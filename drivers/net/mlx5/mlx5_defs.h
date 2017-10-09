@@ -45,9 +45,6 @@
 /* Maximum number of simultaneous VLAN filters. */
 #define MLX5_MAX_VLAN_IDS 128
 
-/* Maximum number of special flows. */
-#define MLX5_MAX_SPECIAL_FLOWS 4
-
 /*
  * Request TX completion every time descriptors reach this threshold since
  * the previous request. Must be a power of two for performance reasons.

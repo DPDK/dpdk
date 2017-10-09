@@ -236,28 +236,6 @@ struct special_flow_init {
 	unsigned int per_vlan:1;
 };
 
-enum hash_rxq_flow_type {
-	HASH_RXQ_FLOW_TYPE_BROADCAST,
-	HASH_RXQ_FLOW_TYPE_IPV6MULTI,
-	HASH_RXQ_FLOW_TYPE_MAC,
-};
-
-#ifndef NDEBUG
-static inline const char *
-hash_rxq_flow_type_str(enum hash_rxq_flow_type flow_type)
-{
-	switch (flow_type) {
-	case HASH_RXQ_FLOW_TYPE_BROADCAST:
-		return "broadcast";
-	case HASH_RXQ_FLOW_TYPE_IPV6MULTI:
-		return "IPv6 multicast";
-	case HASH_RXQ_FLOW_TYPE_MAC:
-		return "MAC";
-	}
-	return NULL;
-}
-#endif /* NDEBUG */
-
 struct hash_rxq {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_qp *qp; /* Hash RX QP. */
@@ -265,8 +243,6 @@ struct hash_rxq {
 	/* MAC flow steering rules, one per VLAN ID. */
 	struct ibv_flow *mac_flow
 		[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
-	struct ibv_flow *special_flow
-		[MLX5_MAX_SPECIAL_FLOWS][MLX5_MAX_VLAN_IDS];
 };
 
 /* TX queue descriptor. */
@@ -336,8 +312,6 @@ size_t priv_flow_attr(struct priv *, struct ibv_flow_attr *,
 		      size_t, enum hash_rxq_type);
 int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
-int priv_allow_flow_type(struct priv *, enum hash_rxq_flow_type);
-int priv_rehash_flows(struct priv *);
 void mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *);
 int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);

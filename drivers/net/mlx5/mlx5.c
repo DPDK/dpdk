@@ -198,10 +198,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
 	/* In case mlx5_dev_stop() has not been called. */
 	priv_dev_interrupt_handler_uninstall(priv, dev);
-	priv_special_flow_disable_all(priv);
-	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
-	priv_flow_flush(priv, &priv->flows);
+	priv_dev_traffic_disable(priv, dev);
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
@@ -843,10 +841,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		     mac.addr_bytes[0], mac.addr_bytes[1],
 		     mac.addr_bytes[2], mac.addr_bytes[3],
 		     mac.addr_bytes[4], mac.addr_bytes[5]);
-		/* Register MAC address. */
-		claim_zero(priv_mac_addr_add(priv, 0,
-					     (const uint8_t (*)[ETHER_ADDR_LEN])
-					     mac.addr_bytes));
 #ifndef NDEBUG
 		{
 			char ifname[IF_NAMESIZE];
@@ -883,6 +877,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->device->driver = &mlx5_driver.driver;
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
+		/* Register MAC address. */
+		claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
 		TAILQ_INIT(&priv->flows);
 		TAILQ_INIT(&priv->ctrl_flows);
 

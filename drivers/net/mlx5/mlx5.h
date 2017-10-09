@@ -96,13 +96,7 @@ struct priv {
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
-	/*
-	 * MAC addresses array and configuration bit-field.
-	 * An extra entry that cannot be modified by the DPDK is reserved
-	 * for broadcast frames (destination MAC address ff:ff:ff:ff:ff:ff).
-	 */
-	struct ether_addr mac[MLX5_MAX_MAC_ADDRESSES];
-	BITFIELD_DECLARE(mac_configured, uint32_t, MLX5_MAX_MAC_ADDRESSES);
+	struct ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
 	uint16_t vlan_filter[MLX5_MAX_VLAN_IDS]; /* VLAN filters table. */
 	unsigned int vlan_filter_n; /* Number of configured VLAN filters. */
 	/* Device properties. */
@@ -225,13 +219,7 @@ void priv_dev_select_rx_function(struct priv *priv, struct rte_eth_dev *dev);
 /* mlx5_mac.c */
 
 int priv_get_mac(struct priv *, uint8_t (*)[ETHER_ADDR_LEN]);
-void hash_rxq_mac_addrs_del(struct hash_rxq *);
-void priv_mac_addrs_disable(struct priv *);
 void mlx5_mac_addr_remove(struct rte_eth_dev *, uint32_t);
-int hash_rxq_mac_addrs_add(struct hash_rxq *);
-int priv_mac_addr_add(struct priv *, unsigned int,
-		      const uint8_t (*)[ETHER_ADDR_LEN]);
-int priv_mac_addrs_enable(struct priv *);
 int mlx5_mac_addr_add(struct rte_eth_dev *, struct ether_addr *, uint32_t,
 		      uint32_t);
 void mlx5_mac_addr_set(struct rte_eth_dev *, struct ether_addr *);
@@ -250,10 +238,6 @@ int mlx5_dev_rss_reta_update(struct rte_eth_dev *,
 
 /* mlx5_rxmode.c */
 
-int priv_special_flow_enable(struct priv *, enum hash_rxq_flow_type);
-void priv_special_flow_disable(struct priv *, enum hash_rxq_flow_type);
-int priv_special_flow_enable_all(struct priv *);
-void priv_special_flow_disable_all(struct priv *);
 void mlx5_promiscuous_enable(struct rte_eth_dev *);
 void mlx5_promiscuous_disable(struct rte_eth_dev *);
 void mlx5_allmulticast_enable(struct rte_eth_dev *);
@@ -280,6 +264,10 @@ void mlx5_vlan_strip_queue_set(struct rte_eth_dev *, uint16_t, int);
 
 int mlx5_dev_start(struct rte_eth_dev *);
 void mlx5_dev_stop(struct rte_eth_dev *);
+int priv_dev_traffic_enable(struct priv *, struct rte_eth_dev *);
+int priv_dev_traffic_disable(struct priv *, struct rte_eth_dev *);
+int priv_dev_traffic_restart(struct priv *, struct rte_eth_dev *);
+int mlx5_traffic_restart(struct rte_eth_dev *);
 
 /* mlx5_flow.c */
 
@@ -302,8 +290,13 @@ int mlx5_flow_isolate(struct rte_eth_dev *, int, struct rte_flow_error *);
 int priv_flow_start(struct priv *, struct mlx5_flows *);
 void priv_flow_stop(struct priv *, struct mlx5_flows *);
 int priv_flow_verify(struct priv *);
+int mlx5_ctrl_flow_vlan(struct rte_eth_dev *, struct rte_flow_item_eth *,
+			struct rte_flow_item_eth *, struct rte_flow_item_vlan *,
+			struct rte_flow_item_vlan *);
 int mlx5_ctrl_flow(struct rte_eth_dev *, struct rte_flow_item_eth *,
-		   struct rte_flow_item_eth *, unsigned int);
+		   struct rte_flow_item_eth *);
+int priv_flow_create_drop_queue(struct priv *);
+void priv_flow_delete_drop_queue(struct priv *);
 
 /* mlx5_socket.c */
 

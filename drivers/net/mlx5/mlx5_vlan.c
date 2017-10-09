@@ -44,61 +44,6 @@
 #include "mlx5_autoconf.h"
 
 /**
- * Configure a VLAN filter.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param vlan_id
- *   VLAN ID to filter.
- * @param on
- *   Toggle filter.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
-{
-	struct priv *priv = dev->data->dev_private;
-	unsigned int i;
-
-	DEBUG("%p: %s VLAN filter ID %" PRIu16,
-	      (void *)dev, (on ? "enable" : "disable"), vlan_id);
-	assert(priv->vlan_filter_n <= RTE_DIM(priv->vlan_filter));
-	for (i = 0; (i != priv->vlan_filter_n); ++i)
-		if (priv->vlan_filter[i] == vlan_id)
-			break;
-	/* Check if there's room for another VLAN filter. */
-	if (i == RTE_DIM(priv->vlan_filter))
-		return ENOMEM;
-	if (i < priv->vlan_filter_n) {
-		assert(priv->vlan_filter_n != 0);
-		/* Enabling an existing VLAN filter has no effect. */
-		if (on)
-			return 0;
-		/* Remove VLAN filter from list. */
-		--priv->vlan_filter_n;
-		memmove(&priv->vlan_filter[i],
-			&priv->vlan_filter[i + 1],
-			sizeof(priv->vlan_filter[i]) *
-			(priv->vlan_filter_n - i));
-		priv->vlan_filter[priv->vlan_filter_n] = 0;
-	} else {
-		assert(i == priv->vlan_filter_n);
-		/* Disabling an unknown VLAN filter has no effect. */
-		if (!on)
-			return 0;
-		/* Add new VLAN filter. */
-		priv->vlan_filter[priv->vlan_filter_n] = vlan_id;
-		++priv->vlan_filter_n;
-	}
-	/* Rehash flows in all hash RX queues. */
-	priv_mac_addrs_disable(priv);
-	priv_special_flow_disable_all(priv);
-	return priv_rehash_flows(priv);
-}
-
-/**
  * DPDK callback to configure a VLAN filter.
  *
  * @param dev
@@ -115,13 +60,41 @@ int
 mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct priv *priv = dev->data->dev_private;
-	int ret;
+	unsigned int i;
 
 	priv_lock(priv);
-	ret = vlan_filter_set(dev, vlan_id, on);
+	DEBUG("%p: %s VLAN filter ID %" PRIu16,
+	      (void *)dev, (on ? "enable" : "disable"), vlan_id);
+	assert(priv->vlan_filter_n <= RTE_DIM(priv->vlan_filter));
+	for (i = 0; (i != priv->vlan_filter_n); ++i)
+		if (priv->vlan_filter[i] == vlan_id)
+			break;
+	if (i < priv->vlan_filter_n) {
+		assert(priv->vlan_filter_n != 0);
+		/* Enabling an existing VLAN filter has no effect. */
+		if (on)
+			goto out;
+		/* Remove VLAN filter from list. */
+		--priv->vlan_filter_n;
+		memmove(&priv->vlan_filter[i],
+			&priv->vlan_filter[i + 1],
+			sizeof(priv->vlan_filter[i]) *
+			(priv->vlan_filter_n - i));
+		priv->vlan_filter[priv->vlan_filter_n] = 0;
+	} else {
+		assert(i == priv->vlan_filter_n);
+		/* Disabling an unknown VLAN filter has no effect. */
+		if (!on)
+			goto out;
+		/* Add new VLAN filter. */
+		priv->vlan_filter[priv->vlan_filter_n] = vlan_id;
+		++priv->vlan_filter_n;
+	}
+	if (dev->data->dev_started)
+		priv_dev_traffic_restart(priv, dev);
+out:
 	priv_unlock(priv);
-	assert(ret >= 0);
-	return -ret;
+	return 0;
 }
 
 /**

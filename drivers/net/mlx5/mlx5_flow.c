@@ -1128,20 +1128,19 @@ priv_flow_create_action_queue(struct priv *priv,
 						 flow->hash_fields,
 						 (*rte_flow->queues),
 						 rte_flow->queues_n);
-	if (rte_flow->frxq.hrxq) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "duplicated flow");
-		goto error;
-	}
-	rte_flow->frxq.hrxq = mlx5_priv_hrxq_new(priv, rss_hash_default_key,
-						 rss_hash_default_key_len,
-						 flow->hash_fields,
-						 (*rte_flow->queues),
-						 rte_flow->queues_n);
 	if (!rte_flow->frxq.hrxq) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "cannot create hash rxq");
-		goto error;
+		rte_flow->frxq.hrxq =
+			mlx5_priv_hrxq_new(priv, rss_hash_default_key,
+					   rss_hash_default_key_len,
+					   flow->hash_fields,
+					   (*rte_flow->queues),
+					   rte_flow->queues_n);
+		if (!rte_flow->frxq.hrxq) {
+			rte_flow_error_set(error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_HANDLE,
+					   NULL, "cannot create hash rxq");
+			goto error;
+		}
 	}
 	for (i = 0; i != flow->actions.queues_n; ++i) {
 		struct mlx5_rxq_data *q =
@@ -1396,7 +1395,7 @@ mlx5_flow_flush(struct rte_eth_dev *dev,
  * @return
  *   0 on success.
  */
-static int
+int
 priv_flow_create_drop_queue(struct priv *priv)
 {
 	struct mlx5_hrxq_drop *fdq = NULL;
@@ -1479,7 +1478,7 @@ error:
  * @param priv
  *   Pointer to private structure.
  */
-static void
+void
 priv_flow_delete_drop_queue(struct priv *priv)
 {
 	struct mlx5_hrxq_drop *fdq = priv->flow_drop_queue;
@@ -1500,8 +1499,6 @@ priv_flow_delete_drop_queue(struct priv *priv)
 
 /**
  * Remove all flows.
- *
- * Called by dev_stop() to remove all flows.
  *
  * @param priv
  *   Pointer to private structure.
@@ -1528,7 +1525,6 @@ priv_flow_stop(struct priv *priv, struct mlx5_flows *list)
 		}
 		DEBUG("Flow %p removed", (void *)flow);
 	}
-	priv_flow_delete_drop_queue(priv);
 }
 
 /**
@@ -1545,12 +1541,8 @@ priv_flow_stop(struct priv *priv, struct mlx5_flows *list)
 int
 priv_flow_start(struct priv *priv, struct mlx5_flows *list)
 {
-	int ret;
 	struct rte_flow *flow;
 
-	ret = priv_flow_create_drop_queue(priv);
-	if (ret)
-		return -1;
 	TAILQ_FOREACH(flow, list, next) {
 		if (flow->frxq.hrxq)
 			goto flow_create;
@@ -1648,25 +1640,28 @@ priv_flow_verify(struct priv *priv)
 }
 
 /**
- * Enable/disable a control flow configured from the control plane.
+ * Enable a control flow configured from the control plane.
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param spec
+ * @param eth_spec
  *   An Ethernet flow spec to apply.
- * @param mask
+ * @param eth_mask
  *   An Ethernet flow mask to apply.
- * @param enable
- *   Enable/disable the flow.
+ * @param vlan_spec
+ *   A VLAN flow spec to apply.
+ * @param vlan_mask
+ *   A VLAN flow mask to apply.
  *
  * @return
  *   0 on success.
  */
 int
-mlx5_ctrl_flow(struct rte_eth_dev *dev,
-	       struct rte_flow_item_eth *spec,
-	       struct rte_flow_item_eth *mask,
-	       unsigned int enable)
+mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
+		    struct rte_flow_item_eth *eth_spec,
+		    struct rte_flow_item_eth *eth_mask,
+		    struct rte_flow_item_vlan *vlan_spec,
+		    struct rte_flow_item_vlan *vlan_mask)
 {
 	struct priv *priv = dev->data->dev_private;
 	const struct rte_flow_attr attr = {
@@ -1676,9 +1671,16 @@ mlx5_ctrl_flow(struct rte_eth_dev *dev,
 	struct rte_flow_item items[] = {
 		{
 			.type = RTE_FLOW_ITEM_TYPE_ETH,
-			.spec = spec,
+			.spec = eth_spec,
 			.last = NULL,
-			.mask = mask,
+			.mask = eth_mask,
+		},
+		{
+			.type = (vlan_spec) ? RTE_FLOW_ITEM_TYPE_VLAN :
+				RTE_FLOW_ITEM_TYPE_END,
+			.spec = vlan_spec,
+			.last = NULL,
+			.mask = vlan_mask,
 		},
 		{
 			.type = RTE_FLOW_ITEM_TYPE_END,
@@ -1698,38 +1700,30 @@ mlx5_ctrl_flow(struct rte_eth_dev *dev,
 	struct rte_flow *flow;
 	struct rte_flow_error error;
 
-	if (enable) {
-		flow = priv_flow_create(priv, &priv->ctrl_flows, &attr, items,
-					actions, &error);
-		if (!flow)
-			return 1;
-	} else {
-		struct spec {
-			struct ibv_flow_attr ibv_attr;
-			struct ibv_flow_spec_eth eth;
-		} spec;
-		struct mlx5_flow_parse parser = {
-			.ibv_attr = &spec.ibv_attr,
-			.offset = sizeof(struct ibv_flow_attr),
-		};
-		struct ibv_flow_spec_eth *eth;
-		const unsigned int attr_size = sizeof(struct ibv_flow_attr);
-
-		claim_zero(mlx5_flow_create_eth(&items[0], NULL, &parser));
-		TAILQ_FOREACH(flow, &priv->ctrl_flows, next) {
-			eth = (void *)((uintptr_t)flow->ibv_attr + attr_size);
-			assert(eth->type == IBV_FLOW_SPEC_ETH);
-			if (!memcmp(eth, &spec.eth, sizeof(*eth)))
-				break;
-		}
-		if (flow) {
-			claim_zero(ibv_destroy_flow(flow->ibv_flow));
-			mlx5_priv_hrxq_release(priv, flow->frxq.hrxq);
-			rte_free(flow->ibv_attr);
-			DEBUG("Control flow destroyed %p", (void *)flow);
-			TAILQ_REMOVE(&priv->ctrl_flows, flow, next);
-			rte_free(flow);
-		}
-	}
+	flow = priv_flow_create(priv, &priv->ctrl_flows, &attr, items, actions,
+				&error);
+	if (!flow)
+		return rte_errno;
 	return 0;
+}
+
+/**
+ * Enable a flow control configured from the control plane.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param eth_spec
+ *   An Ethernet flow spec to apply.
+ * @param eth_mask
+ *   An Ethernet flow mask to apply.
+ *
+ * @return
+ *   0 on success.
+ */
+int
+mlx5_ctrl_flow(struct rte_eth_dev *dev,
+	       struct rte_flow_item_eth *eth_spec,
+	       struct rte_flow_item_eth *eth_mask)
+{
+	return mlx5_ctrl_flow_vlan(dev, eth_spec, eth_mask, NULL, NULL);
 }

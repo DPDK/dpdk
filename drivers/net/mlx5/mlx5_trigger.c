@@ -135,7 +135,14 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	if (mlx5_is_secondary())
 		return -E_RTE_SECONDARY;
 
+	dev->data->dev_started = 1;
 	priv_lock(priv);
+	err = priv_flow_create_drop_queue(priv);
+	if (err) {
+		ERROR("%p: Drop queue allocation failed: %s",
+		      (void *)dev, strerror(err));
+		goto error;
+	}
 	DEBUG("%p: allocating and configuring hash RX queues", (void *)dev);
 	rte_mempool_walk(mlx5_mp2mr_iter, priv);
 	err = priv_txq_start(priv);
@@ -155,21 +162,8 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	/* Update receive callback. */
 	priv_dev_select_rx_function(priv, dev);
 	err = priv_create_hash_rxqs(priv);
-	if (!err)
-		err = priv_rehash_flows(priv);
-	else {
-		ERROR("%p: an error occurred while configuring hash RX queues:"
-		      " %s",
-		      (void *)priv, strerror(err));
-		goto error;
-	}
-	if (dev->data->promiscuous)
-		mlx5_promiscuous_enable(dev);
-	else if (dev->data->all_multicast)
-		mlx5_allmulticast_enable(dev);
-	err = priv_flow_start(priv, &priv->ctrl_flows);
 	if (err) {
-		ERROR("%p: an error occurred while configuring control flows:"
+		ERROR("%p: an error occurred while configuring hash RX queues:"
 		      " %s",
 		      (void *)priv, strerror(err));
 		goto error;
@@ -193,15 +187,14 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	return 0;
 error:
 	/* Rollback. */
+	dev->data->dev_started = 0;
 	LIST_FOREACH(mr, &priv->mr, next)
 		priv_mr_release(priv, mr);
-	priv_special_flow_disable_all(priv);
-	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 	priv_flow_stop(priv, &priv->flows);
-	priv_flow_flush(priv, &priv->ctrl_flows);
-	priv_rxq_stop(priv);
 	priv_txq_stop(priv);
+	priv_rxq_stop(priv);
+	priv_flow_delete_drop_queue(priv);
 	priv_unlock(priv);
 	return -err;
 }
@@ -231,8 +224,6 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	rte_wmb();
 	usleep(1000 * priv->rxqs_n);
 	DEBUG("%p: cleaning up and destroying hash RX queues", (void *)dev);
-	priv_special_flow_disable_all(priv);
-	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 	priv_flow_stop(priv, &priv->flows);
 	priv_flow_flush(priv, &priv->ctrl_flows);
@@ -243,5 +234,172 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	LIST_FOREACH(mr, &priv->mr, next) {
 		priv_mr_release(priv, mr);
 	}
+	priv_flow_delete_drop_queue(priv);
 	priv_unlock(priv);
+}
+
+/**
+ * Enable traffic flows configured by control plane
+ *
+ * @param priv
+ *   Pointer to Ethernet device private data.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success.
+ */
+int
+priv_dev_traffic_enable(struct priv *priv, struct rte_eth_dev *dev)
+{
+	if (priv->isolated)
+		return 0;
+	if (dev->data->promiscuous) {
+		struct rte_flow_item_eth promisc = {
+			.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.type = 0,
+		};
+
+		claim_zero(mlx5_ctrl_flow(dev, &promisc, &promisc));
+	} else if (dev->data->all_multicast) {
+		struct rte_flow_item_eth multicast = {
+			.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+			.src.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+			.type = 0,
+		};
+
+		claim_zero(mlx5_ctrl_flow(dev, &multicast, &multicast));
+	} else {
+		struct rte_flow_item_eth bcast = {
+			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		};
+		struct rte_flow_item_eth ipv6_multi_spec = {
+			.dst.addr_bytes = "\x33\x33\x00\x00\x00\x00",
+		};
+		struct rte_flow_item_eth ipv6_multi_mask = {
+			.dst.addr_bytes = "\xff\xff\x00\x00\x00\x00",
+		};
+		struct rte_flow_item_eth unicast = {
+			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		};
+		struct rte_flow_item_eth unicast_mask = {
+			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		};
+		const unsigned int vlan_filter_n = priv->vlan_filter_n;
+		const struct ether_addr cmp = {
+			.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		};
+		unsigned int i;
+		unsigned int j;
+		unsigned int unicast_flow = 0;
+		int ret;
+
+		for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+			struct ether_addr *mac = &dev->data->mac_addrs[i];
+
+			if (!memcmp(mac, &cmp, sizeof(*mac)))
+				continue;
+			memcpy(&unicast.dst.addr_bytes,
+			       mac->addr_bytes,
+			       ETHER_ADDR_LEN);
+			for (j = 0; j != vlan_filter_n; ++j) {
+				uint16_t vlan = priv->vlan_filter[j];
+
+				struct rte_flow_item_vlan vlan_spec = {
+					.tci = rte_cpu_to_be_16(vlan),
+				};
+				struct rte_flow_item_vlan vlan_mask = {
+					.tci = 0xffff,
+				};
+
+				ret = mlx5_ctrl_flow_vlan(dev, &unicast,
+							  &unicast_mask,
+							  &vlan_spec,
+							  &vlan_mask);
+				if (ret)
+					goto error;
+				unicast_flow = 1;
+			}
+			if (!vlan_filter_n) {
+				ret = mlx5_ctrl_flow(dev, &unicast,
+						     &unicast_mask);
+				if (ret)
+					goto error;
+				unicast_flow = 1;
+			}
+		}
+		if (!unicast_flow)
+			return 0;
+		ret = mlx5_ctrl_flow(dev, &bcast, &bcast);
+		if (ret)
+			goto error;
+		ret = mlx5_ctrl_flow(dev, &ipv6_multi_spec, &ipv6_multi_mask);
+		if (ret)
+			goto error;
+	}
+	return 0;
+error:
+	return rte_errno;
+}
+
+
+/**
+ * Disable traffic flows configured by control plane
+ *
+ * @param priv
+ *   Pointer to Ethernet device private data.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success.
+ */
+int
+priv_dev_traffic_disable(struct priv *priv, struct rte_eth_dev *dev)
+{
+	(void)dev;
+	priv_flow_flush(priv, &priv->ctrl_flows);
+	return 0;
+}
+
+/**
+ * Restart traffic flows configured by control plane
+ *
+ * @param priv
+ *   Pointer to Ethernet device private data.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success.
+ */
+int
+priv_dev_traffic_restart(struct priv *priv, struct rte_eth_dev *dev)
+{
+	if (dev->data->dev_started) {
+		priv_dev_traffic_disable(priv, dev);
+		priv_dev_traffic_enable(priv, dev);
+	}
+	return 0;
+}
+
+/**
+ * Restart traffic flows configured by control plane
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success.
+ */
+int
+mlx5_traffic_restart(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	priv_lock(priv);
+	priv_dev_traffic_restart(priv, dev);
+	priv_unlock(priv);
+	return 0;
 }
