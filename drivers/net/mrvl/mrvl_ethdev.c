@@ -576,6 +576,11 @@ static void
 mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 		   struct rte_eth_dev_info *info)
 {
+	info->speed_capa = ETH_LINK_SPEED_10M |
+			   ETH_LINK_SPEED_100M |
+			   ETH_LINK_SPEED_1G |
+			   ETH_LINK_SPEED_10G;
+
 	info->max_rx_queues = MRVL_PP2_RXQ_MAX;
 	info->max_tx_queues = MRVL_PP2_TXQ_MAX;
 	info->max_mac_addrs = MRVL_MAC_ADDRS_MAX;
