@@ -165,6 +165,17 @@ struct mlx5_ind_table_ibv {
 	uint16_t queues[]; /**< Queue list. */
 };
 
+/* Hash Rx queue. */
+struct mlx5_hrxq {
+	LIST_ENTRY(mlx5_hrxq) next; /* Pointer to the next element. */
+	rte_atomic32_t refcnt; /* Reference counter. */
+	struct mlx5_ind_table_ibv *ind_table; /* Indirection table. */
+	struct ibv_qp *qp; /* Verbs queue pair. */
+	uint64_t hash_fields; /* Verbs Hash fields. */
+	uint8_t rss_key_len; /* Hash key length in bytes. */
+	uint8_t rss_key[]; /* Hash key. */
+};
+
 /* Hash RX queue types. */
 enum hash_rxq_type {
 	HASH_RXQ_TCPV4,
@@ -362,6 +373,12 @@ struct mlx5_ind_table_ibv *mlx5_priv_ind_table_ibv_get(struct priv *,
 						       uint16_t);
 int mlx5_priv_ind_table_ibv_release(struct priv *, struct mlx5_ind_table_ibv *);
 int mlx5_priv_ind_table_ibv_verify(struct priv *);
+struct mlx5_hrxq *mlx5_priv_hrxq_new(struct priv *, uint8_t *, uint8_t,
+				     uint64_t, uint16_t [], uint16_t);
+struct mlx5_hrxq *mlx5_priv_hrxq_get(struct priv *, uint8_t *, uint8_t,
+				     uint64_t, uint16_t [], uint16_t);
+int mlx5_priv_hrxq_release(struct priv *, struct mlx5_hrxq *);
+int mlx5_priv_hrxq_ibv_verify(struct priv *);
 
 /* mlx5_txq.c */
 

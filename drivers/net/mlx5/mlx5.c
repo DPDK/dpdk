@@ -235,6 +235,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->reta_idx != NULL)
 		rte_free(priv->reta_idx);
 	priv_socket_uninit(priv);
+	ret = mlx5_priv_hrxq_ibv_verify(priv);
+	if (ret)
+		WARN("%p: some Hash Rx queue still remain", (void *)priv);
 	ret = mlx5_priv_ind_table_ibv_verify(priv);
 	if (ret)
 		WARN("%p: some Indirection table still remain", (void *)priv);

@@ -87,17 +87,37 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 		       const void *default_mask,
 		       void *data);
 
-struct rte_flow {
-	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
-	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
-	struct mlx5_ind_table_ibv *ind_table; /**< Indirection table. */
+/** Structure for Drop queue. */
+struct mlx5_hrxq_drop {
+	struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
 	struct ibv_qp *qp; /**< Verbs queue pair. */
-	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	struct ibv_wq *wq; /**< Verbs work queue. */
 	struct ibv_cq *cq; /**< Verbs completion queue. */
+};
+
+/* Flows structures. */
+struct mlx5_flow {
+	uint64_t hash_fields; /**< Fields that participate in the hash. */
+	struct mlx5_hrxq *hrxq; /**< Hash Rx queues. */
+};
+
+/* Drop flows structures. */
+struct mlx5_flow_drop {
+	struct mlx5_hrxq_drop hrxq; /**< Drop hash Rx queue. */
+};
+
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	uint32_t mark:1; /**< Set if the flow is marked. */
 	uint32_t drop:1; /**< Drop queue. */
-	uint64_t hash_fields; /**< Fields that participate in the hash. */
+	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
+	struct ibv_flow *ibv_flow; /**< Verbs flow. */
+	uint16_t queues_n; /**< Number of entries in queue[]. */
+	uint16_t (*queues)[]; /**< Queues indexes to use. */
+	union {
+		struct mlx5_flow frxq; /**< Flow with Rx queue. */
+		struct mlx5_flow_drop drxq; /**< Flow with drop Rx queue. */
+	};
 };
 
 /** Static initializer for items. */
@@ -286,14 +306,6 @@ struct mlx5_flow_parse {
 	uint32_t inner; /**< Set once VXLAN is encountered. */
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
 	struct mlx5_flow_action actions; /**< Parsed action result. */
-};
-
-/** Structure for Drop queue. */
-struct rte_flow_drop {
-	struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
-	struct ibv_qp *qp; /**< Verbs queue pair. */
-	struct ibv_wq *wq; /**< Verbs work queue. */
-	struct ibv_cq *cq; /**< Verbs completion queue. */
 };
 
 static const struct rte_flow_ops mlx5_flow_ops = {
@@ -1052,8 +1064,8 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	rte_flow->ibv_attr = flow->ibv_attr;
 	if (!priv->dev->data->dev_started)
 		return rte_flow;
-	rte_flow->qp = priv->flow_drop_queue->qp;
-	rte_flow->ibv_flow = ibv_create_flow(rte_flow->qp,
+	rte_flow->drxq.hrxq.qp = priv->flow_drop_queue->qp;
+	rte_flow->ibv_flow = ibv_create_flow(rte_flow->drxq.hrxq.qp,
 					     rte_flow->ibv_attr);
 	if (!rte_flow->ibv_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -1091,11 +1103,42 @@ priv_flow_create_action_queue(struct priv *priv,
 	assert(priv->pd);
 	assert(priv->ctx);
 	assert(!flow->actions.drop);
-	rte_flow = rte_calloc(__func__, 1, sizeof(*rte_flow), 0);
+	rte_flow =
+		rte_calloc(__func__, 1,
+			   sizeof(*flow) +
+			   flow->actions.queues_n * sizeof(uint16_t),
+			   0);
 	if (!rte_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
+	}
+	rte_flow->mark = flow->actions.mark;
+	rte_flow->ibv_attr = flow->ibv_attr;
+	rte_flow->queues = (uint16_t (*)[])(rte_flow + 1);
+	memcpy(rte_flow->queues, flow->actions.queues,
+	       flow->actions.queues_n * sizeof(uint16_t));
+	rte_flow->queues_n = flow->actions.queues_n;
+	rte_flow->frxq.hash_fields = flow->hash_fields;
+	rte_flow->frxq.hrxq = mlx5_priv_hrxq_get(priv, rss_hash_default_key,
+						 rss_hash_default_key_len,
+						 flow->hash_fields,
+						 (*rte_flow->queues),
+						 rte_flow->queues_n);
+	if (rte_flow->frxq.hrxq) {
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "duplicated flow");
+		goto error;
+	}
+	rte_flow->frxq.hrxq = mlx5_priv_hrxq_new(priv, rss_hash_default_key,
+						 rss_hash_default_key_len,
+						 flow->hash_fields,
+						 (*rte_flow->queues),
+						 rte_flow->queues_n);
+	if (!rte_flow->frxq.hrxq) {
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "cannot create hash rxq");
+		goto error;
 	}
 	for (i = 0; i != flow->actions.queues_n; ++i) {
 		struct mlx5_rxq_data *q =
@@ -1103,50 +1146,9 @@ priv_flow_create_action_queue(struct priv *priv,
 
 		q->mark |= flow->actions.mark;
 	}
-	rte_flow->mark = flow->actions.mark;
-	rte_flow->ibv_attr = flow->ibv_attr;
-	rte_flow->hash_fields = flow->hash_fields;
-	rte_flow->ind_table =
-		mlx5_priv_ind_table_ibv_get(priv, flow->actions.queues,
-					    flow->actions.queues_n);
-	if (!rte_flow->ind_table) {
-		rte_flow->ind_table =
-			mlx5_priv_ind_table_ibv_new(priv, flow->actions.queues,
-						    flow->actions.queues_n);
-		if (!rte_flow->ind_table) {
-			rte_flow_error_set(error, ENOMEM,
-					   RTE_FLOW_ERROR_TYPE_HANDLE,
-					   NULL,
-					   "cannot allocate indirection table");
-			goto error;
-		}
-	}
-	rte_flow->qp = ibv_create_qp_ex(
-		priv->ctx,
-		&(struct ibv_qp_init_attr_ex){
-			.qp_type = IBV_QPT_RAW_PACKET,
-			.comp_mask =
-				IBV_QP_INIT_ATTR_PD |
-				IBV_QP_INIT_ATTR_IND_TABLE |
-				IBV_QP_INIT_ATTR_RX_HASH,
-			.rx_hash_conf = (struct ibv_rx_hash_conf){
-				.rx_hash_function =
-					IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = rss_hash_default_key_len,
-				.rx_hash_key = rss_hash_default_key,
-				.rx_hash_fields_mask = rte_flow->hash_fields,
-			},
-			.rwq_ind_tbl = rte_flow->ind_table->ind_table,
-			.pd = priv->pd
-		});
-	if (!rte_flow->qp) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "cannot allocate QP");
-		goto error;
-	}
 	if (!priv->dev->data->dev_started)
 		return rte_flow;
-	rte_flow->ibv_flow = ibv_create_flow(rte_flow->qp,
+	rte_flow->ibv_flow = ibv_create_flow(rte_flow->frxq.hrxq->qp,
 					     rte_flow->ibv_attr);
 	if (!rte_flow->ibv_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -1156,10 +1158,8 @@ priv_flow_create_action_queue(struct priv *priv,
 	return rte_flow;
 error:
 	assert(rte_flow);
-	if (rte_flow->qp)
-		ibv_destroy_qp(rte_flow->qp);
-	if (rte_flow->ind_table)
-		mlx5_priv_ind_table_ibv_release(priv, rte_flow->ind_table);
+	if (rte_flow->frxq.hrxq)
+		mlx5_priv_hrxq_release(priv, rte_flow->frxq.hrxq);
 	rte_free(rte_flow);
 	return NULL;
 }
@@ -1277,45 +1277,43 @@ priv_flow_destroy(struct priv *priv,
 		  struct rte_flow *flow)
 {
 	unsigned int i;
+	uint16_t *queues;
+	uint16_t queues_n;
 
-	TAILQ_REMOVE(&priv->flows, flow, next);
-	if (flow->ibv_flow)
-		claim_zero(ibv_destroy_flow(flow->ibv_flow));
-	if (flow->drop)
+	if (flow->drop || !flow->mark)
 		goto free;
-	if (flow->qp)
-		claim_zero(ibv_destroy_qp(flow->qp));
-	for (i = 0; i != flow->ind_table->queues_n; ++i) {
+	queues = flow->frxq.hrxq->ind_table->queues;
+	queues_n = flow->frxq.hrxq->ind_table->queues_n;
+	for (i = 0; i != queues_n; ++i) {
 		struct rte_flow *tmp;
-		struct mlx5_rxq_data *rxq_data =
-			(*priv->rxqs)[flow->ind_table->queues[i]];
+		struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[queues[i]];
+		int mark = 0;
 
 		/*
 		 * To remove the mark from the queue, the queue must not be
 		 * present in any other marked flow (RSS or not).
 		 */
-		if (flow->mark) {
-			int mark = 0;
+		TAILQ_FOREACH(tmp, &priv->flows, next) {
+			unsigned int j;
 
-			TAILQ_FOREACH(tmp, &priv->flows, next) {
-				unsigned int j;
-
-				if (tmp->drop)
-					continue;
-				if (!tmp->mark)
-					continue;
-				for (j = 0;
-				     (j != tmp->ind_table->queues_n) && !mark;
-				     j++)
-					if (tmp->ind_table->queues[j] ==
-					    flow->ind_table->queues[i])
-						mark = 1;
-			}
-			rxq_data->mark = mark;
+			if (!tmp->mark)
+				continue;
+			for (j = 0;
+			     (j != tmp->frxq.hrxq->ind_table->queues_n) &&
+			     !mark;
+			     j++)
+				if (tmp->frxq.hrxq->ind_table->queues[j] ==
+				    queues[i])
+					mark = 1;
 		}
+		rxq_data->mark = mark;
 	}
-	mlx5_priv_ind_table_ibv_release(priv, flow->ind_table);
 free:
+	if (flow->ibv_flow)
+		claim_zero(ibv_destroy_flow(flow->ibv_flow));
+	if (!flow->drop)
+		mlx5_priv_hrxq_release(priv, flow->frxq.hrxq);
+	TAILQ_REMOVE(&priv->flows, flow, next);
 	rte_free(flow->ibv_attr);
 	DEBUG("Flow destroyed %p", (void *)flow);
 	rte_free(flow);
@@ -1389,7 +1387,7 @@ mlx5_flow_flush(struct rte_eth_dev *dev,
 static int
 priv_flow_create_drop_queue(struct priv *priv)
 {
-	struct rte_flow_drop *fdq = NULL;
+	struct mlx5_hrxq_drop *fdq = NULL;
 
 	assert(priv->pd);
 	assert(priv->ctx);
@@ -1472,7 +1470,7 @@ error:
 static void
 priv_flow_delete_drop_queue(struct priv *priv)
 {
-	struct rte_flow_drop *fdq = priv->flow_drop_queue;
+	struct mlx5_hrxq_drop *fdq = priv->flow_drop_queue;
 
 	if (!fdq)
 		return;
@@ -1504,9 +1502,12 @@ priv_flow_stop(struct priv *priv)
 	TAILQ_FOREACH_REVERSE(flow, &priv->flows, mlx5_flows, next) {
 		claim_zero(ibv_destroy_flow(flow->ibv_flow));
 		flow->ibv_flow = NULL;
+		mlx5_priv_hrxq_release(priv, flow->frxq.hrxq);
+		flow->frxq.hrxq = NULL;
 		if (flow->mark) {
 			unsigned int n;
-			struct mlx5_ind_table_ibv *ind_tbl = flow->ind_table;
+			struct mlx5_ind_table_ibv *ind_tbl =
+				flow->frxq.hrxq->ind_table;
 
 			for (n = 0; n < ind_tbl->queues_n; ++n)
 				(*priv->rxqs)[ind_tbl->queues[n]]->mark = 0;
@@ -1535,13 +1536,31 @@ priv_flow_start(struct priv *priv)
 	if (ret)
 		return -1;
 	TAILQ_FOREACH(flow, &priv->flows, next) {
-		struct ibv_qp *qp;
-
-		if (flow->drop)
-			qp = priv->flow_drop_queue->qp;
-		else
-			qp = flow->qp;
-		flow->ibv_flow = ibv_create_flow(qp, flow->ibv_attr);
+		if (flow->frxq.hrxq)
+			goto flow_create;
+		flow->frxq.hrxq =
+			mlx5_priv_hrxq_get(priv, rss_hash_default_key,
+					   rss_hash_default_key_len,
+					   flow->frxq.hash_fields,
+					   (*flow->queues),
+					   flow->queues_n);
+		if (flow->frxq.hrxq)
+			goto flow_create;
+		flow->frxq.hrxq =
+			mlx5_priv_hrxq_new(priv, rss_hash_default_key,
+					   rss_hash_default_key_len,
+					   flow->frxq.hash_fields,
+					   (*flow->queues),
+					   flow->queues_n);
+		if (!flow->frxq.hrxq) {
+			DEBUG("Flow %p cannot be applied",
+			      (void *)flow);
+			rte_errno = EINVAL;
+			return rte_errno;
+		}
+flow_create:
+		flow->ibv_flow = ibv_create_flow(flow->frxq.hrxq->qp,
+						 flow->ibv_attr);
 		if (!flow->ibv_flow) {
 			DEBUG("Flow %p cannot be applied", (void *)flow);
 			rte_errno = EINVAL;
@@ -1551,8 +1570,11 @@ priv_flow_start(struct priv *priv)
 		if (flow->mark) {
 			unsigned int n;
 
-			for (n = 0; n < flow->ind_table->queues_n; ++n) {
-				uint16_t idx = flow->ind_table->queues[n];
+			for (n = 0;
+			     n < flow->frxq.hrxq->ind_table->queues_n;
+			     ++n) {
+				uint16_t idx =
+					flow->frxq.hrxq->ind_table->queues[n];
 				(*priv->rxqs)[idx]->mark = 1;
 			}
 		}

@@ -1775,3 +1775,168 @@ mlx5_priv_ind_table_ibv_verify(struct priv *priv)
 	}
 	return ret;
 }
+
+/**
+ * Create an Rx Hash queue.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param rss_key
+ *   RSS key for the Rx hash queue.
+ * @param rss_key_len
+ *   RSS key length.
+ * @param hash_fields
+ *   Verbs protocol hash field to make the RSS on.
+ * @param queues
+ *   Queues entering in hash queue.
+ * @param queues_n
+ *   Number of queues.
+ *
+ * @return
+ *   An hash Rx queue on success.
+ */
+struct mlx5_hrxq*
+mlx5_priv_hrxq_new(struct priv *priv, uint8_t *rss_key, uint8_t rss_key_len,
+		   uint64_t hash_fields, uint16_t queues[], uint16_t queues_n)
+{
+	struct mlx5_hrxq *hrxq;
+	struct mlx5_ind_table_ibv *ind_tbl;
+	struct ibv_qp *qp;
+
+	ind_tbl = mlx5_priv_ind_table_ibv_get(priv, queues, queues_n);
+	if (!ind_tbl)
+		ind_tbl = mlx5_priv_ind_table_ibv_new(priv, queues, queues_n);
+	if (!ind_tbl)
+		return NULL;
+	qp = ibv_create_qp_ex(
+		priv->ctx,
+		&(struct ibv_qp_init_attr_ex){
+			.qp_type = IBV_QPT_RAW_PACKET,
+			.comp_mask =
+				IBV_QP_INIT_ATTR_PD |
+				IBV_QP_INIT_ATTR_IND_TABLE |
+				IBV_QP_INIT_ATTR_RX_HASH,
+			.rx_hash_conf = (struct ibv_rx_hash_conf){
+				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
+				.rx_hash_key_len = rss_key_len,
+				.rx_hash_key = rss_key,
+				.rx_hash_fields_mask = hash_fields,
+			},
+			.rwq_ind_tbl = ind_tbl->ind_table,
+			.pd = priv->pd,
+		});
+	if (!qp)
+		goto error;
+	hrxq = rte_calloc(__func__, 1, sizeof(*hrxq) + rss_key_len, 0);
+	if (!hrxq)
+		goto error;
+	hrxq->ind_table = ind_tbl;
+	hrxq->qp = qp;
+	hrxq->rss_key_len = rss_key_len;
+	hrxq->hash_fields = hash_fields;
+	memcpy(hrxq->rss_key, rss_key, rss_key_len);
+	rte_atomic32_inc(&hrxq->refcnt);
+	LIST_INSERT_HEAD(&priv->hrxqs, hrxq, next);
+	DEBUG("%p: Hash Rx queue %p: refcnt %d", (void *)priv,
+	      (void *)hrxq, rte_atomic32_read(&hrxq->refcnt));
+	return hrxq;
+error:
+	mlx5_priv_ind_table_ibv_release(priv, ind_tbl);
+	if (qp)
+		claim_zero(ibv_destroy_qp(qp));
+	return NULL;
+}
+
+/**
+ * Get an Rx Hash queue.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param rss_conf
+ *   RSS configuration for the Rx hash queue.
+ * @param queues
+ *   Queues entering in hash queue.
+ * @param queues_n
+ *   Number of queues.
+ *
+ * @return
+ *   An hash Rx queue on success.
+ */
+struct mlx5_hrxq*
+mlx5_priv_hrxq_get(struct priv *priv, uint8_t *rss_key, uint8_t rss_key_len,
+		   uint64_t hash_fields, uint16_t queues[], uint16_t queues_n)
+{
+	struct mlx5_hrxq *hrxq;
+
+	LIST_FOREACH(hrxq, &priv->hrxqs, next) {
+		struct mlx5_ind_table_ibv *ind_tbl;
+
+		if (hrxq->rss_key_len != rss_key_len)
+			continue;
+		if (memcmp(hrxq->rss_key, rss_key, rss_key_len))
+			continue;
+		if (hrxq->hash_fields != hash_fields)
+			continue;
+		ind_tbl = mlx5_priv_ind_table_ibv_get(priv, queues, queues_n);
+		if (!ind_tbl)
+			continue;
+		if (ind_tbl != hrxq->ind_table) {
+			mlx5_priv_ind_table_ibv_release(priv, ind_tbl);
+			continue;
+		}
+		rte_atomic32_inc(&hrxq->refcnt);
+		DEBUG("%p: Hash Rx queue %p: refcnt %d", (void *)priv,
+		      (void *)hrxq, rte_atomic32_read(&hrxq->refcnt));
+		return hrxq;
+	}
+	return NULL;
+}
+
+/**
+ * Release the hash Rx queue.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param hrxq
+ *   Pointer to Hash Rx queue to release.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+mlx5_priv_hrxq_release(struct priv *priv, struct mlx5_hrxq *hrxq)
+{
+	DEBUG("%p: Hash Rx queue %p: refcnt %d", (void *)priv,
+	      (void *)hrxq, rte_atomic32_read(&hrxq->refcnt));
+	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
+		claim_zero(ibv_destroy_qp(hrxq->qp));
+		mlx5_priv_ind_table_ibv_release(priv, hrxq->ind_table);
+		LIST_REMOVE(hrxq, next);
+		rte_free(hrxq);
+		return 0;
+	}
+	claim_nonzero(mlx5_priv_ind_table_ibv_release(priv, hrxq->ind_table));
+	return EBUSY;
+}
+
+/**
+ * Verify the Rx Queue list is empty
+ *
+ * @param priv
+ *  Pointer to private structure.
+ *
+ * @return the number of object not released.
+ */
+int
+mlx5_priv_hrxq_ibv_verify(struct priv *priv)
+{
+	struct mlx5_hrxq *hrxq;
+	int ret = 0;
+
+	LIST_FOREACH(hrxq, &priv->hrxqs, next) {
+		DEBUG("%p: Verbs Hash Rx queue %p still referenced",
+		      (void *)priv, (void *)hrxq);
+		++ret;
+	}
+	return ret;
+}
