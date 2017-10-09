@@ -576,6 +576,11 @@ F: drivers/crypto/qat/
 F: doc/guides/cryptodevs/qat.rst
 F: doc/guides/cryptodevs/features/qat.ini
 
+NXP DPAA_SEC
+M: Akhil Goyal <akhil.goyal@nxp.com>
+M: Hemant Agrawal <hemant.agrawal@nxp.com>
+F: drivers/crypto/dpaa_sec/
+
 NXP DPAA2_SEC
 M: Akhil Goyal <akhil.goyal@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>

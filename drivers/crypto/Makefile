@@ -55,5 +55,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += null
 DEPDIRS-null = $(core-libs)
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += dpaa2_sec
 DEPDIRS-dpaa2_sec = $(core-libs)
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA_SEC) += dpaa_sec
+DEPDIRS-dpaa_sec = $(core-libs)
 
 include $(RTE_SDK)/mk/rte.subdir.mk

@@ -1,7 +1,7 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
+#   Copyright 2017 NXP.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Intel Corporation nor the names of its
+#     * Neither the name of Freescale Semiconductor, Inc nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -31,14 +31,41 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += bus
-DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += event
-DEPDIRS-event := bus
-DIRS-y += mempool
-DEPDIRS-mempool := bus event
-DIRS-y += net
-DEPDIRS-net := bus mempool
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
-DEPDIRS-crypto := bus mempool
+#
+# library name
+#
+LIB = librte_pmd_dpaa_sec.a
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# build flags
+CFLAGS += -D _GNU_SOURCE
+ifeq ($(CONFIG_RTE_LIBRTE_DPAA_SEC_DEBUG_INIT),y)
+CFLAGS += -O0 -g
+CFLAGS += "-Wno-error"
+else
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+endif
+
+CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa
+CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa/include
+CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa_sec/
+#sharing the hw flib headers from dpaa2_sec pmd
+CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
+
+# versioning export map
+EXPORT_MAP := rte_pmd_dpaa_sec_version.map
+
+# library version
+LIBABIVER := 1
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA_SEC) += dpaa_sec.c
+
+# library dependencies
+
+LDLIBS += -lrte_bus_dpaa
+LDLIBS += -lrte_mempool_dpaa
+
+include $(RTE_SDK)/mk/rte.lib.mk
