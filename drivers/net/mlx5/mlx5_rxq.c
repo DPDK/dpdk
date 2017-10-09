@@ -571,15 +571,12 @@ priv_destroy_hash_rxqs(struct priv *priv)
 int
 priv_allow_flow_type(struct priv *priv, enum hash_rxq_flow_type type)
 {
+	(void)priv;
 	switch (type) {
-	case HASH_RXQ_FLOW_TYPE_ALLMULTI:
-		return !!priv->allmulti_req;
 	case HASH_RXQ_FLOW_TYPE_BROADCAST:
 	case HASH_RXQ_FLOW_TYPE_IPV6MULTI:
-		/* If allmulti is enabled, broadcast and ipv6multi
-		 * are unnecessary. */
-		return !priv->allmulti_req;
 	case HASH_RXQ_FLOW_TYPE_MAC:
+		return 1;
 		return 1;
 	default:
 		/* Unsupported flow type is not allowed. */

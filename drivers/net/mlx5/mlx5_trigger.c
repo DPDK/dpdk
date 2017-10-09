@@ -165,6 +165,8 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	}
 	if (dev->data->promiscuous)
 		mlx5_promiscuous_enable(dev);
+	else if (dev->data->all_multicast)
+		mlx5_allmulticast_enable(dev);
 	err = priv_flow_start(priv, &priv->ctrl_flows);
 	if (err) {
 		ERROR("%p: an error occurred while configuring control flows:"

@@ -108,7 +108,6 @@ struct priv {
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
-	unsigned int allmulti_req:1; /* All multicast mode requested. */
 	unsigned int hw_csum:1; /* Checksum offload is supported. */
 	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int hw_vlan_strip:1; /* VLAN stripping is supported. */
