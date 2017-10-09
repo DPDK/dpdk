@@ -8,6 +8,34 @@
 #define RHEL_RELEASE_VERSION(a, b) (((a) << 8) + (b))
 #endif
 
+/* SuSE version macro is the same as Linux kernel version */
+#ifndef SLE_VERSION
+#define SLE_VERSION(a, b, c) KERNEL_VERSION(a, b, c)
+#endif
+#ifdef CONFIG_SUSE_KERNEL
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 57))
+/* SLES12SP3 is at least 4.4.57+ based */
+#define SLE_VERSION_CODE SLE_VERSION(12, 3, 0)
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 28))
+/* SLES12 is at least 3.12.28+ based */
+#define SLE_VERSION_CODE SLE_VERSION(12, 0, 0)
+#elif ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 61)) && \
+	(LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)))
+/* SLES11 SP3 is at least 3.0.61+ based */
+#define SLE_VERSION_CODE SLE_VERSION(11, 3, 0)
+#elif (LINUX_VERSION_CODE == KERNEL_VERSION(2, 6, 32))
+/* SLES11 SP1 is 2.6.32 based */
+#define SLE_VERSION_CODE SLE_VERSION(11, 1, 0)
+#elif (LINUX_VERSION_CODE == KERNEL_VERSION(2, 6, 27))
+/* SLES11 GA is 2.6.27 based */
+#define SLE_VERSION_CODE SLE_VERSION(11, 0, 0)
+#endif /* LINUX_VERSION_CODE == KERNEL_VERSION(x,y,z) */
+#endif /* CONFIG_SUSE_KERNEL */
+#ifndef SLE_VERSION_CODE
+#define SLE_VERSION_CODE 0
+#endif /* SLE_VERSION_CODE */
+
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39) && \
 	(!(defined(RHEL_RELEASE_CODE) && \
 	   RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6, 4)))
@@ -55,7 +83,8 @@
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0) || \
 	(defined(RHEL_RELEASE_CODE) && \
-	 RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4))
+	 RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4)) || \
+	(SLE_VERSION_CODE && SLE_VERSION_CODE == SLE_VERSION(12, 3, 0))
 #define HAVE_TRANS_START_HELPER
 #endif
 
