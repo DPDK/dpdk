@@ -783,7 +783,7 @@ fpavf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
 	uint8_t *idreg;
 	int res;
-	struct fpavf_res *fpa;
+	struct fpavf_res *fpa = NULL;
 
 	RTE_SET_USED(pci_drv);
 	RTE_SET_USED(fpa);
