@@ -478,6 +478,70 @@ mrvl_dev_close(struct rte_eth_dev *dev)
 }
 
 /**
+ * DPDK callback to retrieve physical link information.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param wait_to_complete
+ *   Wait for request completion (ignored).
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
+{
+	/*
+	 * TODO
+	 * once MUSDK provides necessary API use it here
+	 */
+	struct ethtool_cmd edata;
+	struct ifreq req;
+	int ret, fd;
+
+	edata.cmd = ETHTOOL_GSET;
+
+	strcpy(req.ifr_name, dev->data->name);
+	req.ifr_data = (void *)&edata;
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd == -1)
+		return -EFAULT;
+
+	ret = ioctl(fd, SIOCETHTOOL, &req);
+	if (ret == -1) {
+		close(fd);
+		return -EFAULT;
+	}
+
+	close(fd);
+
+	switch (ethtool_cmd_speed(&edata)) {
+	case SPEED_10:
+		dev->data->dev_link.link_speed = ETH_SPEED_NUM_10M;
+		break;
+	case SPEED_100:
+		dev->data->dev_link.link_speed = ETH_SPEED_NUM_100M;
+		break;
+	case SPEED_1000:
+		dev->data->dev_link.link_speed = ETH_SPEED_NUM_1G;
+		break;
+	case SPEED_10000:
+		dev->data->dev_link.link_speed = ETH_SPEED_NUM_10G;
+		break;
+	default:
+		dev->data->dev_link.link_speed = ETH_SPEED_NUM_NONE;
+	}
+
+	dev->data->dev_link.link_duplex = edata.duplex ? ETH_LINK_FULL_DUPLEX :
+							 ETH_LINK_HALF_DUPLEX;
+	dev->data->dev_link.link_autoneg = edata.autoneg ? ETH_LINK_AUTONEG :
+							   ETH_LINK_FIXED;
+
+	return 0;
+}
+
+/**
  * DPDK callback to set the primary MAC address.
  *
  * @param dev
@@ -816,6 +880,7 @@ static const struct eth_dev_ops mrvl_ops = {
 	.dev_set_link_up = mrvl_dev_set_link_up,
 	.dev_set_link_down = mrvl_dev_set_link_down,
 	.dev_close = mrvl_dev_close,
+	.link_update = mrvl_link_update,
 	.mac_addr_set = mrvl_mac_addr_set,
 	.dev_infos_get = mrvl_dev_infos_get,
 	.rxq_info_get = mrvl_rxq_info_get,
