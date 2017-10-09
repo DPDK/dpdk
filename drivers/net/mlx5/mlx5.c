@@ -225,11 +225,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		claim_zero(ibv_close_device(priv->ctx));
 	} else
 		assert(priv->ctx == NULL);
-	if (priv->rss_conf != NULL) {
-		for (i = 0; (i != hash_rxq_init_n); ++i)
-			rte_free((*priv->rss_conf)[i]);
-		rte_free(priv->rss_conf);
-	}
+	if (priv->rss_conf.rss_key != NULL)
+		rte_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)
 		rte_free(priv->reta_idx);
 	priv_socket_uninit(priv);
@@ -816,19 +813,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 				priv->txq_inline = MLX5_WQE_SIZE_MAX -
 						   MLX5_WQE_SIZE;
 		}
-		/* Allocate and register default RSS hash keys. */
-		priv->rss_conf = rte_calloc(__func__, hash_rxq_init_n,
-					    sizeof((*priv->rss_conf)[0]), 0);
-		if (priv->rss_conf == NULL) {
-			err = ENOMEM;
-			goto port_error;
-		}
-		err = rss_hash_rss_conf_new_key(priv,
-						rss_hash_default_key,
-						rss_hash_default_key_len,
-						ETH_RSS_PROTO_MASK);
-		if (err)
-			goto port_error;
 		/* Configure the first MAC address by default. */
 		if (priv_get_mac(priv, &mac.addr_bytes)) {
 			ERROR("cannot get MAC address, is mlx5_en loaded?"
@@ -898,10 +882,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		continue;
 
 port_error:
-		if (priv) {
-			rte_free(priv->rss_conf);
+		if (priv)
 			rte_free(priv);
-		}
 		if (pd)
 			claim_zero(ibv_dealloc_pd(pd));
 		if (ctx)

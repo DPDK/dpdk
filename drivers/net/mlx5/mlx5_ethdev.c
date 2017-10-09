@@ -575,8 +575,29 @@ dev_configure(struct rte_eth_dev *dev)
 	unsigned int i;
 	unsigned int j;
 	unsigned int reta_idx_n;
+	const uint8_t use_app_rss_key =
+		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len;
 
-	priv->rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
+	if (use_app_rss_key &&
+	    (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len !=
+	     rss_hash_default_key_len)) {
+		/* MLX5 RSS only support 40bytes key. */
+		return EINVAL;
+	}
+	priv->rss_conf.rss_key =
+		rte_realloc(priv->rss_conf.rss_key,
+			    rss_hash_default_key_len, 0);
+	if (!priv->rss_conf.rss_key) {
+		ERROR("cannot allocate RSS hash key memory (%u)", rxqs_n);
+		return ENOMEM;
+	}
+	memcpy(priv->rss_conf.rss_key,
+	       use_app_rss_key ?
+	       dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key :
+	       rss_hash_default_key,
+	       rss_hash_default_key_len);
+	priv->rss_conf.rss_key_len = rss_hash_default_key_len;
+	priv->rss_conf.rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
 	if (txqs_n != priv->txqs_n) {
@@ -694,9 +715,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		info->if_index = if_nametoindex(ifname);
 	info->reta_size = priv->reta_idx_n ?
 		priv->reta_idx_n : priv->ind_table_max_size;
-	info->hash_key_size = ((*priv->rss_conf) ?
-			       (*priv->rss_conf)[0]->rss_key_len :
-			       0);
+	info->hash_key_size = priv->rss_conf.rss_key_len;
 	info->speed_capa = priv->link_speed_capa;
 	priv_unlock(priv);
 }

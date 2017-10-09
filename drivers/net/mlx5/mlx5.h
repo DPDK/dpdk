@@ -134,9 +134,7 @@ struct priv {
 	/* Hash RX QPs feeding the indirection table. */
 	struct hash_rxq (*hash_rxqs)[];
 	unsigned int hash_rxqs_n; /* Hash RX QPs array size. */
-	/* RSS configuration array indexed by hash RX queue type. */
-	struct rte_eth_rss_conf *(*rss_conf)[];
-	uint64_t rss_hf; /* RSS DPDK bit field of active RSS. */
+	struct rte_eth_rss_conf rss_conf; /* RSS configuration. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
@@ -226,8 +224,6 @@ void mlx5_mac_addr_set(struct rte_eth_dev *, struct ether_addr *);
 
 /* mlx5_rss.c */
 
-int rss_hash_rss_conf_new_key(struct priv *, const uint8_t *, unsigned int,
-			      uint64_t);
 int mlx5_rss_hash_update(struct rte_eth_dev *, struct rte_eth_rss_conf *);
 int mlx5_rss_hash_conf_get(struct rte_eth_dev *, struct rte_eth_rss_conf *);
 int priv_rss_reta_index_resize(struct priv *, unsigned int);

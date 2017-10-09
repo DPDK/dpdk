@@ -54,74 +54,6 @@
 #include "mlx5_rxtx.h"
 
 /**
- * Get a RSS configuration hash key.
- *
- * @param priv
- *   Pointer to private structure.
- * @param rss_hf
- *   RSS hash functions configuration must be retrieved for.
- *
- * @return
- *   Pointer to a RSS configuration structure or NULL if rss_hf cannot
- *   be matched.
- */
-static struct rte_eth_rss_conf *
-rss_hash_get(struct priv *priv, uint64_t rss_hf)
-{
-	unsigned int i;
-
-	for (i = 0; (i != hash_rxq_init_n); ++i) {
-		uint64_t dpdk_rss_hf = hash_rxq_init[i].dpdk_rss_hf;
-
-		if (!(dpdk_rss_hf & rss_hf))
-			continue;
-		return (*priv->rss_conf)[i];
-	}
-	return NULL;
-}
-
-/**
- * Register a RSS key.
- *
- * @param priv
- *   Pointer to private structure.
- * @param key
- *   Hash key to register.
- * @param key_len
- *   Hash key length in bytes.
- * @param rss_hf
- *   RSS hash functions the provided key applies to.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-int
-rss_hash_rss_conf_new_key(struct priv *priv, const uint8_t *key,
-			  unsigned int key_len, uint64_t rss_hf)
-{
-	unsigned int i;
-
-	for (i = 0; (i != hash_rxq_init_n); ++i) {
-		struct rte_eth_rss_conf *rss_conf;
-		uint64_t dpdk_rss_hf = hash_rxq_init[i].dpdk_rss_hf;
-
-		if (!(dpdk_rss_hf & rss_hf))
-			continue;
-		rss_conf = rte_realloc((*priv->rss_conf)[i],
-				       (sizeof(*rss_conf) + key_len),
-				       0);
-		if (!rss_conf)
-			return ENOMEM;
-		rss_conf->rss_key = (void *)(rss_conf + 1);
-		rss_conf->rss_key_len = key_len;
-		rss_conf->rss_hf = dpdk_rss_hf;
-		memcpy(rss_conf->rss_key, key, key_len);
-		(*priv->rss_conf)[i] = rss_conf;
-	}
-	return 0;
-}
-
-/**
  * DPDK callback to update the RSS hash configuration.
  *
  * @param dev
@@ -137,23 +69,24 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 		     struct rte_eth_rss_conf *rss_conf)
 {
 	struct priv *priv = dev->data->dev_private;
-	int err = 0;
+	int ret = 0;
 
 	priv_lock(priv);
-
-	assert(priv->rss_conf != NULL);
-
-	/* Apply configuration. */
-	if (rss_conf->rss_key)
-		err = rss_hash_rss_conf_new_key(priv,
-						rss_conf->rss_key,
-						rss_conf->rss_key_len,
-						rss_conf->rss_hf);
-	/* Store protocols for which RSS is enabled. */
-	priv->rss_hf = rss_conf->rss_hf;
+	if (rss_conf->rss_key_len) {
+		priv->rss_conf.rss_key = rte_realloc(priv->rss_conf.rss_key,
+						     rss_conf->rss_key_len, 0);
+		if (!priv->rss_conf.rss_key) {
+			ret = -ENOMEM;
+			goto out;
+		}
+		memcpy(&priv->rss_conf.rss_key, rss_conf->rss_key,
+		       rss_conf->rss_key_len);
+		priv->rss_conf.rss_key_len = rss_conf->rss_key_len;
+	}
+	priv->rss_conf.rss_hf = rss_conf->rss_hf;
+out:
 	priv_unlock(priv);
-	assert(err >= 0);
-	return -err;
+	return ret;
 }
 
 /**
@@ -172,28 +105,22 @@ mlx5_rss_hash_conf_get(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_conf *rss_conf)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct rte_eth_rss_conf *priv_rss_conf;
+	int ret = 0;
 
 	priv_lock(priv);
-
-	assert(priv->rss_conf != NULL);
-
-	priv_rss_conf = rss_hash_get(priv, rss_conf->rss_hf);
-	if (!priv_rss_conf) {
-		rss_conf->rss_hf = 0;
-		priv_unlock(priv);
-		return -EINVAL;
+	if (!rss_conf->rss_key) {
+		ret = -ENOMEM;
+		goto out;
 	}
-	if (rss_conf->rss_key &&
-	    rss_conf->rss_key_len >= priv_rss_conf->rss_key_len)
-		memcpy(rss_conf->rss_key,
-		       priv_rss_conf->rss_key,
-		       priv_rss_conf->rss_key_len);
-	rss_conf->rss_key_len = priv_rss_conf->rss_key_len;
-	rss_conf->rss_hf = priv_rss_conf->rss_hf;
-
+	if (rss_conf->rss_key_len < priv->rss_conf.rss_key_len) {
+		ret = -EINVAL;
+		goto out;
+	}
+	memcpy(rss_conf->rss_key, priv->rss_conf.rss_key,
+	       priv->rss_conf.rss_key_len);
+out:
 	priv_unlock(priv);
-	return 0;
+	return ret;
 }
 
 /**
