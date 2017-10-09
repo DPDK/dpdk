@@ -161,9 +161,9 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	}
 	/* Update receive callback. */
 	priv_dev_select_rx_function(priv, dev);
-	err = priv_create_hash_rxqs(priv);
+	err = priv_dev_traffic_enable(priv, dev);
 	if (err) {
-		ERROR("%p: an error occurred while configuring hash RX queues:"
+		ERROR("%p: an error occurred while configuring control flows:"
 		      " %s",
 		      (void *)priv, strerror(err));
 		goto error;
@@ -190,8 +190,8 @@ error:
 	dev->data->dev_started = 0;
 	LIST_FOREACH(mr, &priv->mr, next)
 		priv_mr_release(priv, mr);
-	priv_destroy_hash_rxqs(priv);
 	priv_flow_stop(priv, &priv->flows);
+	priv_dev_traffic_disable(priv, dev);
 	priv_txq_stop(priv);
 	priv_rxq_stop(priv);
 	priv_flow_delete_drop_queue(priv);
@@ -224,9 +224,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	rte_wmb();
 	usleep(1000 * priv->rxqs_n);
 	DEBUG("%p: cleaning up and destroying hash RX queues", (void *)dev);
-	priv_destroy_hash_rxqs(priv);
 	priv_flow_stop(priv, &priv->flows);
-	priv_flow_flush(priv, &priv->ctrl_flows);
+	priv_dev_traffic_disable(priv, dev);
 	priv_rx_intr_vec_disable(priv);
 	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv_txq_stop(priv);

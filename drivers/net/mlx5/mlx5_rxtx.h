@@ -176,75 +176,6 @@ struct mlx5_hrxq {
 	uint8_t rss_key[]; /* Hash key. */
 };
 
-/* Hash RX queue types. */
-enum hash_rxq_type {
-	HASH_RXQ_TCPV4,
-	HASH_RXQ_UDPV4,
-	HASH_RXQ_IPV4,
-	HASH_RXQ_TCPV6,
-	HASH_RXQ_UDPV6,
-	HASH_RXQ_IPV6,
-	HASH_RXQ_ETH,
-};
-
-/* Flow structure with Ethernet specification. It is packed to prevent padding
- * between attr and spec as this layout is expected by libibverbs. */
-struct flow_attr_spec_eth {
-	struct ibv_flow_attr attr;
-	struct ibv_flow_spec_eth spec;
-} __attribute__((packed));
-
-/* Define a struct flow_attr_spec_eth object as an array of at least
- * "size" bytes. Room after the first index is normally used to store
- * extra flow specifications. */
-#define FLOW_ATTR_SPEC_ETH(name, size) \
-	struct flow_attr_spec_eth name \
-		[((size) / sizeof(struct flow_attr_spec_eth)) + \
-		 !!((size) % sizeof(struct flow_attr_spec_eth))]
-
-/* Initialization data for hash RX queue. */
-struct hash_rxq_init {
-	uint64_t hash_fields; /* Fields that participate in the hash. */
-	uint64_t dpdk_rss_hf; /* Matching DPDK RSS hash fields. */
-	unsigned int flow_priority; /* Flow priority to use. */
-	union {
-		struct {
-			enum ibv_flow_spec_type type;
-			uint16_t size;
-		} hdr;
-		struct ibv_flow_spec_tcp_udp tcp_udp;
-		struct ibv_flow_spec_ipv4 ipv4;
-		struct ibv_flow_spec_ipv6 ipv6;
-		struct ibv_flow_spec_eth eth;
-	} flow_spec; /* Flow specification template. */
-	const struct hash_rxq_init *underlayer; /* Pointer to underlayer. */
-};
-
-/* Initialization data for indirection table. */
-struct ind_table_init {
-	unsigned int max_size; /* Maximum number of WQs. */
-	/* Hash RX queues using this table. */
-	unsigned int hash_types;
-	unsigned int hash_types_n;
-};
-
-/* Initialization data for special flows. */
-struct special_flow_init {
-	uint8_t dst_mac_val[6];
-	uint8_t dst_mac_mask[6];
-	unsigned int hash_types;
-	unsigned int per_vlan:1;
-};
-
-struct hash_rxq {
-	struct priv *priv; /* Back pointer to private data. */
-	struct ibv_qp *qp; /* Hash RX QP. */
-	enum hash_rxq_type type; /* Hash RX queue type. */
-	/* MAC flow steering rules, one per VLAN ID. */
-	struct ibv_flow *mac_flow
-		[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
-};
-
 /* TX queue descriptor. */
 __extension__
 struct mlx5_txq_data {
@@ -302,16 +233,9 @@ struct mlx5_txq_ctrl {
 
 /* mlx5_rxq.c */
 
-extern const struct hash_rxq_init hash_rxq_init[];
-extern const unsigned int hash_rxq_init_n;
-
 extern uint8_t rss_hash_default_key[];
 extern const size_t rss_hash_default_key_len;
 
-size_t priv_flow_attr(struct priv *, struct ibv_flow_attr *,
-		      size_t, enum hash_rxq_type);
-int priv_create_hash_rxqs(struct priv *);
-void priv_destroy_hash_rxqs(struct priv *);
 void mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *);
 int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);
