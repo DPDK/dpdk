@@ -298,6 +298,49 @@ struct rte_flow_drop {
 	struct ibv_cq *cq; /**< Verbs completion queue. */
 };
 
+static const struct rte_flow_ops mlx5_flow_ops = {
+	.validate = mlx5_flow_validate,
+	.create = mlx5_flow_create,
+	.destroy = mlx5_flow_destroy,
+	.flush = mlx5_flow_flush,
+	.query = NULL,
+	.isolate = mlx5_flow_isolate,
+};
+
+/**
+ * Manage filter operations.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param filter_type
+ *   Filter type.
+ * @param filter_op
+ *   Operation to perform.
+ * @param arg
+ *   Pointer to operation-specific structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	int ret = EINVAL;
+
+	if (filter_type == RTE_ETH_FILTER_GENERIC) {
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &mlx5_flow_ops;
+		return 0;
+	}
+	ERROR("%p: filter type (%d) not supported",
+	      (void *)dev, filter_type);
+	return -ret;
+}
+
 /**
  * Check support for a given item.
  *

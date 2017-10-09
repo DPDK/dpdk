@@ -80,8 +80,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		      (void *)priv, strerror(err));
 		goto error;
 	}
-	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE)
-		priv_fdir_enable(priv);
 	err = priv_flow_start(priv);
 	if (err) {
 		priv->started = 0;
@@ -135,7 +133,6 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
-	priv_fdir_disable(priv);
 	priv_flow_stop(priv);
 	priv_rx_intr_vec_disable(priv);
 	priv_dev_interrupt_handler_uninstall(priv, dev);

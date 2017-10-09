@@ -145,8 +145,6 @@ struct priv {
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
-	struct fdir_filter_list *fdir_filter_list; /* Flow director rules. */
-	struct fdir_queue *fdir_drop_queue; /* Flow director drop queue. */
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	TAILQ_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
@@ -273,18 +271,10 @@ void mlx5_vlan_strip_queue_set(struct rte_eth_dev *, uint16_t, int);
 int mlx5_dev_start(struct rte_eth_dev *);
 void mlx5_dev_stop(struct rte_eth_dev *);
 
-/* mlx5_fdir.c */
-
-void priv_fdir_queue_destroy(struct priv *, struct fdir_queue *);
-int fdir_init_filters_list(struct priv *);
-void priv_fdir_delete_filters_list(struct priv *);
-void priv_fdir_disable(struct priv *);
-void priv_fdir_enable(struct priv *);
-int mlx5_dev_filter_ctrl(struct rte_eth_dev *, enum rte_filter_type,
-			 enum rte_filter_op, void *);
-
 /* mlx5_flow.c */
 
+int mlx5_dev_filter_ctrl(struct rte_eth_dev *, enum rte_filter_type,
+			 enum rte_filter_op, void *);
 int mlx5_flow_validate(struct rte_eth_dev *, const struct rte_flow_attr *,
 		       const struct rte_flow_item [],
 		       const struct rte_flow_action [],

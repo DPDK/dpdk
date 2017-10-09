@@ -78,14 +78,6 @@ struct mlx5_txq_stats {
 	uint64_t oerrors; /**< Total number of failed transmitted packets. */
 };
 
-/* Flow director queue structure. */
-struct fdir_queue {
-	struct ibv_qp *qp; /* Associated RX QP. */
-	struct ibv_rwq_ind_table *ind_table; /* Indirection table. */
-	struct ibv_wq *wq; /* Work queue. */
-	struct ibv_cq *cq; /* Completion queue. */
-};
-
 struct priv;
 
 /* Compressed CQE context. */
@@ -134,7 +126,6 @@ struct rxq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_wq *wq; /* Work Queue. */
-	struct fdir_queue *fdir_queue; /* Flow director queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_comp_channel *channel;
 	unsigned int socket; /* CPU socket ID for allocations. */

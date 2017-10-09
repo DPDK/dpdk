@@ -201,10 +201,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 
-	/* Remove flow director elements. */
-	priv_fdir_disable(priv);
-	priv_fdir_delete_filters_list(priv);
-
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
@@ -844,10 +840,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		claim_zero(priv_mac_addr_add(priv, 0,
 					     (const uint8_t (*)[ETHER_ADDR_LEN])
 					     mac.addr_bytes));
-		/* Initialize FD filters list. */
-		err = fdir_init_filters_list(priv);
-		if (err)
-			goto port_error;
 #ifndef NDEBUG
 		{
 			char ifname[IF_NAMESIZE];
