@@ -13843,8 +13843,8 @@ no_print_pctypes:
 
 	free(proto);
 	ret = 0;
-#endif
 no_print_return:
+#endif
 	if (ret == -ENOTSUP)
 		printf("Function not supported in PMD driver\n");
 	close_ddp_package_file(pkg);
@@ -14390,17 +14390,16 @@ cmd_pctype_mapping_update_parsed(
 #ifdef RTE_LIBRTE_I40E_PMD
 	struct rte_pmd_i40e_flow_type_mapping mapping;
 	unsigned int i;
-#endif
 	unsigned int nb_item;
 	unsigned int pctype_list[RTE_PMD_I40E_PCTYPE_MAX];
+#endif
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
+#ifdef RTE_LIBRTE_I40E_PMD
 	nb_item = parse_item_list(res->pctype_list, "pctypes",
 				  RTE_PMD_I40E_PCTYPE_MAX, pctype_list, 1);
-
-#ifdef RTE_LIBRTE_I40E_PMD
 	mapping.flow_type = res->flow_type;
 	for (i = 0, mapping.pctype = 0ULL; i < nb_item; i++)
 		mapping.pctype |= (1ULL << pctype_list[i]);
