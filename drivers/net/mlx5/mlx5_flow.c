@@ -292,24 +292,19 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 	},
 };
 
-/* Structure to parse actions. */
-struct mlx5_flow_action {
-	uint32_t queue:1; /**< Target is a receive queue. */
-	uint32_t drop:1; /**< Target is a drop queue. */
-	uint32_t mark:1; /**< Mark is present in the flow. */
-	uint32_t mark_id; /**< Mark identifier. */
-	uint16_t queues[RTE_MAX_QUEUES_PER_PORT]; /**< Queues indexes to use. */
-	uint16_t queues_n; /**< Number of entries in queue[]. */
-};
-
 /** Structure to pass to the conversion function. */
 struct mlx5_flow_parse {
 	struct ibv_flow_attr *ibv_attr; /**< Verbs attribute. */
 	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
 	uint32_t inner; /**< Set once VXLAN is encountered. */
 	uint32_t create:1; /**< Leave allocated resources on exit. */
+	uint32_t queue:1; /**< Target is a receive queue. */
+	uint32_t drop:1; /**< Target is a drop queue. */
+	uint32_t mark:1; /**< Mark is present in the flow. */
+	uint32_t mark_id; /**< Mark identifier. */
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
-	struct mlx5_flow_action actions; /**< Parsed action result. */
+	uint16_t queues[RTE_MAX_QUEUES_PER_PORT]; /**< Queues indexes to use. */
+	uint16_t queues_n; /**< Number of entries in queue[]. */
 };
 
 static const struct rte_flow_ops mlx5_flow_ops = {
@@ -452,9 +447,7 @@ priv_flow_convert(struct priv *priv,
 		.ibv_attr = flow->ibv_attr,
 		.create = flow->create,
 		.offset = sizeof(struct ibv_flow_attr),
-		.actions = {
-			.mark_id = MLX5_FLOW_MARK_DEFAULT,
-		},
+		.mark_id = MLX5_FLOW_MARK_DEFAULT,
 	};
 	if (attr->group) {
 		rte_flow_error_set(error, ENOTSUP,
@@ -488,7 +481,7 @@ priv_flow_convert(struct priv *priv,
 		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
 			continue;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
-			flow->actions.drop = 1;
+			flow->drop = 1;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 			const struct rte_flow_action_queue *queue =
 				(const struct rte_flow_action_queue *)
@@ -498,13 +491,13 @@ priv_flow_convert(struct priv *priv,
 
 			if (!queue || (queue->index > (priv->rxqs_n - 1)))
 				goto exit_action_not_supported;
-			for (n = 0; n < flow->actions.queues_n; ++n) {
-				if (flow->actions.queues[n] == queue->index) {
+			for (n = 0; n < flow->queues_n; ++n) {
+				if (flow->queues[n] == queue->index) {
 					found = 1;
 					break;
 				}
 			}
-			if (flow->actions.queues_n > 1 && !found) {
+			if (flow->queues_n > 1 && !found) {
 				rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   actions,
@@ -512,9 +505,9 @@ priv_flow_convert(struct priv *priv,
 				return -rte_errno;
 			}
 			if (!found) {
-				flow->actions.queue = 1;
-				flow->actions.queues_n = 1;
-				flow->actions.queues[0] = queue->index;
+				flow->queue = 1;
+				flow->queues_n = 1;
+				flow->queues[0] = queue->index;
 			}
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
 			const struct rte_flow_action_rss *rss =
@@ -529,12 +522,12 @@ priv_flow_convert(struct priv *priv,
 						   "no valid queues");
 				return -rte_errno;
 			}
-			if (flow->actions.queues_n == 1) {
+			if (flow->queues_n == 1) {
 				uint16_t found = 0;
 
-				assert(flow->actions.queues_n);
+				assert(flow->queues_n);
 				for (n = 0; n < rss->num; ++n) {
-					if (flow->actions.queues[0] ==
+					if (flow->queues[0] ==
 					    rss->queue[n]) {
 						found = 1;
 						break;
@@ -559,10 +552,10 @@ priv_flow_convert(struct priv *priv,
 					return -rte_errno;
 				}
 			}
-			flow->actions.queue = 1;
+			flow->queue = 1;
 			for (n = 0; n < rss->num; ++n)
-				flow->actions.queues[n] = rss->queue[n];
-			flow->actions.queues_n = rss->num;
+				flow->queues[n] = rss->queue[n];
+			flow->queues_n = rss->num;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_MARK) {
 			const struct rte_flow_action_mark *mark =
 				(const struct rte_flow_action_mark *)
@@ -582,19 +575,19 @@ priv_flow_convert(struct priv *priv,
 						   " and 16777199");
 				return -rte_errno;
 			}
-			flow->actions.mark = 1;
-			flow->actions.mark_id = mark->id;
+			flow->mark = 1;
+			flow->mark_id = mark->id;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_FLAG) {
-			flow->actions.mark = 1;
+			flow->mark = 1;
 		} else {
 			goto exit_action_not_supported;
 		}
 	}
-	if (flow->actions.mark && !flow->ibv_attr && !flow->actions.drop)
+	if (flow->mark && !flow->ibv_attr && !flow->drop)
 		flow->offset += sizeof(struct ibv_flow_spec_action_tag);
-	if (!flow->ibv_attr && flow->actions.drop)
+	if (!flow->ibv_attr && flow->drop)
 		flow->offset += sizeof(struct ibv_flow_spec_action_drop);
-	if (!flow->actions.queue && !flow->actions.drop) {
+	if (!flow->queue && !flow->drop) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "no valid action");
 		return -rte_errno;
@@ -996,7 +989,7 @@ mlx5_flow_create_flag_mark(struct mlx5_flow_parse *flow, uint32_t mark_id)
 	struct ibv_flow_spec_action_tag *tag;
 	unsigned int size = sizeof(struct ibv_flow_spec_action_tag);
 
-	assert(flow->actions.mark);
+	assert(flow->mark);
 	tag = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*tag = (struct ibv_flow_spec_action_tag){
 		.type = IBV_FLOW_SPEC_ACTION_TAG,
@@ -1087,23 +1080,22 @@ priv_flow_create_action_queue(struct priv *priv,
 
 	assert(priv->pd);
 	assert(priv->ctx);
-	assert(!flow->actions.drop);
-	rte_flow =
-		rte_calloc(__func__, 1,
-			   sizeof(*flow) +
-			   flow->actions.queues_n * sizeof(uint16_t),
-			   0);
+	assert(!flow->drop);
+	rte_flow = rte_calloc(__func__, 1,
+			      sizeof(*rte_flow) +
+			      flow->queues_n * sizeof(uint16_t),
+			      0);
 	if (!rte_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
 	}
-	rte_flow->mark = flow->actions.mark;
+	rte_flow->mark = flow->mark;
 	rte_flow->ibv_attr = flow->ibv_attr;
 	rte_flow->queues = (uint16_t (*)[])(rte_flow + 1);
-	memcpy(rte_flow->queues, flow->actions.queues,
-	       flow->actions.queues_n * sizeof(uint16_t));
-	rte_flow->queues_n = flow->actions.queues_n;
+	memcpy(rte_flow->queues, flow->queues,
+	       flow->queues_n * sizeof(uint16_t));
+	rte_flow->queues_n = flow->queues_n;
 	rte_flow->frxq.hash_fields = flow->hash_fields;
 	rte_flow->frxq.hrxq = mlx5_priv_hrxq_get(priv, rss_hash_default_key,
 						 rss_hash_default_key_len,
@@ -1124,11 +1116,11 @@ priv_flow_create_action_queue(struct priv *priv,
 			goto error;
 		}
 	}
-	for (i = 0; i != flow->actions.queues_n; ++i) {
+	for (i = 0; i != flow->queues_n; ++i) {
 		struct mlx5_rxq_data *q =
-			(*priv->rxqs)[flow->actions.queues[i]];
+			(*priv->rxqs)[flow->queues[i]];
 
-		q->mark |= flow->actions.mark;
+		q->mark |= flow->mark;
 	}
 	if (!priv->dev->data->dev_started)
 		return rte_flow;
@@ -1180,7 +1172,7 @@ priv_flow_validate(struct priv *priv,
 	err = priv_flow_convert(priv, attr, items, actions, error, parser);
 	if (err)
 		goto exit;
-	if (parser->actions.mark)
+	if (parser->mark)
 		parser->offset += sizeof(struct ibv_flow_spec_action_tag);
 	parser->ibv_attr = rte_malloc(__func__, parser->offset, 0);
 	if (!parser->ibv_attr) {
@@ -1200,8 +1192,8 @@ priv_flow_validate(struct priv *priv,
 	err = priv_flow_convert(priv, attr, items, actions, error, parser);
 	if (err || parser->create)
 		goto exit;
-	if (parser->actions.mark)
-		mlx5_flow_create_flag_mark(parser, parser->actions.mark_id);
+	if (parser->mark)
+		mlx5_flow_create_flag_mark(parser, parser->mark_id);
 	return 0;
 exit:
 	if (parser->ibv_attr)
@@ -1243,7 +1235,7 @@ priv_flow_create(struct priv *priv,
 	err = priv_flow_validate(priv, attr, items, actions, error, &parser);
 	if (err)
 		goto exit;
-	if (parser.actions.drop)
+	if (parser.drop)
 		flow = priv_flow_create_action_queue_drop(priv, &parser, error);
 	else
 		flow = priv_flow_create_action_queue(priv, &parser, error);
