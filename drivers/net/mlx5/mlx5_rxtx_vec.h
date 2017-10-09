@@ -68,7 +68,11 @@ S_ASSERT_RTE_MBUF(offsetof(struct rte_mbuf, pkt_len) ==
 		  offsetof(struct rte_mbuf, rx_descriptor_fields1) + 4);
 S_ASSERT_RTE_MBUF(offsetof(struct rte_mbuf, data_len) ==
 		  offsetof(struct rte_mbuf, rx_descriptor_fields1) + 8);
+#if (RTE_CACHE_LINE_SIZE == 128)
+S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, pkt_info) == 64);
+#else
 S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, pkt_info) == 0);
+#endif
 S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, rx_hash_res) ==
 		  offsetof(struct mlx5_cqe, pkt_info) + 12);
 S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, rsvd1) +
