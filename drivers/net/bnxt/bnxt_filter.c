@@ -906,7 +906,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct bnxt_filter_info *filter;
-	struct bnxt_vnic_info *vnic;
+	struct bnxt_vnic_info *vnic = NULL;
 	struct rte_flow *flow;
 	unsigned int i;
 	int ret = 0;
