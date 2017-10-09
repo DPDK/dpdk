@@ -39,6 +39,7 @@
 #include <limits.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <sys/queue.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -86,6 +87,9 @@ struct mlx5_xstats_ctrl {
 	uint64_t base[MLX5_MAX_XSTATS];
 };
 
+/* Flow list . */
+TAILQ_HEAD(mlx5_flows, rte_flow);
+
 struct priv {
 	struct rte_eth_dev *dev; /* Ethernet device of master process. */
 	struct ibv_context *ctx; /* Verbs context. */
@@ -104,7 +108,6 @@ struct priv {
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
-	unsigned int promisc_req:1; /* Promiscuous mode requested. */
 	unsigned int allmulti_req:1; /* All multicast mode requested. */
 	unsigned int hw_csum:1; /* Checksum offload is supported. */
 	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
@@ -145,7 +148,8 @@ struct priv {
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct mlx5_hrxq_drop *flow_drop_queue; /* Flow drop queue. */
-	TAILQ_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
+	struct mlx5_flows flows; /* RTE Flow rules. */
+	struct mlx5_flows ctrl_flows; /* Control flow rules. */
 	LIST_HEAD(mr, mlx5_mr) mr; /* Memory region. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
@@ -293,11 +297,14 @@ struct rte_flow *mlx5_flow_create(struct rte_eth_dev *,
 				  struct rte_flow_error *);
 int mlx5_flow_destroy(struct rte_eth_dev *, struct rte_flow *,
 		      struct rte_flow_error *);
+void priv_flow_flush(struct priv *, struct mlx5_flows *);
 int mlx5_flow_flush(struct rte_eth_dev *, struct rte_flow_error *);
 int mlx5_flow_isolate(struct rte_eth_dev *, int, struct rte_flow_error *);
-int priv_flow_start(struct priv *);
-void priv_flow_stop(struct priv *);
+int priv_flow_start(struct priv *, struct mlx5_flows *);
+void priv_flow_stop(struct priv *, struct mlx5_flows *);
 int priv_flow_verify(struct priv *);
+int mlx5_ctrl_flow(struct rte_eth_dev *, struct rte_flow_item_eth *,
+		   struct rte_flow_item_eth *, unsigned int);
 
 /* mlx5_socket.c */
 

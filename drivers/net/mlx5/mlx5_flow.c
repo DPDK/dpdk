@@ -52,6 +52,9 @@
 #include "mlx5.h"
 #include "mlx5_prm.h"
 
+/* Define minimal priority for control plane flows. */
+#define MLX5_CTRL_FLOW_PRIORITY 4
+
 static int
 mlx5_flow_create_eth(const struct rte_flow_item *item,
 		     const void *default_mask,
@@ -451,7 +454,7 @@ priv_flow_validate(struct priv *priv,
 				   "groups are not supported");
 		return -rte_errno;
 	}
-	if (attr->priority) {
+	if (attr->priority && attr->priority != MLX5_CTRL_FLOW_PRIORITY) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 				   NULL,
@@ -1169,6 +1172,8 @@ error:
  *
  * @param priv
  *   Pointer to private structure.
+ * @param list
+ *   Pointer to a TAILQ flow list.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] pattern
@@ -1183,6 +1188,7 @@ error:
  */
 static struct rte_flow *
 priv_flow_create(struct priv *priv,
+		 struct mlx5_flows *list,
 		 const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
@@ -1232,6 +1238,10 @@ priv_flow_create(struct priv *priv,
 		rte_flow = priv_flow_create_action_queue(priv, &flow, error);
 	if (!rte_flow)
 		goto exit;
+	if (rte_flow) {
+		TAILQ_INSERT_TAIL(list, rte_flow, next);
+		DEBUG("Flow created %p", (void *)rte_flow);
+	}
 	return rte_flow;
 exit:
 	rte_free(flow.ibv_attr);
@@ -1255,11 +1265,8 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow *flow;
 
 	priv_lock(priv);
-	flow = priv_flow_create(priv, attr, items, actions, error);
-	if (flow) {
-		TAILQ_INSERT_TAIL(&priv->flows, flow, next);
-		DEBUG("Flow created %p", (void *)flow);
-	}
+	flow = priv_flow_create(priv, &priv->flows, attr, items, actions,
+				error);
 	priv_unlock(priv);
 	return flow;
 }
@@ -1269,11 +1276,14 @@ mlx5_flow_create(struct rte_eth_dev *dev,
  *
  * @param priv
  *   Pointer to private structure.
+ * @param list
+ *   Pointer to a TAILQ flow list.
  * @param[in] flow
  *   Flow to destroy.
  */
 static void
 priv_flow_destroy(struct priv *priv,
+		  struct mlx5_flows *list,
 		  struct rte_flow *flow)
 {
 	unsigned int i;
@@ -1293,7 +1303,7 @@ priv_flow_destroy(struct priv *priv,
 		 * To remove the mark from the queue, the queue must not be
 		 * present in any other marked flow (RSS or not).
 		 */
-		TAILQ_FOREACH(tmp, &priv->flows, next) {
+		TAILQ_FOREACH(tmp, list, next) {
 			unsigned int j;
 
 			if (!tmp->mark)
@@ -1313,7 +1323,7 @@ free:
 		claim_zero(ibv_destroy_flow(flow->ibv_flow));
 	if (!flow->drop)
 		mlx5_priv_hrxq_release(priv, flow->frxq.hrxq);
-	TAILQ_REMOVE(&priv->flows, flow, next);
+	TAILQ_REMOVE(list, flow, next);
 	rte_free(flow->ibv_attr);
 	DEBUG("Flow destroyed %p", (void *)flow);
 	rte_free(flow);
@@ -1334,7 +1344,7 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 
 	(void)error;
 	priv_lock(priv);
-	priv_flow_destroy(priv, flow);
+	priv_flow_destroy(priv, &priv->flows, flow);
 	priv_unlock(priv);
 	return 0;
 }
@@ -1344,15 +1354,17 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
  *
  * @param priv
  *   Pointer to private structure.
+ * @param list
+ *   Pointer to a TAILQ flow list.
  */
-static void
-priv_flow_flush(struct priv *priv)
+void
+priv_flow_flush(struct priv *priv, struct mlx5_flows *list)
 {
-	while (!TAILQ_EMPTY(&priv->flows)) {
+	while (!TAILQ_EMPTY(list)) {
 		struct rte_flow *flow;
 
-		flow = TAILQ_FIRST(&priv->flows);
-		priv_flow_destroy(priv, flow);
+		flow = TAILQ_FIRST(list);
+		priv_flow_destroy(priv, list, flow);
 	}
 }
 
@@ -1370,7 +1382,7 @@ mlx5_flow_flush(struct rte_eth_dev *dev,
 
 	(void)error;
 	priv_lock(priv);
-	priv_flow_flush(priv);
+	priv_flow_flush(priv, &priv->flows);
 	priv_unlock(priv);
 	return 0;
 }
@@ -1493,13 +1505,15 @@ priv_flow_delete_drop_queue(struct priv *priv)
  *
  * @param priv
  *   Pointer to private structure.
+ * @param list
+ *   Pointer to a TAILQ flow list.
  */
 void
-priv_flow_stop(struct priv *priv)
+priv_flow_stop(struct priv *priv, struct mlx5_flows *list)
 {
 	struct rte_flow *flow;
 
-	TAILQ_FOREACH_REVERSE(flow, &priv->flows, mlx5_flows, next) {
+	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next) {
 		claim_zero(ibv_destroy_flow(flow->ibv_flow));
 		flow->ibv_flow = NULL;
 		mlx5_priv_hrxq_release(priv, flow->frxq.hrxq);
@@ -1522,12 +1536,14 @@ priv_flow_stop(struct priv *priv)
  *
  * @param priv
  *   Pointer to private structure.
+ * @param list
+ *   Pointer to a TAILQ flow list.
  *
  * @return
  *   0 on success, a errno value otherwise and rte_errno is set.
  */
 int
-priv_flow_start(struct priv *priv)
+priv_flow_start(struct priv *priv, struct mlx5_flows *list)
 {
 	int ret;
 	struct rte_flow *flow;
@@ -1535,7 +1551,7 @@ priv_flow_start(struct priv *priv)
 	ret = priv_flow_create_drop_queue(priv);
 	if (ret)
 		return -1;
-	TAILQ_FOREACH(flow, &priv->flows, next) {
+	TAILQ_FOREACH(flow, list, next) {
 		if (flow->frxq.hrxq)
 			goto flow_create;
 		flow->frxq.hrxq =
@@ -1629,4 +1645,91 @@ priv_flow_verify(struct priv *priv)
 		++ret;
 	}
 	return ret;
+}
+
+/**
+ * Enable/disable a control flow configured from the control plane.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param spec
+ *   An Ethernet flow spec to apply.
+ * @param mask
+ *   An Ethernet flow mask to apply.
+ * @param enable
+ *   Enable/disable the flow.
+ *
+ * @return
+ *   0 on success.
+ */
+int
+mlx5_ctrl_flow(struct rte_eth_dev *dev,
+	       struct rte_flow_item_eth *spec,
+	       struct rte_flow_item_eth *mask,
+	       unsigned int enable)
+{
+	struct priv *priv = dev->data->dev_private;
+	const struct rte_flow_attr attr = {
+		.ingress = 1,
+		.priority = MLX5_CTRL_FLOW_PRIORITY,
+	};
+	struct rte_flow_item items[] = {
+		{
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.spec = spec,
+			.last = NULL,
+			.mask = mask,
+		},
+		{
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+	};
+	struct rte_flow_action actions[] = {
+		{
+			.type = RTE_FLOW_ACTION_TYPE_QUEUE,
+			.conf = &(struct rte_flow_action_queue){
+				.index = 0,
+			},
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
+	struct rte_flow *flow;
+	struct rte_flow_error error;
+
+	if (enable) {
+		flow = priv_flow_create(priv, &priv->ctrl_flows, &attr, items,
+					actions, &error);
+		if (!flow)
+			return 1;
+	} else {
+		struct spec {
+			struct ibv_flow_attr ibv_attr;
+			struct ibv_flow_spec_eth eth;
+		} spec;
+		struct mlx5_flow_parse parser = {
+			.ibv_attr = &spec.ibv_attr,
+			.offset = sizeof(struct ibv_flow_attr),
+		};
+		struct ibv_flow_spec_eth *eth;
+		const unsigned int attr_size = sizeof(struct ibv_flow_attr);
+
+		claim_zero(mlx5_flow_create_eth(&items[0], NULL, &parser));
+		TAILQ_FOREACH(flow, &priv->ctrl_flows, next) {
+			eth = (void *)((uintptr_t)flow->ibv_attr + attr_size);
+			assert(eth->type == IBV_FLOW_SPEC_ETH);
+			if (!memcmp(eth, &spec.eth, sizeof(*eth)))
+				break;
+		}
+		if (flow) {
+			claim_zero(ibv_destroy_flow(flow->ibv_flow));
+			mlx5_priv_hrxq_release(priv, flow->frxq.hrxq);
+			rte_free(flow->ibv_attr);
+			DEBUG("Control flow destroyed %p", (void *)flow);
+			TAILQ_REMOVE(&priv->ctrl_flows, flow, next);
+			rte_free(flow);
+		}
+	}
+	return 0;
 }

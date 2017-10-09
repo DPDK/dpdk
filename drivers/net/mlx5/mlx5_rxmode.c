@@ -53,20 +53,6 @@
 
 /* Initialization data for special flows. */
 static const struct special_flow_init special_flow_init[] = {
-	[HASH_RXQ_FLOW_TYPE_PROMISC] = {
-		.dst_mac_val = "\x00\x00\x00\x00\x00\x00",
-		.dst_mac_mask = "\x00\x00\x00\x00\x00\x00",
-		.hash_types =
-			1 << HASH_RXQ_TCPV4 |
-			1 << HASH_RXQ_UDPV4 |
-			1 << HASH_RXQ_IPV4 |
-			1 << HASH_RXQ_TCPV6 |
-			1 << HASH_RXQ_UDPV6 |
-			1 << HASH_RXQ_IPV6 |
-			1 << HASH_RXQ_ETH |
-			0,
-		.per_vlan = 0,
-	},
 	[HASH_RXQ_FLOW_TYPE_ALLMULTI] = {
 		.dst_mac_val = "\x01\x00\x00\x00\x00\x00",
 		.dst_mac_mask = "\x01\x00\x00\x00\x00\x00",
@@ -346,7 +332,7 @@ priv_special_flow_enable_all(struct priv *priv)
 
 	if (priv->isolated)
 		return 0;
-	for (flow_type = HASH_RXQ_FLOW_TYPE_PROMISC;
+	for (flow_type = HASH_RXQ_FLOW_TYPE_ALLMULTI;
 			flow_type != HASH_RXQ_FLOW_TYPE_MAC;
 			++flow_type) {
 		int ret;
@@ -373,7 +359,7 @@ priv_special_flow_disable_all(struct priv *priv)
 {
 	enum hash_rxq_flow_type flow_type;
 
-	for (flow_type = HASH_RXQ_FLOW_TYPE_PROMISC;
+	for (flow_type = HASH_RXQ_FLOW_TYPE_ALLMULTI;
 			flow_type != HASH_RXQ_FLOW_TYPE_MAC;
 			++flow_type)
 		priv_special_flow_disable(priv, flow_type);
@@ -388,19 +374,16 @@ priv_special_flow_disable_all(struct priv *priv)
 void
 mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
-	int ret;
+	struct rte_flow_item_eth eth = {
+		.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.type = 0,
+	};
 
 	if (mlx5_is_secondary())
 		return;
-
-	priv_lock(priv);
-	priv->promisc_req = 1;
-	ret = priv_rehash_flows(priv);
-	if (ret)
-		ERROR("error while enabling promiscuous mode: %s",
-		      strerror(ret));
-	priv_unlock(priv);
+	dev->data->promiscuous = 1;
+	claim_zero(mlx5_ctrl_flow(dev, &eth, &eth, 1));
 }
 
 /**
@@ -412,19 +395,16 @@ mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 void
 mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
-	int ret;
+	struct rte_flow_item_eth eth = {
+		.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.type = 0,
+	};
 
 	if (mlx5_is_secondary())
 		return;
-
-	priv_lock(priv);
-	priv->promisc_req = 0;
-	ret = priv_rehash_flows(priv);
-	if (ret)
-		ERROR("error while disabling promiscuous mode: %s",
-		      strerror(ret));
-	priv_unlock(priv);
+	dev->data->promiscuous = 0;
+	claim_zero(mlx5_ctrl_flow(dev, &eth, &eth, 0));
 }
 
 /**

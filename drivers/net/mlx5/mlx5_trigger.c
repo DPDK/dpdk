@@ -163,7 +163,16 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		      (void *)priv, strerror(err));
 		goto error;
 	}
-	err = priv_flow_start(priv);
+	if (dev->data->promiscuous)
+		mlx5_promiscuous_enable(dev);
+	err = priv_flow_start(priv, &priv->ctrl_flows);
+	if (err) {
+		ERROR("%p: an error occurred while configuring control flows:"
+		      " %s",
+		      (void *)priv, strerror(err));
+		goto error;
+	}
+	err = priv_flow_start(priv, &priv->flows);
 	if (err) {
 		ERROR("%p: an error occurred while configuring flows:"
 		      " %s",
@@ -187,7 +196,8 @@ error:
 	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
-	priv_flow_stop(priv);
+	priv_flow_stop(priv, &priv->flows);
+	priv_flow_flush(priv, &priv->ctrl_flows);
 	priv_rxq_stop(priv);
 	priv_txq_stop(priv);
 	priv_unlock(priv);
@@ -222,13 +232,14 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
-	priv_flow_stop(priv);
+	priv_flow_stop(priv, &priv->flows);
+	priv_flow_flush(priv, &priv->ctrl_flows);
 	priv_rx_intr_vec_disable(priv);
+	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv_txq_stop(priv);
 	priv_rxq_stop(priv);
 	LIST_FOREACH(mr, &priv->mr, next) {
 		priv_mr_release(priv, mr);
 	}
-	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv_unlock(priv);
 }

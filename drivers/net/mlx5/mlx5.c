@@ -201,7 +201,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
-
+	priv_flow_flush(priv, &priv->flows);
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
@@ -884,6 +884,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
 		TAILQ_INIT(&priv->flows);
+		TAILQ_INIT(&priv->ctrl_flows);
 
 		/* Hint libmlx5 to use PMD allocator for data plane resources */
 		struct mlx5dv_ctx_allocators alctr = {

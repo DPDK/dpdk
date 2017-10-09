@@ -237,7 +237,6 @@ struct special_flow_init {
 };
 
 enum hash_rxq_flow_type {
-	HASH_RXQ_FLOW_TYPE_PROMISC,
 	HASH_RXQ_FLOW_TYPE_ALLMULTI,
 	HASH_RXQ_FLOW_TYPE_BROADCAST,
 	HASH_RXQ_FLOW_TYPE_IPV6MULTI,
@@ -249,8 +248,6 @@ static inline const char *
 hash_rxq_flow_type_str(enum hash_rxq_flow_type flow_type)
 {
 	switch (flow_type) {
-	case HASH_RXQ_FLOW_TYPE_PROMISC:
-		return "promiscuous";
 	case HASH_RXQ_FLOW_TYPE_ALLMULTI:
 		return "allmulticast";
 	case HASH_RXQ_FLOW_TYPE_BROADCAST:
