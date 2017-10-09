@@ -439,6 +439,19 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 		priv->uc_mc_flushed = 1;
 	}
 
+	if (!priv->vlan_flushed) {
+		ret = pp2_ppio_flush_vlan(priv->ppio);
+		if (ret) {
+			RTE_LOG(ERR, PMD, "Failed to flush vlan list\n");
+			/*
+			 * TODO
+			 * once pp2_ppio_flush_vlan() is supported jump to out
+			 * goto out;
+			 */
+		}
+		priv->vlan_flushed = 1;
+	}
+
 	/* For default QoS config, don't start classifier. */
 	if (mrvl_qos_cfg) {
 		ret = mrvl_start_qos_mapping(priv);
@@ -849,7 +862,8 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	info->tx_desc_lim.nb_min = MRVL_PP2_TXD_MIN;
 	info->tx_desc_lim.nb_align = MRVL_PP2_TXD_ALIGN;
 
-	info->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME;
+	info->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME |
+				DEV_RX_OFFLOAD_VLAN_FILTER;
 	info->flow_type_rss_offloads = ETH_RSS_IPV4 |
 				       ETH_RSS_NONFRAG_IPV4_TCP |
 				       ETH_RSS_NONFRAG_IPV4_UDP;
@@ -901,6 +915,28 @@ static void mrvl_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 
 	qinfo->nb_desc =
 		priv->ppio_params.outqs_params.outqs_params[tx_queue_id].size;
+}
+
+/**
+ * DPDK callback to Configure a VLAN filter.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param vlan_id
+ *   VLAN ID to filter.
+ * @param on
+ *   Toggle filter.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+
+	return on ? pp2_ppio_add_vlan(priv->ppio, vlan_id) :
+		    pp2_ppio_remove_vlan(priv->ppio, vlan_id);
 }
 
 /**
@@ -1211,6 +1247,7 @@ static const struct eth_dev_ops mrvl_ops = {
 	.dev_infos_get = mrvl_dev_infos_get,
 	.rxq_info_get = mrvl_rxq_info_get,
 	.txq_info_get = mrvl_txq_info_get,
+	.vlan_filter_set = mrvl_vlan_filter_set,
 	.rx_queue_setup = mrvl_rx_queue_setup,
 	.rx_queue_release = mrvl_rx_queue_release,
 	.tx_queue_setup = mrvl_tx_queue_setup,
