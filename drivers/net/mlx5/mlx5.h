@@ -146,6 +146,7 @@ struct priv {
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	TAILQ_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
+	LIST_HEAD(mr, mlx5_mr) mr; /* Memory region. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	rte_spinlock_t lock; /* Lock for control functions. */
@@ -298,5 +299,12 @@ int priv_socket_init(struct priv *priv);
 int priv_socket_uninit(struct priv *priv);
 void priv_socket_handle(struct priv *priv);
 int priv_socket_connect(struct priv *priv);
+
+/* mlx5_mr.c */
+
+struct mlx5_mr *priv_mr_new(struct priv *, struct rte_mempool *);
+struct mlx5_mr *priv_mr_get(struct priv *, struct rte_mempool *);
+int priv_mr_release(struct priv *, struct mlx5_mr *);
+int priv_mr_verify(struct priv *);
 
 #endif /* RTE_PMD_MLX5_H_ */

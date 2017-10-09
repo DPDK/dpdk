@@ -256,6 +256,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	ret = priv_flow_verify(priv);
 	if (ret)
 		WARN("%p: some flows still remain", (void *)priv);
+	ret = priv_mr_verify(priv);
+	if (ret)
+		WARN("%p: some Memory Region still remain", (void *)priv);
 	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }

@@ -36,6 +36,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/queue.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -52,6 +53,7 @@
 #include <rte_mempool.h>
 #include <rte_common.h>
 #include <rte_hexdump.h>
+#include <rte_atomic.h>
 
 #include "mlx5_utils.h"
 #include "mlx5.h"
@@ -79,6 +81,17 @@ struct mlx5_txq_stats {
 };
 
 struct priv;
+
+/* Memory region queue object. */
+struct mlx5_mr {
+	LIST_ENTRY(mlx5_mr) next; /**< Pointer to the next element. */
+	rte_atomic32_t refcnt; /*<< Reference counter. */
+	uint32_t lkey; /*<< rte_cpu_to_be_32(mr->lkey) */
+	uintptr_t start; /* Start address of MR */
+	uintptr_t end; /* End address of MR */
+	struct ibv_mr *mr; /*<< Memory Region. */
+	struct rte_mempool *mp; /*<< Memory Pool. */
+};
 
 /* Compressed CQE context. */
 struct rxq_zip {
@@ -126,7 +139,7 @@ struct mlx5_rxq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_wq *wq; /* Work Queue. */
-	struct ibv_mr *mr; /* Memory Region (for mp). */
+	struct mlx5_mr *mr; /* Memory Region (for mp). */
 	struct ibv_comp_channel *channel;
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct mlx5_rxq_data rxq; /* Data path structure. */
@@ -252,6 +265,7 @@ struct mlx5_txq_data {
 	uint16_t mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
 	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
 	uint16_t inline_max_packet_sz; /* Max packet size for inlining. */
+	uint16_t mr_cache_idx; /* Index of last hit entry. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	uint32_t flags; /* Flags for Tx Queue. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
@@ -259,13 +273,7 @@ struct mlx5_txq_data {
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
 	volatile void *bf_reg; /* Blueflame register. */
-	struct {
-		uintptr_t start; /* Start address of MR */
-		uintptr_t end; /* End address of MR */
-		struct ibv_mr *mr; /* Memory Region (for mp). */
-		uint32_t lkey; /* rte_cpu_to_be_32(mr->lkey) */
-	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
-	uint16_t mr_cache_idx; /* Index of last hit entry. */
+	struct mlx5_mr *mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MR translation table. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 } __rte_cache_aligned;
@@ -341,8 +349,8 @@ uint16_t mlx5_rx_burst_vec(void *, struct rte_mbuf **, uint16_t);
 
 struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, struct rte_mempool *);
 void mlx5_txq_mp2mr_iter(struct rte_mempool *, void *);
-uint32_t mlx5_txq_mp2mr_reg(struct mlx5_txq_data *, struct rte_mempool *,
-			    unsigned int);
+struct mlx5_mr *mlx5_txq_mp2mr_reg(struct mlx5_txq_data *, struct rte_mempool *,
+				   unsigned int);
 
 #ifndef NDEBUG
 /**
@@ -564,26 +572,36 @@ mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 {
 	uint16_t i = txq->mr_cache_idx;
 	uintptr_t addr = rte_pktmbuf_mtod(mb, uintptr_t);
+	struct mlx5_mr *mr;
 
 	assert(i < RTE_DIM(txq->mp2mr));
-	if (likely(txq->mp2mr[i].start <= addr && txq->mp2mr[i].end >= addr))
-		return txq->mp2mr[i].lkey;
+	if (likely(txq->mp2mr[i]->start <= addr && txq->mp2mr[i]->end >= addr))
+		return txq->mp2mr[i]->lkey;
 	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
-		if (unlikely(txq->mp2mr[i].mr == NULL)) {
+		if (unlikely(txq->mp2mr[i]->mr == NULL)) {
 			/* Unknown MP, add a new MR for it. */
 			break;
 		}
-		if (txq->mp2mr[i].start <= addr &&
-		    txq->mp2mr[i].end >= addr) {
-			assert(txq->mp2mr[i].lkey != (uint32_t)-1);
-			assert(rte_cpu_to_be_32(txq->mp2mr[i].mr->lkey) ==
-			       txq->mp2mr[i].lkey);
+		if (txq->mp2mr[i]->start <= addr &&
+		    txq->mp2mr[i]->end >= addr) {
+			assert(txq->mp2mr[i]->lkey != (uint32_t)-1);
+			assert(rte_cpu_to_be_32(txq->mp2mr[i]->mr->lkey) ==
+			       txq->mp2mr[i]->lkey);
 			txq->mr_cache_idx = i;
-			return txq->mp2mr[i].lkey;
+			return txq->mp2mr[i]->lkey;
 		}
 	}
 	txq->mr_cache_idx = 0;
-	return mlx5_txq_mp2mr_reg(txq, mlx5_tx_mb2mp(mb), i);
+	mr = mlx5_txq_mp2mr_reg(txq, mlx5_tx_mb2mp(mb), i);
+	/*
+	 * Request the reference to use in this queue, the original one is
+	 * kept by the control plane.
+	 */
+	if (mr) {
+		rte_atomic32_inc(&mr->refcnt);
+		return mr->lkey;
+	}
+	return (uint32_t)-1;
 }
 
 /**

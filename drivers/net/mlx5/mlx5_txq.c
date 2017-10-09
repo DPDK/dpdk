@@ -142,11 +142,9 @@ mlx5_txq_cleanup(struct mlx5_txq_ctrl *txq_ctrl)
 		claim_zero(ibv_destroy_qp(txq_ctrl->qp));
 	if (txq_ctrl->cq != NULL)
 		claim_zero(ibv_destroy_cq(txq_ctrl->cq));
-	for (i = 0; (i != RTE_DIM(txq_ctrl->txq.mp2mr)); ++i) {
-		if (txq_ctrl->txq.mp2mr[i].mr == NULL)
-			break;
-		claim_zero(ibv_dereg_mr(txq_ctrl->txq.mp2mr[i].mr));
-	}
+	for (i = 0; (i != RTE_DIM(txq_ctrl->txq.mp2mr)); ++i)
+		if (txq_ctrl->txq.mp2mr[i])
+			priv_mr_release(txq_ctrl->priv, txq_ctrl->txq.mp2mr[i]);
 	memset(txq_ctrl, 0, sizeof(*txq_ctrl));
 }
 

@@ -42,6 +42,7 @@
 #endif
 
 #include <rte_mempool.h>
+#include <rte_malloc.h>
 
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
@@ -111,54 +112,6 @@ static int mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
 }
 
 /**
- * Register mempool as a memory region.
- *
- * @param pd
- *   Pointer to protection domain.
- * @param mp
- *   Pointer to memory pool.
- *
- * @return
- *   Memory region pointer, NULL in case of error.
- */
-struct ibv_mr *
-mlx5_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
-{
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	uintptr_t start;
-	uintptr_t end;
-	unsigned int i;
-
-	if (mlx5_check_mempool(mp, &start, &end) != 0) {
-		ERROR("mempool %p: not virtually contiguous",
-		      (void *)mp);
-		return NULL;
-	}
-
-	DEBUG("mempool %p area start=%p end=%p size=%zu",
-	      (void *)mp, (void *)start, (void *)end,
-	      (size_t)(end - start));
-	/* Round start and end to page boundary if found in memory segments. */
-	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
-		uintptr_t addr = (uintptr_t)ms[i].addr;
-		size_t len = ms[i].len;
-		unsigned int align = ms[i].hugepage_sz;
-
-		if ((start > addr) && (start < addr + len))
-			start = RTE_ALIGN_FLOOR(start, align);
-		if ((end > addr) && (end < addr + len))
-			end = RTE_ALIGN_CEIL(end, align);
-	}
-	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
-	      (void *)mp, (void *)start, (void *)end,
-	      (size_t)(end - start));
-	return ibv_reg_mr(pd,
-			  (void *)start,
-			  end - start,
-			  IBV_ACCESS_LOCAL_WRITE);
-}
-
-/**
  * Register a Memory Region (MR) <-> Memory Pool (MP) association in
  * txq->mp2mr[]. If mp2mr[] is full, remove an entry first.
  *
@@ -172,44 +125,42 @@ mlx5_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
  *   Index of the next available entry.
  *
  * @return
- *   mr->lkey on success, (uint32_t)-1 on failure.
+ *   mr on success, NULL on failure.
  */
-uint32_t
+struct mlx5_mr*
 mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 		   unsigned int idx)
 {
 	struct mlx5_txq_ctrl *txq_ctrl =
 		container_of(txq, struct mlx5_txq_ctrl, txq);
-	struct ibv_mr *mr;
+	struct mlx5_mr *mr;
 
 	/* Add a new entry, register MR first. */
 	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
 	      (void *)txq_ctrl, mp->name, (void *)mp);
-	mr = mlx5_mp2mr(txq_ctrl->priv->pd, mp);
+	mr = priv_mr_get(txq_ctrl->priv, mp);
+	if (mr == NULL)
+		mr = priv_mr_new(txq_ctrl->priv, mp);
 	if (unlikely(mr == NULL)) {
 		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
 		      (void *)txq_ctrl);
-		return (uint32_t)-1;
+		return NULL;
 	}
-	if (unlikely(idx == RTE_DIM(txq_ctrl->txq.mp2mr))) {
+	if (unlikely(idx == RTE_DIM(txq->mp2mr))) {
 		/* Table is full, remove oldest entry. */
 		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
 		      (void *)txq_ctrl);
 		--idx;
-		claim_zero(ibv_dereg_mr(txq_ctrl->txq.mp2mr[0].mr));
-		memmove(&txq_ctrl->txq.mp2mr[0], &txq_ctrl->txq.mp2mr[1],
-			(sizeof(txq_ctrl->txq.mp2mr) -
-			 sizeof(txq_ctrl->txq.mp2mr[0])));
+		priv_mr_release(txq_ctrl->priv, txq->mp2mr[0]);
+		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
+			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
 	}
 	/* Store the new entry. */
-	txq_ctrl->txq.mp2mr[idx].start = (uintptr_t)mr->addr;
-	txq_ctrl->txq.mp2mr[idx].end = (uintptr_t)mr->addr + mr->length;
-	txq_ctrl->txq.mp2mr[idx].mr = mr;
-	txq_ctrl->txq.mp2mr[idx].lkey = rte_cpu_to_be_32(mr->lkey);
+	txq_ctrl->txq.mp2mr[idx] = mr;
 	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
 	      (void *)txq_ctrl, mp->name, (void *)mp,
-	      txq_ctrl->txq.mp2mr[idx].lkey);
-	return txq_ctrl->txq.mp2mr[idx].lkey;
+	      txq_ctrl->txq.mp2mr[idx]->lkey);
+	return mr;
 }
 
 struct txq_mp2mr_mbuf_check_data {
@@ -275,15 +226,149 @@ mlx5_txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 		return;
 	}
 	for (i = 0; (i != RTE_DIM(txq_ctrl->txq.mp2mr)); ++i) {
-		struct ibv_mr *mr = txq_ctrl->txq.mp2mr[i].mr;
-
-		if (unlikely(mr == NULL)) {
+		if (unlikely(txq_ctrl->txq.mp2mr[i] == NULL)) {
 			/* Unknown MP, add a new MR for it. */
 			break;
 		}
-		if (start >= (uintptr_t)mr->addr &&
-		    end <= (uintptr_t)mr->addr + mr->length)
+		if (start >= (uintptr_t)txq_ctrl->txq.mp2mr[i]->start &&
+		    end <= (uintptr_t)txq_ctrl->txq.mp2mr[i]->end)
 			return;
 	}
 	mlx5_txq_mp2mr_reg(&txq_ctrl->txq, mp, i);
+}
+
+/**
+ * Register a new memory region from the mempool and store it in the memory
+ * region list.
+ *
+ * @param  priv
+ *   Pointer to private structure.
+ * @param mp
+ *   Pointer to the memory pool to register.
+ * @return
+ *   The memory region on success.
+ */
+struct mlx5_mr*
+priv_mr_new(struct priv *priv, struct rte_mempool *mp)
+{
+	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
+	uintptr_t start;
+	uintptr_t end;
+	unsigned int i;
+	struct mlx5_mr *mr;
+
+	mr = rte_zmalloc_socket(__func__, sizeof(*mr), 0, mp->socket_id);
+	if (!mr) {
+		DEBUG("unable to configure MR, ibv_reg_mr() failed.");
+		return NULL;
+	}
+	if (mlx5_check_mempool(mp, &start, &end) != 0) {
+		ERROR("mempool %p: not virtually contiguous",
+		      (void *)mp);
+		return NULL;
+	}
+	DEBUG("mempool %p area start=%p end=%p size=%zu",
+	      (void *)mp, (void *)start, (void *)end,
+	      (size_t)(end - start));
+	/* Round start and end to page boundary if found in memory segments. */
+	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
+		uintptr_t addr = (uintptr_t)ms[i].addr;
+		size_t len = ms[i].len;
+		unsigned int align = ms[i].hugepage_sz;
+
+		if ((start > addr) && (start < addr + len))
+			start = RTE_ALIGN_FLOOR(start, align);
+		if ((end > addr) && (end < addr + len))
+			end = RTE_ALIGN_CEIL(end, align);
+	}
+	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
+	      (void *)mp, (void *)start, (void *)end,
+	      (size_t)(end - start));
+	mr->mr = ibv_reg_mr(priv->pd, (void *)start, end - start,
+			    IBV_ACCESS_LOCAL_WRITE);
+	mr->mp = mp;
+	mr->lkey = rte_cpu_to_be_32(mr->mr->lkey);
+	mr->start = start;
+	mr->end = (uintptr_t)mr->mr->addr + mr->mr->length;
+	rte_atomic32_inc(&mr->refcnt);
+	DEBUG("%p: new Memory Region %p refcnt: %d", (void *)priv,
+	      (void *)mr, rte_atomic32_read(&mr->refcnt));
+	LIST_INSERT_HEAD(&priv->mr, mr, next);
+	return mr;
+}
+
+/**
+ * Search the memory region object in the memory region list.
+ *
+ * @param  priv
+ *   Pointer to private structure.
+ * @param mp
+ *   Pointer to the memory pool to register.
+ * @return
+ *   The memory region on success.
+ */
+struct mlx5_mr*
+priv_mr_get(struct priv *priv, struct rte_mempool *mp)
+{
+	struct mlx5_mr *mr;
+
+	assert(mp);
+	if (LIST_EMPTY(&priv->mr))
+		return NULL;
+	LIST_FOREACH(mr, &priv->mr, next) {
+		if (mr->mp == mp) {
+			rte_atomic32_inc(&mr->refcnt);
+			DEBUG("Memory Region %p refcnt: %d",
+			      (void *)mr, rte_atomic32_read(&mr->refcnt));
+			return mr;
+		}
+	}
+	return NULL;
+}
+
+/**
+ * Release the memory region object.
+ *
+ * @param  mr
+ *   Pointer to memory region to release.
+ *
+ * @return
+ *   0 on success, errno on failure.
+ */
+int
+priv_mr_release(struct priv *priv, struct mlx5_mr *mr)
+{
+	(void)priv;
+	assert(mr);
+	DEBUG("Memory Region %p refcnt: %d",
+	      (void *)mr, rte_atomic32_read(&mr->refcnt));
+	if (rte_atomic32_dec_and_test(&mr->refcnt)) {
+		claim_zero(ibv_dereg_mr(mr->mr));
+		LIST_REMOVE(mr, next);
+		rte_free(mr);
+		return 0;
+	}
+	return EBUSY;
+}
+
+/**
+ * Verify the flow list is empty
+ *
+ * @param priv
+ *  Pointer to private structure.
+ *
+ * @return the number of object not released.
+ */
+int
+priv_mr_verify(struct priv *priv)
+{
+	int ret = 0;
+	struct mlx5_mr *mr;
+
+	LIST_FOREACH(mr, &priv->mr, next) {
+		DEBUG("%p: mr %p still referenced", (void *)priv,
+		      (void *)mr);
+		++ret;
+	}
+	return ret;
 }

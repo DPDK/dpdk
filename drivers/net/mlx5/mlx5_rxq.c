@@ -673,7 +673,7 @@ rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl, unsigned int elts_n)
 			.addr =
 			    rte_cpu_to_be_64(rte_pktmbuf_mtod(buf, uintptr_t)),
 			.byte_count = rte_cpu_to_be_32(DATA_LEN(buf)),
-			.lkey = rte_cpu_to_be_32(rxq_ctrl->mr->lkey),
+			.lkey = rxq_ctrl->mr->lkey,
 		};
 		(*rxq_ctrl->rxq.elts)[i] = buf;
 	}
@@ -767,7 +767,7 @@ mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl)
 	if (rxq_ctrl->channel != NULL)
 		claim_zero(ibv_destroy_comp_channel(rxq_ctrl->channel));
 	if (rxq_ctrl->mr != NULL)
-		claim_zero(ibv_dereg_mr(rxq_ctrl->mr));
+		priv_mr_release(rxq_ctrl->priv, rxq_ctrl->mr);
 	memset(rxq_ctrl, 0, sizeof(*rxq_ctrl));
 }
 
@@ -929,12 +929,15 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 		tmpl.rxq.csum_l2tun =
 			!!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	/* Use the entire RX mempool as the memory region. */
-	tmpl.mr = mlx5_mp2mr(priv->pd, mp);
+	tmpl.mr = priv_mr_get(priv, mp);
 	if (tmpl.mr == NULL) {
-		ret = EINVAL;
-		ERROR("%p: MR creation failure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
+		tmpl.mr = priv_mr_new(priv, mp);
+		if (tmpl.mr == NULL) {
+			ret = EINVAL;
+			ERROR("%p: MR creation failure: %s",
+			      (void *)dev, strerror(ret));
+			goto error;
+		}
 	}
 	if (dev->data->dev_conf.intr_conf.rxq) {
 		tmpl.channel = ibv_create_comp_channel(priv->ctx);
