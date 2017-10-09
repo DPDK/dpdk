@@ -1347,26 +1347,6 @@ free:
 }
 
 /**
- * Destroy a flow.
- *
- * @see rte_flow_destroy()
- * @see rte_flow_ops
- */
-int
-mlx5_flow_destroy(struct rte_eth_dev *dev,
-		  struct rte_flow *flow,
-		  struct rte_flow_error *error)
-{
-	struct priv *priv = dev->data->dev_private;
-
-	(void)error;
-	priv_lock(priv);
-	priv_flow_destroy(priv, &priv->flows, flow);
-	priv_unlock(priv);
-	return 0;
-}
-
-/**
  * Destroy all flows.
  *
  * @param priv
@@ -1383,25 +1363,6 @@ priv_flow_flush(struct priv *priv, struct mlx5_flows *list)
 		flow = TAILQ_FIRST(list);
 		priv_flow_destroy(priv, list, flow);
 	}
-}
-
-/**
- * Destroy all flows.
- *
- * @see rte_flow_flush()
- * @see rte_flow_ops
- */
-int
-mlx5_flow_flush(struct rte_eth_dev *dev,
-		struct rte_flow_error *error)
-{
-	struct priv *priv = dev->data->dev_private;
-
-	(void)error;
-	priv_lock(priv);
-	priv_flow_flush(priv, &priv->flows);
-	priv_unlock(priv);
-	return 0;
 }
 
 /**
@@ -1609,33 +1570,6 @@ flow_create:
 }
 
 /**
- * Isolated mode.
- *
- * @see rte_flow_isolate()
- * @see rte_flow_ops
- */
-int
-mlx5_flow_isolate(struct rte_eth_dev *dev,
-		  int enable,
-		  struct rte_flow_error *error)
-{
-	struct priv *priv = dev->data->dev_private;
-
-	priv_lock(priv);
-	if (dev->data->dev_started) {
-		rte_flow_error_set(error, EBUSY,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL,
-				   "port must be stopped first");
-		priv_unlock(priv);
-		return -rte_errno;
-	}
-	priv->isolated = !!enable;
-	priv_unlock(priv);
-	return 0;
-}
-
-/**
  * Verify the flow list is empty
  *
  * @param priv
@@ -1744,4 +1678,70 @@ mlx5_ctrl_flow(struct rte_eth_dev *dev,
 	       struct rte_flow_item_eth *eth_mask)
 {
 	return mlx5_ctrl_flow_vlan(dev, eth_spec, eth_mask, NULL, NULL);
+}
+
+/**
+ * Destroy a flow.
+ *
+ * @see rte_flow_destroy()
+ * @see rte_flow_ops
+ */
+int
+mlx5_flow_destroy(struct rte_eth_dev *dev,
+		  struct rte_flow *flow,
+		  struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	(void)error;
+	priv_lock(priv);
+	priv_flow_destroy(priv, &priv->flows, flow);
+	priv_unlock(priv);
+	return 0;
+}
+
+/**
+ * Destroy all flows.
+ *
+ * @see rte_flow_flush()
+ * @see rte_flow_ops
+ */
+int
+mlx5_flow_flush(struct rte_eth_dev *dev,
+		struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	(void)error;
+	priv_lock(priv);
+	priv_flow_flush(priv, &priv->flows);
+	priv_unlock(priv);
+	return 0;
+}
+
+/**
+ * Isolated mode.
+ *
+ * @see rte_flow_isolate()
+ * @see rte_flow_ops
+ */
+int
+mlx5_flow_isolate(struct rte_eth_dev *dev,
+		  int enable,
+		  struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	priv_lock(priv);
+	if (dev->data->dev_started) {
+		rte_flow_error_set(error, EBUSY,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "port must be stopped first");
+		priv_unlock(priv);
+		return -rte_errno;
+	}
+	priv->isolated = !!enable;
+	priv_unlock(priv);
+	return 0;
 }
