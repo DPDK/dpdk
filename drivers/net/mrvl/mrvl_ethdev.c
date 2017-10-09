@@ -69,10 +69,11 @@
 /* maximum number of available hifs */
 #define MRVL_MUSDK_HIFS_MAX 9
 
-#define MRVL_MAC_ADDRS_MAX 1
 /* prefetch shift */
 #define MRVL_MUSDK_PREFETCH_SHIFT 2
 
+/* TCAM has 25 entries reserved for uc/mc filter entries */
+#define MRVL_MAC_ADDRS_MAX 25
 #define MRVL_MATCH_LEN 16
 #define MRVL_PKT_EFFEC_OFFS (MRVL_PKT_OFFS + MV_MH_SIZE)
 /* Maximum allowable packet size */
@@ -372,6 +373,22 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	if (ret)
 		return ret;
 
+	/*
+	 * In case there are some some stale uc/mc mac addresses flush them
+	 * here. It cannot be done during mrvl_dev_close() as port information
+	 * is already gone at that point (due to pp2_ppio_deinit() in
+	 * mrvl_dev_stop()).
+	 */
+	if (!priv->uc_mc_flushed) {
+		ret = pp2_ppio_flush_mac_addrs(priv->ppio, 1, 1);
+		if (ret) {
+			RTE_LOG(ERR, PMD,
+				"Failed to flush uc/mc filter list\n");
+			goto out;
+		}
+		priv->uc_mc_flushed = 1;
+	}
+
 	/* For default QoS config, don't start classifier. */
 	if (mrvl_qos_cfg) {
 		ret = mrvl_start_qos_mapping(priv);
@@ -654,6 +671,80 @@ mrvl_allmulticast_disable(struct rte_eth_dev *dev)
 	ret = pp2_ppio_set_mc_promisc(priv->ppio, 0);
 	if (ret)
 		RTE_LOG(ERR, PMD, "Failed to disable all-multicast mode\n");
+}
+
+/**
+ * DPDK callback to remove a MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param index
+ *   MAC address index.
+ */
+static void
+mrvl_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	char buf[ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	ret = pp2_ppio_remove_mac_addr(priv->ppio,
+				       dev->data->mac_addrs[index].addr_bytes);
+	if (ret) {
+		ether_format_addr(buf, sizeof(buf),
+				  &dev->data->mac_addrs[index]);
+		RTE_LOG(ERR, PMD, "Failed to remove mac %s\n", buf);
+	}
+}
+
+/**
+ * DPDK callback to add a MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ * @param index
+ *   MAC address index.
+ * @param vmdq
+ *   VMDq pool index to associate address with (unused).
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+		  uint32_t index, uint32_t vmdq __rte_unused)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	char buf[ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	if (index == 0)
+		/* For setting index 0, mrvl_mac_addr_set() should be used.*/
+		return -1;
+
+	/*
+	 * Maximum number of uc addresses can be tuned via kernel module mvpp2x
+	 * parameter uc_filter_max. Maximum number of mc addresses is then
+	 * MRVL_MAC_ADDRS_MAX - uc_filter_max. Currently it defaults to 4 and
+	 * 21 respectively.
+	 *
+	 * If more than uc_filter_max uc addresses were added to filter list
+	 * then NIC will switch to promiscuous mode automatically.
+	 *
+	 * If more than MRVL_MAC_ADDRS_MAX - uc_filter_max number mc addresses
+	 * were added to filter list then NIC will switch to all-multicast mode
+	 * automatically.
+	 */
+	ret = pp2_ppio_add_mac_addr(priv->ppio, mac_addr->addr_bytes);
+	if (ret) {
+		ether_format_addr(buf, sizeof(buf), mac_addr);
+		RTE_LOG(ERR, PMD, "Failed to add mac %s\n", buf);
+		return -1;
+	}
+
+	return 0;
 }
 
 /**
@@ -1006,6 +1097,8 @@ static const struct eth_dev_ops mrvl_ops = {
 	.allmulticast_enable = mrvl_allmulticast_enable,
 	.promiscuous_disable = mrvl_promiscuous_disable,
 	.allmulticast_disable = mrvl_allmulticast_disable,
+	.mac_addr_remove = mrvl_mac_addr_remove,
+	.mac_addr_add = mrvl_mac_addr_add,
 	.mac_addr_set = mrvl_mac_addr_set,
 	.mtu_set = mrvl_mtu_set,
 	.dev_infos_get = mrvl_dev_infos_get,
