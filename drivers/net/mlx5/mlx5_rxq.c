@@ -1622,3 +1622,156 @@ mlx5_priv_rxq_verify(struct priv *priv)
 	}
 	return ret;
 }
+
+/**
+ * Create an indirection table.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param queues
+ *   Queues entering in the indirection table.
+ * @param queues_n
+ *   Number of queues in the array.
+ *
+ * @return
+ *   A new indirection table.
+ */
+struct mlx5_ind_table_ibv*
+mlx5_priv_ind_table_ibv_new(struct priv *priv, uint16_t queues[],
+			    uint16_t queues_n)
+{
+	struct mlx5_ind_table_ibv *ind_tbl;
+	const unsigned int wq_n = rte_is_power_of_2(queues_n) ?
+		log2above(queues_n) :
+		priv->ind_table_max_size;
+	struct ibv_wq *wq[1 << wq_n];
+	unsigned int i;
+	unsigned int j;
+
+	ind_tbl = rte_calloc(__func__, 1, sizeof(*ind_tbl) +
+			     queues_n * sizeof(uint16_t), 0);
+	if (!ind_tbl)
+		return NULL;
+	for (i = 0; i != queues_n; ++i) {
+		struct mlx5_rxq_ctrl *rxq =
+			mlx5_priv_rxq_get(priv, queues[i]);
+
+		if (!rxq)
+			goto error;
+		wq[i] = rxq->ibv->wq;
+		ind_tbl->queues[i] = queues[i];
+	}
+	ind_tbl->queues_n = queues_n;
+	/* Finalise indirection table. */
+	for (j = 0; i != (unsigned int)(1 << wq_n); ++i, ++j)
+		wq[i] = wq[j];
+	ind_tbl->ind_table = ibv_create_rwq_ind_table(
+		priv->ctx,
+		&(struct ibv_rwq_ind_table_init_attr){
+			.log_ind_tbl_size = wq_n,
+			.ind_tbl = wq,
+			.comp_mask = 0,
+		});
+	if (!ind_tbl->ind_table)
+		goto error;
+	rte_atomic32_inc(&ind_tbl->refcnt);
+	LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
+	DEBUG("%p: Indirection table %p: refcnt %d", (void *)priv,
+	      (void *)ind_tbl, rte_atomic32_read(&ind_tbl->refcnt));
+	return ind_tbl;
+error:
+	rte_free(ind_tbl);
+	DEBUG("%p cannot create indirection table", (void *)priv);
+	return NULL;
+}
+
+/**
+ * Get an indirection table.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param queues
+ *   Queues entering in the indirection table.
+ * @param queues_n
+ *   Number of queues in the array.
+ *
+ * @return
+ *   An indirection table if found.
+ */
+struct mlx5_ind_table_ibv*
+mlx5_priv_ind_table_ibv_get(struct priv *priv, uint16_t queues[],
+			    uint16_t queues_n)
+{
+	struct mlx5_ind_table_ibv *ind_tbl;
+
+	LIST_FOREACH(ind_tbl, &priv->ind_tbls, next) {
+		if ((ind_tbl->queues_n == queues_n) &&
+		    (memcmp(ind_tbl->queues, queues,
+			    ind_tbl->queues_n * sizeof(ind_tbl->queues[0]))
+		     == 0))
+			break;
+	}
+	if (ind_tbl) {
+		unsigned int i;
+
+		rte_atomic32_inc(&ind_tbl->refcnt);
+		DEBUG("%p: Indirection table %p: refcnt %d", (void *)priv,
+		      (void *)ind_tbl, rte_atomic32_read(&ind_tbl->refcnt));
+		for (i = 0; i != ind_tbl->queues_n; ++i)
+			mlx5_priv_rxq_get(priv, ind_tbl->queues[i]);
+	}
+	return ind_tbl;
+}
+
+/**
+ * Release an indirection table.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param ind_table
+ *   Indirection table to release.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+mlx5_priv_ind_table_ibv_release(struct priv *priv,
+				struct mlx5_ind_table_ibv *ind_tbl)
+{
+	unsigned int i;
+
+	DEBUG("%p: Indirection table %p: refcnt %d", (void *)priv,
+	      (void *)ind_tbl, rte_atomic32_read(&ind_tbl->refcnt));
+	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt))
+		claim_zero(ibv_destroy_rwq_ind_table(ind_tbl->ind_table));
+	for (i = 0; i != ind_tbl->queues_n; ++i)
+		claim_nonzero(mlx5_priv_rxq_release(priv, ind_tbl->queues[i]));
+	if (!rte_atomic32_read(&ind_tbl->refcnt)) {
+		LIST_REMOVE(ind_tbl, next);
+		rte_free(ind_tbl);
+		return 0;
+	}
+	return EBUSY;
+}
+
+/**
+ * Verify the Rx Queue list is empty
+ *
+ * @param priv
+ *  Pointer to private structure.
+ *
+ * @return the number of object not released.
+ */
+int
+mlx5_priv_ind_table_ibv_verify(struct priv *priv)
+{
+	struct mlx5_ind_table_ibv *ind_tbl;
+	int ret = 0;
+
+	LIST_FOREACH(ind_tbl, &priv->ind_tbls, next) {
+		DEBUG("%p: Verbs indirection table %p still referenced",
+		      (void *)priv, (void *)ind_tbl);
+		++ret;
+	}
+	return ret;
+}

@@ -90,7 +90,7 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
-	struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
+	struct mlx5_ind_table_ibv *ind_table; /**< Indirection table. */
 	struct ibv_qp *qp; /**< Verbs queue pair. */
 	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	struct ibv_wq *wq; /**< Verbs work queue. */
@@ -98,8 +98,6 @@ struct rte_flow {
 	uint32_t mark:1; /**< Set if the flow is marked. */
 	uint32_t drop:1; /**< Drop queue. */
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
-	uint16_t queues[RTE_MAX_QUEUES_PER_PORT]; /**< List of queues. */
-	uint16_t queues_n; /**< Number of queues in the list. */
 };
 
 /** Static initializer for items. */
@@ -1089,9 +1087,6 @@ priv_flow_create_action_queue(struct priv *priv,
 {
 	struct rte_flow *rte_flow;
 	unsigned int i;
-	unsigned int j;
-	const unsigned int wqs_n = 1 << log2above(flow->actions.queues_n);
-	struct ibv_wq *wqs[wqs_n];
 
 	assert(priv->pd);
 	assert(priv->ctx);
@@ -1102,36 +1097,29 @@ priv_flow_create_action_queue(struct priv *priv,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
 	}
-	for (i = 0; i < flow->actions.queues_n; ++i) {
-		struct mlx5_rxq_ibv *rxq_ibv =
-			mlx5_priv_rxq_ibv_get(priv, flow->actions.queues[i]);
+	for (i = 0; i != flow->actions.queues_n; ++i) {
+		struct mlx5_rxq_data *q =
+			(*priv->rxqs)[flow->actions.queues[i]];
 
-		wqs[i] = rxq_ibv->wq;
-		rte_flow->queues[i] = flow->actions.queues[i];
-		++rte_flow->queues_n;
-		(*priv->rxqs)[flow->actions.queues[i]]->mark |=
-			flow->actions.mark;
-	}
-	/* finalise indirection table. */
-	for (j = 0; i < wqs_n; ++i, ++j) {
-		wqs[i] = wqs[j];
-		if (j == flow->actions.queues_n)
-			j = 0;
+		q->mark |= flow->actions.mark;
 	}
 	rte_flow->mark = flow->actions.mark;
 	rte_flow->ibv_attr = flow->ibv_attr;
 	rte_flow->hash_fields = flow->hash_fields;
-	rte_flow->ind_table = ibv_create_rwq_ind_table(
-		priv->ctx,
-		&(struct ibv_rwq_ind_table_init_attr){
-			.log_ind_tbl_size = log2above(flow->actions.queues_n),
-			.ind_tbl = wqs,
-			.comp_mask = 0,
-		});
+	rte_flow->ind_table =
+		mlx5_priv_ind_table_ibv_get(priv, flow->actions.queues,
+					    flow->actions.queues_n);
 	if (!rte_flow->ind_table) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "cannot allocate indirection table");
-		goto error;
+		rte_flow->ind_table =
+			mlx5_priv_ind_table_ibv_new(priv, flow->actions.queues,
+						    flow->actions.queues_n);
+		if (!rte_flow->ind_table) {
+			rte_flow_error_set(error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_HANDLE,
+					   NULL,
+					   "cannot allocate indirection table");
+			goto error;
+		}
 	}
 	rte_flow->qp = ibv_create_qp_ex(
 		priv->ctx,
@@ -1148,7 +1136,7 @@ priv_flow_create_action_queue(struct priv *priv,
 				.rx_hash_key = rss_hash_default_key,
 				.rx_hash_fields_mask = rte_flow->hash_fields,
 			},
-			.rwq_ind_tbl = rte_flow->ind_table,
+			.rwq_ind_tbl = rte_flow->ind_table->ind_table,
 			.pd = priv->pd
 		});
 	if (!rte_flow->qp) {
@@ -1171,7 +1159,7 @@ error:
 	if (rte_flow->qp)
 		ibv_destroy_qp(rte_flow->qp);
 	if (rte_flow->ind_table)
-		ibv_destroy_rwq_ind_table(rte_flow->ind_table);
+		mlx5_priv_ind_table_ibv_release(priv, rte_flow->ind_table);
 	rte_free(rte_flow);
 	return NULL;
 }
@@ -1297,13 +1285,10 @@ priv_flow_destroy(struct priv *priv,
 		goto free;
 	if (flow->qp)
 		claim_zero(ibv_destroy_qp(flow->qp));
-	if (flow->ind_table)
-		claim_zero(ibv_destroy_rwq_ind_table(flow->ind_table));
-	for (i = 0; i != flow->queues_n; ++i) {
+	for (i = 0; i != flow->ind_table->queues_n; ++i) {
 		struct rte_flow *tmp;
-		struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[flow->queues[i]];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+		struct mlx5_rxq_data *rxq_data =
+			(*priv->rxqs)[flow->ind_table->queues[i]];
 
 		/*
 		 * To remove the mark from the queue, the queue must not be
@@ -1319,14 +1304,17 @@ priv_flow_destroy(struct priv *priv,
 					continue;
 				if (!tmp->mark)
 					continue;
-				for (j = 0; (j != tmp->queues_n) && !mark; j++)
-					if (tmp->queues[j] == flow->queues[i])
+				for (j = 0;
+				     (j != tmp->ind_table->queues_n) && !mark;
+				     j++)
+					if (tmp->ind_table->queues[j] ==
+					    flow->ind_table->queues[i])
 						mark = 1;
 			}
 			rxq_data->mark = mark;
 		}
-		mlx5_priv_rxq_ibv_release(priv, rxq_ctrl->ibv);
 	}
+	mlx5_priv_ind_table_ibv_release(priv, flow->ind_table);
 free:
 	rte_free(flow->ibv_attr);
 	DEBUG("Flow destroyed %p", (void *)flow);
@@ -1518,9 +1506,10 @@ priv_flow_stop(struct priv *priv)
 		flow->ibv_flow = NULL;
 		if (flow->mark) {
 			unsigned int n;
+			struct mlx5_ind_table_ibv *ind_tbl = flow->ind_table;
 
-			for (n = 0; n < flow->queues_n; ++n)
-				(*priv->rxqs)[flow->queues[n]]->mark = 0;
+			for (n = 0; n < ind_tbl->queues_n; ++n)
+				(*priv->rxqs)[ind_tbl->queues[n]]->mark = 0;
 		}
 		DEBUG("Flow %p removed", (void *)flow);
 	}
@@ -1562,8 +1551,10 @@ priv_flow_start(struct priv *priv)
 		if (flow->mark) {
 			unsigned int n;
 
-			for (n = 0; n < flow->queues_n; ++n)
-				(*priv->rxqs)[flow->queues[n]]->mark = 1;
+			for (n = 0; n < flow->ind_table->queues_n; ++n) {
+				uint16_t idx = flow->ind_table->queues[n];
+				(*priv->rxqs)[idx]->mark = 1;
+			}
 		}
 	}
 	return 0;

@@ -156,6 +156,15 @@ struct mlx5_rxq_ctrl {
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 };
 
+/* Indirection table. */
+struct mlx5_ind_table_ibv {
+	LIST_ENTRY(mlx5_ind_table_ibv) next; /* Pointer to the next element. */
+	rte_atomic32_t refcnt; /* Reference counter. */
+	struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
+	uint16_t queues_n; /**< Number of queues in the list. */
+	uint16_t queues[]; /**< Queue list. */
+};
+
 /* Hash RX queue types. */
 enum hash_rxq_type {
 	HASH_RXQ_TCPV4,
@@ -345,6 +354,14 @@ int mlx5_priv_rxq_release(struct priv *, uint16_t);
 int mlx5_priv_rxq_releasable(struct priv *, uint16_t);
 int mlx5_priv_rxq_verify(struct priv *);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *);
+struct mlx5_ind_table_ibv *mlx5_priv_ind_table_ibv_new(struct priv *,
+						       uint16_t [],
+						       uint16_t);
+struct mlx5_ind_table_ibv *mlx5_priv_ind_table_ibv_get(struct priv *,
+						       uint16_t [],
+						       uint16_t);
+int mlx5_priv_ind_table_ibv_release(struct priv *, struct mlx5_ind_table_ibv *);
+int mlx5_priv_ind_table_ibv_verify(struct priv *);
 
 /* mlx5_txq.c */
 

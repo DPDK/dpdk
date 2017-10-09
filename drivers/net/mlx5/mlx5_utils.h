@@ -128,11 +128,13 @@ pmd_drv_log_basename(const char *s)
 
 #define DEBUG(...) PMD_DRV_LOG(DEBUG, __VA_ARGS__)
 #define claim_zero(...) assert((__VA_ARGS__) == 0)
+#define claim_nonzero(...) assert((__VA_ARGS__) != 0)
 
 #else /* NDEBUG */
 
 #define DEBUG(...) (void)0
 #define claim_zero(...) (__VA_ARGS__)
+#define claim_nonzero(...) (__VA_ARGS__)
 
 #endif /* NDEBUG */
 
