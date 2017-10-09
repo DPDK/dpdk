@@ -59,6 +59,10 @@
 #define MLX5_IPV4 4
 #define MLX5_IPV6 6
 
+/* Dev ops structure defined in mlx5.c */
+extern const struct eth_dev_ops mlx5_dev_ops;
+extern const struct eth_dev_ops mlx5_dev_ops_isolate;
+
 static int
 mlx5_flow_create_eth(const struct rte_flow_item *item,
 		     const void *default_mask,
@@ -2359,6 +2363,10 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	priv->isolated = !!enable;
+	if (enable)
+		priv->dev->dev_ops = &mlx5_dev_ops_isolate;
+	else
+		priv->dev->dev_ops = &mlx5_dev_ops;
 	priv_unlock(priv);
 	return 0;
 }
