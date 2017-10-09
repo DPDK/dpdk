@@ -884,6 +884,33 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 }
 
 /**
+ * Return supported packet types.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure (unused).
+ *
+ * @return
+ *   Const pointer to the table with supported packet types.
+ */
+static const uint32_t *
+mrvl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP
+	};
+
+	return ptypes;
+}
+
+/**
  * DPDK callback to get information about specific receive queue.
  *
  * @param dev
@@ -1255,6 +1282,7 @@ static const struct eth_dev_ops mrvl_ops = {
 	.mac_addr_set = mrvl_mac_addr_set,
 	.mtu_set = mrvl_mtu_set,
 	.dev_infos_get = mrvl_dev_infos_get,
+	.dev_supported_ptypes_get = mrvl_dev_supported_ptypes_get,
 	.rxq_info_get = mrvl_rxq_info_get,
 	.txq_info_get = mrvl_txq_info_get,
 	.vlan_filter_set = mrvl_vlan_filter_set,
