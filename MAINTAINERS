@@ -580,6 +580,8 @@ NXP DPAA_SEC
 M: Akhil Goyal <akhil.goyal@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: drivers/crypto/dpaa_sec/
+F: doc/guides/cryptodevs/dpaa_sec.rst
+F: doc/guides/cryptodevs/features/dpaa_sec.ini
 
 NXP DPAA2_SEC
 M: Akhil Goyal <akhil.goyal@nxp.com>

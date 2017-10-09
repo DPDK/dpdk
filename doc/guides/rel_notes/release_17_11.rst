@@ -110,6 +110,12 @@ New Features
   * DES CBC algorithm.
   * AES CCM algorithm.
 
+* **Added NXP DPAA SEC crypto PMD.**
+
+  A new "dpaa_sec" hardware based crypto PMD for NXP DPAA devices has been
+  added. See the "Crypto Device Drivers" document for more details on this
+  driver.
+
 * **Add new benchmarking mode to dpdk-test-crypto-perf application.**
 
   Added new "PMD cyclecount" benchmark mode to dpdk-test-crypto-perf application
