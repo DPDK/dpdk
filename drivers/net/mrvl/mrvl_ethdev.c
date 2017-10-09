@@ -239,6 +239,38 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 }
 
 /**
+ * DPDK callback to change the MTU.
+ *
+ * Setting the MTU affects hardware MRU (packets larger than the MRU
+ * will be dropped).
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mtu
+ *   New MTU.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	/* extra MV_MH_SIZE bytes are required for Marvell tag */
+	uint16_t mru = mtu + MV_MH_SIZE + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	int ret;
+
+	if (mtu < ETHER_MIN_MTU || mru > MRVL_PKT_SIZE_MAX)
+		return -EINVAL;
+
+	ret = pp2_ppio_set_mru(priv->ppio, mru);
+	if (ret)
+		return ret;
+
+	return pp2_ppio_set_mtu(priv->ppio, mtu);
+}
+
+/**
  * DPDK callback to bring the link up.
  *
  * @param dev
@@ -256,6 +288,17 @@ mrvl_dev_set_link_up(struct rte_eth_dev *dev)
 	ret = pp2_ppio_enable(priv->ppio);
 	if (ret)
 		return ret;
+
+	/*
+	 * mtu/mru can be updated if pp2_ppio_enable() was called at least once
+	 * as pp2_ppio_enable() changes port->t_mode from default 0 to
+	 * PP2_TRAFFIC_INGRESS_EGRESS.
+	 *
+	 * Set mtu to default DPDK value here.
+	 */
+	ret = mrvl_mtu_set(dev, dev->data->mtu);
+	if (ret)
+		pp2_ppio_disable(priv->ppio);
 
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 
@@ -887,6 +930,7 @@ static const struct eth_dev_ops mrvl_ops = {
 	.dev_close = mrvl_dev_close,
 	.link_update = mrvl_link_update,
 	.mac_addr_set = mrvl_mac_addr_set,
+	.mtu_set = mrvl_mtu_set,
 	.dev_infos_get = mrvl_dev_infos_get,
 	.rxq_info_get = mrvl_rxq_info_get,
 	.txq_info_get = mrvl_txq_info_get,
