@@ -55,6 +55,7 @@
 #include "mlx5.h"
 #include "mlx5_utils.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_rxtx_vec.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 #include "mlx5_prm.h"
@@ -632,13 +633,6 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq,
 			     10, 11,  2,  3);
 #endif
 
-	/* Compile time sanity check for this function. */
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
-			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 4);
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_len) !=
-			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 8);
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, hash) !=
-			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 12);
 	/*
 	 * Not to overflow elts array. Decompress next time after mbuf
 	 * replenishment.
@@ -856,15 +850,11 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 	/* Merge to ol_flags. */
 	ol_flags = _mm_or_si128(ol_flags, cv_flags);
 	/* Merge mbuf_init and ol_flags. */
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, ol_flags) !=
-			 offsetof(struct rte_mbuf, rearm_data) + 8);
 	rearm0 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(ol_flags, 8), 0x30);
 	rearm1 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(ol_flags, 4), 0x30);
 	rearm2 = _mm_blend_epi16(mbuf_init, ol_flags, 0x30);
 	rearm3 = _mm_blend_epi16(mbuf_init, _mm_srli_si128(ol_flags, 4), 0x30);
 	/* Write 8B rearm_data and 8B ol_flags. */
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, rearm_data) !=
-			 RTE_ALIGN(offsetof(struct rte_mbuf, rearm_data), 16));
 	_mm_store_si128((__m128i *)&pkts[0]->rearm_data, rearm0);
 	_mm_store_si128((__m128i *)&pkts[1]->rearm_data, rearm1);
 	_mm_store_si128((__m128i *)&pkts[2]->rearm_data, rearm2);
@@ -987,26 +977,6 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			      rxq->crc_present * ETHER_CRC_LEN);
 	const __m128i flow_mark_adj = _mm_set_epi32(rxq->mark * (-1), 0, 0, 0);
 
-	/* Compile time sanity check for this function. */
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
-			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 4);
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_len) !=
-			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 8);
-	RTE_BUILD_BUG_ON(offsetof(struct mlx5_cqe, pkt_info) != 0);
-	RTE_BUILD_BUG_ON(offsetof(struct mlx5_cqe, rx_hash_res) !=
-			 offsetof(struct mlx5_cqe, pkt_info) + 12);
-	RTE_BUILD_BUG_ON(offsetof(struct mlx5_cqe, rsvd1) +
-			  sizeof(((struct mlx5_cqe *)0)->rsvd1) !=
-			 offsetof(struct mlx5_cqe, hdr_type_etc));
-	RTE_BUILD_BUG_ON(offsetof(struct mlx5_cqe, vlan_info) !=
-			 offsetof(struct mlx5_cqe, hdr_type_etc) + 2);
-	RTE_BUILD_BUG_ON(offsetof(struct mlx5_cqe, rsvd2) +
-			  sizeof(((struct mlx5_cqe *)0)->rsvd2) !=
-			 offsetof(struct mlx5_cqe, byte_cnt));
-	RTE_BUILD_BUG_ON(offsetof(struct mlx5_cqe, sop_drop_qpn) !=
-			 RTE_ALIGN(offsetof(struct mlx5_cqe, sop_drop_qpn), 8));
-	RTE_BUILD_BUG_ON(offsetof(struct mlx5_cqe, op_own) !=
-			 offsetof(struct mlx5_cqe, sop_drop_qpn) + 7);
 	assert(rxq->sges_n == 0);
 	assert(rxq->cqe_n == rxq->elts_n);
 	cq = &(*rxq->cqes)[cq_idx];
