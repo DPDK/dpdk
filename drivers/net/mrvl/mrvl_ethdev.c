@@ -589,6 +589,74 @@ mrvl_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 }
 
 /**
+ * DPDK callback to enable promiscuous mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mrvl_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret;
+
+	ret = pp2_ppio_set_uc_promisc(priv->ppio, 1);
+	if (ret)
+		RTE_LOG(ERR, PMD, "Failed to enable promiscuous mode\n");
+}
+
+/**
+ * DPDK callback to enable allmulti mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mrvl_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret;
+
+	ret = pp2_ppio_set_mc_promisc(priv->ppio, 1);
+	if (ret)
+		RTE_LOG(ERR, PMD, "Failed enable all-multicast mode\n");
+}
+
+/**
+ * DPDK callback to disable promiscuous mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mrvl_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret;
+
+	ret = pp2_ppio_set_uc_promisc(priv->ppio, 0);
+	if (ret)
+		RTE_LOG(ERR, PMD, "Failed to disable promiscuous mode\n");
+}
+
+/**
+ * DPDK callback to disable allmulticast mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mrvl_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret;
+
+	ret = pp2_ppio_set_mc_promisc(priv->ppio, 0);
+	if (ret)
+		RTE_LOG(ERR, PMD, "Failed to disable all-multicast mode\n");
+}
+
+/**
  * DPDK callback to set the primary MAC address.
  *
  * @param dev
@@ -934,6 +1002,10 @@ static const struct eth_dev_ops mrvl_ops = {
 	.dev_set_link_down = mrvl_dev_set_link_down,
 	.dev_close = mrvl_dev_close,
 	.link_update = mrvl_link_update,
+	.promiscuous_enable = mrvl_promiscuous_enable,
+	.allmulticast_enable = mrvl_allmulticast_enable,
+	.promiscuous_disable = mrvl_promiscuous_disable,
+	.allmulticast_disable = mrvl_allmulticast_disable,
 	.mac_addr_set = mrvl_mac_addr_set,
 	.mtu_set = mrvl_mtu_set,
 	.dev_infos_get = mrvl_dev_infos_get,
