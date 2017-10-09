@@ -430,39 +430,28 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.isolate = mlx5_flow_isolate,
 };
 
-/**
- * Manage filter operations.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param filter_type
- *   Filter type.
- * @param filter_op
- *   Operation to perform.
- * @param arg
- *   Pointer to operation-specific structure.
- *
- * @return
- *   0 on success, negative errno value on failure.
- */
-int
-mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op,
-		     void *arg)
-{
-	int ret = EINVAL;
+/* Convert FDIR request to Generic flow. */
+struct mlx5_fdir {
+	struct rte_flow_attr attr;
+	struct rte_flow_action actions[2];
+	struct rte_flow_item items[4];
+	struct rte_flow_item_eth l2;
+	union {
+		struct rte_flow_item_ipv4 ipv4;
+		struct rte_flow_item_ipv6 ipv6;
+	} l3;
+	union {
+		struct rte_flow_item_udp udp;
+		struct rte_flow_item_tcp tcp;
+	} l4;
+	struct rte_flow_action_queue queue;
+};
 
-	if (filter_type == RTE_ETH_FILTER_GENERIC) {
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		*(const void **)arg = &mlx5_flow_ops;
-		return 0;
-	}
-	ERROR("%p: filter type (%d) not supported",
-	      (void *)dev, filter_type);
-	return -ret;
-}
+/* Verbs specification header. */
+struct ibv_spec_header {
+	enum ibv_flow_spec_type type;
+	uint16_t size;
+};
 
 /**
  * Check support for a given item.
@@ -2372,4 +2361,461 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 	priv->isolated = !!enable;
 	priv_unlock(priv);
 	return 0;
+}
+
+/**
+ * Convert a flow director filter to a generic flow.
+ *
+ * @param priv
+ *   Private structure.
+ * @param fdir_filter
+ *   Flow director filter to add.
+ * @param attributes
+ *   Generic flow parameters structure.
+ *
+ * @return
+ *  0 on success, errno value on error.
+ */
+static int
+priv_fdir_filter_convert(struct priv *priv,
+			 const struct rte_eth_fdir_filter *fdir_filter,
+			 struct mlx5_fdir *attributes)
+{
+	const struct rte_eth_fdir_input *input = &fdir_filter->input;
+
+	/* Validate queue number. */
+	if (fdir_filter->action.rx_queue >= priv->rxqs_n) {
+		ERROR("invalid queue number %d", fdir_filter->action.rx_queue);
+		return EINVAL;
+	}
+	/* Validate the behavior. */
+	if (fdir_filter->action.behavior != RTE_ETH_FDIR_ACCEPT) {
+		ERROR("invalid behavior %d", fdir_filter->action.behavior);
+		return ENOTSUP;
+	}
+	attributes->attr.ingress = 1;
+	attributes->items[0] = (struct rte_flow_item) {
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.spec = &attributes->l2,
+	};
+	attributes->actions[0] = (struct rte_flow_action){
+		.type = RTE_FLOW_ACTION_TYPE_QUEUE,
+		.conf = &attributes->queue,
+	};
+	attributes->queue.index = fdir_filter->action.rx_queue;
+	switch (fdir_filter->input.flow_type) {
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
+		attributes->l3.ipv4.hdr = (struct ipv4_hdr){
+			.src_addr = input->flow.udp4_flow.ip.src_ip,
+			.dst_addr = input->flow.udp4_flow.ip.dst_ip,
+			.time_to_live = input->flow.udp4_flow.ip.ttl,
+			.type_of_service = input->flow.udp4_flow.ip.tos,
+			.next_proto_id = input->flow.udp4_flow.ip.proto,
+		};
+		attributes->l4.udp.hdr = (struct udp_hdr){
+			.src_port = input->flow.udp4_flow.src_port,
+			.dst_port = input->flow.udp4_flow.dst_port,
+		};
+		attributes->items[1] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_IPV4,
+			.spec = &attributes->l3,
+		};
+		attributes->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_UDP,
+			.spec = &attributes->l4,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
+		attributes->l3.ipv4.hdr = (struct ipv4_hdr){
+			.src_addr = input->flow.tcp4_flow.ip.src_ip,
+			.dst_addr = input->flow.tcp4_flow.ip.dst_ip,
+			.time_to_live = input->flow.tcp4_flow.ip.ttl,
+			.type_of_service = input->flow.tcp4_flow.ip.tos,
+			.next_proto_id = input->flow.tcp4_flow.ip.proto,
+		};
+		attributes->l4.tcp.hdr = (struct tcp_hdr){
+			.src_port = input->flow.tcp4_flow.src_port,
+			.dst_port = input->flow.tcp4_flow.dst_port,
+		};
+		attributes->items[1] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_IPV4,
+			.spec = &attributes->l3,
+		};
+		attributes->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_TCP,
+			.spec = &attributes->l4,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
+		attributes->l3.ipv4.hdr = (struct ipv4_hdr){
+			.src_addr = input->flow.ip4_flow.src_ip,
+			.dst_addr = input->flow.ip4_flow.dst_ip,
+			.time_to_live = input->flow.ip4_flow.ttl,
+			.type_of_service = input->flow.ip4_flow.tos,
+			.next_proto_id = input->flow.ip4_flow.proto,
+		};
+		attributes->items[1] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_IPV4,
+			.spec = &attributes->l3,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+		attributes->l3.ipv6.hdr = (struct ipv6_hdr){
+			.hop_limits = input->flow.udp6_flow.ip.hop_limits,
+			.proto = input->flow.udp6_flow.ip.proto,
+		};
+		memcpy(attributes->l3.ipv6.hdr.src_addr,
+		       input->flow.udp6_flow.ip.src_ip,
+		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
+		memcpy(attributes->l3.ipv6.hdr.dst_addr,
+		       input->flow.udp6_flow.ip.dst_ip,
+		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
+		attributes->l4.udp.hdr = (struct udp_hdr){
+			.src_port = input->flow.udp6_flow.src_port,
+			.dst_port = input->flow.udp6_flow.dst_port,
+		};
+		attributes->items[1] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_IPV6,
+			.spec = &attributes->l3,
+		};
+		attributes->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_UDP,
+			.spec = &attributes->l4,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
+		attributes->l3.ipv6.hdr = (struct ipv6_hdr){
+			.hop_limits = input->flow.tcp6_flow.ip.hop_limits,
+			.proto = input->flow.tcp6_flow.ip.proto,
+		};
+		memcpy(attributes->l3.ipv6.hdr.src_addr,
+		       input->flow.tcp6_flow.ip.src_ip,
+		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
+		memcpy(attributes->l3.ipv6.hdr.dst_addr,
+		       input->flow.tcp6_flow.ip.dst_ip,
+		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
+		attributes->l4.tcp.hdr = (struct tcp_hdr){
+			.src_port = input->flow.tcp6_flow.src_port,
+			.dst_port = input->flow.tcp6_flow.dst_port,
+		};
+		attributes->items[1] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_IPV6,
+			.spec = &attributes->l3,
+		};
+		attributes->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_UDP,
+			.spec = &attributes->l4,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
+		attributes->l3.ipv6.hdr = (struct ipv6_hdr){
+			.hop_limits = input->flow.ipv6_flow.hop_limits,
+			.proto = input->flow.ipv6_flow.proto,
+		};
+		memcpy(attributes->l3.ipv6.hdr.src_addr,
+		       input->flow.ipv6_flow.src_ip,
+		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
+		memcpy(attributes->l3.ipv6.hdr.dst_addr,
+		       input->flow.ipv6_flow.dst_ip,
+		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
+		attributes->items[1] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_IPV6,
+			.spec = &attributes->l3,
+		};
+		break;
+	default:
+		ERROR("invalid flow type%d",
+		      fdir_filter->input.flow_type);
+		return ENOTSUP;
+	}
+	return 0;
+}
+
+/**
+ * Add new flow director filter and store it in list.
+ *
+ * @param priv
+ *   Private structure.
+ * @param fdir_filter
+ *   Flow director filter to add.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_fdir_filter_add(struct priv *priv,
+		     const struct rte_eth_fdir_filter *fdir_filter)
+{
+	struct mlx5_fdir attributes = {
+		.attr.group = 0,
+	};
+	struct mlx5_flow_parse parser = {
+		.layer = HASH_RXQ_ETH,
+	};
+	struct rte_flow_error error;
+	struct rte_flow *flow;
+	int ret;
+
+	ret = priv_fdir_filter_convert(priv, fdir_filter, &attributes);
+	if (ret)
+		return -ret;
+	ret = priv_flow_convert(priv, &attributes.attr, attributes.items,
+				attributes.actions, &error, &parser);
+	if (ret)
+		return -ret;
+	flow = priv_flow_create(priv,
+				&priv->flows,
+				&attributes.attr,
+				attributes.items,
+				attributes.actions,
+				&error);
+	if (flow) {
+		TAILQ_INSERT_TAIL(&priv->flows, flow, next);
+		DEBUG("FDIR created %p", (void *)flow);
+		return 0;
+	}
+	return ENOTSUP;
+}
+
+/**
+ * Delete specific filter.
+ *
+ * @param priv
+ *   Private structure.
+ * @param fdir_filter
+ *   Filter to be deleted.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_fdir_filter_delete(struct priv *priv,
+			const struct rte_eth_fdir_filter *fdir_filter)
+{
+	struct mlx5_fdir attributes;
+	struct mlx5_flow_parse parser = {
+		.create = 1,
+		.layer = HASH_RXQ_ETH,
+	};
+	struct rte_flow_error error;
+	struct rte_flow *flow;
+	unsigned int i;
+	int ret;
+
+	ret = priv_fdir_filter_convert(priv, fdir_filter, &attributes);
+	if (ret)
+		return -ret;
+	ret = priv_flow_convert(priv, &attributes.attr, attributes.items,
+				attributes.actions, &error, &parser);
+	if (ret)
+		goto exit;
+	TAILQ_FOREACH(flow, &priv->flows, next) {
+		struct ibv_flow_attr *attr;
+		struct ibv_spec_header *attr_h;
+		void *spec;
+		struct ibv_flow_attr *flow_attr;
+		struct ibv_spec_header *flow_h;
+		void *flow_spec;
+		unsigned int specs_n;
+
+		if (parser.drop)
+			attr = parser.drop_q.ibv_attr;
+		else
+			attr = parser.queue[HASH_RXQ_ETH].ibv_attr;
+		if (flow->drop)
+			flow_attr = flow->drxq.ibv_attr;
+		else
+			flow_attr = flow->frxq[HASH_RXQ_ETH].ibv_attr;
+		/* Compare first the attributes. */
+		if (memcmp(attr, flow_attr, sizeof(struct ibv_flow_attr)))
+			continue;
+		if (attr->num_of_specs == 0)
+			continue;
+		spec = (void *)((uintptr_t)attr +
+				sizeof(struct ibv_flow_attr));
+		flow_spec = (void *)((uintptr_t)flow_attr +
+				     sizeof(struct ibv_flow_attr));
+		specs_n = RTE_MIN(attr->num_of_specs, flow_attr->num_of_specs);
+		for (i = 0; i != specs_n; ++i) {
+			attr_h = spec;
+			flow_h = flow_spec;
+			if (memcmp(spec, flow_spec,
+				   RTE_MIN(attr_h->size, flow_h->size)))
+				continue;
+			spec = (void *)((uintptr_t)attr + attr_h->size);
+			flow_spec = (void *)((uintptr_t)flow_attr +
+					     flow_h->size);
+		}
+		/* At this point, the flow match. */
+		break;
+	}
+	if (flow)
+		priv_flow_destroy(priv, &priv->flows, flow);
+exit:
+	if (parser.drop) {
+		rte_free(parser.drop_q.ibv_attr);
+	} else {
+		for (i = 0; i != hash_rxq_init_n; ++i) {
+			if (parser.queue[i].ibv_attr)
+				rte_free(parser.queue[i].ibv_attr);
+		}
+	}
+	return -ret;
+}
+
+/**
+ * Update queue for specific filter.
+ *
+ * @param priv
+ *   Private structure.
+ * @param fdir_filter
+ *   Filter to be updated.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_fdir_filter_update(struct priv *priv,
+			const struct rte_eth_fdir_filter *fdir_filter)
+{
+	int ret;
+
+	ret = priv_fdir_filter_delete(priv, fdir_filter);
+	if (ret)
+		return ret;
+	ret = priv_fdir_filter_add(priv, fdir_filter);
+	return ret;
+}
+
+/**
+ * Flush all filters.
+ *
+ * @param priv
+ *   Private structure.
+ */
+static void
+priv_fdir_filter_flush(struct priv *priv)
+{
+	priv_flow_flush(priv, &priv->flows);
+}
+
+/**
+ * Get flow director information.
+ *
+ * @param priv
+ *   Private structure.
+ * @param[out] fdir_info
+ *   Resulting flow director information.
+ */
+static void
+priv_fdir_info_get(struct priv *priv, struct rte_eth_fdir_info *fdir_info)
+{
+	struct rte_eth_fdir_masks *mask =
+		&priv->dev->data->dev_conf.fdir_conf.mask;
+
+	fdir_info->mode = priv->dev->data->dev_conf.fdir_conf.mode;
+	fdir_info->guarant_spc = 0;
+	rte_memcpy(&fdir_info->mask, mask, sizeof(fdir_info->mask));
+	fdir_info->max_flexpayload = 0;
+	fdir_info->flow_types_mask[0] = 0;
+	fdir_info->flex_payload_unit = 0;
+	fdir_info->max_flex_payload_segment_num = 0;
+	fdir_info->flex_payload_limit = 0;
+	memset(&fdir_info->flex_conf, 0, sizeof(fdir_info->flex_conf));
+}
+
+/**
+ * Deal with flow director operations.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param filter_op
+ *   Operation to perform.
+ * @param arg
+ *   Pointer to operation-specific structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_fdir_ctrl_func(struct priv *priv, enum rte_filter_op filter_op, void *arg)
+{
+	enum rte_fdir_mode fdir_mode =
+		priv->dev->data->dev_conf.fdir_conf.mode;
+	int ret = 0;
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+	if (fdir_mode != RTE_FDIR_MODE_PERFECT &&
+	    fdir_mode != RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
+		ERROR("%p: flow director mode %d not supported",
+		      (void *)priv, fdir_mode);
+		return EINVAL;
+	}
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = priv_fdir_filter_add(priv, arg);
+		break;
+	case RTE_ETH_FILTER_UPDATE:
+		ret = priv_fdir_filter_update(priv, arg);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = priv_fdir_filter_delete(priv, arg);
+		break;
+	case RTE_ETH_FILTER_FLUSH:
+		priv_fdir_filter_flush(priv);
+		break;
+	case RTE_ETH_FILTER_INFO:
+		priv_fdir_info_get(priv, arg);
+		break;
+	default:
+		DEBUG("%p: unknown operation %u", (void *)priv,
+		      filter_op);
+		ret = EINVAL;
+		break;
+	}
+	return ret;
+}
+
+/**
+ * Manage filter operations.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param filter_type
+ *   Filter type.
+ * @param filter_op
+ *   Operation to perform.
+ * @param arg
+ *   Pointer to operation-specific structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	int ret = EINVAL;
+	struct priv *priv = dev->data->dev_private;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &mlx5_flow_ops;
+		return 0;
+	case RTE_ETH_FILTER_FDIR:
+		priv_lock(priv);
+		ret = priv_fdir_ctrl_func(priv, filter_op, arg);
+		priv_unlock(priv);
+		break;
+	default:
+		ERROR("%p: filter type (%d) not supported",
+		      (void *)dev, filter_type);
+		break;
+	}
+	return -ret;
 }
