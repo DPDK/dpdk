@@ -256,6 +256,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	ret = mlx5_priv_rxq_ibv_verify(priv);
 	if (ret)
 		WARN("%p: some Verbs Rx queue still remain", (void *)priv);
+	ret = mlx5_priv_txq_ibv_verify(priv);
+	if (ret)
+		WARN("%p: some Verbs Tx queue still remain", (void *)priv);
 	ret = priv_flow_verify(priv);
 	if (ret)
 		WARN("%p: some flows still remain", (void *)priv);

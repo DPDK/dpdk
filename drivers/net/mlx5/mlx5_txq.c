@@ -75,13 +75,6 @@ txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl, unsigned int elts_n)
 
 	for (i = 0; (i != elts_n); ++i)
 		(*txq_ctrl->txq.elts)[i] = NULL;
-	for (i = 0; (i != (1u << txq_ctrl->txq.wqe_n)); ++i) {
-		volatile struct mlx5_wqe64 *wqe =
-			(volatile struct mlx5_wqe64 *)
-			txq_ctrl->txq.wqes + i;
-
-		memset((void *)(uintptr_t)wqe, 0x0, sizeof(*wqe));
-	}
 	DEBUG("%p: allocated and configured %u WRs", (void *)txq_ctrl, elts_n);
 	txq_ctrl->txq.elts_head = 0;
 	txq_ctrl->txq.elts_tail = 0;
@@ -138,71 +131,12 @@ mlx5_txq_cleanup(struct mlx5_txq_ctrl *txq_ctrl)
 
 	DEBUG("cleaning up %p", (void *)txq_ctrl);
 	txq_free_elts(txq_ctrl);
-	if (txq_ctrl->qp != NULL)
-		claim_zero(ibv_destroy_qp(txq_ctrl->qp));
-	if (txq_ctrl->cq != NULL)
-		claim_zero(ibv_destroy_cq(txq_ctrl->cq));
 	for (i = 0; (i != RTE_DIM(txq_ctrl->txq.mp2mr)); ++i)
 		if (txq_ctrl->txq.mp2mr[i])
 			priv_mr_release(txq_ctrl->priv, txq_ctrl->txq.mp2mr[i]);
+	if (txq_ctrl->ibv)
+		mlx5_priv_txq_ibv_release(txq_ctrl->priv, txq_ctrl->ibv);
 	memset(txq_ctrl, 0, sizeof(*txq_ctrl));
-}
-
-/**
- * Initialize TX queue.
- *
- * @param tmpl
- *   Pointer to TX queue control template.
- * @param txq_ctrl
- *   Pointer to TX queue control.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static inline int
-txq_setup(struct mlx5_txq_ctrl *tmpl, struct mlx5_txq_ctrl *txq_ctrl)
-{
-	struct mlx5dv_qp qp;
-	struct ibv_cq *ibcq = tmpl->cq;
-	struct mlx5dv_cq cq_info;
-	struct mlx5dv_obj obj;
-	int ret = 0;
-
-	qp.comp_mask = MLX5DV_QP_MASK_UAR_MMAP_OFFSET;
-	obj.cq.in = ibcq;
-	obj.cq.out = &cq_info;
-	obj.qp.in = tmpl->qp;
-	obj.qp.out = &qp;
-	ret = mlx5dv_init_obj(&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_QP);
-	if (ret != 0) {
-		return -EINVAL;
-	}
-	if (cq_info.cqe_size != RTE_CACHE_LINE_SIZE) {
-		ERROR("Wrong MLX5_CQE_SIZE environment variable value: "
-		      "it should be set to %u", RTE_CACHE_LINE_SIZE);
-		return EINVAL;
-	}
-	tmpl->txq.cqe_n = log2above(cq_info.cqe_cnt);
-	tmpl->txq.qp_num_8s = tmpl->qp->qp_num << 8;
-	tmpl->txq.wqes = qp.sq.buf;
-	tmpl->txq.wqe_n = log2above(qp.sq.wqe_cnt);
-	tmpl->txq.qp_db = &qp.dbrec[MLX5_SND_DBR];
-	tmpl->txq.bf_reg = qp.bf.reg;
-	tmpl->txq.cq_db = cq_info.dbrec;
-	tmpl->txq.cqes =
-		(volatile struct mlx5_cqe (*)[])
-		(uintptr_t)cq_info.buf;
-	tmpl->txq.elts =
-		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])
-		((uintptr_t)txq_ctrl + sizeof(*txq_ctrl));
-	if (qp.comp_mask | MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
-		tmpl->uar_mmap_offset = qp.uar_mmap_offset;
-	} else {
-		ERROR("Failed to retrieve UAR info, invalid libmlx5.so version");
-		return EINVAL;
-	}
-
-	return 0;
 }
 
 /**
@@ -232,22 +166,13 @@ mlx5_txq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl,
 		.priv = priv,
 		.socket = socket,
 	};
-	union {
-		struct ibv_qp_init_attr_ex init;
-		struct ibv_cq_init_attr_ex cq;
-		struct ibv_qp_attr mod;
-		struct ibv_cq_ex cq_attr;
-	} attr;
-	unsigned int cqe_n;
 	const unsigned int max_tso_inline = ((MLX5_MAX_TSO_HEADER +
 					     (RTE_CACHE_LINE_SIZE - 1)) /
 					      RTE_CACHE_LINE_SIZE);
-	int ret = 0;
 
 	if (mlx5_getenv_int("MLX5_ENABLE_CQE_COMPRESSION")) {
-		ret = ENOTSUP;
 		ERROR("MLX5_ENABLE_CQE_COMPRESSION must never be set");
-		goto error;
+		return ENOTSUP;
 	}
 	tmpl.txq.flags = conf->txq_flags;
 	assert(desc > MLX5_TX_COMP_THRESH);
@@ -255,53 +180,10 @@ mlx5_txq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl,
 	if (priv->mps == MLX5_MPW_ENHANCED)
 		tmpl.txq.mpw_hdr_dseg = priv->mpw_hdr_dseg;
 	/* MRs will be registered in mp2mr[] later. */
-	attr.cq = (struct ibv_cq_init_attr_ex){
-		.comp_mask = 0,
-	};
-	cqe_n = ((desc / MLX5_TX_COMP_THRESH) - 1) ?
-		((desc / MLX5_TX_COMP_THRESH) - 1) : 1;
-	if (priv->mps == MLX5_MPW_ENHANCED)
-		cqe_n += MLX5_TX_COMP_THRESH_INLINE_DIV;
-	tmpl.cq = ibv_create_cq(priv->ctx,
-				cqe_n,
-				NULL, NULL, 0);
-	if (tmpl.cq == NULL) {
-		ret = ENOMEM;
-		ERROR("%p: CQ creation failure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
 	DEBUG("priv->device_attr.max_qp_wr is %d",
 	      priv->device_attr.orig_attr.max_qp_wr);
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.orig_attr.max_sge);
-	attr.init = (struct ibv_qp_init_attr_ex){
-		/* CQ to be associated with the send queue. */
-		.send_cq = tmpl.cq,
-		/* CQ to be associated with the receive queue. */
-		.recv_cq = tmpl.cq,
-		.cap = {
-			/* Max number of outstanding WRs. */
-			.max_send_wr =
-			 ((priv->device_attr.orig_attr.max_qp_wr < desc) ?
-			   priv->device_attr.orig_attr.max_qp_wr :
-			   desc),
-			/*
-			 * Max number of scatter/gather elements in a WR,
-			 * must be 1 to prevent libmlx5 from trying to affect
-			 * too much memory. TX gather is not impacted by the
-			 * priv->device_attr.max_sge limit and will still work
-			 * properly.
-			 */
-			.max_send_sge = 1,
-		},
-		.qp_type = IBV_QPT_RAW_PACKET,
-		/* Do *NOT* enable this, completions events are managed per
-		 * TX burst. */
-		.sq_sig_all = 0,
-		.pd = priv->pd,
-		.comp_mask = IBV_QP_INIT_ATTR_PD,
-	};
 	if (priv->txq_inline && (priv->txqs_n >= priv->txqs_inline)) {
 		unsigned int ds_cnt;
 
@@ -317,7 +199,7 @@ mlx5_txq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl,
 			/* To minimize the size of data set, avoid requesting
 			 * too large WQ.
 			 */
-			attr.init.cap.max_inline_data =
+			tmpl.max_inline_data =
 				((RTE_MIN(priv->txq_inline,
 					  priv->inline_max_packet_sz) +
 				  (RTE_CACHE_LINE_SIZE - 1)) /
@@ -329,12 +211,12 @@ mlx5_txq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl,
 			 * Adjust inline value as Verbs aggregates
 			 * tso_inline and txq_inline fields.
 			 */
-			attr.init.cap.max_inline_data = inline_diff > 0 ?
-							inline_diff *
-							RTE_CACHE_LINE_SIZE :
-							0;
+			tmpl.max_inline_data = inline_diff > 0 ?
+					       inline_diff *
+					       RTE_CACHE_LINE_SIZE :
+					       0;
 		} else {
-			attr.init.cap.max_inline_data =
+			tmpl.max_inline_data =
 				tmpl.txq.max_inline * RTE_CACHE_LINE_SIZE;
 		}
 		/*
@@ -345,8 +227,7 @@ mlx5_txq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl,
 		 *	WQE ETH  (1 DS)
 		 *	Inline part (N DS)
 		 */
-		ds_cnt = 2 +
-			(attr.init.cap.max_inline_data / MLX5_WQE_DWORD_SIZE);
+		ds_cnt = 2 + (tmpl.max_inline_data / MLX5_WQE_DWORD_SIZE);
 		if (ds_cnt > MLX5_DSEG_MAX) {
 			unsigned int max_inline = (MLX5_DSEG_MAX - 2) *
 						   MLX5_WQE_DWORD_SIZE;
@@ -357,67 +238,20 @@ mlx5_txq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl,
 			     "the maximum possible: %d\n",
 			     priv->txq_inline, max_inline);
 			tmpl.txq.max_inline = max_inline / RTE_CACHE_LINE_SIZE;
-			attr.init.cap.max_inline_data = max_inline;
 		}
 	}
 	if (priv->tso) {
-		attr.init.max_tso_header =
-			max_tso_inline * RTE_CACHE_LINE_SIZE;
-		attr.init.comp_mask |= IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
+		tmpl.max_tso_header = max_tso_inline * RTE_CACHE_LINE_SIZE;
 		tmpl.txq.max_inline = RTE_MAX(tmpl.txq.max_inline,
 					      max_tso_inline);
 		tmpl.txq.tso_en = 1;
 	}
 	if (priv->tunnel_en)
 		tmpl.txq.tunnel_en = 1;
-	tmpl.qp = ibv_create_qp_ex(priv->ctx, &attr.init);
-	if (tmpl.qp == NULL) {
-		ret = (errno ? errno : EINVAL);
-		ERROR("%p: QP creation failure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
-	DEBUG("TX queue capabilities: max_send_wr=%u, max_send_sge=%u,"
-	      " max_inline_data=%u",
-	      attr.init.cap.max_send_wr,
-	      attr.init.cap.max_send_sge,
-	      attr.init.cap.max_inline_data);
-	attr.mod = (struct ibv_qp_attr){
-		/* Move the QP to this state. */
-		.qp_state = IBV_QPS_INIT,
-		/* Primary port number. */
-		.port_num = priv->port
-	};
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod,
-			    (IBV_QP_STATE | IBV_QP_PORT));
-	if (ret) {
-		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
-	ret = txq_setup(&tmpl, txq_ctrl);
-	if (ret) {
-		ERROR("%p: cannot initialize TX queue structure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
+	tmpl.txq.elts =
+		(struct rte_mbuf *(*)[1 << tmpl.txq.elts_n])
+		((uintptr_t)txq_ctrl + sizeof(*txq_ctrl));
 	txq_alloc_elts(&tmpl, desc);
-	attr.mod = (struct ibv_qp_attr){
-		.qp_state = IBV_QPS_RTR
-	};
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
-	if (ret) {
-		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
-	attr.mod.qp_state = IBV_QPS_RTS;
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
-	if (ret) {
-		ERROR("%p: QP state to IBV_QPS_RTS failed: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
 	/* Clean up txq in case we're reinitializing it. */
 	DEBUG("%p: cleaning-up old txq just in case", (void *)txq_ctrl);
 	mlx5_txq_cleanup(txq_ctrl);
@@ -425,12 +259,7 @@ mlx5_txq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl,
 	DEBUG("%p: txq updated with %p", (void *)txq_ctrl, (void *)&tmpl);
 	/* Pre-register known mempools. */
 	rte_mempool_walk(mlx5_txq_mp2mr_iter, txq_ctrl);
-	assert(ret == 0);
 	return 0;
-error:
-	mlx5_txq_cleanup(&tmpl);
-	assert(ret > 0);
-	return ret;
 }
 
 /**
@@ -521,14 +350,22 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		}
 	}
 	ret = mlx5_txq_ctrl_setup(dev, txq_ctrl, desc, socket, conf);
-	if (ret)
+	if (ret) {
 		rte_free(txq_ctrl);
-	else {
-		txq_ctrl->txq.stats.idx = idx;
-		DEBUG("%p: adding TX queue %p to list",
-		      (void *)dev, (void *)txq_ctrl);
-		(*priv->txqs)[idx] = &txq_ctrl->txq;
+		goto out;
 	}
+	txq_ctrl->txq.stats.idx = idx;
+	DEBUG("%p: adding TX queue %p to list",
+	      (void *)dev, (void *)txq_ctrl);
+	(*priv->txqs)[idx] = &txq_ctrl->txq;
+	txq_ctrl->ibv = mlx5_priv_txq_ibv_new(priv, idx);
+	if (!txq_ctrl->ibv) {
+		ret = EAGAIN;
+		goto out;
+	}
+	/* Update send callback. */
+	priv_dev_select_tx_function(priv, priv->dev);
+out:
 	priv_unlock(priv);
 	return -ret;
 }
@@ -621,4 +458,264 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 		}
 	}
 	return 0;
+}
+
+/**
+ * Create the Tx queue Verbs object.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param idx
+ *   Queue index in DPDK Rx queue array
+ *
+ * @return
+ *   The Verbs object initialised if it can be created.
+ */
+struct mlx5_txq_ibv*
+mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
+{
+	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
+	struct mlx5_txq_ctrl *txq_ctrl =
+		container_of(txq_data, struct mlx5_txq_ctrl, txq);
+	struct mlx5_txq_ibv tmpl;
+	struct mlx5_txq_ibv *txq_ibv;
+	union {
+		struct ibv_qp_init_attr_ex init;
+		struct ibv_cq_init_attr_ex cq;
+		struct ibv_qp_attr mod;
+		struct ibv_cq_ex cq_attr;
+	} attr;
+	unsigned int cqe_n;
+	struct mlx5dv_qp qp;
+	struct mlx5dv_cq cq_info;
+	struct mlx5dv_obj obj;
+	const int desc = 1 << txq_data->elts_n;
+	int ret = 0;
+
+	assert(txq_data);
+	if (mlx5_getenv_int("MLX5_ENABLE_CQE_COMPRESSION")) {
+		ERROR("MLX5_ENABLE_CQE_COMPRESSION must never be set");
+		goto error;
+	}
+	memset(&tmpl, 0, sizeof(struct mlx5_txq_ibv));
+	/* MRs will be registered in mp2mr[] later. */
+	attr.cq = (struct ibv_cq_init_attr_ex){
+		.comp_mask = 0,
+	};
+	cqe_n = ((desc / MLX5_TX_COMP_THRESH) - 1) ?
+		((desc / MLX5_TX_COMP_THRESH) - 1) : 1;
+	if (priv->mps == MLX5_MPW_ENHANCED)
+		cqe_n += MLX5_TX_COMP_THRESH_INLINE_DIV;
+	tmpl.cq = ibv_create_cq(priv->ctx, cqe_n, NULL, NULL, 0);
+	if (tmpl.cq == NULL) {
+		ERROR("%p: CQ creation failure", (void *)txq_ctrl);
+		goto error;
+	}
+	attr.init = (struct ibv_qp_init_attr_ex){
+		/* CQ to be associated with the send queue. */
+		.send_cq = tmpl.cq,
+		/* CQ to be associated with the receive queue. */
+		.recv_cq = tmpl.cq,
+		.cap = {
+			/* Max number of outstanding WRs. */
+			.max_send_wr =
+				((priv->device_attr.orig_attr.max_qp_wr <
+				  desc) ?
+				 priv->device_attr.orig_attr.max_qp_wr :
+				 desc),
+			/*
+			 * Max number of scatter/gather elements in a WR,
+			 * must be 1 to prevent libmlx5 from trying to affect
+			 * too much memory. TX gather is not impacted by the
+			 * priv->device_attr.max_sge limit and will still work
+			 * properly.
+			 */
+			.max_send_sge = 1,
+		},
+		.qp_type = IBV_QPT_RAW_PACKET,
+		/*
+		 * Do *NOT* enable this, completions events are managed per
+		 * Tx burst.
+		 */
+		.sq_sig_all = 0,
+		.pd = priv->pd,
+		.comp_mask = IBV_QP_INIT_ATTR_PD,
+	};
+	if (txq_data->inline_en)
+		attr.init.cap.max_inline_data = txq_ctrl->max_inline_data;
+	if (txq_data->tso_en) {
+		attr.init.max_tso_header = txq_ctrl->max_tso_header;
+		attr.init.comp_mask |= IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
+	}
+	tmpl.qp = ibv_create_qp_ex(priv->ctx, &attr.init);
+	if (tmpl.qp == NULL) {
+		ERROR("%p: QP creation failure", (void *)txq_ctrl);
+		goto error;
+	}
+	attr.mod = (struct ibv_qp_attr){
+		/* Move the QP to this state. */
+		.qp_state = IBV_QPS_INIT,
+		/* Primary port number. */
+		.port_num = priv->port
+	};
+	ret = ibv_modify_qp(tmpl.qp, &attr.mod, (IBV_QP_STATE | IBV_QP_PORT));
+	if (ret) {
+		ERROR("%p: QP state to IBV_QPS_INIT failed", (void *)txq_ctrl);
+		goto error;
+	}
+	attr.mod = (struct ibv_qp_attr){
+		.qp_state = IBV_QPS_RTR
+	};
+	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
+	if (ret) {
+		ERROR("%p: QP state to IBV_QPS_RTR failed", (void *)txq_ctrl);
+		goto error;
+	}
+	attr.mod.qp_state = IBV_QPS_RTS;
+	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
+	if (ret) {
+		ERROR("%p: QP state to IBV_QPS_RTS failed", (void *)txq_ctrl);
+		goto error;
+	}
+	txq_ibv = rte_calloc_socket(__func__, 1, sizeof(struct mlx5_txq_ibv), 0,
+				    txq_ctrl->socket);
+	if (!txq_ibv) {
+		ERROR("%p: cannot allocate memory", (void *)txq_ctrl);
+		goto error;
+	}
+	obj.cq.in = tmpl.cq;
+	obj.cq.out = &cq_info;
+	obj.qp.in = tmpl.qp;
+	obj.qp.out = &qp;
+	ret = mlx5dv_init_obj(&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_QP);
+	if (ret != 0)
+		goto error;
+	if (cq_info.cqe_size != RTE_CACHE_LINE_SIZE) {
+		ERROR("Wrong MLX5_CQE_SIZE environment variable value: "
+		      "it should be set to %u", RTE_CACHE_LINE_SIZE);
+		goto error;
+	}
+	txq_data->cqe_n = log2above(cq_info.cqe_cnt);
+	txq_data->qp_num_8s = tmpl.qp->qp_num << 8;
+	txq_data->wqes = qp.sq.buf;
+	txq_data->wqe_n = log2above(qp.sq.wqe_cnt);
+	txq_data->qp_db = &qp.dbrec[MLX5_SND_DBR];
+	txq_data->bf_reg = qp.bf.reg;
+	txq_data->cq_db = cq_info.dbrec;
+	txq_data->cqes =
+		(volatile struct mlx5_cqe (*)[])
+		(uintptr_t)cq_info.buf;
+	txq_data->cq_ci = 0;
+	txq_data->cq_pi = 0;
+	txq_data->wqe_ci = 0;
+	txq_data->wqe_pi = 0;
+	txq_ibv->qp = tmpl.qp;
+	txq_ibv->cq = tmpl.cq;
+	rte_atomic32_inc(&txq_ibv->refcnt);
+	DEBUG("%p: Verbs Tx queue %p: refcnt %d", (void *)priv,
+	      (void *)txq_ibv, rte_atomic32_read(&txq_ibv->refcnt));
+	LIST_INSERT_HEAD(&priv->txqsibv, txq_ibv, next);
+	return txq_ibv;
+error:
+	if (tmpl.cq)
+		claim_zero(ibv_destroy_cq(tmpl.cq));
+	if (tmpl.qp)
+		claim_zero(ibv_destroy_qp(tmpl.qp));
+	return NULL;
+}
+
+/**
+ * Get an Tx queue Verbs object.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param idx
+ *   Queue index in DPDK Rx queue array
+ *
+ * @return
+ *   The Verbs object if it exists.
+ */
+struct mlx5_txq_ibv*
+mlx5_priv_txq_ibv_get(struct priv *priv, uint16_t idx)
+{
+	struct mlx5_txq_ctrl *txq_ctrl;
+
+	if (idx >= priv->txqs_n)
+		return NULL;
+	if (!(*priv->txqs)[idx])
+		return NULL;
+	txq_ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
+	if (txq_ctrl->ibv) {
+		rte_atomic32_inc(&txq_ctrl->ibv->refcnt);
+		DEBUG("%p: Verbs Tx queue %p: refcnt %d", (void *)priv,
+		      (void *)txq_ctrl->ibv,
+		      rte_atomic32_read(&txq_ctrl->ibv->refcnt));
+	}
+	return txq_ctrl->ibv;
+}
+
+/**
+ * Release an Tx verbs queue object.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param txq_ibv
+ *   Verbs Tx queue object.
+ *
+ * @return
+ *   0 on success, errno on failure.
+ */
+int
+mlx5_priv_txq_ibv_release(struct priv *priv, struct mlx5_txq_ibv *txq_ibv)
+{
+	(void)priv;
+	assert(txq_ibv);
+	DEBUG("%p: Verbs Tx queue %p: refcnt %d", (void *)priv,
+	      (void *)txq_ibv, rte_atomic32_read(&txq_ibv->refcnt));
+	if (rte_atomic32_dec_and_test(&txq_ibv->refcnt)) {
+		claim_zero(ibv_destroy_qp(txq_ibv->qp));
+		claim_zero(ibv_destroy_cq(txq_ibv->cq));
+		LIST_REMOVE(txq_ibv, next);
+		rte_free(txq_ibv);
+		return 0;
+	}
+	return EBUSY;
+}
+
+/**
+ * Return true if a single reference exists on the object.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param txq_ibv
+ *   Verbs Tx queue object.
+ */
+int
+mlx5_priv_txq_ibv_releasable(struct priv *priv, struct mlx5_txq_ibv *txq_ibv)
+{
+	(void)priv;
+	assert(txq_ibv);
+	return (rte_atomic32_read(&txq_ibv->refcnt) == 1);
+}
+
+/**
+ * Verify the Verbs Tx queue list is empty
+ *
+ * @param priv
+ *  Pointer to private structure.
+ *
+ * @return the number of object not released.
+ */
+int
+mlx5_priv_txq_ibv_verify(struct priv *priv)
+{
+	int ret = 0;
+	struct mlx5_txq_ibv *txq_ibv;
+
+	LIST_FOREACH(txq_ibv, &priv->txqsibv, next) {
+		DEBUG("%p: Verbs Tx queue %p still referenced", (void *)priv,
+		      (void *)txq_ibv);
+		++ret;
+	}
+	return ret;
 }

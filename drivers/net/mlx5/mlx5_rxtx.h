@@ -287,12 +287,21 @@ struct mlx5_txq_data {
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 } __rte_cache_aligned;
 
+/* Verbs Rx queue elements. */
+struct mlx5_txq_ibv {
+	LIST_ENTRY(mlx5_txq_ibv) next; /* Pointer to the next element. */
+	rte_atomic32_t refcnt; /* Reference counter. */
+	struct ibv_cq *cq; /* Completion Queue. */
+	struct ibv_qp *qp; /* Queue Pair. */
+};
+
 /* TX queue control descriptor. */
 struct mlx5_txq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
-	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_qp *qp; /* Queue Pair. */
 	unsigned int socket; /* CPU socket ID for allocations. */
+	unsigned int max_inline_data; /* Max inline data. */
+	unsigned int max_tso_header; /* Max TSO header size. */
+	struct mlx5_txq_ibv *ibv; /* Verbs queue object. */
 	struct mlx5_txq_data txq; /* Data path structure. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 };
@@ -334,6 +343,11 @@ int mlx5_tx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_txconf *);
 void mlx5_tx_queue_release(void *);
 int priv_tx_uar_remap(struct priv *priv, int fd);
+struct mlx5_txq_ibv *mlx5_priv_txq_ibv_new(struct priv *, uint16_t);
+struct mlx5_txq_ibv *mlx5_priv_txq_ibv_get(struct priv *, uint16_t);
+int mlx5_priv_txq_ibv_release(struct priv *, struct mlx5_txq_ibv *);
+int mlx5_priv_txq_ibv_releasable(struct priv *, struct mlx5_txq_ibv *);
+int mlx5_priv_txq_ibv_verify(struct priv *);
 
 /* mlx5_rxtx.c */
 

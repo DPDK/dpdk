@@ -148,6 +148,7 @@ struct priv {
 	TAILQ_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
 	LIST_HEAD(mr, mlx5_mr) mr; /* Memory region. */
 	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
+	LIST_HEAD(txqibv, mlx5_txq_ibv) txqsibv; /* Verbs Tx queues. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	rte_spinlock_t lock; /* Lock for control functions. */
