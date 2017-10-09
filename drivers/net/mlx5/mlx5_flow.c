@@ -101,11 +101,15 @@ struct mlx5_hrxq_drop {
 /* Flows structures. */
 struct mlx5_flow {
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
+	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
+	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	struct mlx5_hrxq *hrxq; /**< Hash Rx queues. */
 };
 
 /* Drop flows structures. */
 struct mlx5_flow_drop {
+	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
+	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	struct mlx5_hrxq_drop hrxq; /**< Drop hash Rx queue. */
 };
 
@@ -113,8 +117,6 @@ struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	uint32_t mark:1; /**< Set if the flow is marked. */
 	uint32_t drop:1; /**< Drop queue. */
-	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
-	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	uint16_t queues_n; /**< Number of entries in queue[]. */
 	uint16_t (*queues)[]; /**< Queues indexes to use. */
 	union {
@@ -1031,13 +1033,13 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	};
 	++parser->ibv_attr->num_of_specs;
 	parser->offset += sizeof(struct ibv_flow_spec_action_drop);
-	rte_flow->ibv_attr = parser->ibv_attr;
+	rte_flow->drxq.ibv_attr = parser->ibv_attr;
 	if (!priv->dev->data->dev_started)
 		return rte_flow;
 	rte_flow->drxq.hrxq.qp = priv->flow_drop_queue->qp;
-	rte_flow->ibv_flow = ibv_create_flow(rte_flow->drxq.hrxq.qp,
-					     rte_flow->ibv_attr);
-	if (!rte_flow->ibv_flow) {
+	rte_flow->drxq.ibv_flow = ibv_create_flow(rte_flow->drxq.hrxq.qp,
+						  rte_flow->drxq.ibv_attr);
+	if (!rte_flow->drxq.ibv_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "flow rule creation failure");
 		goto error;
@@ -1083,7 +1085,7 @@ priv_flow_create_action_queue(struct priv *priv,
 		return NULL;
 	}
 	rte_flow->mark = parser->mark;
-	rte_flow->ibv_attr = parser->ibv_attr;
+	rte_flow->frxq.ibv_attr = parser->ibv_attr;
 	rte_flow->queues = (uint16_t (*)[])(rte_flow + 1);
 	memcpy(rte_flow->queues, parser->queues,
 	       parser->queues_n * sizeof(uint16_t));
@@ -1116,9 +1118,9 @@ priv_flow_create_action_queue(struct priv *priv,
 	}
 	if (!priv->dev->data->dev_started)
 		return rte_flow;
-	rte_flow->ibv_flow = ibv_create_flow(rte_flow->frxq.hrxq->qp,
-					     rte_flow->ibv_attr);
-	if (!rte_flow->ibv_flow) {
+	rte_flow->frxq.ibv_flow = ibv_create_flow(rte_flow->frxq.hrxq->qp,
+						  rte_flow->frxq.ibv_attr);
+	if (!rte_flow->frxq.ibv_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "flow rule creation failure");
 		goto error;
@@ -1336,12 +1338,17 @@ priv_flow_destroy(struct priv *priv,
 		rxq_data->mark = mark;
 	}
 free:
-	if (flow->ibv_flow)
-		claim_zero(ibv_destroy_flow(flow->ibv_flow));
-	if (!flow->drop)
+	if (flow->drop) {
+		if (flow->drxq.ibv_flow)
+			claim_zero(ibv_destroy_flow(flow->drxq.ibv_flow));
+		rte_free(flow->drxq.ibv_attr);
+	} else {
 		mlx5_priv_hrxq_release(priv, flow->frxq.hrxq);
+		if (flow->frxq.ibv_flow)
+			claim_zero(ibv_destroy_flow(flow->frxq.ibv_flow));
+		rte_free(flow->frxq.ibv_attr);
+	}
 	TAILQ_REMOVE(list, flow, next);
-	rte_free(flow->ibv_attr);
 	DEBUG("Flow destroyed %p", (void *)flow);
 	rte_free(flow);
 }
@@ -1490,8 +1497,9 @@ priv_flow_stop(struct priv *priv, struct mlx5_flows *list)
 	struct rte_flow *flow;
 
 	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next) {
-		claim_zero(ibv_destroy_flow(flow->ibv_flow));
-		flow->ibv_flow = NULL;
+		assert(!flow->drop);
+		claim_zero(ibv_destroy_flow(flow->frxq.ibv_flow));
+		flow->frxq.ibv_flow = NULL;
 		mlx5_priv_hrxq_release(priv, flow->frxq.hrxq);
 		flow->frxq.hrxq = NULL;
 		if (flow->mark) {
@@ -1546,9 +1554,9 @@ priv_flow_start(struct priv *priv, struct mlx5_flows *list)
 			return rte_errno;
 		}
 flow_create:
-		flow->ibv_flow = ibv_create_flow(flow->frxq.hrxq->qp,
-						 flow->ibv_attr);
-		if (!flow->ibv_flow) {
+		flow->frxq.ibv_flow = ibv_create_flow(flow->frxq.hrxq->qp,
+						      flow->frxq.ibv_attr);
+		if (!flow->frxq.ibv_flow) {
 			DEBUG("Flow %p cannot be applied", (void *)flow);
 			rte_errno = EINVAL;
 			return rte_errno;
