@@ -290,6 +290,7 @@ int mlx5_flow_isolate(struct rte_eth_dev *, int, struct rte_flow_error *);
 int priv_flow_start(struct priv *);
 void priv_flow_stop(struct priv *);
 int priv_flow_rxq_in_use(struct priv *, struct mlx5_rxq_data *);
+int priv_flow_verify(struct priv *);
 
 /* mlx5_socket.c */
 

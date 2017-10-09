@@ -190,6 +190,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 {
 	struct priv *priv = mlx5_get_priv(dev);
 	unsigned int i;
+	int ret;
 
 	priv_lock(priv);
 	DEBUG("%p: closing device \"%s\"",
@@ -252,6 +253,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->reta_idx != NULL)
 		rte_free(priv->reta_idx);
 	priv_socket_uninit(priv);
+	ret = priv_flow_verify(priv);
+	if (ret)
+		WARN("%p: some flows still remain", (void *)priv);
 	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }

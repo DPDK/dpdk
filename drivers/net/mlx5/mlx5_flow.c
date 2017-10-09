@@ -1630,3 +1630,25 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 	priv_unlock(priv);
 	return 0;
 }
+
+/**
+ * Verify the flow list is empty
+ *
+ * @param priv
+ *  Pointer to private structure.
+ *
+ * @return the number of flows not released.
+ */
+int
+priv_flow_verify(struct priv *priv)
+{
+	struct rte_flow *flow;
+	int ret = 0;
+
+	TAILQ_FOREACH(flow, &priv->flows, next) {
+		DEBUG("%p: flow %p still referenced", (void *)priv,
+		      (void *)flow);
+		++ret;
+	}
+	return ret;
+}
