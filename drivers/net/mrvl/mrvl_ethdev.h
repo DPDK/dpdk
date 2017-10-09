@@ -33,6 +33,7 @@
 #ifndef _MRVL_ETHDEV_H_
 #define _MRVL_ETHDEV_H_
 
+#include <rte_spinlock.h>
 #include <drivers/mv_pp2_cls.h>
 #include <drivers/mv_pp2_ppio.h>
 
@@ -69,10 +70,20 @@
 /** Packet offset inside RX buffer. */
 #define MRVL_PKT_OFFS 64
 
+/** Maximum number of descriptors in shadow queue. Must be power of 2 */
+#define MRVL_PP2_TX_SHADOWQ_SIZE MRVL_PP2_TXD_MAX
+
+/** Shadow queue size mask (since shadow queue size is power of 2) */
+#define MRVL_PP2_TX_SHADOWQ_MASK (MRVL_PP2_TX_SHADOWQ_SIZE - 1)
+
+/** Minimum number of sent buffers to release from shadow queue to BM */
+#define MRVL_PP2_BUF_RELEASE_BURST_SIZE	64
+
 struct mrvl_priv {
 	/* Hot fields, used in fast path. */
 	struct pp2_bpool *bpool;  /**< BPool pointer */
 	struct pp2_ppio	*ppio;    /**< Port handler pointer */
+	rte_spinlock_t lock;	  /**< Spinlock for checking bpool status */
 	uint16_t bpool_max_size;  /**< BPool maximum size */
 	uint16_t bpool_min_size;  /**< BPool minimum size  */
 	uint16_t bpool_init_size; /**< Configured BPool size  */
