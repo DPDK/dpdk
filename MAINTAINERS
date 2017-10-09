@@ -408,6 +408,8 @@ M: Dmitri Epshtein <dima@marvell.com>
 M: Natalie Samsonov <nsamsono@marvell.com>
 M: Jianbo Liu <jianbo.liu@arm.com>
 F: drivers/net/mrvl/
+F: doc/guides/nics/mrvl.rst
+F: doc/guides/nics/features/mrvl.ini
 
 Netcope szedata2
 M: Matej Vido <vido@cesnet.cz>
