@@ -117,6 +117,60 @@ static int mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
  *
  * This function should only be called by txq_mp2mr().
  *
+ * @param priv
+ *   Pointer to private structure.
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param[in] mp
+ *   Memory Pool for which a Memory Region lkey must be returned.
+ * @param idx
+ *   Index of the next available entry.
+ *
+ * @return
+ *   mr on success, NULL on failure.
+ */
+struct mlx5_mr*
+priv_txq_mp2mr_reg(struct priv *priv, struct mlx5_txq_data *txq,
+		   struct rte_mempool *mp, unsigned int idx)
+{
+	struct mlx5_txq_ctrl *txq_ctrl =
+		container_of(txq, struct mlx5_txq_ctrl, txq);
+	struct mlx5_mr *mr;
+
+	/* Add a new entry, register MR first. */
+	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
+	      (void *)txq_ctrl, mp->name, (void *)mp);
+	mr = priv_mr_get(priv, mp);
+	if (mr == NULL)
+		mr = priv_mr_new(priv, mp);
+	if (unlikely(mr == NULL)) {
+		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
+		      (void *)txq_ctrl);
+		return NULL;
+	}
+	if (unlikely(idx == RTE_DIM(txq->mp2mr))) {
+		/* Table is full, remove oldest entry. */
+		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
+		      (void *)txq_ctrl);
+		--idx;
+		priv_mr_release(priv, txq->mp2mr[0]);
+		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
+			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
+	}
+	/* Store the new entry. */
+	txq_ctrl->txq.mp2mr[idx] = mr;
+	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
+	      (void *)txq_ctrl, mp->name, (void *)mp,
+	      txq_ctrl->txq.mp2mr[idx]->lkey);
+	return mr;
+}
+
+/**
+ * Register a Memory Region (MR) <-> Memory Pool (MP) association in
+ * txq->mp2mr[]. If mp2mr[] is full, remove an entry first.
+ *
+ * This function should only be called by txq_mp2mr().
+ *
  * @param txq
  *   Pointer to TX queue structure.
  * @param[in] mp
@@ -135,35 +189,13 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 		container_of(txq, struct mlx5_txq_ctrl, txq);
 	struct mlx5_mr *mr;
 
-	/* Add a new entry, register MR first. */
-	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
-	      (void *)txq_ctrl, mp->name, (void *)mp);
-	mr = priv_mr_get(txq_ctrl->priv, mp);
-	if (mr == NULL)
-		mr = priv_mr_new(txq_ctrl->priv, mp);
-	if (unlikely(mr == NULL)) {
-		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
-		      (void *)txq_ctrl);
-		return NULL;
-	}
-	if (unlikely(idx == RTE_DIM(txq->mp2mr))) {
-		/* Table is full, remove oldest entry. */
-		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
-		      (void *)txq_ctrl);
-		--idx;
-		priv_mr_release(txq_ctrl->priv, txq->mp2mr[0]);
-		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
-			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
-	}
-	/* Store the new entry. */
-	txq_ctrl->txq.mp2mr[idx] = mr;
-	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
-	      (void *)txq_ctrl, mp->name, (void *)mp,
-	      txq_ctrl->txq.mp2mr[idx]->lkey);
+	priv_lock(txq_ctrl->priv);
+	mr = priv_txq_mp2mr_reg(txq_ctrl->priv, txq, mp, idx);
+	priv_unlock(txq_ctrl->priv);
 	return mr;
 }
 
-struct txq_mp2mr_mbuf_check_data {
+struct mlx5_mp2mr_mbuf_check_data {
 	int ret;
 };
 
@@ -185,7 +217,7 @@ static void
 txq_mp2mr_mbuf_check(struct rte_mempool *mp, void *arg, void *obj,
 	uint32_t index __rte_unused)
 {
-	struct txq_mp2mr_mbuf_check_data *data = arg;
+	struct mlx5_mp2mr_mbuf_check_data *data = arg;
 	struct rte_mbuf *buf = obj;
 
 	/*
@@ -206,35 +238,24 @@ txq_mp2mr_mbuf_check(struct rte_mempool *mp, void *arg, void *obj,
  *   Pointer to TX queue structure.
  */
 void
-mlx5_txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
+mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg)
 {
-	struct mlx5_txq_ctrl *txq_ctrl = arg;
-	struct txq_mp2mr_mbuf_check_data data = {
+	struct priv *priv = (struct priv *)arg;
+	struct mlx5_mp2mr_mbuf_check_data data = {
 		.ret = 0,
 	};
-	uintptr_t start;
-	uintptr_t end;
-	unsigned int i;
+	struct mlx5_mr *mr;
 
 	/* Register mempool only if the first element looks like a mbuf. */
 	if (rte_mempool_obj_iter(mp, txq_mp2mr_mbuf_check, &data) == 0 ||
 			data.ret == -1)
 		return;
-	if (mlx5_check_mempool(mp, &start, &end) != 0) {
-		ERROR("mempool %p: not virtually contiguous",
-		      (void *)mp);
+	mr = priv_mr_get(priv, mp);
+	if (mr) {
+		priv_mr_release(priv, mr);
 		return;
 	}
-	for (i = 0; (i != RTE_DIM(txq_ctrl->txq.mp2mr)); ++i) {
-		if (unlikely(txq_ctrl->txq.mp2mr[i] == NULL)) {
-			/* Unknown MP, add a new MR for it. */
-			break;
-		}
-		if (start >= (uintptr_t)txq_ctrl->txq.mp2mr[i]->start &&
-		    end <= (uintptr_t)txq_ctrl->txq.mp2mr[i]->end)
-			return;
-	}
-	mlx5_txq_mp2mr_reg(&txq_ctrl->txq, mp, i);
+	priv_mr_new(priv, mp);
 }
 
 /**

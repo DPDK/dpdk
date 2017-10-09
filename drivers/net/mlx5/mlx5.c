@@ -225,17 +225,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->txqs != NULL) {
 		/* XXX race condition if mlx5_tx_burst() is still running. */
 		usleep(1000);
-		for (i = 0; (i != priv->txqs_n); ++i) {
-			struct mlx5_txq_data *txq = (*priv->txqs)[i];
-			struct mlx5_txq_ctrl *txq_ctrl;
-
-			if (txq == NULL)
-				continue;
-			txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
-			(*priv->txqs)[i] = NULL;
-			mlx5_txq_cleanup(txq_ctrl);
-			rte_free(txq_ctrl);
-		}
+		for (i = 0; (i != priv->txqs_n); ++i)
+			mlx5_priv_txq_release(priv, i);
 		priv->txqs_n = 0;
 		priv->txqs = NULL;
 	}
@@ -259,6 +250,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	ret = mlx5_priv_txq_ibv_verify(priv);
 	if (ret)
 		WARN("%p: some Verbs Tx queue still remain", (void *)priv);
+	ret = mlx5_priv_txq_verify(priv);
+	if (ret)
+		WARN("%p: some Tx Queues still remain", (void *)priv);
 	ret = priv_flow_verify(priv);
 	if (ret)
 		WARN("%p: some flows still remain", (void *)priv);

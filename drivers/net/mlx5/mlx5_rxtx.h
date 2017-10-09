@@ -297,6 +297,8 @@ struct mlx5_txq_ibv {
 
 /* TX queue control descriptor. */
 struct mlx5_txq_ctrl {
+	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
+	rte_atomic32_t refcnt; /* Reference counter. */
 	struct priv *priv; /* Back pointer to private data. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int max_inline_data; /* Max inline data. */
@@ -336,9 +338,6 @@ int mlx5_priv_rxq_ibv_verify(struct priv *);
 
 /* mlx5_txq.c */
 
-void mlx5_txq_cleanup(struct mlx5_txq_ctrl *);
-int mlx5_txq_ctrl_setup(struct rte_eth_dev *, struct mlx5_txq_ctrl *, uint16_t,
-			unsigned int, const struct rte_eth_txconf *);
 int mlx5_tx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_txconf *);
 void mlx5_tx_queue_release(void *);
@@ -348,6 +347,14 @@ struct mlx5_txq_ibv *mlx5_priv_txq_ibv_get(struct priv *, uint16_t);
 int mlx5_priv_txq_ibv_release(struct priv *, struct mlx5_txq_ibv *);
 int mlx5_priv_txq_ibv_releasable(struct priv *, struct mlx5_txq_ibv *);
 int mlx5_priv_txq_ibv_verify(struct priv *);
+struct mlx5_txq_ctrl *mlx5_priv_txq_new(struct priv *, uint16_t,
+					uint16_t, unsigned int,
+					const struct rte_eth_txconf *);
+struct mlx5_txq_ctrl *mlx5_priv_txq_get(struct priv *, uint16_t);
+int mlx5_priv_txq_release(struct priv *, uint16_t);
+int mlx5_priv_txq_releasable(struct priv *, uint16_t);
+int mlx5_priv_txq_verify(struct priv *);
+void txq_alloc_elts(struct mlx5_txq_ctrl *);
 
 /* mlx5_rxtx.c */
 
@@ -375,7 +382,9 @@ uint16_t mlx5_rx_burst_vec(void *, struct rte_mbuf **, uint16_t);
 
 /* mlx5_mr.c */
 
-void mlx5_txq_mp2mr_iter(struct rte_mempool *, void *);
+void mlx5_mp2mr_iter(struct rte_mempool *, void *);
+struct mlx5_mr *priv_txq_mp2mr_reg(struct priv *priv, struct mlx5_txq_data *,
+				   struct rte_mempool *, unsigned int);
 struct mlx5_mr *mlx5_txq_mp2mr_reg(struct mlx5_txq_data *, struct rte_mempool *,
 				   unsigned int);
 

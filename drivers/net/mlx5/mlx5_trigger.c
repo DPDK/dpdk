@@ -41,6 +41,44 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 
+static void
+priv_txq_stop(struct priv *priv)
+{
+	unsigned int i;
+
+	for (i = 0; i != priv->txqs_n; ++i)
+		mlx5_priv_txq_release(priv, i);
+}
+
+static int
+priv_txq_start(struct priv *priv)
+{
+	unsigned int i;
+	int ret = 0;
+
+	/* Add memory regions to Tx queues. */
+	for (i = 0; i != priv->txqs_n; ++i) {
+		unsigned int idx = 0;
+		struct mlx5_mr *mr;
+		struct mlx5_txq_ctrl *txq_ctrl = mlx5_priv_txq_get(priv, i);
+
+		if (!txq_ctrl)
+			continue;
+		LIST_FOREACH(mr, &priv->mr, next)
+			priv_txq_mp2mr_reg(priv, &txq_ctrl->txq, mr->mp, idx++);
+		txq_alloc_elts(txq_ctrl);
+		txq_ctrl->ibv = mlx5_priv_txq_ibv_new(priv, i);
+		if (!txq_ctrl->ibv) {
+			ret = ENOMEM;
+			goto error;
+		}
+	}
+	return -ret;
+error:
+	priv_txq_stop(priv);
+	return -ret;
+}
+
 /**
  * DPDK callback to start the device.
  *
@@ -56,6 +94,7 @@ int
 mlx5_dev_start(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct mlx5_mr *mr = NULL;
 	int err;
 
 	if (mlx5_is_secondary())
@@ -63,9 +102,17 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 
 	priv_lock(priv);
 	/* Update Rx/Tx callback. */
-	priv_dev_select_tx_function(priv, dev);
 	priv_dev_select_rx_function(priv, dev);
 	DEBUG("%p: allocating and configuring hash RX queues", (void *)dev);
+	rte_mempool_walk(mlx5_mp2mr_iter, priv);
+	err = priv_txq_start(priv);
+	if (err) {
+		ERROR("%p: TXQ allocation failed: %s",
+		      (void *)dev, strerror(err));
+		goto error;
+	}
+	/* Update send callback. */
+	priv_dev_select_tx_function(priv, dev);
 	err = priv_create_hash_rxqs(priv);
 	if (!err)
 		err = priv_rehash_flows(priv);
@@ -94,10 +141,13 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	return 0;
 error:
 	/* Rollback. */
+	LIST_FOREACH(mr, &priv->mr, next)
+		priv_mr_release(priv, mr);
 	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 	priv_flow_stop(priv);
+	priv_txq_stop(priv);
 	priv_unlock(priv);
 	return -err;
 }
@@ -114,6 +164,7 @@ void
 mlx5_dev_stop(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct mlx5_mr *mr;
 
 	if (mlx5_is_secondary())
 		return;
@@ -131,6 +182,10 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv_destroy_hash_rxqs(priv);
 	priv_flow_stop(priv);
 	priv_rx_intr_vec_disable(priv);
+	priv_txq_stop(priv);
+	LIST_FOREACH(mr, &priv->mr, next) {
+		priv_mr_release(priv, mr);
+	}
 	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv_unlock(priv);
 }
