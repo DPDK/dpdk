@@ -1,13 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 
-# binary name
-APP = vm_power_mgr
-
-# all source are stored in SRCS-y
-SRCS-y := main.c vm_power_cli.c power_manager.c channel_manager.c
-SRCS-y += channel_monitor.c
-
 ifneq ($(shell pkg-config --atleast-version=0.9.3 libvirt; echo $$?), 0)
 $(error vm_power_manager requires libvirt >= 0.9.3)
 else
@@ -20,6 +13,13 @@ endif
 RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
+
+# binary name
+APP = vm_power_mgr
+
+# all source are stored in SRCS-y
+SRCS-y := main.c vm_power_cli.c power_manager.c channel_manager.c
+SRCS-y += channel_monitor.c
 
 CFLAGS += -O3 -I$(RTE_SDK)/lib/librte_power/
 CFLAGS += $(WERROR_FLAGS)

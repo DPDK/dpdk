@@ -34,6 +34,27 @@ APP = flow
 
 SRCS-y := main.c
 
+# Build using pkg-config variables if possible
+$(shell pkg-config --exists libdpdk)
+ifeq ($(.SHELLSTATUS),0)
+
+PC_FILE := $(shell pkg-config --path libdpdk)
+CFLAGS += $(shell pkg-config --cflags libdpdk)
+LDFLAGS += $(shell pkg-config --libs libdpdk)
+
+build/$(APP): $(SRCS-y) Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS)
+
+build:
+	@mkdir -p $@
+
+.PHONY: clean
+clean:
+	rm -f build/$(APP)
+	rmdir --ignore-fail-on-non-empty build
+
+else
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
@@ -47,3 +68,5 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
 include $(RTE_SDK)/mk/rte.extapp.mk
+
+endif

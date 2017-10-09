@@ -4,8 +4,6 @@
 # binary name
 APP = ip_pipeline
 
-VPATH += $(SRCDIR)/pipeline
-
 # all source are stored in SRCS-y
 SRCS-y := main.c
 SRCS-y += config_parse.c
@@ -32,9 +30,40 @@ SRCS-y += pipeline_flow_actions.c
 SRCS-y += pipeline_routing_be.c
 SRCS-y += pipeline_routing.c
 
+# Build using pkg-config variables if possible
+$(shell pkg-config --exists libdpdk)
+ifeq ($(.SHELLSTATUS),0)
+
+PC_FILE := $(shell pkg-config --path libdpdk)
+CFLAGS += $(shell pkg-config --cflags libdpdk)
+LDFLAGS += $(shell pkg-config --libs libdpdk)
+
+VPATH += pipeline
+CFLAGS += -I. -I./pipeline/
+
+OBJS := $(patsubst %.c,build/%.o,$(SRCS-y))
+
+build/%.o: %.c Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) -c $< -o $@
+
+build/$(APP): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+
+build:
+	@mkdir -p $@
+
+.PHONY: clean
+clean:
+	rm -f build/$(APP) build/*.o
+	rmdir --ignore-fail-on-non-empty build
+
+else
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
+
+VPATH += $(SRCDIR)/pipeline
 
 # Default target, can be overridden by command line or environment
 RTE_TARGET ?= x86_64-native-linuxapp-gcc
@@ -50,3 +79,5 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -Wno-error=unused-function -Wno-error=unused-variable
 
 include $(RTE_SDK)/mk/rte.extapp.mk
+
+endif
