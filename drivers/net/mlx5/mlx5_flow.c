@@ -307,6 +307,7 @@ struct mlx5_flow_parse {
 	struct ibv_flow_attr *ibv_attr; /**< Verbs attribute. */
 	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
 	uint32_t inner; /**< Set once VXLAN is encountered. */
+	uint32_t create:1; /**< Leave allocated resources on exit. */
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
 	struct mlx5_flow_action actions; /**< Parsed action result. */
 };
@@ -418,7 +419,7 @@ mlx5_flow_item_validate(const struct rte_flow_item *item,
 }
 
 /**
- * Validate a flow supported by the NIC.
+ * Validate and convert a flow supported by the NIC.
  *
  * @param priv
  *   Pointer to private structure.
@@ -437,16 +438,24 @@ mlx5_flow_item_validate(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_flow_validate(struct priv *priv,
-		   const struct rte_flow_attr *attr,
-		   const struct rte_flow_item items[],
-		   const struct rte_flow_action actions[],
-		   struct rte_flow_error *error,
-		   struct mlx5_flow_parse *flow)
+priv_flow_convert(struct priv *priv,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item items[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error,
+		  struct mlx5_flow_parse *flow)
 {
 	const struct mlx5_flow_items *cur_item = mlx5_flow_items;
 
 	(void)priv;
+	*flow = (struct mlx5_flow_parse){
+		.ibv_attr = flow->ibv_attr,
+		.create = flow->create,
+		.offset = sizeof(struct ibv_flow_attr),
+		.actions = {
+			.mark_id = MLX5_FLOW_MARK_DEFAULT,
+		},
+	};
 	if (attr->group) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
@@ -644,35 +653,6 @@ exit_action_not_supported:
 	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 			   actions, "action not supported");
 	return -rte_errno;
-}
-
-/**
- * Validate a flow supported by the NIC.
- *
- * @see rte_flow_validate()
- * @see rte_flow_ops
- */
-int
-mlx5_flow_validate(struct rte_eth_dev *dev,
-		   const struct rte_flow_attr *attr,
-		   const struct rte_flow_item items[],
-		   const struct rte_flow_action actions[],
-		   struct rte_flow_error *error)
-{
-	struct priv *priv = dev->data->dev_private;
-	int ret;
-	struct mlx5_flow_parse flow = {
-		.offset = sizeof(struct ibv_flow_attr),
-		.actions = {
-			.mark_id = MLX5_FLOW_MARK_DEFAULT,
-			.queues_n = 0,
-		},
-	};
-
-	priv_lock(priv);
-	ret = priv_flow_validate(priv, attr, items, actions, error, &flow);
-	priv_unlock(priv);
-	return ret;
 }
 
 /**
@@ -1016,6 +996,7 @@ mlx5_flow_create_flag_mark(struct mlx5_flow_parse *flow, uint32_t mark_id)
 	struct ibv_flow_spec_action_tag *tag;
 	unsigned int size = sizeof(struct ibv_flow_spec_action_tag);
 
+	assert(flow->actions.mark);
 	tag = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*tag = (struct ibv_flow_spec_action_tag){
 		.type = IBV_FLOW_SPEC_ACTION_TAG,
@@ -1023,6 +1004,7 @@ mlx5_flow_create_flag_mark(struct mlx5_flow_parse *flow, uint32_t mark_id)
 		.tag_id = mlx5_flow_mark_set(mark_id),
 	};
 	++flow->ibv_attr->num_of_specs;
+	flow->offset += size;
 	return 0;
 }
 
@@ -1167,6 +1149,67 @@ error:
 }
 
 /**
+ * Validate a flow.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] pattern
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @param[in,out] parser
+ *   MLX5 parser structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int
+priv_flow_validate(struct priv *priv,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item items[],
+		   const struct rte_flow_action actions[],
+		   struct rte_flow_error *error,
+		   struct mlx5_flow_parse *parser)
+{
+	int err;
+
+	err = priv_flow_convert(priv, attr, items, actions, error, parser);
+	if (err)
+		goto exit;
+	if (parser->actions.mark)
+		parser->offset += sizeof(struct ibv_flow_spec_action_tag);
+	parser->ibv_attr = rte_malloc(__func__, parser->offset, 0);
+	if (!parser->ibv_attr) {
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "cannot allocate ibv_attr memory");
+		err = rte_errno;
+		goto exit;
+	}
+	*parser->ibv_attr = (struct ibv_flow_attr){
+		.type = IBV_FLOW_ATTR_NORMAL,
+		.size = sizeof(struct ibv_flow_attr),
+		.priority = attr->priority,
+		.num_of_specs = 0,
+		.port = 0,
+		.flags = 0,
+	};
+	err = priv_flow_convert(priv, attr, items, actions, error, parser);
+	if (err || parser->create)
+		goto exit;
+	if (parser->actions.mark)
+		mlx5_flow_create_flag_mark(parser, parser->actions.mark_id);
+	return 0;
+exit:
+	if (parser->ibv_attr)
+		rte_free(parser->ibv_attr);
+	return err;
+}
+
+/**
  * Convert a flow.
  *
  * @param priv
@@ -1193,58 +1236,49 @@ priv_flow_create(struct priv *priv,
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
-	struct rte_flow *rte_flow;
-	struct mlx5_flow_parse flow = {
-		.offset = sizeof(struct ibv_flow_attr),
-		.actions = {
-			.mark_id = MLX5_FLOW_MARK_DEFAULT,
-			.queues = { 0 },
-			.queues_n = 0,
-		},
-	};
+	struct mlx5_flow_parse parser = { .create = 1, };
+	struct rte_flow *flow;
 	int err;
 
-	err = priv_flow_validate(priv, attr, items, actions, error, &flow);
+	err = priv_flow_validate(priv, attr, items, actions, error, &parser);
 	if (err)
 		goto exit;
-	flow.ibv_attr = rte_malloc(__func__, flow.offset, 0);
-	flow.offset = sizeof(struct ibv_flow_attr);
-	if (!flow.ibv_attr) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "cannot allocate ibv_attr memory");
-		goto exit;
-	}
-	*flow.ibv_attr = (struct ibv_flow_attr){
-		.type = IBV_FLOW_ATTR_NORMAL,
-		.size = sizeof(struct ibv_flow_attr),
-		.priority = attr->priority,
-		.num_of_specs = 0,
-		.port = 0,
-		.flags = 0,
-	};
-	flow.inner = 0;
-	flow.hash_fields = 0;
-	claim_zero(priv_flow_validate(priv, attr, items, actions,
-				      error, &flow));
-	if (flow.actions.mark && !flow.actions.drop) {
-		mlx5_flow_create_flag_mark(&flow, flow.actions.mark_id);
-		flow.offset += sizeof(struct ibv_flow_spec_action_tag);
-	}
-	if (flow.actions.drop)
-		rte_flow =
-			priv_flow_create_action_queue_drop(priv, &flow, error);
+	if (parser.actions.drop)
+		flow = priv_flow_create_action_queue_drop(priv, &parser, error);
 	else
-		rte_flow = priv_flow_create_action_queue(priv, &flow, error);
-	if (!rte_flow)
+		flow = priv_flow_create_action_queue(priv, &parser, error);
+	if (!flow)
 		goto exit;
-	if (rte_flow) {
-		TAILQ_INSERT_TAIL(list, rte_flow, next);
-		DEBUG("Flow created %p", (void *)rte_flow);
-	}
-	return rte_flow;
+	TAILQ_INSERT_TAIL(list, flow, next);
+	DEBUG("Flow created %p", (void *)flow);
+	return flow;
 exit:
-	rte_free(flow.ibv_attr);
+	if (parser.ibv_attr)
+		rte_free(parser.ibv_attr);
 	return NULL;
+}
+
+/**
+ * Validate a flow supported by the NIC.
+ *
+ * @see rte_flow_validate()
+ * @see rte_flow_ops
+ */
+int
+mlx5_flow_validate(struct rte_eth_dev *dev,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item items[],
+		   const struct rte_flow_action actions[],
+		   struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+	int ret;
+	struct mlx5_flow_parse parser = { .create = 0, };
+
+	priv_lock(priv);
+	ret = priv_flow_validate(priv, attr, items, actions, error, &parser);
+	priv_unlock(priv);
+	return ret;
 }
 
 /**
