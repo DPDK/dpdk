@@ -351,11 +351,12 @@ mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 
 	assert(!mlx5_is_secondary());
-	mlx5_dev_stop(dev);
 	priv_lock(priv);
 	ret = priv_dev_rss_reta_update(priv, reta_conf, reta_size);
 	priv_unlock(priv);
-	if (ret)
-		return -ret;
-	return mlx5_dev_start(dev);
+	if (dev->data->dev_started) {
+		mlx5_dev_stop(dev);
+		mlx5_dev_start(dev);
+	}
+	return -ret;
 }

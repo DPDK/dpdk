@@ -30,6 +30,7 @@
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <unistd.h>
 
 #include <rte_ether.h>
 #include <rte_ethdev.h>
@@ -118,6 +119,12 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 		return;
 
 	priv_lock(priv);
+	dev->data->dev_started = 0;
+	/* Prevent crashes when queues are still in use. */
+	dev->rx_pkt_burst = removed_rx_burst;
+	dev->tx_pkt_burst = removed_tx_burst;
+	rte_wmb();
+	usleep(1000 * priv->rxqs_n);
 	DEBUG("%p: cleaning up and destroying hash RX queues", (void *)dev);
 	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
