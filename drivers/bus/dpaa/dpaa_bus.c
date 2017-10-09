@@ -93,6 +93,22 @@ dpaa_remove_from_device_list(struct rte_dpaa_device *dev)
 	TAILQ_INSERT_TAIL(&rte_dpaa_bus.device_list, dev, next);
 }
 
+/*
+ * Reads the SEC device from DTS
+ * Returns -1 if SEC devices not available, 0 otherwise
+ */
+static inline int
+dpaa_sec_available(void)
+{
+	const struct device_node *caam_node;
+
+	for_each_compatible_node(caam_node, NULL, "fsl,sec-v4.0") {
+		return 0;
+	}
+
+	return -1;
+}
+
 static void dpaa_clean_device_list(void);
 
 static int
@@ -133,6 +149,42 @@ dpaa_create_device_list(void)
 	}
 
 	rte_dpaa_bus.device_count = i;
+
+	/* Unlike case of ETH, RTE_LIBRTE_DPAA_MAX_CRYPTODEV SEC devices are
+	 * constantly created only if "sec" property is found in the device
+	 * tree. Logically there is no limit for number of devices (QI
+	 * interfaces) that can be created.
+	 */
+
+	if (dpaa_sec_available()) {
+		DPAA_BUS_LOG(INFO, "DPAA SEC devices are not available");
+		return 0;
+	}
+
+	/* Creating SEC Devices */
+	for (i = 0; i < RTE_LIBRTE_DPAA_MAX_CRYPTODEV; i++) {
+		dev = calloc(1, sizeof(struct rte_dpaa_device));
+		if (!dev) {
+			DPAA_BUS_LOG(ERR, "Failed to allocate SEC devices");
+			ret = -1;
+			goto cleanup;
+		}
+
+		dev->device_type = FSL_DPAA_CRYPTO;
+		dev->id.dev_id = rte_dpaa_bus.device_count + i;
+
+		/* Even though RTE_CRYPTODEV_NAME_MAX_LEN is valid length of
+		 * crypto PMD, using RTE_ETH_NAME_MAX_LEN as that is the size
+		 * allocated for dev->name/
+		 */
+		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
+		sprintf(dev->name, "dpaa-sec%d", i);
+		DPAA_BUS_LOG(DEBUG, "Device added: %s", dev->name);
+
+		dpaa_add_to_device_list(dev);
+	}
+
+	rte_dpaa_bus.device_count += i;
 
 	return 0;
 
