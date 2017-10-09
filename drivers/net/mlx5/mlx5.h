@@ -104,7 +104,6 @@ struct priv {
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
-	unsigned int started:1; /* Device started, flows enabled. */
 	unsigned int promisc_req:1; /* Promiscuous mode requested. */
 	unsigned int allmulti_req:1; /* All multicast mode requested. */
 	unsigned int hw_csum:1; /* Checksum offload is supported. */

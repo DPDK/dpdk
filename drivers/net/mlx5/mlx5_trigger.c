@@ -61,10 +61,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		return -E_RTE_SECONDARY;
 
 	priv_lock(priv);
-	if (priv->started) {
-		priv_unlock(priv);
-		return 0;
-	}
 	/* Update Rx/Tx callback. */
 	priv_dev_select_tx_function(priv, dev);
 	priv_dev_select_rx_function(priv, dev);
@@ -72,8 +68,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	err = priv_create_hash_rxqs(priv);
 	if (!err)
 		err = priv_rehash_flows(priv);
-	if (!err)
-		priv->started = 1;
 	else {
 		ERROR("%p: an error occurred while configuring hash RX queues:"
 		      " %s",
@@ -82,7 +76,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	}
 	err = priv_flow_start(priv);
 	if (err) {
-		priv->started = 0;
 		ERROR("%p: an error occurred while configuring flows:"
 		      " %s",
 		      (void *)priv, strerror(err));
@@ -125,10 +118,6 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 		return;
 
 	priv_lock(priv);
-	if (!priv->started) {
-		priv_unlock(priv);
-		return;
-	}
 	DEBUG("%p: cleaning up and destroying hash RX queues", (void *)dev);
 	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
@@ -136,6 +125,5 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv_flow_stop(priv);
 	priv_rx_intr_vec_disable(priv);
 	priv_dev_interrupt_handler_uninstall(priv, dev);
-	priv->started = 0;
 	priv_unlock(priv);
 }

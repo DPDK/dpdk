@@ -1052,7 +1052,7 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	++flow->ibv_attr->num_of_specs;
 	flow->offset += sizeof(struct ibv_flow_spec_action_drop);
 	rte_flow->ibv_attr = flow->ibv_attr;
-	if (!priv->started)
+	if (!priv->dev->data->dev_started)
 		return rte_flow;
 	rte_flow->qp = priv->flow_drop_queue->qp;
 	rte_flow->ibv_flow = ibv_create_flow(rte_flow->qp,
@@ -1158,7 +1158,7 @@ priv_flow_create_action_queue(struct priv *priv,
 				   NULL, "cannot allocate QP");
 		goto error;
 	}
-	if (!priv->started)
+	if (!priv->dev->data->dev_started)
 		return rte_flow;
 	rte_flow->ibv_flow = ibv_create_flow(rte_flow->qp,
 					     rte_flow->ibv_attr);
@@ -1618,7 +1618,7 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 
 	priv_lock(priv);
-	if (priv->started) {
+	if (dev->data->dev_started) {
 		rte_flow_error_set(error, EBUSY,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,

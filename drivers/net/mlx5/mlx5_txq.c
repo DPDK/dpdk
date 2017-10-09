@@ -490,7 +490,7 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (txq != NULL) {
 		DEBUG("%p: reusing already allocated queue index %u (%p)",
 		      (void *)dev, idx, (void *)txq);
-		if (priv->started) {
+		if (dev->data->dev_started) {
 			priv_unlock(priv);
 			return -EEXIST;
 		}
