@@ -606,11 +606,9 @@ priv_allow_flow_type(struct priv *priv, enum hash_rxq_flow_type type)
 int
 priv_rehash_flows(struct priv *priv)
 {
-	enum hash_rxq_flow_type i;
+	size_t i;
 
-	for (i = HASH_RXQ_FLOW_TYPE_PROMISC;
-			i != RTE_DIM((*priv->hash_rxqs)[0].special_flow);
-			++i)
+	for (i = 0; i != RTE_DIM((*priv->hash_rxqs)[0].special_flow); ++i)
 		if (!priv_allow_flow_type(priv, i)) {
 			priv_special_flow_disable(priv, i);
 		} else {
