@@ -84,4 +84,39 @@ S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, sop_drop_qpn) ==
 S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, op_own) ==
 		  offsetof(struct mlx5_cqe, sop_drop_qpn) + 7);
 
+/**
+ * Replenish buffers for RX in bulk.
+ *
+ * @param rxq
+ *   Pointer to RX queue structure.
+ * @param n
+ *   Number of buffers to be replenished.
+ */
+static inline void
+mlx5_rx_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq, uint16_t n)
+{
+	const uint16_t q_n = 1 << rxq->elts_n;
+	const uint16_t q_mask = q_n - 1;
+	const uint16_t elts_idx = rxq->rq_ci & q_mask;
+	struct rte_mbuf **elts = &(*rxq->elts)[elts_idx];
+	volatile struct mlx5_wqe_data_seg *wq = &(*rxq->wqes)[elts_idx];
+	unsigned int i;
+
+	assert(n >= MLX5_VPMD_RXQ_RPLNSH_THRESH);
+	assert(n <= (uint16_t)(q_n - (rxq->rq_ci - rxq->rq_pi)));
+	assert(MLX5_VPMD_RXQ_RPLNSH_THRESH > MLX5_VPMD_DESCS_PER_LOOP);
+	/* Not to cross queue end. */
+	n = RTE_MIN(n - MLX5_VPMD_DESCS_PER_LOOP, q_n - elts_idx);
+	if (rte_mempool_get_bulk(rxq->mp, (void *)elts, n) < 0) {
+		rxq->stats.rx_nombuf += n;
+		return;
+	}
+	for (i = 0; i < n; ++i)
+		wq[i].addr = rte_cpu_to_be_64((uintptr_t)elts[i]->buf_addr +
+					      RTE_PKTMBUF_HEADROOM);
+	rxq->rq_ci += n;
+	rte_io_wmb();
+	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
+}
+
 #endif /* RTE_PMD_MLX5_RXTX_VEC_H_ */
