@@ -200,7 +200,7 @@ mlx5_set_ptype_table(void)
  *   Size of tailroom.
  */
 static inline size_t
-tx_mlx5_wq_tailroom(struct txq *txq, void *addr)
+tx_mlx5_wq_tailroom(struct mlx5_txq_data *txq, void *addr)
 {
 	size_t tailroom;
 	tailroom = (uintptr_t)(txq->wqes) +
@@ -258,7 +258,7 @@ mlx5_copy_to_wq(void *dst, const void *src, size_t n,
 int
 mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
 {
-	struct txq *txq = tx_queue;
+	struct mlx5_txq_data *txq = tx_queue;
 	uint16_t used;
 
 	mlx5_tx_complete(txq);
@@ -334,7 +334,7 @@ mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
 uint16_t
 mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
-	struct txq *txq = (struct txq *)dpdk_txq;
+	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const uint16_t elts_n = 1 << txq->elts_n;
 	const uint16_t elts_m = elts_n - 1;
@@ -747,7 +747,7 @@ next_wqe:
  *   Packet length.
  */
 static inline void
-mlx5_mpw_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
+mlx5_mpw_new(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw, uint32_t length)
 {
 	uint16_t idx = txq->wqe_ci & ((1 << txq->wqe_n) - 1);
 	volatile struct mlx5_wqe_data_seg (*dseg)[MLX5_MPW_DSEG_MAX] =
@@ -787,7 +787,7 @@ mlx5_mpw_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
  *   Pointer to MPW session structure.
  */
 static inline void
-mlx5_mpw_close(struct txq *txq, struct mlx5_mpw *mpw)
+mlx5_mpw_close(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw)
 {
 	unsigned int num = mpw->pkts_n;
 
@@ -821,7 +821,7 @@ mlx5_mpw_close(struct txq *txq, struct mlx5_mpw *mpw)
 uint16_t
 mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
-	struct txq *txq = (struct txq *)dpdk_txq;
+	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const uint16_t elts_n = 1 << txq->elts_n;
 	const uint16_t elts_m = elts_n - 1;
@@ -964,7 +964,8 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
  *   Packet length.
  */
 static inline void
-mlx5_mpw_inline_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
+mlx5_mpw_inline_new(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw,
+		    uint32_t length)
 {
 	uint16_t idx = txq->wqe_ci & ((1 << txq->wqe_n) - 1);
 	struct mlx5_wqe_inl_small *inl;
@@ -999,7 +1000,7 @@ mlx5_mpw_inline_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
  *   Pointer to MPW session structure.
  */
 static inline void
-mlx5_mpw_inline_close(struct txq *txq, struct mlx5_mpw *mpw)
+mlx5_mpw_inline_close(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw)
 {
 	unsigned int size;
 	struct mlx5_wqe_inl_small *inl = (struct mlx5_wqe_inl_small *)
@@ -1034,7 +1035,7 @@ uint16_t
 mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 			 uint16_t pkts_n)
 {
-	struct txq *txq = (struct txq *)dpdk_txq;
+	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const uint16_t elts_n = 1 << txq->elts_n;
 	const uint16_t elts_m = elts_n - 1;
@@ -1260,7 +1261,7 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
  *   Packet length.
  */
 static inline void
-mlx5_empw_new(struct txq *txq, struct mlx5_mpw *mpw, int padding)
+mlx5_empw_new(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw, int padding)
 {
 	uint16_t idx = txq->wqe_ci & ((1 << txq->wqe_n) - 1);
 
@@ -1302,7 +1303,7 @@ mlx5_empw_new(struct txq *txq, struct mlx5_mpw *mpw, int padding)
  *   Number of consumed WQEs.
  */
 static inline uint16_t
-mlx5_empw_close(struct txq *txq, struct mlx5_mpw *mpw)
+mlx5_empw_close(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw)
 {
 	uint16_t ret;
 
@@ -1333,7 +1334,7 @@ mlx5_empw_close(struct txq *txq, struct mlx5_mpw *mpw)
 uint16_t
 mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
-	struct txq *txq = (struct txq *)dpdk_txq;
+	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const uint16_t elts_n = 1 << txq->elts_n;
 	const uint16_t elts_m = elts_n - 1;

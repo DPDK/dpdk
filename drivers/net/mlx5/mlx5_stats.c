@@ -350,7 +350,7 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		tmp.rx_nombuf += rxq->stats.rx_nombuf;
 	}
 	for (i = 0; (i != priv->txqs_n); ++i) {
-		struct txq *txq = (*priv->txqs)[i];
+		struct mlx5_txq_data *txq = (*priv->txqs)[i];
 
 		if (txq == NULL)
 			continue;

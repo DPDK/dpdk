@@ -69,7 +69,7 @@
  *   Number of elements to allocate.
  */
 static void
-txq_alloc_elts(struct txq_ctrl *txq_ctrl, unsigned int elts_n)
+txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl, unsigned int elts_n)
 {
 	unsigned int i;
 
@@ -95,7 +95,7 @@ txq_alloc_elts(struct txq_ctrl *txq_ctrl, unsigned int elts_n)
  *   Pointer to TX queue structure.
  */
 static void
-txq_free_elts(struct txq_ctrl *txq_ctrl)
+txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	const uint16_t elts_n = 1 << txq_ctrl->txq.elts_n;
 	const uint16_t elts_m = elts_n - 1;
@@ -132,7 +132,7 @@ txq_free_elts(struct txq_ctrl *txq_ctrl)
  *   Pointer to TX queue structure.
  */
 void
-txq_cleanup(struct txq_ctrl *txq_ctrl)
+mlx5_txq_cleanup(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	size_t i;
 
@@ -162,7 +162,7 @@ txq_cleanup(struct txq_ctrl *txq_ctrl)
  *   0 on success, errno value on failure.
  */
 static inline int
-txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
+txq_setup(struct mlx5_txq_ctrl *tmpl, struct mlx5_txq_ctrl *txq_ctrl)
 {
 	struct mlx5dv_qp qp;
 	struct ibv_cq *ibcq = tmpl->cq;
@@ -225,12 +225,12 @@ txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
  *   0 on success, errno value on failure.
  */
 int
-txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
-	       uint16_t desc, unsigned int socket,
-	       const struct rte_eth_txconf *conf)
+mlx5_txq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl,
+		    uint16_t desc, unsigned int socket,
+		    const struct rte_eth_txconf *conf)
 {
 	struct priv *priv = mlx5_get_priv(dev);
-	struct txq_ctrl tmpl = {
+	struct mlx5_txq_ctrl tmpl = {
 		.priv = priv,
 		.socket = socket,
 	};
@@ -422,15 +422,15 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 	}
 	/* Clean up txq in case we're reinitializing it. */
 	DEBUG("%p: cleaning-up old txq just in case", (void *)txq_ctrl);
-	txq_cleanup(txq_ctrl);
+	mlx5_txq_cleanup(txq_ctrl);
 	*txq_ctrl = tmpl;
 	DEBUG("%p: txq updated with %p", (void *)txq_ctrl, (void *)&tmpl);
 	/* Pre-register known mempools. */
-	rte_mempool_walk(txq_mp2mr_iter, txq_ctrl);
+	rte_mempool_walk(mlx5_txq_mp2mr_iter, txq_ctrl);
 	assert(ret == 0);
 	return 0;
 error:
-	txq_cleanup(&tmpl);
+	mlx5_txq_cleanup(&tmpl);
 	assert(ret > 0);
 	return ret;
 }
@@ -457,8 +457,9 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    unsigned int socket, const struct rte_eth_txconf *conf)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct txq *txq = (*priv->txqs)[idx];
-	struct txq_ctrl *txq_ctrl = container_of(txq, struct txq_ctrl, txq);
+	struct mlx5_txq_data *txq = (*priv->txqs)[idx];
+	struct mlx5_txq_ctrl *txq_ctrl =
+		container_of(txq, struct mlx5_txq_ctrl, txq);
 	int ret;
 
 	if (mlx5_is_secondary())
@@ -494,7 +495,7 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			return -EEXIST;
 		}
 		(*priv->txqs)[idx] = NULL;
-		txq_cleanup(txq_ctrl);
+		mlx5_txq_cleanup(txq_ctrl);
 		/* Resize if txq size is changed. */
 		if (txq_ctrl->txq.elts_n != log2above(desc)) {
 			txq_ctrl = rte_realloc(txq_ctrl,
@@ -521,7 +522,7 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			return -ENOMEM;
 		}
 	}
-	ret = txq_ctrl_setup(dev, txq_ctrl, desc, socket, conf);
+	ret = mlx5_txq_ctrl_setup(dev, txq_ctrl, desc, socket, conf);
 	if (ret)
 		rte_free(txq_ctrl);
 	else {
@@ -543,8 +544,8 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 void
 mlx5_tx_queue_release(void *dpdk_txq)
 {
-	struct txq *txq = (struct txq *)dpdk_txq;
-	struct txq_ctrl *txq_ctrl;
+	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
+	struct mlx5_txq_ctrl *txq_ctrl;
 	struct priv *priv;
 	unsigned int i;
 
@@ -553,7 +554,7 @@ mlx5_tx_queue_release(void *dpdk_txq)
 
 	if (txq == NULL)
 		return;
-	txq_ctrl = container_of(txq, struct txq_ctrl, txq);
+	txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
 	priv = txq_ctrl->priv;
 	priv_lock(priv);
 	for (i = 0; (i != priv->txqs_n); ++i)
@@ -563,7 +564,7 @@ mlx5_tx_queue_release(void *dpdk_txq)
 			(*priv->txqs)[i] = NULL;
 			break;
 		}
-	txq_cleanup(txq_ctrl);
+	mlx5_txq_cleanup(txq_ctrl);
 	rte_free(txq_ctrl);
 	priv_unlock(priv);
 }
@@ -588,8 +589,8 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 	unsigned int pages_n = 0;
 	uintptr_t uar_va;
 	void *addr;
-	struct txq *txq;
-	struct txq_ctrl *txq_ctrl;
+	struct mlx5_txq_data *txq;
+	struct mlx5_txq_ctrl *txq_ctrl;
 	int already_mapped;
 	size_t page_size = sysconf(_SC_PAGESIZE);
 
@@ -600,7 +601,7 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 	 */
 	for (i = 0; i != priv->txqs_n; ++i) {
 		txq = (*priv->txqs)[i];
-		txq_ctrl = container_of(txq, struct txq_ctrl, txq);
+		txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
 		uar_va = (uintptr_t)txq_ctrl->txq.bf_reg;
 		uar_va = RTE_ALIGN_FLOOR(uar_va, page_size);
 		already_mapped = 0;

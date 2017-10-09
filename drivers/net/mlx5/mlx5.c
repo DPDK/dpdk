@@ -225,14 +225,14 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		/* XXX race condition if mlx5_tx_burst() is still running. */
 		usleep(1000);
 		for (i = 0; (i != priv->txqs_n); ++i) {
-			struct txq *txq = (*priv->txqs)[i];
-			struct txq_ctrl *txq_ctrl;
+			struct mlx5_txq_data *txq = (*priv->txqs)[i];
+			struct mlx5_txq_ctrl *txq_ctrl;
 
 			if (txq == NULL)
 				continue;
-			txq_ctrl = container_of(txq, struct txq_ctrl, txq);
+			txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
 			(*priv->txqs)[i] = NULL;
-			txq_cleanup(txq_ctrl);
+			mlx5_txq_cleanup(txq_ctrl);
 			rte_free(txq_ctrl);
 		}
 		priv->txqs_n = 0;

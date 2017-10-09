@@ -76,7 +76,7 @@
  *   Number of packets to be filled.
  */
 static inline void
-txq_wr_dseg_v(struct txq *txq, __m128i *dseg,
+txq_wr_dseg_v(struct mlx5_txq_data *txq, __m128i *dseg,
 	      struct rte_mbuf **pkts, unsigned int n)
 {
 	unsigned int pos;
@@ -151,8 +151,8 @@ txq_check_multiseg(struct rte_mbuf **pkts, uint16_t pkts_n)
  *   Number of packets having same ol_flags.
  */
 static inline unsigned int
-txq_calc_offload(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
-		 uint8_t *cs_flags)
+txq_calc_offload(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
+		 uint16_t pkts_n, uint8_t *cs_flags)
 {
 	unsigned int pos;
 	const uint64_t ol_mask =
@@ -202,7 +202,8 @@ txq_calc_offload(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
  *   Number of packets successfully transmitted (<= pkts_n).
  */
 static uint16_t
-txq_scatter_v(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n)
+txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
+	      uint16_t pkts_n)
 {
 	uint16_t elts_head = txq->elts_head;
 	const uint16_t elts_n = 1 << txq->elts_n;
@@ -332,7 +333,7 @@ txq_scatter_v(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n)
  *   Number of packets successfully transmitted (<= pkts_n).
  */
 static inline uint16_t
-txq_burst_v(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
+txq_burst_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	    uint8_t cs_flags)
 {
 	struct rte_mbuf **elts;
@@ -448,7 +449,7 @@ uint16_t
 mlx5_tx_burst_raw_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 		      uint16_t pkts_n)
 {
-	struct txq *txq = (struct txq *)dpdk_txq;
+	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
 	uint16_t nb_tx = 0;
 
 	while (pkts_n > nb_tx) {
@@ -480,7 +481,7 @@ mlx5_tx_burst_raw_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 uint16_t
 mlx5_tx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
-	struct txq *txq = (struct txq *)dpdk_txq;
+	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
 	uint16_t nb_tx = 0;
 
 	while (pkts_n > nb_tx) {
@@ -1304,7 +1305,7 @@ priv_check_raw_vec_tx_support(struct priv *priv)
 
 	/* All the configured queues should support. */
 	for (i = 0; i < priv->txqs_n; ++i) {
-		struct txq *txq = (*priv->txqs)[i];
+		struct mlx5_txq_data *txq = (*priv->txqs)[i];
 
 		if (!(txq->flags & ETH_TXQ_FLAGS_NOMULTSEGS) ||
 		    !(txq->flags & ETH_TXQ_FLAGS_NOOFFLOADS))

@@ -175,9 +175,11 @@ mlx5_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
  *   mr->lkey on success, (uint32_t)-1 on failure.
  */
 uint32_t
-txq_mp2mr_reg(struct txq *txq, struct rte_mempool *mp, unsigned int idx)
+mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
+		   unsigned int idx)
 {
-	struct txq_ctrl *txq_ctrl = container_of(txq, struct txq_ctrl, txq);
+	struct mlx5_txq_ctrl *txq_ctrl =
+		container_of(txq, struct mlx5_txq_ctrl, txq);
 	struct ibv_mr *mr;
 
 	/* Add a new entry, register MR first. */
@@ -253,9 +255,9 @@ txq_mp2mr_mbuf_check(struct rte_mempool *mp, void *arg, void *obj,
  *   Pointer to TX queue structure.
  */
 void
-txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
+mlx5_txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 {
-	struct txq_ctrl *txq_ctrl = arg;
+	struct mlx5_txq_ctrl *txq_ctrl = arg;
 	struct txq_mp2mr_mbuf_check_data data = {
 		.ret = 0,
 	};
@@ -283,5 +285,5 @@ txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 		    end <= (uintptr_t)mr->addr + mr->length)
 			return;
 	}
-	txq_mp2mr_reg(&txq_ctrl->txq, mp, i);
+	mlx5_txq_mp2mr_reg(&txq_ctrl->txq, mp, i);
 }

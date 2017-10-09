@@ -233,7 +233,7 @@ struct hash_rxq {
 
 /* TX queue descriptor. */
 __extension__
-struct txq {
+struct mlx5_txq_data {
 	uint16_t elts_head; /* Current counter in (*elts)[]. */
 	uint16_t elts_tail; /* Counter of first element awaiting completion. */
 	uint16_t elts_comp; /* Counter since last completion request. */
@@ -271,12 +271,12 @@ struct txq {
 } __rte_cache_aligned;
 
 /* TX queue control descriptor. */
-struct txq_ctrl {
+struct mlx5_txq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
 	unsigned int socket; /* CPU socket ID for allocations. */
-	struct txq txq; /* Data path structure. */
+	struct mlx5_txq_data txq; /* Data path structure. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 };
 
@@ -305,9 +305,9 @@ int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 
 /* mlx5_txq.c */
 
-void txq_cleanup(struct txq_ctrl *);
-int txq_ctrl_setup(struct rte_eth_dev *, struct txq_ctrl *, uint16_t,
-		   unsigned int, const struct rte_eth_txconf *);
+void mlx5_txq_cleanup(struct mlx5_txq_ctrl *);
+int mlx5_txq_ctrl_setup(struct rte_eth_dev *, struct mlx5_txq_ctrl *, uint16_t,
+			unsigned int, const struct rte_eth_txconf *);
 int mlx5_tx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_txconf *);
 void mlx5_tx_queue_release(void *);
@@ -340,8 +340,9 @@ uint16_t mlx5_rx_burst_vec(void *, struct rte_mbuf **, uint16_t);
 /* mlx5_mr.c */
 
 struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, struct rte_mempool *);
-void txq_mp2mr_iter(struct rte_mempool *, void *);
-uint32_t txq_mp2mr_reg(struct txq *, struct rte_mempool *, unsigned int);
+void mlx5_txq_mp2mr_iter(struct rte_mempool *, void *);
+uint32_t mlx5_txq_mp2mr_reg(struct mlx5_txq_data *, struct rte_mempool *,
+			    unsigned int);
 
 #ifndef NDEBUG
 /**
@@ -439,7 +440,7 @@ check_cqe(volatile struct mlx5_cqe *cqe,
  *   WQE address.
  */
 static inline uintptr_t *
-tx_mlx5_wqe(struct txq *txq, uint16_t ci)
+tx_mlx5_wqe(struct mlx5_txq_data *txq, uint16_t ci)
 {
 	ci &= ((1 << txq->wqe_n) - 1);
 	return (uintptr_t *)((uintptr_t)txq->wqes + ci * MLX5_WQE_SIZE);
@@ -454,7 +455,7 @@ tx_mlx5_wqe(struct txq *txq, uint16_t ci)
  *   Pointer to TX queue structure.
  */
 static __rte_always_inline void
-mlx5_tx_complete(struct txq *txq)
+mlx5_tx_complete(struct mlx5_txq_data *txq)
 {
 	const uint16_t elts_n = 1 << txq->elts_n;
 	const uint16_t elts_m = elts_n - 1;
@@ -559,7 +560,7 @@ mlx5_tx_mb2mp(struct rte_mbuf *buf)
  *   mr->lkey on success, (uint32_t)-1 on failure.
  */
 static __rte_always_inline uint32_t
-mlx5_tx_mb2mr(struct txq *txq, struct rte_mbuf *mb)
+mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 {
 	uint16_t i = txq->mr_cache_idx;
 	uintptr_t addr = rte_pktmbuf_mtod(mb, uintptr_t);
@@ -582,7 +583,7 @@ mlx5_tx_mb2mr(struct txq *txq, struct rte_mbuf *mb)
 		}
 	}
 	txq->mr_cache_idx = 0;
-	return txq_mp2mr_reg(txq, mlx5_tx_mb2mp(mb), i);
+	return mlx5_txq_mp2mr_reg(txq, mlx5_tx_mb2mp(mb), i);
 }
 
 /**
@@ -594,7 +595,7 @@ mlx5_tx_mb2mr(struct txq *txq, struct rte_mbuf *mb)
  *   Pointer to the last WQE posted in the NIC.
  */
 static __rte_always_inline void
-mlx5_tx_dbrec(struct txq *txq, volatile struct mlx5_wqe *wqe)
+mlx5_tx_dbrec(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe)
 {
 	uint64_t *dst = (uint64_t *)((uintptr_t)txq->bf_reg);
 	volatile uint64_t *src = ((volatile uint64_t *)wqe);
