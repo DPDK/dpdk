@@ -47,6 +47,12 @@ New Features
   256 ports in dpdk. All ethdev APIs which have port_id as parameter are changed
   in the meantime.
 
+* **Added a new driver for Marvell Armada 7k/8k devices.**
+
+  Added the new mrvl net driver for Marvell Armada 7k/8k devices. See the
+  "Network Interface Controller Drivers" document for more details on this new
+  driver.
+
 * **nfp: Added PF support.**
 
   Previously Netronome's NFP PMD had just support for VFs. PF support is

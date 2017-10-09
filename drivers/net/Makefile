@@ -75,6 +75,8 @@ DIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4
 DEPDIRS-mlx4 = $(core-libs)
 DIRS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5
 DEPDIRS-mlx5 = $(core-libs)
+DIRS-$(CONFIG_RTE_LIBRTE_MRVL_PMD) += mrvl
+DEPDIRS-mrvl = $(core-libs) librte_cfgfile
 DIRS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp
 DEPDIRS-nfp = $(core-libs)
 DIRS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt
@@ -111,5 +113,11 @@ ifeq ($(CONFIG_RTE_LIBRTE_VHOST),y)
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_VHOST) += vhost
 endif # $(CONFIG_RTE_LIBRTE_VHOST)
 DEPDIRS-vhost = $(core-libs) librte_vhost
+
+ifeq ($(CONFIG_RTE_LIBRTE_MRVL_PMD),y)
+ifeq ($(CONFIG_RTE_LIBRTE_CFGFILE),n)
+$(error "RTE_LIBRTE_CFGFILE must be enabled in configuration!")
+endif
+endif
 
 include $(RTE_SDK)/mk/rte.subdir.mk
