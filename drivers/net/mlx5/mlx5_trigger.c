@@ -79,6 +79,41 @@ error:
 	return -ret;
 }
 
+static void
+priv_rxq_stop(struct priv *priv)
+{
+	unsigned int i;
+
+	for (i = 0; i != priv->rxqs_n; ++i)
+		mlx5_priv_rxq_release(priv, i);
+}
+
+static int
+priv_rxq_start(struct priv *priv)
+{
+	unsigned int i;
+	int ret = 0;
+
+	for (i = 0; i != priv->rxqs_n; ++i) {
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_priv_rxq_get(priv, i);
+
+		if (!rxq_ctrl)
+			continue;
+		ret = rxq_alloc_elts(rxq_ctrl);
+		if (ret)
+			goto error;
+		rxq_ctrl->ibv = mlx5_priv_rxq_ibv_new(priv, i);
+		if (!rxq_ctrl->ibv) {
+			ret = ENOMEM;
+			goto error;
+		}
+	}
+	return -ret;
+error:
+	priv_rxq_stop(priv);
+	return -ret;
+}
+
 /**
  * DPDK callback to start the device.
  *
@@ -101,8 +136,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		return -E_RTE_SECONDARY;
 
 	priv_lock(priv);
-	/* Update Rx/Tx callback. */
-	priv_dev_select_rx_function(priv, dev);
 	DEBUG("%p: allocating and configuring hash RX queues", (void *)dev);
 	rte_mempool_walk(mlx5_mp2mr_iter, priv);
 	err = priv_txq_start(priv);
@@ -113,6 +146,14 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	}
 	/* Update send callback. */
 	priv_dev_select_tx_function(priv, dev);
+	err = priv_rxq_start(priv);
+	if (err) {
+		ERROR("%p: RXQ allocation failed: %s",
+		      (void *)dev, strerror(err));
+		goto error;
+	}
+	/* Update receive callback. */
+	priv_dev_select_rx_function(priv, dev);
 	err = priv_create_hash_rxqs(priv);
 	if (!err)
 		err = priv_rehash_flows(priv);
@@ -147,6 +188,7 @@ error:
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 	priv_flow_stop(priv);
+	priv_rxq_stop(priv);
 	priv_txq_stop(priv);
 	priv_unlock(priv);
 	return -err;
@@ -183,6 +225,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv_flow_stop(priv);
 	priv_rx_intr_vec_disable(priv);
 	priv_txq_stop(priv);
+	priv_rxq_stop(priv);
 	LIST_FOREACH(mr, &priv->mr, next) {
 		priv_mr_release(priv, mr);
 	}

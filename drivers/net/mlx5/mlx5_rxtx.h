@@ -147,6 +147,8 @@ struct mlx5_rxq_ibv {
 
 /* RX queue control descriptor. */
 struct mlx5_rxq_ctrl {
+	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
+	rte_atomic32_t refcnt; /* Reference counter. */
 	struct priv *priv; /* Back pointer to private data. */
 	struct mlx5_rxq_ibv *ibv; /* Verbs elements. */
 	struct mlx5_rxq_data rxq; /* Data path structure. */
@@ -335,6 +337,14 @@ struct mlx5_rxq_ibv *mlx5_priv_rxq_ibv_get(struct priv *, uint16_t);
 int mlx5_priv_rxq_ibv_release(struct priv *, struct mlx5_rxq_ibv *);
 int mlx5_priv_rxq_ibv_releasable(struct priv *, struct mlx5_rxq_ibv *);
 int mlx5_priv_rxq_ibv_verify(struct priv *);
+struct mlx5_rxq_ctrl *mlx5_priv_rxq_new(struct priv *, uint16_t,
+					uint16_t, unsigned int,
+					struct rte_mempool *);
+struct mlx5_rxq_ctrl *mlx5_priv_rxq_get(struct priv *, uint16_t);
+int mlx5_priv_rxq_release(struct priv *, uint16_t);
+int mlx5_priv_rxq_releasable(struct priv *, uint16_t);
+int mlx5_priv_rxq_verify(struct priv *);
+int rxq_alloc_elts(struct mlx5_rxq_ctrl *);
 
 /* mlx5_txq.c */
 

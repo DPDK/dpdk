@@ -147,6 +147,7 @@ struct priv {
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	TAILQ_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
 	LIST_HEAD(mr, mlx5_mr) mr; /* Memory region. */
+	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
 	LIST_HEAD(txq, mlx5_txq_ctrl) txqsctrl; /* DPDK Tx queues. */
 	LIST_HEAD(txqibv, mlx5_txq_ibv) txqsibv; /* Verbs Tx queues. */
