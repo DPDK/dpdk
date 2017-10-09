@@ -227,6 +227,10 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	if (dev->data->dev_conf.rxmode.jumbo_frame)
+		dev->data->mtu = dev->data->dev_conf.rxmode.max_rx_pkt_len -
+				 ETHER_HDR_LEN - ETHER_CRC_LEN;
+
 	ret = mrvl_configure_rxqs(priv, dev->data->port_id,
 				  dev->data->nb_rx_queues);
 	if (ret < 0)
@@ -636,6 +640,7 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	info->tx_desc_lim.nb_min = MRVL_PP2_TXD_MIN;
 	info->tx_desc_lim.nb_align = MRVL_PP2_TXD_ALIGN;
 
+	info->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME;
 	/* By default packets are dropped if no descriptors are available */
 	info->default_rxconf.rx_drop_en = 1;
 
