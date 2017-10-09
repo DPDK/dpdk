@@ -95,11 +95,11 @@ struct rte_flow {
 	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	struct ibv_wq *wq; /**< Verbs work queue. */
 	struct ibv_cq *cq; /**< Verbs completion queue. */
-	uint16_t rxqs_n; /**< Number of queues in this flow, 0 if drop queue. */
 	uint32_t mark:1; /**< Set if the flow is marked. */
 	uint32_t drop:1; /**< Drop queue. */
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
-	struct mlx5_rxq_data *rxqs[]; /**< Pointer to the queues array. */
+	uint16_t queues[RTE_MAX_QUEUES_PER_PORT]; /**< List of queues. */
+	uint16_t queues_n; /**< Number of queues in the list. */
 };
 
 /** Static initializer for items. */
@@ -1096,23 +1096,21 @@ priv_flow_create_action_queue(struct priv *priv,
 	assert(priv->pd);
 	assert(priv->ctx);
 	assert(!flow->actions.drop);
-	rte_flow = rte_calloc(__func__, 1, sizeof(*rte_flow) +
-			      sizeof(*rte_flow->rxqs) * flow->actions.queues_n,
-			      0);
+	rte_flow = rte_calloc(__func__, 1, sizeof(*rte_flow), 0);
 	if (!rte_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
 	}
 	for (i = 0; i < flow->actions.queues_n; ++i) {
-		struct mlx5_rxq_ctrl *rxq;
+		struct mlx5_rxq_ibv *rxq_ibv =
+			mlx5_priv_rxq_ibv_get(priv, flow->actions.queues[i]);
 
-		rxq = container_of((*priv->rxqs)[flow->actions.queues[i]],
-				   struct mlx5_rxq_ctrl, rxq);
-		wqs[i] = rxq->wq;
-		rte_flow->rxqs[i] = &rxq->rxq;
-		++rte_flow->rxqs_n;
-		rxq->rxq.mark |= flow->actions.mark;
+		wqs[i] = rxq_ibv->wq;
+		rte_flow->queues[i] = flow->actions.queues[i];
+		++rte_flow->queues_n;
+		(*priv->rxqs)[flow->actions.queues[i]]->mark |=
+			flow->actions.mark;
 	}
 	/* finalise indirection table. */
 	for (j = 0; i < wqs_n; ++i, ++j) {
@@ -1290,6 +1288,8 @@ static void
 priv_flow_destroy(struct priv *priv,
 		  struct rte_flow *flow)
 {
+	unsigned int i;
+
 	TAILQ_REMOVE(&priv->flows, flow, next);
 	if (flow->ibv_flow)
 		claim_zero(ibv_destroy_flow(flow->ibv_flow));
@@ -1299,37 +1299,33 @@ priv_flow_destroy(struct priv *priv,
 		claim_zero(ibv_destroy_qp(flow->qp));
 	if (flow->ind_table)
 		claim_zero(ibv_destroy_rwq_ind_table(flow->ind_table));
-	if (flow->mark) {
+	for (i = 0; i != flow->queues_n; ++i) {
 		struct rte_flow *tmp;
-		struct mlx5_rxq_data *rxq;
-		uint32_t mark_n = 0;
-		uint32_t queue_n;
+		struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[flow->queues[i]];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 
 		/*
 		 * To remove the mark from the queue, the queue must not be
 		 * present in any other marked flow (RSS or not).
 		 */
-		for (queue_n = 0; queue_n < flow->rxqs_n; ++queue_n) {
-			rxq = flow->rxqs[queue_n];
-			for (tmp = TAILQ_FIRST(&priv->flows);
-			     tmp;
-			     tmp = TAILQ_NEXT(tmp, next)) {
-				uint32_t tqueue_n;
+		if (flow->mark) {
+			int mark = 0;
+
+			TAILQ_FOREACH(tmp, &priv->flows, next) {
+				unsigned int j;
 
 				if (tmp->drop)
 					continue;
-				for (tqueue_n = 0;
-				     tqueue_n < tmp->rxqs_n;
-				     ++tqueue_n) {
-					struct mlx5_rxq_data *trxq;
-
-					trxq = tmp->rxqs[tqueue_n];
-					if (rxq == trxq)
-						++mark_n;
-				}
+				if (!tmp->mark)
+					continue;
+				for (j = 0; (j != tmp->queues_n) && !mark; j++)
+					if (tmp->queues[j] == flow->queues[i])
+						mark = 1;
 			}
-			rxq->mark = !!mark_n;
+			rxq_data->mark = mark;
 		}
+		mlx5_priv_rxq_ibv_release(priv, rxq_ctrl->ibv);
 	}
 free:
 	rte_free(flow->ibv_attr);
@@ -1523,8 +1519,8 @@ priv_flow_stop(struct priv *priv)
 		if (flow->mark) {
 			unsigned int n;
 
-			for (n = 0; n < flow->rxqs_n; ++n)
-				flow->rxqs[n]->mark = 0;
+			for (n = 0; n < flow->queues_n; ++n)
+				(*priv->rxqs)[flow->queues[n]]->mark = 0;
 		}
 		DEBUG("Flow %p removed", (void *)flow);
 	}
@@ -1566,39 +1562,8 @@ priv_flow_start(struct priv *priv)
 		if (flow->mark) {
 			unsigned int n;
 
-			for (n = 0; n < flow->rxqs_n; ++n)
-				flow->rxqs[n]->mark = 1;
-		}
-	}
-	return 0;
-}
-
-/**
- * Verify if the Rx queue is used in a flow.
- *
- * @param priv
- *   Pointer to private structure.
- * @param rxq
- *   Pointer to the queue to search.
- *
- * @return
- *   Nonzero if the queue is used by a flow.
- */
-int
-priv_flow_rxq_in_use(struct priv *priv, struct mlx5_rxq_data *rxq)
-{
-	struct rte_flow *flow;
-
-	for (flow = TAILQ_FIRST(&priv->flows);
-	     flow;
-	     flow = TAILQ_NEXT(flow, next)) {
-		unsigned int n;
-
-		if (flow->drop)
-			continue;
-		for (n = 0; n < flow->rxqs_n; ++n) {
-			if (flow->rxqs[n] == rxq)
-				return 1;
+			for (n = 0; n < flow->queues_n; ++n)
+				(*priv->rxqs)[flow->queues[n]]->mark = 1;
 		}
 	}
 	return 0;

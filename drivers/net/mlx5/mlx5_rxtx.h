@@ -134,15 +134,24 @@ struct mlx5_rxq_data {
 	uint8_t cq_arm_sn; /* CQ arm seq number. */
 } __rte_cache_aligned;
 
+/* Verbs Rx queue elements. */
+struct mlx5_rxq_ibv {
+	LIST_ENTRY(mlx5_rxq_ibv) next; /* Pointer to the next element. */
+	rte_atomic32_t refcnt; /* Reference counter. */
+	struct mlx5_rxq_ctrl *rxq_ctrl; /* Back pointer to parent. */
+	struct ibv_cq *cq; /* Completion Queue. */
+	struct ibv_wq *wq; /* Work Queue. */
+	struct ibv_comp_channel *channel;
+	struct mlx5_mr *mr; /* Memory Region (for mp). */
+};
+
 /* RX queue control descriptor. */
 struct mlx5_rxq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
-	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_wq *wq; /* Work Queue. */
-	struct mlx5_mr *mr; /* Memory Region (for mp). */
-	struct ibv_comp_channel *channel;
-	unsigned int socket; /* CPU socket ID for allocations. */
+	struct mlx5_rxq_ibv *ibv; /* Verbs elements. */
 	struct mlx5_rxq_data rxq; /* Data path structure. */
+	unsigned int socket; /* CPU socket ID for allocations. */
+	unsigned int irq:1; /* Whether IRQ is enabled. */
 };
 
 /* Hash RX queue types. */
@@ -310,6 +319,11 @@ int priv_rx_intr_vec_enable(struct priv *priv);
 void priv_rx_intr_vec_disable(struct priv *priv);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+struct mlx5_rxq_ibv *mlx5_priv_rxq_ibv_new(struct priv *, uint16_t);
+struct mlx5_rxq_ibv *mlx5_priv_rxq_ibv_get(struct priv *, uint16_t);
+int mlx5_priv_rxq_ibv_release(struct priv *, struct mlx5_rxq_ibv *);
+int mlx5_priv_rxq_ibv_releasable(struct priv *, struct mlx5_rxq_ibv *);
+int mlx5_priv_rxq_ibv_verify(struct priv *);
 
 /* mlx5_txq.c */
 
@@ -347,7 +361,6 @@ uint16_t mlx5_rx_burst_vec(void *, struct rte_mbuf **, uint16_t);
 
 /* mlx5_mr.c */
 
-struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, struct rte_mempool *);
 void mlx5_txq_mp2mr_iter(struct rte_mempool *, void *);
 struct mlx5_mr *mlx5_txq_mp2mr_reg(struct mlx5_txq_data *, struct rte_mempool *,
 				   unsigned int);

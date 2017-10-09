@@ -378,7 +378,7 @@ priv_create_hash_rxqs(struct priv *priv)
 
 		rxq_ctrl = container_of((*priv->rxqs)[(*priv->reta_idx)[i]],
 					struct mlx5_rxq_ctrl, rxq);
-		wqs[i] = rxq_ctrl->wq;
+		wqs[i] = rxq_ctrl->ibv->wq;
 	}
 	/* Get number of hash RX queues to configure. */
 	for (i = 0, hash_rxqs_n = 0; (i != ind_tables_n); ++i)
@@ -645,8 +645,6 @@ rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl, unsigned int elts_n)
 	/* Iterate on segments. */
 	for (i = 0; (i != elts_n); ++i) {
 		struct rte_mbuf *buf;
-		volatile struct mlx5_wqe_data_seg *scat =
-			&(*rxq_ctrl->rxq.wqes)[i];
 
 		buf = rte_pktmbuf_alloc(rxq_ctrl->rxq.mp);
 		if (buf == NULL) {
@@ -667,21 +665,12 @@ rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl, unsigned int elts_n)
 		DATA_LEN(buf) = rte_pktmbuf_tailroom(buf);
 		PKT_LEN(buf) = DATA_LEN(buf);
 		NB_SEGS(buf) = 1;
-		/* scat->addr must be able to store a pointer. */
-		assert(sizeof(scat->addr) >= sizeof(uintptr_t));
-		*scat = (struct mlx5_wqe_data_seg){
-			.addr =
-			    rte_cpu_to_be_64(rte_pktmbuf_mtod(buf, uintptr_t)),
-			.byte_count = rte_cpu_to_be_32(DATA_LEN(buf)),
-			.lkey = rxq_ctrl->mr->lkey,
-		};
 		(*rxq_ctrl->rxq.elts)[i] = buf;
 	}
 	if (rxq_check_vec_support(&rxq_ctrl->rxq) > 0) {
 		struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
 		struct rte_mbuf *mbuf_init = &rxq->fake_mbuf;
 
-		assert(rxq->elts_n == rxq->cqe_n);
 		/* Initialize default rearm_data for vPMD. */
 		mbuf_init->data_off = RTE_PKTMBUF_HEADROOM;
 		rte_mbuf_refcnt_set(mbuf_init, 1);
@@ -759,73 +748,9 @@ void
 mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	DEBUG("cleaning up %p", (void *)rxq_ctrl);
-	rxq_free_elts(rxq_ctrl);
-	if (rxq_ctrl->wq != NULL)
-		claim_zero(ibv_destroy_wq(rxq_ctrl->wq));
-	if (rxq_ctrl->cq != NULL)
-		claim_zero(ibv_destroy_cq(rxq_ctrl->cq));
-	if (rxq_ctrl->channel != NULL)
-		claim_zero(ibv_destroy_comp_channel(rxq_ctrl->channel));
-	if (rxq_ctrl->mr != NULL)
-		priv_mr_release(rxq_ctrl->priv, rxq_ctrl->mr);
+	if (rxq_ctrl->ibv)
+		mlx5_priv_rxq_ibv_release(rxq_ctrl->priv, rxq_ctrl->ibv);
 	memset(rxq_ctrl, 0, sizeof(*rxq_ctrl));
-}
-
-/**
- * Initialize RX queue.
- *
- * @param tmpl
- *   Pointer to RX queue control template.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static inline int
-rxq_setup(struct mlx5_rxq_ctrl *tmpl)
-{
-	struct ibv_cq *ibcq = tmpl->cq;
-	struct mlx5dv_cq cq_info;
-	struct mlx5dv_rwq rwq;
-	const uint16_t desc_n =
-		(1 << tmpl->rxq.elts_n) + tmpl->priv->rx_vec_en *
-		MLX5_VPMD_DESCS_PER_LOOP;
-	struct rte_mbuf *(*elts)[desc_n] =
-		rte_calloc_socket("RXQ", 1, sizeof(*elts), 0, tmpl->socket);
-	struct mlx5dv_obj obj;
-	int ret = 0;
-
-	obj.cq.in = ibcq;
-	obj.cq.out = &cq_info;
-	obj.rwq.in = tmpl->wq;
-	obj.rwq.out = &rwq;
-	ret = mlx5dv_init_obj(&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_RWQ);
-	if (ret != 0) {
-		return -EINVAL;
-	}
-	if (cq_info.cqe_size != RTE_CACHE_LINE_SIZE) {
-		ERROR("Wrong MLX5_CQE_SIZE environment variable value: "
-		      "it should be set to %u", RTE_CACHE_LINE_SIZE);
-		return EINVAL;
-	}
-	if (elts == NULL)
-		return ENOMEM;
-	tmpl->rxq.rq_db = rwq.dbrec;
-	tmpl->rxq.cqe_n = log2above(cq_info.cqe_cnt);
-	tmpl->rxq.cq_ci = 0;
-	tmpl->rxq.rq_ci = 0;
-	tmpl->rxq.rq_pi = 0;
-	tmpl->rxq.cq_db = cq_info.dbrec;
-	tmpl->rxq.wqes =
-		(volatile struct mlx5_wqe_data_seg (*)[])
-		(uintptr_t)rwq.buf;
-	tmpl->rxq.cqes =
-		(volatile struct mlx5_cqe (*)[])
-		(uintptr_t)cq_info.buf;
-	tmpl->rxq.elts = elts;
-	tmpl->rxq.cq_uar = cq_info.cq_uar;
-	tmpl->rxq.cqn = cq_info.cqn;
-	tmpl->rxq.cq_arm_sn = 0;
-	return 0;
 }
 
 /**
@@ -853,29 +778,28 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 	       const struct rte_eth_rxconf *conf, struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
+	const uint16_t desc_n =
+		desc + priv->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
 	struct mlx5_rxq_ctrl tmpl = {
 		.priv = priv,
 		.socket = socket,
 		.rxq = {
+			.elts = rte_calloc_socket("RXQ", 1,
+						  desc_n *
+						  sizeof(struct rte_mbuf *), 0,
+						  socket),
 			.elts_n = log2above(desc),
 			.mp = mp,
 			.rss_hash = priv->rxqs_n > 1,
 		},
 	};
-	struct ibv_wq_attr mod;
-	union {
-		struct ibv_cq_init_attr_ex cq;
-		struct ibv_wq_init_attr wq;
-		struct ibv_cq_ex cq_attr;
-	} attr;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
-	unsigned int cqe_n = desc - 1;
-	const uint16_t desc_n =
-		desc + priv->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
 	struct rte_mbuf *(*elts)[desc_n] = NULL;
 	int ret = 0;
 
 	(void)conf; /* Thresholds configuration (ignored). */
+	if (dev->data->dev_conf.intr_conf.rxq)
+		tmpl.irq = 1;
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
@@ -928,77 +852,13 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 	if (priv->hw_csum_l2tun)
 		tmpl.rxq.csum_l2tun =
 			!!dev->data->dev_conf.rxmode.hw_ip_checksum;
-	/* Use the entire RX mempool as the memory region. */
-	tmpl.mr = priv_mr_get(priv, mp);
-	if (tmpl.mr == NULL) {
-		tmpl.mr = priv_mr_new(priv, mp);
-		if (tmpl.mr == NULL) {
-			ret = EINVAL;
-			ERROR("%p: MR creation failure: %s",
-			      (void *)dev, strerror(ret));
-			goto error;
-		}
-	}
-	if (dev->data->dev_conf.intr_conf.rxq) {
-		tmpl.channel = ibv_create_comp_channel(priv->ctx);
-		if (tmpl.channel == NULL) {
-			ret = ENOMEM;
-			ERROR("%p: Rx interrupt completion channel creation"
-			      " failure: %s",
-			      (void *)dev, strerror(ret));
-			goto error;
-		}
-	}
-	attr.cq = (struct ibv_cq_init_attr_ex){
-		.comp_mask = 0,
-	};
-	if (priv->cqe_comp) {
-		attr.cq.comp_mask |= IBV_CQ_INIT_ATTR_MASK_FLAGS;
-		attr.cq.flags |= MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
-		/*
-		 * For vectorized Rx, it must not be doubled in order to
-		 * make cq_ci and rq_ci aligned.
-		 */
-		if (rxq_check_vec_support(&tmpl.rxq) < 0)
-			cqe_n = (desc * 2) - 1; /* Double the number of CQEs. */
-	}
-	tmpl.cq = ibv_create_cq(priv->ctx, cqe_n, NULL, tmpl.channel, 0);
-	if (tmpl.cq == NULL) {
-		ret = ENOMEM;
-		ERROR("%p: CQ creation failure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
-	DEBUG("priv->device_attr.max_qp_wr is %d",
-	      priv->device_attr.orig_attr.max_qp_wr);
-	DEBUG("priv->device_attr.max_sge is %d",
-	      priv->device_attr.orig_attr.max_sge);
 	/* Configure VLAN stripping. */
 	tmpl.rxq.vlan_strip = (priv->hw_vlan_strip &&
 			       !!dev->data->dev_conf.rxmode.hw_vlan_strip);
-	attr.wq = (struct ibv_wq_init_attr){
-		.wq_context = NULL, /* Could be useful in the future. */
-		.wq_type = IBV_WQT_RQ,
-		/* Max number of outstanding WRs. */
-		.max_wr = desc >> tmpl.rxq.sges_n,
-		/* Max number of scatter/gather elements in a WR. */
-		.max_sge = 1 << tmpl.rxq.sges_n,
-		.pd = priv->pd,
-		.cq = tmpl.cq,
-		.comp_mask =
-			IBV_WQ_FLAGS_CVLAN_STRIPPING |
-			0,
-		.create_flags = (tmpl.rxq.vlan_strip ?
-				 IBV_WQ_FLAGS_CVLAN_STRIPPING :
-				 0),
-	};
 	/* By default, FCS (CRC) is stripped by hardware. */
 	if (dev->data->dev_conf.rxmode.hw_strip_crc) {
 		tmpl.rxq.crc_present = 0;
 	} else if (priv->hw_fcs_strip) {
-		/* Ask HW/Verbs to leave CRC in place when supported. */
-		attr.wq.create_flags |= IBV_WQ_FLAGS_SCATTER_FCS;
-		attr.wq.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 		tmpl.rxq.crc_present = 1;
 	} else {
 		WARN("%p: CRC stripping has been disabled but will still"
@@ -1013,60 +873,21 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 	      tmpl.rxq.crc_present ? "disabled" : "enabled",
 	      tmpl.rxq.crc_present << 2);
 #ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
-	if (!mlx5_getenv_int("MLX5_PMD_ENABLE_PADDING"))
+	if (!mlx5_getenv_int("MLX5_PMD_ENABLE_PADDING")) {
 		; /* Nothing else to do. */
-	else if (priv->hw_padding) {
+	} else if (priv->hw_padding) {
 		INFO("%p: enabling packet padding on queue %p",
 		     (void *)dev, (void *)rxq_ctrl);
-		attr.wq.create_flags |= IBV_WQ_FLAG_RX_END_PADDING;
-		attr.wq.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
-	} else
+	} else {
 		WARN("%p: packet padding has been requested but is not"
 		     " supported, make sure MLNX_OFED and firmware are"
 		     " up to date",
 		     (void *)dev);
+	}
 #endif
-
-	tmpl.wq = ibv_create_wq(priv->ctx, &attr.wq);
-	if (tmpl.wq == NULL) {
-		ret = (errno ? errno : EINVAL);
-		ERROR("%p: WQ creation failure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
-	/*
-	 * Make sure number of WRs*SGEs match expectations since a queue
-	 * cannot allocate more than "desc" buffers.
-	 */
-	if (((int)attr.wq.max_wr != (desc >> tmpl.rxq.sges_n)) ||
-	    ((int)attr.wq.max_sge != (1 << tmpl.rxq.sges_n))) {
-		ERROR("%p: requested %u*%u but got %u*%u WRs*SGEs",
-		      (void *)dev,
-		      (desc >> tmpl.rxq.sges_n), (1 << tmpl.rxq.sges_n),
-		      attr.wq.max_wr, attr.wq.max_sge);
-		ret = EINVAL;
-		goto error;
-	}
 	/* Save port ID. */
 	tmpl.rxq.port_id = dev->data->port_id;
 	DEBUG("%p: RTE port ID: %u", (void *)rxq_ctrl, tmpl.rxq.port_id);
-	/* Change queue state to ready. */
-	mod = (struct ibv_wq_attr){
-		.attr_mask = IBV_WQ_ATTR_STATE,
-		.wq_state = IBV_WQS_RDY,
-	};
-	ret = ibv_modify_wq(tmpl.wq, &mod);
-	if (ret) {
-		ERROR("%p: WQ state to IBV_WQS_RDY failed: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
-	ret = rxq_setup(&tmpl);
-	if (ret) {
-		ERROR("%p: cannot initialize RX queue structure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
 	ret = rxq_alloc_elts(&tmpl, desc);
 	if (ret) {
 		ERROR("%p: RXQ allocation failed: %s",
@@ -1085,17 +906,12 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 	rte_free(tmpl.rxq.elts);
 	tmpl.rxq.elts = elts;
 	*rxq_ctrl = tmpl;
-	/* Update doorbell counter. */
-	rxq_ctrl->rxq.rq_ci = desc >> rxq_ctrl->rxq.sges_n;
-	rte_wmb();
-	*rxq_ctrl->rxq.rq_db = rte_cpu_to_be_32(rxq_ctrl->rxq.rq_ci);
 	DEBUG("%p: rxq updated with %p", (void *)rxq_ctrl, (void *)&tmpl);
 	assert(ret == 0);
 	return 0;
 error:
-	elts = tmpl.rxq.elts;
+	rte_free(tmpl.rxq.elts);
 	mlx5_rxq_cleanup(&tmpl);
-	rte_free(elts);
 	assert(ret > 0);
 	return ret;
 }
@@ -1185,14 +1001,20 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		}
 	}
 	ret = rxq_ctrl_setup(dev, rxq_ctrl, desc, socket, conf, mp);
-	if (ret)
+	if (ret) {
 		rte_free(rxq_ctrl);
-	else {
-		rxq_ctrl->rxq.stats.idx = idx;
-		DEBUG("%p: adding RX queue %p to list",
-		      (void *)dev, (void *)rxq_ctrl);
-		(*priv->rxqs)[idx] = &rxq_ctrl->rxq;
+		goto out;
 	}
+	rxq_ctrl->rxq.stats.idx = idx;
+	DEBUG("%p: adding RX queue %p to list",
+	      (void *)dev, (void *)rxq_ctrl);
+	(*priv->rxqs)[idx] = &rxq_ctrl->rxq;
+	rxq_ctrl->ibv = mlx5_priv_rxq_ibv_new(priv, idx);
+	if (!rxq_ctrl->ibv) {
+		ret = EAGAIN;
+		goto out;
+	}
+out:
 	priv_unlock(priv);
 	return -ret;
 }
@@ -1219,7 +1041,7 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	priv = rxq_ctrl->priv;
 	priv_lock(priv);
-	if (priv_flow_rxq_in_use(priv, rxq))
+	if (!mlx5_priv_rxq_ibv_releasable(priv, rxq_ctrl->ibv))
 		rte_panic("Rx queue %p is still used by a flow and cannot be"
 			  " removed\n", (void *)rxq_ctrl);
 	for (i = 0; (i != priv->rxqs_n); ++i)
@@ -1264,15 +1086,14 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	}
 	intr_handle->type = RTE_INTR_HANDLE_EXT;
 	for (i = 0; i != n; ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+		/* This rxq ibv must not be released in this function. */
+		struct mlx5_rxq_ibv *rxq_ibv = mlx5_priv_rxq_ibv_get(priv, i);
 		int fd;
 		int flags;
 		int rc;
 
 		/* Skip queues that cannot request interrupts. */
-		if (!rxq || !rxq_ctrl->channel) {
+		if (!rxq_ibv || !rxq_ibv->channel) {
 			/* Use invalid intr_vec[] index to disable entry. */
 			intr_handle->intr_vec[i] =
 				RTE_INTR_VEC_RXTX_OFFSET +
@@ -1286,7 +1107,7 @@ priv_rx_intr_vec_enable(struct priv *priv)
 			priv_rx_intr_vec_disable(priv);
 			return -1;
 		}
-		fd = rxq_ctrl->channel->fd;
+		fd = rxq_ibv->channel->fd;
 		flags = fcntl(fd, F_GETFL);
 		rc = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 		if (rc < 0) {
@@ -1316,7 +1137,27 @@ void
 priv_rx_intr_vec_disable(struct priv *priv)
 {
 	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+	unsigned int i;
+	unsigned int rxqs_n = priv->rxqs_n;
+	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 
+	if (!priv->dev->data->dev_conf.intr_conf.rxq)
+		return;
+	for (i = 0; i != n; ++i) {
+		struct mlx5_rxq_ctrl *rxq_ctrl;
+		struct mlx5_rxq_data *rxq_data;
+
+		if (intr_handle->intr_vec[i] == RTE_INTR_VEC_RXTX_OFFSET +
+		    RTE_MAX_RXTX_INTR_VEC_ID)
+			continue;
+		/**
+		 * Need to access directly the queue to release the reference
+		 * kept in priv_rx_intr_vec_enable().
+		 */
+		rxq_data = (*priv->rxqs)[i];
+		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+		mlx5_priv_rxq_ibv_release(priv, rxq_ctrl->ibv);
+	}
 	rte_intr_free_epoll_fd(intr_handle);
 	free(intr_handle->intr_vec);
 	intr_handle->nb_efd = 0;
@@ -1363,16 +1204,30 @@ int
 mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct priv *priv = mlx5_get_priv(dev);
-	struct mlx5_rxq_data *rxq = (*priv->rxqs)[rx_queue_id];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_data *rxq_data;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
 	int ret = 0;
 
-	if (!rxq || !rxq_ctrl->channel) {
+	priv_lock(priv);
+	rxq_data = (*priv->rxqs)[rx_queue_id];
+	if (!rxq_data) {
 		ret = EINVAL;
-	} else {
-		mlx5_arm_cq(rxq, rxq->cq_arm_sn);
+		goto exit;
 	}
+	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	if (rxq_ctrl->irq) {
+		struct mlx5_rxq_ibv *rxq_ibv;
+
+		rxq_ibv = mlx5_priv_rxq_ibv_get(priv, rx_queue_id);
+		if (!rxq_ibv) {
+			ret = EINVAL;
+			goto exit;
+		}
+		mlx5_arm_cq(rxq_data, rxq_data->cq_arm_sn);
+		mlx5_priv_rxq_ibv_release(priv, rxq_ibv);
+	}
+exit:
+	priv_unlock(priv);
 	if (ret)
 		WARN("unable to arm interrupt on rx queue %d", rx_queue_id);
 	return -ret;
@@ -1393,25 +1248,345 @@ int
 mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct priv *priv = mlx5_get_priv(dev);
-	struct mlx5_rxq_data *rxq = (*priv->rxqs)[rx_queue_id];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_data *rxq_data;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+	struct mlx5_rxq_ibv *rxq_ibv = NULL;
 	struct ibv_cq *ev_cq;
 	void *ev_ctx;
-	int ret;
+	int ret = 0;
 
-	if (!rxq || !rxq_ctrl->channel) {
+	priv_lock(priv);
+	rxq_data = (*priv->rxqs)[rx_queue_id];
+	if (!rxq_data) {
 		ret = EINVAL;
-	} else {
-		ret = ibv_get_cq_event(rxq_ctrl->cq->channel, &ev_cq, &ev_ctx);
-		rxq->cq_arm_sn++;
-		if (ret || ev_cq != rxq_ctrl->cq)
-			ret = EINVAL;
+		goto exit;
 	}
+	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	if (!rxq_ctrl->irq)
+		goto exit;
+	rxq_ibv = mlx5_priv_rxq_ibv_get(priv, rx_queue_id);
+	if (!rxq_ibv) {
+		ret = EINVAL;
+		goto exit;
+	}
+	ret = ibv_get_cq_event(rxq_ibv->channel, &ev_cq, &ev_ctx);
+	if (ret || ev_cq != rxq_ibv->cq) {
+		ret = EINVAL;
+		goto exit;
+	}
+	rxq_data->cq_arm_sn++;
+	ibv_ack_cq_events(rxq_ibv->cq, 1);
+exit:
+	if (rxq_ibv)
+		mlx5_priv_rxq_ibv_release(priv, rxq_ibv);
+	priv_unlock(priv);
 	if (ret)
 		WARN("unable to disable interrupt on rx queue %d",
 		     rx_queue_id);
-	else
-		ibv_ack_cq_events(rxq_ctrl->cq, 1);
 	return -ret;
+}
+
+/**
+ * Create the Rx queue Verbs object.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param idx
+ *   Queue index in DPDK Rx queue array
+ *
+ * @return
+ *   The Verbs object initialised if it can be created.
+ */
+struct mlx5_rxq_ibv*
+mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
+{
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	struct ibv_wq_attr mod;
+	union {
+		struct ibv_cq_init_attr_ex cq;
+		struct ibv_wq_init_attr wq;
+		struct ibv_cq_ex cq_attr;
+	} attr;
+	unsigned int cqe_n = (1 << rxq_data->elts_n) - 1;
+	struct mlx5_rxq_ibv *tmpl;
+	struct mlx5dv_cq cq_info;
+	struct mlx5dv_rwq rwq;
+	unsigned int i;
+	int ret = 0;
+	struct mlx5dv_obj obj;
+
+	assert(rxq_data);
+	assert(!rxq_ctrl->ibv);
+	tmpl = rte_calloc_socket(__func__, 1, sizeof(*tmpl), 0,
+				 rxq_ctrl->socket);
+	if (!tmpl) {
+		ERROR("%p: cannot allocate verbs resources",
+		       (void *)rxq_ctrl);
+		goto error;
+	}
+	tmpl->rxq_ctrl = rxq_ctrl;
+	/* Use the entire RX mempool as the memory region. */
+	tmpl->mr = priv_mr_get(priv, rxq_data->mp);
+	if (!tmpl->mr) {
+		tmpl->mr = priv_mr_new(priv, rxq_data->mp);
+		if (!tmpl->mr) {
+			ERROR("%p: MR creation failure", (void *)rxq_ctrl);
+			goto error;
+		}
+	}
+	if (rxq_ctrl->irq) {
+		tmpl->channel = ibv_create_comp_channel(priv->ctx);
+		if (!tmpl->channel) {
+			ERROR("%p: Comp Channel creation failure",
+			      (void *)rxq_ctrl);
+			goto error;
+		}
+	}
+	attr.cq = (struct ibv_cq_init_attr_ex){
+		.comp_mask = 0,
+	};
+	if (priv->cqe_comp) {
+		attr.cq.comp_mask |= IBV_CQ_INIT_ATTR_MASK_FLAGS;
+		attr.cq.flags |= MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+		/*
+		 * For vectorized Rx, it must not be doubled in order to
+		 * make cq_ci and rq_ci aligned.
+		 */
+		if (rxq_check_vec_support(rxq_data) < 0)
+			cqe_n *= 2;
+	}
+	tmpl->cq = ibv_create_cq(priv->ctx, cqe_n, NULL, tmpl->channel, 0);
+	if (tmpl->cq == NULL) {
+		ERROR("%p: CQ creation failure", (void *)rxq_ctrl);
+		goto error;
+	}
+	DEBUG("priv->device_attr.max_qp_wr is %d",
+	      priv->device_attr.orig_attr.max_qp_wr);
+	DEBUG("priv->device_attr.max_sge is %d",
+	      priv->device_attr.orig_attr.max_sge);
+	attr.wq = (struct ibv_wq_init_attr){
+		.wq_context = NULL, /* Could be useful in the future. */
+		.wq_type = IBV_WQT_RQ,
+		/* Max number of outstanding WRs. */
+		.max_wr = (1 << rxq_data->elts_n) >> rxq_data->sges_n,
+		/* Max number of scatter/gather elements in a WR. */
+		.max_sge = 1 << rxq_data->sges_n,
+		.pd = priv->pd,
+		.cq = tmpl->cq,
+		.comp_mask =
+			IBV_WQ_FLAGS_CVLAN_STRIPPING |
+			0,
+		.create_flags = (rxq_data->vlan_strip ?
+				 IBV_WQ_FLAGS_CVLAN_STRIPPING :
+				 0),
+	};
+	/* By default, FCS (CRC) is stripped by hardware. */
+	if (rxq_data->crc_present) {
+		attr.wq.create_flags |= IBV_WQ_FLAGS_SCATTER_FCS;
+		attr.wq.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
+	}
+#ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
+	if (priv->hw_padding) {
+		attr.wq.create_flags |= IBV_WQ_FLAG_RX_END_PADDING;
+		attr.wq.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
+	}
+#endif
+	tmpl->wq = ibv_create_wq(priv->ctx, &attr.wq);
+	if (tmpl->wq == NULL) {
+		ERROR("%p: WQ creation failure", (void *)rxq_ctrl);
+		goto error;
+	}
+	/*
+	 * Make sure number of WRs*SGEs match expectations since a queue
+	 * cannot allocate more than "desc" buffers.
+	 */
+	if (((int)attr.wq.max_wr !=
+	     ((1 << rxq_data->elts_n) >> rxq_data->sges_n)) ||
+	    ((int)attr.wq.max_sge != (1 << rxq_data->sges_n))) {
+		ERROR("%p: requested %u*%u but got %u*%u WRs*SGEs",
+		      (void *)rxq_ctrl,
+		      ((1 << rxq_data->elts_n) >> rxq_data->sges_n),
+		      (1 << rxq_data->sges_n),
+		      attr.wq.max_wr, attr.wq.max_sge);
+		goto error;
+	}
+	/* Change queue state to ready. */
+	mod = (struct ibv_wq_attr){
+		.attr_mask = IBV_WQ_ATTR_STATE,
+		.wq_state = IBV_WQS_RDY,
+	};
+	ret = ibv_modify_wq(tmpl->wq, &mod);
+	if (ret) {
+		ERROR("%p: WQ state to IBV_WQS_RDY failed",
+		      (void *)rxq_ctrl);
+		goto error;
+	}
+	obj.cq.in = tmpl->cq;
+	obj.cq.out = &cq_info;
+	obj.rwq.in = tmpl->wq;
+	obj.rwq.out = &rwq;
+	ret = mlx5dv_init_obj(&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_RWQ);
+	if (ret != 0)
+		goto error;
+	if (cq_info.cqe_size != RTE_CACHE_LINE_SIZE) {
+		ERROR("Wrong MLX5_CQE_SIZE environment variable value: "
+		      "it should be set to %u", RTE_CACHE_LINE_SIZE);
+		goto error;
+	}
+	/* Fill the rings. */
+	rxq_data->wqes = (volatile struct mlx5_wqe_data_seg (*)[])
+		(uintptr_t)rwq.buf;
+	for (i = 0; (i != (unsigned int)(1 << rxq_data->elts_n)); ++i) {
+		struct rte_mbuf *buf = (*rxq_data->elts)[i];
+		volatile struct mlx5_wqe_data_seg *scat = &(*rxq_data->wqes)[i];
+
+		/* scat->addr must be able to store a pointer. */
+		assert(sizeof(scat->addr) >= sizeof(uintptr_t));
+		*scat = (struct mlx5_wqe_data_seg){
+			.addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
+								  uintptr_t)),
+			.byte_count = rte_cpu_to_be_32(DATA_LEN(buf)),
+			.lkey = tmpl->mr->lkey,
+		};
+	}
+	rxq_data->rq_db = rwq.dbrec;
+	rxq_data->cqe_n = log2above(cq_info.cqe_cnt);
+	rxq_data->cq_ci = 0;
+	rxq_data->rq_ci = 0;
+	rxq_data->rq_pi = 0;
+	rxq_data->zip = (struct rxq_zip){
+		.ai = 0,
+	};
+	rxq_data->cq_db = cq_info.dbrec;
+	rxq_data->cqes = (volatile struct mlx5_cqe (*)[])(uintptr_t)cq_info.buf;
+	/* Update doorbell counter. */
+	rxq_data->rq_ci = (1 << rxq_data->elts_n) >> rxq_data->sges_n;
+	rte_wmb();
+	*rxq_data->rq_db = rte_cpu_to_be_32(rxq_data->rq_ci);
+	DEBUG("%p: rxq updated with %p", (void *)rxq_ctrl, (void *)&tmpl);
+	rte_atomic32_inc(&tmpl->refcnt);
+	DEBUG("%p: Verbs Rx queue %p: refcnt %d", (void *)priv,
+	      (void *)tmpl, rte_atomic32_read(&tmpl->refcnt));
+	LIST_INSERT_HEAD(&priv->rxqsibv, tmpl, next);
+	return tmpl;
+error:
+	if (tmpl->wq)
+		claim_zero(ibv_destroy_wq(tmpl->wq));
+	if (tmpl->cq)
+		claim_zero(ibv_destroy_cq(tmpl->cq));
+	if (tmpl->channel)
+		claim_zero(ibv_destroy_comp_channel(tmpl->channel));
+	if (tmpl->mr)
+		priv_mr_release(priv, tmpl->mr);
+	return NULL;
+}
+
+/**
+ * Get an Rx queue Verbs object.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param idx
+ *   Queue index in DPDK Rx queue array
+ *
+ * @return
+ *   The Verbs object if it exists.
+ */
+struct mlx5_rxq_ibv*
+mlx5_priv_rxq_ibv_get(struct priv *priv, uint16_t idx)
+{
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+
+	if (idx >= priv->rxqs_n)
+		return NULL;
+	if (!rxq_data)
+		return NULL;
+	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	if (rxq_ctrl->ibv) {
+		priv_mr_get(priv, rxq_data->mp);
+		rte_atomic32_inc(&rxq_ctrl->ibv->refcnt);
+		DEBUG("%p: Verbs Rx queue %p: refcnt %d", (void *)priv,
+		      (void *)rxq_ctrl->ibv,
+		      rte_atomic32_read(&rxq_ctrl->ibv->refcnt));
+	}
+	return rxq_ctrl->ibv;
+}
+
+/**
+ * Release an Rx verbs queue object.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param rxq_ibv
+ *   Verbs Rx queue object.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+mlx5_priv_rxq_ibv_release(struct priv *priv, struct mlx5_rxq_ibv *rxq_ibv)
+{
+	int ret;
+
+	assert(rxq_ibv);
+	assert(rxq_ibv->wq);
+	assert(rxq_ibv->cq);
+	assert(rxq_ibv->mr);
+	ret = priv_mr_release(priv, rxq_ibv->mr);
+	if (!ret)
+		rxq_ibv->mr = NULL;
+	DEBUG("%p: Verbs Rx queue %p: refcnt %d", (void *)priv,
+	      (void *)rxq_ibv, rte_atomic32_read(&rxq_ibv->refcnt));
+	if (rte_atomic32_dec_and_test(&rxq_ibv->refcnt)) {
+		rxq_free_elts(rxq_ibv->rxq_ctrl);
+		claim_zero(ibv_destroy_wq(rxq_ibv->wq));
+		claim_zero(ibv_destroy_cq(rxq_ibv->cq));
+		if (rxq_ibv->channel)
+			claim_zero(ibv_destroy_comp_channel(rxq_ibv->channel));
+		LIST_REMOVE(rxq_ibv, next);
+		rte_free(rxq_ibv);
+		return 0;
+	}
+	return EBUSY;
+}
+
+/**
+ * Verify the Verbs Rx queue list is empty
+ *
+ * @param priv
+ *  Pointer to private structure.
+ *
+ * @return the number of object not released.
+ */
+int
+mlx5_priv_rxq_ibv_verify(struct priv *priv)
+{
+	int ret = 0;
+	struct mlx5_rxq_ibv *rxq_ibv;
+
+	LIST_FOREACH(rxq_ibv, &priv->rxqsibv, next) {
+		DEBUG("%p: Verbs Rx queue %p still referenced", (void *)priv,
+		      (void *)rxq_ibv);
+		++ret;
+	}
+	return ret;
+}
+
+/**
+ * Return true if a single reference exists on the object.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param rxq_ibv
+ *   Verbs Rx queue object.
+ */
+int
+mlx5_priv_rxq_ibv_releasable(struct priv *priv, struct mlx5_rxq_ibv *rxq_ibv)
+{
+	(void)priv;
+	assert(rxq_ibv);
+	return (rte_atomic32_read(&rxq_ibv->refcnt) == 1);
 }

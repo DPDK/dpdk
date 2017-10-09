@@ -147,6 +147,7 @@ struct priv {
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	TAILQ_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
 	LIST_HEAD(mr, mlx5_mr) mr; /* Memory region. */
+	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	rte_spinlock_t lock; /* Lock for control functions. */
@@ -290,7 +291,6 @@ int mlx5_flow_flush(struct rte_eth_dev *, struct rte_flow_error *);
 int mlx5_flow_isolate(struct rte_eth_dev *, int, struct rte_flow_error *);
 int priv_flow_start(struct priv *);
 void priv_flow_stop(struct priv *);
-int priv_flow_rxq_in_use(struct priv *, struct mlx5_rxq_data *);
 int priv_flow_verify(struct priv *);
 
 /* mlx5_socket.c */
