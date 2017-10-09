@@ -98,6 +98,7 @@ struct mrvl_priv {
 	uint8_t pp_id;
 	uint8_t ppio_id;
 	uint8_t bpool_bit;
+	uint8_t rss_hf_tcp;
 	uint8_t uc_mc_flushed;
 
 	struct pp2_ppio_params ppio_params;

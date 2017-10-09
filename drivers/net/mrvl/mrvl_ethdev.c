@@ -66,6 +66,8 @@
 #define MRVL_MUSDK_HIFS_RESERVED 0x0F
 /* bitmask with reserved bpools */
 #define MRVL_MUSDK_BPOOLS_RESERVED 0x07
+/* bitmask with reserved kernel RSS tables */
+#define MRVL_MUSDK_RSS_RESERVED 0x01
 /* maximum number of available hifs */
 #define MRVL_MUSDK_HIFS_MAX 9
 
@@ -180,9 +182,47 @@ mrvl_reserve_bit(int *bitmap, int max)
 }
 
 /**
+ * Configure rss based on dpdk rss configuration.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param rss_conf
+ *   Pointer to RSS configuration.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_configure_rss(struct mrvl_priv *priv, struct rte_eth_rss_conf *rss_conf)
+{
+	if (rss_conf->rss_key)
+		RTE_LOG(WARNING, PMD, "Changing hash key is not supported\n");
+
+	if (rss_conf->rss_hf == 0) {
+		priv->ppio_params.inqs_params.hash_type = PP2_PPIO_HASH_T_NONE;
+	} else if (rss_conf->rss_hf & ETH_RSS_IPV4) {
+		priv->ppio_params.inqs_params.hash_type =
+			PP2_PPIO_HASH_T_2_TUPLE;
+	} else if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+		priv->ppio_params.inqs_params.hash_type =
+			PP2_PPIO_HASH_T_5_TUPLE;
+		priv->rss_hf_tcp = 1;
+	} else if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+		priv->ppio_params.inqs_params.hash_type =
+			PP2_PPIO_HASH_T_5_TUPLE;
+		priv->rss_hf_tcp = 0;
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
  * Ethernet device configuration.
  *
- * Prepare the driver for a given number of TX and RX queues.
+ * Prepare the driver for a given number of TX and RX queues and
+ * configure RSS.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -196,7 +236,8 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_NONE) {
+	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_NONE &&
+	    dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
 		RTE_LOG(INFO, PMD, "Unsupported rx multi queue mode %d\n",
 			dev->data->dev_conf.rxmode.mq_mode);
 		return -EINVAL;
@@ -240,7 +281,16 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	priv->ppio_params.outqs_params.num_outqs = dev->data->nb_tx_queues;
 	priv->nb_rx_queues = dev->data->nb_rx_queues;
 
-	return 0;
+	if (dev->data->nb_rx_queues == 1 &&
+	    dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
+		RTE_LOG(WARNING, PMD, "Disabling hash for 1 rx queue\n");
+		priv->ppio_params.inqs_params.hash_type = PP2_PPIO_HASH_T_NONE;
+
+		return 0;
+	}
+
+	return mrvl_configure_rss(priv,
+				  &dev->data->dev_conf.rx_adv_conf.rss_conf);
 }
 
 /**
@@ -800,6 +850,10 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	info->tx_desc_lim.nb_align = MRVL_PP2_TXD_ALIGN;
 
 	info->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME;
+	info->flow_type_rss_offloads = ETH_RSS_IPV4 |
+				       ETH_RSS_NONFRAG_IPV4_TCP |
+				       ETH_RSS_NONFRAG_IPV4_UDP;
+
 	/* By default packets are dropped if no descriptors are available */
 	info->default_rxconf.rx_drop_en = 1;
 
@@ -1085,6 +1139,59 @@ mrvl_tx_queue_release(void *txq)
 	rte_free(q);
 }
 
+/**
+ * Update RSS hash configuration
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rss_conf
+ *   Pointer to RSS configuration.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_rss_hash_update(struct rte_eth_dev *dev,
+		     struct rte_eth_rss_conf *rss_conf)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+
+	return mrvl_configure_rss(priv, rss_conf);
+}
+
+/**
+ * DPDK callback to get RSS hash configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @rss_conf
+ *   Pointer to RSS configuration.
+ *
+ * @return
+ *   Always 0.
+ */
+static int
+mrvl_rss_hash_conf_get(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_conf *rss_conf)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	enum pp2_ppio_hash_type hash_type =
+		priv->ppio_params.inqs_params.hash_type;
+
+	rss_conf->rss_key = NULL;
+
+	if (hash_type == PP2_PPIO_HASH_T_NONE)
+		rss_conf->rss_hf = 0;
+	else if (hash_type == PP2_PPIO_HASH_T_2_TUPLE)
+		rss_conf->rss_hf = ETH_RSS_IPV4;
+	else if (hash_type == PP2_PPIO_HASH_T_5_TUPLE && priv->rss_hf_tcp)
+		rss_conf->rss_hf = ETH_RSS_NONFRAG_IPV4_TCP;
+	else if (hash_type == PP2_PPIO_HASH_T_5_TUPLE && !priv->rss_hf_tcp)
+		rss_conf->rss_hf = ETH_RSS_NONFRAG_IPV4_UDP;
+
+	return 0;
+}
+
 static const struct eth_dev_ops mrvl_ops = {
 	.dev_configure = mrvl_dev_configure,
 	.dev_start = mrvl_dev_start,
@@ -1108,6 +1215,8 @@ static const struct eth_dev_ops mrvl_ops = {
 	.rx_queue_release = mrvl_rx_queue_release,
 	.tx_queue_setup = mrvl_tx_queue_setup,
 	.tx_queue_release = mrvl_tx_queue_release,
+	.rss_hash_update = mrvl_rss_hash_update,
+	.rss_hash_conf_get = mrvl_rss_hash_conf_get,
 };
 
 /**
@@ -1394,6 +1503,7 @@ mrvl_init_pp2(void)
 	memset(&init_params, 0, sizeof(init_params));
 	init_params.hif_reserved_map = MRVL_MUSDK_HIFS_RESERVED;
 	init_params.bm_pool_reserved_map = MRVL_MUSDK_BPOOLS_RESERVED;
+	init_params.rss_tbl_reserved_map = MRVL_MUSDK_RSS_RESERVED;
 
 	return pp2_init(&init_params);
 }
