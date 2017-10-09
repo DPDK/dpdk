@@ -567,7 +567,7 @@ rxq_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq, uint16_t n)
 		wq[i].addr = rte_cpu_to_be_64((uintptr_t)elts[i]->buf_addr +
 					      RTE_PKTMBUF_HEADROOM);
 	rxq->rq_ci += n;
-	rte_wmb();
+	rte_io_wmb();
 	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 }
 
@@ -1259,7 +1259,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rcvd_pkt += n;
 		}
 	}
-	rte_wmb();
+	rte_compiler_barrier();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	return rcvd_pkt;
 }

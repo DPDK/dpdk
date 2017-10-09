@@ -504,7 +504,7 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 	txq->cq_ci = cq_ci;
 	txq->elts_tail = elts_tail;
 	/* Update the consumer index. */
-	rte_wmb();
+	rte_compiler_barrier();
 	*txq->cq_db = rte_cpu_to_be_32(cq_ci);
 }
 

@@ -1928,9 +1928,9 @@ skip:
 		return 0;
 	/* Update the consumer index. */
 	rxq->rq_ci = rq_ci >> sges_n;
-	rte_wmb();
+	rte_io_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
-	rte_wmb();
+	rte_io_wmb();
 	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	/* Increment packets counter. */
