@@ -484,51 +484,6 @@ priv_flow_convert(struct priv *priv,
 				   "only ingress is supported");
 		return -rte_errno;
 	}
-	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
-		const struct mlx5_flow_items *token = NULL;
-		unsigned int i;
-		int err;
-
-		if (items->type == RTE_FLOW_ITEM_TYPE_VOID)
-			continue;
-		for (i = 0;
-		     cur_item->items &&
-		     cur_item->items[i] != RTE_FLOW_ITEM_TYPE_END;
-		     ++i) {
-			if (cur_item->items[i] == items->type) {
-				token = &mlx5_flow_items[items->type];
-				break;
-			}
-		}
-		if (!token)
-			goto exit_item_not_supported;
-		cur_item = token;
-		err = mlx5_flow_item_validate(items,
-					      (const uint8_t *)cur_item->mask,
-					      cur_item->mask_sz);
-		if (err)
-			goto exit_item_not_supported;
-		if (flow->ibv_attr && cur_item->convert) {
-			err = cur_item->convert(items,
-						(cur_item->default_mask ?
-						 cur_item->default_mask :
-						 cur_item->mask),
-						flow);
-			if (err)
-				goto exit_item_not_supported;
-		} else if (items->type == RTE_FLOW_ITEM_TYPE_VXLAN) {
-			if (flow->inner) {
-				rte_flow_error_set(error, ENOTSUP,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   items,
-						   "cannot recognize multiple"
-						   " VXLAN encapsulations");
-				return -rte_errno;
-			}
-			flow->inner = 1;
-		}
-		flow->offset += cur_item->dst_sz;
-	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
 		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
 			continue;
@@ -643,6 +598,51 @@ priv_flow_convert(struct priv *priv,
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "no valid action");
 		return -rte_errno;
+	}
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
+		const struct mlx5_flow_items *token = NULL;
+		unsigned int i;
+		int err;
+
+		if (items->type == RTE_FLOW_ITEM_TYPE_VOID)
+			continue;
+		for (i = 0;
+		     cur_item->items &&
+		     cur_item->items[i] != RTE_FLOW_ITEM_TYPE_END;
+		     ++i) {
+			if (cur_item->items[i] == items->type) {
+				token = &mlx5_flow_items[items->type];
+				break;
+			}
+		}
+		if (!token)
+			goto exit_item_not_supported;
+		cur_item = token;
+		err = mlx5_flow_item_validate(items,
+					      (const uint8_t *)cur_item->mask,
+					      cur_item->mask_sz);
+		if (err)
+			goto exit_item_not_supported;
+		if (flow->ibv_attr && cur_item->convert) {
+			err = cur_item->convert(items,
+						(cur_item->default_mask ?
+						 cur_item->default_mask :
+						 cur_item->mask),
+						flow);
+			if (err)
+				goto exit_item_not_supported;
+		} else if (items->type == RTE_FLOW_ITEM_TYPE_VXLAN) {
+			if (flow->inner) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   items,
+						   "cannot recognize multiple"
+						   " VXLAN encapsulations");
+				return -rte_errno;
+			}
+			flow->inner = 1;
+		}
+		flow->offset += cur_item->dst_sz;
 	}
 	return 0;
 exit_item_not_supported:
