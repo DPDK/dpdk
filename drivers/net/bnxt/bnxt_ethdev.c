@@ -2075,6 +2075,385 @@ bnxt_ntuple_filter(struct rte_eth_dev *dev,
 	}
 	return ret;
 }
+
+static int
+bnxt_parse_fdir_filter(struct bnxt *bp,
+		       struct rte_eth_fdir_filter *fdir,
+		       struct bnxt_filter_info *filter)
+{
+	enum rte_fdir_mode fdir_mode =
+		bp->eth_dev->data->dev_conf.fdir_conf.mode;
+	struct bnxt_vnic_info *vnic0, *vnic;
+	struct bnxt_filter_info *filter1;
+	uint32_t en = 0;
+	int i;
+
+	if (fdir_mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
+		return -EINVAL;
+
+	filter->l2_ovlan = fdir->input.flow_ext.vlan_tci;
+	en |= EM_FLOW_ALLOC_INPUT_EN_OVLAN_VID;
+
+	switch (fdir->input.flow_type) {
+	case RTE_ETH_FLOW_IPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
+		/* FALLTHROUGH */
+		filter->src_ipaddr[0] = fdir->input.flow.ip4_flow.src_ip;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR;
+		filter->dst_ipaddr[0] = fdir->input.flow.ip4_flow.dst_ip;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR;
+		filter->ip_protocol = fdir->input.flow.ip4_flow.proto;
+		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+		filter->ip_addr_type =
+			NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV4;
+		filter->src_ipaddr_mask[0] = 0xffffffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+		filter->dst_ipaddr_mask[0] = 0xffffffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+		filter->ethertype = 0x800;
+		filter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
+		filter->src_port = fdir->input.flow.tcp4_flow.src_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT;
+		filter->dst_port = fdir->input.flow.tcp4_flow.dst_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT;
+		filter->dst_port_mask = 0xffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
+		filter->src_port_mask = 0xffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
+		filter->src_ipaddr[0] = fdir->input.flow.tcp4_flow.ip.src_ip;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR;
+		filter->dst_ipaddr[0] = fdir->input.flow.tcp4_flow.ip.dst_ip;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR;
+		filter->ip_protocol = 6;
+		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+		filter->ip_addr_type =
+			NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV4;
+		filter->src_ipaddr_mask[0] = 0xffffffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+		filter->dst_ipaddr_mask[0] = 0xffffffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+		filter->ethertype = 0x800;
+		filter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
+		filter->src_port = fdir->input.flow.udp4_flow.src_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT;
+		filter->dst_port = fdir->input.flow.udp4_flow.dst_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT;
+		filter->dst_port_mask = 0xffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
+		filter->src_port_mask = 0xffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
+		filter->src_ipaddr[0] = fdir->input.flow.udp4_flow.ip.src_ip;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR;
+		filter->dst_ipaddr[0] = fdir->input.flow.udp4_flow.ip.dst_ip;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR;
+		filter->ip_protocol = 17;
+		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+		filter->ip_addr_type =
+			NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV4;
+		filter->src_ipaddr_mask[0] = 0xffffffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+		filter->dst_ipaddr_mask[0] = 0xffffffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+		filter->ethertype = 0x800;
+		filter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+		break;
+	case RTE_ETH_FLOW_IPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
+		/* FALLTHROUGH */
+		filter->ip_addr_type =
+			NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV6;
+		filter->ip_protocol = fdir->input.flow.ipv6_flow.proto;
+		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+		rte_memcpy(filter->src_ipaddr,
+			   fdir->input.flow.ipv6_flow.src_ip, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR;
+		rte_memcpy(filter->dst_ipaddr,
+			   fdir->input.flow.ipv6_flow.dst_ip, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR;
+		memset(filter->dst_ipaddr_mask, 0xff, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+		memset(filter->src_ipaddr_mask, 0xff, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+		filter->ethertype = 0x86dd;
+		filter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
+		filter->src_port = fdir->input.flow.tcp6_flow.src_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT;
+		filter->dst_port = fdir->input.flow.tcp6_flow.dst_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT;
+		filter->dst_port_mask = 0xffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
+		filter->src_port_mask = 0xffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
+		filter->ip_addr_type =
+			NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV6;
+		filter->ip_protocol = fdir->input.flow.tcp6_flow.ip.proto;
+		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+		rte_memcpy(filter->src_ipaddr,
+			   fdir->input.flow.tcp6_flow.ip.src_ip, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR;
+		rte_memcpy(filter->dst_ipaddr,
+			   fdir->input.flow.tcp6_flow.ip.dst_ip, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR;
+		memset(filter->dst_ipaddr_mask, 0xff, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+		memset(filter->src_ipaddr_mask, 0xff, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+		filter->ethertype = 0x86dd;
+		filter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+		filter->src_port = fdir->input.flow.udp6_flow.src_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT;
+		filter->dst_port = fdir->input.flow.udp6_flow.dst_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT;
+		filter->dst_port_mask = 0xffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
+		filter->src_port_mask = 0xffff;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
+		filter->ip_addr_type =
+			NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV6;
+		filter->ip_protocol = fdir->input.flow.udp6_flow.ip.proto;
+		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+		rte_memcpy(filter->src_ipaddr,
+			   fdir->input.flow.udp6_flow.ip.src_ip, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR;
+		rte_memcpy(filter->dst_ipaddr,
+			   fdir->input.flow.udp6_flow.ip.dst_ip, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR;
+		memset(filter->dst_ipaddr_mask, 0xff, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+		memset(filter->src_ipaddr_mask, 0xff, 16);
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+		filter->ethertype = 0x86dd;
+		filter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+		break;
+	case RTE_ETH_FLOW_L2_PAYLOAD:
+		filter->ethertype = fdir->input.flow.l2_flow.ether_type;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+		break;
+	case RTE_ETH_FLOW_VXLAN:
+		if (fdir->action.behavior == RTE_ETH_FDIR_REJECT)
+			return -EINVAL;
+		filter->vni = fdir->input.flow.tunnel_flow.tunnel_id;
+		filter->tunnel_type =
+			CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN;
+		en |= HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_TUNNEL_TYPE;
+		break;
+	case RTE_ETH_FLOW_NVGRE:
+		if (fdir->action.behavior == RTE_ETH_FDIR_REJECT)
+			return -EINVAL;
+		filter->vni = fdir->input.flow.tunnel_flow.tunnel_id;
+		filter->tunnel_type =
+			CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
+		en |= HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_TUNNEL_TYPE;
+		break;
+	case RTE_ETH_FLOW_UNKNOWN:
+	case RTE_ETH_FLOW_RAW:
+	case RTE_ETH_FLOW_FRAG_IPV4:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
+	case RTE_ETH_FLOW_FRAG_IPV6:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
+	case RTE_ETH_FLOW_IPV6_EX:
+	case RTE_ETH_FLOW_IPV6_TCP_EX:
+	case RTE_ETH_FLOW_IPV6_UDP_EX:
+	case RTE_ETH_FLOW_GENEVE:
+		/* FALLTHROUGH */
+	default:
+		return -EINVAL;
+	}
+
+	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+	vnic = STAILQ_FIRST(&bp->ff_pool[fdir->action.rx_queue]);
+	if (vnic == NULL) {
+		RTE_LOG(ERR, PMD, "Invalid queue %d\n", fdir->action.rx_queue);
+		return -EINVAL;
+	}
+
+
+	if (fdir_mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
+		rte_memcpy(filter->dst_macaddr,
+			fdir->input.flow.mac_vlan_flow.mac_addr.addr_bytes, 6);
+			en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_MACADDR;
+	}
+
+	if (fdir->action.behavior == RTE_ETH_FDIR_REJECT) {
+		filter->flags = HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DROP;
+		filter1 = STAILQ_FIRST(&vnic0->filter);
+		//filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
+	} else {
+		filter->dst_id = vnic->fw_vnic_id;
+		for (i = 0; i < ETHER_ADDR_LEN; i++)
+			if (filter->dst_macaddr[i] == 0x00)
+				filter1 = STAILQ_FIRST(&vnic0->filter);
+			else
+				filter1 = bnxt_get_l2_filter(bp, filter, vnic);
+	}
+
+	if (filter1 == NULL)
+		return -EINVAL;
+
+	en |= HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_L2_FILTER_ID;
+	filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+
+	filter->enables = en;
+
+	return 0;
+}
+
+static struct bnxt_filter_info *
+bnxt_match_fdir(struct bnxt *bp, struct bnxt_filter_info *nf)
+{
+	struct bnxt_filter_info *mf = NULL;
+	int i;
+
+	for (i = bp->nr_vnics - 1; i >= 0; i--) {
+		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+
+		STAILQ_FOREACH(mf, &vnic->filter, next) {
+			if (mf->filter_type == nf->filter_type &&
+			    mf->flags == nf->flags &&
+			    mf->src_port == nf->src_port &&
+			    mf->src_port_mask == nf->src_port_mask &&
+			    mf->dst_port == nf->dst_port &&
+			    mf->dst_port_mask == nf->dst_port_mask &&
+			    mf->ip_protocol == nf->ip_protocol &&
+			    mf->ip_addr_type == nf->ip_addr_type &&
+			    mf->ethertype == nf->ethertype &&
+			    mf->vni == nf->vni &&
+			    mf->tunnel_type == nf->tunnel_type &&
+			    mf->l2_ovlan == nf->l2_ovlan &&
+			    mf->l2_ovlan_mask == nf->l2_ovlan_mask &&
+			    mf->l2_ivlan == nf->l2_ivlan &&
+			    mf->l2_ivlan_mask == nf->l2_ivlan_mask &&
+			    !memcmp(mf->l2_addr, nf->l2_addr, ETHER_ADDR_LEN) &&
+			    !memcmp(mf->l2_addr_mask, nf->l2_addr_mask,
+				    ETHER_ADDR_LEN) &&
+			    !memcmp(mf->src_macaddr, nf->src_macaddr,
+				    ETHER_ADDR_LEN) &&
+			    !memcmp(mf->dst_macaddr, nf->dst_macaddr,
+				    ETHER_ADDR_LEN) &&
+			    !memcmp(mf->src_ipaddr, nf->src_ipaddr,
+				    sizeof(nf->src_ipaddr)) &&
+			    !memcmp(mf->src_ipaddr_mask, nf->src_ipaddr_mask,
+				    sizeof(nf->src_ipaddr_mask)) &&
+			    !memcmp(mf->dst_ipaddr, nf->dst_ipaddr,
+				    sizeof(nf->dst_ipaddr)) &&
+			    !memcmp(mf->dst_ipaddr_mask, nf->dst_ipaddr_mask,
+				    sizeof(nf->dst_ipaddr_mask)))
+				return mf;
+		}
+	}
+	return NULL;
+}
+
+static int
+bnxt_fdir_filter(struct rte_eth_dev *dev,
+		 enum rte_filter_op filter_op,
+		 void *arg)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct rte_eth_fdir_filter *fdir  = (struct rte_eth_fdir_filter *)arg;
+	struct bnxt_filter_info *filter, *match;
+	struct bnxt_vnic_info *vnic;
+	int ret = 0, i;
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL && filter_op != RTE_ETH_FILTER_FLUSH)
+		return -EINVAL;
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+	case RTE_ETH_FILTER_DELETE:
+		/* FALLTHROUGH */
+		filter = bnxt_get_unused_filter(bp);
+		if (filter == NULL) {
+			RTE_LOG(ERR, PMD,
+				"Not enough resources for a new flow.\n");
+			return -ENOMEM;
+		}
+
+		ret = bnxt_parse_fdir_filter(bp, fdir, filter);
+		if (ret != 0)
+			goto free_filter;
+
+		match = bnxt_match_fdir(bp, filter);
+		if (match != NULL && filter_op == RTE_ETH_FILTER_ADD) {
+			RTE_LOG(ERR, PMD, "Flow already exists.\n");
+			ret = -EEXIST;
+			goto free_filter;
+		}
+		if (match == NULL && filter_op == RTE_ETH_FILTER_DELETE) {
+			RTE_LOG(ERR, PMD, "Flow does not exist.\n");
+			ret = -ENOENT;
+			goto free_filter;
+		}
+
+		if (fdir->action.behavior == RTE_ETH_FDIR_REJECT)
+			vnic = STAILQ_FIRST(&bp->ff_pool[0]);
+		else
+			vnic =
+			STAILQ_FIRST(&bp->ff_pool[fdir->action.rx_queue]);
+
+		if (filter_op == RTE_ETH_FILTER_ADD) {
+			filter->filter_type = HWRM_CFA_NTUPLE_FILTER;
+			ret = bnxt_hwrm_set_ntuple_filter(bp,
+							  filter->dst_id,
+							  filter);
+			if (ret)
+				goto free_filter;
+			STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+		} else {
+			ret = bnxt_hwrm_clear_ntuple_filter(bp, match);
+			STAILQ_REMOVE(&vnic->filter, match,
+				      bnxt_filter_info, next);
+			bnxt_free_filter(bp, match);
+			filter->fw_l2_filter_id = -1;
+			bnxt_free_filter(bp, filter);
+		}
+		break;
+	case RTE_ETH_FILTER_FLUSH:
+		for (i = bp->nr_vnics - 1; i >= 0; i--) {
+			struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+
+			STAILQ_FOREACH(filter, &vnic->filter, next) {
+				if (filter->filter_type ==
+				    HWRM_CFA_NTUPLE_FILTER) {
+					ret =
+					bnxt_hwrm_clear_ntuple_filter(bp,
+								      filter);
+					STAILQ_REMOVE(&vnic->filter, filter,
+						      bnxt_filter_info, next);
+				}
+			}
+		}
+		return ret;
+	case RTE_ETH_FILTER_UPDATE:
+	case RTE_ETH_FILTER_STATS:
+	case RTE_ETH_FILTER_INFO:
+		/* FALLTHROUGH */
+		RTE_LOG(ERR, PMD, "operation %u not implemented", filter_op);
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "unknown operation %u", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+
+free_filter:
+	filter->fw_l2_filter_id = -1;
+	bnxt_free_filter(bp, filter);
+	return ret;
+}
+
 static int
 bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
 		    enum rte_filter_type filter_type,
@@ -2083,11 +2462,12 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
 	int ret = 0;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_FDIR:
 	case RTE_ETH_FILTER_TUNNEL:
-		/* FALLTHROUGH */
 		RTE_LOG(ERR, PMD,
 			"filter type: %d: To be implemented\n", filter_type);
+		break;
+	case RTE_ETH_FILTER_FDIR:
+		ret = bnxt_fdir_filter(dev, filter_op, arg);
 		break;
 	case RTE_ETH_FILTER_NTUPLE:
 		ret = bnxt_ntuple_filter(dev, filter_op, arg);
