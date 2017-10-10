@@ -360,7 +360,23 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	int rc = 0;
 	struct hwrm_cfa_l2_filter_alloc_input req = {.req_type = 0 };
 	struct hwrm_cfa_l2_filter_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	const struct rte_eth_vmdq_rx_conf *conf =
+		    &dev_conf->rx_adv_conf.vmdq_rx_conf;
 	uint32_t enables = 0;
+	uint16_t j = dst_id - 1;
+
+	//TODO: Is there a better way to add VLANs to each VNIC in case of VMDQ
+	if (conf->pool_map[j].pools & (1UL << j)) {
+		RTE_LOG(DEBUG, PMD,
+			"Add vlan %u to vmdq pool %u\n",
+			conf->pool_map[j].vlan_id, j);
+
+		filter->l2_ivlan = conf->pool_map[j].vlan_id;
+		filter->enables |=
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN |
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN_MASK;
+	}
 
 	if (filter->fw_l2_filter_id != UINT64_MAX)
 		bnxt_hwrm_clear_l2_filter(bp, filter);
@@ -385,8 +401,14 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN)
 		req.l2_ovlan = filter->l2_ovlan;
 	if (enables &
+	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN)
+		req.l2_ovlan = filter->l2_ivlan;
+	if (enables &
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN_MASK)
 		req.l2_ovlan_mask = filter->l2_ovlan_mask;
+	if (enables &
+	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN_MASK)
+		req.l2_ovlan_mask = filter->l2_ivlan_mask;
 	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_ID)
 		req.src_id = rte_cpu_to_le_32(filter->src_id);
 	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_TYPE)

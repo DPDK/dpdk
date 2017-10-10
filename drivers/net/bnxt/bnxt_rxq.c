@@ -184,7 +184,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 
 				filter->l2_ivlan = conf->pool_map[j].vlan_id;
 				filter->enables |=
-				HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN;
+				HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN;
 			}
 		}
 		/*
