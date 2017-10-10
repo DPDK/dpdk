@@ -138,6 +138,36 @@ enum tm_node_level {
 	TM_NODE_LEVEL_MAX,
 };
 
+/* TM Shaper Profile */
+struct tm_shaper_profile {
+	TAILQ_ENTRY(tm_shaper_profile) node;
+	uint32_t shaper_profile_id;
+	uint32_t n_users;
+	struct rte_tm_shaper_params params;
+};
+
+TAILQ_HEAD(tm_shaper_profile_list, tm_shaper_profile);
+
+/* TM Shared Shaper */
+struct tm_shared_shaper {
+	TAILQ_ENTRY(tm_shared_shaper) node;
+	uint32_t shared_shaper_id;
+	uint32_t n_users;
+	uint32_t shaper_profile_id;
+};
+
+TAILQ_HEAD(tm_shared_shaper_list, tm_shared_shaper);
+
+/* TM WRED Profile */
+struct tm_wred_profile {
+	TAILQ_ENTRY(tm_wred_profile) node;
+	uint32_t wred_profile_id;
+	uint32_t n_users;
+	struct rte_tm_wred_params params;
+};
+
+TAILQ_HEAD(tm_wred_profile_list, tm_wred_profile);
+
 /* TM Node */
 struct tm_node {
 	TAILQ_ENTRY(tm_node) node;
@@ -147,6 +177,8 @@ struct tm_node {
 	uint32_t weight;
 	uint32_t level;
 	struct tm_node *parent_node;
+	struct tm_shaper_profile *shaper_profile;
+	struct tm_wred_profile *wred_profile;
 	struct rte_tm_node_params params;
 	struct rte_tm_node_stats stats;
 	uint32_t n_children;
@@ -156,7 +188,15 @@ TAILQ_HEAD(tm_node_list, tm_node);
 
 /* TM Hierarchy Specification */
 struct tm_hierarchy {
+	struct tm_shaper_profile_list shaper_profiles;
+	struct tm_shared_shaper_list shared_shapers;
+	struct tm_wred_profile_list wred_profiles;
 	struct tm_node_list nodes;
+
+	uint32_t n_shaper_profiles;
+	uint32_t n_shared_shapers;
+	uint32_t n_wred_profiles;
+	uint32_t n_nodes;
 
 	uint32_t n_tm_nodes[TM_NODE_LEVEL_MAX];
 };
@@ -170,6 +210,7 @@ struct tm_internals {
 	 *      sense to keep the hierarchy frozen after the port is started.
 	 */
 	struct tm_hierarchy h;
+	int hierarchy_frozen;
 
 	/** Blueprints */
 	struct tm_params params;
