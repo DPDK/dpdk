@@ -42,8 +42,6 @@
 #include <sys/ioctl.h>
 #include <ifaddrs.h>
 
-#include <rte_malloc.h>
-
 /* This header declares the driver interface we implement */
 #include <fman.h>
 #include <of.h>
@@ -72,15 +70,18 @@ if_destructor(struct __fman_if *__if)
 {
 	struct fman_if_bpool *bp, *tmpbp;
 
+	if (!__if)
+		return;
+
 	if (__if->__if.mac_type == fman_offline)
 		goto cleanup;
 
 	list_for_each_entry_safe(bp, tmpbp, &__if->__if.bpool_list, node) {
 		list_del(&bp->node);
-		rte_free(bp);
+		free(bp);
 	}
 cleanup:
-	rte_free(__if);
+	free(__if);
 }
 
 static int
@@ -208,7 +209,7 @@ fman_if_init(const struct device_node *dpa_node)
 	mprop = "fsl,fman-mac";
 
 	/* Allocate an object for this network interface */
-	__if = rte_malloc(NULL, sizeof(*__if), RTE_CACHE_LINE_SIZE);
+	__if = malloc(sizeof(*__if));
 	if (!__if) {
 		FMAN_ERR(-ENOMEM, "malloc(%zu)\n", sizeof(*__if));
 		goto err;
@@ -464,7 +465,7 @@ fman_if_init(const struct device_node *dpa_node)
 		uint64_t bpool_host[6] = {0};
 		const char *pname;
 		/* Allocate an object for the pool */
-		bpool = rte_malloc(NULL, sizeof(*bpool), RTE_CACHE_LINE_SIZE);
+		bpool = malloc(sizeof(*bpool));
 		if (!bpool) {
 			FMAN_ERR(-ENOMEM, "malloc(%zu)\n", sizeof(*bpool));
 			goto err;
@@ -603,7 +604,7 @@ fman_finish(void)
 				-errno, strerror(errno));
 		printf("Tearing down %s\n", __if->node_path);
 		list_del(&__if->__if.node);
-		rte_free(__if);
+		free(__if);
 	}
 
 	close(fman_ccsr_map_fd);
