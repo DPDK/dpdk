@@ -347,6 +347,7 @@ struct rte_eth_rxmode rx_mode = {
 	.hw_vlan_extend = 0, /**< Extended VLAN disabled. */
 	.jumbo_frame    = 0, /**< Jumbo Frame Support disabled. */
 	.hw_strip_crc   = 1, /**< CRC stripping by hardware enabled. */
+	.hw_timestamp   = 0, /**< HW timestamp enabled. */
 };
 
 struct rte_fdir_conf fdir_conf = {

@@ -607,6 +607,14 @@ port_offload_cap_display(portid_t port_id)
 			printf("off\n");
 	}
 
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TIMESTAMP) {
+		printf("HW timestamp:                  ");
+		if (dev->data->dev_conf.rxmode.hw_timestamp)
+			printf("on\n");
+		else
+			printf("off\n");
+	}
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_QINQ_INSERT) {
 		printf("Double VLANs insert:           ");
 		if (ports[port_id].tx_ol_flags &

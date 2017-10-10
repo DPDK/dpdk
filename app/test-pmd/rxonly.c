@@ -158,6 +158,8 @@ pkt_burst_receive(struct fwd_stream *fs)
 				printf("hash=0x%x ID=0x%x ",
 				       mb->hash.fdir.hash, mb->hash.fdir.id);
 		}
+		if (ol_flags & PKT_RX_TIMESTAMP)
+			printf(" - timestamp %"PRIu64" ", mb->timestamp);
 		if (ol_flags & PKT_RX_VLAN_STRIPPED)
 			printf(" - VLAN tci=0x%x", mb->vlan_tci);
 		if (ol_flags & PKT_RX_QINQ_STRIPPED)
