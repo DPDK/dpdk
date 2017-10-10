@@ -362,6 +362,7 @@ The commandline options are:
        csum
        icmpecho
        ieee1588
+       tm
 
 *   ``--rss-ip``
 

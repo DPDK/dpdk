@@ -347,6 +347,13 @@ The available information categories are:
 
 * ``ieee1588``: Demonstrate L2 IEEE1588 V2 PTP timestamping for RX and TX. Requires ``CONFIG_RTE_LIBRTE_IEEE1588=y``.
 
+* ``tm``: Traffic Management forwarding mode
+  Demonstrates the use of ethdev traffic management APIs and softnic PMD for
+  QoS traffic management. In this mode, 5-level hierarchical QoS scheduler is
+  available as an default option that can be enabled through CLI. The user can
+  also modify the default hierarchy or specify the new hierarchy through CLI for
+  implementing QoS scheduler.  Requires ``CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y`` ``CONFIG_RTE_LIBRTE_SCHED=y``.
+
 Note: TX timestamping is only available in the "Full Featured" TX path. To force ``testpmd`` into this mode set ``--txqflags=0``.
 
 Example::
@@ -2007,6 +2014,260 @@ For example, to set the high bit in the register from the example above::
    testpmd> write regbit 0 0xEE00 31 1
    port 0 PCI register at offset 0xEE00: 0x8000000A (2147483658)
 
+
+Traffic Management
+------------------
+
+The following section shows functions for configuring traffic management on
+on the ethernet device through the use of generic TM API.
+
+show port traffic management capability
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show traffic management capability of the port::
+
+   testpmd> show port tm cap (port_id)
+
+show port traffic management capability (hierarchy level)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show traffic management hierarchy level capability of the port::
+
+   testpmd> show port tm cap (port_id) (level_id)
+
+show port traffic management capability (hierarchy node level)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show the traffic management hierarchy node capability of the port::
+
+   testpmd> show port tm cap (port_id) (node_id)
+
+show port traffic management hierarchy node type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show the port traffic management hierarchy node type::
+
+   testpmd> show port tm node type (port_id) (node_id)
+
+show port traffic management hierarchy node stats
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show the port traffic management hierarchy node statistics::
+
+   testpmd> show port tm node stats (port_id) (node_id) (clear)
+
+where:
+
+* ``clear``: When this parameter has a non-zero value, the statistics counters
+  are cleared (i.e. set to zero) immediately after they have been read,
+  otherwise the statistics counters are left untouched.
+
+Add port traffic management private shaper profile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add the port traffic management private shaper profile::
+
+   testpmd> add port tm node shaper profile (port_id) (shaper_profile_id) \
+   (tb_rate) (tb_size) (packet_length_adjust)
+
+where:
+
+* ``shaper_profile id``: Shaper profile ID for the new profile.
+* ``tb_rate``: Token bucket rate (bytes per second).
+* ``tb_size``: Token bucket size (bytes).
+* ``packet_length_adjust``: The value (bytes) to be added to the length of
+  each packet for the purpose of shaping. This parameter value can be used to
+  correct the packet length with the framing overhead bytes that are consumed
+  on the wire.
+
+Delete port traffic management private shaper profile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Delete the port traffic management private shaper::
+
+   testpmd> del port tm node shaper profile (port_id) (shaper_profile_id)
+
+where:
+
+* ``shaper_profile id``: Shaper profile ID that needs to be deleted.
+
+Add port traffic management shared shaper
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create the port traffic management shared shaper::
+
+   testpmd> add port tm node shared shaper (port_id) (shared_shaper_id) \
+   (shaper_profile_id)
+
+where:
+
+* ``shared_shaper_id``: Shared shaper ID to be created.
+* ``shaper_profile id``: Shaper profile ID for shared shaper.
+
+Set port traffic management shared shaper
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Update the port traffic management shared shaper::
+
+   testpmd> set port tm node shared shaper (port_id) (shared_shaper_id) \
+   (shaper_profile_id)
+
+where:
+
+* ``shared_shaper_id``: Shared shaper ID to be update.
+* ``shaper_profile id``: Shaper profile ID for shared shaper.
+
+Delete port traffic management shared shaper
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Delete the port traffic management shared shaper::
+
+   testpmd> del port tm node shared shaper (port_id) (shared_shaper_id)
+
+where:
+
+* ``shared_shaper_id``: Shared shaper ID to be deleted.
+
+Set port traffic management hiearchy node private shaper
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+set the port traffic management hierarchy node private shaper::
+
+   testpmd> set port tm node shaper profile (port_id) (node_id) \
+   (shaper_profile_id)
+
+where:
+
+* ``shaper_profile id``: Private shaper profile ID to be enabled on the
+  hierarchy node.
+
+Add port traffic management WRED profile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a new WRED profile::
+
+   testpmd> add port tm node wred profile (port_id) (wred_profile_id) \
+   (color_g) (min_th_g) (max_th_g) (maxp_inv_g) (wq_log2_g) \
+   (color_y) (min_th_y) (max_th_y) (maxp_inv_y) (wq_log2_y) \
+   (color_r) (min_th_r) (max_th_r) (maxp_inv_r) (wq_log2_r)
+
+where:
+
+* ``wred_profile id``: Identifier for the newly create WRED profile
+* ``color_g``: Packet color (green)
+* ``min_th_g``: Minimum queue threshold for packet with green color
+* ``max_th_g``: Minimum queue threshold for packet with green color
+* ``maxp_inv_g``: Inverse of packet marking probability maximum value (maxp)
+* ``wq_log2_g``: Negated log2 of queue weight (wq)
+* ``color_y``: Packet color (yellow)
+* ``min_th_y``: Minimum queue threshold for packet with yellow color
+* ``max_th_y``: Minimum queue threshold for packet with yellow color
+* ``maxp_inv_y``: Inverse of packet marking probability maximum value (maxp)
+* ``wq_log2_y``: Negated log2 of queue weight (wq)
+* ``color_r``: Packet color (red)
+* ``min_th_r``: Minimum queue threshold for packet with yellow color
+* ``max_th_r``: Minimum queue threshold for packet with yellow color
+* ``maxp_inv_r``: Inverse of packet marking probability maximum value (maxp)
+* ``wq_log2_r``: Negated log2 of queue weight (wq)
+
+Delete port traffic management WRED profile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Delete the WRED profile::
+
+   testpmd> del port tm node wred profile (port_id) (wred_profile_id)
+
+Add port traffic management hierarchy nonleaf node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add nonleaf node to port traffic management hiearchy::
+
+   testpmd> add port tm nonleaf node (port_id) (node_id) (parent_node_id) \
+   (priority) (weight) (level_id) (shaper_profile_id) \
+   (shared_shaper_id) (n_shared_shapers) (n_sp_priorities) (stats_mask) \
+
+where:
+
+* ``parent_node_id``: Node ID of the parent.
+* ``priority``: Node priority (highest node priority is zero). This is used by
+  the SP algorithm running on the parent node for scheduling this node.
+* ``weight``: Node weight (lowest weight is one). The node weight is relative
+  to the weight sum of all siblings that have the same priority. It is used by
+  the WFQ algorithm running on the parent node for scheduling this node.
+* ``level_id``: Hiearchy level of the node.
+* ``shaper_profile_id``: Shaper profile ID of the private shaper to be used by
+  the node.
+* ``shared_shaper_id``: Shared shaper id.
+* ``n_shared_shapers``: Number of shared shapers.
+* ``n_sp_priorities``: Number of strict priorities.
+* ``stats_mask``: Mask of statistics counter types to be enabled for this node.
+
+Add port traffic management hierarchy leaf node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add leaf node to port traffic management hiearchy::
+
+   testpmd> add port tm leaf node (port_id) (node_id) (parent_node_id) \
+   (priority) (weight) (level_id) (shaper_profile_id) \
+   (shared_shaper_id) (n_shared_shapers) (cman_mode) \
+   (wred_profile_id) (stats_mask) \
+
+where:
+
+* ``parent_node_id``: Node ID of the parent.
+* ``priority``: Node priority (highest node priority is zero). This is used by
+  the SP algorithm running on the parent node for scheduling this node.
+* ``weight``: Node weight (lowest weight is one). The node weight is relative
+  to the weight sum of all siblings that have the same priority. It is used by
+  the WFQ algorithm running on the parent node for scheduling this node.
+* ``level_id``: Hiearchy level of the node.
+* ``shaper_profile_id``: Shaper profile ID of the private shaper to be used by
+  the node.
+* ``shared_shaper_id``: Shared shaper id.
+* ``n_shared_shapers``: Number of shared shapers.
+* ``cman_mode``: Congestion management mode to be enabled for this node.
+* ``wred_profile_id``: WRED profile id to be enabled for this node.
+* ``stats_mask``: Mask of statistics counter types to be enabled for this node.
+
+Delete port traffic management hierarchy node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Delete node from port traffic management hiearchy::
+
+   testpmd> del port tm node (port_id) (node_id)
+
+Update port traffic management hierarchy parent node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Update port traffic management hierarchy parent node::
+
+   testpmd> set port tm node parent (port_id) (node_id) (parent_node_id) \
+   (priority) (weight)
+
+This function can only be called after the hierarchy commit invocation. Its
+success depends on the port support for this operation, as advertised through
+the port capability set. This function is valid for all nodes of the traffic
+management hierarchy except root node.
+
+Commit port traffic management hierarchy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Commit the traffic management hierarchy on the port::
+
+   testpmd> port tm hierarchy commit (port_id) (clean_on_fail)
+
+where:
+
+* ``clean_on_fail``: When set to non-zero, hierarchy is cleared on function
+  call failure. On the other hand, hierarchy is preserved when this parameter
+  is equal to zero.
+
+Set port traffic management default hierarchy (tm forwarding mode)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+set the traffic management default hierarchy on the port::
+
+   testpmd> set port tm hierarchy default (port_id)
 
 Filter Functions
 ----------------

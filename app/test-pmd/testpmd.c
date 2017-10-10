@@ -164,6 +164,10 @@ struct fwd_engine * fwd_engines[] = {
 	&tx_only_engine,
 	&csum_fwd_engine,
 	&icmp_echo_engine,
+#if defined RTE_LIBRTE_PMD_SOFTNIC && defined RTE_LIBRTE_SCHED
+	&softnic_tm_engine,
+	&softnic_tm_bypass_engine,
+#endif
 #ifdef RTE_LIBRTE_IEEE1588
 	&ieee1588_fwd_engine,
 #endif
@@ -2109,6 +2113,17 @@ init_port_config(void)
 		    (rte_eth_devices[pid].data->dev_flags &
 		     RTE_ETH_DEV_INTR_RMV))
 			port->dev_conf.intr_conf.rmv = 1;
+
+#if defined RTE_LIBRTE_PMD_SOFTNIC && defined RTE_LIBRTE_SCHED
+		/* Detect softnic port */
+		if (!strcmp(port->dev_info.driver_name, "net_softnic")) {
+			port->softnic_enable = 1;
+			memset(&port->softport, 0, sizeof(struct softnic_port));
+
+			if (!strcmp(cur_fwd_eng->fwd_mode_name, "tm"))
+				port->softport.tm_flag = 1;
+		}
+#endif
 	}
 }
 
