@@ -448,7 +448,7 @@ compatible board:
 
 1. **ARM 64 Tool Chain**
 
-   For example, the `*aarch64* Linaro Toolchain <https://releases.linaro.org/components/toolchain/binaries/4.9-2017.01/aarch64-linux-gnu>`_.
+   For example, the `*aarch64* Linaro Toolchain <https://releases.linaro.org/components/toolchain/binaries/6.4-2017.08/aarch64-linux-gnu/>`_.
 
 2. **Linux Kernel**
 
@@ -487,8 +487,8 @@ separately:
 
 Currently supported by DPDK:
 
-- NXP SDK **2.0+**.
-- MC Firmware version **10.0.0** and higher.
+- NXP SDK **17.08+**.
+- MC Firmware version **10.3.1** and higher.
 - Supported architectures:  **arm64 LE**.
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
@@ -496,7 +496,7 @@ Currently supported by DPDK:
 .. note::
 
    Some part of fslmc bus code (mc flib - object library) routines are
-   dual licensed (BSD & GPLv2).
+   dual licensed (BSD & GPLv2), however they are used as BSD in DPDK in userspace.
 
 Pre-Installation Configuration
 ------------------------------
