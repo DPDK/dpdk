@@ -566,7 +566,9 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 {
 	uint16x4_t ptype;
 	uint32x4_t pinfo, cv_flags;
-	uint32x4_t ol_flags = vdupq_n_u32(rxq->rss_hash * PKT_RX_RSS_HASH);
+	uint32x4_t ol_flags =
+		vdupq_n_u32(rxq->rss_hash * PKT_RX_RSS_HASH |
+			    rxq->hw_timestamp * PKT_RX_TIMESTAMP);
 	const uint32x4_t ptype_ol_mask = { 0x106, 0x106, 0x106, 0x106 };
 	const uint8x16_t cv_flag_sel = {
 		0,
@@ -973,6 +975,24 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* C.4 fill in mbuf - rearm_data and packet_type. */
 		rxq_cq_to_ptype_oflags_v(rxq, ptype_info, flow_tag,
 					 opcode, &elts[pos]);
+		if (rxq->hw_timestamp) {
+			elts[pos]->timestamp =
+				rte_be_to_cpu_64(
+					container_of(p0, struct mlx5_cqe,
+						     pkt_info)->timestamp);
+			elts[pos + 1]->timestamp =
+				rte_be_to_cpu_64(
+					container_of(p1, struct mlx5_cqe,
+						     pkt_info)->timestamp);
+			elts[pos + 2]->timestamp =
+				rte_be_to_cpu_64(
+					container_of(p2, struct mlx5_cqe,
+						     pkt_info)->timestamp);
+			elts[pos + 3]->timestamp =
+				rte_be_to_cpu_64(
+					container_of(p3, struct mlx5_cqe,
+						     pkt_info)->timestamp);
+		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Add up received bytes count. */
 		byte_cnt = vbic_u16(byte_cnt, invalid_mask);

@@ -608,7 +608,7 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 	attr.cq.mlx5 = (struct mlx5dv_cq_init_attr){
 		.comp_mask = 0,
 	};
-	if (priv->cqe_comp) {
+	if (priv->cqe_comp && !rxq_data->hw_timestamp) {
 		attr.cq.mlx5.comp_mask |=
 			MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
 		attr.cq.mlx5.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
@@ -618,6 +618,8 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 		 */
 		if (rxq_check_vec_support(rxq_data) < 0)
 			cqe_n *= 2;
+	} else if (priv->cqe_comp && rxq_data->hw_timestamp) {
+		DEBUG("Rx CQE compression is disabled for HW timestamp");
 	}
 	tmpl->cq = ibv_cq_ex_to_cq(mlx5dv_create_cq(priv->ctx, &attr.cq.ibv,
 						    &attr.cq.mlx5));
@@ -939,6 +941,8 @@ mlx5_priv_rxq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 	if (priv->hw_csum_l2tun)
 		tmpl->rxq.csum_l2tun =
 			!!dev->data->dev_conf.rxmode.hw_ip_checksum;
+	tmpl->rxq.hw_timestamp =
+			!!dev->data->dev_conf.rxmode.hw_timestamp;
 	/* Configure VLAN stripping. */
 	tmpl->rxq.vlan_strip = (priv->hw_vlan_strip &&
 			       !!dev->data->dev_conf.rxmode.hw_vlan_strip);

@@ -1887,6 +1887,11 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				pkt->vlan_tci =
 					rte_be_to_cpu_16(cqe->vlan_info);
 			}
+			if (rxq->hw_timestamp) {
+				pkt->timestamp =
+					rte_be_to_cpu_64(cqe->timestamp);
+				pkt->ol_flags |= PKT_RX_TIMESTAMP;
+			}
 			if (rxq->crc_present)
 				len -= ETHER_CRC_LEN;
 			PKT_LEN(pkt) = len;

@@ -545,7 +545,8 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 {
 	__m128i pinfo0, pinfo1;
 	__m128i pinfo, ptype;
-	__m128i ol_flags = _mm_set1_epi32(rxq->rss_hash * PKT_RX_RSS_HASH);
+	__m128i ol_flags = _mm_set1_epi32(rxq->rss_hash * PKT_RX_RSS_HASH |
+					  rxq->hw_timestamp * PKT_RX_TIMESTAMP);
 	__m128i cv_flags;
 	const __m128i zero = _mm_setzero_si128();
 	const __m128i ptype_mask =
@@ -938,6 +939,16 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		rxq->pending_err |= !!_mm_cvtsi128_si64(opcode);
 		/* D.5 fill in mbuf - rearm_data and packet_type. */
 		rxq_cq_to_ptype_oflags_v(rxq, cqes, opcode, &pkts[pos]);
+		if (rxq->hw_timestamp) {
+			pkts[pos]->timestamp =
+				rte_be_to_cpu_64(cq[pos].timestamp);
+			pkts[pos + 1]->timestamp =
+				rte_be_to_cpu_64(cq[pos + p1].timestamp);
+			pkts[pos + 2]->timestamp =
+				rte_be_to_cpu_64(cq[pos + p2].timestamp);
+			pkts[pos + 3]->timestamp =
+				rte_be_to_cpu_64(cq[pos + p3].timestamp);
+		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Add up received bytes count. */
 		byte_cnt = _mm_shuffle_epi8(op_own, len_shuf_mask);

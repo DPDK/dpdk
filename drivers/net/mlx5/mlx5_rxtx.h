@@ -106,6 +106,7 @@ struct rxq_zip {
 struct mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
+	unsigned int hw_timestamp:1; /* Enable HW timestamp. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	unsigned int crc_present:1; /* CRC must be subtracted. */
 	unsigned int sges_n:2; /* Log 2 of SGEs (max buffers per packet). */
@@ -114,7 +115,7 @@ struct mlx5_rxq_data {
 	unsigned int rss_hash:1; /* RSS hash result is enabled. */
 	unsigned int mark:1; /* Marked flow available on the queue. */
 	unsigned int pending_err:1; /* CQE error needs to be handled. */
-	unsigned int :15; /* Remaining bits. */
+	unsigned int :14; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
