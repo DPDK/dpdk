@@ -179,3 +179,503 @@ tm_stop(struct pmd_internals *p)
 	if (p->soft.tm.sched)
 		rte_sched_port_free(p->soft.tm.sched);
 }
+
+static struct tm_node *
+tm_node_search(struct rte_eth_dev *dev, uint32_t node_id)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct tm_node_list *nl = &p->soft.tm.h.nodes;
+	struct tm_node *n;
+
+	TAILQ_FOREACH(n, nl, node)
+		if (n->node_id == node_id)
+			return n;
+
+	return NULL;
+}
+
+static uint32_t
+tm_level_get_max_nodes(struct rte_eth_dev *dev, enum tm_node_level level)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	uint32_t n_queues_max = p->params.soft.tm.nb_queues;
+	uint32_t n_tc_max = n_queues_max / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS;
+	uint32_t n_pipes_max = n_tc_max / RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE;
+	uint32_t n_subports_max = n_pipes_max;
+	uint32_t n_root_max = 1;
+
+	switch (level) {
+	case TM_NODE_LEVEL_PORT:
+		return n_root_max;
+	case TM_NODE_LEVEL_SUBPORT:
+		return n_subports_max;
+	case TM_NODE_LEVEL_PIPE:
+		return n_pipes_max;
+	case TM_NODE_LEVEL_TC:
+		return n_tc_max;
+	case TM_NODE_LEVEL_QUEUE:
+	default:
+		return n_queues_max;
+	}
+}
+
+#ifdef RTE_SCHED_RED
+#define WRED_SUPPORTED						1
+#else
+#define WRED_SUPPORTED						0
+#endif
+
+#define STATS_MASK_DEFAULT					\
+	(RTE_TM_STATS_N_PKTS |					\
+	RTE_TM_STATS_N_BYTES |					\
+	RTE_TM_STATS_N_PKTS_GREEN_DROPPED |			\
+	RTE_TM_STATS_N_BYTES_GREEN_DROPPED)
+
+#define STATS_MASK_QUEUE						\
+	(STATS_MASK_DEFAULT |					\
+	RTE_TM_STATS_N_PKTS_QUEUED)
+
+static const struct rte_tm_capabilities tm_cap = {
+	.n_nodes_max = UINT32_MAX,
+	.n_levels_max = TM_NODE_LEVEL_MAX,
+
+	.non_leaf_nodes_identical = 0,
+	.leaf_nodes_identical = 1,
+
+	.shaper_n_max = UINT32_MAX,
+	.shaper_private_n_max = UINT32_MAX,
+	.shaper_private_dual_rate_n_max = 0,
+	.shaper_private_rate_min = 1,
+	.shaper_private_rate_max = UINT32_MAX,
+
+	.shaper_shared_n_max = UINT32_MAX,
+	.shaper_shared_n_nodes_per_shaper_max = UINT32_MAX,
+	.shaper_shared_n_shapers_per_node_max = 1,
+	.shaper_shared_dual_rate_n_max = 0,
+	.shaper_shared_rate_min = 1,
+	.shaper_shared_rate_max = UINT32_MAX,
+
+	.shaper_pkt_length_adjust_min = RTE_TM_ETH_FRAMING_OVERHEAD_FCS,
+	.shaper_pkt_length_adjust_max = RTE_TM_ETH_FRAMING_OVERHEAD_FCS,
+
+	.sched_n_children_max = UINT32_MAX,
+	.sched_sp_n_priorities_max = RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE,
+	.sched_wfq_n_children_per_group_max = UINT32_MAX,
+	.sched_wfq_n_groups_max = 1,
+	.sched_wfq_weight_max = UINT32_MAX,
+
+	.cman_head_drop_supported = 0,
+	.cman_wred_context_n_max = 0,
+	.cman_wred_context_private_n_max = 0,
+	.cman_wred_context_shared_n_max = 0,
+	.cman_wred_context_shared_n_nodes_per_context_max = 0,
+	.cman_wred_context_shared_n_contexts_per_node_max = 0,
+
+	.mark_vlan_dei_supported = {0, 0, 0},
+	.mark_ip_ecn_tcp_supported = {0, 0, 0},
+	.mark_ip_ecn_sctp_supported = {0, 0, 0},
+	.mark_ip_dscp_supported = {0, 0, 0},
+
+	.dynamic_update_mask = 0,
+
+	.stats_mask = STATS_MASK_QUEUE,
+};
+
+/* Traffic manager capabilities get */
+static int
+pmd_tm_capabilities_get(struct rte_eth_dev *dev __rte_unused,
+	struct rte_tm_capabilities *cap,
+	struct rte_tm_error *error)
+{
+	if (cap == NULL)
+		return -rte_tm_error_set(error,
+		   EINVAL,
+		   RTE_TM_ERROR_TYPE_CAPABILITIES,
+		   NULL,
+		   rte_strerror(EINVAL));
+
+	memcpy(cap, &tm_cap, sizeof(*cap));
+
+	cap->n_nodes_max = tm_level_get_max_nodes(dev, TM_NODE_LEVEL_PORT) +
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_SUBPORT) +
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_PIPE) +
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_TC) +
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_QUEUE);
+
+	cap->shaper_private_n_max =
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_PORT) +
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_SUBPORT) +
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_PIPE) +
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_TC);
+
+	cap->shaper_shared_n_max = RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE *
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_SUBPORT);
+
+	cap->shaper_n_max = cap->shaper_private_n_max +
+		cap->shaper_shared_n_max;
+
+	cap->shaper_shared_n_nodes_per_shaper_max =
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_PIPE);
+
+	cap->sched_n_children_max = RTE_MAX(
+		tm_level_get_max_nodes(dev, TM_NODE_LEVEL_PIPE),
+		(uint32_t)RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE);
+
+	cap->sched_wfq_n_children_per_group_max = cap->sched_n_children_max;
+
+	if (WRED_SUPPORTED)
+		cap->cman_wred_context_private_n_max =
+			tm_level_get_max_nodes(dev, TM_NODE_LEVEL_QUEUE);
+
+	cap->cman_wred_context_n_max = cap->cman_wred_context_private_n_max +
+		cap->cman_wred_context_shared_n_max;
+
+	return 0;
+}
+
+static const struct rte_tm_level_capabilities tm_level_cap[] = {
+	[TM_NODE_LEVEL_PORT] = {
+		.n_nodes_max = 1,
+		.n_nodes_nonleaf_max = 1,
+		.n_nodes_leaf_max = 0,
+		.non_leaf_nodes_identical = 1,
+		.leaf_nodes_identical = 0,
+
+		.nonleaf = {
+			.shaper_private_supported = 1,
+			.shaper_private_dual_rate_supported = 0,
+			.shaper_private_rate_min = 1,
+			.shaper_private_rate_max = UINT32_MAX,
+			.shaper_shared_n_max = 0,
+
+			.sched_n_children_max = UINT32_MAX,
+			.sched_sp_n_priorities_max = 1,
+			.sched_wfq_n_children_per_group_max = UINT32_MAX,
+			.sched_wfq_n_groups_max = 1,
+			.sched_wfq_weight_max = 1,
+
+			.stats_mask = STATS_MASK_DEFAULT,
+		},
+	},
+
+	[TM_NODE_LEVEL_SUBPORT] = {
+		.n_nodes_max = UINT32_MAX,
+		.n_nodes_nonleaf_max = UINT32_MAX,
+		.n_nodes_leaf_max = 0,
+		.non_leaf_nodes_identical = 1,
+		.leaf_nodes_identical = 0,
+
+		.nonleaf = {
+			.shaper_private_supported = 1,
+			.shaper_private_dual_rate_supported = 0,
+			.shaper_private_rate_min = 1,
+			.shaper_private_rate_max = UINT32_MAX,
+			.shaper_shared_n_max = 0,
+
+			.sched_n_children_max = UINT32_MAX,
+			.sched_sp_n_priorities_max = 1,
+			.sched_wfq_n_children_per_group_max = UINT32_MAX,
+			.sched_wfq_n_groups_max = 1,
+#ifdef RTE_SCHED_SUBPORT_TC_OV
+			.sched_wfq_weight_max = UINT32_MAX,
+#else
+			.sched_wfq_weight_max = 1,
+#endif
+			.stats_mask = STATS_MASK_DEFAULT,
+		},
+	},
+
+	[TM_NODE_LEVEL_PIPE] = {
+		.n_nodes_max = UINT32_MAX,
+		.n_nodes_nonleaf_max = UINT32_MAX,
+		.n_nodes_leaf_max = 0,
+		.non_leaf_nodes_identical = 1,
+		.leaf_nodes_identical = 0,
+
+		.nonleaf = {
+			.shaper_private_supported = 1,
+			.shaper_private_dual_rate_supported = 0,
+			.shaper_private_rate_min = 1,
+			.shaper_private_rate_max = UINT32_MAX,
+			.shaper_shared_n_max = 0,
+
+			.sched_n_children_max =
+				RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE,
+			.sched_sp_n_priorities_max =
+				RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE,
+			.sched_wfq_n_children_per_group_max = 1,
+			.sched_wfq_n_groups_max = 0,
+			.sched_wfq_weight_max = 1,
+
+			.stats_mask = STATS_MASK_DEFAULT,
+		},
+	},
+
+	[TM_NODE_LEVEL_TC] = {
+		.n_nodes_max = UINT32_MAX,
+		.n_nodes_nonleaf_max = UINT32_MAX,
+		.n_nodes_leaf_max = 0,
+		.non_leaf_nodes_identical = 1,
+		.leaf_nodes_identical = 0,
+
+		.nonleaf = {
+			.shaper_private_supported = 1,
+			.shaper_private_dual_rate_supported = 0,
+			.shaper_private_rate_min = 1,
+			.shaper_private_rate_max = UINT32_MAX,
+			.shaper_shared_n_max = 1,
+
+			.sched_n_children_max =
+				RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+			.sched_sp_n_priorities_max = 1,
+			.sched_wfq_n_children_per_group_max =
+				RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+			.sched_wfq_n_groups_max = 1,
+			.sched_wfq_weight_max = UINT32_MAX,
+
+			.stats_mask = STATS_MASK_DEFAULT,
+		},
+	},
+
+	[TM_NODE_LEVEL_QUEUE] = {
+		.n_nodes_max = UINT32_MAX,
+		.n_nodes_nonleaf_max = 0,
+		.n_nodes_leaf_max = UINT32_MAX,
+		.non_leaf_nodes_identical = 0,
+		.leaf_nodes_identical = 1,
+
+		.leaf = {
+			.shaper_private_supported = 0,
+			.shaper_private_dual_rate_supported = 0,
+			.shaper_private_rate_min = 0,
+			.shaper_private_rate_max = 0,
+			.shaper_shared_n_max = 0,
+
+			.cman_head_drop_supported = 0,
+			.cman_wred_context_private_supported = WRED_SUPPORTED,
+			.cman_wred_context_shared_n_max = 0,
+
+			.stats_mask = STATS_MASK_QUEUE,
+		},
+	},
+};
+
+/* Traffic manager level capabilities get */
+static int
+pmd_tm_level_capabilities_get(struct rte_eth_dev *dev __rte_unused,
+	uint32_t level_id,
+	struct rte_tm_level_capabilities *cap,
+	struct rte_tm_error *error)
+{
+	if (cap == NULL)
+		return -rte_tm_error_set(error,
+		   EINVAL,
+		   RTE_TM_ERROR_TYPE_CAPABILITIES,
+		   NULL,
+		   rte_strerror(EINVAL));
+
+	if (level_id >= TM_NODE_LEVEL_MAX)
+		return -rte_tm_error_set(error,
+		   EINVAL,
+		   RTE_TM_ERROR_TYPE_LEVEL_ID,
+		   NULL,
+		   rte_strerror(EINVAL));
+
+	memcpy(cap, &tm_level_cap[level_id], sizeof(*cap));
+
+	switch (level_id) {
+	case TM_NODE_LEVEL_PORT:
+		cap->nonleaf.sched_n_children_max =
+			tm_level_get_max_nodes(dev,
+				TM_NODE_LEVEL_SUBPORT);
+		cap->nonleaf.sched_wfq_n_children_per_group_max =
+			cap->nonleaf.sched_n_children_max;
+		break;
+
+	case TM_NODE_LEVEL_SUBPORT:
+		cap->n_nodes_max = tm_level_get_max_nodes(dev,
+			TM_NODE_LEVEL_SUBPORT);
+		cap->n_nodes_nonleaf_max = cap->n_nodes_max;
+		cap->nonleaf.sched_n_children_max =
+			tm_level_get_max_nodes(dev,
+				TM_NODE_LEVEL_PIPE);
+		cap->nonleaf.sched_wfq_n_children_per_group_max =
+			cap->nonleaf.sched_n_children_max;
+		break;
+
+	case TM_NODE_LEVEL_PIPE:
+		cap->n_nodes_max = tm_level_get_max_nodes(dev,
+			TM_NODE_LEVEL_PIPE);
+		cap->n_nodes_nonleaf_max = cap->n_nodes_max;
+		break;
+
+	case TM_NODE_LEVEL_TC:
+		cap->n_nodes_max = tm_level_get_max_nodes(dev,
+			TM_NODE_LEVEL_TC);
+		cap->n_nodes_nonleaf_max = cap->n_nodes_max;
+		break;
+
+	case TM_NODE_LEVEL_QUEUE:
+	default:
+		cap->n_nodes_max = tm_level_get_max_nodes(dev,
+			TM_NODE_LEVEL_QUEUE);
+		cap->n_nodes_leaf_max = cap->n_nodes_max;
+		break;
+	}
+
+	return 0;
+}
+
+static const struct rte_tm_node_capabilities tm_node_cap[] = {
+	[TM_NODE_LEVEL_PORT] = {
+		.shaper_private_supported = 1,
+		.shaper_private_dual_rate_supported = 0,
+		.shaper_private_rate_min = 1,
+		.shaper_private_rate_max = UINT32_MAX,
+		.shaper_shared_n_max = 0,
+
+		.nonleaf = {
+			.sched_n_children_max = UINT32_MAX,
+			.sched_sp_n_priorities_max = 1,
+			.sched_wfq_n_children_per_group_max = UINT32_MAX,
+			.sched_wfq_n_groups_max = 1,
+			.sched_wfq_weight_max = 1,
+		},
+
+		.stats_mask = STATS_MASK_DEFAULT,
+	},
+
+	[TM_NODE_LEVEL_SUBPORT] = {
+		.shaper_private_supported = 1,
+		.shaper_private_dual_rate_supported = 0,
+		.shaper_private_rate_min = 1,
+		.shaper_private_rate_max = UINT32_MAX,
+		.shaper_shared_n_max = 0,
+
+		.nonleaf = {
+			.sched_n_children_max = UINT32_MAX,
+			.sched_sp_n_priorities_max = 1,
+			.sched_wfq_n_children_per_group_max = UINT32_MAX,
+			.sched_wfq_n_groups_max = 1,
+			.sched_wfq_weight_max = UINT32_MAX,
+		},
+
+		.stats_mask = STATS_MASK_DEFAULT,
+	},
+
+	[TM_NODE_LEVEL_PIPE] = {
+		.shaper_private_supported = 1,
+		.shaper_private_dual_rate_supported = 0,
+		.shaper_private_rate_min = 1,
+		.shaper_private_rate_max = UINT32_MAX,
+		.shaper_shared_n_max = 0,
+
+		.nonleaf = {
+			.sched_n_children_max =
+				RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE,
+			.sched_sp_n_priorities_max =
+				RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE,
+			.sched_wfq_n_children_per_group_max = 1,
+			.sched_wfq_n_groups_max = 0,
+			.sched_wfq_weight_max = 1,
+		},
+
+		.stats_mask = STATS_MASK_DEFAULT,
+	},
+
+	[TM_NODE_LEVEL_TC] = {
+		.shaper_private_supported = 1,
+		.shaper_private_dual_rate_supported = 0,
+		.shaper_private_rate_min = 1,
+		.shaper_private_rate_max = UINT32_MAX,
+		.shaper_shared_n_max = 1,
+
+		.nonleaf = {
+			.sched_n_children_max =
+				RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+			.sched_sp_n_priorities_max = 1,
+			.sched_wfq_n_children_per_group_max =
+				RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+			.sched_wfq_n_groups_max = 1,
+			.sched_wfq_weight_max = UINT32_MAX,
+		},
+
+		.stats_mask = STATS_MASK_DEFAULT,
+	},
+
+	[TM_NODE_LEVEL_QUEUE] = {
+		.shaper_private_supported = 0,
+		.shaper_private_dual_rate_supported = 0,
+		.shaper_private_rate_min = 0,
+		.shaper_private_rate_max = 0,
+		.shaper_shared_n_max = 0,
+
+
+		.leaf = {
+			.cman_head_drop_supported = 0,
+			.cman_wred_context_private_supported = WRED_SUPPORTED,
+			.cman_wred_context_shared_n_max = 0,
+		},
+
+		.stats_mask = STATS_MASK_QUEUE,
+	},
+};
+
+/* Traffic manager node capabilities get */
+static int
+pmd_tm_node_capabilities_get(struct rte_eth_dev *dev __rte_unused,
+	uint32_t node_id,
+	struct rte_tm_node_capabilities *cap,
+	struct rte_tm_error *error)
+{
+	struct tm_node *tm_node;
+
+	if (cap == NULL)
+		return -rte_tm_error_set(error,
+		   EINVAL,
+		   RTE_TM_ERROR_TYPE_CAPABILITIES,
+		   NULL,
+		   rte_strerror(EINVAL));
+
+	tm_node = tm_node_search(dev, node_id);
+	if (tm_node == NULL)
+		return -rte_tm_error_set(error,
+		   EINVAL,
+		   RTE_TM_ERROR_TYPE_NODE_ID,
+		   NULL,
+		   rte_strerror(EINVAL));
+
+	memcpy(cap, &tm_node_cap[tm_node->level], sizeof(*cap));
+
+	switch (tm_node->level) {
+	case TM_NODE_LEVEL_PORT:
+		cap->nonleaf.sched_n_children_max =
+			tm_level_get_max_nodes(dev,
+				TM_NODE_LEVEL_SUBPORT);
+		cap->nonleaf.sched_wfq_n_children_per_group_max =
+			cap->nonleaf.sched_n_children_max;
+		break;
+
+	case TM_NODE_LEVEL_SUBPORT:
+		cap->nonleaf.sched_n_children_max =
+			tm_level_get_max_nodes(dev,
+				TM_NODE_LEVEL_PIPE);
+		cap->nonleaf.sched_wfq_n_children_per_group_max =
+			cap->nonleaf.sched_n_children_max;
+		break;
+
+	case TM_NODE_LEVEL_PIPE:
+	case TM_NODE_LEVEL_TC:
+	case TM_NODE_LEVEL_QUEUE:
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+const struct rte_tm_ops pmd_tm_ops = {
+	.capabilities_get = pmd_tm_capabilities_get,
+	.level_capabilities_get = pmd_tm_level_capabilities_get,
+	.node_capabilities_get = pmd_tm_node_capabilities_get,
+};

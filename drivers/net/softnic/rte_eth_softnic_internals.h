@@ -39,6 +39,7 @@
 #include <rte_mbuf.h>
 #include <rte_sched.h>
 #include <rte_ethdev.h>
+#include <rte_tm_driver.h>
 
 #include "rte_eth_softnic.h"
 
@@ -137,8 +138,26 @@ enum tm_node_level {
 	TM_NODE_LEVEL_MAX,
 };
 
+/* TM Node */
+struct tm_node {
+	TAILQ_ENTRY(tm_node) node;
+	uint32_t node_id;
+	uint32_t parent_node_id;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t level;
+	struct tm_node *parent_node;
+	struct rte_tm_node_params params;
+	struct rte_tm_node_stats stats;
+	uint32_t n_children;
+};
+
+TAILQ_HEAD(tm_node_list, tm_node);
+
 /* TM Hierarchy Specification */
 struct tm_hierarchy {
+	struct tm_node_list nodes;
+
 	uint32_t n_tm_nodes[TM_NODE_LEVEL_MAX];
 };
 
@@ -191,6 +210,11 @@ struct pmd_rx_queue {
 	} hard;
 };
 
+/**
+ * Traffic Management (TM) Operation
+ */
+extern const struct rte_tm_ops pmd_tm_ops;
+
 int
 tm_params_check(struct pmd_params *params, uint32_t hard_rate);
 
@@ -205,6 +229,14 @@ tm_start(struct pmd_internals *p);
 
 void
 tm_stop(struct pmd_internals *p);
+
+static inline int
+tm_enabled(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+
+	return (p->params.soft.flags & PMD_FEATURE_TM);
+}
 
 static inline int
 tm_used(struct rte_eth_dev *dev)

@@ -43,6 +43,7 @@
 #include <rte_errno.h>
 #include <rte_ring.h>
 #include <rte_sched.h>
+#include <rte_tm_driver.h>
 
 #include "rte_eth_softnic.h"
 #include "rte_eth_softnic_internals.h"
@@ -224,6 +225,15 @@ pmd_link_update(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static int
+pmd_tm_ops_get(struct rte_eth_dev *dev, void *arg)
+{
+	*(const struct rte_tm_ops **)arg =
+		(tm_enabled(dev)) ? &pmd_tm_ops : NULL;
+
+	return 0;
+}
+
 static const struct eth_dev_ops pmd_ops = {
 	.dev_configure = pmd_dev_configure,
 	.dev_start = pmd_dev_start,
@@ -233,7 +243,7 @@ static const struct eth_dev_ops pmd_ops = {
 	.dev_infos_get = pmd_dev_infos_get,
 	.rx_queue_setup = pmd_rx_queue_setup,
 	.tx_queue_setup = pmd_tx_queue_setup,
-	.tm_ops_get = NULL,
+	.tm_ops_get = pmd_tm_ops_get,
 };
 
 static uint16_t
