@@ -538,7 +538,7 @@ sw_xstats_get(const struct rte_eventdev *dev,
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);
 	const uint32_t reset = 0;
-	const uint32_t ret_n_lt_stats = 1;
+	const uint32_t ret_n_lt_stats = 0;
 	return sw_xstats_update(sw, mode, queue_port_id, ids, values, n,
 				reset, ret_n_lt_stats);
 }
