@@ -2305,17 +2305,39 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 void
 i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
 {
+	struct rte_eth_dev *dev;
 	uint16_t i;
+
+	dev = &rte_eth_devices[txq->port_id];
 
 	if (!txq || !txq->sw_ring) {
 		PMD_DRV_LOG(DEBUG, "Pointer to rxq or sw_ring is NULL");
 		return;
 	}
 
-	for (i = 0; i < txq->nb_tx_desc; i++) {
-		if (txq->sw_ring[i].mbuf) {
+	/**
+	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
+	 *  so need to free remains more carefully.
+	 */
+	if (dev->tx_pkt_burst == i40e_xmit_pkts_vec) {
+		i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
+		if (txq->tx_tail < i) {
+			for (; i < txq->nb_tx_desc; i++) {
+				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+				txq->sw_ring[i].mbuf = NULL;
+			}
+			i = 0;
+		}
+		for (; i < txq->tx_tail; i++) {
 			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
 			txq->sw_ring[i].mbuf = NULL;
+		}
+	} else {
+		for (i = 0; i < txq->nb_tx_desc; i++) {
+			if (txq->sw_ring[i].mbuf) {
+				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+				txq->sw_ring[i].mbuf = NULL;
+			}
 		}
 	}
 }
