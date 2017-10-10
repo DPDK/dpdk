@@ -894,6 +894,8 @@ rte_event_dev_close(uint8_t dev_id);
 /**< The event generated from cpu for pipelining.
  * Application may use *sub_event_type* to further classify the event
  */
+#define RTE_EVENT_TYPE_ETH_RX_ADAPTER   0x4
+/**< The event generated from event eth Rx adapter */
 #define RTE_EVENT_TYPE_MAX              0x10
 /**< Maximum number of event types */
 
