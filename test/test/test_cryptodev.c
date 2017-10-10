@@ -341,6 +341,28 @@ testsuite_setup(void)
 		}
 	}
 
+	/* Create a MRVL device if required */
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_MRVL_PMD))) {
+#ifndef RTE_LIBRTE_PMD_MRVL_CRYPTO
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO must be"
+			" enabled in config file to run this testsuite.\n");
+		return TEST_FAILED;
+#endif
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_MRVL_PMD)));
+		if (nb_devs < 1) {
+			ret = rte_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_MRVL_PMD),
+				NULL);
+
+			TEST_ASSERT(ret == 0, "Failed to create "
+				"instance of pmd : %s",
+				RTE_STR(CRYPTODEV_NAME_MRVL_PMD));
+		}
+	}
+
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
 	if (gbl_driver_id == rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD))) {
@@ -1913,6 +1935,101 @@ test_AES_chain_armv8_all(void)
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_ARMV8_PMD)),
 		BLKCIPHER_AES_CHAIN_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_chain_mrvl_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool,
+		ts_params->session_mpool,
+		ts_params->valid_devs[0],
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_MRVL_PMD)),
+		BLKCIPHER_AES_CHAIN_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_cipheronly_mrvl_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool,
+		ts_params->session_mpool,
+		ts_params->valid_devs[0],
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_MRVL_PMD)),
+		BLKCIPHER_AES_CIPHERONLY_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_authonly_mrvl_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool,
+		ts_params->session_mpool,
+		ts_params->valid_devs[0],
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_MRVL_PMD)),
+		BLKCIPHER_AUTHONLY_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_3DES_chain_mrvl_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool,
+		ts_params->session_mpool,
+		ts_params->valid_devs[0],
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_MRVL_PMD)),
+		BLKCIPHER_3DES_CHAIN_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_3DES_cipheronly_mrvl_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool,
+		ts_params->session_mpool,
+		ts_params->valid_devs[0],
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_MRVL_PMD)),
+		BLKCIPHER_3DES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -9417,6 +9534,40 @@ static struct unit_test_suite cryptodev_armv8_testsuite  = {
 	}
 };
 
+static struct unit_test_suite cryptodev_mrvl_testsuite  = {
+	.suite_name = "Crypto Device Marvell Component Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown, test_multi_session),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_multi_session_random_usage),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_chain_mrvl_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_cipheronly_mrvl_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_authonly_mrvl_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_3DES_chain_mrvl_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_3DES_cipheronly_mrvl_all),
+
+		/** Negative tests */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			authentication_verify_HMAC_SHA1_fail_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			authentication_verify_HMAC_SHA1_fail_tag_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			auth_decryption_AES128CBC_HMAC_SHA1_fail_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt),
+
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
+
 static int
 test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 {
@@ -9561,6 +9712,22 @@ test_cryptodev_armv8(void)
 	return unit_test_suite_runner(&cryptodev_armv8_testsuite);
 }
 
+static int
+test_cryptodev_mrvl(void)
+{
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_MRVL_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "MRVL PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
+
+	return unit_test_suite_runner(&cryptodev_mrvl_testsuite);
+}
+
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
 
 static int
@@ -9630,5 +9797,6 @@ REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_autotest, test_cryptodev_sw_snow3g);
 REGISTER_TEST_COMMAND(cryptodev_sw_kasumi_autotest, test_cryptodev_sw_kasumi);
 REGISTER_TEST_COMMAND(cryptodev_sw_zuc_autotest, test_cryptodev_sw_zuc);
 REGISTER_TEST_COMMAND(cryptodev_sw_armv8_autotest, test_cryptodev_armv8);
+REGISTER_TEST_COMMAND(cryptodev_sw_mrvl_autotest, test_cryptodev_mrvl);
 REGISTER_TEST_COMMAND(cryptodev_dpaa2_sec_autotest, test_cryptodev_dpaa2_sec);
 REGISTER_TEST_COMMAND(cryptodev_dpaa_sec_autotest, test_cryptodev_dpaa_sec);

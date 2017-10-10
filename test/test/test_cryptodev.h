@@ -88,6 +88,7 @@
 #define CRYPTODEV_NAME_ARMV8_PMD	crypto_armv8
 #define CRYPTODEV_NAME_DPAA2_SEC_PMD	crypto_dpaa2_sec
 #define CRYPTODEV_NAME_SCHEDULER_PMD	crypto_scheduler
+#define CRYPTODEV_NAME_MRVL_PMD		crypto_mrvl
 
 /**
  * Write (spread) data from buffer to mbuf data
