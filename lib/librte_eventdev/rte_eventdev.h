@@ -1019,6 +1019,45 @@ struct rte_event {
 	};
 };
 
+/* Ethdev Rx adapter capability bitmap flags */
+#define RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT	0x1
+/**< This flag is sent when the packet transfer mechanism is in HW.
+ * Ethdev can send packets to the event device using internal event port.
+ */
+#define RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ	0x2
+/**< Adapter supports multiple event queues per ethdev. Every ethdev
+ * Rx queue can be connected to a unique event queue.
+ */
+#define RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID	0x4
+/**< The application can override the adapter generated flow ID in the
+ * event. This flow ID can be specified when adding an ethdev Rx queue
+ * to the adapter using the ev member of struct rte_event_eth_rx_adapter
+ * @see struct rte_event_eth_rx_adapter_queue_conf::ev
+ * @see struct rte_event_eth_rx_adapter_queue_conf::rx_queue_flags
+ */
+
+/**
+ * Retrieve the event device's ethdev Rx adapter capabilities for the
+ * specified ethernet port
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @param eth_port_id
+ *   The identifier of the ethernet device.
+ *
+ * @param[out] caps
+ *   A pointer to memory filled with Rx event adapter capabilities.
+ *
+ * @return
+ *   - 0: Success, driver provides Rx event adapter capabilities for the
+ *	ethernet device.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+int
+rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint8_t eth_port_id,
+				uint32_t *caps);
 
 struct rte_eventdev_driver;
 struct rte_eventdev_ops;

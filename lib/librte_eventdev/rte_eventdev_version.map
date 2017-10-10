@@ -54,4 +54,6 @@ DPDK_17.11 {
 	rte_event_port_attr_get;
 	rte_event_queue_attr_get;
 
+	rte_event_eth_rx_adapter_caps_get;
+
 } DPDK_17.08;

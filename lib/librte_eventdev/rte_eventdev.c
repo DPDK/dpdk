@@ -56,6 +56,7 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_errno.h>
+#include <rte_ethdev.h>
 
 #include "rte_eventdev.h"
 #include "rte_eventdev_pmd.h"
@@ -126,6 +127,28 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 
 	dev_info->dev = dev->dev;
 	return 0;
+}
+
+int
+rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint8_t eth_port_id,
+				uint32_t *caps)
+{
+	struct rte_eventdev *dev;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_port_id, -EINVAL);
+
+	dev = &rte_eventdevs[dev_id];
+
+	if (caps == NULL)
+		return -EINVAL;
+	*caps = 0;
+
+	return dev->dev_ops->eth_rx_adapter_caps_get ?
+				(*dev->dev_ops->eth_rx_adapter_caps_get)(dev,
+						&rte_eth_devices[eth_port_id],
+						caps)
+				: 0;
 }
 
 static inline int

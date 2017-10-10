@@ -86,6 +86,8 @@ extern "C" {
 #define RTE_EVENTDEV_DETACHED  (0)
 #define RTE_EVENTDEV_ATTACHED  (1)
 
+struct rte_eth_dev;
+
 /** Global structure used for maintaining state of allocated event devices */
 struct rte_eventdev_global {
 	uint8_t nb_devs;	/**< Number of devices found */
@@ -429,6 +431,30 @@ typedef int (*eventdev_xstats_get_names_t)(const struct rte_eventdev *dev,
 typedef uint64_t (*eventdev_xstats_get_by_name)(const struct rte_eventdev *dev,
 		const char *name, unsigned int *id);
 
+
+/**
+ * Retrieve the event device's ethdev Rx adapter capabilities for the
+ * specified ethernet port
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param[out] caps
+ *   A pointer to memory filled with Rx event adapter capabilities.
+ *
+ * @return
+ *   - 0: Success, driver provides Rx event adapter capabilities for the
+ *	ethernet device.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+typedef int (*eventdev_eth_rx_adapter_caps_get_t)
+					(const struct rte_eventdev *dev,
+					const struct rte_eth_dev *eth_dev,
+					uint32_t *caps);
 /** Event device operations function pointer table */
 struct rte_eventdev_ops {
 	eventdev_info_get_t dev_infos_get;	/**< Get device info. */
@@ -468,6 +494,9 @@ struct rte_eventdev_ops {
 	/**< Get one value by name. */
 	eventdev_xstats_reset_t xstats_reset;
 	/**< Reset the statistics values in xstats. */
+
+	eventdev_eth_rx_adapter_caps_get_t eth_rx_adapter_caps_get;
+	/**< Get ethernet Rx adapter capabilities */
 };
 
 /**
