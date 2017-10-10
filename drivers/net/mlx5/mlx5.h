@@ -117,6 +117,7 @@ struct priv {
 	unsigned int isolated:1; /* Whether isolated mode is enabled. */
 	unsigned int tx_vec_en:1; /* Whether Tx vector is enabled. */
 	unsigned int rx_vec_en:1; /* Whether Rx vector is enabled. */
+	unsigned int counter_set_supported:1; /* Counter set is supported. */
 	/* Whether Tx offloads for tunneled packets are supported. */
 	unsigned int max_tso_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int txq_inline; /* Maximum packet size for inlining. */
@@ -276,6 +277,9 @@ int mlx5_flow_destroy(struct rte_eth_dev *, struct rte_flow *,
 		      struct rte_flow_error *);
 void priv_flow_flush(struct priv *, struct mlx5_flows *);
 int mlx5_flow_flush(struct rte_eth_dev *, struct rte_flow_error *);
+int mlx5_flow_query(struct rte_eth_dev *, struct rte_flow *,
+		    enum rte_flow_action_type, void *,
+		    struct rte_flow_error *);
 int mlx5_flow_isolate(struct rte_eth_dev *, int, struct rte_flow_error *);
 int priv_flow_start(struct priv *, struct mlx5_flows *);
 void priv_flow_stop(struct priv *, struct mlx5_flows *);

@@ -548,6 +548,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	int idx;
 	int i;
 	struct mlx5dv_context attrs_out;
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+	struct ibv_counter_set_description cs_desc;
+#endif
 
 	(void)pci_drv;
 	assert(pci_drv == &mlx5_driver);
@@ -667,6 +670,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_device_attr_ex device_attr_ex;
 		struct ether_addr mac;
 		uint16_t num_vfs = 0;
+		struct ibv_device_attr_ex device_attr;
 		struct mlx5_args args = {
 			.cqe_comp = MLX5_ARG_UNSET,
 			.txq_inline = MLX5_ARG_UNSET,
@@ -721,6 +725,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			goto port_error;
 		}
 
+		ibv_query_device_ex(ctx, NULL, &device_attr);
 		/* Check port status. */
 		err = ibv_query_port(ctx, port, &port_attr);
 		if (err) {
@@ -798,6 +803,13 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("L2 tunnel checksum offloads are %ssupported",
 		      (priv->hw_csum_l2tun ? "" : "not "));
 
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+		priv->counter_set_supported = !!(device_attr.max_counter_sets);
+		ibv_describe_counter_set(ctx, 0, &cs_desc);
+		DEBUG("counter type = %d, num of cs = %ld, attributes = %d",
+		      cs_desc.counter_type, cs_desc.num_of_cs,
+		      cs_desc.attributes);
+#endif
 		priv->ind_table_max_size =
 			device_attr_ex.rss_caps.max_rwq_indirection_table_size;
 		/* Remove this check once DPDK supports larger/variable

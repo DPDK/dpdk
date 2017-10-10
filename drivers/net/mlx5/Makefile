@@ -144,6 +144,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		/usr/include/linux/ethtool.h \
 		enum ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT \
 		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT \
+		infiniband/verbs.h \
+		enum IBV_FLOW_SPEC_ACTION_COUNT \
+		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.
 

@@ -59,6 +59,25 @@
 #define MLX5_IPV4 4
 #define MLX5_IPV6 6
 
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+struct ibv_counter_set_init_attr {
+	int dummy;
+};
+struct ibv_flow_spec_counter_action {
+	int dummy;
+};
+struct ibv_counter_set {
+	int dummy;
+};
+
+static inline int
+ibv_destroy_counter_set(struct ibv_counter_set *cs)
+{
+	(void)cs;
+	return -ENOTSUP;
+}
+#endif
+
 /* Dev ops structure defined in mlx5.c */
 extern const struct eth_dev_ops mlx5_dev_ops;
 extern const struct eth_dev_ops mlx5_dev_ops_isolate;
@@ -106,6 +125,9 @@ mlx5_flow_create_copy(struct mlx5_flow_parse *parser, void *src,
 
 static int
 mlx5_flow_create_flag_mark(struct mlx5_flow_parse *parser, uint32_t mark_id);
+
+static int
+mlx5_flow_create_count(struct priv *priv, struct mlx5_flow_parse *parser);
 
 /* Hash RX queue types. */
 enum hash_rxq_type {
@@ -190,6 +212,12 @@ const struct hash_rxq_init hash_rxq_init[] = {
 /* Number of entries in hash_rxq_init[]. */
 const unsigned int hash_rxq_init_n = RTE_DIM(hash_rxq_init);
 
+/** Structure for holding counter stats. */
+struct mlx5_flow_counter_stats {
+	uint64_t hits; /**< Number of packets matched by the rule. */
+	uint64_t bytes; /**< Number of bytes matched by the rule. */
+};
+
 /** Structure for Drop queue. */
 struct mlx5_hrxq_drop {
 	struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
@@ -220,6 +248,8 @@ struct rte_flow {
 	uint16_t (*queues)[]; /**< Queues indexes to use. */
 	struct rte_eth_rss_conf rss_conf; /**< RSS configuration */
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
+	struct ibv_counter_set *cs; /**< Holds the counters for the rule. */
+	struct mlx5_flow_counter_stats counter_stats;/**<The counter stats. */
 	union {
 		struct mlx5_flow frxq[RTE_DIM(hash_rxq_init)];
 		/**< Flow with Rx queue. */
@@ -275,6 +305,9 @@ static const enum rte_flow_action_type valid_actions[] = {
 	RTE_FLOW_ACTION_TYPE_QUEUE,
 	RTE_FLOW_ACTION_TYPE_MARK,
 	RTE_FLOW_ACTION_TYPE_FLAG,
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+	RTE_FLOW_ACTION_TYPE_COUNT,
+#endif
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -403,12 +436,14 @@ struct mlx5_flow_parse {
 	/**< Whether resources should remain after a validate. */
 	uint32_t drop:1; /**< Target is a drop queue. */
 	uint32_t mark:1; /**< Mark is present in the flow. */
+	uint32_t count:1; /**< Count is present in the flow. */
 	uint32_t mark_id; /**< Mark identifier. */
 	uint16_t queues[RTE_MAX_QUEUES_PER_PORT]; /**< Queues indexes to use. */
 	uint16_t queues_n; /**< Number of entries in queue[]. */
 	struct rte_eth_rss_conf rss_conf; /**< RSS configuration */
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
 	enum hash_rxq_type layer; /**< Last pattern layer detected. */
+	struct ibv_counter_set *cs; /**< Holds the counter set for the rule */
 	union {
 		struct {
 			struct ibv_flow_attr *ibv_attr;
@@ -430,7 +465,11 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.create = mlx5_flow_create,
 	.destroy = mlx5_flow_destroy,
 	.flush = mlx5_flow_flush,
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+	.query = mlx5_flow_query,
+#else
 	.query = NULL,
+#endif
 	.isolate = mlx5_flow_isolate,
 };
 
@@ -740,6 +779,9 @@ priv_flow_convert_actions(struct priv *priv,
 			parser->mark_id = mark->id;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_FLAG) {
 			parser->mark = 1;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_COUNT &&
+			   priv->counter_set_supported) {
+			parser->count = 1;
 		} else {
 			goto exit_action_not_supported;
 		}
@@ -836,6 +878,16 @@ priv_flow_convert_items_validate(struct priv *priv,
 		for (i = 0; i != hash_rxq_init_n; ++i)
 			parser->queue[i].offset +=
 				sizeof(struct ibv_flow_spec_action_tag);
+	}
+	if (parser->count) {
+		unsigned int size = sizeof(struct ibv_flow_spec_counter_action);
+
+		if (parser->drop) {
+			parser->drop_q.offset += size;
+		} else {
+			for (i = 0; i != hash_rxq_init_n; ++i)
+				parser->queue[i].offset += size;
+		}
 	}
 	return 0;
 exit_item_not_supported:
@@ -1111,6 +1163,11 @@ priv_flow_convert(struct priv *priv,
 	}
 	if (parser->mark)
 		mlx5_flow_create_flag_mark(parser, parser->mark_id);
+	if (parser->count && parser->create) {
+		mlx5_flow_create_count(priv, parser);
+		if (!parser->cs)
+			goto exit_count_error;
+	}
 	/*
 	 * Last step. Complete missing specification to reach the RSS
 	 * configuration.
@@ -1142,6 +1199,10 @@ exit_enomem:
 	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			   NULL, "cannot allocate verbs spec attributes.");
 	return ret;
+exit_count_error:
+	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL, "cannot create counter.");
+	return rte_errno;
 }
 
 /**
@@ -1539,6 +1600,40 @@ mlx5_flow_create_flag_mark(struct mlx5_flow_parse *parser, uint32_t mark_id)
 }
 
 /**
+ * Convert count action to Verbs specification.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param parser
+ *   Pointer to MLX5 flow parser structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+mlx5_flow_create_count(struct priv *priv __rte_unused,
+		       struct mlx5_flow_parse *parser __rte_unused)
+{
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+	unsigned int size = sizeof(struct ibv_flow_spec_counter_action);
+	struct ibv_counter_set_init_attr init_attr = {0};
+	struct ibv_flow_spec_counter_action counter = {
+		.type = IBV_FLOW_SPEC_ACTION_COUNT,
+		.size = size,
+		.counter_set_handle = 0,
+	};
+
+	init_attr.counter_set_id = 0;
+	parser->cs = ibv_create_counter_set(priv->ctx, &init_attr);
+	if (!parser->cs)
+		return EINVAL;
+	counter.counter_set_handle = parser->cs->handle;
+	mlx5_flow_create_copy(parser, &counter, size);
+#endif
+	return 0;
+}
+
+/**
  * Complete flow rule creation with a drop queue.
  *
  * @param priv
@@ -1580,6 +1675,8 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	parser->drop_q.ibv_attr = NULL;
 	flow->drxq.ibv_flow = ibv_create_flow(priv->flow_drop_queue->qp,
 					      flow->drxq.ibv_attr);
+	if (parser->count)
+		flow->cs = parser->cs;
 	if (!flow->drxq.ibv_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "flow rule creation failure");
@@ -1596,6 +1693,11 @@ error:
 	if (flow->drxq.ibv_attr) {
 		rte_free(flow->drxq.ibv_attr);
 		flow->drxq.ibv_attr = NULL;
+	}
+	if (flow->cs) {
+		claim_zero(ibv_destroy_counter_set(flow->cs));
+		flow->cs = NULL;
+		parser->cs = NULL;
 	}
 	return err;
 }
@@ -1687,6 +1789,8 @@ priv_flow_create_action_queue(struct priv *priv,
 	err = priv_flow_create_action_queue_rss(priv, parser, flow, error);
 	if (err)
 		goto error;
+	if (parser->count)
+		flow->cs = parser->cs;
 	if (!priv->dev->data->dev_started)
 		return 0;
 	for (i = 0; i != hash_rxq_init_n; ++i) {
@@ -1726,6 +1830,11 @@ error:
 			mlx5_priv_hrxq_release(priv, flow->frxq[i].hrxq);
 		if (flow->frxq[i].ibv_attr)
 			rte_free(flow->frxq[i].ibv_attr);
+	}
+	if (flow->cs) {
+		claim_zero(ibv_destroy_counter_set(flow->cs));
+		flow->cs = NULL;
+		parser->cs = NULL;
 	}
 	return err;
 }
@@ -1870,6 +1979,10 @@ priv_flow_destroy(struct priv *priv,
 {
 	unsigned int i;
 
+	if (flow->cs) {
+		claim_zero(ibv_destroy_counter_set(flow->cs));
+		flow->cs = NULL;
+	}
 	if (flow->drop || !flow->mark)
 		goto free;
 	for (i = 0; i != flow->queues_n; ++i) {
@@ -2339,6 +2452,86 @@ mlx5_flow_flush(struct rte_eth_dev *dev,
 	priv_unlock(priv);
 	return 0;
 }
+
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+/**
+ * Query flow counter.
+ *
+ * @param cs
+ *   the counter set.
+ * @param counter_value
+ *   returned data from the counter.
+ *
+ * @return
+ *   0 on success, a errno value otherwise and rte_errno is set.
+ */
+static int
+priv_flow_query_count(struct ibv_counter_set *cs,
+		      struct mlx5_flow_counter_stats *counter_stats,
+		      struct rte_flow_query_count *query_count,
+		      struct rte_flow_error *error)
+{
+	uint64_t counters[2];
+	struct ibv_query_counter_set_attr query_cs_attr = {
+		.cs = cs,
+		.query_flags = IBV_COUNTER_SET_FORCE_UPDATE,
+	};
+	struct ibv_counter_set_data query_out = {
+		.out = counters,
+		.outlen = 2 * sizeof(uint64_t),
+	};
+	int res = ibv_query_counter_set(&query_cs_attr, &query_out);
+
+	if (res) {
+		rte_flow_error_set(error, -res,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "cannot read counter");
+		return -res;
+	}
+	query_count->hits_set = 1;
+	query_count->bytes_set = 1;
+	query_count->hits = counters[0] - counter_stats->hits;
+	query_count->bytes = counters[1] - counter_stats->bytes;
+	if (query_count->reset) {
+		counter_stats->hits = counters[0];
+		counter_stats->bytes = counters[1];
+	}
+	return 0;
+}
+
+/**
+ * Query a flows.
+ *
+ * @see rte_flow_query()
+ * @see rte_flow_ops
+ */
+int
+mlx5_flow_query(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
+		enum rte_flow_action_type action __rte_unused,
+		void *data,
+		struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+	int res = EINVAL;
+
+	priv_lock(priv);
+	if (flow->cs) {
+		res = priv_flow_query_count(flow->cs,
+					&flow->counter_stats,
+					(struct rte_flow_query_count *)data,
+					error);
+	} else {
+		rte_flow_error_set(error, res,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "no counter found for flow");
+	}
+	priv_unlock(priv);
+	return -res;
+}
+#endif
 
 /**
  * Isolated mode.
