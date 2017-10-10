@@ -828,12 +828,20 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		}
 		filter->dst_id = vnic->fw_vnic_id;
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic);
+		if (filter1 == NULL) {
+			rc = -ENOSPC;
+			goto ret;
+		}
 		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
 		RTE_LOG(DEBUG, PMD, "VNIC found\n");
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
 		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
+		if (filter1 == NULL) {
+			rc = -ENOSPC;
+			goto ret;
+		}
 		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
 		if (filter->filter_type == HWRM_CFA_EM_FILTER)
 			filter->flags =
@@ -845,6 +853,10 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
+		if (filter1 == NULL) {
+			rc = -ENOSPC;
+			goto ret;
+		}
 		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
 		filter->flags = HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_METER;
 		break;
@@ -892,6 +904,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 	ret = bnxt_validate_and_parse_flow(dev, pattern, actions, attr,
 					   error, filter);
 	/* No need to hold on to this filter if we are just validating flow */
+	filter->fw_l2_filter_id = -1;
 	bnxt_free_filter(bp, filter);
 
 	return ret;
@@ -961,6 +974,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		return flow;
 	}
 free_filter:
+	filter->fw_l2_filter_id = -1;
 	bnxt_free_filter(bp, filter);
 free_flow:
 	RTE_LOG(ERR, PMD, "Failed to create flow.\n");
