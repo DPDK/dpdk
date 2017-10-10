@@ -455,6 +455,139 @@ typedef int (*eventdev_eth_rx_adapter_caps_get_t)
 					(const struct rte_eventdev *dev,
 					const struct rte_eth_dev *eth_dev,
 					uint32_t *caps);
+
+struct rte_event_eth_rx_adapter_queue_conf *queue_conf;
+
+/**
+ * Add ethernet Rx queues to event device. This callback is invoked if
+ * the caps returned from rte_eventdev_eth_rx_adapter_caps_get(, eth_port_id)
+ * has RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT set.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param rx_queue_id
+ *   Ethernet device receive queue index
+ *
+ * @param queue_conf
+ *  Additonal configuration structure
+
+ * @return
+ *   - 0: Success, ethernet receive queue added successfully.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+typedef int (*eventdev_eth_rx_adapter_queue_add_t)(
+		const struct rte_eventdev *dev,
+		const struct rte_eth_dev *eth_dev,
+		int32_t rx_queue_id,
+		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
+
+/**
+ * Delete ethernet Rx queues from event device. This callback is invoked if
+ * the caps returned from eventdev_eth_rx_adapter_caps_get(, eth_port_id)
+ * has RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT set.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param rx_queue_id
+ *   Ethernet device receive queue index
+ *
+ * @return
+ *   - 0: Success, ethernet receive queue deleted successfully.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+typedef int (*eventdev_eth_rx_adapter_queue_del_t)
+					(const struct rte_eventdev *dev,
+					const struct rte_eth_dev *eth_dev,
+					int32_t rx_queue_id);
+
+/**
+ * Start ethernet Rx adapter. This callback is invoked if
+ * the caps returned from eventdev_eth_rx_adapter_caps_get(.., eth_port_id)
+ * has RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT set and Rx queues
+ * from eth_port_id have been added to the event device.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @return
+ *   - 0: Success, ethernet Rx adapter started successfully.
+ *   - <0: Error code returned by the driver function.
+ */
+typedef int (*eventdev_eth_rx_adapter_start_t)
+					(const struct rte_eventdev *dev,
+					const struct rte_eth_dev *eth_dev);
+
+/**
+ * Stop ethernet Rx adapter. This callback is invoked if
+ * the caps returned from eventdev_eth_rx_adapter_caps_get(..,eth_port_id)
+ * has RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT set and Rx queues
+ * from eth_port_id have been added to the event device.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @return
+ *   - 0: Success, ethernet Rx adapter stopped successfully.
+ *   - <0: Error code returned by the driver function.
+ */
+typedef int (*eventdev_eth_rx_adapter_stop_t)
+					(const struct rte_eventdev *dev,
+					const struct rte_eth_dev *eth_dev);
+
+struct rte_event_eth_rx_adapter_stats *stats;
+
+/**
+ * Retrieve ethernet Rx adapter statistics.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param[out] stats
+ *   Pointer to stats structure
+ *
+ * @return
+ *   Return 0 on success.
+ */
+
+typedef int (*eventdev_eth_rx_adapter_stats_get)
+			(const struct rte_eventdev *dev,
+			const struct rte_eth_dev *eth_dev,
+			struct rte_event_eth_rx_adapter_stats *stats);
+/**
+ * Reset ethernet Rx adapter statistics.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @return
+ *   Return 0 on success.
+ */
+typedef int (*eventdev_eth_rx_adapter_stats_reset)
+			(const struct rte_eventdev *dev,
+			const struct rte_eth_dev *eth_dev);
+
 /** Event device operations function pointer table */
 struct rte_eventdev_ops {
 	eventdev_info_get_t dev_infos_get;	/**< Get device info. */
@@ -497,6 +630,18 @@ struct rte_eventdev_ops {
 
 	eventdev_eth_rx_adapter_caps_get_t eth_rx_adapter_caps_get;
 	/**< Get ethernet Rx adapter capabilities */
+	eventdev_eth_rx_adapter_queue_add_t eth_rx_adapter_queue_add;
+	/**< Add Rx queues to ethernet Rx adapter */
+	eventdev_eth_rx_adapter_queue_del_t eth_rx_adapter_queue_del;
+	/**< Delete Rx queues from ethernet Rx adapter */
+	eventdev_eth_rx_adapter_start_t eth_rx_adapter_start;
+	/**< Start ethernet Rx adapter */
+	eventdev_eth_rx_adapter_stop_t eth_rx_adapter_stop;
+	/**< Stop ethernet Rx adapter */
+	eventdev_eth_rx_adapter_stats_get eth_rx_adapter_stats_get;
+	/**< Get ethernet Rx stats */
+	eventdev_eth_rx_adapter_stats_reset eth_rx_adapter_stats_reset;
+	/**< Reset ethernet Rx stats */
 };
 
 /**
