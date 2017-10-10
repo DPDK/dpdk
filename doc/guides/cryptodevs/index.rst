@@ -43,6 +43,7 @@ Crypto Device Drivers
     dpaa_sec
     kasumi
     openssl
+    mrvl
     null
     scheduler
     snow3g
