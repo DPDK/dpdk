@@ -437,13 +437,6 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 #endif
 
 	/*
-	 * Not to overflow elts array. Decompress next time after mbuf
-	 * replenishment.
-	 */
-	if (unlikely(mcqe_n + MLX5_VPMD_DESCS_PER_LOOP >
-		     (uint16_t)(rxq->rq_ci - rxq->cq_ci)))
-		return;
-	/*
 	 * A. load mCQEs into a 128bit register.
 	 * B. store rearm data to mbuf.
 	 * C. combine data from mCQEs with rx_descriptor_fields1.
@@ -764,10 +757,8 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	}
 	elts_idx = rxq->rq_pi & q_mask;
 	elts = &(*rxq->elts)[elts_idx];
-	pkts_n = RTE_MIN(pkts_n - rcvd_pkt,
-			 (uint16_t)(rxq->rq_ci - rxq->cq_ci));
-	/* Not to overflow pkts/elts array. */
-	pkts_n = RTE_ALIGN_FLOOR(pkts_n, MLX5_VPMD_DESCS_PER_LOOP);
+	/* Not to overflow pkts array. */
+	pkts_n = RTE_ALIGN_FLOOR(pkts_n - rcvd_pkt, MLX5_VPMD_DESCS_PER_LOOP);
 	/* Not to cross queue end. */
 	pkts_n = RTE_MIN(pkts_n, q_n - elts_idx);
 	if (!pkts_n)
