@@ -369,6 +369,7 @@ struct rte_eth_rxmode {
 		hw_strip_crc     : 1, /**< Enable CRC stripping by hardware. */
 		enable_scatter   : 1, /**< Enable scatter packets rx handler */
 		enable_lro       : 1, /**< Enable LRO */
+		hw_timestamp     : 1, /**< Enable HW timestamp */
 		/**
 		 * When set the offload bitfield should be ignored.
 		 * Instead per-port Rx offloads should be set on offloads
@@ -961,6 +962,7 @@ struct rte_eth_conf {
 #define DEV_RX_OFFLOAD_JUMBO_FRAME	0x00000800
 #define DEV_RX_OFFLOAD_CRC_STRIP	0x00001000
 #define DEV_RX_OFFLOAD_SCATTER		0x00002000
+#define DEV_RX_OFFLOAD_TIMESTAMP	0x00004000
 #define DEV_RX_OFFLOAD_CHECKSUM (DEV_RX_OFFLOAD_IPV4_CKSUM | \
 				 DEV_RX_OFFLOAD_UDP_CKSUM | \
 				 DEV_RX_OFFLOAD_TCP_CKSUM)

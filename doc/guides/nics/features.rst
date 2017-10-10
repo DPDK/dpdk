@@ -574,6 +574,17 @@ Supports L4 checksum offload.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_UDP_CKSUM,DEV_RX_OFFLOAD_TCP_CKSUM``,
   ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_UDP_CKSUM,DEV_TX_OFFLOAD_TCP_CKSUM,DEV_TX_OFFLOAD_SCTP_CKSUM``.
 
+.. _nic_features_hw_timestamp:
+
+Timestamp offload
+-----------------
+
+Supports Timestamp.
+
+* **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_TIMESTAMP``.
+* **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_TIMESTAMP``.
+* **[provides] mbuf**: ``mbuf.timestamp``.
+* **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa: DEV_RX_OFFLOAD_TIMESTAMP``.
 
 .. _nic_features_macsec_offload:
 

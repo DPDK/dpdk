@@ -715,6 +715,8 @@ rte_eth_convert_rx_offload_bitfield(const struct rte_eth_rxmode *rxmode,
 		offloads |= DEV_RX_OFFLOAD_SCATTER;
 	if (rxmode->enable_lro == 1)
 		offloads |= DEV_RX_OFFLOAD_TCP_LRO;
+	if (rxmode->hw_timestamp == 1)
+		offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
 
 	*rx_offloads = offloads;
 }
@@ -763,6 +765,10 @@ rte_eth_convert_rx_offloads(const uint64_t rx_offloads,
 		rxmode->enable_lro = 1;
 	else
 		rxmode->enable_lro = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP)
+		rxmode->hw_timestamp = 1;
+	else
+		rxmode->hw_timestamp = 0;
 }
 
 int
