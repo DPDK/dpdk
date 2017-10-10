@@ -109,7 +109,10 @@ typedef struct VhostUserLog {
 } VhostUserLog;
 
 typedef struct VhostUserMsg {
-	VhostUserRequest request;
+	union {
+		VhostUserRequest master;
+		VhostUserSlaveRequest slave;
+	} request;
 
 #define VHOST_USER_VERSION_MASK     0x3
 #define VHOST_USER_REPLY_MASK       (0x1 << 2)

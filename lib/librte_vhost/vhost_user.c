@@ -1142,7 +1142,7 @@ vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev, VhostUserMsg *msg)
 {
 	uint16_t vring_idx;
 
-	switch (msg->request) {
+	switch (msg->request.master) {
 	case VHOST_USER_SET_VRING_KICK:
 	case VHOST_USER_SET_VRING_CALL:
 	case VHOST_USER_SET_VRING_ERR:
@@ -1194,7 +1194,7 @@ vhost_user_msg_handler(int vid, int fd)
 	}
 
 	ret = read_vhost_message(fd, &msg);
-	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {
+	if (ret <= 0 || msg.request.master >= VHOST_USER_MAX) {
 		if (ret < 0)
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"vhost read message failed\n");
@@ -1209,12 +1209,12 @@ vhost_user_msg_handler(int vid, int fd)
 	}
 
 	ret = 0;
-	if (msg.request != VHOST_USER_IOTLB_MSG)
+	if (msg.request.master != VHOST_USER_IOTLB_MSG)
 		RTE_LOG(INFO, VHOST_CONFIG, "read message %s\n",
-			vhost_message_str[msg.request]);
+			vhost_message_str[msg.request.master]);
 	else
 		RTE_LOG(DEBUG, VHOST_CONFIG, "read message %s\n",
-			vhost_message_str[msg.request]);
+			vhost_message_str[msg.request.master]);
 
 	ret = vhost_user_check_and_alloc_queue_pair(dev, &msg);
 	if (ret < 0) {
@@ -1223,7 +1223,7 @@ vhost_user_msg_handler(int vid, int fd)
 		return -1;
 	}
 
-	switch (msg.request) {
+	switch (msg.request.master) {
 	case VHOST_USER_GET_FEATURES:
 		msg.payload.u64 = vhost_user_get_features(dev);
 		msg.size = sizeof(msg.payload.u64);
@@ -1353,7 +1353,7 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 {
 	int ret;
 	struct VhostUserMsg msg = {
-		.request = (enum VhostUserRequest)VHOST_USER_SLAVE_IOTLB_MSG,
+		.request.slave = VHOST_USER_SLAVE_IOTLB_MSG,
 		.flags = VHOST_USER_VERSION,
 		.size = sizeof(msg.payload.iotlb),
 		.payload.iotlb = {
