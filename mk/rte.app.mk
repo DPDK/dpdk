@@ -68,7 +68,6 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag
 _LDLIBS-$(CONFIG_RTE_LIBRTE_GRO)            += -lrte_gro
 _LDLIBS-$(CONFIG_RTE_LIBRTE_GSO)            += -lrte_gso
 _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lrte_meter
-_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
 _LDLIBS-$(CONFIG_RTE_LIBRTE_LPM)            += -lrte_lpm
 # librte_acl needs --whole-archive because of weak functions
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ACL)            += --whole-archive
@@ -101,6 +100,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_RING)           += -lrte_ring
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lrte_eal
 _LDLIBS-$(CONFIG_RTE_LIBRTE_CMDLINE)        += -lrte_cmdline
 _LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
+_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
 
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KNI)            += -lrte_kni
@@ -143,6 +143,9 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_NULL)       += -lrte_pmd_null
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lrte_pmd_pcap -lpcap
 _LDLIBS-$(CONFIG_RTE_LIBRTE_QEDE_PMD)       += -lrte_pmd_qede
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_RING)       += -lrte_pmd_ring
+ifeq ($(CONFIG_RTE_LIBRTE_SCHED),y)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC)      += -lrte_pmd_softnic
+endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD)    += -lrte_pmd_sfc_efx
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2)   += -lrte_pmd_szedata2 -lsze2
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_TAP)        += -lrte_pmd_tap

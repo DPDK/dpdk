@@ -59,6 +59,11 @@ New Features
   "Network Interface Controller Drivers" document for more details on this new
   driver.
 
+* **Added SoftNIC PMD.**
+
+  Added new SoftNIC PMD. This virtual device offers applications a software
+  fallback support for traffic management.
+
 * **nfp: Added PF support.**
 
   Previously Netronome's NFP PMD had just support for VFs. PF support is
@@ -288,6 +293,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_pmd_i40e.so.2
      librte_pmd_ixgbe.so.2
      librte_pmd_ring.so.2
+   + librte_pmd_softnic.so.1
      librte_pmd_vhost.so.2
      librte_port.so.3
      librte_power.so.1

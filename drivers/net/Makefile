@@ -109,6 +109,11 @@ DIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += kni
 endif
 DEPDIRS-kni = $(core-libs) librte_kni
 
+ifeq ($(CONFIG_RTE_LIBRTE_SCHED),y)
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += softnic
+endif # $(CONFIG_RTE_LIBRTE_SCHED)
+DEPDIRS-softnic = $(core-libs) librte_sched
+
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST),y)
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_VHOST) += vhost
 endif # $(CONFIG_RTE_LIBRTE_VHOST)

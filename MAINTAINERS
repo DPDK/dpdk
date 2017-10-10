@@ -538,6 +538,11 @@ M: Gaetan Rivet <gaetan.rivet@6wind.com>
 F: drivers/net/failsafe/
 F: doc/guides/nics/fail_safe.rst
 
+Softnic PMD
+M: Jasvinder Singh <jasvinder.singh@intel.com>
+M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
+F: drivers/net/softnic/
+
 
 Crypto Drivers
 --------------

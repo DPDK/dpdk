@@ -51,6 +51,7 @@ The public API headers are grouped by topics:
   [PCI]                (@ref rte_pci.h)
 
 - **device specific**:
+  [softnic]            (@ref rte_eth_softnic.h),
   [bond]               (@ref rte_eth_bond.h),
   [vhost]              (@ref rte_vhost.h),
   [KNI]                (@ref rte_kni.h),
