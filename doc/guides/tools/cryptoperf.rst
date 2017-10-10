@@ -194,6 +194,7 @@ The following are the appication command-line options:
            crypto_dpaa2_sec
            crypto_armv8
            crypto_scheduler
+           crypto_mrvl
 
 * ``--optype <name>``
 

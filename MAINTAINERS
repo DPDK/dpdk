@@ -576,6 +576,16 @@ F: drivers/crypto/qat/
 F: doc/guides/cryptodevs/qat.rst
 F: doc/guides/cryptodevs/features/qat.ini
 
+Marvell Mrvl
+M: Jacek Siuda <jck@semihalf.com>
+M: Tomasz Duszynski <tdu@semihalf.com>
+M: Dmitri Epshtein <dima@marvell.com>
+M: Natalie Samsonov <nsamsono@marvell.com>
+M: Jianbo Liu <jianbo.liu@arm.org>
+F: drivers/crypto/mrvl/
+F: doc/guides/cryptodevs/mrvl.rst
+F: doc/guides/cryptodevs/features/mrvl.ini
+
 NXP DPAA_SEC
 M: Akhil Goyal <akhil.goyal@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>

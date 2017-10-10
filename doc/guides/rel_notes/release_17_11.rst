@@ -116,6 +116,11 @@ New Features
   added. See the "Crypto Device Drivers" document for more details on this
   driver.
 
+* **Added MRVL crypto PMD.**
+
+  A new crypto PMD has been added, which provides several ciphering and hashing
+  algorithms. All cryptography operations use the MUSDK library crypto API.
+
 * **Add new benchmarking mode to dpdk-test-crypto-perf application.**
 
   Added new "PMD cyclecount" benchmark mode to dpdk-test-crypto-perf application

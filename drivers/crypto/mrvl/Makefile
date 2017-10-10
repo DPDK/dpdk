@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright (C) Semihalf 2017. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -13,7 +12,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Intel Corporation nor the names of its
+#     * Neither the name of Semihalf nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -31,33 +30,34 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-core-libs := librte_eal librte_mbuf librte_mempool librte_ring librte_cryptodev
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),config)
+ifeq ($(LIBMUSDK_PATH),)
+$(error "Please define LIBMUSDK_PATH environment variable")
+endif
+endif
+endif
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += aesni_gcm
-DEPDIRS-aesni_gcm = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
-DEPDIRS-aesni_mb = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += armv8
-DEPDIRS-armv8 = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += openssl
-DEPDIRS-openssl = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
-DEPDIRS-qat = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler
-DEPDIRS-scheduler = $(core-libs) librte_kvargs librte_reorder
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += snow3g
-DEPDIRS-snow3g = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += kasumi
-DEPDIRS-kasumi = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += zuc
-DEPDIRS-zuc = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO) += mrvl
-DEPDIRS-mrvl = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += null
-DEPDIRS-null = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += dpaa2_sec
-DEPDIRS-dpaa2_sec = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA_SEC) += dpaa_sec
-DEPDIRS-dpaa_sec = $(core-libs)
+# library name
+LIB = librte_pmd_mrvl_crypto.a
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -I$(LIBMUSDK_PATH)/include
+CFLAGS += -DMVCONF_ARCH_DMA_ADDR_T_64BIT
+
+# library version
+LIBABIVER := 1
+
+# versioning export map
+EXPORT_MAP := rte_mrvl_pmd_version.map
+
+# external library dependencies
+LDLIBS += -L$(LIBMUSDK_PATH)/lib -lmusdk
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO) += rte_mrvl_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO) += rte_mrvl_pmd_ops.c
+
+include $(RTE_SDK)/mk/rte.lib.mk

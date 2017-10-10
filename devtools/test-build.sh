@@ -47,6 +47,7 @@ default_path=$PATH
 # - DPDK_DEP_ZLIB (y/[n])
 # - DPDK_MAKE_JOBS (int)
 # - DPDK_NOTIFY (notify-send)
+# - LIBMUSDK_PATH
 # - LIBSSO_SNOW3G_PATH
 # - LIBSSO_KASUMI_PATH
 # - LIBSSO_ZUC_PATH
@@ -129,6 +130,7 @@ reset_env ()
 	unset DPDK_DEP_ZLIB
 	unset AESNI_MULTI_BUFFER_LIB_PATH
 	unset ARMV8_CRYPTO_LIB_PATH
+	unset LIBMUSDK_PATH
 	unset LIBSSO_SNOW3G_PATH
 	unset LIBSSO_KASUMI_PATH
 	unset LIBSSO_ZUC_PATH
@@ -193,6 +195,8 @@ config () # <directory> <target> <options>
 		test "$DPDK_DEP_SSL" != y || \
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config
+		test -z "$LIBMUSDK_PATH" || \
+		sed -ri    's,(PMD_MRVL_CRYPTO=)n,\1y,' $1/.config
 		build_config_hook $1 $2 $3
 
 		# Explicit enabler/disabler (uppercase)
