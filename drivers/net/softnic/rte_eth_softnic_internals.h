@@ -37,9 +37,18 @@
 #include <stdint.h>
 
 #include <rte_mbuf.h>
+#include <rte_sched.h>
 #include <rte_ethdev.h>
 
 #include "rte_eth_softnic.h"
+
+/**
+ * PMD Parameters
+ */
+
+enum pmd_feature {
+	PMD_FEATURE_TM = 1, /**< Traffic Management (TM) */
+};
 
 #ifndef INTRUSIVE
 #define INTRUSIVE					0
@@ -57,6 +66,16 @@ struct pmd_params {
 		 *      (potentially faster).
 		 */
 		int intrusive;
+
+		/** Traffic Management (TM) */
+		struct {
+			uint32_t rate; /**< Rate (bytes/second) */
+			uint32_t nb_queues; /**< Number of queues */
+			uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+			/**< Queue size per traffic class */
+			uint32_t enq_bsz; /**< Enqueue burst size */
+			uint32_t deq_bsz; /**< Dequeue burst size */
+		} tm;
 	} soft;
 
 	/** Parameters for the hard device (existing) */
@@ -86,6 +105,66 @@ struct default_internals {
 };
 
 /**
+ * Traffic Management (TM) Internals
+ */
+
+#ifndef TM_MAX_SUBPORTS
+#define TM_MAX_SUBPORTS					8
+#endif
+
+#ifndef TM_MAX_PIPES_PER_SUBPORT
+#define TM_MAX_PIPES_PER_SUBPORT			4096
+#endif
+
+struct tm_params {
+	struct rte_sched_port_params port_params;
+
+	struct rte_sched_subport_params subport_params[TM_MAX_SUBPORTS];
+
+	struct rte_sched_pipe_params
+		pipe_profiles[RTE_SCHED_PIPE_PROFILES_PER_PORT];
+	uint32_t n_pipe_profiles;
+	uint32_t pipe_to_profile[TM_MAX_SUBPORTS * TM_MAX_PIPES_PER_SUBPORT];
+};
+
+/* TM Levels */
+enum tm_node_level {
+	TM_NODE_LEVEL_PORT = 0,
+	TM_NODE_LEVEL_SUBPORT,
+	TM_NODE_LEVEL_PIPE,
+	TM_NODE_LEVEL_TC,
+	TM_NODE_LEVEL_QUEUE,
+	TM_NODE_LEVEL_MAX,
+};
+
+/* TM Hierarchy Specification */
+struct tm_hierarchy {
+	uint32_t n_tm_nodes[TM_NODE_LEVEL_MAX];
+};
+
+struct tm_internals {
+	/** Hierarchy specification
+	 *
+	 *     -Hierarchy is unfrozen at init and when port is stopped.
+	 *     -Hierarchy is frozen on successful hierarchy commit.
+	 *     -Run-time hierarchy changes are not allowed, therefore it makes
+	 *      sense to keep the hierarchy frozen after the port is started.
+	 */
+	struct tm_hierarchy h;
+
+	/** Blueprints */
+	struct tm_params params;
+
+	/** Run-time */
+	struct rte_sched_port *sched;
+	struct rte_mbuf **pkts_enq;
+	struct rte_mbuf **pkts_deq;
+	uint32_t pkts_enq_len;
+	uint32_t txq_pos;
+	uint32_t flush_count;
+};
+
+/**
  * PMD Internals
  */
 struct pmd_internals {
@@ -95,6 +174,7 @@ struct pmd_internals {
 	/** Soft device */
 	struct {
 		struct default_internals def; /**< Default */
+		struct tm_internals tm; /**< Traffic Management */
 	} soft;
 
 	/** Hard device */
@@ -110,5 +190,29 @@ struct pmd_rx_queue {
 		uint16_t rx_queue_id;
 	} hard;
 };
+
+int
+tm_params_check(struct pmd_params *params, uint32_t hard_rate);
+
+int
+tm_init(struct pmd_internals *p, struct pmd_params *params, int numa_node);
+
+void
+tm_free(struct pmd_internals *p);
+
+int
+tm_start(struct pmd_internals *p);
+
+void
+tm_stop(struct pmd_internals *p);
+
+static inline int
+tm_used(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+
+	return (p->params.soft.flags & PMD_FEATURE_TM) &&
+		p->soft.tm.h.n_tm_nodes[TM_NODE_LEVEL_PORT];
+}
 
 #endif /* __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__ */

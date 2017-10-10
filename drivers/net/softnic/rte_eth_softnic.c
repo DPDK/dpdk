@@ -42,6 +42,7 @@
 #include <rte_kvargs.h>
 #include <rte_errno.h>
 #include <rte_ring.h>
+#include <rte_sched.h>
 
 #include "rte_eth_softnic.h"
 #include "rte_eth_softnic_internals.h"
@@ -49,10 +50,29 @@
 #define DEV_HARD(p)					\
 	(&rte_eth_devices[p->hard.port_id])
 
+#define PMD_PARAM_SOFT_TM					"soft_tm"
+#define PMD_PARAM_SOFT_TM_RATE				"soft_tm_rate"
+#define PMD_PARAM_SOFT_TM_NB_QUEUES			"soft_tm_nb_queues"
+#define PMD_PARAM_SOFT_TM_QSIZE0			"soft_tm_qsize0"
+#define PMD_PARAM_SOFT_TM_QSIZE1			"soft_tm_qsize1"
+#define PMD_PARAM_SOFT_TM_QSIZE2			"soft_tm_qsize2"
+#define PMD_PARAM_SOFT_TM_QSIZE3			"soft_tm_qsize3"
+#define PMD_PARAM_SOFT_TM_ENQ_BSZ			"soft_tm_enq_bsz"
+#define PMD_PARAM_SOFT_TM_DEQ_BSZ			"soft_tm_deq_bsz"
+
 #define PMD_PARAM_HARD_NAME					"hard_name"
 #define PMD_PARAM_HARD_TX_QUEUE_ID			"hard_tx_queue_id"
 
 static const char *pmd_valid_args[] = {
+	PMD_PARAM_SOFT_TM,
+	PMD_PARAM_SOFT_TM_RATE,
+	PMD_PARAM_SOFT_TM_NB_QUEUES,
+	PMD_PARAM_SOFT_TM_QSIZE0,
+	PMD_PARAM_SOFT_TM_QSIZE1,
+	PMD_PARAM_SOFT_TM_QSIZE2,
+	PMD_PARAM_SOFT_TM_QSIZE3,
+	PMD_PARAM_SOFT_TM_ENQ_BSZ,
+	PMD_PARAM_SOFT_TM_DEQ_BSZ,
 	PMD_PARAM_HARD_NAME,
 	PMD_PARAM_HARD_TX_QUEUE_ID,
 	NULL
@@ -157,6 +177,13 @@ pmd_dev_start(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *p = dev->data->dev_private;
 
+	if (tm_used(dev)) {
+		int status = tm_start(p);
+
+		if (status)
+			return status;
+	}
+
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	if (p->params.soft.intrusive) {
@@ -172,7 +199,12 @@ pmd_dev_start(struct rte_eth_dev *dev)
 static void
 pmd_dev_stop(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *p = dev->data->dev_private;
+
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+
+	if (tm_used(dev))
+		tm_stop(p);
 }
 
 static void
@@ -293,6 +325,77 @@ run_default(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static __rte_always_inline int
+run_tm(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+
+	/* Persistent context: Read Only (update not required) */
+	struct rte_sched_port *sched = p->soft.tm.sched;
+	struct rte_mbuf **pkts_enq = p->soft.tm.pkts_enq;
+	struct rte_mbuf **pkts_deq = p->soft.tm.pkts_deq;
+	uint32_t enq_bsz = p->params.soft.tm.enq_bsz;
+	uint32_t deq_bsz = p->params.soft.tm.deq_bsz;
+	uint16_t nb_tx_queues = dev->data->nb_tx_queues;
+
+	/* Persistent context: Read - Write (update required) */
+	uint32_t txq_pos = p->soft.tm.txq_pos;
+	uint32_t pkts_enq_len = p->soft.tm.pkts_enq_len;
+	uint32_t flush_count = p->soft.tm.flush_count;
+
+	/* Not part of the persistent context */
+	uint32_t pkts_deq_len, pos;
+	uint16_t i;
+
+	/* Soft device TXQ read, TM enqueue */
+	for (i = 0; i < nb_tx_queues; i++) {
+		struct rte_ring *txq = dev->data->tx_queues[txq_pos];
+
+		/* Read TXQ burst to packet enqueue buffer */
+		pkts_enq_len += rte_ring_sc_dequeue_burst(txq,
+			(void **)&pkts_enq[pkts_enq_len],
+			enq_bsz,
+			NULL);
+
+		/* Increment TXQ */
+		txq_pos++;
+		if (txq_pos >= nb_tx_queues)
+			txq_pos = 0;
+
+		/* TM enqueue when complete burst is available */
+		if (pkts_enq_len >= enq_bsz) {
+			rte_sched_port_enqueue(sched, pkts_enq, pkts_enq_len);
+
+			pkts_enq_len = 0;
+			flush_count = 0;
+			break;
+		}
+	}
+
+	if (flush_count >= FLUSH_COUNT_THRESHOLD) {
+		if (pkts_enq_len)
+			rte_sched_port_enqueue(sched, pkts_enq, pkts_enq_len);
+
+		pkts_enq_len = 0;
+		flush_count = 0;
+	}
+
+	p->soft.tm.txq_pos = txq_pos;
+	p->soft.tm.pkts_enq_len = pkts_enq_len;
+	p->soft.tm.flush_count = flush_count + 1;
+
+	/* TM dequeue, Hard device TXQ write */
+	pkts_deq_len = rte_sched_port_dequeue(sched, pkts_deq, deq_bsz);
+
+	for (pos = 0; pos < pkts_deq_len; )
+		pos += rte_eth_tx_burst(p->hard.port_id,
+			p->params.hard.tx_queue_id,
+			&pkts_deq[pos],
+			(uint16_t)(pkts_deq_len - pos));
+
+	return 0;
+}
+
 int
 rte_pmd_softnic_run(uint16_t port_id)
 {
@@ -302,7 +405,7 @@ rte_pmd_softnic_run(uint16_t port_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
 #endif
 
-	return run_default(dev);
+	return (tm_used(dev)) ? run_tm(dev) : run_default(dev);
 }
 
 static struct ether_addr eth_addr = { .addr_bytes = {0} };
@@ -378,12 +481,26 @@ pmd_init(struct pmd_params *params, int numa_node)
 		return NULL;
 	}
 
+	/* Traffic Management (TM)*/
+	if (params->soft.flags & PMD_FEATURE_TM) {
+		status = tm_init(p, params, numa_node);
+		if (status) {
+			default_free(p);
+			free(p->params.hard.name);
+			rte_free(p);
+			return NULL;
+		}
+	}
+
 	return p;
 }
 
 static void
 pmd_free(struct pmd_internals *p)
 {
+	if (p->params.soft.flags & PMD_FEATURE_TM)
+		tm_free(p);
+
 	default_free(p);
 
 	free(p->params.hard.name);
@@ -464,7 +581,7 @@ static int
 pmd_parse_args(struct pmd_params *p, const char *name, const char *params)
 {
 	struct rte_kvargs *kvlist;
-	int ret;
+	int i, ret;
 
 	kvlist = rte_kvargs_parse(params, pmd_valid_args);
 	if (kvlist == NULL)
@@ -474,7 +591,123 @@ pmd_parse_args(struct pmd_params *p, const char *name, const char *params)
 	memset(p, 0, sizeof(*p));
 	p->soft.name = name;
 	p->soft.intrusive = INTRUSIVE;
+	p->soft.tm.rate = 0;
+	p->soft.tm.nb_queues = SOFTNIC_SOFT_TM_NB_QUEUES;
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		p->soft.tm.qsize[i] = SOFTNIC_SOFT_TM_QUEUE_SIZE;
+	p->soft.tm.enq_bsz = SOFTNIC_SOFT_TM_ENQ_BSZ;
+	p->soft.tm.deq_bsz = SOFTNIC_SOFT_TM_DEQ_BSZ;
 	p->hard.tx_queue_id = SOFTNIC_HARD_TX_QUEUE_ID;
+
+	/* SOFT: TM (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM) == 1) {
+		char *s;
+
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM,
+			&get_string, &s);
+		if (ret < 0)
+			goto out_free;
+
+		if (strcmp(s, "on") == 0)
+			p->soft.flags |= PMD_FEATURE_TM;
+		else if (strcmp(s, "off") == 0)
+			p->soft.flags &= ~PMD_FEATURE_TM;
+		else
+			ret = -EINVAL;
+
+		free(s);
+		if (ret)
+			goto out_free;
+	}
+
+	/* SOFT: TM rate (measured in bytes/second) (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM_RATE) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM_RATE,
+			&get_uint32, &p->soft.tm.rate);
+		if (ret < 0)
+			goto out_free;
+
+		p->soft.flags |= PMD_FEATURE_TM;
+	}
+
+	/* SOFT: TM number of queues (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM_NB_QUEUES) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM_NB_QUEUES,
+			&get_uint32, &p->soft.tm.nb_queues);
+		if (ret < 0)
+			goto out_free;
+
+		p->soft.flags |= PMD_FEATURE_TM;
+	}
+
+	/* SOFT: TM queue size 0 .. 3 (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM_QSIZE0) == 1) {
+		uint32_t qsize;
+
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM_QSIZE0,
+			&get_uint32, &qsize);
+		if (ret < 0)
+			goto out_free;
+
+		p->soft.tm.qsize[0] = (uint16_t)qsize;
+		p->soft.flags |= PMD_FEATURE_TM;
+	}
+
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM_QSIZE1) == 1) {
+		uint32_t qsize;
+
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM_QSIZE1,
+			&get_uint32, &qsize);
+		if (ret < 0)
+			goto out_free;
+
+		p->soft.tm.qsize[1] = (uint16_t)qsize;
+		p->soft.flags |= PMD_FEATURE_TM;
+	}
+
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM_QSIZE2) == 1) {
+		uint32_t qsize;
+
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM_QSIZE2,
+			&get_uint32, &qsize);
+		if (ret < 0)
+			goto out_free;
+
+		p->soft.tm.qsize[2] = (uint16_t)qsize;
+		p->soft.flags |= PMD_FEATURE_TM;
+	}
+
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM_QSIZE3) == 1) {
+		uint32_t qsize;
+
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM_QSIZE3,
+			&get_uint32, &qsize);
+		if (ret < 0)
+			goto out_free;
+
+		p->soft.tm.qsize[3] = (uint16_t)qsize;
+		p->soft.flags |= PMD_FEATURE_TM;
+	}
+
+	/* SOFT: TM enqueue burst size (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM_ENQ_BSZ) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM_ENQ_BSZ,
+			&get_uint32, &p->soft.tm.enq_bsz);
+		if (ret < 0)
+			goto out_free;
+
+		p->soft.flags |= PMD_FEATURE_TM;
+	}
+
+	/* SOFT: TM dequeue burst size (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SOFT_TM_DEQ_BSZ) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SOFT_TM_DEQ_BSZ,
+			&get_uint32, &p->soft.tm.deq_bsz);
+		if (ret < 0)
+			goto out_free;
+
+		p->soft.flags |= PMD_FEATURE_TM;
+	}
 
 	/* HARD: name (mandatory) */
 	if (rte_kvargs_count(kvlist, PMD_PARAM_HARD_NAME) == 1) {
@@ -508,6 +741,7 @@ pmd_probe(struct rte_vdev_device *vdev)
 	int status;
 
 	struct rte_eth_dev_info hard_info;
+	uint32_t hard_speed;
 	uint16_t hard_port_id;
 	int numa_node;
 	void *dev_private;
@@ -530,10 +764,18 @@ pmd_probe(struct rte_vdev_device *vdev)
 		return -EINVAL;
 
 	rte_eth_dev_info_get(hard_port_id, &hard_info);
+	hard_speed = eth_dev_speed_max_mbps(hard_info.speed_capa);
 	numa_node = rte_eth_dev_socket_id(hard_port_id);
 
 	if (p.hard.tx_queue_id >= hard_info.max_tx_queues)
 		return -EINVAL;
+
+	if (p.soft.flags & PMD_FEATURE_TM) {
+		status = tm_params_check(&p, hard_speed);
+
+		if (status)
+			return status;
+	}
 
 	/* Allocate and initialize soft ethdev private data */
 	dev_private = pmd_init(&p, numa_node);
@@ -587,5 +829,14 @@ static struct rte_vdev_driver pmd_softnic_drv = {
 
 RTE_PMD_REGISTER_VDEV(net_softnic, pmd_softnic_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_softnic,
+	PMD_PARAM_SOFT_TM	 "=on|off "
+	PMD_PARAM_SOFT_TM_RATE "=<int> "
+	PMD_PARAM_SOFT_TM_NB_QUEUES "=<int> "
+	PMD_PARAM_SOFT_TM_QSIZE0 "=<int> "
+	PMD_PARAM_SOFT_TM_QSIZE1 "=<int> "
+	PMD_PARAM_SOFT_TM_QSIZE2 "=<int> "
+	PMD_PARAM_SOFT_TM_QSIZE3 "=<int> "
+	PMD_PARAM_SOFT_TM_ENQ_BSZ "=<int> "
+	PMD_PARAM_SOFT_TM_DEQ_BSZ "=<int> "
 	PMD_PARAM_HARD_NAME "=<string> "
 	PMD_PARAM_HARD_TX_QUEUE_ID "=<int>");

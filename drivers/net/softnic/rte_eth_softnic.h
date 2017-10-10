@@ -40,6 +40,22 @@
 extern "C" {
 #endif
 
+#ifndef SOFTNIC_SOFT_TM_NB_QUEUES
+#define SOFTNIC_SOFT_TM_NB_QUEUES			65536
+#endif
+
+#ifndef SOFTNIC_SOFT_TM_QUEUE_SIZE
+#define SOFTNIC_SOFT_TM_QUEUE_SIZE			64
+#endif
+
+#ifndef SOFTNIC_SOFT_TM_ENQ_BSZ
+#define SOFTNIC_SOFT_TM_ENQ_BSZ				32
+#endif
+
+#ifndef SOFTNIC_SOFT_TM_DEQ_BSZ
+#define SOFTNIC_SOFT_TM_DEQ_BSZ				24
+#endif
+
 #ifndef SOFTNIC_HARD_TX_QUEUE_ID
 #define SOFTNIC_HARD_TX_QUEUE_ID			0
 #endif
