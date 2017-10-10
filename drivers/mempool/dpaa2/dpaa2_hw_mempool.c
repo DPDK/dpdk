@@ -65,7 +65,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	struct dpaa2_bp_info *bp_info;
 	struct dpbp_attr dpbp_attr;
 	uint32_t bpid;
-	int ret, p_ret;
+	int ret;
 
 	avail_dpbp = dpaa2_alloc_dpbp_dev();
 
@@ -78,7 +78,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			RTE_LOG(ERR, PMD, "Failure in affining portal\n");
-			return ret;
+			goto err1;
 		}
 	}
 
@@ -86,7 +86,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Resource enable failure with"
 			" err code: %d\n", ret);
-		return ret;
+		goto err1;
 	}
 
 	ret = dpbp_get_attributes(&avail_dpbp->dpbp, CMD_PRI_LOW,
@@ -94,10 +94,16 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Resource read failure with"
 			     " err code: %d\n", ret);
-		p_ret = ret;
-		ret = dpbp_disable(&avail_dpbp->dpbp, CMD_PRI_LOW,
-				   avail_dpbp->token);
-		return p_ret;
+		goto err2;
+	}
+
+	bp_info = rte_malloc(NULL,
+			     sizeof(struct dpaa2_bp_info),
+			     RTE_CACHE_LINE_SIZE);
+	if (!bp_info) {
+		PMD_INIT_LOG(ERR, "No heap memory available for bp_info");
+		ret = -ENOMEM;
+		goto err2;
 	}
 
 	/* Allocate the bp_list which will be added into global_bp_list */
@@ -105,7 +111,8 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 			     RTE_CACHE_LINE_SIZE);
 	if (!bp_list) {
 		PMD_INIT_LOG(ERR, "No heap memory available");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err3;
 	}
 
 	/* Set parameters of buffer pool list */
@@ -127,9 +134,6 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	rte_dpaa2_bpid_info[bpid].bp_list = bp_list;
 	rte_dpaa2_bpid_info[bpid].bpid = bpid;
 
-	bp_info = rte_malloc(NULL,
-			     sizeof(struct dpaa2_bp_info),
-			     RTE_CACHE_LINE_SIZE);
 	rte_memcpy(bp_info, (void *)&rte_dpaa2_bpid_info[bpid],
 		   sizeof(struct dpaa2_bp_info));
 	mp->pool_data = (void *)bp_info;
@@ -138,6 +142,14 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 
 	h_bp_list = bp_list;
 	return 0;
+err3:
+	rte_free(bp_info);
+err2:
+	dpbp_disable(&avail_dpbp->dpbp, CMD_PRI_LOW, avail_dpbp->token);
+err1:
+	dpaa2_free_dpbp_dev(avail_dpbp);
+
+	return ret;
 }
 
 static void
