@@ -559,10 +559,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	/* Get mempool capabilities */
 	mp_flags = 0;
 	ret = rte_mempool_ops_get_capabilities(mp, &mp_flags);
-	if (ret == -ENOTSUP)
-		RTE_LOG(DEBUG, MEMPOOL, "get_capability not supported for %s\n",
-					mp->name);
-	else if (ret < 0)
+	if ((ret < 0) && (ret != -ENOTSUP))
 		return ret;
 
 	/* update mempool capabilities */
