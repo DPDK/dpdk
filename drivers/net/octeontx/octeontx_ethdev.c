@@ -199,7 +199,7 @@ octeontx_port_promisc_set(struct octeontx_nic *nic, int en)
 			nic->port_id, en ? "set" : "unset");
 }
 
-static void
+static int
 octeontx_port_stats(struct octeontx_nic *nic, struct rte_eth_stats *stats)
 {
 	octeontx_mbox_bgx_port_stats_t bgx_stats;
@@ -208,8 +208,10 @@ octeontx_port_stats(struct octeontx_nic *nic, struct rte_eth_stats *stats)
 	PMD_INIT_FUNC_TRACE();
 
 	res = octeontx_bgx_port_stats(nic->port_id, &bgx_stats);
-	if (res < 0)
+	if (res < 0) {
 		octeontx_log_err("failed to get port stats %d", nic->port_id);
+		return res;
+	}
 
 	stats->ipackets = bgx_stats.rx_packets;
 	stats->ibytes = bgx_stats.rx_bytes;
@@ -221,6 +223,8 @@ octeontx_port_stats(struct octeontx_nic *nic, struct rte_eth_stats *stats)
 
 	octeontx_log_dbg("port%d stats inpkts=%" PRIx64 " outpkts=%" PRIx64 "",
 			nic->port_id, stats->ipackets, stats->opackets);
+
+	return 0;
 }
 
 static void
@@ -574,13 +578,13 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 	return octeontx_atomic_write_link_status(dev, &link);
 }
 
-static void
+static int
 octeontx_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 
 	PMD_INIT_FUNC_TRACE();
-	octeontx_port_stats(nic, stats);
+	return octeontx_port_stats(nic, stats);
 }
 
 static void

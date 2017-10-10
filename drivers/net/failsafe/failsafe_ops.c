@@ -582,18 +582,25 @@ fs_link_update(struct rte_eth_dev *dev,
 	return -1;
 }
 
-static void
+static int
 fs_stats_get(struct rte_eth_dev *dev,
 	     struct rte_eth_stats *stats)
 {
 	struct sub_device *sdev;
 	uint8_t i;
+	int ret;
 
 	rte_memcpy(stats, &PRIV(dev)->stats_accumulator, sizeof(*stats));
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
-		rte_eth_stats_get(PORT_ID(sdev), &sdev->stats_snapshot);
+		ret = rte_eth_stats_get(PORT_ID(sdev), &sdev->stats_snapshot);
+		if (ret) {
+			ERROR("Operation rte_eth_stats_get failed for sub_device %d with error %d",
+				  i, ret);
+			return ret;
+		}
 		failsafe_stats_increment(stats, &sdev->stats_snapshot);
 	}
+	return 0;
 }
 
 static void

@@ -298,7 +298,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
 }
 
-static void
+static int
 eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 {
 	unsigned i, num_stats;
@@ -306,7 +306,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	const struct pmd_internals *internal;
 
 	if ((dev == NULL) || (igb_stats == NULL))
-		return;
+		return -EINVAL;
 
 	internal = dev->data->dev_private;
 	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
@@ -333,6 +333,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	igb_stats->ipackets = rx_total;
 	igb_stats->opackets = tx_total;
 	igb_stats->oerrors = tx_err_total;
+
+	return 0;
 }
 
 static void

@@ -37,7 +37,7 @@
 #include <rte_ethdev.h>
 
 void bnxt_free_stats(struct bnxt *bp);
-void bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
+int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_stats *bnxt_stats);
 void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev);
 int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,

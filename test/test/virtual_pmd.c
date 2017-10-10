@@ -211,13 +211,15 @@ virtual_ethdev_link_update_fail(struct rte_eth_dev *bonded_eth_dev __rte_unused,
 	return -1;
 }
 
-static void
+static int
 virtual_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
 
 	if (stats)
 		rte_memcpy(stats, &dev_private->eth_stats, sizeof(*stats));
+
+	return 0;
 }
 
 static void

@@ -65,7 +65,7 @@ static int eth_ark_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
 static int eth_ark_dev_set_link_up(struct rte_eth_dev *dev);
 static int eth_ark_dev_set_link_down(struct rte_eth_dev *dev);
-static void eth_ark_dev_stats_get(struct rte_eth_dev *dev,
+static int eth_ark_dev_stats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_stats *stats);
 static void eth_ark_dev_stats_reset(struct rte_eth_dev *dev);
 static void eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
@@ -241,7 +241,7 @@ check_for_ext(struct ark_adapter *ark)
 		(int (*)(struct rte_eth_dev *, void *))
 		dlsym(ark->d_handle, "dev_set_link_down");
 	ark->user_ext.stats_get =
-		(void (*)(struct rte_eth_dev *, struct rte_eth_stats *,
+		(int (*)(struct rte_eth_dev *, struct rte_eth_stats *,
 			  void *))
 		dlsym(ark->d_handle, "stats_get");
 	ark->user_ext.stats_reset =
@@ -816,7 +816,7 @@ eth_ark_dev_set_link_down(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	uint16_t i;
@@ -835,8 +835,9 @@ eth_ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		eth_rx_queue_stats_get(dev->data->rx_queues[i], stats);
 	if (ark->user_ext.stats_get)
-		ark->user_ext.stats_get(dev, stats,
+		return ark->user_ext.stats_get(dev, stats,
 			ark->user_data[dev->data->port_id]);
+	return 0;
 }
 
 static void

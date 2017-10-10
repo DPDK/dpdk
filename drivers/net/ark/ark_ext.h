@@ -91,7 +91,7 @@ int dev_set_link_up(struct rte_eth_dev *dev,
 int dev_set_link_down(struct rte_eth_dev *dev,
 		      void *user_data);
 
-void stats_get(struct rte_eth_dev *dev,
+int stats_get(struct rte_eth_dev *dev,
 	       struct rte_eth_stats *stats,
 	       void *user_data);
 

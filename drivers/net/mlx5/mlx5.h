@@ -237,7 +237,7 @@ void mlx5_allmulticast_disable(struct rte_eth_dev *);
 /* mlx5_stats.c */
 
 void priv_xstats_init(struct priv *);
-void mlx5_stats_get(struct rte_eth_dev *, struct rte_eth_stats *);
+int mlx5_stats_get(struct rte_eth_dev *, struct rte_eth_stats *);
 void mlx5_stats_reset(struct rte_eth_dev *);
 int mlx5_xstats_get(struct rte_eth_dev *,
 		    struct rte_eth_xstat *, unsigned int);

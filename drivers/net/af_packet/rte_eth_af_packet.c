@@ -331,7 +331,7 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 0;
 }
 
-static void
+static int
 eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 {
 	unsigned i, imax;
@@ -364,6 +364,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	igb_stats->opackets = tx_total;
 	igb_stats->oerrors = tx_err_total;
 	igb_stats->obytes = tx_bytes_total;
+	return 0;
 }
 
 static void

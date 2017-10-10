@@ -176,7 +176,7 @@ static void ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int ixgbe_dev_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
-static void ixgbe_dev_stats_get(struct rte_eth_dev *dev,
+static int ixgbe_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static int ixgbe_dev_xstats_get(struct rte_eth_dev *dev,
 				struct rte_eth_xstat *xstats, unsigned n);
@@ -269,7 +269,7 @@ static void ixgbevf_dev_close(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_reset(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct ixgbe_hw *hw);
 static void ixgbevf_intr_enable(struct ixgbe_hw *hw);
-static void ixgbevf_dev_stats_get(struct rte_eth_dev *dev,
+static int ixgbevf_dev_stats_get(struct rte_eth_dev *dev,
 		struct rte_eth_stats *stats);
 static void ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
 static int ixgbevf_vlan_filter_set(struct rte_eth_dev *dev,
@@ -3104,7 +3104,7 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 /*
  * This function is based on ixgbe_update_stats_counters() in ixgbe/ixgbe.c
  */
-static void
+static int
 ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct ixgbe_hw *hw =
@@ -3126,7 +3126,7 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			&total_qbrc, &total_qprc, &total_qprdc);
 
 	if (stats == NULL)
-		return;
+		return -EINVAL;
 
 	/* Fill out the rte_eth_stats statistics structure */
 	stats->ipackets = total_qprc;
@@ -3157,6 +3157,7 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	/* Tx Errors */
 	stats->oerrors  = 0;
+	return 0;
 }
 
 static void
@@ -3568,7 +3569,7 @@ ixgbevf_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	return IXGBEVF_NB_XSTATS;
 }
 
-static void
+static int
 ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats *)
@@ -3577,12 +3578,13 @@ ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	ixgbevf_update_stats(dev);
 
 	if (stats == NULL)
-		return;
+		return -EINVAL;
 
 	stats->ipackets = hw_stats->vfgprc;
 	stats->ibytes = hw_stats->vfgorc;
 	stats->opackets = hw_stats->vfgptc;
 	stats->obytes = hw_stats->vfgotc;
+	return 0;
 }
 
 static void

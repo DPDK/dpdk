@@ -156,16 +156,17 @@ void enic_dev_stats_clear(struct enic *enic)
 	enic_clear_soft_stats(enic);
 }
 
-void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
+int enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
 {
 	struct vnic_stats *stats;
 	struct enic_soft_stats *soft_stats = &enic->soft_stats;
 	int64_t rx_truncated;
 	uint64_t rx_packet_errors;
+	int ret = vnic_dev_stats_dump(enic->vdev, &stats);
 
-	if (vnic_dev_stats_dump(enic->vdev, &stats)) {
+	if (ret) {
 		dev_err(enic, "Error in getting stats\n");
-		return;
+		return ret;
 	}
 
 	/* The number of truncated packets can only be calculated by
@@ -191,6 +192,7 @@ void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
 	r_stats->imissed = stats->rx.rx_no_bufs + rx_truncated;
 
 	r_stats->rx_nombuf = rte_atomic64_read(&soft_stats->rx_nombuf);
+	return 0;
 }
 
 void enic_del_mac_address(struct enic *enic, int mac_index)

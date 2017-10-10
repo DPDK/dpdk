@@ -311,7 +311,7 @@ lio_dev_xstats_reset(struct rte_eth_dev *eth_dev)
 }
 
 /* Retrieve the device statistics (# packets in/out, # bytes in/out, etc */
-static void
+static int
 lio_dev_stats_get(struct rte_eth_dev *eth_dev,
 		  struct rte_eth_stats *stats)
 {
@@ -359,6 +359,8 @@ lio_dev_stats_get(struct rte_eth_dev *eth_dev,
 	stats->ibytes = bytes;
 	stats->ipackets = pkts;
 	stats->ierrors = drop;
+
+	return 0;
 }
 
 static void

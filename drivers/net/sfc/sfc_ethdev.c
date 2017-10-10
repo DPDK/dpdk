@@ -521,16 +521,18 @@ sfc_tx_queue_release(void *queue)
 	sfc_adapter_unlock(sa);
 }
 
-static void
+static int
 sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_port *port = &sa->port;
 	uint64_t *mac_stats;
+	int ret;
 
 	rte_spinlock_lock(&port->mac_stats_lock);
 
-	if (sfc_port_update_mac_stats(sa) != 0)
+	ret = sfc_port_update_mac_stats(sa);
+	if (ret != 0)
 		goto unlock;
 
 	mac_stats = port->mac_stats_buf;
@@ -587,6 +589,8 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 unlock:
 	rte_spinlock_unlock(&port->mac_stats_lock);
+	SFC_ASSERT(ret >= 0);
+	return -ret;
 }
 
 static void

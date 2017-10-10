@@ -87,7 +87,7 @@ static int __vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 static int vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
 static void vmxnet3_hw_stats_save(struct vmxnet3_hw *hw);
-static void vmxnet3_dev_stats_get(struct rte_eth_dev *dev,
+static int vmxnet3_dev_stats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_stats *stats);
 static int vmxnet3_dev_xstats_get_names(struct rte_eth_dev *dev,
 					struct rte_eth_xstat_name *xstats,
@@ -1034,7 +1034,7 @@ vmxnet3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	return count;
 }
 
-static void
+static int
 vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	unsigned int i;
@@ -1080,6 +1080,8 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->ierrors += rxStats.pktsRxError;
 		stats->rx_nombuf += rxStats.pktsRxOutOfBuf;
 	}
+
+	return 0;
 }
 
 static void

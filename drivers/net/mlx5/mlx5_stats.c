@@ -318,7 +318,7 @@ priv_xstats_reset(struct priv *priv)
  * @param[out] stats
  *   Stats structure output buffer.
  */
-void
+int
 mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct priv *priv = mlx5_get_priv(dev);
@@ -373,6 +373,7 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 #endif
 	*stats = tmp;
 	priv_unlock(priv);
+	return 0;
 }
 
 /**

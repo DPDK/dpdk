@@ -117,7 +117,7 @@ int mlx4_mtu_get(struct priv *priv, uint16_t *mtu);
 int mlx4_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx4_dev_set_link_down(struct rte_eth_dev *dev);
 int mlx4_dev_set_link_up(struct rte_eth_dev *dev);
-void mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+int mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 void mlx4_stats_reset(struct rte_eth_dev *dev);
 void mlx4_dev_infos_get(struct rte_eth_dev *dev,
 			struct rte_eth_dev_info *info);

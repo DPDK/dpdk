@@ -1209,7 +1209,7 @@ typedef int (*eth_link_update_t)(struct rte_eth_dev *dev,
 				int wait_to_complete);
 /**< @internal Get link speed, duplex mode and state (up/down) of an Ethernet device. */
 
-typedef void (*eth_stats_get_t)(struct rte_eth_dev *dev,
+typedef int (*eth_stats_get_t)(struct rte_eth_dev *dev,
 				struct rte_eth_stats *igb_stats);
 /**< @internal Get global I/O statistics of an Ethernet device. */
 

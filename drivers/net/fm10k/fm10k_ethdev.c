@@ -1346,7 +1346,7 @@ fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	return FM10K_NB_XSTATS;
 }
 
-static void
+static int
 fm10k_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	uint64_t ipackets, opackets, ibytes, obytes;
@@ -1376,6 +1376,7 @@ fm10k_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = opackets;
 	stats->ibytes = ibytes;
 	stats->obytes = obytes;
+	return 0;
 }
 
 static void

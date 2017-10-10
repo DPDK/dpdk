@@ -329,7 +329,7 @@ bnx2xvf_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_comple
 	return old_link_status == dev->data->dev_link.link_status ? -1 : 0;
 }
 
-static void
+static int
 bnx2x_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
@@ -389,6 +389,8 @@ bnx2x_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	stats->imissed = brb_drops + brb_truncates +
 			 brb_truncate_discard + stats->rx_nombuf;
+
+	return 0;
 }
 
 static int

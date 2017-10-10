@@ -97,7 +97,7 @@ struct ark_user_ext {
 	int (*link_update)(struct rte_eth_dev *, int wait_to_complete, void *);
 	int (*dev_set_link_up)(struct rte_eth_dev *, void *);
 	int (*dev_set_link_down)(struct rte_eth_dev *, void *);
-	void (*stats_get)(struct rte_eth_dev *, struct rte_eth_stats *, void *);
+	int (*stats_get)(struct rte_eth_dev *, struct rte_eth_stats *, void *);
 	void (*stats_reset)(struct rte_eth_dev *, void *);
 	void (*mac_addr_add)(struct rte_eth_dev *,
 						  struct ether_addr *,

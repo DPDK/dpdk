@@ -228,9 +228,10 @@ void bnxt_free_stats(struct bnxt *bp)
 	}
 }
 
-void bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
+int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_stats *bnxt_stats)
 {
+	int rc = 0;
 	unsigned int i;
 	struct bnxt *bp = eth_dev->data->dev_private;
 
@@ -240,19 +241,26 @@ void bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 
-		bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i,
+		rc = bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i,
 				     bnxt_stats, 1);
+		if (unlikely(rc))
+			return rc;
 	}
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 
-		bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i,
+		rc = bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i,
 				     bnxt_stats, 0);
+		if (unlikely(rc))
+			return rc;
 	}
-	bnxt_hwrm_func_qstats(bp, 0xffff, bnxt_stats);
+	rc = bnxt_hwrm_func_qstats(bp, 0xffff, bnxt_stats);
+	if (unlikely(rc))
+		return rc;
 	bnxt_stats->rx_nombuf = rte_atomic64_read(&bp->rx_mbuf_alloc_fail);
+	return rc;
 }
 
 void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)

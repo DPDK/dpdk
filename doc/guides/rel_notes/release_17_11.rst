@@ -226,6 +226,12 @@ API Changes
 * ``rte_mem_phy2mch`` was used in Xen dom0 to obtain the physical address;
   remove this API as Xen dom0 support was removed.
 
+* **Add return value to stats_get dev op API**
+
+  The ``stats_get`` dev op API return value has been changed to be int.
+  By this way PMDs can return an error value in case of failure at stats
+  getting process time.
+
 
 ABI Changes
 -----------

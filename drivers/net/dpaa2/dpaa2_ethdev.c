@@ -1061,7 +1061,7 @@ dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 			"error: Setting the MAC ADDR failed %d\n", ret);
 }
 static
-void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
+int dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 			 struct rte_eth_stats *stats)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
@@ -1076,12 +1076,12 @@ void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 
 	if (!dpni) {
 		RTE_LOG(ERR, PMD, "dpni is NULL\n");
-		return;
+		return -EINVAL;
 	}
 
 	if (!stats) {
 		RTE_LOG(ERR, PMD, "stats is NULL\n");
-		return;
+		return -EINVAL;
 	}
 
 	/*Get Counters from page_0*/
@@ -1116,11 +1116,11 @@ void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 	stats->oerrors = value.page_2.egress_discarded_frames;
 	stats->imissed = value.page_2.ingress_nobuffer_discards;
 
-	return;
+	return 0;
 
 err:
 	RTE_LOG(ERR, PMD, "Operation not completed:Error Code = %d\n", retcode);
-	return;
+	return retcode;
 };
 
 static int

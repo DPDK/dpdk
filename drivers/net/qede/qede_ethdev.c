@@ -1460,7 +1460,7 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 		rte_eal_alarm_cancel(qede_poll_sp_sb_cb, (void *)eth_dev);
 }
 
-static void
+static int
 qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
@@ -1544,6 +1544,8 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 		if (j == txq_stat_cntrs)
 			break;
 	}
+
+	return 0;
 }
 
 static unsigned

@@ -190,7 +190,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->min_rx_bufsize = 0;
 }
 
-static void
+static int
 eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	unsigned i;
@@ -214,6 +214,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ipackets = rx_total;
 	stats->opackets = tx_total;
 	stats->oerrors = tx_err_total;
+
+	return 0;
 }
 
 static void

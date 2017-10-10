@@ -283,7 +283,7 @@ eth_kni_link_update(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
-static void
+static int
 eth_kni_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	unsigned long rx_packets_total = 0, rx_bytes_total = 0;
@@ -320,6 +320,8 @@ eth_kni_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = tx_packets_total;
 	stats->obytes = tx_bytes_total;
 	stats->oerrors = tx_packets_err_total;
+
+	return 0;
 }
 
 static void

@@ -107,7 +107,7 @@ static uint16_t avp_xmit_pkts(void *tx_queue,
 static void avp_dev_rx_queue_release(void *rxq);
 static void avp_dev_tx_queue_release(void *txq);
 
-static void avp_dev_stats_get(struct rte_eth_dev *dev,
+static int avp_dev_stats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_stats *stats);
 static void avp_dev_stats_reset(struct rte_eth_dev *dev);
 
@@ -2241,7 +2241,7 @@ avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 	}
 }
 
-static void
+static int
 avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
@@ -2274,6 +2274,8 @@ avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
 			stats->q_errors[i] += txq->errors;
 		}
 	}
+
+	return 0;
 }
 
 static void

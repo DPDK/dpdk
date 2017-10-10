@@ -242,7 +242,7 @@ nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 	return -ENOTSUP;
 }
 
-static void
+static int
 nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	uint16_t qidx;
@@ -332,6 +332,8 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets += port_stats.tx_bcast_frames_ok;
 	stats->opackets += port_stats.tx_mcast_frames_ok;
 	stats->oerrors = port_stats.tx_drops;
+
+	return 0;
 }
 
 static const uint32_t *

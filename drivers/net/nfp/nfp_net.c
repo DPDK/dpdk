@@ -88,7 +88,7 @@ static int nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				  uint16_t nb_desc, unsigned int socket_id,
 				  const struct rte_eth_txconf *tx_conf);
 static int nfp_net_start(struct rte_eth_dev *dev);
-static void nfp_net_stats_get(struct rte_eth_dev *dev,
+static int nfp_net_stats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_stats *stats);
 static void nfp_net_stats_reset(struct rte_eth_dev *dev);
 static void nfp_net_stop(struct rte_eth_dev *dev);
@@ -1027,7 +1027,7 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	return -1;
 }
 
-static void
+static int
 nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	int i;
@@ -1113,8 +1113,11 @@ nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	nfp_dev_stats.imissed -= hw->eth_stats_base.imissed;
 
-	if (stats)
+	if (stats) {
 		memcpy(stats, &nfp_dev_stats, sizeof(*stats));
+		return 0;
+	}
+	return -EINVAL;
 }
 
 static void

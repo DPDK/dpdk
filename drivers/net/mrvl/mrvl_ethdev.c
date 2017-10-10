@@ -845,8 +845,11 @@ mrvl_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
  *   Pointer to Ethernet device structure.
  * @param stats
  *   Stats structure output buffer.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
  */
-static void
+static int
 mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
@@ -919,7 +922,7 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	ret = pp2_ppio_get_statistics(priv->ppio, &ppio_stats, 0);
 	if (unlikely(ret)) {
 		RTE_LOG(ERR, PMD, "Failed to update port statistics\n");
-		return;
+		return ret;
 	}
 
 	stats->ipackets += ppio_stats.rx_packets - drop_mac;
@@ -930,6 +933,8 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			  ppio_stats.rx_fifo_dropped +
 			  ppio_stats.rx_cls_dropped;
 	stats->ierrors = drop_mac;
+
+	return 0;
 }
 
 /**

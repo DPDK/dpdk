@@ -1537,8 +1537,7 @@ rte_eth_stats_get(uint16_t port_id, struct rte_eth_stats *stats)
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->stats_get, -ENOTSUP);
 	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
-	(*dev->dev_ops->stats_get)(dev, stats);
-	return 0;
+	return (*dev->dev_ops->stats_get)(dev, stats);
 }
 
 int

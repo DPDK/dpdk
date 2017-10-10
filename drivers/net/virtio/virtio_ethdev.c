@@ -77,7 +77,7 @@ static int virtio_dev_link_update(struct rte_eth_dev *dev,
 static void virtio_set_hwaddr(struct virtio_hw *hw);
 static void virtio_get_hwaddr(struct virtio_hw *hw);
 
-static void virtio_dev_stats_get(struct rte_eth_dev *dev,
+static int virtio_dev_stats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_stats *stats);
 static int virtio_dev_xstats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_xstat *xstats, unsigned n);
@@ -964,10 +964,12 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	return count;
 }
 
-static void
+static int
 virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	virtio_update_stats(dev, stats);
+
+	return 0;
 }
 
 static void

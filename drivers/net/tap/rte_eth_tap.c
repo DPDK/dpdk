@@ -687,7 +687,7 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		 DEV_TX_OFFLOAD_TCP_CKSUM);
 }
 
-static void
+static int
 tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 {
 	unsigned int i, imax;
@@ -728,6 +728,7 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 	tap_stats->opackets = tx_total;
 	tap_stats->oerrors = tx_err_total;
 	tap_stats->obytes = tx_bytes_total;
+	return 0;
 }
 
 static void

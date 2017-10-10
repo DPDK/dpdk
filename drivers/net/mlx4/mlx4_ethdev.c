@@ -571,7 +571,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
  * @param[out] stats
  *   Stats structure output buffer.
  */
-void
+int
 mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct rte_eth_stats tmp;
@@ -613,6 +613,7 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		tmp.oerrors += txq->stats.odropped;
 	}
 	*stats = tmp;
+	return 0;
 }
 
 /**

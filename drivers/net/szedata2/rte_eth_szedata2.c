@@ -1042,7 +1042,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->speed_capa = ETH_LINK_SPEED_100G;
 }
 
-static void
+static int
 eth_stats_get(struct rte_eth_dev *dev,
 		struct rte_eth_stats *stats)
 {
@@ -1077,6 +1077,8 @@ eth_stats_get(struct rte_eth_dev *dev,
 	stats->ibytes = rx_total_bytes;
 	stats->obytes = tx_total_bytes;
 	stats->oerrors = tx_err_total;
+
+	return 0;
 }
 
 static void

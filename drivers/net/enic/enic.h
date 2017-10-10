@@ -282,7 +282,7 @@ extern int enic_enable(struct enic *enic);
 extern int enic_disable(struct enic *enic);
 extern void enic_remove(struct enic *enic);
 extern int enic_get_link_status(struct enic *enic);
-extern void enic_dev_stats_get(struct enic *enic,
+extern int enic_dev_stats_get(struct enic *enic,
 	struct rte_eth_stats *r_stats);
 extern void enic_dev_stats_clear(struct enic *enic);
 extern void enic_add_packet_filter(struct enic *enic);

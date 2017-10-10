@@ -468,13 +468,13 @@ static int enicpmd_dev_link_update(struct rte_eth_dev *eth_dev,
 	return enic_link_update(enic);
 }
 
-static void enicpmd_dev_stats_get(struct rte_eth_dev *eth_dev,
+static int enicpmd_dev_stats_get(struct rte_eth_dev *eth_dev,
 	struct rte_eth_stats *stats)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
-	enic_dev_stats_get(enic, stats);
+	return enic_dev_stats_get(enic, stats);
 }
 
 static void enicpmd_dev_stats_reset(struct rte_eth_dev *eth_dev)
