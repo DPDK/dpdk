@@ -43,6 +43,7 @@ CFLAGS += $(WERROR_FLAGS)
 # library source files
 SRCS-y += rte_eventdev.c
 SRCS-y += rte_event_ring.c
+SRCS-y += rte_event_eth_rx_adapter.c
 
 # export include files
 SYMLINK-y-include += rte_eventdev.h

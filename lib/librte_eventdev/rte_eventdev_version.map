@@ -55,5 +55,14 @@ DPDK_17.11 {
 	rte_event_queue_attr_get;
 
 	rte_event_eth_rx_adapter_caps_get;
+	rte_event_eth_rx_adapter_create;
+	rte_event_eth_rx_adapter_create_ext;
+	rte_event_eth_rx_adapter_free;
+	rte_event_eth_rx_adapter_queue_add;
+	rte_event_eth_rx_adapter_queue_del;
+	rte_event_eth_rx_adapter_start;
+	rte_event_eth_rx_adapter_stop;
+	rte_event_eth_rx_adapter_stats_get;
+	rte_event_eth_rx_adapter_stats_reset;
 
 } DPDK_17.08;
