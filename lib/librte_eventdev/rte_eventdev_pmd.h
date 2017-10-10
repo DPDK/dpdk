@@ -83,6 +83,14 @@ extern "C" {
 	} \
 } while (0)
 
+#define RTE_EVENT_ETH_RX_ADAPTER_SW_CAP \
+		((RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID) | \
+			(RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ))
+
+/**< Ethernet Rx adapter cap to return If the packet transfers from
+ * the ethdev to eventdev use a SW service function
+ */
+
 #define RTE_EVENTDEV_DETACHED  (0)
 #define RTE_EVENTDEV_ATTACHED  (1)
 
