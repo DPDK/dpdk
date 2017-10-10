@@ -201,7 +201,7 @@ compatible board:
 
 1. **ARM 64 Tool Chain**
 
-   For example, the `*aarch64* Linaro Toolchain <https://releases.linaro.org/components/toolchain/binaries/4.9-2017.01/aarch64-linux-gnu>`_.
+   For example, the `*aarch64* Linaro Toolchain <https://releases.linaro.org/components/toolchain/binaries/6.4-2017.08/aarch64-linux-gnu/>`_.
 
 2. **Linux Kernel**
 
@@ -218,9 +218,10 @@ compatible board:
    Before any DPDK application can be executed, the Frame Manager Configuration
    Tool (FMC) need to be executed to set the configurations of the queues. This
    includes the queue state, RSS and other policies.
-   This tool can be obtained from `NXP (Freescale) Public Git Repository <http://git.freescale.com/git/cgit.cgi/ppc/sdk/fmc.git>`_.
+   This tool can be obtained from `NXP (Freescale) Public Git Repository <https://github.com/qoriq-open-source/fmc>`_.
+
    This tool needs configuration files which are available in the
-   :ref:`DPDK Extra Scripts <extra_scripts>`, described below.
+   :ref:`DPDK Extra Scripts <extra_scripts>`, described below for DPDK usages.
 
 As an alternative method, DPAA PMD can also be executed using images provided
 as part of SDK from NXP. The SDK includes all the above prerequisites necessary
@@ -261,7 +262,7 @@ Currently supported by DPDK:
 .. note::
 
    Some part of dpaa bus code (qbman and fman - library) routines are
-   dual licensed (BSD & GPLv2).
+   dual licensed (BSD & GPLv2), however they are used as BSD in DPDK in userspace.
 
 Pre-Installation Configuration
 ------------------------------
