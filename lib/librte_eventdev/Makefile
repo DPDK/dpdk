@@ -50,6 +50,7 @@ SYMLINK-y-include += rte_eventdev_pmd.h
 SYMLINK-y-include += rte_eventdev_pmd_pci.h
 SYMLINK-y-include += rte_eventdev_pmd_vdev.h
 SYMLINK-y-include += rte_event_ring.h
+SYMLINK-y-include += rte_event_eth_rx_adapter.h
 
 # versioning export map
 EXPORT_MAP := rte_eventdev_version.map
