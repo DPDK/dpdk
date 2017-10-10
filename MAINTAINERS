@@ -267,6 +267,7 @@ Eventdev Ethdev Rx Adapter API - EXPERIMENTAL
 M: Nikhil Rao <nikhil.rao@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*eth_rx_adapter*
+F: test/test/test_event_eth_rx_adapter.c
 
 
 Networking Drivers
