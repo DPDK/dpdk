@@ -58,6 +58,9 @@
 #include "channel_monitor.h"
 #include "power_manager.h"
 #include "vm_power_cli.h"
+#include <rte_pmd_ixgbe.h>
+#include <rte_pmd_i40e.h>
+#include <rte_pmd_bnxt.h>
 
 #define RX_RING_SIZE 512
 #define TX_RING_SIZE 512
@@ -301,11 +304,49 @@ main(int argc, char **argv)
 
 	/* Initialize ports. */
 	for (portid = 0; portid < nb_ports; portid++) {
+		struct ether_addr eth;
+		int w, j;
+		int ret = -ENOTSUP;
+
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
+
+		eth.addr_bytes[0] = 0xe0;
+		eth.addr_bytes[1] = 0xe0;
+		eth.addr_bytes[2] = 0xe0;
+		eth.addr_bytes[3] = 0xe0;
+		eth.addr_bytes[4] = portid + 0xf0;
+
 		if (port_init(portid, mbuf_pool) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu8 "\n",
 					portid);
+
+		for (w = 0; w < MAX_VFS; w++) {
+			eth.addr_bytes[5] = w + 0xf0;
+
+			if (ret == -ENOTSUP)
+				ret = rte_pmd_ixgbe_set_vf_mac_addr(portid,
+						w, &eth);
+			if (ret == -ENOTSUP)
+				ret = rte_pmd_i40e_set_vf_mac_addr(portid,
+						w, &eth);
+			if (ret == -ENOTSUP)
+				ret = rte_pmd_bnxt_set_vf_mac_addr(portid,
+						w, &eth);
+
+			switch (ret) {
+			case 0:
+				printf("Port %d VF %d MAC: ",
+						portid, w);
+				for (j = 0; j < 6; j++) {
+					printf("%02x", eth.addr_bytes[j]);
+					if (j < 5)
+						printf(":");
+				}
+				printf("\n");
+				break;
+			}
+		}
 	}
 
 	lcore_id = rte_get_next_lcore(-1, 1, 0);
