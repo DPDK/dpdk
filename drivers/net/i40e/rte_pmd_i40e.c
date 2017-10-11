@@ -2430,3 +2430,33 @@ rte_pmd_i40e_flow_type_mapping_update(
 
 	return 0;
 }
+
+int
+rte_pmd_i40e_query_vfid_by_mac(uint16_t port, const struct ether_addr *vf_mac)
+{
+	struct rte_eth_dev *dev;
+	struct ether_addr *mac;
+	struct i40e_pf *pf;
+	int vf_id;
+	struct i40e_pf_vf *vf;
+	uint16_t vf_num;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	vf_num = pf->vf_num;
+
+	for (vf_id = 0; vf_id < vf_num; vf_id++) {
+		vf = &pf->vfs[vf_id];
+		mac = &vf->mac_addr;
+
+		if (is_same_ether_addr(mac, vf_mac))
+			return vf_id;
+	}
+
+	return -EINVAL;
+}

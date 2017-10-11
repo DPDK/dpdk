@@ -737,4 +737,19 @@ int rte_pmd_i40e_flow_type_mapping_get(
  */
 int rte_pmd_i40e_flow_type_mapping_reset(uint8_t port);
 
+/**
+ * On the PF, find VF index based on VF MAC address
+ *
+ * @param port
+ *    pointer to port identifier of the device
+ * @param vf_mac
+ *    the mac address of the vf to determine index of
+ * @return
+ *    The index of vfid If successful.
+ *    -EINVAL: vf mac address does not exist for this port
+ *    -ENOTSUP: i40e not supported for this port.
+ */
+int rte_pmd_i40e_query_vfid_by_mac(uint16_t port,
+					const struct ether_addr *vf_mac);
+
 #endif /* _PMD_I40E_H_ */

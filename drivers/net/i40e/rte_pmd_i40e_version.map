@@ -53,5 +53,6 @@ DPDK_17.11 {
 	rte_pmd_i40e_flow_type_mapping_update;
 	rte_pmd_i40e_flow_type_mapping_get;
 	rte_pmd_i40e_flow_type_mapping_reset;
+	rte_pmd_i40e_query_vfid_by_mac;
 
 } DPDK_17.08;
