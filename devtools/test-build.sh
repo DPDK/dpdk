@@ -39,7 +39,7 @@ default_path=$PATH
 # - DPDK_DEP_ARCHIVE
 # - DPDK_DEP_CFLAGS
 # - DPDK_DEP_LDFLAGS
-# - DPDK_DEP_MOFED (y/[n])
+# - DPDK_DEP_MLX (y/[n])
 # - DPDK_DEP_NUMA ([y]/n)
 # - DPDK_DEP_PCAP (y/[n])
 # - DPDK_DEP_SSL (y/[n])
@@ -122,7 +122,7 @@ reset_env ()
 	unset DPDK_DEP_ARCHIVE
 	unset DPDK_DEP_CFLAGS
 	unset DPDK_DEP_LDFLAGS
-	unset DPDK_DEP_MOFED
+	unset DPDK_DEP_MLX
 	unset DPDK_DEP_NUMA
 	unset DPDK_DEP_PCAP
 	unset DPDK_DEP_SSL
@@ -169,7 +169,7 @@ config () # <directory> <target> <options>
 		sed -ri             's,(BYPASS=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ARCHIVE" != y || \
 		sed -ri       's,(RESOURCE_TAR=)n,\1y,' $1/.config
-		test "$DPDK_DEP_MOFED" != y || \
+		test "$DPDK_DEP_MLX" != y || \
 		sed -ri           's,(MLX._PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SZE" != y || \
 		sed -ri       's,(PMD_SZEDATA2=)n,\1y,' $1/.config

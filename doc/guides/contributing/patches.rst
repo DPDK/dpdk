@@ -367,7 +367,6 @@ The builds can be modified via the following environmental variables:
 * ``DPDK_BUILD_TEST_CONFIGS`` (target1+option1+option2 target2)
 * ``DPDK_DEP_CFLAGS``
 * ``DPDK_DEP_LDFLAGS``
-* ``DPDK_DEP_MOFED`` (y/[n])
 * ``DPDK_DEP_PCAP`` (y/[n])
 * ``DPDK_NOTIFY`` (notify-send)
 
