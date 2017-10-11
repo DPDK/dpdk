@@ -97,7 +97,39 @@ enum rte_pmd_i40e_package_info {
 	RTE_PMD_I40E_PKG_INFO_MAX = 0xFFFFFFFF
 };
 
-#define RTE_PMD_I40E_DDP_NAME_SIZE 32
+/**
+ *  Option types of queue region.
+ */
+enum rte_pmd_i40e_queue_region_op {
+	RTE_PMD_I40E_RSS_QUEUE_REGION_UNDEFINED,
+	/** add queue region set */
+	RTE_PMD_I40E_RSS_QUEUE_REGION_SET,
+	/** add PF region pctype set */
+	RTE_PMD_I40E_RSS_QUEUE_REGION_FLOWTYPE_SET,
+	/** add queue region user priority set */
+	RTE_PMD_I40E_RSS_QUEUE_REGION_USER_PRIORITY_SET,
+	/**
+	 * ALL configuration about queue region from up layer
+	 * at first will only keep in DPDK software stored in driver,
+	 * only after " FLUSH_ON ", it commit all configuration to HW.
+	 * Because PMD had to set hardware configuration at a time, so
+	 * it will record all up layer command at first.
+	 */
+	RTE_PMD_I40E_RSS_QUEUE_REGION_ALL_FLUSH_ON,
+	/**
+	 * "FLUSH_OFF " is just clean all configuration about queue
+	 * region just now, and restore all to DPDK i40e driver default
+	 * config when start up.
+	 */
+	RTE_PMD_I40E_RSS_QUEUE_REGION_ALL_FLUSH_OFF,
+	RTE_PMD_I40E_RSS_QUEUE_REGION_INFO_GET,
+	RTE_PMD_I40E_RSS_QUEUE_REGION_OP_MAX
+};
+
+#define RTE_PMD_I40E_DDP_NAME_SIZE     32
+#define RTE_PMD_I40E_PCTYPE_MAX        64
+#define RTE_PMD_I40E_REGION_MAX_NUM    8
+#define RTE_PMD_I40E_MAX_USER_PRIORITY 8
 
 /**
  * Version for dynamic device personalization.
@@ -168,6 +200,54 @@ struct rte_pmd_i40e_ptype_info {
 struct rte_pmd_i40e_ptype_mapping {
 	uint16_t hw_ptype; /**< hardware defined packet type*/
 	uint32_t sw_ptype; /**< software defined packet type */
+};
+
+/**
+ * Queue region related information.
+ */
+struct rte_pmd_i40e_queue_region_conf {
+	/** the region id for this configuration */
+	uint8_t region_id;
+	/** the pctype or hardware flowtype of packet,
+	 * the specific index for each type has been defined
+	 * in file i40e_type.h as enum i40e_filter_pctype.
+	 */
+	uint8_t hw_flowtype;
+	/** the start queue index for this region */
+	uint8_t queue_start_index;
+	/** the total queue number of this queue region */
+	uint8_t queue_num;
+	/** the packet's user priority for this region */
+	uint8_t user_priority;
+};
+
+/* queue region info */
+struct rte_pmd_i40e_queue_region_info {
+	/** the region id for this configuration */
+	uint8_t region_id;
+	/** the start queue index for this region */
+	uint8_t queue_start_index;
+	/** the total queue number of this queue region */
+	uint8_t queue_num;
+	/** the total number of user priority for this region */
+	uint8_t user_priority_num;
+	/** the packet's user priority for this region */
+	uint8_t user_priority[RTE_PMD_I40E_MAX_USER_PRIORITY];
+	/** the total number of flowtype for this region */
+	uint8_t flowtype_num;
+	/**
+	 * the pctype or hardware flowtype of packet,
+	 * the specific index for each type has been defined
+	 * in file i40e_type.h as enum i40e_filter_pctype.
+	 */
+	uint8_t hw_flowtype[RTE_PMD_I40E_PCTYPE_MAX];
+};
+
+struct rte_pmd_i40e_queue_regions {
+	/** the total number of queue region for this port */
+	uint16_t queue_region_number;
+	struct rte_pmd_i40e_queue_region_info
+		region[RTE_PMD_I40E_REGION_MAX_NUM];
 };
 
 /**
@@ -751,5 +831,19 @@ int rte_pmd_i40e_flow_type_mapping_reset(uint8_t port);
  */
 int rte_pmd_i40e_query_vfid_by_mac(uint16_t port,
 					const struct ether_addr *vf_mac);
+
+/**
+ * Do RSS queue region configuration for that port as
+ * the command option type
+ *
+ * @param port_id
+ *    The port identifier of the Ethernet device.
+ * @param op_type
+ *    Queue region operation type
+ * @param arg
+ *    Queue region operation type specific data
+ */
+int rte_pmd_i40e_rss_queue_region_conf(uint16_t port_id,
+			enum rte_pmd_i40e_queue_region_op op_type, void *arg);
 
 #endif /* _PMD_I40E_H_ */

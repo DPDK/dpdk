@@ -54,5 +54,6 @@ DPDK_17.11 {
 	rte_pmd_i40e_flow_type_mapping_get;
 	rte_pmd_i40e_flow_type_mapping_reset;
 	rte_pmd_i40e_query_vfid_by_mac;
+	rte_pmd_i40e_rss_queue_region_conf;
 
 } DPDK_17.08;

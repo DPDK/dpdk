@@ -138,10 +138,6 @@
 #define I40E_PRTTSYN_TSYNTYPE    0x0e000000
 #define I40E_CYCLECOUNTER_MASK   0xffffffffffffffffULL
 
-#define I40E_MAX_PERCENT            100
-#define I40E_DEFAULT_DCB_APP_NUM    1
-#define I40E_DEFAULT_DCB_APP_PRIO   3
-
 /**
  * Below are values for writing un-exposed registers suggested
  * by silicon experts
@@ -310,7 +306,6 @@ static int i40e_pf_parameter_init(struct rte_eth_dev *dev);
 static int i40e_pf_setup(struct i40e_pf *pf);
 static int i40e_dev_rxtx_init(struct i40e_pf *pf);
 static int i40e_vmdq_setup(struct rte_eth_dev *dev);
-static int i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb);
 static int i40e_dcb_setup(struct rte_eth_dev *dev);
 static void i40e_stat_update_32(struct i40e_hw *hw, uint32_t reg,
 		bool offset_loaded, uint64_t *offset, uint64_t *stat);
@@ -1058,6 +1053,20 @@ i40e_init_customized_info(struct i40e_pf *pf)
 	pf->gtp_support = false;
 }
 
+void
+i40e_init_queue_region_conf(struct rte_eth_dev *dev)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_queue_regions *info = &pf->queue_region;
+	uint16_t i;
+
+	for (i = 0; i < I40E_PFQF_HREGION_MAX_INDEX; i++)
+		i40e_write_rx_ctl(hw, I40E_PFQF_HREGION(i), 0);
+
+	memset(info, 0, sizeof(struct i40e_queue_regions));
+}
+
 static int
 eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
@@ -1336,6 +1345,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	ret = i40e_init_fdir_filter_list(dev);
 	if (ret < 0)
 		goto err_init_fdir_filter_list;
+
+	/* initialize queue region configuration */
+	i40e_init_queue_region_conf(dev);
 
 	return 0;
 
@@ -2141,6 +2153,9 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 
 	/* reset hierarchy commit */
 	pf->tm_conf.committed = false;
+
+	/* Remove all the queue region configuration */
+	i40e_flush_queue_region_all_conf(dev, hw, pf, 0);
 
 	hw->adapter_stopped = 1;
 }
@@ -10471,7 +10486,7 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
  *
  * Returns 0 on success, negative value on failure
  */
-static int
+int
 i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);

@@ -260,6 +260,12 @@ enum i40e_flxpld_layer_idx {
 #define I40E_QOS_BW_WEIGHT_MIN 1
 /* The max bandwidth weight is 127. */
 #define I40E_QOS_BW_WEIGHT_MAX 127
+/* The max queue region index is 7. */
+#define I40E_REGION_MAX_INDEX 7
+
+#define I40E_MAX_PERCENT            100
+#define I40E_DEFAULT_DCB_APP_NUM    1
+#define I40E_DEFAULT_DCB_APP_PRIO   3
 
 /**
  * The overhead from MTU to max frame size.
@@ -646,6 +652,34 @@ struct i40e_ethertype_rule {
 	struct rte_hash *hash_table;
 };
 
+/* queue region info */
+struct i40e_queue_region_info {
+	/* the region id for this configuration */
+	uint8_t region_id;
+	/* the start queue index for this region */
+	uint8_t queue_start_index;
+	/* the total queue number of this queue region */
+	uint8_t queue_num;
+	/* the total number of user priority for this region */
+	uint8_t user_priority_num;
+	/* the packet's user priority for this region */
+	uint8_t user_priority[I40E_MAX_USER_PRIORITY];
+	/* the total number of flowtype for this region */
+	uint8_t flowtype_num;
+	/**
+	 * the pctype or hardware flowtype of packet,
+	 * the specific index for each type has been defined
+	 * in file i40e_type.h as enum i40e_filter_pctype.
+	 */
+	uint8_t hw_flowtype[I40E_FILTER_PCTYPE_MAX];
+};
+
+struct i40e_queue_regions {
+	/* the total number of queue region for this port */
+	uint16_t queue_region_number;
+	struct i40e_queue_region_info region[I40E_REGION_MAX_INDEX + 1];
+};
+
 /* Tunnel filter number HW supports */
 #define I40E_MAX_TUNNEL_FILTER_NUM 400
 
@@ -902,6 +936,7 @@ struct i40e_pf {
 	struct i40e_fdir_info fdir; /* flow director info */
 	struct i40e_ethertype_rule ethertype; /* Ethertype filter rule */
 	struct i40e_tunnel_rule tunnel; /* Tunnel filter rule */
+	struct i40e_queue_regions queue_region; /* queue region info */
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
 	struct i40e_mirror_rule_list mirror_list;
 	uint16_t nb_mirror_rule;   /* The number of mirror rules */
@@ -1150,6 +1185,10 @@ struct i40e_customized_pctype*
 i40e_find_customized_pctype(struct i40e_pf *pf, uint8_t index);
 void i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
 				 uint32_t pkg_size);
+int i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb);
+int i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
+		struct i40e_hw *hw, struct i40e_pf *pf, uint16_t on);
+void i40e_init_queue_region_conf(struct rte_eth_dev *dev);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)

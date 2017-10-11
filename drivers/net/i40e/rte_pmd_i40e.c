@@ -35,6 +35,7 @@
 #include <rte_tailq.h>
 
 #include "base/i40e_prototype.h"
+#include "base/i40e_dcb.h"
 #include "i40e_ethdev.h"
 #include "i40e_pf.h"
 #include "i40e_rxtx.h"
@@ -2459,4 +2460,497 @@ rte_pmd_i40e_query_vfid_by_mac(uint16_t port, const struct ether_addr *vf_mac)
 	}
 
 	return -EINVAL;
+}
+
+static int
+i40e_vsi_update_queue_region_mapping(struct i40e_hw *hw,
+			      struct i40e_pf *pf)
+{
+	uint16_t i;
+	struct i40e_vsi *vsi = pf->main_vsi;
+	uint16_t queue_offset, bsf, tc_index;
+	struct i40e_vsi_context ctxt;
+	struct i40e_aqc_vsi_properties_data *vsi_info;
+	struct i40e_queue_regions *region_info =
+				&pf->queue_region;
+	int32_t ret = -EINVAL;
+
+	if (!region_info->queue_region_number) {
+		PMD_INIT_LOG(ERR, "there is no that region id been set before");
+		return ret;
+	}
+
+	memset(&ctxt, 0, sizeof(struct i40e_vsi_context));
+
+	/* Update Queue Pairs Mapping for currently enabled UPs */
+	ctxt.seid = vsi->seid;
+	ctxt.pf_num = hw->pf_id;
+	ctxt.vf_num = 0;
+	ctxt.uplink_seid = vsi->uplink_seid;
+	ctxt.info = vsi->info;
+	vsi_info = &ctxt.info;
+
+	memset(vsi_info->tc_mapping, 0, sizeof(uint16_t) * 8);
+	memset(vsi_info->queue_mapping, 0, sizeof(uint16_t) * 16);
+
+	/* Configure queue region and queue mapping parameters,
+	 * for enabled queue region, allocate queues to this region.
+	 */
+
+	for (i = 0; i < region_info->queue_region_number; i++) {
+		tc_index = region_info->region[i].region_id;
+		bsf = rte_bsf32(region_info->region[i].queue_num);
+		queue_offset = region_info->region[i].queue_start_index;
+		vsi_info->tc_mapping[tc_index] = rte_cpu_to_le_16(
+			(queue_offset << I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT) |
+				(bsf << I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT));
+	}
+
+	/* Associate queue number with VSI, Keep vsi->nb_qps unchanged */
+	vsi_info->mapping_flags |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_QUE_MAP_CONTIG);
+	vsi_info->queue_mapping[0] = rte_cpu_to_le_16(vsi->base_queue);
+	vsi_info->valid_sections |=
+		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_QUEUE_MAP_VALID);
+
+	/* Update the VSI after updating the VSI queue-mapping information */
+	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to configure queue region mapping = %d ",
+				hw->aq.asq_last_status);
+		return ret;
+	}
+	/* update the local VSI info with updated queue map */
+	rte_memcpy(&vsi->info.tc_mapping, &ctxt.info.tc_mapping,
+					sizeof(vsi->info.tc_mapping));
+	rte_memcpy(&vsi->info.queue_mapping,
+			&ctxt.info.queue_mapping,
+			sizeof(vsi->info.queue_mapping));
+	vsi->info.mapping_flags = ctxt.info.mapping_flags;
+	vsi->info.valid_sections = 0;
+
+	return 0;
+}
+
+
+static int
+i40e_queue_region_set_region(struct i40e_pf *pf,
+				struct rte_pmd_i40e_queue_region_conf *conf_ptr)
+{
+	uint16_t i;
+	struct i40e_vsi *main_vsi = pf->main_vsi;
+	struct i40e_queue_regions *info = &pf->queue_region;
+	int32_t ret = -EINVAL;
+
+	if (!((rte_is_power_of_2(conf_ptr->queue_num)) &&
+				conf_ptr->queue_num <= 64)) {
+		PMD_DRV_LOG(ERR, "The region sizes should be any of the following values: 1, 2, 4, 8, 16, 32, 64 as long as the "
+			"total number of queues do not exceed the VSI allocation");
+		return ret;
+	}
+
+	if (conf_ptr->region_id > I40E_REGION_MAX_INDEX) {
+		PMD_DRV_LOG(ERR, "the queue region max index is 7");
+		return ret;
+	}
+
+	if ((conf_ptr->queue_start_index + conf_ptr->queue_num)
+					> main_vsi->nb_used_qps) {
+		PMD_DRV_LOG(ERR, "the queue index exceeds the VSI range");
+		return ret;
+	}
+
+	for (i = 0; i < info->queue_region_number; i++)
+		if (conf_ptr->region_id == info->region[i].region_id)
+			break;
+
+	if (i == info->queue_region_number &&
+				i <= I40E_REGION_MAX_INDEX) {
+		info->region[i].region_id = conf_ptr->region_id;
+		info->region[i].queue_num = conf_ptr->queue_num;
+		info->region[i].queue_start_index =
+			conf_ptr->queue_start_index;
+		info->queue_region_number++;
+	} else {
+		PMD_DRV_LOG(ERR, "queue region number exceeds maxnum 8 or the queue region id has been set before");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+i40e_queue_region_set_flowtype(struct i40e_pf *pf,
+			struct rte_pmd_i40e_queue_region_conf *rss_region_conf)
+{
+	int32_t ret = -EINVAL;
+	struct i40e_queue_regions *info = &pf->queue_region;
+	uint16_t i, j;
+	uint16_t region_index, flowtype_index;
+
+	/* For the pctype or hardware flowtype of packet,
+	 * the specific index for each type has been defined
+	 * in file i40e_type.h as enum i40e_filter_pctype.
+	 */
+
+	if (rss_region_conf->region_id > I40E_PFQF_HREGION_MAX_INDEX) {
+		PMD_DRV_LOG(ERR, "the queue region max index is 7");
+		return ret;
+	}
+
+	if (rss_region_conf->hw_flowtype >= I40E_FILTER_PCTYPE_MAX) {
+		PMD_DRV_LOG(ERR, "the hw_flowtype or PCTYPE max index is 63");
+		return ret;
+	}
+
+
+	for (i = 0; i < info->queue_region_number; i++)
+		if (rss_region_conf->region_id == info->region[i].region_id)
+			break;
+
+	if (i == info->queue_region_number) {
+		PMD_DRV_LOG(ERR, "that region id has not been set before");
+		ret = -ENODATA;
+		return ret;
+	}
+	region_index = i;
+
+	for (i = 0; i < info->queue_region_number; i++) {
+		for (j = 0; j < info->region[i].flowtype_num; j++) {
+			if (rss_region_conf->hw_flowtype ==
+				info->region[i].hw_flowtype[j]) {
+				PMD_DRV_LOG(ERR, "that hw_flowtype has been set before");
+				return 0;
+			}
+		}
+	}
+
+	flowtype_index = info->region[region_index].flowtype_num;
+	info->region[region_index].hw_flowtype[flowtype_index] =
+					rss_region_conf->hw_flowtype;
+	info->region[region_index].flowtype_num++;
+
+	return 0;
+}
+
+static void
+i40e_queue_region_pf_flowtype_conf(struct i40e_hw *hw,
+				struct i40e_pf *pf)
+{
+	uint8_t hw_flowtype;
+	uint32_t pfqf_hregion;
+	uint16_t i, j, index;
+	struct i40e_queue_regions *info = &pf->queue_region;
+
+	/* For the pctype or hardware flowtype of packet,
+	 * the specific index for each type has been defined
+	 * in file i40e_type.h as enum i40e_filter_pctype.
+	 */
+
+	for (i = 0; i < info->queue_region_number; i++) {
+		for (j = 0; j < info->region[i].flowtype_num; j++) {
+			hw_flowtype = info->region[i].hw_flowtype[j];
+			index = hw_flowtype >> 3;
+			pfqf_hregion =
+				i40e_read_rx_ctl(hw, I40E_PFQF_HREGION(index));
+
+			if ((hw_flowtype & 0x7) == 0) {
+				pfqf_hregion |= info->region[i].region_id <<
+					I40E_PFQF_HREGION_REGION_0_SHIFT;
+				pfqf_hregion |= 1 <<
+					I40E_PFQF_HREGION_OVERRIDE_ENA_0_SHIFT;
+			} else if ((hw_flowtype & 0x7) == 1) {
+				pfqf_hregion |= info->region[i].region_id  <<
+					I40E_PFQF_HREGION_REGION_1_SHIFT;
+				pfqf_hregion |= 1 <<
+					I40E_PFQF_HREGION_OVERRIDE_ENA_1_SHIFT;
+			} else if ((hw_flowtype & 0x7) == 2) {
+				pfqf_hregion |= info->region[i].region_id  <<
+					I40E_PFQF_HREGION_REGION_2_SHIFT;
+				pfqf_hregion |= 1 <<
+					I40E_PFQF_HREGION_OVERRIDE_ENA_2_SHIFT;
+			} else if ((hw_flowtype & 0x7) == 3) {
+				pfqf_hregion |= info->region[i].region_id  <<
+					I40E_PFQF_HREGION_REGION_3_SHIFT;
+				pfqf_hregion |= 1 <<
+					I40E_PFQF_HREGION_OVERRIDE_ENA_3_SHIFT;
+			} else if ((hw_flowtype & 0x7) == 4) {
+				pfqf_hregion |= info->region[i].region_id  <<
+					I40E_PFQF_HREGION_REGION_4_SHIFT;
+				pfqf_hregion |= 1 <<
+					I40E_PFQF_HREGION_OVERRIDE_ENA_4_SHIFT;
+			} else if ((hw_flowtype & 0x7) == 5) {
+				pfqf_hregion |= info->region[i].region_id  <<
+					I40E_PFQF_HREGION_REGION_5_SHIFT;
+				pfqf_hregion |= 1 <<
+					I40E_PFQF_HREGION_OVERRIDE_ENA_5_SHIFT;
+			} else if ((hw_flowtype & 0x7) == 6) {
+				pfqf_hregion |= info->region[i].region_id  <<
+					I40E_PFQF_HREGION_REGION_6_SHIFT;
+				pfqf_hregion |= 1 <<
+					I40E_PFQF_HREGION_OVERRIDE_ENA_6_SHIFT;
+			} else {
+				pfqf_hregion |= info->region[i].region_id  <<
+					I40E_PFQF_HREGION_REGION_7_SHIFT;
+				pfqf_hregion |= 1 <<
+					I40E_PFQF_HREGION_OVERRIDE_ENA_7_SHIFT;
+			}
+
+			i40e_write_rx_ctl(hw, I40E_PFQF_HREGION(index),
+						pfqf_hregion);
+		}
+	}
+}
+
+static int
+i40e_queue_region_set_user_priority(struct i40e_pf *pf,
+		struct rte_pmd_i40e_queue_region_conf *rss_region_conf)
+{
+	struct i40e_queue_regions *info = &pf->queue_region;
+	int32_t ret = -EINVAL;
+	uint16_t i, j, region_index;
+
+	if (rss_region_conf->user_priority >= I40E_MAX_USER_PRIORITY) {
+		PMD_DRV_LOG(ERR, "the queue region max index is 7");
+		return ret;
+	}
+
+	if (rss_region_conf->region_id > I40E_REGION_MAX_INDEX) {
+		PMD_DRV_LOG(ERR, "the region_id max index is 7");
+		return ret;
+	}
+
+	for (i = 0; i < info->queue_region_number; i++)
+		if (rss_region_conf->region_id == info->region[i].region_id)
+			break;
+
+	if (i == info->queue_region_number) {
+		PMD_DRV_LOG(ERR, "that region id has not been set before");
+		ret = -ENODATA;
+		return ret;
+	}
+
+	region_index = i;
+
+	for (i = 0; i < info->queue_region_number; i++) {
+		for (j = 0; j < info->region[i].user_priority_num; j++) {
+			if (info->region[i].user_priority[j] ==
+				rss_region_conf->user_priority) {
+				PMD_DRV_LOG(ERR, "that user priority has been set before");
+				return 0;
+			}
+		}
+	}
+
+	j = info->region[region_index].user_priority_num;
+	info->region[region_index].user_priority[j] =
+					rss_region_conf->user_priority;
+	info->region[region_index].user_priority_num++;
+
+	return 0;
+}
+
+static int
+i40e_queue_region_dcb_configure(struct i40e_hw *hw,
+				struct i40e_pf *pf)
+{
+	struct i40e_dcbx_config dcb_cfg_local;
+	struct i40e_dcbx_config *dcb_cfg;
+	struct i40e_queue_regions *info = &pf->queue_region;
+	struct i40e_dcbx_config *old_cfg = &hw->local_dcbx_config;
+	int32_t ret = -EINVAL;
+	uint16_t i, j, prio_index, region_index;
+	uint8_t tc_map, tc_bw, bw_lf;
+
+	if (!info->queue_region_number) {
+		PMD_DRV_LOG(ERR, "No queue region been set before");
+		return ret;
+	}
+
+	dcb_cfg = &dcb_cfg_local;
+	memset(dcb_cfg, 0, sizeof(struct i40e_dcbx_config));
+
+	/* assume each tc has the same bw */
+	tc_bw = I40E_MAX_PERCENT / info->queue_region_number;
+	for (i = 0; i < info->queue_region_number; i++)
+		dcb_cfg->etscfg.tcbwtable[i] = tc_bw;
+	/* to ensure the sum of tcbw is equal to 100 */
+	bw_lf = I40E_MAX_PERCENT %  info->queue_region_number;
+	for (i = 0; i < bw_lf; i++)
+		dcb_cfg->etscfg.tcbwtable[i]++;
+
+	/* assume each tc has the same Transmission Selection Algorithm */
+	for (i = 0; i < info->queue_region_number; i++)
+		dcb_cfg->etscfg.tsatable[i] = I40E_IEEE_TSA_ETS;
+
+	for (i = 0; i < info->queue_region_number; i++) {
+		for (j = 0; j < info->region[i].user_priority_num; j++) {
+			prio_index = info->region[i].user_priority[j];
+			region_index = info->region[i].region_id;
+			dcb_cfg->etscfg.prioritytable[prio_index] =
+						region_index;
+		}
+	}
+
+	/* FW needs one App to configure HW */
+	dcb_cfg->numapps = I40E_DEFAULT_DCB_APP_NUM;
+	dcb_cfg->app[0].selector = I40E_APP_SEL_ETHTYPE;
+	dcb_cfg->app[0].priority = I40E_DEFAULT_DCB_APP_PRIO;
+	dcb_cfg->app[0].protocolid = I40E_APP_PROTOID_FCOE;
+
+	tc_map = RTE_LEN2MASK(info->queue_region_number, uint8_t);
+
+	dcb_cfg->pfc.willing = 0;
+	dcb_cfg->pfc.pfccap = I40E_MAX_TRAFFIC_CLASS;
+	dcb_cfg->pfc.pfcenable = tc_map;
+
+	/* Copy the new config to the current config */
+	*old_cfg = *dcb_cfg;
+	old_cfg->etsrec = old_cfg->etscfg;
+	ret = i40e_set_dcb_config(hw);
+
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Set queue region DCB Config failed, err %s aq_err %s",
+			 i40e_stat_str(hw, ret),
+			 i40e_aq_str(hw, hw->aq.asq_last_status));
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
+	struct i40e_hw *hw, struct i40e_pf *pf, uint16_t on)
+{
+	int32_t ret = -EINVAL;
+	struct i40e_queue_regions *info = &pf->queue_region;
+
+	if (on) {
+		i40e_queue_region_pf_flowtype_conf(hw, pf);
+
+		ret = i40e_vsi_update_queue_region_mapping(hw, pf);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(INFO, "Failed to flush queue region mapping.");
+			return ret;
+		}
+
+		ret = i40e_queue_region_dcb_configure(hw, pf);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(INFO, "Failed to flush dcb.");
+			return ret;
+		}
+
+		return 0;
+	}
+
+	info->queue_region_number = 1;
+	info->region[0].queue_num = 64;
+	info->region[0].queue_start_index = 0;
+
+	ret = i40e_vsi_update_queue_region_mapping(hw, pf);
+	if (ret != I40E_SUCCESS)
+		PMD_DRV_LOG(INFO, "Failed to flush queue region mapping.");
+
+	ret = i40e_dcb_init_configure(dev, TRUE);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(INFO, "Failed to flush dcb.");
+		pf->flags &= ~I40E_FLAG_DCB;
+	}
+
+	i40e_init_queue_region_conf(dev);
+
+	return 0;
+}
+
+static int
+i40e_queue_region_pf_check_rss(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint64_t hena;
+
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(1))) << 32;
+
+	if (!hena)
+		return -ENOTSUP;
+
+	return 0;
+}
+
+static int
+i40e_queue_region_get_all_info(struct i40e_pf *pf,
+		struct i40e_queue_regions *regions_ptr)
+{
+	struct i40e_queue_regions *info = &pf->queue_region;
+
+	rte_memcpy(regions_ptr, info,
+			sizeof(struct i40e_queue_regions));
+
+	return 0;
+}
+
+int rte_pmd_i40e_rss_queue_region_conf(uint16_t port_id,
+		enum rte_pmd_i40e_queue_region_op op_type, void *arg)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int32_t ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	if (!(!i40e_queue_region_pf_check_rss(pf)))
+		return -ENOTSUP;
+
+	/* This queue region feature only support pf by now. It should
+	 * be called after dev_start, and will be clear after dev_stop.
+	 * "RTE_PMD_I40E_RSS_QUEUE_REGION_ALL_FLUSH_ON"
+	 * is just an enable function which server for other configuration,
+	 * it is for all configuration about queue region from up layer,
+	 * at first will only keep in DPDK softwarestored in driver,
+	 * only after "FLUSH_ON", it commit all configuration to HW.
+	 * Because PMD had to set hardware configuration at a time, so
+	 * it will record all up layer command at first.
+	 * "RTE_PMD_I40E_RSS_QUEUE_REGION_ALL_FLUSH_OFF" is
+	 * just clean all configuration about queue region just now,
+	 * and restore all to DPDK i40e driver default
+	 * config when start up.
+	 */
+
+	switch (op_type) {
+	case RTE_PMD_I40E_RSS_QUEUE_REGION_SET:
+		ret = i40e_queue_region_set_region(pf,
+				(struct rte_pmd_i40e_queue_region_conf *)arg);
+		break;
+	case RTE_PMD_I40E_RSS_QUEUE_REGION_FLOWTYPE_SET:
+		ret = i40e_queue_region_set_flowtype(pf,
+				(struct rte_pmd_i40e_queue_region_conf *)arg);
+		break;
+	case RTE_PMD_I40E_RSS_QUEUE_REGION_USER_PRIORITY_SET:
+		ret = i40e_queue_region_set_user_priority(pf,
+				(struct rte_pmd_i40e_queue_region_conf *)arg);
+		break;
+	case RTE_PMD_I40E_RSS_QUEUE_REGION_ALL_FLUSH_ON:
+		ret = i40e_flush_queue_region_all_conf(dev, hw, pf, 1);
+		break;
+	case RTE_PMD_I40E_RSS_QUEUE_REGION_ALL_FLUSH_OFF:
+		ret = i40e_flush_queue_region_all_conf(dev, hw, pf, 0);
+		break;
+	case RTE_PMD_I40E_RSS_QUEUE_REGION_INFO_GET:
+		ret = i40e_queue_region_get_all_info(pf,
+				(struct i40e_queue_regions *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "op type (%d) not supported",
+			    op_type);
+		ret = -EINVAL;
+	}
+
+	I40E_WRITE_FLUSH(hw);
+
+	return ret;
 }
