@@ -46,6 +46,47 @@ struct name_id_map {
 	uint32_t id;
 };
 
+static void
+usage(char *progname)
+{
+	printf("%s [EAL options] --\n"
+		" --silent: disable options dump\n"
+		" --ptest throughput / latency / verify / pmd-cycleount :"
+		" set test type\n"
+		" --pool_sz N: set the number of crypto ops/mbufs allocated\n"
+		" --total-ops N: set the number of total operations performed\n"
+		" --burst-sz N: set the number of packets per burst\n"
+		" --buffer-sz N: set the size of a single packet\n"
+		" --segment-sz N: set the size of the segment to use\n"
+		" --desc-nb N: set number of descriptors for each crypto device\n"
+		" --devtype TYPE: set crypto device type to use\n"
+		" --optype cipher-only / auth-only / cipher-then-auth /\n"
+		"           auth-then-cipher / aead : set operation type\n"
+		" --sessionless: enable session-less crypto operations\n"
+		" --out-of-place: enable out-of-place crypto operations\n"
+		" --test-file NAME: set the test vector file path\n"
+		" --test-name NAME: set specific test name section in test file\n"
+		" --cipher-algo ALGO: set cipher algorithm\n"
+		" --cipher-op encrypt / decrypt: set the cipher operation\n"
+		" --cipher-key-sz N: set the cipher key size\n"
+		" --cipher-iv-sz N: set the cipher IV size\n"
+		" --auth-algo ALGO: set auth algorithm\n"
+		" --auth-op generate / verify: set the auth operation\n"
+		" --auth-key-sz N: set the auth key size\n"
+		" --auth-iv-sz N: set the auth IV size\n"
+		" --aead-algo ALGO: set AEAD algorithm\n"
+		" --aead-op encrypt / decrypt: set the AEAD operation\n"
+		" --aead-key-sz N: set the AEAD key size\n"
+		" --aead-iv-sz N: set the AEAD IV size\n"
+		" --aead-aad-sz N: set the AEAD AAD size\n"
+		" --digest-sz N: set the digest size\n"
+		" --pmd-cyclecount-delay-ms N: set delay between enqueue\n"
+		"           and dequeue in pmd-cyclecount benchmarking mode\n"
+		" --csv-friendly: enable test result output CSV friendly\n"
+		" -h: prints this help\n",
+		progname);
+}
+
 static int
 get_str_key_id_mapping(struct name_id_map *map, unsigned int map_len,
 		const char *str_key)
@@ -829,11 +870,14 @@ cperf_options_parse(struct cperf_options *options, int argc, char **argv)
 {
 	int opt, retval, opt_idx;
 
-	while ((opt = getopt_long(argc, argv, "", lgopts, &opt_idx)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "h", lgopts, &opt_idx)) != EOF) {
 		switch (opt) {
+		case 'h':
+			usage(argv[0]);
+			rte_exit(EXIT_SUCCESS, "Displayed help\n");
+			break;
 		/* long options */
 		case 0:
-
 			retval = cperf_opts_parse_long(opt_idx, options);
 			if (retval != 0)
 				return retval;
@@ -841,6 +885,7 @@ cperf_options_parse(struct cperf_options *options, int argc, char **argv)
 			break;
 
 		default:
+			usage(argv[0]);
 			return -EINVAL;
 		}
 	}
