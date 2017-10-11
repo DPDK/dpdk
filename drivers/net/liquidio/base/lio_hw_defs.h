@@ -106,6 +106,8 @@ enum lio_card_type {
 
 #define LIO_FW_VERSION_LENGTH		32
 
+#define LIO_VF_TRUST_MIN_VERSION	"1.7.1"
+
 /** Tag types used by Octeon cores in its work. */
 enum octeon_tag_type {
 	OCTEON_ORDERED_TAG	= 0,
@@ -185,6 +187,7 @@ enum octeon_tag_type {
 
 /* Interface flags communicated between host driver and core app. */
 enum lio_ifflags {
+	LIO_IFFLAG_PROMISC	= 0x01,
 	LIO_IFFLAG_ALLMULTI	= 0x02,
 	LIO_IFFLAG_UNICAST	= 0x10
 };

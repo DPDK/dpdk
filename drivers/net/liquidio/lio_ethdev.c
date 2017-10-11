@@ -1049,6 +1049,48 @@ lio_change_dev_flag(struct rte_eth_dev *eth_dev)
 }
 
 static void
+lio_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	if (strcmp(lio_dev->firmware_version, LIO_VF_TRUST_MIN_VERSION) < 0) {
+		lio_dev_err(lio_dev, "Require firmware version >= %s\n",
+			    LIO_VF_TRUST_MIN_VERSION);
+		return;
+	}
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down, can't enable promiscuous\n",
+			    lio_dev->port_id);
+		return;
+	}
+
+	lio_dev->ifflags |= LIO_IFFLAG_PROMISC;
+	lio_change_dev_flag(eth_dev);
+}
+
+static void
+lio_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	if (strcmp(lio_dev->firmware_version, LIO_VF_TRUST_MIN_VERSION) < 0) {
+		lio_dev_err(lio_dev, "Require firmware version >= %s\n",
+			    LIO_VF_TRUST_MIN_VERSION);
+		return;
+	}
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down, can't disable promiscuous\n",
+			    lio_dev->port_id);
+		return;
+	}
+
+	lio_dev->ifflags &= ~LIO_IFFLAG_PROMISC;
+	lio_change_dev_flag(eth_dev);
+}
+
+static void
 lio_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -1748,6 +1790,9 @@ static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 		goto nic_config_fail;
 	}
 
+	snprintf(lio_dev->firmware_version, LIO_FW_VERSION_LENGTH, "%s",
+		 resp->cfg_info.lio_firmware_version);
+
 	lio_swap_8B_data((uint64_t *)(&resp->cfg_info),
 			 sizeof(struct octeon_if_cfg_info) >> 3);
 
@@ -1851,6 +1896,8 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_set_link_up	= lio_dev_set_link_up,
 	.dev_set_link_down	= lio_dev_set_link_down,
 	.dev_close		= lio_dev_close,
+	.promiscuous_enable	= lio_dev_promiscuous_enable,
+	.promiscuous_disable	= lio_dev_promiscuous_disable,
 	.allmulticast_enable	= lio_dev_allmulticast_enable,
 	.allmulticast_disable	= lio_dev_allmulticast_disable,
 	.link_update		= lio_dev_link_update,

@@ -195,6 +195,14 @@ This section provides instructions to configure SR-IOV with Linux OS.
       Done
       testpmd>
 
+#. Enabling VF promiscuous mode
+
+   One VF per PF can be marked as trusted for promiscuous mode.
+
+   .. code-block:: console
+
+      ip link set dev <PF iface> vf <VF id> trust on
+
 
 Limitations
 -----------
