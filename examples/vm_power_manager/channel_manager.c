@@ -574,6 +574,73 @@ set_channel_status(const char *vm_name, unsigned *channel_list,
 	return num_channels_changed;
 }
 
+void
+get_all_vm(int *num_vm, int *num_vcpu)
+{
+
+	virNodeInfo node_info;
+	virDomainPtr *domptr;
+	uint64_t mask;
+	int i, ii, numVcpus[MAX_VCPUS], cpu, n_vcpus;
+	unsigned int jj;
+	const char *vm_name;
+	unsigned int domain_flags = VIR_CONNECT_LIST_DOMAINS_RUNNING |
+				VIR_CONNECT_LIST_DOMAINS_PERSISTENT;
+	unsigned int domain_flag = VIR_DOMAIN_VCPU_CONFIG;
+
+
+	memset(global_cpumaps, 0, CHANNEL_CMDS_MAX_CPUS*global_maplen);
+	if (virNodeGetInfo(global_vir_conn_ptr, &node_info)) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to retrieve node Info\n");
+		return;
+	}
+
+	/* Returns number of pcpus */
+	global_n_host_cpus = (unsigned int)node_info.cpus;
+
+	/* Returns number of active domains */
+	*num_vm = virConnectListAllDomains(global_vir_conn_ptr, &domptr,
+					domain_flags);
+	if (*num_vm <= 0) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "No Active Domains Running\n");
+		return;
+	}
+
+	for (i = 0; i < *num_vm; i++) {
+
+		/* Get Domain Names */
+		vm_name = virDomainGetName(domptr[i]);
+		lvm_info[i].vm_name = vm_name;
+
+		/* Get Number of Vcpus */
+		numVcpus[i] = virDomainGetVcpusFlags(domptr[i], domain_flag);
+
+		/* Get Number of VCpus & VcpuPinInfo */
+		n_vcpus = virDomainGetVcpuPinInfo(domptr[i],
+				numVcpus[i], global_cpumaps,
+				global_maplen, domain_flag);
+
+		if ((int)n_vcpus > 0) {
+			*num_vcpu = n_vcpus;
+			lvm_info[i].num_cpus = n_vcpus;
+		}
+
+		/* Save pcpu in use by libvirt VMs */
+		for (ii = 0; ii < n_vcpus; ii++) {
+			mask = 0;
+			for (jj = 0; jj < global_n_host_cpus; jj++) {
+				if (VIR_CPU_USABLE(global_cpumaps,
+						global_maplen, ii, jj) > 0) {
+					mask |= 1ULL << jj;
+				}
+			}
+			ITERATIVE_BITMASK_CHECK_64(mask, cpu) {
+				lvm_info[i].pcpus[ii] = cpu;
+			}
+		}
+	}
+}
+
 int
 get_info_vm(const char *vm_name, struct vm_info *info)
 {

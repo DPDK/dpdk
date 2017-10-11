@@ -66,6 +66,17 @@ struct sockaddr_un _sockaddr_un;
 #define UNIX_PATH_MAX sizeof(_sockaddr_un.sun_path)
 #endif
 
+#define MAX_VMS 4
+#define MAX_VCPUS 20
+
+
+struct libvirt_vm_info {
+	const char *vm_name;
+	unsigned int pcpus[MAX_VCPUS];
+	uint8_t num_cpus;
+};
+
+struct libvirt_vm_info lvm_info[MAX_VMS];
 /* Communication Channel Status */
 enum channel_status { CHANNEL_MGR_CHANNEL_DISCONNECTED = 0,
 	CHANNEL_MGR_CHANNEL_CONNECTED,
@@ -319,6 +330,20 @@ int set_channel_status(const char *vm_name, unsigned *channel_list,
  */
 int get_info_vm(const char *vm_name, struct vm_info *info);
 
+/**
+ * Populates a table with all domains running and their physical cpu.
+ * All information is gathered through libvirt api.
+ *
+ * @param num_vm
+ *  modified to store number of active VMs
+ *
+ * @param num_vcpu
+    modified to store number of vcpus active
+ *
+ * @return
+ *   void
+ */
+void get_all_vm(int *num_vm, int *num_vcpu);
 #ifdef __cplusplus
 }
 #endif
