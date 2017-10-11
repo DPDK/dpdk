@@ -1030,7 +1030,10 @@ rte_eal_hugepage_init(void)
 					strerror(errno));
 			return -1;
 		}
-		mcfg->memseg[0].phys_addr = RTE_BAD_PHYS_ADDR;
+		if (rte_eal_iova_mode() == RTE_IOVA_VA)
+			mcfg->memseg[0].phys_addr = (uintptr_t)addr;
+		else
+			mcfg->memseg[0].phys_addr = RTE_BAD_PHYS_ADDR;
 		mcfg->memseg[0].addr = addr;
 		mcfg->memseg[0].hugepage_sz = RTE_PGSIZE_4K;
 		mcfg->memseg[0].len = internal_config.memory;
