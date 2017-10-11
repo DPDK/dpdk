@@ -1527,7 +1527,7 @@ static int eth_i40evf_pci_remove(struct rte_pci_device *pci_dev)
  */
 static struct rte_pci_driver rte_i40evf_pmd = {
 	.id_table = pci_id_i40evf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA,
 	.probe = eth_i40evf_pci_probe,
 	.remove = eth_i40evf_pci_remove,
 };
