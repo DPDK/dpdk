@@ -148,6 +148,13 @@ guest_channel_send_msg(struct channel_packet *pkt, unsigned lcore_id)
 	return 0;
 }
 
+int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
+			unsigned int lcore_id)
+{
+	return guest_channel_send_msg(pkt, lcore_id);
+}
+
+
 void
 guest_channel_host_disconnect(unsigned lcore_id)
 {

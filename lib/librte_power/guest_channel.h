@@ -81,6 +81,21 @@ void guest_channel_host_disconnect(unsigned lcore_id);
  */
 int guest_channel_send_msg(struct channel_packet *pkt, unsigned lcore_id);
 
+/**
+ * Send a message contained in pkt over the Virtio-Serial to the host endpoint.
+ *
+ * @param pkt
+ *  Pointer to a populated struct channel_packet
+ *
+ * @param lcore_id
+ *  lcore_id.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
+ */
+int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
+			unsigned int lcore_id);
 
 #ifdef __cplusplus
 }

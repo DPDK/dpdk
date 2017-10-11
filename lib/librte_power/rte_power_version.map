@@ -20,6 +20,7 @@ DPDK_2.0 {
 DPDK_17.11 {
 	global:
 
+	rte_power_guest_channel_send_msg;
 	rte_power_freq_disable_turbo;
 	rte_power_freq_enable_turbo;
 	rte_power_turbo_status;
