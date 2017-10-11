@@ -397,7 +397,7 @@ aesni_mb_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
 			"aesni_mb_pmd_%u_qp_%u",
 			dev->data->dev_id, qp->id);
 
-	if (n > sizeof(qp->name))
+	if (n >= sizeof(qp->name))
 		return -1;
 
 	return 0;
@@ -415,7 +415,7 @@ aesni_mb_pmd_qp_create_processed_ops_ring(struct aesni_mb_qp *qp,
 				"%s_%s",
 				qp->name, str);
 
-	if (n > sizeof(ring_name))
+	if (n >= sizeof(ring_name))
 		return NULL;
 
 	r = rte_ring_lookup(ring_name);

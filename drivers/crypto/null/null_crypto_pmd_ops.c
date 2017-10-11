@@ -175,7 +175,7 @@ null_crypto_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
 			"null_crypto_pmd_%u_qp_%u",
 			dev->data->dev_id, qp->id);
 
-	if (n > sizeof(qp->name))
+	if (n >= sizeof(qp->name))
 		return -1;
 
 	return 0;
