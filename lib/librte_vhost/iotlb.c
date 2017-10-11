@@ -300,7 +300,7 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 {
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
 	struct vhost_virtqueue *vq = dev->virtqueue[vq_index];
-	int ret = -1, socket;
+	int socket = 0;
 
 	if (vq->iotlb_pool) {
 		/*
@@ -313,10 +313,9 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 	}
 
 #ifdef RTE_LIBRTE_VHOST_NUMA
-	ret = get_mempolicy(&socket, NULL, 0, vq, MPOL_F_NODE | MPOL_F_ADDR);
-#endif
-	if (ret)
+	if (get_mempolicy(&socket, NULL, 0, vq, MPOL_F_NODE | MPOL_F_ADDR) != 0)
 		socket = 0;
+#endif
 
 	rte_rwlock_init(&vq->iotlb_lock);
 	rte_rwlock_init(&vq->iotlb_pending_lock);
