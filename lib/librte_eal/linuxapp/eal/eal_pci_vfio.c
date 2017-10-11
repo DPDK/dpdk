@@ -743,12 +743,6 @@ pci_vfio_ioport_unmap(struct rte_pci_ioport *p)
 }
 
 int
-pci_vfio_enable(void)
-{
-	return vfio_enable("vfio_pci");
-}
-
-int
 pci_vfio_is_enabled(void)
 {
 	return vfio_is_enabled("vfio_pci");

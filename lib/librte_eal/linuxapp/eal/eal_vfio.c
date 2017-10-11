@@ -489,7 +489,7 @@ vfio_enable(const char *modname)
 	/* inform the user that we are probing for VFIO */
 	RTE_LOG(INFO, EAL, "Probing VFIO support...\n");
 
-	/* check if vfio-pci module is loaded */
+	/* check if vfio module is loaded */
 	vfio_available = rte_eal_check_module(modname);
 
 	/* return error directly */

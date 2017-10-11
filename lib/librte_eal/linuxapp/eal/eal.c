@@ -710,9 +710,13 @@ static int rte_eal_vfio_setup(void)
 {
 	int vfio_enabled = 0;
 
+	if (vfio_enable("vfio"))
+		return -1;
+	vfio_enabled = vfio_is_enabled("vfio");
+
 	if (!internal_config.no_pci) {
-		pci_vfio_enable();
-		vfio_enabled |= pci_vfio_is_enabled();
+		if (!pci_vfio_is_enabled())
+			RTE_LOG(DEBUG, EAL, "VFIO PCI modules not loaded\n");
 	}
 
 	if (vfio_enabled) {
