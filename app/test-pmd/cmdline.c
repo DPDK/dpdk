@@ -660,6 +660,24 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"ptype mapping update (port_id) (hw_ptype) (sw_ptype)\n"
 			"    Update a ptype mapping item on a port\n\n"
 
+			"set port (port_id) queue-region region_id (value) "
+			"queue_start_index (value) queue_num (value)\n"
+			"    Set a queue region on a port\n\n"
+
+			"set port (port_id) queue-region region_id (value) "
+			"flowtype (value)\n"
+			"    Set a flowtype region index on a port\n\n"
+
+			"set port (port_id) queue-region UP (value) region_id (value)\n"
+			"    Set the mapping of User Priority to "
+			"queue region on a port\n\n"
+
+			"set port (port_id) queue-region flush (on|off)\n"
+			"    flush all queue region related configuration\n\n"
+
+			"show port (port_id) queue-region\n"
+			"    show all queue region related configuration info\n\n"
+
 			, list_pkt_forwarding_modes()
 		);
 	}
@@ -8469,6 +8487,448 @@ cmdline_parse_inst_t cmd_syn_filter = {
 	},
 };
 
+/* *** queue region set *** */
+struct cmd_queue_region_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t  port_id;
+	cmdline_fixed_string_t cmd;
+	cmdline_fixed_string_t region;
+	uint8_t  region_id;
+	cmdline_fixed_string_t queue_start_index;
+	uint8_t  queue_id;
+	cmdline_fixed_string_t queue_num;
+	uint8_t  queue_num_value;
+};
+
+static void
+cmd_queue_region_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_queue_region_result *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_queue_region_conf region_conf;
+	enum rte_pmd_i40e_queue_region_op op_type;
+#endif
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	memset(&region_conf, 0, sizeof(region_conf));
+	op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_SET;
+	region_conf.region_id = res->region_id;
+	region_conf.queue_num = res->queue_num_value;
+	region_conf.queue_start_index = res->queue_id;
+
+	ret = rte_pmd_i40e_rss_queue_region_conf(res->port_id,
+				op_type, &region_conf);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENOTSUP:
+		printf("function not implemented or supported\n");
+		break;
+	default:
+		printf("queue region config error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_token_string_t cmd_queue_region_set =
+TOKEN_STRING_INITIALIZER(struct cmd_queue_region_result,
+		set, "set");
+cmdline_parse_token_string_t cmd_queue_region_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_region_result, port, "port");
+cmdline_parse_token_num_t cmd_queue_region_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_region_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_queue_region_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_region_result,
+				 cmd, "queue-region");
+cmdline_parse_token_string_t cmd_queue_region_id =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_region_result,
+				region, "region_id");
+cmdline_parse_token_num_t cmd_queue_region_index =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_region_result,
+				region_id, UINT8);
+cmdline_parse_token_string_t cmd_queue_region_queue_start_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_region_result,
+				queue_start_index, "queue_start_index");
+cmdline_parse_token_num_t cmd_queue_region_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_region_result,
+				queue_id, UINT8);
+cmdline_parse_token_string_t cmd_queue_region_queue_num =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_region_result,
+				queue_num, "queue_num");
+cmdline_parse_token_num_t cmd_queue_region_queue_num_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_region_result,
+				queue_num_value, UINT8);
+
+cmdline_parse_inst_t cmd_queue_region = {
+	.f = cmd_queue_region_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> queue-region region_id <value> "
+		"queue_start_index <value> queue_num <value>: Set a queue region",
+	.tokens = {
+		(void *)&cmd_queue_region_set,
+		(void *)&cmd_queue_region_port,
+		(void *)&cmd_queue_region_port_id,
+		(void *)&cmd_queue_region_cmd,
+		(void *)&cmd_queue_region_id,
+		(void *)&cmd_queue_region_index,
+		(void *)&cmd_queue_region_queue_start_index,
+		(void *)&cmd_queue_region_queue_id,
+		(void *)&cmd_queue_region_queue_num,
+		(void *)&cmd_queue_region_queue_num_value,
+		NULL,
+	},
+};
+
+/* *** queue region and flowtype set *** */
+struct cmd_region_flowtype_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t  port_id;
+	cmdline_fixed_string_t cmd;
+	cmdline_fixed_string_t region;
+	uint8_t  region_id;
+	cmdline_fixed_string_t flowtype;
+	uint8_t  flowtype_id;
+};
+
+static void
+cmd_region_flowtype_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_region_flowtype_result *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_queue_region_conf region_conf;
+	enum rte_pmd_i40e_queue_region_op op_type;
+#endif
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	memset(&region_conf, 0, sizeof(region_conf));
+
+	op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_FLOWTYPE_SET;
+	region_conf.region_id = res->region_id;
+	region_conf.hw_flowtype = res->flowtype_id;
+
+	ret = rte_pmd_i40e_rss_queue_region_conf(res->port_id,
+			op_type, &region_conf);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENOTSUP:
+		printf("function not implemented or supported\n");
+		break;
+	default:
+		printf("region flowtype config error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_token_string_t cmd_region_flowtype_set =
+TOKEN_STRING_INITIALIZER(struct cmd_region_flowtype_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_region_flowtype_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_region_flowtype_result,
+				port, "port");
+cmdline_parse_token_num_t cmd_region_flowtype_port_index =
+	TOKEN_NUM_INITIALIZER(struct cmd_region_flowtype_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_region_flowtype_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_region_flowtype_result,
+				cmd, "queue-region");
+cmdline_parse_token_string_t cmd_region_flowtype_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_region_flowtype_result,
+				region, "region_id");
+cmdline_parse_token_num_t cmd_region_flowtype_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_region_flowtype_result,
+				region_id, UINT8);
+cmdline_parse_token_string_t cmd_region_flowtype_flow_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_region_flowtype_result,
+				flowtype, "flowtype");
+cmdline_parse_token_num_t cmd_region_flowtype_flow_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_region_flowtype_result,
+				flowtype_id, UINT8);
+cmdline_parse_inst_t cmd_region_flowtype = {
+	.f = cmd_region_flowtype_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> queue-region region_id <value> "
+		"flowtype <value>: Set a flowtype region index",
+	.tokens = {
+		(void *)&cmd_region_flowtype_set,
+		(void *)&cmd_region_flowtype_port,
+		(void *)&cmd_region_flowtype_port_index,
+		(void *)&cmd_region_flowtype_cmd,
+		(void *)&cmd_region_flowtype_index,
+		(void *)&cmd_region_flowtype_id,
+		(void *)&cmd_region_flowtype_flow_index,
+		(void *)&cmd_region_flowtype_flow_id,
+		NULL,
+	},
+};
+
+/* *** User Priority (UP) to queue region (region_id) set *** */
+struct cmd_user_priority_region_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t  port_id;
+	cmdline_fixed_string_t cmd;
+	cmdline_fixed_string_t user_priority;
+	uint8_t  user_priority_id;
+	cmdline_fixed_string_t region;
+	uint8_t  region_id;
+};
+
+static void
+cmd_user_priority_region_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_user_priority_region_result *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_queue_region_conf region_conf;
+	enum rte_pmd_i40e_queue_region_op op_type;
+#endif
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	memset(&region_conf, 0, sizeof(region_conf));
+	op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_USER_PRIORITY_SET;
+	region_conf.user_priority = res->user_priority_id;
+	region_conf.region_id = res->region_id;
+
+	ret = rte_pmd_i40e_rss_queue_region_conf(res->port_id,
+				op_type, &region_conf);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENOTSUP:
+		printf("function not implemented or supported\n");
+		break;
+	default:
+		printf("user_priority region config error: (%s)\n",
+				strerror(-ret));
+	}
+}
+
+cmdline_parse_token_string_t cmd_user_priority_region_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_user_priority_region_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_user_priority_region_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_user_priority_region_result,
+				port, "port");
+cmdline_parse_token_num_t cmd_user_priority_region_port_index =
+	TOKEN_NUM_INITIALIZER(struct cmd_user_priority_region_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_user_priority_region_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_user_priority_region_result,
+				cmd, "queue-region");
+cmdline_parse_token_string_t cmd_user_priority_region_UP =
+	TOKEN_STRING_INITIALIZER(struct cmd_user_priority_region_result,
+				user_priority, "UP");
+cmdline_parse_token_num_t cmd_user_priority_region_UP_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_user_priority_region_result,
+				user_priority_id, UINT8);
+cmdline_parse_token_string_t cmd_user_priority_region_region =
+	TOKEN_STRING_INITIALIZER(struct cmd_user_priority_region_result,
+				region, "region_id");
+cmdline_parse_token_num_t cmd_user_priority_region_region_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_user_priority_region_result,
+				region_id, UINT8);
+
+cmdline_parse_inst_t cmd_user_priority_region = {
+	.f = cmd_user_priority_region_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> queue-region UP <value> "
+		"region_id <value>: Set the mapping of User Priority (UP) "
+		"to queue region (region_id) ",
+	.tokens = {
+		(void *)&cmd_user_priority_region_set,
+		(void *)&cmd_user_priority_region_port,
+		(void *)&cmd_user_priority_region_port_index,
+		(void *)&cmd_user_priority_region_cmd,
+		(void *)&cmd_user_priority_region_UP,
+		(void *)&cmd_user_priority_region_UP_id,
+		(void *)&cmd_user_priority_region_region,
+		(void *)&cmd_user_priority_region_region_id,
+		NULL,
+	},
+};
+
+/* *** flush all queue region related configuration *** */
+struct cmd_flush_queue_region_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint8_t  port_id;
+	cmdline_fixed_string_t cmd;
+	cmdline_fixed_string_t flush;
+	cmdline_fixed_string_t what;
+};
+
+static void
+cmd_flush_queue_region_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_flush_queue_region_result *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_queue_region_conf region_conf;
+	enum rte_pmd_i40e_queue_region_op op_type;
+#endif
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	memset(&region_conf, 0, sizeof(region_conf));
+
+	if (strcmp(res->what, "on") == 0)
+		op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_ALL_FLUSH_ON;
+	else
+		op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_ALL_FLUSH_OFF;
+
+	ret = rte_pmd_i40e_rss_queue_region_conf(res->port_id,
+				op_type, &region_conf);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENOTSUP:
+		printf("function not implemented or supported\n");
+		break;
+	default:
+		printf("queue region config flush error: (%s)\n",
+				strerror(-ret));
+	}
+}
+
+cmdline_parse_token_string_t cmd_flush_queue_region_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_flush_queue_region_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_flush_queue_region_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_flush_queue_region_result,
+				port, "port");
+cmdline_parse_token_num_t cmd_flush_queue_region_port_index =
+	TOKEN_NUM_INITIALIZER(struct cmd_flush_queue_region_result,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_flush_queue_region_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_flush_queue_region_result,
+				cmd, "queue-region");
+cmdline_parse_token_string_t cmd_flush_queue_region_flush =
+	TOKEN_STRING_INITIALIZER(struct cmd_flush_queue_region_result,
+				flush, "flush");
+cmdline_parse_token_string_t cmd_flush_queue_region_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_flush_queue_region_result,
+				what, "on#off");
+
+cmdline_parse_inst_t cmd_flush_queue_region = {
+	.f = cmd_flush_queue_region_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> queue-region flush on|off"
+		": flush all queue region related configuration",
+	.tokens = {
+		(void *)&cmd_flush_queue_region_set,
+		(void *)&cmd_flush_queue_region_port,
+		(void *)&cmd_flush_queue_region_port_index,
+		(void *)&cmd_flush_queue_region_cmd,
+		(void *)&cmd_flush_queue_region_flush,
+		(void *)&cmd_flush_queue_region_what,
+		NULL,
+	},
+};
+
+/* *** get all queue region related configuration info *** */
+struct cmd_show_queue_region_info {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	uint8_t  port_id;
+	cmdline_fixed_string_t cmd;
+};
+
+static void
+cmd_show_queue_region_info_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_show_queue_region_info *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_queue_regions rte_pmd_regions;
+	enum rte_pmd_i40e_queue_region_op op_type;
+#endif
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	memset(&rte_pmd_regions, 0, sizeof(rte_pmd_regions));
+
+	op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_INFO_GET;
+
+	ret = rte_pmd_i40e_rss_queue_region_conf(res->port_id,
+					op_type, &rte_pmd_regions);
+
+	port_queue_region_info_display(res->port_id, &rte_pmd_regions);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENOTSUP:
+		printf("function not implemented or supported\n");
+		break;
+	default:
+		printf("queue region config info show error: (%s)\n",
+				strerror(-ret));
+	}
+}
+
+cmdline_parse_token_string_t cmd_show_queue_region_info_get =
+TOKEN_STRING_INITIALIZER(struct cmd_show_queue_region_info,
+				show, "show");
+cmdline_parse_token_string_t cmd_show_queue_region_info_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_queue_region_info,
+				port, "port");
+cmdline_parse_token_num_t cmd_show_queue_region_info_port_index =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_queue_region_info,
+				port_id, UINT8);
+cmdline_parse_token_string_t cmd_show_queue_region_info_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_queue_region_info,
+				cmd, "queue-region");
+
+cmdline_parse_inst_t cmd_show_queue_region_info_all = {
+	.f = cmd_show_queue_region_info_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> queue-region"
+		": show all queue region related configuration info",
+	.tokens = {
+		(void *)&cmd_show_queue_region_info_get,
+		(void *)&cmd_show_queue_region_info_port,
+		(void *)&cmd_show_queue_region_info_port_index,
+		(void *)&cmd_show_queue_region_info_cmd,
+		NULL,
+	},
+};
+
 /* *** ADD/REMOVE A 2tuple FILTER *** */
 struct cmd_2tuple_filter_result {
 	cmdline_fixed_string_t filter;
@@ -15130,6 +15590,11 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_pctype_mapping_get,
 	(cmdline_parse_inst_t *)&cmd_pctype_mapping_reset,
 	(cmdline_parse_inst_t *)&cmd_pctype_mapping_update,
+	(cmdline_parse_inst_t *)&cmd_queue_region,
+	(cmdline_parse_inst_t *)&cmd_region_flowtype,
+	(cmdline_parse_inst_t *)&cmd_user_priority_region,
+	(cmdline_parse_inst_t *)&cmd_flush_queue_region,
+	(cmdline_parse_inst_t *)&cmd_show_queue_region_info_all,
 	NULL,
 };
 

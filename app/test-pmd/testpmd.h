@@ -718,6 +718,8 @@ uint8_t *open_ddp_package_file(const char *file_path, uint32_t *size);
 int save_ddp_package_file(const char *file_path, uint8_t *buf, uint32_t size);
 int close_ddp_package_file(uint8_t *buf);
 
+void port_queue_region_info_display(portid_t port_id, void *buf);
+
 enum print_warning {
 	ENABLED_WARN = 0,
 	DISABLED_WARN

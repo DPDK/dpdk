@@ -857,6 +857,49 @@ Where:
 
    Check the NIC Datasheet for hardware limits.
 
+RSS queue region
+~~~~~~~~~~~~~~~~
+
+Set RSS queue region span on a port::
+
+   testpmd> set port (port_id) queue-region region_id (value) \
+		queue_start_index (value) queue_num (value)
+
+Set flowtype mapping on a RSS queue region on a port::
+
+   testpmd> set port (port_id) queue-region region_id (value) flowtype (value)
+
+where:
+
+* For the flowtype(pctype) of packet,the specific index for each type has
+  been defined in file i40e_type.h as enum i40e_filter_pctype.
+
+Set user priority mapping on a RSS queue region on a port::
+
+   testpmd> set port (port_id) queue-region UP (value) region_id (value)
+
+Flush all queue region related configuration on a port::
+
+   testpmd> set port (port_id) queue-region flush (on|off)
+
+where:
+
+* "on"is just an enable function which server for other configuration,
+  it is for all configuration about queue region from up layer,
+  at first will only keep in DPDK softwarestored in driver,
+  only after "flush on", it commit all configuration to HW.
+  "off" is just clean all configuration about queue region just now,
+  and restore all to DPDK i40e driver default config when start up.
+
+Show all queue region related configuration info on a port::
+
+   testpmd> show port (port_id) queue-region
+
+.. note::
+
+  Queue region only support on PF by now, so these command is
+  only for configuration of queue region on PF port.
+
 csum parse-tunnel
 ~~~~~~~~~~~~~~~~~
 
