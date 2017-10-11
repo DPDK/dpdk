@@ -231,6 +231,19 @@ int power_manager_disable_turbo_core(unsigned int core_num);
  */
 uint32_t power_manager_get_current_frequency(unsigned core_num);
 
+/**
+ * Scale to medium frequency for the core specified by core_num.
+ * It is thread-safe.
+ *
+ * @param core_num
+ *  The core number to change frequency
+ *
+ * @return
+ *  - 1 on success.
+ *  - 0 if frequency not changed.
+ *  - Negative on error.
+ */
+int power_manager_scale_core_med(unsigned int core_num);
 
 #ifdef __cplusplus
 }

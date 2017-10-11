@@ -108,7 +108,7 @@ set_host_cpus_mask(void)
 int
 power_manager_init(void)
 {
-	unsigned i, num_cpus;
+	unsigned int i, num_cpus, num_freqs;
 	uint64_t cpu_mask;
 	int ret = 0;
 
@@ -121,15 +121,21 @@ power_manager_init(void)
 	rte_power_set_env(PM_ENV_ACPI_CPUFREQ);
 	cpu_mask = global_enabled_cpus;
 	for (i = 0; cpu_mask; cpu_mask &= ~(1 << i++)) {
-		if (rte_power_init(i) < 0 || rte_power_freqs(i,
-				global_core_freq_info[i].freqs,
-				RTE_MAX_LCORE_FREQS) == 0) {
-			RTE_LOG(ERR, POWER_MANAGER, "Unable to initialize power manager "
+		if (rte_power_init(i) < 0)
+			RTE_LOG(ERR, POWER_MANAGER,
+					"Unable to initialize power manager "
 					"for core %u\n", i);
+		num_freqs = rte_power_freqs(i, global_core_freq_info[i].freqs,
+					RTE_MAX_LCORE_FREQS);
+		if (num_freqs == 0) {
+			RTE_LOG(ERR, POWER_MANAGER,
+				"Unable to get frequency list for core %u\n",
+				i);
 			global_enabled_cpus &= ~(1 << i);
 			num_cpus--;
 			ret = -1;
 		}
+		global_core_freq_info[i].num_freqs = num_freqs;
 		rte_spinlock_init(&global_core_freq_info[i].power_sl);
 	}
 	RTE_LOG(INFO, POWER_MANAGER, "Detected %u host CPUs , enabled core mask:"
@@ -284,5 +290,21 @@ power_manager_disable_turbo_core(unsigned int core_num)
 	int ret = 0;
 
 	POWER_SCALE_CORE(disable_turbo, core_num, ret);
+	return ret;
+}
+
+int
+power_manager_scale_core_med(unsigned int core_num)
+{
+	int ret = 0;
+
+	if (core_num >= POWER_MGR_MAX_CPUS)
+		return -1;
+	if (!(global_enabled_cpus & (1ULL << core_num)))
+		return -1;
+	rte_spinlock_lock(&global_core_freq_info[core_num].power_sl);
+	ret = rte_power_set_freq(core_num,
+				global_core_freq_info[core_num].num_freqs / 2);
+	rte_spinlock_unlock(&global_core_freq_info[core_num].power_sl);
 	return ret;
 }
