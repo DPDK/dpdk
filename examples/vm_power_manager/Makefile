@@ -54,6 +54,22 @@ CFLAGS += $(WERROR_FLAGS)
 
 LDLIBS += -lvirt
 
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+
+ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
+LDLIBS += -lrte_pmd_ixgbe
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_I40E_PMD),y)
+LDLIBS += -lrte_pmd_i40e
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_BNXT_PMD),y)
+LDLIBS += -lrte_pmd_bnxt
+endif
+
+endif
+
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)

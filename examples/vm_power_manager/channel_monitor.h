@@ -35,6 +35,24 @@
 #define CHANNEL_MONITOR_H_
 
 #include "channel_manager.h"
+#include "channel_commands.h"
+
+struct core_share {
+	unsigned int pcpu;
+	/*
+	 * 1 CORE SHARE
+	 * 0 NOT SHARED
+	 */
+	int status;
+};
+
+struct policy {
+	struct channel_packet pkt;
+	uint32_t pfid[MAX_VFS];
+	uint32_t port[MAX_VFS];
+	unsigned int enabled;
+	struct core_share core_share[MAX_VCPU_PER_VM];
+};
 
 #ifdef __cplusplus
 extern "C" {
