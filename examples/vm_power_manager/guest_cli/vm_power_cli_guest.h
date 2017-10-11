@@ -40,12 +40,6 @@ extern "C" {
 
 #include "channel_commands.h"
 
-int guest_channel_host_connect(unsigned lcore_id);
-
-int guest_channel_send_msg(struct channel_packet *pkt, unsigned lcore_id);
-
-void guest_channel_host_disconnect(unsigned lcore_id);
-
 void run_cli(__attribute__((unused)) void *arg);
 
 #ifdef __cplusplus
