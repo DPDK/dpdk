@@ -566,6 +566,17 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
 		priv->vf = vf;
+		priv->hw_csum =	!!(device_attr.device_cap_flags &
+				   IBV_DEVICE_RAW_IP_CSUM);
+		DEBUG("checksum offloading is %ssupported",
+		      (priv->hw_csum ? "" : "not "));
+		/* Only ConnectX-3 Pro supports tunneling. */
+		priv->hw_csum_l2tun =
+			priv->hw_csum &&
+			(device_attr.vendor_part_id ==
+			 PCI_DEVICE_ID_MELLANOX_CONNECTX3PRO);
+		DEBUG("L2 tunnel checksum offloads are %ssupported",
+		      (priv->hw_csum_l2tun ? "" : "not "));
 		/* Configure the first MAC address by default. */
 		if (mlx4_get_mac(priv, &mac.addr_bytes)) {
 			ERROR("cannot get MAC address, is mlx4_en loaded?"

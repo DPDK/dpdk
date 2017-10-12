@@ -64,6 +64,8 @@
 
 /* Work queue element (WQE) flags. */
 #define MLX4_BIT_WQE_OWN 0x80000000
+#define MLX4_WQE_CTRL_IIP_HDR_CSUM (1 << 28)
+#define MLX4_WQE_CTRL_IL4_HDR_CSUM (1 << 27)
 
 #define MLX4_SIZE_TO_TXBBS(size) \
 	(RTE_ALIGN((size), (MLX4_TXBB_SIZE)) >> (MLX4_TXBB_SHIFT))

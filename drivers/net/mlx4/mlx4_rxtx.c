@@ -431,6 +431,25 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 	} else {
 		srcrb_flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT);
 	}
+	/* Enable HW checksum offload if requested */
+	if (txq->csum &&
+	    (pkt->ol_flags &
+	     (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))) {
+		const uint64_t is_tunneled = (pkt->ol_flags &
+					      (PKT_TX_TUNNEL_GRE |
+					       PKT_TX_TUNNEL_VXLAN));
+
+		if (is_tunneled && txq->csum_l2tun) {
+			owner_opcode |= MLX4_WQE_CTRL_IIP_HDR_CSUM |
+					MLX4_WQE_CTRL_IL4_HDR_CSUM;
+			if (pkt->ol_flags & PKT_TX_OUTER_IP_CKSUM)
+				srcrb_flags |=
+					RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM);
+		} else {
+			srcrb_flags |= RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM |
+						MLX4_WQE_CTRL_TCP_UDP_CSUM);
+		}
+	}
 	ctrl->srcrb_flags = srcrb_flags;
 	/*
 	 * Make sure descriptor is fully written before

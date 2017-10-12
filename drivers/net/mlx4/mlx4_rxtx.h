@@ -124,6 +124,8 @@ struct txq {
 	struct txq_elt (*elts)[]; /**< Tx elements. */
 	struct mlx4_txq_stats stats; /**< Tx queue counters. */
 	uint32_t max_inline; /**< Max inline send size. */
+	uint32_t csum:1; /**< Enable checksum offloading. */
+	uint32_t csum_l2tun:1; /**< Same for L2 tunnels. */
 	uint8_t *bounce_buf;
 	/**< Memory used for storing the first DWORD of data TXBBs. */
 	struct {

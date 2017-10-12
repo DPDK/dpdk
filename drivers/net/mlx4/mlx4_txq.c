@@ -276,6 +276,8 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			RTE_MIN(MLX4_PMD_TX_PER_COMP_REQ, desc / 4),
 		.elts_comp_cd_init =
 			RTE_MIN(MLX4_PMD_TX_PER_COMP_REQ, desc / 4),
+		.csum = priv->hw_csum,
+		.csum_l2tun = priv->hw_csum_l2tun,
 		.bounce_buf = bounce_buf,
 	};
 	txq->cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
