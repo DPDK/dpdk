@@ -268,18 +268,64 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	rxq->qp = ibv_create_qp
-		(priv->pd,
-		 &(struct ibv_qp_init_attr){
-			.send_cq = rxq->cq,
-			.recv_cq = rxq->cq,
-			.cap = {
-				.max_recv_wr =
-					RTE_MIN(priv->device_attr.max_qp_wr,
-						desc),
-				.max_recv_sge = 1,
+	rxq->wq = ibv_create_wq
+		(priv->ctx,
+		 &(struct ibv_wq_init_attr){
+			.wq_type = IBV_WQT_RQ,
+			.max_wr = RTE_MIN(priv->device_attr.max_qp_wr, desc),
+			.max_sge = 1,
+			.pd = priv->pd,
+			.cq = rxq->cq,
+		 });
+	if (!rxq->wq) {
+		rte_errno = errno ? errno : EINVAL;
+		ERROR("%p: WQ creation failure: %s",
+		      (void *)dev, strerror(rte_errno));
+		goto error;
+	}
+	ret = ibv_modify_wq
+		(rxq->wq,
+		 &(struct ibv_wq_attr){
+			.attr_mask = IBV_WQ_ATTR_STATE,
+			.wq_state = IBV_WQS_RDY,
+		 });
+	if (ret) {
+		rte_errno = ret;
+		ERROR("%p: WQ state to IBV_WPS_RDY failed: %s",
+		      (void *)dev, strerror(rte_errno));
+		goto error;
+	}
+	rxq->ind = ibv_create_rwq_ind_table
+		(priv->ctx,
+		 &(struct ibv_rwq_ind_table_init_attr){
+			.log_ind_tbl_size = 0,
+			.ind_tbl = (struct ibv_wq *[]){
+				rxq->wq,
 			},
+			.comp_mask = 0,
+		 });
+	if (!rxq->ind) {
+		rte_errno = errno ? errno : EINVAL;
+		ERROR("%p: indirection table creation failure: %s",
+		      (void *)dev, strerror(errno));
+		goto error;
+	}
+	rxq->qp = ibv_create_qp_ex
+		(priv->ctx,
+		 &(struct ibv_qp_init_attr_ex){
+			.comp_mask = (IBV_QP_INIT_ATTR_PD |
+				      IBV_QP_INIT_ATTR_RX_HASH |
+				      IBV_QP_INIT_ATTR_IND_TABLE),
 			.qp_type = IBV_QPT_RAW_PACKET,
+			.pd = priv->pd,
+			.rwq_ind_tbl = rxq->ind,
+			.rx_hash_conf = {
+				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
+				.rx_hash_key_len = MLX4_RSS_HASH_KEY_SIZE,
+				.rx_hash_key =
+					(uint8_t [MLX4_RSS_HASH_KEY_SIZE]){ 0 },
+				.rx_hash_fields_mask = 0,
+			},
 		 });
 	if (!rxq->qp) {
 		rte_errno = errno ? errno : EINVAL;
@@ -306,8 +352,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	ret = ibv_post_recv(rxq->qp, &(*rxq->elts)[0].wr,
-			    &(struct ibv_recv_wr *){ NULL });
+	ret = ibv_post_wq_recv(rxq->wq, &(*rxq->elts)[0].wr,
+			       &(struct ibv_recv_wr *){ NULL });
 	if (ret) {
 		rte_errno = ret;
 		ERROR("%p: ibv_post_recv() failed: %s",
@@ -373,6 +419,10 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	mlx4_rxq_free_elts(rxq);
 	if (rxq->qp)
 		claim_zero(ibv_destroy_qp(rxq->qp));
+	if (rxq->ind)
+		claim_zero(ibv_destroy_rwq_ind_table(rxq->ind));
+	if (rxq->wq)
+		claim_zero(ibv_destroy_wq(rxq->wq));
 	if (rxq->cq)
 		claim_zero(ibv_destroy_cq(rxq->cq));
 	if (rxq->channel)

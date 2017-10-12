@@ -459,7 +459,7 @@ repost:
 	/* Repost WRs. */
 	*wr_next = NULL;
 	assert(wr_head);
-	ret = ibv_post_recv(rxq->qp, wr_head, &wr_bad);
+	ret = ibv_post_wq_recv(rxq->wq, wr_head, &wr_bad);
 	if (unlikely(ret)) {
 		/* Inability to repost WRs is fatal. */
 		DEBUG("%p: recv_burst(): failed (ret=%d)",

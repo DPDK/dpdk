@@ -61,6 +61,9 @@
 /** Maximum size for inline data. */
 #define MLX4_PMD_MAX_INLINE 0
 
+/** Fixed RSS hash key size in bytes. Cannot be modified. */
+#define MLX4_RSS_HASH_KEY_SIZE 40
+
 /**
  * Maximum number of cached Memory Pools (MPs) per TX queue. Each RTE MP
  * from which buffers are to be transmitted will have to be mapped by this

@@ -73,6 +73,8 @@ struct rxq {
 	struct rte_mempool *mp; /**< Memory pool for allocations. */
 	struct ibv_mr *mr; /**< Memory region (for mp). */
 	struct ibv_cq *cq; /**< Completion queue. */
+	struct ibv_wq *wq; /**< Work queue. */
+	struct ibv_rwq_ind_table *ind; /**< Indirection table. */
 	struct ibv_qp *qp; /**< Queue pair. */
 	struct ibv_comp_channel *channel; /**< Rx completion channel. */
 	unsigned int port_id; /**< Port ID for incoming packets. */
