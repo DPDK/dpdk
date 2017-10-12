@@ -579,7 +579,7 @@ signal_handler(int sig_num)
 }
 
 static inline int
-configure_vdev(uint8_t port_id)
+configure_vdev(uint16_t port_id)
 {
 	struct ether_addr addr;
 	const uint16_t rxRings = 0, txRings = 1;
@@ -609,7 +609,7 @@ configure_vdev(uint8_t port_id)
 	rte_eth_macaddr_get(port_id, &addr);
 	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
-			(unsigned)port_id,
+			port_id,
 			addr.addr_bytes[0], addr.addr_bytes[1],
 			addr.addr_bytes[2], addr.addr_bytes[3],
 			addr.addr_bytes[4], addr.addr_bytes[5]);
