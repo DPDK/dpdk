@@ -70,6 +70,14 @@
 #define MLX4_SIZE_TO_TXBBS(size) \
 	(RTE_ALIGN((size), (MLX4_TXBB_SIZE)) >> (MLX4_TXBB_SHIFT))
 
+/* CQE checksum flags. */
+enum {
+	MLX4_CQE_L2_TUNNEL_IPV4 = (int)(1u << 25),
+	MLX4_CQE_L2_TUNNEL_L4_CSUM = (int)(1u << 26),
+	MLX4_CQE_L2_TUNNEL = (int)(1u << 27),
+	MLX4_CQE_L2_TUNNEL_IPOK = (int)(1u << 31),
+};
+
 /* Send queue information. */
 struct mlx4_sq {
 	uint8_t *buf; /**< SQ buffer. */
@@ -117,6 +125,27 @@ mlx4_get_cqe(struct mlx4_cq *cq, uint32_t index)
 				   ((index & (cq->cqe_cnt - 1)) <<
 				    (5 + cq->cqe_64)) +
 				   (cq->cqe_64 << 5));
+}
+
+/**
+ * Transpose a flag in a value.
+ *
+ * @param val
+ *   Input value.
+ * @param from
+ *   Flag to retrieve from input value.
+ * @param to
+ *   Flag to set in output value.
+ *
+ * @return
+ *   Output value with transposed flag enabled if present on input.
+ */
+static inline uint64_t
+mlx4_transpose(uint64_t val, uint64_t from, uint64_t to)
+{
+	return (from >= to ?
+		(val & from) / (from / to) :
+		(val & from) * (to / from));
 }
 
 #endif /* MLX4_PRM_H_ */

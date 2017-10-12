@@ -78,6 +78,8 @@ struct rxq {
 	struct rte_mbuf *(*elts)[]; /**< Rx elements. */
 	volatile struct mlx4_wqe_data_seg (*wqes)[]; /**< HW queue entries. */
 	volatile uint32_t *rq_db; /**< RQ doorbell record. */
+	uint32_t csum:1; /**< Enable checksum offloading. */
+	uint32_t csum_l2tun:1; /**< Same for L2 tunnels. */
 	struct mlx4_cq mcq;  /**< Info for directly manipulating the CQ. */
 	struct mlx4_rxq_stats stats; /**< Rx queue counters. */
 	unsigned int socket; /**< CPU socket ID for allocations. */

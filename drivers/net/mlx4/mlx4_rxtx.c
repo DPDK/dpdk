@@ -557,6 +557,107 @@ stop:
 }
 
 /**
+ * Translate Rx completion flags to packet type.
+ *
+ * @param flags
+ *   Rx completion flags returned by mlx4_cqe_flags().
+ *
+ * @return
+ *   Packet type in mbuf format.
+ */
+static inline uint32_t
+rxq_cq_to_pkt_type(uint32_t flags)
+{
+	uint32_t pkt_type;
+
+	if (flags & MLX4_CQE_L2_TUNNEL)
+		pkt_type =
+			mlx4_transpose(flags,
+				       MLX4_CQE_L2_TUNNEL_IPV4,
+				       RTE_PTYPE_L3_IPV4_EXT_UNKNOWN) |
+			mlx4_transpose(flags,
+				       MLX4_CQE_STATUS_IPV4_PKT,
+				       RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN);
+	else
+		pkt_type = mlx4_transpose(flags,
+					  MLX4_CQE_STATUS_IPV4_PKT,
+					  RTE_PTYPE_L3_IPV4_EXT_UNKNOWN);
+	return pkt_type;
+}
+
+/**
+ * Translate Rx completion flags to offload flags.
+ *
+ * @param flags
+ *   Rx completion flags returned by mlx4_cqe_flags().
+ * @param csum
+ *   Whether Rx checksums are enabled.
+ * @param csum_l2tun
+ *   Whether Rx L2 tunnel checksums are enabled.
+ *
+ * @return
+ *   Offload flags (ol_flags) in mbuf format.
+ */
+static inline uint32_t
+rxq_cq_to_ol_flags(uint32_t flags, int csum, int csum_l2tun)
+{
+	uint32_t ol_flags = 0;
+
+	if (csum)
+		ol_flags |=
+			mlx4_transpose(flags,
+				       MLX4_CQE_STATUS_IP_HDR_CSUM_OK,
+				       PKT_RX_IP_CKSUM_GOOD) |
+			mlx4_transpose(flags,
+				       MLX4_CQE_STATUS_TCP_UDP_CSUM_OK,
+				       PKT_RX_L4_CKSUM_GOOD);
+	if ((flags & MLX4_CQE_L2_TUNNEL) && csum_l2tun)
+		ol_flags |=
+			mlx4_transpose(flags,
+				       MLX4_CQE_L2_TUNNEL_IPOK,
+				       PKT_RX_IP_CKSUM_GOOD) |
+			mlx4_transpose(flags,
+				       MLX4_CQE_L2_TUNNEL_L4_CSUM,
+				       PKT_RX_L4_CKSUM_GOOD);
+	return ol_flags;
+}
+
+/**
+ * Extract checksum information from CQE flags.
+ *
+ * @param cqe
+ *   Pointer to CQE structure.
+ * @param csum
+ *   Whether Rx checksums are enabled.
+ * @param csum_l2tun
+ *   Whether Rx L2 tunnel checksums are enabled.
+ *
+ * @return
+ *   CQE checksum information.
+ */
+static inline uint32_t
+mlx4_cqe_flags(struct mlx4_cqe *cqe, int csum, int csum_l2tun)
+{
+	uint32_t flags = 0;
+
+	/*
+	 * The relevant bits are in different locations on their
+	 * CQE fields therefore we can join them in one 32bit
+	 * variable.
+	 */
+	if (csum)
+		flags = (rte_be_to_cpu_32(cqe->status) &
+			 MLX4_CQE_STATUS_IPV4_CSUM_OK);
+	if (csum_l2tun)
+		flags |= (rte_be_to_cpu_32(cqe->vlan_my_qpn) &
+			  (MLX4_CQE_L2_TUNNEL |
+			   MLX4_CQE_L2_TUNNEL_IPOK |
+			   MLX4_CQE_L2_TUNNEL_L4_CSUM |
+			   MLX4_CQE_L2_TUNNEL_IPV4));
+	return flags;
+}
+
+/**
  * Poll one CQE from CQ.
  *
  * @param rxq
@@ -664,8 +765,21 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				goto skip;
 			}
 			pkt = seg;
-			pkt->packet_type = 0;
-			pkt->ol_flags = 0;
+			if (rxq->csum | rxq->csum_l2tun) {
+				uint32_t flags =
+					mlx4_cqe_flags(cqe,
+						       rxq->csum,
+						       rxq->csum_l2tun);
+
+				pkt->ol_flags =
+					rxq_cq_to_ol_flags(flags,
+							   rxq->csum,
+							   rxq->csum_l2tun);
+				pkt->packet_type = rxq_cq_to_pkt_type(flags);
+			} else {
+				pkt->packet_type = 0;
+				pkt->ol_flags = 0;
+			}
 			pkt->pkt_len = len;
 		}
 		rep->nb_segs = 1;

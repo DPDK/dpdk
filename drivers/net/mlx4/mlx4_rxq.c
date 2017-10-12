@@ -464,6 +464,11 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.sges_n = 0,
 		.elts_n = rte_log2_u32(desc),
 		.elts = elts,
+		/* Toggle Rx checksum offload if hardware supports it. */
+		.csum = (priv->hw_csum &&
+			 dev->data->dev_conf.rxmode.hw_ip_checksum),
+		.csum_l2tun = (priv->hw_csum_l2tun &&
+			       dev->data->dev_conf.rxmode.hw_ip_checksum),
 		.stats.idx = idx,
 		.socket = socket,
 	};

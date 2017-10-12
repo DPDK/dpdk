@@ -767,10 +767,14 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_mac_addrs = RTE_DIM(priv->mac);
 	info->rx_offload_capa = 0;
 	info->tx_offload_capa = 0;
-	if (priv->hw_csum)
+	if (priv->hw_csum) {
 		info->tx_offload_capa |= (DEV_TX_OFFLOAD_IPV4_CKSUM |
 					  DEV_TX_OFFLOAD_UDP_CKSUM |
 					  DEV_TX_OFFLOAD_TCP_CKSUM);
+		info->rx_offload_capa |= (DEV_RX_OFFLOAD_IPV4_CKSUM |
+					  DEV_RX_OFFLOAD_UDP_CKSUM |
+					  DEV_RX_OFFLOAD_TCP_CKSUM);
+	}
 	if (priv->hw_csum_l2tun)
 		info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 	if (mlx4_get_ifname(priv, &ifname) == 0)
