@@ -310,7 +310,7 @@ meminfo_display(void)
 }
 
 static void
-nic_stats_display(uint8_t port_id)
+nic_stats_display(uint16_t port_id)
 {
 	struct rte_eth_stats stats;
 	uint8_t i;
@@ -349,7 +349,7 @@ nic_stats_display(uint8_t port_id)
 }
 
 static void
-nic_stats_clear(uint8_t port_id)
+nic_stats_clear(uint16_t port_id)
 {
 	printf("\n Clearing NIC stats for port %d\n", port_id);
 	rte_eth_stats_reset(port_id);
@@ -411,7 +411,7 @@ static void collectd_resolve_cnt_type(char *cnt_type, size_t cnt_type_len,
 }
 
 static void
-nic_xstats_by_name_display(uint8_t port_id, char *name)
+nic_xstats_by_name_display(uint16_t port_id, char *name)
 {
 	uint64_t id;
 
@@ -426,7 +426,7 @@ nic_xstats_by_name_display(uint8_t port_id, char *name)
 }
 
 static void
-nic_xstats_by_ids_display(uint8_t port_id, uint64_t *ids, int len)
+nic_xstats_by_ids_display(uint16_t port_id, uint64_t *ids, int len)
 {
 	struct rte_eth_xstat_name *xstats_names;
 	uint64_t *values;
@@ -473,7 +473,7 @@ err:
 }
 
 static void
-nic_xstats_display(uint8_t port_id)
+nic_xstats_display(uint16_t port_id)
 {
 	struct rte_eth_xstat_name *xstats_names;
 	uint64_t *values;
@@ -541,7 +541,7 @@ err:
 }
 
 static void
-nic_xstats_clear(uint8_t port_id)
+nic_xstats_clear(uint16_t port_id)
 {
 	printf("\n Clearing NIC xstats for port %d\n", port_id);
 	rte_eth_xstats_reset(port_id);
@@ -618,7 +618,7 @@ main(int argc, char **argv)
 	char n_flag[] = "-n4";
 	char mp_flag[] = "--proc-type=secondary";
 	char *argp[argc + 3];
-	uint8_t nb_ports;
+	uint16_t nb_ports;
 
 	/* preparse app arguments */
 	ret = proc_info_preparse_args(argc, argv);
