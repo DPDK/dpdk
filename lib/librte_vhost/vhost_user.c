@@ -314,6 +314,9 @@ out:
 	dev->virtqueue[index] = vq;
 	vhost_devices[dev->vid] = dev;
 
+	if (old_vq != vq)
+		vhost_user_iotlb_init(dev, index);
+
 	return dev;
 }
 #else

@@ -309,7 +309,6 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 		 */
 		vhost_user_iotlb_cache_remove_all(vq);
 		vhost_user_iotlb_pending_remove_all(vq);
-		return 0;
 	}
 
 #ifdef RTE_LIBRTE_VHOST_NUMA
