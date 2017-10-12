@@ -36,6 +36,7 @@
 
 #include <net/if.h>
 #include <stdint.h>
+#include <sys/queue.h>
 
 /* Verbs headers do not support -pedantic. */
 #ifdef PEDANTIC
@@ -51,13 +52,13 @@
 #include <rte_interrupts.h>
 #include <rte_mempool.h>
 
-/* Request send completion once in every 64 sends, might be less. */
+/** Request send completion once in every 64 sends, might be less. */
 #define MLX4_PMD_TX_PER_COMP_REQ 64
 
-/* Maximum size for inline data. */
+/** Maximum size for inline data. */
 #define MLX4_PMD_MAX_INLINE 0
 
-/*
+/**
  * Maximum number of cached Memory Pools (MPs) per TX queue. Each RTE MP
  * from which buffers are to be transmitted will have to be mapped by this
  * driver to their own Memory Region (MR). This is a slow operation.
@@ -68,10 +69,10 @@
 #define MLX4_PMD_TX_MP_CACHE 8
 #endif
 
-/* Interrupt alarm timeout value in microseconds. */
+/** Interrupt alarm timeout value in microseconds. */
 #define MLX4_INTR_ALARM_TIMEOUT 100000
 
-/* Port parameter. */
+/** Port parameter. */
 #define MLX4_PMD_PORT_KVARG "port"
 
 enum {
@@ -84,29 +85,31 @@ enum {
 	PCI_DEVICE_ID_MELLANOX_CONNECTX3PRO = 0x1007,
 };
 
+/** Driver name reported to lower layers and used in log output. */
 #define MLX4_DRIVER_NAME "net_mlx4"
 
 struct rxq;
 struct txq;
 struct rte_flow;
 
+/** Private data structure. */
 struct priv {
-	struct rte_eth_dev *dev; /* Ethernet device. */
-	struct ibv_context *ctx; /* Verbs context. */
-	struct ibv_device_attr device_attr; /* Device properties. */
-	struct ibv_pd *pd; /* Protection Domain. */
-	struct ether_addr mac; /* MAC address. */
-	struct ibv_flow *mac_flow; /* Flow associated with MAC address. */
+	struct rte_eth_dev *dev; /**< Ethernet device. */
+	struct ibv_context *ctx; /**< Verbs context. */
+	struct ibv_device_attr device_attr; /**< Device properties. */
+	struct ibv_pd *pd; /**< Protection Domain. */
+	struct ether_addr mac; /**< MAC address. */
+	struct ibv_flow *mac_flow; /**< Flow associated with MAC address. */
 	/* Device properties. */
-	uint16_t mtu; /* Configured MTU. */
-	uint8_t port; /* Physical port number. */
-	uint32_t started:1; /* Device started, flows enabled. */
-	uint32_t vf:1; /* This is a VF device. */
-	uint32_t intr_alarm:1; /* An interrupt alarm is scheduled. */
-	uint32_t isolated:1; /* Toggle isolated mode. */
-	struct rte_intr_handle intr_handle; /* Port interrupt handle. */
-	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
-	LIST_HEAD(mlx4_flows, rte_flow) flows;
+	uint16_t mtu; /**< Configured MTU. */
+	uint8_t port; /**< Physical port number. */
+	uint32_t started:1; /**< Device started, flows enabled. */
+	uint32_t vf:1; /**< This is a VF device. */
+	uint32_t intr_alarm:1; /**< An interrupt alarm is scheduled. */
+	uint32_t isolated:1; /**< Toggle isolated mode. */
+	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
+	struct rte_flow_drop *flow_drop_queue; /**< Flow drop queue. */
+	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 };
 
 /* mlx4_ethdev.c */

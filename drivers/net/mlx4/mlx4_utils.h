@@ -49,7 +49,7 @@
  * information replace the driver name (MLX4_DRIVER_NAME) in log messages.
  */
 
-/* Return the file name part of a path. */
+/** Return the file name part of a path. */
 static inline const char *
 pmd_drv_log_basename(const char *s)
 {
@@ -98,7 +98,7 @@ pmd_drv_log_basename(const char *s)
 #define WARN(...) PMD_DRV_LOG(WARNING, __VA_ARGS__)
 #define ERROR(...) PMD_DRV_LOG(ERR, __VA_ARGS__)
 
-/* Allocate a buffer on the stack and fill it with a printf format string. */
+/** Allocate a buffer on the stack and fill it with a printf format string. */
 #define MKSTR(name, ...) \
 	char name[snprintf(NULL, 0, __VA_ARGS__) + 1]; \
 	\

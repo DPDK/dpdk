@@ -52,6 +52,7 @@
 #include <rte_flow_driver.h>
 #include <rte_byteorder.h>
 
+/** PMD-specific (mlx4) definition of a flow rule handle. */
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct ibv_flow *ibv_flow; /**< Verbs flow. */
@@ -65,6 +66,7 @@ struct mlx4_flow {
 	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
 };
 
+/** Flow rule target descriptor. */
 struct mlx4_flow_action {
 	uint32_t drop:1; /**< Target is a drop queue. */
 	uint32_t queue:1; /**< Target is a receive queue. */

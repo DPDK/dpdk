@@ -85,8 +85,8 @@ struct rxq {
 
 /** Tx element. */
 struct txq_elt {
-	struct ibv_send_wr wr; /* Work request. */
-	struct ibv_sge sge; /* Scatter/gather element. */
+	struct ibv_send_wr wr; /**< Work request. */
+	struct ibv_sge sge; /**< Scatter/gather element. */
 	struct rte_mbuf *buf; /**< Buffer. */
 };
 
