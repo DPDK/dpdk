@@ -155,34 +155,6 @@ mlx4_txq_free_elts(struct txq *txq)
 	rte_free(elts);
 }
 
-/**
- * Clean up a Tx queue.
- *
- * Destroy objects, free allocated memory and reset the structure for reuse.
- *
- * @param txq
- *   Pointer to Tx queue structure.
- */
-void
-mlx4_txq_cleanup(struct txq *txq)
-{
-	size_t i;
-
-	DEBUG("cleaning up %p", (void *)txq);
-	mlx4_txq_free_elts(txq);
-	if (txq->qp != NULL)
-		claim_zero(ibv_destroy_qp(txq->qp));
-	if (txq->cq != NULL)
-		claim_zero(ibv_destroy_cq(txq->cq));
-	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
-		if (txq->mp2mr[i].mp == NULL)
-			break;
-		assert(txq->mp2mr[i].mr != NULL);
-		claim_zero(ibv_dereg_mr(txq->mp2mr[i].mr));
-	}
-	memset(txq, 0, sizeof(*txq));
-}
-
 struct txq_mp2mr_mbuf_check_data {
 	int ret;
 };
@@ -242,143 +214,6 @@ mlx4_txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 }
 
 /**
- * Configure a Tx queue.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param txq
- *   Pointer to Tx queue structure.
- * @param desc
- *   Number of descriptors to configure in queue.
- * @param socket
- *   NUMA socket on which memory must be allocated.
- * @param[in] conf
- *   Thresholds parameters.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx4_txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
-	       unsigned int socket, const struct rte_eth_txconf *conf)
-{
-	struct priv *priv = dev->data->dev_private;
-	struct txq tmpl = {
-		.priv = priv,
-		.socket = socket
-	};
-	union {
-		struct ibv_qp_init_attr init;
-		struct ibv_qp_attr mod;
-	} attr;
-	int ret;
-
-	(void)conf; /* Thresholds configuration (ignored). */
-	if (priv == NULL) {
-		rte_errno = EINVAL;
-		goto error;
-	}
-	if (desc == 0) {
-		rte_errno = EINVAL;
-		ERROR("%p: invalid number of Tx descriptors", (void *)dev);
-		goto error;
-	}
-	/* MRs will be registered in mp2mr[] later. */
-	tmpl.cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
-	if (tmpl.cq == NULL) {
-		rte_errno = ENOMEM;
-		ERROR("%p: CQ creation failure: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	DEBUG("priv->device_attr.max_qp_wr is %d",
-	      priv->device_attr.max_qp_wr);
-	DEBUG("priv->device_attr.max_sge is %d",
-	      priv->device_attr.max_sge);
-	attr.init = (struct ibv_qp_init_attr){
-		/* CQ to be associated with the send queue. */
-		.send_cq = tmpl.cq,
-		/* CQ to be associated with the receive queue. */
-		.recv_cq = tmpl.cq,
-		.cap = {
-			/* Max number of outstanding WRs. */
-			.max_send_wr = ((priv->device_attr.max_qp_wr < desc) ?
-					priv->device_attr.max_qp_wr :
-					desc),
-			/* Max number of scatter/gather elements in a WR. */
-			.max_send_sge = 1,
-			.max_inline_data = MLX4_PMD_MAX_INLINE,
-		},
-		.qp_type = IBV_QPT_RAW_PACKET,
-		/*
-		 * Do *NOT* enable this, completions events are managed per
-		 * Tx burst.
-		 */
-		.sq_sig_all = 0,
-	};
-	tmpl.qp = ibv_create_qp(priv->pd, &attr.init);
-	if (tmpl.qp == NULL) {
-		rte_errno = errno ? errno : EINVAL;
-		ERROR("%p: QP creation failure: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	/* ibv_create_qp() updates this value. */
-	tmpl.max_inline = attr.init.cap.max_inline_data;
-	attr.mod = (struct ibv_qp_attr){
-		/* Move the QP to this state. */
-		.qp_state = IBV_QPS_INIT,
-		/* Primary port number. */
-		.port_num = priv->port
-	};
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE | IBV_QP_PORT);
-	if (ret) {
-		rte_errno = ret;
-		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	ret = mlx4_txq_alloc_elts(&tmpl, desc);
-	if (ret) {
-		ERROR("%p: TXQ allocation failed: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	attr.mod = (struct ibv_qp_attr){
-		.qp_state = IBV_QPS_RTR
-	};
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
-	if (ret) {
-		rte_errno = ret;
-		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	attr.mod.qp_state = IBV_QPS_RTS;
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
-	if (ret) {
-		rte_errno = ret;
-		ERROR("%p: QP state to IBV_QPS_RTS failed: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	/* Clean up txq in case we're reinitializing it. */
-	DEBUG("%p: cleaning-up old txq just in case", (void *)txq);
-	mlx4_txq_cleanup(txq);
-	*txq = tmpl;
-	DEBUG("%p: txq updated with %p", (void *)txq, (void *)&tmpl);
-	/* Pre-register known mempools. */
-	rte_mempool_walk(mlx4_txq_mp2mr_iter, txq);
-	return 0;
-error:
-	ret = rte_errno;
-	mlx4_txq_cleanup(&tmpl);
-	rte_errno = ret;
-	assert(rte_errno > 0);
-	return -rte_errno;
-}
-
-/**
  * DPDK callback to configure a Tx queue.
  *
  * @param dev
@@ -400,9 +235,11 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    unsigned int socket, const struct rte_eth_txconf *conf)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct txq *txq = dev->data->tx_queues[idx];
+	struct ibv_qp_init_attr qp_init_attr;
+	struct txq *txq;
 	int ret;
 
+	(void)conf; /* Thresholds configuration (ignored). */
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
 	if (idx >= dev->data->nb_tx_queues) {
@@ -411,34 +248,114 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, idx, dev->data->nb_tx_queues);
 		return -rte_errno;
 	}
-	if (txq != NULL) {
-		DEBUG("%p: reusing already allocated queue index %u (%p)",
-		      (void *)dev, idx, (void *)txq);
-		if (priv->started) {
-			rte_errno = EEXIST;
-			return -rte_errno;
-		}
-		dev->data->tx_queues[idx] = NULL;
-		mlx4_txq_cleanup(txq);
-	} else {
-		txq = rte_calloc_socket("TXQ", 1, sizeof(*txq), 0, socket);
-		if (txq == NULL) {
-			rte_errno = ENOMEM;
-			ERROR("%p: unable to allocate queue index %u",
-			      (void *)dev, idx);
-			return -rte_errno;
-		}
+	txq = dev->data->tx_queues[idx];
+	if (txq) {
+		rte_errno = EEXIST;
+		DEBUG("%p: Tx queue %u already configured, release it first",
+		      (void *)dev, idx);
+		return -rte_errno;
 	}
-	ret = mlx4_txq_setup(dev, txq, desc, socket, conf);
+	if (!desc) {
+		rte_errno = EINVAL;
+		ERROR("%p: invalid number of Tx descriptors", (void *)dev);
+		return -rte_errno;
+	}
+	/* Allocate and initialize Tx queue. */
+	txq = rte_calloc_socket("TXQ", 1, sizeof(*txq), 0, socket);
+	if (!txq) {
+		rte_errno = ENOMEM;
+		ERROR("%p: unable to allocate queue index %u",
+		      (void *)dev, idx);
+		return -rte_errno;
+	}
+	*txq = (struct txq){
+		.priv = priv,
+		.stats.idx = idx,
+		.socket = socket,
+	};
+	txq->cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
+	if (!txq->cq) {
+		rte_errno = ENOMEM;
+		ERROR("%p: CQ creation failure: %s",
+		      (void *)dev, strerror(rte_errno));
+		goto error;
+	}
+	qp_init_attr = (struct ibv_qp_init_attr){
+		.send_cq = txq->cq,
+		.recv_cq = txq->cq,
+		.cap = {
+			.max_send_wr =
+				RTE_MIN(priv->device_attr.max_qp_wr, desc),
+			.max_send_sge = 1,
+			.max_inline_data = MLX4_PMD_MAX_INLINE,
+		},
+		.qp_type = IBV_QPT_RAW_PACKET,
+		/* No completion events must occur by default. */
+		.sq_sig_all = 0,
+	};
+	txq->qp = ibv_create_qp(priv->pd, &qp_init_attr);
+	if (!txq->qp) {
+		rte_errno = errno ? errno : EINVAL;
+		ERROR("%p: QP creation failure: %s",
+		      (void *)dev, strerror(rte_errno));
+		goto error;
+	}
+	txq->max_inline = qp_init_attr.cap.max_inline_data;
+	ret = ibv_modify_qp
+		(txq->qp,
+		 &(struct ibv_qp_attr){
+			.qp_state = IBV_QPS_INIT,
+			.port_num = priv->port,
+		 },
+		 IBV_QP_STATE | IBV_QP_PORT);
 	if (ret) {
-		rte_free(txq);
-	} else {
-		txq->stats.idx = idx;
-		DEBUG("%p: adding Tx queue %p to list",
-		      (void *)dev, (void *)txq);
-		dev->data->tx_queues[idx] = txq;
+		rte_errno = ret;
+		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
+		      (void *)dev, strerror(rte_errno));
+		goto error;
 	}
-	return ret;
+	ret = mlx4_txq_alloc_elts(txq, desc);
+	if (ret) {
+		ERROR("%p: TXQ allocation failed: %s",
+		      (void *)dev, strerror(rte_errno));
+		goto error;
+	}
+	ret = ibv_modify_qp
+		(txq->qp,
+		 &(struct ibv_qp_attr){
+			.qp_state = IBV_QPS_RTR,
+		 },
+		 IBV_QP_STATE);
+	if (ret) {
+		rte_errno = ret;
+		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
+		      (void *)dev, strerror(rte_errno));
+		goto error;
+	}
+	ret = ibv_modify_qp
+		(txq->qp,
+		 &(struct ibv_qp_attr){
+			.qp_state = IBV_QPS_RTS,
+		 },
+		 IBV_QP_STATE);
+	if (ret) {
+		rte_errno = ret;
+		ERROR("%p: QP state to IBV_QPS_RTS failed: %s",
+		      (void *)dev, strerror(rte_errno));
+		goto error;
+	}
+	/* Pre-register known mempools. */
+	rte_mempool_walk(mlx4_txq_mp2mr_iter, txq);
+	DEBUG("%p: adding Tx queue %p to list", (void *)dev, (void *)txq);
+	dev->data->tx_queues[idx] = txq;
+	return 0;
+error:
+	dev->data->tx_queues[idx] = NULL;
+	ret = rte_errno;
+	mlx4_tx_queue_release(txq);
+	rte_errno = ret;
+	assert(rte_errno > 0);
+	return -rte_errno;
 }
 
 /**
@@ -464,6 +381,16 @@ mlx4_tx_queue_release(void *dpdk_txq)
 			priv->dev->data->tx_queues[i] = NULL;
 			break;
 		}
-	mlx4_txq_cleanup(txq);
+	mlx4_txq_free_elts(txq);
+	if (txq->qp)
+		claim_zero(ibv_destroy_qp(txq->qp));
+	if (txq->cq)
+		claim_zero(ibv_destroy_cq(txq->cq));
+	for (i = 0; i != RTE_DIM(txq->mp2mr); ++i) {
+		if (!txq->mp2mr[i].mp)
+			break;
+		assert(txq->mp2mr[i].mr);
+		claim_zero(ibv_dereg_mr(txq->mp2mr[i].mr));
+	}
 	rte_free(txq);
 }
