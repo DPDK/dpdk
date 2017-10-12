@@ -1940,7 +1940,7 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed)
 		ETH_LINK_SPEED_10G | ETH_LINK_SPEED_20G | ETH_LINK_SPEED_25G | \
 		ETH_LINK_SPEED_40G | ETH_LINK_SPEED_50G)
 
-static int bnxt_valid_link_speed(uint32_t link_speed, uint8_t port_id)
+static int bnxt_valid_link_speed(uint32_t link_speed, uint16_t port_id)
 {
 	uint32_t one_speed;
 
