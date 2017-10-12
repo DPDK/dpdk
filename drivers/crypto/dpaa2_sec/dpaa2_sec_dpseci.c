@@ -203,7 +203,6 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		old_icv = (uint8_t *)(sge + 1);
 		memcpy(old_icv,	sym_op->aead.digest.data,
 		       sess->digest_length);
-		memset(sym_op->aead.digest.data, 0, sess->digest_length);
 		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_icv));
 		sge->length = sess->digest_length;
 		DPAA2_SET_FD_LEN(fd, (sym_op->aead.data.length +
@@ -342,7 +341,6 @@ build_authenc_fd(dpaa2_sec_session *sess,
 		old_icv = (uint8_t *)(sge + 1);
 		memcpy(old_icv,	sym_op->auth.digest.data,
 		       sess->digest_length);
-		memset(sym_op->auth.digest.data, 0, sess->digest_length);
 		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_icv));
 		sge->length = sess->digest_length;
 		DPAA2_SET_FD_LEN(fd, (sym_op->auth.data.length +
@@ -436,7 +434,6 @@ build_auth_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 		old_digest = (uint8_t *)(sge + 1);
 		rte_memcpy(old_digest, sym_op->auth.digest.data,
 			   sess->digest_length);
-		memset(sym_op->auth.digest.data, 0, sess->digest_length);
 		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_digest));
 		sge->length = sess->digest_length;
 		fle->length = sym_op->auth.data.length +
