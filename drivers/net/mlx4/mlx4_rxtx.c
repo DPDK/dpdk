@@ -311,10 +311,13 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 	struct mlx4_wqe_data_seg *dseg;
 	struct mlx4_sq *sq = &txq->msq;
 	struct rte_mbuf *buf;
+	union {
+		uint32_t flags;
+		uint16_t flags16[2];
+	} srcrb;
 	uint32_t head_idx = sq->head & sq->txbb_cnt_mask;
 	uint32_t lkey;
 	uintptr_t addr;
-	uint32_t srcrb_flags;
 	uint32_t owner_opcode = MLX4_OPCODE_SEND;
 	uint32_t byte_count;
 	int wqe_real_size;
@@ -414,22 +417,16 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 	/* Fill the control parameters for this packet. */
 	ctrl->fence_size = (wqe_real_size >> 4) & 0x3f;
 	/*
-	 * The caller should prepare "imm" in advance in order to support
-	 * VF to VF communication (when the device is a virtual-function
-	 * device (VF)).
-	 */
-	ctrl->imm = 0;
-	/*
 	 * For raw Ethernet, the SOLICIT flag is used to indicate that no ICRC
 	 * should be calculated.
 	 */
 	txq->elts_comp_cd -= nr_txbbs;
 	if (unlikely(txq->elts_comp_cd <= 0)) {
 		txq->elts_comp_cd = txq->elts_comp_cd_init;
-		srcrb_flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT |
+		srcrb.flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT |
 				       MLX4_WQE_CTRL_CQ_UPDATE);
 	} else {
-		srcrb_flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT);
+		srcrb.flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT);
 	}
 	/* Enable HW checksum offload if requested */
 	if (txq->csum &&
@@ -443,14 +440,26 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 			owner_opcode |= MLX4_WQE_CTRL_IIP_HDR_CSUM |
 					MLX4_WQE_CTRL_IL4_HDR_CSUM;
 			if (pkt->ol_flags & PKT_TX_OUTER_IP_CKSUM)
-				srcrb_flags |=
+				srcrb.flags |=
 					RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM);
 		} else {
-			srcrb_flags |= RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM |
+			srcrb.flags |= RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM |
 						MLX4_WQE_CTRL_TCP_UDP_CSUM);
 		}
 	}
-	ctrl->srcrb_flags = srcrb_flags;
+	if (txq->lb) {
+		/*
+		 * Copy destination MAC address to the WQE, this allows
+		 * loopback in eSwitch, so that VFs and PF can communicate
+		 * with each other.
+		 */
+		srcrb.flags16[0] = *(rte_pktmbuf_mtod(pkt, uint16_t *));
+		ctrl->imm = *(rte_pktmbuf_mtod_offset(pkt, uint32_t *,
+						      sizeof(uint16_t)));
+	} else {
+		ctrl->imm = 0;
+	}
+	ctrl->srcrb_flags = srcrb.flags;
 	/*
 	 * Make sure descriptor is fully written before
 	 * setting ownership bit (because HW can start

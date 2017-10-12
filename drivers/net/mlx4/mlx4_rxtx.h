@@ -128,6 +128,7 @@ struct txq {
 	uint32_t max_inline; /**< Max inline send size. */
 	uint32_t csum:1; /**< Enable checksum offloading. */
 	uint32_t csum_l2tun:1; /**< Same for L2 tunnels. */
+	uint32_t lb:1; /**< Whether packets should be looped back by eSwitch. */
 	uint8_t *bounce_buf;
 	/**< Memory used for storing the first DWORD of data TXBBs. */
 	struct {
