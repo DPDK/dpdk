@@ -1047,6 +1047,14 @@ mlx4_flow_internal_next_vlan(struct priv *priv, uint16_t vlan)
 /**
  * Generate internal flow rules.
  *
+ * Various flow rules are created depending on the mode the device is in:
+ *
+ * 1. Promiscuous: port MAC + catch-all (VLAN filtering is ignored).
+ * 2. All multicast: port MAC/VLAN + catch-all multicast.
+ * 3. Otherwise: port MAC/VLAN + broadcast MAC/VLAN.
+ *
+ * About MAC flow rules:
+ *
  * - MAC flow rules are generated from @p dev->data->mac_addrs
  *   (@p priv->mac array).
  * - An additional flow rule for Ethernet broadcasts is also generated.
@@ -1071,6 +1079,9 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	struct rte_flow_item_eth eth_spec;
 	const struct rte_flow_item_eth eth_mask = {
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	};
+	const struct rte_flow_item_eth eth_allmulti = {
+		.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
 	};
 	struct rte_flow_item_vlan vlan_spec;
 	const struct rte_flow_item_vlan vlan_mask = {
@@ -1106,9 +1117,13 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	};
 	struct ether_addr *rule_mac = &eth_spec.dst;
 	rte_be16_t *rule_vlan =
-		priv->dev->data->dev_conf.rxmode.hw_vlan_filter ?
+		priv->dev->data->dev_conf.rxmode.hw_vlan_filter &&
+		!priv->dev->data->promiscuous ?
 		&vlan_spec.tci :
 		NULL;
+	int broadcast =
+		!priv->dev->data->promiscuous &&
+		!priv->dev->data->all_multicast;
 	uint16_t vlan = 0;
 	struct rte_flow *flow;
 	unsigned int i;
@@ -1132,7 +1147,7 @@ next_vlan:
 			rule_vlan = NULL;
 		}
 	}
-	for (i = 0; i != RTE_DIM(priv->mac) + 1; ++i) {
+	for (i = 0; i != RTE_DIM(priv->mac) + broadcast; ++i) {
 		const struct ether_addr *mac;
 
 		/* Broadcasts are handled by an extra iteration. */
@@ -1178,23 +1193,59 @@ next_vlan:
 						actions, error);
 			if (!flow) {
 				err = -rte_errno;
-				break;
+				goto error;
 			}
 		}
 		flow->select = 1;
 		flow->mac = 1;
 	}
-	if (!err && rule_vlan) {
+	if (rule_vlan) {
 		vlan = mlx4_flow_internal_next_vlan(priv, vlan + 1);
 		if (vlan < 4096)
 			goto next_vlan;
 	}
-	/* Clear selection and clean up stale MAC flow rules. */
+	/* Take care of promiscuous and all multicast flow rules. */
+	if (!broadcast) {
+		for (flow = LIST_FIRST(&priv->flows);
+		     flow && flow->internal;
+		     flow = LIST_NEXT(flow, next)) {
+			if (priv->dev->data->promiscuous) {
+				if (flow->promisc)
+					break;
+			} else {
+				assert(priv->dev->data->all_multicast);
+				if (flow->allmulti)
+					break;
+			}
+		}
+		if (!flow || !flow->internal) {
+			/* Not found, create a new flow rule. */
+			if (priv->dev->data->promiscuous) {
+				pattern[1].spec = NULL;
+				pattern[1].mask = NULL;
+			} else {
+				assert(priv->dev->data->all_multicast);
+				pattern[1].spec = &eth_allmulti;
+				pattern[1].mask = &eth_allmulti;
+			}
+			pattern[2] = pattern[3];
+			flow = mlx4_flow_create(priv->dev, &attr, pattern,
+						actions, error);
+			if (!flow) {
+				err = -rte_errno;
+				goto error;
+			}
+		}
+		assert(flow->promisc || flow->allmulti);
+		flow->select = 1;
+	}
+error:
+	/* Clear selection and clean up stale internal flow rules. */
 	flow = LIST_FIRST(&priv->flows);
 	while (flow && flow->internal) {
 		struct rte_flow *next = LIST_NEXT(flow, next);
 
-		if (flow->mac && !flow->select)
+		if (!flow->select)
 			claim_zero(mlx4_flow_destroy(priv->dev, flow, error));
 		else
 			flow->select = 0;

@@ -520,6 +520,101 @@ mlx4_dev_set_link_up(struct rte_eth_dev *dev)
 }
 
 /**
+ * Supported Rx mode toggles.
+ *
+ * Even and odd values respectively stand for off and on.
+ */
+enum rxmode_toggle {
+	RXMODE_TOGGLE_PROMISC_OFF,
+	RXMODE_TOGGLE_PROMISC_ON,
+	RXMODE_TOGGLE_ALLMULTI_OFF,
+	RXMODE_TOGGLE_ALLMULTI_ON,
+};
+
+/**
+ * Helper function to toggle promiscuous and all multicast modes.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param toggle
+ *   Toggle to set.
+ */
+static void
+mlx4_rxmode_toggle(struct rte_eth_dev *dev, enum rxmode_toggle toggle)
+{
+	struct priv *priv = dev->data->dev_private;
+	const char *mode;
+	struct rte_flow_error error;
+
+	switch (toggle) {
+	case RXMODE_TOGGLE_PROMISC_OFF:
+	case RXMODE_TOGGLE_PROMISC_ON:
+		mode = "promiscuous";
+		dev->data->promiscuous = toggle & 1;
+		break;
+	case RXMODE_TOGGLE_ALLMULTI_OFF:
+	case RXMODE_TOGGLE_ALLMULTI_ON:
+		mode = "all multicast";
+		dev->data->all_multicast = toggle & 1;
+		break;
+	}
+	if (!mlx4_flow_sync(priv, &error))
+		return;
+	ERROR("cannot toggle %s mode (code %d, \"%s\"),"
+	      " flow error type %d, cause %p, message: %s",
+	      mode, rte_errno, strerror(rte_errno), error.type, error.cause,
+	      error.message ? error.message : "(unspecified)");
+}
+
+/**
+ * DPDK callback to enable promiscuous mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+void
+mlx4_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_PROMISC_ON);
+}
+
+/**
+ * DPDK callback to disable promiscuous mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+void
+mlx4_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_PROMISC_OFF);
+}
+
+/**
+ * DPDK callback to enable all multicast mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+void
+mlx4_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_ALLMULTI_ON);
+}
+
+/**
+ * DPDK callback to disable all multicast mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+void
+mlx4_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_ALLMULTI_OFF);
+}
+
+/**
  * DPDK callback to remove a MAC address.
  *
  * @param dev
