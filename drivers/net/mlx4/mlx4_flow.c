@@ -850,20 +850,24 @@ mlx4_flow_toggle(struct priv *priv,
 			mlx4_drop_put(priv->drop);
 		return 0;
 	}
-	if (flow->ibv_flow)
-		return 0;
-	assert(flow->queue ^ flow->drop);
 	if (flow->queue) {
-		struct rxq *rxq;
+		struct rxq *rxq = NULL;
 
-		assert(flow->queue_id < priv->dev->data->nb_rx_queues);
-		rxq = priv->dev->data->rx_queues[flow->queue_id];
-		if (!rxq) {
-			err = EINVAL;
-			msg = "target queue must be configured first";
-			goto error;
+		if (flow->queue_id < priv->dev->data->nb_rx_queues)
+			rxq = priv->dev->data->rx_queues[flow->queue_id];
+		if (flow->ibv_flow) {
+			if (!rxq ^ !flow->drop)
+				return 0;
+			/* Verbs flow needs updating. */
+			claim_zero(ibv_destroy_flow(flow->ibv_flow));
+			flow->ibv_flow = NULL;
+			if (flow->drop)
+				mlx4_drop_put(priv->drop);
 		}
-		qp = rxq->qp;
+		if (rxq)
+			qp = rxq->qp;
+		/* A missing target queue drops traffic implicitly. */
+		flow->drop = !rxq;
 	}
 	if (flow->drop) {
 		mlx4_drop_get(priv);
@@ -876,6 +880,8 @@ mlx4_flow_toggle(struct priv *priv,
 	}
 	assert(qp);
 	assert(flow->ibv_attr);
+	if (flow->ibv_flow)
+		return 0;
 	flow->ibv_flow = ibv_create_flow(qp, flow->ibv_attr);
 	if (flow->ibv_flow)
 		return 0;
