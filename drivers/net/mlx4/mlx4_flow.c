@@ -58,6 +58,7 @@
 #include <rte_errno.h>
 #include <rte_eth_ctrl.h>
 #include <rte_ethdev.h>
+#include <rte_ether.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
@@ -1010,6 +1011,10 @@ mlx4_flow_flush(struct rte_eth_dev *dev,
 /**
  * Generate internal flow rules.
  *
+ * - MAC flow rules are generated from @p dev->data->mac_addrs
+ *   (@p priv->mac array).
+ * - An additional flow rule for Ethernet broadcasts is also generated.
+ *
  * @param priv
  *   Pointer to private structure.
  * @param[out] error
@@ -1025,18 +1030,18 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 		.priority = MLX4_FLOW_PRIORITY_LAST,
 		.ingress = 1,
 	};
+	struct rte_flow_item_eth eth_spec;
+	const struct rte_flow_item_eth eth_mask = {
+		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	};
 	struct rte_flow_item pattern[] = {
 		{
 			.type = MLX4_FLOW_ITEM_TYPE_INTERNAL,
 		},
 		{
 			.type = RTE_FLOW_ITEM_TYPE_ETH,
-			.spec = &(struct rte_flow_item_eth){
-				.dst = priv->mac,
-			},
-			.mask = &(struct rte_flow_item_eth){
-				.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-			},
+			.spec = &eth_spec,
+			.mask = &eth_mask,
 		},
 		{
 			.type = RTE_FLOW_ITEM_TYPE_END,
@@ -1053,10 +1058,69 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		},
 	};
+	struct ether_addr *rule_mac = &eth_spec.dst;
+	struct rte_flow *flow;
+	unsigned int i;
+	int err = 0;
 
-	if (!mlx4_flow_create(priv->dev, &attr, pattern, actions, error))
-		return -rte_errno;
-	return 0;
+	for (i = 0; i != RTE_DIM(priv->mac) + 1; ++i) {
+		const struct ether_addr *mac;
+
+		/* Broadcasts are handled by an extra iteration. */
+		if (i < RTE_DIM(priv->mac))
+			mac = &priv->mac[i];
+		else
+			mac = &eth_mask.dst;
+		if (is_zero_ether_addr(mac))
+			continue;
+		/* Check if MAC flow rule is already present. */
+		for (flow = LIST_FIRST(&priv->flows);
+		     flow && flow->internal;
+		     flow = LIST_NEXT(flow, next)) {
+			const struct ibv_flow_spec_eth *eth =
+				(const void *)((uintptr_t)flow->ibv_attr +
+					       sizeof(*flow->ibv_attr));
+			unsigned int j;
+
+			if (!flow->mac)
+				continue;
+			assert(flow->ibv_attr->type == IBV_FLOW_ATTR_NORMAL);
+			assert(flow->ibv_attr->num_of_specs == 1);
+			assert(eth->type == IBV_FLOW_SPEC_ETH);
+			for (j = 0; j != sizeof(mac->addr_bytes); ++j)
+				if (eth->val.dst_mac[j] != mac->addr_bytes[j] ||
+				    eth->mask.dst_mac[j] != UINT8_C(0xff) ||
+				    eth->val.src_mac[j] != UINT8_C(0x00) ||
+				    eth->mask.src_mac[j] != UINT8_C(0x00))
+					break;
+			if (j == sizeof(mac->addr_bytes))
+				break;
+		}
+		if (!flow || !flow->internal) {
+			/* Not found, create a new flow rule. */
+			memcpy(rule_mac, mac, sizeof(*mac));
+			flow = mlx4_flow_create(priv->dev, &attr, pattern,
+						actions, error);
+			if (!flow) {
+				err = -rte_errno;
+				break;
+			}
+		}
+		flow->select = 1;
+		flow->mac = 1;
+	}
+	/* Clear selection and clean up stale MAC flow rules. */
+	flow = LIST_FIRST(&priv->flows);
+	while (flow && flow->internal) {
+		struct rte_flow *next = LIST_NEXT(flow, next);
+
+		if (flow->mac && !flow->select)
+			claim_zero(mlx4_flow_destroy(priv->dev, flow, error));
+		else
+			flow->select = 0;
+		flow = next;
+	}
+	return err;
 }
 
 /**
@@ -1090,12 +1154,8 @@ mlx4_flow_sync(struct priv *priv, struct rte_flow_error *error)
 		     flow && flow->internal;
 		     flow = LIST_FIRST(&priv->flows))
 			claim_zero(mlx4_flow_destroy(priv->dev, flow, error));
-	} else if (!LIST_FIRST(&priv->flows) ||
-		   !LIST_FIRST(&priv->flows)->internal) {
-		/*
-		 * If the first rule is not internal outside isolated mode,
-		 * they must be added back.
-		 */
+	} else {
+		/* Refresh internal rules. */
 		ret = mlx4_flow_internal(priv, error);
 		if (ret)
 			return ret;

@@ -52,6 +52,9 @@
 #include <rte_interrupts.h>
 #include <rte_mempool.h>
 
+/** Maximum number of simultaneous MAC addresses. This value is arbitrary. */
+#define MLX4_MAX_MAC_ADDRESSES 128
+
 /** Request send completion once in every 64 sends, might be less. */
 #define MLX4_PMD_TX_PER_COMP_REQ 64
 
@@ -99,7 +102,6 @@ struct priv {
 	struct ibv_context *ctx; /**< Verbs context. */
 	struct ibv_device_attr device_attr; /**< Device properties. */
 	struct ibv_pd *pd; /**< Protection Domain. */
-	struct ether_addr mac; /**< MAC address. */
 	/* Device properties. */
 	uint16_t mtu; /**< Configured MTU. */
 	uint8_t port; /**< Physical port number. */
@@ -110,6 +112,8 @@ struct priv {
 	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
 	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
+	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
+	/**< Configured MAC addresses. Unused entries are zeroed. */
 };
 
 /* mlx4_ethdev.c */
@@ -120,6 +124,10 @@ int mlx4_mtu_get(struct priv *priv, uint16_t *mtu);
 int mlx4_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx4_dev_set_link_down(struct rte_eth_dev *dev);
 int mlx4_dev_set_link_up(struct rte_eth_dev *dev);
+void mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
+int mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+		      uint32_t index, uint32_t vmdq);
+void mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr);
 int mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 void mlx4_stats_reset(struct rte_eth_dev *dev);
 void mlx4_dev_infos_get(struct rte_eth_dev *dev,

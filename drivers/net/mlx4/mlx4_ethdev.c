@@ -64,9 +64,11 @@
 #include <rte_errno.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
+#include <rte_flow.h>
 #include <rte_pci.h>
 
 #include "mlx4.h"
+#include "mlx4_flow.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
@@ -518,6 +520,88 @@ mlx4_dev_set_link_up(struct rte_eth_dev *dev)
 }
 
 /**
+ * DPDK callback to remove a MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param index
+ *   MAC address index.
+ */
+void
+mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rte_flow_error error;
+
+	if (index >= RTE_DIM(priv->mac)) {
+		rte_errno = EINVAL;
+		return;
+	}
+	memset(&priv->mac[index], 0, sizeof(priv->mac[index]));
+	if (!mlx4_flow_sync(priv, &error))
+		return;
+	ERROR("failed to synchronize flow rules after removing MAC address"
+	      " at index %d (code %d, \"%s\"),"
+	      " flow error type %d, cause %p, message: %s",
+	      index, rte_errno, strerror(rte_errno), error.type, error.cause,
+	      error.message ? error.message : "(unspecified)");
+}
+
+/**
+ * DPDK callback to add a MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ * @param index
+ *   MAC address index.
+ * @param vmdq
+ *   VMDq pool index to associate address with (ignored).
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+		  uint32_t index, uint32_t vmdq)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rte_flow_error error;
+	int ret;
+
+	(void)vmdq;
+	if (index >= RTE_DIM(priv->mac)) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	memcpy(&priv->mac[index], mac_addr, sizeof(priv->mac[index]));
+	ret = mlx4_flow_sync(priv, &error);
+	if (!ret)
+		return 0;
+	ERROR("failed to synchronize flow rules after adding MAC address"
+	      " at index %d (code %d, \"%s\"),"
+	      " flow error type %d, cause %p, message: %s",
+	      index, rte_errno, strerror(rte_errno), error.type, error.cause,
+	      error.message ? error.message : "(unspecified)");
+	return ret;
+}
+
+/**
+ * DPDK callback to set the primary MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ */
+void
+mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+{
+	mlx4_mac_addr_add(dev, mac_addr, 0, 0);
+}
+
+/**
  * DPDK callback to get information about the device.
  *
  * @param dev
@@ -549,8 +633,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		max = 65535;
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
-	/* Last array entry is reserved for broadcast. */
-	info->max_mac_addrs = 1;
+	info->max_mac_addrs = RTE_DIM(priv->mac);
 	info->rx_offload_capa = 0;
 	info->tx_offload_capa = 0;
 	if (mlx4_get_ifname(priv, &ifname) == 0)

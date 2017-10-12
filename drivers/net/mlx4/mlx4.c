@@ -221,6 +221,9 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.dev_set_link_up = mlx4_dev_set_link_up,
 	.dev_close = mlx4_dev_close,
 	.link_update = mlx4_link_update,
+	.mac_addr_remove = mlx4_mac_addr_remove,
+	.mac_addr_add = mlx4_mac_addr_add,
+	.mac_addr_set = mlx4_mac_addr_set,
 	.stats_get = mlx4_stats_get,
 	.stats_reset = mlx4_stats_reset,
 	.dev_infos_get = mlx4_dev_infos_get,
@@ -552,7 +555,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		     mac.addr_bytes[2], mac.addr_bytes[3],
 		     mac.addr_bytes[4], mac.addr_bytes[5]);
 		/* Register MAC address. */
-		priv->mac = mac;
+		priv->mac[0] = mac;
 #ifndef NDEBUG
 		{
 			char ifname[IF_NAMESIZE];
@@ -581,7 +584,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			goto port_error;
 		}
 		eth_dev->data->dev_private = priv;
-		eth_dev->data->mac_addrs = &priv->mac;
+		eth_dev->data->mac_addrs = priv->mac;
 		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 		eth_dev->device->driver = &mlx4_driver.driver;
