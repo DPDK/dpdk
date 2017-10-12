@@ -769,6 +769,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->tx_offload_capa = 0;
 	if (mlx4_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
+	info->hash_key_size = MLX4_RSS_HASH_KEY_SIZE;
 	info->speed_capa =
 			ETH_LINK_SPEED_1G |
 			ETH_LINK_SPEED_10G |

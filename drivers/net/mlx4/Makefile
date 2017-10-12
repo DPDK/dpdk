@@ -54,7 +54,7 @@ CFLAGS += -D_BSD_SOURCE
 CFLAGS += -D_DEFAULT_SOURCE
 CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
-LDLIBS += -libverbs
+LDLIBS += -libverbs -lmlx4
 
 # A few warnings cannot be avoided in external headers.
 CFLAGS += -Wno-error=cast-qual

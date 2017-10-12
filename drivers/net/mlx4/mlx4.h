@@ -95,6 +95,7 @@ enum {
 #define MLX4_DRIVER_NAME "net_mlx4"
 
 struct mlx4_drop;
+struct mlx4_rss;
 struct rxq;
 struct txq;
 struct rte_flow;
@@ -114,6 +115,7 @@ struct priv {
 	uint32_t isolated:1; /**< Toggle isolated mode. */
 	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
 	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */
+	LIST_HEAD(, mlx4_rss) rss; /**< Shared targets for Rx flow rules. */
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
 	/**< Configured MAC addresses. Unused entries are zeroed. */

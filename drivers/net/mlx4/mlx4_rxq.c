@@ -65,6 +65,242 @@
 #include "mlx4_utils.h"
 
 /**
+ * Historical RSS hash key.
+ *
+ * This used to be the default for mlx4 in Linux before v3.19 switched to
+ * generating random hash keys through netdev_rss_key_fill().
+ *
+ * It is used in this PMD for consistency with past DPDK releases but can
+ * now be overridden through user configuration.
+ *
+ * Note: this is not const to work around API quirks.
+ */
+uint8_t
+mlx4_rss_hash_key_default[MLX4_RSS_HASH_KEY_SIZE] = {
+	0x2c, 0xc6, 0x81, 0xd1,
+	0x5b, 0xdb, 0xf4, 0xf7,
+	0xfc, 0xa2, 0x83, 0x19,
+	0xdb, 0x1a, 0x3e, 0x94,
+	0x6b, 0x9e, 0x38, 0xd9,
+	0x2c, 0x9c, 0x03, 0xd1,
+	0xad, 0x99, 0x44, 0xa7,
+	0xd9, 0x56, 0x3d, 0x59,
+	0x06, 0x3c, 0x25, 0xf3,
+	0xfc, 0x1f, 0xdc, 0x2a,
+};
+
+/**
+ * Obtain a RSS context with specified properties.
+ *
+ * Used when creating a flow rule targeting one or several Rx queues.
+ *
+ * If a matching RSS context already exists, it is returned with its
+ * reference count incremented.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param fields
+ *   Fields for RSS processing (Verbs format).
+ * @param[in] key
+ *   Hash key to use (whose size is exactly MLX4_RSS_HASH_KEY_SIZE).
+ * @param queues
+ *   Number of target queues.
+ * @param[in] queue_id
+ *   Target queues.
+ *
+ * @return
+ *   Pointer to RSS context on success, NULL otherwise and rte_errno is set.
+ */
+struct mlx4_rss *
+mlx4_rss_get(struct priv *priv, uint64_t fields,
+	     uint8_t key[MLX4_RSS_HASH_KEY_SIZE],
+	     uint16_t queues, const uint16_t queue_id[])
+{
+	struct mlx4_rss *rss;
+	size_t queue_id_size = sizeof(queue_id[0]) * queues;
+
+	LIST_FOREACH(rss, &priv->rss, next)
+		if (fields == rss->fields &&
+		    queues == rss->queues &&
+		    !memcmp(key, rss->key, MLX4_RSS_HASH_KEY_SIZE) &&
+		    !memcmp(queue_id, rss->queue_id, queue_id_size)) {
+			++rss->refcnt;
+			return rss;
+		}
+	rss = rte_malloc(__func__, offsetof(struct mlx4_rss, queue_id) +
+			 queue_id_size, 0);
+	if (!rss)
+		goto error;
+	*rss = (struct mlx4_rss){
+		.priv = priv,
+		.refcnt = 1,
+		.usecnt = 0,
+		.qp = NULL,
+		.ind = NULL,
+		.fields = fields,
+		.queues = queues,
+	};
+	memcpy(rss->key, key, MLX4_RSS_HASH_KEY_SIZE);
+	memcpy(rss->queue_id, queue_id, queue_id_size);
+	LIST_INSERT_HEAD(&priv->rss, rss, next);
+	return rss;
+error:
+	rte_errno = ENOMEM;
+	return NULL;
+}
+
+/**
+ * Release a RSS context instance.
+ *
+ * Used when destroying a flow rule targeting one or several Rx queues.
+ *
+ * This function decrements the reference count of the context and destroys
+ * it after reaching 0. The context must have no users at this point; all
+ * prior calls to mlx4_rss_attach() must have been followed by matching
+ * calls to mlx4_rss_detach().
+ *
+ * @param rss
+ *   RSS context to release.
+ */
+void mlx4_rss_put(struct mlx4_rss *rss)
+{
+	assert(rss->refcnt);
+	if (--rss->refcnt)
+		return;
+	assert(!rss->usecnt);
+	assert(!rss->qp);
+	assert(!rss->ind);
+	LIST_REMOVE(rss, next);
+	rte_free(rss);
+}
+
+/**
+ * Attach a user to a RSS context instance.
+ *
+ * Used when the RSS QP and indirection table objects must be instantiated,
+ * that is, when a flow rule must be enabled.
+ *
+ * This function increments the usage count of the context.
+ *
+ * @param rss
+ *   RSS context to attach to.
+ */
+int mlx4_rss_attach(struct mlx4_rss *rss)
+{
+	assert(rss->refcnt);
+	if (rss->usecnt++) {
+		assert(rss->qp);
+		assert(rss->ind);
+		return 0;
+	}
+
+	struct ibv_wq *ind_tbl[rss->queues];
+	struct priv *priv = rss->priv;
+	const char *msg;
+	unsigned int i;
+	int ret;
+
+	if (!rte_is_power_of_2(RTE_DIM(ind_tbl))) {
+		msg = "number of RSS queues must be a power of two";
+		goto error;
+	}
+	for (i = 0; i != RTE_DIM(ind_tbl); ++i) {
+		uint16_t id = rss->queue_id[i];
+		struct rxq *rxq = NULL;
+
+		if (id < priv->dev->data->nb_rx_queues)
+			rxq = priv->dev->data->rx_queues[id];
+		if (!rxq) {
+			msg = "RSS target queue is not configured";
+			goto error;
+		}
+		ind_tbl[i] = rxq->wq;
+	}
+	rss->ind = ibv_create_rwq_ind_table
+		(priv->ctx,
+		 &(struct ibv_rwq_ind_table_init_attr){
+			.log_ind_tbl_size = rte_log2_u32(RTE_DIM(ind_tbl)),
+			.ind_tbl = ind_tbl,
+			.comp_mask = 0,
+		 });
+	if (!rss->ind) {
+		msg = "RSS indirection table creation failure";
+		goto error;
+	}
+	rss->qp = ibv_create_qp_ex
+		(priv->ctx,
+		 &(struct ibv_qp_init_attr_ex){
+			.comp_mask = (IBV_QP_INIT_ATTR_PD |
+				      IBV_QP_INIT_ATTR_RX_HASH |
+				      IBV_QP_INIT_ATTR_IND_TABLE),
+			.qp_type = IBV_QPT_RAW_PACKET,
+			.pd = priv->pd,
+			.rwq_ind_tbl = rss->ind,
+			.rx_hash_conf = {
+				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
+				.rx_hash_key_len = MLX4_RSS_HASH_KEY_SIZE,
+				.rx_hash_key = rss->key,
+				.rx_hash_fields_mask = rss->fields,
+			},
+		 });
+	if (!rss->qp) {
+		msg = "RSS hash QP creation failure";
+		goto error;
+	}
+	ret = ibv_modify_qp
+		(rss->qp,
+		 &(struct ibv_qp_attr){
+			.qp_state = IBV_QPS_INIT,
+			.port_num = priv->port,
+		 },
+		 IBV_QP_STATE | IBV_QP_PORT);
+	if (ret) {
+		msg = "failed to switch RSS hash QP to INIT state";
+		goto error;
+	}
+	ret = ibv_modify_qp
+		(rss->qp,
+		 &(struct ibv_qp_attr){
+			.qp_state = IBV_QPS_RTR,
+		 },
+		 IBV_QP_STATE);
+	if (ret) {
+		msg = "failed to switch RSS hash QP to RTR state";
+		goto error;
+	}
+	return 0;
+error:
+	ERROR("mlx4: %s", msg);
+	--rss->usecnt;
+	rte_errno = EINVAL;
+	return -rte_errno;
+}
+
+/**
+ * Detach a user from a RSS context instance.
+ *
+ * Used when disabling (not destroying) a flow rule.
+ *
+ * This function decrements the usage count of the context and destroys
+ * usage resources after reaching 0.
+ *
+ * @param rss
+ *   RSS context to detach from.
+ */
+void mlx4_rss_detach(struct mlx4_rss *rss)
+{
+	assert(rss->refcnt);
+	assert(rss->qp);
+	assert(rss->ind);
+	if (--rss->usecnt)
+		return;
+	claim_zero(ibv_destroy_qp(rss->qp));
+	rss->qp = NULL;
+	claim_zero(ibv_destroy_rwq_ind_table(rss->ind));
+	rss->ind = NULL;
+}
+
+/**
  * Allocate Rx queue elements.
  *
  * @param rxq
@@ -295,57 +531,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	rxq->ind = ibv_create_rwq_ind_table
-		(priv->ctx,
-		 &(struct ibv_rwq_ind_table_init_attr){
-			.log_ind_tbl_size = 0,
-			.ind_tbl = (struct ibv_wq *[]){
-				rxq->wq,
-			},
-			.comp_mask = 0,
-		 });
-	if (!rxq->ind) {
-		rte_errno = errno ? errno : EINVAL;
-		ERROR("%p: indirection table creation failure: %s",
-		      (void *)dev, strerror(errno));
-		goto error;
-	}
-	rxq->qp = ibv_create_qp_ex
-		(priv->ctx,
-		 &(struct ibv_qp_init_attr_ex){
-			.comp_mask = (IBV_QP_INIT_ATTR_PD |
-				      IBV_QP_INIT_ATTR_RX_HASH |
-				      IBV_QP_INIT_ATTR_IND_TABLE),
-			.qp_type = IBV_QPT_RAW_PACKET,
-			.pd = priv->pd,
-			.rwq_ind_tbl = rxq->ind,
-			.rx_hash_conf = {
-				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = MLX4_RSS_HASH_KEY_SIZE,
-				.rx_hash_key =
-					(uint8_t [MLX4_RSS_HASH_KEY_SIZE]){ 0 },
-				.rx_hash_fields_mask = 0,
-			},
-		 });
-	if (!rxq->qp) {
-		rte_errno = errno ? errno : EINVAL;
-		ERROR("%p: QP creation failure: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	ret = ibv_modify_qp
-		(rxq->qp,
-		 &(struct ibv_qp_attr){
-			.qp_state = IBV_QPS_INIT,
-			.port_num = priv->port,
-		 },
-		 IBV_QP_STATE | IBV_QP_PORT);
-	if (ret) {
-		rte_errno = ret;
-		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
 	ret = mlx4_rxq_alloc_elts(rxq);
 	if (ret) {
 		ERROR("%p: RXQ allocation failed: %s",
@@ -359,18 +544,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		ERROR("%p: ibv_post_recv() failed: %s",
 		      (void *)dev,
 		      strerror(rte_errno));
-		goto error;
-	}
-	ret = ibv_modify_qp
-		(rxq->qp,
-		 &(struct ibv_qp_attr){
-			.qp_state = IBV_QPS_RTR,
-		 },
-		 IBV_QP_STATE);
-	if (ret) {
-		rte_errno = ret;
-		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
-		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	DEBUG("%p: adding Rx queue %p to list", (void *)dev, (void *)rxq);
@@ -417,10 +590,6 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 		}
 	mlx4_flow_sync(priv, NULL);
 	mlx4_rxq_free_elts(rxq);
-	if (rxq->qp)
-		claim_zero(ibv_destroy_qp(rxq->qp));
-	if (rxq->ind)
-		claim_zero(ibv_destroy_rwq_ind_table(rxq->ind));
 	if (rxq->wq)
 		claim_zero(ibv_destroy_wq(rxq->wq));
 	if (rxq->cq)

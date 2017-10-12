@@ -35,6 +35,7 @@
 #define MLX4_RXTX_H_
 
 #include <stdint.h>
+#include <sys/queue.h>
 
 /* Verbs headers do not support -pedantic. */
 #ifdef PEDANTIC
@@ -74,8 +75,6 @@ struct rxq {
 	struct ibv_mr *mr; /**< Memory region (for mp). */
 	struct ibv_cq *cq; /**< Completion queue. */
 	struct ibv_wq *wq; /**< Work queue. */
-	struct ibv_rwq_ind_table *ind; /**< Indirection table. */
-	struct ibv_qp *qp; /**< Queue pair. */
 	struct ibv_comp_channel *channel; /**< Rx completion channel. */
 	unsigned int port_id; /**< Port ID for incoming packets. */
 	unsigned int elts_n; /**< (*elts)[] length. */
@@ -84,6 +83,20 @@ struct rxq {
 	struct mlx4_rxq_stats stats; /**< Rx queue counters. */
 	unsigned int socket; /**< CPU socket ID for allocations. */
 	uint8_t data[]; /**< Remaining queue resources. */
+};
+
+/** Shared flow target for Rx queues. */
+struct mlx4_rss {
+	LIST_ENTRY(mlx4_rss) next; /**< Next entry in list. */
+	struct priv *priv; /**< Back pointer to private data. */
+	uint32_t refcnt; /**< Reference count for this object. */
+	uint32_t usecnt; /**< Number of users relying on @p qp and @p ind. */
+	struct ibv_qp *qp; /**< Queue pair. */
+	struct ibv_rwq_ind_table *ind; /**< Indirection table. */
+	uint64_t fields; /**< Fields for RSS processing (Verbs format). */
+	uint8_t key[MLX4_RSS_HASH_KEY_SIZE]; /**< Hash key to use. */
+	uint16_t queues; /**< Number of target queues. */
+	uint16_t queue_id[]; /**< Target queues. */
 };
 
 /** Tx element. */
@@ -126,6 +139,13 @@ struct txq {
 
 /* mlx4_rxq.c */
 
+uint8_t mlx4_rss_hash_key_default[MLX4_RSS_HASH_KEY_SIZE];
+struct mlx4_rss *mlx4_rss_get(struct priv *priv, uint64_t fields,
+			      uint8_t key[MLX4_RSS_HASH_KEY_SIZE],
+			      uint16_t queues, const uint16_t queue_id[]);
+void mlx4_rss_put(struct mlx4_rss *rss);
+int mlx4_rss_attach(struct mlx4_rss *rss);
+void mlx4_rss_detach(struct mlx4_rss *rss);
 int mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			uint16_t desc, unsigned int socket,
 			const struct rte_eth_rxconf *conf,

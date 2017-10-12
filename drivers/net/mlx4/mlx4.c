@@ -50,6 +50,7 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #include <infiniband/verbs.h>
+#include <infiniband/mlx4dv.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -99,8 +100,20 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct rte_flow_error error;
+	uint8_t log2_range = rte_log2_u32(dev->data->nb_rx_queues);
 	int ret;
 
+	/* Prepare range for RSS contexts before creating the first WQ. */
+	ret = mlx4dv_set_context_attr(priv->ctx,
+				      MLX4DV_SET_CTX_ATTR_LOG_WQS_RANGE_SZ,
+				      &log2_range);
+	if (ret) {
+		ERROR("cannot set up range size for RSS context to %u"
+		      " (for %u Rx queues), error: %s",
+		      1 << log2_range, dev->data->nb_rx_queues, strerror(ret));
+		rte_errno = ret;
+		return -ret;
+	}
 	/* Prepare internal flow rules. */
 	ret = mlx4_flow_sync(priv, &error);
 	if (ret) {

@@ -103,6 +103,62 @@ struct mlx4_drop {
 };
 
 /**
+ * Convert DPDK RSS hash fields to their Verbs equivalent.
+ *
+ * @param rss_hf
+ *   Hash fields in DPDK format (see struct rte_eth_rss_conf).
+ *
+ * @return
+ *   A valid Verbs RSS hash fields mask for mlx4 on success, (uint64_t)-1
+ *   otherwise and rte_errno is set.
+ */
+static uint64_t
+mlx4_conv_rss_hf(uint64_t rss_hf)
+{
+	enum { IPV4, IPV6, TCP, UDP, };
+	const uint64_t in[] = {
+		[IPV4] = (ETH_RSS_IPV4 |
+			  ETH_RSS_FRAG_IPV4 |
+			  ETH_RSS_NONFRAG_IPV4_TCP |
+			  ETH_RSS_NONFRAG_IPV4_UDP |
+			  ETH_RSS_NONFRAG_IPV4_OTHER),
+		[IPV6] = (ETH_RSS_IPV6 |
+			  ETH_RSS_FRAG_IPV6 |
+			  ETH_RSS_NONFRAG_IPV6_TCP |
+			  ETH_RSS_NONFRAG_IPV6_UDP |
+			  ETH_RSS_NONFRAG_IPV6_OTHER |
+			  ETH_RSS_IPV6_EX |
+			  ETH_RSS_IPV6_TCP_EX |
+			  ETH_RSS_IPV6_UDP_EX),
+		[TCP] = (ETH_RSS_NONFRAG_IPV4_TCP |
+			 ETH_RSS_NONFRAG_IPV6_TCP |
+			 ETH_RSS_IPV6_TCP_EX),
+		[UDP] = (ETH_RSS_NONFRAG_IPV4_UDP |
+			 ETH_RSS_NONFRAG_IPV6_UDP |
+			 ETH_RSS_IPV6_UDP_EX),
+	};
+	const uint64_t out[RTE_DIM(in)] = {
+		[IPV4] = IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4,
+		[IPV6] = IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6,
+		[TCP] = IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_DST_PORT_TCP,
+		[UDP] = IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_DST_PORT_UDP,
+	};
+	uint64_t seen = 0;
+	uint64_t conv = 0;
+	unsigned int i;
+
+	for (i = 0; i != RTE_DIM(in); ++i)
+		if (rss_hf & in[i]) {
+			seen |= rss_hf & in[i];
+			conv |= out[i];
+		}
+	if (!(rss_hf & ~seen))
+		return conv;
+	rte_errno = ENOTSUP;
+	return (uint64_t)-1;
+}
+
+/**
  * Merge Ethernet pattern item into flow rule handle.
  *
  * Additional mlx4-specific constraints on supported fields:
@@ -663,6 +719,9 @@ fill:
 	for (action = actions; action->type; ++action) {
 		switch (action->type) {
 			const struct rte_flow_action_queue *queue;
+			const struct rte_flow_action_rss *rss;
+			const struct rte_eth_rss_conf *rss_conf;
+			unsigned int i;
 
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			continue;
@@ -670,23 +729,87 @@ fill:
 			flow->drop = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			if (flow->rss)
+				break;
 			queue = action->conf;
-			if (queue->index >= priv->dev->data->nb_rx_queues)
+			flow->rss = mlx4_rss_get
+				(priv, 0, mlx4_rss_hash_key_default, 1,
+				 &queue->index);
+			if (!flow->rss) {
+				msg = "not enough resources for additional"
+					" single-queue RSS context";
 				goto exit_action_not_supported;
-			flow->queue = 1;
-			flow->queue_id = queue->index;
+			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			if (flow->rss)
+				break;
+			rss = action->conf;
+			/* Default RSS configuration if none is provided. */
+			rss_conf =
+				rss->rss_conf ?
+				rss->rss_conf :
+				&(struct rte_eth_rss_conf){
+					.rss_key = mlx4_rss_hash_key_default,
+					.rss_key_len = MLX4_RSS_HASH_KEY_SIZE,
+					.rss_hf = (ETH_RSS_IPV4 |
+						   ETH_RSS_NONFRAG_IPV4_UDP |
+						   ETH_RSS_NONFRAG_IPV4_TCP |
+						   ETH_RSS_IPV6 |
+						   ETH_RSS_NONFRAG_IPV6_UDP |
+						   ETH_RSS_NONFRAG_IPV6_TCP),
+				};
+			/* Sanity checks. */
+			if (!rte_is_power_of_2(rss->num)) {
+				msg = "for RSS, mlx4 requires the number of"
+					" queues to be a power of two";
+				goto exit_action_not_supported;
+			}
+			if (rss_conf->rss_key_len !=
+			    sizeof(flow->rss->key)) {
+				msg = "mlx4 supports exactly one RSS hash key"
+					" length: "
+					MLX4_STR_EXPAND(MLX4_RSS_HASH_KEY_SIZE);
+				goto exit_action_not_supported;
+			}
+			for (i = 1; i < rss->num; ++i)
+				if (rss->queue[i] - rss->queue[i - 1] != 1)
+					break;
+			if (i != rss->num) {
+				msg = "mlx4 requires RSS contexts to use"
+					" consecutive queue indices only";
+				goto exit_action_not_supported;
+			}
+			if (rss->queue[0] % rss->num) {
+				msg = "mlx4 requires the first queue of a RSS"
+					" context to be aligned on a multiple"
+					" of the context size";
+				goto exit_action_not_supported;
+			}
+			flow->rss = mlx4_rss_get
+				(priv, mlx4_conv_rss_hf(rss_conf->rss_hf),
+				 rss_conf->rss_key, rss->num, rss->queue);
+			if (!flow->rss) {
+				msg = "either invalid parameters or not enough"
+					" resources for additional multi-queue"
+					" RSS context";
+				goto exit_action_not_supported;
+			}
 			break;
 		default:
 			goto exit_action_not_supported;
 		}
 	}
-	if (!flow->queue && !flow->drop)
+	if (!flow->rss && !flow->drop)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			 NULL, "no valid action");
 	/* Validation ends here. */
-	if (!addr)
+	if (!addr) {
+		if (flow->rss)
+			mlx4_rss_put(flow->rss);
 		return 0;
+	}
 	if (flow == &temp) {
 		/* Allocate proper handle based on collected data. */
 		const struct mlx4_malloc_vec vec[] = {
@@ -711,6 +834,7 @@ fill:
 		*flow = (struct rte_flow){
 			.ibv_attr = temp.ibv_attr,
 			.ibv_attr_size = sizeof(*flow->ibv_attr),
+			.rss = temp.rss,
 		};
 		*flow->ibv_attr = (struct ibv_flow_attr){
 			.type = IBV_FLOW_ATTR_NORMAL,
@@ -727,7 +851,7 @@ exit_item_not_supported:
 				  item, msg ? msg : "item not supported");
 exit_action_not_supported:
 	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
-				  action, "action not supported");
+				  action, msg ? msg : "action not supported");
 }
 
 /**
@@ -850,6 +974,8 @@ mlx4_flow_toggle(struct priv *priv,
 		flow->ibv_flow = NULL;
 		if (flow->drop)
 			mlx4_drop_put(priv->drop);
+		else if (flow->rss)
+			mlx4_rss_detach(flow->rss);
 		return 0;
 	}
 	assert(flow->ibv_attr);
@@ -861,6 +987,8 @@ mlx4_flow_toggle(struct priv *priv,
 			flow->ibv_flow = NULL;
 			if (flow->drop)
 				mlx4_drop_put(priv->drop);
+			else if (flow->rss)
+				mlx4_rss_detach(flow->rss);
 		}
 		err = EACCES;
 		msg = ("priority level "
@@ -868,24 +996,42 @@ mlx4_flow_toggle(struct priv *priv,
 		       " is reserved when not in isolated mode");
 		goto error;
 	}
-	if (flow->queue) {
-		struct rxq *rxq = NULL;
+	if (flow->rss) {
+		struct mlx4_rss *rss = flow->rss;
+		int missing = 0;
+		unsigned int i;
 
-		if (flow->queue_id < priv->dev->data->nb_rx_queues)
-			rxq = priv->dev->data->rx_queues[flow->queue_id];
+		/* Stop at the first nonexistent target queue. */
+		for (i = 0; i != rss->queues; ++i)
+			if (rss->queue_id[i] >=
+			    priv->dev->data->nb_rx_queues ||
+			    !priv->dev->data->rx_queues[rss->queue_id[i]]) {
+				missing = 1;
+				break;
+			}
 		if (flow->ibv_flow) {
-			if (!rxq ^ !flow->drop)
+			if (missing ^ !flow->drop)
 				return 0;
 			/* Verbs flow needs updating. */
 			claim_zero(ibv_destroy_flow(flow->ibv_flow));
 			flow->ibv_flow = NULL;
 			if (flow->drop)
 				mlx4_drop_put(priv->drop);
+			else
+				mlx4_rss_detach(rss);
 		}
-		if (rxq)
-			qp = rxq->qp;
+		if (!missing) {
+			err = mlx4_rss_attach(rss);
+			if (err) {
+				err = -err;
+				msg = "cannot create indirection table or hash"
+					" QP to associate flow rule with";
+				goto error;
+			}
+			qp = rss->qp;
+		}
 		/* A missing target queue drops traffic implicitly. */
-		flow->drop = !rxq;
+		flow->drop = missing;
 	}
 	if (flow->drop) {
 		mlx4_drop_get(priv);
@@ -904,6 +1050,8 @@ mlx4_flow_toggle(struct priv *priv,
 		return 0;
 	if (flow->drop)
 		mlx4_drop_put(priv->drop);
+	else if (flow->rss)
+		mlx4_rss_detach(flow->rss);
 	err = errno;
 	msg = "flow rule rejected by device";
 error:
@@ -946,6 +1094,8 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 		}
 		return flow;
 	}
+	if (flow->rss)
+		mlx4_rss_put(flow->rss);
 	rte_flow_error_set(error, -err, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			   error->message);
 	rte_free(flow);
@@ -992,6 +1142,8 @@ mlx4_flow_destroy(struct rte_eth_dev *dev,
 	if (err)
 		return err;
 	LIST_REMOVE(flow, next);
+	if (flow->rss)
+		mlx4_rss_put(flow->rss);
 	rte_free(flow);
 	return 0;
 }
@@ -1320,6 +1472,7 @@ mlx4_flow_clean(struct priv *priv)
 
 	while ((flow = LIST_FIRST(&priv->flows)))
 		mlx4_flow_destroy(priv->dev, flow, NULL);
+	assert(LIST_EMPTY(&priv->rss));
 }
 
 static const struct rte_flow_ops mlx4_flow_ops = {
