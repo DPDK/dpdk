@@ -107,7 +107,9 @@ struct mlx4_drop {
  *
  * Additional mlx4-specific constraints on supported fields:
  *
- * - No support for partial masks.
+ * - No support for partial masks, except in the specific case of matching
+ *   all multicast traffic (@p spec->dst and @p mask->dst equal to
+ *   01:00:00:00:00:00).
  * - Not providing @p item->spec or providing an empty @p mask->dst is
  *   *only* supported if the rule doesn't specify additional matching
  *   criteria (i.e. rule is promiscuous-like).
@@ -152,6 +154,13 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 			goto error;
 		} else if (!sum_dst) {
 			flow->promisc = 1;
+		} else if (sum_dst == 1 && mask->dst.addr_bytes[0] == 1) {
+			if (!(spec->dst.addr_bytes[0] & 1)) {
+				msg = "mlx4 does not support the explicit"
+					" exclusion of all multicast traffic";
+				goto error;
+			}
+			flow->allmulti = 1;
 		} else if (sum_dst != (UINT8_C(0xff) * ETHER_ADDR_LEN)) {
 			msg = "mlx4 does not support matching partial"
 				" Ethernet fields";
@@ -162,6 +171,10 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 		return 0;
 	if (flow->promisc) {
 		flow->ibv_attr->type = IBV_FLOW_ATTR_ALL_DEFAULT;
+		return 0;
+	}
+	if (flow->allmulti) {
+		flow->ibv_attr->type = IBV_FLOW_ATTR_MC_DEFAULT;
 		return 0;
 	}
 	++flow->ibv_attr->num_of_specs;
@@ -615,7 +628,7 @@ fill:
 			flow->internal = 1;
 			continue;
 		}
-		if (flow->promisc) {
+		if (flow->promisc || flow->allmulti) {
 			msg = "mlx4 does not support additional matching"
 				" criteria combined with indiscriminate"
 				" matching on Ethernet headers";
