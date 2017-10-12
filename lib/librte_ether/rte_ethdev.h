@@ -2462,23 +2462,23 @@ rte_eth_xstats_get_names_by_id(uint16_t port_id,
  * @param ids
  *   A pointer to an ids array passed by application. This tells which
  *   statistics values function should retrieve. This parameter
- *   can be set to NULL if n is 0. In this case function will retrieve
+ *   can be set to NULL if size is 0. In this case function will retrieve
  *   all avalible statistics.
  * @param values
  *   A pointer to a table to be filled with device statistics values.
- * @param n
+ * @param size
  *   The size of the ids array (number of elements).
  * @return
- *   - A positive value lower or equal to n: success. The return value
+ *   - A positive value lower or equal to size: success. The return value
  *     is the number of entries filled in the stats table.
- *   - A positive value higher than n: error, the given statistics table
+ *   - A positive value higher than size: error, the given statistics table
  *     is too small. The return value corresponds to the size that should
  *     be given to succeed. The entries in the table are not valid and
  *     shall not be used by the caller.
  *   - A negative value on error (invalid port id).
  */
 int rte_eth_xstats_get_by_id(uint16_t port_id, const uint64_t *ids,
-			     uint64_t *values, unsigned int n);
+			     uint64_t *values, unsigned int size);
 
 /**
  * Gets the ID of a statistic from its name.
