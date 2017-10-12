@@ -39,6 +39,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
+#include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -110,14 +111,14 @@ struct mlx4_flow_proc_item {
 	 * @param default_mask
 	 *   Default bit-masks to use when item->mask is not provided.
 	 * @param flow
-	 *   Internal structure to store the conversion.
+	 *   Flow rule handle to update.
 	 *
 	 * @return
 	 *   0 on success, negative value otherwise.
 	 */
 	int (*convert)(const struct rte_flow_item *item,
 		       const void *default_mask,
-		       struct mlx4_flow *flow);
+		       struct rte_flow *flow);
 	/** Size in bytes of the destination structure. */
 	const unsigned int dst_sz;
 	/** List of possible subsequent items. */
@@ -137,12 +138,12 @@ struct rte_flow_drop {
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
  * @param flow[in, out]
- *   Conversion result.
+ *   Flow rule handle to update.
  */
 static int
 mlx4_flow_create_eth(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     struct mlx4_flow *flow)
+		     struct rte_flow *flow)
 {
 	const struct rte_flow_item_eth *spec = item->spec;
 	const struct rte_flow_item_eth *mask = item->mask;
@@ -152,7 +153,7 @@ mlx4_flow_create_eth(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 2;
-	eth = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
+	eth = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*eth = (struct ibv_flow_spec_eth) {
 		.type = IBV_FLOW_SPEC_ETH,
 		.size = eth_size,
@@ -183,19 +184,20 @@ mlx4_flow_create_eth(const struct rte_flow_item *item,
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
  * @param flow[in, out]
- *   Conversion result.
+ *   Flow rule handle to update.
  */
 static int
 mlx4_flow_create_vlan(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      struct mlx4_flow *flow)
+		      struct rte_flow *flow)
 {
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
 	struct ibv_flow_spec_eth *eth;
 	const unsigned int eth_size = sizeof(struct ibv_flow_spec_eth);
 
-	eth = (void *)((uintptr_t)flow->ibv_attr + flow->offset - eth_size);
+	eth = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size -
+		       eth_size);
 	if (!spec)
 		return 0;
 	if (!mask)
@@ -214,12 +216,12 @@ mlx4_flow_create_vlan(const struct rte_flow_item *item,
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
  * @param flow[in, out]
- *   Conversion result.
+ *   Flow rule handle to update.
  */
 static int
 mlx4_flow_create_ipv4(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      struct mlx4_flow *flow)
+		      struct rte_flow *flow)
 {
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
@@ -228,7 +230,7 @@ mlx4_flow_create_ipv4(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 1;
-	ipv4 = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
+	ipv4 = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*ipv4 = (struct ibv_flow_spec_ipv4) {
 		.type = IBV_FLOW_SPEC_IPV4,
 		.size = ipv4_size,
@@ -259,12 +261,12 @@ mlx4_flow_create_ipv4(const struct rte_flow_item *item,
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
  * @param flow[in, out]
- *   Conversion result.
+ *   Flow rule handle to update.
  */
 static int
 mlx4_flow_create_udp(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     struct mlx4_flow *flow)
+		     struct rte_flow *flow)
 {
 	const struct rte_flow_item_udp *spec = item->spec;
 	const struct rte_flow_item_udp *mask = item->mask;
@@ -273,7 +275,7 @@ mlx4_flow_create_udp(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 0;
-	udp = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
+	udp = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*udp = (struct ibv_flow_spec_tcp_udp) {
 		.type = IBV_FLOW_SPEC_UDP,
 		.size = udp_size,
@@ -300,12 +302,12 @@ mlx4_flow_create_udp(const struct rte_flow_item *item,
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
  * @param flow[in, out]
- *   Conversion result.
+ *   Flow rule handle to update.
  */
 static int
 mlx4_flow_create_tcp(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     struct mlx4_flow *flow)
+		     struct rte_flow *flow)
 {
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
@@ -314,7 +316,7 @@ mlx4_flow_create_tcp(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 0;
-	tcp = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
+	tcp = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*tcp = (struct ibv_flow_spec_tcp_udp) {
 		.type = IBV_FLOW_SPEC_TCP,
 		.size = tcp_size,
@@ -556,8 +558,9 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
  *   Associated actions (list terminated by the END action).
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
- * @param[in, out] flow
- *   Flow structure to update.
+ * @param[in, out] addr
+ *   Buffer where the resulting flow rule handle pointer must be stored.
+ *   If NULL, stop processing after validation stage.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
@@ -568,15 +571,13 @@ mlx4_flow_prepare(struct priv *priv,
 		  const struct rte_flow_item pattern[],
 		  const struct rte_flow_action actions[],
 		  struct rte_flow_error *error,
-		  struct mlx4_flow *flow)
+		  struct rte_flow **addr)
 {
 	const struct rte_flow_item *item;
 	const struct rte_flow_action *action;
-	const struct mlx4_flow_proc_item *proc = mlx4_flow_proc_item_list;
-	struct mlx4_flow_target target = {
-		.queue = 0,
-		.drop = 0,
-	};
+	const struct mlx4_flow_proc_item *proc;
+	struct rte_flow temp = { .ibv_attr_size = sizeof(*temp.ibv_attr) };
+	struct rte_flow *flow = &temp;
 	uint32_t priority_override = 0;
 
 	if (attr->group)
@@ -603,6 +604,8 @@ mlx4_flow_prepare(struct priv *priv,
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
 			 NULL, "only ingress is supported");
+fill:
+	proc = mlx4_flow_proc_item_list;
 	/* Go over pattern. */
 	for (item = pattern; item->type; ++item) {
 		const struct mlx4_flow_proc_item *next = NULL;
@@ -633,10 +636,12 @@ mlx4_flow_prepare(struct priv *priv,
 		if (!next)
 			goto exit_item_not_supported;
 		proc = next;
-		err = proc->validate(item, proc->mask, proc->mask_sz);
-		if (err)
-			goto exit_item_not_supported;
-		if (flow->ibv_attr && proc->convert) {
+		/* Perform validation once, while handle is not allocated. */
+		if (flow == &temp) {
+			err = proc->validate(item, proc->mask, proc->mask_sz);
+			if (err)
+				goto exit_item_not_supported;
+		} else if (proc->convert) {
 			err = proc->convert(item,
 					    (proc->default_mask ?
 					     proc->default_mask :
@@ -645,10 +650,10 @@ mlx4_flow_prepare(struct priv *priv,
 			if (err)
 				goto exit_item_not_supported;
 		}
-		flow->offset += proc->dst_sz;
+		flow->ibv_attr_size += proc->dst_sz;
 	}
 	/* Use specified priority level when in isolated mode. */
-	if (priv->isolated && flow->ibv_attr)
+	if (priv->isolated && flow != &temp)
 		flow->ibv_attr->priority = priority_override;
 	/* Go over actions list. */
 	for (action = actions; action->type; ++action) {
@@ -658,22 +663,59 @@ mlx4_flow_prepare(struct priv *priv,
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			continue;
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			target.drop = 1;
+			flow->drop = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			queue = action->conf;
 			if (queue->index >= priv->dev->data->nb_rx_queues)
 				goto exit_action_not_supported;
-			target.queue = 1;
+			flow->queue = 1;
+			flow->queue_id = queue->index;
 			break;
 		default:
 			goto exit_action_not_supported;
 		}
 	}
-	if (!target.queue && !target.drop)
+	if (!flow->queue && !flow->drop)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			 NULL, "no valid action");
+	/* Validation ends here. */
+	if (!addr)
+		return 0;
+	if (flow == &temp) {
+		/* Allocate proper handle based on collected data. */
+		const struct mlx4_malloc_vec vec[] = {
+			{
+				.align = alignof(struct rte_flow),
+				.size = sizeof(*flow),
+				.addr = (void **)&flow,
+			},
+			{
+				.align = alignof(struct ibv_flow_attr),
+				.size = temp.ibv_attr_size,
+				.addr = (void **)&temp.ibv_attr,
+			},
+		};
+
+		if (!mlx4_zmallocv(__func__, vec, RTE_DIM(vec)))
+			return rte_flow_error_set
+				(error, -rte_errno,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				 "flow rule handle allocation failure");
+		/* Most fields will be updated by second pass. */
+		*flow = (struct rte_flow){
+			.ibv_attr = temp.ibv_attr,
+			.ibv_attr_size = sizeof(*flow->ibv_attr),
+		};
+		*flow->ibv_attr = (struct ibv_flow_attr){
+			.type = IBV_FLOW_ATTR_NORMAL,
+			.size = sizeof(*flow->ibv_attr),
+			.port = priv->port,
+		};
+		goto fill;
+	}
+	*addr = flow;
 	return 0;
 exit_item_not_supported:
 	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
@@ -697,9 +739,8 @@ mlx4_flow_validate(struct rte_eth_dev *dev,
 		   struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct mlx4_flow flow = { .offset = sizeof(struct ibv_flow_attr) };
 
-	return mlx4_flow_prepare(priv, attr, pattern, actions, error, &flow);
+	return mlx4_flow_prepare(priv, attr, pattern, actions, error, NULL);
 }
 
 /**
@@ -776,60 +817,66 @@ err:
 }
 
 /**
- * Complete flow rule creation.
+ * Toggle a configured flow rule.
  *
  * @param priv
  *   Pointer to private structure.
- * @param ibv_attr
- *   Verbs flow attributes.
- * @param target
- *   Rule target descriptor.
+ * @param flow
+ *   Flow rule handle to toggle.
+ * @param enable
+ *   Whether associated Verbs flow must be created or removed.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  *
  * @return
- *   A flow if the rule could be created.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct rte_flow *
-mlx4_flow_create_target_queue(struct priv *priv,
-			      struct ibv_flow_attr *ibv_attr,
-			      struct mlx4_flow_target *target,
-			      struct rte_flow_error *error)
+static int
+mlx4_flow_toggle(struct priv *priv,
+		 struct rte_flow *flow,
+		 int enable,
+		 struct rte_flow_error *error)
 {
-	struct ibv_qp *qp;
-	struct rte_flow *rte_flow;
+	struct ibv_qp *qp = NULL;
+	const char *msg;
+	int err;
 
-	assert(priv->pd);
-	assert(priv->ctx);
-	rte_flow = rte_calloc(__func__, 1, sizeof(*rte_flow), 0);
-	if (!rte_flow) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, "cannot allocate flow memory");
-		return NULL;
+	if (!enable) {
+		if (!flow->ibv_flow)
+			return 0;
+		claim_zero(ibv_destroy_flow(flow->ibv_flow));
+		flow->ibv_flow = NULL;
+		return 0;
 	}
-	if (target->drop) {
-		qp = priv->flow_drop_queue ? priv->flow_drop_queue->qp : NULL;
-	} else {
-		struct rxq *rxq = priv->dev->data->rx_queues[target->queue_id];
+	if (flow->ibv_flow)
+		return 0;
+	assert(flow->queue ^ flow->drop);
+	if (flow->queue) {
+		struct rxq *rxq;
 
+		assert(flow->queue_id < priv->dev->data->nb_rx_queues);
+		rxq = priv->dev->data->rx_queues[flow->queue_id];
+		if (!rxq) {
+			err = EINVAL;
+			msg = "target queue must be configured first";
+			goto error;
+		}
 		qp = rxq->qp;
-		rte_flow->qp = qp;
 	}
-	rte_flow->ibv_attr = ibv_attr;
-	if (!priv->started)
-		return rte_flow;
-	rte_flow->ibv_flow = ibv_create_flow(qp, rte_flow->ibv_attr);
-	if (!rte_flow->ibv_flow) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, "flow rule creation failure");
-		goto error;
+	if (flow->drop) {
+		assert(priv->flow_drop_queue);
+		qp = priv->flow_drop_queue->qp;
 	}
-	return rte_flow;
+	assert(qp);
+	assert(flow->ibv_attr);
+	flow->ibv_flow = ibv_create_flow(qp, flow->ibv_attr);
+	if (flow->ibv_flow)
+		return 0;
+	err = errno;
+	msg = "flow rule rejected by device";
 error:
-	rte_free(rte_flow);
-	return NULL;
+	return rte_flow_error_set
+		(error, err, RTE_FLOW_ERROR_TYPE_HANDLE, flow, msg);
 }
 
 /**
@@ -845,69 +892,21 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
-	const struct rte_flow_action *action;
 	struct priv *priv = dev->data->dev_private;
-	struct rte_flow *rte_flow;
-	struct mlx4_flow_target target;
-	struct mlx4_flow flow = { .offset = sizeof(struct ibv_flow_attr), };
+	struct rte_flow *flow;
 	int err;
 
 	err = mlx4_flow_prepare(priv, attr, pattern, actions, error, &flow);
 	if (err)
 		return NULL;
-	flow.ibv_attr = rte_malloc(__func__, flow.offset, 0);
-	if (!flow.ibv_attr) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, "cannot allocate ibv_attr memory");
-		return NULL;
+	err = mlx4_flow_toggle(priv, flow, priv->started, error);
+	if (!err) {
+		LIST_INSERT_HEAD(&priv->flows, flow, next);
+		return flow;
 	}
-	flow.offset = sizeof(struct ibv_flow_attr);
-	*flow.ibv_attr = (struct ibv_flow_attr){
-		.comp_mask = 0,
-		.type = IBV_FLOW_ATTR_NORMAL,
-		.size = sizeof(struct ibv_flow_attr),
-		.priority = attr->priority,
-		.num_of_specs = 0,
-		.port = priv->port,
-		.flags = 0,
-	};
-	claim_zero(mlx4_flow_prepare(priv, attr, pattern, actions,
-				     error, &flow));
-	target = (struct mlx4_flow_target){
-		.queue = 0,
-		.drop = 0,
-	};
-	for (action = actions; action->type; ++action) {
-		switch (action->type) {
-			const struct rte_flow_action_queue *queue;
-
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			continue;
-		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			queue = action->conf;
-			target.queue = 1;
-			target.queue_id = queue->index;
-			break;
-		case RTE_FLOW_ACTION_TYPE_DROP:
-			target.drop = 1;
-			break;
-		default:
-			rte_flow_error_set(error, ENOTSUP,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   action, "unsupported action");
-			goto exit;
-		}
-	}
-	rte_flow = mlx4_flow_create_target_queue(priv, flow.ibv_attr,
-						 &target, error);
-	if (rte_flow) {
-		LIST_INSERT_HEAD(&priv->flows, rte_flow, next);
-		DEBUG("Flow created %p", (void *)rte_flow);
-		return rte_flow;
-	}
-exit:
-	rte_free(flow.ibv_attr);
+	rte_flow_error_set(error, -err, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   error->message);
+	rte_free(flow);
 	return NULL;
 }
 
@@ -939,7 +938,7 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
 }
 
 /**
- * Destroy a flow.
+ * Destroy a flow rule.
  *
  * @see rte_flow_destroy()
  * @see rte_flow_ops
@@ -949,19 +948,18 @@ mlx4_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
 		  struct rte_flow_error *error)
 {
-	(void)dev;
-	(void)error;
+	struct priv *priv = dev->data->dev_private;
+	int err = mlx4_flow_toggle(priv, flow, 0, error);
+
+	if (err)
+		return err;
 	LIST_REMOVE(flow, next);
-	if (flow->ibv_flow)
-		claim_zero(ibv_destroy_flow(flow->ibv_flow));
-	rte_free(flow->ibv_attr);
-	DEBUG("Flow destroyed %p", (void *)flow);
 	rte_free(flow);
 	return 0;
 }
 
 /**
- * Destroy all flows.
+ * Destroy all flow rules.
  *
  * @see rte_flow_flush()
  * @see rte_flow_ops
@@ -982,9 +980,7 @@ mlx4_flow_flush(struct rte_eth_dev *dev,
 }
 
 /**
- * Remove all flows.
- *
- * Called by dev_stop() to remove all flows.
+ * Disable flow rules.
  *
  * @param priv
  *   Pointer to private structure.
@@ -997,27 +993,24 @@ mlx4_flow_stop(struct priv *priv)
 	for (flow = LIST_FIRST(&priv->flows);
 	     flow;
 	     flow = LIST_NEXT(flow, next)) {
-		claim_zero(ibv_destroy_flow(flow->ibv_flow));
-		flow->ibv_flow = NULL;
-		DEBUG("Flow %p removed", (void *)flow);
+		claim_zero(mlx4_flow_toggle(priv, flow, 0, NULL));
 	}
 	mlx4_flow_destroy_drop_queue(priv);
 }
 
 /**
- * Add all flows.
+ * Enable flow rules.
  *
  * @param priv
  *   Pointer to private structure.
  *
  * @return
- *   0 on success, a errno value otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx4_flow_start(struct priv *priv)
 {
 	int ret;
-	struct ibv_qp *qp;
 	struct rte_flow *flow;
 
 	ret = mlx4_flow_create_drop_queue(priv);
@@ -1026,14 +1019,11 @@ mlx4_flow_start(struct priv *priv)
 	for (flow = LIST_FIRST(&priv->flows);
 	     flow;
 	     flow = LIST_NEXT(flow, next)) {
-		qp = flow->qp ? flow->qp : priv->flow_drop_queue->qp;
-		flow->ibv_flow = ibv_create_flow(qp, flow->ibv_attr);
-		if (!flow->ibv_flow) {
-			DEBUG("Flow %p cannot be applied", (void *)flow);
-			rte_errno = EINVAL;
-			return rte_errno;
+		ret = mlx4_flow_toggle(priv, flow, 1, NULL);
+		if (unlikely(ret)) {
+			mlx4_flow_stop(priv);
+			return ret;
 		}
-		DEBUG("Flow %p applied", (void *)flow);
 	}
 	return 0;
 }

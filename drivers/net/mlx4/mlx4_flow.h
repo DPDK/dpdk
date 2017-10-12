@@ -60,20 +60,10 @@ struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
-	struct ibv_qp *qp; /**< Verbs queue pair. */
-};
-
-/** Structure to pass to the conversion function. */
-struct mlx4_flow {
-	struct ibv_flow_attr *ibv_attr; /**< Verbs attribute. */
-	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
-};
-
-/** Flow rule target descriptor. */
-struct mlx4_flow_target {
-	uint32_t drop:1; /**< Target is a drop queue. */
+	uint32_t ibv_attr_size; /**< Size of Verbs attributes. */
+	uint32_t drop:1; /**< This rule drops packets. */
 	uint32_t queue:1; /**< Target is a receive queue. */
-	uint32_t queue_id; /**< Identifier of the queue. */
+	uint16_t queue_id; /**< Target queue. */
 };
 
 /* mlx4_flow.c */
