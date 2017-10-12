@@ -38,6 +38,7 @@ CFLAGS := -I$(SRCDIR) $(CFLAGS)
 CFLAGS += $(WERROR_FLAGS) -O3
 
 LDLIBS += -lm
+LDLIBS += -lrte_eal -lrte_hash
 
 EXPORT_MAP := rte_member_version.map
 

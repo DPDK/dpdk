@@ -37,6 +37,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_kvargs.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
+LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_kvargs_version.map
 

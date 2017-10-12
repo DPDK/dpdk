@@ -39,6 +39,7 @@ LIBABIVER := 3
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_eal -lrte_ring -lrte_ethdev -lrte_hash
 
 # library source files
 SRCS-y += rte_eventdev.c

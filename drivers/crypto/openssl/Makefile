@@ -45,6 +45,8 @@ EXPORT_MAP := rte_pmd_openssl_version.map
 
 # external library dependencies
 LDLIBS += -lcrypto
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_cryptodev
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += rte_openssl_pmd.c

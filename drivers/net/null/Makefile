@@ -38,6 +38,8 @@ LIB = librte_pmd_null.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 
 EXPORT_MAP := rte_pmd_null_version.map
 

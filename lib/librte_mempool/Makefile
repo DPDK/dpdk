@@ -35,6 +35,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_mempool.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
+LDLIBS += -lrte_eal -lrte_ring
 
 EXPORT_MAP := rte_mempool_version.map
 

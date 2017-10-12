@@ -62,5 +62,7 @@ LDLIBS += -lpthread
 ifdef CONFIG_RTE_EXEC_ENV_LINUXAPP
 LDLIBS += -ldl
 endif
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 
 include $(RTE_SDK)/mk/rte.lib.mk

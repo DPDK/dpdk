@@ -9,6 +9,8 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -DZLIB_CONST
 LDLIBS += -lz
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 
 EXPORT_MAP := rte_pmd_bnx2x_version.map
 

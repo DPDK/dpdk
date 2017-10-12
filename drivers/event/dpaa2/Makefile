@@ -45,6 +45,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/portal
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa2
 CFLAGS += -I$(RTE_SDK)/drivers/event/dpaa2
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
+LDLIBS += -lrte_eal -lrte_eventdev -lrte_bus_fslmc
 
 # versioning export map
 EXPORT_MAP := rte_pmd_dpaa2_event_version.map

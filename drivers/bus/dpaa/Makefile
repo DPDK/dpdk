@@ -72,5 +72,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += \
 
 # Link Pthread
 LDLIBS += -lpthread
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev
 
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -43,6 +43,7 @@ ifeq ($(shell test $(GCC_VERSION) -le 50 && echo 1), 1)
 CFLAGS += -Wno-missing-field-initializers
 endif
 endif
+LDLIBS += -lrte_eal -lrte_eventdev -lrte_kvargs -lrte_ring
 
 # library version
 LIBABIVER := 1

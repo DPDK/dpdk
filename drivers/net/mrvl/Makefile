@@ -55,6 +55,8 @@ CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -O3
 LDLIBS += -L$(LIBMUSDK_PATH)/lib
 LDLIBS += -lmusdk
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_cfgfile
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_MRVL_PMD) += mrvl_ethdev.c

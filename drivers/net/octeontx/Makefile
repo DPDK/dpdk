@@ -61,6 +61,9 @@ CFLAGS_octeontx_rxtx.o += -fno-prefetch-loop-arrays
 endif
 CFLAGS_octeontx_rxtx.o += -O3 -Ofast
 
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
+LDLIBS += -lrte_mempool_octeontx
 LDLIBS += -lrte_eventdev
 
 include $(RTE_SDK)/mk/rte.lib.mk

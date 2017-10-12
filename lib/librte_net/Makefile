@@ -34,6 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_net.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
+LDLIBS += -lrte_mbuf -lrte_eal
 
 EXPORT_MAP := rte_net_version.map
 LIBABIVER := 1

@@ -36,6 +36,7 @@ LIB = librte_reorder.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf
 
 EXPORT_MAP := rte_reorder_version.map
 

@@ -36,6 +36,7 @@ LIB = librte_gro.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_ethdev -lrte_net
 
 EXPORT_MAP := rte_gro_version.map
 

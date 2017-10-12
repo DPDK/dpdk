@@ -38,6 +38,8 @@ LIB = librte_ethdev.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_net -lrte_eal -lrte_mempool -lrte_ring
+LDLIBS += -lrte_mbuf
 
 EXPORT_MAP := rte_ethdev_version.map
 

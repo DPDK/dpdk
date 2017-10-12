@@ -62,8 +62,7 @@ build: _postbuild
 $(DIRS-y):
 	@[ -d $(CURDIR)/$@ ] || mkdir -p $(CURDIR)/$@
 	@echo "== Build $S/$@"
-	@$(MAKE) S=$S/$@ -f $(SRCDIR)/$@/Makefile -C $(CURDIR)/$@ \
-		DEPDIRS="$(DEPDIRS-$@)" all
+	@$(MAKE) S=$S/$@ -f $(SRCDIR)/$@/Makefile -C $(CURDIR)/$@ all
 
 .PHONY: clean
 clean: _postclean

@@ -40,6 +40,7 @@ CFLAGS += $(WERROR_FLAGS)
 
 # Headers
 CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
+LDLIBS += -lrte_eal -lrte_mempool -lrte_ring
 
 EXPORT_MAP := rte_mempool_stack_version.map
 

@@ -39,6 +39,8 @@ LIBABIVER := 3
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_eal -lrte_mempool -lrte_ring -lrte_mbuf
+LDLIBS += -lrte_kvargs
 
 # library source files
 SRCS-y += rte_cryptodev.c rte_cryptodev_pmd.c

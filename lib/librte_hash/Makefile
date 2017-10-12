@@ -36,6 +36,7 @@ LIB = librte_hash.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+LDLIBS += -lrte_eal -lrte_ring
 
 EXPORT_MAP := rte_hash_version.map
 

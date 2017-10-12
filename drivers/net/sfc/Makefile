@@ -69,6 +69,8 @@ CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
 # value is set
 CFLAGS_sfc_ef10_tx.o += -wd3656
 endif
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 
 #
 # List of base driver object files for which

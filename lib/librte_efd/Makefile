@@ -36,6 +36,7 @@ LIB = librte_efd.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+LDLIBS += -lrte_eal -lrte_ring -lrte_hash
 
 EXPORT_MAP := rte_efd_version.map
 

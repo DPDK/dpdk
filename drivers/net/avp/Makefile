@@ -39,6 +39,8 @@ LIB = librte_pmd_avp.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 
 EXPORT_MAP := rte_pmd_avp_version.map
 

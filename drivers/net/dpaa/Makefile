@@ -57,5 +57,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_DPAA_PMD) += dpaa_rxtx.c
 
 LDLIBS += -lrte_bus_dpaa
 LDLIBS += -lrte_mempool_dpaa
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 
 include $(RTE_SDK)/mk/rte.lib.mk

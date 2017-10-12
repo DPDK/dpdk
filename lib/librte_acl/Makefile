@@ -36,6 +36,7 @@ LIB = librte_acl.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_acl_version.map
 

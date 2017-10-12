@@ -54,6 +54,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_socket.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_portlist.c
 
 CFLAGS += -D_GNU_SOURCE
+LDLIBS += -lrte_eal
 
 # install includes
 INCS := cmdline.h cmdline_parse.h cmdline_parse_num.h cmdline_parse_ipaddr.h

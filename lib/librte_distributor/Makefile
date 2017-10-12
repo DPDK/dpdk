@@ -36,6 +36,7 @@ LIB = librte_distributor.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_ethdev
 
 EXPORT_MAP := rte_distributor_version.map
 

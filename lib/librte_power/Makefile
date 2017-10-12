@@ -35,6 +35,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_power.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -fno-strict-aliasing
+LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_power_version.map
 

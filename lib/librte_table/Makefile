@@ -38,6 +38,11 @@ LIB = librte_table.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf -lrte_port
+LDLIBS += -lrte_lpm -lrte_hash
+ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
+LDLIBS += -lrte_acl
+endif
 
 EXPORT_MAP := rte_table_version.map
 

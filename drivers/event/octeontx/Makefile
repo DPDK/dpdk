@@ -40,6 +40,8 @@ LIB = librte_pmd_octeontx_ssovf.a
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx/
 
+LDLIBS += -lrte_eal -lrte_eventdev -lrte_mempool_octeontx
+
 EXPORT_MAP := rte_pmd_octeontx_ssovf_version.map
 
 LIBABIVER := 1

@@ -62,6 +62,8 @@ endif
 CFLAGS_BASE_DRIVER =
 
 endif
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 
 #
 # Add extra flags for base driver files (also known as shared code)

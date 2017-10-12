@@ -38,6 +38,11 @@ LIB = librte_port.a
 ifeq ($(CONFIG_RTE_PORT_PCAP),y)
 LDLIBS += -lpcap
 endif
+LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf -lrte_ethdev
+LDLIBS += -lrte_ip_frag -lrte_sched
+ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
+LDLIBS += -lrte_kni
+endif
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

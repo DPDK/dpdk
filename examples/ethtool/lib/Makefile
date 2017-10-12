@@ -59,5 +59,6 @@ ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
 LDLIBS += -lrte_pmd_ixgbe
 endif
 endif
+LDLIBS += -lrte_eal -lrte_ethdev
 
 include $(RTE_SDK)/mk/rte.extlib.mk

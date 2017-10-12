@@ -54,6 +54,8 @@ CFLAGS += -I$(LIBSSO_KASUMI_PATH)
 CFLAGS += -I$(LIBSSO_KASUMI_PATH)/include
 CFLAGS += -I$(LIBSSO_KASUMI_PATH)/build
 LDLIBS += -L$(LIBSSO_KASUMI_PATH)/build -lsso_kasumi
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_cryptodev
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += rte_kasumi_pmd.c

@@ -52,7 +52,6 @@ $(DIRS-y):
 		BASE_OUTPUT=$(BASE_OUTPUT) \
 		CUR_SUBDIR=$(CUR_SUBDIR)/$(@) \
 		S=$(CURDIR)/$(@) \
-		DEPDIRS="$(DEPDIRS-$@)" \
 		$(filter-out $(DIRS-y),$(MAKECMDGOALS))
 
 define depdirs_rule

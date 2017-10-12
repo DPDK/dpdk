@@ -38,6 +38,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_skeleton_event.a
 
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_eal -lrte_eventdev
 
 EXPORT_MAP := rte_pmd_skeleton_event_version.map
 

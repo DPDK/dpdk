@@ -40,6 +40,7 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
 LDLIBS += -lm
+LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_meter_version.map
 

@@ -36,6 +36,7 @@ LIB = librte_latencystats.a
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 LDLIBS += -lm
 LDLIBS += -lpthread
+LDLIBS += -lrte_eal -lrte_metrics -lrte_ethdev -lrte_mbuf
 
 EXPORT_MAP := rte_latencystats_version.map
 

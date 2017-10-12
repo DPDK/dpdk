@@ -37,6 +37,8 @@ LIB = librte_pmd_null_crypto.a
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+LDLIBS += -lrte_cryptodev
 
 # library version
 LIBABIVER := 1
