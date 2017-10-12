@@ -93,7 +93,7 @@ $(API_EXAMPLES): api-html-clean
 	$(Q)mkdir -p $(@D)
 	@printf '/**\n' > $(API_EXAMPLES)
 	@printf '@page examples DPDK Example Programs\n\n' >> $(API_EXAMPLES)
-	@find examples -type f -name '*.c' -printf '@example %p\n' >> $(API_EXAMPLES)
+	@find examples -type f -name '*.c' -printf '@example %p\n' | LC_ALL=C sort >> $(API_EXAMPLES)
 	@printf '*/\n' >> $(API_EXAMPLES)
 
 guides-pdf-clean: guides-pdf-img-clean
