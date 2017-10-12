@@ -43,7 +43,7 @@ APP = ip_pipeline
 
 VPATH += $(SRCDIR)/pipeline
 
-INC += $(wildcard *.h) $(wildcard pipeline/*.h)
+INC += $(sort $(wildcard *.h)) $(sort $(wildcard pipeline/*.h))
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := main.c

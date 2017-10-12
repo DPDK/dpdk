@@ -49,7 +49,7 @@ APP = server
 # all source are stored in SRCS-y
 SRCS-y := main.c init.c args.c
 
-INC := $(wildcard *.h)
+INC := $(sort $(wildcard *.h))
 
 CFLAGS += $(WERROR_FLAGS) -O3
 CFLAGS += -I$(SRCDIR)/../shared
