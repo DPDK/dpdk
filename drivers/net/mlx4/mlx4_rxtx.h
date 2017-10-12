@@ -81,6 +81,7 @@ struct rxq {
 	struct rxq_elt (*elts)[]; /**< Rx elements. */
 	struct mlx4_rxq_stats stats; /**< Rx queue counters. */
 	unsigned int socket; /**< CPU socket ID for allocations. */
+	uint8_t data[]; /**< Remaining queue resources. */
 };
 
 /** Tx element. */
@@ -118,6 +119,7 @@ struct txq {
 	unsigned int elts_comp_cd_init; /**< Initial value for countdown. */
 	struct mlx4_txq_stats stats; /**< Tx queue counters. */
 	unsigned int socket; /**< CPU socket ID for allocations. */
+	uint8_t data[]; /**< Remaining queue resources. */
 };
 
 /* mlx4_rxq.c */

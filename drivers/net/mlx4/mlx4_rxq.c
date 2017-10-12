@@ -69,36 +69,30 @@
  *
  * @param rxq
  *   Pointer to Rx queue structure.
- * @param elts_n
- *   Number of elements to allocate.
  *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx4_rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
+mlx4_rxq_alloc_elts(struct rxq *rxq)
 {
+	struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts;
 	unsigned int i;
-	struct rxq_elt (*elts)[elts_n] =
-		rte_calloc_socket("RXQ elements", 1, sizeof(*elts), 0,
-				  rxq->socket);
 
-	if (elts == NULL) {
-		rte_errno = ENOMEM;
-		ERROR("%p: can't allocate packets array", (void *)rxq);
-		goto error;
-	}
 	/* For each WR (packet). */
-	for (i = 0; (i != elts_n); ++i) {
+	for (i = 0; i != RTE_DIM(*elts); ++i) {
 		struct rxq_elt *elt = &(*elts)[i];
 		struct ibv_recv_wr *wr = &elt->wr;
 		struct ibv_sge *sge = &(*elts)[i].sge;
 		struct rte_mbuf *buf = rte_pktmbuf_alloc(rxq->mp);
 
 		if (buf == NULL) {
+			while (i--) {
+				rte_pktmbuf_free_seg((*elts)[i].buf);
+				(*elts)[i].buf = NULL;
+			}
 			rte_errno = ENOMEM;
-			ERROR("%p: empty mbuf pool", (void *)rxq);
-			goto error;
+			return -rte_errno;
 		}
 		elt->buf = buf;
 		wr->next = &(*elts)[(i + 1)].wr;
@@ -121,21 +115,7 @@ mlx4_rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 	}
 	/* The last WR pointer must be NULL. */
 	(*elts)[(i - 1)].wr.next = NULL;
-	DEBUG("%p: allocated and configured %u single-segment WRs",
-	      (void *)rxq, elts_n);
-	rxq->elts_n = elts_n;
-	rxq->elts_head = 0;
-	rxq->elts = elts;
 	return 0;
-error:
-	if (elts != NULL) {
-		for (i = 0; (i != RTE_DIM(*elts)); ++i)
-			rte_pktmbuf_free_seg((*elts)[i].buf);
-		rte_free(elts);
-	}
-	DEBUG("%p: failed, freed everything", (void *)rxq);
-	assert(rte_errno > 0);
-	return -rte_errno;
 }
 
 /**
@@ -148,17 +128,15 @@ static void
 mlx4_rxq_free_elts(struct rxq *rxq)
 {
 	unsigned int i;
-	unsigned int elts_n = rxq->elts_n;
-	struct rxq_elt (*elts)[elts_n] = rxq->elts;
+	struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts;
 
 	DEBUG("%p: freeing WRs", (void *)rxq);
-	rxq->elts_n = 0;
-	rxq->elts = NULL;
-	if (elts == NULL)
-		return;
-	for (i = 0; (i != RTE_DIM(*elts)); ++i)
+	for (i = 0; (i != RTE_DIM(*elts)); ++i) {
+		if (!(*elts)[i].buf)
+			continue;
 		rte_pktmbuf_free_seg((*elts)[i].buf);
-	rte_free(elts);
+		(*elts)[i].buf = NULL;
+	}
 }
 
 /**
@@ -187,8 +165,21 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 {
 	struct priv *priv = dev->data->dev_private;
 	uint32_t mb_len = rte_pktmbuf_data_room_size(mp);
+	struct rxq_elt (*elts)[desc];
 	struct rte_flow_error error;
 	struct rxq *rxq;
+	struct mlx4_malloc_vec vec[] = {
+		{
+			.align = RTE_CACHE_LINE_SIZE,
+			.size = sizeof(*rxq),
+			.addr = (void **)&rxq,
+		},
+		{
+			.align = RTE_CACHE_LINE_SIZE,
+			.size = sizeof(*elts),
+			.addr = (void **)&elts,
+		},
+	};
 	int ret;
 
 	(void)conf; /* Thresholds configuration (ignored). */
@@ -213,9 +204,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		return -rte_errno;
 	}
 	/* Allocate and initialize Rx queue. */
-	rxq = rte_calloc_socket("RXQ", 1, sizeof(*rxq), 0, socket);
+	mlx4_zmallocv_socket("RXQ", vec, RTE_DIM(vec), socket);
 	if (!rxq) {
-		rte_errno = ENOMEM;
 		ERROR("%p: unable to allocate queue index %u",
 		      (void *)dev, idx);
 		return -rte_errno;
@@ -224,6 +214,9 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.priv = priv,
 		.mp = mp,
 		.port_id = dev->data->port_id,
+		.elts_n = desc,
+		.elts_head = 0,
+		.elts = elts,
 		.stats.idx = idx,
 		.socket = socket,
 	};
@@ -307,7 +300,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	ret = mlx4_rxq_alloc_elts(rxq, desc);
+	ret = mlx4_rxq_alloc_elts(rxq);
 	if (ret) {
 		ERROR("%p: RXQ allocation failed: %s",
 		      (void *)dev, strerror(rte_errno));

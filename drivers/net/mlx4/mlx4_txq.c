@@ -64,59 +64,6 @@
 #include "mlx4_utils.h"
 
 /**
- * Allocate Tx queue elements.
- *
- * @param txq
- *   Pointer to Tx queue structure.
- * @param elts_n
- *   Number of elements to allocate.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx4_txq_alloc_elts(struct txq *txq, unsigned int elts_n)
-{
-	unsigned int i;
-	struct txq_elt (*elts)[elts_n] =
-		rte_calloc_socket("TXQ", 1, sizeof(*elts), 0, txq->socket);
-	int ret = 0;
-
-	if (elts == NULL) {
-		ERROR("%p: can't allocate packets array", (void *)txq);
-		ret = ENOMEM;
-		goto error;
-	}
-	for (i = 0; (i != elts_n); ++i) {
-		struct txq_elt *elt = &(*elts)[i];
-
-		elt->buf = NULL;
-	}
-	DEBUG("%p: allocated and configured %u WRs", (void *)txq, elts_n);
-	txq->elts_n = elts_n;
-	txq->elts = elts;
-	txq->elts_head = 0;
-	txq->elts_tail = 0;
-	txq->elts_comp = 0;
-	/*
-	 * Request send completion every MLX4_PMD_TX_PER_COMP_REQ packets or
-	 * at least 4 times per ring.
-	 */
-	txq->elts_comp_cd_init =
-		((MLX4_PMD_TX_PER_COMP_REQ < (elts_n / 4)) ?
-		 MLX4_PMD_TX_PER_COMP_REQ : (elts_n / 4));
-	txq->elts_comp_cd = txq->elts_comp_cd_init;
-	assert(ret == 0);
-	return 0;
-error:
-	rte_free(elts);
-	DEBUG("%p: failed, freed everything", (void *)txq);
-	assert(ret > 0);
-	rte_errno = ret;
-	return -rte_errno;
-}
-
-/**
  * Free Tx queue elements.
  *
  * @param txq
@@ -125,34 +72,21 @@ error:
 static void
 mlx4_txq_free_elts(struct txq *txq)
 {
-	unsigned int elts_n = txq->elts_n;
 	unsigned int elts_head = txq->elts_head;
 	unsigned int elts_tail = txq->elts_tail;
-	struct txq_elt (*elts)[elts_n] = txq->elts;
+	struct txq_elt (*elts)[txq->elts_n] = txq->elts;
 
 	DEBUG("%p: freeing WRs", (void *)txq);
-	txq->elts_n = 0;
-	txq->elts_head = 0;
-	txq->elts_tail = 0;
-	txq->elts_comp = 0;
-	txq->elts_comp_cd = 0;
-	txq->elts_comp_cd_init = 0;
-	txq->elts = NULL;
-	if (elts == NULL)
-		return;
 	while (elts_tail != elts_head) {
 		struct txq_elt *elt = &(*elts)[elts_tail];
 
 		assert(elt->buf != NULL);
 		rte_pktmbuf_free(elt->buf);
-#ifndef NDEBUG
-		/* Poisoning. */
-		memset(elt, 0x77, sizeof(*elt));
-#endif
-		if (++elts_tail == elts_n)
+		elt->buf = NULL;
+		if (++elts_tail == RTE_DIM(*elts))
 			elts_tail = 0;
 	}
-	rte_free(elts);
+	txq->elts_tail = txq->elts_head;
 }
 
 struct txq_mp2mr_mbuf_check_data {
@@ -235,8 +169,21 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    unsigned int socket, const struct rte_eth_txconf *conf)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct txq_elt (*elts)[desc];
 	struct ibv_qp_init_attr qp_init_attr;
 	struct txq *txq;
+	struct mlx4_malloc_vec vec[] = {
+		{
+			.align = RTE_CACHE_LINE_SIZE,
+			.size = sizeof(*txq),
+			.addr = (void **)&txq,
+		},
+		{
+			.align = RTE_CACHE_LINE_SIZE,
+			.size = sizeof(*elts),
+			.addr = (void **)&elts,
+		},
+	};
 	int ret;
 
 	(void)conf; /* Thresholds configuration (ignored). */
@@ -261,9 +208,8 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		return -rte_errno;
 	}
 	/* Allocate and initialize Tx queue. */
-	txq = rte_calloc_socket("TXQ", 1, sizeof(*txq), 0, socket);
+	mlx4_zmallocv_socket("TXQ", vec, RTE_DIM(vec), socket);
 	if (!txq) {
-		rte_errno = ENOMEM;
 		ERROR("%p: unable to allocate queue index %u",
 		      (void *)dev, idx);
 		return -rte_errno;
@@ -272,6 +218,19 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.priv = priv,
 		.stats.idx = idx,
 		.socket = socket,
+		.elts_n = desc,
+		.elts = elts,
+		.elts_head = 0,
+		.elts_tail = 0,
+		.elts_comp = 0,
+		/*
+		 * Request send completion every MLX4_PMD_TX_PER_COMP_REQ
+		 * packets or at least 4 times per ring.
+		 */
+		.elts_comp_cd =
+			RTE_MIN(MLX4_PMD_TX_PER_COMP_REQ, desc / 4),
+		.elts_comp_cd_init =
+			RTE_MIN(MLX4_PMD_TX_PER_COMP_REQ, desc / 4),
 	};
 	txq->cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
 	if (!txq->cq) {
@@ -311,12 +270,6 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (ret) {
 		rte_errno = ret;
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	ret = mlx4_txq_alloc_elts(txq, desc);
-	if (ret) {
-		ERROR("%p: TXQ allocation failed: %s",
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
