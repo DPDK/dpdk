@@ -155,7 +155,6 @@ mlx4_flow_create_eth(const struct rte_flow_item *item,
 	unsigned int i;
 
 	++flow->ibv_attr->num_of_specs;
-	flow->ibv_attr->priority = 2;
 	eth = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*eth = (struct ibv_flow_spec_eth) {
 		.type = IBV_FLOW_SPEC_ETH,
@@ -232,7 +231,6 @@ mlx4_flow_create_ipv4(const struct rte_flow_item *item,
 	unsigned int ipv4_size = sizeof(struct ibv_flow_spec_ipv4);
 
 	++flow->ibv_attr->num_of_specs;
-	flow->ibv_attr->priority = 1;
 	ipv4 = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*ipv4 = (struct ibv_flow_spec_ipv4) {
 		.type = IBV_FLOW_SPEC_IPV4,
@@ -277,7 +275,6 @@ mlx4_flow_create_udp(const struct rte_flow_item *item,
 	unsigned int udp_size = sizeof(struct ibv_flow_spec_tcp_udp);
 
 	++flow->ibv_attr->num_of_specs;
-	flow->ibv_attr->priority = 0;
 	udp = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*udp = (struct ibv_flow_spec_tcp_udp) {
 		.type = IBV_FLOW_SPEC_UDP,
@@ -318,7 +315,6 @@ mlx4_flow_create_tcp(const struct rte_flow_item *item,
 	unsigned int tcp_size = sizeof(struct ibv_flow_spec_tcp_udp);
 
 	++flow->ibv_attr->num_of_specs;
-	flow->ibv_attr->priority = 0;
 	tcp = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*tcp = (struct ibv_flow_spec_tcp_udp) {
 		.type = IBV_FLOW_SPEC_TCP,
@@ -581,19 +577,11 @@ mlx4_flow_prepare(struct priv *priv,
 	const struct mlx4_flow_proc_item *proc;
 	struct rte_flow temp = { .ibv_attr_size = sizeof(*temp.ibv_attr) };
 	struct rte_flow *flow = &temp;
-	uint32_t priority_override = 0;
 
 	if (attr->group)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
 			 NULL, "groups are not supported");
-	if (priv->isolated)
-		priority_override = attr->priority;
-	else if (attr->priority)
-		return rte_flow_error_set
-			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-			 NULL,
-			 "priorities are not supported outside isolated mode");
 	if (attr->priority > MLX4_FLOW_PRIORITY_LAST)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
@@ -659,9 +647,6 @@ fill:
 		}
 		flow->ibv_attr_size += proc->dst_sz;
 	}
-	/* Use specified priority level when in isolated mode. */
-	if (priv->isolated && flow != &temp)
-		flow->ibv_attr->priority = priority_override;
 	/* Go over actions list. */
 	for (action = actions; action->type; ++action) {
 		switch (action->type) {
@@ -718,6 +703,7 @@ fill:
 		*flow->ibv_attr = (struct ibv_flow_attr){
 			.type = IBV_FLOW_ATTR_NORMAL,
 			.size = sizeof(*flow->ibv_attr),
+			.priority = attr->priority,
 			.port = priv->port,
 		};
 		goto fill;
@@ -854,6 +840,22 @@ mlx4_flow_toggle(struct priv *priv,
 			mlx4_drop_put(priv->drop);
 		return 0;
 	}
+	assert(flow->ibv_attr);
+	if (!flow->internal &&
+	    !priv->isolated &&
+	    flow->ibv_attr->priority == MLX4_FLOW_PRIORITY_LAST) {
+		if (flow->ibv_flow) {
+			claim_zero(ibv_destroy_flow(flow->ibv_flow));
+			flow->ibv_flow = NULL;
+			if (flow->drop)
+				mlx4_drop_put(priv->drop);
+		}
+		err = EACCES;
+		msg = ("priority level "
+		       MLX4_STR_EXPAND(MLX4_FLOW_PRIORITY_LAST)
+		       " is reserved when not in isolated mode");
+		goto error;
+	}
 	if (flow->queue) {
 		struct rxq *rxq = NULL;
 
@@ -883,7 +885,6 @@ mlx4_flow_toggle(struct priv *priv,
 		qp = priv->drop->qp;
 	}
 	assert(qp);
-	assert(flow->ibv_attr);
 	if (flow->ibv_flow)
 		return 0;
 	flow->ibv_flow = ibv_create_flow(qp, flow->ibv_attr);
@@ -1028,6 +1029,7 @@ static int
 mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 {
 	struct rte_flow_attr attr = {
+		.priority = MLX4_FLOW_PRIORITY_LAST,
 		.ingress = 1,
 	};
 	struct rte_flow_item pattern[] = {
