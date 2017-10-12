@@ -184,46 +184,6 @@ mlx4_rxq_cleanup(struct rxq *rxq)
 }
 
 /**
- * Allocate a Queue Pair.
- * Optionally setup inline receive if supported.
- *
- * @param priv
- *   Pointer to private structure.
- * @param cq
- *   Completion queue to associate with QP.
- * @param desc
- *   Number of descriptors in QP (hint only).
- *
- * @return
- *   QP pointer or NULL in case of error and rte_errno is set.
- */
-static struct ibv_qp *
-mlx4_rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc)
-{
-	struct ibv_qp *qp;
-	struct ibv_qp_init_attr attr = {
-		/* CQ to be associated with the send queue. */
-		.send_cq = cq,
-		/* CQ to be associated with the receive queue. */
-		.recv_cq = cq,
-		.cap = {
-			/* Max number of outstanding WRs. */
-			.max_recv_wr = ((priv->device_attr.max_qp_wr < desc) ?
-					priv->device_attr.max_qp_wr :
-					desc),
-			/* Max number of scatter/gather elements in a WR. */
-			.max_recv_sge = 1,
-		},
-		.qp_type = IBV_QPT_RAW_PACKET,
-	};
-
-	qp = ibv_create_qp(priv->pd, &attr);
-	if (!qp)
-		rte_errno = errno ? errno : EINVAL;
-	return qp;
-}
-
-/**
  * Configure a Rx queue.
  *
  * @param dev
@@ -254,6 +214,7 @@ mlx4_rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		.socket = socket
 	};
 	struct ibv_qp_attr mod;
+	struct ibv_qp_init_attr qp_init;
 	struct ibv_recv_wr *bad_wr;
 	unsigned int mb_len;
 	int ret;
@@ -317,8 +278,24 @@ mlx4_rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	      priv->device_attr.max_qp_wr);
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.max_sge);
-	tmpl.qp = mlx4_rxq_setup_qp(priv, tmpl.cq, desc);
+	qp_init = (struct ibv_qp_init_attr){
+		/* CQ to be associated with the send queue. */
+		.send_cq = tmpl.cq,
+		/* CQ to be associated with the receive queue. */
+		.recv_cq = tmpl.cq,
+		.cap = {
+			/* Max number of outstanding WRs. */
+			.max_recv_wr = ((priv->device_attr.max_qp_wr < desc) ?
+					priv->device_attr.max_qp_wr :
+					desc),
+			/* Max number of scatter/gather elements in a WR. */
+			.max_recv_sge = 1,
+		},
+		.qp_type = IBV_QPT_RAW_PACKET,
+	};
+	tmpl.qp = ibv_create_qp(priv->pd, &qp_init);
 	if (tmpl.qp == NULL) {
+		rte_errno = errno ? errno : EINVAL;
 		ERROR("%p: QP creation failure: %s",
 		      (void *)dev, strerror(rte_errno));
 		goto error;
