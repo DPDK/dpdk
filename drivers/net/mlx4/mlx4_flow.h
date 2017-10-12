@@ -70,7 +70,7 @@ struct mlx4_flow {
 };
 
 /** Flow rule target descriptor. */
-struct mlx4_flow_action {
+struct mlx4_flow_target {
 	uint32_t drop:1; /**< Target is a drop queue. */
 	uint32_t queue:1; /**< Target is a receive queue. */
 	uint32_t queue_id; /**< Identifier of the queue. */

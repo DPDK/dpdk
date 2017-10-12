@@ -66,16 +66,14 @@
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
-/** Static initializer for items. */
-#define ITEMS(...) \
+/** Static initializer for a list of subsequent item types. */
+#define NEXT_ITEM(...) \
 	(const enum rte_flow_item_type []){ \
 		__VA_ARGS__, RTE_FLOW_ITEM_TYPE_END, \
 	}
 
-/** Structure to generate a simple graph of layers supported by the NIC. */
-struct mlx4_flow_items {
-	/** List of possible actions for these items. */
-	const enum rte_flow_action_type *const actions;
+/** Processor structure associated with a flow item. */
+struct mlx4_flow_proc_item {
 	/** Bit-masks corresponding to the possibilities for the item. */
 	const void *mask;
 	/**
@@ -121,20 +119,13 @@ struct mlx4_flow_items {
 		       void *data);
 	/** Size in bytes of the destination structure. */
 	const unsigned int dst_sz;
-	/** List of possible following items.  */
-	const enum rte_flow_item_type *const items;
+	/** List of possible subsequent items. */
+	const enum rte_flow_item_type *const next_item;
 };
 
 struct rte_flow_drop {
 	struct ibv_qp *qp; /**< Verbs queue pair. */
 	struct ibv_cq *cq; /**< Verbs completion queue. */
-};
-
-/** Valid action for this PMD. */
-static const enum rte_flow_action_type valid_actions[] = {
-	RTE_FLOW_ACTION_TYPE_DROP,
-	RTE_FLOW_ACTION_TYPE_QUEUE,
-	RTE_FLOW_ACTION_TYPE_END,
 };
 
 /**
@@ -485,14 +476,13 @@ mlx4_flow_validate_tcp(const struct rte_flow_item *item,
 }
 
 /** Graph of supported items and associated actions. */
-static const struct mlx4_flow_items mlx4_flow_items[] = {
+static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
-		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH),
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
-		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VLAN,
-			       RTE_FLOW_ITEM_TYPE_IPV4),
-		.actions = valid_actions,
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VLAN,
+				       RTE_FLOW_ITEM_TYPE_IPV4),
 		.mask = &(const struct rte_flow_item_eth){
 			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 			.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
@@ -504,8 +494,7 @@ static const struct mlx4_flow_items mlx4_flow_items[] = {
 		.dst_sz = sizeof(struct ibv_flow_spec_eth),
 	},
 	[RTE_FLOW_ITEM_TYPE_VLAN] = {
-		.items = ITEMS(RTE_FLOW_ITEM_TYPE_IPV4),
-		.actions = valid_actions,
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_IPV4),
 		.mask = &(const struct rte_flow_item_vlan){
 		/* rte_flow_item_vlan_mask is invalid for mlx4. */
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -520,9 +509,8 @@ static const struct mlx4_flow_items mlx4_flow_items[] = {
 		.dst_sz = 0,
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
-		.items = ITEMS(RTE_FLOW_ITEM_TYPE_UDP,
-			       RTE_FLOW_ITEM_TYPE_TCP),
-		.actions = valid_actions,
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_UDP,
+				       RTE_FLOW_ITEM_TYPE_TCP),
 		.mask = &(const struct rte_flow_item_ipv4){
 			.hdr = {
 				.src_addr = -1,
@@ -536,7 +524,6 @@ static const struct mlx4_flow_items mlx4_flow_items[] = {
 		.dst_sz = sizeof(struct ibv_flow_spec_ipv4),
 	},
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
-		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_udp){
 			.hdr = {
 				.src_port = -1,
@@ -550,7 +537,6 @@ static const struct mlx4_flow_items mlx4_flow_items[] = {
 		.dst_sz = sizeof(struct ibv_flow_spec_tcp_udp),
 	},
 	[RTE_FLOW_ITEM_TYPE_TCP] = {
-		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_tcp){
 			.hdr = {
 				.src_port = -1,
@@ -572,7 +558,7 @@ static const struct mlx4_flow_items mlx4_flow_items[] = {
  *   Pointer to private structure.
  * @param[in] attr
  *   Flow rule attributes.
- * @param[in] items
+ * @param[in] pattern
  *   Pattern specification (list terminated by the END pattern item).
  * @param[in] actions
  *   Associated actions (list terminated by the END action).
@@ -587,13 +573,15 @@ static const struct mlx4_flow_items mlx4_flow_items[] = {
 static int
 mlx4_flow_prepare(struct priv *priv,
 		  const struct rte_flow_attr *attr,
-		  const struct rte_flow_item items[],
+		  const struct rte_flow_item pattern[],
 		  const struct rte_flow_action actions[],
 		  struct rte_flow_error *error,
 		  struct mlx4_flow *flow)
 {
-	const struct mlx4_flow_items *cur_item = mlx4_flow_items;
-	struct mlx4_flow_action action = {
+	const struct rte_flow_item *item;
+	const struct rte_flow_action *action;
+	const struct mlx4_flow_proc_item *proc = mlx4_flow_proc_item_list;
+	struct mlx4_flow_target target = {
 		.queue = 0,
 		.drop = 0,
 	};
@@ -638,82 +626,80 @@ mlx4_flow_prepare(struct priv *priv,
 				   "only ingress is supported");
 		return -rte_errno;
 	}
-	/* Go over items list. */
-	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
-		const struct mlx4_flow_items *token = NULL;
+	/* Go over pattern. */
+	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		const struct mlx4_flow_proc_item *next = NULL;
 		unsigned int i;
 		int err;
 
-		if (items->type == RTE_FLOW_ITEM_TYPE_VOID)
+		if (item->type == RTE_FLOW_ITEM_TYPE_VOID)
 			continue;
 		/*
 		 * The nic can support patterns with NULL eth spec only
 		 * if eth is a single item in a rule.
 		 */
-		if (!items->spec &&
-			items->type == RTE_FLOW_ITEM_TYPE_ETH) {
-			const struct rte_flow_item *next = items + 1;
+		if (!item->spec && item->type == RTE_FLOW_ITEM_TYPE_ETH) {
+			const struct rte_flow_item *next = item + 1;
 
 			if (next->type != RTE_FLOW_ITEM_TYPE_END) {
 				rte_flow_error_set(error, ENOTSUP,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   items,
+						   item,
 						   "the rule requires"
 						   " an Ethernet spec");
 				return -rte_errno;
 			}
 		}
 		for (i = 0;
-		     cur_item->items &&
-		     cur_item->items[i] != RTE_FLOW_ITEM_TYPE_END;
+		     proc->next_item &&
+		     proc->next_item[i] != RTE_FLOW_ITEM_TYPE_END;
 		     ++i) {
-			if (cur_item->items[i] == items->type) {
-				token = &mlx4_flow_items[items->type];
+			if (proc->next_item[i] == item->type) {
+				next = &mlx4_flow_proc_item_list[item->type];
 				break;
 			}
 		}
-		if (!token)
+		if (!next)
 			goto exit_item_not_supported;
-		cur_item = token;
-		err = cur_item->validate(items,
-					(const uint8_t *)cur_item->mask,
-					 cur_item->mask_sz);
+		proc = next;
+		err = proc->validate(item, proc->mask, proc->mask_sz);
 		if (err)
 			goto exit_item_not_supported;
-		if (flow->ibv_attr && cur_item->convert) {
-			err = cur_item->convert(items,
-						(cur_item->default_mask ?
-						 cur_item->default_mask :
-						 cur_item->mask),
-						 flow);
+		if (flow->ibv_attr && proc->convert) {
+			err = proc->convert(item,
+					    (proc->default_mask ?
+					     proc->default_mask :
+					     proc->mask),
+					    flow);
 			if (err)
 				goto exit_item_not_supported;
 		}
-		flow->offset += cur_item->dst_sz;
+		flow->offset += proc->dst_sz;
 	}
 	/* Use specified priority level when in isolated mode. */
 	if (priv->isolated && flow->ibv_attr)
 		flow->ibv_attr->priority = priority_override;
-	/* Go over actions list */
-	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
-		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
+	/* Go over actions list. */
+	for (action = actions;
+	     action->type != RTE_FLOW_ACTION_TYPE_END;
+	     ++action) {
+		if (action->type == RTE_FLOW_ACTION_TYPE_VOID) {
 			continue;
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
-			action.drop = 1;
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+		} else if (action->type == RTE_FLOW_ACTION_TYPE_DROP) {
+			target.drop = 1;
+		} else if (action->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 			const struct rte_flow_action_queue *queue =
-				(const struct rte_flow_action_queue *)
-				actions->conf;
+				action->conf;
 
 			if (!queue || (queue->index >
 				       (priv->dev->data->nb_rx_queues - 1)))
 				goto exit_action_not_supported;
-			action.queue = 1;
+			target.queue = 1;
 		} else {
 			goto exit_action_not_supported;
 		}
 	}
-	if (!action.queue && !action.drop) {
+	if (!target.queue && !target.drop) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "no valid action");
 		return -rte_errno;
@@ -721,11 +707,11 @@ mlx4_flow_prepare(struct priv *priv,
 	return 0;
 exit_item_not_supported:
 	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
-			   items, "item not supported");
+			   item, "item not supported");
 	return -rte_errno;
 exit_action_not_supported:
 	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
-			   actions, "action not supported");
+			   action, "action not supported");
 	return -rte_errno;
 }
 
@@ -738,14 +724,14 @@ exit_action_not_supported:
 static int
 mlx4_flow_validate(struct rte_eth_dev *dev,
 		   const struct rte_flow_attr *attr,
-		   const struct rte_flow_item items[],
+		   const struct rte_flow_item pattern[],
 		   const struct rte_flow_action actions[],
 		   struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx4_flow flow = { .offset = sizeof(struct ibv_flow_attr) };
 
-	return mlx4_flow_prepare(priv, attr, items, actions, error, &flow);
+	return mlx4_flow_prepare(priv, attr, pattern, actions, error, &flow);
 }
 
 /**
@@ -828,8 +814,8 @@ err:
  *   Pointer to private structure.
  * @param ibv_attr
  *   Verbs flow attributes.
- * @param action
- *   Target action structure.
+ * @param target
+ *   Rule target descriptor.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  *
@@ -837,9 +823,9 @@ err:
  *   A flow if the rule could be created.
  */
 static struct rte_flow *
-mlx4_flow_create_action_queue(struct priv *priv,
+mlx4_flow_create_target_queue(struct priv *priv,
 			      struct ibv_flow_attr *ibv_attr,
-			      struct mlx4_flow_action *action,
+			      struct mlx4_flow_target *target,
 			      struct rte_flow_error *error)
 {
 	struct ibv_qp *qp;
@@ -853,10 +839,10 @@ mlx4_flow_create_action_queue(struct priv *priv,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
 	}
-	if (action->drop) {
+	if (target->drop) {
 		qp = priv->flow_drop_queue ? priv->flow_drop_queue->qp : NULL;
 	} else {
-		struct rxq *rxq = priv->dev->data->rx_queues[action->queue_id];
+		struct rxq *rxq = priv->dev->data->rx_queues[target->queue_id];
 
 		qp = rxq->qp;
 		rte_flow->qp = qp;
@@ -885,17 +871,18 @@ error:
 static struct rte_flow *
 mlx4_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr,
-		 const struct rte_flow_item items[],
+		 const struct rte_flow_item pattern[],
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
+	const struct rte_flow_action *action;
 	struct priv *priv = dev->data->dev_private;
 	struct rte_flow *rte_flow;
-	struct mlx4_flow_action action;
+	struct mlx4_flow_target target;
 	struct mlx4_flow flow = { .offset = sizeof(struct ibv_flow_attr), };
 	int err;
 
-	err = mlx4_flow_prepare(priv, attr, items, actions, error, &flow);
+	err = mlx4_flow_prepare(priv, attr, pattern, actions, error, &flow);
 	if (err)
 		return NULL;
 	flow.ibv_attr = rte_malloc(__func__, flow.offset, 0);
@@ -914,31 +901,33 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 		.port = priv->port,
 		.flags = 0,
 	};
-	claim_zero(mlx4_flow_prepare(priv, attr, items, actions,
+	claim_zero(mlx4_flow_prepare(priv, attr, pattern, actions,
 				     error, &flow));
-	action = (struct mlx4_flow_action){
+	target = (struct mlx4_flow_target){
 		.queue = 0,
 		.drop = 0,
 	};
-	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
-		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
+	for (action = actions;
+	     action->type != RTE_FLOW_ACTION_TYPE_END;
+	     ++action) {
+		if (action->type == RTE_FLOW_ACTION_TYPE_VOID) {
 			continue;
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
-			action.queue = 1;
-			action.queue_id =
+		} else if (action->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+			target.queue = 1;
+			target.queue_id =
 				((const struct rte_flow_action_queue *)
-				 actions->conf)->index;
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
-			action.drop = 1;
+				 action->conf)->index;
+		} else if (action->type == RTE_FLOW_ACTION_TYPE_DROP) {
+			target.drop = 1;
 		} else {
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   actions, "unsupported action");
+					   action, "unsupported action");
 			goto exit;
 		}
 	}
-	rte_flow = mlx4_flow_create_action_queue(priv, flow.ibv_attr,
-						 &action, error);
+	rte_flow = mlx4_flow_create_target_queue(priv, flow.ibv_attr,
+						 &target, error);
 	if (rte_flow) {
 		LIST_INSERT_HEAD(&priv->flows, rte_flow, next);
 		DEBUG("Flow created %p", (void *)rte_flow);
