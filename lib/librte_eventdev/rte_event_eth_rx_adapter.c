@@ -392,7 +392,7 @@ flush_event_buffer(struct rte_event_eth_rx_adapter *rx_adapter)
 	    &rx_adapter->event_enqueue_buffer;
 	struct rte_event_eth_rx_adapter_stats *stats = &rx_adapter->stats;
 
-	uint16_t n = rte_event_enqueue_burst(rx_adapter->eventdev_id,
+	uint16_t n = rte_event_enqueue_new_burst(rx_adapter->eventdev_id,
 					rx_adapter->event_port_id,
 					buf->events,
 					buf->count);
