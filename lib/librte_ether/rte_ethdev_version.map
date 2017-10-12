@@ -193,5 +193,6 @@ DPDK_17.11 {
 
 	rte_eth_dev_pool_ops_supported;
 	rte_eth_dev_reset;
+	rte_flow_error_set;
 
 } DPDK_17.08;

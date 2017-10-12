@@ -1462,7 +1462,7 @@ tap_flow_isolate(struct rte_eth_dev *dev,
 	return 0;
 error:
 	pmd->flow_isolate = 0;
-	return -rte_flow_error_set(
+	return rte_flow_error_set(
 		error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 		"TC rule creation failed");
 }

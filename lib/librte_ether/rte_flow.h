@@ -1322,6 +1322,30 @@ int
 rte_flow_isolate(uint16_t port_id, int set, struct rte_flow_error *error);
 
 /**
+ * Initialize flow error structure.
+ *
+ * @param[out] error
+ *   Pointer to flow error structure (may be NULL).
+ * @param code
+ *   Related error code (rte_errno).
+ * @param type
+ *   Cause field and error types.
+ * @param cause
+ *   Object responsible for the error.
+ * @param message
+ *   Human-readable error message.
+ *
+ * @return
+ *   Negative error code (errno value) and rte_errno is set.
+ */
+int
+rte_flow_error_set(struct rte_flow_error *error,
+		   int code,
+		   enum rte_flow_error_type type,
+		   const void *cause,
+		   const char *message);
+
+/**
  * Generic flow representation.
  *
  * This form is sufficient to describe an rte_flow independently from any

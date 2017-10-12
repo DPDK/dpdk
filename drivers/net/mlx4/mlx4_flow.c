@@ -955,9 +955,9 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
 		mlx4_mac_addr_del(priv);
 	} else if (mlx4_mac_addr_add(priv) < 0) {
 		priv->isolated = 1;
-		return -rte_flow_error_set(error, rte_errno,
-					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					   NULL, "cannot leave isolated mode");
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot leave isolated mode");
 	}
 	return 0;
 }

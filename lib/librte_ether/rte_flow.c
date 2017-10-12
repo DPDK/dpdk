@@ -145,9 +145,9 @@ rte_flow_validate(uint16_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->validate))
 		return ops->validate(dev, attr, pattern, actions, error);
-	return -rte_flow_error_set(error, ENOSYS,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, rte_strerror(ENOSYS));
+	return rte_flow_error_set(error, ENOSYS,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOSYS));
 }
 
 /* Create a flow rule on a given port. */
@@ -183,9 +183,9 @@ rte_flow_destroy(uint16_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->destroy))
 		return ops->destroy(dev, flow, error);
-	return -rte_flow_error_set(error, ENOSYS,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, rte_strerror(ENOSYS));
+	return rte_flow_error_set(error, ENOSYS,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOSYS));
 }
 
 /* Destroy all flow rules associated with a port. */
@@ -200,9 +200,9 @@ rte_flow_flush(uint16_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->flush))
 		return ops->flush(dev, error);
-	return -rte_flow_error_set(error, ENOSYS,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, rte_strerror(ENOSYS));
+	return rte_flow_error_set(error, ENOSYS,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOSYS));
 }
 
 /* Query an existing flow rule. */
@@ -220,9 +220,9 @@ rte_flow_query(uint16_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->query))
 		return ops->query(dev, flow, action, data, error);
-	return -rte_flow_error_set(error, ENOSYS,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, rte_strerror(ENOSYS));
+	return rte_flow_error_set(error, ENOSYS,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOSYS));
 }
 
 /* Restrict ingress traffic to the defined flow rules. */
@@ -238,9 +238,28 @@ rte_flow_isolate(uint16_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->isolate))
 		return ops->isolate(dev, set, error);
-	return -rte_flow_error_set(error, ENOSYS,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, rte_strerror(ENOSYS));
+	return rte_flow_error_set(error, ENOSYS,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOSYS));
+}
+
+/* Initialize flow error structure. */
+int
+rte_flow_error_set(struct rte_flow_error *error,
+		   int code,
+		   enum rte_flow_error_type type,
+		   const void *cause,
+		   const char *message)
+{
+	if (error) {
+		*error = (struct rte_flow_error){
+			.type = type,
+			.cause = cause,
+			.message = message,
+		};
+	}
+	rte_errno = code;
+	return -code;
 }
 
 /** Compute storage space needed by item specification. */

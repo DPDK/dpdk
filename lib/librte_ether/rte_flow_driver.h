@@ -45,7 +45,6 @@
 
 #include <stdint.h>
 
-#include <rte_errno.h>
 #include "rte_ethdev.h"
 #include "rte_flow.h"
 
@@ -126,43 +125,6 @@ struct rte_flow_ops {
 		 int,
 		 struct rte_flow_error *);
 };
-
-/**
- * Initialize generic flow error structure.
- *
- * This function also sets rte_errno to a given value.
- *
- * @param[out] error
- *   Pointer to flow error structure (may be NULL).
- * @param code
- *   Related error code (rte_errno).
- * @param type
- *   Cause field and error types.
- * @param cause
- *   Object responsible for the error.
- * @param message
- *   Human-readable error message.
- *
- * @return
- *   Error code.
- */
-static inline int
-rte_flow_error_set(struct rte_flow_error *error,
-		   int code,
-		   enum rte_flow_error_type type,
-		   const void *cause,
-		   const char *message)
-{
-	if (error) {
-		*error = (struct rte_flow_error){
-			.type = type,
-			.cause = cause,
-			.message = message,
-		};
-	}
-	rte_errno = code;
-	return code;
-}
 
 /**
  * Get generic flow operations structure from a port.
