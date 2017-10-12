@@ -76,49 +76,17 @@
 
 /** Processor structure associated with a flow item. */
 struct mlx4_flow_proc_item {
-	/** Bit-masks corresponding to the possibilities for the item. */
-	const void *mask;
-	/**
-	 * Default bit-masks to use when item->mask is not provided. When
-	 * \default_mask is also NULL, the full supported bit-mask (\mask) is
-	 * used instead.
-	 */
-	const void *default_mask;
-	/** Bit-masks size in bytes. */
+	/** Bit-mask for fields supported by this PMD. */
+	const void *mask_support;
+	/** Bit-mask to use when @p item->mask is not provided. */
+	const void *mask_default;
+	/** Size in bytes for @p mask_support and @p mask_default. */
 	const unsigned int mask_sz;
-	/**
-	 * Check support for a given item.
-	 *
-	 * @param item[in]
-	 *   Item specification.
-	 * @param mask[in]
-	 *   Bit-masks covering supported fields to compare with spec,
-	 *   last and mask in
-	 *   \item.
-	 * @param size
-	 *   Bit-Mask size in bytes.
-	 *
-	 * @return
-	 *   0 on success, negative value otherwise.
-	 */
-	int (*validate)(const struct rte_flow_item *item,
-			const uint8_t *mask, unsigned int size);
-	/**
-	 * Conversion function from rte_flow to NIC specific flow.
-	 *
-	 * @param item
-	 *   rte_flow item to convert.
-	 * @param default_mask
-	 *   Default bit-masks to use when item->mask is not provided.
-	 * @param flow
-	 *   Flow rule handle to update.
-	 *
-	 * @return
-	 *   0 on success, negative value otherwise.
-	 */
-	int (*convert)(const struct rte_flow_item *item,
-		       const void *default_mask,
-		       struct rte_flow *flow);
+	/** Merge a pattern item into a flow rule handle. */
+	int (*merge)(struct rte_flow *flow,
+		     const struct rte_flow_item *item,
+		     const struct mlx4_flow_proc_item *proc,
+		     struct rte_flow_error *error);
 	/** Size in bytes of the destination structure. */
 	const unsigned int dst_sz;
 	/** List of possible subsequent items. */
@@ -134,107 +102,185 @@ struct mlx4_drop {
 };
 
 /**
- * Convert Ethernet item to Verbs specification.
+ * Merge Ethernet pattern item into flow rule handle.
  *
- * @param item[in]
- *   Item specification.
- * @param default_mask[in]
- *   Default bit-masks to use when item->mask is not provided.
- * @param flow[in, out]
+ * Additional mlx4-specific constraints on supported fields:
+ *
+ * - No support for partial masks.
+ * - Not providing @p item->spec or providing an empty @p mask->dst is
+ *   *only* supported if the rule doesn't specify additional matching
+ *   criteria (i.e. rule is promiscuous-like).
+ *
+ * @param[in, out] flow
  *   Flow rule handle to update.
+ * @param[in] item
+ *   Pattern item to merge.
+ * @param[in] proc
+ *   Associated item-processing object.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx4_flow_create_eth(const struct rte_flow_item *item,
-		     const void *default_mask,
-		     struct rte_flow *flow)
+mlx4_flow_merge_eth(struct rte_flow *flow,
+		    const struct rte_flow_item *item,
+		    const struct mlx4_flow_proc_item *proc,
+		    struct rte_flow_error *error)
 {
 	const struct rte_flow_item_eth *spec = item->spec;
-	const struct rte_flow_item_eth *mask = item->mask;
+	const struct rte_flow_item_eth *mask =
+		spec ? (item->mask ? item->mask : proc->mask_default) : NULL;
 	struct ibv_flow_spec_eth *eth;
-	const unsigned int eth_size = sizeof(struct ibv_flow_spec_eth);
+	const char *msg;
 	unsigned int i;
 
+	if (!mask) {
+		flow->promisc = 1;
+	} else {
+		uint32_t sum_dst = 0;
+		uint32_t sum_src = 0;
+
+		for (i = 0; i != sizeof(mask->dst.addr_bytes); ++i) {
+			sum_dst += mask->dst.addr_bytes[i];
+			sum_src += mask->src.addr_bytes[i];
+		}
+		if (sum_src) {
+			msg = "mlx4 does not support source MAC matching";
+			goto error;
+		} else if (!sum_dst) {
+			flow->promisc = 1;
+		} else if (sum_dst != (UINT8_C(0xff) * ETHER_ADDR_LEN)) {
+			msg = "mlx4 does not support matching partial"
+				" Ethernet fields";
+			goto error;
+		}
+	}
+	if (!flow->ibv_attr)
+		return 0;
+	if (flow->promisc) {
+		flow->ibv_attr->type = IBV_FLOW_ATTR_ALL_DEFAULT;
+		return 0;
+	}
 	++flow->ibv_attr->num_of_specs;
 	eth = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*eth = (struct ibv_flow_spec_eth) {
 		.type = IBV_FLOW_SPEC_ETH,
-		.size = eth_size,
+		.size = sizeof(*eth),
 	};
-	if (!spec) {
-		flow->ibv_attr->type = IBV_FLOW_ATTR_ALL_DEFAULT;
-		return 0;
-	}
-	if (!mask)
-		mask = default_mask;
 	memcpy(eth->val.dst_mac, spec->dst.addr_bytes, ETHER_ADDR_LEN);
-	memcpy(eth->val.src_mac, spec->src.addr_bytes, ETHER_ADDR_LEN);
 	memcpy(eth->mask.dst_mac, mask->dst.addr_bytes, ETHER_ADDR_LEN);
-	memcpy(eth->mask.src_mac, mask->src.addr_bytes, ETHER_ADDR_LEN);
 	/* Remove unwanted bits from values. */
 	for (i = 0; i < ETHER_ADDR_LEN; ++i) {
 		eth->val.dst_mac[i] &= eth->mask.dst_mac[i];
-		eth->val.src_mac[i] &= eth->mask.src_mac[i];
 	}
 	return 0;
+error:
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+				  item, msg);
 }
 
 /**
- * Convert VLAN item to Verbs specification.
+ * Merge VLAN pattern item into flow rule handle.
  *
- * @param item[in]
- *   Item specification.
- * @param default_mask[in]
- *   Default bit-masks to use when item->mask is not provided.
- * @param flow[in, out]
+ * Additional mlx4-specific constraints on supported fields:
+ *
+ * - Matching *all* VLAN traffic by omitting @p item->spec or providing an
+ *   empty @p item->mask would also include non-VLAN traffic. Doing so is
+ *   therefore unsupported.
+ * - No support for partial masks.
+ *
+ * @param[in, out] flow
  *   Flow rule handle to update.
+ * @param[in] item
+ *   Pattern item to merge.
+ * @param[in] proc
+ *   Associated item-processing object.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx4_flow_create_vlan(const struct rte_flow_item *item,
-		      const void *default_mask,
-		      struct rte_flow *flow)
+mlx4_flow_merge_vlan(struct rte_flow *flow,
+		     const struct rte_flow_item *item,
+		     const struct mlx4_flow_proc_item *proc,
+		     struct rte_flow_error *error)
 {
 	const struct rte_flow_item_vlan *spec = item->spec;
-	const struct rte_flow_item_vlan *mask = item->mask;
+	const struct rte_flow_item_vlan *mask =
+		spec ? (item->mask ? item->mask : proc->mask_default) : NULL;
 	struct ibv_flow_spec_eth *eth;
-	const unsigned int eth_size = sizeof(struct ibv_flow_spec_eth);
+	const char *msg;
 
-	eth = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size -
-		       eth_size);
-	if (!spec)
+	if (!mask || !mask->tci) {
+		msg = "mlx4 cannot match all VLAN traffic while excluding"
+			" non-VLAN traffic, TCI VID must be specified";
+		goto error;
+	}
+	if (mask->tci != RTE_BE16(0x0fff)) {
+		msg = "mlx4 does not support partial TCI VID matching";
+		goto error;
+	}
+	if (!flow->ibv_attr)
 		return 0;
-	if (!mask)
-		mask = default_mask;
+	eth = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size -
+		       sizeof(*eth));
 	eth->val.vlan_tag = spec->tci;
 	eth->mask.vlan_tag = mask->tci;
 	eth->val.vlan_tag &= eth->mask.vlan_tag;
 	return 0;
+error:
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+				  item, msg);
 }
 
 /**
- * Convert IPv4 item to Verbs specification.
+ * Merge IPv4 pattern item into flow rule handle.
  *
- * @param item[in]
- *   Item specification.
- * @param default_mask[in]
- *   Default bit-masks to use when item->mask is not provided.
- * @param flow[in, out]
+ * Additional mlx4-specific constraints on supported fields:
+ *
+ * - No support for partial masks.
+ *
+ * @param[in, out] flow
  *   Flow rule handle to update.
+ * @param[in] item
+ *   Pattern item to merge.
+ * @param[in] proc
+ *   Associated item-processing object.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx4_flow_create_ipv4(const struct rte_flow_item *item,
-		      const void *default_mask,
-		      struct rte_flow *flow)
+mlx4_flow_merge_ipv4(struct rte_flow *flow,
+		     const struct rte_flow_item *item,
+		     const struct mlx4_flow_proc_item *proc,
+		     struct rte_flow_error *error)
 {
 	const struct rte_flow_item_ipv4 *spec = item->spec;
-	const struct rte_flow_item_ipv4 *mask = item->mask;
+	const struct rte_flow_item_ipv4 *mask =
+		spec ? (item->mask ? item->mask : proc->mask_default) : NULL;
 	struct ibv_flow_spec_ipv4 *ipv4;
-	unsigned int ipv4_size = sizeof(struct ibv_flow_spec_ipv4);
+	const char *msg;
 
+	if (mask &&
+	    ((uint32_t)(mask->hdr.src_addr + 1) > UINT32_C(1) ||
+	     (uint32_t)(mask->hdr.dst_addr + 1) > UINT32_C(1))) {
+		msg = "mlx4 does not support matching partial IPv4 fields";
+		goto error;
+	}
+	if (!flow->ibv_attr)
+		return 0;
 	++flow->ibv_attr->num_of_specs;
 	ipv4 = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*ipv4 = (struct ibv_flow_spec_ipv4) {
 		.type = IBV_FLOW_SPEC_IPV4,
-		.size = ipv4_size,
+		.size = sizeof(*ipv4),
 	};
 	if (!spec)
 		return 0;
@@ -242,8 +288,6 @@ mlx4_flow_create_ipv4(const struct rte_flow_item *item,
 		.src_ip = spec->hdr.src_addr,
 		.dst_ip = spec->hdr.dst_addr,
 	};
-	if (!mask)
-		mask = default_mask;
 	ipv4->mask = (struct ibv_flow_ipv4_filter) {
 		.src_ip = mask->hdr.src_addr,
 		.dst_ip = mask->hdr.dst_addr,
@@ -252,224 +296,188 @@ mlx4_flow_create_ipv4(const struct rte_flow_item *item,
 	ipv4->val.src_ip &= ipv4->mask.src_ip;
 	ipv4->val.dst_ip &= ipv4->mask.dst_ip;
 	return 0;
+error:
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+				  item, msg);
 }
 
 /**
- * Convert UDP item to Verbs specification.
+ * Merge UDP pattern item into flow rule handle.
  *
- * @param item[in]
- *   Item specification.
- * @param default_mask[in]
- *   Default bit-masks to use when item->mask is not provided.
- * @param flow[in, out]
+ * Additional mlx4-specific constraints on supported fields:
+ *
+ * - No support for partial masks.
+ *
+ * @param[in, out] flow
  *   Flow rule handle to update.
+ * @param[in] item
+ *   Pattern item to merge.
+ * @param[in] proc
+ *   Associated item-processing object.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx4_flow_create_udp(const struct rte_flow_item *item,
-		     const void *default_mask,
-		     struct rte_flow *flow)
+mlx4_flow_merge_udp(struct rte_flow *flow,
+		    const struct rte_flow_item *item,
+		    const struct mlx4_flow_proc_item *proc,
+		    struct rte_flow_error *error)
 {
 	const struct rte_flow_item_udp *spec = item->spec;
-	const struct rte_flow_item_udp *mask = item->mask;
+	const struct rte_flow_item_udp *mask =
+		spec ? (item->mask ? item->mask : proc->mask_default) : NULL;
 	struct ibv_flow_spec_tcp_udp *udp;
-	unsigned int udp_size = sizeof(struct ibv_flow_spec_tcp_udp);
+	const char *msg;
 
+	if (!mask ||
+	    ((uint16_t)(mask->hdr.src_port + 1) > UINT16_C(1) ||
+	     (uint16_t)(mask->hdr.dst_port + 1) > UINT16_C(1))) {
+		msg = "mlx4 does not support matching partial UDP fields";
+		goto error;
+	}
+	if (!flow->ibv_attr)
+		return 0;
 	++flow->ibv_attr->num_of_specs;
 	udp = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*udp = (struct ibv_flow_spec_tcp_udp) {
 		.type = IBV_FLOW_SPEC_UDP,
-		.size = udp_size,
+		.size = sizeof(*udp),
 	};
 	if (!spec)
 		return 0;
 	udp->val.dst_port = spec->hdr.dst_port;
 	udp->val.src_port = spec->hdr.src_port;
-	if (!mask)
-		mask = default_mask;
 	udp->mask.dst_port = mask->hdr.dst_port;
 	udp->mask.src_port = mask->hdr.src_port;
 	/* Remove unwanted bits from values. */
 	udp->val.src_port &= udp->mask.src_port;
 	udp->val.dst_port &= udp->mask.dst_port;
 	return 0;
+error:
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+				  item, msg);
 }
 
 /**
- * Convert TCP item to Verbs specification.
+ * Merge TCP pattern item into flow rule handle.
  *
- * @param item[in]
- *   Item specification.
- * @param default_mask[in]
- *   Default bit-masks to use when item->mask is not provided.
- * @param flow[in, out]
+ * Additional mlx4-specific constraints on supported fields:
+ *
+ * - No support for partial masks.
+ *
+ * @param[in, out] flow
  *   Flow rule handle to update.
+ * @param[in] item
+ *   Pattern item to merge.
+ * @param[in] proc
+ *   Associated item-processing object.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx4_flow_create_tcp(const struct rte_flow_item *item,
-		     const void *default_mask,
-		     struct rte_flow *flow)
+mlx4_flow_merge_tcp(struct rte_flow *flow,
+		    const struct rte_flow_item *item,
+		    const struct mlx4_flow_proc_item *proc,
+		    struct rte_flow_error *error)
 {
 	const struct rte_flow_item_tcp *spec = item->spec;
-	const struct rte_flow_item_tcp *mask = item->mask;
+	const struct rte_flow_item_tcp *mask =
+		spec ? (item->mask ? item->mask : proc->mask_default) : NULL;
 	struct ibv_flow_spec_tcp_udp *tcp;
-	unsigned int tcp_size = sizeof(struct ibv_flow_spec_tcp_udp);
+	const char *msg;
 
+	if (!mask ||
+	    ((uint16_t)(mask->hdr.src_port + 1) > UINT16_C(1) ||
+	     (uint16_t)(mask->hdr.dst_port + 1) > UINT16_C(1))) {
+		msg = "mlx4 does not support matching partial TCP fields";
+		goto error;
+	}
+	if (!flow->ibv_attr)
+		return 0;
 	++flow->ibv_attr->num_of_specs;
 	tcp = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size);
 	*tcp = (struct ibv_flow_spec_tcp_udp) {
 		.type = IBV_FLOW_SPEC_TCP,
-		.size = tcp_size,
+		.size = sizeof(*tcp),
 	};
 	if (!spec)
 		return 0;
 	tcp->val.dst_port = spec->hdr.dst_port;
 	tcp->val.src_port = spec->hdr.src_port;
-	if (!mask)
-		mask = default_mask;
 	tcp->mask.dst_port = mask->hdr.dst_port;
 	tcp->mask.src_port = mask->hdr.src_port;
 	/* Remove unwanted bits from values. */
 	tcp->val.src_port &= tcp->mask.src_port;
 	tcp->val.dst_port &= tcp->mask.dst_port;
 	return 0;
+error:
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+				  item, msg);
 }
 
 /**
- * Check support for a given item.
+ * Perform basic sanity checks on a pattern item.
  *
- * @param item[in]
+ * @param[in] item
  *   Item specification.
- * @param mask[in]
- *   Bit-masks covering supported fields to compare with spec, last and mask in
- *   \item.
- * @param size
- *   Bit-Mask size in bytes.
+ * @param[in] proc
+ *   Associated item-processing object.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
  *
  * @return
- *   0 on success, negative value otherwise.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx4_flow_item_validate(const struct rte_flow_item *item,
-			const uint8_t *mask, unsigned int size)
+mlx4_flow_item_check(const struct rte_flow_item *item,
+		     const struct mlx4_flow_proc_item *proc,
+		     struct rte_flow_error *error)
 {
-	int ret = 0;
+	const uint8_t *mask;
+	unsigned int i;
 
+	/* item->last and item->mask cannot exist without item->spec. */
 	if (!item->spec && (item->mask || item->last))
-		return -1;
-	if (item->spec && !item->mask) {
-		unsigned int i;
-		const uint8_t *spec = item->spec;
-
-		for (i = 0; i < size; ++i)
-			if ((spec[i] | mask[i]) != mask[i])
-				return -1;
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "\"mask\" or \"last\" field provided without a"
+			 " corresponding \"spec\"");
+	/* No spec, no mask, no problem. */
+	if (!item->spec)
+		return 0;
+	mask = item->mask ?
+		(const uint8_t *)item->mask :
+		(const uint8_t *)proc->mask_default;
+	assert(mask);
+	/*
+	 * Single-pass check to make sure that:
+	 * - Mask is supported, no bits are set outside proc->mask_support.
+	 * - Both item->spec and item->last are included in mask.
+	 */
+	for (i = 0; i != proc->mask_sz; ++i) {
+		if (!mask[i])
+			continue;
+		if ((mask[i] | ((const uint8_t *)proc->mask_support)[i]) !=
+		    ((const uint8_t *)proc->mask_support)[i])
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+				 item, "unsupported field found in \"mask\"");
+		if (item->last &&
+		    (((const uint8_t *)item->spec)[i] & mask[i]) !=
+		    (((const uint8_t *)item->last)[i] & mask[i]))
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+				 item,
+				 "range between \"spec\" and \"last\""
+				 " is larger than \"mask\"");
 	}
-	if (item->last && !item->mask) {
-		unsigned int i;
-		const uint8_t *spec = item->last;
-
-		for (i = 0; i < size; ++i)
-			if ((spec[i] | mask[i]) != mask[i])
-				return -1;
-	}
-	if (item->spec && item->last) {
-		uint8_t spec[size];
-		uint8_t last[size];
-		const uint8_t *apply = mask;
-		unsigned int i;
-
-		if (item->mask)
-			apply = item->mask;
-		for (i = 0; i < size; ++i) {
-			spec[i] = ((const uint8_t *)item->spec)[i] & apply[i];
-			last[i] = ((const uint8_t *)item->last)[i] & apply[i];
-		}
-		ret = memcmp(spec, last, size);
-	}
-	return ret;
-}
-
-static int
-mlx4_flow_validate_eth(const struct rte_flow_item *item,
-		       const uint8_t *mask, unsigned int size)
-{
-	if (item->mask) {
-		const struct rte_flow_item_eth *mask = item->mask;
-
-		if (mask->dst.addr_bytes[0] != 0xff ||
-				mask->dst.addr_bytes[1] != 0xff ||
-				mask->dst.addr_bytes[2] != 0xff ||
-				mask->dst.addr_bytes[3] != 0xff ||
-				mask->dst.addr_bytes[4] != 0xff ||
-				mask->dst.addr_bytes[5] != 0xff)
-			return -1;
-	}
-	return mlx4_flow_item_validate(item, mask, size);
-}
-
-static int
-mlx4_flow_validate_vlan(const struct rte_flow_item *item,
-			const uint8_t *mask, unsigned int size)
-{
-	if (item->mask) {
-		const struct rte_flow_item_vlan *mask = item->mask;
-
-		if (mask->tci != 0 &&
-		    ntohs(mask->tci) != 0x0fff)
-			return -1;
-	}
-	return mlx4_flow_item_validate(item, mask, size);
-}
-
-static int
-mlx4_flow_validate_ipv4(const struct rte_flow_item *item,
-			const uint8_t *mask, unsigned int size)
-{
-	if (item->mask) {
-		const struct rte_flow_item_ipv4 *mask = item->mask;
-
-		if (mask->hdr.src_addr != 0 &&
-		    mask->hdr.src_addr != 0xffffffff)
-			return -1;
-		if (mask->hdr.dst_addr != 0 &&
-		    mask->hdr.dst_addr != 0xffffffff)
-			return -1;
-	}
-	return mlx4_flow_item_validate(item, mask, size);
-}
-
-static int
-mlx4_flow_validate_udp(const struct rte_flow_item *item,
-		       const uint8_t *mask, unsigned int size)
-{
-	if (item->mask) {
-		const struct rte_flow_item_udp *mask = item->mask;
-
-		if (mask->hdr.src_port != 0 &&
-		    mask->hdr.src_port != 0xffff)
-			return -1;
-		if (mask->hdr.dst_port != 0 &&
-		    mask->hdr.dst_port != 0xffff)
-			return -1;
-	}
-	return mlx4_flow_item_validate(item, mask, size);
-}
-
-static int
-mlx4_flow_validate_tcp(const struct rte_flow_item *item,
-		       const uint8_t *mask, unsigned int size)
-{
-	if (item->mask) {
-		const struct rte_flow_item_tcp *mask = item->mask;
-
-		if (mask->hdr.src_port != 0 &&
-		    mask->hdr.src_port != 0xffff)
-			return -1;
-		if (mask->hdr.dst_port != 0 &&
-		    mask->hdr.dst_port != 0xffff)
-			return -1;
-	}
-	return mlx4_flow_item_validate(item, mask, size);
+	return 0;
 }
 
 /** Graph of supported items and associated actions. */
@@ -480,66 +488,62 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VLAN,
 				       RTE_FLOW_ITEM_TYPE_IPV4),
-		.mask = &(const struct rte_flow_item_eth){
+		.mask_support = &(const struct rte_flow_item_eth){
+			/* Only destination MAC can be matched. */
 			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-			.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		},
-		.default_mask = &rte_flow_item_eth_mask,
+		.mask_default = &rte_flow_item_eth_mask,
 		.mask_sz = sizeof(struct rte_flow_item_eth),
-		.validate = mlx4_flow_validate_eth,
-		.convert = mlx4_flow_create_eth,
+		.merge = mlx4_flow_merge_eth,
 		.dst_sz = sizeof(struct ibv_flow_spec_eth),
 	},
 	[RTE_FLOW_ITEM_TYPE_VLAN] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_IPV4),
-		.mask = &(const struct rte_flow_item_vlan){
+		.mask_support = &(const struct rte_flow_item_vlan){
 			/* Only TCI VID matching is supported. */
 			.tci = RTE_BE16(0x0fff),
 		},
+		.mask_default = &rte_flow_item_vlan_mask,
 		.mask_sz = sizeof(struct rte_flow_item_vlan),
-		.validate = mlx4_flow_validate_vlan,
-		.convert = mlx4_flow_create_vlan,
+		.merge = mlx4_flow_merge_vlan,
 		.dst_sz = 0,
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_UDP,
 				       RTE_FLOW_ITEM_TYPE_TCP),
-		.mask = &(const struct rte_flow_item_ipv4){
+		.mask_support = &(const struct rte_flow_item_ipv4){
 			.hdr = {
 				.src_addr = RTE_BE32(0xffffffff),
 				.dst_addr = RTE_BE32(0xffffffff),
 			},
 		},
-		.default_mask = &rte_flow_item_ipv4_mask,
+		.mask_default = &rte_flow_item_ipv4_mask,
 		.mask_sz = sizeof(struct rte_flow_item_ipv4),
-		.validate = mlx4_flow_validate_ipv4,
-		.convert = mlx4_flow_create_ipv4,
+		.merge = mlx4_flow_merge_ipv4,
 		.dst_sz = sizeof(struct ibv_flow_spec_ipv4),
 	},
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
-		.mask = &(const struct rte_flow_item_udp){
+		.mask_support = &(const struct rte_flow_item_udp){
 			.hdr = {
 				.src_port = RTE_BE16(0xffff),
 				.dst_port = RTE_BE16(0xffff),
 			},
 		},
-		.default_mask = &rte_flow_item_udp_mask,
+		.mask_default = &rte_flow_item_udp_mask,
 		.mask_sz = sizeof(struct rte_flow_item_udp),
-		.validate = mlx4_flow_validate_udp,
-		.convert = mlx4_flow_create_udp,
+		.merge = mlx4_flow_merge_udp,
 		.dst_sz = sizeof(struct ibv_flow_spec_tcp_udp),
 	},
 	[RTE_FLOW_ITEM_TYPE_TCP] = {
-		.mask = &(const struct rte_flow_item_tcp){
+		.mask_support = &(const struct rte_flow_item_tcp){
 			.hdr = {
 				.src_port = RTE_BE16(0xffff),
 				.dst_port = RTE_BE16(0xffff),
 			},
 		},
-		.default_mask = &rte_flow_item_tcp_mask,
+		.mask_default = &rte_flow_item_tcp_mask,
 		.mask_sz = sizeof(struct rte_flow_item_tcp),
-		.validate = mlx4_flow_validate_tcp,
-		.convert = mlx4_flow_create_tcp,
+		.merge = mlx4_flow_merge_tcp,
 		.dst_sz = sizeof(struct ibv_flow_spec_tcp_udp),
 	},
 };
@@ -577,6 +581,7 @@ mlx4_flow_prepare(struct priv *priv,
 	const struct mlx4_flow_proc_item *proc;
 	struct rte_flow temp = { .ibv_attr_size = sizeof(*temp.ibv_attr) };
 	struct rte_flow *flow = &temp;
+	const char *msg = NULL;
 
 	if (attr->group)
 		return rte_flow_error_set
@@ -609,18 +614,11 @@ fill:
 			flow->internal = 1;
 			continue;
 		}
-		/*
-		 * The nic can support patterns with NULL eth spec only
-		 * if eth is a single item in a rule.
-		 */
-		if (!item->spec && item->type == RTE_FLOW_ITEM_TYPE_ETH) {
-			const struct rte_flow_item *next = item + 1;
-
-			if (next->type)
-				return rte_flow_error_set
-					(error, ENOTSUP,
-					 RTE_FLOW_ERROR_TYPE_ITEM, item,
-					 "the rule requires an Ethernet spec");
+		if (flow->promisc) {
+			msg = "mlx4 does not support additional matching"
+				" criteria combined with indiscriminate"
+				" matching on Ethernet headers";
+			goto exit_item_not_supported;
 		}
 		for (i = 0; proc->next_item && proc->next_item[i]; ++i) {
 			if (proc->next_item[i] == item->type) {
@@ -631,19 +629,19 @@ fill:
 		if (!next)
 			goto exit_item_not_supported;
 		proc = next;
-		/* Perform validation once, while handle is not allocated. */
+		/*
+		 * Perform basic sanity checks only once, while handle is
+		 * not allocated.
+		 */
 		if (flow == &temp) {
-			err = proc->validate(item, proc->mask, proc->mask_sz);
+			err = mlx4_flow_item_check(item, proc, error);
 			if (err)
-				goto exit_item_not_supported;
-		} else if (proc->convert) {
-			err = proc->convert(item,
-					    (proc->default_mask ?
-					     proc->default_mask :
-					     proc->mask),
-					    flow);
+				return err;
+		}
+		if (proc->merge) {
+			err = proc->merge(flow, item, proc, error);
 			if (err)
-				goto exit_item_not_supported;
+				return err;
 		}
 		flow->ibv_attr_size += proc->dst_sz;
 	}
@@ -712,7 +710,7 @@ fill:
 	return 0;
 exit_item_not_supported:
 	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
-				  item, "item not supported");
+				  item, msg ? msg : "item not supported");
 exit_action_not_supported:
 	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 				  action, "action not supported");

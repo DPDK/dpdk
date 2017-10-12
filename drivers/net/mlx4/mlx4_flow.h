@@ -65,6 +65,7 @@ struct rte_flow {
 	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
 	uint32_t ibv_attr_size; /**< Size of Verbs attributes. */
 	uint32_t internal:1; /**< Internal flow rule outside isolated mode. */
+	uint32_t promisc:1; /**< This rule matches everything. */
 	uint32_t drop:1; /**< This rule drops packets. */
 	uint32_t queue:1; /**< Target is a receive queue. */
 	uint16_t queue_id; /**< Target queue. */
