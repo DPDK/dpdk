@@ -53,6 +53,7 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include <rte_byteorder.h>
 #include <rte_errno.h>
 #include <rte_eth_ctrl.h>
 #include <rte_ethdev.h>
@@ -108,7 +109,7 @@ struct mlx4_flow_proc_item {
 	 *   rte_flow item to convert.
 	 * @param default_mask
 	 *   Default bit-masks to use when item->mask is not provided.
-	 * @param data
+	 * @param flow
 	 *   Internal structure to store the conversion.
 	 *
 	 * @return
@@ -116,7 +117,7 @@ struct mlx4_flow_proc_item {
 	 */
 	int (*convert)(const struct rte_flow_item *item,
 		       const void *default_mask,
-		       void *data);
+		       struct mlx4_flow *flow);
 	/** Size in bytes of the destination structure. */
 	const unsigned int dst_sz;
 	/** List of possible subsequent items. */
@@ -135,17 +136,16 @@ struct rte_flow_drop {
  *   Item specification.
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
- * @param data[in, out]
- *   User structure.
+ * @param flow[in, out]
+ *   Conversion result.
  */
 static int
 mlx4_flow_create_eth(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data)
+		     struct mlx4_flow *flow)
 {
 	const struct rte_flow_item_eth *spec = item->spec;
 	const struct rte_flow_item_eth *mask = item->mask;
-	struct mlx4_flow *flow = (struct mlx4_flow *)data;
 	struct ibv_flow_spec_eth *eth;
 	const unsigned int eth_size = sizeof(struct ibv_flow_spec_eth);
 	unsigned int i;
@@ -182,17 +182,16 @@ mlx4_flow_create_eth(const struct rte_flow_item *item,
  *   Item specification.
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
- * @param data[in, out]
- *   User structure.
+ * @param flow[in, out]
+ *   Conversion result.
  */
 static int
 mlx4_flow_create_vlan(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      void *data)
+		      struct mlx4_flow *flow)
 {
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
-	struct mlx4_flow *flow = (struct mlx4_flow *)data;
 	struct ibv_flow_spec_eth *eth;
 	const unsigned int eth_size = sizeof(struct ibv_flow_spec_eth);
 
@@ -214,17 +213,16 @@ mlx4_flow_create_vlan(const struct rte_flow_item *item,
  *   Item specification.
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
- * @param data[in, out]
- *   User structure.
+ * @param flow[in, out]
+ *   Conversion result.
  */
 static int
 mlx4_flow_create_ipv4(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      void *data)
+		      struct mlx4_flow *flow)
 {
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
-	struct mlx4_flow *flow = (struct mlx4_flow *)data;
 	struct ibv_flow_spec_ipv4 *ipv4;
 	unsigned int ipv4_size = sizeof(struct ibv_flow_spec_ipv4);
 
@@ -260,17 +258,16 @@ mlx4_flow_create_ipv4(const struct rte_flow_item *item,
  *   Item specification.
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
- * @param data[in, out]
- *   User structure.
+ * @param flow[in, out]
+ *   Conversion result.
  */
 static int
 mlx4_flow_create_udp(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data)
+		     struct mlx4_flow *flow)
 {
 	const struct rte_flow_item_udp *spec = item->spec;
 	const struct rte_flow_item_udp *mask = item->mask;
-	struct mlx4_flow *flow = (struct mlx4_flow *)data;
 	struct ibv_flow_spec_tcp_udp *udp;
 	unsigned int udp_size = sizeof(struct ibv_flow_spec_tcp_udp);
 
@@ -302,17 +299,16 @@ mlx4_flow_create_udp(const struct rte_flow_item *item,
  *   Item specification.
  * @param default_mask[in]
  *   Default bit-masks to use when item->mask is not provided.
- * @param data[in, out]
- *   User structure.
+ * @param flow[in, out]
+ *   Conversion result.
  */
 static int
 mlx4_flow_create_tcp(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data)
+		     struct mlx4_flow *flow)
 {
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
-	struct mlx4_flow *flow = (struct mlx4_flow *)data;
 	struct ibv_flow_spec_tcp_udp *tcp;
 	unsigned int tcp_size = sizeof(struct ibv_flow_spec_tcp_udp);
 
@@ -496,12 +492,8 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 	[RTE_FLOW_ITEM_TYPE_VLAN] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_IPV4),
 		.mask = &(const struct rte_flow_item_vlan){
-		/* rte_flow_item_vlan_mask is invalid for mlx4. */
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-			.tci = 0x0fff,
-#else
-			.tci = 0xff0f,
-#endif
+			/* Only TCI VID matching is supported. */
+			.tci = RTE_BE16(0x0fff),
 		},
 		.mask_sz = sizeof(struct rte_flow_item_vlan),
 		.validate = mlx4_flow_validate_vlan,
@@ -513,8 +505,8 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 				       RTE_FLOW_ITEM_TYPE_TCP),
 		.mask = &(const struct rte_flow_item_ipv4){
 			.hdr = {
-				.src_addr = -1,
-				.dst_addr = -1,
+				.src_addr = RTE_BE32(0xffffffff),
+				.dst_addr = RTE_BE32(0xffffffff),
 			},
 		},
 		.default_mask = &rte_flow_item_ipv4_mask,
@@ -526,8 +518,8 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
 		.mask = &(const struct rte_flow_item_udp){
 			.hdr = {
-				.src_port = -1,
-				.dst_port = -1,
+				.src_port = RTE_BE16(0xffff),
+				.dst_port = RTE_BE16(0xffff),
 			},
 		},
 		.default_mask = &rte_flow_item_udp_mask,
@@ -539,8 +531,8 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 	[RTE_FLOW_ITEM_TYPE_TCP] = {
 		.mask = &(const struct rte_flow_item_tcp){
 			.hdr = {
-				.src_port = -1,
-				.dst_port = -1,
+				.src_port = RTE_BE16(0xffff),
+				.dst_port = RTE_BE16(0xffff),
 			},
 		},
 		.default_mask = &rte_flow_item_tcp_mask,
@@ -627,7 +619,7 @@ mlx4_flow_prepare(struct priv *priv,
 		return -rte_errno;
 	}
 	/* Go over pattern. */
-	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+	for (item = pattern; item->type; ++item) {
 		const struct mlx4_flow_proc_item *next = NULL;
 		unsigned int i;
 		int err;
@@ -641,7 +633,7 @@ mlx4_flow_prepare(struct priv *priv,
 		if (!item->spec && item->type == RTE_FLOW_ITEM_TYPE_ETH) {
 			const struct rte_flow_item *next = item + 1;
 
-			if (next->type != RTE_FLOW_ITEM_TYPE_END) {
+			if (next->type) {
 				rte_flow_error_set(error, ENOTSUP,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -650,10 +642,7 @@ mlx4_flow_prepare(struct priv *priv,
 				return -rte_errno;
 			}
 		}
-		for (i = 0;
-		     proc->next_item &&
-		     proc->next_item[i] != RTE_FLOW_ITEM_TYPE_END;
-		     ++i) {
+		for (i = 0; proc->next_item && proc->next_item[i]; ++i) {
 			if (proc->next_item[i] == item->type) {
 				next = &mlx4_flow_proc_item_list[item->type];
 				break;
@@ -680,22 +669,22 @@ mlx4_flow_prepare(struct priv *priv,
 	if (priv->isolated && flow->ibv_attr)
 		flow->ibv_attr->priority = priority_override;
 	/* Go over actions list. */
-	for (action = actions;
-	     action->type != RTE_FLOW_ACTION_TYPE_END;
-	     ++action) {
-		if (action->type == RTE_FLOW_ACTION_TYPE_VOID) {
-			continue;
-		} else if (action->type == RTE_FLOW_ACTION_TYPE_DROP) {
-			target.drop = 1;
-		} else if (action->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
-			const struct rte_flow_action_queue *queue =
-				action->conf;
+	for (action = actions; action->type; ++action) {
+		switch (action->type) {
+			const struct rte_flow_action_queue *queue;
 
-			if (!queue || (queue->index >
-				       (priv->dev->data->nb_rx_queues - 1)))
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			continue;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			target.drop = 1;
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			queue = action->conf;
+			if (queue->index >= priv->dev->data->nb_rx_queues)
 				goto exit_action_not_supported;
 			target.queue = 1;
-		} else {
+			break;
+		default:
 			goto exit_action_not_supported;
 		}
 	}
@@ -907,19 +896,21 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 		.queue = 0,
 		.drop = 0,
 	};
-	for (action = actions;
-	     action->type != RTE_FLOW_ACTION_TYPE_END;
-	     ++action) {
-		if (action->type == RTE_FLOW_ACTION_TYPE_VOID) {
+	for (action = actions; action->type; ++action) {
+		switch (action->type) {
+			const struct rte_flow_action_queue *queue;
+
+		case RTE_FLOW_ACTION_TYPE_VOID:
 			continue;
-		} else if (action->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			queue = action->conf;
 			target.queue = 1;
-			target.queue_id =
-				((const struct rte_flow_action_queue *)
-				 action->conf)->index;
-		} else if (action->type == RTE_FLOW_ACTION_TYPE_DROP) {
+			target.queue_id = queue->index;
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
 			target.drop = 1;
-		} else {
+			break;
+		default:
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   action, "unsupported action");
