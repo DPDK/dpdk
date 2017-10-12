@@ -436,8 +436,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			rte_free(rxq);
 			return ret;
 		}
-		/* Update receive callback. */
-		dev->rx_pkt_burst = mlx4_rx_burst;
 	}
 	return ret;
 }

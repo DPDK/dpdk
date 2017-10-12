@@ -149,6 +149,9 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		      error.message ? error.message : "(unspecified)");
 		goto err;
 	}
+	rte_wmb();
+	dev->tx_pkt_burst = mlx4_tx_burst;
+	dev->rx_pkt_burst = mlx4_rx_burst;
 	return 0;
 err:
 	/* Rollback. */
@@ -173,6 +176,9 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 		return;
 	DEBUG("%p: detaching flows from all RX queues", (void *)dev);
 	priv->started = 0;
+	dev->tx_pkt_burst = mlx4_tx_burst_removed;
+	dev->rx_pkt_burst = mlx4_rx_burst_removed;
+	rte_wmb();
 	mlx4_flow_sync(priv, NULL);
 	mlx4_intr_uninstall(priv);
 }
@@ -191,14 +197,13 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
 
-	if (priv == NULL)
-		return;
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
-	mlx4_flow_clean(priv);
 	dev->rx_pkt_burst = mlx4_rx_burst_removed;
 	dev->tx_pkt_burst = mlx4_tx_burst_removed;
+	rte_wmb();
+	mlx4_flow_clean(priv);
 	for (i = 0; i != dev->data->nb_rx_queues; ++i)
 		mlx4_rx_queue_release(dev->data->rx_queues[i]);
 	for (i = 0; i != dev->data->nb_tx_queues; ++i)

@@ -467,20 +467,16 @@ mlx4_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
 static int
 mlx4_dev_set_link(struct priv *priv, int up)
 {
-	struct rte_eth_dev *dev = priv->dev;
 	int err;
 
 	if (up) {
 		err = mlx4_set_flags(priv, ~IFF_UP, IFF_UP);
 		if (err)
 			return err;
-		dev->rx_pkt_burst = mlx4_rx_burst;
 	} else {
 		err = mlx4_set_flags(priv, ~IFF_UP, ~IFF_UP);
 		if (err)
 			return err;
-		dev->rx_pkt_burst = mlx4_rx_burst_removed;
-		dev->tx_pkt_burst = mlx4_tx_burst_removed;
 	}
 	return 0;
 }
