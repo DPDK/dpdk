@@ -82,7 +82,7 @@ struct itt_profile_rx_data itt_rx_data[RTE_MAX_ETHPORTS];
  * type declaration.
  */
 static uint16_t
-collect_itt_rx_burst_cb(uint8_t port_id, uint16_t queue_id,
+collect_itt_rx_burst_cb(uint16_t port_id, uint16_t queue_id,
 	__rte_unused struct rte_mbuf *pkts[], uint16_t nb_pkts,
 	__rte_unused uint16_t max_pkts, __rte_unused void *user_param)
 {
@@ -121,7 +121,7 @@ collect_itt_rx_burst_cb(uint8_t port_id, uint16_t queue_id,
  *  - On failure, a negative value.
  */
 static inline int
-itt_profile_rx_init(uint8_t port_id, char *port_name, uint8_t rx_queue_num)
+itt_profile_rx_init(uint16_t port_id, char *port_name, uint8_t rx_queue_num)
 {
 	uint16_t q_id;
 
@@ -155,7 +155,7 @@ itt_profile_rx_init(uint8_t port_id, char *port_name, uint8_t rx_queue_num)
 #endif /* RTE_ETHDEV_PROFILE_ITT_WASTED_RX_ITERATIONS */
 
 int
-__rte_eth_profile_rx_init(__rte_unused uint8_t port_id,
+__rte_eth_profile_rx_init(__rte_unused uint16_t port_id,
 	__rte_unused struct rte_eth_dev *dev)
 {
 #ifdef RTE_ETHDEV_PROFILE_ITT_WASTED_RX_ITERATIONS

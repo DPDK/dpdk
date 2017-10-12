@@ -51,6 +51,6 @@
  *  - On failure, a negative value.
  */
 int
-__rte_eth_profile_rx_init(uint8_t port_id, struct rte_eth_dev *dev);
+__rte_eth_profile_rx_init(uint16_t port_id, struct rte_eth_dev *dev);
 
 #endif

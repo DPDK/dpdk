@@ -4583,7 +4583,7 @@ int rte_eth_dev_adjust_nb_rx_tx_desc(uint16_t port_id,
  *   - -EINVAL: Pool param is null.
  */
 int
-rte_eth_dev_pool_ops_supported(uint8_t port_id, const char *pool);
+rte_eth_dev_pool_ops_supported(uint16_t port_id, const char *pool);
 
 #ifdef __cplusplus
 }
