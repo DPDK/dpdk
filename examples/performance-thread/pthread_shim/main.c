@@ -161,6 +161,7 @@ static void initial_lthread(void *args __attribute__((unused)))
 	pthread_override_set(1);
 
 	uint64_t i;
+	int ret;
 
 	/* initialize mutex for shared counter */
 	print_count = 0;
@@ -187,7 +188,10 @@ static void initial_lthread(void *args __attribute__((unused)))
 		pthread_attr_setaffinity_np(&attr, sizeof(rte_cpuset_t), &cpuset);
 
 		/* create the thread */
-		pthread_create(&tid[i], &attr, helloworld_pthread, (void *) i);
+		ret = pthread_create(&tid[i], &attr,
+				helloworld_pthread, (void *) i);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE, "Cannot create helloworld thread\n");
 	}
 
 	/* wait for 1s to allow threads
