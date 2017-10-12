@@ -128,8 +128,6 @@ int mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			const struct rte_eth_rxconf *conf,
 			struct rte_mempool *mp);
 void mlx4_rx_queue_release(void *dpdk_rxq);
-void mlx4_mac_addr_del(struct priv *priv);
-int mlx4_mac_addr_add(struct priv *priv);
 
 /* mlx4_rxtx.c */
 

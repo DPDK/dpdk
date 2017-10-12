@@ -100,7 +100,6 @@ struct priv {
 	struct ibv_device_attr device_attr; /**< Device properties. */
 	struct ibv_pd *pd; /**< Protection Domain. */
 	struct ether_addr mac; /**< MAC address. */
-	struct ibv_flow *mac_flow; /**< Flow associated with MAC address. */
 	/* Device properties. */
 	uint16_t mtu; /**< Configured MTU. */
 	uint8_t port; /**< Physical port number. */

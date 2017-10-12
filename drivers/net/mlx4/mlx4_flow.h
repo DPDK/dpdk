@@ -55,12 +55,16 @@
 /** Last and lowest priority level for a flow rule. */
 #define MLX4_FLOW_PRIORITY_LAST UINT32_C(0xfff)
 
+/** Meta pattern item used to distinguish internal rules. */
+#define MLX4_FLOW_ITEM_TYPE_INTERNAL ((enum rte_flow_item_type)-1)
+
 /** PMD-specific (mlx4) definition of a flow rule handle. */
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
 	uint32_t ibv_attr_size; /**< Size of Verbs attributes. */
+	uint32_t internal:1; /**< Internal flow rule outside isolated mode. */
 	uint32_t drop:1; /**< This rule drops packets. */
 	uint32_t queue:1; /**< Target is a receive queue. */
 	uint16_t queue_id; /**< Target queue. */
@@ -68,6 +72,8 @@ struct rte_flow {
 
 /* mlx4_flow.c */
 
+int mlx4_flow_sync(struct priv *priv);
+void mlx4_flow_clean(struct priv *priv);
 int mlx4_flow_start(struct priv *priv);
 void mlx4_flow_stop(struct priv *priv);
 int mlx4_filter_ctrl(struct rte_eth_dev *dev,

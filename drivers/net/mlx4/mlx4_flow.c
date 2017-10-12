@@ -617,6 +617,10 @@ fill:
 
 		if (item->type == RTE_FLOW_ITEM_TYPE_VOID)
 			continue;
+		if (item->type == MLX4_FLOW_ITEM_TYPE_INTERNAL) {
+			flow->internal = 1;
+			continue;
+		}
 		/*
 		 * The nic can support patterns with NULL eth spec only
 		 * if eth is a single item in a rule.
@@ -916,7 +920,17 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 		return NULL;
 	err = mlx4_flow_toggle(priv, flow, priv->started, error);
 	if (!err) {
-		LIST_INSERT_HEAD(&priv->flows, flow, next);
+		struct rte_flow *curr = LIST_FIRST(&priv->flows);
+
+		/* New rules are inserted after internal ones. */
+		if (!curr || !curr->internal) {
+			LIST_INSERT_HEAD(&priv->flows, flow, next);
+		} else {
+			while (LIST_NEXT(curr, next) &&
+			       LIST_NEXT(curr, next)->internal)
+				curr = LIST_NEXT(curr, next);
+			LIST_INSERT_AFTER(curr, flow, next);
+		}
 		return flow;
 	}
 	rte_flow_error_set(error, -err, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -941,13 +955,14 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
 	if (!!enable == !!priv->isolated)
 		return 0;
 	priv->isolated = !!enable;
-	if (enable) {
-		mlx4_mac_addr_del(priv);
-	} else if (mlx4_mac_addr_add(priv) < 0) {
-		priv->isolated = 1;
+	if (mlx4_flow_sync(priv)) {
+		priv->isolated = !enable;
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "cannot leave isolated mode");
+					  NULL,
+					  enable ?
+					  "cannot enter isolated mode" :
+					  "cannot leave isolated mode");
 	}
 	return 0;
 }
@@ -974,7 +989,9 @@ mlx4_flow_destroy(struct rte_eth_dev *dev,
 }
 
 /**
- * Destroy all flow rules.
+ * Destroy user-configured flow rules.
+ *
+ * This function skips internal flows rules.
  *
  * @see rte_flow_flush()
  * @see rte_flow_ops
@@ -984,14 +1001,130 @@ mlx4_flow_flush(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct rte_flow *flow = LIST_FIRST(&priv->flows);
 
-	while (!LIST_EMPTY(&priv->flows)) {
-		struct rte_flow *flow;
+	while (flow) {
+		struct rte_flow *next = LIST_NEXT(flow, next);
 
-		flow = LIST_FIRST(&priv->flows);
-		mlx4_flow_destroy(dev, flow, error);
+		if (!flow->internal)
+			mlx4_flow_destroy(dev, flow, error);
+		flow = next;
 	}
 	return 0;
+}
+
+/**
+ * Generate internal flow rules.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
+{
+	struct rte_flow_attr attr = {
+		.ingress = 1,
+	};
+	struct rte_flow_item pattern[] = {
+		{
+			.type = MLX4_FLOW_ITEM_TYPE_INTERNAL,
+		},
+		{
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.spec = &(struct rte_flow_item_eth){
+				.dst = priv->mac,
+			},
+			.mask = &(struct rte_flow_item_eth){
+				.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			},
+		},
+		{
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+	};
+	struct rte_flow_action actions[] = {
+		{
+			.type = RTE_FLOW_ACTION_TYPE_QUEUE,
+			.conf = &(struct rte_flow_action_queue){
+				.index = 0,
+			},
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
+
+	if (!mlx4_flow_create(priv->dev, &attr, pattern, actions, error))
+		return -rte_errno;
+	return 0;
+}
+
+/**
+ * Synchronize flow rules.
+ *
+ * This function synchronizes flow rules with the state of the device by
+ * taking into account isolated mode and whether target queues are
+ * configured.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx4_flow_sync(struct priv *priv)
+{
+	struct rte_flow *flow;
+	int ret;
+
+	/* Internal flow rules are guaranteed to come first in the list. */
+	if (priv->isolated) {
+		/*
+		 * Get rid of them in isolated mode, stop at the first
+		 * non-internal rule found.
+		 */
+		for (flow = LIST_FIRST(&priv->flows);
+		     flow && flow->internal;
+		     flow = LIST_FIRST(&priv->flows))
+			claim_zero(mlx4_flow_destroy(priv->dev, flow, NULL));
+	} else if (!LIST_FIRST(&priv->flows) ||
+		   !LIST_FIRST(&priv->flows)->internal) {
+		/*
+		 * If the first rule is not internal outside isolated mode,
+		 * they must be added back.
+		 */
+		ret = mlx4_flow_internal(priv, NULL);
+		if (ret)
+			return ret;
+	}
+	if (priv->started)
+		return mlx4_flow_start(priv);
+	mlx4_flow_stop(priv);
+	return 0;
+}
+
+/**
+ * Clean up all flow rules.
+ *
+ * Unlike mlx4_flow_flush(), this function takes care of all remaining flow
+ * rules regardless of whether they are internal or user-configured.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ */
+void
+mlx4_flow_clean(struct priv *priv)
+{
+	struct rte_flow *flow;
+
+	while ((flow = LIST_FIRST(&priv->flows)))
+		mlx4_flow_destroy(priv->dev, flow, NULL);
 }
 
 /**

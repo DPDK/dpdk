@@ -96,8 +96,15 @@ const char *pmd_mlx4_init_params[] = {
 static int
 mlx4_dev_configure(struct rte_eth_dev *dev)
 {
-	(void)dev;
-	return 0;
+	struct priv *priv = dev->data->dev_private;
+	int ret;
+
+	/* Prepare internal flow rules. */
+	ret = mlx4_flow_sync(priv);
+	if (ret)
+		ERROR("cannot set up internal flow rules: %s",
+		      strerror(-ret));
+	return ret;
 }
 
 /**
@@ -121,9 +128,6 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		return 0;
 	DEBUG("%p: attaching configured flows to all RX queues", (void *)dev);
 	priv->started = 1;
-	ret = mlx4_mac_addr_add(priv);
-	if (ret)
-		goto err;
 	ret = mlx4_intr_install(priv);
 	if (ret) {
 		ERROR("%p: interrupt handler installation failed",
@@ -139,7 +143,6 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	return 0;
 err:
 	/* Rollback. */
-	mlx4_mac_addr_del(priv);
 	priv->started = 0;
 	return ret;
 }
@@ -163,7 +166,6 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	priv->started = 0;
 	mlx4_flow_stop(priv);
 	mlx4_intr_uninstall(priv);
-	mlx4_mac_addr_del(priv);
 }
 
 /**
@@ -185,7 +187,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
-	mlx4_mac_addr_del(priv);
+	mlx4_flow_clean(priv);
 	dev->rx_pkt_burst = mlx4_rx_burst_removed;
 	dev->tx_pkt_burst = mlx4_tx_burst_removed;
 	for (i = 0; i != dev->data->nb_rx_queues; ++i)
@@ -542,8 +544,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		     mac.addr_bytes[4], mac.addr_bytes[5]);
 		/* Register MAC address. */
 		priv->mac = mac;
-		if (mlx4_mac_addr_add(priv))
-			goto port_error;
 #ifndef NDEBUG
 		{
 			char ifname[IF_NAMESIZE];

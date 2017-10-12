@@ -59,6 +59,7 @@
 #include <rte_mempool.h>
 
 #include "mlx4.h"
+#include "mlx4_flow.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
@@ -399,8 +400,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			return -rte_errno;
 		}
 		dev->data->rx_queues[idx] = NULL;
-		if (idx == 0)
-			mlx4_mac_addr_del(priv);
+		/* Disable associated flows. */
+		mlx4_flow_sync(priv);
 		mlx4_rxq_cleanup(rxq);
 	} else {
 		rxq = rte_calloc_socket("RXQ", 1, sizeof(*rxq), 0, socket);
@@ -419,6 +420,14 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		DEBUG("%p: adding Rx queue %p to list",
 		      (void *)dev, (void *)rxq);
 		dev->data->rx_queues[idx] = rxq;
+		/* Re-enable associated flows. */
+		ret = mlx4_flow_sync(priv);
+		if (ret) {
+			dev->data->rx_queues[idx] = NULL;
+			mlx4_rxq_cleanup(rxq);
+			rte_free(rxq);
+			return ret;
+		}
 		/* Update receive callback. */
 		dev->rx_pkt_burst = mlx4_rx_burst;
 	}
@@ -446,111 +455,9 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 			DEBUG("%p: removing Rx queue %p from list",
 			      (void *)priv->dev, (void *)rxq);
 			priv->dev->data->rx_queues[i] = NULL;
-			if (i == 0)
-				mlx4_mac_addr_del(priv);
 			break;
 		}
+	mlx4_flow_sync(priv);
 	mlx4_rxq_cleanup(rxq);
 	rte_free(rxq);
-}
-
-/**
- * Unregister a MAC address.
- *
- * @param priv
- *   Pointer to private structure.
- */
-void
-mlx4_mac_addr_del(struct priv *priv)
-{
-#ifndef NDEBUG
-	uint8_t (*mac)[ETHER_ADDR_LEN] = &priv->mac.addr_bytes;
-#endif
-
-	if (!priv->mac_flow)
-		return;
-	DEBUG("%p: removing MAC address %02x:%02x:%02x:%02x:%02x:%02x",
-	      (void *)priv,
-	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5]);
-	claim_zero(ibv_destroy_flow(priv->mac_flow));
-	priv->mac_flow = NULL;
-}
-
-/**
- * Register a MAC address.
- *
- * The MAC address is registered in queue 0.
- *
- * @param priv
- *   Pointer to private structure.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-int
-mlx4_mac_addr_add(struct priv *priv)
-{
-	uint8_t (*mac)[ETHER_ADDR_LEN] = &priv->mac.addr_bytes;
-	struct rxq *rxq;
-	struct ibv_flow *flow;
-
-	/* If device isn't started, this is all we need to do. */
-	if (!priv->started)
-		return 0;
-	if (priv->isolated)
-		return 0;
-	if (priv->dev->data->rx_queues && priv->dev->data->rx_queues[0])
-		rxq = priv->dev->data->rx_queues[0];
-	else
-		return 0;
-
-	/* Allocate flow specification on the stack. */
-	struct __attribute__((packed)) {
-		struct ibv_flow_attr attr;
-		struct ibv_flow_spec_eth spec;
-	} data;
-	struct ibv_flow_attr *attr = &data.attr;
-	struct ibv_flow_spec_eth *spec = &data.spec;
-
-	if (priv->mac_flow)
-		mlx4_mac_addr_del(priv);
-	/*
-	 * No padding must be inserted by the compiler between attr and spec.
-	 * This layout is expected by libibverbs.
-	 */
-	assert(((uint8_t *)attr + sizeof(*attr)) == (uint8_t *)spec);
-	*attr = (struct ibv_flow_attr){
-		.type = IBV_FLOW_ATTR_NORMAL,
-		.priority = 3,
-		.num_of_specs = 1,
-		.port = priv->port,
-		.flags = 0
-	};
-	*spec = (struct ibv_flow_spec_eth){
-		.type = IBV_FLOW_SPEC_ETH,
-		.size = sizeof(*spec),
-		.val = {
-			.dst_mac = {
-				(*mac)[0], (*mac)[1], (*mac)[2],
-				(*mac)[3], (*mac)[4], (*mac)[5]
-			},
-		},
-		.mask = {
-			.dst_mac = "\xff\xff\xff\xff\xff\xff",
-		}
-	};
-	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x",
-	      (void *)priv,
-	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5]);
-	/* Create related flow. */
-	flow = ibv_create_flow(rxq->qp, attr);
-	if (flow == NULL) {
-		rte_errno = errno ? errno : EINVAL;
-		ERROR("%p: flow configuration failed, errno=%d: %s",
-		      (void *)rxq, rte_errno, strerror(errno));
-		return -rte_errno;
-	}
-	assert(priv->mac_flow == NULL);
-	priv->mac_flow = flow;
-	return 0;
 }
