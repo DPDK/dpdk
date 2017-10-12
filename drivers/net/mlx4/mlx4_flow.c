@@ -1256,12 +1256,21 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		},
 	};
+	/*
+	 * Round number of queues down to their previous power of 2 to
+	 * comply with RSS context limitations. Extra queues silently do not
+	 * get RSS by default.
+	 */
+	uint32_t queues =
+		rte_align32pow2(priv->dev->data->nb_rx_queues + 1) >> 1;
+	alignas(struct rte_flow_action_rss) uint8_t rss_conf_data
+		[offsetof(struct rte_flow_action_rss, queue) +
+		 sizeof(((struct rte_flow_action_rss *)0)->queue[0]) * queues];
+	struct rte_flow_action_rss *rss_conf = (void *)rss_conf_data;
 	struct rte_flow_action actions[] = {
 		{
-			.type = RTE_FLOW_ACTION_TYPE_QUEUE,
-			.conf = &(struct rte_flow_action_queue){
-				.index = 0,
-			},
+			.type = RTE_FLOW_ACTION_TYPE_RSS,
+			.conf = rss_conf,
 		},
 		{
 			.type = RTE_FLOW_ACTION_TYPE_END,
@@ -1281,6 +1290,13 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	unsigned int i;
 	int err = 0;
 
+	/* Prepare default RSS configuration. */
+	*rss_conf = (struct rte_flow_action_rss){
+		.rss_conf = NULL, /* Rely on default fallback settings. */
+		.num = queues,
+	};
+	for (i = 0; i != queues; ++i)
+		rss_conf->queue[i] = i;
 	/*
 	 * Set up VLAN item if filtering is enabled and at least one VLAN
 	 * filter is configured.
