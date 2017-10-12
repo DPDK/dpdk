@@ -538,9 +538,44 @@ stop:
 }
 
 /**
- * DPDK callback for Rx.
+ * Poll one CQE from CQ.
  *
- * The following function doesn't manage scattered packets.
+ * @param rxq
+ *   Pointer to the receive queue structure.
+ * @param[out] out
+ *   Just polled CQE.
+ *
+ * @return
+ *   Number of bytes of the CQE, 0 in case there is no completion.
+ */
+static unsigned int
+mlx4_cq_poll_one(struct rxq *rxq, struct mlx4_cqe **out)
+{
+	int ret = 0;
+	struct mlx4_cqe *cqe = NULL;
+	struct mlx4_cq *cq = &rxq->mcq;
+
+	cqe = (struct mlx4_cqe *)mlx4_get_cqe(cq, cq->cons_index);
+	if (!!(cqe->owner_sr_opcode & MLX4_CQE_OWNER_MASK) ^
+	    !!(cq->cons_index & cq->cqe_cnt))
+		goto out;
+	/*
+	 * Make sure we read CQ entry contents after we've checked the
+	 * ownership bit.
+	 */
+	rte_rmb();
+	assert(!(cqe->owner_sr_opcode & MLX4_CQE_IS_SEND_MASK));
+	assert((cqe->owner_sr_opcode & MLX4_CQE_OPCODE_MASK) !=
+	       MLX4_CQE_OPCODE_ERROR);
+	ret = rte_be_to_cpu_32(cqe->byte_cnt);
+	++cq->cons_index;
+out:
+	*out = cqe;
+	return ret;
+}
+
+/**
+ * DPDK callback for Rx with scattered packets support.
  *
  * @param dpdk_rxq
  *   Generic pointer to Rx queue structure.
@@ -555,112 +590,107 @@ stop:
 uint16_t
 mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
-	struct rxq *rxq = (struct rxq *)dpdk_rxq;
-	struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts;
-	const unsigned int elts_n = rxq->elts_n;
-	unsigned int elts_head = rxq->elts_head;
-	struct ibv_wc wcs[pkts_n];
-	struct ibv_recv_wr *wr_head = NULL;
-	struct ibv_recv_wr **wr_next = &wr_head;
-	struct ibv_recv_wr *wr_bad = NULL;
-	unsigned int i;
-	unsigned int pkts_ret = 0;
-	int ret;
+	struct rxq *rxq = dpdk_rxq;
+	const uint32_t wr_cnt = (1 << rxq->elts_n) - 1;
+	const uint16_t sges_n = rxq->sges_n;
+	struct rte_mbuf *pkt = NULL;
+	struct rte_mbuf *seg = NULL;
+	unsigned int i = 0;
+	uint32_t rq_ci = rxq->rq_ci << sges_n;
+	int len = 0;
 
-	ret = ibv_poll_cq(rxq->cq, pkts_n, wcs);
-	if (unlikely(ret == 0))
-		return 0;
-	if (unlikely(ret < 0)) {
-		DEBUG("rxq=%p, ibv_poll_cq() failed (wc_n=%d)",
-		      (void *)rxq, ret);
-		return 0;
-	}
-	assert(ret <= (int)pkts_n);
-	/* For each work completion. */
-	for (i = 0; i != (unsigned int)ret; ++i) {
-		struct ibv_wc *wc = &wcs[i];
-		struct rxq_elt *elt = &(*elts)[elts_head];
-		struct ibv_recv_wr *wr = &elt->wr;
-		uint32_t len = wc->byte_len;
-		struct rte_mbuf *seg = elt->buf;
-		struct rte_mbuf *rep;
+	while (pkts_n) {
+		struct mlx4_cqe *cqe;
+		uint32_t idx = rq_ci & wr_cnt;
+		struct rte_mbuf *rep = (*rxq->elts)[idx];
+		volatile struct mlx4_wqe_data_seg *scat = &(*rxq->wqes)[idx];
 
-		/* Sanity checks. */
-		assert(wr->sg_list == &elt->sge);
-		assert(wr->num_sge == 1);
-		assert(elts_head < rxq->elts_n);
-		assert(rxq->elts_head < rxq->elts_n);
-		/*
-		 * Fetch initial bytes of packet descriptor into a
-		 * cacheline while allocating rep.
-		 */
-		rte_mbuf_prefetch_part1(seg);
-		rte_mbuf_prefetch_part2(seg);
-		/* Link completed WRs together for repost. */
-		*wr_next = wr;
-		wr_next = &wr->next;
-		if (unlikely(wc->status != IBV_WC_SUCCESS)) {
-			/* Whatever, just repost the offending WR. */
-			DEBUG("rxq=%p: bad work completion status (%d): %s",
-			      (void *)rxq, wc->status,
-			      ibv_wc_status_str(wc->status));
-			/* Increment dropped packets counter. */
-			++rxq->stats.idropped;
-			goto repost;
-		}
+		/* Update the 'next' pointer of the previous segment. */
+		if (pkt)
+			seg->next = rep;
+		seg = rep;
+		rte_prefetch0(seg);
+		rte_prefetch0(scat);
 		rep = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(rep == NULL)) {
-			/*
-			 * Unable to allocate a replacement mbuf,
-			 * repost WR.
-			 */
-			DEBUG("rxq=%p: can't allocate a new mbuf",
-			      (void *)rxq);
-			/* Increase out of memory counters. */
 			++rxq->stats.rx_nombuf;
-			++rxq->priv->dev->data->rx_mbuf_alloc_failed;
-			goto repost;
+			if (!pkt) {
+				/*
+				 * No buffers before we even started,
+				 * bail out silently.
+				 */
+				break;
+			}
+			while (pkt != seg) {
+				assert(pkt != (*rxq->elts)[idx]);
+				rep = pkt->next;
+				pkt->next = NULL;
+				pkt->nb_segs = 1;
+				rte_mbuf_raw_free(pkt);
+				pkt = rep;
+			}
+			break;
 		}
-		/* Reconfigure sge to use rep instead of seg. */
-		elt->sge.addr = (uintptr_t)rep->buf_addr + RTE_PKTMBUF_HEADROOM;
-		assert(elt->sge.lkey == rxq->mr->lkey);
-		elt->buf = rep;
-		/* Update seg information. */
-		seg->data_off = RTE_PKTMBUF_HEADROOM;
-		seg->nb_segs = 1;
-		seg->port = rxq->port_id;
-		seg->next = NULL;
-		seg->pkt_len = len;
+		if (!pkt) {
+			/* Looking for the new packet. */
+			len = mlx4_cq_poll_one(rxq, &cqe);
+			if (!len) {
+				rte_mbuf_raw_free(rep);
+				break;
+			}
+			if (unlikely(len < 0)) {
+				/* Rx error, packet is likely too large. */
+				rte_mbuf_raw_free(rep);
+				++rxq->stats.idropped;
+				goto skip;
+			}
+			pkt = seg;
+			pkt->packet_type = 0;
+			pkt->ol_flags = 0;
+			pkt->pkt_len = len;
+		}
+		rep->nb_segs = 1;
+		rep->port = rxq->port_id;
+		rep->data_len = seg->data_len;
+		rep->data_off = seg->data_off;
+		(*rxq->elts)[idx] = rep;
+		/*
+		 * Fill NIC descriptor with the new buffer. The lkey and size
+		 * of the buffers are already known, only the buffer address
+		 * changes.
+		 */
+		scat->addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(rep, uintptr_t));
+		if (len > seg->data_len) {
+			len -= seg->data_len;
+			++pkt->nb_segs;
+			++rq_ci;
+			continue;
+		}
+		/* The last segment. */
 		seg->data_len = len;
-		seg->packet_type = 0;
-		seg->ol_flags = 0;
+		/* Increment bytes counter. */
+		rxq->stats.ibytes += pkt->pkt_len;
 		/* Return packet. */
-		*(pkts++) = seg;
-		++pkts_ret;
-		/* Increase bytes counter. */
-		rxq->stats.ibytes += len;
-repost:
-		if (++elts_head >= elts_n)
-			elts_head = 0;
-		continue;
+		*(pkts++) = pkt;
+		pkt = NULL;
+		--pkts_n;
+		++i;
+skip:
+		/* Align consumer index to the next stride. */
+		rq_ci >>= sges_n;
+		++rq_ci;
+		rq_ci <<= sges_n;
 	}
-	if (unlikely(i == 0))
+	if (unlikely(i == 0 && (rq_ci >> sges_n) == rxq->rq_ci))
 		return 0;
-	/* Repost WRs. */
-	*wr_next = NULL;
-	assert(wr_head);
-	ret = ibv_post_wq_recv(rxq->wq, wr_head, &wr_bad);
-	if (unlikely(ret)) {
-		/* Inability to repost WRs is fatal. */
-		DEBUG("%p: recv_burst(): failed (ret=%d)",
-		      (void *)rxq->priv,
-		      ret);
-		abort();
-	}
-	rxq->elts_head = elts_head;
-	/* Increase packets counter. */
-	rxq->stats.ipackets += pkts_ret;
-	return pkts_ret;
+	/* Update the consumer index. */
+	rxq->rq_ci = rq_ci >> sges_n;
+	rte_wmb();
+	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
+	*rxq->mcq.set_ci_db = rte_cpu_to_be_32(rxq->mcq.cons_index & 0xffffff);
+	/* Increment packets counter. */
+	rxq->stats.ipackets += i;
+	return i;
 }
 
 /**

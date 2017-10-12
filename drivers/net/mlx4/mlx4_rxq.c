@@ -51,6 +51,7 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_ethdev.h>
@@ -312,45 +313,46 @@ void mlx4_rss_detach(struct mlx4_rss *rss)
 static int
 mlx4_rxq_alloc_elts(struct rxq *rxq)
 {
-	struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts;
+	const uint32_t elts_n = 1 << rxq->elts_n;
+	const uint32_t sges_n = 1 << rxq->sges_n;
+	struct rte_mbuf *(*elts)[elts_n] = rxq->elts;
 	unsigned int i;
 
-	/* For each WR (packet). */
+	assert(rte_is_power_of_2(elts_n));
 	for (i = 0; i != RTE_DIM(*elts); ++i) {
-		struct rxq_elt *elt = &(*elts)[i];
-		struct ibv_recv_wr *wr = &elt->wr;
-		struct ibv_sge *sge = &(*elts)[i].sge;
+		volatile struct mlx4_wqe_data_seg *scat = &(*rxq->wqes)[i];
 		struct rte_mbuf *buf = rte_pktmbuf_alloc(rxq->mp);
 
 		if (buf == NULL) {
 			while (i--) {
-				rte_pktmbuf_free_seg((*elts)[i].buf);
-				(*elts)[i].buf = NULL;
+				rte_pktmbuf_free_seg((*elts)[i]);
+				(*elts)[i] = NULL;
 			}
 			rte_errno = ENOMEM;
 			return -rte_errno;
 		}
-		elt->buf = buf;
-		wr->next = &(*elts)[(i + 1)].wr;
-		wr->sg_list = sge;
-		wr->num_sge = 1;
 		/* Headroom is reserved by rte_pktmbuf_alloc(). */
 		assert(buf->data_off == RTE_PKTMBUF_HEADROOM);
 		/* Buffer is supposed to be empty. */
 		assert(rte_pktmbuf_data_len(buf) == 0);
 		assert(rte_pktmbuf_pkt_len(buf) == 0);
-		/* sge->addr must be able to store a pointer. */
-		assert(sizeof(sge->addr) >= sizeof(uintptr_t));
-		/* SGE keeps its headroom. */
-		sge->addr = (uintptr_t)
-			((uint8_t *)buf->buf_addr + RTE_PKTMBUF_HEADROOM);
-		sge->length = (buf->buf_len - RTE_PKTMBUF_HEADROOM);
-		sge->lkey = rxq->mr->lkey;
-		/* Redundant check for tailroom. */
-		assert(sge->length == rte_pktmbuf_tailroom(buf));
+		/* Only the first segment keeps headroom. */
+		if (i % sges_n)
+			buf->data_off = 0;
+		buf->port = rxq->port_id;
+		buf->data_len = rte_pktmbuf_tailroom(buf);
+		buf->pkt_len = rte_pktmbuf_tailroom(buf);
+		buf->nb_segs = 1;
+		*scat = (struct mlx4_wqe_data_seg){
+			.addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
+								  uintptr_t)),
+			.byte_count = rte_cpu_to_be_32(buf->data_len),
+			.lkey = rte_cpu_to_be_32(rxq->mr->lkey),
+		};
+		(*elts)[i] = buf;
 	}
-	/* The last WR pointer must be NULL. */
-	(*elts)[(i - 1)].wr.next = NULL;
+	DEBUG("%p: allocated and configured %u segments (max %u packets)",
+	      (void *)rxq, elts_n, elts_n / sges_n);
 	return 0;
 }
 
@@ -364,14 +366,14 @@ static void
 mlx4_rxq_free_elts(struct rxq *rxq)
 {
 	unsigned int i;
-	struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts;
+	struct rte_mbuf *(*elts)[1 << rxq->elts_n] = rxq->elts;
 
-	DEBUG("%p: freeing WRs", (void *)rxq);
+	DEBUG("%p: freeing Rx queue elements", (void *)rxq);
 	for (i = 0; (i != RTE_DIM(*elts)); ++i) {
-		if (!(*elts)[i].buf)
+		if (!(*elts)[i])
 			continue;
-		rte_pktmbuf_free_seg((*elts)[i].buf);
-		(*elts)[i].buf = NULL;
+		rte_pktmbuf_free_seg((*elts)[i]);
+		(*elts)[i] = NULL;
 	}
 }
 
@@ -400,8 +402,11 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct mlx4dv_obj mlxdv;
+	struct mlx4dv_rwq dv_rwq;
+	struct mlx4dv_cq dv_cq;
 	uint32_t mb_len = rte_pktmbuf_data_room_size(mp);
-	struct rxq_elt (*elts)[desc];
+	struct rte_mbuf *(*elts)[rte_align32pow2(desc)];
 	struct rte_flow_error error;
 	struct rxq *rxq;
 	struct mlx4_malloc_vec vec[] = {
@@ -439,6 +444,12 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		ERROR("%p: invalid number of Rx descriptors", (void *)dev);
 		return -rte_errno;
 	}
+	if (desc != RTE_DIM(*elts)) {
+		desc = RTE_DIM(*elts);
+		WARN("%p: increased number of descriptors in Rx queue %u"
+		     " to the next power of two (%u)",
+		     (void *)dev, idx, desc);
+	}
 	/* Allocate and initialize Rx queue. */
 	mlx4_zmallocv_socket("RXQ", vec, RTE_DIM(vec), socket);
 	if (!rxq) {
@@ -450,8 +461,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.priv = priv,
 		.mp = mp,
 		.port_id = dev->data->port_id,
-		.elts_n = desc,
-		.elts_head = 0,
+		.sges_n = 0,
+		.elts_n = rte_log2_u32(desc),
 		.elts = elts,
 		.stats.idx = idx,
 		.socket = socket,
@@ -462,9 +473,29 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		;
 	} else if (dev->data->dev_conf.rxmode.enable_scatter) {
-		WARN("%p: scattered mode has been requested but is"
-		     " not supported, this may lead to packet loss",
-		     (void *)dev);
+		uint32_t size =
+			RTE_PKTMBUF_HEADROOM +
+			dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		uint32_t sges_n;
+
+		/*
+		 * Determine the number of SGEs needed for a full packet
+		 * and round it to the next power of two.
+		 */
+		sges_n = rte_log2_u32((size / mb_len) + !!(size % mb_len));
+		rxq->sges_n = sges_n;
+		/* Make sure sges_n did not overflow. */
+		size = mb_len * (1 << rxq->sges_n);
+		size -= RTE_PKTMBUF_HEADROOM;
+		if (size < dev->data->dev_conf.rxmode.max_rx_pkt_len) {
+			rte_errno = EOVERFLOW;
+			ERROR("%p: too many SGEs (%u) needed to handle"
+			      " requested maximum packet size %u",
+			      (void *)dev,
+			      1 << sges_n,
+			      dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			goto error;
+		}
 	} else {
 		WARN("%p: the requested maximum Rx packet size (%u) is"
 		     " larger than a single mbuf (%u) and scattered"
@@ -472,6 +503,17 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		     (void *)dev,
 		     dev->data->dev_conf.rxmode.max_rx_pkt_len,
 		     mb_len - RTE_PKTMBUF_HEADROOM);
+	}
+	DEBUG("%p: maximum number of segments per packet: %u",
+	      (void *)dev, 1 << rxq->sges_n);
+	if (desc % (1 << rxq->sges_n)) {
+		rte_errno = EINVAL;
+		ERROR("%p: number of Rx queue descriptors (%u) is not a"
+		      " multiple of maximum segments per packet (%u)",
+		      (void *)dev,
+		      desc,
+		      1 << rxq->sges_n);
+		goto error;
 	}
 	/* Use the entire Rx mempool as the memory region. */
 	rxq->mr = mlx4_mp2mr(priv->pd, mp);
@@ -497,7 +539,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			goto error;
 		}
 	}
-	rxq->cq = ibv_create_cq(priv->ctx, desc, NULL, rxq->channel, 0);
+	rxq->cq = ibv_create_cq(priv->ctx, desc >> rxq->sges_n, NULL,
+				rxq->channel, 0);
 	if (!rxq->cq) {
 		rte_errno = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
@@ -508,8 +551,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		(priv->ctx,
 		 &(struct ibv_wq_init_attr){
 			.wq_type = IBV_WQT_RQ,
-			.max_wr = RTE_MIN(priv->device_attr.max_qp_wr, desc),
-			.max_sge = 1,
+			.max_wr = desc >> rxq->sges_n,
+			.max_sge = 1 << rxq->sges_n,
 			.pd = priv->pd,
 			.cq = rxq->cq,
 		 });
@@ -531,27 +574,43 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
+	/* Retrieve device queue information. */
+	mlxdv.cq.in = rxq->cq;
+	mlxdv.cq.out = &dv_cq;
+	mlxdv.rwq.in = rxq->wq;
+	mlxdv.rwq.out = &dv_rwq;
+	ret = mlx4dv_init_obj(&mlxdv, MLX4DV_OBJ_RWQ | MLX4DV_OBJ_CQ);
+	if (ret) {
+		rte_errno = EINVAL;
+		ERROR("%p: failed to obtain device information", (void *)dev);
+		goto error;
+	}
+	rxq->wqes =
+		(volatile struct mlx4_wqe_data_seg (*)[])
+		((uintptr_t)dv_rwq.buf.buf + dv_rwq.rq.offset);
+	rxq->rq_db = dv_rwq.rdb;
+	rxq->rq_ci = 0;
+	rxq->mcq.buf = dv_cq.buf.buf;
+	rxq->mcq.cqe_cnt = dv_cq.cqe_cnt;
+	rxq->mcq.set_ci_db = dv_cq.set_ci_db;
+	rxq->mcq.cqe_64 = (dv_cq.cqe_size & 64) ? 1 : 0;
 	ret = mlx4_rxq_alloc_elts(rxq);
 	if (ret) {
 		ERROR("%p: RXQ allocation failed: %s",
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	ret = ibv_post_wq_recv(rxq->wq, &(*rxq->elts)[0].wr,
-			       &(struct ibv_recv_wr *){ NULL });
-	if (ret) {
-		rte_errno = ret;
-		ERROR("%p: ibv_post_recv() failed: %s",
-		      (void *)dev,
-		      strerror(rte_errno));
-		goto error;
-	}
 	DEBUG("%p: adding Rx queue %p to list", (void *)dev, (void *)rxq);
 	dev->data->rx_queues[idx] = rxq;
 	/* Enable associated flows. */
 	ret = mlx4_flow_sync(priv, &error);
-	if (!ret)
+	if (!ret) {
+		/* Update doorbell counter. */
+		rxq->rq_ci = desc >> rxq->sges_n;
+		rte_wmb();
+		*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 		return 0;
+	}
 	ERROR("cannot re-attach flow rules to queue %u"
 	      " (code %d, \"%s\"), flow error type %d, cause %p, message: %s",
 	      idx, -ret, strerror(-ret), error.type, error.cause,

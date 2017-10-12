@@ -63,13 +63,6 @@ struct mlx4_rxq_stats {
 	uint64_t rx_nombuf; /**< Total of Rx mbuf allocation failures. */
 };
 
-/** Rx element. */
-struct rxq_elt {
-	struct ibv_recv_wr wr; /**< Work request. */
-	struct ibv_sge sge; /**< Scatter/gather element. */
-	struct rte_mbuf *buf; /**< Buffer. */
-};
-
 /** Rx queue descriptor. */
 struct rxq {
 	struct priv *priv; /**< Back pointer to private data. */
@@ -78,10 +71,14 @@ struct rxq {
 	struct ibv_cq *cq; /**< Completion queue. */
 	struct ibv_wq *wq; /**< Work queue. */
 	struct ibv_comp_channel *channel; /**< Rx completion channel. */
-	unsigned int port_id; /**< Port ID for incoming packets. */
-	unsigned int elts_n; /**< (*elts)[] length. */
-	unsigned int elts_head; /**< Current index in (*elts)[]. */
-	struct rxq_elt (*elts)[]; /**< Rx elements. */
+	uint16_t rq_ci; /**< Saved RQ consumer index. */
+	uint16_t port_id; /**< Port ID for incoming packets. */
+	uint16_t sges_n; /**< Number of segments per packet (log2 value). */
+	uint16_t elts_n; /**< Mbuf queue size (log2 value). */
+	struct rte_mbuf *(*elts)[]; /**< Rx elements. */
+	volatile struct mlx4_wqe_data_seg (*wqes)[]; /**< HW queue entries. */
+	volatile uint32_t *rq_db; /**< RQ doorbell record. */
+	struct mlx4_cq mcq;  /**< Info for directly manipulating the CQ. */
 	struct mlx4_rxq_stats stats; /**< Rx queue counters. */
 	unsigned int socket; /**< CPU socket ID for allocations. */
 	uint8_t data[]; /**< Remaining queue resources. */
