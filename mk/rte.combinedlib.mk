@@ -42,7 +42,7 @@ endif
 RTE_LIBNAME := dpdk
 COMBINEDLIB := lib$(RTE_LIBNAME)$(EXT)
 
-LIBS := $(filter-out $(COMBINEDLIB), $(notdir $(wildcard $(RTE_OUTPUT)/lib/*$(EXT))))
+LIBS := $(filter-out $(COMBINEDLIB), $(sort $(notdir $(wildcard $(RTE_OUTPUT)/lib/*$(EXT)))))
 
 all: FORCE
 	$(Q)echo "GROUP ( $(LIBS) )" > $(RTE_OUTPUT)/lib/$(COMBINEDLIB)
