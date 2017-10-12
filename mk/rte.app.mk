@@ -290,8 +290,8 @@ LDLIBS_NAMES += $(patsubst -Wl$(comma)-l%,lib%.a,$(filter -Wl$(comma)-l%,$(LDLIB
 
 # list of found libraries files (useful for deps). If not found, the
 # library is silently ignored and dep won't be checked
-LDLIBS_FILES := $(wildcard $(foreach dir,$(LDLIBS_PATH),\
-	$(addprefix $(dir)/,$(LDLIBS_NAMES))))
+LDLIBS_FILES := $(sort $(wildcard $(foreach dir,$(LDLIBS_PATH),\
+	$(addprefix $(dir)/,$(LDLIBS_NAMES)))))
 
 #
 # Compile executable file if needed

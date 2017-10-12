@@ -69,9 +69,9 @@ O_TO_EXE_DO = @set -e; \
 -include .$(HOSTAPP).cmd
 
 # list of .a files that are linked to this application
-LDLIBS_FILES := $(wildcard \
+LDLIBS_FILES := $(sort $(wildcard \
 	$(addprefix $(RTE_OUTPUT)/lib/, \
-	$(patsubst -l%,lib%.a,$(filter -l%,$(LDLIBS)))))
+	$(patsubst -l%,lib%.a,$(filter -l%,$(LDLIBS))))))
 
 #
 # Compile executable file if needed
