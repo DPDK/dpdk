@@ -675,7 +675,7 @@ void stop_port(portid_t pid);
 void close_port(portid_t pid);
 void reset_port(portid_t pid);
 void attach_port(char *identifier);
-void detach_port(uint8_t port_id);
+void detach_port(portid_t port_id);
 int all_ports_stopped(void);
 int port_is_started(portid_t port_id);
 void pmd_test_exit(void);
@@ -698,10 +698,10 @@ void port_rss_hash_conf_show(portid_t port_id, char rss_info[],
 			     int show_rss_key);
 void port_rss_hash_key_update(portid_t port_id, char rss_type[],
 			      uint8_t *hash_key, uint hash_key_len);
-void get_syn_filter(uint8_t port_id);
-void get_ethertype_filter(uint8_t port_id, uint16_t index);
-void get_2tuple_filter(uint8_t port_id, uint16_t index);
-void get_5tuple_filter(uint8_t port_id, uint16_t index);
+void get_syn_filter(portid_t port_id);
+void get_ethertype_filter(portid_t port_id, uint16_t index);
+void get_2tuple_filter(portid_t port_id, uint16_t index);
+void get_5tuple_filter(portid_t port_id, uint16_t index);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
 int tx_queue_id_is_invalid(queueid_t txq_id);
 void setup_gro(const char *onoff, portid_t port_id);
@@ -710,9 +710,9 @@ void show_gro(portid_t port_id);
 void setup_gso(const char *mode, portid_t port_id);
 
 /* Functions to manage the set of filtered Multicast MAC addresses */
-void mcast_addr_add(uint8_t port_id, struct ether_addr *mc_addr);
-void mcast_addr_remove(uint8_t port_id, struct ether_addr *mc_addr);
-void port_dcb_info_display(uint8_t port_id);
+void mcast_addr_add(portid_t port_id, struct ether_addr *mc_addr);
+void mcast_addr_remove(portid_t port_id, struct ether_addr *mc_addr);
+void port_dcb_info_display(portid_t port_id);
 
 uint8_t *open_ddp_package_file(const char *file_path, uint32_t *size);
 int save_ddp_package_file(const char *file_path, uint8_t *buf, uint32_t size);

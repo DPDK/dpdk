@@ -1497,7 +1497,7 @@ tx_desc_id_is_invalid(uint16_t txdesc_id)
 }
 
 static const struct rte_memzone *
-ring_dma_zone_lookup(const char *ring_name, uint8_t port_id, uint16_t q_id)
+ring_dma_zone_lookup(const char *ring_name, portid_t port_id, uint16_t q_id)
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
@@ -1547,9 +1547,9 @@ ring_rxd_display_dword(union igb_ring_dword dword)
 static void
 ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
 #ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
-			   uint8_t port_id,
+			   portid_t port_id,
 #else
-			   __rte_unused uint8_t port_id,
+			   __rte_unused portid_t port_id,
 #endif
 			   uint16_t desc_id)
 {
@@ -3275,7 +3275,7 @@ mcast_addr_pool_remove(struct rte_port *port, uint32_t addr_idx)
 }
 
 static void
-eth_port_multicast_addr_list_set(uint8_t port_id)
+eth_port_multicast_addr_list_set(portid_t port_id)
 {
 	struct rte_port *port;
 	int diag;
@@ -3290,7 +3290,7 @@ eth_port_multicast_addr_list_set(uint8_t port_id)
 }
 
 void
-mcast_addr_add(uint8_t port_id, struct ether_addr *mc_addr)
+mcast_addr_add(portid_t port_id, struct ether_addr *mc_addr)
 {
 	struct rte_port *port;
 	uint32_t i;
@@ -3318,7 +3318,7 @@ mcast_addr_add(uint8_t port_id, struct ether_addr *mc_addr)
 }
 
 void
-mcast_addr_remove(uint8_t port_id, struct ether_addr *mc_addr)
+mcast_addr_remove(portid_t port_id, struct ether_addr *mc_addr)
 {
 	struct rte_port *port;
 	uint32_t i;
@@ -3345,7 +3345,7 @@ mcast_addr_remove(uint8_t port_id, struct ether_addr *mc_addr)
 }
 
 void
-port_dcb_info_display(uint8_t port_id)
+port_dcb_info_display(portid_t port_id)
 {
 	struct rte_eth_dcb_info dcb_info;
 	uint16_t i;

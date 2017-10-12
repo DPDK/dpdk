@@ -398,7 +398,8 @@ struct gro_status gro_ports[RTE_MAX_ETHPORTS];
 uint8_t gro_flush_cycles = GRO_DEFAULT_FLUSH_CYCLES;
 
 /* Forward function declarations */
-static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
+static void map_port_queue_stats_mapping_registers(portid_t pi,
+						   struct rte_port *port);
 static void check_all_ports_link_status(uint32_t port_mask);
 static int eth_event_callback(portid_t port_id,
 			      enum rte_eth_event_type type,
@@ -1784,7 +1785,7 @@ attach_port(char *identifier)
 }
 
 void
-detach_port(uint8_t port_id)
+detach_port(portid_t port_id)
 {
 	char name[RTE_ETH_NAME_MAX_LEN];
 
@@ -1899,7 +1900,7 @@ static void
 rmv_event_callback(void *arg)
 {
 	struct rte_eth_dev *dev;
-	uint8_t port_id = (intptr_t)arg;
+	portid_t port_id = (intptr_t)arg;
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
@@ -1954,7 +1955,7 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 }
 
 static int
-set_tx_queue_stats_mapping_registers(uint8_t port_id, struct rte_port *port)
+set_tx_queue_stats_mapping_registers(portid_t port_id, struct rte_port *port)
 {
 	uint16_t i;
 	int diag;
@@ -1977,7 +1978,7 @@ set_tx_queue_stats_mapping_registers(uint8_t port_id, struct rte_port *port)
 }
 
 static int
-set_rx_queue_stats_mapping_registers(uint8_t port_id, struct rte_port *port)
+set_rx_queue_stats_mapping_registers(portid_t port_id, struct rte_port *port)
 {
 	uint16_t i;
 	int diag;
@@ -2000,7 +2001,7 @@ set_rx_queue_stats_mapping_registers(uint8_t port_id, struct rte_port *port)
 }
 
 static void
-map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port)
+map_port_queue_stats_mapping_registers(portid_t pi, struct rte_port *port)
 {
 	int diag = 0;
 
