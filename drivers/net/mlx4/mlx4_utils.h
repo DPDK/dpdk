@@ -110,8 +110,23 @@ pmd_drv_log_basename(const char *s)
 /** Similar to MLX4_STR() with enclosed macros expanded first. */
 #define MLX4_STR_EXPAND(...) MLX4_STR(__VA_ARGS__)
 
+/** Object description used with mlx4_mallocv() and similar functions. */
+struct mlx4_malloc_vec {
+	size_t align; /**< Alignment constraint (power of 2), 0 if unknown. */
+	size_t size; /**< Object size. */
+	void **addr; /**< Storage for allocation address. */
+};
+
 /* mlx4_utils.c */
 
 int mlx4_fd_set_non_blocking(int fd);
+size_t mlx4_mallocv(const char *type, const struct mlx4_malloc_vec *vec,
+		    unsigned int cnt);
+size_t mlx4_zmallocv(const char *type, const struct mlx4_malloc_vec *vec,
+		     unsigned int cnt);
+size_t mlx4_mallocv_socket(const char *type, const struct mlx4_malloc_vec *vec,
+			   unsigned int cnt, int socket);
+size_t mlx4_zmallocv_socket(const char *type, const struct mlx4_malloc_vec *vec,
+			    unsigned int cnt, int socket);
 
 #endif /* MLX4_UTILS_H_ */
