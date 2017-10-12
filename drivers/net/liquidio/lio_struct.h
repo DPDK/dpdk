@@ -684,7 +684,7 @@ struct lio_device {
 	uint8_t nb_tx_queues;
 	uint8_t port_configured;
 	struct lio_rss_ctx rss_state;
-	uint8_t port_id;
+	uint16_t port_id;
 	char firmware_version[LIO_FW_VERSION_LENGTH];
 };
 #endif /* _LIO_STRUCT_H_ */
