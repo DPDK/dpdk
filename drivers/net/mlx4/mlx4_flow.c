@@ -133,9 +133,11 @@ mlx4_conv_rss_hf(uint64_t rss_hf)
 		[TCP] = (ETH_RSS_NONFRAG_IPV4_TCP |
 			 ETH_RSS_NONFRAG_IPV6_TCP |
 			 ETH_RSS_IPV6_TCP_EX),
-		[UDP] = (ETH_RSS_NONFRAG_IPV4_UDP |
-			 ETH_RSS_NONFRAG_IPV6_UDP |
-			 ETH_RSS_IPV6_UDP_EX),
+		/*
+		 * UDP support is temporarily disabled due to an
+		 * implementation issue in the kernel.
+		 */
+		[UDP] = 0,
 	};
 	const uint64_t out[RTE_DIM(in)] = {
 		[IPV4] = IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4,
@@ -753,10 +755,8 @@ fill:
 					.rss_key = mlx4_rss_hash_key_default,
 					.rss_key_len = MLX4_RSS_HASH_KEY_SIZE,
 					.rss_hf = (ETH_RSS_IPV4 |
-						   ETH_RSS_NONFRAG_IPV4_UDP |
 						   ETH_RSS_NONFRAG_IPV4_TCP |
 						   ETH_RSS_IPV6 |
-						   ETH_RSS_NONFRAG_IPV6_UDP |
 						   ETH_RSS_NONFRAG_IPV6_TCP),
 				};
 			/* Sanity checks. */
