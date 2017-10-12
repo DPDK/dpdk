@@ -1,0 +1,120 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright 2017 6WIND S.A.
+ *   Copyright 2017 Mellanox
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of 6WIND S.A. nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef MLX4_PRM_H_
+#define MLX4_PRM_H_
+
+#include <rte_atomic.h>
+#include <rte_branch_prediction.h>
+#include <rte_byteorder.h>
+
+/* Verbs headers do not support -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#include <infiniband/mlx4dv.h>
+#include <infiniband/verbs.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
+
+/* ConnectX-3 Tx queue basic block. */
+#define MLX4_TXBB_SHIFT 6
+#define MLX4_TXBB_SIZE (1 << MLX4_TXBB_SHIFT)
+
+/* Typical TSO descriptor with 16 gather entries is 352 bytes. */
+#define MLX4_MAX_WQE_SIZE 512
+#define MLX4_MAX_WQE_TXBBS (MLX4_MAX_WQE_SIZE / MLX4_TXBB_SIZE)
+
+/* Send queue stamping/invalidating information. */
+#define MLX4_SQ_STAMP_STRIDE 64
+#define MLX4_SQ_STAMP_DWORDS (MLX4_SQ_STAMP_STRIDE / 4)
+#define MLX4_SQ_STAMP_SHIFT 31
+#define MLX4_SQ_STAMP_VAL 0x7fffffff
+
+/* Work queue element (WQE) flags. */
+#define MLX4_BIT_WQE_OWN 0x80000000
+
+#define MLX4_SIZE_TO_TXBBS(size) \
+	(RTE_ALIGN((size), (MLX4_TXBB_SIZE)) >> (MLX4_TXBB_SHIFT))
+
+/* Send queue information. */
+struct mlx4_sq {
+	uint8_t *buf; /**< SQ buffer. */
+	uint8_t *eob; /**< End of SQ buffer */
+	uint32_t head; /**< SQ head counter in units of TXBBS. */
+	uint32_t tail; /**< SQ tail counter in units of TXBBS. */
+	uint32_t txbb_cnt; /**< Num of WQEBB in the Q (should be ^2). */
+	uint32_t txbb_cnt_mask; /**< txbbs_cnt mask (txbb_cnt is ^2). */
+	uint32_t headroom_txbbs; /**< Num of txbbs that should be kept free. */
+	uint32_t *db; /**< Pointer to the doorbell. */
+	uint32_t doorbell_qpn; /**< qp number to write to the doorbell. */
+};
+
+#define mlx4_get_send_wqe(sq, n) ((sq)->buf + ((n) * (MLX4_TXBB_SIZE)))
+
+/* Completion queue information. */
+struct mlx4_cq {
+	uint8_t *buf; /**< Pointer to the completion queue buffer. */
+	uint32_t cqe_cnt; /**< Number of entries in the queue. */
+	uint32_t cqe_64:1; /**< CQ entry size is 64 bytes. */
+	uint32_t cons_index; /**< Last queue entry that was handled. */
+	uint32_t *set_ci_db; /**< Pointer to the completion queue doorbell. */
+};
+
+/**
+ * Retrieve a CQE entry from a CQ.
+ *
+ * cqe = cq->buf + cons_index * cqe_size + cqe_offset
+ *
+ * Where cqe_size is 32 or 64 bytes and cqe_offset is 0 or 32 (depending on
+ * cqe_size).
+ *
+ * @param cq
+ *   CQ to retrieve entry from.
+ * @param index
+ *   Entry index.
+ *
+ * @return
+ *   Pointer to CQE entry.
+ */
+static inline struct mlx4_cqe *
+mlx4_get_cqe(struct mlx4_cq *cq, uint32_t index)
+{
+	return (struct mlx4_cqe *)(cq->buf +
+				   ((index & (cq->cqe_cnt - 1)) <<
+				    (5 + cq->cqe_64)) +
+				   (cq->cqe_64 << 5));
+}
+
+#endif /* MLX4_PRM_H_ */

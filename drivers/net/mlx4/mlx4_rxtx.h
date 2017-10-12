@@ -41,6 +41,7 @@
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
+#include <infiniband/mlx4dv.h>
 #include <infiniband/verbs.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
@@ -51,6 +52,7 @@
 #include <rte_mempool.h>
 
 #include "mlx4.h"
+#include "mlx4_prm.h"
 
 /** Rx queue counters. */
 struct mlx4_rxq_stats {
@@ -101,8 +103,6 @@ struct mlx4_rss {
 
 /** Tx element. */
 struct txq_elt {
-	struct ibv_send_wr wr; /**< Work request. */
-	struct ibv_sge sge; /**< Scatter/gather element. */
 	struct rte_mbuf *buf; /**< Buffer. */
 };
 
@@ -116,24 +116,28 @@ struct mlx4_txq_stats {
 
 /** Tx queue descriptor. */
 struct txq {
-	struct priv *priv; /**< Back pointer to private data. */
+	struct mlx4_sq msq; /**< Info for directly manipulating the SQ. */
+	struct mlx4_cq mcq; /**< Info for directly manipulating the CQ. */
+	unsigned int elts_head; /**< Current index in (*elts)[]. */
+	unsigned int elts_tail; /**< First element awaiting completion. */
+	unsigned int elts_comp; /**< Number of packets awaiting completion. */
+	int elts_comp_cd; /**< Countdown for next completion. */
+	unsigned int elts_comp_cd_init; /**< Initial value for countdown. */
+	unsigned int elts_n; /**< (*elts)[] length. */
+	struct txq_elt (*elts)[]; /**< Tx elements. */
+	struct mlx4_txq_stats stats; /**< Tx queue counters. */
+	uint32_t max_inline; /**< Max inline send size. */
+	uint8_t *bounce_buf;
+	/**< Memory used for storing the first DWORD of data TXBBs. */
 	struct {
 		const struct rte_mempool *mp; /**< Cached memory pool. */
 		struct ibv_mr *mr; /**< Memory region (for mp). */
 		uint32_t lkey; /**< mr->lkey copy. */
 	} mp2mr[MLX4_PMD_TX_MP_CACHE]; /**< MP to MR translation table. */
+	struct priv *priv; /**< Back pointer to private data. */
+	unsigned int socket; /**< CPU socket ID for allocations. */
 	struct ibv_cq *cq; /**< Completion queue. */
 	struct ibv_qp *qp; /**< Queue pair. */
-	uint32_t max_inline; /**< Max inline send size. */
-	unsigned int elts_n; /**< (*elts)[] length. */
-	struct txq_elt (*elts)[]; /**< Tx elements. */
-	unsigned int elts_head; /**< Current index in (*elts)[]. */
-	unsigned int elts_tail; /**< First element awaiting completion. */
-	unsigned int elts_comp; /**< Number of completion requests. */
-	unsigned int elts_comp_cd; /**< Countdown for next completion. */
-	unsigned int elts_comp_cd_init; /**< Initial value for countdown. */
-	struct mlx4_txq_stats stats; /**< Tx queue counters. */
-	unsigned int socket; /**< CPU socket ID for allocations. */
 	uint8_t data[]; /**< Remaining queue resources. */
 };
 

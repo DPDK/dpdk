@@ -60,6 +60,7 @@
 
 #include "mlx4.h"
 #include "mlx4_autoconf.h"
+#include "mlx4_prm.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
@@ -148,6 +149,41 @@ mlx4_txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 }
 
 /**
+ * Retrieves information needed in order to directly access the Tx queue.
+ *
+ * @param txq
+ *   Pointer to Tx queue structure.
+ * @param mlxdv
+ *   Pointer to device information for this Tx queue.
+ */
+static void
+mlx4_txq_fill_dv_obj_info(struct txq *txq, struct mlx4dv_obj *mlxdv)
+{
+	struct mlx4_sq *sq = &txq->msq;
+	struct mlx4_cq *cq = &txq->mcq;
+	struct mlx4dv_qp *dqp = mlxdv->qp.out;
+	struct mlx4dv_cq *dcq = mlxdv->cq.out;
+	uint32_t sq_size = (uint32_t)dqp->rq.offset - (uint32_t)dqp->sq.offset;
+
+	sq->buf = (uint8_t *)dqp->buf.buf + dqp->sq.offset;
+	/* Total length, including headroom and spare WQEs. */
+	sq->eob = sq->buf + sq_size;
+	sq->head = 0;
+	sq->tail = 0;
+	sq->txbb_cnt =
+		(dqp->sq.wqe_cnt << dqp->sq.wqe_shift) >> MLX4_TXBB_SHIFT;
+	sq->txbb_cnt_mask = sq->txbb_cnt - 1;
+	sq->db = dqp->sdb;
+	sq->doorbell_qpn = dqp->doorbell_qpn;
+	sq->headroom_txbbs =
+		(2048 + (1 << dqp->sq.wqe_shift)) >> MLX4_TXBB_SHIFT;
+	cq->buf = dcq->buf.buf;
+	cq->cqe_cnt = dcq->cqe_cnt;
+	cq->set_ci_db = dcq->set_ci_db;
+	cq->cqe_64 = (dcq->cqe_size & 64) ? 1 : 0;
+}
+
+/**
  * DPDK callback to configure a Tx queue.
  *
  * @param dev
@@ -169,9 +205,13 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    unsigned int socket, const struct rte_eth_txconf *conf)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct mlx4dv_obj mlxdv;
+	struct mlx4dv_qp dv_qp;
+	struct mlx4dv_cq dv_cq;
 	struct txq_elt (*elts)[desc];
 	struct ibv_qp_init_attr qp_init_attr;
 	struct txq *txq;
+	uint8_t *bounce_buf;
 	struct mlx4_malloc_vec vec[] = {
 		{
 			.align = RTE_CACHE_LINE_SIZE,
@@ -182,6 +222,11 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			.align = RTE_CACHE_LINE_SIZE,
 			.size = sizeof(*elts),
 			.addr = (void **)&elts,
+		},
+		{
+			.align = RTE_CACHE_LINE_SIZE,
+			.size = MLX4_MAX_WQE_SIZE,
+			.addr = (void **)&bounce_buf,
 		},
 	};
 	int ret;
@@ -231,6 +276,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			RTE_MIN(MLX4_PMD_TX_PER_COMP_REQ, desc / 4),
 		.elts_comp_cd_init =
 			RTE_MIN(MLX4_PMD_TX_PER_COMP_REQ, desc / 4),
+		.bounce_buf = bounce_buf,
 	};
 	txq->cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
 	if (!txq->cq) {
@@ -297,6 +343,19 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
+	/* Retrieve device queue information. */
+	mlxdv.cq.in = txq->cq;
+	mlxdv.cq.out = &dv_cq;
+	mlxdv.qp.in = txq->qp;
+	mlxdv.qp.out = &dv_qp;
+	ret = mlx4dv_init_obj(&mlxdv, MLX4DV_OBJ_QP | MLX4DV_OBJ_CQ);
+	if (ret) {
+		rte_errno = EINVAL;
+		ERROR("%p: failed to obtain information needed for"
+		      " accessing the device queues", (void *)dev);
+		goto error;
+	}
+	mlx4_txq_fill_dv_obj_info(txq, &mlxdv);
 	/* Pre-register known mempools. */
 	rte_mempool_walk(mlx4_txq_mp2mr_iter, txq);
 	DEBUG("%p: adding Tx queue %p to list", (void *)dev, (void *)txq);
