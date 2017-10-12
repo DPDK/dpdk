@@ -122,10 +122,6 @@ The following options can be modified in the ``config`` file.
 
     Toggle compilation of the librte_pmd_mrvl driver.
 
-- ``CONFIG_RTE_LIBRTE_MRVL_DEBUG`` (default ``n``)
-
-    Toggle display of debugging messages.
-
 - ``CONFIG_RTE_MRVL_MUSDK_DMA_MEMSIZE`` (default ``41943040``)
 
     Size in bytes of the contiguous memory region that MUSDK will allocate
