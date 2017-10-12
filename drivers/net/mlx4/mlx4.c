@@ -60,6 +60,7 @@
 #include <rte_ethdev.h>
 #include <rte_ethdev_pci.h>
 #include <rte_ether.h>
+#include <rte_flow.h>
 #include <rte_interrupts.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
@@ -97,13 +98,17 @@ static int
 mlx4_dev_configure(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct rte_flow_error error;
 	int ret;
 
 	/* Prepare internal flow rules. */
-	ret = mlx4_flow_sync(priv);
-	if (ret)
-		ERROR("cannot set up internal flow rules: %s",
-		      strerror(-ret));
+	ret = mlx4_flow_sync(priv, &error);
+	if (ret) {
+		ERROR("cannot set up internal flow rules (code %d, \"%s\"),"
+		      " flow error type %d, cause %p, message: %s",
+		      -ret, strerror(-ret), error.type, error.cause,
+		      error.message ? error.message : "(unspecified)");
+	}
 	return ret;
 }
 
@@ -122,6 +127,7 @@ static int
 mlx4_dev_start(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct rte_flow_error error;
 	int ret;
 
 	if (priv->started)
@@ -134,10 +140,13 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		     (void *)dev);
 		goto err;
 	}
-	ret = mlx4_flow_start(priv);
+	ret = mlx4_flow_sync(priv, &error);
 	if (ret) {
-		ERROR("%p: flow start failed: %s",
-		      (void *)dev, strerror(ret));
+		ERROR("%p: cannot attach flow rules (code %d, \"%s\"),"
+		      " flow error type %d, cause %p, message: %s",
+		      (void *)dev,
+		      -ret, strerror(-ret), error.type, error.cause,
+		      error.message ? error.message : "(unspecified)");
 		goto err;
 	}
 	return 0;
@@ -164,7 +173,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 		return;
 	DEBUG("%p: detaching flows from all RX queues", (void *)dev);
 	priv->started = 0;
-	mlx4_flow_stop(priv);
+	mlx4_flow_sync(priv, NULL);
 	mlx4_intr_uninstall(priv);
 }
 

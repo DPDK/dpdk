@@ -956,14 +956,9 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
 	if (!!enable == !!priv->isolated)
 		return 0;
 	priv->isolated = !!enable;
-	if (mlx4_flow_sync(priv)) {
+	if (mlx4_flow_sync(priv, error)) {
 		priv->isolated = !enable;
-		return rte_flow_error_set(error, rte_errno,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  enable ?
-					  "cannot enter isolated mode" :
-					  "cannot leave isolated mode");
+		return -rte_errno;
 	}
 	return 0;
 }
@@ -1075,12 +1070,14 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
  *
  * @param priv
  *   Pointer to private structure.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_flow_sync(struct priv *priv)
+mlx4_flow_sync(struct priv *priv, struct rte_flow_error *error)
 {
 	struct rte_flow *flow;
 	int ret;
@@ -1094,20 +1091,27 @@ mlx4_flow_sync(struct priv *priv)
 		for (flow = LIST_FIRST(&priv->flows);
 		     flow && flow->internal;
 		     flow = LIST_FIRST(&priv->flows))
-			claim_zero(mlx4_flow_destroy(priv->dev, flow, NULL));
+			claim_zero(mlx4_flow_destroy(priv->dev, flow, error));
 	} else if (!LIST_FIRST(&priv->flows) ||
 		   !LIST_FIRST(&priv->flows)->internal) {
 		/*
 		 * If the first rule is not internal outside isolated mode,
 		 * they must be added back.
 		 */
-		ret = mlx4_flow_internal(priv, NULL);
+		ret = mlx4_flow_internal(priv, error);
 		if (ret)
 			return ret;
 	}
-	if (priv->started)
-		return mlx4_flow_start(priv);
-	mlx4_flow_stop(priv);
+	/* Toggle the remaining flow rules . */
+	for (flow = LIST_FIRST(&priv->flows);
+	     flow;
+	     flow = LIST_NEXT(flow, next)) {
+		ret = mlx4_flow_toggle(priv, flow, priv->started, error);
+		if (ret)
+			return ret;
+	}
+	if (!priv->started)
+		assert(!priv->drop);
 	return 0;
 }
 
@@ -1127,52 +1131,6 @@ mlx4_flow_clean(struct priv *priv)
 
 	while ((flow = LIST_FIRST(&priv->flows)))
 		mlx4_flow_destroy(priv->dev, flow, NULL);
-}
-
-/**
- * Disable flow rules.
- *
- * @param priv
- *   Pointer to private structure.
- */
-void
-mlx4_flow_stop(struct priv *priv)
-{
-	struct rte_flow *flow;
-
-	for (flow = LIST_FIRST(&priv->flows);
-	     flow;
-	     flow = LIST_NEXT(flow, next)) {
-		claim_zero(mlx4_flow_toggle(priv, flow, 0, NULL));
-	}
-	assert(!priv->drop);
-}
-
-/**
- * Enable flow rules.
- *
- * @param priv
- *   Pointer to private structure.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-int
-mlx4_flow_start(struct priv *priv)
-{
-	int ret;
-	struct rte_flow *flow;
-
-	for (flow = LIST_FIRST(&priv->flows);
-	     flow;
-	     flow = LIST_NEXT(flow, next)) {
-		ret = mlx4_flow_toggle(priv, flow, 1, NULL);
-		if (unlikely(ret)) {
-			mlx4_flow_stop(priv);
-			return ret;
-		}
-	}
-	return 0;
 }
 
 static const struct rte_flow_ops mlx4_flow_ops = {

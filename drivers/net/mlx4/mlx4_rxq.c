@@ -54,6 +54,7 @@
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_ethdev.h>
+#include <rte_flow.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
@@ -401,7 +402,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		}
 		dev->data->rx_queues[idx] = NULL;
 		/* Disable associated flows. */
-		mlx4_flow_sync(priv);
+		mlx4_flow_sync(priv, NULL);
 		mlx4_rxq_cleanup(rxq);
 	} else {
 		rxq = rte_calloc_socket("RXQ", 1, sizeof(*rxq), 0, socket);
@@ -416,13 +417,20 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (ret) {
 		rte_free(rxq);
 	} else {
+		struct rte_flow_error error;
+
 		rxq->stats.idx = idx;
 		DEBUG("%p: adding Rx queue %p to list",
 		      (void *)dev, (void *)rxq);
 		dev->data->rx_queues[idx] = rxq;
 		/* Re-enable associated flows. */
-		ret = mlx4_flow_sync(priv);
+		ret = mlx4_flow_sync(priv, &error);
 		if (ret) {
+			ERROR("cannot re-attach flow rules to queue %u"
+			      " (code %d, \"%s\"), flow error type %d,"
+			      " cause %p, message: %s", idx,
+			      -ret, strerror(-ret), error.type, error.cause,
+			      error.message ? error.message : "(unspecified)");
 			dev->data->rx_queues[idx] = NULL;
 			mlx4_rxq_cleanup(rxq);
 			rte_free(rxq);
@@ -457,7 +465,7 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 			priv->dev->data->rx_queues[i] = NULL;
 			break;
 		}
-	mlx4_flow_sync(priv);
+	mlx4_flow_sync(priv, NULL);
 	mlx4_rxq_cleanup(rxq);
 	rte_free(rxq);
 }
