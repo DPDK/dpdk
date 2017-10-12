@@ -579,45 +579,30 @@ mlx4_flow_prepare(struct priv *priv,
 	};
 	uint32_t priority_override = 0;
 
-	if (attr->group) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
-				   NULL,
-				   "groups are not supported");
-		return -rte_errno;
-	}
-	if (priv->isolated) {
+	if (attr->group)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+			 NULL, "groups are not supported");
+	if (priv->isolated)
 		priority_override = attr->priority;
-	} else if (attr->priority) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-				   NULL,
-				   "priorities are not supported outside"
-				   " isolated mode");
-		return -rte_errno;
-	}
-	if (attr->priority > MLX4_FLOW_PRIORITY_LAST) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-				   NULL,
-				   "maximum priority level is "
-				   MLX4_STR_EXPAND(MLX4_FLOW_PRIORITY_LAST));
-		return -rte_errno;
-	}
-	if (attr->egress) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
-				   NULL,
-				   "egress is not supported");
-		return -rte_errno;
-	}
-	if (!attr->ingress) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-				   NULL,
-				   "only ingress is supported");
-		return -rte_errno;
-	}
+	else if (attr->priority)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+			 NULL,
+			 "priorities are not supported outside isolated mode");
+	if (attr->priority > MLX4_FLOW_PRIORITY_LAST)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+			 NULL, "maximum priority level is "
+			 MLX4_STR_EXPAND(MLX4_FLOW_PRIORITY_LAST));
+	if (attr->egress)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+			 NULL, "egress is not supported");
+	if (!attr->ingress)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+			 NULL, "only ingress is supported");
 	/* Go over pattern. */
 	for (item = pattern; item->type; ++item) {
 		const struct mlx4_flow_proc_item *next = NULL;
@@ -633,14 +618,11 @@ mlx4_flow_prepare(struct priv *priv,
 		if (!item->spec && item->type == RTE_FLOW_ITEM_TYPE_ETH) {
 			const struct rte_flow_item *next = item + 1;
 
-			if (next->type) {
-				rte_flow_error_set(error, ENOTSUP,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "the rule requires"
-						   " an Ethernet spec");
-				return -rte_errno;
-			}
+			if (next->type)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM, item,
+					 "the rule requires an Ethernet spec");
 		}
 		for (i = 0; proc->next_item && proc->next_item[i]; ++i) {
 			if (proc->next_item[i] == item->type) {
@@ -688,20 +670,17 @@ mlx4_flow_prepare(struct priv *priv,
 			goto exit_action_not_supported;
 		}
 	}
-	if (!target.queue && !target.drop) {
-		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "no valid action");
-		return -rte_errno;
-	}
+	if (!target.queue && !target.drop)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			 NULL, "no valid action");
 	return 0;
 exit_item_not_supported:
-	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
-			   item, "item not supported");
-	return -rte_errno;
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+				  item, "item not supported");
 exit_action_not_supported:
-	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
-			   action, "action not supported");
-	return -rte_errno;
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				  action, "action not supported");
 }
 
 /**
@@ -824,7 +803,8 @@ mlx4_flow_create_target_queue(struct priv *priv,
 	assert(priv->ctx);
 	rte_flow = rte_calloc(__func__, 1, sizeof(*rte_flow), 0);
 	if (!rte_flow) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
 	}
@@ -841,7 +821,8 @@ mlx4_flow_create_target_queue(struct priv *priv,
 		return rte_flow;
 	rte_flow->ibv_flow = ibv_create_flow(qp, rte_flow->ibv_attr);
 	if (!rte_flow->ibv_flow) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "flow rule creation failure");
 		goto error;
 	}
@@ -876,7 +857,8 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 		return NULL;
 	flow.ibv_attr = rte_malloc(__func__, flow.offset, 0);
 	if (!flow.ibv_attr) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "cannot allocate ibv_attr memory");
 		return NULL;
 	}
