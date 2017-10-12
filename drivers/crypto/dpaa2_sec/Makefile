@@ -71,13 +71,6 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += dpaa2_sec_dpseci.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += mc/dpseci.c
 
-# library dependencies
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += lib/librte_mempool lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += lib/librte_cryptodev
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += drivers/bus/fslmc
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += drivers/mempool/dpaa2
-
 LDLIBS += -lrte_bus_fslmc
 LDLIBS += -lrte_mempool_dpaa2
 
