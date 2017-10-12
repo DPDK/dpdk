@@ -340,7 +340,6 @@ mlx4_txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	}
 	ret = mlx4_txq_alloc_elts(&tmpl, desc);
 	if (ret) {
-		rte_errno = ret;
 		ERROR("%p: TXQ allocation failed: %s",
 		      (void *)dev, strerror(rte_errno));
 		goto error;
