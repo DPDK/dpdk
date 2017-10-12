@@ -197,12 +197,13 @@ To segment an outgoing packet, an application must:
    - a pointer to the mbuf pool for allocating indirect buffers, which are
      used to locate GSO segments' packet payloads.
 
-.. note::
+     .. note::
 
-     An application may use the same pool for both direct and indirect
-     buffers. However, since each indirect mbuf simply stores a pointer, the
-     application may reduce its memory consumption by creating a separate memory
-     pool, containing smaller elements, for the indirect pool.
+       An application may use the same pool for both direct and indirect
+       buffers. However, since indirect mbufs simply store a pointer, the
+       application may reduce its memory consumption by creating a separate memory
+       pool, containing smaller elements, for the indirect pool.
+
 
    - the size of each output segment, including packet headers and payload,
      measured in bytes.
