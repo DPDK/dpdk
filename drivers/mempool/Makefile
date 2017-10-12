@@ -41,6 +41,6 @@ DEPDIRS-ring = $(core-libs)
 DIRS-$(CONFIG_RTE_DRIVER_MEMPOOL_STACK) += stack
 DEPDIRS-stack = $(core-libs)
 DIRS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx
-DEPDIRS-octeontx = $(core-libs)
+DEPDIRS-octeontx = $(core-libs) librte_mbuf
 
 include $(RTE_SDK)/mk/rte.subdir.mk

@@ -62,7 +62,4 @@ else
 CFLAGS_rte_mempool_octeontx.o += -Ofast
 endif
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += lib/librte_mbuf
-
 include $(RTE_SDK)/mk/rte.lib.mk
