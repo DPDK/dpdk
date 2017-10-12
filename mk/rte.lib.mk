@@ -59,14 +59,20 @@ endif
 
 
 _BUILD = $(LIB)
-_INSTALL = $(INSTALL-FILES-y) $(SYMLINK-FILES-y) $(RTE_OUTPUT)/lib/$(LIB)
+PREINSTALL = $(SYMLINK-FILES-y)
+_INSTALL = $(INSTALL-FILES-y) $(RTE_OUTPUT)/lib/$(LIB)
 _CLEAN = doclean
 
 .PHONY: all
 all: install
 
 .PHONY: install
+ifeq ($(SYMLINK-FILES-y),)
 install: build _postinstall
+else
+install: _preinstall build _postinstall
+build: _preinstall
+endif
 
 _postinstall: build
 
