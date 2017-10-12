@@ -47,6 +47,9 @@ sources = ['eal_alarm.c',
 ]
 
 eal_extra_link_arg = '-ldl'
+if has_libnuma == 1
+	dpdk_conf.set10('RTE_EAL_NUMA_AWARE_HUGEPAGES', true)
+endif
 
 if get_option('per_library_versions')
 	lib_version = '@0@.1'.format(version)

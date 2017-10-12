@@ -37,6 +37,16 @@ add_project_arguments('-march=@0@'.format(machine), language: 'c')
 add_project_link_arguments('-lm', language: 'c')
 dpdk_extra_ldflags += '-lm'
 
+# check for libraries used in multiple places in DPDK
+has_libnuma = 0
+numa_dep = cc.find_library('numa', required: false)
+if numa_dep.found() and cc.has_header('numaif.h')
+	dpdk_conf.set10('RTE_HAS_LIBNUMA', true)
+	has_libnuma = 1
+	add_project_link_arguments('-lnuma', language: 'c')
+	dpdk_extra_ldflags += '-lnuma'
+endif
+
 # add -include rte_config to cflags
 add_project_arguments('-include', 'rte_config.h', language: 'c')
 
