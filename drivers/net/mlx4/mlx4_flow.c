@@ -597,8 +597,8 @@ mlx4_flow_prepare(struct priv *priv,
 		.queue = 0,
 		.drop = 0,
 	};
+	uint32_t priority_override = 0;
 
-	(void)priv;
 	if (attr->group) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
@@ -606,11 +606,22 @@ mlx4_flow_prepare(struct priv *priv,
 				   "groups are not supported");
 		return -rte_errno;
 	}
-	if (attr->priority) {
+	if (priv->isolated) {
+		priority_override = attr->priority;
+	} else if (attr->priority) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 				   NULL,
-				   "priorities are not supported");
+				   "priorities are not supported outside"
+				   " isolated mode");
+		return -rte_errno;
+	}
+	if (attr->priority > MLX4_FLOW_PRIORITY_LAST) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+				   NULL,
+				   "maximum priority level is "
+				   MLX4_STR_EXPAND(MLX4_FLOW_PRIORITY_LAST));
 		return -rte_errno;
 	}
 	if (attr->egress) {
@@ -680,6 +691,9 @@ mlx4_flow_prepare(struct priv *priv,
 		}
 		flow->offset += cur_item->dst_sz;
 	}
+	/* Use specified priority level when in isolated mode. */
+	if (priv->isolated && flow->ibv_attr)
+		flow->ibv_attr->priority = priority_override;
 	/* Go over actions list */
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
 		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {

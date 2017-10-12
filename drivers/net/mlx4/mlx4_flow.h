@@ -52,6 +52,9 @@
 #include <rte_flow_driver.h>
 #include <rte_byteorder.h>
 
+/** Last and lowest priority level for a flow rule. */
+#define MLX4_FLOW_PRIORITY_LAST UINT32_C(0xfff)
+
 /** PMD-specific (mlx4) definition of a flow rule handle. */
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */

@@ -104,6 +104,12 @@ pmd_drv_log_basename(const char *s)
 	\
 	snprintf(name, sizeof(name), __VA_ARGS__)
 
+/** Generate a string out of the provided arguments. */
+#define MLX4_STR(...) # __VA_ARGS__
+
+/** Similar to MLX4_STR() with enclosed macros expanded first. */
+#define MLX4_STR_EXPAND(...) MLX4_STR(__VA_ARGS__)
+
 /* mlx4_utils.c */
 
 int mlx4_fd_set_non_blocking(int fd);
