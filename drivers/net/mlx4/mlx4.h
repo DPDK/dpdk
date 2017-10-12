@@ -88,6 +88,7 @@ enum {
 /** Driver name reported to lower layers and used in log output. */
 #define MLX4_DRIVER_NAME "net_mlx4"
 
+struct mlx4_drop;
 struct rxq;
 struct txq;
 struct rte_flow;
@@ -108,7 +109,7 @@ struct priv {
 	uint32_t intr_alarm:1; /**< An interrupt alarm is scheduled. */
 	uint32_t isolated:1; /**< Toggle isolated mode. */
 	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
-	struct rte_flow_drop *flow_drop_queue; /**< Flow drop queue. */
+	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 };
 

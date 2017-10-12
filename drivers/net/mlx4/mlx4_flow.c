@@ -125,9 +125,12 @@ struct mlx4_flow_proc_item {
 	const enum rte_flow_item_type *const next_item;
 };
 
-struct rte_flow_drop {
-	struct ibv_qp *qp; /**< Verbs queue pair. */
-	struct ibv_cq *cq; /**< Verbs completion queue. */
+/** Shared resources for drop flow rules. */
+struct mlx4_drop {
+	struct ibv_qp *qp; /**< QP target. */
+	struct ibv_cq *cq; /**< CQ associated with above QP. */
+	struct priv *priv; /**< Back pointer to private data. */
+	uint32_t refcnt; /**< Reference count. */
 };
 
 /**
@@ -744,76 +747,73 @@ mlx4_flow_validate(struct rte_eth_dev *dev,
 }
 
 /**
- * Destroy a drop queue.
- *
- * @param priv
- *   Pointer to private structure.
- */
-static void
-mlx4_flow_destroy_drop_queue(struct priv *priv)
-{
-	if (priv->flow_drop_queue) {
-		struct rte_flow_drop *fdq = priv->flow_drop_queue;
-
-		priv->flow_drop_queue = NULL;
-		claim_zero(ibv_destroy_qp(fdq->qp));
-		claim_zero(ibv_destroy_cq(fdq->cq));
-		rte_free(fdq);
-	}
-}
-
-/**
- * Create a single drop queue for all drop flows.
+ * Get a drop flow rule resources instance.
  *
  * @param priv
  *   Pointer to private structure.
  *
  * @return
- *   0 on success, negative value otherwise.
+ *   Pointer to drop flow resources on success, NULL otherwise and rte_errno
+ *   is set.
  */
-static int
-mlx4_flow_create_drop_queue(struct priv *priv)
+static struct mlx4_drop *
+mlx4_drop_get(struct priv *priv)
 {
-	struct ibv_qp *qp;
-	struct ibv_cq *cq;
-	struct rte_flow_drop *fdq;
+	struct mlx4_drop *drop = priv->drop;
 
-	fdq = rte_calloc(__func__, 1, sizeof(*fdq), 0);
-	if (!fdq) {
-		ERROR("Cannot allocate memory for drop struct");
-		goto err;
+	if (drop) {
+		assert(drop->refcnt);
+		assert(drop->priv == priv);
+		++drop->refcnt;
+		return drop;
 	}
-	cq = ibv_create_cq(priv->ctx, 1, NULL, NULL, 0);
-	if (!cq) {
-		ERROR("Cannot create drop CQ");
-		goto err_create_cq;
-	}
-	qp = ibv_create_qp(priv->pd,
-			   &(struct ibv_qp_init_attr){
-				.send_cq = cq,
-				.recv_cq = cq,
-				.cap = {
-					.max_recv_wr = 1,
-					.max_recv_sge = 1,
-				},
-				.qp_type = IBV_QPT_RAW_PACKET,
-			   });
-	if (!qp) {
-		ERROR("Cannot create drop QP");
-		goto err_create_qp;
-	}
-	*fdq = (struct rte_flow_drop){
-		.qp = qp,
-		.cq = cq,
+	drop = rte_malloc(__func__, sizeof(*drop), 0);
+	if (!drop)
+		goto error;
+	*drop = (struct mlx4_drop){
+		.priv = priv,
+		.refcnt = 1,
 	};
-	priv->flow_drop_queue = fdq;
-	return 0;
-err_create_qp:
-	claim_zero(ibv_destroy_cq(cq));
-err_create_cq:
-	rte_free(fdq);
-err:
-	return -1;
+	drop->cq = ibv_create_cq(priv->ctx, 1, NULL, NULL, 0);
+	if (!drop->cq)
+		goto error;
+	drop->qp = ibv_create_qp(priv->pd,
+				 &(struct ibv_qp_init_attr){
+					.send_cq = drop->cq,
+					.recv_cq = drop->cq,
+					.qp_type = IBV_QPT_RAW_PACKET,
+				 });
+	if (!drop->qp)
+		goto error;
+	priv->drop = drop;
+	return drop;
+error:
+	if (drop->qp)
+		claim_zero(ibv_destroy_qp(drop->qp));
+	if (drop->cq)
+		claim_zero(ibv_destroy_cq(drop->cq));
+	if (drop)
+		rte_free(drop);
+	rte_errno = ENOMEM;
+	return NULL;
+}
+
+/**
+ * Give back a drop flow rule resources instance.
+ *
+ * @param drop
+ *   Pointer to drop flow rule resources.
+ */
+static void
+mlx4_drop_put(struct mlx4_drop *drop)
+{
+	assert(drop->refcnt);
+	if (--drop->refcnt)
+		return;
+	drop->priv->drop = NULL;
+	claim_zero(ibv_destroy_qp(drop->qp));
+	claim_zero(ibv_destroy_cq(drop->cq));
+	rte_free(drop);
 }
 
 /**
@@ -846,6 +846,8 @@ mlx4_flow_toggle(struct priv *priv,
 			return 0;
 		claim_zero(ibv_destroy_flow(flow->ibv_flow));
 		flow->ibv_flow = NULL;
+		if (flow->drop)
+			mlx4_drop_put(priv->drop);
 		return 0;
 	}
 	if (flow->ibv_flow)
@@ -864,14 +866,21 @@ mlx4_flow_toggle(struct priv *priv,
 		qp = rxq->qp;
 	}
 	if (flow->drop) {
-		assert(priv->flow_drop_queue);
-		qp = priv->flow_drop_queue->qp;
+		mlx4_drop_get(priv);
+		if (!priv->drop) {
+			err = rte_errno;
+			msg = "resources for drop flow rule cannot be created";
+			goto error;
+		}
+		qp = priv->drop->qp;
 	}
 	assert(qp);
 	assert(flow->ibv_attr);
 	flow->ibv_flow = ibv_create_flow(qp, flow->ibv_attr);
 	if (flow->ibv_flow)
 		return 0;
+	if (flow->drop)
+		mlx4_drop_put(priv->drop);
 	err = errno;
 	msg = "flow rule rejected by device";
 error:
@@ -995,7 +1004,7 @@ mlx4_flow_stop(struct priv *priv)
 	     flow = LIST_NEXT(flow, next)) {
 		claim_zero(mlx4_flow_toggle(priv, flow, 0, NULL));
 	}
-	mlx4_flow_destroy_drop_queue(priv);
+	assert(!priv->drop);
 }
 
 /**
@@ -1013,9 +1022,6 @@ mlx4_flow_start(struct priv *priv)
 	int ret;
 	struct rte_flow *flow;
 
-	ret = mlx4_flow_create_drop_queue(priv);
-	if (ret)
-		return -1;
 	for (flow = LIST_FIRST(&priv->flows);
 	     flow;
 	     flow = LIST_NEXT(flow, next)) {
