@@ -588,6 +588,48 @@ mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 }
 
 /**
+ * DPDK callback to configure a VLAN filter.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param vlan_id
+ *   VLAN ID to filter.
+ * @param on
+ *   Toggle filter.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rte_flow_error error;
+	unsigned int vidx = vlan_id / 64;
+	unsigned int vbit = vlan_id % 64;
+	uint64_t *v;
+	int ret;
+
+	if (vidx >= RTE_DIM(dev->data->vlan_filter_conf.ids)) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	v = &dev->data->vlan_filter_conf.ids[vidx];
+	*v &= ~(UINT64_C(1) << vbit);
+	*v |= (uint64_t)!!on << vbit;
+	ret = mlx4_flow_sync(priv, &error);
+	if (!ret)
+		return 0;
+	ERROR("failed to synchronize flow rules after %s VLAN filter on ID %u"
+	      " (code %d, \"%s\"), "
+	      " flow error type %d, cause %p, message: %s",
+	      on ? "enabling" : "disabling", vlan_id,
+	      rte_errno, strerror(rte_errno), error.type, error.cause,
+	      error.message ? error.message : "(unspecified)");
+	return ret;
+}
+
+/**
  * DPDK callback to set the primary MAC address.
  *
  * @param dev

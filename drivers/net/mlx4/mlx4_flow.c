@@ -1009,11 +1009,36 @@ mlx4_flow_flush(struct rte_eth_dev *dev,
 }
 
 /**
+ * Helper function to determine the next configured VLAN filter.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param vlan
+ *   VLAN ID to use as a starting point.
+ *
+ * @return
+ *   Next configured VLAN ID or a high value (>= 4096) if there is none.
+ */
+static uint16_t
+mlx4_flow_internal_next_vlan(struct priv *priv, uint16_t vlan)
+{
+	while (vlan < 4096) {
+		if (priv->dev->data->vlan_filter_conf.ids[vlan / 64] &
+		    (UINT64_C(1) << (vlan % 64)))
+			return vlan;
+		++vlan;
+	}
+	return vlan;
+}
+
+/**
  * Generate internal flow rules.
  *
  * - MAC flow rules are generated from @p dev->data->mac_addrs
  *   (@p priv->mac array).
  * - An additional flow rule for Ethernet broadcasts is also generated.
+ * - All these are per-VLAN if @p dev->data->dev_conf.rxmode.hw_vlan_filter
+ *   is enabled and VLAN filters are configured.
  *
  * @param priv
  *   Pointer to private structure.
@@ -1034,6 +1059,10 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	const struct rte_flow_item_eth eth_mask = {
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	};
+	struct rte_flow_item_vlan vlan_spec;
+	const struct rte_flow_item_vlan vlan_mask = {
+		.tci = RTE_BE16(0x0fff),
+	};
 	struct rte_flow_item pattern[] = {
 		{
 			.type = MLX4_FLOW_ITEM_TYPE_INTERNAL,
@@ -1042,6 +1071,10 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 			.type = RTE_FLOW_ITEM_TYPE_ETH,
 			.spec = &eth_spec,
 			.mask = &eth_mask,
+		},
+		{
+			/* Replaced with VLAN if filtering is enabled. */
+			.type = RTE_FLOW_ITEM_TYPE_END,
 		},
 		{
 			.type = RTE_FLOW_ITEM_TYPE_END,
@@ -1059,10 +1092,33 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 		},
 	};
 	struct ether_addr *rule_mac = &eth_spec.dst;
+	rte_be16_t *rule_vlan =
+		priv->dev->data->dev_conf.rxmode.hw_vlan_filter ?
+		&vlan_spec.tci :
+		NULL;
+	uint16_t vlan = 0;
 	struct rte_flow *flow;
 	unsigned int i;
 	int err = 0;
 
+	/*
+	 * Set up VLAN item if filtering is enabled and at least one VLAN
+	 * filter is configured.
+	 */
+	if (rule_vlan) {
+		vlan = mlx4_flow_internal_next_vlan(priv, 0);
+		if (vlan < 4096) {
+			pattern[2] = (struct rte_flow_item){
+				.type = RTE_FLOW_ITEM_TYPE_VLAN,
+				.spec = &vlan_spec,
+				.mask = &vlan_mask,
+			};
+next_vlan:
+			*rule_vlan = rte_cpu_to_be_16(vlan);
+		} else {
+			rule_vlan = NULL;
+		}
+	}
 	for (i = 0; i != RTE_DIM(priv->mac) + 1; ++i) {
 		const struct ether_addr *mac;
 
@@ -1087,6 +1143,12 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 			assert(flow->ibv_attr->type == IBV_FLOW_ATTR_NORMAL);
 			assert(flow->ibv_attr->num_of_specs == 1);
 			assert(eth->type == IBV_FLOW_SPEC_ETH);
+			if (rule_vlan &&
+			    (eth->val.vlan_tag != *rule_vlan ||
+			     eth->mask.vlan_tag != RTE_BE16(0x0fff)))
+				continue;
+			if (!rule_vlan && eth->mask.vlan_tag)
+				continue;
 			for (j = 0; j != sizeof(mac->addr_bytes); ++j)
 				if (eth->val.dst_mac[j] != mac->addr_bytes[j] ||
 				    eth->mask.dst_mac[j] != UINT8_C(0xff) ||
@@ -1108,6 +1170,11 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 		}
 		flow->select = 1;
 		flow->mac = 1;
+	}
+	if (!err && rule_vlan) {
+		vlan = mlx4_flow_internal_next_vlan(priv, vlan + 1);
+		if (vlan < 4096)
+			goto next_vlan;
 	}
 	/* Clear selection and clean up stale MAC flow rules. */
 	flow = LIST_FIRST(&priv->flows);
