@@ -100,10 +100,10 @@ struct priv {
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
-	unsigned int started:1; /* Device started, flows enabled. */
-	unsigned int vf:1; /* This is a VF device. */
-	unsigned int intr_alarm:1; /* An interrupt alarm is scheduled. */
-	unsigned int isolated:1; /* Toggle isolated mode. */
+	uint32_t started:1; /* Device started, flows enabled. */
+	uint32_t vf:1; /* This is a VF device. */
+	uint32_t intr_alarm:1; /* An interrupt alarm is scheduled. */
+	uint32_t isolated:1; /* Toggle isolated mode. */
 	struct rte_intr_handle intr_handle; /* Port interrupt handle. */
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	LIST_HEAD(mlx4_flows, rte_flow) flows;
