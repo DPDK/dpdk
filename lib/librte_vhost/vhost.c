@@ -55,6 +55,7 @@
 
 struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 
+/* Called with iotlb_lock read-locked */
 uint64_t
 __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		    uint64_t iova, uint64_t size, uint8_t perm)
@@ -71,8 +72,19 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		return vva;
 
 	if (!vhost_user_iotlb_pending_miss(vq, iova + tmp_size, perm)) {
+		/*
+		 * iotlb_lock is read-locked for a full burst,
+		 * but it only protects the iotlb cache.
+		 * In case of IOTLB miss, we might block on the socket,
+		 * which could cause a deadlock with QEMU if an IOTLB update
+		 * is being handled. We can safely unlock here to avoid it.
+		 */
+		vhost_user_iotlb_rd_unlock(vq);
+
 		vhost_user_iotlb_pending_insert(vq, iova + tmp_size, perm);
 		vhost_user_iotlb_miss(dev, iova + tmp_size, perm);
+
+		vhost_user_iotlb_rd_lock(vq);
 	}
 
 	return 0;
