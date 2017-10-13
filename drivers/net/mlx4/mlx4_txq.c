@@ -261,7 +261,9 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	*txq = (struct txq){
 		.priv = priv,
-		.stats.idx = idx,
+		.stats = {
+			.idx = idx,
+		},
 		.socket = socket,
 		.elts_n = desc,
 		.elts = elts,

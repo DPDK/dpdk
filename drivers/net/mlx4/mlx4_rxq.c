@@ -469,7 +469,9 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			 dev->data->dev_conf.rxmode.hw_ip_checksum),
 		.csum_l2tun = (priv->hw_csum_l2tun &&
 			       dev->data->dev_conf.rxmode.hw_ip_checksum),
-		.stats.idx = idx,
+		.stats = {
+			.idx = idx,
+		},
 		.socket = socket,
 	};
 	/* Enable scattered packets support for this queue if necessary. */
