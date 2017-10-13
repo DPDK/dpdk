@@ -44,6 +44,7 @@ Programmer's Guide
     mbuf_lib
     poll_mode_drv
     rte_flow
+    traffic_metering_and_policing
     traffic_management
     cryptodev_lib
     link_bonding_poll_mode_drv_lib
