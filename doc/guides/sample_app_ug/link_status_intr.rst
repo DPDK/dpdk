@@ -219,7 +219,7 @@ An example callback function that has been written as indicated below.
 .. code-block:: c
 
     static void
-    lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
+    lsi_event_callback(uint16_t port_id, enum rte_eth_event_type type, void *param)
     {
         struct rte_eth_link link;
 
@@ -405,7 +405,7 @@ If the table is full, the whole packets table is transmitted using the lsi_send_
     /* Send the packet on an output interface */
 
     static int
-    lsi_send_packet(struct rte_mbuf *m, uint8_t port)
+    lsi_send_packet(struct rte_mbuf *m, uint16_t port)
     {
         unsigned lcore_id, len;
         struct lcore_queue_conf *qconf;

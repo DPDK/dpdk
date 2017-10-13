@@ -181,11 +181,11 @@ responsible for checking if it needs to scale down frequency at run time by chec
         struct lcore_conf *qconf;
         int ret;
         unsigned nb_ports;
-        uint16_t queueid;
+        uint16_t queueid, portid;
         unsigned lcore_id;
         uint64_t hz;
         uint32_t n_tx_queue, nb_lcores;
-        uint8_t portid, nb_rx_queue, queue, socketid;
+        uint8_t nb_rx_queue, queue, socketid;
 
         // ...
 

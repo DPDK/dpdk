@@ -1418,7 +1418,7 @@ supported and can be created.
 .. code-block:: c
 
    int
-   rte_flow_validate(uint8_t port_id,
+   rte_flow_validate(uint16_t port_id,
                      const struct rte_flow_attr *attr,
                      const struct rte_flow_item pattern[],
                      const struct rte_flow_action actions[],
@@ -1473,7 +1473,7 @@ actually created and a handle returned.
 .. code-block:: c
 
    struct rte_flow *
-   rte_flow_create(uint8_t port_id,
+   rte_flow_create(uint16_t port_id,
                    const struct rte_flow_attr *attr,
                    const struct rte_flow_item pattern[],
                    const struct rte_flow_action *actions[],
@@ -1505,7 +1505,7 @@ performing this step before releasing resources.
 .. code-block:: c
 
    int
-   rte_flow_destroy(uint8_t port_id,
+   rte_flow_destroy(uint16_t port_id,
                     struct rte_flow *flow,
                     struct rte_flow_error *error);
 
@@ -1536,7 +1536,7 @@ port. They are released as with successive calls to ``rte_flow_destroy()``.
 .. code-block:: c
 
    int
-   rte_flow_flush(uint8_t port_id,
+   rte_flow_flush(uint16_t port_id,
                   struct rte_flow_error *error);
 
 In the unlikely event of failure, handles are still considered destroyed and
@@ -1564,7 +1564,7 @@ definition.
 .. code-block:: c
 
    int
-   rte_flow_query(uint8_t port_id,
+   rte_flow_query(uint16_t port_id,
                   struct rte_flow *flow,
                   enum rte_flow_action_type action,
                   void *data,
@@ -1637,7 +1637,7 @@ port and may return errors such as ``ENOTSUP`` ("not supported"):
 .. code-block:: c
 
    int
-   rte_flow_isolate(uint8_t port_id, int set, struct rte_flow_error *error);
+   rte_flow_isolate(uint16_t port_id, int set, struct rte_flow_error *error);
 
 Arguments:
 

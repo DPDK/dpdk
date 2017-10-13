@@ -160,7 +160,7 @@ Forwarding application is shown below:
 .. code-block:: c
 
     static inline int
-    port_init(uint8_t port, struct rte_mempool *mbuf_pool)
+    port_init(uint16_t port, struct rte_mempool *mbuf_pool)
     {
         struct rte_eth_conf port_conf = port_conf_default;
         const uint16_t rx_rings = 1, tx_rings = 1;
@@ -241,8 +241,8 @@ looks like the following:
     static __attribute__((noreturn)) void
     lcore_main(void)
     {
-        const uint8_t nb_ports = rte_eth_dev_count();
-        uint8_t port;
+        const uint16_t nb_ports = rte_eth_dev_count();
+        uint16_t port;
 
         /*
          * Check that the port is on the same NUMA node as the polling thread

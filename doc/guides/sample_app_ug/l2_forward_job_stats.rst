@@ -558,7 +558,7 @@ If the table is full, the whole packets table is transmitted using the l2fwd_sen
     /* Send the packet on an output interface */
 
     static int
-    l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
+    l2fwd_send_packet(struct rte_mbuf *m, uint16_t port)
     {
         unsigned lcore_id, len;
         struct lcore_queue_conf *qconf;
@@ -593,7 +593,7 @@ however it improves performance:
         unsigned lcore_id;
         struct lcore_queue_conf *qconf;
         struct mbuf_table *m_table;
-        uint8_t portid;
+        uint16_t portid;
 
         lcore_id = rte_lcore_id();
         qconf = &lcore_queue_conf[lcore_id];

@@ -562,7 +562,7 @@ NIC Reset API
 
 .. code-block:: c
 
-    int rte_eth_dev_reset(uint8_t port_id);
+    int rte_eth_dev_reset(uint16_t port_id);
 
 Sometimes a port has to be reset passively. For example when a PF is
 reset, all its VFs should also be reset by the application to make them

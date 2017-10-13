@@ -268,7 +268,7 @@ The actual packet transmission is done in the mcast_send_pkt() function:
 
 .. code-block:: c
 
-    static inline void mcast_send_pkt(struct rte_mbuf *pkt, struct ether_addr *dest_addr, struct lcore_queue_conf *qconf, uint8_t port)
+    static inline void mcast_send_pkt(struct rte_mbuf *pkt, struct ether_addr *dest_addr, struct lcore_queue_conf *qconf, uint16_t port)
     {
         struct ether_hdr *ethdr;
         uint16_t len;

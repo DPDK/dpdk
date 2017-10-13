@@ -257,7 +257,7 @@ PTP IEEE1588 L2 functionality.
 .. code-block:: c
 
     void
-    parse_ptp_frames(uint8_t portid, struct rte_mbuf *m) {
+    parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
         struct ptp_header *ptp_hdr;
         struct ether_hdr *eth_hdr;
         uint16_t eth_type;
