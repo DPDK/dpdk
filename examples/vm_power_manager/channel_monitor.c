@@ -169,8 +169,9 @@ update_policy(struct channel_packet *pkt)
 {
 
 	unsigned int updated = 0;
+	int i;
 
-	for (int i = 0; i < MAX_VMS; i++) {
+	for (i = 0; i < MAX_VMS; i++) {
 		if (strcmp(policies[i].pkt.vm_name, pkt->vm_name) == 0) {
 			policies[i].pkt = *pkt;
 			get_pcpu_to_control(&policies[i]);
@@ -184,7 +185,7 @@ update_policy(struct channel_packet *pkt)
 		}
 	}
 	if (!updated) {
-		for (int i = 0; i < MAX_VMS; i++) {
+		for (i = 0; i < MAX_VMS; i++) {
 			if (policies[i].enabled == 0) {
 				policies[i].pkt = *pkt;
 				get_pcpu_to_control(&policies[i]);
@@ -543,7 +544,9 @@ run_channel_monitor(void)
 		}
 		rte_delay_us(time_period_s*1000000);
 		if (policy_is_set) {
-			for (int j = 0; j < MAX_VMS; j++) {
+			int j;
+
+			for (j = 0; j < MAX_VMS; j++) {
 				if (policies[j].enabled == 1)
 					apply_policy(&policies[j]);
 			}
