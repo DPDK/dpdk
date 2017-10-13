@@ -551,6 +551,13 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	if (eal_plugins_init() < 0) {
+		rte_eal_init_alert("Cannot init plugins\n");
+		rte_errno = EINVAL;
+		rte_atomic32_clear(&run_once);
+		return -1;
+	}
+
 	if (eal_option_device_parse()) {
 		rte_errno = ENODEV;
 		rte_atomic32_clear(&run_once);
@@ -634,9 +641,6 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	eal_check_mem_on_local_socket();
-
-	if (eal_plugins_init() < 0)
-		rte_eal_init_alert("Cannot init plugins\n");
 
 	eal_thread_init_master(rte_config.master_lcore);
 
