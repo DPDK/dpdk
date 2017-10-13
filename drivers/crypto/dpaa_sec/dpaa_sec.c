@@ -890,6 +890,13 @@ dpaa_sec_enqueue_op(struct rte_crypto_op *op,  struct dpaa_sec_qp *qp)
 			return ret;
 	}
 
+	/*
+	 * Segmented buffer is not supported.
+	 */
+	if (!rte_pktmbuf_is_contiguous(op->sym->m_src)) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return -ENOTSUP;
+	}
 	if (is_auth_only(ses)) {
 		cf = build_auth_only(op, ses);
 	} else if (is_cipher_only(ses)) {
