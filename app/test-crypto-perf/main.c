@@ -424,6 +424,7 @@ main(int argc, char **argv)
 	struct rte_mempool *session_pool_socket[RTE_MAX_NUMA_NODES] = { 0 };
 
 	int nb_cryptodevs = 0;
+	uint16_t total_nb_qps = 0;
 	uint8_t cdev_id, i;
 	uint8_t enabled_cdevs[RTE_CRYPTO_MAX_DEVS] = { 0 };
 
@@ -509,7 +510,7 @@ main(int argc, char **argv)
 	if (!opts.silent)
 		show_test_vector(t_vec);
 
-	uint16_t total_nb_qps = nb_cryptodevs * opts.nb_qps;
+	total_nb_qps = nb_cryptodevs * opts.nb_qps;
 
 	i = 0;
 	uint8_t qp_id = 0, cdev_index = 0;
