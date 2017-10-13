@@ -306,8 +306,8 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 				sizeof(struct esp_hdr) + sa->iv_len);
 		memmove(new_ip, ip4, ip_hdr_len);
 		esp = (struct esp_hdr *)(new_ip + ip_hdr_len);
+		ip4 = (struct ip *)new_ip;
 		if (likely(ip4->ip_v == IPVERSION)) {
-			ip4 = (struct ip *)new_ip;
 			ip4->ip_p = IPPROTO_ESP;
 			ip4->ip_len = htons(rte_pktmbuf_data_len(m));
 		} else {
