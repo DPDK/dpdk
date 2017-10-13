@@ -196,3 +196,21 @@ DPDK_17.11 {
 	rte_flow_error_set;
 
 } DPDK_17.08;
+
+EXPERIMENTAL {
+	global:
+
+	rte_mtr_capabilities_get;
+	rte_mtr_create;
+	rte_mtr_destroy;
+	rte_mtr_meter_disable;
+	rte_mtr_meter_dscp_table_update;
+	rte_mtr_meter_enable;
+	rte_mtr_meter_profile_add;
+	rte_mtr_meter_profile_delete;
+	rte_mtr_meter_profile_update;
+	rte_mtr_policer_actions_update;
+	rte_mtr_stats_read;
+	rte_mtr_stats_update;
+
+} DPDK_17.11;

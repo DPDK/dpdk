@@ -46,6 +46,7 @@ LIBABIVER := 8
 SRCS-y += rte_ethdev.c
 SRCS-y += rte_flow.c
 SRCS-y += rte_tm.c
+SRCS-y += rte_mtr.c
 SRCS-y += ethdev_profile.c
 
 #
@@ -60,5 +61,7 @@ SYMLINK-y-include += rte_flow.h
 SYMLINK-y-include += rte_flow_driver.h
 SYMLINK-y-include += rte_tm.h
 SYMLINK-y-include += rte_tm_driver.h
+SYMLINK-y-include += rte_mtr.h
+SYMLINK-y-include += rte_mtr_driver.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

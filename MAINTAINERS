@@ -256,6 +256,10 @@ M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 T: git://dpdk.org/next/dpdk-next-tm
 F: lib/librte_ether/rte_tm*
 
+Traffic Metering and Policing API - EXPERIMENTAL
+M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
+F: lib/librte_ether/rte_mtr*
+
 Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
 F: lib/librte_cryptodev/
