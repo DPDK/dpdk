@@ -2610,7 +2610,7 @@ i40e_queue_region_set_flowtype(struct i40e_pf *pf,
 
 	if (i == info->queue_region_number) {
 		PMD_DRV_LOG(ERR, "that region id has not been set before");
-		ret = -ENODATA;
+		ret = -EINVAL;
 		return ret;
 	}
 	region_index = i;
@@ -2726,7 +2726,7 @@ i40e_queue_region_set_user_priority(struct i40e_pf *pf,
 
 	if (i == info->queue_region_number) {
 		PMD_DRV_LOG(ERR, "that region id has not been set before");
-		ret = -ENODATA;
+		ret = -EINVAL;
 		return ret;
 	}
 
