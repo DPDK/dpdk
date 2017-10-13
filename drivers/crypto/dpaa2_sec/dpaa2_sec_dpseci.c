@@ -548,7 +548,13 @@ build_sec_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	int ret = -1;
 
 	PMD_INIT_FUNC_TRACE();
-
+	/*
+	 * Segmented buffer is not supported.
+	 */
+	if (!rte_pktmbuf_is_contiguous(op->sym->m_src)) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return -ENOTSUP;
+	}
 	switch (sess->ctxt_type) {
 	case DPAA2_SEC_CIPHER:
 		ret = build_cipher_fd(sess, op, fd, bpid);
