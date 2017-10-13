@@ -15,6 +15,21 @@
 #define HAVE_PTE_MASK_PAGE_IOMAP
 #endif
 
+#ifndef PCI_MSIX_ENTRY_SIZE
+#define PCI_MSIX_ENTRY_SIZE            16
+#define PCI_MSIX_ENTRY_VECTOR_CTRL     12
+#define PCI_MSIX_ENTRY_CTRL_MASKBIT    1
+#endif
+
+/*
+ * for kernels < 2.6.38 and backported patch that moves MSI-X entry definition
+ * to pci_regs.h Those kernels has PCI_MSIX_ENTRY_SIZE defined but not
+ * PCI_MSIX_ENTRY_CTRL_MASKBIT
+ */
+#ifndef PCI_MSIX_ENTRY_CTRL_MASKBIT
+#define PCI_MSIX_ENTRY_CTRL_MASKBIT    1
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34) && \
 	(!(defined(RHEL_RELEASE_CODE) && \
 	 RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(5, 9)))
@@ -110,10 +125,12 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 #define HAVE_ALLOC_IRQ_VECTORS 1
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
+#define HAVE_MSI_LIST_IN_GENERIC_DEVICE 1
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 #define HAVE_PCI_MSI_MASK_IRQ 1
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)
-#define HAVE_IRQ_DATA 1
-#endif
+

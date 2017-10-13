@@ -90,6 +90,74 @@ static const struct attribute_group dev_attr_grp = {
 	.attrs = dev_attrs,
 };
 
+#ifndef HAVE_PCI_MSI_MASK_IRQ
+/*
+ * It masks the msix on/off of generating MSI-X messages.
+ */
+static void
+igbuio_msix_mask_irq(struct msi_desc *desc, s32 state)
+{
+	u32 mask_bits = desc->masked;
+	unsigned int offset = desc->msi_attrib.entry_nr * PCI_MSIX_ENTRY_SIZE +
+						PCI_MSIX_ENTRY_VECTOR_CTRL;
+
+	if (state != 0)
+		mask_bits &= ~PCI_MSIX_ENTRY_CTRL_MASKBIT;
+	else
+		mask_bits |= PCI_MSIX_ENTRY_CTRL_MASKBIT;
+
+	if (mask_bits != desc->masked) {
+		writel(mask_bits, desc->mask_base + offset);
+		readl(desc->mask_base);
+		desc->masked = mask_bits;
+	}
+}
+
+/*
+ * It masks the msi on/off of generating MSI messages.
+ */
+static void
+igbuio_msi_mask_irq(struct pci_dev *pdev, struct msi_desc *desc, int32_t state)
+{
+	u32 mask_bits = desc->masked;
+	u32 offset = desc->irq - pdev->irq;
+	u32 mask = 1 << offset;
+	u32 flag = !!state << offset;
+
+	if (!desc->msi_attrib.maskbit)
+		return;
+
+	mask_bits &= ~mask;
+	mask_bits |= flag;
+
+	if (mask_bits != desc->masked) {
+		pci_write_config_dword(pdev, desc->mask_pos, mask_bits);
+		desc->masked = mask_bits;
+	}
+}
+
+static void
+igbuio_mask_irq(struct pci_dev *pdev, enum rte_intr_mode mode, s32 irq_state)
+{
+	struct msi_desc *desc;
+	struct list_head *msi_list;
+
+#ifdef HAVE_MSI_LIST_IN_GENERIC_DEVICE
+	msi_list = &pdev->dev.msi_list;
+#else
+	msi_list = &pdev->msi_list;
+#endif
+
+	if (mode == RTE_INTR_MODE_MSIX) {
+		list_for_each_entry(desc, msi_list, list)
+			igbuio_msix_mask_irq(desc, irq_state);
+	} else if (mode == RTE_INTR_MODE_MSI) {
+		list_for_each_entry(desc, msi_list, list)
+			igbuio_msi_mask_irq(pdev, desc, irq_state);
+	}
+}
+#endif
+
 /**
  * This is the irqcontrol callback to be registered to uio_info.
  * It can be used to disable/enable interrupt from user space processes.
@@ -109,10 +177,8 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 	struct rte_uio_pci_dev *udev = info->priv;
 	struct pci_dev *pdev = udev->pdev;
 
-#ifdef HAVE_IRQ_DATA
+#ifdef HAVE_PCI_MSI_MASK_IRQ
 	struct irq_data *irq = irq_get_irq_data(udev->info.irq);
-#else
-	unsigned int irq = udev->info.irq;
 #endif
 
 	pci_cfg_access_lock(pdev);
@@ -124,10 +190,7 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 		else
 			pci_msi_mask_irq(irq);
 #else
-		if (irq_state == 1)
-			unmask_msi_irq(irq);
-		else
-			mask_msi_irq(irq);
+		igbuio_mask_irq(pdev, udev->mode, irq_state);
 #endif
 	}
 
