@@ -44,6 +44,12 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_EFD) := rte_efd.c
 
+# if the compiler supports AVX2, add efd x86 file
+ifneq ($(findstring CC_SUPPORT_AVX2,$(MACHINE_CFLAGS)),)
+SRCS-$(CONFIG_RTE_ARCH_X86) += rte_efd_x86.c
+CFLAGS_rte_efd_x86.o += -mavx2
+endif
+
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_EFD)-include := rte_efd.h
 
