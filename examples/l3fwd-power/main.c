@@ -752,8 +752,6 @@ power_idle_heuristic(uint32_t zero_rx_packet_count)
 	*/
 	else
 		return SUSPEND_THRESHOLD;
-
-	return 0;
 }
 
 static inline enum freq_scale_hint_t
