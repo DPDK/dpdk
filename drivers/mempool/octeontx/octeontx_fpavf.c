@@ -523,8 +523,7 @@ octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
 	int res;
 
 	RTE_SET_USED(node_id);
-	FPAVF_STATIC_ASSERTION(sizeof(struct rte_mbuf) <=
-				OCTEONTX_FPAVF_BUF_OFFSET);
+	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) > OCTEONTX_FPAVF_BUF_OFFSET);
 
 	if (unlikely(*va_start == NULL))
 		goto error_end;

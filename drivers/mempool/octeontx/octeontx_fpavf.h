@@ -92,8 +92,6 @@
 #define FPA_MAX_OBJ_SIZE		(128 * 1024)
 #define OCTEONTX_FPAVF_BUF_OFFSET	128
 
-#define FPAVF_STATIC_ASSERTION(s) _Static_assert(s, #s)
-
 /*
  * In Cavium OcteonTX SoC, all accesses to the device registers are
  * implicitly strongly ordered. So, the relaxed version of IO operation is
