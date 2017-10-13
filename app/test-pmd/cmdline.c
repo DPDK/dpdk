@@ -99,6 +99,7 @@
 #include <rte_pmd_bnxt.h>
 #endif
 #include "testpmd.h"
+#include "cmdline_mtr.h"
 
 static struct cmdline *testpmd_cl;
 
@@ -234,6 +235,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port (port_id) pctype mapping\n"
 			"    Get flow ptype to pctype mapping on a port\n\n"
 
+			"show port meter stats (port_id) (meter_id) (clear)\n"
+			"    Get meter stats on a port\n\n"
 		);
 	}
 
@@ -674,6 +677,33 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set port (port_id) queue-region flush (on|off)\n"
 			"    flush all queue region related configuration\n\n"
+
+			"add port meter profile srtcm_rfc2697 (port_id) (profile_id) (cir) (cbs) (ebs) (color_aware)\n"
+			"    meter profile add - srtcm rfc 2697\n\n"
+
+			"add port meter profile trtcm_rfc2698 (port_id) (profile_id) (cir) (pir) (cbs) (pbs)\n"
+			"    meter profile add - trtcm rfc 2698\n\n"
+
+			"add port meter profile trtcm_rfc4115 (port_id) (profile_id) (cir) (eir) (cbs) (ebs)\n"
+			"    meter profile add - trtcm rfc 4115\n\n"
+
+			"del port meter profile (port_id) (profile_id)\n"
+			"    meter profile delete\n\n"
+
+			"set port meter (port_id) (mtr_id) (profile_id) (g_action) (y_action) (r_action) (stats_mask) (shared)\n"
+			"    meter create\n\n"
+
+			"del port meter (port_id) (mtr_id)\n"
+			"    meter delete\n\n"
+
+			"set port meter profile (port_id) (mtr_id) (profile_id)\n"
+			"    meter update meter profile\n\n"
+
+			"set port meter policer action (port_id) (mtr_id) (color) (action)\n"
+			"    meter update policer action\n\n"
+
+			"set port meter stats mask (port_id) (mtr_id) (stats_mask)\n"
+			"    meter update stats\n\n"
 
 			"show port (port_id) queue-region\n"
 			"    show all queue region related configuration info\n\n"
@@ -15540,6 +15570,15 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_hash_input_set,
 	(cmdline_parse_inst_t *)&cmd_set_fdir_input_set,
 	(cmdline_parse_inst_t *)&cmd_flow,
+	(cmdline_parse_inst_t *)&cmd_add_port_meter_profile_srtcm,
+	(cmdline_parse_inst_t *)&cmd_add_port_meter_profile_trtcm,
+	(cmdline_parse_inst_t *)&cmd_del_port_meter_profile,
+	(cmdline_parse_inst_t *)&cmd_set_port_meter,
+	(cmdline_parse_inst_t *)&cmd_del_port_meter,
+	(cmdline_parse_inst_t *)&cmd_set_port_meter_profile,
+	(cmdline_parse_inst_t *)&cmd_set_port_meter_policer_action,
+	(cmdline_parse_inst_t *)&cmd_set_port_meter_stats_mask,
+	(cmdline_parse_inst_t *)&cmd_show_port_meter_stats,
 	(cmdline_parse_inst_t *)&cmd_mcast_addr,
 	(cmdline_parse_inst_t *)&cmd_config_l2_tunnel_eth_type_all,
 	(cmdline_parse_inst_t *)&cmd_config_l2_tunnel_eth_type_specific,

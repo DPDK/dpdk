@@ -48,6 +48,7 @@ SRCS-y := testpmd.c
 SRCS-y += parameters.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_flow.c
+SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_mtr.c
 SRCS-y += config.c
 SRCS-y += iofwd.c
 SRCS-y += macfwd.c

@@ -198,6 +198,8 @@ enum index {
 	ACTION_VF,
 	ACTION_VF_ORIGINAL,
 	ACTION_VF_ID,
+	ACTION_METER,
+	ACTION_METER_ID,
 };
 
 /** Size of pattern[] field in struct rte_flow_item_raw. */
@@ -614,6 +616,7 @@ static const enum index next_action[] = {
 	ACTION_RSS,
 	ACTION_PF,
 	ACTION_VF,
+	ACTION_METER,
 	ZERO,
 };
 
@@ -644,6 +647,12 @@ static const enum index action_rss[] = {
 static const enum index action_vf[] = {
 	ACTION_VF_ORIGINAL,
 	ACTION_VF_ID,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_meter[] = {
+	ACTION_METER_ID,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -1604,6 +1613,21 @@ static const struct token token_list[] = {
 		.help = "VF ID to redirect packets to",
 		.next = NEXT(action_vf, NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_vf, id)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_METER] = {
+		.name = "meter",
+		.help = "meter the directed packets at given id",
+		.priv = PRIV_ACTION(METER,
+				    sizeof(struct rte_flow_action_meter)),
+		.next = NEXT(action_meter),
+		.call = parse_vc,
+	},
+	[ACTION_METER_ID] = {
+		.name = "mtr_id",
+		.help = "meter id to use",
+		.next = NEXT(action_meter, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_meter, mtr_id)),
 		.call = parse_vc_conf,
 	},
 };
