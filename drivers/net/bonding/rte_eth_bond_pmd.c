@@ -538,7 +538,7 @@ ipv4_addr_to_dot(uint32_t be_ipv4_addr, char *buf, uint8_t buf_size)
 #define MAX_CLIENTS_NUMBER	128
 uint8_t active_clients;
 struct client_stats_t {
-	uint8_t port;
+	uint16_t port;
 	uint32_t ipv4_addr;
 	uint32_t ipv4_rx_packets;
 	uint32_t ipv4_tx_packets;
@@ -546,7 +546,7 @@ struct client_stats_t {
 struct client_stats_t client_stats[MAX_CLIENTS_NUMBER];
 
 static void
-update_client_stats(uint32_t addr, uint8_t port, uint32_t *TXorRXindicator)
+update_client_stats(uint32_t addr, uint16_t port, uint32_t *TXorRXindicator)
 {
 	int i = 0;
 
@@ -604,7 +604,7 @@ update_client_stats(uint32_t addr, uint8_t port, uint32_t *TXorRXindicator)
 
 static void
 mode6_debug(const char __attribute__((unused)) *info, struct ether_hdr *eth_h,
-		uint8_t port, uint32_t __attribute__((unused)) *burstnumber)
+		uint16_t port, uint32_t __attribute__((unused)) *burstnumber)
 {
 	struct ipv4_hdr *ipv4_h;
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
@@ -2059,7 +2059,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 
 	RTE_LOG(INFO, EAL, "Closing bonded device %s\n", dev->device->name);
 	while (internals->slave_count != skipped) {
-		uint8_t port_id = internals->slaves[skipped].port_id;
+		uint16_t port_id = internals->slaves[skipped].port_id;
 
 		rte_eth_dev_stop(port_id);
 
