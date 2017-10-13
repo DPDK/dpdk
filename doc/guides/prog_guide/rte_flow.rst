@@ -1371,6 +1371,29 @@ rule or if packets are not addressed to a VF in the first place.
    | ``vf``       | VF ID to redirect packets to   |
    +--------------+--------------------------------+
 
+Action: ``METER``
+^^^^^^^^^^^^^^^^^
+
+Applies a stage of metering and policing.
+
+The metering and policing (MTR) object has to be first created using the
+rte_mtr_create() API function. The ID of the MTR object is specified as
+action parameter. More than one flow can use the same MTR object through
+the meter action. The MTR object can be further updated or queried using
+the rte_mtr* API.
+
+- Non-terminating by default.
+
+.. _table_rte_flow_action_meter:
+
+.. table:: METER
+
+   +--------------+---------------+
+   | Field        | Value         |
+   +==============+===============+
+   | ``mtr_id``   | MTR object ID |
+   +--------------+---------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 
