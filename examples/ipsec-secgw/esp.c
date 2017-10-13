@@ -211,7 +211,8 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 			/* XXX No option headers supported */
 			memmove(ip6, ip, sizeof(struct ip6_hdr));
 			ip6->ip6_nxt = *nexthdr;
-			ip6->ip6_plen = htons(rte_pktmbuf_data_len(m));
+			ip6->ip6_plen = htons(rte_pktmbuf_data_len(m) -
+					      sizeof(struct ip6_hdr));
 		}
 	} else
 		ipip_inbound(m, sizeof(struct esp_hdr) + sa->iv_len);
@@ -313,7 +314,8 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		} else {
 			ip6 = (struct ip6_hdr *)new_ip;
 			ip6->ip6_nxt = IPPROTO_ESP;
-			ip6->ip6_plen = htons(rte_pktmbuf_data_len(m));
+			ip6->ip6_plen = htons(rte_pktmbuf_data_len(m) -
+					      sizeof(struct ip6_hdr));
 		}
 	}
 

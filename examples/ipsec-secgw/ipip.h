@@ -72,7 +72,8 @@ ipip_outbound(struct rte_mbuf *m, uint32_t offset, uint32_t is_ipv6,
 
 		/* Per RFC4301 5.1.2.1 */
 		outip6->ip6_flow = htonl(IP6_VERSION << 28 | ds_ecn << 20);
-		outip6->ip6_plen = htons(rte_pktmbuf_data_len(m));
+		outip6->ip6_plen = htons(rte_pktmbuf_data_len(m) -
+					 sizeof(struct ip6_hdr));
 
 		outip6->ip6_nxt = IPPROTO_ESP;
 		outip6->ip6_hops = IPDEFTTL;
