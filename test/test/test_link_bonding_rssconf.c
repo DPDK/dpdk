@@ -75,7 +75,7 @@
 #define INVALID_BONDING_MODE    (-1)
 
 struct slave_conf {
-	uint8_t port_id;
+	uint16_t port_id;
 	struct rte_eth_dev_info dev_info;
 
 	struct rte_eth_rss_conf rss_conf;
@@ -159,7 +159,8 @@ static struct rte_eth_conf rss_pmd_conf = {
 		RTE_DIM(test_params.slave_ports))
 
 static int
-configure_ethdev(uint8_t port_id, struct rte_eth_conf *eth_conf, uint8_t start)
+configure_ethdev(uint16_t port_id, struct rte_eth_conf *eth_conf,
+		 uint8_t start)
 {
 	int rxq, txq;
 
@@ -243,7 +244,7 @@ bond_slaves(void)
  * Set all RETA values in port_id to value
  */
 static int
-reta_set(uint8_t port_id, uint8_t value, int reta_size)
+reta_set(uint16_t port_id, uint8_t value, int reta_size)
 {
 	struct rte_eth_rss_reta_entry64 reta_conf[512/RTE_RETA_GROUP_SIZE];
 	int i, j;

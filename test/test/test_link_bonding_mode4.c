@@ -102,7 +102,7 @@ static const struct ether_addr slow_protocol_mac_addr = {
 struct slave_conf {
 	struct rte_ring *rx_queue;
 	struct rte_ring *tx_queue;
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t bonded : 1;
 
 	uint8_t lacp_parnter_state;
@@ -235,7 +235,7 @@ free_pkts(struct rte_mbuf **pkts, uint16_t count)
 }
 
 static int
-configure_ethdev(uint8_t port_id, uint8_t start)
+configure_ethdev(uint16_t port_id, uint8_t start)
 {
 	TEST_ASSERT(rte_eth_dev_configure(port_id, 1, 1, &default_pmd_conf) == 0,
 		"Failed to configure device %u", port_id);

@@ -226,7 +226,7 @@ static void free_virtualpmd_tx_queue(void);
 
 
 static int
-configure_ethdev(uint8_t port_id, uint8_t start, uint8_t en_isr)
+configure_ethdev(uint16_t port_id, uint8_t start, uint8_t en_isr)
 {
 	int q_id;
 
