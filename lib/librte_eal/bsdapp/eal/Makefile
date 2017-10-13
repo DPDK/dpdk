@@ -94,6 +94,24 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_cpuflags.c
 SRCS-$(CONFIG_RTE_ARCH_X86) += rte_spinlock.c
 SRCS-y += rte_cycles.c
 
+# for run-time dispatch of memcpy
+SRCS-$(CONFIG_RTE_ARCH_X86) += rte_memcpy.c
+SRCS-$(CONFIG_RTE_ARCH_X86) += rte_memcpy_sse.c
+
+# if the compiler supports AVX512, add avx512 file
+ifneq ($(findstring CC_SUPPORT_AVX512F,$(MACHINE_CFLAGS)),)
+SRCS-$(CONFIG_RTE_ARCH_X86) += rte_memcpy_avx512f.c
+CFLAGS_rte_memcpy_avx512f.o += -mavx512f
+CFLAGS_rte_memcpy_avx512f.o += -DRTE_MACHINE_CPUFLAG_AVX512F
+endif
+
+# if the compiler supports AVX2, add avx2 file
+ifneq ($(findstring CC_SUPPORT_AVX2,$(MACHINE_CFLAGS)),)
+SRCS-$(CONFIG_RTE_ARCH_X86) += rte_memcpy_avx2.c
+CFLAGS_rte_memcpy_avx2.o += -mavx2
+CFLAGS_rte_memcpy_avx2.o += -DRTE_MACHINE_CPUFLAG_AVX2
+endif
+
 CFLAGS_eal_common_cpuflags.o := $(CPUFLAGS_LIST)
 
 CFLAGS_eal.o := -D_GNU_SOURCE

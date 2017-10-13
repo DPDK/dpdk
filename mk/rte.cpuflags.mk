@@ -134,6 +134,20 @@ endif
 
 MACHINE_CFLAGS += $(addprefix -DRTE_MACHINE_CPUFLAG_,$(CPUFLAGS))
 
+# Check if the compiler suppoerts AVX512
+CC_SUPPORT_AVX512F := $(shell $(CC) -mavx512f -dM -E - < /dev/null 2>&1 | grep -q AVX512 && echo 1)
+ifeq ($(CC_SUPPORT_AVX512F),1)
+ifeq ($(CONFIG_RTE_ENABLE_AVX512),y)
+MACHINE_CFLAGS += -DCC_SUPPORT_AVX512F
+endif
+endif
+
+# Check if the compiler supports AVX2
+CC_SUPPORT_AVX2 := $(shell $(CC) -mavx2 -dM -E - < /dev/null 2>&1 | grep -q AVX2 && echo 1)
+ifeq ($(CC_SUPPORT_AVX2),1)
+MACHINE_CFLAGS += -DCC_SUPPORT_AVX2
+endif
+
 # To strip whitespace
 comma:= ,
 empty:=

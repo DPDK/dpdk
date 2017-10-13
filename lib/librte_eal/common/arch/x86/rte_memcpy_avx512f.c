@@ -31,43 +31,14 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_MEMCPY_X86_64_H_
-#define _RTE_MEMCPY_X86_64_H_
+#include <rte_memcpy.h>
 
-#include <rte_memcpy_internal.h>
-
-#ifdef __cplusplus
-extern "C" {
+#ifndef RTE_MACHINE_CPUFLAG_AVX512F
+#error RTE_MACHINE_CPUFLAG_AVX512F not defined
 #endif
 
-#define RTE_X86_MEMCPY_THRESH 128
-
-extern void *
-(*rte_memcpy_ptr)(void *dst, const void *src, size_t n);
-
-/**
- * Different implementations of memcpy.
- */
-extern void*
-rte_memcpy_avx512f(void *dst, const void *src, size_t n);
-
-extern void *
-rte_memcpy_avx2(void *dst, const void *src, size_t n);
-
-extern void *
-rte_memcpy_sse(void *dst, const void *src, size_t n);
-
-static inline void *
-rte_memcpy(void *dst, const void *src, size_t n)
+void *
+rte_memcpy_avx512f(void *dst, const void *src, size_t n)
 {
-	if (n <= RTE_X86_MEMCPY_THRESH)
-		return rte_memcpy_internal(dst, src, n);
-	else
-		return (*rte_memcpy_ptr)(dst, src, n);
+	return rte_memcpy_internal(dst, src, n);
 }
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _RTE_MEMCPY_X86_64_H_ */

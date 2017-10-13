@@ -31,43 +31,29 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_MEMCPY_X86_64_H_
-#define _RTE_MEMCPY_X86_64_H_
+#include <rte_memcpy.h>
+#include <rte_cpuflags.h>
+#include <rte_log.h>
 
-#include <rte_memcpy_internal.h>
+void *(*rte_memcpy_ptr)(void *dst, const void *src, size_t n) = NULL;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define RTE_X86_MEMCPY_THRESH 128
-
-extern void *
-(*rte_memcpy_ptr)(void *dst, const void *src, size_t n);
-
-/**
- * Different implementations of memcpy.
- */
-extern void*
-rte_memcpy_avx512f(void *dst, const void *src, size_t n);
-
-extern void *
-rte_memcpy_avx2(void *dst, const void *src, size_t n);
-
-extern void *
-rte_memcpy_sse(void *dst, const void *src, size_t n);
-
-static inline void *
-rte_memcpy(void *dst, const void *src, size_t n)
+static void __attribute__((constructor))
+rte_memcpy_init(void)
 {
-	if (n <= RTE_X86_MEMCPY_THRESH)
-		return rte_memcpy_internal(dst, src, n);
-	else
-		return (*rte_memcpy_ptr)(dst, src, n);
-}
-
-#ifdef __cplusplus
-}
+#ifdef CC_SUPPORT_AVX512F
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F)) {
+		rte_memcpy_ptr = rte_memcpy_avx512f;
+		RTE_LOG(DEBUG, EAL, "AVX512 memcpy is using!\n");
+		return;
+	}
 #endif
-
-#endif /* _RTE_MEMCPY_X86_64_H_ */
+#ifdef CC_SUPPORT_AVX2
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2)) {
+		rte_memcpy_ptr = rte_memcpy_avx2;
+		RTE_LOG(DEBUG, EAL, "AVX2 memcpy is using!\n");
+		return;
+	}
+#endif
+	rte_memcpy_ptr = rte_memcpy_sse;
+	RTE_LOG(DEBUG, EAL, "Default SSE/AVX memcpy is using!\n");
+}
