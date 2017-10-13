@@ -122,13 +122,14 @@ igbuio_msi_mask_irq(struct pci_dev *pdev, struct msi_desc *desc, int32_t state)
 	u32 mask_bits = desc->masked;
 	u32 offset = desc->irq - pdev->irq;
 	u32 mask = 1 << offset;
-	u32 flag = !!state << offset;
 
 	if (!desc->msi_attrib.maskbit)
 		return;
 
-	mask_bits &= ~mask;
-	mask_bits |= flag;
+	if (state != 0)
+		mask_bits &= ~mask;
+	else
+		mask_bits |= mask;
 
 	if (mask_bits != desc->masked) {
 		pci_write_config_dword(pdev, desc->mask_pos, mask_bits);
