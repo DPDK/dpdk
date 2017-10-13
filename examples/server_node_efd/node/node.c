@@ -77,7 +77,7 @@ static uint8_t node_id;
 #define MBQ_CAPACITY 32
 
 /* maps input ports to output ports for packets */
-static uint8_t output_ports[RTE_MAX_ETHPORTS];
+static uint16_t output_ports[RTE_MAX_ETHPORTS];
 
 /* buffers up a set of packet that are ready to send */
 struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
@@ -154,7 +154,7 @@ static void
 flush_tx_error_callback(struct rte_mbuf **unsent, uint16_t count,
 		void *userdata) {
 	int i;
-	uint8_t port_id = (uintptr_t)userdata;
+	uint16_t port_id = (uintptr_t)userdata;
 
 	tx_stats->tx_drop[port_id] += count;
 
@@ -165,7 +165,7 @@ flush_tx_error_callback(struct rte_mbuf **unsent, uint16_t count,
 }
 
 static void
-configure_tx_buffer(uint8_t port_id, uint16_t size)
+configure_tx_buffer(uint16_t port_id, uint16_t size)
 {
 	int ret;
 
@@ -174,16 +174,17 @@ configure_tx_buffer(uint8_t port_id, uint16_t size)
 			RTE_ETH_TX_BUFFER_SIZE(size), 0,
 			rte_eth_dev_socket_id(port_id));
 	if (tx_buffer[port_id] == NULL)
-		rte_exit(EXIT_FAILURE, "Cannot allocate buffer for tx "
-				"on port %u\n", (unsigned int) port_id);
+		rte_exit(EXIT_FAILURE,
+			"Cannot allocate buffer for tx on port %u\n", port_id);
 
 	rte_eth_tx_buffer_init(tx_buffer[port_id], size);
 
 	ret = rte_eth_tx_buffer_set_err_callback(tx_buffer[port_id],
 			flush_tx_error_callback, (void *)(intptr_t)port_id);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Cannot set error callback for "
-			"tx buffer on port %u\n", (unsigned int) port_id);
+		rte_exit(EXIT_FAILURE,
+			"Cannot set error callback for tx buffer on port %u\n",
+			port_id);
 }
 
 /*
@@ -282,8 +283,8 @@ static inline void
 transmit_packet(struct rte_mbuf *buf)
 {
 	int sent;
-	const uint8_t in_port = buf->port;
-	const uint8_t out_port = output_ports[in_port];
+	const uint16_t in_port = buf->port;
+	const uint16_t out_port = output_ports[in_port];
 	struct rte_eth_dev_tx_buffer *buffer = tx_buffer[out_port];
 
 	sent = rte_eth_tx_buffer(out_port, node_id, buffer, buf);
@@ -381,7 +382,7 @@ main(int argc, char *argv[])
 
 	for (;;) {
 		uint16_t  rx_pkts = PKT_READ_SIZE;
-		uint8_t port;
+		uint16_t port;
 
 		/*
 		 * Try dequeuing max possible packets first, if that fails,

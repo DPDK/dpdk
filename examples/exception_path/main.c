@@ -444,7 +444,7 @@ parse_args(int argc, char **argv)
 
 /* Initialise a single port on an Ethernet device */
 static void
-init_port(uint8_t port)
+init_port(uint16_t port)
 {
 	int ret;
 	uint16_t nb_rxd = NB_RXD;

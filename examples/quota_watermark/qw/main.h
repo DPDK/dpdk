@@ -45,7 +45,7 @@ extern int *quota;
 extern unsigned int *low_watermark;
 extern unsigned int *high_watermark;
 
-extern uint8_t port_pairs[RTE_MAX_ETHPORTS];
+extern uint16_t port_pairs[RTE_MAX_ETHPORTS];
 
 extern struct rte_ring *rings[RTE_MAX_LCORE][RTE_MAX_ETHPORTS];
 extern struct rte_mempool *mbuf_pool;

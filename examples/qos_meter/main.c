@@ -116,8 +116,8 @@ static struct rte_eth_conf port_conf = {
 #define PKT_TX_BURST_MAX                32
 #define TIME_TX_DRAIN                   200000ULL
 
-static uint8_t port_rx;
-static uint8_t port_tx;
+static uint16_t port_rx;
+static uint16_t port_tx;
 static struct rte_mbuf *pkts_rx[PKT_RX_BURST_MAX];
 struct rte_eth_dev_tx_buffer *tx_buffer;
 

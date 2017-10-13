@@ -2037,7 +2037,7 @@ static void
 lthread_tx_per_ring(void *dummy)
 {
 	int nb_rx;
-	uint8_t portid;
+	uint16_t portid;
 	struct rte_ring *ring;
 	struct thread_tx_conf *tx_conf;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -2544,7 +2544,7 @@ check_port_config(const unsigned nb_ports)
 }
 
 static uint8_t
-get_port_n_rx_queues(const uint8_t port)
+get_port_n_rx_queues(const uint16_t port)
 {
 	int queue = -1;
 	uint16_t i;
@@ -3441,7 +3441,7 @@ init_mem(unsigned nb_mbuf)
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */

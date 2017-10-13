@@ -73,7 +73,7 @@ static struct rte_eth_fc_conf fc_conf = {
 };
 
 
-void configure_eth_port(uint8_t port_id)
+void configure_eth_port(uint16_t port_id)
 {
 	int ret;
 	uint16_t nb_rxd = RX_DESC_PER_QUEUE;
@@ -135,7 +135,7 @@ init_dpdk(void)
 		rte_exit(EXIT_FAILURE, "Not enough ethernet port available\n");
 }
 
-void init_ring(int lcore_id, uint8_t port_id)
+void init_ring(int lcore_id, uint16_t port_id)
 {
 	struct rte_ring *ring;
 	char ring_name[RTE_RING_NAMESIZE];

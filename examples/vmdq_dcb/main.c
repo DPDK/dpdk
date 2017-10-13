@@ -87,7 +87,7 @@
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask;
-static uint8_t ports[RTE_MAX_ETHPORTS];
+static uint16_t ports[RTE_MAX_ETHPORTS];
 static unsigned num_ports;
 
 /* number of pools (if user does not specify any, 32 by default */
@@ -220,7 +220,7 @@ get_eth_conf(struct rte_eth_conf *eth_conf)
  * coming from the mbuf_pool passed as parameter
  */
 static inline int
-port_init(uint8_t port, struct rte_mempool *mbuf_pool)
+port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_conf port_conf = {0};
@@ -646,7 +646,7 @@ main(int argc, char *argv[])
 	uintptr_t i;
 	int ret;
 	unsigned nb_ports, valid_num_ports;
-	uint8_t portid;
+	uint16_t portid;
 
 	signal(SIGHUP, sighup_handler);
 

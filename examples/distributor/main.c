@@ -212,7 +212,7 @@ lcore_rx(struct lcore_params *p)
 {
 	const uint16_t nb_ports = rte_eth_dev_count();
 	const int socket_id = rte_socket_id();
-	uint8_t port;
+	uint16_t port;
 	struct rte_mbuf *bufs[BURST_SIZE*2];
 
 	for (port = 0; port < nb_ports; port++) {

@@ -451,7 +451,7 @@ power_timer_cb(__attribute__((unused)) struct rte_timer *tim,
 
 /* Enqueue a single packet, and send burst if queue is filled */
 static inline int
-send_single_packet(struct rte_mbuf *m, uint8_t port)
+send_single_packet(struct rte_mbuf *m, uint16_t port)
 {
 	uint32_t lcore_id;
 	struct lcore_conf *qconf;
@@ -659,7 +659,7 @@ add_cb_parse_ptype(uint16_t portid, uint16_t queueid)
 }
 
 static inline void
-l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid,
+l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 				struct lcore_conf *qconf)
 {
 	struct ether_hdr *eth_hdr;
@@ -1115,7 +1115,7 @@ check_port_config(const unsigned nb_ports)
 }
 
 static uint8_t
-get_port_n_rx_queues(const uint8_t port)
+get_port_n_rx_queues(const uint16_t port)
 {
 	int queue = -1;
 	uint16_t i;
@@ -1599,7 +1599,7 @@ check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 	}
 }
 
-static int check_ptype(uint8_t portid)
+static int check_ptype(uint16_t portid)
 {
 	int i, ret;
 	int ptype_l3_ipv4 = 0;
@@ -1650,7 +1650,7 @@ main(int argc, char **argv)
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
 	int ret;
-	unsigned nb_ports;
+	uint16_t nb_ports;
 	uint16_t queueid;
 	unsigned lcore_id;
 	uint64_t hz;
@@ -1877,7 +1877,7 @@ main(int argc, char **argv)
 		rte_spinlock_init(&(locks[portid]));
 	}
 
-	check_all_ports_link_status((uint8_t)nb_ports, enabled_port_mask);
+	check_all_ports_link_status(nb_ports, enabled_port_mask);
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);

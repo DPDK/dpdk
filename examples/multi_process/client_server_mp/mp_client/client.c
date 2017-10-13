@@ -216,8 +216,8 @@ static void
 handle_packet(struct rte_mbuf *buf)
 {
 	int sent;
-	const uint8_t in_port = buf->port;
-	const uint8_t out_port = output_ports[in_port];
+	const uint16_t in_port = buf->port;
+	const uint16_t out_port = output_ports[in_port];
 	struct rte_eth_dev_tx_buffer *buffer = tx_buffer[out_port];
 
 	sent = rte_eth_tx_buffer(out_port, client_id, buffer, buf);
@@ -276,7 +276,7 @@ main(int argc, char *argv[])
 
 	for (;;) {
 		uint16_t i, rx_pkts;
-		uint8_t port;
+		uint16_t port;
 
 		rx_pkts = rte_ring_dequeue_burst(rx_ring, pkts,
 				PKT_READ_SIZE, NULL);

@@ -69,13 +69,13 @@ int *quota;
 unsigned int *low_watermark;
 unsigned int *high_watermark;
 
-uint8_t port_pairs[RTE_MAX_ETHPORTS];
+uint16_t port_pairs[RTE_MAX_ETHPORTS];
 
 struct rte_ring *rings[RTE_MAX_LCORE][RTE_MAX_ETHPORTS];
 struct rte_mempool *mbuf_pool;
 
 
-static void send_pause_frame(uint8_t port_id, uint16_t duration)
+static void send_pause_frame(uint16_t port_id, uint16_t duration)
 {
 	struct rte_mbuf *mbuf;
 	struct ether_fc_frame *pause_frame;

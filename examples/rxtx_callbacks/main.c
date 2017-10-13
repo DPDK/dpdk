@@ -159,7 +159,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 static  __attribute__((noreturn)) void
 lcore_main(void)
 {
-	uint8_t port;
+	uint16_t port;
 
 	for (port = 0; port < nb_ports; port++)
 		if (rte_eth_dev_socket_id(port) > 0 &&

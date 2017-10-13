@@ -274,8 +274,8 @@ em_mask_key(void *key, xmm_t mask)
 #error No vector engine (SSE, NEON, ALTIVEC) available, check your toolchain
 #endif
 
-static inline uint8_t
-em_get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid, void *lookup_struct)
+static inline uint16_t
+em_get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, void *lookup_struct)
 {
 	int ret = 0;
 	union ipv4_5tuple_host key;
@@ -292,11 +292,11 @@ em_get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid, void *lookup_struct)
 
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
-	return (uint8_t)((ret < 0) ? portid : ipv4_l3fwd_out_if[ret]);
+	return (ret < 0) ? portid : ipv4_l3fwd_out_if[ret];
 }
 
-static inline uint8_t
-em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
+static inline uint16_t
+em_get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid, void *lookup_struct)
 {
 	int ret = 0;
 	union ipv6_5tuple_host key;
@@ -325,7 +325,7 @@ em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv6_l3fwd_lookup_struct, (const void *)&key);
-	return (uint8_t)((ret < 0) ? portid : ipv6_l3fwd_out_if[ret]);
+	return (ret < 0) ? portid : ipv6_l3fwd_out_if[ret];
 }
 
 #if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
@@ -649,7 +649,8 @@ em_main_loop(__attribute__((unused)) void *dummy)
 	unsigned lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, nb_rx;
-	uint8_t portid, queueid;
+	uint8_t queueid;
+	uint16_t portid;
 	struct lcore_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 		US_PER_S * BURST_TX_DRAIN_US;
@@ -671,7 +672,7 @@ em_main_loop(__attribute__((unused)) void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD,
-			" -- lcoreid=%u portid=%hhu rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
 			lcore_id, portid, queueid);
 	}
 

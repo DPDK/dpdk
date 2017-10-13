@@ -129,7 +129,7 @@ const uint16_t tenant_id_conf[] = {
  * coming from the mbuf_pool passed as parameter
  */
 int
-vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
+vxlan_port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
 	int retval;
 	uint16_t q;
@@ -202,7 +202,7 @@ vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	rte_eth_macaddr_get(port, &ports_eth_addr[port]);
 	RTE_LOG(INFO, PORT, "Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
-			(unsigned)port,
+			port,
 			ports_eth_addr[port].addr_bytes[0],
 			ports_eth_addr[port].addr_bytes[1],
 			ports_eth_addr[port].addr_bytes[2],
@@ -414,7 +414,7 @@ vxlan_unlink(struct vhost_dev *vdev)
 
 /* Transmit packets after encapsulating */
 int
-vxlan_tx_pkts(uint8_t port_id, uint16_t queue_id,
+vxlan_tx_pkts(uint16_t port_id, uint16_t queue_id,
 		struct rte_mbuf **tx_pkts, uint16_t nb_pkts) {
 	int ret = 0;
 	uint16_t i;

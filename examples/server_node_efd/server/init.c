@@ -121,7 +121,7 @@ init_mbuf_pools(void)
  * - start the port and report its status to stdout
  */
 static int
-init_port(uint8_t port_num)
+init_port(uint16_t port_num)
 {
 	/* for port configuration all features are off by default */
 	const struct rte_eth_conf port_conf = {
@@ -136,7 +136,7 @@ init_port(uint8_t port_num)
 	uint16_t q;
 	int retval;
 
-	printf("Port %u init ... ", (unsigned int)port_num);
+	printf("Port %u init ... ", port_num);
 	fflush(stdout);
 
 	/*
@@ -255,11 +255,12 @@ populate_efd_table(void)
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	uint8_t count, all_ports_up, print_flag = 0;
+	uint16_t portid;
 	struct rte_eth_link link;
 
 	printf("\nChecking link status");
@@ -274,14 +275,15 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
-					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", info->id[portid],
-						(unsigned int)link.link_speed,
+					printf(
+					"Port%d Link Up. Speed %u Mbps - %s\n",
+						info->id[portid],
+						link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
 					printf("Port %d Link Down\n",
-						(uint8_t)info->id[portid]);
+						info->id[portid]);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */

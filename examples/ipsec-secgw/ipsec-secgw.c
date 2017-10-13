@@ -163,12 +163,12 @@ static uint32_t single_sa;
 static uint32_t single_sa_idx;
 
 struct lcore_rx_queue {
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t queue_id;
 } __rte_cache_aligned;
 
 struct lcore_params {
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t queue_id;
 	uint8_t lcore_id;
 } __rte_cache_aligned;
@@ -290,7 +290,7 @@ prepare_traffic(struct rte_mbuf **pkts, struct ipsec_traffic *t,
 }
 
 static inline void
-prepare_tx_pkt(struct rte_mbuf *pkt, uint8_t port)
+prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port)
 {
 	struct ip *ip;
 	struct ether_hdr *ethhdr;
@@ -320,7 +320,7 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint8_t port)
 }
 
 static inline void
-prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint8_t port)
+prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint16_t port)
 {
 	int32_t i;
 	const int32_t prefetch_offset = 2;
@@ -336,7 +336,7 @@ prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint8_t port)
 
 /* Send burst of packets on an output interface */
 static inline int32_t
-send_burst(struct lcore_conf *qconf, uint16_t n, uint8_t port)
+send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
 {
 	struct rte_mbuf **m_table;
 	int32_t ret;
@@ -359,7 +359,7 @@ send_burst(struct lcore_conf *qconf, uint16_t n, uint8_t port)
 
 /* Enqueue a single packet, and send burst if queue is filled */
 static inline int32_t
-send_single_packet(struct rte_mbuf *m, uint8_t port)
+send_single_packet(struct rte_mbuf *m, uint16_t port)
 {
 	uint32_t lcore_id;
 	uint16_t len;
@@ -646,7 +646,7 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 
 static inline void
 process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
-		uint8_t nb_pkts, uint8_t portid)
+		uint8_t nb_pkts, uint16_t portid)
 {
 	struct ipsec_traffic traffic;
 
@@ -691,7 +691,8 @@ main_loop(__attribute__((unused)) void *dummy)
 	uint32_t lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int32_t i, nb_rx;
-	uint8_t portid, queueid;
+	uint16_t portid;
+	uint8_t queueid;
 	struct lcore_conf *qconf;
 	int32_t socket_id;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1)
@@ -728,7 +729,7 @@ main_loop(__attribute__((unused)) void *dummy)
 		portid = rxql[i].port_id;
 		queueid = rxql[i].queue_id;
 		RTE_LOG(INFO, IPSEC,
-			" -- lcoreid=%u portid=%hhu rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -759,7 +760,8 @@ main_loop(__attribute__((unused)) void *dummy)
 static int32_t
 check_params(void)
 {
-	uint8_t lcore, portid, nb_ports;
+	uint8_t lcore;
+	uint16_t portid, nb_ports;
 	uint16_t i;
 	int32_t socket_id;
 
@@ -797,7 +799,7 @@ check_params(void)
 }
 
 static uint8_t
-get_port_nb_rx_queues(const uint8_t port)
+get_port_nb_rx_queues(const uint16_t port)
 {
 	int32_t queue = -1;
 	uint16_t i;
@@ -1055,11 +1057,12 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	uint16_t portid;
+	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 
 	printf("\nChecking link status");
@@ -1074,14 +1077,13 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
-					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", (uint8_t)portid,
-						(uint32_t)link.link_speed,
+					printf(
+					"Port%d Link Up - speed %u Mbps -%s\n",
+						portid, link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
-					printf("Port %d Link Down\n",
-						(uint8_t)portid);
+					printf("Port %d Link Down\n", portid);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
@@ -1322,7 +1324,7 @@ cryptodevs_init(void)
 }
 
 static void
-port_init(uint8_t portid)
+port_init(uint16_t portid)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
@@ -1438,8 +1440,9 @@ int32_t
 main(int32_t argc, char **argv)
 {
 	int32_t ret;
-	uint32_t lcore_id, nb_ports;
-	uint8_t portid, socket_id;
+	uint32_t lcore_id;
+	uint8_t socket_id;
+	uint16_t portid, nb_ports;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1522,7 +1525,7 @@ main(int32_t argc, char **argv)
 			rte_eth_promiscuous_enable(portid);
 	}
 
-	check_all_ports_link_status((uint8_t)nb_ports, enabled_port_mask);
+	check_all_ports_link_status(nb_ports, enabled_port_mask);
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);

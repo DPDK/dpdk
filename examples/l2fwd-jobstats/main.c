@@ -176,7 +176,7 @@ show_lcore_stats(unsigned lcore_id)
 	uint64_t busy, busy_min, busy_max;
 
 	/* Jobs statistics. */
-	const uint8_t port_cnt = qconf->n_rx_port;
+	const uint16_t port_cnt = qconf->n_rx_port;
 	uint64_t jobs_exec_cnt[port_cnt], jobs_period[port_cnt];
 	uint64_t jobs_exec[port_cnt], jobs_exec_min[port_cnt],
 				jobs_exec_max[port_cnt];
@@ -414,11 +414,11 @@ l2fwd_fwd_job(__rte_unused struct rte_timer *timer, void *arg)
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_mbuf *m;
 
-	const uint8_t port_idx = (uintptr_t) arg;
+	const uint16_t port_idx = (uintptr_t) arg;
 	const unsigned lcore_id = rte_lcore_id();
 	struct lcore_queue_conf *qconf = &lcore_queue_conf[lcore_id];
 	struct rte_jobstats *job = &qconf->port_fwd_jobs[port_idx];
-	const uint8_t portid = qconf->rx_port_list[port_idx];
+	const uint16_t portid = qconf->rx_port_list[port_idx];
 
 	uint8_t j;
 	uint16_t total_nb_rx;
@@ -428,7 +428,7 @@ l2fwd_fwd_job(__rte_unused struct rte_timer *timer, void *arg)
 	/* Call rx burst 2 times. This allow rte_jobstats logic to see if this
 	 * function must be called more frequently. */
 
-	total_nb_rx = rte_eth_rx_burst((uint8_t) portid, 0, pkts_burst,
+	total_nb_rx = rte_eth_rx_burst(portid, 0, pkts_burst,
 			MAX_PKT_BURST);
 
 	for (j = 0; j < total_nb_rx; j++) {
@@ -438,7 +438,7 @@ l2fwd_fwd_job(__rte_unused struct rte_timer *timer, void *arg)
 	}
 
 	if (total_nb_rx == MAX_PKT_BURST) {
-		const uint16_t nb_rx = rte_eth_rx_burst((uint8_t) portid, 0, pkts_burst,
+		const uint16_t nb_rx = rte_eth_rx_burst(portid, 0, pkts_burst,
 				MAX_PKT_BURST);
 
 		total_nb_rx += nb_rx;
@@ -464,7 +464,7 @@ l2fwd_flush_job(__rte_unused struct rte_timer *timer, __rte_unused void *arg)
 	uint64_t now;
 	unsigned lcore_id;
 	struct lcore_queue_conf *qconf;
-	uint8_t portid;
+	uint16_t portid;
 	unsigned i;
 	uint32_t sent;
 	struct rte_eth_dev_tx_buffer *buffer;
@@ -714,11 +714,12 @@ l2fwd_parse_args(int argc, char **argv)
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	uint16_t portid;
+	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 
 	printf("\nChecking link status");
@@ -733,14 +734,13 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
-					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", (uint8_t)portid,
-						(unsigned)link.link_speed,
+					printf(
+					"Port%d Link Up. Speed %u Mbps - %s\n",
+						portid, link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
-					printf("Port %d Link Down\n",
-						(uint8_t)portid);
+					printf("Port %d Link Down\n", portid);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */

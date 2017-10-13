@@ -79,7 +79,7 @@ extern "C" {
  *   - (0) if successful.
  *   - (-ENODEV) if *port_id* invalid.
  */
-int rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo);
+int rte_ethtool_get_drvinfo(uint16_t port_id, struct ethtool_drvinfo *drvinfo);
 
 /**
  * Retrieve the Ethernet device register length in bytes.
@@ -93,7 +93,7 @@ int rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo);
  *   - (-ENODEV) if *port_id* invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_get_regs_len(uint8_t port_id);
+int rte_ethtool_get_regs_len(uint16_t port_id);
 
 /**
  * Retrieve the Ethernet device register information according to
@@ -111,7 +111,7 @@ int rte_ethtool_get_regs_len(uint8_t port_id);
  *   - (-ENODEV) if *port_id* invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_get_regs(uint8_t port_id, struct ethtool_regs *regs,
+int rte_ethtool_get_regs(uint16_t port_id, struct ethtool_regs *regs,
 			    void *data);
 
 /**
@@ -127,7 +127,7 @@ int rte_ethtool_get_regs(uint8_t port_id, struct ethtool_regs *regs,
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_get_link(uint8_t port_id);
+int rte_ethtool_get_link(uint16_t port_id);
 
 /**
  * Retrieve the Ethernet device EEPROM size
@@ -141,7 +141,7 @@ int rte_ethtool_get_link(uint8_t port_id);
  *   - (-ENODEV) if *port_id* invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_get_eeprom_len(uint8_t port_id);
+int rte_ethtool_get_eeprom_len(uint16_t port_id);
 
 /**
  * Retrieve EEPROM content based upon eeprom range described in ethtool
@@ -159,7 +159,7 @@ int rte_ethtool_get_eeprom_len(uint8_t port_id);
  *   - (-ENODEV) if *port_id* invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_get_eeprom(uint8_t port_id, struct ethtool_eeprom *eeprom,
+int rte_ethtool_get_eeprom(uint16_t port_id, struct ethtool_eeprom *eeprom,
 			      void *words);
 
 /**
@@ -179,7 +179,7 @@ int rte_ethtool_get_eeprom(uint8_t port_id, struct ethtool_eeprom *eeprom,
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_set_eeprom(uint8_t port_id, struct ethtool_eeprom *eeprom,
+int rte_ethtool_set_eeprom(uint16_t port_id, struct ethtool_eeprom *eeprom,
 			      void *words);
 
 /**
@@ -199,7 +199,7 @@ int rte_ethtool_set_eeprom(uint8_t port_id, struct ethtool_eeprom *eeprom,
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_get_pauseparam(uint8_t port_id,
+int rte_ethtool_get_pauseparam(uint16_t port_id,
 				   struct ethtool_pauseparam *pause_param);
 
 /**
@@ -217,7 +217,7 @@ int rte_ethtool_get_pauseparam(uint8_t port_id,
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_set_pauseparam(uint8_t port_id,
+int rte_ethtool_set_pauseparam(uint16_t port_id,
 				   struct ethtool_pauseparam *param);
 
 /**
@@ -231,7 +231,7 @@ int rte_ethtool_set_pauseparam(uint8_t port_id,
  *   - (-ENODEV) if *port_id* invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_open(uint8_t port_id);
+int rte_ethtool_net_open(uint16_t port_id);
 
 /**
  * Stop the Ethernet device.
@@ -242,7 +242,7 @@ int rte_ethtool_net_open(uint8_t port_id);
  *   - (0) if successful.
  *   - (-ENODEV) if *port_id* invalid.
  */
-int rte_ethtool_net_stop(uint8_t port_id);
+int rte_ethtool_net_stop(uint16_t port_id);
 
 /**
  * Get the Ethernet device MAC address.
@@ -255,7 +255,7 @@ int rte_ethtool_net_stop(uint8_t port_id);
  *   - (0) if successful.
  *   - (-ENODEV) if *port_id* invalid.
  */
-int rte_ethtool_net_get_mac_addr(uint8_t port_id, struct ether_addr *addr);
+int rte_ethtool_net_get_mac_addr(uint16_t port_id, struct ether_addr *addr);
 
 /**
  * Setting the Ethernet device MAC address.
@@ -271,7 +271,7 @@ int rte_ethtool_net_get_mac_addr(uint8_t port_id, struct ether_addr *addr);
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_set_mac_addr(uint8_t port_id, struct ether_addr *addr);
+int rte_ethtool_net_set_mac_addr(uint16_t port_id, struct ether_addr *addr);
 
 /**
  * Validate if the provided MAC address is valid unicast address
@@ -287,7 +287,7 @@ int rte_ethtool_net_set_mac_addr(uint8_t port_id, struct ether_addr *addr);
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_validate_addr(uint8_t port_id, struct ether_addr *addr);
+int rte_ethtool_net_validate_addr(uint16_t port_id, struct ether_addr *addr);
 
 /**
  * Setting the Ethernet device maximum Tx unit.
@@ -303,7 +303,7 @@ int rte_ethtool_net_validate_addr(uint8_t port_id, struct ether_addr *addr);
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_change_mtu(uint8_t port_id, int mtu);
+int rte_ethtool_net_change_mtu(uint16_t port_id, int mtu);
 
 /**
  * Retrieve the Ethernet device traffic statistics
@@ -319,7 +319,7 @@ int rte_ethtool_net_change_mtu(uint8_t port_id, int mtu);
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_get_stats64(uint8_t port_id, struct rte_eth_stats *stats);
+int rte_ethtool_net_get_stats64(uint16_t port_id, struct rte_eth_stats *stats);
 
 /**
  * Update the Ethernet device VLAN filter with new vid
@@ -334,7 +334,7 @@ int rte_ethtool_net_get_stats64(uint8_t port_id, struct rte_eth_stats *stats);
  *   - (-ENODEV) if *port_id* invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_vlan_rx_add_vid(uint8_t port_id, uint16_t vid);
+int rte_ethtool_net_vlan_rx_add_vid(uint16_t port_id, uint16_t vid);
 
 /**
  * Remove VLAN id from Ethernet device.
@@ -349,7 +349,7 @@ int rte_ethtool_net_vlan_rx_add_vid(uint8_t port_id, uint16_t vid);
  *   - (-ENODEV) if *port_id* invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_vlan_rx_kill_vid(uint8_t port_id, uint16_t vid);
+int rte_ethtool_net_vlan_rx_kill_vid(uint16_t port_id, uint16_t vid);
 
 /**
  * Setting the Ethernet device rx mode.
@@ -362,7 +362,7 @@ int rte_ethtool_net_vlan_rx_kill_vid(uint8_t port_id, uint16_t vid);
  *   - (-ENODEV) if *port_id* invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_set_rx_mode(uint8_t port_id);
+int rte_ethtool_net_set_rx_mode(uint16_t port_id);
 
 /**
  * Getting ring parameters for Ethernet device.
@@ -380,7 +380,7 @@ int rte_ethtool_net_set_rx_mode(uint8_t port_id);
  *   Only the tx_pending and rx_pending fields of struct ethtool_ringparam
  *   are used, and the function only gets parameters for queue 0.
  */
-int rte_ethtool_get_ringparam(uint8_t port_id,
+int rte_ethtool_get_ringparam(uint16_t port_id,
 	struct ethtool_ringparam *ring_param);
 
 /**
@@ -399,7 +399,7 @@ int rte_ethtool_get_ringparam(uint8_t port_id,
  *   Only the tx_pending and rx_pending fields of struct ethtool_ringparam
  *   are used, and the function only sets parameters for queue 0.
  */
-int rte_ethtool_set_ringparam(uint8_t port_id,
+int rte_ethtool_set_ringparam(uint16_t port_id,
 	struct ethtool_ringparam *ring_param);
 
 

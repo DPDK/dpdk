@@ -98,7 +98,7 @@
 #define MBUF_HEADROOM_UINT32(mbuf) (*(uint32_t *)((uint8_t *)(mbuf) \
 		+ sizeof(struct rte_mbuf)))
 
-#define INVALID_PORT_ID 0xFF
+#define INVALID_PORT_ID 0xFFFF
 
 /* Size of buffers used for snprintfs. */
 #define MAX_PRINT_BUFF 6072
@@ -184,7 +184,7 @@ static uint32_t burst_rx_retry_num = BURST_RX_RETRIES;
 static char dev_basename[MAX_BASENAME_SZ] = "vhost-net";
 
 static unsigned lcore_ids[RTE_MAX_LCORE];
-uint8_t ports[RTE_MAX_ETHPORTS];
+uint16_t ports[RTE_MAX_ETHPORTS];
 
 static unsigned nb_ports; /**< The number of ports specified in command line */
 
@@ -1161,7 +1161,7 @@ main(int argc, char *argv[])
 	unsigned lcore_id, core_id = 0;
 	unsigned nb_ports, valid_nb_ports;
 	int ret;
-	uint8_t portid;
+	uint16_t portid;
 	uint16_t queue_id;
 	static pthread_t tid;
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
