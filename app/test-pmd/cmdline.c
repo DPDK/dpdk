@@ -1942,7 +1942,7 @@ cmdline_parse_inst_t cmd_config_rss_hash_key = {
 /* *** configure port rxq/txq start/stop *** */
 struct cmd_config_rxtx_queue {
 	cmdline_fixed_string_t port;
-	uint8_t portid;
+	portid_t portid;
 	cmdline_fixed_string_t rxtxq;
 	uint16_t qid;
 	cmdline_fixed_string_t opname;
@@ -2010,7 +2010,7 @@ cmd_config_rxtx_queue_parsed(void *parsed_result,
 cmdline_parse_token_string_t cmd_config_rxtx_queue_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_queue, port, "port");
 cmdline_parse_token_num_t cmd_config_rxtx_queue_portid =
-	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_queue, portid, UINT8);
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_queue, portid, UINT16);
 cmdline_parse_token_string_t cmd_config_rxtx_queue_rxtxq =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_queue, rxtxq, "rxq#txq");
 cmdline_parse_token_num_t cmd_config_rxtx_queue_qid =
@@ -5237,7 +5237,7 @@ struct cmd_set_bond_mac_addr_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t bonding;
 	cmdline_fixed_string_t mac_addr;
-	uint8_t port_num;
+	uint16_t port_num;
 	struct ether_addr address;
 };
 
@@ -5267,7 +5267,8 @@ cmdline_parse_token_string_t cmd_set_bond_mac_addr_mac =
 		TOKEN_STRING_INITIALIZER(struct cmd_set_bond_mac_addr_result, mac_addr,
 				"mac_addr");
 cmdline_parse_token_num_t cmd_set_bond_mac_addr_portnum =
-		TOKEN_NUM_INITIALIZER(struct cmd_set_bond_mac_addr_result, port_num, UINT8);
+		TOKEN_NUM_INITIALIZER(struct cmd_set_bond_mac_addr_result,
+				port_num, UINT16);
 cmdline_parse_token_etheraddr_t cmd_set_bond_mac_addr_addr =
 		TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_bond_mac_addr_result, address);
 
@@ -5291,7 +5292,7 @@ struct cmd_set_bond_mon_period_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t bonding;
 	cmdline_fixed_string_t mon_period;
-	uint8_t port_num;
+	uint16_t port_num;
 	uint32_t period_ms;
 };
 
@@ -5325,7 +5326,7 @@ cmdline_parse_token_string_t cmd_set_bond_mon_period_mon_period =
 				mon_period,	"mon_period");
 cmdline_parse_token_num_t cmd_set_bond_mon_period_portnum =
 		TOKEN_NUM_INITIALIZER(struct cmd_set_bond_mon_period_result,
-				port_num, UINT8);
+				port_num, UINT16);
 cmdline_parse_token_num_t cmd_set_bond_mon_period_period_ms =
 		TOKEN_NUM_INITIALIZER(struct cmd_set_bond_mon_period_result,
 				period_ms, UINT32);
@@ -5350,7 +5351,7 @@ struct cmd_set_bonding_agg_mode_policy_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t bonding;
 	cmdline_fixed_string_t agg_mode;
-	uint8_t port_num;
+	uint16_t port_num;
 	cmdline_fixed_string_t policy;
 };
 
@@ -5393,7 +5394,7 @@ cmdline_parse_token_string_t cmd_set_bonding_agg_mode_agg_mode =
 
 cmdline_parse_token_num_t cmd_set_bonding_agg_mode_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_agg_mode_policy_result,
-				port_num, UINT8);
+				port_num, UINT16);
 
 cmdline_parse_token_string_t cmd_set_bonding_agg_mode_policy_string =
 	TOKEN_STRING_INITIALIZER(
@@ -5607,7 +5608,7 @@ struct cmd_set_promisc_mode_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t promisc;
 	cmdline_fixed_string_t port_all; /* valid if "allports" argument == 1 */
-	uint8_t port_num;                /* valid if "allports" argument == 0 */
+	uint16_t port_num;               /* valid if "allports" argument == 0 */
 	cmdline_fixed_string_t mode;
 };
 
@@ -5687,7 +5688,7 @@ struct cmd_set_allmulti_mode_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t allmulti;
 	cmdline_fixed_string_t port_all; /* valid if "allports" argument == 1 */
-	uint8_t port_num;                /* valid if "allports" argument == 0 */
+	uint16_t port_num;               /* valid if "allports" argument == 0 */
 	cmdline_fixed_string_t mode;
 };
 
@@ -5731,7 +5732,7 @@ cmdline_parse_token_string_t cmd_setallmulti_portall =
 				 "all");
 cmdline_parse_token_num_t cmd_setallmulti_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_allmulti_mode_result, port_num,
-			      UINT8);
+			      UINT16);
 cmdline_parse_token_string_t cmd_setallmulti_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_allmulti_mode_result, mode,
 				 "on#off");
@@ -6497,7 +6498,7 @@ struct cmd_showport_result {
 	cmdline_fixed_string_t show;
 	cmdline_fixed_string_t port;
 	cmdline_fixed_string_t what;
-	uint8_t portnum;
+	uint16_t portnum;
 };
 
 static void cmd_showport_parsed(void *parsed_result,
@@ -6535,7 +6536,7 @@ cmdline_parse_token_string_t cmd_showport_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_result, what,
 				 "info#stats#xstats#fdir#stat_qmap#dcb_tc#cap");
 cmdline_parse_token_num_t cmd_showport_portnum =
-	TOKEN_NUM_INITIALIZER(struct cmd_showport_result, portnum, UINT8);
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_result, portnum, UINT16);
 
 cmdline_parse_inst_t cmd_showport = {
 	.f = cmd_showport_parsed,
@@ -6557,7 +6558,7 @@ struct cmd_showqueue_result {
 	cmdline_fixed_string_t show;
 	cmdline_fixed_string_t type;
 	cmdline_fixed_string_t what;
-	uint8_t portnum;
+	uint16_t portnum;
 	uint16_t queuenum;
 };
 
@@ -6581,7 +6582,7 @@ cmdline_parse_token_string_t cmd_showqueue_type =
 cmdline_parse_token_string_t cmd_showqueue_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showqueue_result, what, "info");
 cmdline_parse_token_num_t cmd_showqueue_portnum =
-	TOKEN_NUM_INITIALIZER(struct cmd_showqueue_result, portnum, UINT8);
+	TOKEN_NUM_INITIALIZER(struct cmd_showqueue_result, portnum, UINT16);
 cmdline_parse_token_num_t cmd_showqueue_queuenum =
 	TOKEN_NUM_INITIALIZER(struct cmd_showqueue_result, queuenum, UINT16);
 
@@ -6969,7 +6970,7 @@ cmdline_parse_inst_t cmd_quit = {
 struct cmd_mac_addr_result {
 	cmdline_fixed_string_t mac_addr_cmd;
 	cmdline_fixed_string_t what;
-	uint8_t port_num;
+	uint16_t port_num;
 	struct ether_addr address;
 };
 
@@ -7001,7 +7002,8 @@ cmdline_parse_token_string_t cmd_mac_addr_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_mac_addr_result, what,
 				"add#remove#set");
 cmdline_parse_token_num_t cmd_mac_addr_portnum =
-		TOKEN_NUM_INITIALIZER(struct cmd_mac_addr_result, port_num, UINT8);
+		TOKEN_NUM_INITIALIZER(struct cmd_mac_addr_result, port_num,
+					UINT16);
 cmdline_parse_token_etheraddr_t cmd_mac_addr_addr =
 		TOKEN_ETHERADDR_INITIALIZER(struct cmd_mac_addr_result, address);
 
@@ -7460,7 +7462,7 @@ struct cmd_vf_mac_addr_result {
 	cmdline_fixed_string_t mac_addr_cmd;
 	cmdline_fixed_string_t what;
 	cmdline_fixed_string_t port;
-	uint8_t port_num;
+	uint16_t port_num;
 	cmdline_fixed_string_t vf;
 	uint8_t vf_num;
 	struct ether_addr address;
@@ -7503,7 +7505,7 @@ cmdline_parse_token_string_t cmd_vf_mac_addr_port =
 				port,"port");
 cmdline_parse_token_num_t cmd_vf_mac_addr_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_vf_mac_addr_result,
-				port_num, UINT8);
+				port_num, UINT16);
 cmdline_parse_token_string_t cmd_vf_mac_addr_vf =
 	TOKEN_STRING_INITIALIZER(struct cmd_vf_mac_addr_result,
 				vf,"vf");
@@ -7629,7 +7631,7 @@ cmdline_parse_inst_t cmd_vf_rxvlan_filter = {
 struct cmd_queue_rate_limit_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t port;
-	uint8_t port_num;
+	uint16_t port_num;
 	cmdline_fixed_string_t queue;
 	uint8_t queue_num;
 	cmdline_fixed_string_t rate;
@@ -7661,7 +7663,7 @@ cmdline_parse_token_string_t cmd_queue_rate_limit_port =
 				port, "port");
 cmdline_parse_token_num_t cmd_queue_rate_limit_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_queue_rate_limit_result,
-				port_num, UINT8);
+				port_num, UINT16);
 cmdline_parse_token_string_t cmd_queue_rate_limit_queue =
 	TOKEN_STRING_INITIALIZER(struct cmd_queue_rate_limit_result,
 				queue, "queue");
@@ -7696,7 +7698,7 @@ cmdline_parse_inst_t cmd_queue_rate_limit = {
 struct cmd_vf_rate_limit_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t port;
-	uint8_t port_num;
+	uint16_t port_num;
 	cmdline_fixed_string_t vf;
 	uint8_t vf_num;
 	cmdline_fixed_string_t rate;
@@ -7731,7 +7733,7 @@ cmdline_parse_token_string_t cmd_vf_rate_limit_port =
 				port, "port");
 cmdline_parse_token_num_t cmd_vf_rate_limit_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
-				port_num, UINT8);
+				port_num, UINT16);
 cmdline_parse_token_string_t cmd_vf_rate_limit_vf =
 	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
 				vf, "vf");
@@ -11285,7 +11287,7 @@ cmdline_parse_inst_t cmd_set_fdir_input_set = {
 struct cmd_mcast_addr_result {
 	cmdline_fixed_string_t mcast_addr_cmd;
 	cmdline_fixed_string_t what;
-	uint8_t port_num;
+	uint16_t port_num;
 	struct ether_addr mc_addr;
 };
 
@@ -11315,7 +11317,7 @@ cmdline_parse_token_string_t cmd_mcast_addr_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_mcast_addr_result, what,
 				 "add#remove");
 cmdline_parse_token_num_t cmd_mcast_addr_portnum =
-	TOKEN_NUM_INITIALIZER(struct cmd_mcast_addr_result, port_num, UINT8);
+	TOKEN_NUM_INITIALIZER(struct cmd_mcast_addr_result, port_num, UINT16);
 cmdline_parse_token_etheraddr_t cmd_mcast_addr_addr =
 	TOKEN_ETHERADDR_INITIALIZER(struct cmd_mac_addr_result, address);
 

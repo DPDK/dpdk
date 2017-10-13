@@ -131,7 +131,7 @@ struct pdump_stats {
 
 struct pdump_tuples {
 	/* cli params */
-	uint8_t port;
+	uint16_t port;
 	char *device_id;
 	uint16_t queue;
 	char rx_dev[TX_STREAM_SIZE];
