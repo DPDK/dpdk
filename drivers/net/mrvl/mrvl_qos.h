@@ -94,7 +94,7 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
  * @returns 0 in case of success, negative value otherwise.
  */
 int
-mrvl_configure_rxqs(struct mrvl_priv *priv, uint8_t portid,
+mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 		    uint16_t max_queues);
 
 /**
