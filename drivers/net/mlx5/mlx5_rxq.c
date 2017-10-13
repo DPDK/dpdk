@@ -617,7 +617,7 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 		 * make cq_ci and rq_ci aligned.
 		 */
 		if (rxq_check_vec_support(rxq_data) < 0)
-			cqe_n *= 2;
+			attr.cq.ibv.cqe *= 2;
 	} else if (priv->cqe_comp && rxq_data->hw_timestamp) {
 		DEBUG("Rx CQE compression is disabled for HW timestamp");
 	}
