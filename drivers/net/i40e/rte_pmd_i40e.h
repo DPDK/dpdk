@@ -759,7 +759,7 @@ int rte_pmd_i40e_ptype_mapping_replace(uint16_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
  */
-int rte_pmd_i40e_add_vf_mac_addr(uint8_t port, uint16_t vf_id,
+int rte_pmd_i40e_add_vf_mac_addr(uint16_t port, uint16_t vf_id,
 				 struct ether_addr *mac_addr);
 
 #define RTE_PMD_I40E_PCTYPE_MAX		64
@@ -788,7 +788,7 @@ struct rte_pmd_i40e_flow_type_mapping {
  *	set other PCTYPEs maps to PCTYPE_INVALID.
  */
 int rte_pmd_i40e_flow_type_mapping_update(
-			uint8_t port,
+			uint16_t port,
 			struct rte_pmd_i40e_flow_type_mapping *mapping_items,
 			uint16_t count,
 			uint8_t exclusive);
@@ -805,7 +805,7 @@ int rte_pmd_i40e_flow_type_mapping_update(
  *    RTE_PMD_I40E_FLOW_TYPE_MAX items
  */
 int rte_pmd_i40e_flow_type_mapping_get(
-			uint8_t port,
+			uint16_t port,
 			struct rte_pmd_i40e_flow_type_mapping *mapping_items);
 
 /**
@@ -815,7 +815,7 @@ int rte_pmd_i40e_flow_type_mapping_get(
  * @param port
  *    pointer to port identifier of the device
  */
-int rte_pmd_i40e_flow_type_mapping_reset(uint8_t port);
+int rte_pmd_i40e_flow_type_mapping_reset(uint16_t port);
 
 /**
  * On the PF, find VF index based on VF MAC address

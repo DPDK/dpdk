@@ -11065,7 +11065,7 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 			       struct rte_pmd_i40e_proto_info *proto)
 {
 	struct rte_pmd_i40e_ptype_mapping *ptype_mapping;
-	uint8_t port_id = dev->data->port_id;
+	uint16_t port_id = dev->data->port_id;
 	uint32_t ptype_num;
 	struct rte_pmd_i40e_ptype_info *ptype;
 	uint32_t buff_size;
