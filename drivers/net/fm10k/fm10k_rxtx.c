@@ -198,7 +198,7 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 					q->alloc_thresh);
 
 		if (unlikely(ret != 0)) {
-			uint8_t port = q->port_id;
+			uint16_t port = q->port_id;
 			PMD_RX_LOG(ERR, "Failed to alloc mbuf");
 			/*
 			 * Need to restore next_dd if we cannot allocate new
@@ -356,7 +356,7 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 					q->alloc_thresh);
 
 		if (unlikely(ret != 0)) {
-			uint8_t port = q->port_id;
+			uint16_t port = q->port_id;
 			PMD_RX_LOG(ERR, "Failed to alloc mbuf");
 			/*
 			 * Need to restore next_dd if we cannot allocate new
