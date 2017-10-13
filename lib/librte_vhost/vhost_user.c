@@ -420,6 +420,7 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 
 	dev = numa_realloc(dev, vq_index);
 	vq = dev->virtqueue[vq_index];
+	addr = &vq->ring_addrs;
 
 	vq->avail = (struct vring_avail *)(uintptr_t)ring_addr_to_vva(dev,
 			vq, addr->avail_user_addr, sizeof(struct vring_avail));
