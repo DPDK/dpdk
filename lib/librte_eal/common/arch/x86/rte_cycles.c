@@ -70,6 +70,9 @@ rdmsr(int msr, uint64_t *val)
 
 	return ret;
 #else
+	RTE_SET_USED(msr);
+	RTE_SET_USED(val);
+
 	return -1;
 #endif
 }
