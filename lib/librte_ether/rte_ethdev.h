@@ -1499,6 +1499,9 @@ typedef int (*eth_filter_ctrl_t)(struct rte_eth_dev *dev,
 typedef int (*eth_tm_ops_get_t)(struct rte_eth_dev *dev, void *ops);
 /**< @internal Get Traffic Management (TM) operations on an Ethernet device */
 
+typedef int (*eth_mtr_ops_get_t)(struct rte_eth_dev *dev, void *ops);
+/**< @internal Get Trafffic Metering and Policing (MTR) operations */
+
 typedef int (*eth_get_dcb_info)(struct rte_eth_dev *dev,
 				 struct rte_eth_dcb_info *dcb_info);
 /**< @internal Get dcb information on an Ethernet device */
@@ -1627,6 +1630,10 @@ struct eth_dev_ops {
 
 	eth_tm_ops_get_t tm_ops_get;
 	/**< Get Traffic Management (TM) operations. */
+
+	eth_mtr_ops_get_t mtr_ops_get;
+	/**< Get Traffic Metering and Policing (MTR) operations. */
+
 	eth_pool_ops_supported_t pool_ops_supported;
 	/**< Test if a port supports specific mempool ops */
 };
