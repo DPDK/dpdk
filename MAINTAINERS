@@ -555,13 +555,18 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: doc/guides/cryptodevs/features/default.ini
 
-ARMv8 Crypto PMD
+ARMv8 Crypto
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: drivers/crypto/armv8/
 F: doc/guides/cryptodevs/armv8.rst
 F: doc/guides/cryptodevs/features/armv8.ini
 
-Intel AES-NI GCM PMD
+Crypto Scheduler
+M: Fan Zhang <roy.fan.zhang@intel.com>
+F: drivers/crypto/scheduler/
+F: doc/guides/cryptodevs/scheduler.rst
+
+Intel AES-NI GCM
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/aesni_gcm/
 F: doc/guides/cryptodevs/aesni_gcm.rst
@@ -581,6 +586,12 @@ F: drivers/crypto/qat/
 F: doc/guides/cryptodevs/qat.rst
 F: doc/guides/cryptodevs/features/qat.ini
 
+KASUMI
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+F: drivers/crypto/kasumi/
+F: doc/guides/cryptodevs/kasumi.rst
+F: doc/guides/cryptodevs/features/kasumi.ini
+
 Marvell Mrvl
 M: Jacek Siuda <jck@semihalf.com>
 M: Tomasz Duszynski <tdu@semihalf.com>
@@ -590,6 +601,12 @@ M: Jianbo Liu <jianbo.liu@arm.org>
 F: drivers/crypto/mrvl/
 F: doc/guides/cryptodevs/mrvl.rst
 F: doc/guides/cryptodevs/features/mrvl.ini
+
+Null Crypto
+M: Declan Doherty <declan.doherty@intel.com>
+F: drivers/crypto/null/
+F: doc/guides/cryptodevs/null.rst
+F: doc/guides/cryptodevs/features/null.ini
 
 NXP DPAA_SEC
 M: Akhil Goyal <akhil.goyal@nxp.com>
@@ -605,40 +622,23 @@ F: drivers/crypto/dpaa2_sec/
 F: doc/guides/cryptodevs/dpaa2_sec.rst
 F: doc/guides/cryptodevs/features/dpaa2_sec.ini
 
-SNOW 3G PMD
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-F: drivers/crypto/snow3g/
-F: doc/guides/cryptodevs/snow3g.rst
-F: doc/guides/cryptodevs/features/snow3g.ini
-
-KASUMI PMD
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-F: drivers/crypto/kasumi/
-F: doc/guides/cryptodevs/kasumi.rst
-F: doc/guides/cryptodevs/features/kasumi.ini
-
-ZUC PMD
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-F: drivers/crypto/zuc/
-F: doc/guides/cryptodevs/zuc.rst
-F: doc/guides/cryptodevs/features/zuc.ini
-
-OpenSSL PMD
+OpenSSL
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/openssl/
 F: doc/guides/cryptodevs/openssl.rst
 F: doc/guides/cryptodevs/features/openssl.ini
 
-Null Crypto PMD
-M: Declan Doherty <declan.doherty@intel.com>
-F: drivers/crypto/null/
-F: doc/guides/cryptodevs/null.rst
-F: doc/guides/cryptodevs/features/null.ini
+SNOW 3G
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+F: drivers/crypto/snow3g/
+F: doc/guides/cryptodevs/snow3g.rst
+F: doc/guides/cryptodevs/features/snow3g.ini
 
-Crypto Scheduler PMD
-M: Fan Zhang <roy.fan.zhang@intel.com>
-F: drivers/crypto/scheduler/
-F: doc/guides/cryptodevs/scheduler.rst
+ZUC
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+F: drivers/crypto/zuc/
+F: doc/guides/cryptodevs/zuc.rst
+F: doc/guides/cryptodevs/features/zuc.ini
 
 
 Eventdev Drivers
