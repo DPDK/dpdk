@@ -338,16 +338,16 @@ The libraries prepended with a plus sign were incremented in this version.
 .. code-block:: diff
 
      librte_acl.so.2
-     librte_bitratestats.so.2
+   + librte_bitratestats.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2
      librte_cryptodev.so.3
      librte_distributor.so.1
      librte_eal.so.5
-     librte_ethdev.so.8
-     librte_eventdev.so.3
+   + librte_ethdev.so.8
+   + librte_eventdev.so.3
      librte_gro.so.1
-     librte_gso.so.1
+   + librte_gso.so.1
      librte_hash.so.2
      librte_ip_frag.so.1
      librte_jobstats.so.1
@@ -360,15 +360,15 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_meter.so.1
      librte_metrics.so.1
      librte_net.so.1
-     librte_pdump.so.2
+   + librte_pdump.so.2
      librte_pipeline.so.3
-     librte_pmd_bnxt.so.2
-     librte_pmd_bond.so.2
-     librte_pmd_i40e.so.2
-     librte_pmd_ixgbe.so.2
+   + librte_pmd_bnxt.so.2
+   + librte_pmd_bond.so.2
+   + librte_pmd_i40e.so.2
+   + librte_pmd_ixgbe.so.2
      librte_pmd_ring.so.2
    + librte_pmd_softnic.so.1
-     librte_pmd_vhost.so.2
+   + librte_pmd_vhost.so.2
      librte_port.so.3
      librte_power.so.1
      librte_reorder.so.1
