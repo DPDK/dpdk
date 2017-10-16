@@ -698,10 +698,6 @@ void port_rss_hash_conf_show(portid_t port_id, char rss_info[],
 			     int show_rss_key);
 void port_rss_hash_key_update(portid_t port_id, char rss_type[],
 			      uint8_t *hash_key, uint hash_key_len);
-void get_syn_filter(portid_t port_id);
-void get_ethertype_filter(portid_t port_id, uint16_t index);
-void get_2tuple_filter(portid_t port_id, uint16_t index);
-void get_5tuple_filter(portid_t port_id, uint16_t index);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
 int tx_queue_id_is_invalid(queueid_t txq_id);
 void setup_gro(const char *onoff, portid_t port_id);
