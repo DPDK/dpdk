@@ -724,6 +724,33 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port (port_id) queue-region\n"
 			"    show all queue region related configuration info\n\n"
 
+			"add port tm node shaper profile (port_id) (shaper_profile_id)"
+			" (tb_rate) (tb_size) (packet_length_adjust)\n"
+			"	Add port tm node private shaper profile.\n\n"
+
+			"del port tm node shaper profile (port_id) (shaper_profile_id)\n"
+			"	Delete port tm node private shaper profile.\n\n"
+
+			"add port tm node shared shaper (port_id) (shared_shaper_id)"
+			" (shaper_profile_id)\n"
+			"	Add/update port tm node shared shaper.\n\n"
+
+			"del port tm node shared shaper (port_id) (shared_shaper_id)\n"
+			"	Delete port tm node shared shaper.\n\n"
+
+			"set port tm node shaper profile (port_id) (node_id)"
+			" (shaper_profile_id)\n"
+			"	Set port tm node shaper profile.\n\n"
+
+			"add port tm node wred profile (port_id) (wred_profile_id)"
+			" (color_g) (min_th_g) (max_th_g) (maxp_inv_g) (wq_log2_g)"
+			" (color_y) (min_th_y) (max_th_y) (maxp_inv_y) (wq_log2_y)"
+			" (color_r) (min_th_r) (max_th_r) (maxp_inv_r) (wq_log2_r)\n"
+			"	Add port tm node wred profile.\n\n"
+
+			"del port tm node wred profile (port_id) (wred_profile_id)\n"
+			"	Delete port tm node wred profile.\n\n"
+
 			, list_pkt_forwarding_modes()
 		);
 	}
@@ -15658,6 +15685,13 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_show_port_tm_node_cap,
 	(cmdline_parse_inst_t *)&cmd_show_port_tm_node_type,
 	(cmdline_parse_inst_t *)&cmd_show_port_tm_node_stats,
+	(cmdline_parse_inst_t *)&cmd_add_port_tm_node_shaper_profile,
+	(cmdline_parse_inst_t *)&cmd_del_port_tm_node_shaper_profile,
+	(cmdline_parse_inst_t *)&cmd_add_port_tm_node_shared_shaper,
+	(cmdline_parse_inst_t *)&cmd_del_port_tm_node_shared_shaper,
+	(cmdline_parse_inst_t *)&cmd_add_port_tm_node_wred_profile,
+	(cmdline_parse_inst_t *)&cmd_del_port_tm_node_wred_profile,
+	(cmdline_parse_inst_t *)&cmd_set_port_tm_node_shaper_profile,
 	NULL,
 };
 
