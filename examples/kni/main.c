@@ -805,8 +805,11 @@ kni_alloc(uint16_t port_id)
 
 			memset(&dev_info, 0, sizeof(dev_info));
 			rte_eth_dev_info_get(port_id, &dev_info);
-			conf.addr = dev_info.pci_dev->addr;
-			conf.id = dev_info.pci_dev->id;
+
+			if (dev_info.pci_dev) {
+				conf.addr = dev_info.pci_dev->addr;
+				conf.id = dev_info.pci_dev->id;
+			}
 
 			memset(&ops, 0, sizeof(ops));
 			ops.port_id = port_id;
