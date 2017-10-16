@@ -291,6 +291,13 @@ interrupt, Rx interrupts, and Tx interrupts. Config interrupt is used for
 notification of device configuration changes, especially link status (lsc).
 Interrupt mode is translated into Rx interrupts in the context of DPDK.
 
+.. Note::
+
+   Virtio PMD already has support for receiving lsc from qemu when the link
+   status changes, especially when vhost user disconnects. However, it fails
+   to do that if the VM is created by qemu 2.6.2 or below, since the
+   capability to detect vhost user disconnection is introduced in qemu 2.7.0.
+
 Prerequisites for Rx interrupts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
