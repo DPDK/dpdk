@@ -62,6 +62,5 @@ endif
 CFLAGS_octeontx_rxtx.o += -O3 -Ofast
 
 LDLIBS += -lrte_eventdev
-LDLIBS += -lrte_pmd_octeontx_ssovf
 
 include $(RTE_SDK)/mk/rte.lib.mk

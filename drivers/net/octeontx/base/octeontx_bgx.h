@@ -36,7 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <rte_pmd_octeontx_ssovf.h>
+#include <octeontx_mbox.h>
 
 #define OCTEONTX_BGX_COPROC	        6
 

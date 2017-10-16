@@ -38,7 +38,7 @@ DEPDIRS-skeleton = $(core-libs)
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV) += sw
 DEPDIRS-sw = $(core-libs) librte_kvargs librte_ring
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += octeontx
-DEPDIRS-octeontx = $(core-libs)
+DEPDIRS-octeontx = $(core-libs) librte_mempool_octeontx
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_EVENTDEV) += dpaa2
 DEPDIRS-dpaa2 = $(core-libs) librte_bus_fslmc
 

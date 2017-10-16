@@ -35,6 +35,7 @@
 #include <rte_branch_prediction.h>
 
 #include "ssovf_evdev.h"
+#include <octeontx_mbox.h>
 
 enum {
 	SSO_SYNC_ORDERED,

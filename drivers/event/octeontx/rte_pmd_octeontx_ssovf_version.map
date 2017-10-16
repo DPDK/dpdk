@@ -1,9 +1,3 @@
 DPDK_17.05 {
-	global:
-
-	octeontx_ssovf_info;
-	octeontx_ssovf_bar;
-	octeontx_ssovf_mbox_send;
-
 	local: *;
 };

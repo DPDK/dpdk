@@ -37,7 +37,7 @@
 #include <rte_eventdev_pmd_vdev.h>
 #include <rte_io.h>
 
-#include "rte_pmd_octeontx_ssovf.h"
+#include <octeontx_mbox.h>
 
 #define EVENTDEV_NAME_OCTEONTX_PMD event_octeontx
 
@@ -58,10 +58,6 @@
 	RTE_LOG(ERR, EVENTDEV, "[%s] %s() " fmt "\n", \
 		RTE_STR(EVENTDEV_NAME_OCTEONTX_PMD), __func__, ## args)
 
-#define PCI_VENDOR_ID_CAVIUM              0x177D
-#define PCI_DEVICE_ID_OCTEONTX_SSOGRP_VF  0xA04B
-#define PCI_DEVICE_ID_OCTEONTX_SSOWS_VF   0xA04D
-
 #define SSO_MAX_VHGRP                     (64)
 #define SSO_MAX_VHWS                      (32)
 
@@ -76,7 +72,6 @@
 #define SSO_VHGRP_XAQ_CNT                 (0x1B0ULL)
 #define SSO_VHGRP_AQ_CNT                  (0x1C0ULL)
 #define SSO_VHGRP_AQ_THR                  (0x1E0ULL)
-#define SSO_VHGRP_PF_MBOX(x)              (0x200ULL | ((x) << 3))
 
 /* BAR2 */
 #define SSO_VHGRP_OP_ADD_WORK0            (0x00ULL)
@@ -106,8 +101,6 @@
 #define SSOW_VHWS_OP_CLR_NSCHED           (0x10000ULL)
 #define SSOW_VHWS_OP_GET_WORK0            (0x80000ULL)
 #define SSOW_VHWS_OP_GET_WORK1            (0x80008ULL)
-
-#define SSOW_BAR4_LEN                     (64 * 1024)
 
 /* Mailbox message constants */
 #define SSO_COPROC                        0x2

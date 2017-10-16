@@ -35,7 +35,7 @@
 
 #include <stdint.h>
 
-#include <rte_pmd_octeontx_ssovf.h>
+#include <octeontx_mbox.h>
 
 #define OCTEONTX_PKI_COPROC                     5
 

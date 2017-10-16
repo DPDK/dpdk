@@ -36,7 +36,17 @@
 #include <rte_io.h>
 #include <rte_pci.h>
 
-#include "ssovf_evdev.h"
+#include "octeontx_mbox.h"
+#include "octeontx_pool_logs.h"
+
+#define PCI_VENDOR_ID_CAVIUM              0x177D
+#define PCI_DEVICE_ID_OCTEONTX_SSOGRP_VF  0xA04B
+#define PCI_DEVICE_ID_OCTEONTX_SSOWS_VF   0xA04D
+
+#define SSO_MAX_VHGRP                     (64)
+#define SSO_MAX_VHWS                      (32)
+
+#define SSO_VHGRP_AQ_THR                  (0x1E0ULL)
 
 struct ssovf_res {
 	uint16_t domain;
@@ -86,7 +96,7 @@ octeontx_ssovf_info(struct octeontx_ssovf_info *info)
 		if (sdev.grp[i].vfid != i ||
 			sdev.grp[i].bar0 == NULL ||
 			sdev.grp[i].domain != domain) {
-			ssovf_log_err("GRP error, vfid=%d/%d domain=%d/%d %p",
+			mbox_log_err("GRP error, vfid=%d/%d domain=%d/%d %p",
 				i, sdev.grp[i].vfid,
 				domain, sdev.grp[i].domain,
 				sdev.grp[i].bar0);
@@ -99,7 +109,7 @@ octeontx_ssovf_info(struct octeontx_ssovf_info *info)
 		if (sdev.hws[i].vfid != i ||
 			sdev.hws[i].bar0 == NULL ||
 			sdev.hws[i].domain != domain) {
-			ssovf_log_err("HWS error, vfid=%d/%d domain=%d/%d %p",
+			mbox_log_err("HWS error, vfid=%d/%d domain=%d/%d %p",
 				i, sdev.hws[i].vfid,
 				domain, sdev.hws[i].domain,
 				sdev.hws[i].bar0);
@@ -169,7 +179,7 @@ ssowvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	if (pci_dev->mem_resource[0].addr == NULL ||
 			pci_dev->mem_resource[2].addr == NULL ||
 			pci_dev->mem_resource[4].addr == NULL) {
-		ssovf_log_err("Empty bars %p %p %p",
+		mbox_log_err("Empty bars %p %p %p",
 				pci_dev->mem_resource[0].addr,
 				pci_dev->mem_resource[2].addr,
 				pci_dev->mem_resource[4].addr);
@@ -177,7 +187,7 @@ ssowvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	}
 
 	if (pci_dev->mem_resource[4].len != SSOW_BAR4_LEN) {
-		ssovf_log_err("Bar4 len mismatch %d != %d",
+		mbox_log_err("Bar4 len mismatch %d != %d",
 			SSOW_BAR4_LEN, (int)pci_dev->mem_resource[4].len);
 		return -EINVAL;
 	}
@@ -185,7 +195,7 @@ ssowvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	id = pci_dev->mem_resource[4].addr;
 	vfid = id->vfid;
 	if (vfid >= SSO_MAX_VHWS) {
-		ssovf_log_err("Invalid vfid(%d/%d)", vfid, SSO_MAX_VHWS);
+		mbox_log_err("Invalid vfid(%d/%d)", vfid, SSO_MAX_VHWS);
 		return -EINVAL;
 	}
 
@@ -198,7 +208,7 @@ ssowvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	sdev.total_ssowvfs++;
 	rte_wmb();
-	ssovf_log_dbg("Domain=%d hws=%d total_ssowvfs=%d", res->domain,
+	mbox_log_dbg("Domain=%d hws=%d total_ssowvfs=%d", res->domain,
 			res->vfid, sdev.total_ssowvfs);
 	return 0;
 }
@@ -239,7 +249,7 @@ ssovf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	if (pci_dev->mem_resource[0].addr == NULL ||
 			pci_dev->mem_resource[2].addr == NULL) {
-		ssovf_log_err("Empty bars %p %p",
+		mbox_log_err("Empty bars %p %p",
 			pci_dev->mem_resource[0].addr,
 			pci_dev->mem_resource[2].addr);
 		return -ENODEV;
@@ -252,7 +262,7 @@ ssovf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	rte_write64((1ULL << 33) - 1, idreg);
 	vfid = (val >> 16) & 0xffff;
 	if (vfid >= SSO_MAX_VHGRP) {
-		ssovf_log_err("Invalid vfid (%d/%d)", vfid, SSO_MAX_VHGRP);
+		mbox_log_err("Invalid vfid (%d/%d)", vfid, SSO_MAX_VHGRP);
 		return -EINVAL;
 	}
 
@@ -264,7 +274,7 @@ ssovf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	sdev.total_ssovfs++;
 	rte_wmb();
-	ssovf_log_dbg("Domain=%d group=%d total_ssovfs=%d", res->domain,
+	mbox_log_dbg("Domain=%d group=%d total_ssovfs=%d", res->domain,
 			res->vfid, sdev.total_ssovfs);
 	return 0;
 }

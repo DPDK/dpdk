@@ -36,13 +36,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_mempool_octeontx.a
 
-ifeq ($(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL_DEBUG),y)
-CFLAGS += -O0 -g
-else
-CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-endif
-
 EXPORT_MAP := rte_mempool_octeontx_version.map
 
 LIBABIVER := 1
@@ -50,6 +44,8 @@ LIBABIVER := 1
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx_ssovf.c
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx_mbox.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx_fpavf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += rte_mempool_octeontx.c
 
@@ -68,7 +64,5 @@ endif
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += lib/librte_mbuf
-
-LDLIBS += -lrte_pmd_octeontx_ssovf
 
 include $(RTE_SDK)/mk/rte.lib.mk

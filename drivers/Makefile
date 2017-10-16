@@ -32,13 +32,13 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-y += bus
-DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += event
-DEPDIRS-event := bus
 DIRS-y += mempool
-DEPDIRS-mempool := bus event
+DEPDIRS-mempool := bus
 DIRS-y += net
 DEPDIRS-net := bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
 DEPDIRS-crypto := bus mempool
+DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += event
+DEPDIRS-event := bus mempool
 
 include $(RTE_SDK)/mk/rte.subdir.mk

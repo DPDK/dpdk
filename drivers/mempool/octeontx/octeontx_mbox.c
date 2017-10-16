@@ -38,10 +38,11 @@
 #include <rte_io.h>
 #include <rte_spinlock.h>
 
-#include "ssovf_evdev.h"
+#include "octeontx_mbox.h"
+#include "octeontx_pool_logs.h"
 
 /* Mbox operation timeout in seconds */
-#define MBOX_WAIT_TIME_SEC      3
+#define MBOX_WAIT_TIME_SEC	3
 #define MAX_RAM_MBOX_LEN	((SSOW_BAR4_LEN >> 1) - 8 /* Mbox header */)
 
 /* Mbox channel state */
@@ -86,7 +87,6 @@ struct mbox_ram_hdr {
 		};
 	};
 };
-
 
 static inline void
 mbox_msgcpy(uint8_t *d, const uint8_t *s, uint16_t size)
@@ -181,7 +181,7 @@ mbox_wait_response(struct mbox *m, struct octeontx_mbox_hdr *hdr,
 	return len;
 
 error:
-	ssovf_log_err("Failed to send mbox(%d/%d) coproc=%d msg=%d ret=(%d,%d)",
+	mbox_log_err("Failed to send mbox(%d/%d) coproc=%d msg=%d ret=(%d,%d)",
 			m->tag_own, rx_hdr.tag, hdr->coproc, hdr->msg, res,
 			hdr->res_code);
 	return res;
@@ -195,7 +195,7 @@ mbox_send(struct mbox *m, struct octeontx_mbox_hdr *hdr, const void *txmsg,
 
 	if (m->init_once == 0 || hdr == NULL ||
 		txsize > MAX_RAM_MBOX_LEN || rxsize > MAX_RAM_MBOX_LEN) {
-		ssovf_log_err("Invalid init_once=%d hdr=%p txsz=%d rxsz=%d",
+		mbox_log_err("Invalid init_once=%d hdr=%p txsz=%d rxsz=%d",
 				m->init_once, hdr, txsize, rxsize);
 		return res;
 	}
@@ -219,7 +219,7 @@ mbox_setup(struct mbox *m)
 		m->reg += SSO_VHGRP_PF_MBOX(1);
 
 		if (m->ram_mbox_base == NULL || m->reg == NULL) {
-			ssovf_log_err("Invalid ram_mbox_base=%p or reg=%p",
+			mbox_log_err("Invalid ram_mbox_base=%p or reg=%p",
 				m->ram_mbox_base, m->reg);
 			return -EINVAL;
 		}

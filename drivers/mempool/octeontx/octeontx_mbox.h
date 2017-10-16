@@ -30,10 +30,13 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __RTE_PMD_OCTEONTX_SSOVF_H__
-#define __RTE_PMD_OCTEONTX_SSOVF_H__
+#ifndef __OCTEONTX_MBOX_H__
+#define __OCTEONTX_MBOX_H__
 
 #include <rte_common.h>
+
+#define SSOW_BAR4_LEN			(64 * 1024)
+#define SSO_VHGRP_PF_MBOX(x)		(0x200ULL | ((x) << 3))
 
 struct octeontx_ssovf_info {
 	uint16_t domain; /* Domain id */
@@ -58,4 +61,4 @@ void *octeontx_ssovf_bar(enum octeontx_ssovf_type, uint8_t id, uint8_t bar);
 int octeontx_ssovf_mbox_send(struct octeontx_mbox_hdr *hdr,
 		void *txdata, uint16_t txlen, void *rxdata, uint16_t rxlen);
 
-#endif /* __RTE_PMD_OCTEONTX_SSOVF_H__ */
+#endif /* __OCTEONTX_MBOX_H__ */

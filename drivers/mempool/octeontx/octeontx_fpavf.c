@@ -48,7 +48,7 @@
 #include <rte_spinlock.h>
 #include <rte_mbuf.h>
 
-#include <rte_pmd_octeontx_ssovf.h>
+#include "octeontx_mbox.h"
 #include "octeontx_fpavf.h"
 
 /* FPA Mbox Message */
@@ -635,7 +635,7 @@ octeontx_fpa_bufpool_destroy(uintptr_t handle, int node_id)
 	cnt = fpavf_read64((void *)((uintptr_t)pool_bar +
 					FPA_VF_VHAURA_CNT(gpool)));
 	if (cnt) {
-		fpavf_log_dbg("buffer exist in pool cnt %ld\n", cnt);
+		fpavf_log_dbg("buffer exist in pool cnt %" PRId64 "\n", cnt);
 		return -EBUSY;
 	}
 
