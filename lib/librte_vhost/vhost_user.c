@@ -372,33 +372,6 @@ ring_addr_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return qva_to_vva(dev, ra);
 }
 
-/*
- * The virtio device sends us the desc, used and avail ring addresses.
- * This function then converts these to our address space.
- */
-static int
-vhost_user_set_vring_addr(struct virtio_net *dev, VhostUserMsg *msg)
-{
-	struct vhost_virtqueue *vq;
-	struct vhost_vring_addr *addr = &msg->payload.addr;
-
-	if (dev->mem == NULL)
-		return -1;
-
-	/* addr->index refers to the queue index. The txq 1, rxq is 0. */
-	vq = dev->virtqueue[msg->payload.addr.index];
-
-	/*
-	 * Rings addresses should not be interpreted as long as the ring is not
-	 * started and enabled
-	 */
-	memcpy(&vq->ring_addrs, addr, sizeof(*addr));
-
-	vring_invalidate(dev, vq);
-
-	return 0;
-}
-
 static struct virtio_net *
 translate_ring_addresses(struct virtio_net *dev, int vq_index)
 {
@@ -461,6 +434,43 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 			dev->vid, vq->log_guest_addr);
 
 	return dev;
+}
+
+/*
+ * The virtio device sends us the desc, used and avail ring addresses.
+ * This function then converts these to our address space.
+ */
+static int
+vhost_user_set_vring_addr(struct virtio_net **pdev, VhostUserMsg *msg)
+{
+	struct vhost_virtqueue *vq;
+	struct vhost_vring_addr *addr = &msg->payload.addr;
+	struct virtio_net *dev = *pdev;
+
+	if (dev->mem == NULL)
+		return -1;
+
+	/* addr->index refers to the queue index. The txq 1, rxq is 0. */
+	vq = dev->virtqueue[msg->payload.addr.index];
+
+	/*
+	 * Rings addresses should not be interpreted as long as the ring is not
+	 * started and enabled
+	 */
+	memcpy(&vq->ring_addrs, addr, sizeof(*addr));
+
+	vring_invalidate(dev, vq);
+
+	if (vq->enabled && (dev->features &
+				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))) {
+		dev = translate_ring_addresses(dev, msg->payload.state.index);
+		if (!dev)
+			return -1;
+
+		*pdev = dev;
+	}
+
+	return 0;
 }
 
 /*
@@ -1273,7 +1283,7 @@ vhost_user_msg_handler(int vid, int fd)
 		vhost_user_set_vring_num(dev, &msg);
 		break;
 	case VHOST_USER_SET_VRING_ADDR:
-		vhost_user_set_vring_addr(dev, &msg);
+		vhost_user_set_vring_addr(&dev, &msg);
 		break;
 	case VHOST_USER_SET_VRING_BASE:
 		vhost_user_set_vring_base(dev, &msg);
