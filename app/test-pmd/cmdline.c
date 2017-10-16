@@ -751,6 +751,28 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"del port tm node wred profile (port_id) (wred_profile_id)\n"
 			"	Delete port tm node wred profile.\n\n"
 
+			"add port tm nonleaf node (port_id) (node_id) (parent_node_id)"
+			" (priority) (weight) (level_id) (shaper_profile_id)"
+			" (n_sp_priorities) (stats_mask) (n_shared_shapers)"
+			" [(shared_shaper_id_0) (shared_shaper_id_1)...]\n"
+			"	Add port tm nonleaf node.\n\n"
+
+			"add port tm leaf node (port_id) (node_id) (parent_node_id)"
+			" (priority) (weight) (level_id) (shaper_profile_id)"
+			" (cman_mode) (wred_profile_id) (stats_mask) (n_shared_shapers)"
+			" [(shared_shaper_id_0) (shared_shaper_id_1)...]\n"
+			"	Add port tm leaf node.\n\n"
+
+			"del port tm node (port_id) (node_id)\n"
+			"	Delete port tm node.\n\n"
+
+			"set port tm node parent (port_id) (node_id) (parent_node_id)"
+			" (priority) (weight)\n"
+			"	Set port tm node parent.\n\n"
+
+			"port tm hierarchy commit (port_id) (clean_on_fail)\n"
+			"	Commit tm hierarchy.\n\n"
+
 			, list_pkt_forwarding_modes()
 		);
 	}
@@ -15692,6 +15714,11 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_port_tm_node_wred_profile,
 	(cmdline_parse_inst_t *)&cmd_del_port_tm_node_wred_profile,
 	(cmdline_parse_inst_t *)&cmd_set_port_tm_node_shaper_profile,
+	(cmdline_parse_inst_t *)&cmd_add_port_tm_nonleaf_node,
+	(cmdline_parse_inst_t *)&cmd_add_port_tm_leaf_node,
+	(cmdline_parse_inst_t *)&cmd_del_port_tm_node,
+	(cmdline_parse_inst_t *)&cmd_set_port_tm_node_parent,
+	(cmdline_parse_inst_t *)&cmd_port_tm_hierarchy_commit,
 	NULL,
 };
 

@@ -42,6 +42,17 @@
 #include "testpmd.h"
 #include "cmdline_tm.h"
 
+#define PARSE_DELIMITER				" \f\n\r\t\v"
+#define MAX_NUM_SHARED_SHAPERS		256
+
+#define skip_white_spaces(pos)			\
+({						\
+	__typeof__(pos) _p = (pos);		\
+	for ( ; isspace(*_p); _p++)		\
+		;				\
+	_p;					\
+})
+
 /** Display TM Error Message */
 static void
 print_err_msg(struct rte_tm_error *error)
@@ -118,6 +129,100 @@ print_err_msg(struct rte_tm_error *error)
 		error->type);
 }
 
+static int
+read_uint64(uint64_t *value, const char *p)
+{
+	char *next;
+	uint64_t val;
+
+	p = skip_white_spaces(p);
+	if (!isdigit(*p))
+		return -EINVAL;
+
+	val = strtoul(p, &next, 10);
+	if (p == next)
+		return -EINVAL;
+
+	p = next;
+	switch (*p) {
+	case 'T':
+		val *= 1024ULL;
+		/* fall through */
+	case 'G':
+		val *= 1024ULL;
+		/* fall through */
+	case 'M':
+		val *= 1024ULL;
+		/* fall through */
+	case 'k':
+	case 'K':
+		val *= 1024ULL;
+		p++;
+		break;
+	}
+
+	p = skip_white_spaces(p);
+	if (*p != '\0')
+		return -EINVAL;
+
+	*value = val;
+	return 0;
+}
+
+static int
+read_uint32(uint32_t *value, const char *p)
+{
+	uint64_t val = 0;
+	int ret = read_uint64(&val, p);
+
+	if (ret < 0)
+		return ret;
+
+	if (val > UINT32_MAX)
+		return -ERANGE;
+
+	*value = val;
+	return 0;
+}
+
+static int
+parse_multi_ss_id_str(char *s_str, uint32_t *n_ssp, uint32_t shaper_id[])
+{
+	uint32_t n_shared_shapers = 0, i = 0;
+	char *token;
+
+	/* First token: num of shared shapers */
+	token = strtok_r(s_str, PARSE_DELIMITER, &s_str);
+	if (token ==  NULL)
+		return -1;
+
+	if (read_uint32(&n_shared_shapers, token))
+		return -1;
+
+	/* Check: num of shared shaper */
+	if (n_shared_shapers >= MAX_NUM_SHARED_SHAPERS) {
+		printf(" Number of shared shapers exceed the max (error)\n");
+		return -1;
+	}
+
+	/* Parse shared shaper ids */
+	while (1) {
+		token = strtok_r(s_str, PARSE_DELIMITER, &s_str);
+		if ((token !=  NULL && n_shared_shapers == 0) ||
+			(token == NULL && i < n_shared_shapers))
+			return -1;
+
+		if (token == NULL)
+			break;
+
+		if (read_uint32(&shaper_id[i], token))
+			return -1;
+		i++;
+	}
+	*n_ssp = n_shared_shapers;
+
+	return 0;
+}
 /* *** Port TM Capability *** */
 struct cmd_show_port_tm_cap_result {
 	cmdline_fixed_string_t show;
@@ -1407,6 +1512,556 @@ cmdline_parse_inst_t cmd_set_port_tm_node_shaper_profile = {
 		(void *)&cmd_set_port_tm_node_shaper_profile_port_id,
 		(void *)&cmd_set_port_tm_node_shaper_profile_node_id,
 		(void *)&cmd_set_port_tm_node_shaper_shaper_profile_profile_id,
+		NULL,
+	},
+};
+
+/* *** Add Port TM nonleaf node *** */
+struct cmd_add_port_tm_nonleaf_node_result {
+	cmdline_fixed_string_t add;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t tm;
+	cmdline_fixed_string_t nonleaf;
+	cmdline_fixed_string_t node;
+	uint16_t port_id;
+	uint32_t node_id;
+	int32_t parent_node_id;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t level_id;
+	uint32_t shaper_profile_id;
+	uint32_t n_sp_priorities;
+	uint64_t stats_mask;
+	cmdline_multi_string_t multi_shared_shaper_id;
+};
+
+cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_add =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_nonleaf_node_result, add, "add");
+cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_nonleaf_node_result, port, "port");
+cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_tm =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_nonleaf_node_result, tm, "tm");
+cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_nonleaf =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_nonleaf_node_result, nonleaf, "nonleaf");
+cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_node =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_nonleaf_node_result, node, "node");
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_port_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_add_port_tm_nonleaf_node_result,
+		 port_id, UINT16);
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_node_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 node_id, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_parent_node_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 parent_node_id, INT32);
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_priority =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 priority, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_weight =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 weight, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_level_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 level_id, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_shaper_profile_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 shaper_profile_id, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_n_sp_priorities =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 n_sp_priorities, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_stats_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 stats_mask, UINT64);
+cmdline_parse_token_string_t
+	cmd_add_port_tm_nonleaf_node_multi_shared_shaper_id =
+	TOKEN_STRING_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
+		 multi_shared_shaper_id, TOKEN_STRING_MULTI);
+
+static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_add_port_tm_nonleaf_node_result *res = parsed_result;
+	struct rte_tm_error error;
+	struct rte_tm_node_params np;
+	uint32_t *shared_shaper_id;
+	uint32_t parent_node_id, n_shared_shapers = 0;
+	char *s_str = res->multi_shared_shaper_id;
+	portid_t port_id = res->port_id;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Port status */
+	if (port_is_started(port_id)) {
+		printf(" Port %u not stopped (error)\n", port_id);
+		return;
+	}
+
+	memset(&np, 0, sizeof(struct rte_tm_node_params));
+
+	/* Node parameters */
+	if (res->parent_node_id < 0)
+		parent_node_id = UINT32_MAX;
+	else
+		parent_node_id = res->parent_node_id;
+
+	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
+		sizeof(uint32_t));
+	/* Parse multi shared shaper id string */
+	ret = parse_multi_ss_id_str(s_str, &n_shared_shapers, shared_shaper_id);
+	if (ret) {
+		printf(" Shared shapers params string parse error\n");
+		free(shared_shaper_id);
+		return;
+	}
+
+	np.shaper_profile_id = res->shaper_profile_id;
+	np.n_shared_shapers = n_shared_shapers;
+	if (np.n_shared_shapers)
+		np.shared_shaper_id = &shared_shaper_id[0];
+	else
+		np.shared_shaper_id = NULL;
+
+	np.nonleaf.n_sp_priorities = res->n_sp_priorities;
+	np.stats_mask = res->stats_mask;
+	np.nonleaf.wfq_weight_mode = NULL;
+
+	ret = rte_tm_node_add(port_id, res->node_id, parent_node_id,
+				res->priority, res->weight, res->level_id,
+				&np, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		free(shared_shaper_id);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_add_port_tm_nonleaf_node = {
+	.f = cmd_add_port_tm_nonleaf_node_parsed,
+	.data = NULL,
+	.help_str = "Add port tm nonleaf node",
+	.tokens = {
+		(void *)&cmd_add_port_tm_nonleaf_node_add,
+		(void *)&cmd_add_port_tm_nonleaf_node_port,
+		(void *)&cmd_add_port_tm_nonleaf_node_tm,
+		(void *)&cmd_add_port_tm_nonleaf_node_nonleaf,
+		(void *)&cmd_add_port_tm_nonleaf_node_node,
+		(void *)&cmd_add_port_tm_nonleaf_node_port_id,
+		(void *)&cmd_add_port_tm_nonleaf_node_node_id,
+		(void *)&cmd_add_port_tm_nonleaf_node_parent_node_id,
+		(void *)&cmd_add_port_tm_nonleaf_node_priority,
+		(void *)&cmd_add_port_tm_nonleaf_node_weight,
+		(void *)&cmd_add_port_tm_nonleaf_node_level_id,
+		(void *)&cmd_add_port_tm_nonleaf_node_shaper_profile_id,
+		(void *)&cmd_add_port_tm_nonleaf_node_n_sp_priorities,
+		(void *)&cmd_add_port_tm_nonleaf_node_stats_mask,
+		(void *)&cmd_add_port_tm_nonleaf_node_multi_shared_shaper_id,
+		NULL,
+	},
+};
+
+/* *** Add Port TM leaf node *** */
+struct cmd_add_port_tm_leaf_node_result {
+	cmdline_fixed_string_t add;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t tm;
+	cmdline_fixed_string_t leaf;
+	cmdline_fixed_string_t node;
+	uint16_t port_id;
+	uint32_t node_id;
+	int32_t parent_node_id;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t level_id;
+	uint32_t shaper_profile_id;
+	uint32_t cman_mode;
+	uint32_t wred_profile_id;
+	uint64_t stats_mask;
+	cmdline_multi_string_t multi_shared_shaper_id;
+};
+
+cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_add =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_leaf_node_result, add, "add");
+cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_leaf_node_result, port, "port");
+cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_tm =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_leaf_node_result, tm, "tm");
+cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_nonleaf =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_leaf_node_result, leaf, "leaf");
+cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_node =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_add_port_tm_leaf_node_result, node, "node");
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 port_id, UINT16);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_node_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 node_id, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_parent_node_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 parent_node_id, INT32);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_priority =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 priority, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_weight =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 weight, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_level_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 level_id, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_shaper_profile_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 shaper_profile_id, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_cman_mode =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 cman_mode, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_wred_profile_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 wred_profile_id, UINT32);
+cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_stats_mask =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 stats_mask, UINT64);
+cmdline_parse_token_string_t
+	cmd_add_port_tm_leaf_node_multi_shared_shaper_id =
+	TOKEN_STRING_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
+		 multi_shared_shaper_id, TOKEN_STRING_MULTI);
+
+static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_add_port_tm_leaf_node_result *res = parsed_result;
+	struct rte_tm_error error;
+	struct rte_tm_node_params np;
+	uint32_t *shared_shaper_id;
+	uint32_t parent_node_id, n_shared_shapers = 0;
+	portid_t port_id = res->port_id;
+	char *s_str = res->multi_shared_shaper_id;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Port status */
+	if (port_is_started(port_id)) {
+		printf(" Port %u not stopped (error)\n", port_id);
+		return;
+	}
+
+	memset(&np, 0, sizeof(struct rte_tm_node_params));
+
+	/* Node parameters */
+	if (res->parent_node_id < 0)
+		parent_node_id = UINT32_MAX;
+	else
+		parent_node_id = res->parent_node_id;
+
+	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
+		sizeof(uint32_t));
+	/* Parse multi shared shaper id string */
+	ret = parse_multi_ss_id_str(s_str, &n_shared_shapers, shared_shaper_id);
+	if (ret) {
+		printf(" Shared shapers params string parse error\n");
+		free(shared_shaper_id);
+		return;
+	}
+
+	np.shaper_profile_id = res->shaper_profile_id;
+	np.n_shared_shapers = n_shared_shapers;
+
+	if (np.n_shared_shapers)
+		np.shared_shaper_id = &shared_shaper_id[0];
+	else
+		np.shared_shaper_id = NULL;
+
+	np.leaf.cman = res->cman_mode;
+	np.leaf.wred.wred_profile_id = res->wred_profile_id;
+	np.stats_mask = res->stats_mask;
+
+	ret = rte_tm_node_add(port_id, res->node_id, parent_node_id,
+				res->priority, res->weight, res->level_id,
+				&np, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		free(shared_shaper_id);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_add_port_tm_leaf_node = {
+	.f = cmd_add_port_tm_leaf_node_parsed,
+	.data = NULL,
+	.help_str = "Add port tm leaf node",
+	.tokens = {
+		(void *)&cmd_add_port_tm_leaf_node_add,
+		(void *)&cmd_add_port_tm_leaf_node_port,
+		(void *)&cmd_add_port_tm_leaf_node_tm,
+		(void *)&cmd_add_port_tm_leaf_node_nonleaf,
+		(void *)&cmd_add_port_tm_leaf_node_node,
+		(void *)&cmd_add_port_tm_leaf_node_port_id,
+		(void *)&cmd_add_port_tm_leaf_node_node_id,
+		(void *)&cmd_add_port_tm_leaf_node_parent_node_id,
+		(void *)&cmd_add_port_tm_leaf_node_priority,
+		(void *)&cmd_add_port_tm_leaf_node_weight,
+		(void *)&cmd_add_port_tm_leaf_node_level_id,
+		(void *)&cmd_add_port_tm_leaf_node_shaper_profile_id,
+		(void *)&cmd_add_port_tm_leaf_node_cman_mode,
+		(void *)&cmd_add_port_tm_leaf_node_wred_profile_id,
+		(void *)&cmd_add_port_tm_leaf_node_stats_mask,
+		(void *)&cmd_add_port_tm_leaf_node_multi_shared_shaper_id,
+		NULL,
+	},
+};
+
+/* *** Delete Port TM Node *** */
+struct cmd_del_port_tm_node_result {
+	cmdline_fixed_string_t del;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t tm;
+	cmdline_fixed_string_t node;
+	uint16_t port_id;
+	uint32_t node_id;
+};
+
+cmdline_parse_token_string_t cmd_del_port_tm_node_del =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_del_port_tm_node_result, del, "del");
+cmdline_parse_token_string_t cmd_del_port_tm_node_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_del_port_tm_node_result, port, "port");
+cmdline_parse_token_string_t cmd_del_port_tm_node_tm =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_del_port_tm_node_result, tm, "tm");
+cmdline_parse_token_string_t cmd_del_port_tm_node_node =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_del_port_tm_node_result, node, "node");
+cmdline_parse_token_num_t cmd_del_port_tm_node_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_del_port_tm_node_result,
+		 port_id, UINT16);
+cmdline_parse_token_num_t cmd_del_port_tm_node_node_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_del_port_tm_node_result,
+		node_id, UINT32);
+
+static void cmd_del_port_tm_node_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_del_port_tm_node_result *res = parsed_result;
+	struct rte_tm_error error;
+	uint32_t node_id = res->node_id;
+	portid_t port_id = res->port_id;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Port status */
+	if (port_is_started(port_id)) {
+		printf(" Port %u not stopped (error)\n", port_id);
+		return;
+	}
+
+	ret = rte_tm_node_delete(port_id, node_id, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_del_port_tm_node = {
+	.f = cmd_del_port_tm_node_parsed,
+	.data = NULL,
+	.help_str = "Delete port tm node",
+	.tokens = {
+		(void *)&cmd_del_port_tm_node_del,
+		(void *)&cmd_del_port_tm_node_port,
+		(void *)&cmd_del_port_tm_node_tm,
+		(void *)&cmd_del_port_tm_node_node,
+		(void *)&cmd_del_port_tm_node_port_id,
+		(void *)&cmd_del_port_tm_node_node_id,
+		NULL,
+	},
+};
+
+/* *** Update Port TM Node Parent *** */
+struct cmd_set_port_tm_node_parent_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t tm;
+	cmdline_fixed_string_t node;
+	cmdline_fixed_string_t parent;
+	uint16_t port_id;
+	uint32_t node_id;
+	uint32_t parent_id;
+	uint32_t priority;
+	uint32_t weight;
+};
+
+cmdline_parse_token_string_t cmd_set_port_tm_node_parent_set =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_tm_node_parent_result, set, "set");
+cmdline_parse_token_string_t cmd_set_port_tm_node_parent_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_tm_node_parent_result, port, "port");
+cmdline_parse_token_string_t cmd_set_port_tm_node_parent_tm =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_tm_node_parent_result, tm, "tm");
+cmdline_parse_token_string_t cmd_set_port_tm_node_parent_node =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_tm_node_parent_result, node, "node");
+cmdline_parse_token_string_t cmd_set_port_tm_node_parent_parent =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_tm_node_parent_result, parent, "parent");
+cmdline_parse_token_num_t cmd_set_port_tm_node_parent_port_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_set_port_tm_node_parent_result, port_id, UINT16);
+cmdline_parse_token_num_t cmd_set_port_tm_node_parent_node_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_set_port_tm_node_parent_result, node_id, UINT32);
+cmdline_parse_token_num_t cmd_set_port_tm_node_parent_parent_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_port_tm_node_parent_result,
+		parent_id, UINT32);
+cmdline_parse_token_num_t cmd_set_port_tm_node_parent_priority =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_port_tm_node_parent_result,
+		priority, UINT32);
+cmdline_parse_token_num_t cmd_set_port_tm_node_parent_weight =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_port_tm_node_parent_result,
+		weight, UINT32);
+
+static void cmd_set_port_tm_node_parent_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_port_tm_node_parent_result *res = parsed_result;
+	struct rte_tm_error error;
+	uint32_t node_id = res->node_id;
+	uint32_t parent_id = res->parent_id;
+	uint32_t priority = res->priority;
+	uint32_t weight = res->weight;
+	portid_t port_id = res->port_id;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Port status */
+	if (!port_is_started(port_id)) {
+		printf(" Port %u not started (error)\n", port_id);
+		return;
+	}
+
+	ret = rte_tm_node_parent_update(port_id, node_id,
+		parent_id, priority, weight, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_set_port_tm_node_parent = {
+	.f = cmd_set_port_tm_node_parent_parsed,
+	.data = NULL,
+	.help_str = "Set port tm node parent",
+	.tokens = {
+		(void *)&cmd_set_port_tm_node_parent_set,
+		(void *)&cmd_set_port_tm_node_parent_port,
+		(void *)&cmd_set_port_tm_node_parent_tm,
+		(void *)&cmd_set_port_tm_node_parent_node,
+		(void *)&cmd_set_port_tm_node_parent_parent,
+		(void *)&cmd_set_port_tm_node_parent_port_id,
+		(void *)&cmd_set_port_tm_node_parent_node_id,
+		(void *)&cmd_set_port_tm_node_parent_parent_id,
+		(void *)&cmd_set_port_tm_node_parent_priority,
+		(void *)&cmd_set_port_tm_node_parent_weight,
+		NULL,
+	},
+};
+
+/* *** Port TM Hierarchy Commit *** */
+struct cmd_port_tm_hierarchy_commit_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t tm;
+	cmdline_fixed_string_t hierarchy;
+	cmdline_fixed_string_t commit;
+	uint16_t port_id;
+	cmdline_fixed_string_t clean_on_fail;
+};
+
+cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_port_tm_hierarchy_commit_result, port, "port");
+cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_tm =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_port_tm_hierarchy_commit_result, tm, "tm");
+cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_hierarchy =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_port_tm_hierarchy_commit_result,
+			hierarchy, "hierarchy");
+cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_commit =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_port_tm_hierarchy_commit_result, commit, "commit");
+cmdline_parse_token_num_t cmd_port_tm_hierarchy_commit_port_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_port_tm_hierarchy_commit_result,
+			port_id, UINT16);
+cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_clean_on_fail =
+	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_hierarchy_commit_result,
+		 clean_on_fail, "yes#no");
+
+static void cmd_port_tm_hierarchy_commit_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_port_tm_hierarchy_commit_result *res = parsed_result;
+	struct rte_tm_error error;
+	uint32_t clean_on_fail;
+	portid_t port_id = res->port_id;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Port status */
+	if (port_is_started(port_id)) {
+		printf(" Port %u not stopped (error)\n", port_id);
+		return;
+	}
+
+	if (strcmp(res->clean_on_fail, "yes") == 0)
+		clean_on_fail = 1;
+	else
+		clean_on_fail = 0;
+
+	ret = rte_tm_hierarchy_commit(port_id, clean_on_fail, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_port_tm_hierarchy_commit = {
+	.f = cmd_port_tm_hierarchy_commit_parsed,
+	.data = NULL,
+	.help_str = "Set port tm node shaper profile",
+	.tokens = {
+		(void *)&cmd_port_tm_hierarchy_commit_port,
+		(void *)&cmd_port_tm_hierarchy_commit_tm,
+		(void *)&cmd_port_tm_hierarchy_commit_hierarchy,
+		(void *)&cmd_port_tm_hierarchy_commit_commit,
+		(void *)&cmd_port_tm_hierarchy_commit_port_id,
+		(void *)&cmd_port_tm_hierarchy_commit_clean_on_fail,
 		NULL,
 	},
 };
