@@ -100,6 +100,7 @@
 #endif
 #include "testpmd.h"
 #include "cmdline_mtr.h"
+#include "cmdline_tm.h"
 
 static struct cmdline *testpmd_cl;
 
@@ -237,6 +238,21 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port meter stats (port_id) (meter_id) (clear)\n"
 			"    Get meter stats on a port\n\n"
+                        "show port tm cap (port_id)\n"
+                        "       Display the port TM capability.\n\n"
+
+                        "show port tm level cap (port_id) (level_id)\n"
+                        "       Display the port TM hierarchical level capability.\n\n"
+
+                        "show port tm node cap (port_id) (node_id)\n"
+                        "       Display the port TM node capability.\n\n"
+
+                        "show port tm node type (port_id) (node_id)\n"
+                        "       Display the port TM node type.\n\n"
+
+                        "show port tm node stats (port_id) (node_id) (clear)\n"
+                        "       Display the port TM node stats.\n\n"
+
 		);
 	}
 
@@ -15637,6 +15653,11 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_user_priority_region,
 	(cmdline_parse_inst_t *)&cmd_flush_queue_region,
 	(cmdline_parse_inst_t *)&cmd_show_queue_region_info_all,
+	(cmdline_parse_inst_t *)&cmd_show_port_tm_cap,
+	(cmdline_parse_inst_t *)&cmd_show_port_tm_level_cap,
+	(cmdline_parse_inst_t *)&cmd_show_port_tm_node_cap,
+	(cmdline_parse_inst_t *)&cmd_show_port_tm_node_type,
+	(cmdline_parse_inst_t *)&cmd_show_port_tm_node_stats,
 	NULL,
 };
 
