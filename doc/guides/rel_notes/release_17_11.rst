@@ -59,6 +59,20 @@ New Features
   "Network Interface Controller Drivers" document for more details on this new
   driver.
 
+* **Updated mlx5 driver.**
+
+  Updated the mlx5 driver including the following changes:
+
+   * Enabled PMD to run on top of upstream linux kernel and rdma-core libs.
+     By that removed the dependency on specific Mellanox OFED libraries.
+   * Improved PMD latency performance.
+   * Improved PMD memory footprint.
+   * Supported vectorized Rx/Tx burst for ARMv8.
+   * Supported secondary process.
+   * Supported flow counters.
+   * Supported Rx hardware timestamp offload.
+   * Supported device removal event.
+
 * **Added SoftNIC PMD.**
 
   Added new SoftNIC PMD. This virtual device offers applications a software
