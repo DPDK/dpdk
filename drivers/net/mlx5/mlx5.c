@@ -639,15 +639,16 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	 * as all ConnectX-5 devices.
 	 */
 	mlx5dv_query_device(attr_ctx, &attrs_out);
-	if (attrs_out.flags & (MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW |
-			       MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED)) {
-		INFO("Enhanced MPW is detected\n");
-		mps = MLX5_MPW_ENHANCED;
-	} else if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
-		INFO("MPW is detected\n");
-		mps = MLX5_MPW;
+	if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
+		if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
+			DEBUG("Enhanced MPW is supported");
+			mps = MLX5_MPW_ENHANCED;
+		} else {
+			DEBUG("MPW is supported");
+			mps = MLX5_MPW;
+		}
 	} else {
-		INFO("MPW is disabled\n");
+		DEBUG("MPW isn't supported");
 		mps = MLX5_MPW_DISABLED;
 	}
 	if (RTE_CACHE_LINE_SIZE == 128 &&
