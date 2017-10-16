@@ -209,9 +209,8 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 static irqreturn_t
 igbuio_pci_irqhandler(int irq, void *dev_id)
 {
-	struct uio_device *idev = (struct uio_device *)dev_id;
-	struct uio_info *info = idev->info;
-	struct rte_uio_pci_dev *udev = info->priv;
+	struct rte_uio_pci_dev *udev = (struct rte_uio_pci_dev *)dev_id;
+	struct uio_info *info = &udev->info;
 
 	/* Legacy mode need to mask in hardware */
 	if (udev->mode == RTE_INTR_MODE_LEGACY &&
@@ -299,7 +298,7 @@ igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
 	if (udev->info.irq != UIO_IRQ_NONE)
 		err = request_irq(udev->info.irq, igbuio_pci_irqhandler,
 				  udev->info.irq_flags, udev->info.name,
-				  udev->info.uio_dev);
+				  udev);
 	dev_info(&udev->pdev->dev, "uio device registered with irq %lx\n",
 		 udev->info.irq);
 
@@ -310,7 +309,7 @@ static void
 igbuio_pci_disable_interrupts(struct rte_uio_pci_dev *udev)
 {
 	if (udev->info.irq) {
-		free_irq(udev->info.irq, udev->info.uio_dev);
+		free_irq(udev->info.irq, udev);
 		udev->info.irq = 0;
 	}
 
