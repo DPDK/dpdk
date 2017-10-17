@@ -730,6 +730,9 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 	};
 	rxq_data->cq_db = cq_info.dbrec;
 	rxq_data->cqes = (volatile struct mlx5_cqe (*)[])(uintptr_t)cq_info.buf;
+	rxq_data->cq_uar = cq_info.cq_uar;
+	rxq_data->cqn = cq_info.cqn;
+	rxq_data->cq_arm_sn = 0;
 	/* Update doorbell counter. */
 	rxq_data->rq_ci = (1 << rxq_data->elts_n) >> rxq_data->sges_n;
 	rte_wmb();
