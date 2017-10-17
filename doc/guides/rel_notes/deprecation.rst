@@ -28,12 +28,14 @@ Deprecation Notices
   - ``eal_parse_pci_DomBDF`` replaced by ``rte_pci_addr_parse``
   - ``rte_eal_compare_pci_addr`` replaced by ``rte_pci_addr_cmp``
 
-* ethdev: Tx offloads will no longer be enabled by default in 17.11.
-  Instead, the ``rte_eth_txmode`` structure will be extended with
-  bit field to enable each Tx offload.
-  Besides of making the Rx/Tx configuration API more consistent for the
-  application, PMDs will be able to provide a better out of the box performance.
-  As part of the work, ``ETH_TXQ_FLAGS_NO*`` will be superseded as well.
+* ethdev: a new Tx and Rx offload API was introduced on 17.11.
+  In the new API, offloads are divided into per-port and per-queue offloads.
+  Offloads are disabled by default and enabled per application request.
+  The old offloads API is target to be deprecated on 18.05. This includes:
+
+  - removal of ``ETH_TXQ_FLAGS_NO*`` flags.
+  - removal of ``txq_flags`` field from ``rte_eth_txconf`` struct.
+  - removal of the offloads bit-field from ``rte_eth_rxmode`` struct.
 
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
