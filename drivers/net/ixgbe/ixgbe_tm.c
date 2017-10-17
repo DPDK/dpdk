@@ -876,15 +876,34 @@ ixgbe_level_capabilities_get(struct rte_eth_dev *dev,
 		cap->n_nodes_max = 1;
 		cap->n_nodes_nonleaf_max = 1;
 		cap->n_nodes_leaf_max = 0;
-		cap->non_leaf_nodes_identical = true;
-		cap->leaf_nodes_identical = true;
+	} else if (level_id == IXGBE_TM_NODE_TYPE_TC) {
+		/* TC */
+		cap->n_nodes_max = IXGBE_DCB_MAX_TRAFFIC_CLASS;
+		cap->n_nodes_nonleaf_max = IXGBE_DCB_MAX_TRAFFIC_CLASS;
+		cap->n_nodes_leaf_max = 0;
+	} else {
+		/* queue */
+		cap->n_nodes_max = hw->mac.max_tx_queues;
+		cap->n_nodes_nonleaf_max = 0;
+		cap->n_nodes_leaf_max = hw->mac.max_tx_queues;
+	}
+
+	cap->non_leaf_nodes_identical = true;
+	cap->leaf_nodes_identical = true;
+
+	if (level_id != IXGBE_TM_NODE_TYPE_QUEUE) {
 		cap->nonleaf.shaper_private_supported = true;
 		cap->nonleaf.shaper_private_dual_rate_supported = false;
 		cap->nonleaf.shaper_private_rate_min = 0;
 		/* 10Gbps -> 1.25GBps */
 		cap->nonleaf.shaper_private_rate_max = 1250000000ull;
 		cap->nonleaf.shaper_shared_n_max = 0;
-		cap->nonleaf.sched_n_children_max = IXGBE_DCB_MAX_TRAFFIC_CLASS;
+		if (level_id == IXGBE_TM_NODE_TYPE_PORT)
+			cap->nonleaf.sched_n_children_max =
+				IXGBE_DCB_MAX_TRAFFIC_CLASS;
+		else
+			cap->nonleaf.sched_n_children_max =
+				hw->mac.max_tx_queues;
 		cap->nonleaf.sched_sp_n_priorities_max = 1;
 		cap->nonleaf.sched_wfq_n_children_per_group_max = 0;
 		cap->nonleaf.sched_wfq_n_groups_max = 0;
@@ -894,21 +913,7 @@ ixgbe_level_capabilities_get(struct rte_eth_dev *dev,
 		return 0;
 	}
 
-	/* TC or queue node */
-	if (level_id == IXGBE_TM_NODE_TYPE_TC) {
-		/* TC */
-		cap->n_nodes_max = IXGBE_DCB_MAX_TRAFFIC_CLASS;
-		cap->n_nodes_nonleaf_max = IXGBE_DCB_MAX_TRAFFIC_CLASS;
-		cap->n_nodes_leaf_max = 0;
-		cap->non_leaf_nodes_identical = true;
-	} else {
-		/* queue */
-		cap->n_nodes_max = hw->mac.max_tx_queues;
-		cap->n_nodes_nonleaf_max = 0;
-		cap->n_nodes_leaf_max = hw->mac.max_tx_queues;
-		cap->non_leaf_nodes_identical = true;
-	}
-	cap->leaf_nodes_identical = true;
+	/* queue node */
 	cap->leaf.shaper_private_supported = true;
 	cap->leaf.shaper_private_dual_rate_supported = false;
 	cap->leaf.shaper_private_rate_min = 0;
