@@ -41,9 +41,7 @@
 
 #include "rte_mrvl_pmd_private.h"
 
-#ifndef RTE_MRVL_MUSDK_DMA_MEMSIZE
-#define RTE_MRVL_MUSDK_DMA_MEMSIZE 41943040
-#endif
+#define MRVL_MUSDK_DMA_MEMSIZE 41943040
 
 static uint8_t cryptodev_driver_id;
 
@@ -766,9 +764,14 @@ cryptodev_mrvl_crypto_create(const char *name,
 	 * ret == -EEXIST is correct, it means DMA
 	 * has been already initialized.
 	 */
-	ret = mv_sys_dma_mem_init(RTE_MRVL_MUSDK_DMA_MEMSIZE);
-	if ((ret < 0) && (ret != -EEXIST))
-		return ret;
+	ret = mv_sys_dma_mem_init(MRVL_MUSDK_DMA_MEMSIZE);
+	if (ret < 0) {
+		if (ret != -EEXIST)
+			return ret;
+
+		MRVL_CRYPTO_LOG_INFO(
+			"DMA memory has been already initialized by a different driver.");
+	}
 
 	sam_params.max_num_sessions = internals->max_nb_sessions;
 
