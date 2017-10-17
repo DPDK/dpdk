@@ -58,7 +58,40 @@
 #define RTE_BACKTRACE 1
 #define RTE_EAL_VFIO 1
 
+/* mempool defines */
+#define RTE_MEMPOOL_CACHE_MAX_SIZE 512
+
 /* mbuf defines */
 #define RTE_MBUF_DEFAULT_MEMPOOL_OPS "ring_mp_mc"
+#define RTE_MBUF_REFCNT_ATOMIC 1
+#define RTE_PKTMBUF_HEADROOM 128
+
+/* ether defines */
+#define RTE_MAX_ETHPORTS 32
+#define RTE_MAX_QUEUES_PER_PORT 1024
+#define RTE_ETHDEV_QUEUE_STAT_CNTRS 16
+#define RTE_ETHDEV_RXTX_CALLBACKS 1
+
+/* cryptodev defines */
+#define RTE_CRYPTO_MAX_DEVS 64
+#define RTE_CRYPTODEV_NAME_LEN 64
+
+/* eventdev defines */
+#define RTE_EVENT_MAX_DEVS 16
+#define RTE_EVENT_MAX_QUEUES_PER_DEV 64
+
+/* ip_fragmentation defines */
+#define RTE_LIBRTE_IP_FRAG_MAX_FRAG 4
+#undef RTE_LIBRTE_IP_FRAG_TBL_STAT
+
+/* rte_power defines */
+#define RTE_MAX_LCORE_FREQS 64
+
+/* rte_sched defines */
+#undef RTE_SCHED_RED
+#undef RTE_SCHED_COLLECT_STATS
+#undef RTE_SCHED_SUBPORT_TC_OV
+#define RTE_SCHED_PORT_N_GRINDERS 8
+#undef RTE_SCHED_VECTOR
 
 #endif /* _RTE_CONFIG_H_ */
