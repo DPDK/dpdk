@@ -621,7 +621,7 @@ i40e_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	tm_node->priority = priority;
 	tm_node->weight = weight;
 	tm_node->reference_count = 0;
-	tm_node->parent = pf->tm_conf.root;
+	tm_node->parent = parent_node;
 	tm_node->shaper_profile = shaper_profile;
 	rte_memcpy(&tm_node->params, params,
 			 sizeof(struct rte_tm_node_params));
