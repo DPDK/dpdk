@@ -374,11 +374,13 @@ i40e_tm_node_search(struct rte_eth_dev *dev,
 }
 
 static int
-i40e_node_param_check(uint32_t node_id, uint32_t parent_node_id,
+i40e_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 		      uint32_t priority, uint32_t weight,
 		      struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	if (node_id == RTE_TM_NODE_ID_NULL) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 		error->message = "invalid node id";
@@ -409,8 +411,8 @@ i40e_node_param_check(uint32_t node_id, uint32_t parent_node_id,
 		return -EINVAL;
 	}
 
-	/* for root node */
-	if (parent_node_id == RTE_TM_NODE_ID_NULL) {
+	/* for non-leaf node */
+	if (node_id >= hw->func_caps.num_tx_qp) {
 		if (params->nonleaf.wfq_weight_mode) {
 			error->type =
 				RTE_TM_ERROR_TYPE_NODE_PARAMS_WFQ_WEIGHT_MODE;
@@ -433,7 +435,7 @@ i40e_node_param_check(uint32_t node_id, uint32_t parent_node_id,
 		return 0;
 	}
 
-	/* for TC or queue node */
+	/* for leaf node */
 	if (params->leaf.cman) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS_CMAN;
 		error->message = "Congestion management not supported";
@@ -494,7 +496,7 @@ i40e_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		return -EINVAL;
 	}
 
-	ret = i40e_node_param_check(node_id, parent_node_id, priority, weight,
+	ret = i40e_node_param_check(dev, node_id, priority, weight,
 				    params, error);
 	if (ret)
 		return ret;
