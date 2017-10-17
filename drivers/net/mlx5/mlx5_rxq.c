@@ -396,6 +396,8 @@ priv_rx_intr_vec_disable(struct priv *priv)
 
 	if (!priv->dev->data->dev_conf.intr_conf.rxq)
 		return;
+	if (!intr_handle->intr_vec)
+		goto free;
 	for (i = 0; i != n; ++i) {
 		struct mlx5_rxq_ctrl *rxq_ctrl;
 		struct mlx5_rxq_data *rxq_data;
@@ -411,8 +413,10 @@ priv_rx_intr_vec_disable(struct priv *priv)
 		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 		mlx5_priv_rxq_ibv_release(priv, rxq_ctrl->ibv);
 	}
+free:
 	rte_intr_free_epoll_fd(intr_handle);
-	free(intr_handle->intr_vec);
+	if (intr_handle->intr_vec)
+		free(intr_handle->intr_vec);
 	intr_handle->nb_efd = 0;
 	intr_handle->intr_vec = NULL;
 }
