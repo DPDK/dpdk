@@ -93,6 +93,9 @@
 #define MRVL_COOKIE_HIGH_ADDR_SHIFT	(sizeof(pp2_cookie_t) * 8)
 #define MRVL_COOKIE_HIGH_ADDR_MASK	(~0ULL << MRVL_COOKIE_HIGH_ADDR_SHIFT)
 
+/* Memory size (in bytes) for MUSDK dma buffers */
+#define MRVL_MUSDK_DMA_MEMSIZE 41943040
+
 static const char * const valid_args[] = {
 	MRVL_IFACE_NAME_ARG,
 	MRVL_CFG_ARG,
@@ -2193,9 +2196,14 @@ rte_pmd_mrvl_probe(struct rte_vdev_device *vdev)
 	 * ret == -EEXIST is correct, it means DMA
 	 * has been already initialized (by another PMD).
 	 */
-	ret = mv_sys_dma_mem_init(RTE_MRVL_MUSDK_DMA_MEMSIZE);
-	if (ret < 0 && ret != -EEXIST)
-		goto out_free_kvlist;
+	ret = mv_sys_dma_mem_init(MRVL_MUSDK_DMA_MEMSIZE);
+	if (ret < 0) {
+		if (ret != -EEXIST)
+			goto out_free_kvlist;
+		else
+			RTE_LOG(INFO, PMD,
+				"DMA memory has been already initialized by a different driver.\n");
+	}
 
 	ret = mrvl_init_pp2();
 	if (ret) {
