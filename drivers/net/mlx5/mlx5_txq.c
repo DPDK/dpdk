@@ -303,7 +303,7 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 		struct ibv_cq_ex cq_attr;
 	} attr;
 	unsigned int cqe_n;
-	struct mlx5dv_qp qp;
+	struct mlx5dv_qp qp = { .comp_mask = MLX5DV_QP_MASK_UAR_MMAP_OFFSET };
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_obj obj;
 	const int desc = 1 << txq_data->elts_n;
@@ -429,6 +429,12 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	txq_ibv->qp = tmpl.qp;
 	txq_ibv->cq = tmpl.cq;
 	rte_atomic32_inc(&txq_ibv->refcnt);
+	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
+		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
+	} else {
+		ERROR("Failed to retrieve UAR info, invalid libmlx5.so version");
+		goto error;
+	}
 	DEBUG("%p: Verbs Tx queue %p: refcnt %d", (void *)priv,
 	      (void *)txq_ibv, rte_atomic32_read(&txq_ibv->refcnt));
 	LIST_INSERT_HEAD(&priv->txqsibv, txq_ibv, next);
