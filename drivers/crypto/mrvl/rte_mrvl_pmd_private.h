@@ -40,18 +40,18 @@
 
 #define MRVL_CRYPTO_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_MRVL_CRYPTO_PMD), \
+			RTE_STR(CRYPTODEV_NAME_MRVL_PMD), \
 			__func__, __LINE__, ## args)
 
 #ifdef RTE_LIBRTE_MRVL_CRYPTO_DEBUG
 #define MRVL_CRYPTO_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_MRVL_CRYPTO_PMD), \
+			RTE_STR(CRYPTODEV_NAME_MRVL_PMD), \
 			__func__, __LINE__, ## args)
 
 #define MRVL_CRYPTO_LOG_DBG(fmt, args...) \
 	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_MRVL_CRYPTO_PMD), \
+			RTE_STR(CRYPTODEV_NAME_MRVL_PMD), \
 			__func__, __LINE__, ## args)
 
 #else
