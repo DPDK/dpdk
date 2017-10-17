@@ -482,7 +482,7 @@ ixgbe_queue_base_nb_get(struct rte_eth_dev *dev, uint16_t tc_node_no,
 }
 
 static int
-ixgbe_node_param_check(uint32_t node_id, uint32_t parent_node_id,
+ixgbe_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 		       uint32_t priority, uint32_t weight,
 		       struct rte_tm_node_params *params,
 		       struct rte_tm_error *error)
@@ -517,8 +517,8 @@ ixgbe_node_param_check(uint32_t node_id, uint32_t parent_node_id,
 		return -EINVAL;
 	}
 
-	/* for root node */
-	if (parent_node_id == RTE_TM_NODE_ID_NULL) {
+	/* for non-leaf node */
+	if (node_id >= dev->data->nb_tx_queues) {
 		/* check the unsupported parameters */
 		if (params->nonleaf.wfq_weight_mode) {
 			error->type =
@@ -542,7 +542,7 @@ ixgbe_node_param_check(uint32_t node_id, uint32_t parent_node_id,
 		return 0;
 	}
 
-	/* for TC or queue node */
+	/* for leaf node */
 	/* check the unsupported parameters */
 	if (params->leaf.cman) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS_CMAN;
@@ -606,7 +606,7 @@ ixgbe_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		return -EINVAL;
 	}
 
-	ret = ixgbe_node_param_check(node_id, parent_node_id, priority, weight,
+	ret = ixgbe_node_param_check(dev, node_id, priority, weight,
 				     params, error);
 	if (ret)
 		return ret;
