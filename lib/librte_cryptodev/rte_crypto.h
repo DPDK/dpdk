@@ -144,6 +144,7 @@ __rte_crypto_op_reset(struct rte_crypto_op *op, enum rte_crypto_op_type type)
 	case RTE_CRYPTO_OP_TYPE_SYMMETRIC:
 		__rte_crypto_sym_op_reset(op->sym);
 		break;
+	case RTE_CRYPTO_OP_TYPE_UNDEFINED:
 	default:
 		break;
 	}
