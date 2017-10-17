@@ -91,11 +91,6 @@ ifdef CONFIG_RTE_LIBRTE_MLX5_TX_MP_CACHE
 CFLAGS += -DMLX5_PMD_TX_MP_CACHE=$(CONFIG_RTE_LIBRTE_MLX5_TX_MP_CACHE)
 endif
 
-# Disable false positive warning
-ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
-CFLAGS_mlx5_txq.o += -wd3656
-endif
-
 include $(RTE_SDK)/mk/rte.lib.mk
 
 # Generate and clean-up mlx5_autoconf.h.

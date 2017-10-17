@@ -246,6 +246,7 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 	int already_mapped;
 	size_t page_size = sysconf(_SC_PAGESIZE);
 
+	memset(pages, 0, priv->txqs_n * sizeof(uintptr_t));
 	/*
 	 * As rdma-core, UARs are mapped in size of OS page size.
 	 * Use aligned address to avoid duplicate mmap.
