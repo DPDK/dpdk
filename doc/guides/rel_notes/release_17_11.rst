@@ -382,7 +382,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_reorder.so.1
      librte_ring.so.1
      librte_sched.so.1
-     librte_table.so.2
+   + librte_table.so.3
      librte_timer.so.1
      librte_vhost.so.3
 

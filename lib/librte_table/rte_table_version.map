@@ -1,19 +1,16 @@
-DPDK_2.0 {
+DPDK_17.11 {
 	global:
 
 	rte_table_acl_ops;
 	rte_table_array_ops;
-	rte_table_hash_ext_dosig_ops;
+	rte_table_hash_cuckoo_ops;
 	rte_table_hash_ext_ops;
-	rte_table_hash_key8_ext_dosig_ops;
-	rte_table_hash_key8_ext_ops;
-	rte_table_hash_key8_lru_dosig_ops;
-	rte_table_hash_key8_lru_ops;
 	rte_table_hash_key16_ext_ops;
 	rte_table_hash_key16_lru_ops;
 	rte_table_hash_key32_ext_ops;
 	rte_table_hash_key32_lru_ops;
-	rte_table_hash_lru_dosig_ops;
+	rte_table_hash_key8_ext_ops;
+	rte_table_hash_key8_lru_ops;
 	rte_table_hash_lru_ops;
 	rte_table_lpm_ipv6_ops;
 	rte_table_lpm_ops;
@@ -21,18 +18,3 @@ DPDK_2.0 {
 
 	local: *;
 };
-
-DPDK_2.2 {
-	global:
-
-	rte_table_hash_key16_ext_dosig_ops;
-	rte_table_hash_key16_lru_dosig_ops;
-
-};
-
-DPDK_17.11 {
-       global:
-
-       rte_table_hash_cuckoo_ops;
-
-} DPDK_2.0;
