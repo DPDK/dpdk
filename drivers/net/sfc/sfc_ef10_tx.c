@@ -602,7 +602,7 @@ sfc_ef10_tx_qreap(struct sfc_dp_txq *dp_txq)
 
 		txd = &txq->sw_ring[completed & txq->ptr_mask];
 		if (txd->mbuf != NULL) {
-			rte_pktmbuf_free(txd->mbuf);
+			rte_pktmbuf_free_seg(txd->mbuf);
 			txd->mbuf = NULL;
 		}
 	}
