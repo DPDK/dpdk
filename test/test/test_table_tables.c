@@ -969,13 +969,13 @@ test_table_hash_cuckoo(void)
 		.name = "CUCKOO",
 	};
 
-	table = rte_table_hash_cuckoo_dosig_ops.f_create(NULL, 0, entry_size);
+	table = rte_table_hash_cuckoo_ops.f_create(NULL, 0, entry_size);
 	if (table != NULL)
 		return -1;
 
 	cuckoo_params.key_size = 0;
 
-	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+	table = rte_table_hash_cuckoo_ops.f_create(&cuckoo_params,
 		0, entry_size);
 	if (table != NULL)
 		return -2;
@@ -983,7 +983,7 @@ test_table_hash_cuckoo(void)
 	cuckoo_params.key_size = 32;
 	cuckoo_params.n_keys = 0;
 
-	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+	table = rte_table_hash_cuckoo_ops.f_create(&cuckoo_params,
 		0, entry_size);
 	if (table != NULL)
 		return -3;
@@ -991,7 +991,7 @@ test_table_hash_cuckoo(void)
 	cuckoo_params.n_keys = 1 << 24;
 	cuckoo_params.f_hash = NULL;
 
-	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+	table = rte_table_hash_cuckoo_ops.f_create(&cuckoo_params,
 		0, entry_size);
 	if (table != NULL)
 		return -4;
@@ -999,24 +999,24 @@ test_table_hash_cuckoo(void)
 	cuckoo_params.f_hash = pipeline_test_hash;
 	cuckoo_params.name = NULL;
 
-	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+	table = rte_table_hash_cuckoo_ops.f_create(&cuckoo_params,
 		0, entry_size);
 	if (table != NULL)
 		return -5;
 
 	cuckoo_params.name = "CUCKOO";
 
-	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+	table = rte_table_hash_cuckoo_ops.f_create(&cuckoo_params,
 		0, entry_size);
 	if (table == NULL)
 		return -6;
 
 	/* Free */
-	status = rte_table_hash_cuckoo_dosig_ops.f_free(table);
+	status = rte_table_hash_cuckoo_ops.f_free(table);
 	if (status < 0)
 		return -7;
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_free(NULL);
+	status = rte_table_hash_cuckoo_ops.f_free(NULL);
 	if (status == 0)
 		return -8;
 
@@ -1027,60 +1027,60 @@ test_table_hash_cuckoo(void)
 	memset(key_cuckoo, 0, 32);
 	kcuckoo[0] = rte_be_to_cpu_32(0xadadadad);
 
-	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params, 0, 1);
+	table = rte_table_hash_cuckoo_ops.f_create(&cuckoo_params, 0, 1);
 	if (table == NULL)
 		return -9;
 
 	entry = 'A';
-	status = rte_table_hash_cuckoo_dosig_ops.f_add(NULL, &key_cuckoo,
+	status = rte_table_hash_cuckoo_ops.f_add(NULL, &key_cuckoo,
 		&entry, &key_found, &entry_ptr);
 	if (status == 0)
 		return -10;
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, NULL, &entry,
+	status = rte_table_hash_cuckoo_ops.f_add(table, NULL, &entry,
 		&key_found, &entry_ptr);
 	if (status == 0)
 		return -11;
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, &key_cuckoo,
+	status = rte_table_hash_cuckoo_ops.f_add(table, &key_cuckoo,
 		NULL, &key_found, &entry_ptr);
 	if (status == 0)
 		return -12;
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, &key_cuckoo,
+	status = rte_table_hash_cuckoo_ops.f_add(table, &key_cuckoo,
 		&entry, &key_found, &entry_ptr);
 	if (status != 0)
 		return -13;
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, &key_cuckoo,
+	status = rte_table_hash_cuckoo_ops.f_add(table, &key_cuckoo,
 		&entry, &key_found, &entry_ptr);
 	if (status != 0)
 		return -14;
 
 	/* Delete */
-	status = rte_table_hash_cuckoo_dosig_ops.f_delete(NULL, &key_cuckoo,
+	status = rte_table_hash_cuckoo_ops.f_delete(NULL, &key_cuckoo,
 		&key_found, NULL);
 	if (status == 0)
 		return -15;
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_delete(table, NULL,
+	status = rte_table_hash_cuckoo_ops.f_delete(table, NULL,
 		&key_found, NULL);
 	if (status == 0)
 		return -16;
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_delete(table, &key_cuckoo,
+	status = rte_table_hash_cuckoo_ops.f_delete(table, &key_cuckoo,
 		&key_found, NULL);
 	if (status != 0)
 		return -17;
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_delete(table, &key_cuckoo,
+	status = rte_table_hash_cuckoo_ops.f_delete(table, &key_cuckoo,
 		&key_found, NULL);
 	if (status != -ENOENT)
 		return -18;
 
 	/* Traffic flow */
 	entry = 'A';
-	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, &key_cuckoo,
+	status = rte_table_hash_cuckoo_ops.f_add(table, &key_cuckoo,
 		&entry, &key_found,
 		&entry_ptr);
 	if (status < 0)
@@ -1093,7 +1093,7 @@ test_table_hash_cuckoo(void)
 		} else
 			PREPARE_PACKET(mbufs[i], 0xadadadab);
 
-	rte_table_hash_cuckoo_dosig_ops.f_lookup(table, mbufs, -1,
+	rte_table_hash_cuckoo_ops.f_lookup(table, mbufs, -1,
 		&result_mask, (void **)entries);
 	if (result_mask != expected_mask)
 		return -20;
@@ -1102,7 +1102,7 @@ test_table_hash_cuckoo(void)
 	for (i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX; i++)
 		rte_pktmbuf_free(mbufs[i]);
 
-	status = rte_table_hash_cuckoo_dosig_ops.f_free(table);
+	status = rte_table_hash_cuckoo_ops.f_free(table);
 
 	return 0;
 }

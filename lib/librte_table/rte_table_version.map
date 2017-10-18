@@ -30,9 +30,9 @@ DPDK_2.2 {
 
 };
 
-DPDK_16.07 {
+DPDK_17.11 {
        global:
 
-       rte_table_hash_cuckoo_dosig_ops;
+       rte_table_hash_cuckoo_ops;
 
 } DPDK_2.0;

@@ -847,7 +847,7 @@ test_table_hash_cuckoo_combined(void)
 	table_packets.n_hit_packets = 50;
 	table_packets.n_miss_packets = 50;
 
-	status = test_table_type(&rte_table_hash_cuckoo_dosig_ops,
+	status = test_table_type(&rte_table_hash_cuckoo_ops,
 		(void *)&cuckoo_params, (void *)key_cuckoo, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_OK);
@@ -855,7 +855,7 @@ test_table_hash_cuckoo_combined(void)
 	/* Invalid parameters */
 	cuckoo_params.key_size = 0;
 
-	status = test_table_type(&rte_table_hash_cuckoo_dosig_ops,
+	status = test_table_type(&rte_table_hash_cuckoo_ops,
 		(void *)&cuckoo_params, (void *)key_cuckoo, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -863,7 +863,7 @@ test_table_hash_cuckoo_combined(void)
 	cuckoo_params.key_size = 32;
 	cuckoo_params.n_keys = 0;
 
-	status = test_table_type(&rte_table_hash_cuckoo_dosig_ops,
+	status = test_table_type(&rte_table_hash_cuckoo_ops,
 		(void *)&cuckoo_params, (void *)key_cuckoo, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -871,7 +871,7 @@ test_table_hash_cuckoo_combined(void)
 	cuckoo_params.n_keys = 1<<16;
 	cuckoo_params.f_hash = NULL;
 
-	status = test_table_type(&rte_table_hash_cuckoo_dosig_ops,
+	status = test_table_type(&rte_table_hash_cuckoo_ops,
 		(void *)&cuckoo_params, (void *)key_cuckoo, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);

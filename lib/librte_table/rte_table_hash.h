@@ -361,8 +361,7 @@ struct rte_table_hash_cuckoo_params {
 	const char *name;
 };
 
-/** Cuckoo hash table operations */
-extern struct rte_table_ops rte_table_hash_cuckoo_dosig_ops;
+extern struct rte_table_ops rte_table_hash_cuckoo_ops;
 
 #ifdef __cplusplus
 }

@@ -286,7 +286,7 @@ rte_table_hash_cuckoo_entry_delete(void *table, void *key,
 
 
 static int
-rte_table_hash_cuckoo_lookup_dosig(void *table,
+rte_table_hash_cuckoo_lookup(void *table,
 	struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
 	uint64_t *lookup_hit_mask,
@@ -370,13 +370,13 @@ rte_table_hash_cuckoo_stats_read(void *table, struct rte_table_stats *stats,
 	return 0;
 }
 
-struct rte_table_ops rte_table_hash_cuckoo_dosig_ops = {
+struct rte_table_ops rte_table_hash_cuckoo_ops = {
 	.f_create = rte_table_hash_cuckoo_create,
 	.f_free = rte_table_hash_cuckoo_free,
 	.f_add = rte_table_hash_cuckoo_entry_add,
 	.f_delete = rte_table_hash_cuckoo_entry_delete,
 	.f_add_bulk = NULL,
 	.f_delete_bulk = NULL,
-	.f_lookup = rte_table_hash_cuckoo_lookup_dosig,
+	.f_lookup = rte_table_hash_cuckoo_lookup,
 	.f_stats = rte_table_hash_cuckoo_stats_read,
 };
