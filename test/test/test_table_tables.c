@@ -878,6 +878,11 @@ test_table_hash_lru(void)
 	if (status < 0)
 		return status;
 
+	status = test_table_hash_lru_generic(
+		&rte_table_hash_key16_lru_ops,
+		16);
+	if (status < 0)
+		return status;
 	status = test_lru_update();
 	if (status < 0)
 		return status;
@@ -894,6 +899,9 @@ test_table_hash_ext(void)
 	if (status < 0)
 		return status;
 
+	status = test_table_hash_ext_generic(&rte_table_hash_key16_ext_ops, 16);
+	if (status < 0)
+		return status;
 	return 0;
 }
 

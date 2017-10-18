@@ -492,18 +492,6 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 	/* Tables */
 	p->n_tables = 1;
 	{
-		struct rte_table_hash_key16_ext_params
-			table_hash_key16_params = {
-			.n_entries = p_fc->n_flows,
-			.n_entries_ext = p_fc->n_flows,
-			.signature_offset = p_fc->hash_offset,
-			.key_offset = p_fc->key_offset,
-			.f_hash = hash_func[(p_fc->key_size / 8) - 1],
-			.key_mask = (p_fc->key_mask_present) ?
-				p_fc->key_mask : NULL,
-			.seed = 0,
-		};
-
 		struct rte_table_hash_params table_hash_params = {
 			.name = p->name,
 			.key_size = p_fc->key_size,
@@ -536,7 +524,7 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 
 		case 16:
 			table_params.ops = &rte_table_hash_key16_ext_ops;
-			table_params.arg_create = &table_hash_key16_params;
+			table_params.arg_create = &table_hash_params;
 			break;
 
 		default:
