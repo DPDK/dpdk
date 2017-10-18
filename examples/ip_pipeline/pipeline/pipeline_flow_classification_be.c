@@ -552,7 +552,7 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 			break;
 
 		default:
-			table_params.ops = &rte_table_hash_ext_dosig_ops;
+			table_params.ops = &rte_table_hash_ext_ops;
 			table_params.arg_create = &table_hash_params;
 		}
 

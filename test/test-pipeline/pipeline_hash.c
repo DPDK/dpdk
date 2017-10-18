@@ -187,7 +187,7 @@ app_main_loop_worker_pipeline_hash(void) {
 		};
 
 		struct rte_pipeline_table_params table_params = {
-			.ops = &rte_table_hash_ext_dosig_ops,
+			.ops = &rte_table_hash_ext_ops,
 			.arg_create = &table_hash_params,
 			.f_action_hit = NULL,
 			.f_action_miss = NULL,

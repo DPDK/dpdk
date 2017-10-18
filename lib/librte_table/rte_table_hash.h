@@ -135,12 +135,7 @@ struct rte_table_hash_ext_params {
 	uint32_t key_offset;
 };
 
-/** Extendible bucket hash table operations for pre-computed key signature */
 extern struct rte_table_ops rte_table_hash_ext_ops;
-
-/** Extendible bucket hash table operations for key signature computed on
-	lookup ("do-sig") */
-extern struct rte_table_ops rte_table_hash_ext_dosig_ops;
 
 /** LRU hash table parameters */
 struct rte_table_hash_lru_params {

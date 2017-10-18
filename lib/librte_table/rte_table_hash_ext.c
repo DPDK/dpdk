@@ -437,8 +437,7 @@ static int rte_table_hash_ext_lookup_unoptimized(
 	struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
 	uint64_t *lookup_hit_mask,
-	void **entries,
-	int dosig)
+	void **entries)
 {
 	struct rte_table_hash *t = (struct rte_table_hash *) table;
 	uint64_t pkts_mask_out = 0;
@@ -458,11 +457,7 @@ static int rte_table_hash_ext_lookup_unoptimized(
 
 		pkt = pkts[pkt_index];
 		key = RTE_MBUF_METADATA_UINT8_PTR(pkt, t->key_offset);
-		if (dosig)
-			sig = (uint64_t) t->f_hash(key, t->key_size, t->seed);
-		else
-			sig = RTE_MBUF_METADATA_UINT32(pkt,
-				t->signature_offset);
+		sig = (uint64_t) t->f_hash(key, t->key_size, t->seed);
 
 		bkt_index = sig & t->bucket_mask;
 		bkt0 = &t->buckets[bkt_index];
@@ -685,38 +680,7 @@ static int rte_table_hash_ext_lookup_unoptimized(
 	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf01, key_offset));\
 }
 
-#define lookup2_stage1(t, g, pkts, pkt10_index, pkt11_index)		\
-{									\
-	struct grinder *g10, *g11;					\
-	uint64_t sig10, sig11, bkt10_index, bkt11_index;		\
-	struct rte_mbuf *mbuf10, *mbuf11;				\
-	struct bucket *bkt10, *bkt11, *buckets = t->buckets;		\
-	uint64_t bucket_mask = t->bucket_mask;				\
-	uint32_t signature_offset = t->signature_offset;		\
-									\
-	mbuf10 = pkts[pkt10_index];					\
-	sig10 = (uint64_t) RTE_MBUF_METADATA_UINT32(mbuf10, signature_offset);\
-	bkt10_index = sig10 & bucket_mask;				\
-	bkt10 = &buckets[bkt10_index];					\
-									\
-	mbuf11 = pkts[pkt11_index];					\
-	sig11 = (uint64_t) RTE_MBUF_METADATA_UINT32(mbuf11, signature_offset);\
-	bkt11_index = sig11 & bucket_mask;				\
-	bkt11 = &buckets[bkt11_index];					\
-									\
-	rte_prefetch0(bkt10);						\
-	rte_prefetch0(bkt11);						\
-									\
-	g10 = &g[pkt10_index];						\
-	g10->sig = sig10;						\
-	g10->bkt = bkt10;						\
-									\
-	g11 = &g[pkt11_index];						\
-	g11->sig = sig11;						\
-	g11->bkt = bkt11;						\
-}
-
-#define lookup2_stage1_dosig(t, g, pkts, pkt10_index, pkt11_index)	\
+#define lookup2_stage1(t, g, pkts, pkt10_index, pkt11_index)	\
 {									\
 	struct grinder *g10, *g11;					\
 	uint64_t sig10, sig11, bkt10_index, bkt11_index;		\
@@ -874,7 +838,7 @@ static int rte_table_hash_ext_lookup(
 	/* Cannot run the pipeline with less than 7 packets */
 	if (__builtin_popcountll(pkts_mask) < 7) {
 		status = rte_table_hash_ext_lookup_unoptimized(table, pkts,
-			pkts_mask, lookup_hit_mask, entries, 0);
+			pkts_mask, lookup_hit_mask, entries);
 		RTE_TABLE_HASH_EXT_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in -
 				__builtin_popcountll(*lookup_hit_mask));
 		return status;
@@ -982,144 +946,7 @@ static int rte_table_hash_ext_lookup(
 		uint64_t pkts_mask_out_slow = 0;
 
 		status = rte_table_hash_ext_lookup_unoptimized(table, pkts,
-			pkts_mask_match_many, &pkts_mask_out_slow, entries, 0);
-		pkts_mask_out |= pkts_mask_out_slow;
-	}
-
-	*lookup_hit_mask = pkts_mask_out;
-	RTE_TABLE_HASH_EXT_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in - __builtin_popcountll(pkts_mask_out));
-	return status;
-}
-
-static int rte_table_hash_ext_lookup_dosig(
-	void *table,
-	struct rte_mbuf **pkts,
-	uint64_t pkts_mask,
-	uint64_t *lookup_hit_mask,
-	void **entries)
-{
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
-	struct grinder *g = t->grinders;
-	uint64_t pkt00_index, pkt01_index, pkt10_index, pkt11_index;
-	uint64_t pkt20_index, pkt21_index, pkt30_index, pkt31_index;
-	uint64_t pkts_mask_out = 0, pkts_mask_match_many = 0;
-	int status = 0;
-
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
-	RTE_TABLE_HASH_EXT_STATS_PKTS_IN_ADD(t, n_pkts_in);
-
-	/* Cannot run the pipeline with less than 7 packets */
-	if (__builtin_popcountll(pkts_mask) < 7) {
-		status = rte_table_hash_ext_lookup_unoptimized(table, pkts,
-			pkts_mask, lookup_hit_mask, entries, 1);
-		RTE_TABLE_HASH_EXT_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in -
-				__builtin_popcountll(*lookup_hit_mask));
-		return status;
-	}
-
-	/* Pipeline stage 0 */
-	lookup2_stage0(t, g, pkts, pkts_mask, pkt00_index, pkt01_index);
-
-	/* Pipeline feed */
-	pkt10_index = pkt00_index;
-	pkt11_index = pkt01_index;
-
-	/* Pipeline stage 0 */
-	lookup2_stage0(t, g, pkts, pkts_mask, pkt00_index, pkt01_index);
-
-	/* Pipeline stage 1 */
-	lookup2_stage1_dosig(t, g, pkts, pkt10_index, pkt11_index);
-
-	/* Pipeline feed */
-	pkt20_index = pkt10_index;
-	pkt21_index = pkt11_index;
-	pkt10_index = pkt00_index;
-	pkt11_index = pkt01_index;
-
-	/* Pipeline stage 0 */
-	lookup2_stage0(t, g, pkts, pkts_mask, pkt00_index, pkt01_index);
-
-	/* Pipeline stage 1 */
-	lookup2_stage1_dosig(t, g, pkts, pkt10_index, pkt11_index);
-
-	/* Pipeline stage 2 */
-	lookup2_stage2(t, g, pkt20_index, pkt21_index, pkts_mask_match_many);
-
-	/*
-	* Pipeline run
-	*
-	*/
-	for ( ; pkts_mask; ) {
-		/* Pipeline feed */
-		pkt30_index = pkt20_index;
-		pkt31_index = pkt21_index;
-		pkt20_index = pkt10_index;
-		pkt21_index = pkt11_index;
-		pkt10_index = pkt00_index;
-		pkt11_index = pkt01_index;
-
-		/* Pipeline stage 0 */
-		lookup2_stage0_with_odd_support(t, g, pkts, pkts_mask,
-			pkt00_index, pkt01_index);
-
-		/* Pipeline stage 1 */
-		lookup2_stage1_dosig(t, g, pkts, pkt10_index, pkt11_index);
-
-		/* Pipeline stage 2 */
-		lookup2_stage2(t, g, pkt20_index, pkt21_index,
-			pkts_mask_match_many);
-
-		/* Pipeline stage 3 */
-		lookup2_stage3(t, g, pkts, pkt30_index, pkt31_index,
-			pkts_mask_out, entries);
-	}
-
-	/* Pipeline feed */
-	pkt30_index = pkt20_index;
-	pkt31_index = pkt21_index;
-	pkt20_index = pkt10_index;
-	pkt21_index = pkt11_index;
-	pkt10_index = pkt00_index;
-	pkt11_index = pkt01_index;
-
-	/* Pipeline stage 1 */
-	lookup2_stage1_dosig(t, g, pkts, pkt10_index, pkt11_index);
-
-	/* Pipeline stage 2 */
-	lookup2_stage2(t, g, pkt20_index, pkt21_index, pkts_mask_match_many);
-
-	/* Pipeline stage 3 */
-	lookup2_stage3(t, g, pkts, pkt30_index, pkt31_index, pkts_mask_out,
-		entries);
-
-	/* Pipeline feed */
-	pkt30_index = pkt20_index;
-	pkt31_index = pkt21_index;
-	pkt20_index = pkt10_index;
-	pkt21_index = pkt11_index;
-
-	/* Pipeline stage 2 */
-	lookup2_stage2(t, g, pkt20_index, pkt21_index, pkts_mask_match_many);
-
-	/* Pipeline stage 3 */
-	lookup2_stage3(t, g, pkts, pkt30_index, pkt31_index, pkts_mask_out,
-		entries);
-
-	/* Pipeline feed */
-	pkt30_index = pkt20_index;
-	pkt31_index = pkt21_index;
-
-	/* Pipeline stage 3 */
-	lookup2_stage3(t, g, pkts, pkt30_index, pkt31_index, pkts_mask_out,
-		entries);
-
-	/* Slow path */
-	pkts_mask_match_many &= ~pkts_mask_out;
-	if (pkts_mask_match_many) {
-		uint64_t pkts_mask_out_slow = 0;
-
-		status = rte_table_hash_ext_lookup_unoptimized(table, pkts,
-			pkts_mask_match_many, &pkts_mask_out_slow, entries, 1);
+			pkts_mask_match_many, &pkts_mask_out_slow, entries);
 		pkts_mask_out |= pkts_mask_out_slow;
 	}
 
@@ -1142,7 +969,7 @@ rte_table_hash_ext_stats_read(void *table, struct rte_table_stats *stats, int cl
 	return 0;
 }
 
-struct rte_table_ops rte_table_hash_ext_ops	 = {
+struct rte_table_ops rte_table_hash_ext_ops  = {
 	.f_create = rte_table_hash_ext_create,
 	.f_free = rte_table_hash_ext_free,
 	.f_add = rte_table_hash_ext_entry_add,
@@ -1150,16 +977,5 @@ struct rte_table_ops rte_table_hash_ext_ops	 = {
 	.f_add_bulk = NULL,
 	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_hash_ext_lookup,
-	.f_stats = rte_table_hash_ext_stats_read,
-};
-
-struct rte_table_ops rte_table_hash_ext_dosig_ops  = {
-	.f_create = rte_table_hash_ext_create,
-	.f_free = rte_table_hash_ext_free,
-	.f_add = rte_table_hash_ext_entry_add,
-	.f_delete = rte_table_hash_ext_entry_delete,
-	.f_add_bulk = NULL,
-	.f_delete_bulk = NULL,
-	.f_lookup = rte_table_hash_ext_lookup_dosig,
 	.f_stats = rte_table_hash_ext_stats_read,
 };
