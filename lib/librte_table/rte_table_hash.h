@@ -98,6 +98,40 @@ extern "C" {
 /** Hash function */
 typedef uint64_t (*rte_table_hash_op_hash)(
 	void *key,
+	void *key_mask,
+	uint32_t key_size,
+	uint64_t seed);
+
+/** Hash table parameters */
+struct rte_table_hash_params {
+	/** Name */
+	const char *name;
+
+	/** Key size (number of bytes) */
+	uint32_t key_size;
+
+	/** Byte offset within packet meta-data where the key is located */
+	uint32_t key_offset;
+
+	/** Key mask */
+	uint8_t *key_mask;
+
+	/** Number of keys */
+	uint32_t n_keys;
+
+	/** Number of buckets */
+	uint32_t n_buckets;
+
+	/** Hash function */
+	rte_table_hash_op_hash f_hash;
+
+	/** Seed value for the hash function */
+	uint64_t seed;
+};
+
+/** Hash function */
+typedef uint64_t (*rte_table_hash_op_hash_nomask)(
+	void *key,
 	uint32_t key_size,
 	uint64_t seed);
 
@@ -121,7 +155,7 @@ struct rte_table_hash_ext_params {
 	uint32_t n_buckets_ext;
 
 	/** Hash function */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed value for the hash function */
 	uint64_t seed;
@@ -149,7 +183,7 @@ struct rte_table_hash_lru_params {
 	uint32_t n_buckets;
 
 	/** Hash function */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed value for the hash function */
 	uint64_t seed;
@@ -175,7 +209,7 @@ struct rte_table_hash_key8_lru_params {
 	uint32_t n_entries;
 
 	/** Hash function */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed for the hash function */
 	uint64_t seed;
@@ -204,7 +238,7 @@ struct rte_table_hash_key8_ext_params {
 	uint32_t n_entries_ext;
 
 	/** Hash function */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed for the hash function */
 	uint64_t seed;
@@ -233,7 +267,7 @@ struct rte_table_hash_key16_lru_params {
 	uint32_t n_entries;
 
 	/** Hash function */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed for the hash function */
 	uint64_t seed;
@@ -262,7 +296,7 @@ struct rte_table_hash_key16_ext_params {
 	uint32_t n_entries_ext;
 
 	/** Hash function */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed for the hash function */
 	uint64_t seed;
@@ -291,7 +325,7 @@ struct rte_table_hash_key32_lru_params {
 	uint32_t n_entries;
 
 	/** Hash function */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed for the hash function */
 	uint64_t seed;
@@ -318,7 +352,7 @@ struct rte_table_hash_key32_ext_params {
 	uint32_t n_entries_ext;
 
 	/** Hash function */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed for the hash function */
 	uint64_t seed;
@@ -344,7 +378,7 @@ struct rte_table_hash_cuckoo_params {
 	uint32_t n_keys;
 
 	/** Hash function used to calculate hash */
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 
 	/** Seed value or Init value used by f_hash */
 	uint32_t seed;

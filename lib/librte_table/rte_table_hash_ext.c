@@ -104,7 +104,7 @@ struct rte_table_hash {
 	uint32_t n_keys;
 	uint32_t n_buckets;
 	uint32_t n_buckets_ext;
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 	uint64_t seed;
 	uint32_t signature_offset;
 	uint32_t key_offset;
@@ -688,7 +688,7 @@ static int rte_table_hash_ext_lookup_unoptimized(
 	struct bucket *bkt10, *bkt11, *buckets = t->buckets;		\
 	uint8_t *key10, *key11;						\
 	uint64_t bucket_mask = t->bucket_mask;				\
-	rte_table_hash_op_hash f_hash = t->f_hash;			\
+	rte_table_hash_op_hash_nomask f_hash = t->f_hash;			\
 	uint64_t seed = t->seed;					\
 	uint32_t key_size = t->key_size;				\
 	uint32_t key_offset = t->key_offset;				\

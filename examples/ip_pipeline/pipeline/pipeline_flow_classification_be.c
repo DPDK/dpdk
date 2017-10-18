@@ -118,7 +118,7 @@ struct flow_table_entry {
 	uint32_t pad;
 };
 
-rte_table_hash_op_hash hash_func[] = {
+rte_table_hash_op_hash_nomask hash_func[] = {
 	hash_default_key8,
 	hash_default_key16,
 	hash_default_key24,

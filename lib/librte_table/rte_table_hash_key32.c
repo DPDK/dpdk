@@ -85,7 +85,7 @@ struct rte_table_hash {
 	uint32_t bucket_size;
 	uint32_t signature_offset;
 	uint32_t key_offset;
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 	uint64_t seed;
 
 	/* Extendible buckets */

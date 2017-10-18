@@ -52,7 +52,7 @@
 struct pipeline_passthrough {
 	struct pipeline p;
 	struct pipeline_passthrough_params params;
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 	uint32_t swap_field0_offset[SWAP_DIM];
 	uint32_t swap_field1_offset[SWAP_DIM];
 	uint64_t swap_field_mask[SWAP_DIM];
@@ -677,7 +677,7 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 	return 0;
 }
 
-static rte_table_hash_op_hash
+static rte_table_hash_op_hash_nomask
 get_hash_function(struct pipeline_passthrough *p)
 {
 	switch (p->params.dma_size) {

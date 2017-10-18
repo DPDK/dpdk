@@ -64,7 +64,7 @@ struct rte_table_hash {
 	uint32_t key_size;
 	uint32_t entry_size;
 	uint32_t n_keys;
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 	uint32_t seed;
 	uint32_t signature_offset;
 	uint32_t key_offset;

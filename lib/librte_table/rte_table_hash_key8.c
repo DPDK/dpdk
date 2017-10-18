@@ -83,7 +83,7 @@ struct rte_table_hash {
 	uint32_t signature_offset;
 	uint32_t key_offset;
 	uint64_t key_mask;
-	rte_table_hash_op_hash f_hash;
+	rte_table_hash_op_hash_nomask f_hash;
 	uint64_t seed;
 
 	/* Extendible buckets */
@@ -733,7 +733,7 @@ rte_table_hash_entry_delete_key8_ext(
 	uint64_t hash_offset_buffer11;				\
 	uint64_t signature10, signature11;			\
 	uint32_t bucket10_index, bucket11_index;		\
-	rte_table_hash_op_hash f_hash = f->f_hash;		\
+	rte_table_hash_op_hash_nomask f_hash = f->f_hash;		\
 	uint64_t seed = f->seed;				\
 	uint32_t key_offset = f->key_offset;			\
 								\
