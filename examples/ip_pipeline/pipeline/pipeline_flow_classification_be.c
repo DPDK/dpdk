@@ -542,29 +542,17 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 
 		switch (p_fc->key_size) {
 		case 8:
-			if (p_fc->hash_offset != 0) {
-				table_params.ops =
-					&rte_table_hash_key8_ext_ops;
-			} else {
-				table_params.ops =
-					&rte_table_hash_key8_ext_dosig_ops;
-			}
+			table_params.ops = &rte_table_hash_key8_ext_dosig_ops;
 			table_params.arg_create = &table_hash_key8_params;
 			break;
 
 		case 16:
-			if (p_fc->hash_offset != 0) {
-				table_params.ops =
-					&rte_table_hash_key16_ext_ops;
-			} else {
-				table_params.ops =
-					&rte_table_hash_key16_ext_dosig_ops;
-			}
+			table_params.ops = &rte_table_hash_key16_ext_dosig_ops;
 			table_params.arg_create = &table_hash_key16_params;
 			break;
 
 		default:
-			table_params.ops = &rte_table_hash_ext_ops;
+			table_params.ops = &rte_table_hash_ext_dosig_ops;
 			table_params.arg_create = &table_hash_params;
 		}
 
