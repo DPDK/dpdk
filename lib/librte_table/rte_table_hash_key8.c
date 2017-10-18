@@ -583,18 +583,6 @@ rte_table_hash_entry_delete_key8_ext(
 
 #define lookup1_stage1(mbuf1, bucket1, f)			\
 {								\
-	uint64_t signature;					\
-	uint32_t bucket_index;					\
-								\
-	signature = RTE_MBUF_METADATA_UINT32(mbuf1, f->signature_offset);\
-	bucket_index = signature & (f->n_buckets - 1);		\
-	bucket1 = (struct rte_bucket_4_8 *)			\
-		&f->memory[bucket_index * f->bucket_size];	\
-	rte_prefetch0(bucket1);					\
-}
-
-#define lookup1_stage1_dosig(mbuf1, bucket1, f)			\
-{								\
 	uint64_t *key;						\
 	uint64_t signature;					\
 	uint32_t bucket_index;					\
@@ -738,25 +726,7 @@ rte_table_hash_entry_delete_key8_ext(
 	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf01, key_offset));\
 }
 
-#define lookup2_stage1(mbuf10, mbuf11, bucket10, bucket11, f)	\
-{								\
-	uint64_t signature10, signature11;			\
-	uint32_t bucket10_index, bucket11_index;		\
-								\
-	signature10 = RTE_MBUF_METADATA_UINT32(mbuf10, f->signature_offset);\
-	bucket10_index = signature10 & (f->n_buckets - 1);	\
-	bucket10 = (struct rte_bucket_4_8 *)			\
-		&f->memory[bucket10_index * f->bucket_size];	\
-	rte_prefetch0(bucket10);				\
-								\
-	signature11 = RTE_MBUF_METADATA_UINT32(mbuf11, f->signature_offset);\
-	bucket11_index = signature11 & (f->n_buckets - 1);	\
-	bucket11 = (struct rte_bucket_4_8 *)			\
-		&f->memory[bucket11_index * f->bucket_size];	\
-	rte_prefetch0(bucket11);				\
-}
-
-#define lookup2_stage1_dosig(mbuf10, mbuf11, bucket10, bucket11, f)\
+#define lookup2_stage1(mbuf10, mbuf11, bucket10, bucket11, f)\
 {								\
 	uint64_t *key10, *key11;				\
 	uint64_t hash_offset_buffer10;				\
@@ -871,8 +841,8 @@ rte_table_hash_lookup_key8_lru(
 	struct rte_table_hash *f = (struct rte_table_hash *) table;
 	struct rte_bucket_4_8 *bucket10, *bucket11, *bucket20, *bucket21;
 	struct rte_mbuf *mbuf00, *mbuf01, *mbuf10, *mbuf11, *mbuf20, *mbuf21;
-	uint32_t pkt00_index, pkt01_index, pkt10_index,
-			pkt11_index, pkt20_index, pkt21_index;
+	uint32_t pkt00_index, pkt01_index, pkt10_index;
+	uint32_t pkt11_index, pkt20_index, pkt21_index;
 	uint64_t pkts_mask_out = 0;
 
 	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
@@ -888,7 +858,7 @@ rte_table_hash_lookup_key8_lru(
 			lookup1_stage0(pkt_index, mbuf, pkts, pkts_mask, f);
 			lookup1_stage1(mbuf, bucket, f);
 			lookup1_stage2_lru(pkt_index, mbuf, bucket,
-					pkts_mask_out, entries, f);
+				pkts_mask_out, entries, f);
 		}
 
 		*lookup_hit_mask = pkts_mask_out;
@@ -987,132 +957,6 @@ rte_table_hash_lookup_key8_lru(
 } /* rte_table_hash_lookup_key8_lru() */
 
 static int
-rte_table_hash_lookup_key8_lru_dosig(
-	void *table,
-	struct rte_mbuf **pkts,
-	uint64_t pkts_mask,
-	uint64_t *lookup_hit_mask,
-	void **entries)
-{
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
-	struct rte_bucket_4_8 *bucket10, *bucket11, *bucket20, *bucket21;
-	struct rte_mbuf *mbuf00, *mbuf01, *mbuf10, *mbuf11, *mbuf20, *mbuf21;
-	uint32_t pkt00_index, pkt01_index, pkt10_index;
-	uint32_t pkt11_index, pkt20_index, pkt21_index;
-	uint64_t pkts_mask_out = 0;
-
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
-	RTE_TABLE_HASH_KEY8_STATS_PKTS_IN_ADD(f, n_pkts_in);
-
-	/* Cannot run the pipeline with less than 5 packets */
-	if (__builtin_popcountll(pkts_mask) < 5) {
-		for ( ; pkts_mask; ) {
-			struct rte_bucket_4_8 *bucket;
-			struct rte_mbuf *mbuf;
-			uint32_t pkt_index;
-
-			lookup1_stage0(pkt_index, mbuf, pkts, pkts_mask, f);
-			lookup1_stage1_dosig(mbuf, bucket, f);
-			lookup1_stage2_lru(pkt_index, mbuf, bucket,
-				pkts_mask_out, entries, f);
-		}
-
-		*lookup_hit_mask = pkts_mask_out;
-		RTE_TABLE_HASH_KEY8_STATS_PKTS_LOOKUP_MISS(f, n_pkts_in - __builtin_popcountll(pkts_mask_out));
-		return 0;
-	}
-
-	/*
-	 * Pipeline fill
-	 *
-	 */
-	/* Pipeline stage 0 */
-	lookup2_stage0(pkt00_index, pkt01_index, mbuf00, mbuf01, pkts,
-		pkts_mask, f);
-
-	/* Pipeline feed */
-	mbuf10 = mbuf00;
-	mbuf11 = mbuf01;
-	pkt10_index = pkt00_index;
-	pkt11_index = pkt01_index;
-
-	/* Pipeline stage 0 */
-	lookup2_stage0(pkt00_index, pkt01_index, mbuf00, mbuf01, pkts,
-		pkts_mask, f);
-
-	/* Pipeline stage 1 */
-	lookup2_stage1_dosig(mbuf10, mbuf11, bucket10, bucket11, f);
-
-	/*
-	 * Pipeline run
-	 *
-	 */
-	for ( ; pkts_mask; ) {
-		/* Pipeline feed */
-		bucket20 = bucket10;
-		bucket21 = bucket11;
-		mbuf20 = mbuf10;
-		mbuf21 = mbuf11;
-		mbuf10 = mbuf00;
-		mbuf11 = mbuf01;
-		pkt20_index = pkt10_index;
-		pkt21_index = pkt11_index;
-		pkt10_index = pkt00_index;
-		pkt11_index = pkt01_index;
-
-		/* Pipeline stage 0 */
-		lookup2_stage0_with_odd_support(pkt00_index, pkt01_index,
-			mbuf00, mbuf01, pkts, pkts_mask, f);
-
-		/* Pipeline stage 1 */
-		lookup2_stage1_dosig(mbuf10, mbuf11, bucket10, bucket11, f);
-
-		/* Pipeline stage 2 */
-		lookup2_stage2_lru(pkt20_index, pkt21_index, mbuf20, mbuf21,
-			bucket20, bucket21, pkts_mask_out, entries, f);
-	}
-
-	/*
-	 * Pipeline flush
-	 *
-	 */
-	/* Pipeline feed */
-	bucket20 = bucket10;
-	bucket21 = bucket11;
-	mbuf20 = mbuf10;
-	mbuf21 = mbuf11;
-	mbuf10 = mbuf00;
-	mbuf11 = mbuf01;
-	pkt20_index = pkt10_index;
-	pkt21_index = pkt11_index;
-	pkt10_index = pkt00_index;
-	pkt11_index = pkt01_index;
-
-	/* Pipeline stage 1 */
-	lookup2_stage1_dosig(mbuf10, mbuf11, bucket10, bucket11, f);
-
-	/* Pipeline stage 2 */
-	lookup2_stage2_lru(pkt20_index, pkt21_index, mbuf20, mbuf21,
-		bucket20, bucket21, pkts_mask_out, entries, f);
-
-	/* Pipeline feed */
-	bucket20 = bucket10;
-	bucket21 = bucket11;
-	mbuf20 = mbuf10;
-	mbuf21 = mbuf11;
-	pkt20_index = pkt10_index;
-	pkt21_index = pkt11_index;
-
-	/* Pipeline stage 2 */
-	lookup2_stage2_lru(pkt20_index, pkt21_index, mbuf20, mbuf21,
-		bucket20, bucket21, pkts_mask_out, entries, f);
-
-	*lookup_hit_mask = pkts_mask_out;
-	RTE_TABLE_HASH_KEY8_STATS_PKTS_LOOKUP_MISS(f, n_pkts_in - __builtin_popcountll(pkts_mask_out));
-	return 0;
-} /* rte_table_hash_lookup_key8_lru_dosig() */
-
-static int
 rte_table_hash_lookup_key8_ext(
 	void *table,
 	struct rte_mbuf **pkts,
@@ -1142,8 +986,8 @@ rte_table_hash_lookup_key8_ext(
 			lookup1_stage0(pkt_index, mbuf, pkts, pkts_mask, f);
 			lookup1_stage1(mbuf, bucket, f);
 			lookup1_stage2_ext(pkt_index, mbuf, bucket,
-				pkts_mask_out, entries, buckets_mask, buckets,
-				keys, f);
+				pkts_mask_out, entries, buckets_mask,
+				buckets, keys, f);
 		}
 
 		goto grind_next_buckets;
@@ -1263,156 +1107,6 @@ grind_next_buckets:
 } /* rte_table_hash_lookup_key8_ext() */
 
 static int
-rte_table_hash_lookup_key8_ext_dosig(
-	void *table,
-	struct rte_mbuf **pkts,
-	uint64_t pkts_mask,
-	uint64_t *lookup_hit_mask,
-	void **entries)
-{
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
-	struct rte_bucket_4_8 *bucket10, *bucket11, *bucket20, *bucket21;
-	struct rte_mbuf *mbuf00, *mbuf01, *mbuf10, *mbuf11, *mbuf20, *mbuf21;
-	uint32_t pkt00_index, pkt01_index, pkt10_index;
-	uint32_t pkt11_index, pkt20_index, pkt21_index;
-	uint64_t pkts_mask_out = 0, buckets_mask = 0;
-	struct rte_bucket_4_8 *buckets[RTE_PORT_IN_BURST_SIZE_MAX];
-	uint64_t *keys[RTE_PORT_IN_BURST_SIZE_MAX];
-
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
-	RTE_TABLE_HASH_KEY8_STATS_PKTS_IN_ADD(f, n_pkts_in);
-
-	/* Cannot run the pipeline with less than 5 packets */
-	if (__builtin_popcountll(pkts_mask) < 5) {
-		for ( ; pkts_mask; ) {
-			struct rte_bucket_4_8 *bucket;
-			struct rte_mbuf *mbuf;
-			uint32_t pkt_index;
-
-			lookup1_stage0(pkt_index, mbuf, pkts, pkts_mask, f);
-			lookup1_stage1_dosig(mbuf, bucket, f);
-			lookup1_stage2_ext(pkt_index, mbuf, bucket,
-				pkts_mask_out, entries, buckets_mask,
-				buckets, keys, f);
-		}
-
-		goto grind_next_buckets;
-	}
-
-	/*
-	 * Pipeline fill
-	 *
-	 */
-	/* Pipeline stage 0 */
-	lookup2_stage0(pkt00_index, pkt01_index, mbuf00, mbuf01, pkts,
-		pkts_mask, f);
-
-	/* Pipeline feed */
-	mbuf10 = mbuf00;
-	mbuf11 = mbuf01;
-	pkt10_index = pkt00_index;
-	pkt11_index = pkt01_index;
-
-	/* Pipeline stage 0 */
-	lookup2_stage0(pkt00_index, pkt01_index, mbuf00, mbuf01, pkts,
-		pkts_mask, f);
-
-	/* Pipeline stage 1 */
-	lookup2_stage1_dosig(mbuf10, mbuf11, bucket10, bucket11, f);
-
-	/*
-	 * Pipeline run
-	 *
-	 */
-	for ( ; pkts_mask; ) {
-		/* Pipeline feed */
-		bucket20 = bucket10;
-		bucket21 = bucket11;
-		mbuf20 = mbuf10;
-		mbuf21 = mbuf11;
-		mbuf10 = mbuf00;
-		mbuf11 = mbuf01;
-		pkt20_index = pkt10_index;
-		pkt21_index = pkt11_index;
-		pkt10_index = pkt00_index;
-		pkt11_index = pkt01_index;
-
-		/* Pipeline stage 0 */
-		lookup2_stage0_with_odd_support(pkt00_index, pkt01_index,
-			mbuf00, mbuf01, pkts, pkts_mask, f);
-
-		/* Pipeline stage 1 */
-		lookup2_stage1_dosig(mbuf10, mbuf11, bucket10, bucket11, f);
-
-		/* Pipeline stage 2 */
-		lookup2_stage2_ext(pkt20_index, pkt21_index, mbuf20, mbuf21,
-			bucket20, bucket21, pkts_mask_out, entries,
-			buckets_mask, buckets, keys, f);
-	}
-
-	/*
-	 * Pipeline flush
-	 *
-	 */
-	/* Pipeline feed */
-	bucket20 = bucket10;
-	bucket21 = bucket11;
-	mbuf20 = mbuf10;
-	mbuf21 = mbuf11;
-	mbuf10 = mbuf00;
-	mbuf11 = mbuf01;
-	pkt20_index = pkt10_index;
-	pkt21_index = pkt11_index;
-	pkt10_index = pkt00_index;
-	pkt11_index = pkt01_index;
-
-	/* Pipeline stage 1 */
-	lookup2_stage1_dosig(mbuf10, mbuf11, bucket10, bucket11, f);
-
-	/* Pipeline stage 2 */
-	lookup2_stage2_ext(pkt20_index, pkt21_index, mbuf20, mbuf21,
-		bucket20, bucket21, pkts_mask_out, entries,
-		buckets_mask, buckets, keys, f);
-
-	/* Pipeline feed */
-	bucket20 = bucket10;
-	bucket21 = bucket11;
-	mbuf20 = mbuf10;
-	mbuf21 = mbuf11;
-	pkt20_index = pkt10_index;
-	pkt21_index = pkt11_index;
-
-	/* Pipeline stage 2 */
-	lookup2_stage2_ext(pkt20_index, pkt21_index, mbuf20, mbuf21,
-		bucket20, bucket21, pkts_mask_out, entries,
-		buckets_mask, buckets, keys, f);
-
-grind_next_buckets:
-	/* Grind next buckets */
-	for ( ; buckets_mask; ) {
-		uint64_t buckets_mask_next = 0;
-
-		for ( ; buckets_mask; ) {
-			uint64_t pkt_mask;
-			uint32_t pkt_index;
-
-			pkt_index = __builtin_ctzll(buckets_mask);
-			pkt_mask = 1LLU << pkt_index;
-			buckets_mask &= ~pkt_mask;
-
-			lookup_grinder(pkt_index, buckets, keys, pkts_mask_out,
-				entries, buckets_mask_next, f);
-		}
-
-		buckets_mask = buckets_mask_next;
-	}
-
-	*lookup_hit_mask = pkts_mask_out;
-	RTE_TABLE_HASH_KEY8_STATS_PKTS_LOOKUP_MISS(f, n_pkts_in - __builtin_popcountll(pkts_mask_out));
-	return 0;
-} /* rte_table_hash_lookup_key8_dosig_ext() */
-
-static int
 rte_table_hash_key8_stats_read(void *table, struct rte_table_stats *stats, int clear)
 {
 	struct rte_table_hash *t = table;
@@ -1437,17 +1131,6 @@ struct rte_table_ops rte_table_hash_key8_lru_ops = {
 	.f_stats = rte_table_hash_key8_stats_read,
 };
 
-struct rte_table_ops rte_table_hash_key8_lru_dosig_ops = {
-	.f_create = rte_table_hash_create_key8_lru,
-	.f_free = rte_table_hash_free_key8_lru,
-	.f_add = rte_table_hash_entry_add_key8_lru,
-	.f_delete = rte_table_hash_entry_delete_key8_lru,
-	.f_add_bulk = NULL,
-	.f_delete_bulk = NULL,
-	.f_lookup = rte_table_hash_lookup_key8_lru_dosig,
-	.f_stats = rte_table_hash_key8_stats_read,
-};
-
 struct rte_table_ops rte_table_hash_key8_ext_ops = {
 	.f_create = rte_table_hash_create_key8_ext,
 	.f_free = rte_table_hash_free_key8_ext,
@@ -1456,16 +1139,5 @@ struct rte_table_ops rte_table_hash_key8_ext_ops = {
 	.f_add_bulk = NULL,
 	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_hash_lookup_key8_ext,
-	.f_stats = rte_table_hash_key8_stats_read,
-};
-
-struct rte_table_ops rte_table_hash_key8_ext_dosig_ops = {
-	.f_create = rte_table_hash_create_key8_ext,
-	.f_free = rte_table_hash_free_key8_ext,
-	.f_add = rte_table_hash_entry_add_key8_ext,
-	.f_delete = rte_table_hash_entry_delete_key8_ext,
-	.f_add_bulk = NULL,
-	.f_delete_bulk = NULL,
-	.f_lookup = rte_table_hash_lookup_key8_ext_dosig,
 	.f_stats = rte_table_hash_key8_stats_read,
 };

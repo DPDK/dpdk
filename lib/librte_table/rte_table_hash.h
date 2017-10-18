@@ -201,11 +201,7 @@ struct rte_table_hash_key8_lru_params {
 	uint8_t *key_mask;
 };
 
-/** LRU hash table operations for pre-computed key signature */
 extern struct rte_table_ops rte_table_hash_key8_lru_ops;
-
-/** LRU hash table operations for key signature computed on lookup ("do-sig") */
-extern struct rte_table_ops rte_table_hash_key8_lru_dosig_ops;
 
 /** Extendible bucket hash table parameters */
 struct rte_table_hash_key8_ext_params {
@@ -234,12 +230,7 @@ struct rte_table_hash_key8_ext_params {
 	uint8_t *key_mask;
 };
 
-/** Extendible bucket hash table operations for pre-computed key signature */
 extern struct rte_table_ops rte_table_hash_key8_ext_ops;
-
-/** Extendible bucket hash table operations for key signature computed on
-    lookup ("do-sig") */
-extern struct rte_table_ops rte_table_hash_key8_ext_dosig_ops;
 
 /**
  * 16-byte key hash tables

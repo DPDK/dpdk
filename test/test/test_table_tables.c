@@ -895,12 +895,12 @@ test_table_hash_lru(void)
 {
 	int status;
 
-	status = test_table_hash_lru_generic(&rte_table_hash_key8_lru_dosig_ops);
+	status = test_table_hash_lru_generic(&rte_table_hash_key8_lru_ops);
 	if (status < 0)
 		return status;
 
 	status = test_table_hash_lru_generic(
-		&rte_table_hash_key8_lru_dosig_ops);
+		&rte_table_hash_key8_lru_ops);
 	if (status < 0)
 		return status;
 
@@ -924,12 +924,12 @@ test_table_hash_ext(void)
 {
 	int status;
 
-	status = test_table_hash_ext_generic(&rte_table_hash_key8_ext_dosig_ops);
+	status = test_table_hash_ext_generic(&rte_table_hash_key8_ext_ops);
 	if (status < 0)
 		return status;
 
 	status = test_table_hash_ext_generic(
-		&rte_table_hash_key8_ext_dosig_ops);
+		&rte_table_hash_key8_ext_ops);
 	if (status < 0)
 		return status;
 

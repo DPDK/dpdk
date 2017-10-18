@@ -1359,7 +1359,7 @@ pipeline_routing_init(struct pipeline_params *params,
 		};
 
 		struct rte_pipeline_table_params table_params = {
-			.ops = &rte_table_hash_key8_ext_dosig_ops,
+			.ops = &rte_table_hash_key8_ext_ops,
 			.arg_create = &table_arp_params,
 			.f_action_hit = get_arp_table_ah_hit(p_rt),
 			.f_action_miss = NULL,

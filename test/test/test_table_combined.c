@@ -469,7 +469,7 @@ test_table_hash8lru(void)
 	table_packets.n_hit_packets = 50;
 	table_packets.n_miss_packets = 50;
 
-	status = test_table_type(&rte_table_hash_key8_lru_dosig_ops,
+	status = test_table_type(&rte_table_hash_key8_lru_ops,
 		(void *)&key8lru_params, (void *)key8lru, &table_packets,
 			NULL, 0);
 	VERIFY(status, CHECK_TABLE_OK);
@@ -477,7 +477,7 @@ test_table_hash8lru(void)
 	/* Invalid parameters */
 	key8lru_params.n_entries = 0;
 
-	status = test_table_type(&rte_table_hash_key8_lru_dosig_ops,
+	status = test_table_type(&rte_table_hash_key8_lru_ops,
 		(void *)&key8lru_params, (void *)key8lru, &table_packets,
 			NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -485,7 +485,7 @@ test_table_hash8lru(void)
 	key8lru_params.n_entries = 1<<16;
 	key8lru_params.f_hash = NULL;
 
-	status = test_table_type(&rte_table_hash_key8_lru_dosig_ops,
+	status = test_table_type(&rte_table_hash_key8_lru_ops,
 		(void *)&key8lru_params, (void *)key8lru, &table_packets,
 			NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -646,7 +646,7 @@ test_table_hash8ext(void)
 	table_packets.n_hit_packets = 50;
 	table_packets.n_miss_packets = 50;
 
-	status = test_table_type(&rte_table_hash_key8_ext_dosig_ops,
+	status = test_table_type(&rte_table_hash_key8_ext_ops,
 		(void *)&key8ext_params, (void *)key8ext, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_OK);
@@ -654,7 +654,7 @@ test_table_hash8ext(void)
 	/* Invalid parameters */
 	key8ext_params.n_entries = 0;
 
-	status = test_table_type(&rte_table_hash_key8_ext_dosig_ops,
+	status = test_table_type(&rte_table_hash_key8_ext_ops,
 		(void *)&key8ext_params, (void *)key8ext, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -662,7 +662,7 @@ test_table_hash8ext(void)
 	key8ext_params.n_entries = 1<<16;
 	key8ext_params.f_hash = NULL;
 
-	status = test_table_type(&rte_table_hash_key8_ext_dosig_ops,
+	status = test_table_type(&rte_table_hash_key8_ext_ops,
 		(void *)&key8ext_params, (void *)key8ext, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -670,7 +670,7 @@ test_table_hash8ext(void)
 	key8ext_params.f_hash = pipeline_test_hash;
 	key8ext_params.n_entries_ext = 0;
 
-	status = test_table_type(&rte_table_hash_key8_ext_dosig_ops,
+	status = test_table_type(&rte_table_hash_key8_ext_ops,
 	(void *)&key8ext_params, (void *)key8ext, &table_packets, NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
 

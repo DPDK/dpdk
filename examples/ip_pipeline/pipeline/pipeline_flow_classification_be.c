@@ -542,7 +542,7 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 
 		switch (p_fc->key_size) {
 		case 8:
-			table_params.ops = &rte_table_hash_key8_ext_dosig_ops;
+			table_params.ops = &rte_table_hash_key8_ext_ops;
 			table_params.arg_create = &table_hash_key8_params;
 			break;
 
