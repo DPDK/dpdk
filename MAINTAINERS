@@ -930,6 +930,7 @@ F: examples/helloworld/
 F: doc/guides/sample_app_ug/hello_world.rst
 
 M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
+M: Radu Nicolau <radu.nicolau@intel.com>
 F: examples/ipsec-secgw/
 F: doc/guides/sample_app_ug/ipsec_secgw.rst
 
