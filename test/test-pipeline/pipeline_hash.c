@@ -231,13 +231,14 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	case e_APP_PIPELINE_HASH_SPEC_KEY8_EXT:
 	{
-		struct rte_table_hash_key8_ext_params table_hash_params = {
-			.n_entries = 1 << 24,
-			.n_entries_ext = 1 << 23,
-			.signature_offset = APP_METADATA_OFFSET(0),
+		struct rte_table_hash_params table_hash_params = {
+			.name = "TABLE",
+			.key_size = key_size,
 			.key_offset = APP_METADATA_OFFSET(32),
 			.key_mask = NULL,
-			.f_hash = test_hash,
+			.n_keys = 1 << 24,
+			.n_buckets = 1 << 22,
+			.f_hash = (rte_table_hash_op_hash)test_hash,
 			.seed = 0,
 		};
 
@@ -257,12 +258,14 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	case e_APP_PIPELINE_HASH_SPEC_KEY8_LRU:
 	{
-		struct rte_table_hash_key8_lru_params table_hash_params = {
-			.n_entries = 1 << 24,
-			.signature_offset = APP_METADATA_OFFSET(0),
+		struct rte_table_hash_params table_hash_params = {
+			.name = "TABLE",
+			.key_size = key_size,
 			.key_offset = APP_METADATA_OFFSET(32),
 			.key_mask = NULL,
-			.f_hash = test_hash,
+			.n_keys = 1 << 24,
+			.n_buckets = 1 << 22,
+			.f_hash = (rte_table_hash_op_hash)test_hash,
 			.seed = 0,
 		};
 

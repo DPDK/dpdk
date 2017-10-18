@@ -1349,13 +1349,15 @@ pipeline_routing_init(struct pipeline_params *params,
 
 	/* ARP table configuration */
 	if (p_rt->params.n_arp_entries) {
-		struct rte_table_hash_key8_ext_params table_arp_params = {
-			.n_entries = p_rt->params.n_arp_entries,
-			.n_entries_ext = p_rt->params.n_arp_entries,
-			.f_hash = hash_default_key8,
-			.seed = 0,
-			.signature_offset = 0, /* Unused */
+		struct rte_table_hash_params table_arp_params = {
+			.name = p->name,
+			.key_size = 8,
 			.key_offset = p_rt->params.arp_key_offset,
+			.key_mask = NULL,
+			.n_keys = p_rt->params.n_arp_entries,
+			.n_buckets = p_rt->params.n_arp_entries / 4,
+			.f_hash = (rte_table_hash_op_hash)hash_default_key8,
+			.seed = 0,
 		};
 
 		struct rte_pipeline_table_params table_params = {

@@ -441,12 +441,15 @@ test_table_hash8lru(void)
 	int status, i;
 
 	/* Traffic flow */
-	struct rte_table_hash_key8_lru_params key8lru_params = {
-		.n_entries = 1<<24,
-		.f_hash = pipeline_test_hash,
-		.signature_offset = APP_METADATA_OFFSET(0),
+	struct rte_table_hash_params key8lru_params = {
+		.name = "TABLE",
+		.key_size = 8,
 		.key_offset = APP_METADATA_OFFSET(32),
 		.key_mask = NULL,
+		.n_keys = 1 << 16,
+		.n_buckets = 1 << 16,
+		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.seed = 0,
 	};
 
 	uint8_t key8lru[8];
@@ -475,14 +478,14 @@ test_table_hash8lru(void)
 	VERIFY(status, CHECK_TABLE_OK);
 
 	/* Invalid parameters */
-	key8lru_params.n_entries = 0;
+	key8lru_params.n_keys = 0;
 
 	status = test_table_type(&rte_table_hash_key8_lru_ops,
 		(void *)&key8lru_params, (void *)key8lru, &table_packets,
 			NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
 
-	key8lru_params.n_entries = 1<<16;
+	key8lru_params.n_keys = 1<<16;
 	key8lru_params.f_hash = NULL;
 
 	status = test_table_type(&rte_table_hash_key8_lru_ops,
@@ -616,14 +619,15 @@ test_table_hash8ext(void)
 	int status, i;
 
 	/* Traffic flow */
-	struct rte_table_hash_key8_ext_params key8ext_params = {
-		.n_entries = 1<<16,
-		.n_entries_ext = 1<<15,
-		.f_hash = pipeline_test_hash,
-		.seed = 0,
-		.signature_offset = APP_METADATA_OFFSET(0),
+	struct rte_table_hash_params key8ext_params = {
+		.name = "TABLE",
+		.key_size = 8,
 		.key_offset = APP_METADATA_OFFSET(32),
 		.key_mask = NULL,
+		.n_keys = 1 << 16,
+		.n_buckets = 1 << 16,
+		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.seed = 0,
 	};
 
 	uint8_t key8ext[8];
@@ -652,26 +656,19 @@ test_table_hash8ext(void)
 	VERIFY(status, CHECK_TABLE_OK);
 
 	/* Invalid parameters */
-	key8ext_params.n_entries = 0;
+	key8ext_params.n_keys = 0;
 
 	status = test_table_type(&rte_table_hash_key8_ext_ops,
 		(void *)&key8ext_params, (void *)key8ext, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
 
-	key8ext_params.n_entries = 1<<16;
+	key8ext_params.n_keys = 1<<16;
 	key8ext_params.f_hash = NULL;
 
 	status = test_table_type(&rte_table_hash_key8_ext_ops,
 		(void *)&key8ext_params, (void *)key8ext, &table_packets,
 		NULL, 0);
-	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
-
-	key8ext_params.f_hash = pipeline_test_hash;
-	key8ext_params.n_entries_ext = 0;
-
-	status = test_table_type(&rte_table_hash_key8_ext_ops,
-	(void *)&key8ext_params, (void *)key8ext, &table_packets, NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
 
 	return 0;

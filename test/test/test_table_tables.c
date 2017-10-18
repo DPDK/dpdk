@@ -67,9 +67,9 @@ unsigned n_table_tests = RTE_DIM(table_tests);
 
 /* Function prototypes */
 static int
-test_table_hash_lru_generic(struct rte_table_ops *ops);
+test_table_hash_lru_generic(struct rte_table_ops *ops, uint32_t key_size);
 static int
-test_table_hash_ext_generic(struct rte_table_ops *ops);
+test_table_hash_ext_generic(struct rte_table_ops *ops, uint32_t key_size);
 
 struct rte_bucket_4_8 {
 	/* Cache line 0 */
@@ -655,7 +655,7 @@ test_table_lpm_ipv6(void)
 }
 
 static int
-test_table_hash_lru_generic(struct rte_table_ops *ops)
+test_table_hash_lru_generic(struct rte_table_ops *ops, uint32_t key_size)
 {
 	int status, i;
 	uint64_t expected_mask = 0, result_mask;
@@ -667,43 +667,31 @@ test_table_hash_lru_generic(struct rte_table_ops *ops)
 	int key_found;
 
 	/* Initialize params and create tables */
-	struct rte_table_hash_key8_lru_params hash_params = {
-		.n_entries = 1 << 10,
-		.f_hash = pipeline_test_hash,
-		.seed = 0,
-		.signature_offset = APP_METADATA_OFFSET(1),
+	struct rte_table_hash_params hash_params = {
+		.name = "TABLE",
+		.key_size = key_size,
 		.key_offset = APP_METADATA_OFFSET(32),
 		.key_mask = NULL,
+		.n_keys = 1 << 10,
+		.n_buckets = 1 << 10,
+		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.seed = 0,
 	};
 
-	hash_params.n_entries = 0;
+	hash_params.n_keys = 0;
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table != NULL)
 		return -1;
 
-	hash_params.n_entries = 1 << 10;
-	hash_params.signature_offset = APP_METADATA_OFFSET(1);
-
-	table = ops->f_create(&hash_params, 0, 1);
-	if (table == NULL)
-		return -2;
-
-	hash_params.signature_offset = APP_METADATA_OFFSET(0);
-	hash_params.key_offset = APP_METADATA_OFFSET(1);
-
-	table = ops->f_create(&hash_params, 0, 1);
-	if (table == NULL)
-		return -3;
-
-	hash_params.key_offset = APP_METADATA_OFFSET(32);
+	hash_params.n_keys = 1 << 10;
 	hash_params.f_hash = NULL;
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table != NULL)
 		return -4;
 
-	hash_params.f_hash = pipeline_test_hash;
+	hash_params.f_hash = (rte_table_hash_op_hash)pipeline_test_hash;
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table == NULL)
@@ -770,7 +758,7 @@ test_table_hash_lru_generic(struct rte_table_ops *ops)
 }
 
 static int
-test_table_hash_ext_generic(struct rte_table_ops *ops)
+test_table_hash_ext_generic(struct rte_table_ops *ops, uint32_t key_size)
 {
 	int status, i;
 	uint64_t expected_mask = 0, result_mask;
@@ -782,35 +770,24 @@ test_table_hash_ext_generic(struct rte_table_ops *ops)
 	void *entry_ptr;
 
 	/* Initialize params and create tables */
-	struct rte_table_hash_key8_ext_params hash_params = {
-		.n_entries = 1 << 10,
-		.n_entries_ext = 1 << 4,
-		.f_hash = pipeline_test_hash,
-		.seed = 0,
-		.signature_offset = APP_METADATA_OFFSET(1),
+	struct rte_table_hash_params hash_params = {
+		.name = "TABLE",
+		.key_size = key_size,
 		.key_offset = APP_METADATA_OFFSET(32),
 		.key_mask = NULL,
+		.n_keys = 1 << 10,
+		.n_buckets = 1 << 10,
+		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.seed = 0,
 	};
 
-	hash_params.n_entries = 0;
+	hash_params.n_keys = 0;
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table != NULL)
 		return -1;
 
-	hash_params.n_entries = 1 << 10;
-	hash_params.n_entries_ext = 0;
-	table = ops->f_create(&hash_params, 0, 1);
-	if (table != NULL)
-		return -2;
-
-	hash_params.n_entries_ext = 1 << 4;
-	hash_params.signature_offset = APP_METADATA_OFFSET(1);
-	table = ops->f_create(&hash_params, 0, 1);
-	if (table == NULL)
-		return -2;
-
-	hash_params.signature_offset = APP_METADATA_OFFSET(0);
+	hash_params.n_keys = 1 << 10;
 	hash_params.key_offset = APP_METADATA_OFFSET(1);
 
 	table = ops->f_create(&hash_params, 0, 1);
@@ -824,7 +801,7 @@ test_table_hash_ext_generic(struct rte_table_ops *ops)
 	if (table != NULL)
 		return -4;
 
-	hash_params.f_hash = pipeline_test_hash;
+	hash_params.f_hash = (rte_table_hash_op_hash)pipeline_test_hash;
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table == NULL)
@@ -895,20 +872,9 @@ test_table_hash_lru(void)
 {
 	int status;
 
-	status = test_table_hash_lru_generic(&rte_table_hash_key8_lru_ops);
-	if (status < 0)
-		return status;
-
 	status = test_table_hash_lru_generic(
-		&rte_table_hash_key8_lru_ops);
-	if (status < 0)
-		return status;
-
-	status = test_table_hash_lru_generic(&rte_table_hash_key16_lru_ops);
-	if (status < 0)
-		return status;
-
-	status = test_table_hash_lru_generic(&rte_table_hash_key32_lru_ops);
+		&rte_table_hash_key8_lru_ops,
+		8);
 	if (status < 0)
 		return status;
 
@@ -924,20 +890,7 @@ test_table_hash_ext(void)
 {
 	int status;
 
-	status = test_table_hash_ext_generic(&rte_table_hash_key8_ext_ops);
-	if (status < 0)
-		return status;
-
-	status = test_table_hash_ext_generic(
-		&rte_table_hash_key8_ext_ops);
-	if (status < 0)
-		return status;
-
-	status = test_table_hash_ext_generic(&rte_table_hash_key16_ext_ops);
-	if (status < 0)
-		return status;
-
-	status = test_table_hash_ext_generic(&rte_table_hash_key32_ext_ops);
+	status = test_table_hash_ext_generic(&rte_table_hash_key8_ext_ops, 8);
 	if (status < 0)
 		return status;
 
