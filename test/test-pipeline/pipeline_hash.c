@@ -204,14 +204,15 @@ app_main_loop_worker_pipeline_hash(void) {
 	case e_APP_PIPELINE_HASH_KEY16_LRU:
 	case e_APP_PIPELINE_HASH_KEY32_LRU:
 	{
-		struct rte_table_hash_lru_params table_hash_params = {
+		struct rte_table_hash_params table_hash_params = {
+			.name = "TABLE",
 			.key_size = key_size,
+			.key_offset = APP_METADATA_OFFSET(32),
+			.key_mask = NULL,
 			.n_keys = 1 << 24,
 			.n_buckets = 1 << 22,
-			.f_hash = test_hash,
+			.f_hash = (rte_table_hash_op_hash)test_hash,
 			.seed = 0,
-			.signature_offset = APP_METADATA_OFFSET(0),
-			.key_offset = APP_METADATA_OFFSET(32),
 		};
 
 		struct rte_pipeline_table_params table_params = {
