@@ -118,7 +118,7 @@ struct flow_table_entry {
 	uint32_t pad;
 };
 
-rte_table_hash_op_hash_nomask hash_func[] = {
+rte_table_hash_op_hash hash_func[] = {
 	hash_default_key8,
 	hash_default_key16,
 	hash_default_key24,
@@ -500,7 +500,7 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 				p_fc->key_mask : NULL,
 			.n_keys = p_fc->n_flows,
 			.n_buckets = p_fc->n_flows / 4,
-			.f_hash = (rte_table_hash_op_hash)hash_func[(p_fc->key_size / 8) - 1],
+			.f_hash = hash_func[(p_fc->key_size / 8) - 1],
 			.seed = 0,
 		};
 
@@ -519,18 +519,17 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 		switch (p_fc->key_size) {
 		case 8:
 			table_params.ops = &rte_table_hash_key8_ext_ops;
-			table_params.arg_create = &table_hash_params;
 			break;
 
 		case 16:
 			table_params.ops = &rte_table_hash_key16_ext_ops;
-			table_params.arg_create = &table_hash_params;
 			break;
 
 		default:
 			table_params.ops = &rte_table_hash_ext_ops;
-			table_params.arg_create = &table_hash_params;
 		}
+
+		table_params.arg_create = &table_hash_params;
 
 		status = rte_pipeline_table_create(p->p,
 			&table_params,

@@ -169,23 +169,23 @@ app_main_loop_worker_pipeline_hash(void) {
 				"ring %d\n", i);
 	}
 
+	struct rte_table_hash_params table_hash_params = {
+		.name = "TABLE",
+		.key_size = key_size,
+		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
+		.n_keys = 1 << 24,
+		.n_buckets = 1 << 22,
+		.f_hash = test_hash,
+		.seed = 0,
+	};
+
 	/* Table configuration */
 	switch (app.pipeline_type) {
 	case e_APP_PIPELINE_HASH_KEY8_EXT:
 	case e_APP_PIPELINE_HASH_KEY16_EXT:
 	case e_APP_PIPELINE_HASH_KEY32_EXT:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_ext_ops,
 			.arg_create = &table_hash_params,
@@ -204,17 +204,6 @@ app_main_loop_worker_pipeline_hash(void) {
 	case e_APP_PIPELINE_HASH_KEY16_LRU:
 	case e_APP_PIPELINE_HASH_KEY32_LRU:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_lru_ops,
 			.arg_create = &table_hash_params,
@@ -231,17 +220,6 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	case e_APP_PIPELINE_HASH_SPEC_KEY8_EXT:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_key8_ext_ops,
 			.arg_create = &table_hash_params,
@@ -258,17 +236,6 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	case e_APP_PIPELINE_HASH_SPEC_KEY8_LRU:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_key8_lru_ops,
 			.arg_create = &table_hash_params,
@@ -285,17 +252,6 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	case e_APP_PIPELINE_HASH_SPEC_KEY16_EXT:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_key16_ext_ops,
 			.arg_create = &table_hash_params,
@@ -312,17 +268,6 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	case e_APP_PIPELINE_HASH_SPEC_KEY16_LRU:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_key16_lru_ops,
 			.arg_create = &table_hash_params,
@@ -339,17 +284,6 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	case e_APP_PIPELINE_HASH_SPEC_KEY32_EXT:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_key32_ext_ops,
 			.arg_create = &table_hash_params,
@@ -367,17 +301,6 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	case e_APP_PIPELINE_HASH_SPEC_KEY32_LRU:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_key32_lru_ops,
 			.arg_create = &table_hash_params,
@@ -402,17 +325,6 @@ app_main_loop_worker_pipeline_hash(void) {
 	case e_APP_PIPELINE_HASH_CUCKOO_KEY112:
 	case e_APP_PIPELINE_HASH_CUCKOO_KEY128:
 	{
-		struct rte_table_hash_params table_hash_params = {
-			.name = "TABLE",
-			.key_size = key_size,
-			.key_offset = APP_METADATA_OFFSET(32),
-			.key_mask = NULL,
-			.n_keys = 1 << 24,
-			.n_buckets = 1 << 22,
-			.f_hash = (rte_table_hash_op_hash)test_hash,
-			.seed = 0,
-		};
-
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_cuckoo_ops,
 			.arg_create = &table_hash_params,
@@ -485,6 +397,7 @@ app_main_loop_worker_pipeline_hash(void) {
 
 uint64_t test_hash(
 	void *key,
+	__attribute__((unused)) void *key_mask,
 	__attribute__((unused)) uint32_t key_size,
 	__attribute__((unused)) uint64_t seed)
 {
@@ -547,7 +460,7 @@ app_main_loop_rx_metadata(void) {
 			} else
 				continue;
 
-			*signature = test_hash(key, 0, 0);
+			*signature = test_hash(key, NULL, 0, 0);
 		}
 
 		do {

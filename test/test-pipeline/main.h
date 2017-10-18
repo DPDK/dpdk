@@ -131,7 +131,10 @@ enum {
 
 void app_main_loop_rx(void);
 void app_main_loop_rx_metadata(void);
-uint64_t test_hash(void *key, uint32_t key_size, uint64_t seed);
+uint64_t test_hash(void *key,
+	void *key_mask,
+	uint32_t key_size,
+	uint64_t seed);
 
 void app_main_loop_worker(void);
 void app_main_loop_worker_pipeline_stub(void);

@@ -88,8 +88,10 @@ app_pipeline_fc_key_convert(struct pipeline_fc_key *key_in,
 	uint32_t *signature)
 {
 	uint8_t buffer[PIPELINE_FC_FLOW_KEY_MAX_SIZE];
+	uint8_t m[PIPELINE_FC_FLOW_KEY_MAX_SIZE]; /* key mask */
 	void *key_buffer = (key_out) ? key_out : buffer;
 
+	memset(m, 0xFF, sizeof(m));
 	switch (key_in->type) {
 	case FLOW_KEY_QINQ:
 	{
@@ -101,7 +103,7 @@ app_pipeline_fc_key_convert(struct pipeline_fc_key *key_in,
 		qinq->cvlan = rte_cpu_to_be_16(key_in->key.qinq.cvlan);
 
 		if (signature)
-			*signature = (uint32_t) hash_default_key8(qinq, 8, 0);
+			*signature = (uint32_t) hash_default_key8(qinq, m, 8, 0);
 		return 0;
 	}
 
@@ -118,7 +120,7 @@ app_pipeline_fc_key_convert(struct pipeline_fc_key *key_in,
 		ipv4->port_dst = rte_cpu_to_be_16(key_in->key.ipv4_5tuple.port_dst);
 
 		if (signature)
-			*signature = (uint32_t) hash_default_key16(ipv4, 16, 0);
+			*signature = (uint32_t) hash_default_key16(ipv4, m, 16, 0);
 		return 0;
 	}
 
@@ -136,7 +138,7 @@ app_pipeline_fc_key_convert(struct pipeline_fc_key *key_in,
 		ipv6->port_dst = rte_cpu_to_be_16(key_in->key.ipv6_5tuple.port_dst);
 
 		if (signature)
-			*signature = (uint32_t) hash_default_key64(ipv6, 64, 0);
+			*signature = (uint32_t) hash_default_key64(ipv6, m, 64, 0);
 		return 0;
 	}
 
@@ -832,12 +834,12 @@ app_pipeline_fc_add_bulk(struct app_params *app,
 	}
 
 	/* Free resources */
-	app_msg_free(app, rsp);
 
 	for (i = rsp->n_keys; i < n_keys; i++)
 		if (new_flow[i])
 			rte_free(flow[i]);
 
+	app_msg_free(app, rsp);
 	rte_free(flow_rsp);
 	rte_free(flow_req);
 	rte_free(new_flow);

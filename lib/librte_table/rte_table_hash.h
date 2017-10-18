@@ -129,12 +129,6 @@ struct rte_table_hash_params {
 	uint64_t seed;
 };
 
-/** Hash function */
-typedef uint64_t (*rte_table_hash_op_hash_nomask)(
-	void *key,
-	uint32_t key_size,
-	uint64_t seed);
-
 extern struct rte_table_ops rte_table_hash_ext_ops;
 
 extern struct rte_table_ops rte_table_hash_lru_ops;

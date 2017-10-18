@@ -60,7 +60,7 @@ table_test table_tests[] = {
 	memset(key, 0, 32);						\
 	k32 = (uint32_t *) key;						\
 	k32[0] = (value);						\
-	*signature = pipeline_test_hash(key, 0, 0);			\
+	*signature = pipeline_test_hash(key, NULL, 0, 0);			\
 } while (0)
 
 unsigned n_table_tests = RTE_DIM(table_tests);
@@ -674,7 +674,7 @@ test_table_hash_lru_generic(struct rte_table_ops *ops, uint32_t key_size)
 		.key_mask = NULL,
 		.n_keys = 1 << 10,
 		.n_buckets = 1 << 10,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 
@@ -691,7 +691,7 @@ test_table_hash_lru_generic(struct rte_table_ops *ops, uint32_t key_size)
 	if (table != NULL)
 		return -4;
 
-	hash_params.f_hash = (rte_table_hash_op_hash)pipeline_test_hash;
+	hash_params.f_hash = pipeline_test_hash;
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table == NULL)
@@ -777,7 +777,7 @@ test_table_hash_ext_generic(struct rte_table_ops *ops, uint32_t key_size)
 		.key_mask = NULL,
 		.n_keys = 1 << 10,
 		.n_buckets = 1 << 10,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 
@@ -801,7 +801,7 @@ test_table_hash_ext_generic(struct rte_table_ops *ops, uint32_t key_size)
 	if (table != NULL)
 		return -4;
 
-	hash_params.f_hash = (rte_table_hash_op_hash)pipeline_test_hash;
+	hash_params.f_hash = pipeline_test_hash;
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table == NULL)
@@ -970,7 +970,7 @@ test_table_hash_cuckoo(void)
 	if (table != NULL)
 		return -4;
 
-	cuckoo_params.f_hash = (rte_table_hash_op_hash)pipeline_test_hash;
+	cuckoo_params.f_hash = pipeline_test_hash;
 	cuckoo_params.name = NULL;
 
 	table = rte_table_hash_cuckoo_ops.f_create(&cuckoo_params,

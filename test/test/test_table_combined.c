@@ -448,7 +448,7 @@ test_table_hash8lru(void)
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 
@@ -509,7 +509,7 @@ test_table_hash16lru(void)
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 
@@ -570,7 +570,7 @@ test_table_hash32lru(void)
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 
@@ -631,7 +631,7 @@ test_table_hash8ext(void)
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 
@@ -692,7 +692,7 @@ test_table_hash16ext(void)
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 
@@ -753,7 +753,7 @@ test_table_hash32ext(void)
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 
@@ -814,7 +814,7 @@ test_table_hash_cuckoo_combined(void)
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash,
 		.seed = 0,
 	};
 

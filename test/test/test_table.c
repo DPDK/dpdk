@@ -72,6 +72,7 @@ static void app_init_rings(void);
 static void app_init_mbuf_pools(void);
 
 uint64_t pipeline_test_hash(void *key,
+		__attribute__((unused)) void *key_mask,
 		__attribute__((unused)) uint32_t key_size,
 		__attribute__((unused)) uint64_t seed)
 {

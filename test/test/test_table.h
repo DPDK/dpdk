@@ -94,7 +94,7 @@
 			APP_METADATA_OFFSET(32));		\
 	k32 = (uint32_t *) key;						\
 	k32[0] = (value);						\
-	*signature = pipeline_test_hash(key, 0, 0);			\
+	*signature = pipeline_test_hash(key, NULL, 0, 0);		\
 	rte_ring_enqueue((ring), m);					\
 } while (0)
 
@@ -131,6 +131,7 @@
 /* Function definitions */
 uint64_t pipeline_test_hash(
 	void *key,
+	__attribute__((unused)) void *key_mask,
 	__attribute__((unused)) uint32_t key_size,
 	__attribute__((unused)) uint64_t seed);
 
