@@ -163,11 +163,7 @@ struct rte_table_hash_lru_params {
 	uint32_t key_offset;
 };
 
-/** LRU hash table operations for pre-computed key signature */
 extern struct rte_table_ops rte_table_hash_lru_ops;
-
-/** LRU hash table operations for key signature computed on lookup ("do-sig") */
-extern struct rte_table_ops rte_table_hash_lru_dosig_ops;
 
 /**
  * 8-byte key hash tables
