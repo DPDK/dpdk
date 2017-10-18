@@ -42,7 +42,9 @@
 #include "rte_table_hash.h"
 #include "rte_lru.h"
 
-#define RTE_TABLE_HASH_KEY_SIZE						32
+#define KEY_SIZE						32
+
+#define KEYS_PER_BUCKET					4
 
 #define RTE_BUCKET_ENTRY_VALID						0x1LLU
 
@@ -79,13 +81,12 @@ struct rte_table_hash {
 
 	/* Input parameters */
 	uint32_t n_buckets;
-	uint32_t n_entries_per_bucket;
 	uint32_t key_size;
 	uint32_t entry_size;
 	uint32_t bucket_size;
-	uint32_t signature_offset;
 	uint32_t key_offset;
-	rte_table_hash_op_hash_nomask f_hash;
+	uint64_t key_mask[4];
+	rte_table_hash_op_hash f_hash;
 	uint64_t seed;
 
 	/* Extendible buckets */
@@ -98,10 +99,52 @@ struct rte_table_hash {
 };
 
 static int
-check_params_create_lru(struct rte_table_hash_key32_lru_params *params) {
-	/* n_entries */
-	if (params->n_entries == 0) {
-		RTE_LOG(ERR, TABLE, "%s: n_entries is zero\n", __func__);
+keycmp(void *a, void *b, void *b_mask)
+{
+	uint64_t *a64 = a, *b64 = b, *b_mask64 = b_mask;
+
+	return (a64[0] != (b64[0] & b_mask64[0])) ||
+		(a64[1] != (b64[1] & b_mask64[1])) ||
+		(a64[2] != (b64[2] & b_mask64[2])) ||
+		(a64[3] != (b64[3] & b_mask64[3]));
+}
+
+static void
+keycpy(void *dst, void *src, void *src_mask)
+{
+	uint64_t *dst64 = dst, *src64 = src, *src_mask64 = src_mask;
+
+	dst64[0] = src64[0] & src_mask64[0];
+	dst64[1] = src64[1] & src_mask64[1];
+	dst64[2] = src64[2] & src_mask64[2];
+	dst64[3] = src64[3] & src_mask64[3];
+}
+
+static int
+check_params_create(struct rte_table_hash_params *params)
+{
+	/* name */
+	if (params->name == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: name invalid value\n", __func__);
+		return -EINVAL;
+	}
+
+	/* key_size */
+	if (params->key_size != KEY_SIZE) {
+		RTE_LOG(ERR, TABLE, "%s: key_size invalid value\n", __func__);
+		return -EINVAL;
+	}
+
+	/* n_keys */
+	if (params->n_keys == 0) {
+		RTE_LOG(ERR, TABLE, "%s: n_keys is zero\n", __func__);
+		return -EINVAL;
+	}
+
+	/* n_buckets */
+	if ((params->n_buckets == 0) ||
+		(!rte_is_power_of_2(params->n_buckets))) {
+		RTE_LOG(ERR, TABLE, "%s: n_buckets invalid value\n", __func__);
 		return -EINVAL;
 	}
 
@@ -120,50 +163,82 @@ rte_table_hash_create_key32_lru(void *params,
 		int socket_id,
 		uint32_t entry_size)
 {
-	struct rte_table_hash_key32_lru_params *p =
-		(struct rte_table_hash_key32_lru_params *) params;
+	struct rte_table_hash_params *p = params;
 	struct rte_table_hash *f;
-	uint32_t n_buckets, n_entries_per_bucket, key_size, bucket_size_cl;
-	uint32_t total_size, i;
+	uint64_t bucket_size, total_size;
+	uint32_t n_buckets, i;
 
 	/* Check input parameters */
-	if ((check_params_create_lru(p) != 0) ||
+	if ((check_params_create(p) != 0) ||
 		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
-		((sizeof(struct rte_bucket_4_32) % 64) != 0)) {
+		((sizeof(struct rte_bucket_4_32) % 64) != 0))
 		return NULL;
-	}
-	n_entries_per_bucket = 4;
-	key_size = 32;
+
+	/*
+	 * Table dimensioning
+	 *
+	 * Objective: Pick the number of buckets (n_buckets) so that there a chance
+	 * to store n_keys keys in the table.
+	 *
+	 * Note: Since the buckets do not get extended, it is not possible to
+	 * guarantee that n_keys keys can be stored in the table at any time. In the
+	 * worst case scenario when all the n_keys fall into the same bucket, only
+	 * a maximum of KEYS_PER_BUCKET keys will be stored in the table. This case
+	 * defeats the purpose of the hash table. It indicates unsuitable f_hash or
+	 * n_keys to n_buckets ratio.
+	 *
+	 * MIN(n_buckets) = (n_keys + KEYS_PER_BUCKET - 1) / KEYS_PER_BUCKET
+	 */
+	n_buckets = rte_align32pow2(
+		(p->n_keys + KEYS_PER_BUCKET - 1) / KEYS_PER_BUCKET);
+	n_buckets = RTE_MAX(n_buckets, p->n_buckets);
 
 	/* Memory allocation */
-	n_buckets = rte_align32pow2((p->n_entries + n_entries_per_bucket - 1) /
-		n_entries_per_bucket);
-	bucket_size_cl = (sizeof(struct rte_bucket_4_32) + n_entries_per_bucket
-		* entry_size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE;
-	total_size = sizeof(struct rte_table_hash) + n_buckets *
-		bucket_size_cl * RTE_CACHE_LINE_SIZE;
+	bucket_size = RTE_CACHE_LINE_ROUNDUP(sizeof(struct rte_bucket_4_32) +
+		KEYS_PER_BUCKET * entry_size);
+	total_size = sizeof(struct rte_table_hash) + n_buckets * bucket_size;
+	if (total_size > SIZE_MAX) {
+		RTE_LOG(ERR, TABLE, "%s: Cannot allocate %" PRIu64 " bytes "
+			"for hash table %s\n",
+			__func__, total_size, p->name);
+		return NULL;
+	}
 
-	f = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
+	f = rte_zmalloc_socket(p->name,
+		(size_t)total_size,
+		RTE_CACHE_LINE_SIZE,
+		socket_id);
 	if (f == NULL) {
-		RTE_LOG(ERR, TABLE,
-			"%s: Cannot allocate %u bytes for hash table\n",
-			__func__, total_size);
+		RTE_LOG(ERR, TABLE, "%s: Cannot allocate %" PRIu64 " bytes "
+			"for hash table %s\n",
+			__func__, total_size, p->name);
 		return NULL;
 	}
 	RTE_LOG(INFO, TABLE,
-		"%s: Hash table memory footprint is %u bytes\n", __func__,
-		total_size);
+		"%s: Hash table %s memory footprint "
+		"is %" PRIu64 " bytes\n",
+		__func__, p->name, total_size);
 
 	/* Memory initialization */
 	f->n_buckets = n_buckets;
-	f->n_entries_per_bucket = n_entries_per_bucket;
-	f->key_size = key_size;
+	f->key_size = KEY_SIZE;
 	f->entry_size = entry_size;
-	f->bucket_size = bucket_size_cl * RTE_CACHE_LINE_SIZE;
-	f->signature_offset = p->signature_offset;
+	f->bucket_size = bucket_size;
 	f->key_offset = p->key_offset;
 	f->f_hash = p->f_hash;
 	f->seed = p->seed;
+
+	if (p->key_mask != NULL) {
+		f->key_mask[0] = ((uint64_t *)p->key_mask)[0];
+		f->key_mask[1] = ((uint64_t *)p->key_mask)[1];
+		f->key_mask[2] = ((uint64_t *)p->key_mask)[2];
+		f->key_mask[3] = ((uint64_t *)p->key_mask)[3];
+	} else {
+		f->key_mask[0] = 0xFFFFFFFFFFFFFFFFLLU;
+		f->key_mask[1] = 0xFFFFFFFFFFFFFFFFLLU;
+		f->key_mask[2] = 0xFFFFFFFFFFFFFFFFLLU;
+		f->key_mask[3] = 0xFFFFFFFFFFFFFFFFLLU;
+	}
 
 	for (i = 0; i < n_buckets; i++) {
 		struct rte_bucket_4_32 *bucket;
@@ -204,7 +279,7 @@ rte_table_hash_entry_add_key32_lru(
 	uint64_t signature, pos;
 	uint32_t bucket_index, i;
 
-	signature = f->f_hash(key, f->key_size, f->seed);
+	signature = f->f_hash(key, f->key_mask, f->key_size, f->seed);
 	bucket_index = signature & (f->n_buckets - 1);
 	bucket = (struct rte_bucket_4_32 *)
 		&f->memory[bucket_index * f->bucket_size];
@@ -213,10 +288,10 @@ rte_table_hash_entry_add_key32_lru(
 	/* Key is present in the bucket */
 	for (i = 0; i < 4; i++) {
 		uint64_t bucket_signature = bucket->signature[i];
-		uint8_t *bucket_key = (uint8_t *) bucket->key[i];
+		uint8_t *bucket_key = (uint8_t *) &bucket->key[i];
 
 		if ((bucket_signature == signature) &&
-			(memcmp(key, bucket_key, f->key_size) == 0)) {
+			(keycmp(bucket_key, key, f->key_mask) == 0)) {
 			uint8_t *bucket_data = &bucket->data[i * f->entry_size];
 
 			memcpy(bucket_data, entry, f->entry_size);
@@ -230,13 +305,13 @@ rte_table_hash_entry_add_key32_lru(
 	/* Key is not present in the bucket */
 	for (i = 0; i < 4; i++) {
 		uint64_t bucket_signature = bucket->signature[i];
-		uint8_t *bucket_key = (uint8_t *) bucket->key[i];
+		uint8_t *bucket_key = (uint8_t *) &bucket->key[i];
 
 		if (bucket_signature == 0) {
 			uint8_t *bucket_data = &bucket->data[i * f->entry_size];
 
 			bucket->signature[i] = signature;
-			memcpy(bucket_key, key, f->key_size);
+			keycpy(bucket_key, key, f->key_mask);
 			memcpy(bucket_data, entry, f->entry_size);
 			lru_update(bucket, i);
 			*key_found = 0;
@@ -249,10 +324,10 @@ rte_table_hash_entry_add_key32_lru(
 	/* Bucket full: replace LRU entry */
 	pos = lru_pos(bucket);
 	bucket->signature[pos] = signature;
-	memcpy(bucket->key[pos], key, f->key_size);
+	keycpy(&bucket->key[pos], key, f->key_mask);
 	memcpy(&bucket->data[pos * f->entry_size], entry, f->entry_size);
 	lru_update(bucket, pos);
-	*key_found	= 0;
+	*key_found = 0;
 	*entry_ptr = (void *) &bucket->data[pos * f->entry_size];
 
 	return 0;
@@ -270,7 +345,7 @@ rte_table_hash_entry_delete_key32_lru(
 	uint64_t signature;
 	uint32_t bucket_index, i;
 
-	signature = f->f_hash(key, f->key_size, f->seed);
+	signature = f->f_hash(key, f->key_mask, f->key_size, f->seed);
 	bucket_index = signature & (f->n_buckets - 1);
 	bucket = (struct rte_bucket_4_32 *)
 		&f->memory[bucket_index * f->bucket_size];
@@ -279,10 +354,10 @@ rte_table_hash_entry_delete_key32_lru(
 	/* Key is present in the bucket */
 	for (i = 0; i < 4; i++) {
 		uint64_t bucket_signature = bucket->signature[i];
-		uint8_t *bucket_key = (uint8_t *) bucket->key[i];
+		uint8_t *bucket_key = (uint8_t *) &bucket->key[i];
 
 		if ((bucket_signature == signature) &&
-			(memcmp(key, bucket_key, f->key_size) == 0)) {
+			(keycmp(bucket_key, key, f->key_mask) == 0)) {
 			uint8_t *bucket_data = &bucket->data[i * f->entry_size];
 
 			bucket->signature[i] = 0;
@@ -299,81 +374,72 @@ rte_table_hash_entry_delete_key32_lru(
 	return 0;
 }
 
-static int
-check_params_create_ext(struct rte_table_hash_key32_ext_params *params) {
-	/* n_entries */
-	if (params->n_entries == 0) {
-		RTE_LOG(ERR, TABLE, "%s: n_entries is zero\n", __func__);
-		return -EINVAL;
-	}
-
-	/* n_entries_ext */
-	if (params->n_entries_ext == 0) {
-		RTE_LOG(ERR, TABLE, "%s: n_entries_ext is zero\n", __func__);
-		return -EINVAL;
-	}
-
-	/* f_hash */
-	if (params->f_hash == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: f_hash function pointer is NULL\n",
-			__func__);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static void *
 rte_table_hash_create_key32_ext(void *params,
 	int socket_id,
 	uint32_t entry_size)
 {
-	struct rte_table_hash_key32_ext_params *p =
-			params;
+	struct rte_table_hash_params *p = params;
 	struct rte_table_hash *f;
-	uint32_t n_buckets, n_buckets_ext, n_entries_per_bucket;
-	uint32_t key_size, bucket_size_cl, stack_size_cl, total_size, i;
+	uint64_t bucket_size, stack_size, total_size;
+	uint32_t n_buckets_ext, i;
 
 	/* Check input parameters */
-	if ((check_params_create_ext(p) != 0) ||
+	if ((check_params_create(p) != 0) ||
 		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
 		((sizeof(struct rte_bucket_4_32) % 64) != 0))
 		return NULL;
 
-	n_entries_per_bucket = 4;
-	key_size = 32;
+	/*
+	 * Table dimensioning
+	 *
+	 * Objective: Pick the number of bucket extensions (n_buckets_ext) so that
+	 * it is guaranteed that n_keys keys can be stored in the table at any time.
+	 *
+	 * The worst case scenario takes place when all the n_keys keys fall into
+	 * the same bucket. Actually, due to the KEYS_PER_BUCKET scheme, the worst
+	 * case takes place when (n_keys - KEYS_PER_BUCKET + 1) keys fall into the
+	 * same bucket, while the remaining (KEYS_PER_BUCKET - 1) keys each fall
+	 * into a different bucket. This case defeats the purpose of the hash table.
+	 * It indicates unsuitable f_hash or n_keys to n_buckets ratio.
+	 *
+	 * n_buckets_ext = n_keys / KEYS_PER_BUCKET + KEYS_PER_BUCKET - 1
+	 */
+	n_buckets_ext = p->n_keys / KEYS_PER_BUCKET + KEYS_PER_BUCKET - 1;
 
 	/* Memory allocation */
-	n_buckets = rte_align32pow2((p->n_entries + n_entries_per_bucket - 1) /
-		n_entries_per_bucket);
-	n_buckets_ext = (p->n_entries_ext + n_entries_per_bucket - 1) /
-		n_entries_per_bucket;
-	bucket_size_cl = (sizeof(struct rte_bucket_4_32) + n_entries_per_bucket
-		* entry_size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE;
-	stack_size_cl = (n_buckets_ext * sizeof(uint32_t) + RTE_CACHE_LINE_SIZE - 1)
-		/ RTE_CACHE_LINE_SIZE;
+	bucket_size = RTE_CACHE_LINE_ROUNDUP(sizeof(struct rte_bucket_4_32) +
+		KEYS_PER_BUCKET * entry_size);
+	stack_size = RTE_CACHE_LINE_ROUNDUP(n_buckets_ext * sizeof(uint32_t));
 	total_size = sizeof(struct rte_table_hash) +
-		((n_buckets + n_buckets_ext) * bucket_size_cl + stack_size_cl) *
-		RTE_CACHE_LINE_SIZE;
+		(p->n_buckets + n_buckets_ext) * bucket_size + stack_size;
+	if (total_size > SIZE_MAX) {
+		RTE_LOG(ERR, TABLE, "%s: Cannot allocate %" PRIu64 " bytes "
+			"for hash table %s\n",
+			__func__, total_size, p->name);
+		return NULL;
+	}
 
-	f = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
+	f = rte_zmalloc_socket(p->name,
+		(size_t)total_size,
+		RTE_CACHE_LINE_SIZE,
+		socket_id);
 	if (f == NULL) {
-		RTE_LOG(ERR, TABLE,
-			"%s: Cannot allocate %u bytes for hash table\n",
-			__func__, total_size);
+		RTE_LOG(ERR, TABLE, "%s: Cannot allocate %" PRIu64 " bytes "
+			"for hash table %s\n",
+			__func__, total_size, p->name);
 		return NULL;
 	}
 	RTE_LOG(INFO, TABLE,
-		"%s: Hash table memory footprint is %u bytes\n", __func__,
-		total_size);
+		"%s: Hash table %s memory footprint "
+		"is %" PRIu64" bytes\n",
+		__func__, p->name, total_size);
 
 	/* Memory initialization */
-	f->n_buckets = n_buckets;
-	f->n_entries_per_bucket = n_entries_per_bucket;
-	f->key_size = key_size;
+	f->n_buckets = p->n_buckets;
+	f->key_size = KEY_SIZE;
 	f->entry_size = entry_size;
-	f->bucket_size = bucket_size_cl * RTE_CACHE_LINE_SIZE;
-	f->signature_offset = p->signature_offset;
+	f->bucket_size = bucket_size;
 	f->key_offset = p->key_offset;
 	f->f_hash = p->f_hash;
 	f->seed = p->seed;
@@ -381,7 +447,19 @@ rte_table_hash_create_key32_ext(void *params,
 	f->n_buckets_ext = n_buckets_ext;
 	f->stack_pos = n_buckets_ext;
 	f->stack = (uint32_t *)
-		&f->memory[(n_buckets + n_buckets_ext) * f->bucket_size];
+		&f->memory[(p->n_buckets + n_buckets_ext) * f->bucket_size];
+
+	if (p->key_mask != NULL) {
+		f->key_mask[0] = (((uint64_t *)p->key_mask)[0]);
+		f->key_mask[1] = (((uint64_t *)p->key_mask)[1]);
+		f->key_mask[2] = (((uint64_t *)p->key_mask)[2]);
+		f->key_mask[3] = (((uint64_t *)p->key_mask)[3]);
+	} else {
+		f->key_mask[0] = 0xFFFFFFFFFFFFFFFFLLU;
+		f->key_mask[1] = 0xFFFFFFFFFFFFFFFFLLU;
+		f->key_mask[2] = 0xFFFFFFFFFFFFFFFFLLU;
+		f->key_mask[3] = 0xFFFFFFFFFFFFFFFFLLU;
+	}
 
 	for (i = 0; i < n_buckets_ext; i++)
 		f->stack[i] = i;
@@ -417,7 +495,7 @@ rte_table_hash_entry_add_key32_ext(
 	uint64_t signature;
 	uint32_t bucket_index, i;
 
-	signature = f->f_hash(key, f->key_size, f->seed);
+	signature = f->f_hash(key, f->key_mask, f->key_size, f->seed);
 	bucket_index = signature & (f->n_buckets - 1);
 	bucket0 = (struct rte_bucket_4_32 *)
 			&f->memory[bucket_index * f->bucket_size];
@@ -427,10 +505,10 @@ rte_table_hash_entry_add_key32_ext(
 	for (bucket = bucket0; bucket != NULL; bucket = bucket->next) {
 		for (i = 0; i < 4; i++) {
 			uint64_t bucket_signature = bucket->signature[i];
-			uint8_t *bucket_key = (uint8_t *) bucket->key[i];
+			uint8_t *bucket_key = (uint8_t *) &bucket->key[i];
 
 			if ((bucket_signature == signature) &&
-				(memcmp(key, bucket_key, f->key_size) == 0)) {
+				(keycmp(bucket_key, key, f->key_mask) == 0)) {
 				uint8_t *bucket_data = &bucket->data[i *
 					f->entry_size];
 
@@ -448,14 +526,14 @@ rte_table_hash_entry_add_key32_ext(
 		bucket_prev = bucket, bucket = bucket->next)
 		for (i = 0; i < 4; i++) {
 			uint64_t bucket_signature = bucket->signature[i];
-			uint8_t *bucket_key = (uint8_t *) bucket->key[i];
+			uint8_t *bucket_key = (uint8_t *) &bucket->key[i];
 
 			if (bucket_signature == 0) {
 				uint8_t *bucket_data = &bucket->data[i *
 					f->entry_size];
 
 				bucket->signature[i] = signature;
-				memcpy(bucket_key, key, f->key_size);
+				keycpy(bucket_key, key, f->key_mask);
 				memcpy(bucket_data, entry, f->entry_size);
 				*key_found = 0;
 				*entry_ptr = (void *) bucket_data;
@@ -475,7 +553,7 @@ rte_table_hash_entry_add_key32_ext(
 		bucket_prev->next_valid = 1;
 
 		bucket->signature[0] = signature;
-		memcpy(bucket->key[0], key, f->key_size);
+		keycpy(&bucket->key[0], key, f->key_mask);
 		memcpy(&bucket->data[0], entry, f->entry_size);
 		*key_found = 0;
 		*entry_ptr = (void *) &bucket->data[0];
@@ -497,7 +575,7 @@ rte_table_hash_entry_delete_key32_ext(
 	uint64_t signature;
 	uint32_t bucket_index, i;
 
-	signature = f->f_hash(key, f->key_size, f->seed);
+	signature = f->f_hash(key, f->key_mask, f->key_size, f->seed);
 	bucket_index = signature & (f->n_buckets - 1);
 	bucket0 = (struct rte_bucket_4_32 *)
 		&f->memory[bucket_index * f->bucket_size];
@@ -508,24 +586,23 @@ rte_table_hash_entry_delete_key32_ext(
 		bucket_prev = bucket, bucket = bucket->next)
 		for (i = 0; i < 4; i++) {
 			uint64_t bucket_signature = bucket->signature[i];
-			uint8_t *bucket_key = (uint8_t *) bucket->key[i];
+			uint8_t *bucket_key = (uint8_t *) &bucket->key[i];
 
 			if ((bucket_signature == signature) &&
-				(memcmp(key, bucket_key, f->key_size) == 0)) {
+				(keycmp(bucket_key, key, f->key_mask) == 0)) {
 				uint8_t *bucket_data = &bucket->data[i *
 					f->entry_size];
 
 				bucket->signature[i] = 0;
 				*key_found = 1;
 				if (entry)
-					memcpy(entry, bucket_data,
-						f->entry_size);
+					memcpy(entry, bucket_data, f->entry_size);
 
 				if ((bucket->signature[0] == 0) &&
-						(bucket->signature[1] == 0) &&
-						(bucket->signature[2] == 0) &&
-						(bucket->signature[3] == 0) &&
-						(bucket_prev != NULL)) {
+					(bucket->signature[1] == 0) &&
+					(bucket->signature[2] == 0) &&
+					(bucket->signature[3] == 0) &&
+					(bucket_prev != NULL)) {
 					bucket_prev->next = bucket->next;
 					bucket_prev->next_valid =
 						bucket->next_valid;
@@ -546,34 +623,39 @@ rte_table_hash_entry_delete_key32_ext(
 	return 0;
 }
 
-#define lookup_key32_cmp(key_in, bucket, pos)			\
+#define lookup_key32_cmp(key_in, bucket, pos, f)			\
 {								\
-	uint64_t xor[4][4], or[4], signature[4];		\
+	uint64_t xor[4][4], or[4], signature[4], k[4];		\
+								\
+	k[0] = key_in[0] & f->key_mask[0];				\
+	k[1] = key_in[1] & f->key_mask[1];				\
+	k[2] = key_in[2] & f->key_mask[2];				\
+	k[3] = key_in[3] & f->key_mask[3];				\
 								\
 	signature[0] = ((~bucket->signature[0]) & 1);		\
 	signature[1] = ((~bucket->signature[1]) & 1);		\
 	signature[2] = ((~bucket->signature[2]) & 1);		\
 	signature[3] = ((~bucket->signature[3]) & 1);		\
 								\
-	xor[0][0] = key_in[0] ^	 bucket->key[0][0];		\
-	xor[0][1] = key_in[1] ^	 bucket->key[0][1];		\
-	xor[0][2] = key_in[2] ^	 bucket->key[0][2];		\
-	xor[0][3] = key_in[3] ^	 bucket->key[0][3];		\
+	xor[0][0] = k[0] ^ bucket->key[0][0];			\
+	xor[0][1] = k[1] ^ bucket->key[0][1];			\
+	xor[0][2] = k[2] ^ bucket->key[0][2];			\
+	xor[0][3] = k[3] ^ bucket->key[0][3];			\
 								\
-	xor[1][0] = key_in[0] ^	 bucket->key[1][0];		\
-	xor[1][1] = key_in[1] ^	 bucket->key[1][1];		\
-	xor[1][2] = key_in[2] ^	 bucket->key[1][2];		\
-	xor[1][3] = key_in[3] ^	 bucket->key[1][3];		\
+	xor[1][0] = k[0] ^ bucket->key[1][0];			\
+	xor[1][1] = k[1] ^ bucket->key[1][1];			\
+	xor[1][2] = k[2] ^ bucket->key[1][2];			\
+	xor[1][3] = k[3] ^ bucket->key[1][3];			\
 								\
-	xor[2][0] = key_in[0] ^	 bucket->key[2][0];		\
-	xor[2][1] = key_in[1] ^	 bucket->key[2][1];		\
-	xor[2][2] = key_in[2] ^	 bucket->key[2][2];		\
-	xor[2][3] = key_in[3] ^	 bucket->key[2][3];		\
+	xor[2][0] = k[0] ^ bucket->key[2][0];			\
+	xor[2][1] = k[1] ^ bucket->key[2][1];			\
+	xor[2][2] = k[2] ^ bucket->key[2][2];			\
+	xor[2][3] = k[3] ^ bucket->key[2][3];			\
 								\
-	xor[3][0] = key_in[0] ^	 bucket->key[3][0];		\
-	xor[3][1] = key_in[1] ^	 bucket->key[3][1];		\
-	xor[3][2] = key_in[2] ^	 bucket->key[3][2];		\
-	xor[3][3] = key_in[3] ^	 bucket->key[3][3];		\
+	xor[3][0] = k[0] ^ bucket->key[3][0];			\
+	xor[3][1] = k[1] ^ bucket->key[3][1];			\
+	xor[3][2] = k[2] ^ bucket->key[3][2];			\
+	xor[3][3] = k[3] ^ bucket->key[3][3];			\
 								\
 	or[0] = xor[0][0] | xor[0][1] | xor[0][2] | xor[0][3] | signature[0];\
 	or[1] = xor[1][0] | xor[1][1] | xor[1][2] | xor[1][3] | signature[1];\
@@ -604,12 +686,15 @@ rte_table_hash_entry_delete_key32_ext(
 	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf0, key_offset));\
 }
 
-#define lookup1_stage1(mbuf1, bucket1, f)			\
+#define lookup1_stage1(mbuf1, bucket1, f)				\
 {								\
+	uint64_t *key;						\
 	uint64_t signature;					\
 	uint32_t bucket_index;					\
 								\
-	signature = RTE_MBUF_METADATA_UINT32(mbuf1, f->signature_offset);\
+	key = RTE_MBUF_METADATA_UINT64_PTR(mbuf1, f->key_offset);	\
+	signature = f->f_hash(key, f->key_mask, KEY_SIZE, f->seed);	\
+								\
 	bucket_index = signature & (f->n_buckets - 1);		\
 	bucket1 = (struct rte_bucket_4_32 *)			\
 		&f->memory[bucket_index * f->bucket_size];	\
@@ -627,8 +712,7 @@ rte_table_hash_entry_delete_key32_ext(
 	uint32_t pos;						\
 								\
 	key = RTE_MBUF_METADATA_UINT64_PTR(mbuf2, f->key_offset);\
-								\
-	lookup_key32_cmp(key, bucket2, pos);			\
+	lookup_key32_cmp(key, bucket2, pos, f);			\
 								\
 	pkt_mask = (bucket2->signature[pos] & 1LLU) << pkt2_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -649,8 +733,7 @@ rte_table_hash_entry_delete_key32_ext(
 	uint32_t pos;						\
 								\
 	key = RTE_MBUF_METADATA_UINT64_PTR(mbuf2, f->key_offset);\
-								\
-	lookup_key32_cmp(key, bucket2, pos);			\
+	lookup_key32_cmp(key, bucket2, pos, f);			\
 								\
 	pkt_mask = (bucket2->signature[pos] & 1LLU) << pkt2_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -678,7 +761,7 @@ rte_table_hash_entry_delete_key32_ext(
 	bucket = buckets[pkt_index];				\
 	key = keys[pkt_index];					\
 								\
-	lookup_key32_cmp(key, bucket, pos);			\
+	lookup_key32_cmp(key, bucket, pos, f);			\
 								\
 	pkt_mask = (bucket->signature[pos] & 1LLU) << pkt_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -745,22 +828,27 @@ rte_table_hash_entry_delete_key32_ext(
 
 #define lookup2_stage1(mbuf10, mbuf11, bucket10, bucket11, f)	\
 {								\
-	uint64_t signature10, signature11;			\
-	uint32_t bucket10_index, bucket11_index;		\
+	uint64_t *key10, *key11;					\
+	uint64_t signature10, signature11;				\
+	uint32_t bucket10_index, bucket11_index;			\
 								\
-	signature10 = RTE_MBUF_METADATA_UINT32(mbuf10, f->signature_offset);\
-	bucket10_index = signature10 & (f->n_buckets - 1);	\
+	key10 = RTE_MBUF_METADATA_UINT64_PTR(mbuf10, f->key_offset);	\
+	signature10 = f->f_hash(key10, f->key_mask,	 KEY_SIZE, f->seed); \
+								\
+	bucket10_index = signature10 & (f->n_buckets - 1);		\
 	bucket10 = (struct rte_bucket_4_32 *)			\
 		&f->memory[bucket10_index * f->bucket_size];	\
-	rte_prefetch0(bucket10);				\
+	rte_prefetch0(bucket10);					\
 	rte_prefetch0((void *)(((uintptr_t) bucket10) + RTE_CACHE_LINE_SIZE));\
 	rte_prefetch0((void *)(((uintptr_t) bucket10) + 2 * RTE_CACHE_LINE_SIZE));\
 								\
-	signature11 = RTE_MBUF_METADATA_UINT32(mbuf11, f->signature_offset);\
-	bucket11_index = signature11 & (f->n_buckets - 1);	\
+	key11 = RTE_MBUF_METADATA_UINT64_PTR(mbuf11, f->key_offset);	\
+	signature11 = f->f_hash(key11, f->key_mask, KEY_SIZE, f->seed);\
+								\
+	bucket11_index = signature11 & (f->n_buckets - 1);		\
 	bucket11 = (struct rte_bucket_4_32 *)			\
 		&f->memory[bucket11_index * f->bucket_size];	\
-	rte_prefetch0(bucket11);				\
+	rte_prefetch0(bucket11);					\
 	rte_prefetch0((void *)(((uintptr_t) bucket11) + RTE_CACHE_LINE_SIZE));\
 	rte_prefetch0((void *)(((uintptr_t) bucket11) + 2 * RTE_CACHE_LINE_SIZE));\
 }
@@ -776,8 +864,8 @@ rte_table_hash_entry_delete_key32_ext(
 	key20 = RTE_MBUF_METADATA_UINT64_PTR(mbuf20, f->key_offset);\
 	key21 = RTE_MBUF_METADATA_UINT64_PTR(mbuf21, f->key_offset);\
 								\
-	lookup_key32_cmp(key20, bucket20, pos20);		\
-	lookup_key32_cmp(key21, bucket21, pos21);		\
+	lookup_key32_cmp(key20, bucket20, pos20, f);		\
+	lookup_key32_cmp(key21, bucket21, pos21, f);		\
 								\
 	pkt20_mask = (bucket20->signature[pos20] & 1LLU) << pkt20_index;\
 	pkt21_mask = (bucket21->signature[pos21] & 1LLU) << pkt21_index;\
@@ -805,8 +893,8 @@ rte_table_hash_entry_delete_key32_ext(
 	key20 = RTE_MBUF_METADATA_UINT64_PTR(mbuf20, f->key_offset);\
 	key21 = RTE_MBUF_METADATA_UINT64_PTR(mbuf21, f->key_offset);\
 								\
-	lookup_key32_cmp(key20, bucket20, pos20);		\
-	lookup_key32_cmp(key21, bucket21, pos21);		\
+	lookup_key32_cmp(key20, bucket20, pos20, f);		\
+	lookup_key32_cmp(key21, bucket21, pos21, f);		\
 								\
 	pkt20_mask = (bucket20->signature[pos20] & 1LLU) << pkt20_index;\
 	pkt21_mask = (bucket21->signature[pos21] & 1LLU) << pkt21_index;\

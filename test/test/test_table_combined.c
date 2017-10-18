@@ -563,12 +563,15 @@ test_table_hash32lru(void)
 	int status, i;
 
 	/* Traffic flow */
-	struct rte_table_hash_key32_lru_params key32lru_params = {
-		.n_entries = 1<<16,
-		.f_hash = pipeline_test_hash,
-		.seed = 0,
-		.signature_offset = APP_METADATA_OFFSET(0),
+	struct rte_table_hash_params key32lru_params = {
+		.name = "TABLE",
+		.key_size = 32,
 		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
+		.n_keys = 1 << 16,
+		.n_buckets = 1 << 16,
+		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.seed = 0,
 	};
 
 	uint8_t key32lru[32];
@@ -597,14 +600,14 @@ test_table_hash32lru(void)
 	VERIFY(status, CHECK_TABLE_OK);
 
 	/* Invalid parameters */
-	key32lru_params.n_entries = 0;
+	key32lru_params.n_keys = 0;
 
 	status = test_table_type(&rte_table_hash_key32_lru_ops,
 		(void *)&key32lru_params, (void *)key32lru, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
 
-	key32lru_params.n_entries = 1<<16;
+	key32lru_params.n_keys = 1<<16;
 	key32lru_params.f_hash = NULL;
 
 	status = test_table_type(&rte_table_hash_key32_lru_ops,
@@ -743,13 +746,15 @@ test_table_hash32ext(void)
 	int status, i;
 
 	/* Traffic flow */
-	struct rte_table_hash_key32_ext_params key32ext_params = {
-		.n_entries = 1<<16,
-		.n_entries_ext = 1<<15,
-		.f_hash = pipeline_test_hash,
-		.seed = 0,
-		.signature_offset = APP_METADATA_OFFSET(0),
+	struct rte_table_hash_params key32ext_params = {
+		.name = "TABLE",
+		.key_size = 32,
 		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
+		.n_keys = 1 << 16,
+		.n_buckets = 1 << 16,
+		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.seed = 0,
 	};
 
 	uint8_t key32ext[32];
@@ -778,23 +783,15 @@ test_table_hash32ext(void)
 	VERIFY(status, CHECK_TABLE_OK);
 
 	/* Invalid parameters */
-	key32ext_params.n_entries = 0;
+	key32ext_params.n_keys = 0;
 
 	status = test_table_type(&rte_table_hash_key32_ext_ops,
 		(void *)&key32ext_params, (void *)key32ext, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
 
-	key32ext_params.n_entries = 1<<16;
+	key32ext_params.n_keys = 1<<16;
 	key32ext_params.f_hash = NULL;
-
-	status = test_table_type(&rte_table_hash_key32_ext_ops,
-		(void *)&key32ext_params, (void *)key32ext, &table_packets,
-		NULL, 0);
-	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
-
-	key32ext_params.f_hash = pipeline_test_hash;
-	key32ext_params.n_entries_ext = 0;
 
 	status = test_table_type(&rte_table_hash_key32_ext_ops,
 		(void *)&key32ext_params, (void *)key32ext, &table_packets,

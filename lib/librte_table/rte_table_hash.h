@@ -147,58 +147,8 @@ extern struct rte_table_ops rte_table_hash_key16_lru_ops;
 
 extern struct rte_table_ops rte_table_hash_key16_ext_ops;
 
-/**
- * 32-byte key hash tables
- *
- */
-/** LRU hash table parameters */
-struct rte_table_hash_key32_lru_params {
-	/** Maximum number of entries (and keys) in the table */
-	uint32_t n_entries;
-
-	/** Hash function */
-	rte_table_hash_op_hash_nomask f_hash;
-
-	/** Seed for the hash function */
-	uint64_t seed;
-
-	/** Byte offset within packet meta-data where the 4-byte key signature
-	is located. Valid for pre-computed key signature tables, ignored for
-	do-sig tables. */
-	uint32_t signature_offset;
-
-	/** Byte offset within packet meta-data where the key is located */
-	uint32_t key_offset;
-};
-
-/** LRU hash table operations for pre-computed key signature */
 extern struct rte_table_ops rte_table_hash_key32_lru_ops;
 
-/** Extendible bucket hash table parameters */
-struct rte_table_hash_key32_ext_params {
-	/** Maximum number of entries (and keys) in the table */
-	uint32_t n_entries;
-
-	/** Number of entries (and keys) for hash table bucket extensions. Each
-		bucket is extended in increments of 4 keys. */
-	uint32_t n_entries_ext;
-
-	/** Hash function */
-	rte_table_hash_op_hash_nomask f_hash;
-
-	/** Seed for the hash function */
-	uint64_t seed;
-
-	/** Byte offset within packet meta-data where the 4-byte key signature
-	is located. Valid for pre-computed key signature tables, ignored for
-	do-sig tables. */
-	uint32_t signature_offset;
-
-	/** Byte offset within packet meta-data where the key is located */
-	uint32_t key_offset;
-};
-
-/** Extendible bucket hash table operations */
 extern struct rte_table_ops rte_table_hash_key32_ext_ops;
 
 /** Cuckoo hash table parameters */
