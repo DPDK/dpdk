@@ -1657,6 +1657,7 @@ rte_eth_xstats_get_names_by_id(uint16_t port_id,
 	uint64_t *ids)
 {
 	struct rte_eth_xstat_name *xstats_names_copy;
+	unsigned int no_basic_stat_requested = 1;
 	unsigned int expected_entries;
 	struct rte_eth_dev *dev;
 	unsigned int i;
@@ -1676,9 +1677,27 @@ rte_eth_xstats_get_names_by_id(uint16_t port_id,
 	if (ids && !xstats_names)
 		return -EINVAL;
 
-	if (dev->dev_ops->xstats_get_names_by_id != NULL)
-		return (*dev->dev_ops->xstats_get_names_by_id)(
-				dev, xstats_names, ids, size);
+	if (ids && dev->dev_ops->xstats_get_names_by_id != NULL && size > 0) {
+		unsigned int basic_count = get_xstats_basic_count(dev);
+		uint64_t ids_copy[size];
+
+		for (i = 0; i < size; i++) {
+			if (ids[i] < basic_count) {
+				no_basic_stat_requested = 0;
+				break;
+			}
+
+			/*
+			 * Convert ids to xstats ids that PMD knows.
+			 * ids known by user are basic + extended stats.
+			 */
+			ids_copy[i] = ids[i] - basic_count;
+		}
+
+		if (no_basic_stat_requested)
+			return (*dev->dev_ops->xstats_get_names_by_id)(dev,
+					xstats_names, ids_copy, size);
+	}
 
 	/* Retrieve all stats */
 	if (!ids) {
@@ -1785,6 +1804,7 @@ int
 rte_eth_xstats_get_by_id(uint16_t port_id, const uint64_t *ids,
 			 uint64_t *values, unsigned int size)
 {
+	unsigned int no_basic_stat_requested = 1;
 	unsigned int num_xstats_filled;
 	uint16_t expected_entries;
 	struct rte_eth_dev *dev;
@@ -1806,9 +1826,27 @@ rte_eth_xstats_get_by_id(uint16_t port_id, const uint64_t *ids,
 	if (ids && !values)
 		return -EINVAL;
 
-	if (dev->dev_ops->xstats_get_by_id != NULL)
-		return (*dev->dev_ops->xstats_get_by_id)(dev, ids, values,
-			size);
+	if (ids && dev->dev_ops->xstats_get_by_id != NULL && size) {
+		unsigned int basic_count = get_xstats_basic_count(dev);
+		uint64_t ids_copy[size];
+
+		for (i = 0; i < size; i++) {
+			if (ids[i] < basic_count) {
+				no_basic_stat_requested = 0;
+				break;
+			}
+
+			/*
+			 * Convert ids to xstats ids that PMD knows.
+			 * ids known by user are basic + extended stats.
+			 */
+			ids_copy[i] = ids[i] - basic_count;
+		}
+
+		if (no_basic_stat_requested)
+			return (*dev->dev_ops->xstats_get_by_id)(dev, ids_copy,
+					values, size);
+	}
 
 	/* Fill the xstats structure */
 	num_xstats_filled = rte_eth_xstats_get(port_id, xstats,
