@@ -135,40 +135,6 @@ typedef uint64_t (*rte_table_hash_op_hash_nomask)(
 	uint32_t key_size,
 	uint64_t seed);
 
-/**
- * Hash tables with configurable key size
- *
- */
-/** Extendible bucket hash table parameters */
-struct rte_table_hash_ext_params {
-	/** Key size (number of bytes) */
-	uint32_t key_size;
-
-	/** Maximum number of keys */
-	uint32_t n_keys;
-
-	/** Number of hash table buckets. Each bucket stores up to 4 keys. */
-	uint32_t n_buckets;
-
-	/** Number of hash table bucket extensions. Each bucket extension has
-	space for 4 keys and each bucket can have 0, 1 or more extensions. */
-	uint32_t n_buckets_ext;
-
-	/** Hash function */
-	rte_table_hash_op_hash_nomask f_hash;
-
-	/** Seed value for the hash function */
-	uint64_t seed;
-
-	/** Byte offset within packet meta-data where the 4-byte key signature
-	is located. Valid for pre-computed key signature tables, ignored for
-	do-sig tables. */
-	uint32_t signature_offset;
-
-	/** Byte offset within packet meta-data where the key is located */
-	uint32_t key_offset;
-};
-
 extern struct rte_table_ops rte_table_hash_ext_ops;
 
 /** LRU hash table parameters */
