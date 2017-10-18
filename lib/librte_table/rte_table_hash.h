@@ -151,32 +151,6 @@ extern struct rte_table_ops rte_table_hash_key32_lru_ops;
 
 extern struct rte_table_ops rte_table_hash_key32_ext_ops;
 
-/** Cuckoo hash table parameters */
-struct rte_table_hash_cuckoo_params {
-    /** Key size (number of bytes */
-		uint32_t key_size;
-
-	/** Maximum number of hash table entries */
-	uint32_t n_keys;
-
-	/** Hash function used to calculate hash */
-	rte_table_hash_op_hash_nomask f_hash;
-
-	/** Seed value or Init value used by f_hash */
-	uint32_t seed;
-
-	/** Byte offset within packet meta-data where the 4-byte key signature
-	is located. Valid for pre-computed key signature tables, ignored for
-	do-sig tables. */
-	uint32_t signature_offset;
-
-	/** Byte offset within packet meta-data where the key is located */
-	uint32_t key_offset;
-
-	/** Hash table name */
-	const char *name;
-};
-
 extern struct rte_table_ops rte_table_hash_cuckoo_ops;
 
 #ifdef __cplusplus

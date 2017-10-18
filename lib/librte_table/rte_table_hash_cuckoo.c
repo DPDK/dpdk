@@ -64,24 +64,27 @@ struct rte_table_hash {
 	uint32_t key_size;
 	uint32_t entry_size;
 	uint32_t n_keys;
-	rte_table_hash_op_hash_nomask f_hash;
+	rte_table_hash_op_hash f_hash;
 	uint32_t seed;
-	uint32_t signature_offset;
 	uint32_t key_offset;
-	const char *name;
 
 	/* cuckoo hash table object */
 	struct rte_hash *h_table;
 
 	/* Lookup table */
-	uint8_t memory[0] __rte_cache_aligned; };
+	uint8_t memory[0] __rte_cache_aligned;
+};
 
 static int
-check_params_create_hash_cuckoo(const struct
-rte_table_hash_cuckoo_params *params) {
-	/* Check for valid parameters */
+check_params_create_hash_cuckoo(struct rte_table_hash_params *params)
+{
 	if (params == NULL) {
 		RTE_LOG(ERR, TABLE, "NULL Input Parameters.\n");
+		return -EINVAL;
+	}
+
+	if (params->name == NULL) {
+		RTE_LOG(ERR, TABLE, "Table name is NULL.\n");
 		return -EINVAL;
 	}
 
@@ -100,11 +103,6 @@ rte_table_hash_cuckoo_params *params) {
 		return -EINVAL;
 	}
 
-	if (params->name == NULL) {
-		RTE_LOG(ERR, TABLE, "Table name is NULL.\n");
-		return -EINVAL;
-	}
-
 	return 0;
 }
 
@@ -113,34 +111,24 @@ rte_table_hash_cuckoo_create(void *params,
 			int socket_id,
 			uint32_t entry_size)
 {
-	struct rte_hash *rte_hash_handle;
+	struct rte_table_hash_params *p = params;
+	struct rte_hash *h_table;
 	struct rte_table_hash *t;
-	uint32_t total_size, total_cl_size;
+	uint32_t total_size;
 
 	/* Check input parameters */
-	struct rte_table_hash_cuckoo_params *p =
-		(struct rte_table_hash_cuckoo_params *) params;
-
 	if (check_params_create_hash_cuckoo(params))
 		return NULL;
 
 	/* Memory allocation */
-	total_cl_size =
-		(sizeof(struct rte_table_hash) +
-		 RTE_CACHE_LINE_SIZE) / RTE_CACHE_LINE_SIZE;
-	total_cl_size += (p->n_keys * entry_size +
-			RTE_CACHE_LINE_SIZE) / RTE_CACHE_LINE_SIZE;
-	total_size = total_cl_size * RTE_CACHE_LINE_SIZE;
+	total_size = sizeof(struct rte_table_hash) +
+		RTE_CACHE_LINE_ROUNDUP(p->n_keys * entry_size);
 
-	t = rte_zmalloc_socket("TABLE",
-			total_size,
-			RTE_CACHE_LINE_SIZE,
-			socket_id);
+	t = rte_zmalloc_socket(p->name, total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (t == NULL) {
 		RTE_LOG(ERR, TABLE,
-			"%s: Cannot allocate %u bytes for Cuckoo hash table\n",
-			__func__,
-			(uint32_t)sizeof(struct rte_table_hash));
+			"%s: Cannot allocate %u bytes for cuckoo hash table %s\n",
+			__func__, total_size, p->name);
 		return NULL;
 	}
 
@@ -154,13 +142,13 @@ rte_table_hash_cuckoo_create(void *params,
 		.name = p->name
 	};
 
-	rte_hash_handle = rte_hash_find_existing(p->name);
-	if (rte_hash_handle == NULL) {
-		rte_hash_handle = rte_hash_create(&hash_cuckoo_params);
-		if (NULL == rte_hash_handle) {
+	h_table = rte_hash_find_existing(p->name);
+	if (h_table == NULL) {
+		h_table = rte_hash_create(&hash_cuckoo_params);
+		if (h_table == NULL) {
 			RTE_LOG(ERR, TABLE,
-				"%s: failed to create cuckoo hash table. keysize: %u",
-				__func__, hash_cuckoo_params.key_len);
+				"%s: failed to create cuckoo hash table %s\n",
+				__func__, p->name);
 			rte_free(t);
 			return NULL;
 		}
@@ -172,25 +160,21 @@ rte_table_hash_cuckoo_create(void *params,
 	t->n_keys = p->n_keys;
 	t->f_hash = p->f_hash;
 	t->seed = p->seed;
-	t->signature_offset = p->signature_offset;
 	t->key_offset = p->key_offset;
-	t->name = p->name;
-	t->h_table = rte_hash_handle;
+	t->h_table = h_table;
 
 	RTE_LOG(INFO, TABLE,
-		"%s: Cuckoo Hash table memory footprint is %u bytes\n",
-		__func__, total_size);
+		"%s: Cuckoo hash table %s memory footprint is %u bytes\n",
+		__func__, p->name, total_size);
 	return t;
 }
 
 static int
 rte_table_hash_cuckoo_free(void *table) {
-	if (table == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: table parameter is NULL\n", __func__);
-		return -EINVAL;
-	}
-
 	struct rte_table_hash *t = table;
+
+	if (table == NULL)
+		return -EINVAL;
 
 	rte_hash_free(t->h_table);
 	rte_free(t);
@@ -200,25 +184,18 @@ rte_table_hash_cuckoo_free(void *table) {
 
 static int
 rte_table_hash_cuckoo_entry_add(void *table, void *key, void *entry,
-		int *key_found, void **entry_ptr) {
+	int *key_found, void **entry_ptr)
+{
+	struct rte_table_hash *t = table;
 	int pos = 0;
 
-	if (table == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: table parameter is NULL\n", __func__);
+	/* Check input parameters */
+	if ((table == NULL) ||
+		(key == NULL) ||
+		(entry == NULL) ||
+		(key_found == NULL) ||
+		(entry_ptr == NULL))
 		return -EINVAL;
-	}
-
-	if (key == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: key parameter is NULL\n", __func__);
-		return -EINVAL;
-	}
-
-	if (entry == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: entry parameter is NULL\n", __func__);
-		return -EINVAL;
-	}
-
-	struct rte_table_hash *t = table;
 
 	/*  Find Existing entries */
 	pos = rte_hash_lookup(t->h_table, key);
@@ -231,17 +208,15 @@ rte_table_hash_cuckoo_entry_add(void *table, void *key, void *entry,
 		*entry_ptr = existing_entry;
 
 		return 0;
-} else if (pos == -ENOENT) {
-	/* Entry not found. Adding new entry */
+	}
+
+	if (pos == -ENOENT) {
+		/* Entry not found. Adding new entry */
 		uint8_t *new_entry;
 
 		pos = rte_hash_add_key(t->h_table, key);
-		if (pos < 0) {
-			RTE_LOG(ERR, TABLE,
-				"%s: Entry not added, status : %u\n",
-				__func__, pos);
+		if (pos < 0)
 			return pos;
-		}
 
 		new_entry = &t->memory[pos * t->entry_size];
 		memcpy(new_entry, entry, t->entry_size);
@@ -250,25 +225,22 @@ rte_table_hash_cuckoo_entry_add(void *table, void *key, void *entry,
 		*entry_ptr = new_entry;
 		return 0;
 	}
+
 	return pos;
 }
 
 static int
 rte_table_hash_cuckoo_entry_delete(void *table, void *key,
-		int *key_found, __rte_unused void *entry) {
+	int *key_found, void *entry)
+{
+	struct rte_table_hash *t = table;
 	int pos = 0;
 
-	if (table == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: table parameter is NULL\n", __func__);
+	/* Check input parameters */
+	if ((table == NULL) ||
+		(key == NULL) ||
+		(key_found == NULL))
 		return -EINVAL;
-	}
-
-	if (key == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: key parameter is NULL\n", __func__);
-		return -EINVAL;
-	}
-
-	struct rte_table_hash *t = table;
 
 	pos = rte_hash_del_key(t->h_table, key);
 	if (pos >= 0) {
@@ -279,11 +251,12 @@ rte_table_hash_cuckoo_entry_delete(void *table, void *key,
 			memcpy(entry, entry_ptr, t->entry_size);
 
 		memset(&t->memory[pos * t->entry_size], 0, t->entry_size);
+		return 0;
 	}
 
+	*key_found = 0;
 	return pos;
 }
-
 
 static int
 rte_table_hash_cuckoo_lookup(void *table,
@@ -292,7 +265,7 @@ rte_table_hash_cuckoo_lookup(void *table,
 	uint64_t *lookup_hit_mask,
 	void **entries)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *)table;
+	struct rte_table_hash *t = table;
 	uint64_t pkts_mask_out = 0;
 	uint32_t i;
 
@@ -301,20 +274,19 @@ rte_table_hash_cuckoo_lookup(void *table,
 	RTE_TABLE_HASH_CUCKOO_STATS_PKTS_IN_ADD(t, n_pkts_in);
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		const uint8_t *keys[64];
-		int32_t positions[64], status;
+		const uint8_t *keys[RTE_PORT_IN_BURST_SIZE_MAX];
+		int32_t positions[RTE_PORT_IN_BURST_SIZE_MAX], status;
 
 		/* Keys for bulk lookup */
 		for (i = 0; i < n_pkts_in; i++)
 			keys[i] = RTE_MBUF_METADATA_UINT8_PTR(pkts[i],
-					t->key_offset);
+				t->key_offset);
 
 		/* Bulk Lookup */
 		status = rte_hash_lookup_bulk(t->h_table,
 				(const void **) keys,
 				n_pkts_in,
 				positions);
-
 		if (status == 0) {
 			for (i = 0; i < n_pkts_in; i++) {
 				if (likely(positions[i] >= 0)) {
@@ -326,7 +298,7 @@ rte_table_hash_cuckoo_lookup(void *table,
 				}
 			}
 		}
-	} else {
+	} else
 		for (i = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX
 					- __builtin_clzll(pkts_mask)); i++) {
 			uint64_t pkt_mask = 1LLU << i;
@@ -345,7 +317,6 @@ rte_table_hash_cuckoo_lookup(void *table,
 				}
 			}
 		}
-	}
 
 	*lookup_hit_mask = pkts_mask_out;
 	RTE_TABLE_HASH_CUCKOO_STATS_PKTS_LOOKUP_MISS(t,

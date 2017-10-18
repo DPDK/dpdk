@@ -402,19 +402,15 @@ app_main_loop_worker_pipeline_hash(void) {
 	case e_APP_PIPELINE_HASH_CUCKOO_KEY112:
 	case e_APP_PIPELINE_HASH_CUCKOO_KEY128:
 	{
-		char hash_name[RTE_HASH_NAMESIZE];
-
-		snprintf(hash_name, sizeof(hash_name), "RTE_TH_CUCKOO_%d",
-			app.pipeline_type);
-
-		struct rte_table_hash_cuckoo_params table_hash_params = {
+		struct rte_table_hash_params table_hash_params = {
+			.name = "TABLE",
 			.key_size = key_size,
-			.n_keys = (1 << 24) + 1,
-			.f_hash = test_hash,
-			.seed = 0,
-			.signature_offset = APP_METADATA_OFFSET(0),
 			.key_offset = APP_METADATA_OFFSET(32),
-			.name = hash_name,
+			.key_mask = NULL,
+			.n_keys = 1 << 24,
+			.n_buckets = 1 << 22,
+			.f_hash = (rte_table_hash_op_hash)test_hash,
+			.seed = 0,
 		};
 
 		struct rte_pipeline_table_params table_params = {

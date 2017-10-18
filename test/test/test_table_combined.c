@@ -807,14 +807,15 @@ test_table_hash_cuckoo_combined(void)
 	int status, i;
 
 	/* Traffic flow */
-	struct rte_table_hash_cuckoo_params cuckoo_params = {
+	struct rte_table_hash_params cuckoo_params = {
+		.name = "TABLE",
 		.key_size = 32,
-		.n_keys = 1<<16,
-		.f_hash = pipeline_test_hash,
-		.seed = 0,
-		.signature_offset = APP_METADATA_OFFSET(0),
 		.key_offset = APP_METADATA_OFFSET(32),
-		.name = "CUCKOO_HASH",
+		.key_mask = NULL,
+		.n_keys = 1 << 16,
+		.n_buckets = 1 << 16,
+		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.seed = 0,
 	};
 
 	uint8_t key_cuckoo[32];
