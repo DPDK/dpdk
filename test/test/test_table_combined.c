@@ -528,7 +528,7 @@ test_table_hash16lru(void)
 	table_packets.n_hit_packets = 50;
 	table_packets.n_miss_packets = 50;
 
-	status = test_table_type(&rte_table_hash_key16_lru_dosig_ops,
+	status = test_table_type(&rte_table_hash_key16_lru_ops,
 		(void *)&key16lru_params, (void *)key16lru, &table_packets,
 			NULL, 0);
 	VERIFY(status, CHECK_TABLE_OK);
@@ -536,7 +536,7 @@ test_table_hash16lru(void)
 	/* Invalid parameters */
 	key16lru_params.n_entries = 0;
 
-	status = test_table_type(&rte_table_hash_key16_lru_dosig_ops,
+	status = test_table_type(&rte_table_hash_key16_lru_ops,
 		(void *)&key16lru_params, (void *)key16lru, &table_packets,
 			NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -544,7 +544,7 @@ test_table_hash16lru(void)
 	key16lru_params.n_entries = 1<<16;
 	key16lru_params.f_hash = NULL;
 
-	status = test_table_type(&rte_table_hash_key16_lru_dosig_ops,
+	status = test_table_type(&rte_table_hash_key16_lru_ops,
 		(void *)&key16lru_params, (void *)key16lru, &table_packets,
 			NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -713,7 +713,7 @@ test_table_hash16ext(void)
 	table_packets.n_hit_packets = 50;
 	table_packets.n_miss_packets = 50;
 
-	status = test_table_type(&rte_table_hash_key16_ext_dosig_ops,
+	status = test_table_type(&rte_table_hash_key16_ext_ops,
 		(void *)&key16ext_params, (void *)key16ext, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_OK);
@@ -721,7 +721,7 @@ test_table_hash16ext(void)
 	/* Invalid parameters */
 	key16ext_params.n_entries = 0;
 
-	status = test_table_type(&rte_table_hash_key16_ext_dosig_ops,
+	status = test_table_type(&rte_table_hash_key16_ext_ops,
 		(void *)&key16ext_params, (void *)key16ext, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -729,7 +729,7 @@ test_table_hash16ext(void)
 	key16ext_params.n_entries = 1<<16;
 	key16ext_params.f_hash = NULL;
 
-	status = test_table_type(&rte_table_hash_key16_ext_dosig_ops,
+	status = test_table_type(&rte_table_hash_key16_ext_ops,
 		(void *)&key16ext_params, (void *)key16ext, &table_packets,
 		NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
@@ -737,7 +737,7 @@ test_table_hash16ext(void)
 	key16ext_params.f_hash = pipeline_test_hash;
 	key16ext_params.n_entries_ext = 0;
 
-	status = test_table_type(&rte_table_hash_key16_ext_dosig_ops,
+	status = test_table_type(&rte_table_hash_key16_ext_ops,
 	(void *)&key16ext_params, (void *)key16ext, &table_packets, NULL, 0);
 	VERIFY(status, CHECK_TABLE_TABLE_CONFIG);
 
