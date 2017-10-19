@@ -104,7 +104,8 @@ Limitations
 -----------
 
 - Inner RSS for VXLAN frames is not supported yet.
-- Port statistics through software counters only.
+- Port statistics through software counters only. Flow statistics are
+  supported by hardware counters.
 - Hardware checksum RX offloads for VXLAN inner header are not supported yet.
 - Forked secondary process not supported.
 - Flow pattern without any specific vlan will match for vlan packets as well:
@@ -127,6 +128,7 @@ Limitations
 - A multi segment packet must have less than 6 segments in case the Tx burst function
   is set to multi-packet send or Enhanced multi-packet send. Otherwise it must have
   less than 50 segments.
+- Count action for RTE flow is only supported in Mellanox OFED 4.2.
 
 Configuration
 -------------
