@@ -46,6 +46,7 @@
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
+#include <infiniband/mlx4dv.h>
 #include <infiniband/verbs.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
@@ -201,7 +202,7 @@ int mlx4_rss_attach(struct mlx4_rss *rss)
 	struct ibv_wq *ind_tbl[rss->queues];
 	struct priv *priv = rss->priv;
 	const char *msg;
-	unsigned int i;
+	unsigned int i = 0;
 	int ret;
 
 	if (!rte_is_power_of_2(RTE_DIM(ind_tbl))) {
@@ -218,6 +219,12 @@ int mlx4_rss_attach(struct mlx4_rss *rss)
 		if (!rxq) {
 			ret = EINVAL;
 			msg = "RSS target queue is not configured";
+			goto error;
+		}
+		ret = mlx4_rxq_attach(rxq);
+		if (ret) {
+			ret = -ret;
+			msg = "unable to attach RSS target queue";
 			goto error;
 		}
 		ind_tbl[i] = rxq->wq;
@@ -286,6 +293,8 @@ error:
 		claim_zero(ibv_destroy_rwq_ind_table(rss->ind));
 		rss->ind = NULL;
 	}
+	while (i--)
+		mlx4_rxq_detach(priv->dev->data->rx_queues[rss->queue_id[i]]);
 	ERROR("mlx4: %s", msg);
 	--rss->usecnt;
 	rte_errno = ret;
@@ -305,6 +314,9 @@ error:
  */
 void mlx4_rss_detach(struct mlx4_rss *rss)
 {
+	struct priv *priv = rss->priv;
+	unsigned int i;
+
 	assert(rss->refcnt);
 	assert(rss->qp);
 	assert(rss->ind);
@@ -314,10 +326,166 @@ void mlx4_rss_detach(struct mlx4_rss *rss)
 	rss->qp = NULL;
 	claim_zero(ibv_destroy_rwq_ind_table(rss->ind));
 	rss->ind = NULL;
+	for (i = 0; i != rss->queues; ++i)
+		mlx4_rxq_detach(priv->dev->data->rx_queues[rss->queue_id[i]]);
 }
 
 /**
- * Allocate Rx queue elements.
+ * Initialize common RSS context resources.
+ *
+ * Because ConnectX-3 hardware limitations require a fixed order in the
+ * indirection table, WQs must be allocated sequentially to be part of a
+ * common RSS context.
+ *
+ * Since a newly created WQ cannot be moved to a different context, this
+ * function allocates them all at once, one for each configured Rx queue,
+ * as well as all related resources (CQs and mbufs).
+ *
+ * This must therefore be done before creating any Rx flow rules relying on
+ * indirection tables.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx4_rss_init(struct priv *priv)
+{
+	struct rte_eth_dev *dev = priv->dev;
+	uint8_t log2_range = rte_log2_u32(dev->data->nb_rx_queues);
+	uint32_t wq_num_prev = 0;
+	const char *msg;
+	unsigned int i;
+	int ret;
+
+	/* Prepare range for RSS contexts before creating the first WQ. */
+	ret = mlx4dv_set_context_attr(priv->ctx,
+				      MLX4DV_SET_CTX_ATTR_LOG_WQS_RANGE_SZ,
+				      &log2_range);
+	if (ret) {
+		ERROR("cannot set up range size for RSS context to %u"
+		      " (for %u Rx queues), error: %s",
+		      1 << log2_range, dev->data->nb_rx_queues, strerror(ret));
+		rte_errno = ret;
+		return -ret;
+	}
+	for (i = 0; i != priv->dev->data->nb_rx_queues; ++i) {
+		struct rxq *rxq = priv->dev->data->rx_queues[i];
+		struct ibv_cq *cq;
+		struct ibv_wq *wq;
+		uint32_t wq_num;
+
+		/* Attach the configured Rx queues. */
+		if (rxq) {
+			assert(!rxq->usecnt);
+			ret = mlx4_rxq_attach(rxq);
+			if (!ret) {
+				wq_num = rxq->wq->wq_num;
+				goto wq_num_check;
+			}
+			ret = -ret;
+			msg = "unable to create Rx queue resources";
+			goto error;
+		}
+		/*
+		 * WQs are temporarily allocated for unconfigured Rx queues
+		 * to maintain proper index alignment in indirection table
+		 * by skipping unused WQ numbers.
+		 *
+		 * The reason this works at all even though these WQs are
+		 * immediately destroyed is that WQNs are allocated
+		 * sequentially and are guaranteed to never be reused in the
+		 * same context by the underlying implementation.
+		 */
+		cq = ibv_create_cq(priv->ctx, 1, NULL, NULL, 0);
+		if (!cq) {
+			ret = ENOMEM;
+			msg = "placeholder CQ creation failure";
+			goto error;
+		}
+		wq = ibv_create_wq
+			(priv->ctx,
+			 &(struct ibv_wq_init_attr){
+				.wq_type = IBV_WQT_RQ,
+				.max_wr = 1,
+				.max_sge = 1,
+				.pd = priv->pd,
+				.cq = cq,
+			 });
+		if (wq) {
+			wq_num = wq->wq_num;
+			claim_zero(ibv_destroy_wq(wq));
+		} else {
+			wq_num = 0; /* Shut up GCC 4.8 warnings. */
+		}
+		claim_zero(ibv_destroy_cq(cq));
+		if (!wq) {
+			ret = ENOMEM;
+			msg = "placeholder WQ creation failure";
+			goto error;
+		}
+wq_num_check:
+		/*
+		 * While guaranteed by the implementation, make sure WQ
+		 * numbers are really sequential (as the saying goes,
+		 * trust, but verify).
+		 */
+		if (i && wq_num - wq_num_prev != 1) {
+			if (rxq)
+				mlx4_rxq_detach(rxq);
+			ret = ERANGE;
+			msg = "WQ numbers are not sequential";
+			goto error;
+		}
+		wq_num_prev = wq_num;
+	}
+	return 0;
+error:
+	ERROR("cannot initialize common RSS resources (queue %u): %s: %s",
+	      i, msg, strerror(ret));
+	while (i--) {
+		struct rxq *rxq = priv->dev->data->rx_queues[i];
+
+		if (rxq)
+			mlx4_rxq_detach(rxq);
+	}
+	rte_errno = ret;
+	return -ret;
+}
+
+/**
+ * Release common RSS context resources.
+ *
+ * As the reverse of mlx4_rss_init(), this must be done after removing all
+ * flow rules relying on indirection tables.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ */
+void
+mlx4_rss_deinit(struct priv *priv)
+{
+	unsigned int i;
+
+	for (i = 0; i != priv->dev->data->nb_rx_queues; ++i) {
+		struct rxq *rxq = priv->dev->data->rx_queues[i];
+
+		if (rxq) {
+			assert(rxq->usecnt == 1);
+			mlx4_rxq_detach(rxq);
+		}
+	}
+}
+
+/**
+ * Attach a user to a Rx queue.
+ *
+ * Used when the resources of an Rx queue must be instantiated for it to
+ * become in a usable state.
+ *
+ * This function increments the usage count of the Rx queue.
  *
  * @param rxq
  *   Pointer to Rx queue structure.
@@ -325,17 +493,76 @@ void mlx4_rss_detach(struct mlx4_rss *rss)
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
-static int
-mlx4_rxq_alloc_elts(struct rxq *rxq)
+int
+mlx4_rxq_attach(struct rxq *rxq)
 {
+	if (rxq->usecnt++) {
+		assert(rxq->cq);
+		assert(rxq->wq);
+		assert(rxq->wqes);
+		assert(rxq->rq_db);
+		return 0;
+	}
+
+	struct priv *priv = rxq->priv;
 	const uint32_t elts_n = 1 << rxq->elts_n;
 	const uint32_t sges_n = 1 << rxq->sges_n;
 	struct rte_mbuf *(*elts)[elts_n] = rxq->elts;
+	struct mlx4dv_obj mlxdv;
+	struct mlx4dv_rwq dv_rwq;
+	struct mlx4dv_cq dv_cq;
+	const char *msg;
+	struct ibv_cq *cq = NULL;
+	struct ibv_wq *wq = NULL;
+	volatile struct mlx4_wqe_data_seg (*wqes)[];
 	unsigned int i;
+	int ret;
 
 	assert(rte_is_power_of_2(elts_n));
+	cq = ibv_create_cq(priv->ctx, elts_n / sges_n, NULL, rxq->channel, 0);
+	if (!cq) {
+		ret = ENOMEM;
+		msg = "CQ creation failure";
+		goto error;
+	}
+	wq = ibv_create_wq
+		(priv->ctx,
+		 &(struct ibv_wq_init_attr){
+			.wq_type = IBV_WQT_RQ,
+			.max_wr = elts_n / sges_n,
+			.max_sge = sges_n,
+			.pd = priv->pd,
+			.cq = cq,
+		 });
+	if (!wq) {
+		ret = errno ? errno : EINVAL;
+		msg = "WQ creation failure";
+		goto error;
+	}
+	ret = ibv_modify_wq
+		(wq,
+		 &(struct ibv_wq_attr){
+			.attr_mask = IBV_WQ_ATTR_STATE,
+			.wq_state = IBV_WQS_RDY,
+		 });
+	if (ret) {
+		msg = "WQ state change to IBV_WQS_RDY failed";
+		goto error;
+	}
+	/* Retrieve device queue information. */
+	mlxdv.cq.in = cq;
+	mlxdv.cq.out = &dv_cq;
+	mlxdv.rwq.in = wq;
+	mlxdv.rwq.out = &dv_rwq;
+	ret = mlx4dv_init_obj(&mlxdv, MLX4DV_OBJ_RWQ | MLX4DV_OBJ_CQ);
+	if (ret) {
+		msg = "failed to obtain device information from WQ/CQ objects";
+		goto error;
+	}
+	wqes = (volatile struct mlx4_wqe_data_seg (*)[])
+		((uintptr_t)dv_rwq.buf.buf + dv_rwq.rq.offset);
 	for (i = 0; i != RTE_DIM(*elts); ++i) {
-		volatile struct mlx4_wqe_data_seg *scat = &(*rxq->wqes)[i];
+		volatile struct mlx4_wqe_data_seg *scat = &(*wqes)[i];
 		struct rte_mbuf *buf = rte_pktmbuf_alloc(rxq->mp);
 
 		if (buf == NULL) {
@@ -343,8 +570,9 @@ mlx4_rxq_alloc_elts(struct rxq *rxq)
 				rte_pktmbuf_free_seg((*elts)[i]);
 				(*elts)[i] = NULL;
 			}
-			rte_errno = ENOMEM;
-			return -rte_errno;
+			ret = ENOMEM;
+			msg = "cannot allocate mbuf";
+			goto error;
 		}
 		/* Headroom is reserved by rte_pktmbuf_alloc(). */
 		assert(buf->data_off == RTE_PKTMBUF_HEADROOM);
@@ -368,21 +596,55 @@ mlx4_rxq_alloc_elts(struct rxq *rxq)
 	}
 	DEBUG("%p: allocated and configured %u segments (max %u packets)",
 	      (void *)rxq, elts_n, elts_n / sges_n);
+	rxq->cq = cq;
+	rxq->wq = wq;
+	rxq->wqes = wqes;
+	rxq->rq_db = dv_rwq.rdb;
+	rxq->mcq.buf = dv_cq.buf.buf;
+	rxq->mcq.cqe_cnt = dv_cq.cqe_cnt;
+	rxq->mcq.set_ci_db = dv_cq.set_ci_db;
+	rxq->mcq.cqe_64 = (dv_cq.cqe_size & 64) ? 1 : 0;
+	/* Update doorbell counter. */
+	rxq->rq_ci = elts_n / sges_n;
+	rte_wmb();
+	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 	return 0;
+error:
+	if (wq)
+		claim_zero(ibv_destroy_wq(wq));
+	if (cq)
+		claim_zero(ibv_destroy_cq(cq));
+	rte_errno = ret;
+	ERROR("error while attaching Rx queue %p: %s: %s",
+	      (void *)rxq, msg, strerror(ret));
+	return -ret;
 }
 
 /**
- * Free Rx queue elements.
+ * Detach a user from a Rx queue.
+ *
+ * This function decrements the usage count of the Rx queue and destroys
+ * usage resources after reaching 0.
  *
  * @param rxq
  *   Pointer to Rx queue structure.
  */
-static void
-mlx4_rxq_free_elts(struct rxq *rxq)
+void
+mlx4_rxq_detach(struct rxq *rxq)
 {
 	unsigned int i;
 	struct rte_mbuf *(*elts)[1 << rxq->elts_n] = rxq->elts;
 
+	if (--rxq->usecnt)
+		return;
+	rxq->rq_ci = 0;
+	memset(&rxq->mcq, 0, sizeof(rxq->mcq));
+	rxq->rq_db = NULL;
+	rxq->wqes = NULL;
+	claim_zero(ibv_destroy_wq(rxq->wq));
+	rxq->wq = NULL;
+	claim_zero(ibv_destroy_cq(rxq->cq));
+	rxq->cq = NULL;
 	DEBUG("%p: freeing Rx queue elements", (void *)rxq);
 	for (i = 0; (i != RTE_DIM(*elts)); ++i) {
 		if (!(*elts)[i])
@@ -417,9 +679,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct mlx4dv_obj mlxdv;
-	struct mlx4dv_rwq dv_rwq;
-	struct mlx4dv_cq dv_cq;
 	uint32_t mb_len = rte_pktmbuf_data_room_size(mp);
 	struct rte_mbuf *(*elts)[rte_align32pow2(desc)];
 	struct rxq *rxq;
@@ -560,73 +819,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			goto error;
 		}
 	}
-	rxq->cq = ibv_create_cq(priv->ctx, desc >> rxq->sges_n, NULL,
-				rxq->channel, 0);
-	if (!rxq->cq) {
-		rte_errno = ENOMEM;
-		ERROR("%p: CQ creation failure: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	rxq->wq = ibv_create_wq
-		(priv->ctx,
-		 &(struct ibv_wq_init_attr){
-			.wq_type = IBV_WQT_RQ,
-			.max_wr = desc >> rxq->sges_n,
-			.max_sge = 1 << rxq->sges_n,
-			.pd = priv->pd,
-			.cq = rxq->cq,
-		 });
-	if (!rxq->wq) {
-		rte_errno = errno ? errno : EINVAL;
-		ERROR("%p: WQ creation failure: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	ret = ibv_modify_wq
-		(rxq->wq,
-		 &(struct ibv_wq_attr){
-			.attr_mask = IBV_WQ_ATTR_STATE,
-			.wq_state = IBV_WQS_RDY,
-		 });
-	if (ret) {
-		rte_errno = ret;
-		ERROR("%p: WQ state to IBV_WPS_RDY failed: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
-	/* Retrieve device queue information. */
-	mlxdv.cq.in = rxq->cq;
-	mlxdv.cq.out = &dv_cq;
-	mlxdv.rwq.in = rxq->wq;
-	mlxdv.rwq.out = &dv_rwq;
-	ret = mlx4dv_init_obj(&mlxdv, MLX4DV_OBJ_RWQ | MLX4DV_OBJ_CQ);
-	if (ret) {
-		rte_errno = EINVAL;
-		ERROR("%p: failed to obtain device information", (void *)dev);
-		goto error;
-	}
-	rxq->wqes =
-		(volatile struct mlx4_wqe_data_seg (*)[])
-		((uintptr_t)dv_rwq.buf.buf + dv_rwq.rq.offset);
-	rxq->rq_db = dv_rwq.rdb;
-	rxq->rq_ci = 0;
-	rxq->mcq.buf = dv_cq.buf.buf;
-	rxq->mcq.cqe_cnt = dv_cq.cqe_cnt;
-	rxq->mcq.set_ci_db = dv_cq.set_ci_db;
-	rxq->mcq.cqe_64 = (dv_cq.cqe_size & 64) ? 1 : 0;
-	ret = mlx4_rxq_alloc_elts(rxq);
-	if (ret) {
-		ERROR("%p: RXQ allocation failed: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
 	DEBUG("%p: adding Rx queue %p to list", (void *)dev, (void *)rxq);
 	dev->data->rx_queues[idx] = rxq;
-	/* Update doorbell counter. */
-	rxq->rq_ci = desc >> rxq->sges_n;
-	rte_wmb();
-	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 	return 0;
 error:
 	dev->data->rx_queues[idx] = NULL;
@@ -660,11 +854,10 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 			priv->dev->data->rx_queues[i] = NULL;
 			break;
 		}
-	mlx4_rxq_free_elts(rxq);
-	if (rxq->wq)
-		claim_zero(ibv_destroy_wq(rxq->wq));
-	if (rxq->cq)
-		claim_zero(ibv_destroy_cq(rxq->cq));
+	assert(!rxq->cq);
+	assert(!rxq->wq);
+	assert(!rxq->wqes);
+	assert(!rxq->rq_db);
 	if (rxq->channel)
 		claim_zero(ibv_destroy_comp_channel(rxq->channel));
 	if (rxq->mr)

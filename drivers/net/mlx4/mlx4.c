@@ -50,7 +50,6 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #include <infiniband/verbs.h>
-#include <infiniband/mlx4dv.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -100,20 +99,8 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct rte_flow_error error;
-	uint8_t log2_range = rte_log2_u32(dev->data->nb_rx_queues);
 	int ret;
 
-	/* Prepare range for RSS contexts before creating the first WQ. */
-	ret = mlx4dv_set_context_attr(priv->ctx,
-				      MLX4DV_SET_CTX_ATTR_LOG_WQS_RANGE_SZ,
-				      &log2_range);
-	if (ret) {
-		ERROR("cannot set up range size for RSS context to %u"
-		      " (for %u Rx queues), error: %s",
-		      1 << log2_range, dev->data->nb_rx_queues, strerror(ret));
-		rte_errno = ret;
-		return -ret;
-	}
 	/* Prepare internal flow rules. */
 	ret = mlx4_flow_sync(priv, &error);
 	if (ret) {
@@ -128,7 +115,8 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 /**
  * DPDK callback to start the device.
  *
- * Simulate device start by attaching all configured flows.
+ * Simulate device start by initializing common RSS resources and attaching
+ * all configured flows.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -147,6 +135,12 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		return 0;
 	DEBUG("%p: attaching configured flows to all RX queues", (void *)dev);
 	priv->started = 1;
+	ret = mlx4_rss_init(priv);
+	if (ret) {
+		ERROR("%p: cannot initialize RSS resources: %s",
+		      (void *)dev, strerror(-ret));
+		goto err;
+	}
 	ret = mlx4_intr_install(priv);
 	if (ret) {
 		ERROR("%p: interrupt handler installation failed",
@@ -194,6 +188,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	rte_wmb();
 	mlx4_flow_sync(priv, NULL);
 	mlx4_intr_uninstall(priv);
+	mlx4_rss_deinit(priv);
 }
 
 /**

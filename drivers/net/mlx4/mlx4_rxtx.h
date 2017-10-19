@@ -83,6 +83,7 @@ struct rxq {
 	struct mlx4_cq mcq;  /**< Info for directly manipulating the CQ. */
 	struct mlx4_rxq_stats stats; /**< Rx queue counters. */
 	unsigned int socket; /**< CPU socket ID for allocations. */
+	uint32_t usecnt; /**< Number of users relying on queue resources. */
 	uint8_t data[]; /**< Remaining queue resources. */
 };
 
@@ -146,12 +147,16 @@ struct txq {
 /* mlx4_rxq.c */
 
 uint8_t mlx4_rss_hash_key_default[MLX4_RSS_HASH_KEY_SIZE];
+int mlx4_rss_init(struct priv *priv);
+void mlx4_rss_deinit(struct priv *priv);
 struct mlx4_rss *mlx4_rss_get(struct priv *priv, uint64_t fields,
 			      uint8_t key[MLX4_RSS_HASH_KEY_SIZE],
 			      uint16_t queues, const uint16_t queue_id[]);
 void mlx4_rss_put(struct mlx4_rss *rss);
 int mlx4_rss_attach(struct mlx4_rss *rss);
 void mlx4_rss_detach(struct mlx4_rss *rss);
+int mlx4_rxq_attach(struct rxq *rxq);
+void mlx4_rxq_detach(struct rxq *rxq);
 int mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			uint16_t desc, unsigned int socket,
 			const struct rte_eth_rxconf *conf,
