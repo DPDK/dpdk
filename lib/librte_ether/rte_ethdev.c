@@ -1563,6 +1563,22 @@ rte_eth_stats_reset(uint16_t port_id)
 	return 0;
 }
 
+static inline int
+get_xstats_basic_count(struct rte_eth_dev *dev)
+{
+	uint16_t nb_rxqs, nb_txqs;
+	int count;
+
+	nb_rxqs = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	nb_txqs = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
+	count = RTE_NB_STATS;
+	count += nb_rxqs * RTE_NB_RXQ_STATS;
+	count += nb_txqs * RTE_NB_TXQ_STATS;
+
+	return count;
+}
+
 static int
 get_xstats_count(uint16_t port_id)
 {
@@ -1584,11 +1600,9 @@ get_xstats_count(uint16_t port_id)
 	} else
 		count = 0;
 
-	count += RTE_NB_STATS;
-	count += RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS) *
-		 RTE_NB_RXQ_STATS;
-	count += RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS) *
-		 RTE_NB_TXQ_STATS;
+
+	count += get_xstats_basic_count(dev);
+
 	return count;
 }
 
