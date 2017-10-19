@@ -1460,9 +1460,7 @@ mlx4_flow_sync(struct priv *priv, struct rte_flow_error *error)
 			return ret;
 	}
 	/* Toggle the remaining flow rules . */
-	for (flow = LIST_FIRST(&priv->flows);
-	     flow;
-	     flow = LIST_NEXT(flow, next)) {
+	LIST_FOREACH(flow, &priv->flows, next) {
 		ret = mlx4_flow_toggle(priv, flow, priv->started, error);
 		if (ret)
 			return ret;
