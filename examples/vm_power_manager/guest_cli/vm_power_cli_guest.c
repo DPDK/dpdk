@@ -131,8 +131,9 @@ cmdline_parse_token_string_t cmd_set_cpu_freq_cmd_cmd =
 cmdline_parse_inst_t cmd_set_cpu_freq_set = {
 	.f = cmd_set_cpu_freq_parsed,
 	.data = NULL,
-	.help_str = "set_cpu_freq <core_num> <up|down|min|max>, Set the current "
-			"frequency for the specified core by scaling up/down/min/max",
+	.help_str = "set_cpu_freq <core_num> "
+			"<up|down|min|max|enable_turbo|disable_turbo>, "
+			"adjust the frequency for the specified core.",
 	.tokens = {
 		(void *)&cmd_set_cpu_freq,
 		(void *)&cmd_set_cpu_freq_core_num,
