@@ -126,7 +126,7 @@ CFLAGS_eal_thread.o += -Wno-return-type
 CFLAGS_eal_hpet.o += -Wno-return-type
 endif
 
-INC := rte_interrupts.h
+INC :=  # no bsdapp specific headers
 
 SYMLINK-$(CONFIG_RTE_EXEC_ENV_BSDAPP)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))
