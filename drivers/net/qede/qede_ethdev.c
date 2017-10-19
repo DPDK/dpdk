@@ -520,7 +520,7 @@ int qede_enable_tpa(struct rte_eth_dev *eth_dev, bool flg)
 			return -1;
 		}
 	}
-
+	qdev->enable_lro = flg;
 	DP_INFO(edev, "LRO is %s\n", flg ? "enabled" : "disabled");
 
 	return 0;
@@ -1108,6 +1108,7 @@ static void qede_fastpath_start(struct ecore_dev *edev)
 
 static int qede_dev_start(struct rte_eth_dev *eth_dev)
 {
+	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 
@@ -1118,10 +1119,15 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 		if (qede_update_mtu(eth_dev, qdev->new_mtu))
 			goto err;
 		qdev->mtu = qdev->new_mtu;
-		/* If MTU has changed then update TPA too */
-		if (qdev->enable_lro)
-			if (qede_enable_tpa(eth_dev, true))
-				goto err;
+	}
+
+	/* Configure TPA parameters */
+	if (rxmode->enable_lro) {
+		if (qede_enable_tpa(eth_dev, true))
+			return -EINVAL;
+		/* Enable scatter mode for LRO */
+		if (!rxmode->enable_scatter)
+			eth_dev->data->scattered_rx = 1;
 	}
 
 	/* Start queues */
@@ -1133,7 +1139,7 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 	 * Also, we would like to retain similar behavior in PF case, so we
 	 * don't do PF/VF specific check here.
 	 */
-	if (eth_dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
+	if (rxmode->mq_mode == ETH_MQ_RX_RSS)
 		if (qede_config_rss(eth_dev))
 			goto err;
 
@@ -1169,7 +1175,6 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 	if (qdev->enable_lro)
 		qede_enable_tpa(eth_dev, false);
 
-	/* TODO: Do we need disable LRO or RSS */
 	/* Stop queues */
 	qede_stop_queues(eth_dev);
 
@@ -1255,16 +1260,6 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 	qdev->mtu = rxmode->max_rx_pkt_len;
 	qdev->new_mtu = qdev->mtu;
-
-	/* Configure TPA parameters */
-	if (rxmode->enable_lro) {
-		if (qede_enable_tpa(eth_dev, true))
-			return -EINVAL;
-		/* Enable scatter mode for LRO */
-		if (!rxmode->enable_scatter)
-			eth_dev->data->scattered_rx = 1;
-	}
-	qdev->enable_lro = rxmode->enable_lro;
 
 	/* Enable VLAN offloads by default */
 	qede_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK  |
