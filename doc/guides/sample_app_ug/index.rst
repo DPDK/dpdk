@@ -58,6 +58,7 @@ Sample Applications User Guides
     link_status_intr
     load_balancer
     server_node_efd
+    service_cores
     multi_process
     qos_metering
     qos_scheduler

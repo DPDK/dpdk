@@ -977,6 +977,10 @@ M: John McNamara <john.mcnamara@intel.com>
 F: examples/rxtx_callbacks/
 F: doc/guides/sample_app_ug/rxtx_callbacks.rst
 
+M: Harry van Haaren <harry.van.haaren@intel.com>
+F: examples/service_cores/
+F: doc/guides/sample_app_ug/service_cores.rst
+
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: John McNamara <john.mcnamara@intel.com>
 F: examples/skeleton/
