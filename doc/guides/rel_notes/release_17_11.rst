@@ -78,6 +78,17 @@ New Features
   Added new SoftNIC PMD. This virtual device offers applications a software
   fallback support for traffic management.
 
+* **Added support for NXP DPAA Devices.**
+
+  Added support for NXP's DPAA devices - LS104x series. This includes:
+
+  * DPAA Bus driver
+  * DPAA Mempool driver for supporting offloaded packet memory pool
+  * DPAA PMD for DPAA devices
+
+  See the "Network Interface Controller Drivers" document for more details of
+  this new driver.
+
 * **nfp: Added PF support.**
 
   Previously Netronome's NFP PMD had just support for VFs. PF support is
