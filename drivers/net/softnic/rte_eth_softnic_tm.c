@@ -47,7 +47,7 @@
 int
 tm_params_check(struct pmd_params *params, uint32_t hard_rate)
 {
-	uint64_t hard_rate_bytes_per_sec = hard_rate * BYTES_IN_MBPS;
+	uint64_t hard_rate_bytes_per_sec = (uint64_t)hard_rate * BYTES_IN_MBPS;
 	uint32_t i;
 
 	/* rate */
