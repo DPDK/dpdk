@@ -844,6 +844,109 @@ static inline uint8_t qede_check_notunn_csum_l4(uint16_t flag)
 	return 0;
 }
 
+/* Returns outer L3 and L4 packet_type for tunneled packets */
+static inline uint32_t qede_rx_cqe_to_pkt_type_outer(struct rte_mbuf *m)
+{
+	uint32_t packet_type = RTE_PTYPE_UNKNOWN;
+	struct ether_hdr *eth_hdr;
+	struct ipv4_hdr *ipv4_hdr;
+	struct ipv6_hdr *ipv6_hdr;
+
+	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	if (eth_hdr->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+		packet_type |= RTE_PTYPE_L3_IPV4;
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+						   sizeof(struct ether_hdr));
+		if (ipv4_hdr->next_proto_id == IPPROTO_TCP)
+			packet_type |= RTE_PTYPE_L4_TCP;
+		else if (ipv4_hdr->next_proto_id == IPPROTO_UDP)
+			packet_type |= RTE_PTYPE_L4_UDP;
+	} else if (eth_hdr->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6)) {
+		packet_type |= RTE_PTYPE_L3_IPV6;
+		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+						   sizeof(struct ether_hdr));
+		if (ipv6_hdr->proto == IPPROTO_TCP)
+			packet_type |= RTE_PTYPE_L4_TCP;
+		else if (ipv6_hdr->proto == IPPROTO_UDP)
+			packet_type |= RTE_PTYPE_L4_UDP;
+	}
+
+	return packet_type;
+}
+
+static inline uint32_t qede_rx_cqe_to_pkt_type_inner(uint16_t flags)
+{
+	uint16_t val;
+
+	/* Lookup table */
+	static const uint32_t
+	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
+		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_INNER_L3_IPV4		|
+				       RTE_PTYPE_INNER_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_INNER_L3_IPV6		|
+				       RTE_PTYPE_INNER_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV4_TCP] = RTE_PTYPE_INNER_L3_IPV4	|
+					   RTE_PTYPE_INNER_L4_TCP	|
+					   RTE_PTYPE_INNER_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV6_TCP] = RTE_PTYPE_INNER_L3_IPV6	|
+					   RTE_PTYPE_INNER_L4_TCP	|
+					   RTE_PTYPE_INNER_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV4_UDP] = RTE_PTYPE_INNER_L3_IPV4	|
+					   RTE_PTYPE_INNER_L4_UDP	|
+					   RTE_PTYPE_INNER_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV6_UDP] = RTE_PTYPE_INNER_L3_IPV6	|
+					   RTE_PTYPE_INNER_L4_UDP	|
+					   RTE_PTYPE_INNER_L2_ETHER,
+		/* Frags with no VLAN */
+		[QEDE_PKT_TYPE_IPV4_FRAG] = RTE_PTYPE_INNER_L3_IPV4	|
+					    RTE_PTYPE_INNER_L4_FRAG	|
+					    RTE_PTYPE_INNER_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV6_FRAG] = RTE_PTYPE_INNER_L3_IPV6	|
+					    RTE_PTYPE_INNER_L4_FRAG	|
+					    RTE_PTYPE_INNER_L2_ETHER,
+		/* VLANs */
+		[QEDE_PKT_TYPE_IPV4_VLAN] = RTE_PTYPE_INNER_L3_IPV4	|
+					    RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV6_VLAN] = RTE_PTYPE_INNER_L3_IPV6	|
+					    RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV4_TCP_VLAN] = RTE_PTYPE_INNER_L3_IPV4	|
+						RTE_PTYPE_INNER_L4_TCP	|
+						RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV6_TCP_VLAN] = RTE_PTYPE_INNER_L3_IPV6	|
+						RTE_PTYPE_INNER_L4_TCP	|
+						RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV4_UDP_VLAN] = RTE_PTYPE_INNER_L3_IPV4	|
+						RTE_PTYPE_INNER_L4_UDP	|
+						RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV6_UDP_VLAN] = RTE_PTYPE_INNER_L3_IPV6	|
+						RTE_PTYPE_INNER_L4_UDP	|
+						RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		/* Frags with VLAN */
+		[QEDE_PKT_TYPE_IPV4_VLAN_FRAG] = RTE_PTYPE_INNER_L3_IPV4 |
+						 RTE_PTYPE_INNER_L4_FRAG |
+						 RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV6_VLAN_FRAG] = RTE_PTYPE_INNER_L3_IPV6 |
+						 RTE_PTYPE_INNER_L4_FRAG |
+						 RTE_PTYPE_INNER_L2_ETHER_VLAN,
+	};
+
+	/* Bits (0..3) provides L3/L4 protocol type */
+	/* Bits (4,5) provides frag and VLAN info */
+	val = ((PARSING_AND_ERR_FLAGS_L3TYPE_MASK <<
+	       PARSING_AND_ERR_FLAGS_L3TYPE_SHIFT) |
+	       (PARSING_AND_ERR_FLAGS_L4PROTOCOL_MASK <<
+		PARSING_AND_ERR_FLAGS_L4PROTOCOL_SHIFT) |
+	       (PARSING_AND_ERR_FLAGS_IPV4FRAG_MASK <<
+		PARSING_AND_ERR_FLAGS_IPV4FRAG_SHIFT) |
+		(PARSING_AND_ERR_FLAGS_TAG8021QEXIST_MASK <<
+		 PARSING_AND_ERR_FLAGS_TAG8021QEXIST_SHIFT)) & flags;
+
+	if (val < QEDE_PKT_TYPE_MAX)
+		return ptype_lkup_tbl[val];
+
+	return RTE_PTYPE_UNKNOWN;
+}
+
 static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
 {
 	uint16_t val;
@@ -851,24 +954,68 @@ static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
 	/* Lookup table */
 	static const uint32_t
 	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
-		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_L3_IPV4,
-		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_L3_IPV6,
-		[QEDE_PKT_TYPE_IPV4_TCP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
-		[QEDE_PKT_TYPE_IPV6_TCP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
-		[QEDE_PKT_TYPE_IPV4_UDP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
-		[QEDE_PKT_TYPE_IPV6_UDP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV4_TCP] = RTE_PTYPE_L3_IPV4	|
+					   RTE_PTYPE_L4_TCP	|
+					   RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV6_TCP] = RTE_PTYPE_L3_IPV6	|
+					   RTE_PTYPE_L4_TCP	|
+					   RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV4_UDP] = RTE_PTYPE_L3_IPV4	|
+					   RTE_PTYPE_L4_UDP	|
+					   RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV6_UDP] = RTE_PTYPE_L3_IPV6	|
+					   RTE_PTYPE_L4_UDP	|
+					   RTE_PTYPE_L2_ETHER,
+		/* Frags with no VLAN */
+		[QEDE_PKT_TYPE_IPV4_FRAG] = RTE_PTYPE_L3_IPV4	|
+					    RTE_PTYPE_L4_FRAG	|
+					    RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_IPV6_FRAG] = RTE_PTYPE_L3_IPV6	|
+					    RTE_PTYPE_L4_FRAG	|
+					    RTE_PTYPE_L2_ETHER,
+		/* VLANs */
+		[QEDE_PKT_TYPE_IPV4_VLAN] = RTE_PTYPE_L3_IPV4		|
+					    RTE_PTYPE_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV6_VLAN] = RTE_PTYPE_L3_IPV6		|
+					    RTE_PTYPE_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV4_TCP_VLAN] = RTE_PTYPE_L3_IPV4	|
+						RTE_PTYPE_L4_TCP	|
+						RTE_PTYPE_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV6_TCP_VLAN] = RTE_PTYPE_L3_IPV6	|
+						RTE_PTYPE_L4_TCP	|
+						RTE_PTYPE_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV4_UDP_VLAN] = RTE_PTYPE_L3_IPV4	|
+						RTE_PTYPE_L4_UDP	|
+						RTE_PTYPE_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV6_UDP_VLAN] = RTE_PTYPE_L3_IPV6	|
+						RTE_PTYPE_L4_UDP	|
+						RTE_PTYPE_L2_ETHER_VLAN,
+		/* Frags with VLAN */
+		[QEDE_PKT_TYPE_IPV4_VLAN_FRAG] = RTE_PTYPE_L3_IPV4	|
+						 RTE_PTYPE_L4_FRAG	|
+						 RTE_PTYPE_L2_ETHER_VLAN,
+		[QEDE_PKT_TYPE_IPV6_VLAN_FRAG] = RTE_PTYPE_L3_IPV6	|
+						 RTE_PTYPE_L4_FRAG	|
+						 RTE_PTYPE_L2_ETHER_VLAN,
 	};
 
 	/* Bits (0..3) provides L3/L4 protocol type */
+	/* Bits (4,5) provides frag and VLAN info */
 	val = ((PARSING_AND_ERR_FLAGS_L3TYPE_MASK <<
 	       PARSING_AND_ERR_FLAGS_L3TYPE_SHIFT) |
 	       (PARSING_AND_ERR_FLAGS_L4PROTOCOL_MASK <<
-		PARSING_AND_ERR_FLAGS_L4PROTOCOL_SHIFT)) & flags;
+		PARSING_AND_ERR_FLAGS_L4PROTOCOL_SHIFT) |
+	       (PARSING_AND_ERR_FLAGS_IPV4FRAG_MASK <<
+		PARSING_AND_ERR_FLAGS_IPV4FRAG_SHIFT) |
+		(PARSING_AND_ERR_FLAGS_TAG8021QEXIST_MASK <<
+		 PARSING_AND_ERR_FLAGS_TAG8021QEXIST_SHIFT)) & flags;
 
 	if (val < QEDE_PKT_TYPE_MAX)
-		return ptype_lkup_tbl[val] | RTE_PTYPE_L2_ETHER;
-	else
-		return RTE_PTYPE_UNKNOWN;
+		return ptype_lkup_tbl[val];
+
+	return RTE_PTYPE_UNKNOWN;
 }
 
 static inline uint8_t
@@ -1100,6 +1247,27 @@ qede_process_sg_pkts(void *p_rxq,  struct rte_mbuf *rx_mb,
 	return 0;
 }
 
+#ifdef RTE_LIBRTE_QEDE_DEBUG_RX
+static inline void
+print_rx_bd_info(struct rte_mbuf *m, struct qede_rx_queue *rxq,
+		 uint8_t bitfield)
+{
+	PMD_RX_LOG(INFO, rxq,
+		"len 0x%x bf 0x%x hash_val 0x%x"
+		" ol_flags 0x%04lx l2=%s l3=%s l4=%s tunn=%s"
+		" inner_l2=%s inner_l3=%s inner_l4=%s\n",
+		m->data_len, bitfield, m->hash.rss,
+		(unsigned long)m->ol_flags,
+		rte_get_ptype_l2_name(m->packet_type),
+		rte_get_ptype_l3_name(m->packet_type),
+		rte_get_ptype_l4_name(m->packet_type),
+		rte_get_ptype_tunnel_name(m->packet_type),
+		rte_get_ptype_inner_l2_name(m->packet_type),
+		rte_get_ptype_inner_l3_name(m->packet_type),
+		rte_get_ptype_inner_l4_name(m->packet_type));
+}
+#endif
+
 uint16_t
 qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -1120,7 +1288,6 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t parse_flag;
 #ifdef RTE_LIBRTE_QEDE_DEBUG_RX
 	uint8_t bitfield_val;
-	enum rss_hash_type htype;
 #endif
 	uint8_t tunn_parse_flag;
 	uint8_t j;
@@ -1214,8 +1381,6 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rss_hash = rte_le_to_cpu_32(fp_cqe->rss_hash);
 #ifdef RTE_LIBRTE_QEDE_DEBUG_RX
 			bitfield_val = fp_cqe->bitfields;
-			htype = (uint8_t)GET_FIELD(bitfield_val,
-					ETH_FAST_PATH_RX_REG_CQE_RSS_HASH_TYPE);
 #endif
 		} else {
 			parse_flag =
@@ -1226,8 +1391,6 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			vlan_tci = rte_le_to_cpu_16(cqe_start_tpa->vlan_tag);
 #ifdef RTE_LIBRTE_QEDE_DEBUG_RX
 			bitfield_val = cqe_start_tpa->bitfields;
-			htype = (uint8_t)GET_FIELD(bitfield_val,
-				ETH_FAST_PATH_RX_TPA_START_CQE_RSS_HASH_TYPE);
 #endif
 			rss_hash = rte_le_to_cpu_32(cqe_start_tpa->rss_hash);
 		}
@@ -1247,8 +1410,17 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				else
 					flags = fp_cqe->tunnel_pars_flags.flags;
 				tunn_parse_flag = flags;
+				/* Tunnel_type */
 				packet_type =
 				qede_rx_cqe_to_tunn_pkt_type(tunn_parse_flag);
+
+				/* Inner header */
+				packet_type |=
+				      qede_rx_cqe_to_pkt_type_inner(parse_flag);
+
+				/* Outer L3/L4 types is not available in CQE */
+				packet_type |=
+				      qede_rx_cqe_to_pkt_type_outer(rx_mb);
 			}
 		} else {
 			PMD_RX_LOG(INFO, rxq, "Rx non-tunneled packet\n");
@@ -1275,21 +1447,16 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			}
 		}
 
-		if (CQE_HAS_VLAN(parse_flag)) {
+		if (CQE_HAS_VLAN(parse_flag) ||
+		    CQE_HAS_OUTER_VLAN(parse_flag)) {
+			/* Note: FW doesn't indicate Q-in-Q packet */
 			ol_flags |= PKT_RX_VLAN_PKT;
 			if (qdev->vlan_strip_flg) {
 				ol_flags |= PKT_RX_VLAN_STRIPPED;
 				rx_mb->vlan_tci = vlan_tci;
 			}
 		}
-		if (CQE_HAS_OUTER_VLAN(parse_flag)) {
-			ol_flags |= PKT_RX_QINQ_PKT;
-			if (qdev->vlan_strip_flg) {
-				rx_mb->vlan_tci = vlan_tci;
-				ol_flags |= PKT_RX_QINQ_STRIPPED;
-			}
-			rx_mb->vlan_tci_outer = 0;
-		}
+
 		/* RSS Hash */
 		if (qdev->rss_enable) {
 			ol_flags |= PKT_RX_RSS_HASH;
@@ -1341,11 +1508,9 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rx_mb->ol_flags = ol_flags;
 		rx_mb->data_len = len;
 		rx_mb->packet_type = packet_type;
-		PMD_RX_LOG(INFO, rxq,
-			   "pkt_type 0x%04x len %u hash_type %d hash_val 0x%x"
-			   " ol_flags 0x%04lx\n",
-			   packet_type, len, htype, rx_mb->hash.rss,
-			   (unsigned long)ol_flags);
+#ifdef RTE_LIBRTE_QEDE_DEBUG_RX
+		print_rx_bd_info(rx_mb, rxq, bitfield_val);
+#endif
 		if (!tpa_start_flg) {
 			rx_mb->nb_segs = fp_cqe->bd_num;
 			rx_mb->pkt_len = pkt_len;
