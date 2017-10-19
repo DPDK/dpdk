@@ -46,7 +46,7 @@ LDLIBS += -lexecinfo
 LDLIBS += -lpthread
 LDLIBS += -lgcc_s
 
-EXPORT_MAP := rte_eal_version.map
+EXPORT_MAP := ../../rte_eal_version.map
 
 LIBABIVER := 6
 

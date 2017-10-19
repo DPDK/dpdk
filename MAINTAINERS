@@ -88,6 +88,7 @@ EAL API and common code
 F: lib/librte_eal/common/*
 F: lib/librte_eal/common/include/*
 F: lib/librte_eal/common/include/generic/
+F: lib/librte_eal/rte_eal_version.map
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: test/test/test_alarm.c
 F: test/test/test_atomic.c
