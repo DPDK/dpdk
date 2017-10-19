@@ -41,6 +41,7 @@ fs_bus_init(struct rte_eth_dev *dev)
 	struct sub_device *sdev;
 	struct rte_devargs *da;
 	uint8_t i;
+	uint16_t j;
 	int ret;
 
 	FOREACH_SUBDEV(sdev, i, dev) {
@@ -57,7 +58,13 @@ fs_bus_init(struct rte_eth_dev *dev)
 			      rte_errno ? ")" : "");
 			continue;
 		}
-		ETH(sdev) = rte_eth_dev_allocated(da->name);
+		RTE_ETH_FOREACH_DEV(j) {
+			if (strcmp(rte_eth_devices[j].device->name,
+				    da->name) == 0) {
+				ETH(sdev) = &rte_eth_devices[j];
+				break;
+			}
+		}
 		if (ETH(sdev) == NULL) {
 			ERROR("sub_device %d init went wrong", i);
 			return -ENODEV;
