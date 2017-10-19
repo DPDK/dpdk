@@ -114,7 +114,7 @@ static uint64_t l2fwd_enabled_port_mask;
 static uint64_t l2fwd_enabled_crypto_mask;
 
 /* list of enabled ports */
-static uint32_t l2fwd_dst_ports[RTE_MAX_ETHPORTS];
+static uint16_t l2fwd_dst_ports[RTE_MAX_ETHPORTS];
 
 
 struct pkt_buffer {
@@ -226,7 +226,7 @@ struct l2fwd_crypto_params {
 /** lcore configuration */
 struct lcore_queue_conf {
 	unsigned nb_rx_ports;
-	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
+	uint16_t rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 
 	unsigned nb_crypto_devs;
 	unsigned cryptodev_list[MAX_RX_QUEUE_PER_LCORE];
@@ -292,7 +292,7 @@ print_stats(void)
 	uint64_t total_packets_dropped, total_packets_tx, total_packets_rx;
 	uint64_t total_packets_enqueued, total_packets_dequeued,
 		total_packets_errors;
-	unsigned portid;
+	uint16_t portid;
 	uint64_t cdevid;
 
 	total_packets_dropped = 0;
@@ -621,7 +621,7 @@ l2fwd_send_packet(struct rte_mbuf *m, uint16_t port)
 }
 
 static void
-l2fwd_mac_updating(struct rte_mbuf *m, unsigned int dest_portid)
+l2fwd_mac_updating(struct rte_mbuf *m, uint16_t dest_portid)
 {
 	struct ether_hdr *eth;
 	void *tmp;
@@ -637,17 +637,17 @@ l2fwd_mac_updating(struct rte_mbuf *m, unsigned int dest_portid)
 }
 
 static void
-l2fwd_simple_forward(struct rte_mbuf *m, unsigned int portid,
+l2fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 		struct l2fwd_crypto_options *options)
 {
-	unsigned int dst_port;
+	uint16_t dst_port;
 
 	dst_port = l2fwd_dst_ports[portid];
 
 	if (options->mac_updating)
 		l2fwd_mac_updating(m, dst_port);
 
-	l2fwd_send_packet(m, (uint8_t) dst_port);
+	l2fwd_send_packet(m, dst_port);
 }
 
 /** Generate random key */
@@ -719,7 +719,8 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 
 	unsigned lcore_id = rte_lcore_id();
 	uint64_t prev_tsc = 0, diff_tsc, cur_tsc, timer_tsc = 0;
-	unsigned i, j, portid, nb_rx, len;
+	unsigned int i, j, nb_rx, len;
+	uint16_t portid;
 	struct lcore_queue_conf *qconf = &lcore_queue_conf[lcore_id];
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 			US_PER_S * BURST_TX_DRAIN_US;
@@ -884,7 +885,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 					continue;
 				l2fwd_send_burst(&lcore_queue_conf[lcore_id],
 						 qconf->pkt_buf[portid].len,
-						 (uint8_t) portid);
+						 portid);
 				qconf->pkt_buf[portid].len = 0;
 			}
 
@@ -918,7 +919,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 
 			cparams = &port_cparams[i];
 
-			nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
+			nb_rx = rte_eth_rx_burst(portid, 0,
 						 pkts_burst, MAX_PKT_BURST);
 
 			port_statistics[portid].rx += nb_rx;
@@ -2342,7 +2343,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 static int
 initialize_ports(struct l2fwd_crypto_options *options)
 {
-	uint8_t last_portid, portid;
+	uint16_t last_portid, portid;
 	unsigned enabled_portcount = 0;
 	unsigned nb_ports = rte_eth_dev_count();
 
@@ -2363,12 +2364,12 @@ initialize_ports(struct l2fwd_crypto_options *options)
 			continue;
 
 		/* init port */
-		printf("Initializing port %u... ", (unsigned) portid);
+		printf("Initializing port %u... ", portid);
 		fflush(stdout);
 		retval = rte_eth_dev_configure(portid, 1, 1, &port_conf);
 		if (retval < 0) {
 			printf("Cannot configure device: err=%d, port=%u\n",
-				  retval, (unsigned) portid);
+				  retval, portid);
 			return -1;
 		}
 
@@ -2376,7 +2377,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 							  &nb_txd);
 		if (retval < 0) {
 			printf("Cannot adjust number of descriptors: err=%d, port=%u\n",
-				retval, (unsigned) portid);
+				retval, portid);
 			return -1;
 		}
 
@@ -2387,7 +2388,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 					     NULL, l2fwd_pktmbuf_pool);
 		if (retval < 0) {
 			printf("rte_eth_rx_queue_setup:err=%d, port=%u\n",
-					retval, (unsigned) portid);
+					retval, portid);
 			return -1;
 		}
 
@@ -2398,7 +2399,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 				NULL);
 		if (retval < 0) {
 			printf("rte_eth_tx_queue_setup:err=%d, port=%u\n",
-				retval, (unsigned) portid);
+				retval, portid);
 
 			return -1;
 		}
@@ -2407,7 +2408,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 		retval = rte_eth_dev_start(portid);
 		if (retval < 0) {
 			printf("rte_eth_dev_start:err=%d, port=%u\n",
-					retval, (unsigned) portid);
+					retval, portid);
 			return -1;
 		}
 
@@ -2416,7 +2417,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 		rte_eth_macaddr_get(portid, &l2fwd_ports_eth_addr[portid]);
 
 		printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
-				(unsigned) portid,
+				portid,
 				l2fwd_ports_eth_addr[portid].addr_bytes[0],
 				l2fwd_ports_eth_addr[portid].addr_bytes[1],
 				l2fwd_ports_eth_addr[portid].addr_bytes[2],
@@ -2493,7 +2494,8 @@ main(int argc, char **argv)
 	struct lcore_queue_conf *qconf;
 	struct l2fwd_crypto_options options;
 
-	uint8_t nb_ports, nb_cryptodevs, portid, cdev_id;
+	uint8_t nb_cryptodevs, cdev_id;
+	uint16_t nb_ports, portid;
 	unsigned lcore_id, rx_lcore_id;
 	int ret, enabled_cdevcount, enabled_portcount;
 	uint8_t enabled_cdevs[RTE_CRYPTO_MAX_DEVS] = {0};
@@ -2570,7 +2572,7 @@ main(int argc, char **argv)
 		qconf->rx_port_list[qconf->nb_rx_ports] = portid;
 		qconf->nb_rx_ports++;
 
-		printf("Lcore %u: RX port %u\n", rx_lcore_id, (unsigned)portid);
+		printf("Lcore %u: RX port %u\n", rx_lcore_id, portid);
 	}
 
 	/* Enable Crypto devices */
