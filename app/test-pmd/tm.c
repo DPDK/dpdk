@@ -335,7 +335,7 @@ set_tm_hiearchy_nodes_shaper_rate(portid_t port_id, struct tm_hierarchy *h)
 	memset(&link_params, 0, sizeof(link_params));
 
 	rte_eth_link_get(port_id, &link_params);
-	tm_port_rate = link_params.link_speed * BYTES_IN_MBPS;
+	tm_port_rate = (uint64_t)link_params.link_speed * BYTES_IN_MBPS;
 
 	if (tm_port_rate > UINT32_MAX)
 		tm_port_rate = UINT32_MAX;
