@@ -1661,10 +1661,15 @@ rte_eth_xstats_get_names_by_id(uint16_t port_id,
 	unsigned int expected_entries;
 	struct rte_eth_dev *dev;
 	unsigned int i;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	expected_entries = get_xstats_count(port_id);
 	dev = &rte_eth_devices[port_id];
+
+	ret = get_xstats_count(port_id);
+	if (ret < 0)
+		return ret;
+	expected_entries = (unsigned int)ret;
 
 	/* Return max number of stats if no ids given */
 	if (!ids) {
@@ -1809,6 +1814,7 @@ rte_eth_xstats_get_by_id(uint16_t port_id, const uint64_t *ids,
 	uint16_t expected_entries;
 	struct rte_eth_dev *dev;
 	unsigned int i;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	expected_entries = get_xstats_count(port_id);
@@ -1849,8 +1855,10 @@ rte_eth_xstats_get_by_id(uint16_t port_id, const uint64_t *ids,
 	}
 
 	/* Fill the xstats structure */
-	num_xstats_filled = rte_eth_xstats_get(port_id, xstats,
-		expected_entries);
+	ret = rte_eth_xstats_get(port_id, xstats, expected_entries);
+	if (ret < 0)
+		return ret;
+	num_xstats_filled = (unsigned int)ret;
 
 	/* Return all stats */
 	if (!ids) {
