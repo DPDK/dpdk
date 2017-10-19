@@ -35,6 +35,14 @@
 #error "don't include this file directly, please include generic <rte_interrupts.h>"
 #endif
 
+/**
+ * @file rte_eal_interrupts.h
+ * @internal
+ *
+ * Contains function prototypes exposed by the EAL for interrupt handling by
+ * drivers and other DPDK internal consumers.
+ */
+
 #ifndef _RTE_EAL_INTERRUPTS_H_
 #define _RTE_EAL_INTERRUPTS_H_
 
