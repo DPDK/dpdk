@@ -125,3 +125,38 @@ rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 	RTE_SET_USED(intr_handle);
 	return 0;
 }
+
+int
+rte_epoll_wait(int epfd, struct rte_epoll_event *events,
+		int maxevents, int timeout)
+{
+	RTE_SET_USED(epfd);
+	RTE_SET_USED(events);
+	RTE_SET_USED(maxevents);
+	RTE_SET_USED(timeout);
+
+	return -ENOTSUP;
+}
+
+int
+rte_epoll_ctl(int epfd, int op, int fd, struct rte_epoll_event *event)
+{
+	RTE_SET_USED(epfd);
+	RTE_SET_USED(op);
+	RTE_SET_USED(fd);
+	RTE_SET_USED(event);
+
+	return -ENOTSUP;
+}
+
+int
+rte_intr_tls_epfd(void)
+{
+	return -ENOTSUP;
+}
+
+void
+rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
+{
+	RTE_SET_USED(intr_handle);
+}

@@ -92,11 +92,14 @@ DPDK_2.0 {
 DPDK_2.1 {
 	global:
 
+	rte_epoll_ctl;
+	rte_epoll_wait;
 	rte_intr_allow_others;
 	rte_intr_dp_is_en;
 	rte_intr_efd_disable;
 	rte_intr_efd_enable;
 	rte_intr_rx_ctl;
+	rte_intr_tls_epfd;
 	rte_memzone_free;
 
 } DPDK_2.0;
@@ -156,9 +159,10 @@ DPDK_17.05 {
 	global:
 
 	rte_cpu_is_supported;
+	rte_intr_free_epoll_fd;
 	rte_log_dump;
-	rte_log_register;
 	rte_log_get_global_level;
+	rte_log_register;
 	rte_log_set_global_level;
 	rte_log_set_level;
 	rte_log_set_level_regexp;
