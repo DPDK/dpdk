@@ -407,7 +407,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mlx4dv_cq dv_cq;
 	uint32_t mb_len = rte_pktmbuf_data_room_size(mp);
 	struct rte_mbuf *(*elts)[rte_align32pow2(desc)];
-	struct rte_flow_error error;
 	struct rxq *rxq;
 	struct mlx4_malloc_vec vec[] = {
 		{
@@ -609,19 +608,11 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	DEBUG("%p: adding Rx queue %p to list", (void *)dev, (void *)rxq);
 	dev->data->rx_queues[idx] = rxq;
-	/* Enable associated flows. */
-	ret = mlx4_flow_sync(priv, &error);
-	if (!ret) {
-		/* Update doorbell counter. */
-		rxq->rq_ci = desc >> rxq->sges_n;
-		rte_wmb();
-		*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
-		return 0;
-	}
-	ERROR("cannot re-attach flow rules to queue %u"
-	      " (code %d, \"%s\"), flow error type %d, cause %p, message: %s",
-	      idx, -ret, strerror(-ret), error.type, error.cause,
-	      error.message ? error.message : "(unspecified)");
+	/* Update doorbell counter. */
+	rxq->rq_ci = desc >> rxq->sges_n;
+	rte_wmb();
+	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
+	return 0;
 error:
 	dev->data->rx_queues[idx] = NULL;
 	ret = rte_errno;
@@ -654,7 +645,6 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 			priv->dev->data->rx_queues[i] = NULL;
 			break;
 		}
-	mlx4_flow_sync(priv, NULL);
 	mlx4_rxq_free_elts(rxq);
 	if (rxq->wq)
 		claim_zero(ibv_destroy_wq(rxq->wq));
