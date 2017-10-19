@@ -185,6 +185,9 @@ void mlx4_rss_put(struct mlx4_rss *rss)
  *
  * @param rss
  *   RSS context to attach to.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int mlx4_rss_attach(struct mlx4_rss *rss)
 {
@@ -202,6 +205,7 @@ int mlx4_rss_attach(struct mlx4_rss *rss)
 	int ret;
 
 	if (!rte_is_power_of_2(RTE_DIM(ind_tbl))) {
+		ret = EINVAL;
 		msg = "number of RSS queues must be a power of two";
 		goto error;
 	}
@@ -212,6 +216,7 @@ int mlx4_rss_attach(struct mlx4_rss *rss)
 		if (id < priv->dev->data->nb_rx_queues)
 			rxq = priv->dev->data->rx_queues[id];
 		if (!rxq) {
+			ret = EINVAL;
 			msg = "RSS target queue is not configured";
 			goto error;
 		}
@@ -225,6 +230,7 @@ int mlx4_rss_attach(struct mlx4_rss *rss)
 			.comp_mask = 0,
 		 });
 	if (!rss->ind) {
+		ret = errno ? errno : EINVAL;
 		msg = "RSS indirection table creation failure";
 		goto error;
 	}
@@ -245,6 +251,7 @@ int mlx4_rss_attach(struct mlx4_rss *rss)
 			},
 		 });
 	if (!rss->qp) {
+		ret = errno ? errno : EINVAL;
 		msg = "RSS hash QP creation failure";
 		goto error;
 	}
@@ -271,10 +278,18 @@ int mlx4_rss_attach(struct mlx4_rss *rss)
 	}
 	return 0;
 error:
+	if (rss->qp) {
+		claim_zero(ibv_destroy_qp(rss->qp));
+		rss->qp = NULL;
+	}
+	if (rss->ind) {
+		claim_zero(ibv_destroy_rwq_ind_table(rss->ind));
+		rss->ind = NULL;
+	}
 	ERROR("mlx4: %s", msg);
 	--rss->usecnt;
-	rte_errno = EINVAL;
-	return -rte_errno;
+	rte_errno = ret;
+	return -ret;
 }
 
 /**
