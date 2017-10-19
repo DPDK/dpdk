@@ -122,7 +122,6 @@
 #define PCI_DEVICE_ID_QLOGIC_AH_IOV            CHIP_NUM_AH_IOV
 
 
-#define QEDE_VXLAN_DEF_PORT		8472
 
 extern char fw_file[];
 
@@ -171,6 +170,13 @@ struct qede_fdir_info {
 	SLIST_HEAD(fdir_list_head, qede_fdir_entry)fdir_list_head;
 };
 
+struct qede_vxlan_tunn {
+	bool enable;
+	uint16_t num_filters;
+	uint16_t filter_type;
+#define QEDE_VXLAN_DEF_PORT			(4789)
+	uint16_t udp_port;
+};
 
 /*
  *  Structure to store private data for each port.
@@ -200,8 +206,7 @@ struct qede_dev {
 	SLIST_HEAD(uc_list_head, qede_ucast_entry) uc_list_head;
 	uint16_t num_uc_addr;
 	bool handle_hw_err;
-	uint16_t num_tunn_filters;
-	uint16_t vxlan_filter_type;
+	struct qede_vxlan_tunn vxlan;
 	struct qede_fdir_info fdir_info;
 	bool vlan_strip_flg;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
