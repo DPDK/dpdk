@@ -68,8 +68,8 @@ vfio_get_group_fd(int iommu_group_no)
 {
 	int i;
 	int vfio_group_fd;
-	int group_idx = -1;
 	char filename[PATH_MAX];
+	struct vfio_group *cur_grp;
 
 	/* check if we already have the group descriptor open */
 	for (i = 0; i < VFIO_MAX_GROUPS; i++)
@@ -85,12 +85,12 @@ vfio_get_group_fd(int iommu_group_no)
 	/* Now lets get an index for the new group */
 	for (i = 0; i < VFIO_MAX_GROUPS; i++)
 		if (vfio_cfg.vfio_groups[i].group_no == -1) {
-			group_idx = i;
+			cur_grp = &vfio_cfg.vfio_groups[i];
 			break;
 		}
 
 	/* This should not happen */
-	if (group_idx == -1) {
+	if (i == VFIO_MAX_GROUPS) {
 		RTE_LOG(ERR, EAL, "No VFIO group free slot found\n");
 		return -1;
 	}
@@ -123,8 +123,8 @@ vfio_get_group_fd(int iommu_group_no)
 			/* noiommu group found */
 		}
 
-		vfio_cfg.vfio_groups[group_idx].group_no = iommu_group_no;
-		vfio_cfg.vfio_groups[group_idx].fd = vfio_group_fd;
+		cur_grp->group_no = iommu_group_no;
+		cur_grp->fd = vfio_group_fd;
 		vfio_cfg.vfio_active_groups++;
 		return vfio_group_fd;
 	}
@@ -157,9 +157,12 @@ vfio_get_group_fd(int iommu_group_no)
 			return 0;
 		case SOCKET_OK:
 			vfio_group_fd = vfio_mp_sync_receive_fd(socket_fd);
-			/* if we got the fd, return it */
+			/* if we got the fd, store it and return it */
 			if (vfio_group_fd > 0) {
 				close(socket_fd);
+				cur_grp->group_no = iommu_group_no;
+				cur_grp->fd = vfio_group_fd;
+				vfio_cfg.vfio_active_groups++;
 				return vfio_group_fd;
 			}
 			/* fall-through on error */
