@@ -1821,6 +1821,8 @@ virtio_dev_start(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxvq = dev->data->rx_queues[i];
+		/* Flush the old packets */
+		virtqueue_flush(rxvq->vq);
 		virtqueue_notify(rxvq->vq);
 	}
 

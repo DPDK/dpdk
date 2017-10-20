@@ -59,3 +59,28 @@ virtqueue_detatch_unused(struct virtqueue *vq)
 		}
 	return NULL;
 }
+
+/* Flush the elements in the used ring. */
+void
+virtqueue_flush(struct virtqueue *vq)
+{
+	struct vring_used_elem *uep;
+	struct vq_desc_extra *dxp;
+	uint16_t used_idx, desc_idx;
+	uint16_t nb_used, i;
+
+	nb_used = VIRTQUEUE_NUSED(vq);
+
+	for (i = 0; i < nb_used; i++) {
+		used_idx = vq->vq_used_cons_idx & (vq->vq_nentries - 1);
+		uep = &vq->vq_ring.used->ring[used_idx];
+		desc_idx = (uint16_t)uep->id;
+		dxp = &vq->vq_descx[desc_idx];
+		if (dxp->cookie != NULL) {
+			rte_pktmbuf_free(dxp->cookie);
+			dxp->cookie = NULL;
+		}
+		vq->vq_used_cons_idx++;
+		vq_ring_free_chain(vq, desc_idx);
+	}
+}

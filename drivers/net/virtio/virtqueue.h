@@ -304,6 +304,9 @@ void virtqueue_dump(struct virtqueue *vq);
  */
 struct rte_mbuf *virtqueue_detatch_unused(struct virtqueue *vq);
 
+/* Flush the elements in the used ring. */
+void virtqueue_flush(struct virtqueue *vq);
+
 static inline int
 virtqueue_full(const struct virtqueue *vq)
 {
@@ -311,6 +314,8 @@ virtqueue_full(const struct virtqueue *vq)
 }
 
 #define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_ring.used->idx - (vq)->vq_used_cons_idx))
+
+void vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx);
 
 static inline void
 vq_update_avail_idx(struct virtqueue *vq)

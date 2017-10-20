@@ -80,7 +80,7 @@ virtio_dev_rx_queue_done(void *rxq, uint16_t offset)
 	return VIRTQUEUE_NUSED(vq) >= offset;
 }
 
-static void
+void
 vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 {
 	struct vring_desc *dp, *dp_tail;
