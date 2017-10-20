@@ -53,11 +53,11 @@ struct bnxt_vnic_info {
 	uint16_t	dflt_ring_grp;
 	uint16_t	mru;
 	uint16_t	hash_type;
-	phys_addr_t	rss_table_dma_addr;
+	rte_iova_t	rss_table_dma_addr;
 	uint16_t	*rss_table;
-	phys_addr_t	rss_hash_key_dma_addr;
+	rte_iova_t	rss_hash_key_dma_addr;
 	void		*rss_hash_key;
-	phys_addr_t	mc_list_dma_addr;
+	rte_iova_t	mc_list_dma_addr;
 	char		*mc_list;
 	uint32_t	mc_addr_cnt;
 #define BNXT_MAX_MC_ADDRS		16

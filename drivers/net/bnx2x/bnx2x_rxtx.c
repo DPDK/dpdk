@@ -71,8 +71,8 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	struct bnx2x_fastpath *fp = &sc->fp[queue_idx];
 	struct eth_rx_cqe_next_page *nextpg;
-	phys_addr_t *rx_bd;
-	phys_addr_t busaddr;
+	rte_iova_t *rx_bd;
+	rte_iova_t busaddr;
 
 	/* First allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct bnx2x_rx_queue),

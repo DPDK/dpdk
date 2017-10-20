@@ -1744,7 +1744,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 		} else {
 			struct lio_buf_free_info *finfo;
 			struct lio_gather *g;
-			phys_addr_t phyaddr;
+			rte_iova_t phyaddr;
 			int i, frags;
 
 			finfo = (struct lio_buf_free_info *)rte_malloc(NULL,
@@ -1791,7 +1791,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 			}
 
 			phyaddr = rte_mem_virt2iova(g->sg);
-			if (phyaddr == RTE_BAD_PHYS_ADDR) {
+			if (phyaddr == RTE_BAD_IOVA) {
 				PMD_TX_LOG(lio_dev, ERR, "bad phys addr\n");
 				goto xmit_failed;
 			}

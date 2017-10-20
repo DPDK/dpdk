@@ -98,7 +98,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	struct rte_pci_device *pdev = bp->pdev;
 	const struct rte_memzone *mz = NULL;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
-	phys_addr_t mz_phys_addr;
+	rte_iova_t mz_phys_addr;
 	int sz;
 
 	int stats_len = (tx_ring_info || rx_ring_info) ?

@@ -127,7 +127,7 @@ struct ark_ddm_cpld_ps_t {
 
 #define ARK_DDM_SETUP  0x00e0
 struct ark_ddm_setup_t {
-	phys_addr_t cons_write_index_addr;
+	rte_iova_t cons_write_index_addr;
 	uint32_t write_index_interval;	/* 4ns each */
 	volatile uint32_t cons_index;
 };
@@ -165,7 +165,7 @@ void ark_ddm_start(struct ark_ddm_t *ddm);
 int ark_ddm_stop(struct ark_ddm_t *ddm, const int wait);
 void ark_ddm_reset(struct ark_ddm_t *ddm);
 void ark_ddm_stats_reset(struct ark_ddm_t *ddm);
-void ark_ddm_setup(struct ark_ddm_t *ddm, phys_addr_t cons_addr,
+void ark_ddm_setup(struct ark_ddm_t *ddm, rte_iova_t cons_addr,
 		   uint32_t interval);
 void ark_ddm_dump_stats(struct ark_ddm_t *ddm, const char *msg);
 void ark_ddm_dump(struct ark_ddm_t *ddm, const char *msg);

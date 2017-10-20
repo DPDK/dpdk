@@ -177,7 +177,7 @@ sfc_ef10_rx_qrefill(struct sfc_ef10_rxq *rxq)
 		     ++i, ++id) {
 			struct rte_mbuf *m = objs[i];
 			struct sfc_ef10_rx_sw_desc *rxd;
-			phys_addr_t phys_addr;
+			rte_iova_t phys_addr;
 
 			SFC_ASSERT((id & ~ptr_mask) == 0);
 			rxd = &rxq->sw_ring[id];

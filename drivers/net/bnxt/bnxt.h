@@ -133,7 +133,7 @@ struct bnxt_pf_info {
 	uint16_t		max_vfs;
 	uint32_t		func_cfg_flags;
 	void			*vf_req_buf;
-	phys_addr_t		vf_req_buf_dma_addr;
+	rte_iova_t		vf_req_buf_dma_addr;
 	uint32_t		vf_req_fwd[8];
 	uint16_t		total_vnics;
 	struct bnxt_child_vf_info	*vf_info;
@@ -203,14 +203,14 @@ struct bnxt {
 	struct bnxt_rx_queue **rx_queues;
 	const void		*rx_mem_zone;
 	struct rx_port_stats    *hw_rx_port_stats;
-	phys_addr_t		hw_rx_port_stats_map;
+	rte_iova_t		hw_rx_port_stats_map;
 
 	unsigned int		tx_nr_rings;
 	unsigned int		tx_cp_nr_rings;
 	struct bnxt_tx_queue **tx_queues;
 	const void		*tx_mem_zone;
 	struct tx_port_stats    *hw_tx_port_stats;
-	phys_addr_t		hw_tx_port_stats_map;
+	rte_iova_t		hw_tx_port_stats_map;
 
 	/* Default completion ring */
 	struct bnxt_cp_ring_info	*def_cp_ring;
@@ -236,9 +236,9 @@ struct bnxt {
 
 	uint16_t			hwrm_cmd_seq;
 	void				*hwrm_cmd_resp_addr;
-	phys_addr_t			hwrm_cmd_resp_dma_addr;
+	rte_iova_t			hwrm_cmd_resp_dma_addr;
 	void				*hwrm_short_cmd_req_addr;
-	phys_addr_t			hwrm_short_cmd_req_dma_addr;
+	rte_iova_t			hwrm_short_cmd_req_dma_addr;
 	rte_spinlock_t			hwrm_lock;
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;

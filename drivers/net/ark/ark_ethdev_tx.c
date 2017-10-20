@@ -310,7 +310,7 @@ eth_ark_tx_queue_setup(struct rte_eth_dev *dev,
 static int
 eth_ark_tx_hw_queue_config(struct ark_tx_queue *queue)
 {
-	phys_addr_t queue_base, ring_base, cons_index_addr;
+	rte_iova_t queue_base, ring_base, cons_index_addr;
 	uint32_t write_interval_ns;
 
 	/* Verify HW -- MPU */

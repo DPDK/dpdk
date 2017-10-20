@@ -686,7 +686,7 @@ lio_swap_8B_data(uint64_t *data, uint32_t blocks)
 static inline uint64_t
 lio_map_ring(void *buf)
 {
-	phys_addr_t dma_addr;
+	rte_iova_t dma_addr;
 
 	dma_addr = rte_mbuf_data_iova_default(((struct rte_mbuf *)buf));
 
@@ -696,7 +696,7 @@ lio_map_ring(void *buf)
 static inline uint64_t
 lio_map_ring_info(struct lio_droq *droq, uint32_t i)
 {
-	phys_addr_t dma_addr;
+	rte_iova_t dma_addr;
 
 	dma_addr = droq->info_list_dma + (i * LIO_DROQ_INFO_SIZE);
 

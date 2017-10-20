@@ -509,7 +509,7 @@ nicvf_qset_rbdr_precharge(void *dev, struct nicvf *nic,
 	struct rbdr_entry_t *desc, *desc0;
 	struct nicvf_rbdr *rbdr = nic->rbdr;
 	uint32_t count;
-	nicvf_phys_addr_t phy;
+	nicvf_iova_addr_t phy;
 
 	assert(rbdr != NULL);
 	desc = rbdr->desc;

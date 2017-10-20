@@ -36,7 +36,7 @@
 #include "ecore_reg.h"
 
 struct bnx2x_softc;
-typedef phys_addr_t ecore_dma_addr_t; /* expected to be 64 bit wide */
+typedef rte_iova_t ecore_dma_addr_t; /* expected to be 64 bit wide */
 typedef volatile int ecore_atomic_t;
 
 

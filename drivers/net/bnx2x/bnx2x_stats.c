@@ -1338,7 +1338,7 @@ bnx2x_prep_fw_stats_req(struct bnx2x_softc *sc)
     int i;
     int first_queue_query_index;
     struct stats_query_header *stats_hdr = &sc->fw_stats_req->hdr;
-    phys_addr_t cur_data_offset;
+    rte_iova_t cur_data_offset;
     struct stats_query_entry *cur_query_entry;
 
     stats_hdr->cmd_num = sc->fw_stats_num;

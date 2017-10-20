@@ -253,7 +253,7 @@ typedef struct __efsys_identifier_s efsys_identifier_t;
 
 /* DMA */
 
-typedef phys_addr_t efsys_dma_addr_t;
+typedef rte_iova_t efsys_dma_addr_t;
 
 typedef struct efsys_mem_s {
 	const struct rte_memzone	*esm_mz;

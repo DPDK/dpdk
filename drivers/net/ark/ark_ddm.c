@@ -93,7 +93,7 @@ ark_ddm_reset(struct ark_ddm_t *ddm)
 }
 
 void
-ark_ddm_setup(struct ark_ddm_t *ddm, phys_addr_t cons_addr, uint32_t interval)
+ark_ddm_setup(struct ark_ddm_t *ddm, rte_iova_t cons_addr, uint32_t interval)
 {
 	ddm->setup.cons_write_index_addr = cons_addr;
 	ddm->setup.write_index_interval = interval / 4;	/* 4 ns period */

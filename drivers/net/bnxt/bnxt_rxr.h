@@ -101,8 +101,8 @@ struct bnxt_rx_ring_info {
 	struct bnxt_sw_rx_bd	*rx_buf_ring; /* sw ring */
 	struct bnxt_sw_rx_bd	*ag_buf_ring; /* sw ring */
 
-	phys_addr_t		rx_desc_mapping;
-	phys_addr_t		ag_desc_mapping;
+	rte_iova_t		rx_desc_mapping;
+	rte_iova_t		ag_desc_mapping;
 
 	struct bnxt_ring	*rx_ring_struct;
 	struct bnxt_ring	*ag_ring_struct;

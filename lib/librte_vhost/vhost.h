@@ -338,7 +338,7 @@ extern uint64_t VHOST_FEATURES;
 extern struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 
 /* Convert guest physical address to host physical address */
-static __rte_always_inline phys_addr_t
+static __rte_always_inline rte_iova_t
 gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
 {
 	uint32_t i;

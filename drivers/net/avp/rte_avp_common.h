@@ -243,7 +243,7 @@ struct rte_avp_desc {
  */
 struct rte_avp_memmap {
 	void *addr;
-	phys_addr_t phys_addr;
+	rte_iova_t phys_addr;
 	uint64_t length;
 };
 
@@ -345,7 +345,7 @@ RTE_AVP_MAKE_VERSION(RTE_AVP_RELEASE_VERSION_1, \
  */
 struct rte_avp_mempool_info {
 	void *addr;
-	phys_addr_t phys_addr;
+	rte_iova_t phys_addr;
 	uint64_t length;
 };
 
@@ -359,10 +359,10 @@ struct rte_avp_device_info {
 
 	char ifname[RTE_AVP_NAMESIZE];	/**< Network device name for AVP */
 
-	phys_addr_t tx_phys;
-	phys_addr_t rx_phys;
-	phys_addr_t alloc_phys;
-	phys_addr_t free_phys;
+	rte_iova_t tx_phys;
+	rte_iova_t rx_phys;
+	rte_iova_t alloc_phys;
+	rte_iova_t free_phys;
 
 	uint32_t features; /**< Supported feature bitmap */
 	uint8_t min_rx_queues; /**< Minimum supported receive/free queues */
@@ -379,14 +379,14 @@ struct rte_avp_device_info {
 	uint32_t free_size;	/**< Size of each free queue */
 
 	/* Used by Ethtool */
-	phys_addr_t req_phys;
-	phys_addr_t resp_phys;
-	phys_addr_t sync_phys;
+	rte_iova_t req_phys;
+	rte_iova_t resp_phys;
+	rte_iova_t sync_phys;
 	void *sync_va;
 
 	/* mbuf mempool (used when a single memory area is supported) */
 	void *mbuf_va;
-	phys_addr_t mbuf_phys;
+	rte_iova_t mbuf_phys;
 
 	/* mbuf mempools */
 	struct rte_avp_mempool_info pool[RTE_AVP_MAX_MEMPOOLS];

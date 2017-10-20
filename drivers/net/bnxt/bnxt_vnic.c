@@ -175,7 +175,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 				BNXT_MAX_MC_ADDRS * ETHER_ADDR_LEN);
 	uint16_t max_vnics;
 	int i;
-	phys_addr_t mz_phys_addr;
+	rte_iova_t mz_phys_addr;
 
 	max_vnics = bp->max_vnics;
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,

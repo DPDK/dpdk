@@ -88,7 +88,7 @@ enum nicvf_err_e {
 	NICVF_ERR_RSS_GET_SZ,    /* -8171 */
 };
 
-typedef nicvf_phys_addr_t (*rbdr_pool_get_handler)(void *dev, void *opaque);
+typedef nicvf_iova_addr_t (*rbdr_pool_get_handler)(void *dev, void *opaque);
 
 struct nicvf_hw_rx_qstats {
 	uint64_t q_rx_bytes;

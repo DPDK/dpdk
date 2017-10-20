@@ -66,7 +66,7 @@ struct virtnet_tx {
 	struct virtqueue *vq;
 	/**< memzone to populate hdr. */
 	const struct rte_memzone *virtio_net_hdr_mz;
-	phys_addr_t virtio_net_hdr_mem;  /**< hdr for each xmit packet */
+	rte_iova_t virtio_net_hdr_mem;   /**< hdr for each xmit packet */
 
 	uint16_t    queue_id;            /**< DPDK queue index. */
 	uint16_t    port_id;             /**< Device port identifier. */
@@ -81,7 +81,7 @@ struct virtnet_ctl {
 	struct virtqueue *vq;
 	/**< memzone to populate hdr. */
 	const struct rte_memzone *virtio_net_hdr_mz;
-	phys_addr_t virtio_net_hdr_mem; /**< hdr for each xmit packet */
+	rte_iova_t virtio_net_hdr_mem;  /**< hdr for each xmit packet */
 	uint16_t port_id;               /**< Device port identifier. */
 	const struct rte_memzone *mz;   /**< mem zone to populate CTL ring. */
 };

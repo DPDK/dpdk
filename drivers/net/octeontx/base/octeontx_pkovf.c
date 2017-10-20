@@ -46,7 +46,7 @@
 
 struct octeontx_pko_iomem {
 	uint8_t		*va;
-	phys_addr_t	iova;
+	rte_iova_t	iova;
 	size_t		size;
 };
 

@@ -3026,7 +3026,7 @@ int bnxt_get_nvram_directory(struct bnxt *bp, uint32_t len, uint8_t *data)
 	uint32_t entry_length;
 	uint8_t *buf;
 	size_t buflen;
-	phys_addr_t dma_handle;
+	rte_iova_t dma_handle;
 	struct hwrm_nvm_get_dir_entries_input req = {0};
 	struct hwrm_nvm_get_dir_entries_output *resp = bp->hwrm_cmd_resp_addr;
 
@@ -3071,7 +3071,7 @@ int bnxt_hwrm_get_nvram_item(struct bnxt *bp, uint32_t index,
 {
 	int rc;
 	uint8_t *buf;
-	phys_addr_t dma_handle;
+	rte_iova_t dma_handle;
 	struct hwrm_nvm_read_input req = {0};
 	struct hwrm_nvm_read_output *resp = bp->hwrm_cmd_resp_addr;
 
@@ -3125,7 +3125,7 @@ int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 	int rc;
 	struct hwrm_nvm_write_input req = {0};
 	struct hwrm_nvm_write_output *resp = bp->hwrm_cmd_resp_addr;
-	phys_addr_t dma_handle;
+	rte_iova_t dma_handle;
 	uint8_t *buf;
 
 	HWRM_PREP(req, NVM_WRITE);

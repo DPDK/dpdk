@@ -46,7 +46,7 @@ struct nicvf_rbdr {
 	uintptr_t rbdr_status;
 	uintptr_t rbdr_door;
 	struct rbdr_entry_t *desc;
-	nicvf_phys_addr_t phys;
+	nicvf_iova_addr_t phys;
 	uint32_t buffsz;
 	uint32_t tail;
 	uint32_t next_tail;
@@ -56,7 +56,7 @@ struct nicvf_rbdr {
 
 struct nicvf_txq {
 	union sq_entry_t *desc;
-	nicvf_phys_addr_t phys;
+	nicvf_iova_addr_t phys;
 	struct rte_mbuf **txbuffs;
 	uintptr_t sq_head;
 	uintptr_t sq_door;
@@ -87,7 +87,7 @@ struct nicvf_rxq {
 	uintptr_t cq_status;
 	uintptr_t cq_door;
 	union mbuf_initializer mbuf_initializer;
-	nicvf_phys_addr_t phys;
+	nicvf_iova_addr_t phys;
 	union cq_entry_t *desc;
 	struct nicvf_rbdr *shared_rbdr;
 	struct nicvf *nic;

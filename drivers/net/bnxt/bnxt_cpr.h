@@ -86,10 +86,10 @@ struct bnxt_cp_ring_info {
 
 	struct cmpl_base	*cp_desc_ring;
 
-	phys_addr_t		cp_desc_mapping;
+	rte_iova_t		cp_desc_mapping;
 
 	struct ctx_hw_stats	*hw_stats;
-	phys_addr_t		hw_stats_map;
+	rte_iova_t		hw_stats_map;
 	uint32_t		hw_stats_ctx_id;
 
 	struct bnxt_ring	*cp_ring_struct;

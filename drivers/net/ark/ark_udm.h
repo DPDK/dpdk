@@ -137,7 +137,7 @@ struct ark_udm_tlp_ps_t {
 
 #define ARK_UDM_RT_CFG 0x00e0
 struct ark_udm_rt_cfg_t {
-	phys_addr_t hw_prod_addr;
+	rte_iova_t hw_prod_addr;
 	uint32_t write_interval;	/* 4ns cycles */
 	volatile uint32_t prod_idx;	/* RO */
 };
@@ -171,7 +171,7 @@ void ark_udm_configure(struct ark_udm_t *udm,
 		       uint32_t headroom,
 		       uint32_t dataroom,
 		       uint32_t write_interval_ns);
-void ark_udm_write_addr(struct ark_udm_t *udm, phys_addr_t addr);
+void ark_udm_write_addr(struct ark_udm_t *udm, rte_iova_t addr);
 void ark_udm_stats_reset(struct ark_udm_t *udm);
 void ark_udm_dump_stats(struct ark_udm_t *udm, const char *msg);
 void ark_udm_dump_queue_stats(struct ark_udm_t *udm, const char *msg,

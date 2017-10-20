@@ -118,7 +118,7 @@ ark_mpu_reset_stats(struct ark_mpu_t *mpu)
 }
 
 int
-ark_mpu_configure(struct ark_mpu_t *mpu, phys_addr_t ring, uint32_t ring_size,
+ark_mpu_configure(struct ark_mpu_t *mpu, rte_iova_t ring, uint32_t ring_size,
 		  int is_tx)
 {
 	ark_mpu_reset(mpu);

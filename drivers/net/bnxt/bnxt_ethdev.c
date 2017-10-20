@@ -2796,7 +2796,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	const struct rte_memzone *mz = NULL;
 	static int version_printed;
 	uint32_t total_alloc_len;
-	phys_addr_t mz_phys_addr;
+	rte_iova_t mz_phys_addr;
 	struct bnxt *bp;
 	int rc;
 

@@ -70,7 +70,7 @@
 
 struct bnxt_ring {
 	void			*bd;
-	phys_addr_t		bd_dma;
+	rte_iova_t		bd_dma;
 	uint32_t		ring_size;
 	uint32_t		ring_mask;
 

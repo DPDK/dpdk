@@ -203,8 +203,8 @@ struct virtqueue {
 		struct virtnet_ctl cq;
 	};
 
-	phys_addr_t vq_ring_mem; /**< physical address of vring,
-				  * or virtual address for virtio_user. */
+	rte_iova_t vq_ring_mem; /**< physical address of vring,
+	                         * or virtual address for virtio_user. */
 
 	/**
 	 * Head of the free chain in the descriptor table. If

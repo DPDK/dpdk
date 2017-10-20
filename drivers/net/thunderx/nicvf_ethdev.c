@@ -680,7 +680,7 @@ nicvf_qset_rbdr_alloc(struct rte_eth_dev *dev, struct nicvf *nic,
 
 static void
 nicvf_rbdr_release_mbuf(struct rte_eth_dev *dev, struct nicvf *nic,
-			nicvf_phys_addr_t phy)
+			nicvf_iova_addr_t phy)
 {
 	uint16_t qidx;
 	void *obj;
@@ -1429,7 +1429,7 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 }
 
-static nicvf_phys_addr_t
+static nicvf_iova_addr_t
 rbdr_rte_mempool_get(void *dev, void *opaque)
 {
 	uint16_t qidx;

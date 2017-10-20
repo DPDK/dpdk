@@ -213,7 +213,7 @@
 #define NICVF_STATIC_ASSERT(s) _Static_assert(s, #s)
 #define assert_primary(nic) assert((nic)->sqs_mode == 0)
 
-typedef uint64_t nicvf_phys_addr_t;
+typedef uint64_t nicvf_iova_addr_t;
 
 /* vNIC HW Enumerations */
 
@@ -840,7 +840,7 @@ struct rbdr_entry_t {
 			uint64_t   buf_addr:42;
 			uint64_t   cache_align:7;
 		};
-		nicvf_phys_addr_t full_addr;
+		nicvf_iova_addr_t full_addr;
 	};
 #else
 	union {
@@ -849,7 +849,7 @@ struct rbdr_entry_t {
 			uint64_t   buf_addr:42;
 			uint64_t   rsvd0:15;
 		};
-		nicvf_phys_addr_t full_addr;
+		nicvf_iova_addr_t full_addr;
 	};
 #endif
 };

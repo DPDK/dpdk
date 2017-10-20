@@ -62,7 +62,7 @@ sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
 	}
 
 	esmp->esm_addr = mz->iova;
-	if (esmp->esm_addr == RTE_BAD_PHYS_ADDR) {
+	if (esmp->esm_addr == RTE_BAD_IOVA) {
 		(void)rte_memzone_free(mz);
 		return EFAULT;
 	}

@@ -387,7 +387,7 @@ avp_dev_translate_buffer(struct avp_dev *avp, void *host_mbuf_address)
 /* translate from host physical address to guest virtual address */
 static void *
 avp_dev_translate_address(struct rte_eth_dev *eth_dev,
-			  phys_addr_t host_phys_addr)
+			  rte_iova_t host_phys_addr)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_mem_resource *resource;

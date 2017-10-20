@@ -49,7 +49,7 @@ struct bnxt_tx_ring_info {
 	struct tx_bd_long	*tx_desc_ring;
 	struct bnxt_sw_tx_bd	*tx_buf_ring;
 
-	phys_addr_t		tx_desc_mapping;
+	rte_iova_t		tx_desc_mapping;
 
 #define BNXT_DEV_STATE_CLOSING	0x1
 	uint32_t		dev_state;

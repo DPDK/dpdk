@@ -122,7 +122,7 @@ ark_udm_configure(struct ark_udm_t *udm,
 }
 
 void
-ark_udm_write_addr(struct ark_udm_t *udm, phys_addr_t addr)
+ark_udm_write_addr(struct ark_udm_t *udm, rte_iova_t addr)
 {
 	udm->rt_cfg.hw_prod_addr = addr;
 }

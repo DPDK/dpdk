@@ -63,7 +63,7 @@ typedef u32 OSAL_BE32;
 
 #define osal_uintptr_t uintptr_t
 
-typedef phys_addr_t dma_addr_t;
+typedef rte_iova_t dma_addr_t;
 
 typedef rte_spinlock_t osal_spinlock_t;
 

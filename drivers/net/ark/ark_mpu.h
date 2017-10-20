@@ -75,7 +75,7 @@ struct ark_mpu_hw_t {
 
 #define ARK_MPU_CFG 0x040
 struct ark_mpu_cfg_t {
-	phys_addr_t ring_base;	/* phys_addr_t is a uint64_t */
+	rte_iova_t ring_base;	/* rte_iova_t is a uint64_t */
 	uint32_t ring_size;
 	uint32_t ring_mask;
 	uint32_t min_host_move;
@@ -137,7 +137,7 @@ int ark_mpu_verify(struct ark_mpu_t *mpu, uint32_t obj_size);
 void ark_mpu_stop(struct ark_mpu_t *mpu);
 void ark_mpu_start(struct ark_mpu_t *mpu);
 int ark_mpu_reset(struct ark_mpu_t *mpu);
-int ark_mpu_configure(struct ark_mpu_t *mpu, phys_addr_t ring,
+int ark_mpu_configure(struct ark_mpu_t *mpu, rte_iova_t ring,
 		      uint32_t ring_size, int is_tx);
 
 void ark_mpu_dump(struct ark_mpu_t *mpu, const char *msg, uint16_t idx);

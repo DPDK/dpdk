@@ -195,7 +195,7 @@ sfc_ef10_tx_reap(struct sfc_ef10_txq *txq)
 }
 
 static void
-sfc_ef10_tx_qdesc_dma_create(phys_addr_t addr, uint16_t size, bool eop,
+sfc_ef10_tx_qdesc_dma_create(rte_iova_t addr, uint16_t size, bool eop,
 			     efx_qword_t *edp)
 {
 	EFX_POPULATE_QWORD_4(*edp,
@@ -341,7 +341,7 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		pkt_len = m_seg->pkt_len;
 		do {
-			phys_addr_t seg_addr = rte_mbuf_data_iova(m_seg);
+			rte_iova_t seg_addr = rte_mbuf_data_iova(m_seg);
 			unsigned int seg_len = rte_pktmbuf_data_len(m_seg);
 			unsigned int id = added & ptr_mask;
 
