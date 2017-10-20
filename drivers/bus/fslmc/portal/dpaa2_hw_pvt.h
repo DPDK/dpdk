@@ -314,7 +314,7 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
  * These routines are called with help of below MACRO's
  */
 
-#define DPAA2_MBUF_VADDR_TO_IOVA(mbuf) ((mbuf)->buf_physaddr)
+#define DPAA2_MBUF_VADDR_TO_IOVA(mbuf) ((mbuf)->buf_iova)
 #define DPAA2_OP_VADDR_TO_IOVA(op) (op->phys_addr)
 
 /**

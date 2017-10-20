@@ -386,7 +386,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* Push descriptor for newly allocated mbuf */
 		nmb->data_off = RTE_PKTMBUF_HEADROOM;
-		dma_addr = (dma_addr_t)(nmb->buf_physaddr +
+		dma_addr = (dma_addr_t)(nmb->buf_iova +
 					RTE_PKTMBUF_HEADROOM);
 		rq_enet_desc_enc(rqd_ptr, dma_addr,
 				(rq->is_sop ? RQ_ENET_TYPE_ONLY_SOP
@@ -578,7 +578,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		vlan_id = 0;
 		vlan_tag_insert = 0;
 		bus_addr = (dma_addr_t)
-			   (tx_pkt->buf_physaddr + tx_pkt->data_off);
+			   (tx_pkt->buf_iova + tx_pkt->data_off);
 
 		descs = (struct wq_enet_desc *)wq->ring.descs;
 		desc_p = descs + head_idx;
@@ -630,7 +630,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				if (tx_pkt->next == NULL)
 					eop = 1;
 				desc_p = descs + head_idx;
-				bus_addr = (dma_addr_t)(tx_pkt->buf_physaddr
+				bus_addr = (dma_addr_t)(tx_pkt->buf_iova
 					   + tx_pkt->data_off);
 				wq_enet_desc_enc((struct wq_enet_desc *)
 						 &desc_tmp, bus_addr, data_len,

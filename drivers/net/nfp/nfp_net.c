@@ -106,7 +106,7 @@ static uint16_t nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 #define NFP_QCP_MAX_ADD	0x7f
 
 #define RTE_MBUF_DMA_ADDR_DEFAULT(mb) \
-	(uint64_t)((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
+	(uint64_t)((mb)->buf_iova + RTE_PKTMBUF_HEADROOM)
 
 /* nfp_qcp_ptr - Read or Write Pointer of a queue */
 enum nfp_qcp_ptr {

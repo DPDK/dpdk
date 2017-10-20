@@ -482,7 +482,7 @@
          sodipodi:role="line"
          x="187.85715"
          y="347.7193"
-         id="tspan5240">(m-&gt;buf_physaddr is the</tspan><tspan
+         id="tspan5240">(m-&gt;buf_iova is the</tspan><tspan
          sodipodi:role="line"
          x="187.85715"
          y="360.2193"

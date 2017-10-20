@@ -1167,7 +1167,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 
 		rte_prefetch0(mbufs[((next_to_use + 4) & ring_mask)]);
 		/* prepare physical address for DMA transaction */
-		ebuf.paddr = mbuf->buf_physaddr + RTE_PKTMBUF_HEADROOM;
+		ebuf.paddr = mbuf->buf_iova + RTE_PKTMBUF_HEADROOM;
 		ebuf.len = mbuf->buf_len - RTE_PKTMBUF_HEADROOM;
 		/* pass resource to device */
 		rc = ena_com_add_single_rx_desc(rxq->ena_com_io_sq,
@@ -1726,7 +1726,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * consideration pushed header
 		 */
 		if (mbuf->data_len > ena_tx_ctx.header_len) {
-			ebuf->paddr = mbuf->buf_physaddr +
+			ebuf->paddr = mbuf->buf_iova +
 				      mbuf->data_off +
 				      ena_tx_ctx.header_len;
 			ebuf->len = mbuf->data_len - ena_tx_ctx.header_len;
@@ -1735,7 +1735,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 
 		while ((mbuf = mbuf->next) != NULL) {
-			ebuf->paddr = mbuf->buf_physaddr + mbuf->data_off;
+			ebuf->paddr = mbuf->buf_iova + mbuf->data_off;
 			ebuf->len = mbuf->data_len;
 			ebuf++;
 			tx_info->num_of_bufs++;

@@ -77,7 +77,7 @@
 		(_fd)->opaque = QM_FD_CONTIG << DPAA_FD_FORMAT_SHIFT; \
 		(_fd)->opaque |= ((_mbuf)->data_off) << DPAA_FD_OFFSET_SHIFT; \
 		(_fd)->opaque |= (_mbuf)->pkt_len; \
-		(_fd)->addr = (_mbuf)->buf_physaddr; \
+		(_fd)->addr = (_mbuf)->buf_iova; \
 		(_fd)->bpid = _bpid; \
 	} while (0)
 
@@ -514,7 +514,7 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 
 	sgt = temp->buf_addr + temp->data_off;
 	fd->format = QM_FD_SG;
-	fd->addr = temp->buf_physaddr;
+	fd->addr = temp->buf_iova;
 	fd->offset = temp->data_off;
 	fd->bpid = bpid;
 	fd->length20 = mbuf->pkt_len;
@@ -523,7 +523,7 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		sg_temp = &sgt[i++];
 		sg_temp->opaque = 0;
 		sg_temp->val = 0;
-		sg_temp->addr = cur_seg->buf_physaddr;
+		sg_temp->addr = cur_seg->buf_iova;
 		sg_temp->offset = cur_seg->data_off;
 		sg_temp->length = cur_seg->data_len;
 		if (RTE_MBUF_DIRECT(cur_seg)) {

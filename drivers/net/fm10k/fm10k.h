@@ -253,11 +253,11 @@ struct fm10k_txq_ops {
 };
 
 #define MBUF_DMA_ADDR(mb) \
-	((uint64_t) ((mb)->buf_physaddr + (mb)->data_off))
+	((uint64_t) ((mb)->buf_iova + (mb)->data_off))
 
 /* enforce 512B alignment on default Rx DMA addresses */
 #define MBUF_DMA_ADDR_DEFAULT(mb) \
-	((uint64_t) RTE_ALIGN(((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM),\
+	((uint64_t) RTE_ALIGN(((mb)->buf_iova + RTE_PKTMBUF_HEADROOM),\
 			FM10K_RX_DATABUF_ALIGN))
 
 static inline void fifo_reset(struct fifo *fifo, uint32_t len)

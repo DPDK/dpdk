@@ -906,7 +906,7 @@ test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 	}
 
 	badbuf = *buf;
-	badbuf.buf_physaddr = 0;
+	badbuf.buf_iova = 0;
 	if (verify_mbuf_check_panics(&badbuf)) {
 		printf("Error with bad-physaddr mbuf test\n");
 		return -1;

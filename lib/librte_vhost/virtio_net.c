@@ -978,7 +978,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			cur->data_len = cpy_len;
 			cur->data_off = 0;
 			cur->buf_addr = (void *)(uintptr_t)desc_addr;
-			cur->buf_physaddr = hpa;
+			cur->buf_iova = hpa;
 
 			/*
 			 * In zero copy mode, one mbuf can only reference data

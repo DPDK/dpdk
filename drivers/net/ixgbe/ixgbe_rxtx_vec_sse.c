@@ -86,8 +86,8 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
-		/* load buf_addr(lo 64bit) and buf_physaddr(hi 64bit) */
-		RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, buf_physaddr) !=
+		/* load buf_addr(lo 64bit) and buf_iova(hi 64bit) */
+		RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, buf_iova) !=
 				offsetof(struct rte_mbuf, buf_addr) + 8);
 		vaddr0 = _mm_loadu_si128((__m128i *)&(mb0->buf_addr));
 		vaddr1 = _mm_loadu_si128((__m128i *)&(mb1->buf_addr));
@@ -667,7 +667,7 @@ vtx1(volatile union ixgbe_adv_tx_desc *txdp,
 {
 	__m128i descriptor = _mm_set_epi64x((uint64_t)pkt->pkt_len << 46 |
 			flags | pkt->data_len,
-			pkt->buf_physaddr + pkt->data_off);
+			pkt->buf_iova + pkt->data_off);
 	_mm_store_si128((__m128i *)&txdp->read, descriptor);
 }
 

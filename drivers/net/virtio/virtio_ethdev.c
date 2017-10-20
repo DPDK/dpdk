@@ -493,7 +493,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	 * VIRTIO_MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
 	 */
 	if (!hw->virtio_user_dev)
-		vq->offset = offsetof(struct rte_mbuf, buf_physaddr);
+		vq->offset = offsetof(struct rte_mbuf, buf_iova);
 	else {
 		vq->vq_ring_mem = (uintptr_t)mz->addr;
 		vq->offset = offsetof(struct rte_mbuf, buf_addr);

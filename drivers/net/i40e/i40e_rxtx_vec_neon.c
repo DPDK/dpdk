@@ -81,13 +81,13 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
-		paddr = mb0->buf_physaddr + RTE_PKTMBUF_HEADROOM;
+		paddr = mb0->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr0 = vdupq_n_u64(paddr);
 
 		/* flush desc with pa dma_addr */
 		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr0);
 
-		paddr = mb1->buf_physaddr + RTE_PKTMBUF_HEADROOM;
+		paddr = mb1->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr1 = vdupq_n_u64(paddr);
 		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr1);
 	}
@@ -515,7 +515,7 @@ vtx1(volatile struct i40e_tx_desc *txdp,
 			((uint64_t)flags  << I40E_TXD_QW1_CMD_SHIFT) |
 			((uint64_t)pkt->data_len << I40E_TXD_QW1_TX_BUF_SZ_SHIFT));
 
-	uint64x2_t descriptor = {pkt->buf_physaddr + pkt->data_off, high_qw};
+	uint64x2_t descriptor = {pkt->buf_iova + pkt->data_off, high_qw};
 	vst1q_u64((uint64_t *)txdp, descriptor);
 }
 

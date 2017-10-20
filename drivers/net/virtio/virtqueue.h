@@ -79,7 +79,7 @@ struct rte_mbuf;
 #define VIRTIO_MBUF_ADDR(mb, vq) \
 	((uint64_t)(*(uintptr_t *)((uintptr_t)(mb) + (vq)->offset)))
 #else
-#define VIRTIO_MBUF_ADDR(mb, vq) ((mb)->buf_physaddr)
+#define VIRTIO_MBUF_ADDR(mb, vq) ((mb)->buf_iova)
 #endif
 
 /**

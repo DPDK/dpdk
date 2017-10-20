@@ -499,22 +499,22 @@ eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 	case 0:
 		while (count != nb) {
 			queue->paddress_q[seed_m++] =
-				(*mbufs++)->buf_physaddr;
+				(*mbufs++)->buf_iova;
 			count++;
 		/* FALLTHROUGH */
 	case 3:
 		queue->paddress_q[seed_m++] =
-			(*mbufs++)->buf_physaddr;
+			(*mbufs++)->buf_iova;
 		count++;
 		/* FALLTHROUGH */
 	case 2:
 		queue->paddress_q[seed_m++] =
-			(*mbufs++)->buf_physaddr;
+			(*mbufs++)->buf_iova;
 		count++;
 		/* FALLTHROUGH */
 	case 1:
 		queue->paddress_q[seed_m++] =
-			(*mbufs++)->buf_physaddr;
+			(*mbufs++)->buf_iova;
 		count++;
 		/* FALLTHROUGH */
 

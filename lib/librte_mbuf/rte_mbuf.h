@@ -432,7 +432,11 @@ struct rte_mbuf {
 	 * same mbuf cacheline0 layout for 32-bit and 64-bit. This makes
 	 * working on vector drivers easier.
 	 */
-	phys_addr_t buf_physaddr __rte_aligned(sizeof(phys_addr_t));
+	RTE_STD_C11
+	union {
+		rte_iova_t buf_iova;
+		rte_iova_t buf_physaddr; /**< deprecated */
+	} __rte_aligned(sizeof(rte_iova_t));
 
 	/* next 8 bytes are initialised on RX descriptor rearm */
 	MARKER64 rearm_data;
@@ -631,7 +635,7 @@ static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);
 static inline phys_addr_t
 rte_mbuf_data_dma_addr(const struct rte_mbuf *mb)
 {
-	return mb->buf_physaddr + mb->data_off;
+	return mb->buf_iova + mb->data_off;
 }
 
 /**
@@ -649,7 +653,7 @@ rte_mbuf_data_dma_addr(const struct rte_mbuf *mb)
 static inline phys_addr_t
 rte_mbuf_data_dma_addr_default(const struct rte_mbuf *mb)
 {
-	return mb->buf_physaddr + RTE_PKTMBUF_HEADROOM;
+	return mb->buf_iova + RTE_PKTMBUF_HEADROOM;
 }
 
 /**
@@ -840,7 +844,7 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
  * For standard needs, prefer rte_pktmbuf_alloc().
  *
  * The caller can expect that the following fields of the mbuf structure
- * are initialized: buf_addr, buf_physaddr, buf_len, refcnt=1, nb_segs=1,
+ * are initialized: buf_addr, buf_iova, buf_len, refcnt=1, nb_segs=1,
  * next=NULL, pool, priv_size. The other fields must be initialized
  * by the caller.
  *
@@ -1250,7 +1254,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *m)
 
 	rte_mbuf_refcnt_update(md, 1);
 	mi->priv_size = m->priv_size;
-	mi->buf_physaddr = m->buf_physaddr;
+	mi->buf_iova = m->buf_iova;
 	mi->buf_addr = m->buf_addr;
 	mi->buf_len = m->buf_len;
 
@@ -1298,7 +1302,7 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 
 	m->priv_size = priv_size;
 	m->buf_addr = (char *)m + mbuf_size;
-	m->buf_physaddr = rte_mempool_virt2iova(m) + mbuf_size;
+	m->buf_iova = rte_mempool_virt2iova(m) + mbuf_size;
 	m->buf_len = (uint16_t)buf_len;
 	rte_pktmbuf_reset_headroom(m);
 	m->data_len = 0;
@@ -1569,7 +1573,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
  *   The offset into the data to calculate address from.
  */
 #define rte_pktmbuf_mtophys_offset(m, o) \
-	(phys_addr_t)((m)->buf_physaddr + (m)->data_off + (o))
+	(rte_iova_t)((m)->buf_iova + (m)->data_off + (o))
 
 /**
  * A macro that returns the physical address that points to the start of the

@@ -105,8 +105,8 @@ build_proto_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_FLC(fd, ((uint64_t)flc));
 
 	/* save physical address of mbuf */
-	op->sym->aead.digest.phys_addr = mbuf->buf_physaddr;
-	mbuf->buf_physaddr = (uint64_t)op;
+	op->sym->aead.digest.phys_addr = mbuf->buf_iova;
+	mbuf->buf_iova = (uint64_t)op;
 
 	return 0;
 }
@@ -723,8 +723,8 @@ sec_simple_fd_to_mbuf(const struct qbman_fd *fd, __rte_unused uint8_t id)
 		DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)),
 		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
 
-	op = (struct rte_crypto_op *)mbuf->buf_physaddr;
-	mbuf->buf_physaddr = op->sym->aead.digest.phys_addr;
+	op = (struct rte_crypto_op *)mbuf->buf_iova;
+	mbuf->buf_iova = op->sym->aead.digest.phys_addr;
 	op->sym->aead.digest.phys_addr = 0L;
 
 	sess_priv = (dpaa2_sec_session *)get_sec_session_private_data(

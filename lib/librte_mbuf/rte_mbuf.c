@@ -134,7 +134,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	/* start of buffer is after mbuf structure and priv data */
 	m->priv_size = priv_size;
 	m->buf_addr = (char *)m + mbuf_size;
-	m->buf_physaddr = rte_mempool_virt2iova(m) + mbuf_size;
+	m->buf_iova = rte_mempool_virt2iova(m) + mbuf_size;
 	m->buf_len = (uint16_t)buf_len;
 
 	/* keep some headroom between start of buffer and data */
@@ -211,8 +211,8 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 	/* generic checks */
 	if (m->pool == NULL)
 		rte_panic("bad mbuf pool\n");
-	if (m->buf_physaddr == 0)
-		rte_panic("bad phys addr\n");
+	if (m->buf_iova == 0)
+		rte_panic("bad IO addr\n");
 	if (m->buf_addr == NULL)
 		rte_panic("bad virt addr\n");
 
@@ -243,8 +243,8 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 
 	__rte_mbuf_sanity_check(m, 1);
 
-	fprintf(f, "dump mbuf at %p, phys=%"PRIx64", buf_len=%u\n",
-	       m, (uint64_t)m->buf_physaddr, (unsigned)m->buf_len);
+	fprintf(f, "dump mbuf at %p, iova=%"PRIx64", buf_len=%u\n",
+	       m, (uint64_t)m->buf_iova, (unsigned)m->buf_len);
 	fprintf(f, "  pkt_len=%"PRIu32", ol_flags=%"PRIx64", nb_segs=%u, "
 	       "in_port=%u\n", m->pkt_len, m->ol_flags,
 	       (unsigned)m->nb_segs, (unsigned)m->port);

@@ -87,13 +87,13 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		 * Data to be rearmed is 6 bytes long.
 		 */
 		vst1_u8((uint8_t *)&mb0->rearm_data, p);
-		paddr = mb0->buf_physaddr + RTE_PKTMBUF_HEADROOM;
+		paddr = mb0->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr0 = vsetq_lane_u64(paddr, zero, 0);
 		/* flush desc with pa dma_addr */
 		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr0);
 
 		vst1_u8((uint8_t *)&mb1->rearm_data, p);
-		paddr = mb1->buf_physaddr + RTE_PKTMBUF_HEADROOM;
+		paddr = mb1->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr1 = vsetq_lane_u64(paddr, zero, 0);
 		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr1);
 	}
@@ -414,7 +414,7 @@ vtx1(volatile union ixgbe_adv_tx_desc *txdp,
 		struct rte_mbuf *pkt, uint64_t flags)
 {
 	uint64x2_t descriptor = {
-			pkt->buf_physaddr + pkt->data_off,
+			pkt->buf_iova + pkt->data_off,
 			(uint64_t)pkt->pkt_len << 46 | flags | pkt->data_len};
 
 	vst1q_u64((uint64_t *)&txdp->read, descriptor);

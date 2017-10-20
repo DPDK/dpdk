@@ -316,7 +316,7 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 		}
 
 		mb->data_off = RTE_PKTMBUF_HEADROOM;
-		dma_addr = (dma_addr_t)(mb->buf_physaddr
+		dma_addr = (dma_addr_t)(mb->buf_iova
 			   + RTE_PKTMBUF_HEADROOM);
 		rq_enet_desc_enc(rqd, dma_addr,
 				(rq->is_sop ? RQ_ENET_TYPE_ONLY_SOP

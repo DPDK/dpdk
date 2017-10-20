@@ -140,7 +140,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			return -ENOMEM;
 		}
 		rxq->sw_ring[idx] = mbuf;
-		rxq->rx_ring[idx] = mbuf->buf_physaddr;
+		rxq->rx_ring[idx] = mbuf->buf_iova;
 	}
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
@@ -400,7 +400,7 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		rx_mb = rxq->sw_ring[bd_cons];
 		rxq->sw_ring[bd_cons] = new_mb;
-		rxq->rx_ring[bd_prod] = new_mb->buf_physaddr;
+		rxq->rx_ring[bd_prod] = new_mb->buf_iova;
 
 		rx_pref = NEXT_RX_BD(bd_cons) & MAX_RX_BD(rxq);
 		rte_prefetch0(rxq->sw_ring[rx_pref]);

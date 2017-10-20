@@ -41,7 +41,7 @@
 #define RING_NEXT(ring, idx)		(((idx) + 1) & (ring)->ring_mask)
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	((uint64_t)((mb)->buf_physaddr + (mb)->data_off))
+	((uint64_t)((mb)->buf_iova + (mb)->data_off))
 
 #define DB_IDX_MASK						0xffffff
 #define DB_IDX_VALID						(0x1 << 26)
