@@ -118,7 +118,7 @@ struct rte_crypto_op {
 	struct rte_mempool *mempool;
 	/**< crypto operation mempool which operation is allocated from */
 
-	phys_addr_t phys_addr;
+	rte_iova_t phys_addr;
 	/**< physical address of crypto operation */
 
 	RTE_STD_C11

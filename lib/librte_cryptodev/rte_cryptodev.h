@@ -110,7 +110,7 @@ extern const char **rte_cyptodev_names;
  *   to calculate address from.
  */
 #define rte_crypto_op_ctophys_offset(c, o)	\
-	(phys_addr_t)((c)->phys_addr + (o))
+	(rte_iova_t)((c)->phys_addr + (o))
 
 /**
  * Crypto parameters range description

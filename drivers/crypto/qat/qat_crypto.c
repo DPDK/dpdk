@@ -1376,7 +1376,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		 * This address may used for setting AAD physical pointer
 		 * into IV offset from op
 		 */
-		phys_addr_t aad_phys_addr_aead = op->sym->aead.aad.phys_addr;
+		rte_iova_t aad_phys_addr_aead = op->sym->aead.aad.phys_addr;
 		if (ctx->qat_hash_alg ==
 				ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 				ctx->qat_hash_alg ==

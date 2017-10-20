@@ -70,7 +70,7 @@ enum qat_device_gen {
 struct qat_queue {
 	char		memz_name[RTE_MEMZONE_NAMESIZE];
 	void		*base_addr;		/* Base address */
-	phys_addr_t	base_phys_addr;		/* Queue physical address */
+	rte_iova_t	base_phys_addr;		/* Queue physical address */
 	uint32_t	head;			/* Shadow copy of the head */
 	uint32_t	tail;			/* Shadow copy of the tail */
 	uint32_t	modulo;

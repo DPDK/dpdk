@@ -548,7 +548,7 @@ struct rte_crypto_sym_op {
 				 * For GCM (@ref RTE_CRYPTO_AEAD_AES_GCM), for
 				 * "digest result" read "authentication tag T".
 				 */
-				phys_addr_t phys_addr;
+				rte_iova_t phys_addr;
 				/**< Physical address of digest */
 			} digest; /**< Digest parameters */
 			struct {
@@ -583,7 +583,7 @@ struct rte_crypto_sym_op {
 				 * of the block size (16 bytes).
 				 *
 				 */
-				phys_addr_t phys_addr;	/**< physical address */
+				rte_iova_t phys_addr;	/**< physical address */
 			} aad;
 			/**< Additional authentication parameters */
 		} aead;
@@ -680,7 +680,7 @@ struct rte_crypto_sym_op {
 					 * will overwrite any data at this location.
 					 *
 					 */
-					phys_addr_t phys_addr;
+					rte_iova_t phys_addr;
 					/**< Physical address of digest */
 				} digest; /**< Digest parameters */
 			} auth;

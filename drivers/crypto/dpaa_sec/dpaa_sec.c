@@ -110,7 +110,7 @@ dpaa_sec_alloc_ctx(dpaa_sec_session *ses)
 	return ctx;
 }
 
-static inline phys_addr_t
+static inline rte_iova_t
 dpaa_mem_vtop(void *vaddr)
 {
 	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
@@ -124,14 +124,14 @@ dpaa_mem_vtop(void *vaddr)
 			paddr = memseg[i].phys_addr +
 				(vaddr_64 - memseg[i].addr_64);
 
-			return (phys_addr_t)paddr;
+			return (rte_iova_t)paddr;
 		}
 	}
-	return (phys_addr_t)(NULL);
+	return (rte_iova_t)(NULL);
 }
 
 static inline void *
-dpaa_mem_ptov(phys_addr_t paddr)
+dpaa_mem_ptov(rte_iova_t paddr)
 {
 	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
 	int i;
@@ -158,7 +158,7 @@ ern_sec_fq_handler(struct qman_portal *qm __rte_unused,
  * all the packets in this queue could be dispatched into caam
  */
 static int
-dpaa_sec_init_rx(struct qman_fq *fq_in, phys_addr_t hwdesc,
+dpaa_sec_init_rx(struct qman_fq *fq_in, rte_iova_t hwdesc,
 		 uint32_t fqid_out)
 {
 	struct qm_mcc_initfq fq_opts;
@@ -566,7 +566,7 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	struct dpaa_sec_job *cf;
 	struct dpaa_sec_op_ctx *ctx;
 	struct qm_sg_entry *sg;
-	phys_addr_t start_addr;
+	rte_iova_t start_addr;
 	uint8_t *old_digest;
 
 	ctx = dpaa_sec_alloc_ctx(ses);
@@ -626,7 +626,7 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	struct dpaa_sec_job *cf;
 	struct dpaa_sec_op_ctx *ctx;
 	struct qm_sg_entry *sg;
-	phys_addr_t src_start_addr, dst_start_addr;
+	rte_iova_t src_start_addr, dst_start_addr;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 
@@ -682,7 +682,7 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	struct dpaa_sec_op_ctx *ctx;
 	struct qm_sg_entry *sg;
 	uint32_t length = 0;
-	phys_addr_t src_start_addr, dst_start_addr;
+	rte_iova_t src_start_addr, dst_start_addr;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 
@@ -793,7 +793,7 @@ build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	struct dpaa_sec_job *cf;
 	struct dpaa_sec_op_ctx *ctx;
 	struct qm_sg_entry *sg;
-	phys_addr_t src_start_addr, dst_start_addr;
+	rte_iova_t src_start_addr, dst_start_addr;
 	uint32_t length = 0;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);

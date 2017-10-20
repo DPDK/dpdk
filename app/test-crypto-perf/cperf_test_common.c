@@ -74,7 +74,7 @@ fill_multi_seg_mbuf(struct rte_mbuf *m, struct rte_mempool *mp,
 	uint16_t mbuf_hdr_size = sizeof(struct rte_mbuf);
 	uint16_t remaining_segments = segments_nb;
 	struct rte_mbuf *next_mbuf;
-	phys_addr_t next_seg_phys_addr = rte_mempool_virt2iova(obj) +
+	rte_iova_t next_seg_phys_addr = rte_mempool_virt2iova(obj) +
 			 mbuf_offset + mbuf_hdr_size;
 
 	do {

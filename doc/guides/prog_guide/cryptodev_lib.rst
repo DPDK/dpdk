@@ -539,12 +539,12 @@ chain.
 
                 struct {
                     uint8_t *data;
-                    phys_addr_t phys_addr;
+                    rte_iova_t phys_addr;
                 } digest; /**< Digest parameters */
 
                 struct {
                     uint8_t *data;
-                    phys_addr_t phys_addr;
+                    rte_iova_t phys_addr;
                 } aad;
                 /**< Additional authentication parameters */
             } aead;
@@ -566,7 +566,7 @@ chain.
 
                     struct {
                         uint8_t *data;
-                        phys_addr_t phys_addr;
+                        rte_iova_t phys_addr;
                     } digest; /**< Digest parameters */
                 } auth;
             };

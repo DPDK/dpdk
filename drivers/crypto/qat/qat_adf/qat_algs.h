@@ -104,8 +104,8 @@ struct qat_alg_buf_list {
 struct qat_crypto_op_cookie {
 	struct qat_alg_buf_list qat_sgl_list_src;
 	struct qat_alg_buf_list qat_sgl_list_dst;
-	phys_addr_t qat_sgl_src_phys_addr;
-	phys_addr_t qat_sgl_dst_phys_addr;
+	rte_iova_t qat_sgl_src_phys_addr;
+	rte_iova_t qat_sgl_dst_phys_addr;
 };
 
 /* Common content descriptor */
@@ -124,7 +124,7 @@ struct qat_session {
 	void *bpi_ctx;
 	struct qat_alg_cd cd;
 	uint8_t *cd_cur_ptr;
-	phys_addr_t cd_paddr;
+	rte_iova_t cd_paddr;
 	struct icp_qat_fw_la_bulk_req fw_req;
 	uint8_t aad_len;
 	struct qat_crypto_instance *inst;

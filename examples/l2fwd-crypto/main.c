@@ -140,7 +140,7 @@ enum l2fwd_crypto_xform_chain {
 struct l2fwd_key {
 	uint8_t *data;
 	uint32_t length;
-	phys_addr_t phys_addr;
+	rte_iova_t phys_addr;
 };
 
 struct l2fwd_iv {

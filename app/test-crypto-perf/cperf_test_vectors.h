@@ -78,13 +78,13 @@ struct cperf_test_vector {
 
 	struct {
 		uint8_t *data;
-		phys_addr_t phys_addr;
+		rte_iova_t phys_addr;
 		uint16_t length;
 	} aad;
 
 	struct {
 		uint8_t *data;
-		phys_addr_t phys_addr;
+		rte_iova_t phys_addr;
 		uint16_t length;
 	} digest;
 
