@@ -404,7 +404,7 @@ mlx4_flow_merge_udp(struct rte_flow *flow,
 	struct ibv_flow_spec_tcp_udp *udp;
 	const char *msg;
 
-	if (!mask ||
+	if (mask &&
 	    ((uint16_t)(mask->hdr.src_port + 1) > UINT16_C(1) ||
 	     (uint16_t)(mask->hdr.dst_port + 1) > UINT16_C(1))) {
 		msg = "mlx4 does not support matching partial UDP fields";
@@ -464,7 +464,7 @@ mlx4_flow_merge_tcp(struct rte_flow *flow,
 	struct ibv_flow_spec_tcp_udp *tcp;
 	const char *msg;
 
-	if (!mask ||
+	if (mask &&
 	    ((uint16_t)(mask->hdr.src_port + 1) > UINT16_C(1) ||
 	     (uint16_t)(mask->hdr.dst_port + 1) > UINT16_C(1))) {
 		msg = "mlx4 does not support matching partial TCP fields";
