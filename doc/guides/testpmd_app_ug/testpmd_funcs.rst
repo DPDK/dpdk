@@ -1220,6 +1220,17 @@ For example, to set rx queue 2 on port 0 to mapping 5::
 
    testpmd>set stat_qmap rx 0 2 5
 
+set xstats-hide-zero
+~~~~~~~~~~~~~~~~~~~~
+
+Set the option to hide zero values for xstats display::
+
+	testpmd> set xstats-hide-zero on|off
+
+.. note::
+
+	By default, the zero values are displayed for xstats.
+
 set port - rx/tx (for VF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

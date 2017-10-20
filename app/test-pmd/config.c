@@ -292,10 +292,13 @@ nic_xstats_display(portid_t port_id)
 	}
 
 	/* Display xstats */
-	for (idx_xstat = 0; idx_xstat < cnt_xstats; idx_xstat++)
+	for (idx_xstat = 0; idx_xstat < cnt_xstats; idx_xstat++) {
+		if (xstats_hide_zero && !xstats[idx_xstat].value)
+			continue;
 		printf("%s: %"PRIu64"\n",
 			xstats_names[idx_xstat].name,
 			xstats[idx_xstat].value);
+	}
 	free(xstats_names);
 	free(xstats);
 }
@@ -2864,6 +2867,12 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 			nb_rx_queue_stats_mappings++;
 		}
 	}
+}
+
+void
+set_xstats_hide_zero(uint8_t on_off)
+{
+	xstats_hide_zero = on_off;
 }
 
 static inline void
