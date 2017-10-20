@@ -161,6 +161,7 @@ static int32_t numa_on = 1; /**< NUMA is enabled by default. */
 static uint32_t nb_lcores;
 static uint32_t single_sa;
 static uint32_t single_sa_idx;
+static uint32_t frame_size;
 
 struct lcore_rx_queue {
 	uint16_t port_id;
@@ -843,6 +844,7 @@ print_usage(const char *prgname)
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -P : enable promiscuous mode\n"
 		"  -u PORTMASK: hexadecimal bitmask of unprotected ports\n"
+		"  -j FRAMESIZE: jumbo frame maximum size\n"
 		"  --"OPTION_CONFIG": (port,queue,lcore): "
 		"rx queues configuration\n"
 		"  --single-sa SAIDX: use single SA index for outbound, "
@@ -981,7 +983,7 @@ parse_args(int32_t argc, char **argv)
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "p:Pu:f:",
+	while ((opt = getopt_long(argc, argvopt, "p:Pu:f:j:",
 				lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -1019,6 +1021,23 @@ parse_args(int32_t argc, char **argv)
 				return -1;
 			}
 			f_present = 1;
+			break;
+		case 'j':
+			{
+				int32_t size = parse_decimal(optarg);
+				if (size <= 1518) {
+					printf("Invalid jumbo frame size\n");
+					if (size < 0) {
+						print_usage(prgname);
+						return -1;
+					}
+					printf("Using default value 9000\n");
+					frame_size = 9000;
+				} else {
+					frame_size = size;
+				}
+			}
+			printf("Enabled jumbo frames size %u\n", frame_size);
 			break;
 		case 0:
 			if (parse_args_long_options(lgopts, option_index)) {
@@ -1357,6 +1376,11 @@ port_init(uint16_t portid)
 	printf("Creating queues: nb_rx_queue=%d nb_tx_queue=%u...\n",
 			nb_rx_queue, nb_tx_queue);
 
+	if (frame_size) {
+		port_conf.rxmode.max_rx_pkt_len = frame_size;
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	}
+
 	ret = rte_eth_dev_configure(portid, nb_rx_queue, nb_tx_queue,
 			&port_conf);
 	if (ret < 0)
@@ -1421,11 +1445,14 @@ static void
 pool_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t nb_mbuf)
 {
 	char s[64];
+	uint32_t buff_size = frame_size ? (frame_size + RTE_PKTMBUF_HEADROOM) :
+			RTE_MBUF_DEFAULT_BUF_SIZE;
+
 
 	snprintf(s, sizeof(s), "mbuf_pool_%d", socket_id);
 	ctx->mbuf_pool = rte_pktmbuf_pool_create(s, nb_mbuf,
 			MEMPOOL_CACHE_SIZE, ipsec_metadata_size(),
-			RTE_MBUF_DEFAULT_BUF_SIZE,
+			buff_size,
 			socket_id);
 	if (ctx->mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool on socket %d\n",

@@ -119,7 +119,7 @@ The application has a number of command line options::
 
 
    ./build/ipsec-secgw [EAL options] --
-                        -p PORTMASK -P -u PORTMASK
+                        -p PORTMASK -P -u PORTMASK -j FRAMESIZE
                         --config (port,queue,lcore)[,(port,queue,lcore]
                         --single-sa SAIDX
                         -f CONFIG_FILE_PATH
@@ -134,6 +134,10 @@ Where:
     set to the Ethernet address of the port are accepted (default is enabled).
 
 *   ``-u PORTMASK``: hexadecimal bitmask of unprotected ports
+
+*   ``-j FRAMESIZE``: *optional*. Enables jumbo frames with the maximum size
+    specified as FRAMESIZE. If an invalid value is provided as FRAMESIZE
+    then the default value 9000 is used.
 
 *   ``--config (port,queue,lcore)[,(port,queue,lcore)]``: determines which queues
     from which ports are mapped to which cores.
