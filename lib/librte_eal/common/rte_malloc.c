@@ -262,6 +262,6 @@ rte_malloc_virt2iova(const void *addr)
 		iova = (uintptr_t)addr;
 	else
 		iova = elem->ms->iova +
-			((uintptr_t)addr - (uintptr_t)elem->ms->addr);
+			RTE_PTR_DIFF(addr, elem->ms->addr);
 	return iova;
 }
