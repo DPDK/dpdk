@@ -11070,7 +11070,7 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 	struct rte_pmd_i40e_ptype_info *ptype;
 	uint32_t buff_size;
 	uint8_t proto_id;
-	char name[16];
+	char name[RTE_PMD_I40E_DDP_NAME_SIZE];
 	uint32_t i, j, n;
 	bool inner_ip;
 	int ret;
