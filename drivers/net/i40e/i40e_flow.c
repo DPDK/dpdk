@@ -2558,6 +2558,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				(const struct rte_flow_item_ipv4 *)item->spec;
 			ipv4_mask =
 				(const struct rte_flow_item_ipv4 *)item->mask;
+			pctype = I40E_FILTER_PCTYPE_NONF_IPV4_OTHER;
+			layer_idx = I40E_FLXPLD_L3_IDX;
 
 			if (ipv4_spec && ipv4_mask && outer_ip) {
 				/* Check IPv4 mask and update input set */
@@ -2584,8 +2586,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
 					input_set |= I40E_INSET_IPV4_PROTO;
 
-				/* Get filter info */
-				pctype = I40E_FILTER_PCTYPE_NONF_IPV4_OTHER;
 				/* Check if it is fragment. */
 				frag_off = ipv4_spec->hdr.fragment_offset;
 				frag_off = rte_be_to_cpu_16(frag_off);
@@ -2604,8 +2604,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					ipv4_spec->hdr.src_addr;
 				filter->input.flow.ip4_flow.dst_ip =
 					ipv4_spec->hdr.dst_addr;
-
-				layer_idx = I40E_FLXPLD_L3_IDX;
 			} else if (!ipv4_spec && !ipv4_mask && !outer_ip) {
 				filter->input.flow_ext.inner_ip = true;
 				filter->input.flow_ext.iip_type =
@@ -2628,6 +2626,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				(const struct rte_flow_item_ipv6 *)item->spec;
 			ipv6_mask =
 				(const struct rte_flow_item_ipv6 *)item->mask;
+			pctype = I40E_FILTER_PCTYPE_NONF_IPV6_OTHER;
+			layer_idx = I40E_FLXPLD_L3_IDX;
 
 			if (ipv6_spec && ipv6_mask && outer_ip) {
 				/* Check IPv6 mask and update input set */
@@ -2677,11 +2677,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				if (ipv6_spec->hdr.proto ==
 				    I40E_IPV6_FRAG_HEADER)
 					pctype = I40E_FILTER_PCTYPE_FRAG_IPV6;
-				else
-					pctype =
-					     I40E_FILTER_PCTYPE_NONF_IPV6_OTHER;
-
-				layer_idx = I40E_FLXPLD_L3_IDX;
 			} else if (!ipv6_spec && !ipv6_mask && !outer_ip) {
 				filter->input.flow_ext.inner_ip = true;
 				filter->input.flow_ext.iip_type =
@@ -2701,6 +2696,12 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
 			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
 
+			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+				pctype =
+					I40E_FILTER_PCTYPE_NONF_IPV4_TCP;
+			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+				pctype =
+					I40E_FILTER_PCTYPE_NONF_IPV6_TCP;
 			if (tcp_spec && tcp_mask) {
 				/* Check TCP mask and update input set */
 				if (tcp_mask->hdr.sent_seq ||
@@ -2723,13 +2724,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					input_set |= I40E_INSET_DST_PORT;
 
 				/* Get filter info */
-				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-					pctype =
-					       I40E_FILTER_PCTYPE_NONF_IPV4_TCP;
-				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-					pctype =
-					       I40E_FILTER_PCTYPE_NONF_IPV6_TCP;
-
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.flow.tcp4_flow.src_port =
 						tcp_spec->hdr.src_port;
@@ -2750,6 +2744,13 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			udp_spec = (const struct rte_flow_item_udp *)item->spec;
 			udp_mask = (const struct rte_flow_item_udp *)item->mask;
 
+			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+				pctype =
+					I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
+			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+				pctype =
+					I40E_FILTER_PCTYPE_NONF_IPV6_UDP;
+
 			if (udp_spec && udp_mask) {
 				/* Check UDP mask and update input set*/
 				if (udp_mask->hdr.dgram_len ||
@@ -2767,13 +2768,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					input_set |= I40E_INSET_DST_PORT;
 
 				/* Get filter info */
-				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-					pctype =
-					       I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
-				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-					pctype =
-					       I40E_FILTER_PCTYPE_NONF_IPV6_UDP;
-
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.flow.udp4_flow.src_port =
 						udp_spec->hdr.src_port;
@@ -2827,6 +2821,13 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			sctp_mask =
 				(const struct rte_flow_item_sctp *)item->mask;
 
+			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+				pctype =
+					I40E_FILTER_PCTYPE_NONF_IPV4_SCTP;
+			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+				pctype =
+					I40E_FILTER_PCTYPE_NONF_IPV6_SCTP;
+
 			if (sctp_spec && sctp_mask) {
 				/* Check SCTP mask and update input set */
 				if (sctp_mask->hdr.cksum) {
@@ -2845,13 +2846,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					input_set |= I40E_INSET_SCTP_VT;
 
 				/* Get filter info */
-				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-					pctype =
-					      I40E_FILTER_PCTYPE_NONF_IPV4_SCTP;
-				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-					pctype =
-					      I40E_FILTER_PCTYPE_NONF_IPV6_SCTP;
-
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.flow.sctp4_flow.src_port =
 						sctp_spec->hdr.src_port;
