@@ -176,9 +176,6 @@ octeontx_fpa_gpool2handle(uint16_t gpool)
 	RTE_ASSERT(gpool < FPA_VF_MAX);
 
 	res = &fpadev.pool[gpool];
-	if (unlikely(res == NULL))
-		return 0;
-
 	return (uintptr_t)res->bar0 | gpool;
 }
 
