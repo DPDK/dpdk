@@ -336,8 +336,6 @@ igbuio_pci_open(struct uio_info *info, struct inode *inode)
 	struct pci_dev *dev = udev->pdev;
 	int err;
 
-	pci_reset_function(dev);
-
 	/* set bus master, which was cleared by the reset function */
 	pci_set_master(dev);
 
