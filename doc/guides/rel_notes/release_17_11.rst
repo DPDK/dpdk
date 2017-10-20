@@ -321,6 +321,23 @@ API Changes
 * ``rte_mem_phy2mch`` was used in Xen dom0 to obtain the physical address;
   remove this API as Xen dom0 support was removed.
 
+* **Some data type, structure members and functions related to physical address
+  are deprecated and have new alias with IOVA wording.**
+
+  * ``phys_addr_t`` can be often replaced by ``rte_iova_t`` of same size.
+  * ``RTE_BAD_PHYS_ADDR`` is often replaced by ``RTE_BAD_IOVA`` of same value.
+  * ``rte_memseg.phys_addr`` is aliased with ``rte_memseg.iova_addr``.
+  * ``rte_mem_virt2phy()`` can often be replaced by ``rte_mem_virt2iova``.
+  * ``rte_malloc_virt2phy`` is aliased with ``rte_malloc_virt2iova``.
+  * ``rte_memzone.phys_addr`` is aliased with ``rte_memzone.iova``.
+  * ``rte_mempool_objhdr.physaddr`` is aliased with ``rte_mempool_objhdr.iova``.
+  * ``rte_mempool_memhdr.phys_addr`` is aliased with ``rte_mempool_memhdr.iova``.
+  * ``rte_mempool_virt2phy()`` can be replaced by ``rte_mempool_virt2iova()``.
+  * ``rte_mempool_populate_phys*()`` are aliased with ``rte_mempool_populate_iova*()``
+  * ``rte_mbuf.buf_physaddr`` is aliased with ``rte_mbuf.buf_iova``.
+  * ``rte_mbuf_data_dma_addr*()`` are aliased with ``rte_mbuf_data_iova*()``.
+  * ``rte_pktmbuf_mtophys*`` are aliased with ``rte_pktmbuf_iova*()``.
+
 * **PCI bus API moved outside of the EAL**
 
   The PCI bus previously implemented within the EAL has been moved.
