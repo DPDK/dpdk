@@ -133,7 +133,7 @@ rte_mem_virt2phy(const void *virtaddr)
 
 	/* Cannot parse /proc/self/pagemap, no need to log errors everywhere */
 	if (!phys_addrs_available)
-		return RTE_BAD_PHYS_ADDR;
+		return RTE_BAD_IOVA;
 
 	/* standard page size */
 	page_size = getpagesize();
@@ -142,7 +142,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "%s(): cannot open /proc/self/pagemap: %s\n",
 			__func__, strerror(errno));
-		return RTE_BAD_PHYS_ADDR;
+		return RTE_BAD_IOVA;
 	}
 
 	virt_pfn = (unsigned long)virtaddr / page_size;
@@ -151,7 +151,7 @@ rte_mem_virt2phy(const void *virtaddr)
 		RTE_LOG(ERR, EAL, "%s(): seek error in /proc/self/pagemap: %s\n",
 				__func__, strerror(errno));
 		close(fd);
-		return RTE_BAD_PHYS_ADDR;
+		return RTE_BAD_IOVA;
 	}
 
 	retval = read(fd, &page, PFN_MASK_SIZE);
@@ -159,12 +159,12 @@ rte_mem_virt2phy(const void *virtaddr)
 	if (retval < 0) {
 		RTE_LOG(ERR, EAL, "%s(): cannot read /proc/self/pagemap: %s\n",
 				__func__, strerror(errno));
-		return RTE_BAD_PHYS_ADDR;
+		return RTE_BAD_IOVA;
 	} else if (retval != PFN_MASK_SIZE) {
 		RTE_LOG(ERR, EAL, "%s(): read %d bytes from /proc/self/pagemap "
 				"but expected %d:\n",
 				__func__, retval, PFN_MASK_SIZE);
-		return RTE_BAD_PHYS_ADDR;
+		return RTE_BAD_IOVA;
 	}
 
 	/*
@@ -172,7 +172,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	 * pagemap.txt in linux Documentation)
 	 */
 	if ((page & 0x7fffffffffffffULL) == 0)
-		return RTE_BAD_PHYS_ADDR;
+		return RTE_BAD_IOVA;
 
 	physaddr = ((page & 0x7fffffffffffffULL) * page_size)
 		+ ((unsigned long)virtaddr % page_size);
@@ -1031,9 +1031,9 @@ rte_eal_hugepage_init(void)
 			return -1;
 		}
 		if (rte_eal_iova_mode() == RTE_IOVA_VA)
-			mcfg->memseg[0].phys_addr = (uintptr_t)addr;
+			mcfg->memseg[0].iova = (uintptr_t)addr;
 		else
-			mcfg->memseg[0].phys_addr = RTE_BAD_PHYS_ADDR;
+			mcfg->memseg[0].iova = RTE_BAD_IOVA;
 		mcfg->memseg[0].addr = addr;
 		mcfg->memseg[0].hugepage_sz = RTE_PGSIZE_4K;
 		mcfg->memseg[0].len = internal_config.memory;
@@ -1282,7 +1282,7 @@ rte_eal_hugepage_init(void)
 			if (j == RTE_MAX_MEMSEG)
 				break;
 
-			mcfg->memseg[j].phys_addr = hugepage[i].physaddr;
+			mcfg->memseg[j].iova = hugepage[i].physaddr;
 			mcfg->memseg[j].addr = hugepage[i].final_va;
 			mcfg->memseg[j].len = hugepage[i].size;
 			mcfg->memseg[j].socket_id = hugepage[i].socket_id;
@@ -1293,7 +1293,7 @@ rte_eal_hugepage_init(void)
 #ifdef RTE_ARCH_PPC_64
 		/* Use the phy and virt address of the last page as segment
 		 * address for IBM Power architecture */
-			mcfg->memseg[j].phys_addr = hugepage[i].physaddr;
+			mcfg->memseg[j].iova = hugepage[i].physaddr;
 			mcfg->memseg[j].addr = hugepage[i].final_va;
 #endif
 			mcfg->memseg[j].len += mcfg->memseg[j].hugepage_sz;

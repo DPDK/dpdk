@@ -95,11 +95,11 @@ rte_dump_physmem_layout(FILE *f)
 		if (mcfg->memseg[i].addr == NULL)
 			break;
 
-		fprintf(f, "Segment %u: phys:0x%"PRIx64", len:%zu, "
+		fprintf(f, "Segment %u: IOVA:0x%"PRIx64", len:%zu, "
 		       "virt:%p, socket_id:%"PRId32", "
 		       "hugepage_sz:%"PRIu64", nchannel:%"PRIx32", "
 		       "nrank:%"PRIx32"\n", i,
-		       mcfg->memseg[i].phys_addr,
+		       mcfg->memseg[i].iova,
 		       mcfg->memseg[i].len,
 		       mcfg->memseg[i].addr,
 		       mcfg->memseg[i].socket_id,

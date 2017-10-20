@@ -108,7 +108,11 @@ typedef uint64_t rte_iova_t;
  * Physical memory segment descriptor.
  */
 struct rte_memseg {
-	phys_addr_t phys_addr;      /**< Start physical address. */
+	RTE_STD_C11
+	union {
+		phys_addr_t phys_addr;  /**< deprecated - Start physical address. */
+		rte_iova_t iova;        /**< Start IO address. */
+	};
 	RTE_STD_C11
 	union {
 		void *addr;         /**< Start virtual address. */
@@ -139,7 +143,7 @@ int rte_mem_lock_page(const void *virt);
  * @param virt
  *   The virtual address.
  * @return
- *   The physical address or RTE_BAD_PHYS_ADDR on error.
+ *   The physical address or RTE_BAD_IOVA on error.
  */
 phys_addr_t rte_mem_virt2phy(const void *virt);
 

@@ -713,7 +713,7 @@ vfio_type1_dma_map(int vfio_container_fd)
 		if (rte_eal_iova_mode() == RTE_IOVA_VA)
 			dma_map.iova = dma_map.vaddr;
 		else
-			dma_map.iova = ms[i].phys_addr;
+			dma_map.iova = ms[i].iova;
 		dma_map.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
 
 		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
@@ -772,7 +772,7 @@ vfio_spapr_dma_map(int vfio_container_fd)
 			break;
 
 		create.window_size = RTE_MAX(create.window_size,
-				ms[i].phys_addr + ms[i].len);
+				ms[i].iova + ms[i].len);
 	}
 
 	/* sPAPR requires window size to be a power of 2 */
@@ -816,7 +816,7 @@ vfio_spapr_dma_map(int vfio_container_fd)
 		if (rte_eal_iova_mode() == RTE_IOVA_VA)
 			dma_map.iova = dma_map.vaddr;
 		else
-			dma_map.iova = ms[i].phys_addr;
+			dma_map.iova = ms[i].iova;
 		dma_map.flags = VFIO_DMA_MAP_FLAG_READ |
 				 VFIO_DMA_MAP_FLAG_WRITE;
 
