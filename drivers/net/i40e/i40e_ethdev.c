@@ -11131,30 +11131,32 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
 					inner_ip = true;
-				} else if (!strncmp(name, "IPV4", 4) &&
+				} else if (!strncmp(name, "IPV4FRAG", 8) &&
 					   inner_ip) {
 					ptype_mapping[i].sw_ptype |=
 					    RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
-				} else if (!strncmp(name, "IPV6", 4) &&
-					   !inner_ip) {
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_INNER_L4_FRAG;
+				} else if (!strncmp(name, "IPV4", 4) &&
+					   inner_ip)
+					ptype_mapping[i].sw_ptype |=
+					    RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
+				else if (!strncmp(name, "IPV6", 4) &&
+					 !inner_ip) {
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 					inner_ip = true;
-				} else if (!strncmp(name, "IPV6", 4) &&
+				} else if (!strncmp(name, "IPV6FRAG", 8) &&
 					   inner_ip) {
 					ptype_mapping[i].sw_ptype |=
 					    RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
-				} else if (!strncmp(name, "IPV4FRAG", 8)) {
-					ptype_mapping[i].sw_ptype |=
-					    RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_INNER_L4_FRAG;
-				} else if (!strncmp(name, "IPV6FRAG", 8)) {
+				} else if (!strncmp(name, "IPV6", 4) &&
+					   inner_ip)
 					ptype_mapping[i].sw_ptype |=
 					    RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
-					ptype_mapping[i].sw_ptype |=
-						RTE_PTYPE_INNER_L4_FRAG;
-				} else if (!strncmp(name, "GTPC", 4))
+				else if (!strncmp(name, "GTPC", 4))
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_TUNNEL_GTPC;
 				else if (!strncmp(name, "GTPU", 4))
