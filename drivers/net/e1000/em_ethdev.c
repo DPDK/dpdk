@@ -560,6 +560,30 @@ em_set_pba(struct e1000_hw *hw)
 	E1000_WRITE_REG(hw, E1000_PBA, pba);
 }
 
+static void
+eth_em_rxtx_control(struct rte_eth_dev *dev,
+		    bool enable)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tctl, rctl;
+
+	tctl = E1000_READ_REG(hw, E1000_TCTL);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+	if (enable) {
+		/* enable Tx/Rx */
+		tctl |= E1000_TCTL_EN;
+		rctl |= E1000_RCTL_EN;
+	} else {
+		/* disable Tx/Rx */
+		tctl &= ~E1000_TCTL_EN;
+		rctl &= ~E1000_RCTL_EN;
+	}
+	E1000_WRITE_REG(hw, E1000_TCTL, tctl);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+	E1000_WRITE_FLUSH(hw);
+}
+
 static int
 eth_em_start(struct rte_eth_dev *dev)
 {
@@ -733,6 +757,9 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	adapter->stopped = 0;
 
+	eth_em_rxtx_control(dev, true);
+	eth_em_link_update(dev, 0);
+
 	PMD_INIT_LOG(DEBUG, "<<");
 
 	return 0;
@@ -758,6 +785,7 @@ eth_em_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
+	eth_em_rxtx_control(dev, false);
 	em_rxq_intr_disable(hw);
 	em_lsc_intr_disable(hw);
 
@@ -1584,7 +1612,6 @@ eth_em_interrupt_action(struct rte_eth_dev *dev,
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-	uint32_t tctl, rctl;
 	struct rte_eth_link link;
 	int ret;
 
@@ -1615,21 +1642,6 @@ eth_em_interrupt_action(struct rte_eth_dev *dev,
 	PMD_INIT_LOG(DEBUG, "PCI Address: %04d:%02d:%02d:%d",
 		     pci_dev->addr.domain, pci_dev->addr.bus,
 		     pci_dev->addr.devid, pci_dev->addr.function);
-
-	tctl = E1000_READ_REG(hw, E1000_TCTL);
-	rctl = E1000_READ_REG(hw, E1000_RCTL);
-	if (link.link_status) {
-		/* enable Tx/Rx */
-		tctl |= E1000_TCTL_EN;
-		rctl |= E1000_RCTL_EN;
-	} else {
-		/* disable Tx/Rx */
-		tctl &= ~E1000_TCTL_EN;
-		rctl &= ~E1000_RCTL_EN;
-	}
-	E1000_WRITE_REG(hw, E1000_TCTL, tctl);
-	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
-	E1000_WRITE_FLUSH(hw);
 
 	return 0;
 }

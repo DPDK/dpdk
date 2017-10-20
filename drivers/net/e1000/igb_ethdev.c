@@ -1277,6 +1277,31 @@ eth_igb_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+eth_igb_rxtx_control(struct rte_eth_dev *dev,
+		     bool enable)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t tctl, rctl;
+
+	tctl = E1000_READ_REG(hw, E1000_TCTL);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+
+	if (enable) {
+		/* enable Tx/Rx */
+		tctl |= E1000_TCTL_EN;
+		rctl |= E1000_RCTL_EN;
+	} else {
+		/* disable Tx/Rx */
+		tctl &= ~E1000_TCTL_EN;
+		rctl &= ~E1000_RCTL_EN;
+	}
+	E1000_WRITE_REG(hw, E1000_TCTL, tctl);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+	E1000_WRITE_FLUSH(hw);
+}
+
 static int
 eth_igb_start(struct rte_eth_dev *dev)
 {
@@ -1480,6 +1505,9 @@ eth_igb_start(struct rte_eth_dev *dev)
 	/* restore all types filter */
 	igb_filter_restore(dev);
 
+	eth_igb_rxtx_control(dev, true);
+	eth_igb_link_update(dev, 0);
+
 	PMD_INIT_LOG(DEBUG, "<<");
 
 	return 0;
@@ -1504,6 +1532,8 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_eth_link link;
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	eth_igb_rxtx_control(dev, false);
 
 	igb_intr_disable(hw);
 
@@ -2835,7 +2865,6 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev,
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	uint32_t tctl, rctl;
 	struct rte_eth_link link;
 	int ret;
 
@@ -2877,20 +2906,6 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev,
 			     pci_dev->addr.bus,
 			     pci_dev->addr.devid,
 			     pci_dev->addr.function);
-		tctl = E1000_READ_REG(hw, E1000_TCTL);
-		rctl = E1000_READ_REG(hw, E1000_RCTL);
-		if (link.link_status) {
-			/* enable Tx/Rx */
-			tctl |= E1000_TCTL_EN;
-			rctl |= E1000_RCTL_EN;
-		} else {
-			/* disable Tx/Rx */
-			tctl &= ~E1000_TCTL_EN;
-			rctl &= ~E1000_RCTL_EN;
-		}
-		E1000_WRITE_REG(hw, E1000_TCTL, tctl);
-		E1000_WRITE_REG(hw, E1000_RCTL, rctl);
-		E1000_WRITE_FLUSH(hw);
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
 					      NULL);
 	}
