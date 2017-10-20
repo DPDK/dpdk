@@ -157,7 +157,11 @@ struct rte_mempool_objsz {
 struct rte_mempool_objhdr {
 	STAILQ_ENTRY(rte_mempool_objhdr) next; /**< Next in list. */
 	struct rte_mempool *mp;          /**< The mempool owning the object. */
-	phys_addr_t physaddr;            /**< Physical address of the object. */
+	RTE_STD_C11
+	union {
+		rte_iova_t iova;         /**< IO address of the object. */
+		phys_addr_t physaddr;    /**< deprecated - Physical address of the object. */
+	};
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	uint64_t cookie;                 /**< Debug cookie. */
 #endif
@@ -203,7 +207,11 @@ struct rte_mempool_memhdr {
 	STAILQ_ENTRY(rte_mempool_memhdr) next; /**< Next in list. */
 	struct rte_mempool *mp;  /**< The mempool owning the chunk */
 	void *addr;              /**< Virtual address of the chunk */
-	phys_addr_t phys_addr;   /**< Physical address of the chunk */
+	RTE_STD_C11
+	union {
+		rte_iova_t iova;       /**< IO address of the chunk */
+		phys_addr_t phys_addr; /**< Physical address of the chunk */
+	};
 	size_t len;              /**< length of the chunk */
 	rte_mempool_memchunk_free_cb_t *free_cb; /**< Free callback */
 	void *opaque;            /**< Argument passed to the free callback */
@@ -417,7 +425,7 @@ typedef int (*rte_mempool_get_capabilities_t)(const struct rte_mempool *mp,
  * Notify new memory area to mempool.
  */
 typedef int (*rte_mempool_ops_register_memory_area_t)
-(const struct rte_mempool *mp, char *vaddr, phys_addr_t paddr, size_t len);
+(const struct rte_mempool *mp, char *vaddr, rte_iova_t iova, size_t len);
 
 /** Structure defining mempool operations structure */
 struct rte_mempool_ops {
@@ -570,8 +578,8 @@ rte_mempool_ops_get_capabilities(const struct rte_mempool *mp,
  *   Pointer to the memory pool.
  * @param vaddr
  *   Pointer to the buffer virtual address.
- * @param paddr
- *   Pointer to the buffer physical address.
+ * @param iova
+ *   Pointer to the buffer IO address.
  * @param len
  *   Pool size.
  * @return
@@ -581,7 +589,7 @@ rte_mempool_ops_get_capabilities(const struct rte_mempool *mp,
  */
 int
 rte_mempool_ops_register_memory_area(const struct rte_mempool *mp,
-				char *vaddr, phys_addr_t paddr, size_t len);
+				char *vaddr, rte_iova_t iova, size_t len);
 
 /**
  * @internal wrapper for mempool_ops free callback.
@@ -797,11 +805,10 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  * @param vaddr
  *   Virtual address of the externally allocated memory buffer.
  *   Will be used to store mempool objects.
- * @param paddr
- *   Array of physical addresses of the pages that comprises given memory
- *   buffer.
+ * @param iova
+ *   Array of IO addresses of the pages that comprises given memory buffer.
  * @param pg_num
- *   Number of elements in the paddr array.
+ *   Number of elements in the iova array.
  * @param pg_shift
  *   LOG2 of the physical pages size.
  * @return
@@ -814,7 +821,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
 		rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 		int socket_id, unsigned flags, void *vaddr,
-		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);
+		const rte_iova_t iova[], uint32_t pg_num, uint32_t pg_shift);
 
 /**
  * Create an empty mempool
@@ -1462,7 +1469,7 @@ rte_mempool_virt2phy(__rte_unused const struct rte_mempool *mp, const void *elt)
 	const struct rte_mempool_objhdr *hdr;
 	hdr = (const struct rte_mempool_objhdr *)RTE_PTR_SUB(elt,
 		sizeof(*hdr));
-	return hdr->physaddr;
+	return hdr->iova;
 }
 
 /**
@@ -1573,11 +1580,10 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
  * @param total_elt_sz
  *   The size of each element, including header and trailer, as returned
  *   by rte_mempool_calc_obj_size().
- * @param paddr
- *   Array of physical addresses of the pages that comprises given memory
- *   buffer.
+ * @param iova
+ *   Array of IO addresses of the pages that comprises given memory buffer.
  * @param pg_num
- *   Number of elements in the paddr array.
+ *   Number of elements in the iova array.
  * @param pg_shift
  *   LOG2 of the physical pages size.
  * @param flags
@@ -1589,7 +1595,7 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
  *   is the actual number of elements that can be stored in that buffer.
  */
 ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num,
-	size_t total_elt_sz, const phys_addr_t paddr[], uint32_t pg_num,
+	size_t total_elt_sz, const rte_iova_t iova[], uint32_t pg_num,
 	uint32_t pg_shift, unsigned int flags);
 
 /**

@@ -220,7 +220,7 @@ octeontx_fpavf_get_capabilities(const struct rte_mempool *mp,
 
 static int
 octeontx_fpavf_register_memory_area(const struct rte_mempool *mp,
-				    char *vaddr, phys_addr_t paddr, size_t len)
+				    char *vaddr, rte_iova_t paddr, size_t len)
 {
 	struct octeontx_pool_info *pool_info;
 

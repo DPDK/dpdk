@@ -221,7 +221,7 @@ octeontx_fpapf_pool_setup(unsigned int gpool, unsigned int buf_size,
 			  signed short buf_offset, unsigned int max_buf_count)
 {
 	void *memptr = NULL;
-	phys_addr_t phys_addr;
+	rte_iova_t phys_addr;
 	unsigned int memsz;
 	struct fpavf_res *fpa = NULL;
 	uint64_t reg;

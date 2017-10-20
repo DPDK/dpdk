@@ -78,7 +78,7 @@ nicvf_mempool_phy_offset(struct rte_mempool *mp)
 
 	hdr = STAILQ_FIRST(&mp->mem_list);
 	assert(hdr != NULL);
-	return (uint64_t)((uintptr_t)hdr->addr - hdr->phys_addr);
+	return (uint64_t)((uintptr_t)hdr->addr - hdr->iova);
 }
 
 static inline uint16_t

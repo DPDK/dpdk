@@ -604,7 +604,7 @@ vmxnet3_dev_setup_memreg(struct rte_eth_dev *dev)
 		Vmxnet3_MemoryRegion *mr = &hw->memRegs->memRegs[j];
 
 		mr->startPA =
-			(uintptr_t)STAILQ_FIRST(&mp[i]->mem_list)->phys_addr;
+			(uintptr_t)STAILQ_FIRST(&mp[i]->mem_list)->iova;
 		mr->length = STAILQ_FIRST(&mp[i]->mem_list)->len <= INT32_MAX ?
 			STAILQ_FIRST(&mp[i]->mem_list)->len : INT32_MAX;
 		mr->txQueueBits = index[i];

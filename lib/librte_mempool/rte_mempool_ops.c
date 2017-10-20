@@ -142,14 +142,14 @@ rte_mempool_ops_get_capabilities(const struct rte_mempool *mp,
 /* wrapper to notify new memory area to external mempool */
 int
 rte_mempool_ops_register_memory_area(const struct rte_mempool *mp, char *vaddr,
-					phys_addr_t paddr, size_t len)
+					rte_iova_t iova, size_t len)
 {
 	struct rte_mempool_ops *ops;
 
 	ops = rte_mempool_get_ops(mp->ops_index);
 
 	RTE_FUNC_PTR_OR_ERR_RET(ops->register_memory_area, -ENOTSUP);
-	return ops->register_memory_area(mp, vaddr, paddr, len);
+	return ops->register_memory_area(mp, vaddr, iova, len);
 }
 
 /* sets mempool ops previously registered by rte_mempool_register_ops. */
