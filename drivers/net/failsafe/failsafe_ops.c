@@ -38,6 +38,7 @@
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
 #include <rte_flow.h>
+#include <rte_cycles.h>
 
 #include "failsafe_private.h"
 
@@ -592,13 +593,18 @@ fs_stats_get(struct rte_eth_dev *dev,
 
 	rte_memcpy(stats, &PRIV(dev)->stats_accumulator, sizeof(*stats));
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
-		ret = rte_eth_stats_get(PORT_ID(sdev), &sdev->stats_snapshot);
+		struct rte_eth_stats *snapshot = &sdev->stats_snapshot.stats;
+		uint64_t *timestamp = &sdev->stats_snapshot.timestamp;
+
+		ret = rte_eth_stats_get(PORT_ID(sdev), snapshot);
 		if (ret) {
 			ERROR("Operation rte_eth_stats_get failed for sub_device %d with error %d",
 				  i, ret);
+			*timestamp = 0;
 			return ret;
 		}
-		failsafe_stats_increment(stats, &sdev->stats_snapshot);
+		*timestamp = rte_rdtsc();
+		failsafe_stats_increment(stats, snapshot);
 	}
 	return 0;
 }

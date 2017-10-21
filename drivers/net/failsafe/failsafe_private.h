@@ -93,6 +93,11 @@ enum dev_state {
 	DEV_STARTED,
 };
 
+struct fs_stats {
+	struct rte_eth_stats stats;
+	uint64_t timestamp;
+};
+
 struct sub_device {
 	/* Exhaustive DPDK device description */
 	struct rte_devargs devargs;
@@ -103,7 +108,7 @@ struct sub_device {
 	/* Device state machine */
 	enum dev_state state;
 	/* Last stats snapshot passed to user */
-	struct rte_eth_stats stats_snapshot;
+	struct fs_stats stats_snapshot;
 	/* Some device are defined as a command line */
 	char *cmdline;
 	/* fail-safe device backreference */

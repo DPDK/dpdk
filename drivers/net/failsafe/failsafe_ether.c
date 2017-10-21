@@ -35,6 +35,7 @@
 
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
+#include <rte_cycles.h>
 
 #include "failsafe_private.h"
 
@@ -317,12 +318,18 @@ fs_dev_stats_save(struct sub_device *sdev)
 
 	/* Attempt to read current stats. */
 	err = rte_eth_stats_get(PORT_ID(sdev), &stats);
-	if (err)
-		WARN("Could not access latest statistics from sub-device %d,"
-			 " using latest snapshot.\n", SUB_ID(sdev));
+	if (err) {
+		uint64_t timestamp = sdev->stats_snapshot.timestamp;
+
+		WARN("Could not access latest statistics from sub-device %d.\n",
+			 SUB_ID(sdev));
+		if (timestamp != 0)
+			WARN("Using latest snapshot taken before %"PRIu64" seconds.\n",
+				 (rte_rdtsc() - timestamp) / rte_get_tsc_hz());
+	}
 	failsafe_stats_increment(&PRIV(sdev->fs_dev)->stats_accumulator,
-			err ? &sdev->stats_snapshot : &stats);
-	memset(&sdev->stats_snapshot, 0, sizeof(struct rte_eth_stats));
+			err ? &sdev->stats_snapshot.stats : &stats);
+	memset(&sdev->stats_snapshot, 0, sizeof(sdev->stats_snapshot));
 }
 
 static inline int
