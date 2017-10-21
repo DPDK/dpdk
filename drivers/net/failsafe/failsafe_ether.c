@@ -312,8 +312,16 @@ fs_dev_remove(struct sub_device *sdev)
 static void
 fs_dev_stats_save(struct sub_device *sdev)
 {
+	struct rte_eth_stats stats;
+	int err;
+
+	/* Attempt to read current stats. */
+	err = rte_eth_stats_get(PORT_ID(sdev), &stats);
+	if (err)
+		WARN("Could not access latest statistics from sub-device %d,"
+			 " using latest snapshot.\n", SUB_ID(sdev));
 	failsafe_stats_increment(&PRIV(sdev->fs_dev)->stats_accumulator,
-			&sdev->stats_snapshot);
+			err ? &sdev->stats_snapshot : &stats);
 	memset(&sdev->stats_snapshot, 0, sizeof(struct rte_eth_stats));
 }
 
