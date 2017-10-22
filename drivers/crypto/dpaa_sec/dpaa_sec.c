@@ -623,11 +623,10 @@ static inline struct dpaa_sec_job *
 build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 {
 	struct rte_crypto_sym_op *sym = op->sym;
-	struct rte_mbuf *mbuf = sym->m_src;
 	struct dpaa_sec_job *cf;
 	struct dpaa_sec_op_ctx *ctx;
 	struct qm_sg_entry *sg;
-	phys_addr_t start_addr;
+	phys_addr_t src_start_addr, dst_start_addr;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 
@@ -637,11 +636,17 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	cf = &ctx->job;
 	ctx->op = op;
-	start_addr = rte_pktmbuf_mtophys(mbuf);
+
+	src_start_addr = rte_pktmbuf_mtophys(sym->m_src);
+
+	if (sym->m_dst)
+		dst_start_addr = rte_pktmbuf_mtophys(sym->m_dst);
+	else
+		dst_start_addr = src_start_addr;
 
 	/* output */
 	sg = &cf->sg[0];
-	qm_sg_entry_set64(sg, start_addr + sym->cipher.data.offset);
+	qm_sg_entry_set64(sg, dst_start_addr + sym->cipher.data.offset);
 	sg->length = sym->cipher.data.length + ses->iv.length;
 	cpu_to_hw_sg(sg);
 
@@ -661,7 +666,7 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	cpu_to_hw_sg(sg);
 
 	sg++;
-	qm_sg_entry_set64(sg, start_addr + sym->cipher.data.offset);
+	qm_sg_entry_set64(sg, src_start_addr + sym->cipher.data.offset);
 	sg->length = sym->cipher.data.length;
 	sg->final = 1;
 	cpu_to_hw_sg(sg);
@@ -673,16 +678,20 @@ static inline struct dpaa_sec_job *
 build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 {
 	struct rte_crypto_sym_op *sym = op->sym;
-	struct rte_mbuf *mbuf = sym->m_src;
 	struct dpaa_sec_job *cf;
 	struct dpaa_sec_op_ctx *ctx;
 	struct qm_sg_entry *sg;
-	phys_addr_t start_addr;
 	uint32_t length = 0;
+	phys_addr_t src_start_addr, dst_start_addr;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 
-	start_addr = mbuf->buf_physaddr + mbuf->data_off;
+	src_start_addr = sym->m_src->buf_physaddr + sym->m_src->data_off;
+
+	if (sym->m_dst)
+		dst_start_addr = sym->m_dst->buf_physaddr + sym->m_dst->data_off;
+	else
+		dst_start_addr = src_start_addr;
 
 	ctx = dpaa_sec_alloc_ctx(ses);
 	if (!ctx)
@@ -710,7 +719,7 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 			cpu_to_hw_sg(sg);
 			sg++;
 		}
-		qm_sg_entry_set64(sg, start_addr + sym->aead.data.offset);
+		qm_sg_entry_set64(sg, src_start_addr + sym->aead.data.offset);
 		sg->length = sym->aead.data.length;
 		length += sg->length;
 		sg->final = 1;
@@ -730,7 +739,7 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 			cpu_to_hw_sg(sg);
 			sg++;
 		}
-		qm_sg_entry_set64(sg, start_addr + sym->aead.data.offset);
+		qm_sg_entry_set64(sg, src_start_addr + sym->aead.data.offset);
 		sg->length = sym->aead.data.length;
 		length += sg->length;
 		cpu_to_hw_sg(sg);
@@ -755,7 +764,7 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	sg++;
 	qm_sg_entry_set64(&cf->sg[0], dpaa_mem_vtop(sg));
 	qm_sg_entry_set64(sg,
-		start_addr + sym->aead.data.offset - ses->auth_only_len);
+		dst_start_addr + sym->aead.data.offset - ses->auth_only_len);
 	sg->length = sym->aead.data.length + ses->auth_only_len;
 	length = sg->length;
 	if (is_encode(ses)) {
@@ -781,16 +790,19 @@ static inline struct dpaa_sec_job *
 build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 {
 	struct rte_crypto_sym_op *sym = op->sym;
-	struct rte_mbuf *mbuf = sym->m_src;
 	struct dpaa_sec_job *cf;
 	struct dpaa_sec_op_ctx *ctx;
 	struct qm_sg_entry *sg;
-	phys_addr_t start_addr;
+	phys_addr_t src_start_addr, dst_start_addr;
 	uint32_t length = 0;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 
-	start_addr = mbuf->buf_physaddr + mbuf->data_off;
+	src_start_addr = sym->m_src->buf_physaddr + sym->m_src->data_off;
+	if (sym->m_dst)
+		dst_start_addr = sym->m_dst->buf_physaddr + sym->m_dst->data_off;
+	else
+		dst_start_addr = src_start_addr;
 
 	ctx = dpaa_sec_alloc_ctx(ses);
 	if (!ctx)
@@ -810,7 +822,7 @@ build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		cpu_to_hw_sg(sg);
 
 		sg++;
-		qm_sg_entry_set64(sg, start_addr + sym->auth.data.offset);
+		qm_sg_entry_set64(sg, src_start_addr + sym->auth.data.offset);
 		sg->length = sym->auth.data.length;
 		length += sg->length;
 		sg->final = 1;
@@ -823,7 +835,7 @@ build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 		sg++;
 
-		qm_sg_entry_set64(sg, start_addr + sym->auth.data.offset);
+		qm_sg_entry_set64(sg, src_start_addr + sym->auth.data.offset);
 		sg->length = sym->auth.data.length;
 		length += sg->length;
 		cpu_to_hw_sg(sg);
@@ -847,7 +859,7 @@ build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	/* output */
 	sg++;
 	qm_sg_entry_set64(&cf->sg[0], dpaa_mem_vtop(sg));
-	qm_sg_entry_set64(sg, start_addr + sym->cipher.data.offset);
+	qm_sg_entry_set64(sg, dst_start_addr + sym->cipher.data.offset);
 	sg->length = sym->cipher.data.length;
 	length = sg->length;
 	if (is_encode(ses)) {
