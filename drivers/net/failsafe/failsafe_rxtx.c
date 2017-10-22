@@ -43,7 +43,8 @@ fs_rx_unsafe(struct sub_device *sdev)
 {
 	return (ETH(sdev) == NULL) ||
 		(ETH(sdev)->rx_pkt_burst == NULL) ||
-		(sdev->state != DEV_STARTED);
+		(sdev->state != DEV_STARTED) ||
+		(sdev->remove != 0);
 }
 
 static inline int
