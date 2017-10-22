@@ -1187,7 +1187,8 @@ static const struct blockcipher_test_case triple_des_chain_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC
 	},
 	{
 		.test_descr = "3DES-128-CBC HMAC-SHA1 Decryption Digest"
@@ -1196,7 +1197,8 @@ static const struct blockcipher_test_case triple_des_chain_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC
 	},
 	{
 		.test_descr = "3DES-128-CBC HMAC-SHA1 Encryption Digest"

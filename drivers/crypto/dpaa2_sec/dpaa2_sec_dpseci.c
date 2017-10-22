@@ -90,10 +90,16 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 	uint32_t auth_only_len = sess->ext_params.aead_ctxt.auth_only_len;
 	int icv_len = sess->digest_length, retval;
 	uint8_t *old_icv;
+	struct rte_mbuf *dst;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			sess->iv.offset);
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (sym_op->m_dst)
+		dst = sym_op->m_dst;
+	else
+		dst = sym_op->m_src;
 
 	/* TODO we are using the first FLE entry to store Mbuf and session ctxt.
 	 * Currently we donot know which FLE has the mbuf stored.
@@ -155,9 +161,9 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FLE_SG_EXT(fle);
 
 	/* Configure Output SGE for Encap/Decap */
-	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(sym_op->m_src));
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(dst));
 	DPAA2_SET_FLE_OFFSET(sge, sym_op->aead.data.offset +
-				sym_op->m_src->data_off - auth_only_len);
+				dst->data_off - auth_only_len);
 	sge->length = sym_op->aead.data.length + auth_only_len;
 
 	if (sess->dir == DIR_ENC) {
@@ -235,8 +241,14 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	uint8_t *old_icv;
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			sess->iv.offset);
+	struct rte_mbuf *dst;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (sym_op->m_dst)
+		dst = sym_op->m_dst;
+	else
+		dst = sym_op->m_src;
 
 	/* we are using the first FLE entry to store Mbuf.
 	 * Currently we donot know which FLE has the mbuf stored.
@@ -300,9 +312,9 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FLE_SG_EXT(fle);
 
 	/* Configure Output SGE for Encap/Decap */
-	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(sym_op->m_src));
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(dst));
 	DPAA2_SET_FLE_OFFSET(sge, sym_op->cipher.data.offset +
-				sym_op->m_src->data_off);
+				dst->data_off);
 	sge->length = sym_op->cipher.data.length;
 
 	if (sess->dir == DIR_ENC) {
@@ -456,8 +468,14 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	struct ctxt_priv *priv = sess->ctxt;
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			sess->iv.offset);
+	struct rte_mbuf *dst;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (sym_op->m_dst)
+		dst = sym_op->m_dst;
+	else
+		dst = sym_op->m_src;
 
 	retval = rte_mempool_get(priv->fle_pool, (void **)(&fle));
 	if (retval) {
@@ -503,9 +521,9 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_MBUF_VADDR_TO_IOVA(sym_op->m_src));
+	DPAA2_SET_FLE_ADDR(fle, DPAA2_MBUF_VADDR_TO_IOVA(dst));
 	DPAA2_SET_FLE_OFFSET(fle, sym_op->cipher.data.offset +
-			     sym_op->m_src->data_off);
+			     dst->data_off);
 
 	fle->length = sym_op->cipher.data.length + sess->iv.length;
 
@@ -657,6 +675,7 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 	struct qbman_fle *fle;
 	struct rte_crypto_op *op;
 	struct ctxt_priv *priv;
+	struct rte_mbuf *dst, *src;
 
 	fle = (struct qbman_fle *)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
 
@@ -679,10 +698,17 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 			DPAA2_GET_FLE_ADDR((fle - 1)));
 
 	/* Prefeth op */
-	rte_prefetch0(op->sym->m_src);
+	src = op->sym->m_src;
+	rte_prefetch0(src);
+
+	if (op->sym->m_dst) {
+		dst = op->sym->m_dst;
+		rte_prefetch0(dst);
+	} else
+		dst = src;
 
 	PMD_RX_LOG(DEBUG, "mbuf %p BMAN buf addr %p",
-		   (void *)op->sym->m_src, op->sym->m_src->buf_addr);
+		   (void *)dst, dst->buf_addr);
 
 	PMD_RX_LOG(DEBUG, "fdaddr =%p bpid =%d meta =%d off =%d, len =%d",
 		   (void *)DPAA2_GET_FD_ADDR(fd),
