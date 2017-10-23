@@ -72,14 +72,14 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	priv_lock(priv);
-	if (rss_conf->rss_key_len) {
+	if (rss_conf->rss_key && rss_conf->rss_key_len) {
 		priv->rss_conf.rss_key = rte_realloc(priv->rss_conf.rss_key,
 						     rss_conf->rss_key_len, 0);
 		if (!priv->rss_conf.rss_key) {
 			ret = -ENOMEM;
 			goto out;
 		}
-		memcpy(&priv->rss_conf.rss_key, rss_conf->rss_key,
+		memcpy(priv->rss_conf.rss_key, rss_conf->rss_key,
 		       rss_conf->rss_key_len);
 		priv->rss_conf.rss_key_len = rss_conf->rss_key_len;
 	}
@@ -105,22 +105,19 @@ mlx5_rss_hash_conf_get(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_conf *rss_conf)
 {
 	struct priv *priv = dev->data->dev_private;
-	int ret = 0;
 
+	if (!rss_conf)
+		return -EINVAL;
 	priv_lock(priv);
-	if (!rss_conf->rss_key) {
-		ret = -ENOMEM;
-		goto out;
+	if (rss_conf->rss_key &&
+	    (rss_conf->rss_key_len >= priv->rss_conf.rss_key_len)) {
+		memcpy(rss_conf->rss_key, priv->rss_conf.rss_key,
+		       priv->rss_conf.rss_key_len);
 	}
-	if (rss_conf->rss_key_len < priv->rss_conf.rss_key_len) {
-		ret = -EINVAL;
-		goto out;
-	}
-	memcpy(rss_conf->rss_key, priv->rss_conf.rss_key,
-	       priv->rss_conf.rss_key_len);
-out:
+	rss_conf->rss_key_len = priv->rss_conf.rss_key_len;
+	rss_conf->rss_hf = priv->rss_conf.rss_hf;
 	priv_unlock(priv);
-	return ret;
+	return 0;
 }
 
 /**
