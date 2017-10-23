@@ -140,11 +140,20 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 			 */
 			struct rte_event *ev_temp = rte_malloc(NULL,
 				sizeof(struct rte_event), 0);
+
+			if (!ev_temp) {
+				if (!loop)
+					return num_tx;
+				frames_to_send = loop;
+				PMD_DRV_LOG(ERR, "Unable to allocate memory");
+				goto send_partial;
+			}
 			rte_memcpy(ev_temp, event, sizeof(struct rte_event));
 			DPAA2_SET_FD_ADDR((&fd_arr[loop]), ev_temp);
 			DPAA2_SET_FD_LEN((&fd_arr[loop]),
 					 sizeof(struct rte_event));
 		}
+send_partial:
 		loop = 0;
 		while (loop < frames_to_send) {
 			loop += qbman_swp_enqueue_multiple_desc(swp,

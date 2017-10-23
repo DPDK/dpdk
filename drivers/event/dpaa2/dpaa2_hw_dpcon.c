@@ -100,7 +100,7 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 
 	TAILQ_INSERT_TAIL(&dpcon_dev_list, dpcon_node, next);
 
-	PMD_DRV_LOG(DEBUG, "DPAA2: Added [dpcon.%d]", dpcon_id);
+	RTE_LOG(DEBUG, PMD, "DPAA2: Added [dpcon.%d]\n", dpcon_id);
 
 	return 0;
 }
