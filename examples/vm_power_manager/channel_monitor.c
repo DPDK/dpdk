@@ -64,7 +64,7 @@
 uint64_t vsi_pkt_count_prev[384];
 uint64_t rdtsc_prev[384];
 
-double time_period_s = 1;
+double time_period_ms = 1;
 static volatile unsigned run_loop = 1;
 static int global_event_fd;
 static unsigned int policy_is_set;
@@ -542,7 +542,7 @@ run_channel_monitor(void)
 					process_request(&pkt, chan_info);
 			}
 		}
-		rte_delay_us(time_period_s*1000000);
+		rte_delay_us(time_period_ms*1000);
 		if (policy_is_set) {
 			int j;
 
