@@ -125,9 +125,12 @@ struct queue_storage_info_t {
 	int toggle;
 };
 
+struct dpaa2_queue;
+
 typedef void (dpaa2_queue_cb_dqrr_t)(struct qbman_swp *swp,
 		const struct qbman_fd *fd,
 		const struct qbman_result *dq,
+		struct dpaa2_queue *rxq,
 		struct rte_event *ev);
 
 struct dpaa2_queue {
@@ -144,6 +147,7 @@ struct dpaa2_queue {
 		struct queue_storage_info_t *q_storage;
 		struct qbman_result *cscn;
 	};
+	struct rte_event ev;
 	dpaa2_queue_cb_dqrr_t *cb;
 };
 

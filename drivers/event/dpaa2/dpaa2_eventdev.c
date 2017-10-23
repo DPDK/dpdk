@@ -189,10 +189,14 @@ RETRY:
 static void dpaa2_eventdev_process_parallel(struct qbman_swp *swp,
 					    const struct qbman_fd *fd,
 					    const struct qbman_result *dq,
+					    struct dpaa2_queue *rxq,
 					    struct rte_event *ev)
 {
 	struct rte_event *ev_temp =
 		(struct rte_event *)DPAA2_GET_FD_ADDR(fd);
+
+	RTE_SET_USED(rxq);
+
 	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
 	rte_free(ev_temp);
 
@@ -202,6 +206,7 @@ static void dpaa2_eventdev_process_parallel(struct qbman_swp *swp,
 static void dpaa2_eventdev_process_atomic(struct qbman_swp *swp,
 					  const struct qbman_fd *fd,
 					  const struct qbman_result *dq,
+					  struct dpaa2_queue *rxq,
 					  struct rte_event *ev)
 {
 	struct rte_event *ev_temp =
@@ -209,6 +214,7 @@ static void dpaa2_eventdev_process_atomic(struct qbman_swp *swp,
 	uint8_t dqrr_index = qbman_get_dqrr_idx(dq);
 
 	RTE_SET_USED(swp);
+	RTE_SET_USED(rxq);
 
 	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
 	rte_free(ev_temp);
@@ -265,7 +271,7 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 
 		rxq = (struct dpaa2_queue *)qbman_result_DQ_fqd_ctx(dq);
 		if (rxq) {
-			rxq->cb(swp, fd, dq, &ev[num_pkts]);
+			rxq->cb(swp, fd, dq, rxq, &ev[num_pkts]);
 		} else {
 			qbman_swp_dqrr_consume(swp, dq);
 			PMD_DRV_LOG(ERR, "Null Return VQ received\n");
