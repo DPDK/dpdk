@@ -44,8 +44,6 @@ DPDK_2.0 {
 	rte_free;
 	rte_get_hpet_cycles;
 	rte_get_hpet_hz;
-	rte_get_log_level;
-	rte_get_log_type;
 	rte_get_tsc_hz;
 	rte_hexdump;
 	rte_intr_callback_register;
@@ -78,8 +76,6 @@ DPDK_2.0 {
 	rte_openlog_stream;
 	rte_realloc;
 	rte_set_application_usage_hook;
-	rte_set_log_level;
-	rte_set_log_type;
 	rte_socket_id;
 	rte_strerror;
 	rte_strsplit;

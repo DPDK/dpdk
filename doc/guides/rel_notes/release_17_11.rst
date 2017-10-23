@@ -283,6 +283,14 @@ API Changes
   The function ``rte_cryptodev_allocate_driver()`` has been modified.
   An extra parameter ``struct cryptodev_driver *crypto_drv`` has been added.
 
+* **Removed deprecated functions to manage log level or type.**
+
+  The functions ``rte_set_log_level()``, ``rte_get_log_level()``,
+  ``rte_set_log_type()`` and ``rte_get_log_type()`` have been removed.
+  They are respectively replaced by ``rte_log_set_global_level()``,
+  ``rte_log_get_global_level()``, ``rte_log_set_level()`` and
+  ``rte_log_get_level()``.
+
 
 ABI Changes
 -----------
@@ -343,7 +351,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cmdline.so.2
      librte_cryptodev.so.3
      librte_distributor.so.1
-     librte_eal.so.5
+   + librte_eal.so.6
    + librte_ethdev.so.8
    + librte_eventdev.so.3
      librte_gro.so.1

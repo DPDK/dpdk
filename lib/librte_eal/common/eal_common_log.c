@@ -89,27 +89,11 @@ rte_log_set_global_level(uint32_t level)
 	rte_logs.level = (uint32_t)level;
 }
 
-/* Set global log level */
-/* replaced by rte_log_set_global_level */
-__rte_deprecated void
-rte_set_log_level(uint32_t level)
-{
-	rte_log_set_global_level(level);
-}
-
 /* Get global log level */
 uint32_t
 rte_log_get_global_level(void)
 {
 	return rte_logs.level;
-}
-
-/* Get global log level */
-/* replaced by rte_log_get_global_level */
-uint32_t
-rte_get_log_level(void)
-{
-	return rte_log_get_global_level();
 }
 
 int
@@ -119,30 +103,6 @@ rte_log_get_level(uint32_t type)
 		return -1;
 
 	return rte_logs.dynamic_types[type].loglevel;
-}
-
-/* Set global log type */
-__rte_deprecated void
-rte_set_log_type(uint32_t type, int enable)
-{
-	if (type < RTE_LOGTYPE_FIRST_EXT_ID) {
-		if (enable)
-			rte_logs.type |= 1 << type;
-		else
-			rte_logs.type &= ~(1 << type);
-	}
-
-	if (enable)
-		rte_log_set_level(type, 0);
-	else
-		rte_log_set_level(type, RTE_LOG_DEBUG);
-}
-
-/* Get global log type */
-__rte_deprecated uint32_t
-rte_get_log_type(void)
-{
-	return rte_logs.type;
 }
 
 int

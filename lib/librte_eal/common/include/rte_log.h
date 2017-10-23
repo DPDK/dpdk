@@ -139,41 +139,12 @@ int rte_openlog_stream(FILE *f);
 void rte_log_set_global_level(uint32_t level);
 
 /**
- * Deprecated, replaced by rte_log_set_global_level().
- */
-__rte_deprecated
-void rte_set_log_level(uint32_t level);
-
-/**
  * Get the global log level.
  *
  * @return
  *   The current global log level.
  */
 uint32_t rte_log_get_global_level(void);
-
-/**
- * Deprecated, replaced by rte_log_get_global_level().
- */
-__rte_deprecated
-uint32_t rte_get_log_level(void);
-
-/**
- * Enable or disable the log type.
- *
- * @param type
- *   Log type, for example, RTE_LOGTYPE_EAL.
- * @param enable
- *   True for enable; false for disable.
- */
-__rte_deprecated
-void rte_set_log_type(uint32_t type, int enable);
-
-/**
- * Get the global log type.
- */
-__rte_deprecated
-uint32_t rte_get_log_type(void);
 
 /**
  * Get the log level for a given type.
