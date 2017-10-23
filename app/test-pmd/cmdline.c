@@ -1845,7 +1845,7 @@ cmd_config_rss_parsed(void *parsed_result,
 			__attribute__((unused)) void *data)
 {
 	struct cmd_config_rss *res = parsed_result;
-	struct rte_eth_rss_conf rss_conf;
+	struct rte_eth_rss_conf rss_conf = { .rss_key_len = 0, };
 	int diag;
 	uint8_t i;
 
