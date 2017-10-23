@@ -1172,8 +1172,18 @@ priv_flow_convert(struct priv *priv,
 	 * Last step. Complete missing specification to reach the RSS
 	 * configuration.
 	 */
-	if (parser->queues_n > 1)
+	if (parser->queues_n > 1) {
 		priv_flow_convert_finalise(priv, parser);
+	} else if (!parser->drop) {
+		/*
+		 * Action queue have their priority overridden with
+		 * Ethernet priority, this priority needs to be adjusted to
+		 * their most specific layer priority.
+		 */
+		parser->queue[HASH_RXQ_ETH].ibv_attr->priority =
+			attr->priority +
+			hash_rxq_init[parser->layer].flow_priority;
+	}
 exit_free:
 	/* Only verification is expected, all resources should be released. */
 	if (!parser->create) {
