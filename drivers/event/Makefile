@@ -31,7 +31,7 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-core-libs := librte_eal librte_eventdev
+core-libs := librte_eal librte_ether librte_eventdev
 
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_SKELETON_EVENTDEV) += skeleton
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV) += sw

@@ -53,11 +53,14 @@
 #include <rte_memzone.h>
 #include <rte_pci.h>
 #include <rte_vdev.h>
+#include <rte_ethdev.h>
+#include <rte_event_eth_rx_adapter.h>
 
 #include <fslmc_vfio.h>
 #include <dpaa2_hw_pvt.h>
 #include <dpaa2_hw_mempool.h>
 #include <dpaa2_hw_dpio.h>
+#include <dpaa2_ethdev.h>
 #include "dpaa2_eventdev.h"
 #include <portal/dpaa2_hw_pvt.h>
 #include <mc/fsl_dpci.h>
@@ -557,6 +560,147 @@ dpaa2_eventdev_dump(struct rte_eventdev *dev, FILE *f)
 	RTE_SET_USED(f);
 }
 
+static int
+dpaa2_eventdev_eth_caps_get(const struct rte_eventdev *dev,
+			    const struct rte_eth_dev *eth_dev,
+			    uint32_t *caps)
+{
+	const char *ethdev_driver = eth_dev->device->driver->name;
+
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+
+	if (!strcmp(ethdev_driver, "net_dpaa2"))
+		*caps = RTE_EVENT_ETH_RX_ADAPTER_DPAA2_CAP;
+	else
+		*caps = RTE_EVENT_ETH_RX_ADAPTER_SW_CAP;
+
+	return 0;
+}
+
+static int
+dpaa2_eventdev_eth_queue_add_all(const struct rte_eventdev *dev,
+		const struct rte_eth_dev *eth_dev,
+		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
+{
+	struct dpaa2_eventdev *priv = dev->data->dev_private;
+	uint8_t ev_qid = queue_conf->ev.queue_id;
+	uint16_t dpcon_id = priv->evq_info[ev_qid].dpcon->dpcon_id;
+	int i, ret;
+
+	PMD_DRV_FUNC_TRACE();
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		ret = dpaa2_eth_eventq_attach(eth_dev, i,
+				dpcon_id, queue_conf);
+		if (ret) {
+			PMD_DRV_ERR("dpaa2_eth_eventq_attach failed: ret %d\n",
+				    ret);
+			goto fail;
+		}
+	}
+	return 0;
+fail:
+	for (i = (i - 1); i >= 0 ; i--)
+		dpaa2_eth_eventq_detach(eth_dev, i);
+
+	return ret;
+}
+
+static int
+dpaa2_eventdev_eth_queue_add(const struct rte_eventdev *dev,
+		const struct rte_eth_dev *eth_dev,
+		int32_t rx_queue_id,
+		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
+{
+	struct dpaa2_eventdev *priv = dev->data->dev_private;
+	uint8_t ev_qid = queue_conf->ev.queue_id;
+	uint16_t dpcon_id = priv->evq_info[ev_qid].dpcon->dpcon_id;
+	int ret;
+
+	PMD_DRV_FUNC_TRACE();
+
+	if (rx_queue_id == -1)
+		return dpaa2_eventdev_eth_queue_add_all(dev,
+				eth_dev, queue_conf);
+
+	ret = dpaa2_eth_eventq_attach(eth_dev, rx_queue_id,
+			dpcon_id, queue_conf);
+	if (ret) {
+		PMD_DRV_ERR("dpaa2_eth_eventq_attach failed: ret: %d\n", ret);
+		return ret;
+	}
+	return 0;
+}
+
+static int
+dpaa2_eventdev_eth_queue_del_all(const struct rte_eventdev *dev,
+			     const struct rte_eth_dev *eth_dev)
+{
+	int i, ret;
+
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		ret = dpaa2_eth_eventq_detach(eth_dev, i);
+		if (ret) {
+			PMD_DRV_ERR("dpaa2_eth_eventq_detach failed: ret %d\n",
+				    ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+dpaa2_eventdev_eth_queue_del(const struct rte_eventdev *dev,
+			     const struct rte_eth_dev *eth_dev,
+			     int32_t rx_queue_id)
+{
+	int ret;
+
+	PMD_DRV_FUNC_TRACE();
+
+	if (rx_queue_id == -1)
+		return dpaa2_eventdev_eth_queue_del_all(dev, eth_dev);
+
+	ret = dpaa2_eth_eventq_detach(eth_dev, rx_queue_id);
+	if (ret) {
+		PMD_DRV_ERR("dpaa2_eth_eventq_detach failed: ret: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+dpaa2_eventdev_eth_start(const struct rte_eventdev *dev,
+			 const struct rte_eth_dev *eth_dev)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
+
+	return 0;
+}
+
+static int
+dpaa2_eventdev_eth_stop(const struct rte_eventdev *dev,
+			const struct rte_eth_dev *eth_dev)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
+
+	return 0;
+}
+
 static const struct rte_eventdev_ops dpaa2_eventdev_ops = {
 	.dev_infos_get    = dpaa2_eventdev_info_get,
 	.dev_configure    = dpaa2_eventdev_configure,
@@ -572,7 +716,12 @@ static const struct rte_eventdev_ops dpaa2_eventdev_ops = {
 	.port_link        = dpaa2_eventdev_port_link,
 	.port_unlink      = dpaa2_eventdev_port_unlink,
 	.timeout_ticks    = dpaa2_eventdev_timeout_ticks,
-	.dump             = dpaa2_eventdev_dump
+	.dump             = dpaa2_eventdev_dump,
+	.eth_rx_adapter_caps_get = dpaa2_eventdev_eth_caps_get,
+	.eth_rx_adapter_queue_add = dpaa2_eventdev_eth_queue_add,
+	.eth_rx_adapter_queue_del = dpaa2_eventdev_eth_queue_del,
+	.eth_rx_adapter_start = dpaa2_eventdev_eth_start,
+	.eth_rx_adapter_stop = dpaa2_eventdev_eth_stop,
 };
 
 static int

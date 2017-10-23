@@ -74,6 +74,14 @@ enum {
 	DPAA2_EVENT_DPCI_MAX_QUEUES
 };
 
+#define RTE_EVENT_ETH_RX_ADAPTER_DPAA2_CAP \
+		(RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT | \
+		RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ | \
+		RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID)
+/**< Ethernet Rx adapter cap to return If the packet transfers from
+ * the ethdev to eventdev with DPAA2 devices.
+ */
+
 struct dpaa2_dpcon_dev {
 	TAILQ_ENTRY(dpaa2_dpcon_dev) next;
 	struct fsl_mc_io dpcon;
