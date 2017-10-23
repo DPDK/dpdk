@@ -2,3 +2,10 @@ DPDK_17.05 {
 
 	local: *;
 };
+
+DPDK_17.11 {
+	global:
+
+	dpaa2_eth_eventq_attach;
+	dpaa2_eth_eventq_detach;
+};

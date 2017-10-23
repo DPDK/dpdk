@@ -34,6 +34,8 @@
 #ifndef _DPAA2_ETHDEV_H
 #define _DPAA2_ETHDEV_H
 
+#include <rte_event_eth_rx_adapter.h>
+
 #include <mc/fsl_dpni.h>
 #include <mc/fsl_mc_sys.h>
 
@@ -100,8 +102,21 @@ int dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 
 int dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv, void *blist);
 
+int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
+		int eth_rx_queue_id,
+		uint16_t dpcon_id,
+		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
+
+int dpaa2_eth_eventq_detach(const struct rte_eth_dev *dev,
+		int eth_rx_queue_id);
+
 uint16_t dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs,
 			       uint16_t nb_pkts);
+void dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
+				      const struct qbman_fd *fd,
+				      const struct qbman_result *dq,
+				      struct dpaa2_queue *rxq,
+				      struct rte_event *ev);
 uint16_t dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
 uint16_t dummy_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
 #endif /* _DPAA2_ETHDEV_H */

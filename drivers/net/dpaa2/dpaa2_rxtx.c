@@ -514,6 +514,26 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	return num_rx;
 }
 
+void __attribute__((hot))
+dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
+				 const struct qbman_fd *fd,
+				 const struct qbman_result *dq,
+				 struct dpaa2_queue *rxq,
+				 struct rte_event *ev)
+{
+	ev->mbuf = eth_fd_to_mbuf(fd);
+
+	ev->flow_id = rxq->ev.flow_id;
+	ev->sub_event_type = rxq->ev.sub_event_type;
+	ev->event_type = RTE_EVENT_TYPE_ETHDEV;
+	ev->op = RTE_EVENT_OP_NEW;
+	ev->sched_type = rxq->ev.sched_type;
+	ev->queue_id = rxq->ev.queue_id;
+	ev->priority = rxq->ev.priority;
+
+	qbman_swp_dqrr_consume(swp, dq);
+}
+
 /*
  * Callback to handle sending packets through WRIOP based interface
  */
