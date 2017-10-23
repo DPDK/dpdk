@@ -2193,8 +2193,8 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf,
 				1 << (i % vmdq_rx_conf->nb_queue_pools);
 		}
 		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
-			vmdq_rx_conf->dcb_tc[i] = i;
-			vmdq_tx_conf->dcb_tc[i] = i;
+			vmdq_rx_conf->dcb_tc[i] = i % num_tcs;
+			vmdq_tx_conf->dcb_tc[i] = i % num_tcs;
 		}
 
 		/* set DCB mode of RX and TX of multiple queues */
