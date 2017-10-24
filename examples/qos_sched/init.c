@@ -118,6 +118,7 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 	rx_conf.rx_thresh.wthresh = rx_thresh.wthresh;
 	rx_conf.rx_free_thresh = 32;
 	rx_conf.rx_drop_en = 0;
+	rx_conf.rx_deferred_start = 0;
 
 	tx_conf.tx_thresh.pthresh = tx_thresh.pthresh;
 	tx_conf.tx_thresh.hthresh = tx_thresh.hthresh;
@@ -125,6 +126,7 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 	tx_conf.tx_free_thresh = 0;
 	tx_conf.tx_rs_thresh = 0;
 	tx_conf.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS;
+	tx_conf.tx_deferred_start = 0;
 
 	/* init port */
 	RTE_LOG(INFO, APP, "Initializing port %"PRIu16"... ", portid);
