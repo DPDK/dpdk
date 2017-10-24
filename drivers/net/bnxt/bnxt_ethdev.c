@@ -1728,10 +1728,12 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 		RTE_LOG(ERR, PMD, "unsupported ether_type(0x%04x) in"
 			" ethertype filter.", efilter->ether_type);
 		*ret = -EINVAL;
+		goto exit;
 	}
 	if (efilter->queue >= bp->rx_nr_rings) {
 		RTE_LOG(ERR, PMD, "Invalid queue %d\n", efilter->queue);
 		*ret = -EINVAL;
+		goto exit;
 	}
 
 	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
@@ -1739,6 +1741,7 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 	if (vnic == NULL) {
 		RTE_LOG(ERR, PMD, "Invalid queue %d\n", efilter->queue);
 		*ret = -EINVAL;
+		goto exit;
 	}
 
 	if (efilter->flags & RTE_ETHTYPE_FLAGS_DROP) {
@@ -1767,6 +1770,7 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 	if (match)
 		*ret = -EEXIST;
 
+exit:
 	return mfilter;
 }
 
