@@ -43,6 +43,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += distributor
 DIRS-y += ethtool
 DIRS-y += exception_path
 DIRS-$(CONFIG_RTE_LIBRTE_EFD) += server_node_efd
+DIRS-$(CONFIG_RTE_LIBRTE_FLOW_CLASSIFY) += flow_classify
 DIRS-y += helloworld
 DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += ip_pipeline
 ifeq ($(CONFIG_RTE_LIBRTE_LPM),y)
