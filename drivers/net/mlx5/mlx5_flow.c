@@ -1679,9 +1679,9 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	};
 	++parser->drop_q.ibv_attr->num_of_specs;
 	parser->drop_q.offset += size;
+	flow->drxq.ibv_attr = parser->drop_q.ibv_attr;
 	if (!priv->dev->data->dev_started)
 		return 0;
-	flow->drxq.ibv_attr = parser->drop_q.ibv_attr;
 	parser->drop_q.ibv_attr = NULL;
 	flow->drxq.ibv_flow = ibv_create_flow(priv->flow_drop_queue->qp,
 					      flow->drxq.ibv_attr);
