@@ -709,7 +709,7 @@ int rte_pmd_bnxt_mac_addr_add(uint16_t port, struct ether_addr *addr,
 	/* If the VF currently uses a random MAC, update default to this one */
 	if (bp->pf.vf_info[vf_id].random_mac) {
 		if (rte_pmd_bnxt_get_vf_rx_status(port, vf_id) <= 0)
-			rc = bnxt_hwrm_func_vf_mac(bp, vf_id, (uint8_t *)addr);
+			bnxt_hwrm_func_vf_mac(bp, vf_id, (uint8_t *)addr);
 	}
 
 	/* query the default VNIC id used by the function */
