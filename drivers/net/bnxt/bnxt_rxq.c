@@ -68,7 +68,6 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	struct bnxt_filter_info *filter;
 	enum rte_eth_nb_pools pools = bp->rx_cp_nr_rings, max_pools = 0;
 	struct bnxt_rx_queue *rxq;
-	bool rss_dflt_cr = false;
 
 	bp->nr_vnics = 0;
 
@@ -119,7 +118,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 				pools = max_pools;
 			break;
 		case ETH_MQ_RX_RSS:
-			pools = 1;
+			pools = bp->rx_cp_nr_rings;
 			break;
 		default:
 			RTE_LOG(ERR, PMD, "Unsupported mq_mod %d\n",
@@ -128,13 +127,6 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			goto err_out;
 		}
 	}
-	/*
-	 * If MQ RX w/o RSS no need for per VNIC filter.
-	 */
-	if ((dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB) ||
-	    (bp->rx_cp_nr_rings &&
-	     !(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS)))
-		rss_dflt_cr = true;
 
 	nb_q_per_grp = bp->rx_cp_nr_rings / pools;
 	start_grp_id = 0;
@@ -151,7 +143,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		STAILQ_INSERT_TAIL(&bp->ff_pool[i], vnic, next);
 		bp->nr_vnics++;
 
-		for (j = 0, ring_idx = 0; j < nb_q_per_grp; j++, ring_idx++) {
+		for (j = 0; j < nb_q_per_grp; j++, ring_idx++) {
 			rxq = bp->eth_dev->data->rx_queues[ring_idx];
 			rxq->vnic = vnic;
 		}
@@ -166,8 +158,10 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		vnic->start_grp_id = start_grp_id;
 		vnic->end_grp_id = end_grp_id;
 
-		if (rss_dflt_cr && i) {
-			vnic->rss_dflt_cr = true;
+		if (i) {
+			if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB ||
+			    !(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS))
+				vnic->rss_dflt_cr = true;
 			goto skip_filter_allocation;
 		}
 		filter = bnxt_alloc_filter(bp);

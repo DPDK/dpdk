@@ -574,6 +574,11 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	int vlan_mask = 0;
 	int rc;
 
+	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		RTE_LOG(ERR, PMD,
+			"RxQ cnt %d > CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
+			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	}
 	bp->dev_stopped = 0;
 
 	rc = bnxt_init_nic(bp);
