@@ -150,6 +150,7 @@ struct cdev_key {
 	uint16_t lcore_id;
 	uint8_t cipher_algo;
 	uint8_t auth_algo;
+	uint8_t aead_algo;
 };
 
 struct socket_ctx {

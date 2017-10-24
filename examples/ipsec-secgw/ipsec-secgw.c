@@ -1132,7 +1132,8 @@ add_mapping(struct rte_hash *map, const char *str, uint16_t cdev_id,
 		uint16_t qp, struct lcore_params *params,
 		struct ipsec_ctx *ipsec_ctx,
 		const struct rte_cryptodev_capabilities *cipher,
-		const struct rte_cryptodev_capabilities *auth)
+		const struct rte_cryptodev_capabilities *auth,
+		const struct rte_cryptodev_capabilities *aead)
 {
 	int32_t ret = 0;
 	unsigned long i;
@@ -1143,6 +1144,8 @@ add_mapping(struct rte_hash *map, const char *str, uint16_t cdev_id,
 		key.cipher_algo = cipher->sym.cipher.algo;
 	if (auth)
 		key.auth_algo = auth->sym.auth.algo;
+	if (aead)
+		key.aead_algo = aead->sym.aead.algo;
 
 	ret = rte_hash_lookup(map, &key);
 	if (ret != -ENOENT)
@@ -1211,6 +1214,12 @@ add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 		if (i->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
 			continue;
 
+		if (i->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			ret |= add_mapping(map, str, cdev_id, qp, params,
+					ipsec_ctx, NULL, NULL, i);
+			continue;
+		}
+
 		if (i->sym.xform_type != RTE_CRYPTO_SYM_XFORM_CIPHER)
 			continue;
 
@@ -1223,7 +1232,7 @@ add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 				continue;
 
 			ret |= add_mapping(map, str, cdev_id, qp, params,
-					ipsec_ctx, i, j);
+						ipsec_ctx, i, j, NULL);
 		}
 	}
 
