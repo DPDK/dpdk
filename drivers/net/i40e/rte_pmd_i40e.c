@@ -2825,6 +2825,7 @@ i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
 {
 	int32_t ret = -EINVAL;
 	struct i40e_queue_regions *info = &pf->queue_region;
+	struct i40e_vsi *main_vsi = pf->main_vsi;
 
 	if (on) {
 		i40e_queue_region_pf_flowtype_conf(hw, pf);
@@ -2845,7 +2846,7 @@ i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
 	}
 
 	info->queue_region_number = 1;
-	info->region[0].queue_num = 64;
+	info->region[0].queue_num = main_vsi->nb_used_qps;
 	info->region[0].queue_start_index = 0;
 
 	ret = i40e_vsi_update_queue_region_mapping(hw, pf);
