@@ -42,7 +42,9 @@ Supported LiquidIO Adapters
 -----------------------------
 
 - LiquidIO II CN2350 210SV/225SV
+- LiquidIO II CN2350 210SVPT
 - LiquidIO II CN2360 210SV/225SV
+- LiquidIO II CN2360 210SVPT
 
 
 Pre-Installation Configuration

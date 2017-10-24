@@ -405,6 +405,10 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 	/* CN23xx 10G cards */
 	case PCI_SUBSYS_DEV_ID_CN2350_210:
 	case PCI_SUBSYS_DEV_ID_CN2360_210:
+	case PCI_SUBSYS_DEV_ID_CN2350_210SVPN3:
+	case PCI_SUBSYS_DEV_ID_CN2360_210SVPN3:
+	case PCI_SUBSYS_DEV_ID_CN2350_210SVPT:
+	case PCI_SUBSYS_DEV_ID_CN2360_210SVPT:
 		devinfo->speed_capa = ETH_LINK_SPEED_10G;
 		break;
 	/* CN23xx 25G cards */
@@ -413,8 +417,9 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 		devinfo->speed_capa = ETH_LINK_SPEED_25G;
 		break;
 	default:
+		devinfo->speed_capa = ETH_LINK_SPEED_10G;
 		lio_dev_err(lio_dev,
-			    "Unknown CN23XX subsystem device id. Not setting speed capability.\n");
+			    "Unknown CN23XX subsystem device id. Setting 10G as default link speed.\n");
 	}
 
 	devinfo->max_rx_queues = lio_dev->max_rx_queues;
