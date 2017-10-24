@@ -437,7 +437,8 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->max_rx_pktlen = BNXT_MAX_MTU + ETHER_HDR_LEN + ETHER_CRC_LEN
 				  + VLAN_TAG_SIZE;
 	dev_info->rx_offload_capa = 0;
-	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_IPV4_CKSUM |
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
+					DEV_TX_OFFLOAD_IPV4_CKSUM |
 					DEV_TX_OFFLOAD_TCP_CKSUM |
 					DEV_TX_OFFLOAD_UDP_CKSUM |
 					DEV_TX_OFFLOAD_TCP_TSO |
