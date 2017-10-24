@@ -86,7 +86,11 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 			int flags;
 
 			flags = fcntl(dev->vhostfd, F_GETFL);
-			fcntl(dev->vhostfd, F_SETFL, flags | O_NONBLOCK);
+			if (fcntl(dev->vhostfd, F_SETFL,
+					flags | O_NONBLOCK) == -1) {
+				PMD_DRV_LOG(ERR, "error setting O_NONBLOCK flag");
+				return;
+			}
 			r = recv(dev->vhostfd, buf, 128, MSG_PEEK);
 			if (r == 0 || (r < 0 && errno != EAGAIN)) {
 				dev->status &= (~VIRTIO_NET_S_LINK_UP);
