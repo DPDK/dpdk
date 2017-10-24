@@ -1000,7 +1000,6 @@ F: examples/performance-thread/
 F: doc/guides/sample_app_ug/performance_thread.rst
 
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-M: Daniel Mrzyglod <danielx.t.mrzyglod@intel.com>
 F: examples/ptpclient/
 
 F: examples/quota_watermark/
