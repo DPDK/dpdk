@@ -323,8 +323,10 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 
 		ring = rxr->ag_ring_struct;
 		/* Agg ring */
-		if (ring == NULL)
+		if (ring == NULL) {
 			RTE_LOG(ERR, PMD, "Alloc AGG Ring is NULL!\n");
+			goto err_out;
+		}
 
 		rc = bnxt_hwrm_ring_alloc(bp, ring,
 				HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
