@@ -1290,6 +1290,9 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	unsigned int i;
 	int err = 0;
 
+	/* Nothing to be done if there are no Rx queues. */
+	if (!queues)
+		goto error;
 	/* Prepare default RSS configuration. */
 	*rss_conf = (struct rte_flow_action_rss){
 		.rss_conf = NULL, /* Rely on default fallback settings. */
