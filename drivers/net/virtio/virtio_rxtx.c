@@ -299,6 +299,10 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		/* prepend cannot fail, checked by caller */
 		hdr = (struct virtio_net_hdr *)
 			rte_pktmbuf_prepend(cookie, head_size);
+		/* rte_pktmbuf_prepend() counts the hdr size to the pkt length,
+		 * which is wrong. Below subtract restores correct pkt size.
+		 */
+		cookie->pkt_len -= head_size;
 		/* if offload disabled, it is not zeroed below, do it now */
 		if (offload == 0) {
 			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
