@@ -251,6 +251,29 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 int
 priv_dev_traffic_enable(struct priv *priv, struct rte_eth_dev *dev)
 {
+	struct rte_flow_item_eth bcast = {
+		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	};
+	struct rte_flow_item_eth ipv6_multi_spec = {
+		.dst.addr_bytes = "\x33\x33\x00\x00\x00\x00",
+	};
+	struct rte_flow_item_eth ipv6_multi_mask = {
+		.dst.addr_bytes = "\xff\xff\x00\x00\x00\x00",
+	};
+	struct rte_flow_item_eth unicast = {
+		.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	};
+	struct rte_flow_item_eth unicast_mask = {
+		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	};
+	const unsigned int vlan_filter_n = priv->vlan_filter_n;
+	const struct ether_addr cmp = {
+		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	};
+	unsigned int i;
+	unsigned int j;
+	int ret;
+
 	if (priv->isolated)
 		return 0;
 	if (dev->data->promiscuous) {
@@ -261,81 +284,80 @@ priv_dev_traffic_enable(struct priv *priv, struct rte_eth_dev *dev)
 		};
 
 		claim_zero(mlx5_ctrl_flow(dev, &promisc, &promisc));
-	} else if (dev->data->all_multicast) {
+		return 0;
+	}
+	if (dev->data->all_multicast) {
 		struct rte_flow_item_eth multicast = {
 			.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
-			.src.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
 			.type = 0,
 		};
 
 		claim_zero(mlx5_ctrl_flow(dev, &multicast, &multicast));
 	} else {
-		struct rte_flow_item_eth bcast = {
-			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-		};
-		struct rte_flow_item_eth ipv6_multi_spec = {
-			.dst.addr_bytes = "\x33\x33\x00\x00\x00\x00",
-		};
-		struct rte_flow_item_eth ipv6_multi_mask = {
-			.dst.addr_bytes = "\xff\xff\x00\x00\x00\x00",
-		};
-		struct rte_flow_item_eth unicast = {
-			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-		};
-		struct rte_flow_item_eth unicast_mask = {
-			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-		};
-		const unsigned int vlan_filter_n = priv->vlan_filter_n;
-		const struct ether_addr cmp = {
-			.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-		};
-		unsigned int i;
-		unsigned int j;
-		unsigned int unicast_flow = 0;
-		int ret;
+		/* Add broadcast/multicast flows. */
+		for (i = 0; i != vlan_filter_n; ++i) {
+			uint16_t vlan = priv->vlan_filter[i];
 
-		for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
-			struct ether_addr *mac = &dev->data->mac_addrs[i];
+			struct rte_flow_item_vlan vlan_spec = {
+				.tci = rte_cpu_to_be_16(vlan),
+			};
+			struct rte_flow_item_vlan vlan_mask = {
+				.tci = 0xffff,
+			};
 
-			if (!memcmp(mac, &cmp, sizeof(*mac)))
-				continue;
-			memcpy(&unicast.dst.addr_bytes,
-			       mac->addr_bytes,
-			       ETHER_ADDR_LEN);
-			for (j = 0; j != vlan_filter_n; ++j) {
-				uint16_t vlan = priv->vlan_filter[j];
-
-				struct rte_flow_item_vlan vlan_spec = {
-					.tci = rte_cpu_to_be_16(vlan),
-				};
-				struct rte_flow_item_vlan vlan_mask = {
-					.tci = 0xffff,
-				};
-
-				ret = mlx5_ctrl_flow_vlan(dev, &unicast,
-							  &unicast_mask,
-							  &vlan_spec,
-							  &vlan_mask);
-				if (ret)
-					goto error;
-				unicast_flow = 1;
-			}
-			if (!vlan_filter_n) {
-				ret = mlx5_ctrl_flow(dev, &unicast,
-						     &unicast_mask);
-				if (ret)
-					goto error;
-				unicast_flow = 1;
-			}
+			ret = mlx5_ctrl_flow_vlan(dev, &bcast, &bcast,
+						  &vlan_spec, &vlan_mask);
+			if (ret)
+				goto error;
+			ret = mlx5_ctrl_flow_vlan(dev, &ipv6_multi_spec,
+						  &ipv6_multi_mask,
+						  &vlan_spec, &vlan_mask);
+			if (ret)
+				goto error;
 		}
-		if (!unicast_flow)
-			return 0;
-		ret = mlx5_ctrl_flow(dev, &bcast, &bcast);
-		if (ret)
-			goto error;
-		ret = mlx5_ctrl_flow(dev, &ipv6_multi_spec, &ipv6_multi_mask);
-		if (ret)
-			goto error;
+		if (!vlan_filter_n) {
+			ret = mlx5_ctrl_flow(dev, &bcast, &bcast);
+			if (ret)
+				goto error;
+			ret = mlx5_ctrl_flow(dev, &ipv6_multi_spec,
+					     &ipv6_multi_mask);
+			if (ret)
+				goto error;
+		}
+	}
+	/* Add MAC address flows. */
+	for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+		struct ether_addr *mac = &dev->data->mac_addrs[i];
+
+		if (!memcmp(mac, &cmp, sizeof(*mac)))
+			continue;
+		memcpy(&unicast.dst.addr_bytes,
+		       mac->addr_bytes,
+		       ETHER_ADDR_LEN);
+		for (j = 0; j != vlan_filter_n; ++j) {
+			uint16_t vlan = priv->vlan_filter[j];
+
+			struct rte_flow_item_vlan vlan_spec = {
+				.tci = rte_cpu_to_be_16(vlan),
+			};
+			struct rte_flow_item_vlan vlan_mask = {
+				.tci = 0xffff,
+			};
+
+			ret = mlx5_ctrl_flow_vlan(dev, &unicast,
+						  &unicast_mask,
+						  &vlan_spec,
+						  &vlan_mask);
+			if (ret)
+				goto error;
+		}
+		if (!vlan_filter_n) {
+			ret = mlx5_ctrl_flow(dev, &unicast,
+					     &unicast_mask);
+			if (ret)
+				goto error;
+		}
 	}
 	return 0;
 error:
