@@ -56,13 +56,17 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 
 	key.cipher_algo = (uint8_t)sa->cipher_algo;
 	key.auth_algo = (uint8_t)sa->auth_algo;
+	key.aead_algo = (uint8_t)sa->aead_algo;
 
 	ret = rte_hash_lookup_data(ipsec_ctx->cdev_map, &key,
 			(void **)&cdev_id_qp);
 	if (ret < 0) {
 		RTE_LOG(ERR, IPSEC, "No cryptodev: core %u, cipher_algo %u, "
-				"auth_algo %u\n", key.lcore_id, key.cipher_algo,
-				key.auth_algo);
+			"auth_algo %u, aead_algo %u\n",
+			key.lcore_id,
+			key.cipher_algo,
+			key.auth_algo,
+			key.aead_algo);
 		return -1;
 	}
 
