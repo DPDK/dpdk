@@ -2601,20 +2601,27 @@ priv_fdir_filter_convert(struct priv *priv,
 		ERROR("invalid queue number %d", fdir_filter->action.rx_queue);
 		return EINVAL;
 	}
-	/* Validate the behavior. */
-	if (fdir_filter->action.behavior != RTE_ETH_FDIR_ACCEPT) {
-		ERROR("invalid behavior %d", fdir_filter->action.behavior);
-		return ENOTSUP;
-	}
 	attributes->attr.ingress = 1;
 	attributes->items[0] = (struct rte_flow_item) {
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 		.spec = &attributes->l2,
 	};
-	attributes->actions[0] = (struct rte_flow_action){
-		.type = RTE_FLOW_ACTION_TYPE_QUEUE,
-		.conf = &attributes->queue,
-	};
+	switch (fdir_filter->action.behavior) {
+	case RTE_ETH_FDIR_ACCEPT:
+		attributes->actions[0] = (struct rte_flow_action){
+			.type = RTE_FLOW_ACTION_TYPE_QUEUE,
+			.conf = &attributes->queue,
+		};
+		break;
+	case RTE_ETH_FDIR_REJECT:
+		attributes->actions[0] = (struct rte_flow_action){
+			.type = RTE_FLOW_ACTION_TYPE_DROP,
+		};
+		break;
+	default:
+		ERROR("invalid behavior %d", fdir_filter->action.behavior);
+		return ENOTSUP;
+	}
 	attributes->queue.index = fdir_filter->action.rx_queue;
 	switch (fdir_filter->input.flow_type) {
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
