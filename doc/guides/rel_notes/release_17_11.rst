@@ -164,6 +164,11 @@ New Features
   Implemented device IOTLB in Vhost-user backend, and enabled Virtio's IOMMU
   feature.
 
+* **Added the Event Ethernet Adapter Library.**
+
+  Added the Event Ethernet Adapter library. It provices APIs for
+  eventdev applications to configure the ethdev to eventdev packet flow.
+
 * **Added Membership library (rte_member).**
 
   Added membership library. It provides an API for DPDK applications to insert a
