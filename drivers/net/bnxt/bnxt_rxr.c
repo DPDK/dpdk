@@ -437,10 +437,10 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 
 	cons = rxcmp->opaque;
 	mbuf = bnxt_consume_rx_buf(rxr, cons);
-	rte_prefetch0(mbuf);
-
 	if (mbuf == NULL)
 		return -EBUSY;
+
+	rte_prefetch0(mbuf);
 
 	mbuf->nb_segs = 1;
 	mbuf->next = NULL;
