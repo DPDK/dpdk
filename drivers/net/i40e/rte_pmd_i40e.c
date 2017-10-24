@@ -1927,8 +1927,8 @@ int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 		tlv = (struct i40e_profile_tlv_section_record *)&proto[1];
 		for (i = j = 0; i < nb_rec; j++) {
 			pinfo[j].proto_id = tlv->data[0];
-			strncpy(pinfo[j].name, (const char *)&tlv->data[1],
-				I40E_DDP_NAME_SIZE);
+			snprintf(pinfo[j].name, I40E_DDP_NAME_SIZE, "%s",
+				 (const char *)&tlv->data[1]);
 			i += tlv->len;
 			tlv = &tlv[tlv->len];
 		}
