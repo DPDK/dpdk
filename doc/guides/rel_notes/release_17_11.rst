@@ -165,6 +165,12 @@ New Features
   checksums, and doesn't update checksums for output packets.
   Additionally, the GSO library doesn't process IP fragmented packets.
 
+* **Added the Flow Classification Library.**
+
+  Added the Flow Classification library, it provides an API for DPDK
+  applications to classify an input packet by matching it against a set of flow
+  rules. It uses the librte_table API to manage the flow rules.
+
 
 Resolved Issues
 ---------------
@@ -354,6 +360,7 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_eal.so.6
    + librte_ethdev.so.8
    + librte_eventdev.so.3
+   + librte_flow_classify.so.1
      librte_gro.so.1
    + librte_gso.so.1
      librte_hash.so.2

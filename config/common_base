@@ -707,6 +707,11 @@ CONFIG_RTE_LIBRTE_GSO=y
 CONFIG_RTE_LIBRTE_METER=y
 
 #
+# Compile librte_classify
+#
+CONFIG_RTE_LIBRTE_FLOW_CLASSIFY=y
+
+#
 # Compile librte_sched
 #
 CONFIG_RTE_LIBRTE_SCHED=y

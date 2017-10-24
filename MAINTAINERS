@@ -707,6 +707,12 @@ M: Mark Kavanagh <mark.b.kavanagh@intel.com>
 F: lib/librte_gso/
 F: doc/guides/prog_guide/generic_segmentation_offload_lib.rst
 
+Flow Classify - EXPERIMENTAL
+M: Bernard Iremonger <bernard.iremonger@intel.com>
+F: lib/librte_flow_classify/
+F: test/test/test_flow_classify*
+F: examples/flow_classify/
+
 Distributor
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: David Hunt <david.hunt@intel.com>
@@ -739,7 +745,6 @@ F: lib/librte_pdump/
 F: doc/guides/prog_guide/pdump_lib.rst
 F: app/pdump/
 F: doc/guides/tools/pdump.rst
-
 
 Packet Framework
 ----------------
