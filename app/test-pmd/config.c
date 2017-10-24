@@ -3185,6 +3185,10 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 {
 	int diag = -ENOTSUP;
 
+	RTE_SET_USED(vf);
+	RTE_SET_USED(rate);
+	RTE_SET_USED(q_msk);
+
 #ifdef RTE_LIBRTE_IXGBE_PMD
 	if (diag == -ENOTSUP)
 		diag = rte_pmd_ixgbe_set_vf_rate_limit(port_id, vf, rate,
