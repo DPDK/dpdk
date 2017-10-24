@@ -66,6 +66,7 @@ Programmer's Guide
     kernel_nic_interface
     thread_safety_dpdk_functions
     eventdev
+    event_ethernet_rx_adapter
     qos_framework
     power_man
     packet_classif_access_ctrl

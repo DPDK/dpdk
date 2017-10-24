@@ -286,6 +286,8 @@ M: Nikhil Rao <nikhil.rao@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*eth_rx_adapter*
 F: test/test/test_event_eth_rx_adapter.c
+F: doc/guides/prog_guide/event_ethernet_rx_adapter.rst
+
 
 Bus Drivers
 -----------
