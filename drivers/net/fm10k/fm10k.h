@@ -155,6 +155,7 @@ struct fm10k_dev_info {
 	struct fm10k_macvlan_filter_info    macvlan;
 	/* Flag to indicate if RX vector conditions satisfied */
 	bool rx_vec_allowed;
+	bool sm_down;
 };
 
 /*
