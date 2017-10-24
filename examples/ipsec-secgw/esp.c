@@ -331,7 +331,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	if (sa->aead_algo == RTE_CRYPTO_AEAD_AES_GCM) {
 		uint8_t *aad;
 
-		*iv = sa->seq;
+		*iv = rte_cpu_to_be_64(sa->seq);
 		sym_cop->aead.data.offset = ip_hdr_len +
 			sizeof(struct esp_hdr) + sa->iv_len;
 		sym_cop->aead.data.length = pad_payload_len;
@@ -344,7 +344,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 		struct cnt_blk *icb = get_cnt_blk(m);
 		icb->salt = sa->salt;
-		icb->iv = sa->seq;
+		icb->iv = rte_cpu_to_be_64(sa->seq);
 		icb->cnt = rte_cpu_to_be_32(1);
 
 		aad = get_aad(m);
@@ -367,7 +367,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 			sym_cop->cipher.data.length = pad_payload_len + sa->iv_len;
 			break;
 		case RTE_CRYPTO_CIPHER_AES_CTR:
-			*iv = sa->seq;
+			*iv = rte_cpu_to_be_64(sa->seq);
 			sym_cop->cipher.data.offset = ip_hdr_len +
 				sizeof(struct esp_hdr) + sa->iv_len;
 			sym_cop->cipher.data.length = pad_payload_len;
@@ -386,7 +386,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 		struct cnt_blk *icb = get_cnt_blk(m);
 		icb->salt = sa->salt;
-		icb->iv = sa->seq;
+		icb->iv = rte_cpu_to_be_64(sa->seq);
 		icb->cnt = rte_cpu_to_be_32(1);
 
 		switch (sa->auth_algo) {
