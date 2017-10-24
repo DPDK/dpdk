@@ -161,6 +161,17 @@ FM10000 PMD driver. The switch driver can be acquired from Intel support.
 Only Testpoint is validated with DPDK, the latest version that has been
 validated with DPDK is 4.1.6.
 
+Support for Switch Restart
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For FM10000 multi host based design a DPDK app running in the VM or host needs
+to be aware of the switch's state since it may undergo a quit-restart. When
+the switch goes down the DPDK app will receive a LSC event indicating link
+status down, and the app should stop the worker threads that are polling on
+the Rx/Tx queues. When switch comes up, a LSC event indicating ``LINK_UP`` is
+sent to the app, which can then restart the FM10000 port to resume network
+processing.
+
 CRC striping
 ~~~~~~~~~~~~
 
