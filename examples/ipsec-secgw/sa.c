@@ -375,7 +375,6 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			rule->auth_algo = algo->algo;
 			rule->auth_key_len = algo->key_len;
 			rule->digest_len = algo->digest_len;
-			rule->aad_len = algo->key_len;
 
 			/* NULL algorithm and combined algos do not
 			 * require auth key
@@ -431,7 +430,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			rule->aead_algo = algo->algo;
 			rule->cipher_key_len = algo->key_len;
 			rule->digest_len = algo->digest_len;
-			rule->aad_len = algo->key_len;
+			rule->aad_len = algo->aad_len;
 			rule->block_size = algo->block_size;
 			rule->iv_len = algo->iv_len;
 
