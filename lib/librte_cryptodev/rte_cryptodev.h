@@ -688,6 +688,11 @@ rte_cryptodev_stats_reset(uint8_t dev_id);
  * @param	dev_info	A pointer to a structure of type
  *				*rte_cryptodev_info* to be filled with the
  *				contextual information of the device.
+ *
+ * @note The capabilities field of dev_info is set to point to the first
+ * element of an array of struct rte_cryptodev_capabilities. The element after
+ * the last valid element has it's op field set to
+ * RTE_CRYPTO_OP_TYPE_UNDEFINED.
  */
 extern void
 rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info);
