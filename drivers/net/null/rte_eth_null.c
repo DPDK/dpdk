@@ -542,8 +542,6 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
 
-	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-
 	/* finally assign rx and tx ops */
 	if (packet_copy) {
 		eth_dev->rx_pkt_burst = eth_null_copy_rx;

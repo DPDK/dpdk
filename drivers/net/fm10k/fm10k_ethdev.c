@@ -3019,7 +3019,6 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	}
 
 	rte_eth_copy_pci_info(dev, pdev);
-	dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 	memset(macvlan, 0, sizeof(*macvlan));

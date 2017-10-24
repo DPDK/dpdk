@@ -284,6 +284,12 @@ API Changes
   The size of internal device name is increased to 64 characters
   to allow for storing longer bus specific name.
 
+* **Ethdev flag RTE_ETH_DEV_DETACHABLE was removed**
+
+  This flag is not necessary anymore, with the new hotplug implementation.
+  It is now removed from the ether library. Its semantic is expressed at the bus
+  and PMD level.
+
 * **Service cores API updated for usability**
 
   The service cores API has been changed, removing pointers from the API

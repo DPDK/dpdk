@@ -358,7 +358,6 @@ do_eth_dev_ring_create(const char *name,
 
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
-	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;
 	data->numa_node = numa_node;
 

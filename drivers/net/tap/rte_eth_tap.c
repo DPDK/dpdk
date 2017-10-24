@@ -1268,7 +1268,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	/* Setup some default values */
 	rte_memcpy(data, dev->data, sizeof(*data));
 	data->dev_private = pmd;
-	data->dev_flags = RTE_ETH_DEV_DETACHABLE | RTE_ETH_DEV_INTR_LSC;
+	data->dev_flags = RTE_ETH_DEV_INTR_LSC;
 	data->numa_node = numa_node;
 
 	data->dev_link = pmd_link;

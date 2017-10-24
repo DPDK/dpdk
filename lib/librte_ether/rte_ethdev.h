@@ -1814,8 +1814,6 @@ struct rte_eth_dev_data {
 	/**< VLAN filter configuration. */
 };
 
-/** Device supports hotplug detach */
-#define RTE_ETH_DEV_DETACHABLE   0x0001
 /** Device supports link state interrupt */
 #define RTE_ETH_DEV_INTR_LSC     0x0002
 /** Device is a bonded slave */

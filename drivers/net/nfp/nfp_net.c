@@ -2668,9 +2668,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-	/* hotplug is not possible with multiport PF */
-	if (!hw->pf_multiport_enabled)
-		eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
@@ -3016,6 +3013,22 @@ static int eth_nfp_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 {
+	struct rte_eth_dev *eth_dev;
+	struct nfp_net_hw *hw, *hwport0;
+	int port = 0;
+
+	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
+	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
+	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
+		port = get_pf_port_number(eth_dev->data->name);
+		hwport0 = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+		hw = &hwport0[port];
+	} else {
+		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	}
+	/* hotplug is not possible with multiport PF */
+	if (!hw->pf_multiport_enabled)
+		return -ENOTSUP;
 	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
 }
 

@@ -1086,8 +1086,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	internal->max_queues = queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = eth_addr;
-	data->dev_flags =
-		RTE_ETH_DEV_DETACHABLE | RTE_ETH_DEV_INTR_LSC;
+	data->dev_flags = RTE_ETH_DEV_INTR_LSC;
 
 	eth_dev->dev_ops = &ops;
 

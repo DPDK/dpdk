@@ -342,7 +342,6 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	/* We are a single function multi-port device. */
 	ret = ark_config_device(dev);
 	dev->dev_ops = &ark_eth_dev_ops;
-	dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	dev->data->mac_addrs = rte_zmalloc("ark", ETHER_ADDR_LEN, 0);
 	if (!dev->data->mac_addrs) {

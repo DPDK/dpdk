@@ -1004,8 +1004,6 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
-
 	/* Check current migration status */
 	if (avp_dev_migration_pending(eth_dev)) {
 		PMD_DRV_LOG(ERR, "VM live migration operation in progress\n");

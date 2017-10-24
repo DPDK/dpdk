@@ -397,8 +397,6 @@ eth_kni_create(struct rte_vdev_device *vdev,
 	eth_dev->data = data;
 	eth_dev->dev_ops = &eth_kni_ops;
 
-	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-
 	internals->no_request_thread = args->no_request_thread;
 
 	return eth_dev;

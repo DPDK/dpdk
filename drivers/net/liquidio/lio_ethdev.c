@@ -2079,7 +2079,6 @@ lio_eth_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	rte_eth_copy_pci_info(eth_dev, pdev);
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	if (pdev->mem_resource[0].addr) {
 		lio_dev->hw_addr = pdev->mem_resource[0].addr;

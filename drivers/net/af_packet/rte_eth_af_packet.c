@@ -814,7 +814,6 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
-	(*eth_dev)->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 
 	return 0;
 

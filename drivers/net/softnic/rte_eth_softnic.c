@@ -557,7 +557,6 @@ pmd_ethdev_register(struct rte_vdev_device *vdev,
 	soft_dev->data->promiscuous = 1;
 	soft_dev->data->kdrv = RTE_KDRV_NONE;
 	soft_dev->data->numa_node = numa_node;
-	soft_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 
 	return 0;
 }
