@@ -1120,7 +1120,7 @@ mlx5_priv_ind_table_ibv_new(struct priv *priv, uint16_t queues[],
 	struct mlx5_ind_table_ibv *ind_tbl;
 	const unsigned int wq_n = rte_is_power_of_2(queues_n) ?
 		log2above(queues_n) :
-		priv->ind_table_max_size;
+		log2above(priv->ind_table_max_size);
 	struct ibv_wq *wq[1 << wq_n];
 	unsigned int i;
 	unsigned int j;
