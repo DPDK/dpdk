@@ -97,6 +97,8 @@ mlx5_set_ptype_table(void)
 	 * bit[6] = tunneled
 	 * bit[7] = outer_l3_type
 	 */
+	/* L2 */
+	(*p)[0x00] = RTE_PTYPE_L2_ETHER;
 	/* L3 */
 	(*p)[0x01] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_L4_NONFRAG;
