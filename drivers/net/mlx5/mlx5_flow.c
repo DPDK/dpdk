@@ -1743,6 +1743,8 @@ priv_flow_create_action_queue_rss(struct priv *priv,
 		flow->frxq[i].ibv_attr = parser->queue[i].ibv_attr;
 		parser->queue[i].ibv_attr = NULL;
 		hash_fields = hash_rxq_init[i].hash_fields;
+		if (!priv->dev->data->dev_started)
+			continue;
 		flow->frxq[i].hrxq =
 			mlx5_priv_hrxq_get(priv,
 					   parser->rss_conf.rss_key,
