@@ -786,6 +786,8 @@ priv_flow_convert_actions(struct priv *priv,
 			goto exit_action_not_supported;
 		}
 	}
+	if (parser->drop && parser->mark)
+		parser->mark = 0;
 	if (!parser->queues_n && !parser->drop) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "no valid action");
