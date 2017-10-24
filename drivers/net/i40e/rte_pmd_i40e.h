@@ -251,6 +251,93 @@ struct rte_pmd_i40e_queue_regions {
 };
 
 /**
+ * Behavior will be taken if raw packet template is matched.
+ */
+enum rte_pmd_i40e_pkt_template_behavior {
+	RTE_PMD_I40E_PKT_TEMPLATE_ACCEPT,
+	RTE_PMD_I40E_PKT_TEMPLATE_REJECT,
+	RTE_PMD_I40E_PKT_TEMPLATE_PASSTHRU,
+};
+
+/**
+ * Flow director report status
+ * It defines what will be reported if raw packet template is matched.
+ */
+enum rte_pmd_i40e_pkt_template_status {
+	/** report nothing */
+	RTE_PMD_I40E_PKT_TEMPLATE_NO_REPORT_STATUS,
+	/** only report FD ID */
+	RTE_PMD_I40E_PKT_TEMPLATE_REPORT_ID,
+	/** report FD ID and 4 flex bytes */
+	RTE_PMD_I40E_PKT_TEMPLATE_REPORT_ID_FLEX_4,
+	/** report 8 flex bytes */
+	RTE_PMD_I40E_PKT_TEMPLATE_REPORT_FLEX_8,
+};
+
+/**
+ * A structure used to define an action when raw packet template is matched.
+ */
+struct rte_pmd_i40e_pkt_template_action {
+	/** queue assigned to if raw packet template match */
+	uint16_t rx_queue;
+	/** behavior will be taken */
+	enum rte_pmd_i40e_pkt_template_behavior behavior;
+	/** status report option */
+	enum rte_pmd_i40e_pkt_template_status report_status;
+	/**
+	 * If report_status is RTE_PMD_I40E_PKT_TEMPLATE_REPORT_ID_FLEX_4 or
+	 * RTE_PMD_I40E_PKT_TEMPLATE_REPORT_FLEX_8, flex_off specifies
+	 * where the reported flex bytes start from in flexible payload.
+	 */
+	uint8_t flex_off;
+};
+
+/**
+ * A structure used to define the input for raw packet template.
+ */
+struct rte_pmd_i40e_pkt_template_input {
+	/** the pctype used for raw packet template */
+	uint16_t pctype;
+	/** the buffer conatining raw packet template */
+	void *packet;
+	/** the length of buffer with raw packet template */
+	uint32_t length;
+};
+
+/**
+ * A structure used to define the configuration parameters
+ * for raw packet template.
+ */
+struct rte_pmd_i40e_pkt_template_conf {
+	/** the input for raw packet template. */
+	struct rte_pmd_i40e_pkt_template_input input;
+	/** the action to be taken when raw packet template is matched */
+	struct rte_pmd_i40e_pkt_template_action action;
+	/** ID, an unique software index for the raw packet template filter */
+	uint32_t soft_id;
+};
+
+/**
+ * Add or remove raw packet template filter to Flow Director.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param conf
+ *   Specifies configuration parameters of raw packet template filter.
+ * @param add
+ *   Speicifes an action to be taken - add or remove raw packet template filter.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if *conf* invalid.
+ *   - (-ENOTSUP) not supported by firmware.
+ */
+int rte_pmd_i40e_flow_add_del_packet_template(
+			uint16_t port,
+			const struct rte_pmd_i40e_pkt_template_conf *conf,
+			uint8_t add);
+
+/**
  * Notify VF when PF link status changes.
  *
  * @param port

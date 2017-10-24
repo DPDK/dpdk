@@ -2954,3 +2954,33 @@ int rte_pmd_i40e_rss_queue_region_conf(uint16_t port_id,
 
 	return ret;
 }
+
+int rte_pmd_i40e_flow_add_del_packet_template(
+			uint16_t port,
+			const struct rte_pmd_i40e_pkt_template_conf *conf,
+			uint8_t add)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port];
+	struct i40e_fdir_filter_conf filter_conf;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	memset(&filter_conf, 0, sizeof(filter_conf));
+	filter_conf.soft_id = conf->soft_id;
+	filter_conf.input.flow.raw_flow.pctype = conf->input.pctype;
+	filter_conf.input.flow.raw_flow.packet = conf->input.packet;
+	filter_conf.input.flow.raw_flow.length = conf->input.length;
+	filter_conf.input.flow_ext.pkt_template = true;
+
+	filter_conf.action.rx_queue = conf->action.rx_queue;
+	filter_conf.action.behavior =
+		(enum i40e_fdir_behavior)conf->action.behavior;
+	filter_conf.action.report_status =
+		(enum i40e_fdir_status)conf->action.report_status;
+	filter_conf.action.flex_off = conf->action.flex_off;
+
+	return i40e_flow_add_del_fdir_filter(dev, &filter_conf, add);
+}

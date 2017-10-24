@@ -50,6 +50,7 @@ DPDK_17.11 {
 	global:
 
 	rte_pmd_i40e_add_vf_mac_addr;
+	rte_pmd_i40e_flow_add_del_packet_template;
 	rte_pmd_i40e_flow_type_mapping_update;
 	rte_pmd_i40e_flow_type_mapping_get;
 	rte_pmd_i40e_flow_type_mapping_reset;

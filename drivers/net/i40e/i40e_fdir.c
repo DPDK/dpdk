@@ -49,6 +49,7 @@
 #include <rte_udp.h>
 #include <rte_tcp.h>
 #include <rte_sctp.h>
+#include <rte_hash_crc.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_type.h"
@@ -1113,6 +1114,13 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 	uint8_t pctype = fdir_input->pctype;
 	struct i40e_customized_pctype *cus_pctype;
 
+	/* raw pcket template - just copy contents of the raw packet */
+	if (fdir_input->flow_ext.pkt_template) {
+		memcpy(raw_pkt, fdir_input->flow.raw_flow.packet,
+		       fdir_input->flow.raw_flow.length);
+		return 0;
+	}
+
 	/* fill the ethernet and IP head */
 	len = i40e_flow_fdir_fill_eth_ip_head(pf, fdir_input, raw_pkt,
 					      !!fdir_input->flow_ext.vlan_tci);
@@ -1370,6 +1378,13 @@ i40e_fdir_filter_convert(const struct i40e_fdir_filter_conf *input,
 			 struct i40e_fdir_filter *filter)
 {
 	rte_memcpy(&filter->fdir, input, sizeof(struct i40e_fdir_filter_conf));
+	if (input->input.flow_ext.pkt_template) {
+		filter->fdir.input.flow.raw_flow.packet = NULL;
+		filter->fdir.input.flow.raw_flow.length =
+			rte_hash_crc(input->input.flow.raw_flow.packet,
+				     input->input.flow.raw_flow.length,
+				     input->input.flow.raw_flow.pctype);
+	}
 	return 0;
 }
 
@@ -1380,7 +1395,13 @@ i40e_sw_fdir_filter_lookup(struct i40e_fdir_info *fdir_info,
 {
 	int ret;
 
-	ret = rte_hash_lookup(fdir_info->hash_table, (const void *)input);
+	if (input->flow_ext.pkt_template)
+		ret = rte_hash_lookup_with_hash(fdir_info->hash_table,
+						(const void *)input,
+						input->flow.raw_flow.length);
+	else
+		ret = rte_hash_lookup(fdir_info->hash_table,
+				      (const void *)input);
 	if (ret < 0)
 		return NULL;
 
@@ -1394,8 +1415,13 @@ i40e_sw_fdir_filter_insert(struct i40e_pf *pf, struct i40e_fdir_filter *filter)
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
 	int ret;
 
-	ret = rte_hash_add_key(fdir_info->hash_table,
-			       &filter->fdir.input);
+	if (filter->fdir.input.flow_ext.pkt_template)
+		ret = rte_hash_add_key_with_hash(fdir_info->hash_table,
+				 &filter->fdir.input,
+				 filter->fdir.input.flow.raw_flow.length);
+	else
+		ret = rte_hash_add_key(fdir_info->hash_table,
+				       &filter->fdir.input);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR,
 			    "Failed to insert fdir filter to hash table %d!",
@@ -1417,7 +1443,12 @@ i40e_sw_fdir_filter_del(struct i40e_pf *pf, struct i40e_fdir_input *input)
 	struct i40e_fdir_filter *filter;
 	int ret;
 
-	ret = rte_hash_del_key(fdir_info->hash_table, input);
+	if (input->flow_ext.pkt_template)
+		ret = rte_hash_del_key_with_hash(fdir_info->hash_table,
+						 input,
+						 input->flow.raw_flow.length);
+	else
+		ret = rte_hash_del_key(fdir_info->hash_table, input);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR,
 			    "Failed to delete fdir filter to hash table %d!",
@@ -1529,6 +1560,17 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "Invalid VF ID");
 		return -EINVAL;
 	}
+	if (filter->input.flow_ext.pkt_template) {
+		if (filter->input.flow.raw_flow.length > I40E_FDIR_PKT_LEN ||
+		    !filter->input.flow.raw_flow.packet) {
+			PMD_DRV_LOG(ERR, "Invalid raw packet template"
+				" flow filter parameters!");
+			return -EINVAL;
+		}
+		pctype = filter->input.flow.raw_flow.pctype;
+	} else {
+		pctype = filter->input.pctype;
+	}
 
 	/* Check if there is the filter in SW list */
 	memset(&check_filter, 0, sizeof(check_filter));
@@ -1557,10 +1599,8 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	if (hw->mac.type == I40E_MAC_X722) {
 		/* get translated pctype value in fd pctype register */
 		pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(
-			hw, I40E_GLQF_FD_PCTYPES(
-				(int)filter->input.pctype));
-	} else
-		pctype = filter->input.pctype;
+			hw, I40E_GLQF_FD_PCTYPES((int)pctype));
+	}
 
 	ret = i40e_flow_fdir_filter_programming(pf, pctype, filter, add);
 	if (ret < 0) {

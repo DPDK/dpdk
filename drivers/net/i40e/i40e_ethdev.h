@@ -485,6 +485,13 @@ struct i40e_gtp_ipv6_flow {
 	struct rte_eth_ipv6_flow ip6;
 };
 
+/* A structure used to define the input for raw type flow */
+struct i40e_raw_flow {
+	uint16_t pctype;
+	void *packet;
+	uint32_t length;
+};
+
 /*
  * A union contains the inputs for all types of flow
  * items in flows need to be in big endian
@@ -502,6 +509,7 @@ union i40e_fdir_flow {
 	struct i40e_gtp_flow       gtp_flow;
 	struct i40e_gtp_ipv4_flow  gtp_ipv4_flow;
 	struct i40e_gtp_ipv6_flow  gtp_ipv6_flow;
+	struct i40e_raw_flow       raw_flow;
 };
 
 enum i40e_fdir_ip_type {
@@ -519,6 +527,7 @@ struct i40e_fdir_flow_ext {
 	bool inner_ip;   /* If there is inner ip */
 	enum i40e_fdir_ip_type iip_type; /* ip type for inner ip */
 	bool customized_pctype; /* If customized pctype is used */
+	bool pkt_template; /* If raw packet template is used */
 };
 
 /* A structure used to define the input for a flow director filter entry */
