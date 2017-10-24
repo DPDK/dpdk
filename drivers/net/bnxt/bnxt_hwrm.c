@@ -785,7 +785,7 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 		(link_info->phy_link_status ==
 		 HWRM_PORT_PHY_QCFG_OUTPUT_LINK_LINK) ? 1 : 0;
 	link_info->link_speed = rte_le_to_cpu_16(resp->link_speed);
-	link_info->duplex = resp->duplex;
+	link_info->duplex = resp->duplex_cfg;
 	link_info->pause = resp->pause;
 	link_info->auto_pause = resp->auto_pause;
 	link_info->force_pause = resp->force_pause;

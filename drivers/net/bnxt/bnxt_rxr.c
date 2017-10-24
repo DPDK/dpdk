@@ -410,12 +410,12 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 				cpr->valid);
 
 	cmp_type = CMP_TYPE(rxcmp);
-	if (cmp_type == RX_PKT_CMPL_TYPE_RX_L2_TPA_START) {
+	if (cmp_type == RX_TPA_START_CMPL_TYPE_RX_TPA_START) {
 		bnxt_tpa_start(rxq, (struct rx_tpa_start_cmpl *)rxcmp,
 			       (struct rx_tpa_start_cmpl_hi *)rxcmp1);
 		rc = -EINVAL; /* Continue w/o new mbuf */
 		goto next_rx;
-	} else if (cmp_type == RX_PKT_CMPL_TYPE_RX_L2_TPA_END) {
+	} else if (cmp_type == RX_TPA_END_CMPL_TYPE_RX_TPA_END) {
 		mbuf = bnxt_tpa_end(rxq, &tmp_raw_cons,
 				   (struct rx_tpa_end_cmpl *)rxcmp,
 				   (struct rx_tpa_end_cmpl_hi *)rxcmp1);

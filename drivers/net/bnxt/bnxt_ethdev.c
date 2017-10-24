@@ -1604,7 +1604,7 @@ bnxt_rx_queue_count_op(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 			goto nothing_to_do;
 		valid = FLIP_VALID(cons, cpr->cp_ring_struct->ring_mask, valid);
 		cmp_type = CMP_TYPE(rxcmp);
-		if (cmp_type == RX_PKT_CMPL_TYPE_RX_L2_TPA_END) {
+		if (cmp_type == RX_TPA_END_CMPL_TYPE_RX_TPA_END) {
 			cmp = (rte_le_to_cpu_32(
 					((struct rx_tpa_end_cmpl *)
 					 (rxcmp))->agg_bufs_v1) &
