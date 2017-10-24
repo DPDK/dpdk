@@ -2679,6 +2679,11 @@ fm10k_dev_interrupt_handler_vf(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct fm10k_mbx_info *mbx = &hw->mbx;
+	struct fm10k_dev_info *dev_info =
+		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
+	const enum fm10k_mbx_state state = mbx->state;
+	int status_mbx;
 
 	if (hw->mac.type != fm10k_mac_vf)
 		return;
@@ -2687,6 +2692,49 @@ fm10k_dev_interrupt_handler_vf(void *param)
 	fm10k_mbx_lock(hw);
 	hw->mbx.ops.process(hw, &hw->mbx);
 	fm10k_mbx_unlock(hw);
+
+	if (state == FM10K_STATE_OPEN && mbx->state == FM10K_STATE_CONNECT) {
+		PMD_INIT_LOG(INFO, "INT: Switch has gone down");
+
+		fm10k_mbx_lock(hw);
+		hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map,
+				MAX_LPORT_NUM, 1);
+		fm10k_mbx_unlock(hw);
+
+		/* Setting reset flag */
+		dev_info->sm_down = 1;
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+				NULL, NULL);
+	}
+
+	if (dev_info->sm_down == 1 &&
+			hw->mac.dglort_map == FM10K_DGLORTMAP_ZERO) {
+		PMD_INIT_LOG(INFO, "INT: Switch has gone up");
+		fm10k_mbx_lock(hw);
+		status_mbx = hw->mac.ops.update_xcast_mode(hw,
+				hw->mac.dglort_map, FM10K_XCAST_MODE_NONE);
+		if (status_mbx != FM10K_SUCCESS)
+			PMD_INIT_LOG(ERR, "Failed to set XCAST mode");
+		fm10k_mbx_unlock(hw);
+
+		/* first clear the internal SW recording structure */
+		fm10k_vlan_filter_set(dev, hw->mac.default_vid, false);
+		fm10k_MAC_filter_set(dev, hw->mac.addr, false,
+				MAIN_VSI_POOL_NUMBER);
+
+		/*
+		 * Add default mac address and vlan for the logical ports that
+		 * have been created, leave to the application to fully recover
+		 * Rx filtering.
+		 */
+		fm10k_MAC_filter_set(dev, hw->mac.addr, true,
+				MAIN_VSI_POOL_NUMBER);
+		fm10k_vlan_filter_set(dev, hw->mac.default_vid, true);
+
+		dev_info->sm_down = 0;
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+				NULL, NULL);
+	}
 
 	/* Re-enable interrupt from device side */
 	FM10K_WRITE_REG(hw, FM10K_VFITR(0), FM10K_ITR_AUTOMASK |
