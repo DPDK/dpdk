@@ -987,7 +987,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			mbuf_avail = cpy_len;
 		} else {
 			if (likely(cpy_len > MAX_BATCH_LEN ||
-				   copy_nb >= vq->size)) {
+				   copy_nb >= vq->size ||
+				   (hdr && cur == m))) {
 				rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *,
 								   mbuf_offset),
 					   (void *)((uintptr_t)(desc_addr +
