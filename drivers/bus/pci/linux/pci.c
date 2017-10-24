@@ -524,8 +524,29 @@ static inline int
 pci_one_device_bound_uio(void)
 {
 	struct rte_pci_device *dev = NULL;
+	struct rte_devargs *devargs;
+	int need_check;
 
 	FOREACH_DEVICE_ON_PCIBUS(dev) {
+		devargs = dev->device.devargs;
+
+		need_check = 0;
+		switch (rte_pci_bus.bus.conf.scan_mode) {
+		case RTE_BUS_SCAN_WHITELIST:
+			if (devargs && devargs->policy == RTE_DEV_WHITELISTED)
+				need_check = 1;
+			break;
+		case RTE_BUS_SCAN_UNDEFINED:
+		case RTE_BUS_SCAN_BLACKLIST:
+			if (devargs == NULL ||
+			    devargs->policy != RTE_DEV_BLACKLISTED)
+				need_check = 1;
+			break;
+		}
+
+		if (!need_check)
+			continue;
+
 		if (dev->kdrv == RTE_KDRV_IGB_UIO ||
 		   dev->kdrv == RTE_KDRV_UIO_GENERIC) {
 			return 1;
