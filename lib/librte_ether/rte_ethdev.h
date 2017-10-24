@@ -2286,6 +2286,7 @@ void rte_eth_dev_close(uint16_t port_id);
  *   - (-EPERM) if not ran from the primary process.
  *   - (-EIO) if re-initialisation failed.
  *   - (-ENOMEM) if the reset failed due to OOM.
+ *   - (-EAGAIN) if the reset temporarily failed and should be retried later.
  */
 int rte_eth_dev_reset(uint16_t port_id);
 
