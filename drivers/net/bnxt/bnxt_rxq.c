@@ -170,17 +170,6 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto err_out;
 		}
-		for (j = 0; j < conf->nb_pool_maps; j++) {
-			if (conf->pool_map[j].pools & (1UL << i)) {
-				RTE_LOG(ERR, PMD,
-					"Add vlan %u to vmdq pool %u\n",
-					conf->pool_map[j].vlan_id, i);
-
-				filter->l2_ivlan = conf->pool_map[j].vlan_id;
-				filter->enables |=
-				HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN;
-			}
-		}
 		/*
 		 * TODO: Configure & associate CFA rule for
 		 * each VNIC for each VMDq with MACVLAN, MACVLAN+TC
