@@ -363,21 +363,6 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id)
 	return -ENODEV;
 }
 
-static int
-rte_eth_dev_is_detachable(uint16_t port_id)
-{
-	uint32_t dev_flags;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
-
-	dev_flags = rte_eth_devices[port_id].data->dev_flags;
-	if ((dev_flags & RTE_ETH_DEV_DETACHABLE) &&
-		(!(dev_flags & RTE_ETH_DEV_BONDED_SLAVE)))
-		return 0;
-	else
-		return 1;
-}
-
 /* attach the new device, then store port_id of the device */
 int
 rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
@@ -428,16 +413,23 @@ err:
 int
 rte_eth_dev_detach(uint16_t port_id, char *name)
 {
+	uint32_t dev_flags;
 	int ret = -1;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	if (name == NULL) {
 		ret = -EINVAL;
 		goto err;
 	}
 
-	/* FIXME: move this to eal, once device flags are relocated there */
-	if (rte_eth_dev_is_detachable(port_id))
+	dev_flags = rte_eth_devices[port_id].data->dev_flags;
+	if (dev_flags & RTE_ETH_DEV_BONDED_SLAVE) {
+		RTE_LOG(ERR, EAL, "Port %" PRIu16 " is bonded, cannot detach\n",
+			port_id);
+		ret = -ENOTSUP;
 		goto err;
+	}
 
 	snprintf(name, sizeof(rte_eth_devices[port_id].data->name),
 		 "%s", rte_eth_devices[port_id].data->name);
