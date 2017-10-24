@@ -2039,6 +2039,11 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 			goto free_filter;
 		STAILQ_INSERT_TAIL(&vnic->filter, bfilter, next);
 	} else {
+		if (mfilter == NULL) {
+			/* This should not happen. But for Coverity! */
+			ret = -ENOENT;
+			goto free_filter;
+		}
 		ret = bnxt_hwrm_clear_ntuple_filter(bp, mfilter);
 
 		STAILQ_REMOVE(&vnic->filter, mfilter, bnxt_filter_info,
