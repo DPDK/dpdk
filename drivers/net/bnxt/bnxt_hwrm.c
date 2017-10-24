@@ -367,7 +367,8 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	uint16_t j = dst_id - 1;
 
 	//TODO: Is there a better way to add VLANs to each VNIC in case of VMDQ
-	if (conf->pool_map[j].pools & (1UL << j)) {
+	if ((dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG) &&
+	    conf->pool_map[j].pools & (1UL << j)) {
 		RTE_LOG(DEBUG, PMD,
 			"Add vlan %u to vmdq pool %u\n",
 			conf->pool_map[j].vlan_id, j);
