@@ -191,6 +191,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	te = rte_zmalloc("LPM6_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
 		RTE_LOG(ERR, LPM, "Failed to allocate tailq entry!\n");
+		rte_errno = ENOMEM;
 		goto exit;
 	}
 
@@ -201,6 +202,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
 		rte_free(te);
+		rte_errno = ENOMEM;
 		goto exit;
 	}
 
@@ -212,6 +214,7 @@ rte_lpm6_create(const char *name, int socket_id,
 		rte_free(lpm);
 		lpm = NULL;
 		rte_free(te);
+		rte_errno = ENOMEM;
 		goto exit;
 	}
 
