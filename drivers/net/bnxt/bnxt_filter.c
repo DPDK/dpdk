@@ -301,7 +301,8 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 }
 
 static int
-bnxt_validate_and_parse_flow_type(const struct rte_flow_item pattern[],
+bnxt_validate_and_parse_flow_type(struct bnxt *bp,
+				  const struct rte_flow_item pattern[],
 				  struct rte_flow_error *error,
 				  struct bnxt_filter_info *filter)
 {
@@ -318,11 +319,14 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_item pattern[],
 	const struct rte_flow_item_vxlan *vxlan_mask;
 	uint8_t vni_mask[] = {0xFF, 0xFF, 0xFF};
 	uint8_t tni_mask[] = {0xFF, 0xFF, 0xFF};
+	const struct rte_flow_item_vf *vf_spec;
 	uint32_t tenant_id_be = 0;
 	bool vni_masked = 0;
 	bool tni_masked = 0;
+	uint32_t vf = 0;
 	int use_ntuple;
 	uint32_t en = 0;
+	int dflt_vnic;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
 	RTE_LOG(DEBUG, PMD, "Use NTUPLE %d\n", use_ntuple);
@@ -687,6 +691,40 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_item pattern[],
 				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
 			}
 			break;
+		case RTE_FLOW_ITEM_TYPE_VF:
+			vf_spec = (const struct rte_flow_item_vf *)item->spec;
+			vf = vf_spec->id;
+			if (!BNXT_PF(bp)) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Configuring on a VF!");
+				return -rte_errno;
+			}
+
+			if (vf >= bp->pdev->max_vfs) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Incorrect VF id!");
+				return -rte_errno;
+			}
+
+			filter->mirror_vnic_id =
+			dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf);
+			if (dflt_vnic < 0) {
+				/* This simply indicates there's no driver
+				 * loaded. This is not an error.
+				 */
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Unable to get default VNIC for VF");
+				return -rte_errno;
+			}
+			filter->mirror_vnic_id = dflt_vnic;
+			en |= NTUPLE_FLTR_ALLOC_INPUT_EN_MIRROR_VNIC_ID;
+			break;
 		default:
 			break;
 		}
@@ -781,8 +819,11 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	const struct rte_flow_action *act = nxt_non_void_action(actions);
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	const struct rte_flow_action_queue *act_q;
+	const struct rte_flow_action_vf *act_vf;
 	struct bnxt_vnic_info *vnic, *vnic0;
 	struct bnxt_filter_info *filter1;
+	uint32_t vf = 0;
+	int dflt_vnic;
 	int rc;
 
 	if (bp->eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
@@ -794,7 +835,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		goto ret;
 	}
 
-	rc = bnxt_validate_and_parse_flow_type(pattern, error, filter);
+	rc = bnxt_validate_and_parse_flow_type(bp, pattern, error, filter);
 	if (rc != 0)
 		goto ret;
 
@@ -860,6 +901,52 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
 		filter->flags = HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_METER;
 		break;
+	case RTE_FLOW_ACTION_TYPE_VF:
+		act_vf = (const struct rte_flow_action_vf *)act->conf;
+		vf = act_vf->id;
+		if (!BNXT_PF(bp)) {
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Configuring on a VF!");
+			rc = -rte_errno;
+			goto ret;
+		}
+
+		if (vf >= bp->pdev->max_vfs) {
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Incorrect VF id!");
+			rc = -rte_errno;
+			goto ret;
+		}
+
+		filter->mirror_vnic_id =
+		dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf);
+		if (dflt_vnic < 0) {
+			/* This simply indicates there's no driver loaded.
+			 * This is not an error.
+			 */
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Unable to get default VNIC for VF");
+			rc = -rte_errno;
+			goto ret;
+		}
+		filter->mirror_vnic_id = dflt_vnic;
+		filter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_MIRROR_VNIC_ID;
+
+		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
+		if (filter1 == NULL) {
+			rc = -ENOSPC;
+			goto ret;
+		}
+		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+		break;
+
 	default:
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION, act,
@@ -868,6 +955,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		goto ret;
 	}
 
+//done:
 	act = nxt_non_void_action(++act);
 	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
 		rte_flow_error_set(error, EINVAL,
