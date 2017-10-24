@@ -38,6 +38,7 @@
 #include <rte_io.h>
 
 #include <octeontx_mbox.h>
+#include <octeontx_ethdev.h>
 
 #define EVENTDEV_NAME_OCTEONTX_PMD event_octeontx
 

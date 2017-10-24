@@ -930,6 +930,7 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 			pki_hash.tag_slc = 1;
 			pki_hash.tag_dlf = 1;
 			pki_hash.tag_slf = 1;
+			pki_hash.tag_prt = 1;
 			octeontx_pki_port_hash_config(port, &pki_hash);
 		}
 
@@ -941,7 +942,7 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 		pki_qos.qpg_qos = PKI_QPG_QOS_NONE;
 		pki_qos.num_entry = 1;
 		pki_qos.drop_policy = 0;
-		pki_qos.tag_type = 2L;
+		pki_qos.tag_type = 0L;
 		pki_qos.qos_entry[0].port_add = 0;
 		pki_qos.qos_entry[0].gaura = gaura;
 		pki_qos.qos_entry[0].ggrp_ok = ev_queues;

@@ -240,9 +240,17 @@ typedef struct mbox_pki_port_modify_qos_entry {
 		uint8_t f_gaura:1;
 		uint8_t f_grptag_ok:1;
 		uint8_t f_grptag_bad:1;
+		uint8_t f_tag_type:1;
 	} mmask;
+	uint8_t tag_type;
 	struct mbox_pki_qos_entry qos_entry;
 } mbox_pki_mod_qos_t;
+
+/* pki flow/style enable qos */
+typedef struct mbox_pki_port_delete_qos_entry {
+	uint8_t port_type;
+	uint16_t index;
+} mbox_pki_del_qos_t;
 
 /* PKI maximum constants */
 #define PKI_VF_MAX			(1)
@@ -407,6 +415,12 @@ typedef struct pki_port_create_qos {
 } pki_qos_cfg_t;
 
 /* pki flow/style enable qos */
+typedef struct pki_port_delete_qos_entry {
+	uint8_t port_type;
+	uint16_t index;
+} pki_del_qos_t;
+
+/* pki flow/style enable qos */
 typedef struct pki_port_modify_qos_entry {
 	uint8_t port_type;
 	uint16_t index;
@@ -415,17 +429,125 @@ typedef struct pki_port_modify_qos_entry {
 		uint8_t f_grp_ok:1;
 		uint8_t f_grp_bad:1;
 		uint8_t f_gaura:1;
+		uint8_t f_grptag_ok:1;
+		uint8_t f_grptag_bad:1;
+		uint8_t f_tag_type:1;
 	} mmask;
+	uint8_t tag_type;
 	struct pki_qos_entry qos_entry;
 } pki_mod_qos_t;
+
+static inline int
+octeontx_pki_port_modify_qos(int port, pki_mod_qos_t *qos_cfg)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_mod_qos_t q_cfg = *(mbox_pki_mod_qos_t *)qos_cfg;
+	int len = sizeof(mbox_pki_mod_qos_t);
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_MODIFY_QOS;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &q_cfg, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+static inline int
+octeontx_pki_port_delete_qos(int port, pki_del_qos_t *qos_cfg)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_del_qos_t q_cfg = *(mbox_pki_del_qos_t *)qos_cfg;
+	int len = sizeof(mbox_pki_del_qos_t);
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_DELETE_QOS;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &q_cfg, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+static inline int
+octeontx_pki_port_close(int port)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_port_t ptype;
+	int len = sizeof(mbox_pki_port_t);
+	memset(&ptype, 0, len);
+	ptype.port_type = OCTTX_PORT_TYPE_NET;
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_CLOSE;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+static inline int
+octeontx_pki_port_start(int port)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_port_t ptype;
+	int len = sizeof(mbox_pki_port_t);
+	memset(&ptype, 0, len);
+	ptype.port_type = OCTTX_PORT_TYPE_NET;
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_START;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+static inline int
+octeontx_pki_port_stop(int port)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_port_t ptype;
+	int len = sizeof(mbox_pki_port_t);
+	memset(&ptype, 0, len);
+	ptype.port_type = OCTTX_PORT_TYPE_NET;
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_STOP;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
 
 int octeontx_pki_port_open(int port);
 int octeontx_pki_port_hash_config(int port, pki_hash_cfg_t *hash_cfg);
 int octeontx_pki_port_pktbuf_config(int port, pki_pktbuf_cfg_t *buf_cfg);
 int octeontx_pki_port_create_qos(int port, pki_qos_cfg_t *qos_cfg);
 int octeontx_pki_port_close(int port);
-int octeontx_pki_port_start(int port);
-int octeontx_pki_port_stop(int port);
 int octeontx_pki_port_errchk_config(int port, pki_errchk_cfg_t *cfg);
 
 #endif /* __OCTEONTX_PKI_H__ */

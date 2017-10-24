@@ -34,8 +34,10 @@
 #include <rte_common.h>
 #include <rte_branch_prediction.h>
 
-#include "ssovf_evdev.h"
 #include <octeontx_mbox.h>
+
+#include "ssovf_evdev.h"
+#include "octeontx_rxtx.h"
 
 enum {
 	SSO_SYNC_ORDERED,
@@ -50,6 +52,28 @@ enum {
 
 /* SSO Operations */
 
+static __rte_always_inline struct rte_mbuf *
+ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_id)
+{
+	struct rte_mbuf *mbuf;
+	octtx_wqe_t *wqe = (octtx_wqe_t *)(uintptr_t)work;
+	rte_prefetch_non_temporal(wqe);
+
+	/* Get mbuf from wqe */
+	mbuf = (struct rte_mbuf *)((uintptr_t)wqe -
+			OCTTX_PACKET_WQE_SKIP);
+	mbuf->packet_type =
+		ptype_table[wqe->s.w2.lcty][wqe->s.w2.lety][wqe->s.w2.lfty];
+	mbuf->data_off = RTE_PTR_DIFF(wqe->s.w3.addr, mbuf->buf_addr);
+	mbuf->pkt_len = wqe->s.w1.len;
+	mbuf->data_len = mbuf->pkt_len;
+	mbuf->nb_segs = 1;
+	mbuf->ol_flags = 0;
+	mbuf->port = port_id;
+	rte_mbuf_refcnt_set(mbuf, 1);
+	return mbuf;
+}
+
 static __rte_always_inline uint16_t
 ssows_get_work(struct ssows *ws, struct rte_event *ev)
 {
@@ -62,9 +86,14 @@ ssows_get_work(struct ssows *ws, struct rte_event *ev)
 	ws->cur_tt = sched_type_queue & 0x3;
 	ws->cur_grp = sched_type_queue >> 2;
 	sched_type_queue = sched_type_queue << 38;
-
 	ev->event = sched_type_queue | (get_work0 & 0xffffffff);
-	ev->u64 = get_work1;
+	if (get_work1 && ev->event_type == RTE_EVENT_TYPE_ETHDEV) {
+		ev->mbuf = ssovf_octeontx_wqe_to_pkt(get_work1,
+				(ev->event >> 20) & 0xF);
+	} else {
+		ev->u64 = get_work1;
+	}
+
 	return !!get_work1;
 }
 
