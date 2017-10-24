@@ -2556,6 +2556,10 @@ fm10k_dev_interrupt_handler_pf(void *param)
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t cause, status;
+	struct fm10k_dev_info *dev_info =
+		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
+	int status_mbx;
+	s32 err;
 
 	if (hw->mac.type != fm10k_mac_pf)
 		return;
@@ -2572,13 +2576,68 @@ fm10k_dev_interrupt_handler_pf(void *param)
 	if (cause & FM10K_EICR_SWITCHNOTREADY)
 		PMD_INIT_LOG(ERR, "INT: Switch is not ready");
 
-	if (cause & FM10K_EICR_SWITCHREADY)
+	if (cause & FM10K_EICR_SWITCHREADY) {
 		PMD_INIT_LOG(INFO, "INT: Switch is ready");
+		if (dev_info->sm_down == 1) {
+			fm10k_mbx_lock(hw);
+
+			/* For recreating logical ports */
+			status_mbx = hw->mac.ops.update_lport_state(hw,
+					hw->mac.dglort_map, MAX_LPORT_NUM, 1);
+			if (status_mbx == FM10K_SUCCESS)
+				PMD_INIT_LOG(INFO,
+					"INT: Recreated Logical port");
+			else
+				PMD_INIT_LOG(INFO,
+					"INT: Logical ports weren't recreated");
+
+			status_mbx = hw->mac.ops.update_xcast_mode(hw,
+				hw->mac.dglort_map, FM10K_XCAST_MODE_NONE);
+			if (status_mbx != FM10K_SUCCESS)
+				PMD_INIT_LOG(ERR, "Failed to set XCAST mode");
+
+			fm10k_mbx_unlock(hw);
+
+			/* first clear the internal SW recording structure */
+			if (!(dev->data->dev_conf.rxmode.mq_mode &
+						ETH_MQ_RX_VMDQ_FLAG))
+				fm10k_vlan_filter_set(dev, hw->mac.default_vid,
+					false);
+
+			fm10k_MAC_filter_set(dev, hw->mac.addr, false,
+					MAIN_VSI_POOL_NUMBER);
+
+			/*
+			 * Add default mac address and vlan for the logical
+			 * ports that have been created, leave to the
+			 * application to fully recover Rx filtering.
+			 */
+			fm10k_MAC_filter_set(dev, hw->mac.addr, true,
+					MAIN_VSI_POOL_NUMBER);
+
+			if (!(dev->data->dev_conf.rxmode.mq_mode &
+						ETH_MQ_RX_VMDQ_FLAG))
+				fm10k_vlan_filter_set(dev, hw->mac.default_vid,
+					true);
+
+			dev_info->sm_down = 0;
+			_rte_eth_dev_callback_process(dev,
+					RTE_ETH_EVENT_INTR_LSC,
+					NULL, NULL);
+		}
+	}
 
 	/* Handle mailbox message */
 	fm10k_mbx_lock(hw);
-	hw->mbx.ops.process(hw, &hw->mbx);
+	err = hw->mbx.ops.process(hw, &hw->mbx);
 	fm10k_mbx_unlock(hw);
+
+	if (err == FM10K_ERR_RESET_REQUESTED) {
+		PMD_INIT_LOG(INFO, "INT: Switch is down");
+		dev_info->sm_down = 1;
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+				NULL, NULL);
+	}
 
 	/* Handle SRAM error */
 	if (cause & FM10K_EICR_SRAMERROR) {
