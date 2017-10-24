@@ -662,13 +662,14 @@ static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
 	uint64_t pool_mask = eth_dev->data->mac_pool_sel[index];
 	struct bnxt_vnic_info *vnic;
 	struct bnxt_filter_info *filter, *temp_filter;
-	int i;
+	uint32_t pool = RTE_MIN(MAX_FF_POOLS, ETH_64_POOLS);
+	uint32_t i;
 
 	/*
 	 * Loop through all VNICs from the specified filter flow pools to
 	 * remove the corresponding MAC addr filter
 	 */
-	for (i = 0; i < MAX_FF_POOLS; i++) {
+	for (i = 0; i < pool; i++) {
 		if (!(pool_mask & (1ULL << i)))
 			continue;
 
