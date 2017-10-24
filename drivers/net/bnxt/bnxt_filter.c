@@ -793,6 +793,8 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	//This flow needs DST MAC which is not same as port/l2
 	RTE_LOG(DEBUG, PMD, "Create L2 filter for DST MAC\n");
 	filter1 = bnxt_get_unused_filter(bp);
+	if (filter1 == NULL)
+		return NULL;
 	filter1->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
 	filter1->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			L2_FILTER_ALLOC_INPUT_EN_L2_ADDR_MASK;
