@@ -50,10 +50,14 @@ static void bnxt_int_handler(void *param)
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
-	uint32_t raw_cons = cpr->cp_raw_cons;
-	uint32_t cons;
 	struct cmpl_base *cmp;
+	uint32_t raw_cons;
+	uint32_t cons;
 
+	if (cpr == NULL)
+		return;
+
+	raw_cons = cpr->cp_raw_cons;
 	while (1) {
 		if (!cpr || !cpr->cp_ring_struct)
 			return;
