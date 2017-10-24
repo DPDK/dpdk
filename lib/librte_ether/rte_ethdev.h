@@ -2278,6 +2278,14 @@ void rte_eth_dev_close(uint16_t port_id);
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-EINVAL) if port identifier is invalid.
+ *   - (-ENOTSUP) if hardware doesn't support this function.
+ *   - (-EPERM) if not ran from the primary process.
+ *   - (-EIO) if re-initialisation failed.
+ *   - (-ENOMEM) if the reset failed due to OOM.
  */
 int rte_eth_dev_reset(uint16_t port_id);
 
