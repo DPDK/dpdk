@@ -43,7 +43,8 @@ extern "C" {
 #include <rte_arp.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
-
+#include <rte_tcp.h>
+#include <rte_sctp.h>
 
 #define IPV4_ADDR(a, b, c, d)(((a & 0xff) << 24) | ((b & 0xff) << 16) | \
 		((c & 0xff) << 8) | (d & 0xff))
@@ -65,6 +66,13 @@ uint16_t
 initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len);
 
+uint16_t
+initialize_tcp_header(struct tcp_hdr *tcp_hdr, uint16_t src_port,
+		uint16_t dst_port, uint16_t pkt_data_len);
+
+uint16_t
+initialize_sctp_header(struct sctp_hdr *sctp_hdr, uint16_t src_port,
+		uint16_t dst_port, uint16_t pkt_data_len);
 
 uint16_t
 initialize_ipv6_header(struct ipv6_hdr *ip_hdr, uint8_t *src_addr,
@@ -74,15 +82,25 @@ uint16_t
 initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 		uint32_t dst_addr, uint16_t pkt_data_len);
 
+uint16_t
+initialize_ipv4_header_proto(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
+		uint32_t dst_addr, uint16_t pkt_data_len, uint8_t proto);
+
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
 		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
 		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst,
 		uint8_t pkt_len, uint8_t nb_pkt_segs);
 
+int
+generate_packet_burst_proto(struct rte_mempool *mp,
+		struct rte_mbuf **pkts_burst,
+		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
+		uint8_t ipv4, uint8_t proto, void *proto_hdr,
+		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs);
+
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* PACKET_BURST_GENERATOR_H_ */
