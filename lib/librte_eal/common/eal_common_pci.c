@@ -263,6 +263,7 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 {
 	struct rte_pci_addr *loc;
 	struct rte_pci_driver *dr;
+	int ret = 0;
 
 	if (dev == NULL)
 		return -EINVAL;
@@ -277,8 +278,11 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 	RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n", dev->id.vendor_id,
 			dev->id.device_id, dr->driver.name);
 
-	if (dr->remove && (dr->remove(dev) < 0))
-		return -1;	/* negative value is an error */
+	if (dr->remove) {
+		ret = dr->remove(dev);
+		if (ret < 0)
+			return ret;
+	}
 
 	/* clear driver structure */
 	dev->driver = NULL;
@@ -551,8 +555,10 @@ pci_unplug(struct rte_device *dev)
 
 	pdev = RTE_DEV_TO_PCI(dev);
 	ret = rte_pci_detach_dev(pdev);
-	rte_pci_remove_device(pdev);
-	free(pdev);
+	if (ret == 0) {
+		rte_pci_remove_device(pdev);
+		free(pdev);
+	}
 	return ret;
 }
 
