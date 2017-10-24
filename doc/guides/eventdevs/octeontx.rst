@@ -149,3 +149,8 @@ Burst mode support
 Burst mode is not supported. Dequeue and Enqueue functions accepts only single
 event at a time.
 
+Rx adapter support
+~~~~~~~~~~~~~~~~~~
+
+When eth_octeontx is used as Rx adapter event schedule type
+``RTE_SCHED_TYPE_PARALLEL`` is not supported.
