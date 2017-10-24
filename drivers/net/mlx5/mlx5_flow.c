@@ -2792,7 +2792,6 @@ priv_fdir_filter_add(struct priv *priv,
 				attributes.actions,
 				&error);
 	if (flow) {
-		TAILQ_INSERT_TAIL(&priv->flows, flow, next);
 		DEBUG("FDIR created %p", (void *)flow);
 		return 0;
 	}
