@@ -270,9 +270,9 @@ struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
 #define RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES     (1ULL << 3)
 /**< Event device is capable of enqueuing events of any type to any queue.
  * If this capability is not set, the queue only supports events of the
- *  *RTE_EVENT_QUEUE_CFG_* type that it was created with.
+ *  *RTE_SCHED_TYPE_* type that it was created with.
  *
- * @see RTE_EVENT_QUEUE_CFG_* values
+ * @see RTE_SCHED_TYPE_* values
  */
 #define RTE_EVENT_DEV_CAP_BURST_MODE          (1ULL << 4)
 /**< Event device is capable of operating in burst mode for enqueue(forward,
@@ -515,39 +515,13 @@ rte_event_dev_configure(uint8_t dev_id,
 /* Event queue specific APIs */
 
 /* Event queue configuration bitmap flags */
-#define RTE_EVENT_QUEUE_CFG_TYPE_MASK          (3ULL << 0)
-/**< Mask for event queue schedule type configuration request */
-#define RTE_EVENT_QUEUE_CFG_ALL_TYPES          (0ULL << 0)
+#define RTE_EVENT_QUEUE_CFG_ALL_TYPES          (1ULL << 0)
 /**< Allow ATOMIC,ORDERED,PARALLEL schedule type enqueue
  *
  * @see RTE_SCHED_TYPE_ORDERED, RTE_SCHED_TYPE_ATOMIC, RTE_SCHED_TYPE_PARALLEL
  * @see rte_event_enqueue_burst()
  */
-#define RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY        (1ULL << 0)
-/**< Allow only ATOMIC schedule type enqueue
- *
- * The rte_event_enqueue_burst() result is undefined if the queue configured
- * with ATOMIC only and sched_type != RTE_SCHED_TYPE_ATOMIC
- *
- * @see RTE_SCHED_TYPE_ATOMIC, rte_event_enqueue_burst()
- */
-#define RTE_EVENT_QUEUE_CFG_ORDERED_ONLY       (2ULL << 0)
-/**< Allow only ORDERED schedule type enqueue
- *
- * The rte_event_enqueue_burst() result is undefined if the queue configured
- * with ORDERED only and sched_type != RTE_SCHED_TYPE_ORDERED
- *
- * @see RTE_SCHED_TYPE_ORDERED, rte_event_enqueue_burst()
- */
-#define RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY      (3ULL << 0)
-/**< Allow only PARALLEL schedule type enqueue
- *
- * The rte_event_enqueue_burst() result is undefined if the queue configured
- * with PARALLEL only and sched_type != RTE_SCHED_TYPE_PARALLEL
- *
- * @see RTE_SCHED_TYPE_PARALLEL, rte_event_enqueue_burst()
- */
-#define RTE_EVENT_QUEUE_CFG_SINGLE_LINK        (1ULL << 2)
+#define RTE_EVENT_QUEUE_CFG_SINGLE_LINK        (1ULL << 1)
 /**< This event queue links only to a single event port.
  *
  *  @see rte_event_port_setup(), rte_event_port_link()
@@ -558,8 +532,8 @@ struct rte_event_queue_conf {
 	uint32_t nb_atomic_flows;
 	/**< The maximum number of active flows this queue can track at any
 	 * given time. If the queue is configured for atomic scheduling (by
-	 * applying the RTE_EVENT_QUEUE_CFG_ALL_TYPES or
-	 * RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY flags to event_queue_cfg), then the
+	 * applying the RTE_EVENT_QUEUE_CFG_ALL_TYPES flag to event_queue_cfg
+	 * or RTE_SCHED_TYPE_ATOMIC flag to schedule_type), then the
 	 * value must be in the range of [1, nb_event_queue_flows], which was
 	 * previously provided in rte_event_dev_configure().
 	 */
@@ -572,12 +546,18 @@ struct rte_event_queue_conf {
 	 * event will be returned from dequeue until one or more entries are
 	 * freed up/released.
 	 * If the queue is configured for ordered scheduling (by applying the
-	 * RTE_EVENT_QUEUE_CFG_ALL_TYPES or RTE_EVENT_QUEUE_CFG_ORDERED_ONLY
-	 * flags to event_queue_cfg), then the value must be in the range of
-	 * [1, nb_event_queue_flows], which was previously supplied to
-	 * rte_event_dev_configure().
+	 * RTE_EVENT_QUEUE_CFG_ALL_TYPES flag to event_queue_cfg or
+	 * RTE_SCHED_TYPE_ORDERED flag to schedule_type), then the value must
+	 * be in the range of [1, nb_event_queue_flows], which was
+	 * previously supplied to rte_event_dev_configure().
 	 */
-	uint32_t event_queue_cfg; /**< Queue cfg flags(EVENT_QUEUE_CFG_) */
+	uint32_t event_queue_cfg;
+	/**< Queue cfg flags(EVENT_QUEUE_CFG_) */
+	uint8_t schedule_type;
+	/**< Queue schedule type(RTE_SCHED_TYPE_*).
+	 * Valid when RTE_EVENT_QUEUE_CFG_ALL_TYPES bit is not set in
+	 * event_queue_cfg.
+	 */
 	uint8_t priority;
 	/**< Priority for this event queue relative to other event queues.
 	 * The requested priority should in the range of

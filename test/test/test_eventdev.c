@@ -300,15 +300,13 @@ test_eventdev_queue_setup(void)
 	/* Negative cases */
 	ret = rte_event_queue_default_conf_get(TEST_DEV_ID, 0, &qconf);
 	TEST_ASSERT_SUCCESS(ret, "Failed to get queue0 info");
-	qconf.event_queue_cfg =	(RTE_EVENT_QUEUE_CFG_ALL_TYPES &
-		 RTE_EVENT_QUEUE_CFG_TYPE_MASK);
+	qconf.event_queue_cfg =	RTE_EVENT_QUEUE_CFG_ALL_TYPES;
 	qconf.nb_atomic_flows = info.max_event_queue_flows + 1;
 	ret = rte_event_queue_setup(TEST_DEV_ID, 0, &qconf);
 	TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
 	qconf.nb_atomic_flows = info.max_event_queue_flows;
-	qconf.event_queue_cfg =	(RTE_EVENT_QUEUE_CFG_ORDERED_ONLY &
-		 RTE_EVENT_QUEUE_CFG_TYPE_MASK);
+	qconf.schedule_type = RTE_SCHED_TYPE_ORDERED;
 	qconf.nb_atomic_order_sequences = info.max_event_queue_flows + 1;
 	ret = rte_event_queue_setup(TEST_DEV_ID, 0, &qconf);
 	TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
@@ -423,7 +421,7 @@ test_eventdev_queue_attr_nb_atomic_flows(void)
 		/* Assume PMD doesn't support atomic flows, return early */
 		return -ENOTSUP;
 
-	qconf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY;
+	qconf.schedule_type = RTE_SCHED_TYPE_ATOMIC;
 
 	for (i = 0; i < (int)queue_count; i++) {
 		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);
@@ -466,7 +464,7 @@ test_eventdev_queue_attr_nb_atomic_order_sequences(void)
 		/* Assume PMD doesn't support reordering */
 		return -ENOTSUP;
 
-	qconf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ORDERED_ONLY;
+	qconf.schedule_type = RTE_SCHED_TYPE_ORDERED;
 
 	for (i = 0; i < (int)queue_count; i++) {
 		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);
@@ -507,7 +505,7 @@ test_eventdev_queue_attr_event_queue_cfg(void)
 	ret = rte_event_queue_default_conf_get(TEST_DEV_ID, 0, &qconf);
 	TEST_ASSERT_SUCCESS(ret, "Failed to get queue0 def conf");
 
-	qconf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY;
+	qconf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_SINGLE_LINK;
 
 	for (i = 0; i < (int)queue_count; i++) {
 		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);

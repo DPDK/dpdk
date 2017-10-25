@@ -345,28 +345,14 @@ sw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 {
 	int type;
 
-	/* SINGLE_LINK can be OR-ed with other types, so handle first */
+	type = conf->schedule_type;
+
 	if (RTE_EVENT_QUEUE_CFG_SINGLE_LINK & conf->event_queue_cfg) {
 		type = SW_SCHED_TYPE_DIRECT;
-	} else {
-		switch (conf->event_queue_cfg) {
-		case RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY:
-			type = RTE_SCHED_TYPE_ATOMIC;
-			break;
-		case RTE_EVENT_QUEUE_CFG_ORDERED_ONLY:
-			type = RTE_SCHED_TYPE_ORDERED;
-			break;
-		case RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY:
-			type = RTE_SCHED_TYPE_PARALLEL;
-			break;
-		case RTE_EVENT_QUEUE_CFG_ALL_TYPES:
-			SW_LOG_ERR("QUEUE_CFG_ALL_TYPES not supported\n");
-			return -ENOTSUP;
-		default:
-			SW_LOG_ERR("Unknown queue type %d requested\n",
-				   conf->event_queue_cfg);
-			return -EINVAL;
-		}
+	} else if (RTE_EVENT_QUEUE_CFG_ALL_TYPES
+			& conf->event_queue_cfg) {
+		SW_LOG_ERR("QUEUE_CFG_ALL_TYPES not supported\n");
+		return -ENOTSUP;
 	}
 
 	struct sw_evdev *sw = sw_pmd_priv(dev);
@@ -400,7 +386,7 @@ sw_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
 	static const struct rte_event_queue_conf default_conf = {
 		.nb_atomic_flows = 4096,
 		.nb_atomic_order_sequences = 1,
-		.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+		.schedule_type = RTE_SCHED_TYPE_ATOMIC,
 		.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 	};
 

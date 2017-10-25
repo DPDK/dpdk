@@ -164,7 +164,7 @@ order_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	/* q0 (ordered queue) configuration */
 	struct rte_event_queue_conf q0_ordered_conf = {
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
-			.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ORDERED_ONLY,
+			.schedule_type = RTE_SCHED_TYPE_ORDERED,
 			.nb_atomic_flows = opt->nb_flows,
 			.nb_atomic_order_sequences = opt->nb_flows,
 	};
@@ -177,7 +177,7 @@ order_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	/* q1 (atomic queue) configuration */
 	struct rte_event_queue_conf q1_atomic_conf = {
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
-			.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+			.schedule_type = RTE_SCHED_TYPE_ATOMIC,
 			.nb_atomic_flows = opt->nb_flows,
 			.nb_atomic_order_sequences = opt->nb_flows,
 	};

@@ -108,7 +108,7 @@ struct config_data {
 static struct config_data cdata = {
 	.num_packets = (1L << 25), /* do ~32M packets */
 	.num_fids = 512,
-	.queue_type = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+	.queue_type = RTE_SCHED_TYPE_ATOMIC,
 	.next_qid = {-1},
 	.qid = {-1},
 	.num_stages = 1,
@@ -490,10 +490,10 @@ parse_app_args(int argc, char **argv)
 			cdata.enable_queue_priorities = 1;
 			break;
 		case 'o':
-			cdata.queue_type = RTE_EVENT_QUEUE_CFG_ORDERED_ONLY;
+			cdata.queue_type = RTE_SCHED_TYPE_ORDERED;
 			break;
 		case 'p':
-			cdata.queue_type = RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY;
+			cdata.queue_type = RTE_SCHED_TYPE_PARALLEL;
 			break;
 		case 'q':
 			cdata.quiet = 1;
@@ -684,7 +684,7 @@ setup_eventdev(struct prod_data *prod_data,
 			.new_event_threshold = 4096,
 	};
 	struct rte_event_queue_conf wkr_q_conf = {
-			.event_queue_cfg = cdata.queue_type,
+			.schedule_type = cdata.queue_type,
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 			.nb_atomic_flows = 1024,
 			.nb_atomic_order_sequences = 1024,
@@ -751,11 +751,11 @@ setup_eventdev(struct prod_data *prod_data,
 		}
 
 		const char *type_str = "Atomic";
-		switch (wkr_q_conf.event_queue_cfg) {
-		case RTE_EVENT_QUEUE_CFG_ORDERED_ONLY:
+		switch (wkr_q_conf.schedule_type) {
+		case RTE_SCHED_TYPE_ORDERED:
 			type_str = "Ordered";
 			break;
-		case RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY:
+		case RTE_SCHED_TYPE_PARALLEL:
 			type_str = "Parallel";
 			break;
 		}
@@ -907,9 +907,9 @@ main(int argc, char **argv)
 		printf("\tworkers: %u\n", cdata.num_workers);
 		printf("\tpackets: %"PRIi64"\n", cdata.num_packets);
 		printf("\tQueue-prio: %u\n", cdata.enable_queue_priorities);
-		if (cdata.queue_type == RTE_EVENT_QUEUE_CFG_ORDERED_ONLY)
+		if (cdata.queue_type == RTE_SCHED_TYPE_ORDERED)
 			printf("\tqid0 type: ordered\n");
-		if (cdata.queue_type == RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY)
+		if (cdata.queue_type == RTE_SCHED_TYPE_ATOMIC)
 			printf("\tqid0 type: atomic\n");
 		printf("\tCores available: %u\n", rte_lcore_count());
 		printf("\tCores used: %u\n", cores_needed);

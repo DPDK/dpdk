@@ -92,25 +92,4 @@ evt_has_all_types_queue(uint8_t dev_id)
 			true : false;
 }
 
-static inline uint32_t
-evt_sched_type2queue_cfg(uint8_t sched_type)
-{
-	uint32_t ret;
-
-	switch (sched_type) {
-	case RTE_SCHED_TYPE_ATOMIC:
-		ret = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY;
-		break;
-	case RTE_SCHED_TYPE_ORDERED:
-		ret = RTE_EVENT_QUEUE_CFG_ORDERED_ONLY;
-		break;
-	case RTE_SCHED_TYPE_PARALLEL:
-		ret = RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY;
-		break;
-	default:
-		rte_panic("Invalid sched_type %d\n", sched_type);
-	}
-	return ret;
-}
-
 #endif /*  _EVT_COMMON_*/

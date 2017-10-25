@@ -517,13 +517,11 @@ is_valid_atomic_queue_conf(const struct rte_event_queue_conf *queue_conf)
 {
 	if (queue_conf &&
 		!(queue_conf->event_queue_cfg &
-		  RTE_EVENT_QUEUE_CFG_SINGLE_LINK) && (
+		  RTE_EVENT_QUEUE_CFG_SINGLE_LINK) &&
 		((queue_conf->event_queue_cfg &
-			RTE_EVENT_QUEUE_CFG_TYPE_MASK)
-			== RTE_EVENT_QUEUE_CFG_ALL_TYPES) ||
-		((queue_conf->event_queue_cfg &
-			RTE_EVENT_QUEUE_CFG_TYPE_MASK)
-			== RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY)
+			 RTE_EVENT_QUEUE_CFG_ALL_TYPES) ||
+		(queue_conf->schedule_type
+			== RTE_SCHED_TYPE_ATOMIC)
 		))
 		return 1;
 	else
@@ -535,13 +533,11 @@ is_valid_ordered_queue_conf(const struct rte_event_queue_conf *queue_conf)
 {
 	if (queue_conf &&
 		!(queue_conf->event_queue_cfg &
-		  RTE_EVENT_QUEUE_CFG_SINGLE_LINK) && (
+		  RTE_EVENT_QUEUE_CFG_SINGLE_LINK) &&
 		((queue_conf->event_queue_cfg &
-			RTE_EVENT_QUEUE_CFG_TYPE_MASK)
-			== RTE_EVENT_QUEUE_CFG_ALL_TYPES) ||
-		((queue_conf->event_queue_cfg &
-			RTE_EVENT_QUEUE_CFG_TYPE_MASK)
-			== RTE_EVENT_QUEUE_CFG_ORDERED_ONLY)
+			 RTE_EVENT_QUEUE_CFG_ALL_TYPES) ||
+		(queue_conf->schedule_type
+			== RTE_SCHED_TYPE_ORDERED)
 		))
 		return 1;
 	else

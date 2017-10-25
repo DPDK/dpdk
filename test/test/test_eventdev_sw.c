@@ -219,7 +219,7 @@ create_lb_qids(struct test *t, int num_qids, uint32_t flags)
 
 	/* Q creation */
 	const struct rte_event_queue_conf conf = {
-			.event_queue_cfg = flags,
+			.schedule_type = flags,
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 			.nb_atomic_flows = 1024,
 			.nb_atomic_order_sequences = 1024,
@@ -242,20 +242,20 @@ create_lb_qids(struct test *t, int num_qids, uint32_t flags)
 static inline int
 create_atomic_qids(struct test *t, int num_qids)
 {
-	return create_lb_qids(t, num_qids, RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY);
+	return create_lb_qids(t, num_qids, RTE_SCHED_TYPE_ATOMIC);
 }
 
 static inline int
 create_ordered_qids(struct test *t, int num_qids)
 {
-	return create_lb_qids(t, num_qids, RTE_EVENT_QUEUE_CFG_ORDERED_ONLY);
+	return create_lb_qids(t, num_qids, RTE_SCHED_TYPE_ORDERED);
 }
 
 
 static inline int
 create_unordered_qids(struct test *t, int num_qids)
 {
-	return create_lb_qids(t, num_qids, RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY);
+	return create_lb_qids(t, num_qids, RTE_SCHED_TYPE_PARALLEL);
 }
 
 static inline int
@@ -1238,7 +1238,7 @@ port_reconfig_credits(struct test *t)
 	const uint32_t NUM_ITERS = 32;
 	for (i = 0; i < NUM_ITERS; i++) {
 		const struct rte_event_queue_conf conf = {
-			.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+			.schedule_type = RTE_SCHED_TYPE_ATOMIC,
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 			.nb_atomic_flows = 1024,
 			.nb_atomic_order_sequences = 1024,
@@ -1320,7 +1320,7 @@ port_single_lb_reconfig(struct test *t)
 
 	static const struct rte_event_queue_conf conf_lb_atomic = {
 		.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
-		.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+		.schedule_type = RTE_SCHED_TYPE_ATOMIC,
 		.nb_atomic_flows = 1024,
 		.nb_atomic_order_sequences = 1024,
 	};
@@ -1818,7 +1818,7 @@ ordered_reconfigure(struct test *t)
 	}
 
 	const struct rte_event_queue_conf conf = {
-			.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ORDERED_ONLY,
+			.schedule_type = RTE_SCHED_TYPE_ORDERED,
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 			.nb_atomic_flows = 1024,
 			.nb_atomic_order_sequences = 1024,
@@ -1865,7 +1865,7 @@ qid_priorities(struct test *t)
 	for (i = 0; i < 3; i++) {
 		/* Create QID */
 		const struct rte_event_queue_conf conf = {
-			.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+			.schedule_type = RTE_SCHED_TYPE_ATOMIC,
 			/* increase priority (0 == highest), as we go */
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL - i,
 			.nb_atomic_flows = 1024,
