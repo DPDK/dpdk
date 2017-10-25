@@ -415,6 +415,17 @@ extern "C" {
  */
 #define RTE_PTYPE_TUNNEL_GTPU               0x00008000
 /**
+ * ESP (IP Encapsulating Security Payload) tunneling packet type.
+ *
+ * Packet format:
+ * <'ether type'=0x0800
+ * | 'version'=4, 'protocol'=51>
+ * or,
+ * <'ether type'=0x86DD
+ * | 'version'=6, 'next header'=51>
+ */
+#define RTE_PTYPE_TUNNEL_ESP                0x00009000
+/**
  * Mask of tunneling packet types.
  */
 #define RTE_PTYPE_TUNNEL_MASK               0x0000f000

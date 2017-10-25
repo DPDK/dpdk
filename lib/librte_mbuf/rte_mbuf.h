@@ -189,9 +189,24 @@ extern "C" {
  */
 #define PKT_RX_TIMESTAMP     (1ULL << 17)
 
+/**
+ * Indicate that security offload processing was applied on the RX packet.
+ */
+#define PKT_RX_SEC_OFFLOAD		(1ULL << 18)
+
+/**
+ * Indicate that security offload processing failed on the RX packet.
+ */
+#define PKT_RX_SEC_OFFLOAD_FAILED  	(1ULL << 19)
+
 /* add new RX flags here */
 
 /* add new TX flags here */
+
+/**
+ * Request security offload processing on the TX packet.
+ */
+#define PKT_TX_SEC_OFFLOAD 		(1ULL << 43)
 
 /**
  * Offload the MACsec. This flag must be set by the application to enable
@@ -316,7 +331,8 @@ extern "C" {
 		PKT_TX_QINQ_PKT |        \
 		PKT_TX_VLAN_PKT |        \
 		PKT_TX_TUNNEL_MASK |	 \
-		PKT_TX_MACSEC)
+		PKT_TX_MACSEC |		 \
+		PKT_TX_SEC_OFFLOAD)
 
 #define __RESERVED           (1ULL << 61) /**< reserved for future mbuf use */
 
@@ -456,8 +472,21 @@ struct rte_mbuf {
 			uint32_t l3_type:4; /**< (Outer) L3 type. */
 			uint32_t l4_type:4; /**< (Outer) L4 type. */
 			uint32_t tun_type:4; /**< Tunnel type. */
-			uint32_t inner_l2_type:4; /**< Inner L2 type. */
-			uint32_t inner_l3_type:4; /**< Inner L3 type. */
+			RTE_STD_C11
+			union {
+				uint8_t inner_esp_next_proto;
+				/**< ESP next protocol type, valid if
+				 * RTE_PTYPE_TUNNEL_ESP tunnel type is set
+				 * on both Tx and Rx.
+				 */
+				__extension__
+				struct {
+					uint8_t inner_l2_type:4;
+					/**< Inner L2 type. */
+					uint8_t inner_l3_type:4;
+					/**< Inner L3 type. */
+				};
+			};
 			uint32_t inner_l4_type:4; /**< Inner L4 type. */
 		};
 	};

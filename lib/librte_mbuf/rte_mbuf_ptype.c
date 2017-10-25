@@ -91,6 +91,7 @@ const char *rte_get_ptype_tunnel_name(uint32_t ptype)
 	case RTE_PTYPE_TUNNEL_GRENAT: return "TUNNEL_GRENAT";
 	case RTE_PTYPE_TUNNEL_GTPC: return "TUNNEL_GTPC";
 	case RTE_PTYPE_TUNNEL_GTPU: return "TUNNEL_GTPU";
+	case RTE_PTYPE_TUNNEL_ESP: return "TUNNEL_ESP";
 	default: return "TUNNEL_UNKNOWN";
 	}
 }
