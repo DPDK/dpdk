@@ -58,8 +58,16 @@ SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_ethdev.c
 
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_octeontx_rxtx.o += -fno-prefetch-loop-arrays
-endif
+
+ifeq ($(shell test $(GCC_VERSION) -ge 46 && echo 1), 1)
 CFLAGS_octeontx_rxtx.o += -O3 -Ofast
+else
+CFLAGS_octeontx_rxtx.o += -O3 -ffast-math
+endif
+
+else
+CFLAGS_octeontx_rxtx.o += -O3 -Ofast
+endif
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
