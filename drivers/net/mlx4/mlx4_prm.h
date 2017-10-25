@@ -93,6 +93,9 @@ struct mlx4_sq {
 
 #define mlx4_get_send_wqe(sq, n) ((sq)->buf + ((n) * (MLX4_TXBB_SIZE)))
 
+/* Completion queue consumer index mask. */
+#define MLX4_CQ_DB_CI_MASK 0xffffff
+
 /* Completion queue information. */
 struct mlx4_cq {
 	uint8_t *buf; /**< Pointer to the completion queue buffer. */

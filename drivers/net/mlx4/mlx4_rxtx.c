@@ -200,7 +200,7 @@ mlx4_txq_complete(struct txq *txq)
 	 * the ring consumer.
 	 */
 	cq->cons_index = cons_index;
-	*cq->set_ci_db = rte_cpu_to_be_32(cq->cons_index & 0xffffff);
+	*cq->set_ci_db = rte_cpu_to_be_32(cq->cons_index & MLX4_CQ_DB_CI_MASK);
 	rte_wmb();
 	sq->tail = sq->tail + nr_txbbs;
 	/* Update the list of packets posted for transmission. */
@@ -829,7 +829,8 @@ skip:
 	rxq->rq_ci = rq_ci >> sges_n;
 	rte_wmb();
 	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
-	*rxq->mcq.set_ci_db = rte_cpu_to_be_32(rxq->mcq.cons_index & 0xffffff);
+	*rxq->mcq.set_ci_db =
+		rte_cpu_to_be_32(rxq->mcq.cons_index & MLX4_CQ_DB_CI_MASK);
 	/* Increment packets counter. */
 	rxq->stats.ipackets += i;
 	return i;
