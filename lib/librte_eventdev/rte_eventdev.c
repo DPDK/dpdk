@@ -809,6 +809,12 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 	case RTE_EVENT_QUEUE_ATTR_EVENT_QUEUE_CFG:
 		*attr_value = conf->event_queue_cfg;
 		break;
+	case RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE:
+		if (conf->event_queue_cfg & RTE_EVENT_QUEUE_CFG_ALL_TYPES)
+			return -EOVERFLOW;
+
+		*attr_value = conf->schedule_type;
+		break;
 	default:
 		return -EINVAL;
 	};

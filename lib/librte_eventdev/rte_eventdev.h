@@ -632,6 +632,10 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
  * The cfg flags for the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_EVENT_QUEUE_CFG 3
+/**
+ * The schedule type of the queue.
+ */
+#define RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE 4
 
 /**
  * Get an attribute from a queue.
@@ -645,6 +649,9 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
  * @retval 0 Successfully returned value
  *         -EINVAL invalid device, queue or attr_id provided, or attr_value
  *         was NULL
+ *         -EOVERFLOW returned when attr_id is set to
+ *         RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE and event_queue_cfg is set to
+ *         RTE_EVENT_QUEUE_CFG_ALL_TYPES
  */
 int
 rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
