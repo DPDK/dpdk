@@ -331,6 +331,42 @@ rte_service_runner_do_callback(struct rte_service_spec_impl *s,
 		s->spec.callback(userdata);
 }
 
+
+static inline int32_t
+service_run(uint32_t i, struct core_state *cs, uint64_t service_mask)
+{
+	if (!service_valid(i))
+		return -EINVAL;
+	struct rte_service_spec_impl *s = &rte_services[i];
+	if (s->comp_runstate != RUNSTATE_RUNNING ||
+			s->app_runstate != RUNSTATE_RUNNING ||
+			!(service_mask & (UINT64_C(1) << i)))
+		return -ENOEXEC;
+
+	/* check do we need cmpset, if MT safe or <= 1 core
+	 * mapped, atomic ops are not required.
+	 */
+	const int use_atomics = (service_mt_safe(s) == 0) &&
+				(s->num_mapped_cores > 1);
+	if (use_atomics) {
+		if (!rte_atomic32_cmpset((uint32_t *)&s->execute_lock, 0, 1))
+			return -EBUSY;
+
+		rte_service_runner_do_callback(s, cs, i);
+		rte_atomic32_clear(&s->execute_lock);
+	} else
+		rte_service_runner_do_callback(s, cs, i);
+
+	return 0;
+}
+
+int32_t rte_service_run_iter_on_app_lcore(uint32_t id)
+{
+	/* run service on calling core, using all-ones as the service mask */
+	struct core_state *cs = &lcore_states[rte_lcore_id()];
+	return service_run(id, cs, UINT64_MAX);
+}
+
 static int32_t
 rte_service_runner_func(void *arg)
 {
@@ -343,27 +379,8 @@ rte_service_runner_func(void *arg)
 		const uint64_t service_mask = cs->service_mask;
 
 		for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
-			if (!service_valid(i))
-				continue;
-			struct rte_service_spec_impl *s = &rte_services[i];
-			if (s->comp_runstate != RUNSTATE_RUNNING ||
-					s->app_runstate != RUNSTATE_RUNNING ||
-					!(service_mask & (UINT64_C(1) << i)))
-				continue;
-
-			/* check do we need cmpset, if MT safe or <= 1 core
-			 * mapped, atomic ops are not required.
-			 */
-			const int use_atomics = (service_mt_safe(s) == 0) &&
-						(s->num_mapped_cores > 1);
-			if (use_atomics) {
-				uint32_t *lock = (uint32_t *)&s->execute_lock;
-				if (rte_atomic32_cmpset(lock, 0, 1)) {
-					rte_service_runner_do_callback(s, cs, i);
-					rte_atomic32_clear(&s->execute_lock);
-				}
-			} else
-				rte_service_runner_do_callback(s, cs, i);
+			/* return value ignored as no change to code flow */
+			service_run(i, cs, service_mask);
 		}
 
 		rte_smp_rmb();

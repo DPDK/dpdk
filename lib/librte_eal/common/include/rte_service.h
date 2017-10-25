@@ -211,6 +211,27 @@ int32_t rte_service_runstate_get(uint32_t id);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
+ * This function runs a service callback from a non-service lcore context.
+ * The *id* of the service to be run is passed in, and the service-callback
+ * is executed on the calling lcore immediately if possible. If the service is
+ * not multi-thread capable and another thread is currently executing it, this
+ * function returns without running the callback.
+ *
+ * Note that any thread calling this function MUST be a DPDK EAL thread, as
+ * the *rte_lcore_id* function is used to access internal data structures.
+ *
+ * @retval 0 Service was run on the calling thread successfully
+ * @retval -EBUSY Another lcore is executing the service, and it is not a
+ *         multi-thread safe service, so the service was not run on this lcore
+ * @retval -ENOEXEC Service is not in a runnable state
+ * @retval -EINVAL Invalid service id
+ */
+int32_t rte_service_run_iter_on_app_lcore(uint32_t id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Start a service core.
  *
  * Starting a core makes the core begin polling. Any services assigned to it
