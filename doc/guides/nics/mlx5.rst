@@ -173,6 +173,23 @@ Environment variables
   This is disabled by default since this can also decrease performance for
   unaligned packet sizes.
 
+- ``MLX5_SHUT_UP_BF``
+
+  Configures HW Tx doorbell register as IO-mapped.
+
+  By default, the HW Tx doorbell is configured as a write-combining register.
+  The register would be flushed to HW usually when the write-combining buffer
+  becomes full, but it depends on CPU design.
+
+  Except for vectorized Tx burst routines, a write memory barrier is enforced
+  after updating the register so that the update can be immediately visible to
+  HW.
+
+  When vectorized Tx burst is called, the barrier is set only if the burst size
+  is not aligned to MLX5_VPMD_TX_MAX_BURST. However, setting this environmental
+  variable will bring better latency even though the maximum throughput can
+  slightly decline.
+
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 

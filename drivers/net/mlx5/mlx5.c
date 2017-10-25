@@ -1036,8 +1036,6 @@ rte_mlx5_pmd_init(void)
 	 * using this PMD, which is not supported in forked processes.
 	 */
 	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
-	/* Don't map UAR to WC if BlueFlame is not used.*/
-	setenv("MLX5_SHUT_UP_BF", "1", 1);
 	/* Match the size of Rx completion entry to the size of a cacheline. */
 	if (RTE_CACHE_LINE_SIZE == 128)
 		setenv("MLX5_CQE_SIZE", "128", 0);
