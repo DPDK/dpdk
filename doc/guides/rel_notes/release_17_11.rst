@@ -303,6 +303,13 @@ API Changes
   and have been replaced by non bus specific functions
   ``rte_cryptodev_pmd_parse_input_args()`` and ``rte_cryptodev_pmd_create()``.
 
+* **Removed PCI device bus specific functions from librte_cryptodev.**
+
+  The functions ``rte_cryptodev_pci_generic_probe()`` and
+  ``rte_cryptodev_pci_generic_remove()`` have been removed from librte_cryptodev
+  and have been replaced by non bus specific functions
+  ``rte_cryptodev_pmd_create()`` and ``rte_cryptodev_pmd_destroy()``.
+
 * **Removed deprecated functions to manage log level or type.**
 
   The functions ``rte_set_log_level()``, ``rte_get_log_level()``,

@@ -58,8 +58,9 @@
 #include <rte_spinlock.h>
 #include <rte_hexdump.h>
 #include <rte_crypto_sym.h>
-#include <rte_cryptodev_pci.h>
 #include <rte_byteorder.h>
+#include <rte_pci.h>
+
 #include <openssl/evp.h>
 
 #include "qat_logs.h"
