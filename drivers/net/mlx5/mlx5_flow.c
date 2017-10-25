@@ -1174,9 +1174,17 @@ priv_flow_convert(struct priv *priv,
 	 * Last step. Complete missing specification to reach the RSS
 	 * configuration.
 	 */
-	if (parser->queues_n > 1) {
+	if (parser->drop) {
+		/*
+		 * Drop queue priority needs to be adjusted to
+		 * their most specific layer priority.
+		 */
+		parser->drop_q.ibv_attr->priority =
+			attr->priority +
+			hash_rxq_init[parser->layer].flow_priority;
+	} else if (parser->queues_n > 1) {
 		priv_flow_convert_finalise(priv, parser);
-	} else if (!parser->drop) {
+	} else {
 		/*
 		 * Action queue have their priority overridden with
 		 * Ethernet priority, this priority needs to be adjusted to
