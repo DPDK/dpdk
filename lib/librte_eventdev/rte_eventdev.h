@@ -1103,6 +1103,10 @@ struct rte_eventdev_data {
 	/**< Event device capabilities(RTE_EVENT_DEV_CAP_)*/
 	struct rte_event_dev_config dev_conf;
 	/**< Configuration applied to device. */
+	uint8_t service_inited;
+	/* Service initialization state */
+	uint32_t service_id;
+	/* Service ID*/
 
 	RTE_STD_C11
 	uint8_t dev_started : 1;
@@ -1604,6 +1608,24 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 int
 rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 			 uint8_t queues[], uint8_t priorities[]);
+
+/**
+ * Retrieve the service ID of the event dev. If the adapter doesn't use
+ * a rte_service function, this function returns -ESRCH.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @param [out] service_id
+ *   A pointer to a uint32_t, to be filled in with the service id.
+ *
+ * @return
+ *   - 0: Success
+ *   - <0: Error code on failure, if the event dev doesn't use a rte_service
+ *   function, this function returns -ESRCH.
+ */
+int
+rte_event_dev_service_id_get(uint8_t dev_id, uint32_t *service_id);
 
 /**
  * Dump internal information about *dev_id* to the FILE* provided in *f*.

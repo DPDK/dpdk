@@ -51,6 +51,7 @@ DPDK_17.11 {
 	global:
 
 	rte_event_dev_attr_get;
+	rte_event_dev_service_id_get;
 	rte_event_port_attr_get;
 	rte_event_queue_attr_get;
 

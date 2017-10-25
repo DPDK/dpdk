@@ -963,6 +963,23 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
 }
 
 int
+rte_event_dev_service_id_get(uint8_t dev_id, uint32_t *service_id)
+{
+	struct rte_eventdev *dev;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_eventdevs[dev_id];
+
+	if (service_id == NULL)
+		return -EINVAL;
+
+	if (dev->data->service_inited)
+		*service_id = dev->data->service_id;
+
+	return dev->data->service_inited ? 0 : -ESRCH;
+}
+
+int
 rte_event_dev_dump(uint8_t dev_id, FILE *f)
 {
 	struct rte_eventdev *dev;
