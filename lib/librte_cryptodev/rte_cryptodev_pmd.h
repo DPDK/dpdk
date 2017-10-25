@@ -56,6 +56,35 @@ extern "C" {
 #include "rte_crypto.h"
 #include "rte_cryptodev.h"
 
+
+#define RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS	8
+#define RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS	2048
+
+#define RTE_CRYPTODEV_PMD_NAME_ARG			("name")
+#define RTE_CRYPTODEV_PMD_MAX_NB_QP_ARG			("max_nb_queue_pairs")
+#define RTE_CRYPTODEV_PMD_MAX_NB_SESS_ARG		("max_nb_sessions")
+#define RTE_CRYPTODEV_PMD_SOCKET_ID_ARG			("socket_id")
+
+
+static const char * const cryptodev_pmd_valid_params[] = {
+	RTE_CRYPTODEV_PMD_NAME_ARG,
+	RTE_CRYPTODEV_PMD_MAX_NB_QP_ARG,
+	RTE_CRYPTODEV_PMD_MAX_NB_SESS_ARG,
+	RTE_CRYPTODEV_PMD_SOCKET_ID_ARG
+};
+
+/**
+ * @internal
+ * Initialisation parameters for crypto devices
+ */
+struct rte_cryptodev_pmd_init_params {
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
+	size_t private_data_size;
+	int socket_id;
+	unsigned int max_nb_queue_pairs;
+	unsigned int max_nb_sessions;
+};
+
 /** Global structure used for maintaining state of allocated crypto devices */
 struct rte_cryptodev_global {
 	struct rte_cryptodev *devs;	/**< Device information array */
@@ -391,6 +420,63 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id);
  */
 extern int
 rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev);
+
+
+/**
+ * @internal
+ *
+ * PMD assist function to parse initialisation arguments for crypto driver
+ * when creating a new crypto PMD device instance.
+ *
+ * PMD driver should set default values for that PMD before calling function,
+ * these default values will be over-written with successfully parsed values
+ * from args string.
+ *
+ * @param	params	parsed PMD initialisation parameters
+ * @param	args	input argument string to parse
+ *
+ * @return
+ *  - 0 on success
+ *  - errno on failure
+ */
+int
+rte_cryptodev_pmd_parse_input_args(
+		struct rte_cryptodev_pmd_init_params *params,
+		const char *args);
+
+/**
+ * @internal
+ *
+ * PMD assist function to provide boiler plate code for crypto driver to create
+ * and allocate resources for a new crypto PMD device instance.
+ *
+ * @param	name	crypto device name.
+ * @param	device	base device instance
+ * @param	params	PMD initialisation parameters
+ *
+ * @return
+ *  - crypto device instance on success
+ *  - NULL on creation failure
+ */
+struct rte_cryptodev *
+rte_cryptodev_pmd_create(const char *name,
+		struct rte_device *device,
+		struct rte_cryptodev_pmd_init_params *params);
+
+/**
+ * @internal
+ *
+ * PMD assist function to provide boiler plate code for crypto driver to
+ * destroy and free resources associated with a crypto PMD device instance.
+ *
+ * @param	cryptodev	crypto device handle.
+ *
+ * @return
+ *  - 0 on success
+ *  - errno on failure
+ */
+int
+rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev);
 
 /**
  * Executes all the user application registered callbacks for the specific

@@ -59,10 +59,10 @@ extern const char **rte_cyptodev_names;
 		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
 
-#define CDEV_PMD_LOG_ERR(dev, ...) \
-	RTE_LOG(ERR, CRYPTODEV, \
-		RTE_FMT("[%s] %s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			dev, __func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
+#define CDEV_LOG_INFO(...) \
+	RTE_LOG(INFO, CRYPTODEV, \
+		RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
+			RTE_FMT_TAIL(__VA_ARGS__,)))
 
 #ifdef RTE_LIBRTE_CRYPTODEV_DEBUG
 #define CDEV_LOG_DEBUG(...) \

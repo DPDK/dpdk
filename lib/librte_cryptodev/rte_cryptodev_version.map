@@ -84,5 +84,8 @@ DPDK_17.11 {
 	global:
 
 	rte_cryptodev_name_get;
+	rte_cryptodev_pmd_create;
+	rte_cryptodev_pmd_destroy;
+	rte_cryptodev_pmd_parse_input_args;
 
 } DPDK_17.08;

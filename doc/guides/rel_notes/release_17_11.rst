@@ -81,6 +81,13 @@ New Features
    * Support for Flow API
    * Support for Tx and Rx descriptor status functions
 
+* **Add bus agnostic functions to cryptodev for PMD initialisation**
+
+  Adds new PMD assist functions ``rte_cryptodev_pmd_parse_input_args()``,
+  ``rte_cryptodev_pmd_create()`` and ``rte_cryptodev_pmd_destroy()`` which
+  are bus independent for driver to manage creation and destruction of new
+  device instances.
+
 * **Updated QAT crypto PMD.**
 
   Performance enhancements:
