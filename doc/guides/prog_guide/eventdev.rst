@@ -217,7 +217,7 @@ calling the setup function. Repeat this step for each queue, starting from
 .. code-block:: c
 
         struct rte_event_queue_conf atomic_conf = {
-                .event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+                .schedule_type = RTE_SCHED_TYPE_ATOMIC,
                 .priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
                 .nb_atomic_flows = 1024,
                 .nb_atomic_order_sequences = 1024,
@@ -320,7 +320,7 @@ The following code shows how those packets can be enqueued into the eventdev:
         for (i = 0; i < nb_rx; i++) {
                 ev[i].flow_id = mbufs[i]->hash.rss;
                 ev[i].op = RTE_EVENT_OP_NEW;
-                ev[i].sched_type = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY;
+                ev[i].sched_type = RTE_SCHED_TYPE_ATOMIC;
                 ev[i].queue_id = 0;
                 ev[i].event_type = RTE_EVENT_TYPE_ETHDEV;
                 ev[i].sub_event_type = 0;
