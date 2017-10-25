@@ -47,7 +47,6 @@
 #define EVT_VERBOSE              ("verbose")
 #define EVT_DEVICE               ("dev")
 #define EVT_TEST                 ("test")
-#define EVT_SCHED_LCORE          ("slcore")
 #define EVT_PROD_LCORES          ("plcores")
 #define EVT_WORK_LCORES          ("wlcores")
 #define EVT_NB_FLOWS             ("nb_flows")
@@ -67,7 +66,6 @@ struct evt_options {
 	bool plcores[RTE_MAX_LCORE];
 	bool wlcores[RTE_MAX_LCORE];
 	uint8_t sched_type_list[EVT_MAX_STAGES];
-	int slcore;
 	uint32_t nb_flows;
 	int socket_id;
 	int pool_sz;
@@ -216,12 +214,6 @@ static inline void
 evt_dump_nb_flows(struct evt_options *opt)
 {
 	evt_dump("nb_flows", "%d", opt->nb_flows);
-}
-
-static inline void
-evt_dump_scheduler_lcore(struct evt_options *opt)
-{
-	evt_dump("scheduler lcore", "%d", opt->slcore);
 }
 
 static inline void

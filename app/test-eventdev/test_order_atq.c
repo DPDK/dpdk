@@ -179,6 +179,12 @@ order_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	if (ret)
 		return ret;
 
+	ret = evt_service_setup(opt->dev_id);
+	if (ret) {
+		evt_err("No service lcore found to run event dev.");
+		return ret;
+	}
+
 	ret = rte_event_dev_start(opt->dev_id);
 	if (ret) {
 		evt_err("failed to start eventdev %d", opt->dev_id);

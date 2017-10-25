@@ -159,6 +159,7 @@ int perf_test_setup(struct evt_test *test, struct evt_options *opt);
 int perf_mempool_setup(struct evt_test *test, struct evt_options *opt);
 int perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 				uint8_t stride, uint8_t nb_queues);
+int perf_event_dev_service_setup(uint8_t dev_id);
 int perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 		int (*worker)(void *));
 void perf_opt_dump(struct evt_options *opt, uint8_t nb_queues);

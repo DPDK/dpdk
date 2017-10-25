@@ -114,13 +114,6 @@ evt_parse_test_name(struct evt_options *opt, const char *arg)
 }
 
 static int
-evt_parse_slcore(struct evt_options *opt, const char *arg)
-{
-	opt->slcore = atoi(arg);
-	return 0;
-}
-
-static int
 evt_parse_socket_id(struct evt_options *opt, const char *arg)
 {
 	opt->socket_id = atoi(arg);
@@ -188,7 +181,6 @@ usage(char *program)
 		"\t--test             : name of the test application to run\n"
 		"\t--socket_id        : socket_id of application resources\n"
 		"\t--pool_sz          : pool size of the mempool\n"
-		"\t--slcore           : lcore id of the scheduler\n"
 		"\t--plcores          : list of lcore ids for producers\n"
 		"\t--wlcores          : list of lcore ids for workers\n"
 		"\t--stlist           : list of scheduled types of the stages\n"
@@ -254,7 +246,6 @@ static struct option lgopts[] = {
 	{ EVT_POOL_SZ,          1, 0, 0 },
 	{ EVT_NB_PKTS,          1, 0, 0 },
 	{ EVT_WKR_DEQ_DEP,      1, 0, 0 },
-	{ EVT_SCHED_LCORE,      1, 0, 0 },
 	{ EVT_SCHED_TYPE_LIST,  1, 0, 0 },
 	{ EVT_FWD_LATENCY,      0, 0, 0 },
 	{ EVT_QUEUE_PRIORITY,   0, 0, 0 },
@@ -278,7 +269,6 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_POOL_SZ, evt_parse_pool_sz},
 		{ EVT_NB_PKTS, evt_parse_nb_pkts},
 		{ EVT_WKR_DEQ_DEP, evt_parse_wkr_deq_dep},
-		{ EVT_SCHED_LCORE, evt_parse_slcore},
 		{ EVT_SCHED_TYPE_LIST, evt_parse_sched_type_list},
 		{ EVT_FWD_LATENCY, evt_parse_fwd_latency},
 		{ EVT_QUEUE_PRIORITY, evt_parse_queue_priority},

@@ -88,18 +88,6 @@ perf_producer(void *arg)
 	return 0;
 }
 
-static inline int
-scheduler(void *arg)
-{
-	struct test_perf *t = arg;
-	const uint8_t dev_id = t->opt->dev_id;
-
-	while (t->done == false)
-		rte_event_schedule(dev_id);
-
-	return 0;
-}
-
 static inline uint64_t
 processed_pkts(struct test_perf *t)
 {
@@ -161,15 +149,6 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 			return ret;
 		}
 		port_idx++;
-	}
-
-	/* launch scheduler */
-	if (!evt_has_distributed_sched(opt->dev_id)) {
-		ret = rte_eal_remote_launch(scheduler, t, opt->slcore);
-		if (ret) {
-			evt_err("failed to launch sched %d", opt->slcore);
-			return ret;
-		}
 	}
 
 	const uint64_t total_pkts = opt->nb_pkts *
@@ -307,10 +286,9 @@ int
 perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 {
 	unsigned int lcores;
-	bool need_slcore = !evt_has_distributed_sched(opt->dev_id);
 
-	/* N producer + N worker + 1 scheduler(based on dev capa) + 1 master */
-	lcores = need_slcore ? 4 : 3;
+	/* N producer + N worker + 1 master */
+	lcores = 3;
 
 	if (rte_lcore_count() < lcores) {
 		evt_err("test need minimum %d lcores", lcores);
@@ -320,10 +298,6 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 	/* Validate worker lcores */
 	if (evt_lcores_has_overlap(opt->wlcores, rte_get_master_lcore())) {
 		evt_err("worker lcores overlaps with master lcore");
-		return -1;
-	}
-	if (need_slcore && evt_lcores_has_overlap(opt->wlcores, opt->slcore)) {
-		evt_err("worker lcores overlaps with scheduler lcore");
 		return -1;
 	}
 	if (evt_lcores_has_overlap_multi(opt->wlcores, opt->plcores)) {
@@ -344,27 +318,12 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 		evt_err("producer lcores overlaps with master lcore");
 		return -1;
 	}
-	if (need_slcore && evt_lcores_has_overlap(opt->plcores, opt->slcore)) {
-		evt_err("producer lcores overlaps with scheduler lcore");
-		return -1;
-	}
 	if (evt_has_disabled_lcore(opt->plcores)) {
 		evt_err("one or more producer lcores are not enabled");
 		return -1;
 	}
 	if (!evt_has_active_lcore(opt->plcores)) {
 		evt_err("minimum one producer is required");
-		return -1;
-	}
-
-	/* Validate scheduler lcore */
-	if (!evt_has_distributed_sched(opt->dev_id) &&
-			opt->slcore == (int)rte_get_master_lcore()) {
-		evt_err("scheduler lcore and master lcore should be different");
-		return -1;
-	}
-	if (need_slcore && !rte_lcore_is_enabled(opt->slcore)) {
-		evt_err("scheduler lcore is not enabled");
 		return -1;
 	}
 
@@ -405,8 +364,6 @@ perf_opt_dump(struct evt_options *opt, uint8_t nb_queues)
 	evt_dump_producer_lcores(opt);
 	evt_dump("nb_worker_lcores", "%d", evt_nr_active_lcores(opt->wlcores));
 	evt_dump_worker_lcores(opt);
-	if (!evt_has_distributed_sched(opt->dev_id))
-		evt_dump_scheduler_lcore(opt);
 	evt_dump_nb_stages(opt);
 	evt_dump("nb_evdev_ports", "%d", perf_nb_event_ports(opt));
 	evt_dump("nb_evdev_queues", "%d", nb_queues);

@@ -292,9 +292,6 @@ order_launch_lcores(struct evt_test *test, struct evt_options *opt,
 	int64_t old_remaining  = -1;
 
 	while (t->err == false) {
-
-		rte_event_schedule(opt->dev_id);
-
 		uint64_t new_cycles = rte_get_timer_cycles();
 		int64_t remaining = rte_atomic64_read(&t->outstand_pkts);
 
