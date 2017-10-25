@@ -375,7 +375,6 @@ skeleton_eventdev_init(struct rte_eventdev *eventdev)
 	PMD_DRV_FUNC_TRACE();
 
 	eventdev->dev_ops       = &skeleton_eventdev_ops;
-	eventdev->schedule      = NULL;
 	eventdev->enqueue       = skeleton_eventdev_enqueue;
 	eventdev->enqueue_burst = skeleton_eventdev_enqueue_burst;
 	eventdev->dequeue       = skeleton_eventdev_dequeue;
@@ -466,7 +465,6 @@ skeleton_eventdev_create(const char *name, int socket_id)
 	}
 
 	eventdev->dev_ops       = &skeleton_eventdev_ops;
-	eventdev->schedule      = NULL;
 	eventdev->enqueue       = skeleton_eventdev_enqueue;
 	eventdev->enqueue_burst = skeleton_eventdev_enqueue_burst;
 	eventdev->dequeue       = skeleton_eventdev_dequeue;

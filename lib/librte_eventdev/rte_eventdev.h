@@ -218,10 +218,10 @@
  * (each worker thread schedules events to its own port) or centralized
  * (a dedicated thread schedules to all ports). Distributed software schedulers
  * perform the scheduling in rte_event_dequeue_burst(), whereas centralized
- * scheduler logic is located in rte_event_schedule().
+ * scheduler logic need a dedicated service core for scheduling.
  * The RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capability flag is not set
  * indicates the device is centralized and thus needs a dedicated scheduling
- * thread that repeatedly calls rte_event_schedule().
+ * thread that repeatedly calls software specific scheduling function.
  *
  * An event driven worker thread has following typical workflow on fastpath:
  * \code{.c}
@@ -263,9 +263,9 @@ struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
  * In distributed scheduling mode, event scheduling happens in HW or
  * rte_event_dequeue_burst() or the combination of these two.
  * If the flag is not set then eventdev is centralized and thus needs a
- * dedicated scheduling thread that repeatedly calls rte_event_schedule().
+ * dedicated service core that acts as a scheduling thread .
  *
- * @see rte_event_schedule(), rte_event_dequeue_burst()
+ * @see rte_event_dequeue_burst()
  */
 #define RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES     (1ULL << 3)
 /**< Event device is capable of enqueuing events of any type to any queue.
@@ -1052,9 +1052,6 @@ struct rte_eventdev_driver;
 struct rte_eventdev_ops;
 struct rte_eventdev;
 
-typedef void (*event_schedule_t)(struct rte_eventdev *dev);
-/**< @internal Schedule one or more events in the event dev. */
-
 typedef uint16_t (*event_enqueue_t)(void *port, const struct rte_event *ev);
 /**< @internal Enqueue event on port of a device */
 
@@ -1118,8 +1115,6 @@ struct rte_eventdev_data {
 
 /** @internal The data structure associated with each event device. */
 struct rte_eventdev {
-	event_schedule_t schedule;
-	/**< Pointer to PMD schedule function. */
 	event_enqueue_t enqueue;
 	/**< Pointer to PMD enqueue function. */
 	event_enqueue_burst_t enqueue_burst;
@@ -1147,24 +1142,6 @@ struct rte_eventdev {
 
 extern struct rte_eventdev *rte_eventdevs;
 /** @internal The pool of rte_eventdev structures. */
-
-
-/**
- * Schedule one or more events in the event dev.
- *
- * An event dev implementation may define this is a NOOP, for instance if
- * the event dev performs its scheduling in hardware.
- *
- * @param dev_id
- *   The identifier of the device.
- */
-static inline void
-rte_event_schedule(uint8_t dev_id)
-{
-	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
-	if (*dev->schedule)
-		(*dev->schedule)(dev);
-}
 
 static __rte_always_inline uint16_t
 __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,

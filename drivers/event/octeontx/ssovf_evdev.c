@@ -157,7 +157,6 @@ ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 {
 	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
 
-	dev->schedule      = NULL;
 	dev->enqueue       = ssows_enq;
 	dev->enqueue_burst = ssows_enq_burst;
 	dev->enqueue_new_burst = ssows_enq_new_burst;

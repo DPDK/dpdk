@@ -785,7 +785,6 @@ dpaa2_eventdev_create(const char *name)
 	}
 
 	eventdev->dev_ops       = &dpaa2_eventdev_ops;
-	eventdev->schedule      = NULL;
 	eventdev->enqueue       = dpaa2_eventdev_enqueue;
 	eventdev->enqueue_burst = dpaa2_eventdev_enqueue_burst;
 	eventdev->enqueue_new_burst = dpaa2_eventdev_enqueue_burst;

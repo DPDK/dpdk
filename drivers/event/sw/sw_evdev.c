@@ -615,10 +615,14 @@ sw_start(struct rte_eventdev *dev)
 	unsigned int i, j;
 	struct sw_evdev *sw = sw_pmd_priv(dev);
 
+	rte_service_component_runstate_set(sw->service_id, 1);
+
 	/* check a service core is mapped to this service */
-	if (!rte_service_runstate_get(sw->service_id))
+	if (!rte_service_runstate_get(sw->service_id)) {
 		SW_LOG_ERR("Warning: No Service core enabled on service %s\n",
 				sw->service_name);
+		return -ENOENT;
+	}
 
 	/* check all ports are set up */
 	for (i = 0; i < sw->port_count; i++)
@@ -833,7 +837,6 @@ sw_probe(struct rte_vdev_device *vdev)
 	dev->enqueue_forward_burst = sw_event_enqueue_burst;
 	dev->dequeue = sw_event_dequeue;
 	dev->dequeue_burst = sw_event_dequeue_burst;
-	dev->schedule = sw_event_schedule;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -858,12 +861,6 @@ sw_probe(struct rte_vdev_device *vdev)
 	int32_t ret = rte_service_component_register(&service, &sw->service_id);
 	if (ret) {
 		SW_LOG_ERR("service register() failed");
-		return -ENOEXEC;
-	}
-
-	ret = rte_service_component_runstate_set(sw->service_id, 1);
-	if (ret) {
-		SW_LOG_ERR("Unable to enable service component");
 		return -ENOEXEC;
 	}
 
