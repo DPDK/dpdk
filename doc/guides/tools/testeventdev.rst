@@ -106,10 +106,6 @@ The following are the application command-line options:
 
         Set the number of mbufs to be allocated from the mempool.
 
-* ``--slcore <n>``
-
-        Set the scheduler lcore id.(Valid when eventdev is not RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capable)
-
 * ``--plcores <CORELIST>``
 
         Set the list of cores to be used as producers.
@@ -362,7 +358,6 @@ Supported application command line options are following::
         --test
         --socket_id
         --pool_sz
-        --slcore (Valid when eventdev is not RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capable)
         --plcores
         --wlcores
         --stlist
@@ -379,8 +374,8 @@ Example command to run perf queue test:
 
 .. code-block:: console
 
-   sudo build/app/dpdk-test-eventdev --vdev=event_sw0 -- \
-        --test=perf_queue --slcore=1 --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
+   sudo build/app/dpdk-test-eventdev -c 0xf -s 0x1 --vdev=event_sw0 -- \
+        --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
 
 
 PERF_ATQ Test
@@ -441,7 +436,6 @@ Supported application command line options are following::
         --test
         --socket_id
         --pool_sz
-        --slcore (Valid when eventdev is not RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capable)
         --plcores
         --wlcores
         --stlist

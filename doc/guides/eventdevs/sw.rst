@@ -78,9 +78,9 @@ Scheduling Quanta
 ~~~~~~~~~~~~~~~~~
 
 The scheduling quanta sets the number of events that the device attempts to
-schedule before returning to the application from the ``rte_event_schedule()``
-function. Note that is a *hint* only, and that fewer or more events may be
-scheduled in a given iteration.
+schedule in a single schedule call performed by the service core. Note that
+is a *hint* only, and that fewer or more events may be scheduled in a given
+iteration.
 
 The scheduling quanta can be set using a string argument to the vdev
 create call:
@@ -140,10 +140,9 @@ eventdev.
 Distributed Scheduler
 ~~~~~~~~~~~~~~~~~~~~~
 
-The software eventdev is a centralized scheduler, requiring the
-``rte_event_schedule()`` function to be called by a CPU core to perform the
-required event distribution. This is not really a limitation but rather a
-design decision.
+The software eventdev is a centralized scheduler, requiring a service core to
+perform the required event distribution. This is not really a limitation but
+rather a design decision.
 
 The ``RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED`` flag is not set in the
 ``event_dev_cap`` field of the ``rte_event_dev_info`` struct for the software
