@@ -64,29 +64,9 @@ all the incoming packets are colored as green.
 Compiling the Application
 -------------------------
 
-#.  Go to the example directory:
+To compile the sample application see :doc:`compiling`.
 
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/qos_meter
-
-#.  Set the target
-    (a default target is used if not specified):
-
-    .. note::
-
-        This application is intended as a linuxapp only.
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        make
+The application is located in the ``qos_meter`` sub-directory.
 
 Running the Application
 -----------------------

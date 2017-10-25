@@ -63,37 +63,12 @@ with the mask of ports to multicast packets to.
 Also, the application does not consider the Ethernet addresses;
 it looks only at the IPv4 destination address for any given packet.
 
-Building the Application
-------------------------
+Compiling the Application
+-------------------------
 
-To compile the application:
+To compile the sample application see :doc:`compiling`.
 
-#.  Go to the sample application directory:
-
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/ipv4_multicast
-
-#.  Set the target (a default target is used if not specified). For example:
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        make
-
-.. note::
-
-    The compiled application is written to the build subdirectory.
-    To have the application written to a different location,
-    the O=/path/to/build/directory option may be specified in the make command.
+The application is located in the ``ipv4_multicast`` sub-directory.
 
 Running the Application
 -----------------------

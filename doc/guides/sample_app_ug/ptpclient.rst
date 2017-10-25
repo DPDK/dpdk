@@ -78,39 +78,20 @@ The adjustment for slave can be represented as:
 If the command line parameter ``-T 1`` is used the application also
 synchronizes the PTP PHC clock with the Linux kernel clock.
 
-
 Compiling the Application
 -------------------------
 
-To compile the application, export the path to the DPDK source tree and edit
-the ``config/common_linuxapp`` configuration file to enable IEEE1588:
+To compile the sample application see :doc:`compiling`.
 
-.. code-block:: console
+The application is located in the ``ptpclient`` sub-directory.
 
-    export RTE_SDK=/path/to/rte_sdk
+.. note::
+   To compile the application edit the ``config/common_linuxapp`` configuration file to enable IEEE1588
+   and then recompile DPDK:
 
-    # Edit  common_linuxapp and set the following options:
-    CONFIG_RTE_LIBRTE_IEEE1588=y
+   .. code-block:: console
 
-Set the target, for example:
-
-.. code-block:: console
-
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-See the *DPDK Getting Started* Guide for possible ``RTE_TARGET`` values.
-
-Build the application as follows:
-
-.. code-block:: console
-
-    # Recompile DPDK.
-    make install T=$RTE_TARGET
-
-    # Compile the application.
-    cd ${RTE_SDK}/examples/ptpclient
-    make
-
+      CONFIG_RTE_LIBRTE_IEEE1588=y
 
 Running the Application
 -----------------------

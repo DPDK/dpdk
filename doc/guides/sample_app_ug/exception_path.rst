@@ -58,28 +58,9 @@ To make throughput measurements, kernel bridges must be setup to forward data be
 Compiling the Application
 -------------------------
 
-#.  Go to example directory:
+To compile the sample application see :doc:`compiling`.
 
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/exception_path
-
-#.  Set the target (a default target will be used if not specified).
-    For example:
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-This application is intended as a linuxapp only.
-See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        make
+The application is located in the ``exception_path`` sub-directory.
 
 Running the Application
 -----------------------

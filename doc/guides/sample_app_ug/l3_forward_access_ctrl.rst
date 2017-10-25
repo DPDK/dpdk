@@ -252,28 +252,9 @@ Once the application starts, it transitions through three phases:
 Compiling the Application
 -------------------------
 
-To compile the application:
+To compile the sample application see :doc:`compiling`.
 
-#.  Go to the sample application directory:
-
-    ..  code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/l3fwd-acl
-
-#.  Set the target (a default target is used if not specified). For example:
-
-    ..  code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    See the *DPDK IPL Getting Started Guide* for possible RTE_TARGET values.
-
-#.  Build the application:
-
-    ..  code-block:: console
-
-        make
+The application is located in the ``l3fwd-acl`` sub-directory.
 
 Running the Application
 -----------------------

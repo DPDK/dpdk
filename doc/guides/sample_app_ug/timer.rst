@@ -37,26 +37,9 @@ This application prints some messages from different lcores regularly, demonstra
 Compiling the Application
 -------------------------
 
-#.  Go to the example directory:
+To compile the sample application see :doc:`compiling`.
 
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/timer
-
-#.  Set the target (a default target is used if not specified). For example:
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    See the *DPDK Getting Started Guide* for possible *RTE_TARGET* values.
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        make
+The application is located in the ``timer`` sub-directory.
 
 Running the Application
 -----------------------

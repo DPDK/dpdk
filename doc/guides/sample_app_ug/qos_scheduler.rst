@@ -58,30 +58,13 @@ The TX thread, if present, reads from the TX ring and write the packets to the T
 Compiling the Application
 -------------------------
 
-To compile the application:
+To compile the sample application see :doc:`compiling`.
 
-#.  Go to the sample application directory:
-
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/qos_sched
-
-#.  Set the target (a default target is used if not specified). For example:
+The application is located in the ``qos_sched`` sub-directory.
 
     .. note::
 
         This application is intended as a linuxapp only.
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        make
 
 .. note::
 

@@ -67,38 +67,28 @@ White paper demonstrating example use case:
 
 Compiling the Application
 -------------------------
+.. note::
 
-Requires ``libpqos`` from Intel's
-`intel-cmt-cat software package <https://github.com/01org/intel-cmt-cat>`_
-hosted on GitHub repository. For installation notes, please see ``README`` file.
+    Requires ``libpqos`` from Intel's
+    `intel-cmt-cat software package <https://github.com/01org/intel-cmt-cat>`_
+    hosted on GitHub repository. For installation notes, please see ``README`` file.
 
-GIT:
+    GIT:
 
-* https://github.com/01org/intel-cmt-cat
+    * https://github.com/01org/intel-cmt-cat
 
-To compile the application export the path to PQoS lib
-and the DPDK source tree and go to the example directory:
 
-.. code-block:: console
+#. To compile the application export the path to PQoS lib
+   and the DPDK source tree and go to the example directory:
 
-    export PQOS_INSTALL_PATH=/path/to/libpqos
-    export RTE_SDK=/path/to/rte_sdk
+   .. code-block:: console
 
-    cd ${RTE_SDK}/examples/l2fwd-cat
+       export PQOS_INSTALL_PATH=/path/to/libpqos
 
-Set the target, for example:
 
-.. code-block:: console
+To compile the sample application see :doc:`compiling`.
 
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-See the *DPDK Getting Started* Guide for possible ``RTE_TARGET`` values.
-
-Build the application as follows:
-
-.. code-block:: console
-
-    make
+The application is located in the ``l2fwd-cat`` sub-directory.
 
 
 Running the Application

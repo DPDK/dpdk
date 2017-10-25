@@ -40,31 +40,13 @@ Example Applications
 
 Building the Sample Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 The multi-process example applications are built in the same way as other sample applications,
 and as documented in the *DPDK Getting Started Guide*.
-To build all the example applications:
 
-#.  Set RTE_SDK and go to the example directory:
 
-    .. code-block:: console
+To compile the sample application see :doc:`compiling`.
 
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/multi_process
-
-#.  Set the target (a default target will be used if not specified). For example:
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
-
-#.  Build the applications:
-
-    .. code-block:: console
-
-        make
+The applications are located in the ``multi_process`` sub-directory.
 
 .. note::
 

@@ -36,6 +36,7 @@ Sample Applications User Guides
     :numbered:
 
     intro
+    compiling
     cmd_line
     ethtool
     exception_path

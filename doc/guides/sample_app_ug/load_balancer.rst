@@ -86,24 +86,9 @@ The routing logic is LPM based, with all the worker threads sharing the same LPM
 Compiling the Application
 -------------------------
 
-The sequence of steps used to build the application is:
+To compile the sample application see :doc:`compiling`.
 
-#.  Export the required environment variables:
-
-    .. code-block:: console
-
-        export RTE_SDK=<Path to the DPDK installation folder>
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-#.  Build the application executable file:
-
-    .. code-block:: console
-
-        cd ${RTE_SDK}/examples/load_balancer
-        make
-
-    For more details on how to build the DPDK libraries and sample applications,
-    please refer to the *DPDK Getting Started Guide.*
+The application is located in the ``load_balancer`` sub-directory.
 
 Running the Application
 -----------------------

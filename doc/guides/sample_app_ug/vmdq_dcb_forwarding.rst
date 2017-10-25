@@ -86,26 +86,11 @@ No command-line options are taken by this application apart from the standard EA
 Compiling the Application
 -------------------------
 
-#.  Go to the examples directory:
 
-    .. code-block:: console
 
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/vmdq_dcb
+To compile the sample application see :doc:`compiling`.
 
-#.  Set the target (a default target is used if not specified). For example:
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        make
+The application is located in the ``vmdq_dcb`` sub-directory.
 
 Running the Application
 -----------------------

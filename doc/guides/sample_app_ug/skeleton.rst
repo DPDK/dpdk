@@ -39,33 +39,12 @@ It is intended as a demonstration of the basic components of a DPDK forwarding
 application. For more detailed implementations see the L2 and L3 forwarding
 sample applications.
 
-
 Compiling the Application
 -------------------------
 
-To compile the application export the path to the DPDK source tree and go to
-the example directory:
+To compile the sample application see :doc:`compiling`.
 
-.. code-block:: console
-
-    export RTE_SDK=/path/to/rte_sdk
-
-    cd ${RTE_SDK}/examples/skeleton
-
-Set the target, for example:
-
-.. code-block:: console
-
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-See the *DPDK Getting Started* Guide for possible ``RTE_TARGET`` values.
-
-Build the application as follows:
-
-.. code-block:: console
-
-    make
-
+The application is located in the ``skeleton`` sub-directory.
 
 Running the Application
 -----------------------

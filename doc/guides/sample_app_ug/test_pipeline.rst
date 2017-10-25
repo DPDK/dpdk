@@ -55,28 +55,12 @@ The application uses three CPU cores:
 
    Test Pipeline Application
 
-
 Compiling the Application
 -------------------------
+To compile the sample application see :doc:`compiling`
 
-#.  Go to the app/test directory:
+The application is located in the ``$RTE_SDK/test/test-pipline`` directory.
 
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/app/test/test-pipeline
-
-#.  Set the target (a default target is used if not specified):
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        make
 
 Running the Application
 -----------------------

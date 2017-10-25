@@ -53,30 +53,12 @@ generator as shown in the figure below.
 
    Performance Benchmarking Setup (Basic Environment)
 
-
 Compiling the Application
 -------------------------
 
-#.  Go to the sample application directory:
+To compile the sample application see :doc:`compiling`.
 
-    ..  code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/distributor
-
-#.  Set the target (a default target is used if not specified). For example:
-
-    ..  code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    See the DPDK Getting Started Guide for possible RTE_TARGET values.
-
-#.  Build the application:
-
-    ..  code-block:: console
-
-        make
+The application is located in the ``distributor`` sub-directory.
 
 Running the Application
 -----------------------

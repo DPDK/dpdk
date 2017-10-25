@@ -201,9 +201,12 @@ Compiling and Running the Host Application
 Compiling
 ~~~~~~~~~
 
-#. export RTE_SDK=/path/to/rte_sdk
-#. cd ${RTE_SDK}/examples/vm_power_manager
-#. make
+Compiling the Application
+-------------------------
+
+To compile the sample application see :doc:`compiling`.
+
+The application is located in the ``vm_power_manager`` sub-directory.
 
 Running
 ~~~~~~~

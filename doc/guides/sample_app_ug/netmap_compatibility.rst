@@ -121,29 +121,12 @@ The bridge application is an example largely based on the bridge example shipped
 It shows how a minimal Netmap application with minimal and straightforward source code changes can be run on top of the DPDK.
 Please refer to ``$RTE_SDK/examples/netmap_compat/bridge/bridge.c`` for an example of a ported application.
 
-Compiling the "bridge" Sample Application
------------------------------------------
+Compiling the Application
+-------------------------
 
-#.  Go to the example directory:
+To compile the sample application see :doc:`compiling`.
 
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/netmap_compat
-
-#.  Set the target (a default target is used if not specified). For example:
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    See the *DPDK Getting Started Guide for Linux* for possible ``RTE_TARGET`` values.
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        make
+The application is located in the ``netmap_compat`` sub-directory.
 
 Running the "bridge" Sample Application
 ---------------------------------------

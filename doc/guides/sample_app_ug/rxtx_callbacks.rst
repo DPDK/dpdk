@@ -45,23 +45,9 @@ prior to transmission to calculate the elapsed time, in CPU cycles.
 Compiling the Application
 -------------------------
 
-To compile the application export the path to the DPDK source tree and go to
-the example directory:
+To compile the sample application see :doc:`compiling`.
 
-.. code-block:: console
-
-    export RTE_SDK=/path/to/rte_sdk
-
-    cd ${RTE_SDK}/examples/rxtx_callbacks
-
-
-Set the target, for example:
-
-.. code-block:: console
-
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-See the *DPDK Getting Started* Guide for possible ``RTE_TARGET`` values.
+The application is located in the ``rxtx_callbacks`` sub-directory.
 
 The callbacks feature requires that the ``CONFIG_RTE_ETHDEV_RXTX_CALLBACKS``
 setting is on in the ``config/common_`` config file that applies to the
@@ -70,13 +56,6 @@ target. This is generally on by default:
 .. code-block:: console
 
     CONFIG_RTE_ETHDEV_RXTX_CALLBACKS=y
-
-Build the application as follows:
-
-.. code-block:: console
-
-    make
-
 
 Running the Application
 -----------------------

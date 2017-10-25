@@ -121,39 +121,16 @@ The example in this section have been validated with the following distributions
 
 Compiling the Sample Code
 -------------------------
-#.  Compile vhost lib:
 
-    To enable vhost, turn on vhost library in the configure file config/common_linuxapp.
+To enable vhost, turn on vhost library in the configure file
+``config/common_linuxapp``.
 
     .. code-block:: console
 
         CONFIG_RTE_LIBRTE_VHOST=y
 
-
-#.  Go to the examples directory:
-
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/tep_termination
-
-#.  Set the target (a default target is used if not specified). For example:
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    See the DPDK Getting Started Guide for possible RTE_TARGET values.
-
-#.  Build the application:
-
-    .. code-block:: console
-
-        cd ${RTE_SDK}
-        make config ${RTE_TARGET}
-        make install ${RTE_TARGET}
-        cd ${RTE_SDK}/examples/tep_termination
-        make
+Then following the to compile the sample application shown in
+:doc:`compiling`.
 
 Running the Sample Code
 -----------------------

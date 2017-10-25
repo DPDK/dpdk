@@ -55,20 +55,12 @@ puts back to the same physical NIC port.
 Build
 ~~~~~
 
-Follow the *Getting Started Guide for Linux* on generic info about
-environment setup and building DPDK from source.
+To compile the sample application see :doc:`compiling`.
 
-In this example, you need build DPDK both on the host and inside guest.
-Also, you need build this example.
+The application is located in the ``vhost`` sub-directory.
 
-.. code-block:: console
-
-    export RTE_SDK=/path/to/dpdk_source
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    cd ${RTE_SDK}/examples/vhost
-    make
-
+.. note::
+   In this example, you need build DPDK both on the host and inside guest.
 
 Start the vswitch example
 ~~~~~~~~~~~~~~~~~~~~~~~~~

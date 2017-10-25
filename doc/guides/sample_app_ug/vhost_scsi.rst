@@ -51,23 +51,14 @@ Testing steps
 This section shows the steps how to start a VM with the block device as
 fast data path for critical application.
 
-Build
-~~~~~
+Compiling the Application
+-------------------------
 
-Follow the *Getting Started Guide for Linux* on generic info about
-environment setup and building DPDK from source.
+To compile the sample application see :doc:`compiling`.
 
-In this example, you need build DPDK both on the host and inside guest.
-Also, you need build this example.
+The application is located in the ``examples`` sub-directory.
 
-.. code-block:: console
-
-    export RTE_SDK=/path/to/dpdk_source
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-    cd ${RTE_SDK}/examples/vhost_scsi
-    make
-
+You will also need to build DPDK both on the host and inside the guest
 
 Start the vhost_scsi example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

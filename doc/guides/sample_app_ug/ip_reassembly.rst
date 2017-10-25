@@ -53,28 +53,14 @@ There are two key differences from the L2 Forwarding sample application:
 The Longest Prefix Match (LPM for IPv4, LPM6 for IPv6) table is used to store/lookup an outgoing port number, associated with that IPv4 address. Any unmatched packets are forwarded to the originating port.Compiling the Application
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-To compile the application:
 
-#.  Go to the sample application directory:
+Compiling the Application
+-------------------------
 
-   .. code-block:: console
+To compile the sample application see :doc:`compiling`.
 
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/ip_reassembly
+The application is located in the ``ip_reassembly`` sub-directory.
 
-#.  Set the target (a default target is used if not specified). For example:
-
-   .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
-
-See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
-
-#.  Build the application:
-
-   .. code-block:: console
-
-        make
 
 Running the Application
 -----------------------
