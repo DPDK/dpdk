@@ -558,14 +558,8 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					break;
 				max_wqe -= n;
 				if (tso) {
-					uint32_t inl =
-					rte_cpu_to_be_32(copy_b |
-							 MLX5_INLINE_SEG);
-
-					pkt_inline_sz =
-						MLX5_WQE_DS(tso_header_sz) *
-						MLX5_WQE_DWORD_SIZE;
-
+					inl = rte_cpu_to_be_32(copy_b |
+							       MLX5_INLINE_SEG);
 					rte_memcpy((void *)raw,
 						   (void *)&inl, sizeof(inl));
 					raw += sizeof(inl);
