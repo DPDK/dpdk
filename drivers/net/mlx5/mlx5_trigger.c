@@ -188,7 +188,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 error:
 	/* Rollback. */
 	dev->data->dev_started = 0;
-	LIST_FOREACH(mr, &priv->mr, next)
+	for (mr = LIST_FIRST(&priv->mr); mr; mr = LIST_FIRST(&priv->mr))
 		priv_mr_release(priv, mr);
 	priv_flow_stop(priv, &priv->flows);
 	priv_dev_traffic_disable(priv, dev);
@@ -230,9 +230,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv_txq_stop(priv);
 	priv_rxq_stop(priv);
-	LIST_FOREACH(mr, &priv->mr, next) {
+	for (mr = LIST_FIRST(&priv->mr); mr; mr = LIST_FIRST(&priv->mr))
 		priv_mr_release(priv, mr);
-	}
 	priv_flow_delete_drop_queue(priv);
 	priv_unlock(priv);
 }
