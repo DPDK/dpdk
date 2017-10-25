@@ -861,6 +861,15 @@ sw_probe(struct rte_vdev_device *vdev)
 		return -ENOEXEC;
 	}
 
+	ret = rte_service_component_runstate_set(sw->service_id, 1);
+	if (ret) {
+		SW_LOG_ERR("Unable to enable service component");
+		return -ENOEXEC;
+	}
+
+	dev->data->service_inited = 1;
+	dev->data->service_id = sw->service_id;
+
 	return 0;
 }
 
