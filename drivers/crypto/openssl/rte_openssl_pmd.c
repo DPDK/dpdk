@@ -34,7 +34,6 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -1668,19 +1667,12 @@ openssl_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 static int
 cryptodev_openssl_create(const char *name,
 			struct rte_vdev_device *vdev,
-			struct rte_crypto_vdev_init_params *init_params)
+			struct rte_cryptodev_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct openssl_private *internals;
 
-	if (init_params->name[0] == '\0')
-		snprintf(init_params->name, sizeof(init_params->name),
-				"%s", name);
-
-	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
-			sizeof(struct openssl_private),
-			init_params->socket_id,
-			vdev);
+	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
 		OPENSSL_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;
@@ -1718,11 +1710,12 @@ init_error:
 static int
 cryptodev_openssl_probe(struct rte_vdev_device *vdev)
 {
-	struct rte_crypto_vdev_init_params init_params = {
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
+	struct rte_cryptodev_pmd_init_params init_params = {
+		"",
+		sizeof(struct openssl_private),
 		rte_socket_id(),
-		{0}
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
 	};
 	const char *name;
 	const char *input_args;
@@ -1732,17 +1725,7 @@ cryptodev_openssl_probe(struct rte_vdev_device *vdev)
 		return -EINVAL;
 	input_args = rte_vdev_device_args(vdev);
 
-	rte_cryptodev_vdev_parse_init_params(&init_params, input_args);
-
-	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
-			init_params.socket_id);
-	if (init_params.name[0] != '\0')
-		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
-			init_params.name);
-	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
-			init_params.max_nb_queue_pairs);
-	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
-			init_params.max_nb_sessions);
+	rte_cryptodev_pmd_parse_input_args(&init_params, input_args);
 
 	return cryptodev_openssl_create(name, vdev, &init_params);
 }
@@ -1751,17 +1734,18 @@ cryptodev_openssl_probe(struct rte_vdev_device *vdev)
 static int
 cryptodev_openssl_remove(struct rte_vdev_device *vdev)
 {
+	struct rte_cryptodev *cryptodev;
 	const char *name;
 
 	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD,
-		"Closing OPENSSL crypto device %s on numa socket %u\n",
-		name, rte_socket_id());
+	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
+	if (cryptodev == NULL)
+		return -ENODEV;
 
-	return 0;
+	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 
 static struct rte_vdev_driver cryptodev_openssl_pmd_drv = {

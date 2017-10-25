@@ -33,7 +33,6 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -45,7 +44,7 @@
 uint8_t cryptodev_driver_id;
 
 struct scheduler_init_params {
-	struct rte_crypto_vdev_init_params def_p;
+	struct rte_cryptodev_pmd_init_params def_p;
 	uint32_t nb_slaves;
 	enum rte_cryptodev_scheduler_mode mode;
 	uint32_t enable_ordering;
@@ -107,20 +106,17 @@ cryptodev_scheduler_create(const char *name,
 	uint32_t i;
 	int ret;
 
-	if (init_params->def_p.name[0] == '\0')
-		snprintf(init_params->def_p.name,
-				sizeof(init_params->def_p.name),
-				"%s", name);
-
-	dev = rte_cryptodev_vdev_pmd_init(init_params->def_p.name,
-			sizeof(struct scheduler_ctx),
-			init_params->def_p.socket_id,
-			vdev);
+	dev = rte_cryptodev_pmd_create(name, &vdev->device,
+			&init_params->def_p);
 	if (dev == NULL) {
 		CS_LOG_ERR("driver %s: failed to create cryptodev vdev",
 			name);
 		return -EFAULT;
 	}
+
+	if (init_params->wcmask != 0)
+		RTE_LOG(INFO, PMD, "  workers core mask = %"PRIx64"\n",
+			init_params->wcmask);
 
 	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_crypto_scheduler_pmd_ops;
@@ -240,10 +236,7 @@ cryptodev_scheduler_remove(struct rte_vdev_device *vdev)
 					sched_ctx->slaves[i].dev_id);
 	}
 
-	RTE_LOG(INFO, PMD, "Closing Crypto Scheduler device %s on numa "
-		"socket %u\n", name, rte_socket_id());
-
-	return 0;
+	return rte_cryptodev_pmd_destroy(dev);
 }
 
 /** Parse integer from integer argument */
@@ -304,7 +297,7 @@ static int
 parse_name_arg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
-	struct rte_crypto_vdev_init_params *params = extra_args;
+	struct rte_cryptodev_pmd_init_params *params = extra_args;
 
 	if (strlen(value) >= RTE_CRYPTODEV_NAME_MAX_LEN - 1) {
 		CS_LOG_ERR("Invalid name %s, should be less than "
@@ -462,10 +455,11 @@ cryptodev_scheduler_probe(struct rte_vdev_device *vdev)
 {
 	struct scheduler_init_params init_params = {
 		.def_p = {
-			RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
-			RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
+			"",
+			sizeof(struct scheduler_ctx),
 			rte_socket_id(),
-			""
+			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
+			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
 		},
 		.nb_slaves = 0,
 		.mode = CDEV_SCHED_MODE_NOT_SET,
@@ -481,19 +475,6 @@ cryptodev_scheduler_probe(struct rte_vdev_device *vdev)
 	scheduler_parse_init_params(&init_params,
 				    rte_vdev_device_args(vdev));
 
-	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n",
-			name,
-			init_params.def_p.socket_id);
-	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
-			init_params.def_p.max_nb_queue_pairs);
-	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
-			init_params.def_p.max_nb_sessions);
-	if (init_params.def_p.name[0] != '\0')
-		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
-			init_params.def_p.name);
-	if (init_params.wcmask != 0)
-		RTE_LOG(INFO, PMD, "  workers core mask = %"PRIx64"\n",
-			init_params.wcmask);
 
 	return cryptodev_scheduler_create(name,
 					vdev,

@@ -35,7 +35,6 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -553,29 +552,23 @@ static int cryptodev_kasumi_remove(struct rte_vdev_device *vdev);
 static int
 cryptodev_kasumi_create(const char *name,
 			struct rte_vdev_device *vdev,
-			struct rte_crypto_vdev_init_params *init_params)
+			struct rte_cryptodev_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct kasumi_private *internals;
 	uint64_t cpu_flags = 0;
 
-	if (init_params->name[0] == '\0')
-		snprintf(init_params->name, sizeof(init_params->name),
-				"%s", name);
+	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
+	if (dev == NULL) {
+		KASUMI_LOG_ERR("failed to create cryptodev vdev");
+		goto init_error;
+	}
 
 	/* Check CPU for supported vector instruction set */
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX))
 		cpu_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
 	else
 		cpu_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
-
-	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
-			sizeof(struct kasumi_private), init_params->socket_id,
-			vdev);
-	if (dev == NULL) {
-		KASUMI_LOG_ERR("failed to create cryptodev vdev");
-		goto init_error;
-	}
 
 	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_kasumi_pmd_ops;
@@ -605,11 +598,12 @@ init_error:
 static int
 cryptodev_kasumi_probe(struct rte_vdev_device *vdev)
 {
-	struct rte_crypto_vdev_init_params init_params = {
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
+	struct rte_cryptodev_pmd_init_params init_params = {
+		"",
+		sizeof(struct kasumi_private),
 		rte_socket_id(),
-		{0}
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
 	};
 	const char *name;
 	const char *input_args;
@@ -619,17 +613,7 @@ cryptodev_kasumi_probe(struct rte_vdev_device *vdev)
 		return -EINVAL;
 	input_args = rte_vdev_device_args(vdev);
 
-	rte_cryptodev_vdev_parse_init_params(&init_params, input_args);
-
-	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
-			init_params.socket_id);
-	if (init_params.name[0] != '\0')
-		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
-			init_params.name);
-	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
-			init_params.max_nb_queue_pairs);
-	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
-			init_params.max_nb_sessions);
+	rte_cryptodev_pmd_parse_input_args(&init_params, input_args);
 
 	return cryptodev_kasumi_create(name, vdev, &init_params);
 }
@@ -637,17 +621,18 @@ cryptodev_kasumi_probe(struct rte_vdev_device *vdev)
 static int
 cryptodev_kasumi_remove(struct rte_vdev_device *vdev)
 {
+	struct rte_cryptodev *cryptodev;
 	const char *name;
 
 	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD, "Closing KASUMI crypto device %s"
-			" on numa socket %u\n",
-			name, rte_socket_id());
+	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
+	if (cryptodev == NULL)
+		return -ENODEV;
 
-	return 0;
+	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 
 static struct rte_vdev_driver cryptodev_kasumi_pmd_drv = {

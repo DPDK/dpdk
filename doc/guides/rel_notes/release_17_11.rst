@@ -296,6 +296,13 @@ API Changes
   The function ``rte_cryptodev_allocate_driver()`` has been modified.
   An extra parameter ``struct cryptodev_driver *crypto_drv`` has been added.
 
+* **Removed virtual device bus specific functions from librte_cryptodev.**
+
+  The functions ``rte_cryptodev_vdev_parse_init_params()`` and
+  ``rte_cryptodev_vdev_pmd_init()`` have been removed from librte_cryptodev
+  and have been replaced by non bus specific functions
+  ``rte_cryptodev_pmd_parse_input_args()`` and ``rte_cryptodev_pmd_create()``.
+
 * **Removed deprecated functions to manage log level or type.**
 
   The functions ``rte_set_log_level()``, ``rte_get_log_level()``,
@@ -362,7 +369,7 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_bitratestats.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2
-     librte_cryptodev.so.3
+   + librte_cryptodev.so.4
      librte_distributor.so.1
    + librte_eal.so.6
    + librte_ethdev.so.8

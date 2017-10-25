@@ -35,7 +35,6 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -486,20 +485,22 @@ static int aesni_gcm_remove(struct rte_vdev_device *vdev);
 static int
 aesni_gcm_create(const char *name,
 		struct rte_vdev_device *vdev,
-		struct rte_crypto_vdev_init_params *init_params)
+		struct rte_cryptodev_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct aesni_gcm_private *internals;
 	enum aesni_gcm_vector_mode vector_mode;
 
-	if (init_params->name[0] == '\0')
-		snprintf(init_params->name, sizeof(init_params->name),
-				"%s", name);
-
 	/* Check CPU for support for AES instruction set */
 	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES)) {
 		GCM_LOG_ERR("AES instructions not supported by CPU");
 		return -EFAULT;
+	}
+
+	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
+	if (dev == NULL) {
+		GCM_LOG_ERR("driver %s: create failed", init_params->name);
+		return -ENODEV;
 	}
 
 	/* Check CPU for supported vector instruction set */
@@ -509,14 +510,6 @@ aesni_gcm_create(const char *name,
 		vector_mode = RTE_AESNI_GCM_AVX;
 	else
 		vector_mode = RTE_AESNI_GCM_SSE;
-
-	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
-			sizeof(struct aesni_gcm_private), init_params->socket_id,
-			vdev);
-	if (dev == NULL) {
-		GCM_LOG_ERR("failed to create cryptodev vdev");
-		goto init_error;
-	}
 
 	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_aesni_gcm_pmd_ops;
@@ -552,22 +545,17 @@ aesni_gcm_create(const char *name,
 	internals->max_nb_sessions = init_params->max_nb_sessions;
 
 	return 0;
-
-init_error:
-	GCM_LOG_ERR("driver %s: create failed", init_params->name);
-
-	aesni_gcm_remove(vdev);
-	return -EFAULT;
 }
 
 static int
 aesni_gcm_probe(struct rte_vdev_device *vdev)
 {
-	struct rte_crypto_vdev_init_params init_params = {
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
+	struct rte_cryptodev_pmd_init_params init_params = {
+		"",
+		sizeof(struct aesni_gcm_private),
 		rte_socket_id(),
-		{0}
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
 	};
 	const char *name;
 	const char *input_args;
@@ -576,17 +564,7 @@ aesni_gcm_probe(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 	input_args = rte_vdev_device_args(vdev);
-	rte_cryptodev_vdev_parse_init_params(&init_params, input_args);
-
-	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
-			init_params.socket_id);
-	if (init_params.name[0] != '\0')
-		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
-			init_params.name);
-	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
-			init_params.max_nb_queue_pairs);
-	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
-			init_params.max_nb_sessions);
+	rte_cryptodev_pmd_parse_input_args(&init_params, input_args);
 
 	return aesni_gcm_create(name, vdev, &init_params);
 }
@@ -594,16 +572,18 @@ aesni_gcm_probe(struct rte_vdev_device *vdev)
 static int
 aesni_gcm_remove(struct rte_vdev_device *vdev)
 {
+	struct rte_cryptodev *cryptodev;
 	const char *name;
 
 	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 
-	GCM_LOG_INFO("Closing AESNI crypto device %s on numa socket %u\n",
-			name, rte_socket_id());
+	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
+	if (cryptodev == NULL)
+		return -ENODEV;
 
-	return 0;
+	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 
 static struct rte_vdev_driver aesni_gcm_pmd_drv = {

@@ -32,7 +32,6 @@
 
 #include <rte_malloc.h>
 
-#include "rte_cryptodev_vdev.h"
 #include "rte_cryptodev_pci.h"
 #include "rte_cryptodev_pmd.h"
 
@@ -200,122 +199,6 @@ rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev)
 	cryptodev->data = NULL;
 
 	return 0;
-}
-
-/**
- * Parse name from argument
- */
-static int
-rte_cryptodev_vdev_parse_name_arg(const char *key __rte_unused,
-		const char *value, void *extra_args)
-{
-	struct rte_crypto_vdev_init_params *params = extra_args;
-
-	if (strlen(value) >= RTE_CRYPTODEV_NAME_MAX_LEN - 1) {
-		CDEV_LOG_ERR("Invalid name %s, should be less than "
-				"%u bytes", value,
-				RTE_CRYPTODEV_NAME_MAX_LEN - 1);
-		return -1;
-	}
-
-	strncpy(params->name, value, RTE_CRYPTODEV_NAME_MAX_LEN);
-
-	return 0;
-}
-
-/**
- * Parse integer from argument
- */
-static int
-rte_cryptodev_vdev_parse_integer_arg(const char *key __rte_unused,
-		const char *value, void *extra_args)
-{
-	int *i = extra_args;
-
-	*i = atoi(value);
-	if (*i < 0) {
-		CDEV_LOG_ERR("Argument has to be positive.");
-		return -1;
-	}
-
-	return 0;
-}
-
-struct rte_cryptodev *
-rte_cryptodev_vdev_pmd_init(const char *name, size_t dev_private_size,
-		int socket_id, struct rte_vdev_device *vdev)
-{
-	struct rte_cryptodev *cryptodev;
-
-	/* allocate device structure */
-	cryptodev = rte_cryptodev_pmd_allocate(name, socket_id);
-	if (cryptodev == NULL)
-		return NULL;
-
-	/* allocate private device structure */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		cryptodev->data->dev_private =
-				rte_zmalloc_socket("cryptodev device private",
-						dev_private_size,
-						RTE_CACHE_LINE_SIZE,
-						socket_id);
-
-		if (cryptodev->data->dev_private == NULL)
-			rte_panic("Cannot allocate memzone for private device"
-					" data");
-	}
-
-	cryptodev->device = &vdev->device;
-
-	return cryptodev;
-}
-
-int
-rte_cryptodev_vdev_parse_init_params(struct rte_crypto_vdev_init_params *params,
-		const char *input_args)
-{
-	struct rte_kvargs *kvlist = NULL;
-	int ret = 0;
-
-	if (params == NULL)
-		return -EINVAL;
-
-	if (input_args) {
-		kvlist = rte_kvargs_parse(input_args,
-				cryptodev_vdev_valid_params);
-		if (kvlist == NULL)
-			return -1;
-
-		ret = rte_kvargs_process(kvlist,
-					RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG,
-					&rte_cryptodev_vdev_parse_integer_arg,
-					&params->max_nb_queue_pairs);
-		if (ret < 0)
-			goto free_kvlist;
-
-		ret = rte_kvargs_process(kvlist,
-					RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG,
-					&rte_cryptodev_vdev_parse_integer_arg,
-					&params->max_nb_sessions);
-		if (ret < 0)
-			goto free_kvlist;
-
-		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_SOCKET_ID,
-					&rte_cryptodev_vdev_parse_integer_arg,
-					&params->socket_id);
-		if (ret < 0)
-			goto free_kvlist;
-
-		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_NAME,
-					&rte_cryptodev_vdev_parse_name_arg,
-					params);
-		if (ret < 0)
-			goto free_kvlist;
-	}
-
-free_kvlist:
-	rte_kvargs_free(kvlist);
-	return ret;
 }
 
 int

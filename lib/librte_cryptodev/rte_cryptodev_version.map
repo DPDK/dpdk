@@ -73,8 +73,6 @@ DPDK_17.08 {
 	rte_cryptodev_sym_capability_check_aead;
 	rte_cryptodev_sym_session_init;
 	rte_cryptodev_sym_session_clear;
-	rte_cryptodev_vdev_parse_init_params;
-	rte_cryptodev_vdev_pmd_init;
 	rte_crypto_aead_algorithm_strings;
 	rte_crypto_aead_operation_strings;
 

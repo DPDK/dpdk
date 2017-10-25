@@ -2016,16 +2016,7 @@ cryptodev_dpaa2_sec_remove(struct rte_dpaa2_device *dpaa2_dev)
 	if (ret)
 		return ret;
 
-	/* free crypto device */
-	rte_cryptodev_pmd_release_device(cryptodev);
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(cryptodev->data->dev_private);
-
-	cryptodev->device = NULL;
-	cryptodev->data = NULL;
-
-	return 0;
+	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 
 static struct rte_dpaa2_driver rte_dpaa2_sec_driver = {

@@ -37,7 +37,6 @@
 #include <rte_dev.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_cryptodev_vdev.h>
 #include <rte_reorder.h>
 
 #include "scheduler_pmd_private.h"
@@ -347,7 +346,7 @@ scheduler_pmd_info_get(struct rte_cryptodev *dev,
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t max_nb_sessions = sched_ctx->nb_slaves ?
-			UINT32_MAX : RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS;
+			UINT32_MAX : RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS;
 	uint32_t i;
 
 	if (!dev_info)

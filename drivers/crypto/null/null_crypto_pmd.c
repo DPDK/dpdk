@@ -33,7 +33,6 @@
 #include <rte_common.h>
 #include <rte_config.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 
@@ -183,28 +182,19 @@ null_crypto_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	return nb_dequeued;
 }
 
-static int cryptodev_null_remove(const char *name);
-
 /** Create crypto device */
 static int
 cryptodev_null_create(const char *name,
 		struct rte_vdev_device *vdev,
-		struct rte_crypto_vdev_init_params *init_params)
+		struct rte_cryptodev_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct null_crypto_private *internals;
 
-	if (init_params->name[0] == '\0')
-		snprintf(init_params->name, sizeof(init_params->name),
-				"%s", name);
-
-	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
-			sizeof(struct null_crypto_private),
-			init_params->socket_id,
-			vdev);
+	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
 		NULL_CRYPTO_LOG_ERR("failed to create cryptodev vdev");
-		goto init_error;
+		return -EFAULT;
 	}
 
 	dev->driver_id = cryptodev_driver_id;
@@ -224,61 +214,53 @@ cryptodev_null_create(const char *name,
 	internals->max_nb_sessions = init_params->max_nb_sessions;
 
 	return 0;
-
-init_error:
-	NULL_CRYPTO_LOG_ERR("driver %s: cryptodev_null_create failed",
-			init_params->name);
-	cryptodev_null_remove(init_params->name);
-
-	return -EFAULT;
 }
 
 /** Initialise null crypto device */
 static int
 cryptodev_null_probe(struct rte_vdev_device *dev)
 {
-	struct rte_crypto_vdev_init_params init_params = {
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
+	struct rte_cryptodev_pmd_init_params init_params = {
+		"",
+		sizeof(struct null_crypto_private),
 		rte_socket_id(),
-		{0}
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
 	};
-	const char *name;
+	const char *name, *args;
+	int retval;
 
 	name = rte_vdev_device_name(dev);
 	if (name == NULL)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n",
-		name, init_params.socket_id);
-	if (init_params.name[0] != '\0')
-		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
-			init_params.name);
-	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
-			init_params.max_nb_queue_pairs);
-	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
-			init_params.max_nb_sessions);
+	args = rte_vdev_device_args(dev);
+
+	retval = rte_cryptodev_pmd_parse_input_args(&init_params, args);
+	if (retval) {
+		RTE_LOG(ERR, PMD,
+			"Failed to parse initialisation arguments[%s]\n", args);
+		return -EINVAL;
+	}
 
 	return cryptodev_null_create(name, dev, &init_params);
 }
 
-/** Uninitialise null crypto device */
 static int
-cryptodev_null_remove(const char *name)
+cryptodev_null_remove_dev(struct rte_vdev_device *vdev)
 {
+	struct rte_cryptodev *cryptodev;
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD, "Closing null crypto device %s on numa socket %u\n",
-			name, rte_socket_id());
+	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
+	if (cryptodev == NULL)
+		return -ENODEV;
 
-	return 0;
-}
-
-static int
-cryptodev_null_remove_dev(struct rte_vdev_device *dev)
-{
-	return cryptodev_null_remove(rte_vdev_device_name(dev));
+	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 
 static struct rte_vdev_driver cryptodev_null_pmd_drv = {

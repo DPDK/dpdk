@@ -71,10 +71,5 @@ Deprecation Notices
 
   - ``rte_cryptodev_create_vdev``
 
-* cryptodev: the following function will be static in 17.11 and included
-  by all crypto drivers, therefore, will not be public:
-
-  - ``rte_cryptodev_vdev_pmd_init``
-
 * librte_meter: The API will change to accommodate configuration profiles.
   Most of the API functions will have an additional opaque parameter.

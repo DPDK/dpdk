@@ -36,7 +36,6 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -720,26 +719,14 @@ mrvl_crypto_pmd_dequeue_burst(void *queue_pair,
 static int
 cryptodev_mrvl_crypto_create(const char *name,
 		struct rte_vdev_device *vdev,
-		struct rte_crypto_vdev_init_params *init_params)
+		struct rte_cryptodev_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct mrvl_crypto_private *internals;
 	struct sam_init_params	sam_params;
 	int ret;
 
-	if (init_params->name[0] == '\0') {
-		ret = rte_cryptodev_pmd_create_dev_name(
-				init_params->name, name);
-
-		if (ret < 0) {
-			MRVL_CRYPTO_LOG_ERR("failed to create unique name");
-			return ret;
-		}
-	}
-
-	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
-				sizeof(struct mrvl_crypto_private),
-				init_params->socket_id, vdev);
+	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
 		MRVL_CRYPTO_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;
@@ -796,40 +783,28 @@ init_error:
 static int
 cryptodev_mrvl_crypto_init(struct rte_vdev_device *vdev)
 {
-	struct rte_crypto_vdev_init_params init_params = { };
-	const char *name;
-	const char *input_args;
+	struct rte_cryptodev_pmd_init_params init_params = { };
+	const char *name, *args;
 	int ret;
 
 	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
-	input_args = rte_vdev_device_args(vdev);
+	args = rte_vdev_device_args(vdev);
 
-	if (!input_args)
-		return -EINVAL;
-
+	init_params.private_data_size = sizeof(struct mrvl_crypto_private);
 	init_params.max_nb_queue_pairs = sam_get_num_inst() * SAM_HW_RING_NUM;
 	init_params.max_nb_sessions =
-		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS;
+		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS;
 	init_params.socket_id = rte_socket_id();
 
-	ret = rte_cryptodev_vdev_parse_init_params(&init_params, input_args);
+	ret = rte_cryptodev_pmd_parse_input_args(&init_params, args);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Failed to parse input arguments\n");
-		return ret;
+		RTE_LOG(ERR, PMD,
+			"Failed to parse initialisation arguments[%s]\n",
+			args);
+		return -EINVAL;
 	}
-
-	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
-			init_params.socket_id);
-	if (init_params.name[0] != '\0') {
-		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
-			init_params.name);
-	}
-	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
-			init_params.max_nb_queue_pairs);
-	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
-			init_params.max_nb_sessions);
 
 	return cryptodev_mrvl_crypto_create(name, vdev, &init_params);
 }
@@ -843,6 +818,7 @@ cryptodev_mrvl_crypto_init(struct rte_vdev_device *vdev)
 static int
 cryptodev_mrvl_crypto_uninit(struct rte_vdev_device *vdev)
 {
+	struct rte_cryptodev *cryptodev;
 	const char *name = rte_vdev_device_name(vdev);
 
 	if (name == NULL)
@@ -854,7 +830,11 @@ cryptodev_mrvl_crypto_uninit(struct rte_vdev_device *vdev)
 
 	sam_deinit();
 
-	return 0;
+	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
+	if (cryptodev == NULL)
+		return -ENODEV;
+
+	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 
 /**
