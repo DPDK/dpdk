@@ -1001,6 +1001,14 @@ enum rte_flow_action_type {
 	 * See file rte_mtr.h for MTR object configuration.
 	 */
 	RTE_FLOW_ACTION_TYPE_METER,
+
+	/**
+	 * Redirects packets to security engine of current device for security
+	 * processing as specified by security session.
+	 *
+	 * See struct rte_flow_action_security.
+	 */
+	RTE_FLOW_ACTION_TYPE_SECURITY
 };
 
 /**
@@ -1105,6 +1113,37 @@ struct rte_flow_action_vf {
  */
 struct rte_flow_action_meter {
 	uint32_t mtr_id; /**< MTR object ID created with rte_mtr_create(). */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_SECURITY
+ *
+ * Perform the security action on flows matched by the pattern items
+ * according to the configuration of the security session.
+ *
+ * This action modifies the payload of matched flows. For INLINE_CRYPTO, the
+ * security protocol headers and IV are fully provided by the application as
+ * specified in the flow pattern. The payload of matching packets is
+ * encrypted on egress, and decrypted and authenticated on ingress.
+ * For INLINE_PROTOCOL, the security protocol is fully offloaded to HW,
+ * providing full encapsulation and decapsulation of packets in security
+ * protocols. The flow pattern specifies both the outer security header fields
+ * and the inner packet fields. The security session specified in the action
+ * must match the pattern parameters.
+ *
+ * The security session specified in the action must be created on the same
+ * port as the flow action that is being specified.
+ *
+ * The ingress/egress flow attribute should match that specified in the
+ * security session if the security session supports the definition of the
+ * direction.
+ *
+ * Multiple flows can be configured to use the same security session.
+ *
+ * Non-terminating by default.
+ */
+struct rte_flow_action_security {
+	void *security_session; /**< Pointer to security session structure. */
 };
 
 /**

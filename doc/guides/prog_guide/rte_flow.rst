@@ -187,7 +187,7 @@ Pattern item
 Pattern items fall in two categories:
 
 - Matching protocol headers and packet data (ANY, RAW, ETH, VLAN, IPV4,
-  IPV6, ICMP, UDP, TCP, SCTP, VXLAN, MPLS, GRE and so on), usually
+  IPV6, ICMP, UDP, TCP, SCTP, VXLAN, MPLS, GRE, ESP and so on), usually
   associated with a specification structure.
 
 - Matching meta-data or affecting pattern processing (END, VOID, INVERT, PF,
@@ -972,6 +972,14 @@ flow rules.
 - ``teid``: tunnel endpoint identifier.
 - Default ``mask`` matches teid only.
 
+Item: ``ESP``
+^^^^^^^^^^^^^
+
+Matches an ESP header.
+
+- ``hdr``: ESP header definition (``rte_esp.h``).
+- Default ``mask`` matches SPI only.
+
 Actions
 ~~~~~~~
 
@@ -989,7 +997,7 @@ They fall in three categories:
   additional processing by subsequent flow rules.
 
 - Other non-terminating meta actions that do not affect the fate of packets
-  (END, VOID, MARK, FLAG, COUNT).
+  (END, VOID, MARK, FLAG, COUNT, SECURITY).
 
 When several actions are combined in a flow rule, they should all have
 different types (e.g. dropping a packet twice is not possible).
@@ -1393,6 +1401,78 @@ the rte_mtr* API.
    +==============+===============+
    | ``mtr_id``   | MTR object ID |
    +--------------+---------------+
+
+Action: ``SECURITY``
+^^^^^^^^^^^^^^^^^^^^
+
+Perform the security action on flows matched by the pattern items
+according to the configuration of the security session.
+
+This action modifies the payload of matched flows. For INLINE_CRYPTO, the
+security protocol headers and IV are fully provided by the application as
+specified in the flow pattern. The payload of matching packets is
+encrypted on egress, and decrypted and authenticated on ingress.
+For INLINE_PROTOCOL, the security protocol is fully offloaded to HW,
+providing full encapsulation and decapsulation of packets in security
+protocols. The flow pattern specifies both the outer security header fields
+and the inner packet fields. The security session specified in the action
+must match the pattern parameters.
+
+The security session specified in the action must be created on the same
+port as the flow action that is being specified.
+
+The ingress/egress flow attribute should match that specified in the
+security session if the security session supports the definition of the
+direction.
+
+Multiple flows can be configured to use the same security session.
+
+- Non-terminating by default.
+
+.. _table_rte_flow_action_security:
+
+.. table:: SECURITY
+
+   +----------------------+--------------------------------------+
+   | Field                | Value                                |
+   +======================+======================================+
+   | ``security_session`` | security session to apply            |
+   +----------------------+--------------------------------------+
+
+The following is an example of configuring IPsec inline using the
+INLINE_CRYPTO security session:
+
+The encryption algorithm, keys and salt are part of the opaque
+``rte_security_session``. The SA is identified according to the IP and ESP
+fields in the pattern items.
+
+.. _table_rte_flow_item_esp_inline_example:
+
+.. table:: IPsec inline crypto flow pattern items.
+
+   +-------+----------+
+   | Index | Item     |
+   +=======+==========+
+   | 0     | Ethernet |
+   +-------+----------+
+   | 1     | IPv4     |
+   +-------+----------+
+   | 2     | ESP      |
+   +-------+----------+
+   | 3     | END      |
+   +-------+----------+
+
+.. _table_rte_flow_action_esp_inline_example:
+
+.. table:: IPsec inline flow actions.
+
+   +-------+----------+
+   | Index | Action   |
+   +=======+==========+
+   | 0     | SECURITY |
+   +-------+----------+
+   | 1     | END      |
+   +-------+----------+
 
 Negative types
 ~~~~~~~~~~~~~~
