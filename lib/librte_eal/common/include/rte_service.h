@@ -199,13 +199,34 @@ int32_t rte_service_runstate_set(uint32_t id, uint32_t runstate);
  * @b EXPERIMENTAL: this API may change without prior notice
  *
  * Get the runstate for the service with *id*. See *rte_service_runstate_set*
- * for details of runstates.
+ * for details of runstates. A service can call this function to ensure that
+ * the application has indicated that it will receive CPU cycles. Either a
+ * service-core is mapped (default case), or the application has explicitly
+ * disabled the check that a service-cores is mapped to the service and takes
+ * responsibility to run the service manually using the available function
+ * *rte_service_run_iter_on_app_lcore* to do so.
  *
  * @retval 1 Service is running
  * @retval 0 Service is stopped
  * @retval -EINVAL Invalid service id
  */
 int32_t rte_service_runstate_get(uint32_t id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Enable or disable the check for a service-core being mapped to the service.
+ * An application can disable the check when takes the responsibility to run a
+ * service itself using *rte_service_run_iter_on_app_lcore*.
+ *
+ * @param id The id of the service to set the check on
+ * @param enable When zero, the check is disabled. Non-zero enables the check.
+ *
+ * @retval 0 Success
+ * @retval -EINVAL Invalid service ID
+ */
+int32_t rte_service_set_runstate_mapped_check(uint32_t id, int32_t enable);
 
 /**
  * @warning

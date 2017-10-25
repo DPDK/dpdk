@@ -54,6 +54,7 @@
 
 #define SERVICE_F_REGISTERED    (1 << 0)
 #define SERVICE_F_STATS_ENABLED (1 << 1)
+#define SERVICE_F_START_CHECK   (1 << 2)
 
 /* runstates for services and lcores, denoting if they are active or not */
 #define RUNSTATE_STOPPED 0
@@ -180,6 +181,19 @@ int32_t rte_service_set_stats_enable(uint32_t id, int32_t enabled)
 	return 0;
 }
 
+int32_t rte_service_set_runstate_mapped_check(uint32_t id, int32_t enabled)
+{
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, 0);
+
+	if (enabled)
+		s->internal_flags |= SERVICE_F_START_CHECK;
+	else
+		s->internal_flags &= ~(SERVICE_F_START_CHECK);
+
+	return 0;
+}
+
 uint32_t
 rte_service_get_count(void)
 {
@@ -241,7 +255,7 @@ rte_service_component_register(const struct rte_service_spec *spec,
 
 	struct rte_service_spec_impl *s = &rte_services[free_slot];
 	s->spec = *spec;
-	s->internal_flags |= SERVICE_F_REGISTERED;
+	s->internal_flags |= SERVICE_F_REGISTERED | SERVICE_F_START_CHECK;
 
 	rte_smp_wmb();
 	rte_service_count++;
@@ -309,9 +323,13 @@ rte_service_runstate_get(uint32_t id)
 	struct rte_service_spec_impl *s;
 	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 	rte_smp_rmb();
+
+	int check_disabled = !(s->internal_flags & SERVICE_F_START_CHECK);
+	int lcore_mapped = (s->num_mapped_cores > 0);
+
 	return (s->app_runstate == RUNSTATE_RUNNING) &&
 		(s->comp_runstate == RUNSTATE_RUNNING) &&
-		(s->num_mapped_cores > 0);
+		(check_disabled | lcore_mapped);
 }
 
 static inline void

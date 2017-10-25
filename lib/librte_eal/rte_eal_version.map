@@ -232,6 +232,7 @@ EXPERIMENTAL {
 	rte_service_run_iter_on_app_lcore;
 	rte_service_runstate_get;
 	rte_service_runstate_set;
+	rte_service_set_runstate_mapped_check;
 	rte_service_set_stats_enable;
 	rte_service_start_with_defaults;
 
