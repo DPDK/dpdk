@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -217,8 +218,9 @@ do {                                                                        \
             memcpy(dst+dst_addrs[t], src+src_addrs[t], size);               \
         total_time2 += rte_rdtsc() - start_time;                            \
     }                                                                       \
-    printf("%8.0f -",  (double)total_time /TEST_ITERATIONS);                \
-    printf("%5.0f",  (double)total_time2 / TEST_ITERATIONS);                \
+    printf("%3.0f -", (double)total_time  / TEST_ITERATIONS);                 \
+    printf("%3.0f",   (double)total_time2 / TEST_ITERATIONS);                 \
+    printf("(%6.2f%%) ", ((double)total_time - total_time2)*100/total_time2); \
 } while (0)
 
 /* Run aligned memcpy tests for each cached/uncached permutation */
@@ -300,6 +302,9 @@ static int
 perf_test(void)
 {
 	int ret;
+	struct timeval tv_begin, tv_end;
+	double time_aligned, time_unaligned;
+	double time_aligned_const, time_unaligned_const;
 
 	ret = init_buffers();
 	if (ret != 0)
@@ -316,25 +321,47 @@ perf_test(void)
 	do_uncached_write(large_buf_write, 0, small_buf_read, 1, SMALL_BUFFER_SIZE);
 
 	printf("\n** rte_memcpy() - memcpy perf. tests (C = compile-time constant) **\n"
-		   "======= ============== ============== ============== ==============\n"
-		   "   Size Cache to cache   Cache to mem   Mem to cache     Mem to mem\n"
-		   "(bytes)        (ticks)        (ticks)        (ticks)        (ticks)\n"
-		   "------- -------------- -------------- -------------- --------------");
+		   "======= ================= ================= ================= =================\n"
+		   "   Size   Cache to cache     Cache to mem      Mem to cache        Mem to mem\n"
+		   "(bytes)          (ticks)          (ticks)           (ticks)           (ticks)\n"
+		   "------- ----------------- ----------------- ----------------- -----------------");
 
-	printf("\n========================== %2dB aligned ============================", ALIGNMENT_UNIT);
+	printf("\n================================= %2dB aligned =================================",
+		ALIGNMENT_UNIT);
 	/* Do aligned tests where size is a variable */
+	gettimeofday(&tv_begin, NULL);
 	perf_test_variable_aligned();
-	printf("\n------- -------------- -------------- -------------- --------------");
+	gettimeofday(&tv_end, NULL);
+	time_aligned = (double)(tv_end.tv_sec - tv_begin.tv_sec)
+		+ ((double)tv_end.tv_usec - tv_begin.tv_usec)/1000000;
+	printf("\n------- ----------------- ----------------- ----------------- -----------------");
 	/* Do aligned tests where size is a compile-time constant */
+	gettimeofday(&tv_begin, NULL);
 	perf_test_constant_aligned();
-	printf("\n=========================== Unaligned =============================");
+	gettimeofday(&tv_end, NULL);
+	time_aligned_const = (double)(tv_end.tv_sec - tv_begin.tv_sec)
+		+ ((double)tv_end.tv_usec - tv_begin.tv_usec)/1000000;
+	printf("\n================================== Unaligned ==================================");
 	/* Do unaligned tests where size is a variable */
+	gettimeofday(&tv_begin, NULL);
 	perf_test_variable_unaligned();
-	printf("\n------- -------------- -------------- -------------- --------------");
+	gettimeofday(&tv_end, NULL);
+	time_unaligned = (double)(tv_end.tv_sec - tv_begin.tv_sec)
+		+ ((double)tv_end.tv_usec - tv_begin.tv_usec)/1000000;
+	printf("\n------- ----------------- ----------------- ----------------- -----------------");
 	/* Do unaligned tests where size is a compile-time constant */
+	gettimeofday(&tv_begin, NULL);
 	perf_test_constant_unaligned();
-	printf("\n======= ============== ============== ============== ==============\n\n");
+	gettimeofday(&tv_end, NULL);
+	time_unaligned_const = (double)(tv_end.tv_sec - tv_begin.tv_sec)
+		+ ((double)tv_end.tv_usec - tv_begin.tv_usec)/1000000;
+	printf("\n======= ================= ================= ================= =================\n\n");
 
+	printf("Test Execution Time (seconds):\n");
+	printf("Aligned variable copy size   = %8.3f\n", time_aligned);
+	printf("Aligned constant copy size   = %8.3f\n", time_aligned_const);
+	printf("Unaligned variable copy size = %8.3f\n", time_unaligned);
+	printf("Unaligned constant copy size = %8.3f\n", time_unaligned_const);
 	free_buffers();
 
 	return 0;
