@@ -187,6 +187,9 @@ const struct rte_flow_action *next_no_void_action(
  * END
  * other members in mask and spec should set to 0x00.
  * item->last should be NULL.
+ *
+ * Special case for flow action type RTE_FLOW_ACTION_TYPE_SECURITY.
+ *
  */
 static int
 cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
@@ -224,6 +227,41 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 				   RTE_FLOW_ERROR_TYPE_ATTR,
 				   NULL, "NULL attribute.");
 		return -rte_errno;
+	}
+
+	/**
+	 *  Special case for flow action type RTE_FLOW_ACTION_TYPE_SECURITY
+	 */
+	act = next_no_void_action(actions, NULL);
+	if (act->type == RTE_FLOW_ACTION_TYPE_SECURITY) {
+		const void *conf = act->conf;
+		/* check if the next not void item is END */
+		act = next_no_void_action(actions, act);
+		if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+			memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+			return -rte_errno;
+		}
+
+		/* get the IP pattern*/
+		item = next_no_void_pattern(pattern, NULL);
+		while (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+				item->type != RTE_FLOW_ITEM_TYPE_IPV6) {
+			if (item->last ||
+					item->type == RTE_FLOW_ITEM_TYPE_END) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "IP pattern missing.");
+				return -rte_errno;
+			}
+			item = next_no_void_pattern(pattern, item);
+		}
+
+		filter->proto = IPPROTO_ESP;
+		return ixgbe_crypto_add_ingress_sa_from_flow(conf, item->spec,
+					item->type == RTE_FLOW_ITEM_TYPE_IPV6);
 	}
 
 	/* the first not void item can be MAC or IPv4 */
@@ -518,6 +556,10 @@ ixgbe_parse_ntuple_filter(struct rte_eth_dev *dev,
 
 	if (ret)
 		return ret;
+
+	/* ESP flow not really a flow*/
+	if (filter->proto == IPPROTO_ESP)
+		return 0;
 
 	/* Ixgbe doesn't support tcp flags. */
 	if (filter->flags & RTE_NTUPLE_FLAGS_TCP_FLAG) {
@@ -2758,6 +2800,11 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
 	ret = ixgbe_parse_ntuple_filter(dev, attr, pattern,
 			actions, &ntuple_filter, error);
+
+	/* ESP flow not really a flow*/
+	if (ntuple_filter.proto == IPPROTO_ESP)
+		return flow;
+
 	if (!ret) {
 		ret = ixgbe_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
 		if (!ret) {

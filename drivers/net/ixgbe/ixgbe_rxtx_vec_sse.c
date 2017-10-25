@@ -123,6 +123,59 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 }
 
 static inline void
+desc_to_olflags_v_ipsec(__m128i descs[4], struct rte_mbuf **rx_pkts)
+{
+	__m128i sterr0, sterr1, sterr2, sterr3;
+	__m128i tmp1, tmp2, tmp3, tmp4;
+	__m128i rearm0, rearm1, rearm2, rearm3;
+
+	const __m128i ipsec_sterr_msk = _mm_set_epi32(
+		0, IXGBE_RXDADV_IPSEC_STATUS_SECP |
+			IXGBE_RXDADV_IPSEC_ERROR_AUTH_FAILED,
+		0, 0);
+	const __m128i ipsec_proc_msk  = _mm_set_epi32(
+		0, IXGBE_RXDADV_IPSEC_STATUS_SECP, 0, 0);
+	const __m128i ipsec_err_flag  = _mm_set_epi32(
+		0, PKT_RX_SEC_OFFLOAD_FAILED | PKT_RX_SEC_OFFLOAD,
+		0, 0);
+	const __m128i ipsec_proc_flag = _mm_set_epi32(
+		0, PKT_RX_SEC_OFFLOAD, 0, 0);
+
+	rearm0 = _mm_load_si128((__m128i *)&rx_pkts[0]->rearm_data);
+	rearm1 = _mm_load_si128((__m128i *)&rx_pkts[1]->rearm_data);
+	rearm2 = _mm_load_si128((__m128i *)&rx_pkts[2]->rearm_data);
+	rearm3 = _mm_load_si128((__m128i *)&rx_pkts[3]->rearm_data);
+	sterr0 = _mm_and_si128(descs[0], ipsec_sterr_msk);
+	sterr1 = _mm_and_si128(descs[1], ipsec_sterr_msk);
+	sterr2 = _mm_and_si128(descs[2], ipsec_sterr_msk);
+	sterr3 = _mm_and_si128(descs[3], ipsec_sterr_msk);
+	tmp1 = _mm_cmpeq_epi32(sterr0, ipsec_sterr_msk);
+	tmp2 = _mm_cmpeq_epi32(sterr0, ipsec_proc_msk);
+	tmp3 = _mm_cmpeq_epi32(sterr1, ipsec_sterr_msk);
+	tmp4 = _mm_cmpeq_epi32(sterr1, ipsec_proc_msk);
+	sterr0 = _mm_or_si128(_mm_and_si128(tmp1, ipsec_err_flag),
+				_mm_and_si128(tmp2, ipsec_proc_flag));
+	sterr1 = _mm_or_si128(_mm_and_si128(tmp3, ipsec_err_flag),
+				_mm_and_si128(tmp4, ipsec_proc_flag));
+	tmp1 = _mm_cmpeq_epi32(sterr2, ipsec_sterr_msk);
+	tmp2 = _mm_cmpeq_epi32(sterr2, ipsec_proc_msk);
+	tmp3 = _mm_cmpeq_epi32(sterr3, ipsec_sterr_msk);
+	tmp4 = _mm_cmpeq_epi32(sterr3, ipsec_proc_msk);
+	sterr2 = _mm_or_si128(_mm_and_si128(tmp1, ipsec_err_flag),
+				_mm_and_si128(tmp2, ipsec_proc_flag));
+	sterr3 = _mm_or_si128(_mm_and_si128(tmp3, ipsec_err_flag),
+				_mm_and_si128(tmp4, ipsec_proc_flag));
+	rearm0 = _mm_or_si128(rearm0, sterr0);
+	rearm1 = _mm_or_si128(rearm1, sterr1);
+	rearm2 = _mm_or_si128(rearm2, sterr2);
+	rearm3 = _mm_or_si128(rearm3, sterr3);
+	_mm_store_si128((__m128i *)&rx_pkts[0]->rearm_data, rearm0);
+	_mm_store_si128((__m128i *)&rx_pkts[1]->rearm_data, rearm1);
+	_mm_store_si128((__m128i *)&rx_pkts[2]->rearm_data, rearm2);
+	_mm_store_si128((__m128i *)&rx_pkts[3]->rearm_data, rearm3);
+}
+
+static inline void
 desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
 	struct rte_mbuf **rx_pkts)
 {
@@ -310,6 +363,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	volatile union ixgbe_adv_rx_desc *rxdp;
 	struct ixgbe_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
+	uint8_t use_ipsec = rxq->using_ipsec;
 	int pos;
 	uint64_t var;
 	__m128i shuf_msk;
@@ -472,6 +526,9 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		/* set ol_flags with vlan packet type */
 		desc_to_olflags_v(descs, mbuf_init, vlan_flags, &rx_pkts[pos]);
+
+		if (unlikely(use_ipsec))
+			desc_to_olflags_v_ipsec(descs, rx_pkts);
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);

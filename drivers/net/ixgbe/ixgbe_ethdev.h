@@ -38,6 +38,7 @@
 #include "base/ixgbe_dcb_82599.h"
 #include "base/ixgbe_dcb_82598.h"
 #include "ixgbe_bypass.h"
+#include "ixgbe_ipsec.h"
 #include <rte_time.h>
 #include <rte_hash.h>
 #include <rte_pci.h>
@@ -486,7 +487,7 @@ struct ixgbe_adapter {
 	struct ixgbe_filter_info    filter;
 	struct ixgbe_l2_tn_info     l2_tn;
 	struct ixgbe_bw_conf        bw_conf;
-
+	struct ixgbe_ipsec          ipsec;
 	bool rx_bulk_alloc_allowed;
 	bool rx_vec_allowed;
 	struct rte_timecounter      systime_tc;
@@ -542,6 +543,9 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_TM_CONF(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->tm_conf)
+
+#define IXGBE_DEV_PRIVATE_TO_IPSEC(adapter)\
+	(&((struct ixgbe_adapter *)adapter)->ipsec)
 
 /*
  * RX/TX function prototypes

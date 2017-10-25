@@ -161,4 +161,12 @@ static inline uint32_t ixgbe_read_addr(volatile void* addr)
 #define IXGBE_WRITE_REG_ARRAY(hw, reg, index, value) \
 	IXGBE_PCI_REG_WRITE(IXGBE_PCI_REG_ARRAY_ADDR((hw), (reg), (index)), (value))
 
+#define IXGBE_WRITE_REG_THEN_POLL_MASK(hw, reg, val, mask, poll_ms)	\
+do {									\
+	uint32_t cnt = poll_ms;						\
+	IXGBE_WRITE_REG(hw, (reg), (val));				\
+	while (((IXGBE_READ_REG(hw, (reg))) & (mask)) && (cnt--))	\
+		rte_delay_ms(1);					\
+} while (0)
+
 #endif /* _IXGBE_OS_H_ */

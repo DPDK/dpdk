@@ -61,6 +61,7 @@
 #include <rte_random.h>
 #include <rte_dev.h>
 #include <rte_hash_crc.h>
+#include <rte_security_driver.h>
 
 #include "ixgbe_logs.h"
 #include "base/ixgbe_api.h"
@@ -1167,6 +1168,11 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
+	/* Initialize security_ctx only for primary process*/
+	eth_dev->security_ctx = ixgbe_ipsec_ctx_create(eth_dev);
+	if (eth_dev->security_ctx == NULL)
+		return -ENOMEM;
+
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
@@ -1400,6 +1406,8 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* Remove all Traffic Manager configuration */
 	ixgbe_tm_conf_uninit(eth_dev);
+
+	rte_free(eth_dev->security_ctx);
 
 	return 0;
 }
@@ -3694,6 +3702,9 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	    hw->mac.type == ixgbe_mac_X550EM_x ||
 	    hw->mac.type == ixgbe_mac_X550EM_a)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+	dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_SECURITY;
+	dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_SECURITY;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
