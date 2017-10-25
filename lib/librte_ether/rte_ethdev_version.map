@@ -191,6 +191,7 @@ DPDK_17.08 {
 DPDK_17.11 {
 	global:
 
+	rte_eth_dev_get_sec_ctx;
 	rte_eth_dev_pool_ops_supported;
 	rte_eth_dev_reset;
 	rte_flow_error_set;

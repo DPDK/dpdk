@@ -301,6 +301,13 @@ rte_eth_dev_socket_id(uint16_t port_id)
 	return rte_eth_devices[port_id].data->numa_node;
 }
 
+void *
+rte_eth_dev_get_sec_ctx(uint8_t port_id)
+{
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, NULL);
+	return rte_eth_devices[port_id].security_ctx;
+}
+
 uint16_t
 rte_eth_dev_count(void)
 {
@@ -712,6 +719,8 @@ rte_eth_convert_rx_offload_bitfield(const struct rte_eth_rxmode *rxmode,
 		offloads |= DEV_RX_OFFLOAD_TCP_LRO;
 	if (rxmode->hw_timestamp == 1)
 		offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+	if (rxmode->security == 1)
+		offloads |= DEV_RX_OFFLOAD_SECURITY;
 
 	*rx_offloads = offloads;
 }
@@ -764,6 +773,10 @@ rte_eth_convert_rx_offloads(const uint64_t rx_offloads,
 		rxmode->hw_timestamp = 1;
 	else
 		rxmode->hw_timestamp = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_SECURITY)
+		rxmode->security = 1;
+	else
+		rxmode->security = 0;
 }
 
 int

@@ -180,6 +180,8 @@ extern "C" {
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_errno.h>
+#include <rte_common.h>
+
 #include "rte_ether.h"
 #include "rte_eth_ctrl.h"
 #include "rte_dev_info.h"
@@ -370,6 +372,7 @@ struct rte_eth_rxmode {
 		enable_scatter   : 1, /**< Enable scatter packets rx handler */
 		enable_lro       : 1, /**< Enable LRO */
 		hw_timestamp     : 1, /**< Enable HW timestamp */
+		security	 : 1, /**< Enable rte_security offloads */
 		/**
 		 * When set the offload bitfield should be ignored.
 		 * Instead per-port Rx offloads should be set on offloads
@@ -963,6 +966,7 @@ struct rte_eth_conf {
 #define DEV_RX_OFFLOAD_CRC_STRIP	0x00001000
 #define DEV_RX_OFFLOAD_SCATTER		0x00002000
 #define DEV_RX_OFFLOAD_TIMESTAMP	0x00004000
+#define DEV_RX_OFFLOAD_SECURITY         0x00008000
 #define DEV_RX_OFFLOAD_CHECKSUM (DEV_RX_OFFLOAD_IPV4_CKSUM | \
 				 DEV_RX_OFFLOAD_UDP_CKSUM | \
 				 DEV_RX_OFFLOAD_TCP_CKSUM)
@@ -998,6 +1002,7 @@ struct rte_eth_conf {
  *   When set application must guarantee that per-queue all mbufs comes from
  *   the same mempool and has refcnt = 1.
  */
+#define DEV_TX_OFFLOAD_SECURITY         0x00020000
 
 struct rte_pci_device;
 
@@ -1741,7 +1746,11 @@ struct rte_eth_dev {
 	 */
 	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 	enum rte_eth_dev_state state; /**< Flag indicating the port state */
+	void *security_ctx; /**< Context for security ops */
 } __rte_cache_aligned;
+
+void *
+rte_eth_dev_get_sec_ctx(uint8_t port_id);
 
 struct rte_eth_dev_sriov {
 	uint8_t active;               /**< SRIOV is active with 16, 32 or 64 pools */
