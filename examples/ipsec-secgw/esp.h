@@ -35,16 +35,6 @@
 
 struct mbuf;
 
-/* RFC4303 */
-struct esp_hdr {
-	uint32_t spi;
-	uint32_t seq;
-	/* Payload */
-	/* Padding */
-	/* Pad Length */
-	/* Next Header */
-	/* Integrity Check Value - ICV */
-};
 
 int
 esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,

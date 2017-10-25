@@ -1390,6 +1390,11 @@ port_init(uint16_t portid)
 		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	}
 
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_SECURITY)
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SECURITY;
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_SECURITY)
+		port_conf.txmode.offloads |= DEV_TX_OFFLOAD_SECURITY;
+
 	ret = rte_eth_dev_configure(portid, nb_rx_queue, nb_tx_queue,
 			&port_conf);
 	if (ret < 0)

@@ -38,6 +38,8 @@
 
 #include <rte_byteorder.h>
 #include <rte_crypto.h>
+#include <rte_security.h>
+#include <rte_flow.h>
 
 #define RTE_LOGTYPE_IPSEC       RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_IPSEC_ESP   RTE_LOGTYPE_USER2
@@ -99,7 +101,10 @@ struct ipsec_sa {
 	uint32_t cdev_id_qp;
 	uint64_t seq;
 	uint32_t salt;
-	struct rte_cryptodev_sym_session *crypto_session;
+	union {
+		struct rte_cryptodev_sym_session *crypto_session;
+		struct rte_security_session *sec_session;
+	};
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_auth_algorithm auth_algo;
 	enum rte_crypto_aead_algorithm aead_algo;
@@ -117,7 +122,28 @@ struct ipsec_sa {
 	uint8_t auth_key[MAX_KEY_SIZE];
 	uint16_t auth_key_len;
 	uint16_t aad_len;
-	struct rte_crypto_sym_xform *xforms;
+	union {
+		struct rte_crypto_sym_xform *xforms;
+		struct rte_security_ipsec_xform *sec_xform;
+	};
+	enum rte_security_session_action_type type;
+	enum rte_security_ipsec_sa_direction direction;
+	uint16_t portid;
+	struct rte_security_ctx *security_ctx;
+	uint32_t ol_flags;
+
+#define MAX_RTE_FLOW_PATTERN (4)
+#define MAX_RTE_FLOW_ACTIONS (2)
+	struct rte_flow_item pattern[MAX_RTE_FLOW_PATTERN];
+	struct rte_flow_action action[MAX_RTE_FLOW_ACTIONS];
+	struct rte_flow_attr attr;
+	union {
+		struct rte_flow_item_ipv4 ipv4_spec;
+		struct rte_flow_item_ipv6 ipv6_spec;
+	};
+	struct rte_flow_item_esp esp_spec;
+	struct rte_flow *flow;
+	struct rte_security_session_conf sess_conf;
 } __rte_cache_aligned;
 
 struct ipsec_mbuf_metadata {
@@ -133,6 +159,8 @@ struct cdev_qp {
 	uint16_t in_flight;
 	uint16_t len;
 	struct rte_crypto_op *buf[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
+	struct rte_mbuf *ol_pkts[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
+	uint16_t ol_pkts_cnt;
 };
 
 struct ipsec_ctx {
