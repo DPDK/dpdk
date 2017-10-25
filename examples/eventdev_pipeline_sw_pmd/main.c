@@ -46,6 +46,7 @@
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
+#include <rte_service.h>
 
 #define MAX_NUM_STAGES 8
 #define BATCH_SIZE 16
@@ -76,6 +77,7 @@ struct fastpath_data {
 	uint32_t rx_lock;
 	uint32_t tx_lock;
 	uint32_t sched_lock;
+	uint32_t evdev_service_id;
 	bool rx_single;
 	bool tx_single;
 	bool sched_single;
@@ -233,7 +235,7 @@ producer(void)
 }
 
 static inline void
-schedule_devices(uint8_t dev_id, unsigned int lcore_id)
+schedule_devices(unsigned int lcore_id)
 {
 	if (fdata->rx_core[lcore_id] && (fdata->rx_single ||
 	    rte_atomic32_cmpset(&(fdata->rx_lock), 0, 1))) {
@@ -243,7 +245,7 @@ schedule_devices(uint8_t dev_id, unsigned int lcore_id)
 
 	if (fdata->sched_core[lcore_id] && (fdata->sched_single ||
 	    rte_atomic32_cmpset(&(fdata->sched_lock), 0, 1))) {
-		rte_event_schedule(dev_id);
+		rte_service_run_iter_on_app_lcore(fdata->evdev_service_id);
 		if (cdata.dump_dev_signal) {
 			rte_event_dev_dump(0, stdout);
 			cdata.dump_dev_signal = 0;
@@ -294,7 +296,7 @@ worker(void *arg)
 	while (!fdata->done) {
 		uint16_t i;
 
-		schedule_devices(dev_id, lcore_id);
+		schedule_devices(lcore_id);
 
 		if (!fdata->worker_core[lcore_id]) {
 			rte_pause();
@@ -839,6 +841,14 @@ setup_eventdev(struct prod_data *prod_data,
 	*cons_data = (struct cons_data){.dev_id = dev_id,
 					.port_id = i };
 
+	ret = rte_event_dev_service_id_get(dev_id,
+				&fdata->evdev_service_id);
+	if (ret != -ESRCH && ret != 0) {
+		printf("Error getting the service ID for sw eventdev\n");
+		return -1;
+	}
+	rte_service_runstate_set(fdata->evdev_service_id, 1);
+	rte_service_set_runstate_mapped_check(fdata->evdev_service_id, 0);
 	if (rte_event_dev_start(dev_id) < 0) {
 		printf("Error starting eventdev\n");
 		return -1;
