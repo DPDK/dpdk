@@ -108,7 +108,7 @@ The public API headers are grouped by topics:
   [GSO]                (@ref rte_gso.h),
   [frag/reass]         (@ref rte_ip_frag.h),
   [LPM IPv4 route]     (@ref rte_lpm.h),
-  [LPM IPv6 route]     (@ref rte_lpm6.h),
+  [LPM IPv6 route]     (@ref rte_lpm6.h)
 
 - **QoS**:
   [metering]           (@ref rte_meter.h),
@@ -120,7 +120,7 @@ The public API headers are grouped by topics:
   [jhash]              (@ref rte_jhash.h),
   [thash]              (@ref rte_thash.h),
   [FBK hash]           (@ref rte_fbk_hash.h),
-  [CRC hash]           (@ref rte_hash_crc.h),
+  [CRC hash]           (@ref rte_hash_crc.h)
 
 - **classification**
   [reorder]            (@ref rte_reorder.h),
@@ -134,7 +134,7 @@ The public API headers are grouped by topics:
   [mbuf]               (@ref rte_mbuf.h),
   [ring]               (@ref rte_ring.h),
   [tailq]              (@ref rte_tailq.h),
-  [bitmap]             (@ref rte_bitmap.h),
+  [bitmap]             (@ref rte_bitmap.h)
 
 - **packet framework**:
   * [port]             (@ref rte_port.h):
