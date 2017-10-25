@@ -548,6 +548,11 @@ CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO=n
 CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO_DEBUG=n
 
 #
+# Compile generic security library
+#
+CONFIG_RTE_LIBRTE_SECURITY=y
+
+#
 # Compile generic event device library
 #
 CONFIG_RTE_LIBRTE_EVENTDEV=y

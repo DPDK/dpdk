@@ -267,6 +267,11 @@ F: lib/librte_cryptodev/
 F: test/test/test_cryptodev*
 F: examples/l2fwd-crypto/
 
+Security API - EXPERIMENTAL
+M: Akhil Goyal <akhil.goyal@nxp.com>
+M: Declan Doherty <declan.doherty@intel.com>
+F: lib/librte_security/
+
 Eventdev API - EXPERIMENTAL
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
