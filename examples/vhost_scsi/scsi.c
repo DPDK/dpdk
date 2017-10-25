@@ -307,7 +307,9 @@ vhost_bdev_scsi_inquiry_command(struct vhost_block_dev *bdev,
 		strncpy((char *)inqdata->t10_vendor_id, "INTEL", 8);
 
 		/* PRODUCT IDENTIFICATION */
-		strncpy((char *)inqdata->product_id, bdev->product_name, 16);
+		snprintf((char *)inqdata->product_id,
+				RTE_DIM(inqdata->product_id), "%s",
+				bdev->product_name);
 
 		/* PRODUCT REVISION LEVEL */
 		strncpy((char *)inqdata->product_rev, "0001", 4);
