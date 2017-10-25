@@ -107,7 +107,7 @@ SRCS-y += test_table_tables.c
 SRCS-y += test_table_ports.c
 SRCS-y += test_table_combined.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_table_acl.c
-SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_flow_classify.c
+SRCS-$(CONFIG_RTE_LIBRTE_FLOW_CLASSIFY) += test_flow_classify.c
 endif
 
 SRCS-y += test_rwlock.c
