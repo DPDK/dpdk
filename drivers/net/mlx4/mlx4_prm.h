@@ -93,16 +93,23 @@ struct mlx4_sq {
 
 #define mlx4_get_send_wqe(sq, n) ((sq)->buf + ((n) * (MLX4_TXBB_SIZE)))
 
-/* Completion queue consumer index mask. */
+/* Completion queue events, numbers and masks. */
+#define MLX4_CQ_DB_GEQ_N_MASK 0x3
+#define MLX4_CQ_DOORBELL 0x20
 #define MLX4_CQ_DB_CI_MASK 0xffffff
 
 /* Completion queue information. */
 struct mlx4_cq {
+	void *cq_uar; /**< CQ user access region. */
+	void *cq_db_reg; /**< CQ doorbell register. */
+	uint32_t *set_ci_db; /**< Pointer to the completion queue doorbell. */
+	uint32_t *arm_db; /**< Pointer to doorbell for arming Rx events. */
 	uint8_t *buf; /**< Pointer to the completion queue buffer. */
 	uint32_t cqe_cnt; /**< Number of entries in the queue. */
 	uint32_t cqe_64:1; /**< CQ entry size is 64 bytes. */
 	uint32_t cons_index; /**< Last queue entry that was handled. */
-	uint32_t *set_ci_db; /**< Pointer to the completion queue doorbell. */
+	uint32_t cqn; /**< CQ number. */
+	int arm_sn; /**< Rx event counter. */
 };
 
 /**

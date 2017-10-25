@@ -510,7 +510,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 	struct rte_mbuf *(*elts)[elts_n] = rxq->elts;
 	struct mlx4dv_obj mlxdv;
 	struct mlx4dv_rwq dv_rwq;
-	struct mlx4dv_cq dv_cq;
+	struct mlx4dv_cq dv_cq = { .comp_mask = MLX4DV_CQ_MASK_UAR, };
 	const char *msg;
 	struct ibv_cq *cq = NULL;
 	struct ibv_wq *wq = NULL;
@@ -604,6 +604,11 @@ mlx4_rxq_attach(struct rxq *rxq)
 	rxq->mcq.cqe_cnt = dv_cq.cqe_cnt;
 	rxq->mcq.set_ci_db = dv_cq.set_ci_db;
 	rxq->mcq.cqe_64 = (dv_cq.cqe_size & 64) ? 1 : 0;
+	rxq->mcq.arm_db = dv_cq.arm_db;
+	rxq->mcq.arm_sn = dv_cq.arm_sn;
+	rxq->mcq.cqn = dv_cq.cqn;
+	rxq->mcq.cq_uar = dv_cq.cq_uar;
+	rxq->mcq.cq_db_reg = (uint8_t *)dv_cq.cq_uar + MLX4_CQ_DOORBELL;
 	/* Update doorbell counter. */
 	rxq->rq_ci = elts_n / sges_n;
 	rte_wmb();

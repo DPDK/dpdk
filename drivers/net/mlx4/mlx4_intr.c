@@ -53,6 +53,7 @@
 #include <rte_alarm.h>
 #include <rte_errno.h>
 #include <rte_ethdev.h>
+#include <rte_io.h>
 #include <rte_interrupts.h>
 
 #include "mlx4.h"
@@ -239,6 +240,35 @@ mlx4_interrupt_handler(struct priv *priv)
 }
 
 /**
+ * MLX4 CQ notification .
+ *
+ * @param rxq
+ *   Pointer to receive queue structure.
+ * @param solicited
+ *   Is request solicited or not.
+ */
+static void
+mlx4_arm_cq(struct rxq *rxq, int solicited)
+{
+	struct mlx4_cq *cq = &rxq->mcq;
+	uint64_t doorbell;
+	uint32_t sn = cq->arm_sn & MLX4_CQ_DB_GEQ_N_MASK;
+	uint32_t ci = cq->cons_index & MLX4_CQ_DB_CI_MASK;
+	uint32_t cmd = solicited ? MLX4_CQ_DB_REQ_NOT_SOL : MLX4_CQ_DB_REQ_NOT;
+
+	*cq->arm_db = rte_cpu_to_be_32(sn << 28 | cmd | ci);
+	/*
+	 * Make sure that the doorbell record in host memory is
+	 * written before ringing the doorbell via PCI MMIO.
+	 */
+	rte_wmb();
+	doorbell = sn << 28 | cmd | cq->cqn;
+	doorbell <<= 32;
+	doorbell |= ci;
+	rte_write64(rte_cpu_to_be_64(doorbell), cq->cq_db_reg);
+}
+
+/**
  * Uninstall interrupt handler.
  *
  * @param priv
@@ -333,6 +363,7 @@ mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
 		WARN("unable to disable interrupt on rx queue %d",
 		     idx);
 	} else {
+		rxq->mcq.arm_sn++;
 		ibv_ack_cq_events(rxq->cq, 1);
 	}
 	return -ret;
@@ -353,15 +384,14 @@ int
 mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct rxq *rxq = dev->data->rx_queues[idx];
-	int ret;
+	int ret = 0;
 
-	if (!rxq || !rxq->channel)
+	if (!rxq || !rxq->channel) {
 		ret = EINVAL;
-	else
-		ret = ibv_req_notify_cq(rxq->cq, 0);
-	if (ret) {
 		rte_errno = ret;
 		WARN("unable to arm interrupt on rx queue %d", idx);
+	} else {
+		mlx4_arm_cq(rxq, 0);
 	}
 	return -ret;
 }
