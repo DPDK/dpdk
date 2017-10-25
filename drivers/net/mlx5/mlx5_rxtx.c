@@ -1884,7 +1884,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			if (rxq->vlan_strip &&
 			    (cqe->hdr_type_etc &
 			     rte_cpu_to_be_16(MLX5_CQE_VLAN_STRIPPED))) {
-				pkt->ol_flags |= PKT_RX_VLAN_PKT |
+				pkt->ol_flags |= PKT_RX_VLAN |
 					PKT_RX_VLAN_STRIPPED;
 				pkt->vlan_tci =
 					rte_be_to_cpu_16(cqe->vlan_info);

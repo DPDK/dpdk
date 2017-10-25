@@ -1405,7 +1405,7 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 	}
 
 	if (pkt->vlan_ex) {
-		mbuf->ol_flags |= PKT_RX_VLAN_PKT;
+		mbuf->ol_flags |= PKT_RX_VLAN;
 		mbuf->vlan_tci = ntohs(pkt->vlan);
 	}
 	rxq->stats.pkts++;
@@ -1550,7 +1550,7 @@ static int process_responses(struct sge_rspq *q, int budget,
 				}
 
 				if (cpl->vlan_ex) {
-					pkt->ol_flags |= PKT_RX_VLAN_PKT;
+					pkt->ol_flags |= PKT_RX_VLAN;
 					pkt->vlan_tci = ntohs(cpl->vlan);
 				}
 

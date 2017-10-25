@@ -451,7 +451,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	sw_ring = &rxq->sw_ring[rxq->rx_tail];
 
 	/* ensure these 2 flags are in the lower 8 bits */
-	RTE_BUILD_BUG_ON((PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED) > UINT8_MAX);
+	RTE_BUILD_BUG_ON((PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED) > UINT8_MAX);
 	vlan_flags = rxq->vlan_flags & UINT8_MAX;
 
 	/* A. load 4 packet in one loop

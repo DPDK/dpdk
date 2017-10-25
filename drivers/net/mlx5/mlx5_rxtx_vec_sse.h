@@ -563,17 +563,17 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 			     (uint8_t)(PKT_RX_L4_CKSUM_GOOD >> 1),
 			     0,
 			     (uint8_t)(PKT_RX_IP_CKSUM_GOOD >> 1),
-			     (uint8_t)(PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED),
+			     (uint8_t)(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
 			     0);
 	const __m128i cv_mask =
 		_mm_set_epi32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-			      PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED,
+			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
 			      PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-			      PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED,
+			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
 			      PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-			      PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED,
+			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
 			      PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-			      PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
+			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
 	const __m128i mbuf_init =
 		_mm_loadl_epi64((__m128i *)&rxq->mbuf_initializer);
 	__m128i rearm0, rearm1, rearm2, rearm3;

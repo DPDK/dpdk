@@ -1359,7 +1359,7 @@ avp_dev_copy_from_buffers(struct avp_dev *avp,
 	src_offset = 0;
 
 	if (pkt_buf->ol_flags & RTE_AVP_RX_VLAN_PKT) {
-		ol_flags = PKT_RX_VLAN_PKT;
+		ol_flags = PKT_RX_VLAN;
 		vlan_tci = pkt_buf->vlan_tci;
 	} else {
 		ol_flags = 0;
@@ -1617,7 +1617,7 @@ avp_recv_pkts(void *rx_queue,
 		m->port = avp->port_id;
 
 		if (pkt_buf->ol_flags & RTE_AVP_RX_VLAN_PKT) {
-			m->ol_flags = PKT_RX_VLAN_PKT;
+			m->ol_flags = PKT_RX_VLAN;
 			m->vlan_tci = pkt_buf->vlan_tci;
 		}
 

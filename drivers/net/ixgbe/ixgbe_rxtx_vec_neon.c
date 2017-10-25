@@ -126,8 +126,8 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 	} vol;
 
 	const uint8x16_t pkttype_msk = {
-			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT,
-			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT,
+			PKT_RX_VLAN, PKT_RX_VLAN,
+			PKT_RX_VLAN, PKT_RX_VLAN,
 			0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00};

@@ -308,7 +308,7 @@ const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
 const char *rte_get_rx_ol_flag_name(uint64_t mask)
 {
 	switch (mask) {
-	case PKT_RX_VLAN_PKT: return "PKT_RX_VLAN_PKT";
+	case PKT_RX_VLAN: return "PKT_RX_VLAN";
 	case PKT_RX_RSS_HASH: return "PKT_RX_RSS_HASH";
 	case PKT_RX_FDIR: return "PKT_RX_FDIR";
 	case PKT_RX_L4_CKSUM_BAD: return "PKT_RX_L4_CKSUM_BAD";
@@ -341,7 +341,7 @@ int
 rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 {
 	const struct flag_mask rx_flags[] = {
-		{ PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT, NULL },
+		{ PKT_RX_VLAN, PKT_RX_VLAN, NULL },
 		{ PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, NULL },
 		{ PKT_RX_FDIR, PKT_RX_FDIR, NULL },
 		{ PKT_RX_L4_CKSUM_BAD, PKT_RX_L4_CKSUM_MASK, NULL },
@@ -363,6 +363,7 @@ rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 		{ PKT_RX_TIMESTAMP, PKT_RX_TIMESTAMP, NULL },
 		{ PKT_RX_SEC_OFFLOAD, PKT_RX_SEC_OFFLOAD, NULL },
 		{ PKT_RX_SEC_OFFLOAD_FAILED, PKT_RX_SEC_OFFLOAD_FAILED, NULL },
+		{ PKT_RX_QINQ, PKT_RX_QINQ, NULL },
 	};
 	const char *name;
 	unsigned int i;

@@ -199,7 +199,7 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 	if (tpa_start1->flags2 &
 	    rte_cpu_to_le_32(RX_TPA_START_CMPL_FLAGS2_META_FORMAT_VLAN)) {
 		mbuf->vlan_tci = rte_le_to_cpu_32(tpa_start1->metadata);
-		mbuf->ol_flags |= PKT_RX_VLAN_PKT;
+		mbuf->ol_flags |= PKT_RX_VLAN;
 	}
 	if (likely(tpa_start1->flags2 &
 		   rte_cpu_to_le_32(RX_TPA_START_CMPL_FLAGS2_L4_CS_CALC)))
@@ -464,7 +464,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 			(RX_PKT_CMPL_METADATA_VID_MASK |
 			RX_PKT_CMPL_METADATA_DE |
 			RX_PKT_CMPL_METADATA_PRI_MASK);
-		mbuf->ol_flags |= PKT_RX_VLAN_PKT;
+		mbuf->ol_flags |= PKT_RX_VLAN;
 	}
 
 	if (likely(RX_CMP_IP_CS_OK(rxcmp1)))

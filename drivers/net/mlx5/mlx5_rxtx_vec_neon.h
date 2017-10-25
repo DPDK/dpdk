@@ -572,7 +572,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	const uint32x4_t ptype_ol_mask = { 0x106, 0x106, 0x106, 0x106 };
 	const uint8x16_t cv_flag_sel = {
 		0,
-		(uint8_t)(PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED),
+		(uint8_t)(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
 		(uint8_t)(PKT_RX_IP_CKSUM_GOOD >> 1),
 		0,
 		(uint8_t)(PKT_RX_L4_CKSUM_GOOD >> 1),
@@ -582,7 +582,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	};
 	const uint32x4_t cv_mask =
 		vdupq_n_u32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-			    PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
+			    PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
 	const uint64x1_t mbuf_init = vld1_u64(&rxq->mbuf_initializer);
 	const uint64x1_t r32_mask = vcreate_u64(0xffffffff);
 	uint64x2_t rearm0, rearm1, rearm2, rearm3;

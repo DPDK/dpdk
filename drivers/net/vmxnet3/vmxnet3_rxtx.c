@@ -847,7 +847,8 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			/* Check for hardware stripped VLAN tag */
 			if (rcd->ts) {
-				start->ol_flags |= (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
+				start->ol_flags |= (PKT_RX_VLAN |
+						PKT_RX_VLAN_STRIPPED);
 				start->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
 			}
 

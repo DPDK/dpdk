@@ -2067,7 +2067,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if ((rxds->rxd.flags & PCIE_DESC_RX_VLAN) &&
 		    (hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN)) {
 			mb->vlan_tci = rte_cpu_to_le_32(rxds->rxd.vlan);
-			mb->ol_flags |= PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED;
+			mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		}
 
 		/* Adding the mbuff to the mbuff array passed by the app */

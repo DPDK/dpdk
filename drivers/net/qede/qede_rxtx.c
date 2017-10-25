@@ -1450,7 +1450,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (CQE_HAS_VLAN(parse_flag) ||
 		    CQE_HAS_OUTER_VLAN(parse_flag)) {
 			/* Note: FW doesn't indicate Q-in-Q packet */
-			ol_flags |= PKT_RX_VLAN_PKT;
+			ol_flags |= PKT_RX_VLAN;
 			if (qdev->vlan_strip_flg) {
 				ol_flags |= PKT_RX_VLAN_STRIPPED;
 				rx_mb->vlan_tci = vlan_tci;

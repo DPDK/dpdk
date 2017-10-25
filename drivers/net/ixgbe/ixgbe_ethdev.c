@@ -1966,9 +1966,9 @@ ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, uint16_t queue, bool on)
 	rxq = dev->data->rx_queues[queue];
 
 	if (on)
-		rxq->vlan_flags = PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED;
+		rxq->vlan_flags = PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 	else
-		rxq->vlan_flags = PKT_RX_VLAN_PKT;
+		rxq->vlan_flags = PKT_RX_VLAN;
 }
 
 static void

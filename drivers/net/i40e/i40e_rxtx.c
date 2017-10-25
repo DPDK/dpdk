@@ -108,7 +108,7 @@ i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
 {
 	if (rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
 		(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT)) {
-		mb->ol_flags |= PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED;
+		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		mb->vlan_tci =
 			rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1);
 		PMD_RX_LOG(DEBUG, "Descriptor l2tag1: %u",

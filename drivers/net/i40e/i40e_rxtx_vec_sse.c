@@ -151,7 +151,7 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, __m128i descs[4],
 	/* map rss and vlan type to rss hash and vlan flag */
 	const __m128i vlan_flags = _mm_set_epi8(0, 0, 0, 0,
 			0, 0, 0, 0,
-			0, 0, 0, PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED,
+			0, 0, 0, PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
 			0, 0, 0, 0);
 
 	const __m128i rss_flags = _mm_set_epi8(0, 0, 0, 0,

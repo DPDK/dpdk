@@ -1881,7 +1881,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->port = rxq->port_id;
 
 		pkt_info = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
-		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
+		/* Only valid if PKT_RX_VLAN set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_status_to_pkt_flags(staterr, vlan_flags);
@@ -1972,7 +1972,7 @@ ixgbe_fill_cluster_head_buf(
 
 	head->port = rxq->port_id;
 
-	/* The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
+	/* The vlan_tci field is only valid when PKT_RX_VLAN is
 	 * set in the pkt_flags field.
 	 */
 	head->vlan_tci = rte_le_to_cpu_16(desc->wb.upper.vlan);

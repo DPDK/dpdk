@@ -349,6 +349,19 @@ API Changes
   ``rte_log_get_global_level()``, ``rte_log_set_level()`` and
   ``rte_log_get_level()``.
 
+* **Removed ``mbuf`` flags ``PKT_RX_VLAN_PKT`` and ``PKT_RX_QINQ_PKT``.**
+
+  The ``mbuf`` flags ``PKT_RX_VLAN_PKT`` and ``PKT_RX_QINQ_PKT`` have
+  been removed since their behavior were not properly described.
+
+* **Added ``mbuf`` flags ``PKT_RX_VLAN`` and ``PKT_RX_QINQ``.**
+
+  Two ``mbuf`` flags have been added to indicate that the VLAN
+  identifier has been saved in in the ``mbuf`` structure. For instance:
+
+  - if VLAN is not stripped and TCI is saved: ``PKT_RX_VLAN``
+  - if VLAN is stripped and TCI is saved: ``PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED``
+
 
 ABI Changes
 -----------

@@ -675,7 +675,7 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 
 	/* Check if VLAN present */
 	pkt_flags = ((rx_status & E1000_RXD_STAT_VP) ?
-		PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED : 0);
+		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED : 0);
 
 	return pkt_flags;
 }
@@ -830,7 +830,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->ol_flags = rxm->ol_flags |
 				rx_desc_error_to_pkt_flags(rxd.errors);
 
-		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
+		/* Only valid if PKT_RX_VLAN set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/*
@@ -1056,7 +1056,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->ol_flags = first_seg->ol_flags |
 					rx_desc_error_to_pkt_flags(rxd.errors);
 
-		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
+		/* Only valid if PKT_RX_VLAN set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/* Prefetch data of first segment, if configured to do so. */

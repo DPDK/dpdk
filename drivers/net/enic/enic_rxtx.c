@@ -243,7 +243,7 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 
 	/* VLAN STRIPPED flag. The L2 packet type updated here also */
 	if (bwflags & CQ_ENET_RQ_DESC_FLAGS_VLAN_STRIPPED) {
-		pkt_flags |= PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED;
+		pkt_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		mbuf->packet_type |= RTE_PTYPE_L2_ETHER;
 	} else {
 		if (vlan_tci != 0)

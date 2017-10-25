@@ -81,8 +81,8 @@ fm10k_desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 
 	const __m128i pkttype_msk = _mm_set_epi16(
 			0x0000, 0x0000, 0x0000, 0x0000,
-			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT,
-			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT);
+			PKT_RX_VLAN, PKT_RX_VLAN,
+			PKT_RX_VLAN, PKT_RX_VLAN);
 
 	/* mask everything except rss type */
 	const __m128i rsstype_msk = _mm_set_epi16(

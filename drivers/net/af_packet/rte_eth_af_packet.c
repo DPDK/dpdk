@@ -167,7 +167,7 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		/* check for vlan info */
 		if (ppd->tp_status & TP_STATUS_VLAN_VALID) {
 			mbuf->vlan_tci = ppd->tp_vlan_tci;
-			mbuf->ol_flags |= (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
+			mbuf->ol_flags |= (PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
 		}
 
 		/* release incoming frame and advance ring buffer */

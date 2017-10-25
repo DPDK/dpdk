@@ -28,11 +28,6 @@ Deprecation Notices
   The change will be only for the name.
   Functional aspects of the API or data-structure will remain same.
 
-* The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
-  are respectively replaced by PKT_RX_VLAN_STRIPPED and
-  PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
-  their behavior will be kept until 17.08 and will be removed in 17.11.
-
 * ethdev: Tx offloads will no longer be enabled by default in 17.11.
   Instead, the ``rte_eth_txmode`` structure will be extended with
   bit field to enable each Tx offload.

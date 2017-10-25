@@ -146,7 +146,7 @@ desc_to_olflags_v(vector unsigned long descs[4], struct rte_mbuf **rx_pkts)
 	/* map rss and vlan type to rss hash and vlan flag */
 	const vector unsigned char vlan_flags = (vector unsigned char){
 			0, 0, 0, 0,
-			PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED, 0, 0, 0,
+			PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0};
 

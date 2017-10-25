@@ -137,7 +137,7 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
 	/* map rss and vlan type to rss hash and vlan flag */
 	const uint8x16_t vlan_flags = {
 			0, 0, 0, 0,
-			PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED, 0, 0, 0,
+			PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0};
 

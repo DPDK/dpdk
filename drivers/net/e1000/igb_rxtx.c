@@ -785,7 +785,7 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 
 	/* Check if VLAN present */
 	pkt_flags = ((rx_status & E1000_RXD_STAT_VP) ?
-		PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED : 0);
+		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED : 0);
 
 #if defined(RTE_LIBRTE_IEEE1588)
 	if (rx_status & E1000_RXD_STAT_TMST)
@@ -946,7 +946,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		rxm->hash.rss = rxd.wb.lower.hi_dword.rss;
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
-		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
+		/* Only valid if PKT_RX_VLAN set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(rxq, hlen_type_rss);
@@ -1180,7 +1180,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->hash.rss = rxd.wb.lower.hi_dword.rss;
 
 		/*
-		 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
+		 * The vlan_tci field is only valid when PKT_RX_VLAN is
 		 * set in the pkt_flags field.
 		 */
 		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);

@@ -89,12 +89,13 @@ extern "C" {
  */
 
 /**
- * RX packet is a 802.1q VLAN packet. This flag was set by PMDs when
- * the packet is recognized as a VLAN, but the behavior between PMDs
- * was not the same. This flag is kept for some time to avoid breaking
- * applications and should be replaced by PKT_RX_VLAN_STRIPPED.
+ * The RX packet is a 802.1q VLAN packet, and the tci has been
+ * saved in in mbuf->vlan_tci.
+ * If the flag PKT_RX_VLAN_STRIPPED is also present, the VLAN
+ * header has been stripped from mbuf data, else it is still
+ * present.
  */
-#define PKT_RX_VLAN_PKT      (1ULL << 0)
+#define PKT_RX_VLAN          (1ULL << 0)
 
 #define PKT_RX_RSS_HASH      (1ULL << 1)  /**< RX packet with RSS hash result. */
 #define PKT_RX_FDIR          (1ULL << 2)  /**< RX packet with FDIR match indicate. */
@@ -123,6 +124,7 @@ extern "C" {
  * A vlan has been stripped by the hardware and its tci is saved in
  * mbuf->vlan_tci. This can only happen if vlan stripping is enabled
  * in the RX configuration of the PMD.
+ * When PKT_RX_VLAN_STRIPPED is set, PKT_RX_VLAN must also be set.
  */
 #define PKT_RX_VLAN_STRIPPED (1ULL << 6)
 
@@ -165,17 +167,11 @@ extern "C" {
  * The 2 vlans have been stripped by the hardware and their tci are
  * saved in mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
  * This can only happen if vlan stripping is enabled in the RX
- * configuration of the PMD. If this flag is set, PKT_RX_VLAN_STRIPPED
- * must also be set.
+ * configuration of the PMD. If this flag is set,
+ * When PKT_RX_QINQ_STRIPPED is set, the flags (PKT_RX_VLAN |
+ * PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ) must also be set.
  */
 #define PKT_RX_QINQ_STRIPPED (1ULL << 15)
-
-/**
- * Deprecated.
- * RX packet with double VLAN stripped.
- * This flag is replaced by PKT_RX_QINQ_STRIPPED.
- */
-#define PKT_RX_QINQ_PKT      PKT_RX_QINQ_STRIPPED
 
 /**
  * When packets are coalesced by a hardware or virtual driver, this flag
@@ -198,6 +194,15 @@ extern "C" {
  * Indicate that security offload processing failed on the RX packet.
  */
 #define PKT_RX_SEC_OFFLOAD_FAILED  	(1ULL << 19)
+
+/**
+ * The RX packet is a double VLAN, and the outer tci has been
+ * saved in in mbuf->vlan_tci_outer.
+ * If the flag PKT_RX_QINQ_STRIPPED is also present, both VLANs
+ * headers have been stripped from mbuf data, else they are still
+ * present.
+ */
+#define PKT_RX_QINQ          (1ULL << 20)
 
 /* add new RX flags here */
 

@@ -219,7 +219,7 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m,
 
 	/* Check if Vlan is present */
 	if (prs & DPAA_PARSE_VLAN_MASK)
-		m->ol_flags |= PKT_RX_VLAN_PKT;
+		m->ol_flags |= PKT_RX_VLAN;
 	/* Packet received without stripping the vlan */
 }
 
