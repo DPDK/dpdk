@@ -50,6 +50,7 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_byteorder.h>
+#include <rte_esp.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -336,6 +337,13 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_gtp.
 	 */
 	RTE_FLOW_ITEM_TYPE_GTPU,
+
+	/**
+	 * Matches a ESP header.
+	 *
+	 * See struct rte_flow_item_esp.
+	 */
+	RTE_FLOW_ITEM_TYPE_ESP,
 };
 
 /**
@@ -783,6 +791,24 @@ struct rte_flow_item_gtp {
 #ifndef __cplusplus
 static const struct rte_flow_item_gtp rte_flow_item_gtp_mask = {
 	.teid = RTE_BE32(0xffffffff),
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ESP
+ *
+ * Matches an ESP header.
+ */
+struct rte_flow_item_esp {
+	struct esp_hdr hdr; /**< ESP header definition. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ESP. */
+#ifndef __cplusplus
+static const struct rte_flow_item_esp rte_flow_item_esp_mask = {
+	.hdr = {
+		.spi = 0xffffffff,
+	},
 };
 #endif
 

@@ -100,6 +100,7 @@ The public API headers are grouped by topics:
   [ethernet]           (@ref rte_ether.h),
   [ARP]                (@ref rte_arp.h),
   [ICMP]               (@ref rte_icmp.h),
+  [ESP]                (@ref rte_esp.h),
   [IP]                 (@ref rte_ip.h),
   [SCTP]               (@ref rte_sctp.h),
   [TCP]                (@ref rte_tcp.h),
