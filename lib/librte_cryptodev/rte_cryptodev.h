@@ -350,6 +350,8 @@ rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
 /**< Utilises CPU NEON instructions */
 #define	RTE_CRYPTODEV_FF_CPU_ARM_CE		(1ULL << 11)
 /**< Utilises ARM CPU Cryptographic Extensions */
+#define	RTE_CRYPTODEV_FF_SECURITY		(1ULL << 12)
+/**< Support Security Protocol Processing */
 
 
 /**
@@ -773,10 +775,16 @@ struct rte_cryptodev {
 	struct rte_cryptodev_cb_list link_intr_cbs;
 	/**< User application callback for interrupts if present */
 
+	void *security_ctx;
+	/**< Context for security ops */
+
 	__extension__
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
 } __rte_cache_aligned;
+
+void *
+rte_cryptodev_get_sec_ctx(uint8_t dev_id);
 
 /**
  *

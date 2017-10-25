@@ -86,7 +86,8 @@ enum rte_crypto_op_status {
  */
 enum rte_crypto_op_sess_type {
 	RTE_CRYPTO_OP_WITH_SESSION,	/**< Session based crypto operation */
-	RTE_CRYPTO_OP_SESSIONLESS	/**< Session-less crypto operation */
+	RTE_CRYPTO_OP_SESSIONLESS,	/**< Session-less crypto operation */
+	RTE_CRYPTO_OP_SECURITY_SESSION	/**< Security session crypto operation */
 };
 
 /**

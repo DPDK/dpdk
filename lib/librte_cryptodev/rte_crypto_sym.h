@@ -508,6 +508,8 @@ struct rte_crypto_sym_op {
 		/**< Handle for the initialised session context */
 		struct rte_crypto_sym_xform *xform;
 		/**< Session-less API crypto operation parameters */
+		struct rte_security_session *sec_session;
+		/**< Handle for the initialised security session context */
 	};
 
 	RTE_STD_C11

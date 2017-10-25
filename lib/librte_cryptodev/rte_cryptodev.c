@@ -488,6 +488,16 @@ rte_cryptodev_devices_get(const char *driver_name, uint8_t *devices,
 	return count;
 }
 
+void *
+rte_cryptodev_get_sec_ctx(uint8_t dev_id)
+{
+	if (rte_crypto_devices[dev_id].feature_flags &
+			RTE_CRYPTODEV_FF_SECURITY)
+		return rte_crypto_devices[dev_id].security_ctx;
+
+	return NULL;
+}
+
 int
 rte_cryptodev_socket_id(uint8_t dev_id)
 {
