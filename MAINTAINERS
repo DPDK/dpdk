@@ -271,6 +271,7 @@ Security API - EXPERIMENTAL
 M: Akhil Goyal <akhil.goyal@nxp.com>
 M: Declan Doherty <declan.doherty@intel.com>
 F: lib/librte_security/
+F: doc/guides/prog_guide/rte_security.rst
 
 Eventdev API - EXPERIMENTAL
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
