@@ -416,7 +416,8 @@ F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/i40e*.ini
 
 Intel fm10k
-M: Jing Chen <jing.d.chen@intel.com>
+M: Qi Zhang <qi.z.zhang@intel.com>
+M: Xiao Wang <xiao.w.wang@intel.com>
 F: drivers/net/fm10k/
 F: doc/guides/nics/features/fm10k*.ini
 
