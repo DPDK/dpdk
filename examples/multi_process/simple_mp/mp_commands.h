@@ -34,7 +34,6 @@
 #ifndef _SIMPLE_MP_COMMANDS_H_
 #define _SIMPLE_MP_COMMANDS_H_
 
-extern const unsigned string_size;
 extern struct rte_ring *send_ring;
 extern struct rte_mempool *message_pool;
 extern volatile int quit;

@@ -67,6 +67,7 @@
 #include <rte_mempool.h>
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
+#include <cmdline_parse_string.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
 #include "mp_commands.h"
@@ -76,7 +77,6 @@
 static const char *_MSG_POOL = "MSG_POOL";
 static const char *_SEC_2_PRI = "SEC_2_PRI";
 static const char *_PRI_2_SEC = "PRI_2_SEC";
-const unsigned string_size = 64;
 
 struct rte_ring *send_ring, *recv_ring;
 struct rte_mempool *message_pool;
@@ -121,7 +121,7 @@ main(int argc, char **argv)
 		send_ring = rte_ring_create(_PRI_2_SEC, ring_size, rte_socket_id(), flags);
 		recv_ring = rte_ring_create(_SEC_2_PRI, ring_size, rte_socket_id(), flags);
 		message_pool = rte_mempool_create(_MSG_POOL, pool_size,
-				string_size, pool_cache, priv_data_sz,
+				STR_TOKEN_SIZE, pool_cache, priv_data_sz,
 				NULL, NULL, NULL, NULL,
 				rte_socket_id(), flags);
 	} else {
