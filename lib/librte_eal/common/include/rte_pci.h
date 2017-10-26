@@ -331,22 +331,6 @@ int rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
  */
 int rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr);
 
-/*
- * Match the PCI Driver and Device using the ID Table
- *
- * @param pci_drv
- *      PCI driver from which ID table would be extracted
- * @param pci_dev
- *      PCI device to match against the driver
- * @return
- *      1 for successful match
- *      0 for unsuccessful match
- */
-int
-rte_pci_match(const struct rte_pci_driver *pci_drv,
-	      const struct rte_pci_device *pci_dev);
-
-
 /**
  * Get iommu class of PCI devices on the bus.
  * And return their preferred iova mapping mode.

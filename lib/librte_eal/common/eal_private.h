@@ -290,6 +290,21 @@ void pci_uio_free_resource(struct rte_pci_device *dev,
 int pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 		struct mapped_pci_resource *uio_res, int map_idx);
 
+/*
+ * Match the PCI Driver and Device using the ID Table
+ *
+ * @param pci_drv
+ *      PCI driver from which ID table would be extracted
+ * @param pci_dev
+ *      PCI device to match against the driver
+ * @return
+ *      1 for successful match
+ *      0 for unsuccessful match
+ */
+int
+rte_pci_match(const struct rte_pci_driver *pci_drv,
+	      const struct rte_pci_device *pci_dev);
+
 /**
  * Init tail queues for non-EAL library structures. This is to allow
  * the rings, mempools, etc. lists to be shared among multiple processes
