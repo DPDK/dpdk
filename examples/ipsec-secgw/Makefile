@@ -38,6 +38,12 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(CONFIG_RTE_LIBRTE_SECURITY),y)
+$(error "RTE_LIBRTE_SECURITY is required to build ipsec-secgw")
+endif
+endif
+
 APP = ipsec-secgw
 
 CFLAGS += -O3 -gdwarf-2
