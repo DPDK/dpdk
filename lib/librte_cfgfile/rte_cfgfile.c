@@ -241,6 +241,11 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 
 			split[0] = buffer;
 			split[1] = memchr(buffer, '=', len);
+			if (split[1] == NULL) {
+				printf("Error line %d - no '='"
+					"character found\n", lineno);
+				goto error1;
+			}
 			*split[1] = '\0';
 			split[1]++;
 
@@ -268,7 +273,7 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 				goto error1;
 
 			_add_entry(&cfg->sections[cfg->num_sections - 1],
-					split[0], (split[1] ? split[1] : ""));
+					split[0], split[1]);
 		}
 	}
 	fclose(f);
