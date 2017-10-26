@@ -339,7 +339,11 @@ pci_vfio_setup_device(struct rte_pci_device *dev, int vfio_dev_fd)
 	}
 
 	/* Reset the device */
-	ioctl(vfio_dev_fd, VFIO_DEVICE_RESET);
+	if (ioctl(vfio_dev_fd, VFIO_DEVICE_RESET)) {
+		RTE_LOG(ERR, EAL, "Unable to reset device! Error: %d (%s)\n",
+				errno, strerror(errno));
+		return -1;
+	}
 
 	return 0;
 }
