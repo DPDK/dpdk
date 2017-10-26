@@ -255,8 +255,6 @@ DPDK_17.11 {
 	rte_memcpy_ptr;
 	rte_pci_addr_cmp;
 	rte_pci_addr_parse;
-	rte_pci_bdf_parse;
-	rte_pci_dbdf_parse;
 	rte_pci_device_name;
 	rte_pci_get_iommu_class;
 	rte_pci_match;

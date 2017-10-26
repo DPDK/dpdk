@@ -105,7 +105,7 @@ get_u8_pciaddr_field(const char *in, void *_u8, char dlm)
 }
 
 
-int
+static int
 rte_pci_bdf_parse(const char *input, struct rte_pci_addr *dev_addr)
 {
 	const char *in = input;
@@ -129,7 +129,7 @@ eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
 	return rte_pci_bdf_parse(input, dev_addr);
 }
 
-int
+static int
 rte_pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr)
 {
 	const char *in = input;

@@ -241,21 +241,6 @@ struct mapped_pci_resource {
 TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
 
 /**
- * Utility function to produce a PCI Bus-Device-Function value
- * given a string representation. Assumes that the BDF is provided without
- * a domain prefix (i.e. domain returned is always 0)
- *
- * @param input
- *	The input string to be parsed. Should have the format XX:XX.X
- * @param dev_addr
- *	The PCI Bus-Device-Function address to be returned. Domain will always be
- *	returned as 0
- * @return
- *  0 on success, negative on error.
- */
-int rte_pci_bdf_parse(const char *input, struct rte_pci_addr *dev_addr);
-
-/**
  * @deprecated
  * Utility function to produce a PCI Bus-Device-Function value
  * given a string representation. Assumes that the BDF is provided without
@@ -270,20 +255,6 @@ int rte_pci_bdf_parse(const char *input, struct rte_pci_addr *dev_addr);
  *  0 on success, negative on error.
  */
 int eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr);
-
-/**
- * Utility function to produce a PCI Bus-Device-Function value
- * given a string representation. Assumes that the BDF is provided including
- * a domain prefix.
- *
- * @param input
- *	The input string to be parsed. Should have the format XXXX:XX:XX.X
- * @param dev_addr
- *	The PCI Bus-Device-Function address to be returned
- * @return
- *  0 on success, negative on error.
- */
-int rte_pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr);
 
 /**
  * @deprecated
