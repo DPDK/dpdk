@@ -35,6 +35,7 @@
 #define _EAL_PRIVATE_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <rte_pci.h>
 
