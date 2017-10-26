@@ -715,11 +715,6 @@ static int rte_eal_vfio_setup(void)
 		return -1;
 	vfio_enabled = vfio_is_enabled("vfio");
 
-	if (!internal_config.no_pci) {
-		if (!pci_vfio_is_enabled())
-			RTE_LOG(DEBUG, EAL, "VFIO PCI modules not loaded\n");
-	}
-
 	if (vfio_enabled) {
 
 		/* if we are primary process, create a thread to communicate with

@@ -460,6 +460,11 @@ rte_pci_scan(void)
 	if (internal_config.no_pci)
 		return 0;
 
+#ifdef VFIO_PRESENT
+	if (!pci_vfio_is_enabled())
+		RTE_LOG(DEBUG, EAL, "VFIO PCI modules not loaded\n");
+#endif
+
 	dir = opendir(pci_get_sysfs_path());
 	if (dir == NULL) {
 		RTE_LOG(ERR, EAL, "%s(): opendir failed: %s\n",
