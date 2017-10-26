@@ -56,6 +56,7 @@
 
 #include <rte_atomic.h>
 #include <rte_ethdev.h>
+#include <rte_bus_pci.h>
 #include <rte_mbuf.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>

@@ -61,6 +61,7 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_tailq.h>
 
 #include "base/nicvf_plat.h"

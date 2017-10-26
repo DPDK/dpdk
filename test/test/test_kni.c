@@ -42,6 +42,7 @@
 #include <rte_string_fns.h>
 #include <rte_mempool.h>
 #include <rte_ethdev.h>
+#include <rte_bus_pci.h>
 #include <rte_cycles.h>
 #include <rte_kni.h>
 

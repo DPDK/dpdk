@@ -42,6 +42,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx/
 CFLAGS += -I$(RTE_SDK)/drivers/net/octeontx/
 
 LDLIBS += -lrte_eal -lrte_eventdev -lrte_mempool_octeontx
+LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_octeontx_ssovf_version.map
 

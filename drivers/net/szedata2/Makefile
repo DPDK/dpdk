@@ -41,6 +41,7 @@ CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lsze2
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
+LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_szedata2_version.map
 

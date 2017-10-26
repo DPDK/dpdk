@@ -35,6 +35,7 @@
 #include <sys/stat.h>
 #include <dlfcn.h>
 
+#include <rte_bus_pci.h>
 #include <rte_ethdev_pci.h>
 #include <rte_kvargs.h>
 

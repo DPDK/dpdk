@@ -41,7 +41,7 @@
 
 #include <rte_atomic.h>
 #include <rte_eal.h>
-#include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_malloc.h>

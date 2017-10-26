@@ -63,5 +63,6 @@ CFLAGS_rte_mempool_octeontx.o += -Ofast
 endif
 
 LDLIBS += -lrte_eal -lrte_mempool -lrte_ring -lrte_mbuf
+LDLIBS += -lrte_bus_pci
 
 include $(RTE_SDK)/mk/rte.lib.mk

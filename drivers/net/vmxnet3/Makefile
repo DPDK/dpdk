@@ -65,6 +65,7 @@ CFLAGS_BASE_DRIVER += -Wno-strict-aliasing -Wno-format-extra-args
 endif
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
+LDLIBS += -lrte_bus_pci
 
 VPATH += $(SRCDIR)/base
 

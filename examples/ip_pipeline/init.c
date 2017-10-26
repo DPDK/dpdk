@@ -49,6 +49,7 @@
 #include <rte_ip.h>
 #include <rte_eal.h>
 #include <rte_malloc.h>
+#include <rte_bus_pci.h>
 
 #include "app.h"
 #include "pipeline.h"

@@ -193,11 +193,12 @@ F: doc/guides/linux_gsg/
 Linux UIO
 M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: lib/librte_eal/linuxapp/igb_uio/
-F: lib/librte_eal/linuxapp/eal/*uio*
+F: drivers/bus/pci/linux/*uio*
 
 Linux VFIO
 M: Anatoly Burakov <anatoly.burakov@intel.com>
 F: lib/librte_eal/linuxapp/eal/*vfio*
+F: drivers/bus/pci/linux/*vfio*
 
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>
@@ -285,6 +286,12 @@ M: Nikhil Rao <nikhil.rao@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*eth_rx_adapter*
 F: test/test/test_event_eth_rx_adapter.c
+
+Bus Drivers
+-----------
+
+PCI bus driver
+F: drivers/bus/pci/
 
 
 Networking Drivers
@@ -839,6 +846,9 @@ Key/Value parsing
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_kvargs/
 F: test/test/test_kvargs.c
+
+PCI
+F: lib/librte_pci/
 
 Power management
 M: David Hunt <david.hunt@intel.com>

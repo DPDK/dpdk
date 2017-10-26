@@ -166,17 +166,6 @@ DPDK_17.05 {
 	rte_log_set_global_level;
 	rte_log_set_level;
 	rte_log_set_level_regexp;
-	rte_pci_dump;
-	rte_pci_ioport_map;
-	rte_pci_ioport_read;
-	rte_pci_ioport_unmap;
-	rte_pci_ioport_write;
-	rte_pci_map_device;
-	rte_pci_read_config;
-	rte_pci_register;
-	rte_pci_unmap_device;
-	rte_pci_unregister;
-	rte_pci_write_config;
 	rte_vdev_init;
 	rte_vdev_register;
 	rte_vdev_uninit;
@@ -237,11 +226,8 @@ EXPERIMENTAL {
 DPDK_17.11 {
 	global:
 
-	eal_parse_pci_BDF;
-	eal_parse_pci_DomBDF;
 	rte_eal_create_uio_dev;
 	rte_bus_get_iommu_class;
-	rte_eal_compare_pci_addr;
 	rte_eal_has_pci;
 	rte_eal_iova_mode;
 	rte_eal_mbuf_default_mempool_ops;
@@ -249,9 +235,6 @@ DPDK_17.11 {
 	rte_eal_vfio_intr_mode;
 	rte_lcore_has_role;
 	rte_memcpy_ptr;
-	rte_pci_addr_cmp;
-	rte_pci_addr_parse;
-	rte_pci_device_name;
 	vfio_enable;
 	vfio_is_enabled;
 	vfio_noiommu_is_enabled;

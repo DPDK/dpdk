@@ -50,6 +50,7 @@ extern "C" {
 #include <rte_eal.h>
 #include <rte_lcore.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 
 #include "rte_eventdev_pmd.h"
 

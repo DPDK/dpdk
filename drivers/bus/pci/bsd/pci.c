@@ -57,6 +57,7 @@
 #include <rte_interrupts.h>
 #include <rte_log.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_common.h>
 #include <rte_launch.h>
 #include <rte_memory.h>
@@ -71,7 +72,7 @@
 #include <rte_devargs.h>
 
 #include "eal_filesystem.h"
-#include "eal_private.h"
+#include "private.h"
 
 /**
  * @file
@@ -323,7 +324,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 		int ret;
 
 		TAILQ_FOREACH(dev2, &rte_pci_bus.device_list, next) {
-			ret = rte_pci_addr_cmp(&dev->addr, &dev2->addr);
+			ret = pci_addr_cmp(&dev->addr, &dev2->addr);
 			if (ret > 0)
 				continue;
 			else if (ret < 0) {

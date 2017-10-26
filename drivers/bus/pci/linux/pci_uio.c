@@ -47,12 +47,13 @@
 
 #include <rte_log.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_eal_memconfig.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 
 #include "eal_filesystem.h"
-#include "eal_pci_init.h"
+#include "pci_init.h"
 
 void *pci_map_addr = NULL;
 

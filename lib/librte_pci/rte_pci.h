@@ -1,0 +1,279 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright 2013-2014 6WIND S.A.
+ *   All rights reserved.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef _RTE_PCI_H_
+#define _RTE_PCI_H_
+
+/**
+ * @file
+ *
+ * RTE PCI Library
+ */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <errno.h>
+#include <sys/queue.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+#include <rte_debug.h>
+#include <rte_interrupts.h>
+
+/** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
+#define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
+#define PCI_PRI_STR_SIZE sizeof("XXXXXXXX:XX:XX.X")
+
+/** Short formatting string, without domain, for PCI device: Ex: 00:01.0 */
+#define PCI_SHORT_PRI_FMT "%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
+
+/** Nb. of values in PCI device identifier format string. */
+#define PCI_FMT_NVAL 4
+
+/** Nb. of values in PCI resource format. */
+#define PCI_RESOURCE_FMT_NVAL 3
+
+/** Maximum number of PCI resources. */
+#define PCI_MAX_RESOURCE 6
+
+/**
+ * A structure describing an ID for a PCI driver. Each driver provides a
+ * table of these IDs for each device that it supports.
+ */
+struct rte_pci_id {
+	uint32_t class_id;            /**< Class ID or RTE_CLASS_ANY_ID. */
+	uint16_t vendor_id;           /**< Vendor ID or PCI_ANY_ID. */
+	uint16_t device_id;           /**< Device ID or PCI_ANY_ID. */
+	uint16_t subsystem_vendor_id; /**< Subsystem vendor ID or PCI_ANY_ID. */
+	uint16_t subsystem_device_id; /**< Subsystem device ID or PCI_ANY_ID. */
+};
+
+/**
+ * A structure describing the location of a PCI device.
+ */
+struct rte_pci_addr {
+	uint32_t domain;                /**< Device domain */
+	uint8_t bus;                    /**< Device bus */
+	uint8_t devid;                  /**< Device ID */
+	uint8_t function;               /**< Device function. */
+};
+
+/** Any PCI device identifier (vendor, device, ...) */
+#define PCI_ANY_ID (0xffff)
+#define RTE_CLASS_ANY_ID (0xffffff)
+
+/**
+ * A structure describing a PCI mapping.
+ */
+struct pci_map {
+	void *addr;
+	char *path;
+	uint64_t offset;
+	uint64_t size;
+	uint64_t phaddr;
+};
+
+struct pci_msix_table {
+	int bar_index;
+	uint32_t offset;
+	uint32_t size;
+};
+
+/**
+ * A structure describing a mapped PCI resource.
+ * For multi-process we need to reproduce all PCI mappings in secondary
+ * processes, so save them in a tailq.
+ */
+struct mapped_pci_resource {
+	TAILQ_ENTRY(mapped_pci_resource) next;
+
+	struct rte_pci_addr pci_addr;
+	char path[PATH_MAX];
+	int nb_maps;
+	struct pci_map maps[PCI_MAX_RESOURCE];
+	struct pci_msix_table msix_table;
+};
+
+
+/** mapped pci device list */
+TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
+
+/**
+ * @deprecated
+ * Utility function to produce a PCI Bus-Device-Function value
+ * given a string representation. Assumes that the BDF is provided without
+ * a domain prefix (i.e. domain returned is always 0)
+ *
+ * @param input
+ *	The input string to be parsed. Should have the format XX:XX.X
+ * @param dev_addr
+ *	The PCI Bus-Device-Function address to be returned.
+ *	Domain will always be returned as 0
+ * @return
+ *  0 on success, negative on error.
+ */
+int eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr);
+
+/**
+ * @deprecated
+ * Utility function to produce a PCI Bus-Device-Function value
+ * given a string representation. Assumes that the BDF is provided including
+ * a domain prefix.
+ *
+ * @param input
+ *	The input string to be parsed. Should have the format XXXX:XX:XX.X
+ * @param dev_addr
+ *	The PCI Bus-Device-Function address to be returned
+ * @return
+ *  0 on success, negative on error.
+ */
+int eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr);
+
+/**
+ * @deprecated
+ * Utility function to write a pci device name, this device name can later be
+ * used to retrieve the corresponding rte_pci_addr using eal_parse_pci_*
+ * BDF helpers.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address
+ * @param output
+ *	The output buffer string
+ * @param size
+ *	The output buffer size
+ */
+void rte_pci_device_name(const struct rte_pci_addr *addr,
+			 char *output, size_t size);
+
+/**
+ * Utility function to write a pci device name, this device name can later be
+ * used to retrieve the corresponding rte_pci_addr using eal_parse_pci_*
+ * BDF helpers.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address
+ * @param output
+ *	The output buffer string
+ * @param size
+ *	The output buffer size
+ */
+void pci_device_name(const struct rte_pci_addr *addr,
+		     char *output, size_t size);
+
+/**
+ * @deprecated
+ * Utility function to compare two PCI device addresses.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to compare
+ * @param addr2
+ *	The PCI Bus-Device-Function address to compare
+ * @return
+ *	0 on equal PCI address.
+ *	Positive on addr is greater than addr2.
+ *	Negative on addr is less than addr2, or error.
+ */
+int rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
+			     const struct rte_pci_addr *addr2);
+
+/**
+ * Utility function to compare two PCI device addresses.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to compare
+ * @param addr2
+ *	The PCI Bus-Device-Function address to compare
+ * @return
+ *	0 on equal PCI address.
+ *	Positive on addr is greater than addr2.
+ *	Negative on addr is less than addr2, or error.
+ */
+int pci_addr_cmp(const struct rte_pci_addr *addr,
+		 const struct rte_pci_addr *addr2);
+
+
+/**
+ * Utility function to parse a string into a PCI location.
+ *
+ * @param str
+ *	The string to parse
+ * @param addr
+ *	The reference to the structure where the location
+ *	is stored.
+ * @return
+ *	0 on success
+ *	<0 otherwise
+ */
+int pci_addr_parse(const char *str, struct rte_pci_addr *addr);
+
+/**
+ * Map a particular resource from a file.
+ *
+ * @param requested_addr
+ *      The starting address for the new mapping range.
+ * @param fd
+ *      The file descriptor.
+ * @param offset
+ *      The offset for the mapping range.
+ * @param size
+ *      The size for the mapping range.
+ * @param additional_flags
+ *      The additional flags for the mapping range.
+ * @return
+ *   - On success, the function returns a pointer to the mapped area.
+ *   - On error, the value MAP_FAILED is returned.
+ */
+void *pci_map_resource(void *requested_addr, int fd, off_t offset,
+		size_t size, int additional_flags);
+
+/**
+ * Unmap a particular resource.
+ *
+ * @param requested_addr
+ *      The address for the unmapping range.
+ * @param size
+ *      The size for the unmapping range.
+ */
+void pci_unmap_resource(void *requested_addr, size_t size);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _RTE_PCI_H_ */

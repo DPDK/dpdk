@@ -45,6 +45,7 @@ CFLAGS += -I$(SRCDIR)/qat_adf
 LDLIBS += -lcrypto
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
+LDLIBS += -lrte_pci -lrte_bus_pci
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_crypto.c

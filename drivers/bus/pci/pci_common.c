@@ -45,6 +45,7 @@
 #include <rte_log.h>
 #include <rte_bus.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
@@ -53,7 +54,7 @@
 #include <rte_common.h>
 #include <rte_devargs.h>
 
-#include "eal_private.h"
+#include "private.h"
 
 extern struct rte_pci_bus rte_pci_bus;
 
@@ -81,131 +82,10 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 		if (devargs->bus != pbus)
 			continue;
 		devargs->bus->parse(devargs->name, &addr);
-		if (!rte_pci_addr_cmp(&dev->addr, &addr))
+		if (!pci_addr_cmp(&dev->addr, &addr))
 			return devargs;
 	}
 	return NULL;
-}
-
-static inline const char *
-get_u8_pciaddr_field(const char *in, void *_u8, char dlm)
-{
-	unsigned long val;
-	uint8_t *u8 = _u8;
-	char *end;
-
-	errno = 0;
-	val = strtoul(in, &end, 16);
-	if (errno != 0 || end[0] != dlm || val > UINT8_MAX) {
-		errno = errno ? errno : EINVAL;
-		return NULL;
-	}
-	*u8 = (uint8_t)val;
-	return end + 1;
-}
-
-
-static int
-rte_pci_bdf_parse(const char *input, struct rte_pci_addr *dev_addr)
-{
-	const char *in = input;
-
-	dev_addr->domain = 0;
-	in = get_u8_pciaddr_field(in, &dev_addr->bus, ':');
-	if (in == NULL)
-		return -EINVAL;
-	in = get_u8_pciaddr_field(in, &dev_addr->devid, '.');
-	if (in == NULL)
-		return -EINVAL;
-	in = get_u8_pciaddr_field(in, &dev_addr->function, '\0');
-	if (in == NULL)
-		return -EINVAL;
-	return 0;
-}
-
-int
-eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
-{
-	return rte_pci_bdf_parse(input, dev_addr);
-}
-
-static int
-rte_pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr)
-{
-	const char *in = input;
-	unsigned long val;
-	char *end;
-
-	errno = 0;
-	val = strtoul(in, &end, 16);
-	if (errno != 0 || end[0] != ':' || val > UINT16_MAX)
-		return -EINVAL;
-	dev_addr->domain = (uint16_t)val;
-	in = end + 1;
-	in = get_u8_pciaddr_field(in, &dev_addr->bus, ':');
-	if (in == NULL)
-		return -EINVAL;
-	in = get_u8_pciaddr_field(in, &dev_addr->devid, '.');
-	if (in == NULL)
-		return -EINVAL;
-	in = get_u8_pciaddr_field(in, &dev_addr->function, '\0');
-	if (in == NULL)
-		return -EINVAL;
-	return 0;
-}
-
-int
-eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
-{
-	return rte_pci_dbdf_parse(input, dev_addr);
-}
-
-void
-rte_pci_device_name(const struct rte_pci_addr *addr,
-		     char *output, size_t size)
-{
-	RTE_VERIFY(size >= PCI_PRI_STR_SIZE);
-	RTE_VERIFY(snprintf(output, size, PCI_PRI_FMT,
-			    addr->domain, addr->bus,
-			    addr->devid, addr->function) >= 0);
-}
-
-int
-rte_pci_addr_cmp(const struct rte_pci_addr *addr,
-		 const struct rte_pci_addr *addr2)
-{
-	uint64_t dev_addr, dev_addr2;
-
-	if ((addr == NULL) || (addr2 == NULL))
-		 return -1;
-
-	dev_addr = ((uint64_t)addr->domain << 24) |
-		 (addr->bus << 16) | (addr->devid << 8) | addr->function;
-	dev_addr2 = ((uint64_t)addr2->domain << 24) |
-		 (addr2->bus << 16) | (addr2->devid << 8) | addr2->function;
-
-	if (dev_addr > dev_addr2)
-		 return 1;
-	else if (dev_addr < dev_addr2)
-		 return -1;
-	else
-		 return 0;
-}
-
-int
-rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
-			 const struct rte_pci_addr *addr2)
-{
-	return rte_pci_addr_cmp(addr, addr2);
-}
-
-int
-rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr)
-{
-	if (rte_pci_bdf_parse(str, addr) == 0 ||
-	    rte_pci_dbdf_parse(str, addr) == 0)
-		return 0;
-	return -1;
 }
 
 void
@@ -229,44 +109,6 @@ pci_name_set(struct rte_pci_device *dev)
 	else
 		/* Otherwise, it uses the internal, canonical form. */
 		dev->device.name = dev->name;
-}
-
-/* map a particular resource from a file */
-void *
-pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
-		 int additional_flags)
-{
-	void *mapaddr;
-
-	/* Map the PCI memory resource of device */
-	mapaddr = mmap(requested_addr, size, PROT_READ | PROT_WRITE,
-			MAP_SHARED | additional_flags, fd, offset);
-	if (mapaddr == MAP_FAILED) {
-		RTE_LOG(ERR, EAL, "%s(): cannot mmap(%d, %p, 0x%lx, 0x%lx): %s (%p)\n",
-			__func__, fd, requested_addr,
-			(unsigned long)size, (unsigned long)offset,
-			strerror(errno), mapaddr);
-	} else
-		RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
-
-	return mapaddr;
-}
-
-/* unmap a particular resource */
-void
-pci_unmap_resource(void *requested_addr, size_t size)
-{
-	if (requested_addr == NULL)
-		return;
-
-	/* Unmap the PCI memory resource of device */
-	if (munmap(requested_addr, size)) {
-		RTE_LOG(ERR, EAL, "%s(): cannot munmap(%p, 0x%lx): %s\n",
-			__func__, requested_addr, (unsigned long)size,
-			strerror(errno));
-	} else
-		RTE_LOG(DEBUG, EAL, "  PCI memory unmapped at %p\n",
-				requested_addr);
 }
 
 /*
@@ -467,7 +309,7 @@ rte_pci_probe_one(const struct rte_pci_addr *addr)
 		goto err_return;
 
 	FOREACH_DEVICE_ON_PCIBUS(dev) {
-		if (rte_pci_addr_cmp(&dev->addr, addr))
+		if (pci_addr_cmp(&dev->addr, addr))
 			continue;
 
 		ret = pci_probe_all_drivers(dev);
@@ -497,7 +339,7 @@ rte_pci_detach(const struct rte_pci_addr *addr)
 		return -1;
 
 	FOREACH_DEVICE_ON_PCIBUS(dev) {
-		if (rte_pci_addr_cmp(&dev->addr, addr))
+		if (pci_addr_cmp(&dev->addr, addr))
 			continue;
 
 		ret = rte_pci_detach_dev(dev);
@@ -599,7 +441,7 @@ pci_parse(const char *name, void *addr)
 	struct rte_pci_addr pci_addr;
 	bool parse;
 
-	parse = (rte_pci_addr_parse(name, &pci_addr) == 0);
+	parse = (pci_addr_parse(name, &pci_addr) == 0);
 	if (parse && addr != NULL)
 		*out = pci_addr;
 	return parse == false;

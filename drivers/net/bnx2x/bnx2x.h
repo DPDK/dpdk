@@ -18,6 +18,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
+#include <rte_bus_pci.h>
 #include <rte_io.h>
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN

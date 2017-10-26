@@ -42,13 +42,15 @@
 
 #include <rte_log.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
 #include <rte_vfio.h>
 
 #include "eal_filesystem.h"
-#include "eal_pci_init.h"
-#include "eal_private.h"
+
+#include "pci_init.h"
+#include "private.h"
 
 /**
  * @file
@@ -580,8 +582,8 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 
 	/* if we're in a secondary process, just find our tailq entry */
 	TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
-		if (rte_pci_addr_cmp(&vfio_res->pci_addr,
-				     &dev->addr))
+		if (pci_addr_cmp(&vfio_res->pci_addr,
+						 &dev->addr))
 			continue;
 		break;
 	}

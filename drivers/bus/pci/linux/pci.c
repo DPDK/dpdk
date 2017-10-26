@@ -37,15 +37,18 @@
 #include <rte_log.h>
 #include <rte_bus.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
 #include <rte_devargs.h>
 #include <rte_memcpy.h>
 #include <rte_vfio.h>
 
-#include "eal_filesystem.h"
 #include "eal_private.h"
-#include "eal_pci_init.h"
+#include "eal_filesystem.h"
+
+#include "private.h"
+#include "pci_init.h"
 
 /**
  * @file
@@ -363,7 +366,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		int ret;
 
 		TAILQ_FOREACH(dev2, &rte_pci_bus.device_list, next) {
-			ret = rte_pci_addr_cmp(&dev->addr, &dev2->addr);
+			ret = pci_addr_cmp(&dev->addr, &dev2->addr);
 			if (ret > 0)
 				continue;
 

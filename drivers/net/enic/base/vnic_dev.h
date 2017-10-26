@@ -35,8 +35,10 @@
 #ifndef _VNIC_DEV_H_
 #define _VNIC_DEV_H_
 
+#include <rte_pci.h>
+#include <rte_bus_pci.h>
+
 #include "enic_compat.h"
-#include "rte_pci.h"
 #include "vnic_resource.h"
 #include "vnic_devcmd.h"
 

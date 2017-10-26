@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
-#include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_malloc.h>
 
 #include "nfp_nfpu.h"

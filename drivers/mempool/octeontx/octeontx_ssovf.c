@@ -35,6 +35,7 @@
 #include <rte_eal.h>
 #include <rte_io.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 
 #include "octeontx_mbox.h"
 #include "octeontx_pool_logs.h"

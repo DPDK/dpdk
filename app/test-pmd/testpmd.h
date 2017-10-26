@@ -35,6 +35,7 @@
 #define _TESTPMD_H_
 
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_gro.h>
 #include <rte_gso.h>
 

@@ -1156,8 +1156,6 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 	} \
 } while (0)
 
-#define RTE_ETH_DEV_TO_PCI(eth_dev)	RTE_DEV_TO_PCI((eth_dev)->device)
-
 /**
  * l2 tunnel configuration.
  */

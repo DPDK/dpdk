@@ -39,6 +39,7 @@ LIB = librte_pmd_skeleton_event.a
 
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_eventdev
+LDLIBS += -lrte_pci -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_skeleton_event_version.map
 

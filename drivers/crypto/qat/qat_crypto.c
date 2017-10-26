@@ -60,6 +60,7 @@
 #include <rte_crypto_sym.h>
 #include <rte_byteorder.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 
 #include <openssl/evp.h>
 

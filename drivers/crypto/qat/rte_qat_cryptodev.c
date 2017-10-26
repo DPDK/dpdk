@@ -31,6 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <rte_bus_pci.h>
 #include <rte_common.h>
 #include <rte_dev.h>
 #include <rte_malloc.h>

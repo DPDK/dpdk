@@ -33,6 +33,8 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-y += librte_compat
 DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
+DIRS-$(CONFIG_RTE_LIBRTE_PCI) += librte_pci
+DEPDIRS-librte_pci := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
 DEPDIRS-librte_ring := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool

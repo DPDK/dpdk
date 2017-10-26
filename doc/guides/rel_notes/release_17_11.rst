@@ -316,6 +316,35 @@ API Changes
 * ``rte_mem_phy2mch`` was used in Xen dom0 to obtain the physical address;
   remove this API as Xen dom0 support was removed.
 
+* **PCI bus API moved outside of the EAL**
+
+  The PCI bus previously implemented within the EAL has been moved.
+  A first part has been added as an RTE library providing PCI helpers to
+  parse device locations or other such utilities.
+  A second part consisting in the actual bus driver has been moved to its
+  proper subdirectory, without changing its functionalities.
+
+  As such, several PCI-related functions are not proposed by the EAL anymore:
+
+  * rte_pci_detach
+  * rte_pci_dump
+  * rte_pci_ioport_map
+  * rte_pci_ioport_read
+  * rte_pci_ioport_unmap
+  * rte_pci_ioport_write
+  * rte_pci_map_device
+  * rte_pci_probe
+  * rte_pci_probe_one
+  * rte_pci_read_config
+  * rte_pci_register
+  * rte_pci_scan
+  * rte_pci_unmap_device
+  * rte_pci_unregister
+  * rte_pci_write_config
+
+  These functions are made available either as part of ``librte_pci`` or
+  ``librte_bus_pci``.
+
 * **Add return value to stats_get dev op API**
 
   The ``stats_get`` dev op API return value has been changed to be int.
@@ -447,6 +476,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_meter.so.1
      librte_metrics.so.1
      librte_net.so.1
+   + librte_pci.so.1
    + librte_pdump.so.2
      librte_pipeline.so.3
    + librte_pmd_bnxt.so.2

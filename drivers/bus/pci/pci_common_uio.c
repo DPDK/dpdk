@@ -39,11 +39,13 @@
 #include <sys/mman.h>
 
 #include <rte_eal.h>
+#include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_tailq.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
 
-#include "eal_private.h"
+#include "private.h"
 
 static struct rte_tailq_elem rte_uio_tailq = {
 	.name = "UIO_RESOURCE_LIST",
@@ -61,7 +63,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
-		if (rte_pci_addr_cmp(&uio_res->pci_addr, &dev->addr))
+		if (pci_addr_cmp(&uio_res->pci_addr, &dev->addr))
 			continue;
 
 		for (i = 0; i != uio_res->nb_maps; i++) {
@@ -187,7 +189,7 @@ pci_uio_find_resource(struct rte_pci_device *dev)
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
-		if (!rte_pci_addr_cmp(&uio_res->pci_addr, &dev->addr))
+		if (!pci_addr_cmp(&uio_res->pci_addr, &dev->addr))
 			return uio_res;
 	}
 	return NULL;
