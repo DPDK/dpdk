@@ -848,6 +848,7 @@ F: lib/librte_kvargs/
 F: test/test/test_kvargs.c
 
 PCI
+M: Gaetan Rivet <gaetan.rivet@6wind.com>
 F: lib/librte_pci/
 
 Power management
