@@ -204,6 +204,10 @@ New Features
   Added the Event Ethernet Adapter library. It provices APIs for
   eventdev applications to configure the ethdev to eventdev packet flow.
 
+* **Updated DPAA2 Event PMD.**
+
+  Added support for eventdev ethernet adapter for DPAA2.
+
 * **Added Membership library (rte_member).**
 
   Added membership library. It provides an API for DPDK applications to insert a
