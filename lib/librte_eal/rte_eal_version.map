@@ -252,7 +252,6 @@ DPDK_17.11 {
 	rte_pci_addr_cmp;
 	rte_pci_addr_parse;
 	rte_pci_device_name;
-	rte_pci_get_iommu_class;
 	vfio_enable;
 	vfio_is_enabled;
 	vfio_noiommu_is_enabled;
