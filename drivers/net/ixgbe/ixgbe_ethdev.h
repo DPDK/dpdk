@@ -38,7 +38,9 @@
 #include "base/ixgbe_dcb_82599.h"
 #include "base/ixgbe_dcb_82598.h"
 #include "ixgbe_bypass.h"
+#ifdef RTE_LIBRTE_SECURITY
 #include "ixgbe_ipsec.h"
+#endif
 #include <rte_time.h>
 #include <rte_hash.h>
 #include <rte_pci.h>
@@ -487,7 +489,9 @@ struct ixgbe_adapter {
 	struct ixgbe_filter_info    filter;
 	struct ixgbe_l2_tn_info     l2_tn;
 	struct ixgbe_bw_conf        bw_conf;
+#ifdef RTE_LIBRTE_SECURITY
 	struct ixgbe_ipsec          ipsec;
+#endif
 	bool rx_bulk_alloc_allowed;
 	bool rx_vec_allowed;
 	struct rte_timecounter      systime_tc;

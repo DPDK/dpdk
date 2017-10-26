@@ -140,8 +140,10 @@ struct ixgbe_rx_queue {
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
 	uint8_t            rx_using_sse;
 	/**< indicates that vector RX is in use */
+#ifdef RTE_LIBRTE_SECURITY
 	uint8_t            using_ipsec;
 	/**< indicates that IPsec RX feature is in use */
+#endif
 #ifdef RTE_IXGBE_INC_VECTOR
 	uint16_t            rxrearm_nb;     /**< number of remaining to be re-armed */
 	uint16_t            rxrearm_start;  /**< the idx we start the re-arming from */
@@ -185,10 +187,11 @@ union ixgbe_tx_offload {
 		/* fields for TX offloading of tunnels */
 		uint64_t outer_l3_len:8; /**< Outer L3 (IP) Hdr Length. */
 		uint64_t outer_l2_len:8; /**< Outer L2 (MAC) Hdr Length. */
-
+#ifdef RTE_LIBRTE_SECURITY
 		/* inline ipsec related*/
 		uint64_t sa_idx:8;	/**< TX SA database entry index */
 		uint64_t sec_pad_len:4;	/**< padding length */
+#endif
 	};
 };
 
@@ -253,9 +256,10 @@ struct ixgbe_tx_queue {
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
 	const struct ixgbe_txq_ops *ops;       /**< txq ops */
 	uint8_t             tx_deferred_start; /**< not in global dev start. */
+#ifdef RTE_LIBRTE_SECURITY
 	uint8_t		    using_ipsec;
 	/**< indicates that IPsec TX feature is in use */
-
+#endif
 };
 
 struct ixgbe_txq_ops {

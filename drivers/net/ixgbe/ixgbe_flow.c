@@ -229,6 +229,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
+#ifdef RTE_LIBRTE_SECURITY
 	/**
 	 *  Special case for flow action type RTE_FLOW_ACTION_TYPE_SECURITY
 	 */
@@ -263,6 +264,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		return ixgbe_crypto_add_ingress_sa_from_flow(conf, item->spec,
 					item->type == RTE_FLOW_ITEM_TYPE_IPV6);
 	}
+#endif
 
 	/* the first not void item can be MAC or IPv4 */
 	item = next_no_void_pattern(pattern, NULL);
@@ -557,9 +559,11 @@ ixgbe_parse_ntuple_filter(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
+#ifdef RTE_LIBRTE_SECURITY
 	/* ESP flow not really a flow*/
 	if (filter->proto == IPPROTO_ESP)
 		return 0;
+#endif
 
 	/* Ixgbe doesn't support tcp flags. */
 	if (filter->flags & RTE_NTUPLE_FLAGS_TCP_FLAG) {
@@ -2801,9 +2805,11 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	ret = ixgbe_parse_ntuple_filter(dev, attr, pattern,
 			actions, &ntuple_filter, error);
 
+#ifdef RTE_LIBRTE_SECURITY
 	/* ESP flow not really a flow*/
 	if (ntuple_filter.proto == IPPROTO_ESP)
 		return flow;
+#endif
 
 	if (!ret) {
 		ret = ixgbe_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
