@@ -87,6 +87,74 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 	return NULL;
 }
 
+/* Macro used by pci addr parsing functions. **/
+#define GET_PCIADDR_FIELD(in, fd, lim, dlm)                     \
+do {                                                            \
+	unsigned long val;                                      \
+	char *end;                                              \
+	errno = 0;                                              \
+	val = strtoul((in), &end, 16);                          \
+	if (errno != 0 || end[0] != (dlm) || val > (lim))       \
+		return -EINVAL;                                 \
+	(fd) = (typeof (fd))val;                                \
+	(in) = end + 1;                                         \
+} while(0)
+
+
+int
+eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
+{
+	dev_addr->domain = 0;
+	GET_PCIADDR_FIELD(input, dev_addr->bus, UINT8_MAX, ':');
+	GET_PCIADDR_FIELD(input, dev_addr->devid, UINT8_MAX, '.');
+	GET_PCIADDR_FIELD(input, dev_addr->function, UINT8_MAX, 0);
+	return 0;
+}
+
+int
+eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
+{
+	GET_PCIADDR_FIELD(input, dev_addr->domain, UINT16_MAX, ':');
+	GET_PCIADDR_FIELD(input, dev_addr->bus, UINT8_MAX, ':');
+	GET_PCIADDR_FIELD(input, dev_addr->devid, UINT8_MAX, '.');
+	GET_PCIADDR_FIELD(input, dev_addr->function, UINT8_MAX, 0);
+	return 0;
+}
+
+#undef GET_PCIADDR_FIELD
+
+void
+rte_pci_device_name(const struct rte_pci_addr *addr,
+		     char *output, size_t size)
+{
+	RTE_VERIFY(size >= PCI_PRI_STR_SIZE);
+	RTE_VERIFY(snprintf(output, size, PCI_PRI_FMT,
+			    addr->domain, addr->bus,
+			    addr->devid, addr->function) >= 0);
+}
+
+int
+rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
+			   const struct rte_pci_addr *addr2)
+{
+	uint64_t dev_addr, dev_addr2;
+
+	if ((addr == NULL) || (addr2 == NULL))
+		 return -1;
+
+	dev_addr = ((uint64_t)addr->domain << 24) |
+		 (addr->bus << 16) | (addr->devid << 8) | addr->function;
+	dev_addr2 = ((uint64_t)addr2->domain << 24) |
+		 (addr2->bus << 16) | (addr2->devid << 8) | addr2->function;
+
+	if (dev_addr > dev_addr2)
+		 return 1;
+	else if (dev_addr < dev_addr2)
+		 return -1;
+	else
+		 return 0;
+}
+
 void
 pci_name_set(struct rte_pci_device *dev)
 {
