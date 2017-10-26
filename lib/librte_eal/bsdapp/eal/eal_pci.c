@@ -368,7 +368,7 @@ rte_pci_scan(void)
 	};
 
 	/* for debug purposes, PCI can be disabled */
-	if (internal_config.no_pci)
+	if (!rte_eal_has_pci())
 		return 0;
 
 	fd = open("/dev/pci", O_RDONLY);

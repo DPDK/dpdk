@@ -457,7 +457,7 @@ rte_pci_scan(void)
 	struct rte_pci_addr addr;
 
 	/* for debug purposes, PCI can be disabled */
-	if (internal_config.no_pci)
+	if (!rte_eal_has_pci())
 		return 0;
 
 #ifdef VFIO_PRESENT

@@ -214,7 +214,7 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 		return -1;
 
 	/* create uio device if we've been asked to */
-	if (internal_config.create_uio_dev && create &&
+	if (rte_eal_create_uio_dev() && create &&
 			pci_mknod_uio_dev(dstbuf, uio_num) < 0)
 		RTE_LOG(WARNING, EAL, "Cannot create /dev/uio%u\n", uio_num);
 

@@ -209,14 +209,18 @@ static int
 pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 {
 	int i, ret, intr_idx;
+	enum rte_intr_mode intr_mode;
 
 	/* default to invalid index */
 	intr_idx = VFIO_PCI_NUM_IRQS;
 
+	/* Get default / configured intr_mode */
+	intr_mode = rte_eal_vfio_intr_mode();
+
 	/* get interrupt type from internal config (MSI-X by default, can be
 	 * overridden from the command line
 	 */
-	switch (internal_config.vfio_intr_mode) {
+	switch (intr_mode) {
 	case RTE_INTR_MODE_MSIX:
 		intr_idx = VFIO_PCI_MSIX_IRQ_INDEX;
 		break;
@@ -240,7 +244,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 		int fd = -1;
 
 		/* skip interrupt modes we don't want */
-		if (internal_config.vfio_intr_mode != RTE_INTR_MODE_NONE &&
+		if (intr_mode != RTE_INTR_MODE_NONE &&
 				i != intr_idx)
 			continue;
 
@@ -256,7 +260,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 		/* if this vector cannot be used with eventfd, fail if we explicitly
 		 * specified interrupt type, otherwise continue */
 		if ((irq.flags & VFIO_IRQ_INFO_EVENTFD) == 0) {
-			if (internal_config.vfio_intr_mode != RTE_INTR_MODE_NONE) {
+			if (intr_mode != RTE_INTR_MODE_NONE) {
 				RTE_LOG(ERR, EAL,
 						"  interrupt vector does not support eventfd!\n");
 				return -1;
@@ -277,15 +281,15 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 
 		switch (i) {
 		case VFIO_PCI_MSIX_IRQ_INDEX:
-			internal_config.vfio_intr_mode = RTE_INTR_MODE_MSIX;
+			intr_mode = RTE_INTR_MODE_MSIX;
 			dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_MSIX;
 			break;
 		case VFIO_PCI_MSI_IRQ_INDEX:
-			internal_config.vfio_intr_mode = RTE_INTR_MODE_MSI;
+			intr_mode = RTE_INTR_MODE_MSI;
 			dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_MSI;
 			break;
 		case VFIO_PCI_INTX_IRQ_INDEX:
-			internal_config.vfio_intr_mode = RTE_INTR_MODE_LEGACY;
+			intr_mode = RTE_INTR_MODE_LEGACY;
 			dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_LEGACY;
 			break;
 		default:
@@ -615,7 +619,7 @@ err_vfio_dev_fd:
 int
 pci_vfio_map_resource(struct rte_pci_device *dev)
 {
-	if (internal_config.process_type == RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		return pci_vfio_map_resource_primary(dev);
 	else
 		return pci_vfio_map_resource_secondary(dev);
