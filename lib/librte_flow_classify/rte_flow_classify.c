@@ -155,7 +155,7 @@ flow_classify_parse_flow(
 	return ret;
 }
 
-#ifdef RTE_LIBRTE_CLASSIFY_DEBUG
+
 #define uint32_t_to_char(ip, a, b, c, d) do {\
 		*a = (unsigned char)(ip >> 24 & 0xff);\
 		*b = (unsigned char)(ip >> 16 & 0xff);\
@@ -216,7 +216,6 @@ print_acl_ipv4_key_delete(struct rte_table_acl_rule_delete_params *key)
 		key->field_value[DSTP_FIELD_IPV4].value.u16,
 		key->field_value[DSTP_FIELD_IPV4].mask_range.u16);
 }
-#endif
 
 static int
 rte_flow_classifier_check_params(struct rte_flow_classifier_params *params)
@@ -418,6 +417,7 @@ static struct rte_flow_classify_rule *
 allocate_acl_ipv4_5tuple_rule(void)
 {
 	struct rte_flow_classify_rule *rule;
+	int log_level;
 
 	rule = malloc(sizeof(struct rte_flow_classify_rule));
 	if (!rule)
@@ -467,18 +467,19 @@ allocate_acl_ipv4_5tuple_rule(void)
 	rule->rules.u.ipv4_5tuple.dst_port_mask = ntuple_filter.dst_port_mask;
 	rule->rules.u.ipv4_5tuple.dst_port = ntuple_filter.dst_port;
 
-#ifdef RTE_LIBRTE_CLASSIFY_DEBUG
-	print_acl_ipv4_key_add(&rule->u.key.key_add);
-#endif
+	log_level = rte_log_get_level(librte_flow_classify_logtype);
+
+	if (log_level == RTE_LOG_DEBUG)
+		print_acl_ipv4_key_add(&rule->u.key.key_add);
 
 	/* key delete values */
 	memcpy(&rule->u.key.key_del.field_value[PROTO_FIELD_IPV4],
 	       &rule->u.key.key_add.field_value[PROTO_FIELD_IPV4],
 	       NUM_FIELDS_IPV4 * sizeof(struct rte_acl_field));
 
-#ifdef RTE_LIBRTE_CLASSIFY_DEBUG
-	print_acl_ipv4_key_delete(&rule->u.key.key_del);
-#endif
+	if (log_level == RTE_LOG_DEBUG)
+		print_acl_ipv4_key_delete(&rule->u.key.key_del);
+
 	return rule;
 }
 
@@ -686,5 +687,5 @@ librte_flow_classify_init_log(void)
 	librte_flow_classify_logtype =
 		rte_log_register("librte.flow_classify");
 	if (librte_flow_classify_logtype >= 0)
-		rte_log_set_level(librte_flow_classify_logtype, RTE_LOG_DEBUG);
+		rte_log_set_level(librte_flow_classify_logtype, RTE_LOG_INFO);
 }
