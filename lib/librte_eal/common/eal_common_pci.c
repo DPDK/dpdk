@@ -599,8 +599,7 @@ pci_parse(const char *name, void *addr)
 	struct rte_pci_addr pci_addr;
 	bool parse;
 
-	parse = (eal_parse_pci_BDF(name, &pci_addr) == 0 ||
-		 eal_parse_pci_DomBDF(name, &pci_addr) == 0);
+	parse = (rte_pci_addr_parse(name, &pci_addr) == 0);
 	if (parse && addr != NULL)
 		*out = pci_addr;
 	return parse == false;
