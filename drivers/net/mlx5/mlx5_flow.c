@@ -1009,15 +1009,13 @@ fill:
 			if (hash_rxq_init[i].ip_version == MLX5_IPV4) {
 				size = sizeof(struct ibv_flow_spec_ipv4_ext);
 				specs.ipv4 = (struct ibv_flow_spec_ipv4_ext){
-					.type = IBV_FLOW_SPEC_IPV4_EXT |
-						parser->inner,
+					.type = IBV_FLOW_SPEC_IPV4_EXT,
 					.size = size,
 				};
 			} else {
 				size = sizeof(struct ibv_flow_spec_ipv6);
 				specs.ipv6 = (struct ibv_flow_spec_ipv6){
-					.type = IBV_FLOW_SPEC_IPV6 |
-						parser->inner,
+					.type = IBV_FLOW_SPEC_IPV6,
 					.size = size,
 				};
 			}
@@ -1037,8 +1035,7 @@ fill:
 				.type = ((i == HASH_RXQ_UDPV4 ||
 					  i == HASH_RXQ_UDPV6) ?
 					 IBV_FLOW_SPEC_UDP :
-					 IBV_FLOW_SPEC_TCP) |
-					parser->inner,
+					 IBV_FLOW_SPEC_TCP),
 				.size = size,
 			};
 			if (parser->queue[i].ibv_attr) {
@@ -1291,7 +1288,9 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 		.size = eth_size,
 	};
 
-	parser->layer = HASH_RXQ_ETH;
+	/* Don't update layer for the inner pattern. */
+	if (!parser->inner)
+		parser->layer = HASH_RXQ_ETH;
 	if (spec) {
 		unsigned int i;
 
@@ -1386,7 +1385,9 @@ mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 		.size = ipv4_size,
 	};
 
-	parser->layer = HASH_RXQ_IPV4;
+	/* Don't update layer for the inner pattern. */
+	if (!parser->inner)
+		parser->layer = HASH_RXQ_IPV4;
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1436,7 +1437,9 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 		.size = ipv6_size,
 	};
 
-	parser->layer = HASH_RXQ_IPV6;
+	/* Don't update layer for the inner pattern. */
+	if (!parser->inner)
+		parser->layer = HASH_RXQ_IPV6;
 	if (spec) {
 		unsigned int i;
 
@@ -1490,10 +1493,13 @@ mlx5_flow_create_udp(const struct rte_flow_item *item,
 		.size = udp_size,
 	};
 
-	if (parser->layer == HASH_RXQ_IPV4)
-		parser->layer = HASH_RXQ_UDPV4;
-	else
-		parser->layer = HASH_RXQ_UDPV6;
+	/* Don't update layer for the inner pattern. */
+	if (!parser->inner) {
+		if (parser->layer == HASH_RXQ_IPV4)
+			parser->layer = HASH_RXQ_UDPV4;
+		else
+			parser->layer = HASH_RXQ_UDPV6;
+	}
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1533,10 +1539,13 @@ mlx5_flow_create_tcp(const struct rte_flow_item *item,
 		.size = tcp_size,
 	};
 
-	if (parser->layer == HASH_RXQ_IPV4)
-		parser->layer = HASH_RXQ_TCPV4;
-	else
-		parser->layer = HASH_RXQ_TCPV6;
+	/* Don't update layer for the inner pattern. */
+	if (!parser->inner) {
+		if (parser->layer == HASH_RXQ_IPV4)
+			parser->layer = HASH_RXQ_TCPV4;
+		else
+			parser->layer = HASH_RXQ_TCPV6;
+	}
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
