@@ -28,6 +28,15 @@ Deprecation Notices
   The change will be only for the name.
   Functional aspects of the API or data-structure will remain same.
 
+* pci: Several exposed functions are misnamed.
+  The following functions are deprecated starting from v17.11 and are replaced:
+
+  - ``eal_parse_pci_BDF`` replaced by ``rte_pci_bdf_parse``
+  - ``eal_parse_pci_DomBDF`` replaced by ``rte_pci_dbdf_parse``
+  - ``rte_eal_compare_pci_addr`` replaced by ``rte_pci_addr_cmp``
+
+  The functions are only renamed. Their behavior is not affected.
+
 * ethdev: Tx offloads will no longer be enabled by default in 17.11.
   Instead, the ``rte_eth_txmode`` structure will be extended with
   bit field to enable each Tx offload.

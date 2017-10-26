@@ -106,7 +106,7 @@ get_u8_pciaddr_field(const char *in, void *_u8, char dlm)
 
 
 int
-eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
+rte_pci_bdf_parse(const char *input, struct rte_pci_addr *dev_addr)
 {
 	const char *in = input;
 
@@ -124,7 +124,13 @@ eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
 }
 
 int
-eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
+eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
+{
+	return rte_pci_bdf_parse(input, dev_addr);
+}
+
+int
+rte_pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr)
 {
 	const char *in = input;
 	unsigned long val;
@@ -148,6 +154,12 @@ eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
 	return 0;
 }
 
+int
+eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
+{
+	return rte_pci_dbdf_parse(input, dev_addr);
+}
+
 void
 rte_pci_device_name(const struct rte_pci_addr *addr,
 		     char *output, size_t size)
@@ -159,8 +171,8 @@ rte_pci_device_name(const struct rte_pci_addr *addr,
 }
 
 int
-rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
-			   const struct rte_pci_addr *addr2)
+rte_pci_addr_cmp(const struct rte_pci_addr *addr,
+		 const struct rte_pci_addr *addr2)
 {
 	uint64_t dev_addr, dev_addr2;
 
@@ -178,6 +190,13 @@ rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
 		 return -1;
 	else
 		 return 0;
+}
+
+int
+rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
+			   const struct rte_pci_addr *addr2)
+{
+	return rte_pci_addr_cmp(addr, addr2);
 }
 
 void

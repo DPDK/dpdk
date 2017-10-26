@@ -253,9 +253,40 @@ TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
  * @return
  *  0 on success, negative on error.
  */
+int rte_pci_bdf_parse(const char *input, struct rte_pci_addr *dev_addr);
+
+/**
+ * @deprecated
+ * Utility function to produce a PCI Bus-Device-Function value
+ * given a string representation. Assumes that the BDF is provided without
+ * a domain prefix (i.e. domain returned is always 0)
+ *
+ * @param input
+ *	The input string to be parsed. Should have the format XX:XX.X
+ * @param dev_addr
+ *	The PCI Bus-Device-Function address to be returned. Domain will always be
+ *	returned as 0
+ * @return
+ *  0 on success, negative on error.
+ */
 int eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr);
 
 /**
+ * Utility function to produce a PCI Bus-Device-Function value
+ * given a string representation. Assumes that the BDF is provided including
+ * a domain prefix.
+ *
+ * @param input
+ *	The input string to be parsed. Should have the format XXXX:XX:XX.X
+ * @param dev_addr
+ *	The PCI Bus-Device-Function address to be returned
+ * @return
+ *  0 on success, negative on error.
+ */
+int rte_pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr);
+
+/**
+ * @deprecated
  * Utility function to produce a PCI Bus-Device-Function value
  * given a string representation. Assumes that the BDF is provided including
  * a domain prefix.
@@ -285,6 +316,22 @@ void rte_pci_device_name(const struct rte_pci_addr *addr, char *output,
 			 size_t size);
 
 /**
+ * Utility function to compare two PCI device addresses.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to compare
+ * @param addr2
+ *	The PCI Bus-Device-Function address to compare
+ * @return
+ *	0 on equal PCI address.
+ *	Positive on addr is greater than addr2.
+ *	Negative on addr is less than addr2, or error.
+ */
+int rte_pci_addr_cmp(const struct rte_pci_addr *addr,
+		     const struct rte_pci_addr *addr2);
+
+/**
+ * @deprecated
  * Utility function to compare two PCI device addresses.
  *
  * @param addr
