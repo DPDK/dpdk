@@ -8,4 +8,5 @@ DPDK_17.11 {
 
 	dpaa2_eth_eventq_attach;
 	dpaa2_eth_eventq_detach;
-};
+
+} DPDK_17.05;
