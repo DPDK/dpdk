@@ -31,6 +31,12 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(CONFIG_RTE_LIBRTE_SECURITY),y)
+$(error "RTE_LIBRTE_SECURITY is required to build RTE_LIBRTE_PMD_DPAA2_SEC")
+endif
+endif
+
 #
 # library name
 #
