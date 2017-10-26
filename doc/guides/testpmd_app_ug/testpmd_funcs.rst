@@ -2238,7 +2238,8 @@ Add nonleaf node to port traffic management hiearchy::
 
    testpmd> add port tm nonleaf node (port_id) (node_id) (parent_node_id) \
    (priority) (weight) (level_id) (shaper_profile_id) \
-   (shared_shaper_id) (n_shared_shapers) (n_sp_priorities) (stats_mask) \
+   (n_sp_priorities) (stats_mask) (n_shared_shapers) \
+   [(shared_shaper_0) (shared_shaper_1) ...] \
 
 where:
 
@@ -2251,10 +2252,10 @@ where:
 * ``level_id``: Hiearchy level of the node.
 * ``shaper_profile_id``: Shaper profile ID of the private shaper to be used by
   the node.
-* ``shared_shaper_id``: Shared shaper id.
-* ``n_shared_shapers``: Number of shared shapers.
 * ``n_sp_priorities``: Number of strict priorities.
 * ``stats_mask``: Mask of statistics counter types to be enabled for this node.
+* ``n_shared_shapers``: Number of shared shapers.
+* ``shared_shaper_id``: Shared shaper id.
 
 Add port traffic management hierarchy leaf node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2263,8 +2264,8 @@ Add leaf node to port traffic management hiearchy::
 
    testpmd> add port tm leaf node (port_id) (node_id) (parent_node_id) \
    (priority) (weight) (level_id) (shaper_profile_id) \
-   (shared_shaper_id) (n_shared_shapers) (cman_mode) \
-   (wred_profile_id) (stats_mask) \
+   (cman_mode) (wred_profile_id) (stats_mask) (n_shared_shapers) \
+   [(shared_shaper_id) (shared_shaper_id) ...] \
 
 where:
 
@@ -2277,11 +2278,11 @@ where:
 * ``level_id``: Hiearchy level of the node.
 * ``shaper_profile_id``: Shaper profile ID of the private shaper to be used by
   the node.
-* ``shared_shaper_id``: Shared shaper id.
-* ``n_shared_shapers``: Number of shared shapers.
 * ``cman_mode``: Congestion management mode to be enabled for this node.
 * ``wred_profile_id``: WRED profile id to be enabled for this node.
 * ``stats_mask``: Mask of statistics counter types to be enabled for this node.
+* ``n_shared_shapers``: Number of shared shapers.
+* ``shared_shaper_id``: Shared shaper id.
 
 Delete port traffic management hierarchy node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
