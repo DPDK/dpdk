@@ -48,7 +48,6 @@
 
 #include "eal_filesystem.h"
 #include "eal_pci_init.h"
-#include "eal_vfio.h"
 #include "eal_private.h"
 
 /**
@@ -61,7 +60,7 @@
  * This file is only compiled if CONFIG_RTE_EAL_VFIO is set to "y".
  */
 
-#ifdef VFIO_PRESENT
+#ifdef RTE_EAL_VFIO
 
 #define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
 #define PAGE_MASK   (~(PAGE_SIZE - 1))

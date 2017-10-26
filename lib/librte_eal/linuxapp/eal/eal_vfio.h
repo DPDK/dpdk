@@ -42,16 +42,6 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
 #include <linux/vfio.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
-#define RTE_PCI_MSIX_TABLE_BIR    0x7
-#define RTE_PCI_MSIX_TABLE_OFFSET 0xfffffff8
-#define RTE_PCI_MSIX_FLAGS_QSIZE  0x07ff
-#else
-#define RTE_PCI_MSIX_TABLE_BIR    PCI_MSIX_TABLE_BIR
-#define RTE_PCI_MSIX_TABLE_OFFSET PCI_MSIX_TABLE_OFFSET
-#define RTE_PCI_MSIX_FLAGS_QSIZE  PCI_MSIX_FLAGS_QSIZE
-#endif
-
 #define RTE_VFIO_TYPE1 VFIO_TYPE1_IOMMU
 
 #ifndef VFIO_SPAPR_TCE_v2_IOMMU
@@ -182,8 +172,6 @@ vfio_get_group_fd(int iommu_group_no);
 /* remove group fd from internal VFIO group fd array */
 int
 clear_group(int vfio_group_fd);
-
-int pci_vfio_is_enabled(void);
 
 int vfio_mp_sync_setup(void);
 
