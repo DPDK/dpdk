@@ -192,3 +192,9 @@ error:
 		close(fd_hugepage);
 	return -1;
 }
+
+int
+rte_eal_using_phys_addrs(void)
+{
+	return 0;
+}
