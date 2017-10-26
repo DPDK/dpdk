@@ -331,25 +331,6 @@ int rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
  */
 int rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr);
 
-/**
- * Scan the content of the PCI bus, and the devices in the devices
- * list
- *
- * @return
- *  0 on success, negative on error
- */
-int rte_pci_scan(void);
-
-/**
- * Probe the PCI bus
- *
- * @return
- *   - 0 on success.
- *   - !0 on error.
- */
-int
-rte_pci_probe(void);
-
 /*
  * Match the PCI Driver and Device using the ID Table
  *
@@ -433,36 +414,6 @@ void *pci_map_resource(void *requested_addr, int fd, off_t offset,
  *      The size for the unmapping range.
  */
 void pci_unmap_resource(void *requested_addr, size_t size);
-
-/**
- * Probe the single PCI device.
- *
- * Scan the content of the PCI bus, and find the pci device specified by pci
- * address, then call the probe() function for registered driver that has a
- * matching entry in its id_table for discovered device.
- *
- * @param addr
- *	The PCI Bus-Device-Function address to probe.
- * @return
- *   - 0 on success.
- *   - Negative on error.
- */
-int rte_pci_probe_one(const struct rte_pci_addr *addr);
-
-/**
- * Close the single PCI device.
- *
- * Scan the content of the PCI bus, and find the pci device specified by pci
- * address, then call the remove() function for registered driver that has a
- * matching entry in its id_table for discovered device.
- *
- * @param addr
- *	The PCI Bus-Device-Function address to close.
- * @return
- *   - 0 on success.
- *   - Negative on error.
- */
-int rte_pci_detach(const struct rte_pci_addr *addr);
 
 /**
  * Dump the content of the PCI bus.
