@@ -303,7 +303,7 @@ rte_cfgfile_create(int flags)
 			CFG_ALLOC_SECTION_BATCH);
 
 	if (cfg->sections == NULL)
-		return NULL;
+		goto error1;
 
 	cfg->allocated_sections = CFG_ALLOC_SECTION_BATCH;
 
@@ -312,7 +312,7 @@ rte_cfgfile_create(int flags)
 			struct rte_cfgfile_entry) * CFG_ALLOC_ENTRY_BATCH);
 
 		if (cfg->sections[i].entries == NULL)
-			return NULL;
+			goto error1;
 
 		cfg->sections[i].num_entries = 0;
 		cfg->sections[i].allocated_entries = CFG_ALLOC_ENTRY_BATCH;
@@ -320,7 +320,21 @@ rte_cfgfile_create(int flags)
 
 	if (flags & CFG_FLAG_GLOBAL_SECTION)
 		rte_cfgfile_add_section(cfg, "GLOBAL");
+
 	return cfg;
+error1:
+	if (cfg->sections != NULL) {
+		for (i = 0; i < cfg->allocated_sections; i++) {
+			if (cfg->sections[i].entries != NULL) {
+				free(cfg->sections[i].entries);
+				cfg->sections[i].entries = NULL;
+			}
+		}
+		free(cfg->sections);
+		cfg->sections = NULL;
+	}
+	free(cfg);
+	return NULL;
 }
 
 int
