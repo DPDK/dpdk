@@ -61,7 +61,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
-		if (rte_eal_compare_pci_addr(&uio_res->pci_addr, &dev->addr))
+		if (rte_pci_addr_cmp(&uio_res->pci_addr, &dev->addr))
 			continue;
 
 		for (i = 0; i != uio_res->nb_maps; i++) {
@@ -187,7 +187,7 @@ pci_uio_find_resource(struct rte_pci_device *dev)
 	TAILQ_FOREACH(uio_res, uio_res_list, next) {
 
 		/* skip this element if it doesn't match our PCI address */
-		if (!rte_eal_compare_pci_addr(&uio_res->pci_addr, &dev->addr))
+		if (!rte_pci_addr_cmp(&uio_res->pci_addr, &dev->addr))
 			return uio_res;
 	}
 	return NULL;

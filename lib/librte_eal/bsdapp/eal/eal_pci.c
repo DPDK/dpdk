@@ -323,7 +323,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 		int ret;
 
 		TAILQ_FOREACH(dev2, &rte_pci_bus.device_list, next) {
-			ret = rte_eal_compare_pci_addr(&dev->addr, &dev2->addr);
+			ret = rte_pci_addr_cmp(&dev->addr, &dev2->addr);
 			if (ret > 0)
 				continue;
 			else if (ret < 0) {
