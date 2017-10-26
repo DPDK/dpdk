@@ -144,15 +144,6 @@ struct vfio_config {
 	struct vfio_group vfio_groups[VFIO_MAX_GROUPS];
 };
 
-#define VFIO_DIR "/dev/vfio"
-#define VFIO_CONTAINER_PATH "/dev/vfio/vfio"
-#define VFIO_GROUP_FMT "/dev/vfio/%u"
-#define VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
-#define VFIO_GET_REGION_ADDR(x) ((uint64_t) x << 40ULL)
-#define VFIO_GET_REGION_IDX(x) (x >> 40)
-#define VFIO_NOIOMMU_MODE      \
-	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
-
 /* DMA mapping function prototype.
  * Takes VFIO container fd as a parameter.
  * Returns 0 on success, -1 on error.
@@ -192,26 +183,9 @@ vfio_get_group_fd(int iommu_group_no);
 int
 clear_group(int vfio_group_fd);
 
-/**
- * Setup vfio_cfg for the device identified by its address. It discovers
- * the configured I/O MMU groups or sets a new one for the device. If a new
- * groups is assigned, the DMA mapping is performed.
- * Returns 0 on success, a negative value on failure and a positive value in
- * case the given device cannot be managed this way.
- */
-int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
-		int *vfio_dev_fd, struct vfio_device_info *device_info);
-
-int vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
-
-int vfio_enable(const char *modname);
-int vfio_is_enabled(const char *modname);
-
 int pci_vfio_is_enabled(void);
 
 int vfio_mp_sync_setup(void);
-
-int vfio_noiommu_is_enabled(void);
 
 #define SOCKET_REQ_CONTAINER 0x100
 #define SOCKET_REQ_GROUP 0x200

@@ -34,6 +34,8 @@
 #ifndef _FSLMC_VFIO_H_
 #define _FSLMC_VFIO_H_
 
+#include <rte_vfio.h>
+
 #include "eal_vfio.h"
 
 #define DPAA2_MC_DPNI_DEVID	7

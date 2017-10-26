@@ -34,7 +34,7 @@
 #ifndef EAL_PCI_INIT_H_
 #define EAL_PCI_INIT_H_
 
-#include "eal_vfio.h"
+#include <rte_vfio.h>
 
 /** IO resource type: */
 #define IORESOURCE_IO         0x00000100
@@ -72,7 +72,7 @@ void pci_uio_ioport_write(struct rte_pci_ioport *p,
 			  const void *data, size_t len, off_t offset);
 int pci_uio_ioport_unmap(struct rte_pci_ioport *p);
 
-#ifdef VFIO_PRESENT
+#ifdef RTE_EAL_VFIO
 
 /* access config space */
 int pci_vfio_read_config(const struct rte_intr_handle *intr_handle,

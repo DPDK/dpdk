@@ -739,3 +739,44 @@ rte_eal_vfio_intr_mode(void)
 {
 	return RTE_INTR_MODE_NONE;
 }
+
+/* dummy forward declaration. */
+struct vfio_device_info;
+
+/* dummy prototypes. */
+int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
+		int *vfio_dev_fd, struct vfio_device_info *device_info);
+int vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
+int vfio_enable(const char *modname);
+int vfio_is_enabled(const char *modname);
+int vfio_noiommu_is_enabled(void);
+
+int vfio_setup_device(__rte_unused const char *sysfs_base,
+		      __rte_unused const char *dev_addr,
+		      __rte_unused int *vfio_dev_fd,
+		      __rte_unused struct vfio_device_info *device_info)
+{
+	return -1;
+}
+
+int vfio_release_device(__rte_unused const char *sysfs_base,
+			__rte_unused const char *dev_addr,
+			__rte_unused int fd)
+{
+	return -1;
+}
+
+int vfio_enable(__rte_unused const char *modname)
+{
+	return -1;
+}
+
+int vfio_is_enabled(__rte_unused const char *modname)
+{
+	return 0;
+}
+
+int vfio_noiommu_is_enabled(void)
+{
+	return 0;
+}

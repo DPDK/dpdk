@@ -41,11 +41,11 @@
 #include <rte_malloc.h>
 #include <rte_devargs.h>
 #include <rte_memcpy.h>
+#include <rte_vfio.h>
 
 #include "eal_filesystem.h"
 #include "eal_private.h"
 #include "eal_pci_init.h"
-#include "eal_vfio.h"
 
 /**
  * @file

@@ -39,6 +39,7 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_eal_memconfig.h>
+#include <rte_vfio.h>
 
 #include "eal_filesystem.h"
 #include "eal_vfio.h"

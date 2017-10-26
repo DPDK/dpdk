@@ -52,9 +52,11 @@
 #include <rte_pci.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
+#include <rte_vfio.h>
 
 #include "eal_filesystem.h"
 #include "eal_pci_init.h"
+#include "eal_vfio.h"
 #include "eal_thread.h"
 
 /**
