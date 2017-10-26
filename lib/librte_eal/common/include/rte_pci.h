@@ -347,6 +347,20 @@ int rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
 			     const struct rte_pci_addr *addr2);
 
 /**
+ * Utility function to parse a string into a PCI location.
+ *
+ * @param str
+ *     The string to parse
+ * @param addr
+ *     The reference to the structure where the location
+ *     is stored.
+ * @return
+ *     0 on success
+ *     <0 otherwise
+ */
+int rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr);
+
+/**
  * Scan the content of the PCI bus, and the devices in the devices
  * list
  *

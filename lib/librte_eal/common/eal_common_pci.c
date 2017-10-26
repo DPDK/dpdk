@@ -199,6 +199,15 @@ rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
 	return rte_pci_addr_cmp(addr, addr2);
 }
 
+int
+rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr)
+{
+	if (rte_pci_bdf_parse(str, addr) == 0 ||
+	    rte_pci_dbdf_parse(str, addr) == 0)
+		return 0;
+	return -1;
+}
+
 void
 pci_name_set(struct rte_pci_device *dev)
 {
