@@ -87,41 +87,66 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 	return NULL;
 }
 
-/* Macro used by pci addr parsing functions. **/
-#define GET_PCIADDR_FIELD(in, fd, lim, dlm)                     \
-do {                                                            \
-	unsigned long val;                                      \
-	char *end;                                              \
-	errno = 0;                                              \
-	val = strtoul((in), &end, 16);                          \
-	if (errno != 0 || end[0] != (dlm) || val > (lim))       \
-		return -EINVAL;                                 \
-	(fd) = (typeof (fd))val;                                \
-	(in) = end + 1;                                         \
-} while(0)
+static inline const char *
+get_u8_pciaddr_field(const char *in, void *_u8, char dlm)
+{
+	unsigned long val;
+	uint8_t *u8 = _u8;
+	char *end;
+
+	errno = 0;
+	val = strtoul(in, &end, 16);
+	if (errno != 0 || end[0] != dlm || val > UINT8_MAX) {
+		errno = errno ? errno : EINVAL;
+		return NULL;
+	}
+	*u8 = (uint8_t)val;
+	return end + 1;
+}
 
 
 int
 eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr)
 {
+	const char *in = input;
+
 	dev_addr->domain = 0;
-	GET_PCIADDR_FIELD(input, dev_addr->bus, UINT8_MAX, ':');
-	GET_PCIADDR_FIELD(input, dev_addr->devid, UINT8_MAX, '.');
-	GET_PCIADDR_FIELD(input, dev_addr->function, UINT8_MAX, 0);
+	in = get_u8_pciaddr_field(in, &dev_addr->bus, ':');
+	if (in == NULL)
+		return -EINVAL;
+	in = get_u8_pciaddr_field(in, &dev_addr->devid, '.');
+	if (in == NULL)
+		return -EINVAL;
+	in = get_u8_pciaddr_field(in, &dev_addr->function, '\0');
+	if (in == NULL)
+		return -EINVAL;
 	return 0;
 }
 
 int
 eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
 {
-	GET_PCIADDR_FIELD(input, dev_addr->domain, UINT16_MAX, ':');
-	GET_PCIADDR_FIELD(input, dev_addr->bus, UINT8_MAX, ':');
-	GET_PCIADDR_FIELD(input, dev_addr->devid, UINT8_MAX, '.');
-	GET_PCIADDR_FIELD(input, dev_addr->function, UINT8_MAX, 0);
+	const char *in = input;
+	unsigned long val;
+	char *end;
+
+	errno = 0;
+	val = strtoul(in, &end, 16);
+	if (errno != 0 || end[0] != ':' || val > UINT16_MAX)
+		return -EINVAL;
+	dev_addr->domain = (uint16_t)val;
+	in = end + 1;
+	in = get_u8_pciaddr_field(in, &dev_addr->bus, ':');
+	if (in == NULL)
+		return -EINVAL;
+	in = get_u8_pciaddr_field(in, &dev_addr->devid, '.');
+	if (in == NULL)
+		return -EINVAL;
+	in = get_u8_pciaddr_field(in, &dev_addr->function, '\0');
+	if (in == NULL)
+		return -EINVAL;
 	return 0;
 }
-
-#undef GET_PCIADDR_FIELD
 
 void
 rte_pci_device_name(const struct rte_pci_addr *addr,
