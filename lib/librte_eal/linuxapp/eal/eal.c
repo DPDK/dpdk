@@ -989,6 +989,22 @@ int rte_eal_has_hugepages(void)
 	return ! internal_config.no_hugetlbfs;
 }
 
+int rte_eal_has_pci(void)
+{
+	return !internal_config.no_pci;
+}
+
+int rte_eal_create_uio_dev(void)
+{
+	return internal_config.create_uio_dev;
+}
+
+enum rte_intr_mode
+rte_eal_vfio_intr_mode(void)
+{
+	return internal_config.vfio_intr_mode;
+}
+
 int
 rte_eal_check_module(const char *module_name)
 {

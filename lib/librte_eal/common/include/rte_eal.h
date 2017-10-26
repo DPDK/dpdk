@@ -47,6 +47,8 @@
 #include <rte_config.h>
 #include <rte_bus.h>
 
+#include <rte_pci_dev_feature_defs.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -266,6 +268,32 @@ rte_set_application_usage_hook(rte_usage_hook_t usage_func);
  *   Nonzero if hugepages are enabled.
  */
 int rte_eal_has_hugepages(void);
+
+/**
+ * Whether EAL is using PCI bus.
+ * Disabled by --no-pci option.
+ *
+ * @return
+ *   Nonzero if the PCI bus is enabled.
+ */
+int rte_eal_has_pci(void);
+
+/**
+ * Whether the EAL was asked to create UIO device.
+ *
+ * @return
+ *   Nonzero if true.
+ */
+int rte_eal_create_uio_dev(void);
+
+/**
+ * The user-configured vfio interrupt mode.
+ *
+ * @return
+ *   Interrupt mode configured with the command line,
+ *   RTE_INTR_MODE_NONE by default.
+ */
+enum rte_intr_mode rte_eal_vfio_intr_mode(void);
 
 /**
  * A wrap API for syscall gettid.

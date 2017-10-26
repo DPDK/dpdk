@@ -723,3 +723,19 @@ rte_eal_process_type(void)
 {
 	return rte_config.process_type;
 }
+
+int rte_eal_has_pci(void)
+{
+	return !internal_config.no_pci;
+}
+
+int rte_eal_create_uio_dev(void)
+{
+	return internal_config.create_uio_dev;
+}
+
+enum rte_intr_mode
+rte_eal_vfio_intr_mode(void)
+{
+	return RTE_INTR_MODE_NONE;
+}
