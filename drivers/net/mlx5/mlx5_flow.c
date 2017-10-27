@@ -479,6 +479,7 @@ struct mlx5_fdir {
 	struct rte_flow_action actions[2];
 	struct rte_flow_item items[4];
 	struct rte_flow_item_eth l2;
+	struct rte_flow_item_eth l2_mask;
 	union {
 		struct rte_flow_item_ipv4 ipv4;
 		struct rte_flow_item_ipv6 ipv6;
@@ -2624,6 +2625,7 @@ priv_fdir_filter_convert(struct priv *priv,
 	attributes->items[0] = (struct rte_flow_item) {
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 		.spec = &attributes->l2,
+		.mask = &attributes->l2_mask,
 	};
 	switch (fdir_filter->action.behavior) {
 	case RTE_ETH_FDIR_ACCEPT:
@@ -2787,6 +2789,11 @@ priv_fdir_filter_add(struct priv *priv,
 {
 	struct mlx5_fdir attributes = {
 		.attr.group = 0,
+		.l2_mask = {
+			.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.type = 0,
+		},
 	};
 	struct mlx5_flow_parse parser = {
 		.layer = HASH_RXQ_ETH,
