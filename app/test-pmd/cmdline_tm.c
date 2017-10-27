@@ -2043,12 +2043,6 @@ static void cmd_port_tm_hierarchy_commit_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	/* Port status */
-	if (port_is_started(port_id)) {
-		printf(" Port %u not stopped (error)\n", port_id);
-		return;
-	}
-
 	if (strcmp(res->clean_on_fail, "yes") == 0)
 		clean_on_fail = 1;
 	else
