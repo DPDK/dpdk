@@ -1615,6 +1615,11 @@ static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
 
 	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
 		sizeof(uint32_t));
+	if (shared_shaper_id == NULL) {
+		printf(" Memory not allocated for shared shapers (error)\n");
+		return;
+	}
+
 	/* Parse multi shared shaper id string */
 	ret = parse_multi_ss_id_str(s_str, &n_shared_shapers, shared_shaper_id);
 	if (ret) {
@@ -1770,6 +1775,11 @@ static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
 
 	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
 		sizeof(uint32_t));
+	if (shared_shaper_id == NULL) {
+		printf(" Memory not allocated for shared shapers (error)\n");
+		return;
+	}
+
 	/* Parse multi shared shaper id string */
 	ret = parse_multi_ss_id_str(s_str, &n_shared_shapers, shared_shaper_id);
 	if (ret) {
