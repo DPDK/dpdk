@@ -367,6 +367,8 @@ hash_crc_key64(void *key, void *mask, __rte_unused uint32_t key_size,
 #define hash_default_key56			hash_crc_key56
 #define hash_default_key64			hash_crc_key64
 
+#elif defined(RTE_ARCH_ARM64)
+#include "hash_func_arm64.h"
 #else
 
 #define hash_default_key8			hash_xor_key8
