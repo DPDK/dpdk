@@ -148,15 +148,14 @@ check_params_create(struct rte_table_hash_params *params)
 	}
 
 	/* n_keys */
-	if ((params->n_keys == 0) ||
-		(!rte_is_power_of_2(params->n_keys))) {
+	if (params->n_keys == 0) {
 		RTE_LOG(ERR, TABLE, "%s: n_keys invalid value\n", __func__);
 		return -EINVAL;
 	}
 
 	/* n_buckets */
 	if ((params->n_buckets == 0) ||
-		(!rte_is_power_of_2(params->n_keys))) {
+		(!rte_is_power_of_2(params->n_buckets))) {
 		RTE_LOG(ERR, TABLE, "%s: n_buckets invalid value\n", __func__);
 		return -EINVAL;
 	}
