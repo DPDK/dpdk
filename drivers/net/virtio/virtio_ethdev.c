@@ -1620,13 +1620,13 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	if (!hw->virtio_user_dev) {
 		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
 		if (ret)
-			return ret;
+			goto out;
 	}
 
 	/* reset device and negotiate default features */
 	ret = virtio_init_device(eth_dev, VIRTIO_PMD_DEFAULT_GUEST_FEATURES);
 	if (ret < 0)
-		return ret;
+		goto out;
 
 	/* Setup interrupt callback  */
 	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
@@ -1634,6 +1634,10 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 			virtio_interrupt_handler, eth_dev);
 
 	return 0;
+
+out:
+	rte_free(eth_dev->data->mac_addrs);
+	return ret;
 }
 
 static int
