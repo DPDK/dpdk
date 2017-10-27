@@ -802,17 +802,15 @@ static void cmd_set_port_meter_policer_action_parsed(void *parsed_result,
 		color = RTE_MTR_GREEN;
 	else if (strcmp(c, "Y") == 0)
 		color = RTE_MTR_YELLOW;
-	else if (strcmp(c, "Y") == 0)
-		color = RTE_MTR_RED;
 	else
-		color = RTE_MTR_COLORS;
+		color = RTE_MTR_RED;
 
 	/* Action */
 	if (strcmp(a, "G") == 0)
 		action[color] = MTR_POLICER_ACTION_COLOR_GREEN;
 	else if (strcmp(a, "Y") == 0)
 		action[color] = MTR_POLICER_ACTION_COLOR_YELLOW;
-	else if (strcmp(a, "Y") == 0)
+	else if (strcmp(a, "R") == 0)
 		action[color] = MTR_POLICER_ACTION_COLOR_RED;
 	else
 		action[color] = MTR_POLICER_ACTION_DROP;
