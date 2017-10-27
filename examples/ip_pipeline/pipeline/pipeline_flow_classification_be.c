@@ -499,7 +499,7 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 			.key_mask = (p_fc->key_mask_present) ?
 				p_fc->key_mask : NULL,
 			.n_keys = p_fc->n_flows,
-			.n_buckets = p_fc->n_flows / 4,
+			.n_buckets = rte_align32pow2(p_fc->n_flows / 4),
 			.f_hash = hash_func[(p_fc->key_size / 8) - 1],
 			.seed = 0,
 		};

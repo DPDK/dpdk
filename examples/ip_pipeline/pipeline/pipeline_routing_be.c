@@ -1355,7 +1355,8 @@ pipeline_routing_init(struct pipeline_params *params,
 			.key_offset = p_rt->params.arp_key_offset,
 			.key_mask = NULL,
 			.n_keys = p_rt->params.n_arp_entries,
-			.n_buckets = p_rt->params.n_arp_entries / 4,
+			.n_buckets =
+				rte_align32pow2(p_rt->params.n_arp_entries / 4),
 			.f_hash = hash_default_key8,
 			.seed = 0,
 		};
