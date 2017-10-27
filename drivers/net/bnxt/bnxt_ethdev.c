@@ -2407,6 +2407,7 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 		ret = bnxt_parse_fdir_filter(bp, fdir, filter);
 		if (ret != 0)
 			goto free_filter;
+		filter->filter_type = HWRM_CFA_NTUPLE_FILTER;
 
 		match = bnxt_match_fdir(bp, filter);
 		if (match != NULL && filter_op == RTE_ETH_FILTER_ADD) {
@@ -2427,7 +2428,6 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 			STAILQ_FIRST(&bp->ff_pool[fdir->action.rx_queue]);
 
 		if (filter_op == RTE_ETH_FILTER_ADD) {
-			filter->filter_type = HWRM_CFA_NTUPLE_FILTER;
 			ret = bnxt_hwrm_set_ntuple_filter(bp,
 							  filter->dst_id,
 							  filter);
