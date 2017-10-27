@@ -206,7 +206,7 @@ out:
 
 		for (i = 0; i < bp->nr_vnics; i++) {
 			STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
-			vnic->hash_type |= hash_type;
+			vnic->hash_type = hash_type;
 
 			/*
 			 * Use the supplied key if the key length is
