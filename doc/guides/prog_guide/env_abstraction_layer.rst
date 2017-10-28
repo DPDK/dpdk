@@ -309,7 +309,7 @@ All these impacts are mentioned in :ref:`known_issue_label` section.
 Public Thread API
 ~~~~~~~~~~~~~~~~~
 
-There are two public APIs ``rte_thread_set_affinity()`` and ``rte_pthread_get_affinity()`` introduced for threads.
+There are two public APIs ``rte_thread_set_affinity()`` and ``rte_thread_get_affinity()`` introduced for threads.
 When they're used in any pthread context, the Thread Local Storage(TLS) will be set/get.
 
 Those TLS include *_cpuset* and *_socket_id*:
