@@ -233,7 +233,7 @@ The application startup arguments are:
  * Default: Not present
 
  * Argument: Path to the CLI script file to be run by the master pipeline at application startup.
-   No CLI script file will be run at startup of this argument is not present.
+   No CLI script file will be run at startup if this argument is not present.
 
 ``-p PORT_MASK``
 
