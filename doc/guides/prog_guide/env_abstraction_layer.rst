@@ -153,7 +153,7 @@ which can trigger the generation of a core file, readable by gdb.
 CPU Feature Identification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The EAL can query the CPU at runtime (using the rte_cpu_get_feature() function) to determine which CPU features are available.
+The EAL can query the CPU at runtime (using the rte_cpu_get_features() function) to determine which CPU features are available.
 
 User Space Interrupt Event
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
