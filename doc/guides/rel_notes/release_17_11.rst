@@ -89,6 +89,17 @@ New Features
   See the "Network Interface Controller Drivers" document for more details of
   this new driver.
 
+* **Updated support for Cavium OCTEONTX Device.**
+
+  Updated support for Cavium's OCTEONTX device(CN83xx). This includes:
+
+  * OCTEONTX Mempool driver for supporting offloaded packet memory pool
+  * OCTEONTX Ethdev PMD
+  * OCTEONTX Eventdev-Ethdev Rx adapter
+
+  See the "Network Interface Controller Drivers" document for more details of
+  this new driver.
+
 * **nfp: Added PF support.**
 
   Previously Netronome's NFP PMD had just support for VFs. PF support is
