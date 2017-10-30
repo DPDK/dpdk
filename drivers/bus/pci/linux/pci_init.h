@@ -74,7 +74,7 @@ void pci_uio_ioport_write(struct rte_pci_ioport *p,
 			  const void *data, size_t len, off_t offset);
 int pci_uio_ioport_unmap(struct rte_pci_ioport *p);
 
-#ifdef RTE_EAL_VFIO
+#ifdef VFIO_PRESENT
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 #define RTE_PCI_MSIX_TABLE_BIR    0x7

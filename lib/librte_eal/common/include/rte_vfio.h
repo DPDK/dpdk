@@ -34,6 +34,18 @@
 #ifndef _RTE_VFIO_H_
 #define _RTE_VFIO_H_
 
+/*
+ * determine if VFIO is present on the system
+ */
+#if !defined(VFIO_PRESENT) && defined(RTE_EAL_VFIO)
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
+#define VFIO_PRESENT
+#endif /* kernel version >= 3.6.0 */
+#endif /* RTE_EAL_VFIO */
+
+#ifdef VFIO_PRESENT
+
 #include <linux/vfio.h>
 
 #define VFIO_DIR "/dev/vfio"
@@ -135,5 +147,7 @@ int vfio_is_enabled(const char *modname);
  *   0 otherwise.
  */
 int vfio_noiommu_is_enabled(void);
+
+#endif /* VFIO_PRESENT */
 
 #endif /* _RTE_VFIO_H_ */

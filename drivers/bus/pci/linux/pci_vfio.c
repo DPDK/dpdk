@@ -62,7 +62,7 @@
  * This file is only compiled if CONFIG_RTE_EAL_VFIO is set to "y".
  */
 
-#ifdef RTE_EAL_VFIO
+#ifdef VFIO_PRESENT
 
 #define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
 #define PAGE_MASK   (~(PAGE_SIZE - 1))
