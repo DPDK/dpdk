@@ -244,7 +244,7 @@ rte_distributor_process_v20(struct rte_distributor_v20 *d,
 			next_value = (((int64_t)(uintptr_t)next_mb)
 					<< RTE_DISTRIB_FLAG_BITS);
 			/*
-			 * User is advocated to set tag vaue for each
+			 * User is advocated to set tag value for each
 			 * mbuf before calling rte_distributor_process.
 			 * User defined tags are used to identify flows,
 			 * or sessions.
