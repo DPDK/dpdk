@@ -1700,13 +1700,13 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	++parser->drop_q.ibv_attr->num_of_specs;
 	parser->drop_q.offset += size;
 	flow->drxq.ibv_attr = parser->drop_q.ibv_attr;
+	if (parser->count)
+		flow->cs = parser->cs;
 	if (!priv->dev->data->dev_started)
 		return 0;
 	parser->drop_q.ibv_attr = NULL;
 	flow->drxq.ibv_flow = ibv_create_flow(priv->flow_drop_queue->qp,
 					      flow->drxq.ibv_attr);
-	if (parser->count)
-		flow->cs = parser->cs;
 	if (!flow->drxq.ibv_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "flow rule creation failure");
