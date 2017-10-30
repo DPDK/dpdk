@@ -99,6 +99,7 @@ Features
 - Hardware checksum TX offload for VXLAN and GRE.
 - RX interrupts.
 - Statistics query including Basic, Extended and per queue.
+- Rx HW timestamp.
 
 Limitations
 -----------
@@ -131,6 +132,7 @@ Limitations
 - Count action for RTE flow is only supported in Mellanox OFED 4.2.
 - Flows with a VXLAN Network Identifier equal (or ends to be equal)
   to 0 are not supported.
+- VXLAN TSO and checksum offloads are not supported on VM.
 
 Configuration
 -------------
@@ -355,8 +357,9 @@ releases.
 RMDA Core with Linux Kernel
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Minimal kernel version : 4.13-rc4 (see `Linux installation documentation`_)
-- Minimal rdma-core version: v15 (see `RDMA Core installation documentation`_)
+- Minimal kernel version : v4.14 or the most recent 4.14-rc (see `Linux installation documentation`_)
+- Minimal rdma-core version: v15+ commit 0c5f5765213a ("Merge pull request #227 from yishaih/tm")
+  (see `RDMA Core installation documentation`_)
 
 .. _`Linux installation documentation`: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/Documentation/admin-guide/README.rst
 .. _`RDMA Core installation documentation`: https://raw.githubusercontent.com/linux-rdma/rdma-core/master/README.md
@@ -367,10 +370,10 @@ Mellanox OFED
 - Mellanox OFED version: **4.2**.
 - firmware version:
 
-  - ConnectX-4: **12.20.1010** and above.
-  - ConnectX-4 Lx: **14.20.1010** and above.
-  - ConnectX-5: **16.20.1010** and above.
-  - ConnectX-5 Ex: **16.20.1010** and above.
+  - ConnectX-4: **12.21.1000** and above.
+  - ConnectX-4 Lx: **14.21.1000** and above.
+  - ConnectX-5: **16.21.1000** and above.
+  - ConnectX-5 Ex: **16.21.1000** and above.
 
 While these libraries and kernel modules are available on OpenFabrics
 Alliance's `website <https://www.openfabrics.org/>`__ and provided by package
@@ -423,7 +426,7 @@ Quick Start Guide on OFED
 
    .. code-block:: console
 
-        ./mlnxofedinstall
+        ./mlnxofedinstall --upstream-libs --dpdk
 
 3. Verify the firmware is the correct one:
 
