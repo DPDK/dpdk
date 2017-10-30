@@ -2011,10 +2011,6 @@ priv_flow_destroy(struct priv *priv,
 {
 	unsigned int i;
 
-	if (flow->cs) {
-		claim_zero(ibv_destroy_counter_set(flow->cs));
-		flow->cs = NULL;
-	}
 	if (flow->drop || !flow->mark)
 		goto free;
 	for (i = 0; i != flow->queues_n; ++i) {
@@ -2062,6 +2058,10 @@ free:
 			if (frxq->ibv_attr)
 				rte_free(frxq->ibv_attr);
 		}
+	}
+	if (flow->cs) {
+		claim_zero(ibv_destroy_counter_set(flow->cs));
+		flow->cs = NULL;
 	}
 	TAILQ_REMOVE(list, flow, next);
 	DEBUG("Flow destroyed %p", (void *)flow);
