@@ -10211,7 +10211,7 @@ cmdline_parse_inst_t cmd_add_del_ip_flow_director = {
 		"ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|"
 		"l2_payload src <src_ip> dst <dst_ip> tos <tos_value> "
 		"proto <proto_value> ttl <ttl_value> vlan <vlan_value> "
-		"flexbytes <flexbyte_vaues> drop|fw <pf_vf> queue <queue_id> "
+		"flexbytes <flexbyte_values> drop|fw <pf_vf> queue <queue_id> "
 		"fd_id <fd_id_value>: "
 		"Add or delete an ip flow director entry on NIC",
 	.tokens = {
