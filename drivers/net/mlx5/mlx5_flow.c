@@ -866,7 +866,7 @@ priv_flow_convert_items_validate(struct priv *priv,
 						   " VXLAN encapsulations");
 				return -rte_errno;
 			}
-			parser->inner = 1;
+			parser->inner = IBV_FLOW_SPEC_INNER;
 		}
 		if (parser->drop) {
 			parser->drop_q.offset += cur_item->dst_sz;
