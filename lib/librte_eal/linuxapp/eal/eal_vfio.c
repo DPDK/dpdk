@@ -814,20 +814,33 @@ vfio_noiommu_dma_map(int __rte_unused vfio_container_fd)
 int
 rte_vfio_noiommu_is_enabled(void)
 {
-	int fd, ret, cnt __rte_unused;
+	int fd;
+	ssize_t cnt;
 	char c;
 
-	ret = -1;
 	fd = open(VFIO_NOIOMMU_MODE, O_RDONLY);
-	if (fd < 0)
-		return -1;
+	if (fd < 0) {
+		if (errno != ENOENT) {
+			RTE_LOG(ERR, EAL, "  cannot open vfio noiommu file %i (%s)\n",
+					errno, strerror(errno));
+			return -1;
+		}
+		/*
+		 * else the file does not exists
+		 * i.e. noiommu is not enabled
+		 */
+		return 0;
+	}
 
 	cnt = read(fd, &c, 1);
-	if (c == 'Y')
-		ret = 1;
-
 	close(fd);
-	return ret;
+	if (cnt != 1) {
+		RTE_LOG(ERR, EAL, "  unable to read from vfio noiommu "
+				"file %i (%s)\n", errno, strerror(errno));
+		return -1;
+	}
+
+	return c == 'Y';
 }
 
 #endif
