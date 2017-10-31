@@ -9353,7 +9353,7 @@ i40e_pctype_to_flowtype(const struct i40e_adapter *adapter,
 
 /* For both X710 and XL710 */
 #define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE_1	0x10000200
-#define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE_2	0x20000200
+#define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE_2	0x203F0200
 #define I40E_GL_SWR_PRI_JOIN_MAP_0		0x26CE00
 
 #define I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE 0x011f0200
