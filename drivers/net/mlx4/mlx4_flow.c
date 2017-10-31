@@ -734,6 +734,11 @@ fill:
 			if (flow->rss)
 				break;
 			queue = action->conf;
+			if (queue->index >= priv->dev->data->nb_rx_queues) {
+				msg = "queue target index beyond number of"
+					" configured Rx queues";
+				goto exit_action_not_supported;
+			}
 			flow->rss = mlx4_rss_get
 				(priv, 0, mlx4_rss_hash_key_default, 1,
 				 &queue->index);
@@ -760,6 +765,15 @@ fill:
 						   ETH_RSS_NONFRAG_IPV6_TCP),
 				};
 			/* Sanity checks. */
+			for (i = 0; i < rss->num; ++i)
+				if (rss->queue[i] >=
+				    priv->dev->data->nb_rx_queues)
+					break;
+			if (i != rss->num) {
+				msg = "queue index target beyond number of"
+					" configured Rx queues";
+				goto exit_action_not_supported;
+			}
 			if (!rte_is_power_of_2(rss->num)) {
 				msg = "for RSS, mlx4 requires the number of"
 					" queues to be a power of two";
