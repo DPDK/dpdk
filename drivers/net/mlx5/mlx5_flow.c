@@ -2847,7 +2847,9 @@ static int
 priv_fdir_filter_delete(struct priv *priv,
 			const struct rte_eth_fdir_filter *fdir_filter)
 {
-	struct mlx5_fdir attributes;
+	struct mlx5_fdir attributes = {
+		.attr.group = 0,
+	};
 	struct mlx5_flow_parse parser = {
 		.create = 1,
 		.layer = HASH_RXQ_ETH,
