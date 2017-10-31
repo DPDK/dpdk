@@ -197,8 +197,7 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
 }
 
 #define PKTLEN_SHIFT     10
-
-#define I40E_VPMD_DESC_DD_MASK	0x0001000100010001ULL
+#define I40E_UINT16_BIT (CHAR_BIT * sizeof(uint16_t))
 
 static inline void
 desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts,
@@ -230,7 +229,6 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	struct i40e_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 	int pos;
-	uint64_t var;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
 	/* mask to shuffle from desc. to mbuf */
@@ -364,7 +362,6 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* C.2 get 4 pkts staterr value  */
 		staterr = vzipq_u16(sterr_tmp1.val[1],
 				    sterr_tmp2.val[1]).val[0];
-		stat = vgetq_lane_u64(vreinterpretq_u64_u16(staterr), 0);
 
 		desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
 
@@ -429,6 +426,12 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			rx_pkts[pos + 3]->next = NULL;
 		}
 
+		staterr = vshlq_n_u16(staterr, I40E_UINT16_BIT - 1);
+		staterr = vreinterpretq_u16_s16(
+				vshrq_n_s16(vreinterpretq_s16_u16(staterr),
+					    I40E_UINT16_BIT - 1));
+		stat = ~vgetq_lane_u64(vreinterpretq_u64_u16(staterr), 0);
+
 		rte_prefetch_non_temporal(rxdp + RTE_I40E_DESCS_PER_LOOP);
 
 		/* D.3 copy final 1,2 data to rx_pkts */
@@ -438,10 +441,12 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			 pkt_mb1);
 		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		/* C.4 calc avaialbe number of desc */
-		var = __builtin_popcountll(stat & I40E_VPMD_DESC_DD_MASK);
-		nb_pkts_recd += var;
-		if (likely(var != RTE_I40E_DESCS_PER_LOOP))
+		if (unlikely(stat == 0)) {
+			nb_pkts_recd += RTE_I40E_DESCS_PER_LOOP;
+		} else {
+			nb_pkts_recd += __builtin_ctzl(stat) / I40E_UINT16_BIT;
 			break;
+		}
 	}
 
 	/* Update our internal tail pointer */
