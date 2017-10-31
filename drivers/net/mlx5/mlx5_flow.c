@@ -2754,7 +2754,7 @@ priv_fdir_filter_convert(struct priv *priv,
 			.spec = &attributes->l3,
 		};
 		attributes->items[2] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_UDP,
+			.type = RTE_FLOW_ITEM_TYPE_TCP,
 			.spec = &attributes->l4,
 		};
 		break;
