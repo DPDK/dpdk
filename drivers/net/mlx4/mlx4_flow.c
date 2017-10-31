@@ -1342,6 +1342,7 @@ next_vlan:
 			assert(flow->ibv_attr->type == IBV_FLOW_ATTR_NORMAL);
 			assert(flow->ibv_attr->num_of_specs == 1);
 			assert(eth->type == IBV_FLOW_SPEC_ETH);
+			assert(flow->rss);
 			if (rule_vlan &&
 			    (eth->val.vlan_tag != *rule_vlan ||
 			     eth->mask.vlan_tag != RTE_BE16(0x0fff)))
@@ -1354,8 +1355,13 @@ next_vlan:
 				    eth->val.src_mac[j] != UINT8_C(0x00) ||
 				    eth->mask.src_mac[j] != UINT8_C(0x00))
 					break;
-			if (j == sizeof(mac->addr_bytes))
-				break;
+			if (j != sizeof(mac->addr_bytes))
+				continue;
+			if (flow->rss->queues != queues ||
+			    memcmp(flow->rss->queue_id, rss_conf->queue,
+				   queues * sizeof(flow->rss->queue_id[0])))
+				continue;
+			break;
 		}
 		if (!flow || !flow->internal) {
 			/* Not found, create a new flow rule. */
@@ -1388,6 +1394,13 @@ next_vlan:
 				if (flow->allmulti)
 					break;
 			}
+		}
+		if (flow && flow->internal) {
+			assert(flow->rss);
+			if (flow->rss->queues != queues ||
+			    memcmp(flow->rss->queue_id, rss_conf->queue,
+				   queues * sizeof(flow->rss->queue_id[0])))
+				flow = NULL;
 		}
 		if (!flow || !flow->internal) {
 			/* Not found, create a new flow rule. */
