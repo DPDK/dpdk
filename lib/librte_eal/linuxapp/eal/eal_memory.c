@@ -261,16 +261,21 @@ static void *
 get_virtual_area(size_t *size, size_t hugepage_sz)
 {
 	void *addr;
+	void *addr_hint;
 	int fd;
 	long aligned_addr;
 
 	if (internal_config.base_virtaddr != 0) {
-		addr = (void*) (uintptr_t) (internal_config.base_virtaddr +
-				baseaddr_offset);
+		int page_size = sysconf(_SC_PAGE_SIZE);
+		addr_hint = (void *) (uintptr_t)
+			(internal_config.base_virtaddr + baseaddr_offset);
+		addr_hint = RTE_PTR_ALIGN_FLOOR(addr_hint, page_size);
+	} else {
+		addr_hint = NULL;
 	}
-	else addr = NULL;
 
 	RTE_LOG(DEBUG, EAL, "Ask a virtual area of 0x%zx bytes\n", *size);
+
 
 	fd = open("/dev/zero", O_RDONLY);
 	if (fd < 0){
@@ -278,16 +283,22 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 		return NULL;
 	}
 	do {
-		addr = mmap(addr,
-				(*size) + hugepage_sz, PROT_READ,
+		addr = mmap(addr_hint, (*size) + hugepage_sz, PROT_READ,
 #ifdef RTE_ARCH_PPC_64
 				MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB,
 #else
 				MAP_PRIVATE,
 #endif
 				fd, 0);
-		if (addr == MAP_FAILED)
+		if (addr == MAP_FAILED) {
 			*size -= hugepage_sz;
+		} else if (addr_hint != NULL && addr != addr_hint) {
+			RTE_LOG(WARNING, EAL, "WARNING! Base virtual address "
+				"hint (%p != %p) not respected!\n",
+				addr_hint, addr);
+			RTE_LOG(WARNING, EAL, "   This may cause issues with "
+				"mapping memory into secondary processes\n");
+		}
 	} while (addr == MAP_FAILED && *size > 0);
 
 	if (addr == MAP_FAILED) {
