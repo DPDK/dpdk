@@ -129,6 +129,8 @@ Limitations
   is set to multi-packet send or Enhanced multi-packet send. Otherwise it must have
   less than 50 segments.
 - Count action for RTE flow is only supported in Mellanox OFED 4.2.
+- Flows with a VXLAN Network Identifier equal (or ends to be equal)
+  to 0 are not supported.
 
 Configuration
 -------------

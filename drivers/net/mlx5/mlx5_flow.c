@@ -1155,7 +1155,7 @@ priv_flow_convert(struct priv *priv,
 					 cur_item->mask),
 					parser);
 		if (ret) {
-			rte_flow_error_set(error, ENOTSUP,
+			rte_flow_error_set(error, ret,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   items, "item not supported");
 			goto exit_free;
@@ -1602,6 +1602,16 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 		/* Remove unwanted bits from values. */
 		vxlan.val.tunnel_id &= vxlan.mask.tunnel_id;
 	}
+	/*
+	 * Tunnel id 0 is equivalent as not adding a VXLAN layer, if only this
+	 * layer is defined in the Verbs specification it is interpreted as
+	 * wildcard and all packets will match this rule, if it follows a full
+	 * stack layer (ex: eth / ipv4 / udp), all packets matching the layers
+	 * before will also match this rule.
+	 * To avoid such situation, VNI 0 is currently refused.
+	 */
+	if (!vxlan.val.tunnel_id)
+		return EINVAL;
 	mlx5_flow_create_copy(parser, &vxlan, size);
 	return 0;
 }
