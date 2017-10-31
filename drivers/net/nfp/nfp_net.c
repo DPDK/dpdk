@@ -3029,7 +3029,7 @@ static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	}
 	/* hotplug is not possible with multiport PF */
-	if (!hw->pf_multiport_enabled)
+	if (hw->pf_multiport_enabled)
 		return -ENOTSUP;
 	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
 }
