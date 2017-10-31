@@ -42,10 +42,10 @@ LTS Release
 -----------
 
 A stable release can be designated as an LTS release based on community
-agreement and a commitment from a maintainer. An LTS release will have a
-maintenance duration of 2 years.
+agreement and a commitment from a maintainer. The current policy is that each
+year's November release will be maintained as an LTS for 2 years.
 
-The current DPDK LTS release is 16.11.
+The current DPDK LTS releases are 16.11 and 17.11.
 
 It is anticipated that there will be at least 4 releases per year of the LTS
 or approximately 1 every 3 months. However, the cadence can be shorter or
