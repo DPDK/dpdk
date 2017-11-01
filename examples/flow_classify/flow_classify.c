@@ -657,13 +657,17 @@ add_rules(const char *rule_path, struct flow_classifier *cls_app)
 	unsigned int i = 0;
 	unsigned int total_num = 0;
 	struct rte_eth_ntuple_filter ntuple_filter;
+	int ret;
 
 	fh = fopen(rule_path, "rb");
 	if (fh == NULL)
-		rte_exit(EXIT_FAILURE, "%s: Open %s failed\n", __func__,
+		rte_exit(EXIT_FAILURE, "%s: fopen %s failed\n", __func__,
 			rule_path);
 
-	fseek(fh, 0, SEEK_SET);
+	ret = fseek(fh, 0, SEEK_SET);
+	if (ret)
+		rte_exit(EXIT_FAILURE, "%s: fseek %d failed\n", __func__,
+			ret);
 
 	i = 0;
 	while (fgets(buff, LINE_MAX, fh) != NULL) {
