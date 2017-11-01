@@ -514,8 +514,10 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	/* Return if queue already configured */
-	if (dpaa2_q->flow_id != 0xffff)
+	if (dpaa2_q->flow_id != 0xffff) {
+		dev->data->tx_queues[tx_queue_id] = dpaa2_q;
 		return 0;
+	}
 
 	memset(&tx_conf_cfg, 0, sizeof(struct dpni_queue));
 	memset(&tx_flow_cfg, 0, sizeof(struct dpni_queue));
