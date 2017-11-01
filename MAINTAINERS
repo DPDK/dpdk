@@ -944,6 +944,10 @@ F: doc/guides/sample_app_ug/ethtool.rst
 F: examples/exception_path/
 F: doc/guides/sample_app_ug/exception_path.rst
 
+M: Ori Kam <orika@mellanox.com>
+F: examples/flow_filtering/
+F: doc/guides/sample_app_ug/flow_filtering.rst
+
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/helloworld/
