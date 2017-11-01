@@ -398,13 +398,24 @@ used to classify MPLS packet by using a command in testpmd like:
    testpmd> ethertype_filter 0 add mac_ignr 00:00:00:00:00:00 ethertype \
             0x8847 fwd queue <M>
 
-16 Byte Descriptor cannot be used on DPDK VF
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+16 Byte RX Descriptor setting on DPDK VF
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If the Linux i40e kernel driver is used as host driver, while DPDK i40e PMD
-is used as the VF driver, DPDK cannot choose 16 byte receive descriptor. That
-is to say, user should keep ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n`` in
-config file.
+Currently the VF's RX descriptor mode is decided by PF. There's no PF-VF
+interface for VF to request the RX descriptor mode, also no interface to notify
+VF its own RX descriptor mode.
+For all available versions of the i40e driver, these drivers don't support 16
+byte RX descriptor. If the Linux i40e kernel driver is used as host driver,
+while DPDK i40e PMD is used as the VF driver, DPDK cannot choose 16 byte receive
+descriptor. The reason is that the RX descriptor is already set to 32 byte by
+the i40e kernel driver. That is to say, user should keep
+``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n`` in config file.
+In the future, if the Linux i40e driver supports 16 byte RX descriptor, user
+should make sure the DPDK VF uses the same RX descriptor mode, 16 byte or 32
+byte, as the PF driver.
+
+The same rule for DPDK PF + DPDK VF. The PF and VF should use the same RX
+descriptor mode. Or the VF RX will not work.
 
 Receive packets with Ethertype 0x88A8
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
