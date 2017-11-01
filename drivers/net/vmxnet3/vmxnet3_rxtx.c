@@ -203,6 +203,8 @@ vmxnet3_dev_tx_queue_release(void *txq)
 		vmxnet3_cmd_ring_release(&tq->cmd_ring);
 		/* Release the memzone */
 		rte_memzone_free(tq->mz);
+		/* Release the queue */
+		rte_free(tq);
 	}
 }
 
@@ -223,6 +225,9 @@ vmxnet3_dev_rx_queue_release(void *rxq)
 
 		/* Release the memzone */
 		rte_memzone_free(rq->mz);
+
+		/* Release the queue */
+		rte_free(rq);
 	}
 }
 
