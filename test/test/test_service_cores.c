@@ -548,6 +548,113 @@ service_mt_unsafe_poll(void)
 	return TEST_SUCCESS;
 }
 
+static int32_t
+delay_as_a_mt_safe_service(void *args)
+{
+	RTE_SET_USED(args);
+	uint32_t *params = args;
+
+	/* retrieve done flag and atomic lock to inc/dec */
+	uint32_t *done = &params[0];
+	rte_atomic32_t *lock = (rte_atomic32_t *)&params[1];
+
+	while (!*done) {
+		rte_atomic32_inc(lock);
+		rte_delay_us(500);
+		if (rte_atomic32_read(lock) > 1)
+			/* pass: second core has simultaneously incremented */
+			*done = 1;
+		rte_atomic32_dec(lock);
+	}
+
+	return 0;
+}
+
+static int32_t
+delay_as_a_service(void *args)
+{
+	uint32_t *done = (uint32_t *)args;
+	while (!*done)
+		rte_delay_ms(5);
+	return 0;
+}
+
+static int
+service_run_on_app_core_func(void *arg)
+{
+	uint32_t *delay_service_id = (uint32_t *)arg;
+	return rte_service_run_iter_on_app_lcore(*delay_service_id, 1);
+}
+
+static int
+service_app_lcore_poll_impl(const int mt_safe)
+{
+	uint32_t params[2] = {0};
+
+	struct rte_service_spec service;
+	memset(&service, 0, sizeof(struct rte_service_spec));
+	snprintf(service.name, sizeof(service.name), MT_SAFE_SERVICE_NAME);
+	if (mt_safe) {
+		service.callback = delay_as_a_mt_safe_service;
+		service.callback_userdata = params;
+		service.capabilities |= RTE_SERVICE_CAP_MT_SAFE;
+	} else {
+		service.callback = delay_as_a_service;
+		service.callback_userdata = &params;
+	}
+
+	uint32_t id;
+	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, &id),
+			"Register of app lcore delay service failed");
+
+	rte_service_component_runstate_set(id, 1);
+	rte_service_runstate_set(id, 1);
+
+	uint32_t app_core2 = rte_get_next_lcore(slcore_id, 1, 1);
+	int app_core2_ret = rte_eal_remote_launch(service_run_on_app_core_func,
+						  &id, app_core2);
+
+	rte_delay_ms(100);
+
+	int app_core1_ret = service_run_on_app_core_func(&id);
+
+	/* flag done, then wait for the spawned 2nd core to return */
+	params[0] = 1;
+	rte_eal_mp_wait_lcore();
+
+	/* core two gets launched first - and should hold the service lock */
+	TEST_ASSERT_EQUAL(0, app_core2_ret,
+			"App core2 : run service didn't return zero");
+
+	if (mt_safe) {
+		/* mt safe should have both cores return 0 for success */
+		TEST_ASSERT_EQUAL(0, app_core1_ret,
+				"MT Safe: App core1 didn't return 0");
+	} else {
+		/* core one attempts to run later - should be blocked */
+		TEST_ASSERT_EQUAL(-EBUSY, app_core1_ret,
+				"MT Unsafe: App core1 didn't return -EBUSY");
+	}
+
+	unregister_all();
+
+	return TEST_SUCCESS;
+}
+
+static int
+service_app_lcore_mt_safe(void)
+{
+	const int mt_safe = 1;
+	return service_app_lcore_poll_impl(mt_safe);
+}
+
+static int
+service_app_lcore_mt_unsafe(void)
+{
+	const int mt_safe = 0;
+	return service_app_lcore_poll_impl(mt_safe);
+}
+
 /* start and stop a service core - ensuring it goes back to sleep */
 static int
 service_lcore_start_stop(void)
@@ -613,6 +720,8 @@ static struct unit_test_suite service_tests  = {
 		TEST_CASE_ST(dummy_register, NULL, service_lcore_en_dis_able),
 		TEST_CASE_ST(dummy_register, NULL, service_mt_unsafe_poll),
 		TEST_CASE_ST(dummy_register, NULL, service_mt_safe_poll),
+		TEST_CASE_ST(dummy_register, NULL, service_app_lcore_mt_safe),
+		TEST_CASE_ST(dummy_register, NULL, service_app_lcore_mt_unsafe),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

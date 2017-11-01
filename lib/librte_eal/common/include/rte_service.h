@@ -232,11 +232,28 @@ int32_t rte_service_set_runstate_mapped_check(uint32_t id, int32_t enable);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * This function runs a service callback from a non-service lcore context.
- * The *id* of the service to be run is passed in, and the service-callback
- * is executed on the calling lcore immediately if possible. If the service is
- * not multi-thread capable and another thread is currently executing it, this
- * function returns without running the callback.
+ * This function runs a service callback from a non-service lcore.
+ *
+ * This function is designed to enable gradual porting to service cores, and
+ * to enable unit tests to verify a service behaves as expected.
+ *
+ * When called, this function ensures that the service identified by *id* is
+ * safe to run on this lcore. Multi-thread safe services are invoked even if
+ * other cores are simultaneously running them as they are multi-thread safe.
+ *
+ * Multi-thread unsafe services are handled depending on the variable
+ * *serialize_multithread_unsafe*:
+ * - When set, the function will check if a service is already being invoked
+ *   on another lcore, refusing to run it and returning -EBUSY.
+ * - When zero, the application takes responsibility to ensure that the service
+ *   indicated by *id* is not going to be invoked by another lcore. This setting
+ *   avoids atomic operations, so is likely to be more performant.
+ *
+ * @param id The ID of the service to run
+ * @param serialize_multithread_unsafe This parameter indicates to the service
+ *           cores library if it is required to use atomics to serialize access
+ *           to mult-thread unsafe services. As there is an overhead in using
+ *           atomics, applications can choose to enable or disable this feature
  *
  * Note that any thread calling this function MUST be a DPDK EAL thread, as
  * the *rte_lcore_id* function is used to access internal data structures.
@@ -244,10 +261,11 @@ int32_t rte_service_set_runstate_mapped_check(uint32_t id, int32_t enable);
  * @retval 0 Service was run on the calling thread successfully
  * @retval -EBUSY Another lcore is executing the service, and it is not a
  *         multi-thread safe service, so the service was not run on this lcore
- * @retval -ENOEXEC Service is not in a runnable state
+ * @retval -ENOEXEC Service is not in a run-able state
  * @retval -EINVAL Invalid service id
  */
-int32_t rte_service_run_iter_on_app_lcore(uint32_t id);
+int32_t rte_service_run_iter_on_app_lcore(uint32_t id,
+		uint32_t serialize_multithread_unsafe);
 
 /**
  * @warning

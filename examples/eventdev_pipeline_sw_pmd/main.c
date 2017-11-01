@@ -245,7 +245,7 @@ schedule_devices(unsigned int lcore_id)
 
 	if (fdata->sched_core[lcore_id] && (fdata->sched_single ||
 	    rte_atomic32_cmpset(&(fdata->sched_lock), 0, 1))) {
-		rte_service_run_iter_on_app_lcore(fdata->evdev_service_id);
+		rte_service_run_iter_on_app_lcore(fdata->evdev_service_id, 1);
 		if (cdata.dump_dev_signal) {
 			rte_event_dev_dump(0, stdout);
 			cdata.dump_dev_signal = 0;

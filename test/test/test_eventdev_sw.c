@@ -417,7 +417,7 @@ run_prio_packet_test(struct test *t)
 		}
 	}
 
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	struct test_event_dev_stats stats;
 	err = test_event_dev_stats_get(evdev, &stats);
@@ -509,7 +509,7 @@ test_single_directed_packet(struct test *t)
 	}
 
 	/* Run schedule() as dir packets may need to be re-ordered */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	struct test_event_dev_stats stats;
 	err = test_event_dev_stats_get(evdev, &stats);
@@ -576,7 +576,7 @@ test_directed_forward_credits(struct test *t)
 			printf("%d: error failed to enqueue\n", __LINE__);
 			return -1;
 		}
-		rte_service_run_iter_on_app_lcore(t->service_id);
+		rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 		uint32_t deq_pkts;
 		deq_pkts = rte_event_dequeue_burst(evdev, 0, &ev, 1, 0);
@@ -738,7 +738,7 @@ burst_packets(struct test *t)
 			return -1;
 		}
 	}
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	/* Check stats for all NUM_PKTS arrived to sched core */
 	struct test_event_dev_stats stats;
@@ -827,7 +827,7 @@ abuse_inflights(struct test *t)
 	}
 
 	/* schedule */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	struct test_event_dev_stats stats;
 
@@ -965,7 +965,7 @@ xstats_tests(struct test *t)
 		}
 	}
 
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	/* Device names / values */
 	int num_stats = rte_event_dev_xstats_names_get(evdev,
@@ -1292,7 +1292,7 @@ port_reconfig_credits(struct test *t)
 			}
 		}
 
-		rte_service_run_iter_on_app_lcore(t->service_id);
+		rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 		struct rte_event ev[NPKTS];
 		int deq = rte_event_dequeue_burst(evdev, t->port[0], ev,
@@ -1518,7 +1518,7 @@ xstats_id_reset_tests(struct test *t)
 		}
 	}
 
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	static const char * const dev_names[] = {
 		"dev_rx", "dev_tx", "dev_drop", "dev_sched_calls",
@@ -1909,7 +1909,7 @@ qid_priorities(struct test *t)
 		}
 	}
 
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	/* dequeue packets, verify priority was upheld */
 	struct rte_event ev[32];
@@ -1990,7 +1990,7 @@ load_balancing(struct test *t)
 		}
 	}
 
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	struct test_event_dev_stats stats;
 	err = test_event_dev_stats_get(evdev, &stats);
@@ -2090,7 +2090,7 @@ load_balancing_history(struct test *t)
 	}
 
 	/* call the scheduler */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	/* Dequeue the flow 0 packet from port 1, so that we can then drop */
 	struct rte_event ev;
@@ -2107,7 +2107,7 @@ load_balancing_history(struct test *t)
 	rte_event_enqueue_burst(evdev, t->port[1], &release_ev, 1);
 
 	/* call the scheduler */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	/*
 	 * Set up the next set of flows, first a new flow to fill up
@@ -2140,7 +2140,7 @@ load_balancing_history(struct test *t)
 	}
 
 	/* schedule */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	err = test_event_dev_stats_get(evdev, &stats);
 	if (err) {
@@ -2184,7 +2184,7 @@ load_balancing_history(struct test *t)
 		while (rte_event_dequeue_burst(evdev, i, &ev, 1, 0))
 			rte_event_enqueue_burst(evdev, i, &release_ev, 1);
 	}
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	cleanup(t);
 	return 0;
@@ -2250,7 +2250,7 @@ invalid_qid(struct test *t)
 	}
 
 	/* call the scheduler */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	err = test_event_dev_stats_get(evdev, &stats);
 	if (err) {
@@ -2335,7 +2335,7 @@ single_packet(struct test *t)
 		return -1;
 	}
 
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	err = test_event_dev_stats_get(evdev, &stats);
 	if (err) {
@@ -2378,7 +2378,7 @@ single_packet(struct test *t)
 		printf("%d: Failed to enqueue\n", __LINE__);
 		return -1;
 	}
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	err = test_event_dev_stats_get(evdev, &stats);
 	if (stats.port_inflight[wrk_enq] != 0) {
@@ -2466,7 +2466,7 @@ inflight_counts(struct test *t)
 	}
 
 	/* schedule */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	err = test_event_dev_stats_get(evdev, &stats);
 	if (err) {
@@ -2522,7 +2522,7 @@ inflight_counts(struct test *t)
 	 * As the scheduler core decrements inflights, it needs to run to
 	 * process packets to act on the drop messages
 	 */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	err = test_event_dev_stats_get(evdev, &stats);
 	if (stats.port_inflight[p1] != 0) {
@@ -2557,7 +2557,7 @@ inflight_counts(struct test *t)
 	 * As the scheduler core decrements inflights, it needs to run to
 	 * process packets to act on the drop messages
 	 */
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	err = test_event_dev_stats_get(evdev, &stats);
 	if (stats.port_inflight[p2] != 0) {
@@ -2651,7 +2651,7 @@ parallel_basic(struct test *t, int check_order)
 		}
 	}
 
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	/* use extra slot to make logic in loops easier */
 	struct rte_event deq_ev[w3_port + 1];
@@ -2678,7 +2678,7 @@ parallel_basic(struct test *t, int check_order)
 			return -1;
 		}
 	}
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	/* dequeue from the tx ports, we should get 3 packets */
 	deq_pkts = rte_event_dequeue_burst(evdev, t->port[tx_port], deq_ev,
@@ -2756,7 +2756,7 @@ holb(struct test *t) /* test to check we avoid basic head-of-line blocking */
 		printf("%d: Error doing first enqueue\n", __LINE__);
 		goto err;
 	}
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	if (rte_event_dev_xstats_by_name_get(evdev, "port_0_cq_ring_used", NULL)
 			!= 1)
@@ -2781,7 +2781,7 @@ holb(struct test *t) /* test to check we avoid basic head-of-line blocking */
 			printf("%d: Error with enqueue\n", __LINE__);
 			goto err;
 		}
-		rte_service_run_iter_on_app_lcore(t->service_id);
+		rte_service_run_iter_on_app_lcore(t->service_id, 1);
 	} while (rte_event_dev_xstats_by_name_get(evdev,
 				rx_port_free_stat, NULL) != 0);
 
@@ -2791,7 +2791,7 @@ holb(struct test *t) /* test to check we avoid basic head-of-line blocking */
 		printf("%d: Error with enqueue\n", __LINE__);
 		goto err;
 	}
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	/* check that the other port still has an empty CQ */
 	if (rte_event_dev_xstats_by_name_get(evdev, other_port_used_stat, NULL)
@@ -2814,7 +2814,7 @@ holb(struct test *t) /* test to check we avoid basic head-of-line blocking */
 		printf("%d: Error with enqueue\n", __LINE__);
 		goto err;
 	}
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 	if (rte_event_dev_xstats_by_name_get(evdev, other_port_used_stat, NULL)
 			!= 1) {
@@ -3004,7 +3004,7 @@ worker_loopback(struct test *t)
 	while (rte_eal_get_lcore_state(p_lcore) != FINISHED ||
 			rte_eal_get_lcore_state(w_lcore) != FINISHED) {
 
-		rte_service_run_iter_on_app_lcore(t->service_id);
+		rte_service_run_iter_on_app_lcore(t->service_id, 1);
 
 		uint64_t new_cycles = rte_get_timer_cycles();
 
@@ -3031,7 +3031,7 @@ worker_loopback(struct test *t)
 			cycles = new_cycles;
 		}
 	}
-	rte_service_run_iter_on_app_lcore(t->service_id);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
 	/* ensure all completions are flushed */
 
 	rte_eal_mp_wait_lcore();
