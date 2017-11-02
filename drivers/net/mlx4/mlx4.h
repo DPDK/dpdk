@@ -160,5 +160,7 @@ int mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx);
 /* mlx4_mr.c */
 
 struct ibv_mr *mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp);
+uint32_t mlx4_txq_add_mr(struct txq *txq, struct rte_mempool *mp,
+			 uint32_t i);
 
 #endif /* RTE_PMD_MLX4_H_ */

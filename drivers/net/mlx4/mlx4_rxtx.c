@@ -37,7 +37,6 @@
  */
 
 #include <assert.h>
-#include <inttypes.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -236,63 +235,6 @@ mlx4_txq_mb2mp(struct rte_mbuf *buf)
 	if (unlikely(RTE_MBUF_INDIRECT(buf)))
 		return rte_mbuf_from_indirect(buf)->pool;
 	return buf->pool;
-}
-
-/**
- * Get memory region (MR) <-> memory pool (MP) association from txq->mp2mr[].
- * Add MP to txq->mp2mr[] if it's not registered yet. If mp2mr[] is full,
- * remove an entry first.
- *
- * @param txq
- *   Pointer to Tx queue structure.
- * @param[in] mp
- *   Memory pool for which a memory region lkey must be returned.
- *
- * @return
- *   mr->lkey on success, (uint32_t)-1 on failure.
- */
-uint32_t
-mlx4_txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
-{
-	unsigned int i;
-	struct ibv_mr *mr;
-
-	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
-		if (unlikely(txq->mp2mr[i].mp == NULL)) {
-			/* Unknown MP, add a new MR for it. */
-			break;
-		}
-		if (txq->mp2mr[i].mp == mp) {
-			assert(txq->mp2mr[i].lkey != (uint32_t)-1);
-			assert(txq->mp2mr[i].mr->lkey == txq->mp2mr[i].lkey);
-			return txq->mp2mr[i].lkey;
-		}
-	}
-	/* Add a new entry, register MR first. */
-	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
-	      (void *)txq, mp->name, (void *)mp);
-	mr = mlx4_mp2mr(txq->priv->pd, mp);
-	if (unlikely(mr == NULL)) {
-		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
-		      (void *)txq);
-		return (uint32_t)-1;
-	}
-	if (unlikely(i == RTE_DIM(txq->mp2mr))) {
-		/* Table is full, remove oldest entry. */
-		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
-		      (void *)txq);
-		--i;
-		claim_zero(ibv_dereg_mr(txq->mp2mr[0].mr));
-		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
-			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
-	}
-	/* Store the new entry. */
-	txq->mp2mr[i].mp = mp;
-	txq->mp2mr[i].mr = mr;
-	txq->mp2mr[i].lkey = mr->lkey;
-	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
-	      (void *)txq, mp->name, (void *)mp, txq->mp2mr[i].lkey);
-	return txq->mp2mr[i].lkey;
 }
 
 /**

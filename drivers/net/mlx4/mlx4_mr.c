@@ -36,7 +36,9 @@
  * Memory management functions for mlx4 driver.
  */
 
+#include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -50,11 +52,13 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
 
+#include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
 struct mlx4_check_mempool_data {
@@ -180,4 +184,50 @@ mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
 	if (!mr)
 		rte_errno = errno ? errno : EINVAL;
 	return mr;
+}
+
+/**
+ * Add memory region (MR) <-> memory pool (MP) association to txq->mp2mr[].
+ * If mp2mr[] is full, remove an entry first.
+ *
+ * @param txq
+ *   Pointer to Tx queue structure.
+ * @param[in] mp
+ *   Memory pool for which a memory region lkey must be added.
+ * @param[in] i
+ *   Index in memory pool (MP) where to add memory region (MR).
+ *
+ * @return
+ *   Added mr->lkey on success, (uint32_t)-1 on failure.
+ */
+uint32_t
+mlx4_txq_add_mr(struct txq *txq, struct rte_mempool *mp, uint32_t i)
+{
+	struct ibv_mr *mr;
+
+	/* Add a new entry, register MR first. */
+	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
+	      (void *)txq, mp->name, (void *)mp);
+	mr = mlx4_mp2mr(txq->priv->pd, mp);
+	if (unlikely(mr == NULL)) {
+		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
+		      (void *)txq);
+		return (uint32_t)-1;
+	}
+	if (unlikely(i == RTE_DIM(txq->mp2mr))) {
+		/* Table is full, remove oldest entry. */
+		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
+		      (void *)txq);
+		--i;
+		claim_zero(ibv_dereg_mr(txq->mp2mr[0].mr));
+		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
+			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
+	}
+	/* Store the new entry. */
+	txq->mp2mr[i].mp = mp;
+	txq->mp2mr[i].mr = mr;
+	txq->mp2mr[i].lkey = mr->lkey;
+	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
+	      (void *)txq, mp->name, (void *)mp, txq->mp2mr[i].lkey);
+	return txq->mp2mr[i].lkey;
 }

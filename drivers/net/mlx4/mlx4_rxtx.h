@@ -165,7 +165,6 @@ void mlx4_rx_queue_release(void *dpdk_rxq);
 
 /* mlx4_rxtx.c */
 
-uint32_t mlx4_txq_mp2mr(struct txq *txq, struct rte_mempool *mp);
 uint16_t mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts,
 		       uint16_t pkts_n);
 uint16_t mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts,
@@ -181,5 +180,35 @@ int mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			uint16_t desc, unsigned int socket,
 			const struct rte_eth_txconf *conf);
 void mlx4_tx_queue_release(void *dpdk_txq);
+
+/**
+ * Get memory region (MR) <-> memory pool (MP) association from txq->mp2mr[].
+ * Call mlx4_txq_add_mr() if MP is not registered yet.
+ *
+ * @param txq
+ *   Pointer to Tx queue structure.
+ * @param[in] mp
+ *   Memory pool for which a memory region lkey must be returned.
+ *
+ * @return
+ *   mr->lkey on success, (uint32_t)-1 on failure.
+ */
+static inline uint32_t
+mlx4_txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
+{
+	unsigned int i;
+
+	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
+		if (unlikely(txq->mp2mr[i].mp == NULL)) {
+			/* Unknown MP, add a new MR for it. */
+			break;
+		}
+		if (txq->mp2mr[i].mp == mp) {
+			/* MP found MP. */
+			return txq->mp2mr[i].lkey;
+		}
+	}
+	return mlx4_txq_add_mr(txq, mp, i);
+}
 
 #endif /* MLX4_RXTX_H_ */
