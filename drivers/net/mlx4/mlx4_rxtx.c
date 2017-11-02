@@ -238,185 +238,6 @@ mlx4_txq_mb2mp(struct rte_mbuf *buf)
 }
 
 /**
- * Posts a single work request to a send queue.
- *
- * @param txq
- *   Target Tx queue.
- * @param pkt
- *   Packet to transmit.
- *
- * @return
- *   0 on success, negative errno value otherwise.
- */
-static inline int
-mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
-{
-	struct mlx4_wqe_ctrl_seg *ctrl;
-	struct mlx4_wqe_data_seg *dseg;
-	struct mlx4_sq *sq = &txq->msq;
-	struct rte_mbuf *buf;
-	union {
-		uint32_t flags;
-		uint16_t flags16[2];
-	} srcrb;
-	uint32_t head_idx = sq->head & sq->txbb_cnt_mask;
-	uint32_t lkey;
-	uintptr_t addr;
-	uint32_t owner_opcode = MLX4_OPCODE_SEND;
-	uint32_t byte_count;
-	int wqe_real_size;
-	int nr_txbbs;
-	struct pv *pv = (struct pv *)txq->bounce_buf;
-	int pv_counter = 0;
-
-	/* Calculate the needed work queue entry size for this packet. */
-	wqe_real_size = sizeof(struct mlx4_wqe_ctrl_seg) +
-			pkt->nb_segs * sizeof(struct mlx4_wqe_data_seg);
-	nr_txbbs = MLX4_SIZE_TO_TXBBS(wqe_real_size);
-	/*
-	 * Check that there is room for this WQE in the send queue and that
-	 * the WQE size is legal.
-	 */
-	if (((sq->head - sq->tail) + nr_txbbs +
-	     sq->headroom_txbbs) >= sq->txbb_cnt ||
-	    nr_txbbs > MLX4_MAX_WQE_TXBBS) {
-		return -ENOSPC;
-	}
-	/* Get the control and data entries of the WQE. */
-	ctrl = (struct mlx4_wqe_ctrl_seg *)mlx4_get_send_wqe(sq, head_idx);
-	dseg = (struct mlx4_wqe_data_seg *)((uintptr_t)ctrl +
-					    sizeof(struct mlx4_wqe_ctrl_seg));
-	/* Fill the data segments with buffer information. */
-	for (buf = pkt; buf != NULL; buf = buf->next, dseg++) {
-		addr = rte_pktmbuf_mtod(buf, uintptr_t);
-		rte_prefetch0((volatile void *)addr);
-		/* Handle WQE wraparound. */
-		if (dseg >= (struct mlx4_wqe_data_seg *)sq->eob)
-			dseg = (struct mlx4_wqe_data_seg *)sq->buf;
-		dseg->addr = rte_cpu_to_be_64(addr);
-		/* Memory region key for this memory pool. */
-		lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(buf));
-#ifndef NDEBUG
-		if (unlikely(lkey == (uint32_t)-1)) {
-			/* MR does not exist. */
-			DEBUG("%p: unable to get MP <-> MR association",
-			      (void *)txq);
-			/*
-			 * Restamp entry in case of failure.
-			 * Make sure that size is written correctly
-			 * Note that we give ownership to the SW, not the HW.
-			 */
-			ctrl->fence_size = (wqe_real_size >> 4) & 0x3f;
-			mlx4_txq_stamp_freed_wqe(sq, head_idx,
-				     (sq->head & sq->txbb_cnt) ? 0 : 1);
-			return -EFAULT;
-		}
-#endif /* NDEBUG */
-		dseg->lkey = rte_cpu_to_be_32(lkey);
-		if (likely(buf->data_len)) {
-			byte_count = rte_cpu_to_be_32(buf->data_len);
-		} else {
-			/*
-			 * Zero length segment is treated as inline segment
-			 * with zero data.
-			 */
-			byte_count = RTE_BE32(0x80000000);
-		}
-		/*
-		 * If the data segment is not at the beginning of a
-		 * Tx basic block (TXBB) then write the byte count,
-		 * else postpone the writing to just before updating the
-		 * control segment.
-		 */
-		if ((uintptr_t)dseg & (uintptr_t)(MLX4_TXBB_SIZE - 1)) {
-			/*
-			 * Need a barrier here before writing the byte_count
-			 * fields to make sure that all the data is visible
-			 * before the byte_count field is set.
-			 * Otherwise, if the segment begins a new cacheline,
-			 * the HCA prefetcher could grab the 64-byte chunk and
-			 * get a valid (!= 0xffffffff) byte count but stale
-			 * data, and end up sending the wrong data.
-			 */
-			rte_io_wmb();
-			dseg->byte_count = byte_count;
-		} else {
-			/*
-			 * This data segment starts at the beginning of a new
-			 * TXBB, so we need to postpone its byte_count writing
-			 * for later.
-			 */
-			pv[pv_counter].dseg = dseg;
-			pv[pv_counter++].val = byte_count;
-		}
-	}
-	/* Write the first DWORD of each TXBB save earlier. */
-	if (pv_counter) {
-		/* Need a barrier here before writing the byte_count. */
-		rte_io_wmb();
-		for (--pv_counter; pv_counter  >= 0; pv_counter--)
-			pv[pv_counter].dseg->byte_count = pv[pv_counter].val;
-	}
-	/* Fill the control parameters for this packet. */
-	ctrl->fence_size = (wqe_real_size >> 4) & 0x3f;
-	/*
-	 * For raw Ethernet, the SOLICIT flag is used to indicate that no ICRC
-	 * should be calculated.
-	 */
-	txq->elts_comp_cd -= nr_txbbs;
-	if (unlikely(txq->elts_comp_cd <= 0)) {
-		txq->elts_comp_cd = txq->elts_comp_cd_init;
-		srcrb.flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT |
-				       MLX4_WQE_CTRL_CQ_UPDATE);
-	} else {
-		srcrb.flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT);
-	}
-	/* Enable HW checksum offload if requested */
-	if (txq->csum &&
-	    (pkt->ol_flags &
-	     (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))) {
-		const uint64_t is_tunneled = (pkt->ol_flags &
-					      (PKT_TX_TUNNEL_GRE |
-					       PKT_TX_TUNNEL_VXLAN));
-
-		if (is_tunneled && txq->csum_l2tun) {
-			owner_opcode |= MLX4_WQE_CTRL_IIP_HDR_CSUM |
-					MLX4_WQE_CTRL_IL4_HDR_CSUM;
-			if (pkt->ol_flags & PKT_TX_OUTER_IP_CKSUM)
-				srcrb.flags |=
-					RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM);
-		} else {
-			srcrb.flags |= RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM |
-						MLX4_WQE_CTRL_TCP_UDP_CSUM);
-		}
-	}
-	if (txq->lb) {
-		/*
-		 * Copy destination MAC address to the WQE, this allows
-		 * loopback in eSwitch, so that VFs and PF can communicate
-		 * with each other.
-		 */
-		srcrb.flags16[0] = *(rte_pktmbuf_mtod(pkt, uint16_t *));
-		ctrl->imm = *(rte_pktmbuf_mtod_offset(pkt, uint32_t *,
-						      sizeof(uint16_t)));
-	} else {
-		ctrl->imm = 0;
-	}
-	ctrl->srcrb_flags = srcrb.flags;
-	/*
-	 * Make sure descriptor is fully written before
-	 * setting ownership bit (because HW can start
-	 * executing as soon as we do).
-	 */
-	rte_wmb();
-	ctrl->owner_opcode = rte_cpu_to_be_32(owner_opcode |
-					      ((sq->head & sq->txbb_cnt) ?
-					       MLX4_BIT_WQE_OWN : 0));
-	sq->head += nr_txbbs;
-	return 0;
-}
-
-/**
  * DPDK callback for Tx.
  *
  * @param dpdk_txq
@@ -439,7 +260,8 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int bytes_sent = 0;
 	unsigned int i;
 	unsigned int max;
-	int err;
+	struct mlx4_sq *sq = &txq->msq;
+	struct pv *pv = (struct pv *)txq->bounce_buf;
 
 	assert(txq->elts_comp_cd != 0);
 	mlx4_txq_complete(txq);
@@ -460,6 +282,21 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			(((elts_head + 1) == elts_n) ? 0 : elts_head + 1);
 		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
 		struct txq_elt *elt = &(*txq->elts)[elts_head];
+		uint32_t owner_opcode = MLX4_OPCODE_SEND;
+		struct mlx4_wqe_ctrl_seg *ctrl;
+		struct mlx4_wqe_data_seg *dseg;
+		struct rte_mbuf *sbuf;
+		union {
+			uint32_t flags;
+			uint16_t flags16[2];
+		} srcrb;
+		uint32_t head_idx = sq->head & sq->txbb_cnt_mask;
+		uint32_t lkey;
+		uintptr_t addr;
+		uint32_t byte_count;
+		int wqe_real_size;
+		int nr_txbbs;
+		int pv_counter = 0;
 
 		/* Clean up old buffer. */
 		if (likely(elt->buf != NULL)) {
@@ -478,18 +315,166 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			} while (tmp != NULL);
 		}
 		RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
-		/* Post the packet for sending. */
-		err = mlx4_post_send(txq, buf);
-		if (unlikely(err)) {
+		/*
+		 * Calculate the needed work queue entry size
+		 * for this packet.
+		 */
+		wqe_real_size = sizeof(struct mlx4_wqe_ctrl_seg) +
+				buf->nb_segs * sizeof(struct mlx4_wqe_data_seg);
+		nr_txbbs = MLX4_SIZE_TO_TXBBS(wqe_real_size);
+		/*
+		 * Check that there is room for this WQE in the send
+		 * queue and that the WQE size is legal.
+		 */
+		if (((sq->head - sq->tail) + nr_txbbs +
+		     sq->headroom_txbbs) >= sq->txbb_cnt ||
+		    nr_txbbs > MLX4_MAX_WQE_TXBBS) {
 			elt->buf = NULL;
-			goto stop;
+			break;
 		}
+		/* Get the control and data entries of the WQE. */
+		ctrl = (struct mlx4_wqe_ctrl_seg *)
+				mlx4_get_send_wqe(sq, head_idx);
+		dseg = (struct mlx4_wqe_data_seg *)((uintptr_t)ctrl +
+				sizeof(struct mlx4_wqe_ctrl_seg));
+		/* Fill the data segments with buffer information. */
+		for (sbuf = buf; sbuf != NULL; sbuf = sbuf->next, dseg++) {
+			addr = rte_pktmbuf_mtod(sbuf, uintptr_t);
+			rte_prefetch0((volatile void *)addr);
+			/* Handle WQE wraparound. */
+			if (dseg >= (struct mlx4_wqe_data_seg *)sq->eob)
+				dseg = (struct mlx4_wqe_data_seg *)sq->buf;
+			dseg->addr = rte_cpu_to_be_64(addr);
+			/* Memory region key (big endian). */
+			lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(sbuf));
+			dseg->lkey = rte_cpu_to_be_32(lkey);
+#ifndef NDEBUG
+			if (unlikely(dseg->lkey ==
+				rte_cpu_to_be_32((uint32_t)-1))) {
+				/* MR does not exist. */
+				DEBUG("%p: unable to get MP <-> MR association",
+				      (void *)txq);
+				/*
+				 * Restamp entry in case of failure.
+				 * Make sure that size is written correctly
+				 * Note that we give ownership to the SW,
+				 * not the HW.
+				 */
+				ctrl->fence_size = (wqe_real_size >> 4) & 0x3f;
+				mlx4_txq_stamp_freed_wqe(sq, head_idx,
+					     (sq->head & sq->txbb_cnt) ? 0 : 1);
+				elt->buf = NULL;
+				break;
+			}
+#endif /* NDEBUG */
+			if (likely(sbuf->data_len)) {
+				byte_count = rte_cpu_to_be_32(sbuf->data_len);
+			} else {
+				/*
+				 * Zero length segment is treated as inline
+				 * segment with zero data.
+				 */
+				byte_count = RTE_BE32(0x80000000);
+			}
+			/*
+			 * If the data segment is not at the beginning
+			 * of a Tx basic block (TXBB) then write the
+			 * byte count, else postpone the writing to
+			 * just before updating the control segment.
+			 */
+			if ((uintptr_t)dseg & (uintptr_t)(MLX4_TXBB_SIZE - 1)) {
+				/*
+				 * Need a barrier here before writing the
+				 * byte_count fields to make sure that all the
+				 * data is visible before the byte_count field
+				 * is set. otherwise, if the segment begins a
+				 * new cacheline, the HCA prefetcher could grab
+				 * the 64-byte chunk and get a valid
+				 * (!= 0xffffffff) byte count but stale data,
+				 * and end up sending the wrong data.
+				 */
+				rte_io_wmb();
+				dseg->byte_count = byte_count;
+			} else {
+				/*
+				 * This data segment starts at the beginning of
+				 * a new TXBB, so we need to postpone its
+				 * byte_count writing for later.
+				 */
+				pv[pv_counter].dseg = dseg;
+				pv[pv_counter++].val = byte_count;
+			}
+		}
+		/* Write the first DWORD of each TXBB save earlier. */
+		if (pv_counter) {
+			/* Need a barrier before writing the byte_count. */
+			rte_io_wmb();
+			for (--pv_counter; pv_counter  >= 0; pv_counter--)
+				pv[pv_counter].dseg->byte_count =
+						pv[pv_counter].val;
+		}
+		/* Fill the control parameters for this packet. */
+		ctrl->fence_size = (wqe_real_size >> 4) & 0x3f;
+		/*
+		 * For raw Ethernet, the SOLICIT flag is used to indicate
+		 * that no ICRC should be calculated.
+		 */
+		txq->elts_comp_cd -= nr_txbbs;
+		if (unlikely(txq->elts_comp_cd <= 0)) {
+			txq->elts_comp_cd = txq->elts_comp_cd_init;
+			srcrb.flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT |
+					       MLX4_WQE_CTRL_CQ_UPDATE);
+		} else {
+			srcrb.flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT);
+		}
+		/* Enable HW checksum offload if requested */
+		if (txq->csum &&
+		    (buf->ol_flags &
+		     (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))) {
+			const uint64_t is_tunneled = (buf->ol_flags &
+						      (PKT_TX_TUNNEL_GRE |
+						       PKT_TX_TUNNEL_VXLAN));
+
+			if (is_tunneled && txq->csum_l2tun) {
+				owner_opcode |= MLX4_WQE_CTRL_IIP_HDR_CSUM |
+						MLX4_WQE_CTRL_IL4_HDR_CSUM;
+				if (buf->ol_flags & PKT_TX_OUTER_IP_CKSUM)
+					srcrb.flags |=
+					    RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM);
+			} else {
+				srcrb.flags |=
+					RTE_BE32(MLX4_WQE_CTRL_IP_HDR_CSUM |
+						MLX4_WQE_CTRL_TCP_UDP_CSUM);
+			}
+		}
+		if (txq->lb) {
+			/*
+			 * Copy destination MAC address to the WQE, this allows
+			 * loopback in eSwitch, so that VFs and PF can
+			 * communicate with each other.
+			 */
+			srcrb.flags16[0] = *(rte_pktmbuf_mtod(buf, uint16_t *));
+			ctrl->imm = *(rte_pktmbuf_mtod_offset(buf, uint32_t *,
+					      sizeof(uint16_t)));
+		} else {
+			ctrl->imm = 0;
+		}
+		ctrl->srcrb_flags = srcrb.flags;
+		/*
+		 * Make sure descriptor is fully written before
+		 * setting ownership bit (because HW can start
+		 * executing as soon as we do).
+		 */
+		rte_wmb();
+		ctrl->owner_opcode = rte_cpu_to_be_32(owner_opcode |
+					      ((sq->head & sq->txbb_cnt) ?
+						       MLX4_BIT_WQE_OWN : 0));
+		sq->head += nr_txbbs;
 		elt->buf = buf;
 		bytes_sent += buf->pkt_len;
 		++elts_comp;
 		elts_head = elts_head_next;
 	}
-stop:
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely(i == 0))
 		return 0;
