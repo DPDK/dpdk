@@ -291,7 +291,7 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 		addr = rte_pktmbuf_mtod(buf, uintptr_t);
 		rte_prefetch0((volatile void *)addr);
 		/* Handle WQE wraparound. */
-		if (unlikely(dseg >= (struct mlx4_wqe_data_seg *)sq->eob))
+		if (dseg >= (struct mlx4_wqe_data_seg *)sq->eob)
 			dseg = (struct mlx4_wqe_data_seg *)sq->buf;
 		dseg->addr = rte_cpu_to_be_64(addr);
 		/* Memory region key for this memory pool. */
