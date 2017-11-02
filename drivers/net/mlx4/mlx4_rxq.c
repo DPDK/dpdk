@@ -164,7 +164,8 @@ error:
  * @param rss
  *   RSS context to release.
  */
-void mlx4_rss_put(struct mlx4_rss *rss)
+void
+mlx4_rss_put(struct mlx4_rss *rss)
 {
 	assert(rss->refcnt);
 	if (--rss->refcnt)
@@ -190,7 +191,8 @@ void mlx4_rss_put(struct mlx4_rss *rss)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-int mlx4_rss_attach(struct mlx4_rss *rss)
+int
+mlx4_rss_attach(struct mlx4_rss *rss)
 {
 	assert(rss->refcnt);
 	if (rss->usecnt++) {
@@ -312,7 +314,8 @@ error:
  * @param rss
  *   RSS context to detach from.
  */
-void mlx4_rss_detach(struct mlx4_rss *rss)
+void
+mlx4_rss_detach(struct mlx4_rss *rss)
 {
 	struct priv *priv = rss->priv;
 	unsigned int i;
