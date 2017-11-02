@@ -169,6 +169,7 @@ mlx4_txq_complete(struct txq *txq)
 		 * Make sure we read the CQE after we read the ownership bit.
 		 */
 		rte_rmb();
+#ifndef NDEBUG
 		if (unlikely((cqe->owner_sr_opcode & MLX4_CQE_OPCODE_MASK) ==
 			     MLX4_CQE_OPCODE_ERROR)) {
 			struct mlx4_err_cqe *cqe_err =
@@ -178,6 +179,7 @@ mlx4_txq_complete(struct txq *txq)
 			      (void *)txq, cqe_err->vendor_err,
 			      cqe_err->syndrome);
 		}
+#endif /* NDEBUG */
 		/* Get WQE index reported in the CQE. */
 		new_index =
 			rte_be_to_cpu_16(cqe->wqe_index) & sq->txbb_cnt_mask;
@@ -302,7 +304,7 @@ mlx4_txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
  *   Packet to transmit.
  *
  * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
+ *   0 on success, negative errno value otherwise.
  */
 static inline int
 mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
@@ -322,7 +324,6 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 	uint32_t byte_count;
 	int wqe_real_size;
 	int nr_txbbs;
-	int rc;
 	struct pv *pv = (struct pv *)txq->bounce_buf;
 	int pv_counter = 0;
 
@@ -337,8 +338,7 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 	if (((sq->head - sq->tail) + nr_txbbs +
 	     sq->headroom_txbbs) >= sq->txbb_cnt ||
 	    nr_txbbs > MLX4_MAX_WQE_TXBBS) {
-		rc = ENOSPC;
-		goto err;
+		return -ENOSPC;
 	}
 	/* Get the control and data entries of the WQE. */
 	ctrl = (struct mlx4_wqe_ctrl_seg *)mlx4_get_send_wqe(sq, head_idx);
@@ -354,6 +354,7 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 		dseg->addr = rte_cpu_to_be_64(addr);
 		/* Memory region key for this memory pool. */
 		lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(buf));
+#ifndef NDEBUG
 		if (unlikely(lkey == (uint32_t)-1)) {
 			/* MR does not exist. */
 			DEBUG("%p: unable to get MP <-> MR association",
@@ -366,9 +367,9 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 			ctrl->fence_size = (wqe_real_size >> 4) & 0x3f;
 			mlx4_txq_stamp_freed_wqe(sq, head_idx,
 				     (sq->head & sq->txbb_cnt) ? 0 : 1);
-			rc = EFAULT;
-			goto err;
+			return -EFAULT;
 		}
+#endif /* NDEBUG */
 		dseg->lkey = rte_cpu_to_be_32(lkey);
 		if (likely(buf->data_len)) {
 			byte_count = rte_cpu_to_be_32(buf->data_len);
@@ -471,9 +472,6 @@ mlx4_post_send(struct txq *txq, struct rte_mbuf *pkt)
 					       MLX4_BIT_WQE_OWN : 0));
 	sq->head += nr_txbbs;
 	return 0;
-err:
-	rte_errno = rc;
-	return -rc;
 }
 
 /**
