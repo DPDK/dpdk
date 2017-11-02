@@ -62,7 +62,7 @@
  * @param txq
  *   Pointer to TX queue structure.
  * @param dseg
- *   Pointer to buffer descriptor to be writen.
+ *   Pointer to buffer descriptor to be written.
  * @param pkts
  *   Pointer to array of packets to be sent.
  * @param n

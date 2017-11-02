@@ -179,7 +179,7 @@ priv_socket_handle(struct priv *priv)
 	}
 	cmsg = CMSG_NXTHDR(&msg, cmsg);
 	if (cmsg != NULL) {
-		WARN("Message wrongly formated");
+		WARN("Message wrongly formatted");
 		goto out;
 	}
 	/* Make sure all the ancillary data was received and valid. */
