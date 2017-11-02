@@ -408,7 +408,7 @@ mlx4_tx_queue_release(void *dpdk_txq)
 		if (!txq->mp2mr[i].mp)
 			break;
 		assert(txq->mp2mr[i].mr);
-		claim_zero(ibv_dereg_mr(txq->mp2mr[i].mr));
+		mlx4_mr_put(txq->mp2mr[i].mr);
 	}
 	rte_free(txq);
 }

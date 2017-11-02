@@ -51,6 +51,7 @@
 #include <rte_ether.h>
 #include <rte_interrupts.h>
 #include <rte_mempool.h>
+#include <rte_spinlock.h>
 
 /** Maximum number of simultaneous MAC addresses. This value is arbitrary. */
 #define MLX4_MAX_MAC_ADDRESSES 128
@@ -100,6 +101,18 @@ struct rxq;
 struct txq;
 struct rte_flow;
 
+/** Memory region descriptor. */
+struct mlx4_mr {
+	LIST_ENTRY(mlx4_mr) next; /**< Next entry in list. */
+	uintptr_t start; /**< Base address for memory region. */
+	uintptr_t end; /**< End address for memory region. */
+	uint32_t lkey; /**< L_Key extracted from @p mr. */
+	uint32_t refcnt; /**< Reference count for this object. */
+	struct priv *priv; /**< Back pointer to private data. */
+	struct ibv_mr *mr; /**< Memory region associated with @p mp. */
+	struct rte_mempool *mp; /**< Target memory pool (mempool). */
+};
+
 /** Private data structure. */
 struct priv {
 	struct rte_eth_dev *dev; /**< Ethernet device. */
@@ -119,6 +132,8 @@ struct priv {
 	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */
 	LIST_HEAD(, mlx4_rss) rss; /**< Shared targets for Rx flow rules. */
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
+	LIST_HEAD(, mlx4_mr) mr; /**< Registered memory regions. */
+	rte_spinlock_t mr_lock; /**< Lock for @p mr access. */
 	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
 	/**< Configured MAC addresses. Unused entries are zeroed. */
 };
@@ -159,7 +174,8 @@ int mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx);
 
 /* mlx4_mr.c */
 
-struct ibv_mr *mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp);
+struct mlx4_mr *mlx4_mr_get(struct priv *priv, struct rte_mempool *mp);
+void mlx4_mr_put(struct mlx4_mr *mr);
 uint32_t mlx4_txq_add_mr(struct txq *txq, struct rte_mempool *mp,
 			 uint32_t i);
 

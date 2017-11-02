@@ -55,8 +55,10 @@
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_errno.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
+#include <rte_spinlock.h>
 
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
@@ -135,24 +137,27 @@ mlx4_check_mempool(struct rte_mempool *mp, uintptr_t *start, uintptr_t *end)
 }
 
 /**
- * Register mempool as a memory region.
+ * Obtain a memory region from a memory pool.
  *
- * @param pd
- *   Pointer to protection domain.
+ * If a matching memory region already exists, it is returned with its
+ * reference count incremented, otherwise a new one is registered.
+ *
+ * @param priv
+ *   Pointer to private structure.
  * @param mp
  *   Pointer to memory pool.
  *
  * @return
  *   Memory region pointer, NULL in case of error and rte_errno is set.
  */
-struct ibv_mr *
-mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
+struct mlx4_mr *
+mlx4_mr_get(struct priv *priv, struct rte_mempool *mp)
 {
 	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
 	uintptr_t start;
 	uintptr_t end;
 	unsigned int i;
-	struct ibv_mr *mr;
+	struct mlx4_mr *mr;
 
 	if (mlx4_check_mempool(mp, &start, &end) != 0) {
 		rte_errno = EINVAL;
@@ -177,13 +182,68 @@ mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
 	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
 	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
-	mr = ibv_reg_mr(pd,
-			(void *)start,
-			end - start,
-			IBV_ACCESS_LOCAL_WRITE);
-	if (!mr)
+	rte_spinlock_lock(&priv->mr_lock);
+	LIST_FOREACH(mr, &priv->mr, next)
+		if (mp == mr->mp && start >= mr->start && end <= mr->end)
+			break;
+	if (mr) {
+		++mr->refcnt;
+		goto release;
+	}
+	mr = rte_malloc(__func__, sizeof(*mr), 0);
+	if (!mr) {
+		rte_errno = ENOMEM;
+		goto release;
+	}
+	*mr = (struct mlx4_mr){
+		.start = start,
+		.end = end,
+		.refcnt = 1,
+		.priv = priv,
+		.mr = ibv_reg_mr(priv->pd, (void *)start, end - start,
+				 IBV_ACCESS_LOCAL_WRITE),
+		.mp = mp,
+	};
+	if (mr->mr) {
+		mr->lkey = mr->mr->lkey;
+		LIST_INSERT_HEAD(&priv->mr, mr, next);
+	} else {
+		rte_free(mr);
+		mr = NULL;
 		rte_errno = errno ? errno : EINVAL;
+	}
+release:
+	rte_spinlock_unlock(&priv->mr_lock);
 	return mr;
+}
+
+/**
+ * Release a memory region.
+ *
+ * This function decrements its reference count and destroys it after
+ * reaching 0.
+ *
+ * Note to avoid race conditions given this function may be used from the
+ * data plane, it's extremely important that each user holds its own
+ * reference.
+ *
+ * @param mr
+ *   Memory region to release.
+ */
+void
+mlx4_mr_put(struct mlx4_mr *mr)
+{
+	struct priv *priv = mr->priv;
+
+	rte_spinlock_lock(&priv->mr_lock);
+	assert(mr->refcnt);
+	if (--mr->refcnt)
+		goto release;
+	LIST_REMOVE(mr, next);
+	claim_zero(ibv_dereg_mr(mr->mr));
+	rte_free(mr);
+release:
+	rte_spinlock_unlock(&priv->mr_lock);
 }
 
 /**
@@ -203,14 +263,14 @@ mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
 uint32_t
 mlx4_txq_add_mr(struct txq *txq, struct rte_mempool *mp, uint32_t i)
 {
-	struct ibv_mr *mr;
+	struct mlx4_mr *mr;
 
 	/* Add a new entry, register MR first. */
 	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
 	      (void *)txq, mp->name, (void *)mp);
-	mr = mlx4_mp2mr(txq->priv->pd, mp);
+	mr = mlx4_mr_get(txq->priv, mp);
 	if (unlikely(mr == NULL)) {
-		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
+		DEBUG("%p: unable to configure MR, mlx4_mr_get() failed",
 		      (void *)txq);
 		return (uint32_t)-1;
 	}
@@ -219,7 +279,7 @@ mlx4_txq_add_mr(struct txq *txq, struct rte_mempool *mp, uint32_t i)
 		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
 		      (void *)txq);
 		--i;
-		claim_zero(ibv_dereg_mr(txq->mp2mr[0].mr));
+		mlx4_mr_put(txq->mp2mr[0].mr);
 		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
 			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
 	}

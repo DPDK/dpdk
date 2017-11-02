@@ -804,9 +804,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	/* Use the entire Rx mempool as the memory region. */
-	rxq->mr = mlx4_mp2mr(priv->pd, mp);
+	rxq->mr = mlx4_mr_get(priv, mp);
 	if (!rxq->mr) {
-		rte_errno = EINVAL;
 		ERROR("%p: MR creation failure: %s",
 		      (void *)dev, strerror(rte_errno));
 		goto error;
@@ -869,6 +868,6 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	if (rxq->channel)
 		claim_zero(ibv_destroy_comp_channel(rxq->channel));
 	if (rxq->mr)
-		claim_zero(ibv_dereg_mr(rxq->mr));
+		mlx4_mr_put(rxq->mr);
 	rte_free(rxq);
 }

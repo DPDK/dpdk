@@ -67,7 +67,7 @@ struct mlx4_rxq_stats {
 struct rxq {
 	struct priv *priv; /**< Back pointer to private data. */
 	struct rte_mempool *mp; /**< Memory pool for allocations. */
-	struct ibv_mr *mr; /**< Memory region (for mp). */
+	struct mlx4_mr *mr; /**< Memory region. */
 	struct ibv_cq *cq; /**< Completion queue. */
 	struct ibv_wq *wq; /**< Work queue. */
 	struct ibv_comp_channel *channel; /**< Rx completion channel. */
@@ -134,7 +134,7 @@ struct txq {
 	/**< Memory used for storing the first DWORD of data TXBBs. */
 	struct {
 		const struct rte_mempool *mp; /**< Cached memory pool. */
-		struct ibv_mr *mr; /**< Memory region (for mp). */
+		struct mlx4_mr *mr; /**< Memory region (for mp). */
 		uint32_t lkey; /**< mr->lkey copy. */
 	} mp2mr[MLX4_PMD_TX_MP_CACHE]; /**< MP to MR translation table. */
 	struct priv *priv; /**< Back pointer to private data. */
