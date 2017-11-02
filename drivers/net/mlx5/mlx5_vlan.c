@@ -61,6 +61,7 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
+	int ret = 0;
 
 	priv_lock(priv);
 	DEBUG("%p: %s VLAN filter ID %" PRIu16,
@@ -69,6 +70,11 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	for (i = 0; (i != priv->vlan_filter_n); ++i)
 		if (priv->vlan_filter[i] == vlan_id)
 			break;
+	/* Check if there's room for another VLAN filter. */
+	if (i == RTE_DIM(priv->vlan_filter)) {
+		ret = -ENOMEM;
+		goto out;
+	}
 	if (i < priv->vlan_filter_n) {
 		assert(priv->vlan_filter_n != 0);
 		/* Enabling an existing VLAN filter has no effect. */
@@ -94,7 +100,7 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		priv_dev_traffic_restart(priv, dev);
 out:
 	priv_unlock(priv);
-	return 0;
+	return ret;
 }
 
 /**
