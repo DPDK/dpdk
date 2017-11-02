@@ -39,7 +39,6 @@
 #include <sched.h>
 #include <pthread.h>
 
-#include <rte_config.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>

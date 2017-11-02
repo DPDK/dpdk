@@ -31,7 +31,6 @@
  */
 
 #include <rte_common.h>
-#include <rte_config.h>
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>

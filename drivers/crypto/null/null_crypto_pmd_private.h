@@ -33,8 +33,6 @@
 #ifndef _NULL_CRYPTO_PMD_PRIVATE_H_
 #define _NULL_CRYPTO_PMD_PRIVATE_H_
 
-#include "rte_config.h"
-
 #define CRYPTODEV_NAME_NULL_PMD		crypto_null
 /**< Null crypto PMD device name */
 

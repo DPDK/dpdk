@@ -36,7 +36,6 @@
 #define _MRVL_QOS_H_
 
 #include <rte_common.h>
-#include <rte_config.h>
 
 #include "mrvl_ethdev.h"
 

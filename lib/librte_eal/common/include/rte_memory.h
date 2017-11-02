@@ -44,8 +44,6 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include <rte_config.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

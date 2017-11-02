@@ -31,7 +31,6 @@
  */
 
 #include <rte_common.h>
-#include <rte_config.h>
 #include <rte_cryptodev_pmd.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
