@@ -99,6 +99,7 @@ get_val_securely(const char *string, uint32_t *val)
 	if (len == 0)
 		return -1;
 
+	errno = 0;
 	*val = strtoul(string, &endptr, 0);
 	if (errno != 0 || RTE_PTR_DIFF(endptr, string) != len)
 		return -2;
