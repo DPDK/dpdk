@@ -69,7 +69,7 @@
  * DWORD (32 byte) of a TXBB.
  */
 struct pv {
-	struct mlx4_wqe_data_seg *dseg;
+	volatile struct mlx4_wqe_data_seg *dseg;
 	uint32_t val;
 };
 
@@ -97,14 +97,15 @@ mlx4_txq_stamp_freed_wqe(struct mlx4_sq *sq, uint16_t index, uint8_t owner)
 {
 	uint32_t stamp = rte_cpu_to_be_32(MLX4_SQ_STAMP_VAL |
 					  (!!owner << MLX4_SQ_STAMP_SHIFT));
-	uint8_t *wqe = mlx4_get_send_wqe(sq, (index & sq->txbb_cnt_mask));
-	uint32_t *ptr = (uint32_t *)wqe;
+	volatile uint8_t *wqe = mlx4_get_send_wqe(sq,
+						(index & sq->txbb_cnt_mask));
+	volatile uint32_t *ptr = (volatile uint32_t *)wqe;
 	int i;
 	int txbbs_size;
 	int num_txbbs;
 
 	/* Extract the size from the control segment of the WQE. */
-	num_txbbs = MLX4_SIZE_TO_TXBBS((((struct mlx4_wqe_ctrl_seg *)
+	num_txbbs = MLX4_SIZE_TO_TXBBS((((volatile struct mlx4_wqe_ctrl_seg *)
 					 wqe)->fence_size & 0x3f) << 4);
 	txbbs_size = num_txbbs * MLX4_TXBB_SIZE;
 	/* Optimize the common case when there is no wrap-around. */
@@ -119,8 +120,8 @@ mlx4_txq_stamp_freed_wqe(struct mlx4_sq *sq, uint16_t index, uint8_t owner)
 		for (i = 0; i < txbbs_size; i += MLX4_SQ_STAMP_STRIDE) {
 			*ptr = stamp;
 			ptr += MLX4_SQ_STAMP_DWORDS;
-			if ((uint8_t *)ptr >= sq->eob) {
-				ptr = (uint32_t *)sq->buf;
+			if ((volatile uint8_t *)ptr >= sq->eob) {
+				ptr = (volatile uint32_t *)sq->buf;
 				stamp ^= RTE_BE32(0x80000000);
 			}
 		}
@@ -149,7 +150,7 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 	unsigned int elts_comp = txq->elts_comp;
 	unsigned int elts_tail = txq->elts_tail;
 	struct mlx4_cq *cq = &txq->mcq;
-	struct mlx4_cqe *cqe;
+	volatile struct mlx4_cqe *cqe;
 	uint32_t cons_index = cq->cons_index;
 	uint16_t new_index;
 	uint16_t nr_txbbs = 0;
@@ -160,7 +161,7 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 	 * reported by them.
 	 */
 	do {
-		cqe = (struct mlx4_cqe *)mlx4_get_cqe(cq, cons_index);
+		cqe = (volatile struct mlx4_cqe *)mlx4_get_cqe(cq, cons_index);
 		if (unlikely(!!(cqe->owner_sr_opcode & MLX4_CQE_OWNER_MASK) ^
 		    !!(cons_index & cq->cqe_cnt)))
 			break;
@@ -171,8 +172,8 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 #ifndef NDEBUG
 		if (unlikely((cqe->owner_sr_opcode & MLX4_CQE_OPCODE_MASK) ==
 			     MLX4_CQE_OPCODE_ERROR)) {
-			struct mlx4_err_cqe *cqe_err =
-				(struct mlx4_err_cqe *)cqe;
+			volatile struct mlx4_err_cqe *cqe_err =
+				(volatile struct mlx4_err_cqe *)cqe;
 			ERROR("%p CQE error - vendor syndrome: 0x%x"
 			      " syndrome: 0x%x\n",
 			      (void *)txq, cqe_err->vendor_err,
@@ -239,15 +240,15 @@ mlx4_txq_mb2mp(struct rte_mbuf *buf)
 
 static int
 mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
-			       struct mlx4_wqe_ctrl_seg **pctrl)
+		   volatile struct mlx4_wqe_ctrl_seg **pctrl)
 {
 	int wqe_real_size;
 	int nr_txbbs;
 	struct pv *pv = (struct pv *)txq->bounce_buf;
 	struct mlx4_sq *sq = &txq->msq;
 	uint32_t head_idx = sq->head & sq->txbb_cnt_mask;
-	struct mlx4_wqe_ctrl_seg *ctrl;
-	struct mlx4_wqe_data_seg *dseg;
+	volatile struct mlx4_wqe_ctrl_seg *ctrl;
+	volatile struct mlx4_wqe_data_seg *dseg;
 	struct rte_mbuf *sbuf;
 	uint32_t lkey;
 	uintptr_t addr;
@@ -255,8 +256,8 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 	int pv_counter = 0;
 
 	/* Calculate the needed work queue entry size for this packet. */
-	wqe_real_size = sizeof(struct mlx4_wqe_ctrl_seg) +
-		buf->nb_segs * sizeof(struct mlx4_wqe_data_seg);
+	wqe_real_size = sizeof(volatile struct mlx4_wqe_ctrl_seg) +
+		buf->nb_segs * sizeof(volatile struct mlx4_wqe_data_seg);
 	nr_txbbs = MLX4_SIZE_TO_TXBBS(wqe_real_size);
 	/*
 	 * Check that there is room for this WQE in the send queue and that
@@ -268,17 +269,18 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 		return -1;
 	}
 	/* Get the control and data entries of the WQE. */
-	ctrl = (struct mlx4_wqe_ctrl_seg *)mlx4_get_send_wqe(sq, head_idx);
-	dseg = (struct mlx4_wqe_data_seg *)((uintptr_t)ctrl +
-			sizeof(struct mlx4_wqe_ctrl_seg));
+	ctrl = (volatile struct mlx4_wqe_ctrl_seg *)
+			mlx4_get_send_wqe(sq, head_idx);
+	dseg = (volatile struct mlx4_wqe_data_seg *)
+			((uintptr_t)ctrl + sizeof(struct mlx4_wqe_ctrl_seg));
 	*pctrl = ctrl;
 	/* Fill the data segments with buffer information. */
 	for (sbuf = buf; sbuf != NULL; sbuf = sbuf->next, dseg++) {
 		addr = rte_pktmbuf_mtod(sbuf, uintptr_t);
 		rte_prefetch0((volatile void *)addr);
 		/* Handle WQE wraparound. */
-		if (dseg >= (struct mlx4_wqe_data_seg *)sq->eob)
-			dseg = (struct mlx4_wqe_data_seg *)sq->buf;
+		if (dseg >= (volatile struct mlx4_wqe_data_seg *)sq->eob)
+			dseg = (volatile struct mlx4_wqe_data_seg *)sq->buf;
 		dseg->addr = rte_cpu_to_be_64(addr);
 		/* Memory region key (big endian) for this memory pool. */
 		lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(sbuf));
@@ -395,8 +397,8 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
 		struct txq_elt *elt = &(*txq->elts)[elts_head];
 		uint32_t owner_opcode = MLX4_OPCODE_SEND;
-		struct mlx4_wqe_ctrl_seg *ctrl;
-		struct mlx4_wqe_data_seg *dseg;
+		volatile struct mlx4_wqe_ctrl_seg *ctrl;
+		volatile struct mlx4_wqe_data_seg *dseg;
 		union {
 			uint32_t flags;
 			uint16_t flags16[2];
@@ -433,15 +435,18 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				break;
 			}
 			/* Get the control and data entries of the WQE. */
-			ctrl = (struct mlx4_wqe_ctrl_seg *)
+			ctrl = (volatile struct mlx4_wqe_ctrl_seg *)
 					mlx4_get_send_wqe(sq, head_idx);
-			dseg = (struct mlx4_wqe_data_seg *)((uintptr_t)ctrl +
+			dseg = (volatile struct mlx4_wqe_data_seg *)
+					((uintptr_t)ctrl +
 					sizeof(struct mlx4_wqe_ctrl_seg));
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			rte_prefetch0((volatile void *)addr);
 			/* Handle WQE wraparound. */
-			if (dseg >= (struct mlx4_wqe_data_seg *)sq->eob)
-				dseg = (struct mlx4_wqe_data_seg *)sq->buf;
+			if (dseg >=
+				(volatile struct mlx4_wqe_data_seg *)sq->eob)
+				dseg = (volatile struct mlx4_wqe_data_seg *)
+						sq->buf;
 			dseg->addr = rte_cpu_to_be_64(addr);
 			/* Memory region key (big endian). */
 			lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(buf));
@@ -633,7 +638,7 @@ rxq_cq_to_ol_flags(uint32_t flags, int csum, int csum_l2tun)
  *   CQE checksum information.
  */
 static inline uint32_t
-mlx4_cqe_flags(struct mlx4_cqe *cqe, int csum, int csum_l2tun)
+mlx4_cqe_flags(volatile struct mlx4_cqe *cqe, int csum, int csum_l2tun)
 {
 	uint32_t flags = 0;
 
@@ -666,13 +671,13 @@ mlx4_cqe_flags(struct mlx4_cqe *cqe, int csum, int csum_l2tun)
  *   Number of bytes of the CQE, 0 in case there is no completion.
  */
 static unsigned int
-mlx4_cq_poll_one(struct rxq *rxq, struct mlx4_cqe **out)
+mlx4_cq_poll_one(struct rxq *rxq, volatile struct mlx4_cqe **out)
 {
 	int ret = 0;
-	struct mlx4_cqe *cqe = NULL;
+	volatile struct mlx4_cqe *cqe = NULL;
 	struct mlx4_cq *cq = &rxq->mcq;
 
-	cqe = (struct mlx4_cqe *)mlx4_get_cqe(cq, cq->cons_index);
+	cqe = (volatile struct mlx4_cqe *)mlx4_get_cqe(cq, cq->cons_index);
 	if (!!(cqe->owner_sr_opcode & MLX4_CQE_OWNER_MASK) ^
 	    !!(cq->cons_index & cq->cqe_cnt))
 		goto out;
@@ -717,7 +722,7 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	int len = 0;
 
 	while (pkts_n) {
-		struct mlx4_cqe *cqe;
+		volatile struct mlx4_cqe *cqe;
 		uint32_t idx = rq_ci & wr_cnt;
 		struct rte_mbuf *rep = (*rxq->elts)[idx];
 		volatile struct mlx4_wqe_data_seg *scat = &(*rxq->wqes)[idx];

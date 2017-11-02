@@ -80,14 +80,14 @@ enum {
 
 /* Send queue information. */
 struct mlx4_sq {
-	uint8_t *buf; /**< SQ buffer. */
-	uint8_t *eob; /**< End of SQ buffer */
+	volatile uint8_t *buf; /**< SQ buffer. */
+	volatile uint8_t *eob; /**< End of SQ buffer */
 	uint32_t head; /**< SQ head counter in units of TXBBS. */
 	uint32_t tail; /**< SQ tail counter in units of TXBBS. */
 	uint32_t txbb_cnt; /**< Num of WQEBB in the Q (should be ^2). */
 	uint32_t txbb_cnt_mask; /**< txbbs_cnt mask (txbb_cnt is ^2). */
 	uint32_t headroom_txbbs; /**< Num of txbbs that should be kept free. */
-	uint32_t *db; /**< Pointer to the doorbell. */
+	volatile uint32_t *db; /**< Pointer to the doorbell. */
 	uint32_t doorbell_qpn; /**< qp number to write to the doorbell. */
 };
 
@@ -100,11 +100,11 @@ struct mlx4_sq {
 
 /* Completion queue information. */
 struct mlx4_cq {
-	void *cq_uar; /**< CQ user access region. */
-	void *cq_db_reg; /**< CQ doorbell register. */
-	uint32_t *set_ci_db; /**< Pointer to the completion queue doorbell. */
-	uint32_t *arm_db; /**< Pointer to doorbell for arming Rx events. */
-	uint8_t *buf; /**< Pointer to the completion queue buffer. */
+	volatile void *cq_uar; /**< CQ user access region. */
+	volatile void *cq_db_reg; /**< CQ doorbell register. */
+	volatile uint32_t *set_ci_db; /**< Pointer to the CQ doorbell. */
+	volatile uint32_t *arm_db; /**< Arming Rx events doorbell. */
+	volatile uint8_t *buf; /**< Pointer to the completion queue buffer. */
 	uint32_t cqe_cnt; /**< Number of entries in the queue. */
 	uint32_t cqe_64:1; /**< CQ entry size is 64 bytes. */
 	uint32_t cons_index; /**< Last queue entry that was handled. */
@@ -128,10 +128,10 @@ struct mlx4_cq {
  * @return
  *   Pointer to CQE entry.
  */
-static inline struct mlx4_cqe *
+static inline volatile struct mlx4_cqe *
 mlx4_get_cqe(struct mlx4_cq *cq, uint32_t index)
 {
-	return (struct mlx4_cqe *)(cq->buf +
+	return (volatile struct mlx4_cqe *)(cq->buf +
 				   ((index & (cq->cqe_cnt - 1)) <<
 				    (5 + cq->cqe_64)) +
 				   (cq->cqe_64 << 5));
