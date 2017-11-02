@@ -14362,7 +14362,7 @@ cmd_ddp_info_parsed(
 	uint32_t dev_num = 0;
 	struct rte_pmd_i40e_ddp_device_id *devs;
 	uint32_t proto_num = 0;
-	struct rte_pmd_i40e_proto_info *proto;
+	struct rte_pmd_i40e_proto_info *proto = NULL;
 	uint32_t pctype_num = 0;
 	struct rte_pmd_i40e_ptype_info *pctype;
 	uint32_t ptype_num = 0;
@@ -14541,9 +14541,10 @@ no_print_pctypes:
 	free(ptype);
 	printf("\n");
 
-	free(proto);
 	ret = 0;
 no_print_return:
+	if (proto)
+		free(proto);
 #endif
 	if (ret == -ENOTSUP)
 		printf("Function not supported in PMD driver\n");
