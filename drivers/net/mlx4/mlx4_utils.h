@@ -34,6 +34,7 @@
 #ifndef MLX4_UTILS_H_
 #define MLX4_UTILS_H_
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 
