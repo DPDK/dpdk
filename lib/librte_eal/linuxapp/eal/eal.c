@@ -807,6 +807,15 @@ rte_eal_init(int argc, char **argv)
 	/* autodetect the iova mapping mode (default is iova_pa) */
 	rte_eal_get_configuration()->iova_mode = rte_bus_get_iommu_class();
 
+	/* Workaround for KNI which requires physical address to work */
+	if (rte_eal_get_configuration()->iova_mode == RTE_IOVA_VA &&
+			rte_eal_check_module("rte_kni") == 1) {
+		rte_eal_get_configuration()->iova_mode = RTE_IOVA_PA;
+		RTE_LOG(WARNING, EAL,
+			"Some devices want IOVA as VA but PA will be used because.. "
+			"KNI module inserted\n");
+	}
+
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
 			eal_hugepage_info_init() < 0) {
