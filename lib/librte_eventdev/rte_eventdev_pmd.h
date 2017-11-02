@@ -481,7 +481,7 @@ struct rte_event_eth_rx_adapter_queue_conf *queue_conf;
  *   Ethernet device receive queue index
  *
  * @param queue_conf
- *  Additonal configuration structure
+ *  Additional configuration structure
 
  * @return
  *   - 0: Success, ethernet receive queue added successfully.

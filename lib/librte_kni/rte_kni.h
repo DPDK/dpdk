@@ -118,7 +118,7 @@ void rte_kni_init(unsigned int max_kni_ifaces);
  * elements for each KNI interface allocated.
  *
  * @param pktmbuf_pool
- *  The mempool for allocting mbufs for packets.
+ *  The mempool for allocating mbufs for packets.
  * @param conf
  *  The pointer to the configurations of the KNI device.
  * @param ops

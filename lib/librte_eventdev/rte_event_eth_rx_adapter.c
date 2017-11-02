@@ -67,7 +67,7 @@ struct rte_event_eth_rx_adapter {
 	struct rte_eth_event_enqueue_buffer event_enqueue_buffer;
 	/* Per adapter stats */
 	struct rte_event_eth_rx_adapter_stats stats;
-	/* Block count, counts upto BLOCK_CNT_THRESHOLD */
+	/* Block count, counts up to BLOCK_CNT_THRESHOLD */
 	uint16_t enq_block_count;
 	/* Block start ts */
 	uint64_t rx_enq_block_start_ts;

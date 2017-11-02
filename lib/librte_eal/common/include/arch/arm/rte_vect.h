@@ -136,7 +136,7 @@ vgetq_lane_p64(poly64x2_t x, const int lane)
 #endif
 
 /*
- * If (0 <= index <= 15), then call the ASIMD ext intruction on the
+ * If (0 <= index <= 15), then call the ASIMD ext instruction on the
  * 128 bit regs v0 and v1 with the appropriate index.
  *
  * Else returns a zero vector.
