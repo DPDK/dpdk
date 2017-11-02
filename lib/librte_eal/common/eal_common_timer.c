@@ -97,8 +97,7 @@ void rte_delay_us_callback_register(void (*userfunc)(unsigned int))
 	rte_delay_us = userfunc;
 }
 
-static void __attribute__((constructor))
-rte_timer_init(void)
+RTE_INIT(rte_timer_init)
 {
 	/* set rte_delay_us_block as a delay function */
 	rte_delay_us_callback_register(rte_delay_us_block);

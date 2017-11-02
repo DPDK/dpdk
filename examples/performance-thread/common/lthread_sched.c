@@ -117,8 +117,7 @@ uint64_t diag_mask;
 
 
 /* constructor */
-void lthread_sched_ctor(void) __attribute__ ((constructor));
-void lthread_sched_ctor(void)
+RTE_INIT(lthread_sched_ctor)
 {
 	memset(schedcore, 0, sizeof(schedcore));
 	rte_atomic16_init(&num_schedulers);

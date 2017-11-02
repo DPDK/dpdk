@@ -336,29 +336,6 @@ enum rte_iova_mode rte_eal_iova_mode(void);
 const char *
 rte_eal_mbuf_default_mempool_ops(void);
 
-/**
- * Run function before main() with low priority.
- *
- * The constructor will be run after prioritized constructors.
- *
- * @param func
- *   Constructor function.
- */
-#define RTE_INIT(func) \
-static void __attribute__((constructor, used)) func(void)
-
-/**
- * Run function before main() with high priority.
- *
- * @param func
- *   Constructor function.
- * @param prio
- *   Priority number must be above 100.
- *   Lowest number is the first to run.
- */
-#define RTE_INIT_PRIO(func, prio) \
-static void __attribute__((constructor(prio), used)) func(void)
-
 #ifdef __cplusplus
 }
 #endif

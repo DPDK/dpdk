@@ -37,8 +37,7 @@
 
 void *(*rte_memcpy_ptr)(void *dst, const void *src, size_t n) = NULL;
 
-static void __attribute__((constructor))
-rte_memcpy_init(void)
+RTE_INIT(rte_memcpy_init)
 {
 #ifdef CC_SUPPORT_AVX512F
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F)) {

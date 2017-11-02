@@ -109,6 +109,29 @@ typedef uint16_t unaligned_uint16_t;
 #define RTE_SET_USED(x) (void)(x)
 
 /**
+ * Run function before main() with low priority.
+ *
+ * The constructor will be run after prioritized constructors.
+ *
+ * @param func
+ *   Constructor function.
+ */
+#define RTE_INIT(func) \
+static void __attribute__((constructor, used)) func(void)
+
+/**
+ * Run function before main() with high priority.
+ *
+ * @param func
+ *   Constructor function.
+ * @param prio
+ *   Priority number must be above 100.
+ *   Lowest number is the first to run.
+ */
+#define RTE_INIT_PRIO(func, prio) \
+static void __attribute__((constructor(prio), used)) func(void)
+
+/**
  * Force a function to be inlined
  */
 #define __rte_always_inline inline __attribute__((always_inline))

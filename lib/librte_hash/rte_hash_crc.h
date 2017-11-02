@@ -480,8 +480,7 @@ rte_hash_crc_set_alg(uint8_t alg)
 }
 
 /* Setting the best available algorithm */
-static inline void __attribute__((constructor))
-rte_hash_crc_init_alg(void)
+RTE_INIT(rte_hash_crc_init_alg)
 {
 	rte_hash_crc_set_alg(CRC32_SSE42_x64);
 }

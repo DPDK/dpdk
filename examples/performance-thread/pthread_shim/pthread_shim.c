@@ -202,10 +202,7 @@ static void *__libc_dl_handle = RTLD_NEXT;
  * The constructor function initialises the
  * function pointers for pthread library functions
  */
-void
-pthread_intercept_ctor(void)__attribute__((constructor));
-void
-pthread_intercept_ctor(void)
+RTE_INIT(pthread_intercept_ctor)
 {
 	override = 0;
 	/*

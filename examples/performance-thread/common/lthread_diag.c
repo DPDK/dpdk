@@ -296,8 +296,7 @@ _lthread_diag_default_cb(uint64_t time, struct lthread *lt, int diag_event,
 /*
  * plug in default diag callback with mask off
  */
-void _lthread_diag_ctor(void)__attribute__((constructor));
-void _lthread_diag_ctor(void)
+RTE_INIT(_lthread_diag_ctor)
 {
 	diag_cb = _lthread_diag_default_cb;
 	diag_mask = 0;

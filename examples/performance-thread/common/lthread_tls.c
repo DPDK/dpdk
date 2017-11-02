@@ -62,9 +62,7 @@ RTE_DEFINE_PER_LTHREAD(void *, dummy);
 
 static struct lthread_key key_table[LTHREAD_MAX_KEYS];
 
-void lthread_tls_ctor(void) __attribute__((constructor));
-
-void lthread_tls_ctor(void)
+RTE_INIT(thread_tls_ctor)
 {
 	key_pool = NULL;
 	key_pool_init = 0;

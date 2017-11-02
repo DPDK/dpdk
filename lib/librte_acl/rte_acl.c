@@ -120,8 +120,7 @@ rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx, enum rte_acl_classify_alg alg)
  * if both conditions are met:
  * at build time compiler supports AVX2 and target cpu supports AVX2.
  */
-static void __attribute__((constructor))
-rte_acl_init(void)
+RTE_INIT(rte_acl_init)
 {
 	enum rte_acl_classify_alg alg = RTE_ACL_CLASSIFY_DEFAULT;
 

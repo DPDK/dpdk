@@ -205,8 +205,7 @@ rte_net_crc_calc(const void *data,
 }
 
 /* Select highest available crc algorithm as default one */
-static inline void __attribute__((constructor))
-rte_net_crc_init(void)
+RTE_INIT(rte_net_crc_init)
 {
 	enum rte_net_crc_alg alg = RTE_NET_CRC_SCALAR;
 
