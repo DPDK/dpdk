@@ -114,9 +114,9 @@ printf "\
 " "$include" "$code" > "${temp}" &&
 if ${CC} ${CPPFLAGS} ${EXTRA_CPPFLAGS} ${CFLAGS} ${EXTRA_CFLAGS} \
 	${AUTO_CONFIG_CFLAGS} \
-	-c -o /dev/null "${temp}" 1>&${out} 2>&${err}
+	-c -o ${temp}.o "${temp}" 1>&${out} 2>&${err}
 then
-	rm -f "${temp}"
+	rm -f "${temp}" "${temp}.o"
 	printf "\
 #ifndef %s
 #define %s 1
@@ -125,7 +125,7 @@ then
 " "${macro}" "${macro}" "${macro}" >> "${file}" &&
 	printf 'Defining %s.\n' "${macro}"
 else
-	rm -f "${temp}"
+	rm -f "${temp}" "${temp}.o"
 	printf "\
 /* %s is not defined. */
 
