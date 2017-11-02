@@ -168,7 +168,7 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 		/*
 		 * Make sure we read the CQE after we read the ownership bit.
 		 */
-		rte_rmb();
+		rte_io_rmb();
 #ifndef NDEBUG
 		if (unlikely((cqe->owner_sr_opcode & MLX4_CQE_OPCODE_MASK) ==
 			     MLX4_CQE_OPCODE_ERROR)) {
@@ -196,14 +196,9 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 	} while (1);
 	if (unlikely(pkts == 0))
 		return 0;
-	/*
-	 * Update CQ.
-	 * To prevent CQ overflow we first update CQ consumer and only then
-	 * the ring consumer.
-	 */
+	/* Update CQ. */
 	cq->cons_index = cons_index;
 	*cq->set_ci_db = rte_cpu_to_be_32(cq->cons_index & MLX4_CQ_DB_CI_MASK);
-	rte_wmb();
 	sq->tail = sq->tail + nr_txbbs;
 	/* Update the list of packets posted for transmission. */
 	elts_comp -= pkts;
@@ -320,6 +315,7 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 		 * control segment.
 		 */
 		if ((uintptr_t)dseg & (uintptr_t)(MLX4_TXBB_SIZE - 1)) {
+#if RTE_CACHE_LINE_SIZE < 64
 			/*
 			 * Need a barrier here before writing the byte_count
 			 * fields to make sure that all the data is visible
@@ -330,6 +326,7 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 			 * data, and end up sending the wrong data.
 			 */
 			rte_io_wmb();
+#endif /* RTE_CACHE_LINE_SIZE */
 			dseg->byte_count = byte_count;
 		} else {
 			/*
@@ -471,8 +468,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				break;
 			}
 #endif /* NDEBUG */
-			/* Need a barrier here before byte count store. */
-			rte_io_wmb();
+			/* Never be TXBB aligned, no need compiler barrier. */
 			dseg->byte_count = rte_cpu_to_be_32(buf->data_len);
 			/* Fill the control parameters for this packet. */
 			ctrl->fence_size = (WQE_ONE_DATA_SEG_SIZE >> 4) & 0x3f;
@@ -534,7 +530,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * setting ownership bit (because HW can start
 		 * executing as soon as we do).
 		 */
-		rte_wmb();
+		rte_io_wmb();
 		ctrl->owner_opcode = rte_cpu_to_be_32(owner_opcode |
 					      ((sq->head & sq->txbb_cnt) ?
 						       MLX4_BIT_WQE_OWN : 0));
