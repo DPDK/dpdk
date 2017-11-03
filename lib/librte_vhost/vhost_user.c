@@ -755,15 +755,12 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring kick idx:%d file:%d\n", file.index, file.fd);
 
-	/*
-	 * Interpret ring addresses only when ring is started and enabled.
-	 * This is now if protocol features aren't supported.
-	 */
-	if (!(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES))) {
-		*pdev = dev = translate_ring_addresses(dev, file.index);
-		if (!dev)
-			return;
-	}
+	/* Interpret ring addresses only when ring is started. */
+	dev = translate_ring_addresses(dev, file.index);
+	if (!dev)
+		return;
+
+	*pdev = dev;
 
 	vq = dev->virtqueue[file.index];
 
@@ -845,28 +842,14 @@ vhost_user_get_vring_base(struct virtio_net *dev,
  * enable the virtio queue pair.
  */
 static int
-vhost_user_set_vring_enable(struct virtio_net **pdev,
+vhost_user_set_vring_enable(struct virtio_net *dev,
 			    VhostUserMsg *msg)
 {
-	struct virtio_net *dev = *pdev;
 	int enable = (int)msg->payload.state.num;
 
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"set queue enable: %d to qp idx: %d\n",
 		enable, msg->payload.state.index);
-
-	/*
-	 * Interpret ring addresses only when ring is started and enabled.
-	 * This is now if protocol features are supported.
-	 */
-	if (enable && (dev->features &
-				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))) {
-		dev = translate_ring_addresses(dev, msg->payload.state.index);
-		if (!dev)
-			return -1;
-
-		*pdev = dev;
-	}
 
 	if (dev->notify_ops->vring_state_changed)
 		dev->notify_ops->vring_state_changed(dev->vid,
@@ -1315,7 +1298,7 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_SET_VRING_ENABLE:
-		vhost_user_set_vring_enable(&dev, &msg);
+		vhost_user_set_vring_enable(dev, &msg);
 		break;
 	case VHOST_USER_SEND_RARP:
 		vhost_user_send_rarp(dev, &msg);
