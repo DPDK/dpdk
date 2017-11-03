@@ -92,8 +92,17 @@ enum rte_page_sizes {
  */
 #define __rte_cache_min_aligned __rte_aligned(RTE_CACHE_LINE_MIN_SIZE)
 
-typedef uint64_t phys_addr_t; /**< Physical address definition. */
+typedef uint64_t phys_addr_t; /**< Physical address. */
 #define RTE_BAD_PHYS_ADDR ((phys_addr_t)-1)
+/**
+ * IO virtual address type.
+ * When the physical addressing mode (IOVA as PA) is in use,
+ * the translation from an IO virtual address (IOVA) to a physical address
+ * is a direct mapping, i.e. the same value.
+ * Otherwise, in virtual mode (IOVA as VA), an IOMMU may do the translation.
+ */
+typedef uint64_t rte_iova_t;
+#define RTE_BAD_IOVA ((rte_iova_t)-1)
 
 /**
  * Physical memory segment descriptor.
