@@ -62,7 +62,6 @@ DPDK_2.0 {
 	rte_malloc_validate;
 	rte_malloc_virt2phy;
 	rte_mem_lock_page;
-	rte_mem_phy2mch;
 	rte_mem_virt2phy;
 	rte_memdump;
 	rte_memory_get_nchannel;
