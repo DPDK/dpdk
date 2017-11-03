@@ -422,7 +422,6 @@ F: doc/guides/nics/features/fm10k*.ini
 
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
-M: Nelio Laranjeiro <nelio.laranjeiro@6wind.com>
 F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
 F: doc/guides/nics/features/mlx4.ini
