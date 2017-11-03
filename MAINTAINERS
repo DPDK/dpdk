@@ -727,7 +727,9 @@ Flow Classify - EXPERIMENTAL
 M: Bernard Iremonger <bernard.iremonger@intel.com>
 F: lib/librte_flow_classify/
 F: test/test/test_flow_classify*
+F: doc/guides/prog_guide/flow_classify_lib.rst
 F: examples/flow_classify/
+F: doc/guides/sample_app_ug/flow_classify.rst
 
 Distributor
 M: Bruce Richardson <bruce.richardson@intel.com>

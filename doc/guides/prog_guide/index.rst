@@ -55,6 +55,7 @@ Programmer's Guide
     member_lib
     lpm_lib
     lpm6_lib
+    flow_classify_lib
     packet_distrib_lib
     reorder_lib
     ip_fragment_reassembly_lib

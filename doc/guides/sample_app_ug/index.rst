@@ -43,6 +43,7 @@ Sample Applications User Guides
     hello_world
     skeleton
     rxtx_callbacks
+    flow_classify
     flow_filtering
     ip_frag
     ipv4_multicast
