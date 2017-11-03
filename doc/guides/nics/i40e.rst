@@ -478,6 +478,11 @@ enabled using the steps below.
 
       setpci -s <XX:XX.X> a8.w=<value>
 
+Vlan strip of VF
+~~~~~~~~~~~~~~~~
+
+The VF vlan strip function is only supported in the i40e kernel driver >= 2.1.26.
+
 High Performance of Small Packets on 40G NIC
 --------------------------------------------
 
