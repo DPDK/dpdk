@@ -76,6 +76,5 @@ executable('dpdk-testpmd',
 	c_args: '-DALLOW_EXPERIMENTAL_API',
 	link_whole: link_libs,
 	dependencies: dep_objs,
-	link_args: eal_extra_link_arg, # add -ldl for linux, -lexecinfo for BSD
 	install_rpath: join_paths(get_option('prefix'), driver_install_path),
 	install: true)

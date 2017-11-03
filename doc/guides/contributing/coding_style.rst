@@ -846,6 +846,15 @@ headers
 	source files, these should be specified using the meson ``files()``
 	function.
 
+includes:
+	**Default Value = []**.
+	Used to indicate any additional header file paths which should be
+	added to the header search path for other libs depending on this
+	library. EAL uses this so that other libraries building against it
+	can find the headers in subdirectories of the main EAL directory. The
+	base directory of each library is always given in the include path,
+	it does not need to be specified here.
+
 name
 	**Default Value = library name derived from the directory name**.
 	If a library's .so or .a file differs from that given in the directory

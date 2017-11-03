@@ -55,6 +55,6 @@ foreach flag: error_cflags
 endforeach
 
 base_lib = static_library('ixgbe_base', sources,
-	dependencies: rte_eal,
+	dependencies: dep_rte_eal,
 	c_args: c_args)
 base_objs = base_lib.extract_all_objects()

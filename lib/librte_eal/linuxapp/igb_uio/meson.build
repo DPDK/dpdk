@@ -29,6 +29,12 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+kernel_dir = get_option('kernel_dir')
+if kernel_dir == ''
+	kernel_version = run_command('uname', '-r').stdout().strip()
+	kernel_dir = '/lib/modules/' + kernel_version + '/build'
+endif
+
 mkfile = custom_target('igb_uio_makefile',
 	output: 'Makefile',
 	command: ['touch', '@OUTPUT@'])
@@ -43,4 +49,4 @@ custom_target('igb_uio',
 			'/../../common/include',
 		'modules'],
 	depends: mkfile,
-	build_by_default: true)
+	build_by_default: get_option('enable_kmods'))

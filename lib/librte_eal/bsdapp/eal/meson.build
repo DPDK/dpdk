@@ -29,7 +29,9 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-sources = ['eal_alarm.c',
+env_objs = []
+env_headers = []
+env_sources = files('eal_alarm.c',
 		'eal_debug.c',
 		'eal_hugepage_info.c',
 		'eal_interrupts.c',
@@ -38,36 +40,4 @@ sources = ['eal_alarm.c',
 		'eal_timer.c',
 		'eal.c',
 		'eal_memory.c',
-]
-
-eal_extra_link_arg = '-lexecinfo'
-
-eal_inc += include_directories('../../../librte_compat')
-if get_option('per_library_versions')
-	lib_version = '@0@.1'.format(version)
-	so_version = '@0@'.format(version)
-else
-	pver = meson.project_version().split('.')
-	lib_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
-	so_version = lib_version
-endif
-
-eal_lib = library('rte_eal', sources, eal_common_sources, eal_common_arch_sources,
-			dependencies: dependency('threads'),
-			include_directories : eal_inc,
-			version: lib_version,
-			soversion: so_version,
-			c_args: ['-D_GNU_SOURCE', '-DALLOW_EXPERIMENTAL_API'],
-			link_depends: version_map,
-			link_args: [eal_extra_link_arg,
-				'-Wl,--version-script=' + version_map],
-			install: true
 )
-
-dpdk_libraries += eal_lib
-dpdk_extra_ldflags += ['-pthread', eal_extra_link_arg]
-
-rte_eal = declare_dependency(link_with: eal_lib,
-		include_directories: eal_inc,
-		dependencies: dependency('threads'))
-set_variable('dep_rte_eal', rte_eal)

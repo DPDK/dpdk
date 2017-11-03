@@ -32,7 +32,9 @@
 eal_inc += include_directories('include', '../../../librte_compat')
 install_subdir('include/exec-env', install_dir: get_option('includedir'))
 
-sources = ['eal_alarm.c',
+env_objs = []
+env_headers = []
+env_sources = files('eal_alarm.c',
 		'eal_debug.c',
 		'eal_hugepage_info.c',
 		'eal_interrupts.c',
@@ -44,38 +46,8 @@ sources = ['eal_alarm.c',
 		'eal_vfio_mp_sync.c',
 		'eal.c',
 		'eal_memory.c',
-]
+)
 
-eal_extra_link_arg = '-ldl'
 if has_libnuma == 1
 	dpdk_conf.set10('RTE_EAL_NUMA_AWARE_HUGEPAGES', true)
 endif
-
-if get_option('per_library_versions')
-	lib_version = '@0@.1'.format(version)
-	so_version = '@0@'.format(version)
-else
-	pver = meson.project_version().split('.')
-	lib_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
-	so_version = lib_version
-endif
-
-eal_lib = library('rte_eal', sources, eal_common_sources, eal_common_arch_sources,
-			dependencies: dependency('threads'),
-			include_directories : eal_inc,
-			version: lib_version,
-			soversion: so_version,
-			c_args: ['-D_GNU_SOURCE', '-DALLOW_EXPERIMENTAL_API'],
-			link_depends: version_map,
-			link_args: [eal_extra_link_arg,
-				'-Wl,--version-script=' + version_map],
-			install: true
-)
-
-dpdk_libraries += eal_lib
-dpdk_extra_ldflags += ['-pthread', eal_extra_link_arg]
-
-rte_eal = declare_dependency(link_with: eal_lib,
-		include_directories: eal_inc,
-		dependencies: dependency('threads'))
-set_variable('dep_rte_eal', rte_eal)

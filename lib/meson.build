@@ -29,9 +29,6 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# special case for eal, not a simple lib, and compat, just a header
-subdir('librte_eal')
-subdir('librte_compat')
 
 # process all libraries equally, as far as possible
 # "core" libs first, then others alphebetically as far as possible
@@ -39,7 +36,8 @@ subdir('librte_compat')
 # sometimes skip deps that would be implied by others, e.g. if mempool is
 # given as a dep, no need to mention ring. This is especially true for the
 # core libs which are widely reused, so their deps are kept to a minimum.
-libraries = ['ring', 'mempool', 'mbuf', 'net', 'ether', 'pci', # core
+libraries = [ 'compat', # just a header, used for versioning
+	'eal', 'ring', 'mempool', 'mbuf', 'net', 'ether', 'pci', # core
 	'metrics', # bitrate/latency stats depends on this
 	'hash',    # efd depends on this
 	'kvargs',  # cryptodev depends on this
@@ -62,13 +60,18 @@ foreach l:libraries
 	allow_experimental_apis = false
 	sources = []
 	headers = []
+	includes = []
 	cflags = []
-	objs = [] # other object files to link against, used e.g. for instruction-
-	          # optimized versions of code
+	objs = [] # other object files to link against, used e.g. for
+	          # instruction-set optimized versions of code
+
 	# use "deps" for internal DPDK dependencies, and "ext_deps" for
 	# external package/library requirements
-	deps = ['eal']
 	ext_deps = []
+	deps = ['eal']   # eal is standard dependency except for itself
+	if l == 'eal'
+		deps = []
+	endif
 
 	dir_name = 'librte_' + l
 	subdir(dir_name)
@@ -77,43 +80,52 @@ foreach l:libraries
 		dpdk_conf.set('RTE_LIBRTE_' + name.to_upper(), 1)
 		install_headers(headers)
 
-		dep_objs = ext_deps
-		foreach d:deps
-			dep_objs += [get_variable('dep_rte_' + d)]
-		endforeach
-
-		if allow_experimental_apis
-			cflags += '-DALLOW_EXPERIMENTAL_API'
-		endif
-
-		if get_option('per_library_versions')
-			lib_version = '@0@.1'.format(version)
-			so_version = '@0@'.format(version)
-		else
-			pver = meson.project_version().split('.')
-			lib_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
-			so_version = lib_version
-		endif
-
-		version_map = '@0@/@1@/rte_@2@_version.map'.format(
-				meson.current_source_dir(), dir_name, name)
 		libname = 'rte_' + name
-		lib = library(libname,
-				sources,
-				objects: objs,
-				c_args: cflags,
-				dependencies: dep_objs,
-				include_directories: include_directories(dir_name),
-				link_args: '-Wl,--version-script=' + version_map,
-				link_depends: version_map,
-				version: lib_version,
-				soversion: so_version,
-				install: true)
-		dep = declare_dependency(link_with: lib,
-				include_directories: include_directories(dir_name),
-				dependencies: dep_objs)
-		set_variable('dep_' + libname, dep)
+		includes += include_directories(dir_name)
 
-		dpdk_libraries = [lib] + dpdk_libraries
-	endif
+		if sources.length() == 0
+			# if no C files, just set a dependency on header path
+			dep = declare_dependency(include_directories: includes)
+		else
+			dep_objs = ext_deps
+			foreach d:deps
+				dep_objs += [get_variable('dep_rte_' + d)]
+			endforeach
+
+			if allow_experimental_apis
+				cflags += '-DALLOW_EXPERIMENTAL_API'
+			endif
+
+			if get_option('per_library_versions')
+				lib_version = '@0@.1'.format(version)
+				so_version = '@0@'.format(version)
+			else
+				prj_ver = meson.project_version().split('.')
+				lib_version = '@0@.@1@'.format(
+						prj_ver.get(0), prj_ver.get(1))
+				so_version = lib_version
+			endif
+
+			version_map = '@0@/@1@/rte_@2@_version.map'.format(
+					meson.current_source_dir(), dir_name, name)
+			lib = library(libname,
+					sources,
+					objects: objs,
+					c_args: cflags,
+					dependencies: dep_objs,
+					include_directories: includes,
+					link_args: '-Wl,--version-script=' + version_map,
+					link_depends: version_map,
+					version: lib_version,
+					soversion: so_version,
+					install: true)
+			dep = declare_dependency(link_with: lib,
+					include_directories: includes,
+					dependencies: dep_objs)
+
+			dpdk_libraries = [lib] + dpdk_libraries
+		endif # sources.length() > 0
+
+		set_variable('dep_' + libname, dep)
+	endif # if build
 endforeach

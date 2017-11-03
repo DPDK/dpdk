@@ -33,9 +33,23 @@
 machine = get_option('machine')
 dpdk_conf.set('RTE_MACHINE', machine)
 add_project_arguments('-march=@0@'.format(machine), language: 'c')
+
+# use pthreads
+add_project_link_arguments('-pthread', language: 'c')
+dpdk_extra_ldflags += '-pthread'
+
 # some libs depend on maths lib
 add_project_link_arguments('-lm', language: 'c')
 dpdk_extra_ldflags += '-lm'
+
+# for linux link against dl, for bsd execinfo
+if host_machine.system() == 'linux'
+	link_lib = 'dl'
+else
+	link_lib = 'execinfo'
+endif
+add_project_link_arguments('-l' + link_lib, language: 'c')
+dpdk_extra_ldflags += '-l' + link_lib
 
 # check for libraries used in multiple places in DPDK
 has_libnuma = 0
