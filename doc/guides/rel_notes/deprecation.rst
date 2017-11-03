@@ -45,5 +45,11 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
+* i40e: The default flexible payload configuration which extracts the first 16
+  bytes of the payload for RSS will be deprecated starting from 18.02. If
+  required the previous behavior can be configured using existing flow
+  director APIs. There is no ABI/API break. This change will just remove a
+  global configuration setting and require explicit configuration.
+
 * librte_meter: The API will change to accommodate configuration profiles.
   Most of the API functions will have an additional opaque parameter.
