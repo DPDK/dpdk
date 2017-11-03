@@ -74,11 +74,14 @@ foreach class:driver_classes
 			endif
 
 			# get dependency objs from strings
-			dep_objs = []
+			shared_objs = []
+			static_objs = []
 			foreach d:deps
-				dep_objs += [get_variable('dep_rte_' + d)]
+				shared_objs += [get_variable('shared_rte_' + d)]
+				static_objs += [get_variable('static_rte_' + d)]
 			endforeach
-			dep_objs += ext_deps
+			shared_objs += ext_deps
+			static_objs += ext_deps
 			dpdk_extra_ldflags += pkgconfig_extra_libs
 
 			# generate pmdinfo sources
@@ -88,7 +91,7 @@ foreach class:driver_classes
 				out_filename = '@0@.pmd.c'.format(src.split('/')[-1])
 				tmp_lib = static_library('tmp_@0@'.format(src.underscorify()),
 					src, include_directories: includes,
-					dependencies: dep_objs,
+					dependencies: static_objs,
 					c_args: cflags)
 				sources += custom_target(out_filename,
 						command: [pmdinfo, tmp_lib.full_path(),
@@ -107,16 +110,27 @@ foreach class:driver_classes
 				so_version = lib_version
 			endif
 
-			# now build the driver itself, and add to the drivers list
+			# now build the static driver
 			lib_name = driver_name_fmt.format(name)
-			version_map = '@0@/@1@/@2@_version.map'.format(
-					meson.current_source_dir(),
-					drv_path, lib_name)
-			lib = library(lib_name,
+			static_lib = static_library(lib_name,
 				sources,
 				objects: objs,
 				include_directories: includes,
-				dependencies: dep_objs,
+				dependencies: static_objs,
+				c_args: cflags,
+				install: true)
+
+			# now build the shared driver
+			sources = []
+			objs += static_lib.extract_all_objects()
+			version_map = '@0@/@1@/@2@_version.map'.format(
+					meson.current_source_dir(),
+					drv_path, lib_name)
+			shared_lib = shared_library(lib_name,
+				sources,
+				objects: objs,
+				include_directories: includes,
+				dependencies: shared_objs,
 				c_args: cflags,
 				link_args: '-Wl,--version-script=' + version_map,
 				link_depends: version_map,
@@ -125,14 +139,19 @@ foreach class:driver_classes
 				install: true,
 				install_dir: driver_install_path)
 
-			dpdk_drivers += lib
-
 			# create a dependency object and add it to the global dictionary so
 			# testpmd or other built-in apps can find it if necessary
-			set_variable('dep_@0@'.format(lib_name),
-					declare_dependency(link_with: lib,
+			shared_dep = declare_dependency(link_with: shared_lib,
 					include_directories: includes,
-					dependencies: dep_objs))
+					dependencies: shared_objs)
+			static_dep = declare_dependency(link_with: static_lib,
+					include_directories: includes,
+					dependencies: static_objs)
+
+			dpdk_drivers += static_lib
+
+			set_variable('shared_@0@'.format(lib_name), shared_dep)
+			set_variable('static_@0@'.format(lib_name), static_dep)
 		endif # build
 	endforeach
 endforeach

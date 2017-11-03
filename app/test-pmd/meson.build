@@ -46,7 +46,7 @@ sources = files('cmdline.c',
 	'testpmd.c',
 	'txonly.c')
 
-deps = ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'meter']
+deps = ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'meter', 'bus_pci']
 if dpdk_conf.has('RTE_LIBRTE_PDUMP')
 	deps += 'pdump'
 endif
@@ -63,7 +63,7 @@ endif
 
 dep_objs = []
 foreach d:deps
-	dep_objs += get_variable('dep_rte_' + d)
+	dep_objs += get_variable(get_option('default_library') + '_rte_' + d)
 endforeach
 
 link_libs = []

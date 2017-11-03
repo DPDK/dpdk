@@ -51,6 +51,6 @@ foreach flag: error_cflags
 endforeach
 
 base_lib = static_library('i40e_base', sources,
-	dependencies: dep_rte_eal,
+	dependencies: static_rte_eal,
 	c_args: c_args)
 base_objs = base_lib.extract_all_objects()

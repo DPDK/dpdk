@@ -85,11 +85,14 @@ foreach l:libraries
 
 		if sources.length() == 0
 			# if no C files, just set a dependency on header path
-			dep = declare_dependency(include_directories: includes)
+			shared_dep = declare_dependency(include_directories: includes)
+			static_dep = shared_dep
 		else
-			dep_objs = ext_deps
+			shared_deps = ext_deps
+			static_deps = ext_deps
 			foreach d:deps
-				dep_objs += [get_variable('dep_rte_' + d)]
+				shared_deps += [get_variable('shared_rte_' + d)]
+				static_deps += [get_variable('static_rte_' + d)]
 			endforeach
 
 			if allow_experimental_apis
@@ -106,26 +109,42 @@ foreach l:libraries
 				so_version = lib_version
 			endif
 
-			version_map = '@0@/@1@/rte_@2@_version.map'.format(
-					meson.current_source_dir(), dir_name, name)
-			lib = library(libname,
+			# first build static lib
+			static_lib = static_library(libname,
 					sources,
 					objects: objs,
 					c_args: cflags,
-					dependencies: dep_objs,
+					dependencies: static_deps,
+					include_directories: includes,
+					install: true)
+			static_dep = declare_dependency(link_with: static_lib,
+					include_directories: includes,
+					dependencies: static_deps)
+
+			# then use pre-build objects to build shared lib
+			sources = []
+			objs += static_lib.extract_all_objects()
+			version_map = '@0@/@1@/rte_@2@_version.map'.format(
+					meson.current_source_dir(), dir_name, name)
+			shared_lib = shared_library(libname,
+					sources,
+					objects: objs,
+					c_args: cflags,
+					dependencies: shared_deps,
 					include_directories: includes,
 					link_args: '-Wl,--version-script=' + version_map,
 					link_depends: version_map,
 					version: lib_version,
 					soversion: so_version,
 					install: true)
-			dep = declare_dependency(link_with: lib,
+			shared_dep = declare_dependency(link_with: shared_lib,
 					include_directories: includes,
-					dependencies: dep_objs)
+					dependencies: shared_deps)
 
-			dpdk_libraries = [lib] + dpdk_libraries
+			dpdk_libraries = [shared_lib] + dpdk_libraries
 		endif # sources.length() > 0
 
-		set_variable('dep_' + libname, dep)
+		set_variable('shared_' + libname, shared_dep)
+		set_variable('static_' + libname, static_dep)
 	endif # if build
 endforeach

@@ -43,15 +43,8 @@ dpdk_libraries = []
 dpdk_drivers = []
 dpdk_extra_ldflags = []
 
-# for static libs, treat the drivers as regular libraries, otherwise
-# for shared libs, put them in a driver folder
-if get_option('default_library') == 'static'
-	driver_install_path = get_option('libdir')
-	eal_pmd_path = ''
-else
-	driver_install_path = join_paths(get_option('libdir'), 'dpdk/drivers')
-	eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
-endif
+driver_install_path = join_paths(get_option('libdir'), 'dpdk/drivers')
+eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
 
 # configure the build, and make sure configs here and in config folder are
 # able to be included in any file. We also store a global array of include dirs
@@ -80,18 +73,17 @@ configure_file(output: build_cfg,
 		install_dir: join_paths(get_option('includedir'),
 				get_option('include_subdir_arch')))
 
-# for static builds, include the drivers as libs, and also any
-# other dependent libs that DPDK needs to link against
-if get_option('default_library') == 'static'
-	dpdk_drivers = ['-Wl,--whole-archive'] + dpdk_drivers + ['-Wl,--no-whole-archive']
-	dpdk_libraries = dpdk_drivers + dpdk_libraries + dpdk_extra_ldflags
-endif
+# for static builds, include the drivers as libs and we need to "whole-archive"
+# them.
+dpdk_drivers = ['-Wl,--whole-archive'] + dpdk_drivers + ['-Wl,--no-whole-archive']
 
 pkg = import('pkgconfig')
 pkg.generate(name: meson.project_name(),
 	filebase: 'lib' + meson.project_name().to_lower(),
 	version: meson.project_version(),
 	libraries: dpdk_libraries,
+	libraries_private: dpdk_drivers + dpdk_libraries +
+			['-Wl,-Bdynamic'] + dpdk_extra_ldflags,
 	description: 'The Data Plane Development Kit (DPDK)',
 	subdirs: [get_option('include_subdir_arch'), '.'],
 	extra_cflags: ['-include', 'rte_config.h', '-march=@0@'.format(machine)]

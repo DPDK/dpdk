@@ -46,7 +46,7 @@ foreach example: get_option('examples').split(',')
 
 	dep_objs = ext_deps
 	foreach d:deps
-		dep_objs += [get_variable('dep_rte_' + d)]
+		dep_objs += [get_variable(get_option('default_library') + '_rte_' + d)]
 	endforeach
 	if allow_experimental_apis
 		cflags += '-DALLOW_EXPERIMENTAL_API'
