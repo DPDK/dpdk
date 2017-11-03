@@ -196,7 +196,6 @@ DPDK_17.11 {
 	rte_lcore_has_role;
 	rte_malloc_virt2iova;
 	rte_mem_virt2iova;
-	rte_memcpy_ptr;
 	rte_vfio_enable;
 	rte_vfio_is_enabled;
 	rte_vfio_noiommu_is_enabled;

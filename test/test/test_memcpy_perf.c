@@ -42,7 +42,6 @@
 #include <rte_malloc.h>
 
 #include <rte_memcpy.h>
-#include <rte_cpuflags.h>
 
 #include "test.h"
 
@@ -80,7 +79,13 @@ static size_t buf_sizes[TEST_VALUE_RANGE];
 #define TEST_BATCH_SIZE         100
 
 /* Data is aligned on this many bytes (power of 2) */
-static uint8_t alignment_unit = 16;
+#ifdef RTE_MACHINE_CPUFLAG_AVX512F
+#define ALIGNMENT_UNIT          64
+#elif defined RTE_MACHINE_CPUFLAG_AVX2
+#define ALIGNMENT_UNIT          32
+#else /* RTE_MACHINE_CPUFLAG */
+#define ALIGNMENT_UNIT          16
+#endif /* RTE_MACHINE_CPUFLAG */
 
 /*
  * Pointers used in performance tests. The two large buffers are for uncached
@@ -90,54 +95,25 @@ static uint8_t alignment_unit = 16;
 static uint8_t *large_buf_read, *large_buf_write;
 static uint8_t *small_buf_read, *small_buf_write;
 
-/* Initialise alignment_unit based on machine at run-time. */
-static void
-init_alignment_unit(void)
-{
-#ifdef CC_SUPPORT_AVX512
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F)) {
-		alignment_unit = 64;
-		return;
-	}
-#endif
-#ifdef CC_SUPPORT_AVX2
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2)) {
-		alignment_unit = 32;
-		return;
-	}
-#endif
-	alignment_unit = 16;
-}
-
 /* Initialise data buffers. */
 static int
 init_buffers(void)
 {
 	unsigned i;
 
-	init_alignment_unit();
-
-	large_buf_read = rte_malloc("memcpy",
-				    LARGE_BUFFER_SIZE + alignment_unit,
-				    alignment_unit);
+	large_buf_read = rte_malloc("memcpy", LARGE_BUFFER_SIZE + ALIGNMENT_UNIT, ALIGNMENT_UNIT);
 	if (large_buf_read == NULL)
 		goto error_large_buf_read;
 
-	large_buf_write = rte_malloc("memcpy",
-				     LARGE_BUFFER_SIZE + alignment_unit,
-				     alignment_unit);
+	large_buf_write = rte_malloc("memcpy", LARGE_BUFFER_SIZE + ALIGNMENT_UNIT, ALIGNMENT_UNIT);
 	if (large_buf_write == NULL)
 		goto error_large_buf_write;
 
-	small_buf_read = rte_malloc("memcpy",
-				    SMALL_BUFFER_SIZE + alignment_unit,
-				    alignment_unit);
+	small_buf_read = rte_malloc("memcpy", SMALL_BUFFER_SIZE + ALIGNMENT_UNIT, ALIGNMENT_UNIT);
 	if (small_buf_read == NULL)
 		goto error_small_buf_read;
 
-	small_buf_write = rte_malloc("memcpy",
-				     SMALL_BUFFER_SIZE + alignment_unit,
-				     alignment_unit);
+	small_buf_write = rte_malloc("memcpy", SMALL_BUFFER_SIZE + ALIGNMENT_UNIT, ALIGNMENT_UNIT);
 	if (small_buf_write == NULL)
 		goto error_small_buf_write;
 
@@ -177,7 +153,7 @@ static inline size_t
 get_rand_offset(size_t uoffset)
 {
 	return ((rte_rand() % (LARGE_BUFFER_SIZE - SMALL_BUFFER_SIZE)) &
-			~(alignment_unit - 1)) + uoffset;
+			~(ALIGNMENT_UNIT - 1)) + uoffset;
 }
 
 /* Fill in source and destination addresses. */
@@ -345,8 +321,7 @@ perf_test(void)
 		   "(bytes)        (ticks)        (ticks)        (ticks)        (ticks)\n"
 		   "------- -------------- -------------- -------------- --------------");
 
-	printf("\n========================= %2dB aligned ============================",
-		alignment_unit);
+	printf("\n========================== %2dB aligned ============================", ALIGNMENT_UNIT);
 	/* Do aligned tests where size is a variable */
 	perf_test_variable_aligned();
 	printf("\n------- -------------- -------------- -------------- --------------");
