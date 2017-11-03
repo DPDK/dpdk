@@ -36,7 +36,6 @@
 #include <rte_version.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
-#include <rte_pci.h>
 #include <rte_bus_pci.h>
 #ifdef RTE_LIBRTE_IXGBE_PMD
 #include <rte_pmd_ixgbe.h>
