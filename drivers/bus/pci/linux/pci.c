@@ -586,6 +586,12 @@ rte_pci_get_iommu_class(void)
 	bool is_vfio_noiommu_enabled = true;
 	bool has_iova_va;
 	bool is_bound_uio;
+	bool spapr_iommu =
+#if defined(RTE_ARCH_PPC64)
+		true;
+#else
+		false;
+#endif
 
 	is_bound = pci_one_device_is_bound();
 	if (!is_bound)
@@ -598,7 +604,8 @@ rte_pci_get_iommu_class(void)
 					true : false;
 #endif
 
-	if (has_iova_va && !is_bound_uio && !is_vfio_noiommu_enabled)
+	if (has_iova_va && !is_bound_uio && !is_vfio_noiommu_enabled &&
+			!spapr_iommu)
 		return RTE_IOVA_VA;
 
 	if (has_iova_va) {
@@ -607,6 +614,8 @@ rte_pci_get_iommu_class(void)
 			RTE_LOG(WARNING, EAL, "vfio-noiommu mode configured\n");
 		if (is_bound_uio)
 			RTE_LOG(WARNING, EAL, "few device bound to UIO\n");
+		if (spapr_iommu)
+			RTE_LOG(WARNING, EAL, "sPAPR IOMMU does not support IOVA as VA\n");
 	}
 
 	return RTE_IOVA_PA;
