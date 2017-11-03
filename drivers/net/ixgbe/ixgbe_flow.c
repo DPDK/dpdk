@@ -1094,7 +1094,7 @@ ixgbe_parse_syn_filter(struct rte_eth_dev *dev,
  * The first not void item can be E_TAG.
  * The next not void item must be END.
  * action:
- * The first not void action should be QUEUE.
+ * The first not void action should be VF or PF.
  * The next not void action should be END.
  * pattern example:
  * ITEM		Spec			Mask
@@ -1105,7 +1105,8 @@ ixgbe_parse_syn_filter(struct rte_eth_dev *dev,
  * item->last should be NULL.
  */
 static int
-cons_parse_l2_tn_filter(const struct rte_flow_attr *attr,
+cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
+			const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
 			struct rte_eth_l2_tunnel_conf *filter,
@@ -1115,7 +1116,8 @@ cons_parse_l2_tn_filter(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_e_tag *e_tag_spec;
 	const struct rte_flow_item_e_tag *e_tag_mask;
 	const struct rte_flow_action *act;
-	const struct rte_flow_action_queue *act_q;
+	const struct rte_flow_action_vf *act_vf;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL,
@@ -1223,9 +1225,10 @@ cons_parse_l2_tn_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	/* check if the first not void action is QUEUE. */
+	/* check if the first not void action is VF or PF. */
 	act = next_no_void_action(actions, NULL);
-	if (act->type != RTE_FLOW_ACTION_TYPE_QUEUE) {
+	if (act->type != RTE_FLOW_ACTION_TYPE_VF &&
+			act->type != RTE_FLOW_ACTION_TYPE_PF) {
 		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1233,8 +1236,12 @@ cons_parse_l2_tn_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	act_q = (const struct rte_flow_action_queue *)act->conf;
-	filter->pool = act_q->index;
+	if (act->type == RTE_FLOW_ACTION_TYPE_VF) {
+		act_vf = (const struct rte_flow_action_vf *)act->conf;
+		filter->pool = act_vf->id;
+	} else {
+		filter->pool = pci_dev->max_vfs;
+	}
 
 	/* check if the next not void item is END */
 	act = next_no_void_action(actions, act);
@@ -1259,8 +1266,10 @@ ixgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	uint16_t vf_num;
 
-	ret = cons_parse_l2_tn_filter(attr, pattern,
+	ret = cons_parse_l2_tn_filter(dev, attr, pattern,
 				actions, l2_tn_filter, error);
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
@@ -1273,7 +1282,9 @@ ixgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	if (l2_tn_filter->pool >= dev->data->nb_rx_queues)
+	vf_num = pci_dev->max_vfs;
+
+	if (l2_tn_filter->pool > vf_num)
 		return -rte_errno;
 
 	return ret;
