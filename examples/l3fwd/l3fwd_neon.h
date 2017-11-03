@@ -114,6 +114,7 @@ port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp, uint16x8_t dp1,
 
 	/* update last port counter. */
 	lp[0] += gptbl[v].lpv;
+	rte_compiler_barrier();
 
 	/* if dest port value has changed. */
 	if (v != GRPMSK) {
