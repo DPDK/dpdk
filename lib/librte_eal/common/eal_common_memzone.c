@@ -251,7 +251,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 
 	mcfg->memzone_cnt++;
 	snprintf(mz->name, sizeof(mz->name), "%s", name);
-	mz->phys_addr = rte_malloc_virt2iova(mz_addr);
+	mz->iova = rte_malloc_virt2iova(mz_addr);
 	mz->addr = mz_addr;
 	mz->len = (requested_len == 0 ? elem->size : requested_len);
 	mz->hugepage_sz = elem->ms->hugepage_sz;
@@ -391,10 +391,10 @@ rte_memzone_dump(FILE *f)
 	for (i=0; i<RTE_MAX_MEMZONE; i++) {
 		if (mcfg->memzone[i].addr == NULL)
 			break;
-		fprintf(f, "Zone %u: name:<%s>, phys:0x%"PRIx64", len:0x%zx"
+		fprintf(f, "Zone %u: name:<%s>, IO:0x%"PRIx64", len:0x%zx"
 		       ", virt:%p, socket_id:%"PRId32", flags:%"PRIx32"\n", i,
 		       mcfg->memzone[i].name,
-		       mcfg->memzone[i].phys_addr,
+		       mcfg->memzone[i].iova,
 		       mcfg->memzone[i].len,
 		       mcfg->memzone[i].addr,
 		       mcfg->memzone[i].socket_id,

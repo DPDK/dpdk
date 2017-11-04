@@ -283,7 +283,7 @@ void enic_init_vnic_resources(struct enic *enic)
 			0 /* cq_entry_enable */,
 			1 /* cq_message_enable */,
 			0 /* interrupt offset */,
-			(u64)enic->wq[index].cqmsg_rz->phys_addr);
+			(u64)enic->wq[index].cqmsg_rz->iova);
 	}
 
 	vnic_intr_init(&enic->intr,
@@ -362,7 +362,7 @@ enic_alloc_consistent(void *priv, size_t size,
 	}
 
 	vaddr = rz->addr;
-	*dma_handle = (dma_addr_t)rz->phys_addr;
+	*dma_handle = (dma_addr_t)rz->iova;
 
 	mze = rte_malloc("enic memzone entry",
 			 sizeof(struct enic_memzone_entry), 0);
@@ -395,7 +395,7 @@ enic_free_consistent(void *priv,
 	rte_spinlock_lock(&enic->memzone_list_lock);
 	LIST_FOREACH(mze, &enic->memzone_list, entries) {
 		if (mze->rz->addr == vaddr &&
-		    mze->rz->phys_addr == dma_handle)
+		    mze->rz->iova == dma_handle)
 			break;
 	}
 	if (mze == NULL) {

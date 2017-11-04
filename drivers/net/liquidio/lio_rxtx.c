@@ -172,7 +172,7 @@ lio_alloc_info_buffer(struct lio_device *lio_dev,
 	if (droq->info_mz == NULL)
 		return NULL;
 
-	droq->info_list_dma = droq->info_mz->phys_addr;
+	droq->info_list_dma = droq->info_mz->iova;
 	droq->info_alloc_size = droq->info_mz->len;
 	droq->info_base_addr = (size_t)droq->info_mz->addr;
 
@@ -222,7 +222,7 @@ lio_init_droq(struct lio_device *lio_dev, uint32_t q_no,
 		return -1;
 	}
 
-	droq->desc_ring_dma = droq->desc_ring_mz->phys_addr;
+	droq->desc_ring_dma = droq->desc_ring_mz->iova;
 	droq->desc_ring = (struct lio_droq_desc *)droq->desc_ring_mz->addr;
 
 	lio_dev_dbg(lio_dev, "droq[%d]: desc_ring: virt: 0x%p, dma: %lx\n",
@@ -734,7 +734,7 @@ lio_init_instr_queue(struct lio_device *lio_dev,
 		return -1;
 	}
 
-	iq->base_addr_dma = iq->iq_mz->phys_addr;
+	iq->base_addr_dma = iq->iq_mz->iova;
 	iq->base_addr = (uint8_t *)iq->iq_mz->addr;
 
 	iq->max_count = num_descs;

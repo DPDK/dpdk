@@ -144,12 +144,12 @@ void *osal_dma_alloc_coherent(struct ecore_dev *p_dev,
 		*phys = 0;
 		return OSAL_NULL;
 	}
-	*phys = mz->phys_addr;
+	*phys = mz->iova;
 	ecore_mz_mapping[ecore_mz_count++] = mz;
 	DP_VERBOSE(p_dev, ECORE_MSG_SP,
 		   "Allocated dma memory size=%zu phys=0x%lx"
 		   " virt=%p core=%d\n",
-		   mz->len, (unsigned long)mz->phys_addr, mz->addr, core_id);
+		   mz->len, (unsigned long)mz->iova, mz->addr, core_id);
 	return mz->addr;
 }
 
@@ -182,12 +182,12 @@ void *osal_dma_alloc_coherent_aligned(struct ecore_dev *p_dev,
 		*phys = 0;
 		return OSAL_NULL;
 	}
-	*phys = mz->phys_addr;
+	*phys = mz->iova;
 	ecore_mz_mapping[ecore_mz_count++] = mz;
 	DP_VERBOSE(p_dev, ECORE_MSG_SP,
 		   "Allocated aligned dma memory size=%zu phys=0x%lx"
 		   " virt=%p core=%d\n",
-		   mz->len, (unsigned long)mz->phys_addr, mz->addr, core_id);
+		   mz->len, (unsigned long)mz->iova, mz->addr, core_id);
 	return mz->addr;
 }
 
@@ -196,7 +196,7 @@ void osal_dma_free_mem(struct ecore_dev *p_dev, dma_addr_t phys)
 	uint16_t j;
 
 	for (j = 0 ; j < ecore_mz_count; j++) {
-		if (phys == ecore_mz_mapping[j]->phys_addr) {
+		if (phys == ecore_mz_mapping[j]->iova) {
 			DP_VERBOSE(p_dev, ECORE_MSG_SP,
 				"Free memzone %s\n", ecore_mz_mapping[j]->name);
 			rte_memzone_free(ecore_mz_mapping[j]);

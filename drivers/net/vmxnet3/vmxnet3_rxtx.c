@@ -979,7 +979,7 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* cmd_ring initialization */
 	ring->base = mz->addr;
-	ring->basePA = mz->phys_addr;
+	ring->basePA = mz->iova;
 
 	/* comp_ring initialization */
 	comp_ring->base = ring->base + ring->size;
@@ -1090,7 +1090,7 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* cmd_ring0 initialization */
 	ring0->base = mz->addr;
-	ring0->basePA = mz->phys_addr;
+	ring0->basePA = mz->iova;
 
 	/* cmd_ring1 initialization */
 	ring1->base = ring0->base + ring0->size;

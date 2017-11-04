@@ -1318,7 +1318,7 @@ alloc_sw_ring:
 	if (metadata)
 		*(void **)metadata = s;
 
-	*phys = (uint64_t)tz->phys_addr;
+	*phys = (uint64_t)tz->iova;
 	return tz->addr;
 }
 

@@ -2847,7 +2847,7 @@ skip_init:
 				return -ENOMEM;
 		}
 		memset(mz->addr, 0, mz->len);
-		mz_phys_addr = mz->phys_addr;
+		mz_phys_addr = mz->iova;
 		if ((unsigned long)mz->addr == mz_phys_addr) {
 			RTE_LOG(WARNING, PMD,
 				"Memzone physical address same as virtual.\n");
@@ -2882,7 +2882,7 @@ skip_init:
 				return -ENOMEM;
 		}
 		memset(mz->addr, 0, mz->len);
-		mz_phys_addr = mz->phys_addr;
+		mz_phys_addr = mz->iova;
 		if ((unsigned long)mz->addr == mz_phys_addr) {
 			RTE_LOG(WARNING, PMD,
 				"Memzone physical address same as virtual.\n");

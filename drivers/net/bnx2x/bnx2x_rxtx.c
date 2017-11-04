@@ -108,7 +108,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		bnx2x_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
-	fp->rx_desc_mapping = rxq->rx_ring_phys_addr = (uint64_t)dma->phys_addr;
+	fp->rx_desc_mapping = rxq->rx_ring_phys_addr = (uint64_t)dma->iova;
 	rxq->rx_ring = (uint64_t*)dma->addr;
 	memset((void *)rxq->rx_ring, 0, dma_size);
 
@@ -154,7 +154,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		PMD_RX_LOG(ERR, "RCQ  alloc failed");
 		return -ENOMEM;
 	}
-	fp->rx_comp_mapping = rxq->cq_ring_phys_addr = (uint64_t)dma->phys_addr;
+	fp->rx_comp_mapping = rxq->cq_ring_phys_addr = (uint64_t)dma->iova;
 	rxq->cq_ring = (union eth_rx_cqe*)dma->addr;
 
 	/* Link the CQ chain pages. */
@@ -289,7 +289,7 @@ bnx2x_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		bnx2x_tx_queue_release(txq);
 		return -ENOMEM;
 	}
-	fp->tx_desc_mapping = txq->tx_ring_phys_addr = (uint64_t)tz->phys_addr;
+	fp->tx_desc_mapping = txq->tx_ring_phys_addr = (uint64_t)tz->iova;
 	txq->tx_ring = (union eth_tx_bd_types *) tz->addr;
 	memset(txq->tx_ring, 0, tsize);
 

@@ -265,7 +265,7 @@ i40e_fdir_setup(struct i40e_pf *pf)
 		goto fail_mem;
 	}
 	pf->fdir.prg_pkt = mz->addr;
-	pf->fdir.dma_addr = mz->phys_addr;
+	pf->fdir.dma_addr = mz->iova;
 
 	pf->fdir.match_counter_index = I40E_COUNTER_INDEX_FDIR(hw->pf_id);
 	PMD_DRV_LOG(INFO, "FDIR setup successfully, with programming queue %u.",

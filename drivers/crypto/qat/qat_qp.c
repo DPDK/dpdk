@@ -373,7 +373,7 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 	}
 
 	queue->base_addr = (char *)qp_mz->addr;
-	queue->base_phys_addr = qp_mz->phys_addr;
+	queue->base_phys_addr = qp_mz->iova;
 	if (qat_qp_check_queue_alignment(queue->base_phys_addr,
 			queue_size_bytes)) {
 		PMD_DRV_LOG(ERR, "Invalid alignment on queue create "

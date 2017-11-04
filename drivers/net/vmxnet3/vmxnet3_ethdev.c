@@ -484,7 +484,7 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	memset(mz->addr, 0, mz->len);
 
 	hw->shared = mz->addr;
-	hw->sharedPA = mz->phys_addr;
+	hw->sharedPA = mz->iova;
 
 	/*
 	 * Allocate a memzone for Vmxnet3_RxQueueDesc - Vmxnet3_TxQueueDesc
@@ -505,7 +505,7 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	hw->tqd_start = (Vmxnet3_TxQueueDesc *)mz->addr;
 	hw->rqd_start = (Vmxnet3_RxQueueDesc *)(hw->tqd_start + hw->num_tx_queues);
 
-	hw->queueDescPA = mz->phys_addr;
+	hw->queueDescPA = mz->iova;
 	hw->queue_desc_len = (uint16_t)size;
 
 	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
@@ -521,7 +521,7 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 		memset(mz->addr, 0, mz->len);
 
 		hw->rss_conf = mz->addr;
-		hw->rss_confPA = mz->phys_addr;
+		hw->rss_confPA = mz->iova;
 	}
 
 	return 0;
@@ -569,7 +569,7 @@ vmxnet3_dev_setup_memreg(struct rte_eth_dev *dev)
 		}
 		memset(mz->addr, 0, mz->len);
 		hw->memRegs = mz->addr;
-		hw->memRegsPA = mz->phys_addr;
+		hw->memRegsPA = mz->iova;
 	}
 
 	num = hw->num_rx_queues;

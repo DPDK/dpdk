@@ -192,7 +192,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 		if (!mz)
 			return -ENOMEM;
 	}
-	mz_phys_addr = mz->phys_addr;
+	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
 		RTE_LOG(WARNING, PMD,
 			"Memzone physical address same as virtual.\n");

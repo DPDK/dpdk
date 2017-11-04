@@ -78,7 +78,7 @@
 
 /* Test if memory overlaps: return 1 if true, or 0 if false. */
 static int
-is_memory_overlap(phys_addr_t ptr1, size_t len1, phys_addr_t ptr2, size_t len2)
+is_memory_overlap(rte_iova_t ptr1, size_t len1, rte_iova_t ptr2, size_t len2)
 {
 	if (ptr2 >= ptr1 && (ptr2 - ptr1) < len1)
 		return 1;
@@ -510,7 +510,7 @@ test_memzone_aligned(void)
 		printf("Unable to reserve 64-byte aligned memzone!\n");
 		return -1;
 	}
-	if ((memzone_aligned_32->phys_addr & RTE_CACHE_LINE_MASK) != 0)
+	if ((memzone_aligned_32->iova & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_32->addr & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
@@ -521,7 +521,7 @@ test_memzone_aligned(void)
 		printf("Unable to reserve 128-byte aligned memzone!\n");
 		return -1;
 	}
-	if ((memzone_aligned_128->phys_addr & 127) != 0)
+	if ((memzone_aligned_128->iova & 127) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_128->addr & 127) != 0)
 		return -1;
@@ -532,7 +532,7 @@ test_memzone_aligned(void)
 		printf("Unable to reserve 256-byte aligned memzone!\n");
 		return -1;
 	}
-	if ((memzone_aligned_256->phys_addr & 255) != 0)
+	if ((memzone_aligned_256->iova & 255) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_256->addr & 255) != 0)
 		return -1;
@@ -543,7 +543,7 @@ test_memzone_aligned(void)
 		printf("Unable to reserve 512-byte aligned memzone!\n");
 		return -1;
 	}
-	if ((memzone_aligned_512->phys_addr & 511) != 0)
+	if ((memzone_aligned_512->iova & 511) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_512->addr & 511) != 0)
 		return -1;
@@ -554,7 +554,7 @@ test_memzone_aligned(void)
 		printf("Unable to reserve 1024-byte aligned memzone!\n");
 		return -1;
 	}
-	if ((memzone_aligned_1024->phys_addr & 1023) != 0)
+	if ((memzone_aligned_1024->iova & 1023) != 0)
 		return -1;
 	if (((uintptr_t) memzone_aligned_1024->addr & 1023) != 0)
 		return -1;
@@ -563,35 +563,35 @@ test_memzone_aligned(void)
 
 	/* check that zones don't overlap */
 	printf("check overlapping\n");
-	if (is_memory_overlap(memzone_aligned_32->phys_addr, memzone_aligned_32->len,
-					memzone_aligned_128->phys_addr, memzone_aligned_128->len))
+	if (is_memory_overlap(memzone_aligned_32->iova, memzone_aligned_32->len,
+					memzone_aligned_128->iova, memzone_aligned_128->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_32->phys_addr, memzone_aligned_32->len,
-					memzone_aligned_256->phys_addr, memzone_aligned_256->len))
+	if (is_memory_overlap(memzone_aligned_32->iova, memzone_aligned_32->len,
+					memzone_aligned_256->iova, memzone_aligned_256->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_32->phys_addr, memzone_aligned_32->len,
-					memzone_aligned_512->phys_addr, memzone_aligned_512->len))
+	if (is_memory_overlap(memzone_aligned_32->iova, memzone_aligned_32->len,
+					memzone_aligned_512->iova, memzone_aligned_512->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_32->phys_addr, memzone_aligned_32->len,
-					memzone_aligned_1024->phys_addr, memzone_aligned_1024->len))
+	if (is_memory_overlap(memzone_aligned_32->iova, memzone_aligned_32->len,
+					memzone_aligned_1024->iova, memzone_aligned_1024->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_128->phys_addr, memzone_aligned_128->len,
-					memzone_aligned_256->phys_addr, memzone_aligned_256->len))
+	if (is_memory_overlap(memzone_aligned_128->iova, memzone_aligned_128->len,
+					memzone_aligned_256->iova, memzone_aligned_256->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_128->phys_addr, memzone_aligned_128->len,
-					memzone_aligned_512->phys_addr, memzone_aligned_512->len))
+	if (is_memory_overlap(memzone_aligned_128->iova, memzone_aligned_128->len,
+					memzone_aligned_512->iova, memzone_aligned_512->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_128->phys_addr, memzone_aligned_128->len,
-					memzone_aligned_1024->phys_addr, memzone_aligned_1024->len))
+	if (is_memory_overlap(memzone_aligned_128->iova, memzone_aligned_128->len,
+					memzone_aligned_1024->iova, memzone_aligned_1024->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_256->phys_addr, memzone_aligned_256->len,
-					memzone_aligned_512->phys_addr, memzone_aligned_512->len))
+	if (is_memory_overlap(memzone_aligned_256->iova, memzone_aligned_256->len,
+					memzone_aligned_512->iova, memzone_aligned_512->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_256->phys_addr, memzone_aligned_256->len,
-					memzone_aligned_1024->phys_addr, memzone_aligned_1024->len))
+	if (is_memory_overlap(memzone_aligned_256->iova, memzone_aligned_256->len,
+					memzone_aligned_1024->iova, memzone_aligned_1024->len))
 		return -1;
-	if (is_memory_overlap(memzone_aligned_512->phys_addr, memzone_aligned_512->len,
-					memzone_aligned_1024->phys_addr, memzone_aligned_1024->len))
+	if (is_memory_overlap(memzone_aligned_512->iova, memzone_aligned_512->len,
+					memzone_aligned_1024->iova, memzone_aligned_1024->len))
 		return -1;
 	return 0;
 }
@@ -601,9 +601,9 @@ check_memzone_bounded(const char *name, uint32_t len,  uint32_t align,
 	uint32_t bound)
 {
 	const struct rte_memzone *mz;
-	phys_addr_t bmask;
+	rte_iova_t bmask;
 
-	bmask = ~((phys_addr_t)bound - 1);
+	bmask = ~((rte_iova_t)bound - 1);
 
 	if ((mz = rte_memzone_reserve_bounded(name, len, SOCKET_ID_ANY, 0,
 			align, bound)) == NULL) {
@@ -612,7 +612,7 @@ check_memzone_bounded(const char *name, uint32_t len,  uint32_t align,
 		return -1;
 	}
 
-	if ((mz->phys_addr & ((phys_addr_t)align - 1)) != 0) {
+	if ((mz->iova & ((rte_iova_t)align - 1)) != 0) {
 		printf("%s(%s): invalid phys addr alignment\n",
 			__func__, mz->name);
 		return -1;
@@ -631,8 +631,8 @@ check_memzone_bounded(const char *name, uint32_t len,  uint32_t align,
 		return -1;
 	}
 
-	if ((mz->phys_addr & bmask) !=
-			((mz->phys_addr + mz->len - 1) & bmask)) {
+	if ((mz->iova & bmask) !=
+			((mz->iova + mz->len - 1) & bmask)) {
 		printf("%s(%s): invalid memzone boundary %u crossed\n",
 			__func__, mz->name, bound);
 		return -1;
@@ -787,11 +787,11 @@ test_memzone(void)
 	/* check cache-line alignments */
 	printf("check alignments and lengths\n");
 
-	if ((memzone1->phys_addr & RTE_CACHE_LINE_MASK) != 0)
+	if ((memzone1->iova & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
-	if ((memzone2->phys_addr & RTE_CACHE_LINE_MASK) != 0)
+	if ((memzone2->iova & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
-	if (memzone3 != NULL && (memzone3->phys_addr & RTE_CACHE_LINE_MASK) != 0)
+	if (memzone3 != NULL && (memzone3->iova & RTE_CACHE_LINE_MASK) != 0)
 		return -1;
 	if ((memzone1->len & RTE_CACHE_LINE_MASK) != 0 || memzone1->len == 0)
 		return -1;
@@ -806,16 +806,16 @@ test_memzone(void)
 	/* check that zones don't overlap */
 	printf("check overlapping\n");
 
-	if (is_memory_overlap(memzone1->phys_addr, memzone1->len,
-			memzone2->phys_addr, memzone2->len))
+	if (is_memory_overlap(memzone1->iova, memzone1->len,
+			memzone2->iova, memzone2->len))
 		return -1;
 	if (memzone3 != NULL &&
-			is_memory_overlap(memzone1->phys_addr, memzone1->len,
-					memzone3->phys_addr, memzone3->len))
+			is_memory_overlap(memzone1->iova, memzone1->len,
+					memzone3->iova, memzone3->len))
 		return -1;
 	if (memzone3 != NULL &&
-			is_memory_overlap(memzone2->phys_addr, memzone2->len,
-					memzone3->phys_addr, memzone3->len))
+			is_memory_overlap(memzone2->iova, memzone2->len,
+					memzone3->iova, memzone3->len))
 		return -1;
 
 	printf("check socket ID\n");

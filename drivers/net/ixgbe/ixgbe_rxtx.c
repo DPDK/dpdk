@@ -2599,7 +2599,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	else
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
 
-	txq->tx_ring_phys_addr = tz->phys_addr;
+	txq->tx_ring_phys_addr = tz->iova;
 	txq->tx_ring = (union ixgbe_adv_tx_desc *) tz->addr;
 
 	/* Allocate software ring */
@@ -2901,7 +2901,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_RDH(rxq->reg_idx));
 	}
 
-	rxq->rx_ring_phys_addr = rz->phys_addr;
+	rxq->rx_ring_phys_addr = rz->iova;
 	rxq->rx_ring = (union ixgbe_adv_rx_desc *) rz->addr;
 
 	/*

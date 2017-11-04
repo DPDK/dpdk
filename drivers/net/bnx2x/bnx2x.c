@@ -184,7 +184,7 @@ bnx2x_dma_alloc(struct bnx2x_softc *sc, size_t size, struct bnx2x_dma *dma,
 		PMD_DRV_LOG(ERR, "DMA alloc failed for %s", msg);
 		return -ENOMEM;
 	}
-	dma->paddr = (uint64_t) z->phys_addr;
+	dma->paddr = (uint64_t) z->iova;
 	dma->vaddr = z->addr;
 
 	PMD_DRV_LOG(DEBUG, "%s: virt=%p phys=%" PRIx64, msg, dma->vaddr, dma->paddr);

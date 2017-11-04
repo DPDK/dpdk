@@ -1562,7 +1562,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* Saving physical and virtual addresses for the RX ring */
-	rxq->dma = (uint64_t)tz->phys_addr;
+	rxq->dma = (uint64_t)tz->iova;
 	rxq->rxds = (struct nfp_net_rx_desc *)tz->addr;
 
 	/* mbuf pointers array for referencing mbufs linked to RX descriptors */
@@ -1718,7 +1718,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->txq_flags = tx_conf->txq_flags;
 
 	/* Saving physical and virtual addresses for the TX ring */
-	txq->dma = (uint64_t)tz->phys_addr;
+	txq->dma = (uint64_t)tz->iova;
 	txq->txds = (struct nfp_net_tx_desc *)tz->addr;
 
 	/* mbuf pointers array for referencing mbufs linked to TX descriptors */

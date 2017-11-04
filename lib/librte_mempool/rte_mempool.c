@@ -601,7 +601,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 		if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
 			paddr = RTE_BAD_PHYS_ADDR;
 		else
-			paddr = mz->phys_addr;
+			paddr = mz->iova;
 
 		if (rte_eal_has_hugepages())
 			ret = rte_mempool_populate_phys(mp, mz->addr,
@@ -1213,7 +1213,7 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	fprintf(f, "mempool <%s>@%p\n", mp->name, mp);
 	fprintf(f, "  flags=%x\n", mp->flags);
 	fprintf(f, "  pool=%p\n", mp->pool_data);
-	fprintf(f, "  phys_addr=0x%" PRIx64 "\n", mp->mz->phys_addr);
+	fprintf(f, "  iova=0x%" PRIx64 "\n", mp->mz->iova);
 	fprintf(f, "  nb_mem_chunks=%u\n", mp->nb_mem_chunks);
 	fprintf(f, "  size=%"PRIu32"\n", mp->size);
 	fprintf(f, "  populated_size=%"PRIu32"\n", mp->populated_size);

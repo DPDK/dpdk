@@ -605,7 +605,7 @@ nicvf_qset_cq_alloc(struct rte_eth_dev *dev, struct nicvf *nic,
 
 	memset(rz->addr, 0, ring_size);
 
-	rxq->phys = rz->phys_addr;
+	rxq->phys = rz->iova;
 	rxq->desc = rz->addr;
 	rxq->qlen_mask = desc_cnt - 1;
 
@@ -629,7 +629,7 @@ nicvf_qset_sq_alloc(struct rte_eth_dev *dev, struct nicvf *nic,
 
 	memset(rz->addr, 0, ring_size);
 
-	sq->phys = rz->phys_addr;
+	sq->phys = rz->iova;
 	sq->desc = rz->addr;
 	sq->qlen_mask = desc_cnt - 1;
 
@@ -663,7 +663,7 @@ nicvf_qset_rbdr_alloc(struct rte_eth_dev *dev, struct nicvf *nic,
 
 	memset(rz->addr, 0, ring_size);
 
-	rbdr->phys = rz->phys_addr;
+	rbdr->phys = rz->iova;
 	rbdr->tail = 0;
 	rbdr->next_tail = 0;
 	rbdr->desc = rz->addr;

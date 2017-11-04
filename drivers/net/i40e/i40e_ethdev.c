@@ -3842,7 +3842,7 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 
 	mem->size = size;
 	mem->va = mz->addr;
-	mem->pa = mz->phys_addr;
+	mem->pa = mz->iova;
 	mem->zone = (const void *)mz;
 	PMD_DRV_LOG(DEBUG,
 		"memzone %s allocated with physical address: %"PRIu64,

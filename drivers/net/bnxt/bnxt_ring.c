@@ -172,7 +172,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			return -ENOMEM;
 	}
 	memset(mz->addr, 0, mz->len);
-	mz_phys_addr = mz->phys_addr;
+	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
 		RTE_LOG(WARNING, PMD,
 			"Memzone physical address same as virtual.\n");
@@ -231,7 +231,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		rx_ring->bd = ((char *)mz->addr + ag_ring_start);
 		rx_ring_info->ag_desc_ring =
 		    (struct rx_prod_pkt_bd *)rx_ring->bd;
-		rx_ring->bd_dma = mz->phys_addr + ag_ring_start;
+		rx_ring->bd_dma = mz->iova + ag_ring_start;
 		rx_ring_info->ag_desc_mapping = rx_ring->bd_dma;
 		rx_ring->mem_zone = (const void *)mz;
 
