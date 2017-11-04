@@ -244,7 +244,7 @@ octeontx_fpapf_pool_setup(unsigned int gpool, unsigned int buf_size,
 
 	/* Configure stack */
 	fpa->pool_stack_base = memptr;
-	phys_addr = rte_malloc_virt2phy(memptr);
+	phys_addr = rte_malloc_virt2iova(memptr);
 
 	buf_size /= FPA_LN_SIZE;
 

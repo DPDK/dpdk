@@ -445,7 +445,7 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 	} else if (strstr(key_token, "aad")) {
 		rte_free(vector->aad.data);
 		vector->aad.data = data;
-		vector->aad.phys_addr = rte_malloc_virt2phy(vector->aad.data);
+		vector->aad.phys_addr = rte_malloc_virt2iova(vector->aad.data);
 		if (tc_found)
 			vector->aad.length = data_length;
 		else {
@@ -460,7 +460,7 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 	} else if (strstr(key_token, "digest")) {
 		rte_free(vector->digest.data);
 		vector->digest.data = data;
-		vector->digest.phys_addr = rte_malloc_virt2phy(
+		vector->digest.phys_addr = rte_malloc_virt2iova(
 			vector->digest.data);
 		if (tc_found)
 			vector->digest.length = data_length;

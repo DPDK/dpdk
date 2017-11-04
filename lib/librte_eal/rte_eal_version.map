@@ -60,7 +60,6 @@ DPDK_2.0 {
 	rte_malloc_set_limit;
 	rte_malloc_socket;
 	rte_malloc_validate;
-	rte_malloc_virt2phy;
 	rte_mem_lock_page;
 	rte_mem_virt2phy;
 	rte_memdump;
@@ -233,6 +232,7 @@ DPDK_17.11 {
 	rte_eal_using_phys_addrs;
 	rte_eal_vfio_intr_mode;
 	rte_lcore_has_role;
+	rte_malloc_virt2iova;
 	rte_mem_virt2iova;
 	rte_memcpy_ptr;
 	rte_vfio_enable;

@@ -99,11 +99,11 @@ eth_ark_rx_hw_setup(struct rte_eth_dev *dev,
 	phys_addr_t phys_addr_q_base;
 	phys_addr_t phys_addr_prod_index;
 
-	queue_base = rte_malloc_virt2phy(queue);
+	queue_base = rte_malloc_virt2iova(queue);
 	phys_addr_prod_index = queue_base +
 		offsetof(struct ark_rx_queue, prod_index);
 
-	phys_addr_q_base = rte_malloc_virt2phy(queue->paddress_q);
+	phys_addr_q_base = rte_malloc_virt2iova(queue->paddress_q);
 
 	/* Verify HW */
 	if (ark_mpu_verify(queue->mpu, sizeof(phys_addr_t))) {

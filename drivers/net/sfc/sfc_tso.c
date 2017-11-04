@@ -155,7 +155,7 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 					   header_len);
 		tsoh = txq->sw_ring[idx & txq->ptr_mask].tsoh;
 
-		header_paddr = rte_malloc_virt2phy((void *)tsoh);
+		header_paddr = rte_malloc_virt2iova((void *)tsoh);
 	} else {
 		if (m->data_len == header_len) {
 			*in_off = 0;

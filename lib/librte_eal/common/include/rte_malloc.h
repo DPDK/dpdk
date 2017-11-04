@@ -323,17 +323,24 @@ int
 rte_malloc_set_limit(const char *type, size_t max);
 
 /**
- * Return the physical address of a virtual address obtained through
+ * Return the IO address of a virtual address obtained through
  * rte_malloc
  *
  * @param addr
  *   Address obtained from a previous rte_malloc call
  * @return
- *   RTE_BAD_PHYS_ADDR on error
- *   otherwise return physical address of the buffer
+ *   RTE_BAD_IOVA on error
+ *   otherwise return an address suitable for IO
  */
-phys_addr_t
-rte_malloc_virt2phy(const void *addr);
+rte_iova_t
+rte_malloc_virt2iova(const void *addr);
+
+__rte_deprecated
+static inline phys_addr_t
+rte_malloc_virt2phy(const void *addr)
+{
+	return rte_malloc_virt2iova(addr);
+}
 
 #ifdef __cplusplus
 }

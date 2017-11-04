@@ -498,7 +498,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 				return NULL;
 			}
 			t_vec->digest.phys_addr =
-				rte_malloc_virt2phy(t_vec->digest.data);
+				rte_malloc_virt2iova(t_vec->digest.data);
 			t_vec->digest.length = options->digest_sz;
 			memcpy(t_vec->digest.data, digest,
 					options->digest_sz);
@@ -531,7 +531,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 				return NULL;
 			}
 			memcpy(t_vec->aad.data, aad, options->aead_aad_sz);
-			t_vec->aad.phys_addr = rte_malloc_virt2phy(t_vec->aad.data);
+			t_vec->aad.phys_addr = rte_malloc_virt2iova(t_vec->aad.data);
 			t_vec->aad.length = options->aead_aad_sz;
 		} else {
 			t_vec->aad.data = NULL;
@@ -546,7 +546,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			return NULL;
 		}
 		t_vec->digest.phys_addr =
-				rte_malloc_virt2phy(t_vec->digest.data);
+				rte_malloc_virt2iova(t_vec->digest.data);
 		t_vec->digest.length = options->digest_sz;
 		memcpy(t_vec->digest.data, digest, options->digest_sz);
 		t_vec->data.aead_offset = 0;

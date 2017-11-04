@@ -485,7 +485,7 @@ octeontx_pko_init_fc(const size_t pko_vf_count)
 		return -ENOMEM;
 	}
 
-	pko_vf_ctl.fc_iomem.iova = rte_malloc_virt2phy((void *)
+	pko_vf_ctl.fc_iomem.iova = rte_malloc_virt2iova((void *)
 							pko_vf_ctl.fc_iomem.va);
 	pko_vf_ctl.fc_iomem.size = fc_mem_size;
 

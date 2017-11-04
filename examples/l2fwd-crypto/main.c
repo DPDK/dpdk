@@ -2484,7 +2484,7 @@ reserve_key_memory(struct l2fwd_crypto_options *options)
 	options->aad.data = rte_malloc("aad", MAX_KEY_SIZE, 0);
 	if (options->aad.data == NULL)
 		rte_exit(EXIT_FAILURE, "Failed to allocate memory for AAD");
-	options->aad.phys_addr = rte_malloc_virt2phy(options->aad.data);
+	options->aad.phys_addr = rte_malloc_virt2iova(options->aad.data);
 }
 
 int

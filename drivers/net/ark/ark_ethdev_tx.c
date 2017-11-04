@@ -317,8 +317,8 @@ eth_ark_tx_hw_queue_config(struct ark_tx_queue *queue)
 	if (ark_mpu_verify(queue->mpu, sizeof(struct ark_tx_meta)))
 		return -1;
 
-	queue_base = rte_malloc_virt2phy(queue);
-	ring_base = rte_malloc_virt2phy(queue->meta_q);
+	queue_base = rte_malloc_virt2iova(queue);
+	ring_base = rte_malloc_virt2iova(queue->meta_q);
 	cons_index_addr =
 		queue_base + offsetof(struct ark_tx_queue, cons_index);
 
