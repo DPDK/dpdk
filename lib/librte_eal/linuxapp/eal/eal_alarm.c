@@ -40,7 +40,6 @@
 #include <sys/timerfd.h>
 
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_interrupts.h>
 #include <rte_alarm.h>
 #include <rte_common.h>

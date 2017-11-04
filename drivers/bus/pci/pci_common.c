@@ -48,7 +48,6 @@
 #include <rte_bus_pci.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>

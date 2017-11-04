@@ -44,7 +44,6 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
-#include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 

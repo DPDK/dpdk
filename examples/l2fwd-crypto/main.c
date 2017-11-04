@@ -67,7 +67,6 @@
 #include <rte_memcpy.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
-#include <rte_memzone.h>
 #include <rte_pci.h>
 #include <rte_per_lcore.h>
 #include <rte_prefetch.h>

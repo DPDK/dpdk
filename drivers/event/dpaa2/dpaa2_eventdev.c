@@ -50,7 +50,6 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_pci.h>
 #include <rte_vdev.h>
 #include <rte_ethdev.h>

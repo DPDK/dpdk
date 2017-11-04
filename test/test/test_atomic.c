@@ -37,7 +37,6 @@
 #include <sys/queue.h>
 
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
 #include <rte_atomic.h>

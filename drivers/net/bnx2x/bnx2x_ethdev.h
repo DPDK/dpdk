@@ -35,7 +35,6 @@
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
 #include <rte_spinlock.h>
-#include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>

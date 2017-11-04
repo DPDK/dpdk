@@ -36,7 +36,6 @@
 
 #include <rte_common.h>
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>

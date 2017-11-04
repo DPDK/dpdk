@@ -44,7 +44,6 @@
 #include <rte_memcpy.h>
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
-#include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>

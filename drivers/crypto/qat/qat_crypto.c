@@ -44,7 +44,6 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_malloc.h>
 #include <rte_launch.h>

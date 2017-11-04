@@ -45,7 +45,6 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_lcore.h>
 #include <rte_vdev.h>
 

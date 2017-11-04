@@ -38,7 +38,6 @@
 
 #include <rte_atomic.h>
 #include <rte_memory.h>
-#include <rte_memzone.h>
 #include <rte_mempool.h>
 
 #include "virtio_pci.h"

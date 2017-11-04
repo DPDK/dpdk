@@ -34,7 +34,6 @@
 #include <string.h>
 
 #include <rte_vdev.h>
-#include <rte_memzone.h>
 #include <rte_kvargs.h>
 #include <rte_ring.h>
 #include <rte_errno.h>

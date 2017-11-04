@@ -40,7 +40,6 @@
 #include <rte_ethdev_pci.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
-#include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>

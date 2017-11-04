@@ -47,7 +47,6 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
-#include <rte_memzone.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
 
