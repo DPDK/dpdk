@@ -1351,7 +1351,7 @@ int qman_init_fq(struct qman_fq *fq, u32 flags, struct qm_mcc_initfq *opts)
 			memset(&mcc->initfq.fqd.context_a, 0,
 			       sizeof(mcc->initfq.fqd.context_a));
 		} else {
-			phys_fq = rte_mem_virt2phy(fq);
+			phys_fq = rte_mem_virt2iova(fq);
 			qm_fqd_stashing_set64(&mcc->initfq.fqd, phys_fq);
 		}
 	}

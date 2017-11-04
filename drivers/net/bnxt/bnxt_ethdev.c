@@ -2852,8 +2852,8 @@ skip_init:
 			RTE_LOG(WARNING, PMD,
 				"Memzone physical address same as virtual.\n");
 			RTE_LOG(WARNING, PMD,
-				"Using rte_mem_virt2phy()\n");
-			mz_phys_addr = rte_mem_virt2phy(mz->addr);
+				"Using rte_mem_virt2iova()\n");
+			mz_phys_addr = rte_mem_virt2iova(mz->addr);
 			if (mz_phys_addr == 0) {
 				RTE_LOG(ERR, PMD,
 				"unable to map address to physical memory\n");
@@ -2887,8 +2887,8 @@ skip_init:
 			RTE_LOG(WARNING, PMD,
 				"Memzone physical address same as virtual.\n");
 			RTE_LOG(WARNING, PMD,
-				"Using rte_mem_virt2phy()\n");
-			mz_phys_addr = rte_mem_virt2phy(mz->addr);
+				"Using rte_mem_virt2iova()\n");
+			mz_phys_addr = rte_mem_virt2iova(mz->addr);
 			if (mz_phys_addr == 0) {
 				RTE_LOG(ERR, PMD,
 				"unable to map address to physical memory\n");

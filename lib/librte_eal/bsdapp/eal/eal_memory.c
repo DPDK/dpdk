@@ -58,6 +58,11 @@ rte_mem_virt2phy(const void *virtaddr)
 	(void)virtaddr;
 	return RTE_BAD_IOVA;
 }
+rte_iova_t
+rte_mem_virt2iova(const void *virtaddr)
+{
+	return rte_mem_virt2phy(virtaddr);
+}
 
 int
 rte_eal_hugepage_init(void)

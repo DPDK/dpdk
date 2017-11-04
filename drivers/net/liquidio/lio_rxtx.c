@@ -1790,7 +1790,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 				m = m->next;
 			}
 
-			phyaddr = rte_mem_virt2phy(g->sg);
+			phyaddr = rte_mem_virt2iova(g->sg);
 			if (phyaddr == RTE_BAD_PHYS_ADDR) {
 				PMD_TX_LOG(lio_dev, ERR, "bad phys addr\n");
 				goto xmit_failed;

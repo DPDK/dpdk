@@ -1284,7 +1284,7 @@ rte_crypto_op_init(struct rte_mempool *mempool,
 
 	__rte_crypto_op_reset(op, type);
 
-	op->phys_addr = rte_mem_virt2phy(_op_data);
+	op->phys_addr = rte_mem_virt2iova(_op_data);
 	op->mempool = mempool;
 }
 

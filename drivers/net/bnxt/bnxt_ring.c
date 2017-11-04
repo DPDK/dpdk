@@ -177,10 +177,10 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		RTE_LOG(WARNING, PMD,
 			"Memzone physical address same as virtual.\n");
 		RTE_LOG(WARNING, PMD,
-			"Using rte_mem_virt2phy()\n");
+			"Using rte_mem_virt2iova()\n");
 		for (sz = 0; sz < total_alloc_len; sz += getpagesize())
 			rte_mem_lock_page(((char *)mz->addr) + sz);
-		mz_phys_addr = rte_mem_virt2phy(mz->addr);
+		mz_phys_addr = rte_mem_virt2iova(mz->addr);
 		if (mz_phys_addr == 0) {
 			RTE_LOG(ERR, PMD,
 			"unable to map ring address to physical memory\n");

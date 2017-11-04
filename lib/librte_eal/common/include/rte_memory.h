@@ -148,6 +148,16 @@ int rte_mem_lock_page(const void *virt);
 phys_addr_t rte_mem_virt2phy(const void *virt);
 
 /**
+ * Get IO virtual address of any mapped virtual address in the current process.
+ *
+ * @param virt
+ *   The virtual address.
+ * @return
+ *   The IO address or RTE_BAD_IOVA on error.
+ */
+rte_iova_t rte_mem_virt2iova(const void *virt);
+
+/**
  * Get the layout of the available physical memory.
  *
  * It can be useful for an application to have the full physical

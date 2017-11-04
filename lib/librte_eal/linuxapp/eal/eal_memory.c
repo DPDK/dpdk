@@ -128,9 +128,6 @@ rte_mem_virt2phy(const void *virtaddr)
 	int page_size;
 	off_t offset;
 
-	if (rte_eal_iova_mode() == RTE_IOVA_VA)
-		return (uintptr_t)virtaddr;
-
 	/* Cannot parse /proc/self/pagemap, no need to log errors everywhere */
 	if (!phys_addrs_available)
 		return RTE_BAD_IOVA;
@@ -178,6 +175,14 @@ rte_mem_virt2phy(const void *virtaddr)
 		+ ((unsigned long)virtaddr % page_size);
 
 	return physaddr;
+}
+
+rte_iova_t
+rte_mem_virt2iova(const void *virtaddr)
+{
+	if (rte_eal_iova_mode() == RTE_IOVA_VA)
+		return (uintptr_t)virtaddr;
+	return rte_mem_virt2phy(virtaddr);
 }
 
 /*

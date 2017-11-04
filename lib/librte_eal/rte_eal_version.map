@@ -233,6 +233,7 @@ DPDK_17.11 {
 	rte_eal_using_phys_addrs;
 	rte_eal_vfio_intr_mode;
 	rte_lcore_has_role;
+	rte_mem_virt2iova;
 	rte_memcpy_ptr;
 	rte_vfio_enable;
 	rte_vfio_is_enabled;

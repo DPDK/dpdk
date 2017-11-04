@@ -240,7 +240,7 @@ struct qm_portal {
 #define EQCR_CARRYCLEAR(p) \
 	(void *)((unsigned long)(p) & (~(unsigned long)(QM_EQCR_SIZE << 6)))
 
-extern dma_addr_t rte_mem_virt2phy(const void *addr);
+extern dma_addr_t rte_mem_virt2iova(const void *addr);
 
 /* Bit-wise logic to convert a ring pointer to a ring index */
 static inline u8 EQCR_PTR2IDX(struct qm_eqcr_entry *e)

@@ -503,7 +503,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	for (off = 0; off + pg_sz <= len &&
 		     mp->populated_size < mp->size; off += phys_len) {
 
-		paddr = rte_mem_virt2phy(addr + off);
+		paddr = rte_mem_virt2iova(addr + off);
 
 		if (paddr == RTE_BAD_PHYS_ADDR && rte_eal_has_hugepages()) {
 			ret = -EINVAL;
@@ -514,7 +514,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		for (phys_len = pg_sz; off + phys_len < len; phys_len += pg_sz) {
 			phys_addr_t paddr_tmp;
 
-			paddr_tmp = rte_mem_virt2phy(addr + off + phys_len);
+			paddr_tmp = rte_mem_virt2iova(addr + off + phys_len);
 
 			if (paddr_tmp != paddr + phys_len)
 				break;
