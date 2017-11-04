@@ -358,8 +358,6 @@ static const struct eth_dev_ops eth_kni_ops = {
 	.stats_reset = eth_kni_stats_reset,
 };
 
-static struct rte_vdev_driver eth_kni_drv;
-
 static struct rte_eth_dev *
 eth_kni_create(struct rte_vdev_device *vdev,
 		struct eth_kni_args *args,
