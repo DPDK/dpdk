@@ -107,10 +107,11 @@ test_phys_addrs_available(void)
 
 	physaddr = rte_mem_virt2phy(&tmp);
 	if (physaddr == RTE_BAD_PHYS_ADDR) {
-		RTE_LOG(ERR, EAL,
-			"Cannot obtain physical addresses: %s. "
-			"Only vfio will function.\n",
-			strerror(errno));
+		if (rte_eal_iova_mode() == RTE_IOVA_PA)
+			RTE_LOG(ERR, EAL,
+				"Cannot obtain physical addresses: %s. "
+				"Only vfio will function.\n",
+				strerror(errno));
 		phys_addrs_available = false;
 	}
 }
