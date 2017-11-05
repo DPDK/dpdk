@@ -185,7 +185,7 @@ tx4(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 	int i;
 
 	for (i = 0; i < 4; ++i, ++txdp, ++pkts) {
-		buf_dma_addr = rte_mbuf_data_dma_addr(*pkts);
+		buf_dma_addr = rte_mbuf_data_iova(*pkts);
 		pkt_len = (*pkts)->data_len;
 
 		/* write data to descriptor */
@@ -208,7 +208,7 @@ tx1(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 	uint64_t buf_dma_addr;
 	uint32_t pkt_len;
 
-	buf_dma_addr = rte_mbuf_data_dma_addr(*pkts);
+	buf_dma_addr = rte_mbuf_data_iova(*pkts);
 	pkt_len = (*pkts)->data_len;
 
 	/* write data to descriptor */
@@ -924,7 +924,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 * Set up Transmit Data Descriptor.
 			 */
 			slen = m_seg->data_len;
-			buf_dma_addr = rte_mbuf_data_dma_addr(m_seg);
+			buf_dma_addr = rte_mbuf_data_iova(m_seg);
 			txd->read.buffer_addr =
 				rte_cpu_to_le_64(buf_dma_addr);
 			txd->read.cmd_type_len =
@@ -1633,7 +1633,7 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
 		mb->data_off = RTE_PKTMBUF_HEADROOM;
 
 		/* populate the descriptors */
-		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(mb));
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mb));
 		rxdp[i].read.hdr_addr = 0;
 		rxdp[i].read.pkt_addr = dma_addr;
 	}
@@ -1865,7 +1865,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm = rxe->mbuf;
 		rxe->mbuf = nmb;
 		dma_addr =
-			rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
 		rxdp->read.hdr_addr = 0;
 		rxdp->read.pkt_addr = dma_addr;
 
@@ -2159,7 +2159,7 @@ next_desc:
 
 		if (!bulk_alloc) {
 			__le64 dma =
-			  rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
+			  rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
 			/*
 			 * Update RX descriptor with the physical address of the
 			 * new data buffer of the new allocated mbuf.
@@ -4188,7 +4188,7 @@ ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
 		mbuf->port = rxq->port_id;
 
 		dma_addr =
-			rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(mbuf));
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 		rxd = &rxq->rx_ring[i];
 		rxd->read.hdr_addr = 0;
 		rxd->read.pkt_addr = dma_addr;

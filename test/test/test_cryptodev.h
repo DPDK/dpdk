@@ -153,18 +153,18 @@ pktmbuf_mtod_offset(struct rte_mbuf *mbuf, int offset) {
 	return rte_pktmbuf_mtod_offset(m, uint8_t *, offset);
 }
 
-static inline phys_addr_t
-pktmbuf_mtophys_offset(struct rte_mbuf *mbuf, int offset) {
+static inline rte_iova_t
+pktmbuf_iova_offset(struct rte_mbuf *mbuf, int offset) {
 	struct rte_mbuf *m;
 
 	for (m = mbuf; (m != NULL) && (offset > m->data_len); m = m->next)
 		offset -= m->data_len;
 
 	if (m == NULL) {
-		printf("pktmbuf_mtophys_offset: offset out of buffer\n");
+		printf("pktmbuf_iova_offset: offset out of buffer\n");
 		return 0;
 	}
-	return rte_pktmbuf_mtophys_offset(m, offset);
+	return rte_pktmbuf_iova_offset(m, offset);
 }
 
 static inline struct rte_mbuf *

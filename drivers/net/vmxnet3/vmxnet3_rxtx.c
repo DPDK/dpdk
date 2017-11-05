@@ -509,7 +509,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 					rte_cpu_to_le_64(txq->data_ring.basePA +
 							 offset);
 			} else {
-				gdesc->txd.addr = rte_mbuf_data_dma_addr(m_seg);
+				gdesc->txd.addr = rte_mbuf_data_iova(m_seg);
 			}
 
 			gdesc->dword[2] = dw2 | m_seg->data_len;
@@ -617,7 +617,7 @@ vmxnet3_renew_desc(vmxnet3_rx_queue_t *rxq, uint8_t ring_id,
 	 */
 	buf_info->m = mbuf;
 	buf_info->len = (uint16_t)(mbuf->buf_len - RTE_PKTMBUF_HEADROOM);
-	buf_info->bufPA = rte_mbuf_data_dma_addr_default(mbuf);
+	buf_info->bufPA = rte_mbuf_data_iova_default(mbuf);
 
 	/* Load Rx Descriptor with the buffer's GPA */
 	rxd->addr = buf_info->bufPA;

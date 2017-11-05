@@ -28,7 +28,7 @@ static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 	}
 	rxq->sw_rx_ring[idx].mbuf = new_mb;
 	rxq->sw_rx_ring[idx].page_offset = 0;
-	mapping = rte_mbuf_data_dma_addr_default(new_mb);
+	mapping = rte_mbuf_data_iova_default(new_mb);
 	/* Advance PROD and get BD pointer */
 	rx_bd = (struct eth_rx_bd *)ecore_chain_produce(&rxq->rx_bd_ring);
 	rx_bd->addr.hi = rte_cpu_to_le_32(U64_HI(mapping));
@@ -1064,7 +1064,7 @@ qede_reuse_page(__rte_unused struct qede_dev *qdev,
 	curr_prod = &rxq->sw_rx_ring[idx];
 	*curr_prod = *curr_cons;
 
-	new_mapping = rte_mbuf_data_dma_addr_default(curr_prod->mbuf) +
+	new_mapping = rte_mbuf_data_iova_default(curr_prod->mbuf) +
 		      curr_prod->page_offset;
 
 	rx_bd_prod->addr.hi = rte_cpu_to_le_32(U64_HI(new_mapping));
@@ -1565,7 +1565,7 @@ qede_encode_sg_bd(struct qede_tx_queue *p_txq, struct rte_mbuf *m_seg,
 				memset(*bd2, 0, sizeof(struct eth_tx_2nd_bd));
 				nb_segs++;
 			}
-			mapping = rte_mbuf_data_dma_addr(m_seg);
+			mapping = rte_mbuf_data_iova(m_seg);
 			QEDE_BD_SET_ADDR_LEN(*bd2, mapping, m_seg->data_len);
 			PMD_TX_LOG(DEBUG, txq, "BD2 len %04x", m_seg->data_len);
 		} else if (nb_segs == 1) {
@@ -1575,7 +1575,7 @@ qede_encode_sg_bd(struct qede_tx_queue *p_txq, struct rte_mbuf *m_seg,
 				memset(*bd3, 0, sizeof(struct eth_tx_3rd_bd));
 				nb_segs++;
 			}
-			mapping = rte_mbuf_data_dma_addr(m_seg);
+			mapping = rte_mbuf_data_iova(m_seg);
 			QEDE_BD_SET_ADDR_LEN(*bd3, mapping, m_seg->data_len);
 			PMD_TX_LOG(DEBUG, txq, "BD3 len %04x", m_seg->data_len);
 		} else {
@@ -1583,7 +1583,7 @@ qede_encode_sg_bd(struct qede_tx_queue *p_txq, struct rte_mbuf *m_seg,
 				ecore_chain_produce(&txq->tx_pbl);
 			memset(tx_bd, 0, sizeof(*tx_bd));
 			nb_segs++;
-			mapping = rte_mbuf_data_dma_addr(m_seg);
+			mapping = rte_mbuf_data_iova(m_seg);
 			QEDE_BD_SET_ADDR_LEN(tx_bd, mapping, m_seg->data_len);
 			PMD_TX_LOG(DEBUG, txq, "BD len %04x", m_seg->data_len);
 		}
@@ -1966,7 +1966,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		nbds++;
 
 		/* Map MBUF linear data for DMA and set in the BD1 */
-		QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
+		QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_iova(mbuf),
 				     mbuf->data_len);
 		bd1->data.bitfields = rte_cpu_to_le_16(bd1_bf);
 		bd1->data.bd_flags.bitfields = bd1_bd_flags_bf;
@@ -1979,11 +1979,11 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			nbds++;
 
 			/* BD1 */
-			QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
+			QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_iova(mbuf),
 					     hdr_size);
 			/* BD2 */
 			QEDE_BD_SET_ADDR_LEN(bd2, (hdr_size +
-					     rte_mbuf_data_dma_addr(mbuf)),
+					     rte_mbuf_data_iova(mbuf)),
 					     mbuf->data_len - hdr_size);
 			bd2->data.bitfields1 = rte_cpu_to_le_16(bd2_bf1);
 			if (mplsoudp_flg) {

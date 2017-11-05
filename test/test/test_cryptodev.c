@@ -1332,7 +1332,7 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 
 	/* Set crypto operation authentication parameters */
 	sym_op->auth.digest.data = ut_params->digest;
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
 
 	sym_op->auth.data.offset = 0;
@@ -1484,7 +1484,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 	sym_op->m_src = ut_params->ibuf;
 
 	sym_op->auth.digest.data = ut_params->digest;
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
 
 	sym_op->auth.data.offset = 0;
@@ -2385,7 +2385,7 @@ create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 				"no room to append auth tag");
 	ut_params->digest = sym_op->auth.digest.data;
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, data_pad_len);
 	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
 		memset(sym_op->auth.digest.data, 0, auth_tag_len);
@@ -2441,7 +2441,7 @@ create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append auth tag");
 	ut_params->digest = sym_op->auth.digest.data;
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, data_pad_len);
 	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
 		memset(sym_op->auth.digest.data, 0, auth_tag_len);
@@ -2508,7 +2508,7 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append auth tag");
 	ut_params->digest = sym_op->auth.digest.data;
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, data_pad_len);
 	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
 		memset(sym_op->auth.digest.data, 0, auth_tag_len);
@@ -2566,7 +2566,7 @@ create_wireless_algo_auth_cipher_operation(unsigned int auth_tag_len,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append auth tag");
 
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, data_pad_len);
 
 	memset(sym_op->auth.digest.data, 0, auth_tag_len);
@@ -5153,7 +5153,7 @@ create_aead_operation(enum rte_crypto_aead_operation op,
 				"no room to append aad");
 
 		sym_op->aead.aad.phys_addr =
-				rte_pktmbuf_mtophys(ut_params->ibuf);
+				rte_pktmbuf_iova(ut_params->ibuf);
 		/* Copy AAD 18 bytes after the AAD pointer, according to the API */
 		memcpy(sym_op->aead.aad.data + 18, tdata->aad.data, tdata->aad.len);
 		TEST_HEXDUMP(stdout, "aad:", sym_op->aead.aad.data,
@@ -5175,7 +5175,7 @@ create_aead_operation(enum rte_crypto_aead_operation op,
 				"no room to append aad");
 
 		sym_op->aead.aad.phys_addr =
-				rte_pktmbuf_mtophys(ut_params->ibuf);
+				rte_pktmbuf_iova(ut_params->ibuf);
 		memcpy(sym_op->aead.aad.data, tdata->aad.data, tdata->aad.len);
 		TEST_HEXDUMP(stdout, "aad:", sym_op->aead.aad.data,
 			tdata->aad.len);
@@ -5243,7 +5243,7 @@ create_aead_operation(enum rte_crypto_aead_operation op,
 		TEST_ASSERT_NOT_NULL(sym_op->aead.digest.data,
 				"no room to append digest");
 		memset(sym_op->aead.digest.data, 0, tdata->auth_tag.len);
-		sym_op->aead.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+		sym_op->aead.digest.phys_addr = rte_pktmbuf_iova_offset(
 				ut_params->obuf ? ut_params->obuf :
 						ut_params->ibuf,
 						plaintext_pad_len +
@@ -5253,7 +5253,7 @@ create_aead_operation(enum rte_crypto_aead_operation op,
 				ut_params->ibuf, tdata->auth_tag.len);
 		TEST_ASSERT_NOT_NULL(sym_op->aead.digest.data,
 				"no room to append digest");
-		sym_op->aead.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+		sym_op->aead.digest.phys_addr = rte_pktmbuf_iova_offset(
 				ut_params->ibuf,
 				plaintext_pad_len + aad_pad_len);
 
@@ -6226,7 +6226,7 @@ static int MD5_HMAC_create_op(struct crypto_unittest_params *ut_params,
 			ut_params->ibuf, MD5_DIGEST_LEN);
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append digest");
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, plaintext_pad_len);
 
 	if (ut_params->auth_xform.auth.op == RTE_CRYPTO_AUTH_OP_VERIFY) {
@@ -6962,7 +6962,7 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append digest");
 
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, plaintext_pad_len);
 
 	if (op == RTE_CRYPTO_AUTH_OP_VERIFY) {
@@ -7484,7 +7484,7 @@ create_auth_operation(struct crypto_testsuite_params *ts_params,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append auth tag");
 
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, reference->plaintext.len);
 
 	if (auth_generate)
@@ -7531,7 +7531,7 @@ create_auth_GMAC_operation(struct crypto_testsuite_params *ts_params,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append auth tag");
 
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, reference->ciphertext.len);
 
 	if (auth_generate)
@@ -7584,7 +7584,7 @@ create_cipher_auth_operation(struct crypto_testsuite_params *ts_params,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append auth tag");
 
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			ut_params->ibuf, reference->ciphertext.len);
 
 	if (auth_generate)
@@ -7863,7 +7863,7 @@ create_aead_operation_SGL(enum rte_crypto_aead_operation op,
 				ut_params->ibuf, aad_len);
 		TEST_ASSERT_NOT_NULL(sym_op->aead.aad.data,
 				"no room to prepend aad");
-		sym_op->aead.aad.phys_addr = rte_pktmbuf_mtophys(
+		sym_op->aead.aad.phys_addr = rte_pktmbuf_iova(
 				ut_params->ibuf);
 
 		memset(sym_op->aead.aad.data, 0, aad_len);
@@ -7883,7 +7883,7 @@ create_aead_operation_SGL(enum rte_crypto_aead_operation op,
 				ut_params->ibuf, aad_len);
 		TEST_ASSERT_NOT_NULL(sym_op->aead.aad.data,
 				"no room to prepend aad");
-		sym_op->aead.aad.phys_addr = rte_pktmbuf_mtophys(
+		sym_op->aead.aad.phys_addr = rte_pktmbuf_iova(
 				ut_params->ibuf);
 
 		memset(sym_op->aead.aad.data, 0, aad_len);
@@ -8030,7 +8030,7 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 			digest_mem = rte_pktmbuf_append(ut_params->obuf,
 				tdata->auth_tag.len);
 
-			digest_phys = rte_pktmbuf_mtophys_offset(
+			digest_phys = rte_pktmbuf_iova_offset(
 					ut_params->obuf,
 					tdata->plaintext.len + prepend_len);
 		}
@@ -8068,14 +8068,14 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 	 * Place digest at the end of the last buffer
 	 */
 	if (!digest_phys)
-		digest_phys = rte_pktmbuf_mtophys(buf) + to_trn;
+		digest_phys = rte_pktmbuf_iova(buf) + to_trn;
 	if (oop && buf_last_oop)
-		digest_phys = rte_pktmbuf_mtophys(buf_last_oop) + to_trn;
+		digest_phys = rte_pktmbuf_iova(buf_last_oop) + to_trn;
 
 	if (!digest_mem && !oop) {
 		digest_mem = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 				+ tdata->auth_tag.len);
-		digest_phys = rte_pktmbuf_mtophys_offset(ut_params->ibuf,
+		digest_phys = rte_pktmbuf_iova_offset(ut_params->ibuf,
 				tdata->plaintext.len);
 	}
 

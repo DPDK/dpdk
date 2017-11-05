@@ -688,7 +688,7 @@ lio_map_ring(void *buf)
 {
 	phys_addr_t dma_addr;
 
-	dma_addr = rte_mbuf_data_dma_addr_default(((struct rte_mbuf *)buf));
+	dma_addr = rte_mbuf_data_iova_default(((struct rte_mbuf *)buf));
 
 	return (uint64_t)dma_addr;
 }

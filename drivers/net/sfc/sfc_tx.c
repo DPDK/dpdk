@@ -765,7 +765,7 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			size_t			seg_len;
 
 			seg_len = m_seg->data_len;
-			next_frag = rte_mbuf_data_dma_addr(m_seg);
+			next_frag = rte_mbuf_data_iova(m_seg);
 
 			/*
 			 * If we've started TSO transaction few steps earlier,

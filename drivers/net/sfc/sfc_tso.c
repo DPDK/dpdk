@@ -141,7 +141,7 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	if (unlikely(tcph_off > encp->enc_tx_tso_tcp_header_offset_limit))
 		return EMSGSIZE;
 
-	header_paddr = rte_pktmbuf_mtophys(m);
+	header_paddr = rte_pktmbuf_iova(m);
 
 	/*
 	 * Sometimes headers may be split across multiple mbufs. In such cases

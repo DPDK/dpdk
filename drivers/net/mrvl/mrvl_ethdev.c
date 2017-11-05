@@ -1153,7 +1153,7 @@ mrvl_fill_bpool(struct mrvl_rxq *rxq, int num)
 		}
 
 		entries[i].buff.addr =
-			rte_mbuf_data_dma_addr_default(mbufs[i]);
+			rte_mbuf_data_iova_default(mbufs[i]);
 		entries[i].buff.cookie = (pp2_cookie_t)(uint64_t)mbufs[i];
 		entries[i].bpool = bpool;
 	}
@@ -1598,7 +1598,7 @@ mrvl_rx_pkt_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		status = pp2_ppio_inq_desc_get_l2_pkt_error(&descs[i]);
 		if (unlikely(status != PP2_DESC_ERR_OK)) {
 			struct pp2_buff_inf binf = {
-				.addr = rte_mbuf_data_dma_addr_default(mbuf),
+				.addr = rte_mbuf_data_iova_default(mbuf),
 				.cookie = (pp2_cookie_t)(uint64_t)mbuf,
 			};
 
@@ -1854,7 +1854,7 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		sq->ent[sq->head].buff.cookie = (pp2_cookie_t)(uint64_t)mbuf;
 		sq->ent[sq->head].buff.addr =
-			rte_mbuf_data_dma_addr_default(mbuf);
+			rte_mbuf_data_iova_default(mbuf);
 		sq->ent[sq->head].bpool =
 			(unlikely(mbuf->port == 0xff || mbuf->refcnt > 1)) ?
 			 NULL : mrvl_port_to_bpool_lookup[mbuf->port];
@@ -1863,7 +1863,7 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		pp2_ppio_outq_desc_reset(&descs[i]);
 		pp2_ppio_outq_desc_set_phys_addr(&descs[i],
-						 rte_pktmbuf_mtophys(mbuf));
+						 rte_pktmbuf_iova(mbuf));
 		pp2_ppio_outq_desc_set_pkt_offset(&descs[i], 0);
 		pp2_ppio_outq_desc_set_pkt_len(&descs[i],
 					       rte_pktmbuf_pkt_len(mbuf));

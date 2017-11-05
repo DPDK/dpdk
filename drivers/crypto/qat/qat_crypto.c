@@ -1119,7 +1119,7 @@ qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buff_start,
 {
 	int nr = 1;
 
-	uint32_t buf_len = rte_pktmbuf_mtophys(buf) -
+	uint32_t buf_len = rte_pktmbuf_iova(buf) -
 			buff_start + rte_pktmbuf_data_len(buf);
 
 	list->bufers[0].addr = buff_start;
@@ -1143,7 +1143,7 @@ qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buff_start,
 
 		list->bufers[nr].len = rte_pktmbuf_data_len(buf);
 		list->bufers[nr].resrvd = 0;
-		list->bufers[nr].addr = rte_pktmbuf_mtophys(buf);
+		list->bufers[nr].addr = rte_pktmbuf_iova(buf);
 
 		buf_len += list->bufers[nr].len;
 		buf = buf->next;
@@ -1499,26 +1499,26 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		 * so as not to overwrite data in dest buffer
 		 */
 		src_buf_start =
-			rte_pktmbuf_mtophys_offset(op->sym->m_src, min_ofs);
+			rte_pktmbuf_iova_offset(op->sym->m_src, min_ofs);
 		dst_buf_start =
-			rte_pktmbuf_mtophys_offset(op->sym->m_dst, min_ofs);
+			rte_pktmbuf_iova_offset(op->sym->m_dst, min_ofs);
 
 	} else {
 		/* In-place operation
 		 * Start DMA at nearest aligned address below min_ofs
 		 */
 		src_buf_start =
-			rte_pktmbuf_mtophys_offset(op->sym->m_src, min_ofs)
+			rte_pktmbuf_iova_offset(op->sym->m_src, min_ofs)
 						& QAT_64_BTYE_ALIGN_MASK;
 
-		if (unlikely((rte_pktmbuf_mtophys(op->sym->m_src) -
+		if (unlikely((rte_pktmbuf_iova(op->sym->m_src) -
 					rte_pktmbuf_headroom(op->sym->m_src))
 							> src_buf_start)) {
 			/* alignment has pushed addr ahead of start of mbuf
 			 * so revert and take the performance hit
 			 */
 			src_buf_start =
-				rte_pktmbuf_mtophys_offset(op->sym->m_src,
+				rte_pktmbuf_iova_offset(op->sym->m_src,
 								min_ofs);
 		}
 		dst_buf_start = src_buf_start;
@@ -1526,7 +1526,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 
 	if (do_cipher || do_aead) {
 		cipher_param->cipher_offset =
-				(uint32_t)rte_pktmbuf_mtophys_offset(
+				(uint32_t)rte_pktmbuf_iova_offset(
 				op->sym->m_src, cipher_ofs) - src_buf_start;
 		cipher_param->cipher_length = cipher_len;
 	} else {
@@ -1535,7 +1535,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 	}
 
 	if (do_auth || do_aead) {
-		auth_param->auth_off = (uint32_t)rte_pktmbuf_mtophys_offset(
+		auth_param->auth_off = (uint32_t)rte_pktmbuf_iova_offset(
 				op->sym->m_src, auth_ofs) - src_buf_start;
 		auth_param->auth_len = auth_len;
 	} else {

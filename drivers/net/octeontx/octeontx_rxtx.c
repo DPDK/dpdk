@@ -70,7 +70,7 @@ __octeontx_xmit_pkts(void *lmtline_va, void *ioreg_va, int64_t *fc_status_va,
 		cmd_buf[0] |= (1ULL << 58); /* SET DF */
 
 	/* Setup PKO_SEND_GATHER_S */
-	cmd_buf[(1 << 1) | 1] = rte_mbuf_data_dma_addr(tx_pkt);
+	cmd_buf[(1 << 1) | 1] = rte_mbuf_data_iova(tx_pkt);
 	cmd_buf[(1 << 1) | 0] = PKO_SEND_GATHER_SUBDC |
 				PKO_SEND_GATHER_LDTYPE(0x1ull) |
 				PKO_SEND_GATHER_GAUAR((long)gaura_id) |

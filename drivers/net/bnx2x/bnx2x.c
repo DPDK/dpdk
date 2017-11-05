@@ -2135,7 +2135,7 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 	tx_start_bd = &txq->tx_ring[TX_BD(bd_prod, txq)].start_bd;
 
 	tx_start_bd->addr =
-	    rte_cpu_to_le_64(rte_mbuf_data_dma_addr(m0));
+	    rte_cpu_to_le_64(rte_mbuf_data_iova(m0));
 	tx_start_bd->nbytes = rte_cpu_to_le_16(m0->data_len);
 	tx_start_bd->bd_flags.as_bitfield = ETH_TX_BD_FLAGS_START_BD;
 	tx_start_bd->general_data =

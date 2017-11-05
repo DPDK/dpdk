@@ -577,7 +577,7 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	ctx->op = op;
 	old_digest = ctx->digest;
 
-	start_addr = rte_pktmbuf_mtophys(mbuf);
+	start_addr = rte_pktmbuf_iova(mbuf);
 	/* output */
 	sg = &cf->sg[0];
 	qm_sg_entry_set64(sg, sym->auth.digest.phys_addr);
@@ -637,10 +637,10 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	cf = &ctx->job;
 	ctx->op = op;
 
-	src_start_addr = rte_pktmbuf_mtophys(sym->m_src);
+	src_start_addr = rte_pktmbuf_iova(sym->m_src);
 
 	if (sym->m_dst)
-		dst_start_addr = rte_pktmbuf_mtophys(sym->m_dst);
+		dst_start_addr = rte_pktmbuf_iova(sym->m_dst);
 	else
 		dst_start_addr = src_start_addr;
 

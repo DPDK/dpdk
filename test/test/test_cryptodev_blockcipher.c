@@ -329,14 +329,14 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			sym_op->auth.digest.data = pktmbuf_mtod_offset
 				(iobuf, digest_offset);
 			sym_op->auth.digest.phys_addr =
-				pktmbuf_mtophys_offset(iobuf,
+				pktmbuf_iova_offset(iobuf,
 					digest_offset);
 		} else {
 			auth_xform->auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
 			sym_op->auth.digest.data = pktmbuf_mtod_offset
 				(sym_op->m_src, digest_offset);
 			sym_op->auth.digest.phys_addr =
-				pktmbuf_mtophys_offset(sym_op->m_src,
+				pktmbuf_iova_offset(sym_op->m_src,
 					digest_offset);
 		}
 

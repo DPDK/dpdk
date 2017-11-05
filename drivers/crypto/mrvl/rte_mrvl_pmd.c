@@ -480,7 +480,7 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 	request->num_bufs = 1;
 	request->src = src_bd;
 	src_bd->vaddr = rte_pktmbuf_mtod(op->sym->m_src, void *);
-	src_bd->paddr = rte_pktmbuf_mtophys(op->sym->m_src);
+	src_bd->paddr = rte_pktmbuf_iova(op->sym->m_src);
 	src_bd->len = rte_pktmbuf_data_len(op->sym->m_src);
 
 	/* Empty source. */
@@ -502,7 +502,7 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 
 	request->dst = dst_bd;
 	dst_bd->vaddr = rte_pktmbuf_mtod(dst_mbuf, void *);
-	dst_bd->paddr = rte_pktmbuf_mtophys(dst_mbuf);
+	dst_bd->paddr = rte_pktmbuf_iova(dst_mbuf);
 
 	/*
 	 * We can use all available space in dst_mbuf,

@@ -128,7 +128,7 @@ sfc_efx_rx_qrefill(struct sfc_efx_rxq *rxq)
 			SFC_ASSERT(m->nb_segs == 1);
 			m->port = port_id;
 
-			addr[i] = rte_pktmbuf_mtophys(m);
+			addr[i] = rte_pktmbuf_iova(m);
 		}
 
 		efx_rx_qpost(rxq->common, addr, rxq->buf_size,

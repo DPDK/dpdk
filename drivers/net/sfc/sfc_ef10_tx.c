@@ -341,7 +341,7 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		pkt_len = m_seg->pkt_len;
 		do {
-			phys_addr_t seg_addr = rte_mbuf_data_dma_addr(m_seg);
+			phys_addr_t seg_addr = rte_mbuf_data_iova(m_seg);
 			unsigned int seg_len = rte_pktmbuf_data_len(m_seg);
 			unsigned int id = added & ptr_mask;
 
@@ -464,7 +464,7 @@ sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		SFC_ASSERT(rte_pktmbuf_data_len(pkt) <=
 			   SFC_EF10_TX_DMA_DESC_LEN_MAX);
 
-		sfc_ef10_tx_qdesc_dma_create(rte_mbuf_data_dma_addr(pkt),
+		sfc_ef10_tx_qdesc_dma_create(rte_mbuf_data_iova(pkt),
 					     rte_pktmbuf_data_len(pkt),
 					     true, &txq->txq_hw_ring[id]);
 

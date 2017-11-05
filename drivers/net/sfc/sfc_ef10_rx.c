@@ -189,7 +189,7 @@ sfc_ef10_rx_qrefill(struct sfc_ef10_rxq *rxq)
 			 * structure members.
 			 */
 
-			phys_addr = rte_mbuf_data_dma_addr_default(m);
+			phys_addr = rte_mbuf_data_iova_default(m);
 			EFX_POPULATE_QWORD_2(rxq->rxq_hw_ring[id],
 			    ESF_DZ_RX_KER_BYTE_CNT, buf_size,
 			    ESF_DZ_RX_KER_BUF_ADDR, phys_addr);

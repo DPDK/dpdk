@@ -625,21 +625,28 @@ rte_mbuf_prefetch_part2(struct rte_mbuf *m)
 static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);
 
 /**
- * Return the DMA address of the beginning of the mbuf data
+ * Return the IO address of the beginning of the mbuf data
  *
  * @param mb
  *   The pointer to the mbuf.
  * @return
- *   The physical address of the beginning of the mbuf data
+ *   The IO address of the beginning of the mbuf data
  */
-static inline phys_addr_t
-rte_mbuf_data_dma_addr(const struct rte_mbuf *mb)
+static inline rte_iova_t
+rte_mbuf_data_iova(const struct rte_mbuf *mb)
 {
 	return mb->buf_iova + mb->data_off;
 }
 
+__rte_deprecated
+static inline phys_addr_t
+rte_mbuf_data_dma_addr(const struct rte_mbuf *mb)
+{
+	return rte_mbuf_data_iova(mb);
+}
+
 /**
- * Return the default DMA address of the beginning of the mbuf data
+ * Return the default IO address of the beginning of the mbuf data
  *
  * This function is used by drivers in their receive function, as it
  * returns the location where data should be written by the NIC, taking
@@ -648,12 +655,19 @@ rte_mbuf_data_dma_addr(const struct rte_mbuf *mb)
  * @param mb
  *   The pointer to the mbuf.
  * @return
- *   The physical address of the beginning of the mbuf data
+ *   The IO address of the beginning of the mbuf data
  */
+static inline rte_iova_t
+rte_mbuf_data_iova_default(const struct rte_mbuf *mb)
+{
+	return mb->buf_iova + RTE_PKTMBUF_HEADROOM;
+}
+
+__rte_deprecated
 static inline phys_addr_t
 rte_mbuf_data_dma_addr_default(const struct rte_mbuf *mb)
 {
-	return mb->buf_iova + RTE_PKTMBUF_HEADROOM;
+	return rte_mbuf_data_iova_default(mb);
 }
 
 /**
@@ -1564,7 +1578,7 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 #define rte_pktmbuf_mtod(m, t) rte_pktmbuf_mtod_offset(m, t, 0)
 
 /**
- * A macro that returns the physical address that points to an offset of the
+ * A macro that returns the IO address that points to an offset of the
  * start of the data in the mbuf
  *
  * @param m
@@ -1572,17 +1586,24 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
  * @param o
  *   The offset into the data to calculate address from.
  */
-#define rte_pktmbuf_mtophys_offset(m, o) \
+#define rte_pktmbuf_iova_offset(m, o) \
 	(rte_iova_t)((m)->buf_iova + (m)->data_off + (o))
 
+/* deprecated */
+#define rte_pktmbuf_mtophys_offset(m, o) \
+	rte_pktmbuf_iova_offset(m, o)
+
 /**
- * A macro that returns the physical address that points to the start of the
+ * A macro that returns the IO address that points to the start of the
  * data in the mbuf
  *
  * @param m
  *   The packet mbuf.
  */
-#define rte_pktmbuf_mtophys(m) rte_pktmbuf_mtophys_offset(m, 0)
+#define rte_pktmbuf_iova(m) rte_pktmbuf_iova_offset(m, 0)
+
+/* deprecated */
+#define rte_pktmbuf_mtophys(m) rte_pktmbuf_iova(m)
 
 /**
  * A macro that returns the length of the packet.

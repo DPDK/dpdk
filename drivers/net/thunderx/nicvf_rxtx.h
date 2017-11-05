@@ -60,7 +60,7 @@ fill_sq_desc_gather(union sq_entry_t *entry, struct rte_mbuf *pkt)
 	sqe.gather.subdesc_type = SQ_DESC_TYPE_GATHER;
 	sqe.gather.ld_type = NIC_SEND_LD_TYPE_E_LDT;
 	sqe.gather.size = pkt->data_len;
-	sqe.gather.addr = rte_mbuf_data_dma_addr(pkt);
+	sqe.gather.addr = rte_mbuf_data_iova(pkt);
 
 	entry->buff[0] = sqe.buff[0];
 	entry->buff[1] = sqe.buff[1];
@@ -80,7 +80,7 @@ fill_sq_desc_gather(union sq_entry_t *entry, struct rte_mbuf *pkt)
 	entry->buff[0] = (uint64_t)SQ_DESC_TYPE_GATHER << 60 |
 			 (uint64_t)NIC_SEND_LD_TYPE_E_LDT << 58 |
 			 pkt->data_len;
-	entry->buff[1] = rte_mbuf_data_dma_addr(pkt);
+	entry->buff[1] = rte_mbuf_data_iova(pkt);
 }
 #endif
 

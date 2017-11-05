@@ -497,7 +497,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 				uint8_t *) + ipdata_offset + data_len;
 		}
 
-		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+		op->sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m,
 				rte_pktmbuf_pkt_len(m) - cparams->digest_length);
 
 		/* For wireless algorithms, offset/length must be in bits */
@@ -558,7 +558,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 				uint8_t *) + ipdata_offset + data_len;
 		}
 
-		op->sym->aead.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+		op->sym->aead.digest.phys_addr = rte_pktmbuf_iova_offset(m,
 				rte_pktmbuf_pkt_len(m) - cparams->digest_length);
 
 		if (cparams->aad.length) {

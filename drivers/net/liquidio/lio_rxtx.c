@@ -1298,7 +1298,7 @@ lio_alloc_soft_command(struct lio_device *lio_dev, uint32_t datasize,
 	sc = rte_pktmbuf_mtod(m, struct lio_soft_command *);
 	memset(sc, 0, LIO_SOFT_COMMAND_BUFFER_SIZE);
 	sc->size = LIO_SOFT_COMMAND_BUFFER_SIZE;
-	sc->dma_addr = rte_mbuf_data_dma_addr(m);
+	sc->dma_addr = rte_mbuf_data_iova(m);
 	sc->mbuf = m;
 
 	dma_addr = sc->dma_addr;
@@ -1739,7 +1739,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 			cmdsetup.s.u.datasize = pkt_len;
 			lio_prepare_pci_cmd(lio_dev, &ndata.cmd,
 					    &cmdsetup, tag);
-			ndata.cmd.cmd3.dptr = rte_mbuf_data_dma_addr(m);
+			ndata.cmd.cmd3.dptr = rte_mbuf_data_iova(m);
 			ndata.reqtype = LIO_REQTYPE_NORESP_NET;
 		} else {
 			struct lio_buf_free_info *finfo;
@@ -1771,7 +1771,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 					    &cmdsetup, tag);
 
 			memset(g->sg, 0, g->sg_size);
-			g->sg[0].ptr[0] = rte_mbuf_data_dma_addr(m);
+			g->sg[0].ptr[0] = rte_mbuf_data_iova(m);
 			lio_add_sg_size(&g->sg[0], m->data_len, 0);
 			pkt_len = m->data_len;
 			finfo->mbuf = m;
@@ -1782,7 +1782,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 			m = m->next;
 			while (frags--) {
 				g->sg[(i >> 2)].ptr[(i & 3)] =
-						rte_mbuf_data_dma_addr(m);
+						rte_mbuf_data_iova(m);
 				lio_add_sg_size(&g->sg[(i >> 2)],
 						m->data_len, (i & 3));
 				pkt_len += m->data_len;

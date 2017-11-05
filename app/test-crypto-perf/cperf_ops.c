@@ -221,7 +221,7 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 			sym_op->auth.digest.data = rte_pktmbuf_mtod_offset(buf,
 					uint8_t *, offset);
 			sym_op->auth.digest.phys_addr =
-					rte_pktmbuf_mtophys_offset(buf,	offset);
+					rte_pktmbuf_iova_offset(buf, offset);
 
 		}
 
@@ -318,7 +318,7 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 			sym_op->auth.digest.data = rte_pktmbuf_mtod_offset(buf,
 					uint8_t *, offset);
 			sym_op->auth.digest.phys_addr =
-					rte_pktmbuf_mtophys_offset(buf,	offset);
+					rte_pktmbuf_iova_offset(buf, offset);
 		}
 
 		if (options->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
@@ -425,7 +425,7 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 			sym_op->aead.digest.data = rte_pktmbuf_mtod_offset(buf,
 					uint8_t *, offset);
 			sym_op->aead.digest.phys_addr =
-					rte_pktmbuf_mtophys_offset(buf,	offset);
+					rte_pktmbuf_iova_offset(buf, offset);
 		}
 	}
 

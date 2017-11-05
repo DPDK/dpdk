@@ -106,12 +106,12 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		aad = get_aad(m);
 		memcpy(aad, iv - sizeof(struct esp_hdr), 8);
 		sym_cop->aead.aad.data = aad;
-		sym_cop->aead.aad.phys_addr = rte_pktmbuf_mtophys_offset(m,
+		sym_cop->aead.aad.phys_addr = rte_pktmbuf_iova_offset(m,
 				aad - rte_pktmbuf_mtod(m, uint8_t *));
 
 		sym_cop->aead.digest.data = rte_pktmbuf_mtod_offset(m, void*,
 				rte_pktmbuf_pkt_len(m) - sa->digest_len);
-		sym_cop->aead.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+		sym_cop->aead.digest.phys_addr = rte_pktmbuf_iova_offset(m,
 				rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	} else {
 		sym_cop->cipher.data.offset =  ip_hdr_len + sizeof(struct esp_hdr) +
@@ -157,7 +157,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 		sym_cop->auth.digest.data = rte_pktmbuf_mtod_offset(m, void*,
 				rte_pktmbuf_pkt_len(m) - sa->digest_len);
-		sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+		sym_cop->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m,
 				rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	}
 
@@ -405,12 +405,12 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		aad = get_aad(m);
 		memcpy(aad, esp, 8);
 		sym_cop->aead.aad.data = aad;
-		sym_cop->aead.aad.phys_addr = rte_pktmbuf_mtophys_offset(m,
+		sym_cop->aead.aad.phys_addr = rte_pktmbuf_iova_offset(m,
 				aad - rte_pktmbuf_mtod(m, uint8_t *));
 
 		sym_cop->aead.digest.data = rte_pktmbuf_mtod_offset(m, uint8_t *,
 			rte_pktmbuf_pkt_len(m) - sa->digest_len);
-		sym_cop->aead.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+		sym_cop->aead.digest.phys_addr = rte_pktmbuf_iova_offset(m,
 			rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	} else {
 		switch (sa->cipher_algo) {
@@ -458,7 +458,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 		sym_cop->auth.digest.data = rte_pktmbuf_mtod_offset(m, uint8_t *,
 				rte_pktmbuf_pkt_len(m) - sa->digest_len);
-		sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+		sym_cop->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m,
 				rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	}
 
