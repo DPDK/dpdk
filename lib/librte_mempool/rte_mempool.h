@@ -1452,24 +1452,29 @@ rte_mempool_empty(const struct rte_mempool *mp)
 }
 
 /**
- * Return the physical address of elt, which is an element of the pool mp.
+ * Return the IO address of elt, which is an element of the pool mp.
  *
- * @param mp
- *   A pointer to the mempool structure.
  * @param elt
  *   A pointer (virtual address) to the element of the pool.
  * @return
- *   The physical address of the elt element.
+ *   The IO address of the elt element.
  *   If the mempool was created with MEMPOOL_F_NO_PHYS_CONTIG, the
- *   returned value is RTE_BAD_PHYS_ADDR.
+ *   returned value is RTE_BAD_IOVA.
  */
-static inline phys_addr_t
-rte_mempool_virt2phy(__rte_unused const struct rte_mempool *mp, const void *elt)
+static inline rte_iova_t
+rte_mempool_virt2iova(const void *elt)
 {
 	const struct rte_mempool_objhdr *hdr;
 	hdr = (const struct rte_mempool_objhdr *)RTE_PTR_SUB(elt,
 		sizeof(*hdr));
 	return hdr->iova;
+}
+
+__rte_deprecated
+static inline phys_addr_t
+rte_mempool_virt2phy(__rte_unused const struct rte_mempool *mp, const void *elt)
+{
+	return rte_mempool_virt2iova(elt);
 }
 
 /**

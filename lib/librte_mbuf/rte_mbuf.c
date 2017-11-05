@@ -134,7 +134,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	/* start of buffer is after mbuf structure and priv data */
 	m->priv_size = priv_size;
 	m->buf_addr = (char *)m + mbuf_size;
-	m->buf_physaddr = rte_mempool_virt2phy(mp, m) + mbuf_size;
+	m->buf_physaddr = rte_mempool_virt2iova(m) + mbuf_size;
 	m->buf_len = (uint16_t)buf_len;
 
 	/* keep some headroom between start of buffer and data */

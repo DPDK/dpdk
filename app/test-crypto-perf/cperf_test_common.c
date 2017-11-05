@@ -50,7 +50,7 @@ fill_single_seg_mbuf(struct rte_mbuf *m, struct rte_mempool *mp,
 	/* start of buffer is after mbuf structure and priv data */
 	m->priv_size = 0;
 	m->buf_addr = (char *)m + mbuf_hdr_size;
-	m->buf_physaddr = rte_mempool_virt2phy(mp, obj) +
+	m->buf_physaddr = rte_mempool_virt2iova(obj) +
 		mbuf_offset + mbuf_hdr_size;
 	m->buf_len = segment_sz;
 	m->data_len = segment_sz;
@@ -74,7 +74,7 @@ fill_multi_seg_mbuf(struct rte_mbuf *m, struct rte_mempool *mp,
 	uint16_t mbuf_hdr_size = sizeof(struct rte_mbuf);
 	uint16_t remaining_segments = segments_nb;
 	struct rte_mbuf *next_mbuf;
-	phys_addr_t next_seg_phys_addr = rte_mempool_virt2phy(mp, obj) +
+	phys_addr_t next_seg_phys_addr = rte_mempool_virt2iova(obj) +
 			 mbuf_offset + mbuf_hdr_size;
 
 	do {

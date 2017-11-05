@@ -228,14 +228,12 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 				qp->op_cookies[i];
 
 		sql_cookie->qat_sgl_src_phys_addr =
-				rte_mempool_virt2phy(qp->op_cookie_pool,
-				sql_cookie) +
+				rte_mempool_virt2iova(sql_cookie) +
 				offsetof(struct qat_crypto_op_cookie,
 				qat_sgl_list_src);
 
 		sql_cookie->qat_sgl_dst_phys_addr =
-				rte_mempool_virt2phy(qp->op_cookie_pool,
-				sql_cookie) +
+				rte_mempool_virt2iova(sql_cookie) +
 				offsetof(struct qat_crypto_op_cookie,
 				qat_sgl_list_dst);
 	}

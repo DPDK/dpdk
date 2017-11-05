@@ -172,8 +172,8 @@ dpaa_mbuf_free_bulk(struct rte_mempool *pool,
 
 	while (i < n) {
 		dpaa_buf_free(bp_info,
-			      (uint64_t)rte_mempool_virt2phy(pool,
-			      obj_table[i]) + bp_info->meta_data_size);
+			      (uint64_t)rte_mempool_virt2iova(obj_table[i]) +
+			      bp_info->meta_data_size);
 		i = i + 1;
 	}
 

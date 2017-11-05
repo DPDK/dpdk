@@ -527,7 +527,7 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	/* Set context descriptor physical address */
-	session->cd_paddr = rte_mempool_virt2phy(NULL, session) +
+	session->cd_paddr = rte_mempool_virt2iova(session) +
 			offsetof(struct qat_session, cd);
 
 	session->min_qat_dev_gen = QAT_GEN1;

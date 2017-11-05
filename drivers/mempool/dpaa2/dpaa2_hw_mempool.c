@@ -225,7 +225,7 @@ rte_dpaa2_mbuf_release(struct rte_mempool *pool __rte_unused,
 	/* convert mbuf to buffers for the remainder */
 	for (i = 0; i < n ; i++) {
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-		bufs[i] = (uint64_t)rte_mempool_virt2phy(pool, obj_table[i])
+		bufs[i] = (uint64_t)rte_mempool_virt2iova(obj_table[i])
 				+ meta_data_size;
 #else
 		bufs[i] = (uint64_t)obj_table[i] + meta_data_size;
@@ -244,7 +244,7 @@ aligned:
 		for (i = 0; i < DPAA2_MBUF_MAX_ACQ_REL; i++) {
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
 			bufs[i] = (uint64_t)
-				  rte_mempool_virt2phy(pool, obj_table[n + i])
+				  rte_mempool_virt2iova(obj_table[n + i])
 				  + meta_data_size;
 #else
 			bufs[i] = (uint64_t)obj_table[n + i] + meta_data_size;

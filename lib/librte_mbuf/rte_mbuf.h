@@ -1298,7 +1298,7 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 
 	m->priv_size = priv_size;
 	m->buf_addr = (char *)m + mbuf_size;
-	m->buf_physaddr = rte_mempool_virt2phy(mp, m) + mbuf_size;
+	m->buf_physaddr = rte_mempool_virt2iova(m) + mbuf_size;
 	m->buf_len = (uint16_t)buf_len;
 	rte_pktmbuf_reset_headroom(m);
 	m->data_len = 0;
