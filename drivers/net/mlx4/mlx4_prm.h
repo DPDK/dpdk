@@ -75,8 +75,24 @@ enum {
 	MLX4_CQE_L2_TUNNEL_IPV4 = (int)(1u << 25),
 	MLX4_CQE_L2_TUNNEL_L4_CSUM = (int)(1u << 26),
 	MLX4_CQE_L2_TUNNEL = (int)(1u << 27),
+	MLX4_CQE_L2_VLAN_MASK = (int)(3u << 29),
 	MLX4_CQE_L2_TUNNEL_IPOK = (int)(1u << 31),
 };
+
+/* CQE status flags. */
+#define MLX4_CQE_STATUS_IPV4 (1 << 22)
+#define MLX4_CQE_STATUS_IPV4F (1 << 23)
+#define MLX4_CQE_STATUS_IPV6 (1 << 24)
+#define MLX4_CQE_STATUS_IPV4OPT (1 << 25)
+#define MLX4_CQE_STATUS_TCP (1 << 26)
+#define MLX4_CQE_STATUS_UDP (1 << 27)
+#define MLX4_CQE_STATUS_PTYPE_MASK \
+	(MLX4_CQE_STATUS_IPV4 | \
+	 MLX4_CQE_STATUS_IPV4F | \
+	 MLX4_CQE_STATUS_IPV6 | \
+	 MLX4_CQE_STATUS_IPV4OPT | \
+	 MLX4_CQE_STATUS_TCP | \
+	 MLX4_CQE_STATUS_UDP)
 
 /* Send queue information. */
 struct mlx4_sq {

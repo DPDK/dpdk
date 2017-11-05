@@ -164,6 +164,7 @@ int mlx4_flow_ctrl_get(struct rte_eth_dev *dev,
 		       struct rte_eth_fc_conf *fc_conf);
 int mlx4_flow_ctrl_set(struct rte_eth_dev *dev,
 		       struct rte_eth_fc_conf *fc_conf);
+const uint32_t *mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 
 /* mlx4_intr.c */
 

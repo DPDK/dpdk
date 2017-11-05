@@ -1013,3 +1013,35 @@ out:
 	assert(ret >= 0);
 	return -ret;
 }
+
+/**
+ * DPDK callback to retrieve the received packet types that are recognized
+ * by the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   Pointer to an array of recognized packet types if in Rx burst mode,
+ *   NULL otherwise.
+ */
+const uint32_t *
+mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/* refers to rxq_cq_to_pkt_type() */
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == mlx4_rx_burst)
+		return ptypes;
+	return NULL;
+}
