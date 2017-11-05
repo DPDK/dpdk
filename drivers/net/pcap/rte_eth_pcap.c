@@ -411,11 +411,13 @@ open_single_tx_pcap(const char *pcap_filename, pcap_dumper_t **dumper)
 	/* The dumper is created using the previous pcap_t reference */
 	*dumper = pcap_dump_open(tx_pcap, pcap_filename);
 	if (*dumper == NULL) {
+		pcap_close(tx_pcap);
 		RTE_LOG(ERR, PMD, "Couldn't open %s for writing.\n",
 			pcap_filename);
 		return -1;
 	}
 
+	pcap_close(tx_pcap);
 	return 0;
 }
 
