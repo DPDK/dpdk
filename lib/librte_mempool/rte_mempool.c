@@ -357,8 +357,8 @@ rte_mempool_free_memchunks(struct rte_mempool *mp)
  * on error.
  */
 int
-rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
-	phys_addr_t paddr, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
+rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
+	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque)
 {
 	unsigned total_elt_sz;
@@ -368,7 +368,7 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	int ret;
 
 	/* Notify memory area to mempool */
-	ret = rte_mempool_ops_register_memory_area(mp, vaddr, paddr, len);
+	ret = rte_mempool_ops_register_memory_area(mp, vaddr, iova, len);
 	if (ret != -ENOTSUP && ret < 0)
 		return ret;
 
@@ -402,7 +402,7 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 
 	memhdr->mp = mp;
 	memhdr->addr = vaddr;
-	memhdr->iova = paddr;
+	memhdr->iova = iova;
 	memhdr->len = len;
 	memhdr->free_cb = free_cb;
 	memhdr->opaque = opaque;
@@ -417,11 +417,11 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 
 	while (off + total_elt_sz <= len && mp->populated_size < mp->size) {
 		off += mp->header_size;
-		if (paddr == RTE_BAD_PHYS_ADDR)
+		if (iova == RTE_BAD_IOVA)
 			mempool_add_elem(mp, (char *)vaddr + off,
-				RTE_BAD_PHYS_ADDR);
+				RTE_BAD_IOVA);
 		else
-			mempool_add_elem(mp, (char *)vaddr + off, paddr + off);
+			mempool_add_elem(mp, (char *)vaddr + off, iova + off);
 		off += mp->elt_size + mp->trailer_size;
 		i++;
 	}
@@ -435,12 +435,20 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	return i;
 }
 
+int
+rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
+	phys_addr_t paddr, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque)
+{
+	return rte_mempool_populate_iova(mp, vaddr, paddr, len, free_cb, opaque);
+}
+
 /* Add objects in the pool, using a table of physical pages. Return the
  * number of objects added, or a negative value on error.
  */
 int
-rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
-	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
+rte_mempool_populate_iova_tab(struct rte_mempool *mp, char *vaddr,
+	const rte_iova_t iova[], uint32_t pg_num, uint32_t pg_shift,
 	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque)
 {
 	uint32_t i, n;
@@ -452,18 +460,18 @@ rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 		return -EEXIST;
 
 	if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
-		return rte_mempool_populate_phys(mp, vaddr, RTE_BAD_PHYS_ADDR,
+		return rte_mempool_populate_iova(mp, vaddr, RTE_BAD_IOVA,
 			pg_num * pg_sz, free_cb, opaque);
 
 	for (i = 0; i < pg_num && mp->populated_size < mp->size; i += n) {
 
 		/* populate with the largest group of contiguous pages */
 		for (n = 1; (i + n) < pg_num &&
-			     paddr[i + n - 1] + pg_sz == paddr[i + n]; n++)
+			     iova[i + n - 1] + pg_sz == iova[i + n]; n++)
 			;
 
-		ret = rte_mempool_populate_phys(mp, vaddr + i * pg_sz,
-			paddr[i], n * pg_sz, free_cb, opaque);
+		ret = rte_mempool_populate_iova(mp, vaddr + i * pg_sz,
+			iova[i], n * pg_sz, free_cb, opaque);
 		if (ret < 0) {
 			rte_mempool_free_memchunks(mp);
 			return ret;
@@ -473,6 +481,15 @@ rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 		cnt += ret;
 	}
 	return cnt;
+}
+
+int
+rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
+	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
+	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque)
+{
+	return rte_mempool_populate_iova_tab(mp, vaddr, paddr, pg_num, pg_shift,
+			free_cb, opaque);
 }
 
 /* Populate the mempool with a virtual area. Return the number of
@@ -497,7 +514,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		return -EINVAL;
 
 	if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
-		return rte_mempool_populate_phys(mp, addr, RTE_BAD_PHYS_ADDR,
+		return rte_mempool_populate_iova(mp, addr, RTE_BAD_IOVA,
 			len, free_cb, opaque);
 
 	for (off = 0; off + pg_sz <= len &&
@@ -520,7 +537,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 				break;
 		}
 
-		ret = rte_mempool_populate_phys(mp, addr + off, iova,
+		ret = rte_mempool_populate_iova(mp, addr + off, iova,
 			phys_len, free_cb, opaque);
 		if (ret < 0)
 			goto fail;
@@ -604,7 +621,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 			iova = mz->iova;
 
 		if (rte_eal_has_hugepages())
-			ret = rte_mempool_populate_phys(mp, mz->addr,
+			ret = rte_mempool_populate_iova(mp, mz->addr,
 				iova, mz->len,
 				rte_mempool_memchunk_mz_free,
 				(void *)(uintptr_t)mz);
@@ -990,7 +1007,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	if (mp_init)
 		mp_init(mp, mp_init_arg);
 
-	ret = rte_mempool_populate_phys_tab(mp, vaddr, iova, pg_num, pg_shift,
+	ret = rte_mempool_populate_iova_tab(mp, vaddr, iova, pg_num, pg_shift,
 		NULL, NULL);
 	if (ret < 0 || ret != (int)mp->size)
 		goto fail;

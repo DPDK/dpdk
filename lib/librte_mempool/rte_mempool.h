@@ -880,7 +880,7 @@ rte_mempool_free(struct rte_mempool *mp);
  * Add a virtually and physically contiguous memory chunk in the pool
  * where objects can be instantiated.
  *
- * If the given physical address is unknown (paddr = RTE_BAD_PHYS_ADDR),
+ * If the given IO address is unknown (iova = RTE_BAD_IOVA),
  * the chunk doesn't need to be physically contiguous (only virtually),
  * and allocated objects may span two pages.
  *
@@ -888,8 +888,8 @@ rte_mempool_free(struct rte_mempool *mp);
  *   A pointer to the mempool structure.
  * @param vaddr
  *   The virtual address of memory that should be used to store objects.
- * @param paddr
- *   The physical address
+ * @param iova
+ *   The IO address
  * @param len
  *   The length of memory in bytes.
  * @param free_cb
@@ -901,6 +901,11 @@ rte_mempool_free(struct rte_mempool *mp);
  *   On error, the chunk is not added in the memory list of the
  *   mempool and a negative errno is returned.
  */
+int rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
+	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque);
+
+__rte_deprecated
 int rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	phys_addr_t paddr, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque);
@@ -909,18 +914,17 @@ int rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
  * Add physical memory for objects in the pool at init
  *
  * Add a virtually contiguous memory chunk in the pool where objects can
- * be instantiated. The physical addresses corresponding to the virtual
- * area are described in paddr[], pg_num, pg_shift.
+ * be instantiated. The IO addresses corresponding to the virtual
+ * area are described in iova[], pg_num, pg_shift.
  *
  * @param mp
  *   A pointer to the mempool structure.
  * @param vaddr
  *   The virtual address of memory that should be used to store objects.
- * @param paddr
- *   An array of physical addresses of each page composing the virtual
- *   area.
+ * @param iova
+ *   An array of IO addresses of each page composing the virtual area.
  * @param pg_num
- *   Number of elements in the paddr array.
+ *   Number of elements in the iova array.
  * @param pg_shift
  *   LOG2 of the physical pages size.
  * @param free_cb
@@ -932,6 +936,11 @@ int rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
  *   On error, the chunks are not added in the memory list of the
  *   mempool and a negative errno is returned.
  */
+int rte_mempool_populate_iova_tab(struct rte_mempool *mp, char *vaddr,
+	const rte_iova_t iova[], uint32_t pg_num, uint32_t pg_shift,
+	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque);
+
+__rte_deprecated
 int rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
 	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque);
