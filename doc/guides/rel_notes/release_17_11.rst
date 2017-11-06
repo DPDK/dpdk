@@ -494,7 +494,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_latencystats.so.1
      librte_lpm.so.2
      librte_mbuf.so.3
-     librte_mempool.so.2
+   + librte_mempool.so.3
      librte_meter.so.1
      librte_metrics.so.1
      librte_net.so.1
