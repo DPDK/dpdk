@@ -52,6 +52,7 @@ enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 #define ETH_VHOST_QUEUES_ARG		"queues"
 #define ETH_VHOST_CLIENT_ARG		"client"
 #define ETH_VHOST_DEQUEUE_ZERO_COPY	"dequeue-zero-copy"
+#define ETH_VHOST_IOMMU_SUPPORT		"iommu-support"
 #define VHOST_MAX_PKT_BURST 32
 
 static const char *valid_arguments[] = {
@@ -59,6 +60,7 @@ static const char *valid_arguments[] = {
 	ETH_VHOST_QUEUES_ARG,
 	ETH_VHOST_CLIENT_ARG,
 	ETH_VHOST_DEQUEUE_ZERO_COPY,
+	ETH_VHOST_IOMMU_SUPPORT,
 	NULL
 };
 
@@ -1164,6 +1166,7 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 	uint64_t flags = 0;
 	int client_mode = 0;
 	int dequeue_zero_copy = 0;
+	int iommu_support = 0;
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_vhost for %s\n",
 		rte_vdev_device_name(dev));
@@ -1209,6 +1212,16 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 
 		if (dequeue_zero_copy)
 			flags |= RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
+	}
+
+	if (rte_kvargs_count(kvlist, ETH_VHOST_IOMMU_SUPPORT) == 1) {
+		ret = rte_kvargs_process(kvlist, ETH_VHOST_IOMMU_SUPPORT,
+					 &open_int, &iommu_support);
+		if (ret < 0)
+			goto out_free;
+
+		if (iommu_support)
+			flags |= RTE_VHOST_USER_IOMMU_SUPPORT;
 	}
 
 	if (dev->device.numa_node == SOCKET_ID_ANY)
