@@ -127,13 +127,6 @@ eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
 
 void
 rte_pci_device_name(const struct rte_pci_addr *addr,
-		    char *output, size_t size)
-{
-	pci_device_name(addr, output, size);
-}
-
-void
-pci_device_name(const struct rte_pci_addr *addr,
 		char *output, size_t size)
 {
 	RTE_VERIFY(size >= PCI_PRI_STR_SIZE);
@@ -146,11 +139,11 @@ int
 rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
 			 const struct rte_pci_addr *addr2)
 {
-	return pci_addr_cmp(addr, addr2);
+	return rte_pci_addr_cmp(addr, addr2);
 }
 
 int
-pci_addr_cmp(const struct rte_pci_addr *addr,
+rte_pci_addr_cmp(const struct rte_pci_addr *addr,
 	     const struct rte_pci_addr *addr2)
 {
 	uint64_t dev_addr, dev_addr2;
@@ -172,7 +165,7 @@ pci_addr_cmp(const struct rte_pci_addr *addr,
 }
 
 int
-pci_addr_parse(const char *str, struct rte_pci_addr *addr)
+rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr)
 {
 	if (pci_bdf_parse(str, addr) == 0 ||
 	    pci_dbdf_parse(str, addr) == 0)

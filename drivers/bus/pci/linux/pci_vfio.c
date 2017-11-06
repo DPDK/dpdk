@@ -589,7 +589,7 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 
 	/* if we're in a secondary process, just find our tailq entry */
 	TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
-		if (pci_addr_cmp(&vfio_res->pci_addr,
+		if (rte_pci_addr_cmp(&vfio_res->pci_addr,
 						 &dev->addr))
 			continue;
 		break;

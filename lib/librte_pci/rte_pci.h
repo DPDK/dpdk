@@ -166,7 +166,6 @@ int eal_parse_pci_BDF(const char *input, struct rte_pci_addr *dev_addr);
 int eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr);
 
 /**
- * @deprecated
  * Utility function to write a pci device name, this device name can later be
  * used to retrieve the corresponding rte_pci_addr using eal_parse_pci_*
  * BDF helpers.
@@ -179,21 +178,6 @@ int eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr);
  *	The output buffer size
  */
 void rte_pci_device_name(const struct rte_pci_addr *addr,
-			 char *output, size_t size);
-
-/**
- * Utility function to write a pci device name, this device name can later be
- * used to retrieve the corresponding rte_pci_addr using eal_parse_pci_*
- * BDF helpers.
- *
- * @param addr
- *	The PCI Bus-Device-Function address
- * @param output
- *	The output buffer string
- * @param size
- *	The output buffer size
- */
-void pci_device_name(const struct rte_pci_addr *addr,
 		     char *output, size_t size);
 
 /**
@@ -224,8 +208,8 @@ int rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
  *	Positive on addr is greater than addr2.
  *	Negative on addr is less than addr2, or error.
  */
-int pci_addr_cmp(const struct rte_pci_addr *addr,
-		 const struct rte_pci_addr *addr2);
+int rte_pci_addr_cmp(const struct rte_pci_addr *addr,
+		     const struct rte_pci_addr *addr2);
 
 
 /**
@@ -240,7 +224,7 @@ int pci_addr_cmp(const struct rte_pci_addr *addr,
  *	0 on success
  *	<0 otherwise
  */
-int pci_addr_parse(const char *str, struct rte_pci_addr *addr);
+int rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr);
 
 /**
  * Map a particular resource from a file.

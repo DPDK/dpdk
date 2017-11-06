@@ -82,7 +82,7 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 		if (devargs->bus != pbus)
 			continue;
 		devargs->bus->parse(devargs->name, &addr);
-		if (!pci_addr_cmp(&dev->addr, &addr))
+		if (!rte_pci_addr_cmp(&dev->addr, &addr))
 			return devargs;
 	}
 	return NULL;
@@ -309,7 +309,7 @@ rte_pci_probe_one(const struct rte_pci_addr *addr)
 		goto err_return;
 
 	FOREACH_DEVICE_ON_PCIBUS(dev) {
-		if (pci_addr_cmp(&dev->addr, addr))
+		if (rte_pci_addr_cmp(&dev->addr, addr))
 			continue;
 
 		ret = pci_probe_all_drivers(dev);
@@ -339,7 +339,7 @@ rte_pci_detach(const struct rte_pci_addr *addr)
 		return -1;
 
 	FOREACH_DEVICE_ON_PCIBUS(dev) {
-		if (pci_addr_cmp(&dev->addr, addr))
+		if (rte_pci_addr_cmp(&dev->addr, addr))
 			continue;
 
 		ret = rte_pci_detach_dev(dev);
@@ -441,7 +441,7 @@ pci_parse(const char *name, void *addr)
 	struct rte_pci_addr pci_addr;
 	bool parse;
 
-	parse = (pci_addr_parse(name, &pci_addr) == 0);
+	parse = (rte_pci_addr_parse(name, &pci_addr) == 0);
 	if (parse && addr != NULL)
 		*out = pci_addr;
 	return parse == false;
