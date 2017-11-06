@@ -1265,7 +1265,8 @@ mlx5_priv_ind_table_ibv_verify(struct priv *priv)
  * @param hash_fields
  *   Verbs protocol hash field to make the RSS on.
  * @param queues
- *   Queues entering in hash queue.
+ *   Queues entering in hash queue. In case of empty hash_fields only the
+ *   first queue index will be taken for the indirection table.
  * @param queues_n
  *   Number of queues.
  *
@@ -1280,6 +1281,7 @@ mlx5_priv_hrxq_new(struct priv *priv, uint8_t *rss_key, uint8_t rss_key_len,
 	struct mlx5_ind_table_ibv *ind_tbl;
 	struct ibv_qp *qp;
 
+	queues_n = hash_fields ? queues_n : 1;
 	ind_tbl = mlx5_priv_ind_table_ibv_get(priv, queues, queues_n);
 	if (!ind_tbl)
 		ind_tbl = mlx5_priv_ind_table_ibv_new(priv, queues, queues_n);
@@ -1332,7 +1334,8 @@ error:
  * @param rss_conf
  *   RSS configuration for the Rx hash queue.
  * @param queues
- *   Queues entering in hash queue.
+ *   Queues entering in hash queue. In case of empty hash_fields only the
+ *   first queue index will be taken for the indirection table.
  * @param queues_n
  *   Number of queues.
  *
@@ -1345,6 +1348,7 @@ mlx5_priv_hrxq_get(struct priv *priv, uint8_t *rss_key, uint8_t rss_key_len,
 {
 	struct mlx5_hrxq *hrxq;
 
+	queues_n = hash_fields ? queues_n : 1;
 	LIST_FOREACH(hrxq, &priv->hrxqs, next) {
 		struct mlx5_ind_table_ibv *ind_tbl;
 

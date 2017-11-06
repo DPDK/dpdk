@@ -1781,7 +1781,7 @@ priv_flow_create_action_queue_rss(struct priv *priv,
 					   parser->rss_conf.rss_key_len,
 					   hash_fields,
 					   parser->queues,
-					   hash_fields ? parser->queues_n : 1);
+					   parser->queues_n);
 		if (flow->frxq[i].hrxq)
 			continue;
 		flow->frxq[i].hrxq =
@@ -1790,7 +1790,7 @@ priv_flow_create_action_queue_rss(struct priv *priv,
 					   parser->rss_conf.rss_key_len,
 					   hash_fields,
 					   parser->queues,
-					   hash_fields ? parser->queues_n : 1);
+					   parser->queues_n);
 		if (!flow->frxq[i].hrxq) {
 			rte_flow_error_set(error, ENOMEM,
 					   RTE_FLOW_ERROR_TYPE_HANDLE,
