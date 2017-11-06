@@ -280,7 +280,7 @@ eal_plugins_init(void)
 	struct shared_driver *solib = NULL;
 	struct stat sb;
 
-	if (*default_solib_dir != '\0' && stat(solib->name, &sb) == 0 &&
+	if (*default_solib_dir != '\0' && stat(default_solib_dir, &sb) == 0 &&
 				S_ISDIR(sb.st_mode))
 		eal_plugin_add(default_solib_dir);
 
