@@ -28,14 +28,8 @@
 #define RETURN_IF_TRUE(cond, retval)
 #endif
 
-/* Hash function used if none is specified */
-#if defined(RTE_ARCH_X86) || defined(RTE_MACHINE_CPUFLAG_CRC32)
 #include <rte_hash_crc.h>
-#define DEFAULT_HASH_FUNC       rte_hash_crc
-#else
 #include <rte_jhash.h>
-#define DEFAULT_HASH_FUNC       rte_jhash
-#endif
 
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 /*
