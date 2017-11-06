@@ -861,6 +861,27 @@ vhost_user_set_vring_enable(struct virtio_net *dev,
 }
 
 static void
+vhost_user_get_protocol_features(struct virtio_net *dev,
+				 struct VhostUserMsg *msg)
+{
+	uint64_t features, protocol_features = VHOST_USER_PROTOCOL_FEATURES;
+
+	rte_vhost_driver_get_features(dev->ifname, &features);
+
+	/*
+	 * REPLY_ACK protocol feature is only mandatory for now
+	 * for IOMMU feature. If IOMMU is explicitly disabled by the
+	 * application, disable also REPLY_ACK feature for older buggy
+	 * Qemu versions (from v2.7.0 to v2.9.0).
+	 */
+	if (!(features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)))
+		protocol_features &= ~(1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK);
+
+	msg->payload.u64 = protocol_features;
+	msg->size = sizeof(msg->payload.u64);
+}
+
+static void
 vhost_user_set_protocol_features(struct virtio_net *dev,
 				 uint64_t protocol_features)
 {
@@ -1231,8 +1252,7 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
-		msg.payload.u64 = VHOST_USER_PROTOCOL_FEATURES;
-		msg.size = sizeof(msg.payload.u64);
+		vhost_user_get_protocol_features(dev, &msg);
 		send_vhost_reply(fd, &msg);
 		break;
 	case VHOST_USER_SET_PROTOCOL_FEATURES:
