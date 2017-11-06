@@ -13,7 +13,9 @@ General Guidelines
 ------------------
 
 #. Whenever possible, ABI should be preserved
-#. The libraries marked in experimental state may change without constraint.
+#. Libraries or APIs marked in ``experimental`` state may change without constraint.
+#. New APIs will be marked as ``experimental`` for at least one release to allow
+   any issues found by users of the new API to be fixed quickly
 #. The addition of symbols is generally not problematic
 #. The modification of symbols can generally be managed with versioning
 #. The removal of symbols generally is an ABI break and requires bumping of the
@@ -41,6 +43,13 @@ ABI versions are set at the time of major release labeling, and the ABI may
 change multiple times, without warning, between the last release label and the
 HEAD label of the git tree.
 
+APIs marked as ``experimental`` are not considered part of the ABI and may
+change without warning at any time.  Since changes to APIs are most likely
+immediately after their introduction, as users begin to take advantage of
+those new APIs and start finding issues with them, new DPDK APIs will be
+automatically marked as ``experimental`` to allow for a period of stabilization
+before they become part of a tracked ABI.
+
 ABI versions, once released, are available until such time as their
 deprecation has been noted in the Release Notes for at least one major release
 cycle. For example consider the case where the ABI for DPDK 2.0 has been
@@ -57,6 +66,14 @@ being provided. The requirements for doing so are:
 
 #. At least 3 acknowledgments of the need to do so must be made on the
    dpdk.org mailing list.
+
+   - The acknowledgment of the maintainer of the component is mandatory, or if
+     no maintainer is available for the component, the tree/sub-tree maintainer
+     for that component must acknowledge the ABI change instead.
+
+   - It is also recommended that acknowledgments from different "areas of
+     interest" be sought for each deprecation, for example: from NIC vendors,
+     CPU vendors, end-users, etc.
 
 #. The changes (including an alternative map file) must be gated with
    the ``RTE_NEXT_ABI`` option, and provided with a deprecation notice at the
