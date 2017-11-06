@@ -576,48 +576,48 @@ ixgbe_crypto_capabilities_get(void *device __rte_unused)
 		{ /* IPsec Inline Crypto ESP Transport Egress */
 			.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
 			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
-			.ipsec = {
+			{.ipsec = {
 				.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 				.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
 				.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
 				.options = { 0 }
-			},
+			} },
 			.crypto_capabilities = aes_gcm_gmac_crypto_capabilities,
 			.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 		},
 		{ /* IPsec Inline Crypto ESP Transport Ingress */
 			.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
 			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
-			.ipsec = {
+			{.ipsec = {
 				.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 				.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
 				.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
 				.options = { 0 }
-			},
+			} },
 			.crypto_capabilities = aes_gcm_gmac_crypto_capabilities,
 			.ol_flags = 0
 		},
 		{ /* IPsec Inline Crypto ESP Tunnel Egress */
 			.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
 			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
-			.ipsec = {
+			{.ipsec = {
 				.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 				.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 				.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
 				.options = { 0 }
-			},
+			} },
 			.crypto_capabilities = aes_gcm_gmac_crypto_capabilities,
 			.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 		},
 		{ /* IPsec Inline Crypto ESP Tunnel Ingress */
 			.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
 			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
-			.ipsec = {
+			{.ipsec = {
 				.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 				.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 				.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
 				.options = { 0 }
-			},
+			} },
 			.crypto_capabilities = aes_gcm_gmac_crypto_capabilities,
 			.ol_flags = 0
 		},
