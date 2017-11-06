@@ -84,6 +84,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 			sizeof(*ht) + (sizeof(ht->t[0]) * params->entries);
 	uint32_t i;
 	struct rte_fbk_hash_list *fbk_hash_list;
+	rte_fbk_hash_fn default_hash_func = (rte_fbk_hash_fn)rte_jhash_1word;
 
 	fbk_hash_list = RTE_TAILQ_CAST(rte_fbk_hash_tailq.head,
 				       rte_fbk_hash_list);
@@ -131,6 +132,14 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 		goto exit;
 	}
 
+	/* Default hash function */
+#if defined(RTE_ARCH_X86)
+	default_hash_func = (rte_fbk_hash_fn)rte_hash_crc_4byte;
+#elif defined(RTE_ARCH_ARM64)
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_CRC32))
+		default_hash_func = (rte_fbk_hash_fn)rte_hash_crc_4byte;
+#endif
+
 	/* Set up hash table context. */
 	snprintf(ht->name, sizeof(ht->name), "%s", params->name);
 	ht->entries = params->entries;
@@ -147,7 +156,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 		ht->init_val = params->init_val;
 	}
 	else {
-		ht->hash_func = RTE_FBK_HASH_FUNC_DEFAULT;
+		ht->hash_func = default_hash_func;
 		ht->init_val = RTE_FBK_HASH_INIT_VAL_DEFAULT;
 	}
 

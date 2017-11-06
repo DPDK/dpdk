@@ -26,16 +26,8 @@ extern "C" {
 #include <string.h>
 
 #include <rte_config.h>
-#ifndef RTE_FBK_HASH_FUNC_DEFAULT
-#if defined(RTE_ARCH_X86) || defined(RTE_MACHINE_CPUFLAG_CRC32)
 #include <rte_hash_crc.h>
-/** Default four-byte key hash function if none is specified. */
-#define RTE_FBK_HASH_FUNC_DEFAULT		rte_hash_crc_4byte
-#else
 #include <rte_jhash.h>
-#define RTE_FBK_HASH_FUNC_DEFAULT		rte_jhash_1word
-#endif
-#endif
 
 #ifndef RTE_FBK_HASH_INIT_VAL_DEFAULT
 /** Initialising value used when calculating hash. */
