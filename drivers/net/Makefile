@@ -36,9 +36,6 @@ ifeq ($(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD),d)
         $(warning thunderx pmd is not supported by old compilers)
 endif
 
-core-libs := librte_eal librte_mbuf librte_mempool librte_ring librte_ether
-core-libs += librte_net librte_kvargs
-
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += af_packet
 DIRS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark
 DIRS-$(CONFIG_RTE_LIBRTE_AVP_PMD) += avp

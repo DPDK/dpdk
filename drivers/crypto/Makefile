@@ -31,8 +31,6 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-core-libs := librte_eal librte_mbuf librte_mempool librte_ring librte_cryptodev
-
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += aesni_gcm
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += armv8
