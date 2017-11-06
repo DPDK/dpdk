@@ -173,7 +173,8 @@ New Features
 * **Added IOMMU support to libvhost-user**
 
   Implemented device IOTLB in Vhost-user backend, and enabled Virtio's IOMMU
-  feature.
+  feature. The feature is disabled by default, and can be enabled by setting
+  RTE_VHOST_USER_IOMMU_SUPPORT flag at vhost device registration time.
 
 * **Added the Event Ethernet Adapter Library.**
 
