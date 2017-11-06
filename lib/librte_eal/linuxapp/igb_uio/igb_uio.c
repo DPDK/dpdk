@@ -348,6 +348,11 @@ igbuio_pci_open(struct uio_info *info, struct inode *inode)
 	return 0;
 }
 
+static bool is_device_excluded_from_reset(struct pci_dev *pdev)
+{
+	return !!pci_match_id(no_reset_pci_tbl, pdev);
+}
+
 static int
 igbuio_pci_release(struct uio_info *info, struct inode *inode)
 {
@@ -360,7 +365,8 @@ igbuio_pci_release(struct uio_info *info, struct inode *inode)
 	/* stop the device from further DMA */
 	pci_clear_master(dev);
 
-	pci_reset_function(dev);
+	if (!is_device_excluded_from_reset(dev))
+		pci_reset_function(dev);
 
 	return 0;
 }
