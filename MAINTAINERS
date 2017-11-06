@@ -247,11 +247,13 @@ F: test/test/test_mbuf.c
 
 Ethernet API
 M: Thomas Monjalon <thomas@monjalon.net>
+T: git://dpdk.org/next/dpdk-next-net
 F: lib/librte_ether/
 F: devtools/test-null.sh
 
 Flow API
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
+T: git://dpdk.org/next/dpdk-next-net
 F: lib/librte_ether/rte_flow*
 
 Traffic Management API - EXPERIMENTAL
@@ -265,6 +267,7 @@ F: lib/librte_ether/rte_mtr*
 
 Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_cryptodev/
 F: test/test/test_cryptodev*
 F: examples/l2fwd-crypto/
