@@ -2866,6 +2866,22 @@ priv_fdir_filter_delete(struct priv *priv,
 				attributes.actions, &error, &parser);
 	if (ret)
 		goto exit;
+	/*
+	 * Special case for drop action which is only set in the
+	 * specifications when the flow is created.  In this situation the
+	 * drop specification is missing.
+	 */
+	if (parser.drop) {
+		struct ibv_flow_spec_action_drop *drop;
+
+		drop = (void *)((uintptr_t)parser.drop_q.ibv_attr +
+				parser.drop_q.offset);
+		*drop = (struct ibv_flow_spec_action_drop){
+			.type = IBV_FLOW_SPEC_ACTION_DROP,
+			.size = sizeof(struct ibv_flow_spec_action_drop),
+		};
+		parser.drop_q.ibv_attr->num_of_specs++;
+	}
 	TAILQ_FOREACH(flow, &priv->flows, next) {
 		struct ibv_flow_attr *attr;
 		struct ibv_spec_header *attr_h;
