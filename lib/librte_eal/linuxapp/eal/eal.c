@@ -710,9 +710,9 @@ static int rte_eal_vfio_setup(void)
 {
 	int vfio_enabled = 0;
 
-	if (vfio_enable("vfio"))
+	if (rte_vfio_enable("vfio"))
 		return -1;
-	vfio_enabled = vfio_is_enabled("vfio");
+	vfio_enabled = rte_vfio_is_enabled("vfio");
 
 	if (vfio_enabled) {
 

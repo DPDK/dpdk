@@ -82,7 +82,7 @@
  *   <0 on failure.
  *   >1 if the device cannot be managed this way.
  */
-int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
+int rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info);
 
 /**
@@ -104,7 +104,7 @@ int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
  *   0 on success.
  *   <0 on failure.
  */
-int vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
+int rte_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
 
 /**
  * Enable a VFIO-related kmod.
@@ -119,7 +119,7 @@ int vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
  *   0 on success.
  *   <0 on failure.
  */
-int vfio_enable(const char *modname);
+int rte_vfio_enable(const char *modname);
 
 /**
  * Check whether a VFIO-related kmod is enabled.
@@ -134,7 +134,7 @@ int vfio_enable(const char *modname);
  *   !0 if true.
  *   0 otherwise.
  */
-int vfio_is_enabled(const char *modname);
+int rte_vfio_is_enabled(const char *modname);
 
 /**
  * Whether VFIO NOIOMMU mode is enabled.
@@ -146,7 +146,7 @@ int vfio_is_enabled(const char *modname);
  *   !0 if true.
  *   0 otherwise.
  */
-int vfio_noiommu_is_enabled(void);
+int rte_vfio_noiommu_is_enabled(void);
 
 #endif /* VFIO_PRESENT */
 

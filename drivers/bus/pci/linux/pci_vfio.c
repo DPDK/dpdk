@@ -325,7 +325,7 @@ pci_vfio_is_ioport_bar(int vfio_dev_fd, int bar_index)
 }
 
 static int
-pci_vfio_setup_device(struct rte_pci_device *dev, int vfio_dev_fd)
+pci_rte_vfio_setup_device(struct rte_pci_device *dev, int vfio_dev_fd)
 {
 	if (pci_vfio_setup_interrupts(dev, vfio_dev_fd) != 0) {
 		RTE_LOG(ERR, EAL, "Error setting up interrupts!\n");
@@ -465,7 +465,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
-	ret = vfio_setup_device(pci_get_sysfs_path(), pci_addr,
+	ret = rte_vfio_setup_device(pci_get_sysfs_path(), pci_addr,
 					&vfio_dev_fd, &device_info);
 	if (ret)
 		return ret;
@@ -546,7 +546,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 		dev->mem_resource[i].addr = maps[i].addr;
 	}
 
-	if (pci_vfio_setup_device(dev, vfio_dev_fd) < 0) {
+	if (pci_rte_vfio_setup_device(dev, vfio_dev_fd) < 0) {
 		RTE_LOG(ERR, EAL, "  %s setup device failed\n", pci_addr);
 		goto err_vfio_res;
 	}
@@ -582,7 +582,7 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
-	ret = vfio_setup_device(pci_get_sysfs_path(), pci_addr,
+	ret = rte_vfio_setup_device(pci_get_sysfs_path(), pci_addr,
 					&vfio_dev_fd, &device_info);
 	if (ret)
 		return ret;
@@ -662,7 +662,7 @@ pci_vfio_unmap_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	ret = vfio_release_device(pci_get_sysfs_path(), pci_addr,
+	ret = rte_vfio_release_device(pci_get_sysfs_path(), pci_addr,
 				  dev->intr_handle.vfio_dev_fd);
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL,
@@ -758,6 +758,6 @@ pci_vfio_ioport_unmap(struct rte_pci_ioport *p)
 int
 pci_vfio_is_enabled(void)
 {
-	return vfio_is_enabled("vfio_pci");
+	return rte_vfio_is_enabled("vfio_pci");
 }
 #endif

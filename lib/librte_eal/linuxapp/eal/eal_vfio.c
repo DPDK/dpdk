@@ -284,7 +284,7 @@ clear_group(int vfio_group_fd)
 }
 
 int
-vfio_setup_device(const char *sysfs_base, const char *dev_addr,
+rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info)
 {
 	struct vfio_group_status group_status = {
@@ -416,7 +416,7 @@ vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 }
 
 int
-vfio_release_device(const char *sysfs_base, const char *dev_addr,
+rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 		    int vfio_dev_fd)
 {
 	struct vfio_group_status group_status = {
@@ -478,7 +478,7 @@ vfio_release_device(const char *sysfs_base, const char *dev_addr,
 }
 
 int
-vfio_enable(const char *modname)
+rte_vfio_enable(const char *modname)
 {
 	/* initialize group list */
 	int i;
@@ -523,7 +523,7 @@ vfio_enable(const char *modname)
 }
 
 int
-vfio_is_enabled(const char *modname)
+rte_vfio_is_enabled(const char *modname)
 {
 	const int mod_available = rte_eal_check_module(modname);
 	return vfio_cfg.vfio_enabled && mod_available;
@@ -841,7 +841,7 @@ vfio_noiommu_dma_map(int __rte_unused vfio_container_fd)
 }
 
 int
-vfio_noiommu_is_enabled(void)
+rte_vfio_noiommu_is_enabled(void)
 {
 	int fd, ret, cnt __rte_unused;
 	char c;

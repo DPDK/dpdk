@@ -743,14 +743,14 @@ rte_eal_vfio_intr_mode(void)
 struct vfio_device_info;
 
 /* dummy prototypes. */
-int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
+int rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info);
-int vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
-int vfio_enable(const char *modname);
-int vfio_is_enabled(const char *modname);
-int vfio_noiommu_is_enabled(void);
+int rte_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
+int rte_vfio_enable(const char *modname);
+int rte_vfio_is_enabled(const char *modname);
+int rte_vfio_noiommu_is_enabled(void);
 
-int vfio_setup_device(__rte_unused const char *sysfs_base,
+int rte_vfio_setup_device(__rte_unused const char *sysfs_base,
 		      __rte_unused const char *dev_addr,
 		      __rte_unused int *vfio_dev_fd,
 		      __rte_unused struct vfio_device_info *device_info)
@@ -758,24 +758,24 @@ int vfio_setup_device(__rte_unused const char *sysfs_base,
 	return -1;
 }
 
-int vfio_release_device(__rte_unused const char *sysfs_base,
+int rte_vfio_release_device(__rte_unused const char *sysfs_base,
 			__rte_unused const char *dev_addr,
 			__rte_unused int fd)
 {
 	return -1;
 }
 
-int vfio_enable(__rte_unused const char *modname)
+int rte_vfio_enable(__rte_unused const char *modname)
 {
 	return -1;
 }
 
-int vfio_is_enabled(__rte_unused const char *modname)
+int rte_vfio_is_enabled(__rte_unused const char *modname)
 {
 	return 0;
 }
 
-int vfio_noiommu_is_enabled(void)
+int rte_vfio_noiommu_is_enabled(void)
 {
 	return 0;
 }

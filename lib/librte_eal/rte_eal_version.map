@@ -235,10 +235,10 @@ DPDK_17.11 {
 	rte_eal_vfio_intr_mode;
 	rte_lcore_has_role;
 	rte_memcpy_ptr;
-	vfio_enable;
-	vfio_is_enabled;
-	vfio_noiommu_is_enabled;
-	vfio_release_device;
-	vfio_setup_device;
+	rte_vfio_enable;
+	rte_vfio_is_enabled;
+	rte_vfio_noiommu_is_enabled;
+	rte_vfio_release_device;
+	rte_vfio_setup_device;
 
 } DPDK_17.08;

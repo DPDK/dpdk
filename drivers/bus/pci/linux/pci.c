@@ -594,7 +594,7 @@ rte_pci_get_iommu_class(void)
 	has_iova_va = pci_one_device_has_iova_va();
 	is_bound_uio = pci_one_device_bound_uio();
 #ifdef VFIO_PRESENT
-	is_vfio_noiommu_enabled = vfio_noiommu_is_enabled() == true ?
+	is_vfio_noiommu_enabled = rte_vfio_noiommu_is_enabled() == true ?
 					true : false;
 #endif
 
