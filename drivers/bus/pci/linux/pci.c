@@ -395,7 +395,7 @@ pci_update_device(const struct rte_pci_addr *addr)
 	char filename[PATH_MAX];
 
 	snprintf(filename, sizeof(filename), "%s/" PCI_PRI_FMT,
-		 pci_get_sysfs_path(), addr->domain, addr->bus, addr->devid,
+		 rte_pci_get_sysfs_path(), addr->domain, addr->bus, addr->devid,
 		 addr->function);
 
 	return pci_scan_one(filename, addr);
@@ -468,7 +468,7 @@ rte_pci_scan(void)
 		RTE_LOG(DEBUG, EAL, "VFIO PCI modules not loaded\n");
 #endif
 
-	dir = opendir(pci_get_sysfs_path());
+	dir = opendir(rte_pci_get_sysfs_path());
 	if (dir == NULL) {
 		RTE_LOG(ERR, EAL, "%s(): opendir failed: %s\n",
 			__func__, strerror(errno));
@@ -483,7 +483,7 @@ rte_pci_scan(void)
 			continue;
 
 		snprintf(dirname, sizeof(dirname), "%s/%s",
-				pci_get_sysfs_path(), e->d_name);
+				rte_pci_get_sysfs_path(), e->d_name);
 
 		if (pci_scan_one(dirname, &addr) < 0)
 			goto error;

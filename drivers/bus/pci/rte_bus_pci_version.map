@@ -2,6 +2,7 @@ DPDK_17.11 {
 	global:
 
 	rte_pci_dump;
+	rte_pci_get_sysfs_path;
 	rte_pci_ioport_map;
 	rte_pci_ioport_read;
 	rte_pci_ioport_unmap;

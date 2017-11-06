@@ -164,14 +164,14 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 	 * or uio:uioX */
 
 	snprintf(dirname, sizeof(dirname),
-			"%s/" PCI_PRI_FMT "/uio", pci_get_sysfs_path(),
+			"%s/" PCI_PRI_FMT "/uio", rte_pci_get_sysfs_path(),
 			loc->domain, loc->bus, loc->devid, loc->function);
 
 	dir = opendir(dirname);
 	if (dir == NULL) {
 		/* retry with the parent directory */
 		snprintf(dirname, sizeof(dirname),
-				"%s/" PCI_PRI_FMT, pci_get_sysfs_path(),
+				"%s/" PCI_PRI_FMT, rte_pci_get_sysfs_path(),
 				loc->domain, loc->bus, loc->devid, loc->function);
 		dir = opendir(dirname);
 
@@ -323,7 +323,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	/* update devname for mmap  */
 	snprintf(devname, sizeof(devname),
 			"%s/" PCI_PRI_FMT "/resource%d",
-			pci_get_sysfs_path(),
+			rte_pci_get_sysfs_path(),
 			loc->domain, loc->bus, loc->devid,
 			loc->function, res_idx);
 
@@ -432,7 +432,7 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 
 	/* open and read addresses of the corresponding resource in sysfs */
 	snprintf(filename, sizeof(filename), "%s/" PCI_PRI_FMT "/resource",
-		pci_get_sysfs_path(), dev->addr.domain, dev->addr.bus,
+		rte_pci_get_sysfs_path(), dev->addr.domain, dev->addr.bus,
 		dev->addr.devid, dev->addr.function);
 	f = fopen(filename, "r");
 	if (f == NULL) {
@@ -454,7 +454,7 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		goto error;
 	}
 	snprintf(filename, sizeof(filename), "%s/" PCI_PRI_FMT "/resource%d",
-		pci_get_sysfs_path(), dev->addr.domain, dev->addr.bus,
+		rte_pci_get_sysfs_path(), dev->addr.domain, dev->addr.bus,
 		dev->addr.devid, dev->addr.function, bar);
 
 	/* mmap the pci resource */

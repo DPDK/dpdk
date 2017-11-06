@@ -60,7 +60,7 @@ extern "C" {
 #include <rte_pci.h>
 
 /** Pathname of PCI devices directory. */
-const char *pci_get_sysfs_path(void);
+const char *rte_pci_get_sysfs_path(void);
 
 /* Forward declarations */
 struct rte_pci_device;

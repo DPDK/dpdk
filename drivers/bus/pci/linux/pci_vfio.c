@@ -465,7 +465,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
-	ret = rte_vfio_setup_device(pci_get_sysfs_path(), pci_addr,
+	ret = rte_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
 					&vfio_dev_fd, &device_info);
 	if (ret)
 		return ret;
@@ -582,7 +582,7 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
-	ret = rte_vfio_setup_device(pci_get_sysfs_path(), pci_addr,
+	ret = rte_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
 					&vfio_dev_fd, &device_info);
 	if (ret)
 		return ret;
@@ -662,7 +662,7 @@ pci_vfio_unmap_resource(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	ret = rte_vfio_release_device(pci_get_sysfs_path(), pci_addr,
+	ret = rte_vfio_release_device(rte_pci_get_sysfs_path(), pci_addr,
 				  dev->intr_handle.vfio_dev_fd);
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL,
