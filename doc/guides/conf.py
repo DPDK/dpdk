@@ -340,7 +340,12 @@ def print_table_css(outfile, table_id):
          font-size: 80%;
          white-space: pre-wrap;
          vertical-align: top;
-         padding: 2px;
+         padding: 0.5em 0;
+         min-width: 0.9em;
+         width: 2em;
+      }
+      table#idx col:first-child {
+         width: 0;
       }
       table#idx th:first-child {
          vertical-align: bottom;
