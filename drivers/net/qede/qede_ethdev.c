@@ -631,7 +631,13 @@ qede_vxlan_enable(struct rte_eth_dev *eth_dev, uint8_t clss,
 
 	for_each_hwfn(edev, i) {
 		p_hwfn = &edev->hwfns[i];
-		p_ptt = IS_PF(edev) ? ecore_ptt_acquire(p_hwfn) : NULL;
+		if (IS_PF(edev)) {
+			p_ptt = ecore_ptt_acquire(p_hwfn);
+			if (!p_ptt)
+				return -EAGAIN;
+		} else {
+			p_ptt = NULL;
+		}
 		rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, p_ptt,
 				&tunn, ECORE_SPQ_MODE_CB, NULL);
 		if (rc != ECORE_SUCCESS) {
@@ -2258,7 +2264,13 @@ qede_conf_udp_dst_port(struct rte_eth_dev *eth_dev,
 		tunn.vxlan_port.port = udp_port;
 		for_each_hwfn(edev, i) {
 			p_hwfn = &edev->hwfns[i];
-			p_ptt = IS_PF(edev) ? ecore_ptt_acquire(p_hwfn) : NULL;
+			if (IS_PF(edev)) {
+				p_ptt = ecore_ptt_acquire(p_hwfn);
+				if (!p_ptt)
+					return -EAGAIN;
+			} else {
+				p_ptt = NULL;
+			}
 			rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, p_ptt, &tunn,
 						ECORE_SPQ_MODE_CB, NULL);
 			if (rc != ECORE_SUCCESS) {
