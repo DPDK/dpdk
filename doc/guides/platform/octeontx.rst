@@ -45,6 +45,10 @@ Common Offload HW Block Drivers
    See :doc: `../eventdevs/octeontx.rst` for octeontx ssovf eventdev driver
    information.
 
+2. **Mempool Driver**
+   See :doc: `../mempool/octeontx.rst` for octeontx fpavf mempool driver
+   information.
+
 Steps To Setup Platform
 -----------------------
 
