@@ -66,6 +66,7 @@ union type0_task_context {
 
 /* TYPE-1 task context - ROCE */
 union type1_task_context {
+	struct regpair reserved; /* @DPDK */
 };
 
 struct src_ent {
@@ -2219,35 +2220,4 @@ ecore_cxt_free_ilt_range(struct ecore_hwfn *p_hwfn,
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return ECORE_SUCCESS;
-}
-
-enum _ecore_status_t ecore_cxt_free_proto_ilt(struct ecore_hwfn *p_hwfn,
-					      enum protocol_type proto)
-{
-	enum _ecore_status_t rc;
-	u32 cid;
-
-	/* Free Connection CXT */
-	rc = ecore_cxt_free_ilt_range(p_hwfn, ECORE_ELEM_CXT,
-				      ecore_cxt_get_proto_cid_start(p_hwfn,
-								    proto),
-				      ecore_cxt_get_proto_cid_count(p_hwfn,
-								    proto,
-								    &cid));
-
-	if (rc)
-		return rc;
-
-	/* Free Task CXT */
-	rc = ecore_cxt_free_ilt_range(p_hwfn, ECORE_ELEM_TASK, 0,
-				      ecore_cxt_get_proto_tid_count(p_hwfn,
-								    proto));
-	if (rc)
-		return rc;
-
-	/* Free TSDM CXT */
-	rc = ecore_cxt_free_ilt_range(p_hwfn, ECORE_ELEM_SRQ, 0,
-				      ecore_cxt_get_srq_count(p_hwfn));
-
-	return rc;
 }
