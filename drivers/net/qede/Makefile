@@ -72,8 +72,9 @@ CFLAGS_BASE_DRIVER += -Wno-sometimes-uninitialized
 ifeq ($(shell clang -Wno-pointer-bool-conversion -Werror -E - < /dev/null > /dev/null 2>&1; echo $$?),0)
 CFLAGS_BASE_DRIVER += -Wno-pointer-bool-conversion
 endif
-else
-CFLAGS_BASE_DRIVER += -wd188 #188: enumerated type mixed with another type
+else #ICC
+CFLAGS_BASE_DRIVER += -wd188   #188: enumerated type mixed with another type
+CFLAGS_qede_ethdev.o += -wd279 #279: controlling expression is constant
 endif
 
 #
