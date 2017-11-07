@@ -894,6 +894,7 @@ mlx5_priv_rxq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 				 0, socket);
 	if (!tmpl)
 		return NULL;
+	tmpl->socket = socket;
 	if (priv->dev->data->dev_conf.intr_conf.rxq)
 		tmpl->irq = 1;
 	/* Enable scattered packets support for this queue if necessary. */

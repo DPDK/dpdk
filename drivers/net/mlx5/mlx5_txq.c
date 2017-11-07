@@ -580,6 +580,7 @@ mlx5_priv_txq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 	assert(desc > MLX5_TX_COMP_THRESH);
 	tmpl->txq.flags = conf->txq_flags;
 	tmpl->priv = priv;
+	tmpl->socket = socket;
 	tmpl->txq.elts_n = log2above(desc);
 	if (priv->mps == MLX5_MPW_ENHANCED)
 		tmpl->txq.mpw_hdr_dseg = priv->mpw_hdr_dseg;
