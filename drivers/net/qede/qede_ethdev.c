@@ -2424,6 +2424,23 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 			return qede_vxlan_enable(eth_dev,
 				ECORE_TUNN_CLSS_MAC_VLAN, false, true);
 
+		filter_type = conf->filter_type;
+		/* Determine if the given filter classification is supported */
+		qede_get_ecore_tunn_params(filter_type, &type, &clss, str);
+		if (clss == MAX_ECORE_TUNN_CLSS) {
+			DP_ERR(edev, "Unsupported filter type\n");
+			return -EINVAL;
+		}
+		/* Init tunnel ucast params */
+		rc = qede_set_ucast_tunn_cmn_param(&ucast, conf, type);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "Unsupported VxLAN filter type 0x%x\n",
+			conf->filter_type);
+			return rc;
+		}
+		DP_INFO(edev, "Rule: \"%s\", op %d, type 0x%x\n",
+			str, filter_op, ucast.type);
+
 		ucast.opcode = ECORE_FILTER_REMOVE;
 
 		if (!(filter_type & ETH_TUNNEL_FILTER_TENID)) {
@@ -2436,6 +2453,8 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 		}
 		if (rc != ECORE_SUCCESS)
 			return rc;
+
+		qdev->vxlan.num_filters--;
 
 		/* Disable VXLAN if VXLAN filters become 0 */
 		if (qdev->vxlan.num_filters == 0)
