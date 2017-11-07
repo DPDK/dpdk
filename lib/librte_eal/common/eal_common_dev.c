@@ -67,7 +67,6 @@ static int cmp_dev_name(const struct rte_device *dev, const void *_name)
 int rte_eal_dev_attach(const char *name, const char *devargs)
 {
 	struct rte_bus *bus;
-	int ret;
 
 	if (name == NULL || devargs == NULL) {
 		RTE_LOG(ERR, EAL, "Invalid device or arguments provided\n");
@@ -80,22 +79,13 @@ int rte_eal_dev_attach(const char *name, const char *devargs)
 			name);
 		return -EINVAL;
 	}
-	if (strcmp(bus->name, "pci") == 0)
-		return rte_eal_hotplug_add("pci", name, devargs);
-	if (strcmp(bus->name, "vdev") != 0) {
-		RTE_LOG(ERR, EAL, "Device attach is only supported for PCI and vdev devices.\n");
-		return -ENOTSUP;
-	}
+	if (strcmp(bus->name, "pci") == 0 || strcmp(bus->name, "vdev") == 0)
+		return rte_eal_hotplug_add(bus->name, name, devargs);
 
-	/*
-	 * If we haven't found a bus device the user meant to "hotplug" a
-	 * virtual device instead.
-	 */
-	ret = rte_vdev_init(name, devargs);
-	if (ret)
-		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
-			name);
-	return ret;
+	RTE_LOG(ERR, EAL,
+		"Device attach is only supported for PCI and vdev devices.\n");
+
+	return -ENOTSUP;
 }
 
 int rte_eal_dev_detach(struct rte_device *dev)
