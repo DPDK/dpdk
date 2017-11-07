@@ -7,7 +7,6 @@ DPDK_16.04 {
 	rte_cryptodev_close;
 	rte_cryptodev_count;
 	rte_cryptodev_configure;
-	rte_cryptodev_create_vdev;
 	rte_cryptodev_get_dev_id;
 	rte_cryptodev_get_feature_name;
 	rte_cryptodev_info_get;

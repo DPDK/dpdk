@@ -53,10 +53,5 @@ Deprecation Notices
   ``rte_cryptodev`` respectively to support security protocol offloaded
   operations.
 
-* cryptodev: the following function is deprecated starting from 17.08 and will
-  be removed in 17.11:
-
-  - ``rte_cryptodev_create_vdev``
-
 * librte_meter: The API will change to accommodate configuration profiles.
   Most of the API functions will have an additional opaque parameter.

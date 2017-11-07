@@ -397,6 +397,9 @@ API Changes
   and have been replaced by non bus specific functions
   ``rte_cryptodev_pmd_parse_input_args()`` and ``rte_cryptodev_pmd_create()``.
 
+* ``rte_cryptodev_create_vdev`` was removed to avoid the dependency on vdev
+  in librte_cryptodev; instead, users can call rte_vdev_init() directly.
+
 * **Removed PCI device bus specific functions from librte_cryptodev.**
 
   The functions ``rte_cryptodev_pci_generic_probe()`` and

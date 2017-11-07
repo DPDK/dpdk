@@ -377,12 +377,6 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 	}
 }
 
-int
-rte_cryptodev_create_vdev(const char *name, const char *args)
-{
-	return rte_vdev_init(name, args);
-}
-
 struct rte_cryptodev *
 rte_cryptodev_pmd_get_dev(uint8_t dev_id)
 {
