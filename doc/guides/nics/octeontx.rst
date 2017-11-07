@@ -195,7 +195,7 @@ Example:
 
 .. code-block:: console
 
-    ./your_dpdk_application --mbuf-pool-ops="octeontx_fpavf" \
+    ./your_dpdk_application --mbuf-pool-ops-name="octeontx_fpavf" \
                 --vdev='event_octeontx' \
                 --vdev="eth_octeontx,nr_port=2"
 
