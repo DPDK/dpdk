@@ -28,7 +28,6 @@
 #include "mcp_public.h"
 #include "ecore_iro.h"
 #include "nvm_cfg.h"
-#include "ecore_dev_api.h"
 #include "ecore_dcbx.h"
 #include "ecore_l2.h"
 

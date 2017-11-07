@@ -9,7 +9,6 @@
 #include "bcm_osal.h"
 #include "ecore.h"
 #include "ecore_spq.h"
-#include "reg_addr.h"
 #include "ecore_gtt_reg_addr.h"
 #include "ecore_init_ops.h"
 #include "ecore_rt_defs.h"
