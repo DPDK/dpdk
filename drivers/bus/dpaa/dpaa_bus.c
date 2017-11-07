@@ -484,11 +484,21 @@ rte_dpaa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	return NULL;
 }
 
+/*
+ * Get iommu class of DPAA2 devices on the bus.
+ */
+static enum rte_iova_mode
+rte_dpaa_get_iommu_class(void)
+{
+	return RTE_IOVA_PA;
+}
+
 struct rte_dpaa_bus rte_dpaa_bus = {
 	.bus = {
 		.scan = rte_dpaa_bus_scan,
 		.probe = rte_dpaa_bus_probe,
 		.find_device = rte_dpaa_find_device,
+		.get_iommu_class = rte_dpaa_get_iommu_class,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.driver_list),
