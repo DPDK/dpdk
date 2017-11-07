@@ -686,10 +686,10 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 
-	src_start_addr = sym->m_src->buf_physaddr + sym->m_src->data_off;
+	src_start_addr = sym->m_src->buf_iova + sym->m_src->data_off;
 
 	if (sym->m_dst)
-		dst_start_addr = sym->m_dst->buf_physaddr + sym->m_dst->data_off;
+		dst_start_addr = sym->m_dst->buf_iova + sym->m_dst->data_off;
 	else
 		dst_start_addr = src_start_addr;
 
