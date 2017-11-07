@@ -1,6 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-    All rights reserved.
+    Copyright (C) Cavium, Inc. 2017. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -12,7 +11,7 @@
     notice, this list of conditions and the following disclaimer in
     the documentation and/or other materials provided with the
     distribution.
-    * Neither the name of Intel Corporation nor the names of its
+    * Neither the name of Cavium Inc nor the names of its
     contributors may be used to endorse or promote products derived
     from this software without specific prior written permission.
 
@@ -28,23 +27,13 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+Platform Specific Guides
+========================
+
+The following are platform specific guides and setup information.
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 2
+    :numbered:
 
-   linux_gsg/index
-   freebsd_gsg/index
-   sample_app_ug/index
-   prog_guide/index
-   howto/index
-   tools/index
-   testpmd_app_ug/index
-   nics/index
-   cryptodevs/index
-   eventdevs/index
-   platform/index
-   contributing/index
-   rel_notes/index
-   faq/index
+    octeontx

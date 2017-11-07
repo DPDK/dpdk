@@ -71,34 +71,7 @@ The features supported by the device and not yet supported by this PMD include:
 Prerequisites
 -------------
 
-There are three main pre-perquisites for executing OCTEONTX PMD on a OCTEONTX
-compatible board:
-
-1. **OCTEONTX Linux kernel PF driver for Network acceleration HW blocks**
-
-   The OCTEONTX Linux kernel drivers (including the required PF driver for the
-   all network acceleration blocks) are available on GitHub at
-   `octeontx-kmod <https://github.com/caviumnetworks/octeontx-kmod>`_
-   along with build, install and dpdk usage instructions.
-
-2. **ARM64 Tool Chain**
-
-   For example, the *aarch64* Linaro Toolchain, which can be obtained from
-   `here <https://releases.linaro.org/components/toolchain/binaries/4.9-2017.01/aarch64-linux-gnu>`_.
-
-3. **Rootfile system**
-
-   Any *aarch64* supporting filesystem can be used. For example,
-   Ubuntu 15.10 (Wily) or 16.04 LTS (Xenial) userland which can be obtained
-   from `<http://cdimage.ubuntu.com/ubuntu-base/releases/16.04/release/ubuntu-base-16.04.1-base-arm64.tar.gz>`_.
-
-   As an alternative method, OCTEONTX PMD can also be executed using images provided
-   as part of SDK from Cavium. The SDK includes all the above prerequisites necessary
-   to bring up a OCTEONTX board.
-
-   SDK and related information can be obtained from: `Cavium support site <https://support.cavium.com/>`_.
-
-Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+See :doc:`../platform/octeontx` for setup information.
 
 Pre-Installation Configuration
 ------------------------------
