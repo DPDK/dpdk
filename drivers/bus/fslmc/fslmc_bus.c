@@ -346,11 +346,21 @@ rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver)
 	driver->fslmc_bus = NULL;
 }
 
+/*
+ * Get iommu class of DPAA2 devices on the bus.
+ */
+static enum rte_iova_mode
+rte_dpaa2_get_iommu_class(void)
+{
+	return RTE_IOVA_PA;
+}
+
 struct rte_fslmc_bus rte_fslmc_bus = {
 	.bus = {
 		.scan = rte_fslmc_scan,
 		.probe = rte_fslmc_probe,
 		.find_device = rte_fslmc_find_device,
+		.get_iommu_class = rte_dpaa2_get_iommu_class,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.driver_list),
