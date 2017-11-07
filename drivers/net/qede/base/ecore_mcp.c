@@ -1420,7 +1420,7 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 	if (p_hwfn->mcp_info->capabilities & FW_MB_PARAM_FEATURE_SUPPORT_EEE)
 		ecore_mcp_read_eee_config(p_hwfn, p_ptt, p_link);
 
-	OSAL_LINK_UPDATE(p_hwfn, p_ptt);
+	OSAL_LINK_UPDATE(p_hwfn);
 out:
 	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->link_lock);
 }

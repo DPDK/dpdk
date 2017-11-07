@@ -179,7 +179,7 @@ static void qed_handle_bulletin_change(struct ecore_hwfn *hwfn)
 		rte_memcpy(hwfn->hw_info.hw_mac_addr, mac, ETH_ALEN);
 
 	/* Always update link configuration according to bulletin */
-	qed_link_update(hwfn, NULL);
+	qed_link_update(hwfn);
 }
 
 static void qede_vf_task(void *arg)
@@ -629,11 +629,12 @@ static int qed_set_link(struct ecore_dev *edev, struct qed_link_params *params)
 	return rc;
 }
 
-void qed_link_update(struct ecore_hwfn *hwfn, struct ecore_ptt *ptt)
+void qed_link_update(struct ecore_hwfn *hwfn)
 {
-	struct qed_link_output if_link;
+	struct ecore_dev *edev = hwfn->p_dev;
+	struct qede_dev *qdev = (struct qede_dev *)edev;
 
-	qed_fill_link(hwfn, ptt, &if_link);
+	qede_link_update((struct rte_eth_dev *)qdev->ethdev, 0);
 }
 
 static int qed_drain(struct ecore_dev *edev)

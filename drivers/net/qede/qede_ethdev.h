@@ -210,6 +210,7 @@ struct qede_dev {
 	struct qede_fdir_info fdir_info;
 	bool vlan_strip_flg;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
+	void *ethdev;
 };
 
 /* Non-static functions */
@@ -225,6 +226,9 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 int qed_fill_eth_dev_info(struct ecore_dev *edev,
 				 struct qed_dev_eth_info *info);
 int qede_dev_set_link_state(struct rte_eth_dev *eth_dev, bool link_up);
+
+int qede_link_update(struct rte_eth_dev *eth_dev,
+		     __rte_unused int wait_to_complete);
 
 int qede_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type type,
 			 enum rte_filter_op op, void *arg);

@@ -30,7 +30,7 @@ enum ecore_mcp_protocol_type;
 union ecore_mcp_protocol_stats;
 enum ecore_hw_err_type;
 
-void qed_link_update(struct ecore_hwfn *hwfn, struct ecore_ptt *ptt);
+void qed_link_update(struct ecore_hwfn *hwfn);
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #undef __BIG_ENDIAN
@@ -338,7 +338,7 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 
 #define OSAL_BITMAP_WEIGHT(bitmap, count) 0
 
-#define OSAL_LINK_UPDATE(hwfn, ptt) qed_link_update(hwfn, ptt)
+#define OSAL_LINK_UPDATE(hwfn) qed_link_update(hwfn)
 #define OSAL_TRANSCEIVER_UPDATE(hwfn) nothing
 #define OSAL_DCBX_AEN(hwfn, mib_type) nothing
 

@@ -1159,6 +1159,9 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 	/* Bring-up the link */
 	qede_dev_set_link_state(eth_dev, true);
 
+	/* Update link status */
+	qede_link_update(eth_dev, 0);
+
 	/* Start/resume traffic */
 	qede_fastpath_start(edev);
 
@@ -1367,7 +1370,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 }
 
 /* return 0 means link status changed, -1 means not changed */
-static int
+int
 qede_link_update(struct rte_eth_dev *eth_dev, __rte_unused int wait_to_complete)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
@@ -2625,6 +2628,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	/* Extract key data structures */
 	adapter = eth_dev->data->dev_private;
+	adapter->ethdev = eth_dev;
 	edev = &adapter->edev;
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	pci_addr = pci_dev->addr;
