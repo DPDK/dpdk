@@ -637,6 +637,8 @@ qede_vxlan_enable(struct rte_eth_dev *eth_dev, uint8_t clss,
 		if (rc != ECORE_SUCCESS) {
 			DP_ERR(edev, "Failed to update tunn_clss %u\n",
 					tunn.vxlan.tun_cls);
+			if (IS_PF(edev))
+				ecore_ptt_release(p_hwfn, p_ptt);
 			break;
 		}
 	}
