@@ -940,7 +940,7 @@ launch_args_parse(int argc, char** argv)
 					port_topology = PORT_TOPOLOGY_LOOP;
 				else
 					rte_exit(EXIT_FAILURE, "port-topology %s invalid -"
-						 " must be: paired or chained \n",
+						 " must be: paired, chained or loop\n",
 						 optarg);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "forward-mode"))
