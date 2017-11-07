@@ -587,7 +587,7 @@ rte_pci_get_iommu_class(void)
 	bool has_iova_va;
 	bool is_bound_uio;
 	bool spapr_iommu =
-#if defined(RTE_ARCH_PPC64)
+#if defined(RTE_ARCH_PPC_64)
 		true;
 #else
 		false;
