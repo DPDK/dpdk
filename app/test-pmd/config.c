@@ -1905,7 +1905,7 @@ simple_fwd_config_setup(void)
 		fwd_streams[i]->rx_queue  = 0;
 		fwd_streams[i]->tx_port   = fwd_ports_ids[j];
 		fwd_streams[i]->tx_queue  = 0;
-		fwd_streams[i]->peer_addr = j;
+		fwd_streams[i]->peer_addr = fwd_streams[i]->tx_port;
 		fwd_streams[i]->retry_enabled = retry_enabled;
 
 		if (port_topology == PORT_TOPOLOGY_PAIRED) {
@@ -1913,7 +1913,7 @@ simple_fwd_config_setup(void)
 			fwd_streams[j]->rx_queue  = 0;
 			fwd_streams[j]->tx_port   = fwd_ports_ids[i];
 			fwd_streams[j]->tx_queue  = 0;
-			fwd_streams[j]->peer_addr = i;
+			fwd_streams[j]->peer_addr = fwd_streams[j]->tx_port;
 			fwd_streams[j]->retry_enabled = retry_enabled;
 		}
 	}
