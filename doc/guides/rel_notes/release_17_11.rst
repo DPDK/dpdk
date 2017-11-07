@@ -170,6 +170,29 @@ New Features
   that displays more detailed breakdown of CPU cycles used by hardware
   acceleration.
 
+* **Added the Security Offload Library.**
+
+  Added an experimental library - rte_security. It provide security APIs for
+  protocols like IPSec using inline ipsec offload to ethernet device or full
+  protocol offload with lookaside crypto device.
+
+  See the "Security_Library" section of the DPDK Programmers Guide document,
+  for more information.
+
+* **Updated DPAA2_SEC crypto driver.**
+
+  Updated dpaa2_sec crypto PMD to support rte_security lookaside protocol
+  offload for IPSec.
+
+* **Updated IXGBE ethernet driver.**
+
+  Updated ixgbe ethernet PMD to support rte_security inline IPSec offload.
+
+* **Updated ipsec-secgw application**
+
+  Updated ipsec-secgw sample application to support rte_security actions for
+  ipsec inline and full protocol offload using lookaside crypto offload.
+
 * **Added IOMMU support to libvhost-user**
 
   Implemented device IOTLB in Vhost-user backend, and enabled Virtio's IOMMU
@@ -461,6 +484,16 @@ ABI Changes
 
   The size of the field ``port_id`` in the ``rte_eth_dev_data`` structure
   changed, as described in the `New Features` section.
+
+* **New parameter added to rte_eth_dev.**
+
+  New parameter ``security_ctx``  added to ``rte_eth_dev`` to support security
+  operations like IPSec inline.
+
+* **New parameter added to rte_cryptodev.**
+
+  New parameter ``security_ctx``  added to ``rte_cryptodev`` to support security
+  operations like lookaside crypto.
 
 
 Removed Items

@@ -43,15 +43,5 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* ethdev: new parameters - ``rte_security_capabilities`` and
-  ``rte_security_ops`` will be added to ``rte_eth_dev_info`` and
-  ``rte_eth_dev`` respectively  to support security operations like
-  ipsec inline.
-
-* cryptodev: new parameters - ``rte_security_capabilities`` and
-  ``rte_security_ops`` will be added to ``rte_cryptodev_info`` and
-  ``rte_cryptodev`` respectively to support security protocol offloaded
-  operations.
-
 * librte_meter: The API will change to accommodate configuration profiles.
   Most of the API functions will have an additional opaque parameter.
