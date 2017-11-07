@@ -38,6 +38,7 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev -lrte_kvargs -lrte_reorder
+LDLIBS += -lrte_bus_vdev
 
 # library version
 LIBABIVER := 1

@@ -60,5 +60,6 @@ CFLAGS += -Wno-strict-prototypes
 CFLAGS += -pedantic
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
+LDLIBS += -lrte_bus_vdev
 
 include $(RTE_SDK)/mk/rte.lib.mk

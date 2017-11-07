@@ -35,6 +35,7 @@
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
+#include <rte_bus_vdev.h>
 
 #include <rte_event_eth_rx_adapter.h>
 

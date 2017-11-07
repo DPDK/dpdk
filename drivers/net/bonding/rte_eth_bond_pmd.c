@@ -43,7 +43,7 @@
 #include <rte_ip_frag.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
 

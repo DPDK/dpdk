@@ -379,6 +379,14 @@ API Changes
   These functions are made available either as part of ``librte_pci`` or
   ``librte_bus_pci``.
 
+* **Moved vdev bus APIs outside of the EAL**
+
+  Moved the following APIs from ``librte_eal`` to ``librte_bus_vdev``:
+  * ``rte_vdev_init``
+  * ``rte_vdev_register``
+  * ``rte_vdev_uninit``
+  * ``rte_vdev_unregister``
+
 * **Add return value to stats_get dev op API**
 
   The ``stats_get`` dev op API return value has been changed to be int.
@@ -491,6 +499,7 @@ The libraries prepended with a plus sign were incremented in this version.
 
      librte_acl.so.2
    + librte_bitratestats.so.2
+   + librte_bus_vdev.so.1
      librte_cfgfile.so.2
      librte_cmdline.so.2
    + librte_cryptodev.so.4

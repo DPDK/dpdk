@@ -74,5 +74,6 @@ LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_mempool_octeontx
 LDLIBS += -lrte_eventdev
 LDLIBS += -lrte_bus_pci
+LDLIBS += -lrte_bus_vdev
 
 include $(RTE_SDK)/mk/rte.lib.mk

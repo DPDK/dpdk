@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2017 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -34,26 +34,24 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_ring.a
+LIB = librte_bus_vdev.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
-LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
-LDLIBS += -lrte_bus_vdev
 
-EXPORT_MAP := rte_pmd_ring_version.map
+# versioning export map
+EXPORT_MAP := rte_bus_vdev_version.map
 
-LIBABIVER := 2
+# library version
+LIBABIVER := 1
 
-#
-# all source are stored in SRCS-y
-#
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += rte_eth_ring.c
+SRCS-y += vdev.c
+
+LDLIBS += -lrte_eal
 
 #
 # Export include files
 #
-SYMLINK-y-include += rte_eth_ring.h
+SYMLINK-y-include += rte_bus_vdev.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

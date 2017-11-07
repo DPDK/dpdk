@@ -37,7 +37,7 @@
 #include <rte_ethdev_vdev.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 
 #include "failsafe_private.h"
 

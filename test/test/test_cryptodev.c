@@ -36,6 +36,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_pause.h>
+#include <rte_bus_vdev.h>
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>

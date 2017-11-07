@@ -169,28 +169,6 @@ struct rte_device {
 };
 
 /**
- * Initialize a driver specified by name.
- *
- * @param name
- *   The pointer to a driver name to be initialized.
- * @param args
- *   The pointer to arguments used by driver initialization.
- * @return
- *  0 on success, negative on error
- */
-int rte_vdev_init(const char *name, const char *args);
-
-/**
- * Uninitalize a driver specified by name.
- *
- * @param name
- *   The pointer to a driver name to be initialized.
- * @return
- *  0 on success, negative on error
- */
-int rte_vdev_uninit(const char *name);
-
-/**
  * Attach a device to a registered driver.
  *
  * @param name
@@ -315,4 +293,4 @@ __attribute__((used)) = str
 }
 #endif
 
-#endif /* _RTE_VDEV_H_ */
+#endif /* _RTE_DEV_H_ */

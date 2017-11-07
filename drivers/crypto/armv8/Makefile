@@ -59,6 +59,7 @@ CFLAGS += -I$(ARMV8_CRYPTO_LIB_PATH)/asm/include
 LDLIBS += -L$(ARMV8_CRYPTO_LIB_PATH) -larmv8_crypto
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
+LDLIBS += -lrte_bus_vdev
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += rte_armv8_pmd.c

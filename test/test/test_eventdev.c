@@ -37,6 +37,7 @@
 #include <rte_memcpy.h>
 #include <rte_eventdev.h>
 #include <rte_dev.h>
+#include <rte_bus_vdev.h>
 
 #include "test.h"
 

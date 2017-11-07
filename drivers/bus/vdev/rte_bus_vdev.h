@@ -124,6 +124,28 @@ RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 #define RTE_PMD_REGISTER_ALIAS(nm, alias)\
 static const char *vdrvinit_ ## nm ## _alias = RTE_STR(alias)
 
+/**
+ * Initialize a driver specified by name.
+ *
+ * @param name
+ *   The pointer to a driver name to be initialized.
+ * @param args
+ *   The pointer to arguments used by driver initialization.
+ * @return
+ *  0 on success, negative on error
+ */
+int rte_vdev_init(const char *name, const char *args);
+
+/**
+ * Uninitalize a driver specified by name.
+ *
+ * @param name
+ *   The pointer to a driver name to be initialized.
+ * @return
+ *  0 on success, negative on error
+ */
+int rte_vdev_uninit(const char *name);
+
 #ifdef __cplusplus
 }
 #endif

@@ -41,11 +41,12 @@
 #include <rte_eal.h>
 #include <rte_dev.h>
 #include <rte_bus.h>
-#include <rte_vdev.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_memory.h>
 #include <rte_errno.h>
+
+#include "rte_bus_vdev.h"
 
 /* Forward declare to access virtual bus name */
 static struct rte_bus rte_vdev_bus;
@@ -124,6 +125,7 @@ find_vdev(const char *name)
 
 	TAILQ_FOREACH(dev, &vdev_device_list, next) {
 		const char *devname = rte_vdev_device_name(dev);
+
 		if (!strncmp(devname, name, strlen(name)))
 			return dev;
 	}

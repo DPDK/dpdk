@@ -45,6 +45,7 @@ CFLAGS += -I.
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_hash
+LDLIBS += -lrte_bus_vdev
 
 #
 # all source are stored in SRCS-y

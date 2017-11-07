@@ -40,7 +40,7 @@
 #include <rte_kni.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 
 /* Only single queue supported */
 #define KNI_MAX_QUEUE_PER_PORT 1

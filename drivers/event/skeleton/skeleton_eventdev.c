@@ -46,7 +46,7 @@
 #include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_lcore.h>
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 
 #include "skeleton_eventdev.h"
 

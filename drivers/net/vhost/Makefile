@@ -39,6 +39,7 @@ LIB = librte_pmd_vhost.a
 LDLIBS += -lpthread
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_vhost
+LDLIBS += -lrte_bus_vdev
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

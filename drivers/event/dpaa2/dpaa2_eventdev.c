@@ -51,7 +51,7 @@
 #include <rte_memcpy.h>
 #include <rte_memory.h>
 #include <rte_pci.h>
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 #include <rte_ethdev.h>
 #include <rte_event_eth_rx_adapter.h>
 

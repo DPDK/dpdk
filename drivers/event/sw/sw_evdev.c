@@ -33,7 +33,7 @@
 #include <inttypes.h>
 #include <string.h>
 
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 #include <rte_kvargs.h>
 #include <rte_ring.h>
 #include <rte_errno.h>

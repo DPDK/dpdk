@@ -40,6 +40,7 @@ CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lpthread
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_kni
+LDLIBS += -lrte_bus_vdev
 
 EXPORT_MAP := rte_pmd_kni_version.map
 

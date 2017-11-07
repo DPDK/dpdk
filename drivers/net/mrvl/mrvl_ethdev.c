@@ -36,7 +36,7 @@
 #include <rte_kvargs.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 
 /* Unluckily, container_of is defined by both DPDK and MUSDK,
  * we'll declare only one version.

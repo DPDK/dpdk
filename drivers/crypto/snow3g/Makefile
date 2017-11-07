@@ -56,6 +56,7 @@ CFLAGS += -I$(LIBSSO_SNOW3G_PATH)/build
 LDLIBS += -L$(LIBSSO_SNOW3G_PATH)/build -lsso_snow3g
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
+LDLIBS += -lrte_bus_vdev
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += rte_snow3g_pmd.c

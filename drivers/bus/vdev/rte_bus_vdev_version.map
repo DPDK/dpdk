@@ -1,0 +1,10 @@
+DPDK_17.11 {
+	global:
+
+	rte_vdev_init;
+	rte_vdev_register;
+	rte_vdev_uninit;
+	rte_vdev_unregister;
+
+	local: *;
+};

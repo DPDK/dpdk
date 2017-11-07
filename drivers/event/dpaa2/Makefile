@@ -46,6 +46,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa2
 CFLAGS += -I$(RTE_SDK)/drivers/event/dpaa2
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
 LDLIBS += -lrte_eal -lrte_eventdev -lrte_bus_fslmc -lrte_pmd_dpaa2
+LDLIBS += -lrte_bus_vdev
 CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2
 CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2/mc
 

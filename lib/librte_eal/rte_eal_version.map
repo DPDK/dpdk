@@ -163,10 +163,6 @@ DPDK_17.05 {
 	rte_log_set_global_level;
 	rte_log_set_level;
 	rte_log_set_level_regexp;
-	rte_vdev_init;
-	rte_vdev_register;
-	rte_vdev_uninit;
-	rte_vdev_unregister;
 	vfio_get_container_fd;
 	vfio_get_group_fd;
 	vfio_get_group_no;

@@ -35,7 +35,7 @@
 #define _RTE_ETHDEV_VDEV_H_
 
 #include <rte_malloc.h>
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 #include <rte_ethdev.h>
 
 /**

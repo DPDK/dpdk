@@ -158,6 +158,11 @@ CONFIG_RTE_ETHDEV_TX_PREPARE_NOOP=n
 CONFIG_RTE_LIBRTE_PCI_BUS=y
 
 #
+# Compile the vdev bus
+#
+CONFIG_RTE_LIBRTE_VDEV_BUS=y
+
+#
 # Compile burst-oriented Amazon ENA PMD driver
 #
 CONFIG_RTE_LIBRTE_ENA_PMD=y

@@ -57,6 +57,7 @@ EXPORT_MAP := rte_mrvl_pmd_version.map
 
 # external library dependencies
 LDLIBS += -L$(LIBMUSDK_PATH)/lib -lmusdk
+LDLIBS += -lrte_bus_vdev
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO) += rte_mrvl_pmd.c

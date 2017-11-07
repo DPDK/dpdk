@@ -45,6 +45,7 @@
 #include <rte_lcore.h>
 #include <rte_per_lcore.h>
 #include <rte_random.h>
+#include <rte_bus_vdev.h>
 
 #include "test.h"
 

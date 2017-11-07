@@ -293,6 +293,9 @@ Bus Drivers
 PCI bus driver
 F: drivers/bus/pci/
 
+VDEV bus driver
+F: drivers/bus/vdev/
+
 
 Networking Drivers
 ------------------

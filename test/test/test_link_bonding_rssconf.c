@@ -48,6 +48,7 @@
 #include <rte_log.h>
 #include <rte_lcore.h>
 #include <rte_memory.h>
+#include <rte_bus_vdev.h>
 
 #include <rte_string_fns.h>
 #include <rte_errno.h>
