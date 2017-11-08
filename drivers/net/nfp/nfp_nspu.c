@@ -566,6 +566,7 @@ nfp_nsp_eth_config(nspu_desc_t *desc, int port, int up)
 			   NSP_ETH_TABLE_SIZE, 0);
 	if (ret) {
 		rte_spinlock_unlock(&desc->nsp_lock);
+		free(entries);
 		return ret;
 	}
 
@@ -586,6 +587,7 @@ nfp_nsp_eth_config(nspu_desc_t *desc, int port, int up)
 
 	if (i == NSP_ETH_MAX_COUNT) {
 		rte_spinlock_unlock(&desc->nsp_lock);
+		free(entries);
 		return -EINVAL;
 	}
 
@@ -610,6 +612,7 @@ nfp_nsp_eth_config(nspu_desc_t *desc, int port, int up)
 				"Hw ethernet port %d configure failed\n", port);
 	}
 	rte_spinlock_unlock(&desc->nsp_lock);
+	free(entries);
 	return ret;
 }
 
