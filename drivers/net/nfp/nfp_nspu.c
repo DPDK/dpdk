@@ -411,6 +411,9 @@ nfp_nspu_set_bar_from_symbl(nspu_desc_t *desc, const char *symbl,
 	int ret = 0;
 
 	sym_buf = malloc(desc->buf_size);
+	if (!sym_buf)
+		return -ENOMEM;
+
 	strncpy(sym_buf, symbl, strlen(symbl));
 	ret = nspu_command(desc, NSP_CMD_GET_SYMBOL, 1, 1, sym_buf,
 			   NFP_SYM_DESC_LEN, strlen(symbl));
