@@ -300,6 +300,7 @@ PCI bus driver
 F: drivers/bus/pci/
 
 VDEV bus driver
+M: Jianfeng Tan <jianfeng.tan@intel.com>
 F: drivers/bus/vdev/
 
 
