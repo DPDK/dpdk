@@ -80,6 +80,9 @@
 /* Max IOQs per LIO Link */
 #define LIO_MAX_IOQS_PER_IF			64
 
+/* Wait time in milliseconds for FLR */
+#define LIO_PCI_FLR_WAIT			100
+
 enum lio_card_type {
 	LIO_23XX /* 23xx */
 };
