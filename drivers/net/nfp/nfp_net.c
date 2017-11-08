@@ -1038,6 +1038,8 @@ nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	/* RTE_ETHDEV_QUEUE_STAT_CNTRS default value is 16 */
 
+	memset(&nfp_dev_stats, 0, sizeof(nfp_dev_stats));
+
 	/* reading per RX ring stats */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
