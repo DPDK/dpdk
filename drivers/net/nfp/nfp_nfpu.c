@@ -75,7 +75,12 @@ nfpu_open(struct rte_pci_device *pci_dev, nfpu_desc_t *desc, int nfp)
 	/* barsz in log2 */
 	while (barsz >>= 1)
 		i++;
+
 	barsz = i;
+
+	/* Sanity check: we can assume any bar size less than 1MB an error */
+	if (barsz < 20)
+		return -1;
 
 	/* Getting address for NFP expansion BAR registers */
 	cfg_base = pci_dev->mem_resource[0].addr;
