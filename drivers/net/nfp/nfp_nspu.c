@@ -341,7 +341,12 @@ nfp_fw_upload(nspu_desc_t *nspu_desc)
 		return -ENOENT;
 	}
 
-	fstat(fw_f, &file_stat);
+	if (fstat(fw_f, &file_stat) < 0) {
+		RTE_LOG(INFO, PMD, "Firmware file %s/%s size is unknown",
+			DEFAULT_FW_PATH, DEFAULT_FW_FILENAME);
+		close(fw_f);
+		return -ENOENT;
+	}
 
 	fsize = file_stat.st_size;
 	RTE_LOG(DEBUG, PMD, "Firmware file with size: %" PRIu64 "\n",
