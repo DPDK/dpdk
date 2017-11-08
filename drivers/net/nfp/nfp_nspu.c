@@ -351,12 +351,14 @@ nfp_fw_upload(nspu_desc_t *nspu_desc)
 		RTE_LOG(INFO, PMD, "fw file too big: %" PRIu64
 				   " bytes (%" PRIu64 " max)",
 				  (uint64_t)fsize, (uint64_t)size);
+		close(fw_f);
 		return -EINVAL;
 	}
 
 	fw_buf = malloc((size_t)size);
 	if (!fw_buf) {
 		RTE_LOG(INFO, PMD, "malloc failed for fw buffer");
+		close(fw_f);
 		return -ENOMEM;
 	}
 	memset(fw_buf, 0, size);
@@ -367,12 +369,14 @@ nfp_fw_upload(nspu_desc_t *nspu_desc)
 				   "Just %" PRIu64 " of %" PRIu64 " bytes read.",
 				   (uint64_t)bytes, (uint64_t)fsize);
 		free(fw_buf);
+		close(fw_f);
 		return -EIO;
 	}
 
 	ret = nspu_command(nspu_desc, NSP_CMD_FW_LOAD, 0, 1, fw_buf, 0, bytes);
 
 	free(fw_buf);
+	close(fw_f);
 
 	return ret;
 }
