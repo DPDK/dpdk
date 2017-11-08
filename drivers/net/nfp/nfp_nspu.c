@@ -618,10 +618,14 @@ nfp_nsp_eth_read_table(nspu_desc_t *desc, union eth_table_entry **table)
 {
 	int ret;
 
+	if (!table)
+		return -EINVAL;
+
 	RTE_LOG(INFO, PMD, "Reading hw ethernet table...\n");
+
 	/* port 0 allocates the eth table and read it using NSPU */
 	*table = malloc(NSP_ETH_TABLE_SIZE);
-	if (!table)
+	if (!*table)
 		return -ENOMEM;
 
 	ret = nspu_command(desc, NSP_CMD_READ_ETH_TABLE, 1, 0, *table,
