@@ -8,14 +8,14 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
-* eal: several API and ABI changes are planned for ``rte_devargs`` in v17.11.
+* eal: several API and ABI changes are planned for ``rte_devargs`` in v18.02.
   The format of device command line parameters will change. The bus will need
   to be explicitly stated in the device declaration. The enum ``rte_devtype``
   was used to identify a bus and will disappear.
   The structure ``rte_devargs`` will change.
   The ``rte_devargs_list`` will be made private.
   The following functions are deprecated starting from 17.08 and will either be
-  modified or removed in 17.11:
+  modified or removed in 18.02:
 
   - ``rte_eal_devargs_add``
   - ``rte_eal_devargs_type_count``
