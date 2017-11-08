@@ -136,6 +136,18 @@ invoke rte_eth_tx_burst() concurrently on the same Tx queue without SW lock.
 * **[related]  API**: ``rte_eth_tx_burst()``.
 
 
+.. _nic_features_fast_mbuf_free:
+
+Fast mbuf free
+--------------
+
+Supports optimization for fast release of mbufs following successful Tx.
+Requires that per queue, all mbufs come from the same mempool and has refcnt = 1.
+
+* **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_MBUF_FAST_FREE``.
+* **[provides]   rte_eth_dev_info**: ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_MBUF_FAST_FREE``.
+
+
 .. _nic_features_free_tx_mbuf_on_demand:
 
 Free Tx mbuf on demand
@@ -639,15 +651,6 @@ Supports packet type parsing and returns a list of supported types.
 
 
 .. _nic_features_timesync:
-
-Mbuf fast free
---------------
-
-Supports optimization for fast release of mbufs following successful Tx.
-Requires that per queue, all mbufs come from the same mempool and has refcnt = 1.
-
-* **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_MBUF_FAST_FREE``.
-* **[provides]   rte_eth_dev_info**: ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_MBUF_FAST_FREE``.
 
 Timesync
 --------
