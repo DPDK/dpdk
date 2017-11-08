@@ -585,7 +585,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 		.non_leaf_nodes_identical = 1,
 		.leaf_nodes_identical = 0,
 
-		.nonleaf = {
+		{.nonleaf = {
 			.shaper_private_supported = 1,
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 1,
@@ -599,7 +599,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.sched_wfq_weight_max = 1,
 
 			.stats_mask = STATS_MASK_DEFAULT,
-		},
+		} },
 	},
 
 	[TM_NODE_LEVEL_SUBPORT] = {
@@ -609,7 +609,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 		.non_leaf_nodes_identical = 1,
 		.leaf_nodes_identical = 0,
 
-		.nonleaf = {
+		{.nonleaf = {
 			.shaper_private_supported = 1,
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 1,
@@ -626,7 +626,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.sched_wfq_weight_max = 1,
 #endif
 			.stats_mask = STATS_MASK_DEFAULT,
-		},
+		} },
 	},
 
 	[TM_NODE_LEVEL_PIPE] = {
@@ -636,7 +636,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 		.non_leaf_nodes_identical = 1,
 		.leaf_nodes_identical = 0,
 
-		.nonleaf = {
+		{.nonleaf = {
 			.shaper_private_supported = 1,
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 1,
@@ -652,7 +652,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.sched_wfq_weight_max = 1,
 
 			.stats_mask = STATS_MASK_DEFAULT,
-		},
+		} },
 	},
 
 	[TM_NODE_LEVEL_TC] = {
@@ -662,7 +662,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 		.non_leaf_nodes_identical = 1,
 		.leaf_nodes_identical = 0,
 
-		.nonleaf = {
+		{.nonleaf = {
 			.shaper_private_supported = 1,
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 1,
@@ -678,7 +678,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.sched_wfq_weight_max = UINT32_MAX,
 
 			.stats_mask = STATS_MASK_DEFAULT,
-		},
+		} },
 	},
 
 	[TM_NODE_LEVEL_QUEUE] = {
@@ -688,7 +688,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 		.non_leaf_nodes_identical = 0,
 		.leaf_nodes_identical = 1,
 
-		.leaf = {
+		{.leaf = {
 			.shaper_private_supported = 0,
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 0,
@@ -700,7 +700,7 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.cman_wred_context_shared_n_max = 0,
 
 			.stats_mask = STATS_MASK_QUEUE,
-		},
+		} },
 	},
 };
 
@@ -778,13 +778,13 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_rate_max = UINT32_MAX,
 		.shaper_shared_n_max = 0,
 
-		.nonleaf = {
+		{.nonleaf = {
 			.sched_n_children_max = UINT32_MAX,
 			.sched_sp_n_priorities_max = 1,
 			.sched_wfq_n_children_per_group_max = UINT32_MAX,
 			.sched_wfq_n_groups_max = 1,
 			.sched_wfq_weight_max = 1,
-		},
+		} },
 
 		.stats_mask = STATS_MASK_DEFAULT,
 	},
@@ -796,13 +796,13 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_rate_max = UINT32_MAX,
 		.shaper_shared_n_max = 0,
 
-		.nonleaf = {
+		{.nonleaf = {
 			.sched_n_children_max = UINT32_MAX,
 			.sched_sp_n_priorities_max = 1,
 			.sched_wfq_n_children_per_group_max = UINT32_MAX,
 			.sched_wfq_n_groups_max = 1,
 			.sched_wfq_weight_max = UINT32_MAX,
-		},
+		} },
 
 		.stats_mask = STATS_MASK_DEFAULT,
 	},
@@ -814,7 +814,7 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_rate_max = UINT32_MAX,
 		.shaper_shared_n_max = 0,
 
-		.nonleaf = {
+		{.nonleaf = {
 			.sched_n_children_max =
 				RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE,
 			.sched_sp_n_priorities_max =
@@ -822,7 +822,7 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 			.sched_wfq_n_children_per_group_max = 1,
 			.sched_wfq_n_groups_max = 0,
 			.sched_wfq_weight_max = 1,
-		},
+		} },
 
 		.stats_mask = STATS_MASK_DEFAULT,
 	},
@@ -834,7 +834,7 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_rate_max = UINT32_MAX,
 		.shaper_shared_n_max = 1,
 
-		.nonleaf = {
+		{.nonleaf = {
 			.sched_n_children_max =
 				RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
 			.sched_sp_n_priorities_max = 1,
@@ -842,7 +842,7 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 				RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
 			.sched_wfq_n_groups_max = 1,
 			.sched_wfq_weight_max = UINT32_MAX,
-		},
+		} },
 
 		.stats_mask = STATS_MASK_DEFAULT,
 	},
@@ -855,11 +855,11 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_shared_n_max = 0,
 
 
-		.leaf = {
+		{.leaf = {
 			.cman_head_drop_supported = 0,
 			.cman_wred_context_private_supported = WRED_SUPPORTED,
 			.cman_wred_context_shared_n_max = 0,
-		},
+		} },
 
 		.stats_mask = STATS_MASK_QUEUE,
 	},
