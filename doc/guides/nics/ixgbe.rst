@@ -239,6 +239,22 @@ There is no RTE API to add a VF's MAC address from the PF. On ixgbe, the
 as a workaround.
 
 
+Inline crypto processing support
+--------------------------------
+
+Inline IPsec processing is supported for ``RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO``
+mode for ESP packets only:
+
+- ESP authentication only: AES-128-GMAC (128-bit key)
+- ESP encryption and authentication: AES-128-GCM (128-bit key)
+
+IPsec Security Gateway Sample Application supports inline IPsec processing for
+ixgbe PMD.
+
+For more details see the IPsec Security Gateway Sample Application and Security
+library documentation.
+
+
 Supported Chipsets and NICs
 ---------------------------
 
