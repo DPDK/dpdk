@@ -107,11 +107,6 @@ These options can be modified in the ``.config`` file.
   to abort with harmless debugging messages as a workaround.
   Relevant only when CONFIG_RTE_LIBRTE_MLX4_DEBUG is enabled.
 
-- ``CONFIG_RTE_LIBRTE_MLX4_MAX_INLINE`` (default **0**)
-
-  Amount of data to be inlined during TX operations. Improves latency but
-  lowers throughput.
-
 - ``CONFIG_RTE_LIBRTE_MLX4_TX_MP_CACHE`` (default **8**)
 
   Maximum number of cached memory pools (MPs) per TX queue. Each MP from
