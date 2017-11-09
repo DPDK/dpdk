@@ -84,7 +84,7 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 		struct rte_security_session_conf sess_conf = {
 			.action_type = sa->type,
 			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
-			.ipsec = {
+			{.ipsec = {
 				.spi = sa->spi,
 				.salt = sa->salt,
 				.options = { 0 },
@@ -94,7 +94,7 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 						sa->flags == IP6_TUNNEL) ?
 					RTE_SECURITY_IPSEC_SA_MODE_TUNNEL :
 					RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
-			},
+			} },
 			.crypto_xform = sa->xforms
 
 		};
