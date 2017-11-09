@@ -1956,25 +1956,29 @@ parse_ntuple_filter(struct bnxt *bp,
 }
 
 static struct bnxt_filter_info*
-bnxt_match_ntuple_filter(struct bnxt_vnic_info *vnic,
+bnxt_match_ntuple_filter(struct bnxt *bp,
 			 struct bnxt_filter_info *bfilter)
 {
 	struct bnxt_filter_info *mfilter = NULL;
+	int i;
 
-	STAILQ_FOREACH(mfilter, &vnic->filter, next) {
-		if (bfilter->src_ipaddr[0] == mfilter->src_ipaddr[0] &&
-		    bfilter->src_ipaddr_mask[0] ==
-		    mfilter->src_ipaddr_mask[0] &&
-		    bfilter->src_port == mfilter->src_port &&
-		    bfilter->src_port_mask == mfilter->src_port_mask &&
-		    bfilter->dst_ipaddr[0] == mfilter->dst_ipaddr[0] &&
-		    bfilter->dst_ipaddr_mask[0] ==
-		    mfilter->dst_ipaddr_mask[0] &&
-		    bfilter->dst_port == mfilter->dst_port &&
-		    bfilter->dst_port_mask == mfilter->dst_port_mask &&
-		    bfilter->flags == mfilter->flags &&
-		    bfilter->enables == mfilter->enables)
-			return mfilter;
+	for (i = bp->nr_vnics - 1; i >= 0; i--) {
+		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+		STAILQ_FOREACH(mfilter, &vnic->filter, next) {
+			if (bfilter->src_ipaddr[0] == mfilter->src_ipaddr[0] &&
+			    bfilter->src_ipaddr_mask[0] ==
+			    mfilter->src_ipaddr_mask[0] &&
+			    bfilter->src_port == mfilter->src_port &&
+			    bfilter->src_port_mask == mfilter->src_port_mask &&
+			    bfilter->dst_ipaddr[0] == mfilter->dst_ipaddr[0] &&
+			    bfilter->dst_ipaddr_mask[0] ==
+			    mfilter->dst_ipaddr_mask[0] &&
+			    bfilter->dst_port == mfilter->dst_port &&
+			    bfilter->dst_port_mask == mfilter->dst_port_mask &&
+			    bfilter->flags == mfilter->flags &&
+			    bfilter->enables == mfilter->enables)
+				return mfilter;
+		}
 	}
 	return NULL;
 }
@@ -2023,7 +2027,7 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 	bfilter->ethertype = 0x800;
 	bfilter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
 
-	mfilter = bnxt_match_ntuple_filter(vnic, bfilter);
+	mfilter = bnxt_match_ntuple_filter(bp, bfilter);
 
 	if (mfilter != NULL && filter_op == RTE_ETH_FILTER_ADD) {
 		RTE_LOG(ERR, PMD, "filter exists.");
