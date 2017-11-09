@@ -457,6 +457,7 @@ int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg)
 	if (IS_VF(edev)) {
 		params.update_tx_switching_flg = 1;
 		params.tx_switching_flg = !flg;
+		DP_INFO(edev, "VF tx-switching is disabled\n");
 	}
 #endif
 	for_each_hwfn(edev, i) {
@@ -469,8 +470,8 @@ int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg)
 			break;
 		}
 	}
-	DP_INFO(edev, "vport %s VF tx-switch %s\n", flg ? "activated" : "deactivated",
-			params.tx_switching_flg ? "enabled" : "disabled");
+	DP_INFO(edev, "vport is %s\n", flg ? "activated" : "deactivated");
+
 	return rc;
 }
 
