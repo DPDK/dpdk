@@ -2914,13 +2914,16 @@ priv_fdir_filter_delete(struct priv *priv,
 			flow_h = flow_spec;
 			if (memcmp(spec, flow_spec,
 				   RTE_MIN(attr_h->size, flow_h->size)))
-				continue;
+				goto wrong_flow;
 			spec = (void *)((uintptr_t)attr + attr_h->size);
 			flow_spec = (void *)((uintptr_t)flow_attr +
 					     flow_h->size);
 		}
 		/* At this point, the flow match. */
 		break;
+wrong_flow:
+		/* The flow does not match. */
+		continue;
 	}
 	if (flow)
 		priv_flow_destroy(priv, &priv->flows, flow);
