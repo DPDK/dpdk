@@ -98,7 +98,7 @@ mlx4_rx_intr_vec_enable(struct priv *priv)
 	struct rte_intr_handle *intr_handle = &priv->intr_handle;
 
 	mlx4_rx_intr_vec_disable(priv);
-	intr_handle->intr_vec = malloc(sizeof(intr_handle->intr_vec[rxqs_n]));
+	intr_handle->intr_vec = malloc(n * sizeof(intr_handle->intr_vec[0]));
 	if (intr_handle->intr_vec == NULL) {
 		rte_errno = ENOMEM;
 		ERROR("failed to allocate memory for interrupt vector,"
