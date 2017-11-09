@@ -1473,13 +1473,10 @@ i40e_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		m = tx_pkts[i];
 		ol_flags = m->ol_flags;
 
-		/**
-		 * m->nb_segs is uint8_t, so nb_segs is always less than
-		 * I40E_TX_MAX_SEG.
-		 * We check only a condition for nb_segs > I40E_TX_MAX_MTU_SEG.
-		 */
+		/* Check for m->nb_segs to not exceed the limits. */
 		if (!(ol_flags & PKT_TX_TCP_SEG)) {
-			if (m->nb_segs > I40E_TX_MAX_MTU_SEG) {
+			if (m->nb_segs > I40E_TX_MAX_SEG ||
+			    m->nb_segs > I40E_TX_MAX_MTU_SEG) {
 				rte_errno = -EINVAL;
 				return i;
 			}

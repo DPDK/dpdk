@@ -682,7 +682,7 @@ eth_szedata2_tx(void *queue,
 	uint32_t hwpkt_len;
 	uint32_t unlock_size;
 	uint32_t rem_len;
-	uint8_t mbuf_segs;
+	uint16_t mbuf_segs;
 	uint16_t pkt_left = nb_pkts;
 
 	if (sze_q->sze == NULL || nb_pkts == 0)

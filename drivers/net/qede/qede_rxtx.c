@@ -1547,14 +1547,14 @@ next_cqe:
 
 
 /* Populate scatter gather buffer descriptor fields */
-static inline uint8_t
+static inline uint16_t
 qede_encode_sg_bd(struct qede_tx_queue *p_txq, struct rte_mbuf *m_seg,
 		  struct eth_tx_2nd_bd **bd2, struct eth_tx_3rd_bd **bd3)
 {
 	struct qede_tx_queue *txq = p_txq;
 	struct eth_tx_bd *tx_bd = NULL;
 	dma_addr_t mapping;
-	uint8_t nb_segs = 0;
+	uint16_t nb_segs = 0;
 
 	/* Check for scattered buffers */
 	while (m_seg) {

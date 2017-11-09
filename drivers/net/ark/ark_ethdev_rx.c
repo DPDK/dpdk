@@ -356,7 +356,7 @@ eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 
 	uint16_t remaining;
 	uint16_t data_len;
-	uint8_t segments;
+	uint16_t segments;
 
 	/* first buf populated by called */
 	mbuf_prev = mbuf0;

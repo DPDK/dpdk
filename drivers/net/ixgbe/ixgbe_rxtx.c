@@ -2639,7 +2639,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 static void __attribute__((cold))
 ixgbe_free_sc_cluster(struct rte_mbuf *m)
 {
-	uint8_t i, nb_segs = m->nb_segs;
+	uint16_t i, nb_segs = m->nb_segs;
 	struct rte_mbuf *next_seg;
 
 	for (i = 0; i < nb_segs; i++) {
