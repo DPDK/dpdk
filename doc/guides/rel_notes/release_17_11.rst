@@ -59,6 +59,32 @@ New Features
   "Network Interface Controller Drivers" document for more details on this new
   driver.
 
+* **Updated mlx4 driver.**
+
+  Updated the mlx4 driver including the following changes:
+
+   * Isolated mode (rte_flow) can now be enabled anytime, not only during
+     initial device configuration.
+   * Flow rules now support up to 4096 priority levels usable at will by
+     applications.
+   * Enhanced error message to help debugging invalid/unsupported flow rules.
+   * Flow rules matching all multicast and promiscuous traffic are now allowed.
+   * No more software restrictions on flow rules with the RSS action, their
+     configuration is much more flexible.
+   * Significantly reduced memory footprint for Rx and Tx queue objects.
+   * While supported, UDP RSS is temporarily disabled due to a remaining issue
+     with its support in the Linux kernel.
+   * The new RSS implementation does not automatically spread traffic according
+     to the inner packet of VXLAN frames anymore, only the outer one (like
+     other PMDs).
+   * Partial (Tx only) support for secondary processes was broken and had to be
+     removed.
+   * Refactored driver to get rid of dependency on the components provided by
+     Mellanox OFED and instead rely on the current and public rdma-core
+     package and Linux version from now on.
+   * Removed compile-time limitation on number of device instances the PMD
+     can support.
+
 * **Updated mlx5 driver.**
 
   Updated the mlx5 driver including the following changes:
