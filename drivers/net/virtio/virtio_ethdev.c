@@ -97,6 +97,9 @@ static void virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 static void virtio_mac_addr_set(struct rte_eth_dev *dev,
 				struct ether_addr *mac_addr);
 
+static int virtio_intr_enable(struct rte_eth_dev *dev);
+static int virtio_intr_disable(struct rte_eth_dev *dev);
+
 static int virtio_dev_queue_stats_mapping_set(
 	struct rte_eth_dev *eth_dev,
 	uint16_t queue_id,
@@ -618,7 +621,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 		virtio_queues_unbind_intr(dev);
 
 	if (intr_conf->lsc || intr_conf->rxq) {
-		rte_intr_disable(dev->intr_handle);
+		virtio_intr_disable(dev);
 		rte_intr_efd_disable(dev->intr_handle);
 		rte_free(dev->intr_handle->intr_vec);
 		dev->intr_handle->intr_vec = NULL;
@@ -1160,6 +1163,34 @@ virtio_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static int
+virtio_intr_enable(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	if (rte_intr_enable(dev->intr_handle) < 0)
+		return -1;
+
+	if (!hw->virtio_user_dev)
+		hw->use_msix = vtpci_msix_detect(RTE_ETH_DEV_TO_PCI(dev));
+
+	return 0;
+}
+
+static int
+virtio_intr_disable(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	if (rte_intr_disable(dev->intr_handle) < 0)
+		return -1;
+
+	if (!hw->virtio_user_dev)
+		hw->use_msix = vtpci_msix_detect(RTE_ETH_DEV_TO_PCI(dev));
+
+	return 0;
+}
+
+static int
 virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 {
 	uint64_t host_features;
@@ -1228,7 +1259,7 @@ virtio_interrupt_handler(void *param)
 	isr = vtpci_isr(hw);
 	PMD_DRV_LOG(INFO, "interrupt status = %#x", isr);
 
-	if (rte_intr_enable(dev->intr_handle) < 0)
+	if (virtio_intr_enable(dev) < 0)
 		PMD_DRV_LOG(ERR, "interrupt enable failed");
 
 	if (isr & VIRTIO_PCI_ISR_CONFIG) {
@@ -1348,7 +1379,7 @@ virtio_configure_intr(struct rte_eth_dev *dev)
 	 * to change the config size from 20 to 24, or VIRTIO_MSI_QUEUE_VECTOR
 	 * (22) will be ignored.
 	 */
-	if (rte_intr_enable(dev->intr_handle) < 0) {
+	if (virtio_intr_enable(dev) < 0) {
 		PMD_DRV_LOG(ERR, "interrupt enable failed");
 		return -1;
 	}
@@ -1388,7 +1419,8 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	}
 
 	/* If host does not support both status and MSI-X then disable LSC */
-	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS) && hw->use_msix)
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS) &&
+	    hw->use_msix != VIRTIO_MSIX_NONE)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 	else
 		eth_dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
@@ -1801,9 +1833,9 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	 */
 	if (dev->data->dev_conf.intr_conf.lsc ||
 	    dev->data->dev_conf.intr_conf.rxq) {
-		rte_intr_disable(dev->intr_handle);
+		virtio_intr_disable(dev);
 
-		if (rte_intr_enable(dev->intr_handle) < 0) {
+		if (virtio_intr_enable(dev) < 0) {
 			PMD_DRV_LOG(ERR, "interrupt enable failed");
 			return -EIO;
 		}
@@ -1912,7 +1944,7 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "stop");
 
 	if (intr_conf->lsc || intr_conf->rxq)
-		rte_intr_disable(dev->intr_handle);
+		virtio_intr_disable(dev);
 
 	hw->started = 0;
 	memset(&link, 0, sizeof(link));

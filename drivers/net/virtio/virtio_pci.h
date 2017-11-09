@@ -314,6 +314,12 @@ struct virtio_net_config {
 /* The alignment to use between consumer and producer parts of vring. */
 #define VIRTIO_PCI_VRING_ALIGN 4096
 
+enum virtio_msix_status {
+	VIRTIO_MSIX_NONE = 0,
+	VIRTIO_MSIX_DISABLED = 1,
+	VIRTIO_MSIX_ENABLED = 2
+};
+
 static inline int
 vtpci_with_feature(struct virtio_hw *hw, uint64_t bit)
 {
@@ -338,6 +344,8 @@ void vtpci_write_dev_config(struct virtio_hw *, size_t, const void *, int);
 void vtpci_read_dev_config(struct virtio_hw *, size_t, void *, int);
 
 uint8_t vtpci_isr(struct virtio_hw *);
+
+enum virtio_msix_status vtpci_msix_detect(struct rte_pci_device *dev);
 
 extern const struct virtio_pci_ops legacy_ops;
 extern const struct virtio_pci_ops modern_ops;
