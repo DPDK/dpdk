@@ -751,7 +751,8 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
  *   Packet type for struct rte_mbuf.
  */
 static inline uint32_t
-rxq_cq_to_pkt_type(volatile struct mlx4_cqe *cqe)
+rxq_cq_to_pkt_type(volatile struct mlx4_cqe *cqe,
+		   uint32_t l2tun_offload)
 {
 	uint8_t idx = 0;
 	uint32_t pinfo = rte_be_to_cpu_32(cqe->vlan_my_qpn);
@@ -762,7 +763,7 @@ rxq_cq_to_pkt_type(volatile struct mlx4_cqe *cqe)
 	 *  bit[7] - MLX4_CQE_L2_TUNNEL
 	 *  bit[6] - MLX4_CQE_L2_TUNNEL_IPV4
 	 */
-	if (!(pinfo & MLX4_CQE_L2_VLAN_MASK) && (pinfo & MLX4_CQE_L2_TUNNEL))
+	if (l2tun_offload && (pinfo & MLX4_CQE_L2_TUNNEL))
 		idx |= ((pinfo & MLX4_CQE_L2_TUNNEL) >> 20) |
 		       ((pinfo & MLX4_CQE_L2_TUNNEL_IPV4) >> 19);
 	/*
@@ -960,7 +961,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 			pkt = seg;
 			/* Update packet information. */
-			pkt->packet_type = rxq_cq_to_pkt_type(cqe);
+			pkt->packet_type =
+				rxq_cq_to_pkt_type(cqe, rxq->l2tun_offload);
 			pkt->ol_flags = 0;
 			pkt->pkt_len = len;
 			if (rxq->csum | rxq->csum_l2tun) {
