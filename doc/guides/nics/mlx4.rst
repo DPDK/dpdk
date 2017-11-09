@@ -115,15 +115,6 @@ These options can be modified in the ``.config`` file.
 
   This value is always 1 for RX queues since they use a single MP.
 
-Environment variables
-~~~~~~~~~~~~~~~~~~~~~
-
-- ``MLX4_INLINE_RECV_SIZE``
-
-  A nonzero value enables inline receive for packets up to that size. May
-  significantly improve performance in some cases but lower it in
-  others. Requires careful testing.
-
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -325,10 +316,7 @@ Performance tuning
 
         cat /sys/module/mlx4_core/parameters/log_num_mgm_entry_size
 
-2. Use environment variable MLX4_INLINE_RECV_SIZE=64 to get maximum
-   performance for 64B messages.
-
-3. Use the CPU near local NUMA node to which the PCIe adapter is connected,
+2. Use the CPU near local NUMA node to which the PCIe adapter is connected,
    for better performance. For VMs, verify that the right CPU
    and NUMA node are pinned according to the above. Run:
 
@@ -338,19 +326,19 @@ Performance tuning
 
    to identify the NUMA node to which the PCIe adapter is connected.
 
-4. If more than one adapter is used, and root complex capabilities allow
+3. If more than one adapter is used, and root complex capabilities allow
    to put both adapters on the same NUMA node without PCI bandwidth degradation,
    it is recommended to locate both adapters on the same NUMA node.
    This in order to forward packets from one to the other without
    NUMA performance penalty.
 
-5. Disable pause frames:
+4. Disable pause frames:
 
    .. code-block:: console
 
         ethtool -A <netdev> rx off tx off
 
-6. Verify IO non-posted prefetch is disabled by default. This can be checked
+5. Verify IO non-posted prefetch is disabled by default. This can be checked
    via the BIOS configuration. Please contact you server provider for more
    information about the settings.
 
