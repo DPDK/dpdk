@@ -331,7 +331,7 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	if (!priv->dev->data->dev_conf.intr_conf.rxq)
 		return 0;
 	priv_rx_intr_vec_disable(priv);
-	intr_handle->intr_vec = malloc(sizeof(intr_handle->intr_vec[rxqs_n]));
+	intr_handle->intr_vec = malloc(n * sizeof(intr_handle->intr_vec[0]));
 	if (intr_handle->intr_vec == NULL) {
 		ERROR("failed to allocate memory for interrupt vector,"
 		      " Rx interrupts will not be supported");
