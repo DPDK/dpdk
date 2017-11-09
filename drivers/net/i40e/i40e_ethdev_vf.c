@@ -650,7 +650,8 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	uint32_t vector_id;
 	int i, err;
 
-	if (rte_intr_allow_others(intr_handle))
+	if (dev->data->dev_conf.intr_conf.rxq != 0 &&
+	    rte_intr_allow_others(intr_handle))
 		vector_id = I40E_RX_VEC_START;
 	else
 		vector_id = I40E_MISC_VEC_ID;
