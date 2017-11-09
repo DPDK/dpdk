@@ -266,6 +266,7 @@ struct rte_security_session_conf {
 	/**< Type of action to be performed on the session */
 	enum rte_security_session_protocol protocol;
 	/**< Security protocol to be configured */
+	RTE_STD_C11
 	union {
 		struct rte_security_ipsec_xform ipsec;
 		struct rte_security_macsec_xform macsec;
@@ -406,6 +407,7 @@ struct rte_security_stats {
 	enum rte_security_session_protocol protocol;
 	/**< Security protocol to be configured */
 
+	RTE_STD_C11
 	union {
 		struct rte_security_macsec_stats macsec;
 		struct rte_security_ipsec_stats ipsec;
@@ -486,6 +488,7 @@ struct rte_security_capability_idx {
 	enum rte_security_session_action_type action;
 	enum rte_security_session_protocol protocol;
 
+	RTE_STD_C11
 	union {
 		struct {
 			enum rte_security_ipsec_sa_protocol proto;
