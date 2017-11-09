@@ -62,21 +62,30 @@ def dump_autotest(child, test_name):
 
 
 def memory_autotest(child, test_name):
+    lines = 0
+    error = ''
     child.sendline(test_name)
-    regexp = "phys:0x[0-9a-f]*, len:([0-9]*), virt:0x[0-9a-f]*, " \
-             "socket_id:[0-9]*"
-    index = child.expect([regexp, pexpect.TIMEOUT], timeout=180)
-    if index != 0:
-        return -1, "Fail [Timeout]"
-    size = int(child.match.groups()[0], 16)
-    if size <= 0:
-        return -1, "Fail [Bad size]"
-    index = child.expect(["Test OK", "Test Failed",
-                          pexpect.TIMEOUT], timeout=10)
-    if index == 1:
-        return -1, "Fail"
-    elif index == 2:
-        return -1, "Fail [Timeout]"
+    while True:
+        regexp = "IOVA:0x[0-9a-f]*, len:([0-9]*), virt:0x[0-9a-f]*, " \
+                 "socket_id:[0-9]*"
+        index = child.expect([regexp, "Test OK", "Test Failed",
+                              pexpect.TIMEOUT], timeout=10)
+        if index == 3:
+            return -1, "Fail [Timeout]"
+        elif index == 1:
+            break
+        elif index == 2:
+            return -1, "Fail"
+        else:
+            lines = lines + 1
+            size = int(child.match.groups()[0], 10)
+            if size <= 0:
+                error = 'Bad size'
+
+    if lines <= 0:
+        return -1, "Fail [No entries]"
+    if error != '':
+        return -1, "Fail [{}]".format(error)
     return 0, "Success"
 
 
