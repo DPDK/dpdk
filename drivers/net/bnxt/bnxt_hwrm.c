@@ -550,7 +550,7 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	}
 
 	req.async_event_fwd[0] |= rte_cpu_to_le_32(0x1);   /* TODO: Use MACRO */
-	memset(req.async_event_fwd, 0xff, sizeof(req.async_event_fwd));
+	//memset(req.async_event_fwd, 0xff, sizeof(req.async_event_fwd));
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -715,34 +715,38 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 	struct hwrm_port_phy_cfg_input req = {0};
 	struct hwrm_port_phy_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t enables = 0;
-	uint32_t link_speed_mask =
-		HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED_MASK;
 
 	HWRM_PREP(req, PORT_PHY_CFG);
 
 	if (conf->link_up) {
+		/* Setting Fixed Speed. But AutoNeg is ON, So disable it */
+		if (bp->link_info.auto_mode && conf->link_speed) {
+			req.auto_mode = HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_NONE;
+			RTE_LOG(DEBUG, PMD, "Disabling AutoNeg\n");
+		}
+
 		req.flags = rte_cpu_to_le_32(conf->phy_flags);
 		req.force_link_speed = rte_cpu_to_le_16(conf->link_speed);
+		enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
 		/*
 		 * Note, ChiMP FW 20.2.1 and 20.2.2 return an error when we set
 		 * any auto mode, even "none".
 		 */
 		if (!conf->link_speed) {
-			req.auto_mode = conf->auto_mode;
-			enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
-			if (conf->auto_mode ==
-			    HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK) {
-				req.auto_link_speed_mask =
-					conf->auto_link_speed_mask;
-				enables |= link_speed_mask;
-			}
-			if (bp->link_info.auto_link_speed) {
-				req.auto_link_speed =
-					bp->link_info.auto_link_speed;
-				enables |=
-				HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED;
-			}
+			/* No speeds specified. Enable AutoNeg - all speeds */
+			req.auto_mode =
+				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_ALL_SPEEDS;
 		}
+		/* AutoNeg - Advertise speeds specified. */
+		if (conf->auto_link_speed_mask) {
+			req.auto_mode =
+				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
+			req.auto_link_speed_mask =
+				conf->auto_link_speed_mask;
+			enables |=
+			HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED_MASK;
+		}
+
 		req.auto_duplex = conf->duplex;
 		enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_DUPLEX;
 		req.auto_pause = conf->auto_pause;
@@ -791,6 +795,8 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 	link_info->auto_pause = resp->auto_pause;
 	link_info->force_pause = resp->force_pause;
 	link_info->auto_mode = resp->auto_mode;
+	link_info->phy_type = resp->phy_type;
+	link_info->media_type = resp->media_type;
 
 	link_info->support_speeds = rte_le_to_cpu_16(resp->support_speeds);
 	link_info->auto_link_speed = rte_le_to_cpu_16(resp->auto_link_speed);
@@ -1886,6 +1892,11 @@ static uint16_t bnxt_parse_eth_link_duplex(uint32_t conf_link_speed)
 	return hw_link_duplex;
 }
 
+static uint16_t bnxt_check_eth_link_autoneg(uint32_t conf_link)
+{
+	return (conf_link & ETH_LINK_SPEED_FIXED) ? 0 : 1;
+}
+
 static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed)
 {
 	uint16_t eth_link_speed = 0;
@@ -2094,7 +2105,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	int rc = 0;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct bnxt_link_info link_req;
-	uint16_t speed;
+	uint16_t speed, autoneg;
 
 	if (BNXT_NPAR_PF(bp) || BNXT_VF(bp))
 		return 0;
@@ -2109,20 +2120,28 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	if (!link_up)
 		goto port_phy_cfg;
 
+	autoneg = bnxt_check_eth_link_autoneg(dev_conf->link_speeds);
 	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds);
 	link_req.phy_flags = HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY;
-	if (speed == 0) {
+	if (autoneg == 1) {
 		link_req.phy_flags |=
 				HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG;
-		link_req.auto_mode =
-				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
 		link_req.auto_link_speed_mask =
 			bnxt_parse_eth_link_speed_mask(bp,
 						       dev_conf->link_speeds);
 	} else {
+		if (bp->link_info.phy_type ==
+		    HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASET ||
+		    bp->link_info.phy_type ==
+		    HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASETE ||
+		    bp->link_info.media_type ==
+		    HWRM_PORT_PHY_QCFG_OUTPUT_MEDIA_TYPE_TP) {
+			RTE_LOG(ERR, PMD, "10GBase-T devices must autoneg\n");
+			return -EINVAL;
+		}
+
 		link_req.phy_flags |= HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE;
 		link_req.link_speed = speed;
-		RTE_LOG(INFO, PMD, "Set Link Speed %x\n", speed);
 	}
 	link_req.duplex = bnxt_parse_eth_link_duplex(dev_conf->link_speeds);
 	link_req.auto_pause = bp->link_info.auto_pause;

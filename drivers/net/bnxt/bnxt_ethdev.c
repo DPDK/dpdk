@@ -146,6 +146,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	ETH_RSS_NONFRAG_IPV6_UDP)
 
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
+static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
 
 /***********************/
 
@@ -370,6 +371,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 			goto err_out;
 		}
 	}
+	bnxt_print_link_info(bp->eth_dev);
 
 	return 0;
 
@@ -533,20 +535,6 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static inline int
-rte_bnxt_atomic_write_link_status(struct rte_eth_dev *eth_dev,
-				struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = &eth_dev->data->dev_link;
-	struct rte_eth_link *src = link;
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
-		return 1;
-
-	return 0;
-}
-
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_link *link = &eth_dev->data->dev_link;
@@ -585,7 +573,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto error;
 
-	bnxt_link_update_op(eth_dev, 0);
+	bnxt_link_update_op(eth_dev, 1);
 
 	if (eth_dev->data->dev_conf.rxmode.hw_vlan_filter)
 		vlan_mask |= ETH_VLAN_FILTER_MASK;
@@ -607,9 +595,14 @@ error:
 static int bnxt_dev_set_link_up_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	int rc = 0;
 
-	eth_dev->data->dev_link.link_status = 1;
-	bnxt_set_hwrm_link_config(bp, true);
+	if (!bp->link_info.link_up)
+		rc = bnxt_set_hwrm_link_config(bp, true);
+	if (!rc)
+		eth_dev->data->dev_link.link_status = 1;
+
+	bnxt_print_link_info(eth_dev);
 	return 0;
 }
 
@@ -619,6 +612,8 @@ static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_link.link_status = 0;
 	bnxt_set_hwrm_link_config(bp, false);
+	bp->link_info.link_up = 0;
+
 	return 0;
 }
 
@@ -760,7 +755,8 @@ out:
 	/* Timed out or success */
 	if (new.link_status != eth_dev->data->dev_link.link_status ||
 	new.link_speed != eth_dev->data->dev_link.link_speed) {
-		rte_bnxt_atomic_write_link_status(eth_dev, &new);
+		memcpy(&eth_dev->data->dev_link, &new,
+			sizeof(struct rte_eth_link));
 		bnxt_print_link_info(eth_dev);
 	}
 

@@ -164,6 +164,8 @@ struct bnxt_link_info {
 	uint16_t		auto_link_speed;
 	uint16_t		auto_link_speed_mask;
 	uint32_t		preemphasis;
+	uint8_t			phy_type;
+	uint8_t			media_type;
 };
 
 #define BNXT_COS_QUEUE_COUNT	8
