@@ -339,7 +339,7 @@ It is the mcast_out_pkt() function that performs the packet duplication (either 
         /* update header's fields */
 
         hdr->pkt.pkt_len = (uint16_t)(hdr->pkt.data_len + pkt->pkt.pkt_len);
-        hdr->pkt.nb_segs = (uint8_t)(pkt->pkt.nb_segs + 1);
+        hdr->pkt.nb_segs = pkt->pkt.nb_segs + 1;
 
         /* copy metadata from source packet */
 

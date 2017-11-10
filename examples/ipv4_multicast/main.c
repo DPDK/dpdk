@@ -289,7 +289,7 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
 
 	/* update header's fields */
 	hdr->pkt_len = (uint16_t)(hdr->data_len + pkt->pkt_len);
-	hdr->nb_segs = (uint8_t)(pkt->nb_segs + 1);
+	hdr->nb_segs = pkt->nb_segs + 1;
 
 	/* copy metadata from source packet*/
 	hdr->port = pkt->port;
