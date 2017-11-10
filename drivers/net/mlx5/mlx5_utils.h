@@ -35,6 +35,7 @@
 #define RTE_PMD_MLX5_UTILS_H_
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <limits.h>
 #include <assert.h>
@@ -60,6 +61,9 @@
 	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)), \
 	 !!(((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] & \
 	     ((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT))))))
+
+/* Convert a bit number to the corresponding 64-bit mask */
+#define MLX5_BITSHIFT(v) (UINT64_C(1) << (v))
 
 /* Save and restore errno around argument evaluation. */
 #define ERRNO_SAFE(x) ((errno = (int []){ errno, ((x), 0) }[0]))
