@@ -180,7 +180,7 @@ int rte_power_acpi_cpufreq_freq_max(unsigned lcore_id);
  *
  * @return
  *  - 1 on success with frequency changed.
- *  - 0 on success without frequency chnaged.
+ *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
 int rte_power_acpi_cpufreq_freq_min(unsigned lcore_id);

@@ -313,7 +313,7 @@ rte_jobstats_set_max(struct rte_jobstats *job, uint64_t period);
  *
  * @param job
  *  Job object.
- * @param update_pedriod_cb
+ * @param update_period_cb
  *  Callback to set. If NULL restore default update function.
  */
 void

@@ -442,7 +442,7 @@ rte_distributor_process_v1705(struct rte_distributor *d,
 
 			/*
 			 * Uncommenting the next line will cause the find_match
-			 * function to be optimised out, making this function
+			 * function to be optimized out, making this function
 			 * do parallel (non-atomic) distribution
 			 */
 			/* matches[j] = 0; */
@@ -536,7 +536,7 @@ MAP_STATIC_SYMBOL(int rte_distributor_returned_pkts(struct rte_distributor *d,
 
 /*
  * Return the number of packets in-flight in a distributor, i.e. packets
- * being workered on or queued up in a backlog.
+ * being worked on or queued up in a backlog.
  */
 static inline unsigned int
 total_outstanding(const struct rte_distributor *d)
@@ -663,7 +663,7 @@ rte_distributor_create_v1705(const char *name,
 #endif
 
 	/*
-	 * Set up the backog tags so they're pointing at the second cache
+	 * Set up the backlog tags so they're pointing at the second cache
 	 * line for performance during flow matching
 	 */
 	for (i = 0 ; i < num_workers ; i++)

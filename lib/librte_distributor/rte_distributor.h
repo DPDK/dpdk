@@ -71,7 +71,7 @@ struct rte_mbuf;
  * @param alg_type
  *   Call the legacy API, or use the new burst API. legacy uses 32-bit
  *   flow ID, and works on a single packet at a time. Latest uses 15-
- *   bit flow ID and works on up to 8 packets at a time to worers.
+ *   bit flow ID and works on up to 8 packets at a time to workers.
  * @return
  *   The newly created distributor instance
  */

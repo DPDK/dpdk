@@ -1062,7 +1062,7 @@ struct rte_eth_rxq_info {
 
 /**
  * Ethernet device TX queue information structure.
- * Used to retieve information about configured queue.
+ * Used to retrieve information about configured queue.
  */
 struct rte_eth_txq_info {
 	struct rte_eth_txconf conf; /**< queue config parameters. */

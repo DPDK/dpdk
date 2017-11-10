@@ -345,7 +345,8 @@ rte_distributor_returned_pkts_v20(struct rte_distributor_v20 *d,
 VERSION_SYMBOL(rte_distributor_returned_pkts, _v20, 2.0);
 
 /* return the number of packets in-flight in a distributor, i.e. packets
- * being workered on or queued up in a backlog. */
+ * being worked on or queued up in a backlog.
+ */
 static inline unsigned
 total_outstanding(const struct rte_distributor_v20 *d)
 {

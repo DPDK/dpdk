@@ -344,7 +344,7 @@ void numa_error(char *where)
  * hugetlbfs, then mmap() hugepage_sz data in it. If orig is set, the
  * virtual address is stored in hugepg_tbl[i].orig_va, else it is stored
  * in hugepg_tbl[i].final_va. The second mapping (when orig is 0) tries to
- * map continguous physical blocks in contiguous virtual blocks.
+ * map contiguous physical blocks in contiguous virtual blocks.
  */
 static unsigned
 map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,

@@ -183,7 +183,7 @@ typedef int (*rte_tm_node_stats_update_t)(struct rte_eth_dev *dev,
 typedef int (*rte_tm_node_wfq_weight_mode_update_t)(
 	struct rte_eth_dev *dev,
 	uint32_t node_id,
-	int *wfq_weigth_mode,
+	int *wfq_weight_mode,
 	uint32_t n_sp_priorities,
 	struct rte_tm_error *error);
 

@@ -164,7 +164,7 @@ rte_memcpy_func(void *dst, const void *src, size_t n)
 	 * We split the remaining bytes (which will be less than 256) into
 	 * 64byte (2^6) chunks.
 	 * Using incrementing integers in the case labels of a switch statement
-	 * enourages the compiler to use a jump table. To get incrementing
+	 * encourages the compiler to use a jump table. To get incrementing
 	 * integers, we shift the 2 relevant bits to the LSB position to first
 	 * get decrementing integers, and then subtract.
 	 */

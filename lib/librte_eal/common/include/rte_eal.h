@@ -217,7 +217,7 @@ int rte_eal_primary_proc_alive(const char *config_file_path);
 /**
  * Usage function typedef used by the application usage function.
  *
- * Use this function typedef to define and call rte_set_applcation_usage_hook()
+ * Use this function typedef to define and call rte_set_application_usage_hook()
  * routine.
  */
 typedef void	(*rte_usage_hook_t)(const char * prgname);

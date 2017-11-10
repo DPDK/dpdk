@@ -228,7 +228,7 @@ const char *rte_kni_get_name(const struct rte_kni *kni);
  * @param kni
  *  pointer to struct rte_kni.
  * @param ops
- *  ponter to struct rte_kni_ops.
+ *  pointer to struct rte_kni_ops.
  *
  * @return
  *  On success: 0

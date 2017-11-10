@@ -267,7 +267,7 @@ power_get_available_freqs(struct rte_power_info *pi)
 	}
 
 	ret = 0;
-	POWER_DEBUG_TRACE("%d frequencie(s) of lcore %u are available\n",
+	POWER_DEBUG_TRACE("%d frequency(s) of lcore %u are available\n",
 			count, pi->lcore_id);
 out:
 	fclose(f);
@@ -359,7 +359,7 @@ rte_power_acpi_cpufreq_init(unsigned lcore_id)
 	}
 
 	RTE_LOG(INFO, POWER, "Initialized successfully for lcore %u "
-			"power manamgement\n", lcore_id);
+			"power management\n", lcore_id);
 	rte_atomic32_cmpset(&(pi->state), POWER_ONGOING, POWER_USED);
 
 	return 0;

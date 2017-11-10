@@ -252,7 +252,7 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align,
 }
 
 /*
- * joing two struct malloc_elem together. elem1 and elem2 must
+ * join two struct malloc_elem together. elem1 and elem2 must
  * be contiguous in memory.
  */
 static inline void

@@ -73,7 +73,7 @@ kni_fifo_put(struct rte_kni_fifo *fifo, void **data, unsigned num)
 }
 
 /**
- * Get up to num elements from the fifo. Return the number actully read
+ * Get up to num elements from the fifo. Return the number actually read
  */
 static inline unsigned
 kni_fifo_get(struct rte_kni_fifo *fifo, void **data, unsigned num)

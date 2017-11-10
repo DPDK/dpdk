@@ -850,10 +850,10 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
 } while (0)
 
 /**
- * Allocate an unitialized mbuf from mempool *mp*.
+ * Allocate an uninitialized mbuf from mempool *mp*.
  *
  * This function can be used by PMDs (especially in RX functions) to
- * allocate an unitialized mbuf. The driver is responsible of
+ * allocate an uninitialized mbuf. The driver is responsible of
  * initializing all the required fields. See rte_pktmbuf_reset().
  * For standard needs, prefer rte_pktmbuf_alloc().
  *
@@ -1778,7 +1778,7 @@ const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
  * @param len
  *   The amount of bytes to read.
  * @param buf
- *   The buffer where data is copied if it is not contigous in mbuf
+ *   The buffer where data is copied if it is not contiguous in mbuf
  *   data. Its length should be at least equal to the len parameter.
  * @return
  *   The pointer to the data, either in the mbuf if it is contiguous,

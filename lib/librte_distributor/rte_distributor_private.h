@@ -90,7 +90,7 @@ union rte_distributor_buffer_v20 {
 
 /*
  * Transfer up to 8 mbufs at a time to/from workers, and
- * flow matching algorithm optimised for 8 flow IDs at a time
+ * flow matching algorithm optimized for 8 flow IDs at a time
  */
 #define RTE_DIST_BURST_SIZE 8
 

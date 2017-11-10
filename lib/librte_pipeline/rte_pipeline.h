@@ -483,7 +483,7 @@ int rte_pipeline_table_entry_delete(struct rte_pipeline *p,
  * @param keys
  *   Array containing table entry keys
  * @param entries
- *   Array containung new contents for every table entry identified by key
+ *   Array containing new contents for every table entry identified by key
  * @param n_keys
  *   Number of keys to add
  * @param key_found

@@ -66,7 +66,7 @@ struct crc_pclmulqdq_ctx crc16_ccitt_pclmulqdq __rte_aligned(16);
  * @param data_block
  *   16 byte data block
  * @param precomp
- *   Precomputed rk1 constanst
+ *   Precomputed rk1 constant
  * @param fold
  *   Current16 byte folded data
  *

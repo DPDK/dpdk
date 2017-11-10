@@ -139,7 +139,7 @@ rte_red_config_init(struct rte_red_config *red_cfg,
 /**
  * @brief Generate random number for RED
  *
- * Implemenetation based on:
+ * Implementation based on:
  * http://software.intel.com/en-us/articles/fast-random-number-generator-on-the-intel-pentiumr-4-processor/
  *
  * 10 bit shift has been found through empirical tests (was 16).
@@ -200,7 +200,7 @@ __rte_red_calc_qempty_factor(uint8_t wq_log2, uint16_t m)
 	 * Now using basic math we compute 2^n:
 	 *   2^(f+n) = 2^f * 2^n
 	 *   2^f - we use lookup table
-	 *   2^n - can be replaced with bit shift right oeprations
+	 *   2^n - can be replaced with bit shift right operations
 	 */
 
 	f = (n >> 6) & 0xf;

@@ -195,7 +195,7 @@ timer_set_running_state(struct rte_timer *tim)
 
 /*
  * Return a skiplist level for a new entry.
- * This probabalistically gives a level with p=1/4 that an entry at level n
+ * This probabilistically gives a level with p=1/4 that an entry at level n
  * will also appear at level n+1.
  */
 static uint32_t

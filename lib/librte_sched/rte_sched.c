@@ -1020,7 +1020,7 @@ rte_sched_subport_read_stats(struct rte_sched_port *port,
 	memcpy(stats, &s->stats, sizeof(struct rte_sched_subport_stats));
 	memset(&s->stats, 0, sizeof(struct rte_sched_subport_stats));
 
-	/* Subport TC ovesubscription status */
+	/* Subport TC oversubscription status */
 	*tc_ov = s->tc_ov;
 
 	return 0;

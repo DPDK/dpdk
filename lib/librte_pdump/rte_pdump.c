@@ -227,7 +227,7 @@ pdump_tx(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
 }
 
 static int
-pdump_regitser_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
+pdump_register_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 				struct rte_ring *ring, struct rte_mempool *mp,
 				uint16_t operation)
 {
@@ -281,7 +281,7 @@ pdump_regitser_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 }
 
 static int
-pdump_regitser_tx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
+pdump_register_tx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 				struct rte_ring *ring, struct rte_mempool *mp,
 				uint16_t operation)
 {
@@ -402,7 +402,7 @@ set_pdump_rxtx_cbs(struct pdump_request *p)
 	/* register RX callback */
 	if (flags & RTE_PDUMP_FLAG_RX) {
 		end_q = (queue == RTE_PDUMP_ALL_QUEUES) ? nb_rx_q : queue + 1;
-		ret = pdump_regitser_rx_callbacks(end_q, port, queue, ring, mp,
+		ret = pdump_register_rx_callbacks(end_q, port, queue, ring, mp,
 							operation);
 		if (ret < 0)
 			return ret;
@@ -411,7 +411,7 @@ set_pdump_rxtx_cbs(struct pdump_request *p)
 	/* register TX callback */
 	if (flags & RTE_PDUMP_FLAG_TX) {
 		end_q = (queue == RTE_PDUMP_ALL_QUEUES) ? nb_tx_q : queue + 1;
-		ret = pdump_regitser_tx_callbacks(end_q, port, queue, ring, mp,
+		ret = pdump_register_tx_callbacks(end_q, port, queue, ring, mp,
 							operation);
 		if (ret < 0)
 			return ret;

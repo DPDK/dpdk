@@ -116,7 +116,7 @@ struct gro_tcp4_tbl {
  * This function creates a TCP/IPv4 reassembly table.
  *
  * @param socket_id
- *  socket index for allocating TCP/IPv4 reassemblt table
+ *  socket index for allocating TCP/IPv4 reassemble table
  * @param max_flow_num
  *  the maximum number of flows in the TCP/IPv4 GRO table
  * @param max_item_per_flow

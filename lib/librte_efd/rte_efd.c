@@ -952,7 +952,7 @@ revert_groups(struct efd_offline_group_rules *previous_group,
  *     This operation was still successful, and entry contains a valid update
  *   RTE_EFD_UPDATE_FAILED
  *     Either the EFD failed to find a suitable perfect hash or the group was full
- *     This is a fatal error, and the table is now in an indeterminite state
+ *     This is a fatal error, and the table is now in an indeterminate state
  *   RTE_EFD_UPDATE_NO_CHANGE
  *     Operation resulted in no change to the table (same value already exists)
  *   0

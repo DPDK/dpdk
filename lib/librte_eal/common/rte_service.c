@@ -153,7 +153,7 @@ service_valid(uint32_t id)
 	service = &rte_services[id];                                    \
 } while (0)
 
-/* returns 1 if statistics should be colleced for service
+/* returns 1 if statistics should be collected for service
  * Returns 0 if statistics should not be collected for service
  */
 static inline int

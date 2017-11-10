@@ -160,7 +160,7 @@ ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 	}
 
 	/*
-	 * errorneous packet: either exceeed max allowed number of fragments,
+	 * erroneous packet: either exceed max allowed number of fragments,
 	 * or duplicate first/last fragment encountered.
 	 */
 	if (idx >= sizeof (fp->frags) / sizeof (fp->frags[0])) {

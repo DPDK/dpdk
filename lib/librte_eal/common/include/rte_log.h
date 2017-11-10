@@ -218,7 +218,7 @@ int rte_log_cur_msg_logtype(void);
  *   The string identifying the log type.
  * @return
  *   - >0: success, the returned value is the log type identifier.
- *   - (-ENONEM): cannot allocate memory.
+ *   - (-ENOMEM): cannot allocate memory.
  */
 int rte_log_register(const char *name);
 
