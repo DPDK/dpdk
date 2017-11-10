@@ -584,6 +584,9 @@ struct rte_mbuf {
 
 } __rte_cache_aligned;
 
+/**< Maximum number of nb_segs allowed. */
+#define RTE_MBUF_MAX_NB_SEGS	UINT16_MAX
+
 /**
  * Prefetch the first part of the mbuf
  *
@@ -1447,7 +1450,7 @@ static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
 {
 	struct rte_mbuf *mc, *mi, **prev;
 	uint32_t pktlen;
-	uint8_t nseg;
+	uint16_t nseg;
 
 	if (unlikely ((mc = rte_pktmbuf_alloc(mp)) == NULL))
 		return NULL;
@@ -1807,14 +1810,14 @@ static inline const void *rte_pktmbuf_read(const struct rte_mbuf *m,
  *
  * @return
  *   - 0, on success.
- *   - -EOVERFLOW, if the chain is full (256 entries)
+ *   - -EOVERFLOW, if the chain segment limit exceeded
  */
 static inline int rte_pktmbuf_chain(struct rte_mbuf *head, struct rte_mbuf *tail)
 {
 	struct rte_mbuf *cur_tail;
 
 	/* Check for number-of-segments-overflow */
-	if (head->nb_segs + tail->nb_segs >= 1 << (sizeof(head->nb_segs) * 8))
+	if (head->nb_segs + tail->nb_segs > RTE_MBUF_MAX_NB_SEGS)
 		return -EOVERFLOW;
 
 	/* Chain 'tail' onto the old tail */
@@ -1822,7 +1825,7 @@ static inline int rte_pktmbuf_chain(struct rte_mbuf *head, struct rte_mbuf *tail
 	cur_tail->next = tail;
 
 	/* accumulate number of segments and total length. */
-	head->nb_segs = (uint8_t)(head->nb_segs + tail->nb_segs);
+	head->nb_segs += tail->nb_segs;
 	head->pkt_len += tail->pkt_len;
 
 	/* pkt_len is only set in the head */

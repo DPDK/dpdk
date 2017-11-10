@@ -139,7 +139,7 @@ pdump_pktmbuf_copy(struct rte_mbuf *m, struct rte_mempool *mp)
 {
 	struct rte_mbuf *m_dup, *seg, **prev;
 	uint32_t pktlen;
-	uint8_t nseg;
+	uint16_t nseg;
 
 	m_dup = rte_pktmbuf_alloc(mp);
 	if (unlikely(m_dup == NULL))

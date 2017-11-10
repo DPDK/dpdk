@@ -203,7 +203,7 @@ void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 {
 	const struct rte_mbuf *m_seg;
-	unsigned nb_segs;
+	unsigned int nb_segs;
 
 	if (m == NULL)
 		rte_panic("mbuf is NULL\n");
@@ -239,7 +239,7 @@ void
 rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 {
 	unsigned int len;
-	unsigned nb_segs;
+	unsigned int nb_segs;
 
 	__rte_mbuf_sanity_check(m, 1);
 
