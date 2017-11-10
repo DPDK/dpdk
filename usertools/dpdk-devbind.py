@@ -539,7 +539,7 @@ def bind_all(dev_list, driver, force=False):
     for d in dev_list:
         bind_one(d, driver, force)
 
-    # For kenels < 3.15 when binding devices to a generic driver
+    # For kernels < 3.15 when binding devices to a generic driver
     # (i.e. one that doesn't have a PCI ID table) using new_id, some devices
     # that are not bound to any other driver could be bound even if no one has
     # asked them to. hence, we check the list of drivers again, and see if
