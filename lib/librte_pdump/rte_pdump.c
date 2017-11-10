@@ -153,6 +153,8 @@ pdump_pktmbuf_copy(struct rte_mbuf *m, struct rte_mempool *mp)
 	do {
 		nseg++;
 		if (pdump_pktmbuf_copy_data(seg, m) < 0) {
+			if (seg != m_dup)
+				rte_pktmbuf_free_seg(seg);
 			rte_pktmbuf_free(m_dup);
 			return NULL;
 		}
