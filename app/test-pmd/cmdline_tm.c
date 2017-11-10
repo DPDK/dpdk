@@ -1599,12 +1599,6 @@ static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	/* Port status */
-	if (port_is_started(port_id)) {
-		printf(" Port %u not stopped (error)\n", port_id);
-		return;
-	}
-
 	memset(&np, 0, sizeof(struct rte_tm_node_params));
 
 	/* Node parameters */
@@ -1758,12 +1752,6 @@ static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
-
-	/* Port status */
-	if (port_is_started(port_id)) {
-		printf(" Port %u not stopped (error)\n", port_id);
-		return;
-	}
 
 	memset(&np, 0, sizeof(struct rte_tm_node_params));
 
