@@ -672,3 +672,148 @@ Tested Platforms
        * Device id (pf/vf): 8086:1521 / 8086:1520
        * Driver version: 5.3.0-k (igb)
 
+* Intel(R) platforms with Mellanox(R) NICs combinations
+
+   * Platform details:
+
+     * Intel(R) Xeon(R) CPU E5-2697A v4 @ 2.60GHz
+     * Intel(R) Xeon(R) CPU E5-2697 v3 @ 2.60GHz
+     * Intel(R) Xeon(R) CPU E5-2680 v2 @ 2.80GHz
+     * Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
+     * Intel(R) Xeon(R) CPU E5-2640 @ 2.50GHz
+     * Intel(R) Xeon(R) CPU E5-2620 v4 @ 2.10GHz
+
+   * OS:
+
+     * Red Hat Enterprise Linux Server release 7.3 (Maipo)
+     * Red Hat Enterprise Linux Server release 7.2 (Maipo)
+     * Ubuntu 16.10
+     * Ubuntu 16.04
+     * Ubuntu 14.04
+
+   * MLNX_OFED: 4.2-1.0.0.0
+
+   * NICs:
+
+     * Mellanox(R) ConnectX(R)-3 Pro 40G MCX354A-FCC_Ax (2x40G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1007
+       * Firmware version: 2.42.5000
+
+     * Mellanox(R) ConnectX(R)-4 10G MCX4111A-XCAT (1x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 10G MCX4121A-XCAT (2x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 25G MCX4111A-ACAT (1x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 25G MCX4121A-ACAT (2x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 40G MCX4131A-BCAT/MCX413A-BCAT (1x40G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 40G MCX415A-BCAT (1x40G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX4131A-GCAT/MCX413A-GCAT (1x50G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX414A-BCAT (2x50G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX415A-GCAT/MCX416A-BCAT/MCX416A-GCAT
+       (2x50G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX415A-CCAT (1x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 100G MCX416A-CCAT (2x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 Lx 10G MCX4121A-XCAT (2x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1015
+       * Firmware version: 14.21.1000
+
+     * Mellanox(R) ConnectX(R)-4 Lx 25G MCX4121A-ACAT (2x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1015
+       * Firmware version: 14.21.1000
+
+     * Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1017
+       * Firmware version: 16.21.1000
+
+     * Mellanox(R) ConnectX-5 Ex EN 100G MCX516A-CDAT (2x100G)
+
+       * Host interface: PCI Express 4.0 x16
+       * Device ID: 15b3:1019
+       * Firmware version: 16.21.1000
+
+* ARM platforms with Mellanox(R) NICs combinations
+
+   * Platform details:
+
+     * Qualcomm ARM 1.1 2500MHz
+
+   * OS:
+
+     * Ubuntu 16.04
+
+   * MLNX_OFED: 4.2-1.0.0.0
+
+   * NICs:
+
+     * Mellanox(R) ConnectX(R)-4 Lx 25G MCX4121A-ACAT (2x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1015
+       * Firmware version: 14.21.1000
+
+     * Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1017
+       * Firmware version: 16.21.1000
