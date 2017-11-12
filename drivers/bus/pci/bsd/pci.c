@@ -75,7 +75,7 @@
 
 /**
  * @file
- * PCI probing under linux
+ * PCI probing under BSD
  *
  * This code is used to simulate a PCI probe by parsing information in
  * sysfs. Moreover, when a registered driver matches a device, the
