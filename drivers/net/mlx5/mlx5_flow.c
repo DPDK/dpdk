@@ -2915,8 +2915,8 @@ priv_fdir_filter_delete(struct priv *priv,
 			if (memcmp(spec, flow_spec,
 				   RTE_MIN(attr_h->size, flow_h->size)))
 				goto wrong_flow;
-			spec = (void *)((uintptr_t)attr + attr_h->size);
-			flow_spec = (void *)((uintptr_t)flow_attr +
+			spec = (void *)((uintptr_t)spec + attr_h->size);
+			flow_spec = (void *)((uintptr_t)flow_spec +
 					     flow_h->size);
 		}
 		/* At this point, the flow match. */
