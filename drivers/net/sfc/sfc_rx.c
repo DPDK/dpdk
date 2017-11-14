@@ -780,9 +780,8 @@ sfc_rx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_rx_desc,
 	if (rx_conf->rx_thresh.pthresh != 0 ||
 	    rx_conf->rx_thresh.hthresh != 0 ||
 	    rx_conf->rx_thresh.wthresh != 0) {
-		sfc_err(sa,
+		sfc_warn(sa,
 			"RxQ prefetch/host/writeback thresholds are not supported");
-		rc = EINVAL;
 	}
 
 	if (rx_conf->rx_free_thresh > rx_free_thresh_max) {
