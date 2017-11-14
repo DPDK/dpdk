@@ -524,7 +524,9 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 						     0,
 					};
 					ds = 1;
+#ifdef MLX5_PMD_SOFT_COUNTERS
 					total_length = 0;
+#endif
 					k++;
 					goto next_wqe;
 				}
