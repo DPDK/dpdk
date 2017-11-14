@@ -59,8 +59,6 @@ struct bnxt_rx_queue {
 	uint32_t			rx_buf_use_size;  /* useable size */
 	struct bnxt_rx_ring_info	*rx_ring;
 	struct bnxt_cp_ring_info	*cp_ring;
-
-	struct bnxt_tpa_info		*rx_tpa;
 };
 
 void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq);
