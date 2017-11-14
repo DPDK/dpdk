@@ -804,13 +804,19 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 	uint16_t *links_map;
 	int i, diag;
 
-	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	RTE_EVENTDEV_VALID_DEVID_OR_ERRNO_RET(dev_id, -EINVAL, 0);
 	dev = &rte_eventdevs[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->port_link, -ENOTSUP);
+
+	if (*dev->dev_ops->port_link == NULL) {
+		RTE_PMD_DEBUG_TRACE("Function not supported\n");
+		rte_errno = -ENOTSUP;
+		return 0;
+	}
 
 	if (!is_valid_port(dev, port_id)) {
 		RTE_EDEV_LOG_ERR("Invalid port_id=%" PRIu8, port_id);
-		return -EINVAL;
+		rte_errno = -EINVAL;
+		return 0;
 	}
 
 	if (queues == NULL) {
@@ -829,8 +835,10 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 	}
 
 	for (i = 0; i < nb_links; i++)
-		if (queues[i] >= dev->data->nb_queues)
-			return -EINVAL;
+		if (queues[i] >= dev->data->nb_queues) {
+			rte_errno = -EINVAL;
+			return 0;
+		}
 
 	diag = (*dev->dev_ops->port_link)(dev, dev->data->ports[port_id],
 						queues, priorities, nb_links);
@@ -855,13 +863,19 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 	int i, diag;
 	uint16_t *links_map;
 
-	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	RTE_EVENTDEV_VALID_DEVID_OR_ERRNO_RET(dev_id, -EINVAL, 0);
 	dev = &rte_eventdevs[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->port_unlink, -ENOTSUP);
+
+	if (*dev->dev_ops->port_unlink == NULL) {
+		RTE_PMD_DEBUG_TRACE("Function not supported\n");
+		rte_errno = -ENOTSUP;
+		return 0;
+	}
 
 	if (!is_valid_port(dev, port_id)) {
 		RTE_EDEV_LOG_ERR("Invalid port_id=%" PRIu8, port_id);
-		return -EINVAL;
+		rte_errno = -EINVAL;
+		return 0;
 	}
 
 	if (queues == NULL) {
@@ -872,8 +886,10 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 	}
 
 	for (i = 0; i < nb_unlinks; i++)
-		if (queues[i] >= dev->data->nb_queues)
-			return -EINVAL;
+		if (queues[i] >= dev->data->nb_queues) {
+			rte_errno = -EINVAL;
+			return 0;
+		}
 
 	diag = (*dev->dev_ops->port_unlink)(dev, dev->data->ports[port_id],
 					queues, nb_unlinks);

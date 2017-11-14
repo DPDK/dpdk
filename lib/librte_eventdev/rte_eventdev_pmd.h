@@ -50,6 +50,14 @@ extern "C" {
 	} \
 } while (0)
 
+#define RTE_EVENTDEV_VALID_DEVID_OR_ERRNO_RET(dev_id, errno, retval) do { \
+	if (!rte_event_pmd_is_valid_dev((dev_id))) { \
+		RTE_EDEV_LOG_ERR("Invalid dev_id=%d\n", dev_id); \
+		rte_errno = errno; \
+		return retval; \
+	} \
+} while (0)
+
 #define RTE_EVENTDEV_VALID_DEVID_OR_RET(dev_id) do { \
 	if (!rte_event_pmd_is_valid_dev((dev_id))) { \
 		RTE_EDEV_LOG_ERR("Invalid dev_id=%d\n", dev_id); \
