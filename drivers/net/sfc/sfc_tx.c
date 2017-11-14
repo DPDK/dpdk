@@ -79,9 +79,8 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
 	if (tx_conf->tx_thresh.pthresh != 0 ||
 	    tx_conf->tx_thresh.hthresh != 0 ||
 	    tx_conf->tx_thresh.wthresh != 0) {
-		sfc_err(sa,
+		sfc_warn(sa,
 			"prefetch/host/writeback thresholds are not supported");
-		rc = EINVAL;
 	}
 
 	if (((flags & ETH_TXQ_FLAGS_NOMULTSEGS) == 0) &&
