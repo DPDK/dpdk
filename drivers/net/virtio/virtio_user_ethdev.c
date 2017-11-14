@@ -80,7 +80,11 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 			} else {
 				dev->status |= VIRTIO_NET_S_LINK_UP;
 			}
-			fcntl(dev->vhostfd, F_SETFL, flags & (~O_NONBLOCK));
+			if (fcntl(dev->vhostfd, F_SETFL,
+					flags & ~O_NONBLOCK) == -1) {
+				PMD_DRV_LOG(ERR, "error clearing O_NONBLOCK flag");
+				return;
+			}
 		}
 		*(uint16_t *)dst = dev->status;
 	}
