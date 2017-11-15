@@ -539,6 +539,9 @@ The libraries prepended with a plus sign were incremented in this version.
 
      librte_acl.so.2
    + librte_bitratestats.so.2
+   + librte_bus_dpaa.so.1
+   + librte_bus_fslmc.so.1
+   + librte_bus_pci.so.1
    + librte_bus_vdev.so.1
      librte_cfgfile.so.2
      librte_cmdline.so.2
