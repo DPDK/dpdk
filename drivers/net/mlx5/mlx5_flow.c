@@ -1930,6 +1930,7 @@ priv_flow_create(struct priv *priv,
 	flow->queues = (uint16_t (*)[])(flow + 1);
 	memcpy(flow->queues, parser.queues, parser.queues_n * sizeof(uint16_t));
 	flow->queues_n = parser.queues_n;
+	flow->mark = parser.mark;
 	/* Copy RSS configuration. */
 	flow->rss_conf = parser.rss_conf;
 	flow->rss_conf.rss_key = flow->rss_key;
