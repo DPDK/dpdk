@@ -120,7 +120,7 @@ in :numref:`figure_gso-output-segment-format`.
 
 .. _figure_gso-output-segment-format:
 
-.. figure:: img/gso-output-segment-format.svg
+.. figure:: img/gso-output-segment-format.*
    :align: center
 
    Two-part GSO output segment
@@ -160,7 +160,7 @@ next input segment).
 
 .. _figure_gso-three-seg-mbuf:
 
-.. figure:: img/gso-three-seg-mbuf.svg
+.. figure:: img/gso-three-seg-mbuf.*
    :align: center
 
    Three-part GSO output segment
