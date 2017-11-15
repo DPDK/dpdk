@@ -296,6 +296,12 @@ F: doc/guides/prog_guide/event_ethernet_rx_adapter.rst
 Bus Drivers
 -----------
 
+NXP buses
+M: Hemant Agrawal <hemant.agrawal@nxp.com>
+M: Shreyansh Jain <shreyansh.jain@nxp.com>
+F: drivers/bus/dpaa/
+F: drivers/bus/fslmc/
+
 PCI bus driver
 F: drivers/bus/pci/
 
@@ -460,7 +466,6 @@ F: doc/guides/nics/features/nfp*.ini
 NXP dpaa
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 M: Shreyansh Jain <shreyansh.jain@nxp.com>
-F: drivers/bus/dpaa/
 F: drivers/mempool/dpaa/
 F: drivers/net/dpaa/
 F: doc/guides/nics/dpaa.rst
@@ -469,7 +474,6 @@ F: doc/guides/nics/features/dpaa.ini
 NXP dpaa2
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 M: Shreyansh Jain <shreyansh.jain@nxp.com>
-F: drivers/bus/fslmc/
 F: drivers/mempool/dpaa2/
 F: drivers/net/dpaa2/
 F: doc/guides/nics/dpaa2.rst
