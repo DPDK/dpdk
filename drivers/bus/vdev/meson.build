@@ -29,7 +29,5 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['pci', 'vdev']
-std_deps = ['eal']
-config_flag_fmt = 'RTE_LIBRTE_@0@_BUS'
-driver_name_fmt = 'rte_bus_@0@'
+sources = files('vdev.c')
+install_headers('rte_bus_vdev.h')
