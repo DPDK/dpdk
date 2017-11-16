@@ -575,7 +575,7 @@ ef10_ev_qdestroy(
 	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
 	    enp->en_family == EFX_FAMILY_MEDFORD);
 
-	(void) efx_mcdi_fini_evq(eep->ee_enp, eep->ee_index);
+	(void) efx_mcdi_fini_evq(enp, eep->ee_index);
 }
 
 	__checkReturn	efx_rc_t
@@ -1346,9 +1346,12 @@ ef10_ev_rxlabel_init(
 	__in		efx_rxq_type_t type)
 {
 	efx_evq_rxq_state_t *eersp;
+#if EFSYS_OPT_RX_PACKED_STREAM
 	boolean_t packed_stream = (type >= EFX_RXQ_TYPE_PACKED_STREAM_1M) &&
 	    (type <= EFX_RXQ_TYPE_PACKED_STREAM_64K);
+#endif
 
+	_NOTE(ARGUNUSED(type))
 	EFSYS_ASSERT3U(label, <, EFX_ARRAY_SIZE(eep->ee_rxq_state));
 	eersp = &eep->ee_rxq_state[label];
 
@@ -1386,8 +1389,6 @@ ef10_ev_rxlabel_init(
 		EFSYS_ASSERT3U(eersp->eers_rx_packed_stream_credits, <=,
 		    EFX_RX_PACKED_STREAM_MAX_CREDITS);
 	}
-#else
-	EFSYS_ASSERT(!packed_stream);
 #endif
 }
 
