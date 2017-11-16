@@ -170,7 +170,8 @@ fail1:
 	__checkReturn		efx_rc_t
 siena_nvram_partn_unlock(
 	__in			efx_nic_t *enp,
-	__in			uint32_t partn)
+	__in			uint32_t partn,
+	__out_opt		uint32_t *verify_resultp)
 {
 	boolean_t reboot;
 	efx_rc_t rc;
@@ -183,7 +184,7 @@ siena_nvram_partn_unlock(
 		    partn == MC_CMD_NVRAM_TYPE_PHY_PORT1 ||
 		    partn == MC_CMD_NVRAM_TYPE_DISABLED_CALLISTO);
 
-	rc = efx_mcdi_nvram_update_finish(enp, partn, reboot, NULL);
+	rc = efx_mcdi_nvram_update_finish(enp, partn, reboot, verify_resultp);
 	if (rc != 0)
 		goto fail1;
 
@@ -587,11 +588,12 @@ fail1:
 	__checkReturn		efx_rc_t
 siena_nvram_partn_rw_finish(
 	__in			efx_nic_t *enp,
-	__in			uint32_t partn)
+	__in			uint32_t partn,
+	__out_opt		uint32_t *verify_resultp)
 {
 	efx_rc_t rc;
 
-	if ((rc = siena_nvram_partn_unlock(enp, partn)) != 0)
+	if ((rc = siena_nvram_partn_unlock(enp, partn, verify_resultp)) != 0)
 		goto fail1;
 
 	return (0);
@@ -705,7 +707,7 @@ siena_nvram_partn_set_version(
 
 	EFSYS_KMEM_FREE(enp->en_esip, length, dcfg);
 
-	siena_nvram_partn_unlock(enp, dcfg_partn);
+	siena_nvram_partn_unlock(enp, dcfg_partn, NULL);
 
 	return (0);
 
