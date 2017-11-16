@@ -188,7 +188,8 @@ malloc_heap_get_stats(const struct malloc_heap *heap,
 	socket_stats->free_count = 0;
 	socket_stats->heap_freesz_bytes = 0;
 	socket_stats->greatest_free_size = 0;
-
+	
+        rte_spinlock_lock(&heap->lock);
 	/* Iterate through free list */
 	for (idx = 0; idx < RTE_HEAP_NUM_FREELISTS; idx++) {
 		for (elem = LIST_FIRST(&heap->free_head[idx]);
@@ -200,6 +201,8 @@ malloc_heap_get_stats(const struct malloc_heap *heap,
 				socket_stats->greatest_free_size = elem->size;
 		}
 	}
+	rte_spinlock_unlock(&heap->lock);
+	
 	/* Get stats on overall heap and allocated memory on this heap */
 	socket_stats->heap_totalsz_bytes = heap->total_size;
 	socket_stats->heap_allocsz_bytes = (socket_stats->heap_totalsz_bytes -
