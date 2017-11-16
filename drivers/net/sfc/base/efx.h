@@ -1411,7 +1411,8 @@ efx_nvram_rw_start(
 extern	__checkReturn		efx_rc_t
 efx_nvram_rw_finish(
 	__in			efx_nic_t *enp,
-	__in			efx_nvram_type_t type);
+	__in			efx_nvram_type_t type,
+	__out_opt		uint32_t *verify_resultp);
 
 extern	__checkReturn		efx_rc_t
 efx_nvram_get_version(
