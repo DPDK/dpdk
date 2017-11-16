@@ -162,8 +162,6 @@ efx_nvram_size(
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
 
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
 
@@ -196,8 +194,6 @@ efx_nvram_get_version(
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
 
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
 
@@ -227,9 +223,6 @@ efx_nvram_rw_start(
 
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
-
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-	EFSYS_ASSERT3U(type, !=, EFX_NVRAM_INVALID);
 
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
@@ -265,9 +258,6 @@ efx_nvram_read_chunk(
 
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
-
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-	EFSYS_ASSERT3U(type, !=, EFX_NVRAM_INVALID);
 
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
@@ -307,9 +297,6 @@ efx_nvram_read_backup(
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
 
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-	EFSYS_ASSERT3U(type, !=, EFX_NVRAM_INVALID);
-
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
 
@@ -342,9 +329,6 @@ efx_nvram_erase(
 
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
-
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-	EFSYS_ASSERT3U(type, !=, EFX_NVRAM_INVALID);
 
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
@@ -384,9 +368,6 @@ efx_nvram_write_chunk(
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
 
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-	EFSYS_ASSERT3U(type, !=, EFX_NVRAM_INVALID);
-
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
 
@@ -418,9 +399,6 @@ efx_nvram_rw_finish(
 
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
-
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-	EFSYS_ASSERT3U(type, !=, EFX_NVRAM_INVALID);
 
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
@@ -465,8 +443,6 @@ efx_nvram_set_version(
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
 
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
 
@@ -505,9 +481,6 @@ efx_nvram_validate(
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
-
-	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
-
 
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
