@@ -606,6 +606,8 @@ ef10_tx_qdesc_dma_create(
 	__in	boolean_t eop,
 	__out	efx_desc_t *edp)
 {
+	_NOTE(ARGUNUSED(etp))
+
 	/* No limitations on boundary crossing */
 	EFSYS_ASSERT(size <= etp->et_enp->en_nic_cfg.enc_tx_dma_desc_size_max);
 
@@ -629,6 +631,8 @@ ef10_tx_qdesc_tso_create(
 	__in	uint8_t  tcp_flags,
 	__out	efx_desc_t *edp)
 {
+	_NOTE(ARGUNUSED(etp))
+
 	EFSYS_PROBE4(tx_desc_tso_create, unsigned int, etp->et_index,
 		    uint16_t, ipv4_id, uint32_t, tcp_seq,
 		    uint8_t, tcp_flags);
@@ -651,6 +655,8 @@ ef10_tx_qdesc_tso2_create(
 	__out_ecount(count)	efx_desc_t *edp,
 	__in			int count)
 {
+	_NOTE(ARGUNUSED(etp, count))
+
 	EFSYS_PROBE4(tx_desc_tso2_create, unsigned int, etp->et_index,
 		    uint16_t, ipv4_id, uint32_t, tcp_seq,
 		    uint16_t, tcp_mss);
@@ -680,6 +686,8 @@ ef10_tx_qdesc_vlantci_create(
 	__in	uint16_t  tci,
 	__out	efx_desc_t *edp)
 {
+	_NOTE(ARGUNUSED(etp))
+
 	EFSYS_PROBE2(tx_desc_vlantci_create, unsigned int, etp->et_index,
 		    uint16_t, tci);
 
