@@ -804,6 +804,16 @@ ef10_rx_qpush_ps_credits(
 	rxq_state->eers_rx_packed_stream_credits = 0;
 }
 
+/*
+ * In accordance with SF-112241-TC the received data has the following layout:
+ *  - 8 byte pseudo-header which consist of:
+ *    - 4 byte little-endian timestamp
+ *    - 2 byte little-endian captured length in bytes
+ *    - 2 byte little-endian original packet length in bytes
+ *  - captured packet bytes
+ *  - optional padding to align to 64 bytes boundary
+ *  - 64 bytes scratch space for the host software
+ */
 	__checkReturn	uint8_t *
 ef10_rx_qps_packet_info(
 	__in		efx_rxq_t *erp,
