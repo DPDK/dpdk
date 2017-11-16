@@ -173,7 +173,7 @@ typedef struct efx_rx_ops_s {
 				      unsigned int);
 	void		(*erxo_qpush)(efx_rxq_t *, unsigned int, unsigned int *);
 #if EFSYS_OPT_RX_PACKED_STREAM
-	void		(*erxo_qps_update_credits)(efx_rxq_t *);
+	void		(*erxo_qpush_ps_credits)(efx_rxq_t *);
 	uint8_t *	(*erxo_qps_packet_info)(efx_rxq_t *, uint8_t *,
 						uint32_t, uint32_t,
 						uint16_t *, uint32_t *, uint32_t *);

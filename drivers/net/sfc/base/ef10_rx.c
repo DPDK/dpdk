@@ -779,8 +779,8 @@ ef10_rx_qpush(
 #if EFSYS_OPT_RX_PACKED_STREAM
 
 			void
-ef10_rx_qps_update_credits(
-	__in	efx_rxq_t *erp)
+ef10_rx_qpush_ps_credits(
+	__in		efx_rxq_t *erp)
 {
 	efx_nic_t *enp = erp->er_enp;
 	efx_dword_t dword;

@@ -103,7 +103,7 @@ siena_rx_qpush(
 
 #if EFSYS_OPT_RX_PACKED_STREAM
 static		void
-siena_rx_qps_update_credits(
+siena_rx_qpush_ps_credits(
 	__in		efx_rxq_t *erp);
 
 static	__checkReturn	uint8_t *
@@ -163,7 +163,7 @@ static const efx_rx_ops_t __efx_rx_siena_ops = {
 	siena_rx_qpost,				/* erxo_qpost */
 	siena_rx_qpush,				/* erxo_qpush */
 #if EFSYS_OPT_RX_PACKED_STREAM
-	siena_rx_qps_update_credits,		/* erxo_qps_update_credits */
+	siena_rx_qpush_ps_credits,		/* erxo_qpush_ps_credits */
 	siena_rx_qps_packet_info,		/* erxo_qps_packet_info */
 #endif
 	siena_rx_qflush,			/* erxo_qflush */
@@ -192,7 +192,7 @@ static const efx_rx_ops_t __efx_rx_ef10_ops = {
 	ef10_rx_qpost,				/* erxo_qpost */
 	ef10_rx_qpush,				/* erxo_qpush */
 #if EFSYS_OPT_RX_PACKED_STREAM
-	ef10_rx_qps_update_credits,		/* erxo_qps_update_credits */
+	ef10_rx_qpush_ps_credits,		/* erxo_qpush_ps_credits */
 	ef10_rx_qps_packet_info,		/* erxo_qps_packet_info */
 #endif
 	ef10_rx_qflush,				/* erxo_qflush */
@@ -532,7 +532,7 @@ efx_rx_qpost(
 #if EFSYS_OPT_RX_PACKED_STREAM
 
 			void
-efx_rx_qps_update_credits(
+efx_rx_qpush_ps_credits(
 	__in		efx_rxq_t *erp)
 {
 	efx_nic_t *enp = erp->er_enp;
@@ -540,7 +540,7 @@ efx_rx_qps_update_credits(
 
 	EFSYS_ASSERT3U(erp->er_magic, ==, EFX_RXQ_MAGIC);
 
-	erxop->erxo_qps_update_credits(erp);
+	erxop->erxo_qpush_ps_credits(erp);
 }
 
 	__checkReturn	uint8_t *
@@ -1235,7 +1235,7 @@ siena_rx_qpush(
 
 #if EFSYS_OPT_RX_PACKED_STREAM
 static		void
-siena_rx_qps_update_credits(
+siena_rx_qpush_ps_credits(
 	__in		efx_rxq_t *erp)
 {
 	/* Not supported by Siena hardware */

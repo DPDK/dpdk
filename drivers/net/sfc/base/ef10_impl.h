@@ -695,8 +695,8 @@ ef10_tx_qpush(
 
 #if EFSYS_OPT_RX_PACKED_STREAM
 extern			void
-ef10_rx_qps_update_credits(
-	__in	efx_rxq_t *erp);
+ef10_rx_qpush_ps_credits(
+	__in		efx_rxq_t *erp);
 
 extern	__checkReturn	uint8_t *
 ef10_rx_qps_packet_info(

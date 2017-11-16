@@ -2050,7 +2050,7 @@ efx_rx_qpush(
 #define	EFX_RXQ_PACKED_STREAM_FAKE_BUF_SIZE 32
 
 extern			void
-efx_rx_qps_update_credits(
+efx_rx_qpush_ps_credits(
 	__in		efx_rxq_t *erp);
 
 extern	__checkReturn	uint8_t *
