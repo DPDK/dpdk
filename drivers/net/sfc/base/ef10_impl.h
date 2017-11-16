@@ -50,8 +50,9 @@ extern "C" {
  */
 #define	EF10_NVRAM_CHUNK 0x80
 
-/* Alignment requirement for value written to RX WPTR:
- *  the WPTR must be aligned to an 8 descriptor boundary
+/*
+ * Alignment requirement for value written to RX WPTR: the WPTR must be aligned
+ * to an 8 descriptor boundary.
  */
 #define	EF10_RX_WPTR_ALIGN 8
 
@@ -505,8 +506,7 @@ ef10_nvram_buffer_find_item_start(
 	__in_bcount(buffer_size)
 				caddr_t bufferp,
 	__in			size_t buffer_size,
-	__out			uint32_t *startp
-	);
+	__out			uint32_t *startp);
 
 extern	__checkReturn		efx_rc_t
 ef10_nvram_buffer_find_end(
@@ -514,8 +514,7 @@ ef10_nvram_buffer_find_end(
 				caddr_t bufferp,
 	__in			size_t buffer_size,
 	__in			uint32_t offset,
-	__out			uint32_t *endp
-	);
+	__out			uint32_t *endp);
 
 extern	__checkReturn	__success(return != B_FALSE)	boolean_t
 ef10_nvram_buffer_find_item(
@@ -524,8 +523,7 @@ ef10_nvram_buffer_find_item(
 	__in			size_t buffer_size,
 	__in			uint32_t offset,
 	__out			uint32_t *startp,
-	__out			uint32_t *lengthp
-	);
+	__out			uint32_t *lengthp);
 
 extern	__checkReturn		efx_rc_t
 ef10_nvram_buffer_get_item(
@@ -537,8 +535,7 @@ ef10_nvram_buffer_get_item(
 	__out_bcount_part(item_max_size, *lengthp)
 				caddr_t itemp,
 	__in			size_t item_max_size,
-	__out			uint32_t *lengthp
-	);
+	__out			uint32_t *lengthp);
 
 extern	__checkReturn		efx_rc_t
 ef10_nvram_buffer_insert_item(
@@ -548,8 +545,7 @@ ef10_nvram_buffer_insert_item(
 	__in			uint32_t offset,
 	__in_bcount(length)	caddr_t keyp,
 	__in			uint32_t length,
-	__out			uint32_t *lengthp
-	);
+	__out			uint32_t *lengthp);
 
 extern	__checkReturn		efx_rc_t
 ef10_nvram_buffer_delete_item(
@@ -558,15 +554,13 @@ ef10_nvram_buffer_delete_item(
 	__in			size_t buffer_size,
 	__in			uint32_t offset,
 	__in			uint32_t length,
-	__in			uint32_t end
-	);
+	__in			uint32_t end);
 
 extern	__checkReturn		efx_rc_t
 ef10_nvram_buffer_finish(
 	__in_bcount(buffer_size)
 				caddr_t bufferp,
-	__in			size_t buffer_size
-	);
+	__in			size_t buffer_size);
 
 #endif	/* EFSYS_OPT_NVRAM */
 
@@ -795,7 +789,7 @@ ef10_tx_qstats_update(
 
 typedef uint32_t	efx_piobuf_handle_t;
 
-#define	EFX_PIOBUF_HANDLE_INVALID	((efx_piobuf_handle_t) -1)
+#define	EFX_PIOBUF_HANDLE_INVALID	((efx_piobuf_handle_t)-1)
 
 extern	__checkReturn	efx_rc_t
 ef10_nic_pio_alloc(
@@ -1034,7 +1028,7 @@ typedef struct ef10_filter_entry_s {
  * IPv4 or IPv6 outer frame, VXLAN, GENEVE or NVGRE packet type, and unicast or
  * multicast inner frames.
  */
-#define EFX_EF10_FILTER_ENCAP_FILTERS_MAX	12
+#define	EFX_EF10_FILTER_ENCAP_FILTERS_MAX	12
 
 typedef struct ef10_filter_table_s {
 	ef10_filter_entry_t	eft_entry[EFX_EF10_FILTER_TBL_ROWS];
@@ -1201,9 +1195,9 @@ ef10_external_port_mapping(
 /* Minimum space for packet in packed stream mode */
 #define	EFX_RX_PACKED_STREAM_MIN_PACKET_SPACE		     \
 	P2ROUNDUP(EFX_RX_PACKED_STREAM_RX_PREFIX_SIZE +	     \
-		  EFX_MAC_PDU_MIN +			     \
-		  EFX_RX_PACKED_STREAM_ALIGNMENT,	     \
-		  EFX_RX_PACKED_STREAM_ALIGNMENT)
+	    EFX_MAC_PDU_MIN +				     \
+	    EFX_RX_PACKED_STREAM_ALIGNMENT,		     \
+	    EFX_RX_PACKED_STREAM_ALIGNMENT)
 
 /* Maximum number of credits */
 #define	EFX_RX_PACKED_STREAM_MAX_CREDITS 127
