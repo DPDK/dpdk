@@ -786,18 +786,25 @@ ef10_rx_qpush_ps_credits(
 	efx_dword_t dword;
 	efx_evq_rxq_state_t *rxq_state =
 		&erp->er_eep->ee_rxq_state[erp->er_label];
+	uint32_t credits;
 
 	EFSYS_ASSERT(rxq_state->eers_rx_packed_stream);
 
 	if (rxq_state->eers_rx_packed_stream_credits == 0)
 		return;
 
+	/*
+	 * It is a bug if we think that FW has utilized more
+	 * credits than it is allowed to have (maximum). However,
+	 * make sure that we do not credit more than maximum anyway.
+	 */
+	credits = MIN(rxq_state->eers_rx_packed_stream_credits,
+	    EFX_RX_PACKED_STREAM_MAX_CREDITS);
 	EFX_POPULATE_DWORD_3(dword,
 	    ERF_DZ_RX_DESC_MAGIC_DOORBELL, 1,
 	    ERF_DZ_RX_DESC_MAGIC_CMD,
 	    ERE_DZ_RX_DESC_MAGIC_CMD_PS_CREDITS,
-	    ERF_DZ_RX_DESC_MAGIC_DATA,
-	    rxq_state->eers_rx_packed_stream_credits);
+	    ERF_DZ_RX_DESC_MAGIC_DATA, credits);
 	EFX_BAR_TBL_WRITED(enp, ER_DZ_RX_DESC_UPD_REG,
 	    erp->er_index, &dword, B_FALSE);
 
@@ -849,11 +856,8 @@ ef10_rx_qps_packet_info(
 	EFSYS_ASSERT3U(current_offset + *lengthp, <, *next_offsetp);
 
 	if ((*next_offsetp ^ current_offset) &
-	    EFX_RX_PACKED_STREAM_MEM_PER_CREDIT) {
-		if (rxq_state->eers_rx_packed_stream_credits <
-		    EFX_RX_PACKED_STREAM_MAX_CREDITS)
-			rxq_state->eers_rx_packed_stream_credits++;
-	}
+	    EFX_RX_PACKED_STREAM_MEM_PER_CREDIT)
+		rxq_state->eers_rx_packed_stream_credits++;
 
 	return (pkt_start);
 }

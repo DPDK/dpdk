@@ -803,9 +803,7 @@ ef10_ev_rx_packed_stream(
 
 	if (new_buffer) {
 		flags |= EFX_PKT_PACKED_STREAM_NEW_BUFFER;
-		if (eersp->eers_rx_packed_stream_credits <
-		    EFX_RX_PACKED_STREAM_MAX_CREDITS)
-			eersp->eers_rx_packed_stream_credits++;
+		eersp->eers_rx_packed_stream_credits++;
 		eersp->eers_rx_read_ptr++;
 	}
 	current_id = eersp->eers_rx_read_ptr & eersp->eers_rx_mask;
