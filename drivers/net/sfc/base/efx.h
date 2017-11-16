@@ -48,6 +48,9 @@ extern "C" {
 #define	EFX_FIELD_OFFSET(_type, _field)		\
 	((size_t) &(((_type *)0)->_field))
 
+/* The macro expands divider twice */
+#define	EFX_DIV_ROUND_UP(_n, _d)		(((_n) + (_d) - 1) / (_d))
+
 /* Return codes */
 
 typedef __success(return == 0) int efx_rc_t;

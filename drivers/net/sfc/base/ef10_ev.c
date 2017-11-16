@@ -1370,7 +1370,7 @@ ef10_ev_rxlabel_init(
 	eersp->eers_rx_packed_stream = packed_stream;
 	if (packed_stream) {
 		eersp->eers_rx_packed_stream_credits = (eep->ee_mask + 1) /
-		    (EFX_RX_PACKED_STREAM_MEM_PER_CREDIT /
+		    EFX_DIV_ROUND_UP(EFX_RX_PACKED_STREAM_MEM_PER_CREDIT,
 		    EFX_RX_PACKED_STREAM_MIN_PACKET_SPACE);
 		EFSYS_ASSERT3U(eersp->eers_rx_packed_stream_credits, !=, 0);
 		/*
