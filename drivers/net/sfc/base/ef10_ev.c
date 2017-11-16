@@ -774,7 +774,7 @@ ef10_ev_rx_packed_stream(
 	__in_opt	void *arg)
 {
 	uint32_t label;
-	uint32_t next_read_lbits;
+	uint32_t pkt_count_lbits;
 	uint16_t flags;
 	boolean_t should_abort;
 	efx_evq_rxq_state_t *eersp;
@@ -782,15 +782,22 @@ ef10_ev_rx_packed_stream(
 	unsigned int current_id;
 	boolean_t new_buffer;
 
-	next_read_lbits = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_DSC_PTR_LBITS);
+	pkt_count_lbits = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_DSC_PTR_LBITS);
 	label = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_QLABEL);
 	new_buffer = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_EV_ROTATE);
 
 	flags = 0;
 
 	eersp = &eep->ee_rxq_state[label];
-	pkt_count = (EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS) + 1 +
-	    next_read_lbits - eersp->eers_rx_stream_npackets) &
+
+	/*
+	 * RX_DSC_PTR_LBITS has least significant bits of the global
+	 * (not per-buffer) packet counter. It is guaranteed that
+	 * maximum number of completed packets fits in lbits-mask.
+	 * So, modulo lbits-mask arithmetic should be used to calculate
+	 * packet counter increment.
+	 */
+	pkt_count = (pkt_count_lbits - eersp->eers_rx_stream_npackets) &
 	    EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS);
 	eersp->eers_rx_stream_npackets += pkt_count;
 
