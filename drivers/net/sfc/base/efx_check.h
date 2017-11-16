@@ -259,8 +259,8 @@
 
 #if EFSYS_OPT_PHY_STATS
 /* Support PHY statistics */
-# if !EFSYS_OPT_SIENA
-#  error "PHY_STATS requires SIENA"
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "PHY_STATS requires SIENA or HUNTINGTON or MEDFORD"
 # endif
 #endif /* EFSYS_OPT_PHY_STATS */
 
