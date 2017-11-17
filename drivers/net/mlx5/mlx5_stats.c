@@ -143,11 +143,9 @@ priv_read_dev_counters(struct priv *priv, uint64_t *stats)
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	unsigned int i;
 	struct ifreq ifr;
-	unsigned int stats_sz = (xstats_ctrl->stats_n * sizeof(uint64_t)) +
-				 sizeof(struct ethtool_stats);
-	struct ethtool_stats et_stats[(stats_sz + (
-				      sizeof(struct ethtool_stats) - 1)) /
-				      sizeof(struct ethtool_stats)];
+	unsigned int stats_sz = xstats_ctrl->stats_n * sizeof(uint64_t);
+	unsigned char et_stat_buf[sizeof(struct ethtool_stats) + stats_sz];
+	struct ethtool_stats *et_stats = (struct ethtool_stats *)et_stat_buf;
 
 	et_stats->cmd = ETHTOOL_GSTATS;
 	et_stats->n_stats = xstats_ctrl->stats_n;
