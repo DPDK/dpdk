@@ -284,6 +284,7 @@ test_mempool_perf(void)
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
 	struct rte_mempool *default_pool = NULL;
+	const char *default_pool_ops;
 	int ret = -1;
 
 	rte_atomic32_init(&synchro);
@@ -307,6 +308,7 @@ test_mempool_perf(void)
 	if (mp_cache == NULL)
 		goto err;
 
+	default_pool_ops = rte_eal_mbuf_default_mempool_ops();
 	/* Create a mempool based on Default handler */
 	default_pool = rte_mempool_create_empty("default_pool",
 						MEMPOOL_SIZE,
@@ -315,21 +317,18 @@ test_mempool_perf(void)
 						SOCKET_ID_ANY, 0);
 
 	if (default_pool == NULL) {
-		printf("cannot allocate %s mempool\n",
-		       RTE_MBUF_DEFAULT_MEMPOOL_OPS);
+		printf("cannot allocate %s mempool\n", default_pool_ops);
 		goto err;
 	}
 
-	if (rte_mempool_set_ops_byname(default_pool,
-				       RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL)
+	if (rte_mempool_set_ops_byname(default_pool, default_pool_ops, NULL)
 				       < 0) {
-		printf("cannot set %s handler\n", RTE_MBUF_DEFAULT_MEMPOOL_OPS);
+		printf("cannot set %s handler\n", default_pool_ops);
 		goto err;
 	}
 
 	if (rte_mempool_populate_default(default_pool) < 0) {
-		printf("cannot populate %s mempool\n",
-		       RTE_MBUF_DEFAULT_MEMPOOL_OPS);
+		printf("cannot populate %s mempool\n", default_pool_ops);
 		goto err;
 	}
 
@@ -349,7 +348,7 @@ test_mempool_perf(void)
 
 	/* performance test with 1, 2 and max cores */
 	printf("start performance test for %s (without cache)\n",
-	       RTE_MBUF_DEFAULT_MEMPOOL_OPS);
+	       default_pool_ops);
 
 	if (do_one_mempool_test(default_pool, 1) < 0)
 		goto err;
