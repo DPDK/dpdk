@@ -21,7 +21,7 @@
  *
  */
 #ifndef likely
-#define likely(x)  __builtin_expect((x),1)
+#define likely(x)	__builtin_expect(!!(x), 1)
 #endif /* likely */
 
 /**
@@ -35,7 +35,7 @@
  *
  */
 #ifndef unlikely
-#define unlikely(x)  __builtin_expect((x),0)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
 #endif /* unlikely */
 
 #endif /* _RTE_BRANCH_PREDICTION_H_ */
