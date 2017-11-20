@@ -2068,6 +2068,179 @@ For example, to set the high bit in the register from the example above::
    testpmd> write regbit 0 0xEE00 31 1
    port 0 PCI register at offset 0xEE00: 0x8000000A (2147483658)
 
+Traffic Metering and Policing
+-----------------------------
+
+The following section shows functions for configuring traffic metering and
+policing on the ethernet device through the use of generic ethdev API.
+
+show port traffic management capability
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show traffic metering and policing capability of the port::
+
+   testpmd> show port meter cap (port_id)
+
+add port meter profile (srTCM rfc2967)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add meter profile (srTCM rfc2697) to the ethernet device::
+
+   testpmd> add port meter profile srtcm_rfc2697 (port_id) (profile_id) \
+   (cir) (cbs) (ebs)
+
+where:
+
+* ``profile_id``: ID for the meter profile.
+* ``cir``: Committed Information Rate (CIR) (bytes/second).
+* ``cbs``: Committed Burst Size (CBS) (bytes).
+* ``ebs``: Excess Burst Size (EBS) (bytes).
+
+add port meter profile (trTCM rfc2968)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add meter profile (srTCM rfc2698) to the ethernet device::
+
+   testpmd> add port meter profile trtcm_rfc2698 (port_id) (profile_id) \
+   (cir) (pir) (cbs) (pbs)
+
+where:
+
+* ``profile_id``: ID for the meter profile.
+* ``cir``: Committed information rate (bytes/second).
+* ``pir``: Peak information rate (bytes/second).
+* ``cbs``: Committed burst size (bytes).
+* ``pbs``: Peak burst size (bytes).
+
+add port meter profile (trTCM rfc4115)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add meter profile (trTCM rfc4115) to the ethernet device::
+
+   testpmd> add port meter profile trtcm_rfc4115 (port_id) (profile_id) \
+   (cir) (eir) (cbs) (ebs)
+
+where:
+
+* ``profile_id``: ID for the meter profile.
+* ``cir``: Committed information rate (bytes/second).
+* ``eir``: Excess information rate (bytes/second).
+* ``cbs``: Committed burst size (bytes).
+* ``ebs``: Excess burst size (bytes).
+
+delete port meter profile
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Delete meter profile from the ethernet device::
+
+   testpmd> del port meter profile (port_id) (profile_id)
+
+create port meter
+~~~~~~~~~~~~~~~~~
+
+Create new meter object for the ethernet device::
+
+   testpmd> create port meter (port_id) (mtr_id) (profile_id) \
+   (meter_enable) (g_action) (y_action) (r_action) (stats_mask) (shared) \
+   (use_pre_meter_color) [(dscp_tbl_entry0) (dscp_tbl_entry1)...\
+   (dscp_tbl_entry63)]
+
+where:
+
+* ``mtr_id``: meter object ID.
+* ``profile_id``: ID for the meter profile.
+* ``meter_enable``: When this parameter has a non-zero value, the meter object
+  gets enabled at the time of creation, otherwise remains disabled.
+* ``g_action``: Policer action for the packet with green color.
+* ``y_action``: Policer action for the packet with yellow color.
+* ``r_action``: Policer action for the packet with red color.
+* ``stats_mask``: Mask of statistics counter types to be enabled for the
+  meter object.
+* ``shared``:  When this parameter has a non-zero value, the meter object is
+  shared by multiple flows. Otherwise, meter object is used by single flow.
+* ``use_pre_meter_color``: When this parameter has a non-zero value, the
+  input color for the current meter object is determined by the latest meter
+  object in the same flow. Otherwise, the current meter object uses the
+  *dscp_table* to determine the input color.
+* ``dscp_tbl_entryx``: DSCP table entry x providing meter providing input
+  color, 0 <= x <= 63.
+
+enable port meter
+~~~~~~~~~~~~~~~~~
+
+Enable meter for the ethernet device::
+
+   testpmd> enable port meter (port_id) (mtr_id)
+
+disable port meter
+~~~~~~~~~~~~~~~~~~
+
+Disable meter for the ethernet device::
+
+   testpmd> disable port meter (port_id) (mtr_id)
+
+delete port meter
+~~~~~~~~~~~~~~~~~
+
+Delete meter for the ethernet device::
+
+   testpmd> del port meter (port_id) (mtr_id)
+
+Set port meter profile
+~~~~~~~~~~~~~~~~~~~~~~
+
+Set meter profile for the ethernet device::
+
+   testpmd> set port meter profile (port_id) (mtr_id) (profile_id)
+
+set port meter dscp table
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set meter dscp table for the ethernet device::
+
+   testpmd> set port meter dscp table (port_id) (mtr_id) [(dscp_tbl_entry0) \
+   (dscp_tbl_entry1)...(dscp_tbl_entry63)]
+
+set port meter policer action
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set meter policer action for the ethernet device::
+
+   testpmd> set port meter policer action (port_id) (mtr_id) (action_mask) \
+   (action0) [(action1) (action1)]
+
+where:
+
+* ``action_mask``: Bit mask indicating which policer actions need to be
+  updated. One or more policer actions can be updated in a single function
+  invocation. To update the policer action associated with color C, bit
+  (1 << C) needs to be set in *action_mask* and element at position C
+  in the *actions* array needs to be valid.
+* ``actionx``: Policer action for the color x,
+  RTE_MTR_GREEN <= x < RTE_MTR_COLORS
+
+set port meter stats mask
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set meter stats mask for the ethernet device::
+
+   testpmd> set port meter stats mask (port_id) (mtr_id) (stats_mask)
+
+where:
+
+* ``stats_mask``: Bit mask indicating statistics counter types to be enabled.
+
+show port meter stats
+~~~~~~~~~~~~~~~~~~~~~
+
+Show meter stats of the ethernet device::
+
+   testpmd> show port meter stats (port_id) (mtr_id) (clear)
+
+where:
+
+* ``clear``: Flag that indicates whether the statistics counters should
+  be cleared (i.e. set to zero) immediately after they have been read or not.
 
 Traffic Management
 ------------------
