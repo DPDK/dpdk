@@ -244,7 +244,7 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 
 	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
 	gpie &= ~IXGBE_GPIE_VTMODE_MASK;
-	gpie |= IXGBE_GPIE_MSIX_MODE;
+	gpie |= IXGBE_GPIE_MSIX_MODE | IXGBE_GPIE_PBA_SUPPORT;
 
 	switch (RTE_ETH_DEV_SRIOV(eth_dev).active) {
 	case ETH_64_POOLS:
