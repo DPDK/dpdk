@@ -1144,7 +1144,8 @@ bond_mode_8023ad_enable(struct rte_eth_dev *bond_dev)
 	uint8_t i;
 
 	for (i = 0; i < internals->active_slave_count; i++)
-		bond_mode_8023ad_activate_slave(bond_dev, i);
+		bond_mode_8023ad_activate_slave(bond_dev,
+				internals->active_slaves[i]);
 
 	return 0;
 }
