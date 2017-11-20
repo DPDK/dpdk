@@ -698,6 +698,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set port (port_id) queue-region flush (on|off)\n"
 			"    flush all queue region related configuration\n\n"
 
+			"show port meter cap (port_id)\n"
+			"    Show port meter capability information\n\n"
+
 			"add port meter profile srtcm_rfc2697 (port_id) (profile_id) (cir) (cbs) (ebs)\n"
 			"    meter profile add - srtcm rfc 2697\n\n"
 
@@ -716,11 +719,21 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"(dscp_tbl_entry63)]\n"
 			"    meter create\n\n"
 
+			"enable port meter (port_id) (mtr_id)\n"
+			"    meter enable\n\n"
+
+			"disable port meter (port_id) (mtr_id)\n"
+			"    meter disable\n\n"
+
 			"del port meter (port_id) (mtr_id)\n"
 			"    meter delete\n\n"
 
 			"set port meter profile (port_id) (mtr_id) (profile_id)\n"
 			"    meter update meter profile\n\n"
+
+			"set port meter dscp table (port_id) (mtr_id) [(dscp_tbl_entry0)\n"
+			"(dscp_tbl_entry1)...(dscp_tbl_entry63)]\n"
+			"    update meter dscp table entries\n\n"
 
 			"set port meter policer action (port_id) (mtr_id) (action_mask)\n"
 			"(action0) [(action1) (action2)]\n"
@@ -15689,12 +15702,16 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_hash_input_set,
 	(cmdline_parse_inst_t *)&cmd_set_fdir_input_set,
 	(cmdline_parse_inst_t *)&cmd_flow,
+	(cmdline_parse_inst_t *)&cmd_show_port_meter_cap,
 	(cmdline_parse_inst_t *)&cmd_add_port_meter_profile_srtcm,
 	(cmdline_parse_inst_t *)&cmd_add_port_meter_profile_trtcm,
 	(cmdline_parse_inst_t *)&cmd_del_port_meter_profile,
 	(cmdline_parse_inst_t *)&cmd_create_port_meter,
+	(cmdline_parse_inst_t *)&cmd_enable_port_meter,
+	(cmdline_parse_inst_t *)&cmd_disable_port_meter,
 	(cmdline_parse_inst_t *)&cmd_del_port_meter,
 	(cmdline_parse_inst_t *)&cmd_set_port_meter_profile,
+	(cmdline_parse_inst_t *)&cmd_set_port_meter_dscp_table,
 	(cmdline_parse_inst_t *)&cmd_set_port_meter_policer_action,
 	(cmdline_parse_inst_t *)&cmd_set_port_meter_stats_mask,
 	(cmdline_parse_inst_t *)&cmd_show_port_meter_stats,

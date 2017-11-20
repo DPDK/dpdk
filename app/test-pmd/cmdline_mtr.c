@@ -188,6 +188,137 @@ parse_policer_action_string(char *p_str, uint32_t action_mask,
 	}
 	return 0;
 }
+
+static int
+parse_multi_token_string(char *t_str, uint16_t *port_id,
+	uint32_t *mtr_id, enum rte_mtr_color *dscp_table)
+{
+	char *token;
+	uint64_t val;
+	int ret;
+
+	/* First token: port id */
+	token = strtok_r(t_str, PARSE_DELIMITER, &t_str);
+	if (token ==  NULL)
+		return -1;
+
+	ret = parse_uint(&val, token);
+	if (ret != 0 || val > UINT16_MAX)
+		return -1;
+
+	*port_id = val;
+
+	/* Second token: meter id */
+	token = strtok_r(t_str, PARSE_DELIMITER, &t_str);
+	if (token == NULL)
+		return 0;
+
+	ret = parse_uint(&val, token);
+	if (ret != 0 || val > UINT32_MAX)
+		return -1;
+
+	*mtr_id = val;
+
+	ret = parse_dscp_table_entries(t_str, dscp_table);
+	if (ret != 0)
+		return -1;
+
+	return 0;
+}
+
+/* *** Show Port Meter Capabilities *** */
+struct cmd_show_port_meter_cap_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t meter;
+	cmdline_fixed_string_t cap;
+	uint16_t port_id;
+};
+
+cmdline_parse_token_string_t cmd_show_port_meter_cap_show =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_show_port_meter_cap_result, show, "show");
+cmdline_parse_token_string_t cmd_show_port_meter_cap_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_show_port_meter_cap_result, port, "port");
+cmdline_parse_token_string_t cmd_show_port_meter_cap_meter =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_show_port_meter_cap_result, meter, "meter");
+cmdline_parse_token_string_t cmd_show_port_meter_cap_cap =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_show_port_meter_cap_result, cap, "cap");
+cmdline_parse_token_num_t cmd_show_port_meter_cap_port_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_show_port_meter_cap_result, port_id, UINT16);
+
+static void cmd_show_port_meter_cap_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_show_port_meter_cap_result *res = parsed_result;
+	struct rte_mtr_capabilities cap;
+	struct rte_mtr_error error;
+	uint16_t port_id = res->port_id;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	memset(&cap, 0, sizeof(struct rte_mtr_capabilities));
+	ret = rte_mtr_capabilities_get(port_id, &cap, &error);
+	if (ret) {
+		print_err_msg(&error);
+		return;
+	}
+
+	printf("\n****   Port Meter Object Capabilities ****\n\n");
+	printf("cap.n_max %" PRIu32 "\n", cap.n_max);
+	printf("cap.n_shared_max %" PRIu32 "\n", cap.n_shared_max);
+	printf("cap.identical %" PRId32 "\n", cap.identical);
+	printf("cap.shared_identical %" PRId32 "\n",
+		cap.shared_identical);
+	printf("cap.shared_n_flows_per_mtr_max %" PRIu32 "\n",
+		cap.shared_n_flows_per_mtr_max);
+	printf("cap.chaining_n_mtrs_per_flow_max %" PRIu32 "\n",
+		cap.chaining_n_mtrs_per_flow_max);
+	printf("cap.chaining_use_prev_mtr_color_supported %" PRId32 "\n",
+		cap.chaining_use_prev_mtr_color_supported);
+	printf("cap.chaining_use_prev_mtr_color_enforced %" PRId32 "\n",
+		cap.chaining_use_prev_mtr_color_enforced);
+	printf("cap.meter_srtcm_rfc2697_n_max %" PRIu32 "\n",
+		cap.meter_srtcm_rfc2697_n_max);
+	printf("cap.meter_trtcm_rfc2698_n_max %" PRIu32 "\n",
+		cap.meter_trtcm_rfc2698_n_max);
+	printf("cap.meter_trtcm_rfc4115_n_max %" PRIu32 "\n",
+		cap.meter_trtcm_rfc4115_n_max);
+	printf("cap.meter_rate_max %" PRIu64 "\n", cap.meter_rate_max);
+	printf("cap.color_aware_srtcm_rfc2697_supported %" PRId32 "\n",
+		cap.color_aware_srtcm_rfc2697_supported);
+	printf("cap.color_aware_trtcm_rfc2698_supported %" PRId32 "\n",
+		cap.color_aware_trtcm_rfc2698_supported);
+	printf("cap.color_aware_trtcm_rfc4115_supported %" PRId32 "\n",
+		cap.color_aware_trtcm_rfc4115_supported);
+	printf("cap.policer_action_recolor_supported %" PRId32 "\n",
+		cap.policer_action_recolor_supported);
+	printf("cap.policer_action_drop_supported %" PRId32 "\n",
+		cap.policer_action_drop_supported);
+	printf("cap.stats_mask %" PRIx64 "\n", cap.stats_mask);
+}
+
+cmdline_parse_inst_t cmd_show_port_meter_cap = {
+	.f = cmd_show_port_meter_cap_parsed,
+	.data = NULL,
+	.help_str = "Show port meter cap",
+	.tokens = {
+		(void *)&cmd_show_port_meter_cap_show,
+		(void *)&cmd_show_port_meter_cap_port,
+		(void *)&cmd_show_port_meter_cap_meter,
+		(void *)&cmd_show_port_meter_cap_cap,
+		(void *)&cmd_show_port_meter_cap_port_id,
+		NULL,
+	},
+};
+
 /* *** Add Port Meter Profile srtcm_rfc2697 *** */
 struct cmd_add_port_meter_profile_srtcm_result {
 	cmdline_fixed_string_t add;
@@ -711,6 +842,128 @@ cmdline_parse_inst_t cmd_create_port_meter = {
 	},
 };
 
+/* *** Enable Meter of MTR Object  *** */
+struct cmd_enable_port_meter_result {
+	cmdline_fixed_string_t enable;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t meter;
+	uint16_t port_id;
+	uint32_t mtr_id;
+};
+
+cmdline_parse_token_string_t cmd_enable_port_meter_enable =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_enable_port_meter_result, enable, "enable");
+cmdline_parse_token_string_t cmd_enable_port_meter_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_enable_port_meter_result, port, "port");
+cmdline_parse_token_string_t cmd_enable_port_meter_meter =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_enable_port_meter_result, meter, "meter");
+cmdline_parse_token_num_t cmd_enable_port_meter_port_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_enable_port_meter_result, port_id, UINT16);
+cmdline_parse_token_num_t cmd_enable_port_meter_mtr_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_enable_port_meter_result, mtr_id, UINT32);
+
+static void cmd_enable_port_meter_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_enable_port_meter_result *res = parsed_result;
+	struct rte_mtr_error error;
+	uint32_t mtr_id = res->mtr_id;
+	uint16_t port_id = res->port_id;
+
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Enable Meter */
+	ret = rte_mtr_meter_enable(port_id, mtr_id, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_enable_port_meter = {
+	.f = cmd_enable_port_meter_parsed,
+	.data = NULL,
+	.help_str = "Enable port meter",
+	.tokens = {
+		(void *)&cmd_enable_port_meter_enable,
+		(void *)&cmd_enable_port_meter_port,
+		(void *)&cmd_enable_port_meter_meter,
+		(void *)&cmd_enable_port_meter_port_id,
+		(void *)&cmd_enable_port_meter_mtr_id,
+		NULL,
+	},
+};
+
+/* *** Disable Meter of MTR Object  *** */
+struct cmd_disable_port_meter_result {
+	cmdline_fixed_string_t disable;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t meter;
+	uint16_t port_id;
+	uint32_t mtr_id;
+};
+
+cmdline_parse_token_string_t cmd_disable_port_meter_disable =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_disable_port_meter_result, disable, "disable");
+cmdline_parse_token_string_t cmd_disable_port_meter_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_disable_port_meter_result, port, "port");
+cmdline_parse_token_string_t cmd_disable_port_meter_meter =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_disable_port_meter_result, meter, "meter");
+cmdline_parse_token_num_t cmd_disable_port_meter_port_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_disable_port_meter_result, port_id, UINT16);
+cmdline_parse_token_num_t cmd_disable_port_meter_mtr_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_disable_port_meter_result, mtr_id, UINT32);
+
+static void cmd_disable_port_meter_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_disable_port_meter_result *res = parsed_result;
+	struct rte_mtr_error error;
+	uint32_t mtr_id = res->mtr_id;
+	uint16_t port_id = res->port_id;
+
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Disable Meter */
+	ret = rte_mtr_meter_disable(port_id, mtr_id, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_disable_port_meter = {
+	.f = cmd_disable_port_meter_parsed,
+	.data = NULL,
+	.help_str = "Disable port meter",
+	.tokens = {
+		(void *)&cmd_disable_port_meter_disable,
+		(void *)&cmd_disable_port_meter_port,
+		(void *)&cmd_disable_port_meter_meter,
+		(void *)&cmd_disable_port_meter_port_id,
+		(void *)&cmd_disable_port_meter_mtr_id,
+		NULL,
+	},
+};
+
 /* *** Delete Port Meter Object *** */
 struct cmd_del_port_meter_result {
 	cmdline_fixed_string_t del;
@@ -841,6 +1094,78 @@ cmdline_parse_inst_t cmd_set_port_meter_profile = {
 		(void *)&cmd_set_port_meter_profile_port_id,
 		(void *)&cmd_set_port_meter_profile_mtr_id,
 		(void *)&cmd_set_port_meter_profile_profile_id,
+		NULL,
+	},
+};
+
+/* *** Set Port Meter DSCP Table *** */
+struct cmd_set_port_meter_dscp_table_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t meter;
+	cmdline_fixed_string_t dscp_table;
+	cmdline_multi_string_t token_string;
+};
+
+cmdline_parse_token_string_t cmd_set_port_meter_dscp_table_set =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_meter_dscp_table_result, set, "set");
+cmdline_parse_token_string_t cmd_set_port_meter_dscp_table_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_meter_dscp_table_result, port, "port");
+cmdline_parse_token_string_t cmd_set_port_meter_dscp_table_meter =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_meter_dscp_table_result, meter, "meter");
+cmdline_parse_token_string_t cmd_set_port_meter_dscp_table_dscp_table =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_set_port_meter_dscp_table_result,
+		dscp_table, "dscp table");
+cmdline_parse_token_string_t cmd_set_port_meter_dscp_table_token_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_port_meter_dscp_table_result,
+		token_string, TOKEN_STRING_MULTI);
+
+static void cmd_set_port_meter_dscp_table_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_port_meter_dscp_table_result *res = parsed_result;
+	struct rte_mtr_error error;
+	enum rte_mtr_color *dscp_table = NULL;
+	char *t_str = res->token_string;
+	uint32_t mtr_id = 0;
+	uint16_t port_id;
+	int ret;
+
+	/* Parse string */
+	ret = parse_multi_token_string(t_str, &port_id, &mtr_id, dscp_table);
+	if (ret) {
+		printf(" Multi token string parse error\n");
+		return;
+	}
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Update Meter DSCP Table*/
+	ret = rte_mtr_meter_dscp_table_update(port_id, mtr_id,
+		dscp_table, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+	free(dscp_table);
+}
+
+cmdline_parse_inst_t cmd_set_port_meter_dscp_table = {
+	.f = cmd_set_port_meter_dscp_table_parsed,
+	.data = NULL,
+	.help_str = "Update port meter dscp table",
+	.tokens = {
+		(void *)&cmd_set_port_meter_dscp_table_set,
+		(void *)&cmd_set_port_meter_dscp_table_port,
+		(void *)&cmd_set_port_meter_dscp_table_meter,
+		(void *)&cmd_set_port_meter_dscp_table_dscp_table,
+		(void *)&cmd_set_port_meter_dscp_table_token_string,
 		NULL,
 	},
 };
