@@ -13,7 +13,7 @@
 
 #define LIO_MAX_SG 12
 /* Flush iq if available tx_desc fall below LIO_FLUSH_WM */
-#define LIO_FLUSH_WM(_iq) ((_iq)->max_count / 2)
+#define LIO_FLUSH_WM(_iq) ((_iq)->nb_desc / 2)
 #define LIO_PKT_IN_DONE_CNT_MASK 0x00000000FFFFFFFFULL
 
 static void
@@ -41,7 +41,7 @@ lio_droq_destroy_ring_buffers(struct lio_droq *droq)
 {
 	uint32_t i;
 
-	for (i = 0; i < droq->max_count; i++) {
+	for (i = 0; i < droq->nb_desc; i++) {
 		if (droq->recv_buf_list[i].buffer) {
 			rte_pktmbuf_free((struct rte_mbuf *)
 					 droq->recv_buf_list[i].buffer);
@@ -60,7 +60,7 @@ lio_droq_setup_ring_buffers(struct lio_device *lio_dev,
 	uint32_t i;
 	void *buf;
 
-	for (i = 0; i < droq->max_count; i++) {
+	for (i = 0; i < droq->nb_desc; i++) {
 		buf = rte_pktmbuf_alloc(droq->mpool);
 		if (buf == NULL) {
 			lio_dev_err(lio_dev, "buffer alloc failed\n");
@@ -135,7 +135,7 @@ lio_alloc_info_buffer(struct lio_device *lio_dev,
 {
 	droq->info_mz = rte_eth_dma_zone_reserve(lio_dev->eth_dev,
 						 "info_list", droq->q_no,
-						 (droq->max_count *
+						 (droq->nb_desc *
 							LIO_DROQ_INFO_SIZE),
 						 RTE_CACHE_LINE_SIZE,
 						 socket_id);
@@ -177,10 +177,10 @@ lio_init_droq(struct lio_device *lio_dev, uint32_t q_no,
 
 	c_refill_threshold = LIO_OQ_REFILL_THRESHOLD_CFG(lio_dev);
 
-	droq->max_count = num_descs;
+	droq->nb_desc = num_descs;
 	droq->buffer_size = desc_size;
 
-	desc_ring_size = droq->max_count * LIO_DROQ_DESC_SIZE;
+	desc_ring_size = droq->nb_desc * LIO_DROQ_DESC_SIZE;
 	droq->desc_ring_mz = rte_eth_dma_zone_reserve(lio_dev->eth_dev,
 						      "droq", q_no,
 						      desc_ring_size,
@@ -199,7 +199,7 @@ lio_init_droq(struct lio_device *lio_dev, uint32_t q_no,
 	lio_dev_dbg(lio_dev, "droq[%d]: desc_ring: virt: 0x%p, dma: %lx\n",
 		    q_no, droq->desc_ring, (unsigned long)droq->desc_ring_dma);
 	lio_dev_dbg(lio_dev, "droq[%d]: num_desc: %d\n", q_no,
-		    droq->max_count);
+		    droq->nb_desc);
 
 	droq->info_list = lio_alloc_info_buffer(lio_dev, droq, socket_id);
 	if (droq->info_list == NULL) {
@@ -208,7 +208,7 @@ lio_init_droq(struct lio_device *lio_dev, uint32_t q_no,
 	}
 
 	droq->recv_buf_list = rte_zmalloc_socket("recv_buf_list",
-						 (droq->max_count *
+						 (droq->nb_desc *
 							LIO_DROQ_RECVBUF_SIZE),
 						 RTE_CACHE_LINE_SIZE,
 						 socket_id);
@@ -245,11 +245,6 @@ lio_setup_droq(struct lio_device *lio_dev, int oq_no, int num_descs,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (lio_dev->droq[oq_no]) {
-		lio_dev_dbg(lio_dev, "Droq %d in use\n", oq_no);
-		return 0;
-	}
-
 	/* Allocate the DS for the new droq. */
 	droq = rte_zmalloc_socket("ethdev RX queue", sizeof(*droq),
 				  RTE_CACHE_LINE_SIZE, socket_id);
@@ -274,7 +269,7 @@ lio_setup_droq(struct lio_device *lio_dev, int oq_no, int num_descs,
 	/* Send credit for octeon output queues. credits are always
 	 * sent after the output queue is enabled.
 	 */
-	rte_write32(lio_dev->droq[oq_no]->max_count,
+	rte_write32(lio_dev->droq[oq_no]->nb_desc,
 		    lio_dev->droq[oq_no]->pkts_credit_reg);
 	rte_wmb();
 
@@ -313,13 +308,13 @@ lio_droq_refill_pullup_descs(struct lio_droq *droq,
 			do {
 				droq->refill_idx = lio_incr_index(
 							droq->refill_idx, 1,
-							droq->max_count);
+							droq->nb_desc);
 				desc_refilled++;
 				droq->refill_count--;
 			} while (droq->recv_buf_list[droq->refill_idx].buffer);
 		}
 		refill_index = lio_incr_index(refill_index, 1,
-					      droq->max_count);
+					      droq->nb_desc);
 	}	/* while */
 
 	return desc_refilled;
@@ -350,7 +345,7 @@ lio_droq_refill(struct lio_droq *droq)
 
 	desc_ring = droq->desc_ring;
 
-	while (droq->refill_count && (desc_refilled < droq->max_count)) {
+	while (droq->refill_count && (desc_refilled < droq->nb_desc)) {
 		/* If a valid buffer exists (happens if there is no dispatch),
 		 * reuse the buffer, else allocate.
 		 */
@@ -373,7 +368,7 @@ lio_droq_refill(struct lio_droq *droq)
 		droq->info_list[droq->refill_idx].length = 0;
 
 		droq->refill_idx = lio_incr_index(droq->refill_idx, 1,
-						  droq->max_count);
+						  droq->nb_desc);
 		desc_refilled++;
 		droq->refill_count--;
 	}
@@ -420,7 +415,7 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 		buf_cnt = lio_droq_get_bufcount(droq->buffer_size,
 						(uint32_t)info->length);
 		droq->read_idx = lio_incr_index(droq->read_idx, buf_cnt,
-						droq->max_count);
+						droq->nb_desc);
 		droq->refill_count += buf_cnt;
 	} else {
 		if (info->length <= droq->buffer_size) {
@@ -433,7 +428,7 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 			droq->recv_buf_list[droq->read_idx].buffer = NULL;
 			droq->read_idx = lio_incr_index(
 						droq->read_idx, 1,
-						droq->max_count);
+						droq->nb_desc);
 			droq->refill_count++;
 
 			if (likely(nicbuf != NULL)) {
@@ -527,7 +522,7 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 				pkt_len += cpy_len;
 				droq->read_idx = lio_incr_index(
 							droq->read_idx,
-							1, droq->max_count);
+							1, droq->nb_desc);
 				droq->refill_count++;
 
 				/* Prefetch buffer pointers when on a
@@ -708,7 +703,7 @@ lio_init_instr_queue(struct lio_device *lio_dev,
 	iq->base_addr_dma = iq->iq_mz->iova;
 	iq->base_addr = (uint8_t *)iq->iq_mz->addr;
 
-	iq->max_count = num_descs;
+	iq->nb_desc = num_descs;
 
 	/* Initialize a list to holds requests that have been posted to Octeon
 	 * but has yet to be fetched by octeon
@@ -727,7 +722,7 @@ lio_init_instr_queue(struct lio_device *lio_dev,
 
 	lio_dev_dbg(lio_dev, "IQ[%d]: base: %p basedma: %lx count: %d\n",
 		    iq_no, iq->base_addr, (unsigned long)iq->base_addr_dma,
-		    iq->max_count);
+		    iq->nb_desc);
 
 	iq->lio_dev = lio_dev;
 	iq->txpciq.txpciq64 = txpciq.txpciq64;
@@ -824,14 +819,6 @@ lio_setup_iq(struct lio_device *lio_dev, int q_index,
 {
 	uint32_t iq_no = (uint32_t)txpciq.s.q_no;
 
-	if (lio_dev->instr_queue[iq_no]) {
-		lio_dev_dbg(lio_dev, "IQ is in use. Cannot create the IQ: %d again\n",
-			    iq_no);
-		lio_dev->instr_queue[iq_no]->txpciq.txpciq64 = txpciq.txpciq64;
-		lio_dev->instr_queue[iq_no]->app_ctx = app_ctx;
-		return 0;
-	}
-
 	lio_dev->instr_queue[iq_no] = rte_zmalloc_socket("ethdev TX queue",
 						sizeof(struct lio_instr_queue),
 						RTE_CACHE_LINE_SIZE, socket_id);
@@ -841,23 +828,15 @@ lio_setup_iq(struct lio_device *lio_dev, int q_index,
 	lio_dev->instr_queue[iq_no]->q_index = q_index;
 	lio_dev->instr_queue[iq_no]->app_ctx = app_ctx;
 
-	if (lio_init_instr_queue(lio_dev, txpciq, num_descs, socket_id))
-		goto release_lio_iq;
+	if (lio_init_instr_queue(lio_dev, txpciq, num_descs, socket_id)) {
+		rte_free(lio_dev->instr_queue[iq_no]);
+		lio_dev->instr_queue[iq_no] = NULL;
+		return -1;
+	}
 
 	lio_dev->num_iqs++;
-	if (lio_dev->fn_list.enable_io_queues(lio_dev))
-		goto delete_lio_iq;
 
 	return 0;
-
-delete_lio_iq:
-	lio_delete_instr_queue(lio_dev, iq_no);
-	lio_dev->num_iqs--;
-release_lio_iq:
-	rte_free(lio_dev->instr_queue[iq_no]);
-	lio_dev->instr_queue[iq_no] = NULL;
-
-	return -1;
 }
 
 int
@@ -928,14 +907,14 @@ post_command2(struct lio_instr_queue *iq, uint8_t *cmd)
 	 * position if queue gets full before Octeon could fetch any instr.
 	 */
 	if (rte_atomic64_read(&iq->instr_pending) >=
-			(int32_t)(iq->max_count - 1)) {
+			(int32_t)(iq->nb_desc - 1)) {
 		st.status = LIO_IQ_SEND_FAILED;
 		st.index = -1;
 		return st;
 	}
 
 	if (rte_atomic64_read(&iq->instr_pending) >=
-			(int32_t)(iq->max_count - 2))
+			(int32_t)(iq->nb_desc - 2))
 		st.status = LIO_IQ_SEND_STOP;
 
 	copy_cmd_into_iq(iq, cmd);
@@ -943,7 +922,7 @@ post_command2(struct lio_instr_queue *iq, uint8_t *cmd)
 	/* "index" is returned, host_write_index is modified. */
 	st.index = iq->host_write_index;
 	iq->host_write_index = lio_incr_index(iq->host_write_index, 1,
-					      iq->max_count);
+					      iq->nb_desc);
 	iq->fill_cnt++;
 
 	/* Flush the command into memory. We need to be sure the data is in
@@ -1045,7 +1024,7 @@ lio_process_iq_request_list(struct lio_device *lio_dev,
 
 skip_this:
 		inst_count++;
-		old = lio_incr_index(old, 1, iq->max_count);
+		old = lio_incr_index(old, 1, iq->nb_desc);
 	}
 
 	iq->flush_index = old;
@@ -1065,7 +1044,7 @@ lio_update_read_index(struct lio_instr_queue *iq)
 	/* Add last_done and modulo with the IQ size to get new index */
 	iq->lio_read_index = (iq->lio_read_index +
 			(uint32_t)(last_done & LIO_PKT_IN_DONE_CNT_MASK)) %
-			iq->max_count;
+			iq->nb_desc;
 }
 
 int
@@ -1523,7 +1502,7 @@ lio_delete_instruction_queue(struct lio_device *lio_dev, int iq_no)
 static inline uint32_t
 lio_iq_get_available(struct lio_device *lio_dev, uint32_t q_no)
 {
-	return ((lio_dev->instr_queue[q_no]->max_count - 1) -
+	return ((lio_dev->instr_queue[q_no]->nb_desc - 1) -
 		(uint32_t)rte_atomic64_read(
 				&lio_dev->instr_queue[q_no]->instr_pending));
 }
@@ -1533,7 +1512,7 @@ lio_iq_is_full(struct lio_device *lio_dev, uint32_t q_no)
 {
 	return ((uint32_t)rte_atomic64_read(
 				&lio_dev->instr_queue[q_no]->instr_pending) >=
-				(lio_dev->instr_queue[q_no]->max_count - 2));
+				(lio_dev->instr_queue[q_no]->nb_desc - 2));
 }
 
 static int

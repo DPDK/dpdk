@@ -51,11 +51,6 @@ lio_get_conf(struct lio_device *lio_dev)
 	return default_lio_conf;
 }
 
-/** Turns off the input and output queues for the device
- *  @param lio_dev which device io queues to disable
- */
-int cn23xx_vf_set_io_queues_off(struct lio_device *lio_dev);
-
 #define CN23XX_VF_BUSY_READING_REG_LOOP_COUNT	100000
 
 void cn23xx_vf_ask_pf_to_do_flr(struct lio_device *lio_dev);

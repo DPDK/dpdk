@@ -102,7 +102,7 @@ struct lio_droq {
 	rte_atomic64_t pkts_pending;
 
 	/** Number of  descriptors in this ring. */
-	uint32_t max_count;
+	uint32_t nb_desc;
 
 	/** The number of descriptors pending refill. */
 	uint32_t refill_count;
@@ -269,8 +269,8 @@ struct lio_instr_queue {
 
 	uint32_t status:8;
 
-	/** Maximum no. of instructions in this queue. */
-	uint32_t max_count;
+	/** Number of  descriptors in this ring. */
+	uint32_t nb_desc;
 
 	/** Index in input ring where the driver should write the next packet */
 	uint32_t host_write_index;

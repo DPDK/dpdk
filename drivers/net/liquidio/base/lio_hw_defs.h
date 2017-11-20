@@ -84,6 +84,7 @@ enum lio_card_type {
 
 #define LIO_FW_VERSION_LENGTH		32
 
+#define LIO_Q_RECONF_MIN_VERSION	"1.7.0"
 #define LIO_VF_TRUST_MIN_VERSION	"1.7.1"
 
 /** Tag types used by Octeon cores in its work. */
@@ -127,6 +128,7 @@ enum octeon_tag_type {
 #define LIO_CMD_ADD_VLAN_FILTER		0x17
 #define LIO_CMD_DEL_VLAN_FILTER		0x18
 #define LIO_CMD_VXLAN_PORT_CONFIG	0x19
+#define LIO_CMD_QUEUE_COUNT_CTL		0x1f
 
 #define LIO_CMD_VXLAN_PORT_ADD		0x0
 #define LIO_CMD_VXLAN_PORT_DEL		0x1

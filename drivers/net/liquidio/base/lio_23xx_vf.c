@@ -121,6 +121,8 @@ cn23xx_vf_setup_global_output_regs(struct lio_device *lio_dev)
 
 		reg_val &= 0xEFFFFFFFFFFFFFFFL;
 
+		lio_write_csr(lio_dev, CN23XX_SLI_OQ_PKTS_SENT(q_no), reg_val);
+
 		reg_val =
 		    lio_read_csr(lio_dev, CN23XX_SLI_OQ_PKT_CONTROL(q_no));
 
@@ -182,7 +184,7 @@ cn23xx_vf_setup_iq_regs(struct lio_device *lio_dev, uint32_t iq_no)
 	/* Write the start of the input queue's ring and its size */
 	lio_write_csr64(lio_dev, CN23XX_SLI_IQ_BASE_ADDR64(iq_no),
 			iq->base_addr_dma);
-	lio_write_csr(lio_dev, CN23XX_SLI_IQ_SIZE(iq_no), iq->max_count);
+	lio_write_csr(lio_dev, CN23XX_SLI_IQ_SIZE(iq_no), iq->nb_desc);
 
 	/* Remember the doorbell & instruction count register addr
 	 * for this queue
@@ -214,7 +216,7 @@ cn23xx_vf_setup_oq_regs(struct lio_device *lio_dev, uint32_t oq_no)
 
 	lio_write_csr64(lio_dev, CN23XX_SLI_OQ_BASE_ADDR64(oq_no),
 			droq->desc_ring_dma);
-	lio_write_csr(lio_dev, CN23XX_SLI_OQ_SIZE(oq_no), droq->max_count);
+	lio_write_csr(lio_dev, CN23XX_SLI_OQ_SIZE(oq_no), droq->nb_desc);
 
 	lio_write_csr(lio_dev, CN23XX_SLI_OQ_BUFF_INFO_SIZE(oq_no),
 		      (droq->buffer_size | (OCTEON_RH_SIZE << 16)));
@@ -509,51 +511,3 @@ cn23xx_vf_setup_device(struct lio_device *lio_dev)
 	return 0;
 }
 
-int
-cn23xx_vf_set_io_queues_off(struct lio_device *lio_dev)
-{
-	uint32_t loop = CN23XX_VF_BUSY_READING_REG_LOOP_COUNT;
-	uint64_t q_no;
-
-	/* Disable the i/p and o/p queues for this Octeon.
-	 * IOQs will already be in reset.
-	 * If RST bit is set, wait for Quiet bit to be set
-	 * Once Quiet bit is set, clear the RST bit
-	 */
-	PMD_INIT_FUNC_TRACE();
-
-	for (q_no = 0; q_no < lio_dev->sriov_info.rings_per_vf; q_no++) {
-		volatile uint64_t reg_val;
-
-		reg_val = lio_read_csr64(lio_dev,
-					 CN23XX_SLI_IQ_PKT_CONTROL64(q_no));
-		while ((reg_val & CN23XX_PKT_INPUT_CTL_RST) && !(reg_val &
-					 CN23XX_PKT_INPUT_CTL_QUIET) && loop) {
-			reg_val = lio_read_csr64(
-					lio_dev,
-					CN23XX_SLI_IQ_PKT_CONTROL64(q_no));
-			loop = loop - 1;
-		}
-
-		if (loop == 0) {
-			lio_dev_err(lio_dev,
-				    "clearing the reset reg failed or setting the quiet reg failed for qno %lu\n",
-				    (unsigned long)q_no);
-			return -1;
-		}
-
-		reg_val = reg_val & ~CN23XX_PKT_INPUT_CTL_RST;
-		lio_write_csr64(lio_dev, CN23XX_SLI_IQ_PKT_CONTROL64(q_no),
-				reg_val);
-
-		reg_val = lio_read_csr64(lio_dev,
-					 CN23XX_SLI_IQ_PKT_CONTROL64(q_no));
-		if (reg_val & CN23XX_PKT_INPUT_CTL_RST) {
-			lio_dev_err(lio_dev, "unable to reset qno %lu\n",
-				    (unsigned long)q_no);
-			return -1;
-		}
-	}
-
-	return 0;
-}
