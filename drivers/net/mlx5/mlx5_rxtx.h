@@ -616,4 +616,38 @@ mlx5_tx_dbrec(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe)
 	mlx5_tx_dbrec_cond_wmb(txq, wqe, 1);
 }
 
+/**
+ * Convert the Checksum offloads to Verbs.
+ *
+ * @param txq_data
+ *   Pointer to the Tx queue.
+ * @param buf
+ *   Pointer to the mbuf.
+ *
+ * @return
+ *   the converted cs_flags.
+ */
+static __rte_always_inline uint8_t
+txq_ol_cksum_to_cs(struct mlx5_txq_data *txq_data, struct rte_mbuf *buf)
+{
+	uint8_t cs_flags = 0;
+
+	/* Should we enable HW CKSUM offload */
+	if (buf->ol_flags &
+	    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
+		if (txq_data->tunnel_en &&
+		    (buf->ol_flags &
+		     (PKT_TX_TUNNEL_GRE | PKT_TX_TUNNEL_VXLAN))) {
+			cs_flags = MLX5_ETH_WQE_L3_INNER_CSUM |
+				   MLX5_ETH_WQE_L4_INNER_CSUM;
+			if (buf->ol_flags & PKT_TX_OUTER_IP_CKSUM)
+				cs_flags |= MLX5_ETH_WQE_L3_CSUM;
+		} else {
+			cs_flags = MLX5_ETH_WQE_L3_CSUM |
+				   MLX5_ETH_WQE_L4_CSUM;
+		}
+	}
+	return cs_flags;
+}
+
 #endif /* RTE_PMD_MLX5_RXTX_H_ */

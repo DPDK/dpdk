@@ -123,24 +123,7 @@ txq_calc_offload(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 	for (pos = 1; pos < pkts_n; ++pos)
 		if ((pkts[pos]->ol_flags ^ pkts[0]->ol_flags) & ol_mask)
 			break;
-	/* Should open another MPW session for the rest. */
-	if (pkts[0]->ol_flags &
-	    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
-		const uint64_t is_tunneled =
-			pkts[0]->ol_flags &
-			(PKT_TX_TUNNEL_GRE |
-			 PKT_TX_TUNNEL_VXLAN);
-
-		if (is_tunneled && txq->tunnel_en) {
-			*cs_flags = MLX5_ETH_WQE_L3_INNER_CSUM |
-				    MLX5_ETH_WQE_L4_INNER_CSUM;
-			if (pkts[0]->ol_flags & PKT_TX_OUTER_IP_CKSUM)
-				*cs_flags |= MLX5_ETH_WQE_L3_CSUM;
-		} else {
-			*cs_flags = MLX5_ETH_WQE_L3_CSUM |
-				    MLX5_ETH_WQE_L4_CSUM;
-		}
-	}
+	*cs_flags = txq_ol_cksum_to_cs(txq, pkts[0]);
 	return pos;
 }
 

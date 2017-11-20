@@ -148,7 +148,7 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 				      8,  9, 10, 11, /* bswap32 */
 				      4,  5,  6,  7, /* bswap32 */
 				      0,  1,  2,  3  /* bswap32 */);
-		uint8_t cs_flags = 0;
+		uint8_t cs_flags;
 		uint16_t max_elts;
 		uint16_t max_wqe;
 		__m128i *t_wqe, *dseg;
@@ -170,22 +170,7 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		}
 		wqe = &((volatile struct mlx5_wqe64 *)
 			 txq->wqes)[wqe_ci & wq_mask].hdr;
-		if (buf->ol_flags &
-		     (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
-			const uint64_t is_tunneled =
-				buf->ol_flags & (PKT_TX_TUNNEL_GRE |
-						 PKT_TX_TUNNEL_VXLAN);
-
-			if (is_tunneled && txq->tunnel_en) {
-				cs_flags = MLX5_ETH_WQE_L3_INNER_CSUM |
-					   MLX5_ETH_WQE_L4_INNER_CSUM;
-				if (buf->ol_flags & PKT_TX_OUTER_IP_CKSUM)
-					cs_flags |= MLX5_ETH_WQE_L3_CSUM;
-			} else {
-				cs_flags = MLX5_ETH_WQE_L3_CSUM |
-					   MLX5_ETH_WQE_L4_CSUM;
-			}
-		}
+		cs_flags = txq_ol_cksum_to_cs(txq, buf);
 		/* Title WQEBB pointer. */
 		t_wqe = (__m128i *)wqe;
 		dseg = (__m128i *)(wqe + 1);

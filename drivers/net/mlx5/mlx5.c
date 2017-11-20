@@ -800,7 +800,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->hw_csum_l2tun = !!(exp_device_attr.exp_device_cap_flags &
 					 IBV_DEVICE_VXLAN_SUPPORT);
 #endif
-		DEBUG("L2 tunnel checksum offloads are %ssupported",
+		DEBUG("Rx L2 tunnel checksum offloads are %ssupported",
 		      (priv->hw_csum_l2tun ? "" : "not "));
 
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
