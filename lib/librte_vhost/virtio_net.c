@@ -159,6 +159,11 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 		net_hdr->gso_size = m_buf->tso_segsz;
 		net_hdr->hdr_len = m_buf->l2_len + m_buf->l3_len
 					+ m_buf->l4_len;
+	} else if (m_buf->ol_flags & PKT_TX_UDP_SEG) {
+		net_hdr->gso_type = VIRTIO_NET_HDR_GSO_UDP;
+		net_hdr->gso_size = m_buf->tso_segsz;
+		net_hdr->hdr_len = m_buf->l2_len + m_buf->l3_len +
+			m_buf->l4_len;
 	} else {
 		ASSIGN_UNLESS_EQUAL(net_hdr->gso_type, 0);
 		ASSIGN_UNLESS_EQUAL(net_hdr->gso_size, 0);
@@ -791,6 +796,11 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 			m->ol_flags |= PKT_TX_TCP_SEG;
 			m->tso_segsz = hdr->gso_size;
 			m->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
+			break;
+		case VIRTIO_NET_HDR_GSO_UDP:
+			m->ol_flags |= PKT_TX_UDP_SEG;
+			m->tso_segsz = hdr->gso_size;
+			m->l4_len = sizeof(struct udp_hdr);
 			break;
 		default:
 			RTE_LOG(WARNING, VHOST_DATA,

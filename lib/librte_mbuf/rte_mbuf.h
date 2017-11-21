@@ -209,6 +209,13 @@ extern "C" {
 /* add new TX flags here */
 
 /**
+ * UDP Fragmentation Offload flag. This flag is used for enabling UDP
+ * fragmentation in SW or in HW. When use UFO, mbuf->tso_segsz is used
+ * to store the MSS of UDP fragments.
+ */
+#define PKT_TX_UDP_SEG	(1ULL << 42)
+
+/**
  * Request security offload processing on the TX packet.
  */
 #define PKT_TX_SEC_OFFLOAD 		(1ULL << 43)
