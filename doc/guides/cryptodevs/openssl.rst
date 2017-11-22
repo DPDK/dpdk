@@ -44,6 +44,7 @@ Features
 OpenSSL PMD has support for:
 
 Supported cipher algorithms:
+
 * ``RTE_CRYPTO_CIPHER_3DES_CBC``
 * ``RTE_CRYPTO_CIPHER_AES_CBC``
 * ``RTE_CRYPTO_CIPHER_AES_CTR``
@@ -51,6 +52,7 @@ Supported cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_DES_DOCSISBPI``
 
 Supported authentication algorithms:
+
 * ``RTE_CRYPTO_AUTH_AES_GMAC``
 * ``RTE_CRYPTO_AUTH_MD5``
 * ``RTE_CRYPTO_AUTH_SHA1``
@@ -66,6 +68,7 @@ Supported authentication algorithms:
 * ``RTE_CRYPTO_AUTH_SHA512_HMAC``
 
 Supported AEAD algorithms:
+
 * ``RTE_CRYPTO_AEAD_AES_GCM``
 * ``RTE_CRYPTO_AEAD_AES_CCM``
 

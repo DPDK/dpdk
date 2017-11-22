@@ -78,6 +78,7 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_ZUC_EIA3``
 
 Supported AEAD algorithms:
+
 * ``RTE_CRYPTO_AEAD_AES_GCM``
 
 
