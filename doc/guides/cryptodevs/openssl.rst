@@ -80,17 +80,23 @@ To compile openssl PMD, it has to be enabled in the config/common_base file
 and appropriate openssl packages have to be installed in the build environment.
 
 The newest openssl library version is supported:
+
 * 1.0.2h-fips  3 May 2016.
+
 Older versions that were also verified:
+
 * 1.0.1f 6 Jan 2014
 * 1.0.1 14 Mar 2012
 
 For Ubuntu 14.04 LTS these packages have to be installed in the build system:
-sudo apt-get install openssl
-sudo apt-get install libc6-dev-i386 (for i686-native-linuxapp-gcc target)
+
+.. code-block:: console
+
+    sudo apt-get install openssl
+    sudo apt-get install libc6-dev-i386 # for i686-native-linuxapp-gcc target
 
 This code was also verified on Fedora 24.
-This code was NOT yet verified on FreeBSD.
+This code has NOT been verified on FreeBSD yet.
 
 Initialization
 --------------
