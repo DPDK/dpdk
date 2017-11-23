@@ -370,7 +370,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		unsigned int ds = 0;
 		unsigned int sg = 0; /* counter of additional segs attached. */
 		uintptr_t addr;
-		uint64_t naddr;
 		uint16_t pkt_inline_sz = MLX5_WQE_DWORD_SIZE + 2;
 		uint16_t tso_header_sz = 0;
 		uint16_t ehdr;
@@ -610,12 +609,12 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			ds = 3;
 use_dseg:
 			/* Add the remaining packet as a simple ds. */
-			naddr = rte_cpu_to_be_64(addr);
+			addr = rte_cpu_to_be_64(addr);
 			*dseg = (rte_v128u32_t){
 				rte_cpu_to_be_32(length),
 				mlx5_tx_mb2mr(txq, buf),
-				naddr,
-				naddr >> 32,
+				addr,
+				addr >> 32,
 			};
 			++ds;
 			if (!segs_n)
@@ -649,12 +648,12 @@ next_seg:
 		total_length += length;
 #endif
 		/* Store segment information. */
-		naddr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf, uintptr_t));
+		addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf, uintptr_t));
 		*dseg = (rte_v128u32_t){
 			rte_cpu_to_be_32(length),
 			mlx5_tx_mb2mr(txq, buf),
-			naddr,
-			naddr >> 32,
+			addr,
+			addr >> 32,
 		};
 		(*txq->elts)[++elts_head & elts_m] = buf;
 		++sg;
@@ -1361,7 +1360,6 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	do {
 		struct rte_mbuf *buf = *(pkts++);
 		uintptr_t addr;
-		uint64_t naddr;
 		unsigned int n;
 		unsigned int do_inline = 0; /* Whether inline is possible. */
 		uint32_t length;
@@ -1546,12 +1544,12 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			for (n = 0; n * RTE_CACHE_LINE_SIZE < length; n++)
 				rte_prefetch2((void *)(addr +
 						n * RTE_CACHE_LINE_SIZE));
-			naddr = rte_cpu_to_be_64(addr);
+			addr = rte_cpu_to_be_64(addr);
 			*dseg = (rte_v128u32_t) {
 				rte_cpu_to_be_32(length),
 				mlx5_tx_mb2mr(txq, buf),
-				naddr,
-				naddr >> 32,
+				addr,
+				addr >> 32,
 			};
 			mpw.data.raw = (volatile void *)(dseg + 1);
 			mpw.total_len += (inl_pad + sizeof(*dseg));
