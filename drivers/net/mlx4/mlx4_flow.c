@@ -105,6 +105,9 @@ struct mlx4_drop {
 /**
  * Convert DPDK RSS hash fields to their Verbs equivalent.
  *
+ * This function returns the supported (default) set when @p rss_hf has
+ * special value (uint64_t)-1.
+ *
  * @param rss_hf
  *   Hash fields in DPDK format (see struct rte_eth_rss_conf).
  *
@@ -154,6 +157,8 @@ mlx4_conv_rss_hf(uint64_t rss_hf)
 			seen |= rss_hf & in[i];
 			conv |= out[i];
 		}
+	if (rss_hf == (uint64_t)-1)
+		return conv;
 	if (!(rss_hf & ~seen))
 		return conv;
 	rte_errno = ENOTSUP;
@@ -759,10 +764,7 @@ fill:
 				&(struct rte_eth_rss_conf){
 					.rss_key = mlx4_rss_hash_key_default,
 					.rss_key_len = MLX4_RSS_HASH_KEY_SIZE,
-					.rss_hf = (ETH_RSS_IPV4 |
-						   ETH_RSS_NONFRAG_IPV4_TCP |
-						   ETH_RSS_IPV6 |
-						   ETH_RSS_NONFRAG_IPV6_TCP),
+					.rss_hf = -1,
 				};
 			/* Sanity checks. */
 			for (i = 0; i < rss->num; ++i)
