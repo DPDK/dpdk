@@ -344,15 +344,10 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int j = 0;
 	unsigned int k = 0;
 	uint16_t max_elts;
-	unsigned int max_inline = txq->max_inline;
-	const unsigned int inline_en = !!max_inline && txq->inline_en;
 	uint16_t max_wqe;
 	unsigned int comp;
-	volatile struct mlx5_wqe_v *wqe = NULL;
 	volatile struct mlx5_wqe_ctrl *last_wqe = NULL;
 	unsigned int segs_n = 0;
-	struct rte_mbuf *buf = NULL;
-	uint8_t *raw;
 
 	if (unlikely(!pkts_n))
 		return 0;
@@ -365,6 +360,11 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	if (unlikely(!max_wqe))
 		return 0;
 	do {
+		unsigned int max_inline = txq->max_inline;
+		const unsigned int inline_en = !!max_inline && txq->inline_en;
+		struct rte_mbuf *buf = NULL;
+		uint8_t *raw;
+		volatile struct mlx5_wqe_v *wqe = NULL;
 		volatile rte_v128u32_t *dseg = NULL;
 		uint32_t length;
 		unsigned int ds = 0;
