@@ -94,7 +94,7 @@ enum rte_security_ipsec_tunnel_type {
 struct rte_security_ctx {
 	void *device;
 	/**< Crypto/ethernet device attached */
-	struct rte_security_ops *ops;
+	const struct rte_security_ops *ops;
 	/**< Pointer to security ops for the device */
 	uint16_t sess_cnt;
 	/**< Number of sessions attached to this context */
