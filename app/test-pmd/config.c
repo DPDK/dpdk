@@ -3497,7 +3497,7 @@ port_dcb_info_display(portid_t port_id)
 }
 
 uint8_t *
-open_ddp_package_file(const char *file_path, uint32_t *size)
+open_file(const char *file_path, uint32_t *size)
 {
 	int fd = open(file_path, O_RDONLY);
 	off_t pkg_size;
@@ -3537,7 +3537,7 @@ open_ddp_package_file(const char *file_path, uint32_t *size)
 	if (ret < 0) {
 		close(fd);
 		printf("%s: File read operation failed\n", __func__);
-		close_ddp_package_file(buf);
+		close_file(buf);
 		return NULL;
 	}
 
@@ -3550,7 +3550,7 @@ open_ddp_package_file(const char *file_path, uint32_t *size)
 }
 
 int
-save_ddp_package_file(const char *file_path, uint8_t *buf, uint32_t size)
+save_file(const char *file_path, uint8_t *buf, uint32_t size)
 {
 	FILE *fh = fopen(file_path, "wb");
 
@@ -3571,7 +3571,7 @@ save_ddp_package_file(const char *file_path, uint8_t *buf, uint32_t size)
 }
 
 int
-close_ddp_package_file(uint8_t *buf)
+close_file(uint8_t *buf)
 {
 	if (buf) {
 		free((void *)buf);

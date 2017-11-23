@@ -999,6 +999,11 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a Tunnel flow director filter.\n\n"
 
+			"flow_director_filter (port_id) mode raw (add|del|update)"
+			" flow (flow_id) (drop|fwd) queue (queue_id)"
+			" fd_id (fd_id_value) packet (packet file name)\n"
+			"    Add/Del a raw type flow director filter.\n\n"
+
 			"flush_flow_director (port_id)\n"
 			"    Flush all flow director entries of a device.\n\n"
 
@@ -9878,6 +9883,8 @@ struct cmd_flow_director_result {
 	cmdline_fixed_string_t tunnel_type;
 	cmdline_fixed_string_t tunnel_id;
 	uint32_t tunnel_id_value;
+	cmdline_fixed_string_t packet;
+	char filepath[];
 };
 
 static inline int
@@ -10027,8 +10034,62 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 			return;
 		}
 	} else {
-		if (strcmp(res->mode_value, "IP")) {
-			printf("Please set mode to IP.\n");
+		if (!strcmp(res->mode_value, "raw")) {
+#ifdef RTE_LIBRTE_I40E_PMD
+			struct rte_pmd_i40e_flow_type_mapping
+					mapping[RTE_PMD_I40E_FLOW_TYPE_MAX];
+			struct rte_pmd_i40e_pkt_template_conf conf;
+			uint16_t flow_type = str2flowtype(res->flow_type);
+			uint16_t i, port = res->port_id;
+			uint8_t add;
+
+			memset(&conf, 0, sizeof(conf));
+
+			if (flow_type == RTE_ETH_FLOW_UNKNOWN) {
+				printf("Invalid flow type specified.\n");
+				return;
+			}
+			ret = rte_pmd_i40e_flow_type_mapping_get(res->port_id,
+								 mapping);
+			if (ret)
+				return;
+			if (mapping[flow_type].pctype == 0ULL) {
+				printf("Invalid flow type specified.\n");
+				return;
+			}
+			for (i = 0; i < RTE_PMD_I40E_PCTYPE_MAX; i++) {
+				if (mapping[flow_type].pctype & (1ULL << i)) {
+					conf.input.pctype = i;
+					break;
+				}
+			}
+
+			conf.input.packet = open_file(res->filepath,
+						&conf.input.length);
+			if (!conf.input.packet)
+				return;
+			if (!strcmp(res->drop, "drop"))
+				conf.action.behavior =
+					RTE_PMD_I40E_PKT_TEMPLATE_REJECT;
+			else
+				conf.action.behavior =
+					RTE_PMD_I40E_PKT_TEMPLATE_ACCEPT;
+			conf.action.report_status =
+					RTE_PMD_I40E_PKT_TEMPLATE_REPORT_ID;
+			conf.action.rx_queue = res->queue_id;
+			conf.soft_id = res->fd_id_value;
+			add  = strcmp(res->ops, "del") ? 1 : 0;
+			ret = rte_pmd_i40e_flow_add_del_packet_template(port,
+									&conf,
+									add);
+			if (ret < 0)
+				printf("flow director config error: (%s)\n",
+				       strerror(-ret));
+			close_file(conf.input.packet);
+#endif
+			return;
+		} else if (strcmp(res->mode_value, "IP")) {
+			printf("Please set mode to IP or raw.\n");
 			return;
 		}
 		entry.input.flow_type = str2flowtype(res->flow_type);
@@ -10200,8 +10261,7 @@ cmdline_parse_token_string_t cmd_flow_director_flow =
 				 flow, "flow");
 cmdline_parse_token_string_t cmd_flow_director_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
-		flow_type, "ipv4-other#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
-		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#l2_payload");
+		flow_type, NULL);
 cmdline_parse_token_string_t cmd_flow_director_ether =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 ether, "ether");
@@ -10293,6 +10353,9 @@ cmdline_parse_token_string_t cmd_flow_director_mode_mac_vlan =
 cmdline_parse_token_string_t cmd_flow_director_mode_tunnel =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 mode_value, "Tunnel");
+cmdline_parse_token_string_t cmd_flow_director_mode_raw =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 mode_value, "raw");
 cmdline_parse_token_string_t cmd_flow_director_mac =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 mac, "mac");
@@ -10311,6 +10374,12 @@ cmdline_parse_token_string_t cmd_flow_director_tunnel_id =
 cmdline_parse_token_num_t cmd_flow_director_tunnel_id_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
 			      tunnel_id_value, UINT32);
+cmdline_parse_token_string_t cmd_flow_director_packet =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 packet, "packet");
+cmdline_parse_token_string_t cmd_flow_director_filepath =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 filepath, NULL);
 
 cmdline_parse_inst_t cmd_add_del_ip_flow_director = {
 	.f = cmd_flow_director_filter_parsed,
@@ -10510,6 +10579,30 @@ cmdline_parse_inst_t cmd_add_del_tunnel_flow_director = {
 		(void *)&cmd_flow_director_queue_id,
 		(void *)&cmd_flow_director_fd_id,
 		(void *)&cmd_flow_director_fd_id_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_add_del_raw_flow_director = {
+	.f = cmd_flow_director_filter_parsed,
+	.data = NULL,
+	.help_str = "flow_director_filter ... : Add or delete a raw flow "
+		"director entry on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_filter,
+		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_mode,
+		(void *)&cmd_flow_director_mode_raw,
+		(void *)&cmd_flow_director_ops,
+		(void *)&cmd_flow_director_flow,
+		(void *)&cmd_flow_director_flow_type,
+		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_queue,
+		(void *)&cmd_flow_director_queue_id,
+		(void *)&cmd_flow_director_fd_id,
+		(void *)&cmd_flow_director_fd_id_value,
+		(void *)&cmd_flow_director_packet,
+		(void *)&cmd_flow_director_filepath,
 		NULL,
 	},
 };
@@ -14348,7 +14441,7 @@ cmd_ddp_add_parsed(
 	}
 	file_num = rte_strsplit(filepath, strlen(filepath), file_fld, 2, ',');
 
-	buff = open_ddp_package_file(file_fld[0], &size);
+	buff = open_file(file_fld[0], &size);
 	if (!buff) {
 		free((void *)filepath);
 		return;
@@ -14366,9 +14459,9 @@ cmd_ddp_add_parsed(
 	else if (ret < 0)
 		printf("Failed to load profile.\n");
 	else if (file_num == 2)
-		save_ddp_package_file(file_fld[1], buff, size);
+		save_file(file_fld[1], buff, size);
 
-	close_ddp_package_file(buff);
+	close_file(buff);
 	free((void *)filepath);
 }
 
@@ -14423,7 +14516,7 @@ cmd_ddp_del_parsed(
 		return;
 	}
 
-	buff = open_ddp_package_file(res->filepath, &size);
+	buff = open_file(res->filepath, &size);
 	if (!buff)
 		return;
 
@@ -14439,7 +14532,7 @@ cmd_ddp_del_parsed(
 	else if (ret < 0)
 		printf("Failed to delete profile.\n");
 
-	close_ddp_package_file(buff);
+	close_file(buff);
 }
 
 cmdline_parse_inst_t cmd_ddp_del = {
@@ -14499,7 +14592,7 @@ cmd_ddp_info_parsed(
 
 #endif
 
-	pkg = open_ddp_package_file(res->filepath, &pkg_size);
+	pkg = open_file(res->filepath, &pkg_size);
 	if (!pkg)
 		return;
 
@@ -14676,7 +14769,7 @@ no_print_return:
 #endif
 	if (ret == -ENOTSUP)
 		printf("Function not supported in PMD driver\n");
-	close_ddp_package_file(pkg);
+	close_file(pkg);
 }
 
 cmdline_parse_inst_t cmd_ddp_get_info = {
@@ -15800,6 +15893,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_del_l2_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_mac_vlan_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_tunnel_flow_director,
+	(cmdline_parse_inst_t *)&cmd_add_del_raw_flow_director,
 	(cmdline_parse_inst_t *)&cmd_flush_flow_director,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_ip_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_mac_vlan_mask,
