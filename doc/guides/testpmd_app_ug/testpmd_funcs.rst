@@ -2694,11 +2694,21 @@ Perfect-tunnel filters, the match mode is set by the ``--pkt-filter-mode`` comma
   The hardware checks a match between the masked fields of the received packets and the programmed filters.
   The masked fields are for tunnel flow.
 
+* Perfect-raw-flow-type match filters.
+  The hardware checks a match between the masked fields of the received packets and pre-loaded raw (template) packet.
+  The masked fields are specified by input sets.
+
 The Flow Director filters can match the different fields for different type of packet: flow type, specific input set
 per flow type and the flexible payload.
 
 The Flow Director can also mask out parts of all of these fields so that filters
 are only applied to certain fields or parts of the fields.
+
+Note that for raw flow type mode the source and destination fields in the
+raw packet buffer need to be presented in a reversed order with respect
+to the expected received packets.
+For example: IP source and destination addresses or TCP/UDP/SCTP
+source and destination ports
 
 Different NICs may have different capabilities, command show port fdir (port_id) can be used to acquire the information.
 
@@ -2745,6 +2755,10 @@ Different NICs may have different capabilities, command show port fdir (port_id)
                         tunnel (NVGRE|VxLAN) tunnel-id (tunnel_id_value) \
                         flexbytes (flexbytes_value) (drop|fwd) \
                         queue (queue_id) fd_id (fd_id_value)
+
+   flow_director_filter (port_id) mode raw (add|del|update) flow (flow_id) \
+                        (drop|fwd) queue (queue_id) fd_id (fd_id_value) \
+                        packet (packet file name)
 
 For example, to add an ipv4-udp flow type filter::
 
@@ -2860,7 +2874,7 @@ Set the global configurations of hash filters::
 
    set_hash_global_config (port_id) (toeplitz|simple_xor|default) \
    (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag| \
-   ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload) \
+   ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload|<flow_id>) \
    (enable|disable)
 
 For example, to enable simple_xor for flow type of ipv6 on port 2::
@@ -2874,8 +2888,8 @@ Set the input set for hash::
 
    set_hash_input_set (port_id) (ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
    ipv4-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other| \
-   l2_payload) (ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos| \
-   ipv4-proto|ipv6-tc|ipv6-next-header|udp-src-port|udp-dst-port| \
+   l2_payload|<flow_id>) (ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6| \
+   ipv4-tos|ipv4-proto|ipv6-tc|ipv6-next-header|udp-src-port|udp-dst-port| \
    tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag| \
    udp-key|gre-key|fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th| \
    fld-8th|none) (select|add)
@@ -2894,8 +2908,8 @@ Set the input set for flow director::
 
    set_fdir_input_set (port_id) (ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
    ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other| \
-   l2_payload) (ivlan|ethertype|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos| \
-   ipv4-proto|ipv4-ttl|ipv6-tc|ipv6-next-header|ipv6-hop-limits| \
+   l2_payload|<flow_id>) (ivlan|ethertype|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6| \
+   ipv4-tos|ipv4-proto|ipv4-ttl|ipv6-tc|ipv6-next-header|ipv6-hop-limits| \
    tudp-src-port|udp-dst-port|cp-src-port|tcp-dst-port|sctp-src-port| \
    sctp-dst-port|sctp-veri-tag|none) (select|add)
 
