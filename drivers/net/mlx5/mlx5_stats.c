@@ -319,7 +319,7 @@ priv_xstats_reset(struct priv *priv)
 int
 mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	struct priv *priv = mlx5_get_priv(dev);
+	struct priv *priv = dev->data->dev_private;
 	struct rte_eth_stats tmp = {0};
 	unsigned int i;
 	unsigned int idx;
@@ -425,7 +425,7 @@ int
 mlx5_xstats_get(struct rte_eth_dev *dev,
 		struct rte_eth_xstat *stats, unsigned int n)
 {
-	struct priv *priv = mlx5_get_priv(dev);
+	struct priv *priv = dev->data->dev_private;
 	int ret = xstats_n;
 
 	if (n >= xstats_n && stats) {
@@ -455,7 +455,7 @@ mlx5_xstats_get(struct rte_eth_dev *dev,
 void
 mlx5_xstats_reset(struct rte_eth_dev *dev)
 {
-	struct priv *priv = mlx5_get_priv(dev);
+	struct priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	int stats_n;
 
@@ -487,7 +487,7 @@ int
 mlx5_xstats_get_names(struct rte_eth_dev *dev,
 		struct rte_eth_xstat_name *xstats_names, unsigned int n)
 {
-	struct priv *priv = mlx5_get_priv(dev);
+	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
 
 	if (n >= xstats_n && xstats_names) {

@@ -119,21 +119,6 @@ struct ethtool_link_settings {
 #endif
 
 /**
- * Return private structure associated with an Ethernet device.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- *
- * @return
- *   Pointer to private structure.
- */
-struct priv *
-mlx5_get_priv(struct rte_eth_dev *dev)
-{
-	return dev->data->dev_private;
-}
-
-/**
  * Check if running as a secondary process.
  *
  * @return
@@ -670,7 +655,7 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 void
 mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
-	struct priv *priv = mlx5_get_priv(dev);
+	struct priv *priv = dev->data->dev_private;
 	unsigned int max;
 	char ifname[IF_NAMESIZE];
 
@@ -761,7 +746,7 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 static int
 mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev, int wait_to_complete)
 {
-	struct priv *priv = mlx5_get_priv(dev);
+	struct priv *priv = dev->data->dev_private;
 	struct ethtool_cmd edata = {
 		.cmd = ETHTOOL_GSET /* Deprecated since Linux v4.5. */
 	};
@@ -827,7 +812,7 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev, int wait_to_complete)
 static int
 mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 {
-	struct priv *priv = mlx5_get_priv(dev);
+	struct priv *priv = dev->data->dev_private;
 	struct ethtool_link_settings gcmd = { .cmd = ETHTOOL_GLINKSETTINGS };
 	struct ifreq ifr;
 	struct rte_eth_link dev_link;

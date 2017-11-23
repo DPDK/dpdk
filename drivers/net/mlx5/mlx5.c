@@ -193,7 +193,7 @@ mlx5_free_verbs_buf(void *ptr, void *data __rte_unused)
 static void
 mlx5_dev_close(struct rte_eth_dev *dev)
 {
-	struct priv *priv = mlx5_get_priv(dev);
+	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
 	int ret;
 
