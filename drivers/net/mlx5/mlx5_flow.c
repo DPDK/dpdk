@@ -250,11 +250,8 @@ struct rte_flow {
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
 	struct ibv_counter_set *cs; /**< Holds the counters for the rule. */
 	struct mlx5_flow_counter_stats counter_stats;/**<The counter stats. */
-	union {
-		struct mlx5_flow frxq[RTE_DIM(hash_rxq_init)];
-		/**< Flow with Rx queue. */
-		struct mlx5_flow_drop drxq; /**< Flow with drop Rx queue. */
-	};
+	struct mlx5_flow frxq[RTE_DIM(hash_rxq_init)];
+	/**< Flow with Rx queue. */
 };
 
 /** Static initializer for items. */
@@ -444,20 +441,12 @@ struct mlx5_flow_parse {
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
 	enum hash_rxq_type layer; /**< Last pattern layer detected. */
 	struct ibv_counter_set *cs; /**< Holds the counter set for the rule */
-	union {
-		struct {
-			struct ibv_flow_attr *ibv_attr;
-			/**< Pointer to Verbs attributes. */
-			unsigned int offset;
-			/**< Current position or total size of the attribute. */
-		} queue[RTE_DIM(hash_rxq_init)];
-		struct {
-			struct ibv_flow_attr *ibv_attr;
-			/**< Pointer to Verbs attributes. */
-			unsigned int offset;
-			/**< Current position or total size of the attribute. */
-		} drop_q;
-	};
+	struct {
+		struct ibv_flow_attr *ibv_attr;
+		/**< Pointer to Verbs attributes. */
+		unsigned int offset;
+		/**< Current position or total size of the attribute. */
+	} queue[RTE_DIM(hash_rxq_init)];
 };
 
 static const struct rte_flow_ops mlx5_flow_ops = {
@@ -827,12 +816,8 @@ priv_flow_convert_items_validate(struct priv *priv,
 
 	(void)priv;
 	/* Initialise the offsets to start after verbs attribute. */
-	if (parser->drop) {
-		parser->drop_q.offset = sizeof(struct ibv_flow_attr);
-	} else {
-		for (i = 0; i != hash_rxq_init_n; ++i)
-			parser->queue[i].offset = sizeof(struct ibv_flow_attr);
-	}
+	for (i = 0; i != hash_rxq_init_n; ++i)
+		parser->queue[i].offset = sizeof(struct ibv_flow_attr);
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
 		const struct mlx5_flow_items *token = NULL;
 		unsigned int n;
@@ -868,9 +853,7 @@ priv_flow_convert_items_validate(struct priv *priv,
 			}
 			parser->inner = IBV_FLOW_SPEC_INNER;
 		}
-		if (parser->drop) {
-			parser->drop_q.offset += cur_item->dst_sz;
-		} else if (parser->queues_n == 1) {
+		if (parser->drop || parser->queues_n == 1) {
 			parser->queue[HASH_RXQ_ETH].offset += cur_item->dst_sz;
 		} else {
 			for (n = 0; n != hash_rxq_init_n; ++n)
@@ -885,12 +868,8 @@ priv_flow_convert_items_validate(struct priv *priv,
 	if (parser->count) {
 		unsigned int size = sizeof(struct ibv_flow_spec_counter_action);
 
-		if (parser->drop) {
-			parser->drop_q.offset += size;
-		} else {
-			for (i = 0; i != hash_rxq_init_n; ++i)
-				parser->queue[i].offset += size;
-		}
+		for (i = 0; i != hash_rxq_init_n; ++i)
+			parser->queue[i].offset += size;
 	}
 	return 0;
 exit_item_not_supported:
@@ -1102,15 +1081,7 @@ priv_flow_convert(struct priv *priv,
 	 * Second step.
 	 * Allocate the memory space to store verbs specifications.
 	 */
-	if (parser->drop) {
-		parser->drop_q.ibv_attr =
-			priv_flow_convert_allocate(priv, attr->priority,
-						   parser->drop_q.offset,
-						   error);
-		if (!parser->drop_q.ibv_attr)
-			return ENOMEM;
-		parser->drop_q.offset = sizeof(struct ibv_flow_attr);
-	} else if (parser->queues_n == 1) {
+	if (parser->drop || parser->queues_n == 1) {
 		unsigned int priority =
 			attr->priority +
 			hash_rxq_init[HASH_RXQ_ETH].flow_priority;
@@ -1172,15 +1143,7 @@ priv_flow_convert(struct priv *priv,
 	 * Last step. Complete missing specification to reach the RSS
 	 * configuration.
 	 */
-	if (parser->drop) {
-		/*
-		 * Drop queue priority needs to be adjusted to
-		 * their most specific layer priority.
-		 */
-		parser->drop_q.ibv_attr->priority =
-			attr->priority +
-			hash_rxq_init[parser->layer].flow_priority;
-	} else if (parser->queues_n > 1) {
+	if (parser->queues_n > 1) {
 		priv_flow_convert_finalise(priv, parser);
 	} else {
 		/*
@@ -1195,10 +1158,6 @@ priv_flow_convert(struct priv *priv,
 exit_free:
 	/* Only verification is expected, all resources should be released. */
 	if (!parser->create) {
-		if (parser->drop) {
-			rte_free(parser->drop_q.ibv_attr);
-			parser->drop_q.ibv_attr = NULL;
-		}
 		for (i = 0; i != hash_rxq_init_n; ++i) {
 			if (parser->queue[i].ibv_attr) {
 				rte_free(parser->queue[i].ibv_attr);
@@ -1240,14 +1199,6 @@ mlx5_flow_create_copy(struct mlx5_flow_parse *parser, void *src,
 	unsigned int i;
 	void *dst;
 
-	if (parser->drop) {
-		dst = (void *)((uintptr_t)parser->drop_q.ibv_attr +
-				parser->drop_q.offset);
-		memcpy(dst, src, size);
-		++parser->drop_q.ibv_attr->num_of_specs;
-		parser->drop_q.offset += size;
-		return;
-	}
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (!parser->queue[i].ibv_attr)
 			continue;
@@ -1340,14 +1291,6 @@ mlx5_flow_create_vlan(const struct rte_flow_item *item,
 		if (!mask)
 			mask = default_mask;
 
-		if (parser->drop) {
-			eth = (void *)((uintptr_t)parser->drop_q.ibv_attr +
-				       parser->drop_q.offset - eth_size);
-			eth->val.vlan_tag = spec->tci;
-			eth->mask.vlan_tag = mask->tci;
-			eth->val.vlan_tag &= eth->mask.vlan_tag;
-			return 0;
-		}
 		for (i = 0; i != hash_rxq_init_n; ++i) {
 			if (!parser->queue[i].ibv_attr)
 				continue;
@@ -1701,23 +1644,25 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	assert(priv->pd);
 	assert(priv->ctx);
 	flow->drop = 1;
-	drop = (void *)((uintptr_t)parser->drop_q.ibv_attr +
-			parser->drop_q.offset);
+	drop = (void *)((uintptr_t)parser->queue[HASH_RXQ_ETH].ibv_attr +
+			parser->queue[HASH_RXQ_ETH].offset);
 	*drop = (struct ibv_flow_spec_action_drop){
 			.type = IBV_FLOW_SPEC_ACTION_DROP,
 			.size = size,
 	};
-	++parser->drop_q.ibv_attr->num_of_specs;
-	parser->drop_q.offset += size;
-	flow->drxq.ibv_attr = parser->drop_q.ibv_attr;
+	++parser->queue[HASH_RXQ_ETH].ibv_attr->num_of_specs;
+	parser->queue[HASH_RXQ_ETH].offset += size;
+	flow->frxq[HASH_RXQ_ETH].ibv_attr =
+		parser->queue[HASH_RXQ_ETH].ibv_attr;
 	if (parser->count)
 		flow->cs = parser->cs;
 	if (!priv->dev->data->dev_started)
 		return 0;
-	parser->drop_q.ibv_attr = NULL;
-	flow->drxq.ibv_flow = ibv_create_flow(priv->flow_drop_queue->qp,
-					      flow->drxq.ibv_attr);
-	if (!flow->drxq.ibv_flow) {
+	parser->queue[HASH_RXQ_ETH].ibv_attr = NULL;
+	flow->frxq[HASH_RXQ_ETH].ibv_flow =
+		ibv_create_flow(priv->flow_drop_queue->qp,
+				flow->frxq[HASH_RXQ_ETH].ibv_attr);
+	if (!flow->frxq[HASH_RXQ_ETH].ibv_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "flow rule creation failure");
 		err = ENOMEM;
@@ -1726,13 +1671,13 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	return 0;
 error:
 	assert(flow);
-	if (flow->drxq.ibv_flow) {
-		claim_zero(ibv_destroy_flow(flow->drxq.ibv_flow));
-		flow->drxq.ibv_flow = NULL;
+	if (flow->frxq[HASH_RXQ_ETH].ibv_flow) {
+		claim_zero(ibv_destroy_flow(flow->frxq[HASH_RXQ_ETH].ibv_flow));
+		flow->frxq[HASH_RXQ_ETH].ibv_flow = NULL;
 	}
-	if (flow->drxq.ibv_attr) {
-		rte_free(flow->drxq.ibv_attr);
-		flow->drxq.ibv_attr = NULL;
+	if (flow->frxq[HASH_RXQ_ETH].ibv_attr) {
+		rte_free(flow->frxq[HASH_RXQ_ETH].ibv_attr);
+		flow->frxq[HASH_RXQ_ETH].ibv_attr = NULL;
 	}
 	if (flow->cs) {
 		claim_zero(ibv_destroy_counter_set(flow->cs));
@@ -1947,13 +1892,9 @@ priv_flow_create(struct priv *priv,
 	DEBUG("Flow created %p", (void *)flow);
 	return flow;
 exit:
-	if (parser.drop) {
-		rte_free(parser.drop_q.ibv_attr);
-	} else {
-		for (i = 0; i != hash_rxq_init_n; ++i) {
-			if (parser.queue[i].ibv_attr)
-				rte_free(parser.queue[i].ibv_attr);
-		}
+	for (i = 0; i != hash_rxq_init_n; ++i) {
+		if (parser.queue[i].ibv_attr)
+			rte_free(parser.queue[i].ibv_attr);
 	}
 	rte_free(flow);
 	return NULL;
@@ -2055,9 +1996,10 @@ priv_flow_destroy(struct priv *priv,
 	}
 free:
 	if (flow->drop) {
-		if (flow->drxq.ibv_flow)
-			claim_zero(ibv_destroy_flow(flow->drxq.ibv_flow));
-		rte_free(flow->drxq.ibv_attr);
+		if (flow->frxq[HASH_RXQ_ETH].ibv_flow)
+			claim_zero(ibv_destroy_flow
+				   (flow->frxq[HASH_RXQ_ETH].ibv_flow));
+		rte_free(flow->frxq[HASH_RXQ_ETH].ibv_attr);
 	} else {
 		for (i = 0; i != hash_rxq_init_n; ++i) {
 			struct mlx5_flow *frxq = &flow->frxq[i];
@@ -2226,10 +2168,11 @@ priv_flow_stop(struct priv *priv, struct mlx5_flows *list)
 		unsigned int i;
 
 		if (flow->drop) {
-			if (!flow->drxq.ibv_flow)
+			if (!flow->frxq[HASH_RXQ_ETH].ibv_flow)
 				continue;
-			claim_zero(ibv_destroy_flow(flow->drxq.ibv_flow));
-			flow->drxq.ibv_flow = NULL;
+			claim_zero(ibv_destroy_flow
+				   (flow->frxq[HASH_RXQ_ETH].ibv_flow));
+			flow->frxq[HASH_RXQ_ETH].ibv_flow = NULL;
 			/* Next flow. */
 			continue;
 		}
@@ -2277,10 +2220,11 @@ priv_flow_start(struct priv *priv, struct mlx5_flows *list)
 		unsigned int i;
 
 		if (flow->drop) {
-			flow->drxq.ibv_flow =
-				ibv_create_flow(priv->flow_drop_queue->qp,
-						flow->drxq.ibv_attr);
-			if (!flow->drxq.ibv_flow) {
+			flow->frxq[HASH_RXQ_ETH].ibv_flow =
+				ibv_create_flow
+				(priv->flow_drop_queue->qp,
+				 flow->frxq[HASH_RXQ_ETH].ibv_attr);
+			if (!flow->frxq[HASH_RXQ_ETH].ibv_flow) {
 				DEBUG("Flow %p cannot be applied",
 				      (void *)flow);
 				rte_errno = EINVAL;
@@ -2875,13 +2819,13 @@ priv_fdir_filter_delete(struct priv *priv,
 	if (parser.drop) {
 		struct ibv_flow_spec_action_drop *drop;
 
-		drop = (void *)((uintptr_t)parser.drop_q.ibv_attr +
-				parser.drop_q.offset);
+		drop = (void *)((uintptr_t)parser.queue[HASH_RXQ_ETH].ibv_attr +
+				parser.queue[HASH_RXQ_ETH].offset);
 		*drop = (struct ibv_flow_spec_action_drop){
 			.type = IBV_FLOW_SPEC_ACTION_DROP,
 			.size = sizeof(struct ibv_flow_spec_action_drop),
 		};
-		parser.drop_q.ibv_attr->num_of_specs++;
+		parser.queue[HASH_RXQ_ETH].ibv_attr->num_of_specs++;
 	}
 	TAILQ_FOREACH(flow, &priv->flows, next) {
 		struct ibv_flow_attr *attr;
@@ -2892,14 +2836,8 @@ priv_fdir_filter_delete(struct priv *priv,
 		void *flow_spec;
 		unsigned int specs_n;
 
-		if (parser.drop)
-			attr = parser.drop_q.ibv_attr;
-		else
-			attr = parser.queue[HASH_RXQ_ETH].ibv_attr;
-		if (flow->drop)
-			flow_attr = flow->drxq.ibv_attr;
-		else
-			flow_attr = flow->frxq[HASH_RXQ_ETH].ibv_attr;
+		attr = parser.queue[HASH_RXQ_ETH].ibv_attr;
+		flow_attr = flow->frxq[HASH_RXQ_ETH].ibv_attr;
 		/* Compare first the attributes. */
 		if (memcmp(attr, flow_attr, sizeof(struct ibv_flow_attr)))
 			continue;
@@ -2929,13 +2867,9 @@ wrong_flow:
 	if (flow)
 		priv_flow_destroy(priv, &priv->flows, flow);
 exit:
-	if (parser.drop) {
-		rte_free(parser.drop_q.ibv_attr);
-	} else {
-		for (i = 0; i != hash_rxq_init_n; ++i) {
-			if (parser.queue[i].ibv_attr)
-				rte_free(parser.queue[i].ibv_attr);
-		}
+	for (i = 0; i != hash_rxq_init_n; ++i) {
+		if (parser.queue[i].ibv_attr)
+			rte_free(parser.queue[i].ibv_attr);
 	}
 	return -ret;
 }
