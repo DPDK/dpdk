@@ -93,7 +93,7 @@ struct rte_crypto_op {
 	rte_iova_t phys_addr;
 	/**< physical address of crypto operation */
 
-	RTE_STD_C11
+	__extension__
 	union {
 		struct rte_crypto_sym_op sym[0];
 		/**< Symmetric operation parameters */
