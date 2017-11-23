@@ -242,8 +242,6 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	int ret = 0;
 
 	(void)conf;
-	if (mlx5_is_secondary())
-		return -E_RTE_SECONDARY;
 	priv_lock(priv);
 	if (!rte_is_power_of_2(desc)) {
 		desc = 1 << log2above(desc);
@@ -294,9 +292,6 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 	struct mlx5_rxq_ctrl *rxq_ctrl;
 	struct priv *priv;
 
-	if (mlx5_is_secondary())
-		return;
-
 	if (rxq == NULL)
 		return;
 	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
@@ -327,7 +322,6 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	unsigned int count = 0;
 	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
 
-	assert(!mlx5_is_secondary());
 	if (!priv->dev->data->dev_conf.intr_conf.rxq)
 		return 0;
 	priv_rx_intr_vec_disable(priv);

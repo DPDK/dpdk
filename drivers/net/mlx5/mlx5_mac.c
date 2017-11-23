@@ -93,8 +93,6 @@ priv_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
 void
 mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
-	if (mlx5_is_secondary())
-		return;
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
 	memset(&dev->data->mac_addrs[index], 0, sizeof(struct ether_addr));
 	if (!dev->data->promiscuous && !dev->data->all_multicast)
@@ -124,8 +122,6 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 	int ret = 0;
 
 	(void)vmdq;
-	if (mlx5_is_secondary())
-		return 0;
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
 	/* First, make sure this address isn't already configured. */
 	for (i = 0; (i != MLX5_MAX_MAC_ADDRESSES); ++i) {
@@ -154,8 +150,6 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 void
 mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
-	if (mlx5_is_secondary())
-		return;
 	DEBUG("%p: setting primary MAC address", (void *)dev);
 	mlx5_mac_addr_add(dev, mac_addr, 0, 0);
 }

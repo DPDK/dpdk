@@ -119,18 +119,6 @@ struct ethtool_link_settings {
 #endif
 
 /**
- * Check if running as a secondary process.
- *
- * @return
- *   Nonzero if running as a secondary process.
- */
-inline int
-mlx5_is_secondary(void)
-{
-	return rte_eal_process_type() == RTE_PROC_SECONDARY;
-}
-
-/**
  * Get interface name from private structure.
  *
  * @param[in] priv
@@ -634,9 +622,6 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (mlx5_is_secondary())
-		return -E_RTE_SECONDARY;
-
 	priv_lock(priv);
 	ret = dev_configure(dev);
 	assert(ret >= 0);
@@ -937,9 +922,6 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	uint16_t kern_mtu;
 	int ret = 0;
 
-	if (mlx5_is_secondary())
-		return -E_RTE_SECONDARY;
-
 	priv_lock(priv);
 	ret = priv_get_mtu(priv, &kern_mtu);
 	if (ret)
@@ -986,9 +968,6 @@ mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		.cmd = ETHTOOL_GPAUSEPARAM
 	};
 	int ret;
-
-	if (mlx5_is_secondary())
-		return -E_RTE_SECONDARY;
 
 	ifr.ifr_data = (void *)&ethpause;
 	priv_lock(priv);
@@ -1037,9 +1016,6 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		.cmd = ETHTOOL_SPAUSEPARAM
 	};
 	int ret;
-
-	if (mlx5_is_secondary())
-		return -E_RTE_SECONDARY;
 
 	ifr.ifr_data = (void *)&ethpause;
 	ethpause.autoneg = fc_conf->autoneg;
@@ -1302,7 +1278,6 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 {
 	int rc, flags;
 
-	assert(!mlx5_is_secondary());
 	assert(priv->ctx->async_fd > 0);
 	flags = fcntl(priv->ctx->async_fd, F_GETFL);
 	rc = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);

@@ -158,7 +158,6 @@ mlx5_alloc_verbs_buf(size_t size, void *data)
 	size_t alignment = sysconf(_SC_PAGESIZE);
 
 	assert(data != NULL);
-	assert(!mlx5_is_secondary());
 	ret = rte_malloc_socket(__func__, size, alignment,
 				priv->dev->device->numa_node);
 	DEBUG("Extern alloc size: %lu, align: %lu: %p", size, alignment, ret);
@@ -177,7 +176,6 @@ static void
 mlx5_free_verbs_buf(void *ptr, void *data __rte_unused)
 {
 	assert(data != NULL);
-	assert(!mlx5_is_secondary());
 	DEBUG("Extern free request: %p", ptr);
 	rte_free(ptr);
 }
@@ -687,7 +685,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		mlx5_dev[idx].ports |= test;
 
-		if (mlx5_is_secondary()) {
+		if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 			/* from rte_ethdev.c */
 			char name[RTE_ETH_NAME_MAX_LEN];
 

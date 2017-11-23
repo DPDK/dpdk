@@ -142,9 +142,6 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		container_of(txq, struct mlx5_txq_ctrl, txq);
 	int ret = 0;
 
-	if (mlx5_is_secondary())
-		return -E_RTE_SECONDARY;
-
 	priv_lock(priv);
 	if (desc <= MLX5_TX_COMP_THRESH) {
 		WARN("%p: number of descriptors requested for TX queue %u"
@@ -202,9 +199,6 @@ mlx5_tx_queue_release(void *dpdk_txq)
 	struct mlx5_txq_ctrl *txq_ctrl;
 	struct priv *priv;
 	unsigned int i;
-
-	if (mlx5_is_secondary())
-		return;
 
 	if (txq == NULL)
 		return;

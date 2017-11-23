@@ -132,9 +132,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	struct mlx5_mr *mr = NULL;
 	int err;
 
-	if (mlx5_is_secondary())
-		return -E_RTE_SECONDARY;
-
 	dev->data->dev_started = 1;
 	priv_lock(priv);
 	err = priv_flow_create_drop_queue(priv);
@@ -212,9 +209,6 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_mr *mr;
-
-	if (mlx5_is_secondary())
-		return;
 
 	priv_lock(priv);
 	dev->data->dev_started = 0;
