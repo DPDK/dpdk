@@ -353,7 +353,7 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 		.pd = priv->pd,
 		.comp_mask = IBV_QP_INIT_ATTR_PD,
 	};
-	if (txq_data->inline_en)
+	if (txq_data->max_inline)
 		attr.init.cap.max_inline_data = txq_ctrl->max_inline_data;
 	if (txq_data->tso_en) {
 		attr.init.max_tso_header = txq_ctrl->max_tso_header;
@@ -589,7 +589,6 @@ mlx5_priv_txq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 		tmpl->txq.max_inline =
 			((priv->txq_inline + (RTE_CACHE_LINE_SIZE - 1)) /
 			 RTE_CACHE_LINE_SIZE);
-		tmpl->txq.inline_en = 1;
 		/* TSO and MPS can't be enabled concurrently. */
 		assert(!priv->tso || !priv->mps);
 		if (priv->mps == MLX5_MPW_ENHANCED) {
