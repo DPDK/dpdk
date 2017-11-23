@@ -158,8 +158,11 @@ mlx4_conv_rss_hf(struct priv *priv, uint64_t rss_hf)
 			conv |= out[i];
 		}
 	if ((conv & priv->hw_rss_sup) == conv) {
-		if (rss_hf == (uint64_t)-1)
+		if (rss_hf == (uint64_t)-1) {
+			/* Include inner RSS by default if supported. */
+			conv |= priv->hw_rss_sup & IBV_RX_HASH_INNER;
 			return conv;
+		}
 		if (!(rss_hf & ~seen))
 			return conv;
 	}

@@ -582,14 +582,15 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->hw_rss_sup = device_attr_ex.rss_caps.rx_hash_fields_mask;
 		if (!priv->hw_rss_sup) {
 			WARN("no RSS capabilities reported; disabling support"
-			     " for UDP RSS");
+			     " for UDP RSS and inner VXLAN RSS");
 			/* Fake support for all possible RSS hash fields. */
 			priv->hw_rss_sup = ~UINT64_C(0);
 			priv->hw_rss_sup = mlx4_conv_rss_hf(priv, -1);
 			/* Filter out known unsupported fields. */
 			priv->hw_rss_sup &=
 				~(uint64_t)(IBV_RX_HASH_SRC_PORT_UDP |
-					    IBV_RX_HASH_DST_PORT_UDP);
+					    IBV_RX_HASH_DST_PORT_UDP |
+					    IBV_RX_HASH_INNER);
 		}
 		DEBUG("supported RSS hash fields mask: %016" PRIx64,
 		      priv->hw_rss_sup);

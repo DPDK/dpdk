@@ -53,6 +53,11 @@
 #include <rte_mempool.h>
 #include <rte_spinlock.h>
 
+#ifndef IBV_RX_HASH_INNER
+/** This is not necessarily defined by supported RDMA core versions. */
+#define IBV_RX_HASH_INNER (1ull << 31)
+#endif /* IBV_RX_HASH_INNER */
+
 /** Maximum number of simultaneous MAC addresses. This value is arbitrary. */
 #define MLX4_MAX_MAC_ADDRESSES 128
 
