@@ -426,6 +426,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	int err = 0;
 	struct ibv_context *attr_ctx = NULL;
 	struct ibv_device_attr device_attr;
+	struct ibv_device_attr_ex device_attr_ex;
 	struct mlx4_conf conf = {
 		.ports.present = 0,
 	};
@@ -499,6 +500,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	/* Use all ports when none are defined */
 	if (!conf.ports.enabled)
 		conf.ports.enabled = conf.ports.present;
+	/* Retrieve extended device attributes. */
+	if (ibv_query_device_ex(attr_ctx, NULL, &device_attr_ex)) {
+		rte_errno = ENODEV;
+		goto error;
+	}
 	for (i = 0; i < device_attr.phys_port_cnt; i++) {
 		uint32_t port = i + 1; /* ports are indexed from one */
 		struct ibv_context *ctx = NULL;
@@ -573,6 +579,20 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			 PCI_DEVICE_ID_MELLANOX_CONNECTX3PRO);
 		DEBUG("L2 tunnel checksum offloads are %ssupported",
 		      (priv->hw_csum_l2tun ? "" : "not "));
+		priv->hw_rss_sup = device_attr_ex.rss_caps.rx_hash_fields_mask;
+		if (!priv->hw_rss_sup) {
+			WARN("no RSS capabilities reported; disabling support"
+			     " for UDP RSS");
+			/* Fake support for all possible RSS hash fields. */
+			priv->hw_rss_sup = ~UINT64_C(0);
+			priv->hw_rss_sup = mlx4_conv_rss_hf(priv, -1);
+			/* Filter out known unsupported fields. */
+			priv->hw_rss_sup &=
+				~(uint64_t)(IBV_RX_HASH_SRC_PORT_UDP |
+					    IBV_RX_HASH_DST_PORT_UDP);
+		}
+		DEBUG("supported RSS hash fields mask: %016" PRIx64,
+		      priv->hw_rss_sup);
 		/* Configure the first MAC address by default. */
 		if (mlx4_get_mac(priv, &mac.addr_bytes)) {
 			ERROR("cannot get MAC address, is mlx4_en loaded?"

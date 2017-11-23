@@ -108,6 +108,8 @@ struct mlx4_drop {
  * This function returns the supported (default) set when @p rss_hf has
  * special value (uint64_t)-1.
  *
+ * @param priv
+ *   Pointer to private structure.
  * @param rss_hf
  *   Hash fields in DPDK format (see struct rte_eth_rss_conf).
  *
@@ -115,8 +117,8 @@ struct mlx4_drop {
  *   A valid Verbs RSS hash fields mask for mlx4 on success, (uint64_t)-1
  *   otherwise and rte_errno is set.
  */
-static uint64_t
-mlx4_conv_rss_hf(uint64_t rss_hf)
+uint64_t
+mlx4_conv_rss_hf(struct priv *priv, uint64_t rss_hf)
 {
 	enum { IPV4, IPV6, TCP, UDP, };
 	const uint64_t in[] = {
@@ -136,11 +138,9 @@ mlx4_conv_rss_hf(uint64_t rss_hf)
 		[TCP] = (ETH_RSS_NONFRAG_IPV4_TCP |
 			 ETH_RSS_NONFRAG_IPV6_TCP |
 			 ETH_RSS_IPV6_TCP_EX),
-		/*
-		 * UDP support is temporarily disabled due to an
-		 * implementation issue in the kernel.
-		 */
-		[UDP] = 0,
+		[UDP] = (ETH_RSS_NONFRAG_IPV4_UDP |
+			 ETH_RSS_NONFRAG_IPV6_UDP |
+			 ETH_RSS_IPV6_UDP_EX),
 	};
 	const uint64_t out[RTE_DIM(in)] = {
 		[IPV4] = IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4,
@@ -157,10 +157,12 @@ mlx4_conv_rss_hf(uint64_t rss_hf)
 			seen |= rss_hf & in[i];
 			conv |= out[i];
 		}
-	if (rss_hf == (uint64_t)-1)
-		return conv;
-	if (!(rss_hf & ~seen))
-		return conv;
+	if ((conv & priv->hw_rss_sup) == conv) {
+		if (rss_hf == (uint64_t)-1)
+			return conv;
+		if (!(rss_hf & ~seen))
+			return conv;
+	}
 	rte_errno = ENOTSUP;
 	return (uint64_t)-1;
 }
@@ -803,7 +805,8 @@ fill:
 				goto exit_action_not_supported;
 			}
 			flow->rss = mlx4_rss_get
-				(priv, mlx4_conv_rss_hf(rss_conf->rss_hf),
+				(priv,
+				 mlx4_conv_rss_hf(priv, rss_conf->rss_hf),
 				 rss_conf->rss_key, rss->num, rss->queue);
 			if (!flow->rss) {
 				msg = "either invalid parameters or not enough"
