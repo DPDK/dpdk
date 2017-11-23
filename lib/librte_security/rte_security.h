@@ -228,6 +228,7 @@ struct rte_security_ipsec_xform {
  */
 struct rte_security_macsec_xform {
 	/** To be Filled */
+	int dummy;
 };
 
 /**
@@ -452,6 +453,7 @@ struct rte_security_capability {
 		/**< IPsec capability */
 		struct {
 			/* To be Filled */
+			int dummy;
 		} macsec;
 		/**< MACsec capability */
 	};
