@@ -59,7 +59,6 @@
 #include <rte_mempool.h>
 
 #include "mlx4.h"
-#include "mlx4_autoconf.h"
 #include "mlx4_prm.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
