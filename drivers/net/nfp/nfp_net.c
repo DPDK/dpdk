@@ -489,7 +489,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	}
 
 	if (rxmode->jumbo_frame)
-		/* this is handled in rte_eth_dev_configure */
+		hw->mtu = rxmode->max_rx_pkt_len;
 
 	if (rxmode->hw_strip_crc) {
 		PMD_INIT_LOG(INFO, "strip CRC not supported");
@@ -1468,6 +1468,13 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	/* check that mtu is within the allowed range */
 	if ((mtu < ETHER_MIN_MTU) || ((uint32_t)mtu > hw->max_mtu))
 		return -EINVAL;
+
+	/* mtu setting is forbidden if port is started */
+	if (dev->data->dev_started) {
+		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
+			    dev->data->port_id);
+		return -EBUSY;
+	}
 
 	/* switch to jumbo mode if needed */
 	if ((uint32_t)mtu > ETHER_MAX_LEN)
