@@ -491,10 +491,8 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	if (rxmode->jumbo_frame)
 		hw->mtu = rxmode->max_rx_pkt_len;
 
-	if (rxmode->hw_strip_crc) {
-		PMD_INIT_LOG(INFO, "strip CRC not supported");
-		return -EINVAL;
-	}
+	if (!rxmode->hw_strip_crc)
+		PMD_INIT_LOG(INFO, "HW does strip CRC and it is not configurable");
 
 	if (rxmode->enable_scatter) {
 		PMD_INIT_LOG(INFO, "Scatter not supported");
