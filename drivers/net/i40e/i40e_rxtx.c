@@ -70,10 +70,6 @@
 #define I40E_TX_OFFLOAD_NOTSUP_MASK \
 		(PKT_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_MASK)
 
-static uint16_t i40e_xmit_pkts_simple(void *tx_queue,
-				      struct rte_mbuf **tx_pkts,
-				      uint16_t nb_pkts);
-
 static inline void
 i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
 {
