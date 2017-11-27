@@ -167,7 +167,7 @@ Next, you need to expose the Virtual Functions (VFs) using the sysfs file system
 First find the BDFs (Bus-Device-Function) of the physical functions (PFs) of
 your device, e.g.::
 
-    lspci -d : 37c8
+    lspci -d:37c8
 
 You should see output similar to::
 
