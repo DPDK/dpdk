@@ -612,7 +612,7 @@ The token bucket generic parameters and operations are presented in :numref:`tab
 
 .. _table_qos_6:
 
-.. table:: Token Bucket Generic Operations
+.. table:: Token Bucket Generic Parameters
 
    +---+------------------------+--------------------+---------------------------------------------------------+
    | # | Token Bucket Parameter | Unit               | Description                                             |
@@ -627,7 +627,7 @@ The token bucket generic parameters and operations are presented in :numref:`tab
 
 .. _table_qos_7:
 
-.. table:: Token Bucket Generic Parameters
+.. table:: Token Bucket Generic Operations
 
    +---+------------------------+------------------------------------------------------------------------------+
    | # | Token Bucket Operation | Description                                                                  |
