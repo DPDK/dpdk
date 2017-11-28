@@ -224,7 +224,7 @@ nicvf_xmit_pkts_multiseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Inform HW to xmit the packets */
 	nicvf_addr_write(sq->sq_door, used_desc);
-	return nb_pkts;
+	return i;
 }
 
 static const uint32_t ptype_table[16][16] __rte_cache_aligned = {
