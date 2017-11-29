@@ -38,6 +38,10 @@ statistics, resetting port statistics and printing DPDK memory information.
 This application extends the original functionality that was supported by
 dump_cfg.
 
+.. note::
+
+    dpdk-procinfo should run alongside primary process with same DPDK version.
+
 Running the Application
 -----------------------
 The application has a number of command line options:

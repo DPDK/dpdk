@@ -52,6 +52,10 @@ Standalone DPDK processes are primary processes,
 while secondary processes can only run alongside a primary process or
 after a primary process has already configured the hugepage shared memory for them.
 
+.. note::
+
+    Secondary processes should run alongside primary process with same DPDK version.
+
 To support these two process types, and other multi-process setups described later,
 two additional command-line parameters are available to the EAL:
 
