@@ -105,8 +105,6 @@ Limitations
 -----------
 
 - Inner RSS for VXLAN frames is not supported yet.
-- Port statistics through software counters only. Flow statistics are
-  supported by hardware counters.
 - Hardware checksum RX offloads for VXLAN inner header are not supported yet.
 - Forked secondary process not supported.
 - Flow pattern without any specific vlan will match for vlan packets as well:
@@ -133,6 +131,17 @@ Limitations
 - Flows with a VXLAN Network Identifier equal (or ends to be equal)
   to 0 are not supported.
 - VXLAN TSO and checksum offloads are not supported on VM.
+
+Statistics
+----------
+
+MLX5 supports various of methods to report statistics:
+
+Port statistics can be queried using ``rte_eth_stats_get()``. The port statistics are through SW only and counts the number of packets received or sent successfully by the PMD.
+
+Extended statistics can be queried using ``rte_eth_xstats_get()``. The extended statistics expose a wider set of counters counted by the device. The extended port statistics counts the number of packets received or sent successfully by the port. As Mellanox NICs are using the :ref:`Bifurcated Linux Driver <linux_gsg_linux_drivers>` those counters counts also packet received or sent by the Linux kernel. The counters with ``_phy`` suffix counts the total events on the physical port, therefore not valid for VF.
+
+Finally per-flow statistics can by queried using ``rte_flow_query`` when attaching a count action for specific flow. The flow counter counts the number of packets received successfully by the port and match the specific flow.
 
 Configuration
 -------------
