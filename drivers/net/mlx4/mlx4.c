@@ -729,6 +729,12 @@ static void
 rte_mlx4_pmd_init(void)
 {
 	/*
+	 * MLX4_DEVICE_FATAL_CLEANUP tells ibv_destroy functions we
+	 * want to get success errno value in case of calling them
+	 * when the device was removed.
+	 */
+	setenv("MLX4_DEVICE_FATAL_CLEANUP", "1", 1);
+	/*
 	 * RDMAV_HUGEPAGES_SAFE tells ibv_fork_init() we intend to use
 	 * huge pages. Calling ibv_fork_init() during init allows
 	 * applications to use fork() safely for purposes other than
