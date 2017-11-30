@@ -40,6 +40,7 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_AVX,                    /**< AVX */
 	RTE_CPUFLAG_F16C,                   /**< F16C */
 	RTE_CPUFLAG_RDRAND,                 /**< RDRAND */
+	RTE_CPUFLAG_HYPERVISOR,             /**< Running in a VM */
 
 	/* (EAX 01h) EDX features */
 	RTE_CPUFLAG_FPU,                    /**< FPU */

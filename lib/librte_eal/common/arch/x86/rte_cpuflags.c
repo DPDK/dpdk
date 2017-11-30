@@ -7,16 +7,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
-#include <cpuid.h>
 
-enum cpu_register_t {
-	RTE_REG_EAX = 0,
-	RTE_REG_EBX,
-	RTE_REG_ECX,
-	RTE_REG_EDX,
-};
-
-typedef uint32_t cpuid_registers_t[4];
+#include "rte_cpuid.h"
 
 /**
  * Struct to hold a processor feature entry
@@ -63,6 +55,7 @@ const struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(AVX, 0x00000001, 0, RTE_REG_ECX, 28)
 	FEAT_DEF(F16C, 0x00000001, 0, RTE_REG_ECX, 29)
 	FEAT_DEF(RDRAND, 0x00000001, 0, RTE_REG_ECX, 30)
+	FEAT_DEF(HYPERVISOR, 0x00000001, 0, RTE_REG_ECX, 31)
 
 	FEAT_DEF(FPU, 0x00000001, 0, RTE_REG_EDX,  0)
 	FEAT_DEF(VME, 0x00000001, 0, RTE_REG_EDX,  1)

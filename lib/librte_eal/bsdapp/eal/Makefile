@@ -43,6 +43,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_memory.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_tailqs.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_errno.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_cpuflags.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_hypervisor.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_string_fns.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_hexdump.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_devargs.c
@@ -59,6 +60,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_service.c
 
 # from arch dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_cpuflags.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_hypervisor.c
 SRCS-$(CONFIG_RTE_ARCH_X86) += rte_spinlock.c
 SRCS-y += rte_cycles.c
 

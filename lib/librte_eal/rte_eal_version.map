@@ -200,6 +200,14 @@ DPDK_17.11 {
 
 } DPDK_17.08;
 
+DPDK_18.02 {
+	global:
+
+	rte_hypervisor_get;
+	rte_hypervisor_get_name;
+
+} DPDK_17.11;
+
 EXPERIMENTAL {
 	global:
 
@@ -235,4 +243,4 @@ EXPERIMENTAL {
 	rte_service_set_stats_enable;
 	rte_service_start_with_defaults;
 
-} DPDK_17.11;
+} DPDK_18.02;
