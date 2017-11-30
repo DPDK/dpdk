@@ -977,7 +977,7 @@ i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
 	struct rte_hash_parameters fdir_hash_params = {
 		.name = fdir_hash_name,
 		.entries = I40E_MAX_FDIR_FILTER_NUM,
-		.key_len = sizeof(struct rte_eth_fdir_input),
+		.key_len = sizeof(struct i40e_fdir_input),
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
 		.socket_id = rte_socket_id(),
