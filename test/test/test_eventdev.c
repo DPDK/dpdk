@@ -811,6 +811,9 @@ test_eventdev_unlink(void)
 	for (i = 0; i < nb_queues; i++)
 		queues[i] = i;
 
+	ret = rte_event_port_link(TEST_DEV_ID, 0, NULL, NULL, 0);
+	TEST_ASSERT(ret >= 0, "Failed to link with NULL device%d",
+				 TEST_DEV_ID);
 
 	ret = rte_event_port_unlink(TEST_DEV_ID, 0, queues, nb_queues);
 	TEST_ASSERT(ret == nb_queues, "Failed to unlink(device%d) ret=%d",
@@ -871,9 +874,9 @@ test_eventdev_link_get(void)
 	ret = rte_event_port_links_get(TEST_DEV_ID, 0, queues, priorities);
 	TEST_ASSERT(ret == 1, "(%d)Wrong link get ret=%d expected=%d",
 					TEST_DEV_ID, ret, 1);
-	/* unlink all*/
+	/* unlink the queue */
 	ret = rte_event_port_unlink(TEST_DEV_ID, 0, NULL, 0);
-	TEST_ASSERT(ret == nb_queues, "Failed to unlink(device%d) ret=%d",
+	TEST_ASSERT(ret == 1, "Failed to unlink(device%d) ret=%d",
 				 TEST_DEV_ID, ret);
 
 	/* 4links and 2 unlinks */

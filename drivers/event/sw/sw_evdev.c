@@ -34,6 +34,7 @@ sw_port_link(struct rte_eventdev *dev, void *port, const uint8_t queues[],
 	RTE_SET_USED(priorities);
 	for (i = 0; i < num; i++) {
 		struct sw_qid *q = &sw->qids[queues[i]];
+		unsigned int j;
 
 		/* check for qid map overflow */
 		if (q->cq_num_mapped_cqs >= RTE_DIM(q->cq_map)) {
@@ -45,6 +46,15 @@ sw_port_link(struct rte_eventdev *dev, void *port, const uint8_t queues[],
 			rte_errno = -EDQUOT;
 			break;
 		}
+
+		for (j = 0; j < q->cq_num_mapped_cqs; j++) {
+			if (q->cq_map[j] == p->id)
+				break;
+		}
+
+		/* check if port is already linked */
+		if (j < q->cq_num_mapped_cqs)
+			continue;
 
 		if (q->type == SW_SCHED_TYPE_DIRECT) {
 			/* check directed qids only map to one port */
@@ -310,6 +320,23 @@ cleanup:
 	return -EINVAL;
 }
 
+static void
+sw_queue_release(struct rte_eventdev *dev, uint8_t id)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	struct sw_qid *qid = &sw->qids[id];
+	uint32_t i;
+
+	for (i = 0; i < SW_IQS_MAX; i++)
+		iq_ring_destroy(qid->iq[i]);
+
+	if (qid->type == RTE_SCHED_TYPE_ORDERED) {
+		rte_free(qid->reorder_buffer);
+		rte_ring_free(qid->reorder_buffer_freelist);
+	}
+	memset(qid, 0, sizeof(*qid));
+}
+
 static int
 sw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 		const struct rte_event_queue_conf *conf)
@@ -327,24 +354,11 @@ sw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 	}
 
 	struct sw_evdev *sw = sw_pmd_priv(dev);
+
+	if (sw->qids[queue_id].initialized)
+		sw_queue_release(dev, queue_id);
+
 	return qid_init(sw, queue_id, type, conf);
-}
-
-static void
-sw_queue_release(struct rte_eventdev *dev, uint8_t id)
-{
-	struct sw_evdev *sw = sw_pmd_priv(dev);
-	struct sw_qid *qid = &sw->qids[id];
-	uint32_t i;
-
-	for (i = 0; i < SW_IQS_MAX; i++)
-		iq_ring_destroy(qid->iq[i]);
-
-	if (qid->type == RTE_SCHED_TYPE_ORDERED) {
-		rte_free(qid->reorder_buffer);
-		rte_ring_free(qid->reorder_buffer_freelist);
-	}
-	memset(qid, 0, sizeof(*qid));
 }
 
 static void
