@@ -13,7 +13,7 @@
 #include <rte_service_component.h>
 
 #include "sw_evdev.h"
-#include "iq_ring.h"
+#include "iq_chunk.h"
 
 #define EVENTDEV_NAME_SW_PMD event_sw
 #define NUMA_NODE_ARG "numa_node"
@@ -213,17 +213,11 @@ qid_init(struct sw_evdev *sw, unsigned int idx, int type,
 	unsigned int i;
 	int dev_id = sw->data->dev_id;
 	int socket_id = sw->data->socket_id;
-	char buf[IQ_RING_NAMESIZE];
+	char buf[IQ_ROB_NAMESIZE];
 	struct sw_qid *qid = &sw->qids[idx];
 
-	for (i = 0; i < SW_IQS_MAX; i++) {
-		snprintf(buf, sizeof(buf), "q_%u_iq_%d", idx, i);
-		qid->iq[i] = iq_ring_create(buf, socket_id);
-		if (!qid->iq[i]) {
-			SW_LOG_DBG("ring create failed");
-			goto cleanup;
-		}
-	}
+	for (i = 0; i < SW_IQS_MAX; i++)
+		iq_init(sw, &qid->iq[i]);
 
 	/* Initialize the FID structures to no pinning (-1), and zero packets */
 	const struct sw_fid_t fid = {.cq = -1, .pcount = 0};
@@ -303,8 +297,8 @@ qid_init(struct sw_evdev *sw, unsigned int idx, int type,
 
 cleanup:
 	for (i = 0; i < SW_IQS_MAX; i++) {
-		if (qid->iq[i])
-			iq_ring_destroy(qid->iq[i]);
+		if (qid->iq[i].head)
+			iq_free_chunk(sw, qid->iq[i].head);
 	}
 
 	if (qid->reorder_buffer) {
@@ -327,8 +321,11 @@ sw_queue_release(struct rte_eventdev *dev, uint8_t id)
 	struct sw_qid *qid = &sw->qids[id];
 	uint32_t i;
 
-	for (i = 0; i < SW_IQS_MAX; i++)
-		iq_ring_destroy(qid->iq[i]);
+	for (i = 0; i < SW_IQS_MAX; i++) {
+		if (!qid->iq[i].head)
+			continue;
+		iq_free_chunk(sw, qid->iq[i].head);
+	}
 
 	if (qid->type == RTE_SCHED_TYPE_ORDERED) {
 		rte_free(qid->reorder_buffer);
@@ -396,11 +393,32 @@ sw_dev_configure(const struct rte_eventdev *dev)
 	struct sw_evdev *sw = sw_pmd_priv(dev);
 	const struct rte_eventdev_data *data = dev->data;
 	const struct rte_event_dev_config *conf = &data->dev_conf;
+	int num_chunks, i;
 
 	sw->qid_count = conf->nb_event_queues;
 	sw->port_count = conf->nb_event_ports;
 	sw->nb_events_limit = conf->nb_events_limit;
 	rte_atomic32_set(&sw->inflights, 0);
+
+	/* Number of chunks sized for worst-case spread of events across IQs */
+	num_chunks = ((SW_INFLIGHT_EVENTS_TOTAL/SW_EVS_PER_Q_CHUNK)+1) +
+			sw->qid_count*SW_IQS_MAX*2;
+
+	/* If this is a reconfiguration, free the previous IQ allocation */
+	if (sw->chunks)
+		rte_free(sw->chunks);
+
+	sw->chunks = rte_malloc_socket(NULL,
+				       sizeof(struct sw_queue_chunk) *
+				       num_chunks,
+				       0,
+				       sw->data->socket_id);
+	if (!sw->chunks)
+		return -ENOMEM;
+
+	sw->chunk_list_head = NULL;
+	for (i = 0; i < num_chunks; i++)
+		iq_free_chunk(sw, &sw->chunks[i]);
 
 	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT)
 		return -ENOTSUP;
@@ -575,17 +593,16 @@ sw_dump(struct rte_eventdev *dev, FILE *f)
 		uint32_t iq;
 		uint32_t iq_printed = 0;
 		for (iq = 0; iq < SW_IQS_MAX; iq++) {
-			if (!qid->iq[iq]) {
+			if (!qid->iq[iq].head) {
 				fprintf(f, "\tiq %d is not initialized.\n", iq);
 				iq_printed = 1;
 				continue;
 			}
-			uint32_t used = iq_ring_count(qid->iq[iq]);
-			uint32_t free = iq_ring_free_count(qid->iq[iq]);
-			const char *col = (free == 0) ? COL_RED : COL_RESET;
+			uint32_t used = iq_count(&qid->iq[iq]);
+			const char *col = COL_RESET;
 			if (used > 0) {
-				fprintf(f, "\t%siq %d: Used %d\tFree %d"
-					COL_RESET"\n", col, iq, used, free);
+				fprintf(f, "\t%siq %d: Used %d"
+					COL_RESET"\n", col, iq, used);
 				iq_printed = 1;
 			}
 		}
@@ -618,7 +635,7 @@ sw_start(struct rte_eventdev *dev)
 
 	/* check all queues are configured and mapped to ports*/
 	for (i = 0; i < sw->qid_count; i++)
-		if (sw->qids[i].iq[0] == NULL ||
+		if (sw->qids[i].iq[0].head == NULL ||
 				sw->qids[i].cq_num_mapped_cqs == 0) {
 			SW_LOG_ERR("Queue %d not configured\n", i);
 			return -ENOLINK;

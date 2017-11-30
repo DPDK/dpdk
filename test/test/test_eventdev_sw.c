@@ -894,8 +894,8 @@ xstats_tests(struct test *t)
 	ret = rte_event_dev_xstats_names_get(evdev,
 					RTE_EVENT_DEV_XSTATS_QUEUE,
 					0, xstats_names, ids, XSTATS_MAX);
-	if (ret != 17) {
-		printf("%d: expected 17 stats, got return %d\n", __LINE__, ret);
+	if (ret != 16) {
+		printf("%d: expected 16 stats, got return %d\n", __LINE__, ret);
 		return -1;
 	}
 
@@ -911,8 +911,8 @@ xstats_tests(struct test *t)
 	ret = rte_event_dev_xstats_get(evdev,
 					RTE_EVENT_DEV_XSTATS_QUEUE,
 					0, ids, values, ret);
-	if (ret != 17) {
-		printf("%d: expected 17 stats, got return %d\n", __LINE__, ret);
+	if (ret != 16) {
+		printf("%d: expected 16 stats, got return %d\n", __LINE__, ret);
 		return -1;
 	}
 
@@ -1074,7 +1074,6 @@ xstats_tests(struct test *t)
 		3 /* tx */,
 		0 /* drop */,
 		3 /* inflights */,
-		512 /* iq size */,
 		0, 0, 0, 0, /* iq 0, 1, 2, 3 used */
 		/* QID-to-Port: pinned_flows, packets */
 		0, 0,
@@ -1105,7 +1104,6 @@ xstats_tests(struct test *t)
 		0 /* tx */,
 		0 /* drop */,
 		3 /* inflight */,
-		512 /* iq size */,
 		0, 0, 0, 0, /* 4 iq used */
 		/* QID-to-Port: pinned_flows, packets */
 		0, 0,
@@ -1657,7 +1655,7 @@ xstats_id_reset_tests(struct test *t)
 		goto fail;
 
 /* num queue stats */
-#define NUM_Q_STATS 17
+#define NUM_Q_STATS 16
 /* queue offset from start of the devices whole xstats.
  * This will break every time we add a statistic to a device/port/queue
  */
@@ -1682,7 +1680,6 @@ xstats_id_reset_tests(struct test *t)
 		"qid_0_tx",
 		"qid_0_drop",
 		"qid_0_inflight",
-		"qid_0_iq_size",
 		"qid_0_iq_0_used",
 		"qid_0_iq_1_used",
 		"qid_0_iq_2_used",
@@ -1701,7 +1698,6 @@ xstats_id_reset_tests(struct test *t)
 		7, /* tx */
 		0, /* drop */
 		7, /* inflight */
-		512, /* iq size */
 		0, /* iq 0 used */
 		0, /* iq 1 used */
 		0, /* iq 2 used */
@@ -1717,7 +1713,6 @@ xstats_id_reset_tests(struct test *t)
 		0, /* tx */
 		0, /* drop */
 		7, /* inflight */
-		512, /* iq size */
 		0, /* iq 0 used */
 		0, /* iq 1 used */
 		0, /* iq 2 used */

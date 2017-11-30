@@ -21,6 +21,10 @@
 #define MAX_SW_PROD_Q_DEPTH 4096
 #define SW_FRAGMENTS_MAX 16
 
+/* Should be power-of-two minus one, to leave room for the next pointer */
+#define SW_EVS_PER_Q_CHUNK 255
+#define SW_Q_CHUNK_SIZE ((SW_EVS_PER_Q_CHUNK + 1) * sizeof(struct rte_event))
+
 /* report dequeue burst sizes in buckets */
 #define SW_DEQ_STAT_BUCKET_SHIFT 2
 /* how many packets pulled from port by sched */
@@ -102,6 +106,14 @@ struct reorder_buffer_entry {
 	struct rte_event fragments[SW_FRAGMENTS_MAX];
 };
 
+struct sw_iq {
+	struct sw_queue_chunk *head;
+	struct sw_queue_chunk *tail;
+	uint16_t head_idx;
+	uint16_t tail_idx;
+	uint16_t count;
+};
+
 struct sw_qid {
 	/* set when the QID has been initialized */
 	uint8_t initialized;
@@ -114,7 +126,7 @@ struct sw_qid {
 	struct sw_point_stats stats;
 
 	/* Internal priority rings for packets */
-	struct iq_ring *iq[SW_IQS_MAX];
+	struct sw_iq iq[SW_IQS_MAX];
 	uint32_t iq_pkt_mask; /* A mask to indicate packets in an IQ */
 	uint64_t iq_pkt_count[SW_IQS_MAX];
 
@@ -225,6 +237,8 @@ struct sw_evdev {
 
 	/* Internal queues - one per logical queue */
 	struct sw_qid qids[RTE_EVENT_MAX_QUEUES_PER_DEV] __rte_cache_aligned;
+	struct sw_queue_chunk *chunk_list_head;
+	struct sw_queue_chunk *chunks;
 
 	/* Cache how many packets are in each cq */
 	uint16_t cq_ring_space[SW_PORTS_MAX] __rte_cache_aligned;

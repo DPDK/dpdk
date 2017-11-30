@@ -4,7 +4,7 @@
 
 #include <rte_event_ring.h>
 #include "sw_evdev.h"
-#include "iq_ring.h"
+#include "iq_chunk.h"
 
 enum xstats_type {
 	/* common stats */
@@ -25,7 +25,6 @@ enum xstats_type {
 	pkt_cycles,
 	poll_return, /* for zero-count and used also for port bucket loop */
 	/* qid_specific */
-	iq_size,
 	iq_used,
 	/* qid port mapping specific */
 	pinned,
@@ -116,7 +115,6 @@ get_qid_stat(const struct sw_evdev *sw, uint16_t obj_idx,
 			return infl;
 		} while (0);
 		break;
-	case iq_size: return RTE_DIM(qid->iq[0]->ring);
 	default: return -1;
 	}
 }
@@ -129,7 +127,7 @@ get_qid_iq_stat(const struct sw_evdev *sw, uint16_t obj_idx,
 	const int iq_idx = extra_arg;
 
 	switch (type) {
-	case iq_used: return iq_ring_count(qid->iq[iq_idx]);
+	case iq_used: return iq_count(&qid->iq[iq_idx]);
 	default: return -1;
 	}
 }
@@ -208,13 +206,13 @@ sw_xstats_init(struct sw_evdev *sw)
 	/* all bucket dequeues are allowed to be reset, handled in loop below */
 
 	static const char * const qid_stats[] = {"rx", "tx", "drop",
-			"inflight", "iq_size"
+			"inflight"
 	};
 	static const enum xstats_type qid_types[] = { rx, tx, dropped,
-			inflight, iq_size
+			inflight
 	};
 	static const uint8_t qid_reset_allowed[] = {1, 1, 1,
-			0, 0
+			0
 	};
 
 	static const char * const qid_iq_stats[] = { "used" };

@@ -6,7 +6,7 @@
 #include <rte_hash_crc.h>
 #include <rte_event_ring.h>
 #include "sw_evdev.h"
-#include "iq_ring.h"
+#include "iq_chunk.h"
 
 #define SW_IQS_MASK (SW_IQS_MAX-1)
 
@@ -43,7 +43,7 @@ sw_schedule_atomic_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 	 */
 	uint32_t qid_id = qid->id;
 
-	iq_ring_dequeue_burst(qid->iq[iq_num], qes, count);
+	iq_dequeue_burst(sw, &qid->iq[iq_num], qes, count);
 	for (i = 0; i < count; i++) {
 		const struct rte_event *qe = &qes[i];
 		const uint16_t flow_id = SW_HASH_FLOWID(qes[i].flow_id);
@@ -102,7 +102,7 @@ sw_schedule_atomic_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 			p->cq_buf_count = 0;
 		}
 	}
-	iq_ring_put_back(qid->iq[iq_num], blocked_qes, nb_blocked);
+	iq_put_back(sw, &qid->iq[iq_num], blocked_qes, nb_blocked);
 
 	return count - nb_blocked;
 }
@@ -128,7 +128,7 @@ sw_schedule_parallel_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 				rte_ring_count(qid->reorder_buffer_freelist));
 
 	for (i = 0; i < count; i++) {
-		const struct rte_event *qe = iq_ring_peek(qid->iq[iq_num]);
+		const struct rte_event *qe = iq_peek(&qid->iq[iq_num]);
 		uint32_t cq_check_count = 0;
 		uint32_t cq;
 
@@ -165,7 +165,7 @@ sw_schedule_parallel_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 					(void *)&p->hist_list[head].rob_entry);
 
 		sw->ports[cq].cq_buf[sw->ports[cq].cq_buf_count++] = *qe;
-		iq_ring_pop(qid->iq[iq_num]);
+		iq_pop(sw, &qid->iq[iq_num]);
 
 		rte_compiler_barrier();
 		p->inflights++;
@@ -190,8 +190,8 @@ sw_schedule_dir_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 		return 0;
 
 	/* burst dequeue from the QID IQ ring */
-	struct iq_ring *ring = qid->iq[iq_num];
-	uint32_t ret = iq_ring_dequeue_burst(ring,
+	struct sw_iq *iq = &qid->iq[iq_num];
+	uint32_t ret = iq_dequeue_burst(sw, iq,
 			&port->cq_buf[port->cq_buf_count], count_free);
 	port->cq_buf_count += ret;
 
@@ -224,7 +224,7 @@ sw_schedule_qid_to_cq(struct sw_evdev *sw)
 			continue;
 
 		uint32_t pkts_done = 0;
-		uint32_t count = iq_ring_count(qid->iq[iq_num]);
+		uint32_t count = iq_count(&qid->iq[iq_num]);
 
 		if (count > 0) {
 			if (type == SW_SCHED_TYPE_DIRECT)
@@ -296,22 +296,15 @@ sw_schedule_reorder(struct sw_evdev *sw, int qid_start, int qid_end)
 					continue;
 				}
 
-				struct sw_qid *dest_qid_ptr =
-					&sw->qids[dest_qid];
-				const struct iq_ring *dest_iq_ptr =
-					dest_qid_ptr->iq[dest_iq];
-				if (iq_ring_free_count(dest_iq_ptr) == 0)
-					break;
-
 				pkts_iter++;
 
 				struct sw_qid *q = &sw->qids[dest_qid];
-				struct iq_ring *r = q->iq[dest_iq];
+				struct sw_iq *iq = &q->iq[dest_iq];
 
 				/* we checked for space above, so enqueue must
 				 * succeed
 				 */
-				iq_ring_enqueue(r, qe);
+				iq_enqueue(sw, iq, qe);
 				q->iq_pkt_mask |= (1 << (dest_iq));
 				q->iq_pkt_count[dest_iq]++;
 				q->stats.rx_pkts++;
@@ -376,10 +369,6 @@ __pull_port_lb(struct sw_evdev *sw, uint32_t port_id, int allow_reorder)
 		uint32_t iq_num = PRIO_TO_IQ(qe->priority);
 		struct sw_qid *qid = &sw->qids[qe->queue_id];
 
-		if ((flags & QE_FLAG_VALID) &&
-				iq_ring_free_count(qid->iq[iq_num]) == 0)
-			break;
-
 		/* now process based on flags. Note that for directed
 		 * queues, the enqueue_flush masks off all but the
 		 * valid flag. This makes FWD and PARTIAL enqueues just
@@ -443,7 +432,7 @@ __pull_port_lb(struct sw_evdev *sw, uint32_t port_id, int allow_reorder)
 			 */
 
 			qid->iq_pkt_mask |= (1 << (iq_num));
-			iq_ring_enqueue(qid->iq[iq_num], qe);
+			iq_enqueue(sw, &qid->iq[iq_num], qe);
 			qid->iq_pkt_count[iq_num]++;
 			qid->stats.rx_pkts++;
 			pkts_iter++;
@@ -488,10 +477,7 @@ sw_schedule_pull_port_dir(struct sw_evdev *sw, uint32_t port_id)
 
 		uint32_t iq_num = PRIO_TO_IQ(qe->priority);
 		struct sw_qid *qid = &sw->qids[qe->queue_id];
-		struct iq_ring *iq_ring = qid->iq[iq_num];
-
-		if (iq_ring_free_count(iq_ring) == 0)
-			break; /* move to next port */
+		struct sw_iq *iq = &qid->iq[iq_num];
 
 		port->stats.rx_pkts++;
 
@@ -499,7 +485,7 @@ sw_schedule_pull_port_dir(struct sw_evdev *sw, uint32_t port_id)
 		 * into the qid at the right priority
 		 */
 		qid->iq_pkt_mask |= (1 << (iq_num));
-		iq_ring_enqueue(iq_ring, qe);
+		iq_enqueue(sw, iq, qe);
 		qid->iq_pkt_count[iq_num]++;
 		qid->stats.rx_pkts++;
 		pkts_iter++;
