@@ -1229,12 +1229,10 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	uint8_t distributing_count;
 
 	uint16_t num_tx_slave, num_tx_total = 0, num_tx_fail_total = 0;
-	uint16_t i, j, op_slave_idx;
-	const uint16_t buffs_size = nb_pkts + BOND_MODE_8023AX_SLAVE_TX_PKTS + 1;
+	uint16_t i, op_slave_idx;
 
 	/* Allocate additional packets in case 8023AD mode. */
-	struct rte_mbuf *slave_bufs[RTE_MAX_ETHPORTS][buffs_size];
-	void *slow_pkts[BOND_MODE_8023AX_SLAVE_TX_PKTS] = { NULL };
+	struct rte_mbuf *slave_bufs[RTE_MAX_ETHPORTS][nb_pkts];
 
 	/* Total amount of packets in slave_bufs */
 	uint16_t slave_nb_pkts[RTE_MAX_ETHPORTS] = { 0 };
@@ -1255,14 +1253,6 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	distributing_count = 0;
 	for (i = 0; i < num_of_slaves; i++) {
 		struct port *port = &mode_8023ad_ports[slaves[i]];
-
-		slave_slow_nb_pkts[i] = rte_ring_dequeue_burst(port->tx_ring,
-				slow_pkts, BOND_MODE_8023AX_SLAVE_TX_PKTS,
-				NULL);
-		slave_nb_pkts[i] = slave_slow_nb_pkts[i];
-
-		for (j = 0; j < slave_slow_nb_pkts[i]; j++)
-			slave_bufs[i][j] = slow_pkts[j];
 
 		if (ACTOR_STATE(port, DISTRIBUTING))
 			distributing_offsets[distributing_count++] = i;
@@ -1302,6 +1292,27 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			uint16_t j = nb_pkts - num_tx_fail_total;
 			for ( ; num_tx_slave < slave_nb_pkts[i]; j++, num_tx_slave++)
 				bufs[j] = slave_bufs[i][num_tx_slave];
+		}
+	}
+
+	/* Check for LACP control packets and send if available */
+	for (i = 0; i < num_of_slaves; i++) {
+		struct port *port = &mode_8023ad_ports[slaves[i]];
+		struct rte_mbuf *ctrl_pkt = NULL;
+
+		int pkt_avail = rte_ring_dequeue(port->tx_ring,
+				(void **)&ctrl_pkt);
+
+		if (unlikely(pkt_avail == 0)) {
+			num_tx_slave = rte_eth_tx_burst(slaves[i],
+					bd_tx_q->queue_id, &ctrl_pkt, 1);
+
+			/*
+			 * re-enqueue LAG control plane packets to buffering
+			 * ring if transmission fails so the packet isn't lost.
+			 */
+			if (num_tx_slave != nb_pkts)
+				rte_ring_enqueue(port->tx_ring,	ctrl_pkt);
 		}
 	}
 
