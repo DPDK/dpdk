@@ -126,7 +126,7 @@ rte_eal_hugepage_attach(void)
 	/* Map the shared hugepage_info into the process address spaces */
 	hpi = mmap(NULL, sizeof(struct hugepage_info), PROT_READ, MAP_PRIVATE,
 			fd_hugepage_info, 0);
-	if (hpi == NULL) {
+	if (hpi == MAP_FAILED) {
 		RTE_LOG(ERR, EAL, "Could not mmap %s\n", eal_hugepage_info_path());
 		goto error;
 	}
