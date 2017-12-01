@@ -980,6 +980,18 @@ Matches an ESP header.
 - ``hdr``: ESP header definition (``rte_esp.h``).
 - Default ``mask`` matches SPI only.
 
+Item: ``GENEVE``
+^^^^^^^^^^^^^^^^
+
+Matches a GENEVE header.
+
+- ``ver_opt_len_o_c_rsvd0``: version (2b), length of the options fields (6b),
+  OAM packet (1b), critical options present (1b), reserved 0 (6b).
+- ``protocol``: protocol type.
+- ``vni``: virtual network identifier.
+- ``rsvd1``: reserved, normally 0x00.
+- Default ``mask`` matches VNI only.
+
 Actions
 ~~~~~~~
 
