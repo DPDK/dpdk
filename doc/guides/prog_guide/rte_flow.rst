@@ -984,7 +984,7 @@ Actions
 ~~~~~~~
 
 Each possible action is represented by a type. Some have associated
-configuration structures. Several actions combined in a list can be affected
+configuration structures. Several actions combined in a list can be assigned
 to a flow rule. That list is not ordered.
 
 They fall in three categories:
