@@ -8,3 +8,11 @@ DPDK_17.11 {
 
 	local: *;
 };
+
+DPDK_18.02 {
+	global:
+
+	rte_vdev_add_custom_scan;
+	rte_vdev_remove_custom_scan;
+
+} DPDK_17.11;

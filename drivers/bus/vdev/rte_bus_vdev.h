@@ -124,6 +124,41 @@ RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 #define RTE_PMD_REGISTER_ALIAS(nm, alias)\
 static const char *vdrvinit_ ## nm ## _alias = RTE_STR(alias)
 
+typedef void (*rte_vdev_scan_callback)(void *user_arg);
+
+/**
+ * Add a callback to be called on vdev scan
+ * before reading the devargs list.
+ *
+ * This function cannot be called in a scan callback
+ * because of deadlock.
+ *
+ * @param callback
+ *   The function to be called which can update the devargs list.
+ * @param user_arg
+ *   An opaque pointer passed to callback.
+ * @return
+ *   0 on success, negative on error
+ */
+int
+rte_vdev_add_custom_scan(rte_vdev_scan_callback callback, void *user_arg);
+
+/**
+ * Remove a registered scan callback.
+ *
+ * This function cannot be called in a scan callback
+ * because of deadlock.
+ *
+ * @param callback
+ *   The registered function to be removed.
+ * @param user_arg
+ *   The associated opaque pointer or (void*)-1 for any.
+ * @return
+ *   0 on success
+ */
+int
+rte_vdev_remove_custom_scan(rte_vdev_scan_callback callback, void *user_arg);
+
 /**
  * Initialize a driver specified by name.
  *

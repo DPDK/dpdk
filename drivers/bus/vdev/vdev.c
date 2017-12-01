@@ -44,6 +44,8 @@
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_memory.h>
+#include <rte_tailq.h>
+#include <rte_spinlock.h>
 #include <rte_errno.h>
 
 #include "rte_bus_vdev.h"
@@ -62,6 +64,16 @@ static struct vdev_device_list vdev_device_list =
 struct vdev_driver_list vdev_driver_list =
 	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
 
+struct vdev_custom_scan {
+	TAILQ_ENTRY(vdev_custom_scan) next;
+	rte_vdev_scan_callback callback;
+	void *user_arg;
+};
+TAILQ_HEAD(vdev_custom_scans, vdev_custom_scan);
+static struct vdev_custom_scans vdev_custom_scans =
+	TAILQ_HEAD_INITIALIZER(vdev_custom_scans);
+static rte_spinlock_t vdev_custom_scan_lock = RTE_SPINLOCK_INITIALIZER;
+
 /* register a driver */
 void
 rte_vdev_register(struct rte_vdev_driver *driver)
@@ -74,6 +86,53 @@ void
 rte_vdev_unregister(struct rte_vdev_driver *driver)
 {
 	TAILQ_REMOVE(&vdev_driver_list, driver, next);
+}
+
+int
+rte_vdev_add_custom_scan(rte_vdev_scan_callback callback, void *user_arg)
+{
+	struct vdev_custom_scan *custom_scan;
+
+	rte_spinlock_lock(&vdev_custom_scan_lock);
+
+	/* check if already registered */
+	TAILQ_FOREACH(custom_scan, &vdev_custom_scans, next) {
+		if (custom_scan->callback == callback &&
+				custom_scan->user_arg == user_arg)
+			break;
+	}
+
+	if (custom_scan == NULL) {
+		custom_scan = malloc(sizeof(struct vdev_custom_scan));
+		if (custom_scan != NULL) {
+			custom_scan->callback = callback;
+			custom_scan->user_arg = user_arg;
+			TAILQ_INSERT_TAIL(&vdev_custom_scans, custom_scan, next);
+		}
+	}
+
+	rte_spinlock_unlock(&vdev_custom_scan_lock);
+
+	return (custom_scan == NULL) ? -1 : 0;
+}
+
+int
+rte_vdev_remove_custom_scan(rte_vdev_scan_callback callback, void *user_arg)
+{
+	struct vdev_custom_scan *custom_scan, *tmp_scan;
+
+	rte_spinlock_lock(&vdev_custom_scan_lock);
+	TAILQ_FOREACH_SAFE(custom_scan, &vdev_custom_scans, next, tmp_scan) {
+		if (custom_scan->callback != callback ||
+				(custom_scan->user_arg != (void *)-1 &&
+				custom_scan->user_arg != user_arg))
+			continue;
+		TAILQ_REMOVE(&vdev_custom_scans, custom_scan, next);
+		free(custom_scan);
+	}
+	rte_spinlock_unlock(&vdev_custom_scan_lock);
+
+	return 0;
 }
 
 static int
@@ -260,6 +319,22 @@ vdev_scan(void)
 {
 	struct rte_vdev_device *dev;
 	struct rte_devargs *devargs;
+	struct vdev_custom_scan *custom_scan;
+
+	/* call custom scan callbacks if any */
+	rte_spinlock_lock(&vdev_custom_scan_lock);
+	TAILQ_FOREACH(custom_scan, &vdev_custom_scans, next) {
+		if (custom_scan->callback != NULL)
+			/*
+			 * the callback should update devargs list
+			 * by calling rte_eal_devargs_insert() with
+			 *     devargs.bus = rte_bus_find_by_name("vdev");
+			 *     devargs.type = RTE_DEVTYPE_VIRTUAL;
+			 *     devargs.policy = RTE_DEV_WHITELISTED;
+			 */
+			custom_scan->callback(custom_scan->user_arg);
+	}
+	rte_spinlock_unlock(&vdev_custom_scan_lock);
 
 	/* for virtual devices we scan the devargs_list populated via cmdline */
 	TAILQ_FOREACH(devargs, &devargs_list, next) {
