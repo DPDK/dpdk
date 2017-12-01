@@ -1005,6 +1005,7 @@ static const struct {
 	MK_FLOW_ITEM(GTP, sizeof(struct rte_flow_item_gtp)),
 	MK_FLOW_ITEM(GTPC, sizeof(struct rte_flow_item_gtp)),
 	MK_FLOW_ITEM(GTPU, sizeof(struct rte_flow_item_gtp)),
+	MK_FLOW_ITEM(GENEVE, sizeof(struct rte_flow_item_geneve)),
 };
 
 /** Compute storage space needed by item specification. */
