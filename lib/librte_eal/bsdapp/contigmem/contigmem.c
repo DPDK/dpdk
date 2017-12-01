@@ -16,6 +16,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/rwlock.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
+#include <sys/vmmeter.h>
 
 #include <machine/bus.h>
 
