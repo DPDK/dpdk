@@ -922,6 +922,7 @@ F: test/test/virtual_pmd.c
 F: test/test/virtual_pmd.h
 
 Driver testing tool
+M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 M: Jingjing Wu <jingjing.wu@intel.com>
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
