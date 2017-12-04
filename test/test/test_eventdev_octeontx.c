@@ -327,7 +327,7 @@ generate_random_events(const unsigned int total_events)
 	for (i = 0; i < total_events; i++) {
 		ret = inject_events(
 			rte_rand() % info.max_event_queue_flows /*flow_id */,
-			rte_rand() % (RTE_EVENT_TYPE_CPU + 1) /* event_type */,
+			RTE_EVENT_TYPE_CPU /* event_type */,
 			rte_rand() % 256 /* sub_event_type */,
 			rte_rand() % (RTE_SCHED_TYPE_PARALLEL + 1),
 			rte_rand() % queue_count /* queue */,
@@ -717,7 +717,7 @@ test_queue_to_port_single_link(void)
 
 		ret = inject_events(
 			0x100 /*flow_id */,
-			rte_rand() % (RTE_EVENT_TYPE_CPU + 1) /* event_type */,
+			RTE_EVENT_TYPE_CPU /* event_type */,
 			rte_rand() % 256 /* sub_event_type */,
 			rte_rand() % (RTE_SCHED_TYPE_PARALLEL + 1),
 			queue /* queue */,
@@ -796,7 +796,7 @@ test_queue_to_port_multi_link(void)
 
 		ret = inject_events(
 			0x100 /*flow_id */,
-			rte_rand() % (RTE_EVENT_TYPE_CPU + 1) /* event_type */,
+			RTE_EVENT_TYPE_CPU /* event_type */,
 			rte_rand() % 256 /* sub_event_type */,
 			rte_rand() % (RTE_SCHED_TYPE_PARALLEL + 1),
 			queue /* queue */,
