@@ -197,6 +197,8 @@ config () # <directory> <target> <options>
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config
 		test -z "$LIBMUSDK_PATH" || \
 		sed -ri    's,(PMD_MRVL_CRYPTO=)n,\1y,' $1/.config
+		test -z "$LIBMUSDK_PATH" || \
+		sed -ri           's,(MRVL_PMD=)n,\1y,' $1/.config
 		build_config_hook $1 $2 $3
 
 		# Explicit enabler/disabler (uppercase)
