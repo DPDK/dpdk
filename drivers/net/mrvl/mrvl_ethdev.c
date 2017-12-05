@@ -47,10 +47,6 @@
 #undef container_of
 #endif
 
-#include <drivers/mv_pp2.h>
-#include <drivers/mv_pp2_bpool.h>
-#include <drivers/mv_pp2_hif.h>
-
 #include <fcntl.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
@@ -690,7 +686,7 @@ mrvl_promiscuous_enable(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
-	ret = pp2_ppio_set_uc_promisc(priv->ppio, 1);
+	ret = pp2_ppio_set_promisc(priv->ppio, 1);
 	if (ret)
 		RTE_LOG(ERR, PMD, "Failed to enable promiscuous mode\n");
 }
@@ -724,7 +720,7 @@ mrvl_promiscuous_disable(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
-	ret = pp2_ppio_set_uc_promisc(priv->ppio, 0);
+	ret = pp2_ppio_set_promisc(priv->ppio, 0);
 	if (ret)
 		RTE_LOG(ERR, PMD, "Failed to disable promiscuous mode\n");
 }

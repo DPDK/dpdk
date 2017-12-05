@@ -43,6 +43,7 @@
 #ifdef container_of
 #undef container_of
 #endif
+#include "env/mv_autogen_comp_flags.h"
 #include "drivers/mv_sam.h"
 #include "drivers/mv_sam_cio.h"
 #include "drivers/mv_sam_session.h"
