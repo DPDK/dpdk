@@ -822,15 +822,14 @@ static void
 mrvl_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret;
 
-	pp2_ppio_set_mac_addr(priv->ppio, mac_addr->addr_bytes);
-	/*
-	 * TODO
-	 * Port stops sending packets if pp2_ppio_set_mac_addr()
-	 * was called after pp2_ppio_enable(). As a quick fix issue
-	 * enable port once again.
-	 */
-	pp2_ppio_enable(priv->ppio);
+	ret = pp2_ppio_set_mac_addr(priv->ppio, mac_addr->addr_bytes);
+	if (ret) {
+		char buf[ETHER_ADDR_FMT_SIZE];
+		ether_format_addr(buf, sizeof(buf), mac_addr);
+		RTE_LOG(ERR, PMD, "Failed to set mac to %s\n", buf);
+	}
 }
 
 /**
