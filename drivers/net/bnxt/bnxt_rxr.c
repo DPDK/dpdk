@@ -456,6 +456,10 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 	}
 
+	if ((rxcmp->flags_type & rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_MASK)) ==
+	     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP)
+		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP;
+
 	if (agg_buf)
 		bnxt_rx_pages(rxq, mbuf, &tmp_raw_cons, agg_buf);
 

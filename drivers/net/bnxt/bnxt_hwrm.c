@@ -427,12 +427,95 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	return rc;
 }
 
+int bnxt_hwrm_ptp_cfg(struct bnxt *bp)
+{
+	struct hwrm_port_mac_cfg_input req = {.req_type = 0};
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	uint32_t flags = 0;
+	int rc;
+
+	if (!ptp)
+		return 0;
+
+	HWRM_PREP(req, PORT_MAC_CFG);
+
+	if (ptp->rx_filter)
+		flags |= PORT_MAC_CFG_REQ_FLAGS_PTP_RX_TS_CAPTURE_ENABLE;
+	else
+		flags |= PORT_MAC_CFG_REQ_FLAGS_PTP_RX_TS_CAPTURE_DISABLE;
+	if (ptp->tx_tstamp_en)
+		flags |= PORT_MAC_CFG_REQ_FLAGS_PTP_TX_TS_CAPTURE_ENABLE;
+	else
+		flags |= PORT_MAC_CFG_REQ_FLAGS_PTP_TX_TS_CAPTURE_DISABLE;
+	req.flags = rte_cpu_to_le_32(flags);
+	req.enables =
+	rte_cpu_to_le_32(PORT_MAC_CFG_REQ_ENABLES_RX_TS_CAPTURE_PTP_MSG_TYPE);
+	req.rx_ts_capture_ptp_msg_type = rte_cpu_to_le_16(ptp->rxctl);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
+{
+	int rc = 0;
+	struct hwrm_port_mac_ptp_qcfg_input req = {.req_type = 0};
+	struct hwrm_port_mac_ptp_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+
+/*	if (bp->hwrm_spec_code < 0x10801 || ptp)  TBD  */
+	if (ptp)
+		return 0;
+
+	HWRM_PREP(req, PORT_MAC_PTP_QCFG);
+
+	req.port_id = rte_cpu_to_le_16(bp->pf.port_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT();
+
+	if (!(resp->flags & PORT_MAC_PTP_QCFG_RESP_FLAGS_DIRECT_ACCESS))
+		return 0;
+
+	ptp = rte_zmalloc("ptp_cfg", sizeof(*ptp), 0);
+	if (!ptp)
+		return -ENOMEM;
+
+	ptp->rx_regs[BNXT_PTP_RX_TS_L] =
+		rte_le_to_cpu_32(resp->rx_ts_reg_off_lower);
+	ptp->rx_regs[BNXT_PTP_RX_TS_H] =
+		rte_le_to_cpu_32(resp->rx_ts_reg_off_upper);
+	ptp->rx_regs[BNXT_PTP_RX_SEQ] =
+		rte_le_to_cpu_32(resp->rx_ts_reg_off_seq_id);
+	ptp->rx_regs[BNXT_PTP_RX_FIFO] =
+		rte_le_to_cpu_32(resp->rx_ts_reg_off_fifo);
+	ptp->rx_regs[BNXT_PTP_RX_FIFO_ADV] =
+		rte_le_to_cpu_32(resp->rx_ts_reg_off_fifo_adv);
+	ptp->tx_regs[BNXT_PTP_TX_TS_L] =
+		rte_le_to_cpu_32(resp->tx_ts_reg_off_lower);
+	ptp->tx_regs[BNXT_PTP_TX_TS_H] =
+		rte_le_to_cpu_32(resp->tx_ts_reg_off_upper);
+	ptp->tx_regs[BNXT_PTP_TX_SEQ] =
+		rte_le_to_cpu_32(resp->tx_ts_reg_off_seq_id);
+	ptp->tx_regs[BNXT_PTP_TX_FIFO] =
+		rte_le_to_cpu_32(resp->tx_ts_reg_off_fifo);
+
+	ptp->bp = bp;
+	bp->ptp_cfg = ptp;
+
+	return 0;
+}
+
 int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 {
 	int rc = 0;
 	struct hwrm_func_qcaps_input req = {.req_type = 0 };
 	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
 	uint16_t new_max_vfs;
+	uint32_t flags;
 	int i;
 
 	HWRM_PREP(req, FUNC_QCAPS);
@@ -444,6 +527,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	HWRM_CHECK_RESULT();
 
 	bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
+	flags = rte_le_to_cpu_32(resp->flags);
 	if (BNXT_PF(bp)) {
 		bp->pf.port_id = resp->port_id;
 		bp->pf.first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
@@ -500,8 +584,16 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->max_vnics = 1;
 	}
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
-	if (BNXT_PF(bp))
+	if (BNXT_PF(bp)) {
 		bp->pf.total_vnics = rte_le_to_cpu_16(resp->max_vnics);
+		if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED) {
+			bp->flags |= BNXT_FLAG_PTP_SUPPORTED;
+			RTE_LOG(INFO, PMD, "PTP SUPPORTED");
+			HWRM_UNLOCK();
+			bnxt_hwrm_ptp_qcfg(bp);
+		}
+	}
+
 	HWRM_UNLOCK();
 
 	return rc;

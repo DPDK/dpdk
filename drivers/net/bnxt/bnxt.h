@@ -44,6 +44,7 @@
 #include <rte_memory.h>
 #include <rte_lcore.h>
 #include <rte_spinlock.h>
+#include <rte_time.h>
 
 #include "bnxt_cpr.h"
 
@@ -180,6 +181,53 @@ struct rte_flow {
 	struct bnxt_vnic_info	*vnic;
 };
 
+struct bnxt_ptp_cfg {
+#define BNXT_GRCPF_REG_WINDOW_BASE_OUT  0x400
+#define BNXT_GRCPF_REG_SYNC_TIME        0x480
+#define BNXT_CYCLECOUNTER_MASK   0xffffffffffffffffULL
+	struct rte_timecounter      tc;
+	struct rte_timecounter      tx_tstamp_tc;
+	struct rte_timecounter      rx_tstamp_tc;
+	struct bnxt		*bp;
+#define BNXT_MAX_TX_TS	1
+	uint16_t			rxctl;
+#define BNXT_PTP_MSG_SYNC			(1 << 0)
+#define BNXT_PTP_MSG_DELAY_REQ			(1 << 1)
+#define BNXT_PTP_MSG_PDELAY_REQ			(1 << 2)
+#define BNXT_PTP_MSG_PDELAY_RESP		(1 << 3)
+#define BNXT_PTP_MSG_FOLLOW_UP			(1 << 8)
+#define BNXT_PTP_MSG_DELAY_RESP			(1 << 9)
+#define BNXT_PTP_MSG_PDELAY_RESP_FOLLOW_UP	(1 << 10)
+#define BNXT_PTP_MSG_ANNOUNCE			(1 << 11)
+#define BNXT_PTP_MSG_SIGNALING			(1 << 12)
+#define BNXT_PTP_MSG_MANAGEMENT			(1 << 13)
+#define BNXT_PTP_MSG_EVENTS		(BNXT_PTP_MSG_SYNC |		\
+					 BNXT_PTP_MSG_DELAY_REQ |	\
+					 BNXT_PTP_MSG_PDELAY_REQ |	\
+					 BNXT_PTP_MSG_PDELAY_RESP)
+	uint8_t			tx_tstamp_en:1;
+	int			rx_filter;
+
+#define BNXT_PTP_RX_TS_L	0
+#define BNXT_PTP_RX_TS_H	1
+#define BNXT_PTP_RX_SEQ		2
+#define BNXT_PTP_RX_FIFO	3
+#define BNXT_PTP_RX_FIFO_PENDING 0x1
+#define BNXT_PTP_RX_FIFO_ADV	4
+#define BNXT_PTP_RX_REGS	5
+
+#define BNXT_PTP_TX_TS_L	0
+#define BNXT_PTP_TX_TS_H	1
+#define BNXT_PTP_TX_SEQ		2
+#define BNXT_PTP_TX_FIFO	3
+#define BNXT_PTP_TX_FIFO_EMPTY	 0x2
+#define BNXT_PTP_TX_REGS	4
+	uint32_t			rx_regs[BNXT_PTP_RX_REGS];
+	uint32_t			rx_mapped_regs[BNXT_PTP_RX_REGS];
+	uint32_t			tx_regs[BNXT_PTP_TX_REGS];
+	uint32_t			tx_mapped_regs[BNXT_PTP_TX_REGS];
+};
+
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
 	void				*bar0;
@@ -195,6 +243,7 @@ struct bnxt {
 #define BNXT_FLAG_JUMBO		(1 << 3)
 #define BNXT_FLAG_SHORT_CMD	(1 << 4)
 #define BNXT_FLAG_UPDATE_HASH	(1 << 5)
+#define BNXT_FLAG_PTP_SUPPORTED	(1 << 6)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
@@ -272,6 +321,7 @@ struct bnxt {
 
 	struct bnxt_led_info	leds[BNXT_MAX_LED];
 	uint8_t			num_leds;
+	struct bnxt_ptp_cfg     *ptp_cfg;
 };
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);

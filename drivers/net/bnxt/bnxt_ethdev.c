@@ -869,7 +869,7 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
 		return -EINVAL;
 	}
-	/* EW - need to revisit here copying from u64 to u16 */
+	/* EW - need to revisit here copying from uint64_t to uint16_t */
 	memcpy(reta_conf, vnic->rss_table, reta_size);
 
 	if (rte_intr_allow_others(intr_handle)) {
@@ -2536,7 +2536,260 @@ bnxt_dev_supported_ptypes_get_op(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+static int bnxt_map_regs(struct bnxt *bp, uint32_t *reg_arr, int count,
+			 int reg_win)
+{
+	uint32_t reg_base = *reg_arr & 0xfffff000;
+	uint32_t win_off;
+	int i;
 
+	for (i = 0; i < count; i++) {
+		if ((reg_arr[i] & 0xfffff000) != reg_base)
+			return -ERANGE;
+	}
+	win_off = BNXT_GRCPF_REG_WINDOW_BASE_OUT + (reg_win - 1) * 4;
+	rte_cpu_to_le_32(rte_write32(reg_base, (uint8_t *)bp->bar0 + win_off));
+	return 0;
+}
+
+static int bnxt_map_ptp_regs(struct bnxt *bp)
+{
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	uint32_t *reg_arr;
+	int rc, i;
+
+	reg_arr = ptp->rx_regs;
+	rc = bnxt_map_regs(bp, reg_arr, BNXT_PTP_RX_REGS, 5);
+	if (rc)
+		return rc;
+
+	reg_arr = ptp->tx_regs;
+	rc = bnxt_map_regs(bp, reg_arr, BNXT_PTP_TX_REGS, 6);
+	if (rc)
+		return rc;
+
+	for (i = 0; i < BNXT_PTP_RX_REGS; i++)
+		ptp->rx_mapped_regs[i] = 0x5000 + (ptp->rx_regs[i] & 0xfff);
+
+	for (i = 0; i < BNXT_PTP_TX_REGS; i++)
+		ptp->tx_mapped_regs[i] = 0x6000 + (ptp->tx_regs[i] & 0xfff);
+
+	return 0;
+}
+
+static void bnxt_unmap_ptp_regs(struct bnxt *bp)
+{
+	rte_cpu_to_le_32(rte_write32(0, (uint8_t *)bp->bar0 +
+			 BNXT_GRCPF_REG_WINDOW_BASE_OUT + 16));
+	rte_cpu_to_le_32(rte_write32(0, (uint8_t *)bp->bar0 +
+			 BNXT_GRCPF_REG_WINDOW_BASE_OUT + 20));
+}
+
+static uint64_t bnxt_cc_read(struct bnxt *bp)
+{
+	uint64_t ns;
+
+	ns = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+			      BNXT_GRCPF_REG_SYNC_TIME));
+	ns |= (uint64_t)(rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+					  BNXT_GRCPF_REG_SYNC_TIME + 4))) << 32;
+	return ns;
+}
+
+static int bnxt_get_tx_ts(struct bnxt *bp, uint64_t *ts)
+{
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	uint32_t fifo;
+
+	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				ptp->tx_mapped_regs[BNXT_PTP_TX_FIFO]));
+	if (fifo & BNXT_PTP_TX_FIFO_EMPTY)
+		return -EAGAIN;
+
+	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				ptp->tx_mapped_regs[BNXT_PTP_TX_FIFO]));
+	*ts = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				ptp->tx_mapped_regs[BNXT_PTP_TX_TS_L]));
+	*ts |= (uint64_t)rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				ptp->tx_mapped_regs[BNXT_PTP_TX_TS_H])) << 32;
+
+	return 0;
+}
+
+static int bnxt_get_rx_ts(struct bnxt *bp, uint64_t *ts)
+{
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	struct bnxt_pf_info *pf = &bp->pf;
+	uint16_t port_id;
+	uint32_t fifo;
+
+	if (!ptp)
+		return -ENODEV;
+
+	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
+	if (!(fifo & BNXT_PTP_RX_FIFO_PENDING))
+		return -EAGAIN;
+
+	port_id = pf->port_id;
+	rte_cpu_to_le_32(rte_write32(1 << port_id, (uint8_t *)bp->bar0 +
+	       ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO_ADV]));
+
+	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				   ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
+	if (fifo & BNXT_PTP_RX_FIFO_PENDING) {
+/*		bnxt_clr_rx_ts(bp);	  TBD  */
+		return -EBUSY;
+	}
+
+	*ts = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				ptp->rx_mapped_regs[BNXT_PTP_RX_TS_L]));
+	*ts |= (uint64_t)rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				ptp->rx_mapped_regs[BNXT_PTP_RX_TS_H])) << 32;
+
+	return 0;
+}
+
+static int
+bnxt_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
+{
+	uint64_t ns;
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+
+	if (!ptp)
+		return 0;
+
+	ns = rte_timespec_to_ns(ts);
+	/* Set the timecounters to a new value. */
+	ptp->tc.nsec = ns;
+
+	return 0;
+}
+
+static int
+bnxt_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
+{
+	uint64_t ns, systime_cycles;
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+
+	if (!ptp)
+		return 0;
+
+	systime_cycles = bnxt_cc_read(bp);
+	ns = rte_timecounter_update(&ptp->tc, systime_cycles);
+	*ts = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+static int
+bnxt_timesync_enable(struct rte_eth_dev *dev)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	uint32_t shift = 0;
+
+	if (!ptp)
+		return 0;
+
+	ptp->rx_filter = 1;
+	ptp->tx_tstamp_en = 1;
+	ptp->rxctl = BNXT_PTP_MSG_EVENTS;
+
+	if (!bnxt_hwrm_ptp_cfg(bp))
+		bnxt_map_ptp_regs(bp);
+
+	memset(&ptp->tc, 0, sizeof(struct rte_timecounter));
+	memset(&ptp->rx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+	memset(&ptp->tx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+
+	ptp->tc.cc_mask = BNXT_CYCLECOUNTER_MASK;
+	ptp->tc.cc_shift = shift;
+	ptp->tc.nsec_mask = (1ULL << shift) - 1;
+
+	ptp->rx_tstamp_tc.cc_mask = BNXT_CYCLECOUNTER_MASK;
+	ptp->rx_tstamp_tc.cc_shift = shift;
+	ptp->rx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+
+	ptp->tx_tstamp_tc.cc_mask = BNXT_CYCLECOUNTER_MASK;
+	ptp->tx_tstamp_tc.cc_shift = shift;
+	ptp->tx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+
+	return 0;
+}
+
+static int
+bnxt_timesync_disable(struct rte_eth_dev *dev)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+
+	if (!ptp)
+		return 0;
+
+	ptp->rx_filter = 0;
+	ptp->tx_tstamp_en = 0;
+	ptp->rxctl = 0;
+
+	bnxt_hwrm_ptp_cfg(bp);
+
+	bnxt_unmap_ptp_regs(bp);
+
+	return 0;
+}
+
+static int
+bnxt_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+				 struct timespec *timestamp,
+				 uint32_t flags __rte_unused)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	uint64_t rx_tstamp_cycles = 0;
+	uint64_t ns;
+
+	if (!ptp)
+		return 0;
+
+	bnxt_get_rx_ts(bp, &rx_tstamp_cycles);
+	ns = rte_timecounter_update(&ptp->rx_tstamp_tc, rx_tstamp_cycles);
+	*timestamp = rte_ns_to_timespec(ns);
+	return  0;
+}
+
+static int
+bnxt_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+				 struct timespec *timestamp)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	uint64_t tx_tstamp_cycles = 0;
+	uint64_t ns;
+
+	if (!ptp)
+		return 0;
+
+	bnxt_get_tx_ts(bp, &tx_tstamp_cycles);
+	ns = rte_timecounter_update(&ptp->tx_tstamp_tc, tx_tstamp_cycles);
+	*timestamp = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+
+static int
+bnxt_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+
+	if (!ptp)
+		return 0;
+
+	ptp->tc.nsec += delta;
+
+	return 0;
+}
 
 static int
 bnxt_get_eeprom_length_op(struct rte_eth_dev *dev)
@@ -2732,6 +2985,13 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.get_eeprom_length    = bnxt_get_eeprom_length_op,
 	.get_eeprom           = bnxt_get_eeprom_op,
 	.set_eeprom           = bnxt_set_eeprom_op,
+	.timesync_enable      = bnxt_timesync_enable,
+	.timesync_disable     = bnxt_timesync_disable,
+	.timesync_read_time   = bnxt_timesync_read_time,
+	.timesync_write_time   = bnxt_timesync_write_time,
+	.timesync_adjust_time = bnxt_timesync_adjust_time,
+	.timesync_read_rx_timestamp = bnxt_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = bnxt_timesync_read_tx_timestamp,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)

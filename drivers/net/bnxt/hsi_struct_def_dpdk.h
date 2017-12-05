@@ -85,6 +85,7 @@
 #define HWRM_PORT_CLR_STATS		(UINT32_C(0x25))
 #define HWRM_PORT_PHY_QCFG		(UINT32_C(0x27))
 #define HWRM_PORT_MAC_QCFG		(UINT32_C(0x28))
+#define HWRM_PORT_MAC_PTP_QCFG          (UINT32_C(0x29))
 #define HWRM_PORT_PHY_QCAPS		(UINT32_C(0x2a))
 #define HWRM_PORT_LED_CFG		(UINT32_C(0x2d))
 #define HWRM_PORT_LED_QCFG		(UINT32_C(0x2e))
@@ -7120,6 +7121,227 @@ struct hwrm_queue_qportcfg_output {
 	 * this field is written last.
 	 */
 } __attribute__((packed));
+
+/*********************
+ * hwrm_port_mac_cfg *
+ *********************/
+
+
+/* hwrm_port_mac_cfg_input (size:320b/40B) */
+struct hwrm_port_mac_cfg_input {
+	uint16_t	req_type;
+	uint16_t	cmpl_ring;
+	uint16_t	seq_id;
+	uint16_t	target_id;
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	#define PORT_MAC_CFG_REQ_FLAGS_MATCH_LINK                    0x1UL
+	#define PORT_MAC_CFG_REQ_FLAGS_VLAN_PRI2COS_ENABLE           0x2UL
+	#define PORT_MAC_CFG_REQ_FLAGS_TUNNEL_PRI2COS_ENABLE         0x4UL
+	#define PORT_MAC_CFG_REQ_FLAGS_IP_DSCP2COS_ENABLE            0x8UL
+	#define PORT_MAC_CFG_REQ_FLAGS_PTP_RX_TS_CAPTURE_ENABLE      0x10UL
+	#define PORT_MAC_CFG_REQ_FLAGS_PTP_RX_TS_CAPTURE_DISABLE     0x20UL
+	#define PORT_MAC_CFG_REQ_FLAGS_PTP_TX_TS_CAPTURE_ENABLE      0x40UL
+	#define PORT_MAC_CFG_REQ_FLAGS_PTP_TX_TS_CAPTURE_DISABLE     0x80UL
+	#define PORT_MAC_CFG_REQ_FLAGS_OOB_WOL_ENABLE                0x100UL
+	#define PORT_MAC_CFG_REQ_FLAGS_OOB_WOL_DISABLE               0x200UL
+	#define PORT_MAC_CFG_REQ_FLAGS_VLAN_PRI2COS_DISABLE          0x400UL
+	#define PORT_MAC_CFG_REQ_FLAGS_TUNNEL_PRI2COS_DISABLE        0x800UL
+	#define PORT_MAC_CFG_REQ_FLAGS_IP_DSCP2COS_DISABLE           0x1000UL
+	uint32_t	enables;
+	#define PORT_MAC_CFG_REQ_ENABLES_IPG                            0x1UL
+	#define PORT_MAC_CFG_REQ_ENABLES_LPBK                           0x2UL
+	#define PORT_MAC_CFG_REQ_ENABLES_VLAN_PRI2COS_MAP_PRI           0x4UL
+	#define PORT_MAC_CFG_REQ_ENABLES_TUNNEL_PRI2COS_MAP_PRI         0x10UL
+	#define PORT_MAC_CFG_REQ_ENABLES_DSCP2COS_MAP_PRI               0x20UL
+	#define PORT_MAC_CFG_REQ_ENABLES_RX_TS_CAPTURE_PTP_MSG_TYPE     0x40UL
+	#define PORT_MAC_CFG_REQ_ENABLES_TX_TS_CAPTURE_PTP_MSG_TYPE     0x80UL
+	#define PORT_MAC_CFG_REQ_ENABLES_COS_FIELD_CFG                  0x100UL
+	uint16_t	port_id;
+	uint8_t		ipg;
+	uint8_t		lpbk;
+	#define PORT_MAC_CFG_REQ_LPBK_NONE   0x0UL
+	#define PORT_MAC_CFG_REQ_LPBK_LOCAL  0x1UL
+	#define PORT_MAC_CFG_REQ_LPBK_REMOTE 0x2UL
+	#define PORT_MAC_CFG_REQ_LPBK_LAST  PORT_MAC_CFG_REQ_LPBK_REMOTE
+	uint8_t		vlan_pri2cos_map_pri;
+	uint8_t		reserved1;
+	uint8_t		tunnel_pri2cos_map_pri;
+	uint8_t		dscp2pri_map_pri;
+	uint16_t	rx_ts_capture_ptp_msg_type;
+	uint16_t	tx_ts_capture_ptp_msg_type;
+	uint8_t		cos_field_cfg;
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_RSVD1                     0x1UL
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_VLAN_PRI_SEL_MASK         0x6UL
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_VLAN_PRI_SEL_SFT          1
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_VLAN_PRI_SEL_INNERMOST \
+		(0x0UL << 1)
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_VLAN_PRI_SEL_OUTER \
+		(0x1UL << 1)
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_VLAN_PRI_SEL_OUTERMOST \
+		(0x2UL << 1)
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_VLAN_PRI_SEL_UNSPECIFIED \
+		(0x3UL << 1)
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_VLAN_PRI_SEL_LAST \
+		PORT_MAC_CFG_REQ_COS_FIELD_CFG_VLAN_PRI_SEL_UNSPECIFIED
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_T_VLAN_PRI_SEL_MASK       0x18UL
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_T_VLAN_PRI_SEL_SFT        3
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_T_VLAN_PRI_SEL_INNERMOST \
+		(0x0UL << 3)
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_T_VLAN_PRI_SEL_OUTER \
+		(0x1UL << 3)
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_T_VLAN_PRI_SEL_OUTERMOST \
+		(0x2UL << 3)
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_T_VLAN_PRI_SEL_UNSPECIFIED \
+		(0x3UL << 3)
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_T_VLAN_PRI_SEL_LAST \
+		PORT_MAC_CFG_REQ_COS_FIELD_CFG_T_VLAN_PRI_SEL_UNSPECIFIED
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_DEFAULT_COS_MASK          0xe0UL
+	#define PORT_MAC_CFG_REQ_COS_FIELD_CFG_DEFAULT_COS_SFT           5
+	uint8_t		unused_0[3];
+};
+
+
+/* hwrm_port_mac_cfg_output (size:128b/16B) */
+struct hwrm_port_mac_cfg_output {
+	uint16_t	error_code;
+	uint16_t	req_type;
+	uint16_t	seq_id;
+	uint16_t	resp_len;
+	uint16_t	mru;
+	uint16_t	mtu;
+	uint8_t		ipg;
+	uint8_t		lpbk;
+	#define PORT_MAC_CFG_RESP_LPBK_NONE   0x0UL
+	#define PORT_MAC_CFG_RESP_LPBK_LOCAL  0x1UL
+	#define PORT_MAC_CFG_RESP_LPBK_REMOTE 0x2UL
+	#define PORT_MAC_CFG_RESP_LPBK_LAST  PORT_MAC_CFG_RESP_LPBK_REMOTE
+	uint8_t		unused_0;
+	uint8_t		valid;
+};
+
+
+/**********************
+ * hwrm_port_mac_qcfg *
+ **********************/
+
+
+/* hwrm_port_mac_qcfg_input (size:192b/24B) */
+struct hwrm_port_mac_qcfg_input {
+	uint16_t	req_type;
+	uint16_t	cmpl_ring;
+	uint16_t	seq_id;
+	uint16_t	target_id;
+	uint64_t	resp_addr;
+	uint16_t	port_id;
+	uint8_t		unused_0[6];
+};
+
+
+/* hwrm_port_mac_qcfg_output (size:192b/24B) */
+struct hwrm_port_mac_qcfg_output {
+	uint16_t	error_code;
+	uint16_t	req_type;
+	uint16_t	seq_id;
+	uint16_t	resp_len;
+	uint16_t	mru;
+	uint16_t	mtu;
+	uint8_t		ipg;
+	uint8_t		lpbk;
+	#define PORT_MAC_QCFG_RESP_LPBK_NONE   0x0UL
+	#define PORT_MAC_QCFG_RESP_LPBK_LOCAL  0x1UL
+	#define PORT_MAC_QCFG_RESP_LPBK_REMOTE 0x2UL
+	#define PORT_MAC_QCFG_RESP_LPBK_LAST  PORT_MAC_QCFG_RESP_LPBK_REMOTE
+	uint8_t		vlan_pri2cos_map_pri;
+	uint8_t		flags;
+	#define PORT_MAC_QCFG_RESP_FLAGS_VLAN_PRI2COS_ENABLE          0x1UL
+	#define PORT_MAC_QCFG_RESP_FLAGS_TUNNEL_PRI2COS_ENABLE        0x2UL
+	#define PORT_MAC_QCFG_RESP_FLAGS_IP_DSCP2COS_ENABLE           0x4UL
+	#define PORT_MAC_QCFG_RESP_FLAGS_OOB_WOL_ENABLE               0x8UL
+	#define PORT_MAC_QCFG_RESP_FLAGS_PTP_RX_TS_CAPTURE_ENABLE     0x10UL
+	#define PORT_MAC_QCFG_RESP_FLAGS_PTP_TX_TS_CAPTURE_ENABLE     0x20UL
+	uint8_t		tunnel_pri2cos_map_pri;
+	uint8_t		dscp2pri_map_pri;
+	uint16_t	rx_ts_capture_ptp_msg_type;
+	uint16_t	tx_ts_capture_ptp_msg_type;
+	uint8_t		cos_field_cfg;
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_RSVD                      0x1UL
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_VLAN_PRI_SEL_MASK         0x6UL
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_VLAN_PRI_SEL_SFT          1
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_VLAN_PRI_SEL_INNERMOST \
+		(0x0UL << 1)
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_VLAN_PRI_SEL_OUTER \
+		(0x1UL << 1)
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_VLAN_PRI_SEL_OUTERMOST \
+		(0x2UL << 1)
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_VLAN_PRI_SEL_UNSPECIFIED \
+		(0x3UL << 1)
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_VLAN_PRI_SEL_LAST \
+		PORT_MAC_QCFG_RESP_COS_FIELD_CFG_VLAN_PRI_SEL_UNSPECIFIED
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_T_VLAN_PRI_SEL_MASK	0x18UL
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_T_VLAN_PRI_SEL_SFT        3
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_T_VLAN_PRI_SEL_INNERMOST \
+		(0x0UL << 3)
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_T_VLAN_PRI_SEL_OUTER \
+		(0x1UL << 3)
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_T_VLAN_PRI_SEL_OUTERMOST \
+		(0x2UL << 3)
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_T_VLAN_PRI_SEL_UNSPECIFIED \
+		(0x3UL << 3)
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_T_VLAN_PRI_SEL_LAST \
+		PORT_MAC_QCFG_RESP_COS_FIELD_CFG_T_VLAN_PRI_SEL_UNSPECIFIED
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_DEFAULT_COS_MASK	0xe0UL
+	#define PORT_MAC_QCFG_RESP_COS_FIELD_CFG_DEFAULT_COS_SFT           5
+	uint8_t		valid;
+};
+
+
+/**************************
+ * hwrm_port_mac_ptp_qcfg *
+ **************************/
+
+
+/* hwrm_port_mac_ptp_qcfg_input (size:192b/24B) */
+struct hwrm_port_mac_ptp_qcfg_input {
+	uint16_t	req_type;
+	uint16_t	cmpl_ring;
+	uint16_t	seq_id;
+	uint16_t	target_id;
+	uint64_t	resp_addr;
+	uint16_t	port_id;
+	uint8_t		unused_0[6];
+};
+
+
+/* hwrm_port_mac_ptp_qcfg_output (size:640b/80B) */
+struct hwrm_port_mac_ptp_qcfg_output {
+	uint16_t	error_code;
+	uint16_t	req_type;
+	uint16_t	seq_id;
+	uint16_t	resp_len;
+	uint8_t		flags;
+	#define PORT_MAC_PTP_QCFG_RESP_FLAGS_DIRECT_ACCESS     0x1UL
+	#define PORT_MAC_PTP_QCFG_RESP_FLAGS_HWRM_ACCESS       0x2UL
+	uint8_t		unused_0[3];
+	uint32_t	rx_ts_reg_off_lower;
+	uint32_t	rx_ts_reg_off_upper;
+	uint32_t	rx_ts_reg_off_seq_id;
+	uint32_t	rx_ts_reg_off_src_id_0;
+	uint32_t	rx_ts_reg_off_src_id_1;
+	uint32_t	rx_ts_reg_off_src_id_2;
+	uint32_t	rx_ts_reg_off_domain_id;
+	uint32_t	rx_ts_reg_off_fifo;
+	uint32_t	rx_ts_reg_off_fifo_adv;
+	uint32_t	rx_ts_reg_off_granularity;
+	uint32_t	tx_ts_reg_off_lower;
+	uint32_t	tx_ts_reg_off_upper;
+	uint32_t	tx_ts_reg_off_seq_id;
+	uint32_t	tx_ts_reg_off_fifo;
+	uint32_t	tx_ts_reg_off_granularity;
+	uint8_t		unused_1[7];
+	uint8_t		valid;
+};
+
 
 /* hwrm_vnic_alloc */
 /*
