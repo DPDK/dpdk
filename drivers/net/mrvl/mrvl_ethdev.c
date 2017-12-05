@@ -361,8 +361,6 @@ mrvl_dev_set_link_up(struct rte_eth_dev *dev)
 	if (ret)
 		pp2_ppio_disable(priv->ppio);
 
-	dev->data->dev_link.link_status = ETH_LINK_UP;
-
 	return ret;
 }
 
@@ -379,15 +377,8 @@ static int
 mrvl_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
-	int ret;
 
-	ret = pp2_ppio_disable(priv->ppio);
-	if (ret)
-		return ret;
-
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
-
-	return ret;
+	return pp2_ppio_disable(priv->ppio);
 }
 
 /**
@@ -628,9 +619,10 @@ mrvl_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	 * TODO
 	 * once MUSDK provides necessary API use it here
 	 */
+	struct mrvl_priv *priv = dev->data->dev_private;
 	struct ethtool_cmd edata;
 	struct ifreq req;
-	int ret, fd;
+	int ret, fd, link_up;
 
 	edata.cmd = ETHTOOL_GSET;
 
@@ -670,6 +662,8 @@ mrvl_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 							 ETH_LINK_HALF_DUPLEX;
 	dev->data->dev_link.link_autoneg = edata.autoneg ? ETH_LINK_AUTONEG :
 							   ETH_LINK_FIXED;
+	pp2_ppio_get_link_state(priv->ppio, &link_up);
+	dev->data->dev_link.link_status = link_up ? ETH_LINK_UP : ETH_LINK_DOWN;
 
 	return 0;
 }
