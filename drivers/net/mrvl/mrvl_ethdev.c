@@ -324,6 +324,9 @@ mrvl_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (mtu < ETHER_MIN_MTU || mru > MRVL_PKT_SIZE_MAX)
 		return -EINVAL;
 
+	if (!priv->ppio)
+		return -EPERM;
+
 	ret = pp2_ppio_set_mru(priv->ppio, mru);
 	if (ret)
 		return ret;
@@ -345,6 +348,9 @@ mrvl_dev_set_link_up(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
+
+	if (!priv->ppio)
+		return -EPERM;
 
 	ret = pp2_ppio_enable(priv->ppio);
 	if (ret)
@@ -377,6 +383,9 @@ static int
 mrvl_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
+
+	if (!priv->ppio)
+		return -EPERM;
 
 	return pp2_ppio_disable(priv->ppio);
 }
@@ -624,6 +633,9 @@ mrvl_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	struct ifreq req;
 	int ret, fd, link_up;
 
+	if (!priv->ppio)
+		return -EPERM;
+
 	edata.cmd = ETHTOOL_GSET;
 
 	strcpy(req.ifr_name, dev->data->name);
@@ -680,6 +692,9 @@ mrvl_promiscuous_enable(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
+	if (!priv->ppio)
+		return;
+
 	ret = pp2_ppio_set_promisc(priv->ppio, 1);
 	if (ret)
 		RTE_LOG(ERR, PMD, "Failed to enable promiscuous mode\n");
@@ -696,6 +711,9 @@ mrvl_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
+
+	if (!priv->ppio)
+		return;
 
 	ret = pp2_ppio_set_mc_promisc(priv->ppio, 1);
 	if (ret)
@@ -714,6 +732,9 @@ mrvl_promiscuous_disable(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
+	if (!priv->ppio)
+		return;
+
 	ret = pp2_ppio_set_promisc(priv->ppio, 0);
 	if (ret)
 		RTE_LOG(ERR, PMD, "Failed to disable promiscuous mode\n");
@@ -730,6 +751,9 @@ mrvl_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
+
+	if (!priv->ppio)
+		return;
 
 	ret = pp2_ppio_set_mc_promisc(priv->ppio, 0);
 	if (ret)
@@ -750,6 +774,9 @@ mrvl_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	char buf[ETHER_ADDR_FMT_SIZE];
 	int ret;
+
+	if (!priv->ppio)
+		return;
 
 	ret = pp2_ppio_remove_mac_addr(priv->ppio,
 				       dev->data->mac_addrs[index].addr_bytes);
@@ -786,6 +813,9 @@ mrvl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	if (index == 0)
 		/* For setting index 0, mrvl_mac_addr_set() should be used.*/
 		return -1;
+
+	if (!priv->ppio)
+		return -EPERM;
 
 	/*
 	 * Maximum number of uc addresses can be tuned via kernel module mvpp2x
@@ -824,6 +854,9 @@ mrvl_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
+	if (!priv->ppio)
+		return;
+
 	ret = pp2_ppio_set_mac_addr(priv->ppio, mac_addr->addr_bytes);
 	if (ret) {
 		char buf[ETHER_ADDR_FMT_SIZE];
@@ -850,6 +883,9 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct pp2_ppio_statistics ppio_stats;
 	uint64_t drop_mac = 0;
 	unsigned int i, idx, ret;
+
+	if (!priv->ppio)
+		return -EPERM;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct mrvl_rxq *rxq = dev->data->rx_queues[i];
@@ -942,6 +978,9 @@ mrvl_stats_reset(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int i;
+
+	if (!priv->ppio)
+		return;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct mrvl_rxq *rxq = dev->data->rx_queues[i];
@@ -1098,6 +1137,9 @@ static int
 mrvl_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
+
+	if (!priv->ppio)
+		return -EPERM;
 
 	return on ? pp2_ppio_add_vlan(priv->ppio, vlan_id) :
 		    pp2_ppio_remove_vlan(priv->ppio, vlan_id);
