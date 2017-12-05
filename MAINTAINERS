@@ -36,6 +36,7 @@ M: maintainers@dpdk.org
 
 Documentation (with overlaps)
 M: John McNamara <john.mcnamara@intel.com>
+M: Marko Kovacevic <marko.kovacevic@intel.com>
 F: README
 F: doc/
 
