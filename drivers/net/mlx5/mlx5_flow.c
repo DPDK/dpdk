@@ -429,6 +429,7 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 /** Structure to pass to the conversion function. */
 struct mlx5_flow_parse {
 	uint32_t inner; /**< Set once VXLAN is encountered. */
+	uint32_t allmulti:1; /**< Set once allmulti dst MAC is encountered. */
 	uint32_t create:1;
 	/**< Whether resources should remain after a validate. */
 	uint32_t drop:1; /**< Target is a drop queue. */
@@ -1165,6 +1166,17 @@ exit_free:
 			}
 		}
 	}
+	if (parser->allmulti &&
+	    parser->layer == HASH_RXQ_ETH) {
+		for (i = 0; i != hash_rxq_init_n; ++i) {
+			if (!parser->queue[i].ibv_attr)
+				continue;
+			if (parser->queue[i].ibv_attr->num_of_specs != 1)
+				break;
+			parser->queue[i].ibv_attr->type =
+						IBV_FLOW_ATTR_MC_DEFAULT;
+		}
+	}
 	return ret;
 exit_enomem:
 	for (i = 0; i != hash_rxq_init_n; ++i) {
@@ -1262,6 +1274,7 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 		eth.val.ether_type &= eth.mask.ether_type;
 	}
 	mlx5_flow_create_copy(parser, &eth, eth_size);
+	parser->allmulti = eth.val.dst_mac[0] & 1;
 	return 0;
 }
 
