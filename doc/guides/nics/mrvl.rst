@@ -87,31 +87,40 @@ Limitations
 Prerequisites
 -------------
 
-- Custom Linux Kernel sources available
-  `here <https://github.com/MarvellEmbeddedProcessors/linux-marvell/tree/linux-4.4.52-armada-17.08>`__.
+- Custom Linux Kernel sources
 
-- Out of tree `mvpp2x_sysfs` kernel module sources available
-  `here <https://github.com/MarvellEmbeddedProcessors/mvpp2x-marvell/tree/mvpp2x-armada-17.08>`__.
+  .. code-block:: console
 
-- MUSDK (Marvell User-Space SDK) sources available
-  `here <https://github.com/MarvellEmbeddedProcessors/musdk-marvell/tree/musdk-armada-17.08>`__.
+     git clone https://github.com/MarvellEmbeddedProcessors/linux-marvell.git -b linux-4.4.52-armada-17.10
 
-    MUSDK is a light-weight library that provides direct access to Marvell's
-    PPv2 (Packet Processor v2). Alternatively prebuilt MUSDK library can be
-    requested from `Marvell Extranet <https://extranet.marvell.com>`_. Once
-    approval has been granted, library can be found by typing ``musdk`` in
-    the search box.
+- Out of tree `mvpp2x_sysfs` kernel module sources
 
-    MUSDK must be configured with the following features:
+  .. code-block:: console
 
-    .. code-block:: console
+     git clone https://github.com/MarvellEmbeddedProcessors/mvpp2x-marvell.git -b mvpp2x-armada-17.10
 
-       --enable-bpool-dma=64
+- MUSDK (Marvell User-Space SDK) sources
+
+  .. code-block:: console
+
+     git clone https://github.com/MarvellEmbeddedProcessors/musdk-marvell.git -b musdk-armada-17.10
+
+  MUSDK is a light-weight library that provides direct access to Marvell's
+  PPv2 (Packet Processor v2). Alternatively prebuilt MUSDK library can be
+  requested from `Marvell Extranet <https://extranet.marvell.com>`_. Once
+  approval has been granted, library can be found by typing ``musdk`` in
+  the search box.
+
+  MUSDK must be configured with the following features:
+
+  .. code-block:: console
+
+     --enable-bpool-dma=64
 
 - DPDK environment
 
-    Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup
-    DPDK environment.
+  Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup
+  DPDK environment.
 
 
 Config File Options
@@ -122,11 +131,6 @@ The following options can be modified in the ``config`` file.
 - ``CONFIG_RTE_LIBRTE_MRVL_PMD`` (default ``n``)
 
     Toggle compilation of the librte_pmd_mrvl driver.
-
-- ``CONFIG_RTE_MRVL_MUSDK_DMA_MEMSIZE`` (default ``41943040``)
-
-    Size in bytes of the contiguous memory region that MUSDK will allocate
-    for run-time DMA-able data buffers.
 
 
 QoS Configuration
@@ -142,7 +146,7 @@ Configuration syntax
 
    [port <portnum> default]
    default_tc = <default_tc>
-   qos_mode = <qos_priority>
+   mapping_priority = <mapping_priority>
 
    [port <portnum> tc <traffic_class>]
    rxq = <rx_queue_list>
@@ -160,7 +164,7 @@ Where:
 
 - ``<default_tc>``: Default traffic class (e.g. 0)
 
-- ``<qos_priority>``: QoS priority for mapping (`ip`, `vlan`, `ip/vlan` or `vlan/ip`).
+- ``<mapping_priority>``: QoS priority for mapping (`ip`, `vlan`, `ip/vlan` or `vlan/ip`).
 
 - ``<traffic_class>``: Traffic Class to be configured.
 
@@ -218,9 +222,26 @@ Building DPDK
 Driver needs precompiled MUSDK library during compilation. Please consult
 ``doc/musdk_get_started.txt`` for the detailed build instructions.
 
+.. code-block:: console
+
+   export CROSS_COMPILE=<toolchain>/bin/aarch64-linux-gnu-
+   ./bootstrap
+   ./configure --enable-bpool-dma=64
+   make install
+
+MUSDK will be installed to `usr/local` under current directory.
+For the detailed build instructions please consult ``doc/musdk_get_started.txt``.
+
 Before the DPDK build process the environmental variable ``LIBMUSDK_PATH`` with
 the path to the MUSDK installation directory needs to be exported.
 
+.. code-block:: console
+
+   export LIBMUSDK_PATH=<musdk>/usr/local
+   export CROSS=aarch64-linux-gnu-
+   make config T=arm64-armv8a-linuxapp-gcc
+   sed -ri 's,(MRVL_PMD=)n,\1y,' build/.config
+   make
 
 Usage Example
 -------------
@@ -242,7 +263,7 @@ Additionally interfaces used by DPDK application need to be put up:
 .. code-block:: console
 
    ip link set eth0 up
-   ip link set eth1 up
+   ip link set eth2 up
 
 In order to run testpmd example application following command can be used:
 
