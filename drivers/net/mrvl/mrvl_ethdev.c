@@ -426,8 +426,10 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	priv->bpool_min_size = priv->nb_rx_queues * MRVL_BURST_SIZE * 2;
 
 	ret = pp2_ppio_init(&priv->ppio_params, &priv->ppio);
-	if (ret)
+	if (ret) {
+		RTE_LOG(ERR, PMD, "Failed to init ppio\n");
 		return ret;
+	}
 
 	/*
 	 * In case there are some some stale uc/mc mac addresses flush them
@@ -462,17 +464,20 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	if (mrvl_qos_cfg) {
 		ret = mrvl_start_qos_mapping(priv);
 		if (ret) {
-			pp2_ppio_deinit(priv->ppio);
-			return ret;
+			RTE_LOG(ERR, PMD, "Failed to setup QoS mapping\n");
+			goto out;
 		}
 	}
 
 	ret = mrvl_dev_set_link_up(dev);
-	if (ret)
+	if (ret) {
+		RTE_LOG(ERR, PMD, "Failed to set link up\n");
 		goto out;
+	}
 
 	return 0;
 out:
+	RTE_LOG(ERR, PMD, "Failed to start device\n");
 	pp2_ppio_deinit(priv->ppio);
 	return ret;
 }
