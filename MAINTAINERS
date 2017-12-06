@@ -79,6 +79,7 @@ F: lib/librte_eal/bsdapp/BSDmakefile.meson
 F: meson_options.txt
 F: config/rte_config.h
 F: buildtools/gen-pmdinfo-cfile.sh
+F: buildtools/symlink-drivers-solibs.sh
 
 ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
