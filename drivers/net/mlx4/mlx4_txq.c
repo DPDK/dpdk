@@ -75,17 +75,16 @@ mlx4_txq_free_elts(struct txq *txq)
 	unsigned int elts_head = txq->elts_head;
 	unsigned int elts_tail = txq->elts_tail;
 	struct txq_elt (*elts)[txq->elts_n] = txq->elts;
+	unsigned int elts_m = txq->elts_n - 1;
 
 	DEBUG("%p: freeing WRs", (void *)txq);
 	while (elts_tail != elts_head) {
-		struct txq_elt *elt = &(*elts)[elts_tail];
+		struct txq_elt *elt = &(*elts)[elts_tail++ & elts_m];
 
 		assert(elt->buf != NULL);
 		rte_pktmbuf_free(elt->buf);
 		elt->buf = NULL;
 		elt->wqe = NULL;
-		if (++elts_tail == RTE_DIM(*elts))
-			elts_tail = 0;
 	}
 	txq->elts_tail = txq->elts_head;
 }
@@ -207,7 +206,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mlx4dv_obj mlxdv;
 	struct mlx4dv_qp dv_qp;
 	struct mlx4dv_cq dv_cq;
-	struct txq_elt (*elts)[desc];
+	struct txq_elt (*elts)[rte_align32pow2(desc)];
 	struct ibv_qp_init_attr qp_init_attr;
 	struct txq *txq;
 	uint8_t *bounce_buf;
@@ -250,6 +249,12 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = EINVAL;
 		ERROR("%p: invalid number of Tx descriptors", (void *)dev);
 		return -rte_errno;
+	}
+	if (desc != RTE_DIM(*elts)) {
+		desc = RTE_DIM(*elts);
+		WARN("%p: increased number of descriptors in Tx queue %u"
+		     " to the next power of two (%u)",
+		     (void *)dev, idx, desc);
 	}
 	/* Allocate and initialize Tx queue. */
 	mlx4_zmallocv_socket("TXQ", vec, RTE_DIM(vec), socket);

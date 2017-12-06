@@ -312,10 +312,14 @@ mlx4_txq_stamp_freed_wqe(struct mlx4_sq *sq, volatile uint32_t *start,
  *
  * @param txq
  *   Pointer to Tx queue structure.
+ * @param elts_m
+ *   Tx elements number mask.
+ * @param sq
+ *   Pointer to the SQ structure.
  */
 static void
-mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
-				  struct mlx4_sq *sq)
+mlx4_txq_complete(struct txq *txq, const unsigned int elts_m,
+		  struct mlx4_sq *sq)
 {
 	unsigned int elts_tail = txq->elts_tail;
 	struct mlx4_cq *cq = &txq->mcq;
@@ -355,13 +359,11 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 	if (unlikely(!completed))
 		return;
 	/* First stamping address is the end of the last one. */
-	first_txbb = (&(*txq->elts)[elts_tail])->eocb;
+	first_txbb = (&(*txq->elts)[elts_tail & elts_m])->eocb;
 	elts_tail += completed;
-	if (elts_tail >= elts_n)
-		elts_tail -= elts_n;
 	/* The new tail element holds the end address. */
 	sq->remain_size += mlx4_txq_stamp_freed_wqe(sq, first_txbb,
-		(&(*txq->elts)[elts_tail])->eocb);
+		(&(*txq->elts)[elts_tail & elts_m])->eocb);
 	/* Update CQ consumer index. */
 	cq->cons_index = cons_index;
 	*cq->set_ci_db = rte_cpu_to_be_32(cons_index & MLX4_CQ_DB_CI_MASK);
@@ -580,6 +582,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct txq *txq = (struct txq *)dpdk_txq;
 	unsigned int elts_head = txq->elts_head;
 	const unsigned int elts_n = txq->elts_n;
+	const unsigned int elts_m = elts_n - 1;
 	unsigned int bytes_sent = 0;
 	unsigned int i;
 	unsigned int max;
@@ -589,24 +592,20 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 	assert(txq->elts_comp_cd != 0);
 	if (likely(txq->elts_comp != 0))
-		mlx4_txq_complete(txq, elts_n, sq);
+		mlx4_txq_complete(txq, elts_m, sq);
 	max = (elts_n - (elts_head - txq->elts_tail));
-	if (max > elts_n)
-		max -= elts_n;
 	assert(max >= 1);
 	assert(max <= elts_n);
 	/* Always leave one free entry in the ring. */
 	--max;
 	if (max > pkts_n)
 		max = pkts_n;
-	elt = &(*txq->elts)[elts_head];
+	elt = &(*txq->elts)[elts_head & elts_m];
 	/* First Tx burst element saves the next WQE control segment. */
 	ctrl = elt->wqe;
 	for (i = 0; (i != max); ++i) {
 		struct rte_mbuf *buf = pkts[i];
-		unsigned int elts_head_next =
-			(((elts_head + 1) == elts_n) ? 0 : elts_head + 1);
-		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
+		struct txq_elt *elt_next = &(*txq->elts)[++elts_head & elts_m];
 		uint32_t owner_opcode = sq->owner_opcode;
 		volatile struct mlx4_wqe_data_seg *dseg =
 				(volatile struct mlx4_wqe_data_seg *)(ctrl + 1);
@@ -725,7 +724,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		ctrl->owner_opcode = rte_cpu_to_be_32(owner_opcode);
 		elt->buf = buf;
 		bytes_sent += buf->pkt_len;
-		elts_head = elts_head_next;
 		ctrl = ctrl_next;
 		elt = elt_next;
 	}
@@ -741,7 +739,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	rte_wmb();
 	/* Ring QP doorbell. */
 	rte_write32(txq->msq.doorbell_qpn, txq->msq.db);
-	txq->elts_head = elts_head;
+	txq->elts_head += i;
 	txq->elts_comp += i;
 	return i;
 }
