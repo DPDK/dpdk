@@ -54,21 +54,17 @@
 
 /* Typical TSO descriptor with 16 gather entries is 352 bytes. */
 #define MLX4_MAX_WQE_SIZE 512
-#define MLX4_MAX_WQE_TXBBS (MLX4_MAX_WQE_SIZE / MLX4_TXBB_SIZE)
+#define MLX4_SEG_SHIFT 4
 
 /* Send queue stamping/invalidating information. */
 #define MLX4_SQ_STAMP_STRIDE 64
 #define MLX4_SQ_STAMP_DWORDS (MLX4_SQ_STAMP_STRIDE / 4)
-#define MLX4_SQ_STAMP_SHIFT 31
+#define MLX4_SQ_OWNER_BIT 31
 #define MLX4_SQ_STAMP_VAL 0x7fffffff
 
 /* Work queue element (WQE) flags. */
-#define MLX4_BIT_WQE_OWN 0x80000000
 #define MLX4_WQE_CTRL_IIP_HDR_CSUM (1 << 28)
 #define MLX4_WQE_CTRL_IL4_HDR_CSUM (1 << 27)
-
-#define MLX4_SIZE_TO_TXBBS(size) \
-	(RTE_ALIGN((size), (MLX4_TXBB_SIZE)) >> (MLX4_TXBB_SHIFT))
 
 /* CQE checksum flags. */
 enum {
@@ -98,16 +94,14 @@ enum {
 struct mlx4_sq {
 	volatile uint8_t *buf; /**< SQ buffer. */
 	volatile uint8_t *eob; /**< End of SQ buffer */
-	uint32_t head; /**< SQ head counter in units of TXBBS. */
-	uint32_t tail; /**< SQ tail counter in units of TXBBS. */
-	uint32_t txbb_cnt; /**< Num of WQEBB in the Q (should be ^2). */
-	uint32_t txbb_cnt_mask; /**< txbbs_cnt mask (txbb_cnt is ^2). */
-	uint32_t headroom_txbbs; /**< Num of txbbs that should be kept free. */
+	uint32_t size; /**< SQ size includes headroom. */
+	uint32_t remain_size; /**< Remaining WQE room in SQ (bytes). */
+	uint32_t owner_opcode;
+	/**< Default owner opcode with HW valid owner bit. */
+	uint32_t stamp; /**< Stamp value with an invalid HW owner bit. */
 	volatile uint32_t *db; /**< Pointer to the doorbell. */
 	uint32_t doorbell_qpn; /**< qp number to write to the doorbell. */
 };
-
-#define mlx4_get_send_wqe(sq, n) ((sq)->buf + ((n) * (MLX4_TXBB_SIZE)))
 
 /* Completion queue events, numbers and masks. */
 #define MLX4_CQ_DB_GEQ_N_MASK 0x3

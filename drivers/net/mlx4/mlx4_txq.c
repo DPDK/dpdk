@@ -83,6 +83,7 @@ mlx4_txq_free_elts(struct txq *txq)
 		assert(elt->buf != NULL);
 		rte_pktmbuf_free(elt->buf);
 		elt->buf = NULL;
+		elt->wqe = NULL;
 		if (++elts_tail == RTE_DIM(*elts))
 			elts_tail = 0;
 	}
@@ -162,20 +163,19 @@ mlx4_txq_fill_dv_obj_info(struct txq *txq, struct mlx4dv_obj *mlxdv)
 	struct mlx4_cq *cq = &txq->mcq;
 	struct mlx4dv_qp *dqp = mlxdv->qp.out;
 	struct mlx4dv_cq *dcq = mlxdv->cq.out;
-	uint32_t sq_size = (uint32_t)dqp->rq.offset - (uint32_t)dqp->sq.offset;
 
-	sq->buf = (uint8_t *)dqp->buf.buf + dqp->sq.offset;
 	/* Total length, including headroom and spare WQEs. */
-	sq->eob = sq->buf + sq_size;
-	sq->head = 0;
-	sq->tail = 0;
-	sq->txbb_cnt =
-		(dqp->sq.wqe_cnt << dqp->sq.wqe_shift) >> MLX4_TXBB_SHIFT;
-	sq->txbb_cnt_mask = sq->txbb_cnt - 1;
+	sq->size = (uint32_t)dqp->rq.offset - (uint32_t)dqp->sq.offset;
+	sq->buf = (uint8_t *)dqp->buf.buf + dqp->sq.offset;
+	sq->eob = sq->buf + sq->size;
+	uint32_t headroom_size = 2048 + (1 << dqp->sq.wqe_shift);
+	/* Continuous headroom size bytes must always stay freed. */
+	sq->remain_size = sq->size - headroom_size;
+	sq->owner_opcode = MLX4_OPCODE_SEND | (0 << MLX4_SQ_OWNER_BIT);
+	sq->stamp = rte_cpu_to_be_32(MLX4_SQ_STAMP_VAL |
+				     (0 << MLX4_SQ_OWNER_BIT));
 	sq->db = dqp->sdb;
 	sq->doorbell_qpn = dqp->doorbell_qpn;
-	sq->headroom_txbbs =
-		(2048 + (1 << dqp->sq.wqe_shift)) >> MLX4_TXBB_SHIFT;
 	cq->buf = dcq->buf.buf;
 	cq->cqe_cnt = dcq->cqe_cnt;
 	cq->set_ci_db = dcq->set_ci_db;
@@ -361,6 +361,9 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	mlx4_txq_fill_dv_obj_info(txq, &mlxdv);
+	/* Save first wqe pointer in the first element. */
+	(&(*txq->elts)[0])->wqe =
+		(volatile struct mlx4_wqe_ctrl_seg *)txq->msq.buf;
 	/* Pre-register known mempools. */
 	rte_mempool_walk(mlx4_txq_mp2mr_iter, txq);
 	DEBUG("%p: adding Tx queue %p to list", (void *)dev, (void *)txq);

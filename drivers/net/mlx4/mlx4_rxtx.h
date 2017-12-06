@@ -105,6 +105,7 @@ struct mlx4_rss {
 /** Tx element. */
 struct txq_elt {
 	struct rte_mbuf *buf; /**< Buffer. */
+	volatile struct mlx4_wqe_ctrl_seg *wqe; /**< SQ WQE. */
 };
 
 /** Rx queue counters. */

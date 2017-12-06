@@ -61,9 +61,6 @@
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
-#define WQE_ONE_DATA_SEG_SIZE \
-	(sizeof(struct mlx4_wqe_ctrl_seg) + sizeof(struct mlx4_wqe_data_seg))
-
 /**
  * Pointer-value pair structure used in tx_post_send for saving the first
  * DWORD (32 byte) of a TXBB.
@@ -268,52 +265,49 @@ uint32_t mlx4_ptype_table[0x100] __rte_cache_aligned = {
  *
  * @param sq
  *   Pointer to the SQ structure.
- * @param index
- *   Index of the freed WQE.
- * @param num_txbbs
- *   Number of blocks to stamp.
- *   If < 0 the routine will use the size written in the WQ entry.
- * @param owner
- *   The value of the WQE owner bit to use in the stamp.
+ * @param[in, out] wqe
+ *   Pointer of WQE address to stamp. This value is modified on return to
+ *   store the address of the next WQE.
  *
  * @return
- *   The number of Tx basic blocs (TXBB) the WQE contained.
+ *   WQE size.
  */
-static int
-mlx4_txq_stamp_freed_wqe(struct mlx4_sq *sq, uint16_t index, uint8_t owner)
+static uint32_t
+mlx4_txq_stamp_freed_wqe(struct mlx4_sq *sq, volatile uint32_t **wqe)
 {
-	uint32_t stamp = rte_cpu_to_be_32(MLX4_SQ_STAMP_VAL |
-					  (!!owner << MLX4_SQ_STAMP_SHIFT));
-	volatile uint8_t *wqe = mlx4_get_send_wqe(sq,
-						(index & sq->txbb_cnt_mask));
-	volatile uint32_t *ptr = (volatile uint32_t *)wqe;
-	int i;
-	int txbbs_size;
-	int num_txbbs;
-
+	uint32_t stamp = sq->stamp;
+	volatile uint32_t *next_txbb = *wqe;
 	/* Extract the size from the control segment of the WQE. */
-	num_txbbs = MLX4_SIZE_TO_TXBBS((((volatile struct mlx4_wqe_ctrl_seg *)
-					 wqe)->fence_size & 0x3f) << 4);
-	txbbs_size = num_txbbs * MLX4_TXBB_SIZE;
+	uint32_t size = RTE_ALIGN((uint32_t)
+				  ((((volatile struct mlx4_wqe_ctrl_seg *)
+				     next_txbb)->fence_size & 0x3f) << 4),
+				  MLX4_TXBB_SIZE);
+	uint32_t size_cd = size;
+
 	/* Optimize the common case when there is no wrap-around. */
-	if (wqe + txbbs_size <= sq->eob) {
+	if ((uintptr_t)next_txbb + size < (uintptr_t)sq->eob) {
 		/* Stamp the freed descriptor. */
-		for (i = 0; i < txbbs_size; i += MLX4_SQ_STAMP_STRIDE) {
-			*ptr = stamp;
-			ptr += MLX4_SQ_STAMP_DWORDS;
-		}
+		do {
+			*next_txbb = stamp;
+			next_txbb += MLX4_SQ_STAMP_DWORDS;
+			size_cd -= MLX4_TXBB_SIZE;
+		} while (size_cd);
 	} else {
 		/* Stamp the freed descriptor. */
-		for (i = 0; i < txbbs_size; i += MLX4_SQ_STAMP_STRIDE) {
-			*ptr = stamp;
-			ptr += MLX4_SQ_STAMP_DWORDS;
-			if ((volatile uint8_t *)ptr >= sq->eob) {
-				ptr = (volatile uint32_t *)sq->buf;
-				stamp ^= RTE_BE32(0x80000000);
+		do {
+			*next_txbb = stamp;
+			next_txbb += MLX4_SQ_STAMP_DWORDS;
+			if ((volatile uint8_t *)next_txbb >= sq->eob) {
+				next_txbb = (volatile uint32_t *)sq->buf;
+				/* Flip invalid stamping ownership. */
+				stamp ^= RTE_BE32(0x1 << MLX4_SQ_OWNER_BIT);
+				sq->stamp = stamp;
 			}
-		}
+			size_cd -= MLX4_TXBB_SIZE;
+		} while (size_cd);
 	}
-	return num_txbbs;
+	*wqe = next_txbb;
+	return size;
 }
 
 /**
@@ -326,24 +320,22 @@ mlx4_txq_stamp_freed_wqe(struct mlx4_sq *sq, uint16_t index, uint8_t owner)
  *
  * @param txq
  *   Pointer to Tx queue structure.
- *
- * @return
- *   0 on success, -1 on failure.
  */
-static int
+static void
 mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 				  struct mlx4_sq *sq)
 {
-	unsigned int elts_comp = txq->elts_comp;
 	unsigned int elts_tail = txq->elts_tail;
-	unsigned int sq_tail = sq->tail;
 	struct mlx4_cq *cq = &txq->mcq;
 	volatile struct mlx4_cqe *cqe;
 	uint32_t cons_index = cq->cons_index;
-	uint16_t new_index;
-	uint16_t nr_txbbs = 0;
-	int pkts = 0;
-
+	volatile uint32_t *first_wqe;
+	volatile uint32_t *next_wqe = (volatile uint32_t *)
+			((&(*txq->elts)[elts_tail])->wqe);
+	volatile uint32_t *last_wqe;
+	uint16_t mask = (((uintptr_t)sq->eob - (uintptr_t)sq->buf) >>
+			 MLX4_TXBB_SHIFT) - 1;
+	uint32_t pkts = 0;
 	/*
 	 * Traverse over all CQ entries reported and handle each WQ entry
 	 * reported by them.
@@ -353,11 +345,11 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 		if (unlikely(!!(cqe->owner_sr_opcode & MLX4_CQE_OWNER_MASK) ^
 		    !!(cons_index & cq->cqe_cnt)))
 			break;
+#ifndef NDEBUG
 		/*
 		 * Make sure we read the CQE after we read the ownership bit.
 		 */
 		rte_io_rmb();
-#ifndef NDEBUG
 		if (unlikely((cqe->owner_sr_opcode & MLX4_CQE_OPCODE_MASK) ==
 			     MLX4_CQE_OPCODE_ERROR)) {
 			volatile struct mlx4_err_cqe *cqe_err =
@@ -366,41 +358,32 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_n,
 			      " syndrome: 0x%x\n",
 			      (void *)txq, cqe_err->vendor_err,
 			      cqe_err->syndrome);
+			break;
 		}
 #endif /* NDEBUG */
-		/* Get WQE index reported in the CQE. */
-		new_index =
-			rte_be_to_cpu_16(cqe->wqe_index) & sq->txbb_cnt_mask;
+		/* Get WQE address buy index from the CQE. */
+		last_wqe = (volatile uint32_t *)((uintptr_t)sq->buf +
+			((rte_be_to_cpu_16(cqe->wqe_index) & mask) <<
+			 MLX4_TXBB_SHIFT));
 		do {
 			/* Free next descriptor. */
-			sq_tail += nr_txbbs;
-			nr_txbbs =
-				mlx4_txq_stamp_freed_wqe(sq,
-				     sq_tail & sq->txbb_cnt_mask,
-				     !!(sq_tail & sq->txbb_cnt));
+			first_wqe = next_wqe;
+			sq->remain_size +=
+				mlx4_txq_stamp_freed_wqe(sq, &next_wqe);
 			pkts++;
-		} while ((sq_tail & sq->txbb_cnt_mask) != new_index);
+		} while (first_wqe != last_wqe);
 		cons_index++;
 	} while (1);
 	if (unlikely(pkts == 0))
-		return 0;
-	/* Update CQ. */
+		return;
+	/* Update CQ consumer index. */
 	cq->cons_index = cons_index;
-	*cq->set_ci_db = rte_cpu_to_be_32(cq->cons_index & MLX4_CQ_DB_CI_MASK);
-	sq->tail = sq_tail + nr_txbbs;
-	/* Update the list of packets posted for transmission. */
-	elts_comp -= pkts;
-	assert(elts_comp <= txq->elts_comp);
-	/*
-	 * Assume completion status is successful as nothing can be done about
-	 * it anyway.
-	 */
+	*cq->set_ci_db = rte_cpu_to_be_32(cons_index & MLX4_CQ_DB_CI_MASK);
+	txq->elts_comp -= pkts;
 	elts_tail += pkts;
 	if (elts_tail >= elts_n)
 		elts_tail -= elts_n;
 	txq->elts_tail = elts_tail;
-	txq->elts_comp = elts_comp;
-	return 0;
 }
 
 /**
@@ -454,41 +437,40 @@ mlx4_fill_tx_data_seg(volatile struct mlx4_wqe_data_seg *dseg,
 	dseg->byte_count = byte_count;
 }
 
-static int
+/**
+ * Write data segments of multi-segment packet.
+ *
+ * @param buf
+ *   Pointer to the first packet mbuf.
+ * @param txq
+ *   Pointer to Tx queue structure.
+ * @param ctrl
+ *   Pointer to the WQE control segment.
+ *
+ * @return
+ *   Pointer to the next WQE control segment on success, NULL otherwise.
+ */
+static volatile struct mlx4_wqe_ctrl_seg *
 mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
-		   volatile struct mlx4_wqe_ctrl_seg **pctrl)
+		   volatile struct mlx4_wqe_ctrl_seg *ctrl)
 {
-	int wqe_real_size;
-	int nr_txbbs;
 	struct pv *pv = (struct pv *)txq->bounce_buf;
 	struct mlx4_sq *sq = &txq->msq;
-	uint32_t head_idx = sq->head & sq->txbb_cnt_mask;
-	volatile struct mlx4_wqe_ctrl_seg *ctrl;
-	volatile struct mlx4_wqe_data_seg *dseg;
 	struct rte_mbuf *sbuf = buf;
 	uint32_t lkey;
 	int pv_counter = 0;
 	int nb_segs = buf->nb_segs;
+	uint32_t wqe_size;
+	volatile struct mlx4_wqe_data_seg *dseg =
+		(volatile struct mlx4_wqe_data_seg *)(ctrl + 1);
 
-	/* Calculate the needed work queue entry size for this packet. */
-	wqe_real_size = sizeof(volatile struct mlx4_wqe_ctrl_seg) +
-		nb_segs * sizeof(volatile struct mlx4_wqe_data_seg);
-	nr_txbbs = MLX4_SIZE_TO_TXBBS(wqe_real_size);
-	/*
-	 * Check that there is room for this WQE in the send queue and that
-	 * the WQE size is legal.
-	 */
-	if (((sq->head - sq->tail) + nr_txbbs +
-				sq->headroom_txbbs) >= sq->txbb_cnt ||
-			nr_txbbs > MLX4_MAX_WQE_TXBBS) {
-		return -1;
-	}
-	/* Get the control and data entries of the WQE. */
-	ctrl = (volatile struct mlx4_wqe_ctrl_seg *)
-			mlx4_get_send_wqe(sq, head_idx);
-	dseg = (volatile struct mlx4_wqe_data_seg *)
-			((uintptr_t)ctrl + sizeof(struct mlx4_wqe_ctrl_seg));
-	*pctrl = ctrl;
+	ctrl->fence_size = 1 + nb_segs;
+	wqe_size = RTE_ALIGN((uint32_t)(ctrl->fence_size << MLX4_SEG_SHIFT),
+			     MLX4_TXBB_SIZE);
+	/* Validate WQE size and WQE space in the send queue. */
+	if (sq->remain_size < wqe_size ||
+	    wqe_size > MLX4_MAX_WQE_SIZE)
+		return NULL;
 	/*
 	 * Fill the data segments with buffer information.
 	 * First WQE TXBB head segment is always control segment,
@@ -502,7 +484,7 @@ txbb_head_seg:
 	if (unlikely(lkey == (uint32_t)-1)) {
 		DEBUG("%p: unable to get MP <-> MR association",
 		      (void *)txq);
-		return -1;
+		return NULL;
 	}
 	/* Handle WQE wraparound. */
 	if (dseg >=
@@ -534,7 +516,7 @@ txbb_tail_segs:
 		if (unlikely(lkey == (uint32_t)-1)) {
 			DEBUG("%p: unable to get MP <-> MR association",
 			      (void *)txq);
-			return -1;
+			return NULL;
 		}
 		mlx4_fill_tx_data_seg(dseg, lkey,
 				      rte_pktmbuf_mtod(sbuf, uintptr_t),
@@ -550,7 +532,7 @@ txbb_tail_segs:
 		if (unlikely(lkey == (uint32_t)-1)) {
 			DEBUG("%p: unable to get MP <-> MR association",
 			      (void *)txq);
-			return -1;
+			return NULL;
 		}
 		mlx4_fill_tx_data_seg(dseg, lkey,
 				      rte_pktmbuf_mtod(sbuf, uintptr_t),
@@ -566,7 +548,7 @@ txbb_tail_segs:
 		if (unlikely(lkey == (uint32_t)-1)) {
 			DEBUG("%p: unable to get MP <-> MR association",
 			      (void *)txq);
-			return -1;
+			return NULL;
 		}
 		mlx4_fill_tx_data_seg(dseg, lkey,
 				      rte_pktmbuf_mtod(sbuf, uintptr_t),
@@ -590,9 +572,10 @@ txbb_tail_segs:
 		for (--pv_counter; pv_counter  >= 0; pv_counter--)
 			pv[pv_counter].dseg->byte_count = pv[pv_counter].val;
 	}
-	/* Fill the control parameters for this packet. */
-	ctrl->fence_size = (wqe_real_size >> 4) & 0x3f;
-	return nr_txbbs;
+	sq->remain_size -= wqe_size;
+	/* Align next WQE address to the next TXBB. */
+	return (volatile struct mlx4_wqe_ctrl_seg *)
+		((volatile uint8_t *)ctrl + wqe_size);
 }
 
 /**
@@ -618,7 +601,8 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int i;
 	unsigned int max;
 	struct mlx4_sq *sq = &txq->msq;
-	int nr_txbbs;
+	volatile struct mlx4_wqe_ctrl_seg *ctrl;
+	struct txq_elt *elt;
 
 	assert(txq->elts_comp_cd != 0);
 	if (likely(txq->elts_comp != 0))
@@ -632,20 +616,22 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	--max;
 	if (max > pkts_n)
 		max = pkts_n;
+	elt = &(*txq->elts)[elts_head];
+	/* Each element saves its appropriate work queue. */
+	ctrl = elt->wqe;
 	for (i = 0; (i != max); ++i) {
 		struct rte_mbuf *buf = pkts[i];
 		unsigned int elts_head_next =
 			(((elts_head + 1) == elts_n) ? 0 : elts_head + 1);
 		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
-		struct txq_elt *elt = &(*txq->elts)[elts_head];
-		uint32_t owner_opcode = MLX4_OPCODE_SEND;
-		volatile struct mlx4_wqe_ctrl_seg *ctrl;
-		volatile struct mlx4_wqe_data_seg *dseg;
+		uint32_t owner_opcode = sq->owner_opcode;
+		volatile struct mlx4_wqe_data_seg *dseg =
+				(volatile struct mlx4_wqe_data_seg *)(ctrl + 1);
+		volatile struct mlx4_wqe_ctrl_seg *ctrl_next;
 		union {
 			uint32_t flags;
 			uint16_t flags16[2];
 		} srcrb;
-		uint32_t head_idx = sq->head & sq->txbb_cnt_mask;
 		uint32_t lkey;
 
 		/* Clean up old buffer. */
@@ -654,7 +640,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 #ifndef NDEBUG
 			/* Poisoning. */
-			memset(elt, 0x66, sizeof(*elt));
+			memset(&elt->buf, 0x66, sizeof(struct rte_mbuf *));
 #endif
 			/* Faster than rte_pktmbuf_free(). */
 			do {
@@ -666,23 +652,11 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
 		if (buf->nb_segs == 1) {
-			/*
-			 * Check that there is room for this WQE in the send
-			 * queue and that the WQE size is legal
-			 */
-			if (((sq->head - sq->tail) + 1 + sq->headroom_txbbs) >=
-			     sq->txbb_cnt || 1 > MLX4_MAX_WQE_TXBBS) {
+			/* Validate WQE space in the send queue. */
+			if (sq->remain_size < MLX4_TXBB_SIZE) {
 				elt->buf = NULL;
 				break;
 			}
-			/* Get the control and data entries of the WQE. */
-			ctrl = (volatile struct mlx4_wqe_ctrl_seg *)
-					mlx4_get_send_wqe(sq, head_idx);
-			dseg = (volatile struct mlx4_wqe_data_seg *)
-					((uintptr_t)ctrl +
-					sizeof(struct mlx4_wqe_ctrl_seg));
-
-			ctrl->fence_size = (WQE_ONE_DATA_SEG_SIZE >> 4) & 0x3f;
 			lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(buf));
 			if (unlikely(lkey == (uint32_t)-1)) {
 				/* MR does not exist. */
@@ -691,23 +665,33 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				elt->buf = NULL;
 				break;
 			}
-			mlx4_fill_tx_data_seg(dseg, lkey,
+			mlx4_fill_tx_data_seg(dseg++, lkey,
 					      rte_pktmbuf_mtod(buf, uintptr_t),
 					      rte_cpu_to_be_32(buf->data_len));
-			nr_txbbs = 1;
+			/* Set WQE size in 16-byte units. */
+			ctrl->fence_size = 0x2;
+			sq->remain_size -= MLX4_TXBB_SIZE;
+			/* Align next WQE address to the next TXBB. */
+			ctrl_next = ctrl + 0x4;
 		} else {
-			nr_txbbs = mlx4_tx_burst_segs(buf, txq, &ctrl);
-			if (nr_txbbs < 0) {
+			ctrl_next = mlx4_tx_burst_segs(buf, txq, ctrl);
+			if (!ctrl_next) {
 				elt->buf = NULL;
 				break;
 			}
+		}
+		/* Hold SQ ring wrap around. */
+		if ((volatile uint8_t *)ctrl_next >= sq->eob) {
+			ctrl_next = (volatile struct mlx4_wqe_ctrl_seg *)
+				((volatile uint8_t *)ctrl_next - sq->size);
+			/* Flip HW valid ownership. */
+			sq->owner_opcode ^= 0x1 << MLX4_SQ_OWNER_BIT;
 		}
 		/*
 		 * For raw Ethernet, the SOLICIT flag is used to indicate
 		 * that no ICRC should be calculated.
 		 */
-		txq->elts_comp_cd -= nr_txbbs;
-		if (unlikely(txq->elts_comp_cd <= 0)) {
+		if (--txq->elts_comp_cd == 0) {
 			txq->elts_comp_cd = txq->elts_comp_cd_init;
 			srcrb.flags = RTE_BE32(MLX4_WQE_CTRL_SOLICIT |
 					       MLX4_WQE_CTRL_CQ_UPDATE);
@@ -753,13 +737,13 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * executing as soon as we do).
 		 */
 		rte_io_wmb();
-		ctrl->owner_opcode = rte_cpu_to_be_32(owner_opcode |
-					      ((sq->head & sq->txbb_cnt) ?
-						       MLX4_BIT_WQE_OWN : 0));
-		sq->head += nr_txbbs;
+		ctrl->owner_opcode = rte_cpu_to_be_32(owner_opcode);
 		elt->buf = buf;
 		bytes_sent += buf->pkt_len;
 		elts_head = elts_head_next;
+		elt_next->wqe = ctrl_next;
+		ctrl = ctrl_next;
+		elt = elt_next;
 	}
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely(i == 0))
