@@ -468,7 +468,6 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 		/* Memory region key (big endian) for this memory pool. */
 		lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(sbuf));
 		dseg->lkey = rte_cpu_to_be_32(lkey);
-#ifndef NDEBUG
 		/* Calculate the needed work queue entry size for this packet */
 		if (unlikely(dseg->lkey == rte_cpu_to_be_32((uint32_t)-1))) {
 			/* MR does not exist. */
@@ -486,7 +485,6 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 					(sq->head & sq->txbb_cnt) ? 0 : 1);
 			return -1;
 		}
-#endif /* NDEBUG */
 		if (likely(sbuf->data_len)) {
 			byte_count = rte_cpu_to_be_32(sbuf->data_len);
 		} else {
@@ -636,7 +634,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* Memory region key (big endian). */
 			lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(buf));
 			dseg->lkey = rte_cpu_to_be_32(lkey);
-#ifndef NDEBUG
 			if (unlikely(dseg->lkey ==
 				rte_cpu_to_be_32((uint32_t)-1))) {
 				/* MR does not exist. */
@@ -655,7 +652,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				elt->buf = NULL;
 				break;
 			}
-#endif /* NDEBUG */
 			/* Never be TXBB aligned, no need compiler barrier. */
 			dseg->byte_count = rte_cpu_to_be_32(buf->data_len);
 			/* Fill the control parameters for this packet. */
