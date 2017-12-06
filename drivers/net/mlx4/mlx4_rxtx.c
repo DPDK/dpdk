@@ -421,6 +421,39 @@ mlx4_txq_mb2mp(struct rte_mbuf *buf)
 	return buf->pool;
 }
 
+/**
+ * Write Tx data segment to the SQ.
+ *
+ * @param dseg
+ *   Pointer to data segment in SQ.
+ * @param lkey
+ *   Memory region lkey.
+ * @param addr
+ *   Data address.
+ * @param byte_count
+ *   Big endian bytes count of the data to send.
+ */
+static inline void
+mlx4_fill_tx_data_seg(volatile struct mlx4_wqe_data_seg *dseg,
+		       uint32_t lkey, uintptr_t addr, rte_be32_t  byte_count)
+{
+	dseg->addr = rte_cpu_to_be_64(addr);
+	dseg->lkey = rte_cpu_to_be_32(lkey);
+#if RTE_CACHE_LINE_SIZE < 64
+	/*
+	 * Need a barrier here before writing the byte_count
+	 * fields to make sure that all the data is visible
+	 * before the byte_count field is set.
+	 * Otherwise, if the segment begins a new cacheline,
+	 * the HCA prefetcher could grab the 64-byte chunk and
+	 * get a valid (!= 0xffffffff) byte count but stale
+	 * data, and end up sending the wrong data.
+	 */
+	rte_io_wmb();
+#endif /* RTE_CACHE_LINE_SIZE */
+	dseg->byte_count = byte_count;
+}
+
 static int
 mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 		   volatile struct mlx4_wqe_ctrl_seg **pctrl)
@@ -432,15 +465,14 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 	uint32_t head_idx = sq->head & sq->txbb_cnt_mask;
 	volatile struct mlx4_wqe_ctrl_seg *ctrl;
 	volatile struct mlx4_wqe_data_seg *dseg;
-	struct rte_mbuf *sbuf;
+	struct rte_mbuf *sbuf = buf;
 	uint32_t lkey;
-	uintptr_t addr;
-	uint32_t byte_count;
 	int pv_counter = 0;
+	int nb_segs = buf->nb_segs;
 
 	/* Calculate the needed work queue entry size for this packet. */
 	wqe_real_size = sizeof(volatile struct mlx4_wqe_ctrl_seg) +
-		buf->nb_segs * sizeof(volatile struct mlx4_wqe_data_seg);
+		nb_segs * sizeof(volatile struct mlx4_wqe_data_seg);
 	nr_txbbs = MLX4_SIZE_TO_TXBBS(wqe_real_size);
 	/*
 	 * Check that there is room for this WQE in the send queue and that
@@ -457,67 +489,99 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 	dseg = (volatile struct mlx4_wqe_data_seg *)
 			((uintptr_t)ctrl + sizeof(struct mlx4_wqe_ctrl_seg));
 	*pctrl = ctrl;
-	/* Fill the data segments with buffer information. */
-	for (sbuf = buf; sbuf != NULL; sbuf = sbuf->next, dseg++) {
-		addr = rte_pktmbuf_mtod(sbuf, uintptr_t);
-		rte_prefetch0((volatile void *)addr);
-		/* Memory region key (big endian) for this memory pool. */
+	/*
+	 * Fill the data segments with buffer information.
+	 * First WQE TXBB head segment is always control segment,
+	 * so jump to tail TXBB data segments code for the first
+	 * WQE data segments filling.
+	 */
+	goto txbb_tail_segs;
+txbb_head_seg:
+	/* Memory region key (big endian) for this memory pool. */
+	lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(sbuf));
+	if (unlikely(lkey == (uint32_t)-1)) {
+		DEBUG("%p: unable to get MP <-> MR association",
+		      (void *)txq);
+		return -1;
+	}
+	/* Handle WQE wraparound. */
+	if (dseg >=
+		(volatile struct mlx4_wqe_data_seg *)sq->eob)
+		dseg = (volatile struct mlx4_wqe_data_seg *)
+			sq->buf;
+	dseg->addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(sbuf, uintptr_t));
+	dseg->lkey = rte_cpu_to_be_32(lkey);
+	/*
+	 * This data segment starts at the beginning of a new
+	 * TXBB, so we need to postpone its byte_count writing
+	 * for later.
+	 */
+	pv[pv_counter].dseg = dseg;
+	/*
+	 * Zero length segment is treated as inline segment
+	 * with zero data.
+	 */
+	pv[pv_counter++].val = rte_cpu_to_be_32(sbuf->data_len ?
+						sbuf->data_len : 0x80000000);
+	sbuf = sbuf->next;
+	dseg++;
+	nb_segs--;
+txbb_tail_segs:
+	/* Jump to default if there are more than two segments remaining. */
+	switch (nb_segs) {
+	default:
 		lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(sbuf));
-		dseg->lkey = rte_cpu_to_be_32(lkey);
-		/* Calculate the needed work queue entry size for this packet */
-		if (unlikely(lkey == rte_cpu_to_be_32((uint32_t)-1))) {
-			/* MR does not exist. */
+		if (unlikely(lkey == (uint32_t)-1)) {
 			DEBUG("%p: unable to get MP <-> MR association",
 			      (void *)txq);
 			return -1;
 		}
-		if (likely(sbuf->data_len)) {
-			byte_count = rte_cpu_to_be_32(sbuf->data_len);
-		} else {
-			/*
-			 * Zero length segment is treated as inline segment
-			 * with zero data.
-			 */
-			byte_count = RTE_BE32(0x80000000);
+		mlx4_fill_tx_data_seg(dseg, lkey,
+				      rte_pktmbuf_mtod(sbuf, uintptr_t),
+				      rte_cpu_to_be_32(sbuf->data_len ?
+						       sbuf->data_len :
+						       0x80000000));
+		sbuf = sbuf->next;
+		dseg++;
+		nb_segs--;
+		/* fallthrough */
+	case 2:
+		lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(sbuf));
+		if (unlikely(lkey == (uint32_t)-1)) {
+			DEBUG("%p: unable to get MP <-> MR association",
+			      (void *)txq);
+			return -1;
 		}
-		/*
-		 * If the data segment is not at the beginning of a
-		 * Tx basic block (TXBB) then write the byte count,
-		 * else postpone the writing to just before updating the
-		 * control segment.
-		 */
-		if ((uintptr_t)dseg & (uintptr_t)(MLX4_TXBB_SIZE - 1)) {
-			dseg->addr = rte_cpu_to_be_64(addr);
-			dseg->lkey = rte_cpu_to_be_32(lkey);
-#if RTE_CACHE_LINE_SIZE < 64
-			/*
-			 * Need a barrier here before writing the byte_count
-			 * fields to make sure that all the data is visible
-			 * before the byte_count field is set.
-			 * Otherwise, if the segment begins a new cacheline,
-			 * the HCA prefetcher could grab the 64-byte chunk and
-			 * get a valid (!= 0xffffffff) byte count but stale
-			 * data, and end up sending the wrong data.
-			 */
-			rte_io_wmb();
-#endif /* RTE_CACHE_LINE_SIZE */
-			dseg->byte_count = byte_count;
-		} else {
-			/*
-			 * This data segment starts at the beginning of a new
-			 * TXBB, so we need to postpone its byte_count writing
-			 * for later.
-			 */
-			/* Handle WQE wraparound. */
-			if (dseg >=
-			    (volatile struct mlx4_wqe_data_seg *)sq->eob)
-				dseg = (volatile struct mlx4_wqe_data_seg *)
-					sq->buf;
-			dseg->addr = rte_cpu_to_be_64(addr);
-			dseg->lkey = rte_cpu_to_be_32(lkey);
-			pv[pv_counter].dseg = dseg;
-			pv[pv_counter++].val = byte_count;
+		mlx4_fill_tx_data_seg(dseg, lkey,
+				      rte_pktmbuf_mtod(sbuf, uintptr_t),
+				      rte_cpu_to_be_32(sbuf->data_len ?
+						       sbuf->data_len :
+						       0x80000000));
+		sbuf = sbuf->next;
+		dseg++;
+		nb_segs--;
+		/* fallthrough */
+	case 1:
+		lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(sbuf));
+		if (unlikely(lkey == (uint32_t)-1)) {
+			DEBUG("%p: unable to get MP <-> MR association",
+			      (void *)txq);
+			return -1;
 		}
+		mlx4_fill_tx_data_seg(dseg, lkey,
+				      rte_pktmbuf_mtod(sbuf, uintptr_t),
+				      rte_cpu_to_be_32(sbuf->data_len ?
+						       sbuf->data_len :
+						       0x80000000));
+		nb_segs--;
+		if (nb_segs) {
+			sbuf = sbuf->next;
+			dseg++;
+			goto txbb_head_seg;
+		}
+		/* fallthrough */
+	case 0:
+		break;
 	}
 	/* Write the first DWORD of each TXBB save earlier. */
 	if (pv_counter) {
@@ -583,7 +647,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		} srcrb;
 		uint32_t head_idx = sq->head & sq->txbb_cnt_mask;
 		uint32_t lkey;
-		uintptr_t addr;
 
 		/* Clean up old buffer. */
 		if (likely(elt->buf != NULL)) {
@@ -618,24 +681,19 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			dseg = (volatile struct mlx4_wqe_data_seg *)
 					((uintptr_t)ctrl +
 					sizeof(struct mlx4_wqe_ctrl_seg));
-			addr = rte_pktmbuf_mtod(buf, uintptr_t);
-			rte_prefetch0((volatile void *)addr);
-			dseg->addr = rte_cpu_to_be_64(addr);
-			/* Memory region key (big endian). */
+
+			ctrl->fence_size = (WQE_ONE_DATA_SEG_SIZE >> 4) & 0x3f;
 			lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(buf));
-			dseg->lkey = rte_cpu_to_be_32(lkey);
-			if (unlikely(dseg->lkey ==
-				rte_cpu_to_be_32((uint32_t)-1))) {
+			if (unlikely(lkey == (uint32_t)-1)) {
 				/* MR does not exist. */
 				DEBUG("%p: unable to get MP <-> MR association",
 				      (void *)txq);
 				elt->buf = NULL;
 				break;
 			}
-			/* Never be TXBB aligned, no need compiler barrier. */
-			dseg->byte_count = rte_cpu_to_be_32(buf->data_len);
-			/* Fill the control parameters for this packet. */
-			ctrl->fence_size = (WQE_ONE_DATA_SEG_SIZE >> 4) & 0x3f;
+			mlx4_fill_tx_data_seg(dseg, lkey,
+					      rte_pktmbuf_mtod(buf, uintptr_t),
+					      rte_cpu_to_be_32(buf->data_len));
 			nr_txbbs = 1;
 		} else {
 			nr_txbbs = mlx4_tx_burst_segs(buf, txq, &ctrl);
