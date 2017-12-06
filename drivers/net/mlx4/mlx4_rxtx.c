@@ -461,15 +461,11 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 	for (sbuf = buf; sbuf != NULL; sbuf = sbuf->next, dseg++) {
 		addr = rte_pktmbuf_mtod(sbuf, uintptr_t);
 		rte_prefetch0((volatile void *)addr);
-		/* Handle WQE wraparound. */
-		if (dseg >= (volatile struct mlx4_wqe_data_seg *)sq->eob)
-			dseg = (volatile struct mlx4_wqe_data_seg *)sq->buf;
-		dseg->addr = rte_cpu_to_be_64(addr);
 		/* Memory region key (big endian) for this memory pool. */
 		lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(sbuf));
 		dseg->lkey = rte_cpu_to_be_32(lkey);
 		/* Calculate the needed work queue entry size for this packet */
-		if (unlikely(dseg->lkey == rte_cpu_to_be_32((uint32_t)-1))) {
+		if (unlikely(lkey == rte_cpu_to_be_32((uint32_t)-1))) {
 			/* MR does not exist. */
 			DEBUG("%p: unable to get MP <-> MR association",
 					(void *)txq);
@@ -501,6 +497,8 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 		 * control segment.
 		 */
 		if ((uintptr_t)dseg & (uintptr_t)(MLX4_TXBB_SIZE - 1)) {
+			dseg->addr = rte_cpu_to_be_64(addr);
+			dseg->lkey = rte_cpu_to_be_32(lkey);
 #if RTE_CACHE_LINE_SIZE < 64
 			/*
 			 * Need a barrier here before writing the byte_count
@@ -520,6 +518,13 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 			 * TXBB, so we need to postpone its byte_count writing
 			 * for later.
 			 */
+			/* Handle WQE wraparound. */
+			if (dseg >=
+			    (volatile struct mlx4_wqe_data_seg *)sq->eob)
+				dseg = (volatile struct mlx4_wqe_data_seg *)
+					sq->buf;
+			dseg->addr = rte_cpu_to_be_64(addr);
+			dseg->lkey = rte_cpu_to_be_32(lkey);
 			pv[pv_counter].dseg = dseg;
 			pv[pv_counter++].val = byte_count;
 		}
@@ -625,11 +630,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					sizeof(struct mlx4_wqe_ctrl_seg));
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			rte_prefetch0((volatile void *)addr);
-			/* Handle WQE wraparound. */
-			if (dseg >=
-				(volatile struct mlx4_wqe_data_seg *)sq->eob)
-				dseg = (volatile struct mlx4_wqe_data_seg *)
-						sq->buf;
 			dseg->addr = rte_cpu_to_be_64(addr);
 			/* Memory region key (big endian). */
 			lkey = mlx4_txq_mp2mr(txq, mlx4_txq_mb2mp(buf));
