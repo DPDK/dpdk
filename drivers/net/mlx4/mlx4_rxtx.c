@@ -468,17 +468,7 @@ mlx4_tx_burst_segs(struct rte_mbuf *buf, struct txq *txq,
 		if (unlikely(lkey == rte_cpu_to_be_32((uint32_t)-1))) {
 			/* MR does not exist. */
 			DEBUG("%p: unable to get MP <-> MR association",
-					(void *)txq);
-			/*
-			 * Restamp entry in case of failure.
-			 * Make sure that size is written correctly
-			 * Note that we give ownership to the SW, not the HW.
-			 */
-			wqe_real_size = sizeof(struct mlx4_wqe_ctrl_seg) +
-				buf->nb_segs * sizeof(struct mlx4_wqe_data_seg);
-			ctrl->fence_size = (wqe_real_size >> 4) & 0x3f;
-			mlx4_txq_stamp_freed_wqe(sq, head_idx,
-					(sq->head & sq->txbb_cnt) ? 0 : 1);
+			      (void *)txq);
 			return -1;
 		}
 		if (likely(sbuf->data_len)) {
@@ -639,16 +629,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				/* MR does not exist. */
 				DEBUG("%p: unable to get MP <-> MR association",
 				      (void *)txq);
-				/*
-				 * Restamp entry in case of failure.
-				 * Make sure that size is written correctly
-				 * Note that we give ownership to the SW,
-				 * not the HW.
-				 */
-				ctrl->fence_size =
-					(WQE_ONE_DATA_SEG_SIZE >> 4) & 0x3f;
-				mlx4_txq_stamp_freed_wqe(sq, head_idx,
-					     (sq->head & sq->txbb_cnt) ? 0 : 1);
 				elt->buf = NULL;
 				break;
 			}
