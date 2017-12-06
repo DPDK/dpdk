@@ -312,6 +312,9 @@ STATIC s32 e1000_init_phy_params_82575(struct e1000_hw *hw)
 		phy->ops.set_d3_lplu_state = e1000_set_d3_lplu_state_82580;
 		phy->ops.force_speed_duplex = e1000_phy_force_speed_duplex_m88;
 		break;
+	case BCM54616_E_PHY_ID:
+		phy->type		= e1000_phy_none;
+		break;
 	default:
 		ret_val = -E1000_ERR_PHY;
 		goto out;
@@ -1606,6 +1609,8 @@ STATIC s32 e1000_setup_copper_link_82575(struct e1000_hw *hw)
 		break;
 	case e1000_phy_82580:
 		ret_val = e1000_copper_link_setup_82577(hw);
+		break;
+	case e1000_phy_none:
 		break;
 	default:
 		ret_val = -E1000_ERR_PHY;
