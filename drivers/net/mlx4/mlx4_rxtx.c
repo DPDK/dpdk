@@ -367,7 +367,6 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_m,
 	/* Update CQ consumer index. */
 	cq->cons_index = cons_index;
 	*cq->set_ci_db = rte_cpu_to_be_32(cons_index & MLX4_CQ_DB_CI_MASK);
-	txq->elts_comp -= completed;
 	txq->elts_tail = elts_tail;
 }
 
@@ -585,15 +584,15 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	const unsigned int elts_m = elts_n - 1;
 	unsigned int bytes_sent = 0;
 	unsigned int i;
-	unsigned int max;
+	unsigned int max = elts_head - txq->elts_tail;
 	struct mlx4_sq *sq = &txq->msq;
 	volatile struct mlx4_wqe_ctrl_seg *ctrl;
 	struct txq_elt *elt;
 
 	assert(txq->elts_comp_cd != 0);
-	if (likely(txq->elts_comp != 0))
+	if (likely(max >= txq->elts_comp_cd_init))
 		mlx4_txq_complete(txq, elts_m, sq);
-	max = (elts_n - (elts_head - txq->elts_tail));
+	max = elts_n - max;
 	assert(max >= 1);
 	assert(max <= elts_n);
 	/* Always leave one free entry in the ring. */
@@ -740,7 +739,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	/* Ring QP doorbell. */
 	rte_write32(txq->msq.doorbell_qpn, txq->msq.db);
 	txq->elts_head += i;
-	txq->elts_comp += i;
 	return i;
 }
 

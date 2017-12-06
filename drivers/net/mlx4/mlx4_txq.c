@@ -273,7 +273,6 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.elts = elts,
 		.elts_head = 0,
 		.elts_tail = 0,
-		.elts_comp = 0,
 		/*
 		 * Request send completion every MLX4_PMD_TX_PER_COMP_REQ
 		 * packets or at least 4 times per ring.

@@ -125,7 +125,6 @@ struct txq {
 	struct mlx4_cq mcq; /**< Info for directly manipulating the CQ. */
 	unsigned int elts_head; /**< Current index in (*elts)[]. */
 	unsigned int elts_tail; /**< First element awaiting completion. */
-	unsigned int elts_comp; /**< Number of packets awaiting completion. */
 	int elts_comp_cd; /**< Countdown for next completion. */
 	unsigned int elts_comp_cd_init; /**< Initial value for countdown. */
 	unsigned int elts_n; /**< (*elts)[] length. */
