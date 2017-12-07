@@ -331,6 +331,7 @@ rdline_char_in(struct rdline *rdl, char c)
 
 		/* delete 1 char from the left */
 		case CMDLINE_KEY_BKSPACE:
+		case CMDLINE_KEY_BKSPACE2:
 			if(!cirbuf_del_tail_safe(&rdl->left)) {
 				rdline_puts(rdl, vt100_bs);
 				display_right_buffer(rdl, 1);

@@ -117,6 +117,7 @@ extern "C" {
 #define CMDLINE_KEY_CTRL_P 23
 #define CMDLINE_KEY_CTRL_N 24
 #define CMDLINE_KEY_META_D 25
+#define CMDLINE_KEY_BKSPACE2 26
 
 extern const char *cmdline_vt100_commands[];
 

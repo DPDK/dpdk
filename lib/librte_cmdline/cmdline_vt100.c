@@ -95,6 +95,7 @@ const char *cmdline_vt100_commands[] = {
 	"\020",
 	"\016",
 	"\033\144",
+	vt100_bs,
 };
 
 void
