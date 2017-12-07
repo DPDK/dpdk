@@ -34,9 +34,17 @@ SRCS-y += pipeline_routing.c
 $(shell pkg-config --exists libdpdk)
 ifeq ($(.SHELLSTATUS),0)
 
+all: shared
+.PHONY: shared static
+shared: build/$(APP)-shared
+	ln -sf $(APP)-shared build/$(APP)
+static: build/$(APP)-static
+	ln -sf $(APP)-static build/$(APP)
+
 PC_FILE := $(shell pkg-config --path libdpdk)
-CFLAGS += $(shell pkg-config --cflags libdpdk)
-LDFLAGS += $(shell pkg-config --libs libdpdk)
+CFLAGS += -O3 $(shell pkg-config --cflags libdpdk)
+LDFLAGS_SHARED = $(shell pkg-config --libs libdpdk)
+LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
 
 VPATH += pipeline
 CFLAGS += -I. -I./pipeline/
@@ -46,15 +54,18 @@ OBJS := $(patsubst %.c,build/%.o,$(SRCS-y))
 build/%.o: %.c Makefile $(PC_FILE) | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
-build/$(APP): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+build/$(APP)-shared: $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
+
+build/$(APP)-static: $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
 build:
 	@mkdir -p $@
 
 .PHONY: clean
 clean:
-	rm -f build/$(APP) build/*.o
+	rm -f build/$(APP)* build/*.o
 	rmdir --ignore-fail-on-non-empty build
 
 else

@@ -12,19 +12,30 @@ SRCS-y := main.c
 $(shell pkg-config --exists libdpdk)
 ifeq ($(.SHELLSTATUS),0)
 
-PC_FILE := $(shell pkg-config --path libdpdk)
-CFLAGS += $(shell pkg-config --cflags libdpdk)
-LDFLAGS += $(shell pkg-config --libs libdpdk)
+all: shared
+.PHONY: shared static
+shared: build/$(APP)-shared
+	ln -sf $(APP)-shared build/$(APP)
+static: build/$(APP)-static
+	ln -sf $(APP)-static build/$(APP)
 
-build/$(APP): $(SRCS-y) Makefile $(PC_FILE) | build
-	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS)
+PC_FILE := $(shell pkg-config --path libdpdk)
+CFLAGS += -O3 $(shell pkg-config --cflags libdpdk)
+LDFLAGS_SHARED = $(shell pkg-config --libs libdpdk)
+LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
+
+build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
+
+build/$(APP)-static: $(SRCS-y) Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
 build:
 	@mkdir -p $@
 
 .PHONY: clean
 clean:
-	rm -f build/$(APP)
+	rm -f build/$(APP) build/$(APP)-static build/$(APP)-shared
 	rmdir --ignore-fail-on-non-empty build
 
 else # Build using legacy build system
