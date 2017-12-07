@@ -1553,7 +1553,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 			pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len,
 			PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	close(fd);
-	if (pci_resource_ptr == NULL) {
+	if (pci_resource_ptr == MAP_FAILED) {
 		RTE_LOG(ERR, PMD, "Could not mmap file %s (fd = %d)\n",
 				rsc_filename, fd);
 		return -EINVAL;
