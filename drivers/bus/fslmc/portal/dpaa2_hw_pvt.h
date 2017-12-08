@@ -173,56 +173,57 @@ enum qbman_fd_format {
 };
 /*Macros to define operations on FD*/
 #define DPAA2_SET_FD_ADDR(fd, addr) do {			\
-	fd->simple.addr_lo = lower_32_bits((uint64_t)(addr));	\
-	fd->simple.addr_hi = upper_32_bits((uint64_t)(addr));	\
+	(fd)->simple.addr_lo = lower_32_bits((uint64_t)(addr));	\
+	(fd)->simple.addr_hi = upper_32_bits((uint64_t)(addr));	\
 } while (0)
-#define DPAA2_SET_FD_LEN(fd, length)	(fd)->simple.len = length
+#define DPAA2_SET_FD_LEN(fd, length)	((fd)->simple.len = length)
 #define DPAA2_SET_FD_BPID(fd, bpid)	((fd)->simple.bpid_offset |= bpid)
-#define DPAA2_SET_FD_IVP(fd)   ((fd->simple.bpid_offset |= 0x00004000))
+#define DPAA2_SET_FD_IVP(fd)   (((fd)->simple.bpid_offset |= 0x00004000))
 #define DPAA2_SET_FD_OFFSET(fd, offset)	\
-	((fd->simple.bpid_offset |= (uint32_t)(offset) << 16))
-#define DPAA2_SET_FD_INTERNAL_JD(fd, len) fd->simple.frc = (0x80000000 | (len))
-#define DPAA2_SET_FD_FRC(fd, frc)	fd->simple.frc = frc
-#define DPAA2_RESET_FD_CTRL(fd)	(fd)->simple.ctrl = 0
+	(((fd)->simple.bpid_offset |= (uint32_t)(offset) << 16))
+#define DPAA2_SET_FD_INTERNAL_JD(fd, len) \
+	((fd)->simple.frc = (0x80000000 | (len)))
+#define DPAA2_SET_FD_FRC(fd, frc)	((fd)->simple.frc = frc)
+#define DPAA2_RESET_FD_CTRL(fd)	 ((fd)->simple.ctrl = 0)
 
 #define	DPAA2_SET_FD_ASAL(fd, asal)	((fd)->simple.ctrl |= (asal << 16))
 #define DPAA2_SET_FD_FLC(fd, addr)	do { \
-	fd->simple.flc_lo = lower_32_bits((uint64_t)(addr));	\
-	fd->simple.flc_hi = upper_32_bits((uint64_t)(addr));	\
+	(fd)->simple.flc_lo = lower_32_bits((uint64_t)(addr));	\
+	(fd)->simple.flc_hi = upper_32_bits((uint64_t)(addr));	\
 } while (0)
-#define DPAA2_SET_FLE_INTERNAL_JD(fle, len) (fle->frc = (0x80000000 | (len)))
+#define DPAA2_SET_FLE_INTERNAL_JD(fle, len) ((fle)->frc = (0x80000000 | (len)))
 #define DPAA2_GET_FLE_ADDR(fle)					\
-	(uint64_t)((((uint64_t)(fle->addr_hi)) << 32) + fle->addr_lo)
+	(uint64_t)((((uint64_t)((fle)->addr_hi)) << 32) + (fle)->addr_lo)
 #define DPAA2_SET_FLE_ADDR(fle, addr) do { \
-	fle->addr_lo = lower_32_bits((uint64_t)addr);     \
-	fle->addr_hi = upper_32_bits((uint64_t)addr);	  \
+	(fle)->addr_lo = lower_32_bits((uint64_t)addr);     \
+	(fle)->addr_hi = upper_32_bits((uint64_t)addr);	  \
 } while (0)
 #define DPAA2_GET_FLE_CTXT(fle)					\
 	(uint64_t)((((uint64_t)((fle)->reserved[1])) << 32) + \
 			(fle)->reserved[0])
 #define DPAA2_FLE_SAVE_CTXT(fle, addr) do { \
-	fle->reserved[0] = lower_32_bits((uint64_t)addr);     \
-	fle->reserved[1] = upper_32_bits((uint64_t)addr);	  \
+	(fle)->reserved[0] = lower_32_bits((uint64_t)addr);     \
+	(fle)->reserved[1] = upper_32_bits((uint64_t)addr);	  \
 } while (0)
 #define DPAA2_SET_FLE_OFFSET(fle, offset) \
 	((fle)->fin_bpid_offset |= (uint32_t)(offset) << 16)
 #define DPAA2_SET_FLE_BPID(fle, bpid) ((fle)->fin_bpid_offset |= (uint64_t)bpid)
 #define DPAA2_GET_FLE_BPID(fle) ((fle)->fin_bpid_offset & 0x000000ff)
-#define DPAA2_SET_FLE_FIN(fle)	(fle->fin_bpid_offset |= (uint64_t)1 << 31)
+#define DPAA2_SET_FLE_FIN(fle)	((fle)->fin_bpid_offset |= (uint64_t)1 << 31)
 #define DPAA2_SET_FLE_IVP(fle)   (((fle)->fin_bpid_offset |= 0x00004000))
 #define DPAA2_SET_FD_COMPOUND_FMT(fd)	\
-	(fd->simple.bpid_offset |= (uint32_t)1 << 28)
+	((fd)->simple.bpid_offset |= (uint32_t)1 << 28)
 #define DPAA2_GET_FD_ADDR(fd)	\
 ((uint64_t)((((uint64_t)((fd)->simple.addr_hi)) << 32) + (fd)->simple.addr_lo))
 
 #define DPAA2_GET_FD_LEN(fd)	((fd)->simple.len)
 #define DPAA2_GET_FD_BPID(fd)	(((fd)->simple.bpid_offset & 0x00003FFF))
-#define DPAA2_GET_FD_IVP(fd)   ((fd->simple.bpid_offset & 0x00004000) >> 14)
+#define DPAA2_GET_FD_IVP(fd)   (((fd)->simple.bpid_offset & 0x00004000) >> 14)
 #define DPAA2_GET_FD_OFFSET(fd)	(((fd)->simple.bpid_offset & 0x0FFF0000) >> 16)
 #define DPAA2_GET_FLE_OFFSET(fle) (((fle)->fin_bpid_offset & 0x0FFF0000) >> 16)
-#define DPAA2_SET_FLE_SG_EXT(fle) (fle->fin_bpid_offset |= (uint64_t)1 << 29)
+#define DPAA2_SET_FLE_SG_EXT(fle) ((fle)->fin_bpid_offset |= (uint64_t)1 << 29)
 #define DPAA2_IS_SET_FLE_SG_EXT(fle)	\
-	((fle->fin_bpid_offset & ((uint64_t)1 << 29)) ? 1 : 0)
+	(((fle)->fin_bpid_offset & ((uint64_t)1 << 29)) ? 1 : 0)
 
 #define DPAA2_INLINE_MBUF_FROM_BUF(buf, meta_data_size) \
 	((struct rte_mbuf *)((uint64_t)(buf) - (meta_data_size)))
