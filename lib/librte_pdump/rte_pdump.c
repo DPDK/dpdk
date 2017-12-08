@@ -552,7 +552,7 @@ rte_pdump_init(const char *path)
 	if (ret != 0) {
 		RTE_LOG(ERR, PDUMP,
 			"Failed to create the pdump thread:%s, %s:%d\n",
-			strerror(errno), __func__, __LINE__);
+			strerror(ret), __func__, __LINE__);
 		return -1;
 	}
 	/* Set thread_name for aid in debugging. */
@@ -575,7 +575,7 @@ rte_pdump_uninit(void)
 	if (ret != 0) {
 		RTE_LOG(ERR, PDUMP,
 			"Failed to cancel the pdump thread:%s, %s:%d\n",
-			strerror(errno), __func__, __LINE__);
+			strerror(ret), __func__, __LINE__);
 		return -1;
 	}
 
