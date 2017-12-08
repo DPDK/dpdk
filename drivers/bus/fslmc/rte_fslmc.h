@@ -149,10 +149,6 @@ static void dpaa2initfn_ ##nm(void) \
 } \
 RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
-#ifdef __cplusplus
-}
-#endif
-
 /**
  * Register a DPAA2 MC Object driver.
  *
@@ -171,5 +167,9 @@ static void dpaa2objinitfn_ ##nm(void) \
 	rte_fslmc_object_register(&dpaa2_obj); \
 } \
 RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_FSLMC_H_ */
