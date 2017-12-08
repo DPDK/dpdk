@@ -500,7 +500,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	int ret, num_rx = 0;
 	uint8_t is_last = 0, status;
 	struct qbman_swp *swp;
-	const struct qbman_fd *fd[DPAA2_DQRR_RING_SIZE];
+	const struct qbman_fd *fd[DPAA2_DQRR_RING_SIZE], *next_fd;
 	struct qbman_pull_desc pulldesc;
 	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
 	struct rte_eth_dev *dev = dpaa2_q->dev;
@@ -543,6 +543,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage);
 	}
 	dq_storage = q_storage->active_dqs;
+	rte_prefetch0((void *)((uint64_t)(dq_storage + 1)));
 	/* Check if the previous issued command is completed.
 	 * Also seems like the SWP is shared between the Ethernet Driver
 	 * and the SEC driver.
@@ -557,7 +558,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		 */
 		while (!qbman_check_new_result(dq_storage))
 			;
-		rte_prefetch0((void *)((uint64_t)(dq_storage + 1)));
+		rte_prefetch0((void *)((uint64_t)(dq_storage + 2)));
 		/* Check whether Last Pull command is Expired and
 		 * setting Condition for Loop termination
 		 */
@@ -570,8 +571,9 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 		fd[num_rx] = qbman_result_DQ_fd(dq_storage);
 
+		next_fd = qbman_result_DQ_fd(dq_storage + 1);
 		/* Prefetch Annotation address for the parse results */
-		rte_prefetch0((void *)((uint64_t)DPAA2_GET_FD_ADDR(fd[num_rx])
+		rte_prefetch0((void *)((uint64_t)DPAA2_GET_FD_ADDR(next_fd)
 				+ DPAA2_FD_PTA_SIZE + 16));
 
 		if (unlikely(DPAA2_FD_GET_FORMAT(fd[num_rx]) == qbman_fd_sg))
