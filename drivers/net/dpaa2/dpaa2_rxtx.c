@@ -216,6 +216,12 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 	/* Resetting the buffer pool id and offset field*/
 	fd->simple.bpid_offset = 0;
 
+	if (unlikely(mbuf->ol_flags & PKT_TX_VLAN_PKT)) {
+		int ret = rte_vlan_insert(&mbuf);
+		if (ret)
+			return ret;
+	}
+
 	temp = rte_pktmbuf_alloc(mbuf->pool);
 	if (temp == NULL) {
 		PMD_TX_LOG(ERR, "No memory to allocate S/G table");
@@ -282,6 +288,12 @@ static void __attribute__ ((noinline)) __attribute__((hot))
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	       struct qbman_fd *fd, uint16_t bpid)
 {
+	if (unlikely(mbuf->ol_flags & PKT_TX_VLAN_PKT)) {
+		if (rte_vlan_insert(&mbuf)) {
+			rte_pktmbuf_free(mbuf);
+			return;
+		}
+	}
 	/*Resetting the buffer pool id and offset field*/
 	fd->simple.bpid_offset = 0;
 
@@ -320,6 +332,12 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 {
 	struct rte_mbuf *m;
 	void *mb = NULL;
+
+	if (unlikely(mbuf->ol_flags & PKT_TX_VLAN_PKT)) {
+		int ret = rte_vlan_insert(&mbuf);
+		if (ret)
+			return ret;
+	}
 
 	if (rte_dpaa2_mbuf_alloc_bulk(
 		rte_dpaa2_bpid_info[bpid].bp_list->mp, &mb, 1)) {
