@@ -178,6 +178,8 @@ enum qbman_fd_format {
 } while (0)
 #define DPAA2_SET_FD_LEN(fd, length)	((fd)->simple.len = length)
 #define DPAA2_SET_FD_BPID(fd, bpid)	((fd)->simple.bpid_offset |= bpid)
+#define DPAA2_SET_ONLY_FD_BPID(fd, bpid) \
+	((fd)->simple.bpid_offset = bpid)
 #define DPAA2_SET_FD_IVP(fd)   (((fd)->simple.bpid_offset |= 0x00004000))
 #define DPAA2_SET_FD_OFFSET(fd, offset)	\
 	(((fd)->simple.bpid_offset |= (uint32_t)(offset) << 16))

@@ -24,6 +24,14 @@
 #include "dpaa2_ethdev.h"
 #include "base/dpaa2_hw_dpni_annot.h"
 
+#define DPAA2_MBUF_TO_CONTIG_FD(_mbuf, _fd, _bpid)  do { \
+	DPAA2_SET_FD_ADDR(_fd, DPAA2_MBUF_VADDR_TO_IOVA(_mbuf)); \
+	DPAA2_SET_FD_LEN(_fd, _mbuf->data_len); \
+	DPAA2_SET_ONLY_FD_BPID(_fd, _bpid); \
+	DPAA2_SET_FD_OFFSET(_fd, _mbuf->data_off); \
+	DPAA2_SET_FD_ASAL(_fd, DPAA2_ASAL_VAL); \
+} while (0)
+
 static inline void __attribute__((hot))
 dpaa2_dev_rx_parse_frc(struct rte_mbuf *m, uint16_t frc)
 {
@@ -410,11 +418,7 @@ eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	/*Resetting the buffer pool id and offset field*/
 	fd->simple.bpid_offset = 0;
 
-	DPAA2_SET_FD_ADDR(fd, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
-	DPAA2_SET_FD_LEN(fd, mbuf->data_len);
-	DPAA2_SET_FD_BPID(fd, bpid);
-	DPAA2_SET_FD_OFFSET(fd, mbuf->data_off);
-	DPAA2_SET_FD_ASAL(fd, DPAA2_ASAL_VAL);
+	DPAA2_MBUF_TO_CONTIG_FD(mbuf, fd, bpid);
 
 	PMD_TX_LOG(DEBUG, "mbuf =%p, mbuf->buf_addr =%p, off = %d,"
 		"fd_off=%d fd =%lx, meta = %d  bpid =%d, len=%d\n",
@@ -471,11 +475,7 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 	/*Resetting the buffer pool id and offset field*/
 	fd->simple.bpid_offset = 0;
 
-	DPAA2_SET_FD_ADDR(fd, DPAA2_MBUF_VADDR_TO_IOVA(m));
-	DPAA2_SET_FD_LEN(fd, mbuf->data_len);
-	DPAA2_SET_FD_BPID(fd, bpid);
-	DPAA2_SET_FD_OFFSET(fd, mbuf->data_off);
-	DPAA2_SET_FD_ASAL(fd, DPAA2_ASAL_VAL);
+	DPAA2_MBUF_TO_CONTIG_FD(m, fd, bpid);
 
 	PMD_TX_LOG(DEBUG, " mbuf %p BMAN buf addr %p",
 		   (void *)mbuf, mbuf->buf_addr);
@@ -695,8 +695,26 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			fd_arr[loop].simple.frc = 0;
 			DPAA2_RESET_FD_CTRL((&fd_arr[loop]));
 			DPAA2_SET_FD_FLC((&fd_arr[loop]), NULL);
-			if (RTE_MBUF_DIRECT(*bufs)) {
+			if (likely(RTE_MBUF_DIRECT(*bufs))) {
 				mp = (*bufs)->pool;
+				/* Check the basic scenario and set
+				 * the FD appropriately here itself.
+				 */
+				if (likely(mp && mp->ops_index ==
+				    priv->bp_list->dpaa2_ops_index &&
+				    (*bufs)->nb_segs == 1 &&
+				    rte_mbuf_refcnt_read((*bufs)) == 1)) {
+					if (unlikely((*bufs)->ol_flags
+						& PKT_TX_VLAN_PKT)) {
+						ret = rte_vlan_insert(bufs);
+						if (ret)
+							goto send_n_return;
+					}
+					DPAA2_MBUF_TO_CONTIG_FD((*bufs),
+					&fd_arr[loop], mempool_to_bpid(mp));
+					bufs++;
+					continue;
+				}
 			} else {
 				mi = rte_mbuf_from_indirect(*bufs);
 				mp = mi->pool;
@@ -745,9 +763,9 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 
 		num_tx += frames_to_send;
-		dpaa2_q->tx_pkts += frames_to_send;
 		nb_pkts -= frames_to_send;
 	}
+	dpaa2_q->tx_pkts += num_tx;
 	return num_tx;
 
 send_n_return:
@@ -760,9 +778,9 @@ send_n_return:
 							&fd_arr[i], loop - i);
 		}
 		num_tx += loop;
-		dpaa2_q->tx_pkts += loop;
 	}
 skip_tx:
+	dpaa2_q->tx_pkts += num_tx;
 	return num_tx;
 }
 
