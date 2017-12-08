@@ -89,3 +89,10 @@ DPDK_17.11 {
 	rte_dpaa2_intr_enable;
 
 } DPDK_17.08;
+
+DPDK_18.02 {
+	global:
+
+	dpaa2_virt_mode;
+
+} DPDK_17.11;

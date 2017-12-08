@@ -25,6 +25,7 @@
 #define VFIO_IOMMU_GROUP_PATH "/sys/kernel/iommu_groups"
 
 struct rte_fslmc_bus rte_fslmc_bus;
+uint8_t dpaa2_virt_mode;
 
 static void
 cleanup_fslmc_device_list(void)
@@ -274,6 +275,9 @@ rte_fslmc_probe(void)
 		}
 	}
 
+	if (rte_eal_iova_mode() == RTE_IOVA_VA)
+		dpaa2_virt_mode = 1;
+
 	return 0;
 }
 
@@ -321,11 +325,51 @@ rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver)
 }
 
 /*
+ * All device has iova as va
+ */
+static inline int
+fslmc_all_device_support_iova(void)
+{
+	int ret = 0;
+	struct rte_dpaa2_device *dev;
+	struct rte_dpaa2_driver *drv;
+
+	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
+		TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
+			ret = rte_fslmc_match(drv, dev);
+			if (ret)
+				continue;
+			/* if the driver is not supporting IOVA */
+			if (!(drv->drv_flags & RTE_DPAA2_DRV_IOVA_AS_VA))
+				return 0;
+		}
+	}
+	return 1;
+}
+
+/*
  * Get iommu class of DPAA2 devices on the bus.
  */
 static enum rte_iova_mode
 rte_dpaa2_get_iommu_class(void)
 {
+	bool is_vfio_noiommu_enabled = 1;
+	bool has_iova_va;
+
+	if (TAILQ_EMPTY(&rte_fslmc_bus.device_list))
+		return RTE_IOVA_DC;
+
+	/* check if all devices on the bus support Virtual addressing or not */
+	has_iova_va = fslmc_all_device_support_iova();
+
+#ifdef VFIO_PRESENT
+	is_vfio_noiommu_enabled = rte_vfio_noiommu_is_enabled() == true ?
+						true : false;
+#endif
+
+	if (has_iova_va && !is_vfio_noiommu_enabled)
+		return RTE_IOVA_VA;
+
 	return RTE_IOVA_PA;
 }
 

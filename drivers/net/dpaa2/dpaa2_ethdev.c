@@ -1977,6 +1977,7 @@ rte_dpaa2_remove(struct rte_dpaa2_device *dpaa2_dev)
 }
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd = {
+	.drv_flags = RTE_DPAA2_DRV_IOVA_AS_VA,
 	.drv_type = DPAA2_ETH,
 	.probe = rte_dpaa2_probe,
 	.remove = rte_dpaa2_remove,

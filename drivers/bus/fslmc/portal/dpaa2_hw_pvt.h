@@ -250,12 +250,18 @@ enum qbman_fd_format {
 #define DPAA2_EQ_RESP_ALWAYS		1
 
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
+extern uint8_t dpaa2_virt_mode;
 static void *dpaa2_mem_ptov(phys_addr_t paddr) __attribute__((unused));
 /* todo - this is costly, need to write a fast coversion routine */
 static void *dpaa2_mem_ptov(phys_addr_t paddr)
 {
-	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
+	const struct rte_memseg *memseg;
 	int i;
+
+	if (dpaa2_virt_mode)
+		return (void *)paddr;
+
+	memseg = rte_eal_get_physmem_layout();
 
 	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
 		if (paddr >= memseg[i].iova &&
@@ -269,8 +275,13 @@ static void *dpaa2_mem_ptov(phys_addr_t paddr)
 static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr) __attribute__((unused));
 static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 {
-	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
+	const struct rte_memseg *memseg;
 	int i;
+
+	if (dpaa2_virt_mode)
+		return vaddr;
+
+	memseg = rte_eal_get_physmem_layout();
 
 	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
 		if (vaddr >= memseg[i].addr_64 &&

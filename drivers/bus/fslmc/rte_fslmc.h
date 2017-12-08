@@ -36,6 +36,9 @@ extern "C" {
 
 #define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
 
+/** Device driver supports IOVA as VA */
+#define RTE_DPAA2_DRV_IOVA_AS_VA 0X0040
+
 struct rte_dpaa2_driver;
 
 /* DPAA2 Device and Driver lists for FSLMC bus */
