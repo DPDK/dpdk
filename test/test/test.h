@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <sys/queue.h>
 
+#include <rte_hexdump.h>
 #include <rte_common.h>
 #include <rte_log.h>
 
@@ -175,11 +176,12 @@ struct unit_test_case {
 
 #define TEST_CASES_END() { NULL, NULL, NULL, NULL, 0 }
 
-#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
-#define TEST_HEXDUMP(file, title, buf, len) rte_hexdump(file, title, buf, len)
-#else
-#define TEST_HEXDUMP(file, title, buf, len) do {} while (0)
-#endif
+static inline void
+debug_hexdump(FILE *file, const char *title, const void *buf, size_t len)
+{
+	if (rte_log_get_global_level() == RTE_LOG_DEBUG)
+		rte_hexdump(file, title, buf, len);
+}
 
 struct unit_test_suite {
 	const char *suite_name;

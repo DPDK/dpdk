@@ -57,7 +57,7 @@ crc_calc(const uint8_t *vec,
 	uint32_t ret = rte_net_crc_calc(vec, vec_len, type);
 
 	/* dump data on console */
-	TEST_HEXDUMP(stdout, NULL, vec, vec_len);
+	debug_hexdump(stdout, NULL, vec, vec_len);
 
 	return  ret;
 }

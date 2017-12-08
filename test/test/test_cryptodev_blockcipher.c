@@ -334,12 +334,12 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		rte_crypto_op_attach_sym_session(op, sess);
 	}
 
-	TEST_HEXDUMP(stdout, "m_src(before):",
+	debug_hexdump(stdout, "m_src(before):",
 			sym_op->m_src->buf_addr, sym_op->m_src->buf_len);
 	rte_memcpy(tmp_src_buf, sym_op->m_src->buf_addr,
 						sym_op->m_src->buf_len);
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
-		TEST_HEXDUMP(stdout, "m_dst(before):",
+		debug_hexdump(stdout, "m_dst(before):",
 			sym_op->m_dst->buf_addr, sym_op->m_dst->buf_len);
 		rte_memcpy(tmp_dst_buf, sym_op->m_dst->buf_addr,
 						sym_op->m_dst->buf_len);
@@ -367,10 +367,10 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		goto error_exit;
 	}
 
-	TEST_HEXDUMP(stdout, "m_src(after):",
+	debug_hexdump(stdout, "m_src(after):",
 			sym_op->m_src->buf_addr, sym_op->m_src->buf_len);
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP)
-		TEST_HEXDUMP(stdout, "m_dst(after):",
+		debug_hexdump(stdout, "m_dst(after):",
 			sym_op->m_dst->buf_addr, sym_op->m_dst->buf_len);
 
 	/* Verify results */
