@@ -25,6 +25,7 @@
 #include <dpaa2_hw_dpio.h>
 #include <mc/fsl_dpmng.h>
 #include "dpaa2_ethdev.h"
+#include <fsl_qbman_debug.h>
 
 struct rte_dpaa2_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -567,6 +568,37 @@ static void
 dpaa2_dev_tx_queue_release(void *q __rte_unused)
 {
 	PMD_INIT_FUNC_TRACE();
+}
+
+static uint32_t
+dpaa2_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	int32_t ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct dpaa2_queue *dpaa2_q;
+	struct qbman_swp *swp;
+	struct qbman_fq_query_np_rslt state;
+	uint32_t frame_cnt = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			RTE_LOG(ERR, PMD, "Failure in affining portal\n");
+			return -EINVAL;
+		}
+	}
+	swp = DPAA2_PER_LCORE_PORTAL;
+
+	dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[rx_queue_id];
+
+	if (qbman_fq_query_state(swp, dpaa2_q->fqid, &state) == 0) {
+		frame_cnt = qbman_fq_state_frame_count(&state);
+		RTE_LOG(DEBUG, PMD, "RX frame count for q(%d) is %u\n",
+			rx_queue_id, frame_cnt);
+	}
+	return frame_cnt;
 }
 
 static const uint32_t *
@@ -1711,6 +1743,7 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
 	.tx_queue_setup    = dpaa2_dev_tx_queue_setup,
 	.tx_queue_release  = dpaa2_dev_tx_queue_release,
+	.rx_queue_count       = dpaa2_dev_rx_queue_count,
 	.flow_ctrl_get	      = dpaa2_flow_ctrl_get,
 	.flow_ctrl_set	      = dpaa2_flow_ctrl_set,
 	.mac_addr_add         = dpaa2_dev_add_mac_addr,
