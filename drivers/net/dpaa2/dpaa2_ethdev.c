@@ -1846,7 +1846,6 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	eth_dev->dev_ops = &dpaa2_ethdev_ops;
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
 	eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
@@ -1950,6 +1949,9 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 	dpaa2_dev->eth_dev = eth_dev;
 	eth_dev->data->rx_mbuf_alloc_failed = 0;
 
+	if (dpaa2_drv->drv_flags & RTE_DPAA2_DRV_INTR_LSC)
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
+
 	/* Invoke PMD device initialization function */
 	diag = dpaa2_dev_init(eth_dev);
 	if (diag == 0)
@@ -1977,7 +1979,7 @@ rte_dpaa2_remove(struct rte_dpaa2_device *dpaa2_dev)
 }
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd = {
-	.drv_flags = RTE_DPAA2_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_DPAA2_DRV_INTR_LSC | RTE_DPAA2_DRV_IOVA_AS_VA,
 	.drv_type = DPAA2_ETH,
 	.probe = rte_dpaa2_probe,
 	.remove = rte_dpaa2_remove,

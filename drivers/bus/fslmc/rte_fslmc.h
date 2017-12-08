@@ -36,6 +36,10 @@ extern "C" {
 
 #define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
 
+
+/** Device driver supports link state interrupt */
+#define RTE_DPAA2_DRV_INTR_LSC	0x0008
+
 /** Device driver supports IOVA as VA */
 #define RTE_DPAA2_DRV_IOVA_AS_VA 0X0040
 
