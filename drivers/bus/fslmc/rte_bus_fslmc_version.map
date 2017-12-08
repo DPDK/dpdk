@@ -95,5 +95,7 @@ DPDK_18.02 {
 
 	dpaa2_svr_family;
 	dpaa2_virt_mode;
+	qbman_fq_query_state;
+	qbman_fq_state_frame_count;
 
 } DPDK_17.11;

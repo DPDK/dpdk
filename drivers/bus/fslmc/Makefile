@@ -36,7 +36,8 @@ EXPORT_MAP := rte_bus_fslmc_version.map
 LIBABIVER := 1
 
 SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += \
-        qbman/qbman_portal.c
+        qbman/qbman_portal.c \
+        qbman/qbman_debug.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += \
 	mc/dpmng.c \
