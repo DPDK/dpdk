@@ -93,6 +93,7 @@ DPDK_17.11 {
 DPDK_18.02 {
 	global:
 
+	dpaa2_svr_family;
 	dpaa2_virt_mode;
 
 } DPDK_17.11;

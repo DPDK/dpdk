@@ -50,6 +50,9 @@ static struct dpio_dev_list dpio_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpio_dev_list); /*!< DPIO device list */
 static uint32_t io_space_count;
 
+/* Variable to store DPAA2 platform type */
+uint32_t dpaa2_svr_family;
+
 /*Stashing Macros default for LS208x*/
 static int dpaa2_core_cluster_base = 0x04;
 static int dpaa2_cluster_sz = 2;
@@ -239,26 +242,6 @@ static int
 dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int cpu_id)
 {
 	int sdest, ret;
-	static int first_time;
-
-	/* find the SoC type for the first time */
-	if (!first_time) {
-		struct mc_soc_version mc_plat_info = {0};
-
-		if (mc_get_soc_version(dpio_dev->dpio,
-				       CMD_PRI_LOW, &mc_plat_info)) {
-			PMD_INIT_LOG(ERR, "\tmc_get_soc_version failed\n");
-		} else if ((mc_plat_info.svr & 0xffff0000) == SVR_LS1080A) {
-			dpaa2_core_cluster_base = 0x02;
-			dpaa2_cluster_sz = 4;
-			PMD_INIT_LOG(DEBUG, "\tLS108x (A53) Platform Detected");
-		} else if ((mc_plat_info.svr & 0xffff0000) == SVR_LX2160A) {
-			dpaa2_core_cluster_base = 0x00;
-			dpaa2_cluster_sz = 2;
-			PMD_INIT_LOG(DEBUG, "\tLX2160 Platform Detected");
-		}
-		first_time = 1;
-	}
 
 	/* Set the Stashing Destination */
 	if (cpu_id < 0) {
@@ -471,6 +454,25 @@ dpaa2_create_dpio_device(int vdev_fd,
 		PMD_INIT_LOG(ERR, "Fail to setup interrupt for %d\n",
 			     dpio_dev->hw_id);
 		rte_free(dpio_dev);
+	}
+
+	/* find the SoC type for the first time */
+	if (!dpaa2_svr_family) {
+		struct mc_soc_version mc_plat_info = {0};
+
+		if (mc_get_soc_version(dpio_dev->dpio,
+				       CMD_PRI_LOW, &mc_plat_info)) {
+			PMD_INIT_LOG(ERR, "\tmc_get_soc_version failed\n");
+		} else if ((mc_plat_info.svr & 0xffff0000) == SVR_LS1080A) {
+			dpaa2_core_cluster_base = 0x02;
+			dpaa2_cluster_sz = 4;
+			PMD_INIT_LOG(DEBUG, "\tLS108x (A53) Platform Detected");
+		} else if ((mc_plat_info.svr & 0xffff0000) == SVR_LX2160A) {
+			dpaa2_core_cluster_base = 0x00;
+			dpaa2_cluster_sz = 2;
+			PMD_INIT_LOG(DEBUG, "\tLX2160 Platform Detected");
+		}
+		dpaa2_svr_family = (mc_plat_info.svr & 0xffff0000);
 	}
 
 	TAILQ_INSERT_TAIL(&dpio_dev_list, dpio_dev, next);

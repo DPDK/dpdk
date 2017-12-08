@@ -392,7 +392,6 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
-	struct mc_soc_version mc_plat_info = {0};
 	struct dpaa2_queue *dpaa2_q;
 	struct dpni_queue cfg;
 	uint8_t options = 0;
@@ -424,18 +423,20 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/*if ls2088 or rev2 device, enable the stashing */
 
-	if (mc_get_soc_version(dpni, CMD_PRI_LOW, &mc_plat_info))
-		PMD_INIT_LOG(ERR, "\tmc_get_soc_version failed\n");
-
-	if ((mc_plat_info.svr & 0xffff0000) != SVR_LS2080A) {
+	if ((dpaa2_svr_family & 0xffff0000) != SVR_LS2080A) {
 		options |= DPNI_QUEUE_OPT_FLC;
 		cfg.flc.stash_control = true;
 		cfg.flc.value &= 0xFFFFFFFFFFFFFFC0;
 		/* 00 00 00 - last 6 bit represent annotation, context stashing,
-		 * data stashing setting 01 01 00 (0x14) to enable
-		 * 1 line data, 1 line annotation
+		 * data stashing setting 01 01 00 (0x14)
+		 * (in following order ->DS AS CS)
+		 * to enable 1 line data, 1 line annotation.
+		 * For LX2, this setting should be 01 00 00 (0x10)
 		 */
-		cfg.flc.value |= 0x14;
+		if ((dpaa2_svr_family & 0xffff0000) == SVR_LX2160A)
+			cfg.flc.value |= 0x10;
+		else
+			cfg.flc.value |= 0x14;
 	}
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_RX,
 			     dpaa2_q->tc_index, flow_id, options, &cfg);
