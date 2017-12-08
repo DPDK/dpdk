@@ -27,8 +27,8 @@
 #define SVR_LS2088A             0x87090000
 #define SVR_LX2160A             0x87360000
 
-#ifndef ETH_VLAN_HLEN
-#define ETH_VLAN_HLEN   4 /** < Vlan Header Length */
+#ifndef VLAN_TAG_SIZE
+#define VLAN_TAG_SIZE   4 /** < Vlan Header Length */
 #endif
 
 #define MAX_TX_RING_SLOTS	8
