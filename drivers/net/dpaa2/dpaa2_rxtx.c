@@ -24,6 +24,75 @@
 #include "dpaa2_ethdev.h"
 #include "base/dpaa2_hw_dpni_annot.h"
 
+static inline void __attribute__((hot))
+dpaa2_dev_rx_parse_frc(struct rte_mbuf *m, uint16_t frc)
+{
+	PMD_RX_LOG(DEBUG, "frc = 0x%x   ", frc);
+
+	m->packet_type = RTE_PTYPE_UNKNOWN;
+	switch (frc) {
+	case DPAA2_PKT_TYPE_ETHER:
+		m->packet_type = RTE_PTYPE_L2_ETHER;
+		break;
+	case DPAA2_PKT_TYPE_IPV4:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4;
+		break;
+	case DPAA2_PKT_TYPE_IPV6:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6;
+		break;
+	case DPAA2_PKT_TYPE_IPV4_EXT:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT;
+		break;
+	case DPAA2_PKT_TYPE_IPV6_EXT:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6_EXT;
+		break;
+	case DPAA2_PKT_TYPE_IPV4_TCP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP;
+		break;
+	case DPAA2_PKT_TYPE_IPV6_TCP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP;
+		break;
+	case DPAA2_PKT_TYPE_IPV4_UDP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP;
+		break;
+	case DPAA2_PKT_TYPE_IPV6_UDP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP;
+		break;
+	case DPAA2_PKT_TYPE_IPV4_SCTP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_SCTP;
+		break;
+	case DPAA2_PKT_TYPE_IPV6_SCTP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_SCTP;
+		break;
+	case DPAA2_PKT_TYPE_IPV4_ICMP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_ICMP;
+		break;
+	case DPAA2_PKT_TYPE_IPV6_ICMP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_ICMP;
+		break;
+	case DPAA2_PKT_TYPE_VLAN_1:
+	case DPAA2_PKT_TYPE_VLAN_2:
+		m->ol_flags |= PKT_RX_VLAN;
+		break;
+	/* More switch cases can be added */
+	/* TODO: Add handling for checksum error check from FRC */
+	default:
+		m->packet_type = RTE_PTYPE_UNKNOWN;
+	}
+}
+
 static inline uint32_t __attribute__((hot))
 dpaa2_dev_rx_parse(uint64_t hw_annot_addr)
 {
@@ -133,13 +202,17 @@ eth_sg_fd_to_mbuf(const struct qbman_fd *fd)
 	first_seg->pkt_len = DPAA2_GET_FD_LEN(fd);
 	first_seg->nb_segs = 1;
 	first_seg->next = NULL;
-
-	first_seg->packet_type = dpaa2_dev_rx_parse(
+	if (dpaa2_svr_family == SVR_LX2160A)
+		dpaa2_dev_rx_parse_frc(first_seg,
+				DPAA2_GET_FD_FRC_PARSE_SUM(fd));
+	else {
+		first_seg->packet_type = dpaa2_dev_rx_parse(
 			 (uint64_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
 			 + DPAA2_FD_PTA_SIZE);
-	dpaa2_dev_rx_offload((uint64_t)DPAA2_IOVA_TO_VADDR(
+		dpaa2_dev_rx_offload((uint64_t)DPAA2_IOVA_TO_VADDR(
 			DPAA2_GET_FD_ADDR(fd)) +
 			DPAA2_FD_PTA_SIZE, first_seg);
+	}
 	rte_mbuf_refcnt_set(first_seg, 1);
 	cur_seg = first_seg;
 	while (!DPAA2_SG_IS_FINAL(sge)) {
@@ -182,14 +255,21 @@ eth_fd_to_mbuf(const struct qbman_fd *fd)
 	mbuf->pkt_len = mbuf->data_len;
 
 	/* Parse the packet */
-	/* parse results are after the private - sw annotation area */
-	mbuf->packet_type = dpaa2_dev_rx_parse(
+	/* parse results for LX2 are there in FRC field of FD.
+	 * For other DPAA2 platforms , parse results are after
+	 * the private - sw annotation area
+	 */
+
+	if (dpaa2_svr_family == SVR_LX2160A)
+		dpaa2_dev_rx_parse_frc(mbuf, DPAA2_GET_FD_FRC_PARSE_SUM(fd));
+	else {
+		mbuf->packet_type = dpaa2_dev_rx_parse(
 			(uint64_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
 			 + DPAA2_FD_PTA_SIZE);
-
-	dpaa2_dev_rx_offload((uint64_t)DPAA2_IOVA_TO_VADDR(
+		dpaa2_dev_rx_offload((uint64_t)DPAA2_IOVA_TO_VADDR(
 			     DPAA2_GET_FD_ADDR(fd)) +
 			     DPAA2_FD_PTA_SIZE, mbuf);
+	}
 
 	mbuf->next = NULL;
 	rte_mbuf_refcnt_set(mbuf, 1);
