@@ -258,10 +258,10 @@ static void *dpaa2_mem_ptov(phys_addr_t paddr)
 	int i;
 
 	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
-		if (paddr >= memseg[i].phys_addr &&
-		   (char *)paddr < (char *)memseg[i].phys_addr + memseg[i].len)
+		if (paddr >= memseg[i].iova &&
+		   (char *)paddr < (char *)memseg[i].iova + memseg[i].len)
 			return (void *)(memseg[i].addr_64
-				+ (paddr - memseg[i].phys_addr));
+				+ (paddr - memseg[i].iova));
 	}
 	return NULL;
 }
@@ -275,7 +275,7 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
 		if (vaddr >= memseg[i].addr_64 &&
 		    vaddr < memseg[i].addr_64 + memseg[i].len)
-			return memseg[i].phys_addr
+			return memseg[i].iova
 				+ (vaddr - memseg[i].addr_64);
 	}
 	return (phys_addr_t)(NULL);
