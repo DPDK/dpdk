@@ -62,6 +62,7 @@
 #include "testpmd.h"
 
 uint16_t verbose_level = 0; /**< Silent by default. */
+int testpmd_logtype; /**< Log type for testpmd logs */
 
 /* use master core for command line ? */
 uint8_t interactive = 0;
@@ -483,7 +484,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 	mb_size = sizeof(struct rte_mbuf) + mbuf_seg_size;
 	mbuf_poolname_build(socket_id, pool_name, sizeof(pool_name));
 
-	RTE_LOG(INFO, USER1,
+	TESTPMD_LOG(INFO,
 		"create a new mbuf pool <%s>: n=%u, size=%u, socket=%u\n",
 		pool_name, nb_mbuf, mbuf_seg_size, socket_id);
 
@@ -1775,7 +1776,7 @@ detach_port(portid_t port_id)
 		port_flow_flush(port_id);
 
 	if (rte_eth_dev_detach(port_id, name)) {
-		RTE_LOG(ERR, USER1, "Failed to detach port '%s'\n", name);
+		TESTPMD_LOG(ERR, "Failed to detach port '%s'\n", name);
 		return;
 	}
 
@@ -1884,7 +1885,7 @@ rmv_event_callback(void *arg)
 	close_port(port_id);
 	printf("removing device %s\n", dev->device->name);
 	if (rte_eal_dev_detach(dev->device))
-		RTE_LOG(ERR, USER1, "Failed to detach device %s\n",
+		TESTPMD_LOG(ERR, "Failed to detach device %s\n",
 			dev->device->name);
 }
 
@@ -2355,8 +2356,13 @@ main(int argc, char** argv)
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
 
+	testpmd_logtype = rte_log_register("testpmd");
+	if (testpmd_logtype < 0)
+		rte_panic("Cannot register log type");
+	rte_log_set_level(testpmd_logtype, RTE_LOG_DEBUG);
+
 	if (mlockall(MCL_CURRENT | MCL_FUTURE)) {
-		RTE_LOG(NOTICE, USER1, "mlockall() failed with error \"%s\"\n",
+		TESTPMD_LOG(NOTICE, "mlockall() failed with error \"%s\"\n",
 			strerror(errno));
 	}
 
@@ -2367,7 +2373,7 @@ main(int argc, char** argv)
 
 	nb_ports = (portid_t) rte_eth_dev_count();
 	if (nb_ports == 0)
-		RTE_LOG(WARNING, EAL, "No probed ethernet devices\n");
+		TESTPMD_LOG(WARNING, "No probed ethernet devices\n");
 
 	/* allocate port structures, and init them */
 	init_port();

@@ -563,7 +563,7 @@ pkt_copy_split(const struct rte_mbuf *pkt)
 	while (i != 0) {
 		p = rte_pktmbuf_alloc(mp);
 		if (p == NULL) {
-			RTE_LOG(ERR, USER1,
+			TESTPMD_LOG(ERR,
 				"failed to allocate %u-th of %u mbuf "
 				"from mempool: %s\n",
 				nb_seg - i, nb_seg, mp->name);
@@ -572,7 +572,7 @@ pkt_copy_split(const struct rte_mbuf *pkt)
 
 		md[--i] = p;
 		if (rte_pktmbuf_tailroom(md[i]) < seglen[i]) {
-			RTE_LOG(ERR, USER1, "mempool %s, %u-th segment: "
+			TESTPMD_LOG(ERR, "mempool %s, %u-th segment: "
 				"expected seglen: %u, "
 				"actual mbuf tailroom: %u\n",
 				mp->name, i, seglen[i],
@@ -585,7 +585,7 @@ pkt_copy_split(const struct rte_mbuf *pkt)
 	if (i == 0) {
 		rc = mbuf_copy_split(pkt, md, seglen, nb_seg);
 		if (rc < 0)
-			RTE_LOG(ERR, USER1,
+			TESTPMD_LOG(ERR,
 				"mbuf_copy_split for %p(len=%u, nb_seg=%u) "
 				"into %u segments failed with error code: %d\n",
 				pkt, pkt->pkt_len, pkt->nb_segs, nb_seg, rc);
@@ -895,8 +895,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			if (ret >= 0)
 				nb_segments += ret;
 			else {
-				RTE_LOG(DEBUG, USER1,
-						"Unable to segment packet");
+				TESTPMD_LOG(DEBUG, "Unable to segment packet");
 				rte_pktmbuf_free(pkts_burst[i]);
 			}
 		}

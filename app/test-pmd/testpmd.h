@@ -324,6 +324,7 @@ extern uint8_t xstats_hide_zero; /**< Hide zero values for xstats display */
 
 /* globals used for configuration */
 extern uint16_t verbose_level; /**< Drives messages being displayed, if any. */
+extern int testpmd_logtype; /**< Log type for testpmd logs */
 extern uint8_t  interactive;
 extern uint8_t  auto_start;
 extern uint8_t  tx_first;
@@ -717,5 +718,8 @@ int new_socket_id(unsigned int socket_id);
 	(uint16_t) ((((cpu_16_v) & 0xFF) << 8) | ((cpu_16_v) >> 8))
 #endif
 #endif /* __GCC__ */
+
+#define TESTPMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, testpmd_logtype, "testpmd: " fmt, ## args)
 
 #endif /* _TESTPMD_H_ */
