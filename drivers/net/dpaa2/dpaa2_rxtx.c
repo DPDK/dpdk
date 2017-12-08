@@ -94,14 +94,13 @@ dpaa2_dev_rx_parse_frc(struct rte_mbuf *m, uint16_t frc)
 }
 
 static inline uint32_t __attribute__((hot))
-dpaa2_dev_rx_parse(uint64_t hw_annot_addr)
+dpaa2_dev_rx_parse_slow(uint64_t hw_annot_addr)
 {
 	uint32_t pkt_type = RTE_PTYPE_UNKNOWN;
 	struct dpaa2_annot_hdr *annotation =
 			(struct dpaa2_annot_hdr *)hw_annot_addr;
 
 	PMD_RX_LOG(DEBUG, "annotation = 0x%lx   ", annotation->word4);
-
 	if (BIT_ISSET_AT_POS(annotation->word3, L2_ARP_PRESENT)) {
 		pkt_type = RTE_PTYPE_L2_ETHER_ARP;
 		goto parse_done;
@@ -155,6 +154,41 @@ dpaa2_dev_rx_parse(uint64_t hw_annot_addr)
 
 parse_done:
 	return pkt_type;
+}
+
+
+static inline uint32_t __attribute__((hot))
+dpaa2_dev_rx_parse(uint64_t hw_annot_addr)
+{
+	struct dpaa2_annot_hdr *annotation =
+			(struct dpaa2_annot_hdr *)hw_annot_addr;
+
+	PMD_RX_LOG(DEBUG, "annotation = 0x%lx   ", annotation->word4);
+
+	/* Return some common types from parse processing */
+	switch (annotation->word4) {
+	case DPAA2_L3_IPv4:
+		return RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4;
+	case DPAA2_L3_IPv6:
+		return  RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6;
+	case DPAA2_L3_IPv4_TCP:
+		return  RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 |
+				RTE_PTYPE_L4_TCP;
+	case DPAA2_L3_IPv4_UDP:
+		return  RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 |
+				RTE_PTYPE_L4_UDP;
+	case DPAA2_L3_IPv6_TCP:
+		return  RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 |
+				RTE_PTYPE_L4_TCP;
+	case DPAA2_L3_IPv6_UDP:
+		return  RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 |
+				RTE_PTYPE_L4_UDP;
+	default:
+		PMD_RX_LOG(DEBUG, "Slow parse the parsing results\n");
+		break;
+	}
+
+	return dpaa2_dev_rx_parse_slow(hw_annot_addr);
 }
 
 static inline void __attribute__((hot))
@@ -253,6 +287,8 @@ eth_fd_to_mbuf(const struct qbman_fd *fd)
 	mbuf->data_off = DPAA2_GET_FD_OFFSET(fd);
 	mbuf->data_len = DPAA2_GET_FD_LEN(fd);
 	mbuf->pkt_len = mbuf->data_len;
+	mbuf->next = NULL;
+	rte_mbuf_refcnt_set(mbuf, 1);
 
 	/* Parse the packet */
 	/* parse results for LX2 are there in FRC field of FD.
@@ -270,9 +306,6 @@ eth_fd_to_mbuf(const struct qbman_fd *fd)
 			     DPAA2_GET_FD_ADDR(fd)) +
 			     DPAA2_FD_PTA_SIZE, mbuf);
 	}
-
-	mbuf->next = NULL;
-	rte_mbuf_refcnt_set(mbuf, 1);
 
 	PMD_RX_LOG(DEBUG, "to mbuf - mbuf =%p, mbuf->buf_addr =%p, off = %d,"
 		"fd_off=%d fd =%lx, meta = %d  bpid =%d, len=%d\n",
