@@ -202,8 +202,7 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 {
-	const struct rte_mbuf *m_seg;
-	unsigned int nb_segs;
+	unsigned int nb_segs, pkt_len;
 
 	if (m == NULL)
 		rte_panic("mbuf is NULL\n");
@@ -224,14 +223,22 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 	if (is_header == 0)
 		return;
 
+	/* data_len is supposed to be not more than pkt_len */
+	if (m->data_len > m->pkt_len)
+		rte_panic("bad data_len\n");
+
 	nb_segs = m->nb_segs;
-	m_seg = m;
-	while (m_seg && nb_segs != 0) {
-		m_seg = m_seg->next;
-		nb_segs--;
-	}
-	if (nb_segs != 0)
+	pkt_len = m->pkt_len;
+
+	do {
+		nb_segs -= 1;
+		pkt_len -= m->data_len;
+	} while ((m = m->next) != NULL);
+
+	if (nb_segs)
 		rte_panic("bad nb_segs\n");
+	if (pkt_len)
+		rte_panic("bad pkt_len\n");
 }
 
 /* dump a mbuf on console */
