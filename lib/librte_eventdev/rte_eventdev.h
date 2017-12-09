@@ -431,9 +431,9 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info);
  * @param[out] attr_value A pointer that will be filled in with the attribute
  *             value if successful.
  *
- * @retval 0 Successfully retrieved attribute value
- *         -EINVAL Invalid device or  *attr_id* provided, or *attr_value*
- *         is NULL
+ * @return
+ *   - 0: Successfully retrieved attribute value
+ *   - -EINVAL: Invalid device or  *attr_id* provided, or *attr_value* is NULL
  */
 int
 rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
@@ -651,18 +651,22 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 /**
  * Get an attribute from a queue.
  *
- * @param dev_id Eventdev id
- * @param queue_id Eventdev queue id
- * @param attr_id The attribute ID to retrieve
- * @param[out] attr_value A pointer that will be filled in with the attribute
- *             value if successful
+ * @param dev_id
+ *   Eventdev id
+ * @param queue_id
+ *   Eventdev queue id
+ * @param attr_id
+ *   The attribute ID to retrieve
+ * @param[out] attr_value
+ *   A pointer that will be filled in with the attribute value if successful
  *
- * @retval 0 Successfully returned value
- *         -EINVAL invalid device, queue or attr_id provided, or attr_value
- *         was NULL
- *         -EOVERFLOW returned when attr_id is set to
- *         RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE and event_queue_cfg is set to
- *         RTE_EVENT_QUEUE_CFG_ALL_TYPES
+ * @return
+ *   - 0: Successfully returned value
+ *   - -EINVAL: invalid device, queue or attr_id provided, or attr_value was
+ *		NULL
+ *   - -EOVERFLOW: returned when attr_id is set to
+ *   RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE and event_queue_cfg is set to
+ *   RTE_EVENT_QUEUE_CFG_ALL_TYPES
  */
 int
 rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
@@ -772,14 +776,18 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 /**
  * Get an attribute from a port.
  *
- * @param dev_id Eventdev id
- * @param port_id Eventdev port id
- * @param attr_id The attribute ID to retrieve
- * @param[out] attr_value A pointer that will be filled in with the attribute
- *             value if successful
+ * @param dev_id
+ *   Eventdev id
+ * @param port_id
+ *   Eventdev port id
+ * @param attr_id
+ *   The attribute ID to retrieve
+ * @param[out] attr_value
+ *   A pointer that will be filled in with the attribute value if successful
  *
- * @retval 0 Successfully returned value
- *         -EINVAL Invalid device, port or attr_id, or attr_value was NULL
+ * @return
+ *   - 0: Successfully returned value
+ *   - (-EINVAL) Invalid device, port or attr_id, or attr_value was NULL
  */
 int
 rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
