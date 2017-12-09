@@ -152,7 +152,7 @@ __rte_log_register(const char *name, int id)
 		return -ENOMEM;
 
 	rte_logs.dynamic_types[id].name = dup_name;
-	rte_logs.dynamic_types[id].loglevel = RTE_LOG_DEBUG;
+	rte_logs.dynamic_types[id].loglevel = RTE_LOG_INFO;
 
 	return id;
 }
@@ -228,11 +228,7 @@ rte_log_init(void)
 {
 	uint32_t i;
 
-#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
-	rte_log_set_global_level(RTE_LOG_INFO);
-#else
-	rte_log_set_global_level(RTE_LOG_LEVEL);
-#endif
+	rte_log_set_global_level(RTE_LOG_DEBUG);
 
 	rte_logs.dynamic_types = calloc(RTE_LOGTYPE_FIRST_EXT_ID,
 		sizeof(struct rte_log_dynamic_type));
