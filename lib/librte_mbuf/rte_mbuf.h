@@ -1541,12 +1541,10 @@ static inline uint16_t rte_pktmbuf_tailroom(const struct rte_mbuf *m)
  */
 static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 {
-	struct rte_mbuf *m2 = (struct rte_mbuf *)m;
-
 	__rte_mbuf_sanity_check(m, 1);
-	while (m2->next != NULL)
-		m2 = m2->next;
-	return m2;
+	while (m->next != NULL)
+		m = m->next;
+	return m;
 }
 
 /**
