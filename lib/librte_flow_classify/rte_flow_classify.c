@@ -679,7 +679,7 @@ static void
 librte_flow_classify_init_log(void)
 {
 	librte_flow_classify_logtype =
-		rte_log_register("librte.flow_classify");
+		rte_log_register("lib.flow_classify");
 	if (librte_flow_classify_logtype >= 0)
 		rte_log_set_level(librte_flow_classify_logtype, RTE_LOG_INFO);
 }
