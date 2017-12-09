@@ -13,7 +13,7 @@
 #include <rte_debug.h>
 
 #ifdef RTE_LIBRTE_SFC_EFX_DEBUG
-/* Avoid dependency from RTE_LOG_LEVEL to be able to enable debug check
+/* Avoid dependency from RTE_LOG_DP_LEVEL to be able to enable debug check
  * in the driver only.
  */
 #define SFC_ASSERT(exp)			RTE_VERIFY(exp)

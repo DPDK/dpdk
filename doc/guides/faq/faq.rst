@@ -103,9 +103,6 @@ Yes, the option ``--log-level=`` accepts one of these numbers:
     #define RTE_LOG_INFO 7U     /* Informational. */
     #define RTE_LOG_DEBUG 8U    /* Debug-level messages. */
 
-It is also possible to change the default level at compile time
-with ``CONFIG_RTE_LOG_LEVEL``.
-
 
 How can I tune my network application to achieve lower latency?
 ---------------------------------------------------------------

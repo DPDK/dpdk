@@ -157,7 +157,7 @@ config () # <directory> <target> <options>
 		! echo $3 | grep -q '+shared' || \
 		sed -ri         's,(SHARED_LIB=)n,\1y,' $1/.config
 		! echo $3 | grep -q '+debug' || ( \
-		sed -ri     's,(RTE_LOG_LEVEL=).*,\1RTE_LOG_DEBUG,' $1/.config
+		sed -ri  's,(RTE_LOG_DP_LEVEL=).*,\1RTE_LOG_DEBUG,' $1/.config
 		sed -ri           's,(_DEBUG.*=)n,\1y,' $1/.config
 		sed -ri            's,(_STAT.*=)n,\1y,' $1/.config
 		sed -ri 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config )

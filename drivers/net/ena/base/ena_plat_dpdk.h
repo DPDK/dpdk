@@ -96,7 +96,7 @@ typedef uint64_t dma_addr_t;
 #define ENA_GET_SYSTEM_USECS()						\
 	(rte_get_timer_cycles() * US_PER_S / rte_get_timer_hz())
 
-#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 #define ENA_ASSERT(cond, format, arg...)				\
 	do {								\
 		if (unlikely(!(cond))) {				\

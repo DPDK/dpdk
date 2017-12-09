@@ -39,7 +39,7 @@
 #include <rte_string_fns.h>
 #include <rte_acl.h>
 
-#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 #define L3FWDACL_DEBUG
 #endif
 #define DO_RFC_1812_CHECKS
