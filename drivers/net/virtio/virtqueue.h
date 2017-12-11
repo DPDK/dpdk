@@ -275,7 +275,7 @@ void virtqueue_dump(struct virtqueue *vq);
 struct rte_mbuf *virtqueue_detatch_unused(struct virtqueue *vq);
 
 /* Flush the elements in the used ring. */
-void virtqueue_flush(struct virtqueue *vq);
+void virtqueue_rxvq_flush(struct virtqueue *vq);
 
 static inline int
 virtqueue_full(const struct virtqueue *vq)

@@ -8,6 +8,7 @@
 #include "virtqueue.h"
 #include "virtio_logs.h"
 #include "virtio_pci.h"
+#include "virtio_rxtx_simple.h"
 
 /*
  * Two types of mbuf to be cleaned:
@@ -33,8 +34,10 @@ virtqueue_detatch_unused(struct virtqueue *vq)
 
 /* Flush the elements in the used ring. */
 void
-virtqueue_flush(struct virtqueue *vq)
+virtqueue_rxvq_flush(struct virtqueue *vq)
 {
+	struct virtnet_rx *rxq = &vq->rxq;
+	struct virtio_hw *hw = vq->hw;
 	struct vring_used_elem *uep;
 	struct vq_desc_extra *dxp;
 	uint16_t used_idx, desc_idx;
@@ -45,13 +48,27 @@ virtqueue_flush(struct virtqueue *vq)
 	for (i = 0; i < nb_used; i++) {
 		used_idx = vq->vq_used_cons_idx & (vq->vq_nentries - 1);
 		uep = &vq->vq_ring.used->ring[used_idx];
-		desc_idx = (uint16_t)uep->id;
-		dxp = &vq->vq_descx[desc_idx];
-		if (dxp->cookie != NULL) {
-			rte_pktmbuf_free(dxp->cookie);
-			dxp->cookie = NULL;
+		if (hw->use_simple_rx) {
+			desc_idx = used_idx;
+			rte_pktmbuf_free(vq->sw_ring[desc_idx]);
+			vq->vq_free_cnt++;
+		} else {
+			desc_idx = (uint16_t)uep->id;
+			dxp = &vq->vq_descx[desc_idx];
+			if (dxp->cookie != NULL) {
+				rte_pktmbuf_free(dxp->cookie);
+				dxp->cookie = NULL;
+			}
+			vq_ring_free_chain(vq, desc_idx);
 		}
 		vq->vq_used_cons_idx++;
-		vq_ring_free_chain(vq, desc_idx);
+	}
+
+	if (hw->use_simple_rx) {
+		while (vq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {
+			virtio_rxq_rearm_vec(rxq);
+			if (virtqueue_kick_prepare(vq))
+				virtqueue_notify(vq);
+		}
 	}
 }
