@@ -2518,6 +2518,22 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 			    pf->offset_loaded,
 			    &pf->internal_stats_offset.rx_broadcast,
 			    &pf->internal_stats.rx_broadcast);
+	/* Get total internal tx packet count */
+	i40e_stat_update_48(hw, I40E_GLV_UPTCH(hw->port),
+			    I40E_GLV_UPTCL(hw->port),
+			    pf->offset_loaded,
+			    &pf->internal_stats_offset.tx_unicast,
+			    &pf->internal_stats.tx_unicast);
+	i40e_stat_update_48(hw, I40E_GLV_MPTCH(hw->port),
+			    I40E_GLV_MPTCL(hw->port),
+			    pf->offset_loaded,
+			    &pf->internal_stats_offset.tx_multicast,
+			    &pf->internal_stats.tx_multicast);
+	i40e_stat_update_48(hw, I40E_GLV_BPTCH(hw->port),
+			    I40E_GLV_BPTCL(hw->port),
+			    pf->offset_loaded,
+			    &pf->internal_stats_offset.tx_broadcast,
+			    &pf->internal_stats.tx_broadcast);
 
 	/* exclude CRC size */
 	pf->internal_stats.rx_bytes -= (pf->internal_stats.rx_unicast +
@@ -2547,15 +2563,31 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 	ns->eth.rx_bytes -= (ns->eth.rx_unicast + ns->eth.rx_multicast +
 		ns->eth.rx_broadcast) * ETHER_CRC_LEN;
 
-	/* Workaround: it is possible I40E_GLV_GORCH[H/L] is updated before
-	 * I40E_GLPRT_GORCH[H/L], so there is a small window that cause negtive
+	/* exclude internal rx bytes
+	 * Workaround: it is possible I40E_GLV_GORCH[H/L] is updated before
+	 * I40E_GLPRT_GORCH[H/L], so there is a small window that cause negative
 	 * value.
+	 * same to I40E_GLV_UPRC[H/L], I40E_GLV_MPRC[H/L], I40E_GLV_BPRC[H/L].
 	 */
 	if (ns->eth.rx_bytes < pf->internal_stats.rx_bytes)
 		ns->eth.rx_bytes = 0;
-	/* exlude internal rx bytes */
 	else
 		ns->eth.rx_bytes -= pf->internal_stats.rx_bytes;
+
+	if (ns->eth.rx_unicast < pf->internal_stats.rx_unicast)
+		ns->eth.rx_unicast = 0;
+	else
+		ns->eth.rx_unicast -= pf->internal_stats.rx_unicast;
+
+	if (ns->eth.rx_multicast < pf->internal_stats.rx_multicast)
+		ns->eth.rx_multicast = 0;
+	else
+		ns->eth.rx_multicast -= pf->internal_stats.rx_multicast;
+
+	if (ns->eth.rx_broadcast < pf->internal_stats.rx_broadcast)
+		ns->eth.rx_broadcast = 0;
+	else
+		ns->eth.rx_broadcast -= pf->internal_stats.rx_broadcast;
 
 	i40e_stat_update_32(hw, I40E_GLPRT_RDPC(hw->port),
 			    pf->offset_loaded, &os->eth.rx_discards,
@@ -2585,11 +2617,31 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 	ns->eth.tx_bytes -= (ns->eth.tx_unicast + ns->eth.tx_multicast +
 		ns->eth.tx_broadcast) * ETHER_CRC_LEN;
 
-	/* exclude internal tx bytes */
+	/* exclude internal tx bytes
+	 * Workaround: it is possible I40E_GLV_GOTCH[H/L] is updated before
+	 * I40E_GLPRT_GOTCH[H/L], so there is a small window that cause negative
+	 * value.
+	 * same to I40E_GLV_UPTC[H/L], I40E_GLV_MPTC[H/L], I40E_GLV_BPTC[H/L].
+	 */
 	if (ns->eth.tx_bytes < pf->internal_stats.tx_bytes)
 		ns->eth.tx_bytes = 0;
 	else
 		ns->eth.tx_bytes -= pf->internal_stats.tx_bytes;
+
+	if (ns->eth.tx_unicast < pf->internal_stats.tx_unicast)
+		ns->eth.tx_unicast = 0;
+	else
+		ns->eth.tx_unicast -= pf->internal_stats.tx_unicast;
+
+	if (ns->eth.tx_multicast < pf->internal_stats.tx_multicast)
+		ns->eth.tx_multicast = 0;
+	else
+		ns->eth.tx_multicast -= pf->internal_stats.tx_multicast;
+
+	if (ns->eth.tx_broadcast < pf->internal_stats.tx_broadcast)
+		ns->eth.tx_broadcast = 0;
+	else
+		ns->eth.tx_broadcast -= pf->internal_stats.tx_broadcast;
 
 	/* GLPRT_TEPC not supported */
 
