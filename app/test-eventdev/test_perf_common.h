@@ -12,6 +12,7 @@
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
+#include <rte_event_eth_rx_adapter.h>
 #include <rte_lcore.h>
 #include <rte_malloc.h>
 #include <rte_mempool.h>

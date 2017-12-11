@@ -203,19 +203,78 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 	return 0;
 }
 
+static int
+perf_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
+		struct rte_event_port_conf prod_conf)
+{
+	int ret = 0;
+	uint16_t prod;
+	struct rte_event_eth_rx_adapter_queue_conf queue_conf;
+
+	memset(&queue_conf, 0,
+			sizeof(struct rte_event_eth_rx_adapter_queue_conf));
+	queue_conf.ev.sched_type = opt->sched_type_list[0];
+	for (prod = 0; prod < rte_eth_dev_count(); prod++) {
+		uint32_t cap;
+
+		ret = rte_event_eth_rx_adapter_caps_get(opt->dev_id,
+				prod, &cap);
+		if (ret) {
+			evt_err("failed to get event rx adapter[%d]"
+					" capabilities",
+					opt->dev_id);
+			return ret;
+		}
+		queue_conf.ev.queue_id = prod * stride;
+		ret = rte_event_eth_rx_adapter_create(prod, opt->dev_id,
+				&prod_conf);
+		if (ret) {
+			evt_err("failed to create rx adapter[%d]", prod);
+			return ret;
+		}
+		ret = rte_event_eth_rx_adapter_queue_add(prod, prod, -1,
+				&queue_conf);
+		if (ret) {
+			evt_err("failed to add rx queues to adapter[%d]", prod);
+			return ret;
+		}
+
+		ret = rte_eth_dev_start(prod);
+		if (ret) {
+			evt_err("Ethernet dev [%d] failed to start."
+					" Using synthetic producer", prod);
+			return ret;
+		}
+
+		ret = rte_event_eth_rx_adapter_start(prod);
+		if (ret) {
+			evt_err("Rx adapter[%d] start failed", prod);
+			return ret;
+		}
+		printf("%s: Port[%d] using Rx adapter[%d] started\n", __func__,
+				prod, prod);
+	}
+
+	return ret;
+}
+
 int
 perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 				uint8_t stride, uint8_t nb_queues)
 {
 	struct test_perf *t = evt_test_priv(test);
-	uint8_t port, prod;
+	uint16_t port, prod;
 	int ret = -1;
+	struct rte_event_port_conf port_conf;
+
+	memset(&port_conf, 0, sizeof(struct rte_event_port_conf));
+	rte_event_port_default_conf_get(opt->dev_id, 0, &port_conf);
 
 	/* port configuration */
 	const struct rte_event_port_conf wkr_p_conf = {
 			.dequeue_depth = opt->wkr_deq_dep,
-			.enqueue_depth = 64,
-			.new_event_threshold = 4096,
+			.enqueue_depth = port_conf.enqueue_depth,
+			.new_event_threshold = port_conf.new_event_threshold,
 	};
 
 	/* setup one port per worker, linking to all queues */
@@ -243,26 +302,38 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 	}
 
 	/* port for producers, no links */
-	const struct rte_event_port_conf prod_conf = {
-			.dequeue_depth = 8,
-			.enqueue_depth = 32,
-			.new_event_threshold = 1200,
+	struct rte_event_port_conf prod_conf = {
+			.dequeue_depth = port_conf.dequeue_depth,
+			.enqueue_depth = port_conf.enqueue_depth,
+			.new_event_threshold = port_conf.new_event_threshold,
 	};
-	prod = 0;
-	for ( ; port < perf_nb_event_ports(opt); port++) {
-		struct prod_data *p = &t->prod[port];
-
-		p->dev_id = opt->dev_id;
-		p->port_id = port;
-		p->queue_id = prod * stride;
-		p->t = t;
-
-		ret = rte_event_port_setup(opt->dev_id, port, &prod_conf);
-		if (ret) {
-			evt_err("failed to setup port %d", port);
-			return ret;
+	if (opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR) {
+		for ( ; port < perf_nb_event_ports(opt); port++) {
+			struct prod_data *p = &t->prod[port];
+			p->t = t;
 		}
-		prod++;
+
+		ret = perf_event_rx_adapter_setup(opt, stride, prod_conf);
+		if (ret)
+			return ret;
+	} else {
+		prod = 0;
+		for ( ; port < perf_nb_event_ports(opt); port++) {
+			struct prod_data *p = &t->prod[port];
+
+			p->dev_id = opt->dev_id;
+			p->port_id = port;
+			p->queue_id = prod * stride;
+			p->t = t;
+
+			ret = rte_event_port_setup(opt->dev_id, port,
+					&prod_conf);
+			if (ret) {
+				evt_err("failed to setup port %d", port);
+				return ret;
+			}
+			prod++;
+		}
 	}
 
 	return ret;
@@ -451,6 +522,7 @@ void perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
 
 	if (opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR) {
 		for (i = 0; i < rte_eth_dev_count(); i++) {
+			rte_event_eth_rx_adapter_stop(i);
 			rte_eth_dev_stop(i);
 			rte_eth_dev_close(i);
 		}

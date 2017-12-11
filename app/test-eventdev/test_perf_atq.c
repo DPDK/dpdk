@@ -159,6 +159,7 @@ perf_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	uint8_t queue;
 	uint8_t nb_queues;
 	uint8_t nb_ports;
+	struct rte_event_dev_info dev_info;
 
 	nb_ports = evt_nr_active_lcores(opt->wlcores);
 	nb_ports += opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ? 0 :
@@ -167,13 +168,22 @@ perf_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	nb_queues = opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ?
 		rte_eth_dev_count() : atq_nb_event_queues(opt);
 
+	memset(&dev_info, 0, sizeof(struct rte_event_dev_info));
+	ret = rte_event_dev_info_get(opt->dev_id, &dev_info);
+	if (ret) {
+		evt_err("failed to get eventdev info %d", opt->dev_id);
+		return ret;
+	}
+
 	const struct rte_event_dev_config config = {
 			.nb_event_queues = nb_queues,
 			.nb_event_ports = nb_ports,
-			.nb_events_limit  = 4096,
+			.nb_events_limit  = dev_info.max_num_events,
 			.nb_event_queue_flows = opt->nb_flows,
-			.nb_event_port_dequeue_depth = 128,
-			.nb_event_port_enqueue_depth = 128,
+			.nb_event_port_dequeue_depth =
+				dev_info.max_event_port_dequeue_depth,
+			.nb_event_port_enqueue_depth =
+				dev_info.max_event_port_enqueue_depth,
 	};
 
 	ret = rte_event_dev_configure(opt->dev_id, &config);
@@ -197,8 +207,7 @@ perf_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 		}
 	}
 
-	ret = perf_event_dev_port_setup(test, opt, 1 /* stride */,
-					nb_queues);
+	ret = perf_event_dev_port_setup(test, opt, 1 /* stride */, nb_queues);
 	if (ret)
 		return ret;
 
