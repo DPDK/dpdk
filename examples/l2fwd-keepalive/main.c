@@ -527,7 +527,6 @@ int
 main(int argc, char **argv)
 {
 	struct lcore_queue_conf *qconf;
-	struct rte_eth_dev_info dev_info;
 	int ret;
 	uint16_t nb_ports;
 	uint16_t nb_ports_available;
@@ -589,8 +588,6 @@ main(int argc, char **argv)
 			last_port = portid;
 
 		nb_ports_in_mask++;
-
-		rte_eth_dev_info_get(portid, &dev_info);
 	}
 	if (nb_ports_in_mask % 2) {
 		printf("Notice: odd number of ports in portmask.\n");
