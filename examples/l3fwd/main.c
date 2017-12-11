@@ -278,7 +278,7 @@ init_lcore_rx_queues(void)
 static void
 print_usage(const char *prgname)
 {
-	printf("%s [EAL options] --"
+	fprintf(stderr, "%s [EAL options] --"
 		" -p PORTMASK"
 		" [-P]"
 		" [-E]"
@@ -508,22 +508,6 @@ parse_args(int argc, char **argv)
 	argvopt = argv;
 
 	/* Error or normal output strings. */
-	const char *str1 = "L3FWD: Invalid portmask";
-	const char *str2 = "L3FWD: Promiscuous mode selected";
-	const char *str3 = "L3FWD: Exact match selected";
-	const char *str4 = "L3FWD: Longest-prefix match selected";
-	const char *str5 = "L3FWD: Invalid config";
-	const char *str6 = "L3FWD: NUMA is disabled";
-	const char *str7 = "L3FWD: IPV6 is specified";
-	const char *str8 =
-		"L3FWD: Jumbo frame is enabled - disabling simple TX path";
-	const char *str9 = "L3FWD: Invalid packet length";
-	const char *str10 = "L3FWD: Set jumbo frame max packet len to ";
-	const char *str11 = "L3FWD: Invalid hash entry number";
-	const char *str12 =
-		"L3FWD: LPM and EM are mutually exclusive, select only one";
-	const char *str13 = "L3FWD: LPM or EM none selected, default LPM on";
-
 	while ((opt = getopt_long(argc, argvopt, short_options,
 				lgopts, &option_index)) != EOF) {
 
@@ -532,24 +516,21 @@ parse_args(int argc, char **argv)
 		case 'p':
 			enabled_port_mask = parse_portmask(optarg);
 			if (enabled_port_mask == 0) {
-				printf("%s\n", str1);
+				fprintf(stderr, "Invalid portmask\n");
 				print_usage(prgname);
 				return -1;
 			}
 			break;
 
 		case 'P':
-			printf("%s\n", str2);
 			promiscuous_on = 1;
 			break;
 
 		case 'E':
-			printf("%s\n", str3);
 			l3fwd_em_on = 1;
 			break;
 
 		case 'L':
-			printf("%s\n", str4);
 			l3fwd_lpm_on = 1;
 			break;
 
@@ -557,7 +538,7 @@ parse_args(int argc, char **argv)
 		case CMD_LINE_OPT_CONFIG_NUM:
 			ret = parse_config(optarg);
 			if (ret) {
-				printf("%s\n", str5);
+				fprintf(stderr, "Invalid config\n");
 				print_usage(prgname);
 				return -1;
 			}
@@ -568,21 +549,19 @@ parse_args(int argc, char **argv)
 			break;
 
 		case CMD_LINE_OPT_NO_NUMA_NUM:
-			printf("%s\n", str6);
 			numa_on = 0;
 			break;
 
 		case CMD_LINE_OPT_IPV6_NUM:
-			printf("%sn", str7);
 			ipv6 = 1;
 			break;
 
 		case CMD_LINE_OPT_ENABLE_JUMBO_NUM: {
-			struct option lenopts = {
+			const struct option lenopts = {
 				"max-pkt-len", required_argument, 0, 0
 			};
 
-			printf("%s\n", str8);
+
 			port_conf.rxmode.jumbo_frame = 1;
 
 			/*
@@ -592,16 +571,14 @@ parse_args(int argc, char **argv)
 			if (getopt_long(argc, argvopt, "",
 					&lenopts, &option_index) == 0) {
 				ret = parse_max_pkt_len(optarg);
-				if ((ret < 64) ||
-					(ret > MAX_JUMBO_PKT_LEN)) {
-					printf("%s\n", str9);
+				if (ret < 64 || ret > MAX_JUMBO_PKT_LEN) {
+					fprintf(stderr,
+						"invalid maximum packet length\n");
 					print_usage(prgname);
 					return -1;
 				}
 				port_conf.rxmode.max_rx_pkt_len = ret;
 			}
-			printf("%s %u\n", str10,
-				(unsigned int)port_conf.rxmode.max_rx_pkt_len);
 			break;
 		}
 
@@ -610,7 +587,7 @@ parse_args(int argc, char **argv)
 			if ((ret > 0) && (ret <= L3FWD_HASH_ENTRIES)) {
 				hash_entry_number = ret;
 			} else {
-				printf("%s\n", str11);
+				fprintf(stderr, "invalid hash entry number\n");
 				print_usage(prgname);
 				return -1;
 			}
@@ -629,7 +606,7 @@ parse_args(int argc, char **argv)
 
 	/* If both LPM and EM are selected, return error. */
 	if (l3fwd_lpm_on && l3fwd_em_on) {
-		printf("%s\n", str12);
+		fprintf(stderr, "LPM and EM are mutually exclusive, select only one\n");
 		return -1;
 	}
 
@@ -638,8 +615,8 @@ parse_args(int argc, char **argv)
 	 * as default match.
 	 */
 	if (!l3fwd_lpm_on && !l3fwd_em_on) {
+		fprintf(stderr, "LPM or EM none selected, default LPM on\n");
 		l3fwd_lpm_on = 1;
-		printf("%s\n", str13);
 	}
 
 	/*
