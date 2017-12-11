@@ -444,6 +444,19 @@ perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 	return 0;
 }
 
+void perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	int i;
+	RTE_SET_USED(test);
+
+	if (opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR) {
+		for (i = 0; i < rte_eth_dev_count(); i++) {
+			rte_eth_dev_stop(i);
+			rte_eth_dev_close(i);
+		}
+	}
+}
+
 int
 perf_mempool_setup(struct evt_test *test, struct evt_options *opt)
 {

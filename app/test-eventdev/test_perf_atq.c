@@ -258,6 +258,7 @@ static const struct evt_test_ops perf_atq =  {
 	.launch_lcores      = perf_atq_launch_lcores,
 	.eventdev_destroy   = perf_eventdev_destroy,
 	.mempool_destroy    = perf_mempool_destroy,
+	.ethdev_destroy     = perf_ethdev_destroy,
 	.test_result        = perf_test_result,
 	.test_destroy       = perf_test_destroy,
 };
