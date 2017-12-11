@@ -259,8 +259,10 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 {
 	unsigned int lcores;
 
-	/* N producer + N worker + 1 master */
-	lcores = 3;
+	/* N producer + N worker + 1 master when producer cores are used
+	 * Else N worker + 1 master when Rx adapter is used
+	 */
+	lcores = opt->prod_type == EVT_PROD_TYPE_SYNT ? 3 : 2;
 
 	if (rte_lcore_count() < lcores) {
 		evt_err("test need minimum %d lcores", lcores);
@@ -285,18 +287,21 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 		return -1;
 	}
 
-	/* Validate producer lcores */
-	if (evt_lcores_has_overlap(opt->plcores, rte_get_master_lcore())) {
-		evt_err("producer lcores overlaps with master lcore");
-		return -1;
-	}
-	if (evt_has_disabled_lcore(opt->plcores)) {
-		evt_err("one or more producer lcores are not enabled");
-		return -1;
-	}
-	if (!evt_has_active_lcore(opt->plcores)) {
-		evt_err("minimum one producer is required");
-		return -1;
+	if (opt->prod_type == EVT_PROD_TYPE_SYNT) {
+		/* Validate producer lcores */
+		if (evt_lcores_has_overlap(opt->plcores,
+					rte_get_master_lcore())) {
+			evt_err("producer lcores overlaps with master lcore");
+			return -1;
+		}
+		if (evt_has_disabled_lcore(opt->plcores)) {
+			evt_err("one or more producer lcores are not enabled");
+			return -1;
+		}
+		if (!evt_has_active_lcore(opt->plcores)) {
+			evt_err("minimum one producer is required");
+			return -1;
+		}
 	}
 
 	if (evt_has_invalid_stage(opt))
@@ -341,6 +346,7 @@ perf_opt_dump(struct evt_options *opt, uint8_t nb_queues)
 	evt_dump("nb_evdev_queues", "%d", nb_queues);
 	evt_dump_queue_priority(opt);
 	evt_dump_sched_type_list(opt);
+	evt_dump_producer_type(opt);
 }
 
 void

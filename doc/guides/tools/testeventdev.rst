@@ -119,6 +119,9 @@ The following are the application command-line options:
 
         Enable queue priority.
 
+* ``--prod_type_ethdev``
+
+        Use ethernet device as producer.
 
 Eventdev Tests
 --------------
@@ -321,6 +324,10 @@ the timestamp in the event on the first stage and then on termination, it
 updates the number of cycles to forward a packet. The application uses this
 value to compute the average latency to a forward packet.
 
+When ``--prod_type_ethdev`` command line option is selected, the application
+uses the probed ethernet devices as producers by configuring them as Rx
+adapters instead of using synthetic producers.
+
 Application options
 ^^^^^^^^^^^^^^^^^^^
 
@@ -339,6 +346,7 @@ Supported application command line options are following::
         --worker_deq_depth
         --fwd_latency
         --queue_priority
+        --prod_type_ethdev
 
 Example
 ^^^^^^^
@@ -350,6 +358,12 @@ Example command to run perf queue test:
    sudo build/app/dpdk-test-eventdev -c 0xf -s 0x1 --vdev=event_sw0 -- \
         --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
 
+Example command to run perf queue test with ethernet ports:
+
+.. code-block:: console
+
+   sudo build/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+        --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --prod_type_ethdev
 
 PERF_ATQ Test
 ~~~~~~~~~~~~~~~
@@ -416,6 +430,7 @@ Supported application command line options are following::
         --nb_pkts
         --worker_deq_depth
         --fwd_latency
+        --prod_type_ethdev
 
 Example
 ^^^^^^^

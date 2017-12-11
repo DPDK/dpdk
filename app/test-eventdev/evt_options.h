@@ -30,7 +30,15 @@
 #define EVT_SCHED_TYPE_LIST      ("stlist")
 #define EVT_FWD_LATENCY          ("fwd_latency")
 #define EVT_QUEUE_PRIORITY       ("queue_priority")
+#define EVT_PROD_ETHDEV          ("prod_type_ethdev")
 #define EVT_HELP                 ("help")
+
+enum evt_prod_type {
+	EVT_PROD_TYPE_NONE,
+	EVT_PROD_TYPE_SYNT,          /* Producer type Synthetic i.e. CPU. */
+	EVT_PROD_TYPE_ETH_RX_ADPTR,  /* Producer type Eth Rx Adapter. */
+	EVT_PROD_TYPE_MAX,
+};
 
 struct evt_options {
 #define EVT_TEST_NAME_MAX_LEN     32
@@ -48,6 +56,7 @@ struct evt_options {
 	uint8_t dev_id;
 	uint32_t fwd_latency:1;
 	uint32_t q_priority:1;
+	enum evt_prod_type prod_type;
 };
 
 void evt_options_default(struct evt_options *opt);
@@ -236,6 +245,26 @@ evt_dump_sched_type_list(struct evt_options *opt)
 		printf("%s ", evt_sched_type_2_str(opt->sched_type_list[i]));
 
 	evt_dump_end;
+}
+
+#define EVT_PROD_MAX_NAME_LEN 50
+static inline void
+evt_dump_producer_type(struct evt_options *opt)
+{
+	char name[EVT_PROD_MAX_NAME_LEN];
+
+	switch (opt->prod_type) {
+	default:
+	case EVT_PROD_TYPE_SYNT:
+		snprintf(name, EVT_PROD_MAX_NAME_LEN,
+				"Synthetic producer lcores");
+		break;
+	case EVT_PROD_TYPE_ETH_RX_ADPTR:
+		snprintf(name, EVT_PROD_MAX_NAME_LEN,
+				"Ethdev Rx Adapter producers");
+		break;
+	}
+	evt_dump("prod_type", "%s", name);
 }
 
 #endif /* _EVT_OPTIONS_ */
