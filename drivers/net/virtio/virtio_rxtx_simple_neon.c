@@ -24,9 +24,7 @@
 
 #include "virtio_rxtx_simple.h"
 
-#define RTE_VIRTIO_VPMD_RX_BURST 32
 #define RTE_VIRTIO_DESC_PER_LOOP 8
-#define RTE_VIRTIO_VPMD_RX_REARM_THRESH RTE_VIRTIO_VPMD_RX_BURST
 
 /* virtio vPMD receive routine, only accept(nb_pkts >= RTE_VIRTIO_DESC_PER_LOOP)
  *
