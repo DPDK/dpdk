@@ -283,6 +283,16 @@ struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
  *
  * @see rte_event_dequeue_burst() rte_event_enqueue_burst()
  */
+#define RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE    (1ULL << 5)
+/**< Event device ports support disabling the implicit release feature, in
+ * which the port will release all unreleased events in its dequeue operation.
+ * If this capability is set and the port is configured with implicit release
+ * disabled, the application is responsible for explicitly releasing events
+ * using either the RTE_EVENT_OP_FORWARD or the RTE_EVENT_OP_RELEASE event
+ * enqueue operations.
+ *
+ * @see rte_event_dequeue_burst() rte_event_enqueue_burst()
+ */
 
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
@@ -686,6 +696,13 @@ struct rte_event_port_conf {
 	 * This value cannot exceed the *nb_event_port_enqueue_depth*
 	 * which previously supplied to rte_event_dev_configure().
 	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
+	 */
+	uint8_t disable_implicit_release;
+	/**< Configure the port not to release outstanding events in
+	 * rte_event_dev_dequeue_burst(). If true, all events received through
+	 * the port must be explicitly released with RTE_EVENT_OP_RELEASE or
+	 * RTE_EVENT_OP_FORWARD. Must be false when the device is not
+	 * RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE capable.
 	 */
 };
 
@@ -1382,9 +1399,9 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
  *
  * The number of events dequeued is the number of scheduler contexts held by
  * this port. These contexts are automatically released in the next
- * rte_event_dequeue_burst() invocation, or invoking rte_event_enqueue_burst()
- * with RTE_EVENT_OP_RELEASE operation can be used to release the
- * contexts early.
+ * rte_event_dequeue_burst() invocation if the port supports implicit
+ * releases, or invoking rte_event_enqueue_burst() with RTE_EVENT_OP_RELEASE
+ * operation can be used to release the contexts early.
  *
  * Event operations RTE_EVENT_OP_FORWARD and RTE_EVENT_OP_RELEASE must only be
  * enqueued to the same port that their associated events were dequeued from.

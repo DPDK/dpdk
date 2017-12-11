@@ -171,6 +171,7 @@ create_ports(struct test *t, int num_ports)
 			.new_event_threshold = 1024,
 			.dequeue_depth = 32,
 			.enqueue_depth = 64,
+			.disable_implicit_release = 0,
 	};
 	if (num_ports > MAX_PORTS)
 		return -1;
@@ -1225,6 +1226,7 @@ port_reconfig_credits(struct test *t)
 				.new_event_threshold = 128,
 				.dequeue_depth = 32,
 				.enqueue_depth = 64,
+				.disable_implicit_release = 0,
 		};
 		if (rte_event_port_setup(evdev, 0, &port_conf) < 0) {
 			printf("%d Error setting up port\n", __LINE__);
@@ -1314,6 +1316,7 @@ port_single_lb_reconfig(struct test *t)
 		.new_event_threshold = 128,
 		.dequeue_depth = 32,
 		.enqueue_depth = 64,
+		.disable_implicit_release = 0,
 	};
 	if (rte_event_port_setup(evdev, 0, &port_conf) < 0) {
 		printf("%d Error setting up port\n", __LINE__);
@@ -2906,7 +2909,7 @@ worker_loopback_producer_fn(void *arg)
 }
 
 static int
-worker_loopback(struct test *t)
+worker_loopback(struct test *t, uint8_t disable_implicit_release)
 {
 	/* use a single producer core, and a worker core to see what happens
 	 * if the worker loops packets back multiple times
@@ -2932,6 +2935,7 @@ worker_loopback(struct test *t)
 	 * only be initialized once - and this needs to be set for multiple runs
 	 */
 	conf.new_event_threshold = 512;
+	conf.disable_implicit_release = disable_implicit_release;
 
 	if (rte_event_port_setup(evdev, 0, &conf) < 0) {
 		printf("Error setting up RX port\n");
@@ -3206,15 +3210,23 @@ test_sw_eventdev(void)
 	}
 	if (rte_lcore_count() >= 3) {
 		printf("*** Running Worker loopback test...\n");
-		ret = worker_loopback(t);
+		ret = worker_loopback(t, 0);
+		if (ret != 0) {
+			printf("ERROR - Worker loopback test FAILED.\n");
+			return ret;
+		}
+
+		printf("*** Running Worker loopback test (implicit release disabled)...\n");
+		ret = worker_loopback(t, 1);
 		if (ret != 0) {
 			printf("ERROR - Worker loopback test FAILED.\n");
 			return ret;
 		}
 	} else {
-		printf("### Not enough cores for worker loopback test.\n");
-		printf("### Need at least 3 cores for test.\n");
+		printf("### Not enough cores for worker loopback tests.\n");
+		printf("### Need at least 3 cores for the tests.\n");
 	}
+
 	/*
 	 * Free test instance, leaving mempool initialized, and a pointer to it
 	 * in static eventdev_func_mempool, as it is re-used on re-runs

@@ -185,6 +185,7 @@ struct sw_port {
 	uint16_t outstanding_releases __rte_cache_aligned;
 	uint16_t inflight_max; /* app requested max inflights for this port */
 	uint16_t inflight_credits; /* num credits this port has right now */
+	uint8_t implicit_release; /* release events before dequeueing */
 
 	uint16_t last_dequeue_burst_sz; /* how big the burst was */
 	uint64_t last_dequeue_ticks; /* used to track burst processing time */

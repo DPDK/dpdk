@@ -658,6 +658,15 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 		return -EINVAL;
 	}
 
+	if (port_conf && port_conf->disable_implicit_release &&
+	    !(dev->data->event_dev_cap &
+	      RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE)) {
+		RTE_EDEV_LOG_ERR(
+		   "dev%d port%d Implicit release disable not supported",
+			dev_id, port_id);
+		return -EINVAL;
+	}
+
 	if (dev->data->dev_started) {
 		RTE_EDEV_LOG_ERR(
 		    "device %d must be stopped to allow port setup", dev_id);

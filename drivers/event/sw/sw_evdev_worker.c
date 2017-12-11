@@ -81,7 +81,7 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 			return 0;
 	}
 
-	uint32_t forwards = 0;
+	uint32_t completions = 0;
 	for (i = 0; i < num; i++) {
 		int op = ev[i].op;
 		int outstanding = p->outstanding_releases > 0;
@@ -90,7 +90,6 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 		p->inflight_credits -= (op == RTE_EVENT_OP_NEW);
 		p->inflight_credits += (op == RTE_EVENT_OP_RELEASE) *
 					outstanding;
-		forwards += (op == RTE_EVENT_OP_FORWARD);
 
 		new_ops[i] = sw_qe_flag_map[op];
 		new_ops[i] &= ~(invalid_qid << QE_FLAG_VALID_SHIFT);
@@ -99,8 +98,10 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 		 * correct usage of the API), providing very high correct
 		 * prediction rate.
 		 */
-		if ((new_ops[i] & QE_FLAG_COMPLETE) && outstanding)
+		if ((new_ops[i] & QE_FLAG_COMPLETE) && outstanding) {
 			p->outstanding_releases--;
+			completions++;
+		}
 
 		/* error case: branch to avoid touching p->stats */
 		if (unlikely(invalid_qid)) {
@@ -109,8 +110,8 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 		}
 	}
 
-	/* handle directed port forward credits */
-	p->inflight_credits -= forwards * p->is_directed;
+	/* handle directed port forward and release credits */
+	p->inflight_credits -= completions * p->is_directed;
 
 	/* returns number of events actually enqueued */
 	uint32_t enq = enqueue_burst_with_ops(p->rx_worker_ring, ev, i,
@@ -144,7 +145,7 @@ sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 	uint32_t credit_update_quanta = sw->credit_update_quanta;
 
 	/* check that all previous dequeues have been released */
-	if (!p->is_directed) {
+	if (p->implicit_release && !p->is_directed) {
 		uint16_t out_rels = p->outstanding_releases;
 		uint16_t i;
 		for (i = 0; i < out_rels; i++)
@@ -154,7 +155,6 @@ sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 	/* returns number of events actually dequeued */
 	uint16_t ndeq = rte_event_ring_dequeue_burst(ring, ev, num, NULL);
 	if (unlikely(ndeq == 0)) {
-		p->outstanding_releases = 0;
 		p->zero_polls++;
 		p->total_polls++;
 		goto end;
@@ -162,7 +162,7 @@ sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 
 	/* only add credits for directed ports - LB ports send RELEASEs */
 	p->inflight_credits += ndeq * p->is_directed;
-	p->outstanding_releases = ndeq;
+	p->outstanding_releases += ndeq;
 	p->last_dequeue_burst_sz = ndeq;
 	p->last_dequeue_ticks = rte_get_timer_cycles();
 	p->poll_buckets[(ndeq - 1) >> SW_DEQ_STAT_BUCKET_SHIFT]++;

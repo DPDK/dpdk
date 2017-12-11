@@ -34,6 +34,7 @@ struct prod_data {
 struct cons_data {
 	uint8_t dev_id;
 	uint8_t port_id;
+	uint8_t release;
 } __rte_cache_aligned;
 
 static struct prod_data prod_data;
@@ -139,6 +140,18 @@ consumer(void)
 		uint8_t outport = packets[i].mbuf->port;
 		rte_eth_tx_buffer(outport, 0, fdata->tx_buf[outport],
 				packets[i].mbuf);
+
+		packets[i].op = RTE_EVENT_OP_RELEASE;
+	}
+
+	if (cons_data.release) {
+		uint16_t nb_tx;
+
+		nb_tx = rte_event_enqueue_burst(dev_id, port_id, packets, n);
+		while (nb_tx < n)
+			nb_tx += rte_event_enqueue_burst(dev_id, port_id,
+							 packets + nb_tx,
+							 n - nb_tx);
 	}
 
 	/* Print out mpps every 1<22 packets */
@@ -685,6 +698,7 @@ setup_eventdev(struct prod_data *prod_data,
 	};
 
 	struct port_link worker_queues[MAX_NUM_STAGES];
+	uint8_t disable_implicit_release;
 	struct port_link tx_queue;
 	unsigned int i;
 
@@ -697,6 +711,12 @@ setup_eventdev(struct prod_data *prod_data,
 	struct rte_event_dev_info dev_info;
 	ret = rte_event_dev_info_get(dev_id, &dev_info);
 	printf("\tEventdev %d: %s\n", dev_id, dev_info.driver_name);
+
+	disable_implicit_release = (dev_info.event_dev_cap &
+				    RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE);
+
+	wkr_p_conf.disable_implicit_release = disable_implicit_release;
+	tx_p_conf.disable_implicit_release = disable_implicit_release;
 
 	if (dev_info.max_event_port_dequeue_depth <
 			config.nb_event_port_dequeue_depth)
@@ -806,6 +826,7 @@ setup_eventdev(struct prod_data *prod_data,
 			.dequeue_depth = 8,
 			.enqueue_depth = 8,
 			.new_event_threshold = 1200,
+			.disable_implicit_release = disable_implicit_release,
 	};
 
 	if (rx_p_conf.dequeue_depth > config.nb_event_port_dequeue_depth)
@@ -822,7 +843,8 @@ setup_eventdev(struct prod_data *prod_data,
 					.port_id = i + 1,
 					.qid = cdata.qid[0] };
 	*cons_data = (struct cons_data){.dev_id = dev_id,
-					.port_id = i };
+					.port_id = i,
+					.release = disable_implicit_release };
 
 	ret = rte_event_dev_service_id_get(dev_id,
 				&fdata->evdev_service_id);
