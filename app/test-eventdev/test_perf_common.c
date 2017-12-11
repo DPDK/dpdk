@@ -384,13 +384,24 @@ perf_mempool_setup(struct evt_test *test, struct evt_options *opt)
 {
 	struct test_perf *t = evt_test_priv(test);
 
-	t->pool = rte_mempool_create(test->name, /* mempool name */
+	if (opt->prod_type == EVT_PROD_TYPE_SYNT) {
+		t->pool = rte_mempool_create(test->name, /* mempool name */
 				opt->pool_sz, /* number of elements*/
 				sizeof(struct perf_elt), /* element size*/
 				512, /* cache size*/
 				0, NULL, NULL,
 				perf_elt_init, /* obj constructor */
 				NULL, opt->socket_id, 0); /* flags */
+	} else {
+		t->pool = rte_pktmbuf_pool_create(test->name, /* mempool name */
+				opt->pool_sz, /* number of elements*/
+				512, /* cache size*/
+				0,
+				RTE_MBUF_DEFAULT_BUF_SIZE,
+				opt->socket_id); /* flags */
+
+	}
+
 	if (t->pool == NULL) {
 		evt_err("failed to create mempool");
 		return -ENOMEM;
