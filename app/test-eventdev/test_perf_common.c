@@ -379,6 +379,71 @@ perf_elt_init(struct rte_mempool *mp, void *arg __rte_unused,
 	memset(obj, 0, mp->elt_size);
 }
 
+#define NB_RX_DESC			128
+#define NB_TX_DESC			512
+int
+perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
+{
+	int i;
+	struct test_perf *t = evt_test_priv(test);
+	struct rte_eth_conf port_conf = {
+		.rxmode = {
+			.mq_mode = ETH_MQ_RX_RSS,
+			.max_rx_pkt_len = ETHER_MAX_LEN,
+			.split_hdr_size = 0,
+			.header_split   = 0,
+			.hw_ip_checksum = 0,
+			.hw_vlan_filter = 0,
+			.hw_vlan_strip  = 0,
+			.hw_vlan_extend = 0,
+			.jumbo_frame    = 0,
+			.hw_strip_crc   = 1,
+		},
+		.rx_adv_conf = {
+			.rss_conf = {
+				.rss_key = NULL,
+				.rss_hf = ETH_RSS_IP,
+			},
+		},
+	};
+
+	if (opt->prod_type == EVT_PROD_TYPE_SYNT)
+		return 0;
+
+	if (!rte_eth_dev_count()) {
+		evt_err("No ethernet ports found.");
+		return -ENODEV;
+	}
+
+	for (i = 0; i < rte_eth_dev_count(); i++) {
+
+		if (rte_eth_dev_configure(i, 1, 1,
+					&port_conf)
+				< 0) {
+			evt_err("Failed to configure eth port [%d]", i);
+			return -EINVAL;
+		}
+
+		if (rte_eth_rx_queue_setup(i, 0, NB_RX_DESC,
+				rte_socket_id(), NULL, t->pool) < 0) {
+			evt_err("Failed to setup eth port [%d] rx_queue: %d.",
+					i, 0);
+			return -EINVAL;
+		}
+
+		if (rte_eth_tx_queue_setup(i, 0, NB_TX_DESC,
+					rte_socket_id(), NULL) < 0) {
+			evt_err("Failed to setup eth port [%d] tx_queue: %d.",
+					i, 0);
+			return -EINVAL;
+		}
+
+		rte_eth_promiscuous_enable(i);
+	}
+
+	return 0;
+}
+
 int
 perf_mempool_setup(struct evt_test *test, struct evt_options *opt)
 {

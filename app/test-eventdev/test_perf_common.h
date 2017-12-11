@@ -129,6 +129,7 @@ perf_nb_event_ports(struct evt_options *opt)
 int perf_test_result(struct evt_test *test, struct evt_options *opt);
 int perf_opt_check(struct evt_options *opt, uint64_t nb_queues);
 int perf_test_setup(struct evt_test *test, struct evt_options *opt);
+int perf_ethdev_setup(struct evt_test *test, struct evt_options *opt);
 int perf_mempool_setup(struct evt_test *test, struct evt_options *opt);
 int perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 				uint8_t stride, uint8_t nb_queues);

@@ -265,6 +265,7 @@ static const struct evt_test_ops perf_queue =  {
 	.opt_dump           = perf_queue_opt_dump,
 	.test_setup         = perf_test_setup,
 	.mempool_setup      = perf_mempool_setup,
+	.ethdev_setup	    = perf_ethdev_setup,
 	.eventdev_setup     = perf_queue_eventdev_setup,
 	.launch_lcores      = perf_queue_launch_lcores,
 	.eventdev_destroy   = perf_eventdev_destroy,

@@ -252,6 +252,7 @@ static const struct evt_test_ops perf_atq =  {
 	.opt_check          = perf_atq_opt_check,
 	.opt_dump           = perf_atq_opt_dump,
 	.test_setup         = perf_test_setup,
+	.ethdev_setup       = perf_ethdev_setup,
 	.mempool_setup      = perf_mempool_setup,
 	.eventdev_setup     = perf_atq_eventdev_setup,
 	.launch_lcores      = perf_atq_launch_lcores,
