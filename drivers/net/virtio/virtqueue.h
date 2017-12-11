@@ -197,8 +197,6 @@ struct virtqueue {
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
 
-#define VIRTIO_NET_CTRL_MAC_ADDR_SET         1
-
 /**
  * This is the first element of the scatter-gather list.  If you don't
  * specify GSO or CSUM features, you can simply ignore the header.
