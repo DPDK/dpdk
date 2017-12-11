@@ -239,6 +239,19 @@ perf_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 			return ret;
 		}
 
+		if (!(cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT)) {
+			uint32_t service_id;
+
+			rte_event_eth_rx_adapter_service_id_get(prod,
+					&service_id);
+			ret = evt_service_setup(service_id);
+			if (ret) {
+				evt_err("Failed to setup service core"
+						" for Rx adapter\n");
+				return ret;
+			}
+		}
+
 		ret = rte_eth_dev_start(prod);
 		if (ret) {
 			evt_err("Ethernet dev [%d] failed to start."
