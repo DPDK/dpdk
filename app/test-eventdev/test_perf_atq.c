@@ -157,10 +157,19 @@ perf_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 {
 	int ret;
 	uint8_t queue;
+	uint8_t nb_queues;
+	uint8_t nb_ports;
+
+	nb_ports = evt_nr_active_lcores(opt->wlcores);
+	nb_ports += opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ? 0 :
+		evt_nr_active_lcores(opt->plcores);
+
+	nb_queues = opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ?
+		rte_eth_dev_count() : atq_nb_event_queues(opt);
 
 	const struct rte_event_dev_config config = {
-			.nb_event_queues = atq_nb_event_queues(opt),
-			.nb_event_ports = perf_nb_event_ports(opt),
+			.nb_event_queues = nb_queues,
+			.nb_event_ports = nb_ports,
 			.nb_events_limit  = 4096,
 			.nb_event_queue_flows = opt->nb_flows,
 			.nb_event_port_dequeue_depth = 128,
@@ -180,7 +189,7 @@ perf_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 			.nb_atomic_order_sequences = opt->nb_flows,
 	};
 	/* queue configurations */
-	for (queue = 0; queue < atq_nb_event_queues(opt); queue++) {
+	for (queue = 0; queue < nb_queues; queue++) {
 		ret = rte_event_queue_setup(opt->dev_id, queue, &q_conf);
 		if (ret) {
 			evt_err("failed to setup queue=%d", queue);
@@ -189,7 +198,7 @@ perf_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	}
 
 	ret = perf_event_dev_port_setup(test, opt, 1 /* stride */,
-					atq_nb_event_queues(opt));
+					nb_queues);
 	if (ret)
 		return ret;
 

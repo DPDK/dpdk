@@ -60,6 +60,17 @@ perf_producer(void *arg)
 	return 0;
 }
 
+static int
+perf_producer_wrapper(void *arg)
+{
+	struct prod_data *p  = arg;
+	struct test_perf *t = p->t;
+	/* Launch the producer function only in case of synthetic producer. */
+	if (t->opt->prod_type == EVT_PROD_TYPE_SYNT)
+		return perf_producer(arg);
+	return 0;
+}
+
 static inline uint64_t
 processed_pkts(struct test_perf *t)
 {
@@ -114,8 +125,8 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 		if (!(opt->plcores[lcore_id]))
 			continue;
 
-		ret = rte_eal_remote_launch(perf_producer, &t->prod[port_idx],
-					 lcore_id);
+		ret = rte_eal_remote_launch(perf_producer_wrapper,
+				&t->prod[port_idx], lcore_id);
 		if (ret) {
 			evt_err("failed to launch perf_producer %d", lcore_id);
 			return ret;
@@ -165,14 +176,17 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 			fflush(stdout);
 
 			if (remaining <= 0) {
-				t->done = true;
 				t->result = EVT_TEST_SUCCESS;
-				rte_smp_wmb();
-				break;
+				if (opt->prod_type == EVT_PROD_TYPE_SYNT) {
+					t->done = true;
+					rte_smp_wmb();
+					break;
+				}
 			}
 		}
 
-		if (new_cycles - dead_lock_cycles > dead_lock_sample) {
+		if (new_cycles - dead_lock_cycles > dead_lock_sample &&
+				opt->prod_type == EVT_PROD_TYPE_SYNT) {
 			remaining = t->outstand_pkts - processed_pkts(t);
 			if (dead_lock_remaining == remaining) {
 				rte_event_dev_dump(opt->dev_id, stdout);

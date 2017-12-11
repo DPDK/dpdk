@@ -154,10 +154,20 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	uint8_t queue;
 	int nb_stages = opt->nb_stages;
 	int ret;
+	int nb_ports;
+	int nb_queues;
+
+	nb_ports = evt_nr_active_lcores(opt->wlcores);
+	nb_ports += opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ? 0 :
+		evt_nr_active_lcores(opt->plcores);
+
+	nb_queues = opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ?
+		rte_eth_dev_count() * nb_stages :
+		perf_queue_nb_event_queues(opt);
 
 	const struct rte_event_dev_config config = {
-			.nb_event_queues = perf_queue_nb_event_queues(opt),
-			.nb_event_ports = perf_nb_event_ports(opt),
+			.nb_event_queues = nb_queues,
+			.nb_event_ports = nb_ports,
 			.nb_events_limit  = 4096,
 			.nb_event_queue_flows = opt->nb_flows,
 			.nb_event_port_dequeue_depth = 128,
@@ -200,7 +210,7 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	}
 
 	ret = perf_event_dev_port_setup(test, opt, nb_stages /* stride */,
-					perf_queue_nb_event_queues(opt));
+					nb_queues);
 	if (ret)
 		return ret;
 
