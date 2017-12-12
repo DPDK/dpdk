@@ -7,7 +7,7 @@
 #include "rte_power.h"
 #include "rte_power_acpi_cpufreq.h"
 #include "rte_power_kvm_vm.h"
-#include "rte_power_common.h"
+#include "power_common.h"
 
 enum power_management_env global_default_env = PM_ENV_NOT_SET;
 

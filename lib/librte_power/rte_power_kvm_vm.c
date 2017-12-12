@@ -9,7 +9,7 @@
 #include "guest_channel.h"
 #include "channel_commands.h"
 #include "rte_power_kvm_vm.h"
-#include "rte_power_common.h"
+#include "power_common.h"
 
 #define FD_PATH "/dev/virtio-ports/virtio.serial.port.poweragent"
 

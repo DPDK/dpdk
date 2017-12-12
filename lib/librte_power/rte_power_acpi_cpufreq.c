@@ -16,7 +16,7 @@
 #include <rte_atomic.h>
 
 #include "rte_power_acpi_cpufreq.h"
-#include "rte_power_common.h"
+#include "power_common.h"
 
 #ifdef RTE_LIBRTE_POWER_DEBUG
 #define POWER_DEBUG_TRACE(fmt, args...) do { \
