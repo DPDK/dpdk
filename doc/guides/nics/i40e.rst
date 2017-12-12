@@ -483,6 +483,11 @@ Vlan strip of VF
 
 The VF vlan strip function is only supported in the i40e kernel driver >= 2.1.26.
 
+DCB function
+~~~~~~~~~~~~
+
+DCB works only when RSS is enabled.
+
 High Performance of Small Packets on 40G NIC
 --------------------------------------------
 
