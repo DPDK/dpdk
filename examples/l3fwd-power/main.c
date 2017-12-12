@@ -1022,9 +1022,11 @@ start_rx:
 					turn_on_intr(qconf);
 					sleep_until_rx_interrupt(
 						qconf->n_rx_queue);
+					/**
+					 * start receiving packets immediately
+					 */
+					goto start_rx;
 				}
-				/* start receiving packets immediately */
-				goto start_rx;
 			}
 			stats[lcore_id].sleep_time += lcore_idle_hint;
 		}
