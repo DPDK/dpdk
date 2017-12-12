@@ -200,7 +200,6 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
 	.intr_conf = {
-		.lsc = 1,
 		.rxq = 1,
 	},
 };
