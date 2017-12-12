@@ -15,7 +15,7 @@ LIBABIVER := 1
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) := rte_power.c power_acpi_cpufreq.c
-SRCS-$(CONFIG_RTE_LIBRTE_POWER) += rte_power_kvm_vm.c guest_channel.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) += power_kvm_vm.c guest_channel.c
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_POWER)-include := rte_power.h

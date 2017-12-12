@@ -6,7 +6,7 @@
 
 #include "rte_power.h"
 #include "power_acpi_cpufreq.h"
-#include "rte_power_kvm_vm.h"
+#include "power_kvm_vm.h"
 #include "power_common.h"
 
 enum power_management_env global_default_env = PM_ENV_NOT_SET;
@@ -43,16 +43,16 @@ rte_power_set_env(enum power_management_env env)
 		rte_power_freq_enable_turbo = power_acpi_enable_turbo;
 		rte_power_freq_disable_turbo = power_acpi_disable_turbo;
 	} else if (env == PM_ENV_KVM_VM) {
-		rte_power_freqs = rte_power_kvm_vm_freqs;
-		rte_power_get_freq = rte_power_kvm_vm_get_freq;
-		rte_power_set_freq = rte_power_kvm_vm_set_freq;
-		rte_power_freq_up = rte_power_kvm_vm_freq_up;
-		rte_power_freq_down = rte_power_kvm_vm_freq_down;
-		rte_power_freq_min = rte_power_kvm_vm_freq_min;
-		rte_power_freq_max = rte_power_kvm_vm_freq_max;
-		rte_power_turbo_status = rte_power_kvm_vm_turbo_status;
-		rte_power_freq_enable_turbo = rte_power_kvm_vm_enable_turbo;
-		rte_power_freq_disable_turbo = rte_power_kvm_vm_disable_turbo;
+		rte_power_freqs = power_kvm_vm_freqs;
+		rte_power_get_freq = power_kvm_vm_get_freq;
+		rte_power_set_freq = power_kvm_vm_set_freq;
+		rte_power_freq_up = power_kvm_vm_freq_up;
+		rte_power_freq_down = power_kvm_vm_freq_down;
+		rte_power_freq_min = power_kvm_vm_freq_min;
+		rte_power_freq_max = power_kvm_vm_freq_max;
+		rte_power_turbo_status = power_kvm_vm_turbo_status;
+		rte_power_freq_enable_turbo = power_kvm_vm_enable_turbo;
+		rte_power_freq_disable_turbo = power_kvm_vm_disable_turbo;
 	} else {
 		RTE_LOG(ERR, POWER, "Invalid Power Management Environment(%d) set\n",
 				env);
@@ -85,7 +85,7 @@ rte_power_init(unsigned int lcore_id)
 		return power_acpi_cpufreq_init(lcore_id);
 	}
 	if (global_default_env == PM_ENV_KVM_VM) {
-		return rte_power_kvm_vm_init(lcore_id);
+		return power_kvm_vm_init(lcore_id);
 	}
 	/* Auto detect Environment */
 	RTE_LOG(INFO, POWER, "Attempting to initialise ACPI cpufreq power "
@@ -97,7 +97,7 @@ rte_power_init(unsigned int lcore_id)
 	}
 
 	RTE_LOG(INFO, POWER, "Attempting to initialise VM power management...\n");
-	ret = rte_power_kvm_vm_init(lcore_id);
+	ret = power_kvm_vm_init(lcore_id);
 	if (ret == 0) {
 		rte_power_set_env(PM_ENV_KVM_VM);
 		goto out;
@@ -114,7 +114,7 @@ rte_power_exit(unsigned int lcore_id)
 	if (global_default_env == PM_ENV_ACPI_CPUFREQ)
 		return power_acpi_cpufreq_exit(lcore_id);
 	if (global_default_env == PM_ENV_KVM_VM)
-		return rte_power_kvm_vm_exit(lcore_id);
+		return power_kvm_vm_exit(lcore_id);
 
 	RTE_LOG(ERR, POWER, "Environment has not been set, unable to exit "
 				"gracefully\n");

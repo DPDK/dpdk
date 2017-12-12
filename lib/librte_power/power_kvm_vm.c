@@ -8,7 +8,7 @@
 
 #include "guest_channel.h"
 #include "channel_commands.h"
-#include "rte_power_kvm_vm.h"
+#include "power_kvm_vm.h"
 #include "power_common.h"
 
 #define FD_PATH "/dev/virtio-ports/virtio.serial.port.poweragent"
@@ -17,7 +17,7 @@ static struct channel_packet pkt[CHANNEL_CMDS_MAX_VM_CHANNELS];
 
 
 int
-rte_power_kvm_vm_init(unsigned int lcore_id)
+power_kvm_vm_init(unsigned int lcore_id)
 {
 	if (lcore_id >= CHANNEL_CMDS_MAX_VM_CHANNELS) {
 		RTE_LOG(ERR, POWER, "Core(%u) is out of range 0...%d\n",
@@ -30,14 +30,14 @@ rte_power_kvm_vm_init(unsigned int lcore_id)
 }
 
 int
-rte_power_kvm_vm_exit(unsigned int lcore_id)
+power_kvm_vm_exit(unsigned int lcore_id)
 {
 	guest_channel_host_disconnect(lcore_id);
 	return 0;
 }
 
 uint32_t
-rte_power_kvm_vm_freqs(__attribute__((unused)) unsigned int lcore_id,
+power_kvm_vm_freqs(__attribute__((unused)) unsigned int lcore_id,
 		__attribute__((unused)) uint32_t *freqs,
 		__attribute__((unused)) uint32_t num)
 {
@@ -47,7 +47,7 @@ rte_power_kvm_vm_freqs(__attribute__((unused)) unsigned int lcore_id,
 }
 
 uint32_t
-rte_power_kvm_vm_get_freq(__attribute__((unused)) unsigned int lcore_id)
+power_kvm_vm_get_freq(__attribute__((unused)) unsigned int lcore_id)
 {
 	RTE_LOG(ERR, POWER, "rte_power_get_freq is not implemented "
 			"for Virtual Machine Power Management\n");
@@ -55,7 +55,7 @@ rte_power_kvm_vm_get_freq(__attribute__((unused)) unsigned int lcore_id)
 }
 
 int
-rte_power_kvm_vm_set_freq(__attribute__((unused)) unsigned int lcore_id,
+power_kvm_vm_set_freq(__attribute__((unused)) unsigned int lcore_id,
 		__attribute__((unused)) uint32_t index)
 {
 	RTE_LOG(ERR, POWER, "rte_power_set_freq is not implemented "
@@ -83,44 +83,44 @@ send_msg(unsigned int lcore_id, uint32_t scale_direction)
 }
 
 int
-rte_power_kvm_vm_freq_up(unsigned int lcore_id)
+power_kvm_vm_freq_up(unsigned int lcore_id)
 {
 	return send_msg(lcore_id, CPU_POWER_SCALE_UP);
 }
 
 int
-rte_power_kvm_vm_freq_down(unsigned int lcore_id)
+power_kvm_vm_freq_down(unsigned int lcore_id)
 {
 	return send_msg(lcore_id, CPU_POWER_SCALE_DOWN);
 }
 
 int
-rte_power_kvm_vm_freq_max(unsigned int lcore_id)
+power_kvm_vm_freq_max(unsigned int lcore_id)
 {
 	return send_msg(lcore_id, CPU_POWER_SCALE_MAX);
 }
 
 int
-rte_power_kvm_vm_freq_min(unsigned int lcore_id)
+power_kvm_vm_freq_min(unsigned int lcore_id)
 {
 	return send_msg(lcore_id, CPU_POWER_SCALE_MIN);
 }
 
 int
-rte_power_kvm_vm_turbo_status(__attribute__((unused)) unsigned int lcore_id)
+power_kvm_vm_turbo_status(__attribute__((unused)) unsigned int lcore_id)
 {
 	RTE_LOG(ERR, POWER, "rte_power_turbo_status is not implemented for Virtual Machine Power Management\n");
 	return -ENOTSUP;
 }
 
 int
-rte_power_kvm_vm_enable_turbo(unsigned int lcore_id)
+power_kvm_vm_enable_turbo(unsigned int lcore_id)
 {
 	return send_msg(lcore_id, CPU_POWER_ENABLE_TURBO);
 }
 
 int
-rte_power_kvm_vm_disable_turbo(unsigned int lcore_id)
+power_kvm_vm_disable_turbo(unsigned int lcore_id)
 {
 	return send_msg(lcore_id, CPU_POWER_DISABLE_TURBO);
 }

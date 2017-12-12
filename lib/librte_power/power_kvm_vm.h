@@ -2,8 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#ifndef _RTE_POWER_KVM_VM_H
-#define _RTE_POWER_KVM_VM_H
+#ifndef _POWER_KVM_VM_H
+#define _POWER_KVM_VM_H
 
 /**
  * @file
@@ -29,7 +29,7 @@ extern "C" {
  *  - 0 on success.
  *  - Negative on error.
  */
-int rte_power_kvm_vm_init(unsigned int lcore_id);
+int power_kvm_vm_init(unsigned int lcore_id);
 
 /**
  * Exit power management on a specific lcore.
@@ -41,7 +41,7 @@ int rte_power_kvm_vm_init(unsigned int lcore_id);
  *  - 0 on success.
  *  - Negative on error.
  */
-int rte_power_kvm_vm_exit(unsigned int lcore_id);
+int power_kvm_vm_exit(unsigned int lcore_id);
 
 /**
  * Get the available frequencies of a specific lcore.
@@ -57,7 +57,7 @@ int rte_power_kvm_vm_exit(unsigned int lcore_id);
  * @return
  *  -ENOTSUP
  */
-uint32_t rte_power_kvm_vm_freqs(unsigned int lcore_id, uint32_t *freqs,
+uint32_t power_kvm_vm_freqs(unsigned int lcore_id, uint32_t *freqs,
 		uint32_t num);
 
 /**
@@ -70,7 +70,7 @@ uint32_t rte_power_kvm_vm_freqs(unsigned int lcore_id, uint32_t *freqs,
  * @return
  *  -ENOTSUP
  */
-uint32_t rte_power_kvm_vm_get_freq(unsigned int lcore_id);
+uint32_t power_kvm_vm_get_freq(unsigned int lcore_id);
 
 /**
  * Set the new frequency for a specific lcore by indicating the index of
@@ -85,7 +85,7 @@ uint32_t rte_power_kvm_vm_get_freq(unsigned int lcore_id);
  * @return
  *  -ENOTSUP
  */
-int rte_power_kvm_vm_set_freq(unsigned int lcore_id, uint32_t index);
+int power_kvm_vm_set_freq(unsigned int lcore_id, uint32_t index);
 
 /**
  * Scale up the frequency of a specific lcore. This request is forwarded to the
@@ -99,7 +99,7 @@ int rte_power_kvm_vm_set_freq(unsigned int lcore_id, uint32_t index);
  *  - 1 on success.
  *  - Negative on error.
  */
-int rte_power_kvm_vm_freq_up(unsigned int lcore_id);
+int power_kvm_vm_freq_up(unsigned int lcore_id);
 
 /**
  * Scale down the frequency of a specific lcore according to the available
@@ -113,7 +113,7 @@ int rte_power_kvm_vm_freq_up(unsigned int lcore_id);
  *  - 1 on success.
  *  - Negative on error.
  */
-int rte_power_kvm_vm_freq_down(unsigned int lcore_id);
+int power_kvm_vm_freq_down(unsigned int lcore_id);
 
 /**
  * Scale up the frequency of a specific lcore to the highest according to the
@@ -127,7 +127,7 @@ int rte_power_kvm_vm_freq_down(unsigned int lcore_id);
  *  - 1 on success.
  *  - Negative on error.
  */
-int rte_power_kvm_vm_freq_max(unsigned int lcore_id);
+int power_kvm_vm_freq_max(unsigned int lcore_id);
 
 /**
  * Scale down the frequency of a specific lcore to the lowest according to the
@@ -141,7 +141,7 @@ int rte_power_kvm_vm_freq_max(unsigned int lcore_id);
  *  - 1 on success.
  *  - Negative on error.
  */
-int rte_power_kvm_vm_freq_min(unsigned int lcore_id);
+int power_kvm_vm_freq_min(unsigned int lcore_id);
 
 /**
  * It should be protected outside of this function for threadsafe.
@@ -152,7 +152,7 @@ int rte_power_kvm_vm_freq_min(unsigned int lcore_id);
  * @return
  *  -ENOTSUP
  */
-int rte_power_kvm_vm_turbo_status(unsigned int lcore_id);
+int power_kvm_vm_turbo_status(unsigned int lcore_id);
 
 /**
  * It should be protected outside of this function for threadsafe.
@@ -164,7 +164,7 @@ int rte_power_kvm_vm_turbo_status(unsigned int lcore_id);
  *  - 1 on success.
  *  - Negative on error.
  */
-int rte_power_kvm_vm_enable_turbo(unsigned int lcore_id);
+int power_kvm_vm_enable_turbo(unsigned int lcore_id);
 
 /**
  * It should be protected outside of this function for threadsafe.
@@ -176,7 +176,7 @@ int rte_power_kvm_vm_enable_turbo(unsigned int lcore_id);
  *  - 1 on success.
  *  - Negative on error.
  */
-int rte_power_kvm_vm_disable_turbo(unsigned int lcore_id);
+int power_kvm_vm_disable_turbo(unsigned int lcore_id);
 #ifdef __cplusplus
 }
 #endif
