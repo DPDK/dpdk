@@ -726,6 +726,7 @@ power_freq_scaleup_heuristic(unsigned lcore_id,
 			     uint16_t port_id,
 			     uint16_t queue_id)
 {
+	uint32_t rxq_count = rte_eth_rx_queue_count(port_id, queue_id);
 /**
  * HW Rx queue size is 128 by default, Rx burst read at maximum 32 entries
  * per iteration
@@ -737,15 +738,12 @@ power_freq_scaleup_heuristic(unsigned lcore_id,
 #define FREQ_UP_TREND2_ACC   100
 #define FREQ_UP_THRESHOLD    10000
 
-	if (likely(rte_eth_rx_descriptor_done(port_id, queue_id,
-			FREQ_GEAR3_RX_PACKET_THRESHOLD) > 0)) {
+	if (likely(rxq_count > FREQ_GEAR3_RX_PACKET_THRESHOLD)) {
 		stats[lcore_id].trend = 0;
 		return FREQ_HIGHEST;
-	} else if (likely(rte_eth_rx_descriptor_done(port_id, queue_id,
-			FREQ_GEAR2_RX_PACKET_THRESHOLD) > 0))
+	} else if (likely(rxq_count > FREQ_GEAR2_RX_PACKET_THRESHOLD))
 		stats[lcore_id].trend += FREQ_UP_TREND2_ACC;
-	else if (likely(rte_eth_rx_descriptor_done(port_id, queue_id,
-			FREQ_GEAR1_RX_PACKET_THRESHOLD) > 0))
+	else if (likely(rxq_count > FREQ_GEAR1_RX_PACKET_THRESHOLD))
 		stats[lcore_id].trend += FREQ_UP_TREND1_ACC;
 
 	if (likely(stats[lcore_id].trend > FREQ_UP_THRESHOLD)) {
