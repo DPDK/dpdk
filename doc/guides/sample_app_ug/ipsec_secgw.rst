@@ -61,6 +61,12 @@ In case of complete protocol offload, the processing of headers(ESP and outer
 IP header) is done by the hardware and the application does not need to
 add/remove them during outbound/inbound processing.
 
+For inline offloaded outbound traffic, the application will not do the LPM
+lookup for routing, as the port on which the packet has to be forwarded will be
+part of the SA. Security parameters will be configured on that port only, and
+sending the packet on other ports could result in unencrypted packets being
+sent out.
+
 The Path for IPsec Inbound traffic is:
 
 *  Read packets from the port.
@@ -543,7 +549,9 @@ where each options means:
  ``<port_id>``
 
  * Port/device ID of the ethernet/crypto accelerator for which the SA is
-   configured. This option is used when *type* is NOT *no-offload*
+   configured. For *inline-crypto-offload* and *inline-protocol-offload*, this
+   port will be used for routing. The routing table will not be referred in
+   this case.
 
  * Optional: No, if *type* is not *no-offload*
 

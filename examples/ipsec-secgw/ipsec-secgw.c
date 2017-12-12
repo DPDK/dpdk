@@ -558,31 +558,81 @@ process_pkts_outbound_nosp(struct ipsec_ctx *ipsec_ctx,
 		traffic->ip6.num = nb_pkts_out;
 }
 
+static inline int32_t
+get_hop_for_offload_pkt(struct rte_mbuf *pkt, int is_ipv6)
+{
+	struct ipsec_mbuf_metadata *priv;
+	struct ipsec_sa *sa;
+
+	priv = get_priv(pkt);
+
+	sa = priv->sa;
+	if (unlikely(sa == NULL)) {
+		RTE_LOG(ERR, IPSEC, "SA not saved in private data\n");
+		goto fail;
+	}
+
+	if (is_ipv6)
+		return sa->portid;
+
+	/* else */
+	return (sa->portid | RTE_LPM_LOOKUP_SUCCESS);
+
+fail:
+	if (is_ipv6)
+		return -1;
+
+	/* else */
+	return 0;
+}
+
 static inline void
 route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 {
 	uint32_t hop[MAX_PKT_BURST * 2];
 	uint32_t dst_ip[MAX_PKT_BURST * 2];
+	int32_t pkt_hop = 0;
 	uint16_t i, offset;
+	uint16_t lpm_pkts = 0;
 
 	if (nb_pkts == 0)
 		return;
 
+	/* Need to do an LPM lookup for non-inline packets. Inline packets will
+	 * have port ID in the SA
+	 */
+
 	for (i = 0; i < nb_pkts; i++) {
-		offset = offsetof(struct ip, ip_dst);
-		dst_ip[i] = *rte_pktmbuf_mtod_offset(pkts[i],
-				uint32_t *, offset);
-		dst_ip[i] = rte_be_to_cpu_32(dst_ip[i]);
+		if (!(pkts[i]->ol_flags & PKT_TX_SEC_OFFLOAD)) {
+			/* Security offload not enabled. So an LPM lookup is
+			 * required to get the hop
+			 */
+			offset = offsetof(struct ip, ip_dst);
+			dst_ip[lpm_pkts] = *rte_pktmbuf_mtod_offset(pkts[i],
+					uint32_t *, offset);
+			dst_ip[lpm_pkts] = rte_be_to_cpu_32(dst_ip[lpm_pkts]);
+			lpm_pkts++;
+		}
 	}
 
-	rte_lpm_lookup_bulk((struct rte_lpm *)rt_ctx, dst_ip, hop, nb_pkts);
+	rte_lpm_lookup_bulk((struct rte_lpm *)rt_ctx, dst_ip, hop, lpm_pkts);
+
+	lpm_pkts = 0;
 
 	for (i = 0; i < nb_pkts; i++) {
-		if ((hop[i] & RTE_LPM_LOOKUP_SUCCESS) == 0) {
+		if (pkts[i]->ol_flags & PKT_TX_SEC_OFFLOAD) {
+			/* Read hop from the SA */
+			pkt_hop = get_hop_for_offload_pkt(pkts[i], 0);
+		} else {
+			/* Need to use hop returned by lookup */
+			pkt_hop = hop[lpm_pkts++];
+		}
+
+		if ((pkt_hop & RTE_LPM_LOOKUP_SUCCESS) == 0) {
 			rte_pktmbuf_free(pkts[i]);
 			continue;
 		}
-		send_single_packet(pkts[i], hop[i] & 0xff);
+		send_single_packet(pkts[i], pkt_hop & 0xff);
 	}
 }
 
@@ -592,26 +642,49 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	int32_t hop[MAX_PKT_BURST * 2];
 	uint8_t dst_ip[MAX_PKT_BURST * 2][16];
 	uint8_t *ip6_dst;
+	int32_t pkt_hop = 0;
 	uint16_t i, offset;
+	uint16_t lpm_pkts = 0;
 
 	if (nb_pkts == 0)
 		return;
 
+	/* Need to do an LPM lookup for non-inline packets. Inline packets will
+	 * have port ID in the SA
+	 */
+
 	for (i = 0; i < nb_pkts; i++) {
-		offset = offsetof(struct ip6_hdr, ip6_dst);
-		ip6_dst = rte_pktmbuf_mtod_offset(pkts[i], uint8_t *, offset);
-		memcpy(&dst_ip[i][0], ip6_dst, 16);
+		if (!(pkts[i]->ol_flags & PKT_TX_SEC_OFFLOAD)) {
+			/* Security offload not enabled. So an LPM lookup is
+			 * required to get the hop
+			 */
+			offset = offsetof(struct ip6_hdr, ip6_dst);
+			ip6_dst = rte_pktmbuf_mtod_offset(pkts[i], uint8_t *,
+					offset);
+			memcpy(&dst_ip[lpm_pkts][0], ip6_dst, 16);
+			lpm_pkts++;
+		}
 	}
 
-	rte_lpm6_lookup_bulk_func((struct rte_lpm6 *)rt_ctx, dst_ip,
-			hop, nb_pkts);
+	rte_lpm6_lookup_bulk_func((struct rte_lpm6 *)rt_ctx, dst_ip, hop,
+			lpm_pkts);
+
+	lpm_pkts = 0;
 
 	for (i = 0; i < nb_pkts; i++) {
-		if (hop[i] == -1) {
+		if (pkts[i]->ol_flags & PKT_TX_SEC_OFFLOAD) {
+			/* Read hop from the SA */
+			pkt_hop = get_hop_for_offload_pkt(pkts[i], 1);
+		} else {
+			/* Need to use hop returned by lookup */
+			pkt_hop = hop[lpm_pkts++];
+		}
+
+		if (pkt_hop == -1) {
 			rte_pktmbuf_free(pkts[i]);
 			continue;
 		}
-		send_single_packet(pkts[i], hop[i] & 0xff);
+		send_single_packet(pkts[i], pkt_hop & 0xff);
 	}
 }
 
