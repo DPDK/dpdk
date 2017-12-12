@@ -15,7 +15,7 @@
 #include <rte_memcpy.h>
 #include <rte_atomic.h>
 
-#include "rte_power_acpi_cpufreq.h"
+#include "power_acpi_cpufreq.h"
 #include "power_common.h"
 
 #ifdef RTE_LIBRTE_POWER_DEBUG
@@ -282,7 +282,7 @@ out:
 }
 
 int
-rte_power_acpi_cpufreq_init(unsigned int lcore_id)
+power_acpi_cpufreq_init(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -323,7 +323,7 @@ rte_power_acpi_cpufreq_init(unsigned int lcore_id)
 	}
 
 	/* Set freq to max by default */
-	if (rte_power_acpi_cpufreq_freq_max(lcore_id) < 0) {
+	if (power_acpi_cpufreq_freq_max(lcore_id) < 0) {
 		RTE_LOG(ERR, POWER, "Cannot set frequency of lcore %u "
 				"to max\n", lcore_id);
 		goto fail;
@@ -390,7 +390,7 @@ out:
 }
 
 int
-rte_power_acpi_cpufreq_exit(unsigned int lcore_id)
+power_acpi_cpufreq_exit(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -432,7 +432,7 @@ fail:
 }
 
 uint32_t
-rte_power_acpi_cpufreq_freqs(unsigned lcore_id, uint32_t *freqs, uint32_t num)
+power_acpi_cpufreq_freqs(unsigned int lcore_id, uint32_t *freqs, uint32_t num)
 {
 	struct rte_power_info *pi;
 
@@ -452,7 +452,7 @@ rte_power_acpi_cpufreq_freqs(unsigned lcore_id, uint32_t *freqs, uint32_t num)
 }
 
 uint32_t
-rte_power_acpi_cpufreq_get_freq(unsigned int lcore_id)
+power_acpi_cpufreq_get_freq(unsigned int lcore_id)
 {
 	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
@@ -463,7 +463,7 @@ rte_power_acpi_cpufreq_get_freq(unsigned int lcore_id)
 }
 
 int
-rte_power_acpi_cpufreq_set_freq(unsigned lcore_id, uint32_t index)
+power_acpi_cpufreq_set_freq(unsigned int lcore_id, uint32_t index)
 {
 	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
@@ -474,7 +474,7 @@ rte_power_acpi_cpufreq_set_freq(unsigned lcore_id, uint32_t index)
 }
 
 int
-rte_power_acpi_cpufreq_freq_down(unsigned int lcore_id)
+power_acpi_cpufreq_freq_down(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -492,7 +492,7 @@ rte_power_acpi_cpufreq_freq_down(unsigned int lcore_id)
 }
 
 int
-rte_power_acpi_cpufreq_freq_up(unsigned int lcore_id)
+power_acpi_cpufreq_freq_up(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -510,7 +510,7 @@ rte_power_acpi_cpufreq_freq_up(unsigned int lcore_id)
 }
 
 int
-rte_power_acpi_cpufreq_freq_max(unsigned int lcore_id)
+power_acpi_cpufreq_freq_max(unsigned int lcore_id)
 {
 	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
@@ -532,7 +532,7 @@ rte_power_acpi_cpufreq_freq_max(unsigned int lcore_id)
 }
 
 int
-rte_power_acpi_cpufreq_freq_min(unsigned int lcore_id)
+power_acpi_cpufreq_freq_min(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -549,7 +549,7 @@ rte_power_acpi_cpufreq_freq_min(unsigned int lcore_id)
 
 
 int
-rte_power_acpi_turbo_status(unsigned int lcore_id)
+power_acpi_turbo_status(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -565,7 +565,7 @@ rte_power_acpi_turbo_status(unsigned int lcore_id)
 
 
 int
-rte_power_acpi_enable_turbo(unsigned int lcore_id)
+power_acpi_enable_turbo(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -587,7 +587,7 @@ rte_power_acpi_enable_turbo(unsigned int lcore_id)
 	}
 
 	/* Max may have changed, so call to max function */
-	if (rte_power_acpi_cpufreq_freq_max(lcore_id) < 0) {
+	if (power_acpi_cpufreq_freq_max(lcore_id) < 0) {
 		RTE_LOG(ERR, POWER,
 			"Failed to set frequency of lcore %u to max\n",
 			lcore_id);
@@ -598,7 +598,7 @@ rte_power_acpi_enable_turbo(unsigned int lcore_id)
 }
 
 int
-rte_power_acpi_disable_turbo(unsigned int lcore_id)
+power_acpi_disable_turbo(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -613,7 +613,7 @@ rte_power_acpi_disable_turbo(unsigned int lcore_id)
 
 	if ((pi->turbo_available) && (pi->curr_idx <= 1)) {
 		/* Try to set freq to max by default coming out of turbo */
-		if (rte_power_acpi_cpufreq_freq_max(lcore_id) < 0) {
+		if (power_acpi_cpufreq_freq_max(lcore_id) < 0) {
 			RTE_LOG(ERR, POWER,
 				"Failed to set frequency of lcore %u to max\n",
 				lcore_id);
