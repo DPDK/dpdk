@@ -869,7 +869,7 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 {
 	struct rte_eventdev *dev;
 	uint8_t all_queues[RTE_EVENT_MAX_QUEUES_PER_DEV];
-	int i, diag;
+	int i, diag, j;
 	uint16_t *links_map;
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERRNO_RET(dev_id, -EINVAL, 0);
@@ -887,13 +887,29 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 		return 0;
 	}
 
+	links_map = dev->data->links_map;
+	/* Point links_map to this port specific area */
+	links_map += (port_id * RTE_EVENT_MAX_QUEUES_PER_DEV);
+
 	if (queues == NULL) {
-		for (i = 0; i < dev->data->nb_queues; i++)
-			all_queues[i] = i;
+		j = 0;
+		for (i = 0; i < dev->data->nb_queues; i++) {
+			if (links_map[i] !=
+					EVENT_QUEUE_SERVICE_PRIORITY_INVALID) {
+				all_queues[j] = i;
+				j++;
+			}
+		}
 		queues = all_queues;
-		nb_unlinks = dev->data->nb_queues;
+	} else {
+		for (j = 0; j < nb_unlinks; j++) {
+			if (links_map[queues[j]] ==
+					EVENT_QUEUE_SERVICE_PRIORITY_INVALID)
+				break;
+		}
 	}
 
+	nb_unlinks = j;
 	for (i = 0; i < nb_unlinks; i++)
 		if (queues[i] >= dev->data->nb_queues) {
 			rte_errno = -EINVAL;
@@ -906,9 +922,6 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 	if (diag < 0)
 		return diag;
 
-	links_map = dev->data->links_map;
-	/* Point links_map to this port specific area */
-	links_map += (port_id * RTE_EVENT_MAX_QUEUES_PER_DEV);
 	for (i = 0; i < diag; i++)
 		links_map[queues[i]] = EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
 
