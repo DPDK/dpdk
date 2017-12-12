@@ -77,7 +77,7 @@ rte_power_get_env(void) {
 }
 
 int
-rte_power_init(unsigned lcore_id)
+rte_power_init(unsigned int lcore_id)
 {
 	int ret = -1;
 
@@ -109,7 +109,7 @@ out:
 }
 
 int
-rte_power_exit(unsigned lcore_id)
+rte_power_exit(unsigned int lcore_id)
 {
 	if (global_default_env == PM_ENV_ACPI_CPUFREQ)
 		return rte_power_acpi_cpufreq_exit(lcore_id);

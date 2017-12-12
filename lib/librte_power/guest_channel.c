@@ -22,7 +22,7 @@
 static int global_fds[RTE_MAX_LCORE];
 
 int
-guest_channel_host_connect(const char *path, unsigned lcore_id)
+guest_channel_host_connect(const char *path, unsigned int lcore_id)
 {
 	int flags, ret;
 	struct channel_packet pkt;
@@ -89,7 +89,7 @@ error:
 }
 
 int
-guest_channel_send_msg(struct channel_packet *pkt, unsigned lcore_id)
+guest_channel_send_msg(struct channel_packet *pkt, unsigned int lcore_id)
 {
 	int ret, buffer_len = sizeof(*pkt);
 	void *buffer = pkt;
@@ -127,7 +127,7 @@ int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
 
 
 void
-guest_channel_host_disconnect(unsigned lcore_id)
+guest_channel_host_disconnect(unsigned int lcore_id)
 {
 	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, GUEST_CHANNEL, "Channel(%u) is out of range 0...%d\n",

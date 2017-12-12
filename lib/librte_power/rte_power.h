@@ -62,7 +62,7 @@ enum power_management_env rte_power_get_env(void);
  *  - 0 on success.
  *  - Negative on error.
  */
-int rte_power_init(unsigned lcore_id);
+int rte_power_init(unsigned int lcore_id);
 
 /**
  * Exit power management on a specific lcore. This will call the environment
@@ -75,7 +75,7 @@ int rte_power_init(unsigned lcore_id);
  *  - 0 on success.
  *  - Negative on error.
  */
-int rte_power_exit(unsigned lcore_id);
+int rte_power_exit(unsigned int lcore_id);
 
 /**
  * Get the available frequencies of a specific lcore.
@@ -92,7 +92,7 @@ int rte_power_exit(unsigned lcore_id);
  * @return
  *  The number of available frequencies.
  */
-typedef uint32_t (*rte_power_freqs_t)(unsigned lcore_id, uint32_t *freqs,
+typedef uint32_t (*rte_power_freqs_t)(unsigned int lcore_id, uint32_t *freqs,
 		uint32_t num);
 
 extern rte_power_freqs_t rte_power_freqs;
@@ -108,7 +108,7 @@ extern rte_power_freqs_t rte_power_freqs;
  * @return
  *  The current index of available frequencies.
  */
-typedef uint32_t (*rte_power_get_freq_t)(unsigned lcore_id);
+typedef uint32_t (*rte_power_get_freq_t)(unsigned int lcore_id);
 
 extern rte_power_get_freq_t rte_power_get_freq;
 
@@ -128,7 +128,7 @@ extern rte_power_get_freq_t rte_power_get_freq;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-typedef int (*rte_power_set_freq_t)(unsigned lcore_id, uint32_t index);
+typedef int (*rte_power_set_freq_t)(unsigned int lcore_id, uint32_t index);
 
 extern rte_power_set_freq_t rte_power_set_freq;
 
@@ -144,7 +144,7 @@ extern rte_power_set_freq_t rte_power_set_freq;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-typedef int (*rte_power_freq_change_t)(unsigned lcore_id);
+typedef int (*rte_power_freq_change_t)(unsigned int lcore_id);
 
 /**
  * Scale up the frequency of a specific lcore according to the available

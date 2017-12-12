@@ -77,7 +77,7 @@ enum power_state {
  * Power info per lcore.
  */
 struct rte_power_info {
-	unsigned lcore_id;                   /**< Logical core id */
+	unsigned int lcore_id;                   /**< Logical core id */
 	uint32_t freqs[RTE_MAX_LCORE_FREQS]; /**< Frequency array */
 	uint32_t nb_freqs;                   /**< number of available freqs */
 	FILE *f;                             /**< FD of scaling_setspeed */
@@ -282,7 +282,7 @@ out:
 }
 
 int
-rte_power_acpi_cpufreq_init(unsigned lcore_id)
+rte_power_acpi_cpufreq_init(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -390,7 +390,7 @@ out:
 }
 
 int
-rte_power_acpi_cpufreq_exit(unsigned lcore_id)
+rte_power_acpi_cpufreq_exit(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -452,7 +452,7 @@ rte_power_acpi_cpufreq_freqs(unsigned lcore_id, uint32_t *freqs, uint32_t num)
 }
 
 uint32_t
-rte_power_acpi_cpufreq_get_freq(unsigned lcore_id)
+rte_power_acpi_cpufreq_get_freq(unsigned int lcore_id)
 {
 	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
@@ -474,7 +474,7 @@ rte_power_acpi_cpufreq_set_freq(unsigned lcore_id, uint32_t index)
 }
 
 int
-rte_power_acpi_cpufreq_freq_down(unsigned lcore_id)
+rte_power_acpi_cpufreq_freq_down(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -492,7 +492,7 @@ rte_power_acpi_cpufreq_freq_down(unsigned lcore_id)
 }
 
 int
-rte_power_acpi_cpufreq_freq_up(unsigned lcore_id)
+rte_power_acpi_cpufreq_freq_up(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 
@@ -510,7 +510,7 @@ rte_power_acpi_cpufreq_freq_up(unsigned lcore_id)
 }
 
 int
-rte_power_acpi_cpufreq_freq_max(unsigned lcore_id)
+rte_power_acpi_cpufreq_freq_max(unsigned int lcore_id)
 {
 	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
@@ -532,7 +532,7 @@ rte_power_acpi_cpufreq_freq_max(unsigned lcore_id)
 }
 
 int
-rte_power_acpi_cpufreq_freq_min(unsigned lcore_id)
+rte_power_acpi_cpufreq_freq_min(unsigned int lcore_id)
 {
 	struct rte_power_info *pi;
 

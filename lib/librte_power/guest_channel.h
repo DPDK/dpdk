@@ -24,7 +24,7 @@ extern "C" {
  *  - 0 on success.
  *  - Negative on error.
  */
-int guest_channel_host_connect(const char *path, unsigned lcore_id);
+int guest_channel_host_connect(const char *path, unsigned int lcore_id);
 
 /**
  * Disconnect from an already connected Virtio-Serial Endpoint.
@@ -34,7 +34,7 @@ int guest_channel_host_connect(const char *path, unsigned lcore_id);
  *  lcore_id.
  *
  */
-void guest_channel_host_disconnect(unsigned lcore_id);
+void guest_channel_host_disconnect(unsigned int lcore_id);
 
 /**
  * Send a message contained in pkt over the Virtio-Serial to the host endpoint.
@@ -50,7 +50,7 @@ void guest_channel_host_disconnect(unsigned lcore_id);
  *  - Negative on channel not connected.
  *  - errno on write to channel error.
  */
-int guest_channel_send_msg(struct channel_packet *pkt, unsigned lcore_id);
+int guest_channel_send_msg(struct channel_packet *pkt, unsigned int lcore_id);
 
 /**
  * Send a message contained in pkt over the Virtio-Serial to the host endpoint.
