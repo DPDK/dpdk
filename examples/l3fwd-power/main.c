@@ -50,8 +50,6 @@
 
 #define MIN_ZERO_POLL_COUNT 10
 
-/* around 100ms at 2 Ghz */
-#define TIMER_RESOLUTION_CYCLES           200000000ULL
 /* 100 ms interval */
 #define TIMER_NUMBER_PER_SECOND           10
 /* 100000 us */
@@ -846,7 +844,7 @@ main_loop(__attribute__((unused)) void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;
-	uint64_t prev_tsc, diff_tsc, cur_tsc;
+	uint64_t prev_tsc, diff_tsc, cur_tsc, tim_res_tsc, hz;
 	uint64_t prev_tsc_power = 0, cur_tsc_power, diff_tsc_power;
 	int i, j, nb_rx;
 	uint8_t queueid;
@@ -861,6 +859,8 @@ main_loop(__attribute__((unused)) void *dummy)
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
 	prev_tsc = 0;
+	hz = rte_get_timer_hz();
+	tim_res_tsc = hz/TIMER_NUMBER_PER_SECOND;
 
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_conf[lcore_id];
@@ -906,7 +906,7 @@ main_loop(__attribute__((unused)) void *dummy)
 		}
 
 		diff_tsc_power = cur_tsc_power - prev_tsc_power;
-		if (diff_tsc_power > TIMER_RESOLUTION_CYCLES) {
+		if (diff_tsc_power > tim_res_tsc) {
 			rte_timer_manage();
 			prev_tsc_power = cur_tsc_power;
 		}
