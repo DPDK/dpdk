@@ -187,6 +187,25 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 		(dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)) ? "on" : "off",
 		(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ? "on" : "off");
 
+	if (!(dev->features & (1ULL << VIRTIO_NET_F_MQ))) {
+		/*
+		 * Remove all but first queue pair if MQ hasn't been
+		 * negotiated. This is safe because the device is not
+		 * running at this stage.
+		 */
+		while (dev->nr_vring > 2) {
+			struct vhost_virtqueue *vq;
+
+			vq = dev->virtqueue[--dev->nr_vring];
+			if (!vq)
+				continue;
+
+			dev->virtqueue[dev->nr_vring] = NULL;
+			cleanup_vq(vq, 1);
+			free_vq(vq);
+		}
+	}
+
 	return 0;
 }
 
