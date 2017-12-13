@@ -334,6 +334,8 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "CPU_AVX";
 	case RTE_CRYPTODEV_FF_CPU_AVX2:
 		return "CPU_AVX2";
+	case RTE_CRYPTODEV_FF_CPU_AVX512:
+		return "CPU_AVX512";
 	case RTE_CRYPTODEV_FF_CPU_AESNI:
 		return "CPU_AESNI";
 	case RTE_CRYPTODEV_FF_HW_ACCELERATED:
