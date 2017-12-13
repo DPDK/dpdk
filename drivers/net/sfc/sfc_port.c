@@ -406,7 +406,10 @@ sfc_port_attach(struct sfc_adapter *sa)
 fail_kvarg_stats_update_period_ms:
 fail_mac_stats_dma_alloc:
 	rte_free(port->mac_stats_buf);
+
 fail_mac_stats_buf_alloc:
+	rte_free(port->mcast_addrs);
+
 fail_mcast_addr_list_buf_alloc:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
@@ -421,6 +424,8 @@ sfc_port_detach(struct sfc_adapter *sa)
 
 	sfc_dma_free(sa, &port->mac_stats_dma_mem);
 	rte_free(port->mac_stats_buf);
+
+	rte_free(port->mcast_addrs);
 
 	sfc_log_init(sa, "done");
 }
