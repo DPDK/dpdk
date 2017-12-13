@@ -404,6 +404,8 @@ sfc_port_attach(struct sfc_adapter *sa)
 	return 0;
 
 fail_kvarg_stats_update_period_ms:
+	sfc_dma_free(sa, &port->mac_stats_dma_mem);
+
 fail_mac_stats_dma_alloc:
 	rte_free(port->mac_stats_buf);
 
