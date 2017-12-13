@@ -23,7 +23,7 @@ typedef int (*cperf_populate_ops_t)(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		uint16_t iv_offset);
+		uint16_t iv_offset, uint32_t *imix_idx);
 
 struct cperf_op_fns {
 	cperf_sessions_create_t sess_create;

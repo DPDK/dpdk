@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <rte_malloc.h>
+#include <rte_random.h>
 #include <rte_eal.h>
 #include <rte_cryptodev.h>
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
@@ -508,13 +510,45 @@ main(int argc, char **argv)
 		i++;
 	}
 
-	/* Get first size from range or list */
-	if (opts.inc_buffer_size != 0)
-		opts.test_buffer_size = opts.min_buffer_size;
-	else
-		opts.test_buffer_size = opts.buffer_size_list[0];
+	if (opts.imix_distribution_count != 0) {
+		uint8_t buffer_size_count = opts.buffer_size_count;
+		uint16_t distribution_total[buffer_size_count];
+		uint32_t op_idx;
+		uint32_t test_average_size = 0;
+		const uint32_t *buffer_size_list = opts.buffer_size_list;
+		const uint32_t *imix_distribution_list = opts.imix_distribution_list;
 
-	while (opts.test_buffer_size <= opts.max_buffer_size) {
+		opts.imix_buffer_sizes = rte_malloc(NULL,
+					sizeof(uint32_t) * opts.pool_sz,
+					0);
+		/*
+		 * Calculate accumulated distribution of
+		 * probabilities per packet size
+		 */
+		distribution_total[0] = imix_distribution_list[0];
+		for (i = 1; i < buffer_size_count; i++)
+			distribution_total[i] = imix_distribution_list[i] +
+				distribution_total[i-1];
+
+		/* Calculate a random sequence of packet sizes, based on distribution */
+		for (op_idx = 0; op_idx < opts.pool_sz; op_idx++) {
+			uint16_t random_number = rte_rand() %
+				distribution_total[buffer_size_count - 1];
+			for (i = 0; i < buffer_size_count; i++)
+				if (random_number < distribution_total[i])
+					break;
+
+			opts.imix_buffer_sizes[op_idx] = buffer_size_list[i];
+		}
+
+		/* Calculate average buffer size for the IMIX distribution */
+		for (i = 0; i < buffer_size_count; i++)
+			test_average_size += buffer_size_list[i] *
+				imix_distribution_list[i];
+
+		opts.test_buffer_size = test_average_size /
+				distribution_total[buffer_size_count - 1];
+
 		i = 0;
 		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
@@ -533,14 +567,45 @@ main(int argc, char **argv)
 			rte_eal_wait_lcore(lcore_id);
 			i++;
 		}
+	} else {
 
 		/* Get next size from range or list */
 		if (opts.inc_buffer_size != 0)
-			opts.test_buffer_size += opts.inc_buffer_size;
-		else {
-			if (++buffer_size_idx == opts.buffer_size_count)
-				break;
-			opts.test_buffer_size = opts.buffer_size_list[buffer_size_idx];
+			opts.test_buffer_size = opts.min_buffer_size;
+		else
+			opts.test_buffer_size = opts.buffer_size_list[0];
+
+		while (opts.test_buffer_size <= opts.max_buffer_size) {
+			i = 0;
+			RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+
+				if (i == nb_cryptodevs)
+					break;
+
+				cdev_id = enabled_cdevs[i];
+
+				rte_eal_remote_launch(cperf_testmap[opts.test].runner,
+					ctx[cdev_id], lcore_id);
+				i++;
+			}
+			i = 0;
+			RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+
+				if (i == nb_cryptodevs)
+					break;
+				rte_eal_wait_lcore(lcore_id);
+				i++;
+			}
+
+			/* Get next size from range or list */
+			if (opts.inc_buffer_size != 0)
+				opts.test_buffer_size += opts.inc_buffer_size;
+			else {
+				if (++buffer_size_idx == opts.buffer_size_count)
+					break;
+				opts.test_buffer_size =
+					opts.buffer_size_list[buffer_size_idx];
+			}
 		}
 	}
 
@@ -579,7 +644,7 @@ err:
 	for (i = 0; i < nb_cryptodevs &&
 			i < RTE_CRYPTO_MAX_DEVS; i++)
 		rte_cryptodev_stop(enabled_cdevs[i]);
-
+	rte_free(opts.imix_buffer_sizes);
 	free_test_vector(t_vec, &opts);
 
 	printf("\n");

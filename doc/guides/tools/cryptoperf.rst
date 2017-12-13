@@ -171,6 +171,20 @@ The following are the appication command-line options:
             is the maximum size (i.e. ``--buffer-sz 16:2:32``)
           * List of values, up to 32 values, separated in commas (i.e. ``--buffer-sz 32,64,128``)
 
+* ``--imix <n>``
+
+        Set the distribution of packet sizes.
+
+        A list of weights must be passed, containing the same number of items than buffer-sz,
+        so each item in this list will be the weight of the packet size on the same position
+        in the buffer-sz parameter (a list have to be passed in that parameter).
+
+        Example:
+
+        To test a distribution of 20% packets of 64 bytes, 40% packets of 100 bytes and 40% packets
+        of 256 bytes, the command line would be: ``--buffer-sz 64,100,256 --imix 20,40,40``.
+        Note that the weights do not have to be percentages, so using ``--imix 1,2,2`` would result
+        in the same distribution
 
 * ``--segment-sz <n>``
 

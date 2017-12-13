@@ -236,6 +236,7 @@ cperf_verify_test_runner(void *test_ctx)
 
 	uint64_t i;
 	uint16_t ops_unused = 0;
+	uint32_t imix_idx = 0;
 
 	struct rte_crypto_op *ops[ctx->options->max_burst_size];
 	struct rte_crypto_op *ops_processed[ctx->options->max_burst_size];
@@ -289,7 +290,7 @@ cperf_verify_test_runner(void *test_ctx)
 		(ctx->populate_ops)(ops, ctx->src_buf_offset,
 				ctx->dst_buf_offset,
 				ops_needed, ctx->sess, ctx->options,
-				ctx->test_vector, iv_offset);
+				ctx->test_vector, iv_offset, &imix_idx);
 
 
 		/* Populate the mbuf with the test vector, for verification */

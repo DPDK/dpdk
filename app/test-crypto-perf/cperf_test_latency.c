@@ -126,6 +126,7 @@ cperf_latency_test_runner(void *arg)
 	struct cperf_latency_ctx *ctx = arg;
 	uint16_t test_burst_size;
 	uint8_t burst_size_idx = 0;
+	uint32_t imix_idx = 0;
 
 	static int only_once;
 
@@ -200,7 +201,8 @@ cperf_latency_test_runner(void *arg)
 			(ctx->populate_ops)(ops, ctx->src_buf_offset,
 					ctx->dst_buf_offset,
 					burst_size, ctx->sess, ctx->options,
-					ctx->test_vector, iv_offset);
+					ctx->test_vector, iv_offset,
+					&imix_idx);
 
 			tsc_start = rte_rdtsc_precise();
 

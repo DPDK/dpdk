@@ -13,7 +13,7 @@ cperf_set_ops_null_cipher(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector __rte_unused,
-		uint16_t iv_offset __rte_unused)
+		uint16_t iv_offset __rte_unused, uint32_t *imix_idx)
 {
 	uint16_t i;
 
@@ -34,7 +34,12 @@ cperf_set_ops_null_cipher(struct rte_crypto_op **ops,
 							dst_buf_offset);
 
 		/* cipher parameters */
-		sym_op->cipher.data.length = options->test_buffer_size;
+		if (options->imix_distribution_count) {
+			sym_op->cipher.data.length =
+				options->imix_buffer_sizes[*imix_idx];
+			*imix_idx = (*imix_idx + 1) % options->pool_sz;
+		} else
+			sym_op->cipher.data.length = options->test_buffer_size;
 		sym_op->cipher.data.offset = 0;
 	}
 
@@ -47,7 +52,7 @@ cperf_set_ops_null_auth(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector __rte_unused,
-		uint16_t iv_offset __rte_unused)
+		uint16_t iv_offset __rte_unused, uint32_t *imix_idx)
 {
 	uint16_t i;
 
@@ -68,7 +73,12 @@ cperf_set_ops_null_auth(struct rte_crypto_op **ops,
 							dst_buf_offset);
 
 		/* auth parameters */
-		sym_op->auth.data.length = options->test_buffer_size;
+		if (options->imix_distribution_count) {
+			sym_op->auth.data.length =
+				options->imix_buffer_sizes[*imix_idx];
+			*imix_idx = (*imix_idx + 1) % options->pool_sz;
+		} else
+			sym_op->auth.data.length = options->test_buffer_size;
 		sym_op->auth.data.offset = 0;
 	}
 
@@ -81,7 +91,7 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		uint16_t iv_offset)
+		uint16_t iv_offset, uint32_t *imix_idx)
 {
 	uint16_t i;
 
@@ -102,12 +112,17 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 							dst_buf_offset);
 
 		/* cipher parameters */
+		if (options->imix_distribution_count) {
+			sym_op->cipher.data.length =
+				options->imix_buffer_sizes[*imix_idx];
+			*imix_idx = (*imix_idx + 1) % options->pool_sz;
+		} else
+			sym_op->cipher.data.length = options->test_buffer_size;
+
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)
-			sym_op->cipher.data.length = options->test_buffer_size << 3;
-		else
-			sym_op->cipher.data.length = options->test_buffer_size;
+			sym_op->cipher.data.length <<= 3;
 
 		sym_op->cipher.data.offset = 0;
 	}
@@ -132,7 +147,7 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		uint16_t iv_offset)
+		uint16_t iv_offset, uint32_t *imix_idx)
 {
 	uint16_t i;
 
@@ -197,12 +212,17 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 
 		}
 
+		if (options->imix_distribution_count) {
+			sym_op->auth.data.length =
+				options->imix_buffer_sizes[*imix_idx];
+			*imix_idx = (*imix_idx + 1) % options->pool_sz;
+		} else
+			sym_op->auth.data.length = options->test_buffer_size;
+
 		if (options->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
 				options->auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9 ||
 				options->auth_algo == RTE_CRYPTO_AUTH_ZUC_EIA3)
-			sym_op->auth.data.length = options->test_buffer_size << 3;
-		else
-			sym_op->auth.data.length = options->test_buffer_size;
+			sym_op->auth.data.length <<= 3;
 
 		sym_op->auth.data.offset = 0;
 	}
@@ -227,7 +247,7 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		uint16_t iv_offset)
+		uint16_t iv_offset, uint32_t *imix_idx)
 {
 	uint16_t i;
 
@@ -248,12 +268,17 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 							dst_buf_offset);
 
 		/* cipher parameters */
+		if (options->imix_distribution_count) {
+			sym_op->cipher.data.length =
+				options->imix_buffer_sizes[*imix_idx];
+			*imix_idx = (*imix_idx + 1) % options->pool_sz;
+		} else
+			sym_op->cipher.data.length = options->test_buffer_size;
+
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)
-			sym_op->cipher.data.length = options->test_buffer_size << 3;
-		else
-			sym_op->cipher.data.length = options->test_buffer_size;
+			sym_op->cipher.data.length <<= 3;
 
 		sym_op->cipher.data.offset = 0;
 
@@ -293,12 +318,17 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 					rte_pktmbuf_iova_offset(buf, offset);
 		}
 
+		if (options->imix_distribution_count) {
+			sym_op->auth.data.length =
+				options->imix_buffer_sizes[*imix_idx];
+			*imix_idx = (*imix_idx + 1) % options->pool_sz;
+		} else
+			sym_op->auth.data.length = options->test_buffer_size;
+
 		if (options->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
 				options->auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9 ||
 				options->auth_algo == RTE_CRYPTO_AUTH_ZUC_EIA3)
-			sym_op->auth.data.length = options->test_buffer_size << 3;
-		else
-			sym_op->auth.data.length = options->test_buffer_size;
+			sym_op->auth.data.length <<= 3;
 
 		sym_op->auth.data.offset = 0;
 	}
@@ -332,7 +362,7 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		uint16_t iv_offset)
+		uint16_t iv_offset, uint32_t *imix_idx)
 {
 	uint16_t i;
 	/* AAD is placed after the IV */
@@ -356,7 +386,12 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 							dst_buf_offset);
 
 		/* AEAD parameters */
-		sym_op->aead.data.length = options->test_buffer_size;
+		if (options->imix_distribution_count) {
+			sym_op->aead.data.length =
+				options->imix_buffer_sizes[*imix_idx];
+			*imix_idx = (*imix_idx + 1) % options->pool_sz;
+		} else
+			sym_op->aead.data.length = options->test_buffer_size;
 		sym_op->aead.data.offset = 0;
 
 		sym_op->aead.aad.data = rte_crypto_op_ctod_offset(ops[i],

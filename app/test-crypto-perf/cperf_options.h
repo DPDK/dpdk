@@ -13,6 +13,7 @@
 #define CPERF_BUFFER_SIZE	("buffer-sz")
 #define CPERF_SEGMENT_SIZE	("segment-sz")
 #define CPERF_DESC_NB		("desc-nb")
+#define CPERF_IMIX		("imix")
 
 #define CPERF_DEVTYPE		("devtype")
 #define CPERF_OPTYPE		("optype")
@@ -73,6 +74,7 @@ struct cperf_options {
 	uint32_t total_ops;
 	uint32_t segment_sz;
 	uint32_t test_buffer_size;
+	uint32_t *imix_buffer_sizes;
 	uint32_t nb_descriptors;
 	uint16_t nb_qps;
 
@@ -122,6 +124,8 @@ struct cperf_options {
 
 	/* pmd-cyclecount specific options */
 	uint32_t pmdcc_delay;
+	uint32_t imix_distribution_list[MAX_LIST];
+	uint8_t imix_distribution_count;
 };
 
 void

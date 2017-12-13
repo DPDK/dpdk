@@ -141,6 +141,7 @@ pmd_cyclecount_bench_ops(struct pmd_cyclecount_state *state, uint32_t cur_op,
 	uint32_t iter_ops_needed =
 			RTE_MIN(state->opts->nb_descriptors, iter_ops_left);
 	uint32_t cur_iter_op;
+	uint32_t imix_idx = 0;
 
 	for (cur_iter_op = 0; cur_iter_op < iter_ops_needed;
 			cur_iter_op += test_burst_size) {
@@ -165,7 +166,8 @@ pmd_cyclecount_bench_ops(struct pmd_cyclecount_state *state, uint32_t cur_op,
 				state->ctx->dst_buf_offset,
 				burst_size,
 				state->ctx->sess, state->opts,
-				state->ctx->test_vector, iv_offset);
+				state->ctx->test_vector, iv_offset,
+				&imix_idx);
 
 #ifdef CPERF_LINEARIZATION_ENABLE
 		/* Check if source mbufs require coalescing */
@@ -190,6 +192,7 @@ pmd_cyclecount_build_ops(struct pmd_cyclecount_state *state,
 		uint32_t iter_ops_needed, uint16_t test_burst_size)
 {
 	uint32_t cur_iter_op;
+	uint32_t imix_idx = 0;
 
 	for (cur_iter_op = 0; cur_iter_op < iter_ops_needed;
 			cur_iter_op += test_burst_size) {
@@ -214,7 +217,8 @@ pmd_cyclecount_build_ops(struct pmd_cyclecount_state *state,
 				state->ctx->dst_buf_offset,
 				burst_size,
 				state->ctx->sess, state->opts,
-				state->ctx->test_vector, iv_offset);
+				state->ctx->test_vector, iv_offset,
+				&imix_idx);
 	}
 	return 0;
 }

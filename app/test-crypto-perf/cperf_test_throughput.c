@@ -92,6 +92,7 @@ cperf_throughput_test_runner(void *test_ctx)
 	struct cperf_throughput_ctx *ctx = test_ctx;
 	uint16_t test_burst_size;
 	uint8_t burst_size_idx = 0;
+	uint32_t imix_idx = 0;
 
 	static int only_once;
 
@@ -165,7 +166,7 @@ cperf_throughput_test_runner(void *test_ctx)
 					ctx->dst_buf_offset,
 					ops_needed, ctx->sess,
 					ctx->options, ctx->test_vector,
-					iv_offset);
+					iv_offset, &imix_idx);
 
 			/**
 			 * When ops_needed is smaller than ops_enqd, the

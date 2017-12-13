@@ -29,6 +29,7 @@ usage(char *progname)
 		" --total-ops N: set the number of total operations performed\n"
 		" --burst-sz N: set the number of packets per burst\n"
 		" --buffer-sz N: set the size of a single packet\n"
+		" --imix N: set the distribution of packet sizes\n"
 		" --segment-sz N: set the size of the segment to use\n"
 		" --desc-nb N: set number of descriptors for each crypto device\n"
 		" --devtype TYPE: set crypto device type to use\n"
@@ -215,6 +216,8 @@ parse_list(const char *arg, uint32_t *list, uint32_t *min, uint32_t *max)
 	char *token;
 	uint32_t number;
 	uint8_t count = 0;
+	uint32_t temp_min;
+	uint32_t temp_max;
 
 	char *copy_arg = strdup(arg);
 
@@ -233,8 +236,8 @@ parse_list(const char *arg, uint32_t *list, uint32_t *min, uint32_t *max)
 			goto err_list;
 
 		list[count++] = number;
-		*min = number;
-		*max = number;
+		temp_min = number;
+		temp_max = number;
 	} else
 		goto err_list;
 
@@ -255,13 +258,18 @@ parse_list(const char *arg, uint32_t *list, uint32_t *min, uint32_t *max)
 
 		list[count++] = number;
 
-		if (number < *min)
-			*min = number;
-		if (number > *max)
-			*max = number;
+		if (number < temp_min)
+			temp_min = number;
+		if (number > temp_max)
+			temp_max = number;
 
 		token = strtok(NULL, ",");
 	}
+
+	if (min)
+		*min = temp_min;
+	if (max)
+		*max = temp_max;
 
 	free(copy_arg);
 	return count;
@@ -352,6 +360,29 @@ parse_segment_sz(struct cperf_options *opts, const char *arg)
 
 	if (opts->segment_sz == 0) {
 		RTE_LOG(ERR, USER1, "Segment size has to be bigger than 0\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+parse_imix(struct cperf_options *opts, const char *arg)
+{
+	int ret;
+
+	ret = parse_list(arg, opts->imix_distribution_list,
+				NULL, NULL);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1, "failed to parse imix distribution\n");
+		return -1;
+	}
+
+	opts->imix_distribution_count = ret;
+
+	if (opts->imix_distribution_count <= 1) {
+		RTE_LOG(ERR, USER1, "imix distribution should have "
+				"at least two entries\n");
 		return -1;
 	}
 
@@ -694,6 +725,7 @@ static struct option lgopts[] = {
 	{ CPERF_SEGMENT_SIZE, required_argument, 0, 0 },
 	{ CPERF_DESC_NB, required_argument, 0, 0 },
 
+	{ CPERF_IMIX, required_argument, 0, 0 },
 	{ CPERF_DEVTYPE, required_argument, 0, 0 },
 	{ CPERF_OPTYPE, required_argument, 0, 0 },
 
@@ -758,6 +790,7 @@ cperf_options_default(struct cperf_options *opts)
 	 */
 	opts->segment_sz = 0;
 
+	opts->imix_distribution_count = 0;
 	strncpy(opts->device_type, "crypto_aesni_mb",
 			sizeof(opts->device_type));
 	opts->nb_qps = 1;
@@ -807,6 +840,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_OPTYPE,		parse_op_type },
 		{ CPERF_SESSIONLESS,	parse_sessionless },
 		{ CPERF_OUT_OF_PLACE,	parse_out_of_place },
+		{ CPERF_IMIX,		parse_imix },
 		{ CPERF_TEST_FILE,	parse_test_file },
 		{ CPERF_TEST_NAME,	parse_test_name },
 		{ CPERF_CIPHER_ALGO,	parse_cipher_algo },
@@ -945,6 +979,14 @@ cperf_options_check(struct cperf_options *options)
 		return -EINVAL;
 	}
 
+	if ((options->imix_distribution_count != 0) &&
+			(options->imix_distribution_count !=
+				options->buffer_size_count)) {
+		RTE_LOG(ERR, USER1, "IMIX distribution must have the same "
+				"number of buffer sizes\n");
+		return -EINVAL;
+	}
+
 	if (options->test == CPERF_TEST_TYPE_VERIFY &&
 			options->test_file == NULL) {
 		RTE_LOG(ERR, USER1, "Define path to the file with test"
@@ -994,6 +1036,13 @@ cperf_options_check(struct cperf_options *options)
 		RTE_LOG(ERR, USER1, "For pmd cyclecount benchmarks, pool size "
 				"must be equal or greater than the number of "
 				"cryptodev descriptors.\n");
+		return -EINVAL;
+	}
+
+	if (options->test == CPERF_TEST_TYPE_VERIFY &&
+			options->imix_distribution_count > 0) {
+		RTE_LOG(ERR, USER1, "IMIX is not allowed when "
+				"using the verify test.\n");
 		return -EINVAL;
 	}
 
