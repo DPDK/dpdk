@@ -154,7 +154,22 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 		return -1;
 	}
 
-	if ((dev->flags & VIRTIO_DEV_RUNNING) && dev->features != features) {
+	if (dev->flags & VIRTIO_DEV_RUNNING) {
+		if (dev->features == features)
+			return 0;
+
+		/*
+		 * Error out if master tries to change features while device is
+		 * in running state. The exception being VHOST_F_LOG_ALL, which
+		 * is enabled when the live-migration starts.
+		 */
+		if ((dev->features ^ features) & ~(1ULL << VHOST_F_LOG_ALL)) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"(%d) features changed while device is running.\n",
+				dev->vid);
+			return -1;
+		}
+
 		if (dev->notify_ops->features_changed)
 			dev->notify_ops->features_changed(dev->vid, features);
 	}
