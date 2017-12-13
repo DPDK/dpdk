@@ -279,10 +279,10 @@ fail_port_init_dev_link:
 	(void)efx_mac_drain(sa->nic, B_TRUE);
 
 fail_mac_drain:
+fail_mac_stats_upload:
 	(void)efx_mac_stats_periodic(sa->nic, &port->mac_stats_dma_mem,
 				     0, B_FALSE);
 
-fail_mac_stats_upload:
 fail_mac_stats_periodic:
 fail_mcast_address_list_set:
 fail_mac_filter_set:
