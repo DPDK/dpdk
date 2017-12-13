@@ -948,7 +948,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 					desc->addr + desc_offset, cpy_len)))) {
 			cur->data_len = cpy_len;
 			cur->data_off = 0;
-			cur->buf_addr = (void *)(uintptr_t)desc_addr;
+			cur->buf_addr = (void *)(uintptr_t)(desc_addr
+				+ desc_offset);
 			cur->buf_iova = hpa;
 
 			/*
