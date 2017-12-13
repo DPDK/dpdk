@@ -74,7 +74,7 @@ get_device(int vid)
 	return dev;
 }
 
-static void
+void
 cleanup_vq(struct vhost_virtqueue *vq, int destroy)
 {
 	if ((vq->callfd >= 0) && (destroy != 0))
@@ -98,6 +98,15 @@ cleanup_device(struct virtio_net *dev, int destroy)
 		cleanup_vq(dev->virtqueue[i], destroy);
 }
 
+void
+free_vq(struct vhost_virtqueue *vq)
+{
+	rte_free(vq->shadow_used_ring);
+	rte_free(vq->batch_copy_elems);
+	rte_mempool_free(vq->iotlb_pool);
+	rte_free(vq);
+}
+
 /*
  * Release virtqueues and device memory.
  */
@@ -105,16 +114,9 @@ static void
 free_device(struct virtio_net *dev)
 {
 	uint32_t i;
-	struct vhost_virtqueue *vq;
 
-	for (i = 0; i < dev->nr_vring; i++) {
-		vq = dev->virtqueue[i];
-
-		rte_free(vq->shadow_used_ring);
-		rte_free(vq->batch_copy_elems);
-		rte_mempool_free(vq->iotlb_pool);
-		rte_free(vq);
-	}
+	for (i = 0; i < dev->nr_vring; i++)
+		free_vq(dev->virtqueue[i]);
 
 	rte_free(dev);
 }

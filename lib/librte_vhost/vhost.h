@@ -338,6 +338,9 @@ void cleanup_device(struct virtio_net *dev, int destroy);
 void reset_device(struct virtio_net *dev);
 void vhost_destroy_device(int);
 
+void cleanup_vq(struct vhost_virtqueue *vq, int destroy);
+void free_vq(struct vhost_virtqueue *vq);
+
 int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
