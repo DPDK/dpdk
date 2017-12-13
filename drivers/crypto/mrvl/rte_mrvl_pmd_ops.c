@@ -558,7 +558,7 @@ mrvl_crypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		int socket_id, struct rte_mempool *session_pool)
 {
 	struct mrvl_crypto_qp *qp = NULL;
-	char match[RTE_CRYPTODEV_NAME_LEN];
+	char match[RTE_CRYPTODEV_NAME_MAX_LEN];
 	unsigned int n;
 
 	/* Allocate the queue pair data structure. */

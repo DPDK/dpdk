@@ -410,7 +410,7 @@ aesni_mb_pmd_qp_create_processed_ops_ring(struct aesni_mb_qp *qp,
 		const char *str, unsigned int ring_size, int socket_id)
 {
 	struct rte_ring *r;
-	char ring_name[RTE_CRYPTODEV_NAME_LEN];
+	char ring_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 
 	unsigned int n = snprintf(ring_name, sizeof(ring_name),
 				"%s_%s",

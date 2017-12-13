@@ -3,6 +3,7 @@
 #define _CPERF_OPTIONS_
 
 #include <rte_crypto.h>
+#include <rte_cryptodev.h>
 
 #define CPERF_PTEST_TYPE	("ptest")
 #define CPERF_SILENT		("silent")
@@ -104,7 +105,7 @@ struct cperf_options {
 
 	uint16_t digest_sz;
 
-	char device_type[RTE_CRYPTODEV_NAME_LEN];
+	char device_type[RTE_CRYPTODEV_NAME_MAX_LEN];
 	enum cperf_op_type op_type;
 
 	char *test_file;

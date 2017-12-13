@@ -56,7 +56,7 @@ struct aesni_gcm_qp {
 	/**< Session Mempool */
 	uint16_t id;
 	/**< Queue Pair Identifier */
-	char name[RTE_CRYPTODEV_NAME_LEN];
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	/**< Unique Queue Pair Name */
 	uint8_t temp_digest[DIGEST_LENGTH_MAX];
 	/**< Buffer used to store the digest generated

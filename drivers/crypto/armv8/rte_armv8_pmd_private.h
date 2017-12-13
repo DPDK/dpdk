@@ -120,7 +120,7 @@ struct armv8_crypto_qp {
 	/**< Session Mempool */
 	struct rte_cryptodev_stats stats;
 	/**< Queue pair statistics */
-	char name[RTE_CRYPTODEV_NAME_LEN];
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	/**< Unique Queue Pair Name */
 	uint8_t temp_digest[DIGEST_LENGTH_MAX];
 	/**< Buffer used to store the digest generated

@@ -130,7 +130,7 @@ struct aesni_mb_private {
 struct aesni_mb_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
-	char name[RTE_CRYPTODEV_NAME_LEN];
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	/**< Unique Queue Pair Name */
 	const struct aesni_mb_op_fns *op_fns;
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */

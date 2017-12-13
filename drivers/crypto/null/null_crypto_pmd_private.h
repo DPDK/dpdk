@@ -39,7 +39,7 @@ struct null_crypto_private {
 struct null_crypto_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
-	char name[RTE_CRYPTODEV_NAME_LEN];
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	/**< Unique Queue Pair Name */
 	struct rte_ring *processed_pkts;
 	/**< Ring for placing process packets */

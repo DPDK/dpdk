@@ -70,7 +70,7 @@ struct openssl_private {
 struct openssl_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
-	char name[RTE_CRYPTODEV_NAME_LEN];
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	/**< Unique Queue Pair Name */
 	struct rte_ring *processed_ops;
 	/**< Ring for placing process packets */
