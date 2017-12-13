@@ -390,7 +390,7 @@ struct rte_cryptodev_ops {
 	/**< Clear a Crypto sessions private data. */
 	cryptodev_sym_queue_pair_attach_session_t qp_attach_session;
 	/**< Attach session to queue pair. */
-	cryptodev_sym_queue_pair_attach_session_t qp_detach_session;
+	cryptodev_sym_queue_pair_detach_session_t qp_detach_session;
 	/**< Detach session from queue pair. */
 };
 
