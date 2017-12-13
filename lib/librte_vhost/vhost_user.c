@@ -1268,7 +1268,9 @@ vhost_user_msg_handler(int vid, int fd)
 		send_vhost_reply(fd, &msg);
 		break;
 	case VHOST_USER_SET_FEATURES:
-		vhost_user_set_features(dev, msg.payload.u64);
+		ret = vhost_user_set_features(dev, msg.payload.u64);
+		if (ret)
+			return -1;
 		break;
 
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
