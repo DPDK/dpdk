@@ -864,7 +864,7 @@ static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
 		/* Note: limit checked in rte_eth_xstats_names() */
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			struct virtqueue *rxvq = dev->data->rx_queues[i];
+			struct virtnet_rx *rxvq = dev->data->rx_queues[i];
 			if (rxvq == NULL)
 				continue;
 			for (t = 0; t < VIRTIO_NB_RXQ_XSTATS; t++) {
@@ -877,7 +877,7 @@ static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
 		}
 
 		for (i = 0; i < dev->data->nb_tx_queues; i++) {
-			struct virtqueue *txvq = dev->data->tx_queues[i];
+			struct virtnet_tx *txvq = dev->data->tx_queues[i];
 			if (txvq == NULL)
 				continue;
 			for (t = 0; t < VIRTIO_NB_TXQ_XSTATS; t++) {
