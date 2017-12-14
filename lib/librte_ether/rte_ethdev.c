@@ -781,7 +781,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * Convert between the offloads API to enable PMDs to support
 	 * only one of them.
 	 */
-	if ((dev_conf->rxmode.ignore_offload_bitfield == 0)) {
+	if (dev_conf->rxmode.ignore_offload_bitfield == 0) {
 		rte_eth_convert_rx_offload_bitfield(
 				&dev_conf->rxmode, &local_conf.rxmode.offloads);
 	} else {
@@ -2664,7 +2664,7 @@ rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct ether_addr *addr,
 
 	index = get_hash_mac_addr_index(port_id, addr);
 	/* Check if it's already there, and do nothing */
-	if ((index >= 0) && (on))
+	if ((index >= 0) && on)
 		return 0;
 
 	if (index < 0) {
