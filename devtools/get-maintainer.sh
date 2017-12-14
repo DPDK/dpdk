@@ -42,15 +42,16 @@ options="$options --no-rolestats"
 print_usage () {
 	cat <<- END_OF_HELP
 	usage: $(basename $0) <patch>
+
+	The DPDK_GETMAINTAINER_PATH variable should be set to the full path to
+	the get_maintainer.pl script located in Linux kernel sources. Example:
+	DPDK_GETMAINTAINER_PATH=~/linux/scripts/get_maintainer.pl
+
+	Also refer to devtools/load-devel-config to store your configuration.
 	END_OF_HELP
 }
 
-# Requires DPDK_GETMAINTAINER_PATH devel config option set,
-# please check devtools/load-devel-config.
-# DPDK_GETMAINTAINER_PATH should be full path to the get_maintainer.pl script,
-# like:
-#   DPDK_GETMAINTAINER_PATH=~/linux/scripts/get_maintainer.pl
-
+# Requires DPDK_GETMAINTAINER_PATH devel config option set
 if [ ! -x "$DPDK_GETMAINTAINER_PATH" ] ; then
 	print_usage >&2
 	echo
