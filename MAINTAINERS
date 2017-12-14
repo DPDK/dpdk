@@ -628,7 +628,7 @@ M: Jacek Siuda <jck@semihalf.com>
 M: Tomasz Duszynski <tdu@semihalf.com>
 M: Dmitri Epshtein <dima@marvell.com>
 M: Natalie Samsonov <nsamsono@marvell.com>
-M: Jianbo Liu <jianbo.liu@arm.org>
+M: Jianbo Liu <jianbo.liu@arm.com>
 F: drivers/crypto/mrvl/
 F: doc/guides/cryptodevs/mrvl.rst
 F: doc/guides/cryptodevs/features/mrvl.ini
