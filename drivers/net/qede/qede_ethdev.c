@@ -1233,6 +1233,14 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		}
 	}
 
+	/* We need to have min 1 RX queue.There is no min check in
+	 * rte_eth_dev_configure(), so we are checking it here.
+	 */
+	if (eth_dev->data->nb_rx_queues == 0) {
+		DP_ERR(edev, "Minimum one RX queue is required\n");
+		return -EINVAL;
+	}
+
 	/* Sanity checks and throw warnings */
 	if (rxmode->enable_scatter)
 		eth_dev->data->scattered_rx = 1;
