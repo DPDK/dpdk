@@ -1865,7 +1865,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	hw->use_simple_rx = 1;
 	hw->use_simple_tx = 1;
 
-#if defined RTE_ARCH_ARM64 || defined CONFIG_RTE_ARCH_ARM
+#if defined RTE_ARCH_ARM64 || defined RTE_ARCH_ARM
 	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON)) {
 		hw->use_simple_rx = 0;
 		hw->use_simple_tx = 0;
