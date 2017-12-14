@@ -482,8 +482,8 @@ qede_update_sge_tpa_params(struct ecore_sge_tpa_params *sge_tpa_params,
 	/* Enable LRO in split mode */
 	sge_tpa_params->tpa_ipv4_en_flg = enable;
 	sge_tpa_params->tpa_ipv6_en_flg = enable;
-	sge_tpa_params->tpa_ipv4_tunn_en_flg = false;
-	sge_tpa_params->tpa_ipv6_tunn_en_flg = false;
+	sge_tpa_params->tpa_ipv4_tunn_en_flg = enable;
+	sge_tpa_params->tpa_ipv6_tunn_en_flg = enable;
 	/* set if tpa enable changes */
 	sge_tpa_params->update_tpa_en_flg = 1;
 	/* set if tpa parameters should be handled */
