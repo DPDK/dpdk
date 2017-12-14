@@ -2415,7 +2415,7 @@ out:
 static s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
 			      u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm)
 {
-	if ((!(adv_reg)) ||  (!(lp_reg)))
+	if (!adv_reg || !lp_reg)
 		return IXGBE_ERR_FC_NOT_NEGOTIATED;
 
 	if ((adv_reg & adv_sym) && (lp_reg & lp_sym)) {
@@ -3279,7 +3279,7 @@ s32 ixgbe_set_vfta_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 			vfta_changed = true;
 		}
 	} else {
-		if ((vfta & targetbit)) {
+		if (vfta & targetbit) {
 			vfta &= ~targetbit;
 			vfta_changed = true;
 		}
@@ -3392,7 +3392,7 @@ s32 ixgbe_set_vlvf_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 		if (bits) {
 			IXGBE_WRITE_REG(hw, IXGBE_VLVF(vlvf_index),
 					(IXGBE_VLVF_VIEN | vlan));
-			if ((!vlan_on) && (vfta_changed != NULL)) {
+			if (!vlan_on && (vfta_changed != NULL)) {
 				/* someone wants to clear the vfta entry
 				 * but some pools/VFs are still using it.
 				 * Ignore it. */

@@ -3009,7 +3009,7 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 		case e1000_i211:
 			/* Enable EEE for internal copper PHY devices */
 			err = e1000_set_eee_i350(hw);
-			if ((!err) &&
+			if (!err &&
 			    (adapter->flags & IGB_FLAG_EEE))
 				adapter->eee_advert =
 					MDIO_EEE_100TX | MDIO_EEE_1000T;
@@ -5022,7 +5022,7 @@ static void igb_update_itr(struct igb_q_vector *q_vector,
 				itrval = bulk_latency;
 			} else if ((packets < 10) || ((bytes/packets) > 1200)) {
 				itrval = bulk_latency;
-			} else if ((packets > 35)) {
+			} else if (packets > 35) {
 				itrval = lowest_latency;
 			}
 		} else if (bytes/packets > 2000) {
