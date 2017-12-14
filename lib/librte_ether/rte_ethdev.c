@@ -64,6 +64,7 @@ static const struct rte_eth_xstats_name_off rte_stats_strings[] = {
 	{"tx_good_packets", offsetof(struct rte_eth_stats, opackets)},
 	{"rx_good_bytes", offsetof(struct rte_eth_stats, ibytes)},
 	{"tx_good_bytes", offsetof(struct rte_eth_stats, obytes)},
+	{"rx_missed_errors", offsetof(struct rte_eth_stats, imissed)},
 	{"rx_errors", offsetof(struct rte_eth_stats, ierrors)},
 	{"tx_errors", offsetof(struct rte_eth_stats, oerrors)},
 	{"rx_mbuf_allocation_errors", offsetof(struct rte_eth_stats,
