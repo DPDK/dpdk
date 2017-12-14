@@ -328,7 +328,7 @@ parse_arg_w(const char *arg)
 
 		errno = 0;
 		lcore = strtoul(p, NULL, 0);
-		if ((errno != 0)) {
+		if (errno != 0) {
 			return -2;
 		}
 
