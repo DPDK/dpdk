@@ -354,7 +354,7 @@ rte_distributor_process_v1705(struct rte_distributor *d,
 	if (unlikely(num_mbufs == 0)) {
 		/* Flush out all non-full cache-lines to workers. */
 		for (wid = 0 ; wid < d->num_workers; wid++) {
-			if ((d->bufs[wid].bufptr64[0] & RTE_DISTRIB_GET_BUF)) {
+			if (d->bufs[wid].bufptr64[0] & RTE_DISTRIB_GET_BUF) {
 				release(d, wid);
 				handle_returns(d, wid);
 			}
