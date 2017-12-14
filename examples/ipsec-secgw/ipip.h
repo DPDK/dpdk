@@ -74,7 +74,7 @@ ipip_outbound(struct rte_mbuf *m, uint32_t offset, uint32_t is_ipv6,
 
 	outip4->ip_src.s_addr = src->ip.ip4;
 	outip4->ip_dst.s_addr = dst->ip.ip4;
-
+	m->packet_type &= ~RTE_PTYPE_L4_MASK;
 	return outip4;
 }
 
@@ -140,6 +140,11 @@ ipip_inbound(struct rte_mbuf *m, uint32_t offset)
 			ip4_ecn_setup(inip4);
 		/* XXX This should be done by the forwarding engine instead */
 		inip4->ip_ttl -= 1;
+		m->packet_type &= ~RTE_PTYPE_L4_MASK;
+		if (inip4->ip_p == IPPROTO_UDP)
+			m->packet_type |= RTE_PTYPE_L4_UDP;
+		else if (inip4->ip_p == IPPROTO_TCP)
+			m->packet_type |= RTE_PTYPE_L4_TCP;
 	} else {
 		inip6 = (struct ip6_hdr *)inip4;
 		if (set_ecn)
