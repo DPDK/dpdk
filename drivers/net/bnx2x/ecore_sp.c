@@ -3402,7 +3402,7 @@ void ecore_init_mac_credit_pool(struct bnx2x_softc *sc,
 		/* CAM credit is equally divided between all active functions
 		 * on the PORT!.
 		 */
-		if ((func_num > 0)) {
+		if (func_num > 0) {
 			if (!CHIP_REV_IS_SLOW(sc))
 				cam_sz = (MAX_MAC_CREDIT_E1H / (2 * func_num));
 			else
@@ -3419,7 +3419,7 @@ void ecore_init_mac_credit_pool(struct bnx2x_softc *sc,
 		 * CAM credit is equaly divided between all active functions
 		 * on the PATH.
 		 */
-		if ((func_num > 0)) {
+		if (func_num > 0) {
 			if (!CHIP_REV_IS_SLOW(sc))
 				cam_sz = (MAX_MAC_CREDIT_E2 / func_num);
 			else

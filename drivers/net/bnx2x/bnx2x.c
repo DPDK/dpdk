@@ -8137,7 +8137,7 @@ static int bnx2x_get_igu_cam_info(struct bnx2x_softc *sc)
 			continue;
 		}
 		fid = IGU_FID(val);
-		if ((fid & IGU_FID_ENCODE_IS_PF)) {
+		if (fid & IGU_FID_ENCODE_IS_PF) {
 			if ((fid & IGU_FID_PF_NUM_MASK) != pfid) {
 				continue;
 			}
