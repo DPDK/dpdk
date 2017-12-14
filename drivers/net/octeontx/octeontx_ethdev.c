@@ -971,6 +971,17 @@ octeontx_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+static int
+octeontx_pool_ops(struct rte_eth_dev *dev, const char *pool)
+{
+	RTE_SET_USED(dev);
+
+	if (!strcmp(pool, "octeontx_fpavf"))
+		return 0;
+
+	return -ENOTSUP;
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops octeontx_dev_ops = {
 	.dev_configure		 = octeontx_dev_configure,
@@ -991,6 +1002,7 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.rx_queue_setup		 = octeontx_dev_rx_queue_setup,
 	.rx_queue_release	 = octeontx_dev_rx_queue_release,
 	.dev_supported_ptypes_get = octeontx_dev_supported_ptypes_get,
+	.pool_ops_supported      = octeontx_pool_ops,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
