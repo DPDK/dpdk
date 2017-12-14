@@ -522,6 +522,16 @@ port_infos_display(portid_t port_id)
 		}
 	}
 
+	printf("Minimum size of RX buffer: %u\n", dev_info.min_rx_bufsize);
+	printf("Maximum configurable length of RX packet: %u\n",
+		dev_info.max_rx_pktlen);
+	if (dev_info.max_vfs)
+		printf("Maximum number of VFs: %u\n", dev_info.max_vfs);
+	if (dev_info.max_vmdq_pools)
+		printf("Maximum number of VMDq pools: %u\n",
+			dev_info.max_vmdq_pools);
+
+	printf("Current number of RX queues: %u\n", dev_info.nb_rx_queues);
 	printf("Max possible RX queues: %u\n", dev_info.max_rx_queues);
 	printf("Max possible number of RXDs per queue: %hu\n",
 		dev_info.rx_desc_lim.nb_max);
@@ -529,6 +539,7 @@ port_infos_display(portid_t port_id)
 		dev_info.rx_desc_lim.nb_min);
 	printf("RXDs number alignment: %hu\n", dev_info.rx_desc_lim.nb_align);
 
+	printf("Current number of TX queues: %u\n", dev_info.nb_tx_queues);
 	printf("Max possible TX queues: %u\n", dev_info.max_tx_queues);
 	printf("Max possible number of TXDs per queue: %hu\n",
 		dev_info.tx_desc_lim.nb_max);
