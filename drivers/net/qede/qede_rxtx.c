@@ -1792,7 +1792,9 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (((tx_ol_flags & PKT_TX_TUNNEL_MASK) ==
 						PKT_TX_TUNNEL_VXLAN) ||
 		    ((tx_ol_flags & PKT_TX_TUNNEL_MASK) ==
-						PKT_TX_TUNNEL_MPLSINUDP)) {
+						PKT_TX_TUNNEL_MPLSINUDP) ||
+		    ((tx_ol_flags & PKT_TX_TUNNEL_MASK) ==
+						PKT_TX_TUNNEL_GENEVE)) {
 			/* Check against max which is Tunnel IPv6 + ext */
 			if (unlikely(txq->nb_tx_avail <
 				ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT))

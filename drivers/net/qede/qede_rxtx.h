@@ -73,7 +73,8 @@
 				 ETH_RSS_IPV6			|\
 				 ETH_RSS_NONFRAG_IPV6_TCP	|\
 				 ETH_RSS_NONFRAG_IPV6_UDP	|\
-				 ETH_RSS_VXLAN)
+				 ETH_RSS_VXLAN			|\
+				 ETH_RSS_GENEVE)
 
 #define QEDE_TXQ_FLAGS		((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS)
 
@@ -151,6 +152,7 @@
 			      PKT_TX_QINQ_PKT           | \
 			      PKT_TX_VLAN_PKT		| \
 			      PKT_TX_TUNNEL_VXLAN	| \
+			      PKT_TX_TUNNEL_GENEVE	| \
 			      PKT_TX_TUNNEL_MPLSINUDP)
 
 #define QEDE_TX_OFFLOAD_NOTSUP_MASK \

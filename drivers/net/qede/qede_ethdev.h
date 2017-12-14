@@ -166,11 +166,14 @@ struct qede_fdir_info {
 	SLIST_HEAD(fdir_list_head, qede_fdir_entry)fdir_list_head;
 };
 
-struct qede_vxlan_tunn {
+/* IANA assigned default UDP ports for encapsulation protocols */
+#define QEDE_VXLAN_DEF_PORT			(4789)
+#define QEDE_GENEVE_DEF_PORT			(6081)
+
+struct qede_udp_tunn {
 	bool enable;
 	uint16_t num_filters;
 	uint16_t filter_type;
-#define QEDE_VXLAN_DEF_PORT			(4789)
 	uint16_t udp_port;
 };
 
@@ -202,7 +205,8 @@ struct qede_dev {
 	SLIST_HEAD(uc_list_head, qede_ucast_entry) uc_list_head;
 	uint16_t num_uc_addr;
 	bool handle_hw_err;
-	struct qede_vxlan_tunn vxlan;
+	struct qede_udp_tunn vxlan;
+	struct qede_udp_tunn geneve;
 	struct qede_fdir_info fdir_info;
 	bool vlan_strip_flg;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
