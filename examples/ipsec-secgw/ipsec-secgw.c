@@ -60,6 +60,7 @@
 
 #define OPTION_CONFIG		"config"
 #define OPTION_SINGLE_SA	"single-sa"
+#define OPTION_CRYPTODEV_MASK	"cryptodev_mask"
 
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
@@ -125,6 +126,7 @@ struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask;
+static uint64_t enabled_cryptodev_mask = UINT64_MAX;
 static uint32_t unprotected_port_mask;
 static int32_t promiscuous_on = 1;
 static int32_t numa_on = 1; /**< NUMA is enabled by default. */
@@ -934,6 +936,8 @@ print_usage(const char *prgname)
 		"rx queues configuration\n"
 		"  --single-sa SAIDX: use single SA index for outbound, "
 		"bypassing the SP\n"
+		"  --cryptodev_mask MASK: hexadecimal bitmask of the "
+		"crypto devices to configure\n"
 		"  -f CONFIG_FILE: Configuration file path\n",
 		prgname);
 }
@@ -1048,6 +1052,14 @@ parse_args_long_options(struct option *lgopts, int32_t option_index)
 		}
 	}
 
+	if (__STRNCMP(optname, OPTION_CRYPTODEV_MASK)) {
+		ret = parse_portmask(optarg);
+		if (ret != -1) {
+			enabled_cryptodev_mask = ret;
+			ret = 0;
+		}
+	}
+
 	return ret;
 }
 #undef __STRNCMP
@@ -1062,6 +1074,7 @@ parse_args(int32_t argc, char **argv)
 	static struct option lgopts[] = {
 		{OPTION_CONFIG, 1, 0, 0},
 		{OPTION_SINGLE_SA, 1, 0, 0},
+		{OPTION_CRYPTODEV_MASK, 1, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 	int32_t f_present = 0;
@@ -1324,6 +1337,16 @@ add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 	return ret;
 }
 
+/* Check if the device is enabled by cryptodev_mask */
+static int
+check_cryptodev_mask(uint8_t cdev_id)
+{
+	if (enabled_cryptodev_mask & (1 << cdev_id))
+		return 0;
+
+	return -1;
+}
+
 static int32_t
 cryptodevs_init(void)
 {
@@ -1361,9 +1384,11 @@ cryptodevs_init(void)
 	}
 
 	idx = 0;
-	/* Start from last cdev id to give HW priority */
-	for (cdev_id = rte_cryptodev_count() - 1; cdev_id >= 0; cdev_id--) {
+	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
 		struct rte_cryptodev_info cdev_info;
+
+		if (check_cryptodev_mask((uint8_t)cdev_id))
+			continue;
 
 		rte_cryptodev_info_get(cdev_id, &cdev_info);
 
