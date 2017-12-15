@@ -543,7 +543,7 @@ static __rte_always_inline uint32_t
 mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 {
 	uint16_t i = txq->mr_cache_idx;
-	uintptr_t addr = rte_pktmbuf_mtod(mb, uintptr_t);
+	uintptr_t addr = rte_pktmbuf_mtod_offset(mb, uintptr_t, DATA_LEN(mb));
 	struct mlx5_mr *mr;
 
 	assert(i < RTE_DIM(txq->mp2mr));
