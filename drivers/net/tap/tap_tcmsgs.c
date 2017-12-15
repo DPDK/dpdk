@@ -107,7 +107,7 @@ qdisc_del(int nlsk_fd, uint16_t ifindex, struct qdisc *qinfo)
 	msg.t.tcm_parent = qinfo->parent;
 	/* if no netlink socket is provided, create one */
 	if (!nlsk_fd) {
-		fd = nl_init(0);
+		fd = tap_nl_init(0);
 		if (fd < 0) {
 			RTE_LOG(ERR, PMD,
 				"Could not delete QDISC: null netlink socket\n");
@@ -116,16 +116,16 @@ qdisc_del(int nlsk_fd, uint16_t ifindex, struct qdisc *qinfo)
 	} else {
 		fd = nlsk_fd;
 	}
-	if (nl_send(fd, &msg.nh) < 0)
+	if (tap_nl_send(fd, &msg.nh) < 0)
 		goto error;
-	if (nl_recv_ack(fd) < 0)
+	if (tap_nl_recv_ack(fd) < 0)
 		goto error;
 	if (!nlsk_fd)
-		return nl_final(fd);
+		return tap_nl_final(fd);
 	return 0;
 error:
 	if (!nlsk_fd)
-		nl_final(fd);
+		tap_nl_final(fd);
 	return -1;
 }
 
@@ -150,11 +150,11 @@ qdisc_add_multiq(int nlsk_fd, uint16_t ifindex)
 		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
 	msg.t.tcm_handle = TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0);
 	msg.t.tcm_parent = TC_H_ROOT;
-	nlattr_add(&msg.nh, TCA_KIND, sizeof("multiq"), "multiq");
-	nlattr_add(&msg.nh, TCA_OPTIONS, sizeof(opt), &opt);
-	if (nl_send(nlsk_fd, &msg.nh) < 0)
+	tap_nlattr_add(&msg.nh, TCA_KIND, sizeof("multiq"), "multiq");
+	tap_nlattr_add(&msg.nh, TCA_OPTIONS, sizeof(opt), &opt);
+	if (tap_nl_send(nlsk_fd, &msg.nh) < 0)
 		return -1;
-	if (nl_recv_ack(nlsk_fd) < 0)
+	if (tap_nl_recv_ack(nlsk_fd) < 0)
 		return -1;
 	return 0;
 }
@@ -179,10 +179,10 @@ qdisc_add_ingress(int nlsk_fd, uint16_t ifindex)
 		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
 	msg.t.tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	msg.t.tcm_parent = TC_H_INGRESS;
-	nlattr_add(&msg.nh, TCA_KIND, sizeof("ingress"), "ingress");
-	if (nl_send(nlsk_fd, &msg.nh) < 0)
+	tap_nlattr_add(&msg.nh, TCA_KIND, sizeof("ingress"), "ingress");
+	if (tap_nl_send(nlsk_fd, &msg.nh) < 0)
 		return -1;
-	if (nl_recv_ack(nlsk_fd) < 0)
+	if (tap_nl_recv_ack(nlsk_fd) < 0)
 		return -1;
 	return 0;
 }
@@ -246,9 +246,9 @@ qdisc_iterate(int nlsk_fd, uint16_t ifindex,
 	};
 
 	tc_init_msg(&msg, ifindex, RTM_GETQDISC, NLM_F_REQUEST | NLM_F_DUMP);
-	if (nl_send(nlsk_fd, &msg.nh) < 0)
+	if (tap_nl_send(nlsk_fd, &msg.nh) < 0)
 		return -1;
-	if (nl_recv(nlsk_fd, callback, &args) < 0)
+	if (tap_nl_recv(nlsk_fd, callback, &args) < 0)
 		return -1;
 	return 0;
 }

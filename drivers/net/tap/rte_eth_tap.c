@@ -1094,7 +1094,7 @@ tap_dev_intr_handler(void *cb_arg)
 	struct rte_eth_dev *dev = cb_arg;
 	struct pmd_internals *pmd = dev->data->dev_private;
 
-	nl_recv(pmd->intr_handle.fd, tap_nl_msg_handler, dev);
+	tap_nl_recv(pmd->intr_handle.fd, tap_nl_msg_handler, dev);
 }
 
 static int
@@ -1105,20 +1105,20 @@ tap_intr_handle_set(struct rte_eth_dev *dev, int set)
 	/* In any case, disable interrupt if the conf is no longer there. */
 	if (!dev->data->dev_conf.intr_conf.lsc) {
 		if (pmd->intr_handle.fd != -1) {
-			nl_final(pmd->intr_handle.fd);
+			tap_nl_final(pmd->intr_handle.fd);
 			rte_intr_callback_unregister(&pmd->intr_handle,
 				tap_dev_intr_handler, dev);
 		}
 		return 0;
 	}
 	if (set) {
-		pmd->intr_handle.fd = nl_init(RTMGRP_LINK);
+		pmd->intr_handle.fd = tap_nl_init(RTMGRP_LINK);
 		if (unlikely(pmd->intr_handle.fd == -1))
 			return -EBADF;
 		return rte_intr_callback_register(
 			&pmd->intr_handle, tap_dev_intr_handler, dev);
 	}
-	nl_final(pmd->intr_handle.fd);
+	tap_nl_final(pmd->intr_handle.fd);
 	return rte_intr_callback_unregister(&pmd->intr_handle,
 					    tap_dev_intr_handler, dev);
 }
@@ -1299,7 +1299,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	 * - rte_flow actual/implicit lists
 	 * - implicit rules
 	 */
-	pmd->nlsk_fd = nl_init(0);
+	pmd->nlsk_fd = tap_nl_init(0);
 	if (pmd->nlsk_fd == -1) {
 		RTE_LOG(WARNING, PMD, "%s: failed to create netlink socket.\n",
 			pmd->name);
@@ -1550,7 +1550,7 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	if (internals->nlsk_fd) {
 		tap_flow_flush(eth_dev, NULL);
 		tap_flow_implicit_flush(internals, NULL);
-		nl_final(internals->nlsk_fd);
+		tap_nl_final(internals->nlsk_fd);
 	}
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
 		if (internals->rxq[i].fd != -1) {

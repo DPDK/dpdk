@@ -465,16 +465,16 @@ tap_flow_create_eth(const struct rte_flow_item *item, void *data)
 		return 0;
 	msg = &flow->msg;
 	if (!is_zero_ether_addr(&spec->dst)) {
-		nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_DST, ETHER_ADDR_LEN,
+		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_DST, ETHER_ADDR_LEN,
 			   &spec->dst.addr_bytes);
-		nlattr_add(&msg->nh,
+		tap_nlattr_add(&msg->nh,
 			   TCA_FLOWER_KEY_ETH_DST_MASK, ETHER_ADDR_LEN,
 			   &mask->dst.addr_bytes);
 	}
 	if (!is_zero_ether_addr(&mask->src)) {
-		nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_SRC, ETHER_ADDR_LEN,
+		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_SRC, ETHER_ADDR_LEN,
 			   &spec->src.addr_bytes);
-		nlattr_add(&msg->nh,
+		tap_nlattr_add(&msg->nh,
 			   TCA_FLOWER_KEY_ETH_SRC_MASK, ETHER_ADDR_LEN,
 			   &mask->src.addr_bytes);
 	}
@@ -526,9 +526,11 @@ tap_flow_create_vlan(const struct rte_flow_item *item, void *data)
 		uint8_t vid = VLAN_ID(tci);
 
 		if (prio)
-			nlattr_add8(&msg->nh, TCA_FLOWER_KEY_VLAN_PRIO, prio);
+			tap_nlattr_add8(&msg->nh,
+					TCA_FLOWER_KEY_VLAN_PRIO, prio);
 		if (vid)
-			nlattr_add16(&msg->nh, TCA_FLOWER_KEY_VLAN_ID, vid);
+			tap_nlattr_add16(&msg->nh,
+					 TCA_FLOWER_KEY_VLAN_ID, vid);
 	}
 	return 0;
 }
@@ -571,19 +573,19 @@ tap_flow_create_ipv4(const struct rte_flow_item *item, void *data)
 	if (!spec)
 		return 0;
 	if (spec->hdr.dst_addr) {
-		nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_DST,
+		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_DST,
 			     spec->hdr.dst_addr);
-		nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_DST_MASK,
+		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_DST_MASK,
 			     mask->hdr.dst_addr);
 	}
 	if (spec->hdr.src_addr) {
-		nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_SRC,
+		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_SRC,
 			     spec->hdr.src_addr);
-		nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_SRC_MASK,
+		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_SRC_MASK,
 			     mask->hdr.src_addr);
 	}
 	if (spec->hdr.next_proto_id)
-		nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO,
+		tap_nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO,
 			    spec->hdr.next_proto_id);
 	return 0;
 }
@@ -627,19 +629,20 @@ tap_flow_create_ipv6(const struct rte_flow_item *item, void *data)
 	if (!spec)
 		return 0;
 	if (memcmp(spec->hdr.dst_addr, empty_addr, 16)) {
-		nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST,
+		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST,
 			   sizeof(spec->hdr.dst_addr), &spec->hdr.dst_addr);
-		nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST_MASK,
+		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST_MASK,
 			   sizeof(mask->hdr.dst_addr), &mask->hdr.dst_addr);
 	}
 	if (memcmp(spec->hdr.src_addr, empty_addr, 16)) {
-		nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC,
+		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC,
 			   sizeof(spec->hdr.src_addr), &spec->hdr.src_addr);
-		nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC_MASK,
+		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC_MASK,
 			   sizeof(mask->hdr.src_addr), &mask->hdr.src_addr);
 	}
 	if (spec->hdr.proto)
-		nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, spec->hdr.proto);
+		tap_nlattr_add8(&msg->nh,
+				TCA_FLOWER_KEY_IP_PROTO, spec->hdr.proto);
 	return 0;
 }
 
@@ -677,14 +680,14 @@ tap_flow_create_udp(const struct rte_flow_item *item, void *data)
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
-	nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_UDP);
+	tap_nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_UDP);
 	if (!spec)
 		return 0;
 	if (spec->hdr.dst_port & mask->hdr.dst_port)
-		nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_DST,
+		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_DST,
 			     spec->hdr.dst_port);
 	if (spec->hdr.src_port & mask->hdr.src_port)
-		nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_SRC,
+		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_SRC,
 			     spec->hdr.src_port);
 	return 0;
 }
@@ -723,14 +726,14 @@ tap_flow_create_tcp(const struct rte_flow_item *item, void *data)
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
-	nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_TCP);
+	tap_nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_TCP);
 	if (!spec)
 		return 0;
 	if (spec->hdr.dst_port & mask->hdr.dst_port)
-		nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_DST,
+		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_DST,
 			     spec->hdr.dst_port);
 	if (spec->hdr.src_port & mask->hdr.src_port)
-		nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_SRC,
+		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_SRC,
 			     spec->hdr.src_port);
 	return 0;
 }
@@ -835,17 +838,17 @@ add_action_gact(struct rte_flow *flow, int action)
 		.action = action
 	};
 
-	if (nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
+	if (tap_nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
 		return -1;
-	if (nlattr_nested_start(msg, act_index++) < 0)
+	if (tap_nlattr_nested_start(msg, act_index++) < 0)
 		return -1;
-	nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("gact"), "gact");
-	if (nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
+	tap_nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("gact"), "gact");
+	if (tap_nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
 		return -1;
-	nlattr_add(&msg->nh, TCA_GACT_PARMS, sizeof(p), &p);
-	nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
-	nlattr_nested_finish(msg); /* nested act_index */
-	nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
+	tap_nlattr_add(&msg->nh, TCA_GACT_PARMS, sizeof(p), &p);
+	tap_nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
+	tap_nlattr_nested_finish(msg); /* nested act_index */
+	tap_nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
 	return 0;
 }
 
@@ -872,21 +875,21 @@ add_action_mirred(struct rte_flow *flow, uint16_t ifindex, uint16_t action_type)
 		.ifindex = ifindex,
 	};
 
-	if (nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
+	if (tap_nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
 		return -1;
-	if (nlattr_nested_start(msg, act_index++) < 0)
+	if (tap_nlattr_nested_start(msg, act_index++) < 0)
 		return -1;
-	nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("mirred"), "mirred");
-	if (nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
+	tap_nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("mirred"), "mirred");
+	if (tap_nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
 		return -1;
 	if (action_type == TCA_EGRESS_MIRROR)
 		p.action = TC_ACT_PIPE;
 	else /* REDIRECT */
 		p.action = TC_ACT_STOLEN;
-	nlattr_add(&msg->nh, TCA_MIRRED_PARMS, sizeof(p), &p);
-	nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
-	nlattr_nested_finish(msg); /* nested act_index */
-	nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
+	tap_nlattr_add(&msg->nh, TCA_MIRRED_PARMS, sizeof(p), &p);
+	tap_nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
+	tap_nlattr_nested_finish(msg); /* nested act_index */
+	tap_nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
 	return 0;
 }
 
@@ -910,18 +913,18 @@ add_action_skbedit(struct rte_flow *flow, uint16_t queue)
 		.action = TC_ACT_PIPE
 	};
 
-	if (nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
+	if (tap_nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
 		return -1;
-	if (nlattr_nested_start(msg, act_index++) < 0)
+	if (tap_nlattr_nested_start(msg, act_index++) < 0)
 		return -1;
-	nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("skbedit"), "skbedit");
-	if (nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
+	tap_nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("skbedit"), "skbedit");
+	if (tap_nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
 		return -1;
-	nlattr_add(&msg->nh, TCA_SKBEDIT_PARMS, sizeof(p), &p);
-	nlattr_add16(&msg->nh, TCA_SKBEDIT_QUEUE_MAPPING, queue);
-	nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
-	nlattr_nested_finish(msg); /* nested act_index */
-	nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
+	tap_nlattr_add(&msg->nh, TCA_SKBEDIT_PARMS, sizeof(p), &p);
+	tap_nlattr_add16(&msg->nh, TCA_SKBEDIT_QUEUE_MAPPING, queue);
+	tap_nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
+	tap_nlattr_nested_finish(msg); /* nested act_index */
+	tap_nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
 	return 0;
 }
 
@@ -1004,8 +1007,8 @@ priv_flow_process(struct pmd_internals *pmd,
 				TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0);
 		}
 		/* use flower filter type */
-		nlattr_add(&flow->msg.nh, TCA_KIND, sizeof("flower"), "flower");
-		if (nlattr_nested_start(&flow->msg, TCA_OPTIONS) < 0)
+		tap_nlattr_add(&flow->msg.nh, TCA_KIND, sizeof("flower"), "flower");
+		if (tap_nlattr_nested_start(&flow->msg, TCA_OPTIONS) < 0)
 			goto exit_item_not_supported;
 	}
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
@@ -1041,14 +1044,14 @@ priv_flow_process(struct pmd_internals *pmd,
 	}
 	if (flow) {
 		if (data.vlan) {
-			nlattr_add16(&flow->msg.nh, TCA_FLOWER_KEY_ETH_TYPE,
+			tap_nlattr_add16(&flow->msg.nh, TCA_FLOWER_KEY_ETH_TYPE,
 				     htons(ETH_P_8021Q));
-			nlattr_add16(&flow->msg.nh,
+			tap_nlattr_add16(&flow->msg.nh,
 				     TCA_FLOWER_KEY_VLAN_ETH_TYPE,
 				     data.eth_type ?
 				     data.eth_type : htons(ETH_P_ALL));
 		} else if (data.eth_type) {
-			nlattr_add16(&flow->msg.nh, TCA_FLOWER_KEY_ETH_TYPE,
+			tap_nlattr_add16(&flow->msg.nh, TCA_FLOWER_KEY_ETH_TYPE,
 				     data.eth_type);
 		}
 	}
@@ -1120,7 +1123,7 @@ priv_flow_process(struct pmd_internals *pmd,
 	}
 end:
 	if (flow)
-		nlattr_nested_finish(&flow->msg); /* nested TCA_OPTIONS */
+		tap_nlattr_nested_finish(&flow->msg); /* nested TCA_OPTIONS */
 	return 0;
 exit_item_not_supported:
 	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1232,13 +1235,13 @@ tap_flow_create(struct rte_eth_dev *dev,
 	tap_flow_set_handle(flow);
 	if (priv_flow_process(pmd, attr, items, actions, error, flow, 0))
 		goto fail;
-	err = nl_send(pmd->nlsk_fd, &msg->nh);
+	err = tap_nl_send(pmd->nlsk_fd, &msg->nh);
 	if (err < 0) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "couldn't send request to kernel");
 		goto fail;
 	}
-	err = nl_recv_ack(pmd->nlsk_fd);
+	err = tap_nl_recv_ack(pmd->nlsk_fd);
 	if (err < 0) {
 		RTE_LOG(ERR, PMD,
 			"Kernel refused TC filter rule creation (%d): %s\n",
@@ -1276,14 +1279,14 @@ tap_flow_create(struct rte_eth_dev *dev,
 				NULL, "rte flow rule validation failed");
 			goto fail;
 		}
-		err = nl_send(pmd->nlsk_fd, &msg->nh);
+		err = tap_nl_send(pmd->nlsk_fd, &msg->nh);
 		if (err < 0) {
 			rte_flow_error_set(
 				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "Failure sending nl request");
 			goto fail;
 		}
-		err = nl_recv_ack(pmd->nlsk_fd);
+		err = tap_nl_recv_ack(pmd->nlsk_fd);
 		if (err < 0) {
 			RTE_LOG(ERR, PMD,
 				"Kernel refused TC filter rule creation (%d): %s\n",
@@ -1329,13 +1332,13 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 	flow->msg.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	flow->msg.nh.nlmsg_type = RTM_DELTFILTER;
 
-	ret = nl_send(pmd->nlsk_fd, &flow->msg.nh);
+	ret = tap_nl_send(pmd->nlsk_fd, &flow->msg.nh);
 	if (ret < 0) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "couldn't send request to kernel");
 		goto end;
 	}
-	ret = nl_recv_ack(pmd->nlsk_fd);
+	ret = tap_nl_recv_ack(pmd->nlsk_fd);
 	/* If errno is ENOENT, the rule is already no longer in the kernel. */
 	if (ret < 0 && errno == ENOENT)
 		ret = 0;
@@ -1352,14 +1355,14 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 		remote_flow->msg.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 		remote_flow->msg.nh.nlmsg_type = RTM_DELTFILTER;
 
-		ret = nl_send(pmd->nlsk_fd, &remote_flow->msg.nh);
+		ret = tap_nl_send(pmd->nlsk_fd, &remote_flow->msg.nh);
 		if (ret < 0) {
 			rte_flow_error_set(
 				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "Failure sending nl request");
 			goto end;
 		}
-		ret = nl_recv_ack(pmd->nlsk_fd);
+		ret = tap_nl_recv_ack(pmd->nlsk_fd);
 		if (ret < 0 && errno == ENOENT)
 			ret = 0;
 		if (ret < 0) {
@@ -1566,12 +1569,12 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 		RTE_LOG(ERR, PMD, "rte flow rule validation failed\n");
 		goto fail;
 	}
-	err = nl_send(pmd->nlsk_fd, &msg->nh);
+	err = tap_nl_send(pmd->nlsk_fd, &msg->nh);
 	if (err < 0) {
 		RTE_LOG(ERR, PMD, "Failure sending nl request\n");
 		goto fail;
 	}
-	err = nl_recv_ack(pmd->nlsk_fd);
+	err = tap_nl_recv_ack(pmd->nlsk_fd);
 	if (err < 0) {
 		RTE_LOG(ERR, PMD,
 			"Kernel refused TC filter rule creation (%d): %s\n",
