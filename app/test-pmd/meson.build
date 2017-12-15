@@ -45,7 +45,7 @@ endif
 
 executable('dpdk-testpmd',
 	sources,
-	c_args: '-DALLOW_EXPERIMENTAL_API',
+	c_args: [machine_arg, '-DALLOW_EXPERIMENTAL_API'],
 	link_whole: link_libs,
 	dependencies: dep_objs,
 	install_rpath: join_paths(get_option('prefix'), driver_install_path),

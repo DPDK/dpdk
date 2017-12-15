@@ -2,9 +2,13 @@
 # Copyright(c) 2017 Intel Corporation
 
 # set the machine type and cflags for it
-machine = get_option('machine')
+if meson.is_cross_build()
+	machine = host_machine.cpu()
+else
+	machine = get_option('machine')
+endif
 dpdk_conf.set('RTE_MACHINE', machine)
-add_project_arguments('-march=@0@'.format(machine), language: 'c')
+machine_arg = '-march=' + machine
 
 # use pthreads
 add_project_link_arguments('-pthread', language: 'c')

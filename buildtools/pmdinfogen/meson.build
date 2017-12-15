@@ -6,5 +6,4 @@ pmdinfogen_inc += include_directories('../../lib/librte_pci')
 pmdinfogen = executable('pmdinfogen',
 	'pmdinfogen.c',
 	include_directories: pmdinfogen_inc,
-	native: true,
-	c_args: cflags)
+	native: true)

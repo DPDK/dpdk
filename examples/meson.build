@@ -10,7 +10,7 @@ foreach example: get_option('examples').split(',')
 	name = example
 	sources = []
 	allow_experimental_apis = false
-	cflags = []
+	cflags = [machine_arg]
 	ext_deps = []
 	includes = [include_directories(example)]
 	deps = ['eal', 'mempool', 'net', 'mbuf', 'ethdev', 'cmdline']

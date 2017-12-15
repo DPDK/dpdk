@@ -800,7 +800,7 @@ build
 
 
 cflags
-	**Default Value = []**.
+	**Default Value = [<-march/-mcpu flags>]**.
 	Used to specify any additional cflags that need to be passed to compile
 	the sources in the library.
 

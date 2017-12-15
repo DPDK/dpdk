@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-cflags = ['-DRTE_LIBRTE_IXGBE_BYPASS']
+cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 
 subdir('base')
 objs = [base_objs]

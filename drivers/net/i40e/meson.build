@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-cflags = ['-DPF_DRIVER',
+cflags += ['-DPF_DRIVER',
 	'-DVF_DRIVER',
 	'-DINTEGRATED_VF',
 	'-DX722_A0_SUPPORT']
