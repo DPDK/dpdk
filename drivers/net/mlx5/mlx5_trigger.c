@@ -64,8 +64,11 @@ priv_txq_start(struct priv *priv)
 
 		if (!txq_ctrl)
 			continue;
-		LIST_FOREACH(mr, &priv->mr, next)
+		LIST_FOREACH(mr, &priv->mr, next) {
 			priv_txq_mp2mr_reg(priv, &txq_ctrl->txq, mr->mp, idx++);
+			if (idx == MLX5_PMD_TX_MP_CACHE)
+				break;
+		}
 		txq_alloc_elts(txq_ctrl);
 		txq_ctrl->ibv = mlx5_priv_txq_ibv_new(priv, i);
 		if (!txq_ctrl->ibv) {
