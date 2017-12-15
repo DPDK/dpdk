@@ -160,7 +160,7 @@ Configurations before running DPDK
 
       usertools/cpu_layout.py
 
-   Or run ``lscpu`` to check the the cores on each socket.
+   Or run ``lscpu`` to check the cores on each socket.
 
 3. Check your NIC id and related socket id:
 

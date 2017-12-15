@@ -324,7 +324,7 @@ struct i40e_vsi {
 	 * needs to add, HW needs to know the layout that VSIs are organized.
 	 * Besides that, VSI isan element and can't switch packets, which needs
 	 * to add new component VEB to perform switching. So, a new VSI needs
-	 * to specify the the uplink VSI (Parent VSI) before created. The
+	 * to specify the uplink VSI (Parent VSI) before created. The
 	 * uplink VSI will check whether it had a VEB to switch packets. If no,
 	 * it will try to create one. Then, uplink VSI will move the new VSI
 	 * into its' sib_vsi_list to manage all the downlink VSI.

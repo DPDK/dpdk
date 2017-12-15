@@ -279,7 +279,7 @@ cperf_verify_test_runner(void *test_ctx)
 					ops_needed) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Failed to allocate more crypto operations "
-				"from the the crypto operation pool.\n"
+				"from the crypto operation pool.\n"
 				"Consider increasing the pool size "
 				"with --pool-sz\n");
 			return -1;

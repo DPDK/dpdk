@@ -1159,7 +1159,7 @@ fail1:
  * For the Huntington family, the current port mode cannot be discovered,
  * so the mapping used is instead the last match in the table to the full
  * set of port modes to which the NIC can be configured. Therefore the
- * ordering of entries in the the mapping table is significant.
+ * ordering of entries in the mapping table is significant.
  */
 static struct {
 	efx_family_t	family;

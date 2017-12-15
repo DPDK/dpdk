@@ -128,7 +128,7 @@ struct ecore_chain {
 	} pbl_sp;
 
 	/* Address of first page of the chain  - the address is required
-	 * for fastpath operation [consume/produce] but only for the the SINGLE
+	 * for fastpath operation [consume/produce] but only for the SINGLE
 	 * flavour which isn't considered fastpath [== SPQ].
 	 */
 	void				*p_virt_addr;

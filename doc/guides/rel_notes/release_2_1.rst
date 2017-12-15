@@ -531,7 +531,7 @@ Resolved Issues
 
 * **eal/linux: Fix irq handling with igb_uio.**
 
-  Fixed an issue where the the introduction of ``uio_pci_generic`` broke
+  Fixed an issue where the introduction of ``uio_pci_generic`` broke
   interrupt handling with igb_uio.
 
   Fixes: c112df6875a5 ("eal/linux: toggle interrupt for uio_pci_generic")

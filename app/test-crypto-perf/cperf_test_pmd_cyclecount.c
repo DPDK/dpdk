@@ -153,7 +153,7 @@ pmd_cyclecount_bench_ops(struct pmd_cyclecount_state *state, uint32_t cur_op,
 					burst_size) != 0) {
 			RTE_LOG(ERR, USER1,
 					"Failed to allocate more crypto operations "
-					"from the the crypto operation pool.\n"
+					"from the crypto operation pool.\n"
 					"Consider increasing the pool size "
 					"with --pool-sz\n");
 				return -1;
@@ -202,7 +202,7 @@ pmd_cyclecount_build_ops(struct pmd_cyclecount_state *state,
 					burst_size) != 0) {
 			RTE_LOG(ERR, USER1,
 					"Failed to allocate more crypto operations "
-					"from the the crypto operation pool.\n"
+					"from the crypto operation pool.\n"
 					"Consider increasing the pool size "
 					"with --pool-sz\n");
 				return -1;

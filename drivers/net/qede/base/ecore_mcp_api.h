@@ -552,7 +552,7 @@ struct ecore_mcp_link_capabilities
 *ecore_mcp_get_link_capabilities(struct ecore_hwfn *p_hwfn);
 
 /**
- * @brief Request the MFW to set the the link according to 'link_input'.
+ * @brief Request the MFW to set the link according to 'link_input'.
  *
  * @param p_hwfn
  * @param p_ptt

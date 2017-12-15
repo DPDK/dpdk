@@ -33,7 +33,7 @@ struct ecore_eth_pf_params {
 	u32	num_arfs_filters;
 };
 
-/* Most of the the parameters below are described in the FW iSCSI / TCP HSI */
+/* Most of the parameters below are described in the FW iSCSI / TCP HSI */
 struct ecore_iscsi_pf_params {
 	u64		glbl_q_params_addr;
 	u64		bdq_pbl_base_addr[2];

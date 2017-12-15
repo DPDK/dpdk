@@ -82,7 +82,7 @@ void _lthread_key_pool_init(void)
 
 /*
  * Create a key
- * this means getting a key from the the pool
+ * this means getting a key from the pool
  */
 int lthread_key_create(unsigned int *key, tls_destructor_func destructor)
 {

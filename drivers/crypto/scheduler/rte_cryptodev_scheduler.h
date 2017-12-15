@@ -198,7 +198,7 @@ int
 rte_cryptodev_scheduler_ordering_get(uint8_t scheduler_id);
 
 /**
- * Get the the attached slaves' count and/or ID
+ * Get the attached slaves' count and/or ID
  *
  * @param scheduler_id
  *   The target scheduler device ID

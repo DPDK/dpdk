@@ -148,7 +148,7 @@ is configured to run every check_period milliseconds.
         rte_exit(EXIT_FAILURE, "Keepalive setup failure.\n");
 
 The rest of the initialization and run-time path follows
-the same paths as the the L2 forwarding application. The only
+the same paths as the L2 forwarding application. The only
 addition to the main processing loop is the mark alive
 functionality and the example random failures.
 

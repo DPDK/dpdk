@@ -343,7 +343,7 @@ fail:
 
 /**
  * It is to check the governor and then set the original governor back if
- * needed by writing the the sys file.
+ * needed by writing the sys file.
  */
 static int
 power_set_governor_original(struct rte_power_info *pi)

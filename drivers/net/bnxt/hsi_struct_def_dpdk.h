@@ -909,7 +909,7 @@ struct rx_pkt_cmpl {
 	 * This is the length of the data for the packet stored in the
 	 * buffer(s) identified by the opaque value. This includes the
 	 * packet BD and any associated buffer BDs. This does not
-	 * include the the length of any data places in aggregation BDs.
+	 * include the length of any data places in aggregation BDs.
 	 */
 	uint32_t opaque;
 	/*
@@ -3275,7 +3275,7 @@ struct hwrm_func_cfg_input {
 	uint16_t fid;
 	/*
 	 * Function ID of the function that is being configured. If set
-	 * to 0xFF...	(All Fs), then the the configuration is for the
+	 * to 0xFF...	(All Fs), then the configuration is for the
 	 * requesting function.
 	 */
 	uint8_t unused_0;

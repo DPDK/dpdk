@@ -153,7 +153,7 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
 * Don't break compilation between commits with forward dependencies in a patchset.
   Each commit should compile on its own to allow for ``git bisect`` and continuous integration testing.
 
-* Add tests to the the ``app/test`` unit test framework where possible.
+* Add tests to the ``app/test`` unit test framework where possible.
 
 * Add documentation, if relevant, in the form of Doxygen comments or a User Guide in RST format.
   See the :ref:`Documentation Guidelines <doc_guidelines>`.
@@ -363,7 +363,7 @@ Where the range is a ``git log`` option.
 Checking Compilation
 --------------------
 
-Compilation of patches and changes should be tested using the the ``test-build.sh`` script in the ``devtools``
+Compilation of patches and changes should be tested using the ``test-build.sh`` script in the ``devtools``
 directory of the DPDK repo::
 
   devtools/test-build.sh x86_64-native-linuxapp-gcc+next+shared
