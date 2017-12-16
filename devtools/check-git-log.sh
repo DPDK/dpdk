@@ -124,6 +124,7 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<crc\>' \
 	-e ':.*\<dma\>' \
 	-e ':.*\<freebsd\>' \
+	-e ':.*\<iova\>' \
 	-e ':.*\<linux\>' \
 	-e ':.*\<lro\>' \
 	-e ':.*\<lsc\>' \
@@ -135,6 +136,7 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<pci\>' \
 	-e ':.*\<pmd\>' \
 	-e ':.*\<rss\>' \
+	-e ':.*\<sctp\>' \
 	-e ':.*\<tso\>' \
 	-e ':.*\<[Vv]lan\>' \
 	-e ':.*\<vsi\>' \
