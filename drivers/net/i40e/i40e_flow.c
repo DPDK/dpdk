@@ -4378,6 +4378,7 @@ i40e_flow_flush_fdir_filter(struct i40e_pf *pf)
 	struct rte_eth_dev *dev = pf->adapter->eth_dev;
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
 	struct i40e_fdir_filter *fdir_filter;
+	enum i40e_filter_pctype pctype;
 	struct rte_flow *flow;
 	void *temp;
 	int ret;
@@ -4399,6 +4400,10 @@ i40e_flow_flush_fdir_filter(struct i40e_pf *pf)
 				rte_free(flow);
 			}
 		}
+
+		for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
+		     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++)
+			pf->fdir.inset_flag[pctype] = 0;
 	}
 
 	return ret;
