@@ -113,7 +113,7 @@ F: test/test/test_tailq.c
 F: test/test/test_version.c
 
 Memory Allocation
-M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
+M: Anatoly Burakov <anatoly.burakov@intel.com>
 F: lib/librte_eal/common/include/rte_mem*
 F: lib/librte_eal/common/include/rte_malloc.h
 F: lib/librte_eal/common/*malloc*
@@ -133,7 +133,7 @@ F: examples/l2fwd-keepalive/
 F: doc/guides/sample_app_ug/keep_alive.rst
 
 Secondary process
-M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
+M: Anatoly Burakov <anatoly.burakov@intel.com>
 K: RTE_PROC_
 F: doc/guides/prog_guide/multi_proc_support.rst
 F: test/test/test_mp_secondary.c
@@ -203,19 +203,16 @@ F: drivers/bus/pci/linux/*vfio*
 
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>
-M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 F: lib/librte_eal/bsdapp/Makefile
 F: lib/librte_eal/bsdapp/eal/
 F: doc/guides/freebsd_gsg/
 
 FreeBSD contigmem
 M: Bruce Richardson <bruce.richardson@intel.com>
-M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 F: lib/librte_eal/bsdapp/contigmem/
 
 FreeBSD UIO
 M: Bruce Richardson <bruce.richardson@intel.com>
-M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 F: lib/librte_eal/bsdapp/nic_uio/
 
 
@@ -966,7 +963,6 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/helloworld/
 F: doc/guides/sample_app_ug/hello_world.rst
 
-M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 M: Radu Nicolau <radu.nicolau@intel.com>
 F: examples/ipsec-secgw/
 F: doc/guides/sample_app_ug/ipsec_secgw.rst
