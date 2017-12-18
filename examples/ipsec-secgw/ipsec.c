@@ -176,6 +176,8 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 
 			sa->attr.egress = (sa->direction ==
 					RTE_SECURITY_IPSEC_SA_DIR_EGRESS);
+			sa->attr.ingress = (sa->direction ==
+					RTE_SECURITY_IPSEC_SA_DIR_INGRESS);
 			sa->flow = rte_flow_create(sa->portid,
 				&sa->attr, sa->pattern, sa->action, &err);
 			if (sa->flow == NULL) {
