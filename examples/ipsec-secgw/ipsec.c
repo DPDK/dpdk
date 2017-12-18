@@ -226,6 +226,13 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 							&err);
 				if (ret)
 					goto flow_create_failure;
+			} else if (sa->attr.egress &&
+				   (sa->ol_flags &
+				    RTE_SECURITY_TX_HW_TRAILER_OFFLOAD)) {
+				sa->action[1].type =
+					RTE_FLOW_ACTION_TYPE_PASSTHRU;
+				sa->action[2].type =
+					RTE_FLOW_ACTION_TYPE_END;
 			}
 flow_create:
 			sa->flow = rte_flow_create(sa->portid,
