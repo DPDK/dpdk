@@ -1960,8 +1960,8 @@ static inline int qman_poll_fq_for_init(struct qman_fq *fq)
 }
 
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define cpu_to_hw_sg(x) (x)
-#define hw_sg_to_cpu(x) (x)
+#define cpu_to_hw_sg(x)
+#define hw_sg_to_cpu(x)
 #else
 #define cpu_to_hw_sg(x)  __cpu_to_hw_sg(x)
 #define hw_sg_to_cpu(x)  __hw_sg_to_cpu(x)
