@@ -113,6 +113,7 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 							rte_eth_dev_get_sec_ctx(
 							sa->portid);
 			const struct rte_security_capability *sec_cap;
+			int ret = 0;
 
 			sa->sec_session = rte_security_session_create(ctx,
 					&sess_conf, ipsec_ctx->session_pool);
@@ -178,9 +179,59 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 					RTE_SECURITY_IPSEC_SA_DIR_EGRESS);
 			sa->attr.ingress = (sa->direction ==
 					RTE_SECURITY_IPSEC_SA_DIR_INGRESS);
+			if (sa->attr.ingress) {
+				uint8_t rss_key[40];
+				struct rte_eth_rss_conf rss_conf = {
+					.rss_key = rss_key,
+					.rss_key_len = 40,
+				};
+				struct rte_eth_dev *eth_dev;
+				union {
+					struct rte_flow_action_rss rss;
+					struct {
+					const struct rte_eth_rss_conf *rss_conf;
+					uint16_t num;
+					uint16_t queue[RTE_MAX_QUEUES_PER_PORT];
+					} local;
+				} action_rss;
+				unsigned int i;
+				unsigned int j;
+
+				sa->action[2].type = RTE_FLOW_ACTION_TYPE_END;
+				/* Try RSS. */
+				sa->action[1].type = RTE_FLOW_ACTION_TYPE_RSS;
+				sa->action[1].conf = &action_rss;
+				eth_dev = ctx->device;
+				rte_eth_dev_rss_hash_conf_get(sa->portid,
+							      &rss_conf);
+				for (i = 0, j = 0;
+				     i < eth_dev->data->nb_rx_queues; ++i)
+					if (eth_dev->data->rx_queues[i])
+						action_rss.local.queue[j++] = i;
+				action_rss.local.num = j;
+				action_rss.local.rss_conf = &rss_conf;
+				ret = rte_flow_validate(sa->portid, &sa->attr,
+							sa->pattern, sa->action,
+							&err);
+				if (!ret)
+					goto flow_create;
+				/* Try Queue. */
+				sa->action[1].type = RTE_FLOW_ACTION_TYPE_QUEUE;
+				sa->action[1].conf =
+					&(struct rte_flow_action_queue){
+					.index = 0,
+				};
+				ret = rte_flow_validate(sa->portid, &sa->attr,
+							sa->pattern, sa->action,
+							&err);
+				if (ret)
+					goto flow_create_failure;
+			}
+flow_create:
 			sa->flow = rte_flow_create(sa->portid,
 				&sa->attr, sa->pattern, sa->action, &err);
 			if (sa->flow == NULL) {
+flow_create_failure:
 				RTE_LOG(ERR, IPSEC,
 					"Failed to create ipsec flow msg: %s\n",
 					err.message);

@@ -104,7 +104,7 @@ struct ipsec_sa {
 	uint32_t ol_flags;
 
 #define MAX_RTE_FLOW_PATTERN (4)
-#define MAX_RTE_FLOW_ACTIONS (2)
+#define MAX_RTE_FLOW_ACTIONS (3)
 	struct rte_flow_item pattern[MAX_RTE_FLOW_PATTERN];
 	struct rte_flow_action action[MAX_RTE_FLOW_ACTIONS];
 	struct rte_flow_attr attr;
