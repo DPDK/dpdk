@@ -122,6 +122,22 @@ typedef int (*security_set_pkt_metadata_t)(void *device,
 		void *params);
 
 /**
+ * Get application specific userdata associated with the security session which
+ * processed the packet. This would be retrieved using the metadata obtained
+ * from packet.
+ *
+ * @param	device		Crypto/eth device pointer
+ * @param	md		Metadata
+ * @param	userdata	Pointer to receive userdata
+ *
+ * @return
+ *  - Returns 0 if userdata is retrieved successfully.
+ *  - Returns -ve value for errors.
+ */
+typedef int (*security_get_userdata_t)(void *device,
+		uint64_t md, void **userdata);
+
+/**
  * Get security capabilities of the device.
  *
  * @param	device		crypto/eth device pointer
@@ -145,6 +161,8 @@ struct rte_security_ops {
 	/**< Clear a security sessions private data. */
 	security_set_pkt_metadata_t set_pkt_metadata;
 	/**< Update mbuf metadata. */
+	security_get_userdata_t get_userdata;
+	/**< Get userdata associated with session which processed the packet. */
 	security_capabilities_get_t capabilities_get;
 	/**< Get security capabilities. */
 };

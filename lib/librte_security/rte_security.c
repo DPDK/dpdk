@@ -108,6 +108,18 @@ rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 					       sess, m, params);
 }
 
+void *
+rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md)
+{
+	void *userdata = NULL;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*instance->ops->get_userdata, NULL);
+	if (instance->ops->get_userdata(instance->device, md, &userdata))
+		return NULL;
+
+	return userdata;
+}
+
 const struct rte_security_capability *
 rte_security_capabilities_get(struct rte_security_ctx *instance)
 {

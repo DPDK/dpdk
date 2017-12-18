@@ -275,6 +275,8 @@ struct rte_security_session_conf {
 	/**< Configuration parameters for security session */
 	struct rte_crypto_sym_xform *crypto_xform;
 	/**< Security Session Crypto Transformations */
+	void *userdata;
+	/**< Application specific userdata to be saved with session */
 };
 
 struct rte_security_session {
@@ -345,6 +347,24 @@ int
 rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 			      struct rte_security_session *sess,
 			      struct rte_mbuf *mb, void *params);
+
+/**
+ * Get userdata associated with the security session which processed the
+ * packet. This userdata would be registered while creating the session, and
+ * application can use this to identify the SA etc. Device-specific metadata
+ * in the mbuf would be used for this.
+ *
+ * This is valid only for inline processed ingress packets.
+ *
+ * @param   instance	security instance
+ * @param   md		device-specific metadata set in mbuf
+ *
+ * @return
+ *  - On success, userdata
+ *  - On failure, NULL
+ */
+void *
+rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md);
 
 /**
  * Attach a session to a symmetric crypto operation

@@ -123,7 +123,9 @@ packet. e.g. in the case of IPSec, the IPSec tunnel headers (if any),
 ESP/AH headers will be removed from the packet and the received packet
 will contains the decrypted packet only. The driver Rx path checks the
 descriptors and based on the crypto status sets additional flags in
-``rte_mbuf.ol_flags`` field.
+``rte_mbuf.ol_flags`` field. The driver would also set device-specific
+metadata in ``rte_mbuf.udata64`` field. This will allow the application
+to identify the security processing done on the packet.
 
 .. note::
 
@@ -396,6 +398,22 @@ For Inline Crypto and Inline protocol offload, device specific defined metadata 
 updated in the mbuf using ``rte_security_set_pkt_metadata()`` if
 ``DEV_TX_OFFLOAD_SEC_NEED_MDATA`` is set.
 
+For inline protocol offloaded ingress traffic, the application can register a
+pointer, ``userdata`` , in the security session. When the packet is received,
+``rte_security_get_userdata()`` would return the userdata registered for the
+security session which processed the packet.
+
+.. note::
+
+    In case of inline processed packets, ``rte_mbuf.udata64`` field would be
+    used by the driver to relay information on the security processing
+    associated with the packet. In ingress, the driver would set this in Rx
+    path while in egress, ``rte_security_set_pkt_metadata()`` would perform a
+    similar operation. The application is expected not to modify the field
+    when it has relevant info. For ingress, this device-specific 64 bit value
+    is required to derive other information (like userdata), required for
+    identifying the security processing done on the packet.
+
 Security session configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -415,6 +433,8 @@ Security Session configuration structure is defined as ``rte_security_session_co
         /**< Configuration parameters for security session */
         struct rte_crypto_sym_xform *crypto_xform;
         /**< Security Session Crypto Transformations */
+        void *userdata;
+        /**< Application specific userdata to be saved with session */
     };
 
 The configuration structure reuses the ``rte_crypto_sym_xform`` struct for crypto related

@@ -4,6 +4,7 @@ EXPERIMENTAL {
 	rte_security_attach_session;
 	rte_security_capabilities_get;
 	rte_security_capability_get;
+	rte_security_get_userdata;
 	rte_security_session_create;
 	rte_security_session_destroy;
 	rte_security_session_stats_get;
