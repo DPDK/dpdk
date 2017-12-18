@@ -17,6 +17,27 @@
 #include "ipsec.h"
 #include "esp.h"
 
+static inline void
+set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
+{
+	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
+		struct rte_security_ipsec_tunnel_param *tunnel =
+				&ipsec->tunnel;
+		if (sa->flags == IP4_TUNNEL) {
+			tunnel->type =
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4;
+			tunnel->ipv4.ttl = IPDEFTTL;
+
+			memcpy((uint8_t *)&tunnel->ipv4.src_ip,
+				(uint8_t *)&sa->src.ip.ip4, 4);
+
+			memcpy((uint8_t *)&tunnel->ipv4.dst_ip,
+				(uint8_t *)&sa->dst.ip.ip4, 4);
+		}
+		/* TODO support for Transport and IPV6 tunnel */
+	}
+}
+
 static inline int
 create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 {
@@ -66,7 +87,8 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 					RTE_SECURITY_IPSEC_SA_MODE_TUNNEL :
 					RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
 			} },
-			.crypto_xform = sa->xforms
+			.crypto_xform = sa->xforms,
+			.userdata = NULL,
 
 		};
 
@@ -75,23 +97,8 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 							rte_cryptodev_get_sec_ctx(
 							ipsec_ctx->tbl[cdev_id_qp].id);
 
-			if (sess_conf.ipsec.mode ==
-					RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
-				struct rte_security_ipsec_tunnel_param *tunnel =
-						&sess_conf.ipsec.tunnel;
-				if (sa->flags == IP4_TUNNEL) {
-					tunnel->type =
-						RTE_SECURITY_IPSEC_TUNNEL_IPV4;
-					tunnel->ipv4.ttl = IPDEFTTL;
-
-					memcpy((uint8_t *)&tunnel->ipv4.src_ip,
-						(uint8_t *)&sa->src.ip.ip4, 4);
-
-					memcpy((uint8_t *)&tunnel->ipv4.dst_ip,
-						(uint8_t *)&sa->dst.ip.ip4, 4);
-				}
-				/* TODO support for Transport and IPV6 tunnel */
-			}
+			/* Set IPsec parameters in conf */
+			set_ipsec_conf(sa, &(sess_conf.ipsec));
 
 			sa->sec_session = rte_security_session_create(ctx,
 					&sess_conf, ipsec_ctx->session_pool);
@@ -177,6 +184,70 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 					err.message);
 				return -1;
 			}
+		} else if (sa->type ==
+				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
+			struct rte_security_ctx *ctx =
+					(struct rte_security_ctx *)
+					rte_eth_dev_get_sec_ctx(sa->portid);
+			const struct rte_security_capability *sec_cap;
+
+			if (ctx == NULL) {
+				RTE_LOG(ERR, IPSEC,
+				"Ethernet device doesn't have security features registered\n");
+				return -1;
+			}
+
+			/* Set IPsec parameters in conf */
+			set_ipsec_conf(sa, &(sess_conf.ipsec));
+
+			/* Save SA as userdata for the security session. When
+			 * the packet is received, this userdata will be
+			 * retrieved using the metadata from the packet.
+			 *
+			 * This is required only for inbound SAs.
+			 */
+
+			if (sa->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+				sess_conf.userdata = (void *) sa;
+
+			sa->sec_session = rte_security_session_create(ctx,
+					&sess_conf, ipsec_ctx->session_pool);
+			if (sa->sec_session == NULL) {
+				RTE_LOG(ERR, IPSEC,
+				"SEC Session init failed: err: %d\n", ret);
+				return -1;
+			}
+
+			sec_cap = rte_security_capabilities_get(ctx);
+
+			if (sec_cap == NULL) {
+				RTE_LOG(ERR, IPSEC,
+				"No capabilities registered\n");
+				return -1;
+			}
+
+			/* iterate until ESP tunnel*/
+			while (sec_cap->action !=
+					RTE_SECURITY_ACTION_TYPE_NONE) {
+
+				if (sec_cap->action == sa->type &&
+				    sec_cap->protocol ==
+					RTE_SECURITY_PROTOCOL_IPSEC &&
+				    sec_cap->ipsec.mode ==
+					RTE_SECURITY_IPSEC_SA_MODE_TUNNEL &&
+				    sec_cap->ipsec.direction == sa->direction)
+					break;
+				sec_cap++;
+			}
+
+			if (sec_cap->action == RTE_SECURITY_ACTION_TYPE_NONE) {
+				RTE_LOG(ERR, IPSEC,
+				"No suitable security capability found\n");
+				return -1;
+			}
+
+			sa->ol_flags = sec_cap->ol_flags;
+			sa->security_ctx = ctx;
 		}
 	} else {
 		sa->crypto_session = rte_cryptodev_sym_session_create(
@@ -294,7 +365,19 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 			}
 			break;
 		case RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL:
-			break;
+			if ((unlikely(sa->sec_session == NULL)) &&
+					create_session(ipsec_ctx, sa)) {
+				rte_pktmbuf_free(pkts[i]);
+				continue;
+			}
+
+			cqp = &ipsec_ctx->tbl[sa->cdev_id_qp];
+			cqp->ol_pkts[cqp->ol_pkts_cnt++] = pkts[i];
+			if (sa->ol_flags & RTE_SECURITY_TX_OLOAD_NEED_MDATA)
+				rte_security_set_pkt_metadata(
+						sa->security_ctx,
+						sa->sec_session, pkts[i], NULL);
+			continue;
 		case RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO:
 			priv->cop.type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 			priv->cop.status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
