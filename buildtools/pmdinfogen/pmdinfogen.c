@@ -158,7 +158,8 @@ static int parse_elf(struct elf_info *info, const char *filename)
 		 * There are more than 64k sections,
 		 * read count from .sh_size.
 		 */
-		info->num_sections = TO_NATIVE(endian, 32, sechdrs[0].sh_size);
+		info->num_sections =
+			TO_NATIVE(endian, ADDR_SIZE, sechdrs[0].sh_size);
 	} else {
 		info->num_sections = hdr->e_shnum;
 	}
@@ -181,7 +182,7 @@ static int parse_elf(struct elf_info *info, const char *filename)
 		sechdrs[i].sh_offset    =
 			TO_NATIVE(endian, ADDR_SIZE, sechdrs[i].sh_offset);
 		sechdrs[i].sh_size      =
-			TO_NATIVE(endian, 32, sechdrs[i].sh_size);
+			TO_NATIVE(endian, ADDR_SIZE, sechdrs[i].sh_size);
 		sechdrs[i].sh_link      =
 			TO_NATIVE(endian, 32, sechdrs[i].sh_link);
 		sechdrs[i].sh_info      =
