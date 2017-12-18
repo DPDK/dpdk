@@ -883,7 +883,7 @@ add_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth,
 		 */
 
 		struct rte_lpm_tbl_entry_v20 new_tbl24_entry = {
-			{ .group_idx = (uint8_t)tbl8_group_index, },
+			.group_idx = (uint8_t)tbl8_group_index,
 			.valid = VALID,
 			.valid_group = 1,
 			.depth = 0,
@@ -929,7 +929,7 @@ add_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth,
 		 */
 
 		struct rte_lpm_tbl_entry_v20 new_tbl24_entry = {
-				{ .group_idx = (uint8_t)tbl8_group_index, },
+				.group_idx = (uint8_t)tbl8_group_index,
 				.valid = VALID,
 				.valid_group = 1,
 				.depth = 0,
@@ -1336,7 +1336,7 @@ delete_depth_small_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked,
 		 */
 
 		struct rte_lpm_tbl_entry_v20 new_tbl24_entry = {
-			{.next_hop = lpm->rules_tbl[sub_rule_index].next_hop,},
+			.next_hop = lpm->rules_tbl[sub_rule_index].next_hop,
 			.valid = VALID,
 			.valid_group = 0,
 			.depth = sub_rule_depth,
@@ -1639,7 +1639,7 @@ delete_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked,
 	} else if (tbl8_recycle_index > -1) {
 		/* Update tbl24 entry. */
 		struct rte_lpm_tbl_entry_v20 new_tbl24_entry = {
-			{ .next_hop = lpm->tbl8[tbl8_recycle_index].next_hop, },
+			.next_hop = lpm->tbl8[tbl8_recycle_index].next_hop,
 			.valid = VALID,
 			.valid_group = 0,
 			.depth = lpm->tbl8[tbl8_recycle_index].depth,
