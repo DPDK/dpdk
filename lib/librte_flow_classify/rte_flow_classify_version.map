@@ -7,6 +7,7 @@ EXPERIMENTAL {
 	rte_flow_classify_table_create;
 	rte_flow_classify_table_entry_add;
 	rte_flow_classify_table_entry_delete;
+	rte_flow_classify_validate;
 
 	local: *;
 };

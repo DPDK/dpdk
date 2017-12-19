@@ -65,7 +65,6 @@ static const struct rte_eth_conf port_conf_default = {
 
 struct flow_classifier {
 	struct rte_flow_classifier *cls;
-	uint32_t table_id[RTE_FLOW_CLASSIFY_TABLE_MAX];
 };
 
 struct flow_classifier_acl {
@@ -166,7 +165,15 @@ static struct rte_flow_item  end_item = { RTE_FLOW_ITEM_TYPE_END,
 /* sample actions:
  * "actions count / end"
  */
-static struct rte_flow_action count_action = { RTE_FLOW_ACTION_TYPE_COUNT, 0};
+struct rte_flow_query_count count = {
+	.reset = 1,
+	.hits_set = 1,
+	.bytes_set = 1,
+	.hits = 0,
+	.bytes = 0,
+};
+static struct rte_flow_action count_action = { RTE_FLOW_ACTION_TYPE_COUNT,
+	&count};
 static struct rte_flow_action end_action = { RTE_FLOW_ACTION_TYPE_END, 0};
 static struct rte_flow_action actions[2];
 
@@ -245,7 +252,7 @@ lcore_main(struct flow_classifier *cls_app)
 	int i = 0;
 
 	ret = rte_flow_classify_table_entry_delete(cls_app->cls,
-			cls_app->table_id[0], rules[7]);
+			rules[7]);
 	if (ret)
 		printf("table_entry_delete failed [7] %d\n\n", ret);
 	else
@@ -263,11 +270,10 @@ lcore_main(struct flow_classifier *cls_app)
 			       port);
 			printf("to polling thread.\n");
 			printf("Performance will not be optimal.\n");
-
-			printf("\nCore %u forwarding packets. ",
-			       rte_lcore_id());
-			printf("[Ctrl+C to quit]\n");
 		}
+	printf("\nCore %u forwarding packets. ", rte_lcore_id());
+	printf("[Ctrl+C to quit]\n");
+
 	/* Run until the application is quit or killed. */
 	for (;;) {
 		/*
@@ -288,7 +294,6 @@ lcore_main(struct flow_classifier *cls_app)
 				if (rules[i]) {
 					ret = rte_flow_classifier_query(
 						cls_app->cls,
-						cls_app->table_id[0],
 						bufs, nb_rx, rules[i],
 						&classify_stats);
 					if (ret)
@@ -605,9 +610,18 @@ add_classify_rule(struct rte_eth_ntuple_filter *ntuple_filter,
 	actions[0] = count_action;
 	actions[1] = end_action;
 
+	/* Validate and add rule */
+	ret = rte_flow_classify_validate(cls_app->cls, &attr,
+			pattern_ipv4_5tuple, actions, &error);
+	if (ret) {
+		printf("table entry validate failed ipv4_proto = %u\n",
+			ipv4_proto);
+		return ret;
+	}
+
 	rule = rte_flow_classify_table_entry_add(
-			cls_app->cls, cls_app->table_id[0], &key_found,
-			&attr, pattern_ipv4_5tuple, actions, &error);
+			cls_app->cls, &attr, pattern_ipv4_5tuple,
+			actions, &key_found, &error);
 	if (rule == NULL) {
 		printf("table entry add failed ipv4_proto = %u\n",
 			ipv4_proto);
@@ -780,7 +794,6 @@ main(int argc, char *argv[])
 
 	cls_params.name = "flow_classifier";
 	cls_params.socket_id = socket_id;
-	cls_params.type = RTE_FLOW_CLASSIFY_TABLE_TYPE_ACL;
 
 	cls_app->cls = rte_flow_classifier_create(&cls_params);
 	if (cls_app->cls == NULL) {
@@ -795,11 +808,11 @@ main(int argc, char *argv[])
 	memcpy(table_acl_params.field_format, ipv4_defs, sizeof(ipv4_defs));
 
 	/* initialise table create params */
-	cls_table_params.ops = &rte_table_acl_ops,
-	cls_table_params.arg_create = &table_acl_params,
+	cls_table_params.ops = &rte_table_acl_ops;
+	cls_table_params.arg_create = &table_acl_params;
+	cls_table_params.type = RTE_FLOW_CLASSIFY_TABLE_ACL_IP4_5TUPLE;
 
-	ret = rte_flow_classify_table_create(cls_app->cls, &cls_table_params,
-			&cls_app->table_id[0]);
+	ret = rte_flow_classify_table_create(cls_app->cls, &cls_table_params);
 	if (ret) {
 		rte_flow_classifier_free(cls_app->cls);
 		rte_free(cls_app);

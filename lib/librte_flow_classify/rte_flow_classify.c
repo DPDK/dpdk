@@ -10,16 +10,20 @@
 
 int librte_flow_classify_logtype;
 
-static struct rte_eth_ntuple_filter ntuple_filter;
 static uint32_t unique_id = 1;
 
+enum rte_flow_classify_table_type table_type
+	= RTE_FLOW_CLASSIFY_TABLE_TYPE_NONE;
 
 struct rte_flow_classify_table_entry {
 	/* meta-data for classify rule */
 	uint32_t rule_id;
+
+	/* Flow action */
+	struct classify_action action;
 };
 
-struct rte_table {
+struct rte_cls_table {
 	/* Input parameters */
 	struct rte_table_ops ops;
 	uint32_t entry_size;
@@ -35,11 +39,16 @@ struct rte_flow_classifier {
 	/* Input parameters */
 	char name[RTE_FLOW_CLASSIFIER_MAX_NAME_SZ];
 	int socket_id;
-	enum rte_flow_classify_table_type type;
 
-	/* Internal tables */
-	struct rte_table tables[RTE_FLOW_CLASSIFY_TABLE_MAX];
+	/* Internal */
+	/* ntuple_filter */
+	struct rte_eth_ntuple_filter ntuple_filter;
+
+	/* classifier tables */
+	struct rte_cls_table tables[RTE_FLOW_CLASSIFY_TABLE_MAX];
+	uint32_t table_mask;
 	uint32_t num_tables;
+
 	uint16_t nb_pkts;
 	struct rte_flow_classify_table_entry
 		*entries[RTE_PORT_IN_BURST_SIZE_MAX];
@@ -68,18 +77,19 @@ struct classify_rules {
 
 struct rte_flow_classify_rule {
 	uint32_t id; /* unique ID of classify rule */
-	struct rte_flow_action action; /* action when match found */
+	enum rte_flow_classify_table_type tbl_type; /* rule table */
 	struct classify_rules rules; /* union of rules */
 	union {
 		struct acl_keys key;
 	} u;
 	int key_found;   /* rule key found in table */
-	void *entry;     /* pointer to buffer to hold rule meta data */
+	struct rte_flow_classify_table_entry entry;  /* rule meta data */
 	void *entry_ptr; /* handle to the table entry for rule meta data */
 };
 
-static int
-flow_classify_parse_flow(
+int
+rte_flow_classify_validate(
+		   struct rte_flow_classifier *cls,
 		   const struct rte_flow_attr *attr,
 		   const struct rte_flow_item pattern[],
 		   const struct rte_flow_action actions[],
@@ -91,7 +101,38 @@ flow_classify_parse_flow(
 	uint32_t i = 0;
 	int ret;
 
-	memset(&ntuple_filter, 0, sizeof(ntuple_filter));
+	if (error == NULL)
+		return -EINVAL;
+
+	if (cls == NULL) {
+		RTE_FLOW_CLASSIFY_LOG(ERR,
+			"%s: rte_flow_classifier parameter is NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (!attr) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, "NULL attribute.");
+		return -EINVAL;
+	}
+
+	if (!pattern) {
+		rte_flow_error_set(error,
+			EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
+			NULL, "NULL pattern.");
+		return -EINVAL;
+	}
+
+	if (!actions) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				   NULL, "NULL action.");
+		return -EINVAL;
+	}
+
+	memset(&cls->ntuple_filter, 0, sizeof(cls->ntuple_filter));
 
 	/* Get the non-void item number of pattern */
 	while ((pattern + i)->type != RTE_FLOW_ITEM_TYPE_END) {
@@ -121,7 +162,7 @@ flow_classify_parse_flow(
 		return -EINVAL;
 	}
 
-	ret = parse_filter(attr, items, actions, &ntuple_filter, error);
+	ret = parse_filter(attr, items, actions, &cls->ntuple_filter, error);
 	free(items);
 	return ret;
 }
@@ -246,17 +287,14 @@ rte_flow_classifier_create(struct rte_flow_classifier_params *params)
 	/* Save input parameters */
 	snprintf(cls->name, RTE_FLOW_CLASSIFIER_MAX_NAME_SZ, "%s",
 			params->name);
-	cls->socket_id = params->socket_id;
-	cls->type = params->type;
 
-	/* Initialize flow classifier internal data structure */
-	cls->num_tables = 0;
+	cls->socket_id = params->socket_id;
 
 	return cls;
 }
 
 static void
-rte_flow_classify_table_free(struct rte_table *table)
+rte_flow_classify_table_free(struct rte_cls_table *table)
 {
 	if (table->ops.f_free != NULL)
 		table->ops.f_free(table->h_table);
@@ -277,7 +315,7 @@ rte_flow_classifier_free(struct rte_flow_classifier *cls)
 
 	/* Free tables */
 	for (i = 0; i < cls->num_tables; i++) {
-		struct rte_table *table = &cls->tables[i];
+		struct rte_cls_table *table = &cls->tables[i];
 
 		rte_flow_classify_table_free(table);
 	}
@@ -290,8 +328,7 @@ rte_flow_classifier_free(struct rte_flow_classifier *cls)
 
 static int
 rte_table_check_params(struct rte_flow_classifier *cls,
-		struct rte_flow_classify_table_params *params,
-		uint32_t *table_id)
+		struct rte_flow_classify_table_params *params)
 {
 	if (cls == NULL) {
 		RTE_FLOW_CLASSIFY_LOG(ERR,
@@ -301,11 +338,6 @@ rte_table_check_params(struct rte_flow_classifier *cls,
 	}
 	if (params == NULL) {
 		RTE_FLOW_CLASSIFY_LOG(ERR, "%s: params parameter is NULL\n",
-			__func__);
-		return -EINVAL;
-	}
-	if (table_id == NULL) {
-		RTE_FLOW_CLASSIFY_LOG(ERR, "%s: table_id parameter is NULL\n",
 			__func__);
 		return -EINVAL;
 	}
@@ -342,21 +374,17 @@ rte_table_check_params(struct rte_flow_classifier *cls,
 
 int
 rte_flow_classify_table_create(struct rte_flow_classifier *cls,
-	struct rte_flow_classify_table_params *params,
-	uint32_t *table_id)
+	struct rte_flow_classify_table_params *params)
 {
-	struct rte_table *table;
+	struct rte_cls_table *table;
 	void *h_table;
-	uint32_t entry_size, id;
+	uint32_t entry_size;
 	int ret;
 
 	/* Check input arguments */
-	ret = rte_table_check_params(cls, params, table_id);
+	ret = rte_table_check_params(cls, params);
 	if (ret != 0)
 		return ret;
-
-	id = cls->num_tables;
-	table = &cls->tables[id];
 
 	/* calculate table entry size */
 	entry_size = sizeof(struct rte_flow_classify_table_entry);
@@ -371,8 +399,9 @@ rte_flow_classify_table_create(struct rte_flow_classifier *cls,
 	}
 
 	/* Commit current table to the classifier */
+	table = &cls->tables[cls->num_tables];
+	table->type = params->type;
 	cls->num_tables++;
-	*table_id = id;
 
 	/* Save input parameters */
 	memcpy(&table->ops, params->ops, sizeof(struct rte_table_ops));
@@ -385,7 +414,7 @@ rte_flow_classify_table_create(struct rte_flow_classifier *cls,
 }
 
 static struct rte_flow_classify_rule *
-allocate_acl_ipv4_5tuple_rule(void)
+allocate_acl_ipv4_5tuple_rule(struct rte_flow_classifier *cls)
 {
 	struct rte_flow_classify_rule *rule;
 	int log_level;
@@ -398,45 +427,44 @@ allocate_acl_ipv4_5tuple_rule(void)
 	rule->id = unique_id++;
 	rule->rules.type = RTE_FLOW_CLASSIFY_RULE_TYPE_IPV4_5TUPLE;
 
-	memcpy(&rule->action, classify_get_flow_action(),
-	       sizeof(struct rte_flow_action));
-
 	/* key add values */
-	rule->u.key.key_add.priority = ntuple_filter.priority;
+	rule->u.key.key_add.priority = cls->ntuple_filter.priority;
 	rule->u.key.key_add.field_value[PROTO_FIELD_IPV4].mask_range.u8 =
-			ntuple_filter.proto_mask;
+			cls->ntuple_filter.proto_mask;
 	rule->u.key.key_add.field_value[PROTO_FIELD_IPV4].value.u8 =
-			ntuple_filter.proto;
-	rule->rules.u.ipv4_5tuple.proto = ntuple_filter.proto;
-	rule->rules.u.ipv4_5tuple.proto_mask = ntuple_filter.proto_mask;
+			cls->ntuple_filter.proto;
+	rule->rules.u.ipv4_5tuple.proto = cls->ntuple_filter.proto;
+	rule->rules.u.ipv4_5tuple.proto_mask = cls->ntuple_filter.proto_mask;
 
 	rule->u.key.key_add.field_value[SRC_FIELD_IPV4].mask_range.u32 =
-			ntuple_filter.src_ip_mask;
+			cls->ntuple_filter.src_ip_mask;
 	rule->u.key.key_add.field_value[SRC_FIELD_IPV4].value.u32 =
-			ntuple_filter.src_ip;
-	rule->rules.u.ipv4_5tuple.src_ip_mask = ntuple_filter.src_ip_mask;
-	rule->rules.u.ipv4_5tuple.src_ip = ntuple_filter.src_ip;
+			cls->ntuple_filter.src_ip;
+	rule->rules.u.ipv4_5tuple.src_ip_mask = cls->ntuple_filter.src_ip_mask;
+	rule->rules.u.ipv4_5tuple.src_ip = cls->ntuple_filter.src_ip;
 
 	rule->u.key.key_add.field_value[DST_FIELD_IPV4].mask_range.u32 =
-			ntuple_filter.dst_ip_mask;
+			cls->ntuple_filter.dst_ip_mask;
 	rule->u.key.key_add.field_value[DST_FIELD_IPV4].value.u32 =
-			ntuple_filter.dst_ip;
-	rule->rules.u.ipv4_5tuple.dst_ip_mask = ntuple_filter.dst_ip_mask;
-	rule->rules.u.ipv4_5tuple.dst_ip = ntuple_filter.dst_ip;
+			cls->ntuple_filter.dst_ip;
+	rule->rules.u.ipv4_5tuple.dst_ip_mask = cls->ntuple_filter.dst_ip_mask;
+	rule->rules.u.ipv4_5tuple.dst_ip = cls->ntuple_filter.dst_ip;
 
 	rule->u.key.key_add.field_value[SRCP_FIELD_IPV4].mask_range.u16 =
-			ntuple_filter.src_port_mask;
+			cls->ntuple_filter.src_port_mask;
 	rule->u.key.key_add.field_value[SRCP_FIELD_IPV4].value.u16 =
-			ntuple_filter.src_port;
-	rule->rules.u.ipv4_5tuple.src_port_mask = ntuple_filter.src_port_mask;
-	rule->rules.u.ipv4_5tuple.src_port = ntuple_filter.src_port;
+			cls->ntuple_filter.src_port;
+	rule->rules.u.ipv4_5tuple.src_port_mask =
+			cls->ntuple_filter.src_port_mask;
+	rule->rules.u.ipv4_5tuple.src_port = cls->ntuple_filter.src_port;
 
 	rule->u.key.key_add.field_value[DSTP_FIELD_IPV4].mask_range.u16 =
-			ntuple_filter.dst_port_mask;
+			cls->ntuple_filter.dst_port_mask;
 	rule->u.key.key_add.field_value[DSTP_FIELD_IPV4].value.u16 =
-			ntuple_filter.dst_port;
-	rule->rules.u.ipv4_5tuple.dst_port_mask = ntuple_filter.dst_port_mask;
-	rule->rules.u.ipv4_5tuple.dst_port = ntuple_filter.dst_port;
+			cls->ntuple_filter.dst_port;
+	rule->rules.u.ipv4_5tuple.dst_port_mask =
+			cls->ntuple_filter.dst_port_mask;
+	rule->rules.u.ipv4_5tuple.dst_port = cls->ntuple_filter.dst_port;
 
 	log_level = rte_log_get_level(librte_flow_classify_logtype);
 
@@ -456,33 +484,20 @@ allocate_acl_ipv4_5tuple_rule(void)
 
 struct rte_flow_classify_rule *
 rte_flow_classify_table_entry_add(struct rte_flow_classifier *cls,
-		uint32_t table_id,
-		int *key_found,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
+		int *key_found,
 		struct rte_flow_error *error)
 {
 	struct rte_flow_classify_rule *rule;
 	struct rte_flow_classify_table_entry *table_entry;
+	struct classify_action *action;
+	uint32_t i;
 	int ret;
 
 	if (!error)
 		return NULL;
-
-	if (!cls) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				NULL, "NULL classifier.");
-		return NULL;
-	}
-
-	if (table_id >= cls->num_tables) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				NULL, "invalid table_id.");
-		return NULL;
-	}
 
 	if (key_found == NULL) {
 		rte_flow_error_set(error, EINVAL,
@@ -491,91 +506,95 @@ rte_flow_classify_table_entry_add(struct rte_flow_classifier *cls,
 		return NULL;
 	}
 
-	if (!pattern) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM_NUM,
-				NULL, "NULL pattern.");
-		return NULL;
-	}
-
-	if (!actions) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION_NUM,
-				NULL, "NULL action.");
-		return NULL;
-	}
-
-	if (!attr) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ATTR,
-				NULL, "NULL attribute.");
-		return NULL;
-	}
-
 	/* parse attr, pattern and actions */
-	ret = flow_classify_parse_flow(attr, pattern, actions, error);
+	ret = rte_flow_classify_validate(cls, attr, pattern, actions, error);
 	if (ret < 0)
 		return NULL;
 
-	switch (cls->type) {
-	case RTE_FLOW_CLASSIFY_TABLE_TYPE_ACL:
-		rule = allocate_acl_ipv4_5tuple_rule();
+	switch (table_type) {
+	case RTE_FLOW_CLASSIFY_TABLE_ACL_IP4_5TUPLE:
+		rule = allocate_acl_ipv4_5tuple_rule(cls);
 		if (!rule)
 			return NULL;
+		rule->tbl_type = table_type;
+		cls->table_mask |= table_type;
 		break;
 	default:
 		return NULL;
 	}
 
-	rule->entry = malloc(sizeof(struct rte_flow_classify_table_entry));
-	if (!rule->entry) {
-		free(rule);
-		return NULL;
-	}
-
-	table_entry = rule->entry;
+	action = classify_get_flow_action();
+	table_entry = &rule->entry;
 	table_entry->rule_id = rule->id;
+	table_entry->action.action_mask = action->action_mask;
 
-	if (cls->tables[table_id].ops.f_add != NULL) {
-		ret = cls->tables[table_id].ops.f_add(
-			cls->tables[table_id].h_table,
-			&rule->u.key.key_add,
-			rule->entry,
-			&rule->key_found,
-			&rule->entry_ptr);
-		if (ret) {
-			free(rule->entry);
-			free(rule);
-			return NULL;
-		}
-		*key_found = rule->key_found;
+	/* Copy actions */
+	if (action->action_mask & (1LLU << RTE_FLOW_ACTION_TYPE_COUNT)) {
+		memcpy(&table_entry->action.act.counter, &action->act.counter,
+				sizeof(table_entry->action.act.counter));
 	}
-	return rule;
+	if (action->action_mask & (1LLU << RTE_FLOW_ACTION_TYPE_MARK)) {
+		memcpy(&table_entry->action.act.mark, &action->act.mark,
+				sizeof(table_entry->action.act.mark));
+	}
+
+	for (i = 0; i < cls->num_tables; i++) {
+		struct rte_cls_table *table = &cls->tables[i];
+
+		if (table->type == table_type) {
+			if (table->ops.f_add != NULL) {
+				ret = table->ops.f_add(
+					table->h_table,
+					&rule->u.key.key_add,
+					&rule->entry,
+					&rule->key_found,
+					&rule->entry_ptr);
+				if (ret) {
+					free(rule);
+					return NULL;
+				}
+
+			*key_found = rule->key_found;
+			}
+
+			return rule;
+		}
+	}
+	return NULL;
 }
 
 int
 rte_flow_classify_table_entry_delete(struct rte_flow_classifier *cls,
-		uint32_t table_id,
 		struct rte_flow_classify_rule *rule)
 {
+	uint32_t i;
 	int ret = -EINVAL;
 
-	if (!cls || !rule || table_id >= cls->num_tables)
+	if (!cls || !rule)
 		return ret;
+	enum rte_flow_classify_table_type tbl_type = rule->tbl_type;
 
-	if (cls->tables[table_id].ops.f_delete != NULL)
-		ret = cls->tables[table_id].ops.f_delete(
-			cls->tables[table_id].h_table,
-			&rule->u.key.key_del,
-			&rule->key_found,
-			&rule->entry);
+	for (i = 0; i < cls->num_tables; i++) {
+		struct rte_cls_table *table = &cls->tables[i];
 
+		if (table->type == tbl_type) {
+			if (table->ops.f_delete != NULL) {
+				ret = table->ops.f_delete(table->h_table,
+						&rule->u.key.key_del,
+						&rule->key_found,
+						&rule->entry);
+
+				return ret;
+			}
+		}
+	}
+	free(rule);
 	return ret;
 }
 
 static int
 flow_classifier_lookup(struct rte_flow_classifier *cls,
-		uint32_t table_id,
+		struct rte_cls_table *table,
 		struct rte_mbuf **pkts,
 		const uint16_t nb_pkts)
 {
@@ -584,8 +603,7 @@ flow_classifier_lookup(struct rte_flow_classifier *cls,
 	uint64_t lookup_hit_mask;
 
 	pkts_mask = RTE_LEN2MASK(nb_pkts, uint64_t);
-	ret = cls->tables[table_id].ops.f_lookup(
-		cls->tables[table_id].h_table,
+	ret = table->ops.f_lookup(table->h_table,
 		pkts, pkts_mask, &lookup_hit_mask,
 		(void **)cls->entries);
 
@@ -603,12 +621,12 @@ action_apply(struct rte_flow_classifier *cls,
 		struct rte_flow_classify_stats *stats)
 {
 	struct rte_flow_classify_ipv4_5tuple_stats *ntuple_stats;
+	struct rte_flow_classify_table_entry *entry = &rule->entry;
 	uint64_t count = 0;
-	int i;
-	int ret = -EINVAL;
+	uint32_t action_mask = entry->action.action_mask;
+	int i, ret = -EINVAL;
 
-	switch (rule->action.type) {
-	case RTE_FLOW_ACTION_TYPE_COUNT:
+	if (action_mask & (1LLU << RTE_FLOW_ACTION_TYPE_COUNT)) {
 		for (i = 0; i < cls->nb_pkts; i++) {
 			if (rule->id == cls->entries[i]->rule_id)
 				count++;
@@ -621,32 +639,37 @@ action_apply(struct rte_flow_classifier *cls,
 			ntuple_stats->counter1 = count;
 			ntuple_stats->ipv4_5tuple = rule->rules.u.ipv4_5tuple;
 		}
-		break;
-	default:
-		ret = -ENOTSUP;
-		break;
 	}
-
 	return ret;
 }
 
 int
 rte_flow_classifier_query(struct rte_flow_classifier *cls,
-		uint32_t table_id,
 		struct rte_mbuf **pkts,
 		const uint16_t nb_pkts,
 		struct rte_flow_classify_rule *rule,
 		struct rte_flow_classify_stats *stats)
 {
+	enum rte_flow_classify_table_type tbl_type;
+	uint32_t i;
 	int ret = -EINVAL;
 
-	if (!cls || !rule || !stats || !pkts  || nb_pkts == 0 ||
-		table_id >= cls->num_tables)
+	if (!cls || !rule || !stats || !pkts  || nb_pkts == 0)
 		return ret;
 
-	ret = flow_classifier_lookup(cls, table_id, pkts, nb_pkts);
-	if (!ret)
-		ret = action_apply(cls, rule, stats);
+	tbl_type = rule->tbl_type;
+	for (i = 0; i < cls->num_tables; i++) {
+		struct rte_cls_table *table = &cls->tables[i];
+
+			if (table->type == tbl_type) {
+				ret = flow_classifier_lookup(cls, table,
+						pkts, nb_pkts);
+				if (!ret) {
+					ret = action_apply(cls, rule, stats);
+					return ret;
+				}
+			}
+	}
 	return ret;
 }
 

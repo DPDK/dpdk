@@ -14,6 +14,20 @@
 extern "C" {
 #endif
 
+extern enum rte_flow_classify_table_type table_type;
+
+struct classify_action {
+	/* Flow action mask */
+	uint64_t action_mask;
+
+	struct action {
+		/** Integer value to return with packets */
+		struct rte_flow_action_mark mark;
+		/** Flow rule counter */
+		struct rte_flow_query_count counter;
+	} act;
+};
+
 typedef int (*parse_filter_t)(const struct rte_flow_attr *attr,
 			      const struct rte_flow_item pattern[],
 			      const struct rte_flow_action actions[],
@@ -35,7 +49,7 @@ parse_filter_t
 classify_find_parse_filter_func(struct rte_flow_item *pattern);
 
 /* get action data */
-struct rte_flow_action *
+struct classify_action *
 classify_get_flow_action(void);
 
 #ifdef __cplusplus

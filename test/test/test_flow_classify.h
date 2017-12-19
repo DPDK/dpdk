@@ -168,7 +168,15 @@ static struct rte_flow_item  sctp_item_1 = { RTE_FLOW_ITEM_TYPE_SCTP,
 /* test actions:
  * "actions count / end"
  */
-static struct rte_flow_action count_action = { RTE_FLOW_ACTION_TYPE_COUNT, 0};
+struct rte_flow_query_count count = {
+	.reset = 1,
+	.hits_set = 1,
+	.bytes_set = 1,
+	.hits = 0,
+	.bytes = 0,
+};
+static struct rte_flow_action count_action = { RTE_FLOW_ACTION_TYPE_COUNT,
+	&count};
 static struct rte_flow_action count_action_bad = { -1, 0};
 
 static struct rte_flow_action end_action = { RTE_FLOW_ACTION_TYPE_END, 0};

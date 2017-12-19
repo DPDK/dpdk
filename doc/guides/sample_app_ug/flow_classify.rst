@@ -228,7 +228,6 @@ table`` to the flow classifier.
 
     struct flow_classifier {
         struct rte_flow_classifier *cls;
-        uint32_t table_id[RTE_FLOW_CLASSIFY_TABLE_MAX];
     };
 
     struct flow_classifier_acl {
@@ -243,7 +242,6 @@ table`` to the flow classifier.
 
     cls_params.name = "flow_classifier";
     cls_params.socket_id = socket_id;
-    cls_params.type = RTE_FLOW_CLASSIFY_TABLE_TYPE_ACL;
 
     cls_app->cls = rte_flow_classifier_create(&cls_params);
     if (cls_app->cls == NULL) {
@@ -260,10 +258,9 @@ table`` to the flow classifier.
     /* initialise table create params */
     cls_table_params.ops = &rte_table_acl_ops,
     cls_table_params.arg_create = &table_acl_params,
-    cls_table_params.table_metadata_size = 0;
+    cls_table_params.type = RTE_FLOW_CLASSIFY_TABLE_ACL_IP4_5TUPLE;
 
-    ret = rte_flow_classify_table_create(cls_app->cls, &cls_table_params,
-                  &cls->table_id[0]);
+    ret = rte_flow_classify_table_create(cls_app->cls, &cls_table_params);
     if (ret) {
         rte_flow_classifier_free(cls_app->cls);
         rte_free(cls);
@@ -495,7 +492,6 @@ following:
                     if (rules[i]) {
                         ret = rte_flow_classifier_query(
                             cls_app->cls,
-                            cls_app->table_id[0],
                             bufs, nb_rx, rules[i],
                             &classify_stats);
                         if (ret)

@@ -11,7 +11,7 @@ struct classify_valid_pattern {
 	parse_filter_t parse_filter;
 };
 
-static struct rte_flow_action action;
+static struct classify_action action;
 
 /* Pattern for IPv4 5-tuple UDP filter */
 static enum rte_flow_item_type pattern_ntuple_1[] = {
@@ -51,7 +51,7 @@ static struct classify_valid_pattern classify_supported_patterns[] = {
 	{ pattern_ntuple_3, classify_parse_ntuple_filter },
 };
 
-struct rte_flow_action *
+struct classify_action *
 classify_get_flow_action(void)
 {
 	return &action;
@@ -215,27 +215,9 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_udp *udp_mask;
 	const struct rte_flow_item_sctp *sctp_spec;
 	const struct rte_flow_item_sctp *sctp_mask;
+	const struct rte_flow_action_count *count;
+	const struct rte_flow_action_mark *mark_spec;
 	uint32_t index;
-
-	if (!pattern) {
-		rte_flow_error_set(error,
-			EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
-			NULL, "NULL pattern.");
-		return -EINVAL;
-	}
-
-	if (!actions) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ACTION_NUM,
-				   NULL, "NULL action.");
-		return -EINVAL;
-	}
-	if (!attr) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR,
-				   NULL, "NULL attribute.");
-		return -EINVAL;
-	}
 
 	/* parse pattern */
 	index = 0;
@@ -454,34 +436,7 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		return -EINVAL;
 	}
 
-	/* parse action */
-	index = 0;
-
-	/**
-	 * n-tuple only supports count,
-	 * check if the first not void action is COUNT.
-	 */
-	memset(&action, 0, sizeof(action));
-	NEXT_ITEM_OF_ACTION(act, actions, index);
-	if (act->type != RTE_FLOW_ACTION_TYPE_COUNT) {
-		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ACTION,
-			item, "Not supported action.");
-		return -EINVAL;
-	}
-	action.type = RTE_FLOW_ACTION_TYPE_COUNT;
-
-	/* check if the next not void item is END */
-	index++;
-	NEXT_ITEM_OF_ACTION(act, actions, index);
-	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
-		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ACTION,
-			act, "Not supported action.");
-		return -EINVAL;
-	}
+	table_type = RTE_FLOW_CLASSIFY_TABLE_ACL_IP4_5TUPLE;
 
 	/* parse attr */
 	/* must be input direction */
@@ -512,6 +467,69 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	filter->priority = (uint16_t)attr->priority;
 	if (attr->priority >  FLOW_RULE_MIN_PRIORITY)
 		filter->priority = FLOW_RULE_MAX_PRIORITY;
+
+	/* parse action */
+	index = 0;
+
+	/**
+	 * n-tuple only supports count and Mark,
+	 * check if the first not void action is COUNT or MARK.
+	 */
+	memset(&action, 0, sizeof(action));
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	switch (act->type) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		action.action_mask |= 1LLU << RTE_FLOW_ACTION_TYPE_COUNT;
+		count = (const struct rte_flow_action_count *)act->conf;
+		memcpy(&action.act.counter, count, sizeof(action.act.counter));
+		break;
+	case RTE_FLOW_ACTION_TYPE_MARK:
+		action.action_mask |= 1LLU << RTE_FLOW_ACTION_TYPE_MARK;
+		mark_spec = (const struct rte_flow_action_mark *)act->conf;
+		memcpy(&action.act.mark, mark_spec, sizeof(action.act.mark));
+		break;
+	default:
+		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
+		rte_flow_error_set(error, EINVAL,
+		   RTE_FLOW_ERROR_TYPE_ACTION, act,
+		   "Invalid action.");
+		return -EINVAL;
+	}
+
+	/* check if the next not void item is MARK or COUNT or END */
+	index++;
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	switch (act->type) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		action.action_mask |= 1LLU << RTE_FLOW_ACTION_TYPE_COUNT;
+		count = (const struct rte_flow_action_count *)act->conf;
+		memcpy(&action.act.counter, count, sizeof(action.act.counter));
+		break;
+	case RTE_FLOW_ACTION_TYPE_MARK:
+		action.action_mask |= 1LLU << RTE_FLOW_ACTION_TYPE_MARK;
+		mark_spec = (const struct rte_flow_action_mark *)act->conf;
+		memcpy(&action.act.mark, mark_spec, sizeof(action.act.mark));
+		break;
+	case RTE_FLOW_ACTION_TYPE_END:
+		return 0;
+	default:
+		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
+		rte_flow_error_set(error, EINVAL,
+		   RTE_FLOW_ERROR_TYPE_ACTION, act,
+		   "Invalid action.");
+		return -EINVAL;
+	}
+
+	/* check if the next not void item is END */
+	index++;
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
+		rte_flow_error_set(error, EINVAL,
+		   RTE_FLOW_ERROR_TYPE_ACTION, act,
+		   "Invalid action.");
+		return -EINVAL;
+	}
 
 	return 0;
 }
