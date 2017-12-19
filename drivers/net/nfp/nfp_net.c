@@ -3085,6 +3085,9 @@ nfpu_error:
 	return ret;
 }
 
+int nfp_logtype_init;
+int nfp_logtype_driver;
+
 static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
@@ -3158,6 +3161,17 @@ RTE_PMD_REGISTER_PCI_TABLE(net_nfp_vf, pci_id_nfp_vf_net_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_pf, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_vf, "* igb_uio | uio_pci_generic | vfio");
 
+RTE_INIT(nfp_init_log);
+static void
+nfp_init_log(void)
+{
+	nfp_logtype_init = rte_log_register("pmd.nfp.init");
+	if (nfp_logtype_init >= 0)
+		rte_log_set_level(nfp_logtype_init, RTE_LOG_NOTICE);
+	nfp_logtype_driver = rte_log_register("pmd.nfp.driver");
+	if (nfp_logtype_driver >= 0)
+		rte_log_set_level(nfp_logtype_driver, RTE_LOG_NOTICE);
+}
 /*
  * Local variables:
  * c-file-style: "Linux"
