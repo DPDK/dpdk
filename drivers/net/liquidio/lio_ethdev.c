@@ -14,6 +14,9 @@
 #include "lio_ethdev.h"
 #include "lio_rxtx.h"
 
+int lio_logtype_init;
+int lio_logtype_driver;
+
 /* Default RSS key in use */
 static uint8_t lio_rss_key[40] = {
 	0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2,
@@ -2181,3 +2184,15 @@ static struct rte_pci_driver rte_liovf_pmd = {
 RTE_PMD_REGISTER_PCI(net_liovf, rte_liovf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_liovf, pci_id_liovf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_liovf, "* igb_uio | vfio-pci");
+
+RTE_INIT(lio_init_log);
+static void
+lio_init_log(void)
+{
+	lio_logtype_init = rte_log_register("pmd.lio.init");
+	if (lio_logtype_init >= 0)
+		rte_log_set_level(lio_logtype_init, RTE_LOG_NOTICE);
+	lio_logtype_driver = rte_log_register("pmd.lio.driver");
+	if (lio_logtype_driver >= 0)
+		rte_log_set_level(lio_logtype_driver, RTE_LOG_NOTICE);
+}
