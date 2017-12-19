@@ -11,6 +11,9 @@
 #include <rte_version.h>
 
 /* Globals */
+int qede_logtype_init;
+int qede_logtype_driver;
+
 static const struct qed_eth_ops *qed_ops;
 static int64_t timer_period = 1;
 
@@ -3125,3 +3128,15 @@ RTE_PMD_REGISTER_KMOD_DEP(net_qede, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PCI(net_qede_vf, rte_qedevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_qede_vf, pci_id_qedevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_qede_vf, "* igb_uio | vfio-pci");
+
+RTE_INIT(qede_init_log);
+static void
+qede_init_log(void)
+{
+	qede_logtype_init = rte_log_register("pmd.qede.init");
+	if (qede_logtype_init >= 0)
+		rte_log_set_level(qede_logtype_init, RTE_LOG_NOTICE);
+	qede_logtype_driver = rte_log_register("pmd.qede.driver");
+	if (qede_logtype_driver >= 0)
+		rte_log_set_level(qede_logtype_driver, RTE_LOG_NOTICE);
+}
