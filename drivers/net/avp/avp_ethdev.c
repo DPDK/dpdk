@@ -60,6 +60,7 @@
 
 #include "avp_logs.h"
 
+int avp_logtype_driver;
 
 static int avp_dev_create(struct rte_pci_device *pci_dev,
 			  struct rte_eth_dev *eth_dev);
@@ -2312,3 +2313,12 @@ avp_dev_stats_reset(struct rte_eth_dev *eth_dev)
 
 RTE_PMD_REGISTER_PCI(net_avp, rte_avp_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_avp, pci_id_avp_map);
+
+RTE_INIT(avp_init_log);
+static void
+avp_init_log(void)
+{
+	avp_logtype_driver = rte_log_register("pmd.avp.driver");
+	if (avp_logtype_driver >= 0)
+		rte_log_set_level(avp_logtype_driver, RTE_LOG_NOTICE);
+}
