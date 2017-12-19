@@ -105,6 +105,22 @@ struct octeontx_fpadev {
 
 static struct octeontx_fpadev fpadev;
 
+int octeontx_logtype_fpavf;
+int octeontx_logtype_fpavf_mbox;
+
+RTE_INIT(otx_pool_init_log);
+static void
+otx_pool_init_log(void)
+{
+	octeontx_logtype_fpavf = rte_log_register("pmd.otx.mempool");
+	if (octeontx_logtype_fpavf >= 0)
+		rte_log_set_level(octeontx_logtype_fpavf, RTE_LOG_NOTICE);
+
+	octeontx_logtype_fpavf_mbox = rte_log_register("pmd.otx.mempool.mbox");
+	if (octeontx_logtype_fpavf_mbox >= 0)
+		rte_log_set_level(octeontx_logtype_fpavf_mbox, RTE_LOG_NOTICE);
+}
+
 /* lock is taken by caller */
 static int
 octeontx_fpa_gpool_alloc(unsigned int object_size)
