@@ -294,6 +294,7 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->info.conf = *rx_conf;
 	rxq->info.nb_desc = nb_rx_desc;
 	rxq->priv = PRIV(dev);
+	rxq->sdev = PRIV(dev)->subs;
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		ret = rte_eth_rx_queue_setup(PORT_ID(sdev),

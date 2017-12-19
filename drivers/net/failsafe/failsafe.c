@@ -55,6 +55,7 @@ fs_sub_device_alloc(struct rte_eth_dev *dev,
 {
 	uint8_t nb_subs;
 	int ret;
+	int i;
 
 	ret = failsafe_args_count_subdevice(dev, params);
 	if (ret)
@@ -72,6 +73,10 @@ fs_sub_device_alloc(struct rte_eth_dev *dev,
 		ERROR("Could not allocate sub_devices");
 		return -ENOMEM;
 	}
+	/* Initiate static sub devices linked list. */
+	for (i = 1; i < nb_subs; i++)
+		PRIV(dev)->subs[i - 1].next = PRIV(dev)->subs + i;
+	PRIV(dev)->subs[i - 1].next = PRIV(dev)->subs;
 	return 0;
 }
 

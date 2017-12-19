@@ -94,36 +94,27 @@ failsafe_rx_burst(void *queue,
 		  struct rte_mbuf **rx_pkts,
 		  uint16_t nb_pkts)
 {
-	struct fs_priv *priv;
 	struct sub_device *sdev;
 	struct rxq *rxq;
 	void *sub_rxq;
 	uint16_t nb_rx;
-	uint8_t nb_polled, nb_subs;
-	uint8_t i;
 
 	rxq = queue;
-	priv = rxq->priv;
-	nb_subs = priv->subs_tail - priv->subs_head;
-	nb_polled = 0;
-	for (i = rxq->last_polled; nb_polled < nb_subs; nb_polled++) {
-		i++;
-		if (i == priv->subs_tail)
-			i = priv->subs_head;
-		sdev = &priv->subs[i];
-		if (fs_rx_unsafe(sdev))
+	sdev = rxq->sdev;
+	do {
+		if (fs_rx_unsafe(sdev)) {
+			nb_rx = 0;
 			continue;
+		}
 		sub_rxq = ETH(sdev)->data->rx_queues[rxq->qid];
 		FS_ATOMIC_P(rxq->refcnt[sdev->sid]);
 		nb_rx = ETH(sdev)->
 			rx_pkt_burst(sub_rxq, rx_pkts, nb_pkts);
 		FS_ATOMIC_V(rxq->refcnt[sdev->sid]);
-		if (nb_rx) {
-			rxq->last_polled = i;
-			return nb_rx;
-		}
-	}
-	return 0;
+		sdev = sdev->next;
+	} while (nb_rx == 0 && sdev != rxq->sdev);
+	rxq->sdev = sdev;
+	return nb_rx;
 }
 
 uint16_t
@@ -131,35 +122,24 @@ failsafe_rx_burst_fast(void *queue,
 			 struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts)
 {
-	struct fs_priv *priv;
 	struct sub_device *sdev;
 	struct rxq *rxq;
 	void *sub_rxq;
 	uint16_t nb_rx;
-	uint8_t nb_polled, nb_subs;
-	uint8_t i;
 
 	rxq = queue;
-	priv = rxq->priv;
-	nb_subs = priv->subs_tail - priv->subs_head;
-	nb_polled = 0;
-	for (i = rxq->last_polled; nb_polled < nb_subs; nb_polled++) {
-		i++;
-		if (i == priv->subs_tail)
-			i = priv->subs_head;
-		sdev = &priv->subs[i];
+	sdev = rxq->sdev;
+	do {
 		RTE_ASSERT(!fs_rx_unsafe(sdev));
 		sub_rxq = ETH(sdev)->data->rx_queues[rxq->qid];
 		FS_ATOMIC_P(rxq->refcnt[sdev->sid]);
 		nb_rx = ETH(sdev)->
 			rx_pkt_burst(sub_rxq, rx_pkts, nb_pkts);
 		FS_ATOMIC_V(rxq->refcnt[sdev->sid]);
-		if (nb_rx) {
-			rxq->last_polled = i;
-			return nb_rx;
-		}
-	}
-	return 0;
+		sdev = sdev->next;
+	} while (nb_rx == 0 && sdev != rxq->sdev);
+	rxq->sdev = sdev;
+	return nb_rx;
 }
 
 uint16_t

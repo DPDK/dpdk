@@ -62,8 +62,8 @@
 struct rxq {
 	struct fs_priv *priv;
 	uint16_t qid;
-	/* id of last sub_device polled */
-	uint8_t last_polled;
+	/* next sub_device to poll */
+	struct sub_device *sdev;
 	unsigned int socket_id;
 	struct rte_eth_rxq_info info;
 	rte_atomic64_t refcnt[];
@@ -100,6 +100,7 @@ struct fs_stats {
 
 struct sub_device {
 	/* Exhaustive DPDK device description */
+	struct sub_device *next;
 	struct rte_devargs devargs;
 	struct rte_bus *bus;
 	struct rte_device *dev;
