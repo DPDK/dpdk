@@ -11,14 +11,12 @@
 #ifndef _PMD_LOGS_H_
 #define _PMD_LOGS_H_
 
+extern int bnx2x_logtype_init;
 #define PMD_INIT_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ##args)
+	rte_log(RTE_LOG_ ## level, bnx2x_logtype_init, \
+		"%s(): " fmt "\n", __func__, ##args)
 
-#ifdef RTE_LIBRTE_BNX2X_DEBUG_INIT
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
-#else
-#define PMD_INIT_FUNC_TRACE() do { } while(0)
-#endif
 
 #ifdef RTE_LIBRTE_BNX2X_DEBUG_RX
 #define PMD_RX_LOG(level, fmt, args...) \
@@ -41,12 +39,10 @@
 #define PMD_TX_FREE_LOG(level, fmt, args...) do { } while(0)
 #endif
 
-#ifdef RTE_LIBRTE_BNX2X_DEBUG
+extern int bnx2x_logtype_driver;
 #define PMD_DRV_LOG_RAW(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt, __func__, ## args)
-#else
-#define PMD_DRV_LOG_RAW(level, fmt, args...) do { } while (0)
-#endif
+	rte_log(RTE_LOG_ ## level, bnx2x_logtype_driver, \
+		"%s(): " fmt, __func__, ## args)
 
 #define PMD_DRV_LOG(level, fmt, args...) \
 	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
@@ -57,6 +53,5 @@
 #else
 #define PMD_DEBUG_PERIODIC_LOG(level, fmt, args...) do { } while(0)
 #endif
-
 
 #endif /* _PMD_LOGS_H_ */

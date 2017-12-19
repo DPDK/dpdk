@@ -1130,9 +1130,7 @@ static void
 bnx2x_sp_event(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 	     union eth_rx_cqe *rr_cqe)
 {
-#ifdef RTE_LIBRTE_BNX2X_DEBUG
 	int cid = SW_CID(rr_cqe->ramrod_cqe.conn_and_cmd_data);
-#endif
 	int command = CQE_CMD(rr_cqe->ramrod_cqe.conn_and_cmd_data);
 	enum ecore_queue_cmd drv_cmd = ECORE_Q_CMD_MAX;
 	struct ecore_queue_sp_obj *q_obj = &BNX2X_SP_OBJ(sc, fp).q_obj;
@@ -7547,9 +7545,7 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 
 	struct bnx2x_pci_cap *caps;
 	uint16_t link_status;
-#ifdef RTE_LIBRTE_BNX2X_DEBUG
 	int reg = 0;
-#endif
 
 	/* check if PCI Power Management is enabled */
 	caps = pci_find_cap(sc, PCIY_PMG, BNX2X_PCI_CAP);

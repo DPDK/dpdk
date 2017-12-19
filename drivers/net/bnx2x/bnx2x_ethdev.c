@@ -14,6 +14,9 @@
 #include <rte_dev.h>
 #include <rte_ethdev_pci.h>
 
+int bnx2x_logtype_init;
+int bnx2x_logtype_driver;
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -687,3 +690,15 @@ RTE_PMD_REGISTER_KMOD_DEP(net_bnx2x, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnx2xvf, pci_id_bnx2xvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_bnx2xvf, "* igb_uio | vfio-pci");
+
+RTE_INIT(bnx2x_init_log);
+static void
+bnx2x_init_log(void)
+{
+	bnx2x_logtype_init = rte_log_register("pmd.bnx2x.init");
+	if (bnx2x_logtype_init >= 0)
+		rte_log_set_level(bnx2x_logtype_init, RTE_LOG_NOTICE);
+	bnx2x_logtype_driver = rte_log_register("pmd.bnx2x.driver");
+	if (bnx2x_logtype_driver >= 0)
+		rte_log_set_level(bnx2x_logtype_driver, RTE_LOG_NOTICE);
+}

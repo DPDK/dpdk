@@ -102,14 +102,6 @@ enabling debugging options may affect system performance.
   to 'y'. Also, in order for firmware binary to load user will need zlib devel
   package installed.
 
-- ``CONFIG_RTE_LIBRTE_BNX2X_DEBUG`` (default **n**)
-
-  Toggle display of generic debugging messages.
-
-- ``CONFIG_RTE_LIBRTE_BNX2X_DEBUG_INIT`` (default **n**)
-
-  Toggle display of initialization related messages.
-
 - ``CONFIG_RTE_LIBRTE_BNX2X_DEBUG_TX`` (default **n**)
 
   Toggle display of transmit fast path run-time messages.
