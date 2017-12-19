@@ -49,7 +49,7 @@
 #define ena_assert_msg(cond, msg)		\
 	do {					\
 		if (unlikely(!(cond))) {	\
-			RTE_LOG(ERR, ENA,	\
+			rte_log(RTE_LOG_ERR, ena_logtype_driver, \
 				"Assert failed on %s:%s:%d: ",	\
 				__FILE__, __func__, __LINE__);	\
 			rte_panic(msg);		\

@@ -178,6 +178,9 @@ static const struct ena_stats ena_stats_ena_com_strings[] = {
 #define	ENA_TX_OFFLOAD_NOTSUP_MASK	\
 	(PKT_TX_OFFLOAD_MASK ^ ENA_TX_OFFLOAD_MASK)
 
+int ena_logtype_init;
+int ena_logtype_driver;
+
 static const struct rte_pci_id pci_id_ena_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_LLQ_VF) },
@@ -1814,3 +1817,15 @@ static struct rte_pci_driver rte_ena_pmd = {
 RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio-pci");
+
+RTE_INIT(ena_init_log);
+static void
+ena_init_log(void)
+{
+	ena_logtype_init = rte_log_register("pmd.ena.init");
+	if (ena_logtype_init >= 0)
+		rte_log_set_level(ena_logtype_init, RTE_LOG_NOTICE);
+	ena_logtype_driver = rte_log_register("pmd.ena.driver");
+	if (ena_logtype_driver >= 0)
+		rte_log_set_level(ena_logtype_driver, RTE_LOG_NOTICE);
+}
