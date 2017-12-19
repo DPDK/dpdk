@@ -47,10 +47,6 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle compilation of the ``librte_mempool_octeontx`` driver.
 
-- ``CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL_DEBUG`` (default ``n``)
-
-  Toggle display of generic debugging messages
-
 Driver Compilation
 ~~~~~~~~~~~~~~~~~~
 

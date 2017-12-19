@@ -51,10 +51,6 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle compilation of the ``librte_pmd_octeontx_ssovf`` driver.
 
-- ``CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF_DEBUG`` (default ``n``)
-
-  Toggle display of generic debugging messages
-
 Driver Compilation
 ~~~~~~~~~~~~~~~~~~
 

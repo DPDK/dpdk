@@ -59,27 +59,6 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle compilation of the ``librte_pmd_octeontx`` driver.
 
-- ``CONFIG_RTE_LIBRTE_OCTEONTX_DEBUG_DRIVER`` (default ``n``)
-
-  Toggle display of generic debugging messages
-
-- ``CONFIG_RTE_LIBRTE_OCTEONTX_DEBUG_INIT`` (default ``n``)
-
-  Toggle display of initialization related messages.
-
-- ``CONFIG_RTE_LIBRTE_OCTEONTX_DEBUG_RX`` (default ``n``)
-
-  Toggle display of receive path message
-
-- ``CONFIG_RTE_LIBRTE_OCTEONTX_DEBUG_TX`` (default ``n``)
-
-  Toggle display of transmit path message
-
-- ``CONFIG_RTE_LIBRTE_OCTEONTX_DEBUG_MBOX`` (default ``n``)
-
-  Toggle display of mbox related message
-
-
 Driver compilation and testing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

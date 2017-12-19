@@ -54,25 +54,13 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle compilation of the ``librte_pmd_thunderx_nicvf`` driver.
 
-- ``CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_INIT`` (default ``n``)
-
-  Toggle display of initialization related messages.
-
 - ``CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_RX`` (default ``n``)
 
-  Toggle display of receive fast path run-time message
+  Toggle asserts of receive fast path.
 
 - ``CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_TX`` (default ``n``)
 
-  Toggle display of transmit fast path run-time message
-
-- ``CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_DRIVER`` (default ``n``)
-
-  Toggle display of generic debugging messages
-
-- ``CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_MBOX`` (default ``n``)
-
-  Toggle display of PF mailbox related run-time check messages
+  Toggle asserts of transmit fast path.
 
 Driver compilation and testing
 ------------------------------
