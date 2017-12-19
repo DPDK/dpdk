@@ -99,6 +99,12 @@ New Features
   * Rx/Tx descriptor status
   * Link status update/event
 
+* **Updated the AESNI-MB PMD.**
+
+  The AESNI-MB PMD has been updated with additional support for:
+
+  * AES-CCM algorithm.
+
 * **Added Wireless Base Band Device (bbdev) abstraction.**
 
   The Wireless Baseband Device library is an acceleration abstraction

@@ -65,6 +65,10 @@ Hash algorithms:
 * RTE_CRYPTO_HASH_SHA512_HMAC
 * RTE_CRYPTO_HASH_AES_XCBC_HMAC
 
+AEAD algorithms:
+
+* RTE_CRYPTO_AEAD_AES_CCM
+
 Limitations
 -----------
 

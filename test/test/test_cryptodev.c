@@ -8722,6 +8722,18 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 						test_DES_cipheronly_mb_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 						test_DES_docsis_mb_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_3),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}

@@ -82,6 +82,15 @@ aesni_mb_get_chain_order(const struct rte_crypto_sym_xform *xform)
 			return AESNI_MB_OP_HASH_CIPHER;
 	}
 
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM) {
+			if (xform->aead.op == RTE_CRYPTO_AEAD_OP_ENCRYPT)
+				return AESNI_MB_OP_AEAD_CIPHER_HASH;
+			else
+				return AESNI_MB_OP_AEAD_HASH_CIPHER;
+		}
+	}
+
 	return AESNI_MB_OP_NOT_SUPPORTED;
 }
 
@@ -257,6 +266,61 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 	return 0;
 }
 
+static int
+aesni_mb_set_session_aead_parameters(const struct aesni_mb_op_fns *mb_ops,
+		struct aesni_mb_session *sess,
+		const struct rte_crypto_sym_xform *xform)
+{
+	aes_keyexp_t aes_keyexp_fn;
+
+	switch (xform->aead.op) {
+	case RTE_CRYPTO_AEAD_OP_ENCRYPT:
+		sess->cipher.direction = ENCRYPT;
+		sess->auth.operation = RTE_CRYPTO_AUTH_OP_GENERATE;
+		break;
+	case RTE_CRYPTO_AEAD_OP_DECRYPT:
+		sess->cipher.direction = DECRYPT;
+		sess->auth.operation = RTE_CRYPTO_AUTH_OP_VERIFY;
+		break;
+	default:
+		MB_LOG_ERR("Invalid aead operation parameter");
+		return -EINVAL;
+	}
+
+	switch (xform->aead.algo) {
+	case RTE_CRYPTO_AEAD_AES_CCM:
+		sess->cipher.mode = CCM;
+		sess->auth.algo = AES_CCM;
+		break;
+	default:
+		MB_LOG_ERR("Unsupported aead mode parameter");
+		return -ENOTSUP;
+	}
+
+	/* Set IV parameters */
+	sess->iv.offset = xform->aead.iv.offset;
+	sess->iv.length = xform->aead.iv.length;
+
+	/* Check key length and choose key expansion function for AES */
+
+	switch (xform->aead.key.length) {
+	case AES_128_BYTES:
+		sess->cipher.key_length_in_bytes = AES_128_BYTES;
+		aes_keyexp_fn = mb_ops->aux.keyexp.aes128;
+		break;
+	default:
+		MB_LOG_ERR("Invalid cipher key length");
+		return -EINVAL;
+	}
+
+	/* Expanded cipher keys */
+	(*aes_keyexp_fn)(xform->aead.key.data,
+			sess->cipher.expanded_aes_keys.encode,
+			sess->cipher.expanded_aes_keys.decode);
+
+	return 0;
+}
+
 /** Parse crypto xform chain and set private session parameters */
 int
 aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
@@ -265,6 +329,7 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 {
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
 	const struct rte_crypto_sym_xform *cipher_xform = NULL;
+	const struct rte_crypto_sym_xform *aead_xform = NULL;
 	int ret;
 
 	/* Select Crypto operation - hash then cipher / cipher then hash */
@@ -298,6 +363,18 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 		auth_xform = NULL;
 		cipher_xform = xform;
 		break;
+	case AESNI_MB_OP_AEAD_CIPHER_HASH:
+		sess->chain_order = CIPHER_HASH;
+		sess->aead.aad_len = xform->aead.aad_length;
+		sess->aead.digest_len = xform->aead.digest_length;
+		aead_xform = xform;
+		break;
+	case AESNI_MB_OP_AEAD_HASH_CIPHER:
+		sess->chain_order = HASH_CIPHER;
+		sess->aead.aad_len = xform->aead.aad_length;
+		sess->aead.digest_len = xform->aead.digest_length;
+		aead_xform = xform;
+		break;
 	case AESNI_MB_OP_NOT_SUPPORTED:
 	default:
 		MB_LOG_ERR("Unsupported operation chain order parameter");
@@ -318,6 +395,15 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 	if (ret != 0) {
 		MB_LOG_ERR("Invalid/unsupported cipher parameters");
 		return ret;
+	}
+
+	if (aead_xform) {
+		ret = aesni_mb_set_session_aead_parameters(mb_ops, sess,
+				aead_xform);
+		if (ret != 0) {
+			MB_LOG_ERR("Invalid/unsupported aead parameters");
+			return ret;
+		}
 	}
 
 	return 0;
@@ -434,6 +520,9 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->_k1_expanded = session->auth.xcbc.k1_expanded;
 		job->_k2 = session->auth.xcbc.k2;
 		job->_k3 = session->auth.xcbc.k3;
+	} else if (job->hash_alg == AES_CCM) {
+		job->u.CCM.aad = op->sym->aead.aad.data + 18;
+		job->u.CCM.aad_len_in_bytes = session->aead.aad_len;
 	} else {
 		job->hashed_auth_key_xor_ipad = session->auth.pads.inner;
 		job->hashed_auth_key_xor_opad = session->auth.pads.outer;
@@ -457,7 +546,10 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 				rte_pktmbuf_data_len(op->sym->m_src));
 	} else {
 		m_dst = m_src;
-		m_offset = op->sym->cipher.data.offset;
+		if (job->hash_alg == AES_CCM)
+			m_offset = op->sym->aead.data.offset;
+		else
+			m_offset = op->sym->cipher.data.offset;
 	}
 
 	/* Set digest output location */
@@ -466,30 +558,51 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->auth_tag_output = qp->temp_digests[*digest_idx];
 		*digest_idx = (*digest_idx + 1) % MAX_JOBS;
 	} else {
-		job->auth_tag_output = op->sym->auth.digest.data;
+		if (job->hash_alg == AES_CCM)
+			job->auth_tag_output = op->sym->aead.digest.data;
+		else
+			job->auth_tag_output = op->sym->auth.digest.data;
 	}
 
 	/*
 	 * Multi-buffer library current only support returning a truncated
 	 * digest length as specified in the relevant IPsec RFCs
 	 */
-	job->auth_tag_output_len_in_bytes =
-			get_truncated_digest_byte_length(job->hash_alg);
+	if (job->hash_alg != AES_CCM)
+		job->auth_tag_output_len_in_bytes =
+				get_truncated_digest_byte_length(job->hash_alg);
+	else
+		job->auth_tag_output_len_in_bytes = session->aead.digest_len;
+
 
 	/* Set IV parameters */
-	job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-			session->iv.offset);
+
 	job->iv_len_in_bytes = session->iv.length;
 
 	/* Data  Parameter */
 	job->src = rte_pktmbuf_mtod(m_src, uint8_t *);
 	job->dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, m_offset);
 
-	job->cipher_start_src_offset_in_bytes = op->sym->cipher.data.offset;
-	job->msg_len_to_cipher_in_bytes = op->sym->cipher.data.length;
+	if (job->hash_alg == AES_CCM) {
+		job->cipher_start_src_offset_in_bytes =
+				op->sym->aead.data.offset;
+		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
+		job->hash_start_src_offset_in_bytes = op->sym->aead.data.offset;
+		job->msg_len_to_hash_in_bytes = op->sym->aead.data.length;
 
-	job->hash_start_src_offset_in_bytes = op->sym->auth.data.offset;
-	job->msg_len_to_hash_in_bytes = op->sym->auth.data.length;
+		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			session->iv.offset + 1);
+	} else {
+		job->cipher_start_src_offset_in_bytes =
+				op->sym->cipher.data.offset;
+		job->msg_len_to_cipher_in_bytes = op->sym->cipher.data.length;
+
+		job->hash_start_src_offset_in_bytes = op->sym->auth.data.offset;
+		job->msg_len_to_hash_in_bytes = op->sym->auth.data.length;
+
+		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			session->iv.offset);
+	}
 
 	/* Set user data to be crypto operation data struct */
 	job->user_data = op;
@@ -501,9 +614,15 @@ static inline void
 verify_digest(struct aesni_mb_qp *qp __rte_unused, JOB_AES_HMAC *job,
 		struct rte_crypto_op *op) {
 	/* Verify digest if required */
-	if (memcmp(job->auth_tag_output, op->sym->auth.digest.data,
-			job->auth_tag_output_len_in_bytes) != 0)
-		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	if (job->hash_alg == AES_CCM) {
+		if (memcmp(job->auth_tag_output, op->sym->aead.digest.data,
+				job->auth_tag_output_len_in_bytes) != 0)
+			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	} else {
+		if (memcmp(job->auth_tag_output, op->sym->auth.digest.data,
+				job->auth_tag_output_len_in_bytes) != 0)
+			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	}
 }
 
 /**

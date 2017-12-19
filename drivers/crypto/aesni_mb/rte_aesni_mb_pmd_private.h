@@ -43,6 +43,7 @@ static const unsigned auth_blocksize[] = {
 		[SHA_384]	= 128,
 		[SHA_512]	= 128,
 		[AES_XCBC]	= 16,
+		[AES_CCM]	= 16,
 };
 
 /**
@@ -65,6 +66,7 @@ static const unsigned auth_truncated_digest_byte_lengths[] = {
 		[SHA_384]	= 24,
 		[SHA_512]	= 32,
 		[AES_XCBC]	= 12,
+		[AES_CCM]	= 8,
 		[NULL_HASH]     = 0
 };
 
@@ -109,6 +111,8 @@ enum aesni_mb_operation {
 	AESNI_MB_OP_CIPHER_HASH,
 	AESNI_MB_OP_HASH_ONLY,
 	AESNI_MB_OP_CIPHER_ONLY,
+	AESNI_MB_OP_AEAD_HASH_CIPHER,
+	AESNI_MB_OP_AEAD_CIPHER_HASH,
 	AESNI_MB_OP_NOT_SUPPORTED
 };
 
@@ -210,6 +214,12 @@ struct aesni_mb_session {
 			/**< Expanded XCBC authentication keys */
 		};
 	} auth;
+	struct {
+		/** AAD data length */
+		uint16_t aad_len;
+		/** digest size */
+		uint16_t digest_len;
+	} aead;
 } __rte_cache_aligned;
 
 
