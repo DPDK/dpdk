@@ -269,13 +269,13 @@ extern int mac_from_arg;
  * a: (rte_atomic64_t)
  */
 #define FS_ATOMIC_P(a) \
-	rte_atomic64_add(&(a), 1)
+	rte_atomic64_set(&(a), 1)
 
 /**
  * a: (rte_atomic64_t)
  */
 #define FS_ATOMIC_V(a) \
-	rte_atomic64_sub(&(a), 1)
+	rte_atomic64_set(&(a), 0)
 
 /**
  * s: (struct sub_device *)
