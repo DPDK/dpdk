@@ -40,6 +40,9 @@
 #define GLORT_FD_MASK    GLORT_PF_MASK
 #define GLORT_FD_INDEX   GLORT_FD_Q_BASE
 
+int fm10k_logtype_init;
+int fm10k_logtype_driver;
+
 static void fm10k_close_mbx_service(struct fm10k_hw *hw);
 static void fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -3233,3 +3236,15 @@ static struct rte_pci_driver rte_pmd_fm10k = {
 RTE_PMD_REGISTER_PCI(net_fm10k, rte_pmd_fm10k);
 RTE_PMD_REGISTER_PCI_TABLE(net_fm10k, pci_id_fm10k_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_fm10k, "* igb_uio | uio_pci_generic | vfio-pci");
+
+RTE_INIT(fm10k_init_log);
+static void
+fm10k_init_log(void)
+{
+	fm10k_logtype_init = rte_log_register("pmd.fm10k.init");
+	if (fm10k_logtype_init >= 0)
+		rte_log_set_level(fm10k_logtype_init, RTE_LOG_NOTICE);
+	fm10k_logtype_driver = rte_log_register("pmd.fm10k.driver");
+	if (fm10k_logtype_driver >= 0)
+		rte_log_set_level(fm10k_logtype_driver, RTE_LOG_NOTICE);
+}
