@@ -7,49 +7,38 @@
 
 #include <assert.h>
 
-#define PMD_INIT_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
-
-#ifdef RTE_LIBRTE_THUNDERX_NICVF_DEBUG_INIT
-#define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, ">>")
-#else
-#define PMD_INIT_FUNC_TRACE() do { } while (0)
-#endif
-
 #ifdef RTE_LIBRTE_THUNDERX_NICVF_DEBUG_RX
-#define PMD_RX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
 #define NICVF_RX_ASSERT(x) assert(x)
 #else
-#define PMD_RX_LOG(level, fmt, args...) do { } while (0)
 #define NICVF_RX_ASSERT(x) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_THUNDERX_NICVF_DEBUG_TX
-#define PMD_TX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
 #define NICVF_TX_ASSERT(x) assert(x)
 #else
-#define PMD_TX_LOG(level, fmt, args...) do { } while (0)
 #define NICVF_TX_ASSERT(x) do { } while (0)
 #endif
 
-#ifdef RTE_LIBRTE_THUNDERX_NICVF_DEBUG_DRIVER
-#define PMD_DRV_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
-#define PMD_DRV_FUNC_TRACE() PMD_DRV_LOG(DEBUG, ">>")
-#else
-#define PMD_DRV_LOG(level, fmt, args...) do { } while (0)
-#define PMD_DRV_FUNC_TRACE() do { } while (0)
-#endif
+#define PMD_INIT_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, nicvf_logtype_init, \
+			"%s(): " fmt "\n", __func__, ## args)
+#define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, ">>")
 
-#ifdef RTE_LIBRTE_THUNDERX_NICVF_DEBUG_MBOX
+#define PMD_DRV_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, nicvf_logtype_driver, \
+			"%s(): " fmt "\n", __func__, ## args)
+#define PMD_DRV_FUNC_TRACE() PMD_DRV_LOG(DEBUG, ">>")
+
 #define PMD_MBOX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+	rte_log(RTE_LOG_ ## level, nicvf_logtype_mbox, \
+			"%s(): " fmt "\n", __func__, ## args)
 #define PMD_MBOX_FUNC_TRACE() PMD_DRV_LOG(DEBUG, ">>")
-#else
-#define PMD_MBOX_LOG(level, fmt, args...) do { } while (0)
-#define PMD_MBOX_FUNC_TRACE() do { } while (0)
-#endif
+
+#define PMD_RX_LOG PMD_DRV_LOG
+#define PMD_TX_LOG PMD_DRV_LOG
+
+extern int nicvf_logtype_init;
+extern int nicvf_logtype_driver;
+extern int nicvf_logtype_mbox;
 
 #endif /* __THUNDERX_NICVF_LOGS__ */

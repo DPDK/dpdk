@@ -43,10 +43,31 @@
 #include "nicvf_svf.h"
 #include "nicvf_logs.h"
 
+int nicvf_logtype_mbox;
+int nicvf_logtype_init;
+int nicvf_logtype_driver;
+
 static void nicvf_dev_stop(struct rte_eth_dev *dev);
 static void nicvf_dev_stop_cleanup(struct rte_eth_dev *dev, bool cleanup);
 static void nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic,
 			  bool cleanup);
+
+RTE_INIT(nicvf_init_log);
+static void
+nicvf_init_log(void)
+{
+	nicvf_logtype_mbox = rte_log_register("pmd.nicvf.mbox");
+	if (nicvf_logtype_mbox >= 0)
+		rte_log_set_level(nicvf_logtype_mbox, RTE_LOG_NOTICE);
+
+	nicvf_logtype_init = rte_log_register("pmd.nicvf.init");
+	if (nicvf_logtype_init >= 0)
+		rte_log_set_level(nicvf_logtype_init, RTE_LOG_NOTICE);
+
+	nicvf_logtype_driver = rte_log_register("pmd.nicvf.driver");
+	if (nicvf_logtype_driver >= 0)
+		rte_log_set_level(nicvf_logtype_driver, RTE_LOG_NOTICE);
+}
 
 static inline int
 nicvf_atomic_write_link_status(struct rte_eth_dev *dev,
