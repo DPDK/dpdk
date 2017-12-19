@@ -25,11 +25,17 @@
 #define OCTEONTX_VDEV_NR_PORT_ARG		("nr_port")
 #define OCTEONTX_MAX_NAME_LEN			32
 
+#define OCTEONTX_MAX_BGX_PORTS			4
+#define OCTEONTX_MAX_LMAC_PER_BGX		4
+
 static inline struct octeontx_nic *
 octeontx_pmd_priv(struct rte_eth_dev *dev)
 {
 	return dev->data->dev_private;
 }
+
+extern uint16_t
+rte_octeontx_pchan_map[OCTEONTX_MAX_BGX_PORTS][OCTEONTX_MAX_LMAC_PER_BGX];
 
 /* Octeontx ethdev nic */
 struct octeontx_nic {

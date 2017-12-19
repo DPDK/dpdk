@@ -2,3 +2,10 @@ DPDK_17.11 {
 
 	local: *;
 };
+
+DPDK_18.02 {
+	global:
+
+	rte_octeontx_pchan_map;
+
+} DPDK_17.11;

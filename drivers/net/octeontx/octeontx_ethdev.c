@@ -27,6 +27,9 @@ struct octeontx_vdev_init_params {
 	uint8_t	nr_port;
 };
 
+uint16_t
+rte_octeontx_pchan_map[OCTEONTX_MAX_BGX_PORTS][OCTEONTX_MAX_LMAC_PER_BGX];
+
 enum octeontx_link_speed {
 	OCTEONTX_LINK_SPEED_SGMII,
 	OCTEONTX_LINK_SPEED_XAUI,
@@ -1138,6 +1141,9 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 				nic->base_ochan, nic->num_ochans,
 				nic->num_tx_queues);
 	PMD_INIT_LOG(DEBUG, "speed %d mtu %d", nic->speed, nic->mtu);
+
+	rte_octeontx_pchan_map[(nic->base_ochan >> 8) & 0x7]
+		[(nic->base_ochan >> 4) & 0xF] = data->port_id;
 
 	return data->port_id;
 
