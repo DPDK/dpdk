@@ -398,6 +398,9 @@ static void ixgbe_l2_tunnel_conf(struct rte_eth_dev *dev);
 		(r) = (h)->bitmap[idx] >> bit & 1;\
 	} while (0)
 
+int ixgbe_logtype_init;
+int ixgbe_logtype_driver;
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -8415,3 +8418,15 @@ RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe_vf, "* igb_uio | vfio-pci");
+
+RTE_INIT(ixgbe_init_log);
+static void
+ixgbe_init_log(void)
+{
+	ixgbe_logtype_init = rte_log_register("pmd.ixgbe.init");
+	if (ixgbe_logtype_init >= 0)
+		rte_log_set_level(ixgbe_logtype_init, RTE_LOG_NOTICE);
+	ixgbe_logtype_driver = rte_log_register("pmd.ixgbe.driver");
+	if (ixgbe_logtype_driver >= 0)
+		rte_log_set_level(ixgbe_logtype_driver, RTE_LOG_NOTICE);
+}
