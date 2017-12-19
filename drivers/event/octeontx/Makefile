@@ -13,7 +13,7 @@ CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx/
 CFLAGS += -I$(RTE_SDK)/drivers/net/octeontx/
 
-LDLIBS += -lrte_eal -lrte_eventdev -lrte_mempool_octeontx
+LDLIBS += -lrte_eal -lrte_eventdev -lrte_mempool_octeontx -lrte_pmd_octeontx
 LDLIBS += -lrte_bus_pci
 LDLIBS += -lrte_bus_vdev
 
