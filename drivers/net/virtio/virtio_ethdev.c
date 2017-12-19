@@ -77,6 +77,9 @@ static int virtio_dev_queue_stats_mapping_set(
 	uint8_t stat_idx,
 	uint8_t is_rx);
 
+int virtio_logtype_init;
+int virtio_logtype_driver;
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -2043,3 +2046,15 @@ __rte_unused uint8_t is_rx)
 RTE_PMD_EXPORT_NAME(net_virtio, __COUNTER__);
 RTE_PMD_REGISTER_PCI_TABLE(net_virtio, pci_id_virtio_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_virtio, "* igb_uio | uio_pci_generic | vfio-pci");
+
+RTE_INIT(virtio_init_log);
+static void
+virtio_init_log(void)
+{
+	virtio_logtype_init = rte_log_register("pmd.virtio.init");
+	if (virtio_logtype_init >= 0)
+		rte_log_set_level(virtio_logtype_init, RTE_LOG_NOTICE);
+	virtio_logtype_driver = rte_log_register("pmd.virtio.driver");
+	if (virtio_logtype_driver >= 0)
+		rte_log_set_level(virtio_logtype_driver, RTE_LOG_NOTICE);
+}
