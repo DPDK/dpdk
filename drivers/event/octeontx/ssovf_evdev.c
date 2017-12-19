@@ -18,6 +18,17 @@
 
 #include "ssovf_evdev.h"
 
+int otx_logtype_ssovf;
+
+RTE_INIT(otx_ssovf_init_log);
+static void
+otx_ssovf_init_log(void)
+{
+	otx_logtype_ssovf = rte_log_register("pmd.otx.eventdev");
+	if (otx_logtype_ssovf >= 0)
+		rte_log_set_level(otx_logtype_ssovf, RTE_LOG_NOTICE);
+}
+
 /* SSOPF Mailbox messages */
 
 struct ssovf_mbox_dev_info {
