@@ -1,0 +1,18 @@
+This file will record any exceptions in DPDK Project with respect to DPDK
+IP License policy as defined in DPDK Charter available at:
+
+	http://dpdk.org/about/charter#ip
+
+Note that following licenses are not exceptions:-
+	- BSD-3-Clause
+	- Dual BSD-3-Clause OR GPL-2.0
+	- Dual BSD-3-Clause OR LGPL-2.1
+	- GPL-2.0  (*Only for kernel code*)
+
+-----------------------------------------------------------------
+SPDX Identifier     TB Approval Date  GB Approval Date  File name
+-----------------------------------------------------------------
+1.
+
+-----------------------------------------------------------------
+

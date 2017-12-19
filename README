@@ -1,8 +1,8 @@
 DPDK is a set of libraries and drivers for fast packet processing.
 It supports many processor architectures and both FreeBSD and Linux.
 
-The DPDK uses the Open Source BSD license for the core libraries and
-drivers. The kernel components are GPLv2 licensed.
+The DPDK uses the Open Source BSD-3-Clause license for the core libraries
+and drivers. The kernel components are GPL-2.0 licensed.
 
 Please check the doc directory for release notes,
 API documentation, and sample application information.
