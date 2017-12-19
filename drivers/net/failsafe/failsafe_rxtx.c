@@ -111,7 +111,7 @@ failsafe_rx_burst(void *queue,
 		if (i == priv->subs_tail)
 			i = priv->subs_head;
 		sdev = &priv->subs[i];
-		if (unlikely(fs_rx_unsafe(sdev)))
+		if (fs_rx_unsafe(sdev))
 			continue;
 		sub_rxq = ETH(sdev)->data->rx_queues[rxq->qid];
 		FS_ATOMIC_P(rxq->refcnt[sdev->sid]);
