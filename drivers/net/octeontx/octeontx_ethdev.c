@@ -38,6 +38,27 @@ enum octeontx_link_speed {
 	OCTEONTX_LINK_SPEED_RESERVE2
 };
 
+int otx_net_logtype_mbox;
+int otx_net_logtype_init;
+int otx_net_logtype_driver;
+
+RTE_INIT(otx_net_init_log);
+static void
+otx_net_init_log(void)
+{
+	otx_net_logtype_mbox = rte_log_register("pmd.otx.ethdev.mbox");
+	if (otx_net_logtype_mbox >= 0)
+		rte_log_set_level(otx_net_logtype_mbox, RTE_LOG_NOTICE);
+
+	otx_net_logtype_init = rte_log_register("pmd.otx.ethdev.init");
+	if (otx_net_logtype_init >= 0)
+		rte_log_set_level(otx_net_logtype_init, RTE_LOG_NOTICE);
+
+	otx_net_logtype_driver = rte_log_register("pmd.otx.ethdev.driver");
+	if (otx_net_logtype_driver >= 0)
+		rte_log_set_level(otx_net_logtype_driver, RTE_LOG_NOTICE);
+}
+
 /* Parse integer from integer argument */
 static int
 parse_integer_arg(const char *key __rte_unused,
