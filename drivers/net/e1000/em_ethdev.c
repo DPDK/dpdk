@@ -105,6 +105,9 @@ static int eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
 
 static enum e1000_fc_mode em_fc_setting = e1000_fc_full;
 
+int e1000_logtype_init;
+int e1000_logtype_driver;
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -1846,3 +1849,15 @@ eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
 RTE_PMD_REGISTER_PCI(net_e1000_em, rte_em_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_e1000_em, pci_id_em_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_e1000_em, "* igb_uio | uio_pci_generic | vfio-pci");
+
+RTE_INIT(e1000_init_log);
+static void
+e1000_init_log(void)
+{
+	e1000_logtype_init = rte_log_register("pmd.e1000.init");
+	if (e1000_logtype_init >= 0)
+		rte_log_set_level(e1000_logtype_init, RTE_LOG_NOTICE);
+	e1000_logtype_driver = rte_log_register("pmd.e1000.driver");
+	if (e1000_logtype_driver >= 0)
+		rte_log_set_level(e1000_logtype_driver, RTE_LOG_NOTICE);
+}
