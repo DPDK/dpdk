@@ -32,6 +32,7 @@ subdir('drivers')
 # build binaries and installable tools
 subdir('usertools')
 subdir('app')
+subdir('test')
 
 # build any examples explicitly requested - useful for developers
 if get_option('examples') != ''

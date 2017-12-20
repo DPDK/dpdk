@@ -18,3 +18,5 @@ option('per_library_versions', type: 'boolean', value: true,
 	description: 'true: each lib gets its own version number, false: DPDK version used for each lib')
 option('use_hpet', type: 'boolean', value: false,
 	description: 'use HPET timer in EAL')
+option('tests', type: 'boolean', value: true,
+	description: 'build unit tests')
