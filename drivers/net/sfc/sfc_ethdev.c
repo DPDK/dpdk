@@ -926,6 +926,12 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 
 	sfc_adapter_lock(sa);
 
+	/*
+	 * Copy the address to the device private data so that
+	 * it could be recalled in the case of adapter restart.
+	 */
+	ether_addr_copy(mac_addr, &port->default_mac_addr);
+
 	if (port->isolated) {
 		sfc_err(sa, "isolated mode is active on the port");
 		sfc_err(sa, "will not set MAC address");
@@ -961,9 +967,9 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 
 		/*
 		 * Since setting MAC address with filters installed is not
-		 * allowed on the adapter, one needs to simply restart adapter
-		 * so that the new MAC address will be taken from an outer
-		 * storage and set flawlessly by means of sfc_start() call
+		 * allowed on the adapter, the new MAC address will be set
+		 * by means of adapter restart. sfc_start() shall retrieve
+		 * the new address from the device private data and set it.
 		 */
 		sfc_stop(sa);
 		rc = sfc_start(sa);
@@ -972,6 +978,13 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	}
 
 unlock:
+	/*
+	 * In the case of failure sa->port->default_mac_addr does not
+	 * need rollback since no error code is returned, and the upper
+	 * API will anyway update the external MAC address storage.
+	 * To be consistent with that new value it is better to keep
+	 * the device private value the same.
+	 */
 	sfc_adapter_unlock(sa);
 }
 

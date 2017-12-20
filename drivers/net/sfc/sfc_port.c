@@ -188,10 +188,10 @@ sfc_port_start(struct sfc_adapter *sa)
 		goto fail_mac_pdu_set;
 
 	if (!port->isolated) {
-		struct ether_addr *mac_addrs = sa->eth_dev->data->mac_addrs;
+		struct ether_addr *addr = &port->default_mac_addr;
 
 		sfc_log_init(sa, "set MAC address");
-		rc = efx_mac_addr_set(sa->nic, mac_addrs[0].addr_bytes);
+		rc = efx_mac_addr_set(sa->nic, addr->addr_bytes);
 		if (rc != 0)
 			goto fail_mac_addr_set;
 
@@ -342,6 +342,8 @@ int
 sfc_port_attach(struct sfc_adapter *sa)
 {
 	struct sfc_port *port = &sa->port;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	const struct ether_addr *from;
 	long kvarg_stats_update_period_ms;
 	int rc;
 
@@ -352,6 +354,10 @@ sfc_port_attach(struct sfc_adapter *sa)
 	/* Enable flow control by default */
 	port->flow_ctrl = EFX_FCNTL_RESPOND | EFX_FCNTL_GENERATE;
 	port->flow_ctrl_autoneg = B_TRUE;
+
+	RTE_BUILD_BUG_ON(sizeof(encp->enc_mac_addr) != sizeof(*from));
+	from = (const struct ether_addr *)(encp->enc_mac_addr);
+	ether_addr_copy(from, &port->default_mac_addr);
 
 	port->max_mcast_addrs = EFX_MAC_MULTICAST_LIST_MAX;
 	port->nb_mcast_addrs = 0;
