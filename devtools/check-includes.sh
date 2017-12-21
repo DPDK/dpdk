@@ -111,6 +111,7 @@ include_dir=${1:-build/include}
 	'exec-env/*' \
 	'rte_vhost.h' \
 	'rte_eth_vhost.h' \
+	'rte_eal_interrupts.h' \
 }
 : ${IGNORE_CXX= \
 	'rte_vhost.h' \
