@@ -292,7 +292,7 @@ test_memzone_reserve_flags(void)
 		mz = rte_memzone_reserve("flag_zone_16M_HINT", size,
 		SOCKET_ID_ANY, RTE_MEMZONE_16MB|RTE_MEMZONE_SIZE_HINT_ONLY);
 		if (mz == NULL) {
-			printf("MEMZONE FLAG 2MB\n");
+			printf("MEMZONE FLAG 16MB\n");
 			return -1;
 		}
 		if (mz->hugepage_sz != RTE_PGSIZE_16M) {
