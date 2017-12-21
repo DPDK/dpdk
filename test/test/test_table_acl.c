@@ -503,6 +503,8 @@ setup_acl_pipeline(void)
 		struct rte_pipeline_table_entry *table_entries[5];
 		int key_found[5];
 
+		memset(table_entries, 0, sizeof(table_entries));
+
 		for (n = 0; n < 5; n++) {
 			memset(&keys[n], 0, sizeof(struct rte_table_acl_rule_delete_params));
 			key_array[n] = &keys[n];
