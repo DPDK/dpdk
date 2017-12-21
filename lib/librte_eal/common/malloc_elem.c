@@ -69,6 +69,7 @@ elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align,
 	if ((new_data_start & bmask) != ((end_pt - 1) & bmask)) {
 		end_pt = RTE_ALIGN_FLOOR(end_pt, bound);
 		new_data_start = RTE_ALIGN_FLOOR((end_pt - size), align);
+		end_pt = new_data_start + size;
 		if (((end_pt - 1) & bmask) != (new_data_start & bmask))
 			return NULL;
 	}
