@@ -12,6 +12,7 @@
  */
 
 #include <stdint.h>
+#include <rte_config.h>
 #include "generic/rte_vect.h"
 
 #if (defined(__ICC) || (__GNUC__ == 4 &&  __GNUC_MINOR__ < 4))

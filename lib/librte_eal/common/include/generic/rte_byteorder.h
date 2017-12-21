@@ -22,6 +22,7 @@
 #endif
 
 #include <rte_common.h>
+#include <rte_config.h>
 
 /*
  * Compile-time endianness detection

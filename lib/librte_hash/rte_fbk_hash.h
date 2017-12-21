@@ -25,6 +25,7 @@ extern "C" {
 
 #include <string.h>
 
+#include <rte_config.h>
 #ifndef RTE_FBK_HASH_FUNC_DEFAULT
 #if defined(RTE_ARCH_X86) || defined(RTE_MACHINE_CPUFLAG_CRC32)
 #include <rte_hash_crc.h>

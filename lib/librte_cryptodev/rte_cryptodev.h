@@ -49,6 +49,7 @@ extern "C" {
 #include "rte_crypto.h"
 #include "rte_dev.h"
 #include <rte_common.h>
+#include <rte_config.h>
 
 extern const char **rte_cyptodev_names;
 

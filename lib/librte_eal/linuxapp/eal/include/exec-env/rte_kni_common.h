@@ -11,6 +11,7 @@
 #define RTE_STD_C11
 #else
 #include <rte_common.h>
+#include <rte_config.h>
 #endif
 
 /**

@@ -52,6 +52,7 @@ extern "C" {
 #include <stdint.h>
 
 #include <rte_common.h>
+#include <rte_config.h>
 
 /** The set ID type that stored internally in hash table based set summary. */
 typedef uint16_t member_set_t;

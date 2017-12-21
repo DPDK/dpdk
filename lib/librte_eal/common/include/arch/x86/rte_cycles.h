@@ -47,6 +47,7 @@ extern int rte_cycles_vmware_tsc_map;
 #include <rte_branch_prediction.h>
 #endif
 #include <rte_common.h>
+#include <rte_config.h>
 
 static inline uint64_t
 rte_rdtsc(void)

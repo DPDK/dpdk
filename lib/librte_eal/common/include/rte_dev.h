@@ -49,6 +49,7 @@ extern "C" {
 #include <stdio.h>
 #include <sys/queue.h>
 
+#include <rte_config.h>
 #include <rte_log.h>
 
 __attribute__((format(printf, 2, 0)))

@@ -48,6 +48,7 @@ extern "C" {
 #include <string.h>
 #include <limits.h>
 
+#include <rte_config.h>
 #include <rte_log.h>
 #include <rte_byteorder.h>
 

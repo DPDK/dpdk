@@ -46,6 +46,7 @@ extern "C" {
 
 #include <string.h>
 
+#include <rte_config.h>
 #include <rte_dev.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>

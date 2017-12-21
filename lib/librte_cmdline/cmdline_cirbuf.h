@@ -61,6 +61,8 @@
 #ifndef _CIRBUF_H_
 #define _CIRBUF_H_
 
+#include <rte_config.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

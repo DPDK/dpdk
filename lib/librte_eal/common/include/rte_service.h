@@ -31,6 +31,7 @@ extern "C" {
 #include <stdint.h>
 #include <sys/queue.h>
 
+#include <rte_config.h>
 #include <rte_lcore.h>
 
 #define RTE_SERVICE_NAME_MAX 32

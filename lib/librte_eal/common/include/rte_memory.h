@@ -20,6 +20,7 @@ extern "C" {
 #endif
 
 #include <rte_common.h>
+#include <rte_config.h>
 
 __extension__
 enum rte_page_sizes {

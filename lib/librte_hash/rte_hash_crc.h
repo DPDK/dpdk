@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <rte_config.h>
 #include <rte_cpuflags.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>

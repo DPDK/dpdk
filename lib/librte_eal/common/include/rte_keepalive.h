@@ -39,6 +39,7 @@
 #ifndef _KEEPALIVE_H_
 #define _KEEPALIVE_H_
 
+#include <rte_config.h>
 #include <rte_memory.h>
 
 #ifndef RTE_KEEPALIVE_MAXCORES

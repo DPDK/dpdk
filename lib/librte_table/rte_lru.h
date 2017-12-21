@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#include <rte_config.h>
 #ifdef RTE_ARCH_X86_64
 #include "rte_lru_x86.h"
 #elif defined(RTE_ARCH_ARM64)
