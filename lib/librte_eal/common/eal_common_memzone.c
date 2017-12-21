@@ -208,7 +208,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		return NULL;
 	}
 
-	const struct malloc_elem *elem = malloc_elem_from_data(mz_addr);
+	struct malloc_elem *elem = malloc_elem_from_data(mz_addr);
 
 	/* fill the zone in config */
 	mz = get_next_free_memzone();
@@ -216,6 +216,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	if (mz == NULL) {
 		RTE_LOG(ERR, EAL, "%s(): Cannot find free memzone but there is room "
 				"in config!\n", __func__);
+		malloc_elem_free(elem);
 		rte_errno = ENOSPC;
 		return NULL;
 	}
