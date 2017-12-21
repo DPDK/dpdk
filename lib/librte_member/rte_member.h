@@ -51,6 +51,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include <rte_common.h>
+
 /** The set ID type that stored internally in hash table based set summary. */
 typedef uint16_t member_set_t;
 /** Invalid set ID used to mean no match found. */
@@ -75,9 +77,12 @@ typedef uint16_t member_set_t;
 
 extern int librte_member_logtype;
 
-#define RTE_MEMBER_LOG(level, fmt, args...) \
-rte_log(RTE_LOG_ ## level, librte_member_logtype, "%s(): " fmt, \
-	__func__, ## args)
+#define RTE_MEMBER_LOG(level, ...) \
+	rte_log(RTE_LOG_ ## level, \
+		librte_member_logtype, \
+		RTE_FMT("%s(): " RTE_FMT_HEAD(__VA_ARGS__,), \
+			__func__, \
+			RTE_FMT_TAIL(__VA_ARGS__,)))
 
 /** @internal setsummary structure. */
 struct rte_member_setsum;
