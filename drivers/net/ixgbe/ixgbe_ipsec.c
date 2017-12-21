@@ -41,6 +41,8 @@ static void
 ixgbe_crypto_clear_ipsec_tables(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_ipsec *priv = IXGBE_DEV_PRIVATE_TO_IPSEC(
+				dev->data->dev_private);
 	int i = 0;
 
 	/* clear Rx IP table*/
@@ -77,6 +79,10 @@ ixgbe_crypto_clear_ipsec_tables(struct rte_eth_dev *dev)
 		IXGBE_WRITE_REG(hw, IXGBE_IPSTXSALT, 0);
 		IXGBE_WAIT_TWRITE;
 	}
+
+	memset(priv->rx_ip_tbl, 0, sizeof(priv->rx_ip_tbl));
+	memset(priv->rx_sa_tbl, 0, sizeof(priv->rx_sa_tbl));
+	memset(priv->tx_sa_tbl, 0, sizeof(priv->tx_sa_tbl));
 }
 
 static int
@@ -144,16 +150,6 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 		priv->rx_sa_tbl[sa_index].spi =
 			rte_cpu_to_be_32(ic_session->spi);
 		priv->rx_sa_tbl[sa_index].ip_index = ip_index;
-		priv->rx_sa_tbl[sa_index].key[3] =
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[0]);
-		priv->rx_sa_tbl[sa_index].key[2] =
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[4]);
-		priv->rx_sa_tbl[sa_index].key[1] =
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[8]);
-		priv->rx_sa_tbl[sa_index].key[0] =
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[12]);
-		priv->rx_sa_tbl[sa_index].salt =
-			rte_cpu_to_be_32(ic_session->salt);
 		priv->rx_sa_tbl[sa_index].mode = IPSRXMOD_VALID;
 		if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION)
 			priv->rx_sa_tbl[sa_index].mode |=
@@ -196,15 +192,15 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE |
 				IPSRXIDX_TABLE_KEY | (sa_index << 3);
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(0),
-				priv->rx_sa_tbl[sa_index].key[0]);
+			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[12]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(1),
-				priv->rx_sa_tbl[sa_index].key[1]);
+			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[8]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(2),
-				priv->rx_sa_tbl[sa_index].key[2]);
+			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[4]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(3),
-				priv->rx_sa_tbl[sa_index].key[3]);
+			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[0]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXSALT,
-				priv->rx_sa_tbl[sa_index].salt);
+				rte_cpu_to_be_32(ic_session->salt));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXMOD,
 				priv->rx_sa_tbl[sa_index].mode);
 		IXGBE_WAIT_RWRITE;
@@ -228,32 +224,22 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 
 		priv->tx_sa_tbl[sa_index].spi =
 			rte_cpu_to_be_32(ic_session->spi);
-		priv->tx_sa_tbl[sa_index].key[3] =
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[0]);
-		priv->tx_sa_tbl[sa_index].key[2] =
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[4]);
-		priv->tx_sa_tbl[sa_index].key[1] =
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[8]);
-		priv->tx_sa_tbl[sa_index].key[0] =
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[12]);
-		priv->tx_sa_tbl[sa_index].salt =
-			rte_cpu_to_be_32(ic_session->salt);
-
-		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE | (sa_index << 3);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(0),
-				priv->tx_sa_tbl[sa_index].key[0]);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(1),
-				priv->tx_sa_tbl[sa_index].key[1]);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(2),
-				priv->tx_sa_tbl[sa_index].key[2]);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(3),
-				priv->tx_sa_tbl[sa_index].key[3]);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXSALT,
-				priv->tx_sa_tbl[sa_index].salt);
-		IXGBE_WAIT_TWRITE;
-
 		priv->tx_sa_tbl[i].used = 1;
 		ic_session->sa_index = sa_index;
+
+		/* write Key table entry*/
+		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE | (sa_index << 3);
+		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(0),
+			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[12]));
+		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(1),
+			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[8]));
+		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(2),
+			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[4]));
+		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(3),
+			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[0]));
+		IXGBE_WRITE_REG(hw, IXGBE_IPSTXSALT,
+				rte_cpu_to_be_32(ic_session->salt));
+		IXGBE_WAIT_TWRITE;
 	}
 
 	return 0;

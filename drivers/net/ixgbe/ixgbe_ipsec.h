@@ -78,16 +78,12 @@ struct ixgbe_crypto_rx_ip_table {
 struct ixgbe_crypto_rx_sa_table {
 	uint32_t spi;
 	uint32_t ip_index;
-	uint32_t key[4];
-	uint32_t salt;
 	uint8_t  mode;
 	uint8_t  used;
 };
 
 struct ixgbe_crypto_tx_sa_table {
 	uint32_t spi;
-	uint32_t key[4];
-	uint32_t salt;
 	uint8_t  used;
 };
 
