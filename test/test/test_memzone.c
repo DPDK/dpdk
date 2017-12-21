@@ -260,8 +260,17 @@ test_memzone_reserve_flags(void)
 		if (hugepage_2MB_avail && hugepage_1GB_avail) {
 			mz = rte_memzone_reserve("flag_zone_2M_HINT", size, SOCKET_ID_ANY,
 								RTE_MEMZONE_2MB|RTE_MEMZONE_1GB);
-			if (mz != NULL) {
+			if (mz == NULL) {
 				printf("BOTH SIZES SET\n");
+				return -1;
+			}
+			if (mz->hugepage_sz != RTE_PGSIZE_1G &&
+					mz->hugepage_sz != RTE_PGSIZE_2M) {
+				printf("Wrong size when both sizes set\n");
+				return -1;
+			}
+			if (rte_memzone_free(mz)) {
+				printf("Fail memzone free\n");
 				return -1;
 			}
 		}
@@ -395,8 +404,17 @@ test_memzone_reserve_flags(void)
 			mz = rte_memzone_reserve("flag_zone_16M_HINT", size,
 				SOCKET_ID_ANY,
 				RTE_MEMZONE_16MB|RTE_MEMZONE_16GB);
-			if (mz != NULL) {
+			if (mz == NULL) {
 				printf("BOTH SIZES SET\n");
+				return -1;
+			}
+			if (mz->hugepage_sz != RTE_PGSIZE_16G &&
+					mz->hugepage_sz != RTE_PGSIZE_16M) {
+				printf("Wrong size when both sizes set\n");
+				return -1;
+			}
+			if (rte_memzone_free(mz)) {
+				printf("Fail memzone free\n");
 				return -1;
 			}
 		}
