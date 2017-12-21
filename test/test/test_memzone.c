@@ -919,11 +919,11 @@ test_memzone_basic(void)
 	return 0;
 }
 
-static int memzone_calk_called;
+static int memzone_walk_called;
 static void memzone_walk_clb(const struct rte_memzone *mz __rte_unused,
 			     void *arg __rte_unused)
 {
-	memzone_calk_called = 1;
+	memzone_walk_called = 1;
 }
 
 static int
@@ -967,7 +967,7 @@ test_memzone(void)
 
 	printf("check memzone cleanup\n");
 	rte_memzone_walk(memzone_walk_clb, NULL);
-	if (memzone_calk_called) {
+	if (memzone_walk_called) {
 		printf("there are some memzones left after test\n");
 		rte_memzone_dump(stdout);
 		return -1;
