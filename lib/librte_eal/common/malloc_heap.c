@@ -149,11 +149,13 @@ malloc_heap_alloc(struct malloc_heap *heap,
  * Function to retrieve data for heap on given socket
  */
 int
-malloc_heap_get_stats(const struct malloc_heap *heap,
+malloc_heap_get_stats(struct malloc_heap *heap,
 		struct rte_malloc_socket_stats *socket_stats)
 {
 	size_t idx;
 	struct malloc_elem *elem;
+
+	rte_spinlock_lock(&heap->lock);
 
 	/* Initialise variables for heap */
 	socket_stats->free_count = 0;
@@ -176,6 +178,8 @@ malloc_heap_get_stats(const struct malloc_heap *heap,
 	socket_stats->heap_allocsz_bytes = (socket_stats->heap_totalsz_bytes -
 			socket_stats->heap_freesz_bytes);
 	socket_stats->alloc_count = heap->alloc_count;
+
+	rte_spinlock_unlock(&heap->lock);
 	return 0;
 }
 
