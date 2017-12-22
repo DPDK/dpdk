@@ -2492,9 +2492,17 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 				item, "Not supported by fdir filter");
 			return -rte_errno;
 		}
-		if (nvgre_mask->c_k_s_rsvd0_ver !=
-			rte_cpu_to_be_16(0x3000) ||
+		if (nvgre_mask->protocol &&
 		    nvgre_mask->protocol != 0xFFFF) {
+			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		if (nvgre_mask->c_k_s_rsvd0_ver &&
+		    nvgre_mask->c_k_s_rsvd0_ver !=
+			rte_cpu_to_be_16(0xFFFF)) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2522,7 +2530,15 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			nvgre_spec =
 				(const struct rte_flow_item_nvgre *)item->spec;
 			if (nvgre_spec->c_k_s_rsvd0_ver !=
-			    rte_cpu_to_be_16(0x2000) ||
+			    rte_cpu_to_be_16(0x2000) &&
+				nvgre_mask->c_k_s_rsvd0_ver) {
+				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+			if (nvgre_mask->protocol &&
 			    nvgre_spec->protocol !=
 			    rte_cpu_to_be_16(NVGRE_PROTOCOL)) {
 				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
