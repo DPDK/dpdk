@@ -3582,6 +3582,41 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 						       "Invalid TNI mask");
 					return -rte_errno;
 				}
+				if (nvgre_mask->protocol &&
+					nvgre_mask->protocol != 0xFFFF) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid NVGRE item");
+					return -rte_errno;
+				}
+				if (nvgre_mask->c_k_s_rsvd0_ver &&
+					nvgre_mask->c_k_s_rsvd0_ver !=
+					rte_cpu_to_be_16(0xFFFF)) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid NVGRE item");
+					return -rte_errno;
+				}
+				if (nvgre_spec->c_k_s_rsvd0_ver !=
+					rte_cpu_to_be_16(0x2000) &&
+					nvgre_mask->c_k_s_rsvd0_ver) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid NVGRE item");
+					return -rte_errno;
+				}
+				if (nvgre_mask->protocol &&
+					nvgre_spec->protocol !=
+					rte_cpu_to_be_16(0x6558)) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid NVGRE item");
+					return -rte_errno;
+				}
 				rte_memcpy(((uint8_t *)&tenant_id_be + 1),
 					   nvgre_spec->tni, 3);
 				filter->tenant_id =
