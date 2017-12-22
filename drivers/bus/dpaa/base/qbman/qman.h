@@ -267,7 +267,9 @@ static inline struct qm_eqcr_entry *qm_eqcr_start_no_stash(struct qm_portal
 {
 	register struct qm_eqcr *eqcr = &portal->eqcr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(!eqcr->busy);
+#endif
 	if (!eqcr->available)
 		return NULL;
 
@@ -284,7 +286,9 @@ static inline struct qm_eqcr_entry *qm_eqcr_start_stash(struct qm_portal
 	register struct qm_eqcr *eqcr = &portal->eqcr;
 	u8 diff, old_ci;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(!eqcr->busy);
+#endif
 	if (!eqcr->available) {
 		old_ci = eqcr->ci;
 		eqcr->ci = qm_cl_in(EQCR_CI) & (QM_EQCR_SIZE - 1);
@@ -303,8 +307,8 @@ static inline void qm_eqcr_abort(struct qm_portal *portal)
 {
 	__maybe_unused register struct qm_eqcr *eqcr = &portal->eqcr;
 
-	DPAA_ASSERT(eqcr->busy);
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
+	DPAA_ASSERT(eqcr->busy);
 	eqcr->busy = 0;
 #endif
 }
@@ -314,8 +318,10 @@ static inline struct qm_eqcr_entry *qm_eqcr_pend_and_next(
 {
 	register struct qm_eqcr *eqcr = &portal->eqcr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(eqcr->busy);
 	DPAA_ASSERT(eqcr->pmode != qm_eqcr_pvb);
+#endif
 	if (eqcr->available == 1)
 		return NULL;
 	eqcr->cursor->__dont_write_directly__verb = myverb | eqcr->vbit;
@@ -336,8 +342,10 @@ static inline void qm_eqcr_pci_commit(struct qm_portal *portal, u8 myverb)
 {
 	register struct qm_eqcr *eqcr = &portal->eqcr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	EQCR_COMMIT_CHECKS(eqcr);
 	DPAA_ASSERT(eqcr->pmode == qm_eqcr_pci);
+#endif
 	eqcr->cursor->__dont_write_directly__verb = myverb | eqcr->vbit;
 	EQCR_INC(eqcr);
 	eqcr->available--;
@@ -353,7 +361,9 @@ static inline void qm_eqcr_pce_prefetch(struct qm_portal *portal)
 {
 	__maybe_unused register struct qm_eqcr *eqcr = &portal->eqcr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(eqcr->pmode == qm_eqcr_pce);
+#endif
 	qm_cl_invalidate(EQCR_PI);
 	qm_cl_touch_rw(EQCR_PI);
 }
@@ -362,8 +372,10 @@ static inline void qm_eqcr_pce_commit(struct qm_portal *portal, u8 myverb)
 {
 	register struct qm_eqcr *eqcr = &portal->eqcr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	EQCR_COMMIT_CHECKS(eqcr);
 	DPAA_ASSERT(eqcr->pmode == qm_eqcr_pce);
+#endif
 	eqcr->cursor->__dont_write_directly__verb = myverb | eqcr->vbit;
 	EQCR_INC(eqcr);
 	eqcr->available--;
@@ -380,8 +392,10 @@ static inline void qm_eqcr_pvb_commit(struct qm_portal *portal, u8 myverb)
 	register struct qm_eqcr *eqcr = &portal->eqcr;
 	struct qm_eqcr_entry *eqcursor;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	EQCR_COMMIT_CHECKS(eqcr);
 	DPAA_ASSERT(eqcr->pmode == qm_eqcr_pvb);
+#endif
 	lwsync();
 	eqcursor = eqcr->cursor;
 	eqcursor->__dont_write_directly__verb = myverb | eqcr->vbit;
@@ -503,7 +517,9 @@ static inline u8 qm_dqrr_pci_update(struct qm_portal *portal)
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 	u8 diff, old_pi = dqrr->pi;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->pmode == qm_dqrr_pci);
+#endif
 	dqrr->pi = qm_in(DQRR_PI_CINH) & (QM_DQRR_SIZE - 1);
 	diff = qm_cyc_diff(QM_DQRR_SIZE, old_pi, dqrr->pi);
 	dqrr->fill += diff;
@@ -514,7 +530,9 @@ static inline void qm_dqrr_pce_prefetch(struct qm_portal *portal)
 {
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->pmode == qm_dqrr_pce);
+#endif
 	qm_cl_invalidate(DQRR_PI);
 	qm_cl_touch_ro(DQRR_PI);
 }
@@ -524,7 +542,9 @@ static inline u8 qm_dqrr_pce_update(struct qm_portal *portal)
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 	u8 diff, old_pi = dqrr->pi;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->pmode == qm_dqrr_pce);
+#endif
 	dqrr->pi = qm_cl_in(DQRR_PI) & (QM_DQRR_SIZE - 1);
 	diff = qm_cyc_diff(QM_DQRR_SIZE, old_pi, dqrr->pi);
 	dqrr->fill += diff;
@@ -536,7 +556,9 @@ static inline void qm_dqrr_pvb_update(struct qm_portal *portal)
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 	const struct qm_dqrr_entry *res = qm_cl(dqrr->ring, dqrr->pi);
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->pmode == qm_dqrr_pvb);
+#endif
 	/* when accessing 'verb', use __raw_readb() to ensure that compiler
 	 * inlining doesn't try to optimise out "excess reads".
 	 */
@@ -552,7 +574,9 @@ static inline void qm_dqrr_cci_consume(struct qm_portal *portal, u8 num)
 {
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cci);
+#endif
 	dqrr->ci = (dqrr->ci + num) & (QM_DQRR_SIZE - 1);
 	qm_out(DQRR_CI_CINH, dqrr->ci);
 }
@@ -561,7 +585,9 @@ static inline void qm_dqrr_cci_consume_to_current(struct qm_portal *portal)
 {
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cci);
+#endif
 	dqrr->ci = DQRR_PTR2IDX(dqrr->cursor);
 	qm_out(DQRR_CI_CINH, dqrr->ci);
 }
@@ -570,7 +596,9 @@ static inline void qm_dqrr_cce_prefetch(struct qm_portal *portal)
 {
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cce);
+#endif
 	qm_cl_invalidate(DQRR_CI);
 	qm_cl_touch_rw(DQRR_CI);
 }
@@ -579,7 +607,9 @@ static inline void qm_dqrr_cce_consume(struct qm_portal *portal, u8 num)
 {
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cce);
+#endif
 	dqrr->ci = (dqrr->ci + num) & (QM_DQRR_SIZE - 1);
 	qm_cl_out(DQRR_CI, dqrr->ci);
 }
@@ -588,7 +618,9 @@ static inline void qm_dqrr_cce_consume_to_current(struct qm_portal *portal)
 {
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cce);
+#endif
 	dqrr->ci = DQRR_PTR2IDX(dqrr->cursor);
 	qm_cl_out(DQRR_CI, dqrr->ci);
 }
@@ -598,7 +630,9 @@ static inline void qm_dqrr_cdc_consume_1(struct qm_portal *portal, u8 idx,
 {
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cdc);
+#endif
 	DPAA_ASSERT(idx < QM_DQRR_SIZE);
 	qm_out(DQRR_DCAP, (0 << 8) |	/* S */
 		((park ? 1 : 0) << 6) |	/* PK */
@@ -612,7 +646,9 @@ static inline void qm_dqrr_cdc_consume_1ptr(struct qm_portal *portal,
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 	u8 idx = DQRR_PTR2IDX(dq);
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cdc);
+#endif
 	DPAA_ASSERT(idx < QM_DQRR_SIZE);
 	qm_out(DQRR_DCAP, (0 << 8) |		/* DQRR_DCAP::S */
 		((park ? 1 : 0) << 6) |		/* DQRR_DCAP::PK */
@@ -623,7 +659,9 @@ static inline void qm_dqrr_cdc_consume_n(struct qm_portal *portal, u16 bitmask)
 {
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cdc);
+#endif
 	qm_out(DQRR_DCAP, (1 << 8) |		/* DQRR_DCAP::S */
 		((u32)bitmask << 16));		/* DQRR_DCAP::DCAP_CI */
 	dqrr->ci = qm_in(DQRR_CI_CINH) & (QM_DQRR_SIZE - 1);
@@ -634,7 +672,9 @@ static inline u8 qm_dqrr_cdc_cci(struct qm_portal *portal)
 {
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cdc);
+#endif
 	return qm_in(DQRR_CI_CINH) & (QM_DQRR_SIZE - 1);
 }
 
@@ -642,7 +682,9 @@ static inline void qm_dqrr_cdc_cce_prefetch(struct qm_portal *portal)
 {
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cdc);
+#endif
 	qm_cl_invalidate(DQRR_CI);
 	qm_cl_touch_ro(DQRR_CI);
 }
@@ -651,7 +693,9 @@ static inline u8 qm_dqrr_cdc_cce(struct qm_portal *portal)
 {
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode == qm_dqrr_cdc);
+#endif
 	return qm_cl_in(DQRR_CI) & (QM_DQRR_SIZE - 1);
 }
 
@@ -659,7 +703,9 @@ static inline u8 qm_dqrr_get_ci(struct qm_portal *portal)
 {
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode != qm_dqrr_cdc);
+#endif
 	return dqrr->ci;
 }
 
@@ -667,7 +713,9 @@ static inline void qm_dqrr_park(struct qm_portal *portal, u8 idx)
 {
 	__maybe_unused register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode != qm_dqrr_cdc);
+#endif
 	qm_out(DQRR_DCAP, (0 << 8) |		/* S */
 		(1 << 6) |			/* PK */
 		(idx & (QM_DQRR_SIZE - 1)));	/* DCAP_CI */
@@ -677,7 +725,9 @@ static inline void qm_dqrr_park_current(struct qm_portal *portal)
 {
 	register struct qm_dqrr *dqrr = &portal->dqrr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(dqrr->cmode != qm_dqrr_cdc);
+#endif
 	qm_out(DQRR_DCAP, (0 << 8) |		/* S */
 		(1 << 6) |			/* PK */
 		DQRR_PTR2IDX(dqrr->cursor));	/* DCAP_CI */
@@ -766,7 +816,9 @@ static inline void qm_mr_cci_consume(struct qm_portal *portal, u8 num)
 {
 	register struct qm_mr *mr = &portal->mr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(mr->cmode == qm_mr_cci);
+#endif
 	mr->ci = (mr->ci + num) & (QM_MR_SIZE - 1);
 	qm_out(MR_CI_CINH, mr->ci);
 }
@@ -775,7 +827,9 @@ static inline void qm_mr_cci_consume_to_current(struct qm_portal *portal)
 {
 	register struct qm_mr *mr = &portal->mr;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(mr->cmode == qm_mr_cci);
+#endif
 	mr->ci = MR_PTR2IDX(mr->cursor);
 	qm_out(MR_CI_CINH, mr->ci);
 }
@@ -806,8 +860,8 @@ static inline void qm_mc_finish(struct qm_portal *portal)
 {
 	__maybe_unused register struct qm_mc *mc = &portal->mc;
 
-	DPAA_ASSERT(mc->state == qman_mc_idle);
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
+	DPAA_ASSERT(mc->state == qman_mc_idle);
 	if (mc->state != qman_mc_idle)
 		pr_crit("Losing incomplete MC command\n");
 #endif
@@ -817,8 +871,8 @@ static inline struct qm_mc_command *qm_mc_start(struct qm_portal *portal)
 {
 	register struct qm_mc *mc = &portal->mc;
 
-	DPAA_ASSERT(mc->state == qman_mc_idle);
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
+	DPAA_ASSERT(mc->state == qman_mc_idle);
 	mc->state = qman_mc_user;
 #endif
 	dcbz_64(mc->cr);
@@ -830,7 +884,9 @@ static inline void qm_mc_commit(struct qm_portal *portal, u8 myverb)
 	register struct qm_mc *mc = &portal->mc;
 	struct qm_mc_result *rr = mc->rr + mc->rridx;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(mc->state == qman_mc_user);
+#endif
 	lwsync();
 	mc->cr->__dont_write_directly__verb = myverb | mc->vbit;
 	dcbf(mc->cr);
@@ -845,7 +901,9 @@ static inline struct qm_mc_result *qm_mc_result(struct qm_portal *portal)
 	register struct qm_mc *mc = &portal->mc;
 	struct qm_mc_result *rr = mc->rr + mc->rridx;
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(mc->state == qman_mc_hw);
+#endif
 	/* The inactive response register's verb byte always returns zero until
 	 * its command is submitted and completed. This includes the valid-bit,
 	 * in case you were wondering.

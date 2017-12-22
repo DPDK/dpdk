@@ -416,7 +416,9 @@ static inline void qm_eqcr_finish(struct qm_portal *portal)
 	qm_cl_invalidate(EQCR_CI);
 	eqcr->ci = qm_cl_in(EQCR_CI) & (QM_EQCR_SIZE - 1);
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(!eqcr->busy);
+#endif
 	if (pi != EQCR_PTR2IDX(eqcr->cursor))
 		pr_crit("losing uncommitted EQCR entries\n");
 	if (ci != eqcr->ci)
@@ -505,7 +507,9 @@ static inline void qm_mr_pvb_update(struct qm_portal *portal)
 	register struct qm_mr *mr = &portal->mr;
 	const struct qm_mr_entry *res = qm_cl(mr->ring, mr->pi);
 
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	DPAA_ASSERT(mr->pmode == qm_mr_pvb);
+#endif
 	/* when accessing 'verb', use __raw_readb() to ensure that compiler
 	 * inlining doesn't try to optimise out "excess reads".
 	 */
@@ -1267,6 +1271,7 @@ void qman_destroy_fq(struct qman_fq *fq, u32 flags __maybe_unused)
 	switch (fq->state) {
 	case qman_fq_state_parked:
 		DPAA_ASSERT(flags & QMAN_FQ_DESTROY_PARKED);
+		/* Fallthrough */
 	case qman_fq_state_oos:
 		if (fq_isset(fq, QMAN_FQ_FLAG_DYNAMIC_FQID))
 			qman_release_fqid(fq->fqid);
