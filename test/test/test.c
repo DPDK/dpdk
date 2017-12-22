@@ -149,8 +149,20 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 	}
 
 	if (suite->setup)
-		if (suite->setup() != 0)
+		if (suite->setup() != 0) {
+			/*
+			 * setup failed, so count all enabled tests and mark
+			 * them as failed
+			 */
+			while (suite->unit_test_cases[total].testcase) {
+				if (!suite->unit_test_cases[total].enabled)
+					skipped++;
+				else
+					failed++;
+				total++;
+			}
 			goto suite_summary;
+		}
 
 	printf(" + ------------------------------------------------------- +\n");
 
