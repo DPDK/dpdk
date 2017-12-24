@@ -214,6 +214,8 @@ prefetch_read_once(const volatile void *addr)
 
 #define EFSYS_OPT_RX_PACKED_STREAM 0
 
+#define EFSYS_OPT_TUNNEL 0
+
 /* ID */
 
 typedef struct __efsys_identifier_s efsys_identifier_t;
