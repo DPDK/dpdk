@@ -271,27 +271,15 @@ sfc_set_drv_limits(struct sfc_adapter *sa)
 	return efx_nic_set_drv_limits(sa->nic, &lim);
 }
 
-int
-sfc_start(struct sfc_adapter *sa)
+static int
+sfc_try_start(struct sfc_adapter *sa)
 {
 	int rc;
 
 	sfc_log_init(sa, "entry");
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
-
-	switch (sa->state) {
-	case SFC_ADAPTER_CONFIGURED:
-		break;
-	case SFC_ADAPTER_STARTED:
-		sfc_info(sa, "already started");
-		return 0;
-	default:
-		rc = EINVAL;
-		goto fail_bad_state;
-	}
-
-	sa->state = SFC_ADAPTER_STARTING;
+	SFC_ASSERT(sa->state == SFC_ADAPTER_STARTING);
 
 	sfc_log_init(sa, "set resource limits");
 	rc = sfc_set_drv_limits(sa);
@@ -327,7 +315,6 @@ sfc_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_flows_insert;
 
-	sa->state = SFC_ADAPTER_STARTED;
 	sfc_log_init(sa, "done");
 	return 0;
 
@@ -351,6 +338,46 @@ fail_intr_start:
 
 fail_nic_init:
 fail_set_drv_limits:
+	sfc_log_init(sa, "failed %d", rc);
+	return rc;
+}
+
+int
+sfc_start(struct sfc_adapter *sa)
+{
+	unsigned int start_tries = 3;
+	int rc;
+
+	sfc_log_init(sa, "entry");
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	switch (sa->state) {
+	case SFC_ADAPTER_CONFIGURED:
+		break;
+	case SFC_ADAPTER_STARTED:
+		sfc_info(sa, "already started");
+		return 0;
+	default:
+		rc = EINVAL;
+		goto fail_bad_state;
+	}
+
+	sa->state = SFC_ADAPTER_STARTING;
+
+	do {
+		rc = sfc_try_start(sa);
+	} while ((--start_tries > 0) &&
+		 (rc == EIO || rc == EAGAIN || rc == ENOENT || rc == EINVAL));
+
+	if (rc != 0)
+		goto fail_try_start;
+
+	sa->state = SFC_ADAPTER_STARTED;
+	sfc_log_init(sa, "done");
+	return 0;
+
+fail_try_start:
 	sa->state = SFC_ADAPTER_CONFIGURED;
 fail_bad_state:
 	sfc_log_init(sa, "failed %d", rc);
