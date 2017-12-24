@@ -39,6 +39,7 @@
 #include <rte_ethdev.h>
 #include <rte_kvargs.h>
 #include <rte_spinlock.h>
+#include <rte_atomic.h>
 
 #include "efx.h"
 
@@ -197,6 +198,7 @@ struct sfc_adapter {
 	efx_family_t			family;
 	efx_nic_t			*nic;
 	rte_spinlock_t			nic_lock;
+	rte_atomic32_t			restart_required;
 
 	struct sfc_mcdi			mcdi;
 	struct sfc_intr			intr;
@@ -328,6 +330,8 @@ int sfc_attach(struct sfc_adapter *sa);
 void sfc_detach(struct sfc_adapter *sa);
 int sfc_start(struct sfc_adapter *sa);
 void sfc_stop(struct sfc_adapter *sa);
+
+void sfc_schedule_restart(struct sfc_adapter *sa);
 
 int sfc_mcdi_init(struct sfc_adapter *sa);
 void sfc_mcdi_fini(struct sfc_adapter *sa);

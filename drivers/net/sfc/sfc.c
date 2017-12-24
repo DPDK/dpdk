@@ -33,6 +33,7 @@
 #include <unistd.h>
 
 #include <rte_errno.h>
+#include <rte_alarm.h>
 
 #include "efx.h"
 
@@ -389,6 +390,58 @@ sfc_stop(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 }
 
+static int
+sfc_restart(struct sfc_adapter *sa)
+{
+	int rc;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	if (sa->state != SFC_ADAPTER_STARTED)
+		return EINVAL;
+
+	sfc_stop(sa);
+
+	rc = sfc_start(sa);
+	if (rc != 0)
+		sfc_err(sa, "restart failed");
+
+	return rc;
+}
+
+static void
+sfc_restart_if_required(void *arg)
+{
+	struct sfc_adapter *sa = arg;
+
+	/* If restart is scheduled, clear the flag and do it */
+	if (rte_atomic32_cmpset((volatile uint32_t *)&sa->restart_required,
+				1, 0)) {
+		sfc_adapter_lock(sa);
+		if (sa->state == SFC_ADAPTER_STARTED)
+			(void)sfc_restart(sa);
+		sfc_adapter_unlock(sa);
+	}
+}
+
+void
+sfc_schedule_restart(struct sfc_adapter *sa)
+{
+	int rc;
+
+	/* Schedule restart alarm if it is not scheduled yet */
+	if (!rte_atomic32_test_and_set(&sa->restart_required))
+		return;
+
+	rc = rte_eal_alarm_set(1, sfc_restart_if_required, sa);
+	if (rc == -ENOTSUP)
+		sfc_warn(sa, "alarms are not supported, restart is pending");
+	else if (rc != 0)
+		sfc_err(sa, "cannot arm restart alarm (rc=%d)", rc);
+	else
+		sfc_info(sa, "restart scheduled");
+}
+
 int
 sfc_configure(struct sfc_adapter *sa)
 {
@@ -679,6 +732,7 @@ sfc_probe(struct sfc_adapter *sa)
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	sa->socket_id = rte_socket_id();
+	rte_atomic32_init(&sa->restart_required);
 
 	sfc_log_init(sa, "init mem bar");
 	rc = sfc_mem_bar_init(sa);
@@ -742,6 +796,14 @@ sfc_unprobe(struct sfc_adapter *sa)
 	efx_nic_unprobe(enp);
 
 	sfc_mcdi_fini(sa);
+
+	/*
+	 * Make sure there is no pending alarm to restart since we are
+	 * going to free device private which is passed as the callback
+	 * opaque data. A new alarm cannot be scheduled since MCDI is
+	 * shut down.
+	 */
+	rte_eal_alarm_cancel(sfc_restart_if_required, sa);
 
 	sfc_log_init(sa, "destroy nic");
 	sa->nic = NULL;

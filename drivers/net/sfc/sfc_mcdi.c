@@ -176,7 +176,7 @@ sfc_mcdi_exception(void *arg, efx_mcdi_exception_t eme)
 	    (eme == EFX_MCDI_EXCEPTION_MC_REBOOT) ? "REBOOT" :
 	    (eme == EFX_MCDI_EXCEPTION_MC_BADASSERT) ? "BADASSERT" : "UNKNOWN");
 
-	sfc_panic(sa, "MCDI exceptions handling is not implemented\n");
+	sfc_schedule_restart(sa);
 }
 
 #define SFC_MCDI_LOG_BUF_SIZE	128
