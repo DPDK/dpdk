@@ -47,6 +47,14 @@ New Features
   users. According to the device configuration, it will setup TX->RX loopback
   link or not.
 
+* **Added NVGRE and UDP tunnels support in Solarflare network PMD.**
+
+  Added support for NVGRE, VXLAN and GENEVE tunnels.
+
+  * Added support for UDP tunnel ports configuration.
+  * Added tunneled packets classification.
+  * Added inner checksum offload.
+
 
 API Changes
 -----------
