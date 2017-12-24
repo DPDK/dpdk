@@ -214,7 +214,7 @@ prefetch_read_once(const volatile void *addr)
 
 #define EFSYS_OPT_RX_PACKED_STREAM 0
 
-#define EFSYS_OPT_TUNNEL 0
+#define EFSYS_OPT_TUNNEL 1
 
 /* ID */
 

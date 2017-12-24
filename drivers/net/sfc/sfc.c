@@ -274,6 +274,7 @@ sfc_set_drv_limits(struct sfc_adapter *sa)
 static int
 sfc_try_start(struct sfc_adapter *sa)
 {
+	const efx_nic_cfg_t *encp;
 	int rc;
 
 	sfc_log_init(sa, "entry");
@@ -290,6 +291,14 @@ sfc_try_start(struct sfc_adapter *sa)
 	rc = efx_nic_init(sa->nic);
 	if (rc != 0)
 		goto fail_nic_init;
+
+	encp = efx_nic_cfg_get(sa->nic);
+	if (encp->enc_tunnel_encapsulations_supported != 0) {
+		sfc_log_init(sa, "apply tunnel config");
+		rc = efx_tunnel_reconfigure(sa->nic);
+		if (rc != 0)
+			goto fail_tunnel_reconfigure;
+	}
 
 	rc = sfc_intr_start(sa);
 	if (rc != 0)
@@ -334,6 +343,7 @@ fail_ev_start:
 	sfc_intr_stop(sa);
 
 fail_intr_start:
+fail_tunnel_reconfigure:
 	efx_nic_fini(sa->nic);
 
 fail_nic_init:
@@ -663,6 +673,16 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_nic_reset;
 
+	/*
+	 * Probed NIC is sufficient for tunnel init.
+	 * Initialize tunnel support to be able to use libefx
+	 * efx_tunnel_config_udp_{add,remove}() in any state and
+	 * efx_tunnel_reconfigure() on start up.
+	 */
+	rc = efx_tunnel_init(enp);
+	if (rc != 0)
+		goto fail_tunnel_init;
+
 	encp = efx_nic_cfg_get(sa->nic);
 
 	if (sa->dp_tx->features & SFC_DP_TX_FEAT_TSO) {
@@ -724,6 +744,9 @@ fail_intr_attach:
 	efx_nic_fini(sa->nic);
 
 fail_estimate_rsrc_limits:
+fail_tunnel_init:
+	efx_tunnel_fini(sa->nic);
+
 fail_nic_reset:
 
 	sfc_log_init(sa, "failed %d", rc);
@@ -743,6 +766,7 @@ sfc_detach(struct sfc_adapter *sa)
 	sfc_port_detach(sa);
 	sfc_ev_detach(sa);
 	sfc_intr_detach(sa);
+	efx_tunnel_fini(sa->nic);
 
 	sa->state = SFC_ADAPTER_UNINITIALIZED;
 }

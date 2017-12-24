@@ -116,6 +116,15 @@ required in the receive buffer.
 It should be taken into account when mbuf pool for receive is created.
 
 
+Tunnels support
+---------------
+
+NVGRE, VXLAN and GENEVE tunnels are supported on SFN8xxx family adapters
+with full-feature firmware variant running.
+**sfboot** should be used to configure NIC to run full-feature firmware variant.
+See Solarflare Server Adapter User's Guide for details.
+
+
 Flow API support
 ----------------
 

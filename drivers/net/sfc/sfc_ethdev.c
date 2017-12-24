@@ -1225,6 +1225,123 @@ sfc_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	return 0;
 }
 
+static efx_tunnel_protocol_t
+sfc_tunnel_rte_type_to_efx_udp_proto(enum rte_eth_tunnel_type rte_type)
+{
+	switch (rte_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		return EFX_TUNNEL_PROTOCOL_VXLAN;
+	case RTE_TUNNEL_TYPE_GENEVE:
+		return EFX_TUNNEL_PROTOCOL_GENEVE;
+	default:
+		return EFX_TUNNEL_NPROTOS;
+	}
+}
+
+enum sfc_udp_tunnel_op_e {
+	SFC_UDP_TUNNEL_ADD_PORT,
+	SFC_UDP_TUNNEL_DEL_PORT,
+};
+
+static int
+sfc_dev_udp_tunnel_op(struct rte_eth_dev *dev,
+		      struct rte_eth_udp_tunnel *tunnel_udp,
+		      enum sfc_udp_tunnel_op_e op)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	efx_tunnel_protocol_t tunnel_proto;
+	int rc;
+
+	sfc_log_init(sa, "%s udp_port=%u prot_type=%u",
+		     (op == SFC_UDP_TUNNEL_ADD_PORT) ? "add" :
+		     (op == SFC_UDP_TUNNEL_DEL_PORT) ? "delete" : "unknown",
+		     tunnel_udp->udp_port, tunnel_udp->prot_type);
+
+	tunnel_proto =
+		sfc_tunnel_rte_type_to_efx_udp_proto(tunnel_udp->prot_type);
+	if (tunnel_proto >= EFX_TUNNEL_NPROTOS) {
+		rc = ENOTSUP;
+		goto fail_bad_proto;
+	}
+
+	sfc_adapter_lock(sa);
+
+	switch (op) {
+	case SFC_UDP_TUNNEL_ADD_PORT:
+		rc = efx_tunnel_config_udp_add(sa->nic,
+					       tunnel_udp->udp_port,
+					       tunnel_proto);
+		break;
+	case SFC_UDP_TUNNEL_DEL_PORT:
+		rc = efx_tunnel_config_udp_remove(sa->nic,
+						  tunnel_udp->udp_port,
+						  tunnel_proto);
+		break;
+	default:
+		rc = EINVAL;
+		goto fail_bad_op;
+	}
+
+	if (rc != 0)
+		goto fail_op;
+
+	if (sa->state == SFC_ADAPTER_STARTED) {
+		rc = efx_tunnel_reconfigure(sa->nic);
+		if (rc == EAGAIN) {
+			/*
+			 * Configuration is accepted by FW and MC reboot
+			 * is initiated to apply the changes. MC reboot
+			 * will be handled in a usual way (MC reboot
+			 * event on management event queue and adapter
+			 * restart).
+			 */
+			rc = 0;
+		} else if (rc != 0) {
+			goto fail_reconfigure;
+		}
+	}
+
+	sfc_adapter_unlock(sa);
+	return 0;
+
+fail_reconfigure:
+	/* Remove/restore entry since the change makes the trouble */
+	switch (op) {
+	case SFC_UDP_TUNNEL_ADD_PORT:
+		(void)efx_tunnel_config_udp_remove(sa->nic,
+						   tunnel_udp->udp_port,
+						   tunnel_proto);
+		break;
+	case SFC_UDP_TUNNEL_DEL_PORT:
+		(void)efx_tunnel_config_udp_add(sa->nic,
+						tunnel_udp->udp_port,
+						tunnel_proto);
+		break;
+	}
+
+fail_op:
+fail_bad_op:
+	sfc_adapter_unlock(sa);
+
+fail_bad_proto:
+	SFC_ASSERT(rc > 0);
+	return -rc;
+}
+
+static int
+sfc_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+			    struct rte_eth_udp_tunnel *tunnel_udp)
+{
+	return sfc_dev_udp_tunnel_op(dev, tunnel_udp, SFC_UDP_TUNNEL_ADD_PORT);
+}
+
+static int
+sfc_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+			    struct rte_eth_udp_tunnel *tunnel_udp)
+{
+	return sfc_dev_udp_tunnel_op(dev, tunnel_udp, SFC_UDP_TUNNEL_DEL_PORT);
+}
+
 #if EFSYS_OPT_RX_SCALE
 static int
 sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
@@ -1529,6 +1646,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.flow_ctrl_get			= sfc_flow_ctrl_get,
 	.flow_ctrl_set			= sfc_flow_ctrl_set,
 	.mac_addr_set			= sfc_mac_addr_set,
+	.udp_tunnel_port_add		= sfc_dev_udp_tunnel_port_add,
+	.udp_tunnel_port_del		= sfc_dev_udp_tunnel_port_del,
 #if EFSYS_OPT_RX_SCALE
 	.reta_update			= sfc_dev_rss_reta_update,
 	.reta_query			= sfc_dev_rss_reta_query,
