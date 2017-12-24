@@ -150,7 +150,8 @@ typedef bool (sfc_dp_rx_qrx_ev_t)(struct sfc_dp_rxq *dp_rxq, unsigned int id);
 typedef void (sfc_dp_rx_qpurge_t)(struct sfc_dp_rxq *dp_rxq);
 
 /** Get packet types recognized/classified */
-typedef const uint32_t * (sfc_dp_rx_supported_ptypes_get_t)(void);
+typedef const uint32_t * (sfc_dp_rx_supported_ptypes_get_t)(
+				uint32_t tunnel_encaps);
 
 /** Get number of pending Rx descriptors */
 typedef unsigned int (sfc_dp_rx_qdesc_npending_t)(struct sfc_dp_rxq *dp_rxq);
@@ -166,6 +167,7 @@ struct sfc_dp_rx {
 	unsigned int				features;
 #define SFC_DP_RX_FEAT_SCATTER			0x1
 #define SFC_DP_RX_FEAT_MULTI_PROCESS		0x2
+#define SFC_DP_RX_FEAT_TUNNELS			0x4
 	sfc_dp_rx_qcreate_t			*qcreate;
 	sfc_dp_rx_qdestroy_t			*qdestroy;
 	sfc_dp_rx_qstart_t			*qstart;

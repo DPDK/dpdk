@@ -251,6 +251,7 @@ static void
 sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 			   struct rte_mbuf *m)
 {
+	uint32_t tun_ptype = 0;
 	uint32_t l2_ptype = 0;
 	uint32_t l3_ptype = 0;
 	uint32_t l4_ptype = 0;
@@ -259,15 +260,40 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 	if (unlikely(EFX_TEST_QWORD_BIT(rx_ev, ESF_DZ_RX_PARSE_INCOMPLETE_LBN)))
 		goto done;
 
+	switch (EFX_QWORD_FIELD(rx_ev, ESF_EZ_RX_ENCAP_HDR)) {
+	default:
+		/* Unexpected encapsulation tag class */
+		SFC_ASSERT(false);
+		/* FALLTHROUGH */
+	case ESE_EZ_ENCAP_HDR_NONE:
+		break;
+	case ESE_EZ_ENCAP_HDR_VXLAN:
+		/*
+		 * It is definitely UDP, but we have no information
+		 * about IPv4 vs IPv6 and VLAN tagging.
+		 */
+		tun_ptype = RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L4_UDP;
+		break;
+	case ESE_EZ_ENCAP_HDR_GRE:
+		/*
+		 * We have no information about IPv4 vs IPv6 and VLAN tagging.
+		 */
+		tun_ptype = RTE_PTYPE_TUNNEL_NVGRE;
+		break;
+	}
+
 	switch (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_ETH_TAG_CLASS)) {
 	case ESE_DZ_ETH_TAG_CLASS_NONE:
-		l2_ptype = RTE_PTYPE_L2_ETHER;
+		l2_ptype = (tun_ptype == 0) ? RTE_PTYPE_L2_ETHER :
+			RTE_PTYPE_INNER_L2_ETHER;
 		break;
 	case ESE_DZ_ETH_TAG_CLASS_VLAN1:
-		l2_ptype = RTE_PTYPE_L2_ETHER_VLAN;
+		l2_ptype = (tun_ptype == 0) ? RTE_PTYPE_L2_ETHER_VLAN :
+			RTE_PTYPE_INNER_L2_ETHER_VLAN;
 		break;
 	case ESE_DZ_ETH_TAG_CLASS_VLAN2:
-		l2_ptype = RTE_PTYPE_L2_ETHER_QINQ;
+		l2_ptype = (tun_ptype == 0) ? RTE_PTYPE_L2_ETHER_QINQ :
+			RTE_PTYPE_INNER_L2_ETHER_QINQ;
 		break;
 	default:
 		/* Unexpected Eth tag class */
@@ -276,25 +302,31 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 
 	switch (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_L3_CLASS)) {
 	case ESE_DZ_L3_CLASS_IP4_FRAG:
-		l4_ptype = RTE_PTYPE_L4_FRAG;
+		l4_ptype = (tun_ptype == 0) ? RTE_PTYPE_L4_FRAG :
+			RTE_PTYPE_INNER_L4_FRAG;
 		/* FALLTHROUGH */
 	case ESE_DZ_L3_CLASS_IP4:
-		l3_ptype = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+		l3_ptype = (tun_ptype == 0) ? RTE_PTYPE_L3_IPV4_EXT_UNKNOWN :
+			RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
 		ol_flags |= PKT_RX_RSS_HASH |
 			((EFX_TEST_QWORD_BIT(rx_ev,
 					     ESF_DZ_RX_IPCKSUM_ERR_LBN)) ?
 			 PKT_RX_IP_CKSUM_BAD : PKT_RX_IP_CKSUM_GOOD);
 		break;
 	case ESE_DZ_L3_CLASS_IP6_FRAG:
-		l4_ptype = RTE_PTYPE_L4_FRAG;
+		l4_ptype = (tun_ptype == 0) ? RTE_PTYPE_L4_FRAG :
+			RTE_PTYPE_INNER_L4_FRAG;
 		/* FALLTHROUGH */
 	case ESE_DZ_L3_CLASS_IP6:
-		l3_ptype = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+		l3_ptype = (tun_ptype == 0) ? RTE_PTYPE_L3_IPV6_EXT_UNKNOWN :
+			RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
 		ol_flags |= PKT_RX_RSS_HASH;
 		break;
 	case ESE_DZ_L3_CLASS_ARP:
 		/* Override Layer 2 packet type */
-		l2_ptype = RTE_PTYPE_L2_ETHER_ARP;
+		/* There is no ARP classification for inner packets */
+		if (tun_ptype == 0)
+			l2_ptype = RTE_PTYPE_L2_ETHER_ARP;
 		break;
 	default:
 		/* Unexpected Layer 3 class */
@@ -303,14 +335,16 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 
 	switch (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_L4_CLASS)) {
 	case ESE_DZ_L4_CLASS_TCP:
-		l4_ptype = RTE_PTYPE_L4_TCP;
+		l4_ptype = (tun_ptype == 0) ? RTE_PTYPE_L4_TCP :
+			RTE_PTYPE_INNER_L4_TCP;
 		ol_flags |=
 			(EFX_TEST_QWORD_BIT(rx_ev,
 					    ESF_DZ_RX_TCPUDP_CKSUM_ERR_LBN)) ?
 			PKT_RX_L4_CKSUM_BAD : PKT_RX_L4_CKSUM_GOOD;
 		break;
 	case ESE_DZ_L4_CLASS_UDP:
-		l4_ptype = RTE_PTYPE_L4_UDP;
+		l4_ptype = (tun_ptype == 0) ? RTE_PTYPE_L4_UDP :
+			RTE_PTYPE_INNER_L4_UDP;
 		ol_flags |=
 			(EFX_TEST_QWORD_BIT(rx_ev,
 					    ESF_DZ_RX_TCPUDP_CKSUM_ERR_LBN)) ?
@@ -329,7 +363,7 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 
 done:
 	m->ol_flags = ol_flags;
-	m->packet_type = l2_ptype | l3_ptype | l4_ptype;
+	m->packet_type = tun_ptype | l2_ptype | l3_ptype | l4_ptype;
 }
 
 static uint16_t
@@ -515,7 +549,7 @@ sfc_ef10_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 }
 
 static const uint32_t *
-sfc_ef10_supported_ptypes_get(void)
+sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
 {
 	static const uint32_t ef10_native_ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -529,8 +563,47 @@ sfc_ef10_supported_ptypes_get(void)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_UNKNOWN
 	};
+	static const uint32_t ef10_overlay_ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L2_ETHER_QINQ,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_TUNNEL_VXLAN,
+		RTE_PTYPE_TUNNEL_NVGRE,
+		RTE_PTYPE_INNER_L2_ETHER,
+		RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		RTE_PTYPE_INNER_L2_ETHER_QINQ,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
 
-	return ef10_native_ptypes;
+	/*
+	 * The function returns static set of supported packet types,
+	 * so we can't build it dynamically based on supported tunnel
+	 * encapsulations and should limit to known sets.
+	 */
+	switch (tunnel_encaps) {
+	case (1u << EFX_TUNNEL_PROTOCOL_VXLAN |
+	      1u << EFX_TUNNEL_PROTOCOL_GENEVE |
+	      1u << EFX_TUNNEL_PROTOCOL_NVGRE):
+		return ef10_overlay_ptypes;
+	default:
+		RTE_LOG(ERR, PMD,
+			"Unexpected set of supported tunnel encapsulations: %#x\n",
+			tunnel_encaps);
+		/* FALLTHROUGH */
+	case 0:
+		return ef10_native_ptypes;
+	}
 }
 
 static sfc_dp_rx_qdesc_npending_t sfc_ef10_rx_qdesc_npending;
@@ -707,7 +780,8 @@ struct sfc_dp_rx sfc_ef10_rx = {
 		.type		= SFC_DP_RX,
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10,
 	},
-	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS,
+	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS |
+				  SFC_DP_RX_FEAT_TUNNELS,
 	.qcreate		= sfc_ef10_rx_qcreate,
 	.qdestroy		= sfc_ef10_rx_qdestroy,
 	.qstart			= sfc_ef10_rx_qstart,

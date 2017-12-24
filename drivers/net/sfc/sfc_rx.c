@@ -193,7 +193,7 @@ sfc_efx_rx_desc_flags_to_packet_type(const unsigned int desc_flags)
 }
 
 static const uint32_t *
-sfc_efx_supported_ptypes_get(void)
+sfc_efx_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -946,6 +946,10 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq_info->type_flags =
 		sa->eth_dev->data->dev_conf.rxmode.enable_scatter ?
 		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
+
+	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
+	    (sa->dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
+		rxq_info->type_flags |= EFX_RXQ_FLAG_INNER_CLASSES;
 
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_RX, sw_index,
 			  rxq_info->entries, socket_id, &evq);

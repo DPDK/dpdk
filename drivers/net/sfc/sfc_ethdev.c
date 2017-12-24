@@ -131,6 +131,10 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM;
 
+	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
+	    (sa->dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_IPV4_CKSUM |
 		DEV_TX_OFFLOAD_UDP_CKSUM |
@@ -183,8 +187,10 @@ static const uint32_t *
 sfc_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint32_t tunnel_encaps = encp->enc_tunnel_encapsulations_supported;
 
-	return sa->dp_rx->supported_ptypes_get();
+	return sa->dp_rx->supported_ptypes_get(tunnel_encaps);
 }
 
 static int
