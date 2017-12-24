@@ -951,6 +951,7 @@ ef10_rx_qcreate(
 	__in		efsys_mem_t *esmp,
 	__in		size_t ndescs,
 	__in		uint32_t id,
+	__in		unsigned int flags,
 	__in		efx_evq_t *eep,
 	__in		efx_rxq_t *erp)
 {
@@ -980,7 +981,6 @@ ef10_rx_qcreate(
 
 	switch (type) {
 	case EFX_RXQ_TYPE_DEFAULT:
-	case EFX_RXQ_TYPE_SCATTER:
 		ps_buf_size = 0;
 		break;
 #if EFSYS_OPT_RX_PACKED_STREAM
@@ -1024,7 +1024,7 @@ ef10_rx_qcreate(
 #endif /* EFSYS_OPT_RX_PACKED_STREAM */
 
 	/* Scatter can only be disabled if the firmware supports doing so */
-	if (type == EFX_RXQ_TYPE_SCATTER)
+	if (flags & EFX_RXQ_FLAG_SCATTER)
 		disable_scatter = B_FALSE;
 	else
 		disable_scatter = encp->enc_rx_disable_scatter_supported;

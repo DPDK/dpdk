@@ -144,6 +144,7 @@ struct sfc_rxq_info {
 	unsigned int		max_entries;
 	unsigned int		entries;
 	efx_rxq_type_t		type;
+	unsigned int		type_flags;
 	struct sfc_rxq		*rxq;
 	boolean_t		deferred_start;
 	boolean_t		deferred_started;

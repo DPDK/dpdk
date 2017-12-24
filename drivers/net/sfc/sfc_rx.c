@@ -697,8 +697,8 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	rc = efx_rx_qcreate(sa->nic, rxq->hw_index, 0, rxq_info->type,
 			    &rxq->mem, rxq_info->entries,
-			    0 /* not used on EF10 */, evq->common,
-			    &rxq->common);
+			    0 /* not used on EF10 */, rxq_info->type_flags,
+			    evq->common, &rxq->common);
 	if (rc != 0)
 		goto fail_rx_qcreate;
 
@@ -942,9 +942,10 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	SFC_ASSERT(nb_rx_desc <= rxq_info->max_entries);
 	rxq_info->entries = nb_rx_desc;
-	rxq_info->type =
+	rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
+	rxq_info->type_flags =
 		sa->eth_dev->data->dev_conf.rxmode.enable_scatter ?
-		EFX_RXQ_TYPE_SCATTER : EFX_RXQ_TYPE_DEFAULT;
+		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
 
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_RX, sw_index,
 			  rxq_info->entries, socket_id, &evq);
