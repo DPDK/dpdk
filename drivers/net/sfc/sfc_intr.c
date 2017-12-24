@@ -57,8 +57,9 @@ sfc_intr_handle_mgmt_evq(struct sfc_adapter *sa)
 
 	evq = sa->mgmt_evq;
 
-	if (evq->init_state != SFC_EVQ_STARTED) {
-		sfc_log_init(sa, "interrupt on stopped EVQ %u", evq->evq_index);
+	if (!sa->mgmt_evq_running) {
+		sfc_log_init(sa, "interrupt on not running management EVQ %u",
+			     evq->evq_index);
 	} else {
 		sfc_ev_qpoll(evq);
 

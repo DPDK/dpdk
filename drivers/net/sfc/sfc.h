@@ -212,7 +212,29 @@ struct sfc_adapter {
 	unsigned int			evq_count;
 
 	unsigned int			mgmt_evq_index;
+	/*
+	 * The lock is used to serialise management event queue polling
+	 * which can be done from different context. Also the lock
+	 * guarantees that mgmt_evq_running is preserved while the lock
+	 * is held. It is used to serialise polling and start/stop
+	 * operations.
+	 *
+	 * Locks which may be held when the lock is acquired:
+	 *  - adapter lock, when:
+	 *    - device start/stop to change mgmt_evq_running
+	 *    - any control operations in client side MCDI proxy handling to
+	 *	poll management event queue waiting for proxy response
+	 *  - MCDI lock, when:
+	 *    - any control operations in client side MCDI proxy handling to
+	 *	poll management event queue waiting for proxy response
+	 *
+	 * Locks which are acquired with the lock held:
+	 *  - nic_lock, when:
+	 *    - MC event processing on management event queue polling
+	 *	(e.g. MC REBOOT or BADASSERT events)
+	 */
 	rte_spinlock_t			mgmt_evq_lock;
+	bool				mgmt_evq_running;
 	struct sfc_evq			*mgmt_evq;
 
 	unsigned int			rxq_count;

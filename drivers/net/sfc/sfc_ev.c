@@ -565,10 +565,8 @@ void
 sfc_ev_mgmt_qpoll(struct sfc_adapter *sa)
 {
 	if (rte_spinlock_trylock(&sa->mgmt_evq_lock)) {
-		struct sfc_evq *mgmt_evq = sa->mgmt_evq;
-
-		if (mgmt_evq->init_state == SFC_EVQ_STARTED)
-			sfc_ev_qpoll(mgmt_evq);
+		if (sa->mgmt_evq_running)
+			sfc_ev_qpoll(sa->mgmt_evq);
 
 		rte_spinlock_unlock(&sa->mgmt_evq_lock);
 	}
@@ -734,19 +732,25 @@ sfc_ev_start(struct sfc_adapter *sa)
 		goto fail_ev_init;
 
 	/* Start management EVQ used for global events */
-	rte_spinlock_lock(&sa->mgmt_evq_lock);
 
+	/*
+	 * Management event queue start polls the queue, but it cannot
+	 * interfere with other polling contexts since mgmt_evq_running
+	 * is false yet.
+	 */
 	rc = sfc_ev_qstart(sa->mgmt_evq, sa->mgmt_evq_index);
 	if (rc != 0)
 		goto fail_mgmt_evq_start;
+
+	rte_spinlock_lock(&sa->mgmt_evq_lock);
+	sa->mgmt_evq_running = true;
+	rte_spinlock_unlock(&sa->mgmt_evq_lock);
 
 	if (sa->intr.lsc_intr) {
 		rc = sfc_ev_qprime(sa->mgmt_evq);
 		if (rc != 0)
 			goto fail_mgmt_evq_prime;
 	}
-
-	rte_spinlock_unlock(&sa->mgmt_evq_lock);
 
 	/*
 	 * Start management EVQ polling. If interrupts are disabled
@@ -767,7 +771,6 @@ fail_mgmt_evq_prime:
 	sfc_ev_qstop(sa->mgmt_evq);
 
 fail_mgmt_evq_start:
-	rte_spinlock_unlock(&sa->mgmt_evq_lock);
 	efx_ev_fini(sa->nic);
 
 fail_ev_init:
@@ -783,8 +786,10 @@ sfc_ev_stop(struct sfc_adapter *sa)
 	sfc_ev_mgmt_periodic_qpoll_stop(sa);
 
 	rte_spinlock_lock(&sa->mgmt_evq_lock);
-	sfc_ev_qstop(sa->mgmt_evq);
+	sa->mgmt_evq_running = false;
 	rte_spinlock_unlock(&sa->mgmt_evq_lock);
+
+	sfc_ev_qstop(sa->mgmt_evq);
 
 	efx_ev_fini(sa->nic);
 }
