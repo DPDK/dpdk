@@ -69,6 +69,8 @@ SFC EFX PMD has support for:
 
 - IPv4/IPv6 TCP/UDP receive checksum offload
 
+- Inner IPv4/IPv6 TCP/UDP receive checksum offload
+
 - Received packet type information
 
 - Receive side scaling (RSS)

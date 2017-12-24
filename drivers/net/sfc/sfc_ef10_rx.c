@@ -252,6 +252,10 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 			   struct rte_mbuf *m)
 {
 	uint32_t tun_ptype = 0;
+	/* Which event bit is mapped to PKT_RX_IP_CKSUM_* */
+	int8_t ip_csum_err_bit;
+	/* Which event bit is mapped to PKT_RX_L4_CKSUM_* */
+	int8_t l4_csum_err_bit;
 	uint32_t l2_ptype = 0;
 	uint32_t l3_ptype = 0;
 	uint32_t l4_ptype = 0;
@@ -282,6 +286,17 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 		break;
 	}
 
+	if (tun_ptype == 0) {
+		ip_csum_err_bit = ESF_DZ_RX_IPCKSUM_ERR_LBN;
+		l4_csum_err_bit = ESF_DZ_RX_TCPUDP_CKSUM_ERR_LBN;
+	} else {
+		ip_csum_err_bit = ESF_EZ_RX_IP_INNER_CHKSUM_ERR_LBN;
+		l4_csum_err_bit = ESF_EZ_RX_TCP_UDP_INNER_CHKSUM_ERR_LBN;
+		if (unlikely(EFX_TEST_QWORD_BIT(rx_ev,
+						ESF_DZ_RX_IPCKSUM_ERR_LBN)))
+			ol_flags |= PKT_RX_EIP_CKSUM_BAD;
+	}
+
 	switch (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_ETH_TAG_CLASS)) {
 	case ESE_DZ_ETH_TAG_CLASS_NONE:
 		l2_ptype = (tun_ptype == 0) ? RTE_PTYPE_L2_ETHER :
@@ -309,8 +324,7 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 		l3_ptype = (tun_ptype == 0) ? RTE_PTYPE_L3_IPV4_EXT_UNKNOWN :
 			RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
 		ol_flags |= PKT_RX_RSS_HASH |
-			((EFX_TEST_QWORD_BIT(rx_ev,
-					     ESF_DZ_RX_IPCKSUM_ERR_LBN)) ?
+			((EFX_TEST_QWORD_BIT(rx_ev, ip_csum_err_bit)) ?
 			 PKT_RX_IP_CKSUM_BAD : PKT_RX_IP_CKSUM_GOOD);
 		break;
 	case ESE_DZ_L3_CLASS_IP6_FRAG:
@@ -338,16 +352,14 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 		l4_ptype = (tun_ptype == 0) ? RTE_PTYPE_L4_TCP :
 			RTE_PTYPE_INNER_L4_TCP;
 		ol_flags |=
-			(EFX_TEST_QWORD_BIT(rx_ev,
-					    ESF_DZ_RX_TCPUDP_CKSUM_ERR_LBN)) ?
+			(EFX_TEST_QWORD_BIT(rx_ev, l4_csum_err_bit)) ?
 			PKT_RX_L4_CKSUM_BAD : PKT_RX_L4_CKSUM_GOOD;
 		break;
 	case ESE_DZ_L4_CLASS_UDP:
 		l4_ptype = (tun_ptype == 0) ? RTE_PTYPE_L4_UDP :
 			RTE_PTYPE_INNER_L4_UDP;
 		ol_flags |=
-			(EFX_TEST_QWORD_BIT(rx_ev,
-					    ESF_DZ_RX_TCPUDP_CKSUM_ERR_LBN)) ?
+			(EFX_TEST_QWORD_BIT(rx_ev, l4_csum_err_bit)) ?
 			PKT_RX_L4_CKSUM_BAD : PKT_RX_L4_CKSUM_GOOD;
 		break;
 	case ESE_DZ_L4_CLASS_UNKNOWN:
