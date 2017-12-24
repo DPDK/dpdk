@@ -743,7 +743,7 @@ sfc_ev_start(struct sfc_adapter *sa)
 	if (sa->intr.lsc_intr) {
 		rc = sfc_ev_qprime(sa->mgmt_evq);
 		if (rc != 0)
-			goto fail_evq0_prime;
+			goto fail_mgmt_evq_prime;
 	}
 
 	rte_spinlock_unlock(&sa->mgmt_evq_lock);
@@ -763,7 +763,7 @@ sfc_ev_start(struct sfc_adapter *sa)
 
 	return 0;
 
-fail_evq0_prime:
+fail_mgmt_evq_prime:
 	sfc_ev_qstop(sa->mgmt_evq);
 
 fail_mgmt_evq_start:
