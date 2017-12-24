@@ -48,6 +48,8 @@ SFC EFX PMD has support for:
 
 - IPv4/IPv6 TCP/UDP transmit checksum offload
 
+- Inner IPv4/IPv6 TCP/UDP transmit checksum offload
+
 - Port hardware statistics
 
 - Extended statistics (see Solarflare Server Adapter User's Guide for

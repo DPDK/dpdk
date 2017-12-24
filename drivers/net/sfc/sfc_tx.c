@@ -410,6 +410,7 @@ sfc_tx_close(struct sfc_adapter *sa)
 int
 sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	struct rte_eth_dev_data *dev_data;
 	struct sfc_txq_info *txq_info;
 	struct sfc_txq *txq;
@@ -440,8 +441,15 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if ((txq->flags & ETH_TXQ_FLAGS_NOXSUMTCP) ||
 	    (txq->flags & ETH_TXQ_FLAGS_NOXSUMUDP)) {
 		flags = EFX_TXQ_CKSUM_IPV4;
+
+		if (encp->enc_tunnel_encapsulations_supported != 0)
+			flags |= EFX_TXQ_CKSUM_INNER_IPV4;
 	} else {
 		flags = EFX_TXQ_CKSUM_IPV4 | EFX_TXQ_CKSUM_TCPUDP;
+
+		if (encp->enc_tunnel_encapsulations_supported != 0)
+			flags |= EFX_TXQ_CKSUM_INNER_IPV4 |
+				 EFX_TXQ_CKSUM_INNER_TCPUDP;
 
 		if (sa->tso)
 			flags |= EFX_TXQ_FATSOV2;
