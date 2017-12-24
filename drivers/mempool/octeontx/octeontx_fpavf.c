@@ -358,8 +358,8 @@ err:
 	return ret;
 }
 
-static int
-octeontx_fpavf_pool_setup(uintptr_t handle, unsigned long memsz,
+int
+octeontx_fpavf_pool_set_range(uintptr_t handle, unsigned long memsz,
 			  void *memva, uint16_t gpool)
 {
 	uint64_t va_end;
@@ -481,21 +481,15 @@ octeontx_fpa_bufpool_free_count(uintptr_t handle)
 
 uintptr_t
 octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
-				unsigned int buf_offset, char **va_start,
-				int node_id)
+				unsigned int buf_offset, int node_id)
 {
 	unsigned int gpool;
-	void *memva;
-	unsigned long memsz;
 	uintptr_t gpool_handle;
 	uintptr_t pool_bar;
 	int res;
 
 	RTE_SET_USED(node_id);
 	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) > OCTEONTX_FPAVF_BUF_OFFSET);
-
-	if (unlikely(*va_start == NULL))
-		goto error_end;
 
 	object_size = RTE_CACHE_LINE_ROUNDUP(object_size);
 	if (object_size > FPA_MAX_OBJ_SIZE) {
@@ -539,15 +533,6 @@ octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
 		goto error_pool_destroy;
 	}
 
-	/* vf pool setup */
-	memsz = object_size * object_count;
-	memva = *va_start;
-	res = octeontx_fpavf_pool_setup(pool_bar, memsz, memva, gpool);
-	if (res < 0) {
-		errno = res;
-		goto error_gaura_detach;
-	}
-
 	/* Release lock */
 	rte_spinlock_unlock(&fpadev.lock);
 
@@ -563,8 +548,6 @@ octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
 
 	return gpool_handle;
 
-error_gaura_detach:
-	(void) octeontx_fpapf_aura_detach(gpool);
 error_pool_destroy:
 	octeontx_fpavf_free(gpool);
 	octeontx_fpapf_pool_destroy(gpool);

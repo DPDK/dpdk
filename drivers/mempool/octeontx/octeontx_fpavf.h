@@ -86,8 +86,10 @@ do {							\
 
 uintptr_t
 octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
-				unsigned int buf_offset, char **va_start,
-				int node);
+				unsigned int buf_offset, int node);
+int
+octeontx_fpavf_pool_set_range(uintptr_t handle, unsigned long memsz,
+			  void *memva, uint16_t gpool);
 int
 octeontx_fpa_bufpool_destroy(uintptr_t handle, int node);
 int
