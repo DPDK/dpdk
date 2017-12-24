@@ -286,10 +286,10 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 			 PKT_RX_IP_CKSUM_BAD : PKT_RX_IP_CKSUM_GOOD);
 		break;
 	case ESE_DZ_L3_CLASS_IP6_FRAG:
-		l4_ptype |= RTE_PTYPE_L4_FRAG;
+		l4_ptype = RTE_PTYPE_L4_FRAG;
 		/* FALLTHROUGH */
 	case ESE_DZ_L3_CLASS_IP6:
-		l3_ptype |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+		l3_ptype = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 		ol_flags |= PKT_RX_RSS_HASH;
 		break;
 	case ESE_DZ_L3_CLASS_ARP:
