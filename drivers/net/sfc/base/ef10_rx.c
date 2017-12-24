@@ -948,6 +948,7 @@ ef10_rx_qcreate(
 	__in		unsigned int index,
 	__in		unsigned int label,
 	__in		efx_rxq_type_t type,
+	__in		uint32_t type_data,
 	__in		efsys_mem_t *esmp,
 	__in		size_t ndescs,
 	__in		uint32_t id,
@@ -984,25 +985,32 @@ ef10_rx_qcreate(
 		ps_buf_size = 0;
 		break;
 #if EFSYS_OPT_RX_PACKED_STREAM
-	case EFX_RXQ_TYPE_PACKED_STREAM_1M:
-		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_1M;
-		break;
-	case EFX_RXQ_TYPE_PACKED_STREAM_512K:
-		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_512K;
-		break;
-	case EFX_RXQ_TYPE_PACKED_STREAM_256K:
-		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_256K;
-		break;
-	case EFX_RXQ_TYPE_PACKED_STREAM_128K:
-		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_128K;
-		break;
-	case EFX_RXQ_TYPE_PACKED_STREAM_64K:
-		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_64K;
+	case EFX_RXQ_TYPE_PACKED_STREAM:
+		switch (type_data) {
+		case EFX_RXQ_PACKED_STREAM_BUF_SIZE_1M:
+			ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_1M;
+			break;
+		case EFX_RXQ_PACKED_STREAM_BUF_SIZE_512K:
+			ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_512K;
+			break;
+		case EFX_RXQ_PACKED_STREAM_BUF_SIZE_256K:
+			ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_256K;
+			break;
+		case EFX_RXQ_PACKED_STREAM_BUF_SIZE_128K:
+			ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_128K;
+			break;
+		case EFX_RXQ_PACKED_STREAM_BUF_SIZE_64K:
+			ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_64K;
+			break;
+		default:
+			rc = ENOTSUP;
+			goto fail3;
+		}
 		break;
 #endif /* EFSYS_OPT_RX_PACKED_STREAM */
 	default:
 		rc = ENOTSUP;
-		goto fail3;
+		goto fail4;
 	}
 
 #if EFSYS_OPT_RX_PACKED_STREAM
@@ -1010,13 +1018,13 @@ ef10_rx_qcreate(
 		/* Check if datapath firmware supports packed stream mode */
 		if (encp->enc_rx_packed_stream_supported == B_FALSE) {
 			rc = ENOTSUP;
-			goto fail4;
+			goto fail5;
 		}
 		/* Check if packed stream allows configurable buffer sizes */
-		if ((type != EFX_RXQ_TYPE_PACKED_STREAM_1M) &&
+		if ((ps_buf_size != MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_1M) &&
 		    (encp->enc_rx_var_packed_stream_supported == B_FALSE)) {
 			rc = ENOTSUP;
-			goto fail5;
+			goto fail6;
 		}
 	}
 #else /* EFSYS_OPT_RX_PACKED_STREAM */
@@ -1031,7 +1039,7 @@ ef10_rx_qcreate(
 
 	if ((rc = efx_mcdi_init_rxq(enp, ndescs, eep->ee_index, label, index,
 		    esmp, disable_scatter, ps_buf_size)) != 0)
-		goto fail6;
+		goto fail7;
 
 	erp->er_eep = eep;
 	erp->er_label = label;
@@ -1042,16 +1050,20 @@ ef10_rx_qcreate(
 
 	return (0);
 
+fail7:
+	EFSYS_PROBE(fail7);
+#if EFSYS_OPT_RX_PACKED_STREAM
 fail6:
 	EFSYS_PROBE(fail6);
-#if EFSYS_OPT_RX_PACKED_STREAM
 fail5:
 	EFSYS_PROBE(fail5);
+#endif /* EFSYS_OPT_RX_PACKED_STREAM */
 fail4:
 	EFSYS_PROBE(fail4);
-#endif /* EFSYS_OPT_RX_PACKED_STREAM */
+#if EFSYS_OPT_RX_PACKED_STREAM
 fail3:
 	EFSYS_PROBE(fail3);
+#endif /* EFSYS_OPT_RX_PACKED_STREAM */
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
