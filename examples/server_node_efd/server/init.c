@@ -94,20 +94,28 @@ static int
 init_port(uint16_t port_num)
 {
 	/* for port configuration all features are off by default */
-	const struct rte_eth_conf port_conf = {
+	struct rte_eth_conf port_conf = {
 		.rxmode = {
-			.mq_mode = ETH_MQ_RX_RSS
-		}
+			.mq_mode = ETH_MQ_RX_RSS,
+			.ignore_offload_bitfield = 1,
+		},
 	};
 	const uint16_t rx_rings = 1, tx_rings = num_nodes;
 	uint16_t rx_ring_size = RTE_MP_RX_DESC_DEFAULT;
 	uint16_t tx_ring_size = RTE_MP_TX_DESC_DEFAULT;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf txconf;
 
 	uint16_t q;
 	int retval;
 
 	printf("Port %u init ... ", port_num);
 	fflush(stdout);
+
+	rte_eth_dev_info_get(port_num, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	/*
 	 * Standard DPDK port initialisation - config port, then set up
@@ -130,10 +138,13 @@ init_port(uint16_t port_num)
 			return retval;
 	}
 
+	txconf = dev_info.default_txconf;
+	txconf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txconf.offloads = port_conf.txmode.offloads;
 	for (q = 0; q < tx_rings; q++) {
 		retval = rte_eth_tx_queue_setup(port_num, q, tx_ring_size,
 				rte_eth_dev_socket_id(port_num),
-				NULL);
+				&txconf);
 		if (retval < 0)
 			return retval;
 	}
