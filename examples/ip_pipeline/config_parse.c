@@ -68,14 +68,8 @@ static const struct app_link_params link_params_default = {
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_NONE,
 
-			.header_split   = 0, /* Header split */
-			.hw_ip_checksum = 0, /* IP checksum offload */
-			.hw_vlan_filter = 0, /* VLAN filtering */
-			.hw_vlan_strip  = 0, /* VLAN strip */
-			.hw_vlan_extend = 0, /* Extended VLAN */
-			.jumbo_frame    = 0, /* Jumbo frame support */
-			.hw_strip_crc   = 1, /* CRC strip by HW */
-			.enable_scatter = 0, /* Scattered packets RX handler */
+			.ignore_offload_bitfield = 1,
+			.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 
 			.max_rx_pkt_len = 9000, /* Jumbo frame max packet len */
 			.split_hdr_size = 0, /* Header split buffer size */
@@ -129,8 +123,7 @@ static const struct app_pktq_hwq_out_params default_hwq_out_params = {
 		},
 		.tx_rs_thresh = 0,
 		.tx_free_thresh = 0,
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-			ETH_TXQ_FLAGS_NOOFFLOADS,
+		.txq_flags = ETH_TXQ_FLAGS_IGNORE,
 		.tx_deferred_start = 0,
 	}
 };

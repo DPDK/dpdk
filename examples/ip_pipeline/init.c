@@ -847,10 +847,10 @@ app_init_link_frag_ras(struct app_params *app)
 	uint32_t i;
 
 	if (is_any_swq_frag_or_ras(app)) {
-		for (i = 0; i < app->n_pktq_hwq_out; i++) {
-			struct app_pktq_hwq_out_params *p_txq = &app->hwq_out_params[i];
-
-			p_txq->conf.txq_flags &= ~ETH_TXQ_FLAGS_NOMULTSEGS;
+		for (i = 0; i < app->n_links; i++) {
+			struct app_link_params *p_link = &app->link_params[i];
+				p_link->conf.txmode.offloads |=
+						DEV_TX_OFFLOAD_MULTI_SEGS;
 		}
 	}
 }
@@ -933,6 +933,7 @@ app_init_link(struct app_params *app)
 
 	for (i = 0; i < app->n_links; i++) {
 		struct app_link_params *p_link = &app->link_params[i];
+		struct rte_eth_dev_info dev_info;
 		uint32_t link_id, n_hwq_in, n_hwq_out, j;
 		int status;
 
@@ -949,6 +950,10 @@ app_init_link(struct app_params *app)
 			n_hwq_out);
 
 		/* LINK */
+		rte_eth_dev_info_get(p_link->pmd_id, &dev_info);
+		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			p_link->conf.txmode.offloads |=
+				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 		status = rte_eth_dev_configure(
 			p_link->pmd_id,
 			n_hwq_in,
@@ -990,6 +995,7 @@ app_init_link(struct app_params *app)
 					p_rxq->name,
 					status);
 
+			p_rxq->conf.offloads = p_link->conf.rxmode.offloads;
 			status = rte_eth_rx_queue_setup(
 				p_link->pmd_id,
 				rxq_queue_id,
@@ -1031,6 +1037,7 @@ app_init_link(struct app_params *app)
 					p_txq->name,
 					status);
 
+			p_txq->conf.offloads = p_link->conf.txmode.offloads;
 			status = rte_eth_tx_queue_setup(
 				p_link->pmd_id,
 				txq_queue_id,
