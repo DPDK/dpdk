@@ -78,13 +78,10 @@
  */
 
 /* Options for configuring ethernet port */
-static const struct rte_eth_conf port_conf = {
+static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.header_split = 0,      /* Header Split disabled */
-		.hw_ip_checksum = 0,    /* IP checksum offload disabled */
-		.hw_vlan_filter = 0,    /* VLAN filtering disabled */
-		.jumbo_frame = 0,       /* Jumbo Frame Support disabled */
-		.hw_strip_crc = 1,      /* CRC stripped by hardware */
+		.ignore_offload_bitfield = 1,
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
@@ -418,11 +415,19 @@ init_port(uint16_t port)
 	int ret;
 	uint16_t nb_rxd = NB_RXD;
 	uint16_t nb_txd = NB_TXD;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf rxq_conf;
+	struct rte_eth_txconf txq_conf;
+	struct rte_eth_conf local_port_conf = port_conf;
 
 	/* Initialise device and RX/TX queues */
 	PRINT_INFO("Initialising port %u ...", port);
 	fflush(stdout);
-	ret = rte_eth_dev_configure(port, 1, 1, &port_conf);
+	rte_eth_dev_info_get(port, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		local_port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	ret = rte_eth_dev_configure(port, 1, 1, &local_port_conf);
 	if (ret < 0)
 		FATAL_ERROR("Could not configure port%u (%d)", port, ret);
 
@@ -431,17 +436,22 @@ init_port(uint16_t port)
 		FATAL_ERROR("Could not adjust number of descriptors for port%u (%d)",
 			    port, ret);
 
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = local_port_conf.rxmode.offloads;
 	ret = rte_eth_rx_queue_setup(port, 0, nb_rxd,
 				rte_eth_dev_socket_id(port),
-				NULL,
+				&rxq_conf,
 				pktmbuf_pool);
 	if (ret < 0)
 		FATAL_ERROR("Could not setup up RX queue for port%u (%d)",
 				port, ret);
 
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = local_port_conf.txmode.offloads;
 	ret = rte_eth_tx_queue_setup(port, 0, nb_txd,
 				rte_eth_dev_socket_id(port),
-				NULL);
+				&txq_conf);
 	if (ret < 0)
 		FATAL_ERROR("Could not setup up TX queue for port%u (%d)",
 				port, ret);
