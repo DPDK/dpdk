@@ -1936,7 +1936,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	virtio_dev_atomic_read_link_status(dev, &link);
 	old = link;
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	link.link_speed  = SPEED_10G;
+	link.link_speed  = ETH_SPEED_NUM_10G;
 
 	if (hw->started == 0) {
 		link.link_status = ETH_LINK_DOWN;

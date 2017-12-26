@@ -9,11 +9,6 @@
 
 #include "virtio_pci.h"
 
-#define SPEED_10	10
-#define SPEED_100	100
-#define SPEED_1000	1000
-#define SPEED_10G	10000
-
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
