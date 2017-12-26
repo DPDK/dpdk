@@ -535,7 +535,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	static const struct rte_eth_conf port_conf_default = {
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_RSS,
-			.max_rx_pkt_len = ETHER_MAX_LEN
+			.max_rx_pkt_len = ETHER_MAX_LEN,
+			.ignore_offload_bitfield = 1,
 		},
 		.rx_adv_conf = {
 			.rss_conf = {
@@ -550,9 +551,16 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	struct rte_eth_conf port_conf = port_conf_default;
 	int retval;
 	uint16_t q;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf txconf;
 
 	if (port >= rte_eth_dev_count())
 		return -1;
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	/* Configure the Ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
@@ -567,10 +575,13 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 			return retval;
 	}
 
+	txconf = dev_info.default_txconf;
+	txconf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txconf.offloads = port_conf_default.txmode.offloads;
 	/* Allocate and set up 1 TX queue per Ethernet port. */
 	for (q = 0; q < tx_rings; q++) {
 		retval = rte_eth_tx_queue_setup(port, q, tx_ring_size,
-				rte_eth_dev_socket_id(port), NULL);
+				rte_eth_dev_socket_id(port), &txconf);
 		if (retval < 0)
 			return retval;
 	}
