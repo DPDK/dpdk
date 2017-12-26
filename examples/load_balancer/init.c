@@ -45,11 +45,9 @@ static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode	= ETH_MQ_RX_RSS,
 		.split_hdr_size = 0,
-		.header_split   = 0, /**< Header Split disabled */
-		.hw_ip_checksum = 1, /**< IP checksum offload enabled */
-		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
+		.ignore_offload_bitfield = 1,
+		.offloads = (DEV_RX_OFFLOAD_CHECKSUM |
+			     DEV_RX_OFFLOAD_CRC_STRIP),
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
@@ -401,6 +399,10 @@ app_init_nics(void)
 		struct rte_mempool *pool;
 		uint16_t nic_rx_ring_size;
 		uint16_t nic_tx_ring_size;
+		struct rte_eth_rxconf rxq_conf;
+		struct rte_eth_txconf txq_conf;
+		struct rte_eth_dev_info dev_info;
+		struct rte_eth_conf local_port_conf = port_conf;
 
 		n_rx_queues = app_get_nic_rx_queues_per_port(port);
 		n_tx_queues = app.nic_tx_port_mask[port];
@@ -411,11 +413,15 @@ app_init_nics(void)
 
 		/* Init port */
 		printf("Initializing NIC port %u ...\n", port);
+		rte_eth_dev_info_get(port, &dev_info);
+		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			local_port_conf.txmode.offloads |=
+				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 		ret = rte_eth_dev_configure(
 			port,
 			(uint8_t) n_rx_queues,
 			(uint8_t) n_tx_queues,
-			&port_conf);
+			&local_port_conf);
 		if (ret < 0) {
 			rte_panic("Cannot init NIC port %u (%d)\n", port, ret);
 		}
@@ -432,6 +438,8 @@ app_init_nics(void)
 		app.nic_rx_ring_size = nic_rx_ring_size;
 		app.nic_tx_ring_size = nic_tx_ring_size;
 
+		rxq_conf = dev_info.default_rxconf;
+		rxq_conf.offloads = local_port_conf.rxmode.offloads;
 		/* Init RX queues */
 		for (queue = 0; queue < APP_MAX_RX_QUEUES_PER_NIC_PORT; queue ++) {
 			if (app.nic_rx_queue_mask[port][queue] == 0) {
@@ -449,7 +457,7 @@ app_init_nics(void)
 				queue,
 				(uint16_t) app.nic_rx_ring_size,
 				socket,
-				NULL,
+				&rxq_conf,
 				pool);
 			if (ret < 0) {
 				rte_panic("Cannot init RX queue %u for port %u (%d)\n",
@@ -457,6 +465,9 @@ app_init_nics(void)
 			}
 		}
 
+		txq_conf = dev_info.default_txconf;
+		txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+		txq_conf.offloads = local_port_conf.txmode.offloads;
 		/* Init TX queues */
 		if (app.nic_tx_port_mask[port] == 1) {
 			app_get_lcore_for_nic_tx(port, &lcore);
@@ -468,7 +479,7 @@ app_init_nics(void)
 				0,
 				(uint16_t) app.nic_tx_ring_size,
 				socket,
-				NULL);
+				&txq_conf);
 			if (ret < 0) {
 				rte_panic("Cannot init TX queue 0 for port %d (%d)\n",
 					port,
