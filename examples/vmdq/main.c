@@ -65,10 +65,7 @@ static const struct rte_eth_conf vmdq_conf_default = {
 	.rxmode = {
 		.mq_mode        = ETH_MQ_RX_VMDQ_ONLY,
 		.split_hdr_size = 0,
-		.header_split   = 0, /**< Header Split disabled */
-		.hw_ip_checksum = 0, /**< IP checksum offload disabled */
-		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
+		.ignore_offload_bitfield = 1,
 	},
 
 	.txmode = {
@@ -159,6 +156,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_rxconf *rxconf;
+	struct rte_eth_txconf *txconf;
 	struct rte_eth_conf port_conf;
 	uint16_t rxRings, txRings;
 	uint16_t rxRingSize = RTE_TEST_RX_DESC_DEFAULT;
@@ -216,6 +214,11 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	 */
 	rxRings = (uint16_t)dev_info.max_rx_queues;
 	txRings = (uint16_t)dev_info.max_tx_queues;
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	retval = rte_eth_dev_configure(port, rxRings, txRings, &port_conf);
 	if (retval != 0)
 		return retval;
@@ -231,9 +234,11 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return -1;
 	}
 
-	rte_eth_dev_info_get(port, &dev_info);
 	rxconf = &dev_info.default_rxconf;
 	rxconf->rx_drop_en = 1;
+	txconf = &dev_info.default_txconf;
+	txconf->txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txconf->offloads = port_conf.txmode.offloads;
 	for (q = 0; q < rxRings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, rxRingSize,
 					rte_eth_dev_socket_id(port),
@@ -248,7 +253,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	for (q = 0; q < txRings; q++) {
 		retval = rte_eth_tx_queue_setup(port, q, txRingSize,
 					rte_eth_dev_socket_id(port),
-					NULL);
+					txconf);
 		if (retval < 0) {
 			printf("initialise tx queue %d failed\n", q);
 			return retval;
