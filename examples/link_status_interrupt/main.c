@@ -76,14 +76,11 @@ struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
-static const struct rte_eth_conf port_conf = {
+static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.split_hdr_size = 0,
-		.header_split   = 0, /**< Header Split disabled */
-		.hw_ip_checksum = 0, /**< IP checksum offload disabled */
-		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
+		.ignore_offload_bitfield = 1,
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
@@ -601,6 +598,11 @@ main(int argc, char **argv)
 
 	/* Initialise each port */
 	for (portid = 0; portid < nb_ports; portid++) {
+		struct rte_eth_rxconf rxq_conf;
+		struct rte_eth_txconf txq_conf;
+		struct rte_eth_conf local_port_conf = port_conf;
+		struct rte_eth_dev_info dev_info;
+
 		/* skip ports that are not enabled */
 		if ((lsi_enabled_port_mask & (1 << portid)) == 0) {
 			printf("Skipping disabled port %u\n", (unsigned) portid);
@@ -609,7 +611,11 @@ main(int argc, char **argv)
 		/* init port */
 		printf("Initializing port %u... ", (unsigned) portid);
 		fflush(stdout);
-		ret = rte_eth_dev_configure(portid, 1, 1, &port_conf);
+		rte_eth_dev_info_get(portid, &dev_info);
+		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			local_port_conf.txmode.offloads |=
+				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		ret = rte_eth_dev_configure(portid, 1, 1, &local_port_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
 				  ret, (unsigned) portid);
@@ -634,9 +640,11 @@ main(int argc, char **argv)
 
 		/* init one RX queue */
 		fflush(stdout);
+		rxq_conf = dev_info.default_rxconf;
+		rxq_conf.offloads = local_port_conf.rxmode.offloads;
 		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
 					     rte_eth_dev_socket_id(portid),
-					     NULL,
+					     &rxq_conf,
 					     lsi_pktmbuf_pool);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: err=%d, port=%u\n",
@@ -644,9 +652,12 @@ main(int argc, char **argv)
 
 		/* init one TX queue logical core on each port */
 		fflush(stdout);
+		txq_conf = dev_info.default_txconf;
+		txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+		txq_conf.offloads = local_port_conf.txmode.offloads;
 		ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
 				rte_eth_dev_socket_id(portid),
-				NULL);
+				&txq_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d,port=%u\n",
 				  ret, (unsigned) portid);
