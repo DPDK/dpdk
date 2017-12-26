@@ -45,7 +45,10 @@ static volatile bool force_quit;
 
 /****************/
 static const struct rte_eth_conf port_conf_default = {
-	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+	.rxmode = {
+		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.ignore_offload_bitfield = 1,
+	},
 };
 
 static inline int
@@ -55,9 +58,16 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	const uint16_t rx_rings = 1, tx_rings = 1;
 	int retval;
 	uint16_t q;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf txq_conf;
 
 	if (port >= rte_eth_dev_count())
 		return -1;
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	/* Configure the Ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
@@ -72,10 +82,13 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 			return retval;
 	}
 
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = port_conf.txmode.offloads;
 	/* Allocate and set up 1 TX queue per Ethernet port. */
 	for (q = 0; q < tx_rings; q++) {
 		retval = rte_eth_tx_queue_setup(port, q, TX_RING_SIZE,
-				rte_eth_dev_socket_id(port), NULL);
+				rte_eth_dev_socket_id(port), &txq_conf);
 		if (retval < 0)
 			return retval;
 	}
