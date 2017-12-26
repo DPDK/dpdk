@@ -95,11 +95,8 @@ static struct kni_port_params *kni_port_params_array[RTE_MAX_ETHPORTS];
 /* Options for configuring ethernet port */
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.header_split = 0,      /* Header Split disabled */
-		.hw_ip_checksum = 0,    /* IP checksum offload disabled */
-		.hw_vlan_filter = 0,    /* VLAN filtering disabled */
-		.jumbo_frame = 0,       /* Jumbo Frame Support disabled */
-		.hw_strip_crc = 1,      /* CRC stripped by hardware */
+		.ignore_offload_bitfield = 1,
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
@@ -578,11 +575,19 @@ init_port(uint16_t port)
 	int ret;
 	uint16_t nb_rxd = NB_RXD;
 	uint16_t nb_txd = NB_TXD;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf rxq_conf;
+	struct rte_eth_txconf txq_conf;
+	struct rte_eth_conf local_port_conf = port_conf;
 
 	/* Initialise device and RX/TX queues */
 	RTE_LOG(INFO, APP, "Initialising port %u ...\n", (unsigned)port);
 	fflush(stdout);
-	ret = rte_eth_dev_configure(port, 1, 1, &port_conf);
+	rte_eth_dev_info_get(port, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		local_port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	ret = rte_eth_dev_configure(port, 1, 1, &local_port_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Could not configure port%u (%d)\n",
 		            (unsigned)port, ret);
@@ -592,14 +597,19 @@ init_port(uint16_t port)
 		rte_exit(EXIT_FAILURE, "Could not adjust number of descriptors "
 				"for port%u (%d)\n", (unsigned)port, ret);
 
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = local_port_conf.rxmode.offloads;
 	ret = rte_eth_rx_queue_setup(port, 0, nb_rxd,
-		rte_eth_dev_socket_id(port), NULL, pktmbuf_pool);
+		rte_eth_dev_socket_id(port), &rxq_conf, pktmbuf_pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Could not setup up RX queue for "
 				"port%u (%d)\n", (unsigned)port, ret);
 
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = local_port_conf.txmode.offloads;
 	ret = rte_eth_tx_queue_setup(port, 0, nb_txd,
-		rte_eth_dev_socket_id(port), NULL);
+		rte_eth_dev_socket_id(port), &txq_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Could not setup up TX queue for "
 				"port%u (%d)\n", (unsigned)port, ret);
@@ -673,7 +683,10 @@ static int
 kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 {
 	int ret;
+	uint16_t nb_rxd = NB_RXD;
 	struct rte_eth_conf conf;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf rxq_conf;
 
 	if (port_id >= rte_eth_dev_count()) {
 		RTE_LOG(ERR, APP, "Invalid port id %d\n", port_id);
@@ -688,9 +701,9 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 	memcpy(&conf, &port_conf, sizeof(conf));
 	/* Set new MTU */
 	if (new_mtu > ETHER_MAX_LEN)
-		conf.rxmode.jumbo_frame = 1;
+		conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		conf.rxmode.jumbo_frame = 0;
+		conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	/* mtu + length of header + length of FCS = max pkt length */
 	conf.rxmode.max_rx_pkt_len = new_mtu + KNI_ENET_HEADER_SIZE +
@@ -698,6 +711,23 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 	ret = rte_eth_dev_configure(port_id, 1, 1, &conf);
 	if (ret < 0) {
 		RTE_LOG(ERR, APP, "Fail to reconfigure port %d\n", port_id);
+		return ret;
+	}
+
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rxd, NULL);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Could not adjust number of descriptors "
+				"for port%u (%d)\n", (unsigned int)port_id,
+				ret);
+
+	rte_eth_dev_info_get(port_id, &dev_info);
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = conf.rxmode.offloads;
+	ret = rte_eth_rx_queue_setup(port_id, 0, nb_rxd,
+		rte_eth_dev_socket_id(port_id), &rxq_conf, pktmbuf_pool);
+	if (ret < 0) {
+		RTE_LOG(ERR, APP, "Fail to setup Rx queue of port %d\n",
+				port_id);
 		return ret;
 	}
 
