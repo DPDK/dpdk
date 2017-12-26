@@ -550,7 +550,7 @@ dev_configure(struct rte_eth_dev *dev)
 	unsigned int j;
 	unsigned int reta_idx_n;
 	const uint8_t use_app_rss_key =
-		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len;
+		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
 
 	if (use_app_rss_key &&
 	    (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len !=
