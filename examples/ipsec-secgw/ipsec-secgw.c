@@ -188,6 +188,8 @@ static struct rte_eth_conf port_conf = {
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
+		.offloads = (DEV_TX_OFFLOAD_IPV4_CKSUM |
+			     DEV_TX_OFFLOAD_MULTI_SEGS),
 	},
 };
 
@@ -1329,6 +1331,7 @@ port_init(uint16_t portid)
 	int32_t ret, socket_id;
 	struct lcore_conf *qconf;
 	struct ether_addr ethaddr;
+	struct rte_eth_conf local_port_conf = port_conf;
 
 	rte_eth_dev_info_get(portid, &dev_info);
 
@@ -1356,17 +1359,19 @@ port_init(uint16_t portid)
 			nb_rx_queue, nb_tx_queue);
 
 	if (frame_size) {
-		port_conf.rxmode.max_rx_pkt_len = frame_size;
-		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+		local_port_conf.rxmode.max_rx_pkt_len = frame_size;
+		local_port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	}
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_SECURITY)
-		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SECURITY;
+		local_port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SECURITY;
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_SECURITY)
-		port_conf.txmode.offloads |= DEV_TX_OFFLOAD_SECURITY;
-
+		local_port_conf.txmode.offloads |= DEV_TX_OFFLOAD_SECURITY;
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		local_port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	ret = rte_eth_dev_configure(portid, nb_rx_queue, nb_tx_queue,
-			&port_conf);
+			&local_port_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Cannot configure device: "
 				"err=%d, port=%d\n", ret, portid);
@@ -1391,7 +1396,8 @@ port_init(uint16_t portid)
 		printf("Setup txq=%u,%d,%d\n", lcore_id, tx_queueid, socket_id);
 
 		txconf = &dev_info.default_txconf;
-		txconf->txq_flags = 0;
+		txconf->txq_flags = ETH_TXQ_FLAGS_IGNORE;
+		txconf->offloads = local_port_conf.txmode.offloads;
 
 		ret = rte_eth_tx_queue_setup(portid, tx_queueid, nb_txd,
 				socket_id, txconf);
@@ -1405,6 +1411,8 @@ port_init(uint16_t portid)
 
 		/* init RX queues */
 		for (queue = 0; queue < qconf->nb_rx_queue; ++queue) {
+			struct rte_eth_rxconf rxq_conf;
+
 			if (portid != qconf->rx_queue_list[queue].port_id)
 				continue;
 
@@ -1413,8 +1421,10 @@ port_init(uint16_t portid)
 			printf("Setup rxq=%d,%d,%d\n", portid, rx_queueid,
 					socket_id);
 
+			rxq_conf = dev_info.default_rxconf;
+			rxq_conf.offloads = local_port_conf.rxmode.offloads;
 			ret = rte_eth_rx_queue_setup(portid, rx_queueid,
-					nb_rxd,	socket_id, NULL,
+					nb_rxd,	socket_id, &rxq_conf,
 					socket_ctx[socket_id].mbuf_pool);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE,
