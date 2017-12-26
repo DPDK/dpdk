@@ -122,11 +122,8 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode = ETH_MQ_RX_NONE,
 		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
-		.header_split   = 0, /**< Header Split disabled */
-		.hw_ip_checksum = 0, /**< IP checksum offload enabled */
-		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
+		.ignore_offload_bitfield = 1,
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
@@ -145,11 +142,19 @@ slave_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 	int retval;
 	uint16_t nb_rxd = RTE_RX_DESC_DEFAULT;
 	uint16_t nb_txd = RTE_TX_DESC_DEFAULT;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf rxq_conf;
+	struct rte_eth_txconf txq_conf;
+	struct rte_eth_conf local_port_conf = port_conf;
 
 	if (portid >= rte_eth_dev_count())
 		rte_exit(EXIT_FAILURE, "Invalid port\n");
 
-	retval = rte_eth_dev_configure(portid, 1, 1, &port_conf);
+	rte_eth_dev_info_get(portid, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		local_port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	retval = rte_eth_dev_configure(portid, 1, 1, &local_port_conf);
 	if (retval != 0)
 		rte_exit(EXIT_FAILURE, "port %u: configuration failed (res=%d)\n",
 				portid, retval);
@@ -160,16 +165,22 @@ slave_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 				"failed (res=%d)\n", portid, retval);
 
 	/* RX setup */
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = local_port_conf.rxmode.offloads;
 	retval = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
-					rte_eth_dev_socket_id(portid), NULL,
+					rte_eth_dev_socket_id(portid),
+					&rxq_conf,
 					mbuf_pool);
 	if (retval < 0)
 		rte_exit(retval, " port %u: RX queue 0 setup failed (res=%d)",
 				portid, retval);
 
 	/* TX setup */
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = local_port_conf.txmode.offloads;
 	retval = rte_eth_tx_queue_setup(portid, 0, nb_txd,
-				rte_eth_dev_socket_id(portid), NULL);
+				rte_eth_dev_socket_id(portid), &txq_conf);
 
 	if (retval < 0)
 		rte_exit(retval, "port %u: TX queue 0 setup failed (res=%d)",
@@ -196,6 +207,10 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 	uint8_t i;
 	uint16_t nb_rxd = RTE_RX_DESC_DEFAULT;
 	uint16_t nb_txd = RTE_TX_DESC_DEFAULT;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf rxq_conf;
+	struct rte_eth_txconf txq_conf;
+	struct rte_eth_conf local_port_conf = port_conf;
 
 	retval = rte_eth_bond_create("bond0", BONDING_MODE_ALB,
 			0 /*SOCKET_ID_ANY*/);
@@ -205,7 +220,11 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 
 	BOND_PORT = retval;
 
-	retval = rte_eth_dev_configure(BOND_PORT, 1, 1, &port_conf);
+	rte_eth_dev_info_get(BOND_PORT, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		local_port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	retval = rte_eth_dev_configure(BOND_PORT, 1, 1, &local_port_conf);
 	if (retval != 0)
 		rte_exit(EXIT_FAILURE, "port %u: configuration failed (res=%d)\n",
 				BOND_PORT, retval);
@@ -216,16 +235,21 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 				"failed (res=%d)\n", BOND_PORT, retval);
 
 	/* RX setup */
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = local_port_conf.rxmode.offloads;
 	retval = rte_eth_rx_queue_setup(BOND_PORT, 0, nb_rxd,
-					rte_eth_dev_socket_id(BOND_PORT), NULL,
-					mbuf_pool);
+					rte_eth_dev_socket_id(BOND_PORT),
+					&rxq_conf, mbuf_pool);
 	if (retval < 0)
 		rte_exit(retval, " port %u: RX queue 0 setup failed (res=%d)",
 				BOND_PORT, retval);
 
 	/* TX setup */
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = local_port_conf.txmode.offloads;
 	retval = rte_eth_tx_queue_setup(BOND_PORT, 0, nb_txd,
-				rte_eth_dev_socket_id(BOND_PORT), NULL);
+				rte_eth_dev_socket_id(BOND_PORT), &txq_conf);
 
 	if (retval < 0)
 		rte_exit(retval, "port %u: TX queue 0 setup failed (res=%d)",
