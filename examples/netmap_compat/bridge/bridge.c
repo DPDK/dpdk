@@ -26,11 +26,8 @@
 struct rte_eth_conf eth_conf = {
 	.rxmode = {
 		.split_hdr_size = 0,
-		.header_split   = 0,
-		.hw_ip_checksum = 0,
-		.hw_vlan_filter = 0,
-		.jumbo_frame    = 0,
-		.hw_strip_crc   = 1,
+		.ignore_offload_bitfield = 1,
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,

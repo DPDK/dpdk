@@ -661,6 +661,9 @@ rte_netmap_init_port(uint16_t portid, const struct rte_netmap_port_conf *conf)
 	int32_t ret;
 	uint16_t i;
 	uint16_t rx_slots, tx_slots;
+	struct rte_eth_rxconf rxq_conf;
+	struct rte_eth_txconf txq_conf;
+	struct rte_eth_dev_info dev_info;
 
 	if (conf == NULL ||
 			portid >= RTE_DIM(ports) ||
@@ -681,6 +684,10 @@ rte_netmap_init_port(uint16_t portid, const struct rte_netmap_port_conf *conf)
 		return -EINVAL;
 	}
 
+	rte_eth_dev_info_get(portid, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		conf->eth_conf->txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	ret = rte_eth_dev_configure(portid, conf->nr_rx_rings,
 		conf->nr_tx_rings, conf->eth_conf);
 
@@ -698,9 +705,14 @@ rte_netmap_init_port(uint16_t portid, const struct rte_netmap_port_conf *conf)
 		return ret;
 	}
 
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = conf->eth_conf->rxmode.offloads;
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = conf->eth_conf->txmode.offloads;
 	for (i = 0; i < conf->nr_tx_rings; i++) {
 		ret = rte_eth_tx_queue_setup(portid, i, tx_slots,
-			conf->socket_id, NULL);
+			conf->socket_id, &txq_conf);
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
@@ -710,7 +722,7 @@ rte_netmap_init_port(uint16_t portid, const struct rte_netmap_port_conf *conf)
 		}
 
 		ret = rte_eth_rx_queue_setup(portid, i, rx_slots,
-			conf->socket_id, NULL, conf->pool);
+			conf->socket_id, &rxq_conf, conf->pool);
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
