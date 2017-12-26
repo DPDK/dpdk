@@ -71,10 +71,7 @@ static const struct rte_eth_conf vmdq_dcb_conf_default = {
 	.rxmode = {
 		.mq_mode        = ETH_MQ_RX_VMDQ_DCB,
 		.split_hdr_size = 0,
-		.header_split   = 0, /**< Header Split disabled */
-		.hw_ip_checksum = 0, /**< IP checksum offload disabled */
-		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
+		.ignore_offload_bitfield = 1,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_VMDQ_DCB,
@@ -199,6 +196,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	uint16_t q;
 	uint16_t queues_per_pool;
 	uint32_t max_nb_pools;
+	struct rte_eth_txconf txq_conf;
 
 	/*
 	 * The max pool number from dev_info will be used to validate the pool
@@ -255,6 +253,10 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	if (retval < 0)
 		return retval;
 
+	rte_eth_dev_info_get(port, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	/*
 	 * Though in this example, all queues including pf queues are setup.
 	 * This is because VMDQ queues doesn't always start from zero, and the
@@ -287,10 +289,13 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		}
 	}
 
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = port_conf.txmode.offloads;
 	for (q = 0; q < num_queues; q++) {
 		retval = rte_eth_tx_queue_setup(port, q, txRingSize,
 					rte_eth_dev_socket_id(port),
-					NULL);
+					&txq_conf);
 		if (retval < 0) {
 			printf("initialize tx queue %d failed\n", q);
 			return retval;
