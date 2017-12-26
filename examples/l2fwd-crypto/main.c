@@ -206,16 +206,13 @@ struct lcore_queue_conf {
 
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
-static const struct rte_eth_conf port_conf = {
+static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = ETH_MQ_RX_NONE,
 		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
-		.header_split   = 0, /**< Header Split disabled */
-		.hw_ip_checksum = 0, /**< IP checksum offload disabled */
-		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
+		.ignore_offload_bitfield = 1,
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
@@ -2327,6 +2324,10 @@ initialize_ports(struct l2fwd_crypto_options *options)
 
 	for (last_portid = 0, portid = 0; portid < nb_ports; portid++) {
 		int retval;
+		struct rte_eth_dev_info dev_info;
+		struct rte_eth_rxconf rxq_conf;
+		struct rte_eth_txconf txq_conf;
+		struct rte_eth_conf local_port_conf = port_conf;
 
 		/* Skip ports that are not enabled */
 		if ((options->portmask & (1 << portid)) == 0)
@@ -2335,7 +2336,11 @@ initialize_ports(struct l2fwd_crypto_options *options)
 		/* init port */
 		printf("Initializing port %u... ", portid);
 		fflush(stdout);
-		retval = rte_eth_dev_configure(portid, 1, 1, &port_conf);
+		rte_eth_dev_info_get(portid, &dev_info);
+		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			local_port_conf.txmode.offloads |=
+				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		retval = rte_eth_dev_configure(portid, 1, 1, &local_port_conf);
 		if (retval < 0) {
 			printf("Cannot configure device: err=%d, port=%u\n",
 				  retval, portid);
@@ -2352,9 +2357,11 @@ initialize_ports(struct l2fwd_crypto_options *options)
 
 		/* init one RX queue */
 		fflush(stdout);
+		rxq_conf = dev_info.default_rxconf;
+		rxq_conf.offloads = local_port_conf.rxmode.offloads;
 		retval = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
 					     rte_eth_dev_socket_id(portid),
-					     NULL, l2fwd_pktmbuf_pool);
+					     &rxq_conf, l2fwd_pktmbuf_pool);
 		if (retval < 0) {
 			printf("rte_eth_rx_queue_setup:err=%d, port=%u\n",
 					retval, portid);
@@ -2363,9 +2370,12 @@ initialize_ports(struct l2fwd_crypto_options *options)
 
 		/* init one TX queue on each port */
 		fflush(stdout);
+		txq_conf = dev_info.default_txconf;
+		txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+		txq_conf.offloads = local_port_conf.txmode.offloads;
 		retval = rte_eth_tx_queue_setup(portid, 0, nb_txd,
 				rte_eth_dev_socket_id(portid),
-				NULL);
+				&txq_conf);
 		if (retval < 0) {
 			printf("rte_eth_tx_queue_setup:err=%d, port=%u\n",
 				retval, portid);
