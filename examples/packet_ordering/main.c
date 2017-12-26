@@ -35,7 +35,11 @@ volatile uint8_t quit_signal;
 
 static struct rte_mempool *mbuf_pool;
 
-static struct rte_eth_conf port_conf_default;
+static struct rte_eth_conf port_conf_default = {
+	.rxmode = {
+		.ignore_offload_bitfield = 1,
+	},
+};
 
 struct worker_thread_args {
 	struct rte_ring *ring_in;
@@ -264,10 +268,17 @@ configure_eth_port(uint16_t port_id)
 	uint16_t q;
 	uint16_t nb_rxd = RX_DESC_PER_QUEUE;
 	uint16_t nb_txd = TX_DESC_PER_QUEUE;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf txconf;
+	struct rte_eth_conf port_conf = port_conf_default;
 
 	if (port_id > nb_ports)
 		return -1;
 
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	ret = rte_eth_dev_configure(port_id, rxRings, txRings, &port_conf_default);
 	if (ret != 0)
 		return ret;
@@ -284,9 +295,12 @@ configure_eth_port(uint16_t port_id)
 			return ret;
 	}
 
+	txconf = dev_info.default_txconf;
+	txconf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txconf.offloads = port_conf.txmode.offloads;
 	for (q = 0; q < txRings; q++) {
 		ret = rte_eth_tx_queue_setup(port_id, q, nb_txd,
-				rte_eth_dev_socket_id(port_id), NULL);
+				rte_eth_dev_socket_id(port_id), &txconf);
 		if (ret < 0)
 			return ret;
 	}
