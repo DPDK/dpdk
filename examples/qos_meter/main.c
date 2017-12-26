@@ -56,11 +56,9 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode	= ETH_MQ_RX_RSS,
 		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
-		.header_split   = 0,
-		.hw_ip_checksum = 1,
-		.hw_vlan_filter = 0,
-		.jumbo_frame    = 0,
-		.hw_strip_crc   = 1,
+		.ignore_offload_bitfield = 1,
+		.offloads = (DEV_RX_OFFLOAD_CHECKSUM |
+			     DEV_RX_OFFLOAD_CRC_STRIP),
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
@@ -281,6 +279,10 @@ main(int argc, char **argv)
 	uint32_t lcore_id;
 	uint16_t nb_rxd = NIC_RX_QUEUE_DESC;
 	uint16_t nb_txd = NIC_TX_QUEUE_DESC;
+	struct rte_eth_conf conf;
+	struct rte_eth_rxconf rxq_conf;
+	struct rte_eth_txconf txq_conf;
+	struct rte_eth_dev_info dev_info;
 	int ret;
 
 	/* EAL init */
@@ -306,7 +308,11 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Buffer pool creation error\n");
 
 	/* NIC init */
-	ret = rte_eth_dev_configure(port_rx, 1, 1, &port_conf);
+	conf = port_conf;
+	rte_eth_dev_info_get(port_rx, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		conf.txmode.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	ret = rte_eth_dev_configure(port_rx, 1, 1, &conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d configuration error (%d)\n", port_rx, ret);
 
@@ -315,19 +321,28 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Port %d adjust number of descriptors error (%d)\n",
 				port_rx, ret);
 
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = conf.rxmode.offloads;
 	ret = rte_eth_rx_queue_setup(port_rx, NIC_RX_QUEUE, nb_rxd,
 				rte_eth_dev_socket_id(port_rx),
-				NULL, pool);
+				&rxq_conf, pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d RX queue setup error (%d)\n", port_rx, ret);
 
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = conf.txmode.offloads;
 	ret = rte_eth_tx_queue_setup(port_rx, NIC_TX_QUEUE, nb_txd,
 				rte_eth_dev_socket_id(port_rx),
-				NULL);
+				&txq_conf);
 	if (ret < 0)
 	rte_exit(EXIT_FAILURE, "Port %d TX queue setup error (%d)\n", port_rx, ret);
 
-	ret = rte_eth_dev_configure(port_tx, 1, 1, &port_conf);
+	conf = port_conf;
+	rte_eth_dev_info_get(port_tx, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		conf.txmode.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	ret = rte_eth_dev_configure(port_tx, 1, 1, &conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d configuration error (%d)\n", port_tx, ret);
 
@@ -338,12 +353,17 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Port %d adjust number of descriptors error (%d)\n",
 				port_tx, ret);
 
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = conf.rxmode.offloads;
 	ret = rte_eth_rx_queue_setup(port_tx, NIC_RX_QUEUE, nb_rxd,
 				rte_eth_dev_socket_id(port_tx),
 				NULL, pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d RX queue setup error (%d)\n", port_tx, ret);
 
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = conf.txmode.offloads;
 	ret = rte_eth_tx_queue_setup(port_tx, NIC_TX_QUEUE, nb_txd,
 				rte_eth_dev_socket_id(port_tx),
 				NULL);
