@@ -21,14 +21,11 @@
 #include "../include/conf.h"
 
 
-static const struct rte_eth_conf port_conf = {
+static struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.split_hdr_size = 0,
-			.header_split   = 0, /**< Header Split disabled */
-			.hw_ip_checksum = 0, /**< IP csum offload disabled */
-			.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-			.jumbo_frame    = 0, /**< Jumbo Frame disabled */
-			.hw_strip_crc   = 1, /**< CRC stripped by hardware */
+			.ignore_offload_bitfield = 1,
+			.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 		},
 		.txmode = {
 			.mq_mode = ETH_DCB_NONE,
@@ -49,10 +46,18 @@ void configure_eth_port(uint16_t port_id)
 	int ret;
 	uint16_t nb_rxd = RX_DESC_PER_QUEUE;
 	uint16_t nb_txd = TX_DESC_PER_QUEUE;
+	struct rte_eth_rxconf rxq_conf;
+	struct rte_eth_txconf txq_conf;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_conf local_port_conf = port_conf;
 
 	rte_eth_dev_stop(port_id);
 
-	ret = rte_eth_dev_configure(port_id, 1, 1, &port_conf);
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		local_port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	ret = rte_eth_dev_configure(port_id, 1, 1, &local_port_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Cannot configure port %u (error %d)\n",
 				(unsigned int) port_id, ret);
@@ -64,9 +69,11 @@ void configure_eth_port(uint16_t port_id)
 				(unsigned int) port_id, ret);
 
 	/* Initialize the port's RX queue */
+	rxq_conf = dev_info.default_rxconf;
+	rxq_conf.offloads = local_port_conf.rxmode.offloads;
 	ret = rte_eth_rx_queue_setup(port_id, 0, nb_rxd,
 			rte_eth_dev_socket_id(port_id),
-			NULL,
+			&rxq_conf,
 			mbuf_pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE,
@@ -74,9 +81,12 @@ void configure_eth_port(uint16_t port_id)
 				(unsigned int) port_id, ret);
 
 	/* Initialize the port's TX queue */
+	txq_conf = dev_info.default_txconf;
+	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+	txq_conf.offloads = local_port_conf.txmode.offloads;
 	ret = rte_eth_tx_queue_setup(port_id, 0, nb_txd,
 			rte_eth_dev_socket_id(port_id),
-			NULL);
+			&txq_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE,
 				"Failed to setup TX queue on port %u (error %d)\n",
