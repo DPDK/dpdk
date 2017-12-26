@@ -164,11 +164,10 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode        = ETH_MQ_RX_RSS,
 		.max_rx_pkt_len = JUMBO_FRAME_MAX_SIZE,
 		.split_hdr_size = 0,
-		.header_split   = 0, /**< Header Split disabled */
-		.hw_ip_checksum = 1, /**< IP checksum offload enabled */
-		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-		.jumbo_frame    = 1, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
+		.ignore_offload_bitfield = 1,
+		.offloads = (DEV_RX_OFFLOAD_CHECKSUM |
+			     DEV_RX_OFFLOAD_JUMBO_FRAME |
+			     DEV_RX_OFFLOAD_CRC_STRIP),
 	},
 	.rx_adv_conf = {
 			.rss_conf = {
@@ -178,6 +177,8 @@ static struct rte_eth_conf port_conf = {
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
+		.offloads = (DEV_TX_OFFLOAD_IPV4_CKSUM |
+			     DEV_TX_OFFLOAD_MULTI_SEGS),
 	},
 };
 
@@ -1023,6 +1024,9 @@ main(int argc, char **argv)
 
 	/* initialize all ports */
 	for (portid = 0; portid < nb_ports; portid++) {
+		struct rte_eth_rxconf rxq_conf;
+		struct rte_eth_conf local_port_conf = port_conf;
+
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << portid)) == 0) {
 			printf("\nSkipping disabled port %d\n", portid);
@@ -1033,8 +1037,9 @@ main(int argc, char **argv)
 
 		/* limit the frame size to the maximum supported by NIC */
 		rte_eth_dev_info_get(portid, &dev_info);
-		port_conf.rxmode.max_rx_pkt_len = RTE_MIN(
-		    dev_info.max_rx_pktlen, port_conf.rxmode.max_rx_pkt_len);
+		local_port_conf.rxmode.max_rx_pkt_len = RTE_MIN(
+		    dev_info.max_rx_pktlen,
+		    local_port_conf.rxmode.max_rx_pkt_len);
 
 		/* get the lcore_id for this port */
 		while (rte_lcore_is_enabled(rx_lcore_id) == 0 ||
@@ -1075,8 +1080,11 @@ main(int argc, char **argv)
 		n_tx_queue = nb_lcores;
 		if (n_tx_queue > MAX_TX_QUEUE_PER_PORT)
 			n_tx_queue = MAX_TX_QUEUE_PER_PORT;
+		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			local_port_conf.txmode.offloads |=
+				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 		ret = rte_eth_dev_configure(portid, 1, (uint16_t)n_tx_queue,
-					    &port_conf);
+					    &local_port_conf);
 		if (ret < 0) {
 			printf("\n");
 			rte_exit(EXIT_FAILURE, "Cannot configure device: "
@@ -1085,8 +1093,10 @@ main(int argc, char **argv)
 		}
 
 		/* init one RX queue */
+		rxq_conf = dev_info.default_rxconf;
+		rxq_conf.offloads = local_port_conf.rxmode.offloads;
 		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
-					     socket, NULL,
+					     socket, &rxq_conf,
 					     rxq->pool);
 		if (ret < 0) {
 			printf("\n");
@@ -1111,7 +1121,8 @@ main(int argc, char **argv)
 			fflush(stdout);
 
 			txconf = &dev_info.default_txconf;
-			txconf->txq_flags = 0;
+			txconf->txq_flags = ETH_TXQ_FLAGS_IGNORE;
+			txconf->offloads = local_port_conf.txmode.offloads;
 
 			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
 					socket, txconf);
