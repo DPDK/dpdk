@@ -8141,13 +8141,17 @@ static void ixgbevf_mbx_process(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	u32 in_msg = 0;
 
-	if (ixgbe_read_mbx(hw, &in_msg, 1, 0))
-		return;
+	/* peek the message first */
+	in_msg = IXGBE_READ_REG(hw, IXGBE_VFMBMEM);
 
 	/* PF reset VF event */
-	if (in_msg == IXGBE_PF_CONTROL_MSG)
+	if (in_msg == IXGBE_PF_CONTROL_MSG) {
+		/* dummy mbx read to ack pf */
+		if (ixgbe_read_mbx(hw, &in_msg, 1, 0))
+			return;
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
 					      NULL);
+	}
 }
 
 static int
