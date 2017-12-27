@@ -390,7 +390,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (max_elts < segs_n)
 			break;
 		max_elts -= segs_n;
-		--segs_n;
+		sg = --segs_n;
 		if (unlikely(--max_wqe == 0))
 			break;
 		wqe = (volatile struct mlx5_wqe_v *)
@@ -516,7 +516,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		/* Inline if enough room. */
 		if (max_inline || tso) {
-			uint32_t inl;
+			uint32_t inl = 0;
 			uintptr_t end = (uintptr_t)
 				(((uintptr_t)txq->wqes) +
 				 (1 << txq->wqe_n) * MLX5_WQE_SIZE);
@@ -524,12 +524,14 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 						   RTE_CACHE_LINE_SIZE -
 						   (pkt_inline_sz - 2) -
 						   !!tso * sizeof(inl);
-			uintptr_t addr_end = (addr + inline_room) &
-					     ~(RTE_CACHE_LINE_SIZE - 1);
-			unsigned int copy_b = (addr_end > addr) ?
-				RTE_MIN((addr_end - addr), length) :
-				0;
+			uintptr_t addr_end;
+			unsigned int copy_b;
 
+pkt_inline:
+			addr_end = RTE_ALIGN_FLOOR(addr + inline_room,
+						   RTE_CACHE_LINE_SIZE);
+			copy_b = (addr_end > addr) ?
+				 RTE_MIN((addr_end - addr), length) : 0;
 			if (copy_b && ((end - (uintptr_t)raw) > copy_b)) {
 				/*
 				 * One Dseg remains in the current WQE.  To
@@ -541,7 +543,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				if (unlikely(max_wqe < n))
 					break;
 				max_wqe -= n;
-				if (tso) {
+				if (tso && !inl) {
 					inl = rte_cpu_to_be_32(copy_b |
 							       MLX5_INLINE_SEG);
 					rte_memcpy((void *)raw,
@@ -576,11 +578,18 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			} else if (!segs_n) {
 				goto next_pkt;
 			} else {
-				/* dseg will be advance as part of next_seg */
-				dseg = (volatile rte_v128u32_t *)
-					((uintptr_t)wqe +
-					 ((ds - 1) * MLX5_WQE_DWORD_SIZE));
-				goto next_seg;
+				raw += copy_b;
+				inline_room -= copy_b;
+				--segs_n;
+				buf = buf->next;
+				assert(buf);
+				addr = rte_pktmbuf_mtod(buf, uintptr_t);
+				length = DATA_LEN(buf);
+#ifdef MLX5_PMD_SOFT_COUNTERS
+				total_length += length;
+#endif
+				(*txq->elts)[++elts_head & elts_m] = buf;
+				goto pkt_inline;
 			}
 		} else {
 			/*
@@ -639,12 +648,8 @@ next_seg:
 			addr >> 32,
 		};
 		(*txq->elts)[++elts_head & elts_m] = buf;
-		++sg;
-		/* Advance counter only if all segs are successfully posted. */
-		if (sg < segs_n)
+		if (--segs_n)
 			goto next_seg;
-		else
-			j += sg;
 next_pkt:
 		if (ds > MLX5_DSEG_MAX) {
 			txq->stats.oerrors++;
@@ -653,6 +658,7 @@ next_pkt:
 		++elts_head;
 		++pkts;
 		++i;
+		j += sg;
 		/* Initialize known and common part of the WQE structure. */
 		if (tso) {
 			wqe->ctrl = (rte_v128u32_t){
