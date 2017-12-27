@@ -1351,21 +1351,13 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		unsigned int n;
 		unsigned int do_inline = 0; /* Whether inline is possible. */
 		uint32_t length;
-		unsigned int segs_n = buf->nb_segs;
 		uint8_t cs_flags;
 
-		/*
-		 * Make sure there is enough room to store this packet and
-		 * that one ring entry remains unused.
-		 */
-		assert(segs_n);
-		if (max_elts - j < segs_n)
+		/* Multi-segmented packet is handled in slow-path outside. */
+		assert(NB_SEGS(buf) == 1);
+		/* Make sure there is enough room to store this packet. */
+		if (max_elts - j == 0)
 			break;
-		/* Do not bother with large packets MPW cannot handle. */
-		if (segs_n > MLX5_MPW_DSEG_MAX) {
-			txq->stats.oerrors++;
-			break;
-		}
 		cs_flags = txq_ol_cksum_to_cs(txq, buf);
 		/* Retrieve packet information. */
 		length = PKT_LEN(buf);
@@ -1374,50 +1366,35 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		 * - no space left even for a dseg
 		 * - next packet can be inlined with a new WQE
 		 * - cs_flag differs
-		 * It can't be MLX5_MPW_STATE_OPENED as always have a single
-		 * segmented packet.
 		 */
 		if (mpw.state == MLX5_MPW_ENHANCED_STATE_OPENED) {
-			if ((segs_n != 1) ||
-			    (inl_pad + sizeof(struct mlx5_wqe_data_seg) >
-			      mpw_room) ||
+			if ((inl_pad + sizeof(struct mlx5_wqe_data_seg) >
+			     mpw_room) ||
 			    (length <= txq->inline_max_packet_sz &&
 			     inl_pad + sizeof(inl_hdr) + length >
-			      mpw_room) ||
+			     mpw_room) ||
 			    (mpw.wqe->eseg.cs_flags != cs_flags))
 				max_wqe -= mlx5_empw_close(txq, &mpw);
 		}
 		if (unlikely(mpw.state == MLX5_MPW_STATE_CLOSED)) {
-			if (unlikely(segs_n != 1)) {
-				/* Fall back to legacy MPW.
-				 * A MPW session consumes 2 WQEs at most to
-				 * include MLX5_MPW_DSEG_MAX pointers.
-				 */
-				if (unlikely(max_wqe < 2))
-					break;
-				mlx5_mpw_new(txq, &mpw, length);
-			} else {
-				/* In Enhanced MPW, inline as much as the budget
-				 * is allowed. The remaining space is to be
-				 * filled with dsegs. If the title WQEBB isn't
-				 * padded, it will have 2 dsegs there.
-				 */
-				mpw_room = RTE_MIN(MLX5_WQE_SIZE_MAX,
-					    (max_inline ? max_inline :
-					     pkts_n * MLX5_WQE_DWORD_SIZE) +
-					    MLX5_WQE_SIZE);
-				if (unlikely(max_wqe * MLX5_WQE_SIZE <
-					      mpw_room))
-					break;
-				/* Don't pad the title WQEBB to not waste WQ. */
-				mlx5_empw_new(txq, &mpw, 0);
-				mpw_room -= mpw.total_len;
-				inl_pad = 0;
-				do_inline =
-					length <= txq->inline_max_packet_sz &&
-					sizeof(inl_hdr) + length <= mpw_room &&
-					!txq->mpw_hdr_dseg;
-			}
+			/* In Enhanced MPW, inline as much as the budget is
+			 * allowed. The remaining space is to be filled with
+			 * dsegs. If the title WQEBB isn't padded, it will have
+			 * 2 dsegs there.
+			 */
+			mpw_room = RTE_MIN(MLX5_WQE_SIZE_MAX,
+					   (max_inline ? max_inline :
+					    pkts_n * MLX5_WQE_DWORD_SIZE) +
+					   MLX5_WQE_SIZE);
+			if (unlikely(max_wqe * MLX5_WQE_SIZE < mpw_room))
+				break;
+			/* Don't pad the title WQEBB to not waste WQ. */
+			mlx5_empw_new(txq, &mpw, 0);
+			mpw_room -= mpw.total_len;
+			inl_pad = 0;
+			do_inline = length <= txq->inline_max_packet_sz &&
+				    sizeof(inl_hdr) + length <= mpw_room &&
+				    !txq->mpw_hdr_dseg;
 			mpw.wqe->eseg.cs_flags = cs_flags;
 		} else {
 			/* Evaluate whether the next packet can be inlined.
@@ -1433,41 +1410,7 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 				(!txq->mpw_hdr_dseg ||
 				 mpw.total_len >= MLX5_WQE_SIZE);
 		}
-		/* Multi-segment packets must be alone in their MPW. */
-		assert((segs_n == 1) || (mpw.pkts_n == 0));
-		if (unlikely(mpw.state == MLX5_MPW_STATE_OPENED)) {
-#if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
-			length = 0;
-#endif
-			do {
-				volatile struct mlx5_wqe_data_seg *dseg;
-
-				assert(buf);
-				(*txq->elts)[elts_head++ & elts_m] = buf;
-				dseg = mpw.data.dseg[mpw.pkts_n];
-				addr = rte_pktmbuf_mtod(buf, uintptr_t);
-				*dseg = (struct mlx5_wqe_data_seg){
-					.byte_count = rte_cpu_to_be_32(
-								DATA_LEN(buf)),
-					.lkey = mlx5_tx_mb2mr(txq, buf),
-					.addr = rte_cpu_to_be_64(addr),
-				};
-#if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
-				length += DATA_LEN(buf);
-#endif
-				buf = buf->next;
-				++j;
-				++mpw.pkts_n;
-			} while (--segs_n);
-			/* A multi-segmented packet takes one MPW session.
-			 * TODO: Pack more multi-segmented packets if possible.
-			 */
-			mlx5_mpw_close(txq, &mpw);
-			if (mpw.pkts_n < 3)
-				max_wqe--;
-			else
-				max_wqe -= 2;
-		} else if (do_inline) {
+		if (do_inline) {
 			/* Inline packet into WQE. */
 			unsigned int max;
 
@@ -1576,8 +1519,6 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 #endif
 	if (mpw.state == MLX5_MPW_ENHANCED_STATE_OPENED)
 		mlx5_empw_close(txq, &mpw);
-	else if (mpw.state == MLX5_MPW_STATE_OPENED)
-		mlx5_mpw_close(txq, &mpw);
 	/* Ring QP doorbell. */
 	mlx5_tx_dbrec(txq, mpw.wqe);
 	txq->elts_head = elts_head;
