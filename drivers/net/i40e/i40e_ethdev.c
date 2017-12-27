@@ -1629,7 +1629,7 @@ __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
 	/* Write first RX queue to Link list register as the head element */
 	if (vsi->type != I40E_VSI_SRIOV) {
 		uint16_t interval =
-			i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
+			i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 1);
 
 		if (msix_vect == I40E_MISC_VEC_ID) {
 			I40E_WRITE_REG(hw, I40E_PFINT_LNKLST0,
@@ -1760,7 +1760,7 @@ i40e_vsi_enable_queues_intr(struct i40e_vsi *vsi)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	uint16_t interval = i40e_calc_itr_interval(\
-		RTE_LIBRTE_I40E_ITR_INTERVAL);
+		RTE_LIBRTE_I40E_ITR_INTERVAL, 1);
 	uint16_t msix_intr, i;
 
 	if (rte_intr_allow_others(intr_handle))
@@ -10663,7 +10663,7 @@ i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t interval =
-		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
+		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 1);
 	uint16_t msix_intr;
 
 	msix_intr = intr_handle->intr_vec[queue_id];
