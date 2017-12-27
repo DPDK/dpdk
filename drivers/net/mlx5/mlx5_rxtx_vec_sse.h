@@ -135,6 +135,8 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 
 	assert(elts_n > pkts_n);
 	mlx5_tx_complete(txq);
+	/* A CQE slot must always be available. */
+	assert((1u << txq->cqe_n) - (txq->cq_pi - txq->cq_ci));
 	if (unlikely(!pkts_n))
 		return 0;
 	for (n = 0; n < pkts_n; ++n) {
@@ -206,7 +208,9 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		wqe->ctrl[2] = rte_cpu_to_be_32(8);
 		wqe->ctrl[3] = txq->elts_head;
 		txq->elts_comp = 0;
+#ifndef NDEBUG
 		++txq->cq_pi;
+#endif
 	}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	txq->stats.opackets += n;
@@ -268,6 +272,8 @@ txq_burst_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	assert(elts_n > pkts_n);
 	mlx5_tx_complete(txq);
 	max_elts = (elts_n - (elts_head - txq->elts_tail));
+	/* A CQE slot must always be available. */
+	assert((1u << txq->cqe_n) - (txq->cq_pi - txq->cq_ci));
 	max_wqe = (1u << txq->wqe_n) - (txq->wqe_ci - txq->wqe_pi);
 	pkts_n = RTE_MIN((unsigned int)RTE_MIN(pkts_n, max_wqe), max_elts);
 	assert(pkts_n <= MLX5_DSEG_MAX - nb_dword_in_hdr);
@@ -307,7 +313,9 @@ txq_burst_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	} else {
 		/* Request a completion. */
 		txq->elts_comp = 0;
+#ifndef NDEBUG
 		++txq->cq_pi;
+#endif
 		comp_req = 8;
 	}
 	/* Fill CTRL in the header. */

@@ -185,7 +185,9 @@ struct mlx5_txq_data {
 	uint16_t elts_comp; /* Counter since last completion request. */
 	uint16_t mpw_comp; /* WQ index since last completion request. */
 	uint16_t cq_ci; /* Consumer index for completion queue. */
+#ifndef NDEBUG
 	uint16_t cq_pi; /* Producer index for completion queue. */
+#endif
 	uint16_t wqe_ci; /* Consumer index for work queue. */
 	uint16_t wqe_pi; /* Producer index for work queue. */
 	uint16_t elts_n:4; /* (*elts)[] length (in log2). */

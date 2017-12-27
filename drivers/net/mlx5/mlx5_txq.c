@@ -418,7 +418,9 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 		(volatile struct mlx5_cqe (*)[])
 		(uintptr_t)cq_info.buf;
 	txq_data->cq_ci = 0;
+#ifndef NDEBUG
 	txq_data->cq_pi = 0;
+#endif
 	txq_data->wqe_ci = 0;
 	txq_data->wqe_pi = 0;
 	txq_ibv->qp = tmpl.qp;
