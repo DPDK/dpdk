@@ -2961,13 +2961,17 @@ void igbvf_mbx_process(struct rte_eth_dev *dev)
 	struct e1000_mbx_info *mbx = &hw->mbx;
 	u32 in_msg = 0;
 
-	if (mbx->ops.read(hw, &in_msg, 1, 0))
-		return;
+	/* peek the message first */
+	in_msg = E1000_READ_REG(hw, E1000_VMBMEM(0));
 
 	/* PF reset VF event */
-	if (in_msg == E1000_PF_CONTROL_MSG)
+	if (in_msg == E1000_PF_CONTROL_MSG) {
+		/* dummy mbx read to ack pf */
+		if (mbx->ops.read(hw, &in_msg, 1, 0))
+			return;
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
 					      NULL);
+	}
 }
 
 static int
