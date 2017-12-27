@@ -75,6 +75,7 @@ copy_buf_to_pkt_segs(void* buf, unsigned len, struct rte_mbuf *pkt,
 		buf = ((char*) buf + copy_len);
 		seg = seg->next;
 		seg_buf = rte_pktmbuf_mtod(seg, char *);
+		copy_len = seg->data_len;
 	}
 	rte_memcpy(seg_buf, buf, (size_t) len);
 }
