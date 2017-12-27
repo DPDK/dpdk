@@ -5,8 +5,6 @@
 #ifndef EAL_PCI_INIT_H_
 #define EAL_PCI_INIT_H_
 
-#include <linux/version.h>
-
 #include <rte_vfio.h>
 
 /** IO resource type: */
@@ -47,14 +45,22 @@ int pci_uio_ioport_unmap(struct rte_pci_ioport *p);
 
 #ifdef VFIO_PRESENT
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
-#define RTE_PCI_MSIX_TABLE_BIR    0x7
-#define RTE_PCI_MSIX_TABLE_OFFSET 0xfffffff8
-#define RTE_PCI_MSIX_FLAGS_QSIZE  0x07ff
-#else
+#ifdef PCI_MSIX_TABLE_BIR
 #define RTE_PCI_MSIX_TABLE_BIR    PCI_MSIX_TABLE_BIR
+#else
+#define RTE_PCI_MSIX_TABLE_BIR    0x7
+#endif
+
+#ifdef PCI_MSIX_TABLE_OFFSET
 #define RTE_PCI_MSIX_TABLE_OFFSET PCI_MSIX_TABLE_OFFSET
+#else
+#define RTE_PCI_MSIX_TABLE_OFFSET 0xfffffff8
+#endif
+
+#ifdef PCI_MSIX_FLAGS_QSIZE
 #define RTE_PCI_MSIX_FLAGS_QSIZE  PCI_MSIX_FLAGS_QSIZE
+#else
+#define RTE_PCI_MSIX_FLAGS_QSIZE  0x07ff
 #endif
 
 /* access config space */
