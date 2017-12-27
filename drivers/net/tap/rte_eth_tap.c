@@ -31,7 +31,6 @@
 #include <net/if.h>
 #include <linux/if_tun.h>
 #include <linux/if_ether.h>
-#include <linux/version.h>
 #include <fcntl.h>
 
 #include <rte_eth_tap.h>
@@ -48,9 +47,6 @@
 #define ETH_TAP_REMOTE_ARG      "remote"
 #define ETH_TAP_MAC_ARG         "mac"
 #define ETH_TAP_MAC_FIXED       "fixed"
-
-#define FLOWER_KERNEL_VERSION KERNEL_VERSION(4, 2, 0)
-#define FLOWER_VLAN_KERNEL_VERSION KERNEL_VERSION(4, 9, 0)
 
 static struct rte_vdev_driver pmd_tap_drv;
 
