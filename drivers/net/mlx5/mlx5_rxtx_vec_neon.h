@@ -222,7 +222,7 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
  * Send burst of packets with Enhanced MPW. If it encounters a multi-seg packet,
  * it returns to make it processed by txq_scatter_v(). All the packets in
  * the pkts list should be single segment packets having same offload flags.
- * This must be checked by txq_check_multiseg() and txq_calc_offload().
+ * This must be checked by txq_count_contig_single_seg() and txq_calc_offload().
  *
  * @param txq
  *   Pointer to TX queue structure.

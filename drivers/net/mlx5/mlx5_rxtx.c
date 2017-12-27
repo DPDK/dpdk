@@ -1304,10 +1304,10 @@ mlx5_empw_close(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw)
 }
 
 /**
- * DPDK callback for TX with Enhanced MPW support.
+ * TX with Enhanced MPW support.
  *
- * @param dpdk_txq
- *   Generic pointer to TX queue structure.
+ * @param txq
+ *   Pointer to TX queue structure.
  * @param[in] pkts
  *   Packets to transmit.
  * @param pkts_n
@@ -1316,10 +1316,10 @@ mlx5_empw_close(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw)
  * @return
  *   Number of packets successfully transmitted (<= pkts_n).
  */
-uint16_t
-mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
+static inline uint16_t
+txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
+	       uint16_t pkts_n)
 {
-	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const uint16_t elts_n = 1 << txq->elts_n;
 	const uint16_t elts_m = elts_n - 1;
@@ -1582,6 +1582,47 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	mlx5_tx_dbrec(txq, mpw.wqe);
 	txq->elts_head = elts_head;
 	return i;
+}
+
+/**
+ * DPDK callback for TX with Enhanced MPW support.
+ *
+ * @param dpdk_txq
+ *   Generic pointer to TX queue structure.
+ * @param[in] pkts
+ *   Packets to transmit.
+ * @param pkts_n
+ *   Number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully transmitted (<= pkts_n).
+ */
+uint16_t
+mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
+{
+	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
+	uint16_t nb_tx = 0;
+
+	while (pkts_n > nb_tx) {
+		uint16_t n;
+		uint16_t ret;
+
+		n = txq_count_contig_multi_seg(&pkts[nb_tx], pkts_n - nb_tx);
+		if (n) {
+			ret = mlx5_tx_burst(dpdk_txq, &pkts[nb_tx], n);
+			if (!ret)
+				break;
+			nb_tx += ret;
+		}
+		n = txq_count_contig_single_seg(&pkts[nb_tx], pkts_n - nb_tx);
+		if (n) {
+			ret = txq_burst_empw(txq, &pkts[nb_tx], n);
+			if (!ret)
+				break;
+			nb_tx += ret;
+		}
+	}
+	return nb_tx;
 }
 
 /**

@@ -68,31 +68,6 @@
 #endif
 
 /**
- * Count the number of continuous single segment packets.
- *
- * @param pkts
- *   Pointer to array of packets.
- * @param pkts_n
- *   Number of packets.
- *
- * @return
- *   Number of continuous single segment packets.
- */
-static inline unsigned int
-txq_check_multiseg(struct rte_mbuf **pkts, uint16_t pkts_n)
-{
-	unsigned int pos;
-
-	if (!pkts_n)
-		return 0;
-	/* Count the number of continuous single segment packets. */
-	for (pos = 0; pos < pkts_n; ++pos)
-		if (NB_SEGS(pkts[pos]) > 1)
-			break;
-	return pos;
-}
-
-/**
  * Count the number of packets having same ol_flags and calculate cs_flags.
  *
  * @param txq
@@ -192,7 +167,7 @@ mlx5_tx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					       pkts_n - nb_tx);
 		n = RTE_MIN((uint16_t)(pkts_n - nb_tx), MLX5_VPMD_TX_MAX_BURST);
 		if (!(txq->flags & ETH_TXQ_FLAGS_NOMULTSEGS))
-			n = txq_check_multiseg(&pkts[nb_tx], n);
+			n = txq_count_contig_single_seg(&pkts[nb_tx], n);
 		if (!(txq->flags & ETH_TXQ_FLAGS_NOOFFLOADS))
 			n = txq_calc_offload(txq, &pkts[nb_tx], n, &cs_flags);
 		ret = txq_burst_v(txq, &pkts[nb_tx], n, cs_flags);
