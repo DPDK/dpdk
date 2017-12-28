@@ -10,7 +10,9 @@ static inline int
 perf_queue_nb_event_queues(struct evt_options *opt)
 {
 	/* nb_queues = number of producers * number of stages */
-	return evt_nr_active_lcores(opt->plcores) * opt->nb_stages;
+	uint8_t nb_prod = opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ?
+		rte_eth_dev_count() : evt_nr_active_lcores(opt->plcores);
+	return nb_prod * opt->nb_stages;
 }
 
 static inline __attribute__((always_inline)) void
@@ -162,9 +164,7 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	nb_ports += opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ? 0 :
 		evt_nr_active_lcores(opt->plcores);
 
-	nb_queues = opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ?
-		rte_eth_dev_count() * nb_stages :
-		perf_queue_nb_event_queues(opt);
+	nb_queues = perf_queue_nb_event_queues(opt);
 
 	memset(&dev_info, 0, sizeof(struct rte_event_dev_info));
 	ret = rte_event_dev_info_get(opt->dev_id, &dev_info);
@@ -196,7 +196,7 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 			.nb_atomic_order_sequences = opt->nb_flows,
 	};
 	/* queue configurations */
-	for (queue = 0; queue < perf_queue_nb_event_queues(opt); queue++) {
+	for (queue = 0; queue < nb_queues; queue++) {
 		q_conf.schedule_type =
 			(opt->sched_type_list[queue % nb_stages]);
 

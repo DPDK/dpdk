@@ -10,7 +10,8 @@ static inline int
 atq_nb_event_queues(struct evt_options *opt)
 {
 	/* nb_queues = number of producers */
-	return evt_nr_active_lcores(opt->plcores);
+	return opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ?
+		rte_eth_dev_count() : evt_nr_active_lcores(opt->plcores);
 }
 
 static inline __attribute__((always_inline)) void
@@ -165,8 +166,7 @@ perf_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	nb_ports += opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ? 0 :
 		evt_nr_active_lcores(opt->plcores);
 
-	nb_queues = opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ?
-		rte_eth_dev_count() : atq_nb_event_queues(opt);
+	nb_queues = atq_nb_event_queues(opt);
 
 	memset(&dev_info, 0, sizeof(struct rte_event_dev_info));
 	ret = rte_event_dev_info_get(opt->dev_id, &dev_info);
