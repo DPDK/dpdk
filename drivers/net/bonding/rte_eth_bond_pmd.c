@@ -1482,7 +1482,8 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 	case BONDING_MODE_BALANCE:
 	case BONDING_MODE_BROADCAST:
 		for (i = 0; i < internals->slave_count; i++) {
-			if (mac_address_set(&rte_eth_devices[internals->slaves[i].port_id],
+			if (rte_eth_dev_default_mac_addr_set(
+					internals->slaves[i].port_id,
 					bonded_eth_dev->data->mac_addrs)) {
 				RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
 						internals->slaves[i].port_id);
@@ -1500,15 +1501,16 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 		for (i = 0; i < internals->slave_count; i++) {
 			if (internals->slaves[i].port_id ==
 					internals->current_primary_port) {
-				if (mac_address_set(&rte_eth_devices[internals->primary_port],
+				if (rte_eth_dev_default_mac_addr_set(
+						internals->primary_port,
 						bonded_eth_dev->data->mac_addrs)) {
 					RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
 							internals->current_primary_port);
 					return -1;
 				}
 			} else {
-				if (mac_address_set(
-						&rte_eth_devices[internals->slaves[i].port_id],
+				if (rte_eth_dev_default_mac_addr_set(
+						internals->slaves[i].port_id,
 						&internals->slaves[i].persisted_mac_addr)) {
 					RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
 							internals->slaves[i].port_id);

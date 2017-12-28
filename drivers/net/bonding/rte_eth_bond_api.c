@@ -424,7 +424,7 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 			&rte_eth_devices[bonded_port_id].data->port_id);
 
 	/* Restore original MAC address of slave device */
-	mac_address_set(&rte_eth_devices[slave_port_id],
+	rte_eth_dev_default_mac_addr_set(slave_port_id,
 			&(internals->slaves[slave_idx].persisted_mac_addr));
 
 	slave_eth_dev = &rte_eth_devices[slave_port_id];
