@@ -85,7 +85,7 @@ struct vfio_iommu_spapr_tce_info {
 #define RTE_VFIO_NOIOMMU VFIO_NOIOMMU_IOMMU
 #endif
 
-#define VFIO_MAX_GROUPS 64
+#define VFIO_MAX_GROUPS RTE_MAX_VFIO_GROUPS
 
 /*
  * Function prototypes for VFIO multiprocess sync functions
