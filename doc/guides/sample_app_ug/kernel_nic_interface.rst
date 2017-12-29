@@ -181,7 +181,7 @@ and one lcore of kernel thread for each port:
 
 .. code-block:: console
 
-    ./build/kni -l 4-7 -n 4 -- -P -p 0x3 -config="(0,4,6,8),(1,5,7,9)"
+    ./build/kni -l 4-7 -n 4 -- -P -p 0x3 --config="(0,4,6,8),(1,5,7,9)"
 
 KNI Operations
 --------------
