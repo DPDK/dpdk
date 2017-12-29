@@ -935,7 +935,8 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 		struct vhost_dev *vdev2;
 
 		TAILQ_FOREACH(vdev2, &vhost_dev_list, global_vdev_entry) {
-			virtio_xmit(vdev2, vdev, m);
+			if (vdev2 != vdev)
+				virtio_xmit(vdev2, vdev, m);
 		}
 		goto queue2nic;
 	}
