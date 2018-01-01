@@ -26,6 +26,8 @@ struct rte_uio_pci_dev {
 	struct uio_info info;
 	struct pci_dev *pdev;
 	enum rte_intr_mode mode;
+	struct mutex lock;
+	int refcnt;
 };
 
 static char *intr_mode;
@@ -317,11 +319,18 @@ igbuio_pci_open(struct uio_info *info, struct inode *inode)
 	struct pci_dev *dev = udev->pdev;
 	int err;
 
+	mutex_lock(&udev->lock);
+	if (++udev->refcnt > 1) {
+		mutex_unlock(&udev->lock);
+		return 0;
+	}
+
 	/* set bus master, which was cleared by the reset function */
 	pci_set_master(dev);
 
 	/* enable interrupts */
 	err = igbuio_pci_enable_interrupts(udev);
+	mutex_unlock(&udev->lock);
 	if (err) {
 		dev_err(&dev->dev, "Enable interrupt fails\n");
 		return err;
@@ -335,12 +344,19 @@ igbuio_pci_release(struct uio_info *info, struct inode *inode)
 	struct rte_uio_pci_dev *udev = info->priv;
 	struct pci_dev *dev = udev->pdev;
 
+	mutex_lock(&udev->lock);
+	if (--udev->refcnt > 0) {
+		mutex_unlock(&udev->lock);
+		return 0;
+	}
+
 	/* disable interrupts */
 	igbuio_pci_disable_interrupts(udev);
 
 	/* stop the device from further DMA */
 	pci_clear_master(dev);
 
+	mutex_unlock(&udev->lock);
 	return 0;
 }
 
@@ -461,6 +477,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	if (!udev)
 		return -ENOMEM;
 
+	mutex_init(&udev->lock);
 	/*
 	 * enable device: ask low-level code to enable I/O and
 	 * memory
@@ -551,6 +568,7 @@ igbuio_pci_remove(struct pci_dev *dev)
 {
 	struct rte_uio_pci_dev *udev = pci_get_drvdata(dev);
 
+	mutex_destroy(&udev->lock);
 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
 	uio_unregister_device(&udev->info);
 	igbuio_pci_release_iomem(&udev->info);
