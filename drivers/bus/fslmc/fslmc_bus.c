@@ -27,6 +27,14 @@
 struct rte_fslmc_bus rte_fslmc_bus;
 uint8_t dpaa2_virt_mode;
 
+uint32_t
+rte_fslmc_get_device_count(enum rte_dpaa2_dev_type device_type)
+{
+	if (device_type > DPAA2_DEVTYPE_MAX)
+		return 0;
+	return rte_fslmc_bus.device_count[device_type];
+}
+
 static void
 cleanup_fslmc_device_list(void)
 {
@@ -137,6 +145,9 @@ scan_one_fslmc_device(char *dev_name)
 		dev->dev_type = DPAA2_MPORTAL;
 	else
 		dev->dev_type = DPAA2_UNKNOWN;
+
+	/* Update the device found into the device_count table */
+	rte_fslmc_bus.device_count[dev->dev_type]++;
 
 	t_ptr = strtok(NULL, ".");
 	if (!t_ptr) {
@@ -382,6 +393,7 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.driver_list),
+	.device_count = {0},
 };
 
 RTE_REGISTER_BUS(fslmc, rte_fslmc_bus.bus);

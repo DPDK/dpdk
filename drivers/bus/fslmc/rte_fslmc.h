@@ -62,7 +62,8 @@ enum rte_dpaa2_dev_type {
 	DPAA2_CI,	/**< DPCI type device */
 	DPAA2_MPORTAL,  /**< DPMCP type device */
 	/* Unknown device placeholder */
-	DPAA2_UNKNOWN
+	DPAA2_UNKNOWN,
+	DPAA2_DEVTYPE_MAX,
 };
 
 TAILQ_HEAD(rte_dpaa2_object_list, rte_dpaa2_object);
@@ -124,8 +125,8 @@ struct rte_fslmc_bus {
 				/**< FSLMC DPAA2 Device list */
 	struct rte_fslmc_driver_list driver_list;
 				/**< FSLMC DPAA2 Driver list */
-	int device_count;
-				/**< Optional: Count of devices on bus */
+	int device_count[DPAA2_DEVTYPE_MAX];
+				/**< Count of all devices scanned */
 };
 
 /**
@@ -164,6 +165,17 @@ RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
  *   to be registered.
  */
 void rte_fslmc_object_register(struct rte_dpaa2_object *object);
+
+/**
+ * Count of a particular type of DPAA2 device scanned on the bus.
+ *
+ * @param dev_type
+ *   Type of device as rte_dpaa2_dev_type enumerator
+ * @return
+ *   >=0 for count; 0 indicates either no device of the said type scanned or
+ *   invalid device type.
+ */
+uint32_t rte_fslmc_get_device_count(enum rte_dpaa2_dev_type device_type);
 
 /** Helper for DPAA2 object registration */
 #define RTE_PMD_REGISTER_DPAA2_OBJECT(nm, dpaa2_obj) \
