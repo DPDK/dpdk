@@ -3352,7 +3352,7 @@ cmdline_parse_token_num_t cmd_vlan_tpid_tpid =
 			      tp_id, UINT16);
 cmdline_parse_token_num_t cmd_vlan_tpid_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_vlan_tpid_result,
-			      port_id, UINT8);
+			      port_id, UINT16);
 
 cmdline_parse_inst_t cmd_vlan_tpid = {
 	.f = cmd_vlan_tpid_parsed,
