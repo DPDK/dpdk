@@ -41,6 +41,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Add MAC loopback support for i40e.**
+
+  Add MAC loopback support for i40e in order to support test task asked by
+  users. According to the device configuration, it will setup TX->RX loopback
+  link or not.
+
 
 API Changes
 -----------
