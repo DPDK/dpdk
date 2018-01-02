@@ -379,13 +379,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		offsetof(struct vring_used, idx),
 		sizeof(vq->used->idx));
 
-	/* flush used->idx update before we read avail->flags. */
-	rte_mb();
-
-	/* Kick the guest if necessary. */
-	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
-			&& (vq->callfd >= 0))
-		eventfd_write(vq->callfd, (eventfd_t)1);
+	vhost_vring_call(vq);
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_rd_unlock(vq);
@@ -672,14 +666,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	if (likely(vq->shadow_used_idx)) {
 		flush_shadow_used_ring(dev, vq);
-
-		/* flush used->idx update before we read avail->flags. */
-		rte_mb();
-
-		/* Kick the guest if necessary. */
-		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
-				&& (vq->callfd >= 0))
-			eventfd_write(vq->callfd, (eventfd_t)1);
+		vhost_vring_call(vq);
 	}
 
 out:
@@ -1078,11 +1065,7 @@ update_used_idx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	vq->used->idx += count;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 			sizeof(vq->used->idx));
-
-	/* Kick guest if required. */
-	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
-			&& (vq->callfd >= 0))
-		eventfd_write(vq->callfd, (eventfd_t)1);
+	vhost_vring_call(vq);
 }
 
 static __rte_always_inline struct zcopy_mbuf *

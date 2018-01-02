@@ -365,4 +365,16 @@ vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return __vhost_iova_to_vva(dev, vq, iova, size, perm);
 }
 
+static __rte_always_inline void
+vhost_vring_call(struct vhost_virtqueue *vq)
+{
+	/* Flush used->idx update before we read avail->flags. */
+	rte_mb();
+
+	/* Kick the guest if necessary. */
+	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
+			&& (vq->callfd >= 0))
+		eventfd_write(vq->callfd, (eventfd_t)1);
+}
+
 #endif /* _VHOST_NET_CDEV_H_ */
