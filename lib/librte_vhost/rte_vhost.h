@@ -57,7 +57,9 @@ struct rte_vhost_vring {
 	struct vring_used	*used;
 	uint64_t		log_guest_addr;
 
+	/** Deprecated, use rte_vhost_vring_call() instead. */
 	int			callfd;
+
 	int			kickfd;
 	uint16_t		size;
 };
@@ -406,6 +408,19 @@ int rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem);
  */
 int rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 			      struct rte_vhost_vring *vring);
+
+/**
+ * Notify the guest that used descriptors have been added to the vring.  This
+ * function acts as a memory barrier.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_vring_call(int vid, uint16_t vring_idx);
 
 /**
  * Get vhost RX queue avail count.

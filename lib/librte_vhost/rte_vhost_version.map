@@ -52,3 +52,10 @@ DPDK_17.08 {
 	rte_vhost_rx_queue_count;
 
 } DPDK_17.05;
+
+DPDK_18.02 {
+	global:
+
+	rte_vhost_vring_call;
+
+} DPDK_17.08;

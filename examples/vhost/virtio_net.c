@@ -178,13 +178,8 @@ vs_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	*(volatile uint16_t *)&vr->used->idx += count;
 	queue->last_used_idx += count;
 
-	/* flush used->idx update before we read avail->flags. */
-	rte_mb();
+	rte_vhost_vring_call(dev->vid, queue_id);
 
-	/* Kick the guest if necessary. */
-	if (!(vr->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
-			&& (vr->callfd >= 0))
-		eventfd_write(vr->callfd, (eventfd_t)1);
 	return count;
 }
 
@@ -367,9 +362,7 @@ vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 
 	vr->used->idx += i;
 
-	if (!(vr->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
-			&& (vr->callfd >= 0))
-		eventfd_write(vr->callfd, (eventfd_t)1);
+	rte_vhost_vring_call(dev->vid, queue_id);
 
 	return i;
 }

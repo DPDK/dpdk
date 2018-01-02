@@ -81,7 +81,7 @@ descriptor_is_wr(struct vring_desc *cur_desc)
 }
 
 static void
-submit_completion(struct vhost_scsi_task *task)
+submit_completion(struct vhost_scsi_task *task, uint32_t q_idx)
 {
 	struct rte_vhost_vring *vq;
 	struct vring_used *used;
@@ -102,7 +102,7 @@ submit_completion(struct vhost_scsi_task *task)
 	/* Send an interrupt back to the guest VM so that it knows
 	 * a completion is ready to be processed.
 	 */
-	eventfd_write(vq->callfd, (eventfd_t)1);
+	rte_vhost_vring_call(task->bdev->vid, q_idx);
 }
 
 static void
@@ -234,7 +234,7 @@ process_requestq(struct vhost_scsi_ctrlr *ctrlr, uint32_t q_idx)
 			task->resp->status = 0;
 			task->resp->resid = 0;
 		}
-		submit_completion(task);
+		submit_completion(task, q_idx);
 		rte_free(task);
 	}
 }
