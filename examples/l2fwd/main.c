@@ -46,8 +46,6 @@ static int mac_updating = 1;
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
-#define NB_MBUF   8192
-
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 #define MEMPOOL_CACHE_SIZE 256
@@ -526,6 +524,8 @@ main(int argc, char **argv)
 	uint16_t portid, last_port;
 	unsigned lcore_id, rx_lcore_id;
 	unsigned nb_ports_in_mask = 0;
+	unsigned int nb_lcores = 0;
+	unsigned int nb_mbufs;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -547,13 +547,6 @@ main(int argc, char **argv)
 
 	/* convert to number of cycles */
 	timer_period *= rte_get_timer_hz();
-
-	/* create the mbuf pool */
-	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF,
-		MEMPOOL_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
-		rte_socket_id());
-	if (l2fwd_pktmbuf_pool == NULL)
-		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports == 0)
@@ -604,9 +597,11 @@ main(int argc, char **argv)
 				rte_exit(EXIT_FAILURE, "Not enough cores\n");
 		}
 
-		if (qconf != &lcore_queue_conf[rx_lcore_id])
+		if (qconf != &lcore_queue_conf[rx_lcore_id]) {
 			/* Assigned a new logical core in the loop above. */
 			qconf = &lcore_queue_conf[rx_lcore_id];
+			nb_lcores++;
+		}
 
 		qconf->rx_port_list[qconf->n_rx_port] = portid;
 		qconf->n_rx_port++;
@@ -614,6 +609,16 @@ main(int argc, char **argv)
 	}
 
 	nb_ports_available = nb_ports;
+
+	nb_mbufs = RTE_MAX(nb_ports * (nb_rxd + nb_txd + MAX_PKT_BURST +
+		nb_lcores * MEMPOOL_CACHE_SIZE), 8192U);
+
+	/* create the mbuf pool */
+	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", nb_mbufs,
+		MEMPOOL_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
+		rte_socket_id());
+	if (l2fwd_pktmbuf_pool == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 
 	/* Initialise each port */
 	for (portid = 0; portid < nb_ports; portid++) {
