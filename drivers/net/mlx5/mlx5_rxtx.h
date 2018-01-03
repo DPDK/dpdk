@@ -636,7 +636,8 @@ txq_ol_cksum_to_cs(struct mlx5_txq_data *txq_data, struct rte_mbuf *buf)
 
 	/* Should we enable HW CKSUM offload */
 	if (buf->ol_flags &
-	    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
+	    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM |
+	     PKT_TX_OUTER_IP_CKSUM)) {
 		if (txq_data->tunnel_en &&
 		    (buf->ol_flags &
 		     (PKT_TX_TUNNEL_GRE | PKT_TX_TUNNEL_VXLAN))) {
