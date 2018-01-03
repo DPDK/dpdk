@@ -51,6 +51,7 @@
 #include <rte_ethdev.h>
 
 #include "mlx5.h"
+#include "mlx5_defs.h"
 #include "mlx5_rxtx.h"
 
 /**
@@ -72,6 +73,10 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	priv_lock(priv);
+	if (rss_conf->rss_hf & MLX5_RSS_HF_MASK) {
+		ret = -EINVAL;
+		goto out;
+	}
 	if (rss_conf->rss_key && rss_conf->rss_key_len) {
 		priv->rss_conf.rss_key = rte_realloc(priv->rss_conf.rss_key,
 						     rss_conf->rss_key_len, 0);

@@ -50,6 +50,7 @@
 #include <rte_malloc.h>
 
 #include "mlx5.h"
+#include "mlx5_defs.h"
 #include "mlx5_prm.h"
 
 /* Define minimal priority for control plane flows. */
@@ -568,9 +569,15 @@ priv_flow_convert_rss_conf(struct priv *priv,
 			   struct mlx5_flow_parse *parser,
 			   const struct rte_eth_rss_conf *rss_conf)
 {
-	const struct rte_eth_rss_conf *rss =
-		rss_conf ? rss_conf : &priv->rss_conf;
+	const struct rte_eth_rss_conf *rss;
 
+	if (rss_conf) {
+		if (rss_conf->rss_hf & MLX5_RSS_HF_MASK)
+			return EINVAL;
+		rss = rss_conf;
+	} else {
+		rss = &priv->rss_conf;
+	}
 	if (rss->rss_key_len > 40)
 		return EINVAL;
 	parser->rss_conf.rss_key_len = rss->rss_key_len;
