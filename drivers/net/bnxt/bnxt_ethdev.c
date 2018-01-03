@@ -1426,7 +1426,6 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev, struct ether_addr *addr)
 		return;
 
 	memcpy(bp->mac_addr, addr, sizeof(bp->mac_addr));
-	memcpy(&dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
 
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
 		/* Default Filter is at Index 0 */
