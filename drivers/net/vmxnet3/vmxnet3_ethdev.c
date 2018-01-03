@@ -1123,7 +1123,6 @@ vmxnet3_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	ether_addr_copy(mac_addr, (struct ether_addr *)(hw->perm_addr));
-	ether_addr_copy(mac_addr, &dev->data->mac_addrs[0]);
 	vmxnet3_write_mac(hw, mac_addr->addr_bytes);
 }
 
