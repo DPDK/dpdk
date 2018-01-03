@@ -336,7 +336,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1,
 					1, 1);
 	else
-		reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 1, 1, 1, 1,
+		reg = qbman_set_swp_cfg(dqrr_size, 0, 1, 3, 2, 2, 1, 1, 1, 1,
 					1, 1);
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
