@@ -428,6 +428,7 @@ F: doc/guides/nics/features/fm10k*.ini
 
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
+T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
 F: doc/guides/nics/features/mlx4.ini
@@ -436,6 +437,7 @@ Mellanox mlx5
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 M: Nelio Laranjeiro <nelio.laranjeiro@6wind.com>
 M: Yongseok Koh <yskoh@mellanox.com>
+T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/net/mlx5/
 F: doc/guides/nics/mlx5.rst
 F: doc/guides/nics/features/mlx5.ini
