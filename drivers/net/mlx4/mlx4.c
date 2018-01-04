@@ -505,6 +505,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		rte_errno = ENODEV;
 		goto error;
 	}
+	assert(device_attr.max_sge >= MLX4_MAX_SGE);
 	for (i = 0; i < device_attr.phys_port_cnt; i++) {
 		uint32_t port = i + 1; /* ports are indexed from one */
 		struct ibv_context *ctx = NULL;

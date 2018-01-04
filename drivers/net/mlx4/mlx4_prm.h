@@ -53,7 +53,10 @@
 #define MLX4_TXBB_SIZE (1 << MLX4_TXBB_SHIFT)
 
 /* Typical TSO descriptor with 16 gather entries is 352 bytes. */
-#define MLX4_MAX_WQE_SIZE 512
+#define MLX4_MAX_SGE 32
+#define MLX4_MAX_WQE_SIZE \
+	(MLX4_MAX_SGE * sizeof(struct mlx4_wqe_data_seg) + \
+	 sizeof(struct mlx4_wqe_ctrl_seg))
 #define MLX4_SEG_SHIFT 4
 
 /* Send queue stamping/invalidating information. */
