@@ -1554,20 +1554,6 @@ start_port(portid_t pid)
 			}
 		}
 
-		for (event_type = RTE_ETH_EVENT_UNKNOWN;
-		     event_type < RTE_ETH_EVENT_MAX;
-		     event_type++) {
-			diag = rte_eth_dev_callback_register(pi,
-							event_type,
-							eth_event_callback,
-							NULL);
-			if (diag) {
-				printf("Failed to setup even callback for event %d\n",
-					event_type);
-				return -1;
-			}
-		}
-
 		/* start port */
 		if (rte_eth_dev_start(pi) < 0) {
 			printf("Fail to start port %d\n", pi);
@@ -1592,6 +1578,20 @@ start_port(portid_t pid)
 
 		/* at least one port started, need checking link status */
 		need_check_link_status = 1;
+	}
+
+	for (event_type = RTE_ETH_EVENT_UNKNOWN;
+	     event_type < RTE_ETH_EVENT_MAX;
+	     event_type++) {
+		diag = rte_eth_dev_callback_register(RTE_ETH_ALL,
+						event_type,
+						eth_event_callback,
+						NULL);
+		if (diag) {
+			printf("Failed to setup even callback for event %d\n",
+				event_type);
+			return -1;
+		}
 	}
 
 	if (need_check_link_status == 1 && !no_link_check)
@@ -1916,6 +1916,8 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		[RTE_ETH_EVENT_VF_MBOX] = "VF Mbox",
 		[RTE_ETH_EVENT_MACSEC] = "MACsec",
 		[RTE_ETH_EVENT_INTR_RMV] = "device removal",
+		[RTE_ETH_EVENT_NEW] = "device probed",
+		[RTE_ETH_EVENT_DESTROY] = "device released",
 		[RTE_ETH_EVENT_MAX] = NULL,
 	};
 

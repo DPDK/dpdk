@@ -480,12 +480,12 @@ The commandline options are:
 
     Set the logical core N to perform bitrate calculation.
 
-*   ``--print-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|all>``
+*   ``--print-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|dev_probed|dev_released|all>``
 
     Enable printing the occurrence of the designated event. Using all will
     enable all of them.
 
-*   ``--mask-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|all>``
+*   ``--mask-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|dev_probed|dev_released|all>``
 
     Disable printing the occurrence of the designated event. Using all will
     disable all of them.

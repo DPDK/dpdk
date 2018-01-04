@@ -516,6 +516,10 @@ parse_event_printing_config(const char *optarg, int enable)
 		mask = UINT32_C(1) << RTE_ETH_EVENT_MACSEC;
 	else if (!strcmp(optarg, "intr_rmv"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_RMV;
+	else if (!strcmp(optarg, "dev_probed"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_NEW;
+	else if (!strcmp(optarg, "dev_released"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_DESTROY;
 	else if (!strcmp(optarg, "all"))
 		mask = ~UINT32_C(0);
 	else {
