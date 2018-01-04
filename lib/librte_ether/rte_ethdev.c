@@ -408,7 +408,7 @@ rte_eth_dev_detach(uint16_t port_id, char *name)
 	if (ret < 0)
 		goto err;
 
-	rte_eth_devices[port_id].state = RTE_ETH_DEV_UNUSED;
+	rte_eth_dev_release_port(&rte_eth_devices[port_id]);
 	return 0;
 
 err:
