@@ -1240,7 +1240,7 @@ virtio_interrupt_handler(void *param)
 		if (virtio_dev_link_update(dev, 0) == 0)
 			_rte_eth_dev_callback_process(dev,
 						      RTE_ETH_EVENT_INTR_LSC,
-						      NULL, NULL);
+						      NULL);
 	}
 
 }

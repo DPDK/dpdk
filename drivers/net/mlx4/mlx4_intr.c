@@ -154,7 +154,7 @@ mlx4_link_status_alarm(struct priv *priv)
 	if (intr_conf->lsc && !mlx4_link_status_check(priv))
 		_rte_eth_dev_callback_process(priv->dev,
 					      RTE_ETH_EVENT_INTR_LSC,
-					      NULL, NULL);
+					      NULL);
 }
 
 /**
@@ -236,7 +236,7 @@ mlx4_interrupt_handler(struct priv *priv)
 	for (i = 0; i != RTE_DIM(caught); ++i)
 		if (caught[i])
 			_rte_eth_dev_callback_process(priv->dev, type[i],
-						      NULL, NULL);
+						      NULL);
 }
 
 /**

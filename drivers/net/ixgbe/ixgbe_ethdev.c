@@ -4361,12 +4361,12 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 		intr->flags &= ~IXGBE_FLAG_NEED_LINK_UPDATE;
 		ixgbe_dev_link_status_print(dev);
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-					      NULL, NULL);
+					      NULL);
 	}
 
 	if (intr->flags & IXGBE_FLAG_MACSEC) {
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_MACSEC,
-					      NULL, NULL);
+					      NULL);
 		intr->flags &= ~IXGBE_FLAG_MACSEC;
 	}
 
@@ -8149,7 +8149,7 @@ static void ixgbevf_mbx_process(struct rte_eth_dev *dev)
 	/* PF reset VF event */
 	if (in_msg == IXGBE_PF_CONTROL_MSG)
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
-					      NULL, NULL);
+					      NULL);
 }
 
 static int

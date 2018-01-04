@@ -1193,8 +1193,7 @@ mlx5_dev_link_status_handler(void *arg)
 	ret = priv_link_status_update(priv);
 	priv_unlock(priv);
 	if (!ret)
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL,
-					      NULL);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 /**
@@ -1216,11 +1215,9 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 	events = priv_dev_status_handler(priv);
 	priv_unlock(priv);
 	if (events & (1 << RTE_ETH_EVENT_INTR_LSC))
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL,
-					      NULL);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	if (events & (1 << RTE_ETH_EVENT_INTR_RMV))
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RMV, NULL,
-					      NULL);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RMV, NULL);
 }
 
 /**

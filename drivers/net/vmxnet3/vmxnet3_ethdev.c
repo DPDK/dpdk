@@ -1306,7 +1306,7 @@ vmxnet3_process_events(struct rte_eth_dev *dev)
 		if (vmxnet3_dev_link_update(dev, 0) == 0)
 			_rte_eth_dev_callback_process(dev,
 						      RTE_ETH_EVENT_INTR_LSC,
-						      NULL, NULL);
+						      NULL);
 	}
 
 	/* Check if there is an error on xmit/recv queues */

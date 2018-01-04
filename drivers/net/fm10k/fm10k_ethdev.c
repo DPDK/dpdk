@@ -2598,7 +2598,7 @@ fm10k_dev_interrupt_handler_pf(void *param)
 			dev_info->sm_down = 0;
 			_rte_eth_dev_callback_process(dev,
 					RTE_ETH_EVENT_INTR_LSC,
-					NULL, NULL);
+					NULL);
 		}
 	}
 
@@ -2611,7 +2611,7 @@ fm10k_dev_interrupt_handler_pf(void *param)
 		PMD_INIT_LOG(INFO, "INT: Switch is down");
 		dev_info->sm_down = 1;
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-				NULL, NULL);
+				NULL);
 	}
 
 	/* Handle SRAM error */
@@ -2679,7 +2679,7 @@ fm10k_dev_interrupt_handler_vf(void *param)
 		/* Setting reset flag */
 		dev_info->sm_down = 1;
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-				NULL, NULL);
+				NULL);
 	}
 
 	if (dev_info->sm_down == 1 &&
@@ -2708,7 +2708,7 @@ fm10k_dev_interrupt_handler_vf(void *param)
 
 		dev_info->sm_down = 0;
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-				NULL, NULL);
+				NULL);
 	}
 
 	/* Re-enable interrupt from device side */

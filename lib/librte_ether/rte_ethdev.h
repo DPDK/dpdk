@@ -3556,8 +3556,6 @@ int rte_eth_dev_callback_unregister(uint16_t port_id,
  *  Pointer to struct rte_eth_dev.
  * @param event
  *  Eth device interrupt event type.
- * @param cb_arg
- *  callback parameter.
  * @param ret_param
  *  To pass data back to user application.
  *  This allows the user application to decide if a particular function
@@ -3567,7 +3565,7 @@ int rte_eth_dev_callback_unregister(uint16_t port_id,
  *  int
  */
 int _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
-		enum rte_eth_event_type event, void *cb_arg, void *ret_param);
+		enum rte_eth_event_type event, void *ret_param);
 
 /**
  * When there is no rx packet coming in Rx Queue for a long time, we can

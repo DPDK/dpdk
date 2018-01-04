@@ -2935,7 +2935,7 @@ rte_eth_dev_callback_unregister(uint16_t port_id,
 
 int
 _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
-	enum rte_eth_event_type event, void *cb_arg, void *ret_param)
+	enum rte_eth_event_type event, void *ret_param)
 {
 	struct rte_eth_dev_callback *cb_lst;
 	struct rte_eth_dev_callback dev_cb;
@@ -2947,8 +2947,6 @@ _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 			continue;
 		dev_cb = *cb_lst;
 		cb_lst->active = 1;
-		if (cb_arg != NULL)
-			dev_cb.cb_arg = cb_arg;
 		if (ret_param != NULL)
 			dev_cb.ret_param = ret_param;
 

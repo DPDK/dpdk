@@ -460,7 +460,7 @@ virtual_ethdev_simulate_link_status_interrupt(uint16_t port_id,
 	vrtl_eth_dev->data->dev_link.link_status = link_status;
 
 	_rte_eth_dev_callback_process(vrtl_eth_dev, RTE_ETH_EVENT_INTR_LSC,
-				      NULL, NULL);
+				      NULL);
 }
 
 int

@@ -2592,7 +2592,7 @@ bond_ethdev_delayed_lsc_propagation(void *arg)
 		return;
 
 	_rte_eth_dev_callback_process((struct rte_eth_dev *)arg,
-			RTE_ETH_EVENT_INTR_LSC, NULL, NULL);
+			RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 int
@@ -2700,7 +2700,7 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 			else
 				_rte_eth_dev_callback_process(bonded_eth_dev,
 						RTE_ETH_EVENT_INTR_LSC,
-						NULL, NULL);
+						NULL);
 
 		} else {
 			if (internals->link_down_delay_ms > 0)
@@ -2710,7 +2710,7 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 			else
 				_rte_eth_dev_callback_process(bonded_eth_dev,
 						RTE_ETH_EVENT_INTR_LSC,
-						NULL, NULL);
+						NULL);
 		}
 	}
 	return 0;

@@ -739,7 +739,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 
 		/* notify application about VF reset */
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_VF_MBOX,
-					      NULL, &ret_param);
+					      &ret_param);
 		return ret;
 	}
 
@@ -751,7 +751,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	 * if ret_param.retval > 1, do nothing and send NAK to VF
 	 */
 	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_VF_MBOX,
-				      NULL, &ret_param);
+				      &ret_param);
 
 	retval = ret_param.retval;
 

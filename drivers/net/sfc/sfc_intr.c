@@ -91,7 +91,7 @@ exit:
 			 "UP" : "DOWN");
 		_rte_eth_dev_callback_process(sa->eth_dev,
 					      RTE_ETH_EVENT_INTR_LSC,
-					      NULL, NULL);
+					      NULL);
 	}
 }
 
@@ -133,7 +133,7 @@ exit:
 		sfc_info(sa, "link status change event");
 		_rte_eth_dev_callback_process(sa->eth_dev,
 					      RTE_ETH_EVENT_INTR_LSC,
-					      NULL, NULL);
+					      NULL);
 	}
 }
 
