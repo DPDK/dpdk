@@ -47,6 +47,7 @@ const char *rte_get_ptype_l2_name(uint32_t ptype)
 	case RTE_PTYPE_L2_ETHER_NSH: return "L2_ETHER_NSH";
 	case RTE_PTYPE_L2_ETHER_VLAN: return "L2_ETHER_VLAN";
 	case RTE_PTYPE_L2_ETHER_QINQ: return "L2_ETHER_QINQ";
+	case RTE_PTYPE_L2_ETHER_PPPOE: return "L2_ETHER_PPPOE";
 	default: return "L2_UNKNOWN";
 	}
 }
@@ -92,6 +93,7 @@ const char *rte_get_ptype_tunnel_name(uint32_t ptype)
 	case RTE_PTYPE_TUNNEL_GTPC: return "TUNNEL_GTPC";
 	case RTE_PTYPE_TUNNEL_GTPU: return "TUNNEL_GTPU";
 	case RTE_PTYPE_TUNNEL_ESP: return "TUNNEL_ESP";
+	case RTE_PTYPE_TUNNEL_L2TP: return "TUNNEL_L2TP";
 	default: return "TUNNEL_UNKNOWN";
 	}
 }

@@ -153,6 +153,13 @@ extern "C" {
  */
 #define RTE_PTYPE_L2_ETHER_QINQ             0x00000007
 /**
+ * PPPOE packet type.
+ *
+ * Packet format:
+ * <'ether type'=[0x8863|0x8864]>
+ */
+#define RTE_PTYPE_L2_ETHER_PPPOE            0x00000008
+/**
  * Mask of layer 2 packet types.
  * It is used for outer packet for tunneling cases.
  */
@@ -425,6 +432,25 @@ extern "C" {
  * | 'version'=6, 'next header'=51>
  */
 #define RTE_PTYPE_TUNNEL_ESP                0x00009000
+/**
+ * L2TP (Layer 2 Tunneling Protocol) tunnleing packet type.
+ *
+ * Packet format:
+ * <'ether type'=0x0800
+ * | 'version'=4, 'protocol'=17>
+ * | 'destination port'=1701>
+ * or,
+ * <'ether type'=0x86DD
+ * | 'version'=6, 'next header'=17
+ * | 'destination port'=1701>
+ * or,
+ * <'ether type'=0x0800
+ * | 'version'=4, 'protocol'=115>
+ * or,
+ * <'ether type'=0x86DD
+ * | 'version'=6, 'protocol'=115>
+ */
+#define RTE_PTYPE_TUNNEL_L2TP               0x0000a000
 /**
  * Mask of tunneling packet types.
  */
