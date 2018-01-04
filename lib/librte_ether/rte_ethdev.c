@@ -209,6 +209,8 @@ rte_eth_dev_allocate(const char *name)
 	eth_dev->data->port_id = port_id;
 	eth_dev->data->mtu = ETHER_MTU;
 
+	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_NEW, NULL);
+
 	return eth_dev;
 }
 
@@ -250,6 +252,9 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 
 	eth_dev->state = RTE_ETH_DEV_UNUSED;
+
+	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_DESTROY, NULL);
+
 	return 0;
 }
 
