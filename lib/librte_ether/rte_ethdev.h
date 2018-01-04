@@ -1108,6 +1108,8 @@ struct rte_eth_dcb_info {
 
 struct rte_eth_dev;
 
+#define RTE_ETH_ALL RTE_MAX_ETHPORTS
+
 struct rte_eth_dev_callback;
 /** @internal Structure to keep track of registered callbacks */
 TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
@@ -3507,10 +3509,11 @@ typedef int (*rte_eth_dev_cb_fn)(uint16_t port_id,
 
 
 /**
- * Register a callback function for specific port id.
+ * Register a callback function for port event.
  *
  * @param port_id
  *  Port id.
+ *  RTE_ETH_ALL means register the event for all port ids.
  * @param event
  *  Event interested.
  * @param cb_fn
@@ -3527,10 +3530,11 @@ int rte_eth_dev_callback_register(uint16_t port_id,
 		rte_eth_dev_cb_fn cb_fn, void *cb_arg);
 
 /**
- * Unregister a callback function for specific port id.
+ * Unregister a callback function for port event.
  *
  * @param port_id
  *  Port id.
+ *  RTE_ETH_ALL means unregister the event for all port ids.
  * @param event
  *  Event interested.
  * @param cb_fn

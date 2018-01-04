@@ -176,7 +176,6 @@ eth_dev_get(uint16_t port_id)
 
 	eth_dev->data = &rte_eth_dev_data[port_id];
 	eth_dev->state = RTE_ETH_DEV_ATTACHED;
-	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
 	eth_dev_last_created_port = port_id;
 
@@ -2850,6 +2849,14 @@ rte_eth_mirror_rule_reset(uint16_t port_id, uint8_t rule_id)
 	return (*dev->dev_ops->mirror_rule_reset)(dev, rule_id);
 }
 
+RTE_INIT(eth_dev_init_cb_lists)
+{
+	int i;
+
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
+		TAILQ_INIT(&rte_eth_devices[i].link_intr_cbs);
+}
+
 int
 rte_eth_dev_callback_register(uint16_t port_id,
 			enum rte_eth_event_type event,
@@ -2857,37 +2864,59 @@ rte_eth_dev_callback_register(uint16_t port_id,
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_callback *user_cb;
+	uint32_t next_port; /* size is 32-bit to prevent loop wrap-around */
+	uint16_t last_port;
 
 	if (!cb_fn)
 		return -EINVAL;
 
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
+	if (!rte_eth_dev_is_valid_port(port_id) && port_id != RTE_ETH_ALL) {
+		RTE_LOG(ERR, EAL, "Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
 
-	dev = &rte_eth_devices[port_id];
+	if (port_id == RTE_ETH_ALL) {
+		next_port = 0;
+		last_port = RTE_MAX_ETHPORTS - 1;
+	} else {
+		next_port = last_port = port_id;
+	}
+
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
 
-	TAILQ_FOREACH(user_cb, &(dev->link_intr_cbs), next) {
-		if (user_cb->cb_fn == cb_fn &&
-			user_cb->cb_arg == cb_arg &&
-			user_cb->event == event) {
-			break;
-		}
-	}
+	do {
+		dev = &rte_eth_devices[next_port];
 
-	/* create a new callback. */
-	if (user_cb == NULL) {
-		user_cb = rte_zmalloc("INTR_USER_CALLBACK",
-					sizeof(struct rte_eth_dev_callback), 0);
-		if (user_cb != NULL) {
-			user_cb->cb_fn = cb_fn;
-			user_cb->cb_arg = cb_arg;
-			user_cb->event = event;
-			TAILQ_INSERT_TAIL(&(dev->link_intr_cbs), user_cb, next);
+		TAILQ_FOREACH(user_cb, &(dev->link_intr_cbs), next) {
+			if (user_cb->cb_fn == cb_fn &&
+				user_cb->cb_arg == cb_arg &&
+				user_cb->event == event) {
+				break;
+			}
 		}
-	}
+
+		/* create a new callback. */
+		if (user_cb == NULL) {
+			user_cb = rte_zmalloc("INTR_USER_CALLBACK",
+				sizeof(struct rte_eth_dev_callback), 0);
+			if (user_cb != NULL) {
+				user_cb->cb_fn = cb_fn;
+				user_cb->cb_arg = cb_arg;
+				user_cb->event = event;
+				TAILQ_INSERT_TAIL(&(dev->link_intr_cbs),
+						  user_cb, next);
+			} else {
+				rte_spinlock_unlock(&rte_eth_dev_cb_lock);
+				rte_eth_dev_callback_unregister(port_id, event,
+								cb_fn, cb_arg);
+				return -ENOMEM;
+			}
+
+		}
+	} while (++next_port <= last_port);
 
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
-	return (user_cb == NULL) ? -ENOMEM : 0;
+	return 0;
 }
 
 int
@@ -2898,36 +2927,50 @@ rte_eth_dev_callback_unregister(uint16_t port_id,
 	int ret;
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_callback *cb, *next;
+	uint32_t next_port; /* size is 32-bit to prevent loop wrap-around */
+	uint16_t last_port;
 
 	if (!cb_fn)
 		return -EINVAL;
 
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
+	if (!rte_eth_dev_is_valid_port(port_id) && port_id != RTE_ETH_ALL) {
+		RTE_LOG(ERR, EAL, "Invalid port_id=%d\n", port_id);
+		return -EINVAL;
+	}
 
-	dev = &rte_eth_devices[port_id];
+	if (port_id == RTE_ETH_ALL) {
+		next_port = 0;
+		last_port = RTE_MAX_ETHPORTS - 1;
+	} else {
+		next_port = last_port = port_id;
+	}
+
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
 
-	ret = 0;
-	for (cb = TAILQ_FIRST(&dev->link_intr_cbs); cb != NULL; cb = next) {
+	do {
+		dev = &rte_eth_devices[next_port];
+		ret = 0;
+		for (cb = TAILQ_FIRST(&dev->link_intr_cbs); cb != NULL;
+		     cb = next) {
 
-		next = TAILQ_NEXT(cb, next);
+			next = TAILQ_NEXT(cb, next);
 
-		if (cb->cb_fn != cb_fn || cb->event != event ||
-				(cb->cb_arg != (void *)-1 &&
-				cb->cb_arg != cb_arg))
-			continue;
+			if (cb->cb_fn != cb_fn || cb->event != event ||
+			    (cb->cb_arg != (void *)-1 && cb->cb_arg != cb_arg))
+				continue;
 
-		/*
-		 * if this callback is not executing right now,
-		 * then remove it.
-		 */
-		if (cb->active == 0) {
-			TAILQ_REMOVE(&(dev->link_intr_cbs), cb, next);
-			rte_free(cb);
-		} else {
-			ret = -EAGAIN;
+			/*
+			 * if this callback is not executing right now,
+			 * then remove it.
+			 */
+			if (cb->active == 0) {
+				TAILQ_REMOVE(&(dev->link_intr_cbs), cb, next);
+				rte_free(cb);
+			} else {
+				ret = -EAGAIN;
+			}
 		}
-	}
+	} while (++next_port <= last_port);
 
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
 	return ret;
