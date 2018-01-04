@@ -656,18 +656,15 @@ test_flow_classify(void)
 	struct rte_table_acl_params table_acl_params;
 	struct rte_flow_classify_table_params cls_table_params;
 	struct rte_flow_classifier_params cls_params;
-	int socket_id;
 	int ret;
 	uint32_t size;
-
-	socket_id = rte_eth_dev_socket_id(0);
 
 	/* Memory allocation */
 	size = RTE_CACHE_LINE_ROUNDUP(sizeof(struct flow_classifier_acl));
 	cls = rte_zmalloc(NULL, size, RTE_CACHE_LINE_SIZE);
 
 	cls_params.name = "flow_classifier";
-	cls_params.socket_id = socket_id;
+	cls_params.socket_id = 0;
 	cls->cls = rte_flow_classifier_create(&cls_params);
 
 	/* initialise ACL table params */
