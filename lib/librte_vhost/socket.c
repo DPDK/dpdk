@@ -433,6 +433,7 @@ static int
 vhost_user_reconnect_init(void)
 {
 	int ret;
+	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	ret = pthread_mutex_init(&reconn_list.mutex, NULL);
 	if (ret < 0) {
@@ -448,6 +449,14 @@ vhost_user_reconnect_init(void)
 		if (pthread_mutex_destroy(&reconn_list.mutex)) {
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"failed to destroy reconnect mutex");
+		}
+	} else {
+		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
+			 "vhost-reconn");
+
+		if (rte_thread_setname(reconn_tid, thread_name)) {
+			RTE_LOG(DEBUG, VHOST_CONFIG,
+				"failed to set reconnect thread name");
 		}
 	}
 
