@@ -1482,6 +1482,8 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	} else {
 		PMD_INIT_LOG(DEBUG, "config->max_virtqueue_pairs=1");
 		hw->max_queue_pairs = 1;
+		hw->max_mtu = VIRTIO_MAX_RX_PKTLEN - ETHER_HDR_LEN -
+			VLAN_TAG_LEN - hw->vtnet_hdr_size;
 	}
 
 	ret = virtio_alloc_queues(eth_dev);
