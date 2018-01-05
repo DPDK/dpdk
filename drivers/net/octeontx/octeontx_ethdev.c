@@ -569,8 +569,8 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 		break;
 	}
 
-	link.link_duplex = ETH_LINK_AUTONEG;
-	link.link_autoneg = ETH_LINK_SPEED_AUTONEG;
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_autoneg = ETH_LINK_AUTONEG;
 
 	return octeontx_atomic_write_link_status(dev, &link);
 }

@@ -1214,7 +1214,7 @@ eth_link_update(struct rte_eth_dev *dev,
 
 	link.link_status = (link_is_up) ? ETH_LINK_UP : ETH_LINK_DOWN;
 
-	link.link_autoneg = ETH_LINK_SPEED_FIXED;
+	link.link_autoneg = ETH_LINK_FIXED;
 
 	rte_atomic64_cmpset((uint64_t *)dev_link, *(uint64_t *)dev_link,
 			*(uint64_t *)link_ptr);

@@ -522,7 +522,7 @@ pmd_ethdev_register(struct rte_vdev_device *vdev,
 	soft_dev->data->dev_private = dev_private;
 	soft_dev->data->dev_link.link_speed = hard_speed;
 	soft_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	soft_dev->data->dev_link.link_autoneg = ETH_LINK_SPEED_FIXED;
+	soft_dev->data->dev_link.link_autoneg = ETH_LINK_AUTONEG;
 	soft_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	soft_dev->data->mac_addrs = &eth_addr;
 	soft_dev->data->promiscuous = 1;

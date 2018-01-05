@@ -93,7 +93,7 @@ nicvf_set_eth_link_status(struct nicvf *nic, struct rte_eth_link *link)
 	else if (nic->duplex == NICVF_FULL_DUPLEX)
 		link->link_duplex = ETH_LINK_FULL_DUPLEX;
 	link->link_speed = nic->speed;
-	link->link_autoneg = ETH_LINK_SPEED_AUTONEG;
+	link->link_autoneg = ETH_LINK_AUTONEG;
 }
 
 static void
