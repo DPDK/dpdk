@@ -178,6 +178,12 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_udp *udp_mask;
 	const struct rte_flow_item_sctp *sctp_spec;
 	const struct rte_flow_item_sctp *sctp_mask;
+	const struct rte_flow_item_eth *eth_spec;
+	const struct rte_flow_item_eth *eth_mask;
+	const struct rte_flow_item_vlan *vlan_spec;
+	const struct rte_flow_item_vlan *vlan_mask;
+	struct rte_flow_item_eth eth_null;
+	struct rte_flow_item_vlan vlan_null;
 
 	if (!pattern) {
 		rte_flow_error_set(error,
@@ -198,6 +204,9 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 				   NULL, "NULL attribute.");
 		return -rte_errno;
 	}
+
+	memset(&eth_null, 0, sizeof(struct rte_flow_item_eth));
+	memset(&vlan_null, 0, sizeof(struct rte_flow_item_vlan));
 
 #ifdef RTE_LIBRTE_SECURITY
 	/**
@@ -248,6 +257,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	}
 	/* Skip Ethernet */
 	if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
+		eth_spec = (const struct rte_flow_item_eth *)item->spec;
+		eth_mask = (const struct rte_flow_item_eth *)item->mask;
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error,
@@ -258,7 +269,45 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 
 		}
 		/* if the first item is MAC, the content should be NULL */
-		if (item->spec || item->mask) {
+		if ((item->spec || item->mask) &&
+			(memcmp(eth_spec, &eth_null,
+				sizeof(struct rte_flow_item_eth)) ||
+			 memcmp(eth_mask, &eth_null,
+				sizeof(struct rte_flow_item_eth)))) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by ntuple filter");
+			return -rte_errno;
+		}
+		/* check if the next not void item is IPv4 or Vlan */
+		item = next_no_void_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+			item->type != RTE_FLOW_ITEM_TYPE_VLAN) {
+			rte_flow_error_set(error,
+			  EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+			  item, "Not supported by ntuple filter");
+			  return -rte_errno;
+		}
+	}
+
+	if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
+		vlan_spec = (const struct rte_flow_item_vlan *)item->spec;
+		vlan_mask = (const struct rte_flow_item_vlan *)item->mask;
+		/*Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error,
+			  EINVAL,
+			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			  item, "Not supported last point for range");
+			return -rte_errno;
+		}
+		/* the content should be NULL */
+		if ((item->spec || item->mask) &&
+			(memcmp(vlan_spec, &vlan_null,
+				sizeof(struct rte_flow_item_vlan)) ||
+			 memcmp(vlan_mask, &vlan_null,
+				sizeof(struct rte_flow_item_vlan)))) {
+
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
 				item, "Not supported by ntuple filter");
@@ -270,52 +319,53 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 			rte_flow_error_set(error,
 			  EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 			  item, "Not supported by ntuple filter");
-			  return -rte_errno;
+			return -rte_errno;
 		}
 	}
 
-	/* get the IPv4 info */
-	if (!item->spec || !item->mask) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Invalid ntuple mask");
-		return -rte_errno;
-	}
-	/*Not supported last point for range*/
-	if (item->last) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			item, "Not supported last point for range");
-		return -rte_errno;
+	if (item->mask) {
+		/* get the IPv4 info */
+		if (!item->spec || !item->mask) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Invalid ntuple mask");
+			return -rte_errno;
+		}
+		/*Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				item, "Not supported last point for range");
+			return -rte_errno;
+		}
 
-	}
-
-	ipv4_mask = (const struct rte_flow_item_ipv4 *)item->mask;
-	/**
-	 * Only support src & dst addresses, protocol,
-	 * others should be masked.
-	 */
-	if (ipv4_mask->hdr.version_ihl ||
-	    ipv4_mask->hdr.type_of_service ||
-	    ipv4_mask->hdr.total_length ||
-	    ipv4_mask->hdr.packet_id ||
-	    ipv4_mask->hdr.fragment_offset ||
-	    ipv4_mask->hdr.time_to_live ||
-	    ipv4_mask->hdr.hdr_checksum) {
+		ipv4_mask = (const struct rte_flow_item_ipv4 *)item->mask;
+		/**
+		 * Only support src & dst addresses, protocol,
+		 * others should be masked.
+		 */
+		if (ipv4_mask->hdr.version_ihl ||
+		    ipv4_mask->hdr.type_of_service ||
+		    ipv4_mask->hdr.total_length ||
+		    ipv4_mask->hdr.packet_id ||
+		    ipv4_mask->hdr.fragment_offset ||
+		    ipv4_mask->hdr.time_to_live ||
+		    ipv4_mask->hdr.hdr_checksum) {
 			rte_flow_error_set(error,
-			EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by ntuple filter");
-		return -rte_errno;
+				EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by ntuple filter");
+			return -rte_errno;
+		}
+
+		filter->dst_ip_mask = ipv4_mask->hdr.dst_addr;
+		filter->src_ip_mask = ipv4_mask->hdr.src_addr;
+		filter->proto_mask  = ipv4_mask->hdr.next_proto_id;
+
+		ipv4_spec = (const struct rte_flow_item_ipv4 *)item->spec;
+		filter->dst_ip = ipv4_spec->hdr.dst_addr;
+		filter->src_ip = ipv4_spec->hdr.src_addr;
+		filter->proto  = ipv4_spec->hdr.next_proto_id;
 	}
-
-	filter->dst_ip_mask = ipv4_mask->hdr.dst_addr;
-	filter->src_ip_mask = ipv4_mask->hdr.src_addr;
-	filter->proto_mask  = ipv4_mask->hdr.next_proto_id;
-
-	ipv4_spec = (const struct rte_flow_item_ipv4 *)item->spec;
-	filter->dst_ip = ipv4_spec->hdr.dst_addr;
-	filter->src_ip = ipv4_spec->hdr.src_addr;
-	filter->proto  = ipv4_spec->hdr.next_proto_id;
 
 	/* check if the next not void item is TCP or UDP */
 	item = next_no_void_pattern(pattern, item);
@@ -330,8 +380,13 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	/* get the TCP/UDP info */
 	if ((item->type != RTE_FLOW_ITEM_TYPE_END) &&
+		(!item->spec && !item->mask)) {
+		goto action;
+	}
+
+	/* get the TCP/UDP/SCTP info */
+	if (item->type != RTE_FLOW_ITEM_TYPE_END &&
 		(!item->spec || !item->mask)) {
 		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
 		rte_flow_error_set(error, EINVAL,
