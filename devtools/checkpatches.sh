@@ -41,7 +41,8 @@ length=${DPDK_CHECKPATCH_LINE_LENGTH:-80}
 options="--no-tree"
 options="$options --max-line-length=$length"
 options="$options --show-types"
-options="$options --ignore=LINUX_VERSION_CODE,FILE_PATH_CHANGES,\
+options="$options --ignore=LINUX_VERSION_CODE,\
+FILE_PATH_CHANGES,MAINTAINERS_STYLE,\
 VOLATILE,PREFER_PACKED,PREFER_ALIGNED,PREFER_PRINTF,\
 PREFER_KERNEL_TYPES,BIT_MACRO,CONST_STRUCT,\
 SPLIT_STRING,LONG_LINE_STRING,\
