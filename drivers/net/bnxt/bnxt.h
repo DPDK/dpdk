@@ -245,6 +245,7 @@ struct bnxt {
 #define BNXT_FLAG_UPDATE_HASH	(1 << 5)
 #define BNXT_FLAG_PTP_SUPPORTED	(1 << 6)
 #define BNXT_FLAG_MULTI_HOST    (1 << 7)
+#define BNXT_FLAG_INIT_DONE	(1 << 31)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->port_partition_type)

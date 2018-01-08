@@ -236,6 +236,10 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = eth_dev->data->dev_private;
 
 	memset(bnxt_stats, 0, sizeof(*bnxt_stats));
+	if (!(bp->flags & BNXT_FLAG_INIT_DONE)) {
+		RTE_LOG(ERR, PMD, "Device Initialization not complete!\n");
+		return 0;
+	}
 
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
@@ -266,6 +270,11 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	if (!(bp->flags & BNXT_FLAG_INIT_DONE)) {
+		RTE_LOG(ERR, PMD, "Device Initialization not complete!\n");
+		return;
+	}
 
 	bnxt_clear_all_hwrm_stat_ctxs(bp);
 	rte_atomic64_clear(&bp->rx_mbuf_alloc_fail);
