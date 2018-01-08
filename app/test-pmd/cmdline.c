@@ -887,6 +887,15 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config (port_id) pctype mapping update"
 			" (pctype_id_0[,pctype_id_1]*) (flow_type_id)\n"
 			"    Update a flow type to pctype mapping item on a port\n\n"
+
+			"port config (port_id) pctype (pctype_id) hash_inset|"
+			"fdir_inset|fdir_flx_inset get|set|clear field\n"
+			" (field_idx)\n"
+			"    Configure RSS|FDIR|FDIR_FLX input set for some pctype\n\n"
+
+			"port config (port_id) pctype (pctype_id) hash_inset|"
+			"fdir_inset|fdir_flx_inset clear all"
+			"    Clear RSS|FDIR|FDIR_FLX input set completely for some pctype\n\n"
 		);
 	}
 
@@ -14880,6 +14889,237 @@ cmdline_parse_inst_t cmd_ddp_get_list = {
 	},
 };
 
+/* Configure input set */
+struct cmd_cfg_input_set_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t cfg;
+	portid_t port_id;
+	cmdline_fixed_string_t pctype;
+	uint8_t pctype_id;
+	cmdline_fixed_string_t inset_type;
+	cmdline_fixed_string_t opt;
+	cmdline_fixed_string_t field;
+	uint8_t field_idx;
+};
+
+static void
+cmd_cfg_input_set_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_cfg_input_set_result *res = parsed_result;
+#ifdef RTE_LIBRTE_I40E_PMD
+	enum rte_pmd_i40e_inset_type inset_type = INSET_NONE;
+	struct rte_pmd_i40e_inset inset;
+#endif
+	int ret = -ENOTSUP;
+
+	if (res->port_id > nb_ports) {
+		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		return;
+	}
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (!strcmp(res->inset_type, "hash_inset"))
+		inset_type = INSET_HASH;
+	else if (!strcmp(res->inset_type, "fdir_inset"))
+		inset_type = INSET_FDIR;
+	else if (!strcmp(res->inset_type, "fdir_flx_inset"))
+		inset_type = INSET_FDIR_FLX;
+	ret = rte_pmd_i40e_inset_get(res->port_id, res->pctype_id,
+				     &inset, inset_type);
+	if (ret) {
+		printf("Failed to get input set.\n");
+		return;
+	}
+
+	if (!strcmp(res->opt, "get")) {
+		ret = rte_pmd_i40e_inset_field_get(inset.inset,
+						   res->field_idx);
+		if (ret)
+			printf("Field index %d is enabled.\n", res->field_idx);
+		else
+			printf("Field index %d is disabled.\n", res->field_idx);
+		return;
+	} else if (!strcmp(res->opt, "set"))
+		ret = rte_pmd_i40e_inset_field_set(&inset.inset,
+						   res->field_idx);
+	else if (!strcmp(res->opt, "clear"))
+		ret = rte_pmd_i40e_inset_field_clear(&inset.inset,
+						     res->field_idx);
+	if (ret) {
+		printf("Failed to configure input set field.\n");
+		return;
+	}
+
+	ret = rte_pmd_i40e_inset_set(res->port_id, res->pctype_id,
+				     &inset, inset_type);
+	if (ret) {
+		printf("Failed to set input set.\n");
+		return;
+	}
+#endif
+
+	if (ret == -ENOTSUP)
+		printf("Function not supported\n");
+}
+
+cmdline_parse_token_string_t cmd_cfg_input_set_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_cfg_input_set_result,
+				 port, "port");
+cmdline_parse_token_string_t cmd_cfg_input_set_cfg =
+	TOKEN_STRING_INITIALIZER(struct cmd_cfg_input_set_result,
+				 cfg, "config");
+cmdline_parse_token_num_t cmd_cfg_input_set_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_cfg_input_set_result,
+			      port_id, UINT16);
+cmdline_parse_token_string_t cmd_cfg_input_set_pctype =
+	TOKEN_STRING_INITIALIZER(struct cmd_cfg_input_set_result,
+				 pctype, "pctype");
+cmdline_parse_token_num_t cmd_cfg_input_set_pctype_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_cfg_input_set_result,
+			      pctype_id, UINT8);
+cmdline_parse_token_string_t cmd_cfg_input_set_inset_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_cfg_input_set_result,
+				 inset_type,
+				 "hash_inset#fdir_inset#fdir_flx_inset");
+cmdline_parse_token_string_t cmd_cfg_input_set_opt =
+	TOKEN_STRING_INITIALIZER(struct cmd_cfg_input_set_result,
+				 opt, "get#set#clear");
+cmdline_parse_token_string_t cmd_cfg_input_set_field =
+	TOKEN_STRING_INITIALIZER(struct cmd_cfg_input_set_result,
+				 field, "field");
+cmdline_parse_token_num_t cmd_cfg_input_set_field_idx =
+	TOKEN_NUM_INITIALIZER(struct cmd_cfg_input_set_result,
+			      field_idx, UINT8);
+
+cmdline_parse_inst_t cmd_cfg_input_set = {
+	.f = cmd_cfg_input_set_parsed,
+	.data = NULL,
+	.help_str = "port config <port_id> pctype <pctype_id> hash_inset|"
+		    "fdir_inset|fdir_flx_inset get|set|clear field <field_idx>",
+	.tokens = {
+		(void *)&cmd_cfg_input_set_port,
+		(void *)&cmd_cfg_input_set_cfg,
+		(void *)&cmd_cfg_input_set_port_id,
+		(void *)&cmd_cfg_input_set_pctype,
+		(void *)&cmd_cfg_input_set_pctype_id,
+		(void *)&cmd_cfg_input_set_inset_type,
+		(void *)&cmd_cfg_input_set_opt,
+		(void *)&cmd_cfg_input_set_field,
+		(void *)&cmd_cfg_input_set_field_idx,
+		NULL,
+	},
+};
+
+/* Clear input set */
+struct cmd_clear_input_set_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t cfg;
+	portid_t port_id;
+	cmdline_fixed_string_t pctype;
+	uint8_t pctype_id;
+	cmdline_fixed_string_t inset_type;
+	cmdline_fixed_string_t clear;
+	cmdline_fixed_string_t all;
+};
+
+static void
+cmd_clear_input_set_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_clear_input_set_result *res = parsed_result;
+#ifdef RTE_LIBRTE_I40E_PMD
+	enum rte_pmd_i40e_inset_type inset_type = INSET_NONE;
+	struct rte_pmd_i40e_inset inset;
+#endif
+	int ret = -ENOTSUP;
+
+	if (res->port_id > nb_ports) {
+		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		return;
+	}
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (!strcmp(res->inset_type, "hash_inset"))
+		inset_type = INSET_HASH;
+	else if (!strcmp(res->inset_type, "fdir_inset"))
+		inset_type = INSET_FDIR;
+	else if (!strcmp(res->inset_type, "fdir_flx_inset"))
+		inset_type = INSET_FDIR_FLX;
+
+	memset(&inset, 0, sizeof(inset));
+
+	ret = rte_pmd_i40e_inset_set(res->port_id, res->pctype_id,
+				     &inset, inset_type);
+	if (ret) {
+		printf("Failed to clear input set.\n");
+		return;
+	}
+
+#endif
+
+	if (ret == -ENOTSUP)
+		printf("Function not supported\n");
+}
+
+cmdline_parse_token_string_t cmd_clear_input_set_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_clear_input_set_result,
+				 port, "port");
+cmdline_parse_token_string_t cmd_clear_input_set_cfg =
+	TOKEN_STRING_INITIALIZER(struct cmd_clear_input_set_result,
+				 cfg, "config");
+cmdline_parse_token_num_t cmd_clear_input_set_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_clear_input_set_result,
+			      port_id, UINT16);
+cmdline_parse_token_string_t cmd_clear_input_set_pctype =
+	TOKEN_STRING_INITIALIZER(struct cmd_clear_input_set_result,
+				 pctype, "pctype");
+cmdline_parse_token_num_t cmd_clear_input_set_pctype_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_clear_input_set_result,
+			      pctype_id, UINT8);
+cmdline_parse_token_string_t cmd_clear_input_set_inset_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_clear_input_set_result,
+				 inset_type,
+				 "hash_inset#fdir_inset#fdir_flx_inset");
+cmdline_parse_token_string_t cmd_clear_input_set_clear =
+	TOKEN_STRING_INITIALIZER(struct cmd_clear_input_set_result,
+				 clear, "clear");
+cmdline_parse_token_string_t cmd_clear_input_set_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_clear_input_set_result,
+				 all, "all");
+
+cmdline_parse_inst_t cmd_clear_input_set = {
+	.f = cmd_clear_input_set_parsed,
+	.data = NULL,
+	.help_str = "port config <port_id> pctype <pctype_id> hash_inset|"
+		    "fdir_inset|fdir_flx_inset clear all",
+	.tokens = {
+		(void *)&cmd_clear_input_set_port,
+		(void *)&cmd_clear_input_set_cfg,
+		(void *)&cmd_clear_input_set_port_id,
+		(void *)&cmd_clear_input_set_pctype,
+		(void *)&cmd_clear_input_set_pctype_id,
+		(void *)&cmd_clear_input_set_inset_type,
+		(void *)&cmd_clear_input_set_clear,
+		(void *)&cmd_clear_input_set_all,
+		NULL,
+	},
+};
+
 /* show vf stats */
 
 /* Common result structure for show vf stats */
@@ -15970,6 +16210,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_ddp_del,
 	(cmdline_parse_inst_t *)&cmd_ddp_get_list,
 	(cmdline_parse_inst_t *)&cmd_ddp_get_info,
+	(cmdline_parse_inst_t *)&cmd_cfg_input_set,
+	(cmdline_parse_inst_t *)&cmd_clear_input_set,
 	(cmdline_parse_inst_t *)&cmd_show_vf_stats,
 	(cmdline_parse_inst_t *)&cmd_clear_vf_stats,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_get,

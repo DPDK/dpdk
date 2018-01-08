@@ -1847,6 +1847,22 @@ where:
 
 * ``flow_type_id``: software flow type id as the index of the pctype mapping table.
 
+port config input set
+~~~~~~~~~~~~~~~~~~~~~
+
+Config RSS/FDIR/FDIR flexible payload input set for some pctype::
+   testpmd> port config (port_id) pctype (pctype_id) \
+            (hash_inset|fdir_inset|fdir_flx_inset) \
+	    (get|set|clear) field (field_idx)
+
+Clear RSS/FDIR/FDIR flexible payload input set for some pctype::
+   testpmd> port config (port_id) pctype (pctype_id) \
+            (hash_inset|fdir_inset|fdir_flx_inset) clear all
+
+where:
+
+* ``pctype_id``: hardware packet classification types.
+* ``field_idx``: hardware field index.
 
 Link Bonding Functions
 ----------------------
