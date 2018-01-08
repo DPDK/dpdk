@@ -806,7 +806,6 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 		bnxt_free_filter(bp, filter1);
 		return NULL;
 	}
-	STAILQ_INSERT_TAIL(&vnic->filter, filter1, next);
 	return filter1;
 }
 
@@ -957,7 +956,11 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		goto ret;
 	}
 
-//done:
+	if (filter1) {
+		bnxt_free_filter(bp, filter1);
+		filter1->fw_l2_filter_id = -1;
+	}
+
 	act = nxt_non_void_action(++act);
 	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
 		rte_flow_error_set(error, EINVAL,
