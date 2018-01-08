@@ -311,6 +311,13 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_rx_queue *rxq;
 	int rc = 0;
 
+	if (queue_idx >= bp->max_rx_rings) {
+		RTE_LOG(ERR, PMD,
+			"Cannot create Rx ring %d. Only %d rings available\n",
+			queue_idx, bp->max_rx_rings);
+		return -ENOSPC;
+	}
+
 	if (!nb_desc || nb_desc > MAX_RX_DESC_CNT) {
 		RTE_LOG(ERR, PMD, "nb_desc %d is invalid\n", nb_desc);
 		rc = -EINVAL;

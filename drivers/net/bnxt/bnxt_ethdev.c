@@ -530,6 +530,26 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
 
 	/* Inherit new configurations */
+	if (eth_dev->data->nb_rx_queues > bp->max_rx_rings ||
+	    eth_dev->data->nb_tx_queues > bp->max_tx_rings ||
+	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues + 1 >
+	    bp->max_cp_rings ||
+	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
+	    bp->max_stat_ctx ||
+	    (uint32_t)(eth_dev->data->nb_rx_queues + 1) > bp->max_ring_grps) {
+		RTE_LOG(ERR, PMD,
+			"Insufficient resources to support requested config\n");
+		RTE_LOG(ERR, PMD,
+			"Num Queues Requested: Tx %d, Rx %d\n",
+			eth_dev->data->nb_tx_queues,
+			eth_dev->data->nb_rx_queues);
+		RTE_LOG(ERR, PMD,
+			"Res available: TxQ %d, RxQ %d, CQ %d Stat %d, Grp %d\n",
+			bp->max_tx_rings, bp->max_rx_rings, bp->max_cp_rings,
+			bp->max_stat_ctx, bp->max_ring_grps);
+		return -ENOSPC;
+	}
+
 	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
 	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
