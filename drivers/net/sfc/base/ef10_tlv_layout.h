@@ -1,13 +1,8 @@
-/**************************************************************************\
-*//*! \file
-** <L5_PRIVATE L5_SOURCE>
-** \author  mjs
-**  \brief  TLV item layouts for EF10 static and dynamic config in NVRAM
-**   \date  2012/11/20
-**    \cop  (c) Solarflare Communications Inc.
-** </L5_PRIVATE>
-*//*
-\**************************************************************************/
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2012-2018 Solarflare Communications Inc.
+ * All rights reserved.
+ */
 
 /* These structures define the layouts for the TLV items stored in static and
  * dynamic configuration partitions in NVRAM for EF10 (Huntington etc.).
