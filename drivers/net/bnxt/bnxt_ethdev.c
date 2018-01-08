@@ -1039,7 +1039,7 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 
-	if (BNXT_NPAR_PF(bp) || BNXT_VF(bp)) {
+	if (!BNXT_SINGLE_PF(bp) || BNXT_VF(bp)) {
 		RTE_LOG(ERR, PMD, "Flow Control Settings cannot be modified\n");
 		return -ENOTSUP;
 	}
@@ -1570,7 +1570,7 @@ bnxt_vlan_pvid_set_op(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	uint16_t vlan = bp->vlan;
 	int rc;
 
-	if (BNXT_NPAR_PF(bp) || BNXT_VF(bp)) {
+	if (!BNXT_SINGLE_PF(bp) || BNXT_VF(bp)) {
 		RTE_LOG(ERR, PMD,
 			"PVID cannot be modified for this function\n");
 		return -ENOTSUP;

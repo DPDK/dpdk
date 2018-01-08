@@ -358,12 +358,12 @@ void bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 
-	if (bp->flags & BNXT_FLAG_PORT_STATS && !BNXT_NPAR_PF(bp))
+	if (bp->flags & BNXT_FLAG_PORT_STATS && BNXT_SINGLE_PF(bp))
 		bnxt_hwrm_port_clr_stats(bp);
 
 	if (BNXT_VF(bp))
 		RTE_LOG(ERR, PMD, "Operation not supported on a VF device\n");
-	if (BNXT_NPAR_PF(bp))
+	if (!BNXT_SINGLE_PF(bp))
 		RTE_LOG(ERR, PMD, "Operation not supported on a MF device\n");
 	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
 		RTE_LOG(ERR, PMD, "Operation not supported\n");

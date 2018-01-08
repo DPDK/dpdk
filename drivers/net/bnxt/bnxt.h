@@ -244,10 +244,12 @@ struct bnxt {
 #define BNXT_FLAG_SHORT_CMD	(1 << 4)
 #define BNXT_FLAG_UPDATE_HASH	(1 << 5)
 #define BNXT_FLAG_PTP_SUPPORTED	(1 << 6)
+#define BNXT_FLAG_MULTI_HOST    (1 << 7)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
-#define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
-#define BNXT_NPAR_PF(bp)	(BNXT_PF(bp) && BNXT_NPAR_ENABLED(bp))
+#define BNXT_NPAR(bp)		((bp)->port_partition_type)
+#define BNXT_MH(bp)             ((bp)->flags & BNXT_FLAG_MULTI_HOST)
+#define BNXT_SINGLE_PF(bp)      (BNXT_PF(bp) && !BNXT_NPAR(bp) && !BNXT_MH(bp))
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
