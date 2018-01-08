@@ -21,44 +21,52 @@ enum policer_action policer_table[e_RTE_METER_COLORS][e_RTE_METER_COLORS] =
 
 #if APP_MODE == APP_MODE_FWD
 
-#define FUNC_METER(a,b,c,d) color, flow_id=flow_id, pkt_len=pkt_len, time=time
+#define FUNC_METER(m, p, time, pkt_len, pkt_color)	\
+({							\
+	void *mp = m;					\
+	void *pp = p;					\
+	mp = mp;					\
+	pp = pp;					\
+	time = time;					\
+	pkt_len = pkt_len;				\
+	pkt_color;					\
+})
 #define FUNC_CONFIG(a, b) 0
-#define PARAMS	app_srtcm_params
 #define FLOW_METER int
+#define PROFILE	app_srtcm_profile
 
 #elif APP_MODE == APP_MODE_SRTCM_COLOR_BLIND
 
-#define FUNC_METER(a,b,c,d) rte_meter_srtcm_color_blind_check(a,b,c)
+#define FUNC_METER(m, p, time, pkt_len, pkt_color)	\
+	rte_meter_srtcm_color_blind_check(m, p, time, pkt_len)
 #define FUNC_CONFIG   rte_meter_srtcm_config
-#define PARAMS        app_srtcm_params
 #define FLOW_METER    struct rte_meter_srtcm
+#define PROFILE       app_srtcm_profile
 
 #elif (APP_MODE == APP_MODE_SRTCM_COLOR_AWARE)
 
 #define FUNC_METER    rte_meter_srtcm_color_aware_check
 #define FUNC_CONFIG   rte_meter_srtcm_config
-#define PARAMS        app_srtcm_params
 #define FLOW_METER    struct rte_meter_srtcm
+#define PROFILE       app_srtcm_profile
 
 #elif (APP_MODE == APP_MODE_TRTCM_COLOR_BLIND)
 
-#define FUNC_METER(a,b,c,d) rte_meter_trtcm_color_blind_check(a,b,c)
+#define FUNC_METER(m, p, time, pkt_len, pkt_color)	\
+	rte_meter_trtcm_color_blind_check(m, p, time, pkt_len)
 #define FUNC_CONFIG  rte_meter_trtcm_config
-#define PARAMS       app_trtcm_params
 #define FLOW_METER   struct rte_meter_trtcm
+#define PROFILE      app_trtcm_profile
 
 #elif (APP_MODE == APP_MODE_TRTCM_COLOR_AWARE)
 
-#define FUNC_METER   rte_meter_trtcm_color_aware_check
+#define FUNC_METER rte_meter_trtcm_color_aware_check
 #define FUNC_CONFIG  rte_meter_trtcm_config
-#define PARAMS       app_trtcm_params
 #define FLOW_METER   struct rte_meter_trtcm
+#define PROFILE      app_trtcm_profile
 
 #else
 #error Invalid value for APP_MODE
 #endif
-
-
-
 
 #endif /* _MAIN_H_ */

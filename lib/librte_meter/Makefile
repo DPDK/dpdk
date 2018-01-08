@@ -16,7 +16,7 @@ LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_meter_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 #
 # all source are stored in SRCS-y

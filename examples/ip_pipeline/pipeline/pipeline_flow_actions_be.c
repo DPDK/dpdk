@@ -111,6 +111,7 @@ static pipeline_msg_req_handler custom_handlers[] = {
  */
 struct meter_policer {
 	struct rte_meter_trtcm meter;
+	struct rte_meter_trtcm_profile meter_profile;
 	struct pipeline_fa_policer_params policer;
 	struct pipeline_fa_policer_stats stats;
 };
@@ -127,8 +128,15 @@ flow_table_entry_set_meter(struct flow_table_entry *entry,
 {
 	struct rte_meter_trtcm *meter = &entry->mp[meter_id].meter;
 	struct rte_meter_trtcm_params *meter_params = &params->m[meter_id];
+	struct rte_meter_trtcm_profile *meter_profile =
+					&entry->mp[meter_id].meter_profile;
+	int status;
 
-	return rte_meter_trtcm_config(meter, meter_params);
+	status = rte_meter_trtcm_profile_config(meter_profile, meter_params);
+	if (status)
+		return status;
+
+	return rte_meter_trtcm_config(meter, meter_profile);
 }
 
 static void
@@ -202,11 +210,14 @@ pkt_work(
 	enum rte_meter_color color = p->dscp[dscp].color;
 
 	struct rte_meter_trtcm *meter = &entry->mp[tc].meter;
+	struct rte_meter_trtcm_profile *meter_profile =
+					&entry->mp[tc].meter_profile;
 	struct pipeline_fa_policer_params *policer = &entry->mp[tc].policer;
 	struct pipeline_fa_policer_stats *stats = &entry->mp[tc].stats;
 
 	/* Read (entry), compute */
 	enum rte_meter_color color2 = rte_meter_trtcm_color_aware_check(meter,
+		meter_profile,
 		time,
 		total_length,
 		color);
@@ -284,42 +295,54 @@ pkt4_work(
 	enum rte_meter_color color3 = p->dscp[dscp3].color;
 
 	struct rte_meter_trtcm *meter0 = &entry0->mp[tc0].meter;
+	struct rte_meter_trtcm_profile *meter0_profile =
+				&entry0->mp[tc0].meter_profile;
 	struct pipeline_fa_policer_params *policer0 = &entry0->mp[tc0].policer;
 	struct pipeline_fa_policer_stats *stats0 = &entry0->mp[tc0].stats;
 
 	struct rte_meter_trtcm *meter1 = &entry1->mp[tc1].meter;
+	struct rte_meter_trtcm_profile *meter1_profile =
+				&entry1->mp[tc1].meter_profile;
 	struct pipeline_fa_policer_params *policer1 = &entry1->mp[tc1].policer;
 	struct pipeline_fa_policer_stats *stats1 = &entry1->mp[tc1].stats;
 
 	struct rte_meter_trtcm *meter2 = &entry2->mp[tc2].meter;
+	struct rte_meter_trtcm_profile *meter2_profile =
+				&entry2->mp[tc2].meter_profile;
 	struct pipeline_fa_policer_params *policer2 = &entry2->mp[tc2].policer;
 	struct pipeline_fa_policer_stats *stats2 = &entry2->mp[tc2].stats;
 
 	struct rte_meter_trtcm *meter3 = &entry3->mp[tc3].meter;
+	struct rte_meter_trtcm_profile *meter3_profile =
+				&entry3->mp[tc3].meter_profile;
 	struct pipeline_fa_policer_params *policer3 = &entry3->mp[tc3].policer;
 	struct pipeline_fa_policer_stats *stats3 = &entry3->mp[tc3].stats;
 
 	/* Read (entry), compute, write (entry) */
 	enum rte_meter_color color2_0 = rte_meter_trtcm_color_aware_check(
 		meter0,
+		meter0_profile,
 		time,
 		total_length0,
 		color0);
 
 	enum rte_meter_color color2_1 = rte_meter_trtcm_color_aware_check(
 		meter1,
+		meter1_profile,
 		time,
 		total_length1,
 		color1);
 
 	enum rte_meter_color color2_2 = rte_meter_trtcm_color_aware_check(
 		meter2,
+		meter2_profile,
 		time,
 		total_length2,
 		color2);
 
 	enum rte_meter_color color2_3 = rte_meter_trtcm_color_aware_check(
 		meter3,
+		meter3_profile,
 		time,
 		total_length3,
 		color3);

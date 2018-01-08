@@ -30,62 +30,83 @@ rte_meter_get_tb_params(uint64_t hz, uint64_t rate, uint64_t *tb_period, uint64_
 	}
 }
 
-int
-rte_meter_srtcm_config(struct rte_meter_srtcm *m, struct rte_meter_srtcm_params *params)
+int __rte_experimental
+rte_meter_srtcm_profile_config(struct rte_meter_srtcm_profile *p,
+	struct rte_meter_srtcm_params *params)
 {
-	uint64_t hz;
+	uint64_t hz = rte_get_tsc_hz();
 
 	/* Check input parameters */
-	if ((m == NULL) || (params == NULL)) {
-		return -1;
-	}
-
-	if ((params->cir == 0) || ((params->cbs == 0) && (params->ebs == 0))) {
-		return -2;
-	}
+	if ((p == NULL) ||
+		(params == NULL) ||
+		(params->cir == 0) ||
+		((params->cbs == 0) && (params->ebs == 0)))
+		return -EINVAL;
 
 	/* Initialize srTCM run-time structure */
-	hz = rte_get_tsc_hz();
-	m->time = rte_get_tsc_cycles();
-	m->tc = m->cbs = params->cbs;
-	m->te = m->ebs = params->ebs;
-	rte_meter_get_tb_params(hz, params->cir, &m->cir_period, &m->cir_bytes_per_period);
-
-	RTE_LOG(INFO, METER, "Low level srTCM config: \n"
-		"\tCIR period = %" PRIu64 ", CIR bytes per period = %" PRIu64 "\n",
-		m->cir_period, m->cir_bytes_per_period);
+	p->cbs = params->cbs;
+	p->ebs = params->ebs;
+	rte_meter_get_tb_params(hz, params->cir, &p->cir_period,
+		&p->cir_bytes_per_period);
 
 	return 0;
 }
 
 int
-rte_meter_trtcm_config(struct rte_meter_trtcm *m, struct rte_meter_trtcm_params *params)
+rte_meter_srtcm_config(struct rte_meter_srtcm *m,
+	struct rte_meter_srtcm_profile *p)
 {
-	uint64_t hz;
+	/* Check input parameters */
+	if ((m == NULL) || (p == NULL))
+		return -EINVAL;
+
+	/* Initialize srTCM run-time structure */
+	m->time = rte_get_tsc_cycles();
+	m->tc = p->cbs;
+	m->te = p->ebs;
+
+	return 0;
+}
+
+int __rte_experimental
+rte_meter_trtcm_profile_config(struct rte_meter_trtcm_profile *p,
+	struct rte_meter_trtcm_params *params)
+{
+	uint64_t hz = rte_get_tsc_hz();
 
 	/* Check input parameters */
-	if ((m == NULL) || (params == NULL)) {
-		return -1;
-	}
-
-	if ((params->cir == 0) || (params->pir == 0) || (params->pir < params->cir) ||
-		(params->cbs == 0) || (params->pbs == 0)) {
-		return -2;
-	}
+	if ((p == NULL) ||
+		(params == NULL) ||
+		(params->cir == 0) ||
+		(params->pir == 0) ||
+		(params->pir < params->cir) ||
+		(params->cbs == 0) ||
+		(params->pbs == 0))
+		return -EINVAL;
 
 	/* Initialize trTCM run-time structure */
-	hz = rte_get_tsc_hz();
-	m->time_tc = m->time_tp = rte_get_tsc_cycles();
-	m->tc = m->cbs = params->cbs;
-	m->tp = m->pbs = params->pbs;
-	rte_meter_get_tb_params(hz, params->cir, &m->cir_period, &m->cir_bytes_per_period);
-	rte_meter_get_tb_params(hz, params->pir, &m->pir_period, &m->pir_bytes_per_period);
+	p->cbs = params->cbs;
+	p->pbs = params->pbs;
+	rte_meter_get_tb_params(hz, params->cir, &p->cir_period,
+		&p->cir_bytes_per_period);
+	rte_meter_get_tb_params(hz, params->pir, &p->pir_period,
+		&p->pir_bytes_per_period);
 
-	RTE_LOG(INFO, METER, "Low level trTCM config: \n"
-		"\tCIR period = %" PRIu64 ", CIR bytes per period = %" PRIu64 "\n"
-		"\tPIR period = %" PRIu64 ", PIR bytes per period = %" PRIu64 "\n",
-		m->cir_period, m->cir_bytes_per_period,
-		m->pir_period, m->pir_bytes_per_period);
+	return 0;
+}
+
+int
+rte_meter_trtcm_config(struct rte_meter_trtcm *m,
+	struct rte_meter_trtcm_profile *p)
+{
+	/* Check input parameters */
+	if ((m == NULL) || (p == NULL))
+		return -EINVAL;
+
+	/* Initialize trTCM run-time structure */
+	m->time_tc = m->time_tp = rte_get_tsc_cycles();
+	m->tc = p->cbs;
+	m->tp = p->pbs;
 
 	return 0;
 }

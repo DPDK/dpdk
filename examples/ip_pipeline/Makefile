@@ -48,6 +48,7 @@ LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
 
 VPATH += pipeline
 CFLAGS += -I. -I./pipeline/
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 OBJS := $(patsubst %.c,build/%.o,$(SRCS-y))
 
@@ -88,6 +89,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := $(SRCS-y)
 CFLAGS += -I$(SRCDIR) -I$(SRCDIR)/pipeline
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -Wno-error=unused-function -Wno-error=unused-variable
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 include $(RTE_SDK)/mk/rte.extapp.mk
 

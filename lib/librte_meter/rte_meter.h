@@ -20,6 +20,7 @@ extern "C" {
  ***/
 
 #include <stdint.h>
+#include <rte_compat.h>
 
 /*
  * Application Programmer's Interface (API)
@@ -53,6 +54,18 @@ struct rte_meter_trtcm_params {
 	uint64_t pbs; /**< Peak Burst Size (PBS). Measured in bytes. */
 };
 
+/**
+ * Internal data structure storing the srTCM configuration profile. Typically
+ * shared by multiple srTCM objects.
+ */
+struct rte_meter_srtcm_profile;
+
+/**
+ * Internal data structure storing the trTCM configuration profile. Typically
+ * shared by multiple trTCM objects.
+ */
+struct rte_meter_trtcm_profile;
+
 /** Internal data structure storing the srTCM run-time context per metered traffic flow. */
 struct rte_meter_srtcm;
 
@@ -60,38 +73,68 @@ struct rte_meter_srtcm;
 struct rte_meter_trtcm;
 
 /**
+ * srTCM profile configuration
+ *
+ * @param p
+ *    Pointer to pre-allocated srTCM profile data structure
+ * @param params
+ *    srTCM profile parameters
+ * @return
+ *    0 upon success, error code otherwise
+ */
+int __rte_experimental
+rte_meter_srtcm_profile_config(struct rte_meter_srtcm_profile *p,
+	struct rte_meter_srtcm_params *params);
+
+/**
+ * trTCM profile configuration
+ *
+ * @param p
+ *    Pointer to pre-allocated trTCM profile data structure
+ * @param params
+ *    trTCM profile parameters
+ * @return
+ *    0 upon success, error code otherwise
+ */
+int __rte_experimental
+rte_meter_trtcm_profile_config(struct rte_meter_trtcm_profile *p,
+	struct rte_meter_trtcm_params *params);
+
+/**
  * srTCM configuration per metered traffic flow
  *
  * @param m
  *    Pointer to pre-allocated srTCM data structure
- * @param params
- *    User parameters per srTCM metered traffic flow
+ * @param p
+ *    srTCM profile. Needs to be valid.
  * @return
  *    0 upon success, error code otherwise
  */
 int
 rte_meter_srtcm_config(struct rte_meter_srtcm *m,
-	struct rte_meter_srtcm_params *params);
+	struct rte_meter_srtcm_profile *p);
 
 /**
  * trTCM configuration per metered traffic flow
  *
  * @param m
  *    Pointer to pre-allocated trTCM data structure
- * @param params
- *    User parameters per trTCM metered traffic flow
+ * @param p
+ *    trTCM profile. Needs to be valid.
  * @return
  *    0 upon success, error code otherwise
  */
 int
 rte_meter_trtcm_config(struct rte_meter_trtcm *m,
-	struct rte_meter_trtcm_params *params);
+	struct rte_meter_trtcm_profile *p);
 
 /**
  * srTCM color blind traffic metering
  *
  * @param m
  *    Handle to srTCM instance
+ * @param p
+ *    srTCM profile specified at srTCM object creation time
  * @param time
  *    Current CPU time stamp (measured in CPU cycles)
  * @param pkt_len
@@ -101,6 +144,7 @@ rte_meter_trtcm_config(struct rte_meter_trtcm *m,
  */
 static inline enum rte_meter_color
 rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
+	struct rte_meter_srtcm_profile *p,
 	uint64_t time,
 	uint32_t pkt_len);
 
@@ -109,6 +153,8 @@ rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
  *
  * @param m
  *    Handle to srTCM instance
+ * @param p
+ *    srTCM profile specified at srTCM object creation time
  * @param time
  *    Current CPU time stamp (measured in CPU cycles)
  * @param pkt_len
@@ -120,6 +166,7 @@ rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
  */
 static inline enum rte_meter_color
 rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
+	struct rte_meter_srtcm_profile *p,
 	uint64_t time,
 	uint32_t pkt_len,
 	enum rte_meter_color pkt_color);
@@ -129,6 +176,8 @@ rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
  *
  * @param m
  *    Handle to trTCM instance
+ * @param p
+ *    trTCM profile specified at trTCM object creation time
  * @param time
  *    Current CPU time stamp (measured in CPU cycles)
  * @param pkt_len
@@ -138,6 +187,7 @@ rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
  */
 static inline enum rte_meter_color
 rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
+	struct rte_meter_trtcm_profile *p,
 	uint64_t time,
 	uint32_t pkt_len);
 
@@ -146,6 +196,8 @@ rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
  *
  * @param m
  *    Handle to trTCM instance
+ * @param p
+ *    trTCM profile specified at trTCM object creation time
  * @param time
  *    Current CPU time stamp (measured in CPU cycles)
  * @param pkt_len
@@ -157,6 +209,7 @@ rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
  */
 static inline enum rte_meter_color
 rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
+	struct rte_meter_trtcm_profile *p,
 	uint64_t time,
 	uint32_t pkt_len,
 	enum rte_meter_color pkt_color);
@@ -166,33 +219,57 @@ rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
  *
  ***/
 
+struct rte_meter_srtcm_profile {
+	uint64_t cbs;
+	/**< Upper limit for C token bucket */
+	uint64_t ebs;
+	/**< Upper limit for E token bucket */
+	uint64_t cir_period;
+	/**< Number of CPU cycles for each update of C and E token buckets */
+	uint64_t cir_bytes_per_period;
+	/**< Number of bytes to add to C and E token buckets on each update */
+};
+
 /* Internal data structure storing the srTCM run-time context per metered traffic flow. */
 struct rte_meter_srtcm {
 	uint64_t time; /* Time of latest update of C and E token buckets */
 	uint64_t tc;   /* Number of bytes currently available in the committed (C) token bucket */
 	uint64_t te;   /* Number of bytes currently available in the excess (E) token bucket */
-	uint64_t cbs;  /* Upper limit for C token bucket */
-	uint64_t ebs;  /* Upper limit for E token bucket */
-	uint64_t cir_period; /* Number of CPU cycles for one update of C and E token buckets */
-	uint64_t cir_bytes_per_period; /* Number of bytes to add to C and E token buckets on each update */
 };
 
-/* Internal data structure storing the trTCM run-time context per metered traffic flow. */
+struct rte_meter_trtcm_profile {
+	uint64_t cbs;
+	/**< Upper limit for C token bucket */
+	uint64_t pbs;
+	/**< Upper limit for P token bucket */
+	uint64_t cir_period;
+	/**< Number of CPU cycles for one update of C token bucket */
+	uint64_t cir_bytes_per_period;
+	/**< Number of bytes to add to C token bucket on each update */
+	uint64_t pir_period;
+	/**< Number of CPU cycles for one update of P token bucket */
+	uint64_t pir_bytes_per_period;
+	/**< Number of bytes to add to P token bucket on each update */
+};
+
+/**
+ * Internal data structure storing the trTCM run-time context per metered
+ * traffic flow.
+ */
 struct rte_meter_trtcm {
-	uint64_t time_tc; /* Time of latest update of C token bucket */
-	uint64_t time_tp; /* Time of latest update of E token bucket */
-	uint64_t tc;      /* Number of bytes currently available in the committed (C) token bucket */
-	uint64_t tp;      /* Number of bytes currently available in the peak (P) token bucket */
-	uint64_t cbs;     /* Upper limit for C token bucket */
-	uint64_t pbs;     /* Upper limit for P token bucket */
-	uint64_t cir_period; /* Number of CPU cycles for one update of C token bucket */
-	uint64_t cir_bytes_per_period; /* Number of bytes to add to C token bucket on each update */
-	uint64_t pir_period; /* Number of CPU cycles for one update of P token bucket */
-	uint64_t pir_bytes_per_period; /* Number of bytes to add to P token bucket on each update */
+	uint64_t time_tc;
+	/**< Time of latest update of C token bucket */
+	uint64_t time_tp;
+	/**< Time of latest update of E token bucket */
+	uint64_t tc;
+	/**< Number of bytes currently available in committed(C) token bucket */
+	uint64_t tp;
+	/**< Number of bytes currently available in the peak(P) token bucket */
 };
 
 static inline enum rte_meter_color
 rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
+	struct rte_meter_srtcm_profile *p,
 	uint64_t time,
 	uint32_t pkt_len)
 {
@@ -200,17 +277,17 @@ rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
 
 	/* Bucket update */
 	time_diff = time - m->time;
-	n_periods = time_diff / m->cir_period;
-	m->time += n_periods * m->cir_period;
+	n_periods = time_diff / p->cir_period;
+	m->time += n_periods * p->cir_period;
 
 	/* Put the tokens overflowing from tc into te bucket */
-	tc = m->tc + n_periods * m->cir_bytes_per_period;
+	tc = m->tc + n_periods * p->cir_bytes_per_period;
 	te = m->te;
-	if (tc > m->cbs) {
-		te += (tc - m->cbs);
-		if (te > m->ebs)
-			te = m->ebs;
-		tc = m->cbs;
+	if (tc > p->cbs) {
+		te += (tc - p->cbs);
+		if (te > p->ebs)
+			te = p->ebs;
+		tc = p->cbs;
 	}
 
 	/* Color logic */
@@ -233,6 +310,7 @@ rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
 
 static inline enum rte_meter_color
 rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
+	struct rte_meter_srtcm_profile *p,
 	uint64_t time,
 	uint32_t pkt_len,
 	enum rte_meter_color pkt_color)
@@ -241,17 +319,17 @@ rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
 
 	/* Bucket update */
 	time_diff = time - m->time;
-	n_periods = time_diff / m->cir_period;
-	m->time += n_periods * m->cir_period;
+	n_periods = time_diff / p->cir_period;
+	m->time += n_periods * p->cir_period;
 
 	/* Put the tokens overflowing from tc into te bucket */
-	tc = m->tc + n_periods * m->cir_bytes_per_period;
+	tc = m->tc + n_periods * p->cir_bytes_per_period;
 	te = m->te;
-	if (tc > m->cbs) {
-		te += (tc - m->cbs);
-		if (te > m->ebs)
-			te = m->ebs;
-		tc = m->cbs;
+	if (tc > p->cbs) {
+		te += (tc - p->cbs);
+		if (te > p->ebs)
+			te = p->ebs;
+		tc = p->cbs;
 	}
 
 	/* Color logic */
@@ -274,6 +352,7 @@ rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
 
 static inline enum rte_meter_color
 rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
+	struct rte_meter_trtcm_profile *p,
 	uint64_t time,
 	uint32_t pkt_len)
 {
@@ -282,18 +361,18 @@ rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
 	/* Bucket update */
 	time_diff_tc = time - m->time_tc;
 	time_diff_tp = time - m->time_tp;
-	n_periods_tc = time_diff_tc / m->cir_period;
-	n_periods_tp = time_diff_tp / m->pir_period;
-	m->time_tc += n_periods_tc * m->cir_period;
-	m->time_tp += n_periods_tp * m->pir_period;
+	n_periods_tc = time_diff_tc / p->cir_period;
+	n_periods_tp = time_diff_tp / p->pir_period;
+	m->time_tc += n_periods_tc * p->cir_period;
+	m->time_tp += n_periods_tp * p->pir_period;
 
-	tc = m->tc + n_periods_tc * m->cir_bytes_per_period;
-	if (tc > m->cbs)
-		tc = m->cbs;
+	tc = m->tc + n_periods_tc * p->cir_bytes_per_period;
+	if (tc > p->cbs)
+		tc = p->cbs;
 
-	tp = m->tp + n_periods_tp * m->pir_bytes_per_period;
-	if (tp > m->pbs)
-		tp = m->pbs;
+	tp = m->tp + n_periods_tp * p->pir_bytes_per_period;
+	if (tp > p->pbs)
+		tp = p->pbs;
 
 	/* Color logic */
 	if (tp < pkt_len) {
@@ -315,6 +394,7 @@ rte_meter_trtcm_color_blind_check(struct rte_meter_trtcm *m,
 
 static inline enum rte_meter_color
 rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
+	struct rte_meter_trtcm_profile *p,
 	uint64_t time,
 	uint32_t pkt_len,
 	enum rte_meter_color pkt_color)
@@ -324,18 +404,18 @@ rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
 	/* Bucket update */
 	time_diff_tc = time - m->time_tc;
 	time_diff_tp = time - m->time_tp;
-	n_periods_tc = time_diff_tc / m->cir_period;
-	n_periods_tp = time_diff_tp / m->pir_period;
-	m->time_tc += n_periods_tc * m->cir_period;
-	m->time_tp += n_periods_tp * m->pir_period;
+	n_periods_tc = time_diff_tc / p->cir_period;
+	n_periods_tp = time_diff_tp / p->pir_period;
+	m->time_tc += n_periods_tc * p->cir_period;
+	m->time_tp += n_periods_tp * p->pir_period;
 
-	tc = m->tc + n_periods_tc * m->cir_bytes_per_period;
-	if (tc > m->cbs)
-		tc = m->cbs;
+	tc = m->tc + n_periods_tc * p->cir_bytes_per_period;
+	if (tc > p->cbs)
+		tc = p->cbs;
 
-	tp = m->tp + n_periods_tp * m->pir_bytes_per_period;
-	if (tp > m->pbs)
-		tp = m->pbs;
+	tp = m->tp + n_periods_tp * p->pir_bytes_per_period;
+	if (tp > p->pbs)
+		tp = p->pbs;
 
 	/* Color logic */
 	if ((pkt_color == e_RTE_METER_RED) || (tp < pkt_len)) {

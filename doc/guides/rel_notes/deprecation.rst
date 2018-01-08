@@ -165,9 +165,6 @@ Deprecation Notices
   director APIs. There is no ABI/API break. This change will just remove a
   global configuration setting and require explicit configuration.
 
-* librte_meter: The API will change to accommodate configuration profiles.
-  Most of the API functions will have an additional opaque parameter.
-
 * ring: The alignment constraints on the ring structure will be relaxed
   to one cache line instead of two, and an empty cache line padding will
   be added between the producer and consumer structures. The size of the
