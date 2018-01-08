@@ -1783,10 +1783,17 @@ int bnxt_free_all_hwrm_rings(struct bnxt *bp)
 					rxr->rx_ring_struct->ring_size *
 					sizeof(*rxr->rx_buf_ring));
 			rxr->rx_prod = 0;
+		}
+		ring = rxr->ag_ring_struct;
+		if (ring->fw_ring_id != INVALID_HW_RING_ID) {
+			bnxt_hwrm_ring_free(bp, ring,
+					    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
+			ring->fw_ring_id = INVALID_HW_RING_ID;
 			memset(rxr->ag_buf_ring, 0,
-					rxr->ag_ring_struct->ring_size *
-					sizeof(*rxr->ag_buf_ring));
+			       rxr->ag_ring_struct->ring_size *
+			       sizeof(*rxr->ag_buf_ring));
 			rxr->ag_prod = 0;
+			bp->grp_info[i].ag_fw_ring_id = INVALID_HW_RING_ID;
 		}
 		if (cpr->cp_ring_struct->fw_ring_id != INVALID_HW_RING_ID) {
 			bnxt_free_cp_ring(bp, cpr, idx);
