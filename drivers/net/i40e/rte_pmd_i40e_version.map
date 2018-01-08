@@ -58,3 +58,10 @@ DPDK_17.11 {
 	rte_pmd_i40e_rss_queue_region_conf;
 
 } DPDK_17.08;
+
+DPDK_18.02 {
+	global:
+
+	rte_pmd_i40e_inset_get;
+	rte_pmd_i40e_inset_set;
+} DPDK_17.11;

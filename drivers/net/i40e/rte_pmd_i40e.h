@@ -289,6 +289,23 @@ struct rte_pmd_i40e_pkt_template_conf {
 	uint32_t soft_id;
 };
 
+enum rte_pmd_i40e_inset_type {
+	INSET_NONE = 0,
+	INSET_HASH,
+	INSET_FDIR,
+	INSET_FDIR_FLX,
+};
+
+struct  rte_pmd_i40e_inset_mask {
+	uint8_t field_idx;
+	uint16_t mask;
+};
+
+struct rte_pmd_i40e_inset {
+	uint64_t inset;
+	struct rte_pmd_i40e_inset_mask mask[2];
+};
+
 /**
  * Add or remove raw packet template filter to Flow Director.
  *
@@ -904,5 +921,126 @@ int rte_pmd_i40e_query_vfid_by_mac(uint16_t port,
  */
 int rte_pmd_i40e_rss_queue_region_conf(uint16_t port_id,
 			enum rte_pmd_i40e_queue_region_op op_type, void *arg);
+
+int rte_pmd_i40e_cfg_hash_inset(uint16_t port,
+				uint64_t pctype, uint64_t inset);
+
+/**
+ * Get input set
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param pctype
+ *    HW pctype.
+ * @param inset
+ *    Buffer for input set info.
+ * @param inset_type
+ *    Type of input set.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) if operation not supported.
+ */
+int rte_pmd_i40e_inset_get(uint16_t port, uint8_t pctype,
+			   struct rte_pmd_i40e_inset *inset,
+			   enum rte_pmd_i40e_inset_type inset_type);
+
+/**
+ * Set input set
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param pctype
+ *    HW pctype.
+ * @param inset
+ *    Input set info.
+ * @param inset_type
+ *    Type of input set.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) if operation not supported.
+ */
+int rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
+			   struct rte_pmd_i40e_inset *inset,
+			   enum rte_pmd_i40e_inset_type inset_type);
+
+/**
+ * Get bit value for some field index
+ *
+ * @param inset
+ *    Input set value.
+ * @param field_idx
+ *    Field index for input set.
+ * @return
+ *   - (1) if set.
+ *   - (0) if cleared.
+ */
+static inline int
+rte_pmd_i40e_inset_field_get(uint64_t inset, uint8_t field_idx)
+{
+	uint8_t bit_idx;
+
+	if (field_idx > 63)
+		return 0;
+
+	bit_idx = 63 - field_idx;
+	if (inset & (1ULL << bit_idx))
+		return 1;
+
+	return 0;
+}
+
+/**
+ * Set bit value for some field index
+ *
+ * @param inset
+ *    Input set value.
+ * @param field_idx
+ *    Field index for input set.
+ * @return
+ *   - (-1) if failed.
+ *   - (0) if success.
+ */
+static inline int
+rte_pmd_i40e_inset_field_set(uint64_t *inset, uint8_t field_idx)
+{
+	uint8_t bit_idx;
+
+	if (field_idx > 63)
+		return -1;
+
+	bit_idx = 63 - field_idx;
+	*inset = *inset | (1ULL << bit_idx);
+
+	return 0;
+}
+
+/**
+ * Clear bit value for some field index
+ *
+ * @param inset
+ *    Input set value.
+ * @param field_idx
+ *    Field index for input set.
+ * @return
+ *   - (-1) if failed.
+ *   - (0) if success.
+ */
+static inline int
+rte_pmd_i40e_inset_field_clear(uint64_t *inset, uint8_t field_idx)
+{
+	uint8_t bit_idx;
+
+	if (field_idx > 63)
+		return -1;
+
+	bit_idx = 63 - field_idx;
+	*inset = *inset & ~(1ULL << bit_idx);
+
+	return 0;
+}
 
 #endif /* _PMD_I40E_H_ */

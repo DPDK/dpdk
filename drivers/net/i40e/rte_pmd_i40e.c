@@ -2956,3 +2956,144 @@ int rte_pmd_i40e_flow_add_del_packet_template(
 
 	return i40e_flow_add_del_fdir_filter(dev, &filter_conf, add);
 }
+
+int
+rte_pmd_i40e_inset_get(uint16_t port, uint8_t pctype,
+		       struct rte_pmd_i40e_inset *inset,
+		       enum rte_pmd_i40e_inset_type inset_type)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_hw *hw;
+	uint64_t inset_reg;
+	uint32_t mask_reg[2];
+	int i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	if (pctype > 63)
+		return -EINVAL;
+
+	hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	memset(inset, 0, sizeof(struct rte_pmd_i40e_inset));
+
+	switch (inset_type) {
+	case INSET_HASH:
+		/* Get input set */
+		inset_reg =
+			i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(1, pctype));
+		inset_reg <<= I40E_32_BIT_WIDTH;
+		inset_reg |=
+			i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(0, pctype));
+		/* Get field mask */
+		mask_reg[0] =
+			i40e_read_rx_ctl(hw, I40E_GLQF_HASH_MSK(0, pctype));
+		mask_reg[1] =
+			i40e_read_rx_ctl(hw, I40E_GLQF_HASH_MSK(1, pctype));
+		break;
+	case INSET_FDIR:
+		inset_reg =
+			i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 1));
+		inset_reg <<= I40E_32_BIT_WIDTH;
+		inset_reg |=
+			i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 0));
+		mask_reg[0] =
+			i40e_read_rx_ctl(hw, I40E_GLQF_FD_MSK(0, pctype));
+		mask_reg[1] =
+			i40e_read_rx_ctl(hw, I40E_GLQF_FD_MSK(1, pctype));
+		break;
+	case INSET_FDIR_FLX:
+		inset_reg =
+			i40e_read_rx_ctl(hw, I40E_PRTQF_FD_FLXINSET(pctype));
+		mask_reg[0] =
+			i40e_read_rx_ctl(hw, I40E_PRTQF_FD_MSK(pctype, 0));
+		mask_reg[1] =
+			i40e_read_rx_ctl(hw, I40E_PRTQF_FD_MSK(pctype, 1));
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unsupported input set type.");
+		return -EINVAL;
+	}
+
+	inset->inset = inset_reg;
+
+	for (i = 0; i < 2; i++) {
+		inset->mask[i].field_idx = ((mask_reg[i] >> 16) & 0x3F);
+		inset->mask[i].mask = mask_reg[i] & 0xFFFF;
+	}
+
+	return 0;
+}
+
+int
+rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
+		       struct rte_pmd_i40e_inset *inset,
+		       enum rte_pmd_i40e_inset_type inset_type)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_hw *hw;
+	uint64_t inset_reg;
+	uint32_t mask_reg[2];
+	int i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	if (pctype > 63)
+		return -EINVAL;
+
+	hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Clear mask first */
+	for (i = 0; i < 2; i++)
+		i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype), 0);
+
+	inset_reg = inset->inset;
+	for (i = 0; i < 2; i++)
+		mask_reg[i] = (inset->mask[i].field_idx << 16) |
+			inset->mask[i].mask;
+
+	switch (inset_type) {
+	case INSET_HASH:
+		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(0, pctype),
+				     (uint32_t)(inset_reg & UINT32_MAX));
+		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(1, pctype),
+				     (uint32_t)((inset_reg >>
+					      I40E_32_BIT_WIDTH) & UINT32_MAX));
+		for (i = 0; i < 2; i++)
+			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
+					     mask_reg[i]);
+		break;
+	case INSET_FDIR:
+		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
+				     (uint32_t)(inset_reg & UINT32_MAX));
+		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 1),
+				     (uint32_t)((inset_reg >>
+					      I40E_32_BIT_WIDTH) & UINT32_MAX));
+		for (i = 0; i < 2; i++)
+			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+					     mask_reg[i]);
+		break;
+	case INSET_FDIR_FLX:
+		i40e_check_write_reg(hw, I40E_PRTQF_FD_FLXINSET(pctype),
+				     (uint32_t)(inset_reg & UINT32_MAX));
+		for (i = 0; i < 2; i++)
+			i40e_check_write_reg(hw, I40E_PRTQF_FD_MSK(pctype, i),
+					     mask_reg[i]);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unsupported input set type.");
+		return -EINVAL;
+	}
+
+	I40E_WRITE_FLUSH(hw);
+	return 0;
+}
