@@ -1732,9 +1732,9 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 	int match = 0;
 	*ret = 0;
 
-	if (efilter->ether_type != ETHER_TYPE_IPv4 &&
-		efilter->ether_type != ETHER_TYPE_IPv6) {
-		RTE_LOG(ERR, PMD, "unsupported ether_type(0x%04x) in"
+	if (efilter->ether_type == ETHER_TYPE_IPv4 ||
+		efilter->ether_type == ETHER_TYPE_IPv6) {
+		RTE_LOG(ERR, PMD, "invalid ether_type(0x%04x) in"
 			" ethertype filter.", efilter->ether_type);
 		*ret = -EINVAL;
 		goto exit;
