@@ -362,9 +362,6 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_ring *ring = txr->tx_ring_struct;
 		unsigned int idx = i + 1 + bp->rx_cp_nr_rings;
 
-		/* Account for AGG Rings. AGG ring cnt = Rx Cmpl ring cnt */
-		idx += bp->rx_cp_nr_rings;
-
 		/* Tx cmpl */
 		rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
 					HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
