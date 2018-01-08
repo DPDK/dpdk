@@ -3172,9 +3172,17 @@ skip_init:
 	rc = bnxt_hwrm_ver_get(bp);
 	if (rc)
 		goto error_free;
-	bnxt_hwrm_queue_qportcfg(bp);
+	rc = bnxt_hwrm_queue_qportcfg(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm queue qportcfg failed\n");
+		goto error_free;
+	}
 
-	bnxt_hwrm_func_qcfg(bp);
+	rc = bnxt_hwrm_func_qcfg(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm func qcfg failed\n");
+		goto error_free;
+	}
 
 	/* Get the MAX capabilities for this function */
 	rc = bnxt_hwrm_func_qcaps(bp);
