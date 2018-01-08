@@ -100,7 +100,7 @@ mbox_send_request(struct mbox *m, struct octeontx_mbox_hdr *hdr,
 
 	/* Write the msg header */
 	rte_write64(new_hdr.u64, ram_mbox_hdr);
-	rte_io_wmb();
+	rte_smp_wmb();
 	/* Notify PF about the new msg - write to MBOX reg generates PF IRQ */
 	rte_write64(0, m->reg);
 }
