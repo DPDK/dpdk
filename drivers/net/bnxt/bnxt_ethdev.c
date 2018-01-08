@@ -1962,7 +1962,8 @@ parse_ntuple_filter(struct bnxt *bp,
 
 static struct bnxt_filter_info*
 bnxt_match_ntuple_filter(struct bnxt *bp,
-			 struct bnxt_filter_info *bfilter)
+			 struct bnxt_filter_info *bfilter,
+			 struct bnxt_vnic_info **mvnic)
 {
 	struct bnxt_filter_info *mfilter = NULL;
 	int i;
@@ -1981,8 +1982,11 @@ bnxt_match_ntuple_filter(struct bnxt *bp,
 			    bfilter->dst_port == mfilter->dst_port &&
 			    bfilter->dst_port_mask == mfilter->dst_port_mask &&
 			    bfilter->flags == mfilter->flags &&
-			    bfilter->enables == mfilter->enables)
+			    bfilter->enables == mfilter->enables) {
+				if (mvnic)
+					*mvnic = vnic;
 				return mfilter;
+			}
 		}
 	}
 	return NULL;
@@ -1994,7 +1998,7 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 		       enum rte_filter_op filter_op)
 {
 	struct bnxt_filter_info *bfilter, *mfilter, *filter1;
-	struct bnxt_vnic_info *vnic, *vnic0;
+	struct bnxt_vnic_info *vnic, *vnic0, *mvnic;
 	int ret;
 
 	if (nfilter->flags != RTE_5TUPLE_FLAGS) {
@@ -2032,11 +2036,21 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 	bfilter->ethertype = 0x800;
 	bfilter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
 
-	mfilter = bnxt_match_ntuple_filter(bp, bfilter);
+	mfilter = bnxt_match_ntuple_filter(bp, bfilter, &mvnic);
 
-	if (mfilter != NULL && filter_op == RTE_ETH_FILTER_ADD) {
-		RTE_LOG(ERR, PMD, "filter exists.");
+	if (mfilter != NULL && filter_op == RTE_ETH_FILTER_ADD &&
+	    bfilter->dst_id == mfilter->dst_id) {
+		RTE_LOG(ERR, PMD, "filter exists.\n");
 		ret = -EEXIST;
+		goto free_filter;
+	} else if (mfilter != NULL && filter_op == RTE_ETH_FILTER_ADD &&
+		   bfilter->dst_id != mfilter->dst_id) {
+		mfilter->dst_id = vnic->fw_vnic_id;
+		ret = bnxt_hwrm_set_ntuple_filter(bp, mfilter->dst_id, mfilter);
+		STAILQ_REMOVE(&mvnic->filter, mfilter, bnxt_filter_info, next);
+		STAILQ_INSERT_TAIL(&vnic->filter, mfilter, next);
+		RTE_LOG(ERR, PMD, "filter with matching pattern exists.\n");
+		RTE_LOG(ERR, PMD, " Updated it to the new destination queue\n");
 		goto free_filter;
 	}
 	if (mfilter == NULL && filter_op == RTE_ETH_FILTER_DELETE) {
@@ -2059,11 +2073,11 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 		}
 		ret = bnxt_hwrm_clear_ntuple_filter(bp, mfilter);
 
-		STAILQ_REMOVE(&vnic->filter, mfilter, bnxt_filter_info,
-			      next);
+		STAILQ_REMOVE(&vnic->filter, mfilter, bnxt_filter_info, next);
 		bnxt_free_filter(bp, mfilter);
-		bfilter->fw_l2_filter_id = -1;
+		mfilter->fw_l2_filter_id = -1;
 		bnxt_free_filter(bp, bfilter);
+		bfilter->fw_l2_filter_id = -1;
 	}
 
 	return 0;
