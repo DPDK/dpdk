@@ -1138,7 +1138,6 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 	cpr->hw_stats_ctx_id = rte_le_to_cpu_16(resp->stat_ctx_id);
 
 	HWRM_UNLOCK();
-	bp->grp_info[idx].fw_stats_ctx = cpr->hw_stats_ctx_id;
 
 	return rc;
 }
@@ -1661,19 +1660,15 @@ int bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
 
 	for (i = 0; i < bp->rx_cp_nr_rings + bp->tx_cp_nr_rings; i++) {
 
-		if (i >= bp->rx_cp_nr_rings)
+		if (i >= bp->rx_cp_nr_rings) {
 			cpr = bp->tx_queues[i - bp->rx_cp_nr_rings]->cp_ring;
-		else
+		} else {
 			cpr = bp->rx_queues[i]->cp_ring;
+			bp->grp_info[i].fw_stats_ctx = -1;
+		}
 		if (cpr->hw_stats_ctx_id != HWRM_NA_SIGNATURE) {
 			rc = bnxt_hwrm_stat_ctx_free(bp, cpr, i);
 			cpr->hw_stats_ctx_id = HWRM_NA_SIGNATURE;
-			/*
-			 * TODO. Need a better way to reset grp_info.stats_ctx
-			 * for Rx rings only. stats_ctx is not saved for Tx
-			 * in grp_info.
-			 */
-			bp->grp_info[i].fw_stats_ctx = cpr->hw_stats_ctx_id;
 			if (rc)
 				return rc;
 		}
@@ -1733,7 +1728,6 @@ static void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 	bnxt_hwrm_ring_free(bp, cp_ring,
 			HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL);
 	cp_ring->fw_ring_id = INVALID_HW_RING_ID;
-	bp->grp_info[idx].cp_fw_ring_id = INVALID_HW_RING_ID;
 	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
 			sizeof(*cpr->cp_desc_ring));
 	cpr->cp_raw_cons = 0;

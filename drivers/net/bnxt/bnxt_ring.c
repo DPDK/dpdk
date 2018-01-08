@@ -63,13 +63,15 @@ void bnxt_free_ring(struct bnxt_ring *ring)
  * Ring groups
  */
 
-void bnxt_init_ring_grps(struct bnxt *bp)
+int bnxt_init_ring_grps(struct bnxt *bp)
 {
 	unsigned int i;
 
 	for (i = 0; i < bp->max_ring_grps; i++)
 		memset(&bp->grp_info[i], (uint8_t)HWRM_NA_SIGNATURE,
 		       sizeof(struct bnxt_ring_grp_info));
+
+	return 0;
 }
 
 /*

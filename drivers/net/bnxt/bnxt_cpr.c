@@ -165,7 +165,6 @@ int bnxt_alloc_def_cp_ring(struct bnxt *bp)
 		goto err_out;
 	cpr->cp_doorbell = bp->pdev->mem_resource[2].addr;
 	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
-	bp->grp_info[0].cp_fw_ring_id = cp_ring->fw_ring_id;
 	if (BNXT_PF(bp))
 		rc = bnxt_hwrm_func_cfg_def_cp(bp);
 	else

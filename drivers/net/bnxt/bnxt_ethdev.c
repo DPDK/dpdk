@@ -393,7 +393,10 @@ static int bnxt_init_nic(struct bnxt *bp)
 {
 	int rc;
 
-	bnxt_init_ring_grps(bp);
+	rc = bnxt_init_ring_grps(bp);
+	if (rc)
+		return rc;
+
 	bnxt_init_vnics(bp);
 	bnxt_init_filters(bp);
 
@@ -3207,11 +3210,19 @@ skip_init:
 	/* Copy the permanent MAC from the qcap response address now. */
 	memcpy(bp->mac_addr, bp->dflt_mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
+
+	if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
+		/* 1 ring is for default completion ring */
+		RTE_LOG(ERR, PMD, "Insufficient resource: Ring Group\n");
+		rc = -ENOSPC;
+		goto error_free;
+	}
+
 	bp->grp_info = rte_zmalloc("bnxt_grp_info",
 				sizeof(*bp->grp_info) * bp->max_ring_grps, 0);
 	if (!bp->grp_info) {
 		RTE_LOG(ERR, PMD,
-			"Failed to alloc %zu bytes needed to store group info table\n",
+			"Failed to alloc %zu bytes to store group info table\n",
 			sizeof(*bp->grp_info) * bp->max_ring_grps);
 		rc = -ENOMEM;
 		goto error_free;
