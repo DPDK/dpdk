@@ -2214,8 +2214,6 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 		case ETH_MQ_RX_NONE:
 			/* if nothing mq mode configure, use default scheme */
 			dev->data->dev_conf.rxmode.mq_mode = ETH_MQ_RX_VMDQ_ONLY;
-			if (RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool > 1)
-				RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool = 1;
 			break;
 		default: /* ETH_MQ_RX_DCB, ETH_MQ_RX_DCB_RSS or ETH_MQ_TX_DCB*/
 			/* SRIOV only works in VMDq enable mode */
