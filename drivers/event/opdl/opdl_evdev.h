@@ -337,5 +337,6 @@ int initialise_all_other_ports(struct rte_eventdev *dev);
 int initialise_queue_zero_ports(struct rte_eventdev *dev);
 int assign_internal_queue_ids(struct rte_eventdev *dev);
 void destroy_queues_and_rings(struct rte_eventdev *dev);
+int opdl_selftest(void);
 
 #endif /* _OPDL_EVDEV_H_ */

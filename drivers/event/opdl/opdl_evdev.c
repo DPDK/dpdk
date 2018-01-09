@@ -728,6 +728,9 @@ opdl_probe(struct rte_vdev_device *vdev)
 	str_len = strlen(name);
 	memcpy(opdl->service_name, name, str_len);
 
+	if (do_test == 1)
+		test_result =  opdl_selftest();
+
 	return test_result;
 }
 
