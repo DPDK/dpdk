@@ -88,8 +88,7 @@ sfc_efx_rx_qrefill(struct sfc_efx_rxq *rxq)
 	struct rte_mbuf *m;
 	uint16_t port_id = rxq->dp.dpq.port_id;
 
-	free_space = EFX_RXQ_LIMIT(rxq->ptr_mask + 1) -
-		(added - rxq->completed);
+	free_space = rxq->max_fill_level - (added - rxq->completed);
 
 	if (free_space < rxq->refill_threshold)
 		return;
@@ -459,6 +458,7 @@ sfc_efx_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	rxq->ptr_mask = info->rxq_entries - 1;
 	rxq->batch_max = info->batch_max;
 	rxq->prefix_size = info->prefix_size;
+	rxq->max_fill_level = info->max_fill_level;
 	rxq->refill_threshold = info->refill_threshold;
 	rxq->buf_size = info->buf_size;
 	rxq->refill_mb_pool = info->refill_mb_pool;
@@ -998,6 +998,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	memset(&info, 0, sizeof(info));
 	info.refill_mb_pool = rxq->refill_mb_pool;
+	info.max_fill_level = rxq_max_fill_level;
 	info.refill_threshold = rxq->refill_threshold;
 	info.buf_size = buf_size;
 	info.batch_max = encp->enc_rx_batch_max;

@@ -121,6 +121,7 @@ struct sfc_efx_rxq {
 	/* Used on refill */
 	unsigned int			added;
 	unsigned int			pushed;
+	unsigned int			max_fill_level;
 	unsigned int			refill_threshold;
 	uint16_t			buf_size;
 	struct rte_mempool		*refill_mb_pool;

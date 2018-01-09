@@ -93,6 +93,7 @@ struct sfc_ef10_rxq {
 	/* Used on refill */
 	uint16_t			buf_size;
 	unsigned int			added;
+	unsigned int			max_fill_level;
 	unsigned int			refill_threshold;
 	struct rte_mempool		*refill_mb_pool;
 	efx_qword_t			*rxq_hw_ring;
@@ -141,8 +142,7 @@ sfc_ef10_rx_qrefill(struct sfc_ef10_rxq *rxq)
 	void *objs[SFC_RX_REFILL_BULK];
 	unsigned int added = rxq->added;
 
-	free_space = SFC_EF10_RXQ_LIMIT(ptr_mask + 1) -
-		(added - rxq->completed);
+	free_space = rxq->max_fill_level - (added - rxq->completed);
 
 	if (free_space < rxq->refill_threshold)
 		return;
@@ -705,6 +705,7 @@ sfc_ef10_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 		rxq->flags |= SFC_EF10_RXQ_RSS_HASH;
 	rxq->ptr_mask = info->rxq_entries - 1;
 	rxq->evq_hw_ring = info->evq_hw_ring;
+	rxq->max_fill_level = info->max_fill_level;
 	rxq->refill_threshold = info->refill_threshold;
 	rxq->rearm_data =
 		sfc_ef10_mk_mbuf_rearm_data(port_id, info->prefix_size);

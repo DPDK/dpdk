@@ -60,6 +60,8 @@ struct sfc_dp_rxq {
 struct sfc_dp_rx_qcreate_info {
 	/** Memory pool to allocate Rx buffer from */
 	struct rte_mempool	*refill_mb_pool;
+	/** Maximum number of pushed Rx descriptors in the queue */
+	unsigned int		max_fill_level;
 	/** Minimum number of unused Rx descriptors to do refill */
 	unsigned int		refill_threshold;
 	/**
