@@ -290,6 +290,10 @@ enum i40e_status_code i40e_aq_delete_lldp_tlv(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_stop_lldp(struct i40e_hw *hw, bool shutdown_agent,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_set_dcb_parameters(struct i40e_hw *hw,
+						 bool dcb_enable,
+						 struct i40e_asq_cmd_details
+						 *cmd_details);
 enum i40e_status_code i40e_aq_start_lldp(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_get_cee_dcb_config(struct i40e_hw *hw,
