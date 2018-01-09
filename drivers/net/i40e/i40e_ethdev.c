@@ -672,17 +672,6 @@ RTE_PMD_REGISTER_KMOD_DEP(net_i40e, "* igb_uio | uio_pci_generic | vfio-pci");
 static inline void i40e_GLQF_reg_init(struct i40e_hw *hw)
 {
 	/*
-	 * Force global configuration for flexible payload
-	 * to the first 16 bytes of the corresponding L2/L3/L4 paylod.
-	 * This should be removed from code once proper
-	 * configuration API is added to avoid configuration conflicts
-	 * between ports of the same device.
-	 */
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(33), 0x000000E0);
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(34), 0x000000E3);
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(35), 0x000000E6);
-
-	/*
 	 * Initialize registers for parsing packet type of QinQ
 	 * This should be removed from code once proper
 	 * configuration API is added to avoid configuration conflicts
@@ -1115,9 +1104,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 
 	/*
 	 * To work around the NVM issue, initialize registers
-	 * for flexible payload and packet type of QinQ by
-	 * software. It should be removed once issues are fixed
-	 * in NVM.
+	 * for packet type of QinQ by software.
+	 * It should be removed once issues are fixed in NVM.
 	 */
 	i40e_GLQF_reg_init(hw);
 
@@ -1286,6 +1274,10 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 
 	/* enable uio intr after callback register */
 	rte_intr_enable(intr_handle);
+
+	/* By default disable flexible payload in global configuration */
+	i40e_flex_payload_reg_set_default(hw);
+
 	/*
 	 * Add an ethertype filter to drop all flow control frames transmitted
 	 * from VSIs. By doing so, we stop VF from sending out PAUSE or PFC
@@ -1404,6 +1396,17 @@ i40e_rm_fdir_filter_list(struct i40e_pf *pf)
 		TAILQ_REMOVE(&fdir_info->fdir_list, p_fdir, rules);
 		rte_free(p_fdir);
 	}
+}
+
+void i40e_flex_payload_reg_set_default(struct i40e_hw *hw)
+{
+	/*
+	 * Disable by default flexible payload
+	 * for corresponding L2/L3/L4 layers.
+	 */
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(33), 0x00000000);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(34), 0x00000000);
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(35), 0x00000000);
 }
 
 static int
@@ -2202,6 +2205,9 @@ i40e_dev_close(struct rte_eth_dev *dev)
 
 	i40e_res_pool_destroy(&pf->qp_pool);
 	i40e_res_pool_destroy(&pf->msix_pool);
+
+	/* Disable flexible payload in global configuration */
+	i40e_flex_payload_reg_set_default(hw);
 
 	/* force a PF reset to clean anything leftover */
 	reg = I40E_READ_REG(hw, I40E_PFGEN_CTRL);

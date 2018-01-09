@@ -2248,10 +2248,17 @@ i40e_flow_set_fdir_flex_pit(struct i40e_pf *pf,
 			    uint8_t raw_id)
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	uint32_t flx_pit;
+	uint32_t flx_pit, flx_ort;
 	uint8_t field_idx;
 	uint16_t min_next_off = 0;  /* in words */
 	uint8_t i;
+
+	if (raw_id) {
+		flx_ort = (1 << I40E_GLQF_ORT_FLX_PAYLOAD_SHIFT) |
+			  (raw_id << I40E_GLQF_ORT_FIELD_CNT_SHIFT) |
+			  (layer_idx * I40E_MAX_FLXPLD_FIED);
+		I40E_WRITE_REG(hw, I40E_GLQF_ORT(33 + layer_idx), flx_ort);
+	}
 
 	/* Set flex pit */
 	for (i = 0; i < raw_id; i++) {

@@ -1171,6 +1171,7 @@ int i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb);
 int i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
 		struct i40e_hw *hw, struct i40e_pf *pf, uint16_t on);
 void i40e_init_queue_region_conf(struct rte_eth_dev *dev);
+void i40e_flex_payload_reg_set_default(struct i40e_hw *hw);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)
