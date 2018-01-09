@@ -78,6 +78,22 @@ struct sfc_dp_tx_qcreate_info {
 };
 
 /**
+ * Get size of transmit and event queue rings by the number of Tx
+ * descriptors.
+ *
+ * @param nb_tx_desc		Number of Tx descriptors
+ * @param txq_entries		Location for number of Tx ring entries
+ * @param evq_entries		Location for number of event ring entries
+ * @param txq_max_fill_level	Location for maximum Tx ring fill level
+ *
+ * @return 0 or positive errno.
+ */
+typedef int (sfc_dp_tx_qsize_up_rings_t)(uint16_t nb_tx_desc,
+					 unsigned int *txq_entries,
+					 unsigned int *evq_entries,
+					 unsigned int *txq_max_fill_level);
+
+/**
  * Allocate and initialize datapath transmit queue.
  *
  * @param port_id	The port identifier
@@ -144,6 +160,7 @@ struct sfc_dp_tx {
 #define SFC_DP_TX_FEAT_MULTI_PROCESS	0x8
 #define SFC_DP_TX_FEAT_MULTI_POOL	0x10
 #define SFC_DP_TX_FEAT_REFCNT		0x20
+	sfc_dp_tx_qsize_up_rings_t	*qsize_up_rings;
 	sfc_dp_tx_qcreate_t		*qcreate;
 	sfc_dp_tx_qdestroy_t		*qdestroy;
 	sfc_dp_tx_qstart_t		*qstart;

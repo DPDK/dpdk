@@ -57,7 +57,7 @@
 #define SFC_TX_QFLUSH_POLL_ATTEMPTS	(2000)
 
 static int
-sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
+sfc_tx_qcheck_conf(struct sfc_adapter *sa, unsigned int txq_max_fill_level,
 		   const struct rte_eth_txconf *tx_conf)
 {
 	unsigned int flags = tx_conf->txq_flags;
@@ -69,10 +69,10 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
 		rc = EINVAL;
 	}
 
-	if (tx_conf->tx_free_thresh > EFX_TXQ_LIMIT(nb_tx_desc)) {
+	if (tx_conf->tx_free_thresh > txq_max_fill_level) {
 		sfc_err(sa,
 			"TxQ free threshold too large: %u vs maximum %u",
-			tx_conf->tx_free_thresh, EFX_TXQ_LIMIT(nb_tx_desc));
+			tx_conf->tx_free_thresh, txq_max_fill_level);
 		rc = EINVAL;
 	}
 
@@ -145,6 +145,9 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	     const struct rte_eth_txconf *tx_conf)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	unsigned int txq_entries;
+	unsigned int evq_entries;
+	unsigned int txq_max_fill_level;
 	struct sfc_txq_info *txq_info;
 	struct sfc_evq *evq;
 	struct sfc_txq *txq;
@@ -153,18 +156,23 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
-	rc = sfc_tx_qcheck_conf(sa, nb_tx_desc, tx_conf);
+	rc = sa->dp_tx->qsize_up_rings(nb_tx_desc, &txq_entries, &evq_entries,
+				       &txq_max_fill_level);
+	if (rc != 0)
+		goto fail_size_up_rings;
+
+	rc = sfc_tx_qcheck_conf(sa, txq_max_fill_level, tx_conf);
 	if (rc != 0)
 		goto fail_bad_conf;
 
 	SFC_ASSERT(sw_index < sa->txq_count);
 	txq_info = &sa->txq_info[sw_index];
 
-	SFC_ASSERT(nb_tx_desc <= sa->txq_max_entries);
-	txq_info->entries = nb_tx_desc;
+	SFC_ASSERT(txq_entries <= sa->txq_max_entries);
+	txq_info->entries = txq_entries;
 
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_TX, sw_index,
-			  txq_info->entries, socket_id, &evq);
+			  evq_entries, socket_id, &evq);
 	if (rc != 0)
 		goto fail_ev_qinit;
 
@@ -193,7 +201,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.txq_entries = txq_info->entries;
 	info.dma_desc_size_max = encp->enc_tx_dma_desc_size_max;
 	info.txq_hw_ring = txq->mem.esm_base;
-	info.evq_entries = txq_info->entries;
+	info.evq_entries = evq_entries;
 	info.evq_hw_ring = evq->mem.esm_base;
 	info.hw_index = txq->hw_index;
 	info.mem_bar = sa->mem_bar.esb_base;
@@ -226,6 +234,7 @@ fail_ev_qinit:
 	txq_info->entries = 0;
 
 fail_bad_conf:
+fail_size_up_rings:
 	sfc_log_init(sa, "failed (TxQ = %u, rc = %d)", sw_index, rc);
 	return rc;
 }
@@ -873,6 +882,19 @@ sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 	return txq;
 }
 
+static sfc_dp_tx_qsize_up_rings_t sfc_efx_tx_qsize_up_rings;
+static int
+sfc_efx_tx_qsize_up_rings(uint16_t nb_tx_desc,
+			  unsigned int *txq_entries,
+			  unsigned int *evq_entries,
+			  unsigned int *txq_max_fill_level)
+{
+	*txq_entries = nb_tx_desc;
+	*evq_entries = nb_tx_desc;
+	*txq_max_fill_level = EFX_TXQ_LIMIT(*txq_entries);
+	return 0;
+}
+
 static sfc_dp_tx_qcreate_t sfc_efx_tx_qcreate;
 static int
 sfc_efx_tx_qcreate(uint16_t port_id, uint16_t queue_id,
@@ -1048,6 +1070,7 @@ struct sfc_dp_tx sfc_efx_tx = {
 				  SFC_DP_TX_FEAT_MULTI_POOL |
 				  SFC_DP_TX_FEAT_REFCNT |
 				  SFC_DP_TX_FEAT_MULTI_SEG,
+	.qsize_up_rings		= sfc_efx_tx_qsize_up_rings,
 	.qcreate		= sfc_efx_tx_qcreate,
 	.qdestroy		= sfc_efx_tx_qdestroy,
 	.qstart			= sfc_efx_tx_qstart,

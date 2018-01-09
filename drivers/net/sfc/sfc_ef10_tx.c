@@ -487,6 +487,19 @@ sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 
+static sfc_dp_tx_qsize_up_rings_t sfc_ef10_tx_qsize_up_rings;
+static int
+sfc_ef10_tx_qsize_up_rings(uint16_t nb_tx_desc,
+			   unsigned int *txq_entries,
+			   unsigned int *evq_entries,
+			   unsigned int *txq_max_fill_level)
+{
+	*txq_entries = nb_tx_desc;
+	*evq_entries = nb_tx_desc;
+	*txq_max_fill_level = SFC_EF10_TXQ_LIMIT(*txq_entries);
+	return 0;
+}
+
 static sfc_dp_tx_qcreate_t sfc_ef10_tx_qcreate;
 static int
 sfc_ef10_tx_qcreate(uint16_t port_id, uint16_t queue_id,
@@ -628,6 +641,7 @@ struct sfc_dp_tx sfc_ef10_tx = {
 				  SFC_DP_TX_FEAT_MULTI_POOL |
 				  SFC_DP_TX_FEAT_REFCNT |
 				  SFC_DP_TX_FEAT_MULTI_PROCESS,
+	.qsize_up_rings		= sfc_ef10_tx_qsize_up_rings,
 	.qcreate		= sfc_ef10_tx_qcreate,
 	.qdestroy		= sfc_ef10_tx_qdestroy,
 	.qstart			= sfc_ef10_tx_qstart,
@@ -644,6 +658,7 @@ struct sfc_dp_tx sfc_ef10_simple_tx = {
 		.type		= SFC_DP_TX,
 	},
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
+	.qsize_up_rings		= sfc_ef10_tx_qsize_up_rings,
 	.qcreate		= sfc_ef10_tx_qcreate,
 	.qdestroy		= sfc_ef10_tx_qdestroy,
 	.qstart			= sfc_ef10_tx_qstart,
