@@ -1685,7 +1685,9 @@ i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 #endif
 	    dev->rx_pkt_burst == i40e_recv_scattered_pkts ||
 	    dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec ||
-	    dev->rx_pkt_burst == i40e_recv_pkts_vec)
+	    dev->rx_pkt_burst == i40e_recv_pkts_vec ||
+	    dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec_avx2 ||
+	    dev->rx_pkt_burst == i40e_recv_pkts_vec_avx2)
 		return ptypes;
 	return NULL;
 }
@@ -2807,6 +2809,17 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 				     dev->data->port_id);
 
 			dev->rx_pkt_burst = i40e_recv_scattered_pkts_vec;
+#ifdef RTE_ARCH_X86
+			/*
+			 * since AVX frequency can be different to base
+			 * frequency, limit use of AVX2 version to later
+			 * plaforms, not all those that could theoretically
+			 * run it.
+			 */
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+				dev->rx_pkt_burst =
+					i40e_recv_scattered_pkts_vec_avx2;
+#endif
 		} else {
 			PMD_INIT_LOG(DEBUG, "Using a Scattered with bulk "
 					   "allocation callback (port=%d).",
@@ -2826,6 +2839,16 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 			     dev->data->port_id);
 
 		dev->rx_pkt_burst = i40e_recv_pkts_vec;
+#ifdef RTE_ARCH_X86
+		/*
+		 * since AVX frequency can be different to base
+		 * frequency, limit use of AVX2 version to later
+		 * plaforms, not all those that could theoretically
+		 * run it.
+		 */
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+			dev->rx_pkt_burst = i40e_recv_pkts_vec_avx2;
+#endif
 	} else if (ad->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
 				    "satisfied. Rx Burst Bulk Alloc function "
@@ -2846,7 +2869,9 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		rx_using_sse =
 			(dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec ||
-			 dev->rx_pkt_burst == i40e_recv_pkts_vec);
+			 dev->rx_pkt_burst == i40e_recv_pkts_vec ||
+			 dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec_avx2 ||
+			 dev->rx_pkt_burst == i40e_recv_pkts_vec_avx2);
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			struct i40e_rx_queue *rxq = dev->data->rx_queues[i];
@@ -3015,6 +3040,22 @@ i40e_recv_scattered_pkts_vec(
 	void __rte_unused *rx_queue,
 	struct rte_mbuf __rte_unused **rx_pkts,
 	uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}
+
+uint16_t __attribute__((weak))
+i40e_recv_pkts_vec_avx2(void __rte_unused *rx_queue,
+			struct rte_mbuf __rte_unused **rx_pkts,
+			uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}
+
+uint16_t __attribute__((weak))
+i40e_recv_scattered_pkts_vec_avx2(void __rte_unused *rx_queue,
+			struct rte_mbuf __rte_unused **rx_pkts,
+			uint16_t __rte_unused nb_pkts)
 {
 	return 0;
 }
