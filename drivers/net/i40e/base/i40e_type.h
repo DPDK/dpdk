@@ -77,6 +77,9 @@ POSSIBILITY OF SUCH DAMAGE.
 /* Max default timeout in ms, */
 #define I40E_MAX_NVM_TIMEOUT		18000
 
+/* Max timeout in ms for the phy to respond */
+#define I40E_MAX_PHY_TIMEOUT		500
+
 /* Check whether address is multicast. */
 #define I40E_IS_MULTICAST(address) (bool)(((u8 *)(address))[0] & ((u8)0x01))
 
