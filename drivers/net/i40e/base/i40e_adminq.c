@@ -1143,7 +1143,7 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	hw->aq.arq.next_to_use = ntu;
 
 #ifdef PF_DRIVER
-	i40e_nvmupd_check_wait_event(hw, LE16_TO_CPU(e->desc.opcode));
+	i40e_nvmupd_check_wait_event(hw, LE16_TO_CPU(e->desc.opcode), &e->desc);
 #endif /* PF_DRIVER */
 clean_arq_element_out:
 	/* Set pending if needed, unlock and return */

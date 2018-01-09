@@ -487,7 +487,9 @@ enum i40e_status_code i40e_validate_nvm_checksum(struct i40e_hw *hw,
 enum i40e_status_code i40e_nvmupd_command(struct i40e_hw *hw,
 					  struct i40e_nvm_access *cmd,
 					  u8 *bytes, int *);
-void i40e_nvmupd_check_wait_event(struct i40e_hw *hw, u16 opcode);
+void i40e_nvmupd_check_wait_event(struct i40e_hw *hw, u16 opcode,
+				  struct i40e_aq_desc *desc);
+void i40e_nvmupd_clear_wait_state(struct i40e_hw *hw);
 void i40e_set_pci_config_data(struct i40e_hw *hw, u16 link_status);
 #endif /* PF_DRIVER */
 
