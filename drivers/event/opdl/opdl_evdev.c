@@ -26,6 +26,152 @@
 static void
 opdl_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info);
 
+static int
+opdl_port_link(struct rte_eventdev *dev,
+	       void *port,
+	       const uint8_t queues[],
+	       const uint8_t priorities[],
+	       uint16_t num)
+{
+	struct opdl_port *p = port;
+
+	RTE_SET_USED(priorities);
+	RTE_SET_USED(dev);
+
+	if (unlikely(dev->data->dev_started)) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "Attempt to link queue (%u) to port %d while device started\n",
+			     dev->data->dev_id,
+				queues[0],
+				p->id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	/* Max of 1 queue per port */
+	if (num > 1) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "Attempt to link more than one queue (%u) to port %d requested\n",
+			     dev->data->dev_id,
+				num,
+				p->id);
+		rte_errno = -EDQUOT;
+		return 0;
+	}
+
+	if (!p->configured) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "port %d not configured, cannot link to %u\n",
+			     dev->data->dev_id,
+				p->id,
+				queues[0]);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	if (p->external_qid != OPDL_INVALID_QID) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "port %d already linked to queue %u, cannot link to %u\n",
+			     dev->data->dev_id,
+				p->id,
+				p->external_qid,
+				queues[0]);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	p->external_qid = queues[0];
+
+	return 1;
+}
+
+static int
+opdl_port_unlink(struct rte_eventdev *dev,
+		 void *port,
+		 uint8_t queues[],
+		 uint16_t nb_unlinks)
+{
+	struct opdl_port *p = port;
+
+	RTE_SET_USED(queues);
+	RTE_SET_USED(nb_unlinks);
+
+	if (unlikely(dev->data->dev_started)) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "Attempt to unlink queue (%u) to port %d while device started\n",
+			     dev->data->dev_id,
+			     queues[0],
+			     p->id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+	RTE_SET_USED(nb_unlinks);
+
+	/* Port Stuff */
+	p->queue_id = OPDL_INVALID_QID;
+	p->p_type = OPDL_INVALID_PORT;
+	p->external_qid = OPDL_INVALID_QID;
+
+	/* always unlink 0 queue due to statice pipeline */
+	return 0;
+}
+
+static int
+opdl_port_setup(struct rte_eventdev *dev,
+		uint8_t port_id,
+		const struct rte_event_port_conf *conf)
+{
+	struct opdl_evdev *device = opdl_pmd_priv(dev);
+	struct opdl_port *p = &device->ports[port_id];
+
+	RTE_SET_USED(conf);
+
+	/* Check if port already configured */
+	if (p->configured) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "Attempt to setup port %d which is already setup\n",
+			     dev->data->dev_id,
+			     p->id);
+		return -EDQUOT;
+	}
+
+	*p = (struct opdl_port){0}; /* zero entire structure */
+	p->id = port_id;
+	p->opdl = device;
+	p->queue_id = OPDL_INVALID_QID;
+	p->external_qid = OPDL_INVALID_QID;
+	dev->data->ports[port_id] = p;
+	rte_smp_wmb();
+	p->configured = 1;
+	device->nb_ports++;
+	return 0;
+}
+
+static void
+opdl_port_release(void *port)
+{
+	struct opdl_port *p = (void *)port;
+
+	if (p == NULL ||
+	    p->opdl->data->dev_started) {
+		return;
+	}
+
+	p->configured = 0;
+	p->initialized = 0;
+}
+
+static void
+opdl_port_def_conf(struct rte_eventdev *dev, uint8_t port_id,
+		struct rte_event_port_conf *port_conf)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(port_id);
+
+	port_conf->new_event_threshold = MAX_OPDL_CONS_Q_DEPTH;
+	port_conf->dequeue_depth = MAX_OPDL_CONS_Q_DEPTH;
+	port_conf->enqueue_depth = MAX_OPDL_CONS_Q_DEPTH;
+}
 
 static int
 opdl_queue_setup(struct rte_eventdev *dev,
@@ -413,6 +559,12 @@ opdl_probe(struct rte_vdev_device *vdev)
 		.queue_def_conf = opdl_queue_def_conf,
 		.queue_setup = opdl_queue_setup,
 		.queue_release = opdl_queue_release,
+		.port_def_conf = opdl_port_def_conf,
+		.port_setup = opdl_port_setup,
+		.port_release = opdl_port_release,
+		.port_link = opdl_port_link,
+		.port_unlink = opdl_port_unlink,
+
 
 		.xstats_get = opdl_xstats_get,
 		.xstats_get_names = opdl_xstats_get_names,
