@@ -638,6 +638,20 @@ sfc_ef10_rx_qdesc_status(__rte_unused struct sfc_dp_rxq *dp_rxq,
 }
 
 
+static sfc_dp_rx_qsize_up_rings_t sfc_ef10_rx_qsize_up_rings;
+static int
+sfc_ef10_rx_qsize_up_rings(uint16_t nb_rx_desc,
+			   unsigned int *rxq_entries,
+			   unsigned int *evq_entries,
+			   unsigned int *rxq_max_fill_level)
+{
+	*rxq_entries = nb_rx_desc;
+	*evq_entries = nb_rx_desc;
+	*rxq_max_fill_level = SFC_EF10_RXQ_LIMIT(*rxq_entries);
+	return 0;
+}
+
+
 static uint64_t
 sfc_ef10_mk_mbuf_rearm_data(uint16_t port_id, uint16_t prefix_size)
 {
@@ -794,6 +808,7 @@ struct sfc_dp_rx sfc_ef10_rx = {
 	},
 	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS |
 				  SFC_DP_RX_FEAT_TUNNELS,
+	.qsize_up_rings		= sfc_ef10_rx_qsize_up_rings,
 	.qcreate		= sfc_ef10_rx_qcreate,
 	.qdestroy		= sfc_ef10_rx_qdestroy,
 	.qstart			= sfc_ef10_rx_qstart,

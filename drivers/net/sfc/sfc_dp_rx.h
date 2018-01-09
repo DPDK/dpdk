@@ -101,6 +101,22 @@ struct sfc_dp_rx_qcreate_info {
 };
 
 /**
+ * Get size of receive and event queue rings by the number of Rx
+ * descriptors.
+ *
+ * @param nb_rx_desc		Number of Rx descriptors
+ * @param rxq_entries		Location for number of Rx ring entries
+ * @param evq_entries		Location for number of event ring entries
+ * @param rxq_max_fill_level	Location for maximum Rx ring fill level
+ *
+ * @return 0 or positive errno.
+ */
+typedef int (sfc_dp_rx_qsize_up_rings_t)(uint16_t nb_rx_desc,
+					 unsigned int *rxq_entries,
+					 unsigned int *evq_entries,
+					 unsigned int *rxq_max_fill_level);
+
+/**
  * Allocate and initialize datapath receive queue.
  *
  * @param port_id	The port identifier
@@ -168,6 +184,7 @@ struct sfc_dp_rx {
 #define SFC_DP_RX_FEAT_SCATTER			0x1
 #define SFC_DP_RX_FEAT_MULTI_PROCESS		0x2
 #define SFC_DP_RX_FEAT_TUNNELS			0x4
+	sfc_dp_rx_qsize_up_rings_t		*qsize_up_rings;
 	sfc_dp_rx_qcreate_t			*qcreate;
 	sfc_dp_rx_qdestroy_t			*qdestroy;
 	sfc_dp_rx_qstart_t			*qstart;

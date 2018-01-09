@@ -413,6 +413,19 @@ sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 	return rxq;
 }
 
+static sfc_dp_rx_qsize_up_rings_t sfc_efx_rx_qsize_up_rings;
+static int
+sfc_efx_rx_qsize_up_rings(uint16_t nb_rx_desc,
+			  unsigned int *rxq_entries,
+			  unsigned int *evq_entries,
+			  unsigned int *rxq_max_fill_level)
+{
+	*rxq_entries = nb_rx_desc;
+	*evq_entries = nb_rx_desc;
+	*rxq_max_fill_level = EFX_RXQ_LIMIT(*rxq_entries);
+	return 0;
+}
+
 static sfc_dp_rx_qcreate_t sfc_efx_rx_qcreate;
 static int
 sfc_efx_rx_qcreate(uint16_t port_id, uint16_t queue_id,
@@ -535,6 +548,7 @@ struct sfc_dp_rx sfc_efx_rx = {
 		.hw_fw_caps	= 0,
 	},
 	.features		= SFC_DP_RX_FEAT_SCATTER,
+	.qsize_up_rings		= sfc_efx_rx_qsize_up_rings,
 	.qcreate		= sfc_efx_rx_qcreate,
 	.qdestroy		= sfc_efx_rx_qdestroy,
 	.qstart			= sfc_efx_rx_qstart,
@@ -771,10 +785,9 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 }
 
 static int
-sfc_rx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_rx_desc,
+sfc_rx_qcheck_conf(struct sfc_adapter *sa, unsigned int rxq_max_fill_level,
 		   const struct rte_eth_rxconf *rx_conf)
 {
-	const uint16_t rx_free_thresh_max = EFX_RXQ_LIMIT(nb_rx_desc);
 	int rc = 0;
 
 	if (rx_conf->rx_thresh.pthresh != 0 ||
@@ -784,10 +797,10 @@ sfc_rx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_rx_desc,
 			"RxQ prefetch/host/writeback thresholds are not supported");
 	}
 
-	if (rx_conf->rx_free_thresh > rx_free_thresh_max) {
+	if (rx_conf->rx_free_thresh > rxq_max_fill_level) {
 		sfc_err(sa,
 			"RxQ free threshold too large: %u vs maximum %u",
-			rx_conf->rx_free_thresh, rx_free_thresh_max);
+			rx_conf->rx_free_thresh, rxq_max_fill_level);
 		rc = EINVAL;
 	}
 
@@ -907,13 +920,21 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	int rc;
+	unsigned int rxq_entries;
+	unsigned int evq_entries;
+	unsigned int rxq_max_fill_level;
 	uint16_t buf_size;
 	struct sfc_rxq_info *rxq_info;
 	struct sfc_evq *evq;
 	struct sfc_rxq *rxq;
 	struct sfc_dp_rx_qcreate_info info;
 
-	rc = sfc_rx_qcheck_conf(sa, nb_rx_desc, rx_conf);
+	rc = sa->dp_rx->qsize_up_rings(nb_rx_desc, &rxq_entries, &evq_entries,
+				       &rxq_max_fill_level);
+	if (rc != 0)
+		goto fail_size_up_rings;
+
+	rc = sfc_rx_qcheck_conf(sa, rxq_max_fill_level, rx_conf);
 	if (rc != 0)
 		goto fail_bad_conf;
 
@@ -940,8 +961,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	SFC_ASSERT(sw_index < sa->rxq_count);
 	rxq_info = &sa->rxq_info[sw_index];
 
-	SFC_ASSERT(nb_rx_desc <= rxq_info->max_entries);
-	rxq_info->entries = nb_rx_desc;
+	SFC_ASSERT(rxq_entries <= rxq_info->max_entries);
+	rxq_info->entries = rxq_entries;
 	rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
 	rxq_info->type_flags =
 		sa->eth_dev->data->dev_conf.rxmode.enable_scatter ?
@@ -952,7 +973,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		rxq_info->type_flags |= EFX_RXQ_FLAG_INNER_CLASSES;
 
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_RX, sw_index,
-			  rxq_info->entries, socket_id, &evq);
+			  evq_entries, socket_id, &evq);
 	if (rc != 0)
 		goto fail_ev_qinit;
 
@@ -989,7 +1010,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	info.rxq_entries = rxq_info->entries;
 	info.rxq_hw_ring = rxq->mem.esm_base;
-	info.evq_entries = rxq_info->entries;
+	info.evq_entries = evq_entries;
 	info.evq_hw_ring = evq->mem.esm_base;
 	info.hw_index = rxq->hw_index;
 	info.mem_bar = sa->mem_bar.esb_base;
@@ -1022,6 +1043,7 @@ fail_ev_qinit:
 	rxq_info->entries = 0;
 
 fail_bad_conf:
+fail_size_up_rings:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
 }
