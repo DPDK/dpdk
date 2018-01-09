@@ -2025,7 +2025,11 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 
 	if (hw->aq.api_maj_ver == I40E_FW_API_VERSION_MAJOR &&
 	    hw->aq.api_min_ver >= 7) {
-		hw->phy.phy_types = LE32_TO_CPU(*(__le32 *)resp->link_type);
+		__le32 tmp;
+
+		i40e_memcpy(&tmp, resp->link_type, sizeof(tmp),
+			    I40E_NONDMA_TO_NONDMA);
+		hw->phy.phy_types = LE32_TO_CPU(tmp);
 		hw->phy.phy_types |= ((u64)resp->link_type_ext << 32);
 	}
 
