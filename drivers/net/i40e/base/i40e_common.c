@@ -1394,7 +1394,7 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 				break;
 			reg2 = rd32(hw, I40E_GLGEN_RSTAT);
 			if (reg2 & I40E_GLGEN_RSTAT_DEVSTATE_MASK) {
-				DEBUGOUT("Core reset upcoming.\n");
+				DEBUGOUT("Core reset upcoming. Skipping PF reset request.\n");
 				DEBUGOUT1("I40E_GLGEN_RSTAT = 0x%x\n", reg2);
 				return I40E_ERR_NOT_READY;
 			}
@@ -1770,6 +1770,8 @@ enum i40e_status_code i40e_aq_set_phy_config(struct i40e_hw *hw,
 /**
  * i40e_set_fc
  * @hw: pointer to the hw struct
+ * @aq_failures: buffer to return AdminQ failure information
+ * @atomic_restart: whether to enable atomic link restart
  *
  * Set the requested flow control mode using set_phy_config.
  **/
@@ -3124,8 +3126,8 @@ enum i40e_status_code i40e_aq_remove_macvlan(struct i40e_hw *hw, u16 seid,
  * @mr_list: list of mirrored VSI SEIDs or VLAN IDs
  * @cmd_details: pointer to command details structure or NULL
  * @rule_id: Rule ID returned from FW
- * @rule_used: Number of rules used in internal switch
- * @rule_free: Number of rules free in internal switch
+ * @rules_used: Number of rules used in internal switch
+ * @rules_free: Number of rules free in internal switch
  *
  * Add/Delete a mirror rule to a specific switch. Mirror rules are supported for
  * VEBs/VEPA elements only
@@ -3185,8 +3187,8 @@ static enum i40e_status_code i40e_mirrorrule_op(struct i40e_hw *hw,
  * @mr_list: list of mirrored VSI SEIDs or VLAN IDs
  * @cmd_details: pointer to command details structure or NULL
  * @rule_id: Rule ID returned from FW
- * @rule_used: Number of rules used in internal switch
- * @rule_free: Number of rules free in internal switch
+ * @rules_used: Number of rules used in internal switch
+ * @rules_free: Number of rules free in internal switch
  *
  * Add mirror rule. Mirror rules are supported for VEBs or VEPA elements only
  **/
@@ -3216,8 +3218,8 @@ enum i40e_status_code i40e_aq_add_mirrorrule(struct i40e_hw *hw, u16 sw_seid,
  *		add_mirrorrule.
  * @mr_list: list of mirrored VLAN IDs to be removed
  * @cmd_details: pointer to command details structure or NULL
- * @rule_used: Number of rules used in internal switch
- * @rule_free: Number of rules free in internal switch
+ * @rules_used: Number of rules used in internal switch
+ * @rules_free: Number of rules free in internal switch
  *
  * Delete a mirror rule. Mirror rules are supported for VEBs/VEPA elements only
  **/
@@ -3620,6 +3622,8 @@ enum i40e_status_code i40e_aq_write_nvm_config(struct i40e_hw *hw,
 /**
  * i40e_aq_oem_post_update - triggers an OEM specific flow after update
  * @hw: pointer to the hw struct
+ * @buff: buffer for result
+ * @buff_size: buffer size
  * @cmd_details: pointer to command details structure or NULL
  **/
 enum i40e_status_code i40e_aq_oem_post_update(struct i40e_hw *hw,
@@ -4520,7 +4524,6 @@ enum i40e_status_code i40e_aq_start_stop_dcbx(struct i40e_hw *hw,
  * i40e_aq_add_udp_tunnel
  * @hw: pointer to the hw struct
  * @udp_port: the UDP port to add in Host byte order
- * @header_len: length of the tunneling header length in DWords
  * @protocol_index: protocol index type
  * @filter_index: pointer to filter index
  * @cmd_details: pointer to command details structure or NULL
@@ -5263,6 +5266,7 @@ enum i40e_status_code i40e_aq_config_vsi_tc_bw(struct i40e_hw *hw,
  * @hw: pointer to the hw struct
  * @seid: seid of the switching component connected to Physical Port
  * @ets_data: Buffer holding ETS parameters
+ * @opcode: Tx scheduler AQ command opcode
  * @cmd_details: pointer to command details structure or NULL
  **/
 enum i40e_status_code i40e_aq_config_switch_comp_ets(struct i40e_hw *hw,
@@ -5625,10 +5629,10 @@ enum i40e_status_code i40e_aq_add_rem_control_packet_filter(struct i40e_hw *hw,
  * @hw: pointer to the hw struct
  * @seid: VSI seid to add ethertype filter from
  **/
-#define I40E_FLOW_CONTROL_ETHTYPE 0x8808
 void i40e_add_filter_to_drop_tx_flow_control_frames(struct i40e_hw *hw,
 						    u16 seid)
 {
+#define I40E_FLOW_CONTROL_ETHTYPE 0x8808
 	u16 flag = I40E_AQC_ADD_CONTROL_PACKET_FLAGS_IGNORE_MAC |
 		   I40E_AQC_ADD_CONTROL_PACKET_FLAGS_DROP |
 		   I40E_AQC_ADD_CONTROL_PACKET_FLAGS_TX;
@@ -6209,6 +6213,7 @@ void i40e_set_pci_config_data(struct i40e_hw *hw, u16 link_status)
  * @ret_buff_size: actual buffer size returned
  * @ret_next_table: next block to read
  * @ret_next_index: next index to read
+ * @cmd_details: pointer to command details structure or NULL
  *
  * Dump internal FW/HW data for debug purposes.
  *
@@ -6331,7 +6336,7 @@ enum i40e_status_code i40e_aq_configure_partition_bw(struct i40e_hw *hw,
  * i40e_read_phy_register_clause22
  * @hw: pointer to the HW structure
  * @reg: register address in the page
- * @phy_adr: PHY address on MDIO interface
+ * @phy_addr: PHY address on MDIO interface
  * @value: PHY register value
  *
  * Reads specified PHY register value
@@ -6376,7 +6381,7 @@ enum i40e_status_code i40e_read_phy_register_clause22(struct i40e_hw *hw,
  * i40e_write_phy_register_clause22
  * @hw: pointer to the HW structure
  * @reg: register address in the page
- * @phy_adr: PHY address on MDIO interface
+ * @phy_addr: PHY address on MDIO interface
  * @value: PHY register value
  *
  * Writes specified PHY register value
@@ -6417,7 +6422,7 @@ enum i40e_status_code i40e_write_phy_register_clause22(struct i40e_hw *hw,
  * @hw: pointer to the HW structure
  * @page: registers page number
  * @reg: register address in the page
- * @phy_adr: PHY address on MDIO interface
+ * @phy_addr: PHY address on MDIO interface
  * @value: PHY register value
  *
  * Reads specified PHY register value
@@ -6491,7 +6496,7 @@ phy_read_end:
  * @hw: pointer to the HW structure
  * @page: registers page number
  * @reg: register address in the page
- * @phy_adr: PHY address on MDIO interface
+ * @phy_addr: PHY address on MDIO interface
  * @value: PHY register value
  *
  * Writes value to specified PHY register
@@ -6558,7 +6563,7 @@ phy_write_end:
  * @hw: pointer to the HW structure
  * @page: registers page number
  * @reg: register address in the page
- * @phy_adr: PHY address on MDIO interface
+ * @phy_addr: PHY address on MDIO interface
  * @value: PHY register value
  *
  * Writes value to specified PHY register
@@ -6594,7 +6599,7 @@ enum i40e_status_code i40e_write_phy_register(struct i40e_hw *hw,
  * @hw: pointer to the HW structure
  * @page: registers page number
  * @reg: register address in the page
- * @phy_adr: PHY address on MDIO interface
+ * @phy_addr: PHY address on MDIO interface
  * @value: PHY register value
  *
  * Reads specified PHY register value
@@ -6629,7 +6634,6 @@ enum i40e_status_code i40e_read_phy_register(struct i40e_hw *hw,
  * i40e_get_phy_address
  * @hw: pointer to the HW structure
  * @dev_num: PHY port num that address we want
- * @phy_addr: Returned PHY address
  *
  * Gets PHY address for current port
  **/
@@ -6823,7 +6827,9 @@ enum i40e_status_code i40e_led_get_phy(struct i40e_hw *hw, u16 *led_addr,
  * i40e_led_set_phy
  * @hw: pointer to the HW structure
  * @on: true or false
+ * @led_addr: address of led register to use
  * @mode: original val plus bit for set or ignore
+ *
  * Set led's on or off when controlled by the PHY
  *
  **/
@@ -7163,7 +7169,7 @@ enum i40e_status_code i40e_vf_reset(struct i40e_hw *hw)
 /**
  * i40e_aq_set_arp_proxy_config
  * @hw: pointer to the HW structure
- * @proxy_config - pointer to proxy config command table struct
+ * @proxy_config: pointer to proxy config command table struct
  * @cmd_details: pointer to command details
  *
  * Set ARP offload parameters from pre-populated
@@ -7349,7 +7355,6 @@ enum i40e_status_code i40e_aq_clear_all_wol_filters(struct i40e_hw *hw,
 	return status;
 }
 
-
 /**
  * i40e_aq_write_ddp - Write dynamic device personalization (ddp)
  * @hw: pointer to the hw struct
@@ -7401,6 +7406,7 @@ i40e_status_code i40e_aq_write_ddp(struct i40e_hw *hw, void *buff,
  * @hw: pointer to the hw struct
  * @buff: command buffer (size in bytes = buff_size)
  * @buff_size: buffer size in bytes
+ * @flags: AdminQ command flags
  * @cmd_details: pointer to command details structure or NULL
  **/
 enum

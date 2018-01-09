@@ -349,8 +349,8 @@ VIRTCHNL_CHECK_STRUCT_LEN(72, virtchnl_vsi_queue_config_info);
  * additional queues must be negotiated.  This is a best effort request as it
  * is possible the PF does not have enough queues left to support the request.
  * If the PF cannot support the number requested it will respond with the
- * maximum number it is able to support; otherwise it will respond with the
- * number requested.
+ * maximum number it is able to support.  If the request is successful, PF will
+ * then reset the VF to institute required changes.
  */
 
 /* VF resource request */
@@ -509,7 +509,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(6, virtchnl_rss_key);
 struct virtchnl_rss_lut {
 	u16 vsi_id;
 	u16 lut_entries;
-	u8 lut[1];        /* RSS lookup table*/
+	u8 lut[1];        /* RSS lookup table */
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN(6, virtchnl_rss_lut);
@@ -764,7 +764,7 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		return VIRTCHNL_ERR_PARAM;
 	}
 	/* few more checks */
-	if ((valid_len != msglen) || (err_msg_format))
+	if (err_msg_format || valid_len != msglen)
 		return VIRTCHNL_STATUS_ERR_OPCODE_MISMATCH;
 
 	return 0;
