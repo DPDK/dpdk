@@ -398,6 +398,7 @@ F: doc/guides/nics/features/enic.ini
 
 Intel e1000
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/e1000/
 F: doc/guides/nics/e1000em.rst
 F: doc/guides/nics/intel_vf.rst
@@ -407,6 +408,7 @@ F: doc/guides/nics/features/igb*.ini
 Intel ixgbe
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/ixgbe/
 F: doc/guides/nics/ixgbe.rst
 F: doc/guides/nics/intel_vf.rst
@@ -415,6 +417,7 @@ F: doc/guides/nics/features/ixgbe*.ini
 Intel i40e
 M: Beilei Xing <beilei.xing@intel.com>
 M: Qi Zhang <qi.z.zhang@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/i40e/
 F: doc/guides/nics/i40e.rst
 F: doc/guides/nics/intel_vf.rst
@@ -423,6 +426,7 @@ F: doc/guides/nics/features/i40e*.ini
 Intel fm10k
 M: Qi Zhang <qi.z.zhang@intel.com>
 M: Xiao Wang <xiao.w.wang@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/fm10k/
 F: doc/guides/nics/features/fm10k*.ini
 
