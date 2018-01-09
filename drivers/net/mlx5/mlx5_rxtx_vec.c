@@ -219,7 +219,6 @@ rxq_handle_pending_error(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	rxq->stats.ipackets -= (pkts_n - n);
 	rxq->stats.ibytes -= err_bytes;
 #endif
-	rxq->pending_err = 0;
 	return n;
 }
 
@@ -241,9 +240,10 @@ mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct mlx5_rxq_data *rxq = dpdk_rxq;
 	uint16_t nb_rx;
+	uint64_t err = 0;
 
-	nb_rx = rxq_burst_v(rxq, pkts, pkts_n);
-	if (unlikely(rxq->pending_err))
+	nb_rx = rxq_burst_v(rxq, pkts, pkts_n, &err);
+	if (unlikely(err))
 		nb_rx = rxq_handle_pending_error(rxq, pkts, nb_rx);
 	return nb_rx;
 }

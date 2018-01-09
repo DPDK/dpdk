@@ -662,12 +662,16 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
  *   Array to store received packets.
  * @param pkts_n
  *   Maximum number of packets in array.
+ * @param[out] err
+ *   Pointer to a flag. Set non-zero value if pkts array has at least one error
+ *   packet to handle.
  *
  * @return
  *   Number of packets received including errors (<= pkts_n).
  */
 static inline uint16_t
-rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
+rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
+	    uint64_t *err)
 {
 	const uint16_t q_n = 1 << rxq->cqe_n;
 	const uint16_t q_mask = q_n - 1;
@@ -929,7 +933,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		opcode = _mm_packs_epi32(opcode, zero);
 		opcode = _mm_andnot_si128(invalid_mask, opcode);
 		/* D.4 mark if any error is set */
-		rxq->pending_err |= !!_mm_cvtsi128_si64(opcode);
+		*err |= _mm_cvtsi128_si64(opcode);
 		/* D.5 fill in mbuf - rearm_data and packet_type. */
 		rxq_cq_to_ptype_oflags_v(rxq, cqes, opcode, &pkts[pos]);
 		if (rxq->hw_timestamp) {
