@@ -70,13 +70,6 @@ Limitations
 * Hardware only supports scenarios where ICV (digest buffer) is placed just
   after the authenticated data. Other placement will result in error.
 
-* Before running crypto test suite it is advised to increase limit of
-  opened files:
-
-  .. code-block:: console
-
-     ulimit -n 20000
-
 Installation
 ------------
 
@@ -92,20 +85,18 @@ Currently there are two driver specific compilation options in
 
     Toggle display of debugging messages.
 
-During compilation external MUSDK library, which provides direct access
-to Marvell's EIP197 cryptographic engine, is necessary. Library sources are
-available `here <https://github.com/MarvellEmbeddedProcessors/musdk-marvell/tree/musdk-armada-17.08>`__.
+For a list of prerequisites please refer to `Prerequisites` section in
+:ref:`MRVL Poll Mode Driver <mrvl_poll_mode_driver>` guide.
 
-Alternatively, prebuilt library can be downloaded from
-`Marvell Extranet <https://extranet.marvell.com>`_. Once approval has been
-granted, library can be found by typing ``musdk`` in the search box.
+MRVL CRYPTO PMD requires MUSDK built with EIP197 support thus following
+extra option must be passed to the library configuration script:
 
-For MUSDK library build instructions please refer to ``doc/musdk_get_started.txt``
-in library sources directory.
+.. code-block:: console
 
-MUSDK requires out of tree kernel modules to work. Kernel tree needed to build
-them is available
-`here <https://github.com/MarvellEmbeddedProcessors/linux-marvell/tree/linux-4.4.52-armada-17.08>`__.
+   --enable-sam
+
+For `crypto_safexcel.ko` module build instructions please refer
+to `doc/musdk_get_started.txt`.
 
 Initialization
 --------------
@@ -120,10 +111,6 @@ loaded:
    insmod mv_pp_uio.ko
    insmod mv_sam_uio.ko
    insmod crypto_safexcel.ko
-
-- `musdk_uio.ko`, `mv_pp2_uio.ko` and `mv_sam_uio.ko` are distributed together with MUSDK library.
-- `crypto_safexcel.ko` is an in-kernel module.
-- `mvpp2x_sysfs.ko` can be build from sources available `here <https://github.com/MarvellEmbeddedProcessors/mvpp2x-marvell/tree/mvpp2x-armada-17.08>`__.
 
 The following parameters (all optional) are exported by the driver:
 
