@@ -4130,6 +4130,28 @@ i40e_aq_update_nvm_exit:
 }
 
 /**
+ * i40e_aq_nvm_progress
+ * @hw: pointer to the hw struct
+ * @progress: pointer to progress returned from AQ
+ * @cmd_details: pointer to command details structure or NULL
+ *
+ * Gets progress of flash rearrangement process
+ **/
+enum i40e_status_code i40e_aq_nvm_progress(struct i40e_hw *hw, u8 *progress,
+				struct i40e_asq_cmd_details *cmd_details)
+{
+	enum i40e_status_code status;
+	struct i40e_aq_desc desc;
+
+	DEBUGFUNC("i40e_aq_nvm_progress");
+
+	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_nvm_progress);
+	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
+	*progress = desc.params.raw[0];
+	return status;
+}
+
+/**
  * i40e_aq_get_lldp_mib
  * @hw: pointer to the hw struct
  * @bridge_type: type of bridge requested
