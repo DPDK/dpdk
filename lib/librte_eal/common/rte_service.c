@@ -558,23 +558,6 @@ rte_service_map_lcore_get(uint32_t id, uint32_t lcore)
 	return ret;
 }
 
-int32_t rte_service_lcore_reset_all(void)
-{
-	/* loop over cores, reset all to mask 0 */
-	uint32_t i;
-	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		lcore_states[i].service_mask = 0;
-		lcore_states[i].is_service_core = 0;
-		lcore_states[i].runstate = RUNSTATE_STOPPED;
-	}
-	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++)
-		rte_atomic32_set(&rte_services[i].num_mapped_cores, 0);
-
-	rte_smp_wmb();
-
-	return 0;
-}
-
 static void
 set_lcore_state(uint32_t lcore, int32_t state)
 {
@@ -587,6 +570,25 @@ set_lcore_state(uint32_t lcore, int32_t state)
 
 	/* update per-lcore optimized state tracking */
 	lcore_states[lcore].is_service_core = (state == ROLE_SERVICE);
+}
+
+int32_t rte_service_lcore_reset_all(void)
+{
+	/* loop over cores, reset all to mask 0 */
+	uint32_t i;
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		if (lcore_states[i].is_service_core) {
+			lcore_states[i].service_mask = 0;
+			set_lcore_state(i, ROLE_RTE);
+			lcore_states[i].runstate = RUNSTATE_STOPPED;
+		}
+	}
+	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++)
+		rte_atomic32_set(&rte_services[i].num_mapped_cores, 0);
+
+	rte_smp_wmb();
+
+	return 0;
 }
 
 int32_t
