@@ -40,3 +40,4 @@ application trough the eventdev API.
     dpaa2
     sw
     octeontx
+    opdl
