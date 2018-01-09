@@ -1078,22 +1078,19 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	}
 
 	/* set next_to_use to head */
-#ifdef PF_DRIVER
 #ifdef INTEGRATED_VF
 	if (!i40e_is_vf(hw))
-		ntu = (rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK);
+		ntu = rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK;
+	else
+		ntu = rd32(hw, hw->aq.arq.head) & I40E_VF_ARQH1_ARQH_MASK;
 #else
-	ntu = (rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK);
-#endif /* INTEGRATED_VF */
+#ifdef PF_DRIVER
+	ntu = rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK;
 #endif /* PF_DRIVER */
 #ifdef VF_DRIVER
-#ifdef INTEGRATED_VF
-	if (i40e_is_vf(hw))
-		ntu = (rd32(hw, hw->aq.arq.head) & I40E_VF_ARQH1_ARQH_MASK);
-#else
-	ntu = (rd32(hw, hw->aq.arq.head) & I40E_VF_ARQH1_ARQH_MASK);
-#endif /* INTEGRATED_VF */
+	ntu = rd32(hw, hw->aq.arq.head) & I40E_VF_ARQH1_ARQH_MASK;
 #endif /* VF_DRIVER */
+#endif /* INTEGRATED_VF */
 	if (ntu == ntc) {
 		/* nothing to do - shouldn't need to update ring's values */
 		ret_code = I40E_ERR_ADMIN_QUEUE_NO_WORK;
