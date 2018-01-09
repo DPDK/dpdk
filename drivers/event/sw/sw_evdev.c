@@ -217,9 +217,6 @@ qid_init(struct sw_evdev *sw, unsigned int idx, int type,
 	char buf[IQ_ROB_NAMESIZE];
 	struct sw_qid *qid = &sw->qids[idx];
 
-	for (i = 0; i < SW_IQS_MAX; i++)
-		iq_init(sw, &qid->iq[i]);
-
 	/* Initialize the FID structures to no pinning (-1), and zero packets */
 	const struct sw_fid_t fid = {.cq = -1, .pcount = 0};
 	for (i = 0; i < RTE_DIM(qid->fids); i++)
@@ -297,11 +294,6 @@ qid_init(struct sw_evdev *sw, unsigned int idx, int type,
 	return 0;
 
 cleanup:
-	for (i = 0; i < SW_IQS_MAX; i++) {
-		if (qid->iq[i].head)
-			iq_free_chunk(sw, qid->iq[i].head);
-	}
-
 	if (qid->reorder_buffer) {
 		rte_free(qid->reorder_buffer);
 		qid->reorder_buffer = NULL;
@@ -320,13 +312,6 @@ sw_queue_release(struct rte_eventdev *dev, uint8_t id)
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);
 	struct sw_qid *qid = &sw->qids[id];
-	uint32_t i;
-
-	for (i = 0; i < SW_IQS_MAX; i++) {
-		if (!qid->iq[i].head)
-			continue;
-		iq_free_chunk(sw, qid->iq[i].head);
-	}
 
 	if (qid->type == RTE_SCHED_TYPE_ORDERED) {
 		rte_free(qid->reorder_buffer);
@@ -357,6 +342,41 @@ sw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 		sw_queue_release(dev, queue_id);
 
 	return qid_init(sw, queue_id, type, conf);
+}
+
+static void
+sw_init_qid_iqs(struct sw_evdev *sw)
+{
+	int i, j;
+
+	/* Initialize the IQ memory of all configured qids */
+	for (i = 0; i < RTE_EVENT_MAX_QUEUES_PER_DEV; i++) {
+		struct sw_qid *qid = &sw->qids[i];
+
+		if (!qid->initialized)
+			continue;
+
+		for (j = 0; j < SW_IQS_MAX; j++)
+			iq_init(sw, &qid->iq[j]);
+	}
+}
+
+static void
+sw_clean_qid_iqs(struct sw_evdev *sw)
+{
+	int i, j;
+
+	/* Release the IQ memory of all configured qids */
+	for (i = 0; i < RTE_EVENT_MAX_QUEUES_PER_DEV; i++) {
+		struct sw_qid *qid = &sw->qids[i];
+
+		for (j = 0; j < SW_IQS_MAX; j++) {
+			if (!qid->iq[j].head)
+				continue;
+			iq_free_chunk_list(sw, qid->iq[j].head);
+			qid->iq[j].head = NULL;
+		}
+	}
 }
 
 static void
@@ -406,7 +426,10 @@ sw_dev_configure(const struct rte_eventdev *dev)
 	num_chunks = ((SW_INFLIGHT_EVENTS_TOTAL/SW_EVS_PER_Q_CHUNK)+1) +
 			sw->qid_count*SW_IQS_MAX*2;
 
-	/* If this is a reconfiguration, free the previous IQ allocation */
+	/* If this is a reconfiguration, free the previous IQ allocation. All
+	 * IQ chunk references were cleaned out of the QIDs in sw_stop(), and
+	 * will be reinitialized in sw_start().
+	 */
 	if (sw->chunks)
 		rte_free(sw->chunks);
 
@@ -642,8 +665,8 @@ sw_start(struct rte_eventdev *dev)
 
 	/* check all queues are configured and mapped to ports*/
 	for (i = 0; i < sw->qid_count; i++)
-		if (sw->qids[i].iq[0].head == NULL ||
-				sw->qids[i].cq_num_mapped_cqs == 0) {
+		if (!sw->qids[i].initialized ||
+		    sw->qids[i].cq_num_mapped_cqs == 0) {
 			SW_LOG_ERR("Queue %d not configured\n", i);
 			return -ENOLINK;
 		}
@@ -664,6 +687,8 @@ sw_start(struct rte_eventdev *dev)
 		}
 	}
 
+	sw_init_qid_iqs(sw);
+
 	if (sw_xstats_init(sw) < 0)
 		return -EINVAL;
 
@@ -677,6 +702,7 @@ static void
 sw_stop(struct rte_eventdev *dev)
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);
+	sw_clean_qid_iqs(sw);
 	sw_xstats_uninit(sw);
 	sw->started = 0;
 	rte_smp_wmb();

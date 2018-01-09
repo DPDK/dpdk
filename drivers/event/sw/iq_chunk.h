@@ -45,12 +45,24 @@ iq_free_chunk(struct sw_evdev *sw, struct sw_queue_chunk *chunk)
 }
 
 static __rte_always_inline void
+iq_free_chunk_list(struct sw_evdev *sw, struct sw_queue_chunk *head)
+{
+	while (head) {
+		struct sw_queue_chunk *next;
+		next = head->next;
+		iq_free_chunk(sw, head);
+		head = next;
+	}
+}
+
+static __rte_always_inline void
 iq_init(struct sw_evdev *sw, struct sw_iq *iq)
 {
 	iq->head = iq_alloc_chunk(sw);
 	iq->tail = iq->head;
 	iq->head_idx = 0;
 	iq->tail_idx = 0;
+	iq->count = 0;
 }
 
 static __rte_always_inline void
@@ -126,7 +138,7 @@ iq_dequeue_burst(struct sw_evdev *sw,
 
 done:
 	if (unlikely(index == SW_EVS_PER_Q_CHUNK)) {
-		struct sw_queue_chunk *next = iq->head->next;
+		struct sw_queue_chunk *next = current->next;
 		iq_free_chunk(sw, current);
 		iq->head = next;
 		iq->head_idx = 0;
