@@ -228,6 +228,12 @@ struct igb_ethertype_filter {
 	uint32_t etqf;
 };
 
+struct igb_rte_flow_rss_conf {
+	struct rte_eth_rss_conf rss_conf; /**< RSS parameters. */
+	uint16_t num; /**< Number of entries in queue[]. */
+	uint16_t queue[IGB_MAX_RX_QUEUE_NUM]; /**< Queues indices to use. */
+};
+
 /*
  * Structure to store filters'info.
  */
@@ -245,6 +251,8 @@ struct e1000_filter_info {
 	struct e1000_2tuple_filter_list twotuple_list;
 	/* store the SYN filter info */
 	uint32_t syn_info;
+	/* store the rss filter info */
+	struct igb_rte_flow_rss_conf rss_info;
 };
 
 /*
@@ -313,6 +321,12 @@ struct igb_flex_filter_ele {
 	struct rte_eth_flex_filter filter_info;
 };
 
+/* rss filter  list structure */
+struct igb_rss_conf_ele {
+	TAILQ_ENTRY(igb_rss_conf_ele) entries;
+	struct igb_rte_flow_rss_conf filter_info;
+};
+
 /* igb_flow memory list structure */
 struct igb_flow_mem {
 	TAILQ_ENTRY(igb_flow_mem) entries;
@@ -328,6 +342,8 @@ TAILQ_HEAD(igb_syn_filter_list, igb_eth_syn_filter_ele);
 struct igb_syn_filter_list igb_filter_syn_list;
 TAILQ_HEAD(igb_flex_filter_list, igb_flex_filter_ele);
 struct igb_flex_filter_list igb_filter_flex_list;
+TAILQ_HEAD(igb_rss_filter_list, igb_rss_conf_ele);
+struct igb_rss_filter_list igb_filter_rss_list;
 TAILQ_HEAD(igb_flow_mem_list, igb_flow_mem);
 struct igb_flow_mem_list igb_flow_list;
 
@@ -471,4 +487,8 @@ int eth_igb_syn_filter_set(struct rte_eth_dev *dev,
 int eth_igb_add_del_flex_filter(struct rte_eth_dev *dev,
 			struct rte_eth_flex_filter *filter,
 			bool add);
+int igb_config_rss_filter(struct rte_eth_dev *dev,
+			struct igb_rte_flow_rss_conf *conf,
+			bool add);
+
 #endif /* _E1000_ETHDEV_H_ */

@@ -2757,3 +2757,64 @@ igb_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
 	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
 }
+
+int
+igb_config_rss_filter(struct rte_eth_dev *dev,
+		struct igb_rte_flow_rss_conf *conf, bool add)
+{
+	uint32_t shift;
+	uint16_t i, j;
+	struct rte_eth_rss_conf rss_conf = conf->rss_conf;
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!add) {
+		if (memcmp(conf, &filter_info->rss_info,
+			sizeof(struct igb_rte_flow_rss_conf)) == 0) {
+			igb_rss_disable(dev);
+			memset(&filter_info->rss_info, 0,
+				sizeof(struct igb_rte_flow_rss_conf));
+			return 0;
+		}
+		return -EINVAL;
+	}
+
+	if (filter_info->rss_info.num)
+		return -EINVAL;
+
+	/* Fill in redirection table. */
+	shift = (hw->mac.type == e1000_82575) ? 6 : 0;
+	for (i = 0, j = 0; i < 128; i++, j++) {
+		union e1000_reta {
+			uint32_t dword;
+			uint8_t  bytes[4];
+		} reta;
+		uint8_t q_idx;
+
+		q_idx = conf->queue[j];
+		if (j == conf->num)
+			j = 0;
+		reta.bytes[i & 3] = (uint8_t)(q_idx << shift);
+		if ((i & 3) == 3)
+			E1000_WRITE_REG(hw, E1000_RETA(i >> 2), reta.dword);
+	}
+
+	/* Configure the RSS key and the RSS protocols used to compute
+	 * the RSS hash of input packets.
+	 */
+	if ((rss_conf.rss_hf & IGB_RSS_OFFLOAD_ALL) == 0) {
+		igb_rss_disable(dev);
+		return 0;
+	}
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = rss_intel_key; /* Default hash key */
+	igb_hw_rss_hash_set(hw, &rss_conf);
+
+	rte_memcpy(&filter_info->rss_info,
+		conf, sizeof(struct igb_rte_flow_rss_conf));
+
+	return 0;
+}

@@ -919,6 +919,7 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	TAILQ_INIT(&igb_filter_ethertype_list);
 	TAILQ_INIT(&igb_filter_syn_list);
 	TAILQ_INIT(&igb_filter_flex_list);
+	TAILQ_INIT(&igb_filter_rss_list);
 	TAILQ_INIT(&igb_flow_list);
 
 	return 0;
@@ -977,6 +978,10 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 	filter_info->ethertype_mask = 0;
 	memset(filter_info->ethertype_filters, 0,
 		E1000_MAX_ETQF_FILTERS * sizeof(struct igb_ethertype_filter));
+
+	/* clear the rss filter info */
+	memset(&filter_info->rss_info, 0,
+		sizeof(struct igb_rte_flow_rss_conf));
 
 	/* remove all ntuple filters of the device */
 	igb_ntuple_filter_uninit(eth_dev);
@@ -5599,6 +5604,17 @@ igb_flex_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore rss filter */
+static inline void
+igb_rss_filter_restore(struct rte_eth_dev *dev)
+{
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+
+	if (filter_info->rss_info.num)
+		igb_config_rss_filter(dev, &filter_info->rss_info, TRUE);
+}
+
 /* restore all types filter */
 static int
 igb_filter_restore(struct rte_eth_dev *dev)
@@ -5607,6 +5623,7 @@ igb_filter_restore(struct rte_eth_dev *dev)
 	igb_ethertype_filter_restore(dev);
 	igb_syn_filter_restore(dev);
 	igb_flex_filter_restore(dev);
+	igb_rss_filter_restore(dev);
 
 	return 0;
 }

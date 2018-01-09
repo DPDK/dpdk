@@ -55,6 +55,12 @@ New Features
   * Added tunneled packets classification.
   * Added inner checksum offload.
 
+* **Added the igb ethernet driver to support RSS with flow API.**
+
+  Rte_flow actually defined to include RSS, but till now, RSS is out of
+  rte_flow. This patch is to support igb NIC with existing RSS configuration
+  using rte_flow API.
+
 
 API Changes
 -----------
