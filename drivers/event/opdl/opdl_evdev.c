@@ -27,6 +27,110 @@ static void
 opdl_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info);
 
 
+static int
+opdl_queue_setup(struct rte_eventdev *dev,
+		 uint8_t queue_id,
+		 const struct rte_event_queue_conf *conf)
+{
+	enum queue_type type;
+
+	struct opdl_evdev *device = opdl_pmd_priv(dev);
+
+	/* Extra sanity check, probably not needed */
+	if (queue_id == OPDL_INVALID_QID) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "Invalid queue id %u requested\n",
+			     dev->data->dev_id,
+			     queue_id);
+		return -EINVAL;
+	}
+
+	if (device->nb_q_md > device->max_queue_nb) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "Max number of queues %u exceeded by request %u\n",
+			     dev->data->dev_id,
+			     device->max_queue_nb,
+			     device->nb_q_md);
+		return -EINVAL;
+	}
+
+	if (RTE_EVENT_QUEUE_CFG_ALL_TYPES
+	    & conf->event_queue_cfg) {
+		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+			     "QUEUE_CFG_ALL_TYPES not supported\n",
+			     dev->data->dev_id);
+		return -ENOTSUP;
+	} else if (RTE_EVENT_QUEUE_CFG_SINGLE_LINK
+		   & conf->event_queue_cfg) {
+		type = OPDL_Q_TYPE_SINGLE_LINK;
+	} else {
+		switch (conf->schedule_type) {
+		case RTE_SCHED_TYPE_ORDERED:
+			type = OPDL_Q_TYPE_ORDERED;
+			break;
+		case RTE_SCHED_TYPE_ATOMIC:
+			type = OPDL_Q_TYPE_ATOMIC;
+			break;
+		case RTE_SCHED_TYPE_PARALLEL:
+			type = OPDL_Q_TYPE_ORDERED;
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+				     "Unknown queue type %d requested\n",
+				     dev->data->dev_id,
+				     conf->event_queue_cfg);
+			return -EINVAL;
+		}
+	}
+	/* Check if queue id has been setup already */
+	for (uint32_t i = 0; i < device->nb_q_md; i++) {
+		if (device->q_md[i].ext_id == queue_id) {
+			PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
+				     "queue id %u already setup\n",
+				     dev->data->dev_id,
+				     queue_id);
+			return -EINVAL;
+		}
+	}
+
+	device->q_md[device->nb_q_md].ext_id = queue_id;
+	device->q_md[device->nb_q_md].type = type;
+	device->q_md[device->nb_q_md].setup = 1;
+	device->nb_q_md++;
+
+	return 1;
+}
+
+static void
+opdl_queue_release(struct rte_eventdev *dev, uint8_t queue_id)
+{
+	struct opdl_evdev *device = opdl_pmd_priv(dev);
+
+	RTE_SET_USED(queue_id);
+
+	if (device->data->dev_started)
+		return;
+
+}
+
+static void
+opdl_queue_def_conf(struct rte_eventdev *dev,
+		    uint8_t queue_id,
+		    struct rte_event_queue_conf *conf)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+
+	static const struct rte_event_queue_conf default_conf = {
+		.nb_atomic_flows = 1024,
+		.nb_atomic_order_sequences = 1,
+		.event_queue_cfg = 0,
+		.schedule_type = RTE_SCHED_TYPE_ORDERED,
+		.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+	};
+
+	*conf = default_conf;
+}
 
 
 static int
@@ -305,6 +409,10 @@ opdl_probe(struct rte_vdev_device *vdev)
 		.dev_start = opdl_start,
 		.dev_stop = opdl_stop,
 		.dump = opdl_dump,
+
+		.queue_def_conf = opdl_queue_def_conf,
+		.queue_setup = opdl_queue_setup,
+		.queue_release = opdl_queue_release,
 
 		.xstats_get = opdl_xstats_get,
 		.xstats_get_names = opdl_xstats_get_names,
