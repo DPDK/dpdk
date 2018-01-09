@@ -76,4 +76,7 @@ POSSIBILITY OF SUCH DAMAGE.
 					 (d) == I40E_DEV_ID_QSFP_B  || \
 					 (d) == I40E_DEV_ID_QSFP_C)
 
+#define i40e_is_25G_device(d)		((d) == I40E_DEV_ID_25G_B  || \
+					 (d) == I40E_DEV_ID_25G_SFP28)
+
 #endif /* _I40E_DEVIDS_H_ */
