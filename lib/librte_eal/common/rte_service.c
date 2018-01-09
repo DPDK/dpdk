@@ -516,10 +516,14 @@ service_update(struct rte_service_spec *service, uint32_t lcore,
 
 	uint64_t sid_mask = UINT64_C(1) << sid;
 	if (set) {
-		if (*set) {
+		uint64_t lcore_mapped = lcore_states[lcore].service_mask &
+			sid_mask;
+
+		if (*set && !lcore_mapped) {
 			lcore_states[lcore].service_mask |= sid_mask;
 			rte_atomic32_inc(&rte_services[sid].num_mapped_cores);
-		} else {
+		}
+		if (!*set && lcore_mapped) {
 			lcore_states[lcore].service_mask &= ~(sid_mask);
 			rte_atomic32_dec(&rte_services[sid].num_mapped_cores);
 		}
