@@ -509,7 +509,7 @@ rte_vhost_vring_call(int vid, uint16_t vring_idx)
 	if (!vq)
 		return -1;
 
-	vhost_vring_call(vq);
+	vhost_vring_call(dev, vq);
 	return 0;
 }
 

@@ -384,7 +384,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		offsetof(struct vring_used, idx),
 		sizeof(vq->used->idx));
 
-	vhost_vring_call(vq);
+	vhost_vring_call(dev, vq);
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_rd_unlock(vq);
@@ -671,7 +671,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	if (likely(vq->shadow_used_idx)) {
 		flush_shadow_used_ring(dev, vq);
-		vhost_vring_call(vq);
+		vhost_vring_call(dev, vq);
 	}
 
 out:
@@ -1075,7 +1075,7 @@ update_used_idx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	vq->used->idx += count;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 			sizeof(vq->used->idx));
-	vhost_vring_call(vq);
+	vhost_vring_call(dev, vq);
 }
 
 static __rte_always_inline struct zcopy_mbuf *
