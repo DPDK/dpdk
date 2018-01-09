@@ -111,6 +111,18 @@ New Features
 
   See the :doc:`../prog_guide/bbdev` programmer's guide for more details.
 
+* **Added New eventdev OPDL PMD**
+
+  The OPDL (Ordered Packet Distribution Library) eventdev is a specific
+  implementation of the eventdev API. It is particularly suited to packet
+  processing workloads that have high throughput and low latency requirements.
+  All packets follow the same path through the device. The order in which
+  packets  follow is determinted by the order in which queues are set up.
+  Events are left on the ring until they are transmitted. As a result packets
+  do not go out of order.
+
+  With this change, application can use OPDL PMD by eventdev api.
+
 
 API Changes
 -----------
