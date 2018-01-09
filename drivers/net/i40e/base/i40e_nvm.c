@@ -549,7 +549,8 @@ enum i40e_status_code i40e_write_nvm_aq(struct i40e_hw *hw, u8 module_pointer,
 		ret_code = i40e_aq_update_nvm(hw, module_pointer,
 					      2 * offset,  /*bytes*/
 					      2 * words,   /*bytes*/
-					      data, last_command, &cmd_details);
+					      data, last_command, 0,
+					      &cmd_details);
 
 	return ret_code;
 }
@@ -796,6 +797,12 @@ STATIC INLINE u8 i40e_nvmupd_get_module(u32 val)
 STATIC INLINE u8 i40e_nvmupd_get_transaction(u32 val)
 {
 	return (u8)((val & I40E_NVM_TRANS_MASK) >> I40E_NVM_TRANS_SHIFT);
+}
+
+STATIC INLINE u8 i40e_nvmupd_get_preservation_flags(u32 val)
+{
+	return (u8)((val & I40E_NVM_PRESERVATION_FLAGS_MASK) >>
+		    I40E_NVM_PRESERVATION_FLAGS_SHIFT);
 }
 
 STATIC const char *i40e_nvm_update_state_str[] = {
@@ -1610,18 +1617,20 @@ STATIC enum i40e_status_code i40e_nvmupd_nvm_write(struct i40e_hw *hw,
 	enum i40e_status_code status = I40E_SUCCESS;
 	struct i40e_asq_cmd_details cmd_details;
 	u8 module, transaction;
+	u8 preservation_flags;
 	bool last;
 
 	transaction = i40e_nvmupd_get_transaction(cmd->config);
 	module = i40e_nvmupd_get_module(cmd->config);
 	last = (transaction & I40E_NVM_LCB);
+	preservation_flags = i40e_nvmupd_get_preservation_flags(cmd->config);
 
 	memset(&cmd_details, 0, sizeof(cmd_details));
 	cmd_details.wb_desc = &hw->nvm_wb_desc;
 
 	status = i40e_aq_update_nvm(hw, module, cmd->offset,
 				    (u16)cmd->data_size, bytes, last,
-				    &cmd_details);
+				    preservation_flags, &cmd_details);
 	if (status) {
 		i40e_debug(hw, I40E_DEBUG_NVM,
 			   "i40e_nvmupd_nvm_write mod 0x%x off 0x%x len 0x%x\n",
