@@ -57,6 +57,8 @@ struct sfc_dp_txq {
  * readable.
  */
 struct sfc_dp_tx_qcreate_info {
+	/** Maximum number of pushed Tx descriptors */
+	unsigned int		max_fill_level;
 	/** Minimum number of unused Tx descriptors to do reap */
 	unsigned int		free_thresh;
 	/** Transmit queue configuration flags */

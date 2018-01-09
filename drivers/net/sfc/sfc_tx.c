@@ -196,6 +196,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		goto fail_dma_alloc;
 
 	memset(&info, 0, sizeof(info));
+	info.max_fill_level = txq_max_fill_level;
 	info.free_thresh = txq->free_thresh;
 	info.flags = tx_conf->txq_flags;
 	info.txq_entries = txq_info->entries;
@@ -695,7 +696,7 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	unsigned int pushed = added;
 	unsigned int pkts_sent = 0;
 	efx_desc_t *pend = &txq->pend_desc[0];
-	const unsigned int hard_max_fill = EFX_TXQ_LIMIT(txq->ptr_mask + 1);
+	const unsigned int hard_max_fill = txq->max_fill_level;
 	const unsigned int soft_max_fill = hard_max_fill - txq->free_thresh;
 	unsigned int fill_level = added - txq->completed;
 	boolean_t reap_done;
@@ -941,6 +942,7 @@ sfc_efx_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 
 	txq->evq = ctrl_txq->evq;
 	txq->ptr_mask = info->txq_entries - 1;
+	txq->max_fill_level = info->max_fill_level;
 	txq->free_thresh = info->free_thresh;
 	txq->dma_desc_size_max = info->dma_desc_size_max;
 
@@ -1030,7 +1032,7 @@ sfc_efx_tx_qdesc_status(struct sfc_dp_txq *dp_txq, uint16_t offset)
 	if (unlikely(offset > txq->ptr_mask))
 		return -EINVAL;
 
-	if (unlikely(offset >= EFX_TXQ_LIMIT(txq->ptr_mask + 1)))
+	if (unlikely(offset >= txq->max_fill_level))
 		return RTE_ETH_TX_DESC_UNAVAIL;
 
 	/*

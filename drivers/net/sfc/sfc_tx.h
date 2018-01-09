@@ -110,6 +110,7 @@ struct sfc_efx_txq {
 	unsigned int			added;
 	unsigned int			pending;
 	unsigned int			completed;
+	unsigned int			max_fill_level;
 	unsigned int			free_thresh;
 	uint16_t			hw_vlan_tci;
 	uint16_t			dma_desc_size_max;

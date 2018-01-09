@@ -77,6 +77,7 @@ struct sfc_ef10_txq {
 	unsigned int			ptr_mask;
 	unsigned int			added;
 	unsigned int			completed;
+	unsigned int			max_fill_level;
 	unsigned int			free_thresh;
 	unsigned int			evq_read_ptr;
 	struct sfc_ef10_tx_sw_desc	*sw_ring;
@@ -288,7 +289,6 @@ static uint16_t
 sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct sfc_ef10_txq * const txq = sfc_ef10_txq_by_dp_txq(tx_queue);
-	unsigned int ptr_mask;
 	unsigned int added;
 	unsigned int dma_desc_space;
 	bool reap_done;
@@ -299,16 +299,13 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		     (SFC_EF10_TXQ_NOT_RUNNING | SFC_EF10_TXQ_EXCEPTION)))
 		return 0;
 
-	ptr_mask = txq->ptr_mask;
 	added = txq->added;
-	dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
-			 (added - txq->completed);
+	dma_desc_space = txq->max_fill_level - (added - txq->completed);
 
 	reap_done = (dma_desc_space < txq->free_thresh);
 	if (reap_done) {
 		sfc_ef10_tx_reap(txq);
-		dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
-				 (added - txq->completed);
+		dma_desc_space = txq->max_fill_level - (added - txq->completed);
 	}
 
 	for (pktp = &tx_pkts[0], pktp_end = &tx_pkts[nb_pkts];
@@ -333,7 +330,7 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			sfc_ef10_tx_reap(txq);
 			reap_done = true;
-			dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
+			dma_desc_space = txq->max_fill_level -
 				(added - txq->completed);
 			if (sfc_ef10_tx_pkt_descs_max(m_seg) > dma_desc_space)
 				break;
@@ -343,7 +340,7 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		do {
 			rte_iova_t seg_addr = rte_mbuf_data_iova(m_seg);
 			unsigned int seg_len = rte_pktmbuf_data_len(m_seg);
-			unsigned int id = added & ptr_mask;
+			unsigned int id = added & txq->ptr_mask;
 
 			SFC_ASSERT(seg_len <= SFC_EF10_TX_DMA_DESC_LEN_MAX);
 
@@ -446,14 +443,12 @@ sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	ptr_mask = txq->ptr_mask;
 	added = txq->added;
-	dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
-			 (added - txq->completed);
+	dma_desc_space = txq->max_fill_level - (added - txq->completed);
 
 	reap_done = (dma_desc_space < RTE_MAX(txq->free_thresh, nb_pkts));
 	if (reap_done) {
 		sfc_ef10_simple_tx_reap(txq);
-		dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
-				 (added - txq->completed);
+		dma_desc_space = txq->max_fill_level - (added - txq->completed);
 	}
 
 	pktp_end = &tx_pkts[MIN(nb_pkts, dma_desc_space)];
@@ -532,6 +527,7 @@ sfc_ef10_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 
 	txq->flags = SFC_EF10_TXQ_NOT_RUNNING;
 	txq->ptr_mask = info->txq_entries - 1;
+	txq->max_fill_level = info->max_fill_level;
 	txq->free_thresh = info->free_thresh;
 	txq->txq_hw_ring = info->txq_hw_ring;
 	txq->doorbell = (volatile uint8_t *)info->mem_bar +
