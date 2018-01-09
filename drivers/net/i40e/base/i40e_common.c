@@ -7018,8 +7018,8 @@ enum i40e_status_code i40e_aq_set_phy_register(struct i40e_hw *hw,
 
 	cmd->phy_interface = phy_select;
 	cmd->dev_addres = dev_addr;
-	cmd->reg_address = reg_addr;
-	cmd->reg_value = reg_val;
+	cmd->reg_address = CPU_TO_LE32(reg_addr);
+	cmd->reg_value = CPU_TO_LE32(reg_val);
 
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
@@ -7052,11 +7052,11 @@ enum i40e_status_code i40e_aq_get_phy_register(struct i40e_hw *hw,
 
 	cmd->phy_interface = phy_select;
 	cmd->dev_addres = dev_addr;
-	cmd->reg_address = reg_addr;
+	cmd->reg_address = CPU_TO_LE32(reg_addr);
 
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 	if (!status)
-		*reg_val = cmd->reg_value;
+		*reg_val = LE32_TO_CPU(cmd->reg_value);
 
 	return status;
 }
