@@ -1567,7 +1567,7 @@ i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
-	if (!(vf->vf_res->vf_offload_flags & VIRTCHNL_VF_OFFLOAD_VLAN))
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN))
 		return -ENOTSUP;
 
 	/* Vlan stripping setting */

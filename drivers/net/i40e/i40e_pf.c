@@ -308,8 +308,8 @@ i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf, bool b_op)
 		goto send_msg;
 	}
 
-	vf_res->vf_offload_flags = VIRTCHNL_VF_OFFLOAD_L2 |
-				VIRTCHNL_VF_OFFLOAD_VLAN;
+	vf_res->vf_cap_flags = VIRTCHNL_VF_OFFLOAD_L2 |
+			       VIRTCHNL_VF_OFFLOAD_VLAN;
 	vf_res->max_vectors = hw->func_caps.num_msix_vectors_vf;
 	vf_res->num_queue_pairs = vf->vsi->nb_qps;
 	vf_res->num_vsis = I40E_DEFAULT_VF_VSI_NUM;

@@ -7175,9 +7175,9 @@ void i40e_vf_parse_hw_config(struct i40e_hw *hw,
 	hw->dev_caps.num_rx_qp = msg->num_queue_pairs;
 	hw->dev_caps.num_tx_qp = msg->num_queue_pairs;
 	hw->dev_caps.num_msix_vectors_vf = msg->max_vectors;
-	hw->dev_caps.dcb = msg->vf_offload_flags &
+	hw->dev_caps.dcb = msg->vf_cap_flags &
 			   VIRTCHNL_VF_OFFLOAD_L2;
-	hw->dev_caps.iwarp = (msg->vf_offload_flags &
+	hw->dev_caps.iwarp = (msg->vf_cap_flags &
 			      VIRTCHNL_VF_OFFLOAD_IWARP) ? 1 : 0;
 	for (i = 0; i < msg->num_vsis; i++) {
 		if (vsi_res->vsi_type == VIRTCHNL_VSI_SRIOV) {
