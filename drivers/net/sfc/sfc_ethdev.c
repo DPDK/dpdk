@@ -178,6 +178,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 */
 	dev_info->rx_desc_lim.nb_align = EFX_RXQ_MINNDESCS;
 
+	/* Initialize to hardware limits */
 	dev_info->tx_desc_lim.nb_max = sa->txq_max_entries;
 	dev_info->tx_desc_lim.nb_min = EFX_TXQ_MINNDESCS;
 	/*
@@ -188,6 +189,8 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	if (sa->dp_rx->get_dev_info != NULL)
 		sa->dp_rx->get_dev_info(dev_info);
+	if (sa->dp_tx->get_dev_info != NULL)
+		sa->dp_tx->get_dev_info(dev_info);
 }
 
 static const uint32_t *

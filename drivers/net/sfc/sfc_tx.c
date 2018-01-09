@@ -160,6 +160,10 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 				       &txq_max_fill_level);
 	if (rc != 0)
 		goto fail_size_up_rings;
+	SFC_ASSERT(txq_entries >= EFX_TXQ_MINNDESCS);
+	SFC_ASSERT(txq_entries <= sa->txq_max_entries);
+	SFC_ASSERT(txq_entries >= nb_tx_desc);
+	SFC_ASSERT(txq_max_fill_level <= nb_tx_desc);
 
 	rc = sfc_tx_qcheck_conf(sa, txq_max_fill_level, tx_conf);
 	if (rc != 0)
@@ -168,7 +172,6 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	SFC_ASSERT(sw_index < sa->txq_count);
 	txq_info = &sa->txq_info[sw_index];
 
-	SFC_ASSERT(txq_entries <= sa->txq_max_entries);
 	txq_info->entries = txq_entries;
 
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_TX, sw_index,

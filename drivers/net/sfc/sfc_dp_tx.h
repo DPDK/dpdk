@@ -80,6 +80,13 @@ struct sfc_dp_tx_qcreate_info {
 };
 
 /**
+ * Get Tx datapath specific device info.
+ *
+ * @param dev_info		Device info to be adjusted
+ */
+typedef void (sfc_dp_tx_get_dev_info_t)(struct rte_eth_dev_info *dev_info);
+
+/**
  * Get size of transmit and event queue rings by the number of Tx
  * descriptors.
  *
@@ -162,6 +169,7 @@ struct sfc_dp_tx {
 #define SFC_DP_TX_FEAT_MULTI_PROCESS	0x8
 #define SFC_DP_TX_FEAT_MULTI_POOL	0x10
 #define SFC_DP_TX_FEAT_REFCNT		0x20
+	sfc_dp_tx_get_dev_info_t	*get_dev_info;
 	sfc_dp_tx_qsize_up_rings_t	*qsize_up_rings;
 	sfc_dp_tx_qcreate_t		*qcreate;
 	sfc_dp_tx_qdestroy_t		*qdestroy;

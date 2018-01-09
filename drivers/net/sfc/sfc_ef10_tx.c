@@ -481,6 +481,17 @@ sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return pktp - &tx_pkts[0];
 }
 
+static sfc_dp_tx_get_dev_info_t sfc_ef10_get_dev_info;
+static void
+sfc_ef10_get_dev_info(struct rte_eth_dev_info *dev_info)
+{
+	/*
+	 * Number of descriptors just defines maximum number of pushed
+	 * descriptors (fill level).
+	 */
+	dev_info->tx_desc_lim.nb_min = 1;
+	dev_info->tx_desc_lim.nb_align = 1;
+}
 
 static sfc_dp_tx_qsize_up_rings_t sfc_ef10_tx_qsize_up_rings;
 static int
@@ -489,9 +500,19 @@ sfc_ef10_tx_qsize_up_rings(uint16_t nb_tx_desc,
 			   unsigned int *evq_entries,
 			   unsigned int *txq_max_fill_level)
 {
-	*txq_entries = nb_tx_desc;
-	*evq_entries = nb_tx_desc;
-	*txq_max_fill_level = SFC_EF10_TXQ_LIMIT(*txq_entries);
+	/*
+	 * rte_ethdev API guarantees that the number meets min, max and
+	 * alignment requirements.
+	 */
+	if (nb_tx_desc <= EFX_TXQ_MINNDESCS)
+		*txq_entries = EFX_TXQ_MINNDESCS;
+	else
+		*txq_entries = rte_align32pow2(nb_tx_desc);
+
+	*evq_entries = *txq_entries;
+
+	*txq_max_fill_level = RTE_MIN(nb_tx_desc,
+				      SFC_EF10_TXQ_LIMIT(*evq_entries));
 	return 0;
 }
 
@@ -637,6 +658,7 @@ struct sfc_dp_tx sfc_ef10_tx = {
 				  SFC_DP_TX_FEAT_MULTI_POOL |
 				  SFC_DP_TX_FEAT_REFCNT |
 				  SFC_DP_TX_FEAT_MULTI_PROCESS,
+	.get_dev_info		= sfc_ef10_get_dev_info,
 	.qsize_up_rings		= sfc_ef10_tx_qsize_up_rings,
 	.qcreate		= sfc_ef10_tx_qcreate,
 	.qdestroy		= sfc_ef10_tx_qdestroy,
@@ -654,6 +676,7 @@ struct sfc_dp_tx sfc_ef10_simple_tx = {
 		.type		= SFC_DP_TX,
 	},
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
+	.get_dev_info		= sfc_ef10_get_dev_info,
 	.qsize_up_rings		= sfc_ef10_tx_qsize_up_rings,
 	.qcreate		= sfc_ef10_tx_qcreate,
 	.qdestroy		= sfc_ef10_tx_qdestroy,
