@@ -320,6 +320,7 @@ service_lcore_en_dis_able(void)
 
 	/* call remote_launch to verify that app can launch ex-service lcore */
 	service_remote_launch_flag = 0;
+	rte_eal_wait_lcore(slcore_id);
 	int ret = rte_eal_remote_launch(service_remote_launch_func, NULL,
 					slcore_id);
 	TEST_ASSERT_EQUAL(0, ret, "Ex-service core remote launch failed.");
@@ -334,7 +335,7 @@ static int
 service_lcore_running_check(void)
 {
 	uint64_t tick = service_tick;
-	rte_delay_ms(SERVICE_DELAY * 10);
+	rte_delay_ms(SERVICE_DELAY * 100);
 	/* if (tick != service_tick) we know the lcore as polled the service */
 	return tick != service_tick;
 }
@@ -477,6 +478,10 @@ service_threaded_test(int mt_safe)
 	if (!mt_safe)
 		test_params[1] = 1;
 
+	/* wait for lcores before start() */
+	rte_eal_wait_lcore(slcore_1);
+	rte_eal_wait_lcore(slcore_2);
+
 	rte_service_lcore_start(slcore_1);
 	rte_service_lcore_start(slcore_2);
 
@@ -490,6 +495,8 @@ service_threaded_test(int mt_safe)
 	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
 			"Failed to stop MT Safe service");
 
+	rte_eal_wait_lcore(slcore_1);
+	rte_eal_wait_lcore(slcore_2);
 	unregister_all();
 
 	/* return the value of the callback pass_test variable to caller */
@@ -583,6 +590,7 @@ service_app_lcore_poll_impl(const int mt_safe)
 	rte_service_runstate_set(id, 1);
 
 	uint32_t app_core2 = rte_get_next_lcore(slcore_id, 1, 1);
+	rte_eal_wait_lcore(app_core2);
 	int app_core2_ret = rte_eal_remote_launch(service_run_on_app_core_func,
 						  &id, app_core2);
 

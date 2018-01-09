@@ -246,7 +246,9 @@ int32_t rte_service_run_iter_on_app_lcore(uint32_t id,
  * Start a service core.
  *
  * Starting a core makes the core begin polling. Any services assigned to it
- * will be run as fast as possible.
+ * will be run as fast as possible. The application must ensure that the lcore
+ * is in a launchable state: e.g. call *rte_eal_lcore_wait* on the lcore_id
+ * before calling this function.
  *
  * @retval 0 Success
  * @retval -EINVAL Failed to start core. The *lcore_id* passed in is not
