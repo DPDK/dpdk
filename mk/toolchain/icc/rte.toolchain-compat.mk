@@ -49,4 +49,10 @@ else
 	ifeq ($(shell test $(ICC_MAJOR_VERSION) -le 16 && echo 1), 1)
 		CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD=d
 	endif
+
+        # Disable event/opdl  PMD for icc <= 16.0
+	ifeq ($(shell test $(ICC_MAJOR_VERSION) -le 16 && echo 1), 1)
+		CONFIG_RTE_LIBRTE_PMD_OPDL_EVENTDEV=d
+	endif
+
 endif

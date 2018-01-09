@@ -67,4 +67,10 @@ else
 	ifeq ($(shell test $(GCC_VERSION) -lt 47 && echo 1), 1)
 		CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD=d
 	endif
+
+	# Disable OPDL PMD for gcc < 4.7
+	ifeq ($(shell test $(GCC_VERSION) -lt 47 && echo 1), 1)
+		CONFIG_RTE_LIBRTE_PMD_OPDL_EVENTDEV=d
+	endif
+
 endif

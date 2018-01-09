@@ -723,6 +723,11 @@ F: doc/guides/eventdevs/sw.rst
 F: examples/eventdev_pipeline_sw_pmd/
 F: doc/guides/sample_app_ug/eventdev_pipeline_sw_pmd.rst
 
+Software OPDL Eventdev PMD
+M: Liang Ma <liang.j.ma@intel.com>
+M: Peter Mccarthy <peter.mccarthy@intel.com>
+F: drivers/event/opdl/
+
 
 Packet processing
 -----------------
