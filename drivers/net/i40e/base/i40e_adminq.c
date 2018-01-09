@@ -694,6 +694,12 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 		hw->flags |= I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE;
 	}
 
+	/* Newer versions of firmware require lock when reading the NVM */
+	if ((hw->aq.api_maj_ver > 1) ||
+	    ((hw->aq.api_maj_ver == 1) &&
+	     (hw->aq.api_min_ver >= 5)))
+		hw->flags |= I40E_HW_FLAG_NVM_READ_REQUIRES_LOCK;
+
 	if (hw->aq.api_maj_ver > I40E_FW_API_VERSION_MAJOR) {
 		ret_code = I40E_ERR_FIRMWARE_API_VERSION;
 		goto init_adminq_free_arq;
