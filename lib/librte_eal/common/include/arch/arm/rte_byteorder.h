@@ -50,7 +50,7 @@ extern "C" {
 
 static inline uint16_t rte_arch_bswap16(uint16_t _x)
 {
-	register uint16_t x = _x;
+	uint16_t x = _x;
 
 	asm volatile ("rev16 %w0,%w1"
 		      : "=r" (x)
