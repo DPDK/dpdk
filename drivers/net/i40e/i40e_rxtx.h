@@ -227,6 +227,8 @@ void i40e_set_tx_function_flag(struct rte_eth_dev *dev,
 void i40e_set_tx_function(struct rte_eth_dev *dev);
 void i40e_set_default_ptype_table(struct rte_eth_dev *dev);
 void i40e_set_default_pctype_table(struct rte_eth_dev *dev);
+uint16_t i40e_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
+	uint16_t nb_pkts);
 
 /* For each value it means, datasheet of hardware can tell more details
  *

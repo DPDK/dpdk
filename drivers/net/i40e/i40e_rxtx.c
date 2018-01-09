@@ -2283,7 +2283,8 @@ i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
 	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
 	 *  so need to free remains more carefully.
 	 */
-	if (dev->tx_pkt_burst == i40e_xmit_pkts_vec) {
+	if (dev->tx_pkt_burst == i40e_xmit_pkts_vec_avx2 ||
+			dev->tx_pkt_burst == i40e_xmit_pkts_vec) {
 		i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
 		if (txq->tx_tail < i) {
 			for (; i < txq->nb_tx_desc; i++) {
@@ -2902,6 +2903,16 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 		if (ad->tx_vec_allowed) {
 			PMD_INIT_LOG(DEBUG, "Vector tx finally be used.");
 			dev->tx_pkt_burst = i40e_xmit_pkts_vec;
+#ifdef RTE_ARCH_X86
+			/*
+			 * since AVX frequency can be different to base
+			 * frequency, limit use of AVX2 version to later
+			 * plaforms, not all those that could theoretically
+			 * run it.
+			 */
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+				dev->tx_pkt_burst = i40e_xmit_pkts_vec_avx2;
+#endif
 		} else {
 			PMD_INIT_LOG(DEBUG, "Simple tx finally be used.");
 			dev->tx_pkt_burst = i40e_xmit_pkts_simple;
@@ -3028,6 +3039,14 @@ i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue __rte_unused*rxq)
 
 uint16_t __attribute__((weak))
 i40e_xmit_fixed_burst_vec(void __rte_unused * tx_queue,
+			  struct rte_mbuf __rte_unused **tx_pkts,
+			  uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}
+
+uint16_t __attribute__((weak))
+i40e_xmit_pkts_vec_avx2(void __rte_unused * tx_queue,
 			  struct rte_mbuf __rte_unused **tx_pkts,
 			  uint16_t __rte_unused nb_pkts)
 {
