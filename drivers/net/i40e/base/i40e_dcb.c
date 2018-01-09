@@ -1277,6 +1277,67 @@ enum i40e_status_code i40e_dcb_config_to_lldp(u8 *lldpmib, u16 *miblen,
 
 
 /**
+ * _i40e_read_lldp_cfg - generic read of LLDP Configuration data from NVM
+ * @hw: pointer to the HW structure
+ * @lldp_cfg: pointer to hold lldp configuration variables
+ * @module: address of the module pointer
+ * @word_offset: offset of LLDP configuration
+ *
+ * Reads the LLDP configuration data from NVM using passed addresses
+ **/
+static enum i40e_status_code _i40e_read_lldp_cfg(struct i40e_hw *hw,
+					  struct i40e_lldp_variables *lldp_cfg,
+					  u8 module, u32 word_offset)
+{
+	u32 address, offset = (2 * word_offset);
+	enum i40e_status_code ret;
+	u16 mem;
+
+	ret = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
+	if (ret != I40E_SUCCESS)
+		return ret;
+
+	ret = i40e_aq_read_nvm(hw, 0x0, module * 2, sizeof(mem), &mem, true,
+			       NULL);
+	i40e_release_nvm(hw);
+	if (ret != I40E_SUCCESS)
+		return ret;
+
+	/* Check if this pointer needs to be read in word size or 4K sector
+	 * units.
+	 */
+	if (mem & I40E_PTR_TYPE)
+		address = (0x7FFF & mem) * 4096;
+	else
+		address = (0x7FFF & mem) * 2;
+
+	ret = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
+	if (ret != I40E_SUCCESS)
+		goto err_lldp_cfg;
+
+	ret = i40e_aq_read_nvm(hw, module, offset, sizeof(mem), &mem, true,
+			       NULL);
+	i40e_release_nvm(hw);
+	if (ret != I40E_SUCCESS)
+		return ret;
+
+	offset = mem + word_offset;
+	offset *= 2;
+
+	ret = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
+	if (ret != I40E_SUCCESS)
+		goto err_lldp_cfg;
+
+	ret = i40e_aq_read_nvm(hw, 0, address + offset,
+			       sizeof(struct i40e_lldp_variables), lldp_cfg,
+			       true, NULL);
+	i40e_release_nvm(hw);
+
+err_lldp_cfg:
+	return ret;
+}
+
+/**
  * i40e_read_lldp_cfg - read LLDP Configuration data from NVM
  * @hw: pointer to the HW structure
  * @lldp_cfg: pointer to hold lldp configuration variables
@@ -1287,21 +1348,34 @@ enum i40e_status_code i40e_read_lldp_cfg(struct i40e_hw *hw,
 					 struct i40e_lldp_variables *lldp_cfg)
 {
 	enum i40e_status_code ret = I40E_SUCCESS;
-	u32 offset = (2 * I40E_NVM_LLDP_CFG_PTR);
+	u32 mem;
 
 	if (!lldp_cfg)
 		return I40E_ERR_PARAM;
 
 	ret = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 	if (ret != I40E_SUCCESS)
-		goto err_lldp_cfg;
+		return ret;
 
-	ret = i40e_aq_read_nvm(hw, I40E_SR_EMP_MODULE_PTR, offset,
-			       sizeof(struct i40e_lldp_variables),
-			       (u8 *)lldp_cfg,
-			       true, NULL);
+	ret = i40e_aq_read_nvm(hw, I40E_SR_NVM_CONTROL_WORD, 0, sizeof(mem),
+			       &mem, true, NULL);
 	i40e_release_nvm(hw);
+	if (ret != I40E_SUCCESS)
+		return ret;
 
-err_lldp_cfg:
+	/* Read a bit that holds information whether we are running flat or
+	 * structured NVM image. Flat image has LLDP configuration in shadow
+	 * ram, so there is a need to pass different addresses for both cases.
+	 */
+	if (mem & I40E_SR_NVM_MAP_STRUCTURE_TYPE) {
+		/* Flat NVM case */
+		ret = _i40e_read_lldp_cfg(hw, lldp_cfg, I40E_SR_EMP_MODULE_PTR,
+					  I40E_SR_LLDP_CFG_PTR);
+	} else {
+		/* Good old structured NVM image */
+		ret = _i40e_read_lldp_cfg(hw, lldp_cfg, I40E_EMP_MODULE_PTR,
+					  I40E_NVM_LLDP_CFG_PTR);
+	}
+
 	return ret;
 }
