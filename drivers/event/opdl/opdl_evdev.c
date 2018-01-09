@@ -26,6 +26,65 @@
 static void
 opdl_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info);
 
+uint16_t
+opdl_event_enqueue_burst(void *port,
+			 const struct rte_event ev[],
+			 uint16_t num)
+{
+	struct opdl_port *p = port;
+
+	if (unlikely(!p->opdl->data->dev_started))
+		return 0;
+
+
+	/* either rx_enqueue or disclaim*/
+	return p->enq(p, ev, num);
+}
+
+uint16_t
+opdl_event_enqueue(void *port, const struct rte_event *ev)
+{
+	struct opdl_port *p = port;
+
+	if (unlikely(!p->opdl->data->dev_started))
+		return 0;
+
+
+	return p->enq(p, ev, 1);
+}
+
+uint16_t
+opdl_event_dequeue_burst(void *port,
+			 struct rte_event *ev,
+			 uint16_t num,
+			 uint64_t wait)
+{
+	struct opdl_port *p = (void *)port;
+
+	RTE_SET_USED(wait);
+
+	if (unlikely(!p->opdl->data->dev_started))
+		return 0;
+
+	/* This function pointer can point to tx_dequeue or claim*/
+	return p->deq(p, ev, num);
+}
+
+uint16_t
+opdl_event_dequeue(void *port,
+		   struct rte_event *ev,
+		   uint64_t wait)
+{
+	struct opdl_port *p = (void *)port;
+
+	if (unlikely(!p->opdl->data->dev_started))
+		return 0;
+
+	RTE_SET_USED(wait);
+
+	return p->deq(p, ev, 1);
+}
+
 static int
 opdl_port_link(struct rte_eventdev *dev,
 	       void *port,
@@ -650,6 +709,13 @@ opdl_probe(struct rte_vdev_device *vdev)
 			  (do_test ? "true" : "false"));
 
 	dev->dev_ops = &evdev_opdl_ops;
+
+	dev->enqueue = opdl_event_enqueue;
+	dev->enqueue_burst = opdl_event_enqueue_burst;
+	dev->enqueue_new_burst = opdl_event_enqueue_burst;
+	dev->enqueue_forward_burst = opdl_event_enqueue_burst;
+	dev->dequeue = opdl_event_dequeue;
+	dev->dequeue_burst = opdl_event_dequeue_burst;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
