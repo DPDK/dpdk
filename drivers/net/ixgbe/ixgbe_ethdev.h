@@ -195,6 +195,12 @@ struct ixgbe_hw_fdir_info {
 	bool mask_added; /* If already got mask from consistent filter */
 };
 
+struct ixgbe_rte_flow_rss_conf {
+	struct rte_eth_rss_conf rss_conf; /**< RSS parameters. */
+	uint16_t num; /**< Number of entries in queue[]. */
+	uint16_t queue[IXGBE_MAX_RX_QUEUE_NUM]; /**< Queues indices to use. */
+};
+
 /* structure for interrupt relative data */
 struct ixgbe_interrupt {
 	uint32_t flags;
@@ -311,6 +317,8 @@ struct ixgbe_filter_info {
 	struct ixgbe_5tuple_filter_list fivetuple_list;
 	/* store the SYN filter info */
 	uint32_t syn_info;
+	/* store the rss filter info */
+	struct ixgbe_rte_flow_rss_conf rss_info;
 };
 
 struct ixgbe_l2_tn_key {
@@ -690,6 +698,8 @@ void ixgbe_tm_conf_init(struct rte_eth_dev *dev);
 void ixgbe_tm_conf_uninit(struct rte_eth_dev *dev);
 int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
 			       uint16_t tx_rate);
+int ixgbe_config_rss_filter(struct rte_eth_dev *dev,
+		struct ixgbe_rte_flow_rss_conf *conf, bool add);
 
 static inline int
 ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,

@@ -5550,6 +5550,71 @@ ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 	}
 }
 
+int
+ixgbe_config_rss_filter(struct rte_eth_dev *dev,
+		struct ixgbe_rte_flow_rss_conf *conf, bool add)
+{
+	struct ixgbe_hw *hw;
+	uint32_t reta;
+	uint16_t i;
+	uint16_t j;
+	uint16_t sp_reta_size;
+	uint32_t reta_reg;
+	struct rte_eth_rss_conf rss_conf = conf->rss_conf;
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
+
+	if (!add) {
+		if (memcmp(conf, &filter_info->rss_info,
+			sizeof(struct ixgbe_rte_flow_rss_conf)) == 0) {
+			ixgbe_rss_disable(dev);
+			memset(&filter_info->rss_info, 0,
+				sizeof(struct ixgbe_rte_flow_rss_conf));
+			return 0;
+		}
+		return -EINVAL;
+	}
+
+	if (filter_info->rss_info.num)
+		return -EINVAL;
+	/* Fill in redirection table
+	 * The byte-swap is needed because NIC registers are in
+	 * little-endian order.
+	 */
+	reta = 0;
+	for (i = 0, j = 0; i < sp_reta_size; i++, j++) {
+		reta_reg = ixgbe_reta_reg_get(hw->mac.type, i);
+
+		if (j == conf->num)
+			j = 0;
+		reta = (reta << 8) | conf->queue[j];
+		if ((i & 3) == 3)
+			IXGBE_WRITE_REG(hw, reta_reg,
+					rte_bswap32(reta));
+	}
+
+	/* Configure the RSS key and the RSS protocols used to compute
+	 * the RSS hash of input packets.
+	 */
+	if ((rss_conf.rss_hf & IXGBE_RSS_OFFLOAD_ALL) == 0) {
+		ixgbe_rss_disable(dev);
+		return -EINVAL;
+	}
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = rss_intel_key; /* Default hash key */
+	ixgbe_hw_rss_hash_set(hw, &rss_conf);
+
+	rte_memcpy(&filter_info->rss_info,
+		conf, sizeof(struct ixgbe_rte_flow_rss_conf));
+
+	return 0;
+}
+
 /* Stubs needed for linkage when CONFIG_RTE_IXGBE_INC_VECTOR is set to 'n' */
 int __attribute__((weak))
 ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev __rte_unused *dev)

@@ -74,6 +74,11 @@ struct ixgbe_eth_l2_tunnel_conf_ele {
 	TAILQ_ENTRY(ixgbe_eth_l2_tunnel_conf_ele) entries;
 	struct rte_eth_l2_tunnel_conf filter_info;
 };
+/* rss filter list structure */
+struct ixgbe_rss_conf_ele {
+	TAILQ_ENTRY(ixgbe_rss_conf_ele) entries;
+	struct ixgbe_rte_flow_rss_conf filter_info;
+};
 /* ixgbe_flow memory list structure */
 struct ixgbe_flow_mem {
 	TAILQ_ENTRY(ixgbe_flow_mem) entries;
@@ -85,6 +90,7 @@ TAILQ_HEAD(ixgbe_ethertype_filter_list, ixgbe_ethertype_filter_ele);
 TAILQ_HEAD(ixgbe_syn_filter_list, ixgbe_eth_syn_filter_ele);
 TAILQ_HEAD(ixgbe_fdir_rule_filter_list, ixgbe_fdir_rule_ele);
 TAILQ_HEAD(ixgbe_l2_tunnel_filter_list, ixgbe_eth_l2_tunnel_conf_ele);
+TAILQ_HEAD(ixgbe_rss_filter_list, ixgbe_rss_conf_ele);
 TAILQ_HEAD(ixgbe_flow_mem_list, ixgbe_flow_mem);
 
 static struct ixgbe_ntuple_filter_list filter_ntuple_list;
@@ -92,6 +98,7 @@ static struct ixgbe_ethertype_filter_list filter_ethertype_list;
 static struct ixgbe_syn_filter_list filter_syn_list;
 static struct ixgbe_fdir_rule_filter_list filter_fdir_list;
 static struct ixgbe_l2_tunnel_filter_list filter_l2_tunnel_list;
+static struct ixgbe_rss_filter_list filter_rss_list;
 static struct ixgbe_flow_mem_list ixgbe_flow_list;
 
 /**
@@ -2742,6 +2749,109 @@ step_next:
 	return ret;
 }
 
+static int
+ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_action actions[],
+			struct ixgbe_rte_flow_rss_conf *rss_conf,
+			struct rte_flow_error *error)
+{
+	const struct rte_flow_action *act;
+	const struct rte_flow_action_rss *rss;
+	uint16_t n;
+
+	/**
+	 * rss only supports forwarding,
+	 * check if the first not void action is RSS.
+	 */
+	act = next_no_void_action(actions, NULL);
+	if (act->type != RTE_FLOW_ACTION_TYPE_RSS) {
+		memset(rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	rss = (const struct rte_flow_action_rss *)act->conf;
+
+	if (!rss || !rss->num) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act,
+			   "no valid queues");
+		return -rte_errno;
+	}
+
+	for (n = 0; n < rss->num; n++) {
+		if (rss->queue[n] >= dev->data->nb_rx_queues) {
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "queue id > max number of queues");
+			return -rte_errno;
+		}
+	}
+	if (rss->rss_conf)
+		rss_conf->rss_conf = *rss->rss_conf;
+	else
+		rss_conf->rss_conf.rss_hf = IXGBE_RSS_OFFLOAD_ALL;
+
+	for (n = 0; n < rss->num; ++n)
+		rss_conf->queue[n] = rss->queue[n];
+	rss_conf->num = rss->num;
+
+	/* check if the next not void item is END */
+	act = next_no_void_action(actions, act);
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		memset(rss_conf, 0, sizeof(struct rte_eth_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	/* parse attr */
+	/* must be input direction */
+	if (!attr->ingress) {
+		memset(rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+				   attr, "Only support ingress.");
+		return -rte_errno;
+	}
+
+	/* not supported */
+	if (attr->egress) {
+		memset(rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+				   attr, "Not support egress.");
+		return -rte_errno;
+	}
+
+	if (attr->priority > 0xFFFF) {
+		memset(rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+				   attr, "Error priority.");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+/* remove the rss filter */
+static void
+ixgbe_clear_rss_filter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+
+	if (filter_info->rss_info.num)
+		ixgbe_config_rss_filter(dev, &filter_info->rss_info, FALSE);
+}
+
 void
 ixgbe_filterlist_init(void)
 {
@@ -2750,6 +2860,7 @@ ixgbe_filterlist_init(void)
 	TAILQ_INIT(&filter_syn_list);
 	TAILQ_INIT(&filter_fdir_list);
 	TAILQ_INIT(&filter_l2_tunnel_list);
+	TAILQ_INIT(&filter_rss_list);
 	TAILQ_INIT(&ixgbe_flow_list);
 }
 
@@ -2762,6 +2873,7 @@ ixgbe_filterlist_flush(void)
 	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
+	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 
 	while ((ntuple_filter_ptr = TAILQ_FIRST(&filter_ntuple_list))) {
 		TAILQ_REMOVE(&filter_ntuple_list,
@@ -2798,6 +2910,13 @@ ixgbe_filterlist_flush(void)
 		rte_free(fdir_rule_ptr);
 	}
 
+	while ((rss_filter_ptr = TAILQ_FIRST(&filter_rss_list))) {
+		TAILQ_REMOVE(&filter_rss_list,
+				 rss_filter_ptr,
+				 entries);
+		rte_free(rss_filter_ptr);
+	}
+
 	while ((ixgbe_flow_mem_ptr = TAILQ_FIRST(&ixgbe_flow_list))) {
 		TAILQ_REMOVE(&ixgbe_flow_list,
 				 ixgbe_flow_mem_ptr,
@@ -2828,12 +2947,14 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	struct rte_eth_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	struct ixgbe_rte_flow_rss_conf rss_conf;
 	struct rte_flow *flow = NULL;
 	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
 	struct ixgbe_ethertype_filter_ele *ethertype_filter_ptr;
 	struct ixgbe_eth_syn_filter_ele *syn_filter_ptr;
 	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
+	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
 	uint8_t first_mask = FALSE;
 
@@ -3034,6 +3155,29 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		}
 	}
 
+	memset(&rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
+	ret = ixgbe_parse_rss_filter(dev, attr,
+					actions, &rss_conf, error);
+	if (!ret) {
+		ret = ixgbe_config_rss_filter(dev, &rss_conf, TRUE);
+		if (!ret) {
+			rss_filter_ptr = rte_zmalloc("ixgbe_rss_filter",
+				sizeof(struct ixgbe_rss_conf_ele), 0);
+			if (!rss_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+			rte_memcpy(&rss_filter_ptr->filter_info,
+				&rss_conf,
+				sizeof(struct ixgbe_rte_flow_rss_conf));
+			TAILQ_INSERT_TAIL(&filter_rss_list,
+				rss_filter_ptr, entries);
+			flow->rule = rss_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_HASH;
+			return flow;
+		}
+	}
+
 out:
 	TAILQ_REMOVE(&ixgbe_flow_list,
 		ixgbe_flow_mem_ptr, entries);
@@ -3062,6 +3206,7 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 	struct rte_eth_syn_filter syn_filter;
 	struct rte_eth_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_fdir_rule fdir_rule;
+	struct ixgbe_rte_flow_rss_conf rss_conf;
 	int ret;
 
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
@@ -3091,6 +3236,12 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 	memset(&l2_tn_filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
 	ret = ixgbe_parse_l2_tn_filter(dev, attr, pattern,
 				actions, &l2_tn_filter, error);
+	if (!ret)
+		return 0;
+
+	memset(&rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
+	ret = ixgbe_parse_rss_filter(dev, attr,
+					actions, &rss_conf, error);
 
 	return ret;
 }
@@ -3117,6 +3268,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 
 	switch (filter_type) {
 	case RTE_ETH_FILTER_NTUPLE:
@@ -3185,6 +3337,17 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 			rte_free(l2_tn_filter_ptr);
 		}
 		break;
+	case RTE_ETH_FILTER_HASH:
+		rss_filter_ptr = (struct ixgbe_rss_conf_ele *)
+				pmd_flow->rule;
+		ret = ixgbe_config_rss_filter(dev,
+					&rss_filter_ptr->filter_info, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&filter_rss_list,
+				rss_filter_ptr, entries);
+			rte_free(rss_filter_ptr);
+		}
+		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 			    filter_type);
@@ -3235,6 +3398,8 @@ ixgbe_flow_flush(struct rte_eth_dev *dev,
 					NULL, "Failed to flush rule");
 		return ret;
 	}
+
+	ixgbe_clear_rss_filter(dev);
 
 	ixgbe_filterlist_flush();
 

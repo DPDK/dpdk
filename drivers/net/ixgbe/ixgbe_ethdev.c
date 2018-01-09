@@ -8313,6 +8313,18 @@ ixgbe_l2_tn_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore rss filter */
+static inline void
+ixgbe_rss_filter_restore(struct rte_eth_dev *dev)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+
+	if (filter_info->rss_info.num)
+		ixgbe_config_rss_filter(dev,
+			&filter_info->rss_info, TRUE);
+}
+
 static int
 ixgbe_filter_restore(struct rte_eth_dev *dev)
 {
@@ -8321,6 +8333,7 @@ ixgbe_filter_restore(struct rte_eth_dev *dev)
 	ixgbe_syn_filter_restore(dev);
 	ixgbe_fdir_filter_restore(dev);
 	ixgbe_l2_tn_filter_restore(dev);
+	ixgbe_rss_filter_restore(dev);
 
 	return 0;
 }

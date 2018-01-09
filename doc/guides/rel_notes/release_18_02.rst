@@ -41,6 +41,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added the ixgbe ethernet driver to support RSS with flow API.**
+
+  Rte_flow actually defined to include RSS, but till now, RSS is out of
+  rte_flow. This patch is to support igb and ixgbe NIC with existing RSS
+  configuration using rte_flow API.
+
 * **Add MAC loopback support for i40e.**
 
   Add MAC loopback support for i40e in order to support test task asked by
