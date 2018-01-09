@@ -294,6 +294,28 @@ struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
  * @see rte_event_dequeue_burst() rte_event_enqueue_burst()
  */
 
+#define RTE_EVENT_DEV_CAP_NONSEQ_MODE         (1ULL << 6)
+/**< Event device is capable of operating in none sequential mode. The path
+ * of the event is not necessary to be sequential. Application can change
+ * the path of event at runtime. If the flag is not set, then event each event
+ * will follow a path from queue 0 to queue 1 to queue 2 etc. If the flag is
+ * set, events may be sent to queues in any order. If the flag is not set, the
+ * eventdev will return an error when the application enqueues an event for a
+ * qid which is not the next in the sequence.
+ */
+
+#define RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK   (1ULL << 7)
+/**< Event device is capable of configuring the queue/port link at runtime.
+ * If the flag is not set, the eventdev queue/port link is only can be
+ * configured during  initialization.
+ */
+
+#define RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT (1ULL << 8)
+/**< Event device is capable of setting up the link between multiple queue
+ * with single port. If the flag is not set, the eventdev can only map a
+ * single queue to each port or map a single queue to many port.
+ */
+
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
 /**< Highest priority expressed across eventdev subsystem
