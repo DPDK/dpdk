@@ -3952,6 +3952,69 @@ i40e_get_cap(struct i40e_hw *hw)
 	return ret;
 }
 
+#define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF	4
+#define QUEUE_NUM_PER_VF_ARG			"queue-num-per-vf"
+RTE_PMD_REGISTER_PARAM_STRING(net_i40e,	QUEUE_NUM_PER_VF_ARG "=1|2|4|8|16");
+
+static int i40e_pf_parse_vf_queue_number_handler(const char *key,
+		const char *value,
+		void *opaque)
+{
+	struct i40e_pf *pf;
+	unsigned long num;
+	char *end;
+
+	pf = (struct i40e_pf *)opaque;
+	RTE_SET_USED(key);
+
+	errno = 0;
+	num = strtoul(value, &end, 0);
+	if (errno != 0 || end == value || *end != 0) {
+		PMD_DRV_LOG(WARNING, "Wrong VF queue number = %s, Now it is "
+			    "kept the value = %hu", value, pf->vf_nb_qp_max);
+		return -(EINVAL);
+	}
+
+	if (num <= I40E_MAX_QP_NUM_PER_VF && rte_is_power_of_2(num))
+		pf->vf_nb_qp_max = (uint16_t)num;
+	else
+		/* here return 0 to make next valid same argument work */
+		PMD_DRV_LOG(WARNING, "Wrong VF queue number = %lu, it must be "
+			    "power of 2 and equal or less than 16 !, Now it is "
+			    "kept the value = %hu", num, pf->vf_nb_qp_max);
+
+	return 0;
+}
+
+static int i40e_pf_config_vf_rxq_number(struct rte_eth_dev *dev)
+{
+	static const char * const valid_keys[] = {QUEUE_NUM_PER_VF_ARG, NULL};
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct rte_kvargs *kvlist;
+
+	/* set default queue number per VF as 4 */
+	pf->vf_nb_qp_max = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF;
+
+	if (dev->device->devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(dev->device->devargs->args, valid_keys);
+	if (kvlist == NULL)
+		return -(EINVAL);
+
+	if (rte_kvargs_count(kvlist, QUEUE_NUM_PER_VF_ARG) > 1)
+		PMD_DRV_LOG(WARNING, "More than one argument \"%s\" and only "
+			    "the first invalid or last valid one is used !",
+			    QUEUE_NUM_PER_VF_ARG);
+
+	rte_kvargs_process(kvlist, QUEUE_NUM_PER_VF_ARG,
+			   i40e_pf_parse_vf_queue_number_handler, pf);
+
+	rte_kvargs_free(kvlist);
+
+	return 0;
+}
+
 static int
 i40e_pf_parameter_init(struct rte_eth_dev *dev)
 {
@@ -3964,6 +4027,9 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "HW configuration doesn't support SRIOV");
 		return -EINVAL;
 	}
+
+	i40e_pf_config_vf_rxq_number(dev);
+
 	/* Add the parameter init for LFC */
 	pf->fc_conf.pause_time = I40E_DEFAULT_PAUSE_TIME;
 	pf->fc_conf.high_water[I40E_MAX_TRAFFIC_CLASS] = I40E_DEFAULT_HIGH_WATER;
@@ -3973,7 +4039,6 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 	pf->max_num_vsi = hw->func_caps.num_vsis;
 	pf->lan_nb_qp_max = RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF;
 	pf->vmdq_nb_qp_max = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
-	pf->vf_nb_qp_max = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF;
 
 	/* FDir queue/VSI allocation */
 	pf->fdir_qp_offset = 0;
@@ -4003,7 +4068,7 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 	pf->vf_qp_offset = pf->lan_qp_offset + pf->lan_nb_qps;
 	if (hw->func_caps.sr_iov_1_1 && pci_dev->max_vfs) {
 		pf->flags |= I40E_FLAG_SRIOV;
-		pf->vf_nb_qps = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF;
+		pf->vf_nb_qps = pf->vf_nb_qp_max;
 		pf->vf_num = pci_dev->max_vfs;
 		PMD_DRV_LOG(DEBUG,
 			"%u VF VSIs, %u queues per VF VSI, in total %u queues",

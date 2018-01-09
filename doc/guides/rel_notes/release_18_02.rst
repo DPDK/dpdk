@@ -53,6 +53,14 @@ New Features
   users. According to the device configuration, it will setup TX->RX loopback
   link or not.
 
+* **Add the support of run time determination of number of queues per i40e VF**
+
+  The number of queue per VF is determined by its host PF. If the PCI address
+  of an i40e PF is aaaa:bb.cc, the number of queues per VF can be configured
+  with EAL parameter like -w aaaa:bb.cc,queue-num-per-vf=n. The value n can be
+  1, 2, 4, 8 or 16. If no such parameter is configured, the number of queues
+  per VF is 4 by default.
+
 * **Added NVGRE and UDP tunnels support in Solarflare network PMD.**
 
   Added support for NVGRE, VXLAN and GENEVE tunnels.

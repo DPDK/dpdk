@@ -115,10 +115,6 @@ Please note that enabling debugging options may affect system performance.
 
   Number of queues reserved for PF.
 
-- ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF`` (default ``4``)
-
-  Number of queues reserved for each SR-IOV VF.
-
 - ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM`` (default ``4``)
 
   Number of queues reserved for each VMDQ Pool.
@@ -126,6 +122,18 @@ Please note that enabling debugging options may affect system performance.
 - ``CONFIG_RTE_LIBRTE_I40E_ITR_INTERVAL`` (default ``-1``)
 
   Interrupt Throttling interval.
+
+
+Runtime Config Options
+~~~~~~~~~~~~~~~~~~~~~~
+
+- ``Number of Queues per VF`` (default ``4``)
+
+  The number of queue per VF is determined by its host PF. If the PCI address
+  of an i40e PF is aaaa:bb.cc, the number of queues per VF can be configured
+  with EAL parameter like -w aaaa:bb.cc,queue-num-per-vf=n. The value n can be
+  1, 2, 4, 8 or 16. If no such parameter is configured, the number of queues
+  per VF is 4 by default.
 
 
 Driver compilation and testing
