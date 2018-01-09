@@ -638,6 +638,19 @@ sfc_ef10_rx_qdesc_status(__rte_unused struct sfc_dp_rxq *dp_rxq,
 }
 
 
+static sfc_dp_rx_get_dev_info_t sfc_ef10_rx_get_dev_info;
+static void
+sfc_ef10_rx_get_dev_info(struct rte_eth_dev_info *dev_info)
+{
+	/*
+	 * Number of descriptors just defines maximum number of pushed
+	 * descriptors (fill level).
+	 */
+	dev_info->rx_desc_lim.nb_min = SFC_RX_REFILL_BULK;
+	dev_info->rx_desc_lim.nb_align = SFC_RX_REFILL_BULK;
+}
+
+
 static sfc_dp_rx_qsize_up_rings_t sfc_ef10_rx_qsize_up_rings;
 static int
 sfc_ef10_rx_qsize_up_rings(uint16_t nb_rx_desc,
@@ -645,9 +658,19 @@ sfc_ef10_rx_qsize_up_rings(uint16_t nb_rx_desc,
 			   unsigned int *evq_entries,
 			   unsigned int *rxq_max_fill_level)
 {
-	*rxq_entries = nb_rx_desc;
-	*evq_entries = nb_rx_desc;
-	*rxq_max_fill_level = SFC_EF10_RXQ_LIMIT(*rxq_entries);
+	/*
+	 * rte_ethdev API guarantees that the number meets min, max and
+	 * alignment requirements.
+	 */
+	if (nb_rx_desc <= EFX_RXQ_MINNDESCS)
+		*rxq_entries = EFX_RXQ_MINNDESCS;
+	else
+		*rxq_entries = rte_align32pow2(nb_rx_desc);
+
+	*evq_entries = *rxq_entries;
+
+	*rxq_max_fill_level = RTE_MIN(nb_rx_desc,
+				      SFC_EF10_RXQ_LIMIT(*evq_entries));
 	return 0;
 }
 
@@ -809,6 +832,7 @@ struct sfc_dp_rx sfc_ef10_rx = {
 	},
 	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS |
 				  SFC_DP_RX_FEAT_TUNNELS,
+	.get_dev_info		= sfc_ef10_rx_get_dev_info,
 	.qsize_up_rings		= sfc_ef10_rx_qsize_up_rings,
 	.qcreate		= sfc_ef10_rx_qcreate,
 	.qdestroy		= sfc_ef10_rx_qdestroy,

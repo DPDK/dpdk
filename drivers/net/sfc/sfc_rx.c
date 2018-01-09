@@ -933,6 +933,10 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 				       &rxq_max_fill_level);
 	if (rc != 0)
 		goto fail_size_up_rings;
+	SFC_ASSERT(rxq_entries >= EFX_RXQ_MINNDESCS);
+	SFC_ASSERT(rxq_entries <= EFX_RXQ_MAXNDESCS);
+	SFC_ASSERT(rxq_entries >= nb_rx_desc);
+	SFC_ASSERT(rxq_max_fill_level <= nb_rx_desc);
 
 	rc = sfc_rx_qcheck_conf(sa, rxq_max_fill_level, rx_conf);
 	if (rc != 0)

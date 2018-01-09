@@ -170,6 +170,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (sa->tso)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
 
+	/* Initialize to hardware limits */
 	dev_info->rx_desc_lim.nb_max = EFX_RXQ_MAXNDESCS;
 	dev_info->rx_desc_lim.nb_min = EFX_RXQ_MINNDESCS;
 	/* The RXQ hardware requires that the descriptor count is a power
@@ -184,6 +185,9 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 * of 2, but tx_desc_lim cannot properly describe that constraint
 	 */
 	dev_info->tx_desc_lim.nb_align = EFX_TXQ_MINNDESCS;
+
+	if (sa->dp_rx->get_dev_info != NULL)
+		sa->dp_rx->get_dev_info(dev_info);
 }
 
 static const uint32_t *

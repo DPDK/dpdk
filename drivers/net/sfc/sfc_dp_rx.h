@@ -103,6 +103,13 @@ struct sfc_dp_rx_qcreate_info {
 };
 
 /**
+ * Get Rx datapath specific device info.
+ *
+ * @param dev_info		Device info to be adjusted
+ */
+typedef void (sfc_dp_rx_get_dev_info_t)(struct rte_eth_dev_info *dev_info);
+
+/**
  * Get size of receive and event queue rings by the number of Rx
  * descriptors.
  *
@@ -186,6 +193,7 @@ struct sfc_dp_rx {
 #define SFC_DP_RX_FEAT_SCATTER			0x1
 #define SFC_DP_RX_FEAT_MULTI_PROCESS		0x2
 #define SFC_DP_RX_FEAT_TUNNELS			0x4
+	sfc_dp_rx_get_dev_info_t		*get_dev_info;
 	sfc_dp_rx_qsize_up_rings_t		*qsize_up_rings;
 	sfc_dp_rx_qcreate_t			*qcreate;
 	sfc_dp_rx_qdestroy_t			*qdestroy;
