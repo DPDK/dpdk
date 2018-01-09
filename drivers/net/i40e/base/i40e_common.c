@@ -6688,6 +6688,64 @@ phy_blinking_end:
 }
 
 /**
+ * i40e_led_get_reg - read LED register
+ * @hw: pointer to the HW structure
+ * @led_addr: LED register address
+ * @reg_val: read register value
+ **/
+static enum i40e_status_code i40e_led_get_reg(struct i40e_hw *hw, u16 led_addr,
+					      u32 *reg_val)
+{
+	enum i40e_status_code status;
+	u8 phy_addr = 0;
+
+	*reg_val = 0;
+	if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE) {
+		status = i40e_aq_get_phy_register(hw,
+						I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
+						I40E_PHY_COM_REG_PAGE,
+						I40E_PHY_LED_PROV_REG_1,
+						reg_val, NULL);
+	} else {
+		phy_addr = i40e_get_phy_address(hw, hw->port);
+		status = i40e_read_phy_register_clause45(hw,
+							 I40E_PHY_COM_REG_PAGE,
+							 led_addr, phy_addr,
+							 (u16 *)reg_val);
+	}
+	return status;
+}
+
+/**
+ * i40e_led_set_reg - write LED register
+ * @hw: pointer to the HW structure
+ * @led_addr: LED register address
+ * @reg_val: register value to write
+ **/
+static enum i40e_status_code i40e_led_set_reg(struct i40e_hw *hw, u16 led_addr,
+					      u32 reg_val)
+{
+	enum i40e_status_code status;
+	u8 phy_addr = 0;
+
+	if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE) {
+		status = i40e_aq_set_phy_register(hw,
+						I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
+						I40E_PHY_COM_REG_PAGE,
+						I40E_PHY_LED_PROV_REG_1,
+						reg_val, NULL);
+	} else {
+		phy_addr = i40e_get_phy_address(hw, hw->port);
+		status = i40e_write_phy_register_clause45(hw,
+							  I40E_PHY_COM_REG_PAGE,
+							  led_addr, phy_addr,
+							  (u16)reg_val);
+	}
+
+	return status;
+}
+
+/**
  * i40e_led_get_phy - return current on/off mode
  * @hw: pointer to the hw struct
  * @led_addr: address of led register to use
@@ -6699,43 +6757,35 @@ enum i40e_status_code i40e_led_get_phy(struct i40e_hw *hw, u16 *led_addr,
 {
 	enum i40e_status_code status = I40E_SUCCESS;
 	u16 gpio_led_port;
+	u32 reg_val_aq;
+	u16 temp_addr;
 	u8 phy_addr = 0;
 	u16 reg_val;
-	u16 temp_addr;
-	u8 port_num;
-	u32 i;
-	u32 reg_val_aq;
 
 	if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE) {
-		status =
-		      i40e_aq_get_phy_register(hw,
-					       I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
-					       I40E_PHY_COM_REG_PAGE,
-					       I40E_PHY_LED_PROV_REG_1,
-					       &reg_val_aq, NULL);
-		if (status)
-			return status;
-		*val = (u16)reg_val_aq;
-	} else {
-		temp_addr = I40E_PHY_LED_PROV_REG_1;
-		i = rd32(hw, I40E_PFGEN_PORTNUM);
-		port_num = (u8)(i & I40E_PFGEN_PORTNUM_PORT_NUM_MASK);
-		phy_addr = i40e_get_phy_address(hw, port_num);
-
-		for (gpio_led_port = 0; gpio_led_port < 3; gpio_led_port++,
-		     temp_addr++) {
-			status =
-			 i40e_read_phy_register_clause45(hw,
+		status = i40e_aq_get_phy_register(hw,
+						I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
+						I40E_PHY_COM_REG_PAGE,
+						I40E_PHY_LED_PROV_REG_1,
+						&reg_val_aq, NULL);
+		if (status == I40E_SUCCESS)
+			*val = (u16)reg_val_aq;
+		return status;
+	}
+	temp_addr = I40E_PHY_LED_PROV_REG_1;
+	phy_addr = i40e_get_phy_address(hw, hw->port);
+	for (gpio_led_port = 0; gpio_led_port < 3; gpio_led_port++,
+	     temp_addr++) {
+		status = i40e_read_phy_register_clause45(hw,
 							 I40E_PHY_COM_REG_PAGE,
 							 temp_addr, phy_addr,
 							 &reg_val);
-			if (status)
-				return status;
-			*val = reg_val;
-			if (reg_val & I40E_PHY_LED_LINK_MODE_MASK) {
-				*led_addr = temp_addr;
-				break;
-			}
+		if (status)
+			return status;
+		*val = reg_val;
+		if (reg_val & I40E_PHY_LED_LINK_MODE_MASK) {
+			*led_addr = temp_addr;
+			break;
 		}
 	}
 	return status;
@@ -6755,113 +6805,35 @@ enum i40e_status_code i40e_led_set_phy(struct i40e_hw *hw, bool on,
 	enum i40e_status_code status = I40E_SUCCESS;
 	u32 led_ctl = 0;
 	u32 led_reg = 0;
-	u8 phy_addr = 0;
-	u8 port_num;
-	u32 i;
 
-	if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE) {
-		status =
-		      i40e_aq_get_phy_register(hw,
-					       I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
-					       I40E_PHY_COM_REG_PAGE,
-					       I40E_PHY_LED_PROV_REG_1,
-					       &led_reg, NULL);
-	} else {
-		i = rd32(hw, I40E_PFGEN_PORTNUM);
-		port_num = (u8)(i & I40E_PFGEN_PORTNUM_PORT_NUM_MASK);
-		phy_addr = i40e_get_phy_address(hw, port_num);
-		status = i40e_read_phy_register_clause45(hw,
-							 I40E_PHY_COM_REG_PAGE,
-							 led_addr, phy_addr,
-							 (u16 *)&led_reg);
-	}
+	status = i40e_led_get_reg(hw, led_addr, &led_reg);
 	if (status)
 		return status;
 	led_ctl = led_reg;
 	if (led_reg & I40E_PHY_LED_LINK_MODE_MASK) {
 		led_reg = 0;
-		if (hw->aq.api_maj_ver == I40E_FW_API_VERSION_MAJOR &&
-		    hw->aq.api_min_ver >= I40E_MINOR_VER_GET_LINK_INFO_XL710) {
-			status = i40e_aq_set_phy_register(hw,
-					I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
-					I40E_PHY_COM_REG_PAGE,
-					I40E_PHY_LED_PROV_REG_1,
-					led_reg, NULL);
-		} else {
-			status = i40e_write_phy_register_clause45(hw,
-							I40E_PHY_COM_REG_PAGE,
-							led_addr, phy_addr,
-							(u16)led_reg);
-		}
+		status = i40e_led_set_reg(hw, led_addr, led_reg);
 		if (status)
 			return status;
 	}
-	if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE) {
-		status =
-		      i40e_aq_get_phy_register(hw,
-					       I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
-					       I40E_PHY_COM_REG_PAGE,
-					       I40E_PHY_LED_PROV_REG_1,
-					       &led_reg, NULL);
-	} else {
-		status = i40e_read_phy_register_clause45(hw,
-							 I40E_PHY_COM_REG_PAGE,
-							 led_addr, phy_addr,
-							 (u16 *)&led_reg);
-	}
+	status = i40e_led_get_reg(hw, led_addr, &led_reg);
 	if (status)
 		goto restore_config;
 	if (on)
 		led_reg = I40E_PHY_LED_MANUAL_ON;
 	else
 		led_reg = 0;
-
-	if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE) {
-		status =
-		      i40e_aq_set_phy_register(hw,
-					       I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
-					       I40E_PHY_COM_REG_PAGE,
-					       I40E_PHY_LED_PROV_REG_1,
-					       led_reg, NULL);
-	} else {
-		status =
-		    i40e_write_phy_register_clause45(hw, I40E_PHY_COM_REG_PAGE,
-						     led_addr, phy_addr,
-						     (u16)led_reg);
-	}
+	status = i40e_led_set_reg(hw, led_addr, led_reg);
 	if (status)
 		goto restore_config;
 	if (mode & I40E_PHY_LED_MODE_ORIG) {
 		led_ctl = (mode & I40E_PHY_LED_MODE_MASK);
-		if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE) {
-			status = i40e_aq_set_phy_register(hw,
-					I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
-					I40E_PHY_COM_REG_PAGE,
-					I40E_PHY_LED_PROV_REG_1,
-					led_ctl, NULL);
-		} else {
-			status = i40e_write_phy_register_clause45(hw,
-							 I40E_PHY_COM_REG_PAGE,
-							 led_addr, phy_addr,
-							 (u16)led_ctl);
-		}
+		status = i40e_led_set_reg(hw, led_addr, led_ctl);
 	}
 	return status;
+
 restore_config:
-	if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE) {
-		status =
-		      i40e_aq_set_phy_register(hw,
-					       I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
-					       I40E_PHY_COM_REG_PAGE,
-					       I40E_PHY_LED_PROV_REG_1,
-					       led_ctl, NULL);
-	} else {
-		status =
-			i40e_write_phy_register_clause45(hw,
-							 I40E_PHY_COM_REG_PAGE,
-							 led_addr, phy_addr,
-							 (u16)led_ctl);
-	}
+	status = i40e_led_set_reg(hw, led_addr, led_ctl);
 	return status;
 }
 #endif /* PF_DRIVER */
