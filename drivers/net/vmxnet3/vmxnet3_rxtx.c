@@ -674,6 +674,8 @@ vmxnet3_rx_offload(const Vmxnet3_RxCompDesc *rcd, struct rte_mbuf *rxm)
 			if ((rcd->tcp || rcd->udp) && !rcd->tuc)
 				rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 		}
+	} else {
+		rxm->packet_type = RTE_PTYPE_UNKNOWN;
 	}
 }
 
