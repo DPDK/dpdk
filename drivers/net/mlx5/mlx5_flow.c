@@ -778,7 +778,7 @@ priv_flow_convert_actions(struct priv *priv,
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_FLAG) {
 			parser->mark = 1;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_COUNT &&
-			   priv->config.counter_set_supported) {
+			   priv->config.flow_counter_en) {
 			parser->count = 1;
 		} else {
 			goto exit_action_not_supported;

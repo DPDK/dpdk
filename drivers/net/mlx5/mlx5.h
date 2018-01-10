@@ -110,7 +110,7 @@ struct mlx5_dev_config {
 	unsigned int sriov:1; /* This is a VF or PF with VF devices. */
 	unsigned int mps:2; /* Multi-packet send supported mode. */
 	unsigned int tunnel_en:1; /* Whether tunnel is supported. */
-	unsigned int counter_set_supported:1; /* Counter set is supported. */
+	unsigned int flow_counter_en:1; /* Whether flow counter is supported. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
 	unsigned int tso:1; /* Whether TSO is enabled. */
 	unsigned int tx_vec_en:1; /* Tx vector is enabled. */

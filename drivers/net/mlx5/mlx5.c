@@ -759,8 +759,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		      (config.hw_csum_l2tun ? "" : "not "));
 
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
-		config.counter_set_supported =
-					!!(device_attr.max_counter_sets);
+		config.flow_counter_en = !!(device_attr.max_counter_sets);
 		ibv_describe_counter_set(ctx, 0, &cs_desc);
 		DEBUG("counter type = %d, num of cs = %ld, attributes = %d",
 		      cs_desc.counter_type, cs_desc.num_of_cs,
