@@ -509,3 +509,8 @@ The commandline options are:
     configured flow rules only (see flow command).
 
     Ports that do not support this mode are automatically discarded.
+
+*   ``--tx-offloads=0xXXXXXXXX``
+
+    Set the hexadecimal bitmask of TX queue offloads.
+    The default value is 0.

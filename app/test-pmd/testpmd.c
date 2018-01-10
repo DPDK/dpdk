@@ -316,6 +316,8 @@ struct rte_eth_rxmode rx_mode = {
 	.ignore_offload_bitfield = 1,
 };
 
+struct rte_eth_txmode tx_mode;
+
 struct rte_fdir_conf fdir_conf = {
 	.mode = RTE_FDIR_MODE_NONE,
 	.pballoc = RTE_FDIR_PBALLOC_64K,
@@ -576,6 +578,8 @@ init_config(void)
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
+		/* Apply default Tx configuration for all ports */
+		port->dev_conf.txmode = tx_mode;
 		rte_eth_dev_info_get(pid, &port->dev_info);
 
 		if (numa_support) {
