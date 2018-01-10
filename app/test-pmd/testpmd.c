@@ -1470,6 +1470,9 @@ start_port(portid_t pid)
 		}
 		if (port->need_reconfig_queues > 0) {
 			port->need_reconfig_queues = 0;
+			port->tx_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
+			/* Apply Tx offloads configuration */
+			port->tx_conf.offloads = port->dev_conf.txmode.offloads;
 			/* setup tx queues */
 			for (qi = 0; qi < nb_txq; qi++) {
 				if ((numa_support) &&
