@@ -1197,6 +1197,8 @@ struct qman_fq {
 	 */
 	spinlock_t fqlock;
 	u32 fqid;
+	u32 fqid_le;
+
 	/* DPDK Interface */
 	void *dpaa_intf;
 
