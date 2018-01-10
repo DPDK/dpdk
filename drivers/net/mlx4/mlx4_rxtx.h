@@ -180,6 +180,7 @@ uint16_t mlx4_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
 
 /* mlx4_txq.c */
 
+uint64_t mlx4_get_tx_port_offloads(struct priv *priv);
 int mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			uint16_t desc, unsigned int socket,
 			const struct rte_eth_txconf *conf);
