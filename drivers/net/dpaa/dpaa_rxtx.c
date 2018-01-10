@@ -639,7 +639,7 @@ tx_on_external_pool(struct qman_fq *txq, struct rte_mbuf *mbuf,
 		return 1;
 	}
 
-	DPAA_MBUF_TO_CONTIG_FD(mbuf, fd_arr, dpaa_intf->bp_info->bpid);
+	DPAA_MBUF_TO_CONTIG_FD(dmable_mbuf, fd_arr, dpaa_intf->bp_info->bpid);
 
 	return 0;
 }
