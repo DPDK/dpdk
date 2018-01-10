@@ -43,6 +43,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)
 LDLIBS += -lrte_pmd_bond
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_DPAA_PMD),y)
+LDLIBS += -lrte_pmd_dpaa
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
 LDLIBS += -lrte_pmd_ixgbe
 endif
