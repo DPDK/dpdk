@@ -718,8 +718,8 @@ Software Eventdev PMD
 M: Harry van Haaren <harry.van.haaren@intel.com>
 F: drivers/event/sw/
 F: doc/guides/eventdevs/sw.rst
-F: examples/eventdev_pipeline_sw_pmd/
-F: doc/guides/sample_app_ug/eventdev_pipeline_sw_pmd.rst
+F: examples/eventdev_pipeline/
+F: doc/guides/sample_app_ug/eventdev_pipeline.rst
 
 Software OPDL Eventdev PMD
 M: Liang Ma <liang.j.ma@intel.com>

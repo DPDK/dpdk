@@ -103,6 +103,6 @@ $(info vm_power_manager requires libvirt >= 0.9.3)
 endif
 endif
 
-DIRS-y += eventdev_pipeline_sw_pmd
+DIRS-y += eventdev_pipeline
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk

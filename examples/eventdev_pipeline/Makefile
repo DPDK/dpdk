@@ -11,7 +11,7 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # binary name
-APP = eventdev_pipeline_sw_pmd
+APP = eventdev_pipeline
 
 # all source are stored in SRCS-y
 SRCS-y := main.c
