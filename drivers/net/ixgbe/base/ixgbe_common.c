@@ -4584,10 +4584,11 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 				 u32 length, u32 timeout, bool return_data)
 {
 	u32 hdr_size = sizeof(struct ixgbe_hic_hdr);
-	u16 dword_len;
+	struct ixgbe_hic_hdr *resp = (struct ixgbe_hic_hdr *)buffer;
 	u16 buf_len;
 	s32 status;
 	u32 bi;
+	u32 dword_len;
 
 	DEBUGFUNC("ixgbe_host_interface_command");
 
@@ -4617,8 +4618,23 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 		IXGBE_LE32_TO_CPUS((uintptr_t)&buffer[bi]);
 	}
 
-	/* If there is any thing in data position pull it in */
-	buf_len = ((struct ixgbe_hic_hdr *)buffer)->buf_len;
+	/*
+	 * If there is any thing in data position pull it in
+	 * Read Flash command requires reading buffer length from
+	 * two byes instead of one byte
+	 */
+	if (resp->cmd == 0x30) {
+		for (; bi < dword_len + 2; bi++) {
+			buffer[bi] = IXGBE_READ_REG_ARRAY(hw, IXGBE_FLEX_MNG,
+							  bi);
+			IXGBE_LE32_TO_CPUS(&buffer[bi]);
+		}
+		buf_len = (((u16)(resp->cmd_or_resp.ret_status) << 3)
+				  & 0xF00) | resp->buf_len;
+		hdr_size += (2 << 2);
+	} else {
+		buf_len = resp->buf_len;
+	}
 	if (!buf_len)
 		goto rel_out;
 
