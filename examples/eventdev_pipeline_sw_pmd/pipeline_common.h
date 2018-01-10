@@ -84,7 +84,60 @@ struct config_data {
 	uint8_t rx_adapter_id;
 };
 
+struct port_link {
+	uint8_t queue_id;
+	uint8_t priority;
+};
+
 struct cons_data cons_data;
 
 struct fastpath_data *fdata;
 struct config_data cdata;
+
+static __rte_always_inline void
+work(struct rte_mbuf *m)
+{
+	struct ether_hdr *eth;
+	struct ether_addr addr;
+
+	/* change mac addresses on packet (to use mbuf data) */
+	/*
+	 * FIXME Swap mac address properly and also handle the
+	 * case for both odd and even number of stages that the
+	 * addresses end up the same at the end of the pipeline
+	 */
+	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	ether_addr_copy(&eth->d_addr, &addr);
+	ether_addr_copy(&addr, &eth->d_addr);
+
+	/* do a number of cycles of work per packet */
+	volatile uint64_t start_tsc = rte_rdtsc();
+	while (rte_rdtsc() < start_tsc + cdata.worker_cycles)
+		rte_pause();
+}
+
+static __rte_always_inline void
+schedule_devices(unsigned int lcore_id)
+{
+	if (fdata->rx_core[lcore_id]) {
+		rte_service_run_iter_on_app_lcore(fdata->rxadptr_service_id,
+				!fdata->rx_single);
+	}
+
+	if (fdata->sched_core[lcore_id]) {
+		rte_service_run_iter_on_app_lcore(fdata->evdev_service_id,
+				!fdata->sched_single);
+		if (cdata.dump_dev_signal) {
+			rte_event_dev_dump(0, stdout);
+			cdata.dump_dev_signal = 0;
+		}
+	}
+
+	if (fdata->tx_core[lcore_id] && (fdata->tx_single ||
+			 rte_atomic32_cmpset(&(fdata->tx_lock), 0, 1))) {
+		fdata->cap.consumer();
+		rte_atomic32_clear((rte_atomic32_t *)&(fdata->tx_lock));
+	}
+}
+
+void set_worker_generic_setup_data(struct setup_data *caps, bool burst);
