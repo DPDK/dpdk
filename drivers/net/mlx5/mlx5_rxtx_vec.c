@@ -287,10 +287,10 @@ priv_check_raw_vec_tx_support(struct priv *priv)
 int __attribute__((cold))
 priv_check_vec_tx_support(struct priv *priv)
 {
-	if (!priv->tx_vec_en ||
+	if (!priv->config.tx_vec_en ||
 	    priv->txqs_n > MLX5_VPMD_MIN_TXQS ||
-	    priv->mps != MLX5_MPW_ENHANCED ||
-	    priv->tso)
+	    priv->config.mps != MLX5_MPW_ENHANCED ||
+	    priv->config.tso)
 		return -ENOTSUP;
 	return 1;
 }
@@ -310,7 +310,7 @@ rxq_check_vec_support(struct mlx5_rxq_data *rxq)
 	struct mlx5_rxq_ctrl *ctrl =
 		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 
-	if (!ctrl->priv->rx_vec_en || rxq->sges_n != 0)
+	if (!ctrl->priv->config.rx_vec_en || rxq->sges_n != 0)
 		return -ENOTSUP;
 	return 1;
 }
@@ -329,7 +329,7 @@ priv_check_vec_rx_support(struct priv *priv)
 {
 	uint16_t i;
 
-	if (!priv->rx_vec_en)
+	if (!priv->config.rx_vec_en)
 		return -ENOTSUP;
 	/* All the configured queues should support. */
 	for (i = 0; i < priv->rxqs_n; ++i) {

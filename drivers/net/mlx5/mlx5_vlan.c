@@ -165,7 +165,7 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 	struct priv *priv = dev->data->dev_private;
 
 	/* Validate hw support */
-	if (!priv->hw_vlan_strip) {
+	if (!priv->config.hw_vlan_strip) {
 		ERROR("VLAN stripping is not supported");
 		return;
 	}
@@ -198,7 +198,7 @@ mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		int hw_vlan_strip = !!dev->data->dev_conf.rxmode.hw_vlan_strip;
 
-		if (!priv->hw_vlan_strip) {
+		if (!priv->config.hw_vlan_strip) {
 			ERROR("VLAN stripping is not supported");
 			return 0;
 		}

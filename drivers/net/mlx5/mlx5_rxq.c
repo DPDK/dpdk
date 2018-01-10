@@ -570,6 +570,7 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 	unsigned int i;
 	int ret = 0;
 	struct mlx5dv_obj obj;
+	struct mlx5_dev_config *config = &priv->config;
 
 	assert(rxq_data);
 	assert(!rxq_ctrl->ibv);
@@ -606,7 +607,7 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 	attr.cq.mlx5 = (struct mlx5dv_cq_init_attr){
 		.comp_mask = 0,
 	};
-	if (priv->cqe_comp && !rxq_data->hw_timestamp) {
+	if (config->cqe_comp && !rxq_data->hw_timestamp) {
 		attr.cq.mlx5.comp_mask |=
 			MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
 		attr.cq.mlx5.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
@@ -616,7 +617,7 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 		 */
 		if (rxq_check_vec_support(rxq_data) < 0)
 			attr.cq.ibv.cqe *= 2;
-	} else if (priv->cqe_comp && rxq_data->hw_timestamp) {
+	} else if (config->cqe_comp && rxq_data->hw_timestamp) {
 		DEBUG("Rx CQE compression is disabled for HW timestamp");
 	}
 	tmpl->cq = ibv_cq_ex_to_cq(mlx5dv_create_cq(priv->ctx, &attr.cq.ibv,
@@ -651,7 +652,7 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 		attr.wq.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 	}
 #ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
-	if (priv->hw_padding) {
+	if (config->hw_padding) {
 		attr.wq.create_flags |= IBV_WQ_FLAG_RX_END_PADDING;
 		attr.wq.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 	}
@@ -878,9 +879,14 @@ mlx5_priv_rxq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 {
 	struct rte_eth_dev *dev = priv->dev;
 	struct mlx5_rxq_ctrl *tmpl;
-	const uint16_t desc_n =
-		desc + priv->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
+	struct mlx5_dev_config *config = &priv->config;
+	/*
+	 * Always allocate extra slots, even if eventually
+	 * the vector Rx will not be used.
+	 */
+	const uint16_t desc_n =
+		desc + config->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
 
 	tmpl = rte_calloc_socket("RXQ", 1,
 				 sizeof(*tmpl) +
@@ -938,20 +944,20 @@ mlx5_priv_rxq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	/* Toggle RX checksum offload if hardware supports it. */
-	if (priv->hw_csum)
+	if (config->hw_csum)
 		tmpl->rxq.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
-	if (priv->hw_csum_l2tun)
+	if (config->hw_csum_l2tun)
 		tmpl->rxq.csum_l2tun =
 			!!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	tmpl->rxq.hw_timestamp =
 			!!dev->data->dev_conf.rxmode.hw_timestamp;
 	/* Configure VLAN stripping. */
-	tmpl->rxq.vlan_strip = (priv->hw_vlan_strip &&
+	tmpl->rxq.vlan_strip = (config->hw_vlan_strip &&
 			       !!dev->data->dev_conf.rxmode.hw_vlan_strip);
 	/* By default, FCS (CRC) is stripped by hardware. */
 	if (dev->data->dev_conf.rxmode.hw_strip_crc) {
 		tmpl->rxq.crc_present = 0;
-	} else if (priv->hw_fcs_strip) {
+	} else if (config->hw_fcs_strip) {
 		tmpl->rxq.crc_present = 1;
 	} else {
 		WARN("%p: CRC stripping has been disabled but will still"

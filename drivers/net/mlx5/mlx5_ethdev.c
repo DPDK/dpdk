@@ -579,7 +579,7 @@ dev_configure(struct rte_eth_dev *dev)
 		     (void *)dev, priv->txqs_n, txqs_n);
 		priv->txqs_n = txqs_n;
 	}
-	if (rxqs_n > priv->ind_table_max_size) {
+	if (rxqs_n > priv->config.ind_table_max_size) {
 		ERROR("cannot handle this many RX queues (%u)", rxqs_n);
 		return EINVAL;
 	}
@@ -592,7 +592,7 @@ dev_configure(struct rte_eth_dev *dev)
 	 * maximum indirection table size for better balancing.
 	 * The result is always rounded to the next power of two. */
 	reta_idx_n = (1 << log2above((rxqs_n & (rxqs_n - 1)) ?
-				     priv->ind_table_max_size :
+				     priv->config.ind_table_max_size :
 				     rxqs_n));
 	if (priv_rss_reta_index_resize(priv, reta_idx_n))
 		return ENOMEM;
@@ -641,6 +641,7 @@ void
 mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
 	unsigned int max;
 	char ifname[IF_NAMESIZE];
 
@@ -663,31 +664,31 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_tx_queues = max;
 	info->max_mac_addrs = RTE_DIM(priv->mac);
 	info->rx_offload_capa =
-		(priv->hw_csum ?
+		(config->hw_csum ?
 		 (DEV_RX_OFFLOAD_IPV4_CKSUM |
 		  DEV_RX_OFFLOAD_UDP_CKSUM |
 		  DEV_RX_OFFLOAD_TCP_CKSUM) :
 		 0) |
-		(priv->hw_vlan_strip ? DEV_RX_OFFLOAD_VLAN_STRIP : 0) |
+		(priv->config.hw_vlan_strip ? DEV_RX_OFFLOAD_VLAN_STRIP : 0) |
 		DEV_RX_OFFLOAD_TIMESTAMP;
 
-	if (!priv->mps)
+	if (!config->mps)
 		info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
-	if (priv->hw_csum)
+	if (config->hw_csum)
 		info->tx_offload_capa |=
 			(DEV_TX_OFFLOAD_IPV4_CKSUM |
 			 DEV_TX_OFFLOAD_UDP_CKSUM |
 			 DEV_TX_OFFLOAD_TCP_CKSUM);
-	if (priv->tso)
+	if (config->tso)
 		info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
-	if (priv->tunnel_en)
+	if (config->tunnel_en)
 		info->tx_offload_capa |= (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 					  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 					  DEV_TX_OFFLOAD_GRE_TNL_TSO);
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	info->reta_size = priv->reta_idx_n ?
-		priv->reta_idx_n : priv->ind_table_max_size;
+		priv->reta_idx_n : config->ind_table_max_size;
 	info->hash_key_size = priv->rss_conf.rss_key_len;
 	info->speed_capa = priv->link_speed_capa;
 	priv_unlock(priv);
@@ -1394,10 +1395,11 @@ eth_tx_burst_t
 priv_select_tx_function(struct priv *priv, __rte_unused struct rte_eth_dev *dev)
 {
 	eth_tx_burst_t tx_pkt_burst = mlx5_tx_burst;
+	struct mlx5_dev_config *config = &priv->config;
 
 	assert(priv != NULL);
 	/* Select appropriate TX function. */
-	if (priv->mps == MLX5_MPW_ENHANCED) {
+	if (config->mps == MLX5_MPW_ENHANCED) {
 		if (priv_check_vec_tx_support(priv) > 0) {
 			if (priv_check_raw_vec_tx_support(priv) > 0)
 				tx_pkt_burst = mlx5_tx_burst_raw_vec;
@@ -1408,10 +1410,10 @@ priv_select_tx_function(struct priv *priv, __rte_unused struct rte_eth_dev *dev)
 			tx_pkt_burst = mlx5_tx_burst_empw;
 			DEBUG("selected Enhanced MPW TX function");
 		}
-	} else if (priv->mps && priv->txq_inline) {
+	} else if (config->mps && (config->txq_inline > 0)) {
 		tx_pkt_burst = mlx5_tx_burst_mpw_inline;
 		DEBUG("selected MPW inline TX function");
-	} else if (priv->mps) {
+	} else if (config->mps) {
 		tx_pkt_burst = mlx5_tx_burst_mpw;
 		DEBUG("selected MPW TX function");
 	}

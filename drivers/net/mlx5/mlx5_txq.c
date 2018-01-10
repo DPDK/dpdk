@@ -273,6 +273,25 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 }
 
 /**
+ * Check if the burst function is using eMPW.
+ *
+ * @param tx_pkt_burst
+ *   Tx burst function pointer.
+ *
+ * @return
+ *   1 if the burst function is using eMPW, 0 otherwise.
+ */
+static int
+is_empw_burst_func(eth_tx_burst_t tx_pkt_burst)
+{
+	if (tx_pkt_burst == mlx5_tx_burst_raw_vec ||
+	    tx_pkt_burst == mlx5_tx_burst_vec ||
+	    tx_pkt_burst == mlx5_tx_burst_empw)
+		return 1;
+	return 0;
+}
+
+/**
  * Create the Tx queue Verbs object.
  *
  * @param priv
@@ -302,6 +321,7 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_obj obj;
 	const int desc = 1 << txq_data->elts_n;
+	eth_tx_burst_t tx_pkt_burst = priv_select_tx_function(priv, priv->dev);
 	int ret = 0;
 
 	assert(txq_data);
@@ -316,7 +336,7 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	};
 	cqe_n = ((desc / MLX5_TX_COMP_THRESH) - 1) ?
 		((desc / MLX5_TX_COMP_THRESH) - 1) : 1;
-	if (priv->mps == MLX5_MPW_ENHANCED)
+	if (is_empw_burst_func(tx_pkt_burst))
 		cqe_n += MLX5_TX_COMP_THRESH_INLINE_DIV;
 	tmpl.cq = ibv_create_cq(priv->ctx, cqe_n, NULL, NULL, 0);
 	if (tmpl.cq == NULL) {
@@ -541,6 +561,107 @@ mlx5_priv_txq_ibv_verify(struct priv *priv)
 }
 
 /**
+ * Set Tx queue parameters from device configuration.
+ *
+ * @param txq_ctrl
+ *   Pointer to Tx queue control structure.
+ */
+static void
+txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
+{
+	struct priv *priv = txq_ctrl->priv;
+	struct mlx5_dev_config *config = &priv->config;
+	const unsigned int max_tso_inline =
+		((MLX5_MAX_TSO_HEADER + (RTE_CACHE_LINE_SIZE - 1)) /
+		 RTE_CACHE_LINE_SIZE);
+	unsigned int txq_inline;
+	unsigned int txqs_inline;
+	unsigned int inline_max_packet_sz;
+	eth_tx_burst_t tx_pkt_burst = priv_select_tx_function(priv, priv->dev);
+	int is_empw_func = is_empw_burst_func(tx_pkt_burst);
+
+	txq_inline = (config->txq_inline == MLX5_ARG_UNSET) ?
+		0 : config->txq_inline;
+	txqs_inline = (config->txqs_inline == MLX5_ARG_UNSET) ?
+		0 : config->txqs_inline;
+	inline_max_packet_sz =
+		(config->inline_max_packet_sz == MLX5_ARG_UNSET) ?
+		0 : config->inline_max_packet_sz;
+	if (is_empw_func) {
+		if (config->txq_inline == MLX5_ARG_UNSET)
+			txq_inline = MLX5_WQE_SIZE_MAX - MLX5_WQE_SIZE;
+		if (config->txqs_inline == MLX5_ARG_UNSET)
+			txqs_inline = MLX5_EMPW_MIN_TXQS;
+		if (config->inline_max_packet_sz == MLX5_ARG_UNSET)
+			inline_max_packet_sz = MLX5_EMPW_MAX_INLINE_LEN;
+		txq_ctrl->txq.mpw_hdr_dseg = config->mpw_hdr_dseg;
+		txq_ctrl->txq.inline_max_packet_sz = inline_max_packet_sz;
+	}
+	if (txq_inline && priv->txqs_n >= txqs_inline) {
+		unsigned int ds_cnt;
+
+		txq_ctrl->txq.max_inline =
+			((txq_inline + (RTE_CACHE_LINE_SIZE - 1)) /
+			 RTE_CACHE_LINE_SIZE);
+		/* TSO and MPS can't be enabled concurrently. */
+		assert(!config->tso || !config->mps);
+		if (is_empw_func) {
+			/* To minimize the size of data set, avoid requesting
+			 * too large WQ.
+			 */
+			txq_ctrl->max_inline_data =
+				((RTE_MIN(txq_inline,
+					  inline_max_packet_sz) +
+				  (RTE_CACHE_LINE_SIZE - 1)) /
+				 RTE_CACHE_LINE_SIZE) * RTE_CACHE_LINE_SIZE;
+		} else if (config->tso) {
+			int inline_diff = txq_ctrl->txq.max_inline -
+					  max_tso_inline;
+
+			/*
+			 * Adjust inline value as Verbs aggregates
+			 * tso_inline and txq_inline fields.
+			 */
+			txq_ctrl->max_inline_data = inline_diff > 0 ?
+					       inline_diff *
+					       RTE_CACHE_LINE_SIZE :
+					       0;
+		} else {
+			txq_ctrl->max_inline_data =
+				txq_ctrl->txq.max_inline * RTE_CACHE_LINE_SIZE;
+		}
+		/*
+		 * Check if the inline size is too large in a way which
+		 * can make the WQE DS to overflow.
+		 * Considering in calculation:
+		 *      WQE CTRL (1 DS)
+		 *      WQE ETH  (1 DS)
+		 *      Inline part (N DS)
+		 */
+		ds_cnt = 2 + (txq_ctrl->txq.max_inline / MLX5_WQE_DWORD_SIZE);
+		if (ds_cnt > MLX5_DSEG_MAX) {
+			unsigned int max_inline = (MLX5_DSEG_MAX - 2) *
+						  MLX5_WQE_DWORD_SIZE;
+
+			max_inline = max_inline - (max_inline %
+						   RTE_CACHE_LINE_SIZE);
+			WARN("txq inline is too large (%d) setting it to "
+			     "the maximum possible: %d\n",
+			     txq_inline, max_inline);
+			txq_ctrl->txq.max_inline = max_inline /
+						   RTE_CACHE_LINE_SIZE;
+		}
+	}
+	if (config->tso) {
+		txq_ctrl->max_tso_header = max_tso_inline * RTE_CACHE_LINE_SIZE;
+		txq_ctrl->txq.max_inline = RTE_MAX(txq_ctrl->txq.max_inline,
+						   max_tso_inline);
+		txq_ctrl->txq.tso_en = 1;
+	}
+	txq_ctrl->txq.tunnel_en = config->tunnel_en;
+}
+
+/**
  * Create a DPDK Tx queue.
  *
  * @param priv
@@ -562,9 +683,6 @@ mlx5_priv_txq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 		  unsigned int socket,
 		  const struct rte_eth_txconf *conf)
 {
-	const unsigned int max_tso_inline =
-		((MLX5_MAX_TSO_HEADER + (RTE_CACHE_LINE_SIZE - 1)) /
-		 RTE_CACHE_LINE_SIZE);
 	struct mlx5_txq_ctrl *tmpl;
 
 	tmpl = rte_calloc_socket("TXQ", 1,
@@ -578,76 +696,12 @@ mlx5_priv_txq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 	tmpl->priv = priv;
 	tmpl->socket = socket;
 	tmpl->txq.elts_n = log2above(desc);
-	if (priv->mps == MLX5_MPW_ENHANCED)
-		tmpl->txq.mpw_hdr_dseg = priv->mpw_hdr_dseg;
+	txq_set_params(tmpl);
 	/* MRs will be registered in mp2mr[] later. */
 	DEBUG("priv->device_attr.max_qp_wr is %d",
 	      priv->device_attr.orig_attr.max_qp_wr);
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.orig_attr.max_sge);
-	if (priv->txq_inline && (priv->txqs_n >= priv->txqs_inline)) {
-		unsigned int ds_cnt;
-
-		tmpl->txq.max_inline =
-			((priv->txq_inline + (RTE_CACHE_LINE_SIZE - 1)) /
-			 RTE_CACHE_LINE_SIZE);
-		/* TSO and MPS can't be enabled concurrently. */
-		assert(!priv->tso || !priv->mps);
-		if (priv->mps == MLX5_MPW_ENHANCED) {
-			tmpl->txq.inline_max_packet_sz =
-				priv->inline_max_packet_sz;
-			/* To minimize the size of data set, avoid requesting
-			 * too large WQ.
-			 */
-			tmpl->max_inline_data =
-				((RTE_MIN(priv->txq_inline,
-					  priv->inline_max_packet_sz) +
-				  (RTE_CACHE_LINE_SIZE - 1)) /
-				 RTE_CACHE_LINE_SIZE) * RTE_CACHE_LINE_SIZE;
-		} else if (priv->tso) {
-			int inline_diff = tmpl->txq.max_inline - max_tso_inline;
-
-			/*
-			 * Adjust inline value as Verbs aggregates
-			 * tso_inline and txq_inline fields.
-			 */
-			tmpl->max_inline_data = inline_diff > 0 ?
-					       inline_diff *
-					       RTE_CACHE_LINE_SIZE :
-					       0;
-		} else {
-			tmpl->max_inline_data =
-				tmpl->txq.max_inline * RTE_CACHE_LINE_SIZE;
-		}
-		/*
-		 * Check if the inline size is too large in a way which
-		 * can make the WQE DS to overflow.
-		 * Considering in calculation:
-		 *      WQE CTRL (1 DS)
-		 *      WQE ETH  (1 DS)
-		 *      Inline part (N DS)
-		 */
-		ds_cnt = 2 + (tmpl->txq.max_inline / MLX5_WQE_DWORD_SIZE);
-		if (ds_cnt > MLX5_DSEG_MAX) {
-			unsigned int max_inline = (MLX5_DSEG_MAX - 2) *
-						  MLX5_WQE_DWORD_SIZE;
-
-			max_inline = max_inline - (max_inline %
-						   RTE_CACHE_LINE_SIZE);
-			WARN("txq inline is too large (%d) setting it to "
-			     "the maximum possible: %d\n",
-			     priv->txq_inline, max_inline);
-			tmpl->txq.max_inline = max_inline / RTE_CACHE_LINE_SIZE;
-		}
-	}
-	if (priv->tso) {
-		tmpl->max_tso_header = max_tso_inline * RTE_CACHE_LINE_SIZE;
-		tmpl->txq.max_inline = RTE_MAX(tmpl->txq.max_inline,
-					       max_tso_inline);
-		tmpl->txq.tso_en = 1;
-	}
-	if (priv->tunnel_en)
-		tmpl->txq.tunnel_en = 1;
 	tmpl->txq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])(tmpl + 1);
 	tmpl->txq.stats.idx = idx;

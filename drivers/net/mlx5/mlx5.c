@@ -94,9 +94,6 @@
 /* Device parameter to enable hardware Rx vector. */
 #define MLX5_RX_VEC_EN "rx_vec_en"
 
-/* Default PMD specific parameter value. */
-#define MLX5_ARG_UNSET (-1)
-
 #ifndef HAVE_IBV_MLX5_MOD_MPW
 #define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
 #define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
@@ -106,17 +103,6 @@
 #define MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP (1 << 4)
 #endif
 
-struct mlx5_args {
-	int cqe_comp;
-	int txq_inline;
-	int txqs_inline;
-	int mps;
-	int mpw_hdr_dseg;
-	int inline_max_packet_sz;
-	int tso;
-	int tx_vec_en;
-	int rx_vec_en;
-};
 /**
  * Retrieve integer value from environment variable.
  *
@@ -399,7 +385,7 @@ mlx5_dev_idx(struct rte_pci_addr *pci_addr)
 static int
 mlx5_args_check(const char *key, const char *val, void *opaque)
 {
-	struct mlx5_args *args = opaque;
+	struct mlx5_dev_config *config = opaque;
 	unsigned long tmp;
 
 	errno = 0;
@@ -409,23 +395,23 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		return errno;
 	}
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
-		args->cqe_comp = !!tmp;
+		config->cqe_comp = !!tmp;
 	} else if (strcmp(MLX5_TXQ_INLINE, key) == 0) {
-		args->txq_inline = tmp;
+		config->txq_inline = tmp;
 	} else if (strcmp(MLX5_TXQS_MIN_INLINE, key) == 0) {
-		args->txqs_inline = tmp;
+		config->txqs_inline = tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
-		args->mps = !!tmp;
+		config->mps = !!tmp ? config->mps : 0;
 	} else if (strcmp(MLX5_TXQ_MPW_HDR_DSEG_EN, key) == 0) {
-		args->mpw_hdr_dseg = !!tmp;
+		config->mpw_hdr_dseg = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MAX_INLINE_LEN, key) == 0) {
-		args->inline_max_packet_sz = tmp;
+		config->inline_max_packet_sz = tmp;
 	} else if (strcmp(MLX5_TSO, key) == 0) {
-		args->tso = !!tmp;
+		config->tso = !!tmp;
 	} else if (strcmp(MLX5_TX_VEC_EN, key) == 0) {
-		args->tx_vec_en = !!tmp;
+		config->tx_vec_en = !!tmp;
 	} else if (strcmp(MLX5_RX_VEC_EN, key) == 0) {
-		args->rx_vec_en = !!tmp;
+		config->rx_vec_en = !!tmp;
 	} else {
 		WARN("%s: unknown parameter", key);
 		return -EINVAL;
@@ -436,8 +422,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 /**
  * Parse device parameters.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param config
+ *   Pointer to device configuration structure.
  * @param devargs
  *   Device arguments structure.
  *
@@ -445,7 +431,7 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
  *   0 on success, errno value on failure.
  */
 static int
-mlx5_args(struct mlx5_args *args, struct rte_devargs *devargs)
+mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 {
 	const char **params = (const char *[]){
 		MLX5_RXQ_CQE_COMP_EN,
@@ -473,7 +459,7 @@ mlx5_args(struct mlx5_args *args, struct rte_devargs *devargs)
 	for (i = 0; (params[i] != NULL); ++i) {
 		if (rte_kvargs_count(kvlist, params[i])) {
 			ret = rte_kvargs_process(kvlist, params[i],
-						 mlx5_args_check, args);
+						 mlx5_args_check, config);
 			if (ret != 0) {
 				rte_kvargs_free(kvlist);
 				return ret;
@@ -485,38 +471,6 @@ mlx5_args(struct mlx5_args *args, struct rte_devargs *devargs)
 }
 
 static struct rte_pci_driver mlx5_driver;
-
-/**
- * Assign parameters from args into priv, only non default
- * values are considered.
- *
- * @param[out] priv
- *   Pointer to private structure.
- * @param[in] args
- *   Pointer to args values.
- */
-static void
-mlx5_args_assign(struct priv *priv, struct mlx5_args *args)
-{
-	if (args->cqe_comp != MLX5_ARG_UNSET)
-		priv->cqe_comp = args->cqe_comp;
-	if (args->txq_inline != MLX5_ARG_UNSET)
-		priv->txq_inline = args->txq_inline;
-	if (args->txqs_inline != MLX5_ARG_UNSET)
-		priv->txqs_inline = args->txqs_inline;
-	if (args->mps != MLX5_ARG_UNSET)
-		priv->mps = args->mps ? priv->mps : 0;
-	if (args->mpw_hdr_dseg != MLX5_ARG_UNSET)
-		priv->mpw_hdr_dseg = args->mpw_hdr_dseg;
-	if (args->inline_max_packet_sz != MLX5_ARG_UNSET)
-		priv->inline_max_packet_sz = args->inline_max_packet_sz;
-	if (args->tso != MLX5_ARG_UNSET)
-		priv->tso = args->tso;
-	if (args->tx_vec_en != MLX5_ARG_UNSET)
-		priv->tx_vec_en = args->tx_vec_en;
-	if (args->rx_vec_en != MLX5_ARG_UNSET)
-		priv->rx_vec_en = args->rx_vec_en;
-}
 
 /**
  * DPDK callback to register a PCI device.
@@ -671,16 +625,17 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ether_addr mac;
 		uint16_t num_vfs = 0;
 		struct ibv_device_attr_ex device_attr;
-		struct mlx5_args args = {
-			.cqe_comp = MLX5_ARG_UNSET,
+		struct mlx5_dev_config config = {
+			.cqe_comp = cqe_comp,
+			.mps = mps,
+			.tunnel_en = tunnel_en,
+			.tso = 0,
+			.tx_vec_en = 1,
+			.rx_vec_en = 1,
+			.mpw_hdr_dseg = 0,
 			.txq_inline = MLX5_ARG_UNSET,
 			.txqs_inline = MLX5_ARG_UNSET,
-			.mps = MLX5_ARG_UNSET,
-			.mpw_hdr_dseg = MLX5_ARG_UNSET,
 			.inline_max_packet_sz = MLX5_ARG_UNSET,
-			.tso = MLX5_ARG_UNSET,
-			.tx_vec_en = MLX5_ARG_UNSET,
-			.rx_vec_en = MLX5_ARG_UNSET,
 		};
 
 		mlx5_dev[idx].ports |= test;
@@ -779,106 +734,89 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
-		priv->mps = mps; /* Enable MPW by default if supported. */
-		priv->cqe_comp = cqe_comp;
-		priv->tunnel_en = tunnel_en;
-		/* Enable vector by default if supported. */
-		priv->tx_vec_en = 1;
-		priv->rx_vec_en = 1;
-		err = mlx5_args(&args, pci_dev->device.devargs);
+		err = mlx5_args(&config, pci_dev->device.devargs);
 		if (err) {
 			ERROR("failed to process device arguments: %s",
 			      strerror(err));
 			goto port_error;
 		}
-		mlx5_args_assign(priv, &args);
 		if (ibv_query_device_ex(ctx, NULL, &device_attr_ex)) {
 			ERROR("ibv_query_device_ex() failed");
 			goto port_error;
 		}
 
-		priv->hw_csum =
-			!!(device_attr_ex.device_cap_flags_ex &
-			   IBV_DEVICE_RAW_IP_CSUM);
+		config.hw_csum = !!(device_attr_ex.device_cap_flags_ex &
+				    IBV_DEVICE_RAW_IP_CSUM);
 		DEBUG("checksum offloading is %ssupported",
-		      (priv->hw_csum ? "" : "not "));
+		      (config.hw_csum ? "" : "not "));
 
 #ifdef HAVE_IBV_DEVICE_VXLAN_SUPPORT
-		priv->hw_csum_l2tun = !!(exp_device_attr.exp_device_cap_flags &
-					 IBV_DEVICE_VXLAN_SUPPORT);
+		config.hw_csum_l2tun =
+				!!(exp_device_attr.exp_device_cap_flags &
+				   IBV_DEVICE_VXLAN_SUPPORT);
 #endif
 		DEBUG("Rx L2 tunnel checksum offloads are %ssupported",
-		      (priv->hw_csum_l2tun ? "" : "not "));
+		      (config.hw_csum_l2tun ? "" : "not "));
 
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
-		priv->counter_set_supported = !!(device_attr.max_counter_sets);
+		config.counter_set_supported =
+					!!(device_attr.max_counter_sets);
 		ibv_describe_counter_set(ctx, 0, &cs_desc);
 		DEBUG("counter type = %d, num of cs = %ld, attributes = %d",
 		      cs_desc.counter_type, cs_desc.num_of_cs,
 		      cs_desc.attributes);
 #endif
-		priv->ind_table_max_size =
+		config.ind_table_max_size =
 			device_attr_ex.rss_caps.max_rwq_indirection_table_size;
 		/* Remove this check once DPDK supports larger/variable
 		 * indirection tables. */
-		if (priv->ind_table_max_size >
+		if (config.ind_table_max_size >
 				(unsigned int)ETH_RSS_RETA_SIZE_512)
-			priv->ind_table_max_size = ETH_RSS_RETA_SIZE_512;
+			config.ind_table_max_size = ETH_RSS_RETA_SIZE_512;
 		DEBUG("maximum RX indirection table size is %u",
-		      priv->ind_table_max_size);
-		priv->hw_vlan_strip = !!(device_attr_ex.raw_packet_caps &
+		      config.ind_table_max_size);
+		config.hw_vlan_strip = !!(device_attr_ex.raw_packet_caps &
 					 IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
 		DEBUG("VLAN stripping is %ssupported",
-		      (priv->hw_vlan_strip ? "" : "not "));
+		      (config.hw_vlan_strip ? "" : "not "));
 
-		priv->hw_fcs_strip =
+		config.hw_fcs_strip =
 				!!(device_attr_ex.orig_attr.device_cap_flags &
 				IBV_WQ_FLAGS_SCATTER_FCS);
 		DEBUG("FCS stripping configuration is %ssupported",
-		      (priv->hw_fcs_strip ? "" : "not "));
+		      (config.hw_fcs_strip ? "" : "not "));
 
 #ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
-		priv->hw_padding = !!device_attr_ex.rx_pad_end_addr_align;
+		config.hw_padding = !!device_attr_ex.rx_pad_end_addr_align;
 #endif
 		DEBUG("hardware RX end alignment padding is %ssupported",
-		      (priv->hw_padding ? "" : "not "));
+		      (config.hw_padding ? "" : "not "));
 
 		priv_get_num_vfs(priv, &num_vfs);
-		priv->sriov = (num_vfs || sriov);
-		priv->tso = ((priv->tso) &&
-			    (device_attr_ex.tso_caps.max_tso > 0) &&
-			    (device_attr_ex.tso_caps.supported_qpts &
-			    (1 << IBV_QPT_RAW_PACKET)));
-		if (priv->tso)
-			priv->max_tso_payload_sz =
-				device_attr_ex.tso_caps.max_tso;
-		if (priv->mps && !mps) {
+		config.sriov = (num_vfs || sriov);
+		if (config.tso)
+			config.tso = ((device_attr_ex.tso_caps.max_tso > 0) &&
+				      (device_attr_ex.tso_caps.supported_qpts &
+				      (1 << IBV_QPT_RAW_PACKET)));
+		if (config.tso)
+			config.tso_max_payload_sz =
+					device_attr_ex.tso_caps.max_tso;
+		if (config.mps && !mps) {
 			ERROR("multi-packet send not supported on this device"
 			      " (" MLX5_TXQ_MPW_EN ")");
 			err = ENOTSUP;
 			goto port_error;
-		} else if (priv->mps && priv->tso) {
+		} else if (config.mps && config.tso) {
 			WARN("multi-packet send not supported in conjunction "
 			      "with TSO. MPS disabled");
-			priv->mps = 0;
+			config.mps = 0;
 		}
 		INFO("%sMPS is %s",
-		     priv->mps == MLX5_MPW_ENHANCED ? "Enhanced " : "",
-		     priv->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
-		/* Set default values for Enhanced MPW, a.k.a MPWv2. */
-		if (priv->mps == MLX5_MPW_ENHANCED) {
-			if (args.txqs_inline == MLX5_ARG_UNSET)
-				priv->txqs_inline = MLX5_EMPW_MIN_TXQS;
-			if (args.inline_max_packet_sz == MLX5_ARG_UNSET)
-				priv->inline_max_packet_sz =
-					MLX5_EMPW_MAX_INLINE_LEN;
-			if (args.txq_inline == MLX5_ARG_UNSET)
-				priv->txq_inline = MLX5_WQE_SIZE_MAX -
-						   MLX5_WQE_SIZE;
-		}
-		if (priv->cqe_comp && !cqe_comp) {
+		     config.mps == MLX5_MPW_ENHANCED ? "Enhanced " : "",
+		     config.mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
+		if (config.cqe_comp && !cqe_comp) {
 			WARN("Rx CQE compression isn't supported");
-			priv->cqe_comp = 0;
+			config.cqe_comp = 0;
 		}
 		/* Configure the first MAC address by default. */
 		if (priv_get_mac(priv, &mac.addr_bytes)) {
@@ -945,6 +883,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("forcing Ethernet interface up");
 		priv_set_flags(priv, ~IFF_UP, IFF_UP);
 		mlx5_link_update(priv->dev, 1);
+		/* Store device configuration on private structure. */
+		priv->config = config;
 		continue;
 
 port_error:
