@@ -2675,21 +2675,26 @@ vlan_extend_set(portid_t port_id, int on)
 {
 	int diag;
 	int vlan_offload;
+	uint64_t port_rx_offloads = ports[port_id].dev_conf.rxmode.offloads;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 
-	if (on)
+	if (on) {
 		vlan_offload |= ETH_VLAN_EXTEND_OFFLOAD;
-	else
+		port_rx_offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
+	} else {
 		vlan_offload &= ~ETH_VLAN_EXTEND_OFFLOAD;
+		port_rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_EXTEND;
+	}
 
 	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
 	if (diag < 0)
 		printf("rx_vlan_extend_set(port_pi=%d, on=%d) failed "
 	       "diag=%d\n", port_id, on, diag);
+	ports[port_id].dev_conf.rxmode.offloads = port_rx_offloads;
 }
 
 void
@@ -2697,21 +2702,26 @@ rx_vlan_strip_set(portid_t port_id, int on)
 {
 	int diag;
 	int vlan_offload;
+	uint64_t port_rx_offloads = ports[port_id].dev_conf.rxmode.offloads;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 
-	if (on)
+	if (on) {
 		vlan_offload |= ETH_VLAN_STRIP_OFFLOAD;
-	else
+		port_rx_offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	} else {
 		vlan_offload &= ~ETH_VLAN_STRIP_OFFLOAD;
+		port_rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+	}
 
 	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
 	if (diag < 0)
 		printf("rx_vlan_strip_set(port_pi=%d, on=%d) failed "
 	       "diag=%d\n", port_id, on, diag);
+	ports[port_id].dev_conf.rxmode.offloads = port_rx_offloads;
 }
 
 void
@@ -2733,21 +2743,26 @@ rx_vlan_filter_set(portid_t port_id, int on)
 {
 	int diag;
 	int vlan_offload;
+	uint64_t port_rx_offloads = ports[port_id].dev_conf.rxmode.offloads;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 
-	if (on)
+	if (on) {
 		vlan_offload |= ETH_VLAN_FILTER_OFFLOAD;
-	else
+		port_rx_offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+	} else {
 		vlan_offload &= ~ETH_VLAN_FILTER_OFFLOAD;
+		port_rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
+	}
 
 	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
 	if (diag < 0)
 		printf("rx_vlan_filter_set(port_pi=%d, on=%d) failed "
 	       "diag=%d\n", port_id, on, diag);
+	ports[port_id].dev_conf.rxmode.offloads = port_rx_offloads;
 }
 
 int

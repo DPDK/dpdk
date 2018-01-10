@@ -575,6 +575,7 @@ init_config(void)
 		port = &ports[pid];
 		/* Apply default Tx configuration for all ports */
 		port->dev_conf.txmode = tx_mode;
+		port->dev_conf.rxmode = rx_mode;
 		rte_eth_dev_info_get(pid, &port->dev_info);
 
 		if (numa_support) {
@@ -2061,7 +2062,6 @@ init_port_config(void)
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
-		port->dev_conf.rxmode = rx_mode;
 		port->dev_conf.fdir_conf = fdir_conf;
 		if (nb_rxq > 1) {
 			port->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
