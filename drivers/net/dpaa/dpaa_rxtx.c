@@ -97,12 +97,6 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m,
 	DPAA_DP_LOG(DEBUG, " Parsing mbuf: %p with annotations: %p", m, annot);
 
 	switch (prs) {
-	case DPAA_PKT_TYPE_NONE:
-		m->packet_type = 0;
-		break;
-	case DPAA_PKT_TYPE_ETHER:
-		m->packet_type = RTE_PTYPE_L2_ETHER;
-		break;
 	case DPAA_PKT_TYPE_IPV4:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV4;
@@ -110,6 +104,9 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m,
 	case DPAA_PKT_TYPE_IPV6:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV6;
+		break;
+	case DPAA_PKT_TYPE_ETHER:
+		m->packet_type = RTE_PTYPE_L2_ETHER;
 		break;
 	case DPAA_PKT_TYPE_IPV4_FRAG:
 	case DPAA_PKT_TYPE_IPV4_FRAG_UDP:
@@ -173,6 +170,9 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m,
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_SCTP;
 		break;
+	case DPAA_PKT_TYPE_NONE:
+		m->packet_type = 0;
+		break;
 	/* More switch cases can be added */
 	default:
 		dpaa_slow_parsing(m, prs);
@@ -183,12 +183,11 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m,
 					<< DPAA_PKT_L3_LEN_SHIFT;
 
 	/* Set the hash values */
-	m->hash.rss = (uint32_t)(rte_be_to_cpu_64(annot->hash));
-	m->ol_flags = PKT_RX_RSS_HASH;
+	m->hash.rss = (uint32_t)(annot->hash);
 	/* All packets with Bad checksum are dropped by interface (and
 	 * corresponding notification issued to RX error queues).
 	 */
-	m->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+	m->ol_flags = PKT_RX_RSS_HASH | PKT_RX_IP_CKSUM_GOOD;
 
 	/* Check if Vlan is present */
 	if (prs & DPAA_PARSE_VLAN_MASK)
@@ -297,7 +296,7 @@ dpaa_unsegmented_checksum(struct rte_mbuf *mbuf, struct qm_fd *fd_arr)
 }
 
 struct rte_mbuf *
-dpaa_eth_sg_to_mbuf(struct qm_fd *fd, uint32_t ifid)
+dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 {
 	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(fd->bpid);
 	struct rte_mbuf *first_seg, *prev_seg, *cur_seg, *temp;
@@ -355,34 +354,31 @@ dpaa_eth_sg_to_mbuf(struct qm_fd *fd, uint32_t ifid)
 	return first_seg;
 }
 
-static inline struct rte_mbuf *dpaa_eth_fd_to_mbuf(struct qm_fd *fd,
-							uint32_t ifid)
+static inline struct rte_mbuf *
+dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 {
-	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(fd->bpid);
 	struct rte_mbuf *mbuf;
-	void *ptr;
+	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(fd->bpid);
+	void *ptr = rte_dpaa_mem_ptov(qm_fd_addr(fd));
 	uint8_t format =
 		(fd->opaque & DPAA_FD_FORMAT_MASK) >> DPAA_FD_FORMAT_SHIFT;
-	uint16_t offset =
-		(fd->opaque & DPAA_FD_OFFSET_MASK) >> DPAA_FD_OFFSET_SHIFT;
-	uint32_t length = fd->opaque & DPAA_FD_LENGTH_MASK;
+	uint16_t offset;
+	uint32_t length;
 
 	DPAA_DP_LOG(DEBUG, " FD--->MBUF");
 
 	if (unlikely(format == qm_fd_sg))
 		return dpaa_eth_sg_to_mbuf(fd, ifid);
 
+	rte_prefetch0((void *)((uint8_t *)ptr + DEFAULT_RX_ICEOF));
+
+	offset = (fd->opaque & DPAA_FD_OFFSET_MASK) >> DPAA_FD_OFFSET_SHIFT;
+	length = fd->opaque & DPAA_FD_LENGTH_MASK;
+
 	/* Ignoring case when format != qm_fd_contig */
 	dpaa_display_frame(fd);
-	ptr = rte_dpaa_mem_ptov(fd->addr);
-	/* Ignoring case when ptr would be NULL. That is only possible incase
-	 * of a corrupted packet
-	 */
 
 	mbuf = (struct rte_mbuf *)((char *)ptr - bp_info->meta_data_size);
-	/* Prefetch the Parse results and packet data to L1 */
-	rte_prefetch0((void *)((uint8_t *)ptr + DEFAULT_RX_ICEOF));
-	rte_prefetch0((void *)((uint8_t *)ptr + offset));
 
 	mbuf->data_off = offset;
 	mbuf->data_len = length;
@@ -462,11 +458,11 @@ static struct rte_mbuf *dpaa_get_dmable_mbuf(struct rte_mbuf *mbuf,
 	if (!dpaa_mbuf)
 		return NULL;
 
-	memcpy((uint8_t *)(dpaa_mbuf->buf_addr) + mbuf->data_off, (void *)
+	memcpy((uint8_t *)(dpaa_mbuf->buf_addr) + RTE_PKTMBUF_HEADROOM, (void *)
 		((uint8_t *)(mbuf->buf_addr) + mbuf->data_off), mbuf->pkt_len);
 
 	/* Copy only the required fields */
-	dpaa_mbuf->data_off = mbuf->data_off;
+	dpaa_mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 	dpaa_mbuf->pkt_len = mbuf->pkt_len;
 	dpaa_mbuf->ol_flags = mbuf->ol_flags;
 	dpaa_mbuf->packet_type = mbuf->packet_type;
