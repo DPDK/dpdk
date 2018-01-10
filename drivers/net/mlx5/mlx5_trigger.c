@@ -152,7 +152,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 	/* Update send callback. */
-	priv_dev_select_tx_function(priv, dev);
+	dev->tx_pkt_burst = priv_select_tx_function(priv, dev);
 	err = priv_rxq_start(priv);
 	if (err) {
 		ERROR("%p: RXQ allocation failed: %s",
@@ -160,7 +160,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 	/* Update receive callback. */
-	priv_dev_select_rx_function(priv, dev);
+	dev->rx_pkt_burst = priv_select_rx_function(priv, dev);
 	err = priv_dev_traffic_enable(priv, dev);
 	if (err) {
 		ERROR("%p: an error occurred while configuring control flows:"

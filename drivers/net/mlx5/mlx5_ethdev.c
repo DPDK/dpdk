@@ -1325,8 +1325,8 @@ priv_dev_set_link(struct priv *priv, struct rte_eth_dev *dev, int up)
 		err = priv_set_flags(priv, ~IFF_UP, IFF_UP);
 		if (err)
 			return err;
-		priv_dev_select_tx_function(priv, dev);
-		priv_dev_select_rx_function(priv, dev);
+		dev->tx_pkt_burst = priv_select_tx_function(priv, dev);
+		dev->rx_pkt_burst = priv_select_rx_function(priv, dev);
 	} else {
 		err = priv_set_flags(priv, ~IFF_UP, ~IFF_UP);
 		if (err)
@@ -1386,32 +1386,36 @@ mlx5_set_link_up(struct rte_eth_dev *dev)
  *   Pointer to private data structure.
  * @param dev
  *   Pointer to rte_eth_dev structure.
+ *
+ * @return
+ *   Pointer to selected Tx burst function.
  */
-void
-priv_dev_select_tx_function(struct priv *priv, struct rte_eth_dev *dev)
+eth_tx_burst_t
+priv_select_tx_function(struct priv *priv, __rte_unused struct rte_eth_dev *dev)
 {
+	eth_tx_burst_t tx_pkt_burst = mlx5_tx_burst;
+
 	assert(priv != NULL);
-	assert(dev != NULL);
-	dev->tx_pkt_burst = mlx5_tx_burst;
 	/* Select appropriate TX function. */
 	if (priv->mps == MLX5_MPW_ENHANCED) {
 		if (priv_check_vec_tx_support(priv) > 0) {
 			if (priv_check_raw_vec_tx_support(priv) > 0)
-				dev->tx_pkt_burst = mlx5_tx_burst_raw_vec;
+				tx_pkt_burst = mlx5_tx_burst_raw_vec;
 			else
-				dev->tx_pkt_burst = mlx5_tx_burst_vec;
+				tx_pkt_burst = mlx5_tx_burst_vec;
 			DEBUG("selected Enhanced MPW TX vectorized function");
 		} else {
-			dev->tx_pkt_burst = mlx5_tx_burst_empw;
+			tx_pkt_burst = mlx5_tx_burst_empw;
 			DEBUG("selected Enhanced MPW TX function");
 		}
 	} else if (priv->mps && priv->txq_inline) {
-		dev->tx_pkt_burst = mlx5_tx_burst_mpw_inline;
+		tx_pkt_burst = mlx5_tx_burst_mpw_inline;
 		DEBUG("selected MPW inline TX function");
 	} else if (priv->mps) {
-		dev->tx_pkt_burst = mlx5_tx_burst_mpw;
+		tx_pkt_burst = mlx5_tx_burst_mpw;
 		DEBUG("selected MPW TX function");
 	}
+	return tx_pkt_burst;
 }
 
 /**
@@ -1421,16 +1425,19 @@ priv_dev_select_tx_function(struct priv *priv, struct rte_eth_dev *dev)
  *   Pointer to private data structure.
  * @param dev
  *   Pointer to rte_eth_dev structure.
+ *
+ * @return
+ *   Pointer to selected Rx burst function.
  */
-void
-priv_dev_select_rx_function(struct priv *priv, struct rte_eth_dev *dev)
+eth_rx_burst_t
+priv_select_rx_function(struct priv *priv, __rte_unused struct rte_eth_dev *dev)
 {
+	eth_rx_burst_t rx_pkt_burst = mlx5_rx_burst;
+
 	assert(priv != NULL);
-	assert(dev != NULL);
 	if (priv_check_vec_rx_support(priv) > 0) {
-		dev->rx_pkt_burst = mlx5_rx_burst_vec;
+		rx_pkt_burst = mlx5_rx_burst_vec;
 		DEBUG("selected RX vectorized function");
-	} else {
-		dev->rx_pkt_burst = mlx5_rx_burst;
 	}
+	return rx_pkt_burst;
 }

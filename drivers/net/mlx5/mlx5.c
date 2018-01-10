@@ -712,8 +712,15 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 				err = -err;
 				goto error;
 			}
-			priv_dev_select_rx_function(priv, eth_dev);
-			priv_dev_select_tx_function(priv, eth_dev);
+			/*
+			 * Ethdev pointer is still required as input since
+			 * the primary device is not accessible from the
+			 * secondary process.
+			 */
+			eth_dev->rx_pkt_burst =
+				priv_select_rx_function(priv, eth_dev);
+			eth_dev->tx_pkt_burst =
+				priv_select_tx_function(priv, eth_dev);
 			continue;
 		}
 
