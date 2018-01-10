@@ -151,6 +151,8 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 		PMD_INIT_LOG(ERR, "Control queue is not supported.");
 		return -1;
 	}
+
+	rte_spinlock_lock(&cvq->lock);
 	vq = cvq->vq;
 	head = vq->vq_desc_head_idx;
 
@@ -158,8 +160,10 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 		"vq->hw->cvq = %p vq = %p",
 		vq->vq_desc_head_idx, status, vq->hw->cvq, vq);
 
-	if ((vq->vq_free_cnt < ((uint32_t)pkt_num + 2)) || (pkt_num < 1))
+	if (vq->vq_free_cnt < pkt_num + 2 || pkt_num < 1) {
+		rte_spinlock_unlock(&cvq->lock);
 		return -1;
+	}
 
 	memcpy(cvq->virtio_net_hdr_mz->addr, ctrl,
 		sizeof(struct virtio_pmd_ctrl));
@@ -235,6 +239,7 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 
 	result = cvq->virtio_net_hdr_mz->addr;
 
+	rte_spinlock_unlock(&cvq->lock);
 	return result->status;
 }
 

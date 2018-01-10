@@ -55,6 +55,7 @@ struct virtnet_ctl {
 	rte_iova_t virtio_net_hdr_mem;  /**< hdr for each xmit packet */
 	uint16_t port_id;               /**< Device port identifier. */
 	const struct rte_memzone *mz;   /**< mem zone to populate CTL ring. */
+	rte_spinlock_t lock;              /**< spinlock for control queue. */
 };
 
 int virtio_rxq_vec_setup(struct virtnet_rx *rxvq);

@@ -378,6 +378,7 @@ virtio_dev_cq_start(struct rte_eth_dev *dev)
 	struct virtio_hw *hw = dev->data->dev_private;
 
 	if (hw->cvq && hw->cvq->vq) {
+		rte_spinlock_init(&hw->cvq->lock);
 		VIRTQUEUE_DUMP((struct virtqueue *)hw->cvq->vq);
 	}
 }
