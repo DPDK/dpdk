@@ -161,6 +161,8 @@ int mlx4_rss_attach(struct mlx4_rss *rss);
 void mlx4_rss_detach(struct mlx4_rss *rss);
 int mlx4_rxq_attach(struct rxq *rxq);
 void mlx4_rxq_detach(struct rxq *rxq);
+uint64_t mlx4_get_rx_port_offloads(struct priv *priv);
+uint64_t mlx4_get_rx_queue_offloads(struct priv *priv);
 int mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			uint16_t desc, unsigned int socket,
 			const struct rte_eth_rxconf *conf,

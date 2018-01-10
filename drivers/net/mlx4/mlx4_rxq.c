@@ -663,6 +663,63 @@ mlx4_rxq_detach(struct rxq *rxq)
 }
 
 /**
+ * Returns the per-queue supported offloads.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   Supported Tx offloads.
+ */
+uint64_t
+mlx4_get_rx_queue_offloads(struct priv *priv)
+{
+	uint64_t offloads = DEV_RX_OFFLOAD_SCATTER;
+
+	if (priv->hw_csum)
+		offloads |= DEV_RX_OFFLOAD_CHECKSUM;
+	return offloads;
+}
+
+/**
+ * Returns the per-port supported offloads.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   Supported Rx offloads.
+ */
+uint64_t
+mlx4_get_rx_port_offloads(struct priv *priv)
+{
+	uint64_t offloads = DEV_RX_OFFLOAD_VLAN_FILTER;
+
+	(void)priv;
+	return offloads;
+}
+
+/**
+ * Checks if the per-queue offload configuration is valid.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param requested
+ *   Per-queue offloads configuration.
+ *
+ * @return
+ *   Nonzero when configuration is valid.
+ */
+static int
+mlx4_check_rx_queue_offloads(struct priv *priv, uint64_t requested)
+{
+	uint64_t mandatory = priv->dev->data->dev_conf.rxmode.offloads;
+	uint64_t supported = mlx4_get_rx_port_offloads(priv);
+
+	return !((mandatory ^ requested) & supported);
+}
+
+/**
  * DPDK callback to configure a Rx queue.
  *
  * @param dev
@@ -707,6 +764,16 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	(void)conf; /* Thresholds configuration (ignored). */
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
+	if (!mlx4_check_rx_queue_offloads(priv, conf->offloads)) {
+		rte_errno = ENOTSUP;
+		ERROR("%p: Rx queue offloads 0x%" PRIx64 " don't match port "
+		      "offloads 0x%" PRIx64 " or supported offloads 0x%" PRIx64,
+		      (void *)dev, conf->offloads,
+		      dev->data->dev_conf.rxmode.offloads,
+		      (mlx4_get_rx_port_offloads(priv) |
+		       mlx4_get_rx_queue_offloads(priv)));
+		return -rte_errno;
+	}
 	if (idx >= dev->data->nb_rx_queues) {
 		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
@@ -746,10 +813,10 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.elts_n = rte_log2_u32(desc),
 		.elts = elts,
 		/* Toggle Rx checksum offload if hardware supports it. */
-		.csum = (priv->hw_csum &&
-			 dev->data->dev_conf.rxmode.hw_ip_checksum),
-		.csum_l2tun = (priv->hw_csum_l2tun &&
-			       dev->data->dev_conf.rxmode.hw_ip_checksum),
+		.csum = priv->hw_csum &&
+			(conf->offloads & DEV_RX_OFFLOAD_CHECKSUM),
+		.csum_l2tun = priv->hw_csum_l2tun &&
+			      (conf->offloads & DEV_RX_OFFLOAD_CHECKSUM),
 		.l2tun_offload = priv->hw_csum_l2tun,
 		.stats = {
 			.idx = idx,
@@ -761,7 +828,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
 	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		;
-	} else if (dev->data->dev_conf.rxmode.enable_scatter) {
+	} else if (conf->offloads & DEV_RX_OFFLOAD_SCATTER) {
 		uint32_t size =
 			RTE_PKTMBUF_HEADROOM +
 			dev->data->dev_conf.rxmode.max_rx_pkt_len;

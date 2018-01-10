@@ -766,13 +766,10 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
 	info->max_mac_addrs = RTE_DIM(priv->mac);
-	info->rx_offload_capa = 0;
 	info->tx_offload_capa = mlx4_get_tx_port_offloads(priv);
-	if (priv->hw_csum) {
-		info->rx_offload_capa |= (DEV_RX_OFFLOAD_IPV4_CKSUM |
-					  DEV_RX_OFFLOAD_UDP_CKSUM |
-					  DEV_RX_OFFLOAD_TCP_CKSUM);
-	}
+	info->rx_queue_offload_capa = mlx4_get_rx_queue_offloads(priv);
+	info->rx_offload_capa = (mlx4_get_rx_port_offloads(priv) |
+				 info->rx_queue_offload_capa);
 	if (mlx4_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	info->hash_key_size = MLX4_RSS_HASH_KEY_SIZE;

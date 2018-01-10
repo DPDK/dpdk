@@ -1232,7 +1232,7 @@ mlx4_flow_internal_next_vlan(struct priv *priv, uint16_t vlan)
  * - MAC flow rules are generated from @p dev->data->mac_addrs
  *   (@p priv->mac array).
  * - An additional flow rule for Ethernet broadcasts is also generated.
- * - All these are per-VLAN if @p dev->data->dev_conf.rxmode.hw_vlan_filter
+ * - All these are per-VLAN if @p DEV_RX_OFFLOAD_VLAN_FILTER
  *   is enabled and VLAN filters are configured.
  *
  * @param priv
@@ -1300,7 +1300,8 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	};
 	struct ether_addr *rule_mac = &eth_spec.dst;
 	rte_be16_t *rule_vlan =
-		priv->dev->data->dev_conf.rxmode.hw_vlan_filter &&
+		(priv->dev->data->dev_conf.rxmode.offloads &
+		 DEV_RX_OFFLOAD_VLAN_FILTER) &&
 		!priv->dev->data->promiscuous ?
 		&vlan_spec.tci :
 		NULL;
