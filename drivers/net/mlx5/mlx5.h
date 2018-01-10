@@ -180,6 +180,22 @@ priv_lock(struct priv *priv)
 }
 
 /**
+ * Try to lock private structure to protect it from concurrent access in the
+ * control path.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   1 if the lock is successfully taken; 0 otherwise.
+ */
+static inline int
+priv_trylock(struct priv *priv)
+{
+	return rte_spinlock_trylock(&priv->lock);
+}
+
+/**
  * Unlock private structure.
  *
  * @param priv
