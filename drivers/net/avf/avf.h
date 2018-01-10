@@ -117,6 +117,7 @@ struct avf_adapter {
 	struct rte_eth_dev *eth_dev;
 	struct avf_info vf;
 
+	bool rx_bulk_alloc_allowed;
 	/* For vector PMD */
 	bool rx_vec_allowed;
 	bool tx_vec_allowed;

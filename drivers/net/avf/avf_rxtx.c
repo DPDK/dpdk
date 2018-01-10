@@ -120,6 +120,27 @@ check_tx_vec_allow(struct avf_tx_queue *txq)
 }
 #endif
 
+static inline bool
+check_rx_bulk_allow(struct avf_rx_queue *rxq)
+{
+	int ret = TRUE;
+
+	if (!(rxq->rx_free_thresh >= AVF_RX_MAX_BURST)) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
+			     "rxq->rx_free_thresh=%d, "
+			     "AVF_RX_MAX_BURST=%d",
+			     rxq->rx_free_thresh, AVF_RX_MAX_BURST);
+		ret = FALSE;
+	} else if (rxq->nb_rx_desc % rxq->rx_free_thresh != 0) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
+			     "rxq->nb_rx_desc=%d, "
+			     "rxq->rx_free_thresh=%d",
+			     rxq->nb_rx_desc, rxq->rx_free_thresh);
+		ret = FALSE;
+	}
+	return ret;
+}
+
 static inline void
 reset_rx_queue(struct avf_rx_queue *rxq)
 {
@@ -137,6 +158,11 @@ reset_rx_queue(struct avf_rx_queue *rxq)
 
 	for (i = 0; i < AVF_RX_MAX_BURST; i++)
 		rxq->sw_ring[rxq->nb_rx_desc + i] = &rxq->fake_mbuf;
+
+	/* for rx bulk */
+	rxq->rx_nb_avail = 0;
+	rxq->rx_next_avail = 0;
+	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
 
 	rxq->rx_tail = 0;
 	rxq->nb_rx_hold = 0;
@@ -233,6 +259,17 @@ release_rxq_mbufs(struct avf_rx_queue *rxq)
 			rxq->sw_ring[i] = NULL;
 		}
 	}
+
+	/* for rx bulk */
+	if (rxq->rx_nb_avail == 0)
+		return;
+	for (i = 0; i < rxq->rx_nb_avail; i++) {
+		struct rte_mbuf *mbuf;
+
+		mbuf = rxq->rx_stage[rxq->rx_next_avail + i];
+		rte_pktmbuf_free_seg(mbuf);
+	}
+	rxq->rx_nb_avail = 0;
 }
 
 static inline void
@@ -362,6 +399,19 @@ avf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	dev->data->rx_queues[queue_idx] = rxq;
 	rxq->qrx_tail = hw->hw_addr + AVF_QRX_TAIL1(rxq->queue_id);
 	rxq->ops = &def_rxq_ops;
+
+	if (check_rx_bulk_allow(rxq) == TRUE) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
+			     "satisfied. Rx Burst Bulk Alloc function will be "
+			     "used on port=%d, queue=%d.",
+			     rxq->port_id, rxq->queue_id);
+	} else {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
+			     "not satisfied, Scattered Rx is requested "
+			     "on port=%d, queue=%d.",
+			     rxq->port_id, rxq->queue_id);
+		ad->rx_bulk_alloc_allowed = false;
+	}
 
 #ifdef RTE_LIBRTE_AVF_INC_VECTOR
 	if (check_rx_vec_allow(rxq) == FALSE)
@@ -1036,6 +1086,252 @@ avf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rx;
 }
 
+#define AVF_LOOK_AHEAD 8
+static inline int
+avf_rx_scan_hw_ring(struct avf_rx_queue *rxq)
+{
+	volatile union avf_rx_desc *rxdp;
+	struct rte_mbuf **rxep;
+	struct rte_mbuf *mb;
+	uint16_t pkt_len;
+	uint64_t qword1;
+	uint32_t rx_status;
+	int32_t s[AVF_LOOK_AHEAD], nb_dd;
+	int32_t i, j, nb_rx = 0;
+	uint64_t pkt_flags;
+	static const uint32_t ptype_tbl[UINT8_MAX + 1] __rte_cache_aligned = {
+		/* [0] reserved */
+		[1] = RTE_PTYPE_L2_ETHER,
+		/* [2] - [21] reserved */
+		[22] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_FRAG,
+		[23] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_NONFRAG,
+		[24] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_UDP,
+		/* [25] reserved */
+		[26] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_TCP,
+		[27] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_SCTP,
+		[28] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_ICMP,
+		/* All others reserved */
+	};
+
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxep = &rxq->sw_ring[rxq->rx_tail];
+
+	qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
+	rx_status = (qword1 & AVF_RXD_QW1_STATUS_MASK) >>
+		    AVF_RXD_QW1_STATUS_SHIFT;
+
+	/* Make sure there is at least 1 packet to receive */
+	if (!(rx_status & (1 << AVF_RX_DESC_STATUS_DD_SHIFT)))
+		return 0;
+
+	/* Scan LOOK_AHEAD descriptors at a time to determine which
+	 * descriptors reference packets that are ready to be received.
+	 */
+	for (i = 0; i < AVF_RX_MAX_BURST; i += AVF_LOOK_AHEAD,
+	     rxdp += AVF_LOOK_AHEAD, rxep += AVF_LOOK_AHEAD) {
+		/* Read desc statuses backwards to avoid race condition */
+		for (j = AVF_LOOK_AHEAD - 1; j >= 0; j--) {
+			qword1 = rte_le_to_cpu_64(
+				rxdp[j].wb.qword1.status_error_len);
+			s[j] = (qword1 & AVF_RXD_QW1_STATUS_MASK) >>
+			       AVF_RXD_QW1_STATUS_SHIFT;
+		}
+
+		rte_smp_rmb();
+
+		/* Compute how many status bits were set */
+		for (j = 0, nb_dd = 0; j < AVF_LOOK_AHEAD; j++)
+			nb_dd += s[j] & (1 << AVF_RX_DESC_STATUS_DD_SHIFT);
+
+		nb_rx += nb_dd;
+
+		/* Translate descriptor info to mbuf parameters */
+		for (j = 0; j < nb_dd; j++) {
+			AVF_DUMP_RX_DESC(rxq, &rxdp[j],
+					 rxq->rx_tail + i * AVF_LOOK_AHEAD + j);
+
+			mb = rxep[j];
+			qword1 = rte_le_to_cpu_64
+					(rxdp[j].wb.qword1.status_error_len);
+			pkt_len = ((qword1 & AVF_RXD_QW1_LENGTH_PBUF_MASK) >>
+				  AVF_RXD_QW1_LENGTH_PBUF_SHIFT) - rxq->crc_len;
+			mb->data_len = pkt_len;
+			mb->pkt_len = pkt_len;
+			mb->ol_flags = 0;
+			avf_rxd_to_vlan_tci(mb, &rxdp[j]);
+			pkt_flags = avf_rxd_to_pkt_flags(qword1);
+			mb->packet_type =
+				ptype_tbl[(uint8_t)((qword1 &
+				AVF_RXD_QW1_PTYPE_MASK) >>
+				AVF_RXD_QW1_PTYPE_SHIFT)];
+
+			if (pkt_flags & PKT_RX_RSS_HASH)
+				mb->hash.rss = rte_le_to_cpu_32(
+					rxdp[j].wb.qword0.hi_dword.rss);
+
+			mb->ol_flags |= pkt_flags;
+		}
+
+		for (j = 0; j < AVF_LOOK_AHEAD; j++)
+			rxq->rx_stage[i + j] = rxep[j];
+
+		if (nb_dd != AVF_LOOK_AHEAD)
+			break;
+	}
+
+	/* Clear software ring entries */
+	for (i = 0; i < nb_rx; i++)
+		rxq->sw_ring[rxq->rx_tail + i] = NULL;
+
+	return nb_rx;
+}
+
+static inline uint16_t
+avf_rx_fill_from_stage(struct avf_rx_queue *rxq,
+		       struct rte_mbuf **rx_pkts,
+		       uint16_t nb_pkts)
+{
+	uint16_t i;
+	struct rte_mbuf **stage = &rxq->rx_stage[rxq->rx_next_avail];
+
+	nb_pkts = (uint16_t)RTE_MIN(nb_pkts, rxq->rx_nb_avail);
+
+	for (i = 0; i < nb_pkts; i++)
+		rx_pkts[i] = stage[i];
+
+	rxq->rx_nb_avail = (uint16_t)(rxq->rx_nb_avail - nb_pkts);
+	rxq->rx_next_avail = (uint16_t)(rxq->rx_next_avail + nb_pkts);
+
+	return nb_pkts;
+}
+
+static inline int
+avf_rx_alloc_bufs(struct avf_rx_queue *rxq)
+{
+	volatile union avf_rx_desc *rxdp;
+	struct rte_mbuf **rxep;
+	struct rte_mbuf *mb;
+	uint16_t alloc_idx, i;
+	uint64_t dma_addr;
+	int diag;
+
+	/* Allocate buffers in bulk */
+	alloc_idx = (uint16_t)(rxq->rx_free_trigger -
+				(rxq->rx_free_thresh - 1));
+	rxep = &rxq->sw_ring[alloc_idx];
+	diag = rte_mempool_get_bulk(rxq->mp, (void *)rxep,
+				    rxq->rx_free_thresh);
+	if (unlikely(diag != 0)) {
+		PMD_RX_LOG(ERR, "Failed to get mbufs in bulk");
+		return -ENOMEM;
+	}
+
+	rxdp = &rxq->rx_ring[alloc_idx];
+	for (i = 0; i < rxq->rx_free_thresh; i++) {
+		if (likely(i < (rxq->rx_free_thresh - 1)))
+			/* Prefetch next mbuf */
+			rte_prefetch0(rxep[i + 1]);
+
+		mb = rxep[i];
+		rte_mbuf_refcnt_set(mb, 1);
+		mb->next = NULL;
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
+		mb->nb_segs = 1;
+		mb->port = rxq->port_id;
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mb));
+		rxdp[i].read.hdr_addr = 0;
+		rxdp[i].read.pkt_addr = dma_addr;
+	}
+
+	/* Update rx tail register */
+	rte_wmb();
+	AVF_PCI_REG_WRITE_RELAXED(rxq->qrx_tail, rxq->rx_free_trigger);
+
+	rxq->rx_free_trigger =
+		(uint16_t)(rxq->rx_free_trigger + rxq->rx_free_thresh);
+	if (rxq->rx_free_trigger >= rxq->nb_rx_desc)
+		rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
+
+	return 0;
+}
+
+static inline uint16_t
+rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct avf_rx_queue *rxq = (struct avf_rx_queue *)rx_queue;
+	struct rte_eth_dev *dev;
+	uint16_t nb_rx = 0;
+
+	if (!nb_pkts)
+		return 0;
+
+	if (rxq->rx_nb_avail)
+		return avf_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
+
+	nb_rx = (uint16_t)avf_rx_scan_hw_ring(rxq);
+	rxq->rx_next_avail = 0;
+	rxq->rx_nb_avail = nb_rx;
+	rxq->rx_tail = (uint16_t)(rxq->rx_tail + nb_rx);
+
+	if (rxq->rx_tail > rxq->rx_free_trigger) {
+		if (avf_rx_alloc_bufs(rxq) != 0) {
+			uint16_t i, j;
+
+			/* TODO: count rx_mbuf_alloc_failed here */
+
+			rxq->rx_nb_avail = 0;
+			rxq->rx_tail = (uint16_t)(rxq->rx_tail - nb_rx);
+			for (i = 0, j = rxq->rx_tail; i < nb_rx; i++, j++)
+				rxq->sw_ring[j] = rxq->rx_stage[i];
+
+			return 0;
+		}
+	}
+
+	if (rxq->rx_tail >= rxq->nb_rx_desc)
+		rxq->rx_tail = 0;
+
+	PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u, nb_rx=%u",
+		   rxq->port_id, rxq->queue_id,
+		   rxq->rx_tail, nb_rx);
+
+	if (rxq->rx_nb_avail)
+		return avf_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
+
+	return 0;
+}
+
+static uint16_t
+avf_recv_pkts_bulk_alloc(void *rx_queue,
+			 struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
+{
+	uint16_t nb_rx = 0, n, count;
+
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	if (likely(nb_pkts <= AVF_RX_MAX_BURST))
+		return rx_recv_pkts(rx_queue, rx_pkts, nb_pkts);
+
+	while (nb_pkts) {
+		n = RTE_MIN(nb_pkts, AVF_RX_MAX_BURST);
+		count = rx_recv_pkts(rx_queue, &rx_pkts[nb_rx], n);
+		nb_rx = (uint16_t)(nb_rx + count);
+		nb_pkts = (uint16_t)(nb_pkts - count);
+		if (count < n)
+			break;
+	}
+
+	return nb_rx;
+}
+
 static inline int
 avf_xmit_cleanup(struct avf_tx_queue *txq)
 {
@@ -1467,6 +1763,10 @@ avf_set_rx_function(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(DEBUG, "Using a Scattered Rx callback (port=%d).",
 			    dev->data->port_id);
 		dev->rx_pkt_burst = avf_recv_scattered_pkts;
+	} else if (adapter->rx_bulk_alloc_allowed) {
+		PMD_DRV_LOG(DEBUG, "Using bulk Rx callback (port=%d).",
+			    dev->data->port_id);
+		dev->rx_pkt_burst = avf_recv_pkts_bulk_alloc;
 	} else {
 		PMD_DRV_LOG(DEBUG, "Using Basic Rx callback (port=%d).",
 			    dev->data->port_id);

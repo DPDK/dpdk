@@ -83,6 +83,12 @@ struct avf_rx_queue {
 	uint16_t rxrearm_start;    /* the idx we start the re-arming from */
 	uint64_t mbuf_initializer; /* value to init mbufs */
 
+	/* for rx bulk */
+	uint16_t rx_nb_avail;      /* number of staged packets ready */
+	uint16_t rx_next_avail;    /* index of next staged packets */
+	uint16_t rx_free_trigger;  /* triggers rx buffer allocation */
+	struct rte_mbuf *rx_stage[AVF_RX_MAX_BURST * 2]; /* store mbuf */
+
 	uint16_t port_id;        /* device port ID */
 	uint8_t crc_len;        /* 0 if CRC stripped, 4 otherwise */
 	uint16_t queue_id;      /* Rx queue index */
