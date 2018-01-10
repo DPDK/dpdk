@@ -3109,74 +3109,6 @@ cmdline_parse_inst_t cmd_set_txsplit = {
 	},
 };
 
-/* *** CONFIG TX QUEUE FLAGS *** */
-
-struct cmd_config_txqflags_result {
-	cmdline_fixed_string_t port;
-	cmdline_fixed_string_t config;
-	cmdline_fixed_string_t all;
-	cmdline_fixed_string_t what;
-	int32_t hexvalue;
-};
-
-static void cmd_config_txqflags_parsed(void *parsed_result,
-				__attribute__((unused)) struct cmdline *cl,
-				__attribute__((unused)) void *data)
-{
-	struct cmd_config_txqflags_result *res = parsed_result;
-
-	if (!all_ports_stopped()) {
-		printf("Please stop all ports first\n");
-		return;
-	}
-
-	if (strcmp(res->what, "txqflags")) {
-		printf("Unknown parameter\n");
-		return;
-	}
-
-	if (res->hexvalue >= 0) {
-		txq_flags = res->hexvalue;
-	} else {
-		printf("txqflags must be >= 0\n");
-		return;
-	}
-
-	init_port_config();
-
-	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
-}
-
-cmdline_parse_token_string_t cmd_config_txqflags_port =
-	TOKEN_STRING_INITIALIZER(struct cmd_config_txqflags_result, port,
-				 "port");
-cmdline_parse_token_string_t cmd_config_txqflags_config =
-	TOKEN_STRING_INITIALIZER(struct cmd_config_txqflags_result, config,
-				 "config");
-cmdline_parse_token_string_t cmd_config_txqflags_all =
-	TOKEN_STRING_INITIALIZER(struct cmd_config_txqflags_result, all,
-				 "all");
-cmdline_parse_token_string_t cmd_config_txqflags_what =
-	TOKEN_STRING_INITIALIZER(struct cmd_config_txqflags_result, what,
-				 "txqflags");
-cmdline_parse_token_num_t cmd_config_txqflags_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_config_txqflags_result,
-				hexvalue, INT32);
-
-cmdline_parse_inst_t cmd_config_txqflags = {
-	.f = cmd_config_txqflags_parsed,
-	.data = NULL,
-	.help_str = "port config all txqflags <value>",
-	.tokens = {
-		(void *)&cmd_config_txqflags_port,
-		(void *)&cmd_config_txqflags_config,
-		(void *)&cmd_config_txqflags_all,
-		(void *)&cmd_config_txqflags_what,
-		(void *)&cmd_config_txqflags_value,
-		NULL,
-	},
-};
-
 /* *** ADD/REMOVE ALL VLAN IDENTIFIERS TO/FROM A PORT VLAN RX FILTER *** */
 struct cmd_rx_vlan_filter_all_result {
 	cmdline_fixed_string_t rx_vlan;
@@ -15726,7 +15658,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
 	(cmdline_parse_inst_t *)&cmd_config_rss,
 	(cmdline_parse_inst_t *)&cmd_config_rxtx_queue,
-	(cmdline_parse_inst_t *)&cmd_config_txqflags,
 	(cmdline_parse_inst_t *)&cmd_config_rss_reta,
 	(cmdline_parse_inst_t *)&cmd_showport_reta,
 	(cmdline_parse_inst_t *)&cmd_config_burst,

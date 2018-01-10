@@ -381,7 +381,6 @@ extern int16_t rx_free_thresh;
 extern int8_t rx_drop_en;
 extern int16_t tx_free_thresh;
 extern int16_t tx_rs_thresh;
-extern int32_t txq_flags;
 
 extern uint8_t dcb_config;
 extern uint8_t dcb_test;

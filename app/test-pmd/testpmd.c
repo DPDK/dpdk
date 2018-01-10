@@ -231,11 +231,6 @@ int16_t tx_free_thresh = RTE_PMD_PARAM_UNSET;
 int16_t tx_rs_thresh = RTE_PMD_PARAM_UNSET;
 
 /*
- * Configurable value of TX queue flags.
- */
-int32_t txq_flags = RTE_PMD_PARAM_UNSET;
-
-/*
  * Receive Side Scaling (RSS) configuration.
  */
 uint64_t rss_hf = ETH_RSS_IP; /* RSS IP by default. */
@@ -2056,9 +2051,6 @@ rxtx_port_config(struct rte_port *port)
 
 	if (tx_free_thresh != RTE_PMD_PARAM_UNSET)
 		port->tx_conf.tx_free_thresh = tx_free_thresh;
-
-	if (txq_flags != RTE_PMD_PARAM_UNSET)
-		port->tx_conf.txq_flags = txq_flags;
 }
 
 void

@@ -417,7 +417,6 @@ tx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 	printf("\nTX writeback threshold: %hhu", qinfo.conf.tx_thresh.wthresh);
 	printf("\nTX RS threshold: %hu", qinfo.conf.tx_rs_thresh);
 	printf("\nTX free threshold: %hu", qinfo.conf.tx_free_thresh);
-	printf("\nTX flags: %#x", qinfo.conf.txq_flags);
 	printf("\nTX deferred start: %s",
 		(qinfo.conf.tx_deferred_start != 0) ? "on" : "off");
 	printf("\nNumber of TXDs: %hu", qinfo.nb_desc);
@@ -1724,10 +1723,8 @@ rxtx_config_display(void)
 				tx_conf->tx_thresh.pthresh,
 				tx_conf->tx_thresh.hthresh,
 				tx_conf->tx_thresh.wthresh);
-		printf("  TX RS bit threshold=%d - TXQ flags=0x%"PRIx32""
-		       " - TXQ offloads=0x%"PRIx64"\n",
-				tx_conf->tx_rs_thresh, tx_conf->txq_flags,
-				tx_conf->offloads);
+		printf("  TX RS bit threshold=%d - TXQ offloads=0x%"PRIx64"\n",
+				tx_conf->tx_rs_thresh, tx_conf->offloads);
 	}
 }
 

@@ -70,7 +70,7 @@ usage(char* progname)
 	       "--rss-ip | --rss-udp | "
 	       "--rxpt= | --rxht= | --rxwt= | --rxfreet= | "
 	       "--txpt= | --txht= | --txwt= | --txfreet= | "
-	       "--txrst= | --txqflags= | --tx-offloads ]\n",
+	       "--txrst= | --tx-offloads ]\n",
 	       progname);
 #ifdef RTE_LIBRTE_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
@@ -163,8 +163,6 @@ usage(char* progname)
 	       "(0 <= N <= value of txd).\n");
 	printf("  --txrst=N: set the transmit RS bit threshold of TX rings to N "
 	       "(0 <= N <= value of txd).\n");
-	printf("  --txqflags=0xXXXXXXXX: hexadecimal bitmask of TX queue flags "
-	       "(0 <= N <= 0x7FFFFFFF).\n");
 	printf("  --tx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping]: "
 	       "tx queues statistics counters mapping "
 	       "(0 <= mapping <= %d).\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
@@ -603,7 +601,6 @@ launch_args_parse(int argc, char** argv)
 		{ "txwt",			1, 0, 0 },
 		{ "txfreet",			1, 0, 0 },
 		{ "txrst",			1, 0, 0 },
-		{ "txqflags",			1, 0, 0 },
 		{ "rxpt",			1, 0, 0 },
 		{ "rxht",			1, 0, 0 },
 		{ "rxwt",			1, 0, 0 },
@@ -976,15 +973,6 @@ launch_args_parse(int argc, char** argv)
 					tx_rs_thresh = (int16_t)n;
 				else
 					rte_exit(EXIT_FAILURE, "txrst must be >= 0\n");
-			}
-			if (!strcmp(lgopts[opt_idx].name, "txqflags")) {
-				char *end = NULL;
-				n = strtoul(optarg, &end, 16);
-				if (n >= 0)
-					txq_flags = (int32_t)n;
-				else
-					rte_exit(EXIT_FAILURE,
-						 "txqflags must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxd")) {
 				n = atoi(optarg);

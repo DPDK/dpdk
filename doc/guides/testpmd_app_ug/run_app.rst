@@ -447,18 +447,6 @@ The commandline options are:
     Set the transmit RS bit threshold of TX rings to N, where 0 <= N <= value of ``--txd``.
     The default value is 0.
 
-*   ``--txqflags=0xXXXXXXXX``
-
-    Set the hexadecimal bitmask of TX queue flags, where 0 <= N <= 0x7FFFFFFF.
-    The default value is 0.
-
-    .. note::
-
-       When using hardware offload functions such as vlan or checksum
-       add ``txqflags=0`` to force the full-featured TX code path.
-       In some PMDs this may already be the default.
-
-
 *   ``--rx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping)]``
 
     Set the RX queues statistics counters mapping 0 <= mapping <= 15.

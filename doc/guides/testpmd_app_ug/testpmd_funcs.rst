@@ -354,8 +354,6 @@ The available information categories are:
   also modify the default hierarchy or specify the new hierarchy through CLI for
   implementing QoS scheduler.  Requires ``CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y`` ``CONFIG_RTE_LIBRTE_SCHED=y``.
 
-Note: TX timestamping is only available in the "Full Featured" TX path. To force ``testpmd`` into this mode set ``--txqflags=0``.
-
 Example::
 
    testpmd> set fwd rxonly
@@ -1680,15 +1678,6 @@ Set RX scatter mode on or off for all ports::
 RX scatter mode is off by default.
 
 The ``on`` option is equivalent to the ``--enable-scatter`` command-line option.
-
-port config - TX queue flags
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set a hexadecimal bitmap of TX queue flags for all ports::
-
-   testpmd> port config all txqflags value
-
-This command is equivalent to the ``--txqflags`` command-line option.
 
 port config - RX Checksum
 ~~~~~~~~~~~~~~~~~~~~~~~~~
