@@ -32,6 +32,7 @@
 #include <rte_ip.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
+#include <rte_net.h>
 
 #include "dpaa_ethdev.h"
 #include "dpaa_rxtx.h"
@@ -478,6 +479,15 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 	fd->opaque_addr = 0;
 
 	if (mbuf->ol_flags & DPAA_TX_CKSUM_OFFLOAD_MASK) {
+		if (!mbuf->packet_type) {
+			struct rte_net_hdr_lens hdr_lens;
+
+			mbuf->packet_type = rte_net_get_ptype(mbuf, &hdr_lens,
+					RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK
+					| RTE_PTYPE_L4_MASK);
+			mbuf->l2_len = hdr_lens.l2_len;
+			mbuf->l3_len = hdr_lens.l3_len;
+		}
 		if (temp->data_off < DEFAULT_TX_ICEOF
 			+ sizeof(struct dpaa_eth_parse_results_t))
 			temp->data_off = DEFAULT_TX_ICEOF
@@ -585,6 +595,15 @@ tx_on_dpaa_pool_unsegmented(struct rte_mbuf *mbuf,
 	}
 
 	if (mbuf->ol_flags & DPAA_TX_CKSUM_OFFLOAD_MASK) {
+		if (!mbuf->packet_type) {
+			struct rte_net_hdr_lens hdr_lens;
+
+			mbuf->packet_type = rte_net_get_ptype(mbuf, &hdr_lens,
+					RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK
+					| RTE_PTYPE_L4_MASK);
+			mbuf->l2_len = hdr_lens.l2_len;
+			mbuf->l3_len = hdr_lens.l3_len;
+		}
 		if (mbuf->data_off < (DEFAULT_TX_ICEOF +
 		    sizeof(struct dpaa_eth_parse_results_t))) {
 			DPAA_DP_LOG(DEBUG, "Checksum offload Err: "
