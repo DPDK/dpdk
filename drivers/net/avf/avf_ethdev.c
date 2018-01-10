@@ -55,6 +55,7 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.dev_close                  = avf_dev_close,
 	.dev_infos_get              = avf_dev_info_get,
 	.dev_supported_ptypes_get   = avf_dev_supported_ptypes_get,
+	.link_update                = avf_dev_link_update,
 	.rx_queue_start             = avf_dev_rx_queue_start,
 	.rx_queue_stop              = avf_dev_rx_queue_stop,
 	.tx_queue_start             = avf_dev_tx_queue_start,
@@ -429,6 +430,53 @@ avf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return ptypes;
 }
 
+int
+avf_dev_link_update(struct rte_eth_dev *dev,
+		    __rte_unused int wait_to_complete)
+{
+	struct rte_eth_link new_link;
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	/* Only read status info stored in VF, and the info is updated
+	 *  when receive LINK_CHANGE evnet from PF by Virtchnnl.
+	 */
+	switch (vf->link_speed) {
+	case VIRTCHNL_LINK_SPEED_100MB:
+		new_link.link_speed = ETH_SPEED_NUM_100M;
+		break;
+	case VIRTCHNL_LINK_SPEED_1GB:
+		new_link.link_speed = ETH_SPEED_NUM_1G;
+		break;
+	case VIRTCHNL_LINK_SPEED_10GB:
+		new_link.link_speed = ETH_SPEED_NUM_10G;
+		break;
+	case VIRTCHNL_LINK_SPEED_20GB:
+		new_link.link_speed = ETH_SPEED_NUM_20G;
+		break;
+	case VIRTCHNL_LINK_SPEED_25GB:
+		new_link.link_speed = ETH_SPEED_NUM_25G;
+		break;
+	case VIRTCHNL_LINK_SPEED_40GB:
+		new_link.link_speed = ETH_SPEED_NUM_40G;
+		break;
+	default:
+		new_link.link_speed = ETH_SPEED_NUM_NONE;
+		break;
+	}
+
+	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	new_link.link_status = vf->link_up ? ETH_LINK_UP :
+					     ETH_LINK_DOWN;
+	new_link.link_autoneg = !!(dev->data->dev_conf.link_speeds &
+				ETH_LINK_SPEED_FIXED);
+
+	rte_atomic64_cmpset((uint64_t *)&dev->data->dev_link,
+			    *(uint64_t *)&dev->data->dev_link,
+			    *(uint64_t *)&new_link);
+
+	return 0;
+}
+
 static int
 avf_check_vf_reset_done(struct avf_hw *hw)
 {
@@ -712,7 +760,8 @@ static int eth_avf_pci_remove(struct rte_pci_device *pci_dev)
 /* Adaptive virtual function driver struct */
 static struct rte_pci_driver rte_avf_pmd = {
 	.id_table = pci_id_avf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+		     RTE_PCI_DRV_IOVA_AS_VA,
 	.probe = eth_avf_pci_probe,
 	.remove = eth_avf_pci_remove,
 };

@@ -133,6 +133,41 @@ avf_execute_vf_cmd(struct avf_adapter *adapter, struct avf_cmd_info *args)
 	return err;
 }
 
+static void
+avf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
+			uint16_t msglen)
+{
+	struct virtchnl_pf_event *pf_msg =
+			(struct virtchnl_pf_event *)msg;
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	if (msglen < sizeof(struct virtchnl_pf_event)) {
+		PMD_DRV_LOG(DEBUG, "Error event");
+		return;
+	}
+	switch (pf_msg->event) {
+	case VIRTCHNL_EVENT_RESET_IMPENDING:
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
+					      NULL, NULL);
+		break;
+	case VIRTCHNL_EVENT_LINK_CHANGE:
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
+		vf->link_up = pf_msg->event_data.link_event.link_status;
+		vf->link_speed = pf_msg->event_data.link_event.link_speed;
+		avf_dev_link_update(dev, 0);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+					      NULL, NULL);
+		break;
+	case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event");
+		break;
+	default:
+		PMD_DRV_LOG(ERR, " unknown event received %u", pf_msg->event);
+		break;
+	}
+}
+
 void
 avf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 {
@@ -172,7 +207,8 @@ avf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 		switch (aq_opc) {
 		case avf_aqc_opc_send_msg_to_vf:
 			if (msg_opc == VIRTCHNL_OP_EVENT) {
-				/* TODO */
+				avf_handle_pf_event_msg(dev, info.msg_buf,
+							info.msg_len);
 			} else {
 				/* read message and it's expected one */
 				if (msg_opc == vf->pend_cmd) {
