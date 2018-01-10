@@ -391,7 +391,7 @@ F: doc/guides/nics/features/cxgbe.ini
 
 Cisco enic
 M: John Daley <johndale@cisco.com>
-M: Nelson Escobar <neescoba@cisco.com>
+M: Hyong Youb Kim <hyonkim@cisco.com>
 F: drivers/net/enic/
 F: doc/guides/nics/enic.rst
 F: doc/guides/nics/features/enic.ini
