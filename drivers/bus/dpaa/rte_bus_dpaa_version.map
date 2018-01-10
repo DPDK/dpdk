@@ -73,6 +73,7 @@ DPDK_18.02 {
 	qman_alloc_pool_range;
 	qman_create_cgr;
 	qman_delete_cgr;
+	qman_enqueue_multi_fq;
 	qman_modify_cgr;
 	qman_oos_fq;
 	qman_portal_poll_rx;

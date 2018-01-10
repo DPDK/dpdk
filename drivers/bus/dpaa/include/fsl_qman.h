@@ -1703,6 +1703,20 @@ int qman_enqueue_multi(struct qman_fq *fq,
 		       const struct qm_fd *fd,
 		int frames_to_send);
 
+/**
+ * qman_enqueue_multi_fq - Enqueue multiple frames to their respective frame
+ * queues.
+ * @fq[]: Array of frame queue objects to enqueue to
+ * @fd: pointer to first descriptor of frame to be enqueued
+ * @frames_to_send: number of frames to be sent.
+ *
+ * This API is similar to qman_enqueue_multi(), but it takes fd which needs
+ * to be processed by different frame queues.
+ */
+int
+qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
+		      int frames_to_send);
+
 typedef int (*qman_cb_precommit) (void *arg);
 
 /**
