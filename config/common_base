@@ -218,6 +218,11 @@ CONFIG_RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE=y
 CONFIG_RTE_LIBRTE_FM10K_INC_VECTOR=y
 
 #
+# Compile burst-oriented AVF PMD driver
+#
+CONFIG_RTE_LIBRTE_AVF_PMD=y
+
+#
 # Compile burst-oriented Mellanox ConnectX-3 (MLX4) PMD
 #
 CONFIG_RTE_LIBRTE_MLX4_PMD=n
