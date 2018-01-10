@@ -57,7 +57,9 @@ assumes the packets are complete (i.e., MF==0 && frag_off==0), when IP
 fragmentation is possible (i.e., DF==0). Additionally, it complies RFC
 6864 to process the IPv4 ID field.
 
-Currently, the GRO library provides GRO supports for TCP/IPv4 packets.
+Currently, the GRO library provides GRO supports for TCP/IPv4 packets and
+VxLAN packets which contain an outer IPv4 header and an inner TCP/IPv4
+packet.
 
 Two Sets of API
 ---------------
@@ -108,7 +110,8 @@ Reassembly Algorithm
 
 The reassembly algorithm is used for reassembling packets. In the GRO
 library, different GRO types can use different algorithms. In this
-section, we will introduce an algorithm, which is used by TCP/IPv4 GRO.
+section, we will introduce an algorithm, which is used by TCP/IPv4 GRO
+and VxLAN GRO.
 
 Challenges
 ~~~~~~~~~~
@@ -184,6 +187,30 @@ Header fields deciding if two packets are neighbors include:
 
 - IPv4 ID. The IPv4 ID fields of the packets, whose DF bit is 0, should
   be increased by 1.
+
+VxLAN GRO
+---------
+
+The table structure used by VxLAN GRO, which is in charge of processing
+VxLAN packets with an outer IPv4 header and inner TCP/IPv4 packet, is
+similar with that of TCP/IPv4 GRO. Differently, the header fields used
+to define a VxLAN flow include:
+
+- outer source and destination: Ethernet and IP address, UDP port
+
+- VxLAN header (VNI and flag)
+
+- inner source and destination: Ethernet and IP address, TCP port
+
+Header fields deciding if packets are neighbors include:
+
+- outer IPv4 ID. The IPv4 ID fields of the packets, whose DF bit in the
+  outer IPv4 header is 0, should be increased by 1.
+
+- inner TCP sequence number
+
+- inner IPv4 ID. The IPv4 ID fields of the packets, whose DF bit in the
+  inner IPv4 header is 0, should be increased by 1.
 
 .. note::
         We comply RFC 6864 to process the IPv4 ID field. Specifically,

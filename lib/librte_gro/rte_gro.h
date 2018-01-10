@@ -23,12 +23,15 @@ extern "C" {
  */
 #define RTE_GRO_TYPE_MAX_NUM 64
 /**< the max number of supported GRO types */
-#define RTE_GRO_TYPE_SUPPORT_NUM 1
+#define RTE_GRO_TYPE_SUPPORT_NUM 2
 /**< the number of currently supported GRO types */
 
 #define RTE_GRO_TCP_IPV4_INDEX 0
 #define RTE_GRO_TCP_IPV4 (1ULL << RTE_GRO_TCP_IPV4_INDEX)
 /**< TCP/IPv4 GRO flag */
+#define RTE_GRO_IPV4_VXLAN_TCP_IPV4_INDEX 1
+#define RTE_GRO_IPV4_VXLAN_TCP_IPV4 (1ULL << RTE_GRO_IPV4_VXLAN_TCP_IPV4_INDEX)
+/**< VxLAN GRO flag. */
 
 /**
  * Structure used to create GRO context objects or used to pass

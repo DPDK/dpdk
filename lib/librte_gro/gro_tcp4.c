@@ -6,8 +6,6 @@
 #include <rte_mbuf.h>
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
-#include <rte_ip.h>
-#include <rte_tcp.h>
 
 #include "gro_tcp4.h"
 
@@ -72,109 +70,6 @@ gro_tcp4_tbl_destroy(void *tbl)
 		rte_free(tcp_tbl->flows);
 	}
 	rte_free(tcp_tbl);
-}
-
-/*
- * merge two TCP/IPv4 packets without updating checksums.
- * If cmp is larger than 0, append the new packet to the
- * original packet. Otherwise, pre-pend the new packet to
- * the original packet.
- */
-static inline int
-merge_two_tcp4_packets(struct gro_tcp4_item *item,
-		struct rte_mbuf *pkt,
-		int cmp,
-		uint32_t sent_seq,
-		uint16_t ip_id)
-{
-	struct rte_mbuf *pkt_head, *pkt_tail, *lastseg;
-	uint16_t hdr_len;
-
-	if (cmp > 0) {
-		pkt_head = item->firstseg;
-		pkt_tail = pkt;
-	} else {
-		pkt_head = pkt;
-		pkt_tail = item->firstseg;
-	}
-
-	/* check if the IPv4 packet length is greater than the max value */
-	hdr_len = pkt_head->l2_len + pkt_head->l3_len + pkt_head->l4_len;
-	if (unlikely(pkt_head->pkt_len - pkt_head->l2_len + pkt_tail->pkt_len -
-				hdr_len > MAX_IPV4_PKT_LENGTH))
-		return 0;
-
-	/* remove the packet header for the tail packet */
-	rte_pktmbuf_adj(pkt_tail, hdr_len);
-
-	/* chain two packets together */
-	if (cmp > 0) {
-		item->lastseg->next = pkt;
-		item->lastseg = rte_pktmbuf_lastseg(pkt);
-		/* update IP ID to the larger value */
-		item->ip_id = ip_id;
-	} else {
-		lastseg = rte_pktmbuf_lastseg(pkt);
-		lastseg->next = item->firstseg;
-		item->firstseg = pkt;
-		/* update sent_seq to the smaller value */
-		item->sent_seq = sent_seq;
-	}
-	item->nb_merged++;
-
-	/* update mbuf metadata for the merged packet */
-	pkt_head->nb_segs += pkt_tail->nb_segs;
-	pkt_head->pkt_len += pkt_tail->pkt_len;
-
-	return 1;
-}
-
-/*
- * Check if two TCP/IPv4 packets are neighbors.
- */
-static inline int
-check_seq_option(struct gro_tcp4_item *item,
-		struct tcp_hdr *tcph,
-		uint32_t sent_seq,
-		uint16_t ip_id,
-		uint16_t tcp_hl,
-		uint16_t tcp_dl,
-		uint8_t is_atomic)
-{
-	struct rte_mbuf *pkt_orig = item->firstseg;
-	struct ipv4_hdr *iph_orig;
-	struct tcp_hdr *tcph_orig;
-	uint16_t len, tcp_hl_orig;
-
-	iph_orig = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt_orig, char *) +
-			pkt_orig->l2_len);
-	tcph_orig = (struct tcp_hdr *)((char *)iph_orig + pkt_orig->l3_len);
-	tcp_hl_orig = pkt_orig->l4_len;
-
-	/* Check if TCP option fields equal */
-	len = RTE_MAX(tcp_hl, tcp_hl_orig) - sizeof(struct tcp_hdr);
-	if ((tcp_hl != tcp_hl_orig) ||
-			((len > 0) && (memcmp(tcph + 1, tcph_orig + 1,
-					len) != 0)))
-		return 0;
-
-	/* Don't merge packets whose DF bits are different */
-	if (unlikely(item->is_atomic ^ is_atomic))
-		return 0;
-
-	/* check if the two packets are neighbors */
-	len = pkt_orig->pkt_len - pkt_orig->l2_len - pkt_orig->l3_len -
-		tcp_hl_orig;
-	if ((sent_seq == item->sent_seq + len) && (is_atomic ||
-				(ip_id == item->ip_id + 1)))
-		/* append the new packet */
-		return 1;
-	else if ((sent_seq + tcp_dl == item->sent_seq) && (is_atomic ||
-			(ip_id + item->nb_merged == item->ip_id)))
-		/* pre-pend the new packet */
-		return -1;
-
-	return 0;
 }
 
 static inline uint32_t
@@ -277,21 +172,6 @@ insert_new_flow(struct gro_tcp4_tbl *tbl,
 	tbl->flow_num++;
 
 	return flow_idx;
-}
-
-/*
- * Check if two TCP/IPv4 packets belong to the same flow.
- */
-static inline int
-is_same_tcp4_flow(struct tcp4_flow_key k1, struct tcp4_flow_key k2)
-{
-	return (is_same_ether_addr(&k1.eth_saddr, &k2.eth_saddr) &&
-			is_same_ether_addr(&k1.eth_daddr, &k2.eth_daddr) &&
-			(k1.ip_src_addr == k2.ip_src_addr) &&
-			(k1.ip_dst_addr == k2.ip_dst_addr) &&
-			(k1.recv_ack == k2.recv_ack) &&
-			(k1.src_port == k2.src_port) &&
-			(k1.dst_port == k2.dst_port));
 }
 
 /*
@@ -407,11 +287,11 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	prev_idx = cur_idx;
 	do {
 		cmp = check_seq_option(&(tbl->items[cur_idx]), tcp_hdr,
-				sent_seq, ip_id, pkt->l4_len, tcp_dl,
+				sent_seq, ip_id, pkt->l4_len, tcp_dl, 0,
 				is_atomic);
 		if (cmp) {
 			if (merge_two_tcp4_packets(&(tbl->items[cur_idx]),
-						pkt, cmp, sent_seq, ip_id))
+						pkt, cmp, sent_seq, ip_id, 0))
 				return 1;
 			/*
 			 * Fail to merge the two packets, as the packet
