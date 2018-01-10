@@ -1366,15 +1366,23 @@ all_ports_started(void)
 }
 
 int
+port_is_stopped(portid_t port_id)
+{
+	struct rte_port *port = &ports[port_id];
+
+	if ((port->port_status != RTE_PORT_STOPPED) &&
+	    (port->slave_flag == 0))
+		return 0;
+	return 1;
+}
+
+int
 all_ports_stopped(void)
 {
 	portid_t pi;
-	struct rte_port *port;
 
 	RTE_ETH_FOREACH_DEV(pi) {
-		port = &ports[pi];
-		if ((port->port_status != RTE_PORT_STOPPED) &&
-			(port->slave_flag == 0))
+		if (!port_is_stopped(pi))
 			return 0;
 	}
 
