@@ -186,7 +186,9 @@ dpaa_fw_version_get(struct rte_eth_dev *dev __rte_unused,
 		DPAA_PMD_ERR("Unable to open SoC device");
 		return -ENOTSUP; /* Not supported on this infra */
 	}
-	if (fscanf(svr_file, "svr:%x", &svr_ver) <= 0)
+	if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
+		dpaa_svr_family = svr_ver & SVR_MASK;
+	else
 		DPAA_PMD_ERR("Unable to read SoC device");
 
 	fclose(svr_file);

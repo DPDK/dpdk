@@ -51,6 +51,8 @@ struct netcfg_info *dpaa_netcfg;
 /* define a variable to hold the portal_key, once created.*/
 pthread_key_t dpaa_portal_key;
 
+unsigned int dpaa_svr_family;
+
 RTE_DEFINE_PER_LCORE(bool, _dpaa_io);
 
 static inline void
@@ -417,6 +419,8 @@ rte_dpaa_bus_probe(void)
 	int ret = -1;
 	struct rte_dpaa_device *dev;
 	struct rte_dpaa_driver *drv;
+	FILE *svr_file = NULL;
+	unsigned int svr_ver;
 
 	BUS_INIT_FUNC_TRACE();
 
@@ -436,6 +440,14 @@ rte_dpaa_bus_probe(void)
 			break;
 		}
 	}
+
+	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
+	if (svr_file) {
+		if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
+			dpaa_svr_family = svr_ver & SVR_MASK;
+		fclose(svr_file);
+	}
+
 	return 0;
 }
 

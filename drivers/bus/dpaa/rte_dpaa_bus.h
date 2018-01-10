@@ -20,6 +20,17 @@
 #define DEV_TO_DPAA_DEVICE(ptr)	\
 		container_of(ptr, struct rte_dpaa_device, device)
 
+/* DPAA SoC identifier; If this is not available, it can be concluded
+ * that board is non-DPAA. Single slot is currently supported.
+ */
+#define DPAA_SOC_ID_FILE	"/sys/devices/soc0/soc_id"
+
+#define SVR_LS1043A_FAMILY	0x87920000
+#define SVR_LS1046A_FAMILY	0x87070000
+#define SVR_MASK		0xffff0000
+
+extern unsigned int dpaa_svr_family;
+
 struct rte_dpaa_device;
 struct rte_dpaa_driver;
 

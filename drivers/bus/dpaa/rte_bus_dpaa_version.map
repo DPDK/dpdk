@@ -64,3 +64,11 @@ DPDK_17.11 {
 
 	local: *;
 };
+
+DPDK_18.02 {
+	global:
+
+	dpaa_svr_family;
+
+	local: *;
+} DPDK_17.11;
