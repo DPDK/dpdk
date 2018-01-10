@@ -669,7 +669,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	struct rte_mbuf *mbuf, *mi = NULL;
 	struct rte_mempool *mp;
 	struct dpaa_bp_info *bp_info;
-	struct qm_fd fd_arr[MAX_TX_RING_SLOTS];
+	struct qm_fd fd_arr[DPAA_TX_BURST_SIZE];
 	uint32_t frames_to_send, loop, i = 0;
 	uint16_t state;
 	int ret;
@@ -683,7 +683,8 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	DPAA_DP_LOG(DEBUG, "Transmitting %d buffers on queue: %p", nb_bufs, q);
 
 	while (nb_bufs) {
-		frames_to_send = (nb_bufs >> 3) ? MAX_TX_RING_SLOTS : nb_bufs;
+		frames_to_send = (nb_bufs > DPAA_TX_BURST_SIZE) ?
+				DPAA_TX_BURST_SIZE : nb_bufs;
 		for (loop = 0; loop < frames_to_send; loop++, i++) {
 			mbuf = bufs[i];
 			if (RTE_MBUF_DIRECT(mbuf)) {

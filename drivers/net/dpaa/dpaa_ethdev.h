@@ -41,7 +41,7 @@
 #define DPAA_MAX_MAC_FILTER (MEMAC_NUM_OF_PADDRS + 1)
 
 /*Maximum number of slots available in TX ring*/
-#define MAX_TX_RING_SLOTS	8
+#define DPAA_TX_BURST_SIZE	7
 
 #ifndef VLAN_TAG_SIZE
 #define VLAN_TAG_SIZE   4 /** < Vlan Header Length */
