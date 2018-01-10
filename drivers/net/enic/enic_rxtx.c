@@ -490,8 +490,8 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 
 		mss = 0;
-		vlan_id = 0;
-		vlan_tag_insert = 0;
+		vlan_id = tx_pkt->vlan_tci;
+		vlan_tag_insert = !!(ol_flags & PKT_TX_VLAN_PKT);
 		bus_addr = (dma_addr_t)
 			   (tx_pkt->buf_iova + tx_pkt->data_off);
 
@@ -531,10 +531,6 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			}
 		}
 
-		if (ol_flags & PKT_TX_VLAN_PKT) {
-			vlan_tag_insert = 1;
-			vlan_id = tx_pkt->vlan_tci;
-		}
 
 		wq_enet_desc_enc(&desc_tmp, bus_addr, data_len, mss, header_len,
 				 offload_mode, eop, eop, 0, vlan_tag_insert,
