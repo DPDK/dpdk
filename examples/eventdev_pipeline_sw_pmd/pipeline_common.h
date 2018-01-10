@@ -82,6 +82,10 @@ struct config_data {
 	int16_t next_qid[MAX_NUM_STAGES+2];
 	int16_t qid[MAX_NUM_STAGES];
 	uint8_t rx_adapter_id;
+	uint64_t worker_lcore_mask;
+	uint64_t rx_lcore_mask;
+	uint64_t tx_lcore_mask;
+	uint64_t sched_lcore_mask;
 };
 
 struct port_link {

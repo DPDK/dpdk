@@ -385,6 +385,48 @@ init_rx_adapter(uint16_t nb_ports)
 				cdata.rx_adapter_id);
 }
 
+static void
+generic_opt_check(void)
+{
+	int i;
+	int ret;
+	uint32_t cap = 0;
+	uint8_t rx_needed = 0;
+	struct rte_event_dev_info eventdev_info;
+
+	memset(&eventdev_info, 0, sizeof(struct rte_event_dev_info));
+	rte_event_dev_info_get(0, &eventdev_info);
+
+	for (i = 0; i < rte_eth_dev_count(); i++) {
+		ret = rte_event_eth_rx_adapter_caps_get(0, i, &cap);
+		if (ret)
+			rte_exit(EXIT_FAILURE,
+				"failed to get event rx adapter capabilities");
+		rx_needed |=
+			!(cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT);
+	}
+
+	if (cdata.worker_lcore_mask == 0 ||
+			(rx_needed && cdata.rx_lcore_mask == 0) ||
+			cdata.tx_lcore_mask == 0 || (cdata.sched_lcore_mask == 0
+				&& !(eventdev_info.event_dev_cap &
+					RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED))) {
+		printf("Core part of pipeline was not assigned any cores. "
+			"This will stall the pipeline, please check core masks "
+			"(use -h for details on setting core masks):\n"
+			"\trx: %"PRIu64"\n\ttx: %"PRIu64"\n\tsched: %"PRIu64
+			"\n\tworkers: %"PRIu64"\n",
+			cdata.rx_lcore_mask, cdata.tx_lcore_mask,
+			cdata.sched_lcore_mask,
+			cdata.worker_lcore_mask);
+		rte_exit(-1, "Fix core masks\n");
+	}
+
+	if (eventdev_info.event_dev_cap & RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED)
+		memset(fdata->sched_core, 0,
+				sizeof(unsigned int) * MAX_NUM_CORE);
+}
+
 void
 set_worker_generic_setup_data(struct setup_data *caps, bool burst)
 {
@@ -395,4 +437,5 @@ set_worker_generic_setup_data(struct setup_data *caps, bool burst)
 	caps->adptr_setup = init_rx_adapter;
 	caps->scheduler = schedule_devices;
 	caps->evdev_setup = setup_eventdev_generic;
+	caps->check_opt = generic_opt_check;
 }

@@ -225,17 +225,11 @@ parse_app_args(int argc, char **argv)
 		}
 	}
 
-	if (worker_lcore_mask == 0 || rx_lcore_mask == 0 ||
-	    sched_lcore_mask == 0 || tx_lcore_mask == 0) {
-		printf("Core part of pipeline was not assigned any cores. "
-			"This will stall the pipeline, please check core masks "
-			"(use -h for details on setting core masks):\n"
-			"\trx: %"PRIu64"\n\ttx: %"PRIu64"\n\tsched: %"PRIu64
-			"\n\tworkers: %"PRIu64"\n",
-			rx_lcore_mask, tx_lcore_mask, sched_lcore_mask,
-			worker_lcore_mask);
-		rte_exit(-1, "Fix core masks\n");
-	}
+	cdata.worker_lcore_mask = worker_lcore_mask;
+	cdata.sched_lcore_mask = sched_lcore_mask;
+	cdata.rx_lcore_mask = rx_lcore_mask;
+	cdata.tx_lcore_mask = tx_lcore_mask;
+
 	if (cdata.num_stages == 0 || cdata.num_stages > MAX_NUM_STAGES)
 		usage();
 
