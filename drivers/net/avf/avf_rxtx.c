@@ -92,6 +92,34 @@ check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
 	return 0;
 }
 
+#ifdef RTE_LIBRTE_AVF_INC_VECTOR
+static inline bool
+check_rx_vec_allow(struct avf_rx_queue *rxq)
+{
+	if (rxq->rx_free_thresh >= AVF_VPMD_RX_MAX_BURST &&
+	    rxq->nb_rx_desc % rxq->rx_free_thresh == 0) {
+		PMD_INIT_LOG(DEBUG, "Vector Rx can be enabled on this rxq.");
+		return TRUE;
+	}
+
+	PMD_INIT_LOG(DEBUG, "Vector Rx cannot be enabled on this rxq.");
+	return FALSE;
+}
+
+static inline bool
+check_tx_vec_allow(struct avf_tx_queue *txq)
+{
+	if ((txq->txq_flags & AVF_SIMPLE_FLAGS) == AVF_SIMPLE_FLAGS &&
+	    txq->rs_thresh >= AVF_VPMD_TX_MAX_BURST &&
+	    txq->rs_thresh <= AVF_VPMD_TX_MAX_FREE_BUF) {
+		PMD_INIT_LOG(DEBUG, "Vector tx can be enabled on this txq.");
+		return TRUE;
+	}
+	PMD_INIT_LOG(DEBUG, "Vector Tx cannot be enabled on this txq.");
+	return FALSE;
+}
+#endif
+
 static inline void
 reset_rx_queue(struct avf_rx_queue *rxq)
 {
@@ -225,6 +253,14 @@ release_txq_mbufs(struct avf_tx_queue *txq)
 	}
 }
 
+static const struct avf_rxq_ops def_rxq_ops = {
+	.release_mbufs = release_rxq_mbufs,
+};
+
+static const struct avf_txq_ops def_txq_ops = {
+	.release_mbufs = release_txq_mbufs,
+};
+
 int
 avf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		       uint16_t nb_desc, unsigned int socket_id,
@@ -325,7 +361,12 @@ avf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->q_set = TRUE;
 	dev->data->rx_queues[queue_idx] = rxq;
 	rxq->qrx_tail = hw->hw_addr + AVF_QRX_TAIL1(rxq->queue_id);
+	rxq->ops = &def_rxq_ops;
 
+#ifdef RTE_LIBRTE_AVF_INC_VECTOR
+	if (check_rx_vec_allow(rxq) == FALSE)
+		ad->rx_vec_allowed = false;
+#endif
 	return 0;
 }
 
@@ -337,6 +378,8 @@ avf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		       const struct rte_eth_txconf *tx_conf)
 {
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct avf_adapter *ad =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct avf_tx_queue *txq;
 	const struct rte_memzone *mz;
 	uint32_t ring_size;
@@ -416,6 +459,12 @@ avf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->q_set = TRUE;
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->qtx_tail = hw->hw_addr + AVF_QTX_TAIL1(queue_idx);
+	txq->ops = &def_txq_ops;
+
+#ifdef RTE_LIBRTE_AVF_INC_VECTOR
+	if (check_tx_vec_allow(txq) == FALSE)
+		ad->tx_vec_allowed = false;
+#endif
 
 	return 0;
 }
@@ -514,7 +563,7 @@ avf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	rxq = dev->data->rx_queues[rx_queue_id];
-	release_rxq_mbufs(rxq);
+	rxq->ops->release_mbufs(rxq);
 	reset_rx_queue(rxq);
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -542,7 +591,7 @@ avf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	txq = dev->data->tx_queues[tx_queue_id];
-	release_txq_mbufs(txq);
+	txq->ops->release_mbufs(txq);
 	reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -557,7 +606,7 @@ avf_dev_rx_queue_release(void *rxq)
 	if (!q)
 		return;
 
-	release_rxq_mbufs(q);
+	q->ops->release_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -571,7 +620,7 @@ avf_dev_tx_queue_release(void *txq)
 	if (!q)
 		return;
 
-	release_txq_mbufs(q);
+	q->ops->release_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -595,7 +644,7 @@ avf_stop_queues(struct rte_eth_dev *dev)
 		txq = dev->data->tx_queues[i];
 		if (!txq)
 			continue;
-		release_txq_mbufs(txq);
+		txq->ops->release_mbufs(txq);
 		reset_tx_queue(txq);
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
@@ -603,7 +652,7 @@ avf_stop_queues(struct rte_eth_dev *dev)
 		rxq = dev->data->rx_queues[i];
 		if (!rxq)
 			continue;
-		release_rxq_mbufs(rxq);
+		rxq->ops->release_mbufs(rxq);
 		reset_rx_queue(rxq);
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
@@ -1320,6 +1369,27 @@ end_of_tx:
 	return nb_tx;
 }
 
+static uint16_t
+avf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		  uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct avf_tx_queue *txq = (struct avf_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
+		ret = avf_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx], num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+
 /* TX prep functions */
 uint16_t
 avf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -1372,18 +1442,64 @@ avf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 void
 avf_set_rx_function(struct rte_eth_dev *dev)
 {
-	if (dev->data->scattered_rx)
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_rx_queue *rxq;
+	int i;
+
+	if (adapter->rx_vec_allowed) {
+		if (dev->data->scattered_rx) {
+			PMD_DRV_LOG(DEBUG, "Using Vector Scattered Rx callback"
+				    " (port=%d).", dev->data->port_id);
+			dev->rx_pkt_burst = avf_recv_scattered_pkts_vec;
+		} else {
+			PMD_DRV_LOG(DEBUG, "Using Vector Rx callback"
+				    " (port=%d).", dev->data->port_id);
+			dev->rx_pkt_burst = avf_recv_pkts_vec;
+		}
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq = dev->data->rx_queues[i];
+			if (!rxq)
+				continue;
+			avf_rxq_vec_setup(rxq);
+		}
+	} else if (dev->data->scattered_rx) {
+		PMD_DRV_LOG(DEBUG, "Using a Scattered Rx callback (port=%d).",
+			    dev->data->port_id);
 		dev->rx_pkt_burst = avf_recv_scattered_pkts;
-	else
+	} else {
+		PMD_DRV_LOG(DEBUG, "Using Basic Rx callback (port=%d).",
+			    dev->data->port_id);
 		dev->rx_pkt_burst = avf_recv_pkts;
+	}
 }
 
 /* choose tx function*/
 void
 avf_set_tx_function(struct rte_eth_dev *dev)
 {
-	dev->tx_pkt_burst = avf_xmit_pkts;
-	dev->tx_pkt_prepare = avf_prep_pkts;
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_tx_queue *txq;
+	int i;
+
+	if (adapter->tx_vec_allowed) {
+		PMD_DRV_LOG(DEBUG, "Using Vector Tx callback (port=%d).",
+			    dev->data->port_id);
+		dev->tx_pkt_burst = avf_xmit_pkts_vec;
+		dev->tx_pkt_prepare = NULL;
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			txq = dev->data->tx_queues[i];
+			if (!txq)
+				continue;
+			avf_txq_vec_setup(txq);
+		}
+	} else {
+		PMD_DRV_LOG(DEBUG, "Using Basic Tx callback (port=%d).",
+			    dev->data->port_id);
+		dev->tx_pkt_burst = avf_xmit_pkts;
+		dev->tx_pkt_prepare = avf_prep_pkts;
+	}
 }
 
 void
@@ -1504,4 +1620,40 @@ avf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 		return RTE_ETH_TX_DESC_DONE;
 
 	return RTE_ETH_TX_DESC_FULL;
+}
+
+uint16_t __attribute__((weak))
+avf_recv_pkts_vec(__rte_unused void *rx_queue,
+		  __rte_unused struct rte_mbuf **rx_pkts,
+		  __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+uint16_t __attribute__((weak))
+avf_recv_scattered_pkts_vec(__rte_unused void *rx_queue,
+			    __rte_unused struct rte_mbuf **rx_pkts,
+			    __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+uint16_t __attribute__((weak))
+avf_xmit_fixed_burst_vec(__rte_unused void *tx_queue,
+			 __rte_unused struct rte_mbuf **tx_pkts,
+			 __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+int __attribute__((weak))
+avf_rxq_vec_setup(__rte_unused struct avf_rx_queue *rxq)
+{
+	return -1;
+}
+
+int __attribute__((weak))
+avf_txq_vec_setup(__rte_unused struct avf_tx_queue *txq)
+{
+	return -1;
 }

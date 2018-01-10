@@ -16,6 +16,15 @@
 /* used for Rx Bulk Allocate */
 #define AVF_RX_MAX_BURST         32
 
+/* used for Vector PMD */
+#define AVF_VPMD_RX_MAX_BURST    32
+#define AVF_VPMD_TX_MAX_BURST    32
+#define AVF_VPMD_DESCS_PER_LOOP  4
+#define AVF_VPMD_TX_MAX_FREE_BUF 64
+
+#define AVF_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
+			  ETH_TXQ_FLAGS_NOOFFLOADS)
+
 #define DEFAULT_TX_RS_THRESH     32
 #define DEFAULT_TX_FREE_THRESH   32
 
@@ -45,6 +54,14 @@
 #define avf_rx_desc avf_32byte_rx_desc
 #endif
 
+struct avf_rxq_ops {
+	void (*release_mbufs)(struct avf_rx_queue *rxq);
+};
+
+struct avf_txq_ops {
+	void (*release_mbufs)(struct avf_tx_queue *txq);
+};
+
 /* Structure associated with each Rx queue. */
 struct avf_rx_queue {
 	struct rte_mempool *mp;       /* mbuf pool to populate Rx ring */
@@ -61,7 +78,12 @@ struct avf_rx_queue {
 	struct rte_mbuf *pkt_last_seg;  /* last segment of current packet */
 	struct rte_mbuf fake_mbuf;      /* dummy mbuf */
 
-	uint16_t port_id;       /* device port ID */
+	/* used for VPMD */
+	uint16_t rxrearm_nb;       /* number of remaining to be re-armed */
+	uint16_t rxrearm_start;    /* the idx we start the re-arming from */
+	uint64_t mbuf_initializer; /* value to init mbufs */
+
+	uint16_t port_id;        /* device port ID */
 	uint8_t crc_len;        /* 0 if CRC stripped, 4 otherwise */
 	uint16_t queue_id;      /* Rx queue index */
 	uint16_t rx_buf_len;    /* The packet buffer size */
@@ -70,6 +92,7 @@ struct avf_rx_queue {
 
 	bool q_set;             /* if rx queue has been configured */
 	bool rx_deferred_start; /* don't start this queue in dev start */
+	const struct avf_rxq_ops *ops;
 };
 
 struct avf_tx_entry {
@@ -102,6 +125,7 @@ struct avf_tx_queue {
 
 	bool q_set;                    /* if rx queue has been configured */
 	bool tx_deferred_start;        /* don't start this queue in dev start */
+	const struct avf_txq_ops *ops;
 };
 
 /* Offload features */
@@ -154,6 +178,16 @@ void avf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 uint32_t avf_dev_rxq_count(struct rte_eth_dev *dev, uint16_t queue_id);
 int avf_dev_rx_desc_status(void *rx_queue, uint16_t offset);
 int avf_dev_tx_desc_status(void *tx_queue, uint16_t offset);
+
+uint16_t avf_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+			   uint16_t nb_pkts);
+uint16_t avf_recv_scattered_pkts_vec(void *rx_queue,
+				     struct rte_mbuf **rx_pkts,
+				     uint16_t nb_pkts);
+uint16_t avf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+				  uint16_t nb_pkts);
+int avf_rxq_vec_setup(struct avf_rx_queue *rxq);
+int avf_txq_vec_setup(struct avf_tx_queue *txq);
 
 static inline
 void avf_dump_rx_descriptor(struct avf_rx_queue *rxq,

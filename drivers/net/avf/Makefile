@@ -47,5 +47,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_common.c
 SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_vchnl.c
 SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_rxtx.c
+ifeq ($(CONFIG_RTE_ARCH_x86), y)
+SRCS-$(CONFIG_RTE_LIBRTE_AVF_INC_VECTOR) += avf_rxtx_vec_sse.c
+endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -121,6 +121,17 @@ avf_dev_configure(struct rte_eth_dev *dev)
 	struct avf_info *vf =  AVF_DEV_PRIVATE_TO_VF(ad);
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 
+#ifdef RTE_LIBRTE_AVF_INC_VECTOR
+	/* Initialize to TRUE. If any of Rx queues doesn't meet the
+	 * vector Rx/Tx preconditions, it will be reset.
+	 */
+	ad->rx_vec_allowed = true;
+	ad->tx_vec_allowed = true;
+#else
+	ad->rx_vec_allowed = false;
+	ad->tx_vec_allowed = false;
+#endif
+
 	/* Vlan stripping setting */
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN) {
 		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
