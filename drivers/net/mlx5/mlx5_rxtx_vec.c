@@ -160,15 +160,15 @@ mlx5_tx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint16_t ret;
 
 		/* Transmit multi-seg packets in the head of pkts list. */
-		if (!(txq->flags & ETH_TXQ_FLAGS_NOMULTSEGS) &&
+		if ((txq->offloads & DEV_TX_OFFLOAD_MULTI_SEGS) &&
 		    NB_SEGS(pkts[nb_tx]) > 1)
 			nb_tx += txq_scatter_v(txq,
 					       &pkts[nb_tx],
 					       pkts_n - nb_tx);
 		n = RTE_MIN((uint16_t)(pkts_n - nb_tx), MLX5_VPMD_TX_MAX_BURST);
-		if (!(txq->flags & ETH_TXQ_FLAGS_NOMULTSEGS))
+		if (txq->offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
 			n = txq_count_contig_single_seg(&pkts[nb_tx], n);
-		if (!(txq->flags & ETH_TXQ_FLAGS_NOOFFLOADS))
+		if (txq->offloads & MLX5_VEC_TX_CKSUM_OFFLOAD_CAP)
 			n = txq_calc_offload(txq, &pkts[nb_tx], n, &cs_flags);
 		ret = txq_burst_v(txq, &pkts[nb_tx], n, cs_flags);
 		nb_tx += ret;
@@ -253,24 +253,20 @@ mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
  *
  * @param priv
  *   Pointer to private structure.
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
  *
  * @return
  *   1 if supported, negative errno value if not.
  */
 int __attribute__((cold))
-priv_check_raw_vec_tx_support(struct priv *priv)
+priv_check_raw_vec_tx_support(__rte_unused struct priv *priv,
+			      struct rte_eth_dev *dev)
 {
-	uint16_t i;
+	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 
-	/* All the configured queues should support. */
-	for (i = 0; i < priv->txqs_n; ++i) {
-		struct mlx5_txq_data *txq = (*priv->txqs)[i];
-
-		if (!(txq->flags & ETH_TXQ_FLAGS_NOMULTSEGS) ||
-		    !(txq->flags & ETH_TXQ_FLAGS_NOOFFLOADS))
-			break;
-	}
-	if (i != priv->txqs_n)
+	/* Doesn't support any offload. */
+	if (offloads)
 		return -ENOTSUP;
 	return 1;
 }
@@ -280,17 +276,21 @@ priv_check_raw_vec_tx_support(struct priv *priv)
  *
  * @param priv
  *   Pointer to private structure.
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
  *
  * @return
  *   1 if supported, negative errno value if not.
  */
 int __attribute__((cold))
-priv_check_vec_tx_support(struct priv *priv)
+priv_check_vec_tx_support(struct priv *priv, struct rte_eth_dev *dev)
 {
+	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
+
 	if (!priv->config.tx_vec_en ||
 	    priv->txqs_n > MLX5_VPMD_MIN_TXQS ||
 	    priv->config.mps != MLX5_MPW_ENHANCED ||
-	    priv->config.tso)
+	    offloads & ~MLX5_VEC_TX_OFFLOAD_CAP)
 		return -ENOTSUP;
 	return 1;
 }

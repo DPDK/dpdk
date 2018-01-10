@@ -116,6 +116,63 @@ txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 }
 
 /**
+ * Returns the per-port supported offloads.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   Supported Tx offloads.
+ */
+uint64_t
+mlx5_priv_get_tx_port_offloads(struct priv *priv)
+{
+	uint64_t offloads = (DEV_TX_OFFLOAD_MULTI_SEGS |
+			     DEV_TX_OFFLOAD_VLAN_INSERT);
+	struct mlx5_dev_config *config = &priv->config;
+
+	if (config->hw_csum)
+		offloads |= (DEV_TX_OFFLOAD_IPV4_CKSUM |
+			     DEV_TX_OFFLOAD_UDP_CKSUM |
+			     DEV_TX_OFFLOAD_TCP_CKSUM);
+	if (config->tso)
+		offloads |= DEV_TX_OFFLOAD_TCP_TSO;
+	if (config->tunnel_en) {
+		if (config->hw_csum)
+			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		if (config->tso)
+			offloads |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+				     DEV_TX_OFFLOAD_GRE_TNL_TSO);
+	}
+	return offloads;
+}
+
+/**
+ * Checks if the per-queue offload configuration is valid.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param offloads
+ *   Per-queue offloads configuration.
+ *
+ * @return
+ *   1 if the configuration is valid, 0 otherwise.
+ */
+static int
+priv_is_tx_queue_offloads_allowed(struct priv *priv, uint64_t offloads)
+{
+	uint64_t port_offloads = priv->dev->data->dev_conf.txmode.offloads;
+	uint64_t port_supp_offloads = mlx5_priv_get_tx_port_offloads(priv);
+
+	/* There are no Tx offloads which are per queue. */
+	if ((offloads & port_supp_offloads) != offloads)
+		return 0;
+	if ((port_offloads ^ offloads) & port_supp_offloads)
+		return 0;
+	return 1;
+}
+
+/**
  * DPDK callback to configure a TX queue.
  *
  * @param dev
@@ -143,6 +200,20 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	int ret = 0;
 
 	priv_lock(priv);
+	/*
+	 * Don't verify port offloads for application which
+	 * use the old API.
+	 */
+	if (!!(conf->txq_flags & ETH_TXQ_FLAGS_IGNORE) &&
+	    !priv_is_tx_queue_offloads_allowed(priv, conf->offloads)) {
+		ret = ENOTSUP;
+		ERROR("%p: Tx queue offloads 0x%" PRIx64 " don't match port "
+		      "offloads 0x%" PRIx64 " or supported offloads 0x%" PRIx64,
+		      (void *)dev, conf->offloads,
+		      dev->data->dev_conf.txmode.offloads,
+		      mlx5_priv_get_tx_port_offloads(priv));
+		goto out;
+	}
 	if (desc <= MLX5_TX_COMP_THRESH) {
 		WARN("%p: number of descriptors requested for TX queue %u"
 		     " must be higher than MLX5_TX_COMP_THRESH, using"
@@ -579,6 +650,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	unsigned int inline_max_packet_sz;
 	eth_tx_burst_t tx_pkt_burst = priv_select_tx_function(priv, priv->dev);
 	int is_empw_func = is_empw_burst_func(tx_pkt_burst);
+	int tso = !!(txq_ctrl->txq.offloads & DEV_TX_OFFLOAD_TCP_TSO);
 
 	txq_inline = (config->txq_inline == MLX5_ARG_UNSET) ?
 		0 : config->txq_inline;
@@ -603,8 +675,6 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 		txq_ctrl->txq.max_inline =
 			((txq_inline + (RTE_CACHE_LINE_SIZE - 1)) /
 			 RTE_CACHE_LINE_SIZE);
-		/* TSO and MPS can't be enabled concurrently. */
-		assert(!config->tso || !config->mps);
 		if (is_empw_func) {
 			/* To minimize the size of data set, avoid requesting
 			 * too large WQ.
@@ -614,7 +684,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 					  inline_max_packet_sz) +
 				  (RTE_CACHE_LINE_SIZE - 1)) /
 				 RTE_CACHE_LINE_SIZE) * RTE_CACHE_LINE_SIZE;
-		} else if (config->tso) {
+		} else if (tso) {
 			int inline_diff = txq_ctrl->txq.max_inline -
 					  max_tso_inline;
 
@@ -652,7 +722,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 						   RTE_CACHE_LINE_SIZE;
 		}
 	}
-	if (config->tso) {
+	if (tso) {
 		txq_ctrl->max_tso_header = max_tso_inline * RTE_CACHE_LINE_SIZE;
 		txq_ctrl->txq.max_inline = RTE_MAX(txq_ctrl->txq.max_inline,
 						   max_tso_inline);
@@ -692,7 +762,7 @@ mlx5_priv_txq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 	if (!tmpl)
 		return NULL;
 	assert(desc > MLX5_TX_COMP_THRESH);
-	tmpl->txq.flags = conf->txq_flags;
+	tmpl->txq.offloads = conf->offloads;
 	tmpl->priv = priv;
 	tmpl->socket = socket;
 	tmpl->txq.elts_n = log2above(desc);

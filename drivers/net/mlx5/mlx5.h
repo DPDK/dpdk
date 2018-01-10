@@ -112,7 +112,7 @@ struct mlx5_dev_config {
 	unsigned int tunnel_en:1; /* Whether tunnel is supported. */
 	unsigned int flow_counter_en:1; /* Whether flow counter is supported. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
-	unsigned int tso:1; /* Whether TSO is enabled. */
+	unsigned int tso:1; /* Whether TSO is supported. */
 	unsigned int tx_vec_en:1; /* Tx vector is enabled. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
 	unsigned int mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */

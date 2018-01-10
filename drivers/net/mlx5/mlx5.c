@@ -85,9 +85,6 @@
 /* Device parameter to limit the size of inlining packet. */
 #define MLX5_TXQ_MAX_INLINE_LEN "txq_max_inline_len"
 
-/* Device parameter to enable hardware TSO offload. */
-#define MLX5_TSO "tso"
-
 /* Device parameter to enable hardware Tx vector. */
 #define MLX5_TX_VEC_EN "tx_vec_en"
 
@@ -406,8 +403,6 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->mpw_hdr_dseg = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MAX_INLINE_LEN, key) == 0) {
 		config->inline_max_packet_sz = tmp;
-	} else if (strcmp(MLX5_TSO, key) == 0) {
-		config->tso = !!tmp;
 	} else if (strcmp(MLX5_TX_VEC_EN, key) == 0) {
 		config->tx_vec_en = !!tmp;
 	} else if (strcmp(MLX5_RX_VEC_EN, key) == 0) {
@@ -440,7 +435,6 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_TXQ_MPW_EN,
 		MLX5_TXQ_MPW_HDR_DSEG_EN,
 		MLX5_TXQ_MAX_INLINE_LEN,
-		MLX5_TSO,
 		MLX5_TX_VEC_EN,
 		MLX5_RX_VEC_EN,
 		NULL,
@@ -629,7 +623,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			.cqe_comp = cqe_comp,
 			.mps = mps,
 			.tunnel_en = tunnel_en,
-			.tso = 0,
 			.tx_vec_en = 1,
 			.rx_vec_en = 1,
 			.mpw_hdr_dseg = 0,
@@ -793,10 +786,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		priv_get_num_vfs(priv, &num_vfs);
 		config.sriov = (num_vfs || sriov);
-		if (config.tso)
-			config.tso = ((device_attr_ex.tso_caps.max_tso > 0) &&
-				      (device_attr_ex.tso_caps.supported_qpts &
-				      (1 << IBV_QPT_RAW_PACKET)));
+		config.tso = ((device_attr_ex.tso_caps.max_tso > 0) &&
+			      (device_attr_ex.tso_caps.supported_qpts &
+			      (1 << IBV_QPT_RAW_PACKET)));
 		if (config.tso)
 			config.tso_max_payload_sz =
 					device_attr_ex.tso_caps.max_tso;
@@ -805,10 +797,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			      " (" MLX5_TXQ_MPW_EN ")");
 			err = ENOTSUP;
 			goto port_error;
-		} else if (config.mps && config.tso) {
-			WARN("multi-packet send not supported in conjunction "
-			      "with TSO. MPS disabled");
-			config.mps = 0;
 		}
 		INFO("%sMPS is %s",
 		     config.mps == MLX5_MPW_ENHANCED ? "Enhanced " : "",

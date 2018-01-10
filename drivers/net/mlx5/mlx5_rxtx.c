@@ -1994,16 +1994,18 @@ mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 }
 
 int __attribute__((weak))
-priv_check_raw_vec_tx_support(struct priv *priv)
+priv_check_raw_vec_tx_support(struct priv *priv, struct rte_eth_dev *dev)
 {
 	(void)priv;
+	(void)dev;
 	return -ENOTSUP;
 }
 
 int __attribute__((weak))
-priv_check_vec_tx_support(struct priv *priv)
+priv_check_vec_tx_support(struct priv *priv, struct rte_eth_dev *dev)
 {
 	(void)priv;
+	(void)dev;
 	return -ENOTSUP;
 }
 

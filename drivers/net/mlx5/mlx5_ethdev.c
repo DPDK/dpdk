@@ -551,7 +551,15 @@ dev_configure(struct rte_eth_dev *dev)
 	unsigned int reta_idx_n;
 	const uint8_t use_app_rss_key =
 		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
+	uint64_t supp_tx_offloads = mlx5_priv_get_tx_port_offloads(priv);
+	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 
+	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
+		ERROR("Some Tx offloads are not supported "
+		      "requested 0x%" PRIx64 " supported 0x%" PRIx64,
+		      tx_offloads, supp_tx_offloads);
+		return ENOTSUP;
+	}
 	if (use_app_rss_key &&
 	    (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len !=
 	     rss_hash_default_key_len)) {
@@ -672,19 +680,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		(priv->config.hw_vlan_strip ? DEV_RX_OFFLOAD_VLAN_STRIP : 0) |
 		DEV_RX_OFFLOAD_TIMESTAMP;
 
-	if (!config->mps)
-		info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
-	if (config->hw_csum)
-		info->tx_offload_capa |=
-			(DEV_TX_OFFLOAD_IPV4_CKSUM |
-			 DEV_TX_OFFLOAD_UDP_CKSUM |
-			 DEV_TX_OFFLOAD_TCP_CKSUM);
-	if (config->tso)
-		info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
-	if (config->tunnel_en)
-		info->tx_offload_capa |= (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-					  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-					  DEV_TX_OFFLOAD_GRE_TNL_TSO);
+	info->tx_offload_capa = mlx5_priv_get_tx_port_offloads(priv);
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	info->reta_size = priv->reta_idx_n ?
@@ -1392,16 +1388,23 @@ mlx5_set_link_up(struct rte_eth_dev *dev)
  *   Pointer to selected Tx burst function.
  */
 eth_tx_burst_t
-priv_select_tx_function(struct priv *priv, __rte_unused struct rte_eth_dev *dev)
+priv_select_tx_function(struct priv *priv, struct rte_eth_dev *dev)
 {
 	eth_tx_burst_t tx_pkt_burst = mlx5_tx_burst;
 	struct mlx5_dev_config *config = &priv->config;
+	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
+	int tso = !!(tx_offloads & (DEV_TX_OFFLOAD_TCP_TSO |
+				    DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+				    DEV_TX_OFFLOAD_GRE_TNL_TSO));
+	int vlan_insert = !!(tx_offloads & DEV_TX_OFFLOAD_VLAN_INSERT);
 
 	assert(priv != NULL);
 	/* Select appropriate TX function. */
+	if (vlan_insert || tso)
+		return tx_pkt_burst;
 	if (config->mps == MLX5_MPW_ENHANCED) {
-		if (priv_check_vec_tx_support(priv) > 0) {
-			if (priv_check_raw_vec_tx_support(priv) > 0)
+		if (priv_check_vec_tx_support(priv, dev) > 0) {
+			if (priv_check_raw_vec_tx_support(priv, dev) > 0)
 				tx_pkt_burst = mlx5_tx_burst_raw_vec;
 			else
 				tx_pkt_burst = mlx5_tx_burst_vec;

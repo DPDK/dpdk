@@ -200,7 +200,7 @@ struct mlx5_txq_data {
 	uint16_t inline_max_packet_sz; /* Max packet size for inlining. */
 	uint16_t mr_cache_idx; /* Index of last hit entry. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
-	uint32_t flags; /* Flags for Tx Queue. */
+	uint64_t offloads; /* Offloads for Tx Queue. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
 	volatile void *wqes; /* Work queue (use volatile to write into). */
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
@@ -292,6 +292,7 @@ int mlx5_priv_txq_release(struct priv *, uint16_t);
 int mlx5_priv_txq_releasable(struct priv *, uint16_t);
 int mlx5_priv_txq_verify(struct priv *);
 void txq_alloc_elts(struct mlx5_txq_ctrl *);
+uint64_t mlx5_priv_get_tx_port_offloads(struct priv *);
 
 /* mlx5_rxtx.c */
 
@@ -309,8 +310,8 @@ int mlx5_rx_descriptor_status(void *, uint16_t);
 int mlx5_tx_descriptor_status(void *, uint16_t);
 
 /* Vectorized version of mlx5_rxtx.c */
-int priv_check_raw_vec_tx_support(struct priv *);
-int priv_check_vec_tx_support(struct priv *);
+int priv_check_raw_vec_tx_support(struct priv *, struct rte_eth_dev *);
+int priv_check_vec_tx_support(struct priv *, struct rte_eth_dev *);
 int rxq_check_vec_support(struct mlx5_rxq_data *);
 int priv_check_vec_rx_support(struct priv *);
 uint16_t mlx5_tx_burst_raw_vec(void *, struct rte_mbuf **, uint16_t);
