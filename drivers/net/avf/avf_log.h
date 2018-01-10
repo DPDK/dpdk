@@ -20,4 +20,25 @@ extern int avf_logtype_driver;
 	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
 #define PMD_DRV_FUNC_TRACE() PMD_DRV_LOG(DEBUG, " >>")
 
+#ifdef RTE_LIBRTE_AVF_DEBUG_RX
+#define PMD_RX_LOG(level, fmt, args...) \
+	RTE_LOG_DP(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+#else
+#define PMD_RX_LOG(level, fmt, args...) do { } while (0)
+#endif
+
+#ifdef RTE_LIBRTE_AVF_DEBUG_TX
+#define PMD_TX_LOG(level, fmt, args...) \
+	RTE_LOG_DP(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+#else
+#define PMD_TX_LOG(level, fmt, args...) do { } while (0)
+#endif
+
+#ifdef RTE_LIBRTE_AVF_DEBUG_TX_FREE
+#define PMD_TX_FREE_LOG(level, fmt, args...) \
+	RTE_LOG_DP(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+#else
+#define PMD_TX_FREE_LOG(level, fmt, args...) do { } while (0)
+#endif
+
 #endif /* _AVF_LOG_H_ */

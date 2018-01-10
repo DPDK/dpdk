@@ -39,6 +39,7 @@ static void avf_dev_stop(struct rte_eth_dev *dev);
 static void avf_dev_close(struct rte_eth_dev *dev);
 static void avf_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
+static const uint32_t *avf_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 
 int avf_logtype_init;
 int avf_logtype_driver;
@@ -53,6 +54,7 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.dev_stop                   = avf_dev_stop,
 	.dev_close                  = avf_dev_close,
 	.dev_infos_get              = avf_dev_info_get,
+	.dev_supported_ptypes_get   = avf_dev_supported_ptypes_get,
 	.rx_queue_start             = avf_dev_rx_queue_start,
 	.rx_queue_stop              = avf_dev_rx_queue_stop,
 	.tx_queue_start             = avf_dev_tx_queue_start,
@@ -204,9 +206,12 @@ avf_init_queues(struct rte_eth_dev *dev)
 		if (ret != AVF_SUCCESS)
 			break;
 	}
-	/* TODO: set rx/tx function to vector/scatter/single-segment
+	/* set rx/tx function to vector/scatter/single-segment
 	 * according to parameters
 	 */
+	avf_set_rx_function(dev);
+	avf_set_tx_function(dev);
+
 	return ret;
 }
 
@@ -407,6 +412,23 @@ avf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 }
 
+static const uint32_t *
+avf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+	return ptypes;
+}
+
 static int
 avf_check_vf_reset_done(struct avf_hw *hw)
 {
@@ -556,7 +578,19 @@ avf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* assign ops func pointer */
 	eth_dev->dev_ops = &avf_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &avf_recv_pkts;
+	eth_dev->tx_pkt_burst = &avf_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &avf_prep_pkts;
 
+	/* For secondary processes, we don't initialise any further as primary
+	 * has already done this work. Only check if we need a different RX
+	 * and TX function.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		avf_set_rx_function(eth_dev);
+		avf_set_tx_function(eth_dev);
+		return 0;
+	}
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->vendor_id = pci_dev->id.vendor_id;

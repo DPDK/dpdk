@@ -434,6 +434,7 @@ Intel avf
 M: Jingjing Wu <jingjing.wu@intel.com>
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 F: drivers/net/avf/
+F: doc/guides/nics/features/avf*.ini
 
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>

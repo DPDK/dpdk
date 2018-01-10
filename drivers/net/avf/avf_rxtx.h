@@ -19,6 +19,25 @@
 #define DEFAULT_TX_RS_THRESH     32
 #define DEFAULT_TX_FREE_THRESH   32
 
+#define AVF_MIN_TSO_MSS          256
+#define AVF_MAX_TSO_MSS          9668
+#define AVF_TSO_MAX_SEG          UINT8_MAX
+#define AVF_TX_MAX_MTU_SEG       8
+
+#define AVF_TX_CKSUM_OFFLOAD_MASK (		 \
+		PKT_TX_IP_CKSUM |		 \
+		PKT_TX_L4_MASK |		 \
+		PKT_TX_TCP_SEG)
+
+#define AVF_TX_OFFLOAD_MASK (  \
+		PKT_TX_VLAN_PKT |		 \
+		PKT_TX_IP_CKSUM |		 \
+		PKT_TX_L4_MASK |		 \
+		PKT_TX_TCP_SEG)
+
+#define AVF_TX_OFFLOAD_NOTSUP_MASK \
+		(PKT_TX_OFFLOAD_MASK ^ AVF_TX_OFFLOAD_MASK)
+
 /* HW desc structure, both 16-byte and 32-byte types are supported */
 #ifdef RTE_LIBRTE_AVF_16BYTE_RX_DESC
 #define avf_rx_desc avf_16byte_rx_desc
@@ -85,6 +104,18 @@ struct avf_tx_queue {
 	bool tx_deferred_start;        /* don't start this queue in dev start */
 };
 
+/* Offload features */
+union avf_tx_offload {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /* L3 (IP) Header Length. */
+		uint64_t l4_len:8; /* L4 Header Length. */
+		uint64_t tso_segsz:16; /* TCP TSO segment size */
+		/* uint64_t unused : 24; */
+	};
+};
+
 int avf_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
@@ -105,6 +136,17 @@ int avf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int avf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 void avf_dev_tx_queue_release(void *txq);
 void avf_stop_queues(struct rte_eth_dev *dev);
+uint16_t avf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		       uint16_t nb_pkts);
+uint16_t avf_recv_scattered_pkts(void *rx_queue,
+				 struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts);
+uint16_t avf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts);
+uint16_t avf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts);
+void avf_set_rx_function(struct rte_eth_dev *dev);
+void avf_set_tx_function(struct rte_eth_dev *dev);
 
 static inline
 void avf_dump_rx_descriptor(struct avf_rx_queue *rxq,
@@ -157,4 +199,15 @@ void avf_dump_tx_descriptor(const struct avf_tx_queue *txq,
 	       txq->queue_id, name, tx_id, tx_desc->buffer_addr,
 	       tx_desc->cmd_type_offset_bsz);
 }
+
+#ifdef DEBUG_DUMP_DESC
+#define AVF_DUMP_RX_DESC(rxq, desc, rx_id) \
+	avf_dump_rx_descriptor(rxq, desc, rx_id)
+#define AVF_DUMP_TX_DESC(txq, desc, tx_id) \
+	avf_dump_tx_descriptor(txq, desc, tx_id)
+#else
+#define AVF_DUMP_RX_DESC(rxq, desc, rx_id) do { } while (0)
+#define AVF_DUMP_TX_DESC(txq, desc, tx_id) do { } while (0)
+#endif
+
 #endif /* _AVF_RXTX_H_ */

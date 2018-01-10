@@ -34,17 +34,11 @@ static inline int
 check_rx_thresh(uint16_t nb_desc, uint16_t thresh)
 {
 	/* The following constraints must be satisfied:
-	 *   thresh >= AVF_RX_MAX_BURST
 	 *   thresh < rxq->nb_rx_desc
-	 *   (rxq->nb_rx_desc % thresh) == 0
 	 */
-	if (thresh < AVF_RX_MAX_BURST ||
-	    thresh >= nb_desc ||
-	    (nb_desc % thresh != 0)) {
-		PMD_INIT_LOG(ERR, "rx_free_thresh (%u) must be less than %u, "
-			     "greater than or equal to %u, "
-			     "and a divisor of %u",
-			     thresh, nb_desc, AVF_RX_MAX_BURST, nb_desc);
+	if (thresh >= nb_desc) {
+		PMD_INIT_LOG(ERR, "rx_free_thresh (%u) must be less than %u",
+			     thresh, nb_desc);
 		return -EINVAL;
 	}
 	return 0;
@@ -613,4 +607,781 @@ avf_stop_queues(struct rte_eth_dev *dev)
 		reset_rx_queue(rxq);
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
+}
+
+static inline void
+avf_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union avf_rx_desc *rxdp)
+{
+	if (rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
+		(1 << AVF_RX_DESC_STATUS_L2TAG1P_SHIFT)) {
+		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->vlan_tci =
+			rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1);
+	} else {
+		mb->vlan_tci = 0;
+	}
+}
+
+/* Translate the rx descriptor status and error fields to pkt flags */
+static inline uint64_t
+avf_rxd_to_pkt_flags(uint64_t qword)
+{
+	uint64_t flags;
+	uint64_t error_bits = (qword >> AVF_RXD_QW1_ERROR_SHIFT);
+
+#define AVF_RX_ERR_BITS 0x3f
+
+	/* Check if RSS_HASH */
+	flags = (((qword >> AVF_RX_DESC_STATUS_FLTSTAT_SHIFT) &
+					AVF_RX_DESC_FLTSTAT_RSS_HASH) ==
+			AVF_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
+
+	if (likely((error_bits & AVF_RX_ERR_BITS) == 0)) {
+		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		return flags;
+	}
+
+	if (unlikely(error_bits & (1 << AVF_RX_DESC_ERROR_IPE_SHIFT)))
+		flags |= PKT_RX_IP_CKSUM_BAD;
+	else
+		flags |= PKT_RX_IP_CKSUM_GOOD;
+
+	if (unlikely(error_bits & (1 << AVF_RX_DESC_ERROR_L4E_SHIFT)))
+		flags |= PKT_RX_L4_CKSUM_BAD;
+	else
+		flags |= PKT_RX_L4_CKSUM_GOOD;
+
+	/* TODO: Oversize error bit is not processed here */
+
+	return flags;
+}
+
+/* implement recv_pkts */
+uint16_t
+avf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	volatile union avf_rx_desc *rx_ring;
+	volatile union avf_rx_desc *rxdp;
+	struct avf_rx_queue *rxq;
+	union avf_rx_desc rxd;
+	struct rte_mbuf *rxe;
+	struct rte_eth_dev *dev;
+	struct rte_mbuf *rxm;
+	struct rte_mbuf *nmb;
+	uint16_t nb_rx;
+	uint32_t rx_status;
+	uint64_t qword1;
+	uint16_t rx_packet_len;
+	uint16_t rx_id, nb_hold;
+	uint64_t dma_addr;
+	uint64_t pkt_flags;
+	static const uint32_t ptype_tbl[UINT8_MAX + 1] __rte_cache_aligned = {
+		/* [0] reserved */
+		[1] = RTE_PTYPE_L2_ETHER,
+		/* [2] - [21] reserved */
+		[22] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_FRAG,
+		[23] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_NONFRAG,
+		[24] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_UDP,
+		/* [25] reserved */
+		[26] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_TCP,
+		[27] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_SCTP,
+		[28] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_ICMP,
+		/* All others reserved */
+	};
+
+	nb_rx = 0;
+	nb_hold = 0;
+	rxq = rx_queue;
+	rx_id = rxq->rx_tail;
+	rx_ring = rxq->rx_ring;
+
+	while (nb_rx < nb_pkts) {
+		rxdp = &rx_ring[rx_id];
+		qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
+		rx_status = (qword1 & AVF_RXD_QW1_STATUS_MASK) >>
+			    AVF_RXD_QW1_STATUS_SHIFT;
+
+		/* Check the DD bit first */
+		if (!(rx_status & (1 << AVF_RX_DESC_STATUS_DD_SHIFT)))
+			break;
+		AVF_DUMP_RX_DESC(rxq, rxdp, rx_id);
+
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(!nmb)) {
+			dev = &rte_eth_devices[rxq->port_id];
+			dev->data->rx_mbuf_alloc_failed++;
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u", rxq->port_id, rxq->queue_id);
+			break;
+		}
+
+		rxd = *rxdp;
+		nb_hold++;
+		rxe = rxq->sw_ring[rx_id];
+		rx_id++;
+		if (unlikely(rx_id == rxq->nb_rx_desc))
+			rx_id = 0;
+
+		/* Prefetch next mbuf */
+		rte_prefetch0(rxq->sw_ring[rx_id]);
+
+		/* When next RX descriptor is on a cache line boundary,
+		 * prefetch the next 4 RX descriptors and next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_prefetch0(&rx_ring[rx_id]);
+			rte_prefetch0(rxq->sw_ring[rx_id]);
+		}
+		rxm = rxe;
+		rxe = nmb;
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+		rxdp->read.hdr_addr = 0;
+		rxdp->read.pkt_addr = dma_addr;
+
+		rx_packet_len = ((qword1 & AVF_RXD_QW1_LENGTH_PBUF_MASK) >>
+				AVF_RXD_QW1_LENGTH_PBUF_SHIFT) - rxq->crc_len;
+
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_prefetch0(RTE_PTR_ADD(rxm->buf_addr, RTE_PKTMBUF_HEADROOM));
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = rx_packet_len;
+		rxm->data_len = rx_packet_len;
+		rxm->port = rxq->port_id;
+		rxm->ol_flags = 0;
+		avf_rxd_to_vlan_tci(rxm, &rxd);
+		pkt_flags = avf_rxd_to_pkt_flags(qword1);
+		rxm->packet_type =
+			ptype_tbl[(uint8_t)((qword1 &
+			AVF_RXD_QW1_PTYPE_MASK) >> AVF_RXD_QW1_PTYPE_SHIFT)];
+
+		if (pkt_flags & PKT_RX_RSS_HASH)
+			rxm->hash.rss =
+				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
+
+		rxm->ol_flags |= pkt_flags;
+
+		rx_pkts[nb_rx++] = rxm;
+	}
+	rxq->rx_tail = rx_id;
+
+	/* If the number of free RX descriptors is greater than the RX free
+	 * threshold of the queue, advance the receive tail register of queue.
+	 * Update that register with the value of the last processed RX
+	 * descriptor minus 1.
+	 */
+	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
+	if (nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
+			   "nb_hold=%u nb_rx=%u",
+			   rxq->port_id, rxq->queue_id,
+			   rx_id, nb_hold, nb_rx);
+		rx_id = (uint16_t)((rx_id == 0) ?
+			(rxq->nb_rx_desc - 1) : (rx_id - 1));
+		AVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		nb_hold = 0;
+	}
+	rxq->nb_rx_hold = nb_hold;
+
+	return nb_rx;
+}
+
+/* implement recv_scattered_pkts  */
+uint16_t
+avf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			uint16_t nb_pkts)
+{
+	struct avf_rx_queue *rxq = rx_queue;
+	union avf_rx_desc rxd;
+	struct rte_mbuf *rxe;
+	struct rte_mbuf *first_seg = rxq->pkt_first_seg;
+	struct rte_mbuf *last_seg = rxq->pkt_last_seg;
+	struct rte_mbuf *nmb, *rxm;
+	uint16_t rx_id = rxq->rx_tail;
+	uint16_t nb_rx = 0, nb_hold = 0, rx_packet_len;
+	struct rte_eth_dev *dev;
+	uint32_t rx_status;
+	uint64_t qword1;
+	uint64_t dma_addr;
+	uint64_t pkt_flags;
+
+	volatile union avf_rx_desc *rx_ring = rxq->rx_ring;
+	volatile union avf_rx_desc *rxdp;
+	static const uint32_t ptype_tbl[UINT8_MAX + 1] __rte_cache_aligned = {
+		/* [0] reserved */
+		[1] = RTE_PTYPE_L2_ETHER,
+		/* [2] - [21] reserved */
+		[22] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_FRAG,
+		[23] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_NONFRAG,
+		[24] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_UDP,
+		/* [25] reserved */
+		[26] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_TCP,
+		[27] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_SCTP,
+		[28] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_ICMP,
+		/* All others reserved */
+	};
+
+	while (nb_rx < nb_pkts) {
+		rxdp = &rx_ring[rx_id];
+		qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
+		rx_status = (qword1 & AVF_RXD_QW1_STATUS_MASK) >>
+			    AVF_RXD_QW1_STATUS_SHIFT;
+
+		/* Check the DD bit */
+		if (!(rx_status & (1 << AVF_RX_DESC_STATUS_DD_SHIFT)))
+			break;
+		AVF_DUMP_RX_DESC(rxq, rxdp, rx_id);
+
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(!nmb)) {
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u", rxq->port_id, rxq->queue_id);
+			dev = &rte_eth_devices[rxq->port_id];
+			dev->data->rx_mbuf_alloc_failed++;
+			break;
+		}
+
+		rxd = *rxdp;
+		nb_hold++;
+		rxe = rxq->sw_ring[rx_id];
+		rx_id++;
+		if (rx_id == rxq->nb_rx_desc)
+			rx_id = 0;
+
+		/* Prefetch next mbuf */
+		rte_prefetch0(rxq->sw_ring[rx_id]);
+
+		/* When next RX descriptor is on a cache line boundary,
+		 * prefetch the next 4 RX descriptors and next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_prefetch0(&rx_ring[rx_id]);
+			rte_prefetch0(rxq->sw_ring[rx_id]);
+		}
+
+		rxm = rxe;
+		rxe = nmb;
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+
+		/* Set data buffer address and data length of the mbuf */
+		rxdp->read.hdr_addr = 0;
+		rxdp->read.pkt_addr = dma_addr;
+		rx_packet_len = (qword1 & AVF_RXD_QW1_LENGTH_PBUF_MASK) >>
+				 AVF_RXD_QW1_LENGTH_PBUF_SHIFT;
+		rxm->data_len = rx_packet_len;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+
+		/* If this is the first buffer of the received packet, set the
+		 * pointer to the first mbuf of the packet and initialize its
+		 * context. Otherwise, update the total length and the number
+		 * of segments of the current scattered packet, and update the
+		 * pointer to the last mbuf of the current packet.
+		 */
+		if (!first_seg) {
+			first_seg = rxm;
+			first_seg->nb_segs = 1;
+			first_seg->pkt_len = rx_packet_len;
+		} else {
+			first_seg->pkt_len =
+				(uint16_t)(first_seg->pkt_len +
+						rx_packet_len);
+			first_seg->nb_segs++;
+			last_seg->next = rxm;
+		}
+
+		/* If this is not the last buffer of the received packet,
+		 * update the pointer to the last mbuf of the current scattered
+		 * packet and continue to parse the RX ring.
+		 */
+		if (!(rx_status & (1 << AVF_RX_DESC_STATUS_EOF_SHIFT))) {
+			last_seg = rxm;
+			continue;
+		}
+
+		/* This is the last buffer of the received packet. If the CRC
+		 * is not stripped by the hardware:
+		 *  - Subtract the CRC length from the total packet length.
+		 *  - If the last buffer only contains the whole CRC or a part
+		 *  of it, free the mbuf associated to the last buffer. If part
+		 *  of the CRC is also contained in the previous mbuf, subtract
+		 *  the length of that CRC part from the data length of the
+		 *  previous mbuf.
+		 */
+		rxm->next = NULL;
+		if (unlikely(rxq->crc_len > 0)) {
+			first_seg->pkt_len -= ETHER_CRC_LEN;
+			if (rx_packet_len <= ETHER_CRC_LEN) {
+				rte_pktmbuf_free_seg(rxm);
+				first_seg->nb_segs--;
+				last_seg->data_len =
+					(uint16_t)(last_seg->data_len -
+					(ETHER_CRC_LEN - rx_packet_len));
+				last_seg->next = NULL;
+			} else
+				rxm->data_len = (uint16_t)(rx_packet_len -
+								ETHER_CRC_LEN);
+		}
+
+		first_seg->port = rxq->port_id;
+		first_seg->ol_flags = 0;
+		avf_rxd_to_vlan_tci(first_seg, &rxd);
+		pkt_flags = avf_rxd_to_pkt_flags(qword1);
+		first_seg->packet_type =
+			ptype_tbl[(uint8_t)((qword1 &
+			AVF_RXD_QW1_PTYPE_MASK) >> AVF_RXD_QW1_PTYPE_SHIFT)];
+
+		if (pkt_flags & PKT_RX_RSS_HASH)
+			first_seg->hash.rss =
+				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
+
+		first_seg->ol_flags |= pkt_flags;
+
+		/* Prefetch data of first segment, if configured to do so. */
+		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
+					  first_seg->data_off));
+		rx_pkts[nb_rx++] = first_seg;
+		first_seg = NULL;
+	}
+
+	/* Record index of the next RX descriptor to probe. */
+	rxq->rx_tail = rx_id;
+	rxq->pkt_first_seg = first_seg;
+	rxq->pkt_last_seg = last_seg;
+
+	/* If the number of free RX descriptors is greater than the RX free
+	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
+	 * register. Update the RDT with the value of the last processed RX
+	 * descriptor minus 1, to guarantee that the RDT register is never
+	 * equal to the RDH register, which creates a "full" ring situtation
+	 * from the hardware point of view.
+	 */
+	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
+	if (nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
+			   "nb_hold=%u nb_rx=%u",
+			   rxq->port_id, rxq->queue_id,
+			   rx_id, nb_hold, nb_rx);
+		rx_id = (uint16_t)(rx_id == 0 ?
+			(rxq->nb_rx_desc - 1) : (rx_id - 1));
+		AVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		nb_hold = 0;
+	}
+	rxq->nb_rx_hold = nb_hold;
+
+	return nb_rx;
+}
+
+static inline int
+avf_xmit_cleanup(struct avf_tx_queue *txq)
+{
+	struct avf_tx_entry *sw_ring = txq->sw_ring;
+	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
+	uint16_t nb_tx_desc = txq->nb_tx_desc;
+	uint16_t desc_to_clean_to;
+	uint16_t nb_tx_to_clean;
+
+	volatile struct avf_tx_desc *txd = txq->tx_ring;
+
+	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->rs_thresh);
+	if (desc_to_clean_to >= nb_tx_desc)
+		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
+
+	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
+	if ((txd[desc_to_clean_to].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(AVF_TXD_QW1_DTYPE_MASK)) !=
+			rte_cpu_to_le_64(AVF_TX_DESC_DTYPE_DESC_DONE)) {
+		PMD_TX_FREE_LOG(DEBUG, "TX descriptor %4u is not done "
+				"(port=%d queue=%d)", desc_to_clean_to,
+				txq->port_id, txq->queue_id);
+		return -1;
+	}
+
+	if (last_desc_cleaned > desc_to_clean_to)
+		nb_tx_to_clean = (uint16_t)((nb_tx_desc - last_desc_cleaned) +
+							desc_to_clean_to);
+	else
+		nb_tx_to_clean = (uint16_t)(desc_to_clean_to -
+					last_desc_cleaned);
+
+	txd[desc_to_clean_to].cmd_type_offset_bsz = 0;
+
+	txq->last_desc_cleaned = desc_to_clean_to;
+	txq->nb_free = (uint16_t)(txq->nb_free + nb_tx_to_clean);
+
+	return 0;
+}
+
+/* Check if the context descriptor is needed for TX offloading */
+static inline uint16_t
+avf_calc_context_desc(uint64_t flags)
+{
+	static uint64_t mask = PKT_TX_TCP_SEG;
+
+	return (flags & mask) ? 1 : 0;
+}
+
+static inline void
+avf_txd_enable_checksum(uint64_t ol_flags,
+			uint32_t *td_cmd,
+			uint32_t *td_offset,
+			union avf_tx_offload tx_offload)
+{
+	/* Set MACLEN */
+	*td_offset |= (tx_offload.l2_len >> 1) <<
+		      AVF_TX_DESC_LENGTH_MACLEN_SHIFT;
+
+	/* Enable L3 checksum offloads */
+	if (ol_flags & PKT_TX_IP_CKSUM) {
+		*td_cmd |= AVF_TX_DESC_CMD_IIPT_IPV4_CSUM;
+		*td_offset |= (tx_offload.l3_len >> 2) <<
+			      AVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+	} else if (ol_flags & PKT_TX_IPV4) {
+		*td_cmd |= AVF_TX_DESC_CMD_IIPT_IPV4;
+		*td_offset |= (tx_offload.l3_len >> 2) <<
+			      AVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+	} else if (ol_flags & PKT_TX_IPV6) {
+		*td_cmd |= AVF_TX_DESC_CMD_IIPT_IPV6;
+		*td_offset |= (tx_offload.l3_len >> 2) <<
+			      AVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+	}
+
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		*td_cmd |= AVF_TX_DESC_CMD_L4T_EOFT_TCP;
+		*td_offset |= (tx_offload.l4_len >> 2) <<
+			      AVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+		return;
+	}
+
+	/* Enable L4 checksum offloads */
+	switch (ol_flags & PKT_TX_L4_MASK) {
+	case PKT_TX_TCP_CKSUM:
+		*td_cmd |= AVF_TX_DESC_CMD_L4T_EOFT_TCP;
+		*td_offset |= (sizeof(struct tcp_hdr) >> 2) <<
+			      AVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+		break;
+	case PKT_TX_SCTP_CKSUM:
+		*td_cmd |= AVF_TX_DESC_CMD_L4T_EOFT_SCTP;
+		*td_offset |= (sizeof(struct sctp_hdr) >> 2) <<
+			      AVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+		break;
+	case PKT_TX_UDP_CKSUM:
+		*td_cmd |= AVF_TX_DESC_CMD_L4T_EOFT_UDP;
+		*td_offset |= (sizeof(struct udp_hdr) >> 2) <<
+			      AVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+		break;
+	default:
+		break;
+	}
+}
+
+/* set TSO context descriptor
+ * support IP -> L4 and IP -> IP -> L4
+ */
+static inline uint64_t
+avf_set_tso_ctx(struct rte_mbuf *mbuf, union avf_tx_offload tx_offload)
+{
+	uint64_t ctx_desc = 0;
+	uint32_t cd_cmd, hdr_len, cd_tso_len;
+
+	if (!tx_offload.l4_len) {
+		PMD_TX_LOG(DEBUG, "L4 length set to 0");
+		return ctx_desc;
+	}
+
+	/* in case of non tunneling packet, the outer_l2_len and
+	 * outer_l3_len must be 0.
+	 */
+	hdr_len = tx_offload.l2_len +
+		  tx_offload.l3_len +
+		  tx_offload.l4_len;
+
+	cd_cmd = AVF_TX_CTX_DESC_TSO;
+	cd_tso_len = mbuf->pkt_len - hdr_len;
+	ctx_desc |= ((uint64_t)cd_cmd << AVF_TXD_CTX_QW1_CMD_SHIFT) |
+		     ((uint64_t)cd_tso_len << AVF_TXD_CTX_QW1_TSO_LEN_SHIFT) |
+		     ((uint64_t)mbuf->tso_segsz << AVF_TXD_CTX_QW1_MSS_SHIFT);
+
+	return ctx_desc;
+}
+
+/* Construct the tx flags */
+static inline uint64_t
+avf_build_ctob(uint32_t td_cmd, uint32_t td_offset, unsigned int size,
+	       uint32_t td_tag)
+{
+	return rte_cpu_to_le_64(AVF_TX_DESC_DTYPE_DATA |
+				((uint64_t)td_cmd  << AVF_TXD_QW1_CMD_SHIFT) |
+				((uint64_t)td_offset <<
+				 AVF_TXD_QW1_OFFSET_SHIFT) |
+				((uint64_t)size  <<
+				 AVF_TXD_QW1_TX_BUF_SZ_SHIFT) |
+				((uint64_t)td_tag  <<
+				 AVF_TXD_QW1_L2TAG1_SHIFT));
+}
+
+/* TX function */
+uint16_t
+avf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	volatile struct avf_tx_desc *txd;
+	volatile struct avf_tx_desc *txr;
+	struct avf_tx_queue *txq;
+	struct avf_tx_entry *sw_ring;
+	struct avf_tx_entry *txe, *txn;
+	struct rte_mbuf *tx_pkt;
+	struct rte_mbuf *m_seg;
+	uint16_t tx_id;
+	uint16_t nb_tx;
+	uint32_t td_cmd;
+	uint32_t td_offset;
+	uint32_t td_tag;
+	uint64_t ol_flags;
+	uint16_t nb_used;
+	uint16_t nb_ctx;
+	uint16_t tx_last;
+	uint16_t slen;
+	uint64_t buf_dma_addr;
+	union avf_tx_offload tx_offload = {0};
+
+	txq = tx_queue;
+	sw_ring = txq->sw_ring;
+	txr = txq->tx_ring;
+	tx_id = txq->tx_tail;
+	txe = &sw_ring[tx_id];
+
+	/* Check if the descriptor ring needs to be cleaned. */
+	if (txq->nb_free < txq->free_thresh)
+		avf_xmit_cleanup(txq);
+
+	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		td_cmd = 0;
+		td_tag = 0;
+		td_offset = 0;
+
+		tx_pkt = *tx_pkts++;
+		RTE_MBUF_PREFETCH_TO_FREE(txe->mbuf);
+
+		ol_flags = tx_pkt->ol_flags;
+		tx_offload.l2_len = tx_pkt->l2_len;
+		tx_offload.l3_len = tx_pkt->l3_len;
+		tx_offload.l4_len = tx_pkt->l4_len;
+		tx_offload.tso_segsz = tx_pkt->tso_segsz;
+
+		/* Calculate the number of context descriptors needed. */
+		nb_ctx = avf_calc_context_desc(ol_flags);
+
+		/* The number of descriptors that must be allocated for
+		 * a packet equals to the number of the segments of that
+		 * packet plus 1 context descriptor if needed.
+		 */
+		nb_used = (uint16_t)(tx_pkt->nb_segs + nb_ctx);
+		tx_last = (uint16_t)(tx_id + nb_used - 1);
+
+		/* Circular ring */
+		if (tx_last >= txq->nb_tx_desc)
+			tx_last = (uint16_t)(tx_last - txq->nb_tx_desc);
+
+		PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u"
+			   " tx_first=%u tx_last=%u",
+			   txq->port_id, txq->queue_id, tx_id, tx_last);
+
+		if (nb_used > txq->nb_free) {
+			if (avf_xmit_cleanup(txq)) {
+				if (nb_tx == 0)
+					return 0;
+				goto end_of_tx;
+			}
+			if (unlikely(nb_used > txq->rs_thresh)) {
+				while (nb_used > txq->nb_free) {
+					if (avf_xmit_cleanup(txq)) {
+						if (nb_tx == 0)
+							return 0;
+						goto end_of_tx;
+					}
+				}
+			}
+		}
+
+		/* Descriptor based VLAN insertion */
+		if (ol_flags & PKT_TX_VLAN_PKT) {
+			td_cmd |= AVF_TX_DESC_CMD_IL2TAG1;
+			td_tag = tx_pkt->vlan_tci;
+		}
+
+		/* According to datasheet, the bit2 is reserved and must be
+		 * set to 1.
+		 */
+		td_cmd |= 0x04;
+
+		/* Enable checksum offloading */
+		if (ol_flags & AVF_TX_CKSUM_OFFLOAD_MASK)
+			avf_txd_enable_checksum(ol_flags, &td_cmd,
+						&td_offset, tx_offload);
+
+		if (nb_ctx) {
+			/* Setup TX context descriptor if required */
+			volatile struct avf_tx_context_desc *ctx_txd =
+				(volatile struct avf_tx_context_desc *)
+					&txr[tx_id];
+			uint16_t cd_l2tag2 = 0;
+			uint64_t cd_type_cmd_tso_mss =
+				AVF_TX_DESC_DTYPE_CONTEXT;
+
+			txn = &sw_ring[txe->next_id];
+			RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
+			if (txe->mbuf) {
+				rte_pktmbuf_free_seg(txe->mbuf);
+				txe->mbuf = NULL;
+			}
+
+			/* TSO enabled */
+			if (ol_flags & PKT_TX_TCP_SEG)
+				cd_type_cmd_tso_mss |=
+					avf_set_tso_ctx(tx_pkt, tx_offload);
+
+			AVF_DUMP_TX_DESC(txq, ctx_txd, tx_id);
+			txe->last_id = tx_last;
+			tx_id = txe->next_id;
+			txe = txn;
+		}
+
+		m_seg = tx_pkt;
+		do {
+			txd = &txr[tx_id];
+			txn = &sw_ring[txe->next_id];
+
+			if (txe->mbuf)
+				rte_pktmbuf_free_seg(txe->mbuf);
+			txe->mbuf = m_seg;
+
+			/* Setup TX Descriptor */
+			slen = m_seg->data_len;
+			buf_dma_addr = rte_mbuf_data_iova(m_seg);
+			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
+			txd->cmd_type_offset_bsz = avf_build_ctob(td_cmd,
+								  td_offset,
+								  slen,
+								  td_tag);
+
+			AVF_DUMP_TX_DESC(txq, txd, tx_id);
+			txe->last_id = tx_last;
+			tx_id = txe->next_id;
+			txe = txn;
+			m_seg = m_seg->next;
+		} while (m_seg);
+
+		/* The last packet data descriptor needs End Of Packet (EOP) */
+		td_cmd |= AVF_TX_DESC_CMD_EOP;
+		txq->nb_used = (uint16_t)(txq->nb_used + nb_used);
+		txq->nb_free = (uint16_t)(txq->nb_free - nb_used);
+
+		if (txq->nb_used >= txq->rs_thresh) {
+			PMD_TX_LOG(DEBUG, "Setting RS bit on TXD id="
+				   "%4u (port=%d queue=%d)",
+				   tx_last, txq->port_id, txq->queue_id);
+
+			td_cmd |= AVF_TX_DESC_CMD_RS;
+
+			/* Update txq RS bit counters */
+			txq->nb_used = 0;
+		}
+
+		txd->cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)td_cmd) <<
+					 AVF_TXD_QW1_CMD_SHIFT);
+		AVF_DUMP_TX_DESC(txq, txd, tx_id);
+	}
+
+end_of_tx:
+	rte_wmb();
+
+	PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u tx_tail=%u nb_tx=%u",
+		   txq->port_id, txq->queue_id, tx_id, nb_tx);
+
+	AVF_PCI_REG_WRITE_RELAXED(txq->qtx_tail, tx_id);
+	txq->tx_tail = tx_id;
+
+	return nb_tx;
+}
+
+/* TX prep functions */
+uint16_t
+avf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+	      uint16_t nb_pkts)
+{
+	int i, ret;
+	uint64_t ol_flags;
+	struct rte_mbuf *m;
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+
+		/* Check condition for nb_segs > AVF_TX_MAX_MTU_SEG. */
+		if (!(ol_flags & PKT_TX_TCP_SEG)) {
+			if (m->nb_segs > AVF_TX_MAX_MTU_SEG) {
+				rte_errno = -EINVAL;
+				return i;
+			}
+		} else if ((m->tso_segsz < AVF_MIN_TSO_MSS) ||
+			   (m->tso_segsz > AVF_MAX_TSO_MSS)) {
+			/* MSS outside the range are considered malicious */
+			rte_errno = -EINVAL;
+			return i;
+		}
+
+		if (ol_flags & AVF_TX_OFFLOAD_NOTSUP_MASK) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		ret = rte_net_intel_cksum_prepare(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+
+	return i;
+}
+
+/* choose rx function*/
+void
+avf_set_rx_function(struct rte_eth_dev *dev)
+{
+	if (dev->data->scattered_rx)
+		dev->rx_pkt_burst = avf_recv_scattered_pkts;
+	else
+		dev->rx_pkt_burst = avf_recv_pkts;
+}
+
+/* choose tx function*/
+void
+avf_set_tx_function(struct rte_eth_dev *dev)
+{
+	dev->tx_pkt_burst = avf_xmit_pkts;
+	dev->tx_pkt_prepare = avf_prep_pkts;
 }
