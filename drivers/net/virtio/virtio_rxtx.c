@@ -988,7 +988,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t nb_used, nb_tx = 0;
 	int error;
 
-	if (unlikely(hw->started == 0))
+	if (unlikely(hw->started == 0 && tx_pkts != hw->inject_pkts))
 		return nb_tx;
 
 	if (unlikely(nb_pkts < 1))

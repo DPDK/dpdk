@@ -26,6 +26,7 @@
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_dev.h>
+#include <rte_cycles.h>
 
 #include "virtio_ethdev.h"
 #include "virtio_pci.h"
@@ -1223,6 +1224,57 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 	return 0;
 }
 
+int
+virtio_dev_pause(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	rte_spinlock_lock(&hw->state_lock);
+
+	if (hw->started == 0) {
+		/* Device is just stopped. */
+		rte_spinlock_unlock(&hw->state_lock);
+		return -1;
+	}
+	hw->started = 0;
+	/*
+	 * Prevent the worker threads from touching queues to avoid contention,
+	 * 1 ms should be enough for the ongoing Tx function to finish.
+	 */
+	rte_delay_ms(1);
+	return 0;
+}
+
+/*
+ * Recover hw state to let the worker threads continue.
+ */
+void
+virtio_dev_resume(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	hw->started = 1;
+	rte_spinlock_unlock(&hw->state_lock);
+}
+
+/*
+ * Should be called only after device is paused.
+ */
+int
+virtio_inject_pkts(struct rte_eth_dev *dev, struct rte_mbuf **tx_pkts,
+		int nb_pkts)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtnet_tx *txvq = dev->data->tx_queues[0];
+	int ret;
+
+	hw->inject_pkts = tx_pkts;
+	ret = dev->tx_pkt_burst(txvq, tx_pkts, nb_pkts);
+	hw->inject_pkts = NULL;
+
+	return ret;
+}
+
 /*
  * Process Virtio Config changed interrupt and call the callback
  * if link state changed.
@@ -1762,6 +1814,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return -EBUSY;
 		}
 
+	rte_spinlock_init(&hw->state_lock);
+
 	hw->use_simple_rx = 1;
 	hw->use_simple_tx = 1;
 
@@ -1928,12 +1982,14 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, "stop");
 
+	rte_spinlock_lock(&hw->state_lock);
 	if (intr_conf->lsc || intr_conf->rxq)
 		virtio_intr_disable(dev);
 
 	hw->started = 0;
 	memset(&link, 0, sizeof(link));
 	virtio_dev_atomic_write_link_status(dev, &link);
+	rte_spinlock_unlock(&hw->state_lock);
 }
 
 static int

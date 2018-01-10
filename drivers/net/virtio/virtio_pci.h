@@ -241,6 +241,13 @@ struct virtio_hw {
 	struct virtio_pci_common_cfg *common_cfg;
 	struct virtio_net_config *dev_cfg;
 	void	    *virtio_user_dev;
+	/*
+	 * App management thread and virtio interrupt handler thread
+	 * both can change device state, this lock is meant to avoid
+	 * such a contention.
+	 */
+	rte_spinlock_t state_lock;
+	struct rte_mbuf **inject_pkts;
 
 	struct virtqueue **vqs;
 };
