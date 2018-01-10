@@ -1722,6 +1722,28 @@ int qman_query_fq_np(struct qman_fq *fq, struct qm_mcr_queryfq_np *np)
 	return 0;
 }
 
+int qman_query_fq_frm_cnt(struct qman_fq *fq, u32 *frm_cnt)
+{
+	struct qm_mc_command *mcc;
+	struct qm_mc_result *mcr;
+	struct qman_portal *p = get_affine_portal();
+
+	mcc = qm_mc_start(&p->p);
+	mcc->queryfq.fqid = cpu_to_be32(fq->fqid);
+	qm_mc_commit(&p->p, QM_MCC_VERB_QUERYFQ_NP);
+	while (!(mcr = qm_mc_result(&p->p)))
+		cpu_relax();
+	DPAA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_MCR_VERB_QUERYFQ_NP);
+
+	if (mcr->result == QM_MCR_RESULT_OK)
+		*frm_cnt = be24_to_cpu(mcr->queryfq_np.frm_cnt);
+	else if (mcr->result == QM_MCR_RESULT_ERR_FQID)
+		return -ERANGE;
+	else if (mcr->result != QM_MCR_RESULT_OK)
+		return -EIO;
+	return 0;
+}
+
 int qman_query_wq(u8 query_dedicated, struct qm_mcr_querywq *wq)
 {
 	struct qm_mc_command *mcc;

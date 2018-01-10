@@ -73,6 +73,7 @@ DPDK_18.02 {
 	qman_create_cgr;
 	qman_delete_cgr;
 	qman_modify_cgr;
+	qman_query_fq_frm_cnt;
 	qman_release_cgrid_range;
 	rte_dpaa_portal_fq_close;
 	rte_dpaa_portal_fq_init;

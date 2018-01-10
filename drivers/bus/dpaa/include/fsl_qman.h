@@ -1616,6 +1616,13 @@ int qman_query_fq_has_pkts(struct qman_fq *fq);
 int qman_query_fq_np(struct qman_fq *fq, struct qm_mcr_queryfq_np *np);
 
 /**
+ * qman_query_fq_frmcnt - Queries fq frame count
+ * @fq: the frame queue object to be queried
+ * @frm_cnt: number of frames in the queue
+ */
+int qman_query_fq_frm_cnt(struct qman_fq *fq, u32 *frm_cnt);
+
+/**
  * qman_query_wq - Queries work queue lengths
  * @query_dedicated: If non-zero, query length of WQs in the channel dedicated
  *		to this software portal. Otherwise, query length of WQs in a
