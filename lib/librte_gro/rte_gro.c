@@ -23,11 +23,14 @@ static gro_tbl_destroy_fn tbl_destroy_fn[RTE_GRO_TYPE_MAX_NUM] = {
 static gro_tbl_pkt_count_fn tbl_pkt_count_fn[RTE_GRO_TYPE_MAX_NUM] = {
 			gro_tcp4_tbl_pkt_count, NULL};
 
+#define IS_IPV4_TCP_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
+		((ptype & RTE_PTYPE_L4_TCP) == RTE_PTYPE_L4_TCP))
+
 /*
- * GRO context structure, which is used to merge packets. It keeps
- * many reassembly tables of desired GRO types. Applications need to
- * create GRO context objects before using rte_gro_reassemble to
- * perform GRO.
+ * GRO context structure. It keeps the table structures, which are
+ * used to merge packets, for different GRO types. Before using
+ * rte_gro_reassemble(), applications need to create the GRO context
+ * first.
  */
 struct gro_ctx {
 	/* GRO types to perform */
@@ -85,8 +88,6 @@ rte_gro_ctx_destroy(void *ctx)
 	uint64_t gro_type_flag;
 	uint8_t i;
 
-	if (gro_ctx == NULL)
-		return;
 	for (i = 0; i < RTE_GRO_TYPE_MAX_NUM; i++) {
 		gro_type_flag = 1ULL << i;
 		if ((gro_ctx->gro_types & gro_type_flag) == 0)
@@ -103,62 +104,54 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 		uint16_t nb_pkts,
 		const struct rte_gro_param *param)
 {
-	uint16_t i;
-	uint16_t nb_after_gro = nb_pkts;
-	uint32_t item_num;
-
 	/* allocate a reassembly table for TCP/IPv4 GRO */
 	struct gro_tcp4_tbl tcp_tbl;
-	struct gro_tcp4_key tcp_keys[RTE_GRO_MAX_BURST_ITEM_NUM];
+	struct gro_tcp4_flow tcp_flows[RTE_GRO_MAX_BURST_ITEM_NUM];
 	struct gro_tcp4_item tcp_items[RTE_GRO_MAX_BURST_ITEM_NUM] = {{0} };
 
 	struct rte_mbuf *unprocess_pkts[nb_pkts];
-	uint16_t unprocess_num = 0;
+	uint32_t item_num;
 	int32_t ret;
-	uint64_t current_time;
+	uint16_t i, unprocess_num = 0, nb_after_gro = nb_pkts;
 
-	if ((param->gro_types & RTE_GRO_TCP_IPV4) == 0)
+	if (unlikely((param->gro_types & RTE_GRO_TCP_IPV4) == 0))
 		return nb_pkts;
 
-	/* get the actual number of packets */
+	/* Get the maximum number of packets */
 	item_num = RTE_MIN(nb_pkts, (param->max_flow_num *
-			param->max_item_per_flow));
+				param->max_item_per_flow));
 	item_num = RTE_MIN(item_num, RTE_GRO_MAX_BURST_ITEM_NUM);
 
 	for (i = 0; i < item_num; i++)
-		tcp_keys[i].start_index = INVALID_ARRAY_INDEX;
+		tcp_flows[i].start_index = INVALID_ARRAY_INDEX;
 
-	tcp_tbl.keys = tcp_keys;
+	tcp_tbl.flows = tcp_flows;
 	tcp_tbl.items = tcp_items;
-	tcp_tbl.key_num = 0;
+	tcp_tbl.flow_num = 0;
 	tcp_tbl.item_num = 0;
-	tcp_tbl.max_key_num = item_num;
+	tcp_tbl.max_flow_num = item_num;
 	tcp_tbl.max_item_num = item_num;
 
-	current_time = rte_rdtsc();
-
 	for (i = 0; i < nb_pkts; i++) {
-		if ((pkts[i]->packet_type & (RTE_PTYPE_L3_IPV4 |
-					RTE_PTYPE_L4_TCP)) ==
-				(RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP)) {
-			ret = gro_tcp4_reassemble(pkts[i],
-					&tcp_tbl,
-					current_time);
+		if (IS_IPV4_TCP_PKT(pkts[i]->packet_type)) {
+			/*
+			 * The timestamp is ignored, since all packets
+			 * will be flushed from the tables.
+			 */
+			ret = gro_tcp4_reassemble(pkts[i], &tcp_tbl, 0);
 			if (ret > 0)
 				/* merge successfully */
 				nb_after_gro--;
-			else if (ret < 0) {
-				unprocess_pkts[unprocess_num++] =
-					pkts[i];
-			}
+			else if (ret < 0)
+				unprocess_pkts[unprocess_num++] = pkts[i];
 		} else
 			unprocess_pkts[unprocess_num++] = pkts[i];
 	}
 
-	/* re-arrange GROed packets */
 	if (nb_after_gro < nb_pkts) {
-		i = gro_tcp4_tbl_timeout_flush(&tcp_tbl, current_time,
-				pkts, nb_pkts);
+		/* Flush all packets from the tables */
+		i = gro_tcp4_tbl_timeout_flush(&tcp_tbl, 0, pkts, nb_pkts);
+		/* Copy unprocessed packets */
 		if (unprocess_num > 0) {
 			memcpy(&pkts[i], unprocess_pkts,
 					sizeof(struct rte_mbuf *) *
@@ -174,31 +167,28 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 		uint16_t nb_pkts,
 		void *ctx)
 {
-	uint16_t i, unprocess_num = 0;
 	struct rte_mbuf *unprocess_pkts[nb_pkts];
 	struct gro_ctx *gro_ctx = ctx;
+	void *tcp_tbl;
 	uint64_t current_time;
+	uint16_t i, unprocess_num = 0;
 
-	if ((gro_ctx->gro_types & RTE_GRO_TCP_IPV4) == 0)
+	if (unlikely((gro_ctx->gro_types & RTE_GRO_TCP_IPV4) == 0))
 		return nb_pkts;
 
+	tcp_tbl = gro_ctx->tbls[RTE_GRO_TCP_IPV4_INDEX];
 	current_time = rte_rdtsc();
 
 	for (i = 0; i < nb_pkts; i++) {
-		if ((pkts[i]->packet_type & (RTE_PTYPE_L3_IPV4 |
-					RTE_PTYPE_L4_TCP)) ==
-				(RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP)) {
-			if (gro_tcp4_reassemble(pkts[i],
-						gro_ctx->tbls
-						[RTE_GRO_TCP_IPV4_INDEX],
+		if (IS_IPV4_TCP_PKT(pkts[i]->packet_type)) {
+			if (gro_tcp4_reassemble(pkts[i], tcp_tbl,
 						current_time) < 0)
 				unprocess_pkts[unprocess_num++] = pkts[i];
 		} else
 			unprocess_pkts[unprocess_num++] = pkts[i];
 	}
 	if (unprocess_num > 0) {
-		memcpy(pkts, unprocess_pkts,
-				sizeof(struct rte_mbuf *) *
+		memcpy(pkts, unprocess_pkts, sizeof(struct rte_mbuf *) *
 				unprocess_num);
 	}
 
@@ -224,6 +214,7 @@ rte_gro_timeout_flush(void *ctx,
 				flush_timestamp,
 				out, max_nb_out);
 	}
+
 	return 0;
 }
 
@@ -232,19 +223,20 @@ rte_gro_get_pkt_count(void *ctx)
 {
 	struct gro_ctx *gro_ctx = ctx;
 	gro_tbl_pkt_count_fn pkt_count_fn;
+	uint64_t gro_types = gro_ctx->gro_types, flag;
 	uint64_t item_num = 0;
-	uint64_t gro_type_flag;
 	uint8_t i;
 
-	for (i = 0; i < RTE_GRO_TYPE_MAX_NUM; i++) {
-		gro_type_flag = 1ULL << i;
-		if ((gro_ctx->gro_types & gro_type_flag) == 0)
+	for (i = 0; i < RTE_GRO_TYPE_MAX_NUM && gro_types; i++) {
+		flag = 1ULL << i;
+		if ((gro_types & flag) == 0)
 			continue;
 
+		gro_types ^= flag;
 		pkt_count_fn = tbl_pkt_count_fn[i];
-		if (pkt_count_fn == NULL)
-			continue;
-		item_num += pkt_count_fn(gro_ctx->tbls[i]);
+		if (pkt_count_fn)
+			item_num += pkt_count_fn(gro_ctx->tbls[i]);
 	}
+
 	return item_num;
 }

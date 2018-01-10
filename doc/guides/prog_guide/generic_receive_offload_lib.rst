@@ -32,128 +32,154 @@ Generic Receive Offload Library
 ===============================
 
 Generic Receive Offload (GRO) is a widely used SW-based offloading
-technique to reduce per-packet processing overhead. It gains performance
-by reassembling small packets into large ones. To enable more flexibility
-to applications, DPDK implements GRO as a standalone library. Applications
-explicitly use the GRO library to merge small packets into large ones.
+technique to reduce per-packet processing overheads. By reassembling
+small packets into larger ones, GRO enables applications to process
+fewer large packets directly, thus reducing the number of packets to
+be processed. To benefit DPDK-based applications, like Open vSwitch,
+DPDK also provides own GRO implementation. In DPDK, GRO is implemented
+as a standalone library. Applications explicitly use the GRO library to
+reassemble packets.
 
-The GRO library assumes all input packets have correct checksums. In
-addition, the GRO library doesn't re-calculate checksums for merged
-packets. If input packets are IP fragmented, the GRO library assumes
-they are complete packets (i.e. with L4 headers).
+Overview
+--------
 
-Currently, the GRO library implements TCP/IPv4 packet reassembly.
+In the GRO library, there are many GRO types which are defined by packet
+types. One GRO type is in charge of process one kind of packets. For
+example, TCP/IPv4 GRO processes TCP/IPv4 packets.
 
-Reassembly Modes
-----------------
+Each GRO type has a reassembly function, which defines own algorithm and
+table structure to reassemble packets. We assign input packets to the
+corresponding GRO functions by MBUF->packet_type.
 
-The GRO library provides two reassembly modes: lightweight and
-heavyweight mode. If applications want to merge packets in a simple way,
-they can use the lightweight mode API. If applications want more
-fine-grained controls, they can choose the heavyweight mode API.
+The GRO library doesn't check if input packets have correct checksums and
+doesn't re-calculate checksums for merged packets. The GRO library
+assumes the packets are complete (i.e., MF==0 && frag_off==0), when IP
+fragmentation is possible (i.e., DF==0). Additionally, it requires IPv4
+ID to be increased by one.
 
-Lightweight Mode
-~~~~~~~~~~~~~~~~
+Currently, the GRO library provides GRO supports for TCP/IPv4 packets.
 
-The ``rte_gro_reassemble_burst()`` function is used for reassembly in
-lightweight mode. It tries to merge N input packets at a time, where
-N should be less than or equal to ``RTE_GRO_MAX_BURST_ITEM_NUM``.
+Two Sets of API
+---------------
 
-In each invocation, ``rte_gro_reassemble_burst()`` allocates temporary
-reassembly tables for the desired GRO types. Note that the reassembly
-table is a table structure used to reassemble packets and different GRO
-types (e.g. TCP/IPv4 GRO and TCP/IPv6 GRO) have different reassembly table
-structures. The ``rte_gro_reassemble_burst()`` function uses the reassembly
-tables to merge the N input packets.
+For different usage scenarios, the GRO library provides two sets of API.
+The one is called the lightweight mode API, which enables applications to
+merge a small number of packets rapidly; the other is called the
+heavyweight mode API, which provides fine-grained controls to
+applications and supports to merge a large number of packets.
 
-For applications, performing GRO in lightweight mode is simple. They
-just need to invoke ``rte_gro_reassemble_burst()``. Applications can get
-GROed packets as soon as ``rte_gro_reassemble_burst()`` returns.
+Lightweight Mode API
+~~~~~~~~~~~~~~~~~~~~
 
-Heavyweight Mode
-~~~~~~~~~~~~~~~~
+The lightweight mode only has one function ``rte_gro_reassemble_burst()``,
+which process N packets at a time. Using the lightweight mode API to
+merge packets is very simple. Calling ``rte_gro_reassemble_burst()`` is
+enough. The GROed packets are returned to applications as soon as it
+finishes.
 
-The ``rte_gro_reassemble()`` function is used for reassembly in heavyweight
-mode. Compared with the lightweight mode, performing GRO in heavyweight mode
-is relatively complicated.
+In ``rte_gro_reassemble_burst()``, table structures of different GRO
+types are allocated in the stack. This design simplifies applications'
+operations. However, limited by the stack size, the maximum number of
+packets that ``rte_gro_reassemble_burst()`` can process in an invocation
+should be less than or equal to ``RTE_GRO_MAX_BURST_ITEM_NUM``.
 
-Before performing GRO, applications need to create a GRO context object
-by calling ``rte_gro_ctx_create()``. A GRO context object holds the
-reassembly tables of desired GRO types. Note that all update/lookup
-operations on the context object are not thread safe. So if different
-processes or threads want to access the same context object simultaneously,
-some external syncing mechanisms must be used.
+Heavyweight Mode API
+~~~~~~~~~~~~~~~~~~~~
 
-Once the GRO context is created, applications can then use the
-``rte_gro_reassemble()`` function to merge packets. In each invocation,
-``rte_gro_reassemble()`` tries to merge input packets with the packets
-in the reassembly tables. If an input packet is an unsupported GRO type,
-or other errors happen (e.g. SYN bit is set), ``rte_gro_reassemble()``
-returns the packet to applications. Otherwise, the input packet is either
-merged or inserted into a reassembly table.
+Compared with the lightweight mode, using the heavyweight mode API is
+relatively complex. Firstly, applications need to create a GRO context
+by ``rte_gro_ctx_create()``. ``rte_gro_ctx_create()`` allocates tables
+structures in the heap and stores their pointers in the GRO context.
+Secondly, applications use ``rte_gro_reassemble()`` to merge packets.
+If input packets have invalid parameters, ``rte_gro_reassemble()``
+returns them to applications. For example, packets of unsupported GRO
+types or TCP SYN packets are returned. Otherwise, the input packets are
+either merged with the existed packets in the tables or inserted into the
+tables. Finally, applications use ``rte_gro_timeout_flush()`` to flush
+packets from the tables, when they want to get the GROed packets.
 
-When applications want to get GRO processed packets, they need to use
-``rte_gro_timeout_flush()`` to flush them from the tables manually.
+Note that all update/lookup operations on the GRO context are not thread
+safe. So if different processes or threads want to access the same
+context object simultaneously, some external syncing mechanisms must be
+used.
+
+Reassembly Algorithm
+--------------------
+
+The reassembly algorithm is used for reassembling packets. In the GRO
+library, different GRO types can use different algorithms. In this
+section, we will introduce an algorithm, which is used by TCP/IPv4 GRO.
+
+Challenges
+~~~~~~~~~~
+
+The reassembly algorithm determines the efficiency of GRO. There are two
+challenges in the algorithm design:
+
+- a high cost algorithm/implementation would cause packet dropping in a
+  high speed network.
+
+- packet reordering makes it hard to merge packets. For example, Linux
+  GRO fails to merge packets when encounters packet reordering.
+
+The above two challenges require our algorithm is:
+
+- lightweight enough to scale fast networking speed
+
+- capable of handling packet reordering
+
+In DPDK GRO, we use a key-based algorithm to address the two challenges.
+
+Key-based Reassembly Algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:numref:`figure_gro-key-algorithm` illustrates the procedure of the
+key-based algorithm. Packets are classified into "flows" by some header
+fields (we call them as "key"). To process an input packet, the algorithm
+searches for a matched "flow" (i.e., the same value of key) for the
+packet first, then checks all packets in the "flow" and tries to find a
+"neighbor" for it. If find a "neighbor", merge the two packets together.
+If can't find a "neighbor", store the packet into its "flow". If can't
+find a matched "flow", insert a new "flow" and store the packet into the
+"flow".
+
+.. note::
+        Packets in the same "flow" that can't merge are always caused
+        by packet reordering.
+
+The key-based algorithm has two characters:
+
+- classifying packets into "flows" to accelerate packet aggregation is
+  simple (address challenge 1).
+
+- storing out-of-order packets makes it possible to merge later (address
+  challenge 2).
+
+.. _figure_gro-key-algorithm:
+
+.. figure:: img/gro-key-algorithm.*
+   :align: center
+
+   Key-based Reassembly Algorithm
 
 TCP/IPv4 GRO
 ------------
 
-TCP/IPv4 GRO supports merging small TCP/IPv4 packets into large ones,
-using a table structure called the TCP/IPv4 reassembly table.
+The table structure used by TCP/IPv4 GRO contains two arrays: flow array
+and item array. The flow array keeps flow information, and the item array
+keeps packet information.
 
-TCP/IPv4 Reassembly Table
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Header fields used to define a TCP/IPv4 flow include:
 
-A TCP/IPv4 reassembly table includes a "key" array and an "item" array.
-The key array keeps the criteria to merge packets and the item array
-keeps the packet information.
+- source and destination: Ethernet and IP address, TCP port
 
-Each key in the key array points to an item group, which consists of
-packets which have the same criteria values but can't be merged. A key
-in the key array includes two parts:
+- TCP acknowledge number
 
-* ``criteria``: the criteria to merge packets. If two packets can be
-  merged, they must have the same criteria values.
+TCP/IPv4 packets whose FIN, SYN, RST, URG, PSH, ECE or CWR bit is set
+won't be processed.
 
-* ``start_index``: the item array index of the first packet in the item
-  group.
+Header fields deciding if two packets are neighbors include:
 
-Each element in the item array keeps the information of a packet. An item
-in the item array mainly includes three parts:
+- TCP sequence number
 
-* ``firstseg``: the mbuf address of the first segment of the packet.
-
-* ``lastseg``: the mbuf address of the last segment of the packet.
-
-* ``next_pkt_index``: the item array index of the next packet in the same
-  item group. TCP/IPv4 GRO uses ``next_pkt_index`` to chain the packets
-  that have the same criteria value but can't be merged together.
-
-Procedure to Reassemble a Packet
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To reassemble an incoming packet needs three steps:
-
-#. Check if the packet should be processed. Packets with one of the
-   following properties aren't processed and are returned immediately:
-
-   * FIN, SYN, RST, URG, PSH, ECE or CWR bit is set.
-
-   * L4 payload length is 0.
-
-#.  Traverse the key array to find a key which has the same criteria
-    value with the incoming packet. If found, go to the next step.
-    Otherwise, insert a new key and a new item for the packet.
-
-#. Locate the first packet in the item group via ``start_index``. Then
-   traverse all packets in the item group via ``next_pkt_index``. If a
-   packet is found which can be merged with the incoming one, merge them
-   together. If one isn't found, insert the packet into this item group.
-   Note that to merge two packets is to link them together via mbuf's
-   ``next`` field.
-
-When packets are flushed from the reassembly table, TCP/IPv4 GRO updates
-packet header fields for the merged packets. Note that before reassembling
-the packet, TCP/IPv4 GRO doesn't check if the checksums of packets are
-correct. Also, TCP/IPv4 GRO doesn't re-calculate checksums for merged
-packets.
+- IPv4 ID. The IPv4 ID fields of the packets should be increased by 1.

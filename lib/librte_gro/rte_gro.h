@@ -31,8 +31,8 @@ extern "C" {
 /**< TCP/IPv4 GRO flag */
 
 /**
- * A structure which is used to create GRO context objects or tell
- * rte_gro_reassemble_burst() what reassembly rules are demanded.
+ * Structure used to create GRO context objects or used to pass
+ * application-determined parameters to rte_gro_reassemble_burst().
  */
 struct rte_gro_param {
 	uint64_t gro_types;
@@ -78,26 +78,23 @@ void rte_gro_ctx_destroy(void *ctx);
 
 /**
  * This is one of the main reassembly APIs, which merges numbers of
- * packets at a time. It assumes that all inputted packets are with
- * correct checksums. That is, applications should guarantee all
- * inputted packets are correct. Besides, it doesn't re-calculate
- * checksums for merged packets. If inputted packets are IP fragmented,
- * this function assumes them are complete (i.e. with L4 header). After
- * finishing processing, it returns all GROed packets to applications
- * immediately.
+ * packets at a time. It doesn't check if input packets have correct
+ * checksums and doesn't re-calculate checksums for merged packets.
+ * It assumes the packets are complete (i.e., MF==0 && frag_off==0),
+ * when IP fragmentation is possible (i.e., DF==0). The GROed packets
+ * are returned as soon as the function finishes.
  *
  * @param pkts
- *  a pointer array which points to the packets to reassemble. Besides,
- *  it keeps mbuf addresses for the GROed packets.
+ *  Pointer array pointing to the packets to reassemble. Besides, it
+ *  keeps MBUF addresses for the GROed packets.
  * @param nb_pkts
- *  the number of packets to reassemble.
+ *  The number of packets to reassemble
  * @param param
- *  applications use it to tell rte_gro_reassemble_burst() what rules
- *  are demanded.
+ *  Application-determined parameters for reassembling packets.
  *
  * @return
- *  the number of packets after been GROed. If no packets are merged,
- *  the returned value is nb_pkts.
+ *  The number of packets after been GROed. If no packets are merged,
+ *  the return value is equals to nb_pkts.
  */
 uint16_t rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 		uint16_t nb_pkts,
@@ -107,32 +104,28 @@ uint16_t rte_gro_reassemble_burst(struct rte_mbuf **pkts,
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Reassembly function, which tries to merge inputted packets with
- * the packets in the reassembly tables of a given GRO context. This
- * function assumes all inputted packets are with correct checksums.
- * And it won't update checksums if two packets are merged. Besides,
- * if inputted packets are IP fragmented, this function assumes they
- * are complete packets (i.e. with L4 header).
+ * Reassembly function, which tries to merge input packets with the
+ * existed packets in the reassembly tables of a given GRO context.
+ * It doesn't check if input packets have correct checksums and doesn't
+ * re-calculate checksums for merged packets. Additionally, it assumes
+ * the packets are complete (i.e., MF==0 && frag_off==0), when IP
+ * fragmentation is possible (i.e., DF==0).
  *
- * If the inputted packets don't have data or are with unsupported GRO
- * types etc., they won't be processed and are returned to applications.
- * Otherwise, the inputted packets are either merged or inserted into
- * the table. If applications want get packets in the table, they need
- * to call flush API.
+ * If the input packets have invalid parameters (e.g. no data payload,
+ * unsupported GRO types), they are returned to applications. Otherwise,
+ * they are either merged or inserted into the table. Applications need
+ * to flush packets from the tables by flush API, if they want to get the
+ * GROed packets.
  *
  * @param pkts
- *  packet to reassemble. Besides, after this function finishes, it
- *  keeps the unprocessed packets (e.g. without data or unsupported
- *  GRO types).
+ *  Packets to reassemble. It's also used to store the unprocessed packets.
  * @param nb_pkts
- *  the number of packets to reassemble.
+ *  The number of packets to reassemble
  * @param ctx
- *  a pointer points to a GRO context object.
+ *  GRO context object pointer
  *
  * @return
- *  return the number of unprocessed packets (e.g. without data or
- *  unsupported GRO types). If all packets are processed (merged or
- *  inserted into the table), return 0.
+ *  The number of unprocessed packets.
  */
 uint16_t rte_gro_reassemble(struct rte_mbuf **pkts,
 		uint16_t nb_pkts,
@@ -142,29 +135,28 @@ uint16_t rte_gro_reassemble(struct rte_mbuf **pkts,
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * This function flushes the timeout packets from reassembly tables of
- * desired GRO types. The max number of flushed timeout packets is the
- * element number of the array which is used to keep the flushed packets.
+ * This function flushes the timeout packets from the reassembly tables
+ * of desired GRO types. The max number of flushed packets is the
+ * element number of 'out'.
  *
- * Besides, this function won't re-calculate checksums for merged
- * packets in the tables. That is, the returned packets may be with
- * wrong checksums.
+ * Additionally, the flushed packets may have incorrect checksums, since
+ * this function doesn't re-calculate checksums for merged packets.
  *
  * @param ctx
- *  a pointer points to a GRO context object.
+ *  GRO context object pointer.
  * @param timeout_cycles
- *  max TTL for packets in reassembly tables, measured in nanosecond.
+ *  The max TTL for packets in reassembly tables, measured in nanosecond.
  * @param gro_types
- *  this function only flushes packets which belong to the GRO types
- *  specified by gro_types.
+ *  This function flushes packets whose GRO types are specified by
+ *  gro_types.
  * @param out
- *  a pointer array that is used to keep flushed timeout packets.
+ *  Pointer array used to keep flushed packets.
  * @param max_nb_out
- *  the element number of out. It's also the max number of timeout
+ *  The element number of 'out'. It's also the max number of timeout
  *  packets that can be flushed finally.
  *
  * @return
- *  the number of flushed packets. If no packets are flushed, return 0.
+ *  The number of flushed packets.
  */
 uint16_t rte_gro_timeout_flush(void *ctx,
 		uint64_t timeout_cycles,
@@ -180,10 +172,10 @@ uint16_t rte_gro_timeout_flush(void *ctx,
  * of a given GRO context.
  *
  * @param ctx
- *  pointer points to a GRO context object.
+ *  GRO context object pointer.
  *
  * @return
- *  the number of packets in all reassembly tables.
+ *  The number of packets in the tables.
  */
 uint64_t rte_gro_get_pkt_count(void *ctx);
 
