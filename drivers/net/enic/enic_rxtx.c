@@ -273,10 +273,7 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 
 	/* checksum flags */
 	if (mbuf->packet_type & RTE_PTYPE_L3_IPV4) {
-		if (enic_cq_rx_desc_csum_not_calc(cqrd))
-			pkt_flags |= (PKT_RX_IP_CKSUM_UNKNOWN &
-				     PKT_RX_L4_CKSUM_UNKNOWN);
-		else {
+		if (!enic_cq_rx_desc_csum_not_calc(cqrd)) {
 			uint32_t l4_flags;
 			l4_flags = mbuf->packet_type & RTE_PTYPE_L4_MASK;
 
