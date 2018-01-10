@@ -28,8 +28,8 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-I40E/IXGBE/IGB Virtual Function Driver
-======================================
+Intel Virtual Function Driver
+=============================
 
 Supported Intel® Ethernet Controllers (see the *DPDK Release Notes* for details)
 support the following modes of operation in a virtualized environment:
@@ -92,6 +92,22 @@ For global resource access, a Virtual Function has to send a request to the Phys
 and the Physical Function operates on the global resources on behalf of the Virtual Function.
 For this out-of-band communication, an SR-IOV enabled NIC provides a memory buffer for each Virtual Function,
 which is called a "Mailbox".
+
+Intel® Ethernet Adaptive Virtual Function
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Adaptive Virtual Function (AVF) is a SR-IOV Virtual Function with the same device id (8086:1889) on different Intel Ethernet Controller.
+AVF Driver is VF driver which supports for all future Intel devices without requiring a VM update. And since this happens to be an adaptive VF driver,
+every new drop of the VF driver would add more and more advanced features that can be turned on in the VM if the underlying HW device supports those
+advanced features based on a device agnostic way without ever compromising on the base functionality. AVF provides generic hardware interface and
+interface between AVF driver and a compliant PF driver is specified.
+
+Intel products starting Ethernet Controller 710 Series to support Adaptive Virtual Function.
+
+The way to generate Virtual Function is like normal, and the resource of VF assignment depends on the NIC Infrastructure.
+
+For more detail on SR-IOV, please refer to the following documents:
+
+*   `Intel® AVF HAS <https://www.intel.com/content/dam/www/public/us/en/documents/product-specifications/ethernet-adaptive-virtual-function-hardware-spec.pdf>`_
 
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

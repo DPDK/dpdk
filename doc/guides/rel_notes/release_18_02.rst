@@ -75,6 +75,23 @@ New Features
   rte_flow. This patch is to support igb NIC with existing RSS configuration
   using rte_flow API.
 
+* **Add AVF (Adaptive Virtual Function) net PMD.**
+
+  A new net PMD has been added, which supports Intel® Ethernet Adaptive
+  Virtual Function (AVF) with features list below:
+
+  * Basic Rx/Tx burst
+  * SSE vectorized Rx/Tx burst
+  * Promiscuous mode
+  * MAC/VLAN offload
+  * Checksum offload
+  * TSO offload
+  * Jumbo frame and MTU setting
+  * RSS configuration
+  * stats
+  * Rx/Tx descriptor status
+  * Link status update/event
+
 
 API Changes
 -----------

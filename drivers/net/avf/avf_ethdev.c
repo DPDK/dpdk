@@ -67,9 +67,14 @@ static int avf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 static int avf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static void avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 					 struct ether_addr *mac_addr);
+static int avf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
+					uint16_t queue_id);
+static int avf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
+					 uint16_t queue_id);
 
 int avf_logtype_init;
 int avf_logtype_driver;
+
 static const struct rte_pci_id pci_id_avf_map[] = {
 	{ RTE_PCI_DEVICE(AVF_INTEL_VENDOR_ID, AVF_DEV_ID_ADAPTIVE_VF) },
 	{ .vendor_id = 0, /* sentinel */ },
@@ -111,6 +116,8 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.rx_descriptor_status       = avf_dev_rx_desc_status,
 	.tx_descriptor_status       = avf_dev_tx_desc_status,
 	.mtu_set                    = avf_dev_mtu_set,
+	.rx_queue_intr_enable       = avf_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable      = avf_dev_rx_queue_intr_disable,
 };
 
 static int
@@ -275,6 +282,99 @@ avf_init_queues(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static int avf_config_rx_queues_irqs(struct rte_eth_dev *dev,
+				     struct rte_intr_handle *intr_handle)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(adapter);
+	uint16_t interval, i;
+	int vec;
+
+	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+		if (rte_intr_efd_enable(intr_handle, dev->data->nb_rx_queues))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (!intr_handle->intr_vec) {
+			PMD_DRV_LOG(ERR, "Failed to allocate %d rx intr_vec",
+				    dev->data->nb_rx_queues);
+			return -1;
+		}
+	}
+
+	if (!dev->data->dev_conf.intr_conf.rxq) {
+		/* Rx interrupt disabled, Map interrupt only for writeback */
+		vf->nb_msix = 1;
+		if (vf->vf_res->vf_cap_flags &
+		    VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
+			/* If WB_ON_ITR supports, enable it */
+			vf->msix_base = AVF_RX_VEC_START;
+			AVF_WRITE_REG(hw, AVFINT_DYN_CTLN1(vf->msix_base - 1),
+				      AVFINT_DYN_CTLN1_ITR_INDX_MASK |
+				      AVFINT_DYN_CTLN1_WB_ON_ITR_MASK);
+		} else {
+			/* If no WB_ON_ITR offload flags, need to set
+			 * interrupt for descriptor write back.
+			 */
+			vf->msix_base = AVF_MISC_VEC_ID;
+
+			/* set ITR to max */
+			interval = avf_calc_itr_interval(
+					AVF_QUEUE_ITR_INTERVAL_MAX);
+			AVF_WRITE_REG(hw, AVFINT_DYN_CTL01,
+				      AVFINT_DYN_CTL01_INTENA_MASK |
+				      (AVF_ITR_INDEX_DEFAULT <<
+				       AVFINT_DYN_CTL01_ITR_INDX_SHIFT) |
+				      (interval <<
+				       AVFINT_DYN_CTL01_INTERVAL_SHIFT));
+		}
+		AVF_WRITE_FLUSH(hw);
+		/* map all queues to the same interrupt */
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			vf->rxq_map[0] |= 1 << i;
+	} else {
+		if (!rte_intr_allow_others(intr_handle)) {
+			vf->nb_msix = 1;
+			vf->msix_base = AVF_MISC_VEC_ID;
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				vf->rxq_map[0] |= 1 << i;
+				intr_handle->intr_vec[i] = AVF_MISC_VEC_ID;
+			}
+			PMD_DRV_LOG(DEBUG,
+				    "vector 0 are mapping to all Rx queues");
+		} else {
+			/* If Rx interrupt is reuquired, and we can use
+			 * multi interrupts, then the vec is from 1
+			 */
+			vf->nb_msix = RTE_MIN(vf->vf_res->max_vectors,
+					      intr_handle->nb_efd);
+			vf->msix_base = AVF_RX_VEC_START;
+			vec = AVF_RX_VEC_START;
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				vf->rxq_map[vec] |= 1 << i;
+				intr_handle->intr_vec[i] = vec++;
+				if (vec >= vf->nb_msix)
+					vec = AVF_RX_VEC_START;
+			}
+			PMD_DRV_LOG(DEBUG,
+				    "%u vectors are mapping to %u Rx queues",
+				    vf->nb_msix, dev->data->nb_rx_queues);
+		}
+	}
+
+	if (avf_config_irq_map(adapter)) {
+		PMD_DRV_LOG(ERR, "config interrupt mapping failed");
+		return -1;
+	}
+	return 0;
+}
+
 static int
 avf_start_queues(struct rte_eth_dev *dev)
 {
@@ -314,8 +414,6 @@ avf_dev_start(struct rte_eth_dev *dev)
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
-	uint16_t interval;
-	int i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -324,8 +422,6 @@ avf_dev_start(struct rte_eth_dev *dev)
 	vf->max_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	vf->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
 				      dev->data->nb_tx_queues);
-
-	/* TODO: Rx interrupt */
 
 	if (avf_init_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "failed to do Queue init");
@@ -344,35 +440,14 @@ avf_dev_start(struct rte_eth_dev *dev)
 		goto err_queue;
 	}
 
-	/* Map interrupt for writeback */
-	vf->nb_msix = 1;
-	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
-		/* If WB_ON_ITR supports, enable it */
-		vf->msix_base = AVF_RX_VEC_START;
-		AVF_WRITE_REG(hw, AVFINT_DYN_CTLN1(vf->msix_base - 1),
-			      AVFINT_DYN_CTLN1_ITR_INDX_MASK |
-			      AVFINT_DYN_CTLN1_WB_ON_ITR_MASK);
-	} else {
-		/* If no WB_ON_ITR offload flags, need to set interrupt for
-		 * descriptor write back.
-		 */
-		vf->msix_base = AVF_MISC_VEC_ID;
-
-		/* set ITR to max */
-		interval = avf_calc_itr_interval(AVF_QUEUE_ITR_INTERVAL_MAX);
-		AVF_WRITE_REG(hw, AVFINT_DYN_CTL01,
-			      AVFINT_DYN_CTL01_INTENA_MASK |
-			      (AVF_ITR_INDEX_DEFAULT <<
-			       AVFINT_DYN_CTL01_ITR_INDX_SHIFT) |
-			      (interval << AVFINT_DYN_CTL01_INTERVAL_SHIFT));
-	}
-	AVF_WRITE_FLUSH(hw);
-	/* map all queues to the same interrupt */
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		vf->rxq_map[0] |= 1 << i;
-	if (avf_config_irq_map(adapter)) {
-		PMD_DRV_LOG(ERR, "config interrupt mapping failed");
+	if (avf_config_rx_queues_irqs(dev, intr_handle) != 0) {
+		PMD_DRV_LOG(ERR, "configure irq failed");
 		goto err_queue;
+	}
+	/* re-enable intr again, because efd assign may change */
+	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+		rte_intr_disable(intr_handle);
+		rte_intr_enable(intr_handle);
 	}
 
 	/* Set all mac addrs */
@@ -383,7 +458,6 @@ avf_dev_start(struct rte_eth_dev *dev)
 		goto err_mac;
 	}
 
-	/* TODO: enable interrupt for RX interrupt */
 	return 0;
 
 err_mac:
@@ -399,6 +473,8 @@ avf_dev_stop(struct rte_eth_dev *dev)
 	struct avf_adapter *adapter =
 		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = dev->intr_handle;
 	int ret, i;
 
 	PMD_INIT_FUNC_TRACE();
@@ -408,9 +484,13 @@ avf_dev_stop(struct rte_eth_dev *dev)
 
 	avf_stop_queues(dev);
 
-	/*TODO: Disable the interrupt for Rx*/
-
-	/* TODO: Rx interrupt vector mapping free */
+	/* Disable the interrupt for Rx */
+	rte_intr_efd_disable(intr_handle);
+	/* Rx interrupt vector mapping free */
+	if (intr_handle->intr_vec) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
 
 	/* remove all mac addrs */
 	avf_add_del_all_mac_addr(adapter, FALSE);
@@ -910,6 +990,58 @@ avf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		PMD_DRV_LOG(ERR, "Get statistics failed");
 	}
 	return -EIO;
+}
+
+static int
+avf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(adapter);
+	uint16_t msix_intr;
+
+	msix_intr = pci_dev->intr_handle.intr_vec[queue_id];
+	if (msix_intr == AVF_MISC_VEC_ID) {
+		PMD_DRV_LOG(INFO, "MISC is also enabled for control");
+		AVF_WRITE_REG(hw, AVFINT_DYN_CTL01,
+			      AVFINT_DYN_CTL01_INTENA_MASK |
+			      AVFINT_DYN_CTL01_ITR_INDX_MASK);
+	} else {
+		AVF_WRITE_REG(hw,
+			      AVFINT_DYN_CTLN1(msix_intr - AVF_RX_VEC_START),
+			      AVFINT_DYN_CTLN1_INTENA_MASK |
+			      AVFINT_DYN_CTLN1_ITR_INDX_MASK);
+	}
+
+	AVF_WRITE_FLUSH(hw);
+
+	rte_intr_enable(&pci_dev->intr_handle);
+
+	return 0;
+}
+
+static int
+avf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t msix_intr;
+
+	msix_intr = pci_dev->intr_handle.intr_vec[queue_id];
+	if (msix_intr == AVF_MISC_VEC_ID) {
+		PMD_DRV_LOG(ERR, "MISC is used for control, cannot disable it");
+		return -EIO;
+	}
+
+	AVF_WRITE_REG(hw,
+		      AVFINT_DYN_CTLN1(msix_intr - AVF_RX_VEC_START),
+		      0);
+
+	AVF_WRITE_FLUSH(hw);
+	return 0;
 }
 
 static int
