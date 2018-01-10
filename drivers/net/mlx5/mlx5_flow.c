@@ -868,6 +868,10 @@ priv_flow_convert_items_validate(struct priv *priv,
 				parser->queue[n].offset += cur_item->dst_sz;
 		}
 	}
+	if (parser->drop) {
+		parser->queue[HASH_RXQ_ETH].offset +=
+			sizeof(struct ibv_flow_spec_action_drop);
+	}
 	if (parser->mark) {
 		for (i = 0; i != hash_rxq_init_n; ++i)
 			parser->queue[i].offset +=
