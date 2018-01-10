@@ -43,6 +43,90 @@ worker_tx_pkt(struct rte_mbuf *mbuf)
 		rte_pause();
 }
 
+/* Single stage pipeline workers */
+
+static int
+worker_do_tx_single(void *arg)
+{
+	struct worker_data *data = (struct worker_data *)arg;
+	const uint8_t dev = data->dev_id;
+	const uint8_t port = data->port_id;
+	size_t fwd = 0, received = 0, tx = 0;
+	struct rte_event ev;
+
+	while (!fdata->done) {
+
+		if (!rte_event_dequeue_burst(dev, port, &ev, 1, 0)) {
+			rte_pause();
+			continue;
+		}
+
+		received++;
+
+		if (ev.sched_type == RTE_SCHED_TYPE_ATOMIC) {
+			worker_tx_pkt(ev.mbuf);
+			tx++;
+			continue;
+		}
+		work();
+		ev.queue_id++;
+		worker_fwd_event(&ev, RTE_SCHED_TYPE_ATOMIC);
+		worker_event_enqueue(dev, port, &ev);
+		fwd++;
+	}
+
+	if (!cdata.quiet)
+		printf("  worker %u thread done. RX=%zu FWD=%zu TX=%zu\n",
+				rte_lcore_id(), received, fwd, tx);
+	return 0;
+}
+
+static int
+worker_do_tx_single_burst(void *arg)
+{
+	struct rte_event ev[BATCH_SIZE + 1];
+
+	struct worker_data *data = (struct worker_data *)arg;
+	const uint8_t dev = data->dev_id;
+	const uint8_t port = data->port_id;
+	size_t fwd = 0, received = 0, tx = 0;
+
+	while (!fdata->done) {
+		uint16_t i;
+		uint16_t nb_rx = rte_event_dequeue_burst(dev, port, ev,
+				BATCH_SIZE, 0);
+
+		if (!nb_rx) {
+			rte_pause();
+			continue;
+		}
+		received += nb_rx;
+
+		for (i = 0; i < nb_rx; i++) {
+			rte_prefetch0(ev[i + 1].mbuf);
+			if (ev[i].sched_type == RTE_SCHED_TYPE_ATOMIC) {
+
+				worker_tx_pkt(ev[i].mbuf);
+				ev[i].op = RTE_EVENT_OP_RELEASE;
+				tx++;
+
+			} else {
+				ev[i].queue_id++;
+				worker_fwd_event(&ev[i], RTE_SCHED_TYPE_ATOMIC);
+			}
+			work();
+		}
+
+		worker_event_enqueue_burst(dev, port, ev, nb_rx);
+		fwd += nb_rx;
+	}
+
+	if (!cdata.quiet)
+		printf("  worker %u thread done. RX=%zu FWD=%zu TX=%zu\n",
+				rte_lcore_id(), received, fwd, tx);
+	return 0;
+}
+
 /* Multi stage Pipeline Workers */
 
 static int
@@ -617,15 +701,33 @@ get_worker_loop_non_burst(uint8_t atq)
 	return worker_do_tx;
 }
 
-void
-set_worker_tx_setup_data(struct setup_data *caps, bool burst)
+static worker_loop
+get_worker_single_stage(bool burst)
+{
+	if (burst)
+		return worker_do_tx_single_burst;
+
+	return worker_do_tx_single;
+}
+
+static worker_loop
+get_worker_multi_stage(bool burst)
 {
 	uint8_t atq = cdata.all_type_queues ? 1 : 0;
 
 	if (burst)
-		caps->worker = get_worker_loop_burst(atq);
+		return get_worker_loop_burst(atq);
+
+	return get_worker_loop_non_burst(atq);
+}
+
+void
+set_worker_tx_setup_data(struct setup_data *caps, bool burst)
+{
+	if (cdata.num_stages == 1)
+		caps->worker = get_worker_single_stage(burst);
 	else
-		caps->worker = get_worker_loop_non_burst(atq);
+		caps->worker = get_worker_multi_stage(burst);
 
 	memset(fdata->tx_core, 0, sizeof(unsigned int) * MAX_NUM_CORE);
 
@@ -634,4 +736,5 @@ set_worker_tx_setup_data(struct setup_data *caps, bool burst)
 	caps->scheduler = schedule_devices;
 	caps->evdev_setup = setup_eventdev_worker_tx;
 	caps->adptr_setup = init_rx_adapter;
+
 }
