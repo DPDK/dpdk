@@ -264,13 +264,40 @@ _dpaa_portal_init(void *arg)
  * rte_dpaa_portal_init - Wrapper over _dpaa_portal_init with thread level check
  * XXX Complete this
  */
-int
-rte_dpaa_portal_init(void *arg)
+int rte_dpaa_portal_init(void *arg)
 {
 	if (unlikely(!RTE_PER_LCORE(_dpaa_io)))
 		return _dpaa_portal_init(arg);
 
 	return 0;
+}
+
+int
+rte_dpaa_portal_fq_init(void *arg, struct qman_fq *fq)
+{
+	/* Affine above created portal with channel*/
+	u32 sdqcr;
+	struct qman_portal *qp;
+
+	if (unlikely(!RTE_PER_LCORE(_dpaa_io)))
+		_dpaa_portal_init(arg);
+
+	/* Initialise qman specific portals */
+	qp = fsl_qman_portal_create();
+	if (!qp) {
+		DPAA_BUS_LOG(ERR, "Unable to alloc fq portal");
+		return -1;
+	}
+	fq->qp = qp;
+	sdqcr = QM_SDQCR_CHANNELS_POOL_CONV(fq->ch_id);
+	qman_static_dequeue_add(sdqcr, qp);
+
+	return 0;
+}
+
+int rte_dpaa_portal_fq_close(struct qman_fq *fq)
+{
+	return fsl_qman_portal_destroy(fq->qp);
 }
 
 void

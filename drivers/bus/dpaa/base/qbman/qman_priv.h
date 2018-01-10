@@ -146,8 +146,10 @@ int qm_get_wpm(int *wpm);
 
 struct qman_portal *qman_create_affine_portal(
 			const struct qm_portal_config *config,
-			const struct qman_cgrs *cgrs);
-const struct qm_portal_config *qman_destroy_affine_portal(void);
+			const struct qman_cgrs *cgrs,
+			int alloc);
+const struct qm_portal_config *
+qman_destroy_affine_portal(struct qman_portal *q);
 
 struct qm_portal_config *qm_get_unused_portal(void);
 struct qm_portal_config *qm_get_unused_portal_idx(uint32_t idx);

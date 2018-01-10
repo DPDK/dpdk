@@ -1190,21 +1190,24 @@ struct qman_fq_cb {
 struct qman_fq {
 	/* Caller of qman_create_fq() provides these demux callbacks */
 	struct qman_fq_cb cb;
-	/*
-	 * These are internal to the driver, don't touch. In particular, they
-	 * may change, be removed, or extended (so you shouldn't rely on
-	 * sizeof(qman_fq) being a constant).
-	 */
-	spinlock_t fqlock;
-	u32 fqid;
+
 	u32 fqid_le;
+	u16 ch_id;
+	u8 cgr_groupid;
+	u8 is_static;
 
 	/* DPDK Interface */
 	void *dpaa_intf;
 
+	/* affined portal in case of static queue */
+	struct qman_portal *qp;
+
 	volatile unsigned long flags;
+
 	enum qman_fq_state state;
-	int cgr_groupid;
+	u32 fqid;
+	spinlock_t fqlock;
+
 	struct rb_node node;
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
 	u32 key;
@@ -1383,7 +1386,7 @@ void qman_start_dequeues(void);
  * (SDQCR). The requested pools are limited to those the portal has dequeue
  * access to.
  */
-void qman_static_dequeue_add(u32 pools);
+void qman_static_dequeue_add(u32 pools, struct qman_portal *qm);
 
 /**
  * qman_static_dequeue_del - Remove pool channels from the portal SDQCR
@@ -1393,7 +1396,7 @@ void qman_static_dequeue_add(u32 pools);
  * register (SDQCR). The requested pools are limited to those the portal has
  * dequeue access to.
  */
-void qman_static_dequeue_del(u32 pools);
+void qman_static_dequeue_del(u32 pools, struct qman_portal *qp);
 
 /**
  * qman_static_dequeue_get - return the portal's current SDQCR
@@ -1402,7 +1405,7 @@ void qman_static_dequeue_del(u32 pools);
  * entire register is returned, so if only the currently-enabled pool channels
  * are desired, mask the return value with QM_SDQCR_CHANNELS_POOL_MASK.
  */
-u32 qman_static_dequeue_get(void);
+u32 qman_static_dequeue_get(struct qman_portal *qp);
 
 /**
  * qman_dca - Perform a Discrete Consumption Acknowledgment

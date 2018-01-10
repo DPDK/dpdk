@@ -67,6 +67,10 @@ void bman_thread_irq(void);
 int qman_global_init(void);
 int bman_global_init(void);
 
+/* Direct portal create and destroy */
+struct qman_portal *fsl_qman_portal_create(void);
+int fsl_qman_portal_destroy(struct qman_portal *qp);
+
 #ifdef __cplusplus
 }
 #endif

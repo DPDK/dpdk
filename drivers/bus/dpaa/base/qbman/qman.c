@@ -621,11 +621,52 @@ fail_eqcr:
 	return NULL;
 }
 
+#define MAX_GLOBAL_PORTALS 8
+static struct qman_portal global_portals[MAX_GLOBAL_PORTALS];
+static int global_portals_used[MAX_GLOBAL_PORTALS];
+
+static struct qman_portal *
+qman_alloc_global_portal(void)
+{
+	unsigned int i;
+
+	for (i = 0; i < MAX_GLOBAL_PORTALS; i++) {
+		if (global_portals_used[i] == 0) {
+			global_portals_used[i] = 1;
+			return &global_portals[i];
+		}
+	}
+	pr_err("No portal available (%x)\n", MAX_GLOBAL_PORTALS);
+
+	return NULL;
+}
+
+static int
+qman_free_global_portal(struct qman_portal *portal)
+{
+	unsigned int i;
+
+	for (i = 0; i < MAX_GLOBAL_PORTALS; i++) {
+		if (&global_portals[i] == portal) {
+			global_portals_used[i] = 0;
+			return 0;
+		}
+	}
+	return -1;
+}
+
 struct qman_portal *qman_create_affine_portal(const struct qm_portal_config *c,
-					      const struct qman_cgrs *cgrs)
+					      const struct qman_cgrs *cgrs,
+					      int alloc)
 {
 	struct qman_portal *res;
-	struct qman_portal *portal = get_affine_portal();
+	struct qman_portal *portal;
+
+	if (alloc)
+		portal = qman_alloc_global_portal();
+	else
+		portal = get_affine_portal();
+
 	/* A criteria for calling this function (from qman_driver.c) is that
 	 * we're already affine to the cpu and won't schedule onto another cpu.
 	 */
@@ -675,13 +716,18 @@ void qman_destroy_portal(struct qman_portal *qm)
 	spin_lock_destroy(&qm->cgr_lock);
 }
 
-const struct qm_portal_config *qman_destroy_affine_portal(void)
+const struct qm_portal_config *
+qman_destroy_affine_portal(struct qman_portal *qp)
 {
 	/* We don't want to redirect if we're a slave, use "raw" */
-	struct qman_portal *qm = get_affine_portal();
+	struct qman_portal *qm;
 	const struct qm_portal_config *pcfg;
 	int cpu;
 
+	if (qp == NULL)
+		qm = get_affine_portal();
+	else
+		qm = qp;
 	pcfg = qm->config;
 	cpu = pcfg->cpu;
 
@@ -690,6 +736,9 @@ const struct qm_portal_config *qman_destroy_affine_portal(void)
 	spin_lock(&affine_mask_lock);
 	CPU_CLR(cpu, &affine_mask);
 	spin_unlock(&affine_mask_lock);
+
+	qman_free_global_portal(qm);
+
 	return pcfg;
 }
 
@@ -1096,27 +1145,27 @@ void qman_start_dequeues(void)
 		qm_dqrr_set_maxfill(&p->p, DQRR_MAXFILL);
 }
 
-void qman_static_dequeue_add(u32 pools)
+void qman_static_dequeue_add(u32 pools, struct qman_portal *qp)
 {
-	struct qman_portal *p = get_affine_portal();
+	struct qman_portal *p = qp ? qp : get_affine_portal();
 
 	pools &= p->config->pools;
 	p->sdqcr |= pools;
 	qm_dqrr_sdqcr_set(&p->p, p->sdqcr);
 }
 
-void qman_static_dequeue_del(u32 pools)
+void qman_static_dequeue_del(u32 pools, struct qman_portal *qp)
 {
-	struct qman_portal *p = get_affine_portal();
+	struct qman_portal *p = qp ? qp : get_affine_portal();
 
 	pools &= p->config->pools;
 	p->sdqcr &= ~pools;
 	qm_dqrr_sdqcr_set(&p->p, p->sdqcr);
 }
 
-u32 qman_static_dequeue_get(void)
+u32 qman_static_dequeue_get(struct qman_portal *qp)
 {
-	struct qman_portal *p = get_affine_portal();
+	struct qman_portal *p = qp ? qp : get_affine_portal();
 	return p->sdqcr;
 }
 

@@ -39,6 +39,11 @@ enum dpaa_portal_type {
 	dpaa_portal_bman,
 };
 
+struct dpaa_portal_map {
+	void *cinh;
+	void *cena;
+};
+
 struct dpaa_ioctl_portal_map {
 	/* Input parameter, is a qman or bman portal required. */
 	enum dpaa_portal_type type;
@@ -50,10 +55,8 @@ struct dpaa_ioctl_portal_map {
 	/* Return value if the map succeeds, this gives the mapped
 	 * cache-inhibited (cinh) and cache-enabled (cena) addresses.
 	 */
-	struct dpaa_portal_map {
-		void *cinh;
-		void *cena;
-	} addr;
+	struct dpaa_portal_map addr;
+
 	/* Qman-specific return values */
 	u16 channel;
 	uint32_t pools;
