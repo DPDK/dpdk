@@ -34,6 +34,22 @@ struct worker_data {
 	uint8_t port_id;
 } __rte_cache_aligned;
 
+typedef int (*worker_loop)(void *);
+typedef int (*consumer_loop)(void);
+typedef void (*schedule_loop)(unsigned int);
+typedef int (*eventdev_setup)(struct cons_data *, struct worker_data *);
+typedef void (*rx_adapter_setup)(uint16_t nb_ports);
+typedef void (*opt_check)(void);
+
+struct setup_data {
+	worker_loop worker;
+	consumer_loop consumer;
+	schedule_loop scheduler;
+	eventdev_setup evdev_setup;
+	rx_adapter_setup adptr_setup;
+	opt_check check_opt;
+};
+
 struct fastpath_data {
 	volatile int done;
 	uint32_t tx_lock;
@@ -47,6 +63,7 @@ struct fastpath_data {
 	unsigned int sched_core[MAX_NUM_CORE];
 	unsigned int worker_core[MAX_NUM_CORE];
 	struct rte_eth_dev_tx_buffer *tx_buf[RTE_MAX_ETHPORTS];
+	struct setup_data cap;
 } __rte_cache_aligned;
 
 struct config_data {
