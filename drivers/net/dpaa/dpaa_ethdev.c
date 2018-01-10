@@ -513,6 +513,22 @@ static void dpaa_eth_tx_queue_release(void *txq __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 }
 
+static uint32_t
+dpaa_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct qman_fq *rxq = &dpaa_intf->rx_queues[rx_queue_id];
+	u32 frm_cnt = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (qman_query_fq_frm_cnt(rxq, &frm_cnt) == 0) {
+		RTE_LOG(DEBUG, PMD, "RX frame count for q(%d) is %u\n",
+			rx_queue_id, frm_cnt);
+	}
+	return frm_cnt;
+}
+
 static int dpaa_link_down(struct rte_eth_dev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -664,6 +680,7 @@ static struct eth_dev_ops dpaa_devops = {
 	.tx_queue_setup		  = dpaa_eth_tx_queue_setup,
 	.rx_queue_release	  = dpaa_eth_rx_queue_release,
 	.tx_queue_release	  = dpaa_eth_tx_queue_release,
+	.rx_queue_count		  = dpaa_dev_rx_queue_count,
 
 	.flow_ctrl_get		  = dpaa_flow_ctrl_get,
 	.flow_ctrl_set		  = dpaa_flow_ctrl_set,
