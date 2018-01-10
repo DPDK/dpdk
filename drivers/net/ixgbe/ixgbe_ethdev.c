@@ -66,6 +66,9 @@
 /* Timer value included in XOFF frames. */
 #define IXGBE_FC_PAUSE 0x680
 
+/*Default value of Max Rx Queue*/
+#define IXGBE_MAX_RX_QUEUE_NUM 128
+
 #define IXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define IXGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 #define IXGBE_VMDQ_NUM_UC_MAC         4096 /* Maximum nb. of UC MAC addr. */
@@ -2168,9 +2171,10 @@ ixgbe_check_vf_rss_rxq_num(struct rte_eth_dev *dev, uint16_t nb_rx_q)
 		return -EINVAL;
 	}
 
-	RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool = nb_rx_q;
-	RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx = pci_dev->max_vfs * nb_rx_q;
-
+	RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool =
+		IXGBE_MAX_RX_QUEUE_NUM / RTE_ETH_DEV_SRIOV(dev).active;
+	RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx =
+		pci_dev->max_vfs * RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
 	return 0;
 }
 
