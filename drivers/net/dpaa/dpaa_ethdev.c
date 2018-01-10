@@ -186,19 +186,15 @@ dpaa_fw_version_get(struct rte_eth_dev *dev __rte_unused,
 		DPAA_PMD_ERR("Unable to open SoC device");
 		return -ENOTSUP; /* Not supported on this infra */
 	}
-
-	ret = fscanf(svr_file, "svr:%x", &svr_ver);
-	if (ret <= 0) {
+	if (fscanf(svr_file, "svr:%x", &svr_ver) <= 0)
 		DPAA_PMD_ERR("Unable to read SoC device");
-		return -ENOTSUP; /* Not supported on this infra */
-	}
 
-	ret = snprintf(fw_version, fw_size,
-		       "svr:%x-fman-v%x",
-		       svr_ver,
-		       fman_ip_rev);
+	fclose(svr_file);
 
+	ret = snprintf(fw_version, fw_size, "SVR:%x-fman-v%x",
+		       svr_ver, fman_ip_rev);
 	ret += 1; /* add the size of '\0' */
+
 	if (fw_size < (uint32_t)ret)
 		return ret;
 	else

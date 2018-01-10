@@ -20,7 +20,7 @@
 /* DPAA SoC identifier; If this is not available, it can be concluded
  * that board is non-DPAA. Single slot is currently supported.
  */
-#define DPAA_SOC_ID_FILE		"sys/devices/soc0/soc_id"
+#define DPAA_SOC_ID_FILE		"/sys/devices/soc0/soc_id"
 
 #define DPAA_MBUF_HW_ANNOTATION		64
 #define DPAA_FD_PTA_SIZE		64
