@@ -18,18 +18,12 @@
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
+#include <rte_event_eth_rx_adapter.h>
 #include <rte_service.h>
 
 #define MAX_NUM_STAGES 8
 #define BATCH_SIZE 16
 #define MAX_NUM_CORE 64
-
-struct prod_data {
-	uint8_t dev_id;
-	uint8_t port_id;
-	int32_t qid;
-	unsigned int num_nic_ports;
-} __rte_cache_aligned;
 
 struct cons_data {
 	uint8_t dev_id;
@@ -37,7 +31,6 @@ struct cons_data {
 	uint8_t release;
 } __rte_cache_aligned;
 
-static struct prod_data prod_data;
 static struct cons_data cons_data;
 
 struct worker_data {
@@ -47,10 +40,9 @@ struct worker_data {
 
 struct fastpath_data {
 	volatile int done;
-	uint32_t rx_lock;
 	uint32_t tx_lock;
-	uint32_t sched_lock;
 	uint32_t evdev_service_id;
+	uint32_t rxadptr_service_id;
 	bool rx_single;
 	bool tx_single;
 	bool sched_single;
@@ -78,6 +70,7 @@ struct config_data {
 	unsigned int worker_cq_depth;
 	int16_t next_qid[MAX_NUM_STAGES+2];
 	int16_t qid[MAX_NUM_STAGES];
+	uint8_t rx_adapter_id;
 };
 
 static struct config_data cdata = {
@@ -178,64 +171,21 @@ consumer(void)
 	return 0;
 }
 
-static int
-producer(void)
-{
-	static uint8_t eth_port;
-	struct rte_mbuf *mbufs[BATCH_SIZE+2];
-	struct rte_event ev[BATCH_SIZE+2];
-	uint32_t i, num_ports = prod_data.num_nic_ports;
-	int32_t qid = prod_data.qid;
-	uint8_t dev_id = prod_data.dev_id;
-	uint8_t port_id = prod_data.port_id;
-	uint32_t prio_idx = 0;
-
-	const uint16_t nb_rx = rte_eth_rx_burst(eth_port, 0, mbufs, BATCH_SIZE);
-	if (++eth_port == num_ports)
-		eth_port = 0;
-	if (nb_rx == 0) {
-		rte_pause();
-		return 0;
-	}
-
-	for (i = 0; i < nb_rx; i++) {
-		ev[i].flow_id = mbufs[i]->hash.rss;
-		ev[i].op = RTE_EVENT_OP_NEW;
-		ev[i].sched_type = cdata.queue_type;
-		ev[i].queue_id = qid;
-		ev[i].event_type = RTE_EVENT_TYPE_ETHDEV;
-		ev[i].sub_event_type = 0;
-		ev[i].priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
-		ev[i].mbuf = mbufs[i];
-		RTE_SET_USED(prio_idx);
-	}
-
-	const int nb_tx = rte_event_enqueue_burst(dev_id, port_id, ev, nb_rx);
-	if (nb_tx != nb_rx) {
-		for (i = nb_tx; i < nb_rx; i++)
-			rte_pktmbuf_free(mbufs[i]);
-	}
-
-	return 0;
-}
-
 static inline void
 schedule_devices(unsigned int lcore_id)
 {
-	if (fdata->rx_core[lcore_id] && (fdata->rx_single ||
-	    rte_atomic32_cmpset(&(fdata->rx_lock), 0, 1))) {
-		producer();
-		rte_atomic32_clear((rte_atomic32_t *)&(fdata->rx_lock));
+	if (fdata->rx_core[lcore_id]) {
+		rte_service_run_iter_on_app_lcore(fdata->rxadptr_service_id,
+				!fdata->rx_single);
 	}
 
-	if (fdata->sched_core[lcore_id] && (fdata->sched_single ||
-	    rte_atomic32_cmpset(&(fdata->sched_lock), 0, 1))) {
-		rte_service_run_iter_on_app_lcore(fdata->evdev_service_id, 1);
+	if (fdata->sched_core[lcore_id]) {
+		rte_service_run_iter_on_app_lcore(fdata->evdev_service_id,
+				!fdata->sched_single);
 		if (cdata.dump_dev_signal) {
 			rte_event_dev_dump(0, stdout);
 			cdata.dump_dev_signal = 0;
 		}
-		rte_atomic32_clear((rte_atomic32_t *)&(fdata->sched_lock));
 	}
 
 	if (fdata->tx_core[lcore_id] && (fdata->tx_single ||
@@ -538,6 +488,70 @@ parse_app_args(int argc, char **argv)
 	}
 }
 
+static inline void
+init_rx_adapter(uint16_t nb_ports)
+{
+	int i;
+	int ret;
+	uint8_t evdev_id = 0;
+	struct rte_event_dev_info dev_info;
+
+	ret = rte_event_dev_info_get(evdev_id, &dev_info);
+
+	struct rte_event_port_conf rx_p_conf = {
+		.dequeue_depth = 8,
+		.enqueue_depth = 8,
+		.new_event_threshold = 1200,
+	};
+
+	if (rx_p_conf.dequeue_depth > dev_info.max_event_port_dequeue_depth)
+		rx_p_conf.dequeue_depth = dev_info.max_event_port_dequeue_depth;
+	if (rx_p_conf.enqueue_depth > dev_info.max_event_port_enqueue_depth)
+		rx_p_conf.enqueue_depth = dev_info.max_event_port_enqueue_depth;
+
+	ret = rte_event_eth_rx_adapter_create(cdata.rx_adapter_id, evdev_id,
+			&rx_p_conf);
+	if (ret)
+		rte_exit(EXIT_FAILURE, "failed to create rx adapter[%d]",
+				cdata.rx_adapter_id);
+
+	struct rte_event_eth_rx_adapter_queue_conf queue_conf = {
+		.ev.sched_type = cdata.queue_type,
+		.ev.queue_id = cdata.qid[0],
+	};
+
+	for (i = 0; i < nb_ports; i++) {
+		uint32_t cap;
+
+		ret = rte_event_eth_rx_adapter_caps_get(evdev_id, i, &cap);
+		if (ret)
+			rte_exit(EXIT_FAILURE,
+					"failed to get event rx adapter "
+					"capabilities");
+
+		ret = rte_event_eth_rx_adapter_queue_add(cdata.rx_adapter_id, i,
+				-1, &queue_conf);
+		if (ret)
+			rte_exit(EXIT_FAILURE,
+					"Failed to add queues to Rx adapter");
+	}
+
+	ret = rte_event_eth_rx_adapter_service_id_get(cdata.rx_adapter_id,
+				&fdata->rxadptr_service_id);
+	if (ret != -ESRCH && ret != 0) {
+		rte_exit(EXIT_FAILURE,
+			"Error getting the service ID for Rx adapter\n");
+	}
+	rte_service_runstate_set(fdata->rxadptr_service_id, 1);
+	rte_service_set_runstate_mapped_check(fdata->rxadptr_service_id, 0);
+
+	ret = rte_event_eth_rx_adapter_start(cdata.rx_adapter_id);
+	if (ret)
+		rte_exit(EXIT_FAILURE, "Rx adapter[%d] start failed",
+				cdata.rx_adapter_id);
+
+}
+
 /*
  * Initializes a given port using global settings and with the RX buffers
  * coming from the mbuf_pool passed as a parameter.
@@ -659,15 +673,14 @@ struct port_link {
 };
 
 static int
-setup_eventdev(struct prod_data *prod_data,
-		struct cons_data *cons_data,
+setup_eventdev(struct cons_data *cons_data,
 		struct worker_data *worker_data)
 {
 	const uint8_t dev_id = 0;
 	/* +1 stages is for a SINGLE_LINK TX stage */
 	const uint8_t nb_queues = cdata.num_stages + 1;
-	/* + 2 is one port for producer and one for consumer */
-	const uint8_t nb_ports = cdata.num_workers + 2;
+	/* + 1 for consumer */
+	const uint8_t nb_ports = cdata.num_workers + 1;
 	struct rte_event_dev_config config = {
 			.nb_event_queues = nb_queues,
 			.nb_event_ports = nb_ports,
@@ -821,27 +834,6 @@ setup_eventdev(struct prod_data *prod_data,
 				__LINE__, i);
 		return -1;
 	}
-	/* port for producer, no links */
-	struct rte_event_port_conf rx_p_conf = {
-			.dequeue_depth = 8,
-			.enqueue_depth = 8,
-			.new_event_threshold = 1200,
-			.disable_implicit_release = disable_implicit_release,
-	};
-
-	if (rx_p_conf.dequeue_depth > config.nb_event_port_dequeue_depth)
-		rx_p_conf.dequeue_depth = config.nb_event_port_dequeue_depth;
-	if (rx_p_conf.enqueue_depth > config.nb_event_port_enqueue_depth)
-		rx_p_conf.enqueue_depth = config.nb_event_port_enqueue_depth;
-
-	if (rte_event_port_setup(dev_id, i + 1, &rx_p_conf) < 0) {
-		printf("Error setting up port %d\n", i);
-		return -1;
-	}
-
-	*prod_data = (struct prod_data){.dev_id = dev_id,
-					.port_id = i + 1,
-					.qid = cdata.qid[0] };
 	*cons_data = (struct cons_data){.dev_id = dev_id,
 					.port_id = i,
 					.release = disable_implicit_release };
@@ -945,12 +937,12 @@ main(int argc, char **argv)
 	if (worker_data == NULL)
 		rte_panic("rte_calloc failed\n");
 
-	int dev_id = setup_eventdev(&prod_data, &cons_data, worker_data);
+	int dev_id = setup_eventdev(&cons_data, worker_data);
 	if (dev_id < 0)
 		rte_exit(EXIT_FAILURE, "Error setting up eventdev\n");
 
-	prod_data.num_nic_ports = num_ports;
 	init_ports(num_ports);
+	init_rx_adapter(num_ports);
 
 	int worker_idx = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
@@ -965,8 +957,8 @@ main(int argc, char **argv)
 
 		if (fdata->rx_core[lcore_id])
 			printf(
-				"[%s()] lcore %d executing NIC Rx, and using eventdev port %u\n",
-				__func__, lcore_id, prod_data.port_id);
+				"[%s()] lcore %d executing NIC Rx\n",
+				__func__, lcore_id);
 
 		if (fdata->tx_core[lcore_id])
 			printf(
