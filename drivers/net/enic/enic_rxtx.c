@@ -230,16 +230,9 @@ static inline void
 enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 {
 	struct cq_enet_rq_desc *cqrd = (struct cq_enet_rq_desc *)cqd;
-	uint16_t ciflags, bwflags, pkt_flags = 0, vlan_tci;
-	ciflags = enic_cq_rx_desc_ciflags(cqrd);
+	uint16_t bwflags, pkt_flags = 0, vlan_tci;
 	bwflags = enic_cq_rx_desc_bwflags(cqrd);
 	vlan_tci = enic_cq_rx_desc_vlan(cqrd);
-
-	mbuf->ol_flags = 0;
-
-	/* flags are meaningless if !EOP */
-	if (unlikely(!enic_cq_rx_desc_eop(ciflags)))
-		goto mbuf_flags_done;
 
 	/* VLAN STRIPPED flag. The L2 packet type updated here also */
 	if (bwflags & CQ_ENET_RQ_DESC_FLAGS_VLAN_STRIPPED) {
@@ -292,7 +285,6 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 		}
 	}
 
- mbuf_flags_done:
 	mbuf->ol_flags = pkt_flags;
 }
 
