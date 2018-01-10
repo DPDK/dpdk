@@ -272,6 +272,30 @@ static inline void dpaa_checksum_offload(struct rte_mbuf *mbuf,
 	fd->cmd = DPAA_FD_CMD_RPD | DPAA_FD_CMD_DTC;
 }
 
+static inline void
+dpaa_unsegmented_checksum(struct rte_mbuf *mbuf, struct qm_fd *fd_arr)
+{
+	if (!mbuf->packet_type) {
+		struct rte_net_hdr_lens hdr_lens;
+
+		mbuf->packet_type = rte_net_get_ptype(mbuf, &hdr_lens,
+				RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK
+				| RTE_PTYPE_L4_MASK);
+		mbuf->l2_len = hdr_lens.l2_len;
+		mbuf->l3_len = hdr_lens.l3_len;
+	}
+	if (mbuf->data_off < (DEFAULT_TX_ICEOF +
+	    sizeof(struct dpaa_eth_parse_results_t))) {
+		DPAA_DP_LOG(DEBUG, "Checksum offload Err: "
+			"Not enough Headroom "
+			"space for correct Checksum offload."
+			"So Calculating checksum in Software.");
+		dpaa_checksum(mbuf);
+	} else {
+		dpaa_checksum_offload(mbuf, fd_arr, mbuf->buf_addr);
+	}
+}
+
 struct rte_mbuf *
 dpaa_eth_sg_to_mbuf(struct qm_fd *fd, uint32_t ifid)
 {
@@ -594,27 +618,8 @@ tx_on_dpaa_pool_unsegmented(struct rte_mbuf *mbuf,
 		rte_pktmbuf_free(mbuf);
 	}
 
-	if (mbuf->ol_flags & DPAA_TX_CKSUM_OFFLOAD_MASK) {
-		if (!mbuf->packet_type) {
-			struct rte_net_hdr_lens hdr_lens;
-
-			mbuf->packet_type = rte_net_get_ptype(mbuf, &hdr_lens,
-					RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK
-					| RTE_PTYPE_L4_MASK);
-			mbuf->l2_len = hdr_lens.l2_len;
-			mbuf->l3_len = hdr_lens.l3_len;
-		}
-		if (mbuf->data_off < (DEFAULT_TX_ICEOF +
-		    sizeof(struct dpaa_eth_parse_results_t))) {
-			DPAA_DP_LOG(DEBUG, "Checksum offload Err: "
-				"Not enough Headroom "
-				"space for correct Checksum offload."
-				"So Calculating checksum in Software.");
-			dpaa_checksum(mbuf);
-		} else {
-			dpaa_checksum_offload(mbuf, fd_arr, mbuf->buf_addr);
-		}
-	}
+	if (mbuf->ol_flags & DPAA_TX_CKSUM_OFFLOAD_MASK)
+		dpaa_unsegmented_checksum(mbuf, fd_arr);
 }
 
 /* Handle all mbufs on dpaa BMAN managed pool */
@@ -670,7 +675,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	struct rte_mempool *mp;
 	struct dpaa_bp_info *bp_info;
 	struct qm_fd fd_arr[DPAA_TX_BURST_SIZE];
-	uint32_t frames_to_send, loop, i = 0;
+	uint32_t frames_to_send, loop, sent = 0;
 	uint16_t state;
 	int ret;
 
@@ -685,10 +690,23 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	while (nb_bufs) {
 		frames_to_send = (nb_bufs > DPAA_TX_BURST_SIZE) ?
 				DPAA_TX_BURST_SIZE : nb_bufs;
-		for (loop = 0; loop < frames_to_send; loop++, i++) {
-			mbuf = bufs[i];
-			if (RTE_MBUF_DIRECT(mbuf)) {
+		for (loop = 0; loop < frames_to_send; loop++) {
+			mbuf = *(bufs++);
+			if (likely(RTE_MBUF_DIRECT(mbuf))) {
 				mp = mbuf->pool;
+				bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
+				if (likely(mp->ops_index ==
+						bp_info->dpaa_ops_index &&
+					mbuf->nb_segs == 1 &&
+					rte_mbuf_refcnt_read(mbuf) == 1)) {
+					DPAA_MBUF_TO_CONTIG_FD(mbuf,
+						&fd_arr[loop], bp_info->bpid);
+					if (mbuf->ol_flags &
+						DPAA_TX_CKSUM_OFFLOAD_MASK)
+						dpaa_unsegmented_checksum(mbuf,
+							&fd_arr[loop]);
+					continue;
+				}
 			} else {
 				mi = rte_mbuf_from_indirect(mbuf);
 				mp = mi->pool;
@@ -729,11 +747,12 @@ send_pkts:
 					frames_to_send - loop);
 		}
 		nb_bufs -= frames_to_send;
+		sent += frames_to_send;
 	}
 
-	DPAA_DP_LOG(DEBUG, "Transmitted %d buffers on queue: %p", i, q);
+	DPAA_DP_LOG(DEBUG, "Transmitted %d buffers on queue: %p", sent, q);
 
-	return i;
+	return sent;
 }
 
 uint16_t dpaa_eth_tx_drop_all(void *q  __rte_unused,
