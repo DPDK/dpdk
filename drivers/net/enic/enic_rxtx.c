@@ -327,7 +327,6 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	while (nb_rx < nb_pkts) {
 		volatile struct rq_enet_desc *rqd_ptr;
-		dma_addr_t dma_addr;
 		struct cq_desc cqd;
 		uint8_t packet_error;
 		uint16_t ciflags;
@@ -376,12 +375,13 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* Push descriptor for newly allocated mbuf */
 		nmb->data_off = RTE_PKTMBUF_HEADROOM;
-		dma_addr = (dma_addr_t)(nmb->buf_iova +
-					RTE_PKTMBUF_HEADROOM);
-		rq_enet_desc_enc(rqd_ptr, dma_addr,
-				(rq->is_sop ? RQ_ENET_TYPE_ONLY_SOP
-				: RQ_ENET_TYPE_NOT_SOP),
-				nmb->buf_len - RTE_PKTMBUF_HEADROOM);
+		/*
+		 * Only the address needs to be refilled. length_type of the
+		 * descriptor it set during initialization
+		 * (enic_alloc_rx_queue_mbufs) and does not change.
+		 */
+		rqd_ptr->address = rte_cpu_to_le_64(nmb->buf_iova +
+						    RTE_PKTMBUF_HEADROOM);
 
 		/* Fill in the rest of the mbuf */
 		seg_length = enic_cq_rx_desc_n_bytes(&cqd);
