@@ -7,6 +7,7 @@
 
 #include "qman.h"
 #include <rte_branch_prediction.h>
+#include <rte_dpaa_bus.h>
 
 /* Compilation constants */
 #define DQRR_MAXFILL	15
@@ -503,7 +504,12 @@ struct qman_portal *qman_create_portal(
 
 	p = &portal->p;
 
-	portal->use_eqcr_ci_stashing = ((qman_ip_rev >= QMAN_REV30) ? 1 : 0);
+	if (dpaa_svr_family == SVR_LS1043A_FAMILY)
+		portal->use_eqcr_ci_stashing = 3;
+	else
+		portal->use_eqcr_ci_stashing =
+					((qman_ip_rev >= QMAN_REV30) ? 1 : 0);
+
 	/*
 	 * prep the low-level portal struct with the mapped addresses from the
 	 * config, everything that follows depends on it and "config" is more
@@ -516,7 +522,7 @@ struct qman_portal *qman_create_portal(
 	 * and stash with high-than-DQRR priority.
 	 */
 	if (qm_eqcr_init(p, qm_eqcr_pvb,
-			 portal->use_eqcr_ci_stashing ? 3 : 0, 1)) {
+			 portal->use_eqcr_ci_stashing, 1)) {
 		pr_err("Qman EQCR initialisation failed\n");
 		goto fail_eqcr;
 	}
