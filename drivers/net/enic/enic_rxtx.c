@@ -105,59 +105,6 @@ enic_cq_rx_desc_n_bytes(struct cq_desc *cqd)
 		CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK;
 }
 
-/* Find the offset to L5. This is needed by enic TSO implementation.
- * Return 0 if not a TCP packet or can't figure out the length.
- */
-static inline uint8_t tso_header_len(struct rte_mbuf *mbuf)
-{
-	struct ether_hdr *eh;
-	struct vlan_hdr *vh;
-	struct ipv4_hdr *ip4;
-	struct ipv6_hdr *ip6;
-	struct tcp_hdr *th;
-	uint8_t hdr_len;
-	uint16_t ether_type;
-
-	/* offset past Ethernet header */
-	eh = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
-	ether_type = eh->ether_type;
-	hdr_len = sizeof(struct ether_hdr);
-	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
-		vh = rte_pktmbuf_mtod_offset(mbuf, struct vlan_hdr *, hdr_len);
-		ether_type = vh->eth_proto;
-		hdr_len += sizeof(struct vlan_hdr);
-	}
-
-	/* offset past IP header */
-	switch (rte_be_to_cpu_16(ether_type)) {
-	case ETHER_TYPE_IPv4:
-		ip4 = rte_pktmbuf_mtod_offset(mbuf, struct ipv4_hdr *, hdr_len);
-		if (ip4->next_proto_id != IPPROTO_TCP)
-			return 0;
-		hdr_len += (ip4->version_ihl & 0xf) * 4;
-		break;
-	case ETHER_TYPE_IPv6:
-		ip6 = rte_pktmbuf_mtod_offset(mbuf, struct ipv6_hdr *, hdr_len);
-		if (ip6->proto != IPPROTO_TCP)
-			return 0;
-		hdr_len += sizeof(struct ipv6_hdr);
-		break;
-	default:
-		return 0;
-	}
-
-	if ((hdr_len + sizeof(struct tcp_hdr)) > mbuf->pkt_len)
-		return 0;
-
-	/* offset past TCP header */
-	th = rte_pktmbuf_mtod_offset(mbuf, struct tcp_hdr *, hdr_len);
-	hdr_len += (th->data_off >> 4) * 4;
-
-	if (hdr_len > mbuf->pkt_len)
-		return 0;
-
-	return hdr_len;
-}
 
 static inline uint8_t
 enic_cq_rx_check_err(struct cq_desc *cqd)
@@ -556,7 +503,8 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		header_len = 0;
 
 		if (tso) {
-			header_len = tso_header_len(tx_pkt);
+			header_len = tx_pkt->l2_len + tx_pkt->l3_len +
+				     tx_pkt->l4_len;
 
 			/* Drop if non-TCP packet or TSO seg size is too big */
 			if (unlikely(header_len == 0 || ((tx_pkt->tso_segsz +
