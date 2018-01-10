@@ -99,21 +99,20 @@ struct fastpath_data *fdata;
 struct config_data cdata;
 
 static __rte_always_inline void
-work(struct rte_mbuf *m)
+exchange_mac(struct rte_mbuf *m)
 {
 	struct ether_hdr *eth;
 	struct ether_addr addr;
 
 	/* change mac addresses on packet (to use mbuf data) */
-	/*
-	 * FIXME Swap mac address properly and also handle the
-	 * case for both odd and even number of stages that the
-	 * addresses end up the same at the end of the pipeline
-	 */
 	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
 	ether_addr_copy(&eth->d_addr, &addr);
 	ether_addr_copy(&addr, &eth->d_addr);
+}
 
+static __rte_always_inline void
+work(void)
+{
 	/* do a number of cycles of work per packet */
 	volatile uint64_t start_tsc = rte_rdtsc();
 	while (rte_rdtsc() < start_tsc + cdata.worker_cycles)

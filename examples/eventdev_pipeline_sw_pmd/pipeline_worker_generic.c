@@ -45,7 +45,7 @@ worker_generic(void *arg)
 		ev.op = RTE_EVENT_OP_FORWARD;
 		ev.sched_type = cdata.queue_type;
 
-		work(ev.mbuf);
+		work();
 
 		while (rte_event_enqueue_burst(dev_id, port_id, &ev, 1) != 1)
 			rte_pause();
@@ -101,7 +101,7 @@ worker_generic_burst(void *arg)
 			events[i].op = RTE_EVENT_OP_FORWARD;
 			events[i].sched_type = cdata.queue_type;
 
-			work(events[i].mbuf);
+			work();
 		}
 		uint16_t nb_tx = rte_event_enqueue_burst(dev_id, port_id,
 				events, nb_rx);
@@ -148,6 +148,7 @@ consumer(void)
 		received++;
 		uint8_t outport = packet.mbuf->port;
 
+		exchange_mac(packet.mbuf);
 		rte_eth_tx_buffer(outport, 0, fdata->tx_buf[outport],
 				packet.mbuf);
 
@@ -212,6 +213,8 @@ consumer_burst(void)
 		received += n;
 		for (i = 0; i < n; i++) {
 			uint8_t outport = packets[i].mbuf->port;
+
+			exchange_mac(packets[i].mbuf);
 			rte_eth_tx_buffer(outport, 0, fdata->tx_buf[outport],
 					packets[i].mbuf);
 
