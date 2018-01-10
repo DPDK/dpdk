@@ -54,8 +54,8 @@ corresponding GRO functions by MBUF->packet_type.
 The GRO library doesn't check if input packets have correct checksums and
 doesn't re-calculate checksums for merged packets. The GRO library
 assumes the packets are complete (i.e., MF==0 && frag_off==0), when IP
-fragmentation is possible (i.e., DF==0). Additionally, it requires IPv4
-ID to be increased by one.
+fragmentation is possible (i.e., DF==0). Additionally, it complies RFC
+6864 to process the IPv4 ID field.
 
 Currently, the GRO library provides GRO supports for TCP/IPv4 packets.
 
@@ -182,4 +182,12 @@ Header fields deciding if two packets are neighbors include:
 
 - TCP sequence number
 
-- IPv4 ID. The IPv4 ID fields of the packets should be increased by 1.
+- IPv4 ID. The IPv4 ID fields of the packets, whose DF bit is 0, should
+  be increased by 1.
+
+.. note::
+        We comply RFC 6864 to process the IPv4 ID field. Specifically,
+        we check IPv4 ID fields for the packets whose DF bit is 0 and
+        ignore IPv4 ID fields for the packets whose DF bit is 1.
+        Additionally, packets which have different value of DF bit can't
+        be merged.

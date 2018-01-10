@@ -61,6 +61,8 @@ struct gro_tcp4_item {
 	uint16_t ip_id;
 	/* the number of merged packets */
 	uint16_t nb_merged;
+	/* Indicate if IPv4 ID can be ignored */
+	uint8_t is_atomic;
 };
 
 /*

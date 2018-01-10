@@ -138,7 +138,8 @@ check_seq_option(struct gro_tcp4_item *item,
 		uint32_t sent_seq,
 		uint16_t ip_id,
 		uint16_t tcp_hl,
-		uint16_t tcp_dl)
+		uint16_t tcp_dl,
+		uint8_t is_atomic)
 {
 	struct rte_mbuf *pkt_orig = item->firstseg;
 	struct ipv4_hdr *iph_orig;
@@ -157,14 +158,19 @@ check_seq_option(struct gro_tcp4_item *item,
 					len) != 0)))
 		return 0;
 
+	/* Don't merge packets whose DF bits are different */
+	if (unlikely(item->is_atomic ^ is_atomic))
+		return 0;
+
 	/* check if the two packets are neighbors */
 	len = pkt_orig->pkt_len - pkt_orig->l2_len - pkt_orig->l3_len -
 		tcp_hl_orig;
-	if ((sent_seq == item->sent_seq + len) && (ip_id == item->ip_id + 1))
+	if ((sent_seq == item->sent_seq + len) && (is_atomic ||
+				(ip_id == item->ip_id + 1)))
 		/* append the new packet */
 		return 1;
-	else if ((sent_seq + tcp_dl == item->sent_seq) &&
-			(ip_id + item->nb_merged == item->ip_id))
+	else if ((sent_seq + tcp_dl == item->sent_seq) && (is_atomic ||
+			(ip_id + item->nb_merged == item->ip_id)))
 		/* pre-pend the new packet */
 		return -1;
 
@@ -201,7 +207,8 @@ insert_new_item(struct gro_tcp4_tbl *tbl,
 		uint64_t start_time,
 		uint32_t prev_idx,
 		uint32_t sent_seq,
-		uint16_t ip_id)
+		uint16_t ip_id,
+		uint8_t is_atomic)
 {
 	uint32_t item_idx;
 
@@ -216,6 +223,7 @@ insert_new_item(struct gro_tcp4_tbl *tbl,
 	tbl->items[item_idx].sent_seq = sent_seq;
 	tbl->items[item_idx].ip_id = ip_id;
 	tbl->items[item_idx].nb_merged = 1;
+	tbl->items[item_idx].is_atomic = is_atomic;
 	tbl->item_num++;
 
 	/* if the previous packet exists, chain them together. */
@@ -310,7 +318,8 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	struct ipv4_hdr *ipv4_hdr;
 	struct tcp_hdr *tcp_hdr;
 	uint32_t sent_seq;
-	uint16_t tcp_dl, ip_id, hdr_len;
+	uint16_t tcp_dl, ip_id, hdr_len, frag_off;
+	uint8_t is_atomic;
 
 	struct tcp4_flow_key key;
 	uint32_t cur_idx, prev_idx, item_idx;
@@ -337,7 +346,13 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	if (tcp_dl <= 0)
 		return -1;
 
-	ip_id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
+	/*
+	 * Save IPv4 ID for the packet whose DF bit is 0. For the packet
+	 * whose DF bit is 1, IPv4 ID is ignored.
+	 */
+	frag_off = rte_be_to_cpu_16(ipv4_hdr->fragment_offset);
+	is_atomic = (frag_off & IPV4_HDR_DF_FLAG) == IPV4_HDR_DF_FLAG;
+	ip_id = is_atomic ? 0 : rte_be_to_cpu_16(ipv4_hdr->packet_id);
 	sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);
 
 	ether_addr_copy(&(eth_hdr->s_addr), &(key.eth_saddr));
@@ -368,7 +383,8 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	 */
 	if (find == 0) {
 		item_idx = insert_new_item(tbl, pkt, start_time,
-				INVALID_ARRAY_INDEX, sent_seq, ip_id);
+				INVALID_ARRAY_INDEX, sent_seq, ip_id,
+				is_atomic);
 		if (item_idx == INVALID_ARRAY_INDEX)
 			return -1;
 		if (insert_new_flow(tbl, &key, item_idx) ==
@@ -391,7 +407,8 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	prev_idx = cur_idx;
 	do {
 		cmp = check_seq_option(&(tbl->items[cur_idx]), tcp_hdr,
-				sent_seq, ip_id, pkt->l4_len, tcp_dl);
+				sent_seq, ip_id, pkt->l4_len, tcp_dl,
+				is_atomic);
 		if (cmp) {
 			if (merge_two_tcp4_packets(&(tbl->items[cur_idx]),
 						pkt, cmp, sent_seq, ip_id))
@@ -402,7 +419,7 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 			 * the packet into the flow.
 			 */
 			if (insert_new_item(tbl, pkt, start_time, prev_idx,
-						sent_seq, ip_id) ==
+						sent_seq, ip_id, is_atomic) ==
 					INVALID_ARRAY_INDEX)
 				return -1;
 			return 0;
@@ -413,7 +430,7 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 
 	/* Fail to find a neighbor, so store the packet into the flow. */
 	if (insert_new_item(tbl, pkt, start_time, prev_idx, sent_seq,
-				ip_id) == INVALID_ARRAY_INDEX)
+				ip_id, is_atomic) == INVALID_ARRAY_INDEX)
 		return -1;
 
 	return 0;
