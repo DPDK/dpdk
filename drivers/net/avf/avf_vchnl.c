@@ -720,3 +720,93 @@ avf_query_stats(struct avf_adapter *adapter,
 	*pstats = (struct virtchnl_eth_stats *)args.out_buffer;
 	return 0;
 }
+
+int
+avf_config_promisc(struct avf_adapter *adapter,
+		   bool enable_unicast,
+		   bool enable_multicast)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_promisc_info promisc;
+	struct avf_cmd_info args;
+	int err;
+
+	promisc.flags = 0;
+	promisc.vsi_id = vf->vsi_res->vsi_id;
+
+	if (enable_unicast)
+		promisc.flags |= FLAG_VF_UNICAST_PROMISC;
+
+	if (enable_multicast)
+		promisc.flags |= FLAG_VF_MULTICAST_PROMISC;
+
+	args.ops = VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE;
+	args.in_args = (uint8_t *)&promisc;
+	args.in_args_size = sizeof(promisc);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+
+	err = avf_execute_vf_cmd(adapter, &args);
+
+	if (err)
+		PMD_DRV_LOG(ERR,
+			    "fail to execute command CONFIG_PROMISCUOUS_MODE");
+	return err;
+}
+
+int
+avf_add_del_eth_addr(struct avf_adapter *adapter, struct ether_addr *addr,
+		     bool add)
+{
+	struct virtchnl_ether_addr_list *list;
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	uint8_t cmd_buffer[sizeof(struct virtchnl_ether_addr_list) +
+			   sizeof(struct virtchnl_ether_addr)];
+	struct avf_cmd_info args;
+	int err;
+
+	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
+	list->vsi_id = vf->vsi_res->vsi_id;
+	list->num_elements = 1;
+	rte_memcpy(list->list[0].addr, addr->addr_bytes,
+		   sizeof(addr->addr_bytes));
+
+	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
+	args.in_args = cmd_buffer;
+	args.in_args_size = sizeof(cmd_buffer);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    add ? "OP_ADD_ETH_ADDR" :  "OP_DEL_ETH_ADDR");
+	return err;
+}
+
+int
+avf_add_del_vlan(struct avf_adapter *adapter, uint16_t vlanid, bool add)
+{
+	struct virtchnl_vlan_filter_list *vlan_list;
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	uint8_t cmd_buffer[sizeof(struct virtchnl_vlan_filter_list) +
+							sizeof(uint16_t)];
+	struct avf_cmd_info args;
+	int err;
+
+	vlan_list = (struct virtchnl_vlan_filter_list *)cmd_buffer;
+	vlan_list->vsi_id = vf->vsi_res->vsi_id;
+	vlan_list->num_elements = 1;
+	vlan_list->vlan_id[0] = vlanid;
+
+	args.ops = add ? VIRTCHNL_OP_ADD_VLAN : VIRTCHNL_OP_DEL_VLAN;
+	args.in_args = cmd_buffer;
+	args.in_args_size = sizeof(cmd_buffer);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    add ? "OP_ADD_VLAN" :  "OP_DEL_VLAN");
+
+	return err;
+}

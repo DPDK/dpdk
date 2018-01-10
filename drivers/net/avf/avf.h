@@ -203,4 +203,9 @@ int avf_dev_link_update(struct rte_eth_dev *dev,
 			__rte_unused int wait_to_complete);
 int avf_query_stats(struct avf_adapter *adapter,
 		    struct virtchnl_eth_stats **pstats);
+int avf_config_promisc(struct avf_adapter *adapter, bool enable_unicast,
+		       bool enable_multicast);
+int avf_add_del_eth_addr(struct avf_adapter *adapter,
+			 struct ether_addr *addr, bool add);
+int avf_add_del_vlan(struct avf_adapter *adapter, uint16_t vlanid, bool add);
 #endif /* _AVF_ETHDEV_H_ */

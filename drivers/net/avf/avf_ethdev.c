@@ -42,6 +42,20 @@ static void avf_dev_info_get(struct rte_eth_dev *dev,
 static const uint32_t *avf_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int avf_dev_stats_get(struct rte_eth_dev *dev,
 			     struct rte_eth_stats *stats);
+static void avf_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static void avf_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static void avf_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static void avf_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int avf_dev_add_mac_addr(struct rte_eth_dev *dev,
+				struct ether_addr *addr,
+				uint32_t index,
+				uint32_t pool);
+static void avf_dev_del_mac_addr(struct rte_eth_dev *dev, uint32_t index);
+static int avf_dev_vlan_filter_set(struct rte_eth_dev *dev,
+				   uint16_t vlan_id, int on);
+static int avf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static void avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
+					 struct ether_addr *mac_addr);
 
 int avf_logtype_init;
 int avf_logtype_driver;
@@ -59,6 +73,14 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.dev_supported_ptypes_get   = avf_dev_supported_ptypes_get,
 	.link_update                = avf_dev_link_update,
 	.stats_get                  = avf_dev_stats_get,
+	.promiscuous_enable         = avf_dev_promiscuous_enable,
+	.promiscuous_disable        = avf_dev_promiscuous_disable,
+	.allmulticast_enable        = avf_dev_allmulticast_enable,
+	.allmulticast_disable       = avf_dev_allmulticast_disable,
+	.mac_addr_add               = avf_dev_add_mac_addr,
+	.mac_addr_remove            = avf_dev_del_mac_addr,
+	.vlan_filter_set            = avf_dev_vlan_filter_set,
+	.vlan_offload_set           = avf_dev_vlan_offload_set,
 	.rx_queue_start             = avf_dev_rx_queue_start,
 	.rx_queue_stop              = avf_dev_rx_queue_stop,
 	.tx_queue_start             = avf_dev_tx_queue_start,
@@ -67,6 +89,7 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.rx_queue_release           = avf_dev_rx_queue_release,
 	.tx_queue_setup             = avf_dev_tx_queue_setup,
 	.tx_queue_release           = avf_dev_tx_queue_release,
+	.mac_addr_set               = avf_dev_set_default_mac_addr,
 };
 
 static int
@@ -478,6 +501,202 @@ avf_dev_link_update(struct rte_eth_dev *dev,
 			    *(uint64_t *)&new_link);
 
 	return 0;
+}
+
+static void
+avf_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	int ret;
+
+	if (vf->promisc_unicast_enabled)
+		return;
+
+	ret = avf_config_promisc(adapter, TRUE, vf->promisc_multicast_enabled);
+	if (!ret)
+		vf->promisc_unicast_enabled = TRUE;
+}
+
+static void
+avf_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	int ret;
+
+	if (!vf->promisc_unicast_enabled)
+		return;
+
+	ret = avf_config_promisc(adapter, FALSE, vf->promisc_multicast_enabled);
+	if (!ret)
+		vf->promisc_unicast_enabled = FALSE;
+}
+
+static void
+avf_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	int ret;
+
+	if (vf->promisc_multicast_enabled)
+		return;
+
+	ret = avf_config_promisc(adapter, vf->promisc_unicast_enabled, TRUE);
+	if (!ret)
+		vf->promisc_multicast_enabled = TRUE;
+}
+
+static void
+avf_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	int ret;
+
+	if (!vf->promisc_multicast_enabled)
+		return;
+
+	ret = avf_config_promisc(adapter, vf->promisc_unicast_enabled, FALSE);
+	if (!ret)
+		vf->promisc_multicast_enabled = FALSE;
+}
+
+static int
+avf_dev_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr,
+		     __rte_unused uint32_t index,
+		     __rte_unused uint32_t pool)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	int err;
+
+	if (is_zero_ether_addr(addr)) {
+		PMD_DRV_LOG(ERR, "Invalid Ethernet Address");
+		return -EINVAL;
+	}
+
+	err = avf_add_del_eth_addr(adapter, addr, TRUE);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to add MAC address");
+		return -EIO;
+	}
+
+	vf->mac_num++;
+
+	return 0;
+}
+
+static void
+avf_dev_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct ether_addr *addr;
+	int err;
+
+	addr = &dev->data->mac_addrs[index];
+
+	err = avf_add_del_eth_addr(adapter, addr, FALSE);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to delete MAC address");
+
+	vf->mac_num--;
+}
+
+static int
+avf_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	int err;
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN))
+		return -ENOTSUP;
+
+	err = avf_add_del_vlan(adapter, vlan_id, on);
+	if (err)
+		return -EIO;
+	return 0;
+}
+
+static int
+avf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	int err;
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN))
+		return -ENOTSUP;
+
+	/* Vlan stripping setting */
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		/* Enable or disable VLAN stripping */
+		if (dev_conf->rxmode.hw_vlan_strip)
+			err = avf_enable_vlan_strip(adapter);
+		else
+			err = avf_disable_vlan_strip(adapter);
+	}
+
+	if (err)
+		return -EIO;
+	return 0;
+}
+
+static void
+avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
+			     struct ether_addr *mac_addr)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(adapter);
+	struct ether_addr *perm_addr, *old_addr;
+	int ret;
+
+	old_addr = (struct ether_addr *)hw->mac.addr;
+	perm_addr = (struct ether_addr *)hw->mac.perm_addr;
+
+	if (is_same_ether_addr(mac_addr, old_addr))
+		return;
+
+	/* If the MAC address is configured by host, skip the setting */
+	if (is_valid_assigned_ether_addr(perm_addr))
+		return;
+
+	ret = avf_add_del_eth_addr(adapter, old_addr, FALSE);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Fail to delete old MAC:"
+			    " %02X:%02X:%02X:%02X:%02X:%02X",
+			    old_addr->addr_bytes[0],
+			    old_addr->addr_bytes[1],
+			    old_addr->addr_bytes[2],
+			    old_addr->addr_bytes[3],
+			    old_addr->addr_bytes[4],
+			    old_addr->addr_bytes[5]);
+
+	ret = avf_add_del_eth_addr(adapter, mac_addr, TRUE);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Fail to add new MAC:"
+			    " %02X:%02X:%02X:%02X:%02X:%02X",
+			    mac_addr->addr_bytes[0],
+			    mac_addr->addr_bytes[1],
+			    mac_addr->addr_bytes[2],
+			    mac_addr->addr_bytes[3],
+			    mac_addr->addr_bytes[4],
+			    mac_addr->addr_bytes[5]);
+
+	ether_addr_copy(mac_addr, (struct ether_addr *)hw->mac.addr);
 }
 
 static int
