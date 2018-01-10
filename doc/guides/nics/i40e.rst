@@ -65,6 +65,7 @@ Features of the I40E PMD are:
 - Hot plug
 - IEEE1588/802.1AS timestamping
 - VF Daemon (VFD) - EXPERIMENTAL
+- Dynamic Device Personalization (DDP)
 
 
 Prerequisites
@@ -382,6 +383,52 @@ configuration passed on the EAL command line.
 The floating VEB functionality requires a NIC firmware version of 5.0
 or greater.
 
+Dynamic Device Personalization (DDP)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Intel® Ethernet Controller X*710 support a feature called "Dynamic Device
+Personalization (DDP)", which is used to configure hardware by downloading
+a profile to support protocols/filters which are not supported by default.
+The DDP functionality requires a NIC firmware version of 6.0 or greater.
+
+Current implementation supports MPLSoUDP/MPLSoGRE/GTP-C/GTP-U/PPPoE/PPPoL2TP,
+steering can be used with rte_flow API.
+
+Load a profile which supports MPLSoUDP/MPLSoGRE:
+
+.. code-block:: console
+
+   testpmd> ddp add 0 ./mpls.pkgo
+
+Delete a MPLS profile:
+
+.. code-block:: console
+
+   testpmd> ddp del 0 ./mpls.pkgo
+
+Get loaded DDP package info list:
+
+.. code-block:: console
+
+   testpmd> ddp get list 0
+
+Display information about a MPLS profile:
+
+.. code-block:: console
+
+   testpmd> ddp get info ./mpls.pkgo
+
+Input set configuration
+~~~~~~~~~~~~~~~~~~~~~~~
+Input set for any PCTYPE can be configured with user defined configuration,
+For example, to use only 48bit prefix for IPv6 src address for IPv6 TCP RSS:
+
+.. code-block:: console
+
+   testpmd> port config 0 pctype 43 hash_inset clear all
+   testpmd> port config 0 pctype 43 hash_inset set field 13
+   testpmd> port config 0 pctype 43 hash_inset set field 14
+   testpmd> port config 0 pctype 43 hash_inset set field 15
 
 Limitations or Known issues
 ---------------------------
