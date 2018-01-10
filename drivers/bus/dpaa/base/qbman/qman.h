@@ -154,7 +154,7 @@ struct qm_eqcr {
 };
 
 struct qm_dqrr {
-	const struct qm_dqrr_entry *ring, *cursor;
+	struct qm_dqrr_entry *ring, *cursor;
 	u8 pi, ci, fill, ithresh, vbit;
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	enum qm_dqrr_dmode dmode;
@@ -441,7 +441,7 @@ static inline u8 DQRR_PTR2IDX(const struct qm_dqrr_entry *e)
 	return ((uintptr_t)e >> 6) & (QM_DQRR_SIZE - 1);
 }
 
-static inline const struct qm_dqrr_entry *DQRR_INC(
+static inline struct qm_dqrr_entry *DQRR_INC(
 						const struct qm_dqrr_entry *e)
 {
 	return DQRR_CARRYCLEAR(e + 1);

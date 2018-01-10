@@ -1051,6 +1051,70 @@ u16 qman_affine_channel(int cpu)
 	return affine_channels[cpu];
 }
 
+unsigned int qman_portal_poll_rx(unsigned int poll_limit,
+				 void **bufs,
+				 struct qman_portal *p)
+{
+	const struct qm_dqrr_entry *dq;
+	struct qman_fq *fq;
+	enum qman_cb_dqrr_result res;
+	unsigned int limit = 0;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	struct qm_dqrr_entry *shadow;
+#endif
+	unsigned int rx_number = 0;
+
+	do {
+		qm_dqrr_pvb_update(&p->p);
+		dq = qm_dqrr_current(&p->p);
+		if (unlikely(!dq))
+			break;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	/* If running on an LE system the fields of the
+	 * dequeue entry must be swapper.  Because the
+	 * QMan HW will ignore writes the DQRR entry is
+	 * copied and the index stored within the copy
+	 */
+		shadow = &p->shadow_dqrr[DQRR_PTR2IDX(dq)];
+		*shadow = *dq;
+		dq = shadow;
+		shadow->fqid = be32_to_cpu(shadow->fqid);
+		shadow->contextB = be32_to_cpu(shadow->contextB);
+		shadow->seqnum = be16_to_cpu(shadow->seqnum);
+		hw_fd_to_cpu(&shadow->fd);
+#endif
+
+		/* SDQCR: context_b points to the FQ */
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+		fq = get_fq_table_entry(dq->contextB);
+#else
+		fq = (void *)(uintptr_t)dq->contextB;
+#endif
+		/* Now let the callback do its stuff */
+		res = fq->cb.dqrr_dpdk_cb(NULL, p, fq, dq, &bufs[rx_number]);
+		rx_number++;
+		/* Interpret 'dq' from a driver perspective. */
+		/*
+		 * Parking isn't possible unless HELDACTIVE was set. NB,
+		 * FORCEELIGIBLE implies HELDACTIVE, so we only need to
+		 * check for HELDACTIVE to cover both.
+		 */
+		DPAA_ASSERT((dq->stat & QM_DQRR_STAT_FQ_HELDACTIVE) ||
+			    (res != qman_cb_dqrr_park));
+		qm_dqrr_cdc_consume_1ptr(&p->p, dq, res == qman_cb_dqrr_park);
+		/* Move forward */
+		qm_dqrr_next(&p->p);
+		/*
+		 * Entry processed and consumed, increment our counter.  The
+		 * callback can request that we exit after consuming the
+		 * entry, and we also exit if we reach our processing limit,
+		 * so loop back only if neither of these conditions is met.
+		 */
+	} while (likely(++limit < poll_limit));
+
+	return limit;
+}
+
 struct qm_dqrr_entry *qman_dequeue(struct qman_fq *fq)
 {
 	struct qman_portal *p = get_affine_portal();
