@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2017 Intel Corporation
+ */
+
+Intel® AVF driver
+=================
+
+This directory contains source code of FreeBSD AVF driver of version
+cid-avf.2018.01.02.tar.gz released by the team which develops
+basic drivers for any AVF NIC. The directory of base/ contains the
+original source package.
+
+Updating the driver
+===================
+
+NOTE: The source code in this directory should not be modified apart from
+the following file(s):
+
+    avf_osdep.h

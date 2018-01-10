@@ -430,6 +430,11 @@ T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/fm10k/
 F: doc/guides/nics/features/fm10k*.ini
 
+Intel avf
+M: Jingjing Wu <jingjing.wu@intel.com>
+M: Wenzhuo Lu <wenzhuo.lu@intel.com>
+F: drivers/net/avf/
+
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
