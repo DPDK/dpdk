@@ -364,8 +364,19 @@ init_ports(unsigned int num_ports)
 static void
 do_capability_setup(uint16_t nb_ethdev, uint8_t eventdev_id)
 {
-	RTE_SET_USED(nb_ethdev);
+	int i;
+	uint8_t mt_unsafe = 0;
 	uint8_t burst = 0;
+
+	for (i = 0; i < nb_ethdev; i++) {
+		struct rte_eth_dev_info dev_info;
+		memset(&dev_info, 0, sizeof(struct rte_eth_dev_info));
+
+		rte_eth_dev_info_get(i, &dev_info);
+		/* Check if it is safe ask worker to tx. */
+		mt_unsafe |= !(dev_info.tx_offload_capa &
+				DEV_TX_OFFLOAD_MT_LOCKFREE);
+	}
 
 	struct rte_event_dev_info eventdev_info;
 	memset(&eventdev_info, 0, sizeof(struct rte_event_dev_info));
@@ -374,7 +385,10 @@ do_capability_setup(uint16_t nb_ethdev, uint8_t eventdev_id)
 	burst = eventdev_info.event_dev_cap & RTE_EVENT_DEV_CAP_BURST_MODE ? 1 :
 		0;
 
-	set_worker_generic_setup_data(&fdata->cap, burst);
+	if (mt_unsafe)
+		set_worker_generic_setup_data(&fdata->cap, burst);
+	else
+		set_worker_tx_setup_data(&fdata->cap, burst);
 }
 
 static void

@@ -16,6 +16,7 @@ APP = eventdev_pipeline_sw_pmd
 # all source are stored in SRCS-y
 SRCS-y := main.c
 SRCS-y += pipeline_worker_generic.c
+SRCS-y += pipeline_worker_tx.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

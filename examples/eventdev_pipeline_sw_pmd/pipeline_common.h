@@ -79,6 +79,10 @@ struct config_data {
 	int dump_dev_signal;
 	unsigned int num_stages;
 	unsigned int worker_cq_depth;
+	unsigned int rx_stride;
+	/* Use rx stride value to reduce congestion in entry queue when using
+	 * multiple eth ports by forming multiple event queue pipelines.
+	 */
 	int16_t next_qid[MAX_NUM_STAGES+2];
 	int16_t qid[MAX_NUM_STAGES];
 	uint8_t rx_adapter_id;
@@ -144,3 +148,4 @@ schedule_devices(unsigned int lcore_id)
 }
 
 void set_worker_generic_setup_data(struct setup_data *caps, bool burst);
+void set_worker_tx_setup_data(struct setup_data *caps, bool burst);
