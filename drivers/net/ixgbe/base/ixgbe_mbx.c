@@ -444,17 +444,6 @@ STATIC s32 ixgbe_write_mbx_vf(struct ixgbe_hw *hw, u32 *msg, u16 size,
 	for (i = 0; i < size; i++)
 		IXGBE_WRITE_REG_ARRAY(hw, IXGBE_VFMBMEM, i, msg[i]);
 
-	/*
-	 * Complete the remaining mailbox data registers with zero to reset
-	 * the data sent in a previous exchange (in either side) with the PF,
-	 * including exchanges performed by another Guest OS to which that VF
-	 * was previously assigned.
-	 */
-	while (i < hw->mbx.size) {
-		IXGBE_WRITE_REG_ARRAY(hw, IXGBE_VFMBMEM, i, 0);
-		i++;
-	}
-
 	/* update stats */
 	hw->mbx.stats.msgs_tx++;
 
@@ -692,17 +681,6 @@ STATIC s32 ixgbe_write_mbx_pf(struct ixgbe_hw *hw, u32 *msg, u16 size,
 	/* copy the caller specified message to the mailbox memory buffer */
 	for (i = 0; i < size; i++)
 		IXGBE_WRITE_REG_ARRAY(hw, IXGBE_PFMBMEM(vf_number), i, msg[i]);
-
-	/*
-	 * Complete the remaining mailbox data registers with zero to reset
-	 * the data sent in a previous exchange (in either side) with the VF,
-	 * including exchanges performed by another Guest OS to which that VF
-	 * was previously assigned.
-	 */
-	while (i < hw->mbx.size) {
-		IXGBE_WRITE_REG_ARRAY(hw, IXGBE_PFMBMEM(vf_number), i, 0);
-		i++;
-	}
 
 	/* Interrupt VF to tell it a message has been sent and release buffer*/
 	IXGBE_WRITE_REG(hw, IXGBE_PFMAILBOX(vf_number), IXGBE_PFMAILBOX_STS);
