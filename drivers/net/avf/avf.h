@@ -201,4 +201,6 @@ int avf_config_irq_map(struct avf_adapter *adapter);
 void avf_add_del_all_mac_addr(struct avf_adapter *adapter, bool add);
 int avf_dev_link_update(struct rte_eth_dev *dev,
 			__rte_unused int wait_to_complete);
+int avf_query_stats(struct avf_adapter *adapter,
+		    struct virtchnl_eth_stats **pstats);
 #endif /* _AVF_ETHDEV_H_ */

@@ -693,3 +693,30 @@ avf_add_del_all_mac_addr(struct avf_adapter *adapter, bool add)
 		begin = next_begin;
 	} while (begin < AVF_NUM_MACADDR_MAX);
 }
+
+int
+avf_query_stats(struct avf_adapter *adapter,
+		struct virtchnl_eth_stats **pstats)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_queue_select q_stats;
+	struct avf_cmd_info args;
+	int err;
+
+	memset(&q_stats, 0, sizeof(q_stats));
+	q_stats.vsi_id = vf->vsi_res->vsi_id;
+	args.ops = VIRTCHNL_OP_GET_STATS;
+	args.in_args = (uint8_t *)&q_stats;
+	args.in_args_size = sizeof(q_stats);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_STATS");
+		*pstats = NULL;
+		return err;
+	}
+	*pstats = (struct virtchnl_eth_stats *)args.out_buffer;
+	return 0;
+}

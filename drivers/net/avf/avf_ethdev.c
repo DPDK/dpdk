@@ -40,6 +40,8 @@ static void avf_dev_close(struct rte_eth_dev *dev);
 static void avf_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static const uint32_t *avf_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+static int avf_dev_stats_get(struct rte_eth_dev *dev,
+			     struct rte_eth_stats *stats);
 
 int avf_logtype_init;
 int avf_logtype_driver;
@@ -56,6 +58,7 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.dev_infos_get              = avf_dev_info_get,
 	.dev_supported_ptypes_get   = avf_dev_supported_ptypes_get,
 	.link_update                = avf_dev_link_update,
+	.stats_get                  = avf_dev_stats_get,
 	.rx_queue_start             = avf_dev_rx_queue_start,
 	.rx_queue_stop              = avf_dev_rx_queue_stop,
 	.tx_queue_start             = avf_dev_tx_queue_start,
@@ -475,6 +478,30 @@ avf_dev_link_update(struct rte_eth_dev *dev,
 			    *(uint64_t *)&new_link);
 
 	return 0;
+}
+
+static int
+avf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct virtchnl_eth_stats *pstats = NULL;
+	int ret;
+
+	ret = avf_query_stats(adapter, &pstats);
+	if (ret == 0) {
+		stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
+						pstats->rx_broadcast;
+		stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
+						pstats->tx_unicast;
+		stats->imissed = pstats->rx_discards;
+		stats->oerrors = pstats->tx_errors + pstats->tx_discards;
+		stats->ibytes = pstats->rx_bytes;
+		stats->obytes = pstats->tx_bytes;
+	} else {
+		PMD_DRV_LOG(ERR, "Get statistics failed");
+	}
+	return -EIO;
 }
 
 static int
