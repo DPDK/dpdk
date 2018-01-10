@@ -265,7 +265,7 @@ s32 prot_autoc_read_82599(struct ixgbe_hw *hw, bool *locked, u32 *reg_val)
 /**
  * prot_autoc_write_82599 - Hides MAC differences needed for AUTOC write
  * @hw: pointer to hardware structure
- * @reg_val: value to write to AUTOC
+ * @autoc: value to write to AUTOC
  * @locked: bool to indicate whether the SW/FW lock was already taken by
  *           previous proc_autoc_read_82599.
  *
@@ -1367,6 +1367,7 @@ s32 ixgbe_init_fdir_signature_82599(struct ixgbe_hw *hw, u32 fdirctrl)
 s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
 			bool cloud_mode)
 {
+	UNREFERENCED_1PARAMETER(cloud_mode);
 	DEBUGFUNC("ixgbe_init_fdir_perfect_82599");
 
 	/*
@@ -1455,7 +1456,8 @@ do { \
 
 /**
  *  ixgbe_atr_compute_sig_hash_82599 - Compute the signature hash
- *  @stream: input bitstream to compute the hash on
+ *  @input: input bitstream to compute the hash on
+ *  @common: compressed common input dword
  *
  *  This function is almost identical to the function above but contains
  *  several optimizations such as unwinding all of the loops, letting the
@@ -1594,7 +1596,7 @@ do { \
 
 /**
  *  ixgbe_atr_compute_perfect_hash_82599 - Compute the perfect filter hash
- *  @atr_input: input bitstream to compute the hash on
+ *  @input: input bitstream to compute the hash on
  *  @input_mask: mask for the input bitstream
  *
  *  This function serves two main purposes.  First it applies the input_mask
@@ -1695,6 +1697,7 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 	u32 fdirm = IXGBE_FDIRM_DIPv6;
 	u32 fdirtcpm;
 	u32 fdirip6m;
+	UNREFERENCED_1PARAMETER(cloud_mode);
 	DEBUGFUNC("ixgbe_fdir_set_atr_input_mask_82599");
 
 	/*
@@ -1871,6 +1874,7 @@ s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 	u32 addr_low, addr_high;
 	u32 cloud_type = 0;
 	s32 err;
+	UNREFERENCED_1PARAMETER(cloud_mode);
 
 	DEBUGFUNC("ixgbe_fdir_write_perfect_filter_82599");
 	if (!cloud_mode) {
@@ -1995,6 +1999,7 @@ s32 ixgbe_fdir_erase_perfect_filter_82599(struct ixgbe_hw *hw,
  *  @input_mask: mask for the input bitstream
  *  @soft_id: software index for the filters
  *  @queue: queue index to direct traffic to
+ *  @cloud_mode: unused
  *
  *  Note that the caller to this function must lock before calling, since the
  *  hardware writes must be protected from one another.
@@ -2005,6 +2010,7 @@ s32 ixgbe_fdir_add_perfect_filter_82599(struct ixgbe_hw *hw,
 					u16 soft_id, u8 queue, bool cloud_mode)
 {
 	s32 err = IXGBE_ERR_CONFIG;
+	UNREFERENCED_1PARAMETER(cloud_mode);
 
 	DEBUGFUNC("ixgbe_fdir_add_perfect_filter_82599");
 
@@ -2514,6 +2520,7 @@ reset_pipeline_out:
  *  ixgbe_read_i2c_byte_82599 - Reads 8 bit word over I2C
  *  @hw: pointer to hardware structure
  *  @byte_offset: byte offset to read
+ *  @dev_addr: address to read from
  *  @data: value read
  *
  *  Performs byte read operation to SFP module's EEPROM over I2C interface at
@@ -2571,6 +2578,7 @@ release_i2c_access:
  *  ixgbe_write_i2c_byte_82599 - Writes 8 bit word over I2C
  *  @hw: pointer to hardware structure
  *  @byte_offset: byte offset to write
+ *  @dev_addr: address to read from
  *  @data: value to write
  *
  *  Performs byte write operation to SFP module's EEPROM over I2C interface at

@@ -758,7 +758,7 @@ static s32 ixgbe_fc_autoneg_fw(struct ixgbe_hw *hw)
 
 /**
  * ixgbe_setup_eee_fw - Enable/disable EEE support
- * @hw: pointer to the HW structurewrite_reg_mdi
+ * @hw: pointer to the HW structure
  * @enable_eee: boolean flag to enable EEE
  *
  * Enable/disable EEE based on enable_eee flag.
@@ -2625,6 +2625,8 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 /**
  *  ixgbe_setup_mac_link_sfp_x550em - Setup internal/external the PHY for SFP
  *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: unused
  *
  *  Configure the external PHY and the integrated KR PHY for SFP support.
  **/
@@ -2717,6 +2719,8 @@ STATIC s32 ixgbe_setup_sfi_x550a(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 /**
  *  ixgbe_setup_mac_link_sfp_x550a - Setup internal PHY for SFP
  *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: unused
  *
  *  Configure the integrated PHY for SFP support.
  **/
@@ -3338,6 +3342,8 @@ out:
  * @ptr: pointer offset in eeprom
  * @size: size of section pointed by ptr, if 0 first word will be used as size
  * @csum: address of checksum to update
+ * @buffer: pointer to buffer containing calculated checksum
+ * @buffer_size: size of buffer
  *
  * Returns error status for any failure
  */
@@ -3715,6 +3721,7 @@ s32 ixgbe_get_bus_info_X550em(struct ixgbe_hw *hw)
 
 /**
  * ixgbe_disable_rx_x550 - Disable RX unit
+ * @hw: pointer to hardware structure
  *
  * Enables the Rx DMA unit for x550
  **/
@@ -4359,6 +4366,7 @@ STATIC void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
  *  ixgbe_read_phy_reg_x550a  - Reads specified PHY register
  *  @hw: pointer to hardware structure
  *  @reg_addr: 32 bit address of PHY register to read
+ *  @device_type: 5 bit device type
  *  @phy_data: Pointer to read data from PHY register
  *
  *  Reads a value from a specified PHY register using the SWFW lock and PHY
