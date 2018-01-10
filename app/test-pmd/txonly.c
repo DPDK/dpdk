@@ -165,6 +165,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint32_t retry;
 	uint64_t ol_flags = 0;
 	uint8_t  i;
+	uint64_t tx_offloads;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
 	uint64_t end_tsc;
@@ -178,13 +179,14 @@ pkt_burst_transmit(struct fwd_stream *fs)
 
 	mbp = current_fwd_lcore()->mbp;
 	txp = &ports[fs->tx_port];
+	tx_offloads = txp->dev_conf.txmode.offloads;
 	vlan_tci = txp->tx_vlan_id;
 	vlan_tci_outer = txp->tx_vlan_id_outer;
-	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_VLAN)
+	if (tx_offloads	& DEV_TX_OFFLOAD_VLAN_INSERT)
 		ol_flags = PKT_TX_VLAN_PKT;
-	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_QINQ)
+	if (tx_offloads & DEV_TX_OFFLOAD_QINQ_INSERT)
 		ol_flags |= PKT_TX_QINQ_PKT;
-	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_MACSEC)
+	if (tx_offloads & DEV_TX_OFFLOAD_MACSEC_INSERT)
 		ol_flags |= PKT_TX_MACSEC;
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = rte_mbuf_raw_alloc(mbp);

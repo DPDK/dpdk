@@ -109,26 +109,6 @@ struct fwd_stream {
 #endif
 };
 
-/** Offload IP checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_IP_CKSUM          0x0001
-/** Offload UDP checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_UDP_CKSUM         0x0002
-/** Offload TCP checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_TCP_CKSUM         0x0004
-/** Offload SCTP checksum in csum forward engine */
-#define TESTPMD_TX_OFFLOAD_SCTP_CKSUM        0x0008
-/** Offload outer IP checksum in csum forward engine for recognized tunnels */
-#define TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM    0x0010
-/** Parse tunnel in csum forward engine. If set, dissect tunnel headers
- * of rx packets. If not set, treat inner headers as payload. */
-#define TESTPMD_TX_OFFLOAD_PARSE_TUNNEL      0x0020
-/** Insert VLAN header in forward engine */
-#define TESTPMD_TX_OFFLOAD_INSERT_VLAN       0x0040
-/** Insert double VLAN header in forward engine */
-#define TESTPMD_TX_OFFLOAD_INSERT_QINQ       0x0080
-/** Offload MACsec in forward engine */
-#define TESTPMD_TX_OFFLOAD_MACSEC            0x0100
-
 /** Descriptor for a single flow. */
 struct port_flow {
 	size_t size; /**< Allocated space including data[]. */
@@ -186,7 +166,7 @@ struct rte_port {
 	struct fwd_stream       *rx_stream; /**< Port RX stream, if unique */
 	struct fwd_stream       *tx_stream; /**< Port TX stream, if unique */
 	unsigned int            socket_id;  /**< For NUMA support */
-	uint16_t                tx_ol_flags;/**< TX Offload Flags (TESTPMD_TX_OFFLOAD...). */
+	uint16_t		parse_tunnel:1; /**< Parse internal headers */
 	uint16_t                tso_segsz;  /**< Segmentation offload MSS for non-tunneled packets. */
 	uint16_t                tunnel_tso_segsz; /**< Segmentation offload MSS for tunneled pkts. */
 	uint16_t                tx_vlan_id;/**< The tag ID */

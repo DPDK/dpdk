@@ -3670,45 +3670,45 @@ static void
 csum_show(int port_id)
 {
 	struct rte_eth_dev_info dev_info;
-	uint16_t ol_flags;
+	uint64_t tx_offloads;
 
-	ol_flags = ports[port_id].tx_ol_flags;
+	tx_offloads = ports[port_id].dev_conf.txmode.offloads;
 	printf("Parse tunnel is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) ? "on" : "off");
+		(ports[port_id].parse_tunnel) ? "on" : "off");
 	printf("IP checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) ? "hw" : "sw");
 	printf("UDP checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) ? "hw" : "sw");
 	printf("TCP checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ? "hw" : "sw");
 	printf("SCTP checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
 	printf("Outer-Ip checksum offload is %s\n",
-		(ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ? "hw" : "sw");
 
 	/* display warnings if configuration is not supported by the NIC */
 	rte_eth_dev_info_get(port_id, &dev_info);
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM) &&
+	if ((tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0) {
 		printf("Warning: hardware IP checksum enabled but not "
 			"supported by port %d\n", port_id);
 	}
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM) &&
+	if ((tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_CKSUM) == 0) {
 		printf("Warning: hardware UDP checksum enabled but not "
 			"supported by port %d\n", port_id);
 	}
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_TCP_CKSUM) &&
+	if ((tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_CKSUM) == 0) {
 		printf("Warning: hardware TCP checksum enabled but not "
 			"supported by port %d\n", port_id);
 	}
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_SCTP_CKSUM) &&
+	if ((tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_SCTP_CKSUM) == 0) {
 		printf("Warning: hardware SCTP checksum enabled but not "
 			"supported by port %d\n", port_id);
 	}
-	if ((ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) &&
+	if ((tx_offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) == 0) {
 		printf("Warning: hardware outer IP checksum enabled but not "
 			"supported by port %d\n", port_id);
@@ -3722,7 +3722,6 @@ cmd_csum_parsed(void *parsed_result,
 {
 	struct cmd_csum_result *res = parsed_result;
 	int hw = 0;
-	uint16_t mask = 0;
 	uint64_t csum_offloads = 0;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN)) {
@@ -3740,28 +3739,21 @@ cmd_csum_parsed(void *parsed_result,
 			hw = 1;
 
 		if (!strcmp(res->proto, "ip")) {
-			mask = TESTPMD_TX_OFFLOAD_IP_CKSUM;
 			csum_offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
 		} else if (!strcmp(res->proto, "udp")) {
-			mask = TESTPMD_TX_OFFLOAD_UDP_CKSUM;
 			csum_offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
 		} else if (!strcmp(res->proto, "tcp")) {
-			mask = TESTPMD_TX_OFFLOAD_TCP_CKSUM;
 			csum_offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
 		} else if (!strcmp(res->proto, "sctp")) {
-			mask = TESTPMD_TX_OFFLOAD_SCTP_CKSUM;
 			csum_offloads |= DEV_TX_OFFLOAD_SCTP_CKSUM;
 		} else if (!strcmp(res->proto, "outer-ip")) {
-			mask = TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM;
 			csum_offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 		}
 
 		if (hw) {
-			ports[res->port_id].tx_ol_flags |= mask;
 			ports[res->port_id].dev_conf.txmode.offloads |=
 							csum_offloads;
 		} else {
-			ports[res->port_id].tx_ol_flags &= (~mask);
 			ports[res->port_id].dev_conf.txmode.offloads &=
 							(~csum_offloads);
 		}
@@ -3838,11 +3830,9 @@ cmd_csum_tunnel_parsed(void *parsed_result,
 		return;
 
 	if (!strcmp(res->onoff, "on"))
-		ports[res->port_id].tx_ol_flags |=
-			TESTPMD_TX_OFFLOAD_PARSE_TUNNEL;
+		ports[res->port_id].parse_tunnel = 1;
 	else
-		ports[res->port_id].tx_ol_flags &=
-			(~TESTPMD_TX_OFFLOAD_PARSE_TUNNEL);
+		ports[res->port_id].parse_tunnel = 0;
 
 	csum_show(res->port_id);
 }
@@ -4042,12 +4032,11 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 		 */
 		check_tunnel_tso_nic_support(res->port_id);
 
-		if (!(ports[res->port_id].tx_ol_flags &
-		      TESTPMD_TX_OFFLOAD_PARSE_TUNNEL))
+		if (!ports[res->port_id].parse_tunnel)
 			printf("Warning: csum parse_tunnel must be set "
 				"so that tunneled packets are recognized\n");
-		if (!(ports[res->port_id].tx_ol_flags &
-		      TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM))
+		if (!(ports[res->port_id].dev_conf.txmode.offloads &
+		      DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM))
 			printf("Warning: csum set outer-ip must be set to hw "
 				"if outer L3 is IPv4; not necessary for IPv6\n");
 	}
@@ -13099,7 +13088,6 @@ cmd_set_macsec_offload_on_parsed(
 		return;
 	}
 
-	ports[port_id].tx_ol_flags |= TESTPMD_TX_OFFLOAD_MACSEC;
 	ports[port_id].dev_conf.txmode.offloads |= DEV_TX_OFFLOAD_MACSEC_INSERT;
 #ifdef RTE_LIBRTE_IXGBE_PMD
 	ret = rte_pmd_ixgbe_macsec_enable(port_id, en, rp);
@@ -13189,7 +13177,6 @@ cmd_set_macsec_offload_off_parsed(
 		return;
 	}
 
-	ports[port_id].tx_ol_flags &= ~TESTPMD_TX_OFFLOAD_MACSEC;
 	ports[port_id].dev_conf.txmode.offloads &=
 					~DEV_TX_OFFLOAD_MACSEC_INSERT;
 #ifdef RTE_LIBRTE_IXGBE_PMD
