@@ -69,6 +69,11 @@ DPDK_18.02 {
 	global:
 
 	dpaa_svr_family;
+	qman_alloc_cgrid_range;
+	qman_create_cgr;
+	qman_delete_cgr;
+	qman_modify_cgr;
+	qman_release_cgrid_range;
 
 	local: *;
 } DPDK_17.11;
