@@ -12,3 +12,9 @@ DPDK_17.05 {
 	rte_net_crc_set_alg;
 
 } DPDK_16.11;
+
+EXPERIMENTAL {
+	global:
+
+	rte_net_make_rarp_packet;
+} DPDK_17.05;

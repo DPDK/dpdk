@@ -13,6 +13,7 @@ LIBABIVER := 1
 
 SRCS-$(CONFIG_RTE_LIBRTE_NET) := rte_net.c
 SRCS-$(CONFIG_RTE_LIBRTE_NET) += rte_net_crc.c
+SRCS-$(CONFIG_RTE_LIBRTE_NET) += rte_arp.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_NET)-include := rte_ip.h rte_tcp.h rte_udp.h rte_esp.h
