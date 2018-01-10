@@ -120,8 +120,6 @@ unsigned long vnic_dev_get_res_type_len(struct vnic_dev *vdev,
 unsigned int vnic_dev_desc_ring_size(struct vnic_dev_ring *ring,
 	unsigned int desc_count, unsigned int desc_size);
 void vnic_dev_clear_desc_ring(struct vnic_dev_ring *ring);
-void vnic_set_hdr_split_size(struct vnic_dev *vdev, u16 size);
-u16 vnic_get_hdr_split_size(struct vnic_dev *vdev);
 int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev, struct vnic_dev_ring *ring,
 	unsigned int desc_count, unsigned int desc_size, unsigned int socket_id,
 	char *z_name);

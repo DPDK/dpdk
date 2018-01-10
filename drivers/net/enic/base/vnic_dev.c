@@ -78,7 +78,6 @@ struct vnic_dev {
 	enum vnic_proxy_type proxy;
 	u32 proxy_index;
 	u64 args[VNIC_DEVCMD_NARGS];
-	u16 split_hdr_size;
 	int in_reset;
 	struct vnic_intr_coal_timer_info intr_coal_timer_info;
 	void *(*alloc_consistent)(void *priv, size_t size,
@@ -249,16 +248,6 @@ unsigned int vnic_dev_desc_ring_size(struct vnic_dev_ring *ring,
 	ring->size_unaligned = ring->size + ring->base_align;
 
 	return ring->size_unaligned;
-}
-
-void vnic_set_hdr_split_size(struct vnic_dev *vdev, u16 size)
-{
-	vdev->split_hdr_size = size;
-}
-
-u16 vnic_get_hdr_split_size(struct vnic_dev *vdev)
-{
-	return vdev->split_hdr_size;
 }
 
 void vnic_dev_clear_desc_ring(struct vnic_dev_ring *ring)

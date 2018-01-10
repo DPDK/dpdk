@@ -98,11 +98,6 @@ enic_rxmbuf_queue_release(__rte_unused struct enic *enic, struct vnic_rq *rq)
 	}
 }
 
-void enic_set_hdr_split_size(struct enic *enic, u16 split_hdr_size)
-{
-	vnic_set_hdr_split_size(enic->vdev, split_hdr_size);
-}
-
 static void enic_free_wq_buf(struct vnic_wq_buf *buf)
 {
 	struct rte_mbuf *mbuf = (struct rte_mbuf *)buf->mb;

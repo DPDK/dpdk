@@ -407,14 +407,6 @@ static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
-	if (eth_dev->data->dev_conf.rxmode.split_hdr_size &&
-	    (eth_dev->data->dev_conf.rxmode.offloads &
-	     DEV_RX_OFFLOAD_HEADER_SPLIT)) {
-		/* Enable header-data-split */
-		enic_set_hdr_split_size(enic,
-			eth_dev->data->dev_conf.rxmode.split_hdr_size);
-	}
-
 	enic->hw_ip_checksum = !!(eth_dev->data->dev_conf.rxmode.offloads &
 				  DEV_RX_OFFLOAD_CHECKSUM);
 	ret = enicpmd_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK);
