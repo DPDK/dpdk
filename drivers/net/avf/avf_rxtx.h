@@ -147,6 +147,13 @@ uint16_t avf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts);
 void avf_set_rx_function(struct rte_eth_dev *dev);
 void avf_set_tx_function(struct rte_eth_dev *dev);
+void avf_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+			  struct rte_eth_rxq_info *qinfo);
+void avf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+			  struct rte_eth_txq_info *qinfo);
+uint32_t avf_dev_rxq_count(struct rte_eth_dev *dev, uint16_t queue_id);
+int avf_dev_rx_desc_status(void *rx_queue, uint16_t offset);
+int avf_dev_tx_desc_status(void *tx_queue, uint16_t offset);
 
 static inline
 void avf_dump_rx_descriptor(struct avf_rx_queue *rxq,

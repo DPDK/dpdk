@@ -1385,3 +1385,123 @@ avf_set_tx_function(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = avf_xmit_pkts;
 	dev->tx_pkt_prepare = avf_prep_pkts;
 }
+
+void
+avf_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		     struct rte_eth_rxq_info *qinfo)
+{
+	struct avf_rx_queue *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mp;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+
+	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
+	qinfo->conf.rx_drop_en = TRUE;
+	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
+}
+
+void
+avf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		     struct rte_eth_txq_info *qinfo)
+{
+	struct avf_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+
+	qinfo->conf.tx_free_thresh = txq->free_thresh;
+	qinfo->conf.tx_rs_thresh = txq->rs_thresh;
+	qinfo->conf.txq_flags = txq->txq_flags;
+	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+}
+
+/* Get the number of used descriptors of a rx queue */
+uint32_t
+avf_dev_rxq_count(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+#define AVF_RXQ_SCAN_INTERVAL 4
+	volatile union avf_rx_desc *rxdp;
+	struct avf_rx_queue *rxq;
+	uint16_t desc = 0;
+
+	rxq = dev->data->rx_queues[queue_id];
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	while ((desc < rxq->nb_rx_desc) &&
+	       ((rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
+		 AVF_RXD_QW1_STATUS_MASK) >> AVF_RXD_QW1_STATUS_SHIFT) &
+	       (1 << AVF_RX_DESC_STATUS_DD_SHIFT)) {
+		/* Check the DD bit of a rx descriptor of each 4 in a group,
+		 * to avoid checking too frequently and downgrading performance
+		 * too much.
+		 */
+		desc += AVF_RXQ_SCAN_INTERVAL;
+		rxdp += AVF_RXQ_SCAN_INTERVAL;
+		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
+			rxdp = &(rxq->rx_ring[rxq->rx_tail +
+					desc - rxq->nb_rx_desc]);
+	}
+
+	return desc;
+}
+
+int
+avf_dev_rx_desc_status(void *rx_queue, uint16_t offset)
+{
+	struct avf_rx_queue *rxq = rx_queue;
+	volatile uint64_t *status;
+	uint64_t mask;
+	uint32_t desc;
+
+	if (unlikely(offset >= rxq->nb_rx_desc))
+		return -EINVAL;
+
+	if (offset >= rxq->nb_rx_desc - rxq->nb_rx_hold)
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	desc = rxq->rx_tail + offset;
+	if (desc >= rxq->nb_rx_desc)
+		desc -= rxq->nb_rx_desc;
+
+	status = &rxq->rx_ring[desc].wb.qword1.status_error_len;
+	mask = rte_le_to_cpu_64((1ULL << AVF_RX_DESC_STATUS_DD_SHIFT)
+		<< AVF_RXD_QW1_STATUS_SHIFT);
+	if (*status & mask)
+		return RTE_ETH_RX_DESC_DONE;
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
+int
+avf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
+{
+	struct avf_tx_queue *txq = tx_queue;
+	volatile uint64_t *status;
+	uint64_t mask, expect;
+	uint32_t desc;
+
+	if (unlikely(offset >= txq->nb_tx_desc))
+		return -EINVAL;
+
+	desc = txq->tx_tail + offset;
+	/* go to next desc that has the RS bit */
+	desc = ((desc + txq->rs_thresh - 1) / txq->rs_thresh) *
+		txq->rs_thresh;
+	if (desc >= txq->nb_tx_desc) {
+		desc -= txq->nb_tx_desc;
+		if (desc >= txq->nb_tx_desc)
+			desc -= txq->nb_tx_desc;
+	}
+
+	status = &txq->tx_ring[desc].cmd_type_offset_bsz;
+	mask = rte_le_to_cpu_64(AVF_TXD_QW1_DTYPE_MASK);
+	expect = rte_cpu_to_le_64(
+		 AVF_TX_DESC_DTYPE_DESC_DONE << AVF_TXD_QW1_DTYPE_SHIFT);
+	if ((*status & mask) == expect)
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}

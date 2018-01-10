@@ -105,6 +105,11 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.reta_query                 = avf_dev_rss_reta_query,
 	.rss_hash_update            = avf_dev_rss_hash_update,
 	.rss_hash_conf_get          = avf_dev_rss_hash_conf_get,
+	.rxq_info_get               = avf_dev_rxq_info_get,
+	.txq_info_get               = avf_dev_txq_info_get,
+	.rx_queue_count             = avf_dev_rxq_count,
+	.rx_descriptor_status       = avf_dev_rx_desc_status,
+	.tx_descriptor_status       = avf_dev_tx_desc_status,
 	.mtu_set                    = avf_dev_mtu_set,
 };
 
