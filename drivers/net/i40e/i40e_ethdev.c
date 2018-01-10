@@ -3719,6 +3719,7 @@ i40e_get_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 {
 	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	uint32_t reg;
 	int ret;
 
 	if (!lut)
@@ -3735,14 +3736,22 @@ i40e_get_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 		uint32_t *lut_dw = (uint32_t *)lut;
 		uint16_t i, lut_size_dw = lut_size / 4;
 
-		for (i = 0; i < lut_size_dw; i++)
-			lut_dw[i] = I40E_READ_REG(hw, I40E_PFQF_HLUT(i));
+		if (vsi->type == I40E_VSI_SRIOV) {
+			for (i = 0; i <= lut_size_dw; i++) {
+				reg = I40E_VFQF_HLUT1(i, vsi->user_param);
+				lut_dw[i] = i40e_read_rx_ctl(hw, reg);
+			}
+		} else {
+			for (i = 0; i < lut_size_dw; i++)
+				lut_dw[i] = I40E_READ_REG(hw,
+							  I40E_PFQF_HLUT(i));
+		}
 	}
 
 	return 0;
 }
 
-static int
+int
 i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 {
 	struct i40e_pf *pf;
@@ -3766,8 +3775,17 @@ i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 		uint32_t *lut_dw = (uint32_t *)lut;
 		uint16_t i, lut_size_dw = lut_size / 4;
 
-		for (i = 0; i < lut_size_dw; i++)
-			I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i), lut_dw[i]);
+		if (vsi->type == I40E_VSI_SRIOV) {
+			for (i = 0; i < lut_size_dw; i++)
+				I40E_WRITE_REG(
+					hw,
+					I40E_VFQF_HLUT1(i, vsi->user_param),
+					lut_dw[i]);
+		} else {
+			for (i = 0; i < lut_size_dw; i++)
+				I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i),
+					       lut_dw[i]);
+		}
 		I40E_WRITE_FLUSH(hw);
 	}
 
@@ -6804,17 +6822,20 @@ i40e_pf_disable_rss(struct i40e_pf *pf)
 	I40E_WRITE_FLUSH(hw);
 }
 
-static int
+int
 i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len)
 {
 	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	uint16_t key_idx = (vsi->type == I40E_VSI_SRIOV) ?
+			   I40E_VFQF_HKEY_MAX_INDEX :
+			   I40E_PFQF_HKEY_MAX_INDEX;
 	int ret = 0;
 
 	if (!key || key_len == 0) {
 		PMD_DRV_LOG(DEBUG, "No key to be configured");
 		return 0;
-	} else if (key_len != (I40E_PFQF_HKEY_MAX_INDEX + 1) *
+	} else if (key_len != (key_idx + 1) *
 		sizeof(uint32_t)) {
 		PMD_DRV_LOG(ERR, "Invalid key length %u", key_len);
 		return -EINVAL;
@@ -6831,8 +6852,18 @@ i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len)
 		uint32_t *hash_key = (uint32_t *)key;
 		uint16_t i;
 
-		for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
-			i40e_write_rx_ctl(hw, I40E_PFQF_HKEY(i), hash_key[i]);
+		if (vsi->type == I40E_VSI_SRIOV) {
+			for (i = 0; i <= I40E_VFQF_HKEY_MAX_INDEX; i++)
+				I40E_WRITE_REG(
+					hw,
+					I40E_VFQF_HKEY1(i, vsi->user_param),
+					hash_key[i]);
+
+		} else {
+			for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
+				I40E_WRITE_REG(hw, I40E_PFQF_HKEY(i),
+					       hash_key[i]);
+		}
 		I40E_WRITE_FLUSH(hw);
 	}
 
@@ -6844,6 +6875,7 @@ i40e_get_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t *key_len)
 {
 	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	uint32_t reg;
 	int ret;
 
 	if (!key || !key_len)
@@ -6860,11 +6892,22 @@ i40e_get_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t *key_len)
 		uint32_t *key_dw = (uint32_t *)key;
 		uint16_t i;
 
-		for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
-			key_dw[i] = i40e_read_rx_ctl(hw, I40E_PFQF_HKEY(i));
+		if (vsi->type == I40E_VSI_SRIOV) {
+			for (i = 0; i <= I40E_VFQF_HKEY_MAX_INDEX; i++) {
+				reg = I40E_VFQF_HKEY1(i, vsi->user_param);
+				key_dw[i] = i40e_read_rx_ctl(hw, reg);
+			}
+			*key_len = (I40E_VFQF_HKEY_MAX_INDEX + 1) *
+				   sizeof(uint32_t);
+		} else {
+			for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++) {
+				reg = I40E_PFQF_HKEY(i);
+				key_dw[i] = i40e_read_rx_ctl(hw, reg);
+			}
+			*key_len = (I40E_PFQF_HKEY_MAX_INDEX + 1) *
+				   sizeof(uint32_t);
+		}
 	}
-	*key_len = (I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
-
 	return 0;
 }
 

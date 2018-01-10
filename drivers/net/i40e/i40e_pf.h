@@ -8,6 +8,12 @@
 /* Default setting on number of VSIs that VF can contain */
 #define I40E_DEFAULT_VF_VSI_NUM 1
 
+#define I40E_VIRTCHNL_OFFLOAD_CAPS ( \
+	VIRTCHNL_VF_OFFLOAD_L2 | \
+	VIRTCHNL_VF_OFFLOAD_VLAN | \
+	VIRTCHNL_VF_OFFLOAD_RSS_PF | \
+	VIRTCHNL_VF_OFFLOAD_RX_POLLING)
+
 struct virtchnl_vlan_offload_info {
 	uint16_t vsi_id;
 	uint8_t enable_vlan_strip;

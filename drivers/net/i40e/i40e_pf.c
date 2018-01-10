@@ -244,19 +244,23 @@ i40e_pf_host_send_msg_to_vf(struct i40e_pf_vf *vf,
 }
 
 static void
-i40e_pf_host_process_cmd_version(struct i40e_pf_vf *vf, bool b_op)
+i40e_pf_host_process_cmd_version(struct i40e_pf_vf *vf, uint8_t *msg,
+				 bool b_op)
 {
 	struct virtchnl_version_info info;
 
-	/* Respond like a Linux PF host in order to support both DPDK VF and
-	 * Linux VF driver. The expense is original DPDK host specific feature
+	/* VF and PF drivers need to follow the Virtchnl definition, No matter
+	 * it's DPDK or other kernel drivers.
+	 * The original DPDK host specific feature
 	 * like CFG_VLAN_PVID and CONFIG_VSI_QUEUES_EXT will not available.
-	 *
-	 * DPDK VF also can't identify host driver by version number returned.
-	 * It always assume talking with Linux PF.
 	 */
+
 	info.major = VIRTCHNL_VERSION_MAJOR;
-	info.minor = VIRTCHNL_VERSION_MINOR_NO_VF_CAPS;
+	vf->version = *(struct virtchnl_version_info *)msg;
+	if (VF_IS_V10(&vf->version))
+		info.minor = VIRTCHNL_VERSION_MINOR_NO_VF_CAPS;
+	else
+		info.minor = VIRTCHNL_VERSION_MINOR;
 
 	if (b_op)
 		i40e_pf_host_send_msg_to_vf(vf, VIRTCHNL_OP_VERSION,
@@ -280,11 +284,13 @@ i40e_pf_host_process_cmd_reset_vf(struct i40e_pf_vf *vf)
 }
 
 static int
-i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf, bool b_op)
+i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf, uint8_t *msg,
+					 bool b_op)
 {
 	struct virtchnl_vf_resource *vf_res = NULL;
 	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
 	uint32_t len = 0;
+	uint64_t default_hena = I40E_RSS_HENA_ALL;
 	int ret = I40E_SUCCESS;
 
 	if (!b_op) {
@@ -308,11 +314,35 @@ i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf, bool b_op)
 		goto send_msg;
 	}
 
-	vf_res->vf_cap_flags = VIRTCHNL_VF_OFFLOAD_L2 |
-			       VIRTCHNL_VF_OFFLOAD_VLAN;
+	if (VF_IS_V10(&vf->version)) /* doesn't support offload negotiate */
+		vf->request_caps = VIRTCHNL_VF_OFFLOAD_L2 |
+				   VIRTCHNL_VF_OFFLOAD_VLAN;
+	else
+		vf->request_caps = *(uint32_t *)msg;
+
+	/* enable all RSS by default,
+	 * doesn't support hena setting by virtchnnl yet.
+	 */
+	if (vf->request_caps & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
+		I40E_WRITE_REG(hw, I40E_VFQF_HENA1(0, vf->vf_idx),
+			       (uint32_t)default_hena);
+		I40E_WRITE_REG(hw, I40E_VFQF_HENA1(1, vf->vf_idx),
+			       (uint32_t)(default_hena >> 32));
+		I40E_WRITE_FLUSH(hw);
+	}
+
+	vf_res->vf_cap_flags = vf->request_caps &
+				   I40E_VIRTCHNL_OFFLOAD_CAPS;
+	/* For X722, it supports write back on ITR
+	 * without binding queue to interrupt vector.
+	 */
+	if (hw->mac.type == I40E_MAC_X722)
+		vf_res->vf_cap_flags |= VIRTCHNL_VF_OFFLOAD_WB_ON_ITR;
 	vf_res->max_vectors = hw->func_caps.num_msix_vectors_vf;
 	vf_res->num_queue_pairs = vf->vsi->nb_qps;
 	vf_res->num_vsis = I40E_DEFAULT_VF_VSI_NUM;
+	vf_res->rss_key_size = (I40E_PFQF_HKEY_MAX_INDEX + 1) * 4;
+	vf_res->rss_lut_size = (I40E_VFQF_HLUT1_MAX_INDEX + 1) * 4;
 
 	/* Change below setting if PF host can support more VSIs for VF */
 	vf_res->vsi_res[0].vsi_type = VIRTCHNL_VSI_SRIOV;
@@ -1061,6 +1091,84 @@ i40e_pf_host_process_cmd_disable_vlan_strip(struct i40e_pf_vf *vf, bool b_op)
 	return ret;
 }
 
+static int
+i40e_pf_host_process_cmd_set_rss_lut(struct i40e_pf_vf *vf,
+				     uint8_t *msg,
+				     uint16_t msglen,
+				     bool b_op)
+{
+	struct virtchnl_rss_lut *rss_lut = (struct virtchnl_rss_lut *)msg;
+	uint16_t valid_len;
+	int ret = I40E_SUCCESS;
+
+	if (!b_op) {
+		i40e_pf_host_send_msg_to_vf(
+			vf,
+			VIRTCHNL_OP_CONFIG_RSS_LUT,
+			I40E_NOT_SUPPORTED, NULL, 0);
+		return ret;
+	}
+
+	if (!msg || msglen <= sizeof(struct virtchnl_rss_lut)) {
+		PMD_DRV_LOG(ERR, "set_rss_lut argument too short");
+		ret = I40E_ERR_PARAM;
+		goto send_msg;
+	}
+	valid_len = sizeof(struct virtchnl_rss_lut) + rss_lut->lut_entries - 1;
+	if (msglen < valid_len) {
+		PMD_DRV_LOG(ERR, "set_rss_lut length mismatch");
+		ret = I40E_ERR_PARAM;
+		goto send_msg;
+	}
+
+	ret = i40e_set_rss_lut(vf->vsi, rss_lut->lut, rss_lut->lut_entries);
+
+send_msg:
+	i40e_pf_host_send_msg_to_vf(vf, VIRTCHNL_OP_CONFIG_RSS_LUT,
+				    ret, NULL, 0);
+
+	return ret;
+}
+
+static int
+i40e_pf_host_process_cmd_set_rss_key(struct i40e_pf_vf *vf,
+				     uint8_t *msg,
+				     uint16_t msglen,
+				     bool b_op)
+{
+	struct virtchnl_rss_key *rss_key = (struct virtchnl_rss_key *)msg;
+	uint16_t valid_len;
+	int ret = I40E_SUCCESS;
+
+	if (!b_op) {
+		i40e_pf_host_send_msg_to_vf(
+			vf,
+			VIRTCHNL_OP_DEL_VLAN,
+			VIRTCHNL_OP_CONFIG_RSS_KEY, NULL, 0);
+		return ret;
+	}
+
+	if (!msg || msglen <= sizeof(struct virtchnl_rss_key)) {
+		PMD_DRV_LOG(ERR, "set_rss_key argument too short");
+		ret = I40E_ERR_PARAM;
+		goto send_msg;
+	}
+	valid_len = sizeof(struct virtchnl_rss_key) + rss_key->key_len - 1;
+	if (msglen < valid_len) {
+		PMD_DRV_LOG(ERR, "set_rss_key length mismatch");
+		ret = I40E_ERR_PARAM;
+		goto send_msg;
+	}
+
+	ret = i40e_set_rss_key(vf->vsi, rss_key->key, rss_key->key_len);
+
+send_msg:
+	i40e_pf_host_send_msg_to_vf(vf, VIRTCHNL_OP_CONFIG_RSS_KEY,
+				    ret, NULL, 0);
+
+	return ret;
+}
+
 void
 i40e_notify_vf_link_status(struct rte_eth_dev *dev, struct i40e_pf_vf *vf)
 {
@@ -1167,7 +1275,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	switch (opcode) {
 	case VIRTCHNL_OP_VERSION:
 		PMD_DRV_LOG(INFO, "OP_VERSION received");
-		i40e_pf_host_process_cmd_version(vf, b_op);
+		i40e_pf_host_process_cmd_version(vf, msg, b_op);
 		break;
 	case VIRTCHNL_OP_RESET_VF:
 		PMD_DRV_LOG(INFO, "OP_RESET_VF received");
@@ -1175,7 +1283,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 		break;
 	case VIRTCHNL_OP_GET_VF_RESOURCES:
 		PMD_DRV_LOG(INFO, "OP_GET_VF_RESOURCES received");
-		i40e_pf_host_process_cmd_get_vf_resource(vf, b_op);
+		i40e_pf_host_process_cmd_get_vf_resource(vf, msg, b_op);
 		break;
 	case VIRTCHNL_OP_CONFIG_VSI_QUEUES:
 		PMD_DRV_LOG(INFO, "OP_CONFIG_VSI_QUEUES received");
@@ -1235,6 +1343,14 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	case VIRTCHNL_OP_DISABLE_VLAN_STRIPPING:
 		PMD_DRV_LOG(INFO, "OP_DISABLE_VLAN_STRIPPING received");
 		i40e_pf_host_process_cmd_disable_vlan_strip(vf, b_op);
+		break;
+	case VIRTCHNL_OP_CONFIG_RSS_LUT:
+		PMD_DRV_LOG(INFO, "OP_CONFIG_RSS_LUT received");
+		i40e_pf_host_process_cmd_set_rss_lut(vf, msg, msglen, b_op);
+		break;
+	case VIRTCHNL_OP_CONFIG_RSS_KEY:
+		PMD_DRV_LOG(INFO, "OP_CONFIG_RSS_KEY received");
+		i40e_pf_host_process_cmd_set_rss_key(vf, msg, msglen, b_op);
 		break;
 	/* Don't add command supported below, which will
 	 * return an error code.

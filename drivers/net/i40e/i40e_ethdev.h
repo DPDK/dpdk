@@ -399,6 +399,9 @@ struct i40e_pf_vf {
 	uint16_t lan_nb_qps; /* Actual queues allocated */
 	uint16_t reset_cnt; /* Total vf reset times */
 	struct ether_addr mac_addr;  /* Default MAC address */
+	/* version of the virtchnl from VF */
+	struct virtchnl_version_info version;
+	uint32_t request_caps; /* offload caps requested from VF */
 };
 
 /*
@@ -1172,6 +1175,8 @@ int i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
 		struct i40e_hw *hw, struct i40e_pf *pf, uint16_t on);
 void i40e_init_queue_region_conf(struct rte_eth_dev *dev);
 void i40e_flex_payload_reg_set_default(struct i40e_hw *hw);
+int i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len);
+int i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)
