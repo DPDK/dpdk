@@ -265,8 +265,6 @@ CONFIG_RTE_LIBRTE_CXGBE_TPUT=y
 # Compile burst-oriented Cisco ENIC PMD driver
 #
 CONFIG_RTE_LIBRTE_ENIC_PMD=y
-CONFIG_RTE_LIBRTE_ENIC_DEBUG=n
-CONFIG_RTE_LIBRTE_ENIC_DEBUG_FLOW=n
 
 #
 # Compile burst-oriented Netronome NFP PMD driver

@@ -49,12 +49,14 @@
 #include "vnic_enet.h"
 #include "enic.h"
 
-#ifdef RTE_LIBRTE_ENIC_DEBUG
-#define ENICPMD_FUNC_TRACE() \
-	RTE_LOG(DEBUG, PMD, "ENICPMD trace: %s\n", __func__)
-#else
-#define ENICPMD_FUNC_TRACE() (void)0
-#endif
+int enicpmd_logtype_init;
+int enicpmd_logtype_flow;
+
+#define PMD_INIT_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, enicpmd_logtype_init, \
+		"%s" fmt "\n", __func__, ##args)
+
+#define ENICPMD_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
 /*
  * The set of PCI devices this driver supports
@@ -65,6 +67,18 @@ static const struct rte_pci_id pci_id_enic_map[] = {
 	{ RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET_VF) },
 	{.vendor_id = 0, /* sentinel */},
 };
+
+RTE_INIT(enicpmd_init_log);
+static void
+enicpmd_init_log(void)
+{
+	enicpmd_logtype_init = rte_log_register("pmd.enic.init");
+	if (enicpmd_logtype_init >= 0)
+		rte_log_set_level(enicpmd_logtype_init, RTE_LOG_NOTICE);
+	enicpmd_logtype_flow = rte_log_register("pmd.enic.flow");
+	if (enicpmd_logtype_flow >= 0)
+		rte_log_set_level(enicpmd_logtype_flow, RTE_LOG_NOTICE);
+}
 
 static int
 enicpmd_fdir_ctrl_func(struct rte_eth_dev *eth_dev,

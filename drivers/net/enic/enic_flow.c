@@ -42,15 +42,12 @@
 #include "vnic_dev.h"
 #include "vnic_nic.h"
 
-#ifdef RTE_LIBRTE_ENIC_DEBUG_FLOW
 #define FLOW_TRACE() \
-	RTE_LOG(DEBUG, PMD, "%s()\n", __func__)
+	rte_log(RTE_LOG_DEBUG, enicpmd_logtype_flow, \
+		"%s()\n", __func__)
 #define FLOW_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, fmt, ## args)
-#else
-#define FLOW_TRACE() do { } while (0)
-#define FLOW_LOG(level, fmt, args...) do { } while (0)
-#endif
+	rte_log(RTE_LOG_ ## level, enicpmd_logtype_flow, \
+		fmt "\n", ##args)
 
 /** Info about how to copy items into enic filters. */
 struct enic_items {

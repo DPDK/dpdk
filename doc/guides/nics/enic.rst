@@ -52,12 +52,6 @@ Configuration information
   - **CONFIG_RTE_LIBRTE_ENIC_PMD** (default y): Enables or disables inclusion
     of the ENIC PMD driver in the DPDK compilation.
 
-  - **CONFIG_RTE_LIBRTE_ENIC_DEBUG** (default n): Enables or disables debug
-    logging within the ENIC PMD driver.
-
-  - **CONFIG_RTE_LIBRTE_ENIC_DEBUG_FLOW** (default n): Enables or disables flow
-    API related debug logging within the ENIC PMD driver.
-
 - **vNIC Configuration Parameters**
 
   - **Number of Queues**

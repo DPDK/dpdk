@@ -84,6 +84,8 @@
 #define dev_warning(x, args...) dev_printk(WARNING, args)
 #define dev_debug(x, args...) dev_printk(DEBUG, args)
 
+extern int enicpmd_logtype_flow;
+
 #define __le16 u16
 #define __le32 u32
 #define __le64 u64
