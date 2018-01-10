@@ -370,7 +370,8 @@ static int enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 	ENICPMD_FUNC_TRACE();
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (eth_dev->data->dev_conf.rxmode.hw_vlan_strip)
+		if (eth_dev->data->dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_VLAN_STRIP)
 			enic->ig_vlan_strip_en = 1;
 		else
 			enic->ig_vlan_strip_en = 0;
@@ -407,13 +408,15 @@ static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 	}
 
 	if (eth_dev->data->dev_conf.rxmode.split_hdr_size &&
-		eth_dev->data->dev_conf.rxmode.header_split) {
+	    (eth_dev->data->dev_conf.rxmode.offloads &
+	     DEV_RX_OFFLOAD_HEADER_SPLIT)) {
 		/* Enable header-data-split */
 		enic_set_hdr_split_size(enic,
 			eth_dev->data->dev_conf.rxmode.split_hdr_size);
 	}
 
-	enic->hw_ip_checksum = eth_dev->data->dev_conf.rxmode.hw_ip_checksum;
+	enic->hw_ip_checksum = !!(eth_dev->data->dev_conf.rxmode.offloads &
+				  DEV_RX_OFFLOAD_CHECKSUM);
 	ret = enicpmd_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK);
 
 	return ret;

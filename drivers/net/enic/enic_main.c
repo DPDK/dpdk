@@ -634,7 +634,8 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	mbuf_size = (uint16_t)(rte_pktmbuf_data_room_size(mp) -
 			       RTE_PKTMBUF_HEADROOM);
 
-	if (enic->rte_dev->data->dev_conf.rxmode.enable_scatter) {
+	if (enic->rte_dev->data->dev_conf.rxmode.offloads &
+	    DEV_RX_OFFLOAD_SCATTER) {
 		dev_info(enic, "Rq %u Scatter rx mode enabled\n", queue_idx);
 		/* ceil((mtu + ETHER_HDR_LEN + 4)/mbuf_size) */
 		mbufs_per_pkt = ((mtu + ETHER_HDR_LEN + 4) +
@@ -1208,7 +1209,8 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 	/* The easy case is when scatter is disabled. However if the MTU
 	 * becomes greater than the mbuf data size, packet drops will ensue.
 	 */
-	if (!enic->rte_dev->data->dev_conf.rxmode.enable_scatter) {
+	if (!(enic->rte_dev->data->dev_conf.rxmode.offloads &
+	      DEV_RX_OFFLOAD_SCATTER)) {
 		eth_dev->data->mtu = new_mtu;
 		goto set_mtu_done;
 	}
