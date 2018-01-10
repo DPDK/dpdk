@@ -282,7 +282,8 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 			else
 				pkt_flags |= PKT_RX_IP_CKSUM_BAD;
 
-			if (l4_flags & (RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP)) {
+			if (l4_flags == RTE_PTYPE_L4_UDP ||
+			    l4_flags == RTE_PTYPE_L4_TCP) {
 				if (enic_cq_rx_desc_tcp_udp_csum_ok(cqrd))
 					pkt_flags |= PKT_RX_L4_CKSUM_GOOD;
 				else
