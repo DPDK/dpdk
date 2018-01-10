@@ -120,6 +120,7 @@ static struct option long_options[] = {
 	{"parallel", no_argument, 0, 'p'},
 	{"ordered", no_argument, 0, 'o'},
 	{"quiet", no_argument, 0, 'q'},
+	{"use-atq", no_argument, 0, 'a'},
 	{"dump", no_argument, 0, 'D'},
 	{0, 0, 0, 0}
 };
@@ -143,6 +144,7 @@ usage(void)
 		"  -o, --ordered                Use ordered scheduling\n"
 		"  -p, --parallel               Use parallel scheduling\n"
 		"  -q, --quiet                  Minimize printed output\n"
+		"  -a, --use-atq                Use all type queues\n"
 		"  -D, --dump                   Print detailed statistics before exit"
 		"\n";
 	fprintf(stderr, "%s", usage_str);
@@ -163,7 +165,7 @@ parse_app_args(int argc, char **argv)
 	int i;
 
 	for (;;) {
-		c = getopt_long(argc, argv, "r:t:e:c:w:n:f:s:poPqDW:",
+		c = getopt_long(argc, argv, "r:t:e:c:w:n:f:s:paoPqDW:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -195,6 +197,9 @@ parse_app_args(int argc, char **argv)
 			break;
 		case 'p':
 			cdata.queue_type = RTE_SCHED_TYPE_PARALLEL;
+			break;
+		case 'a':
+			cdata.all_type_queues = 1;
 			break;
 		case 'q':
 			cdata.quiet = 1;

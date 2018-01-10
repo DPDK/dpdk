@@ -77,6 +77,7 @@ struct config_data {
 	int quiet;
 	int dump_dev;
 	int dump_dev_signal;
+	int all_type_queues;
 	unsigned int num_stages;
 	unsigned int worker_cq_depth;
 	unsigned int rx_stride;

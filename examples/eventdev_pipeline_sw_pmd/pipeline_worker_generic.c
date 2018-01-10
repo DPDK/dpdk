@@ -516,6 +516,11 @@ generic_opt_check(void)
 	memset(&eventdev_info, 0, sizeof(struct rte_event_dev_info));
 	rte_event_dev_info_get(0, &eventdev_info);
 
+	if (cdata.all_type_queues && !(eventdev_info.event_dev_cap &
+				RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES))
+		rte_exit(EXIT_FAILURE,
+				"Event dev doesn't support all type queues\n");
+
 	for (i = 0; i < rte_eth_dev_count(); i++) {
 		ret = rte_event_eth_rx_adapter_caps_get(0, i, &cap);
 		if (ret)
