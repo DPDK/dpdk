@@ -54,6 +54,16 @@ static void avf_dev_del_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 static int avf_dev_vlan_filter_set(struct rte_eth_dev *dev,
 				   uint16_t vlan_id, int on);
 static int avf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int avf_dev_rss_reta_update(struct rte_eth_dev *dev,
+				   struct rte_eth_rss_reta_entry64 *reta_conf,
+				   uint16_t reta_size);
+static int avf_dev_rss_reta_query(struct rte_eth_dev *dev,
+				  struct rte_eth_rss_reta_entry64 *reta_conf,
+				  uint16_t reta_size);
+static int avf_dev_rss_hash_update(struct rte_eth_dev *dev,
+				   struct rte_eth_rss_conf *rss_conf);
+static int avf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+				     struct rte_eth_rss_conf *rss_conf);
 static void avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 					 struct ether_addr *mac_addr);
 
@@ -90,6 +100,10 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.tx_queue_setup             = avf_dev_tx_queue_setup,
 	.tx_queue_release           = avf_dev_tx_queue_release,
 	.mac_addr_set               = avf_dev_set_default_mac_addr,
+	.reta_update                = avf_dev_rss_reta_update,
+	.reta_query                 = avf_dev_rss_reta_query,
+	.rss_hash_update            = avf_dev_rss_hash_update,
+	.rss_hash_conf_get          = avf_dev_rss_hash_conf_get,
 };
 
 static int
@@ -651,6 +665,134 @@ avf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 	if (err)
 		return -EIO;
+	return 0;
+}
+
+static int
+avf_dev_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	uint8_t *lut;
+	uint16_t i, idx, shift;
+	int ret;
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
+		return -ENOTSUP;
+
+	if (reta_size != vf->vf_res->rss_lut_size) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number of hardware can "
+			"support (%d)", reta_size, vf->vf_res->rss_lut_size);
+		return -EINVAL;
+	}
+
+	lut = rte_zmalloc("rss_lut", reta_size, 0);
+	if (!lut) {
+		PMD_DRV_LOG(ERR, "No memory can be allocated");
+		return -ENOMEM;
+	}
+	/* store the old lut table temporarily */
+	rte_memcpy(lut, vf->rss_lut, reta_size);
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			lut[i] = reta_conf[idx].reta[shift];
+	}
+
+	rte_memcpy(vf->rss_lut, lut, reta_size);
+	/* send virtchnnl ops to configure rss*/
+	ret = avf_configure_rss_lut(adapter);
+	if (ret) /* revert back */
+		rte_memcpy(vf->rss_lut, lut, reta_size);
+	rte_free(lut);
+
+	return ret;
+}
+
+static int
+avf_dev_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	uint16_t i, idx, shift;
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
+		return -ENOTSUP;
+
+	if (reta_size != vf->vf_res->rss_lut_size) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number of hardware can "
+			"support (%d)", reta_size, vf->vf_res->rss_lut_size);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = vf->rss_lut[i];
+	}
+
+	return 0;
+}
+
+static int
+avf_dev_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
+		return -ENOTSUP;
+
+	/* HENA setting, it is enabled by default, no change */
+	if (!rss_conf->rss_key || rss_conf->rss_key_len == 0) {
+		PMD_DRV_LOG(DEBUG, "No key to be configured");
+		return 0;
+	} else if (rss_conf->rss_key_len != vf->vf_res->rss_key_size) {
+		PMD_DRV_LOG(ERR, "The size of hash key configured "
+			"(%d) doesn't match the size of hardware can "
+			"support (%d)", rss_conf->rss_key_len,
+			vf->vf_res->rss_key_size);
+		return -EINVAL;
+	}
+
+	rte_memcpy(vf->rss_key, rss_conf->rss_key, rss_conf->rss_key_len);
+
+	return avf_configure_rss_key(adapter);
+}
+
+static int
+avf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct avf_adapter *adapter =
+		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
+		return -ENOTSUP;
+
+	 /* Just set it to default value now. */
+	rss_conf->rss_hf = AVF_RSS_OFFLOAD_ALL;
+
+	if (!rss_conf->rss_key)
+		return 0;
+
+	rss_conf->rss_key_len = vf->vf_res->rss_key_size;
+	rte_memcpy(rss_conf->rss_key, vf->rss_key, rss_conf->rss_key_len);
+
 	return 0;
 }
 
