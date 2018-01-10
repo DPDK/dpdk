@@ -55,6 +55,9 @@ Configuration information
   - **CONFIG_RTE_LIBRTE_ENIC_DEBUG** (default n): Enables or disables debug
     logging within the ENIC PMD driver.
 
+  - **CONFIG_RTE_LIBRTE_ENIC_DEBUG_FLOW** (default n): Enables or disables flow
+    API related debug logging within the ENIC PMD driver.
+
 - **vNIC Configuration Parameters**
 
   - **Number of Queues**
@@ -66,7 +69,7 @@ Configuration information
     These values should be configured as follows:
 
     - The number of WQs should be greater or equal to the value of the
-      expected nb_tx_q parameter in the call to the
+      expected nb_tx_q parameter in the call to
       rte_eth_dev_configure()
 
     - The number of RQs configured in the vNIC should be greater or
@@ -88,7 +91,7 @@ Configuration information
   - **Size of Queues**
 
     Likewise, the number of receive and transmit descriptors are configurable on
-    a per vNIC bases via the UCS Manager and should be greater than or equal to
+    a per-vNIC basis via the UCS Manager and should be greater than or equal to
     the nb_rx_desc and   nb_tx_desc parameters expected to be used in the calls
     to rte_eth_rx_queue_setup() and rte_eth_tx_queue_setup() respectively.
     An application requesting more than the set size will be limited to that
@@ -101,7 +104,7 @@ Configuration information
 
     - *Note*: Since the introduction of Rx scatter, for performance
       reasons, this PMD uses two RQs on the vNIC per receive queue in
-      DPDK.  One RQ holds descriptors for the start of a packet the
+      DPDK.  One RQ holds descriptors for the start of a packet, and the
       second RQ holds the descriptors for the rest of the fragments of
       a packet.  This means that the nb_rx_desc parameter to
       rte_eth_rx_queue_setup() can be a greater than 4096.  The exact
@@ -110,7 +113,7 @@ Configuration information
 
       For example: If the mbuf size is 2048, and the MTU is 9000, then
       receiving a full size packet will take 5 descriptors, 1 from the
-      start of packet queue, and 4 from the second queue.  Assuming
+      start-of-packet queue, and 4 from the second queue.  Assuming
       that the RQ size was set to the maximum of 4096, then the
       application can specify up to 1024 + 4096 as the nb_rx_desc
       parameter to rte_eth_rx_queue_setup().
@@ -156,7 +159,7 @@ host to route intra-host VM traffic.
 
 Please refer to `Creating a Dynamic vNIC Connection Policy
 <http://www.cisco.com/c/en/us/td/docs/unified_computing/ucs/sw/vm_fex/vmware/gui/config_guide/b_GUI_VMware_VM-FEX_UCSM_Configuration_Guide/b_GUI_VMware_VM-FEX_UCSM_Configuration_Guide_chapter_010.html#task_433E01651F69464783A68E66DA8A47A5>`_
-for information on configuring SR-IOV Adapter policies using UCS manager.
+for information on configuring SR-IOV adapter policies using UCS manager.
 
 Once the policies are in place and the host OS is rebooted, VFs should be
 visible on the host, E.g.:
@@ -222,15 +225,15 @@ Generic Flow API is supported. The baseline support is:
 
 - **1200 series VICs**
 
-  5-tuple exact Flow support for 1200 series adapters. This allows:
+  5-tuple exact flow support for 1200 series adapters. This allows:
 
   - Attributes: ingress
   - Items: ipv4, ipv6, udp, tcp (must exactly match src/dst IP
-    addresses and ports and all must be specified).
+    addresses and ports and all must be specified)
   - Actions: queue and void
   - Selectors: 'is'
 
-- **1300 series VICS with Advanced filters disabled**
+- **1300 series VICS with advanced filters disabled**
 
   With advanced filters disabled, an IPv4 or IPv6 item must be specified
   in the pattern.
@@ -239,15 +242,15 @@ Generic Flow API is supported. The baseline support is:
   - Items: eth, ipv4, ipv6, udp, tcp, vxlan, inner eth, ipv4, ipv6, udp, tcp
   - Actions: queue and void
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
-  - In total, up to 64 bytes of mask is allowed across all haeders
+  - In total, up to 64 bytes of mask is allowed across all headers
 
-- **1300 series VICS with Advanced filters enabled**
+- **1300 series VICS with advanced filters enabled**
 
   - Attributes: ingress
   - Items: eth, ipv4, ipv6, udp, tcp, vxlan, inner eth, ipv4, ipv6, udp, tcp
   - Actions: queue, mark, flag and void
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
-  - In total, up to 64 bytes of mask is allowed across all haeders
+  - In total, up to 64 bytes of mask is allowed across all headers
 
 More features may be added in future firmware and new versions of the VIC.
 Please refer to the release notes.
@@ -268,8 +271,8 @@ Limitations
   connected point-to-point to another adapter port or connected though a router
   instead of a switch, all ingress packets will be VLAN tagged. Programs such
   as l3fwd which do not account for VLAN tags in packets will misbehave. The
-  solution is to enable VLAN stripping on ingress. The follow code fragment is
-  example of how to accomplish this:
+  solution is to enable VLAN stripping on ingress. The following code fragment is
+  an example of how to accomplish this:
 
 .. code-block:: console
 
@@ -291,7 +294,7 @@ Limitations
   - VF devices are not usable directly from the host. They can  only be used
     as assigned devices on VM instances.
   - Currently, unbind of the ENIC kernel mode driver 'enic.ko' on the VM
-    instance may hang. As a workaround, enic.ko should blacklisted or removed
+    instance may hang. As a workaround, enic.ko should be blacklisted or removed
     from the boot process.
   - pci_generic cannot be used as the uio module in the VM. igb_uio or
     vfio in non-IOMMU mode can be used.
@@ -304,7 +307,7 @@ Limitations
   - The number of filters that can be specified with the Generic Flow API is
     dependent on how many header fields are being masked. Use 'flow create' in
     a loop to determine how many filters your VIC will support (not more than
-    1000 for 1300 series VICs). Filter are checked for matching in the order they
+    1000 for 1300 series VICs). Filters are checked for matching in the order they
     were added. Since there currently is no grouping or priority support,
     'catch-all' filters should be added last.
 
@@ -316,8 +319,6 @@ the ENIC PMD library will be built into the DPDK library.
 
 Refer to the document :ref:`compiling and testing a PMD for a NIC
 <pmd_build_and_test>` for details.
-
-By default the ENIC PMD library will be built into the DPDK library.
 
 For configuring and using UIO and VFIO frameworks, please refer to the
 documentation that comes with DPDK suite.
@@ -363,7 +364,7 @@ Supported features
 - IPV4, IPV6 and TCP RSS hashing
 - Scattered Rx
 - MTU update
-- SR-IOV on UCS managed servers connected to Fabric Interconnects.
+- SR-IOV on UCS managed servers connected to Fabric Interconnects
 - Flow API
 
 Known bugs and unsupported features in this release
@@ -372,7 +373,7 @@ Known bugs and unsupported features in this release
 - Signature or flex byte based flow direction
 - Drop feature of flow direction
 - VLAN based flow direction
-- non-IPV4 flow direction
+- Non-IPV4 flow direction
 - Setting of extended VLAN
 - UDP RSS hashing
 - MTU update only works if Scattered Rx mode is disabled
@@ -381,15 +382,15 @@ Prerequisites
 -------------
 
 - Prepare the system as recommended by DPDK suite.  This includes environment
-  variables, hugepages configuration, tool-chains and configuration
+  variables, hugepages configuration, tool-chains and configuration.
 - Insert vfio-pci kernel module using the command 'modprobe vfio-pci' if the
-  user wants to use VFIO framework
+  user wants to use VFIO framework.
 - Insert uio kernel module using the command 'modprobe uio' if the user wants
-  to use UIO framework
+  to use UIO framework.
 - DPDK suite should be configured based on the user's decision to use VFIO or
-  UIO framework
+  UIO framework.
 - If the vNIC device(s) to be used is bound to the kernel mode Ethernet driver
-  use 'ifconfig' to bring the interface down. The dpdk-devbind.py tool can
+  use 'ip' to bring the interface down. The dpdk-devbind.py tool can
   then be used to unbind the device's bus id from the ENIC kernel mode driver.
 - Bind the intended vNIC to vfio-pci in case the user wants ENIC PMD to use
   VFIO framework using dpdk-devbind.py.
@@ -422,7 +423,8 @@ libraries and the initialization time of the application.
 Additional Reference
 --------------------
 
-- http://www.cisco.com/c/en/us/products/servers-unified-computing
+- https://www.cisco.com/c/en/us/products/servers-unified-computing/index.html
+- https://www.cisco.com/c/en/us/products/interfaces-modules/unified-computing-system-adapters/index.html
 
 Contact Information
 -------------------
