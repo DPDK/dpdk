@@ -810,45 +810,6 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 	}
 }
 
-#define RARP_PKT_SIZE	64
-
-static int
-make_rarp_packet(struct rte_mbuf *rarp_mbuf, const struct ether_addr *mac)
-{
-	struct ether_hdr *eth_hdr;
-	struct arp_hdr  *rarp;
-
-	if (rarp_mbuf->buf_len < 64) {
-		RTE_LOG(WARNING, VHOST_DATA,
-			"failed to make RARP; mbuf size too small %u (< %d)\n",
-			rarp_mbuf->buf_len, RARP_PKT_SIZE);
-		return -1;
-	}
-
-	/* Ethernet header. */
-	eth_hdr = rte_pktmbuf_mtod_offset(rarp_mbuf, struct ether_hdr *, 0);
-	memset(eth_hdr->d_addr.addr_bytes, 0xff, ETHER_ADDR_LEN);
-	ether_addr_copy(mac, &eth_hdr->s_addr);
-	eth_hdr->ether_type = htons(ETHER_TYPE_RARP);
-
-	/* RARP header. */
-	rarp = (struct arp_hdr *)(eth_hdr + 1);
-	rarp->arp_hrd = htons(ARP_HRD_ETHER);
-	rarp->arp_pro = htons(ETHER_TYPE_IPv4);
-	rarp->arp_hln = ETHER_ADDR_LEN;
-	rarp->arp_pln = 4;
-	rarp->arp_op  = htons(ARP_OP_REVREQUEST);
-
-	ether_addr_copy(mac, &rarp->arp_data.arp_sha);
-	ether_addr_copy(mac, &rarp->arp_data.arp_tha);
-	memset(&rarp->arp_data.arp_sip, 0x00, 4);
-	memset(&rarp->arp_data.arp_tip, 0x00, 4);
-
-	rarp_mbuf->pkt_len  = rarp_mbuf->data_len = RARP_PKT_SIZE;
-
-	return 0;
-}
-
 static __rte_always_inline void
 put_zmbuf(struct zcopy_mbuf *zmbuf)
 {
@@ -1208,7 +1169,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			return 0;
 		}
 
-		if (make_rarp_packet(rarp_mbuf, &dev->mac)) {
+		if (rte_net_make_rarp_packet(rarp_mbuf, &dev->mac) < 0) {
 			rte_pktmbuf_free(rarp_mbuf);
 			rarp_mbuf = NULL;
 		} else {
