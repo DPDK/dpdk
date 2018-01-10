@@ -1594,6 +1594,7 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 				__attribute__((unused)) void *data)
 {
 	struct cmd_config_max_pkt_len_result *res = parsed_result;
+	uint64_t rx_offloads = rx_mode.offloads;
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
@@ -1611,13 +1612,15 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 
 		rx_mode.max_rx_pkt_len = res->value;
 		if (res->value > ETHER_MAX_LEN)
-			rx_mode.jumbo_frame = 1;
+			rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 		else
-			rx_mode.jumbo_frame = 0;
+			rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 	} else {
 		printf("Unknown parameter\n");
 		return;
 	}
+
+	rx_mode.offloads = rx_offloads;
 
 	init_port_config();
 
@@ -1720,6 +1723,7 @@ cmd_config_rx_mode_flag_parsed(void *parsed_result,
 				__attribute__((unused)) void *data)
 {
 	struct cmd_config_rx_mode_flag *res = parsed_result;
+	uint64_t rx_offloads = rx_mode.offloads;
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
@@ -1728,48 +1732,48 @@ cmd_config_rx_mode_flag_parsed(void *parsed_result,
 
 	if (!strcmp(res->name, "crc-strip")) {
 		if (!strcmp(res->value, "on"))
-			rx_mode.hw_strip_crc = 1;
+			rx_offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 		else if (!strcmp(res->value, "off"))
-			rx_mode.hw_strip_crc = 0;
+			rx_offloads &= ~DEV_RX_OFFLOAD_CRC_STRIP;
 		else {
 			printf("Unknown parameter\n");
 			return;
 		}
 	} else if (!strcmp(res->name, "scatter")) {
-		if (!strcmp(res->value, "on"))
-			rx_mode.enable_scatter = 1;
-		else if (!strcmp(res->value, "off"))
-			rx_mode.enable_scatter = 0;
-		else {
+		if (!strcmp(res->value, "on")) {
+			rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
+		} else if (!strcmp(res->value, "off")) {
+			rx_offloads &= ~DEV_RX_OFFLOAD_SCATTER;
+		} else {
 			printf("Unknown parameter\n");
 			return;
 		}
 	} else if (!strcmp(res->name, "rx-cksum")) {
 		if (!strcmp(res->value, "on"))
-			rx_mode.hw_ip_checksum = 1;
+			rx_offloads |= DEV_RX_OFFLOAD_CHECKSUM;
 		else if (!strcmp(res->value, "off"))
-			rx_mode.hw_ip_checksum = 0;
+			rx_offloads &= ~DEV_RX_OFFLOAD_CHECKSUM;
 		else {
 			printf("Unknown parameter\n");
 			return;
 		}
 	} else if (!strcmp(res->name, "rx-timestamp")) {
 		if (!strcmp(res->value, "on"))
-			rx_mode.hw_timestamp = 1;
+			rx_offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
 		else if (!strcmp(res->value, "off"))
-			rx_mode.hw_timestamp = 0;
+			rx_offloads &= ~DEV_RX_OFFLOAD_TIMESTAMP;
 		else {
 			printf("Unknown parameter\n");
 			return;
 		}
 	} else if (!strcmp(res->name, "hw-vlan")) {
 		if (!strcmp(res->value, "on")) {
-			rx_mode.hw_vlan_filter = 1;
-			rx_mode.hw_vlan_strip  = 1;
+			rx_offloads |= (DEV_RX_OFFLOAD_VLAN_FILTER |
+					DEV_RX_OFFLOAD_VLAN_STRIP);
 		}
 		else if (!strcmp(res->value, "off")) {
-			rx_mode.hw_vlan_filter = 0;
-			rx_mode.hw_vlan_strip  = 0;
+			rx_offloads &= ~(DEV_RX_OFFLOAD_VLAN_FILTER |
+					DEV_RX_OFFLOAD_VLAN_STRIP);
 		}
 		else {
 			printf("Unknown parameter\n");
@@ -1777,27 +1781,27 @@ cmd_config_rx_mode_flag_parsed(void *parsed_result,
 		}
 	} else if (!strcmp(res->name, "hw-vlan-filter")) {
 		if (!strcmp(res->value, "on"))
-			rx_mode.hw_vlan_filter = 1;
+			rx_offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
 		else if (!strcmp(res->value, "off"))
-			rx_mode.hw_vlan_filter = 0;
+			rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
 		else {
 			printf("Unknown parameter\n");
 			return;
 		}
 	} else if (!strcmp(res->name, "hw-vlan-strip")) {
 		if (!strcmp(res->value, "on"))
-			rx_mode.hw_vlan_strip  = 1;
+			rx_offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
 		else if (!strcmp(res->value, "off"))
-			rx_mode.hw_vlan_strip  = 0;
+			rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 		else {
 			printf("Unknown parameter\n");
 			return;
 		}
 	} else if (!strcmp(res->name, "hw-vlan-extend")) {
 		if (!strcmp(res->value, "on"))
-			rx_mode.hw_vlan_extend = 1;
+			rx_offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
 		else if (!strcmp(res->value, "off"))
-			rx_mode.hw_vlan_extend = 0;
+			rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_EXTEND;
 		else {
 			printf("Unknown parameter\n");
 			return;
@@ -1815,6 +1819,7 @@ cmd_config_rx_mode_flag_parsed(void *parsed_result,
 		printf("Unknown parameter\n");
 		return;
 	}
+	rx_mode.offloads = rx_offloads;
 
 	init_port_config();
 

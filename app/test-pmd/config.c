@@ -551,14 +551,12 @@ port_infos_display(portid_t port_id)
 void
 port_offload_cap_display(portid_t port_id)
 {
-	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	static const char *info_border = "************";
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	dev = &rte_eth_devices[port_id];
 	rte_eth_dev_info_get(port_id, &dev_info);
 
 	printf("\n%s Port %d supported offload features: %s\n",
@@ -566,7 +564,8 @@ port_offload_cap_display(portid_t port_id)
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_VLAN_STRIP) {
 		printf("VLAN stripped:                 ");
-		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_VLAN_STRIP)
 			printf("on\n");
 		else
 			printf("off\n");
@@ -574,7 +573,8 @@ port_offload_cap_display(portid_t port_id)
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_QINQ_STRIP) {
 		printf("Double VLANs stripped:         ");
-		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_VLAN_EXTEND)
 			printf("on\n");
 		else
 			printf("off\n");
@@ -582,7 +582,8 @@ port_offload_cap_display(portid_t port_id)
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_IPV4_CKSUM) {
 		printf("RX IPv4 checksum:              ");
-		if (dev->data->dev_conf.rxmode.hw_ip_checksum)
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_IPV4_CKSUM)
 			printf("on\n");
 		else
 			printf("off\n");
@@ -590,7 +591,8 @@ port_offload_cap_display(portid_t port_id)
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_UDP_CKSUM) {
 		printf("RX UDP checksum:               ");
-		if (dev->data->dev_conf.rxmode.hw_ip_checksum)
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_UDP_CKSUM)
 			printf("on\n");
 		else
 			printf("off\n");
@@ -598,18 +600,26 @@ port_offload_cap_display(portid_t port_id)
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_CKSUM) {
 		printf("RX TCP checksum:               ");
-		if (dev->data->dev_conf.rxmode.hw_ip_checksum)
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_TCP_CKSUM)
 			printf("on\n");
 		else
 			printf("off\n");
 	}
 
-	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM)
-		printf("RX Outer IPv4 checksum:        on");
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) {
+		printf("RX Outer IPv4 checksum:               ");
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM)
+			printf("on\n");
+		else
+			printf("off\n");
+	}
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO) {
 		printf("Large receive offload:         ");
-		if (dev->data->dev_conf.rxmode.enable_lro)
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_TCP_LRO)
 			printf("on\n");
 		else
 			printf("off\n");
@@ -626,7 +636,8 @@ port_offload_cap_display(portid_t port_id)
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TIMESTAMP) {
 		printf("HW timestamp:                  ");
-		if (dev->data->dev_conf.rxmode.hw_timestamp)
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_TIMESTAMP)
 			printf("on\n");
 		else
 			printf("off\n");
@@ -1686,7 +1697,8 @@ rxtx_config_display(void)
 
 		printf("  port %d:\n", (unsigned int)pid);
 		printf("  CRC stripping %s\n",
-				ports[pid].dev_conf.rxmode.hw_strip_crc ?
+				(ports[pid].dev_conf.rxmode.offloads &
+				 DEV_RX_OFFLOAD_CRC_STRIP) ?
 				"enabled" : "disabled");
 		printf("  RX queues=%d - RX desc=%d - RX free threshold=%d\n",
 				nb_rxq, nb_rxd, rx_conf->rx_free_thresh);

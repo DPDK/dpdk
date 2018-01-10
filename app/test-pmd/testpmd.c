@@ -310,15 +310,10 @@ lcoreid_t latencystats_lcore_id = -1;
  */
 struct rte_eth_rxmode rx_mode = {
 	.max_rx_pkt_len = ETHER_MAX_LEN, /**< Default maximum frame length. */
-	.split_hdr_size = 0,
-	.header_split   = 0, /**< Header Split disabled. */
-	.hw_ip_checksum = 0, /**< IP checksum offload disabled. */
-	.hw_vlan_filter = 1, /**< VLAN filtering enabled. */
-	.hw_vlan_strip  = 1, /**< VLAN strip enabled. */
-	.hw_vlan_extend = 0, /**< Extended VLAN disabled. */
-	.jumbo_frame    = 0, /**< Jumbo Frame Support disabled. */
-	.hw_strip_crc   = 1, /**< CRC stripping by hardware enabled. */
-	.hw_timestamp   = 0, /**< HW timestamp enabled. */
+	.offloads = (DEV_RX_OFFLOAD_VLAN_FILTER |
+		     DEV_RX_OFFLOAD_VLAN_STRIP |
+		     DEV_RX_OFFLOAD_CRC_STRIP),
+	.ignore_offload_bitfield = 1,
 };
 
 struct rte_fdir_conf fdir_conf = {
@@ -1493,6 +1488,8 @@ start_port(portid_t pid)
 				port->need_reconfig_queues = 1;
 				return -1;
 			}
+			/* Apply Rx offloads configuration */
+			port->rx_conf.offloads = port->dev_conf.rxmode.offloads;
 			/* setup rx queues */
 			for (qi = 0; qi < nb_rxq; qi++) {
 				if ((numa_support) &&
@@ -2224,7 +2221,7 @@ init_port_dcb_config(portid_t pid,
 	retval = get_eth_dcb_conf(&port_conf, dcb_mode, num_tcs, pfc_en);
 	if (retval < 0)
 		return retval;
-	port_conf.rxmode.hw_vlan_filter = 1;
+	port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
 
 	/**
 	 * Write the configuration into the device.
@@ -2273,7 +2270,7 @@ init_port_dcb_config(portid_t pid,
 
 	rxtx_port_config(rte_port);
 	/* VLAN filter */
-	rte_port->dev_conf.rxmode.hw_vlan_filter = 1;
+	rte_port->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
 	for (i = 0; i < RTE_DIM(vlan_tags); i++)
 		rx_vft_set(pid, vlan_tags[i], 1);
 

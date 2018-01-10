@@ -537,6 +537,8 @@ launch_args_parse(int argc, char** argv)
 	char **argvopt;
 	int opt_idx;
 	enum { TX, RX };
+	/* Default Rx offloads for all ports. */
+	uint64_t rx_offloads = rx_mode.offloads;
 
 	static struct option lgopts[] = {
 		{ "help",			0, 0, 0 },
@@ -775,7 +777,8 @@ launch_args_parse(int argc, char** argv)
 				if (n >= ETHER_MIN_LEN) {
 					rx_mode.max_rx_pkt_len = (uint32_t) n;
 					if (n > ETHER_MAX_LEN)
-					    rx_mode.jumbo_frame = 1;
+						rx_offloads |=
+							DEV_RX_OFFLOAD_JUMBO_FRAME;
 				} else
 					rte_exit(EXIT_FAILURE,
 						 "Invalid max-pkt-len=%d - should be > %d\n",
@@ -868,34 +871,30 @@ launch_args_parse(int argc, char** argv)
 			}
 #endif
 			if (!strcmp(lgopts[opt_idx].name, "disable-crc-strip"))
-				rx_mode.hw_strip_crc = 0;
+				rx_offloads &= ~DEV_RX_OFFLOAD_CRC_STRIP;
 			if (!strcmp(lgopts[opt_idx].name, "enable-lro"))
-				rx_mode.enable_lro = 1;
+				rx_offloads |= DEV_RX_OFFLOAD_TCP_LRO;
 			if (!strcmp(lgopts[opt_idx].name, "enable-scatter"))
-				rx_mode.enable_scatter = 1;
+				rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
 			if (!strcmp(lgopts[opt_idx].name, "enable-rx-cksum"))
-				rx_mode.hw_ip_checksum = 1;
+				rx_offloads |= DEV_RX_OFFLOAD_CHECKSUM;
 			if (!strcmp(lgopts[opt_idx].name,
 					"enable-rx-timestamp"))
-				rx_mode.hw_timestamp = 1;
-
-			if (!strcmp(lgopts[opt_idx].name, "disable-hw-vlan")) {
-				rx_mode.hw_vlan_filter = 0;
-				rx_mode.hw_vlan_strip  = 0;
-				rx_mode.hw_vlan_extend = 0;
-			}
+				rx_offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+			if (!strcmp(lgopts[opt_idx].name, "disable-hw-vlan"))
+				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN;
 
 			if (!strcmp(lgopts[opt_idx].name,
 					"disable-hw-vlan-filter"))
-				rx_mode.hw_vlan_filter = 0;
+				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
 
 			if (!strcmp(lgopts[opt_idx].name,
 					"disable-hw-vlan-strip"))
-				rx_mode.hw_vlan_strip  = 0;
+				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 
 			if (!strcmp(lgopts[opt_idx].name,
 					"disable-hw-vlan-extend"))
-				rx_mode.hw_vlan_extend = 0;
+				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_EXTEND;
 
 			if (!strcmp(lgopts[opt_idx].name, "enable-drop-en"))
 				rx_drop_en = 1;
@@ -1111,4 +1110,7 @@ launch_args_parse(int argc, char** argv)
 			break;
 		}
 	}
+
+	/* Set offload configuration from command line parameters. */
+	rx_mode.offloads = rx_offloads;
 }
