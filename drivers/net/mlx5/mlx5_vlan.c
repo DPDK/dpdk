@@ -196,7 +196,8 @@ mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	unsigned int i;
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
-		int hw_vlan_strip = !!dev->data->dev_conf.rxmode.hw_vlan_strip;
+		int hw_vlan_strip = !!(dev->data->dev_conf.rxmode.offloads &
+				       DEV_RX_OFFLOAD_VLAN_STRIP);
 
 		if (!priv->config.hw_vlan_strip) {
 			ERROR("VLAN stripping is not supported");

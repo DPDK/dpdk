@@ -553,11 +553,21 @@ dev_configure(struct rte_eth_dev *dev)
 		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
 	uint64_t supp_tx_offloads = mlx5_priv_get_tx_port_offloads(priv);
 	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
+	uint64_t supp_rx_offloads =
+		(mlx5_priv_get_rx_port_offloads(priv) |
+		 mlx5_priv_get_rx_queue_offloads(priv));
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 
 	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
 		ERROR("Some Tx offloads are not supported "
 		      "requested 0x%" PRIx64 " supported 0x%" PRIx64,
 		      tx_offloads, supp_tx_offloads);
+		return ENOTSUP;
+	}
+	if ((rx_offloads & supp_rx_offloads) != rx_offloads) {
+		ERROR("Some Rx offloads are not supported "
+		      "requested 0x%" PRIx64 " supported 0x%" PRIx64,
+		      rx_offloads, supp_rx_offloads);
 		return ENOTSUP;
 	}
 	if (use_app_rss_key &&
@@ -671,15 +681,10 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
 	info->max_mac_addrs = RTE_DIM(priv->mac);
-	info->rx_offload_capa =
-		(config->hw_csum ?
-		 (DEV_RX_OFFLOAD_IPV4_CKSUM |
-		  DEV_RX_OFFLOAD_UDP_CKSUM |
-		  DEV_RX_OFFLOAD_TCP_CKSUM) :
-		 0) |
-		(priv->config.hw_vlan_strip ? DEV_RX_OFFLOAD_VLAN_STRIP : 0) |
-		DEV_RX_OFFLOAD_TIMESTAMP;
-
+	info->rx_queue_offload_capa =
+		mlx5_priv_get_rx_queue_offloads(priv);
+	info->rx_offload_capa = (mlx5_priv_get_rx_port_offloads(priv) |
+				 info->rx_queue_offload_capa);
 	info->tx_offload_capa = mlx5_priv_get_tx_port_offloads(priv);
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);

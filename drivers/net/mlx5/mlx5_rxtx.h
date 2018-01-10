@@ -252,6 +252,7 @@ int mlx5_priv_rxq_ibv_releasable(struct priv *, struct mlx5_rxq_ibv *);
 int mlx5_priv_rxq_ibv_verify(struct priv *);
 struct mlx5_rxq_ctrl *mlx5_priv_rxq_new(struct priv *, uint16_t,
 					uint16_t, unsigned int,
+					const struct rte_eth_rxconf *,
 					struct rte_mempool *);
 struct mlx5_rxq_ctrl *mlx5_priv_rxq_get(struct priv *, uint16_t);
 int mlx5_priv_rxq_release(struct priv *, uint16_t);
@@ -272,6 +273,8 @@ struct mlx5_hrxq *mlx5_priv_hrxq_get(struct priv *, uint8_t *, uint8_t,
 				     uint64_t, uint16_t [], uint16_t);
 int mlx5_priv_hrxq_release(struct priv *, struct mlx5_hrxq *);
 int mlx5_priv_hrxq_ibv_verify(struct priv *);
+uint64_t mlx5_priv_get_rx_port_offloads(struct priv *);
+uint64_t mlx5_priv_get_rx_queue_offloads(struct priv *);
 
 /* mlx5_txq.c */
 

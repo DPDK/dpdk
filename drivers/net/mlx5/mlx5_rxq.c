@@ -213,6 +213,78 @@ mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl)
 }
 
 /**
+ * Returns the per-queue supported offloads.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   Supported Rx offloads.
+ */
+uint64_t
+mlx5_priv_get_rx_queue_offloads(struct priv *priv)
+{
+	struct mlx5_dev_config *config = &priv->config;
+	uint64_t offloads = (DEV_RX_OFFLOAD_SCATTER |
+			     DEV_RX_OFFLOAD_TIMESTAMP |
+			     DEV_RX_OFFLOAD_JUMBO_FRAME);
+
+	if (config->hw_fcs_strip)
+		offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+	if (config->hw_csum)
+		offloads |= (DEV_RX_OFFLOAD_IPV4_CKSUM |
+			     DEV_RX_OFFLOAD_UDP_CKSUM |
+			     DEV_RX_OFFLOAD_TCP_CKSUM);
+	if (config->hw_vlan_strip)
+		offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	return offloads;
+}
+
+
+/**
+ * Returns the per-port supported offloads.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @return
+ *   Supported Rx offloads.
+ */
+uint64_t
+mlx5_priv_get_rx_port_offloads(struct priv *priv __rte_unused)
+{
+	uint64_t offloads = DEV_RX_OFFLOAD_VLAN_FILTER;
+
+	return offloads;
+}
+
+/**
+ * Checks if the per-queue offload configuration is valid.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param offloads
+ *   Per-queue offloads configuration.
+ *
+ * @return
+ *   1 if the configuration is valid, 0 otherwise.
+ */
+static int
+priv_is_rx_queue_offloads_allowed(struct priv *priv, uint64_t offloads)
+{
+	uint64_t port_offloads = priv->dev->data->dev_conf.rxmode.offloads;
+	uint64_t queue_supp_offloads =
+		mlx5_priv_get_rx_queue_offloads(priv);
+	uint64_t port_supp_offloads = mlx5_priv_get_rx_port_offloads(priv);
+
+	if ((offloads & (queue_supp_offloads | port_supp_offloads)) !=
+	    offloads)
+		return 0;
+	if (((port_offloads ^ offloads) & port_supp_offloads))
+		return 0;
+	return 1;
+}
+
+/**
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -241,7 +313,6 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	int ret = 0;
 
-	(void)conf;
 	priv_lock(priv);
 	if (!rte_is_power_of_2(desc)) {
 		desc = 1 << log2above(desc);
@@ -257,6 +328,16 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		priv_unlock(priv);
 		return -EOVERFLOW;
 	}
+	if (!priv_is_rx_queue_offloads_allowed(priv, conf->offloads)) {
+		ret = ENOTSUP;
+		ERROR("%p: Rx queue offloads 0x%" PRIx64 " don't match port "
+		      "offloads 0x%" PRIx64 " or supported offloads 0x%" PRIx64,
+		      (void *)dev, conf->offloads,
+		      dev->data->dev_conf.rxmode.offloads,
+		      (mlx5_priv_get_rx_port_offloads(priv) |
+		       mlx5_priv_get_rx_queue_offloads(priv)));
+		goto out;
+	}
 	if (!mlx5_priv_rxq_releasable(priv, idx)) {
 		ret = EBUSY;
 		ERROR("%p: unable to release queue index %u",
@@ -264,7 +345,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto out;
 	}
 	mlx5_priv_rxq_release(priv, idx);
-	rxq_ctrl = mlx5_priv_rxq_new(priv, idx, desc, socket, mp);
+	rxq_ctrl = mlx5_priv_rxq_new(priv, idx, desc, socket, conf, mp);
 	if (!rxq_ctrl) {
 		ERROR("%p: unable to allocate queue index %u",
 		      (void *)dev, idx);
@@ -875,7 +956,8 @@ mlx5_priv_rxq_ibv_releasable(struct priv *priv, struct mlx5_rxq_ibv *rxq_ibv)
  */
 struct mlx5_rxq_ctrl*
 mlx5_priv_rxq_new(struct priv *priv, uint16_t idx, uint16_t desc,
-		  unsigned int socket, struct rte_mempool *mp)
+		  unsigned int socket, const struct rte_eth_rxconf *conf,
+		  struct rte_mempool *mp)
 {
 	struct rte_eth_dev *dev = priv->dev;
 	struct mlx5_rxq_ctrl *tmpl;
@@ -902,7 +984,7 @@ mlx5_priv_rxq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
 	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		tmpl->rxq.sges_n = 0;
-	} else if (dev->data->dev_conf.rxmode.enable_scatter) {
+	} else if (conf->offloads & DEV_RX_OFFLOAD_SCATTER) {
 		unsigned int size =
 			RTE_PKTMBUF_HEADROOM +
 			dev->data->dev_conf.rxmode.max_rx_pkt_len;
@@ -944,18 +1026,14 @@ mlx5_priv_rxq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	/* Toggle RX checksum offload if hardware supports it. */
-	if (config->hw_csum)
-		tmpl->rxq.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
-	if (config->hw_csum_l2tun)
-		tmpl->rxq.csum_l2tun =
-			!!dev->data->dev_conf.rxmode.hw_ip_checksum;
-	tmpl->rxq.hw_timestamp =
-			!!dev->data->dev_conf.rxmode.hw_timestamp;
+	tmpl->rxq.csum = !!(conf->offloads & DEV_RX_OFFLOAD_CHECKSUM);
+	tmpl->rxq.csum_l2tun = (!!(conf->offloads & DEV_RX_OFFLOAD_CHECKSUM) &&
+				priv->config.hw_csum_l2tun);
+	tmpl->rxq.hw_timestamp = !!(conf->offloads & DEV_RX_OFFLOAD_TIMESTAMP);
 	/* Configure VLAN stripping. */
-	tmpl->rxq.vlan_strip = (config->hw_vlan_strip &&
-			       !!dev->data->dev_conf.rxmode.hw_vlan_strip);
+	tmpl->rxq.vlan_strip = !!(conf->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 	/* By default, FCS (CRC) is stripped by hardware. */
-	if (dev->data->dev_conf.rxmode.hw_strip_crc) {
+	if (conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
 		tmpl->rxq.crc_present = 0;
 	} else if (config->hw_fcs_strip) {
 		tmpl->rxq.crc_present = 1;
