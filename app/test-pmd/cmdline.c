@@ -3655,6 +3655,7 @@ cmd_csum_parsed(void *parsed_result,
 	struct cmd_csum_result *res = parsed_result;
 	int hw = 0;
 	uint64_t csum_offloads = 0;
+	struct rte_eth_dev_info dev_info;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN)) {
 		printf("invalid port %d\n", res->port_id);
@@ -3665,21 +3666,53 @@ cmd_csum_parsed(void *parsed_result,
 		return;
 	}
 
+	rte_eth_dev_info_get(res->port_id, &dev_info);
 	if (!strcmp(res->mode, "set")) {
 
 		if (!strcmp(res->hwsw, "hw"))
 			hw = 1;
 
 		if (!strcmp(res->proto, "ip")) {
-			csum_offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+			if (dev_info.tx_offload_capa &
+						DEV_TX_OFFLOAD_IPV4_CKSUM) {
+				csum_offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+			} else {
+				printf("IP checksum offload is not supported "
+				       "by port %u\n", res->port_id);
+			}
 		} else if (!strcmp(res->proto, "udp")) {
-			csum_offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+			if (dev_info.tx_offload_capa &
+						DEV_TX_OFFLOAD_UDP_CKSUM) {
+				csum_offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+			} else {
+				printf("UDP checksum offload is not supported "
+				       "by port %u\n", res->port_id);
+			}
 		} else if (!strcmp(res->proto, "tcp")) {
-			csum_offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+			if (dev_info.tx_offload_capa &
+						DEV_TX_OFFLOAD_TCP_CKSUM) {
+				csum_offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+			} else {
+				printf("TCP checksum offload is not supported "
+				       "by port %u\n", res->port_id);
+			}
 		} else if (!strcmp(res->proto, "sctp")) {
-			csum_offloads |= DEV_TX_OFFLOAD_SCTP_CKSUM;
+			if (dev_info.tx_offload_capa &
+						DEV_TX_OFFLOAD_SCTP_CKSUM) {
+				csum_offloads |= DEV_TX_OFFLOAD_SCTP_CKSUM;
+			} else {
+				printf("SCTP checksum offload is not supported "
+				       "by port %u\n", res->port_id);
+			}
 		} else if (!strcmp(res->proto, "outer-ip")) {
-			csum_offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+			if (dev_info.tx_offload_capa &
+					DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) {
+				csum_offloads |=
+						DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+			} else {
+				printf("Outer IP checksum offload is not "
+				       "supported by port %u\n", res->port_id);
+			}
 		}
 
 		if (hw) {
@@ -3822,6 +3855,14 @@ cmd_tso_set_parsed(void *parsed_result,
 	if (!strcmp(res->mode, "set"))
 		ports[res->port_id].tso_segsz = res->tso_segsz;
 
+	rte_eth_dev_info_get(res->port_id, &dev_info);
+	if ((ports[res->port_id].tso_segsz != 0) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_TSO) == 0) {
+		printf("Error: TSO is not supported by port %d\n",
+		       res->port_id);
+		return;
+	}
+
 	if (ports[res->port_id].tso_segsz == 0) {
 		ports[res->port_id].dev_conf.txmode.offloads &=
 						~DEV_TX_OFFLOAD_TCP_TSO;
@@ -3898,24 +3939,25 @@ struct cmd_tunnel_tso_set_result {
 	portid_t port_id;
 };
 
-static void
+static struct rte_eth_dev_info
 check_tunnel_tso_nic_support(portid_t port_id)
 {
 	struct rte_eth_dev_info dev_info;
 
 	rte_eth_dev_info_get(port_id, &dev_info);
 	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
-		printf("Warning: TSO enabled but VXLAN TUNNEL TSO not "
-		       "supported by port %d\n", port_id);
+		printf("Warning: VXLAN TUNNEL TSO not supported therefore "
+		       "not enabled for port %d\n", port_id);
 	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GRE_TNL_TSO))
-		printf("Warning: TSO enabled but GRE TUNNEL TSO not "
-			"supported by port %d\n", port_id);
+		printf("Warning: GRE TUNNEL TSO	not supported therefore "
+		       "not enabled for port %d\n", port_id);
 	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPIP_TNL_TSO))
-		printf("Warning: TSO enabled but IPIP TUNNEL TSO not "
-		       "supported by port %d\n", port_id);
+		printf("Warning: IPIP TUNNEL TSO not supported therefore "
+		       "not enabled for port %d\n", port_id);
 	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
-		printf("Warning: TSO enabled but GENEVE TUNNEL TSO not "
-		       "supported by port %d\n", port_id);
+		printf("Warning: GENEVE TUNNEL TSO not supported therefore "
+		       "not enabled for port %d\n", port_id);
+	return dev_info;
 }
 
 static void
@@ -3924,6 +3966,7 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 			  __attribute__((unused)) void *data)
 {
 	struct cmd_tunnel_tso_set_result *res = parsed_result;
+	struct rte_eth_dev_info dev_info;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
@@ -3935,6 +3978,7 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 	if (!strcmp(res->mode, "set"))
 		ports[res->port_id].tunnel_tso_segsz = res->tso_segsz;
 
+	dev_info = check_tunnel_tso_nic_support(res->port_id);
 	if (ports[res->port_id].tunnel_tso_segsz == 0) {
 		ports[res->port_id].dev_conf.txmode.offloads &=
 			~(DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
@@ -3943,11 +3987,13 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 			  DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
 		printf("TSO for tunneled packets is disabled\n");
 	} else {
+		uint64_t tso_offloads = (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+					 DEV_TX_OFFLOAD_GRE_TNL_TSO |
+					 DEV_TX_OFFLOAD_IPIP_TNL_TSO |
+					 DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+
 		ports[res->port_id].dev_conf.txmode.offloads |=
-			(DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			 DEV_TX_OFFLOAD_GRE_TNL_TSO |
-			 DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-			 DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+			(tso_offloads & dev_info.tx_offload_capa);
 		printf("TSO segment size for tunneled packets is %d\n",
 			ports[res->port_id].tunnel_tso_segsz);
 
@@ -3962,7 +4008,6 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 		 * is not necessary for IPv6 tunneled pkts because there's no
 		 * checksum in IP header anymore.
 		 */
-		check_tunnel_tso_nic_support(res->port_id);
 
 		if (!ports[res->port_id].parse_tunnel)
 			printf("Warning: csum parse_tunnel must be set "
@@ -13012,6 +13057,7 @@ cmd_set_macsec_offload_on_parsed(
 	portid_t port_id = res->port_id;
 	int en = (strcmp(res->en_on_off, "on") == 0) ? 1 : 0;
 	int rp = (strcmp(res->rp_on_off, "on") == 0) ? 1 : 0;
+	struct rte_eth_dev_info dev_info;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
@@ -13020,15 +13066,19 @@ cmd_set_macsec_offload_on_parsed(
 		return;
 	}
 
-	ports[port_id].dev_conf.txmode.offloads |= DEV_TX_OFFLOAD_MACSEC_INSERT;
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MACSEC_INSERT) {
 #ifdef RTE_LIBRTE_IXGBE_PMD
-	ret = rte_pmd_ixgbe_macsec_enable(port_id, en, rp);
+		ret = rte_pmd_ixgbe_macsec_enable(port_id, en, rp);
 #endif
+	}
 	RTE_SET_USED(en);
 	RTE_SET_USED(rp);
 
 	switch (ret) {
 	case 0:
+		ports[port_id].dev_conf.txmode.offloads |=
+						DEV_TX_OFFLOAD_MACSEC_INSERT;
 		cmd_reconfig_device_queue(port_id, 1, 1);
 		break;
 	case -ENODEV:
@@ -13100,6 +13150,7 @@ cmd_set_macsec_offload_off_parsed(
 {
 	struct cmd_macsec_offload_off_result *res = parsed_result;
 	int ret = -ENOTSUP;
+	struct rte_eth_dev_info dev_info;
 	portid_t port_id = res->port_id;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
@@ -13109,14 +13160,16 @@ cmd_set_macsec_offload_off_parsed(
 		return;
 	}
 
-	ports[port_id].dev_conf.txmode.offloads &=
-					~DEV_TX_OFFLOAD_MACSEC_INSERT;
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MACSEC_INSERT) {
 #ifdef RTE_LIBRTE_IXGBE_PMD
-	ret = rte_pmd_ixgbe_macsec_disable(port_id);
+		ret = rte_pmd_ixgbe_macsec_disable(port_id);
 #endif
-
+	}
 	switch (ret) {
 	case 0:
+		ports[port_id].dev_conf.txmode.offloads &=
+						~DEV_TX_OFFLOAD_MACSEC_INSERT;
 		cmd_reconfig_device_queue(port_id, 1, 1);
 		break;
 	case -ENODEV:
