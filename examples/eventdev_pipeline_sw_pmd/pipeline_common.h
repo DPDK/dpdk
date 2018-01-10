@@ -70,6 +70,7 @@ struct config_data {
 	unsigned int active_cores;
 	unsigned int num_workers;
 	int64_t num_packets;
+	uint64_t num_mbuf;
 	unsigned int num_fids;
 	int queue_type;
 	int worker_cycles;

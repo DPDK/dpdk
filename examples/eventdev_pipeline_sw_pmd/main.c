@@ -116,6 +116,7 @@ static struct option long_options[] = {
 	{"sched-mask", required_argument, 0, 'e'},
 	{"cq-depth", required_argument, 0, 'c'},
 	{"work-cycles", required_argument, 0, 'W'},
+	{"mempool-size", required_argument, 0, 'm'},
 	{"queue-priority", no_argument, 0, 'P'},
 	{"parallel", no_argument, 0, 'p'},
 	{"ordered", no_argument, 0, 'o'},
@@ -145,6 +146,7 @@ usage(void)
 		"  -p, --parallel               Use parallel scheduling\n"
 		"  -q, --quiet                  Minimize printed output\n"
 		"  -a, --use-atq                Use all type queues\n"
+		"  -m, --mempool-size=N         Dictate the mempool size\n"
 		"  -D, --dump                   Print detailed statistics before exit"
 		"\n";
 	fprintf(stderr, "%s", usage_str);
@@ -165,7 +167,7 @@ parse_app_args(int argc, char **argv)
 	int i;
 
 	for (;;) {
-		c = getopt_long(argc, argv, "r:t:e:c:w:n:f:s:paoPqDW:",
+		c = getopt_long(argc, argv, "r:t:e:c:w:n:f:s:m:paoPqDW:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -224,6 +226,9 @@ parse_app_args(int argc, char **argv)
 			sched_lcore_mask = parse_coremask(optarg);
 			popcnt = __builtin_popcountll(sched_lcore_mask);
 			fdata->sched_single = (popcnt == 1);
+			break;
+		case 'm':
+			cdata.num_mbuf = (uint64_t)atol(optarg);
 			break;
 		default:
 			usage();
@@ -339,8 +344,11 @@ init_ports(unsigned int num_ports)
 	uint8_t portid;
 	unsigned int i;
 
+	if (!cdata.num_mbuf)
+		cdata.num_mbuf = 16384 * num_ports;
+
 	struct rte_mempool *mp = rte_pktmbuf_pool_create("packet_pool",
-			/* mbufs */ 16384 * num_ports,
+			/* mbufs */ cdata.num_mbuf,
 			/* cache_size */ 512,
 			/* priv_size*/ 0,
 			/* data_room_size */ RTE_MBUF_DEFAULT_BUF_SIZE,
