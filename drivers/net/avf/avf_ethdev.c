@@ -64,6 +64,7 @@ static int avf_dev_rss_hash_update(struct rte_eth_dev *dev,
 				   struct rte_eth_rss_conf *rss_conf);
 static int avf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				     struct rte_eth_rss_conf *rss_conf);
+static int avf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static void avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 					 struct ether_addr *mac_addr);
 
@@ -104,6 +105,7 @@ static const struct eth_dev_ops avf_eth_dev_ops = {
 	.reta_query                 = avf_dev_rss_reta_query,
 	.rss_hash_update            = avf_dev_rss_hash_update,
 	.rss_hash_conf_get          = avf_dev_rss_hash_conf_get,
+	.mtu_set                    = avf_dev_mtu_set,
 };
 
 static int
@@ -794,6 +796,34 @@ avf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rte_memcpy(rss_conf->rss_key, vf->rss_key, rss_conf->rss_key_len);
 
 	return 0;
+}
+
+static int
+avf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	uint32_t frame_size = mtu + AVF_ETH_OVERHEAD;
+	int ret = 0;
+
+	if (mtu < ETHER_MIN_MTU || frame_size > AVF_FRAME_SIZE_MAX)
+		return -EINVAL;
+
+	/* mtu setting is forbidden if port is start */
+	if (dev->data->dev_started) {
+		PMD_DRV_LOG(ERR, "port must be stopped before configuration");
+		return -EBUSY;
+	}
+
+	if (frame_size > ETHER_MAX_LEN)
+		dev->data->dev_conf.rxmode.offloads |=
+				DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
+		dev->data->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_JUMBO_FRAME;
+
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+
+	return ret;
 }
 
 static void
