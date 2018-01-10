@@ -25,6 +25,7 @@
 #include "base/avf_type.h"
 
 #include "avf.h"
+#include "avf_rxtx.h"
 
 #define MAX_TRY_TIMES 200
 #define ASQ_DELAY_MS  10
@@ -196,6 +197,48 @@ avf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 	}
 }
 
+int
+avf_enable_vlan_strip(struct avf_adapter *adapter)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct avf_cmd_info args;
+	int ret;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL_OP_ENABLE_VLAN_STRIPPING;
+	args.in_args = NULL;
+	args.in_args_size = 0;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+	ret = avf_execute_vf_cmd(adapter, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to execute command of"
+			    " OP_ENABLE_VLAN_STRIPPING");
+
+	return ret;
+}
+
+int
+avf_disable_vlan_strip(struct avf_adapter *adapter)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct avf_cmd_info args;
+	int ret;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL_OP_DISABLE_VLAN_STRIPPING;
+	args.in_args = NULL;
+	args.in_args_size = 0;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+	ret = avf_execute_vf_cmd(adapter, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to execute command of"
+			    " OP_DISABLE_VLAN_STRIPPING");
+
+	return ret;
+}
+
 #define VIRTCHNL_VERSION_MAJOR_START 1
 #define VIRTCHNL_VERSION_MINOR_START 1
 
@@ -274,8 +317,8 @@ avf_get_vf_resource(struct avf_adapter *adapter)
 	err = avf_execute_vf_cmd(adapter, &args);
 
 	if (err) {
-		PMD_DRV_LOG(ERR, "Failed to execute command of "
-				 "OP_GET_VF_RESOURCE");
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_GET_VF_RESOURCE");
 		return -1;
 	}
 
@@ -301,4 +344,316 @@ avf_get_vf_resource(struct avf_adapter *adapter)
 	vf->vsi.adapter = adapter;
 
 	return 0;
+}
+
+int
+avf_enable_queues(struct avf_adapter *adapter)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_queue_select queue_select;
+	struct avf_cmd_info args;
+	int err;
+
+	memset(&queue_select, 0, sizeof(queue_select));
+	queue_select.vsi_id = vf->vsi_res->vsi_id;
+
+	queue_select.rx_queues = BIT(adapter->eth_dev->data->nb_rx_queues) - 1;
+	queue_select.tx_queues = BIT(adapter->eth_dev->data->nb_tx_queues) - 1;
+
+	args.ops = VIRTCHNL_OP_ENABLE_QUEUES;
+	args.in_args = (u8 *)&queue_select;
+	args.in_args_size = sizeof(queue_select);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_ENABLE_QUEUES");
+		return err;
+	}
+	return 0;
+}
+
+int
+avf_disable_queues(struct avf_adapter *adapter)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_queue_select queue_select;
+	struct avf_cmd_info args;
+	int err;
+
+	memset(&queue_select, 0, sizeof(queue_select));
+	queue_select.vsi_id = vf->vsi_res->vsi_id;
+
+	queue_select.rx_queues = BIT(adapter->eth_dev->data->nb_rx_queues) - 1;
+	queue_select.tx_queues = BIT(adapter->eth_dev->data->nb_tx_queues) - 1;
+
+	args.ops = VIRTCHNL_OP_DISABLE_QUEUES;
+	args.in_args = (u8 *)&queue_select;
+	args.in_args_size = sizeof(queue_select);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_DISABLE_QUEUES");
+		return err;
+	}
+	return 0;
+}
+
+int
+avf_switch_queue(struct avf_adapter *adapter, uint16_t qid,
+		 bool rx, bool on)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_queue_select queue_select;
+	struct avf_cmd_info args;
+	int err;
+
+	memset(&queue_select, 0, sizeof(queue_select));
+	queue_select.vsi_id = vf->vsi_res->vsi_id;
+	if (rx)
+		queue_select.rx_queues |= 1 << qid;
+	else
+		queue_select.tx_queues |= 1 << qid;
+
+	if (on)
+		args.ops = VIRTCHNL_OP_ENABLE_QUEUES;
+	else
+		args.ops = VIRTCHNL_OP_DISABLE_QUEUES;
+	args.in_args = (u8 *)&queue_select;
+	args.in_args_size = sizeof(queue_select);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "Failed to execute command of %s",
+			    on ? "OP_ENABLE_QUEUES" : "OP_DISABLE_QUEUES");
+	return err;
+}
+
+int
+avf_configure_rss_lut(struct avf_adapter *adapter)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_rss_lut *rss_lut;
+	struct avf_cmd_info args;
+	int len, err = 0;
+
+	len = sizeof(*rss_lut) + vf->vf_res->rss_lut_size - 1;
+	rss_lut = rte_zmalloc("rss_lut", len, 0);
+	if (!rss_lut)
+		return -ENOMEM;
+
+	rss_lut->vsi_id = vf->vsi_res->vsi_id;
+	rss_lut->lut_entries = vf->vf_res->rss_lut_size;
+	rte_memcpy(rss_lut->lut, vf->rss_lut, vf->vf_res->rss_lut_size);
+
+	args.ops = VIRTCHNL_OP_CONFIG_RSS_LUT;
+	args.in_args = (u8 *)rss_lut;
+	args.in_args_size = len;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_CONFIG_RSS_LUT");
+
+	rte_free(rss_lut);
+	return err;
+}
+
+int
+avf_configure_rss_key(struct avf_adapter *adapter)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_rss_key *rss_key;
+	struct avf_cmd_info args;
+	int len, err = 0;
+
+	len = sizeof(*rss_key) + vf->vf_res->rss_key_size - 1;
+	rss_key = rte_zmalloc("rss_key", len, 0);
+	if (!rss_key)
+		return -ENOMEM;
+
+	rss_key->vsi_id = vf->vsi_res->vsi_id;
+	rss_key->key_len = vf->vf_res->rss_key_size;
+	rte_memcpy(rss_key->key, vf->rss_key, vf->vf_res->rss_key_size);
+
+	args.ops = VIRTCHNL_OP_CONFIG_RSS_KEY;
+	args.in_args = (u8 *)rss_key;
+	args.in_args_size = len;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_CONFIG_RSS_KEY");
+
+	rte_free(rss_key);
+	return err;
+}
+
+int
+avf_configure_queues(struct avf_adapter *adapter)
+{
+	struct avf_rx_queue **rxq =
+		(struct avf_rx_queue **)adapter->eth_dev->data->rx_queues;
+	struct avf_tx_queue **txq =
+		(struct avf_tx_queue **)adapter->eth_dev->data->tx_queues;
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_vsi_queue_config_info *vc_config;
+	struct virtchnl_queue_pair_info *vc_qp;
+	struct avf_cmd_info args;
+	uint16_t i, size;
+	int err;
+
+	size = sizeof(*vc_config) +
+	       sizeof(vc_config->qpair[0]) * vf->num_queue_pairs;
+	vc_config = rte_zmalloc("cfg_queue", size, 0);
+	if (!vc_config)
+		return -ENOMEM;
+
+	vc_config->vsi_id = vf->vsi_res->vsi_id;
+	vc_config->num_queue_pairs = vf->num_queue_pairs;
+
+	for (i = 0, vc_qp = vc_config->qpair;
+	     i < vf->num_queue_pairs;
+	     i++, vc_qp++) {
+		vc_qp->txq.vsi_id = vf->vsi_res->vsi_id;
+		vc_qp->txq.queue_id = i;
+		/* Virtchnnl configure queues by pairs */
+		if (i < adapter->eth_dev->data->nb_tx_queues) {
+			vc_qp->txq.ring_len = txq[i]->nb_tx_desc;
+			vc_qp->txq.dma_ring_addr = txq[i]->tx_ring_phys_addr;
+		}
+		vc_qp->rxq.vsi_id = vf->vsi_res->vsi_id;
+		vc_qp->rxq.queue_id = i;
+		vc_qp->rxq.max_pkt_size = vf->max_pkt_len;
+		/* Virtchnnl configure queues by pairs */
+		if (i < adapter->eth_dev->data->nb_rx_queues) {
+			vc_qp->rxq.ring_len = rxq[i]->nb_rx_desc;
+			vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;
+			vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
+		}
+	}
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL_OP_CONFIG_VSI_QUEUES;
+	args.in_args = (uint8_t *)vc_config;
+	args.in_args_size = size;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "Failed to execute command of"
+			    " VIRTCHNL_OP_CONFIG_VSI_QUEUES");
+
+	rte_free(vc_config);
+	return err;
+}
+
+int
+avf_config_irq_map(struct avf_adapter *adapter)
+{
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_irq_map_info *map_info;
+	struct virtchnl_vector_map *vecmap;
+	struct avf_cmd_info args;
+	uint32_t vector_id;
+	int len, i, err;
+
+	len = sizeof(struct virtchnl_irq_map_info) +
+	      sizeof(struct virtchnl_vector_map) * vf->nb_msix;
+
+	map_info = rte_zmalloc("map_info", len, 0);
+	if (!map_info)
+		return -ENOMEM;
+
+	map_info->num_vectors = vf->nb_msix;
+	for (i = 0; i < vf->nb_msix; i++) {
+		vecmap = &map_info->vecmap[i];
+		vecmap->vsi_id = vf->vsi_res->vsi_id;
+		vecmap->rxitr_idx = AVF_ITR_INDEX_DEFAULT;
+		vecmap->vector_id = vf->msix_base + i;
+		vecmap->txq_map = 0;
+		vecmap->rxq_map = vf->rxq_map[vf->msix_base + i];
+	}
+
+	args.ops = VIRTCHNL_OP_CONFIG_IRQ_MAP;
+	args.in_args = (u8 *)map_info;
+	args.in_args_size = len;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = AVF_AQ_BUF_SZ;
+	err = avf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command OP_CONFIG_IRQ_MAP");
+
+	rte_free(map_info);
+	return err;
+}
+
+void
+avf_add_del_all_mac_addr(struct avf_adapter *adapter, bool add)
+{
+	struct virtchnl_ether_addr_list *list;
+	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
+	struct ether_addr *addr;
+	struct avf_cmd_info args;
+	int len, err, i, j;
+	int next_begin = 0;
+	int begin = 0;
+
+	do {
+		j = 0;
+		len = sizeof(struct virtchnl_ether_addr_list);
+		for (i = begin; i < AVF_NUM_MACADDR_MAX; i++, next_begin++) {
+			addr = &adapter->eth_dev->data->mac_addrs[i];
+			if (is_zero_ether_addr(addr))
+				continue;
+			len += sizeof(struct virtchnl_ether_addr);
+			if (len >= AVF_AQ_BUF_SZ) {
+				next_begin = i + 1;
+				break;
+			}
+		}
+
+		list = rte_zmalloc("avf_del_mac_buffer", len, 0);
+		if (!list) {
+			PMD_DRV_LOG(ERR, "fail to allocate memory");
+			return;
+		}
+
+		for (i = begin; i < next_begin; i++) {
+			addr = &adapter->eth_dev->data->mac_addrs[i];
+			if (is_zero_ether_addr(addr))
+				continue;
+			rte_memcpy(list->list[j].addr, addr->addr_bytes,
+				   sizeof(addr->addr_bytes));
+			PMD_DRV_LOG(DEBUG, "add/rm mac:%x:%x:%x:%x:%x:%x",
+				    addr->addr_bytes[0], addr->addr_bytes[1],
+				    addr->addr_bytes[2], addr->addr_bytes[3],
+				    addr->addr_bytes[4], addr->addr_bytes[5]);
+			j++;
+		}
+		list->vsi_id = vf->vsi_res->vsi_id;
+		list->num_elements = j;
+		args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR :
+			   VIRTCHNL_OP_DEL_ETH_ADDR;
+		args.in_args = (uint8_t *)list;
+		args.in_args_size = len;
+		args.out_buffer = vf->aq_resp;
+		args.out_size = AVF_AQ_BUF_SZ;
+		err = avf_execute_vf_cmd(adapter, &args);
+		if (err)
+			PMD_DRV_LOG(ERR, "fail to execute command %s",
+				    add ? "OP_ADD_ETHER_ADDRESS" :
+				    "OP_DEL_ETHER_ADDRESS");
+		rte_free(list);
+		begin = next_begin;
+	} while (begin < AVF_NUM_MACADDR_MAX);
 }

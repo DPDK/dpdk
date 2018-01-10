@@ -36,6 +36,13 @@
 	VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | \
 	VIRTCHNL_VF_OFFLOAD_RX_POLLING)
 
+#define AVF_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_FRAG_IPV4 |         \
+	ETH_RSS_NONFRAG_IPV4_TCP |  \
+	ETH_RSS_NONFRAG_IPV4_UDP |  \
+	ETH_RSS_NONFRAG_IPV4_SCTP | \
+	ETH_RSS_NONFRAG_IPV4_OTHER)
+
 #define AVF_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
 #define AVF_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
 
@@ -181,4 +188,15 @@ _atomic_set_cmd(struct avf_info *vf, enum virtchnl_ops ops)
 int avf_check_api_version(struct avf_adapter *adapter);
 int avf_get_vf_resource(struct avf_adapter *adapter);
 void avf_handle_virtchnl_msg(struct rte_eth_dev *dev);
+int avf_enable_vlan_strip(struct avf_adapter *adapter);
+int avf_disable_vlan_strip(struct avf_adapter *adapter);
+int avf_switch_queue(struct avf_adapter *adapter, uint16_t qid,
+		     bool rx, bool on);
+int avf_enable_queues(struct avf_adapter *adapter);
+int avf_disable_queues(struct avf_adapter *adapter);
+int avf_configure_rss_lut(struct avf_adapter *adapter);
+int avf_configure_rss_key(struct avf_adapter *adapter);
+int avf_configure_queues(struct avf_adapter *adapter);
+int avf_config_irq_map(struct avf_adapter *adapter);
+void avf_add_del_all_mac_addr(struct avf_adapter *adapter, bool add);
 #endif /* _AVF_ETHDEV_H_ */
