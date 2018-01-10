@@ -290,6 +290,17 @@ state during application initialization:
   In case the application is configured to use lesser number of queues than
   configured above, it might result in packet loss (because of distribution).
 
+- ``DPAA_PUSH_QUEUES_NUMBER`` (default 4)
+
+  This defines the number of High performance queues to be used for ethdev Rx.
+  These queues use one private HW portal per queue configured, so they are
+  limited in the system. The first configured ethdev queues will be
+  automatically be assigned from the these high perf PUSH queues. Any queue
+  configuration beyond that will be standard Rx queues. The application can
+  choose to change their number if HW portals are limited.
+  The valid values are from '0' to '4'. The valuse shall be set to '0' if the
+  application want to use eventdev with DPAA device.
+
 
 Driver compilation and testing
 ------------------------------

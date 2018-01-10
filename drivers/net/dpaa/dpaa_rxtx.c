@@ -394,6 +394,37 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	return mbuf;
 }
 
+enum qman_cb_dqrr_result dpaa_rx_cb(void *event __always_unused,
+				    struct qman_portal *qm __always_unused,
+				    struct qman_fq *fq,
+				    const struct qm_dqrr_entry *dqrr,
+				    void **bufs)
+{
+	const struct qm_fd *fd = &dqrr->fd;
+
+	*bufs = dpaa_eth_fd_to_mbuf(fd,
+			((struct dpaa_if *)fq->dpaa_intf)->ifid);
+	return qman_cb_dqrr_consume;
+}
+
+static uint16_t
+dpaa_eth_queue_portal_rx(struct qman_fq *fq,
+			 struct rte_mbuf **bufs,
+			 uint16_t nb_bufs)
+{
+	int ret;
+
+	if (unlikely(fq->qp == NULL)) {
+		ret = rte_dpaa_portal_fq_init((void *)0, fq);
+		if (ret) {
+			DPAA_PMD_ERR("Failure in affining portal %d", ret);
+			return 0;
+		}
+	}
+
+	return qman_portal_poll_rx(nb_bufs, (void **)bufs, fq->qp);
+}
+
 uint16_t dpaa_eth_queue_rx(void *q,
 			   struct rte_mbuf **bufs,
 			   uint16_t nb_bufs)
@@ -402,6 +433,9 @@ uint16_t dpaa_eth_queue_rx(void *q,
 	struct qm_dqrr_entry *dq;
 	uint32_t num_rx = 0, ifid = ((struct dpaa_if *)fq->dpaa_intf)->ifid;
 	int ret;
+
+	if (likely(fq->is_static))
+		return dpaa_eth_queue_portal_rx(fq, bufs, nb_bufs);
 
 	ret = rte_dpaa_portal_init((void *)0);
 	if (ret) {
