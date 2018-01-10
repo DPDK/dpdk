@@ -61,6 +61,13 @@ New Features
   1, 2, 4, 8 or 16. If no such parameter is configured, the number of queues
   per VF is 4 by default.
 
+* **Added the i40e ethernet driver to support RSS with flow API.**
+
+  Rte_flow actually defined to include RSS, but till now, RSS is out of
+  rte_flow. This patch is to support i40e NIC with existing RSS
+  configuration using rte_flow API.It also enable queue region configuration
+  using flow API for i40e.
+
 * **Added NVGRE and UDP tunnels support in Solarflare network PMD.**
 
   Added support for NVGRE, VXLAN and GENEVE tunnels.

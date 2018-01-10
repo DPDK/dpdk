@@ -1313,6 +1313,10 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	/* initialize queue region configuration */
 	i40e_init_queue_region_conf(dev);
 
+	/* initialize rss configuration from rte_flow */
+	memset(&pf->rss_info, 0,
+		sizeof(struct i40e_rte_flow_rss_conf));
+
 	return 0;
 
 err_init_fdir_filter_list:
@@ -11123,12 +11127,23 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 	}
 }
 
+/* Restore rss filter */
+static inline void
+i40e_rss_filter_restore(struct i40e_pf *pf)
+{
+	struct i40e_rte_flow_rss_conf *conf =
+					&pf->rss_info;
+	if (conf->num)
+		i40e_config_rss_filter(pf, conf, TRUE);
+}
+
 static void
 i40e_filter_restore(struct i40e_pf *pf)
 {
 	i40e_ethertype_filter_restore(pf);
 	i40e_tunnel_filter_restore(pf);
 	i40e_fdir_filter_restore(pf);
+	i40e_rss_filter_restore(pf);
 }
 
 static bool
@@ -11581,6 +11596,82 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 	ret = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 			&filter_replace_buf);
 	return ret;
+}
+
+int
+i40e_config_rss_filter(struct i40e_pf *pf,
+		struct i40e_rte_flow_rss_conf *conf, bool add)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint32_t i, lut = 0;
+	uint16_t j, num;
+	struct rte_eth_rss_conf rss_conf = conf->rss_conf;
+	struct i40e_rte_flow_rss_conf *rss_info = &pf->rss_info;
+
+	if (!add) {
+		if (memcmp(conf, rss_info,
+			sizeof(struct i40e_rte_flow_rss_conf)) == 0) {
+			i40e_pf_disable_rss(pf);
+			memset(rss_info, 0,
+				sizeof(struct i40e_rte_flow_rss_conf));
+			return 0;
+		}
+		return -EINVAL;
+	}
+
+	if (rss_info->num)
+		return -EINVAL;
+
+	/* If both VMDQ and RSS enabled, not all of PF queues are configured.
+	 * It's necessary to calculate the actual PF queues that are configured.
+	 */
+	if (pf->dev_data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG)
+		num = i40e_pf_calc_configured_queues_num(pf);
+	else
+		num = pf->dev_data->nb_rx_queues;
+
+	num = RTE_MIN(num, conf->num);
+	PMD_DRV_LOG(INFO, "Max of contiguous %u PF queues are configured",
+			num);
+
+	if (num == 0) {
+		PMD_DRV_LOG(ERR, "No PF queues are configured to enable RSS");
+		return -ENOTSUP;
+	}
+
+	/* Fill in redirection table */
+	for (i = 0, j = 0; i < hw->func_caps.rss_table_size; i++, j++) {
+		if (j == num)
+			j = 0;
+		lut = (lut << 8) | (conf->queue[j] & ((0x1 <<
+			hw->func_caps.rss_table_entry_width) - 1));
+		if ((i & 3) == 3)
+			I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i >> 2), lut);
+	}
+
+	if ((rss_conf.rss_hf & pf->adapter->flow_types_mask) == 0) {
+		i40e_pf_disable_rss(pf);
+		return 0;
+	}
+	if (rss_conf.rss_key == NULL || rss_conf.rss_key_len <
+		(I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t)) {
+		/* Random default keys */
+		static uint32_t rss_key_default[] = {0x6b793944,
+			0x23504cb5, 0x5bea75b6, 0x309f4f12, 0x3dc0a2b8,
+			0x024ddcdf, 0x339b8ca0, 0x4c4af64a, 0x34fac605,
+			0x55d85839, 0x3a58997d, 0x2ec938e1, 0x66031581};
+
+		rss_conf.rss_key = (uint8_t *)rss_key_default;
+		rss_conf.rss_key_len = (I40E_PFQF_HKEY_MAX_INDEX + 1) *
+							sizeof(uint32_t);
+	}
+
+	return i40e_hw_rss_hash_set(pf, &rss_conf);
+
+	rte_memcpy(rss_info,
+		conf, sizeof(struct i40e_rte_flow_rss_conf));
+
+	return 0;
 }
 
 RTE_INIT(i40e_init_log);

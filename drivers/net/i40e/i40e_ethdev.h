@@ -867,6 +867,13 @@ struct i40e_customized_pctype {
 	bool valid;   /* Check if it's valid */
 };
 
+struct i40e_rte_flow_rss_conf {
+	struct rte_eth_rss_conf rss_conf; /**< RSS parameters. */
+	uint16_t queue_region_conf; /**< Queue region config flag */
+	uint16_t num; /**< Number of entries in queue[]. */
+	uint16_t queue[I40E_MAX_Q_PER_TC]; /**< Queues indices to use. */
+};
+
 /*
  * Structure to store private data specific for PF instance.
  */
@@ -921,6 +928,7 @@ struct i40e_pf {
 	struct i40e_fdir_info fdir; /* flow director info */
 	struct i40e_ethertype_rule ethertype; /* Ethertype filter rule */
 	struct i40e_tunnel_rule tunnel; /* Tunnel filter rule */
+	struct i40e_rte_flow_rss_conf rss_info; /* rss info */
 	struct i40e_queue_regions queue_region; /* queue region info */
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
 	struct i40e_mirror_rule_list mirror_list;
@@ -1047,6 +1055,7 @@ union i40e_filter_t {
 	struct i40e_fdir_filter_conf fdir_filter;
 	struct rte_eth_tunnel_filter_conf tunnel_filter;
 	struct i40e_tunnel_filter_conf consistent_tunnel_filter;
+	struct i40e_rte_flow_rss_conf rss_conf;
 };
 
 typedef int (*parse_filter_t)(struct rte_eth_dev *dev,
@@ -1177,6 +1186,8 @@ void i40e_init_queue_region_conf(struct rte_eth_dev *dev);
 void i40e_flex_payload_reg_set_default(struct i40e_hw *hw);
 int i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len);
 int i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size);
+int i40e_config_rss_filter(struct i40e_pf *pf,
+		struct i40e_rte_flow_rss_conf *conf, bool add);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)
