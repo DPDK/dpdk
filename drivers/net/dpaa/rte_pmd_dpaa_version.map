@@ -2,3 +2,11 @@ DPDK_17.11 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_pmd_dpaa_set_tx_loopback;
+
+	local: *;
+} DPDK_17.11;
