@@ -694,7 +694,6 @@ pci_ioport_map(struct rte_pci_device *dev, int bar __rte_unused,
 	if (!found)
 		return -1;
 
-	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 	p->base = start;
 	RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%x\n", start);
 
