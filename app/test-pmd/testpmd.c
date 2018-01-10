@@ -311,7 +311,9 @@ struct rte_eth_rxmode rx_mode = {
 	.ignore_offload_bitfield = 1,
 };
 
-struct rte_eth_txmode tx_mode;
+struct rte_eth_txmode tx_mode = {
+	.offloads = DEV_TX_OFFLOAD_MBUF_FAST_FREE,
+};
 
 struct rte_fdir_conf fdir_conf = {
 	.mode = RTE_FDIR_MODE_NONE,
@@ -577,6 +579,10 @@ init_config(void)
 		port->dev_conf.txmode = tx_mode;
 		port->dev_conf.rxmode = rx_mode;
 		rte_eth_dev_info_get(pid, &port->dev_info);
+		if (!(port->dev_info.tx_offload_capa &
+		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
+			port->dev_conf.txmode.offloads &=
+				~DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 		if (numa_support) {
 			if (port_numa[pid] != NUMA_NO_CONFIG)
