@@ -4246,10 +4246,17 @@ s32 ixgbe_check_mac_link_generic(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		break;
 	case IXGBE_LINKS_SPEED_10_X550EM_A:
 		*speed = IXGBE_LINK_SPEED_UNKNOWN;
+#ifdef PREBOOT_SUPPORT
 		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
-		    hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L) {
+		    hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L ||
+		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII ||
+		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII_L)
 			*speed = IXGBE_LINK_SPEED_10_FULL;
-		}
+#else
+		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
+		    hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)
+			*speed = IXGBE_LINK_SPEED_10_FULL;
+#endif /* PREBOOT_SUPPORT */
 		break;
 	default:
 		*speed = IXGBE_LINK_SPEED_UNKNOWN;
@@ -4669,10 +4676,10 @@ s32 ixgbe_set_fw_drv_ver_generic(struct ixgbe_hw *hw, u8 maj, u8 min,
 	fw_cmd.ver_build = build;
 	fw_cmd.ver_sub = sub;
 	fw_cmd.hdr.checksum = 0;
-	fw_cmd.hdr.checksum = ixgbe_calculate_checksum((u8 *)&fw_cmd,
-				(FW_CEM_HDR_LEN + fw_cmd.hdr.buf_len));
 	fw_cmd.pad = 0;
 	fw_cmd.pad2 = 0;
+	fw_cmd.hdr.checksum = ixgbe_calculate_checksum((u8 *)&fw_cmd,
+				(FW_CEM_HDR_LEN + fw_cmd.hdr.buf_len));
 
 	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
 		ret_val = ixgbe_host_interface_command(hw, (u32 *)&fw_cmd,
@@ -5165,8 +5172,8 @@ bool ixgbe_mng_present(struct ixgbe_hw *hw)
 		return false;
 
 	fwsm = IXGBE_READ_REG(hw, IXGBE_FWSM_BY_MAC(hw));
-	fwsm &= IXGBE_FWSM_MODE_MASK;
-	return fwsm == IXGBE_FWSM_FW_MODE_PT;
+
+	return !!(fwsm & IXGBE_FWSM_FW_MODE_PT);
 }
 
 /**

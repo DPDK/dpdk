@@ -336,98 +336,6 @@ STATIC void ixgbe_setup_mux_ctl(struct ixgbe_hw *hw)
 }
 
 /**
- * ixgbe_read_phy_reg_mdi_22 - Read from a clause 22 PHY register without lock
- * @hw: pointer to hardware structure
- * @reg_addr: 32 bit address of PHY register to read
- * @dev_type: always unused
- * @phy_data: Pointer to read data from PHY register
- */
-STATIC s32 ixgbe_read_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
-				     u32 dev_type, u16 *phy_data)
-{
-	u32 i, data, command;
-	UNREFERENCED_1PARAMETER(dev_type);
-
-	/* Setup and write the read command */
-	command = (reg_addr << IXGBE_MSCA_DEV_TYPE_SHIFT) |
-		  (hw->phy.addr << IXGBE_MSCA_PHY_ADDR_SHIFT) |
-		  IXGBE_MSCA_OLD_PROTOCOL | IXGBE_MSCA_READ_AUTOINC |
-		  IXGBE_MSCA_MDI_COMMAND;
-
-	IXGBE_WRITE_REG(hw, IXGBE_MSCA, command);
-
-	/* Check every 10 usec to see if the access completed.
-	 * The MDI Command bit will clear when the operation is
-	 * complete
-	 */
-	for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
-		usec_delay(10);
-
-		command = IXGBE_READ_REG(hw, IXGBE_MSCA);
-		if (!(command & IXGBE_MSCA_MDI_COMMAND))
-			break;
-	}
-
-	if (command & IXGBE_MSCA_MDI_COMMAND) {
-		ERROR_REPORT1(IXGBE_ERROR_POLLING,
-			      "PHY read command did not complete.\n");
-		return IXGBE_ERR_PHY;
-	}
-
-	/* Read operation is complete.  Get the data from MSRWD */
-	data = IXGBE_READ_REG(hw, IXGBE_MSRWD);
-	data >>= IXGBE_MSRWD_READ_DATA_SHIFT;
-	*phy_data = (u16)data;
-
-	return IXGBE_SUCCESS;
-}
-
-/**
- * ixgbe_write_phy_reg_mdi_22 - Write to a clause 22 PHY register without lock
- * @hw: pointer to hardware structure
- * @reg_addr: 32 bit PHY register to write
- * @dev_type: always unused
- * @phy_data: Data to write to the PHY register
- */
-STATIC s32 ixgbe_write_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
-				      u32 dev_type, u16 phy_data)
-{
-	u32 i, command;
-	UNREFERENCED_1PARAMETER(dev_type);
-
-	/* Put the data in the MDI single read and write data register*/
-	IXGBE_WRITE_REG(hw, IXGBE_MSRWD, (u32)phy_data);
-
-	/* Setup and write the write command */
-	command = (reg_addr << IXGBE_MSCA_DEV_TYPE_SHIFT) |
-		  (hw->phy.addr << IXGBE_MSCA_PHY_ADDR_SHIFT) |
-		  IXGBE_MSCA_OLD_PROTOCOL | IXGBE_MSCA_WRITE |
-		  IXGBE_MSCA_MDI_COMMAND;
-
-	IXGBE_WRITE_REG(hw, IXGBE_MSCA, command);
-
-	/* Check every 10 usec to see if the access completed.
-	 * The MDI Command bit will clear when the operation is
-	 * complete
-	 */
-	for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
-		usec_delay(10);
-
-		command = IXGBE_READ_REG(hw, IXGBE_MSCA);
-		if (!(command & IXGBE_MSCA_MDI_COMMAND))
-			break;
-	}
-
-	if (command & IXGBE_MSCA_MDI_COMMAND) {
-		ERROR_REPORT1(IXGBE_ERROR_POLLING,
-			      "PHY write cmd didn't complete\n");
-		return IXGBE_ERR_PHY;
-	}
-
-	return IXGBE_SUCCESS;
-}
-
-/**
  * ixgbe_identify_phy_x550em - Get PHY type based on device id
  * @hw: pointer to hardware structure
  *
@@ -467,14 +375,10 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 		return ixgbe_identify_phy_generic(hw);
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
 		hw->phy.type = ixgbe_phy_ext_1g_t;
-		hw->phy.ops.read_reg = NULL;
-		hw->phy.ops.write_reg = NULL;
 		break;
 	case IXGBE_DEV_ID_X550EM_A_1G_T:
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 		hw->phy.type = ixgbe_phy_fw;
-		hw->phy.ops.read_reg = NULL;
-		hw->phy.ops.write_reg = NULL;
 		if (hw->bus.lan_id)
 			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
 		else
@@ -854,7 +758,7 @@ static s32 ixgbe_fc_autoneg_fw(struct ixgbe_hw *hw)
 
 /**
  * ixgbe_setup_eee_fw - Enable/disable EEE support
- * @hw: pointer to the HW structure
+ * @hw: pointer to the HW structurewrite_reg_mdi
  * @enable_eee: boolean flag to enable EEE
  *
  * Enable/disable EEE based on enable_eee flag.
@@ -1764,9 +1668,12 @@ STATIC s32 ixgbe_restart_an_internal_phy_x550em(struct ixgbe_hw *hw)
 	return status;
 }
 
+#ifndef PREBOOT_SUPPORT
 /**
  * ixgbe_setup_sgmii - Set up link for sgmii
  * @hw: pointer to hardware structure
+ * @speed: new link speed
+ * @autoneg_wait: true when waiting for completion is needed
  */
 STATIC s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 			     bool autoneg_wait)
@@ -1831,9 +1738,12 @@ STATIC s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 	return hw->phy.ops.setup_link_speed(hw, speed, autoneg_wait);
 }
 
+#endif /* PREBOOT_SUPPORT */
 /**
- * ixgbe_setup_sgmii_fw - Set up link for sgmii with firmware-controlled PHYs
+ * ixgbe_setup_sgmii_fw - Set up link for internal PHY SGMII auto-negotiation
  * @hw: pointer to hardware structure
+ * @speed: new link speed
+ * @autoneg_wait: true when waiting for completion is needed
  */
 STATIC s32 ixgbe_setup_sgmii_fw(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 				bool autoneg_wait)
@@ -1953,7 +1863,11 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 	case ixgbe_media_type_backplane:
 		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII ||
 		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII_L)
+#ifdef PREBOOT_SUPPORT
+			mac->ops.setup_link = ixgbe_setup_sgmii_fw;
+#else
 			mac->ops.setup_link = ixgbe_setup_sgmii;
+#endif /* PREBOOT_SUPPORT */
 		break;
 	default:
 		break;
@@ -2003,8 +1917,18 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 	} else {
 		switch (hw->phy.type) {
 		case ixgbe_phy_ext_1g_t:
-		case ixgbe_phy_sgmii:
+#ifdef PREBOOT_SUPPORT
 			*speed = IXGBE_LINK_SPEED_1GB_FULL;
+			break;
+#endif /* PREBOOT_SUPPORT */
+		case ixgbe_phy_sgmii:
+#ifdef PREBOOT_SUPPORT
+			*speed = IXGBE_LINK_SPEED_1GB_FULL |
+				 IXGBE_LINK_SPEED_100_FULL |
+				 IXGBE_LINK_SPEED_10_FULL;
+#else
+			*speed = IXGBE_LINK_SPEED_1GB_FULL;
+#endif /* PREBOOT_SUPPORT */
 			break;
 		case ixgbe_phy_x550em_kr:
 			if (hw->mac.type == ixgbe_mac_X550EM_a) {
@@ -2376,10 +2300,10 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_X550EM_A_1G_T:
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
-		phy->ops.read_reg_mdi = ixgbe_read_phy_reg_mdi_22;
-		phy->ops.write_reg_mdi = ixgbe_write_phy_reg_mdi_22;
-		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
-		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
+		phy->ops.read_reg_mdi = NULL;
+		phy->ops.write_reg_mdi = NULL;
+		hw->phy.ops.read_reg = NULL;
+		hw->phy.ops.write_reg = NULL;
 		phy->ops.check_overtemp = ixgbe_check_overtemp_fw;
 		if (hw->bus.lan_id)
 			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
@@ -2400,6 +2324,9 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		/* set up for CS4227 usage */
 		hw->phy.phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		break;
+	case IXGBE_DEV_ID_X550EM_X_1G_T:
+		phy->ops.read_reg_mdi = NULL;
+		phy->ops.write_reg_mdi = NULL;
 	default:
 		break;
 	}
@@ -2536,7 +2463,8 @@ s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 		DEBUGOUT1("Failed to initialize PHY ops, STATUS = %d\n",
 			  status);
 
-	if (status == IXGBE_ERR_SFP_NOT_SUPPORTED) {
+	if (status == IXGBE_ERR_SFP_NOT_SUPPORTED ||
+	    status == IXGBE_ERR_PHY_ADDR_INVALID) {
 		DEBUGOUT("Returning from reset HW due to PHY init failure\n");
 		return status;
 	}
@@ -3211,6 +3139,8 @@ s32 ixgbe_read_ee_hostif_X550(struct ixgbe_hw *hw, u16 offset, u16 *data)
 	buffer.address = IXGBE_CPU_TO_BE32(offset * 2);
 	/* one word */
 	buffer.length = IXGBE_CPU_TO_BE16(sizeof(u16));
+	buffer.pad2 = 0;
+	buffer.pad3 = 0;
 
 	status = hw->mac.ops.acquire_swfw_sync(hw, mask);
 	if (status)
@@ -3269,6 +3199,8 @@ s32 ixgbe_read_ee_hostif_buffer_X550(struct ixgbe_hw *hw,
 		/* convert offset from words to bytes */
 		buffer.address = IXGBE_CPU_TO_BE32((offset + current_word) * 2);
 		buffer.length = IXGBE_CPU_TO_BE16(words_to_read * 2);
+		buffer.pad2 = 0;
+		buffer.pad3 = 0;
 
 		status = ixgbe_hic_unlocked(hw, (u32 *)&buffer, sizeof(buffer),
 					    IXGBE_HI_COMMAND_TIMEOUT);
@@ -3740,7 +3672,13 @@ u64 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 			physical_layer |= IXGBE_PHYSICAL_LAYER_10BASE_T;
 		break;
 	case ixgbe_phy_sgmii:
+#ifdef PREBOOT_SUPPORT
+		physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_KX |
+				 IXGBE_PHYSICAL_LAYER_100BASE_TX |
+				 IXGBE_PHYSICAL_LAYER_10BASE_T;
+#else
 		physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_KX;
+#endif /* PREBOOT_SUPPORT */
 		break;
 	case ixgbe_phy_ext_1g_t:
 		physical_layer |= IXGBE_PHYSICAL_LAYER_1000BASE_T;
