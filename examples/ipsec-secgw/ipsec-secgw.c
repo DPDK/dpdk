@@ -422,7 +422,8 @@ inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
 		}
 
 		sa_idx = ip->res[i] & PROTECT_MASK;
-		if (sa_idx == 0 || !inbound_sa_check(sa, m, sa_idx)) {
+		if (sa_idx >= IPSEC_SA_MAX_ENTRIES ||
+				!inbound_sa_check(sa, m, sa_idx)) {
 			rte_pktmbuf_free(m);
 			continue;
 		}
@@ -487,9 +488,9 @@ outbound_sp(struct sp_ctx *sp, struct traffic_type *ip,
 	for (i = 0; i < ip->num; i++) {
 		m = ip->pkts[i];
 		sa_idx = ip->res[i] & PROTECT_MASK;
-		if ((ip->res[i] == 0) || (ip->res[i] & DISCARD))
+		if (ip->res[i] & DISCARD)
 			rte_pktmbuf_free(m);
-		else if (sa_idx != 0) {
+		else if (sa_idx < IPSEC_SA_MAX_ENTRIES) {
 			ipsec->res[ipsec->num] = sa_idx;
 			ipsec->pkts[ipsec->num++] = m;
 		} else /* BYPASS */

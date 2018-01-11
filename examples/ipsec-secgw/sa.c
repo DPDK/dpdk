@@ -240,6 +240,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	APP_CHECK_TOKEN_IS_NUM(tokens, 1, status);
 	if (status->status < 0)
 		return;
+	if (atoi(tokens[1]) == INVALID_SPI)
+		return;
 	rule->spi = atoi(tokens[1]);
 
 	for (ti = 2; ti < n_tokens; ti++) {
