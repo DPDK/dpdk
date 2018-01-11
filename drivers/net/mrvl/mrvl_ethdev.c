@@ -150,22 +150,17 @@ struct mrvl_txq {
 	int queue_id;
 	int port_id;
 	uint64_t bytes_sent;
+	struct mrvl_shadow_txq shadow_txqs[RTE_MAX_LCORE];
 };
-
-/*
- * Every tx queue should have dedicated shadow tx queue.
- *
- * Ports assigned by DPDK might not start at zero or be continuous so
- * as a workaround define shadow queues for each possible port so that
- * we eventually fit somewhere.
- */
-struct mrvl_shadow_txq shadow_txqs[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
 static int mrvl_lcore_first;
 static int mrvl_lcore_last;
 static int mrvl_dev_num;
 
 static int mrvl_fill_bpool(struct mrvl_rxq *rxq, int num);
+static inline void mrvl_free_sent_buffers(struct pp2_ppio *ppio,
+			struct pp2_hif *hif, unsigned int core_id,
+			struct mrvl_shadow_txq *sq, int qid, int force);
 
 static inline int
 mrvl_get_bpool_size(int pp2_id, int pool_id)
@@ -594,21 +589,32 @@ mrvl_flush_rx_queues(struct rte_eth_dev *dev)
 static void
 mrvl_flush_tx_shadow_queues(struct rte_eth_dev *dev)
 {
-	int i;
+	int i, j;
+	struct mrvl_txq *txq;
 
 	RTE_LOG(INFO, PMD, "Flushing tx shadow queues\n");
-	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		struct mrvl_shadow_txq *sq =
-			&shadow_txqs[dev->data->port_id][i];
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = (struct mrvl_txq *)dev->data->tx_queues[i];
 
-		while (sq->tail != sq->head) {
-			uint64_t addr = cookie_addr_high |
+		for (j = 0; j < RTE_MAX_LCORE; j++) {
+			struct mrvl_shadow_txq *sq;
+
+			if (!hifs[j])
+				continue;
+
+			sq = &txq->shadow_txqs[j];
+			mrvl_free_sent_buffers(txq->priv->ppio,
+				hifs[j], j, sq, txq->queue_id, 1);
+			while (sq->tail != sq->head) {
+				uint64_t addr = cookie_addr_high |
 					sq->ent[sq->tail].buff.cookie;
-			rte_pktmbuf_free((struct rte_mbuf *)addr);
-			sq->tail = (sq->tail + 1) & MRVL_PP2_TX_SHADOWQ_MASK;
+				rte_pktmbuf_free(
+					(struct rte_mbuf *)addr);
+				sq->tail = (sq->tail + 1) &
+					    MRVL_PP2_TX_SHADOWQ_MASK;
+			}
+			memset(sq, 0, sizeof(*sq));
 		}
-
-		memset(sq, 0, sizeof(*sq));
 	}
 }
 
@@ -1959,7 +1965,7 @@ static uint16_t
 mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct mrvl_txq *q = txq;
-	struct mrvl_shadow_txq *sq = &shadow_txqs[q->port_id][rte_lcore_id()];
+	struct mrvl_shadow_txq *sq;
 	struct pp2_hif *hif;
 	struct pp2_ppio_desc descs[nb_pkts];
 	unsigned int core_id = rte_lcore_id();
@@ -1968,6 +1974,7 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint64_t addr;
 
 	hif = mrvl_get_hif(q->priv, core_id);
+	sq = &q->shadow_txqs[core_id];
 
 	if (unlikely(!q->priv->ppio || !hif))
 		return 0;
