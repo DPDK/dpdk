@@ -453,6 +453,11 @@ CONFIG_RTE_LIBRTE_BBDEV=y
 CONFIG_RTE_BBDEV_MAX_DEVS=128
 
 #
+# Compile PMD for NULL bbdev device
+#
+CONFIG_RTE_LIBRTE_PMD_BBDEV_NULL=y
+
+#
 # Compile generic crypto device library
 #
 CONFIG_RTE_LIBRTE_CRYPTODEV=y

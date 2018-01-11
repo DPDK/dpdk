@@ -268,6 +268,8 @@ Baseband API - EXPERIMENTAL
 M: Amr Mokhtar <amr.mokhtar@intel.com>
 F: lib/librte_bbdev/
 F: doc/guides/prog_guide/bbdev.rst
+F: drivers/bbdev/
+F: doc/guides/bbdevs/
 
 Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
