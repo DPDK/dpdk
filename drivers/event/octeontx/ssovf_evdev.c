@@ -10,6 +10,7 @@
 #include <rte_eal.h>
 #include <rte_ethdev.h>
 #include <rte_event_eth_rx_adapter.h>
+#include <rte_kvargs.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
@@ -580,6 +581,15 @@ ssovf_close(struct rte_eventdev *dev)
 	return 0;
 }
 
+static int
+ssovf_selftest(const char *key __rte_unused, const char *value,
+		void *opaque)
+{
+	int *flag = opaque;
+	*flag = !!atoi(value);
+	return 0;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -617,13 +627,42 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 	struct rte_eventdev *eventdev;
 	static int ssovf_init_once;
 	const char *name;
+	const char *params;
 	int ret;
+	int selftest = 0;
+
+	static const char *const args[] = {
+		SSOVF_SELFTEST_ARG,
+		NULL
+	};
 
 	name = rte_vdev_device_name(vdev);
 	/* More than one instance is not supported */
 	if (ssovf_init_once) {
 		ssovf_log_err("Request to create >1 %s instance", name);
 		return -EINVAL;
+	}
+
+	params = rte_vdev_device_args(vdev);
+	if (params != NULL && params[0] != '\0') {
+		struct rte_kvargs *kvlist = rte_kvargs_parse(params, args);
+
+		if (!kvlist) {
+			ssovf_log_info(
+				"Ignoring unsupported params supplied '%s'",
+				name);
+		} else {
+			int ret = rte_kvargs_process(kvlist,
+					SSOVF_SELFTEST_ARG,
+					ssovf_selftest, &selftest);
+			if (ret != 0) {
+				ssovf_log_err("%s: Error in selftest", name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+		}
+
+		rte_kvargs_free(kvlist);
 	}
 
 	eventdev = rte_event_pmd_vdev_init(name, sizeof(struct ssovf_evdev),
@@ -676,6 +715,8 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 			edev->max_event_ports);
 
 	ssovf_init_once = 1;
+	if (selftest)
+		test_eventdev_octeontx();
 	return 0;
 
 error:
