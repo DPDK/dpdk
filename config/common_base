@@ -458,6 +458,11 @@ CONFIG_RTE_BBDEV_MAX_DEVS=128
 CONFIG_RTE_LIBRTE_PMD_BBDEV_NULL=y
 
 #
+# Compile PMD for turbo software bbdev device
+#
+CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW=n
+
+#
 # Compile generic crypto device library
 #
 CONFIG_RTE_LIBRTE_CRYPTODEV=y
