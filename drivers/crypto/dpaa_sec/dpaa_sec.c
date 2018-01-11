@@ -537,46 +537,66 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 	return 0;
 }
 
-static inline unsigned int
-dpaa_volatile_deq(struct qman_fq *fq, unsigned int len, bool exact)
-{
-	unsigned int pkts = 0;
-	int ret;
-	struct qm_mcr_queryfq_np np;
-	enum qman_fq_state state;
-	uint32_t flags;
-	uint32_t vdqcr;
-
-	qman_query_fq_np(fq, &np);
-	if (np.frm_cnt) {
-		vdqcr = QM_VDQCR_NUMFRAMES_SET(len);
-		if (exact)
-			vdqcr |= QM_VDQCR_EXACT;
-		ret = qman_volatile_dequeue(fq, 0, vdqcr);
-		if (ret)
-			return 0;
-		do {
-			pkts += qman_poll_dqrr(len);
-			qman_fq_state(fq, &state, &flags);
-		} while (flags & QMAN_FQ_STATE_VDQCR);
-	}
-	return pkts;
-}
-
 /* qp is lockless, should be accessed by only one thread */
 static int
 dpaa_sec_deq(struct dpaa_sec_qp *qp, struct rte_crypto_op **ops, int nb_ops)
 {
 	struct qman_fq *fq;
+	unsigned int pkts = 0;
+	int ret;
+	struct qm_dqrr_entry *dq;
 
 	fq = &qp->outq;
-	dpaa_sec_op_nb = 0;
-	dpaa_sec_ops = ops;
+	ret = qman_set_vdq(fq, (nb_ops > DPAA_MAX_DEQUEUE_NUM_FRAMES) ?
+				DPAA_MAX_DEQUEUE_NUM_FRAMES : nb_ops);
+	if (ret)
+		return 0;
 
-	if (unlikely(nb_ops > DPAA_SEC_BURST))
-		nb_ops = DPAA_SEC_BURST;
+	do {
+		const struct qm_fd *fd;
+		struct dpaa_sec_job *job;
+		struct dpaa_sec_op_ctx *ctx;
+		struct rte_crypto_op *op;
 
-	return dpaa_volatile_deq(fq, nb_ops, 1);
+		dq = qman_dequeue(fq);
+		if (!dq)
+			continue;
+
+		fd = &dq->fd;
+		/* sg is embedded in an op ctx,
+		 * sg[0] is for output
+		 * sg[1] for input
+		 */
+		job = dpaa_mem_ptov(qm_fd_addr_get64(fd));
+
+		ctx = container_of(job, struct dpaa_sec_op_ctx, job);
+		ctx->fd_status = fd->status;
+		op = ctx->op;
+		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+			struct qm_sg_entry *sg_out;
+			uint32_t len;
+
+			sg_out = &job->sg[0];
+			hw_sg_to_cpu(sg_out);
+			len = sg_out->length;
+			op->sym->m_src->pkt_len = len;
+			op->sym->m_src->data_len = len;
+		}
+		if (!ctx->fd_status) {
+			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+		} else {
+			printf("\nSEC return err: 0x%x", ctx->fd_status);
+			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		}
+		ops[pkts++] = op;
+
+		/* report op status to sym->op and then free the ctx memeory */
+		rte_mempool_put(ctx->ctx_pool, (void *)ctx);
+
+		qman_dqrr_consume(fq, dq);
+	} while (fq->flags & QMAN_FQ_STATE_VDQCR);
+
+	return pkts;
 }
 
 /**
@@ -949,95 +969,118 @@ build_proto(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	return cf;
 }
 
-static int
-dpaa_sec_enqueue_op(struct rte_crypto_op *op,  struct dpaa_sec_qp *qp)
-{
-	struct dpaa_sec_job *cf;
-	dpaa_sec_session *ses;
-	struct qm_fd fd;
-	int ret;
-	uint32_t auth_only_len = op->sym->auth.data.length -
-				op->sym->cipher.data.length;
-
-	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-		ses = (dpaa_sec_session *)get_session_private_data(
-				op->sym->session, cryptodev_driver_id);
-	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
-		ses = (dpaa_sec_session *)get_sec_session_private_data(
-				op->sym->sec_session);
-	else
-		return -ENOTSUP;
-
-	if (unlikely(!ses->qp || ses->qp != qp)) {
-		PMD_INIT_LOG(DEBUG, "sess->qp - %p qp %p", ses->qp, qp);
-		if (dpaa_sec_attach_sess_q(qp, ses))
-			return -1;
-	}
-
-	/*
-	 * Segmented buffer is not supported.
-	 */
-	if (!rte_pktmbuf_is_contiguous(op->sym->m_src)) {
-		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -ENOTSUP;
-	}
-	if (is_auth_only(ses)) {
-		cf = build_auth_only(op, ses);
-	} else if (is_cipher_only(ses)) {
-		cf = build_cipher_only(op, ses);
-	} else if (is_aead(ses)) {
-		cf = build_cipher_auth_gcm(op, ses);
-		auth_only_len = ses->auth_only_len;
-	} else if (is_auth_cipher(ses)) {
-		cf = build_cipher_auth(op, ses);
-	} else if (is_proto_ipsec(ses)) {
-		cf = build_proto(op, ses);
-	} else {
-		PMD_TX_LOG(ERR, "not supported sec op");
-		return -ENOTSUP;
-	}
-	if (unlikely(!cf))
-		return -ENOMEM;
-
-	memset(&fd, 0, sizeof(struct qm_fd));
-	qm_fd_addr_set64(&fd, dpaa_mem_vtop(cf->sg));
-	fd._format1 = qm_fd_compound;
-	fd.length29 = 2 * sizeof(struct qm_sg_entry);
-	/* Auth_only_len is set as 0 in descriptor and it is overwritten
-	 * here in the fd.cmd which will update the DPOVRD reg.
-	 */
-	if (auth_only_len)
-		fd.cmd = 0x80000000 | auth_only_len;
-	do {
-		ret = qman_enqueue(ses->inq, &fd, 0);
-	} while (ret != 0);
-
-	return 0;
-}
-
 static uint16_t
 dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 		       uint16_t nb_ops)
 {
 	/* Function to transmit the frames to given device and queuepair */
 	uint32_t loop;
-	int32_t ret;
 	struct dpaa_sec_qp *dpaa_qp = (struct dpaa_sec_qp *)qp;
 	uint16_t num_tx = 0;
+	struct qm_fd fds[DPAA_SEC_BURST], *fd;
+	uint32_t frames_to_send;
+	struct rte_crypto_op *op;
+	struct dpaa_sec_job *cf;
+	dpaa_sec_session *ses;
+	struct dpaa_sec_op_ctx *ctx;
+	uint32_t auth_only_len;
+	struct qman_fq *inq[DPAA_SEC_BURST];
 
-	if (unlikely(nb_ops == 0))
-		return 0;
+	while (nb_ops) {
+		frames_to_send = (nb_ops > DPAA_SEC_BURST) ?
+				DPAA_SEC_BURST : nb_ops;
+		for (loop = 0; loop < frames_to_send; loop++) {
+			op = *(ops++);
+			switch (op->sess_type) {
+			case RTE_CRYPTO_OP_WITH_SESSION:
+				ses = (dpaa_sec_session *)
+					get_session_private_data(
+							op->sym->session,
+							cryptodev_driver_id);
+				break;
+			case RTE_CRYPTO_OP_SECURITY_SESSION:
+				ses = (dpaa_sec_session *)
+					get_sec_session_private_data(
+							op->sym->sec_session);
+				break;
+			default:
+				PMD_TX_LOG(ERR,
+					"sessionless crypto op not supported");
+				frames_to_send = loop;
+				nb_ops = loop;
+				goto send_pkts;
+			}
+			if (unlikely(!ses->qp || ses->qp != qp)) {
+				PMD_INIT_LOG(DEBUG, "sess->qp - %p qp %p",
+						ses->qp, qp);
+				if (dpaa_sec_attach_sess_q(qp, ses)) {
+					frames_to_send = loop;
+					nb_ops = loop;
+					goto send_pkts;
+				}
+			}
 
-	/*Prepare each packet which is to be sent*/
-	for (loop = 0; loop < nb_ops; loop++) {
-		if (ops[loop]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
-			PMD_TX_LOG(ERR, "sessionless crypto op not supported");
-			return 0;
+			/*
+			 * Segmented buffer is not supported.
+			 */
+			if (!rte_pktmbuf_is_contiguous(op->sym->m_src)) {
+				op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+				frames_to_send = loop;
+				nb_ops = loop;
+				goto send_pkts;
+			}
+			auth_only_len = op->sym->auth.data.length -
+						op->sym->cipher.data.length;
+
+			if (is_auth_only(ses)) {
+				cf = build_auth_only(op, ses);
+			} else if (is_cipher_only(ses)) {
+				cf = build_cipher_only(op, ses);
+			} else if (is_aead(ses)) {
+				cf = build_cipher_auth_gcm(op, ses);
+				auth_only_len = ses->auth_only_len;
+			} else if (is_auth_cipher(ses)) {
+				cf = build_cipher_auth(op, ses);
+			} else if (is_proto_ipsec(ses)) {
+				cf = build_proto(op, ses);
+			} else {
+				PMD_TX_LOG(ERR, "not supported sec op");
+				frames_to_send = loop;
+				nb_ops = loop;
+				goto send_pkts;
+			}
+			if (unlikely(!cf)) {
+				frames_to_send = loop;
+				nb_ops = loop;
+				goto send_pkts;
+			}
+
+			fd = &fds[loop];
+			inq[loop] = ses->inq;
+			fd->opaque_addr = 0;
+			fd->cmd = 0;
+			ctx = container_of(cf, struct dpaa_sec_op_ctx, job);
+			qm_fd_addr_set64(fd, dpaa_mem_vtop_ctx(ctx, cf->sg));
+			fd->_format1 = qm_fd_compound;
+			fd->length29 = 2 * sizeof(struct qm_sg_entry);
+			/* Auth_only_len is set as 0 in descriptor and it is
+			 * overwritten here in the fd.cmd which will update
+			 * the DPOVRD reg.
+			 */
+			if (auth_only_len)
+				fd->cmd = 0x80000000 | auth_only_len;
+
 		}
-		ret = dpaa_sec_enqueue_op(ops[loop], dpaa_qp);
-		if (!ret)
-			num_tx++;
+send_pkts:
+		loop = 0;
+		while (loop < frames_to_send) {
+			loop += qman_enqueue_multi_fq(&inq[loop], &fds[loop],
+					frames_to_send - loop);
+		}
+		nb_ops -= frames_to_send;
+		num_tx += frames_to_send;
 	}
+
 	dpaa_qp->tx_pkts += num_tx;
 	dpaa_qp->tx_errs += nb_ops - num_tx;
 

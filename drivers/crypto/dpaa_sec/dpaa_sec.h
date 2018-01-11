@@ -8,7 +8,7 @@
 #define _DPAA_SEC_H_
 
 #define NUM_POOL_CHANNELS	4
-#define DPAA_SEC_BURST		32
+#define DPAA_SEC_BURST		7
 #define DPAA_SEC_ALG_UNSUPPORT	(-1)
 #define TDES_CBC_IV_LEN		8
 #define AES_CBC_IV_LEN		16
@@ -135,6 +135,7 @@ struct dpaa_sec_qp {
 
 #define RTE_DPAA_MAX_NB_SEC_QPS 1
 #define RTE_DPAA_MAX_RX_QUEUE RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS
+#define DPAA_MAX_DEQUEUE_NUM_FRAMES 63
 
 /* internal sec queue interface */
 struct dpaa_sec_dev_private {
