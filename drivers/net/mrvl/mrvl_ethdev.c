@@ -1932,6 +1932,7 @@ skip:
 		sq->tail = (sq->tail + num) & MRVL_PP2_TX_SHADOWQ_MASK;
 		sq->size -= num;
 		num = 0;
+		skip_bufs = 0;
 	}
 
 	if (likely(num)) {
