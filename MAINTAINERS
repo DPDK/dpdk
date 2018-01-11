@@ -706,7 +706,6 @@ Cavium OCTEONTX ssovf
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 M: Santosh Shukla <santosh.shukla@caviumnetworks.com>
 F: drivers/event/octeontx/
-F: test/test/test_eventdev_octeontx.c
 F: doc/guides/eventdevs/octeontx.rst
 
 NXP DPAA2 eventdev
