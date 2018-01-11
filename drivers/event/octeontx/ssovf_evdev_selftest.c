@@ -18,11 +18,20 @@
 #include <rte_per_lcore.h>
 #include <rte_random.h>
 #include <rte_bus_vdev.h>
+#include <rte_test.h>
 
-#include "test.h"
+#include "ssovf_evdev.h"
 
 #define NUM_PACKETS (1 << 18)
 #define MAX_EVENTS  (16 * 1024)
+
+#define OCTEONTX_TEST_RUN(setup, teardown, test) \
+	octeontx_test_run(setup, teardown, test, #test)
+
+static int total;
+static int passed;
+static int failed;
+static int unsupported;
 
 static int evdev;
 static struct rte_mempool *eventdev_test_mempool;
@@ -51,11 +60,11 @@ static inline int
 seqn_list_update(int val)
 {
 	if (seqn_list_index >= NUM_PACKETS)
-		return TEST_FAILED;
+		return -1;
 
 	seqn_list[seqn_list_index++] = val;
 	rte_smp_wmb();
-	return TEST_SUCCESS;
+	return 0;
 }
 
 static inline int
@@ -65,11 +74,11 @@ seqn_list_check(int limit)
 
 	for (i = 0; i < limit; i++) {
 		if (seqn_list[i] != i) {
-			printf("Seqn mismatch %d %d\n", seqn_list[i], i);
-			return TEST_FAILED;
+			ssovf_log_dbg("Seqn mismatch %d %d", seqn_list[i], i);
+			return -1;
 		}
 	}
-	return TEST_SUCCESS;
+	return 0;
 }
 
 struct test_core_param {
@@ -86,20 +95,21 @@ testsuite_setup(void)
 
 	evdev = rte_event_dev_get_dev_id(eventdev_name);
 	if (evdev < 0) {
-		printf("%d: Eventdev %s not found - creating.\n",
+		ssovf_log_dbg("%d: Eventdev %s not found - creating.",
 				__LINE__, eventdev_name);
 		if (rte_vdev_init(eventdev_name, NULL) < 0) {
-			printf("Error creating eventdev %s\n", eventdev_name);
-			return TEST_FAILED;
+			ssovf_log_dbg("Error creating eventdev %s",
+					eventdev_name);
+			return -1;
 		}
 		evdev = rte_event_dev_get_dev_id(eventdev_name);
 		if (evdev < 0) {
-			printf("Error finding newly created eventdev\n");
-			return TEST_FAILED;
+			ssovf_log_dbg("Error finding newly created eventdev");
+			return -1;
 		}
 	}
 
-	return TEST_SUCCESS;
+	return 0;
 }
 
 static void
@@ -149,31 +159,32 @@ _eventdev_setup(int mode)
 					512, /* Use very small mbufs */
 					rte_socket_id());
 	if (!eventdev_test_mempool) {
-		printf("ERROR creating mempool\n");
-		return TEST_FAILED;
+		ssovf_log_dbg("ERROR creating mempool");
+		return -1;
 	}
 
 	ret = rte_event_dev_info_get(evdev, &info);
-	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
-	TEST_ASSERT(info.max_num_events >= (int32_t)MAX_EVENTS,
-			"max_num_events=%d < max_events=%d",
-			info.max_num_events, MAX_EVENTS);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+	RTE_TEST_ASSERT(info.max_num_events >= (int32_t)MAX_EVENTS,
+			"ERROR max_num_events=%d < max_events=%d",
+				info.max_num_events, MAX_EVENTS);
 
 	devconf_set_default_sane_values(&dev_conf, &info);
 	if (mode == TEST_EVENTDEV_SETUP_DEQUEUE_TIMEOUT)
 		dev_conf.event_dev_cfg |= RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT;
 
 	ret = rte_event_dev_configure(evdev, &dev_conf);
-	TEST_ASSERT_SUCCESS(ret, "Failed to configure eventdev");
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to configure eventdev");
 
 	uint32_t queue_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &queue_count), "Queue count get failed");
 
 	if (mode == TEST_EVENTDEV_SETUP_PRIORITY) {
 		if (queue_count > 8) {
-			printf("test expects the unique priority per queue\n");
+			ssovf_log_dbg(
+				"test expects the unique priority per queue");
 			return -ENOTSUP;
 		}
 
@@ -188,35 +199,39 @@ _eventdev_setup(int mode)
 
 			ret = rte_event_queue_default_conf_get(evdev, i,
 						&queue_conf);
-			TEST_ASSERT_SUCCESS(ret, "Failed to get def_conf%d", i);
+			RTE_TEST_ASSERT_SUCCESS(ret, "Failed to get def_conf%d",
+					i);
 			queue_conf.priority = i * step;
 			ret = rte_event_queue_setup(evdev, i, &queue_conf);
-			TEST_ASSERT_SUCCESS(ret, "Failed to setup queue=%d", i);
+			RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup queue=%d",
+					i);
 		}
 
 	} else {
 		/* Configure event queues with default priority */
 		for (i = 0; i < (int)queue_count; i++) {
 			ret = rte_event_queue_setup(evdev, i, NULL);
-			TEST_ASSERT_SUCCESS(ret, "Failed to setup queue=%d", i);
+			RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup queue=%d",
+					i);
 		}
 	}
 	/* Configure event ports */
 	uint32_t port_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&port_count), "Port count get failed");
 	for (i = 0; i < (int)port_count; i++) {
 		ret = rte_event_port_setup(evdev, i, NULL);
-		TEST_ASSERT_SUCCESS(ret, "Failed to setup port=%d", i);
+		RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup port=%d", i);
 		ret = rte_event_port_link(evdev, i, NULL, NULL, 0);
-		TEST_ASSERT(ret >= 0, "Failed to link all queues port=%d", i);
+		RTE_TEST_ASSERT(ret >= 0, "Failed to link all queues port=%d",
+				i);
 	}
 
 	ret = rte_event_dev_start(evdev);
-	TEST_ASSERT_SUCCESS(ret, "Failed to start device");
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to start device");
 
-	return TEST_SUCCESS;
+	return 0;
 }
 
 static inline int
@@ -283,7 +298,7 @@ inject_events(uint32_t flow_id, uint8_t event_type, uint8_t sub_event_type,
 		struct rte_event ev = {.event = 0, .u64 = 0};
 
 		m = rte_pktmbuf_alloc(eventdev_test_mempool);
-		TEST_ASSERT_NOT_NULL(m, "mempool alloc failed");
+		RTE_TEST_ASSERT_NOT_NULL(m, "mempool alloc failed");
 
 		m->seqn = i;
 		update_event_and_validation_attr(m, &ev, flow_id, event_type,
@@ -304,8 +319,8 @@ check_excess_events(uint8_t port)
 	for (i = 0; i < 32; i++) {
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
 
-		TEST_ASSERT_SUCCESS(valid_event, "Unexpected valid event=%d",
-					ev.mbuf->seqn);
+		RTE_TEST_ASSERT_SUCCESS(valid_event,
+				"Unexpected valid event=%d", ev.mbuf->seqn);
 	}
 	return 0;
 }
@@ -318,12 +333,12 @@ generate_random_events(const unsigned int total_events)
 	int ret;
 
 	uint32_t queue_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &queue_count), "Queue count get failed");
 
 	ret = rte_event_dev_info_get(evdev, &info);
-	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
 	for (i = 0; i < total_events; i++) {
 		ret = inject_events(
 			rte_rand() % info.max_event_queue_flows /*flow_id */,
@@ -334,7 +349,7 @@ generate_random_events(const unsigned int total_events)
 			0 /* port */,
 			1 /* events */);
 		if (ret)
-			return TEST_FAILED;
+			return -1;
 	}
 	return ret;
 }
@@ -346,19 +361,19 @@ validate_event(struct rte_event *ev)
 	struct event_attr *attr;
 
 	attr = rte_pktmbuf_mtod(ev->mbuf, struct event_attr *);
-	TEST_ASSERT_EQUAL(attr->flow_id, ev->flow_id,
+	RTE_TEST_ASSERT_EQUAL(attr->flow_id, ev->flow_id,
 			"flow_id mismatch enq=%d deq =%d",
 			attr->flow_id, ev->flow_id);
-	TEST_ASSERT_EQUAL(attr->event_type, ev->event_type,
+	RTE_TEST_ASSERT_EQUAL(attr->event_type, ev->event_type,
 			"event_type mismatch enq=%d deq =%d",
 			attr->event_type, ev->event_type);
-	TEST_ASSERT_EQUAL(attr->sub_event_type, ev->sub_event_type,
+	RTE_TEST_ASSERT_EQUAL(attr->sub_event_type, ev->sub_event_type,
 			"sub_event_type mismatch enq=%d deq =%d",
 			attr->sub_event_type, ev->sub_event_type);
-	TEST_ASSERT_EQUAL(attr->sched_type, ev->sched_type,
+	RTE_TEST_ASSERT_EQUAL(attr->sched_type, ev->sched_type,
 			"sched_type mismatch enq=%d deq =%d",
 			attr->sched_type, ev->sched_type);
-	TEST_ASSERT_EQUAL(attr->queue, ev->queue_id,
+	RTE_TEST_ASSERT_EQUAL(attr->queue, ev->queue_id,
 			"queue mismatch enq=%d deq =%d",
 			attr->queue, ev->queue_id);
 	return 0;
@@ -377,8 +392,8 @@ consume_events(uint8_t port, const uint32_t total_events, validate_event_cb fn)
 
 	while (1) {
 		if (++forward_progress_cnt > UINT16_MAX) {
-			printf("Detected deadlock\n");
-			return TEST_FAILED;
+			ssovf_log_dbg("Detected deadlock");
+			return -1;
 		}
 
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
@@ -388,11 +403,11 @@ consume_events(uint8_t port, const uint32_t total_events, validate_event_cb fn)
 		forward_progress_cnt = 0;
 		ret = validate_event(&ev);
 		if (ret)
-			return TEST_FAILED;
+			return -1;
 
 		if (fn != NULL) {
 			ret = fn(index, port, &ev);
-			TEST_ASSERT_SUCCESS(ret,
+			RTE_TEST_ASSERT_SUCCESS(ret,
 				"Failed to validate test specific event");
 		}
 
@@ -410,8 +425,8 @@ static int
 validate_simple_enqdeq(uint32_t index, uint8_t port, struct rte_event *ev)
 {
 	RTE_SET_USED(port);
-	TEST_ASSERT_EQUAL(index, ev->mbuf->seqn, "index=%d != seqn=%d", index,
-					ev->mbuf->seqn);
+	RTE_TEST_ASSERT_EQUAL(index, ev->mbuf->seqn, "index=%d != seqn=%d",
+			index, ev->mbuf->seqn);
 	return 0;
 }
 
@@ -428,7 +443,7 @@ test_simple_enqdeq(uint8_t sched_type)
 				0 /* port */,
 				MAX_EVENTS);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
 	return consume_events(0 /* port */, MAX_EVENTS,	validate_simple_enqdeq);
 }
@@ -463,7 +478,7 @@ test_multi_queue_enq_single_port_deq(void)
 
 	ret = generate_random_events(MAX_EVENTS);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
 	return consume_events(0 /* port */, MAX_EVENTS, NULL);
 }
@@ -486,7 +501,7 @@ static int
 validate_queue_priority(uint32_t index, uint8_t port, struct rte_event *ev)
 {
 	uint32_t queue_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &queue_count), "Queue count get failed");
 	uint32_t range = MAX_EVENTS / queue_count;
@@ -494,7 +509,7 @@ validate_queue_priority(uint32_t index, uint8_t port, struct rte_event *ev)
 
 	expected_val += ev->queue_id;
 	RTE_SET_USED(port);
-	TEST_ASSERT_EQUAL(ev->mbuf->seqn, expected_val,
+	RTE_TEST_ASSERT_EQUAL(ev->mbuf->seqn, expected_val,
 	"seqn=%d index=%d expected=%d range=%d nb_queues=%d max_event=%d",
 			ev->mbuf->seqn, index, expected_val, range,
 			queue_count, MAX_EVENTS);
@@ -510,7 +525,7 @@ test_multi_queue_priority(void)
 
 	/* See validate_queue_priority() comments for priority validate logic */
 	uint32_t queue_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &queue_count), "Queue count get failed");
 	max_evts_roundoff  = MAX_EVENTS / queue_count;
@@ -520,7 +535,7 @@ test_multi_queue_priority(void)
 		struct rte_event ev = {.event = 0, .u64 = 0};
 
 		m = rte_pktmbuf_alloc(eventdev_test_mempool);
-		TEST_ASSERT_NOT_NULL(m, "mempool alloc failed");
+		RTE_TEST_ASSERT_NOT_NULL(m, "mempool alloc failed");
 
 		m->seqn = i;
 		queue = i % queue_count;
@@ -548,7 +563,7 @@ worker_multi_port_fn(void *arg)
 			continue;
 
 		ret = validate_event(&ev);
-		TEST_ASSERT_SUCCESS(ret, "Failed to validate event");
+		RTE_TEST_ASSERT_SUCCESS(ret, "Failed to validate event");
 		rte_pktmbuf_free(ev.mbuf);
 		rte_atomic32_sub(total_events, 1);
 	}
@@ -559,27 +574,29 @@ static inline int
 wait_workers_to_join(int lcore, const rte_atomic32_t *count)
 {
 	uint64_t cycles, print_cycles;
+	RTE_SET_USED(count);
 
 	print_cycles = cycles = rte_get_timer_cycles();
 	while (rte_eal_get_lcore_state(lcore) != FINISHED) {
 		uint64_t new_cycles = rte_get_timer_cycles();
 
 		if (new_cycles - print_cycles > rte_get_timer_hz()) {
-			printf("\r%s: events %d\n", __func__,
+			ssovf_log_dbg("\r%s: events %d", __func__,
 				rte_atomic32_read(count));
 			print_cycles = new_cycles;
 		}
 		if (new_cycles - cycles > rte_get_timer_hz() * 10) {
-			printf("%s: No schedules for seconds, deadlock (%d)\n",
+			ssovf_log_dbg(
+				"%s: No schedules for seconds, deadlock (%d)",
 				__func__,
 				rte_atomic32_read(count));
 			rte_event_dev_dump(evdev, stdout);
 			cycles = new_cycles;
-			return TEST_FAILED;
+			return -1;
 		}
 	}
 	rte_eal_mp_wait_lcore();
-	return TEST_SUCCESS;
+	return 0;
 }
 
 
@@ -603,12 +620,12 @@ launch_workers_and_wait(int (*master_worker)(void *),
 
 	param = malloc(sizeof(struct test_core_param) * nb_workers);
 	if (!param)
-		return TEST_FAILED;
+		return -1;
 
 	ret = rte_event_dequeue_timeout_ticks(evdev,
 		rte_rand() % 10000000/* 10ms */, &dequeue_tmo_ticks);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
 	param[0].total_events = &atomic_total_events;
 	param[0].sched_type = sched_type;
@@ -651,17 +668,17 @@ test_multi_queue_enq_multi_port_deq(void)
 
 	ret = generate_random_events(total_events);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&nr_ports), "Port count get failed");
 	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	if (!nr_ports) {
-		printf("%s: Not enough ports=%d or workers=%d\n", __func__,
+		ssovf_log_dbg("%s: Not enough ports=%d or workers=%d", __func__,
 			nr_ports, rte_lcore_count() - 1);
-		return TEST_SUCCESS;
+		return 0;
 	}
 
 	return launch_workers_and_wait(worker_multi_port_fn,
@@ -674,7 +691,7 @@ validate_queue_to_port_single_link(uint32_t index, uint8_t port,
 			struct rte_event *ev)
 {
 	RTE_SET_USED(index);
-	TEST_ASSERT_EQUAL(port, ev->queue_id,
+	RTE_TEST_ASSERT_EQUAL(port, ev->queue_id,
 				"queue mismatch enq=%d deq =%d",
 				port, ev->queue_id);
 	return 0;
@@ -690,18 +707,19 @@ test_queue_to_port_single_link(void)
 	int i, nr_links, ret;
 
 	uint32_t port_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&port_count), "Port count get failed");
 
 	/* Unlink all connections that created in eventdev_setup */
 	for (i = 0; i < (int)port_count; i++) {
 		ret = rte_event_port_unlink(evdev, i, NULL, 0);
-		TEST_ASSERT(ret >= 0, "Failed to unlink all queues port=%d", i);
+		RTE_TEST_ASSERT(ret >= 0,
+				"Failed to unlink all queues port=%d", i);
 	}
 
 	uint32_t queue_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &queue_count), "Queue count get failed");
 
@@ -713,7 +731,7 @@ test_queue_to_port_single_link(void)
 		uint8_t queue = (uint8_t)i;
 
 		ret = rte_event_port_link(evdev, i, &queue, NULL, 1);
-		TEST_ASSERT(ret == 1, "Failed to link queue to port %d", i);
+		RTE_TEST_ASSERT(ret == 1, "Failed to link queue to port %d", i);
 
 		ret = inject_events(
 			0x100 /*flow_id */,
@@ -724,7 +742,7 @@ test_queue_to_port_single_link(void)
 			i /* port */,
 			total_events /* events */);
 		if (ret)
-			return TEST_FAILED;
+			return -1;
 	}
 
 	/* Verify the events generated from correct queue */
@@ -732,10 +750,10 @@ test_queue_to_port_single_link(void)
 		ret = consume_events(i /* port */, total_events,
 				validate_queue_to_port_single_link);
 		if (ret)
-			return TEST_FAILED;
+			return -1;
 	}
 
-	return TEST_SUCCESS;
+	return 0;
 }
 
 static int
@@ -743,7 +761,7 @@ validate_queue_to_port_multi_link(uint32_t index, uint8_t port,
 			struct rte_event *ev)
 {
 	RTE_SET_USED(index);
-	TEST_ASSERT_EQUAL(port, (ev->queue_id & 0x1),
+	RTE_TEST_ASSERT_EQUAL(port, (ev->queue_id & 0x1),
 				"queue mismatch enq=%d deq =%d",
 				port, ev->queue_id);
 	return 0;
@@ -761,27 +779,27 @@ test_queue_to_port_multi_link(void)
 	uint32_t nr_queues = 0;
 	uint32_t nr_ports = 0;
 
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &nr_queues), "Queue count get failed");
 
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 				&nr_queues), "Queue count get failed");
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&nr_ports), "Port count get failed");
 
 	if (nr_ports < 2) {
-		printf("%s: Not enough ports to test ports=%d\n",
+		ssovf_log_dbg("%s: Not enough ports to test ports=%d",
 				__func__, nr_ports);
-		return TEST_SUCCESS;
+		return 0;
 	}
 
 	/* Unlink all connections that created in eventdev_setup */
 	for (port = 0; port < nr_ports; port++) {
 		ret = rte_event_port_unlink(evdev, port, NULL, 0);
-		TEST_ASSERT(ret >= 0, "Failed to unlink all queues port=%d",
+		RTE_TEST_ASSERT(ret >= 0, "Failed to unlink all queues port=%d",
 					port);
 	}
 
@@ -791,7 +809,7 @@ test_queue_to_port_multi_link(void)
 	for (queue = 0; queue < nr_queues; queue++) {
 		port = queue & 0x1;
 		ret = rte_event_port_link(evdev, port, &queue, NULL, 1);
-		TEST_ASSERT(ret == 1, "Failed to link queue=%d to port=%d",
+		RTE_TEST_ASSERT(ret == 1, "Failed to link queue=%d to port=%d",
 					queue, port);
 
 		ret = inject_events(
@@ -803,7 +821,7 @@ test_queue_to_port_multi_link(void)
 			port /* port */,
 			total_events /* events */);
 		if (ret)
-			return TEST_FAILED;
+			return -1;
 
 		if (port == 0)
 			port0_events += total_events;
@@ -814,13 +832,13 @@ test_queue_to_port_multi_link(void)
 	ret = consume_events(0 /* port */, port0_events,
 				validate_queue_to_port_multi_link);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 	ret = consume_events(1 /* port */, port1_events,
 				validate_queue_to_port_multi_link);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
-	return TEST_SUCCESS;
+	return 0;
 }
 
 static int
@@ -850,17 +868,17 @@ worker_flow_based_pipeline(void *arg)
 			ev.op = RTE_EVENT_OP_FORWARD;
 			rte_event_enqueue_burst(evdev, port, &ev, 1);
 		} else if (ev.sub_event_type == 1) { /* Events from stage 1*/
-			if (seqn_list_update(ev.mbuf->seqn) == TEST_SUCCESS) {
+			if (seqn_list_update(ev.mbuf->seqn) == 0) {
 				rte_pktmbuf_free(ev.mbuf);
 				rte_atomic32_sub(total_events, 1);
 			} else {
-				printf("Failed to update seqn_list\n");
-				return TEST_FAILED;
+				ssovf_log_dbg("Failed to update seqn_list");
+				return -1;
 			}
 		} else {
-			printf("Invalid ev.sub_event_type = %d\n",
+			ssovf_log_dbg("Invalid ev.sub_event_type = %d",
 					ev.sub_event_type);
-			return TEST_FAILED;
+			return -1;
 		}
 	}
 	return 0;
@@ -874,15 +892,15 @@ test_multiport_flow_sched_type_test(uint8_t in_sched_type,
 	uint32_t nr_ports;
 	int ret;
 
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&nr_ports), "Port count get failed");
 	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	if (!nr_ports) {
-		printf("%s: Not enough ports=%d or workers=%d\n", __func__,
+		ssovf_log_dbg("%s: Not enough ports=%d or workers=%d", __func__,
 			nr_ports, rte_lcore_count() - 1);
-		return TEST_SUCCESS;
+		return 0;
 	}
 
 	/* Injects events with m->seqn=0 to total_events */
@@ -895,20 +913,20 @@ test_multiport_flow_sched_type_test(uint8_t in_sched_type,
 		0 /* port */,
 		total_events /* events */);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
 	ret = launch_workers_and_wait(worker_flow_based_pipeline,
 					worker_flow_based_pipeline,
 					total_events, nr_ports, out_sched_type);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
 	if (in_sched_type != RTE_SCHED_TYPE_PARALLEL &&
 			out_sched_type == RTE_SCHED_TYPE_ATOMIC) {
 		/* Check the events order maintained or not */
 		return seqn_list_check(total_events);
 	}
-	return TEST_SUCCESS;
+	return 0;
 }
 
 
@@ -1005,16 +1023,16 @@ worker_group_based_pipeline(void *arg)
 			ev.op = RTE_EVENT_OP_FORWARD;
 			rte_event_enqueue_burst(evdev, port, &ev, 1);
 		} else if (ev.queue_id == 1) { /* Events from stage 1(group 1)*/
-			if (seqn_list_update(ev.mbuf->seqn) == TEST_SUCCESS) {
+			if (seqn_list_update(ev.mbuf->seqn) == 0) {
 				rte_pktmbuf_free(ev.mbuf);
 				rte_atomic32_sub(total_events, 1);
 			} else {
-				printf("Failed to update seqn_list\n");
-				return TEST_FAILED;
+				ssovf_log_dbg("Failed to update seqn_list");
+				return -1;
 			}
 		} else {
-			printf("Invalid ev.queue_id = %d\n", ev.queue_id);
-			return TEST_FAILED;
+			ssovf_log_dbg("Invalid ev.queue_id = %d", ev.queue_id);
+			return -1;
 		}
 	}
 
@@ -1030,21 +1048,21 @@ test_multiport_queue_sched_type_test(uint8_t in_sched_type,
 	uint32_t nr_ports;
 	int ret;
 
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&nr_ports), "Port count get failed");
 
 	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	uint32_t queue_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &queue_count), "Queue count get failed");
 	if (queue_count < 2 ||  !nr_ports) {
-		printf("%s: Not enough queues=%d ports=%d or workers=%d\n",
+		ssovf_log_dbg("%s: Not enough queues=%d ports=%d or workers=%d",
 			 __func__, queue_count, nr_ports,
 			 rte_lcore_count() - 1);
-		return TEST_SUCCESS;
+		return 0;
 	}
 
 	/* Injects events with m->seqn=0 to total_events */
@@ -1057,20 +1075,20 @@ test_multiport_queue_sched_type_test(uint8_t in_sched_type,
 		0 /* port */,
 		total_events /* events */);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
 	ret = launch_workers_and_wait(worker_group_based_pipeline,
 					worker_group_based_pipeline,
 					total_events, nr_ports, out_sched_type);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
 	if (in_sched_type != RTE_SCHED_TYPE_PARALLEL &&
 			out_sched_type == RTE_SCHED_TYPE_ATOMIC) {
 		/* Check the events order maintained or not */
 		return seqn_list_check(total_events);
 	}
-	return TEST_SUCCESS;
+	return 0;
 }
 
 static int
@@ -1173,15 +1191,15 @@ launch_multi_port_max_stages_random_sched_type(int (*fn)(void *))
 	uint32_t nr_ports;
 	int ret;
 
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&nr_ports), "Port count get failed");
 	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	if (!nr_ports) {
-		printf("%s: Not enough ports=%d or workers=%d\n", __func__,
+		ssovf_log_dbg("%s: Not enough ports=%d or workers=%d", __func__,
 			nr_ports, rte_lcore_count() - 1);
-		return TEST_SUCCESS;
+		return 0;
 	}
 
 	/* Injects events with m->seqn=0 to total_events */
@@ -1194,7 +1212,7 @@ launch_multi_port_max_stages_random_sched_type(int (*fn)(void *))
 		0 /* port */,
 		MAX_EVENTS /* events */);
 	if (ret)
-		return TEST_FAILED;
+		return -1;
 
 	return launch_workers_and_wait(fn, fn, MAX_EVENTS, nr_ports,
 					 0xff /* invalid */);
@@ -1216,7 +1234,7 @@ worker_queue_based_pipeline_max_stages_rand_sched_type(void *arg)
 	uint16_t valid_event;
 	uint8_t port = param->port;
 	uint32_t queue_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &queue_count), "Queue count get failed");
 	uint8_t nr_queues = queue_count;
@@ -1258,7 +1276,7 @@ worker_mixed_pipeline_max_stages_rand_sched_type(void *arg)
 	uint16_t valid_event;
 	uint8_t port = param->port;
 	uint32_t queue_count;
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
 			    &queue_count), "Queue count get failed");
 	uint8_t nr_queues = queue_count;
@@ -1329,14 +1347,14 @@ test_producer_consumer_ingress_order_test(int (*fn)(void *))
 {
 	uint32_t nr_ports;
 
-	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+	RTE_TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&nr_ports), "Port count get failed");
 	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	if (rte_lcore_count() < 3 || nr_ports < 2) {
-		printf("### Not enough cores for %s test.\n", __func__);
-		return TEST_SUCCESS;
+		ssovf_log_dbg("### Not enough cores for %s test.", __func__);
+		return 0;
 	}
 
 	launch_workers_and_wait(worker_ordered_flow_producer, fn,
@@ -1361,86 +1379,107 @@ test_queue_producer_consumer_ingress_order_test(void)
 				worker_group_based_pipeline);
 }
 
-static struct unit_test_suite eventdev_octeontx_testsuite  = {
-	.suite_name = "eventdev octeontx unit test suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
-	.unit_test_cases = {
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_simple_enqdeq_ordered),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_simple_enqdeq_atomic),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_simple_enqdeq_parallel),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_queue_enq_single_port_deq),
-		TEST_CASE_ST(eventdev_setup_priority, eventdev_teardown,
-			test_multi_queue_priority),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_queue_enq_multi_port_deq),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_queue_to_port_single_link),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_queue_to_port_multi_link),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_ordered_to_atomic),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_ordered_to_ordered),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_ordered_to_parallel),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_atomic_to_atomic),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_atomic_to_ordered),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_atomic_to_parallel),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_parallel_to_atomic),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_parallel_to_ordered),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_parallel_to_parallel),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_ordered_to_atomic),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_ordered_to_ordered),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_ordered_to_parallel),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_atomic_to_atomic),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_atomic_to_ordered),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_atomic_to_parallel),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_parallel_to_atomic),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_parallel_to_ordered),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_parallel_to_parallel),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_flow_max_stages_random_sched_type),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_queue_max_stages_random_sched_type),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_multi_port_mixed_max_stages_random_sched_type),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_flow_producer_consumer_ingress_order_test),
-		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
-			test_queue_producer_consumer_ingress_order_test),
-		/* Tests with dequeue timeout */
-		TEST_CASE_ST(eventdev_setup_dequeue_timeout, eventdev_teardown,
-			test_multi_port_flow_ordered_to_atomic),
-		TEST_CASE_ST(eventdev_setup_dequeue_timeout, eventdev_teardown,
-			test_multi_port_queue_ordered_to_atomic),
-		TEST_CASES_END() /**< NULL terminate unit test array */
-	}
-};
-
-static int
-test_eventdev_octeontx(void)
+static void octeontx_test_run(int (*setup)(void), void (*tdown)(void),
+		int (*test)(void), const char *name)
 {
-	return unit_test_suite_runner(&eventdev_octeontx_testsuite);
+	if (setup() < 0) {
+		ssovf_log_selftest("Error setting up test %s", name);
+		unsupported++;
+	} else {
+		if (test() < 0) {
+			failed++;
+			ssovf_log_selftest("%s Failed", name);
+		} else {
+			passed++;
+			ssovf_log_selftest("%s Passed", name);
+		}
+	}
+
+	total++;
+	tdown();
 }
 
-REGISTER_TEST_COMMAND(eventdev_octeontx_autotest, test_eventdev_octeontx);
+int
+test_eventdev_octeontx(void)
+{
+	testsuite_setup();
+
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_simple_enqdeq_ordered);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_simple_enqdeq_atomic);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_simple_enqdeq_parallel);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_queue_enq_single_port_deq);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_queue_enq_multi_port_deq);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_queue_to_port_single_link);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_queue_to_port_multi_link);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_ordered_to_atomic);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_ordered_to_ordered);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_ordered_to_parallel);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_atomic_to_atomic);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_atomic_to_ordered);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_atomic_to_parallel);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_parallel_to_atomic);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_parallel_to_ordered);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_parallel_to_parallel);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_ordered_to_atomic);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_ordered_to_ordered);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_ordered_to_parallel);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_atomic_to_atomic);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_atomic_to_ordered);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_atomic_to_parallel);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_parallel_to_atomic);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_parallel_to_ordered);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_parallel_to_parallel);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_flow_max_stages_random_sched_type);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_max_stages_random_sched_type);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_multi_port_mixed_max_stages_random_sched_type);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_flow_producer_consumer_ingress_order_test);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_queue_producer_consumer_ingress_order_test);
+	OCTEONTX_TEST_RUN(eventdev_setup_priority, eventdev_teardown,
+			test_multi_queue_priority);
+	OCTEONTX_TEST_RUN(eventdev_setup_dequeue_timeout, eventdev_teardown,
+			test_multi_port_flow_ordered_to_atomic);
+	OCTEONTX_TEST_RUN(eventdev_setup_dequeue_timeout, eventdev_teardown,
+			test_multi_port_queue_ordered_to_atomic);
+
+	ssovf_log_selftest("Total tests   : %d", total);
+	ssovf_log_selftest("Passed        : %d", passed);
+	ssovf_log_selftest("Failed        : %d", failed);
+	ssovf_log_selftest("Not supported : %d", unsupported);
+
+	testsuite_teardown();
+
+	if (failed)
+		return -1;
+
+	return 0;
+}
