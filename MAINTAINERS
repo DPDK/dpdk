@@ -272,6 +272,8 @@ F: drivers/bbdev/
 F: doc/guides/bbdevs/
 F: app/test-bbdev/
 F: doc/guides/tools/testbbdev.rst
+F: examples/bbdev_app/
+F: doc/guides/sample_app_ug/bbdev_app.rst
 
 Crypto API
 M: Declan Doherty <declan.doherty@intel.com>

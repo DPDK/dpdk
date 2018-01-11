@@ -37,6 +37,7 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+DIRS-$(CONFIG_RTE_LIBRTE_BBDEV) += bbdev_app
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bond
 DIRS-y += cmdline
 DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += distributor
