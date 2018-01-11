@@ -68,3 +68,9 @@ DPDK_17.11 {
 	rte_event_eth_rx_adapter_stop;
 
 } DPDK_17.08;
+
+DPDK_18.02 {
+	global:
+
+	rte_event_dev_selftest;
+} DPDK_17.11;

@@ -1810,6 +1810,18 @@ rte_event_dev_xstats_reset(uint8_t dev_id,
 			   const uint32_t ids[],
 			   uint32_t nb_ids);
 
+/**
+ * Trigger the eventdev self test.
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @return
+ *   - 0: Selftest successful
+ *   - -ENOTSUP if the device doesn't support selftest
+ *   - other values < 0 on failure.
+ */
+int rte_event_dev_selftest(uint8_t dev_id);
+
 #ifdef __cplusplus
 }
 #endif

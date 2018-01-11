@@ -1086,6 +1086,16 @@ int rte_event_dev_xstats_reset(uint8_t dev_id,
 	return -ENOTSUP;
 }
 
+int rte_event_dev_selftest(uint8_t dev_id)
+{
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	if (dev->dev_ops->dev_selftest != NULL)
+		return (*dev->dev_ops->dev_selftest)();
+	return -ENOTSUP;
+}
+
 int
 rte_event_dev_start(uint8_t dev_id)
 {

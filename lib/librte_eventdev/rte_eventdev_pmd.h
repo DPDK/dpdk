@@ -577,6 +577,13 @@ typedef int (*eventdev_eth_rx_adapter_stats_get)
 typedef int (*eventdev_eth_rx_adapter_stats_reset)
 			(const struct rte_eventdev *dev,
 			const struct rte_eth_dev *eth_dev);
+/**
+ * Start eventdev selftest.
+ *
+ * @return
+ *   Return 0 on success.
+ */
+typedef int (*eventdev_selftest)(void);
 
 /** Event device operations function pointer table */
 struct rte_eventdev_ops {
@@ -632,6 +639,9 @@ struct rte_eventdev_ops {
 	/**< Get ethernet Rx stats */
 	eventdev_eth_rx_adapter_stats_reset eth_rx_adapter_stats_reset;
 	/**< Reset ethernet Rx stats */
+
+	eventdev_selftest dev_selftest;
+	/**< Start eventdev Selftest */
 };
 
 /**
