@@ -9565,7 +9565,7 @@ test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_QAT is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_qat_testsuite);
@@ -9581,7 +9581,7 @@ test_cryptodev_aesni_mb(void /*argv __rte_unused, int argc __rte_unused*/)
 		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_AESNI_MB is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_aesni_mb_testsuite);
@@ -9597,7 +9597,7 @@ test_cryptodev_openssl(void)
 		RTE_LOG(ERR, USER1, "OPENSSL PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_OPENSSL is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_openssl_testsuite);
@@ -9613,7 +9613,7 @@ test_cryptodev_aesni_gcm(void)
 		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_AESNI_GCM is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_aesni_gcm_testsuite);
@@ -9629,7 +9629,7 @@ test_cryptodev_null(void)
 		RTE_LOG(ERR, USER1, "NULL PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_NULL is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_null_testsuite);
@@ -9645,7 +9645,7 @@ test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
 		RTE_LOG(ERR, USER1, "SNOW3G PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_SNOW3G is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_sw_snow3g_testsuite);
@@ -9661,7 +9661,7 @@ test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
 		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_KASUMI is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_sw_kasumi_testsuite);
@@ -9677,7 +9677,7 @@ test_cryptodev_sw_zuc(void /*argv __rte_unused, int argc __rte_unused*/)
 		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_ZUC is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_sw_zuc_testsuite);
@@ -9693,7 +9693,7 @@ test_cryptodev_armv8(void)
 		RTE_LOG(ERR, USER1, "ARMV8 PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_ARMV8 is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_armv8_testsuite);
@@ -9709,7 +9709,7 @@ test_cryptodev_mrvl(void)
 		RTE_LOG(ERR, USER1, "MRVL PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_MRVL_CRYPTO is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_mrvl_testsuite);
@@ -9727,14 +9727,14 @@ test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
 		RTE_LOG(ERR, USER1, "SCHEDULER PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_SCHEDULER is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	if (rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)) == -1) {
 		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
 			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 }
 	return unit_test_suite_runner(&cryptodev_scheduler_testsuite);
 }
@@ -9753,7 +9753,7 @@ test_cryptodev_dpaa2_sec(void /*argv __rte_unused, int argc __rte_unused*/)
 		RTE_LOG(ERR, USER1, "DPAA2 SEC PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_dpaa2_sec_testsuite);
@@ -9769,7 +9769,7 @@ test_cryptodev_dpaa_sec(void /*argv __rte_unused, int argc __rte_unused*/)
 		RTE_LOG(ERR, USER1, "DPAA SEC PMD must be loaded. Check if "
 				"CONFIG_RTE_LIBRTE_PMD_DPAA_SEC is enabled "
 				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	return unit_test_suite_runner(&cryptodev_dpaa_sec_testsuite);
