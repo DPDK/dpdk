@@ -1168,16 +1168,6 @@ priv_flow_convert(struct priv *priv,
 			attr->priority +
 			hash_rxq_init[parser->layer].flow_priority;
 	}
-exit_free:
-	/* Only verification is expected, all resources should be released. */
-	if (!parser->create) {
-		for (i = 0; i != hash_rxq_init_n; ++i) {
-			if (parser->queue[i].ibv_attr) {
-				rte_free(parser->queue[i].ibv_attr);
-				parser->queue[i].ibv_attr = NULL;
-			}
-		}
-	}
 	if (parser->allmulti &&
 	    parser->layer == HASH_RXQ_ETH) {
 		for (i = 0; i != hash_rxq_init_n; ++i) {
@@ -1187,6 +1177,16 @@ exit_free:
 				break;
 			parser->queue[i].ibv_attr->type =
 						IBV_FLOW_ATTR_MC_DEFAULT;
+		}
+	}
+exit_free:
+	/* Only verification is expected, all resources should be released. */
+	if (!parser->create) {
+		for (i = 0; i != hash_rxq_init_n; ++i) {
+			if (parser->queue[i].ibv_attr) {
+				rte_free(parser->queue[i].ibv_attr);
+				parser->queue[i].ibv_attr = NULL;
+			}
 		}
 	}
 	return ret;
