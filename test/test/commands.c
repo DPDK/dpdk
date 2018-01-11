@@ -103,6 +103,7 @@ static void cmd_autotest_parsed(void *parsed_result,
 			ret = t->callback();
 	}
 
+	last_test_result = ret;
 	if (ret == 0)
 		printf("Test OK\n");
 	else

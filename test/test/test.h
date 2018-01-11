@@ -191,6 +191,7 @@ struct unit_test_suite {
 };
 
 int unit_test_suite_runner(struct unit_test_suite *suite);
+extern int last_test_result;
 
 #define RECURSIVE_ENV_VAR "RTE_TEST_RECURSIVE"
 

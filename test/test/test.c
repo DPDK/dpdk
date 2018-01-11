@@ -73,6 +73,8 @@ do_recursive_call(void)
 	return -1;
 }
 
+int last_test_result;
+
 int
 main(int argc, char **argv)
 {
@@ -111,6 +113,20 @@ main(int argc, char **argv)
 	if (cl == NULL) {
 		return -1;
 	}
+
+	char *dpdk_test = getenv("DPDK_TEST");
+	if (dpdk_test && strlen(dpdk_test)) {
+		char buf[1024];
+		snprintf(buf, sizeof(buf), "%s\n", dpdk_test);
+		if (cmdline_in(cl, buf, strlen(buf)) < 0) {
+			printf("error on cmdline input\n");
+			return -1;
+		}
+
+		cmdline_stdin_exit(cl);
+		return last_test_result;
+	}
+	/* if no DPDK_TEST env variable, go interactive */
 	cmdline_interact(cl);
 	cmdline_stdin_exit(cl);
 #endif
@@ -201,6 +217,8 @@ suite_summary:
 	printf(" + Tests Passed :      %2d\n", succeeded);
 	printf(" + Tests Failed :      %2d\n", failed);
 	printf(" + ------------------------------------------------------- +\n");
+
+	last_test_result = failed;
 
 	if (failed)
 		return -1;
