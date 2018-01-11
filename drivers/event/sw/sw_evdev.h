@@ -306,5 +306,6 @@ int sw_xstats_reset(struct rte_eventdev *dev,
 		const uint32_t ids[],
 		uint32_t nb_ids);
 
+int test_sw_eventdev(void);
 
 #endif /* _SW_EVDEV_H_ */

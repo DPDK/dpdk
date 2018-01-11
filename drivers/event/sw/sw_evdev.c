@@ -795,6 +795,8 @@ sw_probe(struct rte_vdev_device *vdev)
 			.xstats_get_names = sw_xstats_get_names,
 			.xstats_get_by_name = sw_xstats_get_by_name,
 			.xstats_reset = sw_xstats_reset,
+
+			.dev_selftest = test_sw_eventdev,
 	};
 
 	static const char *const args[] = {
