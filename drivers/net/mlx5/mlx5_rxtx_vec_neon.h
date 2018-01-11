@@ -583,11 +583,15 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	if (rxq->mark) {
 		const uint32x4_t ft_def = vdupq_n_u32(MLX5_FLOW_MARK_DEFAULT);
 		const uint32x4_t fdir_flags = vdupq_n_u32(PKT_RX_FDIR);
-		const uint32x4_t fdir_id_flags = vdupq_n_u32(PKT_RX_FDIR_ID);
+		uint32x4_t fdir_id_flags = vdupq_n_u32(PKT_RX_FDIR_ID);
+		uint32x4_t invalid_mask;
 
 		/* Check if flow tag is non-zero then set PKT_RX_FDIR. */
-		ol_flags = vorrq_u32(ol_flags, vbicq_u32(fdir_flags,
-							 vceqzq_u32(flow_tag)));
+		invalid_mask = vceqzq_u32(flow_tag);
+		ol_flags = vorrq_u32(ol_flags,
+				     vbicq_u32(fdir_flags, invalid_mask));
+		/* Mask out invalid entries. */
+		fdir_id_flags = vbicq_u32(fdir_id_flags, invalid_mask);
 		/* Check if flow tag MLX5_FLOW_MARK_DEFAULT. */
 		ol_flags = vorrq_u32(ol_flags,
 				     vbicq_u32(fdir_id_flags,

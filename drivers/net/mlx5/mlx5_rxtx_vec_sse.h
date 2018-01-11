@@ -584,7 +584,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 			_mm_set_epi32(0xffffff00, 0xffffff00,
 				      0xffffff00, 0xffffff00);
 		const __m128i fdir_flags = _mm_set1_epi32(PKT_RX_FDIR);
-		const __m128i fdir_id_flags = _mm_set1_epi32(PKT_RX_FDIR_ID);
+		__m128i fdir_id_flags = _mm_set1_epi32(PKT_RX_FDIR_ID);
 		__m128i flow_tag, invalid_mask;
 
 		flow_tag = _mm_and_si128(pinfo, pinfo_ft_mask);
@@ -594,7 +594,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 					_mm_andnot_si128(invalid_mask,
 							 fdir_flags));
 		/* Mask out invalid entries. */
-		flow_tag = _mm_andnot_si128(invalid_mask, flow_tag);
+		fdir_id_flags = _mm_andnot_si128(invalid_mask, fdir_id_flags);
 		/* Check if flow tag MLX5_FLOW_MARK_DEFAULT. */
 		ol_flags = _mm_or_si128(ol_flags,
 					_mm_andnot_si128(
