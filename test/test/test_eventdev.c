@@ -990,4 +990,26 @@ test_eventdev_common(void)
 	return unit_test_suite_runner(&eventdev_common_testsuite);
 }
 
+static int
+test_eventdev_selftest_impl(const char *pmd, const char *opts)
+{
+	rte_vdev_init(pmd, opts);
+	return rte_event_dev_selftest(rte_event_dev_get_dev_id(pmd));
+}
+
+static int
+test_eventdev_selftest_sw(void)
+{
+	return test_eventdev_selftest_impl("event_sw", "");
+}
+
+static int
+test_eventdev_selftest_octeontx(void)
+{
+	return test_eventdev_selftest_impl("event_octeontx", "");
+}
+
 REGISTER_TEST_COMMAND(eventdev_common_autotest, test_eventdev_common);
+REGISTER_TEST_COMMAND(eventdev_selftest_sw, test_eventdev_selftest_sw);
+REGISTER_TEST_COMMAND(eventdev_selftest_octeontx,
+		test_eventdev_selftest_octeontx);
