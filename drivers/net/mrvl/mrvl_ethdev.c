@@ -111,6 +111,11 @@ struct pp2_bpool *mrvl_port_to_bpool_lookup[RTE_MAX_ETHPORTS];
 int mrvl_port_bpool_size[PP2_NUM_PKT_PROC][PP2_BPOOL_NUM_POOLS][RTE_MAX_LCORE];
 uint64_t cookie_addr_high = MRVL_COOKIE_ADDR_INVALID;
 
+struct mrvl_ifnames {
+	const char *names[PP2_NUM_ETH_PPIO * PP2_NUM_PKT_PROC];
+	int idx;
+};
+
 /*
  * To use buffer harvesting based on loopback port shadow queue structure
  * was introduced for buffers information bookkeeping.
@@ -156,10 +161,9 @@ struct mrvl_txq {
  */
 struct mrvl_shadow_txq shadow_txqs[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
-/** Number of ports configured. */
-int mrvl_ports_nb;
 static int mrvl_lcore_first;
 static int mrvl_lcore_last;
+static int mrvl_dev_num;
 
 static inline int
 mrvl_get_bpool_size(int pp2_id, int pool_id)
@@ -584,8 +588,10 @@ mrvl_dev_stop(struct rte_eth_dev *dev)
 	mrvl_dev_set_link_down(dev);
 	mrvl_flush_rx_queues(dev);
 	mrvl_flush_tx_shadow_queues(dev);
-	if (priv->qos_tbl)
+	if (priv->qos_tbl) {
 		pp2_cls_qos_tbl_deinit(priv->qos_tbl);
+		priv->qos_tbl = NULL;
+	}
 	pp2_ppio_deinit(priv->ppio);
 	priv->ppio = NULL;
 }
@@ -2070,6 +2076,7 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 
 	eth_dev->rx_pkt_burst = mrvl_rx_pkt_burst;
 	eth_dev->tx_pkt_burst = mrvl_tx_pkt_burst;
+	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->dev_private = priv;
 	eth_dev->device = &vdev->device;
 	eth_dev->dev_ops = &mrvl_ops;
@@ -2103,6 +2110,7 @@ mrvl_eth_dev_destroy(const char *name)
 
 	priv = eth_dev->data->dev_private;
 	pp2_bpool_deinit(priv->bpool);
+	used_bpools[priv->pp_id] &= ~(1 << priv->bpool_bit);
 	rte_free(priv);
 	rte_free(eth_dev->data->mac_addrs);
 	rte_eth_dev_release_port(eth_dev);
@@ -2126,9 +2134,9 @@ static int
 mrvl_get_ifnames(const char *key __rte_unused, const char *value,
 		 void *extra_args)
 {
-	const char **ifnames = extra_args;
+	struct mrvl_ifnames *ifnames = extra_args;
 
-	ifnames[mrvl_ports_nb++] = value;
+	ifnames->names[ifnames->idx++] = value;
 
 	return 0;
 }
@@ -2177,6 +2185,8 @@ mrvl_deinit_hifs(void)
 		if (hifs[i])
 			pp2_hif_deinit(hifs[i]);
 	}
+	used_hifs = MRVL_MUSDK_HIFS_RESERVED;
+	memset(hifs, 0, sizeof(hifs));
 }
 
 static void mrvl_set_first_last_cores(int core_id)
@@ -2201,7 +2211,7 @@ static int
 rte_pmd_mrvl_probe(struct rte_vdev_device *vdev)
 {
 	struct rte_kvargs *kvlist;
-	const char *ifnames[PP2_NUM_ETH_PPIO * PP2_NUM_PKT_PROC];
+	struct mrvl_ifnames ifnames;
 	int ret = -EINVAL;
 	uint32_t i, ifnum, cfgnum, core_id;
 	const char *params;
@@ -2215,21 +2225,34 @@ rte_pmd_mrvl_probe(struct rte_vdev_device *vdev)
 		return -EINVAL;
 
 	ifnum = rte_kvargs_count(kvlist, MRVL_IFACE_NAME_ARG);
-	if (ifnum > RTE_DIM(ifnames))
+	if (ifnum > RTE_DIM(ifnames.names))
 		goto out_free_kvlist;
 
+	ifnames.idx = 0;
 	rte_kvargs_process(kvlist, MRVL_IFACE_NAME_ARG,
 			   mrvl_get_ifnames, &ifnames);
 
-	cfgnum = rte_kvargs_count(kvlist, MRVL_CFG_ARG);
-	if (cfgnum > 1) {
-		RTE_LOG(ERR, PMD, "Cannot handle more than one config file!\n");
-		goto out_free_kvlist;
-	} else if (cfgnum == 1) {
-		rte_kvargs_process(kvlist, MRVL_CFG_ARG,
-				   mrvl_get_qoscfg, &mrvl_qos_cfg);
+
+	/*
+	 * The below system initialization should be done only once,
+	 * on the first provided configuration file
+	 */
+	if (!mrvl_qos_cfg) {
+		cfgnum = rte_kvargs_count(kvlist, MRVL_CFG_ARG);
+		RTE_LOG(INFO, PMD, "Parsing config file!\n");
+		if (cfgnum > 1) {
+			RTE_LOG(ERR, PMD, "Cannot handle more than one config file!\n");
+			goto out_free_kvlist;
+		} else if (cfgnum == 1) {
+			rte_kvargs_process(kvlist, MRVL_CFG_ARG,
+					   mrvl_get_qoscfg, &mrvl_qos_cfg);
+		}
 	}
 
+	if (mrvl_dev_num)
+		goto init_devices;
+
+	RTE_LOG(INFO, PMD, "Perform MUSDK initializations\n");
 	/*
 	 * ret == -EEXIST is correct, it means DMA
 	 * has been already initialized (by another PMD).
@@ -2253,12 +2276,14 @@ rte_pmd_mrvl_probe(struct rte_vdev_device *vdev)
 	if (ret)
 		goto out_deinit_hifs;
 
+init_devices:
 	for (i = 0; i < ifnum; i++) {
-		RTE_LOG(INFO, PMD, "Creating %s\n", ifnames[i]);
-		ret = mrvl_eth_dev_create(vdev, ifnames[i]);
+		RTE_LOG(INFO, PMD, "Creating %s\n", ifnames.names[i]);
+		ret = mrvl_eth_dev_create(vdev, ifnames.names[i]);
 		if (ret)
 			goto out_cleanup;
 	}
+	mrvl_dev_num += ifnum;
 
 	rte_kvargs_free(kvlist);
 
@@ -2274,12 +2299,15 @@ rte_pmd_mrvl_probe(struct rte_vdev_device *vdev)
 	return 0;
 out_cleanup:
 	for (; i > 0; i--)
-		mrvl_eth_dev_destroy(ifnames[i]);
+		mrvl_eth_dev_destroy(ifnames.names[i]);
 out_deinit_hifs:
-	mrvl_deinit_hifs();
-	mrvl_deinit_pp2();
+	if (mrvl_dev_num == 0) {
+		mrvl_deinit_hifs();
+		mrvl_deinit_pp2();
+	}
 out_deinit_dma:
-	mv_sys_dma_mem_destroy();
+	if (mrvl_dev_num == 0)
+		mv_sys_dma_mem_destroy();
 out_free_kvlist:
 	rte_kvargs_free(kvlist);
 
@@ -2312,11 +2340,15 @@ rte_pmd_mrvl_remove(struct rte_vdev_device *vdev)
 
 		rte_eth_dev_get_name_by_port(i, ifname);
 		mrvl_eth_dev_destroy(ifname);
+		mrvl_dev_num--;
 	}
 
-	mrvl_deinit_hifs();
-	mrvl_deinit_pp2();
-	mv_sys_dma_mem_destroy();
+	if (mrvl_dev_num == 0) {
+		RTE_LOG(INFO, PMD, "Perform MUSDK deinit\n");
+		mrvl_deinit_hifs();
+		mrvl_deinit_pp2();
+		mv_sys_dma_mem_destroy();
+	}
 
 	return 0;
 }

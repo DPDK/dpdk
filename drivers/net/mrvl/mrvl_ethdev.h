@@ -115,7 +115,4 @@ struct mrvl_priv {
 	uint16_t nb_rx_queues;
 };
 
-/** Number of ports configured. */
-extern int mrvl_ports_nb;
-
 #endif /* _MRVL_ETHDEV_H_ */
