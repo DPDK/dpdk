@@ -106,6 +106,8 @@ static void cmd_autotest_parsed(void *parsed_result,
 	last_test_result = ret;
 	if (ret == 0)
 		printf("Test OK\n");
+	else if (ret == TEST_SKIPPED)
+		printf("Test Skipped\n");
 	else
 		printf("Test Failed\n");
 	fflush(stdout);
