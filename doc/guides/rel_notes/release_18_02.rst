@@ -99,6 +99,18 @@ New Features
   * Rx/Tx descriptor status
   * Link status update/event
 
+* **Added Wireless Base Band Device (bbdev) abstraction.**
+
+  The Wireless Baseband Device library is an acceleration abstraction
+  framework for 3gpp Layer 1 processing functions that provides a common
+  programming interface for seamless opeartion on integrated or discrete
+  hardware accelerators or using optimized software libraries for signal
+  processing.
+  The current release only supports 3GPP CRC, Turbo Coding and Rate
+  Matching operations, as specified in 3GPP TS 36.212.
+
+  See the :doc:`../prog_guide/bbdev` programmer's guide for more details.
+
 
 API Changes
 -----------
@@ -175,6 +187,7 @@ The libraries prepended with a plus sign were incremented in this version.
 .. code-block:: diff
 
      librte_acl.so.2
+   + librte_bbdev.so.1
      librte_bitratestats.so.2
      librte_bus_dpaa.so.1
      librte_bus_fslmc.so.1

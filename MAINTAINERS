@@ -264,6 +264,11 @@ Traffic Metering and Policing API - EXPERIMENTAL
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/librte_ether/rte_mtr*
 
+Baseband API - EXPERIMENTAL
+M: Amr Mokhtar <amr.mokhtar@intel.com>
+F: lib/librte_bbdev/
+F: doc/guides/prog_guide/bbdev.rst
+
 Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto

@@ -42,6 +42,7 @@ The public API headers are grouped by topics:
   [rte_flow]           (@ref rte_flow.h),
   [rte_tm]             (@ref rte_tm.h),
   [rte_mtr]            (@ref rte_mtr.h),
+  [bbdev]              (@ref rte_bbdev.h),
   [cryptodev]          (@ref rte_cryptodev.h),
   [security]           (@ref rte_security.h),
   [eventdev]           (@ref rte_eventdev.h),

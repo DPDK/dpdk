@@ -446,6 +446,12 @@ CONFIG_RTE_LIBRTE_PMD_FAILSAFE=y
 #
 CONFIG_RTE_PMD_PACKET_PREFETCH=y
 
+# Compile generic wireless base band device library
+# EXPERIMENTAL: API may change without prior notice
+#
+CONFIG_RTE_LIBRTE_BBDEV=y
+CONFIG_RTE_BBDEV_MAX_DEVS=128
+
 #
 # Compile generic crypto device library
 #
