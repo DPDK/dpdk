@@ -166,7 +166,7 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 			sa->pattern[2].type = RTE_FLOW_ITEM_TYPE_ESP;
 			sa->pattern[2].spec = &sa->esp_spec;
 			sa->pattern[2].mask = &rte_flow_item_esp_mask;
-			sa->esp_spec.hdr.spi = sa->spi;
+			sa->esp_spec.hdr.spi = rte_cpu_to_be_32(sa->spi);
 
 			sa->pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
 
