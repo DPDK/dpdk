@@ -10,7 +10,6 @@
 
 #include <rte_hexdump.h>
 #include <rte_common.h>
-#include <rte_log.h>
 
 #define TEST_SUCCESS EXIT_SUCCESS
 #define TEST_FAILED  -1
@@ -23,23 +22,13 @@
 # define TEST_TRACE_FAILURE(_file, _line, _func)
 #endif
 
-#define TEST_ASSERT(cond, msg, ...) do {                         \
-		if (!(cond)) {                                           \
-			printf("TestCase %s() line %d failed: "              \
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
-			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
-			return TEST_FAILED;                                  \
-		}                                                        \
-} while (0)
+#define RTE_TEST_TRACE_FAILURE TEST_TRACE_FAILURE
 
-#define TEST_ASSERT_EQUAL(a, b, msg, ...) do {                   \
-		if (!(a == b)) {                                         \
-			printf("TestCase %s() line %d failed: "              \
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
-			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
-			return TEST_FAILED;                                  \
-		}                                                        \
-} while (0)
+#include <rte_test.h>
+
+#define TEST_ASSERT RTE_TEST_ASSERT
+
+#define TEST_ASSERT_EQUAL RTE_TEST_ASSERT_EQUAL
 
 /* Compare two buffers (length in bytes) */
 #define TEST_ASSERT_BUFFERS_ARE_EQUAL(a, b, len,  msg, ...) do {	\
@@ -107,52 +96,15 @@
 	}                                                                     \
 } while (0)
 
-#define TEST_ASSERT_NOT_EQUAL(a, b, msg, ...) do {               \
-		if (!(a != b)) {                                         \
-			printf("TestCase %s() line %d failed: "              \
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
-			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
-			return TEST_FAILED;                                  \
-		}                                                        \
-} while (0)
+#define TEST_ASSERT_NOT_EQUAL RTE_TEST_ASSERT_NOT_EQUAL
 
-#define TEST_ASSERT_SUCCESS(val, msg, ...) do {                  \
-		typeof(val) _val = (val);                                \
-		if (!(_val == 0)) {                                      \
-			printf("TestCase %s() line %d failed (err %d): "     \
-				msg "\n", __func__, __LINE__, _val,              \
-				##__VA_ARGS__);                                  \
-			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
-			return TEST_FAILED;                                  \
-		}                                                        \
-} while (0)
+#define TEST_ASSERT_SUCCESS RTE_TEST_ASSERT_SUCCESS
 
-#define TEST_ASSERT_FAIL(val, msg, ...) do {                     \
-		if (!(val != 0)) {                                       \
-			printf("TestCase %s() line %d failed: "              \
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
-			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
-			return TEST_FAILED;                                  \
-		}                                                        \
-} while (0)
+#define TEST_ASSERT_FAIL RTE_TEST_ASSERT_FAIL
 
-#define TEST_ASSERT_NULL(val, msg, ...) do {                     \
-		if (!(val == NULL)) {                                    \
-			printf("TestCase %s() line %d failed: "              \
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
-			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
-			return TEST_FAILED;                                  \
-		}                                                        \
-} while (0)
+#define TEST_ASSERT_NULL RTE_TEST_ASSERT_NULL
 
-#define TEST_ASSERT_NOT_NULL(val, msg, ...) do {                 \
-		if (!(val != NULL)) {                                    \
-			printf("TestCase %s() line %d failed: "              \
-				msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
-			TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
-			return TEST_FAILED;                                  \
-		}                                                        \
-} while (0)
+#define TEST_ASSERT_NOT_NULL RTE_TEST_ASSERT_NOT_NULL
 
 struct unit_test_case {
 	int (*setup)(void);
