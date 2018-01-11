@@ -22,6 +22,7 @@
 #define ssovf_log_dbg(fmt, ...) SSOVF_LOG(DEBUG, fmt, ##__VA_ARGS__)
 #define ssovf_log_err(fmt, ...) SSOVF_LOG(ERR, fmt, ##__VA_ARGS__)
 #define ssovf_func_trace ssovf_log_dbg
+#define ssovf_log_selftest ssovf_log_info
 
 #define SSO_MAX_VHGRP                     (64)
 #define SSO_MAX_VHWS                      (32)
@@ -163,5 +164,6 @@ uint16_t ssows_deq_timeout_burst(void *port, struct rte_event ev[],
 		uint16_t nb_events, uint64_t timeout_ticks);
 void ssows_flush_events(struct ssows *ws, uint8_t queue_id);
 void ssows_reset(struct ssows *ws);
+int test_eventdev_octeontx(void);
 
 #endif /* __SSOVF_EVDEV_H__ */

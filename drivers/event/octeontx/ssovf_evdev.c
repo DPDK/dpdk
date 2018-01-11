@@ -600,6 +600,8 @@ static const struct rte_eventdev_ops ssovf_ops = {
 	.eth_rx_adapter_start = ssovf_eth_rx_adapter_start,
 	.eth_rx_adapter_stop = ssovf_eth_rx_adapter_stop,
 
+	.dev_selftest = test_eventdev_octeontx,
+
 	.dump             = ssovf_dump,
 	.dev_start        = ssovf_start,
 	.dev_stop         = ssovf_stop,
