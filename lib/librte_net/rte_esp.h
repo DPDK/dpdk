@@ -49,8 +49,8 @@ extern "C" {
  * ESP Header
  */
 struct esp_hdr {
-	uint32_t spi;  /**< Security Parameters Index */
-	uint32_t seq;  /**< packet sequence number */
+	rte_be32_t spi;  /**< Security Parameters Index */
+	rte_be32_t seq;  /**< packet sequence number */
 } __attribute__((__packed__));
 
 #ifdef __cplusplus
