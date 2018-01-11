@@ -23,7 +23,7 @@
 #include <rte_service_component.h>
 #include <rte_bus_vdev.h>
 
-#include "test.h"
+#include "sw_evdev.h"
 
 #define MAX_PORTS 16
 #define MAX_QIDS 16
@@ -3013,7 +3013,7 @@ worker_loopback(struct test *t, uint8_t disable_implicit_release)
 
 static struct rte_mempool *eventdev_func_mempool;
 
-static int
+int
 test_sw_eventdev(void)
 {
 	struct test *t = malloc(sizeof(struct test));
@@ -3024,25 +3024,25 @@ test_sw_eventdev(void)
 	 */
 	release_ev.op = RTE_EVENT_OP_RELEASE;
 
-	const char *eventdev_name = "event_sw0";
+	const char *eventdev_name = "event_sw";
 	evdev = rte_event_dev_get_dev_id(eventdev_name);
 	if (evdev < 0) {
 		printf("%d: Eventdev %s not found - creating.\n",
 				__LINE__, eventdev_name);
 		if (rte_vdev_init(eventdev_name, NULL) < 0) {
 			printf("Error creating eventdev\n");
-			return -1;
+			goto test_fail;
 		}
 		evdev = rte_event_dev_get_dev_id(eventdev_name);
 		if (evdev < 0) {
 			printf("Error finding newly created eventdev\n");
-			return -1;
+			goto test_fail;
 		}
 	}
 
 	if (rte_event_dev_service_id_get(evdev, &t->service_id) < 0) {
 		printf("Failed to get service ID for software event dev\n");
-		return -1;
+		goto test_fail;
 	}
 
 	rte_service_runstate_set(t->service_id, 1);
@@ -3059,7 +3059,7 @@ test_sw_eventdev(void)
 				rte_socket_id());
 		if (!eventdev_func_mempool) {
 			printf("ERROR creating mempool\n");
-			return -1;
+			goto test_fail;
 		}
 	}
 	t->mbuf_pool = eventdev_func_mempool;
@@ -3067,146 +3067,146 @@ test_sw_eventdev(void)
 	ret = test_single_directed_packet(t);
 	if (ret != 0) {
 		printf("ERROR - Single Directed Packet test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Directed Forward Credit test...\n");
 	ret = test_directed_forward_credits(t);
 	if (ret != 0) {
 		printf("ERROR - Directed Forward Credit test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Single Load Balanced Packet test...\n");
 	ret = single_packet(t);
 	if (ret != 0) {
 		printf("ERROR - Single Packet test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Unordered Basic test...\n");
 	ret = unordered_basic(t);
 	if (ret != 0) {
 		printf("ERROR -  Unordered Basic test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Ordered Basic test...\n");
 	ret = ordered_basic(t);
 	if (ret != 0) {
 		printf("ERROR -  Ordered Basic test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Burst Packets test...\n");
 	ret = burst_packets(t);
 	if (ret != 0) {
 		printf("ERROR - Burst Packets test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Load Balancing test...\n");
 	ret = load_balancing(t);
 	if (ret != 0) {
 		printf("ERROR - Load Balancing test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Prioritized Directed test...\n");
 	ret = test_priority_directed(t);
 	if (ret != 0) {
 		printf("ERROR - Prioritized Directed test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Prioritized Atomic test...\n");
 	ret = test_priority_atomic(t);
 	if (ret != 0) {
 		printf("ERROR - Prioritized Atomic test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 
 	printf("*** Running Prioritized Ordered test...\n");
 	ret = test_priority_ordered(t);
 	if (ret != 0) {
 		printf("ERROR - Prioritized Ordered test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Prioritized Unordered test...\n");
 	ret = test_priority_unordered(t);
 	if (ret != 0) {
 		printf("ERROR - Prioritized Unordered test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Invalid QID test...\n");
 	ret = invalid_qid(t);
 	if (ret != 0) {
 		printf("ERROR - Invalid QID test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Load Balancing History test...\n");
 	ret = load_balancing_history(t);
 	if (ret != 0) {
 		printf("ERROR - Load Balancing History test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Inflight Count test...\n");
 	ret = inflight_counts(t);
 	if (ret != 0) {
 		printf("ERROR - Inflight Count test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Abuse Inflights test...\n");
 	ret = abuse_inflights(t);
 	if (ret != 0) {
 		printf("ERROR - Abuse Inflights test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running XStats test...\n");
 	ret = xstats_tests(t);
 	if (ret != 0) {
 		printf("ERROR - XStats test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running XStats ID Reset test...\n");
 	ret = xstats_id_reset_tests(t);
 	if (ret != 0) {
 		printf("ERROR - XStats ID Reset test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running XStats Brute Force test...\n");
 	ret = xstats_brute_force(t);
 	if (ret != 0) {
 		printf("ERROR - XStats Brute Force test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running XStats ID Abuse test...\n");
 	ret = xstats_id_abuse_tests(t);
 	if (ret != 0) {
 		printf("ERROR - XStats ID Abuse test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running QID Priority test...\n");
 	ret = qid_priorities(t);
 	if (ret != 0) {
 		printf("ERROR - QID Priority test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Ordered Reconfigure test...\n");
 	ret = ordered_reconfigure(t);
 	if (ret != 0) {
 		printf("ERROR - Ordered Reconfigure test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Port LB Single Reconfig test...\n");
 	ret = port_single_lb_reconfig(t);
 	if (ret != 0) {
 		printf("ERROR - Port LB Single Reconfig test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Port Reconfig Credits test...\n");
 	ret = port_reconfig_credits(t);
 	if (ret != 0) {
 		printf("ERROR - Port Reconfig Credits Reset test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	printf("*** Running Head-of-line-blocking test...\n");
 	ret = holb(t);
 	if (ret != 0) {
 		printf("ERROR - Head-of-line-blocking test FAILED.\n");
-		return ret;
+		goto test_fail;
 	}
 	if (rte_lcore_count() >= 3) {
 		printf("*** Running Worker loopback test...\n");
@@ -3220,7 +3220,7 @@ test_sw_eventdev(void)
 		ret = worker_loopback(t, 1);
 		if (ret != 0) {
 			printf("ERROR - Worker loopback test FAILED.\n");
-			return ret;
+			goto test_fail;
 		}
 	} else {
 		printf("### Not enough cores for worker loopback tests.\n");
@@ -3233,7 +3233,9 @@ test_sw_eventdev(void)
 	 */
 	free(t);
 
+	printf("SW Eventdev Selftest Successful.\n");
 	return 0;
+test_fail:
+	printf("SW Eventdev Selftest Failed.\n");
+	return -1;
 }
-
-REGISTER_TEST_COMMAND(eventdev_sw_autotest, test_sw_eventdev);
