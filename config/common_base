@@ -812,6 +812,11 @@ CONFIG_RTE_TEST_PMD_RECORD_CORE_CYCLES=n
 CONFIG_RTE_TEST_PMD_RECORD_BURST_STATS=n
 
 #
+# Compile the bbdev test application
+#
+CONFIG_RTE_TEST_BBDEV=y
+
+#
 # Compile the crypto performance application
 #
 CONFIG_RTE_APP_CRYPTO_PERF=y

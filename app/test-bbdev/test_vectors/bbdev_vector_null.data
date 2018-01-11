@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2017 Intel Corporation
+
+op_type =
+RTE_BBDEV_OP_NONE
