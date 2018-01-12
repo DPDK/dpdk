@@ -9,6 +9,7 @@
 #include "qede_ethdev.h"
 #include <rte_alarm.h>
 #include <rte_version.h>
+#include <rte_kvargs.h>
 
 /* Globals */
 int qede_logtype_init;
@@ -456,13 +457,13 @@ int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg)
 	params.update_vport_active_tx_flg = 1;
 	params.vport_active_rx_flg = flg;
 	params.vport_active_tx_flg = flg;
-#ifndef RTE_LIBRTE_QEDE_VF_TX_SWITCH
-	if (IS_VF(edev)) {
-		params.update_tx_switching_flg = 1;
-		params.tx_switching_flg = !flg;
-		DP_INFO(edev, "VF tx-switching is disabled\n");
+	if (!qdev->enable_tx_switching) {
+		if (IS_VF(edev)) {
+			params.update_tx_switching_flg = 1;
+			params.tx_switching_flg = !flg;
+			DP_INFO(edev, "VF tx-switching is disabled\n");
+		}
 	}
-#endif
 	for_each_hwfn(edev, i) {
 		p_hwfn = &edev->hwfns[i];
 		params.opaque_fid = p_hwfn->hw_info.opaque_fid;
@@ -1281,6 +1282,68 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 	DP_INFO(edev, "Device is stopped\n");
 }
 
+#define QEDE_TX_SWITCHING		"vf_txswitch"
+
+const char *valid_args[] = {
+	QEDE_TX_SWITCHING,
+	NULL,
+};
+
+static int qede_args_check(const char *key, const char *val, void *opaque)
+{
+	unsigned long tmp;
+	int ret = 0;
+	struct rte_eth_dev *eth_dev = opaque;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+#endif
+
+	errno = 0;
+	tmp = strtoul(val, NULL, 0);
+	if (errno) {
+		DP_INFO(edev, "%s: \"%s\" is not a valid integer", key, val);
+		return errno;
+	}
+
+	if (strcmp(QEDE_TX_SWITCHING, key) == 0)
+		qdev->enable_tx_switching = !!tmp;
+
+	return ret;
+}
+
+static int qede_args(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	struct rte_kvargs *kvlist;
+	struct rte_devargs *devargs;
+	int ret;
+	int i;
+
+	devargs = pci_dev->device.devargs;
+	if (!devargs)
+		return 0; /* return success */
+
+	kvlist = rte_kvargs_parse(devargs->args, valid_args);
+	if (kvlist == NULL)
+		return -EINVAL;
+
+	 /* Process parameters. */
+	for (i = 0; (valid_args[i] != NULL); ++i) {
+		if (rte_kvargs_count(kvlist, valid_args[i])) {
+			ret = rte_kvargs_process(kvlist, valid_args[i],
+						 qede_args_check, eth_dev);
+			if (ret != ECORE_SUCCESS) {
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+		}
+	}
+	rte_kvargs_free(kvlist);
+
+	return 0;
+}
+
 static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
@@ -1313,6 +1376,13 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		DP_ERR(edev, "Minimum one RX queue is required\n");
 		return -EINVAL;
 	}
+
+	/* Enable Tx switching by default */
+	qdev->enable_tx_switching = 1;
+
+	/* Parse devargs and fix up rxmode */
+	if (qede_args(eth_dev))
+		return -ENOTSUP;
 
 	/* Sanity checks and throw warnings */
 	if (rxmode->enable_scatter)

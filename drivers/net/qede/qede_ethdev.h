@@ -188,6 +188,7 @@ struct qede_dev {
 	struct qede_fastpath *fp_array;
 	uint16_t mtu;
 	uint16_t new_mtu;
+	bool enable_tx_switching;
 	bool rss_enable;
 	struct rte_eth_rss_conf rss_conf;
 	uint16_t rss_ind_table[ECORE_RSS_IND_TABLE_SIZE];
