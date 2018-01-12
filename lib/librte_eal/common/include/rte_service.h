@@ -394,6 +394,23 @@ int32_t rte_service_lcore_count_services(uint32_t lcore);
  */
 int32_t rte_service_dump(FILE *f, uint32_t id);
 
+/**
+ * Returns the number of cycles that this service has consumed
+ */
+#define RTE_SERVICE_ATTR_CYCLES 0
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get an attribute from a service.
+ *
+ * @retval 0 Success, the attribute value has been written to *attr_value*.
+ *         -EINVAL Invalid id, attr_id or attr_value was NULL.
+ */
+int32_t rte_service_attr_get(uint32_t id, uint32_t attr_id,
+			     uint32_t *attr_value);
+
 #ifdef __cplusplus
 }
 #endif

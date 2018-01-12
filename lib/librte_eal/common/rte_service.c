@@ -682,6 +682,24 @@ rte_service_lcore_stop(uint32_t lcore)
 	return 0;
 }
 
+int32_t
+rte_service_attr_get(uint32_t id, uint32_t attr_id, uint32_t *attr_value)
+{
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
+
+	if (!attr_value)
+		return -EINVAL;
+
+	switch (attr_id) {
+	case RTE_SERVICE_ATTR_CYCLES:
+		*attr_value = s->cycles_spent;
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
 static void
 rte_service_dump_one(FILE *f, struct rte_service_spec_impl *s,
 		     uint64_t all_cycles, uint32_t reset)
