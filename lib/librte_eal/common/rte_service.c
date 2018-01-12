@@ -695,6 +695,9 @@ rte_service_attr_get(uint32_t id, uint32_t attr_id, uint32_t *attr_value)
 	case RTE_SERVICE_ATTR_CYCLES:
 		*attr_value = s->cycles_spent;
 		return 0;
+	case RTE_SERVICE_ATTR_CALL_COUNT:
+		*attr_value = s->calls;
+		return 0;
 	default:
 		return -EINVAL;
 	}

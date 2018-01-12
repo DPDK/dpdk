@@ -400,6 +400,11 @@ int32_t rte_service_dump(FILE *f, uint32_t id);
 #define RTE_SERVICE_ATTR_CYCLES 0
 
 /**
+ * Returns the count of invocations of this service function
+ */
+#define RTE_SERVICE_ATTR_CALL_COUNT 1
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *

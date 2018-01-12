@@ -278,6 +278,12 @@ service_attr_get(void)
 			"Valid attr_get() call didn't return success");
 	TEST_ASSERT_EQUAL(0, attr_value,
 			"attr_get() call didn't set correct cycles (zero)");
+	/* check correct call count */
+	const int attr_calls = RTE_SERVICE_ATTR_CALL_COUNT;
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(0, attr_value,
+			"attr_get() call didn't get call count (zero)");
 
 	/* Call service to increment cycle count */
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_id),
@@ -298,6 +304,11 @@ service_attr_get(void)
 
 	rte_service_lcore_stop(slcore_id);
 
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(1, (attr_value > 0),
+			"attr_get() call didn't get call count (zero)");
+
 	TEST_ASSERT_EQUAL(0, rte_service_attr_reset_all(id),
 			"Valid attr_reset_all() return success");
 
@@ -305,6 +316,11 @@ service_attr_get(void)
 			"Valid attr_get() call didn't return success");
 	TEST_ASSERT_EQUAL(0, attr_value,
 			"attr_get() call didn't set correct cycles (zero)");
+	/* ensure call count > zero */
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(0, (attr_value > 0),
+			"attr_get() call didn't get call count (zero)");
 
 	return unregister_all();
 }
