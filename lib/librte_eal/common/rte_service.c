@@ -712,15 +712,27 @@ rte_service_dump_one(FILE *f, struct rte_service_spec_impl *s,
 	if (s->calls != 0)
 		calls = s->calls;
 
+	if (reset) {
+		s->cycles_spent = 0;
+		s->calls = 0;
+		return;
+	}
+
 	fprintf(f, "  %s: stats %d\tcalls %"PRIu64"\tcycles %"
 			PRIu64"\tavg: %"PRIu64"\n",
 			s->spec.name, service_stats_enabled(s), s->calls,
 			s->cycles_spent, s->cycles_spent / calls);
+}
 
-	if (reset) {
-		s->cycles_spent = 0;
-		s->calls = 0;
-	}
+int32_t
+rte_service_attr_reset_all(uint32_t id)
+{
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
+
+	int reset = 1;
+	rte_service_dump_one(NULL, s, 0, reset);
+	return 0;
 }
 
 static void
@@ -768,7 +780,7 @@ int32_t rte_service_dump(FILE *f, uint32_t id)
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
 		if (!service_valid(i))
 			continue;
-		uint32_t reset = 1;
+		uint32_t reset = 0;
 		rte_service_dump_one(f, &rte_services[i], total_cycles, reset);
 	}
 
@@ -777,7 +789,7 @@ int32_t rte_service_dump(FILE *f, uint32_t id)
 		if (lcore_config[i].core_role != ROLE_SERVICE)
 			continue;
 
-		uint32_t reset = 1;
+		uint32_t reset = 0;
 		service_dump_calls_per_lcore(f, i, reset);
 	}
 

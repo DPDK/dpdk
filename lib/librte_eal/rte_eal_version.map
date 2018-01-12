@@ -217,6 +217,7 @@ EXPERIMENTAL {
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
 	rte_service_attr_get;
+	rte_service_attr_reset_all;
 	rte_service_component_register;
 	rte_service_component_unregister;
 	rte_service_component_runstate_set;

@@ -411,6 +411,18 @@ int32_t rte_service_dump(FILE *f, uint32_t id);
 int32_t rte_service_attr_get(uint32_t id, uint32_t attr_id,
 			     uint32_t *attr_value);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Reset all attribute values of a service.
+ *
+ * @param id The service to reset all statistics of
+ * @retval 0 Successfully reset attributes
+ *         -EINVAL Invalid service id provided
+ */
+int32_t rte_service_attr_reset_all(uint32_t id);
+
 #ifdef __cplusplus
 }
 #endif

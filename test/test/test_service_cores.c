@@ -242,6 +242,9 @@ service_name(void)
 static int
 service_attr_get(void)
 {
+	/* ensure all services unregistered so cycle counts are zero */
+	unregister_all();
+
 	struct rte_service_spec service;
 	memset(&service, 0, sizeof(struct rte_service_spec));
 	service.callback = dummy_cb;
@@ -294,6 +297,14 @@ service_attr_get(void)
 			"attr_get() failed to get cycles (expected > zero)");
 
 	rte_service_lcore_stop(slcore_id);
+
+	TEST_ASSERT_EQUAL(0, rte_service_attr_reset_all(id),
+			"Valid attr_reset_all() return success");
+
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_id, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(0, attr_value,
+			"attr_get() call didn't set correct cycles (zero)");
 
 	return unregister_all();
 }
