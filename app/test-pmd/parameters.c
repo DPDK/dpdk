@@ -935,12 +935,12 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txq")) {
 				n = atoi(optarg);
-				if (n >= 0 && n <= (int) MAX_QUEUE_ID)
+				if (n >= 0 && check_nb_txq((queueid_t)n) == 0)
 					nb_txq = (queueid_t) n;
 				else
 					rte_exit(EXIT_FAILURE, "txq %d invalid - must be"
-						  " >= 0 && <= %d\n", n,
-						  (int) MAX_QUEUE_ID);
+						  " >= 0 && <= %u\n", n,
+						  get_allowed_max_nb_txq(&pid));
 			}
 			if (!nb_rxq && !nb_txq) {
 				rte_exit(EXIT_FAILURE, "Either rx or tx queues should "

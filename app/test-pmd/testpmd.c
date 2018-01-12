@@ -580,6 +580,52 @@ check_nb_rxq(queueid_t rxq)
 	return 0;
 }
 
+/*
+ * Get the allowed maximum number of TX queues.
+ * *pid return the port id which has minimal value of
+ * max_tx_queues in all ports.
+ */
+queueid_t
+get_allowed_max_nb_txq(portid_t *pid)
+{
+	queueid_t allowed_max_txq = MAX_QUEUE_ID;
+	portid_t pi;
+	struct rte_eth_dev_info dev_info;
+
+	RTE_ETH_FOREACH_DEV(pi) {
+		rte_eth_dev_info_get(pi, &dev_info);
+		if (dev_info.max_tx_queues < allowed_max_txq) {
+			allowed_max_txq = dev_info.max_tx_queues;
+			*pid = pi;
+		}
+	}
+	return allowed_max_txq;
+}
+
+/*
+ * Check input txq is valid or not.
+ * If input txq is not greater than any of maximum number
+ * of TX queues of all ports, it is valid.
+ * if valid, return 0, else return -1
+ */
+int
+check_nb_txq(queueid_t txq)
+{
+	queueid_t allowed_max_txq;
+	portid_t pid = 0;
+
+	allowed_max_txq = get_allowed_max_nb_txq(&pid);
+	if (txq > allowed_max_txq) {
+		printf("Fail: input txq (%u) can't be greater "
+		       "than max_tx_queues (%u) of port %u\n",
+		       txq,
+		       allowed_max_txq,
+		       pid);
+		return -1;
+	}
+	return 0;
+}
+
 static void
 init_config(void)
 {
