@@ -19,8 +19,8 @@
 #define NB_SOCKETS                      (2)
 #define MEMPOOL_CACHE_SIZE 250
 #define MAX_PKT_BURST                   (32)
-#define RTE_TEST_RX_DESC_DEFAULT        (128)
-#define RTE_TEST_TX_DESC_DEFAULT        (512)
+#define RTE_TEST_RX_DESC_DEFAULT        (1024)
+#define RTE_TEST_TX_DESC_DEFAULT        (1024)
 #define RTE_PORT_ALL            (~(uint16_t)0x0)
 
 /* how long test would take at full line rate */

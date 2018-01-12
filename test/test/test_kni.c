@@ -23,8 +23,8 @@
 #define PKT_BURST_SZ     32
 #define MEMPOOL_CACHE_SZ PKT_BURST_SZ
 #define SOCKET           0
-#define NB_RXD           128
-#define NB_TXD           512
+#define NB_RXD           1024
+#define NB_TXD           1024
 #define KNI_TIMEOUT_MS   5000 /* ms */
 
 #define IFCONFIG      "/sbin/ifconfig "

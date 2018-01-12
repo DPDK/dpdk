@@ -33,8 +33,8 @@
 
 #define SLAVE_COUNT (4)
 
-#define RX_RING_SIZE 128
-#define TX_RING_SIZE 512
+#define RX_RING_SIZE 1024
+#define TX_RING_SIZE 1024
 
 #define MBUF_CACHE_SIZE         (250)
 #define BURST_SIZE              (32)
