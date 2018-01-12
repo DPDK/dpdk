@@ -534,6 +534,52 @@ check_socket_id(const unsigned int socket_id)
 	return 0;
 }
 
+/*
+ * Get the allowed maximum number of RX queues.
+ * *pid return the port id which has minimal value of
+ * max_rx_queues in all ports.
+ */
+queueid_t
+get_allowed_max_nb_rxq(portid_t *pid)
+{
+	queueid_t allowed_max_rxq = MAX_QUEUE_ID;
+	portid_t pi;
+	struct rte_eth_dev_info dev_info;
+
+	RTE_ETH_FOREACH_DEV(pi) {
+		rte_eth_dev_info_get(pi, &dev_info);
+		if (dev_info.max_rx_queues < allowed_max_rxq) {
+			allowed_max_rxq = dev_info.max_rx_queues;
+			*pid = pi;
+		}
+	}
+	return allowed_max_rxq;
+}
+
+/*
+ * Check input rxq is valid or not.
+ * If input rxq is not greater than any of maximum number
+ * of RX queues of all ports, it is valid.
+ * if valid, return 0, else return -1
+ */
+int
+check_nb_rxq(queueid_t rxq)
+{
+	queueid_t allowed_max_rxq;
+	portid_t pid = 0;
+
+	allowed_max_rxq = get_allowed_max_nb_rxq(&pid);
+	if (rxq > allowed_max_rxq) {
+		printf("Fail: input rxq (%u) can't be greater "
+		       "than max_rx_queues (%u) of port %u\n",
+		       rxq,
+		       allowed_max_rxq,
+		       pid);
+		return -1;
+	}
+	return 0;
+}
+
 static void
 init_config(void)
 {
