@@ -2816,22 +2816,23 @@ i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
 		return 0;
 	}
 
-	info->queue_region_number = 1;
-	info->region[0].queue_num = main_vsi->nb_used_qps;
-	info->region[0].queue_start_index = 0;
+	if (info->queue_region_number) {
+		info->queue_region_number = 1;
+		info->region[0].queue_num = main_vsi->nb_used_qps;
+		info->region[0].queue_start_index = 0;
 
-	ret = i40e_vsi_update_queue_region_mapping(hw, pf);
-	if (ret != I40E_SUCCESS)
-		PMD_DRV_LOG(INFO, "Failed to flush queue region mapping.");
+		ret = i40e_vsi_update_queue_region_mapping(hw, pf);
+		if (ret != I40E_SUCCESS)
+			PMD_DRV_LOG(INFO, "Failed to flush queue region mapping.");
 
-	ret = i40e_dcb_init_configure(dev, TRUE);
-	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(INFO, "Failed to flush dcb.");
-		pf->flags &= ~I40E_FLAG_DCB;
+		ret = i40e_dcb_init_configure(dev, TRUE);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(INFO, "Failed to flush dcb.");
+			pf->flags &= ~I40E_FLAG_DCB;
+		}
+
+		i40e_init_queue_region_conf(dev);
 	}
-
-	i40e_init_queue_region_conf(dev);
-
 	return 0;
 }
 

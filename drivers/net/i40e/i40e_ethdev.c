@@ -2144,9 +2144,6 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	/* reset hierarchy commit */
 	pf->tm_conf.committed = false;
 
-	/* Remove all the queue region configuration */
-	i40e_flush_queue_region_all_conf(dev, hw, pf, 0);
-
 	hw->adapter_stopped = 1;
 }
 
