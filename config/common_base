@@ -784,6 +784,11 @@ CONFIG_RTE_APP_TEST=y
 CONFIG_RTE_APP_TEST_RESOURCE_TAR=n
 
 #
+# Compile the procinfo application
+#
+CONFIG_RTE_PROC_INFO=n
+
+#
 # Compile the PMD test application
 #
 CONFIG_RTE_TEST_PMD=y
