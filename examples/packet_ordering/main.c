@@ -16,8 +16,8 @@
 #include <rte_ring.h>
 #include <rte_reorder.h>
 
-#define RX_DESC_PER_QUEUE 128
-#define TX_DESC_PER_QUEUE 512
+#define RX_DESC_PER_QUEUE 1024
+#define TX_DESC_PER_QUEUE 1024
 
 #define MAX_PKTS_BURST 32
 #define REORDER_BUFFER_SIZE 8192

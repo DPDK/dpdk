@@ -78,8 +78,8 @@
 /*
  * Configurable number of RX/TX ring descriptors
  */
-#define IPSEC_SECGW_RX_DESC_DEFAULT 128
-#define IPSEC_SECGW_TX_DESC_DEFAULT 512
+#define IPSEC_SECGW_RX_DESC_DEFAULT 1024
+#define IPSEC_SECGW_TX_DESC_DEFAULT 1024
 static uint16_t nb_rxd = IPSEC_SECGW_RX_DESC_DEFAULT;
 static uint16_t nb_txd = IPSEC_SECGW_TX_DESC_DEFAULT;
 

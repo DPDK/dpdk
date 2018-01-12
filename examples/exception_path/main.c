@@ -65,10 +65,10 @@
 #define MEMPOOL_CACHE_SZ        PKT_BURST_SZ
 
 /* Number of RX ring descriptors */
-#define NB_RXD                  128
+#define NB_RXD                  1024
 
 /* Number of TX ring descriptors */
-#define NB_TXD                  512
+#define NB_TXD                  1024
 
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be

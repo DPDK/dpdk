@@ -91,8 +91,8 @@
 /*
  * Configurable number of RX/TX ring descriptors
  */
-#define RTE_RX_DESC_DEFAULT 128
-#define RTE_TX_DESC_DEFAULT 512
+#define RTE_RX_DESC_DEFAULT 1024
+#define RTE_TX_DESC_DEFAULT 1024
 
 #define BOND_IP_1	7
 #define BOND_IP_2	0

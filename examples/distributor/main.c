@@ -17,8 +17,8 @@
 #include <rte_distributor.h>
 #include <rte_pause.h>
 
-#define RX_RING_SIZE 512
-#define TX_RING_SIZE 512
+#define RX_RING_SIZE 1024
+#define TX_RING_SIZE 1024
 #define NUM_MBUFS ((64*1024)-1)
 #define MBUF_CACHE_SIZE 128
 #define BURST_SIZE 64

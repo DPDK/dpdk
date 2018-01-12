@@ -71,8 +71,8 @@ static struct rte_eth_conf port_conf = {
 	},
 };
 
-#define NIC_RX_QUEUE_DESC               128
-#define NIC_TX_QUEUE_DESC               512
+#define NIC_RX_QUEUE_DESC               1024
+#define NIC_TX_QUEUE_DESC               1024
 
 #define NIC_RX_QUEUE                    0
 #define NIC_TX_QUEUE                    0
