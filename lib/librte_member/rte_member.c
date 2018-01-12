@@ -162,8 +162,9 @@ rte_member_create(const struct rte_member_parameters *params)
 	return setsum;
 
 error_unlock_exit:
+	rte_free(te);
+	rte_free(setsum);
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
-	rte_member_free(setsum);
 	return NULL;
 }
 
