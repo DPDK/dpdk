@@ -1089,6 +1089,15 @@ Set the MAC address for a VF from the PF::
 
    testpmd> set vf mac addr (port_id) (vf_id) (XX:XX:XX:XX:XX:XX)
 
+set eth-peer
+~~~~~~~~~~~~
+
+Set the forwarding peer address for certain port::
+
+   testpmd> set eth-peer (port_id) (perr_addr)
+
+This is equivalent to the ``--eth-peer`` command-line option.
+
 set port-uta
 ~~~~~~~~~~~~
 

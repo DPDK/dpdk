@@ -553,6 +553,8 @@ void set_def_fwd_config(void);
 void reconfig(portid_t new_port_id, unsigned socket_id);
 int init_fwd_streams(void);
 
+void set_fwd_eth_peer(portid_t port_id, char *peer_addr);
+
 void port_mtu_set(portid_t port_id, uint16_t mtu);
 void port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_pos);
 void port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,

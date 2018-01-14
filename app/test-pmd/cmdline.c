@@ -486,6 +486,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set vf mac addr (port_id) (vf_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Set the MAC address for a VF from the PF.\n\n"
 
+			"set eth-peer (port_id) (peer_addr)\n"
+			"    set the peer address for certain port.\n\n"
+
 			"set port (port_id) uta (mac_address|all) (on|off)\n"
 			"    Add/Remove a or all unicast hash filter(s)"
 			"from port X.\n\n"
@@ -7182,6 +7185,50 @@ cmdline_parse_inst_t cmd_mac_addr = {
 	},
 };
 
+/* *** SET THE PEER ADDRESS FOR CERTAIN PORT *** */
+struct cmd_eth_peer_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t eth_peer;
+	portid_t port_id;
+	cmdline_fixed_string_t peer_addr;
+};
+
+static void cmd_set_eth_peer_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+		struct cmd_eth_peer_result *res = parsed_result;
+
+		if (test_done == 0) {
+			printf("Please stop forwarding first\n");
+			return;
+		}
+		if (!strcmp(res->eth_peer, "eth-peer")) {
+			set_fwd_eth_peer(res->port_id, res->peer_addr);
+			fwd_config_setup();
+		}
+}
+cmdline_parse_token_string_t cmd_eth_peer_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_eth_peer_result, set, "set");
+cmdline_parse_token_string_t cmd_eth_peer =
+	TOKEN_STRING_INITIALIZER(struct cmd_eth_peer_result, eth_peer, "eth-peer");
+cmdline_parse_token_num_t cmd_eth_peer_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_eth_peer_result, port_id, UINT16);
+cmdline_parse_token_string_t cmd_eth_peer_addr =
+	TOKEN_STRING_INITIALIZER(struct cmd_eth_peer_result, peer_addr, NULL);
+
+cmdline_parse_inst_t cmd_set_fwd_eth_peer = {
+	.f = cmd_set_eth_peer_parsed,
+	.data = NULL,
+	.help_str = "set eth-peer <port_id> <peer_mac>",
+	.tokens = {
+		(void *)&cmd_eth_peer_set,
+		(void *)&cmd_eth_peer,
+		(void *)&cmd_eth_peer_port_id,
+		(void *)&cmd_eth_peer_addr,
+		NULL,
+	},
+};
 
 /* *** CONFIGURE QUEUE STATS COUNTER MAPPINGS *** */
 struct cmd_set_qmap_result {
@@ -15706,6 +15753,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_read_rxd_txd,
 	(cmdline_parse_inst_t *)&cmd_stop,
 	(cmdline_parse_inst_t *)&cmd_mac_addr,
+	(cmdline_parse_inst_t *)&cmd_set_fwd_eth_peer,
 	(cmdline_parse_inst_t *)&cmd_set_qmap,
 	(cmdline_parse_inst_t *)&cmd_set_xstats_hide_zero,
 	(cmdline_parse_inst_t *)&cmd_operate_port,
