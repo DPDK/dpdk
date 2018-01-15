@@ -91,7 +91,8 @@ typedef struct dpaa_sec_session_entry {
 	uint8_t dir;         /*!< Operation Direction */
 	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
 	enum rte_crypto_auth_algorithm auth_alg; /*!< Authentication Algorithm*/
-	enum rte_crypto_aead_algorithm aead_alg; /*!< Authentication Algorithm*/
+	enum rte_crypto_aead_algorithm aead_alg; /*!< AEAD Algorithm*/
+	enum rte_security_session_protocol proto_alg; /*!< Security Algorithm*/
 	union {
 		struct {
 			uint8_t *data;	/**< pointer to key data */
@@ -114,6 +115,9 @@ typedef struct dpaa_sec_session_entry {
 	} iv;	/**< Initialisation vector parameters */
 	uint16_t auth_only_len; /*!< Length of data for Auth only */
 	uint32_t digest_length;
+	struct ipsec_encap_pdb encap_pdb;
+	struct ip ip4_hdr;
+	struct ipsec_decap_pdb decap_pdb;
 	struct dpaa_sec_qp *qp;
 	struct qman_fq *inq;
 	struct sec_cdb cdb;	/**< cmd block associated with qp */
@@ -377,5 +381,61 @@ static const struct rte_cryptodev_capabilities dpaa_sec_capabilities[] = {
 
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
+
+static const struct rte_security_capability dpaa_sec_security_cap[] = {
+	{ /* IPsec Lookaside Protocol offload ESP Transport Egress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = dpaa_sec_capabilities
+	},
+	{ /* IPsec Lookaside Protocol offload ESP Tunnel Ingress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = dpaa_sec_capabilities
+	},
+	{
+		.action = RTE_SECURITY_ACTION_TYPE_NONE
+	}
+};
+
+/**
+ * Checksum
+ *
+ * @param buffer calculate chksum for buffer
+ * @param len    buffer length
+ *
+ * @return checksum value in host cpu order
+ */
+static inline uint16_t
+calc_chksum(void *buffer, int len)
+{
+	uint16_t *buf = (uint16_t *)buffer;
+	uint32_t sum = 0;
+	uint16_t result;
+
+	for (sum = 0; len > 1; len -= 2)
+		sum += *buf++;
+
+	if (len == 1)
+		sum += *(unsigned char *)buf;
+
+	sum = (sum >> 16) + (sum & 0xFFFF);
+	sum += (sum >> 16);
+	result = ~sum;
+
+	return  result;
+}
 
 #endif /* _DPAA_SEC_H_ */

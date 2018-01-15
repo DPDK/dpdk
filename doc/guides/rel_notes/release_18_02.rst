@@ -105,6 +105,11 @@ New Features
 
   * AES-CCM algorithm.
 
+* **Updated the DPAA_SEC crypto driver to support rte_security.**
+
+  Updated the ``dpaa_sec`` crypto PMD to support ``rte_security`` lookaside
+  protocol offload for IPSec.
+
 * **Added Wireless Base Band Device (bbdev) abstraction.**
 
   The Wireless Baseband Device library is an acceleration abstraction
