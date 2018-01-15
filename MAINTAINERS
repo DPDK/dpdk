@@ -95,6 +95,7 @@ F: lib/librte_eal/rte_eal_version.map
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: test/test/test_alarm.c
 F: test/test/test_atomic.c
+F: test/test/test_barrier.c
 F: test/test/test_byteorder.c
 F: test/test/test_common.c
 F: test/test/test_cpuflags.c

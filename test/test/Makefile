@@ -61,6 +61,7 @@ SRCS-y += test_prefetch.c
 SRCS-y += test_byteorder.c
 SRCS-y += test_per_lcore.c
 SRCS-y += test_atomic.c
+SRCS-y += test_barrier.c
 SRCS-y += test_malloc.c
 SRCS-y += test_cycles.c
 SRCS-y += test_spinlock.c
