@@ -760,7 +760,7 @@ test_memzone_bounded(void)
 static int
 test_memzone_free(void)
 {
-	const struct rte_memzone *mz[RTE_MAX_MEMZONE];
+	const struct rte_memzone *mz[RTE_MAX_MEMZONE + 1];
 	int i;
 	char name[20];
 
