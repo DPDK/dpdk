@@ -11005,8 +11005,8 @@ static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
 	}
 	memcpy(&pf->dev_addr, mac_addr, ETH_ADDR_LEN);
 
-	/* Flags: 0x3 updates port address */
-	i40e_aq_mac_address_write(hw, 0x3, mac_addr->addr_bytes, NULL);
+	i40e_aq_mac_address_write(hw, I40E_AQC_WRITE_TYPE_LAA_WOL,
+				  mac_addr->addr_bytes, NULL);
 }
 
 static int
