@@ -86,6 +86,7 @@ dpaa2_core_cluster_sdest(int cpu_id)
 	return dpaa2_core_cluster_base + x;
 }
 
+#ifdef RTE_LIBRTE_PMD_DPAA2_EVENTDEV
 static void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
 {
 #define STRING_LEN	28
@@ -174,6 +175,7 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 
 	return 0;
 }
+#endif
 
 static int
 configure_dpio_qbman_swp(struct dpaa2_dpio_dev *dpio_dev)
@@ -266,10 +268,12 @@ dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int cpu_id)
 		return -1;
 	}
 
+#ifdef RTE_LIBRTE_PMD_DPAA2_EVENTDEV
 	if (dpaa2_dpio_intr_init(dpio_dev)) {
 		PMD_DRV_LOG(ERR, "Interrupt registration failed for dpio\n");
 		return -1;
 	}
+#endif
 
 	return 0;
 }
