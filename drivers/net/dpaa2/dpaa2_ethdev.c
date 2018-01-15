@@ -380,6 +380,22 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		return ret;
 	}
 
+	/* Enabling hash results in FD requires setting DPNI_FLCTYPE_HASH in
+	 * dpni_set_offload API. Setting this FLCTYPE for DPNI sets the FD[SC]
+	 * to 0 for LS2 in the hardware thus disabling data/annotation
+	 * stashing. For LX2 this is fixed in hardware and thus hash result and
+	 * parse results can be received in FD using this option.
+	 */
+	if (dpaa2_svr_family == SVR_LX2160A) {
+		ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+				       DPNI_FLCTYPE_HASH, true);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Error setting FLCTYPE: Err = %d\n",
+				     ret);
+			return ret;
+		}
+	}
+
 	if (eth_conf->rxmode.hw_vlan_filter)
 		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
 
