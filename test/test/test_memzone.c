@@ -251,10 +251,6 @@ test_memzone_reserve_flags(void)
 				printf("MEMZONE FLAG 2MB\n");
 				return -1;
 			}
-			if (rte_memzone_free(mz)) {
-				printf("Fail memzone free\n");
-				return -1;
-			}
 		}
 
 		if (hugepage_2MB_avail && hugepage_1GB_avail) {
