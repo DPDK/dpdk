@@ -1057,7 +1057,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		return 0;
 	}
 	i40e_set_default_ptype_table(dev);
-	i40e_set_default_pctype_table(dev);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	intr_handle = &pci_dev->intr_handle;
 
@@ -1102,6 +1101,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Failed to init shared code (base driver): %d", ret);
 		return ret;
 	}
+
+	i40e_set_default_pctype_table(dev);
 
 	/*
 	 * To work around the NVM issue, initialize registers
