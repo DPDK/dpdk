@@ -166,14 +166,23 @@ parse_done:
 	return pkt_type;
 }
 
-
 static inline uint32_t __attribute__((hot))
-dpaa2_dev_rx_parse(uint64_t hw_annot_addr)
+dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, uint64_t hw_annot_addr)
 {
 	struct dpaa2_annot_hdr *annotation =
 			(struct dpaa2_annot_hdr *)hw_annot_addr;
 
 	PMD_RX_LOG(DEBUG, "annotation = 0x%lx   ", annotation->word4);
+
+	/* Check offloads first */
+	if (BIT_ISSET_AT_POS(annotation->word3,
+			     L2_VLAN_1_PRESENT | L2_VLAN_N_PRESENT))
+		mbuf->ol_flags |= PKT_RX_VLAN;
+
+	if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L3CE))
+		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+	else if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L4CE))
+		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 
 	/* Return some common types from parse processing */
 	switch (annotation->word4) {
@@ -199,23 +208,6 @@ dpaa2_dev_rx_parse(uint64_t hw_annot_addr)
 	}
 
 	return dpaa2_dev_rx_parse_slow(hw_annot_addr);
-}
-
-static inline void __attribute__((hot))
-dpaa2_dev_rx_offload(uint64_t hw_annot_addr, struct rte_mbuf *mbuf)
-{
-	struct dpaa2_annot_hdr *annotation =
-		(struct dpaa2_annot_hdr *)hw_annot_addr;
-
-	if (BIT_ISSET_AT_POS(annotation->word3,
-			     L2_VLAN_1_PRESENT | L2_VLAN_N_PRESENT))
-		mbuf->ol_flags |= PKT_RX_VLAN;
-
-	if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L3CE))
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-
-	if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L4CE))
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 }
 
 static inline struct rte_mbuf *__attribute__((hot))
@@ -249,14 +241,11 @@ eth_sg_fd_to_mbuf(const struct qbman_fd *fd)
 	if (dpaa2_svr_family == SVR_LX2160A)
 		dpaa2_dev_rx_parse_frc(first_seg,
 				DPAA2_GET_FD_FRC_PARSE_SUM(fd));
-	else {
-		first_seg->packet_type = dpaa2_dev_rx_parse(
+	else
+		first_seg->packet_type = dpaa2_dev_rx_parse(first_seg,
 			 (uint64_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
 			 + DPAA2_FD_PTA_SIZE);
-		dpaa2_dev_rx_offload((uint64_t)DPAA2_IOVA_TO_VADDR(
-			DPAA2_GET_FD_ADDR(fd)) +
-			DPAA2_FD_PTA_SIZE, first_seg);
-	}
+
 	rte_mbuf_refcnt_set(first_seg, 1);
 	cur_seg = first_seg;
 	while (!DPAA2_SG_IS_FINAL(sge)) {
@@ -308,14 +297,10 @@ eth_fd_to_mbuf(const struct qbman_fd *fd)
 
 	if (dpaa2_svr_family == SVR_LX2160A)
 		dpaa2_dev_rx_parse_frc(mbuf, DPAA2_GET_FD_FRC_PARSE_SUM(fd));
-	else {
-		mbuf->packet_type = dpaa2_dev_rx_parse(
+	else
+		mbuf->packet_type = dpaa2_dev_rx_parse(mbuf,
 			(uint64_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
 			 + DPAA2_FD_PTA_SIZE);
-		dpaa2_dev_rx_offload((uint64_t)DPAA2_IOVA_TO_VADDR(
-			     DPAA2_GET_FD_ADDR(fd)) +
-			     DPAA2_FD_PTA_SIZE, mbuf);
-	}
 
 	PMD_RX_LOG(DEBUG, "to mbuf - mbuf =%p, mbuf->buf_addr =%p, off = %d,"
 		"fd_off=%d fd =%lx, meta = %d  bpid =%d, len=%d\n",
@@ -334,10 +319,6 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 	struct rte_mbuf *cur_seg = mbuf, *prev_seg, *mi, *temp;
 	struct qbman_sge *sgt, *sge = NULL;
 	int i;
-
-	/* First Prepare FD to be transmited*/
-	/* Resetting the buffer pool id and offset field*/
-	fd->simple.bpid_offset = 0;
 
 	if (unlikely(mbuf->ol_flags & PKT_TX_VLAN_PKT)) {
 		int ret = rte_vlan_insert(&mbuf);
@@ -417,8 +398,6 @@ eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 			return;
 		}
 	}
-	/*Resetting the buffer pool id and offset field*/
-	fd->simple.bpid_offset = 0;
 
 	DPAA2_MBUF_TO_CONTIG_FD(mbuf, fd, bpid);
 
@@ -473,9 +452,6 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 	m->ol_flags = mbuf->ol_flags;
 	m->packet_type = mbuf->packet_type;
 	m->tx_offload = mbuf->tx_offload;
-
-	/*Resetting the buffer pool id and offset field*/
-	fd->simple.bpid_offset = 0;
 
 	DPAA2_MBUF_TO_CONTIG_FD(m, fd, bpid);
 
@@ -800,6 +776,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				(*bufs)->seqn = DPAA2_INVALID_MBUF_SEQN;
 			}
 
+			fd_arr[loop].simple.bpid_offset = 0;
 			fd_arr[loop].simple.frc = 0;
 			DPAA2_RESET_FD_CTRL((&fd_arr[loop]));
 			DPAA2_SET_FD_FLC((&fd_arr[loop]), NULL);
