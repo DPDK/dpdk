@@ -166,7 +166,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	}
 
 	/* Allocate memory to store the LPM data structures. */
-	lpm = (struct rte_lpm6 *)rte_zmalloc_socket(mem_name, (size_t)mem_size,
+	lpm = rte_zmalloc_socket(mem_name, (size_t)mem_size,
 			RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm == NULL) {
@@ -176,7 +176,7 @@ rte_lpm6_create(const char *name, int socket_id,
 		goto exit;
 	}
 
-	lpm->rules_tbl = (struct rte_lpm6_rule *)rte_zmalloc_socket(NULL,
+	lpm->rules_tbl = rte_zmalloc_socket(NULL,
 			(size_t)rules_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm->rules_tbl == NULL) {

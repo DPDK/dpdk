@@ -99,7 +99,7 @@ rte_lpm_find_existing_v20(const char *name)
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, lpm_list, next) {
-		l = (struct rte_lpm_v20 *) te->data;
+		l = te->data;
 		if (strncmp(name, l->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
@@ -125,7 +125,7 @@ rte_lpm_find_existing_v1604(const char *name)
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_FOREACH(te, lpm_list, next) {
-		l = (struct rte_lpm *) te->data;
+		l = te->data;
 		if (strncmp(name, l->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
@@ -174,11 +174,11 @@ rte_lpm_create_v20(const char *name, int socket_id, int max_rules,
 
 	/* guarantee there's no existing */
 	TAILQ_FOREACH(te, lpm_list, next) {
-		lpm = (struct rte_lpm_v20 *) te->data;
+		lpm = te->data;
 		if (strncmp(name, lpm->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
-	lpm = NULL;
+
 	if (te != NULL) {
 		rte_errno = EEXIST;
 		goto exit;
@@ -193,7 +193,7 @@ rte_lpm_create_v20(const char *name, int socket_id, int max_rules,
 	}
 
 	/* Allocate memory to store the LPM data structures. */
-	lpm = (struct rte_lpm_v20 *)rte_zmalloc_socket(mem_name, mem_size,
+	lpm = rte_zmalloc_socket(mem_name, mem_size,
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
@@ -206,7 +206,7 @@ rte_lpm_create_v20(const char *name, int socket_id, int max_rules,
 	lpm->max_rules = max_rules;
 	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
 
-	te->data = (void *) lpm;
+	te->data = lpm;
 
 	TAILQ_INSERT_TAIL(lpm_list, te, next);
 
@@ -250,11 +250,11 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 
 	/* guarantee there's no existing */
 	TAILQ_FOREACH(te, lpm_list, next) {
-		lpm = (struct rte_lpm *) te->data;
+		lpm = te->data;
 		if (strncmp(name, lpm->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
-	lpm = NULL;
+
 	if (te != NULL) {
 		rte_errno = EEXIST;
 		goto exit;
@@ -269,7 +269,7 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 	}
 
 	/* Allocate memory to store the LPM data structures. */
-	lpm = (struct rte_lpm *)rte_zmalloc_socket(mem_name, mem_size,
+	lpm = rte_zmalloc_socket(mem_name, mem_size,
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (lpm == NULL) {
 		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
@@ -278,7 +278,7 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 		goto exit;
 	}
 
-	lpm->rules_tbl = (struct rte_lpm_rule *)rte_zmalloc_socket(NULL,
+	lpm->rules_tbl = rte_zmalloc_socket(NULL,
 			(size_t)rules_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm->rules_tbl == NULL) {
@@ -290,7 +290,7 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 		goto exit;
 	}
 
-	lpm->tbl8 = (struct rte_lpm_tbl_entry *)rte_zmalloc_socket(NULL,
+	lpm->tbl8 = rte_zmalloc_socket(NULL,
 			(size_t)tbl8s_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm->tbl8 == NULL) {
@@ -308,7 +308,7 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 	lpm->number_tbl8s = config->number_tbl8s;
 	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
 
-	te->data = (void *) lpm;
+	te->data = lpm;
 
 	TAILQ_INSERT_TAIL(lpm_list, te, next);
 

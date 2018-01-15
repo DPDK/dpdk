@@ -558,7 +558,7 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 	}
 
 	/* Create a new EFD table management structure */
-	table = (struct rte_efd_table *) rte_zmalloc_socket(NULL,
+	table = rte_zmalloc_socket(NULL,
 			sizeof(struct rte_efd_table),
 			RTE_CACHE_LINE_SIZE,
 			offline_cpu_socket);
@@ -580,7 +580,7 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 	table->key_len = key_len;
 
 	/* key_array */
-	key_array = (uint8_t *) rte_zmalloc_socket(NULL,
+	key_array = rte_zmalloc_socket(NULL,
 			table->max_num_rules * table->key_len,
 			RTE_CACHE_LINE_SIZE,
 			offline_cpu_socket);
@@ -616,7 +616,7 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 			 * as a continuous block
 			 */
 			table->chunks[socket_id] =
-				(struct efd_online_chunk *) rte_zmalloc_socket(
+				rte_zmalloc_socket(
 				NULL,
 				online_table_size,
 				RTE_CACHE_LINE_SIZE,
@@ -666,7 +666,7 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 	 */
 	offline_table_size = num_chunks * sizeof(struct efd_offline_chunk_rules);
 	table->offline_chunks =
-			(struct efd_offline_chunk_rules *) rte_zmalloc_socket(NULL,
+			rte_zmalloc_socket(NULL,
 			offline_table_size,
 			RTE_CACHE_LINE_SIZE,
 			offline_cpu_socket);
