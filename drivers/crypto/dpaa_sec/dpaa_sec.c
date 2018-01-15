@@ -43,6 +43,9 @@ static uint8_t cryptodev_driver_id;
 static __thread struct rte_crypto_op **dpaa_sec_ops;
 static __thread int dpaa_sec_op_nb;
 
+static int
+dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess);
+
 static inline void
 dpaa_sec_op_ending(struct dpaa_sec_op_ctx *ctx)
 {
@@ -151,15 +154,6 @@ dpaa_sec_init_rx(struct qman_fq *fq_in, rte_iova_t hwdesc,
 	/* Clear FQ options */
 	memset(&fq_opts, 0x00, sizeof(struct qm_mcc_initfq));
 
-	flags = QMAN_FQ_FLAG_LOCKED | QMAN_FQ_FLAG_DYNAMIC_FQID |
-		QMAN_FQ_FLAG_TO_DCPORTAL;
-
-	ret = qman_create_fq(0, flags, fq_in);
-	if (unlikely(ret != 0)) {
-		PMD_INIT_LOG(ERR, "qman_create_fq failed");
-		return ret;
-	}
-
 	flags = QMAN_INITFQ_FLAG_SCHED;
 	fq_opts.we_mask = QM_INITFQ_WE_DESTWQ | QM_INITFQ_WE_CONTEXTA |
 			  QM_INITFQ_WE_CONTEXTB;
@@ -171,9 +165,11 @@ dpaa_sec_init_rx(struct qman_fq *fq_in, rte_iova_t hwdesc,
 
 	fq_in->cb.ern  = ern_sec_fq_handler;
 
+	PMD_INIT_LOG(DEBUG, "in-%x out-%x", fq_in->fqid, fqid_out);
+
 	ret = qman_init_fq(fq_in, flags, &fq_opts);
 	if (unlikely(ret != 0))
-		PMD_INIT_LOG(ERR, "qman_init_fq failed");
+		PMD_INIT_LOG(ERR, "qman_init_fq failed %d", ret);
 
 	return ret;
 }
@@ -357,7 +353,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 {
 	struct alginfo alginfo_c = {0}, alginfo_a = {0}, alginfo = {0};
 	uint32_t shared_desc_len = 0;
-	struct sec_cdb *cdb = &ses->qp->cdb;
+	struct sec_cdb *cdb = &ses->cdb;
 	int err;
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 	int swap = false;
@@ -877,12 +873,10 @@ dpaa_sec_enqueue_op(struct rte_crypto_op *op,  struct dpaa_sec_qp *qp)
 	ses = (dpaa_sec_session *)get_session_private_data(op->sym->session,
 					cryptodev_driver_id);
 
-	if (unlikely(!qp->ses || qp->ses != ses)) {
-		qp->ses = ses;
-		ses->qp = qp;
-		ret = dpaa_sec_prep_cdb(ses);
-		if (ret)
-			return ret;
+	if (unlikely(!ses->qp || ses->qp != qp)) {
+		PMD_INIT_LOG(DEBUG, "sess->qp - %p qp %p", ses->qp, qp);
+		if (dpaa_sec_attach_sess_q(qp, ses))
+			return -1;
 	}
 
 	/*
@@ -918,7 +912,7 @@ dpaa_sec_enqueue_op(struct rte_crypto_op *op,  struct dpaa_sec_qp *qp)
 	if (auth_only_len)
 		fd.cmd = 0x80000000 | auth_only_len;
 	do {
-		ret = qman_enqueue(&qp->inq, &fd, 0);
+		ret = qman_enqueue(ses->inq, &fd, 0);
 	} while (ret != 0);
 
 	return 0;
@@ -1134,43 +1128,82 @@ dpaa_sec_aead_init(struct rte_cryptodev *dev __rte_unused,
 	return 0;
 }
 
-static int
-dpaa_sec_qp_attach_sess(struct rte_cryptodev *dev, uint16_t qp_id, void *ses)
+static struct qman_fq *
+dpaa_sec_attach_rxq(struct dpaa_sec_dev_private *qi)
 {
-	dpaa_sec_session *sess = ses;
-	struct dpaa_sec_qp *qp;
+	unsigned int i;
 
-	PMD_INIT_FUNC_TRACE();
-
-	qp = dev->data->queue_pairs[qp_id];
-	if (qp->ses != NULL) {
-		PMD_INIT_LOG(ERR, "qp in-use by another session\n");
-		return -EBUSY;
+	for (i = 0; i < qi->max_nb_sessions; i++) {
+		if (qi->inq_attach[i] == 0) {
+			qi->inq_attach[i] = 1;
+			return &qi->inq[i];
+		}
 	}
+	PMD_DRV_LOG(ERR, "All ses session in use %x", qi->max_nb_sessions);
 
-	qp->ses = sess;
-	sess->qp = qp;
-
-	return dpaa_sec_prep_cdb(sess);
+	return NULL;
 }
 
 static int
-dpaa_sec_qp_detach_sess(struct rte_cryptodev *dev, uint16_t qp_id, void *ses)
+dpaa_sec_detach_rxq(struct dpaa_sec_dev_private *qi, struct qman_fq *fq)
+{
+	unsigned int i;
+
+	for (i = 0; i < qi->max_nb_sessions; i++) {
+		if (&qi->inq[i] == fq) {
+			qi->inq_attach[i] = 0;
+			return 0;
+		}
+	}
+	return -1;
+}
+
+static int
+dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess)
+{
+	int ret;
+
+	sess->qp = qp;
+	ret = dpaa_sec_prep_cdb(sess);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Unable to prepare sec cdb");
+		return -1;
+	}
+
+	ret = dpaa_sec_init_rx(sess->inq, dpaa_mem_vtop(&sess->cdb),
+			       qman_fq_fqid(&qp->outq));
+	if (ret)
+		PMD_DRV_LOG(ERR, "Unable to init sec queue");
+
+	return ret;
+}
+
+static int
+dpaa_sec_qp_attach_sess(struct rte_cryptodev *dev __rte_unused,
+			uint16_t qp_id __rte_unused,
+			void *ses __rte_unused)
+{
+	PMD_INIT_FUNC_TRACE();
+	return 0;
+}
+
+static int
+dpaa_sec_qp_detach_sess(struct rte_cryptodev *dev,
+			uint16_t qp_id  __rte_unused,
+			void *ses)
 {
 	dpaa_sec_session *sess = ses;
-	struct dpaa_sec_qp *qp;
+	struct dpaa_sec_dev_private *qi = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
-	qp = dev->data->queue_pairs[qp_id];
-	if (qp->ses != NULL) {
-		qp->ses = NULL;
-		sess->qp = NULL;
-		return 0;
-	}
+	if (sess->inq)
+		dpaa_sec_detach_rxq(qi, sess->inq);
+	sess->inq = NULL;
 
-	PMD_DRV_LOG(ERR, "No session attached to qp");
-	return -EINVAL;
+	sess->qp = NULL;
+
+	return 0;
 }
 
 static int
@@ -1233,8 +1266,20 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 		return -EINVAL;
 	}
 	session->ctx_pool = internals->ctx_pool;
+	session->inq = dpaa_sec_attach_rxq(internals);
+	if (session->inq == NULL) {
+		PMD_DRV_LOG(ERR, "unable to attach sec queue");
+		goto err1;
+	}
 
 	return 0;
+
+err1:
+	rte_free(session->cipher_key.data);
+	rte_free(session->auth_key.data);
+	memset(session, 0, sizeof(dpaa_sec_session));
+
+	return -EINVAL;
 }
 
 static int
@@ -1267,6 +1312,7 @@ dpaa_sec_session_configure(struct rte_cryptodev *dev,
 	set_session_private_data(sess, dev->driver_id,
 			sess_private_data);
 
+
 	return 0;
 }
 
@@ -1275,16 +1321,22 @@ static void
 dpaa_sec_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
-	PMD_INIT_FUNC_TRACE();
+	struct dpaa_sec_dev_private *qi = dev->data->dev_private;
 	uint8_t index = dev->driver_id;
 	void *sess_priv = get_session_private_data(sess, index);
+
+	PMD_INIT_FUNC_TRACE();
+
 	dpaa_sec_session *s = (dpaa_sec_session *)sess_priv;
 
 	if (sess_priv) {
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+
+		if (s->inq)
+			dpaa_sec_detach_rxq(qi, s->inq);
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
 		memset(s, 0, sizeof(dpaa_sec_session));
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
 		set_session_private_data(sess, index, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
@@ -1332,7 +1384,8 @@ dpaa_sec_dev_infos_get(struct rte_cryptodev *dev,
 		info->capabilities = dpaa_sec_capabilities;
 		info->sym.max_nb_sessions = internals->max_nb_sessions;
 		info->sym.max_nb_sessions_per_qp =
-			RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS / RTE_MAX_NB_SEC_QPS;
+			RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS /
+			RTE_DPAA_MAX_NB_SEC_QPS;
 		info->driver_id = cryptodev_driver_id;
 	}
 }
@@ -1377,7 +1430,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 {
 	struct dpaa_sec_dev_private *internals;
 	struct dpaa_sec_qp *qp;
-	uint32_t i;
+	uint32_t i, flags;
 	int ret;
 	char str[20];
 
@@ -1393,7 +1446,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
 
 	internals = cryptodev->data->dev_private;
-	internals->max_nb_queue_pairs = RTE_MAX_NB_SEC_QPS;
+	internals->max_nb_queue_pairs = RTE_DPAA_MAX_NB_SEC_QPS;
 	internals->max_nb_sessions = RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS;
 
 	for (i = 0; i < internals->max_nb_queue_pairs; i++) {
@@ -1404,10 +1457,15 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 			PMD_INIT_LOG(ERR, "config tx of queue pair  %d", i);
 			goto init_error;
 		}
-		ret = dpaa_sec_init_rx(&qp->inq, dpaa_mem_vtop(&qp->cdb),
-				       qman_fq_fqid(&qp->outq));
-		if (ret) {
-			PMD_INIT_LOG(ERR, "config rx of queue pair %d", i);
+	}
+
+	flags = QMAN_FQ_FLAG_LOCKED | QMAN_FQ_FLAG_DYNAMIC_FQID |
+		QMAN_FQ_FLAG_TO_DCPORTAL;
+	for (i = 0; i < internals->max_nb_sessions; i++) {
+		/* create rx qman fq for sessions*/
+		ret = qman_create_fq(0, flags, &internals->inq[i]);
+		if (unlikely(ret != 0)) {
+			PMD_INIT_LOG(ERR, "sec qman_create_fq failed");
 			goto init_error;
 		}
 	}

@@ -38,36 +38,6 @@ enum dpaa_sec_op_type {
 	DPAA_SEC_MAX
 };
 
-typedef struct dpaa_sec_session_entry {
-	uint8_t dir;         /*!< Operation Direction */
-	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
-	enum rte_crypto_auth_algorithm auth_alg; /*!< Authentication Algorithm*/
-	enum rte_crypto_aead_algorithm aead_alg; /*!< Authentication Algorithm*/
-	union {
-		struct {
-			uint8_t *data;	/**< pointer to key data */
-			size_t length;	/**< key length in bytes */
-		} aead_key;
-		struct {
-			struct {
-				uint8_t *data;	/**< pointer to key data */
-				size_t length;	/**< key length in bytes */
-			} cipher_key;
-			struct {
-				uint8_t *data;	/**< pointer to key data */
-				size_t length;	/**< key length in bytes */
-			} auth_key;
-		};
-	};
-	struct {
-		uint16_t length;
-		uint16_t offset;
-	} iv;	/**< Initialisation vector parameters */
-	uint16_t auth_only_len; /*!< Length of data for Auth only */
-	uint32_t digest_length;
-	struct dpaa_sec_qp *qp;
-	struct rte_mempool *ctx_pool; /* session mempool for dpaa_sec_op_ctx */
-} dpaa_sec_session;
 
 #define DPAA_SEC_MAX_DESC_SIZE  64
 /* code or cmd block to caam */
@@ -117,11 +87,41 @@ struct sec_cdb {
 	uint32_t sh_desc[DPAA_SEC_MAX_DESC_SIZE];
 };
 
+typedef struct dpaa_sec_session_entry {
+	uint8_t dir;         /*!< Operation Direction */
+	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
+	enum rte_crypto_auth_algorithm auth_alg; /*!< Authentication Algorithm*/
+	enum rte_crypto_aead_algorithm aead_alg; /*!< Authentication Algorithm*/
+	union {
+		struct {
+			uint8_t *data;	/**< pointer to key data */
+			size_t length;	/**< key length in bytes */
+		} aead_key;
+		struct {
+			struct {
+				uint8_t *data;	/**< pointer to key data */
+				size_t length;	/**< key length in bytes */
+			} cipher_key;
+			struct {
+				uint8_t *data;	/**< pointer to key data */
+				size_t length;	/**< key length in bytes */
+			} auth_key;
+		};
+	};
+	struct {
+		uint16_t length;
+		uint16_t offset;
+	} iv;	/**< Initialisation vector parameters */
+	uint16_t auth_only_len; /*!< Length of data for Auth only */
+	uint32_t digest_length;
+	struct dpaa_sec_qp *qp;
+	struct qman_fq *inq;
+	struct sec_cdb cdb;	/**< cmd block associated with qp */
+	struct rte_mempool *ctx_pool; /* session mempool for dpaa_sec_op_ctx */
+} dpaa_sec_session;
+
 struct dpaa_sec_qp {
 	struct dpaa_sec_dev_private *internals;
-	struct sec_cdb cdb;		/* cmd block associated with qp */
-	dpaa_sec_session *ses;		/* session associated with qp */
-	struct qman_fq inq;
 	struct qman_fq outq;
 	int rx_pkts;
 	int rx_errs;
@@ -129,12 +129,16 @@ struct dpaa_sec_qp {
 	int tx_errs;
 };
 
-#define RTE_MAX_NB_SEC_QPS RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS
+#define RTE_DPAA_MAX_NB_SEC_QPS 1
+#define RTE_DPAA_MAX_RX_QUEUE RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS
+
 /* internal sec queue interface */
 struct dpaa_sec_dev_private {
 	void *sec_hw;
 	struct rte_mempool *ctx_pool; /* per dev mempool for dpaa_sec_op_ctx */
-	struct dpaa_sec_qp qps[RTE_MAX_NB_SEC_QPS]; /* i/o queue for sec */
+	struct dpaa_sec_qp qps[RTE_DPAA_MAX_NB_SEC_QPS]; /* i/o queue for sec */
+	struct qman_fq inq[RTE_DPAA_MAX_RX_QUEUE];
+	unsigned char inq_attach[RTE_DPAA_MAX_RX_QUEUE];
 	unsigned int max_nb_queue_pairs;
 	unsigned int max_nb_sessions;
 };
