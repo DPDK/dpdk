@@ -27,6 +27,10 @@ ipip_outbound(struct rte_mbuf *m, uint32_t offset, uint32_t is_ipv6,
 	if (inip4->ip_v == IPVERSION) {
 		/* XXX This should be done by the forwarding engine instead */
 		inip4->ip_ttl -= 1;
+		if (inip4->ip_sum >= rte_cpu_to_be_16(0xffff - 0x100))
+			inip4->ip_sum += rte_cpu_to_be_16(0x100) + 1;
+		else
+			inip4->ip_sum += rte_cpu_to_be_16(0x100);
 		ds_ecn = inip4->ip_tos;
 	} else {
 		inip6 = (struct ip6_hdr *)inip4;
@@ -95,8 +99,17 @@ ip6ip_outbound(struct rte_mbuf *m, uint32_t offset,
 static inline void
 ip4_ecn_setup(struct ip *ip4)
 {
-	if (ip4->ip_tos & IPTOS_ECN_MASK)
+	if (ip4->ip_tos & IPTOS_ECN_MASK) {
+		unsigned long sum;
+		uint8_t old;
+
+		old = ip4->ip_tos;
 		ip4->ip_tos |= IPTOS_ECN_CE;
+		sum = old + (~(*(uint8_t *)&ip4->ip_tos) & 0xff);
+		sum += rte_be_to_cpu_16(ip4->ip_sum);
+		sum = (sum & 0xffff) + (sum >> 16);
+		ip4->ip_sum = rte_cpu_to_be_16(sum + (sum >> 16));
+	}
 }
 
 static inline void
@@ -140,6 +153,10 @@ ipip_inbound(struct rte_mbuf *m, uint32_t offset)
 			ip4_ecn_setup(inip4);
 		/* XXX This should be done by the forwarding engine instead */
 		inip4->ip_ttl -= 1;
+		if (inip4->ip_sum >= rte_cpu_to_be_16(0xffff - 0x100))
+			inip4->ip_sum += rte_cpu_to_be_16(0x100) + 1;
+		else
+			inip4->ip_sum += rte_cpu_to_be_16(0x100);
 		m->packet_type &= ~RTE_PTYPE_L4_MASK;
 		if (inip4->ip_p == IPPROTO_UDP)
 			m->packet_type |= RTE_PTYPE_L4_UDP;
