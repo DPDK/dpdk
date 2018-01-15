@@ -80,6 +80,8 @@ dpaa_sec_alloc_ctx(dpaa_sec_session *ses)
 	dcbz_64(&ctx->job.sg[SG_CACHELINE_3]);
 
 	ctx->ctx_pool = ses->ctx_pool;
+	ctx->vtop_offset = (uint64_t) ctx
+				- rte_mempool_virt2iova(ctx);
 
 	return ctx;
 }
@@ -102,6 +104,13 @@ dpaa_mem_vtop(void *vaddr)
 		}
 	}
 	return (rte_iova_t)(NULL);
+}
+
+/* virtual address conversin when mempool support is available for ctx */
+static inline phys_addr_t
+dpaa_mem_vtop_ctx(struct dpaa_sec_op_ctx *ctx, void *vaddr)
+{
+	return (uint64_t)vaddr - ctx->vtop_offset;
 }
 
 static inline void *
@@ -563,7 +572,7 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	if (is_decode(ses)) {
 		/* need to extend the input to a compound frame */
 		sg->extension = 1;
-		qm_sg_entry_set64(sg, dpaa_mem_vtop(&cf->sg[2]));
+		qm_sg_entry_set64(sg, dpaa_mem_vtop_ctx(ctx, &cf->sg[2]));
 		sg->length = sym->auth.data.length + ses->digest_length;
 		sg->final = 1;
 		cpu_to_hw_sg(sg);
@@ -577,7 +586,7 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		cpu_to_hw_sg(sg);
 
 		/* let's check digest by hw */
-		start_addr = dpaa_mem_vtop(old_digest);
+		start_addr = dpaa_mem_vtop_ctx(ctx, old_digest);
 		sg++;
 		qm_sg_entry_set64(sg, start_addr);
 		sg->length = ses->digest_length;
@@ -631,7 +640,7 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	sg->extension = 1;
 	sg->final = 1;
 	sg->length = sym->cipher.data.length + ses->iv.length;
-	qm_sg_entry_set64(sg, dpaa_mem_vtop(&cf->sg[2]));
+	qm_sg_entry_set64(sg, dpaa_mem_vtop_ctx(ctx, &cf->sg[2]));
 	cpu_to_hw_sg(sg);
 
 	sg = &cf->sg[2];
@@ -677,7 +686,7 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	/* input */
 	rte_prefetch0(cf->sg);
 	sg = &cf->sg[2];
-	qm_sg_entry_set64(&cf->sg[1], dpaa_mem_vtop(sg));
+	qm_sg_entry_set64(&cf->sg[1], dpaa_mem_vtop_ctx(ctx, sg));
 	if (is_encode(ses)) {
 		qm_sg_entry_set64(sg, dpaa_mem_vtop(IV_ptr));
 		sg->length = ses->iv.length;
@@ -722,7 +731,7 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		       ses->digest_length);
 		sg++;
 
-		qm_sg_entry_set64(sg, dpaa_mem_vtop(ctx->digest));
+		qm_sg_entry_set64(sg, dpaa_mem_vtop_ctx(ctx, ctx->digest));
 		sg->length = ses->digest_length;
 		length += sg->length;
 		sg->final = 1;
@@ -736,7 +745,7 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* output */
 	sg++;
-	qm_sg_entry_set64(&cf->sg[0], dpaa_mem_vtop(sg));
+	qm_sg_entry_set64(&cf->sg[0], dpaa_mem_vtop_ctx(ctx, sg));
 	qm_sg_entry_set64(sg,
 		dst_start_addr + sym->aead.data.offset - ses->auth_only_len);
 	sg->length = sym->aead.data.length + ses->auth_only_len;
@@ -788,7 +797,7 @@ build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	/* input */
 	rte_prefetch0(cf->sg);
 	sg = &cf->sg[2];
-	qm_sg_entry_set64(&cf->sg[1], dpaa_mem_vtop(sg));
+	qm_sg_entry_set64(&cf->sg[1], dpaa_mem_vtop_ctx(ctx, sg));
 	if (is_encode(ses)) {
 		qm_sg_entry_set64(sg, dpaa_mem_vtop(IV_ptr));
 		sg->length = ses->iv.length;
@@ -818,7 +827,7 @@ build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		       ses->digest_length);
 		sg++;
 
-		qm_sg_entry_set64(sg, dpaa_mem_vtop(ctx->digest));
+		qm_sg_entry_set64(sg, dpaa_mem_vtop_ctx(ctx, ctx->digest));
 		sg->length = ses->digest_length;
 		length += sg->length;
 		sg->final = 1;
@@ -832,7 +841,7 @@ build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* output */
 	sg++;
-	qm_sg_entry_set64(&cf->sg[0], dpaa_mem_vtop(sg));
+	qm_sg_entry_set64(&cf->sg[0], dpaa_mem_vtop_ctx(ctx, sg));
 	qm_sg_entry_set64(sg, dst_start_addr + sym->cipher.data.offset);
 	sg->length = sym->cipher.data.length;
 	length = sg->length;

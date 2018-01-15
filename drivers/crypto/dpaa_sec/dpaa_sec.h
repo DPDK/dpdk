@@ -155,6 +155,7 @@ struct dpaa_sec_op_ctx {
 	struct rte_crypto_op *op;
 	struct rte_mempool *ctx_pool; /* mempool pointer for dpaa_sec_op_ctx */
 	uint32_t fd_status;
+	int64_t vtop_offset;
 	uint8_t digest[DPAA_MAX_NB_MAX_DIGEST];
 };
 
