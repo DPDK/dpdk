@@ -232,6 +232,7 @@ vhost_user_set_vring_num(struct virtio_net *dev,
 				"zero copy is force disabled\n");
 			dev->dequeue_zero_copy = 0;
 		}
+		TAILQ_INIT(&vq->zmbuf_list);
 	}
 
 	vq->shadow_used_ring = rte_malloc(NULL,
@@ -266,6 +267,9 @@ numa_realloc(struct virtio_net *dev, int index)
 	int oldnode, newnode;
 	struct virtio_net *old_dev;
 	struct vhost_virtqueue *old_vq, *vq;
+	struct zcopy_mbuf *new_zmbuf;
+	struct vring_used_elem *new_shadow_used_ring;
+	struct batch_copy_elem *new_batch_copy_elems;
 	int ret;
 
 	old_dev = dev;
@@ -290,6 +294,33 @@ numa_realloc(struct virtio_net *dev, int index)
 			return dev;
 
 		memcpy(vq, old_vq, sizeof(*vq));
+		TAILQ_INIT(&vq->zmbuf_list);
+
+		new_zmbuf = rte_malloc_socket(NULL, vq->zmbuf_size *
+			sizeof(struct zcopy_mbuf), 0, newnode);
+		if (new_zmbuf) {
+			rte_free(vq->zmbufs);
+			vq->zmbufs = new_zmbuf;
+		}
+
+		new_shadow_used_ring = rte_malloc_socket(NULL,
+			vq->size * sizeof(struct vring_used_elem),
+			RTE_CACHE_LINE_SIZE,
+			newnode);
+		if (new_shadow_used_ring) {
+			rte_free(vq->shadow_used_ring);
+			vq->shadow_used_ring = new_shadow_used_ring;
+		}
+
+		new_batch_copy_elems = rte_malloc_socket(NULL,
+			vq->size * sizeof(struct batch_copy_elem),
+			RTE_CACHE_LINE_SIZE,
+			newnode);
+		if (new_batch_copy_elems) {
+			rte_free(vq->batch_copy_elems);
+			vq->batch_copy_elems = new_batch_copy_elems;
+		}
+
 		rte_free(old_vq);
 	}
 
