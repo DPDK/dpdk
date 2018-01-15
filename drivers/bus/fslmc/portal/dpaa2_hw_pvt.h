@@ -93,8 +93,9 @@ struct dpaa2_dpbp_dev {
 struct queue_storage_info_t {
 	struct qbman_result *dq_storage[NUM_DQS_PER_QUEUE];
 	struct qbman_result *active_dqs;
-	int active_dpio_id;
-	int toggle;
+	uint8_t active_dpio_id;
+	uint8_t toggle;
+	uint8_t last_num_pkts;
 };
 
 struct dpaa2_queue;
