@@ -8137,14 +8137,17 @@ i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 		(reg & I40E_GLQF_CTL_HTOEP_MASK) ? "Toeplitz" : "Simple XOR");
 
 	/*
-	 * We work only with lowest 32 bits which is not correct, but to work
-	 * properly the valid_bit_mask size should be increased up to 64 bits
-	 * and this will brake ABI. This modification will be done in next
-	 * release
+	 * As i40e supports less than 64 flow types, only first 64 bits need to
+	 * be checked.
 	 */
-	g_cfg->valid_bit_mask[0] = (uint32_t)adapter->flow_types_mask;
+	for (i = 1; i < RTE_SYM_HASH_MASK_ARRAY_SIZE; i++) {
+		g_cfg->valid_bit_mask[i] = 0ULL;
+		g_cfg->sym_hash_enable_mask[i] = 0ULL;
+	}
 
-	for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < UINT32_BIT; i++) {
+	g_cfg->valid_bit_mask[0] = adapter->flow_types_mask;
+
+	for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < UINT64_BIT; i++) {
 		if (!adapter->pctypes_tbl[i])
 			continue;
 		for (j = I40E_FILTER_PCTYPE_INVALID + 1;
@@ -8153,7 +8156,7 @@ i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 				reg = i40e_read_rx_ctl(hw, I40E_GLQF_HSYM(j));
 				if (reg & I40E_GLQF_HSYM_SYMH_ENA_MASK) {
 					g_cfg->sym_hash_enable_mask[0] |=
-								(1UL << i);
+								(1ULL << i);
 				}
 			}
 		}
@@ -8167,7 +8170,7 @@ i40e_hash_global_config_check(const struct i40e_adapter *adapter,
 			      const struct rte_eth_hash_global_conf *g_cfg)
 {
 	uint32_t i;
-	uint32_t mask0, i40e_mask = adapter->flow_types_mask;
+	uint64_t mask0, i40e_mask = adapter->flow_types_mask;
 
 	if (g_cfg->hash_func != RTE_ETH_HASH_FUNCTION_TOEPLITZ &&
 		g_cfg->hash_func != RTE_ETH_HASH_FUNCTION_SIMPLE_XOR &&
@@ -8178,7 +8181,7 @@ i40e_hash_global_config_check(const struct i40e_adapter *adapter,
 	}
 
 	/*
-	 * As i40e supports less than 32 flow types, only first 32 bits need to
+	 * As i40e supports less than 64 flow types, only first 64 bits need to
 	 * be checked.
 	 */
 	mask0 = g_cfg->valid_bit_mask[0];
@@ -8214,23 +8217,20 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 	int ret;
 	uint16_t i, j;
 	uint32_t reg;
-	/*
-	 * We work only with lowest 32 bits which is not correct, but to work
-	 * properly the valid_bit_mask size should be increased up to 64 bits
-	 * and this will brake ABI. This modification will be done in next
-	 * release
-	 */
-	uint32_t mask0 = g_cfg->valid_bit_mask[0] &
-					(uint32_t)adapter->flow_types_mask;
+	uint64_t mask0 = g_cfg->valid_bit_mask[0] & adapter->flow_types_mask;
 
 	/* Check the input parameters */
 	ret = i40e_hash_global_config_check(adapter, g_cfg);
 	if (ret < 0)
 		return ret;
 
-	for (i = RTE_ETH_FLOW_UNKNOWN + 1; mask0 && i < UINT32_BIT; i++) {
+	/*
+	 * As i40e supports less than 64 flow types, only first 64 bits need to
+	 * be configured.
+	 */
+	for (i = RTE_ETH_FLOW_UNKNOWN + 1; mask0 && i < UINT64_BIT; i++) {
 		if (mask0 & (1UL << i)) {
-			reg = (g_cfg->sym_hash_enable_mask[0] & (1UL << i)) ?
+			reg = (g_cfg->sym_hash_enable_mask[0] & (1ULL << i)) ?
 					I40E_GLQF_HSYM_SYMH_ENA_MASK : 0;
 
 			for (j = I40E_FILTER_PCTYPE_INVALID + 1;

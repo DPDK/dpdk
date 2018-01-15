@@ -66,17 +66,17 @@
 #define I40E_COUNTER_INDEX_FDIR(pf_id)   (0 + (pf_id) * I40E_COUNTER_PF)
 
 #define I40E_FDIR_FLOWS ( \
-	(1 << RTE_ETH_FLOW_FRAG_IPV4) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_UDP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_TCP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) | \
-	(1 << RTE_ETH_FLOW_FRAG_IPV6) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) | \
-	(1 << RTE_ETH_FLOW_L2_PAYLOAD))
+	(1ULL << RTE_ETH_FLOW_FRAG_IPV4) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_UDP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_TCP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) | \
+	(1ULL << RTE_ETH_FLOW_FRAG_IPV6) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) | \
+	(1ULL << RTE_ETH_FLOW_L2_PAYLOAD))
 
 static int i40e_fdir_filter_programming(struct i40e_pf *pf,
 			enum i40e_filter_pctype pctype,
@@ -1999,6 +1999,7 @@ i40e_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir)
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	uint16_t num_flex_set = 0;
 	uint16_t num_flex_mask = 0;
+	uint16_t i;
 
 	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT)
 		fdir->mode = RTE_FDIR_MODE_PERFECT;
@@ -2011,6 +2012,8 @@ i40e_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir)
 		(uint32_t)hw->func_caps.fd_filters_best_effort;
 	fdir->max_flexpayload = I40E_FDIR_MAX_FLEX_LEN;
 	fdir->flow_types_mask[0] = I40E_FDIR_FLOWS;
+	for (i = 1; i < RTE_FLOW_MASK_ARRAY_SIZE; i++)
+		fdir->flow_types_mask[i] = 0ULL;
 	fdir->flex_payload_unit = sizeof(uint16_t);
 	fdir->flex_bitmask_unit = sizeof(uint16_t);
 	fdir->max_flex_payload_segment_num = I40E_MAX_FLXPLD_FIED;

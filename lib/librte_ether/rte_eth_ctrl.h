@@ -662,9 +662,9 @@ enum rte_fdir_mode {
 	RTE_FDIR_MODE_PERFECT_TUNNEL,   /**< Enable FDIR filter mode - tunnel. */
 };
 
-#define UINT32_BIT (CHAR_BIT * sizeof(uint32_t))
+#define UINT64_BIT (CHAR_BIT * sizeof(uint64_t))
 #define RTE_FLOW_MASK_ARRAY_SIZE \
-	(RTE_ALIGN(RTE_ETH_FLOW_MAX, UINT32_BIT)/UINT32_BIT)
+	(RTE_ALIGN(RTE_ETH_FLOW_MAX, UINT64_BIT)/UINT64_BIT)
 
 /**
  * A structure used to get the information of flow director filter.
@@ -681,7 +681,7 @@ struct rte_eth_fdir_info {
 	uint32_t guarant_spc; /**< Guaranteed spaces.*/
 	uint32_t best_spc; /**< Best effort spaces.*/
 	/** Bit mask for every supported flow type. */
-	uint32_t flow_types_mask[RTE_FLOW_MASK_ARRAY_SIZE];
+	uint64_t flow_types_mask[RTE_FLOW_MASK_ARRAY_SIZE];
 	uint32_t max_flexpayload; /**< Total flex payload in bytes. */
 	/** Flexible payload unit in bytes. Size and alignments of all flex
 	    payload segments should be multiplies of this value. */
@@ -774,7 +774,7 @@ enum rte_eth_hash_function {
 };
 
 #define RTE_SYM_HASH_MASK_ARRAY_SIZE \
-	(RTE_ALIGN(RTE_ETH_FLOW_MAX, UINT32_BIT)/UINT32_BIT)
+	(RTE_ALIGN(RTE_ETH_FLOW_MAX, UINT64_BIT)/UINT64_BIT)
 /**
  * A structure used to set or get global hash function configurations which
  * include symmetric hash enable per flow type and hash function type.
@@ -787,9 +787,9 @@ enum rte_eth_hash_function {
 struct rte_eth_hash_global_conf {
 	enum rte_eth_hash_function hash_func; /**< Hash function type */
 	/** Bit mask for symmetric hash enable per flow type */
-	uint32_t sym_hash_enable_mask[RTE_SYM_HASH_MASK_ARRAY_SIZE];
+	uint64_t sym_hash_enable_mask[RTE_SYM_HASH_MASK_ARRAY_SIZE];
 	/** Bit mask indicates if the corresponding bit is valid */
-	uint32_t valid_bit_mask[RTE_SYM_HASH_MASK_ARRAY_SIZE];
+	uint64_t valid_bit_mask[RTE_SYM_HASH_MASK_ARRAY_SIZE];
 };
 
 /**

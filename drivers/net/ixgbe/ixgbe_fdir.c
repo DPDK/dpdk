@@ -41,14 +41,14 @@
 #define IXGBE_FDIRCMD_CMD_INTERVAL_US   10
 
 #define IXGBE_FDIR_FLOW_TYPES ( \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_UDP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_TCP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
-	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER))
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_UDP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_TCP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_UDP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_TCP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
+	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER))
 
 #define IPV6_ADDR_TO_MASK(ipaddr, ipv6m) do { \
 	uint8_t ipv6_addr[16]; \
@@ -1407,7 +1407,7 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_hw_fdir_info *info =
 			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
-	uint32_t fdirctrl, max_num;
+	uint32_t fdirctrl, max_num, i;
 	uint8_t offset;
 
 	fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
@@ -1439,9 +1439,11 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info
 
 	if (fdir_info->mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN ||
 	    fdir_info->mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
-		fdir_info->flow_types_mask[0] = 0;
+		fdir_info->flow_types_mask[0] = 0ULL;
 	else
 		fdir_info->flow_types_mask[0] = IXGBE_FDIR_FLOW_TYPES;
+	for (i = 1; i < RTE_FLOW_MASK_ARRAY_SIZE; i++)
+		fdir_info->flow_types_mask[i] = 0ULL;
 
 	fdir_info->flex_payload_unit = sizeof(uint16_t);
 	fdir_info->max_flex_payload_segment_num = 1;

@@ -10899,7 +10899,7 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 	struct rte_eth_fdir_info fdir_info;
 	struct rte_eth_fdir_flex_mask flex_mask;
 	struct rte_port *port;
-	uint32_t flow_type_mask;
+	uint64_t flow_type_mask;
 	uint16_t i;
 	int ret;
 
@@ -10952,7 +10952,7 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 			return;
 		}
 		for (i = RTE_ETH_FLOW_UNKNOWN; i < RTE_ETH_FLOW_MAX; i++) {
-			if (flow_type_mask & (1 << i)) {
+			if (flow_type_mask & (1ULL << i)) {
 				flex_mask.flow_type = i;
 				fdir_set_flex_mask(res->port_id, &flex_mask);
 			}
@@ -10961,7 +10961,7 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 		return;
 	}
 	flex_mask.flow_type = str2flowtype(res->flow_type);
-	if (!(flow_type_mask & (1 << flex_mask.flow_type))) {
+	if (!(flow_type_mask & (1ULL << flex_mask.flow_type))) {
 		printf("Flow type %s not supported on port %d\n",
 				res->flow_type, res->port_id);
 		return;
@@ -11323,10 +11323,10 @@ cmd_get_hash_global_config_parsed(void *parsed_result,
 	}
 
 	for (i = 0; i < RTE_ETH_FLOW_MAX; i++) {
-		idx = i / UINT32_BIT;
-		offset = i % UINT32_BIT;
+		idx = i / UINT64_BIT;
+		offset = i % UINT64_BIT;
 		if (!(info.info.global_conf.valid_bit_mask[idx] &
-						(1UL << offset)))
+						(1ULL << offset)))
 			continue;
 		str = flowtype_to_str(i);
 		if (!str)
@@ -11334,7 +11334,7 @@ cmd_get_hash_global_config_parsed(void *parsed_result,
 		printf("Symmetric hash is %s globally for flow type %s "
 							"by port %d\n",
 			((info.info.global_conf.sym_hash_enable_mask[idx] &
-			(1UL << offset)) ? "enabled" : "disabled"), str,
+			(1ULL << offset)) ? "enabled" : "disabled"), str,
 							res->port_id);
 	}
 }
@@ -11395,12 +11395,12 @@ cmd_set_hash_global_config_parsed(void *parsed_result,
 			RTE_ETH_HASH_FUNCTION_DEFAULT;
 
 	ftype = str2flowtype(res->flow_type);
-	idx = ftype / (CHAR_BIT * sizeof(uint32_t));
-	offset = ftype % (CHAR_BIT * sizeof(uint32_t));
-	info.info.global_conf.valid_bit_mask[idx] |= (1UL << offset);
+	idx = ftype / UINT64_BIT;
+	offset = ftype % UINT64_BIT;
+	info.info.global_conf.valid_bit_mask[idx] |= (1ULL << offset);
 	if (!strcmp(res->enable, "enable"))
 		info.info.global_conf.sym_hash_enable_mask[idx] |=
-						(1UL << offset);
+						(1ULL << offset);
 	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_HASH,
 					RTE_ETH_FILTER_SET, &info);
 	if (ret < 0)

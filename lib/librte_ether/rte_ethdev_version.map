@@ -198,6 +198,13 @@ DPDK_17.11 {
 
 } DPDK_17.08;
 
+DPDK_18.02 {
+	global:
+
+	rte_eth_dev_filter_ctrl;
+
+} DPDK_17.11;
+
 EXPERIMENTAL {
 	global:
 
