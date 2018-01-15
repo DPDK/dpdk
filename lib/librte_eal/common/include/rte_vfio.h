@@ -148,6 +148,10 @@ int rte_vfio_is_enabled(const char *modname);
  */
 int rte_vfio_noiommu_is_enabled(void);
 
+/* remove group fd from internal VFIO group fd array */
+int
+rte_vfio_clear_group(int vfio_group_fd);
+
 #endif /* VFIO_PRESENT */
 
 #endif /* _RTE_VFIO_H_ */

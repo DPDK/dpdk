@@ -778,3 +778,8 @@ int rte_vfio_noiommu_is_enabled(void)
 {
 	return 0;
 }
+
+int rte_vfio_clear_group(int vfio_group_fd)
+{
+	return 0;
+}

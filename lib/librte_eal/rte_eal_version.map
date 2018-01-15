@@ -205,6 +205,7 @@ DPDK_18.02 {
 
 	rte_hypervisor_get;
 	rte_hypervisor_get_name;
+	rte_vfio_clear_group;
 
 } DPDK_17.11;
 

@@ -148,10 +148,6 @@ vfio_get_group_no(const char *sysfs_base,
 int
 vfio_get_group_fd(int iommu_group_no);
 
-/* remove group fd from internal VFIO group fd array */
-int
-clear_group(int vfio_group_fd);
-
 int vfio_mp_sync_setup(void);
 
 #define SOCKET_REQ_CONTAINER 0x100

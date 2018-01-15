@@ -304,7 +304,7 @@ vfio_mp_sync_thread(void __rte_unused * arg)
 				continue;
 			}
 
-			ret = clear_group(vfio_data);
+			ret = rte_vfio_clear_group(vfio_data);
 
 			if (ret < 0)
 				vfio_mp_sync_send_request(conn_sock, SOCKET_NO_FD);
