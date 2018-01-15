@@ -147,6 +147,12 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	PMD_INIT_FUNC_TRACE();
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
+		/* VLAN Filter not avaialble */
+		if (!priv->max_vlan_filters) {
+			RTE_LOG(INFO, PMD, "VLAN filter not available\n");
+			goto next_mask;
+		}
+
 		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
 			ret = dpni_enable_vlan_filter(dpni, CMD_PRI_LOW,
 						      priv->token, true);
@@ -157,7 +163,7 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			RTE_LOG(ERR, PMD, "Unable to set vlan filter = %d\n",
 				ret);
 	}
-
+next_mask:
 	if (mask & ETH_VLAN_EXTEND_MASK) {
 		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
 			RTE_LOG(INFO, PMD,
@@ -373,6 +379,9 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Error to get TX l4 csum:Error = %d\n", ret);
 		return ret;
 	}
+
+	if (eth_conf->rxmode.hw_vlan_filter)
+		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
 
 	/* update the current status */
 	dpaa2_dev_link_update(dev, 0);
@@ -764,16 +773,6 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 			     "code = %d\n", ret);
 		return ret;
 	}
-	/* VLAN Offload Settings */
-	if (priv->max_vlan_filters) {
-		ret = dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
-		if (ret) {
-			PMD_INIT_LOG(ERR, "Error to dpaa2_vlan_offload_set:"
-				     "code = %d\n", ret);
-			return ret;
-		}
-	}
-
 
 	/* if the interrupts were configured on this devices*/
 	if (intr_handle && (intr_handle->fd) &&
