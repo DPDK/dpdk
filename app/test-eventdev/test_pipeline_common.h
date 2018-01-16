@@ -65,6 +65,78 @@ struct test_pipeline {
 
 #define BURST_SIZE 16
 
+#define PIPELINE_WROKER_SINGLE_STAGE_INIT \
+	struct worker_data *w  = arg;     \
+	struct test_pipeline *t = w->t;   \
+	const uint8_t dev = w->dev_id;    \
+	const uint8_t port = w->port_id;  \
+	struct rte_event ev
+
+#define PIPELINE_WROKER_SINGLE_STAGE_BURST_INIT \
+	int i;                                  \
+	struct worker_data *w  = arg;           \
+	struct test_pipeline *t = w->t;         \
+	const uint8_t dev = w->dev_id;          \
+	const uint8_t port = w->port_id;        \
+	struct rte_event ev[BURST_SIZE + 1]
+
+#define PIPELINE_WROKER_MULTI_STAGE_INIT                         \
+	struct worker_data *w  = arg;                            \
+	struct test_pipeline *t = w->t;                          \
+	uint8_t cq_id;                                           \
+	const uint8_t dev = w->dev_id;                           \
+	const uint8_t port = w->port_id;                         \
+	const uint8_t last_queue = t->opt->nb_stages - 1;        \
+	uint8_t *const sched_type_list = &t->sched_type_list[0]; \
+	struct rte_event ev
+
+#define PIPELINE_WROKER_MULTI_STAGE_BURST_INIT                   \
+	int i;                                  \
+	struct worker_data *w  = arg;                            \
+	struct test_pipeline *t = w->t;                          \
+	uint8_t cq_id;                                           \
+	const uint8_t dev = w->dev_id;                           \
+	const uint8_t port = w->port_id;                         \
+	const uint8_t last_queue = t->opt->nb_stages - 1;        \
+	uint8_t *const sched_type_list = &t->sched_type_list[0]; \
+	struct rte_event ev[BURST_SIZE + 1]
+
+static __rte_always_inline void
+pipeline_fwd_event(struct rte_event *ev, uint8_t sched)
+{
+	ev->event_type = RTE_EVENT_TYPE_CPU;
+	ev->op = RTE_EVENT_OP_FORWARD;
+	ev->sched_type = sched;
+}
+
+static __rte_always_inline void
+pipeline_event_enqueue(const uint8_t dev, const uint8_t port,
+		struct rte_event *ev)
+{
+	while (rte_event_enqueue_burst(dev, port, ev, 1) != 1)
+		rte_pause();
+}
+
+static __rte_always_inline void
+pipeline_event_enqueue_burst(const uint8_t dev, const uint8_t port,
+		struct rte_event *ev, const uint16_t nb_rx)
+{
+	uint16_t enq;
+
+	enq = rte_event_enqueue_burst(dev, port, ev, nb_rx);
+	while (enq < nb_rx) {
+		enq += rte_event_enqueue_burst(dev, port,
+						ev + enq, nb_rx - enq);
+	}
+}
+
+static __rte_always_inline void
+pipeline_tx_pkt(struct rte_mbuf *mbuf)
+{
+	while (rte_eth_tx_burst(mbuf->port, 0, &mbuf, 1) != 1)
+		rte_pause();
+}
+
 static inline int
 pipeline_nb_event_ports(struct evt_options *opt)
 {
