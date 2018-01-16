@@ -277,6 +277,26 @@ in the body of the commit message. For example::
 
      Signed-off-by: Alex Smith <alex.smith@example.com>
 
+Patch for Stable Releases
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All fix patches to the master branch that are candidates for backporting
+should also be CCed to the `stable@dpdk.org <http://dpdk.org/ml/listinfo/stable>`_
+mailing list.
+In the commit message body the Cc: stable@dpdk.org should be inserted as follows::
+
+     doc: fix some parameter description
+
+     Update the docs, fixing description of some parameter.
+
+     Fixes: abcdefgh1234 ("doc: add some parameter")
+     Cc: stable@dpdk.org
+
+     Signed-off-by: Alex Smith <alex.smith@example.com>
+
+For further information on stable contribution you can go to
+:doc:`Stable Contribution Guide <stable>`.
+
 
 Creating Patches
 ----------------
