@@ -51,8 +51,17 @@ struct test_pipeline {
 	uint8_t sched_type_list[EVT_MAX_STAGES] __rte_cache_aligned;
 } __rte_cache_aligned;
 
+static inline int
+pipeline_nb_event_ports(struct evt_options *opt)
+{
+	return evt_nr_active_lcores(opt->wlcores);
+}
+
+int pipeline_test_result(struct evt_test *test, struct evt_options *opt);
+int pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues);
 int pipeline_test_setup(struct evt_test *test, struct evt_options *opt);
 int pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt);
+void pipeline_opt_dump(struct evt_options *opt, uint8_t nb_queues);
 void pipeline_test_destroy(struct evt_test *test, struct evt_options *opt);
 void pipeline_mempool_destroy(struct evt_test *test, struct evt_options *opt);
 
