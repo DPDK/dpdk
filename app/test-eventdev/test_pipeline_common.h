@@ -84,6 +84,8 @@ int pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt);
 int pipeline_event_port_setup(struct evt_test *test, struct evt_options *opt,
 		uint8_t *queue_arr, uint8_t nb_queues,
 		const struct rte_event_port_conf p_conf);
+int pipeline_launch_lcores(struct evt_test *test, struct evt_options *opt,
+		int (*worker)(void *));
 void pipeline_opt_dump(struct evt_options *opt, uint8_t nb_queues);
 void pipeline_test_destroy(struct evt_test *test, struct evt_options *opt);
 void pipeline_eventdev_destroy(struct evt_test *test, struct evt_options *opt);

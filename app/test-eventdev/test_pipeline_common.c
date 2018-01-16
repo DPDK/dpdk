@@ -90,6 +90,73 @@ pipeline_opt_dump(struct evt_options *opt, uint8_t nb_queues)
 	evt_dump_producer_type(opt);
 }
 
+static inline uint64_t
+processed_pkts(struct test_pipeline *t)
+{
+	uint8_t i;
+	uint64_t total = 0;
+
+	rte_smp_rmb();
+	if (t->mt_unsafe)
+		total = t->tx_service.processed_pkts;
+	else
+		for (i = 0; i < t->nb_workers; i++)
+			total += t->worker[i].processed_pkts;
+
+	return total;
+}
+
+int
+pipeline_launch_lcores(struct evt_test *test, struct evt_options *opt,
+		int (*worker)(void *))
+{
+	int ret, lcore_id;
+	struct test_pipeline *t = evt_test_priv(test);
+
+	int port_idx = 0;
+	/* launch workers */
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		if (!(opt->wlcores[lcore_id]))
+			continue;
+
+		ret = rte_eal_remote_launch(worker,
+				 &t->worker[port_idx], lcore_id);
+		if (ret) {
+			evt_err("failed to launch worker %d", lcore_id);
+			return ret;
+		}
+		port_idx++;
+	}
+
+	uint64_t perf_cycles = rte_get_timer_cycles();
+	const uint64_t perf_sample = rte_get_timer_hz();
+
+	static float total_mpps;
+	static uint64_t samples;
+
+	uint64_t prev_pkts = 0;
+
+	while (t->done == false) {
+		const uint64_t new_cycles = rte_get_timer_cycles();
+
+		if ((new_cycles - perf_cycles) > perf_sample) {
+			const uint64_t curr_pkts = processed_pkts(t);
+
+			float mpps = (float)(curr_pkts - prev_pkts)/1000000;
+
+			prev_pkts = curr_pkts;
+			perf_cycles = new_cycles;
+			total_mpps += mpps;
+			++samples;
+			printf(CLGRN"\r%.3f mpps avg %.3f mpps"CLNRM,
+					mpps, total_mpps/samples);
+			fflush(stdout);
+		}
+	}
+	printf("\n");
+	return 0;
+}
+
 int
 pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues)
 {
