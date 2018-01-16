@@ -19,6 +19,8 @@
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
 #include <rte_spinlock.h>
+#include <rte_service.h>
+#include <rte_service_component.h>
 
 #include "evt_common.h"
 #include "evt_options.h"
@@ -30,6 +32,17 @@ struct worker_data {
 	uint64_t processed_pkts;
 	uint8_t dev_id;
 	uint8_t port_id;
+	struct test_pipeline *t;
+} __rte_cache_aligned;
+
+struct tx_service_data {
+	uint8_t dev_id;
+	uint8_t queue_id;
+	uint8_t port_id;
+	uint32_t service_id;
+	uint64_t processed_pkts;
+	uint16_t nb_ethports;
+	struct rte_eth_dev_tx_buffer *tx_buf[RTE_MAX_ETHPORTS];
 	struct test_pipeline *t;
 } __rte_cache_aligned;
 
@@ -45,11 +58,12 @@ struct test_pipeline {
 	uint64_t outstand_pkts;
 	struct rte_mempool *pool;
 	struct worker_data worker[EVT_MAX_PORTS];
-	struct rte_eth_dev_tx_buffer *tx_buf[RTE_MAX_ETHPORTS];
-	rte_spinlock_t tx_lk[RTE_MAX_ETHPORTS];
+	struct tx_service_data tx_service;
 	struct evt_options *opt;
 	uint8_t sched_type_list[EVT_MAX_STAGES] __rte_cache_aligned;
 } __rte_cache_aligned;
+
+#define BURST_SIZE 16
 
 static inline int
 pipeline_nb_event_ports(struct evt_options *opt)
@@ -63,6 +77,9 @@ int pipeline_test_setup(struct evt_test *test, struct evt_options *opt);
 int pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt);
 int pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 		struct rte_event_port_conf prod_conf);
+int pipeline_event_tx_service_setup(struct evt_test *test,
+		struct evt_options *opt, uint8_t tx_queue_id,
+		uint8_t tx_port_id, const struct rte_event_port_conf p_conf);
 int pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt);
 int pipeline_event_port_setup(struct evt_test *test, struct evt_options *opt,
 		uint8_t *queue_arr, uint8_t nb_queues,
