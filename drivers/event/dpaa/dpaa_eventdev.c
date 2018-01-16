@@ -201,7 +201,51 @@ dpaa_event_dev_close(struct rte_eventdev *dev)
 	return 0;
 }
 
+static void
+dpaa_event_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
+			  struct rte_event_queue_conf *queue_conf)
+{
+	EVENTDEV_DRV_FUNC_TRACE();
 
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+
+	memset(queue_conf, 0, sizeof(struct rte_event_queue_conf));
+	queue_conf->schedule_type = RTE_SCHED_TYPE_PARALLEL;
+	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_HIGHEST;
+}
+
+static int
+dpaa_event_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
+		       const struct rte_event_queue_conf *queue_conf)
+{
+	struct dpaa_eventdev *priv = dev->data->dev_private;
+	struct dpaa_eventq *evq_info = &priv->evq_info[queue_id];
+
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	switch (queue_conf->schedule_type) {
+	case RTE_SCHED_TYPE_PARALLEL:
+	case RTE_SCHED_TYPE_ATOMIC:
+		break;
+	case RTE_SCHED_TYPE_ORDERED:
+		EVENTDEV_DRV_ERR("Schedule type is not supported.");
+		return -1;
+	}
+	evq_info->event_queue_cfg = queue_conf->event_queue_cfg;
+	evq_info->event_queue_id = queue_id;
+
+	return 0;
+}
+
+static void
+dpaa_event_queue_release(struct rte_eventdev *dev, uint8_t queue_id)
+{
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+}
 
 static const struct rte_eventdev_ops dpaa_eventdev_ops = {
 	.dev_infos_get    = dpaa_event_dev_info_get,
@@ -209,6 +253,9 @@ static const struct rte_eventdev_ops dpaa_eventdev_ops = {
 	.dev_start        = dpaa_event_dev_start,
 	.dev_stop         = dpaa_event_dev_stop,
 	.dev_close        = dpaa_event_dev_close,
+	.queue_def_conf   = dpaa_event_queue_def_conf,
+	.queue_setup      = dpaa_event_queue_setup,
+	.queue_release    = dpaa_event_queue_release,
 	.timeout_ticks    = dpaa_event_dequeue_timeout_ticks,
 };
 
