@@ -123,6 +123,23 @@ New Features
 
   With this change, application can use OPDL PMD by eventdev api.
 
+* **Added New pipeline use case for dpdk-test-eventdev application**
+
+  The pipeline case can be used to simulate various stages in a real world
+  application from packet receive to transmit while maintaining the packet
+  ordering also measure the performance of the event device across the stages
+  of the pipeline.
+
+  The pipeline use case has been made generic to work will all the event
+  devices based on the capabilities.
+
+* **Updated Eventdev Sample application to support event devices based on capability**
+
+  Updated Eventdev pipeline sample application to support various types of pipelines
+  based on the capabilities of the attached event and ethernet devices. Also,
+  renamed the application from SW PMD specific ``eventdev_pipeline_sw_pmd``
+  to PMD agnostic ``eventdev_pipeline``.
+
 
 API Changes
 -----------
