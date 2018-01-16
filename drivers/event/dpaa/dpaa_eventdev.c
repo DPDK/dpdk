@@ -247,6 +247,106 @@ dpaa_event_queue_release(struct rte_eventdev *dev, uint8_t queue_id)
 	RTE_SET_USED(queue_id);
 }
 
+static void
+dpaa_event_port_default_conf_get(struct rte_eventdev *dev, uint8_t port_id,
+				 struct rte_event_port_conf *port_conf)
+{
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(port_id);
+
+	port_conf->new_event_threshold = DPAA_EVENT_MAX_NUM_EVENTS;
+	port_conf->dequeue_depth = DPAA_EVENT_MAX_PORT_DEQUEUE_DEPTH;
+	port_conf->enqueue_depth = DPAA_EVENT_MAX_PORT_ENQUEUE_DEPTH;
+}
+
+static int
+dpaa_event_port_setup(struct rte_eventdev *dev, uint8_t port_id,
+		      const struct rte_event_port_conf *port_conf)
+{
+	struct dpaa_eventdev *eventdev = dev->data->dev_private;
+
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(port_conf);
+	dev->data->ports[port_id] = &eventdev->ports[port_id];
+
+	return 0;
+}
+
+static void
+dpaa_event_port_release(void *port)
+{
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(port);
+}
+
+static int
+dpaa_event_port_link(struct rte_eventdev *dev, void *port,
+		     const uint8_t queues[], const uint8_t priorities[],
+		     uint16_t nb_links)
+{
+	struct dpaa_eventdev *priv = dev->data->dev_private;
+	struct dpaa_port *event_port = (struct dpaa_port *)port;
+	struct dpaa_eventq *event_queue;
+	uint8_t eventq_id;
+	int i;
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(priorities);
+
+	/* First check that input configuration are valid */
+	for (i = 0; i < nb_links; i++) {
+		eventq_id = queues[i];
+		event_queue = &priv->evq_info[eventq_id];
+		if ((event_queue->event_queue_cfg
+			& RTE_EVENT_QUEUE_CFG_SINGLE_LINK)
+			&& (event_queue->event_port)) {
+			return -EINVAL;
+		}
+	}
+
+	for (i = 0; i < nb_links; i++) {
+		eventq_id = queues[i];
+		event_queue = &priv->evq_info[eventq_id];
+		event_port->evq_info[i].event_queue_id = eventq_id;
+		event_port->evq_info[i].ch_id = event_queue->ch_id;
+		event_queue->event_port = port;
+	}
+
+	event_port->num_linked_evq = event_port->num_linked_evq + i;
+
+	return (int)i;
+}
+
+static int
+dpaa_event_port_unlink(struct rte_eventdev *dev, void *port,
+		       uint8_t queues[], uint16_t nb_links)
+{
+	int i;
+	uint8_t eventq_id;
+	struct dpaa_eventq *event_queue;
+	struct dpaa_eventdev *priv = dev->data->dev_private;
+	struct dpaa_port *event_port = (struct dpaa_port *)port;
+
+	if (!event_port->num_linked_evq)
+		return nb_links;
+
+	for (i = 0; i < nb_links; i++) {
+		eventq_id = queues[i];
+		event_port->evq_info[eventq_id].event_queue_id = -1;
+		event_port->evq_info[eventq_id].ch_id = 0;
+		event_queue = &priv->evq_info[eventq_id];
+		event_queue->event_port = NULL;
+	}
+
+	event_port->num_linked_evq = event_port->num_linked_evq - i;
+
+	return (int)i;
+}
+
 static const struct rte_eventdev_ops dpaa_eventdev_ops = {
 	.dev_infos_get    = dpaa_event_dev_info_get,
 	.dev_configure    = dpaa_event_dev_configure,
@@ -256,6 +356,11 @@ static const struct rte_eventdev_ops dpaa_eventdev_ops = {
 	.queue_def_conf   = dpaa_event_queue_def_conf,
 	.queue_setup      = dpaa_event_queue_setup,
 	.queue_release    = dpaa_event_queue_release,
+	.port_def_conf    = dpaa_event_port_default_conf_get,
+	.port_setup       = dpaa_event_port_setup,
+	.port_release       = dpaa_event_port_release,
+	.port_link        = dpaa_event_port_link,
+	.port_unlink      = dpaa_event_port_unlink,
 	.timeout_ticks    = dpaa_event_dequeue_timeout_ticks,
 };
 
