@@ -1248,6 +1248,8 @@ dpaa_sec_detach_rxq(struct dpaa_sec_dev_private *qi, struct qman_fq *fq)
 
 	for (i = 0; i < qi->max_nb_sessions; i++) {
 		if (&qi->inq[i] == fq) {
+			qman_retire_fq(fq, NULL);
+			qman_oos_fq(fq);
 			qi->inq_attach[i] = 0;
 			return 0;
 		}
