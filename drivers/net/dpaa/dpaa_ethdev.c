@@ -95,6 +95,21 @@ static const struct rte_dpaa_xstats_name_off dpaa_xstats_strings[] = {
 
 static struct rte_dpaa_driver rte_dpaa_pmd;
 
+static inline void
+dpaa_poll_queue_default_config(struct qm_mcc_initfq *opts)
+{
+	memset(opts, 0, sizeof(struct qm_mcc_initfq));
+	opts->we_mask = QM_INITFQ_WE_FQCTRL | QM_INITFQ_WE_CONTEXTA;
+	opts->fqd.fq_ctrl = QM_FQCTRL_AVOIDBLOCK | QM_FQCTRL_CTXASTASHING |
+			   QM_FQCTRL_PREFERINCACHE;
+	opts->fqd.context_a.stashing.exclusive = 0;
+	if (dpaa_svr_family != SVR_LS1046A_FAMILY)
+		opts->fqd.context_a.stashing.annotation_cl =
+						DPAA_IF_RX_ANNOTATION_STASH;
+	opts->fqd.context_a.stashing.data_cl = DPAA_IF_RX_DATA_STASH;
+	opts->fqd.context_a.stashing.context_cl = DPAA_IF_RX_CONTEXT_STASH;
+}
+
 static int
 dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
@@ -533,6 +548,97 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
+int dpaa_eth_eventq_attach(const struct rte_eth_dev *dev,
+			   int eth_rx_queue_id,
+		u16 ch_id,
+		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
+{
+	int ret;
+	u32 flags = 0;
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct qman_fq *rxq = &dpaa_intf->rx_queues[eth_rx_queue_id];
+	struct qm_mcc_initfq opts = {0};
+
+	if (dpaa_push_mode_max_queue)
+		DPAA_PMD_WARN("PUSH mode already enabled for first %d queues.\n"
+			      "To disable set DPAA_PUSH_QUEUES_NUMBER to 0\n",
+			      dpaa_push_mode_max_queue);
+
+	dpaa_poll_queue_default_config(&opts);
+
+	switch (queue_conf->ev.sched_type) {
+	case RTE_SCHED_TYPE_ATOMIC:
+		opts.fqd.fq_ctrl |= QM_FQCTRL_HOLDACTIVE;
+		/* Reset FQCTRL_AVOIDBLOCK bit as it is unnecessary
+		 * configuration with HOLD_ACTIVE setting
+		 */
+		opts.fqd.fq_ctrl &= (~QM_FQCTRL_AVOIDBLOCK);
+		rxq->cb.dqrr_dpdk_cb = dpaa_rx_cb_atomic;
+		break;
+	case RTE_SCHED_TYPE_ORDERED:
+		DPAA_PMD_ERR("Ordered queue schedule type is not supported\n");
+		return -1;
+	default:
+		opts.fqd.fq_ctrl |= QM_FQCTRL_AVOIDBLOCK;
+		rxq->cb.dqrr_dpdk_cb = dpaa_rx_cb_parallel;
+		break;
+	}
+
+	opts.we_mask = opts.we_mask | QM_INITFQ_WE_DESTWQ;
+	opts.fqd.dest.channel = ch_id;
+	opts.fqd.dest.wq = queue_conf->ev.priority;
+
+	if (dpaa_intf->cgr_rx) {
+		opts.we_mask |= QM_INITFQ_WE_CGID;
+		opts.fqd.cgid = dpaa_intf->cgr_rx[eth_rx_queue_id].cgrid;
+		opts.fqd.fq_ctrl |= QM_FQCTRL_CGE;
+	}
+
+	flags = QMAN_INITFQ_FLAG_SCHED;
+
+	ret = qman_init_fq(rxq, flags, &opts);
+	if (ret) {
+		DPAA_PMD_ERR("Channel/Queue association failed. fqid %d ret:%d",
+			     rxq->fqid, ret);
+		return ret;
+	}
+
+	/* copy configuration which needs to be filled during dequeue */
+	memcpy(&rxq->ev, &queue_conf->ev, sizeof(struct rte_event));
+	dev->data->rx_queues[eth_rx_queue_id] = rxq;
+
+	return ret;
+}
+
+int dpaa_eth_eventq_detach(const struct rte_eth_dev *dev,
+			   int eth_rx_queue_id)
+{
+	struct qm_mcc_initfq opts;
+	int ret;
+	u32 flags = 0;
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct qman_fq *rxq = &dpaa_intf->rx_queues[eth_rx_queue_id];
+
+	dpaa_poll_queue_default_config(&opts);
+
+	if (dpaa_intf->cgr_rx) {
+		opts.we_mask |= QM_INITFQ_WE_CGID;
+		opts.fqd.cgid = dpaa_intf->cgr_rx[eth_rx_queue_id].cgrid;
+		opts.fqd.fq_ctrl |= QM_FQCTRL_CGE;
+	}
+
+	ret = qman_init_fq(rxq, flags, &opts);
+	if (ret) {
+		DPAA_PMD_ERR("init rx fqid %d failed with ret: %d",
+			     rxq->fqid, ret);
+	}
+
+	rxq->cb.dqrr_dpdk_cb = NULL;
+	dev->data->rx_queues[eth_rx_queue_id] = NULL;
+
+	return 0;
+}
+
 static
 void dpaa_eth_rx_queue_release(void *rxq __rte_unused)
 {
@@ -853,13 +959,8 @@ static int dpaa_rx_queue_init(struct qman_fq *fq, struct qman_cgr *cgr_rx,
 		return ret;
 	}
 	fq->is_static = false;
-	opts.we_mask = QM_INITFQ_WE_FQCTRL | QM_INITFQ_WE_CONTEXTA;
-	opts.fqd.fq_ctrl = QM_FQCTRL_AVOIDBLOCK | QM_FQCTRL_CTXASTASHING |
-			   QM_FQCTRL_PREFERINCACHE;
-	opts.fqd.context_a.stashing.exclusive = 0;
-	opts.fqd.context_a.stashing.annotation_cl = DPAA_IF_RX_ANNOTATION_STASH;
-	opts.fqd.context_a.stashing.data_cl = DPAA_IF_RX_DATA_STASH;
-	opts.fqd.context_a.stashing.context_cl = DPAA_IF_RX_CONTEXT_STASH;
+
+	dpaa_poll_queue_default_config(&opts);
 
 	if (cgr_rx) {
 		/* Enable tail drop with cgr on this queue */

@@ -33,12 +33,14 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_net.h>
+#include <rte_eventdev.h>
 
 #include "dpaa_ethdev.h"
 #include "dpaa_rxtx.h"
 #include <rte_dpaa_bus.h>
 #include <dpaa_mempool.h>
 
+#include <qman.h>
 #include <fsl_usd.h>
 #include <fsl_qman.h>
 #include <fsl_bman.h>
@@ -425,6 +427,67 @@ dpaa_eth_queue_portal_rx(struct qman_fq *fq,
 	return qman_portal_poll_rx(nb_bufs, (void **)bufs, fq->qp);
 }
 
+enum qman_cb_dqrr_result
+dpaa_rx_cb_parallel(void *event,
+		    struct qman_portal *qm __always_unused,
+		    struct qman_fq *fq,
+		    const struct qm_dqrr_entry *dqrr,
+		    void **bufs)
+{
+	u32 ifid = ((struct dpaa_if *)fq->dpaa_intf)->ifid;
+	struct rte_mbuf *mbuf;
+	struct rte_event *ev = (struct rte_event *)event;
+
+	mbuf = dpaa_eth_fd_to_mbuf(&dqrr->fd, ifid);
+	ev->event_ptr = (void *)mbuf;
+	ev->flow_id = fq->ev.flow_id;
+	ev->sub_event_type = fq->ev.sub_event_type;
+	ev->event_type = RTE_EVENT_TYPE_ETHDEV;
+	ev->op = RTE_EVENT_OP_NEW;
+	ev->sched_type = fq->ev.sched_type;
+	ev->queue_id = fq->ev.queue_id;
+	ev->priority = fq->ev.priority;
+	ev->impl_opaque = (uint8_t)DPAA_INVALID_MBUF_SEQN;
+	mbuf->seqn = DPAA_INVALID_MBUF_SEQN;
+	*bufs = mbuf;
+
+	return qman_cb_dqrr_consume;
+}
+
+enum qman_cb_dqrr_result
+dpaa_rx_cb_atomic(void *event,
+		  struct qman_portal *qm __always_unused,
+		  struct qman_fq *fq,
+		  const struct qm_dqrr_entry *dqrr,
+		  void **bufs)
+{
+	u8 index;
+	u32 ifid = ((struct dpaa_if *)fq->dpaa_intf)->ifid;
+	struct rte_mbuf *mbuf;
+	struct rte_event *ev = (struct rte_event *)event;
+
+	mbuf = dpaa_eth_fd_to_mbuf(&dqrr->fd, ifid);
+	ev->event_ptr = (void *)mbuf;
+	ev->flow_id = fq->ev.flow_id;
+	ev->sub_event_type = fq->ev.sub_event_type;
+	ev->event_type = RTE_EVENT_TYPE_ETHDEV;
+	ev->op = RTE_EVENT_OP_NEW;
+	ev->sched_type = fq->ev.sched_type;
+	ev->queue_id = fq->ev.queue_id;
+	ev->priority = fq->ev.priority;
+
+	/* Save active dqrr entries */
+	index = DQRR_PTR2IDX(dqrr);
+	DPAA_PER_LCORE_DQRR_SIZE++;
+	DPAA_PER_LCORE_DQRR_HELD |= 1 << index;
+	DPAA_PER_LCORE_DQRR_MBUF(index) = mbuf;
+	ev->impl_opaque = index + 1;
+	mbuf->seqn = (uint32_t)index + 1;
+	*bufs = mbuf;
+
+	return qman_cb_dqrr_defer;
+}
+
 uint16_t dpaa_eth_queue_rx(void *q,
 			   struct rte_mbuf **bufs,
 			   uint16_t nb_bufs)
@@ -708,6 +771,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	uint32_t frames_to_send, loop, sent = 0;
 	uint16_t state;
 	int ret;
+	uint32_t seqn, index, flags[DPAA_TX_BURST_SIZE] = {0};
 
 	ret = rte_dpaa_portal_init((void *)0);
 	if (ret) {
@@ -768,14 +832,26 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 					goto send_pkts;
 				}
 			}
+			seqn = mbuf->seqn;
+			if (seqn != DPAA_INVALID_MBUF_SEQN) {
+				index = seqn - 1;
+				if (DPAA_PER_LCORE_DQRR_HELD & (1 << index)) {
+					flags[loop] =
+					   ((index & QM_EQCR_DCA_IDXMASK) << 8);
+					flags[loop] |= QMAN_ENQUEUE_FLAG_DCA;
+					DPAA_PER_LCORE_DQRR_SIZE--;
+					DPAA_PER_LCORE_DQRR_HELD &=
+								~(1 << index);
+				}
+			}
 		}
 
 send_pkts:
 		loop = 0;
 		while (loop < frames_to_send) {
 			loop += qman_enqueue_multi(q, &fd_arr[loop],
-						   NULL,
-					frames_to_send - loop);
+						   &flags[loop],
+						   frames_to_send - loop);
 		}
 		nb_bufs -= frames_to_send;
 		sent += frames_to_send;

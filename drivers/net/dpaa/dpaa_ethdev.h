@@ -10,6 +10,7 @@
 /* System headers */
 #include <stdbool.h>
 #include <rte_ethdev.h>
+#include <rte_event_eth_rx_adapter.h>
 
 #include <fsl_usd.h>
 #include <fsl_qman.h>
@@ -23,6 +24,13 @@
 #if (DPAA_MBUF_HW_ANNOTATION + DPAA_FD_PTA_SIZE) > RTE_PKTMBUF_HEADROOM
 #error "Annotation requirement is more than RTE_PKTMBUF_HEADROOM"
 #endif
+
+/* mbuf->seqn will be used to store event entry index for
+ * driver specific usage. For parallel mode queues, invalid
+ * index will be set and for atomic mode queues, valid value
+ * ranging from 1 to 16.
+ */
+#define DPAA_INVALID_MBUF_SEQN  0
 
 /* we will re-use the HEADROOM for annotation in RX */
 #define DPAA_HW_BUF_RESERVE	0
@@ -151,5 +159,26 @@ struct dpaa_if_stats {
 	uint64_t tpkt;		/**<Tx Packet */
 	uint64_t tund;		/**<Tx Undersized */
 };
+
+int dpaa_eth_eventq_attach(const struct rte_eth_dev *dev,
+			   int eth_rx_queue_id,
+		u16 ch_id,
+		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
+
+int dpaa_eth_eventq_detach(const struct rte_eth_dev *dev,
+			   int eth_rx_queue_id);
+
+enum qman_cb_dqrr_result
+dpaa_rx_cb_parallel(void *event,
+		    struct qman_portal *qm __always_unused,
+		    struct qman_fq *fq,
+		    const struct qm_dqrr_entry *dqrr,
+		    void **bufs);
+enum qman_cb_dqrr_result
+dpaa_rx_cb_atomic(void *event,
+		  struct qman_portal *qm __always_unused,
+		  struct qman_fq *fq,
+		  const struct qm_dqrr_entry *dqrr,
+		  void **bufs);
 
 #endif
