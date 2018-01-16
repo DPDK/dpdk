@@ -68,6 +68,7 @@ DPDK_17.11 {
 DPDK_18.02 {
 	global:
 
+	dpaa_logtype_eventdev;
 	dpaa_svr_family;
 	per_lcore_held_bufs;
 	qm_channel_pool1;

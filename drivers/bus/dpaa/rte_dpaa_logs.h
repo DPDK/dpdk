@@ -12,6 +12,7 @@
 extern int dpaa_logtype_bus;
 extern int dpaa_logtype_mempool;
 extern int dpaa_logtype_pmd;
+extern int dpaa_logtype_eventdev;
 
 #define DPAA_BUS_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaa_logtype_bus, "%s(): " fmt "\n", \
@@ -73,6 +74,21 @@ extern int dpaa_logtype_pmd;
 	DPAA_PMD_LOG(INFO, fmt, ## args)
 #define DPAA_PMD_WARN(fmt, args...) \
 	DPAA_PMD_LOG(WARNING, fmt, ## args)
+
+#define DPAA_EVENTDEV_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, dpaa_logtype_eventdev, "%s(): " fmt "\n", \
+		__func__, ##args)
+
+#define EVENTDEV_INIT_FUNC_TRACE() DPAA_EVENTDEV_LOG(DEBUG, " >>")
+
+#define DPAA_EVENTDEV_DEBUG(fmt, args...) \
+	DPAA_EVENTDEV_LOG(DEBUG, fmt, ## args)
+#define DPAA_EVENTDEV_ERR(fmt, args...) \
+	DPAA_EVENTDEV_LOG(ERR, fmt, ## args)
+#define DPAA_EVENTDEV_INFO(fmt, args...) \
+	DPAA_EVENTDEV_LOG(INFO, fmt, ## args)
+#define DPAA_EVENTDEV_WARN(fmt, args...) \
+	DPAA_EVENTDEV_LOG(WARNING, fmt, ## args)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA_DP_LOG(level, fmt, args...) \
