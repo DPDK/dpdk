@@ -60,6 +60,116 @@ dpaa_event_dequeue_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
 }
 
 static void
+dpaa_eventq_portal_add(u16 ch_id)
+{
+	uint32_t sdqcr;
+
+	sdqcr = QM_SDQCR_CHANNELS_POOL_CONV(ch_id);
+	qman_static_dequeue_add(sdqcr, NULL);
+}
+
+static uint16_t
+dpaa_event_enqueue_burst(void *port, const struct rte_event ev[],
+			 uint16_t nb_events)
+{
+	uint16_t i;
+	struct rte_mbuf *mbuf;
+
+	RTE_SET_USED(port);
+	/*Release all the contexts saved previously*/
+	for (i = 0; i < nb_events; i++) {
+		switch (ev[i].op) {
+		case RTE_EVENT_OP_RELEASE:
+			qman_dca_index(ev[i].impl_opaque, 0);
+			mbuf = DPAA_PER_LCORE_DQRR_MBUF(i);
+			mbuf->seqn = DPAA_INVALID_MBUF_SEQN;
+			DPAA_PER_LCORE_DQRR_HELD &= ~(1 << i);
+			DPAA_PER_LCORE_DQRR_SIZE--;
+			break;
+		default:
+			break;
+		}
+	}
+
+	return nb_events;
+}
+
+static uint16_t
+dpaa_event_enqueue(void *port, const struct rte_event *ev)
+{
+	return dpaa_event_enqueue_burst(port, ev, 1);
+}
+
+static uint16_t
+dpaa_event_dequeue_burst(void *port, struct rte_event ev[],
+			 uint16_t nb_events, uint64_t timeout_ticks)
+{
+	int ret;
+	u16 ch_id;
+	void *buffers[8];
+	u32 num_frames, i;
+	uint64_t wait_time, cur_ticks, start_ticks;
+	struct dpaa_port *portal = (struct dpaa_port *)port;
+	struct rte_mbuf *mbuf;
+
+	/* Affine current thread context to a qman portal */
+	ret = rte_dpaa_portal_init((void *)0);
+	if (ret) {
+		DPAA_EVENTDEV_ERR("Unable to initialize portal");
+		return ret;
+	}
+
+	if (unlikely(!portal->is_port_linked)) {
+		/*
+		 * Affine event queue for current thread context
+		 * to a qman portal.
+		 */
+		for (i = 0; i < portal->num_linked_evq; i++) {
+			ch_id = portal->evq_info[i].ch_id;
+			dpaa_eventq_portal_add(ch_id);
+		}
+		portal->is_port_linked = true;
+	}
+
+	/* Check if there are atomic contexts to be released */
+	i = 0;
+	while (DPAA_PER_LCORE_DQRR_SIZE) {
+		if (DPAA_PER_LCORE_DQRR_HELD & (1 << i)) {
+			qman_dca_index(i, 0);
+			mbuf = DPAA_PER_LCORE_DQRR_MBUF(i);
+			mbuf->seqn = DPAA_INVALID_MBUF_SEQN;
+			DPAA_PER_LCORE_DQRR_HELD &= ~(1 << i);
+			DPAA_PER_LCORE_DQRR_SIZE--;
+		}
+		i++;
+	}
+	DPAA_PER_LCORE_DQRR_HELD = 0;
+
+	if (portal->timeout == DPAA_EVENT_PORT_DEQUEUE_TIMEOUT_INVALID)
+		wait_time = timeout_ticks;
+	else
+		wait_time = portal->timeout;
+
+	/* Lets dequeue the frames */
+	start_ticks = rte_get_timer_cycles();
+	wait_time += start_ticks;
+	do {
+		num_frames = qman_portal_dequeue(ev, nb_events, buffers);
+		if (num_frames != 0)
+			break;
+		cur_ticks = rte_get_timer_cycles();
+	} while (cur_ticks < wait_time);
+
+	return num_frames;
+}
+
+static uint16_t
+dpaa_event_dequeue(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+{
+	return dpaa_event_dequeue_burst(port, ev, 1, timeout_ticks);
+}
+
+static void
 dpaa_event_dev_info_get(struct rte_eventdev *dev,
 			struct rte_event_dev_info *dev_info)
 {
@@ -496,6 +606,10 @@ dpaa_event_dev_create(const char *name)
 	}
 
 	eventdev->dev_ops       = &dpaa_eventdev_ops;
+	eventdev->enqueue       = dpaa_event_enqueue;
+	eventdev->enqueue_burst = dpaa_event_enqueue_burst;
+	eventdev->dequeue       = dpaa_event_dequeue;
+	eventdev->dequeue_burst = dpaa_event_dequeue_burst;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
