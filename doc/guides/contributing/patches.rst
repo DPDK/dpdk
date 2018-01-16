@@ -256,6 +256,27 @@ In addition to the ``Signed-off-by:`` name the commit messages can also have
 tags for who reported, suggested, tested and reviewed the patch being
 posted. Please refer to the `Tested, Acked and Reviewed by`_ section.
 
+Coverity Related Patch Fixes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`Coverity <https://scan.coverity.com/projects/dpdk-data-plane-development-kit>`_
+is a tool for static code analysis.
+It is used as a cloud-based service used to scan the DPDK source code,
+and alert developers of any potential defects in the source code.
+When fixing an issue found by Coverity, the patch must contain a Coverity issue ID
+in the body of the commit message. For example::
+
+
+     doc: fix some parameter description
+
+     Update the docs, fixing description of some parameter.
+
+     Coverity issue: 12345
+     Fixes: abcdefgh1234 ("doc: add some parameter")
+     Cc: author@example.com
+
+     Signed-off-by: Alex Smith <alex.smith@example.com>
+
 
 Creating Patches
 ----------------
