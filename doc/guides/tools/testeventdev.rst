@@ -547,3 +547,88 @@ Example command to run pipeline queue test:
 
     sudo build/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
         --test=pipeline_queue --wlcore=1 --prod_type_ethdev --stlist=a
+
+
+PIPELINE_ATQ Test
+~~~~~~~~~~~~~~~~~~~
+
+This is a pipeline test case that aims at testing the following with
+``all types queue`` eventdev scheme.
+
+#. Measure the end-to-end performance of an event dev with a ethernet dev.
+#. Maintain packet ordering from Rx to Tx.
+
+.. _table_eventdev_pipeline_atq_test:
+
+.. table:: Pipeline atq test eventdev configuration.
+
+   +---+--------------+----------------+-----------------------------------------+
+   | # | Items        | Value          | Comments                                |
+   |   |              |                |                                         |
+   +===+==============+================+=========================================+
+   | 1 | nb_queues    | nb_producers + | Queues will be configured based on the  |
+   |   |              | x              | user requested sched type list(--stlist)|
+   |   |              |                | where x = 1 in generic pipeline and 0   |
+   |   |              |                | in lockfree pipeline                    |
+   +---+--------------+----------------+-----------------------------------------+
+   | 2 | nb_producers | >= 1           | Producers will be configured based on   |
+   |   |              |                | the number of detected ethernet devices.|
+   |   |              |                | Each ethdev will be configured as an Rx |
+   |   |              |                | adapter.                                |
+   +---+--------------+----------------+-----------------------------------------+
+   | 3 | nb_workers   | >= 1           | Selected through --wlcores command line |
+   |   |              |                | argument                                |
+   +---+--------------+----------------+-----------------------------------------+
+   | 4 | nb_ports     | nb_workers +   | Workers use port 0 to port n.           |
+   |   |              | nb_producers   | Producers use port n+1 to port n+m,     |
+   |   |              |                | depending on the Rx adapter capability. |
+   +---+--------------+----------------+-----------------------------------------+
+
+.. _figure_eventdev_pipeline_atq_test_generic:
+
+.. figure:: img/eventdev_pipeline_atq_test_generic.*
+
+.. _figure_eventdev_pipeline_atq_test_lockfree:
+
+.. figure:: img/eventdev_pipeline_atq_test_lockfree.*
+
+   pipeline atq test operation.
+
+The pipeline atq test configures the eventdev with Q queues and P ports,
+where Q and P is a function of the number of workers, the number of producers
+and number of stages as mentioned in :numref:`table_eventdev_pipeline_atq_test`.
+
+The atq queue test functions as same as ``pipeline_queue`` test. The difference
+is, It uses, ``all type queue scheme`` instead of separate queues for each
+stage and thus reduces the number of queues required to realize the use case.
+
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+        --verbose
+        --dev
+        --test
+        --socket_id
+        --pool_sz
+        --wlcores
+        --stlist
+        --worker_deq_depth
+        --prod_type_ethdev
+
+
+.. Note::
+
+    * The ``--prod_type_ethdev`` is mandatory for running this test.
+
+Example
+^^^^^^^
+
+Example command to run pipeline queue test:
+
+.. code-block:: console
+
+    sudo build/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+        --test=pipeline_atq --wlcore=1 --prod_type_ethdev --stlist=a
