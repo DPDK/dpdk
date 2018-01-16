@@ -52,6 +52,8 @@ struct test_pipeline {
 } __rte_cache_aligned;
 
 int pipeline_test_setup(struct evt_test *test, struct evt_options *opt);
+int pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt);
 void pipeline_test_destroy(struct evt_test *test, struct evt_options *opt);
+void pipeline_mempool_destroy(struct evt_test *test, struct evt_options *opt);
 
 #endif /* _TEST_PIPELINE_COMMON_ */

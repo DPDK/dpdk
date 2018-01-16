@@ -6,6 +6,35 @@
 #include "test_pipeline_common.h"
 
 int
+pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt)
+{
+	struct test_pipeline *t = evt_test_priv(test);
+
+	t->pool = rte_pktmbuf_pool_create(test->name, /* mempool name */
+			opt->pool_sz, /* number of elements*/
+			512, /* cache size*/
+			0,
+			RTE_MBUF_DEFAULT_BUF_SIZE,
+			opt->socket_id); /* flags */
+
+	if (t->pool == NULL) {
+		evt_err("failed to create mempool");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void
+pipeline_mempool_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	RTE_SET_USED(opt);
+	struct test_pipeline *t = evt_test_priv(test);
+
+	rte_mempool_free(t->pool);
+}
+
+int
 pipeline_test_setup(struct evt_test *test, struct evt_options *opt)
 {
 	void *test_pipeline;
