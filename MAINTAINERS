@@ -714,6 +714,11 @@ M: Nipun Gupta <nipun.gupta@nxp.com>
 F: drivers/event/dpaa2/
 F: doc/guides/eventdevs/dpaa2.rst
 
+NXP DPAA eventdev
+M: Hemant Agrawal <hemant.agrawal@nxp.com>
+M: Sunil Kumar Kori <sunil.kori@nxp.com>
+F: drivers/event/dpaa/
+
 Software Eventdev PMD
 M: Harry van Haaren <harry.van.haaren@intel.com>
 F: drivers/event/sw/
