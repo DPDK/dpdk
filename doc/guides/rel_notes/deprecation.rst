@@ -38,6 +38,9 @@ Deprecation Notices
   success and failure, respectively.  This will change to 1 and 0 for true and
   false, respectively, to make use of the function more intuitive.
 
+* eal: new ``numa_node_count`` member will be added to ``rte_config`` structure
+  in v18.05.
+
 * ethdev: a new Tx and Rx offload API was introduced on 17.11.
   In the new API, offloads are divided into per-port and per-queue offloads.
   Offloads are disabled by default and enabled per application request.
