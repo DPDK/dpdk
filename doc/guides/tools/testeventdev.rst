@@ -441,3 +441,109 @@ Example command to run perf ``all types queue`` test:
 
    sudo build/app/dpdk-test-eventdev --vdev=event_octeontx -- \
                 --test=perf_atq --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
+
+
+PIPELINE_QUEUE Test
+~~~~~~~~~~~~~~~~~~~
+
+This is a pipeline test case that aims at testing the following:
+
+#. Measure the end-to-end performance of an event dev with a ethernet dev.
+#. Maintain packet ordering from Rx to Tx.
+
+.. _table_eventdev_pipeline_queue_test:
+
+.. table:: Pipeline queue test eventdev configuration.
+
+   +---+--------------+----------------+-----------------------------------------+
+   | # | Items        | Value          | Comments                                |
+   |   |              |                |                                         |
+   +===+==============+================+=========================================+
+   | 1 | nb_queues    | (nb_producers  | Queues will be configured based on the  |
+   |   |              | * nb_stages) + | user requested sched type list(--stlist)|
+   |   |              | x              | Here value of x is 1 in generic pipeline|
+   |   |              |                | and nb_producers in lockfree pipeline   |
+   +---+--------------+----------------+-----------------------------------------+
+   | 2 | nb_producers | >= 1           | Producers will be configured based on   |
+   |   |              |                | the number of detected ethernet devices.|
+   |   |              |                | Each ethdev will be configured as an Rx |
+   |   |              |                | adapter.                                |
+   +---+--------------+----------------+-----------------------------------------+
+   | 3 | nb_workers   | >= 1           | Selected through --wlcores command line |
+   |   |              |                | argument                                |
+   +---+--------------+----------------+-----------------------------------------+
+   | 4 | nb_ports     | nb_workers +   | Workers use port 0 to port n.           |
+   |   |              | nb_producers   | Producers use port n+1 to port n+m,     |
+   |   |              |                | depending on the Rx adapter capability. |
+   +---+--------------+----------------+-----------------------------------------+
+
+.. _figure_eventdev_pipeline_queue_test_generic:
+
+.. figure:: img/eventdev_pipeline_queue_test_generic.*
+
+.. _figure_eventdev_pipeline_queue_test_lockfree:
+
+.. figure:: img/eventdev_pipeline_queue_test_lockfree.*
+
+   pipeline queue test operation.
+
+The pipeline queue test configures the eventdev with Q queues and P ports,
+where Q and P is a function of the number of workers, the number of producers
+and number of stages as mentioned in :numref:`table_eventdev_pipeline_queue_test`.
+
+The user can choose the number of workers and number of stages through the
+``--wlcores`` and the ``--stlist`` application command line arguments
+respectively.
+
+The number of producers depends on the number of ethernet devices detected and
+each ethernet device is configured as a event_eth_rx_adapter that acts as a
+producer.
+
+The producer(s) injects the events to eventdev based the first stage sched type
+list requested by the user through ``--stlist`` the command line argument.
+
+Based on the number of stages to process(selected through ``--stlist``),
+The application forwards the event to next upstream queue and when it reaches
+the last stage in the pipeline if the event type is ``atomic`` it is enqueued
+onto ethdev Tx queue else to maintain ordering the event type is set to
+``atomic`` and enqueued onto the last stage queue.
+
+If the ethernet has ``DEV_TX_OFFLOAD_MT_LOCKFREE`` capability then the worker
+cores transmit the packets directly. Else the worker cores enqueue the packet
+onto the ``SINGLE_LINK_QUEUE`` that is managed by a Tx service. The Tx service
+dequeues the packet and transmits it.
+
+On packet Tx, application increments the number events processed and print
+periodically in one second to get the number of events processed in one
+second.
+
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+        --verbose
+        --dev
+        --test
+        --socket_id
+        --pool_sz
+        --wlcores
+        --stlist
+        --worker_deq_depth
+        --prod_type_ethdev
+
+
+.. Note::
+
+    * The ``--prod_type_ethdev`` is mandatory for running this test.
+
+Example
+^^^^^^^
+
+Example command to run pipeline queue test:
+
+.. code-block:: console
+
+    sudo build/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+        --test=pipeline_queue --wlcore=1 --prod_type_ethdev --stlist=a
