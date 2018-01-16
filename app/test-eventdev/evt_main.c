@@ -29,6 +29,9 @@ signal_handler(int signum)
 
 		rte_eal_mp_wait_lcore();
 
+		if (test->ops.test_result)
+			test->ops.test_result(test, &opt);
+
 		if (test->ops.eventdev_destroy)
 			test->ops.eventdev_destroy(test, &opt);
 

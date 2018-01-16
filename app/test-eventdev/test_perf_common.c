@@ -8,7 +8,19 @@ int
 perf_test_result(struct evt_test *test, struct evt_options *opt)
 {
 	RTE_SET_USED(opt);
+	int i;
+	uint64_t total = 0;
 	struct test_perf *t = evt_test_priv(test);
+
+	printf("Packet distribution across worker cores :\n");
+	for (i = 0; i < t->nb_workers; i++)
+		total += t->worker[i].processed_pkts;
+	for (i = 0; i < t->nb_workers; i++)
+		printf("Worker %d packets: "CLGRN"%"PRIx64" "CLNRM"percentage:"
+				CLGRN" %3.2f\n"CLNRM, i,
+				t->worker[i].processed_pkts,
+				(((double)t->worker[i].processed_pkts)/total)
+				* 100);
 
 	return t->result;
 }
