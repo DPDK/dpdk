@@ -8,6 +8,8 @@
 #include "qman.h"
 #include <rte_branch_prediction.h>
 #include <rte_dpaa_bus.h>
+#include <rte_eventdev.h>
+#include <rte_byteorder.h>
 
 /* Compilation constants */
 #define DQRR_MAXFILL	15
@@ -1115,6 +1117,74 @@ unsigned int qman_portal_poll_rx(unsigned int poll_limit,
 	return limit;
 }
 
+u32 qman_portal_dequeue(struct rte_event ev[], unsigned int poll_limit,
+			void **bufs)
+{
+	const struct qm_dqrr_entry *dq;
+	struct qman_fq *fq;
+	enum qman_cb_dqrr_result res;
+	unsigned int limit = 0;
+	struct qman_portal *p = get_affine_portal();
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	struct qm_dqrr_entry *shadow;
+#endif
+	unsigned int rx_number = 0;
+
+	do {
+		qm_dqrr_pvb_update(&p->p);
+		dq = qm_dqrr_current(&p->p);
+		if (!dq)
+			break;
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		/*
+		 * If running on an LE system the fields of the
+		 * dequeue entry must be swapper.  Because the
+		 * QMan HW will ignore writes the DQRR entry is
+		 * copied and the index stored within the copy
+		 */
+		shadow = &p->shadow_dqrr[DQRR_PTR2IDX(dq)];
+		*shadow = *dq;
+		dq = shadow;
+		shadow->fqid = be32_to_cpu(shadow->fqid);
+		shadow->contextB = be32_to_cpu(shadow->contextB);
+		shadow->seqnum = be16_to_cpu(shadow->seqnum);
+		hw_fd_to_cpu(&shadow->fd);
+#endif
+
+	       /* SDQCR: context_b points to the FQ */
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+		fq = get_fq_table_entry(dq->contextB);
+#else
+		fq = (void *)(uintptr_t)dq->contextB;
+#endif
+		/* Now let the callback do its stuff */
+		res = fq->cb.dqrr_dpdk_cb(&ev[rx_number], p, fq,
+					 dq, &bufs[rx_number]);
+		rx_number++;
+		/* Interpret 'dq' from a driver perspective. */
+		/*
+		 * Parking isn't possible unless HELDACTIVE was set. NB,
+		 * FORCEELIGIBLE implies HELDACTIVE, so we only need to
+		 * check for HELDACTIVE to cover both.
+		 */
+		DPAA_ASSERT((dq->stat & QM_DQRR_STAT_FQ_HELDACTIVE) ||
+			    (res != qman_cb_dqrr_park));
+		if (res != qman_cb_dqrr_defer)
+			qm_dqrr_cdc_consume_1ptr(&p->p, dq,
+						 res == qman_cb_dqrr_park);
+		/* Move forward */
+		qm_dqrr_next(&p->p);
+		/*
+		 * Entry processed and consumed, increment our counter.  The
+		 * callback can request that we exit after consuming the
+		 * entry, and we also exit if we reach our processing limit,
+		 * so loop back only if neither of these conditions is met.
+		 */
+	} while (++limit < poll_limit);
+
+	return limit;
+}
+
 struct qm_dqrr_entry *qman_dequeue(struct qman_fq *fq)
 {
 	struct qman_portal *p = get_affine_portal();
@@ -1233,11 +1303,18 @@ u32 qman_static_dequeue_get(struct qman_portal *qp)
 	return p->sdqcr;
 }
 
-void qman_dca(struct qm_dqrr_entry *dq, int park_request)
+void qman_dca(const struct qm_dqrr_entry *dq, int park_request)
 {
 	struct qman_portal *p = get_affine_portal();
 
 	qm_dqrr_cdc_consume_1ptr(&p->p, dq, park_request);
+}
+
+void qman_dca_index(u8 index, int park_request)
+{
+	struct qman_portal *p = get_affine_portal();
+
+	qm_dqrr_cdc_consume_1(&p->p, index, park_request);
 }
 
 /* Frame queue API */
@@ -2088,8 +2165,8 @@ int qman_enqueue(struct qman_fq *fq, const struct qm_fd *fd, u32 flags)
 }
 
 int qman_enqueue_multi(struct qman_fq *fq,
-		       const struct qm_fd *fd,
-		       int frames_to_send)
+		       const struct qm_fd *fd, u32 *flags,
+		int frames_to_send)
 {
 	struct qman_portal *p = get_affine_portal();
 	struct qm_portal *portal = &p->p;
@@ -2097,7 +2174,7 @@ int qman_enqueue_multi(struct qman_fq *fq,
 	register struct qm_eqcr *eqcr = &portal->eqcr;
 	struct qm_eqcr_entry *eq = eqcr->cursor, *prev_eq;
 
-	u8 i, diff, old_ci, sent = 0;
+	u8 i = 0, diff, old_ci, sent = 0;
 
 	/* Update the available entries if no entry is free */
 	if (!eqcr->available) {
@@ -2121,7 +2198,11 @@ int qman_enqueue_multi(struct qman_fq *fq,
 		eq->fd.addr = cpu_to_be40(fd->addr);
 		eq->fd.status = cpu_to_be32(fd->status);
 		eq->fd.opaque = cpu_to_be32(fd->opaque);
-
+		if (flags[i] & QMAN_ENQUEUE_FLAG_DCA) {
+			eq->dca = QM_EQCR_DCA_ENABLE |
+				((flags[i] >> 8) & QM_EQCR_DCA_IDXMASK);
+		}
+		i++;
 		eq = (void *)((unsigned long)(eq + 1) &
 			(~(unsigned long)(QM_EQCR_SIZE << 6)));
 		eqcr->available--;

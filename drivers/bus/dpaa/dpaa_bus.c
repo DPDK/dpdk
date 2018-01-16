@@ -54,6 +54,7 @@ pthread_key_t dpaa_portal_key;
 unsigned int dpaa_svr_family;
 
 RTE_DEFINE_PER_LCORE(bool, _dpaa_io);
+RTE_DEFINE_PER_LCORE(struct dpaa_portal_dqrr, held_bufs);
 
 static inline void
 dpaa_add_to_device_list(struct rte_dpaa_device *dev)

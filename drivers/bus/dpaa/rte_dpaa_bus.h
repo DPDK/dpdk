@@ -155,6 +155,20 @@ static void dpaainitfn_ ##nm(void) \
 } \
 RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
+/* Create storage for dqrr entries per lcore */
+#define DPAA_PORTAL_DEQUEUE_DEPTH	16
+struct dpaa_portal_dqrr {
+	void *mbuf[DPAA_PORTAL_DEQUEUE_DEPTH];
+	uint64_t dqrr_held;
+	uint8_t dqrr_size;
+};
+
+RTE_DECLARE_PER_LCORE(struct dpaa_portal_dqrr, held_bufs);
+
+#define DPAA_PER_LCORE_DQRR_SIZE       RTE_PER_LCORE(held_bufs).dqrr_size
+#define DPAA_PER_LCORE_DQRR_HELD       RTE_PER_LCORE(held_bufs).dqrr_held
+#define DPAA_PER_LCORE_DQRR_MBUF(i)    RTE_PER_LCORE(held_bufs).mbuf[i]
+
 #ifdef __cplusplus
 }
 #endif

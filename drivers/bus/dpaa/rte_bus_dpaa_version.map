@@ -69,17 +69,22 @@ DPDK_18.02 {
 	global:
 
 	dpaa_svr_family;
+	per_lcore_held_bufs;
+	qm_channel_pool1;
 	qman_alloc_cgrid_range;
 	qman_alloc_pool_range;
 	qman_create_cgr;
+	qman_dca_index;
 	qman_delete_cgr;
 	qman_enqueue_multi_fq;
 	qman_modify_cgr;
 	qman_oos_fq;
+	qman_portal_dequeue;
 	qman_portal_poll_rx;
 	qman_query_fq_frm_cnt;
 	qman_release_cgrid_range;
 	qman_retire_fq;
+	qman_static_dequeue_add;
 	rte_dpaa_portal_fq_close;
 	rte_dpaa_portal_fq_init;
 

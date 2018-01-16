@@ -774,6 +774,7 @@ send_pkts:
 		loop = 0;
 		while (loop < frames_to_send) {
 			loop += qman_enqueue_multi(q, &fd_arr[loop],
+						   NULL,
 					frames_to_send - loop);
 		}
 		nb_bufs -= frames_to_send;
