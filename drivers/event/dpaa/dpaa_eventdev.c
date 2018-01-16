@@ -347,6 +347,118 @@ dpaa_event_port_unlink(struct rte_eventdev *dev, void *port,
 	return (int)i;
 }
 
+static int
+dpaa_event_eth_rx_adapter_caps_get(const struct rte_eventdev *dev,
+				   const struct rte_eth_dev *eth_dev,
+				   uint32_t *caps)
+{
+	const char *ethdev_driver = eth_dev->device->driver->name;
+
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+
+	if (!strcmp(ethdev_driver, "net_dpaa"))
+		*caps = RTE_EVENT_ETH_RX_ADAPTER_DPAA_CAP;
+	else
+		*caps = RTE_EVENT_ETH_RX_ADAPTER_SW_CAP;
+
+	return 0;
+}
+
+static int
+dpaa_event_eth_rx_adapter_queue_add(
+		const struct rte_eventdev *dev,
+		const struct rte_eth_dev *eth_dev,
+		int32_t rx_queue_id,
+		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
+{
+	struct dpaa_eventdev *eventdev = dev->data->dev_private;
+	uint8_t ev_qid = queue_conf->ev.queue_id;
+	u16 ch_id = eventdev->evq_info[ev_qid].ch_id;
+	struct dpaa_if *dpaa_intf = eth_dev->data->dev_private;
+	int ret, i;
+
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	if (rx_queue_id == -1) {
+		for (i = 0; i < dpaa_intf->nb_rx_queues; i++) {
+			ret = dpaa_eth_eventq_attach(eth_dev, i, ch_id,
+						     queue_conf);
+			if (ret) {
+				EVENTDEV_DRV_ERR(
+					"Event Queue attach failed:%d\n", ret);
+				goto detach_configured_queues;
+			}
+		}
+		return 0;
+	}
+
+	ret = dpaa_eth_eventq_attach(eth_dev, rx_queue_id, ch_id, queue_conf);
+	if (ret)
+		EVENTDEV_DRV_ERR("dpaa_eth_eventq_attach failed:%d\n", ret);
+	return ret;
+
+detach_configured_queues:
+
+	for (i = (i - 1); i >= 0 ; i--)
+		dpaa_eth_eventq_detach(eth_dev, i);
+
+	return ret;
+}
+
+static int
+dpaa_event_eth_rx_adapter_queue_del(const struct rte_eventdev *dev,
+				    const struct rte_eth_dev *eth_dev,
+				    int32_t rx_queue_id)
+{
+	int ret, i;
+	struct dpaa_if *dpaa_intf = eth_dev->data->dev_private;
+
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	if (rx_queue_id == -1) {
+		for (i = 0; i < dpaa_intf->nb_rx_queues; i++) {
+			ret = dpaa_eth_eventq_detach(eth_dev, i);
+			if (ret)
+				EVENTDEV_DRV_ERR(
+					"Event Queue detach failed:%d\n", ret);
+		}
+
+		return 0;
+	}
+
+	ret = dpaa_eth_eventq_detach(eth_dev, rx_queue_id);
+	if (ret)
+		EVENTDEV_DRV_ERR("dpaa_eth_eventq_detach failed:%d\n", ret);
+	return ret;
+}
+
+static int
+dpaa_event_eth_rx_adapter_start(const struct rte_eventdev *dev,
+				const struct rte_eth_dev *eth_dev)
+{
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
+
+	return 0;
+}
+
+static int
+dpaa_event_eth_rx_adapter_stop(const struct rte_eventdev *dev,
+			       const struct rte_eth_dev *eth_dev)
+{
+	EVENTDEV_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
+
+	return 0;
+}
+
 static const struct rte_eventdev_ops dpaa_eventdev_ops = {
 	.dev_infos_get    = dpaa_event_dev_info_get,
 	.dev_configure    = dpaa_event_dev_configure,
@@ -362,6 +474,11 @@ static const struct rte_eventdev_ops dpaa_eventdev_ops = {
 	.port_link        = dpaa_event_port_link,
 	.port_unlink      = dpaa_event_port_unlink,
 	.timeout_ticks    = dpaa_event_dequeue_timeout_ticks,
+	.eth_rx_adapter_caps_get = dpaa_event_eth_rx_adapter_caps_get,
+	.eth_rx_adapter_queue_add = dpaa_event_eth_rx_adapter_queue_add,
+	.eth_rx_adapter_queue_del = dpaa_event_eth_rx_adapter_queue_del,
+	.eth_rx_adapter_start = dpaa_event_eth_rx_adapter_start,
+	.eth_rx_adapter_stop = dpaa_event_eth_rx_adapter_stop,
 };
 
 static int
