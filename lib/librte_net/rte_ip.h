@@ -344,6 +344,12 @@ struct ipv6_hdr {
 	uint8_t  dst_addr[16]; /**< IP address of destination host(s). */
 } __attribute__((__packed__));
 
+/* IPv6 vtc_flow: IPv / TC / flow_label */
+#define IPV6_HDR_FL_SHIFT 0
+#define IPV6_HDR_TC_SHIFT 20
+#define IPV6_HDR_FL_MASK ((1u << IPV6_HDR_TC_SHIFT) - 1)
+#define IPV6_HDR_TC_MASK (0xf << IPV6_HDR_TC_SHIFT)
+
 /**
  * Process the pseudo-header checksum of an IPv6 header.
  *
