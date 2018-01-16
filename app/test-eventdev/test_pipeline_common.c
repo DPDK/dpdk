@@ -89,6 +89,97 @@ pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues)
 	return 0;
 }
 
+#define NB_RX_DESC			128
+#define NB_TX_DESC			512
+int
+pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
+{
+	int i;
+	uint8_t nb_queues = 1;
+	uint8_t mt_state = 0;
+	struct test_pipeline *t = evt_test_priv(test);
+	struct rte_eth_rxconf rx_conf;
+	struct rte_eth_conf port_conf = {
+		.rxmode = {
+			.mq_mode = ETH_MQ_RX_RSS,
+			.max_rx_pkt_len = ETHER_MAX_LEN,
+			.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
+			.ignore_offload_bitfield = 1,
+		},
+		.rx_adv_conf = {
+			.rss_conf = {
+				.rss_key = NULL,
+				.rss_hf = ETH_RSS_IP,
+			},
+		},
+	};
+
+	RTE_SET_USED(opt);
+	if (!rte_eth_dev_count()) {
+		evt_err("No ethernet ports found.\n");
+		return -ENODEV;
+	}
+
+	for (i = 0; i < rte_eth_dev_count(); i++) {
+		struct rte_eth_dev_info dev_info;
+
+		memset(&dev_info, 0, sizeof(struct rte_eth_dev_info));
+		rte_eth_dev_info_get(i, &dev_info);
+		mt_state = !(dev_info.tx_offload_capa &
+				DEV_TX_OFFLOAD_MT_LOCKFREE);
+		rx_conf = dev_info.default_rxconf;
+		rx_conf.offloads = port_conf.rxmode.offloads;
+
+		if (rte_eth_dev_configure(i, nb_queues, nb_queues,
+					&port_conf)
+				< 0) {
+			evt_err("Failed to configure eth port [%d]\n", i);
+			return -EINVAL;
+		}
+
+		if (rte_eth_rx_queue_setup(i, 0, NB_RX_DESC,
+				rte_socket_id(), &rx_conf, t->pool) < 0) {
+			evt_err("Failed to setup eth port [%d] rx_queue: %d.\n",
+					i, 0);
+			return -EINVAL;
+		}
+		if (rte_eth_tx_queue_setup(i, 0, NB_TX_DESC,
+					rte_socket_id(), NULL) < 0) {
+			evt_err("Failed to setup eth port [%d] tx_queue: %d.\n",
+					i, 0);
+			return -EINVAL;
+		}
+
+		t->mt_unsafe |= mt_state;
+		rte_eth_promiscuous_enable(i);
+	}
+
+	return 0;
+}
+
+void
+pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	int i;
+	RTE_SET_USED(test);
+	RTE_SET_USED(opt);
+
+	for (i = 0; i < rte_eth_dev_count(); i++) {
+		rte_event_eth_rx_adapter_stop(i);
+		rte_eth_dev_stop(i);
+		rte_eth_dev_close(i);
+	}
+}
+
+void
+pipeline_eventdev_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	RTE_SET_USED(test);
+
+	rte_event_dev_stop(opt->dev_id);
+	rte_event_dev_close(opt->dev_id);
+}
+
 int
 pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt)
 {

@@ -60,9 +60,12 @@ pipeline_nb_event_ports(struct evt_options *opt)
 int pipeline_test_result(struct evt_test *test, struct evt_options *opt);
 int pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues);
 int pipeline_test_setup(struct evt_test *test, struct evt_options *opt);
+int pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt);
 int pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt);
 void pipeline_opt_dump(struct evt_options *opt, uint8_t nb_queues);
 void pipeline_test_destroy(struct evt_test *test, struct evt_options *opt);
+void pipeline_eventdev_destroy(struct evt_test *test, struct evt_options *opt);
+void pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt);
 void pipeline_mempool_destroy(struct evt_test *test, struct evt_options *opt);
 
 #endif /* _TEST_PIPELINE_COMMON_ */
