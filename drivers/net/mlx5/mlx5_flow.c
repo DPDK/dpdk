@@ -48,6 +48,7 @@
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
+#include <rte_ip.h>
 
 #include "mlx5.h"
 #include "mlx5_defs.h"
@@ -1410,6 +1411,8 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 		parser->layer = HASH_RXQ_IPV6;
 	if (spec) {
 		unsigned int i;
+		uint32_t vtc_flow_val;
+		uint32_t vtc_flow_mask;
 
 		if (!mask)
 			mask = default_mask;
@@ -1421,7 +1424,20 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 		       RTE_DIM(ipv6.mask.src_ip));
 		memcpy(&ipv6.mask.dst_ip, mask->hdr.dst_addr,
 		       RTE_DIM(ipv6.mask.dst_ip));
-		ipv6.mask.flow_label = mask->hdr.vtc_flow;
+		vtc_flow_val = rte_be_to_cpu_32(spec->hdr.vtc_flow);
+		vtc_flow_mask = rte_be_to_cpu_32(mask->hdr.vtc_flow);
+		ipv6.val.flow_label =
+			rte_cpu_to_be_32((vtc_flow_val & IPV6_HDR_FL_MASK) >>
+					 IPV6_HDR_FL_SHIFT);
+		ipv6.val.traffic_class = (vtc_flow_val & IPV6_HDR_TC_MASK) >>
+					 IPV6_HDR_TC_SHIFT;
+		ipv6.val.next_hdr = spec->hdr.proto;
+		ipv6.val.hop_limit = spec->hdr.hop_limits;
+		ipv6.mask.flow_label =
+			rte_cpu_to_be_32((vtc_flow_mask & IPV6_HDR_FL_MASK) >>
+					 IPV6_HDR_FL_SHIFT);
+		ipv6.mask.traffic_class = (vtc_flow_mask & IPV6_HDR_TC_MASK) >>
+					  IPV6_HDR_TC_SHIFT;
 		ipv6.mask.next_hdr = mask->hdr.proto;
 		ipv6.mask.hop_limit = mask->hdr.hop_limits;
 		/* Remove unwanted bits from values. */
@@ -1430,6 +1446,7 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 			ipv6.val.dst_ip[i] &= ipv6.mask.dst_ip[i];
 		}
 		ipv6.val.flow_label &= ipv6.mask.flow_label;
+		ipv6.val.traffic_class &= ipv6.mask.traffic_class;
 		ipv6.val.next_hdr &= ipv6.mask.next_hdr;
 		ipv6.val.hop_limit &= ipv6.mask.hop_limit;
 	}
