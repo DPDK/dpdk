@@ -157,6 +157,120 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 	return 0;
 }
 
+int
+pipeline_event_port_setup(struct evt_test *test, struct evt_options *opt,
+		uint8_t *queue_arr, uint8_t nb_queues,
+		const struct rte_event_port_conf p_conf)
+{
+	int i;
+	int ret;
+	uint8_t port;
+	struct test_pipeline *t = evt_test_priv(test);
+
+
+	/* setup one port per worker, linking to all queues */
+	for (port = 0; port < evt_nr_active_lcores(opt->wlcores); port++) {
+		struct worker_data *w = &t->worker[port];
+
+		w->dev_id = opt->dev_id;
+		w->port_id = port;
+		w->t = t;
+		w->processed_pkts = 0;
+
+		ret = rte_event_port_setup(opt->dev_id, port, &p_conf);
+		if (ret) {
+			evt_err("failed to setup port %d", port);
+			return ret;
+		}
+
+		if (queue_arr == NULL) {
+			if (rte_event_port_link(opt->dev_id, port, NULL, NULL,
+						0) != nb_queues)
+				goto link_fail;
+		} else {
+			for (i = 0; i < nb_queues; i++) {
+				if (rte_event_port_link(opt->dev_id, port,
+						&queue_arr[i], NULL, 1) != 1)
+					goto link_fail;
+			}
+		}
+	}
+
+	return 0;
+
+link_fail:
+	evt_err("failed to link all queues to port %d", port);
+	return -EINVAL;
+}
+
+int
+pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
+		struct rte_event_port_conf prod_conf)
+{
+	int ret = 0;
+	uint16_t prod;
+	struct rte_event_eth_rx_adapter_queue_conf queue_conf;
+
+	memset(&queue_conf, 0,
+			sizeof(struct rte_event_eth_rx_adapter_queue_conf));
+	queue_conf.ev.sched_type = opt->sched_type_list[0];
+	for (prod = 0; prod < rte_eth_dev_count(); prod++) {
+		uint32_t cap;
+
+		ret = rte_event_eth_rx_adapter_caps_get(opt->dev_id,
+				prod, &cap);
+		if (ret) {
+			evt_err("failed to get event rx adapter[%d]"
+					" capabilities",
+					opt->dev_id);
+			return ret;
+		}
+		queue_conf.ev.queue_id = prod * stride;
+		ret = rte_event_eth_rx_adapter_create(prod, opt->dev_id,
+				&prod_conf);
+		if (ret) {
+			evt_err("failed to create rx adapter[%d]", prod);
+			return ret;
+		}
+		ret = rte_event_eth_rx_adapter_queue_add(prod, prod, -1,
+				&queue_conf);
+		if (ret) {
+			evt_err("failed to add rx queues to adapter[%d]", prod);
+			return ret;
+		}
+
+		if (!(cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT)) {
+			uint32_t service_id;
+
+			rte_event_eth_rx_adapter_service_id_get(prod,
+					&service_id);
+			ret = evt_service_setup(service_id);
+			if (ret) {
+				evt_err("Failed to setup service core"
+						" for Rx adapter\n");
+				return ret;
+			}
+		}
+
+		ret = rte_eth_dev_start(prod);
+		if (ret) {
+			evt_err("Ethernet dev [%d] failed to start."
+					" Using synthetic producer", prod);
+			return ret;
+		}
+
+		ret = rte_event_eth_rx_adapter_start(prod);
+		if (ret) {
+			evt_err("Rx adapter[%d] start failed", prod);
+			return ret;
+		}
+		printf("%s: Port[%d] using Rx adapter[%d] started\n", __func__,
+				prod, prod);
+	}
+
+	return ret;
+}
+
 void
 pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
 {

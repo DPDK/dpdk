@@ -61,7 +61,12 @@ int pipeline_test_result(struct evt_test *test, struct evt_options *opt);
 int pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues);
 int pipeline_test_setup(struct evt_test *test, struct evt_options *opt);
 int pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt);
+int pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
+		struct rte_event_port_conf prod_conf);
 int pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt);
+int pipeline_event_port_setup(struct evt_test *test, struct evt_options *opt,
+		uint8_t *queue_arr, uint8_t nb_queues,
+		const struct rte_event_port_conf p_conf);
 void pipeline_opt_dump(struct evt_options *opt, uint8_t nb_queues);
 void pipeline_test_destroy(struct evt_test *test, struct evt_options *opt);
 void pipeline_eventdev_destroy(struct evt_test *test, struct evt_options *opt);
