@@ -748,6 +748,7 @@ int rte_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd
 int rte_vfio_enable(const char *modname);
 int rte_vfio_is_enabled(const char *modname);
 int rte_vfio_noiommu_is_enabled(void);
+int rte_vfio_clear_group(int vfio_group_fd);
 
 int rte_vfio_setup_device(__rte_unused const char *sysfs_base,
 		      __rte_unused const char *dev_addr,
@@ -779,7 +780,7 @@ int rte_vfio_noiommu_is_enabled(void)
 	return 0;
 }
 
-int rte_vfio_clear_group(int vfio_group_fd)
+int rte_vfio_clear_group(__rte_unused int vfio_group_fd)
 {
 	return 0;
 }
