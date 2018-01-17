@@ -102,10 +102,6 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle compilation of the ``lrte_pmd_dpaa2_event`` driver.
 
-- ``CONFIG_RTE_LIBRTE_PMD_DPAA2_EVENTDEV_DEBUG`` (default ``n``)
-
-  Toggle display of generic debugging messages
-
 Driver Compilation
 ~~~~~~~~~~~~~~~~~~
 

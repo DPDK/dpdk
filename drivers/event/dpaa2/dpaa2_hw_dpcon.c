@@ -20,6 +20,7 @@
 #include <rte_dev.h>
 #include <rte_ethdev.h>
 
+#include <fslmc_logs.h>
 #include <rte_fslmc.h>
 #include <mc/fsl_dpcon.h>
 #include <portal/dpaa2_hw_pvt.h>

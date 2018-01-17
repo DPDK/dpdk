@@ -16,18 +16,6 @@
 
 #define EVENTDEV_NAME_DPAA2_PMD		event_dpaa2
 
-#ifdef RTE_LIBRTE_PMD_DPAA2_EVENTDEV_DEBUG
-#define PMD_DRV_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
-#define PMD_DRV_FUNC_TRACE() PMD_DRV_LOG(DEBUG, ">>")
-#else
-#define PMD_DRV_LOG(level, fmt, args...) do { } while (0)
-#define PMD_DRV_FUNC_TRACE() do { } while (0)
-#endif
-
-#define PMD_DRV_ERR(fmt, args...) \
-	RTE_LOG(ERR, PMD, "%s(): " fmt "\n", __func__, ## args)
-
 #define DPAA2_EVENT_DEFAULT_DPCI_PRIO 0
 
 #define DPAA2_EVENT_MAX_QUEUES			16
