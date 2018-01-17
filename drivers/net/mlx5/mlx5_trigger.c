@@ -151,28 +151,10 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		      (void *)dev, strerror(err));
 		goto error;
 	}
-	/* Update send callback. */
-	dev->tx_pkt_burst = priv_select_tx_function(priv, dev);
 	err = priv_rxq_start(priv);
 	if (err) {
 		ERROR("%p: RXQ allocation failed: %s",
 		      (void *)dev, strerror(err));
-		goto error;
-	}
-	/* Update receive callback. */
-	dev->rx_pkt_burst = priv_select_rx_function(priv, dev);
-	err = priv_dev_traffic_enable(priv, dev);
-	if (err) {
-		ERROR("%p: an error occurred while configuring control flows:"
-		      " %s",
-		      (void *)priv, strerror(err));
-		goto error;
-	}
-	err = priv_flow_start(priv, &priv->flows);
-	if (err) {
-		ERROR("%p: an error occurred while configuring flows:"
-		      " %s",
-		      (void *)priv, strerror(err));
 		goto error;
 	}
 	err = priv_rx_intr_vec_enable(priv);
@@ -181,8 +163,11 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		      (void *)priv);
 		goto error;
 	}
-	priv_dev_interrupt_handler_install(priv, dev);
 	priv_xstats_init(priv);
+	/* Update link status and Tx/Rx callbacks for the first time. */
+	memset(&dev->data->dev_link, 0, sizeof(struct rte_eth_link));
+	priv_link_update(priv, 1);
+	priv_dev_interrupt_handler_install(priv, dev);
 	priv_unlock(priv);
 	return 0;
 error:
