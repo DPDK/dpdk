@@ -644,6 +644,8 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 		Vmxnet3_TxQueueDesc *tqd = &hw->tqd_start[i];
 		vmxnet3_tx_queue_t *txq  = dev->data->tx_queues[i];
 
+		txq->shared = &hw->tqd_start[i];
+
 		tqd->ctrl.txNumDeferred  = 0;
 		tqd->ctrl.txThreshold    = 1;
 		tqd->conf.txRingBasePA   = txq->cmd_ring.basePA;
@@ -663,6 +665,8 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	for (i = 0; i < hw->num_rx_queues; i++) {
 		Vmxnet3_RxQueueDesc *rqd  = &hw->rqd_start[i];
 		vmxnet3_rx_queue_t *rxq   = dev->data->rx_queues[i];
+
+		rxq->shared = &hw->rqd_start[i];
 
 		rqd->conf.rxRingBasePA[0] = rxq->cmd_ring[0].basePA;
 		rqd->conf.rxRingBasePA[1] = rxq->cmd_ring[1].basePA;
