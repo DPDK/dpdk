@@ -91,6 +91,7 @@ struct ena_ring {
 	uint8_t tx_max_header_size;
 	int configured;
 	struct ena_adapter *adapter;
+	uint64_t offloads;
 } __rte_cache_aligned;
 
 enum ena_adapter_state {
@@ -175,6 +176,8 @@ struct ena_adapter {
 	struct ena_driver_stats *drv_stats;
 	enum ena_adapter_state state;
 
+	uint64_t tx_supported_offloads;
+	uint64_t tx_selected_offloads;
 };
 
 #endif /* _ENA_ETHDEV_H_ */

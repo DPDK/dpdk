@@ -164,6 +164,14 @@ static const struct ena_stats ena_stats_ena_com_strings[] = {
 #define ENA_STATS_ARRAY_RX	ARRAY_SIZE(ena_stats_rx_strings)
 #define ENA_STATS_ARRAY_ENA_COM	ARRAY_SIZE(ena_stats_ena_com_strings)
 
+#define QUEUE_OFFLOADS (DEV_TX_OFFLOAD_TCP_CKSUM |\
+			DEV_TX_OFFLOAD_UDP_CKSUM |\
+			DEV_TX_OFFLOAD_IPV4_CKSUM |\
+			DEV_TX_OFFLOAD_TCP_TSO)
+#define MBUF_OFFLOADS (PKT_TX_L4_MASK |\
+		       PKT_TX_IP_CKSUM |\
+		       PKT_TX_TCP_SEG)
+
 /** Vendor ID used by Amazon devices */
 #define PCI_VENDOR_ID_AMAZON 0x1D0F
 /** Amazon devices */
@@ -230,6 +238,8 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 			      struct rte_eth_rss_reta_entry64 *reta_conf,
 			      uint16_t reta_size);
 static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
+static bool ena_are_tx_queue_offloads_allowed(struct ena_adapter *adapter,
+					      uint64_t offloads);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -283,21 +293,24 @@ static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 }
 
 static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
-				       struct ena_com_tx_ctx *ena_tx_ctx)
+				       struct ena_com_tx_ctx *ena_tx_ctx,
+				       uint64_t queue_offloads)
 {
 	struct ena_com_tx_meta *ena_meta = &ena_tx_ctx->ena_meta;
 
-	if (mbuf->ol_flags &
-	    (PKT_TX_L4_MASK | PKT_TX_IP_CKSUM | PKT_TX_TCP_SEG)) {
+	if ((mbuf->ol_flags & MBUF_OFFLOADS) &&
+	    (queue_offloads & QUEUE_OFFLOADS)) {
 		/* check if TSO is required */
-		if (mbuf->ol_flags & PKT_TX_TCP_SEG) {
+		if ((mbuf->ol_flags & PKT_TX_TCP_SEG) &&
+		    (queue_offloads & DEV_TX_OFFLOAD_TCP_TSO)) {
 			ena_tx_ctx->tso_enable = true;
 
 			ena_meta->l4_hdr_len = GET_L4_HDR_LEN(mbuf);
 		}
 
 		/* check if L3 checksum is needed */
-		if (mbuf->ol_flags & PKT_TX_IP_CKSUM)
+		if ((mbuf->ol_flags & PKT_TX_IP_CKSUM) &&
+		    (queue_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM))
 			ena_tx_ctx->l3_csum_enable = true;
 
 		if (mbuf->ol_flags & PKT_TX_IPV6) {
@@ -313,19 +326,17 @@ static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 		}
 
 		/* check if L4 checksum is needed */
-		switch (mbuf->ol_flags & PKT_TX_L4_MASK) {
-		case PKT_TX_TCP_CKSUM:
+		if ((mbuf->ol_flags & PKT_TX_TCP_CKSUM) &&
+		    (queue_offloads & DEV_TX_OFFLOAD_TCP_CKSUM)) {
 			ena_tx_ctx->l4_proto = ENA_ETH_IO_L4_PROTO_TCP;
 			ena_tx_ctx->l4_csum_enable = true;
-			break;
-		case PKT_TX_UDP_CKSUM:
+		} else if ((mbuf->ol_flags & PKT_TX_UDP_CKSUM) &&
+			   (queue_offloads & DEV_TX_OFFLOAD_UDP_CKSUM)) {
 			ena_tx_ctx->l4_proto = ENA_ETH_IO_L4_PROTO_UDP;
 			ena_tx_ctx->l4_csum_enable = true;
-			break;
-		default:
+		} else {
 			ena_tx_ctx->l4_proto = ENA_ETH_IO_L4_PROTO_UNKNOWN;
 			ena_tx_ctx->l4_csum_enable = false;
-			break;
 		}
 
 		ena_meta->mss = mbuf->tso_segsz;
@@ -948,7 +959,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 			      uint16_t queue_idx,
 			      uint16_t nb_desc,
 			      __rte_unused unsigned int socket_id,
-			      __rte_unused const struct rte_eth_txconf *tx_conf)
+			      const struct rte_eth_txconf *tx_conf)
 {
 	struct ena_com_create_io_ctx ctx =
 		/* policy set to _HOST just to satisfy icc compiler */
@@ -982,6 +993,12 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(ERR, PMD,
 			"Unsupported size of TX queue (max size: %d)\n",
 			adapter->tx_ring_size);
+		return -EINVAL;
+	}
+
+	if (tx_conf->txq_flags == ETH_TXQ_FLAGS_IGNORE &&
+	    !ena_are_tx_queue_offloads_allowed(adapter, tx_conf->offloads)) {
+		RTE_LOG(ERR, PMD, "Unsupported queue offloads\n");
 		return -EINVAL;
 	}
 
@@ -1038,6 +1055,8 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 	for (i = 0; i < txq->ring_size; i++)
 		txq->empty_tx_reqs[i] = i;
+
+	txq->offloads = tx_conf->offloads;
 
 	/* Store pointer to this queue in upper layer */
 	txq->configured = 1;
@@ -1389,6 +1408,14 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
+	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
+
+	if ((tx_offloads & adapter->tx_supported_offloads) != tx_offloads) {
+		RTE_LOG(ERR, PMD, "Some Tx offloads are not supported "
+		    "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
+		    tx_offloads, adapter->tx_supported_offloads);
+		return -ENOTSUP;
+	}
 
 	if (!(adapter->state == ENA_ADAPTER_STATE_INIT ||
 	      adapter->state == ENA_ADAPTER_STATE_STOPPED)) {
@@ -1410,6 +1437,7 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 		break;
 	}
 
+	adapter->tx_selected_offloads = tx_offloads;
 	return 0;
 }
 
@@ -1438,13 +1466,26 @@ static void ena_init_rings(struct ena_adapter *adapter)
 	}
 }
 
+static bool ena_are_tx_queue_offloads_allowed(struct ena_adapter *adapter,
+					      uint64_t offloads)
+{
+	uint64_t port_offloads = adapter->tx_selected_offloads;
+
+	/* Check if port supports all requested offloads.
+	 * True if all offloads selected for queue are set for port.
+	 */
+	if ((offloads & port_offloads) != offloads)
+		return false;
+	return true;
+}
+
 static void ena_infos_get(struct rte_eth_dev *dev,
 			  struct rte_eth_dev_info *dev_info)
 {
 	struct ena_adapter *adapter;
 	struct ena_com_dev *ena_dev;
 	struct ena_com_dev_get_features_ctx feat;
-	uint32_t rx_feat = 0, tx_feat = 0;
+	uint64_t rx_feat = 0, tx_feat = 0;
 	int rc = 0;
 
 	ena_assert_msg(dev->data != NULL, "Uninitialized device");
@@ -1493,6 +1534,7 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 	/* Inform framework about available features */
 	dev_info->rx_offload_capa = rx_feat;
 	dev_info->tx_offload_capa = tx_feat;
+	dev_info->tx_queue_offload_capa = tx_feat;
 
 	dev_info->min_rx_bufsize = ENA_MIN_FRAME_LEN;
 	dev_info->max_rx_pktlen  = adapter->max_mtu;
@@ -1501,6 +1543,8 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = adapter->num_queues;
 	dev_info->max_tx_queues = adapter->num_queues;
 	dev_info->reta_size = ENA_RX_RSS_TABLE_SIZE;
+
+	adapter->tx_supported_offloads = tx_feat;
 }
 
 static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -1717,7 +1761,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		} /* there's no else as we take advantage of memset zeroing */
 
 		/* Set TX offloads flags, if applicable */
-		ena_tx_mbuf_prepare(mbuf, &ena_tx_ctx);
+		ena_tx_mbuf_prepare(mbuf, &ena_tx_ctx, tx_ring->offloads);
 
 		if (unlikely(mbuf->ol_flags &
 			     (PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD)))
