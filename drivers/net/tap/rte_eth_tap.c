@@ -253,6 +253,43 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 	}
 }
 
+static uint64_t
+tap_rx_offload_get_port_capa(void)
+{
+	/*
+	 * In order to support legacy apps,
+	 * report capabilities also as port capabilities.
+	 */
+	return DEV_RX_OFFLOAD_SCATTER |
+	       DEV_RX_OFFLOAD_IPV4_CKSUM |
+	       DEV_RX_OFFLOAD_UDP_CKSUM |
+	       DEV_RX_OFFLOAD_TCP_CKSUM;
+}
+
+static uint64_t
+tap_rx_offload_get_queue_capa(void)
+{
+	return DEV_RX_OFFLOAD_SCATTER |
+	       DEV_RX_OFFLOAD_IPV4_CKSUM |
+	       DEV_RX_OFFLOAD_UDP_CKSUM |
+	       DEV_RX_OFFLOAD_TCP_CKSUM;
+}
+
+static bool
+tap_rxq_are_offloads_valid(struct rte_eth_dev *dev, uint64_t offloads)
+{
+	uint64_t port_offloads = dev->data->dev_conf.rxmode.offloads;
+	uint64_t queue_supp_offloads = tap_rx_offload_get_queue_capa();
+	uint64_t port_supp_offloads = tap_rx_offload_get_port_capa();
+
+	if ((offloads & (queue_supp_offloads | port_supp_offloads)) !=
+	    offloads)
+		return false;
+	if ((port_offloads ^ offloads) & port_supp_offloads)
+		return false;
+	return true;
+}
+
 /* Callback to handle the rx burst of packets to the correct interface and
  * file descriptor(s) in a multi-queue setup.
  */
@@ -277,8 +314,9 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		int len;
 
 		len = readv(rxq->fd, *rxq->iovecs,
-			    1 + (rxq->rxmode->enable_scatter ?
-				 rxq->nb_rx_desc : 1));
+			    1 +
+			    (rxq->rxmode->offloads & DEV_RX_OFFLOAD_SCATTER ?
+			     rxq->nb_rx_desc : 1));
 		if (len < (int)sizeof(struct tun_pi))
 			break;
 
@@ -333,7 +371,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		seg->next = NULL;
 		mbuf->packet_type = rte_net_get_ptype(mbuf, NULL,
 						      RTE_PTYPE_ALL_MASK);
-		if (rxq->rxmode->hw_ip_checksum)
+		if (rxq->rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM)
 			tap_verify_csum(mbuf);
 
 		/* account for the receive frame */
@@ -694,12 +732,12 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 0;
 	dev_info->pci_dev = NULL;
 	dev_info->speed_capa = tap_dev_speed_capa();
-	dev_info->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM |
-				     DEV_RX_OFFLOAD_UDP_CKSUM |
-				     DEV_RX_OFFLOAD_TCP_CKSUM);
+	dev_info->rx_queue_offload_capa = tap_rx_offload_get_queue_capa();
+	dev_info->rx_offload_capa = tap_rx_offload_get_port_capa() |
+				    dev_info->rx_queue_offload_capa;
 	dev_info->tx_queue_offload_capa = tap_tx_offload_get_queue_capa();
-	dev_info->tx_offload_capa = dev_info->tx_queue_offload_capa |
-				    tap_tx_offload_get_port_capa();
+	dev_info->tx_offload_capa = tap_tx_offload_get_port_capa() |
+				    dev_info->tx_queue_offload_capa;
 }
 
 static int
@@ -1015,6 +1053,19 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		return -1;
 	}
 
+	/* Verify application offloads are valid for our port and queue. */
+	if (!tap_rxq_are_offloads_valid(dev, rx_conf->offloads)) {
+		rte_errno = ENOTSUP;
+		RTE_LOG(ERR, PMD,
+			"%p: Rx queue offloads 0x%" PRIx64
+			" don't match port offloads 0x%" PRIx64
+			" or supported offloads 0x%" PRIx64 "\n",
+			(void *)dev, rx_conf->offloads,
+			dev->data->dev_conf.rxmode.offloads,
+			(tap_rx_offload_get_port_capa() |
+			 tap_rx_offload_get_queue_capa()));
+		return -rte_errno;
+	}
 	rxq->mp = mp;
 	rxq->trigger_seen = 1; /* force initial burst */
 	rxq->in_port = dev->data->port_id;
