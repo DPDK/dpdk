@@ -859,6 +859,13 @@ void qbman_swp_dqrr_consume(struct qbman_swp *s,
 	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_DCAP, QBMAN_IDX_FROM_DQRR(dq));
 }
 
+/* Consume DQRR entries previously returned from qbman_swp_dqrr_next(). */
+void qbman_swp_dqrr_idx_consume(struct qbman_swp *s,
+			    uint8_t dqrr_index)
+{
+	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_DCAP, dqrr_index);
+}
+
 /*********************************/
 /* Polling user-provided storage */
 /*********************************/

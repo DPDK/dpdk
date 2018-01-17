@@ -389,6 +389,13 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *p);
 void qbman_swp_dqrr_consume(struct qbman_swp *s, const struct qbman_result *dq);
 
 /**
+ * qbman_swp_dqrr_idx_consume() -  Given the DQRR index consume the DQRR entry
+ * @s: the software portal object.
+ * @dqrr_index: the DQRR index entry to be consumed.
+ */
+void qbman_swp_dqrr_idx_consume(struct qbman_swp *s, uint8_t dqrr_index);
+
+/**
  * qbman_get_dqrr_idx() - Get dqrr index from the given dqrr
  * @dqrr: the given dqrr object.
  *
