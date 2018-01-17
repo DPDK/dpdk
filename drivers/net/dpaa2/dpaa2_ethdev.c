@@ -1670,6 +1670,8 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 
 	if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_PARALLEL)
 		dpaa2_ethq->cb = dpaa2_dev_process_parallel_event;
+	else if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_ATOMIC)
+		dpaa2_ethq->cb = dpaa2_dev_process_atomic_event;
 	else
 		return -EINVAL;
 
@@ -1678,6 +1680,11 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 	cfg.destination.type = DPNI_DEST_DPCON;
 	cfg.destination.id = dpcon_id;
 	cfg.destination.priority = queue_conf->ev.priority;
+
+	if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_ATOMIC) {
+		options |= DPNI_QUEUE_OPT_HOLD_ACTIVE;
+		cfg.destination.hold_active = 1;
+	}
 
 	options |= DPNI_QUEUE_OPT_USER_CTX;
 	cfg.user_context = (uint64_t)(dpaa2_ethq);

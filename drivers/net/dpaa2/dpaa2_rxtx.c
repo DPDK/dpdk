@@ -15,11 +15,13 @@
 #include <rte_string_fns.h>
 #include <rte_dev.h>
 
+#include <rte_fslmc.h>
 #include <fslmc_logs.h>
 #include <fslmc_vfio.h>
 #include <dpaa2_hw_pvt.h>
 #include <dpaa2_hw_dpio.h>
 #include <dpaa2_hw_mempool.h>
+#include <dpaa2_eventdev.h>
 
 #include "dpaa2_ethdev.h"
 #include "base/dpaa2_hw_dpni_annot.h"
@@ -641,6 +643,30 @@ dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
 	qbman_swp_dqrr_consume(swp, dq);
 }
 
+void dpaa2_dev_process_atomic_event(struct qbman_swp *swp __attribute__((unused)),
+				    const struct qbman_fd *fd,
+				    const struct qbman_result *dq,
+				    struct dpaa2_queue *rxq,
+				    struct rte_event *ev)
+{
+	uint8_t dqrr_index = qbman_get_dqrr_idx(dq);
+
+	ev->mbuf = eth_fd_to_mbuf(fd);
+
+	ev->flow_id = rxq->ev.flow_id;
+	ev->sub_event_type = rxq->ev.sub_event_type;
+	ev->event_type = RTE_EVENT_TYPE_ETHDEV;
+	ev->op = RTE_EVENT_OP_NEW;
+	ev->sched_type = rxq->ev.sched_type;
+	ev->queue_id = rxq->ev.queue_id;
+	ev->priority = rxq->ev.priority;
+
+	ev->mbuf->seqn = dqrr_index + 1;
+	DPAA2_PER_LCORE_DQRR_SIZE++;
+	DPAA2_PER_LCORE_DQRR_HELD |= 1 << dqrr_index;
+	DPAA2_PER_LCORE_DQRR_MBUF(dqrr_index) = ev->mbuf;
+}
+
 /*
  * Callback to handle sending packets through WRIOP based interface
  */
@@ -661,6 +687,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t bpid;
 	struct rte_eth_dev *dev = dpaa2_q->dev;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	uint32_t flags[MAX_TX_RING_SLOTS] = {0};
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
@@ -679,7 +706,6 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	qbman_eq_desc_set_response(&eqdesc, 0, 0);
 	qbman_eq_desc_set_qd(&eqdesc, priv->qdid,
 			     dpaa2_q->flow_id, dpaa2_q->tc_index);
-
 	/*Clear the unused FD fields before sending*/
 	while (nb_pkts) {
 		/*Check if the queue is congested*/
@@ -694,6 +720,16 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		frames_to_send = (nb_pkts >> 3) ? MAX_TX_RING_SLOTS : nb_pkts;
 
 		for (loop = 0; loop < frames_to_send; loop++) {
+			if ((*bufs)->seqn) {
+				uint8_t dqrr_index = (*bufs)->seqn - 1;
+
+				flags[loop] = QBMAN_ENQUEUE_FLAG_DCA |
+						dqrr_index;
+				DPAA2_PER_LCORE_DQRR_SIZE--;
+				DPAA2_PER_LCORE_DQRR_HELD &= ~(1 << dqrr_index);
+				(*bufs)->seqn = DPAA2_INVALID_MBUF_SEQN;
+			}
+
 			fd_arr[loop].simple.frc = 0;
 			DPAA2_RESET_FD_CTRL((&fd_arr[loop]));
 			DPAA2_SET_FD_FLC((&fd_arr[loop]), NULL);
@@ -761,7 +797,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		loop = 0;
 		while (loop < frames_to_send) {
 			loop += qbman_swp_enqueue_multiple(swp, &eqdesc,
-					&fd_arr[loop], NULL,
+					&fd_arr[loop], &flags[loop],
 					frames_to_send - loop);
 		}
 
@@ -778,7 +814,8 @@ send_n_return:
 
 		while (i < loop) {
 			i += qbman_swp_enqueue_multiple(swp, &eqdesc,
-							&fd_arr[i], NULL,
+							&fd_arr[i],
+							&flags[loop],
 							loop - i);
 		}
 		num_tx += loop;
