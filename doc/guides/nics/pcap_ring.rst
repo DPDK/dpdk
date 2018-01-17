@@ -5,7 +5,7 @@ Libpcap and Ring Based Poll Mode Drivers
 ========================================
 
 In addition to Poll Mode Drivers (PMDs) for physical and virtual hardware,
-the DPDK also includes two pure-software PMDs. These two drivers are:
+the DPDK also includes pure-software PMDs, two of these drivers are:
 
 *   A libpcap -based PMD (librte_pmd_pcap) that reads and writes packets using libpcap,
     - both from files on disk, as well as from physical NIC devices using standard Linux kernel drivers.
@@ -147,6 +147,12 @@ Otherwise, the first 512 packets from the input pcap file will be discarded by t
     $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
         --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_pcap=file_tx.pcap' \
         -- --port-topology=chained --no-flush-rx
+
+.. note::
+
+   The network interface provided to the PMD should be up. The PMD will return
+   an error if interface is down, and the PMD itself won't change the status
+   of the external network interface.
 
 
 Rings-based PMD
