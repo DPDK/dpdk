@@ -72,11 +72,38 @@ static struct rte_eth_dev_info default_infos = {
 	 */
 	.rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_QINQ_STRIP |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_LRO,
+		DEV_RX_OFFLOAD_TCP_LRO |
+		DEV_RX_OFFLOAD_QINQ_STRIP |
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_MACSEC_STRIP |
+		DEV_RX_OFFLOAD_HEADER_SPLIT |
+		DEV_RX_OFFLOAD_VLAN_FILTER |
+		DEV_RX_OFFLOAD_VLAN_EXTEND |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_CRC_STRIP |
+		DEV_RX_OFFLOAD_SCATTER |
+		DEV_RX_OFFLOAD_TIMESTAMP |
+		DEV_RX_OFFLOAD_SECURITY,
+	.rx_queue_offload_capa =
+		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_LRO |
+		DEV_RX_OFFLOAD_QINQ_STRIP |
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_MACSEC_STRIP |
+		DEV_RX_OFFLOAD_HEADER_SPLIT |
+		DEV_RX_OFFLOAD_VLAN_FILTER |
+		DEV_RX_OFFLOAD_VLAN_EXTEND |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_CRC_STRIP |
+		DEV_RX_OFFLOAD_SCATTER |
+		DEV_RX_OFFLOAD_TIMESTAMP |
+		DEV_RX_OFFLOAD_SECURITY,
 	.tx_offload_capa = 0x0,
 	.flow_type_rss_offloads = 0x0,
 };
@@ -255,6 +282,25 @@ fs_dev_close(struct rte_eth_dev *dev)
 	fs_dev_free_queues(dev);
 }
 
+static bool
+fs_rxq_offloads_valid(struct rte_eth_dev *dev, uint64_t offloads)
+{
+	uint64_t port_offloads;
+	uint64_t queue_supp_offloads;
+	uint64_t port_supp_offloads;
+
+	port_offloads = dev->data->dev_conf.rxmode.offloads;
+	queue_supp_offloads = PRIV(dev)->infos.rx_queue_offload_capa;
+	port_supp_offloads = PRIV(dev)->infos.rx_offload_capa;
+	if ((offloads & (queue_supp_offloads | port_supp_offloads)) !=
+	     offloads)
+		return false;
+	/* Verify we have no conflict with port offloads */
+	if ((port_offloads ^ offloads) & port_supp_offloads)
+		return false;
+	return true;
+}
+
 static void
 fs_rx_queue_release(void *queue)
 {
@@ -291,6 +337,18 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	if (rxq != NULL) {
 		fs_rx_queue_release(rxq);
 		dev->data->rx_queues[rx_queue_id] = NULL;
+	}
+	/* Verify application offloads are valid for our port and queue. */
+	if (fs_rxq_offloads_valid(dev, rx_conf->offloads) == false) {
+		rte_errno = ENOTSUP;
+		ERROR("Rx queue offloads 0x%" PRIx64
+		      " don't match port offloads 0x%" PRIx64
+		      " or supported offloads 0x%" PRIx64,
+		      rx_conf->offloads,
+		      dev->data->dev_conf.rxmode.offloads,
+		      PRIV(dev)->infos.rx_offload_capa |
+		      PRIV(dev)->infos.rx_queue_offload_capa);
+		return -rte_errno;
 	}
 	rxq = rte_zmalloc(NULL,
 			  sizeof(*rxq) +
@@ -595,17 +653,22 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 		rte_memcpy(&PRIV(dev)->infos, &default_infos,
 			   sizeof(default_infos));
 	} else {
-		uint32_t rx_offload_capa;
+		uint64_t rx_offload_capa;
+		uint64_t rxq_offload_capa;
 
 		rx_offload_capa = default_infos.rx_offload_capa;
+		rxq_offload_capa = default_infos.rx_queue_offload_capa;
 		FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
 			rte_eth_dev_info_get(PORT_ID(sdev),
 					&PRIV(dev)->infos);
 			rx_offload_capa &= PRIV(dev)->infos.rx_offload_capa;
+			rxq_offload_capa &=
+					PRIV(dev)->infos.rx_queue_offload_capa;
 		}
 		sdev = TX_SUBDEV(dev);
 		rte_eth_dev_info_get(PORT_ID(sdev), &PRIV(dev)->infos);
 		PRIV(dev)->infos.rx_offload_capa = rx_offload_capa;
+		PRIV(dev)->infos.rx_queue_offload_capa = rxq_offload_capa;
 		PRIV(dev)->infos.tx_offload_capa &=
 					default_infos.tx_offload_capa;
 		PRIV(dev)->infos.tx_queue_offload_capa &=
