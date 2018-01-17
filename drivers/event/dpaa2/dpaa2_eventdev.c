@@ -237,8 +237,7 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 	/* Check if there are atomic contexts to be released */
 	while (DPAA2_PER_LCORE_DPIO->dqrr_size) {
 		if (DPAA2_PER_LCORE_DPIO->dqrr_held & (1 << i)) {
-			dq = qbman_get_dqrr_from_idx(swp, i);
-			qbman_swp_dqrr_consume(swp, dq);
+			qbman_swp_dqrr_idx_consume(swp, i);
 			DPAA2_PER_LCORE_DPIO->dqrr_size--;
 		}
 		i++;
