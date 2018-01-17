@@ -267,6 +267,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev;
 	struct vmxnet3_hw *hw = eth_dev->data->dev_private;
 	uint32_t mac_hi, mac_lo, ver;
+	struct rte_eth_link link;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -368,6 +369,13 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	/* clear shadow stats */
 	memset(hw->saved_tx_stats, 0, sizeof(hw->saved_tx_stats));
 	memset(hw->saved_rx_stats, 0, sizeof(hw->saved_rx_stats));
+
+	/* set the initial link status */
+	memset(&link, 0, sizeof(link));
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_speed = ETH_SPEED_NUM_10G;
+	link.link_autoneg = ETH_LINK_FIXED;
+	vmxnet3_dev_atomic_write_link_status(eth_dev, &link);
 
 	return 0;
 }
@@ -857,6 +865,9 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_speed = ETH_SPEED_NUM_10G;
+	link.link_autoneg = ETH_LINK_FIXED;
 	vmxnet3_dev_atomic_write_link_status(dev, &link);
 }
 
@@ -1145,12 +1156,11 @@ __vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_LINK);
 	ret = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
 
-	if (ret & 0x1) {
+	if (ret & 0x1)
 		link.link_status = ETH_LINK_UP;
-		link.link_duplex = ETH_LINK_FULL_DUPLEX;
-		link.link_speed = ETH_SPEED_NUM_10G;
-		link.link_autoneg = ETH_LINK_AUTONEG;
-	}
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_speed = ETH_SPEED_NUM_10G;
+	link.link_autoneg = ETH_LINK_AUTONEG;
 
 	vmxnet3_dev_atomic_write_link_status(dev, &link);
 
