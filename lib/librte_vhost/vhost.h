@@ -81,12 +81,14 @@ struct vhost_virtqueue {
 
 	/* Backend value to determine if device should started/stopped */
 	int			backend;
+	int			enabled;
+	int			access_ok;
+	rte_spinlock_t		access_lock;
+
 	/* Used to notify the guest (trigger interrupt) */
 	int			callfd;
 	/* Currently unused as polling mode is enabled */
 	int			kickfd;
-	int			enabled;
-	int			access_ok;
 
 	/* Physical address of used ring, for logging */
 	uint64_t		log_guest_addr;

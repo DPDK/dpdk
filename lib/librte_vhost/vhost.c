@@ -232,6 +232,7 @@ alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 
 	dev->virtqueue[vring_idx] = vq;
 	init_vring_queue(dev, vring_idx);
+	rte_spinlock_init(&vq->access_lock);
 
 	dev->nr_vring += 1;
 

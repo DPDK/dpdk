@@ -1260,12 +1260,47 @@ vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev, VhostUserMsg *msg)
 	return alloc_vring_queue(dev, vring_idx);
 }
 
+static void
+vhost_user_lock_all_queue_pairs(struct virtio_net *dev)
+{
+	unsigned int i = 0;
+	unsigned int vq_num = 0;
+
+	while (vq_num < dev->nr_vring) {
+		struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+		if (vq) {
+			rte_spinlock_lock(&vq->access_lock);
+			vq_num++;
+		}
+		i++;
+	}
+}
+
+static void
+vhost_user_unlock_all_queue_pairs(struct virtio_net *dev)
+{
+	unsigned int i = 0;
+	unsigned int vq_num = 0;
+
+	while (vq_num < dev->nr_vring) {
+		struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+		if (vq) {
+			rte_spinlock_unlock(&vq->access_lock);
+			vq_num++;
+		}
+		i++;
+	}
+}
+
 int
 vhost_user_msg_handler(int vid, int fd)
 {
 	struct virtio_net *dev;
 	struct VhostUserMsg msg;
 	int ret;
+	int unlock_required = 0;
 
 	dev = get_device(vid);
 	if (dev == NULL)
@@ -1309,6 +1344,38 @@ vhost_user_msg_handler(int vid, int fd)
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"failed to alloc queue\n");
 		return -1;
+	}
+
+	/*
+	 * Note: we don't lock all queues on VHOST_USER_GET_VRING_BASE,
+	 * since it is sent when virtio stops and device is destroyed.
+	 * destroy_device waits for queues to be inactive, so it is safe.
+	 * Otherwise taking the access_lock would cause a dead lock.
+	 */
+	switch (msg.request.master) {
+	case VHOST_USER_SET_FEATURES:
+	case VHOST_USER_SET_PROTOCOL_FEATURES:
+	case VHOST_USER_SET_OWNER:
+	case VHOST_USER_RESET_OWNER:
+	case VHOST_USER_SET_MEM_TABLE:
+	case VHOST_USER_SET_LOG_BASE:
+	case VHOST_USER_SET_LOG_FD:
+	case VHOST_USER_SET_VRING_NUM:
+	case VHOST_USER_SET_VRING_ADDR:
+	case VHOST_USER_SET_VRING_BASE:
+	case VHOST_USER_SET_VRING_KICK:
+	case VHOST_USER_SET_VRING_CALL:
+	case VHOST_USER_SET_VRING_ERR:
+	case VHOST_USER_SET_VRING_ENABLE:
+	case VHOST_USER_SEND_RARP:
+	case VHOST_USER_NET_SET_MTU:
+	case VHOST_USER_SET_SLAVE_REQ_FD:
+		vhost_user_lock_all_queue_pairs(dev);
+		unlock_required = 1;
+		break;
+	default:
+		break;
+
 	}
 
 	switch (msg.request.master) {
@@ -1413,6 +1480,9 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	}
+
+	if (unlock_required)
+		vhost_user_unlock_all_queue_pairs(dev);
 
 	if (msg.flags & VHOST_USER_NEED_REPLY) {
 		msg.payload.u64 = !!ret;
