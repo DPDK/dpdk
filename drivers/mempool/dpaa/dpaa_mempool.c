@@ -73,6 +73,8 @@ dpaa_mbuf_create_pool(struct rte_mempool *mp)
 	rte_dpaa_bpid_info[bpid].meta_data_size =
 		sizeof(struct rte_mbuf) + rte_pktmbuf_priv_size(mp);
 	rte_dpaa_bpid_info[bpid].dpaa_ops_index = mp->ops_index;
+	rte_dpaa_bpid_info[bpid].ptov_off = 0;
+	rte_dpaa_bpid_info[bpid].flags = 0;
 
 	bp_info = rte_malloc(NULL,
 			     sizeof(struct dpaa_bp_info),
@@ -145,9 +147,20 @@ dpaa_mbuf_free_bulk(struct rte_mempool *pool,
 	}
 
 	while (i < n) {
+		uint64_t phy = rte_mempool_virt2iova(obj_table[i]);
+
+		if (unlikely(!bp_info->ptov_off)) {
+			/* buffers are not from multiple memzones */
+			if (!(bp_info->flags & DPAA_MPOOL_MULTI_MEMZONE)) {
+				bp_info->ptov_off
+						= (uint64_t)obj_table[i] - phy;
+				rte_dpaa_bpid_info[bp_info->bpid].ptov_off
+						= bp_info->ptov_off;
+			}
+		}
+
 		dpaa_buf_free(bp_info,
-			      (uint64_t)rte_mempool_virt2iova(obj_table[i]) +
-			      bp_info->meta_data_size);
+			      (uint64_t)phy + bp_info->meta_data_size);
 		i = i + 1;
 	}
 
@@ -215,7 +228,7 @@ dpaa_mbuf_alloc_bulk(struct rte_mempool *pool,
 			 * i.e. first buffer is valid, remaining 6 buffers
 			 * may be null.
 			 */
-			bufaddr = (void *)rte_dpaa_mem_ptov(bufs[i].addr);
+			bufaddr = DPAA_MEMPOOL_PTOV(bp_info, bufs[i].addr);
 			m[n] = (struct rte_mbuf *)((char *)bufaddr
 						- bp_info->meta_data_size);
 			DPAA_MEMPOOL_DPDEBUG("Paddr (%p), FD (%p) from BMAN",
@@ -246,6 +259,36 @@ dpaa_mbuf_get_count(const struct rte_mempool *mp)
 	return bman_query_free_buffers(bp_info->bp);
 }
 
+static int
+dpaa_register_memory_area(const struct rte_mempool *mp,
+			  char *vaddr __rte_unused,
+			  rte_iova_t paddr __rte_unused,
+			  size_t len)
+{
+	struct dpaa_bp_info *bp_info;
+	unsigned int total_elt_sz;
+
+	MEMPOOL_INIT_FUNC_TRACE();
+
+	if (!mp || !mp->pool_data) {
+		DPAA_MEMPOOL_ERR("Invalid mempool provided\n");
+		return 0;
+	}
+
+	bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
+	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
+
+	DPAA_MEMPOOL_DEBUG("Req size %lu vs Available %u\n",
+			   len, total_elt_sz * mp->size);
+
+	/* Detect pool area has sufficient space for elements in this memzone */
+	if (len < total_elt_sz * mp->size)
+		/* Else, Memory will be allocated from multiple memzones */
+		bp_info->flags |= DPAA_MPOOL_MULTI_MEMZONE;
+
+	return 0;
+}
+
 struct rte_mempool_ops dpaa_mpool_ops = {
 	.name = "dpaa",
 	.alloc = dpaa_mbuf_create_pool,
@@ -253,6 +296,7 @@ struct rte_mempool_ops dpaa_mpool_ops = {
 	.enqueue = dpaa_mbuf_free_bulk,
 	.dequeue = dpaa_mbuf_alloc_bulk,
 	.get_count = dpaa_mbuf_get_count,
+	.register_memory_area = dpaa_register_memory_area,
 };
 
 MEMPOOL_REGISTER_OPS(dpaa_mpool_ops);

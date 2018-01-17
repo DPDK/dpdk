@@ -28,6 +28,9 @@
 /* Maximum release/acquire from BMAN */
 #define DPAA_MBUF_MAX_ACQ_REL  8
 
+/* Buffers are allocated from multiple memzones i.e. non phys contiguous */
+#define DPAA_MPOOL_MULTI_MEMZONE  0x01
+
 struct dpaa_bp_info {
 	struct rte_mempool *mp;
 	struct bman_pool *bp;
@@ -35,7 +38,17 @@ struct dpaa_bp_info {
 	uint32_t size;
 	uint32_t meta_data_size;
 	int32_t dpaa_ops_index;
+	int64_t ptov_off;
+	uint8_t flags;
 };
+
+static inline void *
+DPAA_MEMPOOL_PTOV(struct dpaa_bp_info *bp_info, uint64_t addr)
+{
+	if (bp_info->ptov_off)
+		return ((void *)(addr + bp_info->ptov_off));
+	return rte_dpaa_mem_ptov(addr);
+}
 
 #define DPAA_MEMPOOL_TO_POOL_INFO(__mp) \
 	((struct dpaa_bp_info *)__mp->pool_data)
