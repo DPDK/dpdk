@@ -240,6 +240,8 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
 static bool ena_are_tx_queue_offloads_allowed(struct ena_adapter *adapter,
 					      uint64_t offloads);
+static bool ena_are_rx_queue_offloads_allowed(struct ena_adapter *adapter,
+					      uint64_t offloads);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -769,7 +771,8 @@ static uint32_t ena_get_mtu_conf(struct ena_adapter *adapter)
 {
 	uint32_t max_frame_len = adapter->max_mtu;
 
-	if (adapter->rte_eth_dev_data->dev_conf.rxmode.jumbo_frame == 1)
+	if (adapter->rte_eth_dev_data->dev_conf.rxmode.offloads &
+	    DEV_RX_OFFLOAD_JUMBO_FRAME)
 		max_frame_len =
 			adapter->rte_eth_dev_data->dev_conf.rxmode.max_rx_pkt_len;
 
@@ -1069,7 +1072,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 			      uint16_t queue_idx,
 			      uint16_t nb_desc,
 			      __rte_unused unsigned int socket_id,
-			      __rte_unused const struct rte_eth_rxconf *rx_conf,
+			      const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp)
 {
 	struct ena_com_create_io_ctx ctx =
@@ -1102,6 +1105,11 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(ERR, PMD,
 			"Unsupported size of RX queue (max size: %d)\n",
 			adapter->rx_ring_size);
+		return -EINVAL;
+	}
+
+	if (!ena_are_rx_queue_offloads_allowed(adapter, rx_conf->offloads)) {
+		RTE_LOG(ERR, PMD, "Unsupported queue offloads\n");
 		return -EINVAL;
 	}
 
@@ -1409,11 +1417,19 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
 	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 
 	if ((tx_offloads & adapter->tx_supported_offloads) != tx_offloads) {
 		RTE_LOG(ERR, PMD, "Some Tx offloads are not supported "
 		    "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
 		    tx_offloads, adapter->tx_supported_offloads);
+		return -ENOTSUP;
+	}
+
+	if ((rx_offloads & adapter->rx_supported_offloads) != rx_offloads) {
+		RTE_LOG(ERR, PMD, "Some Rx offloads are not supported "
+		    "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
+		    rx_offloads, adapter->rx_supported_offloads);
 		return -ENOTSUP;
 	}
 
@@ -1438,6 +1454,7 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	adapter->tx_selected_offloads = tx_offloads;
+	adapter->rx_selected_offloads = rx_offloads;
 	return 0;
 }
 
@@ -1470,6 +1487,19 @@ static bool ena_are_tx_queue_offloads_allowed(struct ena_adapter *adapter,
 					      uint64_t offloads)
 {
 	uint64_t port_offloads = adapter->tx_selected_offloads;
+
+	/* Check if port supports all requested offloads.
+	 * True if all offloads selected for queue are set for port.
+	 */
+	if ((offloads & port_offloads) != offloads)
+		return false;
+	return true;
+}
+
+static bool ena_are_rx_queue_offloads_allowed(struct ena_adapter *adapter,
+					      uint64_t offloads)
+{
+	uint64_t port_offloads = adapter->rx_selected_offloads;
 
 	/* Check if port supports all requested offloads.
 	 * True if all offloads selected for queue are set for port.
@@ -1533,6 +1563,7 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 
 	/* Inform framework about available features */
 	dev_info->rx_offload_capa = rx_feat;
+	dev_info->rx_queue_offload_capa = rx_feat;
 	dev_info->tx_offload_capa = tx_feat;
 	dev_info->tx_queue_offload_capa = tx_feat;
 
@@ -1545,6 +1576,7 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 	dev_info->reta_size = ENA_RX_RSS_TABLE_SIZE;
 
 	adapter->tx_supported_offloads = tx_feat;
+	adapter->rx_supported_offloads = rx_feat;
 }
 
 static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
