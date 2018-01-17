@@ -99,13 +99,13 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 			qbman_eq_desc_set_no_orp(&eqdesc[loop], 0);
 			qbman_eq_desc_set_response(&eqdesc[loop], 0, 0);
 
-			if (event->impl_opaque) {
-				uint8_t dqrr_index = event->impl_opaque - 1;
+			if (event->mbuf->seqn) {
+				uint8_t dqrr_index = event->mbuf->seqn - 1;
 
 				qbman_eq_desc_set_dca(&eqdesc[loop], 1,
 						      dqrr_index, 0);
-				DPAA2_PER_LCORE_DPIO->dqrr_size--;
-				DPAA2_PER_LCORE_DPIO->dqrr_held &=
+				DPAA2_PER_LCORE_DQRR_SIZE--;
+				DPAA2_PER_LCORE_DQRR_HELD &=
 					~(1 << dqrr_index);
 			}
 
@@ -207,9 +207,9 @@ static void dpaa2_eventdev_process_atomic(struct qbman_swp *swp,
 
 	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
 	rte_free(ev_temp);
-	ev->impl_opaque = dqrr_index + 1;
-	DPAA2_PER_LCORE_DPIO->dqrr_size++;
-	DPAA2_PER_LCORE_DPIO->dqrr_held |= 1 << dqrr_index;
+	ev->mbuf->seqn = dqrr_index + 1;
+	DPAA2_PER_LCORE_DQRR_SIZE++;
+	DPAA2_PER_LCORE_DQRR_HELD |= 1 << dqrr_index;
 }
 
 static uint16_t
@@ -231,18 +231,19 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 			return 0;
 		}
 	}
-
 	swp = DPAA2_PER_LCORE_PORTAL;
 
 	/* Check if there are atomic contexts to be released */
-	while (DPAA2_PER_LCORE_DPIO->dqrr_size) {
-		if (DPAA2_PER_LCORE_DPIO->dqrr_held & (1 << i)) {
+	while (DPAA2_PER_LCORE_DQRR_SIZE) {
+		if (DPAA2_PER_LCORE_DQRR_HELD & (1 << i)) {
 			qbman_swp_dqrr_idx_consume(swp, i);
-			DPAA2_PER_LCORE_DPIO->dqrr_size--;
+			DPAA2_PER_LCORE_DQRR_SIZE--;
+			DPAA2_PER_LCORE_DQRR_MBUF(i)->seqn =
+				DPAA2_INVALID_MBUF_SEQN;
 		}
 		i++;
 	}
-	DPAA2_PER_LCORE_DPIO->dqrr_held = 0;
+	DPAA2_PER_LCORE_DQRR_HELD = 0;
 
 	do {
 		dq = qbman_swp_dqrr_next(swp);

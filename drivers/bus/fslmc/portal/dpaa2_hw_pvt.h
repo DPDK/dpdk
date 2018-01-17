@@ -79,8 +79,6 @@ struct dpaa2_dpio_dev {
 	struct rte_intr_handle intr_handle; /* Interrupt related info */
 	int32_t	epoll_fd; /**< File descriptor created for interrupt polling */
 	int32_t hw_id; /**< An unique ID of this DPIO device instance */
-	uint64_t dqrr_held;
-	uint8_t dqrr_size;
 };
 
 struct dpaa2_dpbp_dev {

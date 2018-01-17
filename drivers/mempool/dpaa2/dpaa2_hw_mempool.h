@@ -10,6 +10,8 @@
 
 #define DPAA2_MAX_BUF_POOLS	8
 
+#define DPAA2_INVALID_MBUF_SEQN	0
+
 struct buf_pool_cfg {
 	void *addr;
 	/**< The address from where DPAA2 will carve out the buffers */
