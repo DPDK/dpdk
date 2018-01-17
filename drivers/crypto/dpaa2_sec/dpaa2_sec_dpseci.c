@@ -673,6 +673,7 @@ dpaa2_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 		while (loop < frames_to_send) {
 			loop += qbman_swp_enqueue_multiple(swp, &eqdesc,
 							&fd_arr[loop],
+							NULL,
 							frames_to_send - loop);
 		}
 

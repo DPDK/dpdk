@@ -496,6 +496,7 @@ int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
 int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 			       const struct qbman_eq_desc *d,
 			       const struct qbman_fd *fd,
+			       uint32_t *flags,
 			       int num_frames)
 {
 	uint32_t *p;
@@ -538,6 +539,12 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 		p = qbman_cena_write_start_wo_shadow(&s->sys,
 					QBMAN_CENA_SWP_EQCR(eqcr_pi & 7));
 		p[0] = cl[0] | s->eqcr.pi_vb;
+		if (flags && (flags[i] & QBMAN_ENQUEUE_FLAG_DCA)) {
+			struct qbman_eq_desc *d = (struct qbman_eq_desc *)p;
+
+			d->eq.dca = (1 << QB_ENQUEUE_CMD_DCA_EN_SHIFT) |
+				((flags[i]) & QBMAN_EQCR_DCA_IDXMASK);
+		}
 		eqcr_pi++;
 		eqcr_pi &= 0xF;
 		if (!(eqcr_pi & 7))

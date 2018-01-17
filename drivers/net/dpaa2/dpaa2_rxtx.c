@@ -761,7 +761,8 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		loop = 0;
 		while (loop < frames_to_send) {
 			loop += qbman_swp_enqueue_multiple(swp, &eqdesc,
-					&fd_arr[loop], frames_to_send - loop);
+					&fd_arr[loop], NULL,
+					frames_to_send - loop);
 		}
 
 		num_tx += frames_to_send;
@@ -777,7 +778,8 @@ send_n_return:
 
 		while (i < loop) {
 			i += qbman_swp_enqueue_multiple(swp, &eqdesc,
-							&fd_arr[i], loop - i);
+							&fd_arr[i], NULL,
+							loop - i);
 		}
 		num_tx += loop;
 	}
