@@ -242,9 +242,6 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		return -1;
 	}
 
-	/* Add slave details to bonded device */
-	slave_eth_dev->data->dev_flags |= RTE_ETH_DEV_BONDED_SLAVE;
-
 	rte_eth_dev_info_get(slave_port_id, &dev_info);
 	if (dev_info.max_rx_pktlen < internals->max_rx_pktlen) {
 		RTE_BOND_LOG(ERR, "Slave (port %u) max_rx_pktlen too small",
@@ -316,17 +313,20 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 
 	internals->slave_count++;
 
-	/* Update all slave devices MACs*/
-	mac_address_slaves_update(bonded_eth_dev);
-
 	if (bonded_eth_dev->data->dev_started) {
 		if (slave_configure(bonded_eth_dev, slave_eth_dev) != 0) {
-			slave_eth_dev->data->dev_flags &= (~RTE_ETH_DEV_BONDED_SLAVE);
+			internals->slave_count--;
 			RTE_BOND_LOG(ERR, "rte_bond_slaves_configure: port=%d",
 					slave_port_id);
 			return -1;
 		}
 	}
+
+	/* Add slave details to bonded device */
+	slave_eth_dev->data->dev_flags |= RTE_ETH_DEV_BONDED_SLAVE;
+
+	/* Update all slave devices MACs*/
+	mac_address_slaves_update(bonded_eth_dev);
 
 	/* Register link status change callback with bonded device pointer as
 	 * argument*/
