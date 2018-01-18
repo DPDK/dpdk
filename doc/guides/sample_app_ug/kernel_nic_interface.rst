@@ -512,12 +512,13 @@ Callbacks for Kernel Requests
 
 To execute specific PMD operations in user space requested by some Linux* commands,
 callbacks must be implemented and filled in the struct rte_kni_ops structure.
-Currently, setting a new MTU, change in MAC address and
+Currently, setting a new MTU, change in MAC address, configuring promiscusous mode and
 configuring the network interface(up/down) re supported.
 Default implementation for following is available in rte_kni library.
 Application may choose to not implement following callbacks:
 
 - ``config_mac_address``
+- ``config_promiscusity``
 
 
 .. code-block:: c
@@ -526,6 +527,7 @@ Application may choose to not implement following callbacks:
         .change_mtu = kni_change_mtu,
         .config_network_if = kni_config_network_interface,
         .config_mac_address = kni_config_mac_address,
+        .config_promiscusity = kni_config_promiscusity,
     };
 
     /* Callback for request of changing MTU */
@@ -609,6 +611,14 @@ Application may choose to not implement following callbacks:
 
     static int
     kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[])
+    {
+        .....
+    }
+
+    /* Callback for request of configuring promiscuous mode */
+
+    static int
+    kni_config_promiscusity(uint16_t port_id, uint8_t to_on)
     {
         .....
     }

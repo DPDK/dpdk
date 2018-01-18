@@ -525,6 +525,26 @@ kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[])
 	return ret;
 }
 
+/* default callback for request of configuring promiscuous mode */
+static int
+kni_config_promiscusity(uint16_t port_id, uint8_t to_on)
+{
+	if (port_id >= rte_eth_dev_count() || port_id >= RTE_MAX_ETHPORTS) {
+		RTE_LOG(ERR, KNI, "Invalid port id %d\n", port_id);
+		return -EINVAL;
+	}
+
+	RTE_LOG(INFO, KNI, "Configure promiscuous mode of %d to %d\n",
+		port_id, to_on);
+
+	if (to_on)
+		rte_eth_promiscuous_enable(port_id);
+	else
+		rte_eth_promiscuous_disable(port_id);
+
+	return 0;
+}
+
 int
 rte_kni_handle_request(struct rte_kni *kni)
 {
@@ -563,6 +583,14 @@ rte_kni_handle_request(struct rte_kni *kni)
 		else if (kni->ops.port_id != UINT16_MAX)
 			req->result = kni_config_mac_address(
 					kni->ops.port_id, req->mac_addr);
+		break;
+	case RTE_KNI_REQ_CHANGE_PROMISC: /* Change PROMISCUOUS MODE */
+		if (kni->ops.config_promiscusity)
+			req->result = kni->ops.config_promiscusity(
+					kni->ops.port_id, req->promiscusity);
+		else if (kni->ops.port_id != UINT16_MAX)
+			req->result = kni_config_promiscusity(
+					kni->ops.port_id, req->promiscusity);
 		break;
 	default:
 		RTE_LOG(ERR, KNI, "Unknown request id %u\n", req->req_id);
@@ -714,7 +742,8 @@ kni_check_request_register(struct rte_kni_ops *ops)
 
 	if ((ops->change_mtu == NULL)
 		&& (ops->config_network_if == NULL)
-		&& (ops->config_mac_address == NULL))
+		&& (ops->config_mac_address == NULL)
+		&& (ops->config_promiscusity == NULL))
 		return KNI_REQ_NO_REGISTER;
 
 	return KNI_REQ_REGISTERED;

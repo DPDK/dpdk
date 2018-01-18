@@ -584,6 +584,22 @@ kni_net_change_mtu(struct net_device *dev, int new_mtu)
 	return (ret == 0) ? req.result : ret;
 }
 
+static void
+kni_net_set_promiscusity(struct net_device *netdev, int flags)
+{
+	struct rte_kni_request req;
+	struct kni_dev *kni = netdev_priv(netdev);
+
+	memset(&req, 0, sizeof(req));
+	req.req_id = RTE_KNI_REQ_CHANGE_PROMISC;
+
+	if (netdev->flags & IFF_PROMISC)
+		req.promiscusity = 1;
+	else
+		req.promiscusity = 0;
+	kni_net_process_request(kni, &req);
+}
+
 /*
  * Checks if the user space application provided the resp message
  */
@@ -693,6 +709,7 @@ static const struct net_device_ops kni_net_netdev_ops = {
 	.ndo_open = kni_net_open,
 	.ndo_stop = kni_net_release,
 	.ndo_set_config = kni_net_config,
+	.ndo_change_rx_flags = kni_net_set_promiscusity,
 	.ndo_start_xmit = kni_net_tx,
 	.ndo_change_mtu = kni_net_change_mtu,
 	.ndo_do_ioctl = kni_net_ioctl,
