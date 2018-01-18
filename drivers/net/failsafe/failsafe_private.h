@@ -48,6 +48,7 @@
 #define PMD_FAILSAFE_PARAM_STRING	\
 	"dev(<ifc>),"			\
 	"exec(<shell command>),"	\
+	"fd(<fd number>),"		\
 	"mac=mac_addr,"			\
 	"hotplug_poll=u64"		\
 	""
@@ -112,6 +113,8 @@ struct sub_device {
 	struct fs_stats stats_snapshot;
 	/* Some device are defined as a command line */
 	char *cmdline;
+	/* Others are retrieved through a file descriptor */
+	char *fd_str;
 	/* fail-safe device backreference */
 	struct rte_eth_dev *fs_dev;
 	/* flag calling for recollection */

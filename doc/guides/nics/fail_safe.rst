@@ -106,6 +106,15 @@ Fail-safe command line parameters
   All commas within the ``shell command`` are replaced by spaces before
   executing the command. This helps using scripts to specify devices.
 
+- **fd(<file descriptor number>)** parameter
+
+  This parameter reads a device definition from an arbitrary file descriptor
+  number in ``<iface>`` format as described above.
+
+  The file descriptor is read in non-blocking mode and is never closed in
+  order to take only the last line into account (unlike ``exec()``) at every
+  probe attempt.
+
 - **mac** parameter [MAC address]
 
   This parameter allows the user to set a default MAC address to the fail-safe
