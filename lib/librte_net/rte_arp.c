@@ -7,17 +7,28 @@
 #include <rte_arp.h>
 
 #define RARP_PKT_SIZE	64
-int
-rte_net_make_rarp_packet(struct rte_mbuf *mbuf, const struct ether_addr *mac)
+struct rte_mbuf *
+rte_net_make_rarp_packet(struct rte_mempool *mpool,
+		const struct ether_addr *mac)
 {
 	struct ether_hdr *eth_hdr;
 	struct arp_hdr *rarp;
+	struct rte_mbuf *mbuf;
 
-	if (mbuf->buf_len < RARP_PKT_SIZE)
-		return -1;
+	if (mpool == NULL)
+		return NULL;
+
+	mbuf = rte_pktmbuf_alloc(mpool);
+	if (mbuf == NULL)
+		return NULL;
+
+	eth_hdr = (struct ether_hdr *)rte_pktmbuf_append(mbuf, RARP_PKT_SIZE);
+	if (eth_hdr == NULL) {
+		rte_pktmbuf_free(mbuf);
+		return NULL;
+	}
 
 	/* Ethernet header. */
-	eth_hdr = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
 	memset(eth_hdr->d_addr.addr_bytes, 0xff, ETHER_ADDR_LEN);
 	ether_addr_copy(mac, &eth_hdr->s_addr);
 	eth_hdr->ether_type = htons(ETHER_TYPE_RARP);
@@ -35,8 +46,5 @@ rte_net_make_rarp_packet(struct rte_mbuf *mbuf, const struct ether_addr *mac)
 	memset(&rarp->arp_data.arp_sip, 0x00, 4);
 	memset(&rarp->arp_data.arp_tip, 0x00, 4);
 
-	mbuf->data_len = RARP_PKT_SIZE;
-	mbuf->pkt_len = RARP_PKT_SIZE;
-
-	return 0;
+	return mbuf;
 }

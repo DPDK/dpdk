@@ -1162,19 +1162,13 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			rte_atomic16_cmpset((volatile uint16_t *)
 				&dev->broadcast_rarp.cnt, 1, 0))) {
 
-		rarp_mbuf = rte_pktmbuf_alloc(mbuf_pool);
+		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
 		if (rarp_mbuf == NULL) {
 			RTE_LOG(ERR, VHOST_DATA,
-				"Failed to allocate memory for mbuf.\n");
+				"Failed to make RARP packet.\n");
 			return 0;
 		}
-
-		if (rte_net_make_rarp_packet(rarp_mbuf, &dev->mac) < 0) {
-			rte_pktmbuf_free(rarp_mbuf);
-			rarp_mbuf = NULL;
-		} else {
-			count -= 1;
-		}
+		count -= 1;
 	}
 
 	free_entries = *((volatile uint16_t *)&vq->avail->idx) -

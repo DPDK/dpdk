@@ -82,16 +82,17 @@ struct arp_hdr {
  *
  * Make a RARP packet based on MAC addr.
  *
- * @param mbuf
- *   Pointer to the rte_mbuf structure
+ * @param mpool
+ *   Pointer to the rte_mempool
  * @param mac
  *   Pointer to the MAC addr
  *
  * @return
- *   - 0 on success, negative on error
+ *   - RARP packet pointer on success, or NULL on error
  */
-int
-rte_net_make_rarp_packet(struct rte_mbuf *mbuf, const struct ether_addr *mac);
+struct rte_mbuf *
+rte_net_make_rarp_packet(struct rte_mempool *mpool,
+		const struct ether_addr *mac);
 
 #ifdef __cplusplus
 }
