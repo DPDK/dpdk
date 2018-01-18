@@ -208,6 +208,7 @@ DPDK_18.02 {
 EXPERIMENTAL {
 	global:
 
+	rte_eth_dev_rx_offload_name;
 	rte_mtr_capabilities_get;
 	rte_mtr_create;
 	rte_mtr_destroy;

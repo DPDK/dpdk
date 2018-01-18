@@ -946,6 +946,11 @@ struct rte_eth_conf {
 			     DEV_RX_OFFLOAD_VLAN_FILTER | \
 			     DEV_RX_OFFLOAD_VLAN_EXTEND)
 
+/*
+ * If new Rx offload capabilities are defined, they also must be
+ * mentioned in rte_rx_offload_names in rte_ethdev.c file.
+ */
+
 /**
  * TX offload capabilities of a device.
  */
@@ -1921,6 +1926,19 @@ int rte_eth_dev_detach(uint16_t port_id, char *devname);
  *   0 if the speed cannot be mapped
  */
 uint32_t rte_eth_speed_bitflag(uint32_t speed, int duplex);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get DEV_RX_OFFLOAD_* flag name.
+ *
+ * @param offload
+ *   Offload flag.
+ * @return
+ *   Offload name or 'UNKNOWN' if the flag cannot be recognised.
+ */
+const char *rte_eth_dev_rx_offload_name(uint64_t offload);
 
 /**
  * Configure an Ethernet device.

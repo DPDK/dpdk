@@ -90,6 +90,32 @@ static const struct rte_eth_xstats_name_off rte_txq_stats_strings[] = {
 #define RTE_NB_TXQ_STATS (sizeof(rte_txq_stats_strings) /	\
 		sizeof(rte_txq_stats_strings[0]))
 
+#define RTE_RX_OFFLOAD_BIT2STR(_name)	\
+	{ DEV_RX_OFFLOAD_##_name, #_name }
+
+static const struct {
+	uint64_t offload;
+	const char *name;
+} rte_rx_offload_names[] = {
+	RTE_RX_OFFLOAD_BIT2STR(VLAN_STRIP),
+	RTE_RX_OFFLOAD_BIT2STR(IPV4_CKSUM),
+	RTE_RX_OFFLOAD_BIT2STR(UDP_CKSUM),
+	RTE_RX_OFFLOAD_BIT2STR(TCP_CKSUM),
+	RTE_RX_OFFLOAD_BIT2STR(TCP_LRO),
+	RTE_RX_OFFLOAD_BIT2STR(QINQ_STRIP),
+	RTE_RX_OFFLOAD_BIT2STR(OUTER_IPV4_CKSUM),
+	RTE_RX_OFFLOAD_BIT2STR(MACSEC_STRIP),
+	RTE_RX_OFFLOAD_BIT2STR(HEADER_SPLIT),
+	RTE_RX_OFFLOAD_BIT2STR(VLAN_FILTER),
+	RTE_RX_OFFLOAD_BIT2STR(VLAN_EXTEND),
+	RTE_RX_OFFLOAD_BIT2STR(JUMBO_FRAME),
+	RTE_RX_OFFLOAD_BIT2STR(CRC_STRIP),
+	RTE_RX_OFFLOAD_BIT2STR(SCATTER),
+	RTE_RX_OFFLOAD_BIT2STR(TIMESTAMP),
+	RTE_RX_OFFLOAD_BIT2STR(SECURITY),
+};
+
+#undef RTE_RX_OFFLOAD_BIT2STR
 
 /**
  * The user application callback description.
@@ -745,6 +771,22 @@ rte_eth_convert_rx_offloads(const uint64_t rx_offloads,
 		rxmode->security = 1;
 	else
 		rxmode->security = 0;
+}
+
+const char *
+rte_eth_dev_rx_offload_name(uint64_t offload)
+{
+	const char *name = "UNKNOWN";
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(rte_rx_offload_names); ++i) {
+		if (offload == rte_rx_offload_names[i].offload) {
+			name = rte_rx_offload_names[i].name;
+			break;
+		}
+	}
+
+	return name;
 }
 
 int
