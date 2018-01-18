@@ -86,5 +86,10 @@ The following device parameters are supported:
   Same as ``iface`` except a suitable NetVSC interface is located using its
   MAC address.
 
+- ``force`` [int]
+
+  If nonzero, forces the use of specified interfaces even if not detected as
+  NetVSC or detected as routed NETVSC.
+
 Not specifying either ``iface`` or ``mac`` makes this driver attach itself to
 all unrouted NetVSC interfaces found on the system.

@@ -36,6 +36,7 @@
 #define VDEV_NETVSC_DRIVER net_vdev_netvsc
 #define VDEV_NETVSC_ARG_IFACE "iface"
 #define VDEV_NETVSC_ARG_MAC "mac"
+#define VDEV_NETVSC_ARG_FORCE "force"
 #define VDEV_NETVSC_PROBE_MS 1000
 
 #define NETVSC_CLASS_ID "{f8615163-df3e-46c5-913f-f2d2f965ed0e}"
@@ -419,6 +420,9 @@ vdev_netvsc_alarm(__rte_unused void *arg)
  *   - struct rte_kvargs *kvargs:
  *     Device arguments provided to current driver instance.
  *
+ *   - int force:
+ *     Accept specified interface even if not detected as NetVSC.
+ *
  *   - unsigned int specified:
  *     Number of specific netdevices provided as device arguments.
  *
@@ -436,6 +440,7 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 {
 	const char *name = va_arg(ap, const char *);
 	struct rte_kvargs *kvargs = va_arg(ap, struct rte_kvargs *);
+	int force = va_arg(ap, int);
 	unsigned int specified = va_arg(ap, unsigned int);
 	unsigned int *matched = va_arg(ap, unsigned int *);
 	unsigned int i;
@@ -490,20 +495,18 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 		return 0;
 	}
 	if (!vdev_netvsc_iface_is_netvsc(iface)) {
-		if (!specified)
+		if (!specified || !force)
 			return 0;
 		DRV_LOG(WARNING,
-			"interface \"%s\" (index %u) is not NetVSC,"
-			" skipping",
+			"using non-NetVSC interface \"%s\" (index %u)",
 			iface->if_name, iface->if_index);
-		return 0;
 	}
 	/* Routed NetVSC should not be probed. */
 	if (vdev_netvsc_has_route(iface->if_name)) {
-		DRV_LOG(WARNING, "NetVSC interface \"%s\" (index %u) is routed",
-			iface->if_name, iface->if_index);
-		if (!specified)
+		if (!specified || !force)
 			return 0;
+		DRV_LOG(WARNING, "using routed NetVSC interface \"%s\""
+			" (index %u)", iface->if_name, iface->if_index);
 	}
 	/* Create interface context. */
 	ctx = calloc(1, sizeof(*ctx));
@@ -597,6 +600,7 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 	static const char *const vdev_netvsc_arg[] = {
 		VDEV_NETVSC_ARG_IFACE,
 		VDEV_NETVSC_ARG_MAC,
+		VDEV_NETVSC_ARG_FORCE,
 		NULL,
 	};
 	const char *name = rte_vdev_device_name(dev);
@@ -605,6 +609,7 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 						     vdev_netvsc_arg);
 	unsigned int specified = 0;
 	unsigned int matched = 0;
+	int force = 0;
 	unsigned int i;
 	int ret;
 
@@ -616,14 +621,16 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 	for (i = 0; i != kvargs->count; ++i) {
 		const struct rte_kvargs_pair *pair = &kvargs->pairs[i];
 
-		if (!strcmp(pair->key, VDEV_NETVSC_ARG_IFACE) ||
-		    !strcmp(pair->key, VDEV_NETVSC_ARG_MAC))
+		if (!strcmp(pair->key, VDEV_NETVSC_ARG_FORCE))
+			force = !!atoi(pair->value);
+		else if (!strcmp(pair->key, VDEV_NETVSC_ARG_IFACE) ||
+			 !strcmp(pair->key, VDEV_NETVSC_ARG_MAC))
 			++specified;
 	}
 	rte_eal_alarm_cancel(vdev_netvsc_alarm, NULL);
 	/* Gather interfaces. */
 	ret = vdev_netvsc_foreach_iface(vdev_netvsc_netvsc_probe, name, kvargs,
-					specified, &matched);
+					force, specified, &matched);
 	if (ret < 0)
 		goto error;
 	if (matched < specified)
@@ -682,7 +689,8 @@ RTE_PMD_REGISTER_VDEV(VDEV_NETVSC_DRIVER, vdev_netvsc_vdev);
 RTE_PMD_REGISTER_ALIAS(VDEV_NETVSC_DRIVER, eth_vdev_netvsc);
 RTE_PMD_REGISTER_PARAM_STRING(net_vdev_netvsc,
 			      VDEV_NETVSC_ARG_IFACE "=<string> "
-			      VDEV_NETVSC_ARG_MAC "=<string>");
+			      VDEV_NETVSC_ARG_MAC "=<string> "
+			      VDEV_NETVSC_ARG_FORCE "=<int>");
 
 /** Initialize driver log type. */
 RTE_INIT(vdev_netvsc_init_log)
