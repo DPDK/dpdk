@@ -1001,6 +1001,7 @@ F: examples/helloworld/
 F: doc/guides/sample_app_ug/hello_world.rst
 
 M: Radu Nicolau <radu.nicolau@intel.com>
+M: Akhil Goyal <akhil.goyal@nxp.com>
 F: examples/ipsec-secgw/
 F: doc/guides/sample_app_ug/ipsec_secgw.rst
 
