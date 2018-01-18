@@ -19,6 +19,8 @@
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_ether.h>
+#include <rte_ip.h>
+#include <rte_arp.h>
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_cpuflags.h>
@@ -80,6 +82,9 @@ static int virtio_dev_queue_stats_mapping_set(
 
 int virtio_logtype_init;
 int virtio_logtype_driver;
+
+static void virtio_notify_peers(struct rte_eth_dev *dev);
+static void virtio_ack_link_announce(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -1275,9 +1280,46 @@ virtio_inject_pkts(struct rte_eth_dev *dev, struct rte_mbuf **tx_pkts,
 	return ret;
 }
 
+static void
+virtio_notify_peers(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtnet_rx *rxvq = dev->data->rx_queues[0];
+	struct rte_mbuf *rarp_mbuf;
+
+	rarp_mbuf = rte_net_make_rarp_packet(rxvq->mpool,
+			(struct ether_addr *)hw->mac_addr);
+	if (rarp_mbuf == NULL) {
+		PMD_DRV_LOG(ERR, "failed to make RARP packet.");
+		return;
+	}
+
+	/* If virtio port just stopped, no need to send RARP */
+	if (virtio_dev_pause(dev) < 0) {
+		rte_pktmbuf_free(rarp_mbuf);
+		return;
+	}
+
+	virtio_inject_pkts(dev, &rarp_mbuf, 1);
+	virtio_dev_resume(dev);
+}
+
+static void
+virtio_ack_link_announce(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtio_pmd_ctrl ctrl;
+
+	ctrl.hdr.class = VIRTIO_NET_CTRL_ANNOUNCE;
+	ctrl.hdr.cmd = VIRTIO_NET_CTRL_ANNOUNCE_ACK;
+
+	virtio_send_command(hw->cvq, &ctrl, NULL, 0);
+}
+
 /*
- * Process Virtio Config changed interrupt and call the callback
- * if link state changed.
+ * Process virtio config changed interrupt. Call the callback
+ * if link state changed, generate gratuitous RARP packet if
+ * the status indicates an ANNOUNCE.
  */
 void
 virtio_interrupt_handler(void *param)
@@ -1300,6 +1342,10 @@ virtio_interrupt_handler(void *param)
 						      NULL);
 	}
 
+	if (isr & VIRTIO_NET_S_ANNOUNCE) {
+		virtio_notify_peers(dev);
+		virtio_ack_link_announce(dev);
+	}
 }
 
 /* set rx and tx handlers according to what is supported */
