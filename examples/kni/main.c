@@ -846,6 +846,8 @@ kni_alloc(uint16_t port_id)
 			rte_eth_macaddr_get(port_id,
 					(struct ether_addr *)&conf.mac_addr);
 
+			rte_eth_dev_get_mtu(port_id, &conf.mtu);
+
 			memset(&ops, 0, sizeof(ops));
 			ops.port_id = port_id;
 			ops.change_mtu = kni_change_mtu;

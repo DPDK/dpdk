@@ -340,6 +340,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.force_bind = conf->force_bind;
 	dev_info.group_id = conf->group_id;
 	dev_info.mbuf_size = conf->mbuf_size;
+	dev_info.mtu = conf->mtu;
 
 	memcpy(dev_info.mac_addr, conf->mac_addr, ETHER_ADDR_LEN);
 
