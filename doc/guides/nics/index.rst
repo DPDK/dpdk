@@ -64,6 +64,7 @@ Network Interface Controller Drivers
     szedata2
     tap
     thunderx
+    vdev_netvsc
     virtio
     vhost
     vmxnet3

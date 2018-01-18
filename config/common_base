@@ -279,6 +279,11 @@ CONFIG_RTE_LIBRTE_NFP_DEBUG_RX=n
 CONFIG_RTE_LIBRTE_MRVL_PMD=n
 
 #
+# Compile virtual device driver for NetVSC on Hyper-V/Azure
+#
+CONFIG_RTE_LIBRTE_VDEV_NETVSC_PMD=n
+
+#
 # Compile burst-oriented Broadcom BNXT PMD driver
 #
 CONFIG_RTE_LIBRTE_BNXT_PMD=y

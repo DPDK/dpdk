@@ -473,6 +473,12 @@ F: drivers/net/mrvl/
 F: doc/guides/nics/mrvl.rst
 F: doc/guides/nics/features/mrvl.ini
 
+Microsoft vdev_netvsc - EXPERIMENTAL
+M: Matan Azrad <matan@mellanox.com>
+F: drivers/net/vdev_netvsc/
+F: doc/guides/nics/vdev_netvsc.rst
+F: doc/guides/nics/features/vdev_netvsc.ini
+
 Netcope szedata2
 M: Matej Vido <vido@cesnet.cz>
 F: drivers/net/szedata2/
