@@ -172,6 +172,7 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint32_t buffsz, frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
 	size_t i;
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -197,15 +198,15 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 
 	if (frame_size > ETHER_MAX_LEN)
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		rxmode->offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		rxmode->offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	if (nicvf_mbox_update_hw_max_frs(nic, frame_size))
 		return -EINVAL;
 
 	/* Update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = (uint32_t)frame_size;
+	rxmode->max_rx_pkt_len = (uint32_t)frame_size;
 	nic->mtu = mtu;
 
 	for (i = 0; i < nic->sqs_count; i++)
@@ -896,7 +897,7 @@ nicvf_set_tx_function(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		if ((txq->txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS) == 0) {
+		if (txq->offloads & DEV_TX_OFFLOAD_MULTI_SEGS) {
 			multiseg = true;
 			break;
 		}
@@ -935,9 +936,10 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 			 const struct rte_eth_txconf *tx_conf)
 {
 	uint16_t tx_free_thresh;
-	uint8_t is_single_pool;
+	bool is_single_pool;
 	struct nicvf_txq *txq;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint64_t conf_offloads, offload_capa, unsupported_offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -950,6 +952,17 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	if (socket_id != (unsigned int)SOCKET_ID_ANY && socket_id != nic->node)
 		PMD_DRV_LOG(WARNING, "socket_id expected %d, configured %d",
 		socket_id, nic->node);
+
+	conf_offloads = tx_conf->offloads;
+	offload_capa = NICVF_TX_OFFLOAD_CAPA;
+
+	unsupported_offloads = conf_offloads & ~offload_capa;
+	if (unsupported_offloads) {
+		PMD_INIT_LOG(ERR, "Tx offloads 0x%" PRIx64 " are not supported."
+		      "Requested 0x%" PRIx64 " supported 0x%" PRIx64 ".\n",
+		      unsupported_offloads, conf_offloads, offload_capa);
+		return -ENOTSUP;
+	}
 
 	/* Tx deferred start is not supported */
 	if (tx_conf->tx_deferred_start) {
@@ -1000,11 +1013,11 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	txq->nic = nic;
 	txq->queue_id = qidx;
 	txq->tx_free_thresh = tx_free_thresh;
-	txq->txq_flags = tx_conf->txq_flags;
 	txq->sq_head = nicvf_qset_base(nic, qidx) + NIC_QSET_SQ_0_7_HEAD;
 	txq->sq_door = nicvf_qset_base(nic, qidx) + NIC_QSET_SQ_0_7_DOOR;
-	is_single_pool = (txq->txq_flags & ETH_TXQ_FLAGS_NOREFCOUNT &&
-				txq->txq_flags & ETH_TXQ_FLAGS_NOMULTMEMP);
+	txq->offloads = conf_offloads;
+
+	is_single_pool = !!(conf_offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE);
 
 	/* Choose optimum free threshold value for multipool case */
 	if (!is_single_pool) {
@@ -1035,9 +1048,10 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 
 	nicvf_tx_queue_reset(txq);
 
-	PMD_TX_LOG(DEBUG, "[%d] txq=%p nb_desc=%d desc=%p phys=0x%" PRIx64,
+	PMD_INIT_LOG(DEBUG, "[%d] txq=%p nb_desc=%d desc=%p"
+			" phys=0x%" PRIx64 " offloads=0x%" PRIx64,
 			nicvf_netdev_qidx(nic, qidx), txq, nb_desc, txq->desc,
-			txq->phys);
+			txq->phys, txq->offloads);
 
 	dev->data->tx_queues[nicvf_netdev_qidx(nic, qidx)] = txq;
 	dev->data->tx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
@@ -1263,6 +1277,7 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	uint16_t rx_free_thresh;
 	struct nicvf_rxq *rxq;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint64_t conf_offloads, offload_capa, unsupported_offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1275,6 +1290,24 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	if (socket_id != (unsigned int)SOCKET_ID_ANY && socket_id != nic->node)
 		PMD_DRV_LOG(WARNING, "socket_id expected %d, configured %d",
 		socket_id, nic->node);
+
+
+	conf_offloads = rx_conf->offloads;
+
+	if (conf_offloads & DEV_RX_OFFLOAD_CHECKSUM) {
+		PMD_INIT_LOG(NOTICE, "Rx checksum not supported");
+		conf_offloads &= ~DEV_RX_OFFLOAD_CHECKSUM;
+	}
+
+	offload_capa = NICVF_RX_OFFLOAD_CAPA;
+	unsupported_offloads = conf_offloads & ~offload_capa;
+
+	if (unsupported_offloads) {
+		PMD_INIT_LOG(ERR, "Rx offloads 0x%" PRIx64 " are not supported. "
+		      "Requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
+		      unsupported_offloads, conf_offloads, offload_capa);
+		return -ENOTSUP;
+	}
 
 	/* Mempool memory must be contiguous, so must be one memory segment*/
 	if (mp->nb_mem_chunks != 1) {
@@ -1356,9 +1389,10 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 
 	nicvf_rx_queue_reset(rxq);
 
-	PMD_RX_LOG(DEBUG, "[%d] rxq=%p pool=%s nb_desc=(%d/%d) phy=%" PRIx64,
+	PMD_INIT_LOG(DEBUG, "[%d] rxq=%p pool=%s nb_desc=(%d/%d)"
+			" phy=0x%" PRIx64 " offloads=0x%" PRIx64,
 			nicvf_netdev_qidx(nic, qidx), rxq, mp->name, nb_desc,
-			rte_mempool_avail_count(mp), rxq->phys);
+			rte_mempool_avail_count(mp), rxq->phys, conf_offloads);
 
 	dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)] = rxq;
 	dev->data->rx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
@@ -1392,13 +1426,10 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_vfs = pci_dev->max_vfs;
 
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
-	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_IPV4_CKSUM  |
-		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_TSO     |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+	dev_info->rx_offload_capa = NICVF_RX_OFFLOAD_CAPA;
+	dev_info->tx_offload_capa = NICVF_TX_OFFLOAD_CAPA;
+	dev_info->rx_queue_offload_capa = NICVF_RX_OFFLOAD_CAPA;
+	dev_info->tx_queue_offload_capa = NICVF_TX_OFFLOAD_CAPA;
 
 	dev_info->reta_size = nic->rss_info.rss_size;
 	dev_info->hash_key_size = RSS_HASH_KEY_BYTE_SIZE;
@@ -1409,6 +1440,7 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = NICVF_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -1419,6 +1451,10 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			ETH_TXQ_FLAGS_NOMULTMEMP  |
 			ETH_TXQ_FLAGS_NOVLANOFFL  |
 			ETH_TXQ_FLAGS_NOXSUMSCTP,
+		.offloads = DEV_TX_OFFLOAD_MBUF_FAST_FREE |
+			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM   |
+			DEV_TX_OFFLOAD_UDP_CKSUM          |
+			DEV_TX_OFFLOAD_TCP_CKSUM,
 	};
 }
 
@@ -1459,6 +1495,7 @@ nicvf_vf_start(struct rte_eth_dev *dev, struct nicvf *nic, uint32_t rbdrsz)
 	struct rte_mbuf *mbuf;
 	uint16_t rx_start, rx_end;
 	uint16_t tx_start, tx_end;
+	bool vlan_strip;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1578,7 +1615,9 @@ nicvf_vf_start(struct rte_eth_dev *dev, struct nicvf *nic, uint32_t rbdrsz)
 		     nic->rbdr->tail, nb_rbdr_desc, nic->vf_id);
 
 	/* Configure VLAN Strip */
-	nicvf_vlan_hw_strip(nic, dev->data->dev_conf.rxmode.hw_vlan_strip);
+	vlan_strip = !!(dev->data->dev_conf.rxmode.offloads &
+			DEV_RX_OFFLOAD_VLAN_STRIP);
+	nicvf_vlan_hw_strip(nic, vlan_strip);
 
 	/* Based on the packet type(IPv4 or IPv6), the nicvf HW aligns L3 data
 	 * to the 64bit memory address.
@@ -1706,11 +1745,11 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len +
 					    2 * VLAN_TAG_SIZE > buffsz)
 		dev->data->scattered_rx = 1;
-	if (rx_conf->enable_scatter)
+	if ((rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) != 0)
 		dev->data->scattered_rx = 1;
 
 	/* Setup MTU based on max_rx_pkt_len or default */
-	mtu = dev->data->dev_conf.rxmode.jumbo_frame ?
+	mtu = dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME ?
 		dev->data->dev_conf.rxmode.max_rx_pkt_len
 			-  ETHER_HDR_LEN - ETHER_CRC_LEN
 		: ETHER_MTU;
@@ -1884,12 +1923,44 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_txmode *txmode = &conf->txmode;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint8_t cqcount;
+	uint64_t conf_rx_offloads, rx_offload_capa;
+	uint64_t conf_tx_offloads, tx_offload_capa;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (!rte_eal_has_hugepages()) {
 		PMD_INIT_LOG(INFO, "Huge page is not configured");
 		return -EINVAL;
+	}
+
+	conf_tx_offloads = dev->data->dev_conf.txmode.offloads;
+	tx_offload_capa = NICVF_TX_OFFLOAD_CAPA;
+
+	if ((conf_tx_offloads & tx_offload_capa) != conf_tx_offloads) {
+		PMD_INIT_LOG(ERR, "Some Tx offloads are not supported "
+		      "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
+		      conf_tx_offloads, tx_offload_capa);
+		return -ENOTSUP;
+	}
+
+	if (rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM) {
+		PMD_INIT_LOG(NOTICE, "Rx checksum not supported");
+		rxmode->offloads &= ~DEV_RX_OFFLOAD_CHECKSUM;
+	}
+
+	conf_rx_offloads = rxmode->offloads;
+	rx_offload_capa = NICVF_RX_OFFLOAD_CAPA;
+
+	if ((conf_rx_offloads & rx_offload_capa) != conf_rx_offloads) {
+		PMD_INIT_LOG(ERR, "Some Rx offloads are not supported "
+		      "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
+		      conf_rx_offloads, rx_offload_capa);
+		return -ENOTSUP;
+	}
+
+	if ((conf_rx_offloads & DEV_RX_OFFLOAD_CRC_STRIP) == 0) {
+		PMD_INIT_LOG(NOTICE, "Can't disable hw crc strip");
+		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 
 	if (txmode->mq_mode) {
@@ -1903,33 +1974,8 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (!rxmode->hw_strip_crc) {
-		PMD_INIT_LOG(NOTICE, "Can't disable hw crc strip");
-		rxmode->hw_strip_crc = 1;
-	}
-
-	if (rxmode->hw_ip_checksum) {
-		PMD_INIT_LOG(NOTICE, "Rxcksum not supported");
-		rxmode->hw_ip_checksum = 0;
-	}
-
 	if (rxmode->split_hdr_size) {
 		PMD_INIT_LOG(INFO, "Rxmode does not support split header");
-		return -EINVAL;
-	}
-
-	if (rxmode->hw_vlan_filter) {
-		PMD_INIT_LOG(INFO, "VLAN filter not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->hw_vlan_extend) {
-		PMD_INIT_LOG(INFO, "VLAN extended not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->enable_lro) {
-		PMD_INIT_LOG(INFO, "LRO not supported");
 		return -EINVAL;
 	}
 

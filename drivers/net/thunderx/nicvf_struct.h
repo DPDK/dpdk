@@ -39,7 +39,7 @@ struct nicvf_txq {
 	uint32_t tail;
 	int32_t xmit_bufs;
 	uint32_t qlen_mask;
-	uint32_t txq_flags;
+	uint64_t offloads;
 	uint16_t queue_id;
 	uint16_t tx_free_thresh;
 } __rte_cache_aligned;
