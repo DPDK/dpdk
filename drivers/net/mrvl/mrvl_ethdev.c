@@ -379,7 +379,7 @@ mrvl_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 
 	if (!priv->ppio)
-		return -EPERM;
+		return 0;
 
 	ret = pp2_ppio_set_mru(priv->ppio, mru);
 	if (ret)
