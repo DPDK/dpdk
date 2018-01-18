@@ -407,7 +407,7 @@ failsafe_args_free(struct rte_eth_dev *dev)
 	uint8_t i;
 
 	FOREACH_SUBDEV(sdev, i, dev) {
-		rte_free(sdev->cmdline);
+		free(sdev->cmdline);
 		sdev->cmdline = NULL;
 		free(sdev->devargs.args);
 		sdev->devargs.args = NULL;
