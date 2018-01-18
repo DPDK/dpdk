@@ -315,6 +315,18 @@ rte_security_session_update(struct rte_security_ctx *instance,
 			    struct rte_security_session_conf *conf);
 
 /**
+ * Get the size of the security session data for a device.
+ *
+ * @param   instance	security instance.
+ *
+ * @return
+ *   - Size of the private data, if successful
+ *   - 0 if device is invalid or does not support the operation.
+ */
+unsigned int
+rte_security_session_get_size(struct rte_security_ctx *instance);
+
+/**
  * Free security session header and the session private data and
  * return it to its original mempool.
  *

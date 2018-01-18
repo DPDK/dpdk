@@ -91,6 +91,18 @@ typedef int (*security_session_destroy_t)(void *device,
 typedef int (*security_session_update_t)(void *device,
 		struct rte_security_session *sess,
 		struct rte_security_session_conf *conf);
+
+/**
+ * Get the size of a security session
+ *
+ * @param	device		Crypto/eth device pointer
+ *
+ * @return
+ *  - On success returns the size of the session structure for device
+ *  - On failure returns 0
+ */
+typedef unsigned int (*security_session_get_size)(void *device);
+
 /**
  * Get stats from the PMD.
  *
@@ -155,6 +167,8 @@ struct rte_security_ops {
 	/**< Configure a security session. */
 	security_session_update_t session_update;
 	/**< Update a security session. */
+	security_session_get_size session_get_size;
+	/**< Return size of security session. */
 	security_session_stats_get_t session_stats_get;
 	/**< Get security session statistics. */
 	security_session_destroy_t session_destroy;

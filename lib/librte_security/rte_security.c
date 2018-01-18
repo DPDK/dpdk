@@ -70,6 +70,13 @@ rte_security_session_update(struct rte_security_ctx *instance,
 	return instance->ops->session_update(instance->device, sess, conf);
 }
 
+unsigned int
+rte_security_session_get_size(struct rte_security_ctx *instance)
+{
+	RTE_FUNC_PTR_OR_ERR_RET(*instance->ops->session_get_size, 0);
+	return instance->ops->session_get_size(instance->device);
+}
+
 int
 rte_security_session_stats_get(struct rte_security_ctx *instance,
 			       struct rte_security_session *sess,
