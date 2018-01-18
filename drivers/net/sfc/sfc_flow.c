@@ -1104,8 +1104,6 @@ sfc_flow_parse(struct rte_eth_dev *dev,
 	struct sfc_adapter *sa = dev->data->dev_private;
 	int rc;
 
-	memset(&flow->spec, 0, sizeof(flow->spec));
-
 	rc = sfc_flow_parse_attr(attr, flow, error);
 	if (rc != 0)
 		goto fail_bad_value;
@@ -1137,6 +1135,8 @@ sfc_flow_validate(struct rte_eth_dev *dev,
 		  struct rte_flow_error *error)
 {
 	struct rte_flow flow;
+
+	memset(&flow, 0, sizeof(flow));
 
 	return sfc_flow_parse(dev, attr, pattern, actions, &flow, error);
 }
