@@ -39,6 +39,7 @@
 #define VDEV_NETVSC_PROBE_MS 1000
 
 #define NETVSC_CLASS_ID "{f8615163-df3e-46c5-913f-f2d2f965ed0e}"
+#define NETVSC_MAX_ROUTE_LINE_SIZE 300
 
 #define DRV_LOG(level, ...) \
 	rte_log(RTE_LOG_ ## level, \
@@ -194,6 +195,44 @@ vdev_netvsc_iface_is_netvsc(const struct if_nameindex *iface)
 		rte_errno = errno;
 	ret = len == (int)strlen(NETVSC_CLASS_ID);
 	fclose(f);
+	return ret;
+}
+
+/**
+ * Determine if a network interface has a route.
+ *
+ * @param[in] name
+ *   Network device name.
+ *
+ * @return
+ *   A nonzero value when interface has an route. In case of error,
+ *   rte_errno is updated and 0 returned.
+ */
+static int
+vdev_netvsc_has_route(const char *name)
+{
+	FILE *fp;
+	int ret = 0;
+	char route[NETVSC_MAX_ROUTE_LINE_SIZE];
+	char *netdev;
+
+	fp = fopen("/proc/net/route", "r");
+	if (!fp) {
+		rte_errno = errno;
+		return 0;
+	}
+	while (fgets(route, NETVSC_MAX_ROUTE_LINE_SIZE, fp) != NULL) {
+		netdev = strtok(route, "\t");
+		if (strcmp(netdev, name) == 0) {
+			ret = 1;
+			break;
+		}
+		/* Move file pointer to the next line. */
+		while (strchr(route, '\n') == NULL &&
+		       fgets(route, NETVSC_MAX_ROUTE_LINE_SIZE, fp) != NULL)
+			;
+	}
+	fclose(fp);
 	return ret;
 }
 
@@ -458,6 +497,13 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 			" skipping",
 			iface->if_name, iface->if_index);
 		return 0;
+	}
+	/* Routed NetVSC should not be probed. */
+	if (vdev_netvsc_has_route(iface->if_name)) {
+		DRV_LOG(WARNING, "NetVSC interface \"%s\" (index %u) is routed",
+			iface->if_name, iface->if_index);
+		if (!specified)
+			return 0;
 	}
 	/* Create interface context. */
 	ctx = calloc(1, sizeof(*ctx));

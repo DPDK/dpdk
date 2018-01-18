@@ -87,4 +87,4 @@ The following device parameters are supported:
   MAC address.
 
 Not specifying either ``iface`` or ``mac`` makes this driver attach itself to
-all NetVSC interfaces found on the system.
+all unrouted NetVSC interfaces found on the system.
