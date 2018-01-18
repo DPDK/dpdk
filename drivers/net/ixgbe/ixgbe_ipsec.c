@@ -402,6 +402,12 @@ ixgbe_crypto_create_session(void *device,
 	return 0;
 }
 
+static unsigned int
+ixgbe_crypto_session_get_size(__rte_unused void *device)
+{
+	return sizeof(struct ixgbe_crypto_session);
+}
+
 static int
 ixgbe_crypto_remove_session(void *device,
 		struct rte_security_session *session)
@@ -674,6 +680,7 @@ ixgbe_crypto_add_ingress_sa_from_flow(const void *sess,
 static struct rte_security_ops ixgbe_security_ops = {
 	.session_create = ixgbe_crypto_create_session,
 	.session_update = NULL,
+	.session_get_size = ixgbe_crypto_session_get_size,
 	.session_stats_get = NULL,
 	.session_destroy = ixgbe_crypto_remove_session,
 	.set_pkt_metadata = ixgbe_crypto_update_mb,
