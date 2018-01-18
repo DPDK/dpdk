@@ -30,13 +30,16 @@
 #include <rte_errno.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
+#include <rte_hypervisor.h>
 #include <rte_kvargs.h>
 #include <rte_log.h>
 
 #define VDEV_NETVSC_DRIVER net_vdev_netvsc
+#define VDEV_NETVSC_DRIVER_NAME RTE_STR(VDEV_NETVSC_DRIVER)
 #define VDEV_NETVSC_ARG_IFACE "iface"
 #define VDEV_NETVSC_ARG_MAC "mac"
 #define VDEV_NETVSC_ARG_FORCE "force"
+#define VDEV_NETVSC_ARG_IGNORE "ignore"
 #define VDEV_NETVSC_PROBE_MS 1000
 
 #define NETVSC_CLASS_ID "{f8615163-df3e-46c5-913f-f2d2f965ed0e}"
@@ -45,7 +48,7 @@
 #define DRV_LOG(level, ...) \
 	rte_log(RTE_LOG_ ## level, \
 		vdev_netvsc_logtype, \
-		RTE_FMT(RTE_STR(VDEV_NETVSC_DRIVER) ": " \
+		RTE_FMT(VDEV_NETVSC_DRIVER_NAME ": " \
 			RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 		RTE_FMT_TAIL(__VA_ARGS__,)))
 
@@ -601,6 +604,7 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 		VDEV_NETVSC_ARG_IFACE,
 		VDEV_NETVSC_ARG_MAC,
 		VDEV_NETVSC_ARG_FORCE,
+		VDEV_NETVSC_ARG_IGNORE,
 		NULL,
 	};
 	const char *name = rte_vdev_device_name(dev);
@@ -610,6 +614,7 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 	unsigned int specified = 0;
 	unsigned int matched = 0;
 	int force = 0;
+	int ignore = 0;
 	unsigned int i;
 	int ret;
 
@@ -623,9 +628,16 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 
 		if (!strcmp(pair->key, VDEV_NETVSC_ARG_FORCE))
 			force = !!atoi(pair->value);
+		else if (!strcmp(pair->key, VDEV_NETVSC_ARG_IGNORE))
+			ignore = !!atoi(pair->value);
 		else if (!strcmp(pair->key, VDEV_NETVSC_ARG_IFACE) ||
 			 !strcmp(pair->key, VDEV_NETVSC_ARG_MAC))
 			++specified;
+	}
+	if (ignore) {
+		if (kvargs)
+			rte_kvargs_free(kvargs);
+		return 0;
 	}
 	rte_eal_alarm_cancel(vdev_netvsc_alarm, NULL);
 	/* Gather interfaces. */
@@ -690,7 +702,8 @@ RTE_PMD_REGISTER_ALIAS(VDEV_NETVSC_DRIVER, eth_vdev_netvsc);
 RTE_PMD_REGISTER_PARAM_STRING(net_vdev_netvsc,
 			      VDEV_NETVSC_ARG_IFACE "=<string> "
 			      VDEV_NETVSC_ARG_MAC "=<string> "
-			      VDEV_NETVSC_ARG_FORCE "=<int>");
+			      VDEV_NETVSC_ARG_FORCE "=<int> "
+			      VDEV_NETVSC_ARG_IGNORE "=<int>");
 
 /** Initialize driver log type. */
 RTE_INIT(vdev_netvsc_init_log)
@@ -698,4 +711,42 @@ RTE_INIT(vdev_netvsc_init_log)
 	vdev_netvsc_logtype = rte_log_register("pmd.vdev_netvsc");
 	if (vdev_netvsc_logtype >= 0)
 		rte_log_set_level(vdev_netvsc_logtype, RTE_LOG_NOTICE);
+}
+
+/** Compare function for vdev find device operation. */
+static int
+vdev_netvsc_cmp_rte_device(const struct rte_device *dev1,
+			   __rte_unused const void *_dev2)
+{
+	return strcmp(dev1->devargs->name, VDEV_NETVSC_DRIVER_NAME);
+}
+
+/**
+ * A callback called by vdev bus scan function to ensure this driver probing
+ * automatically in Hyper-V VM system unless it already exists in the
+ * devargs list.
+ */
+static void
+vdev_netvsc_scan_callback(__rte_unused void *arg)
+{
+	struct rte_vdev_device *dev;
+	struct rte_devargs *devargs;
+	struct rte_bus *vbus = rte_bus_find_by_name("vdev");
+
+	TAILQ_FOREACH(devargs, &devargs_list, next)
+		if (!strcmp(devargs->name, VDEV_NETVSC_DRIVER_NAME))
+			return;
+	dev = (struct rte_vdev_device *)vbus->find_device(NULL,
+		vdev_netvsc_cmp_rte_device, VDEV_NETVSC_DRIVER_NAME);
+	if (dev)
+		return;
+	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, VDEV_NETVSC_DRIVER_NAME))
+		DRV_LOG(ERR, "unable to add netvsc devargs.");
+}
+
+/** Initialize the custom scan. */
+RTE_INIT(vdev_netvsc_custom_scan_add)
+{
+	if (rte_hypervisor_get() == RTE_HYPERVISOR_HYPERV)
+		rte_vdev_add_custom_scan(vdev_netvsc_scan_callback, NULL);
 }

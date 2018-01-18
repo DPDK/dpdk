@@ -71,8 +71,8 @@ Build options
 Run-time parameters
 -------------------
 
-To invoke this driver, applications have to explicitly provide the
-``--vdev=net_vdev_netvsc`` EAL option.
+This driver is invoked automatically in Hyper-V VM systems unless the user
+invoked it by command line using ``--vdev=net_vdev_netvsc`` EAL option.
 
 The following device parameters are supported:
 
@@ -90,6 +90,11 @@ The following device parameters are supported:
 
   If nonzero, forces the use of specified interfaces even if not detected as
   NetVSC or detected as routed NETVSC.
+
+- ``ignore`` [int]
+
+  If nonzero, ignores the driver runnig (actually used to disable the
+  auto-detection in Hyper-V VM).
 
 Not specifying either ``iface`` or ``mac`` makes this driver attach itself to
 all unrouted NetVSC interfaces found on the system.
