@@ -687,15 +687,37 @@ static struct rte_security_ops ixgbe_security_ops = {
 	.capabilities_get = ixgbe_crypto_capabilities_get
 };
 
-struct rte_security_ctx *
+static int
+ixgbe_crypto_capable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t reg_i, reg, capable = 1;
+	/* test if rx crypto can be enabled and then write back initial value*/
+	reg_i = IXGBE_READ_REG(hw, IXGBE_SECRXCTRL);
+	IXGBE_WRITE_REG(hw, IXGBE_SECRXCTRL, 0);
+	reg = IXGBE_READ_REG(hw, IXGBE_SECRXCTRL);
+	if (reg != 0)
+		capable = 0;
+	IXGBE_WRITE_REG(hw, IXGBE_SECRXCTRL, reg_i);
+	return capable;
+}
+
+int
 ixgbe_ipsec_ctx_create(struct rte_eth_dev *dev)
 {
-	struct rte_security_ctx *ctx = rte_malloc("rte_security_instances_ops",
-					sizeof(struct rte_security_ctx), 0);
-	if (ctx) {
-		ctx->device = (void *)dev;
-		ctx->ops = &ixgbe_security_ops;
-		ctx->sess_cnt = 0;
+	struct rte_security_ctx *ctx = NULL;
+
+	if (ixgbe_crypto_capable(dev)) {
+		ctx = rte_malloc("rte_security_instances_ops",
+				 sizeof(struct rte_security_ctx), 0);
+		if (ctx) {
+			ctx->device = (void *)dev;
+			ctx->ops = &ixgbe_security_ops;
+			ctx->sess_cnt = 0;
+			dev->security_ctx = ctx;
+		} else {
+			return -ENOMEM;
+		}
 	}
-	return ctx;
+	return 0;
 }

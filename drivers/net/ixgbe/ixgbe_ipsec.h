@@ -106,8 +106,7 @@ struct ixgbe_ipsec {
 };
 
 
-struct rte_security_ctx *
-ixgbe_ipsec_ctx_create(struct rte_eth_dev *dev);
+int ixgbe_ipsec_ctx_create(struct rte_eth_dev *dev);
 int ixgbe_crypto_enable_ipsec(struct rte_eth_dev *dev);
 int ixgbe_crypto_add_ingress_sa_from_flow(const void *sess,
 					  const void *ip_spec,
