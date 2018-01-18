@@ -981,6 +981,11 @@ struct rte_eth_conf {
  */
 #define DEV_TX_OFFLOAD_SECURITY         0x00020000
 
+/*
+ * If new Tx offload capabilities are defined, they also must be
+ * mentioned in rte_tx_offload_names in rte_ethdev.c file.
+ */
+
 struct rte_pci_device;
 
 /**
@@ -1939,6 +1944,19 @@ uint32_t rte_eth_speed_bitflag(uint32_t speed, int duplex);
  *   Offload name or 'UNKNOWN' if the flag cannot be recognised.
  */
 const char *rte_eth_dev_rx_offload_name(uint64_t offload);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get DEV_TX_OFFLOAD_* flag name.
+ *
+ * @param offload
+ *   Offload flag.
+ * @return
+ *   Offload name or 'UNKNOWN' if the flag cannot be recognised.
+ */
+const char *rte_eth_dev_tx_offload_name(uint64_t offload);
 
 /**
  * Configure an Ethernet device.

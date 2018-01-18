@@ -117,6 +117,35 @@ static const struct {
 
 #undef RTE_RX_OFFLOAD_BIT2STR
 
+#define RTE_TX_OFFLOAD_BIT2STR(_name)	\
+	{ DEV_TX_OFFLOAD_##_name, #_name }
+
+static const struct {
+	uint64_t offload;
+	const char *name;
+} rte_tx_offload_names[] = {
+	RTE_TX_OFFLOAD_BIT2STR(VLAN_INSERT),
+	RTE_TX_OFFLOAD_BIT2STR(IPV4_CKSUM),
+	RTE_TX_OFFLOAD_BIT2STR(UDP_CKSUM),
+	RTE_TX_OFFLOAD_BIT2STR(TCP_CKSUM),
+	RTE_TX_OFFLOAD_BIT2STR(SCTP_CKSUM),
+	RTE_TX_OFFLOAD_BIT2STR(TCP_TSO),
+	RTE_TX_OFFLOAD_BIT2STR(UDP_TSO),
+	RTE_TX_OFFLOAD_BIT2STR(OUTER_IPV4_CKSUM),
+	RTE_TX_OFFLOAD_BIT2STR(QINQ_INSERT),
+	RTE_TX_OFFLOAD_BIT2STR(VXLAN_TNL_TSO),
+	RTE_TX_OFFLOAD_BIT2STR(GRE_TNL_TSO),
+	RTE_TX_OFFLOAD_BIT2STR(IPIP_TNL_TSO),
+	RTE_TX_OFFLOAD_BIT2STR(GENEVE_TNL_TSO),
+	RTE_TX_OFFLOAD_BIT2STR(MACSEC_INSERT),
+	RTE_TX_OFFLOAD_BIT2STR(MT_LOCKFREE),
+	RTE_TX_OFFLOAD_BIT2STR(MULTI_SEGS),
+	RTE_TX_OFFLOAD_BIT2STR(MBUF_FAST_FREE),
+	RTE_TX_OFFLOAD_BIT2STR(SECURITY),
+};
+
+#undef RTE_TX_OFFLOAD_BIT2STR
+
 /**
  * The user application callback description.
  *
@@ -782,6 +811,22 @@ rte_eth_dev_rx_offload_name(uint64_t offload)
 	for (i = 0; i < RTE_DIM(rte_rx_offload_names); ++i) {
 		if (offload == rte_rx_offload_names[i].offload) {
 			name = rte_rx_offload_names[i].name;
+			break;
+		}
+	}
+
+	return name;
+}
+
+const char *
+rte_eth_dev_tx_offload_name(uint64_t offload)
+{
+	const char *name = "UNKNOWN";
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(rte_tx_offload_names); ++i) {
+		if (offload == rte_tx_offload_names[i].offload) {
+			name = rte_tx_offload_names[i].name;
 			break;
 		}
 	}
