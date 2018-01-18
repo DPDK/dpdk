@@ -61,7 +61,7 @@ struct mbox_ram_hdr {
 };
 
 static inline void
-mbox_msgcpy(uint8_t *d, const uint8_t *s, uint16_t size)
+mbox_msgcpy(volatile uint8_t *d, volatile const uint8_t *s, uint16_t size)
 {
 	uint16_t i;
 
