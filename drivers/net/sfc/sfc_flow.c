@@ -999,7 +999,7 @@ fail_scale_tbl_set:
 fail_filter_insert:
 fail_scale_key_set:
 fail_scale_mode_set:
-	if (rss != NULL)
+	if (flow->rss)
 		efx_rx_scale_context_free(sa->nic, spec->efs_rss_context);
 
 fail_scale_context_alloc:
