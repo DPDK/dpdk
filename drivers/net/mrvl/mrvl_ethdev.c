@@ -909,7 +909,7 @@ mrvl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		return -1;
 
 	if (!priv->ppio)
-		return -EPERM;
+		return 0;
 
 	/*
 	 * Maximum number of uc addresses can be tuned via kernel module mvpp2x
