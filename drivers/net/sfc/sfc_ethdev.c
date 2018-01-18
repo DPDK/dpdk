@@ -104,14 +104,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	/* By default packets are dropped if no descriptors are available */
 	dev_info->default_rxconf.rx_drop_en = 1;
 
-	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM;
-
-	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
-	    (sa->dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+	dev_info->rx_offload_capa = sfc_rx_get_dev_offload_caps(sa);
 
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_IPV4_CKSUM |

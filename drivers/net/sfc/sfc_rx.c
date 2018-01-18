@@ -762,6 +762,23 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	sfc_ev_qstop(rxq->evq);
 }
 
+uint64_t
+sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint64_t caps = 0;
+
+	caps |= DEV_RX_OFFLOAD_IPV4_CKSUM;
+	caps |= DEV_RX_OFFLOAD_UDP_CKSUM;
+	caps |= DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	if (encp->enc_tunnel_encapsulations_supported &&
+	    (sa->dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
+		caps |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+	return caps;
+}
+
 static int
 sfc_rx_qcheck_conf(struct sfc_adapter *sa, unsigned int rxq_max_fill_level,
 		   const struct rte_eth_rxconf *rx_conf)
