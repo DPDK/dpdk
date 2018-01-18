@@ -143,6 +143,7 @@ int sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index);
 void sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
 
 uint64_t sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa);
+uint64_t sfc_rx_get_queue_offload_caps(struct sfc_adapter *sa);
 
 void sfc_rx_qflush_done(struct sfc_rxq *rxq);
 void sfc_rx_qflush_failed(struct sfc_rxq *rxq);

@@ -299,11 +299,12 @@ sfc_port_configure(struct sfc_adapter *sa)
 {
 	const struct rte_eth_dev_data *dev_data = sa->eth_dev->data;
 	struct sfc_port *port = &sa->port;
+	const struct rte_eth_rxmode *rxmode = &dev_data->dev_conf.rxmode;
 
 	sfc_log_init(sa, "entry");
 
-	if (dev_data->dev_conf.rxmode.jumbo_frame)
-		port->pdu = dev_data->dev_conf.rxmode.max_rx_pkt_len;
+	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
+		port->pdu = rxmode->max_rx_pkt_len;
 	else
 		port->pdu = EFX_MAC_PDU(dev_data->mtu);
 

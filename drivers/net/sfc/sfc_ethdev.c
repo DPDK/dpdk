@@ -104,7 +104,15 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	/* By default packets are dropped if no descriptors are available */
 	dev_info->default_rxconf.rx_drop_en = 1;
 
-	dev_info->rx_offload_capa = sfc_rx_get_dev_offload_caps(sa);
+	dev_info->rx_queue_offload_capa = sfc_rx_get_queue_offload_caps(sa);
+
+	/*
+	 * rx_offload_capa includes both device and queue offloads since
+	 * the latter may be requested on a per device basis which makes
+	 * sense when some offloads are needed to be set on all queues.
+	 */
+	dev_info->rx_offload_capa = sfc_rx_get_dev_offload_caps(sa) |
+				    dev_info->rx_queue_offload_capa;
 
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_IPV4_CKSUM |
@@ -882,7 +890,13 @@ sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	 * The driver does not use it, but other PMDs update jumbo_frame
 	 * flag and max_rx_pkt_len when MTU is set.
 	 */
-	dev->data->dev_conf.rxmode.jumbo_frame = (mtu > ETHER_MAX_LEN);
+	if (mtu > ETHER_MAX_LEN) {
+		struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+
+		rxmode->offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+		rxmode->jumbo_frame = 1;
+	}
+
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = sa->port.pdu;
 
 	sfc_adapter_unlock(sa);
@@ -1045,8 +1059,13 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	qinfo->conf.rx_free_thresh = rxq->refill_threshold;
 	qinfo->conf.rx_drop_en = 1;
 	qinfo->conf.rx_deferred_start = rxq_info->deferred_start;
-	qinfo->scattered_rx =
-		((rxq_info->type_flags & EFX_RXQ_FLAG_SCATTER) != 0);
+	qinfo->conf.offloads = DEV_RX_OFFLOAD_IPV4_CKSUM |
+			       DEV_RX_OFFLOAD_UDP_CKSUM |
+			       DEV_RX_OFFLOAD_TCP_CKSUM;
+	if (rxq_info->type_flags & EFX_RXQ_FLAG_SCATTER) {
+		qinfo->conf.offloads |= DEV_RX_OFFLOAD_SCATTER;
+		qinfo->scattered_rx = 1;
+	}
 	qinfo->nb_desc = rxq_info->entries;
 
 	sfc_adapter_unlock(sa);

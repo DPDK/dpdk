@@ -768,6 +768,8 @@ sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa)
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	uint64_t caps = 0;
 
+	caps |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	caps |= DEV_RX_OFFLOAD_CRC_STRIP;
 	caps |= DEV_RX_OFFLOAD_IPV4_CKSUM;
 	caps |= DEV_RX_OFFLOAD_UDP_CKSUM;
 	caps |= DEV_RX_OFFLOAD_TCP_CKSUM;
@@ -779,10 +781,62 @@ sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa)
 	return caps;
 }
 
+uint64_t
+sfc_rx_get_queue_offload_caps(struct sfc_adapter *sa)
+{
+	uint64_t caps = 0;
+
+	if (sa->dp_rx->features & SFC_DP_RX_FEAT_SCATTER)
+		caps |= DEV_RX_OFFLOAD_SCATTER;
+
+	return caps;
+}
+
+static void
+sfc_rx_log_offloads(struct sfc_adapter *sa, const char *offload_group,
+		    const char *verdict, uint64_t offloads)
+{
+	unsigned long long bit;
+
+	while ((bit = __builtin_ffsll(offloads)) != 0) {
+		uint64_t flag = (1ULL << --bit);
+
+		sfc_err(sa, "Rx %s offload %s %s", offload_group,
+			rte_eth_dev_rx_offload_name(flag), verdict);
+
+		offloads &= ~flag;
+	}
+}
+
+static boolean_t
+sfc_rx_queue_offloads_mismatch(struct sfc_adapter *sa, uint64_t requested)
+{
+	uint64_t mandatory = sa->eth_dev->data->dev_conf.rxmode.offloads;
+	uint64_t supported = sfc_rx_get_dev_offload_caps(sa) |
+			     sfc_rx_get_queue_offload_caps(sa);
+	uint64_t rejected = requested & ~supported;
+	uint64_t missing = (requested & mandatory) ^ mandatory;
+	boolean_t mismatch = B_FALSE;
+
+	if (rejected) {
+		sfc_rx_log_offloads(sa, "queue", "is unsupported", rejected);
+		mismatch = B_TRUE;
+	}
+
+	if (missing) {
+		sfc_rx_log_offloads(sa, "queue", "must be set", missing);
+		mismatch = B_TRUE;
+	}
+
+	return mismatch;
+}
+
 static int
 sfc_rx_qcheck_conf(struct sfc_adapter *sa, unsigned int rxq_max_fill_level,
 		   const struct rte_eth_rxconf *rx_conf)
 {
+	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
+				      sfc_rx_get_queue_offload_caps(sa);
 	int rc = 0;
 
 	if (rx_conf->rx_thresh.pthresh != 0 ||
@@ -803,6 +857,17 @@ sfc_rx_qcheck_conf(struct sfc_adapter *sa, unsigned int rxq_max_fill_level,
 		sfc_err(sa, "RxQ drop disable is not supported");
 		rc = EINVAL;
 	}
+
+	if ((rx_conf->offloads & DEV_RX_OFFLOAD_CHECKSUM) !=
+	    DEV_RX_OFFLOAD_CHECKSUM)
+		sfc_warn(sa, "Rx checksum offloads cannot be disabled - always on (IPv4/TCP/UDP)");
+
+	if ((offloads_supported & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) &&
+	    (~rx_conf->offloads & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM))
+		sfc_warn(sa, "Rx outer IPv4 checksum offload cannot be disabled - always on");
+
+	if (sfc_rx_queue_offloads_mismatch(sa, rx_conf->offloads))
+		rc = EINVAL;
 
 	return rc;
 }
@@ -946,7 +1011,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	}
 
 	if ((buf_size < sa->port.pdu + encp->enc_rx_prefix_size) &&
-	    !sa->eth_dev->data->dev_conf.rxmode.enable_scatter) {
+	    (~rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER)) {
 		sfc_err(sa, "Rx scatter is disabled and RxQ %u mbuf pool "
 			"object size is too small", sw_index);
 		sfc_err(sa, "RxQ %u calculated Rx buffer size is %u vs "
@@ -964,7 +1029,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq_info->entries = rxq_entries;
 	rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
 	rxq_info->type_flags =
-		sa->eth_dev->data->dev_conf.rxmode.enable_scatter ?
+		(rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) ?
 		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
 
 	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
@@ -1227,6 +1292,9 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 {
+	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
+				      sfc_rx_get_queue_offload_caps(sa);
+	uint64_t offloads_rejected = rxmode->offloads & ~offloads_supported;
 	int rc = 0;
 
 	switch (rxmode->mq_mode) {
@@ -1247,43 +1315,16 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		rc = EINVAL;
 	}
 
-	if (rxmode->header_split) {
-		sfc_err(sa, "Header split on Rx not supported");
+	if (offloads_rejected) {
+		sfc_rx_log_offloads(sa, "device", "is unsupported",
+				    offloads_rejected);
 		rc = EINVAL;
 	}
 
-	if (rxmode->hw_vlan_filter) {
-		sfc_err(sa, "HW VLAN filtering not supported");
-		rc = EINVAL;
-	}
-
-	if (rxmode->hw_vlan_strip) {
-		sfc_err(sa, "HW VLAN stripping not supported");
-		rc = EINVAL;
-	}
-
-	if (rxmode->hw_vlan_extend) {
-		sfc_err(sa,
-			"Q-in-Q HW VLAN stripping not supported");
-		rc = EINVAL;
-	}
-
-	if (!rxmode->hw_strip_crc) {
-		sfc_warn(sa,
-			 "FCS stripping control not supported - always stripped");
+	if (~rxmode->offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
+		sfc_warn(sa, "FCS stripping cannot be disabled - always on");
+		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 		rxmode->hw_strip_crc = 1;
-	}
-
-	if (rxmode->enable_scatter &&
-	    (~sa->dp_rx->features & SFC_DP_RX_FEAT_SCATTER)) {
-		sfc_err(sa, "Rx scatter not supported by %s datapath",
-			sa->dp_rx->dp.name);
-		rc = EINVAL;
-	}
-
-	if (rxmode->enable_lro) {
-		sfc_err(sa, "LRO not supported");
-		rc = EINVAL;
 	}
 
 	return rc;
