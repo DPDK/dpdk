@@ -114,20 +114,12 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_offload_capa = sfc_rx_get_dev_offload_caps(sa) |
 				    dev_info->rx_queue_offload_capa;
 
-	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM;
-
-	if (encp->enc_tunnel_encapsulations_supported != 0)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+	dev_info->tx_offload_capa = sfc_tx_get_dev_offload_caps(sa);
 
 	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOXSUMSCTP;
 	if ((~sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) ||
 	    !encp->enc_hw_tx_insert_vlan_enabled)
 		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOVLANOFFL;
-	else
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_VLAN_INSERT;
 
 	if (~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_SEG)
 		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
@@ -145,9 +137,6 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->flow_type_rss_offloads = SFC_RSS_OFFLOADS;
 	}
 #endif
-
-	if (sa->tso)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
 
 	/* Initialize to hardware limits */
 	dev_info->rx_desc_lim.nb_max = EFX_RXQ_MAXNDESCS;

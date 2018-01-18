@@ -34,6 +34,29 @@
  */
 #define SFC_TX_QFLUSH_POLL_ATTEMPTS	(2000)
 
+uint64_t
+sfc_tx_get_dev_offload_caps(struct sfc_adapter *sa)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint64_t caps = 0;
+
+	caps |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+	caps |= DEV_TX_OFFLOAD_UDP_CKSUM;
+	caps |= DEV_TX_OFFLOAD_TCP_CKSUM;
+
+	if (encp->enc_tunnel_encapsulations_supported)
+		caps |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+	if ((sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) &&
+	    encp->enc_hw_tx_insert_vlan_enabled)
+		caps |= DEV_TX_OFFLOAD_VLAN_INSERT;
+
+	if (sa->tso)
+		caps |= DEV_TX_OFFLOAD_TCP_TSO;
+
+	return caps;
+}
+
 static int
 sfc_tx_qcheck_conf(struct sfc_adapter *sa, unsigned int txq_max_fill_level,
 		   const struct rte_eth_txconf *tx_conf)
