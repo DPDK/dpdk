@@ -133,6 +133,12 @@ New Features
 
   * Added dynamic device personalization processing to i40e firmware.
 
+* **Updated i40e driver to support MPLSoUDP/MPLSoGRE.**
+
+  Updated i40e PMD to support MPLSoUDP/MPLSoGRE with MPLSoUDP/MPLSoGRE
+  supporting profiles which can be programmed by dynamic device personalization
+  (DDP) process.
+
 * **Added Cloud Filter for QinQ steering to i40e.**
 
   * Added a QinQ cloud filter on the i40e PMD, for steering traffic to a VM

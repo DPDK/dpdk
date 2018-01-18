@@ -210,6 +210,12 @@ New Features
 
   Updated ixgbe ethernet PMD to support ``rte_security`` inline IPSec offload.
 
+* **Updated i40e driver to support GTP-C/GTP-U.**
+
+  Updated i40e PMD to support GTP-C/GTP-U with GTP-C/GTP-U supporting
+  profiles which can be programmed by dynamic device personalization (DDP)
+  process.
+
 * **Updated ipsec-secgw application to support rte_security.**
 
   Updated the ``ipsec-secgw`` sample application to support ``rte_security``

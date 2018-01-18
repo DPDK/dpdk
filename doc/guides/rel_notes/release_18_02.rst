@@ -77,6 +77,12 @@ New Features
   configuration using rte_flow API.It also enable queue region configuration
   using flow API for i40e.
 
+* **Updated i40e driver to support PPPoE/PPPoL2TP.**
+
+  Updated i40e PMD to support PPPoE/PPPoL2TP with PPPoE/PPPoL2TP supporting
+  profiles which can be programmed by dynamic device personalization (DDP)
+  process.
+
 * **Added NVGRE and UDP tunnels support in Solarflare network PMD.**
 
   Added support for NVGRE, VXLAN and GENEVE tunnels.
