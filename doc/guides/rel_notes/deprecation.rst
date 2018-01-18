@@ -41,6 +41,15 @@ Deprecation Notices
 * eal: new ``numa_node_count`` member will be added to ``rte_config`` structure
   in v18.05.
 
+* eal: due to internal data layout reorganization, there will be changes to
+  several structures and functions as a result of coming changes to support
+  memory hotplug in v18.05.
+  ``rte_eal_get_physmem_layout`` will be deprecated and removed in subsequent
+  releases.
+  ``rte_mem_config`` contents will change due to switch to memseg lists.
+  ``rte_memzone`` member ``memseg_id`` will no longer serve any useful purpose
+  and will be removed.
+
 * ethdev: a new Tx and Rx offload API was introduced on 17.11.
   In the new API, offloads are divided into per-port and per-queue offloads.
   Offloads are disabled by default and enabled per application request.
