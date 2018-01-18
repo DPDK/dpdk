@@ -130,8 +130,6 @@ struct cdev_qp {
 	uint16_t in_flight;
 	uint16_t len;
 	struct rte_crypto_op *buf[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
-	struct rte_mbuf *ol_pkts[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
-	uint16_t ol_pkts_cnt;
 };
 
 struct ipsec_ctx {
@@ -143,6 +141,8 @@ struct ipsec_ctx {
 	uint16_t last_qp;
 	struct cdev_qp tbl[MAX_QP_PER_LCORE];
 	struct rte_mempool *session_pool;
+	struct rte_mbuf *ol_pkts[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
+	uint16_t ol_pkts_cnt;
 };
 
 struct cdev_key {

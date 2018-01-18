@@ -368,7 +368,6 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 	struct ipsec_mbuf_metadata *priv;
 	struct rte_crypto_sym_op *sym_cop;
 	struct ipsec_sa *sa;
-	struct cdev_qp *cqp;
 
 	for (i = 0; i < nb_pkts; i++) {
 		if (unlikely(sas[i] == NULL)) {
@@ -431,8 +430,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 				continue;
 			}
 
-			cqp = &ipsec_ctx->tbl[sa->cdev_id_qp];
-			cqp->ol_pkts[cqp->ol_pkts_cnt++] = pkts[i];
+			ipsec_ctx->ol_pkts[ipsec_ctx->ol_pkts_cnt++] = pkts[i];
 			if (sa->ol_flags & RTE_SECURITY_TX_OLOAD_NEED_MDATA)
 				rte_security_set_pkt_metadata(
 						sa->security_ctx,
@@ -459,8 +457,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 				continue;
 			}
 
-			cqp = &ipsec_ctx->tbl[sa->cdev_id_qp];
-			cqp->ol_pkts[cqp->ol_pkts_cnt++] = pkts[i];
+			ipsec_ctx->ol_pkts[ipsec_ctx->ol_pkts_cnt++] = pkts[i];
 			if (sa->ol_flags & RTE_SECURITY_TX_OLOAD_NEED_MDATA)
 				rte_security_set_pkt_metadata(
 						sa->security_ctx,
@@ -485,11 +482,10 @@ ipsec_dequeue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 
 	for (i = 0; i < ipsec_ctx->nb_qps && nb_pkts < max_pkts;) {
 		struct cdev_qp *cqp;
-
 		cqp = &ipsec_ctx->tbl[ipsec_ctx->last_qp];
 
-		while (cqp->ol_pkts_cnt > 0 && nb_pkts < max_pkts) {
-			pkt = cqp->ol_pkts[--cqp->ol_pkts_cnt];
+		while (ipsec_ctx->ol_pkts_cnt > 0 && nb_pkts < max_pkts) {
+			pkt = ipsec_ctx->ol_pkts[--ipsec_ctx->ol_pkts_cnt];
 			rte_prefetch0(pkt);
 			priv = get_priv(pkt);
 			sa = priv->sa;

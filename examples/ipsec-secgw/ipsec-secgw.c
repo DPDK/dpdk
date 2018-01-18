@@ -1354,7 +1354,7 @@ cryptodevs_init(void)
 	struct rte_cryptodev_config dev_conf;
 	struct rte_cryptodev_qp_conf qp_conf;
 	uint16_t idx, max_nb_qps, qp, i;
-	int16_t cdev_id;
+	int16_t cdev_id, port_id;
 	struct rte_hash_parameters params = { 0 };
 
 	params.entries = CDEV_MAP_ENTRIES;
@@ -1380,6 +1380,14 @@ cryptodevs_init(void)
 	uint32_t max_sess_sz = 0, sess_sz;
 	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
 		sess_sz = rte_cryptodev_get_private_session_size(cdev_id);
+		if (sess_sz > max_sess_sz)
+			max_sess_sz = sess_sz;
+	}
+	for (port_id = 0; port_id < rte_eth_dev_count(); port_id++) {
+		if ((enabled_port_mask & (1 << port_id)) == 0)
+			continue;
+		sess_sz = rte_security_session_get_size(
+				rte_eth_dev_get_sec_ctx(port_id));
 		if (sess_sz > max_sess_sz)
 			max_sess_sz = sess_sz;
 	}
@@ -1454,6 +1462,38 @@ cryptodevs_init(void)
 			rte_panic("Failed to start cryptodev %u\n",
 					cdev_id);
 	}
+
+	/* create session pools for eth devices that implement security */
+	for (port_id = 0; port_id < rte_eth_dev_count(); port_id++) {
+		if ((enabled_port_mask & (1 << port_id)) &&
+				rte_eth_dev_get_sec_ctx(port_id)) {
+			int socket_id = rte_eth_dev_socket_id(port_id);
+
+			if (!socket_ctx[socket_id].session_pool) {
+				char mp_name[RTE_MEMPOOL_NAMESIZE];
+				struct rte_mempool *sess_mp;
+
+				snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
+						"sess_mp_%u", socket_id);
+				sess_mp = rte_mempool_create(mp_name,
+						CDEV_MP_NB_OBJS,
+						max_sess_sz,
+						CDEV_MP_CACHE_SZ,
+						0, NULL, NULL, NULL,
+						NULL, socket_id,
+						0);
+				if (sess_mp == NULL)
+					rte_exit(EXIT_FAILURE,
+						"Cannot create session pool "
+						"on socket %d\n", socket_id);
+				else
+					printf("Allocated session pool "
+						"on socket %d\n", socket_id);
+				socket_ctx[socket_id].session_pool = sess_mp;
+			}
+		}
+	}
+
 
 	printf("\n");
 
