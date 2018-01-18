@@ -649,12 +649,24 @@ kni_net_rebuild_header(struct sk_buff *skb)
 static int
 kni_net_set_mac(struct net_device *netdev, void *p)
 {
+	int ret;
+	struct rte_kni_request req;
+	struct kni_dev *kni;
 	struct sockaddr *addr = p;
+
+	memset(&req, 0, sizeof(req));
+	req.req_id = RTE_KNI_REQ_CHANGE_MAC_ADDR;
 
 	if (!is_valid_ether_addr((unsigned char *)(addr->sa_data)))
 		return -EADDRNOTAVAIL;
+
+	memcpy(req.mac_addr, addr->sa_data, netdev->addr_len);
 	memcpy(netdev->dev_addr, addr->sa_data, netdev->addr_len);
-	return 0;
+
+	kni = netdev_priv(netdev);
+	ret = kni_net_process_request(kni, &req);
+
+	return (ret == 0 ? req.result : ret);
 }
 
 #ifdef HAVE_CHANGE_CARRIER_CB

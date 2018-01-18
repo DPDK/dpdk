@@ -20,6 +20,7 @@
 #include <rte_pci.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
+#include <rte_ether.h>
 
 #include <exec-env/rte_kni_common.h>
 
@@ -41,6 +42,9 @@ struct rte_kni_ops {
 
 	/* Pointer to function of configuring network interface */
 	int (*config_network_if)(uint16_t port_id, uint8_t if_up);
+
+	/* Pointer to function of configuring mac address */
+	int (*config_mac_address)(uint16_t port_id, uint8_t mac_addr[]);
 };
 
 /**
@@ -61,6 +65,7 @@ struct rte_kni_conf {
 
 	__extension__
 	uint8_t force_bind : 1; /* Flag to bind kernel thread */
+	char mac_addr[ETHER_ADDR_LEN]; /* MAC address assigned to KNI */
 };
 
 /**

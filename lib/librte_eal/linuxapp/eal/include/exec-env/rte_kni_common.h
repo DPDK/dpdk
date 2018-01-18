@@ -28,6 +28,7 @@ enum rte_kni_req_id {
 	RTE_KNI_REQ_UNKNOWN = 0,
 	RTE_KNI_REQ_CHANGE_MTU,
 	RTE_KNI_REQ_CFG_NETWORK_IF,
+	RTE_KNI_REQ_CHANGE_MAC_ADDR,
 	RTE_KNI_REQ_MAX,
 };
 
@@ -40,6 +41,7 @@ struct rte_kni_request {
 	union {
 		uint32_t new_mtu;    /**< New MTU */
 		uint8_t if_up;       /**< 1: interface up, 0: interface down */
+		uint8_t mac_addr[6]; /**< MAC address for interface */
 	};
 	int32_t result;               /**< Result for processing request */
 } __attribute__((__packed__));
@@ -116,6 +118,7 @@ struct rte_kni_device_info {
 
 	/* mbuf size */
 	unsigned mbuf_size;
+	char mac_addr[6];
 };
 
 #define KNI_DEVICE "kni"

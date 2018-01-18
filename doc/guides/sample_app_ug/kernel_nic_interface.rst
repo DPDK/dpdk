@@ -209,6 +209,12 @@ Dumping the network traffic:
 
     #tcpdump -i vEth0_0
 
+Change the MAC address:
+
+.. code-block:: console
+
+    #ifconfig vEth0_0 hw ether 0C:01:02:03:04:08
+
 When the DPDK userspace application is closed, all the KNI devices are deleted from Linux*.
 
 Explanation
@@ -269,11 +275,15 @@ The code for allocating the kernel NIC interfaces for a specific port is as foll
                     conf.addr = dev_info.pci_dev->addr;
                     conf.id = dev_info.pci_dev->id;
 
+                    /* Get the interface default mac address */
+                    rte_eth_macaddr_get(port_id, (struct ether_addr *)&conf.mac_addr);
+
                     memset(&ops, 0, sizeof(ops));
 
                     ops.port_id = port_id;
                     ops.change_mtu = kni_change_mtu;
                     ops.config_network_if = kni_config_network_interface;
+                    ops.config_mac_address = kni_config_mac_address;
 
                     kni = rte_kni_alloc(pktmbuf_pool, &conf, &ops);
                 } else
@@ -502,13 +512,20 @@ Callbacks for Kernel Requests
 
 To execute specific PMD operations in user space requested by some Linux* commands,
 callbacks must be implemented and filled in the struct rte_kni_ops structure.
-Currently, setting a new MTU and configuring the network interface (up/ down) are supported.
+Currently, setting a new MTU, change in MAC address and
+configuring the network interface(up/down) re supported.
+Default implementation for following is available in rte_kni library.
+Application may choose to not implement following callbacks:
+
+- ``config_mac_address``
+
 
 .. code-block:: c
 
     static struct rte_kni_ops kni_ops = {
         .change_mtu = kni_change_mtu,
         .config_network_if = kni_config_network_interface,
+        .config_mac_address = kni_config_mac_address,
     };
 
     /* Callback for request of changing MTU */
@@ -586,4 +603,12 @@ Currently, setting a new MTU and configuring the network interface (up/ down) ar
         if (ret < 0)
             RTE_LOG(ERR, APP, "Failed to start port %d\n", port_id);
         return ret;
+    }
+
+    /* Callback for request of configuring device mac address */
+
+    static int
+    kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[])
+    {
+        .....
     }

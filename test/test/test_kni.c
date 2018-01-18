@@ -74,6 +74,7 @@ static const struct rte_eth_conf port_conf = {
 static struct rte_kni_ops kni_ops = {
 	.change_mtu = NULL,
 	.config_network_if = NULL,
+	.config_mac_address = NULL,
 };
 
 static unsigned lcore_master, lcore_ingress, lcore_egress;
@@ -231,6 +232,7 @@ test_kni_register_handler_mp(void)
 		struct rte_kni_ops ops = {
 			.change_mtu = kni_change_mtu,
 			.config_network_if = NULL,
+			.config_mac_address = NULL,
 		};
 
 		if (!kni) {
