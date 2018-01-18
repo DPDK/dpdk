@@ -224,6 +224,12 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 				ret = rte_flow_validate(sa->portid, &sa->attr,
 							sa->pattern, sa->action,
 							&err);
+				/* Try End. */
+				sa->action[1].type = RTE_FLOW_ACTION_TYPE_END;
+				sa->action[1].conf = NULL;
+				ret = rte_flow_validate(sa->portid, &sa->attr,
+							sa->pattern, sa->action,
+							&err);
 				if (ret)
 					goto flow_create_failure;
 			} else if (sa->attr.egress &&
