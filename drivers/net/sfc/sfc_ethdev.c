@@ -83,6 +83,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint64_t txq_offloads_def = 0;
 
 	sfc_log_init(sa, "entry");
 
@@ -114,7 +115,20 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_offload_capa = sfc_rx_get_dev_offload_caps(sa) |
 				    dev_info->rx_queue_offload_capa;
 
-	dev_info->tx_offload_capa = sfc_tx_get_dev_offload_caps(sa);
+	dev_info->tx_queue_offload_capa = sfc_tx_get_queue_offload_caps(sa);
+
+	/*
+	 * tx_offload_capa includes both device and queue offloads since
+	 * the latter may be requested on a per device basis which makes
+	 * sense when some offloads are needed to be set on all queues.
+	 */
+	dev_info->tx_offload_capa = sfc_tx_get_dev_offload_caps(sa) |
+				    dev_info->tx_queue_offload_capa;
+
+	if (dev_info->tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		txq_offloads_def |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
+	dev_info->default_txconf.offloads |= txq_offloads_def;
 
 	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOXSUMSCTP;
 	if ((~sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) ||
@@ -1081,6 +1095,7 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	memset(qinfo, 0, sizeof(*qinfo));
 
 	qinfo->conf.txq_flags = txq_info->txq->flags;
+	qinfo->conf.offloads = txq_info->txq->offloads;
 	qinfo->conf.tx_free_thresh = txq_info->txq->free_thresh;
 	qinfo->conf.tx_deferred_start = txq_info->deferred_start;
 	qinfo->nb_desc = txq_info->entries;

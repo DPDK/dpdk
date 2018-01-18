@@ -40,6 +40,26 @@ sfc_tx_get_dev_offload_caps(struct sfc_adapter *sa)
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	uint64_t caps = 0;
 
+	if ((sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) &&
+	    encp->enc_hw_tx_insert_vlan_enabled)
+		caps |= DEV_TX_OFFLOAD_VLAN_INSERT;
+
+	if (sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_SEG)
+		caps |= DEV_TX_OFFLOAD_MULTI_SEGS;
+
+	if ((~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_POOL) &&
+	    (~sa->dp_tx->features & SFC_DP_TX_FEAT_REFCNT))
+		caps |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
+	return caps;
+}
+
+uint64_t
+sfc_tx_get_queue_offload_caps(struct sfc_adapter *sa)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint64_t caps = 0;
+
 	caps |= DEV_TX_OFFLOAD_IPV4_CKSUM;
 	caps |= DEV_TX_OFFLOAD_UDP_CKSUM;
 	caps |= DEV_TX_OFFLOAD_TCP_CKSUM;
@@ -47,22 +67,55 @@ sfc_tx_get_dev_offload_caps(struct sfc_adapter *sa)
 	if (encp->enc_tunnel_encapsulations_supported)
 		caps |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 
-	if ((sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) &&
-	    encp->enc_hw_tx_insert_vlan_enabled)
-		caps |= DEV_TX_OFFLOAD_VLAN_INSERT;
-
 	if (sa->tso)
 		caps |= DEV_TX_OFFLOAD_TCP_TSO;
 
 	return caps;
 }
 
+static void
+sfc_tx_log_offloads(struct sfc_adapter *sa, const char *offload_group,
+		    const char *verdict, uint64_t offloads)
+{
+	unsigned long long bit;
+
+	while ((bit = __builtin_ffsll(offloads)) != 0) {
+		uint64_t flag = (1ULL << --bit);
+
+		sfc_err(sa, "Tx %s offload %s %s", offload_group,
+			rte_eth_dev_tx_offload_name(flag), verdict);
+
+		offloads &= ~flag;
+	}
+}
+
+static int
+sfc_tx_queue_offload_mismatch(struct sfc_adapter *sa, uint64_t requested)
+{
+	uint64_t mandatory = sa->eth_dev->data->dev_conf.txmode.offloads;
+	uint64_t supported = sfc_tx_get_dev_offload_caps(sa) |
+			     sfc_tx_get_queue_offload_caps(sa);
+	uint64_t rejected = requested & ~supported;
+	uint64_t missing = (requested & mandatory) ^ mandatory;
+	boolean_t mismatch = B_FALSE;
+
+	if (rejected) {
+		sfc_tx_log_offloads(sa, "queue", "is unsupported", rejected);
+		mismatch = B_TRUE;
+	}
+
+	if (missing) {
+		sfc_tx_log_offloads(sa, "queue", "must be set", missing);
+		mismatch = B_TRUE;
+	}
+
+	return mismatch;
+}
+
 static int
 sfc_tx_qcheck_conf(struct sfc_adapter *sa, unsigned int txq_max_fill_level,
 		   const struct rte_eth_txconf *tx_conf)
 {
-	unsigned int flags = tx_conf->txq_flags;
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	int rc = 0;
 
 	if (tx_conf->tx_rs_thresh != 0) {
@@ -84,51 +137,15 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, unsigned int txq_max_fill_level,
 			"prefetch/host/writeback thresholds are not supported");
 	}
 
-	if (((flags & ETH_TXQ_FLAGS_NOMULTSEGS) == 0) &&
-	    (~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_SEG)) {
-		sfc_err(sa, "Multi-segment is not supported by %s datapath",
-			sa->dp_tx->dp.name);
-		rc = EINVAL;
-	}
-
-	if (((flags & ETH_TXQ_FLAGS_NOMULTMEMP) == 0) &&
-	    (~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_POOL)) {
-		sfc_err(sa, "multi-mempool is not supported by %s datapath",
-			sa->dp_tx->dp.name);
-		rc = EINVAL;
-	}
-
-	if (((flags & ETH_TXQ_FLAGS_NOREFCOUNT) == 0) &&
-	    (~sa->dp_tx->features & SFC_DP_TX_FEAT_REFCNT)) {
-		sfc_err(sa,
-			"mbuf reference counters are neglected by %s datapath",
-			sa->dp_tx->dp.name);
-		rc = EINVAL;
-	}
-
-	if ((flags & ETH_TXQ_FLAGS_NOVLANOFFL) == 0) {
-		if (!encp->enc_hw_tx_insert_vlan_enabled) {
-			sfc_err(sa, "VLAN offload is not supported");
-			rc = EINVAL;
-		} else if (~sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) {
-			sfc_err(sa,
-				"VLAN offload is not supported by %s datapath",
-				sa->dp_tx->dp.name);
-			rc = EINVAL;
-		}
-	}
-
-	if ((flags & ETH_TXQ_FLAGS_NOXSUMSCTP) == 0) {
-		sfc_err(sa, "SCTP offload is not supported");
-		rc = EINVAL;
-	}
-
 	/* We either perform both TCP and UDP offload, or no offload at all */
-	if (((flags & ETH_TXQ_FLAGS_NOXSUMTCP) == 0) !=
-	    ((flags & ETH_TXQ_FLAGS_NOXSUMUDP) == 0)) {
+	if (((tx_conf->offloads & DEV_TX_OFFLOAD_TCP_CKSUM) == 0) !=
+	    ((tx_conf->offloads & DEV_TX_OFFLOAD_UDP_CKSUM) == 0)) {
 		sfc_err(sa, "TCP and UDP offloads can't be set independently");
 		rc = EINVAL;
 	}
+
+	if (sfc_tx_queue_offload_mismatch(sa, tx_conf->offloads))
+		rc = EINVAL;
 
 	return rc;
 }
@@ -193,6 +210,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		(tx_conf->tx_free_thresh) ? tx_conf->tx_free_thresh :
 		SFC_TX_DEFAULT_FREE_THRESH;
 	txq->flags = tx_conf->txq_flags;
+	txq->offloads = tx_conf->offloads;
 
 	rc = sfc_dma_alloc(sa, "txq", sw_index, EFX_TXQ_SIZE(txq_info->entries),
 			   socket_id, &txq->mem);
@@ -203,6 +221,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.max_fill_level = txq_max_fill_level;
 	info.free_thresh = txq->free_thresh;
 	info.flags = tx_conf->txq_flags;
+	info.offloads = tx_conf->offloads;
 	info.txq_entries = txq_info->entries;
 	info.dma_desc_size_max = encp->enc_tx_dma_desc_size_max;
 	info.txq_hw_ring = txq->mem.esm_base;
@@ -284,6 +303,9 @@ sfc_tx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 {
+	uint64_t offloads_supported = sfc_tx_get_dev_offload_caps(sa) |
+				      sfc_tx_get_queue_offload_caps(sa);
+	uint64_t offloads_rejected = txmode->offloads & ~offloads_supported;
 	int rc = 0;
 
 	switch (txmode->mq_mode) {
@@ -311,6 +333,12 @@ sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 
 	if (txmode->hw_vlan_insert_pvid) {
 		sfc_err(sa, "Port-based VLAN insertion not supported");
+		rc = EINVAL;
+	}
+
+	if (offloads_rejected) {
+		sfc_tx_log_offloads(sa, "device", "is unsupported",
+				    offloads_rejected);
 		rc = EINVAL;
 	}
 
@@ -424,12 +452,13 @@ sfc_tx_close(struct sfc_adapter *sa)
 int
 sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 {
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint64_t offloads_supported = sfc_tx_get_dev_offload_caps(sa) |
+				      sfc_tx_get_queue_offload_caps(sa);
 	struct rte_eth_dev_data *dev_data;
 	struct sfc_txq_info *txq_info;
 	struct sfc_txq *txq;
 	struct sfc_evq *evq;
-	uint16_t flags;
+	uint16_t flags = 0;
 	unsigned int desc_index;
 	int rc = 0;
 
@@ -449,25 +478,39 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 		goto fail_ev_qstart;
 
 	/*
-	 * It seems that DPDK has no controls regarding IPv4 offloads,
-	 * hence, we always enable it here
+	 * The absence of ETH_TXQ_FLAGS_IGNORE is associated with a legacy
+	 * application which expects that IPv4 checksum offload is enabled
+	 * all the time as there is no legacy flag to turn off the offload.
 	 */
-	if ((txq->flags & ETH_TXQ_FLAGS_NOXSUMTCP) ||
-	    (txq->flags & ETH_TXQ_FLAGS_NOXSUMUDP)) {
-		flags = EFX_TXQ_CKSUM_IPV4;
+	if ((txq->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) ||
+	    (~txq->flags & ETH_TXQ_FLAGS_IGNORE))
+		flags |= EFX_TXQ_CKSUM_IPV4;
 
-		if (encp->enc_tunnel_encapsulations_supported != 0)
-			flags |= EFX_TXQ_CKSUM_INNER_IPV4;
-	} else {
-		flags = EFX_TXQ_CKSUM_IPV4 | EFX_TXQ_CKSUM_TCPUDP;
+	if ((txq->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
+	    ((~txq->flags & ETH_TXQ_FLAGS_IGNORE) &&
+	     (offloads_supported & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)))
+		flags |= EFX_TXQ_CKSUM_INNER_IPV4;
 
-		if (encp->enc_tunnel_encapsulations_supported != 0)
-			flags |= EFX_TXQ_CKSUM_INNER_IPV4 |
-				 EFX_TXQ_CKSUM_INNER_TCPUDP;
+	if ((txq->offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ||
+	    (txq->offloads & DEV_TX_OFFLOAD_UDP_CKSUM)) {
+		flags |= EFX_TXQ_CKSUM_TCPUDP;
 
-		if (sa->tso)
-			flags |= EFX_TXQ_FATSOV2;
+		if ((~txq->flags & ETH_TXQ_FLAGS_IGNORE) &&
+		    (offloads_supported & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM))
+			flags |= EFX_TXQ_CKSUM_INNER_TCPUDP;
 	}
+
+	/*
+	 * The absence of ETH_TXQ_FLAGS_IGNORE is associated with a legacy
+	 * application. In turn, the absence of ETH_TXQ_FLAGS_NOXSUMTCP is
+	 * associated specifically with a legacy application which expects
+	 * both TCP checksum offload and TSO to be enabled because the legacy
+	 * API does not provide a dedicated mechanism to control TSO.
+	 */
+	if ((txq->offloads & DEV_TX_OFFLOAD_TCP_TSO) ||
+	    ((~txq->flags & ETH_TXQ_FLAGS_IGNORE) &&
+	     (~txq->flags & ETH_TXQ_FLAGS_NOXSUMTCP)))
+		flags |= EFX_TXQ_FATSOV2;
 
 	rc = efx_tx_qcreate(sa->nic, sw_index, 0, &txq->mem,
 			    txq_info->entries, 0 /* not used on EF10 */,
@@ -736,9 +779,9 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/*
 		 * Here VLAN TCI is expected to be zero in case if no
-		 * DEV_TX_VLAN_OFFLOAD capability is advertised;
+		 * DEV_TX_OFFLOAD_VLAN_INSERT capability is advertised;
 		 * if the calling app ignores the absence of
-		 * DEV_TX_VLAN_OFFLOAD and pushes VLAN TCI, then
+		 * DEV_TX_OFFLOAD_VLAN_INSERT and pushes VLAN TCI, then
 		 * TX_ERROR will occur
 		 */
 		pkt_descs += sfc_efx_tx_maybe_insert_tag(txq, m_seg, &pend);
