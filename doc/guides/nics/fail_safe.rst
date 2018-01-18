@@ -93,6 +93,14 @@ Fail-safe command line parameters
   additional sub-device parameters if need be. They will be passed on to the
   sub-device.
 
+.. note::
+
+   In case of whitelist sub-device probed by EAL, fail-safe PMD will take the device
+   as is, which means that EAL device options are taken in this case.
+   When trying to use a PCI device automatically probed in blacklist mode,
+   the syntax for the fail-safe must be with the full PCI id:
+   Domain:Bus:Device.Function. See the usage example section.
+
 - **exec(<shell command>)** parameter
 
   This parameter allows the user to provide a command to the fail-safe PMD to
@@ -168,6 +176,15 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
       $RTE_TARGET/build/app/testpmd -c 0xff -n 4 --no-pci \
          --vdev='net_failsafe0,exec(echo 84:00.0)' -- -i
+
+#. Start testpmd, automatically probing the device 84:00.0 and using it with
+   the fail-safe.
+ 
+   .. code-block:: console
+ 
+      $RTE_TARGET/build/app/testpmd -c 0xff -n 4 \
+         --vdev 'net_failsafe0,dev(0000:84:00.0),dev(net_ring0)' -- -i
+
 
 Using the Fail-safe PMD from an application
 -------------------------------------------

@@ -58,6 +58,8 @@
 #define FAILSAFE_MAX_ETHPORTS 2
 #define FAILSAFE_MAX_ETHADDR 128
 
+#define DEVARGS_MAXLEN 4096
+
 /* TYPES */
 
 struct rxq {

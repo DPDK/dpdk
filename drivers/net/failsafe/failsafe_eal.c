@@ -36,39 +36,77 @@
 #include "failsafe_private.h"
 
 static int
+fs_ethdev_portid_get(const char *name, uint16_t *port_id)
+{
+	uint16_t pid;
+	size_t len;
+
+	if (name == NULL) {
+		DEBUG("Null pointer is specified\n");
+		return -EINVAL;
+	}
+	len = strlen(name);
+	RTE_ETH_FOREACH_DEV(pid) {
+		if (!strncmp(name, rte_eth_devices[pid].device->name, len)) {
+			*port_id = pid;
+			return 0;
+		}
+	}
+	return -ENODEV;
+}
+
+static int
 fs_bus_init(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
 	struct rte_devargs *da;
 	uint8_t i;
-	uint16_t j;
+	uint16_t pid;
 	int ret;
 
 	FOREACH_SUBDEV(sdev, i, dev) {
 		if (sdev->state != DEV_PARSED)
 			continue;
 		da = &sdev->devargs;
-		ret = rte_eal_hotplug_add(da->bus->name,
-					  da->name,
-					  da->args);
-		if (ret) {
-			ERROR("sub_device %d probe failed %s%s%s", i,
-			      rte_errno ? "(" : "",
-			      rte_errno ? strerror(rte_errno) : "",
-			      rte_errno ? ")" : "");
-			continue;
-		}
-		RTE_ETH_FOREACH_DEV(j) {
-			if (strcmp(rte_eth_devices[j].device->name,
-				    da->name) == 0) {
-				ETH(sdev) = &rte_eth_devices[j];
-				break;
+		if (fs_ethdev_portid_get(da->name, &pid) != 0) {
+			ret = rte_eal_hotplug_add(da->bus->name,
+						  da->name,
+						  da->args);
+			if (ret) {
+				ERROR("sub_device %d probe failed %s%s%s", i,
+				      rte_errno ? "(" : "",
+				      rte_errno ? strerror(rte_errno) : "",
+				      rte_errno ? ")" : "");
+				continue;
 			}
+			if (fs_ethdev_portid_get(da->name, &pid) != 0) {
+				ERROR("sub_device %d init went wrong", i);
+				return -ENODEV;
+			}
+		} else {
+			char devstr[DEVARGS_MAXLEN] = "";
+			struct rte_devargs *probed_da =
+					rte_eth_devices[pid].device->devargs;
+
+			/* Take control of device probed by EAL options. */
+			free(da->args);
+			memset(da, 0, sizeof(*da));
+			if (probed_da != NULL)
+				snprintf(devstr, sizeof(devstr), "%s,%s",
+					 probed_da->name, probed_da->args);
+			else
+				snprintf(devstr, sizeof(devstr), "%s",
+					 rte_eth_devices[pid].device->name);
+			ret = rte_eal_devargs_parse(devstr, da);
+			if (ret) {
+				ERROR("Probed devargs parsing failed with code"
+				      " %d", ret);
+				return ret;
+			}
+			INFO("Taking control of a probed sub device"
+			      " %d named %s", i, da->name);
 		}
-		if (ETH(sdev) == NULL) {
-			ERROR("sub_device %d init went wrong", i);
-			return -ENODEV;
-		}
+		ETH(sdev) = &rte_eth_devices[pid];
 		SUB_ID(sdev) = i;
 		sdev->fs_dev = dev;
 		sdev->dev = ETH(sdev)->device;

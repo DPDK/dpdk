@@ -45,8 +45,6 @@
 
 #include "failsafe_private.h"
 
-#define DEVARGS_MAXLEN 4096
-
 /* Callback used when a new device is found in devargs */
 typedef int (parse_cb)(struct rte_eth_dev *dev, const char *params,
 		uint8_t head);
