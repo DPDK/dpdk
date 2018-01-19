@@ -33,7 +33,7 @@ Link Bonding Poll Mode Driver Library
 
 In addition to Poll Mode Drivers (PMDs) for physical and virtual hardware,
 DPDK also includes a pure-software library that
-allows physical PMD's to be bonded together to create a single logical PMD.
+allows physical PMDs to be bonded together to create a single logical PMD.
 
 .. figure:: img/bond-overview.*
 
@@ -41,12 +41,12 @@ allows physical PMD's to be bonded together to create a single logical PMD.
 
 
 The Link Bonding PMD library(librte_pmd_bond) supports bonding of groups of
-``rte_eth_dev`` ports of the same speed and duplex to provide
-similar the capabilities to that found in Linux bonding driver to allow the
-aggregation of multiple (slave) NICs into a single logical interface between a
-server and a switch. The new bonded PMD will then process these interfaces
-based on the mode of operation specified to provide support for features such
-as redundant links, fault tolerance and/or load balancing.
+``rte_eth_dev`` ports of the same speed and duplex to provide similar
+capabilities to that found in Linux bonding driver to allow the aggregation
+of multiple (slave) NICs into a single logical interface between a server
+and a switch. The new bonded PMD will then process these interfaces based on
+the mode of operation specified to provide support for features such as
+redundant links, fault tolerance and/or load balancing.
 
 The librte_pmd_bond library exports a C API which provides an API for the
 creation of bonded devices as well as the configuration and management of the
