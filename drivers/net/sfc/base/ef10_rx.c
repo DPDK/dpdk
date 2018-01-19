@@ -940,7 +940,7 @@ ef10_rx_qcreate(
 	boolean_t want_inner_classes;
 	unsigned int ps_buf_size;
 
-	_NOTE(ARGUNUSED(id, erp))
+	_NOTE(ARGUNUSED(id, erp, type_data))
 
 	EFX_STATIC_ASSERT(EFX_EV_RX_NLABELS == (1 << ESF_DZ_RX_QLABEL_WIDTH));
 	EFSYS_ASSERT3U(label, <, EFX_EV_RX_NLABELS);
