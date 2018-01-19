@@ -139,7 +139,6 @@ i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
 
 	rte_wmb();
 	/* Init the RX tail regieter. */
-	I40E_PCI_REG_WRITE(rxq->qrx_tail, 0);
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
 	return err;
@@ -1342,13 +1341,18 @@ i40e_check_fdir_programming_status(struct i40e_rx_queue *rxq)
 				PMD_DRV_LOG(ERR, "invalid programming status"
 					    " reported, error = %u.", error);
 		} else
-			PMD_DRV_LOG(ERR, "unknown programming status"
+			PMD_DRV_LOG(INFO, "unknown programming status"
 				    " reported, len = %d, id = %u.", len, id);
 		rxdp->wb.qword1.status_error_len = 0;
 		rxq->rx_tail++;
 		if (unlikely(rxq->rx_tail == rxq->nb_rx_desc))
 			rxq->rx_tail = 0;
+		if (rxq->rx_tail == 0)
+			I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
+		else
+			I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->rx_tail - 1);
 	}
+
 	return ret;
 }
 
