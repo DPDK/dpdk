@@ -263,6 +263,7 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 #ifdef RTE_LIBRTE_CMDLINE_DEBUG
 	char debug_buf[BUFSIZ];
 #endif
+	char *result_buf = result.buf;
 
 	if (!cl || !buf)
 		return CMDLINE_PARSE_BAD_ARGS;
@@ -312,16 +313,14 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 		debug_printf("INST %d\n", inst_num);
 
 		/* fully parsed */
-		tok = match_inst(inst, buf, 0, tmp_result.buf,
-				 sizeof(tmp_result.buf));
+		tok = match_inst(inst, buf, 0, result_buf,
+				 CMDLINE_PARSE_RESULT_BUFSIZE);
 
 		if (tok > 0) /* we matched at least one token */
 			err = CMDLINE_PARSE_BAD_ARGS;
 
 		else if (!tok) {
 			debug_printf("INST fully parsed\n");
-			memcpy(&result, &tmp_result,
-			       sizeof(result));
 			/* skip spaces */
 			while (isblank2(*curbuf)) {
 				curbuf++;
@@ -332,6 +331,7 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 				if (!f) {
 					memcpy(&f, &inst->f, sizeof(f));
 					memcpy(&data, &inst->data, sizeof(data));
+					result_buf = tmp_result.buf;
 				}
 				else {
 					/* more than 1 inst matches */
