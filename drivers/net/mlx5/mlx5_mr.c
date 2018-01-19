@@ -291,6 +291,9 @@ priv_mr_new(struct priv *priv, struct rte_mempool *mp)
 	DEBUG("mempool %p area start=%p end=%p size=%zu",
 	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
+	/* Save original addresses for exact MR lookup. */
+	mr->start = start;
+	mr->end = end;
 	/* Round start and end to page boundary if found in memory segments. */
 	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
 		uintptr_t addr = (uintptr_t)ms[i].addr;
@@ -309,8 +312,6 @@ priv_mr_new(struct priv *priv, struct rte_mempool *mp)
 			    IBV_ACCESS_LOCAL_WRITE);
 	mr->mp = mp;
 	mr->lkey = rte_cpu_to_be_32(mr->mr->lkey);
-	mr->start = start;
-	mr->end = (uintptr_t)mr->mr->addr + mr->mr->length;
 	rte_atomic32_inc(&mr->refcnt);
 	DEBUG("%p: new Memory Region %p refcnt: %d", (void *)priv,
 	      (void *)mr, rte_atomic32_read(&mr->refcnt));
