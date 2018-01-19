@@ -1731,9 +1731,6 @@ struct rte_eth_dev {
 	void *security_ctx; /**< Context for security ops */
 } __rte_cache_aligned;
 
-void *
-rte_eth_dev_get_sec_ctx(uint8_t port_id);
-
 struct rte_eth_dev_sriov {
 	uint8_t active;               /**< SRIOV is active with 16, 32 or 64 pools */
 	uint8_t nb_q_per_pool;        /**< rx queue number per pool */
@@ -4617,6 +4614,18 @@ int rte_eth_dev_adjust_nb_rx_tx_desc(uint16_t port_id,
  */
 int
 rte_eth_dev_pool_ops_supported(uint16_t port_id, const char *pool);
+
+/**
+ * Get the security context for the Ethernet device.
+ *
+ * @param port_id
+ *   Port identifier of the Ethernet device
+ * @return
+ *   - NULL on error.
+ *   - pointer to security context on success.
+ */
+void *
+rte_eth_dev_get_sec_ctx(uint8_t port_id);
 
 #ifdef __cplusplus
 }
