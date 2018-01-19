@@ -5837,7 +5837,7 @@ cmdline_parse_token_string_t cmd_setpromisc_portall =
 				 "all");
 cmdline_parse_token_num_t cmd_setpromisc_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_promisc_mode_result, port_num,
-			      UINT8);
+			      UINT16);
 cmdline_parse_token_string_t cmd_setpromisc_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_promisc_mode_result, mode,
 				 "on#off");
