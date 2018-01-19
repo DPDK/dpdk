@@ -2053,7 +2053,8 @@ static int check_invalid_pkt_type(uint32_t pkt_type)
 	    l2 != RTE_PTYPE_L2_ETHER_LLDP &&
 	    l2 != RTE_PTYPE_L2_ETHER_NSH &&
 	    l2 != RTE_PTYPE_L2_ETHER_VLAN &&
-	    l2 != RTE_PTYPE_L2_ETHER_QINQ)
+	    l2 != RTE_PTYPE_L2_ETHER_QINQ &&
+	    l2 != RTE_PTYPE_L2_ETHER_PPPOE)
 		return -1;
 
 	if (l3 &&
@@ -2082,7 +2083,8 @@ static int check_invalid_pkt_type(uint32_t pkt_type)
 	    tnl != RTE_PTYPE_TUNNEL_GENEVE &&
 	    tnl != RTE_PTYPE_TUNNEL_GRENAT &&
 	    tnl != RTE_PTYPE_TUNNEL_GTPC &&
-	    tnl != RTE_PTYPE_TUNNEL_GTPU)
+	    tnl != RTE_PTYPE_TUNNEL_GTPU &&
+	    tnl != RTE_PTYPE_TUNNEL_L2TP)
 		return -1;
 
 	if (il2 &&
