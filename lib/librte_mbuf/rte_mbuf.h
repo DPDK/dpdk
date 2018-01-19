@@ -896,11 +896,9 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
 static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 {
 	struct rte_mbuf *m;
-	void *mb = NULL;
 
-	if (rte_mempool_get(mp, &mb) < 0)
+	if (rte_mempool_get(mp, (void **)&m) < 0)
 		return NULL;
-	m = (struct rte_mbuf *)mb;
 	MBUF_RAW_ALLOC_CHECK(m);
 	return m;
 }
