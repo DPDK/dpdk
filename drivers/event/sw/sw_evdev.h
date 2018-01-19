@@ -64,7 +64,7 @@ static const uint8_t sw_qe_flag_map[] = {
 		QE_FLAG_VALID | QE_FLAG_COMPLETE | QE_FLAG_NOT_EOP,
 };
 
-#ifdef RTE_LIBRTE_PMD_EVDEV_SW_DEBUG
+#ifdef RTE_LIBRTE_PMD_SW_EVENTDEV_DEBUG
 #define SW_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, EVENTDEV, "[%s] %s() line %u: " fmt "\n", \
 			SW_PMD_NAME, \
