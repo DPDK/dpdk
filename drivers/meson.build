@@ -1,7 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-driver_classes = ['bus', 'crypto', 'event', 'mempool', 'net']
+# Defines the order in which the drivers are buit.
+driver_classes = ['bus',
+	       'mempool', # depends on bus.
+	       'net',     # depends on bus and mempool.
+	       'crypto',  # depenss on bus, mempool (net in future).
+	       'event']   # depends on bus, mempool and net.
 
 foreach class:driver_classes
 	drivers = []
