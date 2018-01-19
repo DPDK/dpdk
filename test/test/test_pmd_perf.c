@@ -292,10 +292,10 @@ alloc_lcore(uint16_t socketid)
 	return (uint16_t)-1;
 }
 
-volatile uint64_t stop;
-uint64_t count;
-uint64_t drop;
-uint64_t idle;
+static volatile uint64_t stop;
+static uint64_t count;
+static uint64_t drop;
+static uint64_t idle;
 
 static void
 reset_count(void)
@@ -528,7 +528,7 @@ main_loop(__rte_unused void *args)
 	return 0;
 }
 
-rte_atomic64_t start;
+static rte_atomic64_t start;
 
 static inline int
 poll_burst(void *args)
