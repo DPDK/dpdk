@@ -1515,3 +1515,23 @@ priv_select_rx_function(struct priv *priv, __rte_unused struct rte_eth_dev *dev)
 	}
 	return rx_pkt_burst;
 }
+
+/**
+ * Check if mlx5 device was removed.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   1 when device is removed, otherwise 0.
+ */
+int
+mlx5_is_removed(struct rte_eth_dev *dev)
+{
+	struct ibv_device_attr device_attr;
+	struct priv *priv = dev->data->dev_private;
+
+	if (ibv_query_device(priv->ctx, &device_attr) == EIO)
+		return 1;
+	return 0;
+}

@@ -238,6 +238,7 @@ void priv_dev_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
 void priv_dev_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
 int mlx5_set_link_down(struct rte_eth_dev *dev);
 int mlx5_set_link_up(struct rte_eth_dev *dev);
+int mlx5_is_removed(struct rte_eth_dev *dev);
 eth_tx_burst_t priv_select_tx_function(struct priv *, struct rte_eth_dev *);
 eth_rx_burst_t priv_select_rx_function(struct priv *, struct rte_eth_dev *);
 

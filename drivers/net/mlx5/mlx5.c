@@ -284,6 +284,7 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.tx_descriptor_status = mlx5_tx_descriptor_status,
 	.rx_queue_intr_enable = mlx5_rx_intr_enable,
 	.rx_queue_intr_disable = mlx5_rx_intr_disable,
+	.is_removed = mlx5_is_removed,
 };
 
 static const struct eth_dev_ops mlx5_dev_sec_ops = {
@@ -331,6 +332,7 @@ const struct eth_dev_ops mlx5_dev_ops_isolate = {
 	.tx_descriptor_status = mlx5_tx_descriptor_status,
 	.rx_queue_intr_enable = mlx5_rx_intr_enable,
 	.rx_queue_intr_disable = mlx5_rx_intr_disable,
+	.is_removed = mlx5_is_removed,
 };
 
 static struct {
