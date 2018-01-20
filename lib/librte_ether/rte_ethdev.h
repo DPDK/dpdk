@@ -2057,6 +2057,7 @@ rte_eth_dev_is_removed(uint16_t port_id);
  *   memory buffers to populate each descriptor of the receive ring.
  * @return
  *   - 0: Success, receive queue correctly set up.
+ *   - -EIO: if device is removed.
  *   - -EINVAL: The size of network buffers which can be allocated from the
  *      memory pool does not fit the various buffer sizes allowed by the
  *      device controller.
@@ -2157,6 +2158,7 @@ int rte_eth_dev_is_valid_port(uint16_t port_id);
  * @return
  *   - 0: Success, the receive queue is started.
  *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
 int rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id);
@@ -2173,6 +2175,7 @@ int rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id);
  * @return
  *   - 0: Success, the receive queue is stopped.
  *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
 int rte_eth_dev_rx_queue_stop(uint16_t port_id, uint16_t rx_queue_id);
@@ -2190,6 +2193,7 @@ int rte_eth_dev_rx_queue_stop(uint16_t port_id, uint16_t rx_queue_id);
  * @return
  *   - 0: Success, the transmit queue is started.
  *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
 int rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id);
@@ -2206,6 +2210,7 @@ int rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id);
  * @return
  *   - 0: Success, the transmit queue is stopped.
  *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
 int rte_eth_dev_tx_queue_stop(uint16_t port_id, uint16_t tx_queue_id);
@@ -2307,7 +2312,7 @@ void rte_eth_dev_close(uint16_t port_id);
  *   - (-EINVAL) if port identifier is invalid.
  *   - (-ENOTSUP) if hardware doesn't support this function.
  *   - (-EPERM) if not ran from the primary process.
- *   - (-EIO) if re-initialisation failed.
+ *   - (-EIO) if re-initialisation failed or device is removed.
  *   - (-ENOMEM) if the reset failed due to OOM.
  *   - (-EAGAIN) if the reset temporarily failed and should be retried later.
  */
@@ -2543,6 +2548,7 @@ int rte_eth_xstats_get_by_id(uint16_t port_id, const uint64_t *ids,
  * @return
  *    0 on success
  *    -ENODEV for invalid port_id,
+ *    -EIO if device is removed,
  *    -EINVAL if the xstat_name doesn't exist in port_id
  */
 int rte_eth_xstats_get_id_by_name(uint16_t port_id, const char *xstat_name,
@@ -2634,6 +2640,7 @@ void rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info);
  *   - (0) if successful.
  *   - (-ENOTSUP) if operation is not supported.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (>0) if *fw_size* is not enough to store firmware version, return
  *          the size of the non truncated string.
  */
@@ -2705,6 +2712,7 @@ int rte_eth_dev_get_mtu(uint16_t port_id, uint16_t *mtu);
  *   - (0) if successful.
  *   - (-ENOTSUP) if operation is not supported.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (-EINVAL) if *mtu* invalid.
  *   - (-EBUSY) if operation is not allowed when the port is running
  */
@@ -2725,6 +2733,7 @@ int rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu);
  *   - (0) if successful.
  *   - (-ENOSUP) if hardware-assisted VLAN filtering not configured.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOSYS) if VLAN filtering on *port_id* disabled.
  *   - (-EINVAL) if *vlan_id* > 4095.
  */
@@ -2767,6 +2776,7 @@ int rte_eth_dev_set_vlan_strip_on_queue(uint16_t port_id, uint16_t rx_queue_id,
  *   - (0) if successful.
  *   - (-ENOSUP) if hardware-assisted VLAN TPID setup is not supported.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  */
 int rte_eth_dev_set_vlan_ether_type(uint16_t port_id,
 				    enum rte_vlan_type vlan_type,
@@ -2791,6 +2801,7 @@ int rte_eth_dev_set_vlan_ether_type(uint16_t port_id,
  *   - (0) if successful.
  *   - (-ENOSUP) if hardware-assisted VLAN filtering not configured.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  */
 int rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask);
 
@@ -3532,6 +3543,7 @@ rte_eth_tx_buffer_count_callback(struct rte_mbuf **pkts, uint16_t unsent,
  * @return
  *   Failure: < 0
  *     -ENODEV: Invalid interface
+ *     -EIO: device is removed
  *     -ENOTSUP: Driver does not support function
  *   Success: >= 0
  *     0-n: Number of packets freed. More packets may still remain in ring that
@@ -3646,6 +3658,7 @@ int _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
  *   - (-ENOTSUP) if underlying hardware OR driver doesn't support
  *     that operation.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  */
 int rte_eth_dev_rx_intr_enable(uint16_t port_id, uint16_t queue_id);
 
@@ -3667,6 +3680,7 @@ int rte_eth_dev_rx_intr_enable(uint16_t port_id, uint16_t queue_id);
  *   - (-ENOTSUP) if underlying hardware OR driver doesn't support
  *     that operation.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  */
 int rte_eth_dev_rx_intr_disable(uint16_t port_id, uint16_t queue_id);
 
@@ -3724,6 +3738,7 @@ int rte_eth_dev_rx_intr_ctl_q(uint16_t port_id, uint16_t queue_id,
  *   - (-ENOTSUP) if underlying hardware OR driver doesn't support
  *     that operation.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  */
 int  rte_eth_led_on(uint16_t port_id);
 
@@ -3738,6 +3753,7 @@ int  rte_eth_led_on(uint16_t port_id);
  *   - (-ENOTSUP) if underlying hardware OR driver doesn't support
  *     that operation.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  */
 int  rte_eth_led_off(uint16_t port_id);
 
@@ -3752,6 +3768,7 @@ int  rte_eth_led_off(uint16_t port_id);
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support flow control.
  *   - (-ENODEV)  if *port_id* invalid.
+ *   - (-EIO)  if device is removed.
  */
 int rte_eth_dev_flow_ctrl_get(uint16_t port_id,
 			      struct rte_eth_fc_conf *fc_conf);
@@ -3768,7 +3785,7 @@ int rte_eth_dev_flow_ctrl_get(uint16_t port_id,
  *   - (-ENOTSUP) if hardware doesn't support flow control mode.
  *   - (-ENODEV)  if *port_id* invalid.
  *   - (-EINVAL)  if bad parameter
- *   - (-EIO)     if flow control setup failure
+ *   - (-EIO)     if flow control setup failure or device is removed.
  */
 int rte_eth_dev_flow_ctrl_set(uint16_t port_id,
 			      struct rte_eth_fc_conf *fc_conf);
@@ -3786,7 +3803,7 @@ int rte_eth_dev_flow_ctrl_set(uint16_t port_id,
  *   - (-ENOTSUP) if hardware doesn't support priority flow control mode.
  *   - (-ENODEV)  if *port_id* invalid.
  *   - (-EINVAL)  if bad parameter
- *   - (-EIO)     if flow control setup failure
+ *   - (-EIO)     if flow control setup failure or device is removed.
  */
 int rte_eth_dev_priority_flow_ctrl_set(uint16_t port_id,
 				struct rte_eth_pfc_conf *pfc_conf);
@@ -3806,6 +3823,7 @@ int rte_eth_dev_priority_flow_ctrl_set(uint16_t port_id,
  *   - (0) if successfully added or *mac_addr" was already added.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-ENODEV) if *port* is invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOSPC) if no more MAC addresses can be added.
  *   - (-EINVAL) if MAC address is invalid.
  */
@@ -3857,6 +3875,7 @@ int rte_eth_dev_default_mac_addr_set(uint16_t port,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
+ *   - (-EIO) if device is removed.
  */
 int rte_eth_dev_rss_reta_update(uint16_t port,
 				struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -3876,6 +3895,7 @@ int rte_eth_dev_rss_reta_update(uint16_t port,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
+ *   - (-EIO) if device is removed.
  */
 int rte_eth_dev_rss_reta_query(uint16_t port,
 			       struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -3897,6 +3917,7 @@ int rte_eth_dev_rss_reta_query(uint16_t port,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
   *  - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_uc_hash_table_set(uint16_t port, struct ether_addr *addr,
@@ -3917,6 +3938,7 @@ int rte_eth_dev_uc_hash_table_set(uint16_t port, struct ether_addr *addr,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
   *  - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_uc_all_hash_table_set(uint16_t port, uint8_t on);
@@ -3940,6 +3962,7 @@ int rte_eth_dev_uc_all_hash_table_set(uint16_t port, uint8_t on);
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (-EINVAL) if the mr_conf information is not correct.
  */
 int rte_eth_mirror_rule_set(uint16_t port_id,
@@ -3958,6 +3981,7 @@ int rte_eth_mirror_rule_set(uint16_t port_id,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_mirror_rule_reset(uint16_t port_id,
@@ -3976,6 +4000,7 @@ int rte_eth_mirror_rule_reset(uint16_t port_id,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
@@ -3991,6 +4016,7 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if port identifier is invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  */
@@ -4008,6 +4034,7 @@ int rte_eth_dev_rss_hash_update(uint16_t port_id,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if port identifier is invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support RSS.
  */
 int
@@ -4029,6 +4056,7 @@ rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if port identifier is invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support tunnel type.
  */
 int
@@ -4051,6 +4079,7 @@ rte_eth_dev_udp_tunnel_port_add(uint16_t port_id,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if port identifier is invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support tunnel type.
  */
 int
@@ -4069,6 +4098,7 @@ rte_eth_dev_udp_tunnel_port_delete(uint16_t port_id,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support this filter type.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  */
 int rte_eth_dev_filter_supported(uint16_t port_id,
 		enum rte_filter_type filter_type);
@@ -4089,6 +4119,7 @@ int rte_eth_dev_filter_supported(uint16_t port_id,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
 int rte_eth_dev_filter_ctrl(uint16_t port_id, enum rte_filter_type filter_type,
@@ -4104,6 +4135,7 @@ int rte_eth_dev_filter_ctrl(uint16_t port_id, enum rte_filter_type filter_type,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if port identifier is invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support.
  */
 int rte_eth_dev_get_dcb_info(uint16_t port_id,
@@ -4311,6 +4343,7 @@ int rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
 int rte_eth_dev_get_reg_info(uint16_t port_id, struct rte_dev_reg_info *info);
@@ -4324,6 +4357,7 @@ int rte_eth_dev_get_reg_info(uint16_t port_id, struct rte_dev_reg_info *info);
  *   - (>=0) EEPROM size if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
 int rte_eth_dev_get_eeprom_length(uint16_t port_id);
@@ -4340,6 +4374,7 @@ int rte_eth_dev_get_eeprom_length(uint16_t port_id);
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
 int rte_eth_dev_get_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
@@ -4356,6 +4391,7 @@ int rte_eth_dev_get_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
 int rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
@@ -4374,6 +4410,7 @@ int rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if PMD of *port_id* doesn't support multicast filtering.
  *   - (-ENOSPC) if *port_id* has not enough multicast filtering resources.
  */
@@ -4390,6 +4427,7 @@ int rte_eth_dev_set_mc_addr_list(uint16_t port_id,
  * @return
  *   - 0: Success.
  *   - -ENODEV: The port ID is invalid.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
  */
 int rte_eth_timesync_enable(uint16_t port_id);
@@ -4403,6 +4441,7 @@ int rte_eth_timesync_enable(uint16_t port_id);
  * @return
  *   - 0: Success.
  *   - -ENODEV: The port ID is invalid.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
  */
 int rte_eth_timesync_disable(uint16_t port_id);
@@ -4422,6 +4461,7 @@ int rte_eth_timesync_disable(uint16_t port_id);
  *   - 0: Success.
  *   - -EINVAL: No timestamp is available.
  *   - -ENODEV: The port ID is invalid.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
  */
 int rte_eth_timesync_read_rx_timestamp(uint16_t port_id,
@@ -4439,6 +4479,7 @@ int rte_eth_timesync_read_rx_timestamp(uint16_t port_id,
  *   - 0: Success.
  *   - -EINVAL: No timestamp is available.
  *   - -ENODEV: The port ID is invalid.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
  */
 int rte_eth_timesync_read_tx_timestamp(uint16_t port_id,
@@ -4458,6 +4499,7 @@ int rte_eth_timesync_read_tx_timestamp(uint16_t port_id,
  * @return
  *   - 0: Success.
  *   - -ENODEV: The port ID is invalid.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
  */
 int rte_eth_timesync_adjust_time(uint16_t port_id, int64_t delta);
@@ -4493,6 +4535,7 @@ int rte_eth_timesync_read_time(uint16_t port_id, struct timespec *time);
  *   - 0: Success.
  *   - -EINVAL: No timestamp is available.
  *   - -ENODEV: The port ID is invalid.
+ *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
  */
 int rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *time);
@@ -4533,6 +4576,7 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *eth_dev, const char *name,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if port identifier is invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support tunnel type.
  */
 int
@@ -4560,6 +4604,7 @@ rte_eth_dev_l2_tunnel_eth_type_conf(uint16_t port_id,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if port identifier is invalid.
+ *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support tunnel type.
  */
 int
