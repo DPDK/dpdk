@@ -33,6 +33,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/queue.h>
 
 #include <rte_byteorder.h>
@@ -102,6 +103,19 @@ struct remote_rule {
 	struct rte_flow_item items[2];
 	struct rte_flow_action actions[2];
 	int mirred;
+};
+
+struct action_data {
+	char id[16];
+
+	union {
+		struct tc_gact gact;
+		struct tc_mirred mirred;
+		struct skbedit {
+			struct tc_skbedit skbedit;
+			uint16_t queue;
+		} skbedit;
+	};
 };
 
 static int tap_flow_create_eth(const struct rte_flow_item *item, void *data);
@@ -819,111 +833,89 @@ tap_flow_item_validate(const struct rte_flow_item *item,
 }
 
 /**
- * Transform a DROP/PASSTHRU action item in the provided flow for TC.
+ * Configure the kernel with a TC action and its configured parameters
+ * Handled actions: "gact", "mirred", "skbedit", "bpf"
  *
- * @param[in, out] flow
- *   Flow to be filled.
- * @param[in] action
- *   Appropriate action to be set in the TCA_GACT_PARMS structure.
+ * @param[in] flow
+ *   Pointer to rte flow containing the netlink message
+ *
+ * @param[in, out] act_index
+ *   Pointer to action sequence number in the TC command
+ *
+ * @param[in] adata
+ *  Pointer to struct holding the action parameters
  *
  * @return
- *   0 if checks are alright, -1 otherwise.
+ *   -1 on failure, 0 on success
  */
 static int
-add_action_gact(struct rte_flow *flow, int action)
+add_action(struct rte_flow *flow, size_t *act_index, struct action_data *adata)
 {
 	struct nlmsg *msg = &flow->msg;
-	size_t act_index = 1;
-	struct tc_gact p = {
-		.action = action
-	};
 
-	if (tap_nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
+	if (tap_nlattr_nested_start(msg, (*act_index)++) < 0)
 		return -1;
-	if (tap_nlattr_nested_start(msg, act_index++) < 0)
-		return -1;
-	tap_nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("gact"), "gact");
+
+	tap_nlattr_add(&msg->nh, TCA_ACT_KIND,
+				strlen(adata->id) + 1, adata->id);
 	if (tap_nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
 		return -1;
-	tap_nlattr_add(&msg->nh, TCA_GACT_PARMS, sizeof(p), &p);
+	if (strcmp("gact", adata->id) == 0) {
+		tap_nlattr_add(&msg->nh, TCA_GACT_PARMS, sizeof(adata->gact),
+			   &adata->gact);
+	} else if (strcmp("mirred", adata->id) == 0) {
+		if (adata->mirred.eaction == TCA_EGRESS_MIRROR)
+			adata->mirred.action = TC_ACT_PIPE;
+		else /* REDIRECT */
+			adata->mirred.action = TC_ACT_STOLEN;
+		tap_nlattr_add(&msg->nh, TCA_MIRRED_PARMS,
+			   sizeof(adata->mirred),
+			   &adata->mirred);
+	} else if (strcmp("skbedit", adata->id) == 0) {
+		tap_nlattr_add(&msg->nh, TCA_SKBEDIT_PARMS,
+			   sizeof(adata->skbedit.skbedit),
+			   &adata->skbedit.skbedit);
+		tap_nlattr_add16(&msg->nh, TCA_SKBEDIT_QUEUE_MAPPING,
+			     adata->skbedit.queue);
+	} else {
+		return -1;
+	}
 	tap_nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
 	tap_nlattr_nested_finish(msg); /* nested act_index */
-	tap_nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
 	return 0;
 }
 
 /**
- * Transform a MIRRED action item in the provided flow for TC.
+ * Helper function to send a serie of TC actions to the kernel
  *
- * @param[in, out] flow
- *   Flow to be filled.
- * @param[in] ifindex
- *   Netdevice ifindex, where to mirror/redirect packet to.
- * @param[in] action_type
- *   Either TCA_EGRESS_REDIR for redirection or TCA_EGRESS_MIRROR for mirroring.
+ * @param[in] flow
+ *   Pointer to rte flow containing the netlink message
+ *
+ * @param[in] nb_actions
+ *   Number of actions in an array of action structs
+ *
+ * @param[in] data
+ *   Pointer to an array of action structs
+ *
+ * @param[in] classifier_actions
+ *   The classifier on behave of which the actions are configured
  *
  * @return
- *   0 if checks are alright, -1 otherwise.
+ *   -1 on failure, 0 on success
  */
 static int
-add_action_mirred(struct rte_flow *flow, uint16_t ifindex, uint16_t action_type)
+add_actions(struct rte_flow *flow, int nb_actions, struct action_data *data,
+	    int classifier_action)
 {
 	struct nlmsg *msg = &flow->msg;
 	size_t act_index = 1;
-	struct tc_mirred p = {
-		.eaction = action_type,
-		.ifindex = ifindex,
-	};
+	int i;
 
-	if (tap_nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
+	if (tap_nlattr_nested_start(msg, classifier_action) < 0)
 		return -1;
-	if (tap_nlattr_nested_start(msg, act_index++) < 0)
-		return -1;
-	tap_nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("mirred"), "mirred");
-	if (tap_nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
-		return -1;
-	if (action_type == TCA_EGRESS_MIRROR)
-		p.action = TC_ACT_PIPE;
-	else /* REDIRECT */
-		p.action = TC_ACT_STOLEN;
-	tap_nlattr_add(&msg->nh, TCA_MIRRED_PARMS, sizeof(p), &p);
-	tap_nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
-	tap_nlattr_nested_finish(msg); /* nested act_index */
-	tap_nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
-	return 0;
-}
-
-/**
- * Transform a QUEUE action item in the provided flow for TC.
- *
- * @param[in, out] flow
- *   Flow to be filled.
- * @param[in] queue
- *   Queue id to use.
- *
- * @return
- *   0 if checks are alright, -1 otherwise.
- */
-static int
-add_action_skbedit(struct rte_flow *flow, uint16_t queue)
-{
-	struct nlmsg *msg = &flow->msg;
-	size_t act_index = 1;
-	struct tc_skbedit p = {
-		.action = TC_ACT_PIPE
-	};
-
-	if (tap_nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
-		return -1;
-	if (tap_nlattr_nested_start(msg, act_index++) < 0)
-		return -1;
-	tap_nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("skbedit"), "skbedit");
-	if (tap_nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
-		return -1;
-	tap_nlattr_add(&msg->nh, TCA_SKBEDIT_PARMS, sizeof(p), &p);
-	tap_nlattr_add16(&msg->nh, TCA_SKBEDIT_QUEUE_MAPPING, queue);
-	tap_nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
-	tap_nlattr_nested_finish(msg); /* nested act_index */
+	for (i = 0; i < nb_actions; i++)
+		if (add_action(flow, &act_index, data + i) < 0)
+			return -1;
 	tap_nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
 	return 0;
 }
@@ -1056,7 +1048,12 @@ priv_flow_process(struct pmd_internals *pmd,
 		}
 	}
 	if (mirred && flow) {
-		uint16_t if_index = pmd->if_index;
+		struct action_data adata = {
+			.id = "mirred",
+			.mirred = {
+				.eaction = mirred,
+			},
+		};
 
 		/*
 		 * If attr->egress && mirred, then this is a special
@@ -1064,9 +1061,13 @@ priv_flow_process(struct pmd_internals *pmd,
 		 * redirect packets coming from the DPDK App, out
 		 * through the remote netdevice.
 		 */
-		if (attr->egress)
-			if_index = pmd->remote_if_index;
-		if (add_action_mirred(flow, if_index, mirred) < 0)
+		adata.mirred.ifindex = attr->ingress ? pmd->if_index :
+			pmd->remote_if_index;
+		if (mirred == TCA_EGRESS_MIRROR)
+			adata.mirred.action = TC_ACT_PIPE;
+		else
+			adata.mirred.action = TC_ACT_STOLEN;
+		if (add_actions(flow, 1, &adata, TCA_FLOWER_ACT) < 0)
 			goto exit_action_not_supported;
 		else
 			goto end;
@@ -1080,14 +1081,33 @@ priv_flow_process(struct pmd_internals *pmd,
 			if (action)
 				goto exit_action_not_supported;
 			action = 1;
-			if (flow)
-				err = add_action_gact(flow, TC_ACT_SHOT);
+			if (flow) {
+				struct action_data adata = {
+					.id = "gact",
+					.gact = {
+						.action = TC_ACT_SHOT,
+					},
+				};
+
+				err = add_actions(flow, 1, &adata,
+						  TCA_FLOWER_ACT);
+			}
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_PASSTHRU) {
 			if (action)
 				goto exit_action_not_supported;
 			action = 1;
-			if (flow)
-				err = add_action_gact(flow, TC_ACT_UNSPEC);
+			if (flow) {
+				struct action_data adata = {
+					.id = "gact",
+					.gact = {
+						/* continue */
+						.action = TC_ACT_UNSPEC,
+					},
+				};
+
+				err = add_actions(flow, 1, &adata,
+						  TCA_FLOWER_ACT);
+			}
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 			const struct rte_flow_action_queue *queue =
 				(const struct rte_flow_action_queue *)
@@ -1099,22 +1119,46 @@ priv_flow_process(struct pmd_internals *pmd,
 			if (!queue ||
 			    (queue->index > pmd->dev->data->nb_rx_queues - 1))
 				goto exit_action_not_supported;
-			if (flow)
-				err = add_action_skbedit(flow, queue->index);
+			if (flow) {
+				struct action_data adata = {
+					.id = "skbedit",
+					.skbedit = {
+						.skbedit = {
+							.action = TC_ACT_PIPE,
+						},
+						.queue = queue->index,
+					},
+				};
+
+				err = add_actions(flow, 1, &adata,
+					TCA_FLOWER_ACT);
+			}
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
 			/* Fake RSS support. */
 			const struct rte_flow_action_rss *rss =
 				(const struct rte_flow_action_rss *)
 				actions->conf;
 
-			if (action)
+			if (action++)
 				goto exit_action_not_supported;
-			action = 1;
+
 			if (!rss || rss->num < 1 ||
 			    (rss->queue[0] > pmd->dev->data->nb_rx_queues - 1))
 				goto exit_action_not_supported;
-			if (flow)
-				err = add_action_skbedit(flow, rss->queue[0]);
+			if (flow) {
+				struct action_data adata = {
+					.id = "skbedit",
+					.skbedit = {
+						.skbedit = {
+							.action = TC_ACT_PIPE,
+						},
+						.queue = rss->queue[0],
+					},
+				};
+
+				err = add_actions(flow, 1, &adata,
+					TCA_FLOWER_ACT);
+			}
 		} else {
 			goto exit_action_not_supported;
 		}

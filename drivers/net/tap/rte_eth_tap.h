@@ -45,7 +45,7 @@
 #include <rte_ether.h>
 
 #ifdef IFF_MULTI_QUEUE
-#define RTE_PMD_TAP_MAX_QUEUES	16
+#define RTE_PMD_TAP_MAX_QUEUES	TAP_MAX_QUEUES
 #else
 #define RTE_PMD_TAP_MAX_QUEUES	1
 #endif
@@ -91,6 +91,8 @@ struct pmd_internals {
 	int ioctl_sock;                   /* socket for ioctl calls */
 	int nlsk_fd;                      /* Netlink socket fd */
 	int flow_isolate;                 /* 1 if flow isolation is enabled */
+	int flower_support;               /* 1 if kernel supports, else 0 */
+	int flower_vlan_support;          /* 1 if kernel supports, else 0 */
 	LIST_HEAD(tap_flows, rte_flow) flows;        /* rte_flow rules */
 	/* implicit rte_flow rules set when a remote device is active */
 	LIST_HEAD(tap_implicit_flows, rte_flow) implicit_flows;
