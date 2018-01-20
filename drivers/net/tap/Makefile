@@ -63,6 +63,26 @@ tap_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum TCA_FLOWER_KEY_VLAN_PRIO \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_TC_BPF \
+		linux/pkt_cls.h \
+		enum TCA_BPF_UNSPEC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TC_BPF_FD \
+		linux/pkt_cls.h \
+		enum TCA_BPF_FD \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TC_ACT_BPF \
+		linux/tc_act/tc_bpf.h \
+		enum TCA_ACT_BPF_UNSPEC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TC_ACT_BPF_FD \
+		linux/tc_act/tc_bpf.h \
+		enum TCA_ACT_BPF_FD \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_BPF_PROG_LOAD \
 		linux/bpf.h \
 		enum BPF_PROG_LOAD \
