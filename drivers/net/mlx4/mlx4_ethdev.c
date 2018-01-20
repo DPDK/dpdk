@@ -1052,3 +1052,23 @@ mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	}
 	return NULL;
 }
+
+/**
+ * Check if mlx4 device was removed.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   1 when device is removed, otherwise 0.
+ */
+int
+mlx4_is_removed(struct rte_eth_dev *dev)
+{
+	struct ibv_device_attr device_attr;
+	struct priv *priv = dev->data->dev_private;
+
+	if (ibv_query_device(priv->ctx, &device_attr) == EIO)
+		return 1;
+	return 0;
+}

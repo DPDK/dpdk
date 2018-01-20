@@ -256,6 +256,7 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.filter_ctrl = mlx4_filter_ctrl,
 	.rx_queue_intr_enable = mlx4_rx_intr_enable,
 	.rx_queue_intr_disable = mlx4_rx_intr_disable,
+	.is_removed = mlx4_is_removed,
 };
 
 /**
