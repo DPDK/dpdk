@@ -107,6 +107,18 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),
 };
 
+static int
+flow_err(uint16_t port_id, int ret, struct rte_flow_error *error)
+{
+	if (ret == 0)
+		return 0;
+	if (rte_eth_dev_is_removed(port_id))
+		return rte_flow_error_set(error, EIO,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, rte_strerror(EIO));
+	return ret;
+}
+
 /* Get generic flow operations structure from a port. */
 const struct rte_flow_ops *
 rte_flow_ops_get(uint16_t port_id, struct rte_flow_error *error)
@@ -145,7 +157,8 @@ rte_flow_validate(uint16_t port_id,
 	if (unlikely(!ops))
 		return -rte_errno;
 	if (likely(!!ops->validate))
-		return ops->validate(dev, attr, pattern, actions, error);
+		return flow_err(port_id, ops->validate(dev, attr, pattern,
+						       actions, error), error);
 	return rte_flow_error_set(error, ENOSYS,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOSYS));
@@ -160,12 +173,17 @@ rte_flow_create(uint16_t port_id,
 		struct rte_flow_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_flow *flow;
 	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
 
 	if (unlikely(!ops))
 		return NULL;
-	if (likely(!!ops->create))
-		return ops->create(dev, attr, pattern, actions, error);
+	if (likely(!!ops->create)) {
+		flow = ops->create(dev, attr, pattern, actions, error);
+		if (flow == NULL)
+			flow_err(port_id, -rte_errno, error);
+		return flow;
+	}
 	rte_flow_error_set(error, ENOSYS, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			   NULL, rte_strerror(ENOSYS));
 	return NULL;
@@ -183,7 +201,8 @@ rte_flow_destroy(uint16_t port_id,
 	if (unlikely(!ops))
 		return -rte_errno;
 	if (likely(!!ops->destroy))
-		return ops->destroy(dev, flow, error);
+		return flow_err(port_id, ops->destroy(dev, flow, error),
+				error);
 	return rte_flow_error_set(error, ENOSYS,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOSYS));
@@ -200,7 +219,7 @@ rte_flow_flush(uint16_t port_id,
 	if (unlikely(!ops))
 		return -rte_errno;
 	if (likely(!!ops->flush))
-		return ops->flush(dev, error);
+		return flow_err(port_id, ops->flush(dev, error), error);
 	return rte_flow_error_set(error, ENOSYS,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOSYS));
@@ -220,7 +239,8 @@ rte_flow_query(uint16_t port_id,
 	if (!ops)
 		return -rte_errno;
 	if (likely(!!ops->query))
-		return ops->query(dev, flow, action, data, error);
+		return flow_err(port_id, ops->query(dev, flow, action, data,
+						    error), error);
 	return rte_flow_error_set(error, ENOSYS,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOSYS));
@@ -238,7 +258,7 @@ rte_flow_isolate(uint16_t port_id,
 	if (!ops)
 		return -rte_errno;
 	if (likely(!!ops->isolate))
-		return ops->isolate(dev, set, error);
+		return flow_err(port_id, ops->isolate(dev, set, error), error);
 	return rte_flow_error_set(error, ENOSYS,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOSYS));

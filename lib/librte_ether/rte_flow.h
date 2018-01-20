@@ -1267,6 +1267,8 @@ struct rte_flow_error {
  *
  *   -ENOSYS: underlying device does not support this functionality.
  *
+ *   -EIO: underlying device is removed.
+ *
  *   -EINVAL: unknown or invalid rule specification.
  *
  *   -ENOTSUP: valid but unsupported rule specification (e.g. partial
