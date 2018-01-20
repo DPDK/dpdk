@@ -170,7 +170,8 @@ uint16_t
 rte_eth_find_next(uint16_t port_id)
 {
 	while (port_id < RTE_MAX_ETHPORTS &&
-	       rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED)
+	       rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED &&
+	       rte_eth_devices[port_id].state != RTE_ETH_DEV_REMOVED)
 		port_id++;
 
 	if (port_id >= RTE_MAX_ETHPORTS)
@@ -318,8 +319,7 @@ int
 rte_eth_dev_is_valid_port(uint16_t port_id)
 {
 	if (port_id >= RTE_MAX_ETHPORTS ||
-	    (rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED &&
-	     rte_eth_devices[port_id].state != RTE_ETH_DEV_DEFERRED))
+	    (rte_eth_devices[port_id].state == RTE_ETH_DEV_UNUSED))
 		return 0;
 	else
 		return 1;
@@ -1177,6 +1177,29 @@ rte_eth_dev_reset(uint16_t port_id)
 
 	rte_eth_dev_stop(port_id);
 	ret = dev->dev_ops->dev_reset(dev);
+
+	return ret;
+}
+
+int
+rte_eth_dev_is_removed(uint16_t port_id)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+
+	dev = &rte_eth_devices[port_id];
+
+	if (dev->state == RTE_ETH_DEV_REMOVED)
+		return 1;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->is_removed, 0);
+
+	ret = dev->dev_ops->is_removed(dev);
+	if (ret != 0)
+		/* Device is physically removed. */
+		dev->state = RTE_ETH_DEV_REMOVED;
 
 	return ret;
 }

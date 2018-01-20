@@ -1180,6 +1180,9 @@ typedef void (*eth_dev_close_t)(struct rte_eth_dev *dev);
 typedef int (*eth_dev_reset_t)(struct rte_eth_dev *dev);
 /** <@internal Function used to reset a configured Ethernet device. */
 
+typedef int (*eth_is_removed_t)(struct rte_eth_dev *dev);
+/**< @internal Function used to detect an Ethernet device removal. */
+
 typedef void (*eth_promiscuous_enable_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to enable the RX promiscuous mode of an Ethernet device. */
 
@@ -1509,6 +1512,8 @@ struct eth_dev_ops {
 	eth_dev_close_t            dev_close;     /**< Close device. */
 	eth_dev_reset_t		   dev_reset;	  /**< Reset device. */
 	eth_link_update_t          link_update;   /**< Get device link state. */
+	eth_is_removed_t           is_removed;
+	/**< Check if the device was physically removed. */
 
 	eth_promiscuous_enable_t   promiscuous_enable; /**< Promiscuous ON. */
 	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF. */
@@ -1695,6 +1700,7 @@ enum rte_eth_dev_state {
 	RTE_ETH_DEV_UNUSED = 0,
 	RTE_ETH_DEV_ATTACHED,
 	RTE_ETH_DEV_DEFERRED,
+	RTE_ETH_DEV_REMOVED,
 };
 
 /**
@@ -2002,6 +2008,20 @@ int rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_queue,
  *  void
  */
 void _rte_eth_dev_reset(struct rte_eth_dev *dev);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Check if an Ethernet device was physically removed.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   1 when the Ethernet device is removed, otherwise 0.
+ */
+int
+rte_eth_dev_is_removed(uint16_t port_id);
 
 /**
  * Allocate and set up a receive queue for an Ethernet device.
