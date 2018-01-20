@@ -132,6 +132,7 @@ Supported actions:
 - DROP
 - QUEUE
 - PASSTHRU
+- RSS
 
 It is generally not possible to provide a "last" item. However, if the "last"
 item, once masked, is identical to the masked spec, then it is supported.
@@ -160,6 +161,11 @@ Drop UDP packets in vlan 3::
 
    testpmd> flow create 0 priority 3 ingress pattern eth / vlan vid is 3 / \
             ipv4 proto is 17 / end actions drop / end
+
+Distribute IPv4 TCP packets using RSS to a given MAC address over queues 0-3::
+
+   testpmd> flow create 0 priority 4 ingress pattern eth dst is 0a:0b:0c:0d:0e:0f \
+            / ipv4 / tcp / end actions rss queues 0 1 2 3 end / end
 
 Example
 -------
@@ -213,3 +219,57 @@ traffic is being looped back. You can use ``set all size XXX`` to change the
 size of the packets after you stop the traffic. Use pktgen ``help``
 command to see a list of all commands. You can also use the ``-f`` option to
 load commands at startup in command line or Lua script in pktgen.
+
+RSS specifics
+-------------
+Packet distribution in TAP is done by the kernel which has a default
+distribution. This feature is adding RSS distribution based on eBPF code.
+The default eBPF code calculates RSS hash based on Toeplitz algorithm for
+a fixed RSS key. It is calculated on fixed packet offsets. For IPv4 and IPv6 it
+is calculated over src/dst addresses (8 or 32 bytes for IPv4 or IPv6
+respectively) and src/dst TCP/UDP ports (4 bytes).
+
+The RSS algorithm is written in file ``tap_bpf_program.c`` which
+does not take part in TAP PMD compilation. Instead this file is compiled
+in advance to eBPF object file. The eBPF object file is then parsed and
+translated into eBPF byte code in the format of C arrays of eBPF
+instructions. The C array of eBPF instructions is part of TAP PMD tree and
+is taking part in TAP PMD compilation. At run time the C arrays are uploaded to
+the kernel via BPF system calls and the RSS hash is calculated by the
+kernel.
+
+It is possible to support different RSS hash algorithms by updating file
+``tap_bpf_program.c``  In order to add a new RSS hash algorithm follow these
+steps:
+
+1. Write the new RSS implementation in file ``tap_bpf_program.c``
+
+BPF programs which are uploaded to the kernel correspond to
+C functions under different ELF sections.
+
+2. Install ``LLVM`` library and ``clang`` compiler versions 3.7 and above
+
+3. Compile ``tap_bpf_program.c`` via ``LLVM`` into an object file::
+
+    clang -O2 -emit-llvm -c tap_bpf_program.c -o - | llc -march=bpf \
+    -filetype=obj -o <tap_bpf_program.o>
+
+
+4. Use a tool that receives two parameters: an eBPF object file and a section
+name, and prints out the section as a C array of eBPF instructions.
+Embed the C array in your TAP PMD tree.
+
+The C arrays are uploaded to the kernel using BPF system calls.
+
+``tc`` (traffic control) is a well known user space utility program used to
+configure the Linux kernel packet scheduler. It is usually packaged as
+part of the ``iproute2`` package.
+Since commit 11c39b5e9 ("tc: add eBPF support to f_bpf") ``tc`` can be used
+to uploads eBPF code to the kernel and can be patched in order to print the
+C arrays of eBPF instructions just before calling the BPF system call.
+Please refer to ``iproute2`` package file ``lib/bpf.c`` function
+``bpf_prog_load()``.
+
+An example utility for eBPF instruction generation in the format of C arrays will
+be added in next releases
+
