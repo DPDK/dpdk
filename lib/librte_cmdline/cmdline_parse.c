@@ -168,6 +168,8 @@ match_inst(cmdline_parse_inst_t *inst, const char *buf,
 	int n = 0;
 	struct cmdline_token_hdr token_hdr;
 
+	if (resbuf != NULL)
+		memset(resbuf, 0, resbuf_size);
 	/* check if we match all tokens of inst */
 	while (!nb_match_token || i < nb_match_token) {
 		token_p = get_token(inst, i);
