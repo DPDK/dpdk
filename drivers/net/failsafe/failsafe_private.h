@@ -381,4 +381,15 @@ fs_switch_dev(struct rte_eth_dev *dev,
 	rte_wmb();
 }
 
+/*
+ * Adjust error value and rte_errno to the fail-safe actual error value.
+ */
+static inline int
+fs_err(struct sub_device *sdev, int err)
+{
+	/* A device removal shouldn't be reported as an error. */
+	if (sdev->remove == 1 || err == -EIO)
+		return rte_errno = 0;
+	return err;
+}
 #endif /* _RTE_ETH_FAILSAFE_PRIVATE_H_ */

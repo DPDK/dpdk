@@ -87,7 +87,7 @@ fs_flow_validate(struct rte_eth_dev *dev,
 		DEBUG("Calling rte_flow_validate on sub_device %d", i);
 		ret = rte_flow_validate(PORT_ID(sdev),
 				attr, patterns, actions, error);
-		if (ret) {
+		if ((ret = fs_err(sdev, ret))) {
 			ERROR("Operation rte_flow_validate failed for sub_device %d"
 			      " with error %d", i, ret);
 			return ret;
@@ -111,7 +111,7 @@ fs_flow_create(struct rte_eth_dev *dev,
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		flow->flows[i] = rte_flow_create(PORT_ID(sdev),
 				attr, patterns, actions, error);
-		if (flow->flows[i] == NULL) {
+		if (flow->flows[i] == NULL && fs_err(sdev, -rte_errno)) {
 			ERROR("Failed to create flow on sub_device %d",
 				i);
 			goto err;
@@ -150,7 +150,7 @@ fs_flow_destroy(struct rte_eth_dev *dev,
 			continue;
 		local_ret = rte_flow_destroy(PORT_ID(sdev),
 				flow->flows[i], error);
-		if (local_ret) {
+		if ((local_ret = fs_err(sdev, local_ret))) {
 			ERROR("Failed to destroy flow on sub_device %d: %d",
 					i, local_ret);
 			if (ret == 0)
@@ -175,7 +175,7 @@ fs_flow_flush(struct rte_eth_dev *dev,
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		DEBUG("Calling rte_flow_flush on sub_device %d", i);
 		ret = rte_flow_flush(PORT_ID(sdev), error);
-		if (ret) {
+		if ((ret = fs_err(sdev, ret))) {
 			ERROR("Operation rte_flow_flush failed for sub_device %d"
 			      " with error %d", i, ret);
 			return ret;
@@ -199,8 +199,12 @@ fs_flow_query(struct rte_eth_dev *dev,
 
 	sdev = TX_SUBDEV(dev);
 	if (sdev != NULL) {
-		return rte_flow_query(PORT_ID(sdev),
-				flow->flows[SUB_ID(sdev)], type, arg, error);
+		int ret = rte_flow_query(PORT_ID(sdev),
+					 flow->flows[SUB_ID(sdev)],
+					 type, arg, error);
+
+		if ((ret = fs_err(sdev, ret)))
+			return ret;
 	}
 	WARN("No active sub_device to query about its flow");
 	return -1;
@@ -223,7 +227,7 @@ fs_flow_isolate(struct rte_eth_dev *dev,
 			WARN("flow isolation mode of sub_device %d in incoherent state.",
 				i);
 		ret = rte_flow_isolate(PORT_ID(sdev), set, error);
-		if (ret) {
+		if ((ret = fs_err(sdev, ret))) {
 			ERROR("Operation rte_flow_isolate failed for sub_device %d"
 			      " with error %d", i, ret);
 			return ret;
