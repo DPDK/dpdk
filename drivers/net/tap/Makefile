@@ -35,6 +35,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += rte_eth_tap.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_netlink.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_tcmsgs.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_bpf_api.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
 
@@ -60,6 +61,11 @@ tap_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		HAVE_TC_VLAN_ID \
 		linux/pkt_cls.h \
 		enum TCA_FLOWER_KEY_VLAN_PRIO \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_BPF_PROG_LOAD \
+		linux/bpf.h \
+		enum BPF_PROG_LOAD \
 		$(AUTOCONF_OUTPUT)
 
 # Create tap_autoconf.h or update it in case it differs from the new one.

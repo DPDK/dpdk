@@ -80,4 +80,10 @@ int tap_flow_implicit_destroy(struct pmd_internals *pmd,
 int tap_flow_implicit_flush(struct pmd_internals *pmd,
 			    struct rte_flow_error *error);
 
+int tap_flow_bpf_cls_q(__u32 queue_idx);
+int tap_flow_bpf_calc_l3_l4_hash(__u32 key_idx, int map_fd);
+int tap_flow_bpf_rss_map_create(unsigned int key_size, unsigned int value_size,
+			unsigned int max_entries);
+int tap_flow_bpf_update_rss_elem(int fd, void *key, void *value);
+
 #endif /* _TAP_FLOW_H_ */
