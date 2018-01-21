@@ -468,10 +468,10 @@ init_rx_adapter(uint16_t nb_ports)
 		rte_exit(EXIT_FAILURE, "failed to create rx adapter[%d]",
 				cdata.rx_adapter_id);
 
-	struct rte_event_eth_rx_adapter_queue_conf queue_conf = {
-		.ev.sched_type = cdata.queue_type,
-		.ev.queue_id = cdata.qid[0],
-	};
+	struct rte_event_eth_rx_adapter_queue_conf queue_conf;
+	memset(&queue_conf, 0, sizeof(queue_conf));
+	queue_conf.ev.sched_type = cdata.queue_type;
+	queue_conf.ev.queue_id = cdata.qid[0];
 
 	for (i = 0; i < nb_ports; i++) {
 		uint32_t cap;

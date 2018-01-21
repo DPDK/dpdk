@@ -625,9 +625,9 @@ init_rx_adapter(uint16_t nb_ports)
 		rx_p_conf.enqueue_depth = dev_info.max_event_port_enqueue_depth;
 
 
-	struct rte_event_eth_rx_adapter_queue_conf queue_conf = {
-		.ev.sched_type = cdata.queue_type,
-	};
+	struct rte_event_eth_rx_adapter_queue_conf queue_conf;
+	memset(&queue_conf, 0, sizeof(queue_conf));
+	queue_conf.ev.sched_type = cdata.queue_type;
 
 	for (i = 0; i < nb_ports; i++) {
 		uint32_t cap;
