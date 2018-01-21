@@ -110,6 +110,8 @@ rte_log_set_level_regexp(const char *pattern, uint32_t level)
 			rte_logs.dynamic_types[i].loglevel = level;
 	}
 
+	regfree(&r);
+
 	return 0;
 }
 
