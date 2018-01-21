@@ -7,6 +7,8 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_opdl_event.a
 
 # build flags
+CFLAGS += -std=c99
+CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 # for older GCC versions, allow us to initialize an event using
