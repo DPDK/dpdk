@@ -819,7 +819,7 @@ static inline uint32_t
 qat_bpicipher_preprocess(struct qat_session *ctx,
 				struct rte_crypto_op *op)
 {
-	uint8_t block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
+	int block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	uint8_t last_block_len = block_len > 0 ?
 			sym_op->cipher.data.length % block_len : 0;
@@ -874,7 +874,7 @@ static inline uint32_t
 qat_bpicipher_postprocess(struct qat_session *ctx,
 				struct rte_crypto_op *op)
 {
-	uint8_t block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
+	int block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	uint8_t last_block_len = block_len > 0 ?
 			sym_op->cipher.data.length % block_len : 0;
