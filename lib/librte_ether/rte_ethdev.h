@@ -454,7 +454,6 @@ struct rte_eth_rss_conf {
 	ETH_RSS_GENEVE | \
 	ETH_RSS_NVGRE)
 
-
 /**< Mask of valid RSS hash protocols */
 #define ETH_RSS_PROTO_MASK ( \
 	ETH_RSS_IPV4 | \
@@ -1222,8 +1221,6 @@ struct rte_eth_dev_sriov {
 
 #define RTE_ETH_NAME_MAX_LEN RTE_DEV_NAME_MAX_LEN
 
-#include <rte_ethdev_core.h>
-
 /** Device supports link state interrupt */
 #define RTE_ETH_DEV_INTR_LSC     0x0002
 /** Device is a bonded slave */
@@ -1248,7 +1245,6 @@ uint16_t rte_eth_find_next(uint16_t port_id);
 	for (p = rte_eth_find_next(0);				\
 	     (unsigned int)p < (unsigned int)RTE_MAX_ETHPORTS;	\
 	     p = rte_eth_find_next(p + 1))
-
 
 /**
  * Get the total number of Ethernet devices that have been successfully
@@ -1573,8 +1569,6 @@ int rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id);
  */
 int rte_eth_dev_tx_queue_stop(uint16_t port_id, uint16_t tx_queue_id);
 
-
-
 /**
  * Start an Ethernet device.
  *
@@ -1600,7 +1594,6 @@ int rte_eth_dev_start(uint16_t port_id);
  *   The port identifier of the Ethernet device.
  */
 void rte_eth_dev_stop(uint16_t port_id);
-
 
 /**
  * Link up an Ethernet device.
@@ -2193,491 +2186,6 @@ int rte_eth_dev_get_vlan_offload(uint16_t port_id);
  */
 int rte_eth_dev_set_vlan_pvid(uint16_t port_id, uint16_t pvid, int on);
 
-/**
- *
- * Retrieve a burst of input packets from a receive queue of an Ethernet
- * device. The retrieved packets are stored in *rte_mbuf* structures whose
- * pointers are supplied in the *rx_pkts* array.
- *
- * The rte_eth_rx_burst() function loops, parsing the RX ring of the
- * receive queue, up to *nb_pkts* packets, and for each completed RX
- * descriptor in the ring, it performs the following operations:
- *
- * - Initialize the *rte_mbuf* data structure associated with the
- *   RX descriptor according to the information provided by the NIC into
- *   that RX descriptor.
- *
- * - Store the *rte_mbuf* data structure into the next entry of the
- *   *rx_pkts* array.
- *
- * - Replenish the RX descriptor with a new *rte_mbuf* buffer
- *   allocated from the memory pool associated with the receive queue at
- *   initialization time.
- *
- * When retrieving an input packet that was scattered by the controller
- * into multiple receive descriptors, the rte_eth_rx_burst() function
- * appends the associated *rte_mbuf* buffers to the first buffer of the
- * packet.
- *
- * The rte_eth_rx_burst() function returns the number of packets
- * actually retrieved, which is the number of *rte_mbuf* data structures
- * effectively supplied into the *rx_pkts* array.
- * A return value equal to *nb_pkts* indicates that the RX queue contained
- * at least *rx_pkts* packets, and this is likely to signify that other
- * received packets remain in the input queue. Applications implementing
- * a "retrieve as much received packets as possible" policy can check this
- * specific case and keep invoking the rte_eth_rx_burst() function until
- * a value less than *nb_pkts* is returned.
- *
- * This receive method has the following advantages:
- *
- * - It allows a run-to-completion network stack engine to retrieve and
- *   to immediately process received packets in a fast burst-oriented
- *   approach, avoiding the overhead of unnecessary intermediate packet
- *   queue/dequeue operations.
- *
- * - Conversely, it also allows an asynchronous-oriented processing
- *   method to retrieve bursts of received packets and to immediately
- *   queue them for further parallel processing by another logical core,
- *   for instance. However, instead of having received packets being
- *   individually queued by the driver, this approach allows the caller
- *   of the rte_eth_rx_burst() function to queue a burst of retrieved
- *   packets at a time and therefore dramatically reduce the cost of
- *   enqueue/dequeue operations per packet.
- *
- * - It allows the rte_eth_rx_burst() function of the driver to take
- *   advantage of burst-oriented hardware features (CPU cache,
- *   prefetch instructions, and so on) to minimize the number of CPU
- *   cycles per packet.
- *
- * To summarize, the proposed receive API enables many
- * burst-oriented optimizations in both synchronous and asynchronous
- * packet processing environments with no overhead in both cases.
- *
- * The rte_eth_rx_burst() function does not provide any error
- * notification to avoid the corresponding overhead. As a hint, the
- * upper-level application might check the status of the device link once
- * being systematically returned a 0 value for a given number of tries.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param queue_id
- *   The index of the receive queue from which to retrieve input packets.
- *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
- *   to rte_eth_dev_configure().
- * @param rx_pkts
- *   The address of an array of pointers to *rte_mbuf* structures that
- *   must be large enough to store *nb_pkts* pointers in it.
- * @param nb_pkts
- *   The maximum number of packets to retrieve.
- * @return
- *   The number of packets actually retrieved, which is the number
- *   of pointers to *rte_mbuf* structures effectively supplied to the
- *   *rx_pkts* array.
- */
-static inline uint16_t
-rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
-		 struct rte_mbuf **rx_pkts, const uint16_t nb_pkts)
-{
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, 0);
-
-	if (queue_id >= dev->data->nb_rx_queues) {
-		RTE_PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", queue_id);
-		return 0;
-	}
-#endif
-	int16_t nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
-			rx_pkts, nb_pkts);
-
-#ifdef RTE_ETHDEV_RXTX_CALLBACKS
-	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];
-
-	if (unlikely(cb != NULL)) {
-		do {
-			nb_rx = cb->fn.rx(port_id, queue_id, rx_pkts, nb_rx,
-						nb_pkts, cb->param);
-			cb = cb->next;
-		} while (cb != NULL);
-	}
-#endif
-
-	return nb_rx;
-}
-
-/**
- * Get the number of used descriptors of a rx queue
- *
- * @param port_id
- *  The port identifier of the Ethernet device.
- * @param queue_id
- *  The queue id on the specific port.
- * @return
- *  The number of used descriptors in the specific queue, or:
- *     (-EINVAL) if *port_id* or *queue_id* is invalid
- *     (-ENOTSUP) if the device does not support this function
- */
-static inline int
-rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
-	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, -ENOTSUP);
-	if (queue_id >= dev->data->nb_rx_queues)
-		return -EINVAL;
-
-	return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
-}
-
-/**
- * Check if the DD bit of the specific RX descriptor in the queue has been set
- *
- * @param port_id
- *  The port identifier of the Ethernet device.
- * @param queue_id
- *  The queue id on the specific port.
- * @param offset
- *  The offset of the descriptor ID from tail.
- * @return
- *  - (1) if the specific DD bit is set.
- *  - (0) if the specific DD bit is not set.
- *  - (-ENODEV) if *port_id* invalid.
- *  - (-ENOTSUP) if the device does not support this function
- */
-static inline int
-rte_eth_rx_descriptor_done(uint16_t port_id, uint16_t queue_id, uint16_t offset)
-{
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_done, -ENOTSUP);
-	return (*dev->dev_ops->rx_descriptor_done)( \
-		dev->data->rx_queues[queue_id], offset);
-}
-
-#define RTE_ETH_RX_DESC_AVAIL    0 /**< Desc available for hw. */
-#define RTE_ETH_RX_DESC_DONE     1 /**< Desc done, filled by hw. */
-#define RTE_ETH_RX_DESC_UNAVAIL  2 /**< Desc used by driver or hw. */
-
-/**
- * Check the status of a Rx descriptor in the queue
- *
- * It should be called in a similar context than the Rx function:
- * - on a dataplane core
- * - not concurrently on the same queue
- *
- * Since it's a dataplane function, no check is performed on port_id and
- * queue_id. The caller must therefore ensure that the port is enabled
- * and the queue is configured and running.
- *
- * Note: accessing to a random descriptor in the ring may trigger cache
- * misses and have a performance impact.
- *
- * @param port_id
- *  A valid port identifier of the Ethernet device which.
- * @param queue_id
- *  A valid Rx queue identifier on this port.
- * @param offset
- *  The offset of the descriptor starting from tail (0 is the next
- *  packet to be received by the driver).
- *
- * @return
- *  - (RTE_ETH_RX_DESC_AVAIL): Descriptor is available for the hardware to
- *    receive a packet.
- *  - (RTE_ETH_RX_DESC_DONE): Descriptor is done, it is filled by hw, but
- *    not yet processed by the driver (i.e. in the receive queue).
- *  - (RTE_ETH_RX_DESC_UNAVAIL): Descriptor is unavailable, either hold by
- *    the driver and not yet returned to hw, or reserved by the hw.
- *  - (-EINVAL) bad descriptor offset.
- *  - (-ENOTSUP) if the device does not support this function.
- *  - (-ENODEV) bad port or queue (only if compiled with debug).
- */
-static inline int
-rte_eth_rx_descriptor_status(uint16_t port_id, uint16_t queue_id,
-	uint16_t offset)
-{
-	struct rte_eth_dev *dev;
-	void *rxq;
-
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-#endif
-	dev = &rte_eth_devices[port_id];
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	if (queue_id >= dev->data->nb_rx_queues)
-		return -ENODEV;
-#endif
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_status, -ENOTSUP);
-	rxq = dev->data->rx_queues[queue_id];
-
-	return (*dev->dev_ops->rx_descriptor_status)(rxq, offset);
-}
-
-#define RTE_ETH_TX_DESC_FULL    0 /**< Desc filled for hw, waiting xmit. */
-#define RTE_ETH_TX_DESC_DONE    1 /**< Desc done, packet is transmitted. */
-#define RTE_ETH_TX_DESC_UNAVAIL 2 /**< Desc used by driver or hw. */
-
-/**
- * Check the status of a Tx descriptor in the queue.
- *
- * It should be called in a similar context than the Tx function:
- * - on a dataplane core
- * - not concurrently on the same queue
- *
- * Since it's a dataplane function, no check is performed on port_id and
- * queue_id. The caller must therefore ensure that the port is enabled
- * and the queue is configured and running.
- *
- * Note: accessing to a random descriptor in the ring may trigger cache
- * misses and have a performance impact.
- *
- * @param port_id
- *  A valid port identifier of the Ethernet device which.
- * @param queue_id
- *  A valid Tx queue identifier on this port.
- * @param offset
- *  The offset of the descriptor starting from tail (0 is the place where
- *  the next packet will be send).
- *
- * @return
- *  - (RTE_ETH_TX_DESC_FULL) Descriptor is being processed by the hw, i.e.
- *    in the transmit queue.
- *  - (RTE_ETH_TX_DESC_DONE) Hardware is done with this descriptor, it can
- *    be reused by the driver.
- *  - (RTE_ETH_TX_DESC_UNAVAIL): Descriptor is unavailable, reserved by the
- *    driver or the hardware.
- *  - (-EINVAL) bad descriptor offset.
- *  - (-ENOTSUP) if the device does not support this function.
- *  - (-ENODEV) bad port or queue (only if compiled with debug).
- */
-static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
-	uint16_t queue_id, uint16_t offset)
-{
-	struct rte_eth_dev *dev;
-	void *txq;
-
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-#endif
-	dev = &rte_eth_devices[port_id];
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	if (queue_id >= dev->data->nb_tx_queues)
-		return -ENODEV;
-#endif
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_descriptor_status, -ENOTSUP);
-	txq = dev->data->tx_queues[queue_id];
-
-	return (*dev->dev_ops->tx_descriptor_status)(txq, offset);
-}
-
-/**
- * Send a burst of output packets on a transmit queue of an Ethernet device.
- *
- * The rte_eth_tx_burst() function is invoked to transmit output packets
- * on the output queue *queue_id* of the Ethernet device designated by its
- * *port_id*.
- * The *nb_pkts* parameter is the number of packets to send which are
- * supplied in the *tx_pkts* array of *rte_mbuf* structures, each of them
- * allocated from a pool created with rte_pktmbuf_pool_create().
- * The rte_eth_tx_burst() function loops, sending *nb_pkts* packets,
- * up to the number of transmit descriptors available in the TX ring of the
- * transmit queue.
- * For each packet to send, the rte_eth_tx_burst() function performs
- * the following operations:
- *
- * - Pick up the next available descriptor in the transmit ring.
- *
- * - Free the network buffer previously sent with that descriptor, if any.
- *
- * - Initialize the transmit descriptor with the information provided
- *   in the *rte_mbuf data structure.
- *
- * In the case of a segmented packet composed of a list of *rte_mbuf* buffers,
- * the rte_eth_tx_burst() function uses several transmit descriptors
- * of the ring.
- *
- * The rte_eth_tx_burst() function returns the number of packets it
- * actually sent. A return value equal to *nb_pkts* means that all packets
- * have been sent, and this is likely to signify that other output packets
- * could be immediately transmitted again. Applications that implement a
- * "send as many packets to transmit as possible" policy can check this
- * specific case and keep invoking the rte_eth_tx_burst() function until
- * a value less than *nb_pkts* is returned.
- *
- * It is the responsibility of the rte_eth_tx_burst() function to
- * transparently free the memory buffers of packets previously sent.
- * This feature is driven by the *tx_free_thresh* value supplied to the
- * rte_eth_dev_configure() function at device configuration time.
- * When the number of free TX descriptors drops below this threshold, the
- * rte_eth_tx_burst() function must [attempt to] free the *rte_mbuf*  buffers
- * of those packets whose transmission was effectively completed.
- *
- * If the PMD is DEV_TX_OFFLOAD_MT_LOCKFREE capable, multiple threads can
- * invoke this function concurrently on the same tx queue without SW lock.
- * @see rte_eth_dev_info_get, struct rte_eth_txconf::txq_flags
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param queue_id
- *   The index of the transmit queue through which output packets must be
- *   sent.
- *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
- *   to rte_eth_dev_configure().
- * @param tx_pkts
- *   The address of an array of *nb_pkts* pointers to *rte_mbuf* structures
- *   which contain the output packets.
- * @param nb_pkts
- *   The maximum number of packets to transmit.
- * @return
- *   The number of output packets actually stored in transmit descriptors of
- *   the transmit ring. The return value can be less than the value of the
- *   *tx_pkts* parameter when the transmit ring is full or has been filled up.
- */
-static inline uint16_t
-rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
-		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->tx_pkt_burst, 0);
-
-	if (queue_id >= dev->data->nb_tx_queues) {
-		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
-		return 0;
-	}
-#endif
-
-#ifdef RTE_ETHDEV_RXTX_CALLBACKS
-	struct rte_eth_rxtx_callback *cb = dev->pre_tx_burst_cbs[queue_id];
-
-	if (unlikely(cb != NULL)) {
-		do {
-			nb_pkts = cb->fn.tx(port_id, queue_id, tx_pkts, nb_pkts,
-					cb->param);
-			cb = cb->next;
-		} while (cb != NULL);
-	}
-#endif
-
-	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
-}
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
- * Process a burst of output packets on a transmit queue of an Ethernet device.
- *
- * The rte_eth_tx_prepare() function is invoked to prepare output packets to be
- * transmitted on the output queue *queue_id* of the Ethernet device designated
- * by its *port_id*.
- * The *nb_pkts* parameter is the number of packets to be prepared which are
- * supplied in the *tx_pkts* array of *rte_mbuf* structures, each of them
- * allocated from a pool created with rte_pktmbuf_pool_create().
- * For each packet to send, the rte_eth_tx_prepare() function performs
- * the following operations:
- *
- * - Check if packet meets devices requirements for tx offloads.
- *
- * - Check limitations about number of segments.
- *
- * - Check additional requirements when debug is enabled.
- *
- * - Update and/or reset required checksums when tx offload is set for packet.
- *
- * Since this function can modify packet data, provided mbufs must be safely
- * writable (e.g. modified data cannot be in shared segment).
- *
- * The rte_eth_tx_prepare() function returns the number of packets ready to be
- * sent. A return value equal to *nb_pkts* means that all packets are valid and
- * ready to be sent, otherwise stops processing on the first invalid packet and
- * leaves the rest packets untouched.
- *
- * When this functionality is not implemented in the driver, all packets are
- * are returned untouched.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- *   The value must be a valid port id.
- * @param queue_id
- *   The index of the transmit queue through which output packets must be
- *   sent.
- *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
- *   to rte_eth_dev_configure().
- * @param tx_pkts
- *   The address of an array of *nb_pkts* pointers to *rte_mbuf* structures
- *   which contain the output packets.
- * @param nb_pkts
- *   The maximum number of packets to process.
- * @return
- *   The number of packets correct and ready to be sent. The return value can be
- *   less than the value of the *tx_pkts* parameter when some packet doesn't
- *   meet devices requirements with rte_errno set appropriately:
- *   - -EINVAL: offload flags are not correctly set
- *   - -ENOTSUP: the offload feature is not supported by the hardware
- *
- */
-
-#ifndef RTE_ETHDEV_TX_PREPARE_NOOP
-
-static inline uint16_t
-rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
-		struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	struct rte_eth_dev *dev;
-
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	if (!rte_eth_dev_is_valid_port(port_id)) {
-		RTE_PMD_DEBUG_TRACE("Invalid TX port_id=%d\n", port_id);
-		rte_errno = -EINVAL;
-		return 0;
-	}
-#endif
-
-	dev = &rte_eth_devices[port_id];
-
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	if (queue_id >= dev->data->nb_tx_queues) {
-		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
-		rte_errno = -EINVAL;
-		return 0;
-	}
-#endif
-
-	if (!dev->tx_pkt_prepare)
-		return nb_pkts;
-
-	return (*dev->tx_pkt_prepare)(dev->data->tx_queues[queue_id],
-			tx_pkts, nb_pkts);
-}
-
-#else
-
-/*
- * Native NOOP operation for compilation targets which doesn't require any
- * preparations steps, and functional NOOP may introduce unnecessary performance
- * drop.
- *
- * Generally this is not a good idea to turn it on globally and didn't should
- * be used if behavior of tx_preparation can change.
- */
-
-static inline uint16_t
-rte_eth_tx_prepare(__rte_unused uint16_t port_id,
-		__rte_unused uint16_t queue_id,
-		__rte_unused struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	return nb_pkts;
-}
-
-#endif
-
 typedef void (*buffer_tx_error_fn)(struct rte_mbuf **unsent, uint16_t count,
 		void *userdata);
 
@@ -2715,91 +2223,6 @@ struct rte_eth_dev_tx_buffer {
  */
 int
 rte_eth_tx_buffer_init(struct rte_eth_dev_tx_buffer *buffer, uint16_t size);
-
-/**
- * Send any packets queued up for transmission on a port and HW queue
- *
- * This causes an explicit flush of packets previously buffered via the
- * rte_eth_tx_buffer() function. It returns the number of packets successfully
- * sent to the NIC, and calls the error callback for any unsent packets. Unless
- * explicitly set up otherwise, the default callback simply frees the unsent
- * packets back to the owning mempool.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param queue_id
- *   The index of the transmit queue through which output packets must be
- *   sent.
- *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
- *   to rte_eth_dev_configure().
- * @param buffer
- *   Buffer of packets to be transmit.
- * @return
- *   The number of packets successfully sent to the Ethernet device. The error
- *   callback is called for any packets which could not be sent.
- */
-static inline uint16_t
-rte_eth_tx_buffer_flush(uint16_t port_id, uint16_t queue_id,
-		struct rte_eth_dev_tx_buffer *buffer)
-{
-	uint16_t sent;
-	uint16_t to_send = buffer->length;
-
-	if (to_send == 0)
-		return 0;
-
-	sent = rte_eth_tx_burst(port_id, queue_id, buffer->pkts, to_send);
-
-	buffer->length = 0;
-
-	/* All packets sent, or to be dealt with by callback below */
-	if (unlikely(sent != to_send))
-		buffer->error_callback(&buffer->pkts[sent], to_send - sent,
-				buffer->error_userdata);
-
-	return sent;
-}
-
-/**
- * Buffer a single packet for future transmission on a port and queue
- *
- * This function takes a single mbuf/packet and buffers it for later
- * transmission on the particular port and queue specified. Once the buffer is
- * full of packets, an attempt will be made to transmit all the buffered
- * packets. In case of error, where not all packets can be transmitted, a
- * callback is called with the unsent packets as a parameter. If no callback
- * is explicitly set up, the unsent packets are just freed back to the owning
- * mempool. The function returns the number of packets actually sent i.e.
- * 0 if no buffer flush occurred, otherwise the number of packets successfully
- * flushed
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param queue_id
- *   The index of the transmit queue through which output packets must be
- *   sent.
- *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
- *   to rte_eth_dev_configure().
- * @param buffer
- *   Buffer used to collect packets to be sent.
- * @param tx_pkt
- *   Pointer to the packet mbuf to be sent.
- * @return
- *   0 = packet has been buffered for later transmission
- *   N > 0 = packet has been buffered, and the buffer was subsequently flushed,
- *     causing N packets to be sent, and the error callback to be called for
- *     the rest.
- */
-static __rte_always_inline uint16_t
-rte_eth_tx_buffer(uint16_t port_id, uint16_t queue_id,
-		struct rte_eth_dev_tx_buffer *buffer, struct rte_mbuf *tx_pkt)
-{
-	buffer->pkts[buffer->length++] = tx_pkt;
-	if (buffer->length < buffer->size)
-		return 0;
-
-	return rte_eth_tx_buffer_flush(port_id, queue_id, buffer);
-}
 
 /**
  * Configure a callback for buffered packets which cannot be sent
@@ -2931,8 +2354,6 @@ enum rte_eth_event_type {
 typedef int (*rte_eth_dev_cb_fn)(uint16_t port_id,
 		enum rte_eth_event_type event, void *cb_arg, void *ret_param);
 /**< user application callback to be registered for interrupts */
-
-
 
 /**
  * Register a callback function for port event.
@@ -3561,6 +2982,8 @@ void *rte_eth_add_first_rx_callback(uint16_t port_id, uint16_t queue_id,
 void *rte_eth_add_tx_callback(uint16_t port_id, uint16_t queue_id,
 		rte_tx_callback_fn fn, void *user_param);
 
+struct rte_eth_rxtx_callback;
+
 /**
  * Remove an RX packet callback from a given port and queue.
  *
@@ -3976,7 +3399,6 @@ int rte_eth_dev_adjust_nb_rx_tx_desc(uint16_t port_id,
 				     uint16_t *nb_rx_desc,
 				     uint16_t *nb_tx_desc);
 
-
 /**
  * Test if a port supports specific mempool ops.
  *
@@ -4005,6 +3427,579 @@ rte_eth_dev_pool_ops_supported(uint16_t port_id, const char *pool);
  */
 void *
 rte_eth_dev_get_sec_ctx(uint8_t port_id);
+
+
+#include <rte_ethdev_core.h>
+
+/**
+ *
+ * Retrieve a burst of input packets from a receive queue of an Ethernet
+ * device. The retrieved packets are stored in *rte_mbuf* structures whose
+ * pointers are supplied in the *rx_pkts* array.
+ *
+ * The rte_eth_rx_burst() function loops, parsing the RX ring of the
+ * receive queue, up to *nb_pkts* packets, and for each completed RX
+ * descriptor in the ring, it performs the following operations:
+ *
+ * - Initialize the *rte_mbuf* data structure associated with the
+ *   RX descriptor according to the information provided by the NIC into
+ *   that RX descriptor.
+ *
+ * - Store the *rte_mbuf* data structure into the next entry of the
+ *   *rx_pkts* array.
+ *
+ * - Replenish the RX descriptor with a new *rte_mbuf* buffer
+ *   allocated from the memory pool associated with the receive queue at
+ *   initialization time.
+ *
+ * When retrieving an input packet that was scattered by the controller
+ * into multiple receive descriptors, the rte_eth_rx_burst() function
+ * appends the associated *rte_mbuf* buffers to the first buffer of the
+ * packet.
+ *
+ * The rte_eth_rx_burst() function returns the number of packets
+ * actually retrieved, which is the number of *rte_mbuf* data structures
+ * effectively supplied into the *rx_pkts* array.
+ * A return value equal to *nb_pkts* indicates that the RX queue contained
+ * at least *rx_pkts* packets, and this is likely to signify that other
+ * received packets remain in the input queue. Applications implementing
+ * a "retrieve as much received packets as possible" policy can check this
+ * specific case and keep invoking the rte_eth_rx_burst() function until
+ * a value less than *nb_pkts* is returned.
+ *
+ * This receive method has the following advantages:
+ *
+ * - It allows a run-to-completion network stack engine to retrieve and
+ *   to immediately process received packets in a fast burst-oriented
+ *   approach, avoiding the overhead of unnecessary intermediate packet
+ *   queue/dequeue operations.
+ *
+ * - Conversely, it also allows an asynchronous-oriented processing
+ *   method to retrieve bursts of received packets and to immediately
+ *   queue them for further parallel processing by another logical core,
+ *   for instance. However, instead of having received packets being
+ *   individually queued by the driver, this approach allows the caller
+ *   of the rte_eth_rx_burst() function to queue a burst of retrieved
+ *   packets at a time and therefore dramatically reduce the cost of
+ *   enqueue/dequeue operations per packet.
+ *
+ * - It allows the rte_eth_rx_burst() function of the driver to take
+ *   advantage of burst-oriented hardware features (CPU cache,
+ *   prefetch instructions, and so on) to minimize the number of CPU
+ *   cycles per packet.
+ *
+ * To summarize, the proposed receive API enables many
+ * burst-oriented optimizations in both synchronous and asynchronous
+ * packet processing environments with no overhead in both cases.
+ *
+ * The rte_eth_rx_burst() function does not provide any error
+ * notification to avoid the corresponding overhead. As a hint, the
+ * upper-level application might check the status of the device link once
+ * being systematically returned a 0 value for a given number of tries.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the receive queue from which to retrieve input packets.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param rx_pkts
+ *   The address of an array of pointers to *rte_mbuf* structures that
+ *   must be large enough to store *nb_pkts* pointers in it.
+ * @param nb_pkts
+ *   The maximum number of packets to retrieve.
+ * @return
+ *   The number of packets actually retrieved, which is the number
+ *   of pointers to *rte_mbuf* structures effectively supplied to the
+ *   *rx_pkts* array.
+ */
+static inline uint16_t
+rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
+		 struct rte_mbuf **rx_pkts, const uint16_t nb_pkts)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, 0);
+
+	if (queue_id >= dev->data->nb_rx_queues) {
+		RTE_PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", queue_id);
+		return 0;
+	}
+#endif
+	int16_t nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
+			rx_pkts, nb_pkts);
+
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];
+
+	if (unlikely(cb != NULL)) {
+		do {
+			nb_rx = cb->fn.rx(port_id, queue_id, rx_pkts, nb_rx,
+						nb_pkts, cb->param);
+			cb = cb->next;
+		} while (cb != NULL);
+	}
+#endif
+
+	return nb_rx;
+}
+
+/**
+ * Get the number of used descriptors of a rx queue
+ *
+ * @param port_id
+ *  The port identifier of the Ethernet device.
+ * @param queue_id
+ *  The queue id on the specific port.
+ * @return
+ *  The number of used descriptors in the specific queue, or:
+ *     (-EINVAL) if *port_id* or *queue_id* is invalid
+ *     (-ENOTSUP) if the device does not support this function
+ */
+static inline int
+rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, -ENOTSUP);
+	if (queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
+}
+
+/**
+ * Check if the DD bit of the specific RX descriptor in the queue has been set
+ *
+ * @param port_id
+ *  The port identifier of the Ethernet device.
+ * @param queue_id
+ *  The queue id on the specific port.
+ * @param offset
+ *  The offset of the descriptor ID from tail.
+ * @return
+ *  - (1) if the specific DD bit is set.
+ *  - (0) if the specific DD bit is not set.
+ *  - (-ENODEV) if *port_id* invalid.
+ *  - (-ENOTSUP) if the device does not support this function
+ */
+static inline int
+rte_eth_rx_descriptor_done(uint16_t port_id, uint16_t queue_id, uint16_t offset)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_done, -ENOTSUP);
+	return (*dev->dev_ops->rx_descriptor_done)( \
+		dev->data->rx_queues[queue_id], offset);
+}
+
+#define RTE_ETH_RX_DESC_AVAIL    0 /**< Desc available for hw. */
+#define RTE_ETH_RX_DESC_DONE     1 /**< Desc done, filled by hw. */
+#define RTE_ETH_RX_DESC_UNAVAIL  2 /**< Desc used by driver or hw. */
+
+/**
+ * Check the status of a Rx descriptor in the queue
+ *
+ * It should be called in a similar context than the Rx function:
+ * - on a dataplane core
+ * - not concurrently on the same queue
+ *
+ * Since it's a dataplane function, no check is performed on port_id and
+ * queue_id. The caller must therefore ensure that the port is enabled
+ * and the queue is configured and running.
+ *
+ * Note: accessing to a random descriptor in the ring may trigger cache
+ * misses and have a performance impact.
+ *
+ * @param port_id
+ *  A valid port identifier of the Ethernet device which.
+ * @param queue_id
+ *  A valid Rx queue identifier on this port.
+ * @param offset
+ *  The offset of the descriptor starting from tail (0 is the next
+ *  packet to be received by the driver).
+ *
+ * @return
+ *  - (RTE_ETH_RX_DESC_AVAIL): Descriptor is available for the hardware to
+ *    receive a packet.
+ *  - (RTE_ETH_RX_DESC_DONE): Descriptor is done, it is filled by hw, but
+ *    not yet processed by the driver (i.e. in the receive queue).
+ *  - (RTE_ETH_RX_DESC_UNAVAIL): Descriptor is unavailable, either hold by
+ *    the driver and not yet returned to hw, or reserved by the hw.
+ *  - (-EINVAL) bad descriptor offset.
+ *  - (-ENOTSUP) if the device does not support this function.
+ *  - (-ENODEV) bad port or queue (only if compiled with debug).
+ */
+static inline int
+rte_eth_rx_descriptor_status(uint16_t port_id, uint16_t queue_id,
+	uint16_t offset)
+{
+	struct rte_eth_dev *dev;
+	void *rxq;
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+#endif
+	dev = &rte_eth_devices[port_id];
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	if (queue_id >= dev->data->nb_rx_queues)
+		return -ENODEV;
+#endif
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_status, -ENOTSUP);
+	rxq = dev->data->rx_queues[queue_id];
+
+	return (*dev->dev_ops->rx_descriptor_status)(rxq, offset);
+}
+
+#define RTE_ETH_TX_DESC_FULL    0 /**< Desc filled for hw, waiting xmit. */
+#define RTE_ETH_TX_DESC_DONE    1 /**< Desc done, packet is transmitted. */
+#define RTE_ETH_TX_DESC_UNAVAIL 2 /**< Desc used by driver or hw. */
+
+/**
+ * Check the status of a Tx descriptor in the queue.
+ *
+ * It should be called in a similar context than the Tx function:
+ * - on a dataplane core
+ * - not concurrently on the same queue
+ *
+ * Since it's a dataplane function, no check is performed on port_id and
+ * queue_id. The caller must therefore ensure that the port is enabled
+ * and the queue is configured and running.
+ *
+ * Note: accessing to a random descriptor in the ring may trigger cache
+ * misses and have a performance impact.
+ *
+ * @param port_id
+ *  A valid port identifier of the Ethernet device which.
+ * @param queue_id
+ *  A valid Tx queue identifier on this port.
+ * @param offset
+ *  The offset of the descriptor starting from tail (0 is the place where
+ *  the next packet will be send).
+ *
+ * @return
+ *  - (RTE_ETH_TX_DESC_FULL) Descriptor is being processed by the hw, i.e.
+ *    in the transmit queue.
+ *  - (RTE_ETH_TX_DESC_DONE) Hardware is done with this descriptor, it can
+ *    be reused by the driver.
+ *  - (RTE_ETH_TX_DESC_UNAVAIL): Descriptor is unavailable, reserved by the
+ *    driver or the hardware.
+ *  - (-EINVAL) bad descriptor offset.
+ *  - (-ENOTSUP) if the device does not support this function.
+ *  - (-ENODEV) bad port or queue (only if compiled with debug).
+ */
+static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
+	uint16_t queue_id, uint16_t offset)
+{
+	struct rte_eth_dev *dev;
+	void *txq;
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+#endif
+	dev = &rte_eth_devices[port_id];
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	if (queue_id >= dev->data->nb_tx_queues)
+		return -ENODEV;
+#endif
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_descriptor_status, -ENOTSUP);
+	txq = dev->data->tx_queues[queue_id];
+
+	return (*dev->dev_ops->tx_descriptor_status)(txq, offset);
+}
+
+/**
+ * Send a burst of output packets on a transmit queue of an Ethernet device.
+ *
+ * The rte_eth_tx_burst() function is invoked to transmit output packets
+ * on the output queue *queue_id* of the Ethernet device designated by its
+ * *port_id*.
+ * The *nb_pkts* parameter is the number of packets to send which are
+ * supplied in the *tx_pkts* array of *rte_mbuf* structures, each of them
+ * allocated from a pool created with rte_pktmbuf_pool_create().
+ * The rte_eth_tx_burst() function loops, sending *nb_pkts* packets,
+ * up to the number of transmit descriptors available in the TX ring of the
+ * transmit queue.
+ * For each packet to send, the rte_eth_tx_burst() function performs
+ * the following operations:
+ *
+ * - Pick up the next available descriptor in the transmit ring.
+ *
+ * - Free the network buffer previously sent with that descriptor, if any.
+ *
+ * - Initialize the transmit descriptor with the information provided
+ *   in the *rte_mbuf data structure.
+ *
+ * In the case of a segmented packet composed of a list of *rte_mbuf* buffers,
+ * the rte_eth_tx_burst() function uses several transmit descriptors
+ * of the ring.
+ *
+ * The rte_eth_tx_burst() function returns the number of packets it
+ * actually sent. A return value equal to *nb_pkts* means that all packets
+ * have been sent, and this is likely to signify that other output packets
+ * could be immediately transmitted again. Applications that implement a
+ * "send as many packets to transmit as possible" policy can check this
+ * specific case and keep invoking the rte_eth_tx_burst() function until
+ * a value less than *nb_pkts* is returned.
+ *
+ * It is the responsibility of the rte_eth_tx_burst() function to
+ * transparently free the memory buffers of packets previously sent.
+ * This feature is driven by the *tx_free_thresh* value supplied to the
+ * rte_eth_dev_configure() function at device configuration time.
+ * When the number of free TX descriptors drops below this threshold, the
+ * rte_eth_tx_burst() function must [attempt to] free the *rte_mbuf*  buffers
+ * of those packets whose transmission was effectively completed.
+ *
+ * If the PMD is DEV_TX_OFFLOAD_MT_LOCKFREE capable, multiple threads can
+ * invoke this function concurrently on the same tx queue without SW lock.
+ * @see rte_eth_dev_info_get, struct rte_eth_txconf::txq_flags
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param tx_pkts
+ *   The address of an array of *nb_pkts* pointers to *rte_mbuf* structures
+ *   which contain the output packets.
+ * @param nb_pkts
+ *   The maximum number of packets to transmit.
+ * @return
+ *   The number of output packets actually stored in transmit descriptors of
+ *   the transmit ring. The return value can be less than the value of the
+ *   *tx_pkts* parameter when the transmit ring is full or has been filled up.
+ */
+static inline uint16_t
+rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
+		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->tx_pkt_burst, 0);
+
+	if (queue_id >= dev->data->nb_tx_queues) {
+		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
+		return 0;
+	}
+#endif
+
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+	struct rte_eth_rxtx_callback *cb = dev->pre_tx_burst_cbs[queue_id];
+
+	if (unlikely(cb != NULL)) {
+		do {
+			nb_pkts = cb->fn.tx(port_id, queue_id, tx_pkts, nb_pkts,
+					cb->param);
+			cb = cb->next;
+		} while (cb != NULL);
+	}
+#endif
+
+	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Process a burst of output packets on a transmit queue of an Ethernet device.
+ *
+ * The rte_eth_tx_prepare() function is invoked to prepare output packets to be
+ * transmitted on the output queue *queue_id* of the Ethernet device designated
+ * by its *port_id*.
+ * The *nb_pkts* parameter is the number of packets to be prepared which are
+ * supplied in the *tx_pkts* array of *rte_mbuf* structures, each of them
+ * allocated from a pool created with rte_pktmbuf_pool_create().
+ * For each packet to send, the rte_eth_tx_prepare() function performs
+ * the following operations:
+ *
+ * - Check if packet meets devices requirements for tx offloads.
+ *
+ * - Check limitations about number of segments.
+ *
+ * - Check additional requirements when debug is enabled.
+ *
+ * - Update and/or reset required checksums when tx offload is set for packet.
+ *
+ * Since this function can modify packet data, provided mbufs must be safely
+ * writable (e.g. modified data cannot be in shared segment).
+ *
+ * The rte_eth_tx_prepare() function returns the number of packets ready to be
+ * sent. A return value equal to *nb_pkts* means that all packets are valid and
+ * ready to be sent, otherwise stops processing on the first invalid packet and
+ * leaves the rest packets untouched.
+ *
+ * When this functionality is not implemented in the driver, all packets are
+ * are returned untouched.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ *   The value must be a valid port id.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param tx_pkts
+ *   The address of an array of *nb_pkts* pointers to *rte_mbuf* structures
+ *   which contain the output packets.
+ * @param nb_pkts
+ *   The maximum number of packets to process.
+ * @return
+ *   The number of packets correct and ready to be sent. The return value can be
+ *   less than the value of the *tx_pkts* parameter when some packet doesn't
+ *   meet devices requirements with rte_errno set appropriately:
+ *   - -EINVAL: offload flags are not correctly set
+ *   - -ENOTSUP: the offload feature is not supported by the hardware
+ *
+ */
+
+#ifndef RTE_ETHDEV_TX_PREPARE_NOOP
+
+static inline uint16_t
+rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
+		struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rte_eth_dev *dev;
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		RTE_PMD_DEBUG_TRACE("Invalid TX port_id=%d\n", port_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#endif
+
+	dev = &rte_eth_devices[port_id];
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	if (queue_id >= dev->data->nb_tx_queues) {
+		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#endif
+
+	if (!dev->tx_pkt_prepare)
+		return nb_pkts;
+
+	return (*dev->tx_pkt_prepare)(dev->data->tx_queues[queue_id],
+			tx_pkts, nb_pkts);
+}
+
+#else
+
+/*
+ * Native NOOP operation for compilation targets which doesn't require any
+ * preparations steps, and functional NOOP may introduce unnecessary performance
+ * drop.
+ *
+ * Generally this is not a good idea to turn it on globally and didn't should
+ * be used if behavior of tx_preparation can change.
+ */
+
+static inline uint16_t
+rte_eth_tx_prepare(__rte_unused uint16_t port_id,
+		__rte_unused uint16_t queue_id,
+		__rte_unused struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	return nb_pkts;
+}
+
+#endif
+
+/**
+ * Send any packets queued up for transmission on a port and HW queue
+ *
+ * This causes an explicit flush of packets previously buffered via the
+ * rte_eth_tx_buffer() function. It returns the number of packets successfully
+ * sent to the NIC, and calls the error callback for any unsent packets. Unless
+ * explicitly set up otherwise, the default callback simply frees the unsent
+ * packets back to the owning mempool.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param buffer
+ *   Buffer of packets to be transmit.
+ * @return
+ *   The number of packets successfully sent to the Ethernet device. The error
+ *   callback is called for any packets which could not be sent.
+ */
+static inline uint16_t
+rte_eth_tx_buffer_flush(uint16_t port_id, uint16_t queue_id,
+		struct rte_eth_dev_tx_buffer *buffer)
+{
+	uint16_t sent;
+	uint16_t to_send = buffer->length;
+
+	if (to_send == 0)
+		return 0;
+
+	sent = rte_eth_tx_burst(port_id, queue_id, buffer->pkts, to_send);
+
+	buffer->length = 0;
+
+	/* All packets sent, or to be dealt with by callback below */
+	if (unlikely(sent != to_send))
+		buffer->error_callback(&buffer->pkts[sent], to_send - sent,
+				buffer->error_userdata);
+
+	return sent;
+}
+
+/**
+ * Buffer a single packet for future transmission on a port and queue
+ *
+ * This function takes a single mbuf/packet and buffers it for later
+ * transmission on the particular port and queue specified. Once the buffer is
+ * full of packets, an attempt will be made to transmit all the buffered
+ * packets. In case of error, where not all packets can be transmitted, a
+ * callback is called with the unsent packets as a parameter. If no callback
+ * is explicitly set up, the unsent packets are just freed back to the owning
+ * mempool. The function returns the number of packets actually sent i.e.
+ * 0 if no buffer flush occurred, otherwise the number of packets successfully
+ * flushed
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param buffer
+ *   Buffer used to collect packets to be sent.
+ * @param tx_pkt
+ *   Pointer to the packet mbuf to be sent.
+ * @return
+ *   0 = packet has been buffered for later transmission
+ *   N > 0 = packet has been buffered, and the buffer was subsequently flushed,
+ *     causing N packets to be sent, and the error callback to be called for
+ *     the rest.
+ */
+static __rte_always_inline uint16_t
+rte_eth_tx_buffer(uint16_t port_id, uint16_t queue_id,
+		struct rte_eth_dev_tx_buffer *buffer, struct rte_mbuf *tx_pkt)
+{
+	buffer->pkts[buffer->length++] = tx_pkt;
+	if (buffer->length < buffer->size)
+		return 0;
+
+	return rte_eth_tx_buffer_flush(port_id, queue_id, buffer);
+}
 
 #ifdef __cplusplus
 }
