@@ -8,4 +8,4 @@ else
 	sources += files('rte_distributor_match_generic.c')
 endif
 headers = files('rte_distributor.h')
-deps += ['mbuf', 'compat']
+deps += ['mbuf']

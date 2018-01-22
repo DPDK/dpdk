@@ -14,4 +14,4 @@ headers = files('rte_cmp_arm64.h',
 	'rte_thash.h')
 
 sources = files('rte_cuckoo_hash.c', 'rte_fbk_hash.c')
-deps += ['ring', 'compat']
+deps += ['ring']
