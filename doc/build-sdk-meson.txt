@@ -150,6 +150,33 @@ driver install path, so dynamically-linked applications can be run without
 having to pass in ``-d /path/to/driver`` options for standard drivers.
 
 
+Cross Compiling DPDK
+--------------------
+
+To cross-compile DPDK on a desired target machine we can use the following
+command::
+
+	meson cross-build --cross-file <target_machine_configuration>
+
+For example if the target machine is arm64 we can use the following
+command::
+	meson arm-build --cross-file config/arm/arm64_armv8_linuxapp_gcc
+
+where config/arm/arm64_armv8_linuxapp_gcc contains the following
+parameters::
+
+	[binaries]
+	c = 'aarch64-linux-gnu-gcc'
+	cpp = 'aarch64-linux-gnu-cpp'
+	ar = 'aarch64-linux-gnu-ar'
+
+	[host_machine]
+	system = 'linux'
+	cpu_family = 'aarch64'
+	cpu = 'armv8-a'
+	endian = 'little'
+
+
 Using the DPDK within an Application
 -------------------------------------
 
