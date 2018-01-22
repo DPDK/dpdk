@@ -43,6 +43,7 @@
 #include <rte_interrupts.h>
 
 #define FAILSAFE_DRIVER_NAME "Fail-safe PMD"
+#define FAILSAFE_OWNER_NAME "Fail-safe"
 
 #define PMD_FAILSAFE_MAC_KVARG "mac"
 #define PMD_FAILSAFE_HOTPLUG_POLL_KVARG "hotplug_poll"
@@ -167,6 +168,7 @@ struct fs_priv {
 	uint32_t mac_addr_pool[FAILSAFE_MAX_ETHADDR];
 	/* current capabilities */
 	struct rte_eth_dev_info infos;
+	struct rte_eth_dev_owner my_owner; /* Unique owner. */
 	struct rte_intr_handle intr_handle; /* Port interrupt handle. */
 	/*
 	 * Fail-safe state machine.

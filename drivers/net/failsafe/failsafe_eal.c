@@ -106,6 +106,22 @@ fs_bus_init(struct rte_eth_dev *dev)
 			INFO("Taking control of a probed sub device"
 			      " %d named %s", i, da->name);
 		}
+		ret = rte_eth_dev_owner_set(pid, &PRIV(dev)->my_owner);
+		if (ret) {
+			INFO("sub_device %d owner set failed (%s),"
+			     " will try again later", i, strerror(ret));
+			continue;
+		} else if (strncmp(rte_eth_devices[pid].device->name, da->name,
+			   strlen(da->name)) != 0) {
+			/*
+			 * The device probably was removed and its port id was
+			 * reallocated before ownership set.
+			 */
+			rte_eth_dev_owner_unset(pid, PRIV(dev)->my_owner.id);
+			INFO("sub_device %d was probably removed before taking"
+			     " ownership, will try again later", i);
+			continue;
+		}
 		ETH(sdev) = &rte_eth_devices[pid];
 		SUB_ID(sdev) = i;
 		sdev->fs_dev = dev;

@@ -196,6 +196,13 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 	ret = failsafe_args_parse(dev, params);
 	if (ret)
 		goto free_subs;
+	ret = rte_eth_dev_owner_new(&priv->my_owner.id);
+	if (ret) {
+		ERROR("Failed to get unique owner identifier");
+		goto free_args;
+	}
+	snprintf(priv->my_owner.name, sizeof(priv->my_owner.name),
+		 FAILSAFE_OWNER_NAME);
 	ret = failsafe_eal_init(dev);
 	if (ret)
 		goto free_args;
