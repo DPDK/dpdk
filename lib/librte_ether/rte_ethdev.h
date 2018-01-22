@@ -146,6 +146,7 @@ extern "C" {
 /* Use this macro to check if LRO API is supported */
 #define RTE_ETHDEV_HAS_LRO_SUPPORT
 
+#include <rte_compat.h>
 #include <rte_log.h>
 #include <rte_interrupts.h>
 #include <rte_dev.h>
@@ -1313,7 +1314,7 @@ uint32_t rte_eth_speed_bitflag(uint32_t speed, int duplex);
  * @return
  *   Offload name or 'UNKNOWN' if the flag cannot be recognised.
  */
-const char *rte_eth_dev_rx_offload_name(uint64_t offload);
+const char * __rte_experimental rte_eth_dev_rx_offload_name(uint64_t offload);
 
 /**
  * @warning
@@ -1326,7 +1327,7 @@ const char *rte_eth_dev_rx_offload_name(uint64_t offload);
  * @return
  *   Offload name or 'UNKNOWN' if the flag cannot be recognised.
  */
-const char *rte_eth_dev_tx_offload_name(uint64_t offload);
+const char * __rte_experimental rte_eth_dev_tx_offload_name(uint64_t offload);
 
 /**
  * Configure an Ethernet device.
@@ -1374,7 +1375,7 @@ int rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_queue,
  * @return
  *   1 when the Ethernet device is removed, otherwise 0.
  */
-int
+int __rte_experimental
 rte_eth_dev_is_removed(uint16_t port_id);
 
 /**

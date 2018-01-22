@@ -74,7 +74,7 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  */
 #include <stdint.h>
-
+#include <rte_compat.h>
 #include <rte_common.h>
 
 #ifdef __cplusplus
@@ -447,7 +447,7 @@ struct rte_mtr_error {
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_capabilities_get(uint16_t port_id,
 	struct rte_mtr_capabilities *cap,
 	struct rte_mtr_error *error);
@@ -470,7 +470,7 @@ rte_mtr_capabilities_get(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_meter_profile_add(uint16_t port_id,
 	uint32_t meter_profile_id,
 	struct rte_mtr_meter_profile *profile,
@@ -491,7 +491,7 @@ rte_mtr_meter_profile_add(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_meter_profile_delete(uint16_t port_id,
 	uint32_t meter_profile_id,
 	struct rte_mtr_error *error);
@@ -519,7 +519,7 @@ rte_mtr_meter_profile_delete(uint16_t port_id,
  *
  * @see enum rte_flow_action_type::RTE_FLOW_ACTION_TYPE_METER
  */
-int
+int __rte_experimental
 rte_mtr_create(uint16_t port_id,
 	uint32_t mtr_id,
 	struct rte_mtr_params *params,
@@ -542,7 +542,7 @@ rte_mtr_create(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_destroy(uint16_t port_id,
 	uint32_t mtr_id,
 	struct rte_mtr_error *error);
@@ -569,7 +569,7 @@ rte_mtr_destroy(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_meter_disable(uint16_t port_id,
 	uint32_t mtr_id,
 	struct rte_mtr_error *error);
@@ -590,7 +590,7 @@ rte_mtr_meter_disable(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_meter_enable(uint16_t port_id,
 	uint32_t mtr_id,
 	struct rte_mtr_error *error);
@@ -609,7 +609,7 @@ rte_mtr_meter_enable(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_meter_profile_update(uint16_t port_id,
 	uint32_t mtr_id,
 	uint32_t meter_profile_id,
@@ -633,7 +633,7 @@ rte_mtr_meter_profile_update(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
 	uint32_t mtr_id,
 	enum rte_mtr_color *dscp_table,
@@ -659,7 +659,7 @@ rte_mtr_meter_dscp_table_update(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-int
+int __rte_experimental
 rte_mtr_policer_actions_update(uint16_t port_id,
 	uint32_t mtr_id,
 	uint32_t action_mask,
@@ -684,7 +684,7 @@ rte_mtr_policer_actions_update(uint16_t port_id,
  *
  * @see enum rte_mtr_stats_type
  */
-int
+int __rte_experimental
 rte_mtr_stats_update(uint16_t port_id,
 	uint32_t mtr_id,
 	uint64_t stats_mask,
@@ -715,7 +715,7 @@ rte_mtr_stats_update(uint16_t port_id,
  *
  * @see enum rte_mtr_stats_type
  */
-int
+int __rte_experimental
 rte_mtr_stats_read(uint16_t port_id,
 	uint32_t mtr_id,
 	struct rte_mtr_stats *stats,

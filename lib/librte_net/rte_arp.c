@@ -7,7 +7,7 @@
 #include <rte_arp.h>
 
 #define RARP_PKT_SIZE	64
-struct rte_mbuf *
+struct rte_mbuf * __rte_experimental
 rte_net_make_rarp_packet(struct rte_mempool *mpool,
 		const struct ether_addr *mac)
 {

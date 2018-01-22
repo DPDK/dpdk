@@ -15,6 +15,7 @@
 #include <sched.h>
 
 #include <rte_config.h>
+#include <rte_compat.h>
 #include <rte_per_lcore.h>
 #include <rte_bus.h>
 
@@ -183,7 +184,7 @@ int rte_eal_init(int argc, char **argv);
  * @return 0 Successfully released all internal EAL resources
  * @return -EFAULT There was an error in releasing all resources.
  */
-int rte_eal_cleanup(void);
+int __rte_experimental rte_eal_cleanup(void);
 
 /**
  * Check if a primary process is currently alive

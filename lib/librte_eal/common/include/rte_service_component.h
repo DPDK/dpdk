@@ -9,7 +9,7 @@
  * Include this file if you are writing a component that requires CPU cycles to
  * operate, and you wish to run the component using service cores
  */
-
+#include <rte_compat.h>
 #include <rte_service.h>
 
 /**
@@ -73,8 +73,9 @@ struct rte_service_spec {
  *         -EINVAL Attempted to register an invalid service (eg, no callback
  *         set)
  */
-int32_t rte_service_component_register(const struct rte_service_spec *spec,
-				       uint32_t *service_id);
+int32_t __rte_experimental
+rte_service_component_register(const struct rte_service_spec *spec,
+			       uint32_t *service_id);
 
 /**
  * @warning
@@ -88,7 +89,7 @@ int32_t rte_service_component_register(const struct rte_service_spec *spec,
  * @retval -EBUSY The service is currently running, stop the service before
  *          calling unregister. No action has been taken.
  */
-int32_t rte_service_component_unregister(uint32_t id);
+int32_t __rte_experimental rte_service_component_unregister(uint32_t id);
 
 /**
  * @warning
@@ -106,7 +107,7 @@ int32_t rte_service_component_unregister(uint32_t id);
  * @retval -ENODEV Error in enabling service lcore on a service
  * @retval -ENOEXEC Error when starting services
  */
-int32_t rte_service_start_with_defaults(void);
+int32_t __rte_experimental rte_service_start_with_defaults(void);
 
 /**
  * @warning
@@ -123,7 +124,8 @@ int32_t rte_service_start_with_defaults(void);
  *
  * @retval 0 Success
  */
-int32_t rte_service_component_runstate_set(uint32_t id, uint32_t runstate);
+int32_t __rte_experimental rte_service_component_runstate_set(uint32_t id,
+							  uint32_t runstate);
 
 /**
  * @warning
@@ -148,6 +150,6 @@ int32_t rte_service_init(void);
  *
  * @retval None
  */
-void rte_service_finalize(void);
+void __rte_experimental rte_service_finalize(void);
 
 #endif /* _RTE_SERVICE_PRIVATE_H_ */

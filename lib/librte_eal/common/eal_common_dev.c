@@ -37,6 +37,7 @@
 #include <inttypes.h>
 #include <sys/queue.h>
 
+#include <rte_compat.h>
 #include <rte_bus.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
@@ -133,7 +134,7 @@ full_dev_name(const char *bus, const char *dev, const char *args)
 	return name;
 }
 
-int rte_eal_hotplug_add(const char *busname, const char *devname,
+int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devname,
 			const char *devargs)
 {
 	struct rte_bus *bus;
@@ -203,7 +204,8 @@ err_name:
 	return ret;
 }
 
-int rte_eal_hotplug_remove(const char *busname, const char *devname)
+int __rte_experimental
+rte_eal_hotplug_remove(const char *busname, const char *devname)
 {
 	struct rte_bus *bus;
 	struct rte_device *dev;

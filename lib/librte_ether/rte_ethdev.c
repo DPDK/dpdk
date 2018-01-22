@@ -815,7 +815,7 @@ rte_eth_convert_rx_offloads(const uint64_t rx_offloads,
 		rxmode->security = 0;
 }
 
-const char *
+const char * __rte_experimental
 rte_eth_dev_rx_offload_name(uint64_t offload)
 {
 	const char *name = "UNKNOWN";
@@ -831,7 +831,7 @@ rte_eth_dev_rx_offload_name(uint64_t offload)
 	return name;
 }
 
-const char *
+const char * __rte_experimental
 rte_eth_dev_tx_offload_name(uint64_t offload)
 {
 	const char *name = "UNKNOWN";
@@ -1194,7 +1194,7 @@ rte_eth_dev_reset(uint16_t port_id)
 	return eth_err(port_id, ret);
 }
 
-int
+int __rte_experimental
 rte_eth_dev_is_removed(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;

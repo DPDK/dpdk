@@ -53,6 +53,7 @@
 #include <sys/io.h>
 #endif
 
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_memory.h>
@@ -974,7 +975,8 @@ rte_eal_init(int argc, char **argv)
 	return fctret;
 }
 
-int rte_eal_cleanup(void)
+int __rte_experimental
+rte_eal_cleanup(void)
 {
 	rte_service_finalize();
 	return 0;

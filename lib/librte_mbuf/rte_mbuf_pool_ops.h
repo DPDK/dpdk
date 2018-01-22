@@ -17,6 +17,8 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  */
 
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,7 +34,7 @@ extern "C" {
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int
+int __rte_experimental
 rte_mbuf_set_platform_mempool_ops(const char *ops_name);
 
 /**
@@ -44,7 +46,7 @@ rte_mbuf_set_platform_mempool_ops(const char *ops_name);
  *   - On success, platform pool ops name.
  *   - On failure, NULL.
  */
-const char *
+const char * __rte_experimental
 rte_mbuf_platform_mempool_ops(void);
 
 /**
@@ -58,7 +60,7 @@ rte_mbuf_platform_mempool_ops(void);
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int
+int __rte_experimental
 rte_mbuf_set_user_mempool_ops(const char *ops_name);
 
 /**
@@ -70,7 +72,7 @@ rte_mbuf_set_user_mempool_ops(const char *ops_name);
  *   - On success, user pool ops name..
  *   - On failure, NULL.
  */
-const char *
+const char * __rte_experimental
 rte_mbuf_user_mempool_ops(void);
 
 /**
@@ -85,7 +87,7 @@ rte_mbuf_user_mempool_ops(void);
  * @return
  *   returns preferred mbuf pool ops name
  */
-const char *
+const char * __rte_experimental
 rte_mbuf_best_mempool_ops(void);
 
 

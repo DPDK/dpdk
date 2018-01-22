@@ -57,7 +57,7 @@ extern "C" {
  *
  * @return The number of services registered.
  */
-uint32_t rte_service_get_count(void);
+uint32_t __rte_experimental rte_service_get_count(void);
 
 /**
  * @warning
@@ -84,7 +84,8 @@ uint32_t rte_service_get_count(void);
  * @retval -EINVAL Null *service_id* pointer provided
  * @retval -ENODEV No such service registered
  */
-int32_t rte_service_get_by_name(const char *name, uint32_t *service_id);
+int32_t __rte_experimental rte_service_get_by_name(const char *name,
+					       uint32_t *service_id);
 
 /**
  * @warning
@@ -95,7 +96,7 @@ int32_t rte_service_get_by_name(const char *name, uint32_t *service_id);
  * @return A pointer to the name of the service. The returned pointer remains
  *         in ownership of the service, and the application must not free it.
  */
-const char *rte_service_get_name(uint32_t id);
+const char __rte_experimental *rte_service_get_name(uint32_t id);
 
 /**
  * @warning
@@ -108,7 +109,8 @@ const char *rte_service_get_name(uint32_t id);
  * @retval 1 Capability supported by this service instance
  * @retval 0 Capability not supported by this service instance
  */
-int32_t rte_service_probe_capability(uint32_t id, uint32_t capability);
+int32_t __rte_experimental rte_service_probe_capability(uint32_t id,
+						    uint32_t capability);
 
 /**
  * @warning
@@ -132,8 +134,8 @@ int32_t rte_service_probe_capability(uint32_t id, uint32_t capability);
  * @retval 0 lcore map updated successfully
  * @retval -EINVAL An invalid service or lcore was provided.
  */
-int32_t rte_service_map_lcore_set(uint32_t service_id, uint32_t lcore,
-				  uint32_t enable);
+int32_t __rte_experimental rte_service_map_lcore_set(uint32_t service_id,
+				  uint32_t lcore, uint32_t enable);
 
 /**
  * @warning
@@ -148,7 +150,8 @@ int32_t rte_service_map_lcore_set(uint32_t service_id, uint32_t lcore,
  * @retval 0 lcore is not mapped to service
  * @retval -EINVAL An invalid service or lcore was provided.
  */
-int32_t rte_service_map_lcore_get(uint32_t service_id, uint32_t lcore);
+int32_t __rte_experimental rte_service_map_lcore_get(uint32_t service_id,
+						 uint32_t lcore);
 
 /**
  * @warning
@@ -165,7 +168,7 @@ int32_t rte_service_map_lcore_get(uint32_t service_id, uint32_t lcore);
  * @retval 0 The service was successfully started
  * @retval -EINVAL Invalid service id
  */
-int32_t rte_service_runstate_set(uint32_t id, uint32_t runstate);
+int32_t __rte_experimental rte_service_runstate_set(uint32_t id, uint32_t runstate);
 
 /**
  * @warning
@@ -183,7 +186,7 @@ int32_t rte_service_runstate_set(uint32_t id, uint32_t runstate);
  * @retval 0 Service is stopped
  * @retval -EINVAL Invalid service id
  */
-int32_t rte_service_runstate_get(uint32_t id);
+int32_t __rte_experimental rte_service_runstate_get(uint32_t id);
 
 /**
  * @warning
@@ -199,7 +202,8 @@ int32_t rte_service_runstate_get(uint32_t id);
  * @retval 0 Success
  * @retval -EINVAL Invalid service ID
  */
-int32_t rte_service_set_runstate_mapped_check(uint32_t id, int32_t enable);
+int32_t __rte_experimental rte_service_set_runstate_mapped_check(uint32_t id,
+							     int32_t enable);
 
 /**
  * @warning
@@ -237,7 +241,7 @@ int32_t rte_service_set_runstate_mapped_check(uint32_t id, int32_t enable);
  * @retval -ENOEXEC Service is not in a run-able state
  * @retval -EINVAL Invalid service id
  */
-int32_t rte_service_run_iter_on_app_lcore(uint32_t id,
+int32_t __rte_experimental rte_service_run_iter_on_app_lcore(uint32_t id,
 		uint32_t serialize_multithread_unsafe);
 
 /**
@@ -255,7 +259,7 @@ int32_t rte_service_run_iter_on_app_lcore(uint32_t id,
  * @retval -EINVAL Failed to start core. The *lcore_id* passed in is not
  *          currently assigned to be a service core.
  */
-int32_t rte_service_lcore_start(uint32_t lcore_id);
+int32_t __rte_experimental rte_service_lcore_start(uint32_t lcore_id);
 
 /**
  * @warning
@@ -274,7 +278,7 @@ int32_t rte_service_lcore_start(uint32_t lcore_id);
  *          The application must stop the service first, and then stop the
  *          lcore.
  */
-int32_t rte_service_lcore_stop(uint32_t lcore_id);
+int32_t __rte_experimental rte_service_lcore_stop(uint32_t lcore_id);
 
 /**
  * @warning
@@ -290,7 +294,7 @@ int32_t rte_service_lcore_stop(uint32_t lcore_id);
  * @retval -EALREADY lcore is already added to the service core list
  * @retval -EINVAL Invalid lcore provided
  */
-int32_t rte_service_lcore_add(uint32_t lcore);
+int32_t __rte_experimental rte_service_lcore_add(uint32_t lcore);
 
 /**
  * @warning
@@ -304,7 +308,7 @@ int32_t rte_service_lcore_add(uint32_t lcore);
  * @retval -EBUSY Lcore is not stopped, stop service core before removing.
  * @retval -EINVAL failed to add lcore to service core mask.
  */
-int32_t rte_service_lcore_del(uint32_t lcore);
+int32_t __rte_experimental rte_service_lcore_del(uint32_t lcore);
 
 /**
  * @warning
@@ -321,7 +325,7 @@ int32_t rte_service_lcore_del(uint32_t lcore);
  *
  * @return The number of service cores currently configured.
  */
-int32_t rte_service_lcore_count(void);
+int32_t __rte_experimental rte_service_lcore_count(void);
 
 /**
  * @warning
@@ -333,7 +337,7 @@ int32_t rte_service_lcore_count(void);
  *
  * @retval 0 Success
  */
-int32_t rte_service_lcore_reset_all(void);
+int32_t __rte_experimental rte_service_lcore_reset_all(void);
 
 /**
  * @warning
@@ -347,7 +351,8 @@ int32_t rte_service_lcore_reset_all(void);
  * @retval 0 Success
  * @retval -EINVAL Invalid service pointer passed
  */
-int32_t rte_service_set_stats_enable(uint32_t id, int32_t enable);
+int32_t __rte_experimental rte_service_set_stats_enable(uint32_t id,
+						    int32_t enable);
 
 /**
  * @warning
@@ -368,7 +373,7 @@ int32_t rte_service_set_stats_enable(uint32_t id, int32_t enable);
  *          service core list. No items have been populated, call this function
  *          with a size of at least *rte_service_core_count* items.
  */
-int32_t rte_service_lcore_list(uint32_t array[], uint32_t n);
+int32_t __rte_experimental rte_service_lcore_list(uint32_t array[], uint32_t n);
 
 /**
  * @warning
@@ -381,7 +386,7 @@ int32_t rte_service_lcore_list(uint32_t array[], uint32_t n);
  * @retval -EINVAL Invalid lcore provided
  * @retval -ENOTSUP The provided lcore is not a service core.
  */
-int32_t rte_service_lcore_count_services(uint32_t lcore);
+int32_t __rte_experimental rte_service_lcore_count_services(uint32_t lcore);
 
 /**
  * @warning
@@ -393,7 +398,7 @@ int32_t rte_service_lcore_count_services(uint32_t lcore);
  * @retval 0 Statistics have been successfully dumped
  * @retval -EINVAL Invalid service id provided
  */
-int32_t rte_service_dump(FILE *f, uint32_t id);
+int32_t __rte_experimental rte_service_dump(FILE *f, uint32_t id);
 
 /**
  * Returns the number of cycles that this service has consumed
@@ -414,8 +419,8 @@ int32_t rte_service_dump(FILE *f, uint32_t id);
  * @retval 0 Success, the attribute value has been written to *attr_value*.
  *         -EINVAL Invalid id, attr_id or attr_value was NULL.
  */
-int32_t rte_service_attr_get(uint32_t id, uint32_t attr_id,
-			     uint32_t *attr_value);
+int32_t __rte_experimental rte_service_attr_get(uint32_t id, uint32_t attr_id,
+		uint32_t *attr_value);
 
 /**
  * @warning
@@ -427,7 +432,7 @@ int32_t rte_service_attr_get(uint32_t id, uint32_t attr_id,
  * @retval 0 Successfully reset attributes
  *         -EINVAL Invalid service id provided
  */
-int32_t rte_service_attr_reset_all(uint32_t id);
+int32_t __rte_experimental rte_service_attr_reset_all(uint32_t id);
 
 #ifdef __cplusplus
 }

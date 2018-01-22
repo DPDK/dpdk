@@ -50,6 +50,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <sys/queue.h>
+#include <rte_compat.h>
 #include <rte_bus.h>
 
 /**
@@ -136,7 +137,7 @@ int rte_eal_parse_devargs_str(const char *devargs_str,
  *   - 0 on success.
  *   - Negative errno on error.
  */
-int
+int __rte_experimental
 rte_eal_devargs_parse(const char *dev,
 		      struct rte_devargs *da);
 
@@ -150,7 +151,7 @@ rte_eal_devargs_parse(const char *dev,
  *   - 0 on success
  *   - Negative on error.
  */
-int
+int __rte_experimental
 rte_eal_devargs_insert(struct rte_devargs *da);
 
 /**
@@ -193,7 +194,8 @@ int rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str);
  *   <0 on error.
  *   >0 if the devargs was not within the user device list.
  */
-int rte_eal_devargs_remove(const char *busname, const char *devname);
+int __rte_experimental rte_eal_devargs_remove(const char *busname,
+					  const char *devname);
 
 /**
  * Count the number of user devices of a specified type

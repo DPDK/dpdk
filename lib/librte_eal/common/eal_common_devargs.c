@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <rte_compat.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_tailq.h>
@@ -85,7 +86,7 @@ bus_name_cmp(const struct rte_bus *bus, const void *name)
 	return strncmp(bus->name, name, strlen(bus->name));
 }
 
-int
+int __rte_experimental
 rte_eal_devargs_parse(const char *dev, struct rte_devargs *da)
 {
 	struct rte_bus *bus = NULL;
@@ -139,7 +140,7 @@ rte_eal_devargs_parse(const char *dev, struct rte_devargs *da)
 	return 0;
 }
 
-int
+int __rte_experimental
 rte_eal_devargs_insert(struct rte_devargs *da)
 {
 	int ret;
@@ -188,7 +189,7 @@ fail:
 	return -1;
 }
 
-int
+int __rte_experimental
 rte_eal_devargs_remove(const char *busname, const char *devname)
 {
 	struct rte_devargs *d;

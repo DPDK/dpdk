@@ -160,12 +160,12 @@ struct dpaa_if_stats {
 	uint64_t tund;		/**<Tx Undersized */
 };
 
-int dpaa_eth_eventq_attach(const struct rte_eth_dev *dev,
+int __rte_experimental dpaa_eth_eventq_attach(const struct rte_eth_dev *dev,
 			   int eth_rx_queue_id,
 		u16 ch_id,
 		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
 
-int dpaa_eth_eventq_detach(const struct rte_eth_dev *dev,
+int __rte_experimental dpaa_eth_eventq_detach(const struct rte_eth_dev *dev,
 			   int eth_rx_queue_id);
 
 enum qman_cb_dqrr_result

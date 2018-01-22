@@ -50,6 +50,7 @@ extern "C" {
 #include <sys/queue.h>
 
 #include <rte_config.h>
+#include <rte_compat.h>
 #include <rte_log.h>
 
 __attribute__((format(printf, 2, 0)))
@@ -210,7 +211,7 @@ int rte_eal_dev_detach(struct rte_device *dev);
  * @return
  *   0 on success, negative on error.
  */
-int rte_eal_hotplug_add(const char *busname, const char *devname,
+int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devname,
 			const char *devargs);
 
 /**
@@ -226,7 +227,8 @@ int rte_eal_hotplug_add(const char *busname, const char *devname,
  * @return
  *   0 on success, negative on error.
  */
-int rte_eal_hotplug_remove(const char *busname, const char *devname);
+int __rte_experimental rte_eal_hotplug_remove(const char *busname,
+					  const char *devname);
 
 /**
  * Device comparison function.

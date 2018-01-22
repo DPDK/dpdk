@@ -90,7 +90,7 @@ struct arp_hdr {
  * @return
  *   - RARP packet pointer on success, or NULL on error
  */
-struct rte_mbuf *
+struct rte_mbuf * __rte_experimental
 rte_net_make_rarp_packet(struct rte_mempool *mpool,
 		const struct ether_addr *mac);
 
