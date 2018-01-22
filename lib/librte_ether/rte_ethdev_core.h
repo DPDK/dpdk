@@ -548,6 +548,7 @@ struct rte_eth_dev {
 } __rte_cache_aligned;
 
 struct rte_eth_dev_sriov;
+struct rte_eth_dev_owner;
 
 /**
  * @internal
@@ -599,6 +600,7 @@ struct rte_eth_dev_data {
 	int numa_node;  /**< NUMA node connection */
 	struct rte_vlan_filter_conf vlan_filter_conf;
 	/**< VLAN filter configuration. */
+	struct rte_eth_dev_owner owner; /**< The port owner. */
 };
 
 /**
