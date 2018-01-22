@@ -50,6 +50,22 @@ those new APIs and start finding issues with them, new DPDK APIs will be
 automatically marked as ``experimental`` to allow for a period of stabilization
 before they become part of a tracked ABI.
 
+Note that marking an API as experimental is a multi step process.
+To mark an API as experimental, the symbols which are desired to be exported
+must be placed in an EXPERIMENTAL version block in the corresponding libraries'
+version map script.
+Secondly, the corresponding definitions of those exported functions, and
+their forward declarations (in the development header files), must be marked
+with the ``__rte_experimental`` tag (see ``rte_compat.h``).
+The DPDK build makefiles perform a check to ensure that the map file and the
+C code reflect the same list of symbols.
+This check can be circumvented by defining ``ALLOW_EXPERIMENTAL_API``
+during compilation in the corresponding library Makefile.
+
+In addition to tagging the code with ``__rte_experimental``,
+the doxygen markup must also contain the EXPERIMENTAL string,
+and the MAINTAINERS file should note the EXPERIMENTAL libraries.
+
 ABI versions, once released, are available until such time as their
 deprecation has been noted in the Release Notes for at least one major release
 cycle. For example consider the case where the ABI for DPDK 2.0 has been
