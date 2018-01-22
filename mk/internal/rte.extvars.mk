@@ -20,7 +20,7 @@ ifeq ("$(origin M)", "command line")
 RTE_EXTMK := $(abspath $(M))
 endif
 endif
-RTE_EXTMK ?= $(RTE_SRCDIR)/Makefile
+RTE_EXTMK ?= $(RTE_SRCDIR)/$(firstword $(MAKEFILE_LIST))
 export RTE_EXTMK
 
 # RTE_SDK_BIN must point to .config, include/ and lib/.
