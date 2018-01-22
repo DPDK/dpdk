@@ -396,6 +396,8 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	int ret = 0;
 
 	assert(txq_data);
+	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_TX_QUEUE;
+	priv->verbs_alloc_ctx.obj = txq_ctrl;
 	if (mlx5_getenv_int("MLX5_ENABLE_CQE_COMPRESSION")) {
 		ERROR("MLX5_ENABLE_CQE_COMPRESSION must never be set");
 		goto error;
@@ -526,12 +528,14 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	DEBUG("%p: Verbs Tx queue %p: refcnt %d", (void *)priv,
 	      (void *)txq_ibv, rte_atomic32_read(&txq_ibv->refcnt));
 	LIST_INSERT_HEAD(&priv->txqsibv, txq_ibv, next);
+	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return txq_ibv;
 error:
 	if (tmpl.cq)
 		claim_zero(ibv_destroy_cq(tmpl.cq));
 	if (tmpl.qp)
 		claim_zero(ibv_destroy_qp(tmpl.qp));
+	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return NULL;
 }
 

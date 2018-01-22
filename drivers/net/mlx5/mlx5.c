@@ -139,10 +139,20 @@ mlx5_alloc_verbs_buf(size_t size, void *data)
 	struct priv *priv = data;
 	void *ret;
 	size_t alignment = sysconf(_SC_PAGESIZE);
+	unsigned int socket = SOCKET_ID_ANY;
 
+	if (priv->verbs_alloc_ctx.type == MLX5_VERBS_ALLOC_TYPE_TX_QUEUE) {
+		const struct mlx5_txq_ctrl *ctrl = priv->verbs_alloc_ctx.obj;
+
+		socket = ctrl->socket;
+	} else if (priv->verbs_alloc_ctx.type ==
+		   MLX5_VERBS_ALLOC_TYPE_RX_QUEUE) {
+		const struct mlx5_rxq_ctrl *ctrl = priv->verbs_alloc_ctx.obj;
+
+		socket = ctrl->socket;
+	}
 	assert(data != NULL);
-	ret = rte_malloc_socket(__func__, size, alignment,
-				priv->dev->device->numa_node);
+	ret = rte_malloc_socket(__func__, size, alignment, socket);
 	DEBUG("Extern alloc size: %lu, align: %lu: %p", size, alignment, ret);
 	return ret;
 }

@@ -123,6 +123,24 @@ struct mlx5_dev_config {
 	int inline_max_packet_sz; /* Max packet size for inlining. */
 };
 
+/**
+ * Type of objet being allocated.
+ */
+enum mlx5_verbs_alloc_type {
+	MLX5_VERBS_ALLOC_TYPE_NONE,
+	MLX5_VERBS_ALLOC_TYPE_TX_QUEUE,
+	MLX5_VERBS_ALLOC_TYPE_RX_QUEUE,
+};
+
+/**
+ * Verbs allocator needs a context to know in the callback which kind of
+ * resources it is allocating.
+ */
+struct mlx5_verbs_alloc_ctx {
+	enum mlx5_verbs_alloc_type type; /* Kind of object being allocated. */
+	const void *obj; /* Pointer to the DPDK object. */
+};
+
 struct priv {
 	struct rte_eth_dev *dev; /* Ethernet device of master process. */
 	struct ibv_context *ctx; /* Verbs context. */
@@ -164,6 +182,8 @@ struct priv {
 	int primary_socket; /* Unix socket for primary process. */
 	struct rte_intr_handle intr_handle_socket; /* Interrupt handler. */
 	struct mlx5_dev_config config; /* Device configuration. */
+	struct mlx5_verbs_alloc_ctx verbs_alloc_ctx;
+	/* Context for Verbs allocator. */
 };
 
 /**

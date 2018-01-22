@@ -654,6 +654,8 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 
 	assert(rxq_data);
 	assert(!rxq_ctrl->ibv);
+	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_RX_QUEUE;
+	priv->verbs_alloc_ctx.obj = rxq_ctrl;
 	tmpl = rte_calloc_socket(__func__, 1, sizeof(*tmpl), 0,
 				 rxq_ctrl->socket);
 	if (!tmpl) {
@@ -817,6 +819,7 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 	DEBUG("%p: Verbs Rx queue %p: refcnt %d", (void *)priv,
 	      (void *)tmpl, rte_atomic32_read(&tmpl->refcnt));
 	LIST_INSERT_HEAD(&priv->rxqsibv, tmpl, next);
+	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return tmpl;
 error:
 	if (tmpl->wq)
@@ -827,6 +830,7 @@ error:
 		claim_zero(ibv_destroy_comp_channel(tmpl->channel));
 	if (tmpl->mr)
 		priv_mr_release(priv, tmpl->mr);
+	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return NULL;
 }
 
