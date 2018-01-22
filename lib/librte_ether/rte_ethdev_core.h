@@ -17,6 +17,10 @@
  *
  */
 
+struct rte_eth_dev_callback;
+/** @internal Structure to keep track of registered callbacks */
+TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
+
 /*
  * Definitions of all functions exported by an Ethernet driver through the
  * the generic structure of type *eth_dev_ops* supplied in the *rte_eth_dev*

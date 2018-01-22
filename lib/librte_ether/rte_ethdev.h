@@ -1121,10 +1121,6 @@ struct rte_eth_dev;
 
 #define RTE_ETH_ALL RTE_MAX_ETHPORTS
 
-struct rte_eth_dev_callback;
-/** @internal Structure to keep track of registered callbacks */
-TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
-
 /* Macros to check for valid port */
 #define RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, retval) do { \
 	if (!rte_eth_dev_is_valid_port(port_id)) { \
