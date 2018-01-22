@@ -39,7 +39,7 @@ WERROR_FLAGS := -W -Wall -Wstrict-prototypes -Wmissing-prototypes
 WERROR_FLAGS += -Wmissing-declarations -Wold-style-definition -Wpointer-arith
 WERROR_FLAGS += -Wnested-externs -Wcast-qual
 WERROR_FLAGS += -Wformat-nonliteral -Wformat-security
-WERROR_FLAGS += -Wundef -Wwrite-strings
+WERROR_FLAGS += -Wundef -Wwrite-strings -Wdeprecated
 
 ifeq ($(RTE_DEVEL_BUILD),y)
 WERROR_FLAGS += -Werror

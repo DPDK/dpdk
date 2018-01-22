@@ -45,7 +45,7 @@ TOOLCHAIN_ASFLAGS =
 WERROR_FLAGS := -Wall -w2 -diag-disable 271 -diag-warning 1478
 WERROR_FLAGS += -diag-disable 13368 -diag-disable 15527
 WERROR_FLAGS += -diag-disable 188
-WERROR_FLAGS += -diag-disable 11074 -diag-disable 11076
+WERROR_FLAGS += -diag-disable 11074 -diag-disable 11076 -Wdeprecated
 
 ifeq ($(RTE_DEVEL_BUILD),y)
 WERROR_FLAGS += -Werror-all

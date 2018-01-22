@@ -16,6 +16,7 @@ APP = service_cores
 # all source are stored in SRCS-y
 SRCS-y := main.c
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS)
 
 # workaround for a gcc bug with noreturn attribute

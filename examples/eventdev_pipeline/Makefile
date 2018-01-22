@@ -18,6 +18,7 @@ SRCS-y := main.c
 SRCS-y += pipeline_worker_generic.c
 SRCS-y += pipeline_worker_tx.c
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

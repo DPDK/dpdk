@@ -8,4 +8,6 @@ DIRS-$(CONFIG_RTE_EAL_IGB_UIO) += igb_uio
 DIRS-$(CONFIG_RTE_KNI_KMOD) += kni
 DEPDIRS-kni := eal
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 include $(RTE_SDK)/mk/rte.subdir.mk

@@ -10,6 +10,7 @@ LIBABIVER := 1
 EXPORT_MAP := rte_pmd_vdev_netvsc_version.map
 
 # Additional compilation flags.
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += -g
 CFLAGS += -Wall -Wextra

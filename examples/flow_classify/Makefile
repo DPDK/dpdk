@@ -17,6 +17,7 @@ APP = flow_classify
 # all source are stored in SRCS-y
 SRCS-y := flow_classify.c
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

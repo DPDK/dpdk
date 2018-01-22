@@ -18,6 +18,7 @@ endif
 
 APP = ipsec-secgw
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3 -gdwarf-2
 CFLAGS += $(WERROR_FLAGS)
 ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)

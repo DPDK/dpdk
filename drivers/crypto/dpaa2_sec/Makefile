@@ -17,6 +17,7 @@ endif
 LIB = librte_pmd_dpaa2_sec.a
 
 # build flags
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 ifeq ($(CONFIG_RTE_LIBRTE_DPAA2_SEC_DEBUG_INIT),y)
 CFLAGS += -O0 -g
 CFLAGS += "-Wno-error"

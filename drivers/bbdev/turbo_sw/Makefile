@@ -11,6 +11,7 @@ endif
 LIB = librte_pmd_bbdev_turbo_sw.a
 
 # build flags
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring -lrte_kvargs
