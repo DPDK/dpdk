@@ -86,6 +86,8 @@ parse_dscp_table_entries(char *str, enum rte_mtr_color *dscp_table)
 	/* Allocate memory for dscp table */
 	dscp_table = (enum rte_mtr_color *)malloc(MAX_DSCP_TABLE_ENTRIES *
 		sizeof(enum rte_mtr_color));
+	if (dscp_table == NULL)
+		return -1;
 
 	while (1) {
 		if (strcmp(token, "G") == 0 ||
@@ -105,8 +107,10 @@ parse_dscp_table_entries(char *str, enum rte_mtr_color *dscp_table)
 			break;
 
 		token = strtok_r(str, PARSE_DELIMITER, &str);
-		if (token == NULL)
+		if (token == NULL) {
+			free(dscp_table);
 			return -1;
+		}
 	}
 	return 0;
 }
