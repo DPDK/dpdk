@@ -274,6 +274,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set verbose (level)\n"
 			"    Set the debug verbosity level X.\n\n"
 
+			"set log global|(type) (level)\n"
+			"    Set the log level.\n\n"
+
 			"set nbport (num)\n"
 			"    Set number of ports.\n\n"
 
@@ -3051,6 +3054,55 @@ cmdline_parse_inst_t cmd_set_numbers = {
 		(void *)&cmd_set_set,
 		(void *)&cmd_set_what,
 		(void *)&cmd_set_value,
+		NULL,
+	},
+};
+
+/* *** SET LOG LEVEL CONFIGURATION *** */
+
+struct cmd_set_log_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t log;
+	cmdline_fixed_string_t type;
+	uint32_t level;
+};
+
+static void
+cmd_set_log_parsed(void *parsed_result,
+		   __attribute__((unused)) struct cmdline *cl,
+		   __attribute__((unused)) void *data)
+{
+	struct cmd_set_log_result *res;
+	int ret;
+
+	res = parsed_result;
+	if (!strcmp(res->type, "global"))
+		rte_log_set_global_level(res->level);
+	else {
+		ret = rte_log_set_level_regexp(res->type, res->level);
+		if (ret < 0)
+			printf("Unable to set log level\n");
+	}
+}
+
+cmdline_parse_token_string_t cmd_set_log_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_log_result, set, "set");
+cmdline_parse_token_string_t cmd_set_log_log =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_log_result, log, "log");
+cmdline_parse_token_string_t cmd_set_log_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_log_result, type, NULL);
+cmdline_parse_token_num_t cmd_set_log_level =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_log_result, level, UINT32);
+
+cmdline_parse_inst_t cmd_set_log = {
+	.f = cmd_set_log_parsed,
+	.data = NULL,
+	.help_str = "set log global|<type> <level>",
+	.tokens = {
+		(void *)&cmd_set_log_set,
+		(void *)&cmd_set_log_log,
+		(void *)&cmd_set_log_type,
+		(void *)&cmd_set_log_level,
 		NULL,
 	},
 };
@@ -16026,6 +16078,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_link_down,
 	(cmdline_parse_inst_t *)&cmd_reset,
 	(cmdline_parse_inst_t *)&cmd_set_numbers,
+	(cmdline_parse_inst_t *)&cmd_set_log,
 	(cmdline_parse_inst_t *)&cmd_set_txpkts,
 	(cmdline_parse_inst_t *)&cmd_set_txsplit,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_list,

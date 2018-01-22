@@ -448,6 +448,25 @@ Set the debug verbosity level::
 
 Currently the only available levels are 0 (silent except for error) and 1 (fully verbose).
 
+set log
+~~~~~~~
+
+Set the log level for a log type::
+
+	testpmd> set log global|(type) (level)
+
+Where:
+
+* ``type`` is the log name.
+
+* ``level`` is the log level.
+
+For example, to change the global log level::
+	testpmd> set log global (level)
+
+Regexes can also be used for type. To change log level of user1, user2 and user3::
+	testpmd> set log user[1-3] (level)
+
 set nbport
 ~~~~~~~~~~
 
