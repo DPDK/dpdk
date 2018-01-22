@@ -139,7 +139,7 @@ bpi_cipher_decrypt(uint8_t *src, uint8_t *dst,
 	return 0;
 
 cipher_decrypt_err:
-	PMD_DRV_LOG(ERR, "libcrypto ECB cipher encrypt for BPI IV failed");
+	PMD_DRV_LOG(ERR, "libcrypto ECB cipher decrypt for BPI IV failed");
 	return -EINVAL;
 }
 
