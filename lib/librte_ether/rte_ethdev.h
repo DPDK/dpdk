@@ -1158,7 +1158,7 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
  * The callback function is called on RX with a burst of packets that have
  * been received on the given port and queue.
  *
- * @param port
+ * @param port_id
  *   The Ethernet port on which RX is being performed.
  * @param queue
  *   The queue on the Ethernet port which is being used to receive the packets.
@@ -1174,7 +1174,7 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
  * @return
  *   The number of packets returned to the user.
  */
-typedef uint16_t (*rte_rx_callback_fn)(uint16_t port, uint16_t queue,
+typedef uint16_t (*rte_rx_callback_fn)(uint16_t port_id, uint16_t queue,
 	struct rte_mbuf *pkts[], uint16_t nb_pkts, uint16_t max_pkts,
 	void *user_param);
 
@@ -1184,7 +1184,7 @@ typedef uint16_t (*rte_rx_callback_fn)(uint16_t port, uint16_t queue,
  * The callback function is called on TX with a burst of packets immediately
  * before the packets are put onto the hardware queue for transmission.
  *
- * @param port
+ * @param port_id
  *   The Ethernet port on which TX is being performed.
  * @param queue
  *   The queue on the Ethernet port which is being used to transmit the packets.
@@ -1198,7 +1198,7 @@ typedef uint16_t (*rte_rx_callback_fn)(uint16_t port, uint16_t queue,
  * @return
  *   The number of packets to be written to the NIC.
  */
-typedef uint16_t (*rte_tx_callback_fn)(uint16_t port, uint16_t queue,
+typedef uint16_t (*rte_tx_callback_fn)(uint16_t port_id, uint16_t queue,
 	struct rte_mbuf *pkts[], uint16_t nb_pkts, void *user_param);
 
 /**
@@ -2571,7 +2571,7 @@ int rte_eth_dev_priority_flow_ctrl_set(uint16_t port_id,
  * Add a MAC address to an internal array of addresses used to enable whitelist
  * filtering to accept packets only if the destination MAC address matches.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param mac_addr
  *   The MAC address to add.
@@ -2579,20 +2579,20 @@ int rte_eth_dev_priority_flow_ctrl_set(uint16_t port_id,
  *   VMDq pool index to associate address with (if VMDq is enabled). If VMDq is
  *   not enabled, this should be set to 0.
  * @return
- *   - (0) if successfully added or *mac_addr" was already added.
+ *   - (0) if successfully added or *mac_addr* was already added.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-ENODEV) if *port* is invalid.
  *   - (-EIO) if device is removed.
  *   - (-ENOSPC) if no more MAC addresses can be added.
  *   - (-EINVAL) if MAC address is invalid.
  */
-int rte_eth_dev_mac_addr_add(uint16_t port, struct ether_addr *mac_addr,
+int rte_eth_dev_mac_addr_add(uint16_t port_id, struct ether_addr *mac_addr,
 				uint32_t pool);
 
 /**
  * Remove a MAC address from the internal array of addresses.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param mac_addr
  *   MAC address to remove.
@@ -2602,12 +2602,12 @@ int rte_eth_dev_mac_addr_add(uint16_t port, struct ether_addr *mac_addr,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EADDRINUSE) if attempting to remove the default MAC address
  */
-int rte_eth_dev_mac_addr_remove(uint16_t port, struct ether_addr *mac_addr);
+int rte_eth_dev_mac_addr_remove(uint16_t port_id, struct ether_addr *mac_addr);
 
 /**
  * Set the default MAC address.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param mac_addr
  *   New default MAC address.
@@ -2617,13 +2617,13 @@ int rte_eth_dev_mac_addr_remove(uint16_t port, struct ether_addr *mac_addr);
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if MAC address is invalid.
  */
-int rte_eth_dev_default_mac_addr_set(uint16_t port,
+int rte_eth_dev_default_mac_addr_set(uint16_t port_id,
 		struct ether_addr *mac_addr);
 
 /**
  * Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param reta_conf
  *   RETA to update.
@@ -2636,14 +2636,14 @@ int rte_eth_dev_default_mac_addr_set(uint16_t port,
  *   - (-EINVAL) if bad parameter.
  *   - (-EIO) if device is removed.
  */
-int rte_eth_dev_rss_reta_update(uint16_t port,
+int rte_eth_dev_rss_reta_update(uint16_t port_id,
 				struct rte_eth_rss_reta_entry64 *reta_conf,
 				uint16_t reta_size);
 
  /**
  * Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param reta_conf
  *   RETA to query.
@@ -2656,7 +2656,7 @@ int rte_eth_dev_rss_reta_update(uint16_t port,
  *   - (-EINVAL) if bad parameter.
  *   - (-EIO) if device is removed.
  */
-int rte_eth_dev_rss_reta_query(uint16_t port,
+int rte_eth_dev_rss_reta_query(uint16_t port_id,
 			       struct rte_eth_rss_reta_entry64 *reta_conf,
 			       uint16_t reta_size);
 
@@ -2665,7 +2665,7 @@ int rte_eth_dev_rss_reta_query(uint16_t port,
  * MAC address, and the packet is routed to all VFs for which the RX mode is
  * accept packets that match the unicast hash table.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param addr
  *   Unicast MAC address.
@@ -2679,7 +2679,7 @@ int rte_eth_dev_rss_reta_query(uint16_t port,
  *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_eth_dev_uc_hash_table_set(uint16_t port, struct ether_addr *addr,
+int rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct ether_addr *addr,
 				  uint8_t on);
 
  /**
@@ -2687,7 +2687,7 @@ int rte_eth_dev_uc_hash_table_set(uint16_t port, struct ether_addr *addr,
  * Ethernet MAC addresses,the packet is routed to all VFs for which the RX
  * mode is accept packets that match the unicast hash table.
  *
- * @param port
+ * @param port_id
  *   The port identifier of the Ethernet device.
  * @param on
  *    1 - Set all unicast hash bitmaps for receiving all the Ethernet
@@ -2700,7 +2700,7 @@ int rte_eth_dev_uc_hash_table_set(uint16_t port, struct ether_addr *addr,
  *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_eth_dev_uc_all_hash_table_set(uint16_t port, uint8_t on);
+int rte_eth_dev_uc_all_hash_table_set(uint16_t port_id, uint8_t on);
 
 /**
  * Set a traffic mirroring rule on an Ethernet device
