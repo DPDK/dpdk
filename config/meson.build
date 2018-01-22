@@ -56,8 +56,10 @@ endforeach
 compile_time_cpuflags = []
 if host_machine.cpu_family().startswith('x86')
 	arch_subdir = 'x86'
-	subdir(arch_subdir)
+elif host_machine.cpu_family().startswith('arm') or host_machine.cpu_family().startswith('aarch')
+	arch_subdir = 'arm'
 endif
+subdir(arch_subdir)
 dpdk_conf.set('RTE_COMPILE_TIME_CPUFLAGS', ','.join(compile_time_cpuflags))
 
 # set the install path for the drivers
