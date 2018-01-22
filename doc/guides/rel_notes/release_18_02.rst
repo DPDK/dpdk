@@ -178,6 +178,21 @@ New Features
   * ``rte_mp_request`` is for sending a request message and will block until
     it gets a reply message which is sent from the peer by ``rte_mp_reply``.
 
+* **Added new DPDK build system using the tools "meson" and "ninja" [EXPERIMENTAL]**
+
+  Added in support for building DPDK using ``meson`` and ``ninja``, which gives
+  additional features, such as automatic build-time configuration, over the
+  current build system using ``make``. For instructions on how to do a DPDK build
+  using the new system, see the instructions in ``doc/build-sdk-meson.txt``.
+
+.. note::
+
+    This new build system support is incomplete at this point and is added
+    as experimental in this release. The existing build system using ``make``
+    is unaffected by these changes, and can continue to be used for this
+    and subsequent releases until such time as it's deprecation is announced.
+
+
 API Changes
 -----------
 
