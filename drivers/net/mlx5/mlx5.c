@@ -620,6 +620,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	INFO("%u port(s) detected", device_attr.orig_attr.phys_port_cnt);
 
 	for (i = 0; i < device_attr.orig_attr.phys_port_cnt; i++) {
+		char name[RTE_ETH_NAME_MAX_LEN];
+		int len;
 		uint32_t port = i + 1; /* ports are indexed from one */
 		uint32_t test = (1 << i);
 		struct ibv_context *ctx = NULL;
@@ -643,14 +645,15 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			.inline_max_packet_sz = MLX5_ARG_UNSET,
 		};
 
+		len = snprintf(name, sizeof(name), PCI_PRI_FMT,
+			 pci_dev->addr.domain, pci_dev->addr.bus,
+			 pci_dev->addr.devid, pci_dev->addr.function);
+		if (device_attr.orig_attr.phys_port_cnt > 1)
+			snprintf(name + len, sizeof(name), " port %u", i);
+
 		mlx5_dev[idx].ports |= test;
 
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-			/* from rte_ethdev.c */
-			char name[RTE_ETH_NAME_MAX_LEN];
-
-			snprintf(name, sizeof(name), "%s port %u",
-				 ibv_get_device_name(ibv_dev), port);
 			eth_dev = rte_eth_dev_attach_secondary(name);
 			if (eth_dev == NULL) {
 				ERROR("can not attach rte ethdev");
@@ -844,14 +847,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv_get_mtu(priv, &priv->mtu);
 		DEBUG("port %u MTU is %u", priv->port, priv->mtu);
 
-		/* from rte_ethdev.c */
-		{
-			char name[RTE_ETH_NAME_MAX_LEN];
-
-			snprintf(name, sizeof(name), "%s port %u",
-				 ibv_get_device_name(ibv_dev), port);
-			eth_dev = rte_eth_dev_allocate(name);
-		}
+		eth_dev = rte_eth_dev_allocate(name);
 		if (eth_dev == NULL) {
 			ERROR("can not allocate rte ethdev");
 			err = ENOMEM;
