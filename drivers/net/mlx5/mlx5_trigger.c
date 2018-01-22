@@ -181,7 +181,7 @@ error:
 	priv_rxq_stop(priv);
 	priv_flow_delete_drop_queue(priv);
 	priv_unlock(priv);
-	return -err;
+	return err;
 }
 
 /**
