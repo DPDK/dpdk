@@ -77,6 +77,7 @@ M: Neil Horman <nhorman@tuxdriver.com>
 F: lib/librte_compat/
 F: doc/guides/rel_notes/deprecation.rst
 F: devtools/validate-abi.sh
+F: buildtools/check-experimental-syms.sh
 
 Driver information
 F: buildtools/pmdinfogen/
