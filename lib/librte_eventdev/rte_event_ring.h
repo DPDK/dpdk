@@ -98,9 +98,8 @@ rte_event_ring_enqueue_burst(struct rte_event_ring *r,
 		goto end;
 
 	ENQUEUE_PTRS(&r->r, &r[1], prod_head, events, n, struct rte_event);
-	rte_smp_wmb();
 
-	update_tail(&r->r.prod, prod_head, prod_next, 1);
+	update_tail(&r->r.prod, prod_head, prod_next, 1, 1);
 end:
 	if (free_space != NULL)
 		*free_space = free_entries - n;
@@ -140,9 +139,8 @@ rte_event_ring_dequeue_burst(struct rte_event_ring *r,
 		goto end;
 
 	DEQUEUE_PTRS(&r->r, &r[1], cons_head, events, n, struct rte_event);
-	rte_smp_rmb();
 
-	update_tail(&r->r.cons, cons_head, cons_next, 1);
+	update_tail(&r->r.cons, cons_head, cons_next, 1, 0);
 
 end:
 	if (available != NULL)

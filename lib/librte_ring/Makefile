@@ -17,6 +17,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_RING) := rte_ring.c
 
 # install includes
-SYMLINK-$(CONFIG_RTE_LIBRTE_RING)-include := rte_ring.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_RING)-include := rte_ring.h \
+					rte_ring_generic.h
 
 include $(RTE_SDK)/mk/rte.lib.mk
