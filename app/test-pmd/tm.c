@@ -575,6 +575,10 @@ softport_tm_tc_node_add(portid_t port_id, struct tm_hierarchy *h,
 				tc_parent_node_id = h->pipe_node_id[i][j];
 				tnp.shared_shaper_id =
 					(uint32_t *)calloc(1, sizeof(uint32_t));
+				if (tnp.shared_shaper_id == NULL) {
+					printf("Shared shaper mem alloc err\n");
+					return -1;
+				}
 				tnp.shared_shaper_id[0] = k;
 				pos = j + (i * PIPE_NODES_PER_SUBPORT);
 				h->tc_node_id[pos][k] =
