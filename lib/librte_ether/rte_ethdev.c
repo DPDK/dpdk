@@ -221,8 +221,12 @@ rte_eth_dev_find_free_port(void)
 	unsigned i;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if (rte_eth_devices[i].state == RTE_ETH_DEV_UNUSED)
+		/* Using shared name field to find a free port. */
+		if (rte_eth_dev_data[i].name[0] == '\0') {
+			RTE_ASSERT(rte_eth_devices[i].state ==
+				   RTE_ETH_DEV_UNUSED);
 			return i;
+		}
 	}
 	return RTE_MAX_ETHPORTS;
 }
