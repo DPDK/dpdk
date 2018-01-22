@@ -624,8 +624,10 @@ launch_workers_and_wait(int (*master_worker)(void *),
 
 	ret = rte_event_dequeue_timeout_ticks(evdev,
 		rte_rand() % 10000000/* 10ms */, &dequeue_tmo_ticks);
-	if (ret)
+	if (ret) {
+		free(param);
 		return -1;
+	}
 
 	param[0].total_events = &atomic_total_events;
 	param[0].sched_type = sched_type;

@@ -3016,9 +3016,12 @@ static struct rte_mempool *eventdev_func_mempool;
 int
 test_sw_eventdev(void)
 {
-	struct test *t = malloc(sizeof(struct test));
+	struct test *t;
 	int ret;
 
+	t = malloc(sizeof(struct test));
+	if (t == NULL)
+		return -1;
 	/* manually initialize the op, older gcc's complain on static
 	 * initialization of struct elements that are a bitfield.
 	 */
@@ -3236,6 +3239,7 @@ test_sw_eventdev(void)
 	printf("SW Eventdev Selftest Successful.\n");
 	return 0;
 test_fail:
+	free(t);
 	printf("SW Eventdev Selftest Failed.\n");
 	return -1;
 }
