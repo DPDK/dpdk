@@ -314,8 +314,8 @@ static int opdl_add_deps(struct opdl_evdev *device,
 					     "Stages and dependents"
 					     " are not for same opdl ring",
 					     opdl_pmd_dev_id(device));
-				for (uint32_t k = 0;
-						k < device->nb_opdls; k++) {
+				uint32_t k;
+				for (k = 0; k < device->nb_opdls; k++) {
 					opdl_ring_dump(device->opdl[k],
 							stdout);
 				}
@@ -505,8 +505,9 @@ void
 destroy_queues_and_rings(struct rte_eventdev *dev)
 {
 	struct opdl_evdev *device = opdl_pmd_priv(dev);
+	uint32_t i;
 
-	for (uint32_t i = 0; i < device->nb_opdls; i++) {
+	for (i = 0; i < device->nb_opdls; i++) {
 		if (device->opdl[i])
 			opdl_ring_free(device->opdl[i]);
 	}
@@ -639,7 +640,8 @@ create_queues_and_rings(struct rte_eventdev *dev)
 				 OPDL_Q_POS_START,
 				 -1);
 
-		for (uint32_t i = 0; i < device->nb_q_md; i++) {
+		uint32_t i;
+		for (i = 0; i < device->nb_q_md; i++) {
 
 			/* Check */
 			if (!device->q_md[i].setup) {
@@ -702,7 +704,8 @@ initialise_all_other_ports(struct rte_eventdev *dev)
 
 	struct opdl_evdev *device = opdl_pmd_priv(dev);
 
-	for (uint32_t i = 0; i < device->nb_ports; i++) {
+	uint32_t i;
+	for (i = 0; i < device->nb_ports; i++) {
 		struct opdl_port *port = &device->ports[i];
 		struct opdl_queue *queue = &device->queue[port->queue_id];
 
@@ -827,7 +830,7 @@ initialise_all_other_ports(struct rte_eventdev *dev)
 	 * setup the last bit of stage md
 	 */
 	if (!err) {
-		for (uint32_t i = 0; i < device->nb_ports; i++) {
+		for (i = 0; i < device->nb_ports; i++) {
 			struct opdl_port *port = &device->ports[i];
 			struct opdl_queue *queue =
 				&device->queue[port->queue_id];
@@ -872,7 +875,8 @@ initialise_queue_zero_ports(struct rte_eventdev *dev)
 	struct opdl_evdev *device = opdl_pmd_priv(dev);
 
 	/* Assign queue zero and figure out how many Q0 ports we have */
-	for (uint32_t i = 0; i < device->nb_ports; i++) {
+	uint32_t i;
+	for (i = 0; i < device->nb_ports; i++) {
 		struct opdl_port *port = &device->ports[i];
 		if (port->queue_id == OPDL_INVALID_QID) {
 			port->queue_id = 0;
@@ -889,7 +893,7 @@ initialise_queue_zero_ports(struct rte_eventdev *dev)
 	if (stage_inst) {
 
 		/* Assign the new created input stage to all relevant ports */
-		for (uint32_t i = 0; i < device->nb_ports; i++) {
+		for (i = 0; i < device->nb_ports; i++) {
 			struct opdl_port *port = &device->ports[i];
 			if (port->queue_id == 0) {
 				queue = &device->queue[port->queue_id];
@@ -914,8 +918,9 @@ assign_internal_queue_ids(struct rte_eventdev *dev)
 {
 	int err = 0;
 	struct opdl_evdev *device = opdl_pmd_priv(dev);
+	uint32_t i;
 
-	for (uint32_t i = 0; i < device->nb_ports; i++) {
+	for (i = 0; i < device->nb_ports; i++) {
 		struct opdl_port *port = &device->ports[i];
 		if (port->external_qid != OPDL_INVALID_QID) {
 			port->queue_id =

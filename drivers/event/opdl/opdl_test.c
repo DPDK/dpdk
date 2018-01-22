@@ -433,7 +433,8 @@ atomic_basic(struct test *t)
 				return -1;
 			}
 
-			for (int j = 0; j < 3; j++) {
+			int j;
+			for (j = 0; j < 3; j++) {
 				deq_ev[j].op = RTE_EVENT_OP_FORWARD;
 				deq_ev[j].queue_id = t->qid[1];
 			}
@@ -495,8 +496,9 @@ static int
 check_statistics(void)
 {
 	int num_ports = 3; /* Hard-coded for this app */
+	int i;
 
-	for (int i = 0; i < num_ports; i++) {
+	for (i = 0; i < num_ports; i++) {
 		int num_stats, num_stats_returned;
 
 		num_stats = rte_event_dev_xstats_names_get(0,

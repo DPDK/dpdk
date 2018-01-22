@@ -86,7 +86,8 @@ opdl_xstats_get_names(const struct rte_eventdev *dev,
 
 	uint32_t port_idx = queue_port_id * max_num_port_xstat;
 
-	for (uint32_t j = 0; j < max_num_port_xstat; j++) {
+	uint32_t j;
+	for (j = 0; j < max_num_port_xstat; j++) {
 
 		strcpy(xstats_names[j].name,
 				device->port_xstat[j + port_idx].stat.name);
@@ -121,7 +122,8 @@ opdl_xstats_get(const struct rte_eventdev *dev,
 	uint32_t p_start = queue_port_id * max_num_port_xstat;
 	uint32_t p_finish = p_start + max_num_port_xstat;
 
-	for (uint32_t i = 0; i < n; i++) {
+	uint32_t i;
+	for (i = 0; i < n; i++) {
 		if (ids[i] < p_start || ids[i] >= p_finish)
 			return -EINVAL;
 
@@ -142,7 +144,8 @@ opdl_xstats_get_by_name(const struct rte_eventdev *dev,
 
 	uint32_t max_index = device->max_port_nb * max_num_port_xstat;
 
-	for (uint32_t i = 0; i < max_index; i++) {
+	uint32_t i;
+	for (i = 0; i < max_index; i++) {
 
 		if (strncmp(name,
 			   device->port_xstat[i].stat.name,
