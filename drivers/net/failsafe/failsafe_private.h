@@ -38,7 +38,7 @@
 
 #include <rte_atomic.h>
 #include <rte_dev.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_devargs.h>
 
 #define FAILSAFE_DRIVER_NAME "Fail-safe PMD"

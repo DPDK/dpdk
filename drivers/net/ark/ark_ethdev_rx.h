@@ -38,7 +38,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 
 int eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,

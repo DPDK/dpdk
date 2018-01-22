@@ -5,7 +5,7 @@
 #ifndef	__OCTEONTX_RXTX_H__
 #define	__OCTEONTX_RXTX_H__
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #ifndef __hot
 #define __hot	__attribute__((hot))

@@ -15,7 +15,7 @@
  *
  */
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 /**
  * @warning

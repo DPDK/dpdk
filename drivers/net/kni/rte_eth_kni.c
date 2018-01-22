@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_ethdev_vdev.h>
 #include <rte_kni.h>
 #include <rte_kvargs.h>

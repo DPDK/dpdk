@@ -11,7 +11,7 @@
 #define _SFC_DP_RX_H
 
 #include <rte_mempool.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #include "sfc_dp.h"
 

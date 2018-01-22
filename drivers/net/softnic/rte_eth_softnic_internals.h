@@ -9,7 +9,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_sched.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
 
 #include "rte_eth_softnic.h"

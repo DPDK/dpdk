@@ -38,6 +38,7 @@
 
 #include "rte_ether.h"
 #include "rte_ethdev.h"
+#include "rte_ethdev_driver.h"
 #include "ethdev_profile.h"
 
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";

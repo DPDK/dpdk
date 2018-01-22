@@ -4,7 +4,7 @@
 
 #include <inttypes.h>
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_common.h>
 #include <rte_net.h>
 #include "fm10k.h"

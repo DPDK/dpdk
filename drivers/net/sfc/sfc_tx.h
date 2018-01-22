@@ -11,7 +11,7 @@
 #define _SFC_TX_H
 
 #include <rte_mbuf.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #include "efx.h"
 

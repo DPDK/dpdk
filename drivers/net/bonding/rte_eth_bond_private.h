@@ -5,7 +5,7 @@
 #ifndef _RTE_ETH_BOND_PRIVATE_H_
 #define _RTE_ETH_BOND_PRIVATE_H_
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_spinlock.h>
 #include <rte_bitmap.h>
 

@@ -32,7 +32,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_log.h>
 #include <rte_malloc.h>

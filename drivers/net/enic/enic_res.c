@@ -4,7 +4,7 @@
  */
 
 #include "enic_compat.h"
-#include "rte_ethdev.h"
+#include "rte_ethdev_driver.h"
 #include "wq_enet_desc.h"
 #include "rq_enet_desc.h"
 #include "cq_enet_desc.h"

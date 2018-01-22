@@ -10,7 +10,7 @@
 #ifndef _SFC_DP_TX_H
 #define _SFC_DP_TX_H
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #include "sfc_dp.h"
 

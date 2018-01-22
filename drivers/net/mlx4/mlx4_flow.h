@@ -47,7 +47,7 @@
 #endif
 
 #include <rte_eth_ctrl.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_byteorder.h>

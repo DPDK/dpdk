@@ -12,7 +12,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_cycles.h>
 #include <rte_ether.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>

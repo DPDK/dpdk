@@ -6,7 +6,7 @@
 #define __THUNDERX_NICVF_RXTX_H__
 
 #include <rte_byteorder.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #define NICVF_TX_OFFLOAD_MASK (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)
 

@@ -34,7 +34,7 @@
 #ifndef _BNXT_STATS_H_
 #define _BNXT_STATS_H_
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 void bnxt_free_stats(struct bnxt *bp);
 int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,

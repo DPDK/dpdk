@@ -52,7 +52,7 @@
 #endif
 
 #include <rte_ether.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_common.h>
 
 #include "mlx5.h"

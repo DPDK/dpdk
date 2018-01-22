@@ -11,7 +11,7 @@
 #ifndef _PMD_IXGBE_H_
 #define _PMD_IXGBE_H_
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 /**
  * Notify VF when PF link status changes.

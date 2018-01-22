@@ -7,7 +7,7 @@
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_mbuf.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_ethdev_vdev.h>
 #include <rte_malloc.h>
 #include <rte_bus_vdev.h>

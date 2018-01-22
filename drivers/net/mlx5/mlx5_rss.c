@@ -48,7 +48,7 @@
 #endif
 
 #include <rte_malloc.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #include "mlx5.h"
 #include "mlx5_defs.h"

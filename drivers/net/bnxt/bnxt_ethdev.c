@@ -35,7 +35,7 @@
 #include <stdbool.h>
 
 #include <rte_dev.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>

@@ -10,7 +10,7 @@
 #ifndef _SFC_EV_H_
 #define _SFC_EV_H_
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #include "efx.h"
 

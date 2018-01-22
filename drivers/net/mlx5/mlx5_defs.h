@@ -34,7 +34,7 @@
 #ifndef RTE_PMD_MLX5_DEFS_H_
 #define RTE_PMD_MLX5_DEFS_H_
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #include "mlx5_autoconf.h"
 

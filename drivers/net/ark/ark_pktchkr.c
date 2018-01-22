@@ -36,7 +36,7 @@
 #include <locale.h>
 #include <unistd.h>
 
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
 
 #include "ark_pktchkr.h"

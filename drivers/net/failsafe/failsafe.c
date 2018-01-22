@@ -33,7 +33,7 @@
 
 #include <rte_alarm.h>
 #include <rte_malloc.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_ethdev_vdev.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>

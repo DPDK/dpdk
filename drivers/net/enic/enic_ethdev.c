@@ -9,7 +9,7 @@
 #include <rte_dev.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
 #include <rte_string_fns.h>
 

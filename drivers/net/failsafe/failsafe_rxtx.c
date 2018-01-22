@@ -34,7 +34,7 @@
 #include <rte_atomic.h>
 #include <rte_debug.h>
 #include <rte_mbuf.h>
-#include <rte_ethdev.h>
+#include <rte_ethdev_driver.h>
 
 #include "failsafe_private.h"
 
