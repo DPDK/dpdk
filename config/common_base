@@ -611,6 +611,7 @@ CONFIG_RTE_LIBRTE_PMD_DPAA2_EVENTDEV=n
 # Compile librte_ring
 #
 CONFIG_RTE_LIBRTE_RING=y
+CONFIG_RTE_RING_USE_C11_MEM_MODEL=n
 
 #
 # Compile librte_mempool

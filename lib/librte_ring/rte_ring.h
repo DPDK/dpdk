@@ -357,8 +357,20 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
 	} \
 } while (0)
 
-/* Move common functions to generic file */
+/* Between load and load. there might be cpu reorder in weak model
+ * (powerpc/arm).
+ * There are 2 choices for the users
+ * 1.use rmb() memory barrier
+ * 2.use one-direcion load_acquire/store_release barrier,defined by
+ * CONFIG_RTE_RING_USE_C11_MEM_MODEL=y
+ * It depends on performance test results.
+ * By default, move common functions to rte_ring_generic.h
+ */
+#ifdef RTE_RING_USE_C11_MEM_MODEL
+#include "rte_ring_c11_mem.h"
+#else
 #include "rte_ring_generic.h"
+#endif
 
 /**
  * @internal Enqueue several objects on the ring
