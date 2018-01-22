@@ -268,20 +268,23 @@ struct rte_eth_dev *
 rte_eth_dev_allocate(const char *name)
 {
 	uint16_t port_id;
-	struct rte_eth_dev *eth_dev;
+	struct rte_eth_dev *eth_dev = NULL;
+
+	rte_eth_dev_shared_data_prepare();
+
+	/* Synchronize port creation between primary and secondary threads. */
+	rte_spinlock_lock(&rte_eth_dev_shared_data->ownership_lock);
 
 	port_id = rte_eth_dev_find_free_port();
 	if (port_id == RTE_MAX_ETHPORTS) {
 		RTE_PMD_DEBUG_TRACE("Reached maximum number of Ethernet ports\n");
-		return NULL;
+		goto unlock;
 	}
-
-	rte_eth_dev_shared_data_prepare();
 
 	if (rte_eth_dev_allocated(name) != NULL) {
 		RTE_PMD_DEBUG_TRACE("Ethernet Device with name %s already allocated!\n",
 				name);
-		return NULL;
+		goto unlock;
 	}
 
 	eth_dev = eth_dev_get(port_id);
@@ -289,7 +292,11 @@ rte_eth_dev_allocate(const char *name)
 	eth_dev->data->port_id = port_id;
 	eth_dev->data->mtu = ETHER_MTU;
 
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_NEW, NULL);
+unlock:
+	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
+
+	if (eth_dev != NULL)
+		_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_NEW, NULL);
 
 	return eth_dev;
 }
@@ -303,9 +310,12 @@ struct rte_eth_dev *
 rte_eth_dev_attach_secondary(const char *name)
 {
 	uint16_t i;
-	struct rte_eth_dev *eth_dev;
+	struct rte_eth_dev *eth_dev = NULL;
 
 	rte_eth_dev_shared_data_prepare();
+
+	/* Synchronize port attachment to primary port creation and release. */
+	rte_spinlock_lock(&rte_eth_dev_shared_data->ownership_lock);
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (strcmp(rte_eth_dev_shared_data->data[i].name, name) == 0)
@@ -315,12 +325,12 @@ rte_eth_dev_attach_secondary(const char *name)
 		RTE_PMD_DEBUG_TRACE(
 			"device %s is not driven by the primary process\n",
 			name);
-		return NULL;
+	} else {
+		eth_dev = eth_dev_get(i);
+		RTE_ASSERT(eth_dev->data->port_id == i);
 	}
 
-	eth_dev = eth_dev_get(i);
-	RTE_ASSERT(eth_dev->data->port_id == i);
-
+	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
 	return eth_dev;
 }
 
