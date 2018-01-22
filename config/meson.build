@@ -8,7 +8,8 @@ else
 	machine = get_option('machine')
 endif
 dpdk_conf.set('RTE_MACHINE', machine)
-machine_arg = '-march=' + machine
+machine_args = []
+machine_args += '-march=' + machine
 
 # use pthreads
 add_project_link_arguments('-pthread', language: 'c')
@@ -53,6 +54,14 @@ foreach arg: warning_flags
 	endif
 endforeach
 
+# set other values pulled from the build options
+dpdk_conf.set('RTE_MAX_LCORE', get_option('max_lcores'))
+dpdk_conf.set('RTE_MAX_NUMA_NODES', get_option('max_numa_nodes'))
+dpdk_conf.set('RTE_LIBEAL_USE_HPET', get_option('use_hpet'))
+dpdk_conf.set('RTE_EAL_ALLOW_INV_SOCKET_ID', get_option('allow_invalid_socket_id'))
+# values which have defaults which may be overridden
+dpdk_conf.set('RTE_MAX_VFIO_GROUPS', 64)
+
 compile_time_cpuflags = []
 if host_machine.cpu_family().startswith('x86')
 	arch_subdir = 'x86'
@@ -64,13 +73,5 @@ dpdk_conf.set('RTE_COMPILE_TIME_CPUFLAGS', ','.join(compile_time_cpuflags))
 
 # set the install path for the drivers
 dpdk_conf.set_quoted('RTE_EAL_PMD_PATH', eal_pmd_path)
-
-# set other values pulled from the build options
-dpdk_conf.set('RTE_MAX_LCORE', get_option('max_lcores'))
-dpdk_conf.set('RTE_MAX_NUMA_NODES', get_option('max_numa_nodes'))
-dpdk_conf.set('RTE_LIBEAL_USE_HPET', get_option('use_hpet'))
-dpdk_conf.set('RTE_EAL_ALLOW_INV_SOCKET_ID', get_option('allow_invalid_socket_id'))
-# values which have defaults which may be overridden
-dpdk_conf.set('RTE_MAX_VFIO_GROUPS', 64)
 
 install_headers('rte_config.h', subdir: get_option('include_subdir_arch'))

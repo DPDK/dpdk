@@ -239,7 +239,7 @@ if get_option('tests')
 		test_sources,
 		link_whole: link_libs,
 		dependencies: test_dep_objs,
-		c_args: [machine_arg, '-DALLOW_EXPERIMENTAL_API'],
+		c_args: [machine_args, '-DALLOW_EXPERIMENTAL_API'],
 		install_rpath: driver_install_path,
 		install: false)
 

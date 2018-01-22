@@ -33,7 +33,7 @@ foreach l:libraries
 	sources = []
 	headers = []
 	includes = []
-	cflags = [machine_arg]
+	cflags = machine_args
 	objs = [] # other object files to link against, used e.g. for
 	          # instruction-set optimized versions of code
 

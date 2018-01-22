@@ -28,7 +28,7 @@ foreach class:driver_classes
 		allow_experimental_apis = false
 		sources = []
 		objs = []
-		cflags = [machine_arg]
+		cflags = machine_args
 		includes = [include_directories(drv_path)]
 		# set up internal deps. Drivers can append/override as necessary
 		deps = std_deps

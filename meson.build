@@ -66,5 +66,5 @@ pkg.generate(name: meson.project_name(),
 			['-Wl,-Bdynamic'] + dpdk_extra_ldflags,
 	description: 'The Data Plane Development Kit (DPDK)',
 	subdirs: [get_option('include_subdir_arch'), '.'],
-	extra_cflags: ['-include', 'rte_config.h', machine_arg]
+	extra_cflags: ['-include', 'rte_config.h'] + machine_args
 )
