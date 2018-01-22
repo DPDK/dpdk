@@ -216,6 +216,13 @@ New Features
   profiles which can be programmed by dynamic device personalization (DDP)
   process.
 
+* **Added the i40e ethernet driver to support queue region feature.**
+
+  This feature enable queue regions configuration for RSS in PF,
+  so that different traffic classes or different packet
+  classification types can be separated into different queues in
+  different queue regions.
+
 * **Updated ipsec-secgw application to support rte_security.**
 
   Updated the ``ipsec-secgw`` sample application to support ``rte_security``

@@ -66,7 +66,7 @@ Features of the I40E PMD are:
 - IEEE1588/802.1AS timestamping
 - VF Daemon (VFD) - EXPERIMENTAL
 - Dynamic Device Personalization (DDP)
-
+- Queue region configuration
 
 Prerequisites
 -------------
@@ -429,6 +429,29 @@ For example, to use only 48bit prefix for IPv6 src address for IPv6 TCP RSS:
    testpmd> port config 0 pctype 43 hash_inset set field 13
    testpmd> port config 0 pctype 43 hash_inset set field 14
    testpmd> port config 0 pctype 43 hash_inset set field 15
+
+Queue region configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The Ethernet Controller X710/XL710 supports a feature of queue regions
+configuration for RSS in the PF, so that different traffic classes or
+different packet classification types can be separated to different
+queues in different queue regions. There is an API for configuration
+of queue regions in RSS with a command line. It can parse the parameters
+of the region index, queue number, queue start index, user priority, traffic
+classes and so on. Depending on commands from the command line, it will call
+i40e private APIs and start the process of setting or flushing the queue
+region configuration. As this feature is specific for i40e only private
+APIs are used. These new ``test_pmd`` commands are as shown below. For
+details please refer to :doc:`../testpmd_app_ug/index`.
+
+.. code-block:: console
+
+   testpmd> set port (port_id) queue-region region_id (value) \
+		queue_start_index (value) queue_num (value)
+   testpmd> set port (port_id) queue-region region_id (value) flowtype (value)
+   testpmd> set port (port_id) queue-region UP (value) region_id (value)
+   testpmd> set port (port_id) queue-region flush (on|off)
+   testpmd> show port (port_id) queue-region
 
 Limitations or Known issues
 ---------------------------
