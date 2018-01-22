@@ -560,6 +560,7 @@ rte_flow_classify_table_entry_add(struct rte_flow_classifier *cls,
 			return rule;
 		}
 	}
+	free(rule);
 	return NULL;
 }
 
