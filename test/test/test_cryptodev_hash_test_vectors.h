@@ -382,7 +382,8 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_data = &hmac_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
+			    BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC
 	},
 	{
 		.test_descr = "HMAC-SHA1 Digest Verify",
@@ -400,7 +401,8 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_data = &hmac_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
+			    BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC
 	},
 	{
 		.test_descr = "SHA224 Digest",

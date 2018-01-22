@@ -599,6 +599,86 @@ dpaa_sec_deq(struct dpaa_sec_qp *qp, struct rte_crypto_op **ops, int nb_ops)
 	return pkts;
 }
 
+static inline struct dpaa_sec_job *
+build_auth_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct rte_mbuf *mbuf = sym->m_src;
+	struct dpaa_sec_job *cf;
+	struct dpaa_sec_op_ctx *ctx;
+	struct qm_sg_entry *sg, *out_sg, *in_sg;
+	phys_addr_t start_addr;
+	uint8_t *old_digest, extra_segs;
+
+	if (is_decode(ses))
+		extra_segs = 3;
+	else
+		extra_segs = 2;
+
+	if ((mbuf->nb_segs + extra_segs) > MAX_SG_ENTRIES) {
+		PMD_TX_LOG(ERR, "Auth: Max sec segs supported is %d\n",
+								MAX_SG_ENTRIES);
+		return NULL;
+	}
+	ctx = dpaa_sec_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	cf = &ctx->job;
+	ctx->op = op;
+	old_digest = ctx->digest;
+
+	/* output */
+	out_sg = &cf->sg[0];
+	qm_sg_entry_set64(out_sg, sym->auth.digest.phys_addr);
+	out_sg->length = ses->digest_length;
+	cpu_to_hw_sg(out_sg);
+
+	/* input */
+	in_sg = &cf->sg[1];
+	/* need to extend the input to a compound frame */
+	in_sg->extension = 1;
+	in_sg->final = 1;
+	in_sg->length = sym->auth.data.length;
+	qm_sg_entry_set64(in_sg, dpaa_mem_vtop_ctx(ctx, &cf->sg[2]));
+
+	/* 1st seg */
+	sg = in_sg + 1;
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->length = mbuf->data_len - sym->auth.data.offset;
+	sg->offset = sym->auth.data.offset;
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		sg->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+
+	if (is_decode(ses)) {
+		/* Digest verification case */
+		cpu_to_hw_sg(sg);
+		sg++;
+		rte_memcpy(old_digest, sym->auth.digest.data,
+				ses->digest_length);
+		start_addr = dpaa_mem_vtop_ctx(ctx, old_digest);
+		qm_sg_entry_set64(sg, start_addr);
+		sg->length = ses->digest_length;
+		in_sg->length += ses->digest_length;
+	} else {
+		/* Digest calculation case */
+		sg->length -= ses->digest_length;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+	cpu_to_hw_sg(in_sg);
+
+	return cf;
+}
+
 /**
  * packet looks like:
  *		|<----data_len------->|
@@ -669,6 +749,101 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 }
 
 static inline struct dpaa_sec_job *
+build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct dpaa_sec_job *cf;
+	struct dpaa_sec_op_ctx *ctx;
+	struct qm_sg_entry *sg, *out_sg, *in_sg;
+	struct rte_mbuf *mbuf;
+	uint8_t req_segs;
+	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			ses->iv.offset);
+
+	if (sym->m_dst) {
+		mbuf = sym->m_dst;
+		req_segs = mbuf->nb_segs + sym->m_src->nb_segs + 3;
+	} else {
+		mbuf = sym->m_src;
+		req_segs = mbuf->nb_segs * 2 + 3;
+	}
+
+	if (req_segs > MAX_SG_ENTRIES) {
+		PMD_TX_LOG(ERR, "Cipher: Max sec segs supported is %d\n",
+								MAX_SG_ENTRIES);
+		return NULL;
+	}
+
+	ctx = dpaa_sec_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	cf = &ctx->job;
+	ctx->op = op;
+
+	/* output */
+	out_sg = &cf->sg[0];
+	out_sg->extension = 1;
+	out_sg->length = sym->cipher.data.length;
+	qm_sg_entry_set64(out_sg, dpaa_mem_vtop_ctx(ctx, &cf->sg[2]));
+	cpu_to_hw_sg(out_sg);
+
+	/* 1st seg */
+	sg = &cf->sg[2];
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->length = mbuf->data_len - sym->cipher.data.offset;
+	sg->offset = sym->cipher.data.offset;
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		sg->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	/* input */
+	mbuf = sym->m_src;
+	in_sg = &cf->sg[1];
+	in_sg->extension = 1;
+	in_sg->final = 1;
+	in_sg->length = sym->cipher.data.length + ses->iv.length;
+
+	sg++;
+	qm_sg_entry_set64(in_sg, dpaa_mem_vtop_ctx(ctx, sg));
+	cpu_to_hw_sg(in_sg);
+
+	/* IV */
+	qm_sg_entry_set64(sg, dpaa_mem_vtop(IV_ptr));
+	sg->length = ses->iv.length;
+	cpu_to_hw_sg(sg);
+
+	/* 1st seg */
+	sg++;
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->length = mbuf->data_len - sym->cipher.data.offset;
+	sg->offset = sym->cipher.data.offset;
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		sg->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	return cf;
+}
+
+static inline struct dpaa_sec_job *
 build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 {
 	struct rte_crypto_sym_op *sym = op->sym;
@@ -717,6 +892,145 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	sg++;
 	qm_sg_entry_set64(sg, src_start_addr + sym->cipher.data.offset);
 	sg->length = sym->cipher.data.length;
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	return cf;
+}
+
+static inline struct dpaa_sec_job *
+build_cipher_auth_gcm_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct dpaa_sec_job *cf;
+	struct dpaa_sec_op_ctx *ctx;
+	struct qm_sg_entry *sg, *out_sg, *in_sg;
+	struct rte_mbuf *mbuf;
+	uint8_t req_segs;
+	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			ses->iv.offset);
+
+	if (sym->m_dst) {
+		mbuf = sym->m_dst;
+		req_segs = mbuf->nb_segs + sym->m_src->nb_segs + 4;
+	} else {
+		mbuf = sym->m_src;
+		req_segs = mbuf->nb_segs * 2 + 4;
+	}
+
+	if (ses->auth_only_len)
+		req_segs++;
+
+	if (req_segs > MAX_SG_ENTRIES) {
+		PMD_TX_LOG(ERR, "AEAD: Max sec segs supported is %d\n",
+				MAX_SG_ENTRIES);
+		return NULL;
+	}
+
+	ctx = dpaa_sec_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	cf = &ctx->job;
+	ctx->op = op;
+
+	rte_prefetch0(cf->sg);
+
+	/* output */
+	out_sg = &cf->sg[0];
+	out_sg->extension = 1;
+	if (is_encode(ses))
+		out_sg->length = sym->aead.data.length + ses->auth_only_len
+						+ ses->digest_length;
+	else
+		out_sg->length = sym->aead.data.length + ses->auth_only_len;
+
+	/* output sg entries */
+	sg = &cf->sg[2];
+	qm_sg_entry_set64(out_sg, dpaa_mem_vtop_ctx(ctx, sg));
+	cpu_to_hw_sg(out_sg);
+
+	/* 1st seg */
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->length = mbuf->data_len - sym->aead.data.offset +
+					ses->auth_only_len;
+	sg->offset = sym->aead.data.offset - ses->auth_only_len;
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		sg->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	sg->length -= ses->digest_length;
+
+	if (is_encode(ses)) {
+		cpu_to_hw_sg(sg);
+		/* set auth output */
+		sg++;
+		qm_sg_entry_set64(sg, sym->aead.digest.phys_addr);
+		sg->length = ses->digest_length;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	/* input */
+	mbuf = sym->m_src;
+	in_sg = &cf->sg[1];
+	in_sg->extension = 1;
+	in_sg->final = 1;
+	if (is_encode(ses))
+		in_sg->length = ses->iv.length + sym->aead.data.length
+							+ ses->auth_only_len;
+	else
+		in_sg->length = ses->iv.length + sym->aead.data.length
+				+ ses->auth_only_len + ses->digest_length;
+
+	/* input sg entries */
+	sg++;
+	qm_sg_entry_set64(in_sg, dpaa_mem_vtop_ctx(ctx, sg));
+	cpu_to_hw_sg(in_sg);
+
+	/* 1st seg IV */
+	qm_sg_entry_set64(sg, dpaa_mem_vtop(IV_ptr));
+	sg->length = ses->iv.length;
+	cpu_to_hw_sg(sg);
+
+	/* 2nd seg auth only */
+	if (ses->auth_only_len) {
+		sg++;
+		qm_sg_entry_set64(sg, dpaa_mem_vtop(sym->aead.aad.data));
+		sg->length = ses->auth_only_len;
+		cpu_to_hw_sg(sg);
+	}
+
+	/* 3rd seg */
+	sg++;
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->length = mbuf->data_len - sym->aead.data.offset;
+	sg->offset = sym->aead.data.offset;
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		sg->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+
+	if (is_decode(ses)) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		memcpy(ctx->digest, sym->aead.digest.data,
+			ses->digest_length);
+		qm_sg_entry_set64(sg, dpaa_mem_vtop_ctx(ctx, ctx->digest));
+		sg->length = ses->digest_length;
+	}
 	sg->final = 1;
 	cpu_to_hw_sg(sg);
 
@@ -831,6 +1145,132 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	cf->sg[0].length = length;
 	cf->sg[0].extension = 1;
 	cpu_to_hw_sg(&cf->sg[0]);
+
+	return cf;
+}
+
+static inline struct dpaa_sec_job *
+build_cipher_auth_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct dpaa_sec_job *cf;
+	struct dpaa_sec_op_ctx *ctx;
+	struct qm_sg_entry *sg, *out_sg, *in_sg;
+	struct rte_mbuf *mbuf;
+	uint8_t req_segs;
+	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			ses->iv.offset);
+
+	if (sym->m_dst) {
+		mbuf = sym->m_dst;
+		req_segs = mbuf->nb_segs + sym->m_src->nb_segs + 4;
+	} else {
+		mbuf = sym->m_src;
+		req_segs = mbuf->nb_segs * 2 + 4;
+	}
+
+	if (req_segs > MAX_SG_ENTRIES) {
+		PMD_TX_LOG(ERR, "Cipher-Auth: Max sec segs supported is %d\n",
+				MAX_SG_ENTRIES);
+		return NULL;
+	}
+
+	ctx = dpaa_sec_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	cf = &ctx->job;
+	ctx->op = op;
+
+	rte_prefetch0(cf->sg);
+
+	/* output */
+	out_sg = &cf->sg[0];
+	out_sg->extension = 1;
+	if (is_encode(ses))
+		out_sg->length = sym->auth.data.length + ses->digest_length;
+	else
+		out_sg->length = sym->auth.data.length;
+
+	/* output sg entries */
+	sg = &cf->sg[2];
+	qm_sg_entry_set64(out_sg, dpaa_mem_vtop_ctx(ctx, sg));
+	cpu_to_hw_sg(out_sg);
+
+	/* 1st seg */
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->length = mbuf->data_len - sym->auth.data.offset;
+	sg->offset = sym->auth.data.offset;
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		sg->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	sg->length -= ses->digest_length;
+
+	if (is_encode(ses)) {
+		cpu_to_hw_sg(sg);
+		/* set auth output */
+		sg++;
+		qm_sg_entry_set64(sg, sym->auth.digest.phys_addr);
+		sg->length = ses->digest_length;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	/* input */
+	mbuf = sym->m_src;
+	in_sg = &cf->sg[1];
+	in_sg->extension = 1;
+	in_sg->final = 1;
+	if (is_encode(ses))
+		in_sg->length = ses->iv.length + sym->auth.data.length;
+	else
+		in_sg->length = ses->iv.length + sym->auth.data.length
+						+ ses->digest_length;
+
+	/* input sg entries */
+	sg++;
+	qm_sg_entry_set64(in_sg, dpaa_mem_vtop_ctx(ctx, sg));
+	cpu_to_hw_sg(in_sg);
+
+	/* 1st seg IV */
+	qm_sg_entry_set64(sg, dpaa_mem_vtop(IV_ptr));
+	sg->length = ses->iv.length;
+	cpu_to_hw_sg(sg);
+
+	/* 2nd seg */
+	sg++;
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->length = mbuf->data_len - sym->auth.data.offset;
+	sg->offset = sym->auth.data.offset;
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		sg->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+
+	sg->length -= ses->digest_length;
+	if (is_decode(ses)) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		memcpy(ctx->digest, sym->auth.digest.data,
+			ses->digest_length);
+		qm_sg_entry_set64(sg, dpaa_mem_vtop_ctx(ctx, ctx->digest));
+		sg->length = ses->digest_length;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
 
 	return cf;
 }
@@ -1020,34 +1460,42 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				}
 			}
 
-			/*
-			 * Segmented buffer is not supported.
-			 */
-			if (!rte_pktmbuf_is_contiguous(op->sym->m_src)) {
-				op->status = RTE_CRYPTO_OP_STATUS_ERROR;
-				frames_to_send = loop;
-				nb_ops = loop;
-				goto send_pkts;
-			}
 			auth_only_len = op->sym->auth.data.length -
 						op->sym->cipher.data.length;
-
-			if (is_auth_only(ses)) {
-				cf = build_auth_only(op, ses);
-			} else if (is_cipher_only(ses)) {
-				cf = build_cipher_only(op, ses);
-			} else if (is_aead(ses)) {
-				cf = build_cipher_auth_gcm(op, ses);
-				auth_only_len = ses->auth_only_len;
-			} else if (is_auth_cipher(ses)) {
-				cf = build_cipher_auth(op, ses);
-			} else if (is_proto_ipsec(ses)) {
-				cf = build_proto(op, ses);
+			if (rte_pktmbuf_is_contiguous(op->sym->m_src)) {
+				if (is_auth_only(ses)) {
+					cf = build_auth_only(op, ses);
+				} else if (is_cipher_only(ses)) {
+					cf = build_cipher_only(op, ses);
+				} else if (is_aead(ses)) {
+					cf = build_cipher_auth_gcm(op, ses);
+					auth_only_len = ses->auth_only_len;
+				} else if (is_auth_cipher(ses)) {
+					cf = build_cipher_auth(op, ses);
+				} else if (is_proto_ipsec(ses)) {
+					cf = build_proto(op, ses);
+				} else {
+					PMD_TX_LOG(ERR, "not supported sec op");
+					frames_to_send = loop;
+					nb_ops = loop;
+					goto send_pkts;
+				}
 			} else {
-				PMD_TX_LOG(ERR, "not supported sec op");
-				frames_to_send = loop;
-				nb_ops = loop;
-				goto send_pkts;
+				if (is_auth_only(ses)) {
+					cf = build_auth_only_sg(op, ses);
+				} else if (is_cipher_only(ses)) {
+					cf = build_cipher_only_sg(op, ses);
+				} else if (is_aead(ses)) {
+					cf = build_cipher_auth_gcm_sg(op, ses);
+					auth_only_len = ses->auth_only_len;
+				} else if (is_auth_cipher(ses)) {
+					cf = build_cipher_auth_sg(op, ses);
+				} else {
+					PMD_TX_LOG(ERR, "not supported sec op");
+					frames_to_send = loop;
+					nb_ops = loop;
+					goto send_pkts;
+				}
 			}
 			if (unlikely(!cf)) {
 				frames_to_send = loop;
@@ -1834,7 +2282,8 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 	cryptodev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-			RTE_CRYPTODEV_FF_SECURITY;
+			RTE_CRYPTODEV_FF_SECURITY |
+			RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER;
 
 	internals = cryptodev->data->dev_private;
 	internals->max_nb_queue_pairs = RTE_DPAA_MAX_NB_SEC_QPS;
