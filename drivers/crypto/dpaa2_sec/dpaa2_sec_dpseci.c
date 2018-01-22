@@ -48,6 +48,7 @@
 #define FLE_POOL_NUM_BUFS	32000
 #define FLE_POOL_BUF_SIZE	256
 #define FLE_POOL_CACHE_SIZE	512
+#define FLE_SG_MEM_SIZE		2048
 #define SEC_FLC_DHR_OUTBOUND	-114
 #define SEC_FLC_DHR_INBOUND	0
 
@@ -86,6 +87,153 @@ build_proto_fd(dpaa2_sec_session *sess,
 }
 
 static inline int
+build_authenc_gcm_sg_fd(dpaa2_sec_session *sess,
+		 struct rte_crypto_op *op,
+		 struct qbman_fd *fd, __rte_unused uint16_t bpid)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct ctxt_priv *priv = sess->ctxt;
+	struct qbman_fle *fle, *sge, *ip_fle, *op_fle;
+	struct sec_flow_context *flc;
+	uint32_t auth_only_len = sess->ext_params.aead_ctxt.auth_only_len;
+	int icv_len = sess->digest_length;
+	uint8_t *old_icv;
+	struct rte_mbuf *mbuf;
+	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			sess->iv.offset);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (sym_op->m_dst)
+		mbuf = sym_op->m_dst;
+	else
+		mbuf = sym_op->m_src;
+
+	/* first FLE entry used to store mbuf and session ctxt */
+	fle = (struct qbman_fle *)rte_malloc(NULL, FLE_SG_MEM_SIZE,
+			RTE_CACHE_LINE_SIZE);
+	if (unlikely(!fle)) {
+		RTE_LOG(ERR, PMD, "GCM SG: Memory alloc failed for SGE\n");
+		return -1;
+	}
+	memset(fle, 0, FLE_SG_MEM_SIZE);
+	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_FLE_SAVE_CTXT(fle, priv);
+
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+	sge = fle + 3;
+
+	/* Save the shared descriptor */
+	flc = &priv->flc_desc[0].flc;
+
+	/* Configure FD as a FRAME LIST */
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
+
+	PMD_TX_LOG(DEBUG, "GCM SG: auth_off: 0x%x/length %d, digest-len=%d\n"
+		   "iv-len=%d data_off: 0x%x\n",
+		   sym_op->aead.data.offset,
+		   sym_op->aead.data.length,
+		   sym_op->aead.digest.length,
+		   sess->iv.length,
+		   sym_op->m_src->data_off);
+
+	/* Configure Output FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_SG_EXT(op_fle);
+	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_VADDR_TO_IOVA(sge));
+
+	if (auth_only_len)
+		DPAA2_SET_FLE_INTERNAL_JD(op_fle, auth_only_len);
+
+	op_fle->length = (sess->dir == DIR_ENC) ?
+			(sym_op->aead.data.length + icv_len + auth_only_len) :
+			sym_op->aead.data.length + auth_only_len;
+
+	/* Configure Output SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off + sym_op->aead.data.offset -
+								auth_only_len);
+	sge->length = mbuf->data_len - sym_op->aead.data.offset + auth_only_len;
+
+	mbuf = mbuf->next;
+	/* o/p segs */
+	while (mbuf) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+		sge->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	sge->length -= icv_len;
+
+	if (sess->dir == DIR_ENC) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge,
+				DPAA2_VADDR_TO_IOVA(sym_op->aead.digest.data));
+		sge->length = icv_len;
+	}
+	DPAA2_SET_FLE_FIN(sge);
+
+	sge++;
+	mbuf = sym_op->m_src;
+
+	/* Configure Input FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_VADDR_TO_IOVA(sge));
+	DPAA2_SET_FLE_SG_EXT(ip_fle);
+	DPAA2_SET_FLE_FIN(ip_fle);
+	ip_fle->length = (sess->dir == DIR_ENC) ?
+		(sym_op->aead.data.length + sess->iv.length + auth_only_len) :
+		(sym_op->aead.data.length + sess->iv.length + auth_only_len +
+		 icv_len);
+
+	/* Configure Input SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(IV_ptr));
+	sge->length = sess->iv.length;
+
+	sge++;
+	if (auth_only_len) {
+		DPAA2_SET_FLE_ADDR(sge,
+				DPAA2_VADDR_TO_IOVA(sym_op->aead.aad.data));
+		sge->length = auth_only_len;
+		sge++;
+	}
+
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, sym_op->aead.data.offset +
+				mbuf->data_off);
+	sge->length = mbuf->data_len - sym_op->aead.data.offset;
+
+	mbuf = mbuf->next;
+	/* i/p segs */
+	while (mbuf) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+		sge->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+
+	if (sess->dir == DIR_DEC) {
+		sge++;
+		old_icv = (uint8_t *)(sge + 1);
+		memcpy(old_icv,	sym_op->aead.digest.data, icv_len);
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_icv));
+		sge->length = icv_len;
+	}
+
+	DPAA2_SET_FLE_FIN(sge);
+	if (auth_only_len) {
+		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, auth_only_len);
+		DPAA2_SET_FD_INTERNAL_JD(fd, auth_only_len);
+	}
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
+
+	return 0;
+}
+
+static inline int
 build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		     struct rte_crypto_op *op,
 		     struct qbman_fd *fd, uint16_t bpid)
@@ -116,7 +264,7 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 	 */
 	retval = rte_mempool_get(priv->fle_pool, (void **)(&fle));
 	if (retval) {
-		RTE_LOG(ERR, PMD, "Memory alloc failed for SGE\n");
+		RTE_LOG(ERR, PMD, "GCM: Memory alloc failed for SGE\n");
 		return -1;
 	}
 	memset(fle, 0, FLE_POOL_BUF_SIZE);
@@ -149,7 +297,7 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
-	PMD_TX_LOG(DEBUG, "auth_off: 0x%x/length %d, digest-len=%d\n"
+	PMD_TX_LOG(DEBUG, "GCM: auth_off: 0x%x/length %d, digest-len=%d\n"
 		   "iv-len=%d data_off: 0x%x\n",
 		   sym_op->aead.data.offset,
 		   sym_op->aead.data.length,
@@ -234,6 +382,151 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 }
 
 static inline int
+build_authenc_sg_fd(dpaa2_sec_session *sess,
+		 struct rte_crypto_op *op,
+		 struct qbman_fd *fd, __rte_unused uint16_t bpid)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct ctxt_priv *priv = sess->ctxt;
+	struct qbman_fle *fle, *sge, *ip_fle, *op_fle;
+	struct sec_flow_context *flc;
+	uint32_t auth_only_len = sym_op->auth.data.length -
+				sym_op->cipher.data.length;
+	int icv_len = sess->digest_length;
+	uint8_t *old_icv;
+	struct rte_mbuf *mbuf;
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			sess->iv.offset);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (sym_op->m_dst)
+		mbuf = sym_op->m_dst;
+	else
+		mbuf = sym_op->m_src;
+
+	/* first FLE entry used to store mbuf and session ctxt */
+	fle = (struct qbman_fle *)rte_malloc(NULL, FLE_SG_MEM_SIZE,
+			RTE_CACHE_LINE_SIZE);
+	if (unlikely(!fle)) {
+		RTE_LOG(ERR, PMD, "AUTHENC SG: Memory alloc failed for SGE\n");
+		return -1;
+	}
+	memset(fle, 0, FLE_SG_MEM_SIZE);
+	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_FLE_SAVE_CTXT(fle, priv);
+
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+	sge = fle + 3;
+
+	/* Save the shared descriptor */
+	flc = &priv->flc_desc[0].flc;
+
+	/* Configure FD as a FRAME LIST */
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
+
+	PMD_TX_LOG(DEBUG,
+			"AUTHENC SG: auth_off: 0x%x/length %d, digest-len=%d\n"
+			"cipher_off: 0x%x/length %d, iv-len=%d data_off: 0x%x\n",
+		   sym_op->auth.data.offset,
+		   sym_op->auth.data.length,
+		   sym_op->auth.digest.length,
+		   sym_op->cipher.data.offset,
+		   sym_op->cipher.data.length,
+		   sym_op->cipher.iv.length,
+		   sym_op->m_src->data_off);
+
+	/* Configure Output FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_SG_EXT(op_fle);
+	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_VADDR_TO_IOVA(sge));
+
+	if (auth_only_len)
+		DPAA2_SET_FLE_INTERNAL_JD(op_fle, auth_only_len);
+
+	op_fle->length = (sess->dir == DIR_ENC) ?
+			(sym_op->cipher.data.length + icv_len) :
+			sym_op->cipher.data.length;
+
+	/* Configure Output SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off + sym_op->auth.data.offset);
+	sge->length = mbuf->data_len - sym_op->auth.data.offset;
+
+	mbuf = mbuf->next;
+	/* o/p segs */
+	while (mbuf) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+		sge->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	sge->length -= icv_len;
+
+	if (sess->dir == DIR_ENC) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge,
+				DPAA2_VADDR_TO_IOVA(sym_op->auth.digest.data));
+		sge->length = icv_len;
+	}
+	DPAA2_SET_FLE_FIN(sge);
+
+	sge++;
+	mbuf = sym_op->m_src;
+
+	/* Configure Input FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_VADDR_TO_IOVA(sge));
+	DPAA2_SET_FLE_SG_EXT(ip_fle);
+	DPAA2_SET_FLE_FIN(ip_fle);
+	ip_fle->length = (sess->dir == DIR_ENC) ?
+			(sym_op->auth.data.length + sess->iv.length) :
+			(sym_op->auth.data.length + sess->iv.length +
+			 icv_len);
+
+	/* Configure Input SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(iv_ptr));
+	sge->length = sess->iv.length;
+
+	sge++;
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, sym_op->auth.data.offset +
+				mbuf->data_off);
+	sge->length = mbuf->data_len - sym_op->auth.data.offset;
+
+	mbuf = mbuf->next;
+	/* i/p segs */
+	while (mbuf) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+		sge->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	sge->length -= icv_len;
+
+	if (sess->dir == DIR_DEC) {
+		sge++;
+		old_icv = (uint8_t *)(sge + 1);
+		memcpy(old_icv,	sym_op->auth.digest.data,
+		       icv_len);
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_icv));
+		sge->length = icv_len;
+	}
+
+	DPAA2_SET_FLE_FIN(sge);
+	if (auth_only_len) {
+		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, auth_only_len);
+		DPAA2_SET_FD_INTERNAL_JD(fd, auth_only_len);
+	}
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
+
+	return 0;
+}
+
+static inline int
 build_authenc_fd(dpaa2_sec_session *sess,
 		 struct rte_crypto_op *op,
 		 struct qbman_fd *fd, uint16_t bpid)
@@ -298,7 +591,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
-	PMD_TX_LOG(DEBUG, "auth_off: 0x%x/length %d, digest-len=%d\n"
+	PMD_TX_LOG(DEBUG, "AUTHENC: auth_off: 0x%x/length %d, digest-len=%d\n"
 		   "cipher_off: 0x%x/length %d, iv-len=%d data_off: 0x%x\n",
 		   sym_op->auth.data.offset,
 		   sym_op->auth.data.length,
@@ -374,6 +667,86 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	return 0;
 }
 
+static inline int build_auth_sg_fd(
+		dpaa2_sec_session *sess,
+		struct rte_crypto_op *op,
+		struct qbman_fd *fd,
+		__rte_unused uint16_t bpid)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct qbman_fle *fle, *sge, *ip_fle, *op_fle;
+	struct sec_flow_context *flc;
+	struct ctxt_priv *priv = sess->ctxt;
+	uint8_t *old_digest;
+	struct rte_mbuf *mbuf;
+
+	PMD_INIT_FUNC_TRACE();
+
+	mbuf = sym_op->m_src;
+	fle = (struct qbman_fle *)rte_malloc(NULL, FLE_SG_MEM_SIZE,
+			RTE_CACHE_LINE_SIZE);
+	if (unlikely(!fle)) {
+		RTE_LOG(ERR, PMD, "AUTH SG: Memory alloc failed for SGE\n");
+		return -1;
+	}
+	memset(fle, 0, FLE_SG_MEM_SIZE);
+	/* first FLE entry used to store mbuf and session ctxt */
+	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_FLE_SAVE_CTXT(fle, priv);
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+	sge = fle + 3;
+
+	flc = &priv->flc_desc[DESC_INITFINAL].flc;
+	/* sg FD */
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+
+	/* o/p fle */
+	DPAA2_SET_FLE_ADDR(op_fle,
+				DPAA2_VADDR_TO_IOVA(sym_op->auth.digest.data));
+	op_fle->length = sess->digest_length;
+
+	/* i/p fle */
+	DPAA2_SET_FLE_SG_EXT(ip_fle);
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_VADDR_TO_IOVA(sge));
+	/* i/p 1st seg */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, sym_op->auth.data.offset + mbuf->data_off);
+	sge->length = mbuf->data_len - sym_op->auth.data.offset;
+
+	/* i/p segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+		sge->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	if (sess->dir == DIR_ENC) {
+		/* Digest calculation case */
+		sge->length -= sess->digest_length;
+		ip_fle->length = sym_op->auth.data.length;
+	} else {
+		/* Digest verification case */
+		sge++;
+		old_digest = (uint8_t *)(sge + 1);
+		rte_memcpy(old_digest, sym_op->auth.digest.data,
+			   sess->digest_length);
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_digest));
+		sge->length = sess->digest_length;
+		ip_fle->length = sym_op->auth.data.length +
+				sess->digest_length;
+	}
+	DPAA2_SET_FLE_FIN(sge);
+	DPAA2_SET_FLE_FIN(ip_fle);
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
+
+	return 0;
+}
+
 static inline int
 build_auth_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	      struct qbman_fd *fd, uint16_t bpid)
@@ -389,7 +762,7 @@ build_auth_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 
 	retval = rte_mempool_get(priv->fle_pool, (void **)(&fle));
 	if (retval) {
-		RTE_LOG(ERR, PMD, "Memory alloc failed for SGE\n");
+		RTE_LOG(ERR, PMD, "AUTH Memory alloc failed for SGE\n");
 		return -1;
 	}
 	memset(fle, 0, FLE_POOL_BUF_SIZE);
@@ -465,6 +838,123 @@ build_auth_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 }
 
 static int
+build_cipher_sg_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
+		struct qbman_fd *fd, __rte_unused uint16_t bpid)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct qbman_fle *ip_fle, *op_fle, *sge, *fle;
+	struct sec_flow_context *flc;
+	struct ctxt_priv *priv = sess->ctxt;
+	struct rte_mbuf *mbuf;
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			sess->iv.offset);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (sym_op->m_dst)
+		mbuf = sym_op->m_dst;
+	else
+		mbuf = sym_op->m_src;
+
+	fle = (struct qbman_fle *)rte_malloc(NULL, FLE_SG_MEM_SIZE,
+			RTE_CACHE_LINE_SIZE);
+	if (!fle) {
+		RTE_LOG(ERR, PMD, "CIPHER SG: Memory alloc failed for SGE\n");
+		return -1;
+	}
+	memset(fle, 0, FLE_SG_MEM_SIZE);
+	/* first FLE entry used to store mbuf and session ctxt */
+	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_FLE_SAVE_CTXT(fle, priv);
+
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+	sge = fle + 3;
+
+	flc = &priv->flc_desc[0].flc;
+
+	PMD_TX_LOG(DEBUG,
+			"CIPHER SG: cipher_off: 0x%x/length %d,ivlen=%d data_off: 0x%x",
+		   sym_op->cipher.data.offset,
+		   sym_op->cipher.data.length,
+		   sym_op->cipher.iv.length,
+		   sym_op->m_src->data_off);
+
+	/* o/p fle */
+	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_VADDR_TO_IOVA(sge));
+	op_fle->length = sym_op->cipher.data.length;
+	DPAA2_SET_FLE_SG_EXT(op_fle);
+
+	/* o/p 1st seg */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, sym_op->cipher.data.offset + mbuf->data_off);
+	sge->length = mbuf->data_len - sym_op->cipher.data.offset;
+
+	mbuf = mbuf->next;
+	/* o/p segs */
+	while (mbuf) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+		sge->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	DPAA2_SET_FLE_FIN(sge);
+
+	PMD_TX_LOG(DEBUG,
+			"CIPHER SG: 1 - flc = %p, fle = %p FLEaddr = %x-%x, length %d",
+			flc, fle, fle->addr_hi, fle->addr_lo,
+			fle->length);
+
+	/* i/p fle */
+	mbuf = sym_op->m_src;
+	sge++;
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_VADDR_TO_IOVA(sge));
+	ip_fle->length = sess->iv.length + sym_op->cipher.data.length;
+	DPAA2_SET_FLE_SG_EXT(ip_fle);
+
+	/* i/p IV */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(iv_ptr));
+	DPAA2_SET_FLE_OFFSET(sge, 0);
+	sge->length = sess->iv.length;
+
+	sge++;
+
+	/* i/p 1st seg */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, sym_op->cipher.data.offset +
+			     mbuf->data_off);
+	sge->length = mbuf->data_len - sym_op->cipher.data.offset;
+
+	mbuf = mbuf->next;
+	/* i/p segs */
+	while (mbuf) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+		sge->length = mbuf->data_len;
+		mbuf = mbuf->next;
+	}
+	DPAA2_SET_FLE_FIN(sge);
+	DPAA2_SET_FLE_FIN(ip_fle);
+
+	/* sg fd */
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
+
+	PMD_TX_LOG(DEBUG,
+			"CIPHER SG: fdaddr =%p bpid =%d meta =%d off =%d, len =%d",
+		   (void *)DPAA2_GET_FD_ADDR(fd),
+		   DPAA2_GET_FD_BPID(fd),
+		   rte_dpaa2_bpid_info[bpid].meta_data_size,
+		   DPAA2_GET_FD_OFFSET(fd),
+		   DPAA2_GET_FD_LEN(fd));
+	return 0;
+}
+
+static int
 build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 		struct qbman_fd *fd, uint16_t bpid)
 {
@@ -486,7 +976,7 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 
 	retval = rte_mempool_get(priv->fle_pool, (void **)(&fle));
 	if (retval) {
-		RTE_LOG(ERR, PMD, "Memory alloc failed for SGE\n");
+		RTE_LOG(ERR, PMD, "CIPHER: Memory alloc failed for SGE\n");
 		return -1;
 	}
 	memset(fle, 0, FLE_POOL_BUF_SIZE);
@@ -522,7 +1012,8 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
-	PMD_TX_LOG(DEBUG, "cipher_off: 0x%x/length %d,ivlen=%d data_off: 0x%x",
+	PMD_TX_LOG(DEBUG,
+			"CIPHER: cipher_off: 0x%x/length %d, ivlen=%d, data_off: 0x%x",
 		   sym_op->cipher.data.offset,
 		   sym_op->cipher.data.length,
 		   sess->iv.length,
@@ -534,8 +1025,10 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 
 	fle->length = sym_op->cipher.data.length + sess->iv.length;
 
-	PMD_TX_LOG(DEBUG, "1 - flc = %p, fle = %p FLEaddr = %x-%x, length %d",
-		   flc, fle, fle->addr_hi, fle->addr_lo, fle->length);
+	PMD_TX_LOG(DEBUG,
+			"CIPHER: 1 - flc = %p, fle = %p FLEaddr = %x-%x, length %d",
+			flc, fle, fle->addr_hi, fle->addr_lo,
+			fle->length);
 
 	fle++;
 
@@ -556,7 +1049,8 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	DPAA2_SET_FLE_FIN(sge);
 	DPAA2_SET_FLE_FIN(fle);
 
-	PMD_TX_LOG(DEBUG, "fdaddr =%p bpid =%d meta =%d off =%d, len =%d",
+	PMD_TX_LOG(DEBUG,
+			"CIPHER: fdaddr =%p bpid =%d meta =%d off =%d, len =%d",
 		   (void *)DPAA2_GET_FD_ADDR(fd),
 		   DPAA2_GET_FD_BPID(fd),
 		   rte_dpaa2_bpid_info[bpid].meta_data_size,
@@ -574,13 +1068,6 @@ build_sec_fd(struct rte_crypto_op *op,
 	dpaa2_sec_session *sess;
 
 	PMD_INIT_FUNC_TRACE();
-	/*
-	 * Segmented buffer is not supported.
-	 */
-	if (!rte_pktmbuf_is_contiguous(op->sym->m_src)) {
-		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -ENOTSUP;
-	}
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
 		sess = (dpaa2_sec_session *)get_session_private_data(
@@ -591,25 +1078,46 @@ build_sec_fd(struct rte_crypto_op *op,
 	else
 		return -1;
 
-	switch (sess->ctxt_type) {
-	case DPAA2_SEC_CIPHER:
-		ret = build_cipher_fd(sess, op, fd, bpid);
-		break;
-	case DPAA2_SEC_AUTH:
-		ret = build_auth_fd(sess, op, fd, bpid);
-		break;
-	case DPAA2_SEC_AEAD:
-		ret = build_authenc_gcm_fd(sess, op, fd, bpid);
-		break;
-	case DPAA2_SEC_CIPHER_HASH:
-		ret = build_authenc_fd(sess, op, fd, bpid);
-		break;
-	case DPAA2_SEC_IPSEC:
-		ret = build_proto_fd(sess, op, fd, bpid);
-		break;
-	case DPAA2_SEC_HASH_CIPHER:
-	default:
-		RTE_LOG(ERR, PMD, "error: Unsupported session\n");
+	/* Segmented buffer */
+	if (unlikely(!rte_pktmbuf_is_contiguous(op->sym->m_src))) {
+		switch (sess->ctxt_type) {
+		case DPAA2_SEC_CIPHER:
+			ret = build_cipher_sg_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_AUTH:
+			ret = build_auth_sg_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_AEAD:
+			ret = build_authenc_gcm_sg_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_CIPHER_HASH:
+			ret = build_authenc_sg_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_HASH_CIPHER:
+		default:
+			RTE_LOG(ERR, PMD, "error: Unsupported session\n");
+		}
+	} else {
+		switch (sess->ctxt_type) {
+		case DPAA2_SEC_CIPHER:
+			ret = build_cipher_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_AUTH:
+			ret = build_auth_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_AEAD:
+			ret = build_authenc_gcm_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_CIPHER_HASH:
+			ret = build_authenc_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_IPSEC:
+			ret = build_proto_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_HASH_CIPHER:
+		default:
+			RTE_LOG(ERR, PMD, "error: Unsupported session\n");
+		}
 	}
 	return ret;
 }
@@ -767,8 +1275,11 @@ sec_fd_to_mbuf(const struct qbman_fd *fd, uint8_t driver_id)
 		   DPAA2_GET_FD_LEN(fd));
 
 	/* free the fle memory */
-	priv = (struct ctxt_priv *)DPAA2_GET_FLE_CTXT(fle - 1);
-	rte_mempool_put(priv->fle_pool, (void *)(fle - 1));
+	if (likely(rte_pktmbuf_is_contiguous(src))) {
+		priv = (struct ctxt_priv *)DPAA2_GET_FLE_CTXT(fle - 1);
+		rte_mempool_put(priv->fle_pool, (void *)(fle-1));
+	} else
+		rte_free((void *)(fle-1));
 
 	return op;
 }
@@ -2253,7 +2764,8 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 	cryptodev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-			RTE_CRYPTODEV_FF_SECURITY;
+			RTE_CRYPTODEV_FF_SECURITY |
+			RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER;
 
 	internals = cryptodev->data->dev_private;
 	internals->max_nb_sessions = RTE_DPAA2_SEC_PMD_MAX_NB_SESSIONS;
