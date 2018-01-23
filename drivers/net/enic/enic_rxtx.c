@@ -5,6 +5,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_ethdev_driver.h>
+#include <rte_net.h>
 #include <rte_prefetch.h>
 
 #include "enic_compat.h"
@@ -13,6 +14,15 @@
 #include <rte_ether.h>
 #include <rte_ip.h>
 #include <rte_tcp.h>
+
+#define	ENIC_TX_OFFLOAD_MASK (			 \
+		PKT_TX_VLAN_PKT |		 \
+		PKT_TX_IP_CKSUM |		 \
+		PKT_TX_L4_MASK |		 \
+		PKT_TX_TCP_SEG)
+
+#define	ENIC_TX_OFFLOAD_NOTSUP_MASK \
+	(PKT_TX_OFFLOAD_MASK ^ ENIC_TX_OFFLOAD_MASK)
 
 #define RTE_PMD_USE_PREFETCH
 
@@ -431,6 +441,38 @@ unsigned int enic_cleanup_wq(__rte_unused struct enic *enic, struct vnic_wq *wq)
 		wq->last_completed_index = completed_index;
 	}
 	return 0;
+}
+
+uint16_t enic_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts)
+{
+	int32_t ret;
+	uint16_t i;
+	uint64_t ol_flags;
+	struct rte_mbuf *m;
+
+	for (i = 0; i != nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+		if (ol_flags & ENIC_TX_OFFLOAD_NOTSUP_MASK) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		ret = rte_net_intel_cksum_prepare(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+
+	return i;
 }
 
 uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,

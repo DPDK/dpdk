@@ -641,6 +641,7 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &enicpmd_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &enic_recv_pkts;
 	eth_dev->tx_pkt_burst = &enic_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &enic_prep_pkts;
 
 	pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pdev);

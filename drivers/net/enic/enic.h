@@ -268,6 +268,8 @@ uint16_t enic_dummy_recv_pkts(void *rx_queue,
 			      uint16_t nb_pkts);
 uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts);
+uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts);
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu);
 int enic_link_update(struct enic *enic);
 void enic_fdir_info(struct enic *enic);
