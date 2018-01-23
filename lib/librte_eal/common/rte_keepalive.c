@@ -13,8 +13,12 @@
 
 struct rte_keepalive {
 	/** Core Liveness. */
-	enum rte_keepalive_state __rte_cache_aligned state_flags[
-		RTE_KEEPALIVE_MAXCORES];
+	struct {
+		/*
+		 * Each element must be cache aligned to prevent false sharing.
+		 */
+		enum rte_keepalive_state core_state __rte_cache_aligned;
+	} live_data[RTE_KEEPALIVE_MAXCORES];
 
 	/** Last-seen-alive timestamps */
 	uint64_t last_alive[RTE_KEEPALIVE_MAXCORES];
@@ -67,19 +71,22 @@ rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 		if (keepcfg->active_cores[idx_core] == 0)
 			continue;
 
-		switch (keepcfg->state_flags[idx_core]) {
+		switch (keepcfg->live_data[idx_core].core_state) {
 		case RTE_KA_STATE_UNUSED:
 			break;
 		case RTE_KA_STATE_ALIVE: /* Alive */
-			keepcfg->state_flags[idx_core] = RTE_KA_STATE_MISSING;
+			keepcfg->live_data[idx_core].core_state =
+			    RTE_KA_STATE_MISSING;
 			keepcfg->last_alive[idx_core] = rte_rdtsc();
 			break;
 		case RTE_KA_STATE_MISSING: /* MIA */
 			print_trace("Core MIA. ", keepcfg, idx_core);
-			keepcfg->state_flags[idx_core] = RTE_KA_STATE_DEAD;
+			keepcfg->live_data[idx_core].core_state =
+			    RTE_KA_STATE_DEAD;
 			break;
 		case RTE_KA_STATE_DEAD: /* Dead */
-			keepcfg->state_flags[idx_core] = RTE_KA_STATE_GONE;
+			keepcfg->live_data[idx_core].core_state =
+			    RTE_KA_STATE_GONE;
 			print_trace("Core died. ", keepcfg, idx_core);
 			if (keepcfg->callback)
 				keepcfg->callback(
@@ -90,7 +97,8 @@ rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 		case RTE_KA_STATE_GONE: /* Buried */
 			break;
 		case RTE_KA_STATE_DOZING: /* Core going idle */
-			keepcfg->state_flags[idx_core] = RTE_KA_STATE_SLEEP;
+			keepcfg->live_data[idx_core].core_state =
+			    RTE_KA_STATE_SLEEP;
 			keepcfg->last_alive[idx_core] = rte_rdtsc();
 			break;
 		case RTE_KA_STATE_SLEEP: /* Idled core */
@@ -100,7 +108,7 @@ rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 			keepcfg->relay_callback(
 				keepcfg->relay_callback_data,
 				idx_core,
-				keepcfg->state_flags[idx_core],
+				keepcfg->live_data[idx_core].core_state,
 				keepcfg->last_alive[idx_core]
 				);
 	}
@@ -144,11 +152,11 @@ rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 void
 rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)
 {
-	keepcfg->state_flags[rte_lcore_id()] = RTE_KA_STATE_ALIVE;
+	keepcfg->live_data[rte_lcore_id()].core_state = RTE_KA_STATE_ALIVE;
 }
 
 void
 rte_keepalive_mark_sleep(struct rte_keepalive *keepcfg)
 {
-	keepcfg->state_flags[rte_lcore_id()] = RTE_KA_STATE_DOZING;
+	keepcfg->live_data[rte_lcore_id()].core_state = RTE_KA_STATE_DOZING;
 }

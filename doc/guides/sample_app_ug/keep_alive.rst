@@ -168,5 +168,5 @@ The rte_keepalive_mark_alive function simply sets the core state to alive.
     static inline void
     rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)
     {
-        keepcfg->state_flags[rte_lcore_id()] = ALIVE;
+        keepcfg->live_data[rte_lcore_id()].core_state = RTE_KA_STATE_ALIVE;
     }
