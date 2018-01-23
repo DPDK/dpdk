@@ -82,11 +82,6 @@ tap_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		linux/tc_act/tc_bpf.h \
 		enum TCA_ACT_BPF_FD \
 		$(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_BPF_PROG_LOAD \
-		linux/bpf.h \
-		enum BPF_PROG_LOAD \
-		$(AUTOCONF_OUTPUT)
 
 # Create tap_autoconf.h or update it in case it differs from the new one.
 

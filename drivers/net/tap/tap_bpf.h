@@ -7,9 +7,11 @@
 
 #include <tap_autoconf.h>
 
-#ifdef HAVE_BPF_PROG_LOAD
-#include <linux/bpf.h>
-#else
+/* Do not #include <linux/bpf.h> since eBPF must compile on different
+ * distros which may include partial definitions for eBPF (while the
+ * kernel itself may support eBPF). Instead define here all that is needed
+ */
+
 /* BPF_MAP_UPDATE_ELEM command flags */
 #define	BPF_ANY	0 /* create a new element or update an existing */
 
@@ -83,7 +85,6 @@ union bpf_attr {
 		__u32		prog_flags;
 	};
 } __attribute__((aligned(8)));
-#endif
 
 #ifndef __NR_bpf
 # if defined(__i386__)
