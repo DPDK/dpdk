@@ -58,10 +58,58 @@ unsigned int dpaa_svr_family;
 RTE_DEFINE_PER_LCORE(bool, _dpaa_io);
 RTE_DEFINE_PER_LCORE(struct dpaa_portal_dqrr, held_bufs);
 
-static inline void
-dpaa_add_to_device_list(struct rte_dpaa_device *dev)
+static int
+compare_dpaa_devices(struct rte_dpaa_device *dev1,
+		     struct rte_dpaa_device *dev2)
 {
-	TAILQ_INSERT_TAIL(&rte_dpaa_bus.device_list, dev, next);
+	int comp = 0;
+
+	/* Segragating ETH from SEC devices */
+	if (dev1->device_type > dev2->device_type)
+		comp = 1;
+	else if (dev1->device_type < dev2->device_type)
+		comp = -1;
+	else
+		comp = 0;
+
+	if ((comp != 0) || (dev1->device_type != FSL_DPAA_ETH))
+		return comp;
+
+	if (dev1->id.fman_id > dev2->id.fman_id) {
+		comp = 1;
+	} else if (dev1->id.fman_id < dev2->id.fman_id) {
+		comp = -1;
+	} else {
+		/* FMAN ids match, check for mac_id */
+		if (dev1->id.mac_id > dev2->id.mac_id)
+			comp = 1;
+		else if (dev1->id.mac_id < dev2->id.mac_id)
+			comp = -1;
+		else
+			comp = 0;
+	}
+
+	return comp;
+}
+
+static inline void
+dpaa_add_to_device_list(struct rte_dpaa_device *newdev)
+{
+	int comp, inserted = 0;
+	struct rte_dpaa_device *dev = NULL;
+	struct rte_dpaa_device *tdev = NULL;
+
+	TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tdev) {
+		comp = compare_dpaa_devices(newdev, dev);
+		if (comp < 0) {
+			TAILQ_INSERT_BEFORE(dev, newdev, next);
+			inserted = 1;
+			break;
+		}
+	}
+
+	if (!inserted)
+		TAILQ_INSERT_TAIL(&rte_dpaa_bus.device_list, newdev, next);
 }
 
 /*
