@@ -1261,7 +1261,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			desc = (struct vring_desc *)(uintptr_t)
 				vhost_iova_to_vva(dev, vq,
 						vq->desc[desc_indexes[i]].addr,
-						sizeof(*desc),
+						vq->desc[desc_indexes[i]].len,
 						VHOST_ACCESS_RO);
 			if (unlikely(!desc))
 				break;
