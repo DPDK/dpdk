@@ -579,19 +579,17 @@ main(int argc, char **argv)
 			i = 0;
 			RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
-				if (i == nb_cryptodevs)
+				if (i == total_nb_qps)
 					break;
 
-				cdev_id = enabled_cdevs[i];
-
 				rte_eal_remote_launch(cperf_testmap[opts.test].runner,
-					ctx[cdev_id], lcore_id);
+					ctx[i], lcore_id);
 				i++;
 			}
 			i = 0;
 			RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
-				if (i == nb_cryptodevs)
+				if (i == total_nb_qps)
 					break;
 				rte_eal_wait_lcore(lcore_id);
 				i++;
@@ -633,8 +631,6 @@ err:
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		if (i == total_nb_qps)
 			break;
-
-		cdev_id = enabled_cdevs[i];
 
 		if (ctx[i] && cperf_testmap[opts.test].destructor)
 			cperf_testmap[opts.test].destructor(ctx[i]);
