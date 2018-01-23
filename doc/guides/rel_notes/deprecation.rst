@@ -59,6 +59,23 @@ Deprecation Notices
 
   - ``rte_eal_mbuf_default_mempool_ops``
 
+* mempool: several API and ABI changes are planned in v18.05.
+  The following functions, introduced for Xen, which is not supported
+  anymore since v17.11, are hard to use, not used anywhere else in DPDK.
+  Therefore they will be deprecated in v18.05 and removed in v18.08:
+
+  - ``rte_mempool_xmem_create``
+  - ``rte_mempool_xmem_size``
+  - ``rte_mempool_xmem_usage``
+
+  The following changes are planned:
+
+  - removal of ``get_capabilities`` mempool ops and related flags.
+  - substitute ``register_memory_area`` with ``populate`` ops.
+  - addition of new ops to customize required memory chunk calculation,
+    customize objects population and allocate contiguous
+    block of objects if underlying driver supports it.
+
 * ethdev: a new Tx and Rx offload API was introduced on 17.11.
   In the new API, offloads are divided into per-port and per-queue offloads.
   Offloads are disabled by default and enabled per application request.
