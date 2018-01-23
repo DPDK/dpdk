@@ -279,17 +279,6 @@ virtio_dev_queue_release(void *queue __rte_unused)
 	/* do nothing */
 }
 
-static int
-virtio_get_queue_type(struct virtio_hw *hw, uint16_t vtpci_queue_idx)
-{
-	if (vtpci_queue_idx == hw->max_queue_pairs * 2)
-		return VTNET_CQ;
-	else if (vtpci_queue_idx % 2 == 0)
-		return VTNET_RQ;
-	else
-		return VTNET_TQ;
-}
-
 static uint16_t
 virtio_get_nr_vq(struct virtio_hw *hw)
 {

@@ -19,16 +19,38 @@ struct rte_mbuf *
 virtqueue_detatch_unused(struct virtqueue *vq)
 {
 	struct rte_mbuf *cookie;
-	int idx;
+	struct virtio_hw *hw;
+	uint16_t start, end;
+	int type, idx;
 
-	if (vq != NULL)
-		for (idx = 0; idx < vq->vq_nentries; idx++) {
+	if (vq == NULL)
+		return NULL;
+
+	hw = vq->hw;
+	type = virtio_get_queue_type(hw, vq->vq_queue_index);
+	start = vq->vq_avail_idx & (vq->vq_nentries - 1);
+	end = (vq->vq_avail_idx + vq->vq_free_cnt) & (vq->vq_nentries - 1);
+
+	for (idx = 0; idx < vq->vq_nentries; idx++) {
+		if (hw->use_simple_rx && type == VTNET_RQ) {
+			if (start <= end && idx >= start && idx < end)
+				continue;
+			if (start > end && (idx >= start || idx < end))
+				continue;
+			cookie = vq->sw_ring[idx];
+			if (cookie != NULL) {
+				vq->sw_ring[idx] = NULL;
+				return cookie;
+			}
+		} else {
 			cookie = vq->vq_descx[idx].cookie;
 			if (cookie != NULL) {
 				vq->vq_descx[idx].cookie = NULL;
 				return cookie;
 			}
 		}
+	}
+
 	return NULL;
 }
 
