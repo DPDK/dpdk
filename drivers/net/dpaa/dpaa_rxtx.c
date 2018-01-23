@@ -503,10 +503,12 @@ uint16_t dpaa_eth_queue_rx(void *q,
 	if (likely(fq->is_static))
 		return dpaa_eth_queue_portal_rx(fq, bufs, nb_bufs);
 
-	ret = rte_dpaa_portal_init((void *)0);
-	if (ret) {
-		DPAA_PMD_ERR("Failure in affining portal");
-		return 0;
+	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+		ret = rte_dpaa_portal_init((void *)0);
+		if (ret) {
+			DPAA_PMD_ERR("Failure in affining portal");
+			return 0;
+		}
 	}
 
 	ret = qman_set_vdq(fq, (nb_bufs > DPAA_MAX_DEQUEUE_NUM_FRAMES) ?
@@ -777,10 +779,12 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	int ret;
 	uint32_t seqn, index, flags[DPAA_TX_BURST_SIZE] = {0};
 
-	ret = rte_dpaa_portal_init((void *)0);
-	if (ret) {
-		DPAA_PMD_ERR("Failure in affining portal");
-		return 0;
+	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+		ret = rte_dpaa_portal_init((void *)0);
+		if (ret) {
+			DPAA_PMD_ERR("Failure in affining portal");
+			return 0;
+		}
 	}
 
 	DPAA_DP_LOG(DEBUG, "Transmitting %d buffers on queue: %p", nb_bufs, q);

@@ -1333,10 +1333,12 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 		is_global_init = 1;
 	}
 
-	ret = rte_dpaa_portal_init((void *)1);
-	if (ret) {
-		DPAA_PMD_ERR("Unable to initialize portal");
-		return ret;
+	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+		ret = rte_dpaa_portal_init((void *)1);
+		if (ret) {
+			DPAA_PMD_ERR("Unable to initialize portal");
+			return ret;
+		}
 	}
 
 	eth_dev = rte_eth_dev_allocate(dpaa_dev->name);

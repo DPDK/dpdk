@@ -70,6 +70,7 @@ DPDK_18.02 {
 
 	dpaa_logtype_eventdev;
 	dpaa_svr_family;
+	per_lcore_dpaa_io;
 	per_lcore_held_bufs;
 	qm_channel_pool1;
 	qman_alloc_cgrid_range;

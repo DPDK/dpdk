@@ -33,6 +33,8 @@
 
 extern unsigned int dpaa_svr_family;
 
+extern RTE_DEFINE_PER_LCORE(bool, dpaa_io);
+
 struct rte_dpaa_device;
 struct rte_dpaa_driver;
 

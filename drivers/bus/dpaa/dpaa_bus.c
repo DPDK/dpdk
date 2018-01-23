@@ -55,7 +55,7 @@ pthread_key_t dpaa_portal_key;
 
 unsigned int dpaa_svr_family;
 
-RTE_DEFINE_PER_LCORE(bool, _dpaa_io);
+RTE_DEFINE_PER_LCORE(bool, dpaa_io);
 RTE_DEFINE_PER_LCORE(struct dpaa_portal_dqrr, held_bufs);
 
 static int
@@ -225,9 +225,7 @@ dpaa_clean_device_list(void)
 	}
 }
 
-/** XXX move this function into a separate file */
-static int
-_dpaa_portal_init(void *arg)
+int rte_dpaa_portal_init(void *arg)
 {
 	cpu_set_t cpuset;
 	pthread_t id;
@@ -298,21 +296,9 @@ _dpaa_portal_init(void *arg)
 		return ret;
 	}
 
-	RTE_PER_LCORE(_dpaa_io) = true;
+	RTE_PER_LCORE(dpaa_io) = true;
 
 	DPAA_BUS_LOG(DEBUG, "QMAN thread initialized");
-
-	return 0;
-}
-
-/*
- * rte_dpaa_portal_init - Wrapper over _dpaa_portal_init with thread level check
- * XXX Complete this
- */
-int rte_dpaa_portal_init(void *arg)
-{
-	if (unlikely(!RTE_PER_LCORE(_dpaa_io)))
-		return _dpaa_portal_init(arg);
 
 	return 0;
 }
@@ -324,8 +310,8 @@ rte_dpaa_portal_fq_init(void *arg, struct qman_fq *fq)
 	u32 sdqcr;
 	struct qman_portal *qp;
 
-	if (unlikely(!RTE_PER_LCORE(_dpaa_io)))
-		_dpaa_portal_init(arg);
+	if (unlikely(!RTE_PER_LCORE(dpaa_io)))
+		rte_dpaa_portal_init(arg);
 
 	/* Initialise qman specific portals */
 	qp = fsl_qman_portal_create();
@@ -363,7 +349,7 @@ dpaa_portal_finish(void *arg)
 	rte_free(dpaa_io_portal);
 	dpaa_io_portal = NULL;
 
-	RTE_PER_LCORE(_dpaa_io) = false;
+	RTE_PER_LCORE(dpaa_io) = false;
 }
 
 #define DPAA_DEV_PATH1 "/sys/devices/platform/soc/soc:fsl,dpaa"
