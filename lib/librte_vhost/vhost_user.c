@@ -422,21 +422,26 @@ numa_realloc(struct virtio_net *dev, int index __rte_unused)
 
 /* Converts QEMU virtual address to Vhost virtual address. */
 static uint64_t
-qva_to_vva(struct virtio_net *dev, uint64_t qva)
+qva_to_vva(struct virtio_net *dev, uint64_t qva, uint64_t *len)
 {
-	struct rte_vhost_mem_region *reg;
+	struct rte_vhost_mem_region *r;
 	uint32_t i;
 
 	/* Find the region where the address lives. */
 	for (i = 0; i < dev->mem->nregions; i++) {
-		reg = &dev->mem->regions[i];
+		r = &dev->mem->regions[i];
 
-		if (qva >= reg->guest_user_addr &&
-		    qva <  reg->guest_user_addr + reg->size) {
-			return qva - reg->guest_user_addr +
-			       reg->host_user_addr;
+		if (qva >= r->guest_user_addr &&
+		    qva <  r->guest_user_addr + r->size) {
+
+			if (unlikely(*len > r->guest_user_addr + r->size - qva))
+				*len = r->guest_user_addr + r->size - qva;
+
+			return qva - r->guest_user_addr +
+			       r->host_user_addr;
 		}
 	}
+	*len = 0;
 
 	return 0;
 }
@@ -449,20 +454,20 @@ qva_to_vva(struct virtio_net *dev, uint64_t qva)
  */
 static uint64_t
 ring_addr_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
-		uint64_t ra, uint64_t size)
+		uint64_t ra, uint64_t *size)
 {
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)) {
 		uint64_t vva;
 
 		vva = vhost_user_iotlb_cache_find(vq, ra,
-					&size, VHOST_ACCESS_RW);
+					size, VHOST_ACCESS_RW);
 		if (!vva)
 			vhost_user_iotlb_miss(dev, ra, VHOST_ACCESS_RW);
 
 		return vva;
 	}
 
-	return qva_to_vva(dev, ra);
+	return qva_to_vva(dev, ra, size);
 }
 
 static struct virtio_net *
@@ -470,16 +475,18 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[vq_index];
 	struct vhost_vring_addr *addr = &vq->ring_addrs;
+	uint64_t len;
 
 	/* The addresses are converted from QEMU virtual to Vhost virtual. */
 	if (vq->desc && vq->avail && vq->used)
 		return dev;
 
+	len = sizeof(struct vring_desc) * vq->size;
 	vq->desc = (struct vring_desc *)(uintptr_t)ring_addr_to_vva(dev,
-			vq, addr->desc_user_addr, sizeof(struct vring_desc));
-	if (vq->desc == 0) {
+			vq, addr->desc_user_addr, &len);
+	if (vq->desc == 0 || len != sizeof(struct vring_desc) * vq->size) {
 		RTE_LOG(DEBUG, VHOST_CONFIG,
-			"(%d) failed to find desc ring address.\n",
+			"(%d) failed to map desc ring.\n",
 			dev->vid);
 		return dev;
 	}
@@ -488,20 +495,26 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	vq = dev->virtqueue[vq_index];
 	addr = &vq->ring_addrs;
 
+	len = sizeof(struct vring_avail) + sizeof(uint16_t) * vq->size;
 	vq->avail = (struct vring_avail *)(uintptr_t)ring_addr_to_vva(dev,
-			vq, addr->avail_user_addr, sizeof(struct vring_avail));
-	if (vq->avail == 0) {
+			vq, addr->avail_user_addr, &len);
+	if (vq->avail == 0 ||
+			len != sizeof(struct vring_avail) +
+			sizeof(uint16_t) * vq->size) {
 		RTE_LOG(DEBUG, VHOST_CONFIG,
-			"(%d) failed to find avail ring address.\n",
+			"(%d) failed to map avail ring.\n",
 			dev->vid);
 		return dev;
 	}
 
+	len = sizeof(struct vring_used) +
+		sizeof(struct vring_used_elem) * vq->size;
 	vq->used = (struct vring_used *)(uintptr_t)ring_addr_to_vva(dev,
-			vq, addr->used_user_addr, sizeof(struct vring_used));
-	if (vq->used == 0) {
+			vq, addr->used_user_addr, &len);
+	if (vq->used == 0 || len != sizeof(struct vring_used) +
+			sizeof(struct vring_used_elem) * vq->size) {
 		RTE_LOG(DEBUG, VHOST_CONFIG,
-			"(%d) failed to find used ring address.\n",
+			"(%d) failed to map used ring.\n",
 			dev->vid);
 		return dev;
 	}
@@ -1258,11 +1271,12 @@ vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg)
 	struct virtio_net *dev = *pdev;
 	struct vhost_iotlb_msg *imsg = &msg->payload.iotlb;
 	uint16_t i;
-	uint64_t vva;
+	uint64_t vva, len;
 
 	switch (imsg->type) {
 	case VHOST_IOTLB_UPDATE:
-		vva = qva_to_vva(dev, imsg->uaddr);
+		len = imsg->size;
+		vva = qva_to_vva(dev, imsg->uaddr, &len);
 		if (!vva)
 			return -1;
 
@@ -1270,7 +1284,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg)
 			struct vhost_virtqueue *vq = dev->virtqueue[i];
 
 			vhost_user_iotlb_cache_insert(vq, imsg->iova, vva,
-					imsg->size, imsg->perm);
+					len, imsg->perm);
 
 			if (is_vring_iotlb_update(vq, imsg))
 				*pdev = dev = translate_ring_addresses(dev, i);
