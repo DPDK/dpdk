@@ -255,9 +255,9 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 			}
 			return num_pkts;
 		}
+		qbman_swp_prefetch_dqrr_next(swp);
 
 		fd = qbman_result_DQ_fd(dq);
-
 		rxq = (struct dpaa2_queue *)qbman_result_DQ_fqd_ctx(dq);
 		if (rxq) {
 			rxq->cb(swp, fd, dq, rxq, &ev[num_pkts]);
