@@ -268,9 +268,8 @@ int dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 			   struct qm_fd *fd,
 			   uint32_t bpid);
 
-enum qman_cb_dqrr_result dpaa_rx_cb(void *event,
-				    struct qman_portal *qm,
-				    struct qman_fq *fq,
-				    const struct qm_dqrr_entry *dqrr,
-				    void **bd);
+void dpaa_rx_cb(struct qman_fq **fq,
+		struct qm_dqrr_entry **dqrr, void **bufs, int num_bufs);
+
+void dpaa_rx_cb_prepare(struct qm_dqrr_entry *dq, void **bufs);
 #endif

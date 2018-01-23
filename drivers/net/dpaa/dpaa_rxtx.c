@@ -399,17 +399,80 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	return mbuf;
 }
 
-enum qman_cb_dqrr_result dpaa_rx_cb(void *event __always_unused,
-				    struct qman_portal *qm __always_unused,
-				    struct qman_fq *fq,
-				    const struct qm_dqrr_entry *dqrr,
-				    void **bufs)
+void
+dpaa_rx_cb(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
+	   void **bufs, int num_bufs)
 {
-	const struct qm_fd *fd = &dqrr->fd;
+	struct rte_mbuf *mbuf;
+	struct dpaa_bp_info *bp_info;
+	const struct qm_fd *fd;
+	void *ptr;
+	struct dpaa_if *dpaa_intf;
+	uint16_t offset, i;
+	uint32_t length;
+	uint8_t format;
 
-	*bufs = dpaa_eth_fd_to_mbuf(fd,
-			((struct dpaa_if *)fq->dpaa_intf)->ifid);
-	return qman_cb_dqrr_consume;
+	if (dpaa_svr_family != SVR_LS1046A_FAMILY) {
+		bp_info = DPAA_BPID_TO_POOL_INFO(dqrr[0]->fd.bpid);
+		ptr = rte_dpaa_mem_ptov(qm_fd_addr(&dqrr[0]->fd));
+		rte_prefetch0((void *)((uint8_t *)ptr + DEFAULT_RX_ICEOF));
+		bufs[0] = (struct rte_mbuf *)((char *)ptr -
+				bp_info->meta_data_size);
+	}
+
+	for (i = 0; i < num_bufs; i++) {
+		if (dpaa_svr_family != SVR_LS1046A_FAMILY &&
+		    i < num_bufs - 1) {
+			bp_info = DPAA_BPID_TO_POOL_INFO(dqrr[i + 1]->fd.bpid);
+			ptr = rte_dpaa_mem_ptov(qm_fd_addr(&dqrr[i + 1]->fd));
+			rte_prefetch0((void *)((uint8_t *)ptr +
+					DEFAULT_RX_ICEOF));
+			bufs[i + 1] = (struct rte_mbuf *)((char *)ptr -
+					bp_info->meta_data_size);
+		}
+
+		fd = &dqrr[i]->fd;
+		dpaa_intf = fq[i]->dpaa_intf;
+
+		format = (fd->opaque & DPAA_FD_FORMAT_MASK) >>
+				DPAA_FD_FORMAT_SHIFT;
+		if (unlikely(format == qm_fd_sg)) {
+			bufs[i] = dpaa_eth_sg_to_mbuf(fd, dpaa_intf->ifid);
+			continue;
+		}
+
+		offset = (fd->opaque & DPAA_FD_OFFSET_MASK) >>
+				DPAA_FD_OFFSET_SHIFT;
+		length = fd->opaque & DPAA_FD_LENGTH_MASK;
+
+		mbuf = bufs[i];
+		mbuf->data_off = offset;
+		mbuf->data_len = length;
+		mbuf->pkt_len = length;
+		mbuf->port = dpaa_intf->ifid;
+
+		mbuf->nb_segs = 1;
+		mbuf->ol_flags = 0;
+		mbuf->next = NULL;
+		rte_mbuf_refcnt_set(mbuf, 1);
+		dpaa_eth_packet_info(mbuf, (uint64_t)mbuf->buf_addr);
+	}
+}
+
+void dpaa_rx_cb_prepare(struct qm_dqrr_entry *dq, void **bufs)
+{
+	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(dq->fd.bpid);
+	void *ptr = rte_dpaa_mem_ptov(qm_fd_addr(&dq->fd));
+
+	/* In case of LS1046, annotation stashing is disabled due to L2 cache
+	 * being bottleneck in case of multicore scanario for this platform.
+	 * So we prefetch the annoation beforehand, so that it is available
+	 * in cache when accessed.
+	 */
+	if (dpaa_svr_family == SVR_LS1046A_FAMILY)
+		rte_prefetch0((void *)((uint8_t *)ptr + DEFAULT_RX_ICEOF));
+
+	*bufs = (struct rte_mbuf *)((char *)ptr - bp_info->meta_data_size);
 }
 
 static uint16_t

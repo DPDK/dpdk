@@ -1131,6 +1131,14 @@ typedef enum qman_cb_dqrr_result (*qman_dpdk_cb_dqrr)(void *event,
 					const struct qm_dqrr_entry *dqrr,
 					void **bd);
 
+/* This callback type is used when handling buffers in dpdk pull mode */
+typedef void (*qman_dpdk_pull_cb_dqrr)(struct qman_fq **fq,
+					struct qm_dqrr_entry **dqrr,
+					void **bufs,
+					int num_bufs);
+
+typedef void (*qman_dpdk_cb_prepare)(struct qm_dqrr_entry *dq, void **bufs);
+
 /*
  * This callback type is used when handling ERNs, FQRNs and FQRLs via MR. They
  * are always consumed after the callback returns.
@@ -1191,8 +1199,10 @@ enum qman_fq_state {
 struct qman_fq_cb {
 	union { /* for dequeued frames */
 		qman_dpdk_cb_dqrr dqrr_dpdk_cb;
+		qman_dpdk_pull_cb_dqrr dqrr_dpdk_pull_cb;
 		qman_cb_dqrr dqrr;
 	};
+	qman_dpdk_cb_prepare dqrr_prepare;
 	qman_cb_mr ern;		/* for s/w ERNs */
 	qman_cb_mr fqs;		/* frame-queue state changes*/
 };

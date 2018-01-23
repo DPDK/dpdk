@@ -503,7 +503,11 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				   QM_FQCTRL_CTXASTASHING |
 				   QM_FQCTRL_PREFERINCACHE;
 		opts.fqd.context_a.stashing.exclusive = 0;
-		opts.fqd.context_a.stashing.annotation_cl =
+		/* In muticore scenario stashing becomes a bottleneck on LS1046.
+		 * So do not enable stashing in this case
+		 */
+		if (dpaa_svr_family != SVR_LS1046A_FAMILY)
+			opts.fqd.context_a.stashing.annotation_cl =
 						DPAA_IF_RX_ANNOTATION_STASH;
 		opts.fqd.context_a.stashing.data_cl = DPAA_IF_RX_DATA_STASH;
 		opts.fqd.context_a.stashing.context_cl =
@@ -526,7 +530,8 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		if (ret)
 			DPAA_PMD_ERR("Channel/Queue association failed. fqid %d"
 				     " ret: %d", rxq->fqid, ret);
-		rxq->cb.dqrr_dpdk_cb = dpaa_rx_cb;
+		rxq->cb.dqrr_dpdk_pull_cb = dpaa_rx_cb;
+		rxq->cb.dqrr_prepare = dpaa_rx_cb_prepare;
 		rxq->is_static = true;
 	}
 	dev->data->rx_queues[queue_idx] = rxq;
