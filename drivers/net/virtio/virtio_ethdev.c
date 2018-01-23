@@ -1471,6 +1471,11 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	/* Reset the device although not necessary at startup */
 	vtpci_reset(hw);
 
+	if (hw->vqs) {
+		virtio_dev_free_mbufs(eth_dev);
+		virtio_free_queues(hw);
+	}
+
 	/* Tell the host we've noticed this device. */
 	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_ACK);
 
@@ -1968,6 +1973,9 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct virtnet_rx *rxvq = dev->data->rx_queues[i];
 
+		if (rxvq == NULL || rxvq->vq == NULL)
+			continue;
+
 		PMD_INIT_LOG(DEBUG,
 			     "Before freeing rxq[%d] used and unused buf", i);
 		VIRTQUEUE_DUMP(rxvq->vq);
@@ -1986,6 +1994,9 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct virtnet_tx *txvq = dev->data->tx_queues[i];
+
+		if (txvq == NULL || txvq->vq == NULL)
+			continue;
 
 		PMD_INIT_LOG(DEBUG,
 			     "Before freeing txq[%d] used and unused bufs",
