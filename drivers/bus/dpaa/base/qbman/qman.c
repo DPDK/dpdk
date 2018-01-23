@@ -625,7 +625,7 @@ fail_eqcr:
 
 #define MAX_GLOBAL_PORTALS 8
 static struct qman_portal global_portals[MAX_GLOBAL_PORTALS];
-static int global_portals_used[MAX_GLOBAL_PORTALS];
+rte_atomic16_t global_portals_used[MAX_GLOBAL_PORTALS];
 
 static struct qman_portal *
 qman_alloc_global_portal(void)
@@ -633,10 +633,8 @@ qman_alloc_global_portal(void)
 	unsigned int i;
 
 	for (i = 0; i < MAX_GLOBAL_PORTALS; i++) {
-		if (global_portals_used[i] == 0) {
-			global_portals_used[i] = 1;
+		if (rte_atomic16_test_and_set(&global_portals_used[i]))
 			return &global_portals[i];
-		}
 	}
 	pr_err("No portal available (%x)\n", MAX_GLOBAL_PORTALS);
 
@@ -650,7 +648,7 @@ qman_free_global_portal(struct qman_portal *portal)
 
 	for (i = 0; i < MAX_GLOBAL_PORTALS; i++) {
 		if (&global_portals[i] == portal) {
-			global_portals_used[i] = 0;
+			rte_atomic16_clear(&global_portals_used[i]);
 			return 0;
 		}
 	}
