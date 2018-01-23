@@ -676,7 +676,8 @@ dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
 				 struct dpaa2_queue *rxq,
 				 struct rte_event *ev)
 {
-	ev->mbuf = eth_fd_to_mbuf(fd);
+	rte_prefetch0((void *)(DPAA2_GET_FD_ADDR(fd) +
+		DPAA2_FD_PTA_SIZE + 16));
 
 	ev->flow_id = rxq->ev.flow_id;
 	ev->sub_event_type = rxq->ev.sub_event_type;
@@ -685,19 +686,23 @@ dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
 	ev->sched_type = rxq->ev.sched_type;
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
+
+	ev->mbuf = eth_fd_to_mbuf(fd);
 
 	qbman_swp_dqrr_consume(swp, dq);
 }
 
-void dpaa2_dev_process_atomic_event(struct qbman_swp *swp __attribute__((unused)),
-				    const struct qbman_fd *fd,
-				    const struct qbman_result *dq,
-				    struct dpaa2_queue *rxq,
-				    struct rte_event *ev)
+void __attribute__((hot))
+dpaa2_dev_process_atomic_event(struct qbman_swp *swp __attribute__((unused)),
+			       const struct qbman_fd *fd,
+			       const struct qbman_result *dq,
+			       struct dpaa2_queue *rxq,
+			       struct rte_event *ev)
 {
-	uint8_t dqrr_index = qbman_get_dqrr_idx(dq);
+	uint8_t dqrr_index;
 
-	ev->mbuf = eth_fd_to_mbuf(fd);
+	rte_prefetch0((void *)(DPAA2_GET_FD_ADDR(fd) +
+		DPAA2_FD_PTA_SIZE + 16));
 
 	ev->flow_id = rxq->ev.flow_id;
 	ev->sub_event_type = rxq->ev.sub_event_type;
@@ -707,6 +712,9 @@ void dpaa2_dev_process_atomic_event(struct qbman_swp *swp __attribute__((unused)
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
 
+	ev->mbuf = eth_fd_to_mbuf(fd);
+
+	dqrr_index = qbman_get_dqrr_idx(dq);
 	ev->mbuf->seqn = dqrr_index + 1;
 	DPAA2_PER_LCORE_DQRR_SIZE++;
 	DPAA2_PER_LCORE_DQRR_HELD |= 1 << dqrr_index;
