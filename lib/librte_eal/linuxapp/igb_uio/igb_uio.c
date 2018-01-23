@@ -282,7 +282,7 @@ igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
 		err = request_irq(udev->info.irq, igbuio_pci_irqhandler,
 				  udev->info.irq_flags, udev->info.name,
 				  udev);
-	dev_info(&udev->pdev->dev, "uio device registered with irq %lx\n",
+	dev_info(&udev->pdev->dev, "uio device registered with irq %ld\n",
 		 udev->info.irq);
 
 	return err;
