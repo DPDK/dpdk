@@ -29,17 +29,17 @@ struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 /* Called with iotlb_lock read-locked */
 uint64_t
 __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
-		    uint64_t iova, uint64_t size, uint8_t perm)
+		    uint64_t iova, uint64_t *size, uint8_t perm)
 {
 	uint64_t vva, tmp_size;
 
-	if (unlikely(!size))
+	if (unlikely(!*size))
 		return 0;
 
-	tmp_size = size;
+	tmp_size = *size;
 
 	vva = vhost_user_iotlb_cache_find(vq, iova, &tmp_size, perm);
-	if (tmp_size == size)
+	if (tmp_size == *size)
 		return vva;
 
 	iova += tmp_size;
@@ -118,32 +118,39 @@ free_device(struct virtio_net *dev)
 int
 vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	uint64_t size;
+	uint64_t req_size, size;
 
 	if (!(dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)))
 		goto out;
 
-	size = sizeof(struct vring_desc) * vq->size;
+	req_size = sizeof(struct vring_desc) * vq->size;
+	size = req_size;
 	vq->desc = (struct vring_desc *)(uintptr_t)vhost_iova_to_vva(dev, vq,
 						vq->ring_addrs.desc_user_addr,
-						size, VHOST_ACCESS_RW);
-	if (!vq->desc)
+						&size, VHOST_ACCESS_RW);
+	if (!vq->desc || size != req_size)
 		return -1;
 
-	size = sizeof(struct vring_avail);
-	size += sizeof(uint16_t) * vq->size;
+	req_size = sizeof(struct vring_avail);
+	req_size += sizeof(uint16_t) * vq->size;
+	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
+		req_size += sizeof(uint16_t);
+	size = req_size;
 	vq->avail = (struct vring_avail *)(uintptr_t)vhost_iova_to_vva(dev, vq,
 						vq->ring_addrs.avail_user_addr,
-						size, VHOST_ACCESS_RW);
-	if (!vq->avail)
+						&size, VHOST_ACCESS_RW);
+	if (!vq->avail || size != req_size)
 		return -1;
 
-	size = sizeof(struct vring_used);
-	size += sizeof(struct vring_used_elem) * vq->size;
+	req_size = sizeof(struct vring_used);
+	req_size += sizeof(struct vring_used_elem) * vq->size;
+	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
+		req_size += sizeof(uint16_t);
+	size = req_size;
 	vq->used = (struct vring_used *)(uintptr_t)vhost_iova_to_vva(dev, vq,
 						vq->ring_addrs.used_user_addr,
-						size, VHOST_ACCESS_RW);
-	if (!vq->used)
+						&size, VHOST_ACCESS_RW);
+	if (!vq->used || size != req_size)
 		return -1;
 
 out:
