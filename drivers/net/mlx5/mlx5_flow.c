@@ -353,6 +353,7 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 				.dst_addr = -1,
 				.type_of_service = -1,
 				.next_proto_id = -1,
+				.time_to_live = -1,
 			},
 		},
 		.default_mask = &rte_flow_item_ipv4_mask,
