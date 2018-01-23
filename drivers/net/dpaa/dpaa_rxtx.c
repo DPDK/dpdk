@@ -309,7 +309,7 @@ dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 
 	DPAA_DP_LOG(DEBUG, "Received an SG frame");
 
-	vaddr = rte_dpaa_mem_ptov(qm_fd_addr(fd));
+	vaddr = DPAA_MEMPOOL_PTOV(bp_info, qm_fd_addr(fd));
 	if (!vaddr) {
 		DPAA_PMD_ERR("unable to convert physical address");
 		return NULL;
@@ -318,7 +318,7 @@ dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	sg_temp = &sgt[i++];
 	hw_sg_to_cpu(sg_temp);
 	temp = (struct rte_mbuf *)((char *)vaddr - bp_info->meta_data_size);
-	sg_vaddr = rte_dpaa_mem_ptov(qm_sg_entry_get64(sg_temp));
+	sg_vaddr = DPAA_MEMPOOL_PTOV(bp_info, qm_sg_entry_get64(sg_temp));
 
 	first_seg = (struct rte_mbuf *)((char *)sg_vaddr -
 						bp_info->meta_data_size);
@@ -334,7 +334,8 @@ dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	while (i < DPAA_SGT_MAX_ENTRIES) {
 		sg_temp = &sgt[i++];
 		hw_sg_to_cpu(sg_temp);
-		sg_vaddr = rte_dpaa_mem_ptov(qm_sg_entry_get64(sg_temp));
+		sg_vaddr = DPAA_MEMPOOL_PTOV(bp_info,
+					     qm_sg_entry_get64(sg_temp));
 		cur_seg = (struct rte_mbuf *)((char *)sg_vaddr -
 						      bp_info->meta_data_size);
 		cur_seg->data_off = sg_temp->offset;
@@ -361,7 +362,7 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 {
 	struct rte_mbuf *mbuf;
 	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(fd->bpid);
-	void *ptr = rte_dpaa_mem_ptov(qm_fd_addr(fd));
+	void *ptr;
 	uint8_t format =
 		(fd->opaque & DPAA_FD_FORMAT_MASK) >> DPAA_FD_FORMAT_SHIFT;
 	uint16_t offset;
@@ -371,6 +372,8 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 
 	if (unlikely(format == qm_fd_sg))
 		return dpaa_eth_sg_to_mbuf(fd, ifid);
+
+	ptr = DPAA_MEMPOOL_PTOV(bp_info, qm_fd_addr(fd));
 
 	rte_prefetch0((void *)((uint8_t *)ptr + DEFAULT_RX_ICEOF));
 
@@ -537,7 +540,8 @@ static void *dpaa_get_pktbuf(struct dpaa_bp_info *bp_info)
 	DPAA_DP_LOG(DEBUG, "got buffer 0x%lx from pool %d",
 		    (uint64_t)bufs.addr, bufs.bpid);
 
-	buf = (uint64_t)rte_dpaa_mem_ptov(bufs.addr) - bp_info->meta_data_size;
+	buf = (uint64_t)DPAA_MEMPOOL_PTOV(bp_info, bufs.addr)
+				- bp_info->meta_data_size;
 	if (!buf)
 		goto out;
 
