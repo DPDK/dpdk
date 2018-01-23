@@ -1042,6 +1042,9 @@ static void enic_dev_deinit(struct enic *enic)
 	vnic_dev_notify_unset(enic->vdev);
 
 	rte_free(eth_dev->data->mac_addrs);
+	rte_free(enic->cq);
+	rte_free(enic->rq);
+	rte_free(enic->wq);
 }
 
 
@@ -1049,27 +1052,28 @@ int enic_set_vnic_res(struct enic *enic)
 {
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 	int rc = 0;
+	unsigned int required_rq, required_wq, required_cq;
 
-	/* With Rx scatter support, two RQs are now used per RQ used by
-	 * the application.
-	 */
-	if (enic->conf_rq_count < eth_dev->data->nb_rx_queues) {
+	/* Always use two vNIC RQs per eth_dev RQ, regardless of Rx scatter. */
+	required_rq = eth_dev->data->nb_rx_queues * 2;
+	required_wq = eth_dev->data->nb_tx_queues;
+	required_cq = eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues;
+
+	if (enic->conf_rq_count < required_rq) {
 		dev_err(dev, "Not enough Receive queues. Requested:%u which uses %d RQs on VIC, Configured:%u\n",
 			eth_dev->data->nb_rx_queues,
-			eth_dev->data->nb_rx_queues * 2, enic->conf_rq_count);
+			required_rq, enic->conf_rq_count);
 		rc = -EINVAL;
 	}
-	if (enic->conf_wq_count < eth_dev->data->nb_tx_queues) {
+	if (enic->conf_wq_count < required_wq) {
 		dev_err(dev, "Not enough Transmit queues. Requested:%u, Configured:%u\n",
 			eth_dev->data->nb_tx_queues, enic->conf_wq_count);
 		rc = -EINVAL;
 	}
 
-	if (enic->conf_cq_count < (eth_dev->data->nb_rx_queues +
-				   eth_dev->data->nb_tx_queues)) {
+	if (enic->conf_cq_count < required_cq) {
 		dev_err(dev, "Not enough Completion queues. Required:%u, Configured:%u\n",
-			(eth_dev->data->nb_rx_queues +
-			 eth_dev->data->nb_tx_queues), enic->conf_cq_count);
+			required_cq, enic->conf_cq_count);
 		rc = -EINVAL;
 	}
 
@@ -1274,6 +1278,25 @@ static int enic_dev_init(struct enic *enic)
 		dev_err(enic, "Please configure 2 RQs in the vNIC for each Rx queue used by DPDK.\n");
 		dev_err(enic, "See the ENIC PMD guide for more information.\n");
 		return -EINVAL;
+	}
+	/* Queue counts may be zeros. rte_zmalloc returns NULL in that case. */
+	enic->cq = rte_zmalloc("enic_vnic_cq", sizeof(struct vnic_cq) *
+			       enic->conf_cq_count, 8);
+	enic->rq = rte_zmalloc("enic_vnic_rq", sizeof(struct vnic_rq) *
+			       enic->conf_rq_count, 8);
+	enic->wq = rte_zmalloc("enic_vnic_wq", sizeof(struct vnic_wq) *
+			       enic->conf_wq_count, 8);
+	if (enic->conf_cq_count > 0 && enic->cq == NULL) {
+		dev_err(enic, "failed to allocate vnic_cq, aborting.\n");
+		return -1;
+	}
+	if (enic->conf_rq_count > 0 && enic->rq == NULL) {
+		dev_err(enic, "failed to allocate vnic_rq, aborting.\n");
+		return -1;
+	}
+	if (enic->conf_wq_count > 0 && enic->wq == NULL) {
+		dev_err(enic, "failed to allocate vnic_wq, aborting.\n");
+		return -1;
 	}
 
 	/* Get the supported filters */

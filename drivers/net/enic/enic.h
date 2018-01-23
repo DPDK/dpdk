@@ -24,13 +24,6 @@
 #define DRV_DESCRIPTION		"Cisco VIC Ethernet NIC Poll-mode Driver"
 #define DRV_COPYRIGHT		"Copyright 2008-2015 Cisco Systems, Inc"
 
-#define ENIC_WQ_MAX		8
-/* With Rx scatter support, we use two RQs on VIC per RQ used by app. Both
- * RQs use the same CQ.
- */
-#define ENIC_RQ_MAX		16
-#define ENIC_CQ_MAX		(ENIC_WQ_MAX + (ENIC_RQ_MAX / 2))
-#define ENIC_INTR_MAX		(ENIC_CQ_MAX + 2)
 #define ENIC_MAX_MAC_ADDR	64
 
 #define VLAN_ETH_HLEN           18
@@ -121,17 +114,17 @@ struct enic {
 	unsigned int flags;
 	unsigned int priv_flags;
 
-	/* work queue */
-	struct vnic_wq wq[ENIC_WQ_MAX];
-	unsigned int wq_count;
+	/* work queue (len = conf_wq_count) */
+	struct vnic_wq *wq;
+	unsigned int wq_count; /* equals eth_dev nb_tx_queues */
 
-	/* receive queue */
-	struct vnic_rq rq[ENIC_RQ_MAX];
-	unsigned int rq_count;
+	/* receive queue (len = conf_rq_count) */
+	struct vnic_rq *rq;
+	unsigned int rq_count; /* equals eth_dev nb_rx_queues */
 
-	/* completion queue */
-	struct vnic_cq cq[ENIC_CQ_MAX];
-	unsigned int cq_count;
+	/* completion queue (len = conf_cq_count) */
+	struct vnic_cq *cq;
+	unsigned int cq_count; /* equals rq_count + wq_count */
 
 	/* interrupt resource */
 	struct vnic_intr intr;
