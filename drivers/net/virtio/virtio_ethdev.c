@@ -1967,53 +1967,44 @@ virtio_dev_start(struct rte_eth_dev *dev)
 
 static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 {
+	struct virtio_hw *hw = dev->data->dev_private;
+	uint16_t nr_vq = virtio_get_nr_vq(hw);
+	const char *type __rte_unused;
+	unsigned int i, mbuf_num = 0;
+	struct virtqueue *vq;
 	struct rte_mbuf *buf;
-	int i, mbuf_num = 0;
+	int queue_type;
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct virtnet_rx *rxvq = dev->data->rx_queues[i];
+	for (i = 0; i < nr_vq; i++) {
+		vq = hw->vqs[i];
+		if (!vq)
+			continue;
 
-		if (rxvq == NULL || rxvq->vq == NULL)
+		queue_type = virtio_get_queue_type(hw, i);
+		if (queue_type == VTNET_RQ)
+			type = "rxq";
+		else if (queue_type == VTNET_TQ)
+			type = "txq";
+		else
 			continue;
 
 		PMD_INIT_LOG(DEBUG,
-			     "Before freeing rxq[%d] used and unused buf", i);
-		VIRTQUEUE_DUMP(rxvq->vq);
+			"Before freeing %s[%d] used and unused buf",
+			type, i);
+		VIRTQUEUE_DUMP(vq);
 
-		PMD_INIT_LOG(DEBUG, "rx_queues[%d]=%p", i, rxvq);
-		while ((buf = virtqueue_detatch_unused(rxvq->vq)) != NULL) {
+		while ((buf = virtqueue_detatch_unused(vq)) != NULL) {
 			rte_pktmbuf_free(buf);
 			mbuf_num++;
 		}
 
-		PMD_INIT_LOG(DEBUG, "free %d mbufs", mbuf_num);
 		PMD_INIT_LOG(DEBUG,
-			     "After freeing rxq[%d] used and unused buf", i);
-		VIRTQUEUE_DUMP(rxvq->vq);
+			"After freeing %s[%d] used and unused buf",
+			type, i);
+		VIRTQUEUE_DUMP(vq);
 	}
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		struct virtnet_tx *txvq = dev->data->tx_queues[i];
-
-		if (txvq == NULL || txvq->vq == NULL)
-			continue;
-
-		PMD_INIT_LOG(DEBUG,
-			     "Before freeing txq[%d] used and unused bufs",
-			     i);
-		VIRTQUEUE_DUMP(txvq->vq);
-
-		mbuf_num = 0;
-		while ((buf = virtqueue_detatch_unused(txvq->vq)) != NULL) {
-			rte_pktmbuf_free(buf);
-			mbuf_num++;
-		}
-
-		PMD_INIT_LOG(DEBUG, "free %d mbufs", mbuf_num);
-		PMD_INIT_LOG(DEBUG,
-			     "After freeing txq[%d] used and unused buf", i);
-		VIRTQUEUE_DUMP(txvq->vq);
-	}
+	PMD_INIT_LOG(DEBUG, "%d mbufs freed", mbuf_num);
 }
 
 /*
