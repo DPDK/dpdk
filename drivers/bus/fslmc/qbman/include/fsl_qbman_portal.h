@@ -381,6 +381,12 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d);
 const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *p);
 
 /**
+ * qbman_swp_prefetch_dqrr_next() - prefetch the next DQRR entry.
+ * @s: the software portal object.
+ */
+void qbman_swp_prefetch_dqrr_next(struct qbman_swp *s);
+
+/**
  * qbman_swp_dqrr_consume() -  Consume DQRR entries previously returned from
  * qbman_swp_dqrr_next().
  * @s: the software portal object.

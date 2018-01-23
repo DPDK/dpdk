@@ -779,6 +779,17 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 #define QBMAN_RESULT_BPSCN     0x29
 #define QBMAN_RESULT_CSCN_WQ   0x2a
 
+#include <rte_prefetch.h>
+
+void qbman_swp_prefetch_dqrr_next(struct qbman_swp *s)
+{
+	const struct qbman_result *p;
+
+	p = qbman_cena_read_wo_shadow(&s->sys,
+		QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
+	rte_prefetch0(p);
+}
+
 /* NULL return if there are no unconsumed DQRR entries. Returns a DQRR entry
  * only once, so repeated calls can return a sequence of DQRR entries, without
  * requiring they be consumed immediately or in any particular order.

@@ -99,6 +99,7 @@ DPDK_18.02 {
 	qbman_fq_query_state;
 	qbman_fq_state_frame_count;
 	qbman_swp_dqrr_idx_consume;
+	qbman_swp_prefetch_dqrr_next;
 	rte_fslmc_get_device_count;
 
 } DPDK_17.11;
