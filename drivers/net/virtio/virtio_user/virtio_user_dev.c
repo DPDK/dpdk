@@ -142,6 +142,11 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 	for (i = 0; i < dev->max_queue_pairs; ++i)
 		dev->ops->enable_qp(dev, i, 0);
 
+	if (dev->ops->send_request(dev, VHOST_USER_RESET_OWNER, NULL) < 0) {
+		PMD_DRV_LOG(INFO, "Failed to reset the device\n");
+		return -1;
+	}
+
 	return 0;
 }
 
