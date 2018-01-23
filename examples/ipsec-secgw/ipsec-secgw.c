@@ -1384,10 +1384,16 @@ cryptodevs_init(void)
 			max_sess_sz = sess_sz;
 	}
 	for (port_id = 0; port_id < rte_eth_dev_count(); port_id++) {
+		void *sec_ctx;
+
 		if ((enabled_port_mask & (1 << port_id)) == 0)
 			continue;
-		sess_sz = rte_security_session_get_size(
-				rte_eth_dev_get_sec_ctx(port_id));
+
+		sec_ctx = rte_eth_dev_get_sec_ctx(port_id);
+		if (sec_ctx == NULL)
+			continue;
+
+		sess_sz = rte_security_session_get_size(sec_ctx);
 		if (sess_sz > max_sess_sz)
 			max_sess_sz = sess_sz;
 	}
