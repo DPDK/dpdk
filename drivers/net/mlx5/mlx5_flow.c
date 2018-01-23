@@ -529,7 +529,7 @@ mlx5_flow_item_validate(const struct rte_flow_item *item,
 	}
 	if (item->mask) {
 		unsigned int i;
-		const uint8_t *spec = item->mask;
+		const uint8_t *spec = item->spec;
 
 		for (i = 0; i < size; ++i)
 			if ((spec[i] | mask[i]) != mask[i])
