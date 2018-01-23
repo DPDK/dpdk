@@ -2198,7 +2198,7 @@ int qman_enqueue_multi(struct qman_fq *fq,
 		eq->fd.addr = cpu_to_be40(fd->addr);
 		eq->fd.status = cpu_to_be32(fd->status);
 		eq->fd.opaque = cpu_to_be32(fd->opaque);
-		if (flags[i] & QMAN_ENQUEUE_FLAG_DCA) {
+		if (flags && (flags[i] & QMAN_ENQUEUE_FLAG_DCA)) {
 			eq->dca = QM_EQCR_DCA_ENABLE |
 				((flags[i] >> 8) & QM_EQCR_DCA_IDXMASK);
 		}
