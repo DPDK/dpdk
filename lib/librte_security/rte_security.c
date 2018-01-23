@@ -49,7 +49,7 @@ __rte_experimental rte_security_session_create(struct rte_security_ctx *instance
 
 	RTE_FUNC_PTR_OR_ERR_RET(*instance->ops->session_create, NULL);
 
-	if (rte_mempool_get(mp, (void *)&sess))
+	if (rte_mempool_get(mp, (void **)&sess))
 		return NULL;
 
 	if (instance->ops->session_create(instance->device, conf, sess, mp)) {

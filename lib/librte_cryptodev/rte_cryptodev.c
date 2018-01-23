@@ -1094,7 +1094,7 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 	struct rte_cryptodev_sym_session *sess;
 
 	/* Allocate a session structure from the session pool */
-	if (rte_mempool_get(mp, (void *)&sess)) {
+	if (rte_mempool_get(mp, (void **)&sess)) {
 		CDEV_LOG_ERR("couldn't get object from session mempool");
 		return NULL;
 	}
