@@ -28,10 +28,10 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Tun/Tap Poll Mode Driver
-========================
+Tap Poll Mode Driver
+====================
 
-The ``rte_eth_tap.c`` PMD creates a device using TUN/TAP interfaces on the
+The ``rte_eth_tap.c`` PMD creates a device using TAP interfaces on the
 local host. The PMD allows for DPDK and the host to communicate using a raw
 device interface on the host and in the DPDK application.
 
@@ -165,7 +165,7 @@ Distribute IPv4 TCP packets using RSS to a given MAC address over queues 0-3::
 Example
 -------
 
-The following is a simple example of using the TUN/TAP PMD with the Pktgen
+The following is a simple example of using the TAP PMD with the Pktgen
 packet generator. It requires that the ``socat`` utility is installed on the
 test system.
 
