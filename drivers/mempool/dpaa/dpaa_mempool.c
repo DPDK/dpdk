@@ -150,8 +150,8 @@ dpaa_mbuf_free_bulk(struct rte_mempool *pool,
 		uint64_t phy = rte_mempool_virt2iova(obj_table[i]);
 
 		if (unlikely(!bp_info->ptov_off)) {
-			/* buffers are not from multiple memzones */
-			if (!(bp_info->flags & DPAA_MPOOL_MULTI_MEMZONE)) {
+			/* buffers are from single mem segment */
+			if (bp_info->flags & DPAA_MPOOL_SINGLE_SEGMENT) {
 				bp_info->ptov_off
 						= (uint64_t)obj_table[i] - phy;
 				rte_dpaa_bpid_info[bp_info->bpid].ptov_off
@@ -282,9 +282,8 @@ dpaa_register_memory_area(const struct rte_mempool *mp,
 			   len, total_elt_sz * mp->size);
 
 	/* Detect pool area has sufficient space for elements in this memzone */
-	if (len < total_elt_sz * mp->size)
-		/* Else, Memory will be allocated from multiple memzones */
-		bp_info->flags |= DPAA_MPOOL_MULTI_MEMZONE;
+	if (len >= total_elt_sz * mp->size)
+		bp_info->flags |= DPAA_MPOOL_SINGLE_SEGMENT;
 
 	return 0;
 }

@@ -28,8 +28,8 @@
 /* Maximum release/acquire from BMAN */
 #define DPAA_MBUF_MAX_ACQ_REL  8
 
-/* Buffers are allocated from multiple memzones i.e. non phys contiguous */
-#define DPAA_MPOOL_MULTI_MEMZONE  0x01
+/* Buffers are allocated from single mem segment i.e. phys contiguous */
+#define DPAA_MPOOL_SINGLE_SEGMENT  0x01
 
 struct dpaa_bp_info {
 	struct rte_mempool *mp;
