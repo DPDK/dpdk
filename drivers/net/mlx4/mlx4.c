@@ -337,7 +337,7 @@ mlx4_arg_parse(const char *key, const char *val, struct mlx4_conf *conf)
 		return -rte_errno;
 	}
 	if (strcmp(MLX4_PMD_PORT_KVARG, key) == 0) {
-		uint32_t ports = rte_log2_u32(conf->ports.present);
+		uint32_t ports = rte_log2_u32(conf->ports.present + 1);
 
 		if (tmp >= ports) {
 			ERROR("port index %lu outside range [0,%" PRIu32 ")",
