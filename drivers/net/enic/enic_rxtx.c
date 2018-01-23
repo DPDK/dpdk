@@ -195,14 +195,14 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 	}
 
 	/* checksum flags */
-	if (mbuf->packet_type & RTE_PTYPE_L3_IPV4) {
+	if (mbuf->packet_type & (RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L3_IPV6)) {
 		if (!enic_cq_rx_desc_csum_not_calc(cqrd)) {
 			uint32_t l4_flags;
 			l4_flags = mbuf->packet_type & RTE_PTYPE_L4_MASK;
 
 			if (enic_cq_rx_desc_ipv4_csum_ok(cqrd))
 				pkt_flags |= PKT_RX_IP_CKSUM_GOOD;
-			else
+			else if (mbuf->packet_type & RTE_PTYPE_L3_IPV4)
 				pkt_flags |= PKT_RX_IP_CKSUM_BAD;
 
 			if (l4_flags == RTE_PTYPE_L4_UDP ||
