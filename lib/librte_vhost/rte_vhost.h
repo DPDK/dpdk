@@ -149,6 +149,46 @@ rte_vhost_gpa_to_vva(struct rte_vhost_memory *mem, uint64_t gpa)
 	return 0;
 }
 
+/**
+ * Convert guest physical address to host virtual address safely
+ *
+ * This variant of rte_vhost_gpa_to_vva() takes care all the
+ * requested length is mapped and contiguous in process address
+ * space.
+ *
+ * @param mem
+ *  the guest memory regions
+ * @param gpa
+ *  the guest physical address for querying
+ * @param len
+ *  the size of the requested area to map, updated with actual size mapped
+ * @return
+ *  the host virtual address on success, 0 on failure
+ */
+static __rte_always_inline uint64_t
+rte_vhost_va_from_guest_pa(struct rte_vhost_memory *mem,
+						   uint64_t gpa, uint64_t *len)
+{
+	struct rte_vhost_mem_region *r;
+	uint32_t i;
+
+	for (i = 0; i < mem->nregions; i++) {
+		r = &mem->regions[i];
+		if (gpa >= r->guest_phys_addr &&
+		    gpa <  r->guest_phys_addr + r->size) {
+
+			if (unlikely(*len > r->guest_phys_addr + r->size - gpa))
+				*len = r->guest_phys_addr + r->size - gpa;
+
+			return gpa - r->guest_phys_addr +
+			       r->host_user_addr;
+		}
+	}
+	*len = 0;
+
+	return 0;
+}
+
 #define RTE_VHOST_NEED_LOG(features)	((features) & (1ULL << VHOST_F_LOG_ALL))
 
 /**

@@ -61,6 +61,8 @@ DPDK_18.02 {
 } DPDK_17.08;
 
 EXPERIMENTAL {
+	global:
+
 	rte_vdpa_register_device;
 	rte_vdpa_unregister_device;
 	rte_vdpa_find_device_id;
@@ -79,5 +81,5 @@ EXPERIMENTAL {
 	rte_vhost_crypto_fetch_requests;
 	rte_vhost_crypto_finalize_requests;
 	rte_vhost_crypto_set_zero_copy;
-
+	rte_vhost_va_from_guest_pa;
 } DPDK_18.02;

@@ -446,7 +446,7 @@ vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			uint64_t iova, uint64_t *len, uint8_t perm)
 {
 	if (!(dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)))
-		return rte_vhost_gpa_to_vva(dev->mem, iova);
+		return rte_vhost_va_from_guest_pa(dev->mem, iova, len);
 
 	return __vhost_iova_to_vva(dev, vq, iova, len, perm);
 }
