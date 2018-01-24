@@ -12,7 +12,7 @@ EXPORT_MAP := rte_pmd_vdev_netvsc_version.map
 # Additional compilation flags.
 CFLAGS += -O3
 CFLAGS += -g
-CFLAGS += -std=c11 -pedantic -Wall -Wextra
+CFLAGS += -Wall -Wextra
 CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += -D_BSD_SOURCE
 CFLAGS += -D_DEFAULT_SOURCE
