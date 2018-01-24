@@ -71,24 +71,26 @@ The following are the command-line options:
  Defines test cases to run. If not specified all available tests are run.
 
  The following tests can be run:
-  * unittest
+
+ * unittest
      Small unit tests witch check basic functionality of bbdev library.
-  * latency
+ * latency
      Test calculates three latency metrics:
-      * offload_latency_tc
+
+     * offload_latency_tc
          measures the cost of offloading enqueue and dequeue operations.
-      * offload_latency_empty_q_tc
+     * offload_latency_empty_q_tc
          measures the cost of offloading a dequeue operation from an empty queue.
          checks how long last dequeueing if there is no operations to dequeue
-      * operation_latency_tc
+     * operation_latency_tc
          measures the time difference from the first attempt to enqueue till the
          first successful dequeue.
-  * validation
+ * validation
      Test do enqueue on given vector and compare output after dequeueing.
-  * throughput
+ * throughput
      Test measures the achieved throughput on the available lcores.
      Results are printed in million operations per second and million bits per second.
-  * interrupt
+ * interrupt
      The same test as 'throughput' but uses interrupts instead of PMD to perform
      the dequeue.
 
