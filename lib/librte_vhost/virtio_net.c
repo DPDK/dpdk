@@ -16,6 +16,7 @@
 #include <rte_sctp.h>
 #include <rte_arp.h>
 #include <rte_spinlock.h>
+#include <rte_malloc.h>
 
 #include "iotlb.h"
 #include "vhost.h"
@@ -28,6 +29,46 @@ static bool
 is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t nr_vring)
 {
 	return (is_tx ^ (idx & 1)) == 0 && idx < nr_vring;
+}
+
+static __rte_always_inline struct vring_desc *
+alloc_copy_ind_table(struct virtio_net *dev, struct vhost_virtqueue *vq,
+					 struct vring_desc *desc)
+{
+	struct vring_desc *idesc;
+	uint64_t src, dst;
+	uint64_t len, remain = desc->len;
+	uint64_t desc_addr = desc->addr;
+
+	idesc = rte_malloc(__func__, desc->len, 0);
+	if (unlikely(!idesc))
+		return 0;
+
+	dst = (uint64_t)(uintptr_t)idesc;
+
+	while (remain) {
+		len = remain;
+		src = vhost_iova_to_vva(dev, vq, desc_addr, &len,
+				VHOST_ACCESS_RO);
+		if (unlikely(!src || !len)) {
+			rte_free(idesc);
+			return 0;
+		}
+
+		rte_memcpy((void *)(uintptr_t)dst, (void *)(uintptr_t)src, len);
+
+		remain -= len;
+		dst += len;
+		desc_addr += len;
+	}
+
+	return idesc;
+}
+
+static __rte_always_inline void
+free_ind_table(struct vring_desc *idesc)
+{
+	rte_free(idesc);
 }
 
 static __rte_always_inline void
@@ -351,6 +392,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	rte_prefetch0(&vq->desc[desc_indexes[0]]);
 	for (i = 0; i < count; i++) {
+		struct vring_desc *idesc = NULL;
 		uint16_t desc_idx = desc_indexes[i];
 		int err;
 
@@ -360,10 +402,22 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 				vhost_iova_to_vva(dev,
 						vq, vq->desc[desc_idx].addr,
 						&dlen, VHOST_ACCESS_RO);
-			if (unlikely(!descs ||
-					dlen != vq->desc[desc_idx].len)) {
+			if (unlikely(!descs)) {
 				count = i;
 				break;
+			}
+
+			if (unlikely(dlen < vq->desc[desc_idx].len)) {
+				/*
+				 * The indirect desc table is not contiguous
+				 * in process VA space, we have to copy it.
+				 */
+				idesc = alloc_copy_ind_table(dev, vq,
+							&vq->desc[desc_idx]);
+				if (unlikely(!idesc))
+					break;
+
+				descs = idesc;
 			}
 
 			desc_idx = 0;
@@ -376,11 +430,15 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		err = copy_mbuf_to_desc(dev, vq, descs, pkts[i], desc_idx, sz);
 		if (unlikely(err)) {
 			count = i;
+			free_ind_table(idesc);
 			break;
 		}
 
 		if (i + 1 < count)
 			rte_prefetch0(&vq->desc[desc_indexes[i+1]]);
+
+		if (unlikely(!!idesc))
+			free_ind_table(idesc);
 	}
 
 	do_data_copy_enqueue(dev, vq);
@@ -415,6 +473,7 @@ fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t len    = 0;
 	uint64_t dlen;
 	struct vring_desc *descs = vq->desc;
+	struct vring_desc *idesc = NULL;
 
 	*desc_chain_head = idx;
 
@@ -424,15 +483,29 @@ fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			vhost_iova_to_vva(dev, vq, vq->desc[idx].addr,
 						&dlen,
 						VHOST_ACCESS_RO);
-		if (unlikely(!descs || dlen != vq->desc[idx].len))
+		if (unlikely(!descs))
 			return -1;
+
+		if (unlikely(dlen < vq->desc[idx].len)) {
+			/*
+			 * The indirect desc table is not contiguous
+			 * in process VA space, we have to copy it.
+			 */
+			idesc = alloc_copy_ind_table(dev, vq, &vq->desc[idx]);
+			if (unlikely(!idesc))
+				return -1;
+
+			descs = idesc;
+		}
 
 		idx = 0;
 	}
 
 	while (1) {
-		if (unlikely(vec_id >= BUF_VECTOR_MAX || idx >= vq->size))
+		if (unlikely(vec_id >= BUF_VECTOR_MAX || idx >= vq->size)) {
+			free_ind_table(idesc);
 			return -1;
+		}
 
 		len += descs[idx].len;
 		buf_vec[vec_id].buf_addr = descs[idx].addr;
@@ -448,6 +521,9 @@ fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	*desc_chain_len = len;
 	*vec_idx = vec_id;
+
+	if (unlikely(!!idesc))
+		free_ind_table(idesc);
 
 	return 0;
 }
@@ -1265,7 +1341,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	/* Prefetch descriptor index. */
 	rte_prefetch0(&vq->desc[desc_indexes[0]]);
 	for (i = 0; i < count; i++) {
-		struct vring_desc *desc;
+		struct vring_desc *desc, *idesc = NULL;
 		uint16_t sz, idx;
 		uint64_t dlen;
 		int err;
@@ -1280,9 +1356,21 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 						vq->desc[desc_indexes[i]].addr,
 						&dlen,
 						VHOST_ACCESS_RO);
-			if (unlikely(!desc ||
-					dlen != vq->desc[desc_indexes[i]].len))
+			if (unlikely(!desc))
 				break;
+
+			if (unlikely(dlen < vq->desc[desc_indexes[i]].len)) {
+				/*
+				 * The indirect desc table is not contiguous
+				 * in process VA space, we have to copy it.
+				 */
+				idesc = alloc_copy_ind_table(dev, vq,
+						&vq->desc[desc_indexes[i]]);
+				if (unlikely(!idesc))
+					break;
+
+				desc = idesc;
+			}
 
 			rte_prefetch0(desc);
 			sz = vq->desc[desc_indexes[i]].len / sizeof(*desc);
@@ -1297,6 +1385,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		if (unlikely(pkts[i] == NULL)) {
 			RTE_LOG(ERR, VHOST_DATA,
 				"Failed to allocate memory for mbuf.\n");
+			free_ind_table(idesc);
 			break;
 		}
 
@@ -1304,6 +1393,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 					mbuf_pool);
 		if (unlikely(err)) {
 			rte_pktmbuf_free(pkts[i]);
+			free_ind_table(idesc);
 			break;
 		}
 
@@ -1313,6 +1403,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			zmbuf = get_zmbuf(vq);
 			if (!zmbuf) {
 				rte_pktmbuf_free(pkts[i]);
+				free_ind_table(idesc);
 				break;
 			}
 			zmbuf->mbuf = pkts[i];
@@ -1329,6 +1420,9 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			vq->nr_zmbuf += 1;
 			TAILQ_INSERT_TAIL(&vq->zmbuf_list, zmbuf, next);
 		}
+
+		if (unlikely(!!idesc))
+			free_ind_table(idesc);
 	}
 	vq->last_avail_idx += i;
 
