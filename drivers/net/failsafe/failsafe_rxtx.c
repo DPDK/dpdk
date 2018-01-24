@@ -104,6 +104,7 @@ failsafe_rx_burst(void *queue,
 	do {
 		if (fs_rx_unsafe(sdev)) {
 			nb_rx = 0;
+			sdev = sdev->next;
 			continue;
 		}
 		sub_rxq = ETH(sdev)->data->rx_queues[rxq->qid];
