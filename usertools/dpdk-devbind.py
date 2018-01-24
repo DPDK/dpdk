@@ -216,6 +216,8 @@ def get_device_details(devices_type):
                 # of dictionary key names
                 if "Driver" in dev.keys():
                     dev["Driver_str"] = dev.pop("Driver")
+                if "Module" in dev.keys():
+                    dev["Module_str"] = dev.pop("Module")
                 # use dict to make copy of dev
                 devices[dev["Slot"]] = dict(dev)
             # Clear previous device's data
