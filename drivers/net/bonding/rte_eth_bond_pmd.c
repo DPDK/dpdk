@@ -1435,17 +1435,17 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 		if (likely(rte_ring_empty(port->tx_ring)))
 			continue;
 
-		rte_ring_dequeue(port->tx_ring,	(void **)&ctrl_pkt);
-
-		slave_tx_count = rte_eth_tx_burst(slave_port_ids[i],
+		if (rte_ring_dequeue(port->tx_ring,
+				     (void **)&ctrl_pkt) != -ENOENT) {
+			slave_tx_count = rte_eth_tx_burst(slave_port_ids[i],
 					bd_tx_q->queue_id, &ctrl_pkt, 1);
-
-		/*
-		 * re-enqueue LAG control plane packets to buffering
-		 * ring if transmission fails so the packet isn't lost.
-		 */
-		if (slave_tx_count != 1)
-			rte_ring_enqueue(port->tx_ring,	ctrl_pkt);
+			/*
+			 * re-enqueue LAG control plane packets to buffering
+			 * ring if transmission fails so the packet isn't lost.
+			 */
+			if (slave_tx_count != 1)
+				rte_ring_enqueue(port->tx_ring,	ctrl_pkt);
+		}
 	}
 
 	return total_tx_count;
