@@ -92,6 +92,24 @@ uint8_t socket_num = UMA_NO_CONFIG;
 uint8_t mp_anon = 0;
 
 /*
+ * Store specified sockets on which memory pool to be used by ports
+ * is allocated.
+ */
+uint8_t port_numa[RTE_MAX_ETHPORTS];
+
+/*
+ * Store specified sockets on which RX ring to be used by ports
+ * is allocated.
+ */
+uint8_t rxring_numa[RTE_MAX_ETHPORTS];
+
+/*
+ * Store specified sockets on which TX ring to be used by ports
+ * is allocated.
+ */
+uint8_t txring_numa[RTE_MAX_ETHPORTS];
+
+/*
  * Record the Ethernet address of peer target ports to which packets are
  * forwarded.
  * Must be instantiated with the ethernet addresses of peer traffic generator
