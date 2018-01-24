@@ -931,12 +931,13 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		  struct rte_mempool *mbuf_pool)
 {
 	struct vring_desc *desc;
-	uint64_t desc_addr;
+	uint64_t desc_addr, desc_gaddr;
 	uint32_t desc_avail, desc_offset;
 	uint32_t mbuf_avail, mbuf_offset;
 	uint32_t cpy_len;
-	uint64_t dlen;
+	uint64_t desc_chunck_len;
 	struct rte_mbuf *cur = m, *prev = m;
+	struct virtio_net_hdr tmp_hdr;
 	struct virtio_net_hdr *hdr = NULL;
 	/* A counter to avoid desc dead loop chain */
 	uint32_t nr_desc = 1;
@@ -951,19 +952,52 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		goto out;
 	}
 
-	dlen = desc->len;
+	desc_chunck_len = desc->len;
+	desc_gaddr = desc->addr;
 	desc_addr = vhost_iova_to_vva(dev,
-					vq, desc->addr,
-					&dlen,
+					vq, desc_gaddr,
+					&desc_chunck_len,
 					VHOST_ACCESS_RO);
-	if (unlikely(!desc_addr || dlen != desc->len)) {
+	if (unlikely(!desc_addr)) {
 		error = -1;
 		goto out;
 	}
 
 	if (virtio_net_with_host_offload(dev)) {
-		hdr = (struct virtio_net_hdr *)((uintptr_t)desc_addr);
-		rte_prefetch0(hdr);
+		if (unlikely(desc_chunck_len < sizeof(struct virtio_net_hdr))) {
+			uint64_t len = desc_chunck_len;
+			uint64_t remain = sizeof(struct virtio_net_hdr);
+			uint64_t src = desc_addr;
+			uint64_t dst = (uint64_t)(uintptr_t)&tmp_hdr;
+			uint64_t guest_addr = desc_gaddr;
+
+			/*
+			 * No luck, the virtio-net header doesn't fit
+			 * in a contiguous virtual area.
+			 */
+			while (remain) {
+				len = remain;
+				src = vhost_iova_to_vva(dev, vq,
+						guest_addr, &len,
+						VHOST_ACCESS_RO);
+				if (unlikely(!src || !len)) {
+					error = -1;
+					goto out;
+				}
+
+				rte_memcpy((void *)(uintptr_t)dst,
+						   (void *)(uintptr_t)src, len);
+
+				guest_addr += len;
+				remain -= len;
+				dst += len;
+			}
+
+			hdr = &tmp_hdr;
+		} else {
+			hdr = (struct virtio_net_hdr *)((uintptr_t)desc_addr);
+			rte_prefetch0(hdr);
+		}
 	}
 
 	/*
@@ -979,12 +1013,13 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			goto out;
 		}
 
-		dlen = desc->len;
+		desc_chunck_len = desc->len;
+		desc_gaddr = desc->addr;
 		desc_addr = vhost_iova_to_vva(dev,
-							vq, desc->addr,
-							&dlen,
+							vq, desc_gaddr,
+							&desc_chunck_len,
 							VHOST_ACCESS_RO);
-		if (unlikely(!desc_addr || dlen != desc->len)) {
+		if (unlikely(!desc_addr)) {
 			error = -1;
 			goto out;
 		}
@@ -994,19 +1029,37 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		nr_desc    += 1;
 	} else {
 		desc_avail  = desc->len - dev->vhost_hlen;
-		desc_offset = dev->vhost_hlen;
+
+		if (unlikely(desc_chunck_len < dev->vhost_hlen)) {
+			desc_chunck_len = desc_avail;
+			desc_gaddr += dev->vhost_hlen;
+			desc_addr = vhost_iova_to_vva(dev,
+					vq, desc_gaddr,
+					&desc_chunck_len,
+					VHOST_ACCESS_RO);
+			if (unlikely(!desc_addr)) {
+				error = -1;
+				goto out;
+			}
+
+			desc_offset = 0;
+		} else {
+			desc_offset = dev->vhost_hlen;
+			desc_chunck_len -= dev->vhost_hlen;
+		}
 	}
 
 	rte_prefetch0((void *)(uintptr_t)(desc_addr + desc_offset));
 
-	PRINT_PACKET(dev, (uintptr_t)(desc_addr + desc_offset), desc_avail, 0);
+	PRINT_PACKET(dev, (uintptr_t)(desc_addr + desc_offset),
+			(uint32_t)desc_chunck_len, 0);
 
 	mbuf_offset = 0;
 	mbuf_avail  = m->buf_len - RTE_PKTMBUF_HEADROOM;
 	while (1) {
 		uint64_t hpa;
 
-		cpy_len = RTE_MIN(desc_avail, mbuf_avail);
+		cpy_len = RTE_MIN(desc_chunck_len, mbuf_avail);
 
 		/*
 		 * A desc buf might across two host physical pages that are
@@ -1014,7 +1067,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		 * will be copied even though zero copy is enabled.
 		 */
 		if (unlikely(dev->dequeue_zero_copy && (hpa = gpa_to_hpa(dev,
-					desc->addr + desc_offset, cpy_len)))) {
+					desc_gaddr + desc_offset, cpy_len)))) {
 			cur->data_len = cpy_len;
 			cur->data_off = 0;
 			cur->buf_addr = (void *)(uintptr_t)(desc_addr
@@ -1029,7 +1082,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		} else {
 			if (likely(cpy_len > MAX_BATCH_LEN ||
 				   copy_nb >= vq->size ||
-				   (hdr && cur == m))) {
+				   (hdr && cur == m) ||
+				   desc->len != desc_chunck_len)) {
 				rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *,
 								   mbuf_offset),
 					   (void *)((uintptr_t)(desc_addr +
@@ -1050,6 +1104,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		mbuf_avail  -= cpy_len;
 		mbuf_offset += cpy_len;
 		desc_avail  -= cpy_len;
+		desc_chunck_len -= cpy_len;
 		desc_offset += cpy_len;
 
 		/* This desc reaches to its end, get the next one */
@@ -1068,11 +1123,13 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				goto out;
 			}
 
-			dlen = desc->len;
+			desc_chunck_len = desc->len;
+			desc_gaddr = desc->addr;
 			desc_addr = vhost_iova_to_vva(dev,
-							vq, desc->addr,
-							&dlen, VHOST_ACCESS_RO);
-			if (unlikely(!desc_addr || dlen != desc->len)) {
+							vq, desc_gaddr,
+							&desc_chunck_len,
+							VHOST_ACCESS_RO);
+			if (unlikely(!desc_addr)) {
 				error = -1;
 				goto out;
 			}
@@ -1082,7 +1139,23 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			desc_offset = 0;
 			desc_avail  = desc->len;
 
-			PRINT_PACKET(dev, (uintptr_t)desc_addr, desc->len, 0);
+			PRINT_PACKET(dev, (uintptr_t)desc_addr,
+					(uint32_t)desc_chunck_len, 0);
+		} else if (unlikely(desc_chunck_len == 0)) {
+			desc_chunck_len = desc_avail;
+			desc_gaddr += desc_offset;
+			desc_addr = vhost_iova_to_vva(dev, vq,
+					desc_gaddr,
+					&desc_chunck_len,
+					VHOST_ACCESS_RO);
+			if (unlikely(!desc_addr)) {
+				error = -1;
+				goto out;
+			}
+			desc_offset = 0;
+
+			PRINT_PACKET(dev, (uintptr_t)desc_addr,
+					(uint32_t)desc_chunck_len, 0);
 		}
 
 		/*
