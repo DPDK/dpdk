@@ -120,39 +120,6 @@ def check_output(args, stderr=None):
                             stderr=stderr).communicate()[0]
 
 
-def find_module(mod):
-    '''find the .ko file for kernel module named mod.
-    Searches the $RTE_SDK/$RTE_TARGET directory, the kernel
-    modules directory and finally under the parent directory of
-    the script '''
-    # check $RTE_SDK/$RTE_TARGET directory
-    if 'RTE_SDK' in os.environ and 'RTE_TARGET' in os.environ:
-        path = "%s/%s/kmod/%s.ko" % (os.environ['RTE_SDK'],
-                                     os.environ['RTE_TARGET'], mod)
-        if exists(path):
-            return path
-
-    # check using depmod
-    try:
-        with open(os.devnull, "w") as fnull:
-            path = check_output(["modinfo", "-n", mod], stderr=fnull).strip()
-
-        if path and exists(path):
-            return path
-    except:  # if modinfo can't find module, it fails, so continue
-        pass
-
-    # check for a copy based off current path
-    tools_dir = dirname(abspath(sys.argv[0]))
-    if tools_dir.endswith("tools"):
-        base_dir = dirname(tools_dir)
-        find_out = check_output(["find", base_dir, "-name", mod + ".ko"])
-        if len(find_out) > 0:  # something matched
-            path = find_out.splitlines()[0]
-            if exists(path):
-                return path
-
-
 def check_modules():
     '''Checks that igb_uio is loaded'''
     global dpdk_drivers
