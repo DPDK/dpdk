@@ -5034,7 +5034,8 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	ixgbevf_dev_rxtx_start(dev);
 
 	/* check and configure queue intr-vector mapping */
-	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+	if (rte_intr_cap_multiple(intr_handle) &&
+	    dev->data->dev_conf.intr_conf.rxq) {
 		/* According to datasheet, only vector 0/1/2 can be used,
 		 * now only one vector is used for Rx queue
 		 */
