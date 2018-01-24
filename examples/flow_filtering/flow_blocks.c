@@ -33,7 +33,7 @@
 #define MAX_PATTERN_NUM		4
 
 struct rte_flow *
-generate_ipv4_flow(uint8_t port_id, uint16_t rx_q,
+generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 		uint32_t src_ip, uint32_t src_mask,
 		uint32_t dest_ip, uint32_t dest_mask,
 		struct rte_flow_error *error);
@@ -62,7 +62,7 @@ generate_ipv4_flow(uint8_t port_id, uint16_t rx_q,
  *   A flow if the rule could be created else return NULL.
  */
 struct rte_flow *
-generate_ipv4_flow(uint8_t port_id, uint16_t rx_q,
+generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 		uint32_t src_ip, uint32_t src_mask,
 		uint32_t dest_ip, uint32_t dest_mask,
 		struct rte_flow_error *error)
