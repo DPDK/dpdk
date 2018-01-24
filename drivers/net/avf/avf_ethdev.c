@@ -292,7 +292,8 @@ static int avf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 	uint16_t interval, i;
 	int vec;
 
-	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+	if (rte_intr_cap_multiple(intr_handle) &&
+	    dev->data->dev_conf.intr_conf.rxq) {
 		if (rte_intr_efd_enable(intr_handle, dev->data->nb_rx_queues))
 			return -1;
 	}
@@ -308,7 +309,8 @@ static int avf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 		}
 	}
 
-	if (!dev->data->dev_conf.intr_conf.rxq) {
+	if (!dev->data->dev_conf.intr_conf.rxq ||
+	    !rte_intr_dp_is_en(intr_handle)) {
 		/* Rx interrupt disabled, Map interrupt only for writeback */
 		vf->nb_msix = 1;
 		if (vf->vf_res->vf_cap_flags &
