@@ -79,3 +79,7 @@ The xstats-reset parameter controls the resetting of extended port statistics.
 If no port mask is specified xstats are reset for all DPDK ports.
 
 **-m**: Print DPDK memory information.
+
+.. note::
+
+   Stats retrieval using ``dpdk-procinfo`` is not supported for virtual devices like PCAP and TAP.
