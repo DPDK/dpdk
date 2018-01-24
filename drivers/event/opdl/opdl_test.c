@@ -1001,11 +1001,13 @@ opdl_selftest(void)
 		/* turn on stats by default */
 		if (rte_vdev_init(eventdev_name, "do_validation=1") < 0) {
 			PMD_DRV_LOG(ERR, "Error creating eventdev\n");
+			free(t);
 			return -1;
 		}
 		evdev = rte_event_dev_get_dev_id(eventdev_name);
 		if (evdev < 0) {
 			PMD_DRV_LOG(ERR, "Error finding newly created eventdev\n");
+			free(t);
 			return -1;
 		}
 	}
@@ -1021,6 +1023,7 @@ opdl_selftest(void)
 				rte_socket_id());
 		if (!eventdev_func_mempool) {
 			PMD_DRV_LOG(ERR, "ERROR creating mempool\n");
+			free(t);
 			return -1;
 		}
 	}
@@ -1043,9 +1046,9 @@ opdl_selftest(void)
 	ret = single_link_w_stats(t);
 
 	/*
-	 * Free test instance, leaving mempool initialized, and a pointer to it
-	 * in static eventdev_func_mempool, as it is re-used on re-runs
+	 * Free test instance, free  mempool
 	 */
+	rte_mempool_free(t->mbuf_pool);
 	free(t);
 
 	if (ret != 0)
