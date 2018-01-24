@@ -285,22 +285,12 @@ perf_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 
 int
 perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
-				uint8_t stride, uint8_t nb_queues)
+				uint8_t stride, uint8_t nb_queues,
+				const struct rte_event_port_conf *port_conf)
 {
 	struct test_perf *t = evt_test_priv(test);
 	uint16_t port, prod;
 	int ret = -1;
-	struct rte_event_port_conf port_conf;
-
-	memset(&port_conf, 0, sizeof(struct rte_event_port_conf));
-	rte_event_port_default_conf_get(opt->dev_id, 0, &port_conf);
-
-	/* port configuration */
-	const struct rte_event_port_conf wkr_p_conf = {
-			.dequeue_depth = opt->wkr_deq_dep,
-			.enqueue_depth = port_conf.enqueue_depth,
-			.new_event_threshold = port_conf.new_event_threshold,
-	};
 
 	/* setup one port per worker, linking to all queues */
 	for (port = 0; port < evt_nr_active_lcores(opt->wlcores);
@@ -313,7 +303,7 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 		w->processed_pkts = 0;
 		w->latency = 0;
 
-		ret = rte_event_port_setup(opt->dev_id, port, &wkr_p_conf);
+		ret = rte_event_port_setup(opt->dev_id, port, port_conf);
 		if (ret) {
 			evt_err("failed to setup port %d", port);
 			return ret;
@@ -327,18 +317,13 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 	}
 
 	/* port for producers, no links */
-	struct rte_event_port_conf prod_conf = {
-			.dequeue_depth = port_conf.dequeue_depth,
-			.enqueue_depth = port_conf.enqueue_depth,
-			.new_event_threshold = port_conf.new_event_threshold,
-	};
 	if (opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR) {
 		for ( ; port < perf_nb_event_ports(opt); port++) {
 			struct prod_data *p = &t->prod[port];
 			p->t = t;
 		}
 
-		ret = perf_event_rx_adapter_setup(opt, stride, prod_conf);
+		ret = perf_event_rx_adapter_setup(opt, stride, *port_conf);
 		if (ret)
 			return ret;
 	} else {
@@ -352,7 +337,7 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 			p->t = t;
 
 			ret = rte_event_port_setup(opt->dev_id, port,
-					&prod_conf);
+					port_conf);
 			if (ret) {
 				evt_err("failed to setup port %d", port);
 				return ret;

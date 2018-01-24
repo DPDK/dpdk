@@ -219,8 +219,18 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 		}
 	}
 
+	if (opt->wkr_deq_dep > dev_info.max_event_port_dequeue_depth)
+		opt->wkr_deq_dep = dev_info.max_event_port_dequeue_depth;
+
+	/* port configuration */
+	const struct rte_event_port_conf p_conf = {
+			.dequeue_depth = opt->wkr_deq_dep,
+			.enqueue_depth = dev_info.max_event_port_dequeue_depth,
+			.new_event_threshold = dev_info.max_num_events,
+	};
+
 	ret = perf_event_dev_port_setup(test, opt, nb_stages /* stride */,
-					nb_queues);
+					nb_queues, &p_conf);
 	if (ret)
 		return ret;
 

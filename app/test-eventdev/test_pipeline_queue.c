@@ -397,6 +397,9 @@ pipeline_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 		}
 	}
 
+	if (opt->wkr_deq_dep > info.max_event_port_dequeue_depth)
+		opt->wkr_deq_dep = info.max_event_port_dequeue_depth;
+
 	/* port configuration */
 	const struct rte_event_port_conf p_conf = {
 			.dequeue_depth = opt->wkr_deq_dep,
