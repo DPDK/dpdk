@@ -441,6 +441,11 @@ static void cmd_obj_send_parsed(void *parsed_result,
 				(BOND_IP_3 << 16) | (BOND_IP_4 << 24);
 
 	created_pkt = rte_pktmbuf_alloc(mbuf_pool);
+	if (created_pkt == NULL) {
+		cmdline_printf(cl, "Failed to allocate mbuf\n");
+		return;
+	}
+
 	pkt_size = sizeof(struct ether_hdr) + sizeof(struct arp_hdr);
 	created_pkt->data_len = pkt_size;
 	created_pkt->pkt_len = pkt_size;
