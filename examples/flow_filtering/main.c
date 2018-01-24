@@ -55,6 +55,7 @@
 #include <rte_mbuf.h>
 #include <rte_net.h>
 #include <rte_flow.h>
+#include <rte_cycles.h>
 
 static volatile bool force_quit;
 
@@ -119,13 +120,23 @@ main_loop(void)
 	rte_eth_dev_close(port_id);
 }
 
+#define CHECK_INTERVAL 1000  /* 100ms */
+#define MAX_REPEAT_TIMES 90  /* 9s (90 * 100ms) in total */
+
 static void
 assert_link_status(void)
 {
 	struct rte_eth_link link;
+	uint8_t rep_cnt = MAX_REPEAT_TIMES;
 
 	memset(&link, 0, sizeof(link));
-	rte_eth_link_get(port_id, &link);
+	do {
+		rte_eth_link_get(port_id, &link);
+		if (link.link_status == ETH_LINK_UP)
+			break;
+		rte_delay_ms(CHECK_INTERVAL);
+	} while (--rep_cnt);
+
 	if (link.link_status == ETH_LINK_DOWN)
 		rte_exit(EXIT_FAILURE, ":: error: link is still down\n");
 }
