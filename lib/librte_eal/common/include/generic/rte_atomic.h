@@ -17,6 +17,9 @@
 
 #ifdef __DOXYGEN__
 
+/** @name Memory Barrier
+ */
+///@{
 /**
  * General memory barrier.
  *
@@ -43,7 +46,11 @@ static inline void rte_wmb(void);
  * This function is architecture dependent.
  */
 static inline void rte_rmb(void);
+///@}
 
+/** @name SMP Memory Barrier
+ */
+///@{
 /**
  * General memory barrier between lcores
  *
@@ -70,7 +77,11 @@ static inline void rte_smp_wmb(void);
  * before the LOAD operations that follows it.
  */
 static inline void rte_smp_rmb(void);
+///@}
 
+/** @name I/O Memory Barrier
+ */
+///@{
 /**
  * General memory barrier for I/O device
  *
@@ -97,6 +108,7 @@ static inline void rte_io_wmb(void);
  * operations that follow it.
  */
 static inline void rte_io_rmb(void);
+///@}
 
 #endif /* __DOXYGEN__ */
 
