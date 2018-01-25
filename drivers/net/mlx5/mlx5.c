@@ -858,6 +858,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 		eth_dev->device->driver = &mlx5_driver.driver;
+		/*
+		 * Initialize burst functions to prevent crashes before link-up.
+		 */
+		eth_dev->rx_pkt_burst = removed_rx_burst;
+		eth_dev->tx_pkt_burst = removed_tx_burst;
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
 		/* Register MAC address. */

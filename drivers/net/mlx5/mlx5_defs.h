@@ -110,4 +110,7 @@
 /* Supported RSS */
 #define MLX5_RSS_HF_MASK (~(ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP))
 
+/* Maximum number of attempts to query link status before giving up. */
+#define MLX5_MAX_LINK_QUERY_ATTEMPTS 5
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */

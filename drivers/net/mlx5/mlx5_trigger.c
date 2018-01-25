@@ -166,7 +166,13 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	priv_xstats_init(priv);
 	/* Update link status and Tx/Rx callbacks for the first time. */
 	memset(&dev->data->dev_link, 0, sizeof(struct rte_eth_link));
-	priv_link_update(priv, 1);
+	INFO("Forcing port %u link to be up", dev->data->port_id);
+	err = priv_force_link_status_change(priv, ETH_LINK_UP);
+	if (err) {
+		DEBUG("Failed to set port %u link to be up",
+		      dev->data->port_id);
+		goto error;
+	}
 	priv_dev_interrupt_handler_install(priv, dev);
 	priv_unlock(priv);
 	return 0;

@@ -245,6 +245,7 @@ int mlx5_dev_configure(struct rte_eth_dev *);
 void mlx5_dev_infos_get(struct rte_eth_dev *, struct rte_eth_dev_info *);
 const uint32_t *mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int priv_link_update(struct priv *, int);
+int priv_force_link_status_change(struct priv *, int);
 int mlx5_link_update(struct rte_eth_dev *, int);
 int mlx5_dev_set_mtu(struct rte_eth_dev *, uint16_t);
 int mlx5_dev_get_flow_ctrl(struct rte_eth_dev *, struct rte_eth_fc_conf *);

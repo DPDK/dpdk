@@ -967,6 +967,33 @@ priv_link_update(struct priv *priv, int wait_to_complete)
 }
 
 /**
+ * Querying the link status till it changes to the desired state.
+ * Number of query attempts is bounded by MLX5_MAX_LINK_QUERY_ATTEMPTS.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param status
+ *   Link desired status.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+priv_force_link_status_change(struct priv *priv, int status)
+{
+	int try = 0;
+
+	while (try < MLX5_MAX_LINK_QUERY_ATTEMPTS) {
+		priv_link_update(priv, 0);
+		if (priv->dev->data->dev_link.link_status == status)
+			return 0;
+		try++;
+		sleep(1);
+	}
+	return -EAGAIN;
+}
+
+/**
  * DPDK callback to retrieve physical link information.
  *
  * @param dev
