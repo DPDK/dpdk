@@ -11725,10 +11725,10 @@ RTE_INIT(i40e_init_log);
 static void
 i40e_init_log(void)
 {
-	i40e_logtype_init = rte_log_register("pmd.i40e.init");
+	i40e_logtype_init = rte_log_register("pmd.net.i40e.init");
 	if (i40e_logtype_init >= 0)
 		rte_log_set_level(i40e_logtype_init, RTE_LOG_NOTICE);
-	i40e_logtype_driver = rte_log_register("pmd.i40e.driver");
+	i40e_logtype_driver = rte_log_register("pmd.net.i40e.driver");
 	if (i40e_logtype_driver >= 0)
 		rte_log_set_level(i40e_logtype_driver, RTE_LOG_NOTICE);
 }
