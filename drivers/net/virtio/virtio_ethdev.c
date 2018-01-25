@@ -2151,10 +2151,10 @@ RTE_INIT(virtio_init_log);
 static void
 virtio_init_log(void)
 {
-	virtio_logtype_init = rte_log_register("pmd.virtio.init");
+	virtio_logtype_init = rte_log_register("pmd.net.virtio.init");
 	if (virtio_logtype_init >= 0)
 		rte_log_set_level(virtio_logtype_init, RTE_LOG_NOTICE);
-	virtio_logtype_driver = rte_log_register("pmd.virtio.driver");
+	virtio_logtype_driver = rte_log_register("pmd.net.virtio.driver");
 	if (virtio_logtype_driver >= 0)
 		rte_log_set_level(virtio_logtype_driver, RTE_LOG_NOTICE);
 }
