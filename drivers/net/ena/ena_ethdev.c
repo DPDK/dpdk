@@ -1900,10 +1900,10 @@ RTE_INIT(ena_init_log);
 static void
 ena_init_log(void)
 {
-	ena_logtype_init = rte_log_register("pmd.ena.init");
+	ena_logtype_init = rte_log_register("pmd.net.ena.init");
 	if (ena_logtype_init >= 0)
 		rte_log_set_level(ena_logtype_init, RTE_LOG_NOTICE);
-	ena_logtype_driver = rte_log_register("pmd.ena.driver");
+	ena_logtype_driver = rte_log_register("pmd.net.ena.driver");
 	if (ena_logtype_driver >= 0)
 		rte_log_set_level(ena_logtype_driver, RTE_LOG_NOTICE);
 }
