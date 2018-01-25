@@ -160,7 +160,6 @@ struct priv {
 	unsigned int txqs_n; /* TX queues array size. */
 	struct mlx5_rxq_data *(*rxqs)[]; /* RX queues. */
 	struct mlx5_txq_data *(*txqs)[]; /* TX queues. */
-	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	struct rte_eth_rss_conf rss_conf; /* RSS configuration. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	unsigned int (*reta_idx)[]; /* RETA index table. */
