@@ -1342,10 +1342,10 @@ RTE_INIT(avf_init_log);
 static void
 avf_init_log(void)
 {
-	avf_logtype_init = rte_log_register("pmd.avf.init");
+	avf_logtype_init = rte_log_register("pmd.net.avf.init");
 	if (avf_logtype_init >= 0)
 		rte_log_set_level(avf_logtype_init, RTE_LOG_NOTICE);
-	avf_logtype_driver = rte_log_register("pmd.avf.driver");
+	avf_logtype_driver = rte_log_register("pmd.net.avf.driver");
 	if (avf_logtype_driver >= 0)
 		rte_log_set_level(avf_logtype_driver, RTE_LOG_NOTICE);
 }
