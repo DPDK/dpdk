@@ -45,6 +45,7 @@ foreach class:driver_classes
 
 		if build
 			dpdk_conf.set(config_flag_fmt.format(name.to_upper()),1)
+			lib_name = driver_name_fmt.format(name)
 
 			if allow_experimental_apis
 				cflags += '-DALLOW_EXPERIMENTAL_API'
@@ -61,21 +62,22 @@ foreach class:driver_classes
 			static_objs += ext_deps
 			dpdk_extra_ldflags += pkgconfig_extra_libs
 
-			# generate pmdinfo sources
-			pmdinfogen_srcs = run_command('grep', '--files-with-matches',
-				'RTE_PMD_REGISTER_.*(.*)', sources).stdout().strip().split()
-			foreach src: pmdinfogen_srcs
-				out_filename = '@0@.pmd.c'.format(src.split('/')[-1])
-				tmp_lib = static_library('tmp_@0@'.format(src.underscorify()),
-					src, include_directories: includes,
+			# generate pmdinfo sources by building a temporary
+			# lib and then running pmdinfogen on the contents of
+			# that lib. The final lib reuses the object files and
+			# adds in the new source file.
+			out_filename = lib_name + '.pmd.c'
+			tmp_lib = static_library('tmp_' + lib_name,
+					sources,
+					include_directories: includes,
 					dependencies: static_objs,
 					c_args: cflags)
-				sources += custom_target(out_filename,
-						command: [pmdinfo, tmp_lib.full_path(),
-							'@OUTPUT@', pmdinfogen],
-						output: out_filename,
-						depends: [pmdinfogen, tmp_lib])
-			endforeach
+			objs += tmp_lib.extract_all_objects()
+			sources = custom_target(out_filename,
+					command: [pmdinfo, tmp_lib.full_path(),
+						'@OUTPUT@', pmdinfogen],
+					output: out_filename,
+					depends: [pmdinfogen, tmp_lib])
 
 			if get_option('per_library_versions')
 				lib_version = '@0@.1'.format(version)
@@ -88,7 +90,6 @@ foreach class:driver_classes
 			endif
 
 			# now build the static driver
-			lib_name = driver_name_fmt.format(name)
 			static_lib = static_library(lib_name,
 				sources,
 				objects: objs,
@@ -98,8 +99,6 @@ foreach class:driver_classes
 				install: true)
 
 			# now build the shared driver
-			sources = []
-			objs += static_lib.extract_all_objects()
 			version_map = '@0@/@1@/@2@_version.map'.format(
 					meson.current_source_dir(),
 					drv_path, lib_name)

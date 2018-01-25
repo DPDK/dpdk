@@ -6,7 +6,8 @@ arfile=$1
 output=$2
 pmdinfogen=$3
 
-tmp_o=${output%.c.pmd.c}.tmp.o
-
-ar p $arfile > $tmp_o && \
-		$pmdinfogen $tmp_o $output
+echo > $output
+for ofile in `ar t $arfile` ; do
+	ar p $arfile $ofile | $pmdinfogen - - >> $output 2> /dev/null
+done
+exit 0
