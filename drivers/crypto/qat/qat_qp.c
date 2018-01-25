@@ -151,6 +151,11 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	qp->op_cookies = rte_zmalloc("qat PMD op cookie pointer",
 			qp_conf->nb_descriptors * sizeof(*qp->op_cookies),
 			RTE_CACHE_LINE_SIZE);
+	if (qp->op_cookies == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to alloc mem for cookie");
+		rte_free(qp);
+		return -ENOMEM;
+	}
 
 	qp->mmap_bar_addr = pci_dev->mem_resource[0].addr;
 	qp->inflights16 = 0;
@@ -192,7 +197,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	for (i = 0; i < qp->nb_descriptors; i++) {
 		if (rte_mempool_get(qp->op_cookie_pool, &qp->op_cookies[i])) {
 			PMD_DRV_LOG(ERR, "QAT PMD Cannot get op_cookie");
-			return -EFAULT;
+			goto create_err;
 		}
 
 		struct qat_crypto_op_cookie *sql_cookie =
@@ -217,6 +222,9 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	return 0;
 
 create_err:
+	if (qp->op_cookie_pool)
+		rte_mempool_free(qp->op_cookie_pool);
+	rte_free(qp->op_cookies);
 	rte_free(qp);
 	return -EFAULT;
 }

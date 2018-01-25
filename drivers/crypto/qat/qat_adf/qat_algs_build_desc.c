@@ -359,6 +359,11 @@ static int qat_alg_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 
 		in = rte_zmalloc("working mem for key",
 				ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ, 16);
+		if (in == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc memory");
+			return -ENOMEM;
+		}
+
 		rte_memcpy(in, qat_aes_xcbc_key_seed,
 				ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ);
 		for (x = 0; x < HASH_XCBC_PRECOMP_KEY_NUM; x++) {
@@ -389,6 +394,11 @@ static int qat_alg_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 				ICP_QAT_HW_GALOIS_E_CTR0_SZ);
 		in = rte_zmalloc("working mem for key",
 				ICP_QAT_HW_GALOIS_H_SZ, 16);
+		if (in == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc memory");
+			return -ENOMEM;
+		}
+
 		memset(in, 0, ICP_QAT_HW_GALOIS_H_SZ);
 		if (AES_set_encrypt_key(auth_key, auth_keylen << 3,
 			&enc_key) != 0) {
