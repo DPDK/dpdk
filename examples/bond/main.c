@@ -212,7 +212,7 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 	struct rte_eth_txconf txq_conf;
 	struct rte_eth_conf local_port_conf = port_conf;
 
-	retval = rte_eth_bond_create("bond0", BONDING_MODE_ALB,
+	retval = rte_eth_bond_create("net_bonding0", BONDING_MODE_ALB,
 			0 /*SOCKET_ID_ANY*/);
 	if (retval < 0)
 		rte_exit(EXIT_FAILURE,
