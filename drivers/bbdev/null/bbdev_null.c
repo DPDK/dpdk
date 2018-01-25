@@ -340,7 +340,7 @@ RTE_INIT(null_bbdev_init_log);
 static void
 null_bbdev_init_log(void)
 {
-	bbdev_logtype = rte_log_register("pmd.bbdev.null");
+	bbdev_logtype = rte_log_register("pmd.bb.null");
 	if (bbdev_logtype >= 0)
 		rte_log_set_level(bbdev_logtype, RTE_LOG_NOTICE);
 }
