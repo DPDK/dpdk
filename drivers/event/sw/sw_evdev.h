@@ -5,6 +5,7 @@
 #ifndef _SW_EVDEV_H_
 #define _SW_EVDEV_H_
 
+#include "sw_evdev_log.h"
 #include <rte_eventdev.h>
 #include <rte_eventdev_pmd_vdev.h>
 #include <rte_atomic.h>
@@ -63,26 +64,6 @@ static const uint8_t sw_qe_flag_map[] = {
 		 */
 		QE_FLAG_VALID | QE_FLAG_COMPLETE | QE_FLAG_NOT_EOP,
 };
-
-#ifdef RTE_LIBRTE_PMD_SW_EVENTDEV_DEBUG
-#define SW_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, EVENTDEV, "[%s] %s() line %u: " fmt "\n", \
-			SW_PMD_NAME, \
-			__func__, __LINE__, ## args)
-
-#define SW_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, EVENTDEV, "[%s] %s() line %u: " fmt "\n", \
-			SW_PMD_NAME, \
-			__func__, __LINE__, ## args)
-#else
-#define SW_LOG_INFO(fmt, args...)
-#define SW_LOG_DBG(fmt, args...)
-#endif
-
-#define SW_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, EVENTDEV, "[%s] %s() line %u: " fmt "\n", \
-			SW_PMD_NAME, \
-			__func__, __LINE__, ## args)
 
 /* Records basic event stats at a given point. Used in port and qid structs */
 struct sw_point_stats {

@@ -584,7 +584,6 @@ CONFIG_RTE_LIBRTE_PMD_SKELETON_EVENTDEV_DEBUG=n
 # Compile PMD for software event device
 #
 CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV=y
-CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV_DEBUG=n
 
 #
 # Compile PMD for octeontx sso event device
