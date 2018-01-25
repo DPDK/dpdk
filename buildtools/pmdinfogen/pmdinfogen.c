@@ -26,6 +26,7 @@
 #define ADDR_SIZE 32
 #endif
 
+static int use_stdin, use_stdout;
 
 static const char *sym_name(struct elf_info *elf, Elf_Sym *sym)
 {
@@ -39,11 +40,32 @@ static void *grab_file(const char *filename, unsigned long *size)
 {
 	struct stat st;
 	void *map = MAP_FAILED;
-	int fd;
+	int fd = -1;
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0)
-		return NULL;
+	if (!use_stdin) {
+		fd = open(filename, O_RDONLY);
+		if (fd < 0)
+			return NULL;
+	} else {
+		/* from stdin, use a temporary file to mmap */
+		FILE *infile;
+		char buffer[1024];
+		size_t n;
+
+		infile = tmpfile();
+		if (infile == NULL) {
+			perror("tmpfile");
+			return NULL;
+		}
+		while (!feof(stdin)) {
+			n = fread(buffer, 1, sizeof(buffer), stdin);
+			if (fwrite(buffer, 1, n, infile) != n)
+				goto failed;
+		}
+		fflush(infile);
+		fd = fileno(infile);
+	}
+
 	if (fstat(fd, &st))
 		goto failed;
 
@@ -358,10 +380,14 @@ static void output_pmd_info_string(struct elf_info *info, char *outfile)
 	struct rte_pci_id *pci_ids;
 	int idx = 0;
 
-	ofd = fopen(outfile, "w+");
-	if (!ofd) {
-		fprintf(stderr, "Unable to open output file\n");
-		return;
+	if (use_stdout)
+		ofd = stdout;
+	else {
+		ofd = fopen(outfile, "w+");
+		if (!ofd) {
+			fprintf(stderr, "Unable to open output file\n");
+			return;
+		}
 	}
 
 	drv = info->drivers;
@@ -411,6 +437,8 @@ int main(int argc, char **argv)
 			basename(argv[0]));
 		exit(127);
 	}
+	use_stdin = !strcmp(argv[1], "-");
+	use_stdout = !strcmp(argv[2], "-");
 	parse_elf(&info, argv[1]);
 
 	if (locate_pmd_entries(&info) < 0)
