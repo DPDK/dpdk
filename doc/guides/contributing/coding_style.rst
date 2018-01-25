@@ -694,6 +694,56 @@ Control Statements
                  /* NOTREACHED */
          }
 
+Dynamic Logging
+---------------
+
+DPDK provides infrastructure to perform logging during runtime. This is very
+useful for enabling debug output without recompilation. To enable or disable
+logging of a particular topic, the ``--log-level`` parameter can be provided
+to EAL, which will change the log level. DPDK code can register topics,
+which allows the user to adjust the log verbosity for that specific topic.
+
+In general, the naming scheme is as follows: ``type.section.name``
+
+ * Type is the type of component, where ``lib``, ``pmd``, ``bus`` and ``user``
+   are the common options.
+ * Section refers to a specific area, for example a poll-mode-driver for an
+   ethernet device would use ``pmd.net``, while an eventdev PMD uses
+   ``pmd.event``.
+ * The name identifies the individual item that the log applies to.
+   The name section must align with
+   the directory that the PMD code resides. See examples below for clarity.
+
+Examples:
+
+ * The virtio network PMD in ``drivers/net/virtio`` uses ``pmd.net.virtio``
+ * The eventdev software poll mode driver in ``drivers/event/sw`` uses ``pmd.event.sw``
+ * The octeontx mempool driver in ``drivers/mempool/octeontx`` uses ``pmd.mempool.octeontx``
+ * The DPDK hash library in ``lib/librte_hash`` uses ``lib.hash``
+
+Specializations
+~~~~~~~~~~~~~~~
+
+In addition to the above logging topic, any PMD or library can further split
+logging output by using "specializations". A specialization could be the
+difference between initialization code, and logs of events that occur at runtime.
+
+An example could be the initialization log messages getting one
+specialization, while another specialization handles mailbox command logging.
+Each PMD, library or component can create as many specializations as required.
+
+A specialization looks like this:
+
+ * Initialization output: ``type.section.name.init``
+ * PF/VF mailbox output: ``type.section.name.mbox``
+
+A real world example is the i40e poll mode driver which exposes two
+specializations, one for initialization ``pmd.i40e.init`` and the other for
+the remaining driver logs ``pmd.i40e.driver``.
+
+Note that specializations have no formatting rules, but please follow
+a precedent if one exists. In order to see all current log topics and
+specializations, run the ``app/test`` binary, and use the ``dump_log_types``
 
 Python Code
 -----------
