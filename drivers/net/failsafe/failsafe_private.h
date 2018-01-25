@@ -40,6 +40,7 @@
 #include <rte_dev.h>
 #include <rte_ethdev_driver.h>
 #include <rte_devargs.h>
+#include <rte_interrupts.h>
 
 #define FAILSAFE_DRIVER_NAME "Fail-safe PMD"
 
@@ -68,6 +69,8 @@ struct rxq {
 	/* next sub_device to poll */
 	struct sub_device *sdev;
 	unsigned int socket_id;
+	int event_fd;
+	unsigned int enable_events:1;
 	struct rte_eth_rxq_info info;
 	rte_atomic64_t refcnt[];
 };
@@ -145,6 +148,7 @@ struct fs_priv {
 	uint32_t mac_addr_pool[FAILSAFE_MAX_ETHADDR];
 	/* current capabilities */
 	struct rte_eth_dev_info infos;
+	struct rte_intr_handle intr_handle; /* Port interrupt handle. */
 	/*
 	 * Fail-safe state machine.
 	 * This level will be tracking state of the EAL and eth
@@ -158,6 +162,11 @@ struct fs_priv {
 	/* flow isolation state */
 	int flow_isolated:1;
 };
+
+/* FAILSAFE_INTR */
+
+int failsafe_rx_intr_install(struct rte_eth_dev *dev);
+void failsafe_rx_intr_uninstall(struct rte_eth_dev *dev);
 
 /* MISC */
 

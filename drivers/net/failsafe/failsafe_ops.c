@@ -33,6 +33,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include <rte_debug.h>
 #include <rte_atomic.h>
@@ -199,6 +200,9 @@ fs_dev_start(struct rte_eth_dev *dev)
 	uint8_t i;
 	int ret;
 
+	ret = failsafe_rx_intr_install(dev);
+	if (ret)
+		return ret;
 	FOREACH_SUBDEV(sdev, i, dev) {
 		if (sdev->state != DEV_ACTIVE)
 			continue;
@@ -228,6 +232,7 @@ fs_dev_stop(struct rte_eth_dev *dev)
 		rte_eth_dev_stop(PORT_ID(sdev));
 		sdev->state = DEV_STARTED - 1;
 	}
+	failsafe_rx_intr_uninstall(dev);
 }
 
 static int
@@ -317,6 +322,8 @@ fs_rx_queue_release(void *queue)
 	if (queue == NULL)
 		return;
 	rxq = queue;
+	if (rxq->event_fd > 0)
+		close(rxq->event_fd);
 	dev = rxq->priv->dev;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE)
 		SUBOPS(sdev, rx_queue_release)
@@ -333,6 +340,16 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 		const struct rte_eth_rxconf *rx_conf,
 		struct rte_mempool *mb_pool)
 {
+	/*
+	 * FIXME: Add a proper interface in rte_eal_interrupts for
+	 * allocating eventfd as an interrupt vector.
+	 * For the time being, fake as if we are using MSIX interrupts,
+	 * this will cause rte_intr_efd_enable to allocate an eventfd for us.
+	 */
+	struct rte_intr_handle intr_handle = {
+		.type = RTE_INTR_HANDLE_VFIO_MSIX,
+		.efds = { -1, },
+	};
 	struct sub_device *sdev;
 	struct rxq *rxq;
 	uint8_t i;
@@ -370,6 +387,10 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->info.nb_desc = nb_rx_desc;
 	rxq->priv = PRIV(dev);
 	rxq->sdev = PRIV(dev)->subs;
+	ret = rte_intr_efd_enable(&intr_handle, 1);
+	if (ret < 0)
+		return ret;
+	rxq->event_fd = intr_handle.efds[0];
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		ret = rte_eth_rx_queue_setup(PORT_ID(sdev),
@@ -385,6 +406,46 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 free_rxq:
 	fs_rx_queue_release(rxq);
 	return ret;
+}
+
+static int
+fs_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct rxq *rxq;
+
+	if (idx >= dev->data->nb_rx_queues) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	rxq = dev->data->rx_queues[idx];
+	if (rxq == NULL || rxq->event_fd <= 0) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	rxq->enable_events = 1;
+	return 0;
+}
+
+static int
+fs_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct rxq *rxq;
+	uint64_t u64;
+
+	if (idx >= dev->data->nb_rx_queues) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	rxq = dev->data->rx_queues[idx];
+	if (rxq == NULL || rxq->event_fd <= 0) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	rxq->enable_events = 0;
+	/* Clear pending events */
+	while (read(rxq->event_fd, &u64, sizeof(uint64_t)) >  0)
+		;
+	return 0;
 }
 
 static bool
@@ -888,6 +949,8 @@ const struct eth_dev_ops failsafe_ops = {
 	.tx_queue_setup = fs_tx_queue_setup,
 	.rx_queue_release = fs_rx_queue_release,
 	.tx_queue_release = fs_tx_queue_release,
+	.rx_queue_intr_enable = fs_rx_intr_enable,
+	.rx_queue_intr_disable = fs_rx_intr_disable,
 	.flow_ctrl_get = fs_flow_ctrl_get,
 	.flow_ctrl_set = fs_flow_ctrl_set,
 	.mac_addr_remove = fs_mac_addr_remove,

@@ -244,6 +244,10 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		mac->addr_bytes[2], mac->addr_bytes[3],
 		mac->addr_bytes[4], mac->addr_bytes[5]);
 	dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
+	PRIV(dev)->intr_handle = (struct rte_intr_handle){
+		.fd = -1,
+		.type = RTE_INTR_HANDLE_EXT,
+	};
 	return 0;
 free_args:
 	failsafe_args_free(dev);
