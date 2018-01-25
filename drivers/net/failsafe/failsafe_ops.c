@@ -434,6 +434,12 @@ fs_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
+	/* Fail if proxy service is nor running. */
+	if (PRIV(dev)->rxp.sstate != SS_RUNNING) {
+		ERROR("failsafe interrupt services are not running");
+		rte_errno = EAGAIN;
+		return -rte_errno;
+	}
 	rxq->enable_events = 1;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		ret = rte_eth_dev_rx_intr_enable(PORT_ID(sdev), idx);

@@ -12,6 +12,14 @@
 #endif
 #include <unistd.h>
 
+#include <rte_alarm.h>
+#include <rte_config.h>
+#include <rte_errno.h>
+#include <rte_ethdev.h>
+#include <rte_interrupts.h>
+#include <rte_io.h>
+#include <rte_service_component.h>
+
 #include "failsafe_private.h"
 
 #define NUM_RX_PROXIES (FAILSAFE_MAX_ETHPORTS * RTE_MAX_RXTX_INTR_VEC_ID)
@@ -34,6 +42,162 @@ fs_epoll_create1(int flags)
 	RTE_SET_USED(flags);
 	return -ENOTSUP;
 #endif
+}
+
+/**
+ * Install failsafe Rx event proxy service.
+ * The Rx event proxy is the service that listens to Rx events from the
+ * subdevices and triggers failsafe Rx events accordingly.
+ *
+ * @param priv
+ *   Pointer to failsafe private structure.
+ * @return
+ *   0 on success, negative errno value otherwise.
+ */
+static int
+fs_rx_event_proxy_routine(void *data)
+{
+	struct fs_priv *priv;
+	struct rxq *rxq;
+	struct rte_epoll_event *events;
+	uint64_t u64;
+	int i, n;
+	int rc = 0;
+
+	u64 = 1;
+	priv = data;
+	events = priv->rxp.evec;
+	n = rte_epoll_wait(priv->rxp.efd, events, NUM_RX_PROXIES, -1);
+	for (i = 0; i < n; i++) {
+		rxq = events[i].epdata.data;
+		if (rxq->enable_events && rxq->event_fd != -1) {
+			if (write(rxq->event_fd, &u64, sizeof(u64)) !=
+			    sizeof(u64)) {
+				ERROR("Failed to proxy Rx event to socket %d",
+				       rxq->event_fd);
+				rc = -EIO;
+			}
+		}
+	}
+	return rc;
+}
+
+/**
+ * Uninstall failsafe Rx event proxy service.
+ *
+ * @param priv
+ *   Pointer to failsafe private structure.
+ */
+static void
+fs_rx_event_proxy_service_uninstall(struct fs_priv *priv)
+{
+	/* Unregister the event service. */
+	switch (priv->rxp.sstate) {
+	case SS_RUNNING:
+		rte_service_map_lcore_set(priv->rxp.sid, priv->rxp.scid, 0);
+		/* fall through */
+	case SS_READY:
+		rte_service_runstate_set(priv->rxp.sid, 0);
+		rte_service_set_stats_enable(priv->rxp.sid, 0);
+		rte_service_component_runstate_set(priv->rxp.sid, 0);
+		/* fall through */
+	case SS_REGISTERED:
+		rte_service_component_unregister(priv->rxp.sid);
+		/* fall through */
+	default:
+		break;
+	}
+}
+
+/**
+ * Install the failsafe Rx event proxy service.
+ *
+ * @param priv
+ *   Pointer to failsafe private structure.
+ * @return
+ *   0 on success, negative errno value otherwise.
+ */
+static int
+fs_rx_event_proxy_service_install(struct fs_priv *priv)
+{
+	struct rte_service_spec service;
+	int32_t num_service_cores;
+	int ret = 0;
+
+	num_service_cores = rte_service_lcore_count();
+	if (num_service_cores <= 0) {
+		ERROR("Failed to install Rx interrupts, "
+		      "no service core found");
+		return -ENOTSUP;
+	}
+	/* prepare service info */
+	memset(&service, 0, sizeof(struct rte_service_spec));
+	snprintf(service.name, sizeof(service.name), "%s_Rx_service",
+		 priv->dev->data->name);
+	service.socket_id = priv->dev->data->numa_node;
+	service.callback = fs_rx_event_proxy_routine;
+	service.callback_userdata = priv;
+
+	if (priv->rxp.sstate == SS_NO_SERVICE) {
+		uint32_t service_core_list[num_service_cores];
+
+		/* get a service core to work with */
+		ret = rte_service_lcore_list(service_core_list,
+					     num_service_cores);
+		if (ret <= 0) {
+			ERROR("Failed to install Rx interrupts, "
+			      "service core list empty or corrupted");
+			return -ENOTSUP;
+		}
+		priv->rxp.scid = service_core_list[0];
+		ret = rte_service_lcore_add(priv->rxp.scid);
+		if (ret && ret != -EALREADY) {
+			ERROR("Failed adding service core");
+			return ret;
+		}
+		/* service core may be in "stopped" state, start it */
+		ret = rte_service_lcore_start(priv->rxp.scid);
+		if (ret && (ret != -EALREADY)) {
+			ERROR("Failed to install Rx interrupts, "
+			      "service core not started");
+			return ret;
+		}
+		/* register our service */
+		int32_t ret = rte_service_component_register(&service,
+							     &priv->rxp.sid);
+		if (ret) {
+			ERROR("service register() failed");
+			return -ENOEXEC;
+		}
+		priv->rxp.sstate = SS_REGISTERED;
+		/* run the service */
+		ret = rte_service_component_runstate_set(priv->rxp.sid, 1);
+		if (ret < 0) {
+			ERROR("Failed Setting component runstate\n");
+			return ret;
+		}
+		ret = rte_service_set_stats_enable(priv->rxp.sid, 1);
+		if (ret < 0) {
+			ERROR("Failed enabling stats\n");
+			return ret;
+		}
+		ret = rte_service_runstate_set(priv->rxp.sid, 1);
+		if (ret < 0) {
+			ERROR("Failed to run service\n");
+			return ret;
+		}
+		priv->rxp.sstate = SS_READY;
+		/* map the service with the service core */
+		ret = rte_service_map_lcore_set(priv->rxp.sid,
+						priv->rxp.scid, 1);
+		if (ret) {
+			ERROR("Failed to install Rx interrupts, "
+			      "could not map service core");
+			return ret;
+		}
+		priv->rxp.sstate = SS_RUNNING;
+	}
+	return 0;
 }
 
 /**
@@ -69,6 +233,9 @@ fs_rx_event_proxy_install(struct fs_priv *priv)
 		rc = -ENOMEM;
 		goto error;
 	}
+	rc = fs_rx_event_proxy_service_install(priv);
+	if (rc < 0)
+		goto error;
 	return 0;
 error:
 	if (priv->rxp.efd >= 0) {
@@ -222,6 +389,7 @@ void failsafe_rx_intr_uninstall_subdevice(struct sub_device *sdev)
 static void
 fs_rx_event_proxy_uninstall(struct fs_priv *priv)
 {
+	fs_rx_event_proxy_service_uninstall(priv);
 	if (priv->rxp.evec != NULL) {
 		free(priv->rxp.evec);
 		priv->rxp.evec = NULL;

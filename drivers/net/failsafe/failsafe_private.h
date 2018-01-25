@@ -61,6 +61,13 @@
 
 #define DEVARGS_MAXLEN 4096
 
+enum rxp_service_state {
+	SS_NO_SERVICE = 0,
+	SS_REGISTERED,
+	SS_READY,
+	SS_RUNNING,
+};
+
 /* TYPES */
 
 struct rx_proxy {
@@ -68,6 +75,11 @@ struct rx_proxy {
 	int efd;
 	/* event vector to be used by epoll */
 	struct rte_epoll_event *evec;
+	/* rte service id */
+	uint32_t sid;
+	/* service core id */
+	uint32_t scid;
+	enum rxp_service_state sstate;
 };
 
 struct rxq {
@@ -169,7 +181,10 @@ struct fs_priv {
 	 * Rx interrupts/events proxy.
 	 * The PMD issues Rx events to the EAL on behalf of its subdevices,
 	 * it does that by registering an event-fd for each of its queues with
-	 * the EAL.
+	 * the EAL. A PMD service thread listens to all the Rx events from the
+	 * subdevices, when an Rx event is issued by a subdevice it will be
+	 * caught by this service with will trigger an Rx event in the
+	 * appropriate failsafe Rx queue.
 	 */
 	struct rx_proxy rxp;
 	unsigned int pending_alarm:1; /* An alarm is pending */
