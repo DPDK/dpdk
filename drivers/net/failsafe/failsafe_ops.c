@@ -213,6 +213,13 @@ fs_dev_start(struct rte_eth_dev *dev)
 				continue;
 			return ret;
 		}
+		ret = failsafe_rx_intr_install_subdevice(sdev);
+		if (ret) {
+			if (!fs_err(sdev, ret))
+				continue;
+			rte_eth_dev_stop(PORT_ID(sdev));
+			return ret;
+		}
 		sdev->state = DEV_STARTED;
 	}
 	if (PRIV(dev)->state < DEV_STARTED)
@@ -230,6 +237,7 @@ fs_dev_stop(struct rte_eth_dev *dev)
 	PRIV(dev)->state = DEV_STARTED - 1;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_STARTED) {
 		rte_eth_dev_stop(PORT_ID(sdev));
+		failsafe_rx_intr_uninstall_subdevice(sdev);
 		sdev->state = DEV_STARTED - 1;
 	}
 	failsafe_rx_intr_uninstall(dev);
@@ -412,6 +420,10 @@ static int
 fs_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct rxq *rxq;
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret;
+	int rc = 0;
 
 	if (idx >= dev->data->nb_rx_queues) {
 		rte_errno = EINVAL;
@@ -423,14 +435,26 @@ fs_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
 		return -rte_errno;
 	}
 	rxq->enable_events = 1;
-	return 0;
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_dev_rx_intr_enable(PORT_ID(sdev), idx);
+		ret = fs_err(sdev, ret);
+		if (ret)
+			rc = ret;
+	}
+	if (rc)
+		rte_errno = -rc;
+	return rc;
 }
 
 static int
 fs_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct rxq *rxq;
+	struct sub_device *sdev;
 	uint64_t u64;
+	uint8_t i;
+	int rc = 0;
+	int ret;
 
 	if (idx >= dev->data->nb_rx_queues) {
 		rte_errno = EINVAL;
@@ -442,10 +466,18 @@ fs_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
 		return -rte_errno;
 	}
 	rxq->enable_events = 0;
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_dev_rx_intr_disable(PORT_ID(sdev), idx);
+		ret = fs_err(sdev, ret);
+		if (ret)
+			rc = ret;
+	}
 	/* Clear pending events */
 	while (read(rxq->event_fd, &u64, sizeof(uint64_t)) >  0)
 		;
-	return 0;
+	if (rc)
+		rte_errno = -rc;
+	return rc;
 }
 
 static bool

@@ -63,6 +63,13 @@
 
 /* TYPES */
 
+struct rx_proxy {
+	/* epoll file descriptor */
+	int efd;
+	/* event vector to be used by epoll */
+	struct rte_epoll_event *evec;
+};
+
 struct rxq {
 	struct fs_priv *priv;
 	uint16_t qid;
@@ -158,6 +165,13 @@ struct fs_priv {
 	 */
 	enum dev_state state;
 	struct rte_eth_stats stats_accumulator;
+	/*
+	 * Rx interrupts/events proxy.
+	 * The PMD issues Rx events to the EAL on behalf of its subdevices,
+	 * it does that by registering an event-fd for each of its queues with
+	 * the EAL.
+	 */
+	struct rx_proxy rxp;
 	unsigned int pending_alarm:1; /* An alarm is pending */
 	/* flow isolation state */
 	int flow_isolated:1;
@@ -167,6 +181,8 @@ struct fs_priv {
 
 int failsafe_rx_intr_install(struct rte_eth_dev *dev);
 void failsafe_rx_intr_uninstall(struct rte_eth_dev *dev);
+int failsafe_rx_intr_install_subdevice(struct sub_device *sdev);
+void failsafe_rx_intr_uninstall_subdevice(struct sub_device *sdev);
 
 /* MISC */
 
