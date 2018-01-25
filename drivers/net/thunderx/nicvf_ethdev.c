@@ -56,15 +56,15 @@ RTE_INIT(nicvf_init_log);
 static void
 nicvf_init_log(void)
 {
-	nicvf_logtype_mbox = rte_log_register("pmd.nicvf.mbox");
+	nicvf_logtype_mbox = rte_log_register("pmd.net.thunderx.mbox");
 	if (nicvf_logtype_mbox >= 0)
 		rte_log_set_level(nicvf_logtype_mbox, RTE_LOG_NOTICE);
 
-	nicvf_logtype_init = rte_log_register("pmd.nicvf.init");
+	nicvf_logtype_init = rte_log_register("pmd.net.thunderx.init");
 	if (nicvf_logtype_init >= 0)
 		rte_log_set_level(nicvf_logtype_init, RTE_LOG_NOTICE);
 
-	nicvf_logtype_driver = rte_log_register("pmd.nicvf.driver");
+	nicvf_logtype_driver = rte_log_register("pmd.net.thunderx.driver");
 	if (nicvf_logtype_driver >= 0)
 		rte_log_set_level(nicvf_logtype_driver, RTE_LOG_NOTICE);
 }
