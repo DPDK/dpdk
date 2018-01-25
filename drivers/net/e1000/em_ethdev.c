@@ -1868,10 +1868,10 @@ RTE_INIT(e1000_init_log);
 static void
 e1000_init_log(void)
 {
-	e1000_logtype_init = rte_log_register("pmd.e1000.init");
+	e1000_logtype_init = rte_log_register("pmd.net.e1000.init");
 	if (e1000_logtype_init >= 0)
 		rte_log_set_level(e1000_logtype_init, RTE_LOG_NOTICE);
-	e1000_logtype_driver = rte_log_register("pmd.e1000.driver");
+	e1000_logtype_driver = rte_log_register("pmd.net.e1000.driver");
 	if (e1000_logtype_driver >= 0)
 		rte_log_set_level(e1000_logtype_driver, RTE_LOG_NOTICE);
 }
