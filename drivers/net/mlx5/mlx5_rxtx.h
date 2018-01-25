@@ -598,7 +598,7 @@ mlx5_tx_dbrec_cond_wmb(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe,
 	uint64_t *dst = (uint64_t *)((uintptr_t)txq->bf_reg);
 	volatile uint64_t *src = ((volatile uint64_t *)wqe);
 
-	rte_io_wmb();
+	rte_cio_wmb();
 	*txq->qp_db = rte_cpu_to_be_32(txq->wqe_ci);
 	/* Ensure ordering between DB record and BF copy. */
 	rte_wmb();
