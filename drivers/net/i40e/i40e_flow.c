@@ -4164,7 +4164,7 @@ static int
 i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 			    const struct rte_flow_action *actions,
 			    struct rte_flow_error *error,
-			    uint8_t *action_flag,
+			    uint8_t action_flag,
 			    struct i40e_queue_regions *conf_info,
 			    union i40e_filter_t *filter)
 {
@@ -4354,7 +4354,7 @@ i40e_parse_rss_filter(struct rte_eth_dev *dev,
 		return ret;
 
 	ret = i40e_flow_parse_rss_action(dev, actions, error,
-					&action_flag, &info, filter);
+					action_flag, &info, filter);
 	if (ret)
 		return ret;
 
