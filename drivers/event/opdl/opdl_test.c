@@ -562,7 +562,6 @@ single_link_w_stats(struct test *t)
 	uint32_t deq_pkts;
 	struct rte_mbuf *mbufs[3];
 	RTE_SET_USED(mbufs);
-	RTE_SET_USED(i);
 
 	/* Create instance with 3 ports */
 	if (init(t, 2, tx_port + 1) < 0 ||
@@ -702,10 +701,8 @@ single_link(struct test *t)
 	/* const uint8_t w3_port = 3; */
 	const uint8_t tx_port = 2;
 	int err;
-	int i;
 	struct rte_mbuf *mbufs[3];
 	RTE_SET_USED(mbufs);
-	RTE_SET_USED(i);
 
 	/* Create instance with 5 ports */
 	if (init(t, 2, tx_port+1) < 0 ||
