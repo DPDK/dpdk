@@ -759,7 +759,7 @@ RTE_INIT(opdl_init_log);
 static void
 opdl_init_log(void)
 {
-	opdl_logtype_driver = rte_log_register("eventdev.opdl.driver");
+	opdl_logtype_driver = rte_log_register("pmd.event.opdl.driver");
 	if (opdl_logtype_driver >= 0)
 		rte_log_set_level(opdl_logtype_driver, RTE_LOG_INFO);
 }
