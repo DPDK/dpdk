@@ -1352,10 +1352,10 @@ RTE_INIT(vmxnet3_init_log);
 static void
 vmxnet3_init_log(void)
 {
-	vmxnet3_logtype_init = rte_log_register("pmd.vmxnet3.init");
+	vmxnet3_logtype_init = rte_log_register("pmd.net.vmxnet3.init");
 	if (vmxnet3_logtype_init >= 0)
 		rte_log_set_level(vmxnet3_logtype_init, RTE_LOG_NOTICE);
-	vmxnet3_logtype_driver = rte_log_register("pmd.vmxnet3.driver");
+	vmxnet3_logtype_driver = rte_log_register("pmd.net.vmxnet3.driver");
 	if (vmxnet3_logtype_driver >= 0)
 		rte_log_set_level(vmxnet3_logtype_driver, RTE_LOG_NOTICE);
 }
