@@ -130,6 +130,14 @@ static void i40evf_handle_pf_event(struct rte_eth_dev *dev,
 				   uint8_t *msg,
 				   uint16_t msglen);
 
+static int
+i40evf_add_del_mc_addr_list(struct rte_eth_dev *dev,
+			struct ether_addr *mc_addr_set,
+			uint32_t nb_mc_addr, bool add);
+static int
+i40evf_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
+			uint32_t nb_mc_addr);
+
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
 
@@ -195,6 +203,7 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.txq_info_get         = i40e_txq_info_get,
 	.mac_addr_add	      = i40evf_add_mac_addr,
 	.mac_addr_remove      = i40evf_del_mac_addr,
+	.set_mc_addr_list     = i40evf_set_mc_addr_list,
 	.reta_update          = i40evf_dev_rss_reta_update,
 	.reta_query           = i40evf_dev_rss_reta_query,
 	.rss_hash_update      = i40evf_dev_rss_hash_update,
@@ -1998,6 +2007,9 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 
 	/* Set all mac addrs */
 	i40evf_add_del_all_mac_addr(dev, TRUE);
+	/* Set all multicast addresses */
+	i40evf_add_del_mc_addr_list(dev, vf->mc_addrs, vf->mc_addrs_num,
+				TRUE);
 
 	if (i40evf_start_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "enable queues failed");
@@ -2022,6 +2034,8 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 
 err_mac:
 	i40evf_add_del_all_mac_addr(dev, FALSE);
+	i40evf_add_del_mc_addr_list(dev, vf->mc_addrs, vf->mc_addrs_num,
+				FALSE);
 err_queue:
 	return -1;
 }
@@ -2032,6 +2046,7 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2049,6 +2064,9 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 	}
 	/* remove all mac addrs */
 	i40evf_add_del_all_mac_addr(dev, FALSE);
+	/* remove all multicast addresses */
+	i40evf_add_del_mc_addr_list(dev, vf->mc_addrs, vf->mc_addrs_num,
+				FALSE);
 	hw->adapter_stopped = 1;
 
 }
@@ -2663,4 +2681,86 @@ i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
 	i40evf_add_mac_addr(dev, mac_addr, 0, 0);
 
 	ether_addr_copy(mac_addr, (struct ether_addr *)hw->mac.addr);
+}
+
+static int
+i40evf_add_del_mc_addr_list(struct rte_eth_dev *dev,
+			struct ether_addr *mc_addrs,
+			uint32_t mc_addrs_num, bool add)
+{
+	struct virtchnl_ether_addr_list *list;
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	uint8_t cmd_buffer[sizeof(struct virtchnl_ether_addr_list) +
+		(I40E_NUM_MACADDR_MAX * sizeof(struct virtchnl_ether_addr))];
+	uint32_t i;
+	int err;
+	struct vf_cmd_info args;
+
+	if (mc_addrs == NULL || mc_addrs_num == 0)
+		return 0;
+
+	if (mc_addrs_num > I40E_NUM_MACADDR_MAX)
+		return -EINVAL;
+
+	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
+	list->vsi_id = vf->vsi_res->vsi_id;
+	list->num_elements = mc_addrs_num;
+
+	for (i = 0; i < mc_addrs_num; i++) {
+		if (!I40E_IS_MULTICAST(mc_addrs[i].addr_bytes)) {
+			PMD_DRV_LOG(ERR, "Invalid mac:%x:%x:%x:%x:%x:%x",
+				    mc_addrs[i].addr_bytes[0],
+				    mc_addrs[i].addr_bytes[1],
+				    mc_addrs[i].addr_bytes[2],
+				    mc_addrs[i].addr_bytes[3],
+				    mc_addrs[i].addr_bytes[4],
+				    mc_addrs[i].addr_bytes[5]);
+			return -EINVAL;
+		}
+
+		memcpy(list->list[i].addr, mc_addrs[i].addr_bytes,
+			sizeof(list->list[i].addr));
+	}
+
+	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
+	args.in_args = cmd_buffer;
+	args.in_args_size = sizeof(struct virtchnl_ether_addr_list) +
+		i * sizeof(struct virtchnl_ether_addr);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = I40E_AQ_BUF_SZ;
+	err = i40evf_execute_vf_cmd(dev, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			add ? "OP_ADD_ETH_ADDR" : "OP_DEL_ETH_ADDR");
+		return err;
+	}
+
+	return 0;
+}
+
+static int
+i40evf_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addrs,
+			uint32_t mc_addrs_num)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int err;
+
+	/* flush previous addresses */
+	err = i40evf_add_del_mc_addr_list(dev, vf->mc_addrs, vf->mc_addrs_num,
+				FALSE);
+	if (err)
+		return err;
+
+	vf->mc_addrs_num = 0;
+
+	/* add new ones */
+	err = i40evf_add_del_mc_addr_list(dev, mc_addrs, mc_addrs_num,
+					TRUE);
+	if (err)
+		return err;
+
+	vf->mc_addrs_num = mc_addrs_num;
+	memcpy(vf->mc_addrs, mc_addrs, mc_addrs_num * sizeof(*mc_addrs));
+
+	return 0;
 }

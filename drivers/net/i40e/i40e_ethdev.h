@@ -1005,6 +1005,9 @@ struct i40e_vf {
 	uint16_t promisc_flags; /* Promiscuous setting */
 	uint32_t vlan[I40E_VFTA_SIZE]; /* VLAN bit map */
 
+	struct ether_addr mc_addrs[I40E_NUM_MACADDR_MAX]; /* Multicast addrs */
+	uint16_t mc_addrs_num;   /* Multicast mac addresses number */
+
 	/* Event from pf */
 	bool dev_closed;
 	bool link_up;
