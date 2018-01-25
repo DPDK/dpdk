@@ -3298,10 +3298,10 @@ RTE_INIT(qede_init_log);
 static void
 qede_init_log(void)
 {
-	qede_logtype_init = rte_log_register("pmd.qede.init");
+	qede_logtype_init = rte_log_register("pmd.net.qede.init");
 	if (qede_logtype_init >= 0)
 		rte_log_set_level(qede_logtype_init, RTE_LOG_NOTICE);
-	qede_logtype_driver = rte_log_register("pmd.qede.driver");
+	qede_logtype_driver = rte_log_register("pmd.net.qede.driver");
 	if (qede_logtype_driver >= 0)
 		rte_log_set_level(qede_logtype_driver, RTE_LOG_NOTICE);
 }
