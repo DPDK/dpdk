@@ -43,10 +43,10 @@ RTE_INIT(enicpmd_init_log);
 static void
 enicpmd_init_log(void)
 {
-	enicpmd_logtype_init = rte_log_register("pmd.enic.init");
+	enicpmd_logtype_init = rte_log_register("pmd.net.enic.init");
 	if (enicpmd_logtype_init >= 0)
 		rte_log_set_level(enicpmd_logtype_init, RTE_LOG_NOTICE);
-	enicpmd_logtype_flow = rte_log_register("pmd.enic.flow");
+	enicpmd_logtype_flow = rte_log_register("pmd.net.enic.flow");
 	if (enicpmd_logtype_flow >= 0)
 		rte_log_set_level(enicpmd_logtype_flow, RTE_LOG_NOTICE);
 }
