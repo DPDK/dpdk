@@ -1795,7 +1795,7 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AEAD_AES_GCM:
 		aeaddata.algtype = OP_ALG_ALGSEL_AES;
 		aeaddata.algmode = OP_ALG_AAI_GCM;
-		session->cipher_alg = RTE_CRYPTO_AEAD_AES_GCM;
+		session->aead_alg = RTE_CRYPTO_AEAD_AES_GCM;
 		break;
 	case RTE_CRYPTO_AEAD_AES_CCM:
 		RTE_LOG(ERR, PMD, "Crypto: Unsupported AEAD alg %u\n",

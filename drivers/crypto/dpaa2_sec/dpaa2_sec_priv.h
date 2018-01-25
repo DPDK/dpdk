@@ -143,6 +143,7 @@ typedef struct dpaa2_sec_session_entry {
 	uint8_t dir;         /*!< Operation Direction */
 	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
 	enum rte_crypto_auth_algorithm auth_alg; /*!< Authentication Algorithm*/
+	enum rte_crypto_aead_algorithm aead_alg; /*!< AEAD Algorithm*/
 	union {
 		struct {
 			uint8_t *data;	/**< pointer to key data */
