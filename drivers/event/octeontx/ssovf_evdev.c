@@ -25,7 +25,7 @@ RTE_INIT(otx_ssovf_init_log);
 static void
 otx_ssovf_init_log(void)
 {
-	otx_logtype_ssovf = rte_log_register("pmd.otx.eventdev");
+	otx_logtype_ssovf = rte_log_register("pmd.event.octeontx");
 	if (otx_logtype_ssovf >= 0)
 		rte_log_set_level(otx_logtype_ssovf, RTE_LOG_NOTICE);
 }

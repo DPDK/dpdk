@@ -112,11 +112,11 @@ RTE_INIT(otx_pool_init_log);
 static void
 otx_pool_init_log(void)
 {
-	octeontx_logtype_fpavf = rte_log_register("pmd.otx.mempool");
+	octeontx_logtype_fpavf = rte_log_register("pmd.mempool.octeontx");
 	if (octeontx_logtype_fpavf >= 0)
 		rte_log_set_level(octeontx_logtype_fpavf, RTE_LOG_NOTICE);
 
-	octeontx_logtype_fpavf_mbox = rte_log_register("pmd.otx.mempool.mbox");
+	octeontx_logtype_fpavf_mbox = rte_log_register("pmd.mempool.octeontx.mbox");
 	if (octeontx_logtype_fpavf_mbox >= 0)
 		rte_log_set_level(octeontx_logtype_fpavf_mbox, RTE_LOG_NOTICE);
 }

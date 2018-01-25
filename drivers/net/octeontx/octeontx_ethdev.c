@@ -49,15 +49,15 @@ RTE_INIT(otx_net_init_log);
 static void
 otx_net_init_log(void)
 {
-	otx_net_logtype_mbox = rte_log_register("pmd.otx.ethdev.mbox");
+	otx_net_logtype_mbox = rte_log_register("pmd.net.octeontx.mbox");
 	if (otx_net_logtype_mbox >= 0)
 		rte_log_set_level(otx_net_logtype_mbox, RTE_LOG_NOTICE);
 
-	otx_net_logtype_init = rte_log_register("pmd.otx.ethdev.init");
+	otx_net_logtype_init = rte_log_register("pmd.net.octeontx.init");
 	if (otx_net_logtype_init >= 0)
 		rte_log_set_level(otx_net_logtype_init, RTE_LOG_NOTICE);
 
-	otx_net_logtype_driver = rte_log_register("pmd.otx.ethdev.driver");
+	otx_net_logtype_driver = rte_log_register("pmd.net.octeontx.driver");
 	if (otx_net_logtype_driver >= 0)
 		rte_log_set_level(otx_net_logtype_driver, RTE_LOG_NOTICE);
 }
