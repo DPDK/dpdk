@@ -517,7 +517,6 @@ mlx5_arm_cq(struct mlx5_rxq_data *rxq, int sq_n_rxq)
 	doorbell = (uint64_t)doorbell_hi << 32;
 	doorbell |=  rxq->cqn;
 	rxq->cq_db[MLX5_CQ_ARM_DB] = rte_cpu_to_be_32(doorbell_hi);
-	rte_wmb();
 	rte_write64(rte_cpu_to_be_64(doorbell), cq_db_reg);
 }
 
