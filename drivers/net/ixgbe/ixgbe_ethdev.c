@@ -8444,10 +8444,10 @@ RTE_INIT(ixgbe_init_log);
 static void
 ixgbe_init_log(void)
 {
-	ixgbe_logtype_init = rte_log_register("pmd.ixgbe.init");
+	ixgbe_logtype_init = rte_log_register("pmd.net.ixgbe.init");
 	if (ixgbe_logtype_init >= 0)
 		rte_log_set_level(ixgbe_logtype_init, RTE_LOG_NOTICE);
-	ixgbe_logtype_driver = rte_log_register("pmd.ixgbe.driver");
+	ixgbe_logtype_driver = rte_log_register("pmd.net.ixgbe.driver");
 	if (ixgbe_logtype_driver >= 0)
 		rte_log_set_level(ixgbe_logtype_driver, RTE_LOG_NOTICE);
 }
