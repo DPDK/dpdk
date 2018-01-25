@@ -2189,10 +2189,10 @@ RTE_INIT(lio_init_log);
 static void
 lio_init_log(void)
 {
-	lio_logtype_init = rte_log_register("pmd.lio.init");
+	lio_logtype_init = rte_log_register("pmd.net.liquidio.init");
 	if (lio_logtype_init >= 0)
 		rte_log_set_level(lio_logtype_init, RTE_LOG_NOTICE);
-	lio_logtype_driver = rte_log_register("pmd.lio.driver");
+	lio_logtype_driver = rte_log_register("pmd.net.liquidio.driver");
 	if (lio_logtype_driver >= 0)
 		rte_log_set_level(lio_logtype_driver, RTE_LOG_NOTICE);
 }
