@@ -141,8 +141,15 @@ priv_txq_mp2mr_reg(struct priv *priv, struct mlx5_txq_data *txq,
 	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
 	      (void *)txq_ctrl, mp->name, (void *)mp);
 	mr = priv_mr_get(priv, mp);
-	if (mr == NULL)
+	if (mr == NULL) {
+		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+			DEBUG("Using unregistered mempool 0x%p(%s) in secondary process,"
+			     " please create mempool before rte_eth_dev_start()",
+			     (void *)mp, mp->name);
+			return NULL;
+		}
 		mr = priv_mr_new(priv, mp);
+	}
 	if (unlikely(mr == NULL)) {
 		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
 		      (void *)txq_ctrl);
