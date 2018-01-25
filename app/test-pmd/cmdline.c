@@ -3706,40 +3706,40 @@ cmd_csum_parsed(void *parsed_result,
 			hw = 1;
 
 		if (!strcmp(res->proto, "ip")) {
-			if (dev_info.tx_offload_capa &
-						DEV_TX_OFFLOAD_IPV4_CKSUM) {
+			if (hw == 0 || (dev_info.tx_offload_capa &
+						DEV_TX_OFFLOAD_IPV4_CKSUM)) {
 				csum_offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
 			} else {
 				printf("IP checksum offload is not supported "
 				       "by port %u\n", res->port_id);
 			}
 		} else if (!strcmp(res->proto, "udp")) {
-			if (dev_info.tx_offload_capa &
-						DEV_TX_OFFLOAD_UDP_CKSUM) {
+			if (hw == 0 || (dev_info.tx_offload_capa &
+						DEV_TX_OFFLOAD_UDP_CKSUM)) {
 				csum_offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
 			} else {
 				printf("UDP checksum offload is not supported "
 				       "by port %u\n", res->port_id);
 			}
 		} else if (!strcmp(res->proto, "tcp")) {
-			if (dev_info.tx_offload_capa &
-						DEV_TX_OFFLOAD_TCP_CKSUM) {
+			if (hw == 0 || (dev_info.tx_offload_capa &
+						DEV_TX_OFFLOAD_TCP_CKSUM)) {
 				csum_offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
 			} else {
 				printf("TCP checksum offload is not supported "
 				       "by port %u\n", res->port_id);
 			}
 		} else if (!strcmp(res->proto, "sctp")) {
-			if (dev_info.tx_offload_capa &
-						DEV_TX_OFFLOAD_SCTP_CKSUM) {
+			if (hw == 0 || (dev_info.tx_offload_capa &
+						DEV_TX_OFFLOAD_SCTP_CKSUM)) {
 				csum_offloads |= DEV_TX_OFFLOAD_SCTP_CKSUM;
 			} else {
 				printf("SCTP checksum offload is not supported "
 				       "by port %u\n", res->port_id);
 			}
 		} else if (!strcmp(res->proto, "outer-ip")) {
-			if (dev_info.tx_offload_capa &
-					DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) {
+			if (hw == 0 || (dev_info.tx_offload_capa &
+					DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
 				csum_offloads |=
 						DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 			} else {
