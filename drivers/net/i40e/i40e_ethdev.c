@@ -7188,11 +7188,13 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	node = i40e_sw_tunnel_filter_lookup(tunnel_rule, &check_filter.input);
 	if (add && node) {
 		PMD_DRV_LOG(ERR, "Conflict with existing tunnel rules!");
+		rte_free(cld_filter);
 		return -EINVAL;
 	}
 
 	if (!add && !node) {
 		PMD_DRV_LOG(ERR, "There's no corresponding tunnel filter!");
+		rte_free(cld_filter);
 		return -EINVAL;
 	}
 
@@ -7201,16 +7203,26 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 					vsi->seid, &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to add a tunnel filter.");
+			rte_free(cld_filter);
 			return -ENOTSUP;
 		}
 		tunnel = rte_zmalloc("tunnel_filter", sizeof(*tunnel), 0);
+		if (tunnel == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc memory.");
+			rte_free(cld_filter);
+			return -ENOMEM;
+		}
+
 		rte_memcpy(tunnel, &check_filter, sizeof(check_filter));
 		ret = i40e_sw_tunnel_filter_insert(pf, tunnel);
+		if (ret < 0)
+			rte_free(tunnel);
 	} else {
 		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
 						   &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
+			rte_free(cld_filter);
 			return -ENOTSUP;
 		}
 		ret = i40e_sw_tunnel_filter_del(pf, &node->input);
@@ -7639,6 +7651,7 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	else {
 		if (tunnel_filter->vf_id >= pf->vf_num) {
 			PMD_DRV_LOG(ERR, "Invalid argument.");
+			rte_free(cld_filter);
 			return -EINVAL;
 		}
 		vf = &pf->vfs[tunnel_filter->vf_id];
@@ -7653,11 +7666,13 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	node = i40e_sw_tunnel_filter_lookup(tunnel_rule, &check_filter.input);
 	if (add && node) {
 		PMD_DRV_LOG(ERR, "Conflict with existing tunnel rules!");
+		rte_free(cld_filter);
 		return -EINVAL;
 	}
 
 	if (!add && !node) {
 		PMD_DRV_LOG(ERR, "There's no corresponding tunnel filter!");
+		rte_free(cld_filter);
 		return -EINVAL;
 	}
 
@@ -7670,11 +7685,20 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 					vsi->seid, &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to add a tunnel filter.");
+			rte_free(cld_filter);
 			return -ENOTSUP;
 		}
 		tunnel = rte_zmalloc("tunnel_filter", sizeof(*tunnel), 0);
+		if (tunnel == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc memory.");
+			rte_free(cld_filter);
+			return -ENOMEM;
+		}
+
 		rte_memcpy(tunnel, &check_filter, sizeof(check_filter));
 		ret = i40e_sw_tunnel_filter_insert(pf, tunnel);
+		if (ret < 0)
+			rte_free(tunnel);
 	} else {
 		if (big_buffer)
 			ret = i40e_aq_remove_cloud_filters_big_buffer(
@@ -7684,6 +7708,7 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 						   &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
+			rte_free(cld_filter);
 			return -ENOTSUP;
 		}
 		ret = i40e_sw_tunnel_filter_del(pf, &node->input);
@@ -9295,9 +9320,16 @@ i40e_ethertype_filter_set(struct i40e_pf *pf,
 	if (add) {
 		ethertype_filter = rte_zmalloc("ethertype_filter",
 				       sizeof(*ethertype_filter), 0);
+		if (ethertype_filter == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc memory.");
+			return -ENOMEM;
+		}
+
 		rte_memcpy(ethertype_filter, &check_filter,
 			   sizeof(check_filter));
 		ret = i40e_sw_ethertype_filter_insert(pf, ethertype_filter);
+		if (ret < 0)
+			rte_free(ethertype_filter);
 	} else {
 		ret = i40e_sw_ethertype_filter_del(pf, &node->input);
 	}

@@ -1595,8 +1595,15 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	if (add) {
 		fdir_filter = rte_zmalloc("fdir_filter",
 					  sizeof(*fdir_filter), 0);
+		if (fdir_filter == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc memory.");
+			return -ENOMEM;
+		}
+
 		rte_memcpy(fdir_filter, &check_filter, sizeof(check_filter));
 		ret = i40e_sw_fdir_filter_insert(pf, fdir_filter);
+		if (ret < 0)
+			rte_free(fdir_filter);
 	} else {
 		ret = i40e_sw_fdir_filter_del(pf, &node->fdir.input);
 	}
