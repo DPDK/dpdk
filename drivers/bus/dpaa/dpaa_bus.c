@@ -64,12 +64,6 @@ dpaa_add_to_device_list(struct rte_dpaa_device *dev)
 	TAILQ_INSERT_TAIL(&rte_dpaa_bus.device_list, dev, next);
 }
 
-static inline void
-dpaa_remove_from_device_list(struct rte_dpaa_device *dev)
-{
-	TAILQ_INSERT_TAIL(&rte_dpaa_bus.device_list, dev, next);
-}
-
 /*
  * Reads the SEC device from DTS
  * Returns -1 if SEC devices not available, 0 otherwise

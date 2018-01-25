@@ -76,22 +76,6 @@ dump_netcfg(struct netcfg_info *cfg_ptr)
 }
 #endif /* RTE_LIBRTE_DPAA_DEBUG_DRIVER */
 
-static inline int
-get_num_netcfg_interfaces(char *str)
-{
-	char *pch;
-	uint8_t count = 0;
-
-	if (str == NULL)
-		return -EINVAL;
-	pch = strtok(str, ",");
-	while (pch != NULL) {
-		count++;
-		pch = strtok(NULL, ",");
-	}
-	return count;
-}
-
 struct netcfg_info *
 netcfg_acquire(void)
 {
