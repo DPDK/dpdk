@@ -288,7 +288,9 @@ mlx5_tx_queue_release(void *dpdk_txq)
 
 
 /**
- * Map locally UAR used in Tx queues for BlueFlame doorbell.
+ * Mmap TX UAR(HW doorbell) pages into reserved UAR address space.
+ * Both primary and secondary process do mmap to make UAR address
+ * aligned.
  *
  * @param[in] priv
  *   Pointer to private structure.
@@ -305,11 +307,14 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 	uintptr_t pages[priv->txqs_n];
 	unsigned int pages_n = 0;
 	uintptr_t uar_va;
+	uintptr_t off;
 	void *addr;
+	void *ret;
 	struct mlx5_txq_data *txq;
 	struct mlx5_txq_ctrl *txq_ctrl;
 	int already_mapped;
 	size_t page_size = sysconf(_SC_PAGESIZE);
+	int r;
 
 	memset(pages, 0, priv->txqs_n * sizeof(uintptr_t));
 	/*
@@ -320,8 +325,10 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 	for (i = 0; i != priv->txqs_n; ++i) {
 		txq = (*priv->txqs)[i];
 		txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
-		uar_va = (uintptr_t)txq_ctrl->txq.bf_reg;
-		uar_va = RTE_ALIGN_FLOOR(uar_va, page_size);
+		/* UAR addr form verbs used to find dup and offset in page. */
+		uar_va = (uintptr_t)txq_ctrl->bf_reg_orig;
+		off = uar_va & (page_size - 1); /* offset in page. */
+		uar_va = RTE_ALIGN_FLOOR(uar_va, page_size); /* page addr. */
 		already_mapped = 0;
 		for (j = 0; j != pages_n; ++j) {
 			if (pages[j] == uar_va) {
@@ -329,16 +336,30 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 				break;
 			}
 		}
-		if (already_mapped)
-			continue;
-		pages[pages_n++] = uar_va;
-		addr = mmap((void *)uar_va, page_size,
-			    PROT_WRITE, MAP_FIXED | MAP_SHARED, fd,
-			    txq_ctrl->uar_mmap_offset);
-		if (addr != (void *)uar_va) {
-			ERROR("call to mmap failed on UAR for txq %d\n", i);
-			return -1;
+		/* new address in reserved UAR address space. */
+		addr = RTE_PTR_ADD(priv->uar_base,
+				   uar_va & (MLX5_UAR_SIZE - 1));
+		if (!already_mapped) {
+			pages[pages_n++] = uar_va;
+			/* fixed mmap to specified address in reserved
+			 * address space.
+			 */
+			ret = mmap(addr, page_size,
+				   PROT_WRITE, MAP_FIXED | MAP_SHARED, fd,
+				   txq_ctrl->uar_mmap_offset);
+			if (ret != addr) {
+				/* fixed mmap have to return same address */
+				ERROR("call to mmap failed on UAR for txq %d\n",
+				      i);
+				r = ENXIO;
+				return r;
+			}
 		}
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) /* save once */
+			txq_ctrl->txq.bf_reg = RTE_PTR_ADD((void *)addr, off);
+		else
+			assert(txq_ctrl->txq.bf_reg ==
+			       RTE_PTR_ADD((void *)addr, off));
 	}
 	return 0;
 }
@@ -505,7 +526,7 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	txq_data->wqes = qp.sq.buf;
 	txq_data->wqe_n = log2above(qp.sq.wqe_cnt);
 	txq_data->qp_db = &qp.dbrec[MLX5_SND_DBR];
-	txq_data->bf_reg = qp.bf.reg;
+	txq_ctrl->bf_reg_orig = qp.bf.reg;
 	txq_data->cq_db = cq_info.dbrec;
 	txq_data->cqes =
 		(volatile struct mlx5_cqe (*)[])
@@ -840,6 +861,7 @@ mlx5_priv_txq_release(struct priv *priv, uint16_t idx)
 {
 	unsigned int i;
 	struct mlx5_txq_ctrl *txq;
+	size_t page_size = sysconf(_SC_PAGESIZE);
 
 	if (!(*priv->txqs)[idx])
 		return 0;
@@ -859,6 +881,9 @@ mlx5_priv_txq_release(struct priv *priv, uint16_t idx)
 			txq->txq.mp2mr[i] = NULL;
 		}
 	}
+	if (priv->uar_base)
+		munmap((void *)RTE_ALIGN_FLOOR((uintptr_t)txq->txq.bf_reg,
+		       page_size), page_size);
 	if (rte_atomic32_dec_and_test(&txq->refcnt)) {
 		txq_free_elts(txq);
 		LIST_REMOVE(txq, next);

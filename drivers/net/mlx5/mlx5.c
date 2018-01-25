@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <net/if.h>
+#include <sys/mman.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -56,6 +57,7 @@
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_common.h>
+#include <rte_eal_memconfig.h>
 #include <rte_kvargs.h>
 
 #include "mlx5.h"
@@ -478,6 +480,106 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 
 static struct rte_pci_driver mlx5_driver;
 
+/*
+ * Reserved UAR address space for TXQ UAR(hw doorbell) mapping, process
+ * local resource used by both primary and secondary to avoid duplicate
+ * reservation.
+ * The space has to be available on both primary and secondary process,
+ * TXQ UAR maps to this area using fixed mmap w/o double check.
+ */
+static void *uar_base;
+
+/**
+ * Reserve UAR address space for primary process.
+ *
+ * @param[in] priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_uar_init_primary(struct priv *priv)
+{
+	void *addr = (void *)0;
+	int i;
+	const struct rte_mem_config *mcfg;
+	int ret;
+
+	if (uar_base) { /* UAR address space mapped. */
+		priv->uar_base = uar_base;
+		return 0;
+	}
+	/* find out lower bound of hugepage segments */
+	mcfg = rte_eal_get_configuration()->mem_config;
+	for (i = 0; i < RTE_MAX_MEMSEG && mcfg->memseg[i].addr; i++) {
+		if (addr)
+			addr = RTE_MIN(addr, mcfg->memseg[i].addr);
+		else
+			addr = mcfg->memseg[i].addr;
+	}
+	/* keep distance to hugepages to minimize potential conflicts. */
+	addr = RTE_PTR_SUB(addr, MLX5_UAR_OFFSET + MLX5_UAR_SIZE);
+	/* anonymous mmap, no real memory consumption. */
+	addr = mmap(addr, MLX5_UAR_SIZE,
+		    PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (addr == MAP_FAILED) {
+		ERROR("Failed to reserve UAR address space, please adjust "
+		      "MLX5_UAR_SIZE or try --base-virtaddr");
+		ret = ENOMEM;
+		return ret;
+	}
+	/* Accept either same addr or a new addr returned from mmap if target
+	 * range occupied.
+	 */
+	INFO("Reserved UAR address space: %p", addr);
+	priv->uar_base = addr; /* for primary and secondary UAR re-mmap. */
+	uar_base = addr; /* process local, don't reserve again. */
+	return 0;
+}
+
+/**
+ * Reserve UAR address space for secondary process, align with
+ * primary process.
+ *
+ * @param[in] priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_uar_init_secondary(struct priv *priv)
+{
+	void *addr;
+	int ret;
+
+	assert(priv->uar_base);
+	if (uar_base) { /* already reserved. */
+		assert(uar_base == priv->uar_base);
+		return 0;
+	}
+	/* anonymous mmap, no real memory consumption. */
+	addr = mmap(priv->uar_base, MLX5_UAR_SIZE,
+		    PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (addr == MAP_FAILED) {
+		ERROR("UAR mmap failed: %p size: %llu",
+		      priv->uar_base, MLX5_UAR_SIZE);
+		ret = ENXIO;
+		return ret;
+	}
+	if (priv->uar_base != addr) {
+		ERROR("UAR address %p size %llu occupied, please adjust "
+		      "MLX5_UAR_OFFSET or try EAL parameter --base-virtaddr",
+		      priv->uar_base, MLX5_UAR_SIZE);
+		ret = ENXIO;
+		return ret;
+	}
+	uar_base = addr; /* process local, don't reserve again */
+	INFO("Reserved UAR address space: %p", addr);
+	return 0;
+}
+
 /**
  * DPDK callback to register a PCI device.
  *
@@ -663,6 +765,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			eth_dev->device = &pci_dev->device;
 			eth_dev->dev_ops = &mlx5_dev_sec_ops;
 			priv = eth_dev->data->dev_private;
+			err = priv_uar_init_secondary(priv);
+			if (err < 0) {
+				err = -err;
+				goto error;
+			}
 			/* Receive command fd from primary process */
 			err = priv_socket_connect(priv);
 			if (err < 0) {
@@ -671,10 +778,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			}
 			/* Remap UAR for Tx queues. */
 			err = priv_tx_uar_remap(priv, err);
-			if (err < 0) {
-				err = -err;
+			if (err)
 				goto error;
-			}
 			/*
 			 * Ethdev pointer is still required as input since
 			 * the primary device is not accessible from the
@@ -820,6 +925,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			WARN("Rx CQE compression isn't supported");
 			config.cqe_comp = 0;
 		}
+		err = priv_uar_init_primary(priv);
+		if (err)
+			goto port_error;
 		/* Configure the first MAC address by default. */
 		if (priv_get_mac(priv, &mac.addr_bytes)) {
 			ERROR("cannot get MAC address, is mlx5_en loaded?"

@@ -76,10 +76,13 @@ priv_txq_start(struct priv *priv)
 			goto error;
 		}
 	}
-	return -ret;
+	ret = priv_tx_uar_remap(priv, priv->ctx->cmd_fd);
+	if (ret)
+		goto error;
+	return ret;
 error:
 	priv_txq_stop(priv);
-	return -ret;
+	return ret;
 }
 
 static void

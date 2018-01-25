@@ -205,7 +205,7 @@ struct mlx5_txq_data {
 	volatile void *wqes; /* Work queue (use volatile to write into). */
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
-	volatile void *bf_reg; /* Blueflame register. */
+	volatile void *bf_reg; /* Blueflame register remapped. */
 	struct mlx5_mr *mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MR translation table. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
@@ -230,6 +230,7 @@ struct mlx5_txq_ctrl {
 	struct mlx5_txq_ibv *ibv; /* Verbs queue object. */
 	struct mlx5_txq_data txq; /* Data path structure. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
+	volatile void *bf_reg_orig; /* Blueflame register from verbs. */
 };
 
 /* mlx5_rxq.c */
