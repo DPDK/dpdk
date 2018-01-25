@@ -95,7 +95,7 @@ mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
 	memset(&dev->data->mac_addrs[index], 0, sizeof(struct ether_addr));
-	if (!dev->data->promiscuous && !dev->data->all_multicast)
+	if (!dev->data->promiscuous)
 		mlx5_traffic_restart(dev);
 }
 
@@ -134,7 +134,7 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 		return EADDRINUSE;
 	}
 	dev->data->mac_addrs[index] = *mac;
-	if (!dev->data->promiscuous && !dev->data->all_multicast)
+	if (!dev->data->promiscuous)
 		mlx5_traffic_restart(dev);
 	return ret;
 }
