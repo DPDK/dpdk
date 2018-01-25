@@ -1413,6 +1413,11 @@ igb_flow_create(struct rte_eth_dev *dev,
 		if (!ret) {
 			ntuple_filter_ptr = rte_zmalloc("igb_ntuple_filter",
 				sizeof(struct igb_ntuple_filter_ele), 0);
+			if (!ntuple_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+
 			rte_memcpy(&ntuple_filter_ptr->filter_info,
 				&ntuple_filter,
 				sizeof(struct rte_eth_ntuple_filter));
@@ -1435,6 +1440,11 @@ igb_flow_create(struct rte_eth_dev *dev,
 			ethertype_filter_ptr = rte_zmalloc(
 				"igb_ethertype_filter",
 				sizeof(struct igb_ethertype_filter_ele), 0);
+			if (!ethertype_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+
 			rte_memcpy(&ethertype_filter_ptr->filter_info,
 				&ethertype_filter,
 				sizeof(struct rte_eth_ethertype_filter));
@@ -1455,6 +1465,11 @@ igb_flow_create(struct rte_eth_dev *dev,
 		if (!ret) {
 			syn_filter_ptr = rte_zmalloc("igb_syn_filter",
 				sizeof(struct igb_eth_syn_filter_ele), 0);
+			if (!syn_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+
 			rte_memcpy(&syn_filter_ptr->filter_info,
 				&syn_filter,
 				sizeof(struct rte_eth_syn_filter));
@@ -1476,6 +1491,11 @@ igb_flow_create(struct rte_eth_dev *dev,
 		if (!ret) {
 			flex_filter_ptr = rte_zmalloc("igb_flex_filter",
 				sizeof(struct igb_flex_filter_ele), 0);
+			if (!flex_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+
 			rte_memcpy(&flex_filter_ptr->filter_info,
 				&flex_filter,
 				sizeof(struct rte_eth_flex_filter));
