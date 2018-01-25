@@ -79,6 +79,10 @@ extern "C" {
 
 #define rte_io_rmb() rte_rmb()
 
+#define rte_cio_wmb() rte_wmb()
+
+#define rte_cio_rmb() rte_rmb()
+
 #ifdef __cplusplus
 }
 #endif
