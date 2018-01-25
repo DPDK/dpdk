@@ -1989,8 +1989,8 @@ i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 		item_type = item->type;
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth_spec = (const struct rte_flow_item_eth *)item->spec;
-			eth_mask = (const struct rte_flow_item_eth *)item->mask;
+			eth_spec = item->spec;
+			eth_mask = item->mask;
 			/* Get the MAC info. */
 			if (!eth_spec || !eth_mask) {
 				rte_flow_error_set(error, EINVAL,
@@ -2075,7 +2075,7 @@ i40e_flow_parse_ethertype_action(struct rte_eth_dev *dev,
 	}
 
 	if (act->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
-		act_q = (const struct rte_flow_action_queue *)act->conf;
+		act_q = act->conf;
 		filter->queue = act_q->index;
 		if (filter->queue >= pf->dev_data->nb_rx_queues) {
 			rte_flow_error_set(error, EINVAL,
@@ -2477,8 +2477,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		item_type = item->type;
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth_spec = (const struct rte_flow_item_eth *)item->spec;
-			eth_mask = (const struct rte_flow_item_eth *)item->mask;
+			eth_spec = item->spec;
+			eth_mask = item->mask;
 
 			if (eth_spec && eth_mask) {
 				if (!is_zero_ether_addr(&eth_mask->src) ||
@@ -2515,10 +2515,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			vlan_spec =
-				(const struct rte_flow_item_vlan *)item->spec;
-			vlan_mask =
-				(const struct rte_flow_item_vlan *)item->mask;
+			vlan_spec = item->spec;
+			vlan_mask = item->mask;
 			if (vlan_spec && vlan_mask) {
 				if (vlan_mask->tci ==
 				    rte_cpu_to_be_16(I40E_TCI_MASK)) {
@@ -2534,10 +2532,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			l3 = RTE_FLOW_ITEM_TYPE_IPV4;
-			ipv4_spec =
-				(const struct rte_flow_item_ipv4 *)item->spec;
-			ipv4_mask =
-				(const struct rte_flow_item_ipv4 *)item->mask;
+			ipv4_spec = item->spec;
+			ipv4_mask = item->mask;
 			pctype = I40E_FILTER_PCTYPE_NONF_IPV4_OTHER;
 			layer_idx = I40E_FLXPLD_L3_IDX;
 
@@ -2602,10 +2598,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			l3 = RTE_FLOW_ITEM_TYPE_IPV6;
-			ipv6_spec =
-				(const struct rte_flow_item_ipv6 *)item->spec;
-			ipv6_mask =
-				(const struct rte_flow_item_ipv6 *)item->mask;
+			ipv6_spec = item->spec;
+			ipv6_mask = item->mask;
 			pctype = I40E_FILTER_PCTYPE_NONF_IPV6_OTHER;
 			layer_idx = I40E_FLXPLD_L3_IDX;
 
@@ -2673,8 +2667,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				outer_ip = false;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
-			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+			tcp_spec = item->spec;
+			tcp_mask = item->mask;
 
 			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 				pctype =
@@ -2721,8 +2715,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			udp_spec = (const struct rte_flow_item_udp *)item->spec;
-			udp_mask = (const struct rte_flow_item_udp *)item->mask;
+			udp_spec = item->spec;
+			udp_mask = item->mask;
 
 			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 				pctype =
@@ -2774,8 +2768,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				return -rte_errno;
 			}
 
-			gtp_spec = (const struct rte_flow_item_gtp *)item->spec;
-			gtp_mask = (const struct rte_flow_item_gtp *)item->mask;
+			gtp_spec = item->spec;
+			gtp_mask = item->mask;
 
 			if (gtp_spec && gtp_mask) {
 				if (gtp_mask->v_pt_rsv_flags ||
@@ -2796,10 +2790,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_SCTP:
-			sctp_spec =
-				(const struct rte_flow_item_sctp *)item->spec;
-			sctp_mask =
-				(const struct rte_flow_item_sctp *)item->mask;
+			sctp_spec = item->spec;
+			sctp_mask = item->mask;
 
 			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 				pctype =
@@ -2847,8 +2839,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_RAW:
-			raw_spec = (const struct rte_flow_item_raw *)item->spec;
-			raw_mask = (const struct rte_flow_item_raw *)item->mask;
+			raw_spec = item->spec;
+			raw_mask = item->mask;
 
 			if (!raw_spec || !raw_mask) {
 				rte_flow_error_set(error, EINVAL,
@@ -2916,7 +2908,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			raw_id++;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VF:
-			vf_spec = (const struct rte_flow_item_vf *)item->spec;
+			vf_spec = item->spec;
 			filter->input.flow_ext.is_vf = 1;
 			filter->input.flow_ext.dst_id = vf_spec->id;
 			if (filter->input.flow_ext.is_vf &&
@@ -3008,7 +3000,7 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
-		act_q = (const struct rte_flow_action_queue *)act->conf;
+		act_q = act->conf;
 		filter->action.rx_queue = act_q->index;
 		if ((!filter->input.flow_ext.is_vf &&
 		     filter->action.rx_queue >= pf->dev_data->nb_rx_queues) ||
@@ -3039,7 +3031,7 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_MARK:
-		mark_spec = (const struct rte_flow_action_mark *)act->conf;
+		mark_spec = act->conf;
 		filter->action.report_status = I40E_FDIR_REPORT_ID;
 		filter->soft_id = mark_spec->id;
 		break;
@@ -3130,7 +3122,7 @@ i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 	}
 
 	if (act->type == RTE_FLOW_ACTION_TYPE_VF) {
-		act_vf = (const struct rte_flow_action_vf *)act->conf;
+		act_vf = act->conf;
 		filter->vf_id = act_vf->id;
 		filter->is_to_vf = 1;
 		if (filter->vf_id >= pf->vf_num) {
@@ -3145,7 +3137,7 @@ i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 	index++;
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	if (act->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
-		act_q = (const struct rte_flow_action_queue *)act->conf;
+		act_q = act->conf;
 		filter->queue_id = act_q->index;
 		if ((!filter->is_to_vf) &&
 		    (filter->queue_id >= pf->dev_data->nb_rx_queues)) {
@@ -3237,8 +3229,8 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 		item_type = item->type;
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth_spec = (const struct rte_flow_item_eth *)item->spec;
-			eth_mask = (const struct rte_flow_item_eth *)item->mask;
+			eth_spec = item->spec;
+			eth_mask = item->mask;
 
 			/* Check if ETH item is used for place holder.
 			 * If yes, both spec and mask should be NULL.
@@ -3281,10 +3273,8 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			vlan_spec =
-				(const struct rte_flow_item_vlan *)item->spec;
-			vlan_mask =
-				(const struct rte_flow_item_vlan *)item->mask;
+			vlan_spec = item->spec;
+			vlan_mask = item->mask;
 			if (!(vlan_spec && vlan_mask)) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -3341,10 +3331,8 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			vxlan_spec =
-				(const struct rte_flow_item_vxlan *)item->spec;
-			vxlan_mask =
-				(const struct rte_flow_item_vxlan *)item->mask;
+			vxlan_spec = item->spec;
+			vxlan_mask = item->mask;
 			/* Check if VXLAN item is used to describe protocol.
 			 * If yes, both spec and mask should be NULL.
 			 * If no, both spec and mask shouldn't be NULL.
@@ -3470,8 +3458,8 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 		item_type = item->type;
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth_spec = (const struct rte_flow_item_eth *)item->spec;
-			eth_mask = (const struct rte_flow_item_eth *)item->mask;
+			eth_spec = item->spec;
+			eth_mask = item->mask;
 
 			/* Check if ETH item is used for place holder.
 			 * If yes, both spec and mask should be NULL.
@@ -3515,10 +3503,8 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			vlan_spec =
-				(const struct rte_flow_item_vlan *)item->spec;
-			vlan_mask =
-				(const struct rte_flow_item_vlan *)item->mask;
+			vlan_spec = item->spec;
+			vlan_mask = item->mask;
 			if (!(vlan_spec && vlan_mask)) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -3563,10 +3549,8 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
-			nvgre_spec =
-				(const struct rte_flow_item_nvgre *)item->spec;
-			nvgre_mask =
-				(const struct rte_flow_item_nvgre *)item->mask;
+			nvgre_spec = item->spec;
+			nvgre_mask = item->mask;
 			/* Check if NVGRE item is used to describe protocol.
 			 * If yes, both spec and mask should be NULL.
 			 * If no, both spec and mask shouldn't be NULL.
@@ -3777,10 +3761,8 @@ i40e_flow_parse_mpls_pattern(__rte_unused struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
-			mpls_spec =
-				(const struct rte_flow_item_mpls *)item->spec;
-			mpls_mask =
-				(const struct rte_flow_item_mpls *)item->mask;
+			mpls_spec = item->spec;
+			mpls_mask = item->mask;
 
 			if (!mpls_spec || !mpls_mask) {
 				rte_flow_error_set(error, EINVAL,
@@ -3916,10 +3898,8 @@ i40e_flow_parse_gtp_pattern(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTPC:
 		case RTE_FLOW_ITEM_TYPE_GTPU:
-			gtp_spec =
-				(const struct rte_flow_item_gtp *)item->spec;
-			gtp_mask =
-				(const struct rte_flow_item_gtp *)item->mask;
+			gtp_spec = item->spec;
+			gtp_mask = item->mask;
 
 			if (!gtp_spec || !gtp_mask) {
 				rte_flow_error_set(error, EINVAL,
@@ -4030,10 +4010,8 @@ i40e_flow_parse_qinq_pattern(__rte_unused struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			vlan_spec =
-				(const struct rte_flow_item_vlan *)item->spec;
-			vlan_mask =
-				(const struct rte_flow_item_vlan *)item->mask;
+			vlan_spec = item->spec;
+			vlan_mask = item->mask;
 
 			if (!(vlan_spec && vlan_mask)) {
 				rte_flow_error_set(error, EINVAL,
@@ -4157,10 +4135,8 @@ i40e_flow_parse_rss_pattern(__rte_unused struct rte_eth_dev *dev,
 			*action_flag = 1;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			vlan_spec =
-				(const struct rte_flow_item_vlan *)item->spec;
-			vlan_mask =
-				(const struct rte_flow_item_vlan *)item->mask;
+			vlan_spec = item->spec;
+			vlan_mask = item->mask;
 			if (vlan_spec && vlan_mask) {
 				if (vlan_mask->tci ==
 					rte_cpu_to_be_16(I40E_TCI_MASK)) {
@@ -4203,7 +4179,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 	uint32_t index = 0;
 
 	NEXT_ITEM_OF_ACTION(act, actions, index);
-	rss = (const struct rte_flow_action_rss *)act->conf;
+	rss = act->conf;
 
 	/**
 	 * rss only supports forwarding,
