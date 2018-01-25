@@ -2851,6 +2851,13 @@ bond_ethdev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+static void
+bond_ethdev_mac_address_set(struct rte_eth_dev *dev, struct ether_addr *addr)
+{
+	if (mac_address_set(dev, addr))
+		RTE_BOND_LOG(ERR, "Failed to update MAC address");
+}
+
 const struct eth_dev_ops default_dev_ops = {
 	.dev_start            = bond_ethdev_start,
 	.dev_stop             = bond_ethdev_stop,
@@ -2871,7 +2878,8 @@ const struct eth_dev_ops default_dev_ops = {
 	.reta_query           = bond_ethdev_rss_reta_query,
 	.rss_hash_update      = bond_ethdev_rss_hash_update,
 	.rss_hash_conf_get    = bond_ethdev_rss_hash_conf_get,
-	.mtu_set              = bond_ethdev_mtu_set
+	.mtu_set              = bond_ethdev_mtu_set,
+	.mac_addr_set         = bond_ethdev_mac_address_set
 };
 
 static int
