@@ -3241,10 +3241,10 @@ RTE_INIT(fm10k_init_log);
 static void
 fm10k_init_log(void)
 {
-	fm10k_logtype_init = rte_log_register("pmd.fm10k.init");
+	fm10k_logtype_init = rte_log_register("pmd.net.fm10k.init");
 	if (fm10k_logtype_init >= 0)
 		rte_log_set_level(fm10k_logtype_init, RTE_LOG_NOTICE);
-	fm10k_logtype_driver = rte_log_register("pmd.fm10k.driver");
+	fm10k_logtype_driver = rte_log_register("pmd.net.fm10k.driver");
 	if (fm10k_logtype_driver >= 0)
 		rte_log_set_level(fm10k_logtype_driver, RTE_LOG_NOTICE);
 }
