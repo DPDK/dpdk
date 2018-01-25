@@ -814,6 +814,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		uint16x4_t mask;
 		uint16x4_t byte_cnt;
 		uint32x4_t ptype_info, flow_tag;
+		register uint64x2_t c0, c1, c2, c3;
 		uint8_t *p0, *p1, *p2, *p3;
 		uint8_t *e0 = (void *)&elts[pos]->pkt_len;
 		uint8_t *e1 = (void *)&elts[pos + 1]->pkt_len;
@@ -830,6 +831,16 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		p1 = p0 + (pkts_n - pos > 1) * sizeof(struct mlx5_cqe);
 		p2 = p1 + (pkts_n - pos > 2) * sizeof(struct mlx5_cqe);
 		p3 = p2 + (pkts_n - pos > 3) * sizeof(struct mlx5_cqe);
+		/* B.0 (CQE 3) load a block having op_own. */
+		c3 = vld1q_u64((uint64_t *)(p3 + 48));
+		/* B.0 (CQE 2) load a block having op_own. */
+		c2 = vld1q_u64((uint64_t *)(p2 + 48));
+		/* B.0 (CQE 1) load a block having op_own. */
+		c1 = vld1q_u64((uint64_t *)(p1 + 48));
+		/* B.0 (CQE 0) load a block having op_own. */
+		c0 = vld1q_u64((uint64_t *)(p0 + 48));
+		/* Synchronize for loading the rest of blocks. */
+		rte_cio_rmb();
 		/* Prefetch next 4 CQEs. */
 		if (pkts_n - pos >= 2 * MLX5_VPMD_DESCS_PER_LOOP) {
 			unsigned int next = pos + MLX5_VPMD_DESCS_PER_LOOP;
@@ -839,50 +850,46 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			rte_prefetch_non_temporal(&cq[next + 3]);
 		}
 		__asm__ volatile (
-		/* B.1 (CQE 3) load a block having op_own. */
-		"ld1 {v19.16b}, [%[p3]] \n\t"
-		"sub %[p3], %[p3], #48 \n\t"
-		/* B.2 (CQE 3) load the rest blocks. */
+		/* B.1 (CQE 3) load the rest of blocks. */
 		"ld1 {v16.16b - v18.16b}, [%[p3]] \n\t"
+		/* B.2 (CQE 3) move the block having op_own. */
+		"mov v19.16b, %[c3].16b \n\t"
 		/* B.3 (CQE 3) extract 16B fields. */
 		"tbl v23.16b, {v16.16b - v19.16b}, %[cqe_shuf_m].16b \n\t"
+		/* B.1 (CQE 2) load the rest of blocks. */
+		"ld1 {v16.16b - v18.16b}, [%[p2]] \n\t"
 		/* B.4 (CQE 3) adjust CRC length. */
 		"sub v23.8h, v23.8h, %[crc_adj].8h \n\t"
-		/* B.1 (CQE 2) load a block having op_own. */
-		"ld1 {v19.16b}, [%[p2]] \n\t"
-		"sub %[p2], %[p2], #48 \n\t"
 		/* C.1 (CQE 3) generate final structure for mbuf. */
 		"tbl v15.16b, {v23.16b}, %[mb_shuf_m].16b \n\t"
-		/* B.2 (CQE 2) load the rest blocks. */
-		"ld1 {v16.16b - v18.16b}, [%[p2]] \n\t"
+		/* B.2 (CQE 2) move the block having op_own. */
+		"mov v19.16b, %[c2].16b \n\t"
 		/* B.3 (CQE 2) extract 16B fields. */
 		"tbl v22.16b, {v16.16b - v19.16b}, %[cqe_shuf_m].16b \n\t"
+		/* B.1 (CQE 1) load the rest of blocks. */
+		"ld1 {v16.16b - v18.16b}, [%[p1]] \n\t"
 		/* B.4 (CQE 2) adjust CRC length. */
 		"sub v22.8h, v22.8h, %[crc_adj].8h \n\t"
-		/* B.1 (CQE 1) load a block having op_own. */
-		"ld1 {v19.16b}, [%[p1]] \n\t"
-		"sub %[p1], %[p1], #48 \n\t"
 		/* C.1 (CQE 2) generate final structure for mbuf. */
 		"tbl v14.16b, {v22.16b}, %[mb_shuf_m].16b \n\t"
-		/* B.2 (CQE 1) load the rest blocks. */
-		"ld1 {v16.16b - v18.16b}, [%[p1]] \n\t"
+		/* B.2 (CQE 1) move the block having op_own. */
+		"mov v19.16b, %[c1].16b \n\t"
 		/* B.3 (CQE 1) extract 16B fields. */
 		"tbl v21.16b, {v16.16b - v19.16b}, %[cqe_shuf_m].16b \n\t"
+		/* B.1 (CQE 0) load the rest of blocks. */
+		"ld1 {v16.16b - v18.16b}, [%[p0]] \n\t"
 		/* B.4 (CQE 1) adjust CRC length. */
 		"sub v21.8h, v21.8h, %[crc_adj].8h \n\t"
-		/* B.1 (CQE 0) load a block having op_own. */
-		"ld1 {v19.16b}, [%[p0]] \n\t"
-		"sub %[p0], %[p0], #48 \n\t"
 		/* C.1 (CQE 1) generate final structure for mbuf. */
 		"tbl v13.16b, {v21.16b}, %[mb_shuf_m].16b \n\t"
-		/* B.2 (CQE 0) load the rest blocks. */
-		"ld1 {v16.16b - v18.16b}, [%[p0]] \n\t"
+		/* B.2 (CQE 0) move the block having op_own. */
+		"mov v19.16b, %[c0].16b \n\t"
+		/* A.1 load mbuf pointers. */
+		"ld1 {v24.2d - v25.2d}, [%[elts_p]] \n\t"
 		/* B.3 (CQE 0) extract 16B fields. */
 		"tbl v20.16b, {v16.16b - v19.16b}, %[cqe_shuf_m].16b \n\t"
 		/* B.4 (CQE 0) adjust CRC length. */
 		"sub v20.8h, v20.8h, %[crc_adj].8h \n\t"
-		/* A.1 load mbuf pointers. */
-		"ld1 {v24.2d - v25.2d}, [%[elts_p]] \n\t"
 		/* D.1 extract op_own byte. */
 		"tbl %[op_own].8b, {v20.16b - v23.16b}, %[owner_shuf_m].8b \n\t"
 		/* C.2 (CQE 3) adjust flow mark. */
@@ -917,9 +924,9 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		 [byte_cnt]"=&w"(byte_cnt),
 		 [ptype_info]"=&w"(ptype_info),
 		 [flow_tag]"=&w"(flow_tag)
-		:[p3]"r"(p3 + 48), [p2]"r"(p2 + 48),
-		 [p1]"r"(p1 + 48), [p0]"r"(p0 + 48),
+		:[p3]"r"(p3), [p2]"r"(p2), [p1]"r"(p1), [p0]"r"(p0),
 		 [e3]"r"(e3), [e2]"r"(e2), [e1]"r"(e1), [e0]"r"(e0),
+		 [c3]"w"(c3), [c2]"w"(c2), [c1]"w"(c1), [c0]"w"(c0),
 		 [elts_p]"r"(elts_p),
 		 [pkts_p]"r"(pkts_p),
 		 [cqe_shuf_m]"w"(cqe_shuf_m),

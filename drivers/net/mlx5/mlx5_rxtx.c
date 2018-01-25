@@ -1669,6 +1669,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 			return 0;
 		++rxq->cq_ci;
 		op_own = cqe->op_own;
+		rte_cio_rmb();
 		if (MLX5_CQE_FORMAT(op_own) == MLX5_COMPRESSED) {
 			volatile struct mlx5_mini_cqe8 (*mc)[8] =
 				(volatile struct mlx5_mini_cqe8 (*)[8])
