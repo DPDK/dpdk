@@ -555,7 +555,8 @@ mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 	if (likely(txq->mp2mr[i]->start <= addr && txq->mp2mr[i]->end >= addr))
 		return txq->mp2mr[i]->lkey;
 	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
-		if (unlikely(txq->mp2mr[i]->mr == NULL)) {
+		if (unlikely(txq->mp2mr[i] == NULL ||
+		    txq->mp2mr[i]->mr == NULL)) {
 			/* Unknown MP, add a new MR for it. */
 			break;
 		}
