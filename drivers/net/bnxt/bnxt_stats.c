@@ -237,7 +237,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 
 	memset(bnxt_stats, 0, sizeof(*bnxt_stats));
 	if (!(bp->flags & BNXT_FLAG_INIT_DONE)) {
-		RTE_LOG(ERR, PMD, "Device Initialization not complete!\n");
+		PMD_DRV_LOG(ERR, "Device Initialization not complete!\n");
 		return 0;
 	}
 
@@ -272,7 +272,7 @@ void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	if (!(bp->flags & BNXT_FLAG_INIT_DONE)) {
-		RTE_LOG(ERR, PMD, "Device Initialization not complete!\n");
+		PMD_DRV_LOG(ERR, "Device Initialization not complete!\n");
 		return;
 	}
 
@@ -289,7 +289,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	uint64_t tx_drop_pkts;
 
 	if (!(bp->flags & BNXT_FLAG_PORT_STATS)) {
-		RTE_LOG(ERR, PMD, "xstats not supported for VF\n");
+		PMD_DRV_LOG(ERR, "xstats not supported for VF\n");
 		return 0;
 	}
 
@@ -371,11 +371,11 @@ void bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 		bnxt_hwrm_port_clr_stats(bp);
 
 	if (BNXT_VF(bp))
-		RTE_LOG(ERR, PMD, "Operation not supported on a VF device\n");
+		PMD_DRV_LOG(ERR, "Operation not supported on a VF device\n");
 	if (!BNXT_SINGLE_PF(bp))
-		RTE_LOG(ERR, PMD, "Operation not supported on a MF device\n");
+		PMD_DRV_LOG(ERR, "Operation not supported on a MF device\n");
 	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
-		RTE_LOG(ERR, PMD, "Operation not supported\n");
+		PMD_DRV_LOG(ERR, "Operation not supported\n");
 }
 
 int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
@@ -394,7 +394,7 @@ int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
 	bnxt_dev_xstats_get_by_id_op(dev, NULL, values_copy, stat_cnt);
 	for (i = 0; i < limit; i++) {
 		if (ids[i] >= stat_cnt) {
-			RTE_LOG(ERR, PMD, "id value isn't valid");
+			PMD_DRV_LOG(ERR, "id value isn't valid");
 			return -1;
 		}
 		values[i] = values_copy[ids[i]];
@@ -420,7 +420,7 @@ int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
 
 	for (i = 0; i < limit; i++) {
 		if (ids[i] >= stat_cnt) {
-			RTE_LOG(ERR, PMD, "id value isn't valid");
+			PMD_DRV_LOG(ERR, "id value isn't valid");
 			return -1;
 		}
 		strcpy(xstats_names[i].name,

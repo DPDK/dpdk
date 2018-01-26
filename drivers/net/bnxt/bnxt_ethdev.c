@@ -58,6 +58,7 @@
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
 	"Broadcom Cumulus driver " DRV_MODULE_NAME "\n";
+int bnxt_logtype_driver;
 
 #define PCI_VENDOR_ID_BROADCOM 0x14E4
 
@@ -223,25 +224,25 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 	rc = bnxt_alloc_all_hwrm_stat_ctxs(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "HWRM stat ctx alloc failure rc: %x\n", rc);
+		PMD_DRV_LOG(ERR, "HWRM stat ctx alloc failure rc: %x\n", rc);
 		goto err_out;
 	}
 
 	rc = bnxt_alloc_hwrm_rings(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "HWRM ring alloc failure rc: %x\n", rc);
+		PMD_DRV_LOG(ERR, "HWRM ring alloc failure rc: %x\n", rc);
 		goto err_out;
 	}
 
 	rc = bnxt_alloc_all_hwrm_ring_grps(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "HWRM ring grp alloc failure: %x\n", rc);
+		PMD_DRV_LOG(ERR, "HWRM ring grp alloc failure: %x\n", rc);
 		goto err_out;
 	}
 
 	rc = bnxt_mq_rx_configure(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "MQ mode configure failure rc: %x\n", rc);
+		PMD_DRV_LOG(ERR, "MQ mode configure failure rc: %x\n", rc);
 		goto err_out;
 	}
 
@@ -251,14 +252,14 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 		rc = bnxt_hwrm_vnic_alloc(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD, "HWRM vnic %d alloc failure rc: %x\n",
+			PMD_DRV_LOG(ERR, "HWRM vnic %d alloc failure rc: %x\n",
 				i, rc);
 			goto err_out;
 		}
 
 		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"HWRM vnic %d ctx alloc failure rc: %x\n",
 				i, rc);
 			goto err_out;
@@ -266,14 +267,14 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD, "HWRM vnic %d cfg failure rc: %x\n",
+			PMD_DRV_LOG(ERR, "HWRM vnic %d cfg failure rc: %x\n",
 				i, rc);
 			goto err_out;
 		}
 
 		rc = bnxt_set_hwrm_vnic_filters(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"HWRM vnic %d filter failure rc: %x\n",
 				i, rc);
 			goto err_out;
@@ -294,7 +295,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 			}
 			rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 			if (rc) {
-				RTE_LOG(ERR, PMD,
+				PMD_DRV_LOG(ERR,
 					"HWRM vnic %d set RSS failure rc: %x\n",
 					i, rc);
 				goto err_out;
@@ -310,7 +311,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 	}
 	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0], 0, NULL);
 	if (rc) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"HWRM cfa l2 rx mask failure rc: %x\n", rc);
 		goto err_out;
 	}
@@ -320,10 +321,9 @@ static int bnxt_init_chip(struct bnxt *bp)
 	     !RTE_ETH_DEV_SRIOV(bp->eth_dev).active) &&
 	    bp->eth_dev->data->dev_conf.intr_conf.rxq != 0) {
 		intr_vector = bp->eth_dev->data->nb_rx_queues;
-		RTE_LOG(INFO, PMD, "%s(): intr_vector = %d\n", __func__,
-			intr_vector);
+		PMD_DRV_LOG(DEBUG, "intr_vector = %d\n", intr_vector);
 		if (intr_vector > bp->rx_cp_nr_rings) {
-			RTE_LOG(ERR, PMD, "At most %d intr queues supported",
+			PMD_DRV_LOG(ERR, "At most %d intr queues supported",
 					bp->rx_cp_nr_rings);
 			return -ENOTSUP;
 		}
@@ -337,13 +337,13 @@ static int bnxt_init_chip(struct bnxt *bp)
 				    bp->eth_dev->data->nb_rx_queues *
 				    sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
-			RTE_LOG(ERR, PMD, "Failed to allocate %d rx_queues"
+			PMD_DRV_LOG(ERR, "Failed to allocate %d rx_queues"
 				" intr_vec", bp->eth_dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
-		RTE_LOG(DEBUG, PMD, "%s(): intr_handle->intr_vec = %p "
+		PMD_DRV_LOG(DEBUG, "intr_handle->intr_vec = %p "
 			"intr_handle->nb_efd = %d intr_handle->max_intr = %d\n",
-			 __func__, intr_handle->intr_vec, intr_handle->nb_efd,
+			 intr_handle->intr_vec, intr_handle->nb_efd,
 			intr_handle->max_intr);
 	}
 
@@ -359,14 +359,14 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 	rc = bnxt_get_hwrm_link_config(bp, &new);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "HWRM Get link config failure rc: %x\n", rc);
+		PMD_DRV_LOG(ERR, "HWRM Get link config failure rc: %x\n", rc);
 		goto err_out;
 	}
 
 	if (!bp->link_info.link_up) {
 		rc = bnxt_set_hwrm_link_config(bp, true);
 		if (rc) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"HWRM link config failure rc: %x\n", rc);
 			goto err_out;
 		}
@@ -537,13 +537,13 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
 	    bp->max_stat_ctx ||
 	    (uint32_t)(eth_dev->data->nb_rx_queues + 1) > bp->max_ring_grps) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Insufficient resources to support requested config\n");
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Num Queues Requested: Tx %d, Rx %d\n",
 			eth_dev->data->nb_tx_queues,
 			eth_dev->data->nb_rx_queues);
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Res available: TxQ %d, RxQ %d, CQ %d Stat %d, Grp %d\n",
 			bp->max_tx_rings, bp->max_rx_rings, bp->max_cp_rings,
 			bp->max_stat_ctx, bp->max_ring_grps);
@@ -567,13 +567,13 @@ static void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
 	struct rte_eth_link *link = &eth_dev->data->dev_link;
 
 	if (link->link_status)
-		RTE_LOG(INFO, PMD, "Port %d Link Up - speed %u Mbps - %s\n",
+		PMD_DRV_LOG(INFO, "Port %d Link Up - speed %u Mbps - %s\n",
 			eth_dev->data->port_id,
 			(uint32_t)link->link_speed,
 			(link->link_duplex == ETH_LINK_FULL_DUPLEX) ?
 			("full-duplex") : ("half-duplex\n"));
 	else
-		RTE_LOG(INFO, PMD, "Port %d Link Down\n",
+		PMD_DRV_LOG(INFO, "Port %d Link Down\n",
 			eth_dev->data->port_id);
 }
 
@@ -590,7 +590,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	int rc;
 
 	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"RxQ cnt %d > CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
 			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	}
@@ -729,25 +729,25 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_filter_info *filter;
 
 	if (BNXT_VF(bp)) {
-		RTE_LOG(ERR, PMD, "Cannot add MAC address to a VF interface\n");
+		PMD_DRV_LOG(ERR, "Cannot add MAC address to a VF interface\n");
 		return -ENOTSUP;
 	}
 
 	if (!vnic) {
-		RTE_LOG(ERR, PMD, "VNIC not found for pool %d!\n", pool);
+		PMD_DRV_LOG(ERR, "VNIC not found for pool %d!\n", pool);
 		return -EINVAL;
 	}
 	/* Attach requested MAC address to the new l2_filter */
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
 		if (filter->mac_index == index) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"MAC addr already existed for pool %d\n", pool);
 			return -EINVAL;
 		}
 	}
 	filter = bnxt_alloc_filter(bp);
 	if (!filter) {
-		RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
+		PMD_DRV_LOG(ERR, "L2 filter alloc failed\n");
 		return -ENODEV;
 	}
 	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
@@ -770,7 +770,7 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 		if (rc) {
 			new.link_speed = ETH_LINK_SPEED_100M;
 			new.link_duplex = ETH_LINK_FULL_DUPLEX;
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"Failed to retrieve link rc = 0x%x!\n", rc);
 			goto out;
 		}
@@ -861,7 +861,7 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 
 	if (reta_size != HW_HASH_INDEX_SIZE) {
-		RTE_LOG(ERR, PMD, "The configured hash table lookup size "
+		PMD_DRV_LOG(ERR, "The configured hash table lookup size "
 			"(%d) must equal the size supported by the hardware "
 			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
 		return -EINVAL;
@@ -893,7 +893,7 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 
 	if (reta_size != HW_HASH_INDEX_SIZE) {
-		RTE_LOG(ERR, PMD, "The configured hash table lookup size "
+		PMD_DRV_LOG(ERR, "The configured hash table lookup size "
 			"(%d) must equal the size supported by the hardware "
 			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
 		return -EINVAL;
@@ -924,7 +924,7 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	 */
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		if (!rss_conf->rss_hf)
-			RTE_LOG(ERR, PMD, "Hash type NONE\n");
+			PMD_DRV_LOG(ERR, "Hash type NONE\n");
 	} else {
 		if (rss_conf->rss_hf & BNXT_ETH_RSS_SUPPORT)
 			return -EINVAL;
@@ -1013,7 +1013,7 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
 		}
 		if (hash_types) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"Unknwon RSS config from firmware (%08x), RSS disabled",
 				vnic->hash_type);
 			return -ENOTSUP;
@@ -1062,7 +1062,7 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 
 	if (!BNXT_SINGLE_PF(bp) || BNXT_VF(bp)) {
-		RTE_LOG(ERR, PMD, "Flow Control Settings cannot be modified\n");
+		PMD_DRV_LOG(ERR, "Flow Control Settings cannot be modified\n");
 		return -ENOTSUP;
 	}
 
@@ -1122,10 +1122,10 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 	switch (udp_tunnel->prot_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
 		if (bp->vxlan_port_cnt) {
-			RTE_LOG(ERR, PMD, "Tunnel Port %d already programmed\n",
+			PMD_DRV_LOG(ERR, "Tunnel Port %d already programmed\n",
 				udp_tunnel->udp_port);
 			if (bp->vxlan_port != udp_tunnel->udp_port) {
-				RTE_LOG(ERR, PMD, "Only one port allowed\n");
+				PMD_DRV_LOG(ERR, "Only one port allowed\n");
 				return -ENOSPC;
 			}
 			bp->vxlan_port_cnt++;
@@ -1137,10 +1137,10 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
 		if (bp->geneve_port_cnt) {
-			RTE_LOG(ERR, PMD, "Tunnel Port %d already programmed\n",
+			PMD_DRV_LOG(ERR, "Tunnel Port %d already programmed\n",
 				udp_tunnel->udp_port);
 			if (bp->geneve_port != udp_tunnel->udp_port) {
-				RTE_LOG(ERR, PMD, "Only one port allowed\n");
+				PMD_DRV_LOG(ERR, "Only one port allowed\n");
 				return -ENOSPC;
 			}
 			bp->geneve_port_cnt++;
@@ -1151,7 +1151,7 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 		bp->geneve_port_cnt++;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "Tunnel type is not supported\n");
+		PMD_DRV_LOG(ERR, "Tunnel type is not supported\n");
 		return -ENOTSUP;
 	}
 	rc = bnxt_hwrm_tunnel_dst_port_alloc(bp, udp_tunnel->udp_port,
@@ -1171,11 +1171,11 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 	switch (udp_tunnel->prot_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
 		if (!bp->vxlan_port_cnt) {
-			RTE_LOG(ERR, PMD, "No Tunnel port configured yet\n");
+			PMD_DRV_LOG(ERR, "No Tunnel port configured yet\n");
 			return -EINVAL;
 		}
 		if (bp->vxlan_port != udp_tunnel->udp_port) {
-			RTE_LOG(ERR, PMD, "Req Port: %d. Configured port: %d\n",
+			PMD_DRV_LOG(ERR, "Req Port: %d. Configured port: %d\n",
 				udp_tunnel->udp_port, bp->vxlan_port);
 			return -EINVAL;
 		}
@@ -1188,11 +1188,11 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
 		if (!bp->geneve_port_cnt) {
-			RTE_LOG(ERR, PMD, "No Tunnel port configured yet\n");
+			PMD_DRV_LOG(ERR, "No Tunnel port configured yet\n");
 			return -EINVAL;
 		}
 		if (bp->geneve_port != udp_tunnel->udp_port) {
-			RTE_LOG(ERR, PMD, "Req Port: %d. Configured port: %d\n",
+			PMD_DRV_LOG(ERR, "Req Port: %d. Configured port: %d\n",
 				udp_tunnel->udp_port, bp->geneve_port);
 			return -EINVAL;
 		}
@@ -1204,7 +1204,7 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 		port = bp->geneve_fw_dst_port_id;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "Tunnel type is not supported\n");
+		PMD_DRV_LOG(ERR, "Tunnel type is not supported\n");
 		return -ENOTSUP;
 	}
 
@@ -1261,7 +1261,7 @@ static int bnxt_del_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 
 					new_filter = bnxt_alloc_filter(bp);
 					if (!new_filter) {
-						RTE_LOG(ERR, PMD,
+						PMD_DRV_LOG(ERR,
 							"MAC/VLAN filter alloc failed\n");
 						rc = -ENOMEM;
 						goto exit;
@@ -1279,7 +1279,7 @@ static int bnxt_del_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 							new_filter);
 					if (rc)
 						goto exit;
-					RTE_LOG(INFO, PMD,
+					PMD_DRV_LOG(INFO,
 						"Del Vlan filter for %d\n",
 						vlan_id);
 				}
@@ -1334,7 +1334,7 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 				}
 				new_filter = bnxt_alloc_filter(bp);
 				if (!new_filter) {
-					RTE_LOG(ERR, PMD,
+					PMD_DRV_LOG(ERR,
 						"MAC/VLAN filter alloc failed\n");
 					rc = -ENOMEM;
 					goto exit;
@@ -1354,7 +1354,7 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 							     new_filter);
 				if (rc)
 					goto exit;
-				RTE_LOG(INFO, PMD,
+				PMD_DRV_LOG(INFO,
 					"Added Vlan filter for %d\n", vlan_id);
 cont:
 				filter = temp_filter;
@@ -1389,7 +1389,7 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 			for (i = 0; i < 4095; i++)
 				bnxt_del_vlan_filter(bp, i);
 		}
-		RTE_LOG(INFO, PMD, "VLAN Filtering: %d\n",
+		PMD_DRV_LOG(DEBUG, "VLAN Filtering: %d\n",
 			dev->data->dev_conf.rxmode.hw_vlan_filter);
 	}
 
@@ -1403,12 +1403,12 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 				vnic->vlan_strip = false;
 			bnxt_hwrm_vnic_cfg(bp, vnic);
 		}
-		RTE_LOG(INFO, PMD, "VLAN Strip Offload: %d\n",
+		PMD_DRV_LOG(DEBUG, "VLAN Strip Offload: %d\n",
 			dev->data->dev_conf.rxmode.hw_vlan_strip);
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK)
-		RTE_LOG(ERR, PMD, "Extend VLAN Not supported\n");
+		PMD_DRV_LOG(ERR, "Extend VLAN Not supported\n");
 
 	return 0;
 }
@@ -1444,7 +1444,7 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev, struct ether_addr *addr)
 		if (rc)
 			break;
 		filter->mac_index = 0;
-		RTE_LOG(DEBUG, PMD, "Set MAC addr\n");
+		PMD_DRV_LOG(DEBUG, "Set MAC addr\n");
 	}
 }
 
@@ -1547,7 +1547,7 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		      ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE * 2;
 
 	if (new_mtu < ETHER_MIN_MTU || new_mtu > max_dev_mtu) {
-		RTE_LOG(ERR, PMD, "MTU requested must be within (%d, %d)\n",
+		PMD_DRV_LOG(ERR, "MTU requested must be within (%d, %d)\n",
 			ETHER_MIN_MTU, max_dev_mtu);
 		return -EINVAL;
 	}
@@ -1565,7 +1565,7 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		new_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
 
 	eth_dev->data->mtu = new_mtu;
-	RTE_LOG(INFO, PMD, "New MTU is %d\n", eth_dev->data->mtu);
+	PMD_DRV_LOG(INFO, "New MTU is %d\n", eth_dev->data->mtu);
 
 	for (i = 0; i < bp->nr_vnics; i++) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
@@ -1592,7 +1592,7 @@ bnxt_vlan_pvid_set_op(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	int rc;
 
 	if (!BNXT_SINGLE_PF(bp) || BNXT_VF(bp)) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"PVID cannot be modified for this function\n");
 		return -ENOTSUP;
 	}
@@ -1753,13 +1753,13 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 
 	if (efilter->ether_type == ETHER_TYPE_IPv4 ||
 		efilter->ether_type == ETHER_TYPE_IPv6) {
-		RTE_LOG(ERR, PMD, "invalid ether_type(0x%04x) in"
+		PMD_DRV_LOG(ERR, "invalid ether_type(0x%04x) in"
 			" ethertype filter.", efilter->ether_type);
 		*ret = -EINVAL;
 		goto exit;
 	}
 	if (efilter->queue >= bp->rx_nr_rings) {
-		RTE_LOG(ERR, PMD, "Invalid queue %d\n", efilter->queue);
+		PMD_DRV_LOG(ERR, "Invalid queue %d\n", efilter->queue);
 		*ret = -EINVAL;
 		goto exit;
 	}
@@ -1767,7 +1767,7 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
 	vnic = STAILQ_FIRST(&bp->ff_pool[efilter->queue]);
 	if (vnic == NULL) {
-		RTE_LOG(ERR, PMD, "Invalid queue %d\n", efilter->queue);
+		PMD_DRV_LOG(ERR, "Invalid queue %d\n", efilter->queue);
 		*ret = -EINVAL;
 		goto exit;
 	}
@@ -1818,7 +1818,7 @@ bnxt_ethertype_filter(struct rte_eth_dev *dev,
 		return 0;
 
 	if (arg == NULL) {
-		RTE_LOG(ERR, PMD, "arg shouldn't be NULL for operation %u.",
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
 			    filter_op);
 		return -EINVAL;
 	}
@@ -1835,7 +1835,7 @@ bnxt_ethertype_filter(struct rte_eth_dev *dev,
 
 		bfilter = bnxt_get_unused_filter(bp);
 		if (bfilter == NULL) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"Not enough resources for a new filter.\n");
 			return -ENOMEM;
 		}
@@ -1879,11 +1879,11 @@ bnxt_ethertype_filter(struct rte_eth_dev *dev,
 				      next);
 			bnxt_free_filter(bp, filter1);
 		} else if (ret == 0) {
-			RTE_LOG(ERR, PMD, "No matching filter found\n");
+			PMD_DRV_LOG(ERR, "No matching filter found\n");
 		}
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "unsupported operation %u.", filter_op);
+		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
 		ret = -EINVAL;
 		goto error;
 	}
@@ -1902,7 +1902,7 @@ parse_ntuple_filter(struct bnxt *bp,
 	uint32_t en = 0;
 
 	if (nfilter->queue >= bp->rx_nr_rings) {
-		RTE_LOG(ERR, PMD, "Invalid queue %d\n", nfilter->queue);
+		PMD_DRV_LOG(ERR, "Invalid queue %d\n", nfilter->queue);
 		return -EINVAL;
 	}
 
@@ -1914,7 +1914,7 @@ parse_ntuple_filter(struct bnxt *bp,
 			NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "invalid dst_port mask.");
+		PMD_DRV_LOG(ERR, "invalid dst_port mask.");
 		return -EINVAL;
 	}
 
@@ -1932,7 +1932,7 @@ parse_ntuple_filter(struct bnxt *bp,
 		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "invalid protocol mask.");
+		PMD_DRV_LOG(ERR, "invalid protocol mask.");
 		return -EINVAL;
 	}
 
@@ -1944,7 +1944,7 @@ parse_ntuple_filter(struct bnxt *bp,
 			NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "invalid dst_ip mask.");
+		PMD_DRV_LOG(ERR, "invalid dst_ip mask.");
 		return -EINVAL;
 	}
 
@@ -1956,7 +1956,7 @@ parse_ntuple_filter(struct bnxt *bp,
 			NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "invalid src_ip mask.");
+		PMD_DRV_LOG(ERR, "invalid src_ip mask.");
 		return -EINVAL;
 	}
 
@@ -1968,7 +1968,7 @@ parse_ntuple_filter(struct bnxt *bp,
 			NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "invalid src_port mask.");
+		PMD_DRV_LOG(ERR, "invalid src_port mask.");
 		return -EINVAL;
 	}
 
@@ -2021,18 +2021,18 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 	int ret;
 
 	if (nfilter->flags != RTE_5TUPLE_FLAGS) {
-		RTE_LOG(ERR, PMD, "only 5tuple is supported.");
+		PMD_DRV_LOG(ERR, "only 5tuple is supported.");
 		return -EINVAL;
 	}
 
 	if (nfilter->flags & RTE_NTUPLE_FLAGS_TCP_FLAG) {
-		RTE_LOG(ERR, PMD, "Ntuple filter: TCP flags not supported\n");
+		PMD_DRV_LOG(ERR, "Ntuple filter: TCP flags not supported\n");
 		return -EINVAL;
 	}
 
 	bfilter = bnxt_get_unused_filter(bp);
 	if (bfilter == NULL) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Not enough resources for a new filter.\n");
 		return -ENOMEM;
 	}
@@ -2059,7 +2059,7 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 
 	if (mfilter != NULL && filter_op == RTE_ETH_FILTER_ADD &&
 	    bfilter->dst_id == mfilter->dst_id) {
-		RTE_LOG(ERR, PMD, "filter exists.\n");
+		PMD_DRV_LOG(ERR, "filter exists.\n");
 		ret = -EEXIST;
 		goto free_filter;
 	} else if (mfilter != NULL && filter_op == RTE_ETH_FILTER_ADD &&
@@ -2068,12 +2068,12 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 		ret = bnxt_hwrm_set_ntuple_filter(bp, mfilter->dst_id, mfilter);
 		STAILQ_REMOVE(&mvnic->filter, mfilter, bnxt_filter_info, next);
 		STAILQ_INSERT_TAIL(&vnic->filter, mfilter, next);
-		RTE_LOG(ERR, PMD, "filter with matching pattern exists.\n");
-		RTE_LOG(ERR, PMD, " Updated it to the new destination queue\n");
+		PMD_DRV_LOG(ERR, "filter with matching pattern exists.\n");
+		PMD_DRV_LOG(ERR, " Updated it to the new destination queue\n");
 		goto free_filter;
 	}
 	if (mfilter == NULL && filter_op == RTE_ETH_FILTER_DELETE) {
-		RTE_LOG(ERR, PMD, "filter doesn't exist.");
+		PMD_DRV_LOG(ERR, "filter doesn't exist.");
 		ret = -ENOENT;
 		goto free_filter;
 	}
@@ -2118,7 +2118,7 @@ bnxt_ntuple_filter(struct rte_eth_dev *dev,
 		return 0;
 
 	if (arg == NULL) {
-		RTE_LOG(ERR, PMD, "arg shouldn't be NULL for operation %u.",
+		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
 			    filter_op);
 		return -EINVAL;
 	}
@@ -2135,7 +2135,7 @@ bnxt_ntuple_filter(struct rte_eth_dev *dev,
 			filter_op);
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "unsupported operation %u.", filter_op);
+		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
 		ret = -EINVAL;
 		break;
 	}
@@ -2337,7 +2337,7 @@ bnxt_parse_fdir_filter(struct bnxt *bp,
 	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
 	vnic = STAILQ_FIRST(&bp->ff_pool[fdir->action.rx_queue]);
 	if (vnic == NULL) {
-		RTE_LOG(ERR, PMD, "Invalid queue %d\n", fdir->action.rx_queue);
+		PMD_DRV_LOG(ERR, "Invalid queue %d\n", fdir->action.rx_queue);
 		return -EINVAL;
 	}
 
@@ -2441,7 +2441,7 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 		/* FALLTHROUGH */
 		filter = bnxt_get_unused_filter(bp);
 		if (filter == NULL) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"Not enough resources for a new flow.\n");
 			return -ENOMEM;
 		}
@@ -2453,12 +2453,12 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 
 		match = bnxt_match_fdir(bp, filter);
 		if (match != NULL && filter_op == RTE_ETH_FILTER_ADD) {
-			RTE_LOG(ERR, PMD, "Flow already exists.\n");
+			PMD_DRV_LOG(ERR, "Flow already exists.\n");
 			ret = -EEXIST;
 			goto free_filter;
 		}
 		if (match == NULL && filter_op == RTE_ETH_FILTER_DELETE) {
-			RTE_LOG(ERR, PMD, "Flow does not exist.\n");
+			PMD_DRV_LOG(ERR, "Flow does not exist.\n");
 			ret = -ENOENT;
 			goto free_filter;
 		}
@@ -2505,10 +2505,10 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_STATS:
 	case RTE_ETH_FILTER_INFO:
 		/* FALLTHROUGH */
-		RTE_LOG(ERR, PMD, "operation %u not implemented", filter_op);
+		PMD_DRV_LOG(ERR, "operation %u not implemented", filter_op);
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "unknown operation %u", filter_op);
+		PMD_DRV_LOG(ERR, "unknown operation %u", filter_op);
 		ret = -EINVAL;
 		break;
 	}
@@ -2529,7 +2529,7 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
 
 	switch (filter_type) {
 	case RTE_ETH_FILTER_TUNNEL:
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"filter type: %d: To be implemented\n", filter_type);
 		break;
 	case RTE_ETH_FILTER_FDIR:
@@ -2547,7 +2547,7 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
 		*(const void **)arg = &bnxt_flow_ops;
 		break;
 	default:
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Filter type (%d) not supported", filter_type);
 		ret = -EINVAL;
 		break;
@@ -2841,8 +2841,8 @@ bnxt_get_eeprom_length_op(struct rte_eth_dev *dev)
 	uint32_t dir_entries;
 	uint32_t entry_length;
 
-	RTE_LOG(INFO, PMD, "%s(): %04x:%02x:%02x:%02x\n",
-		__func__, bp->pdev->addr.domain, bp->pdev->addr.bus,
+	PMD_DRV_LOG(INFO, "%04x:%02x:%02x:%02x\n",
+		bp->pdev->addr.domain, bp->pdev->addr.bus,
 		bp->pdev->addr.devid, bp->pdev->addr.function);
 
 	rc = bnxt_hwrm_nvm_get_dir_info(bp, &dir_entries, &entry_length);
@@ -2860,8 +2860,8 @@ bnxt_get_eeprom_op(struct rte_eth_dev *dev,
 	uint32_t index;
 	uint32_t offset;
 
-	RTE_LOG(INFO, PMD, "%s(): %04x:%02x:%02x:%02x in_eeprom->offset = %d "
-		"len = %d\n", __func__, bp->pdev->addr.domain,
+	PMD_DRV_LOG(INFO, "%04x:%02x:%02x:%02x in_eeprom->offset = %d "
+		"len = %d\n", bp->pdev->addr.domain,
 		bp->pdev->addr.bus, bp->pdev->addr.devid,
 		bp->pdev->addr.function, in_eeprom->offset, in_eeprom->length);
 
@@ -2929,13 +2929,13 @@ bnxt_set_eeprom_op(struct rte_eth_dev *dev,
 	uint8_t index, dir_op;
 	uint16_t type, ext, ordinal, attr;
 
-	RTE_LOG(INFO, PMD, "%s(): %04x:%02x:%02x:%02x in_eeprom->offset = %d "
-		"len = %d\n", __func__, bp->pdev->addr.domain,
+	PMD_DRV_LOG(INFO, "%04x:%02x:%02x:%02x in_eeprom->offset = %d "
+		"len = %d\n", bp->pdev->addr.domain,
 		bp->pdev->addr.bus, bp->pdev->addr.devid,
 		bp->pdev->addr.function, in_eeprom->offset, in_eeprom->length);
 
 	if (!BNXT_PF(bp)) {
-		RTE_LOG(ERR, PMD, "NVM write not supported from a VF\n");
+		PMD_DRV_LOG(ERR, "NVM write not supported from a VF\n");
 		return -EINVAL;
 	}
 
@@ -3056,7 +3056,7 @@ static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 
 	/* enable device (incl. PCI PM wakeup), and bus-mastering */
 	if (!pci_dev->mem_resource[0].addr) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Cannot find PCI device base address, aborting\n");
 		rc = -ENODEV;
 		goto init_err_disable;
@@ -3067,7 +3067,7 @@ static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 
 	bp->bar0 = (void *)pci_dev->mem_resource[0].addr;
 	if (!bp->bar0) {
-		RTE_LOG(ERR, PMD, "Cannot map device registers, aborting\n");
+		PMD_DRV_LOG(ERR, "Cannot map device registers, aborting\n");
 		rc = -ENOMEM;
 		goto init_err_release;
 	}
@@ -3103,7 +3103,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	int rc;
 
 	if (version_printed++ == 0)
-		RTE_LOG(INFO, PMD, "%s\n", bnxt_version);
+		PMD_DRV_LOG(INFO, "%s\n", bnxt_version);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
@@ -3120,7 +3120,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 
 	rc = bnxt_init_board(eth_dev);
 	if (rc) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Board initialization failed rc: %x\n", rc);
 		goto error;
 	}
@@ -3151,13 +3151,13 @@ skip_init:
 		memset(mz->addr, 0, mz->len);
 		mz_phys_addr = mz->iova;
 		if ((unsigned long)mz->addr == mz_phys_addr) {
-			RTE_LOG(WARNING, PMD,
+			PMD_DRV_LOG(WARNING,
 				"Memzone physical address same as virtual.\n");
-			RTE_LOG(WARNING, PMD,
+			PMD_DRV_LOG(WARNING,
 				"Using rte_mem_virt2iova()\n");
 			mz_phys_addr = rte_mem_virt2iova(mz->addr);
 			if (mz_phys_addr == 0) {
-				RTE_LOG(ERR, PMD,
+				PMD_DRV_LOG(ERR,
 				"unable to map address to physical memory\n");
 				return -ENOMEM;
 			}
@@ -3186,13 +3186,13 @@ skip_init:
 		memset(mz->addr, 0, mz->len);
 		mz_phys_addr = mz->iova;
 		if ((unsigned long)mz->addr == mz_phys_addr) {
-			RTE_LOG(WARNING, PMD,
+			PMD_DRV_LOG(WARNING,
 				"Memzone physical address same as virtual.\n");
-			RTE_LOG(WARNING, PMD,
+			PMD_DRV_LOG(WARNING,
 				"Using rte_mem_virt2iova()\n");
 			mz_phys_addr = rte_mem_virt2iova(mz->addr);
 			if (mz_phys_addr == 0) {
-				RTE_LOG(ERR, PMD,
+				PMD_DRV_LOG(ERR,
 				"unable to map address to physical memory\n");
 				return -ENOMEM;
 			}
@@ -3207,7 +3207,7 @@ skip_init:
 
 	rc = bnxt_alloc_hwrm_resources(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"hwrm resource allocation failure rc: %x\n", rc);
 		goto error_free;
 	}
@@ -3216,31 +3216,31 @@ skip_init:
 		goto error_free;
 	rc = bnxt_hwrm_queue_qportcfg(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "hwrm queue qportcfg failed\n");
+		PMD_DRV_LOG(ERR, "hwrm queue qportcfg failed\n");
 		goto error_free;
 	}
 
 	rc = bnxt_hwrm_func_qcfg(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "hwrm func qcfg failed\n");
+		PMD_DRV_LOG(ERR, "hwrm func qcfg failed\n");
 		goto error_free;
 	}
 
 	/* Get the MAX capabilities for this function */
 	rc = bnxt_hwrm_func_qcaps(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "hwrm query capability failure rc: %x\n", rc);
+		PMD_DRV_LOG(ERR, "hwrm query capability failure rc: %x\n", rc);
 		goto error_free;
 	}
 	if (bp->max_tx_rings == 0) {
-		RTE_LOG(ERR, PMD, "No TX rings available!\n");
+		PMD_DRV_LOG(ERR, "No TX rings available!\n");
 		rc = -EBUSY;
 		goto error_free;
 	}
 	eth_dev->data->mac_addrs = rte_zmalloc("bnxt_mac_addr_tbl",
 					ETHER_ADDR_LEN * bp->max_l2_ctx, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Failed to alloc %u bytes needed to store MAC addr tbl",
 			ETHER_ADDR_LEN * bp->max_l2_ctx);
 		rc = -ENOMEM;
@@ -3252,7 +3252,7 @@ skip_init:
 
 	if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
 		/* 1 ring is for default completion ring */
-		RTE_LOG(ERR, PMD, "Insufficient resource: Ring Group\n");
+		PMD_DRV_LOG(ERR, "Insufficient resource: Ring Group\n");
 		rc = -ENOSPC;
 		goto error_free;
 	}
@@ -3260,7 +3260,7 @@ skip_init:
 	bp->grp_info = rte_zmalloc("bnxt_grp_info",
 				sizeof(*bp->grp_info) * bp->max_ring_grps, 0);
 	if (!bp->grp_info) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Failed to alloc %zu bytes to store group info table\n",
 			sizeof(*bp->grp_info) * bp->max_ring_grps);
 		rc = -ENOMEM;
@@ -3273,7 +3273,7 @@ skip_init:
 	    ((bp->fw_ver >= ((20 << 24) | (8 << 16))))) {
 		memset(bp->pf.vf_req_fwd, 0xff, sizeof(bp->pf.vf_req_fwd));
 	} else {
-		RTE_LOG(WARNING, PMD,
+		PMD_DRV_LOG(WARNING,
 			"Firmware too old for VF mailbox functionality\n");
 		memset(bp->pf.vf_req_fwd, 0, sizeof(bp->pf.vf_req_fwd));
 	}
@@ -3293,20 +3293,20 @@ skip_init:
 	ALLOW_FUNC(HWRM_VNIC_TPA_CFG);
 	rc = bnxt_hwrm_func_driver_register(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Failed to register driver");
 		rc = -EBUSY;
 		goto error_free;
 	}
 
-	RTE_LOG(INFO, PMD,
+	PMD_DRV_LOG(INFO,
 		DRV_MODULE_NAME " found at mem %" PRIx64 ", node addr %pM\n",
 		pci_dev->mem_resource[0].phys_addr,
 		pci_dev->mem_resource[0].addr);
 
 	rc = bnxt_hwrm_func_reset(bp);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
+		PMD_DRV_LOG(ERR, "hwrm chip reset failure rc: %x\n", rc);
 		rc = -EIO;
 		goto error_free;
 	}
@@ -3318,13 +3318,13 @@ skip_init:
 		if (bp->pdev->max_vfs) {
 			rc = bnxt_hwrm_allocate_vfs(bp, bp->pdev->max_vfs);
 			if (rc) {
-				RTE_LOG(ERR, PMD, "Failed to allocate VFs\n");
+				PMD_DRV_LOG(ERR, "Failed to allocate VFs\n");
 				goto error_free;
 			}
 		} else {
 			rc = bnxt_hwrm_allocate_pf_only(bp);
 			if (rc) {
-				RTE_LOG(ERR, PMD,
+				PMD_DRV_LOG(ERR,
 					"Failed to allocate PF resources\n");
 				goto error_free;
 			}
@@ -3431,6 +3431,15 @@ is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv)
 bool is_bnxt_supported(struct rte_eth_dev *dev)
 {
 	return is_device_supported(dev, &bnxt_rte_pmd);
+}
+
+RTE_INIT(bnxt_init_log);
+static void
+bnxt_init_log(void)
+{
+	bnxt_logtype_driver = rte_log_register("pmd.bnxt.driver");
+	if (bnxt_logtype_driver >= 0)
+		rte_log_set_level(bnxt_logtype_driver, RTE_LOG_NOTICE);
 }
 
 RTE_PMD_REGISTER_PCI(net_bnxt, bnxt_rte_pmd);

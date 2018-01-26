@@ -107,7 +107,7 @@ int bnxt_free_vnic(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 		}
 		temp = STAILQ_NEXT(temp, next);
 	}
-	RTE_LOG(ERR, PMD, "VNIC %p is not found in pool[%d]\n", vnic, pool);
+	PMD_DRV_LOG(ERR, "VNIC %p is not found in pool[%d]\n", vnic, pool);
 	return -EINVAL;
 }
 
@@ -118,7 +118,7 @@ struct bnxt_vnic_info *bnxt_alloc_vnic(struct bnxt *bp)
 	/* Find the 1st unused vnic from the free_vnic_list pool*/
 	vnic = STAILQ_FIRST(&bp->free_vnic_list);
 	if (!vnic) {
-		RTE_LOG(ERR, PMD, "No more free VNIC resources\n");
+		PMD_DRV_LOG(ERR, "No more free VNIC resources\n");
 		return NULL;
 	}
 	STAILQ_REMOVE_HEAD(&bp->free_vnic_list, next);
@@ -194,13 +194,13 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	}
 	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
-		RTE_LOG(WARNING, PMD,
+		PMD_DRV_LOG(WARNING,
 			"Memzone physical address same as virtual.\n");
-		RTE_LOG(WARNING, PMD,
+		PMD_DRV_LOG(WARNING,
 			"Using rte_mem_virt2iova()\n");
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
 		if (mz_phys_addr == 0) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 			"unable to map vnic address to physical memory\n");
 			return -ENOMEM;
 		}
@@ -241,7 +241,7 @@ void bnxt_free_vnic_mem(struct bnxt *bp)
 	for (i = 0; i < max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		if (vnic->fw_vnic_id != (uint16_t)HWRM_NA_SIGNATURE) {
-			RTE_LOG(ERR, PMD, "VNIC is not freed yet!\n");
+			PMD_DRV_LOG(ERR, "VNIC is not freed yet!\n");
 			/* TODO Call HWRM to free VNIC */
 		}
 	}
@@ -260,7 +260,7 @@ int bnxt_alloc_vnic_mem(struct bnxt *bp)
 	vnic_mem = rte_zmalloc("bnxt_vnic_info",
 			       max_vnics * sizeof(struct bnxt_vnic_info), 0);
 	if (vnic_mem == NULL) {
-		RTE_LOG(ERR, PMD, "Failed to alloc memory for %d VNICs",
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d VNICs",
 			max_vnics);
 		return -ENOMEM;
 	}

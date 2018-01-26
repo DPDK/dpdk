@@ -75,7 +75,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	if (bp->rx_cp_nr_rings < 2) {
 		vnic = bnxt_alloc_vnic(bp);
 		if (!vnic) {
-			RTE_LOG(ERR, PMD, "VNIC alloc failed\n");
+			PMD_DRV_LOG(ERR, "VNIC alloc failed\n");
 			rc = -ENOMEM;
 			goto err_out;
 		}
@@ -92,7 +92,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		vnic->end_grp_id = vnic->start_grp_id;
 		filter = bnxt_alloc_filter(bp);
 		if (!filter) {
-			RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
+			PMD_DRV_LOG(ERR, "L2 filter alloc failed\n");
 			rc = -ENOMEM;
 			goto err_out;
 		}
@@ -121,7 +121,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			pools = bp->rx_cp_nr_rings;
 			break;
 		default:
-			RTE_LOG(ERR, PMD, "Unsupported mq_mod %d\n",
+			PMD_DRV_LOG(ERR, "Unsupported mq_mod %d\n",
 				dev_conf->rxmode.mq_mode);
 			rc = -EINVAL;
 			goto err_out;
@@ -135,7 +135,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	for (i = 0; i < pools; i++) {
 		vnic = bnxt_alloc_vnic(bp);
 		if (!vnic) {
-			RTE_LOG(ERR, PMD, "VNIC alloc failed\n");
+			PMD_DRV_LOG(ERR, "VNIC alloc failed\n");
 			rc = -ENOMEM;
 			goto err_out;
 		}
@@ -166,7 +166,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		}
 		filter = bnxt_alloc_filter(bp);
 		if (!filter) {
-			RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
+			PMD_DRV_LOG(ERR, "L2 filter alloc failed\n");
 			rc = -ENOMEM;
 			goto err_out;
 		}
@@ -312,14 +312,14 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	int rc = 0;
 
 	if (queue_idx >= bp->max_rx_rings) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"Cannot create Rx ring %d. Only %d rings available\n",
 			queue_idx, bp->max_rx_rings);
 		return -ENOSPC;
 	}
 
 	if (!nb_desc || nb_desc > MAX_RX_DESC_CNT) {
-		RTE_LOG(ERR, PMD, "nb_desc %d is invalid\n", nb_desc);
+		PMD_DRV_LOG(ERR, "nb_desc %d is invalid\n", nb_desc);
 		rc = -EINVAL;
 		goto out;
 	}
@@ -332,7 +332,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq = rte_zmalloc_socket("bnxt_rx_queue", sizeof(struct bnxt_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
-		RTE_LOG(ERR, PMD, "bnxt_rx_queue allocation failed!\n");
+		PMD_DRV_LOG(ERR, "bnxt_rx_queue allocation failed!\n");
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -341,8 +341,8 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 
-	RTE_LOG(DEBUG, PMD, "RX Buf size is %d\n", rxq->rx_buf_use_size);
-	RTE_LOG(DEBUG, PMD, "RX Buf MTU %d\n", eth_dev->data->mtu);
+	PMD_DRV_LOG(DEBUG, "RX Buf size is %d\n", rxq->rx_buf_use_size);
+	PMD_DRV_LOG(DEBUG, "RX Buf MTU %d\n", eth_dev->data->mtu);
 
 	rc = bnxt_init_rx_ring_struct(rxq, socket_id);
 	if (rc)
@@ -357,7 +357,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	/* Allocate RX ring hardware descriptors */
 	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq->rx_ring, rxq->cp_ring,
 			"rxr")) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"ring_dma_zone_reserve for rx_ring failed!\n");
 		bnxt_rx_queue_release_op(rxq);
 		rc = -ENOMEM;

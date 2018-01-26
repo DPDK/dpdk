@@ -334,4 +334,12 @@ int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 
 bool is_bnxt_supported(struct rte_eth_dev *dev);
 extern const struct rte_flow_ops bnxt_flow_ops;
+
+extern int bnxt_logtype_driver;
+#define PMD_DRV_LOG_RAW(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, bnxt_logtype_driver, "%s(): " fmt, \
+		__func__, ## args)
+
+#define PMD_DRV_LOG(level, fmt, args...) \
+	PMD_DRV_LOG_RAW(level, fmt, ## args)
 #endif

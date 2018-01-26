@@ -56,7 +56,7 @@ struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp)
 	/* Find the 1st unused filter from the free_filter_list pool*/
 	filter = STAILQ_FIRST(&bp->free_filter_list);
 	if (!filter) {
-		RTE_LOG(ERR, PMD, "No more free filter resources\n");
+		PMD_DRV_LOG(ERR, "No more free filter resources\n");
 		return NULL;
 	}
 	STAILQ_REMOVE_HEAD(&bp->free_filter_list, next);
@@ -77,7 +77,7 @@ struct bnxt_filter_info *bnxt_alloc_vf_filter(struct bnxt *bp, uint16_t vf)
 
 	filter = rte_zmalloc("bnxt_vf_filter_info", sizeof(*filter), 0);
 	if (!filter) {
-		RTE_LOG(ERR, PMD, "Failed to alloc memory for VF %hu filters\n",
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for VF %hu filters\n",
 			vf);
 		return NULL;
 	}
@@ -145,11 +145,11 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
 		if (filter->fw_l2_filter_id != ((uint64_t)-1)) {
-			RTE_LOG(ERR, PMD, "HWRM filter is not freed??\n");
+			PMD_DRV_LOG(ERR, "HWRM filter is not freed??\n");
 			/* Call HWRM to try to free filter again */
 			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 			if (rc)
-				RTE_LOG(ERR, PMD,
+				PMD_DRV_LOG(ERR,
 				       "HWRM filter cannot be freed rc = %d\n",
 					rc);
 		}
@@ -172,7 +172,7 @@ int bnxt_alloc_filter_mem(struct bnxt *bp)
 				 max_filters * sizeof(struct bnxt_filter_info),
 				 0);
 	if (filter_mem == NULL) {
-		RTE_LOG(ERR, PMD, "Failed to alloc memory for %d filters",
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d filters",
 			max_filters);
 		return -ENOMEM;
 	}
@@ -187,7 +187,7 @@ struct bnxt_filter_info *bnxt_get_unused_filter(struct bnxt *bp)
 	/* Find the 1st unused filter from the free_filter_list pool*/
 	filter = STAILQ_FIRST(&bp->free_filter_list);
 	if (!filter) {
-		RTE_LOG(ERR, PMD, "No more free filter resources\n");
+		PMD_DRV_LOG(ERR, "No more free filter resources\n");
 		return NULL;
 	}
 	STAILQ_REMOVE_HEAD(&bp->free_filter_list, next);
@@ -281,7 +281,7 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 			/* FALLTHROUGH */
 			/* need ntuple match, reset exact match */
 			if (!use_ntuple) {
-				RTE_LOG(ERR, PMD,
+				PMD_DRV_LOG(ERR,
 					"VLAN flow cannot use NTUPLE filter\n");
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -292,7 +292,7 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 			use_ntuple |= 1;
 			break;
 		default:
-			RTE_LOG(ERR, PMD, "Unknown Flow type");
+			PMD_DRV_LOG(ERR, "Unknown Flow type");
 			use_ntuple |= 1;
 		}
 		item++;
@@ -329,7 +329,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	int dflt_vnic;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
-	RTE_LOG(DEBUG, PMD, "Use NTUPLE %d\n", use_ntuple);
+	PMD_DRV_LOG(DEBUG, "Use NTUPLE %d\n", use_ntuple);
 	if (use_ntuple < 0)
 		return use_ntuple;
 
@@ -791,7 +791,7 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 		return f0;
 
 	//This flow needs DST MAC which is not same as port/l2
-	RTE_LOG(DEBUG, PMD, "Create L2 filter for DST MAC\n");
+	PMD_DRV_LOG(DEBUG, "Create L2 filter for DST MAC\n");
 	filter1 = bnxt_get_unused_filter(bp);
 	if (filter1 == NULL)
 		return NULL;
@@ -828,7 +828,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	int rc;
 
 	if (bp->eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
-		RTE_LOG(ERR, PMD, "Cannot create flow on RSS queues\n");
+		PMD_DRV_LOG(ERR, "Cannot create flow on RSS queues\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "Cannot create flow on RSS queues");
@@ -857,7 +857,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			rc = -rte_errno;
 			goto ret;
 		}
-		RTE_LOG(DEBUG, PMD, "Queue index %d\n", act_q->index);
+		PMD_DRV_LOG(DEBUG, "Queue index %d\n", act_q->index);
 
 		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
 		vnic = STAILQ_FIRST(&bp->ff_pool[act_q->index]);
@@ -875,7 +875,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			goto ret;
 		}
 		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
-		RTE_LOG(DEBUG, PMD, "VNIC found\n");
+		PMD_DRV_LOG(DEBUG, "VNIC found\n");
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
 		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
@@ -990,7 +990,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 
 	filter = bnxt_get_unused_filter(bp);
 	if (filter == NULL) {
-		RTE_LOG(ERR, PMD, "Not enough resources for a new flow.\n");
+		PMD_DRV_LOG(ERR, "Not enough resources for a new flow.\n");
 		return -ENOMEM;
 	}
 
@@ -1092,13 +1092,13 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 
 	ret = bnxt_flow_agrs_validate(attr, pattern, actions, error);
 	if (ret != 0) {
-		RTE_LOG(ERR, PMD, "Not a validate flow.\n");
+		PMD_DRV_LOG(ERR, "Not a validate flow.\n");
 		goto free_flow;
 	}
 
 	filter = bnxt_get_unused_filter(bp);
 	if (filter == NULL) {
-		RTE_LOG(ERR, PMD, "Not enough resources for a new flow.\n");
+		PMD_DRV_LOG(ERR, "Not enough resources for a new flow.\n");
 		goto free_flow;
 	}
 
@@ -1109,15 +1109,15 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == -EEXIST) {
-		RTE_LOG(DEBUG, PMD, "Flow already exists.\n");
+		PMD_DRV_LOG(DEBUG, "Flow already exists.\n");
 		/* Clear the filter that was created as part of
 		 * validate_and_parse_flow() above
 		 */
 		bnxt_hwrm_clear_l2_filter(bp, filter);
 		goto free_filter;
 	} else if (ret == -EXDEV) {
-		RTE_LOG(DEBUG, PMD, "Flow with same pattern exists");
-		RTE_LOG(DEBUG, PMD, "Updating with different destination\n");
+		PMD_DRV_LOG(DEBUG, "Flow with same pattern exists");
+		PMD_DRV_LOG(DEBUG, "Updating with different destination\n");
 		update_flow = true;
 	}
 
@@ -1145,7 +1145,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 			ret = -EXDEV;
 			goto free_flow;
 		}
-		RTE_LOG(ERR, PMD, "Successfully created flow.\n");
+		PMD_DRV_LOG(ERR, "Successfully created flow.\n");
 		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
 		return flow;
 	}
@@ -1181,7 +1181,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == 0)
-		RTE_LOG(ERR, PMD, "Could not find matching flow\n");
+		PMD_DRV_LOG(ERR, "Could not find matching flow\n");
 	if (filter->filter_type == HWRM_CFA_EM_FILTER)
 		ret = bnxt_hwrm_clear_em_filter(bp, filter);
 	if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)

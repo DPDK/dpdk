@@ -176,15 +176,15 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	memset(mz->addr, 0, mz->len);
 	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
-		RTE_LOG(WARNING, PMD,
+		PMD_DRV_LOG(WARNING,
 			"Memzone physical address same as virtual.\n");
-		RTE_LOG(WARNING, PMD,
+		PMD_DRV_LOG(WARNING,
 			"Using rte_mem_virt2iova()\n");
 		for (sz = 0; sz < total_alloc_len; sz += getpagesize())
 			rte_mem_lock_page(((char *)mz->addr) + sz);
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
 		if (mz_phys_addr == 0) {
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 			"unable to map ring address to physical memory\n");
 			return -ENOMEM;
 		}
@@ -326,7 +326,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		ring = rxr->ag_ring_struct;
 		/* Agg ring */
 		if (ring == NULL) {
-			RTE_LOG(ERR, PMD, "Alloc AGG Ring is NULL!\n");
+			PMD_DRV_LOG(ERR, "Alloc AGG Ring is NULL!\n");
 			goto err_out;
 		}
 
@@ -336,7 +336,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 				cp_ring->fw_ring_id);
 		if (rc)
 			goto err_out;
-		RTE_LOG(DEBUG, PMD, "Alloc AGG Done!\n");
+		PMD_DRV_LOG(DEBUG, "Alloc AGG Done!\n");
 		rxr->ag_prod = 0;
 		rxr->ag_doorbell =
 		    (char *)pci_dev->mem_resource[2].addr +
@@ -347,7 +347,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		rxq->rx_buf_use_size = BNXT_MAX_MTU + ETHER_HDR_LEN +
 					ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
 		if (bnxt_init_one_rx_ring(rxq)) {
-			RTE_LOG(ERR, PMD, "bnxt_init_one_rx_ring failed!\n");
+			PMD_DRV_LOG(ERR, "bnxt_init_one_rx_ring failed!\n");
 			bnxt_rx_queue_release_op(rxq);
 			return -ENOMEM;
 		}

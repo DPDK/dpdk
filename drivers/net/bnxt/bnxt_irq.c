@@ -84,7 +84,7 @@ static void bnxt_int_handler(void *param)
 					       cpr->cp_ring_struct))
 					goto no_more;
 			}
-			RTE_LOG(INFO, PMD,
+			PMD_DRV_LOG(INFO,
 				"Ignoring %02x completion\n", CMP_TYPE(cmp));
 			break;
 		}
@@ -154,7 +154,7 @@ int bnxt_setup_int(struct bnxt *bp)
 	return 0;
 
 setup_exit:
-	RTE_LOG(ERR, PMD, "bnxt_irq_tbl setup failed\n");
+	PMD_DRV_LOG(ERR, "bnxt_irq_tbl setup failed\n");
 	return rc;
 }
 
