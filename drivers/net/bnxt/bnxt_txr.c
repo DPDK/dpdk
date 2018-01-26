@@ -101,7 +101,7 @@ int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id)
 	if (ring == NULL)
 		return -ENOMEM;
 	txr->tx_ring_struct = ring;
-	ring->ring_size = rte_align32pow2(txq->nb_tx_desc + 1);
+	ring->ring_size = rte_align32pow2(txq->nb_tx_desc);
 	ring->ring_mask = ring->ring_size - 1;
 	ring->bd = (void *)txr->tx_desc_ring;
 	ring->bd_dma = txr->tx_desc_mapping;
