@@ -68,6 +68,8 @@ int bnxt_init_one_tx_ring(struct bnxt_tx_queue *txq);
 int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id);
 uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts);
+int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 #define PKT_TX_OIP_IIP_TCP_UDP_CKSUM	(PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM | \
 					PKT_TX_IP_CKSUM | PKT_TX_OUTER_IP_CKSUM)

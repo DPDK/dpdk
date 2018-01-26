@@ -93,5 +93,4 @@ void bnxt_free_vnic_attributes(struct bnxt *bp);
 int bnxt_alloc_vnic_attributes(struct bnxt *bp);
 void bnxt_free_vnic_mem(struct bnxt *bp);
 int bnxt_alloc_vnic_mem(struct bnxt *bp);
-
 #endif

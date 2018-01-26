@@ -202,7 +202,7 @@ alloc_mem_err:
 
 static int bnxt_init_chip(struct bnxt *bp)
 {
-	unsigned int i, rss_idx, fw_idx;
+	unsigned int i;
 	struct rte_eth_link new;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
@@ -279,27 +279,12 @@ static int bnxt_init_chip(struct bnxt *bp)
 				i, rc);
 			goto err_out;
 		}
-		if (vnic->rss_table && vnic->hash_type) {
-			/*
-			 * Fill the RSS hash & redirection table with
-			 * ring group ids for all VNICs
-			 */
-			for (rss_idx = 0, fw_idx = 0;
-			     rss_idx < HW_HASH_INDEX_SIZE;
-			     rss_idx++, fw_idx++) {
-				if (vnic->fw_grp_ids[fw_idx] ==
-				    INVALID_HW_RING_ID)
-					fw_idx = 0;
-				vnic->rss_table[rss_idx] =
-						vnic->fw_grp_ids[fw_idx];
-			}
-			rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
-			if (rc) {
-				PMD_DRV_LOG(ERR,
-					"HWRM vnic %d set RSS failure rc: %x\n",
-					i, rc);
-				goto err_out;
-			}
+
+		rc = bnxt_vnic_rss_configure(bp, vnic);
+		if (rc) {
+			PMD_DRV_LOG(ERR,
+				    "HWRM vnic set RSS failure rc: %x\n", rc);
+			goto err_out;
 		}
 
 		bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
@@ -3022,6 +3007,10 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.rx_queue_count = bnxt_rx_queue_count_op,
 	.rx_descriptor_status = bnxt_rx_descriptor_status_op,
 	.tx_descriptor_status = bnxt_tx_descriptor_status_op,
+	.rx_queue_start = bnxt_rx_queue_start,
+	.rx_queue_stop = bnxt_rx_queue_stop,
+	.tx_queue_start = bnxt_tx_queue_start,
+	.tx_queue_stop = bnxt_tx_queue_stop,
 	.filter_ctrl = bnxt_filter_ctrl_op,
 	.dev_supported_ptypes_get = bnxt_dev_supported_ptypes_get_op,
 	.get_eeprom_length    = bnxt_get_eeprom_length_op,

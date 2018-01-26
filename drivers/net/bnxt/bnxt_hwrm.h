@@ -187,4 +187,6 @@ int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 			  uint16_t dir_attr, const uint8_t *data,
 			  size_t data_len);
 int bnxt_hwrm_ptp_cfg(struct bnxt *bp);
+int bnxt_vnic_rss_configure(struct bnxt *bp,
+			    struct bnxt_vnic_info *vnic);
 #endif

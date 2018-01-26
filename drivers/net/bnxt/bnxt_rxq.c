@@ -405,3 +405,56 @@ bnxt_rx_queue_intr_disable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 	}
 	return rc;
 }
+
+int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct bnxt_rx_queue *rxq = bp->rx_queues[rx_queue_id];
+	struct bnxt_vnic_info *vnic = NULL;
+
+	if (rxq == NULL) {
+		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
+		return -EINVAL;
+	}
+
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	rxq->rx_deferred_start = false;
+	PMD_DRV_LOG(INFO, "Rx queue started %d\n", rx_queue_id);
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+		vnic = rxq->vnic;
+		if (vnic->fw_grp_ids[rx_queue_id] != INVALID_HW_RING_ID)
+			return 0;
+		PMD_DRV_LOG(DEBUG, "vnic = %p fw_grp_id = %d\n",
+			vnic, bp->grp_info[rx_queue_id + 1].fw_grp_id);
+		vnic->fw_grp_ids[rx_queue_id] =
+					bp->grp_info[rx_queue_id + 1].fw_grp_id;
+		return bnxt_vnic_rss_configure(bp, vnic);
+	}
+
+	return 0;
+}
+
+int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct bnxt_rx_queue *rxq = bp->rx_queues[rx_queue_id];
+	struct bnxt_vnic_info *vnic = NULL;
+
+	if (rxq == NULL) {
+		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
+		return -EINVAL;
+	}
+
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	rxq->rx_deferred_start = true;
+	PMD_DRV_LOG(DEBUG, "Rx queue stopped\n");
+
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+		vnic = rxq->vnic;
+		vnic->fw_grp_ids[rx_queue_id] = INVALID_HW_RING_ID;
+		return bnxt_vnic_rss_configure(bp, vnic);
+	}
+	return 0;
+}

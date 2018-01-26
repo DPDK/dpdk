@@ -545,6 +545,10 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t ag_prod = rxr->ag_prod;
 	int rc = 0;
 
+	/* If Rx Q was stopped return */
+	if (rxq->rx_deferred_start)
+		return 0;
+
 	/* Handle RX burst request */
 	while (1) {
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
