@@ -67,6 +67,8 @@ SRCS-y += test_spinlock.c
 SRCS-y += test_memory.c
 SRCS-y += test_memzone.c
 SRCS-y += test_bitmap.c
+SRCS-y += test_reciprocal_division.c
+SRCS-y += test_reciprocal_division_perf.c
 
 SRCS-y += test_ring.c
 SRCS-y += test_ring_perf.c

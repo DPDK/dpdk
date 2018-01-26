@@ -108,6 +108,7 @@ F: test/test/test_logs.c
 F: test/test/test_memcpy*
 F: test/test/test_per_lcore.c
 F: test/test/test_prefetch.c
+F: test/test/test_reciprocal_division*
 F: test/test/test_rwlock.c
 F: test/test/test_spinlock.c
 F: test/test/test_string_fns.c
