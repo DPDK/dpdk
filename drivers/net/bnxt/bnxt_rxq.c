@@ -118,7 +118,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 				pools = max_pools;
 			break;
 		case ETH_MQ_RX_RSS:
-			pools = bp->rx_cp_nr_rings;
+			pools = 1;
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported mq_mod %d\n",
