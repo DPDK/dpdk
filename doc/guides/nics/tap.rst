@@ -53,11 +53,6 @@ The interface name can be changed by adding the ``iface=foo0``, for example::
 
    --vdev=net_tap0,iface=foo0 --vdev=net_tap1,iface=foo1, ...
 
-Also the speed of the interface can be changed from 10G to whatever number
-needed, but the interface does not enforce that speed, for example::
-
-   --vdev=net_tap0,iface=foo0,speed=25000
-
 Normally the PMD will generate a random MAC address, but when testing or with
 a static configuration the developer may need a fixed MAC address style.
 Using the option ``mac=fixed`` you can create a fixed known MAC address::

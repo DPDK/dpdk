@@ -44,7 +44,6 @@
 #define DEFAULT_TAP_NAME        "dtap"
 
 #define ETH_TAP_IFACE_ARG       "iface"
-#define ETH_TAP_SPEED_ARG       "speed"
 #define ETH_TAP_REMOTE_ARG      "remote"
 #define ETH_TAP_MAC_ARG         "mac"
 #define ETH_TAP_MAC_FIXED       "fixed"
@@ -53,7 +52,6 @@ static struct rte_vdev_driver pmd_tap_drv;
 
 static const char *valid_arguments[] = {
 	ETH_TAP_IFACE_ARG,
-	ETH_TAP_SPEED_ARG,
 	ETH_TAP_REMOTE_ARG,
 	ETH_TAP_MAC_ARG,
 	NULL
@@ -1550,16 +1548,6 @@ set_interface_name(const char *key __rte_unused,
 }
 
 static int
-set_interface_speed(const char *key __rte_unused,
-		    const char *value,
-		    void *extra_args)
-{
-	*(int *)extra_args = (value) ? atoi(value) : ETH_SPEED_NUM_10G;
-
-	return 0;
-}
-
-static int
 set_remote_iface(const char *key __rte_unused,
 		 const char *value,
 		 void *extra_args)
@@ -1609,15 +1597,6 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 		if (kvlist) {
-			if (rte_kvargs_count(kvlist, ETH_TAP_SPEED_ARG) == 1) {
-				ret = rte_kvargs_process(kvlist,
-							 ETH_TAP_SPEED_ARG,
-							 &set_interface_speed,
-							 &speed);
-				if (ret == -1)
-					goto leave;
-			}
-
 			if (rte_kvargs_count(kvlist, ETH_TAP_IFACE_ARG) == 1) {
 				ret = rte_kvargs_process(kvlist,
 							 ETH_TAP_IFACE_ARG,
@@ -1715,6 +1694,5 @@ RTE_PMD_REGISTER_VDEV(net_tap, pmd_tap_drv);
 RTE_PMD_REGISTER_ALIAS(net_tap, eth_tap);
 RTE_PMD_REGISTER_PARAM_STRING(net_tap,
 			      ETH_TAP_IFACE_ARG "=<string> "
-			      ETH_TAP_SPEED_ARG "=<int> "
 			      ETH_TAP_MAC_ARG "=" ETH_TAP_MAC_FIXED " "
 			      ETH_TAP_REMOTE_ARG "=<string>");
