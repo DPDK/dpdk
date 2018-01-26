@@ -98,6 +98,18 @@ rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 	return res;
 }
 
+static inline uint64_t
+rte_atomic64_exchange(volatile uint64_t *dest, uint64_t val)
+{
+	uint64_t old;
+
+	do {
+		old = *dest;
+	} while (rte_atomic64_cmpset(dest, old, val));
+
+	return old;
+}
+
 static inline void
 rte_atomic64_init(rte_atomic64_t *v)
 {

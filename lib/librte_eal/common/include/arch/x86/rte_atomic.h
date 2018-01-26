@@ -104,6 +104,18 @@ rte_atomic16_cmpset(volatile uint16_t *dst, uint16_t exp, uint16_t src)
 	return res;
 }
 
+static inline uint16_t
+rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val)
+{
+	asm volatile(
+			MPLOCKED
+			"xchgw %0, %1;"
+			: "=r" (val), "=m" (*dst)
+			: "0" (val),  "m" (*dst)
+			: "memory");         /* no-clobber list */
+	return val;
+}
+
 static inline int rte_atomic16_test_and_set(rte_atomic16_t *v)
 {
 	return rte_atomic16_cmpset((volatile uint16_t *)&v->cnt, 0, 1);
@@ -176,6 +188,18 @@ rte_atomic32_cmpset(volatile uint32_t *dst, uint32_t exp, uint32_t src)
 			  "m" (*dst)
 			: "memory");            /* no-clobber list */
 	return res;
+}
+
+static inline uint32_t
+rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val)
+{
+	asm volatile(
+			MPLOCKED
+			"xchgl %0, %1;"
+			: "=r" (val), "=m" (*dst)
+			: "0" (val),  "m" (*dst)
+			: "memory");         /* no-clobber list */
+	return val;
 }
 
 static inline int rte_atomic32_test_and_set(rte_atomic32_t *v)

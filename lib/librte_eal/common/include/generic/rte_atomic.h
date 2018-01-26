@@ -191,6 +191,32 @@ rte_atomic16_cmpset(volatile uint16_t *dst, uint16_t exp, uint16_t src)
 #endif
 
 /**
+ * Atomic exchange.
+ *
+ * (atomic) equivalent to:
+ *   ret = *dst
+ *   *dst = val;
+ *   return ret;
+ *
+ * @param dst
+ *   The destination location into which the value will be written.
+ * @param val
+ *   The new value.
+ * @return
+ *   The original value at that location
+ */
+static inline uint16_t
+rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val);
+
+#ifdef RTE_FORCE_INTRINSICS
+static inline uint16_t
+rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val)
+{
+	return __atomic_exchange_2(dst, val, __ATOMIC_SEQ_CST);
+}
+#endif
+
+/**
  * The atomic counter structure.
  */
 typedef struct {
@@ -444,6 +470,32 @@ rte_atomic32_cmpset(volatile uint32_t *dst, uint32_t exp, uint32_t src)
 #endif
 
 /**
+ * Atomic exchange.
+ *
+ * (atomic) equivalent to:
+ *   ret = *dst
+ *   *dst = val;
+ *   return ret;
+ *
+ * @param dst
+ *   The destination location into which the value will be written.
+ * @param val
+ *   The new value.
+ * @return
+ *   The original value at that location
+ */
+static inline uint32_t
+rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val);
+
+#ifdef RTE_FORCE_INTRINSICS
+static inline uint32_t
+rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val)
+{
+	return __atomic_exchange_4(dst, val, __ATOMIC_SEQ_CST);
+}
+#endif
+
+/**
  * The atomic counter structure.
  */
 typedef struct {
@@ -692,6 +744,32 @@ static inline int
 rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 {
 	return __sync_bool_compare_and_swap(dst, exp, src);
+}
+#endif
+
+/**
+ * Atomic exchange.
+ *
+ * (atomic) equivalent to:
+ *   ret = *dst
+ *   *dst = val;
+ *   return ret;
+ *
+ * @param dst
+ *   The destination location into which the value will be written.
+ * @param val
+ *   The new value.
+ * @return
+ *   The original value at that location
+ */
+static inline uint64_t
+rte_atomic64_exchange(volatile uint64_t *dst, uint64_t val);
+
+#ifdef RTE_FORCE_INTRINSICS
+static inline uint64_t
+rte_atomic64_exchange(volatile uint64_t *dst, uint64_t val)
+{
+	return __atomic_exchange_8(dst, val, __ATOMIC_SEQ_CST);
 }
 #endif
 

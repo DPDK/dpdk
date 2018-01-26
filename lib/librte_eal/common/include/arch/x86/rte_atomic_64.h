@@ -71,6 +71,18 @@ rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 	return res;
 }
 
+static inline uint64_t
+rte_atomic64_exchange(volatile uint64_t *dst, uint64_t val)
+{
+	asm volatile(
+			MPLOCKED
+			"xchgq %0, %1;"
+			: "=r" (val), "=m" (*dst)
+			: "0" (val),  "m" (*dst)
+			: "memory");         /* no-clobber list */
+	return val;
+}
+
 static inline void
 rte_atomic64_init(rte_atomic64_t *v)
 {
