@@ -15,7 +15,6 @@
 #include <sys/queue.h>
 
 #include <rte_alarm.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
@@ -69,25 +68,14 @@ nicvf_init_log(void)
 		rte_log_set_level(nicvf_logtype_driver, RTE_LOG_NOTICE);
 }
 
-static inline int
-nicvf_atomic_write_link_status(struct rte_eth_dev *dev,
-			       struct rte_eth_link *link)
+static void
+nicvf_link_status_update(struct nicvf *nic,
+			 struct rte_eth_link *link)
 {
-	struct rte_eth_link *dst = &dev->data->dev_link;
-	struct rte_eth_link *src = link;
+	memset(link, 0, sizeof(*link));
 
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-		*(uint64_t *)src) == 0)
-		return -1;
+	link->link_status = nic->link_up ? ETH_LINK_UP : ETH_LINK_DOWN;
 
-	return 0;
-}
-
-static inline void
-nicvf_set_eth_link_status(struct nicvf *nic, struct rte_eth_link *link)
-{
-	link->link_status = nic->link_up;
-	link->link_duplex = ETH_LINK_AUTONEG;
 	if (nic->duplex == NICVF_HALF_DUPLEX)
 		link->link_duplex = ETH_LINK_HALF_DUPLEX;
 	else if (nic->duplex == NICVF_FULL_DUPLEX)
@@ -101,12 +89,17 @@ nicvf_interrupt(void *arg)
 {
 	struct rte_eth_dev *dev = arg;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
+	struct rte_eth_link link;
 
 	if (nicvf_reg_poll_interrupts(nic) == NIC_MBOX_MSG_BGX_LINK_CHANGE) {
-		if (dev->data->dev_conf.intr_conf.lsc)
-			nicvf_set_eth_link_status(nic, &dev->data->dev_link);
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-					      NULL);
+		if (dev->data->dev_conf.intr_conf.lsc) {
+			nicvf_link_status_update(nic, &link);
+			rte_eth_linkstatus_set(dev, &link);
+
+			_rte_eth_dev_callback_process(dev,
+						      RTE_ETH_EVENT_INTR_LSC,
+						      NULL);
+		}
 	}
 
 	rte_eal_alarm_set(NICVF_INTR_POLL_INTERVAL_MS * 1000,
@@ -153,17 +146,16 @@ nicvf_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	if (wait_to_complete) {
 		/* rte_eth_link_get() might need to wait up to 9 seconds */
 		for (i = 0; i < MAX_CHECK_TIME; i++) {
-			memset(&link, 0, sizeof(link));
-			nicvf_set_eth_link_status(nic, &link);
-			if (link.link_status)
+			nicvf_link_status_update(nic, &link);
+			if (link.link_status == ETH_LINK_UP)
 				break;
 			rte_delay_ms(CHECK_INTERVAL);
 		}
 	} else {
-		memset(&link, 0, sizeof(link));
-		nicvf_set_eth_link_status(nic, &link);
+		nicvf_link_status_update(nic, &link);
 	}
-	return nicvf_atomic_write_link_status(dev, &link);
+
+	return rte_eth_linkstatus_set(dev, &link);
 }
 
 static int
