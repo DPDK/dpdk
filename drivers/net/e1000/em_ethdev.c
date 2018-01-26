@@ -20,7 +20,6 @@
 #include <rte_ethdev_pci.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
-#include <rte_atomic.h>
 #include <rte_malloc.h>
 #include <rte_dev.h>
 
@@ -197,57 +196,6 @@ static const struct eth_dev_ops eth_em_ops = {
 	.txq_info_get         = em_txq_info_get,
 };
 
-/**
- * Atomically reads the link status information from global
- * structure rte_eth_dev.
- *
- * @param dev
- *   - Pointer to the structure rte_eth_dev to read from.
- *   - Pointer to the buffer to be saved with the link status.
- *
- * @return
- *   - On success, zero.
- *   - On failure, negative value.
- */
-static inline int
-rte_em_dev_atomic_read_link_status(struct rte_eth_dev *dev,
-				struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = link;
-	struct rte_eth_link *src = &(dev->data->dev_link);
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
-
-/**
- * Atomically writes the link status information into global
- * structure rte_eth_dev.
- *
- * @param dev
- *   - Pointer to the structure rte_eth_dev to read from.
- *   - Pointer to the buffer to be saved with the link status.
- *
- * @return
- *   - On success, zero.
- *   - On failure, negative value.
- */
-static inline int
-rte_em_dev_atomic_write_link_status(struct rte_eth_dev *dev,
-				struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = &(dev->data->dev_link);
-	struct rte_eth_link *src = link;
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
 
 /**
  *  eth_em_dev_is_ich8 - Check for ICH8 device
@@ -802,7 +750,7 @@ eth_em_stop(struct rte_eth_dev *dev)
 
 	/* clear the recorded link status */
 	memset(&link, 0, sizeof(link));
-	rte_em_dev_atomic_write_link_status(dev, &link);
+	rte_eth_linkstatus_set(dev, &link);
 
 	if (!rte_intr_allow_others(intr_handle))
 		/* resume to the default handler */
@@ -1160,7 +1108,7 @@ eth_em_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_eth_link link, old;
+	struct rte_eth_link link;
 	int link_check, count;
 
 	link_check = 0;
@@ -1195,8 +1143,6 @@ eth_em_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		rte_delay_ms(EM_LINK_UPDATE_CHECK_INTERVAL);
 	}
 	memset(&link, 0, sizeof(link));
-	rte_em_dev_atomic_read_link_status(dev, &link);
-	old = link;
 
 	/* Now we check if a transition has happened */
 	if (link_check && (link.link_status == ETH_LINK_DOWN)) {
@@ -1215,14 +1161,8 @@ eth_em_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		link.link_status = ETH_LINK_DOWN;
 		link.link_autoneg = ETH_LINK_FIXED;
 	}
-	rte_em_dev_atomic_write_link_status(dev, &link);
 
-	/* not changed */
-	if (old.link_status == link.link_status)
-		return -1;
-
-	/* changed */
-	return 0;
+	return rte_eth_linkstatus_set(dev, &link);
 }
 
 /*
@@ -1631,8 +1571,8 @@ eth_em_interrupt_action(struct rte_eth_dev *dev,
 	if (ret < 0)
 		return 0;
 
-	memset(&link, 0, sizeof(link));
-	rte_em_dev_atomic_read_link_status(dev, &link);
+	rte_eth_linkstatus_get(dev, &link);
+
 	if (link.link_status) {
 		PMD_INIT_LOG(INFO, " Port %d: Link Up - speed %u Mbps - %s",
 			     dev->data->port_id, link.link_speed,
