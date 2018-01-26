@@ -221,14 +221,13 @@ Usage example
 Building DPDK
 -------------
 
-Driver needs precompiled MUSDK library during compilation. Please consult
-``doc/musdk_get_started.txt`` for the detailed build instructions.
+Driver needs precompiled MUSDK library during compilation.
 
 .. code-block:: console
 
    export CROSS_COMPILE=<toolchain>/bin/aarch64-linux-gnu-
    ./bootstrap
-   ./configure --enable-bpool-dma=64
+   ./configure --host=aarch64-linux-gnu --enable-bpool-dma=64
    make install
 
 MUSDK will be installed to `usr/local` under current directory.
