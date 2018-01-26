@@ -637,8 +637,13 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 			       sizeof(bp->pf.vf_req_fwd)));
 	}
 
-	req.async_event_fwd[0] |= rte_cpu_to_le_32(0x1);   /* TODO: Use MACRO */
-	//memset(req.async_event_fwd, 0xff, sizeof(req.async_event_fwd));
+	req.async_event_fwd[0] |=
+		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_LINK_STATUS_CHANGE |
+				 ASYNC_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED |
+				 ASYNC_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE);
+	req.async_event_fwd[1] |=
+		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_PF_DRVR_UNLOAD |
+				 ASYNC_CMPL_EVENT_ID_VF_CFG_CHANGE);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 

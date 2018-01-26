@@ -42,6 +42,17 @@ struct bnxt_filter_info;
 struct bnxt_cp_ring_info;
 
 #define HWRM_SEQ_ID_INVALID -1U
+/* Convert Bit field location to value */
+#define ASYNC_CMPL_EVENT_ID_LINK_STATUS_CHANGE	\
+	(1 << HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_STATUS_CHANGE)
+#define ASYNC_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED	\
+	(1 << HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED)
+#define ASYNC_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE	\
+	(1 << HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE)
+#define ASYNC_CMPL_EVENT_ID_PF_DRVR_UNLOAD	\
+	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PF_DRVR_UNLOAD - 32))
+#define ASYNC_CMPL_EVENT_ID_VF_CFG_CHANGE	\
+	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_CFG_CHANGE - 32))
 
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);

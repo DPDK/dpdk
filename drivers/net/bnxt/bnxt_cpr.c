@@ -57,8 +57,17 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE:
 		bnxt_link_update_op(bp->eth_dev, 1);
 		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PF_DRVR_UNLOAD:
+		PMD_DRV_LOG(INFO, "Async event: PF driver unloaded\n");
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_CFG_CHANGE:
+		PMD_DRV_LOG(INFO, "Async event: VF config changed\n");
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED:
+		PMD_DRV_LOG(INFO, "Port conn async event\n");
+		break;
 	default:
-		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);
+		PMD_DRV_LOG(INFO, "handle_async_event id = 0x%x\n", event_id);
 		break;
 	}
 }
