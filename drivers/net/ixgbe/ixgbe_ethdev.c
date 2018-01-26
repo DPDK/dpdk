@@ -2448,6 +2448,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	uint32_t intr_vector = 0;
 	int err, link_up = 0, negotiate = 0;
 	uint32_t speed = 0;
+	uint32_t allowed_speeds = 0;
 	int mask = 0;
 	int status;
 	uint16_t vf, idx;
@@ -2596,9 +2597,21 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	if (err)
 		goto error;
 
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
+		allowed_speeds = ETH_LINK_SPEED_100M | ETH_LINK_SPEED_1G |
+			ETH_LINK_SPEED_2_5G |  ETH_LINK_SPEED_5G |
+			ETH_LINK_SPEED_10G;
+		break;
+	default:
+		allowed_speeds = ETH_LINK_SPEED_100M | ETH_LINK_SPEED_1G |
+			ETH_LINK_SPEED_10G;
+	}
+
 	link_speeds = &dev->data->dev_conf.link_speeds;
-	if (*link_speeds & ~(ETH_LINK_SPEED_100M | ETH_LINK_SPEED_1G |
-			ETH_LINK_SPEED_10G)) {
+	if (*link_speeds & ~allowed_speeds) {
 		PMD_INIT_LOG(ERR, "Invalid link setting");
 		goto error;
 	}
@@ -2624,6 +2637,10 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	} else {
 		if (*link_speeds & ETH_LINK_SPEED_10G)
 			speed |= IXGBE_LINK_SPEED_10GB_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_5G)
+			speed |= IXGBE_LINK_SPEED_5GB_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_2_5G)
+			speed |= IXGBE_LINK_SPEED_2_5GB_FULL;
 		if (*link_speeds & ETH_LINK_SPEED_1G)
 			speed |= IXGBE_LINK_SPEED_1GB_FULL;
 		if (*link_speeds & ETH_LINK_SPEED_100M)
