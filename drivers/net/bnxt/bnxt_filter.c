@@ -250,7 +250,7 @@ nxt_non_void_action(const struct rte_flow_action *cur)
 	}
 }
 
-static inline int check_zero_bytes(const uint8_t *bytes, int len)
+int check_zero_bytes(const uint8_t *bytes, int len)
 {
 	int i;
 	for (i = 0; i < len; i++)

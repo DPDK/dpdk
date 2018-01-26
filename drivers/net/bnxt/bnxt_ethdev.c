@@ -3246,6 +3246,16 @@ skip_init:
 		rc = -ENOMEM;
 		goto error_free;
 	}
+
+	if (check_zero_bytes(bp->dflt_mac_addr, ETHER_ADDR_LEN)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid MAC addr %02X:%02X:%02X:%02X:%02X:%02X\n",
+			    bp->dflt_mac_addr[0], bp->dflt_mac_addr[1],
+			    bp->dflt_mac_addr[2], bp->dflt_mac_addr[3],
+			    bp->dflt_mac_addr[4], bp->dflt_mac_addr[5]);
+		rc = -EINVAL;
+		goto error_free;
+	}
 	/* Copy the permanent MAC from the qcap response address now. */
 	memcpy(bp->mac_addr, bp->dflt_mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
