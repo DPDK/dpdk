@@ -627,34 +627,6 @@ static struct rte_pci_driver rte_i40e_pmd = {
 	.remove = eth_i40e_pci_remove,
 };
 
-static inline int
-rte_i40e_dev_atomic_read_link_status(struct rte_eth_dev *dev,
-				     struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = link;
-	struct rte_eth_link *src = &(dev->data->dev_link);
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
-
-static inline int
-rte_i40e_dev_atomic_write_link_status(struct rte_eth_dev *dev,
-				      struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = &(dev->data->dev_link);
-	struct rte_eth_link *src = link;
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
-
 static inline void
 i40e_write_global_rx_ctl(struct i40e_hw *hw, u32 reg_addr, u32 reg_val)
 {
@@ -2504,6 +2476,8 @@ update_link_wait(struct i40e_hw *hw, struct rte_eth_link *link,
 	memset(&link_status, 0, sizeof(link_status));
 
 	do {
+		memset(&link_status, 0, sizeof(link_status));
+
 		/* Get link status information from hardware */
 		status = i40e_aq_get_link_info(hw, enable_lse,
 						&link_status, NULL);
@@ -2552,13 +2526,11 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 		     int wait_to_complete)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_eth_link link, old;
+	struct rte_eth_link link;
 	bool enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
+	int ret;
 
 	memset(&link, 0, sizeof(link));
-	memset(&old, 0, sizeof(old));
-
-	rte_i40e_dev_atomic_read_link_status(dev, &old);
 
 	/* i40e uses full duplex only */
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
@@ -2570,13 +2542,10 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 	else
 		update_link_wait(hw, &link, enable_lse);
 
-	rte_i40e_dev_atomic_write_link_status(dev, &link);
-	if (link.link_status == old.link_status)
-		return -1;
-
+	ret = rte_eth_linkstatus_set(dev, &link);
 	i40e_notify_all_vfs_link_status(dev);
 
-	return 0;
+	return ret;
 }
 
 /* Get all the statistics of a VSI */
@@ -10383,9 +10352,8 @@ i40e_start_timecounters(struct rte_eth_dev *dev)
 	uint32_t tsync_inc_h;
 
 	/* Get current link speed. */
-	memset(&link, 0, sizeof(link));
 	i40e_dev_link_update(dev, 1);
-	rte_i40e_dev_atomic_read_link_status(dev, &link);
+	rte_eth_linkstatus_get(dev, &link);
 
 	switch (link.link_speed) {
 	case ETH_SPEED_NUM_40G:

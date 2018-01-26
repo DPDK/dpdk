@@ -1036,20 +1036,6 @@ static const struct rte_pci_id pci_id_i40evf_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
-static inline int
-i40evf_dev_atomic_write_link_status(struct rte_eth_dev *dev,
-				    struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = &(dev->data->dev_link);
-	struct rte_eth_link *src = link;
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
-
 /* Disable IRQ0 */
 static inline void
 i40evf_disable_irq0(struct i40e_hw *hw)
@@ -2078,6 +2064,7 @@ i40evf_dev_link_update(struct rte_eth_dev *dev,
 	 * while Linux driver does not
 	 */
 
+	memset(&new_link, 0, sizeof(new_link));
 	/* Linux driver PF host */
 	switch (vf->link_speed) {
 	case I40E_LINK_SPEED_100MB:
@@ -2109,9 +2096,7 @@ i40evf_dev_link_update(struct rte_eth_dev *dev,
 	new_link.link_autoneg =
 		dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED;
 
-	i40evf_dev_atomic_write_link_status(dev, &new_link);
-
-	return 0;
+	return rte_eth_linkstatus_set(dev, &new_link);
 }
 
 static void
