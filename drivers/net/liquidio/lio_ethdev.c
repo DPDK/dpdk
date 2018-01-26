@@ -904,32 +904,6 @@ lio_dev_vlan_filter_set(struct rte_eth_dev *eth_dev, uint16_t vlan_id, int on)
 	return 0;
 }
 
-/**
- * Atomically writes the link status information into global
- * structure rte_eth_dev.
- *
- * @param eth_dev
- *   - Pointer to the structure rte_eth_dev to read from.
- *   - Pointer to the buffer to be saved with the link status.
- *
- * @return
- *   - On success, zero.
- *   - On failure, negative value.
- */
-static inline int
-lio_dev_atomic_write_link_status(struct rte_eth_dev *eth_dev,
-				 struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = &eth_dev->data->dev_link;
-	struct rte_eth_link *src = link;
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-				*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
-
 static uint64_t
 lio_hweight64(uint64_t w)
 {
@@ -949,23 +923,19 @@ lio_dev_link_update(struct rte_eth_dev *eth_dev,
 		    int wait_to_complete __rte_unused)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
-	struct rte_eth_link link, old;
+	struct rte_eth_link link;
 
 	/* Initialize */
+	memset(&link, 0, sizeof(link));
 	link.link_status = ETH_LINK_DOWN;
 	link.link_speed = ETH_SPEED_NUM_NONE;
 	link.link_duplex = ETH_LINK_HALF_DUPLEX;
 	link.link_autoneg = ETH_LINK_AUTONEG;
-	memset(&old, 0, sizeof(old));
 
 	/* Return what we found */
 	if (lio_dev->linfo.link.s.link_up == 0) {
 		/* Interface is down */
-		if (lio_dev_atomic_write_link_status(eth_dev, &link))
-			return -1;
-		if (link.link_status == old.link_status)
-			return -1;
-		return 0;
+		return rte_eth_linkstatus_set(eth_dev, &link);
 	}
 
 	link.link_status = ETH_LINK_UP; /* Interface is up */
@@ -982,13 +952,7 @@ lio_dev_link_update(struct rte_eth_dev *eth_dev,
 		link.link_duplex = ETH_LINK_HALF_DUPLEX;
 	}
 
-	if (lio_dev_atomic_write_link_status(eth_dev, &link))
-		return -1;
-
-	if (link.link_status == old.link_status)
-		return -1;
-
-	return 0;
+	return rte_eth_linkstatus_set(eth_dev, &link);
 }
 
 /**
