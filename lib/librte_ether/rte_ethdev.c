@@ -1763,20 +1763,6 @@ rte_eth_allmulticast_get(uint16_t port_id)
 	return dev->data->all_multicast;
 }
 
-static inline int
-rte_eth_dev_atomic_read_link_status(struct rte_eth_dev *dev,
-				struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = link;
-	struct rte_eth_link *src = &(dev->data->dev_link);
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
-
 void
 rte_eth_link_get(uint16_t port_id, struct rte_eth_link *eth_link)
 {
@@ -1785,8 +1771,8 @@ rte_eth_link_get(uint16_t port_id, struct rte_eth_link *eth_link)
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
 
-	if (dev->data->dev_conf.intr_conf.lsc != 0)
-		rte_eth_dev_atomic_read_link_status(dev, eth_link);
+	if (dev->data->dev_conf.intr_conf.lsc)
+		rte_eth_linkstatus_get(dev, eth_link);
 	else {
 		RTE_FUNC_PTR_OR_RET(*dev->dev_ops->link_update);
 		(*dev->dev_ops->link_update)(dev, 1);
@@ -1802,8 +1788,8 @@ rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *eth_link)
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
 
-	if (dev->data->dev_conf.intr_conf.lsc != 0)
-		rte_eth_dev_atomic_read_link_status(dev, eth_link);
+	if (dev->data->dev_conf.intr_conf.lsc)
+		rte_eth_linkstatus_get(dev, eth_link);
 	else {
 		RTE_FUNC_PTR_OR_RET(*dev->dev_ops->link_update);
 		(*dev->dev_ops->link_update)(dev, 0);
