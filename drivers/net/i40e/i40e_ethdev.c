@@ -11713,7 +11713,7 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 							sizeof(uint32_t);
 	}
 
-	return i40e_hw_rss_hash_set(pf, &rss_conf);
+	i40e_hw_rss_hash_set(pf, &rss_conf);
 
 	rte_memcpy(rss_info,
 		conf, sizeof(struct i40e_rte_flow_rss_conf));

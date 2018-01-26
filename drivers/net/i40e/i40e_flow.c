@@ -4177,6 +4177,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 	struct i40e_rte_flow_rss_conf *rss_info = &pf->rss_info;
 	uint16_t i, j, n, tmp;
 	uint32_t index = 0;
+	uint64_t hf_bit = 1;
 
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	rss = act->conf;
@@ -4195,7 +4196,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 
 	if (action_flag) {
 		for (n = 0; n < 64; n++) {
-			if (rss->rss_conf->rss_hf & (1 << n)) {
+			if (rss->rss_conf->rss_hf & (hf_bit << n)) {
 				conf_info->region[0].hw_flowtype[0] = n;
 				conf_info->region[0].flowtype_num = 1;
 				conf_info->queue_region_number = 1;
@@ -4289,8 +4290,10 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 		}
 
 		rss_config->queue_region_conf = TRUE;
-		return 0;
 	}
+
+	if (rss_config->queue_region_conf)
+		return 0;
 
 	if (!rss || !rss->num) {
 		rte_flow_error_set(error, EINVAL,
