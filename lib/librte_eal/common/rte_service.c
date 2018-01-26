@@ -114,6 +114,20 @@ fail_mem:
 	return -ENOMEM;
 }
 
+void rte_service_finalize(void)
+{
+	if (!rte_service_library_initialized)
+		return;
+
+	if (rte_services)
+		rte_free(rte_services);
+
+	if (lcore_states)
+		rte_free(lcore_states);
+
+	rte_service_library_initialized = 0;
+}
+
 /* returns 1 if service is registered and has not been unregistered
  * Returns 0 if service never registered, or has been unregistered
  */
