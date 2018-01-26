@@ -382,27 +382,11 @@ sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 {
 	struct sfc_evq *evq = arg;
 	struct sfc_adapter *sa = evq->sa;
-	struct rte_eth_link *dev_link = &sa->eth_dev->data->dev_link;
 	struct rte_eth_link new_link;
-	uint64_t new_link_u64;
-	uint64_t old_link_u64;
-
-	EFX_STATIC_ASSERT(sizeof(*dev_link) == sizeof(rte_atomic64_t));
 
 	sfc_port_link_mode_to_info(link_mode, &new_link);
-
-	new_link_u64 = *(uint64_t *)&new_link;
-	do {
-		old_link_u64 = rte_atomic64_read((rte_atomic64_t *)dev_link);
-		if (old_link_u64 == new_link_u64)
-			break;
-
-		if (rte_atomic64_cmpset((volatile uint64_t *)dev_link,
-					old_link_u64, new_link_u64)) {
-			evq->sa->port.lsc_seq++;
-			break;
-		}
-	} while (B_TRUE);
+	if (rte_eth_linkstatus_set(sa->eth_dev, &new_link))
+		evq->sa->port.lsc_seq++;
 
 	return B_FALSE;
 }

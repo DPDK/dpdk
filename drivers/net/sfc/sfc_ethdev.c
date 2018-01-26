@@ -236,22 +236,13 @@ static int
 sfc_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
-	struct rte_eth_link *dev_link = &dev->data->dev_link;
-	struct rte_eth_link old_link;
 	struct rte_eth_link current_link;
+	int ret;
 
 	sfc_log_init(sa, "entry");
 
-retry:
-	EFX_STATIC_ASSERT(sizeof(*dev_link) == sizeof(rte_atomic64_t));
-	*(int64_t *)&old_link = rte_atomic64_read((rte_atomic64_t *)dev_link);
-
 	if (sa->state != SFC_ADAPTER_STARTED) {
 		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, &current_link);
-		if (!rte_atomic64_cmpset((volatile uint64_t *)dev_link,
-					 *(uint64_t *)&old_link,
-					 *(uint64_t *)&current_link))
-			goto retry;
 	} else if (wait_to_complete) {
 		efx_link_mode_t link_mode;
 
@@ -259,21 +250,16 @@ retry:
 			link_mode = EFX_LINK_UNKNOWN;
 		sfc_port_link_mode_to_info(link_mode, &current_link);
 
-		if (!rte_atomic64_cmpset((volatile uint64_t *)dev_link,
-					 *(uint64_t *)&old_link,
-					 *(uint64_t *)&current_link))
-			goto retry;
 	} else {
 		sfc_ev_mgmt_qpoll(sa);
-		*(int64_t *)&current_link =
-			rte_atomic64_read((rte_atomic64_t *)dev_link);
+		rte_eth_linkstatus_get(dev, &current_link);
 	}
 
-	if (old_link.link_status != current_link.link_status)
+	ret = rte_eth_linkstatus_set(dev, &current_link);
+	if (ret == 0)
 		sfc_info(sa, "Link status is %s",
 			 current_link.link_status ? "UP" : "DOWN");
-
-	return old_link.link_status == current_link.link_status ? 0 : -1;
+	return ret;
 }
 
 static void
