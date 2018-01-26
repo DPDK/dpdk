@@ -488,20 +488,6 @@ octeontx_dev_promisc_disable(struct rte_eth_dev *dev)
 	octeontx_port_promisc_set(nic, 0);
 }
 
-static inline int
-octeontx_atomic_write_link_status(struct rte_eth_dev *dev,
-				  struct rte_eth_link *link)
-{
-	struct rte_eth_link *dst = &dev->data->dev_link;
-	struct rte_eth_link *src = link;
-
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-		*(uint64_t *)src) == 0)
-		return -1;
-
-	return 0;
-}
-
 static int
 octeontx_port_link_status(struct octeontx_nic *nic)
 {
@@ -573,7 +559,7 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	link.link_autoneg = ETH_LINK_AUTONEG;
 
-	return octeontx_atomic_write_link_status(dev, &link);
+	return rte_eth_linkstatus_set(dev, &link);
 }
 
 static int
