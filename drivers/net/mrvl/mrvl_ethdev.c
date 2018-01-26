@@ -2096,8 +2096,9 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		sq->ent[sq->head].buff.addr =
 			rte_mbuf_data_iova_default(mbuf);
 		sq->ent[sq->head].bpool =
-			(unlikely(mbuf->port == 0xff || mbuf->refcnt > 1)) ?
-			 NULL : mrvl_port_to_bpool_lookup[mbuf->port];
+			(unlikely(mbuf->port >= RTE_MAX_ETHPORTS ||
+			 mbuf->refcnt > 1)) ? NULL :
+			 mrvl_port_to_bpool_lookup[mbuf->port];
 		sq->head = (sq->head + 1) & MRVL_PP2_TX_SHADOWQ_MASK;
 		sq->size++;
 
@@ -2430,6 +2431,7 @@ rte_pmd_mrvl_probe(struct rte_vdev_device *vdev)
 	}
 
 	memset(mrvl_port_bpool_size, 0, sizeof(mrvl_port_bpool_size));
+	memset(mrvl_port_to_bpool_lookup, 0, sizeof(mrvl_port_to_bpool_lookup));
 
 	mrvl_lcore_first = RTE_MAX_LCORE;
 	mrvl_lcore_last = 0;
