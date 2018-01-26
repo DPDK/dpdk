@@ -423,10 +423,9 @@ static void enicpmd_dev_stop(struct rte_eth_dev *eth_dev)
 
 	ENICPMD_FUNC_TRACE();
 	enic_disable(enic);
+
 	memset(&link, 0, sizeof(link));
-	rte_atomic64_cmpset((uint64_t *)&eth_dev->data->dev_link,
-		*(uint64_t *)&eth_dev->data->dev_link,
-		*(uint64_t *)&link);
+	rte_eth_linkstatus_set(eth_dev, &link);
 }
 
 /*

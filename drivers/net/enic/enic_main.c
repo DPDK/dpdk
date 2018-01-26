@@ -403,16 +403,14 @@ enic_free_consistent(void *priv,
 int enic_link_update(struct enic *enic)
 {
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
-	int ret;
-	int link_status = 0;
+	struct rte_eth_link link;
 
-	link_status = enic_get_link_status(enic);
-	ret = (link_status == enic->link_status);
-	enic->link_status = link_status;
-	eth_dev->data->dev_link.link_status = link_status;
-	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
-	return ret;
+	memset(&link, 0, sizeof(link));
+	link.link_status = enic_get_link_status(enic);
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_speed = vnic_dev_port_speed(enic->vdev);
+
+	return rte_eth_linkstatus_set(eth_dev, &link);
 }
 
 static void
