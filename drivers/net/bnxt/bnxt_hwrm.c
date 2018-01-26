@@ -2140,6 +2140,9 @@ static uint32_t bnxt_parse_hw_link_speed(uint16_t hw_link_speed)
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_50GB:
 		eth_link_speed = ETH_SPEED_NUM_50G;
 		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100GB:
+		eth_link_speed = ETH_SPEED_NUM_100G;
+		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_2GB:
 	default:
 		PMD_DRV_LOG(ERR, "HWRM link speed %d not defined\n",
