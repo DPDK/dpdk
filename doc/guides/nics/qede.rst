@@ -35,14 +35,20 @@ Supported Features
 - N-tuple filter and flow director (limited support)
 - NPAR (NIC Partitioning)
 - SR-IOV VF
-- VXLAN tunneling offload
-- MPLSoUDP Tx tunnel offload
+- VXLAN Tunneling offload
+- GENEVE Tunneling offload
+- MPLSoUDP Tx Tunneling offload
 
 Non-supported Features
 ----------------------
 
 - SR-IOV PF
-- GENEVE and NVGRE Tunneling offloads
+- GRE and NVGRE Tunneling offloads
+
+Co-existence considerations
+---------------------------
+- QLogic FastLinQ QL4xxxx CNAs can have both NIC and Storage personalities. However, coexistence with storage protocol drivers (qedi and qedf) is not supported on the same adapter. So storage personality has to be disabled on that adapter when used in DPDK applications.
+- For SR-IOV case, qede PMD will be used to bind to SR-IOV VF device and Linux native kernel driver (qede) will be attached to SR-IOV PF.
 
 Supported QLogic Adapters
 -------------------------
@@ -94,10 +100,6 @@ enabling debugging options may affect system performance.
 - ``CONFIG_RTE_LIBRTE_QEDE_DEBUG_RX`` (default **n**)
 
   Toggle display of receive fast path run-time messages.
-
-- ``CONFIG_RTE_LIBRTE_QEDE_VF_TX_SWITCH`` (default **"y"**)
-
-  A knob to control per-VF Tx switching feature.
 
 - ``CONFIG_RTE_LIBRTE_QEDE_FW`` (default **""**)
 
