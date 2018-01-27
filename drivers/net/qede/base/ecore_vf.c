@@ -1385,6 +1385,12 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 		if (sge_tpa_params->tpa_gro_consistent_flg)
 			p_sge_tpa_tlv->sge_tpa_flags |=
 			    VFPF_TPA_GRO_CONSIST_FLAG;
+		if (sge_tpa_params->tpa_ipv4_tunn_en_flg)
+			p_sge_tpa_tlv->sge_tpa_flags |=
+			    VFPF_TPA_TUNN_IPV4_EN_FLAG;
+		if (sge_tpa_params->tpa_ipv6_tunn_en_flg)
+			p_sge_tpa_tlv->sge_tpa_flags |=
+			    VFPF_TPA_TUNN_IPV6_EN_FLAG;
 
 		p_sge_tpa_tlv->tpa_max_aggs_num =
 		    sge_tpa_params->tpa_max_aggs_num;

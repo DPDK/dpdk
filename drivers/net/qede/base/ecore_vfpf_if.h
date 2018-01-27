@@ -424,6 +424,8 @@ struct vfpf_vport_update_sge_tpa_tlv {
 	#define VFPF_TPA_PKT_SPLIT_FLAG      (1 << 2)
 	#define VFPF_TPA_HDR_DATA_SPLIT_FLAG (1 << 3)
 	#define VFPF_TPA_GRO_CONSIST_FLAG    (1 << 4)
+	#define VFPF_TPA_TUNN_IPV4_EN_FLAG   (1 << 5)
+	#define VFPF_TPA_TUNN_IPV6_EN_FLAG   (1 << 6)
 
 	u8			update_sge_tpa_flags;
 	#define VFPF_UPDATE_SGE_DEPRECATED_FLAG	   (1 << 0)
