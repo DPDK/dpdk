@@ -1588,7 +1588,8 @@ next_cqe:
 /* Populate scatter gather buffer descriptor fields */
 static inline uint16_t
 qede_encode_sg_bd(struct qede_tx_queue *p_txq, struct rte_mbuf *m_seg,
-		  struct eth_tx_2nd_bd **bd2, struct eth_tx_3rd_bd **bd3)
+		  struct eth_tx_2nd_bd **bd2, struct eth_tx_3rd_bd **bd3,
+		  uint16_t start_seg)
 {
 	struct qede_tx_queue *txq = p_txq;
 	struct eth_tx_bd *tx_bd = NULL;
@@ -1597,7 +1598,7 @@ qede_encode_sg_bd(struct qede_tx_queue *p_txq, struct rte_mbuf *m_seg,
 
 	/* Check for scattered buffers */
 	while (m_seg) {
-		if (nb_segs == 0) {
+		if (start_seg == 0) {
 			if (!*bd2) {
 				*bd2 = (struct eth_tx_2nd_bd *)
 					ecore_chain_produce(&txq->tx_pbl);
@@ -1607,7 +1608,7 @@ qede_encode_sg_bd(struct qede_tx_queue *p_txq, struct rte_mbuf *m_seg,
 			mapping = rte_mbuf_data_iova(m_seg);
 			QEDE_BD_SET_ADDR_LEN(*bd2, mapping, m_seg->data_len);
 			PMD_TX_LOG(DEBUG, txq, "BD2 len %04x", m_seg->data_len);
-		} else if (nb_segs == 1) {
+		} else if (start_seg == 1) {
 			if (!*bd3) {
 				*bd3 = (struct eth_tx_3rd_bd *)
 					ecore_chain_produce(&txq->tx_pbl);
@@ -1645,20 +1646,24 @@ print_tx_bd_info(struct qede_tx_queue *txq,
 
 	if (bd1)
 		PMD_TX_LOG(INFO, txq,
-			   "BD1: nbytes=%u nbds=%u bd_flags=%04x bf=%04x",
-			   rte_cpu_to_le_16(bd1->nbytes), bd1->data.nbds,
-			   bd1->data.bd_flags.bitfields,
-			   rte_cpu_to_le_16(bd1->data.bitfields));
+		   "BD1: nbytes=0x%04x nbds=0x%04x bd_flags=0x%04x bf=0x%04x",
+		   rte_cpu_to_le_16(bd1->nbytes), bd1->data.nbds,
+		   bd1->data.bd_flags.bitfields,
+		   rte_cpu_to_le_16(bd1->data.bitfields));
 	if (bd2)
 		PMD_TX_LOG(INFO, txq,
-			   "BD2: nbytes=%u bf=%04x\n",
-			   rte_cpu_to_le_16(bd2->nbytes), bd2->data.bitfields1);
+		   "BD2: nbytes=0x%04x bf1=0x%04x bf2=0x%04x tunn_ip=0x%04x\n",
+		   rte_cpu_to_le_16(bd2->nbytes), bd2->data.bitfields1,
+		   bd2->data.bitfields2, bd2->data.tunn_ip_size);
 	if (bd3)
 		PMD_TX_LOG(INFO, txq,
-			   "BD3: nbytes=%u bf=%04x mss=%u\n",
-			   rte_cpu_to_le_16(bd3->nbytes),
-			   rte_cpu_to_le_16(bd3->data.bitfields),
-			   rte_cpu_to_le_16(bd3->data.lso_mss));
+		   "BD3: nbytes=0x%04x bf=0x%04x MSS=0x%04x "
+		   "tunn_l4_hdr_start_offset_w=0x%04x tunn_hdr_size=0x%04x\n",
+		   rte_cpu_to_le_16(bd3->nbytes),
+		   rte_cpu_to_le_16(bd3->data.bitfields),
+		   rte_cpu_to_le_16(bd3->data.lso_mss),
+		   bd3->data.tunn_l4_hdr_start_offset_w,
+		   bd3->data.tunn_hdr_size_w);
 
 	rte_get_tx_ol_flag_list(tx_ol_flags, ol_buf, sizeof(ol_buf));
 	PMD_TX_LOG(INFO, txq, "TX offloads = %s\n", ol_buf);
@@ -1938,6 +1943,10 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			 * and BD2 onwards for data.
 			 */
 			hdr_size = mbuf->l2_len + mbuf->l3_len + mbuf->l4_len;
+			if (tunn_flg)
+				hdr_size += mbuf->outer_l2_len +
+					    mbuf->outer_l3_len;
+
 			bd1_bd_flags_bf |= 1 << ETH_TX_1ST_BD_FLAGS_LSO_SHIFT;
 			bd1_bd_flags_bf |=
 					1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
@@ -2054,9 +2063,11 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Handle fragmented MBUF */
 		m_seg = mbuf->next;
+
 		/* Encode scatter gather buffer descriptors if required */
-		nb_frags = qede_encode_sg_bd(txq, m_seg, &bd2, &bd3);
+		nb_frags = qede_encode_sg_bd(txq, m_seg, &bd2, &bd3, nbds - 1);
 		bd1->data.nbds = nbds + nb_frags;
+
 		txq->nb_tx_avail -= bd1->data.nbds;
 		txq->sw_tx_prod++;
 		rte_prefetch0(txq->sw_tx_ring[TX_PROD(txq)].mbuf);
@@ -2064,7 +2075,6 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		    rte_cpu_to_le_16(ecore_chain_get_prod_idx(&txq->tx_pbl));
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 		print_tx_bd_info(txq, bd1, bd2, bd3, tx_ol_flags);
-		PMD_TX_LOG(INFO, txq, "lso=%d tunn=%d", lso_flg, tunn_flg);
 #endif
 		nb_pkt_sent++;
 		txq->xmit_pkts++;
