@@ -1414,18 +1414,24 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 			return -ENOMEM;
 	}
 
+	/* If jumbo enabled adjust MTU */
+	if (eth_dev->data->dev_conf.rxmode.jumbo_frame)
+		eth_dev->data->mtu =
+				eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
+				ETHER_HDR_LEN - ETHER_CRC_LEN;
+
 	/* VF's MTU has to be set using vport-start where as
 	 * PF's MTU can be updated via vport-update.
 	 */
 	if (IS_VF(edev)) {
-		if (qede_start_vport(qdev, rxmode->max_rx_pkt_len))
+		if (qede_start_vport(qdev, eth_dev->data->mtu))
 			return -1;
 	} else {
-		if (qede_update_mtu(eth_dev, rxmode->max_rx_pkt_len))
+		if (qede_update_mtu(eth_dev, eth_dev->data->mtu))
 			return -1;
 	}
 
-	qdev->mtu = rxmode->max_rx_pkt_len;
+	qdev->mtu = eth_dev->data->mtu;
 	qdev->new_mtu = qdev->mtu;
 
 	/* Enable VLAN offloads by default */
@@ -2306,16 +2312,23 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct rte_eth_dev_info dev_info = {0};
 	struct qede_fastpath *fp;
+	uint32_t max_rx_pkt_len;
 	uint32_t frame_size;
 	uint16_t rx_buf_size;
 	uint16_t bufsz;
+	bool restart = false;
 	int i;
 
 	PMD_INIT_FUNC_TRACE(edev);
+	if (IS_VF(edev))
+		return -ENOTSUP;
 	qede_dev_info_get(dev, &dev_info);
-	frame_size = mtu + QEDE_ETH_OVERHEAD;
+	max_rx_pkt_len = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	frame_size = max_rx_pkt_len + QEDE_ETH_OVERHEAD;
 	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen)) {
-		DP_ERR(edev, "MTU %u out of range\n", mtu);
+		DP_ERR(edev, "MTU %u out of range, %u is maximum allowable\n",
+		       mtu, dev_info.max_rx_pktlen - ETHER_HDR_LEN -
+			ETHER_CRC_LEN - QEDE_ETH_OVERHEAD);
 		return -EINVAL;
 	}
 	if (!dev->data->scattered_rx &&
@@ -2329,29 +2342,39 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	 */
 	dev->rx_pkt_burst = qede_rxtx_pkts_dummy;
 	dev->tx_pkt_burst = qede_rxtx_pkts_dummy;
-	qede_dev_stop(dev);
+	if (dev->data->dev_started) {
+		dev->data->dev_started = 0;
+		qede_dev_stop(dev);
+		restart = true;
+	}
 	rte_delay_ms(1000);
-	qdev->mtu = mtu;
+	qdev->new_mtu = mtu;
 	/* Fix up RX buf size for all queues of the port */
 	for_each_rss(i) {
 		fp = &qdev->fp_array[i];
-		bufsz = (uint16_t)rte_pktmbuf_data_room_size(
-			fp->rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
-		if (dev->data->scattered_rx)
-			rx_buf_size = bufsz + QEDE_ETH_OVERHEAD;
-		else
-			rx_buf_size = mtu + QEDE_ETH_OVERHEAD;
-		rx_buf_size = QEDE_CEIL_TO_CACHE_LINE_SIZE(rx_buf_size);
-		fp->rxq->rx_buf_size = rx_buf_size;
-		DP_INFO(edev, "buf_size adjusted to %u\n", rx_buf_size);
+		if (fp->rxq != NULL) {
+			bufsz = (uint16_t)rte_pktmbuf_data_room_size(
+				fp->rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
+			if (dev->data->scattered_rx)
+				rx_buf_size = bufsz + ETHER_HDR_LEN +
+					      ETHER_CRC_LEN + QEDE_ETH_OVERHEAD;
+			else
+				rx_buf_size = frame_size;
+			rx_buf_size = QEDE_CEIL_TO_CACHE_LINE_SIZE(rx_buf_size);
+			fp->rxq->rx_buf_size = rx_buf_size;
+			DP_INFO(edev, "buf_size adjusted to %u\n", rx_buf_size);
+		}
 	}
-	qede_dev_start(dev);
-	if (frame_size > ETHER_MAX_LEN)
+	if (max_rx_pkt_len > ETHER_MAX_LEN)
 		dev->data->dev_conf.rxmode.jumbo_frame = 1;
 	else
 		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+	if (!dev->data->dev_started && restart) {
+		qede_dev_start(dev);
+		dev->data->dev_started = 1;
+	}
 	/* update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_rx_pkt_len;
 	/* Reassign back */
 	dev->rx_pkt_burst = qede_recv_pkts;
 	dev->tx_pkt_burst = qede_xmit_pkts;

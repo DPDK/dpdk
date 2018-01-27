@@ -84,7 +84,6 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->port_id = dev->data->port_id;
 
 	max_rx_pkt_len = (uint16_t)rxmode->max_rx_pkt_len;
-	qdev->mtu = max_rx_pkt_len;
 
 	/* Fix up RX buffer size */
 	bufsz = (uint16_t)rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
@@ -97,9 +96,10 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	}
 
 	if (dev->data->scattered_rx)
-		rxq->rx_buf_size = bufsz + QEDE_ETH_OVERHEAD;
+		rxq->rx_buf_size = bufsz + ETHER_HDR_LEN +
+				   ETHER_CRC_LEN + QEDE_ETH_OVERHEAD;
 	else
-		rxq->rx_buf_size = qdev->mtu + QEDE_ETH_OVERHEAD;
+		rxq->rx_buf_size = max_rx_pkt_len + QEDE_ETH_OVERHEAD;
 	/* Align to cache-line size if needed */
 	rxq->rx_buf_size = QEDE_CEIL_TO_CACHE_LINE_SIZE(rxq->rx_buf_size);
 
