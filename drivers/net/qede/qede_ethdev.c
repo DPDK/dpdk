@@ -681,7 +681,16 @@ qede_tunnel_update(struct qede_dev *qdev,
 
 	for_each_hwfn(edev, i) {
 		p_hwfn = &edev->hwfns[i];
-		p_ptt = IS_PF(edev) ? ecore_ptt_acquire(p_hwfn) : NULL;
+		if (IS_PF(edev)) {
+			p_ptt = ecore_ptt_acquire(p_hwfn);
+			if (!p_ptt) {
+				DP_ERR(p_hwfn, "Can't acquire PTT\n");
+				return -EAGAIN;
+			}
+		} else {
+			p_ptt = NULL;
+		}
+
 		rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, p_ptt,
 				tunn_info, ECORE_SPQ_MODE_CB, NULL);
 		if (IS_PF(edev))
