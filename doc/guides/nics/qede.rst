@@ -87,14 +87,6 @@ enabling debugging options may affect system performance.
 
   Toggle compilation of QEDE PMD driver.
 
-- ``CONFIG_RTE_LIBRTE_QEDE_DEBUG_INFO`` (default **n**)
-
-  Toggle display of generic debugging messages.
-
-- ``CONFIG_RTE_LIBRTE_QEDE_DEBUG_DRIVER`` (default **n**)
-
-  Toggle display of ecore related messages.
-
 - ``CONFIG_RTE_LIBRTE_QEDE_DEBUG_TX`` (default **n**)
 
   Toggle display of transmit fast path run-time messages.
@@ -199,7 +191,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
 
 #. Running testpmd
-   (Enable QEDE_DEBUG_INFO=y to view informational messages):
+   (Supply ``--log-level="pmd.qede.driver",7`` to view informational messages):
 
    Refer to the document
    :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` to run

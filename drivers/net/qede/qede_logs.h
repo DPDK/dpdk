@@ -34,16 +34,12 @@ do { \
 			##__VA_ARGS__); \
 } while (0)
 
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 #define DP_INFO(p_dev, fmt, ...) \
 	rte_log(RTE_LOG_INFO, qede_logtype_driver, \
 		"[%s:%d(%s)]" fmt, \
 		__func__, __LINE__, \
 		(p_dev)->name ? (p_dev)->name : "", \
 		##__VA_ARGS__)
-#else
-#define DP_INFO(p_dev, fmt, ...) do { } while (0)
-#endif
 
 #define DP_VERBOSE(p_dev, module, fmt, ...)				\
 	do {								\

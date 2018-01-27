@@ -357,7 +357,6 @@ qede_alloc_etherdev(struct qede_dev *qdev, struct qed_dev_eth_info *info)
 	qdev->ops = qed_ops;
 }
 
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 static void qede_print_adapter_info(struct qede_dev *qdev)
 {
 	struct ecore_dev *edev = &qdev->edev;
@@ -387,7 +386,6 @@ static void qede_print_adapter_info(struct qede_dev *qdev)
 	DP_INFO(edev, " Firmware file : %s\n", fw_file);
 	DP_INFO(edev, "*********************************\n");
 }
-#endif
 
 static int
 qede_start_vport(struct qede_dev *qdev, uint16_t mtu)
@@ -1149,9 +1147,7 @@ static void qede_prandom_bytes(uint32_t *buff)
 int qede_config_rss(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-#endif
 	uint32_t def_rss_key[ECORE_RSS_KEY_SIZE];
 	struct rte_eth_rss_reta_entry64 reta_conf[2];
 	struct rte_eth_rss_conf rss_conf;
@@ -1295,9 +1291,7 @@ static int qede_args_check(const char *key, const char *val, void *opaque)
 	int ret = 0;
 	struct rte_eth_dev *eth_dev = opaque;
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-#endif
 
 	errno = 0;
 	tmp = strtoul(val, NULL, 0);
@@ -3027,9 +3021,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	eth_dev->dev_ops = (is_vf) ? &qede_eth_vf_dev_ops : &qede_eth_dev_ops;
 
 	if (do_once) {
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 		qede_print_adapter_info(adapter);
-#endif
 		do_once = false;
 	}
 
