@@ -387,6 +387,60 @@ static void qede_print_adapter_info(struct qede_dev *qdev)
 	DP_INFO(edev, "*********************************\n");
 }
 
+static void qede_reset_queue_stats(struct qede_dev *qdev, bool xstats)
+{
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	unsigned int i = 0, j = 0, qid;
+	unsigned int rxq_stat_cntrs, txq_stat_cntrs;
+	struct qede_tx_queue *txq;
+
+	DP_VERBOSE(edev, ECORE_MSG_DEBUG, "Clearing queue stats\n");
+
+	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(qdev),
+			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	txq_stat_cntrs = RTE_MIN(QEDE_TSS_COUNT(qdev),
+			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
+	for_each_rss(qid) {
+		OSAL_MEMSET(((char *)(qdev->fp_array[qid].rxq)) +
+			     offsetof(struct qede_rx_queue, rcv_pkts), 0,
+			    sizeof(uint64_t));
+		OSAL_MEMSET(((char *)(qdev->fp_array[qid].rxq)) +
+			     offsetof(struct qede_rx_queue, rx_hw_errors), 0,
+			    sizeof(uint64_t));
+		OSAL_MEMSET(((char *)(qdev->fp_array[qid].rxq)) +
+			     offsetof(struct qede_rx_queue, rx_alloc_errors), 0,
+			    sizeof(uint64_t));
+
+		if (xstats)
+			for (j = 0; j < RTE_DIM(qede_rxq_xstats_strings); j++)
+				OSAL_MEMSET((((char *)
+					      (qdev->fp_array[qid].rxq)) +
+					     qede_rxq_xstats_strings[j].offset),
+					    0,
+					    sizeof(uint64_t));
+
+		i++;
+		if (i == rxq_stat_cntrs)
+			break;
+	}
+
+	i = 0;
+
+	for_each_tss(qid) {
+		txq = qdev->fp_array[qid].txq;
+
+		OSAL_MEMSET((uint64_t *)(uintptr_t)
+				(((uint64_t)(uintptr_t)(txq)) +
+				 offsetof(struct qede_tx_queue, xmit_pkts)), 0,
+			    sizeof(uint64_t));
+
+		i++;
+		if (i == txq_stat_cntrs)
+			break;
+	}
+}
+
 static int
 qede_start_vport(struct qede_dev *qdev, uint16_t mtu)
 {
@@ -412,6 +466,8 @@ qede_start_vport(struct qede_dev *qdev, uint16_t mtu)
 		}
 	}
 	ecore_reset_vport_stats(edev);
+	if (IS_PF(edev))
+		qede_reset_queue_stats(qdev, true);
 	DP_INFO(edev, "VPORT started with MTU = %u\n", mtu);
 
 	return 0;
@@ -1885,6 +1941,7 @@ qede_reset_xstats(struct rte_eth_dev *dev)
 	struct ecore_dev *edev = &qdev->edev;
 
 	ecore_reset_vport_stats(edev);
+	qede_reset_queue_stats(qdev, true);
 }
 
 int qede_dev_set_link_state(struct rte_eth_dev *eth_dev, bool link_up)
@@ -1920,6 +1977,7 @@ static void qede_reset_stats(struct rte_eth_dev *eth_dev)
 	struct ecore_dev *edev = &qdev->edev;
 
 	ecore_reset_vport_stats(edev);
+	qede_reset_queue_stats(qdev, false);
 }
 
 static void qede_allmulticast_enable(struct rte_eth_dev *eth_dev)
