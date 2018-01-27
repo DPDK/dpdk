@@ -812,10 +812,16 @@ void qede_stop_queues(struct rte_eth_dev *eth_dev)
 	}
 }
 
-static bool qede_tunn_exist(uint16_t flag)
+static inline bool qede_tunn_exist(uint16_t flag)
 {
 	return !!((PARSING_AND_ERR_FLAGS_TUNNELEXIST_MASK <<
 		    PARSING_AND_ERR_FLAGS_TUNNELEXIST_SHIFT) & flag);
+}
+
+static inline uint8_t qede_check_tunn_csum_l3(uint16_t flag)
+{
+	return !!((PARSING_AND_ERR_FLAGS_TUNNELIPHDRERROR_MASK <<
+		PARSING_AND_ERR_FLAGS_TUNNELIPHDRERROR_SHIFT) & flag);
 }
 
 /*
@@ -844,32 +850,50 @@ static inline uint8_t qede_check_notunn_csum_l4(uint16_t flag)
 	return 0;
 }
 
-/* Returns outer L3 and L4 packet_type for tunneled packets */
+/* Returns outer L2, L3 and L4 packet_type for tunneled packets */
 static inline uint32_t qede_rx_cqe_to_pkt_type_outer(struct rte_mbuf *m)
 {
 	uint32_t packet_type = RTE_PTYPE_UNKNOWN;
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
+	struct vlan_hdr *vlan_hdr;
+	uint16_t ethertype;
+	bool vlan_tagged = 0;
+	uint16_t len;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
-	if (eth_hdr->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+	len = sizeof(struct ether_hdr);
+	ethertype = rte_cpu_to_be_16(eth_hdr->ether_type);
+
+	 /* Note: Valid only if VLAN stripping is disabled */
+	if (ethertype == ETHER_TYPE_VLAN) {
+		vlan_tagged = 1;
+		vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+		len += sizeof(struct vlan_hdr);
+		ethertype = rte_cpu_to_be_16(vlan_hdr->eth_proto);
+	}
+
+	if (ethertype == ETHER_TYPE_IPv4) {
 		packet_type |= RTE_PTYPE_L3_IPV4;
-		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
-						   sizeof(struct ether_hdr));
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *, len);
 		if (ipv4_hdr->next_proto_id == IPPROTO_TCP)
 			packet_type |= RTE_PTYPE_L4_TCP;
 		else if (ipv4_hdr->next_proto_id == IPPROTO_UDP)
 			packet_type |= RTE_PTYPE_L4_UDP;
-	} else if (eth_hdr->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6)) {
+	} else if (ethertype == ETHER_TYPE_IPv6) {
 		packet_type |= RTE_PTYPE_L3_IPV6;
-		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
-						   sizeof(struct ether_hdr));
+		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *, len);
 		if (ipv6_hdr->proto == IPPROTO_TCP)
 			packet_type |= RTE_PTYPE_L4_TCP;
 		else if (ipv6_hdr->proto == IPPROTO_UDP)
 			packet_type |= RTE_PTYPE_L4_UDP;
 	}
+
+	if (vlan_tagged)
+		packet_type |= RTE_PTYPE_L2_ETHER_VLAN;
+	else
+		packet_type |= RTE_PTYPE_L2_ETHER;
 
 	return packet_type;
 }
@@ -1163,17 +1187,17 @@ static inline uint32_t qede_rx_cqe_to_tunn_pkt_type(uint16_t flags)
 		[QEDE_PKT_TYPE_TUNN_GRE] = RTE_PTYPE_TUNNEL_GRE,
 		[QEDE_PKT_TYPE_TUNN_VXLAN] = RTE_PTYPE_TUNNEL_VXLAN,
 		[QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_GENEVE] =
-				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L2_ETHER,
+				RTE_PTYPE_TUNNEL_GENEVE,
 		[QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_GRE] =
-				RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_L2_ETHER,
+				RTE_PTYPE_TUNNEL_GRE,
 		[QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_VXLAN] =
-				RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L2_ETHER,
+				RTE_PTYPE_TUNNEL_VXLAN,
 		[QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_GENEVE] =
-				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L2_ETHER,
+				RTE_PTYPE_TUNNEL_GENEVE,
 		[QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_GRE] =
-				RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_L2_ETHER,
+				RTE_PTYPE_TUNNEL_GRE,
 		[QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_VXLAN] =
-				RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L2_ETHER,
+				RTE_PTYPE_TUNNEL_VXLAN,
 		[QEDE_PKT_TYPE_TUNN_IPV4_TENID_NOEXIST_GENEVE] =
 				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L3_IPV4,
 		[QEDE_PKT_TYPE_TUNN_IPV4_TENID_NOEXIST_GRE] =
@@ -1253,7 +1277,7 @@ print_rx_bd_info(struct rte_mbuf *m, struct qede_rx_queue *rxq,
 		 uint8_t bitfield)
 {
 	PMD_RX_LOG(INFO, rxq,
-		"len 0x%x bf 0x%x hash_val 0x%x"
+		"len 0x%04x bf 0x%04x hash_val 0x%x"
 		" ol_flags 0x%04lx l2=%s l3=%s l4=%s tunn=%s"
 		" inner_l2=%s inner_l3=%s inner_l4=%s\n",
 		m->data_len, bitfield, m->hash.rss,
@@ -1404,47 +1428,62 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				ol_flags |= PKT_RX_L4_CKSUM_BAD;
 			} else {
 				ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-				if (tpa_start_flg)
-					flags =
-					 cqe_start_tpa->tunnel_pars_flags.flags;
-				else
-					flags = fp_cqe->tunnel_pars_flags.flags;
-				tunn_parse_flag = flags;
-				/* Tunnel_type */
-				packet_type =
+			}
+
+			if (unlikely(qede_check_tunn_csum_l3(parse_flag))) {
+				PMD_RX_LOG(ERR, rxq,
+					"Outer L3 csum failed, flags = 0x%x\n",
+					parse_flag);
+				  rxq->rx_hw_errors++;
+				  ol_flags |= PKT_RX_EIP_CKSUM_BAD;
+			} else {
+				  ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			}
+
+			if (tpa_start_flg)
+				flags = cqe_start_tpa->tunnel_pars_flags.flags;
+			else
+				flags = fp_cqe->tunnel_pars_flags.flags;
+			tunn_parse_flag = flags;
+
+			/* Tunnel_type */
+			packet_type =
 				qede_rx_cqe_to_tunn_pkt_type(tunn_parse_flag);
 
-				/* Inner header */
-				packet_type |=
-				      qede_rx_cqe_to_pkt_type_inner(parse_flag);
+			/* Inner header */
+			packet_type |=
+			      qede_rx_cqe_to_pkt_type_inner(parse_flag);
 
-				/* Outer L3/L4 types is not available in CQE */
-				packet_type |=
-				      qede_rx_cqe_to_pkt_type_outer(rx_mb);
-			}
+			/* Outer L3/L4 types is not available in CQE */
+			packet_type |= qede_rx_cqe_to_pkt_type_outer(rx_mb);
+
+			/* Outer L3/L4 types is not available in CQE.
+			 * Need to add offset to parse correctly,
+			 */
+			rx_mb->data_off = offset + RTE_PKTMBUF_HEADROOM;
+			packet_type |= qede_rx_cqe_to_pkt_type_outer(rx_mb);
+		}
+
+		/* Common handling for non-tunnel packets and for inner
+		 * headers in the case of tunnel.
+		 */
+		if (unlikely(qede_check_notunn_csum_l4(parse_flag))) {
+			PMD_RX_LOG(ERR, rxq,
+				    "L4 csum failed, flags = 0x%x\n",
+				    parse_flag);
+			rxq->rx_hw_errors++;
+			ol_flags |= PKT_RX_L4_CKSUM_BAD;
 		} else {
-			PMD_RX_LOG(INFO, rxq, "Rx non-tunneled packet\n");
-			if (unlikely(qede_check_notunn_csum_l4(parse_flag))) {
-				PMD_RX_LOG(ERR, rxq,
-					    "L4 csum failed, flags = 0x%x\n",
-					    parse_flag);
-				rxq->rx_hw_errors++;
-				ol_flags |= PKT_RX_L4_CKSUM_BAD;
-			} else {
-				ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-			}
-			if (unlikely(qede_check_notunn_csum_l3(rx_mb,
-							parse_flag))) {
-				PMD_RX_LOG(ERR, rxq,
-					   "IP csum failed, flags = 0x%x\n",
-					   parse_flag);
-				rxq->rx_hw_errors++;
-				ol_flags |= PKT_RX_IP_CKSUM_BAD;
-			} else {
-				ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-				packet_type =
-					qede_rx_cqe_to_pkt_type(parse_flag);
-			}
+			ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		}
+		if (unlikely(qede_check_notunn_csum_l3(rx_mb, parse_flag))) {
+			PMD_RX_LOG(ERR, rxq, "IP csum failed, flags = 0x%x\n",
+				   parse_flag);
+			rxq->rx_hw_errors++;
+			ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		} else {
+			ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			packet_type |= qede_rx_cqe_to_pkt_type(parse_flag);
 		}
 
 		if (CQE_HAS_VLAN(parse_flag) ||
