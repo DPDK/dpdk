@@ -1062,6 +1062,7 @@ static const struct {
 	MK_FLOW_ACTION(RSS, sizeof(struct rte_flow_action_rss)), /* +queue[] */
 	MK_FLOW_ACTION(PF, 0),
 	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),
+	MK_FLOW_ACTION(METER, sizeof(struct rte_flow_action_meter)),
 };
 
 /** Compute storage space needed by action configuration. */
