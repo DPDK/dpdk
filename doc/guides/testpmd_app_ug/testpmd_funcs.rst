@@ -2293,14 +2293,14 @@ show port traffic management capability (hierarchy level)
 
 Show traffic management hierarchy level capability of the port::
 
-   testpmd> show port tm cap (port_id) (level_id)
+   testpmd> show port tm level cap (port_id) (level_id)
 
 show port traffic management capability (hierarchy node level)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Show the traffic management hierarchy node capability of the port::
 
-   testpmd> show port tm cap (port_id) (node_id)
+   testpmd> show port tm node cap (port_id) (node_id)
 
 show port traffic management hierarchy node type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
