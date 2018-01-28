@@ -106,4 +106,8 @@ struct pmd_internals {
 	struct rte_intr_handle intr_handle;          /* LSC interrupt handle. */
 };
 
+/* tap_intr.c */
+
+int tap_rx_intr_vec_set(struct rte_eth_dev *dev, int set);
+
 #endif /* _RTE_ETH_TAP_H_ */

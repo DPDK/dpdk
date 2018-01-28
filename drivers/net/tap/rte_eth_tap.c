@@ -1218,7 +1218,7 @@ tap_dev_intr_handler(void *cb_arg)
 }
 
 static int
-tap_intr_handle_set(struct rte_eth_dev *dev, int set)
+tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 
@@ -1241,6 +1241,20 @@ tap_intr_handle_set(struct rte_eth_dev *dev, int set)
 	tap_nl_final(pmd->intr_handle.fd);
 	return rte_intr_callback_unregister(&pmd->intr_handle,
 					    tap_dev_intr_handler, dev);
+}
+
+static int
+tap_intr_handle_set(struct rte_eth_dev *dev, int set)
+{
+	int err;
+
+	err = tap_lsc_intr_handle_set(dev, set);
+	if (err)
+		return err;
+	err = tap_rx_intr_vec_set(dev, set);
+	if (err && set)
+		tap_lsc_intr_handle_set(dev, 0);
+	return err;
 }
 
 static const uint32_t*
@@ -1375,6 +1389,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 
 	pmd->intr_handle.type = RTE_INTR_HANDLE_EXT;
 	pmd->intr_handle.fd = -1;
+	dev->intr_handle = &pmd->intr_handle;
 
 	/* Presetup the fds to -1 as being not valid */
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
