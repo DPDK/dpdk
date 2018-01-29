@@ -214,6 +214,7 @@ DPDK_18.02 {
 EXPERIMENTAL {
 	global:
 
+	rte_eal_cleanup;
 	rte_eal_devargs_insert;
 	rte_eal_devargs_parse;
 	rte_eal_devargs_remove;

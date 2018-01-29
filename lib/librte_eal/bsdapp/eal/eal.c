@@ -709,6 +709,12 @@ rte_eal_init(int argc, char **argv)
 	return fctret;
 }
 
+int rte_eal_cleanup(void)
+{
+	rte_service_finalize();
+	return 0;
+}
+
 /* get core role */
 enum rte_lcore_role_t
 rte_eal_lcore_role(unsigned lcore_id)

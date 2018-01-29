@@ -99,6 +99,14 @@ It consist of calls to the pthread library (more specifically, pthread_self(), p
     The creation and initialization functions for these objects are not multi-thread safe.
     However, once initialized, the objects themselves can safely be used in multiple threads simultaneously.
 
+Shutdown and Cleanup
+~~~~~~~~~~~~~~~~~~~~
+
+During the initialization of EAL resources such as hugepage backed memory can be
+allocated by core components.  The memory allocated during ``rte_eal_init()``
+can be released by calling the ``rte_eal_cleanup()`` function. Refer to the
+API documentation for details.
+
 Multi-process Support
 ~~~~~~~~~~~~~~~~~~~~~
 

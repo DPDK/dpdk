@@ -170,6 +170,22 @@ int rte_eal_iopl_init(void);
 int rte_eal_init(int argc, char **argv);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Clean up the Environment Abstraction Layer (EAL)
+ *
+ * This function must be called to release any internal resources that EAL has
+ * allocated during rte_eal_init(). After this call, no DPDK function calls may
+ * be made. It is expected that common usage of this function is to call it
+ * just before terminating the process.
+ *
+ * @return 0 Successfully released all internal EAL resources
+ * @return -EFAULT There was an error in releasing all resources.
+ */
+int rte_eal_cleanup(void);
+
+/**
  * Check if a primary process is currently alive
  *
  * This function returns true when a primary process is currently

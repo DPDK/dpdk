@@ -41,6 +41,15 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Add function to allow releasing internal EAL resources on exit**
+
+  During ``rte_eal_init()`` EAL allocates memory from hugepages to enable its
+  core libraries to perform their tasks. The ``rte_eal_cleanup()`` function
+  releases these resources, ensuring that no hugepage memory is leaked. It is
+  expected that all DPDK applications call ``rte_eal_cleanup()`` before
+  exiting. Not calling this function could result in leaking hugepages, leading
+  to failure during initialization of secondary processes.
+
 * **Added the ixgbe ethernet driver to support RSS with flow API.**
 
   Rte_flow actually defined to include RSS, but till now, RSS is out of

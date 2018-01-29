@@ -14,6 +14,7 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_common.h>
+#include <rte_eal.h>
 
 #define BACKTRACE_SIZE 256
 
@@ -79,6 +80,9 @@ rte_exit(int exit_code, const char *format, ...)
 	va_end(ap);
 
 #ifndef RTE_EAL_ALWAYS_PANIC_ON_ERROR
+	if (rte_eal_cleanup() != 0)
+		RTE_LOG(CRIT, EAL,
+			"EAL could not release all resources\n");
 	exit(exit_code);
 #else
 	rte_dump_stack();
