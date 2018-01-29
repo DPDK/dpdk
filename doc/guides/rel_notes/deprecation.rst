@@ -76,6 +76,19 @@ Deprecation Notices
     customize objects population and allocate contiguous
     block of objects if underlying driver supports it.
 
+* mbuf: The control mbuf API will be removed in v18.05. The impacted
+  functions and macros are:
+
+  - ``rte_ctrlmbuf_init()``
+  - ``rte_ctrlmbuf_alloc()``
+  - ``rte_ctrlmbuf_free()``
+  - ``rte_ctrlmbuf_data()``
+  - ``rte_ctrlmbuf_len()``
+  - ``rte_is_ctrlmbuf()``
+  - ``CTRL_MBUF_FLAG``
+
+  The packet mbuf API should be used as a replacement.
+
 * ethdev: a new Tx and Rx offload API was introduced on 17.11.
   In the new API, offloads are divided into per-port and per-queue offloads.
   Offloads are disabled by default and enabled per application request.
