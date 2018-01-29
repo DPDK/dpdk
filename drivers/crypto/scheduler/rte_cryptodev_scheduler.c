@@ -439,8 +439,8 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 				RTE_CRYPTODEV_NAME_MAX_LEN);
 		return -EINVAL;
 	}
-	strncpy(sched_ctx->name, scheduler->name,
-			RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN);
+	snprintf(sched_ctx->name, sizeof(sched_ctx->name), "%s",
+			scheduler->name);
 
 	if (strlen(scheduler->description) >
 			RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN - 1) {
@@ -449,8 +449,8 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 				RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN - 1);
 		return -EINVAL;
 	}
-	strncpy(sched_ctx->description, scheduler->description,
-			RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN);
+	snprintf(sched_ctx->description, sizeof(sched_ctx->description), "%s",
+			scheduler->description);
 
 	/* load scheduler instance operations functions */
 	sched_ctx->ops.config_queue_pair = scheduler->ops->config_queue_pair;
