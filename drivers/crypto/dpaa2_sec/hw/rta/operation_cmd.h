@@ -8,6 +8,8 @@
 #ifndef __RTA_OPERATION_CMD_H__
 #define __RTA_OPERATION_CMD_H__
 
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+
 extern enum rta_sec_era rta_sec_era;
 
 static inline int
