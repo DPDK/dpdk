@@ -5002,7 +5002,11 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	hw->mac.ops.reset_hw(hw);
+	err = hw->mac.ops.reset_hw(hw);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to reset vf hardware (%d)", err);
+		return err;
+	}
 	hw->mac.get_link_status = true;
 
 	/* negotiate mailbox API version to use with the PF. */
