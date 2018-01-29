@@ -20,6 +20,7 @@
 #include <rte_kvargs.h>
 #include <rte_dev.h>
 #include <rte_ethdev_driver.h>
+#include <rte_mbuf_pool_ops.h>
 
 #include <fslmc_logs.h>
 #include <rte_fslmc.h>
@@ -38,6 +39,7 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 {
 	struct dpaa2_dpbp_dev *dpbp_node;
 	int ret;
+	static int register_once;
 
 	/* Allocate DPAA2 dpbp handle */
 	dpbp_node = rte_malloc(NULL, sizeof(struct dpaa2_dpbp_dev), 0);
@@ -73,6 +75,11 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 	TAILQ_INSERT_TAIL(&dpbp_dev_list, dpbp_node, next);
 
 	RTE_LOG(DEBUG, PMD, "DPAA2: Added [dpbp.%d]\n", dpbp_id);
+
+	if (!register_once) {
+		if (rte_mbuf_set_platform_mempool_ops(DPAA2_MEMPOOL_OPS_NAME))
+			register_once = 1;
+	}
 
 	return 0;
 }

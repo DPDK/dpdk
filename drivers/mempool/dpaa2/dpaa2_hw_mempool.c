@@ -354,7 +354,7 @@ rte_hw_mbuf_get_count(const struct rte_mempool *mp)
 }
 
 struct rte_mempool_ops dpaa2_mpool_ops = {
-	.name = "dpaa2",
+	.name = DPAA2_MEMPOOL_OPS_NAME,
 	.alloc = rte_hw_mbuf_create_pool,
 	.free = rte_hw_mbuf_free_pool,
 	.enqueue = rte_hw_mbuf_free_bulk,

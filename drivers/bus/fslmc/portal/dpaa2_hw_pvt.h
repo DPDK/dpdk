@@ -44,6 +44,8 @@
 /* Maximum release/acquire from QBMAN */
 #define DPAA2_MBUF_MAX_ACQ_REL	7
 
+#define DPAA2_MEMPOOL_OPS_NAME		"dpaa2"
+
 #define MAX_BPID 256
 #define DPAA2_MBUF_HW_ANNOTATION	64
 #define DPAA2_FD_PTA_SIZE		0
