@@ -80,6 +80,7 @@
 #define ADF_RING_NEAR_WATERMARK_512 0x08
 #define ADF_RING_NEAR_WATERMARK_0 0x00
 #define ADF_RING_EMPTY_SIG 0x7F7F7F7F
+#define ADF_RING_EMPTY_SIG_BYTE 0x7F
 
 /* Valid internal ring size values */
 #define ADF_RING_SIZE_128 0x01

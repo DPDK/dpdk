@@ -1010,10 +1010,10 @@ void rxq_free_desc(struct qat_qp *qp, struct qat_queue *q)
 	void *cur_desc = (uint8_t *)q->base_addr + old_head;
 
 	if (new_head < old_head) {
-		memset(cur_desc, ADF_RING_EMPTY_SIG, max_head - old_head);
-		memset(q->base_addr, ADF_RING_EMPTY_SIG, new_head);
+		memset(cur_desc, ADF_RING_EMPTY_SIG_BYTE, max_head - old_head);
+		memset(q->base_addr, ADF_RING_EMPTY_SIG_BYTE, new_head);
 	} else {
-		memset(cur_desc, ADF_RING_EMPTY_SIG, new_head - old_head);
+		memset(cur_desc, ADF_RING_EMPTY_SIG_BYTE, new_head - old_head);
 	}
 	q->nb_processed_responses = 0;
 	q->csr_head = new_head;
