@@ -218,7 +218,7 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 #endif
 	internal_cfg->vmware_tsc_map = 0;
 	internal_cfg->create_uio_dev = 0;
-	internal_cfg->user_mbuf_pool_ops_name = RTE_MBUF_DEFAULT_MEMPOOL_OPS;
+	internal_cfg->user_mbuf_pool_ops_name = NULL;
 }
 
 static int

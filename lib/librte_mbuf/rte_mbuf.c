@@ -177,6 +177,8 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 		return NULL;
 
 	mp_ops_name = rte_eal_mbuf_default_mempool_ops();
+	if (mp_ops_name == NULL)
+		mp_ops_name = RTE_MBUF_DEFAULT_MEMPOOL_OPS;
 	ret = rte_mempool_set_ops_byname(mp, mp_ops_name, NULL);
 	if (ret != 0) {
 		RTE_LOG(ERR, MBUF, "error setting mempool handler\n");
