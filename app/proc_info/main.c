@@ -660,5 +660,9 @@ main(int argc, char **argv)
 	if (enable_metrics)
 		metrics_display(RTE_METRICS_GLOBAL);
 
+	ret = rte_eal_cleanup();
+	if (ret)
+		printf("Error from rte_eal_cleanup(), %d\n", ret);
+
 	return 0;
 }
