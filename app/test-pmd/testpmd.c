@@ -38,6 +38,7 @@
 #include <rte_mempool.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_pool_ops.h>
 #include <rte_interrupts.h>
 #include <rte_pci.h>
 #include <rte_ether.h>
@@ -499,6 +500,8 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		rte_mempool_obj_iter(rte_mp, rte_pktmbuf_init, NULL);
 	} else {
 		/* wrapper to rte_mempool_create() */
+		TESTPMD_LOG(INFO, "preferred mempool ops selected: %s\n",
+				rte_mbuf_best_mempool_ops());
 		rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
 			mb_mempool_cache, 0, mbuf_seg_size, socket_id);
 	}
