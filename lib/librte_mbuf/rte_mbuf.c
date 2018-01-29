@@ -149,15 +149,15 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	m->next = NULL;
 }
 
-/* helper to create a mbuf pool */
+/* Helper to create a mbuf pool with given mempool ops name*/
 struct rte_mempool *
-rte_pktmbuf_pool_create(const char *name, unsigned n,
-	unsigned cache_size, uint16_t priv_size, uint16_t data_room_size,
-	int socket_id)
+rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
+	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
+	int socket_id, const char *ops_name)
 {
 	struct rte_mempool *mp;
 	struct rte_pktmbuf_pool_private mbp_priv;
-	const char *mp_ops_name;
+	const char *mp_ops_name = ops_name;
 	unsigned elt_size;
 	int ret;
 
@@ -177,7 +177,8 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 	if (mp == NULL)
 		return NULL;
 
-	mp_ops_name = rte_mbuf_best_mempool_ops();
+	if (mp_ops_name == NULL)
+		mp_ops_name = rte_mbuf_best_mempool_ops();
 	ret = rte_mempool_set_ops_byname(mp, mp_ops_name, NULL);
 	if (ret != 0) {
 		RTE_LOG(ERR, MBUF, "error setting mempool handler\n");
@@ -197,6 +198,16 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 	rte_mempool_obj_iter(mp, rte_pktmbuf_init, NULL);
 
 	return mp;
+}
+
+/* helper to create a mbuf pool */
+struct rte_mempool *
+rte_pktmbuf_pool_create(const char *name, unsigned int n,
+	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
+	int socket_id)
+{
+	return rte_pktmbuf_pool_create_by_ops(name, n, cache_size, priv_size,
+			data_room_size, socket_id, NULL);
 }
 
 /* do some sanity checks on a mbuf: panic if it fails */
