@@ -54,7 +54,7 @@ CFLAGS += -DMVCONF_DMA_PHYS_ADDR_T_PUBLIC
 LIBABIVER := 1
 
 # versioning export map
-EXPORT_MAP := rte_mrvl_pmd_version.map
+EXPORT_MAP := rte_pmd_mrvl_version.map
 
 # external library dependencies
 LDLIBS += -L$(LIBMUSDK_PATH)/lib -lmusdk
