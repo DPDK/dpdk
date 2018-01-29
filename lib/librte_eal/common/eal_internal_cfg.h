@@ -52,7 +52,8 @@ struct internal_config {
 	volatile enum rte_intr_mode vfio_intr_mode;
 	const char *hugefile_prefix;      /**< the base filename of hugetlbfs files */
 	const char *hugepage_dir;         /**< specific hugetlbfs directory to use */
-	const char *mbuf_pool_ops_name;   /**< mbuf pool ops name */
+	const char *user_mbuf_pool_ops_name;
+			/**< user defined mbuf pool ops name */
 	unsigned num_hugepage_sizes;      /**< how many sizes on this system */
 	struct hugepage_info hugepage_info[MAX_HUGEPAGE_SIZES];
 };
