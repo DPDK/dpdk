@@ -139,4 +139,15 @@ int32_t rte_service_component_runstate_set(uint32_t id, uint32_t runstate);
  */
 int32_t rte_service_init(void);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @internal Free up the memory that has been initialized.
+ * This routine is to be invoked prior to process termination.
+ *
+ * @retval None
+ */
+void rte_service_finalize(void);
+
 #endif /* _RTE_SERVICE_PRIVATE_H_ */

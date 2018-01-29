@@ -429,17 +429,6 @@ int32_t rte_service_attr_get(uint32_t id, uint32_t attr_id,
  */
 int32_t rte_service_attr_reset_all(uint32_t id);
 
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
- * Free up the memory that has been initialized. This routine
- * is to be invoked prior to process termination.
- *
- * @retval None
- */
-void rte_service_finalize(void);
-
 #ifdef __cplusplus
 }
 #endif
