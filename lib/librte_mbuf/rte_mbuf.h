@@ -244,7 +244,9 @@ extern "C" {
 /**
  * Second VLAN insertion (QinQ) flag.
  */
-#define PKT_TX_QINQ_PKT    (1ULL << 49)   /**< TX packet with double VLAN inserted. */
+#define PKT_TX_QINQ        (1ULL << 49)   /**< TX packet with double VLAN inserted. */
+/* this old name is deprecated */
+#define PKT_TX_QINQ_PKT    PKT_TX_QINQ
 
 /**
  * TCP segmentation offload. To enable this offload feature for a
@@ -305,7 +307,12 @@ extern "C" {
  */
 #define PKT_TX_IPV6          (1ULL << 56)
 
-#define PKT_TX_VLAN_PKT      (1ULL << 57) /**< TX packet is a 802.1q VLAN packet. */
+/**
+ * TX packet is a 802.1q VLAN packet.
+ */
+#define PKT_TX_VLAN          (1ULL << 57)
+/* this old name is deprecated */
+#define PKT_TX_VLAN_PKT      PKT_TX_VLAN
 
 /**
  * Offload the IP checksum of an external header in the hardware. The
