@@ -882,5 +882,9 @@ main(int argc, char **argv)
 	/* dump debug stats */
 	print_pdump_stats();
 
+	ret = rte_eal_cleanup();
+	if (ret)
+		printf("Error from rte_eal_cleanup(), %d\n", ret);
+
 	return 0;
 }
