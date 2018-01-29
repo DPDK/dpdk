@@ -665,12 +665,15 @@ rte_eth_bond_xmit_policy_set(uint16_t bonded_port_id, uint8_t policy)
 	switch (policy) {
 	case BALANCE_XMIT_POLICY_LAYER2:
 		internals->balance_xmit_policy = policy;
+		internals->burst_xmit_hash = burst_xmit_l2_hash;
 		break;
 	case BALANCE_XMIT_POLICY_LAYER23:
 		internals->balance_xmit_policy = policy;
+		internals->burst_xmit_hash = burst_xmit_l23_hash;
 		break;
 	case BALANCE_XMIT_POLICY_LAYER34:
 		internals->balance_xmit_policy = policy;
+		internals->burst_xmit_hash = burst_xmit_l34_hash;
 		break;
 
 	default:
