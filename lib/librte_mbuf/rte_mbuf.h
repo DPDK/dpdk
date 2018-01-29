@@ -517,7 +517,7 @@ struct rte_mbuf {
 
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
-	/** VLAN TCI (CPU order), valid if PKT_RX_VLAN_STRIPPED is set. */
+	/** VLAN TCI (CPU order), valid if PKT_RX_VLAN is set. */
 	uint16_t vlan_tci;
 
 	union {
@@ -543,7 +543,7 @@ struct rte_mbuf {
 		uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
 	} hash;                   /**< hash information */
 
-	/** Outer VLAN TCI (CPU order), valid if PKT_RX_QINQ_STRIPPED is set. */
+	/** Outer VLAN TCI (CPU order), valid if PKT_RX_QINQ is set. */
 	uint16_t vlan_tci_outer;
 
 	uint16_t buf_len;         /**< Length of segment buffer. */
