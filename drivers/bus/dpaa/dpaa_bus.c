@@ -31,6 +31,7 @@
 #include <rte_malloc.h>
 #include <rte_ring.h>
 #include <rte_bus.h>
+#include <rte_mbuf_pool_ops.h>
 
 #include <rte_dpaa_bus.h>
 #include <rte_dpaa_logs.h>
@@ -469,6 +470,7 @@ rte_dpaa_bus_probe(void)
 			break;
 		}
 	}
+	rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
 
 	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
 	if (svr_file) {

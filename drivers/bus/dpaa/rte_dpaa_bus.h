@@ -17,6 +17,8 @@
 
 #define FSL_DPAA_BUS_NAME	"FSL_DPAA_BUS"
 
+#define DPAA_MEMPOOL_OPS_NAME	"dpaa"
+
 #define DEV_TO_DPAA_DEVICE(ptr)	\
 		container_of(ptr, struct rte_dpaa_device, device)
 

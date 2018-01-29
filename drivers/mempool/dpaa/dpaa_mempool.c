@@ -290,7 +290,7 @@ dpaa_register_memory_area(const struct rte_mempool *mp,
 }
 
 struct rte_mempool_ops dpaa_mpool_ops = {
-	.name = "dpaa",
+	.name = DPAA_MEMPOOL_OPS_NAME,
 	.alloc = dpaa_mbuf_create_pool,
 	.free = dpaa_mbuf_free_pool,
 	.enqueue = dpaa_mbuf_free_bulk,
