@@ -108,7 +108,13 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 		      " flow error type %d, cause %p, message: %s",
 		      -ret, strerror(-ret), error.type, error.cause,
 		      error.message ? error.message : "(unspecified)");
+		goto exit;
 	}
+	ret = mlx4_intr_install(priv);
+	if (ret)
+		ERROR("%p: interrupt handler installation failed",
+		      (void *)dev);
+exit:
 	return ret;
 }
 
@@ -141,7 +147,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		      (void *)dev, strerror(-ret));
 		goto err;
 	}
-	ret = mlx4_intr_install(priv);
+	ret = mlx4_rxq_intr_enable(priv);
 	if (ret) {
 		ERROR("%p: interrupt handler installation failed",
 		     (void *)dev);
@@ -187,7 +193,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = mlx4_rx_burst_removed;
 	rte_wmb();
 	mlx4_flow_sync(priv, NULL);
-	mlx4_intr_uninstall(priv);
+	mlx4_rxq_intr_disable(priv);
 	mlx4_rss_deinit(priv);
 }
 

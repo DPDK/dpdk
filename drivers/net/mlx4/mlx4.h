@@ -177,6 +177,8 @@ int mlx4_is_removed(struct rte_eth_dev *dev);
 
 int mlx4_intr_uninstall(struct priv *priv);
 int mlx4_intr_install(struct priv *priv);
+int mlx4_rxq_intr_enable(struct priv *priv);
+void mlx4_rxq_intr_disable(struct priv *priv);
 int mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx);
 int mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx);
 

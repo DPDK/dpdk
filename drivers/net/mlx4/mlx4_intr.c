@@ -291,7 +291,7 @@ mlx4_intr_uninstall(struct priv *priv)
 	}
 	rte_eal_alarm_cancel((void (*)(void *))mlx4_link_status_alarm, priv);
 	priv->intr_alarm = 0;
-	mlx4_rx_intr_vec_disable(priv);
+	mlx4_rxq_intr_disable(priv);
 	rte_errno = err;
 	return 0;
 }
@@ -313,8 +313,6 @@ mlx4_intr_install(struct priv *priv)
 	int rc;
 
 	mlx4_intr_uninstall(priv);
-	if (intr_conf->rxq && mlx4_rx_intr_vec_enable(priv) < 0)
-		goto error;
 	if (intr_conf->lsc | intr_conf->rmv) {
 		priv->intr_handle.fd = priv->ctx->async_fd;
 		rc = rte_intr_callback_register(&priv->intr_handle,
@@ -394,4 +392,41 @@ mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
 		mlx4_arm_cq(rxq, 0);
 	}
 	return -ret;
+}
+
+/**
+ * Enable datapath interrupts.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx4_rxq_intr_enable(struct priv *priv)
+{
+	const struct rte_intr_conf *const intr_conf =
+		&priv->dev->data->dev_conf.intr_conf;
+
+	if (intr_conf->rxq && mlx4_rx_intr_vec_enable(priv) < 0)
+		goto error;
+	return 0;
+error:
+	return -rte_errno;
+}
+
+/**
+ * Disable datapath interrupts, keeping other interrupts intact.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ */
+void
+mlx4_rxq_intr_disable(struct priv *priv)
+{
+	int err = rte_errno; /* Make sure rte_errno remains unchanged. */
+
+	mlx4_rx_intr_vec_disable(priv);
+	rte_errno = err;
 }
