@@ -136,6 +136,7 @@ The public API headers are grouped by topics:
 
 - **containers**:
   [mbuf]               (@ref rte_mbuf.h),
+  [mbuf pool ops]      (@ref rte_mbuf_pool_ops.h),
   [ring]               (@ref rte_ring.h),
   [tailq]              (@ref rte_tailq.h),
   [bitmap]             (@ref rte_bitmap.h)
