@@ -64,9 +64,9 @@ extern "C" {
  * occur before the STORE operations generated after.
  */
 #ifdef RTE_ARCH_64
-#define	rte_wmb() {asm volatile("lwsync" : : : "memory"); }
+#define	rte_wmb() asm volatile("lwsync" : : : "memory")
 #else
-#define	rte_wmb() {asm volatile("sync" : : : "memory"); }
+#define	rte_wmb() asm volatile("sync" : : : "memory")
 #endif
 
 /**
@@ -76,9 +76,9 @@ extern "C" {
  * occur before the LOAD operations generated after.
  */
 #ifdef RTE_ARCH_64
-#define	rte_rmb() {asm volatile("lwsync" : : : "memory"); }
+#define	rte_rmb() asm volatile("lwsync" : : : "memory")
 #else
-#define	rte_rmb() {asm volatile("sync" : : : "memory"); }
+#define	rte_rmb() asm volatile("sync" : : : "memory")
 #endif
 
 #define rte_smp_mb() rte_mb()
