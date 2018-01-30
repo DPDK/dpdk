@@ -60,6 +60,7 @@
 #include <rte_mempool.h>
 
 #include "mlx4.h"
+#include "mlx4_glue.h"
 #include "mlx4_prm.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
@@ -350,7 +351,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.lb = !!priv->vf,
 		.bounce_buf = bounce_buf,
 	};
-	txq->cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
+	txq->cq = mlx4_glue->create_cq(priv->ctx, desc, NULL, NULL, 0);
 	if (!txq->cq) {
 		rte_errno = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
@@ -370,7 +371,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		/* No completion events must occur by default. */
 		.sq_sig_all = 0,
 	};
-	txq->qp = ibv_create_qp(priv->pd, &qp_init_attr);
+	txq->qp = mlx4_glue->create_qp(priv->pd, &qp_init_attr);
 	if (!txq->qp) {
 		rte_errno = errno ? errno : EINVAL;
 		ERROR("%p: QP creation failure: %s",
@@ -378,7 +379,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	txq->max_inline = qp_init_attr.cap.max_inline_data;
-	ret = ibv_modify_qp
+	ret = mlx4_glue->modify_qp
 		(txq->qp,
 		 &(struct ibv_qp_attr){
 			.qp_state = IBV_QPS_INIT,
@@ -391,7 +392,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	ret = ibv_modify_qp
+	ret = mlx4_glue->modify_qp
 		(txq->qp,
 		 &(struct ibv_qp_attr){
 			.qp_state = IBV_QPS_RTR,
@@ -403,7 +404,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	ret = ibv_modify_qp
+	ret = mlx4_glue->modify_qp
 		(txq->qp,
 		 &(struct ibv_qp_attr){
 			.qp_state = IBV_QPS_RTS,
@@ -420,7 +421,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	mlxdv.cq.out = &dv_cq;
 	mlxdv.qp.in = txq->qp;
 	mlxdv.qp.out = &dv_qp;
-	ret = mlx4dv_init_obj(&mlxdv, MLX4DV_OBJ_QP | MLX4DV_OBJ_CQ);
+	ret = mlx4_glue->dv_init_obj(&mlxdv, MLX4DV_OBJ_QP | MLX4DV_OBJ_CQ);
 	if (ret) {
 		rte_errno = EINVAL;
 		ERROR("%p: failed to obtain information needed for"
@@ -470,9 +471,9 @@ mlx4_tx_queue_release(void *dpdk_txq)
 		}
 	mlx4_txq_free_elts(txq);
 	if (txq->qp)
-		claim_zero(ibv_destroy_qp(txq->qp));
+		claim_zero(mlx4_glue->destroy_qp(txq->qp));
 	if (txq->cq)
-		claim_zero(ibv_destroy_cq(txq->cq));
+		claim_zero(mlx4_glue->destroy_cq(txq->cq));
 	for (i = 0; i != RTE_DIM(txq->mp2mr); ++i) {
 		if (!txq->mp2mr[i].mp)
 			break;

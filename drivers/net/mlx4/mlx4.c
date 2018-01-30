@@ -67,6 +67,7 @@
 #include <rte_mbuf.h>
 
 #include "mlx4.h"
+#include "mlx4_glue.h"
 #include "mlx4_flow.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
@@ -224,8 +225,8 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		mlx4_tx_queue_release(dev->data->tx_queues[i]);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
-		claim_zero(ibv_dealloc_pd(priv->pd));
-		claim_zero(ibv_close_device(priv->ctx));
+		claim_zero(mlx4_glue->dealloc_pd(priv->pd));
+		claim_zero(mlx4_glue->close_device(priv->ctx));
 	} else
 		assert(priv->ctx == NULL);
 	mlx4_intr_uninstall(priv);
@@ -442,7 +443,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	(void)pci_drv;
 	assert(pci_drv == &mlx4_driver);
-	list = ibv_get_device_list(&i);
+	list = mlx4_glue->get_device_list(&i);
 	if (list == NULL) {
 		rte_errno = errno;
 		assert(rte_errno);
@@ -471,12 +472,12 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		      PCI_DEVICE_ID_MELLANOX_CONNECTX3VF);
 		INFO("PCI information matches, using device \"%s\" (VF: %s)",
 		     list[i]->name, (vf ? "true" : "false"));
-		attr_ctx = ibv_open_device(list[i]);
+		attr_ctx = mlx4_glue->open_device(list[i]);
 		err = errno;
 		break;
 	}
 	if (attr_ctx == NULL) {
-		ibv_free_device_list(list);
+		mlx4_glue->free_device_list(list);
 		switch (err) {
 		case 0:
 			rte_errno = ENODEV;
@@ -493,7 +494,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	}
 	ibv_dev = list[i];
 	DEBUG("device opened");
-	if (ibv_query_device(attr_ctx, &device_attr)) {
+	if (mlx4_glue->query_device(attr_ctx, &device_attr)) {
 		rte_errno = ENODEV;
 		goto error;
 	}
@@ -508,7 +509,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	if (!conf.ports.enabled)
 		conf.ports.enabled = conf.ports.present;
 	/* Retrieve extended device attributes. */
-	if (ibv_query_device_ex(attr_ctx, NULL, &device_attr_ex)) {
+	if (mlx4_glue->query_device_ex(attr_ctx, NULL, &device_attr_ex)) {
 		rte_errno = ENODEV;
 		goto error;
 	}
@@ -526,13 +527,13 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		if (!(conf.ports.enabled & (1 << i)))
 			continue;
 		DEBUG("using port %u", port);
-		ctx = ibv_open_device(ibv_dev);
+		ctx = mlx4_glue->open_device(ibv_dev);
 		if (ctx == NULL) {
 			rte_errno = ENODEV;
 			goto port_error;
 		}
 		/* Check port status. */
-		err = ibv_query_port(ctx, port, &port_attr);
+		err = mlx4_glue->query_port(ctx, port, &port_attr);
 		if (err) {
 			rte_errno = err;
 			ERROR("port query failed: %s", strerror(rte_errno));
@@ -546,7 +547,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		}
 		if (port_attr.state != IBV_PORT_ACTIVE)
 			DEBUG("port %d is not active: \"%s\" (%d)",
-			      port, ibv_port_state_str(port_attr.state),
+			      port, mlx4_glue->port_state_str(port_attr.state),
 			      port_attr.state);
 		/* Make asynchronous FD non-blocking to handle interrupts. */
 		if (mlx4_fd_set_non_blocking(ctx->async_fd) < 0) {
@@ -555,7 +556,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			goto port_error;
 		}
 		/* Allocate protection domain. */
-		pd = ibv_alloc_pd(ctx);
+		pd = mlx4_glue->alloc_pd(ctx);
 		if (pd == NULL) {
 			rte_errno = ENOMEM;
 			ERROR("PD allocation failure");
@@ -634,7 +635,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			char name[RTE_ETH_NAME_MAX_LEN];
 
 			snprintf(name, sizeof(name), "%s port %u",
-				 ibv_get_device_name(ibv_dev), port);
+				 mlx4_glue->get_device_name(ibv_dev), port);
 			eth_dev = rte_eth_dev_allocate(name);
 		}
 		if (eth_dev == NULL) {
@@ -677,9 +678,9 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 port_error:
 		rte_free(priv);
 		if (pd)
-			claim_zero(ibv_dealloc_pd(pd));
+			claim_zero(mlx4_glue->dealloc_pd(pd));
 		if (ctx)
-			claim_zero(ibv_close_device(ctx));
+			claim_zero(mlx4_glue->close_device(ctx));
 		if (eth_dev)
 			rte_eth_dev_release_port(eth_dev);
 		break;
@@ -694,9 +695,9 @@ port_error:
 	 */
 error:
 	if (attr_ctx)
-		claim_zero(ibv_close_device(attr_ctx));
+		claim_zero(mlx4_glue->close_device(attr_ctx));
 	if (list)
-		ibv_free_device_list(list);
+		mlx4_glue->free_device_list(list);
 	assert(rte_errno >= 0);
 	return -rte_errno;
 }
@@ -749,7 +750,7 @@ rte_mlx4_pmd_init(void)
 	 * using this PMD, which is not supported in forked processes.
 	 */
 	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
-	ibv_fork_init();
+	mlx4_glue->fork_init();
 	rte_pci_register(&mlx4_driver);
 }
 

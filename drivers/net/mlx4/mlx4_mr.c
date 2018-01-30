@@ -60,6 +60,7 @@
 #include <rte_mempool.h>
 #include <rte_spinlock.h>
 
+#include "mlx4_glue.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
@@ -200,8 +201,8 @@ mlx4_mr_get(struct priv *priv, struct rte_mempool *mp)
 		.end = end,
 		.refcnt = 1,
 		.priv = priv,
-		.mr = ibv_reg_mr(priv->pd, (void *)start, end - start,
-				 IBV_ACCESS_LOCAL_WRITE),
+		.mr = mlx4_glue->reg_mr(priv->pd, (void *)start, end - start,
+					IBV_ACCESS_LOCAL_WRITE),
 		.mp = mp,
 	};
 	if (mr->mr) {
@@ -240,7 +241,7 @@ mlx4_mr_put(struct mlx4_mr *mr)
 	if (--mr->refcnt)
 		goto release;
 	LIST_REMOVE(mr, next);
-	claim_zero(ibv_dereg_mr(mr->mr));
+	claim_zero(mlx4_glue->dereg_mr(mr->mr));
 	rte_free(mr);
 release:
 	rte_spinlock_unlock(&priv->mr_lock);

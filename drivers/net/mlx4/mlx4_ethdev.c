@@ -70,6 +70,7 @@
 
 #include "mlx4.h"
 #include "mlx4_flow.h"
+#include "mlx4_glue.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
@@ -1068,7 +1069,7 @@ mlx4_is_removed(struct rte_eth_dev *dev)
 	struct ibv_device_attr device_attr;
 	struct priv *priv = dev->data->dev_private;
 
-	if (ibv_query_device(priv->ctx, &device_attr) == EIO)
+	if (mlx4_glue->query_device(priv->ctx, &device_attr) == EIO)
 		return 1;
 	return 0;
 }

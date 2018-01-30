@@ -62,6 +62,7 @@
 #include <rte_mempool.h>
 
 #include "mlx4.h"
+#include "mlx4_glue.h"
 #include "mlx4_flow.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
@@ -231,7 +232,7 @@ mlx4_rss_attach(struct mlx4_rss *rss)
 		}
 		ind_tbl[i] = rxq->wq;
 	}
-	rss->ind = ibv_create_rwq_ind_table
+	rss->ind = mlx4_glue->create_rwq_ind_table
 		(priv->ctx,
 		 &(struct ibv_rwq_ind_table_init_attr){
 			.log_ind_tbl_size = rte_log2_u32(RTE_DIM(ind_tbl)),
@@ -243,7 +244,7 @@ mlx4_rss_attach(struct mlx4_rss *rss)
 		msg = "RSS indirection table creation failure";
 		goto error;
 	}
-	rss->qp = ibv_create_qp_ex
+	rss->qp = mlx4_glue->create_qp_ex
 		(priv->ctx,
 		 &(struct ibv_qp_init_attr_ex){
 			.comp_mask = (IBV_QP_INIT_ATTR_PD |
@@ -264,7 +265,7 @@ mlx4_rss_attach(struct mlx4_rss *rss)
 		msg = "RSS hash QP creation failure";
 		goto error;
 	}
-	ret = ibv_modify_qp
+	ret = mlx4_glue->modify_qp
 		(rss->qp,
 		 &(struct ibv_qp_attr){
 			.qp_state = IBV_QPS_INIT,
@@ -275,7 +276,7 @@ mlx4_rss_attach(struct mlx4_rss *rss)
 		msg = "failed to switch RSS hash QP to INIT state";
 		goto error;
 	}
-	ret = ibv_modify_qp
+	ret = mlx4_glue->modify_qp
 		(rss->qp,
 		 &(struct ibv_qp_attr){
 			.qp_state = IBV_QPS_RTR,
@@ -288,11 +289,11 @@ mlx4_rss_attach(struct mlx4_rss *rss)
 	return 0;
 error:
 	if (rss->qp) {
-		claim_zero(ibv_destroy_qp(rss->qp));
+		claim_zero(mlx4_glue->destroy_qp(rss->qp));
 		rss->qp = NULL;
 	}
 	if (rss->ind) {
-		claim_zero(ibv_destroy_rwq_ind_table(rss->ind));
+		claim_zero(mlx4_glue->destroy_rwq_ind_table(rss->ind));
 		rss->ind = NULL;
 	}
 	while (i--)
@@ -325,9 +326,9 @@ mlx4_rss_detach(struct mlx4_rss *rss)
 	assert(rss->ind);
 	if (--rss->usecnt)
 		return;
-	claim_zero(ibv_destroy_qp(rss->qp));
+	claim_zero(mlx4_glue->destroy_qp(rss->qp));
 	rss->qp = NULL;
-	claim_zero(ibv_destroy_rwq_ind_table(rss->ind));
+	claim_zero(mlx4_glue->destroy_rwq_ind_table(rss->ind));
 	rss->ind = NULL;
 	for (i = 0; i != rss->queues; ++i)
 		mlx4_rxq_detach(priv->dev->data->rx_queues[rss->queue_id[i]]);
@@ -364,9 +365,10 @@ mlx4_rss_init(struct priv *priv)
 	int ret;
 
 	/* Prepare range for RSS contexts before creating the first WQ. */
-	ret = mlx4dv_set_context_attr(priv->ctx,
-				      MLX4DV_SET_CTX_ATTR_LOG_WQS_RANGE_SZ,
-				      &log2_range);
+	ret = mlx4_glue->dv_set_context_attr
+		(priv->ctx,
+		 MLX4DV_SET_CTX_ATTR_LOG_WQS_RANGE_SZ,
+		 &log2_range);
 	if (ret) {
 		ERROR("cannot set up range size for RSS context to %u"
 		      " (for %u Rx queues), error: %s",
@@ -402,13 +404,13 @@ mlx4_rss_init(struct priv *priv)
 		 * sequentially and are guaranteed to never be reused in the
 		 * same context by the underlying implementation.
 		 */
-		cq = ibv_create_cq(priv->ctx, 1, NULL, NULL, 0);
+		cq = mlx4_glue->create_cq(priv->ctx, 1, NULL, NULL, 0);
 		if (!cq) {
 			ret = ENOMEM;
 			msg = "placeholder CQ creation failure";
 			goto error;
 		}
-		wq = ibv_create_wq
+		wq = mlx4_glue->create_wq
 			(priv->ctx,
 			 &(struct ibv_wq_init_attr){
 				.wq_type = IBV_WQT_RQ,
@@ -419,11 +421,11 @@ mlx4_rss_init(struct priv *priv)
 			 });
 		if (wq) {
 			wq_num = wq->wq_num;
-			claim_zero(ibv_destroy_wq(wq));
+			claim_zero(mlx4_glue->destroy_wq(wq));
 		} else {
 			wq_num = 0; /* Shut up GCC 4.8 warnings. */
 		}
-		claim_zero(ibv_destroy_cq(cq));
+		claim_zero(mlx4_glue->destroy_cq(cq));
 		if (!wq) {
 			ret = ENOMEM;
 			msg = "placeholder WQ creation failure";
@@ -522,13 +524,14 @@ mlx4_rxq_attach(struct rxq *rxq)
 	int ret;
 
 	assert(rte_is_power_of_2(elts_n));
-	cq = ibv_create_cq(priv->ctx, elts_n / sges_n, NULL, rxq->channel, 0);
+	cq = mlx4_glue->create_cq(priv->ctx, elts_n / sges_n, NULL,
+				  rxq->channel, 0);
 	if (!cq) {
 		ret = ENOMEM;
 		msg = "CQ creation failure";
 		goto error;
 	}
-	wq = ibv_create_wq
+	wq = mlx4_glue->create_wq
 		(priv->ctx,
 		 &(struct ibv_wq_init_attr){
 			.wq_type = IBV_WQT_RQ,
@@ -542,7 +545,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 		msg = "WQ creation failure";
 		goto error;
 	}
-	ret = ibv_modify_wq
+	ret = mlx4_glue->modify_wq
 		(wq,
 		 &(struct ibv_wq_attr){
 			.attr_mask = IBV_WQ_ATTR_STATE,
@@ -557,7 +560,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 	mlxdv.cq.out = &dv_cq;
 	mlxdv.rwq.in = wq;
 	mlxdv.rwq.out = &dv_rwq;
-	ret = mlx4dv_init_obj(&mlxdv, MLX4DV_OBJ_RWQ | MLX4DV_OBJ_CQ);
+	ret = mlx4_glue->dv_init_obj(&mlxdv, MLX4DV_OBJ_RWQ | MLX4DV_OBJ_CQ);
 	if (ret) {
 		msg = "failed to obtain device information from WQ/CQ objects";
 		goto error;
@@ -619,9 +622,9 @@ mlx4_rxq_attach(struct rxq *rxq)
 	return 0;
 error:
 	if (wq)
-		claim_zero(ibv_destroy_wq(wq));
+		claim_zero(mlx4_glue->destroy_wq(wq));
 	if (cq)
-		claim_zero(ibv_destroy_cq(cq));
+		claim_zero(mlx4_glue->destroy_cq(cq));
 	rte_errno = ret;
 	ERROR("error while attaching Rx queue %p: %s: %s",
 	      (void *)rxq, msg, strerror(ret));
@@ -649,9 +652,9 @@ mlx4_rxq_detach(struct rxq *rxq)
 	memset(&rxq->mcq, 0, sizeof(rxq->mcq));
 	rxq->rq_db = NULL;
 	rxq->wqes = NULL;
-	claim_zero(ibv_destroy_wq(rxq->wq));
+	claim_zero(mlx4_glue->destroy_wq(rxq->wq));
 	rxq->wq = NULL;
-	claim_zero(ibv_destroy_cq(rxq->cq));
+	claim_zero(mlx4_glue->destroy_cq(rxq->cq));
 	rxq->cq = NULL;
 	DEBUG("%p: freeing Rx queue elements", (void *)rxq);
 	for (i = 0; (i != RTE_DIM(*elts)); ++i) {
@@ -879,7 +882,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	if (dev->data->dev_conf.intr_conf.rxq) {
-		rxq->channel = ibv_create_comp_channel(priv->ctx);
+		rxq->channel = mlx4_glue->create_comp_channel(priv->ctx);
 		if (rxq->channel == NULL) {
 			rte_errno = ENOMEM;
 			ERROR("%p: Rx interrupt completion channel creation"
@@ -934,7 +937,7 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	assert(!rxq->wqes);
 	assert(!rxq->rq_db);
 	if (rxq->channel)
-		claim_zero(ibv_destroy_comp_channel(rxq->channel));
+		claim_zero(mlx4_glue->destroy_comp_channel(rxq->channel));
 	if (rxq->mr)
 		mlx4_mr_put(rxq->mr);
 	rte_free(rxq);

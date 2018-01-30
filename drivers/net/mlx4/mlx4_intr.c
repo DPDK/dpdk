@@ -57,6 +57,7 @@
 #include <rte_interrupts.h>
 
 #include "mlx4.h"
+#include "mlx4_glue.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
@@ -216,7 +217,7 @@ mlx4_interrupt_handler(struct priv *priv)
 	unsigned int i;
 
 	/* Read all message and acknowledge them. */
-	while (!ibv_get_async_event(priv->ctx, &event)) {
+	while (!mlx4_glue->get_async_event(priv->ctx, &event)) {
 		switch (event.event_type) {
 		case IBV_EVENT_PORT_ACTIVE:
 		case IBV_EVENT_PORT_ERR:
@@ -231,7 +232,7 @@ mlx4_interrupt_handler(struct priv *priv)
 			DEBUG("event type %d on physical port %d not handled",
 			      event.event_type, event.element.port_num);
 		}
-		ibv_ack_async_event(&event);
+		mlx4_glue->ack_async_event(&event);
 	}
 	for (i = 0; i != RTE_DIM(caught); ++i)
 		if (caught[i])
@@ -352,7 +353,8 @@ mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
 	if (!rxq || !rxq->channel) {
 		ret = EINVAL;
 	} else {
-		ret = ibv_get_cq_event(rxq->cq->channel, &ev_cq, &ev_ctx);
+		ret = mlx4_glue->get_cq_event(rxq->cq->channel, &ev_cq,
+					      &ev_ctx);
 		if (ret || ev_cq != rxq->cq)
 			ret = EINVAL;
 	}
@@ -362,7 +364,7 @@ mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
 		     idx);
 	} else {
 		rxq->mcq.arm_sn++;
-		ibv_ack_cq_events(rxq->cq, 1);
+		mlx4_glue->ack_cq_events(rxq->cq, 1);
 	}
 	return -ret;
 }

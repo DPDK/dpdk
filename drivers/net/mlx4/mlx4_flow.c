@@ -65,6 +65,7 @@
 
 /* PMD headers. */
 #include "mlx4.h"
+#include "mlx4_glue.h"
 #include "mlx4_flow.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
@@ -922,24 +923,25 @@ mlx4_drop_get(struct priv *priv)
 		.priv = priv,
 		.refcnt = 1,
 	};
-	drop->cq = ibv_create_cq(priv->ctx, 1, NULL, NULL, 0);
+	drop->cq = mlx4_glue->create_cq(priv->ctx, 1, NULL, NULL, 0);
 	if (!drop->cq)
 		goto error;
-	drop->qp = ibv_create_qp(priv->pd,
-				 &(struct ibv_qp_init_attr){
-					.send_cq = drop->cq,
-					.recv_cq = drop->cq,
-					.qp_type = IBV_QPT_RAW_PACKET,
-				 });
+	drop->qp = mlx4_glue->create_qp
+		(priv->pd,
+		 &(struct ibv_qp_init_attr){
+			.send_cq = drop->cq,
+			.recv_cq = drop->cq,
+			.qp_type = IBV_QPT_RAW_PACKET,
+		 });
 	if (!drop->qp)
 		goto error;
 	priv->drop = drop;
 	return drop;
 error:
 	if (drop->qp)
-		claim_zero(ibv_destroy_qp(drop->qp));
+		claim_zero(mlx4_glue->destroy_qp(drop->qp));
 	if (drop->cq)
-		claim_zero(ibv_destroy_cq(drop->cq));
+		claim_zero(mlx4_glue->destroy_cq(drop->cq));
 	if (drop)
 		rte_free(drop);
 	rte_errno = ENOMEM;
@@ -959,8 +961,8 @@ mlx4_drop_put(struct mlx4_drop *drop)
 	if (--drop->refcnt)
 		return;
 	drop->priv->drop = NULL;
-	claim_zero(ibv_destroy_qp(drop->qp));
-	claim_zero(ibv_destroy_cq(drop->cq));
+	claim_zero(mlx4_glue->destroy_qp(drop->qp));
+	claim_zero(mlx4_glue->destroy_cq(drop->cq));
 	rte_free(drop);
 }
 
@@ -992,7 +994,7 @@ mlx4_flow_toggle(struct priv *priv,
 	if (!enable) {
 		if (!flow->ibv_flow)
 			return 0;
-		claim_zero(ibv_destroy_flow(flow->ibv_flow));
+		claim_zero(mlx4_glue->destroy_flow(flow->ibv_flow));
 		flow->ibv_flow = NULL;
 		if (flow->drop)
 			mlx4_drop_put(priv->drop);
@@ -1005,7 +1007,7 @@ mlx4_flow_toggle(struct priv *priv,
 	    !priv->isolated &&
 	    flow->ibv_attr->priority == MLX4_FLOW_PRIORITY_LAST) {
 		if (flow->ibv_flow) {
-			claim_zero(ibv_destroy_flow(flow->ibv_flow));
+			claim_zero(mlx4_glue->destroy_flow(flow->ibv_flow));
 			flow->ibv_flow = NULL;
 			if (flow->drop)
 				mlx4_drop_put(priv->drop);
@@ -1035,7 +1037,7 @@ mlx4_flow_toggle(struct priv *priv,
 			if (missing ^ !flow->drop)
 				return 0;
 			/* Verbs flow needs updating. */
-			claim_zero(ibv_destroy_flow(flow->ibv_flow));
+			claim_zero(mlx4_glue->destroy_flow(flow->ibv_flow));
 			flow->ibv_flow = NULL;
 			if (flow->drop)
 				mlx4_drop_put(priv->drop);
@@ -1067,7 +1069,7 @@ mlx4_flow_toggle(struct priv *priv,
 	assert(qp);
 	if (flow->ibv_flow)
 		return 0;
-	flow->ibv_flow = ibv_create_flow(qp, flow->ibv_attr);
+	flow->ibv_flow = mlx4_glue->create_flow(qp, flow->ibv_attr);
 	if (flow->ibv_flow)
 		return 0;
 	if (flow->drop)
