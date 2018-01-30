@@ -334,8 +334,8 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 
 	DPAA2_SET_FD_ADDR(fd, DPAA2_MBUF_VADDR_TO_IOVA(temp));
 	DPAA2_SET_FD_LEN(fd, mbuf->pkt_len);
+	DPAA2_SET_ONLY_FD_BPID(fd, bpid);
 	DPAA2_SET_FD_OFFSET(fd, temp->data_off);
-	DPAA2_SET_FD_BPID(fd, bpid);
 	DPAA2_SET_FD_ASAL(fd, DPAA2_ASAL_VAL);
 	DPAA2_FD_SET_FORMAT(fd, qbman_fd_sg);
 	/*Set Scatter gather table and Scatter gather entries*/
@@ -776,7 +776,6 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				(*bufs)->seqn = DPAA2_INVALID_MBUF_SEQN;
 			}
 
-			fd_arr[loop].simple.bpid_offset = 0;
 			fd_arr[loop].simple.frc = 0;
 			DPAA2_RESET_FD_CTRL((&fd_arr[loop]));
 			DPAA2_SET_FD_FLC((&fd_arr[loop]), NULL);
