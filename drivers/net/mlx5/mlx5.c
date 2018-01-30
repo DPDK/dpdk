@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <dlfcn.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -57,6 +58,7 @@
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_common.h>
+#include <rte_config.h>
 #include <rte_eal_memconfig.h>
 #include <rte_kvargs.h>
 
@@ -1075,6 +1077,47 @@ static struct rte_pci_driver mlx5_driver = {
 	.drv_flags = RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV,
 };
 
+#ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
+
+/**
+ * Initialization routine for run-time dependency on rdma-core.
+ */
+static int
+mlx5_glue_init(void)
+{
+	void *handle = NULL;
+	void **sym;
+	const char *dlmsg;
+
+	handle = dlopen(MLX5_GLUE, RTLD_LAZY);
+	if (!handle) {
+		rte_errno = EINVAL;
+		dlmsg = dlerror();
+		if (dlmsg)
+			WARN("cannot load glue library: %s", dlmsg);
+		goto glue_error;
+	}
+	sym = dlsym(handle, "mlx5_glue");
+	if (!sym || !*sym) {
+		rte_errno = EINVAL;
+		dlmsg = dlerror();
+		if (dlmsg)
+			ERROR("cannot resolve glue symbol: %s", dlmsg);
+		goto glue_error;
+	}
+	mlx5_glue = *sym;
+	return 0;
+glue_error:
+	if (handle)
+		dlclose(handle);
+	WARN("cannot initialize PMD due to missing run-time"
+	     " dependency on rdma-core libraries (libibverbs,"
+	     " libmlx5)");
+	return -rte_errno;
+}
+
+#endif
+
 /**
  * Driver initialization routine.
  */
@@ -1094,6 +1137,11 @@ rte_mlx5_pmd_init(void)
 	/* Match the size of Rx completion entry to the size of a cacheline. */
 	if (RTE_CACHE_LINE_SIZE == 128)
 		setenv("MLX5_CQE_SIZE", "128", 0);
+#ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
+	if (mlx5_glue_init())
+		return;
+	assert(mlx5_glue);
+#endif
 	mlx5_glue->fork_init();
 	rte_pci_register(&mlx5_driver);
 }
