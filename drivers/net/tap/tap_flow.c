@@ -1797,6 +1797,7 @@ tap_flow_implicit_flush(struct pmd_internals *pmd, struct rte_flow_error *error)
 }
 
 #define MAX_RSS_KEYS 256
+#define KEY_IDX_OFFSET (3 * MAX_RSS_KEYS)
 #define SEC_NAME_CLS_Q "cls_q"
 
 const char *sec_name[SEC_MAX] = {
@@ -1953,38 +1954,62 @@ static int rss_enable(struct pmd_internals *pmd,
 static int bpf_rss_key(enum bpf_rss_key_e cmd, __u32 *key_idx)
 {
 	__u32 i;
-	int err = -1;
+	int err = 0;
 	static __u32 num_used_keys;
 	static __u32 rss_keys[MAX_RSS_KEYS] = {KEY_STAT_UNSPEC};
 	static __u32 rss_keys_initialized;
 
 	switch (cmd) {
 	case KEY_CMD_GET:
-		if (!rss_keys_initialized)
+		if (!rss_keys_initialized) {
+			err = -1;
 			break;
+		}
 
-		if (num_used_keys == RTE_DIM(rss_keys))
+		if (num_used_keys == RTE_DIM(rss_keys)) {
+			err = -1;
 			break;
+		}
 
 		*key_idx = num_used_keys % RTE_DIM(rss_keys);
 		while (rss_keys[*key_idx] == KEY_STAT_USED)
 			*key_idx = (*key_idx + 1) % RTE_DIM(rss_keys);
 
 		rss_keys[*key_idx] = KEY_STAT_USED;
+
+		/*
+		 * Add an offset to key_idx in order to handle a case of
+		 * RSS and non RSS flows mixture.
+		 * If a non RSS flow is destroyed it has an eBPF map
+		 * index 0 (initialized on flow creation) and might
+		 * unintentionally remove RSS entry 0 from eBPF map.
+		 * To avoid this issue, add an offset to the real index
+		 * during a KEY_CMD_GET operation and subtract this offset
+		 * during a KEY_CMD_RELEASE operation in order to restore
+		 * the real index.
+		 */
+		*key_idx += KEY_IDX_OFFSET;
 		num_used_keys++;
-		err = 0;
 	break;
 
 	case KEY_CMD_RELEASE:
-		if (!rss_keys_initialized) {
-			err = 0;
+		if (!rss_keys_initialized)
 			break;
-		}
 
-		if (rss_keys[*key_idx] == KEY_STAT_USED) {
-			rss_keys[*key_idx] = KEY_STAT_AVAILABLE;
+		/*
+		 * Subtract offest to restore real key index
+		 * If a non RSS flow is falsely trying to release map
+		 * entry 0 - the offset subtraction will calculate the real
+		 * map index as an out-of-range value and the release operation
+		 * will be silently ignored.
+		 */
+		__u32 key = *key_idx - KEY_IDX_OFFSET;
+		if (key >= RTE_DIM(rss_keys))
+			break;
+
+		if (rss_keys[key] == KEY_STAT_USED) {
+			rss_keys[key] = KEY_STAT_AVAILABLE;
 			num_used_keys--;
-			err = 0;
 		}
 	break;
 
@@ -1994,7 +2019,6 @@ static int bpf_rss_key(enum bpf_rss_key_e cmd, __u32 *key_idx)
 
 		rss_keys_initialized = 1;
 		num_used_keys = 0;
-		err = 0;
 	break;
 
 	case KEY_CMD_DEINIT:
@@ -2003,7 +2027,6 @@ static int bpf_rss_key(enum bpf_rss_key_e cmd, __u32 *key_idx)
 
 		rss_keys_initialized = 0;
 		num_used_keys = 0;
-		err = 0;
 	break;
 
 	default:
