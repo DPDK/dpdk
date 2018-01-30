@@ -36,12 +36,23 @@
 #include <assert.h>
 #include <stdint.h>
 
+/* Verbs headers do not support -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#include <infiniband/mlx5dv.h>
+#include <infiniband/verbs.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
+
 #include <rte_ethdev_driver.h>
 #include <rte_common.h>
 
 #include "mlx5_utils.h"
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
+#include "mlx5_glue.h"
 
 /**
  * DPDK callback to configure a VLAN filter.
@@ -138,7 +149,7 @@ priv_vlan_strip_queue_set(struct priv *priv, uint16_t idx, int on)
 		.flags = vlan_offloads,
 	};
 
-	err = ibv_modify_wq(rxq_ctrl->ibv->wq, &mod);
+	err = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
 	if (err) {
 		ERROR("%p: failed to modified stripping mode: %s",
 		      (void *)priv, strerror(err));

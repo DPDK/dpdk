@@ -53,6 +53,7 @@
 #include "mlx5.h"
 #include "mlx5_defs.h"
 #include "mlx5_prm.h"
+#include "mlx5_glue.h"
 
 /* Define minimal priority for control plane flows. */
 #define MLX5_CTRL_FLOW_PRIORITY 4
@@ -62,22 +63,9 @@
 #define MLX5_IPV6 6
 
 #ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
-struct ibv_counter_set_init_attr {
-	int dummy;
-};
 struct ibv_flow_spec_counter_action {
 	int dummy;
 };
-struct ibv_counter_set {
-	int dummy;
-};
-
-static inline int
-ibv_destroy_counter_set(struct ibv_counter_set *cs)
-{
-	(void)cs;
-	return -ENOTSUP;
-}
 #endif
 
 /* Dev ops structure defined in mlx5.c */
@@ -1649,7 +1637,7 @@ mlx5_flow_create_count(struct priv *priv __rte_unused,
 	};
 
 	init_attr.counter_set_id = 0;
-	parser->cs = ibv_create_counter_set(priv->ctx, &init_attr);
+	parser->cs = mlx5_glue->create_counter_set(priv->ctx, &init_attr);
 	if (!parser->cs)
 		return EINVAL;
 	counter.counter_set_handle = parser->cs->handle;
@@ -1702,8 +1690,8 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 		return 0;
 	parser->queue[HASH_RXQ_ETH].ibv_attr = NULL;
 	flow->frxq[HASH_RXQ_ETH].ibv_flow =
-		ibv_create_flow(priv->flow_drop_queue->qp,
-				flow->frxq[HASH_RXQ_ETH].ibv_attr);
+		mlx5_glue->create_flow(priv->flow_drop_queue->qp,
+				       flow->frxq[HASH_RXQ_ETH].ibv_attr);
 	if (!flow->frxq[HASH_RXQ_ETH].ibv_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "flow rule creation failure");
@@ -1714,7 +1702,8 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 error:
 	assert(flow);
 	if (flow->frxq[HASH_RXQ_ETH].ibv_flow) {
-		claim_zero(ibv_destroy_flow(flow->frxq[HASH_RXQ_ETH].ibv_flow));
+		claim_zero(mlx5_glue->destroy_flow
+			   (flow->frxq[HASH_RXQ_ETH].ibv_flow));
 		flow->frxq[HASH_RXQ_ETH].ibv_flow = NULL;
 	}
 	if (flow->frxq[HASH_RXQ_ETH].ibv_attr) {
@@ -1722,7 +1711,7 @@ error:
 		flow->frxq[HASH_RXQ_ETH].ibv_attr = NULL;
 	}
 	if (flow->cs) {
-		claim_zero(ibv_destroy_counter_set(flow->cs));
+		claim_zero(mlx5_glue->destroy_counter_set(flow->cs));
 		flow->cs = NULL;
 		parser->cs = NULL;
 	}
@@ -1826,8 +1815,8 @@ priv_flow_create_action_queue(struct priv *priv,
 		if (!flow->frxq[i].hrxq)
 			continue;
 		flow->frxq[i].ibv_flow =
-			ibv_create_flow(flow->frxq[i].hrxq->qp,
-					flow->frxq[i].ibv_attr);
+			mlx5_glue->create_flow(flow->frxq[i].hrxq->qp,
+					       flow->frxq[i].ibv_attr);
 		if (!flow->frxq[i].ibv_flow) {
 			rte_flow_error_set(error, ENOMEM,
 					   RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -1853,7 +1842,7 @@ error:
 		if (flow->frxq[i].ibv_flow) {
 			struct ibv_flow *ibv_flow = flow->frxq[i].ibv_flow;
 
-			claim_zero(ibv_destroy_flow(ibv_flow));
+			claim_zero(mlx5_glue->destroy_flow(ibv_flow));
 		}
 		if (flow->frxq[i].hrxq)
 			mlx5_priv_hrxq_release(priv, flow->frxq[i].hrxq);
@@ -1861,7 +1850,7 @@ error:
 			rte_free(flow->frxq[i].ibv_attr);
 	}
 	if (flow->cs) {
-		claim_zero(ibv_destroy_counter_set(flow->cs));
+		claim_zero(mlx5_glue->destroy_counter_set(flow->cs));
 		flow->cs = NULL;
 		parser->cs = NULL;
 	}
@@ -2039,7 +2028,7 @@ priv_flow_destroy(struct priv *priv,
 free:
 	if (flow->drop) {
 		if (flow->frxq[HASH_RXQ_ETH].ibv_flow)
-			claim_zero(ibv_destroy_flow
+			claim_zero(mlx5_glue->destroy_flow
 				   (flow->frxq[HASH_RXQ_ETH].ibv_flow));
 		rte_free(flow->frxq[HASH_RXQ_ETH].ibv_attr);
 	} else {
@@ -2047,7 +2036,8 @@ free:
 			struct mlx5_flow *frxq = &flow->frxq[i];
 
 			if (frxq->ibv_flow)
-				claim_zero(ibv_destroy_flow(frxq->ibv_flow));
+				claim_zero(mlx5_glue->destroy_flow
+					   (frxq->ibv_flow));
 			if (frxq->hrxq)
 				mlx5_priv_hrxq_release(priv, frxq->hrxq);
 			if (frxq->ibv_attr)
@@ -2055,7 +2045,7 @@ free:
 		}
 	}
 	if (flow->cs) {
-		claim_zero(ibv_destroy_counter_set(flow->cs));
+		claim_zero(mlx5_glue->destroy_counter_set(flow->cs));
 		flow->cs = NULL;
 	}
 	TAILQ_REMOVE(list, flow, next);
@@ -2103,35 +2093,38 @@ priv_flow_create_drop_queue(struct priv *priv)
 		WARN("cannot allocate memory for drop queue");
 		goto error;
 	}
-	fdq->cq = ibv_create_cq(priv->ctx, 1, NULL, NULL, 0);
+	fdq->cq = mlx5_glue->create_cq(priv->ctx, 1, NULL, NULL, 0);
 	if (!fdq->cq) {
 		WARN("cannot allocate CQ for drop queue");
 		goto error;
 	}
-	fdq->wq = ibv_create_wq(priv->ctx,
-			&(struct ibv_wq_init_attr){
+	fdq->wq = mlx5_glue->create_wq
+		(priv->ctx,
+		 &(struct ibv_wq_init_attr){
 			.wq_type = IBV_WQT_RQ,
 			.max_wr = 1,
 			.max_sge = 1,
 			.pd = priv->pd,
 			.cq = fdq->cq,
-			});
+		 });
 	if (!fdq->wq) {
 		WARN("cannot allocate WQ for drop queue");
 		goto error;
 	}
-	fdq->ind_table = ibv_create_rwq_ind_table(priv->ctx,
-			&(struct ibv_rwq_ind_table_init_attr){
+	fdq->ind_table = mlx5_glue->create_rwq_ind_table
+		(priv->ctx,
+		 &(struct ibv_rwq_ind_table_init_attr){
 			.log_ind_tbl_size = 0,
 			.ind_tbl = &fdq->wq,
 			.comp_mask = 0,
-			});
+		 });
 	if (!fdq->ind_table) {
 		WARN("cannot allocate indirection table for drop queue");
 		goto error;
 	}
-	fdq->qp = ibv_create_qp_ex(priv->ctx,
-		&(struct ibv_qp_init_attr_ex){
+	fdq->qp = mlx5_glue->create_qp_ex
+		(priv->ctx,
+		 &(struct ibv_qp_init_attr_ex){
 			.qp_type = IBV_QPT_RAW_PACKET,
 			.comp_mask =
 				IBV_QP_INIT_ATTR_PD |
@@ -2146,7 +2139,7 @@ priv_flow_create_drop_queue(struct priv *priv)
 				},
 			.rwq_ind_tbl = fdq->ind_table,
 			.pd = priv->pd
-		});
+		 });
 	if (!fdq->qp) {
 		WARN("cannot allocate QP for drop queue");
 		goto error;
@@ -2155,13 +2148,13 @@ priv_flow_create_drop_queue(struct priv *priv)
 	return 0;
 error:
 	if (fdq->qp)
-		claim_zero(ibv_destroy_qp(fdq->qp));
+		claim_zero(mlx5_glue->destroy_qp(fdq->qp));
 	if (fdq->ind_table)
-		claim_zero(ibv_destroy_rwq_ind_table(fdq->ind_table));
+		claim_zero(mlx5_glue->destroy_rwq_ind_table(fdq->ind_table));
 	if (fdq->wq)
-		claim_zero(ibv_destroy_wq(fdq->wq));
+		claim_zero(mlx5_glue->destroy_wq(fdq->wq));
 	if (fdq->cq)
-		claim_zero(ibv_destroy_cq(fdq->cq));
+		claim_zero(mlx5_glue->destroy_cq(fdq->cq));
 	if (fdq)
 		rte_free(fdq);
 	priv->flow_drop_queue = NULL;
@@ -2182,13 +2175,13 @@ priv_flow_delete_drop_queue(struct priv *priv)
 	if (!fdq)
 		return;
 	if (fdq->qp)
-		claim_zero(ibv_destroy_qp(fdq->qp));
+		claim_zero(mlx5_glue->destroy_qp(fdq->qp));
 	if (fdq->ind_table)
-		claim_zero(ibv_destroy_rwq_ind_table(fdq->ind_table));
+		claim_zero(mlx5_glue->destroy_rwq_ind_table(fdq->ind_table));
 	if (fdq->wq)
-		claim_zero(ibv_destroy_wq(fdq->wq));
+		claim_zero(mlx5_glue->destroy_wq(fdq->wq));
 	if (fdq->cq)
-		claim_zero(ibv_destroy_cq(fdq->cq));
+		claim_zero(mlx5_glue->destroy_cq(fdq->cq));
 	rte_free(fdq);
 	priv->flow_drop_queue = NULL;
 }
@@ -2212,7 +2205,7 @@ priv_flow_stop(struct priv *priv, struct mlx5_flows *list)
 		if (flow->drop) {
 			if (!flow->frxq[HASH_RXQ_ETH].ibv_flow)
 				continue;
-			claim_zero(ibv_destroy_flow
+			claim_zero(mlx5_glue->destroy_flow
 				   (flow->frxq[HASH_RXQ_ETH].ibv_flow));
 			flow->frxq[HASH_RXQ_ETH].ibv_flow = NULL;
 			/* Next flow. */
@@ -2233,7 +2226,8 @@ priv_flow_stop(struct priv *priv, struct mlx5_flows *list)
 		for (i = 0; i != hash_rxq_init_n; ++i) {
 			if (!flow->frxq[i].ibv_flow)
 				continue;
-			claim_zero(ibv_destroy_flow(flow->frxq[i].ibv_flow));
+			claim_zero(mlx5_glue->destroy_flow
+				   (flow->frxq[i].ibv_flow));
 			flow->frxq[i].ibv_flow = NULL;
 			mlx5_priv_hrxq_release(priv, flow->frxq[i].hrxq);
 			flow->frxq[i].hrxq = NULL;
@@ -2263,7 +2257,7 @@ priv_flow_start(struct priv *priv, struct mlx5_flows *list)
 
 		if (flow->drop) {
 			flow->frxq[HASH_RXQ_ETH].ibv_flow =
-				ibv_create_flow
+				mlx5_glue->create_flow
 				(priv->flow_drop_queue->qp,
 				 flow->frxq[HASH_RXQ_ETH].ibv_attr);
 			if (!flow->frxq[HASH_RXQ_ETH].ibv_flow) {
@@ -2301,8 +2295,8 @@ priv_flow_start(struct priv *priv, struct mlx5_flows *list)
 			}
 flow_create:
 			flow->frxq[i].ibv_flow =
-				ibv_create_flow(flow->frxq[i].hrxq->qp,
-						flow->frxq[i].ibv_attr);
+				mlx5_glue->create_flow(flow->frxq[i].hrxq->qp,
+						       flow->frxq[i].ibv_attr);
 			if (!flow->frxq[i].ibv_flow) {
 				DEBUG("Flow %p cannot be applied",
 				      (void *)flow);
@@ -2509,7 +2503,7 @@ priv_flow_query_count(struct ibv_counter_set *cs,
 		.out = counters,
 		.outlen = 2 * sizeof(uint64_t),
 	};
-	int res = ibv_query_counter_set(&query_cs_attr, &query_out);
+	int res = mlx5_glue->query_counter_set(&query_cs_attr, &query_out);
 
 	if (res) {
 		rte_flow_error_set(error, -res,

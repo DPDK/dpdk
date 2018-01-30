@@ -65,6 +65,7 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
+#include "mlx5_glue.h"
 
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
@@ -218,8 +219,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	}
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
-		claim_zero(ibv_dealloc_pd(priv->pd));
-		claim_zero(ibv_close_device(priv->ctx));
+		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
+		claim_zero(mlx5_glue->close_device(priv->ctx));
 	} else
 		assert(priv->ctx == NULL);
 	if (priv->rss_conf.rss_key != NULL)
@@ -625,7 +626,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	/* Save PCI address. */
 	mlx5_dev[idx].pci_addr = pci_dev->addr;
-	list = ibv_get_device_list(&i);
+	list = mlx5_glue->get_device_list(&i);
 	if (list == NULL) {
 		assert(errno);
 		if (errno == ENOSYS)
@@ -675,12 +676,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		     " (SR-IOV: %s)",
 		     list[i]->name,
 		     sriov ? "true" : "false");
-		attr_ctx = ibv_open_device(list[i]);
+		attr_ctx = mlx5_glue->open_device(list[i]);
 		err = errno;
 		break;
 	}
 	if (attr_ctx == NULL) {
-		ibv_free_device_list(list);
+		mlx5_glue->free_device_list(list);
 		switch (err) {
 		case 0:
 			ERROR("cannot access device, is mlx5_ib loaded?");
@@ -699,7 +700,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
 	 * as all ConnectX-5 devices.
 	 */
-	mlx5dv_query_device(attr_ctx, &attrs_out);
+	mlx5_glue->dv_query_device(attr_ctx, &attrs_out);
 	if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
 		if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
 			DEBUG("Enhanced MPW is supported");
@@ -717,7 +718,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		cqe_comp = 0;
 	else
 		cqe_comp = 1;
-	if (ibv_query_device_ex(attr_ctx, NULL, &device_attr))
+	if (mlx5_glue->query_device_ex(attr_ctx, NULL, &device_attr))
 		goto error;
 	INFO("%u port(s) detected", device_attr.orig_attr.phys_port_cnt);
 
@@ -794,15 +795,15 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
 
-		ctx = ibv_open_device(ibv_dev);
+		ctx = mlx5_glue->open_device(ibv_dev);
 		if (ctx == NULL) {
 			err = ENODEV;
 			goto port_error;
 		}
 
-		ibv_query_device_ex(ctx, NULL, &device_attr);
+		mlx5_glue->query_device_ex(ctx, NULL, &device_attr);
 		/* Check port status. */
-		err = ibv_query_port(ctx, port, &port_attr);
+		err = mlx5_glue->query_port(ctx, port, &port_attr);
 		if (err) {
 			ERROR("port query failed: %s", strerror(err));
 			goto port_error;
@@ -817,11 +818,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		if (port_attr.state != IBV_PORT_ACTIVE)
 			DEBUG("port %d is not active: \"%s\" (%d)",
-			      port, ibv_port_state_str(port_attr.state),
+			      port, mlx5_glue->port_state_str(port_attr.state),
 			      port_attr.state);
 
 		/* Allocate protection domain. */
-		pd = ibv_alloc_pd(ctx);
+		pd = mlx5_glue->alloc_pd(ctx);
 		if (pd == NULL) {
 			ERROR("PD allocation failure");
 			err = ENOMEM;
@@ -853,7 +854,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			      strerror(err));
 			goto port_error;
 		}
-		if (ibv_query_device_ex(ctx, NULL, &device_attr_ex)) {
+		if (mlx5_glue->query_device_ex(ctx, NULL, &device_attr_ex)) {
 			ERROR("ibv_query_device_ex() failed");
 			goto port_error;
 		}
@@ -873,7 +874,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
 		config.flow_counter_en = !!(device_attr.max_counter_sets);
-		ibv_describe_counter_set(ctx, 0, &cs_desc);
+		mlx5_glue->describe_counter_set(ctx, 0, &cs_desc);
 		DEBUG("counter type = %d, num of cs = %ld, attributes = %d",
 		      cs_desc.counter_type, cs_desc.num_of_cs,
 		      cs_desc.attributes);
@@ -984,8 +985,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			.free = &mlx5_free_verbs_buf,
 			.data = priv,
 		};
-		mlx5dv_set_context_attr(ctx, MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
-					(void *)((uintptr_t)&alctr));
+		mlx5_glue->dv_set_context_attr(ctx,
+					       MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
+					       (void *)((uintptr_t)&alctr));
 
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
@@ -998,9 +1000,9 @@ port_error:
 		if (priv)
 			rte_free(priv);
 		if (pd)
-			claim_zero(ibv_dealloc_pd(pd));
+			claim_zero(mlx5_glue->dealloc_pd(pd));
 		if (ctx)
-			claim_zero(ibv_close_device(ctx));
+			claim_zero(mlx5_glue->close_device(ctx));
 		break;
 	}
 
@@ -1019,9 +1021,9 @@ port_error:
 
 error:
 	if (attr_ctx)
-		claim_zero(ibv_close_device(attr_ctx));
+		claim_zero(mlx5_glue->close_device(attr_ctx));
 	if (list)
-		ibv_free_device_list(list);
+		mlx5_glue->free_device_list(list);
 	assert(err >= 0);
 	return -err;
 }
@@ -1092,7 +1094,7 @@ rte_mlx5_pmd_init(void)
 	/* Match the size of Rx completion entry to the size of a cacheline. */
 	if (RTE_CACHE_LINE_SIZE == 128)
 		setenv("MLX5_CQE_SIZE", "128", 0);
-	ibv_fork_init();
+	mlx5_glue->fork_init();
 	rte_pci_register(&mlx5_driver);
 }
 

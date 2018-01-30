@@ -59,6 +59,7 @@
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
+#include "mlx5_glue.h"
 
 /**
  * Allocate TX queue elements.
@@ -432,7 +433,7 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 		((desc / MLX5_TX_COMP_THRESH) - 1) : 1;
 	if (is_empw_burst_func(tx_pkt_burst))
 		cqe_n += MLX5_TX_COMP_THRESH_INLINE_DIV;
-	tmpl.cq = ibv_create_cq(priv->ctx, cqe_n, NULL, NULL, 0);
+	tmpl.cq = mlx5_glue->create_cq(priv->ctx, cqe_n, NULL, NULL, 0);
 	if (tmpl.cq == NULL) {
 		ERROR("%p: CQ creation failure", (void *)txq_ctrl);
 		goto error;
@@ -473,7 +474,7 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 		attr.init.max_tso_header = txq_ctrl->max_tso_header;
 		attr.init.comp_mask |= IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
 	}
-	tmpl.qp = ibv_create_qp_ex(priv->ctx, &attr.init);
+	tmpl.qp = mlx5_glue->create_qp_ex(priv->ctx, &attr.init);
 	if (tmpl.qp == NULL) {
 		ERROR("%p: QP creation failure", (void *)txq_ctrl);
 		goto error;
@@ -484,7 +485,8 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 		/* Primary port number. */
 		.port_num = priv->port
 	};
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod, (IBV_QP_STATE | IBV_QP_PORT));
+	ret = mlx5_glue->modify_qp(tmpl.qp, &attr.mod,
+				   (IBV_QP_STATE | IBV_QP_PORT));
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_INIT failed", (void *)txq_ctrl);
 		goto error;
@@ -492,13 +494,13 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	attr.mod = (struct ibv_qp_attr){
 		.qp_state = IBV_QPS_RTR
 	};
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
+	ret = mlx5_glue->modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_RTR failed", (void *)txq_ctrl);
 		goto error;
 	}
 	attr.mod.qp_state = IBV_QPS_RTS;
-	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
+	ret = mlx5_glue->modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_RTS failed", (void *)txq_ctrl);
 		goto error;
@@ -513,7 +515,7 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	obj.cq.out = &cq_info;
 	obj.qp.in = tmpl.qp;
 	obj.qp.out = &qp;
-	ret = mlx5dv_init_obj(&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_QP);
+	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_QP);
 	if (ret != 0)
 		goto error;
 	if (cq_info.cqe_size != RTE_CACHE_LINE_SIZE) {
@@ -553,9 +555,9 @@ mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 	return txq_ibv;
 error:
 	if (tmpl.cq)
-		claim_zero(ibv_destroy_cq(tmpl.cq));
+		claim_zero(mlx5_glue->destroy_cq(tmpl.cq));
 	if (tmpl.qp)
-		claim_zero(ibv_destroy_qp(tmpl.qp));
+		claim_zero(mlx5_glue->destroy_qp(tmpl.qp));
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return NULL;
 }
@@ -609,8 +611,8 @@ mlx5_priv_txq_ibv_release(struct priv *priv, struct mlx5_txq_ibv *txq_ibv)
 	DEBUG("%p: Verbs Tx queue %p: refcnt %d", (void *)priv,
 	      (void *)txq_ibv, rte_atomic32_read(&txq_ibv->refcnt));
 	if (rte_atomic32_dec_and_test(&txq_ibv->refcnt)) {
-		claim_zero(ibv_destroy_qp(txq_ibv->qp));
-		claim_zero(ibv_destroy_cq(txq_ibv->cq));
+		claim_zero(mlx5_glue->destroy_qp(txq_ibv->qp));
+		claim_zero(mlx5_glue->destroy_cq(txq_ibv->cq));
 		LIST_REMOVE(txq_ibv, next);
 		rte_free(txq_ibv);
 		return 0;
