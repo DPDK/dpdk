@@ -212,6 +212,10 @@ tap_flow_create(struct rte_eth_dev *dev,
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error);
 
+static void
+tap_flow_free(struct pmd_internals *pmd,
+	struct rte_flow *flow);
+
 static int
 tap_flow_destroy(struct rte_eth_dev *dev,
 		 struct rte_flow *flow,
@@ -1311,6 +1315,38 @@ tap_flow_set_handle(struct rte_flow *flow)
 }
 
 /**
+ * Free the flow opened file descriptors and allocated memory
+ *
+ * @param[in] flow
+ *   Pointer to the flow to free
+ *
+ */
+static void
+tap_flow_free(struct pmd_internals *pmd, struct rte_flow *flow)
+{
+	int i;
+
+	if (!flow)
+		return;
+
+	if (pmd->rss_enabled) {
+		/* Close flow BPF file descriptors */
+		for (i = 0; i < SEC_MAX; i++)
+			if (flow->bpf_fd[i] != 0) {
+				close(flow->bpf_fd[i]);
+				flow->bpf_fd[i] = 0;
+			}
+
+		/* Release the map key for this RSS rule */
+		bpf_rss_key(KEY_CMD_RELEASE, &flow->key_idx);
+		flow->key_idx = 0;
+	}
+
+	/* Free flow allocated memory */
+	rte_free(flow);
+}
+
+/**
  * Create a flow.
  *
  * @see rte_flow_create()
@@ -1428,7 +1464,7 @@ fail:
 	if (remote_flow)
 		rte_free(remote_flow);
 	if (flow)
-		rte_free(flow);
+		tap_flow_free(pmd, flow);
 	return NULL;
 }
 
@@ -1450,7 +1486,6 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 		     struct rte_flow_error *error)
 {
 	struct rte_flow *remote_flow = flow->remote_flow;
-	int i;
 	int ret = 0;
 
 	LIST_REMOVE(flow, next);
@@ -1474,22 +1509,6 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 		rte_flow_error_set(
 			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			"couldn't receive kernel ack to our request");
-		goto end;
-	}
-	/* Close opened BPF file descriptors of this flow */
-	for (i = 0; i < SEC_MAX; i++)
-		if (flow->bpf_fd[i] != 0) {
-			close(flow->bpf_fd[i]);
-			flow->bpf_fd[i] = 0;
-		}
-
-	/* Release map key for this RSS rule */
-	ret = bpf_rss_key(KEY_CMD_RELEASE, &flow->key_idx);
-	if (ret < 0) {
-		rte_flow_error_set(
-			error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-			"Failed to release BPF RSS key");
-
 		goto end;
 	}
 
@@ -1520,7 +1539,7 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 end:
 	if (remote_flow)
 		rte_free(remote_flow);
-	rte_free(flow);
+	tap_flow_free(pmd, flow);
 	return ret;
 }
 
