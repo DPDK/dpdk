@@ -191,7 +191,7 @@ avf_init_rss(struct avf_adapter *adapter)
 				   vf->vf_res->rss_key_size));
 
 	/* init RSS LUT table */
-	for (i = 0; i < vf->vf_res->rss_lut_size; i++, j++) {
+	for (i = 0, j = 0; i < vf->vf_res->rss_lut_size; i++, j++) {
 		if (j >= nb_q)
 			j = 0;
 		vf->rss_lut[i] = j;
@@ -763,10 +763,10 @@ avf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			err = avf_enable_vlan_strip(adapter);
 		else
 			err = avf_disable_vlan_strip(adapter);
-	}
 
-	if (err)
-		return -EIO;
+		if (err)
+			return -EIO;
+	}
 	return 0;
 }
 
