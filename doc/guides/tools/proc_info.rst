@@ -42,6 +42,13 @@ dump_cfg.
 
     dpdk-procinfo should run alongside primary process with same DPDK version.
 
+.. note::
+
+   When running `dpdk-procinfo`` with shared library mode, it is required to
+   pass the same NIC PMD libraries as used for the primary application. Any
+   mismatch in PMD library arguments can lead to undefined behaviour and results
+   affecting primary application too.
+
 Running the Application
 -----------------------
 The application has a number of command line options:
