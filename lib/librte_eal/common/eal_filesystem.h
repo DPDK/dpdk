@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2018 Intel Corporation
  */
 
 /**
@@ -35,6 +35,23 @@ eal_runtime_config_path(void)
 		directory = home_dir;
 	snprintf(buffer, sizeof(buffer) - 1, RUNTIME_CONFIG_FMT, directory,
 			internal_config.hugefile_prefix);
+	return buffer;
+}
+
+/** Path of primary/secondary communication unix socket file. */
+#define MP_SOCKET_PATH_FMT "%s/.%s_unix"
+static inline const char *
+eal_mp_socket_path(void)
+{
+	static char buffer[PATH_MAX]; /* static so auto-zeroed */
+	const char *directory = default_config_dir;
+	const char *home_dir = getenv("HOME");
+
+	if (getuid() != 0 && home_dir != NULL)
+		directory = home_dir;
+	snprintf(buffer, sizeof(buffer) - 1, MP_SOCKET_PATH_FMT,
+		 directory, internal_config.hugefile_prefix);
+
 	return buffer;
 }
 

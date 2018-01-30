@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2016 Intel Corporation
+ * Copyright(c) 2010-2018 Intel Corporation
  */
 
 #ifndef _RTE_EAL_H_
@@ -202,6 +202,84 @@ int __rte_experimental rte_eal_cleanup(void);
  *  - If dead, returns 0.
  */
 int rte_eal_primary_proc_alive(const char *config_file_path);
+
+#define RTE_MP_MAX_FD_NUM	8    /* The max amount of fds */
+#define RTE_MP_MAX_NAME_LEN	64   /* The max length of action name */
+#define RTE_MP_MAX_PARAM_LEN	256  /* The max length of param */
+struct rte_mp_msg {
+	char name[RTE_MP_MAX_NAME_LEN];
+	int len_param;
+	int num_fds;
+	uint8_t param[RTE_MP_MAX_PARAM_LEN];
+	int fds[RTE_MP_MAX_FD_NUM];
+};
+
+/**
+ * Action function typedef used by other components.
+ *
+ * As we create  socket channel for primary/secondary communication, use
+ * this function typedef to register action for coming messages.
+ */
+typedef int (*rte_mp_t)(const struct rte_mp_msg *msg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Register an action function for primary/secondary communication.
+ *
+ * Call this function to register an action, if the calling component wants
+ * to response the messages from the corresponding component in its primary
+ * process or secondary processes.
+ *
+ * @param name
+ *   The name argument plays as the nonredundant key to find the action.
+ *
+ * @param action
+ *   The action argument is the function pointer to the action function.
+ *
+ * @return
+ *  - 0 on success.
+ *  - (<0) on failure.
+ */
+int __rte_experimental
+rte_mp_action_register(const char *name, rte_mp_t action);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Unregister an action function for primary/secondary communication.
+ *
+ * Call this function to unregister an action  if the calling component does
+ * not want to response the messages from the corresponding component in its
+ * primary process or secondary processes.
+ *
+ * @param name
+ *   The name argument plays as the nonredundant key to find the action.
+ *
+ */
+void __rte_experimental
+rte_mp_action_unregister(const char *name);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Send a message to the peer process.
+ *
+ * This function will send a message which will be responsed by the action
+ * identified by name in the peer process.
+ *
+ * @param msg
+ *   The msg argument contains the customized message.
+ *
+ * @return
+ *  - On success, return 0.
+ *  - On failure, return -1, and the reason will be stored in rte_errno.
+ */
+int __rte_experimental
+rte_mp_sendmsg(struct rte_mp_msg *msg);
 
 /**
  * Usage function typedef used by the application usage function.

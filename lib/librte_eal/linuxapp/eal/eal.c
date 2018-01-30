@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2018 Intel Corporation. All rights reserved.
  *   Copyright(c) 2012-2014 6WIND S.A.
  *   All rights reserved.
  *
@@ -851,6 +851,14 @@ rte_eal_init(int argc, char **argv)
 		rte_errno = ENOMEM;
 		rte_atomic32_clear(&run_once);
 		return -1;
+	}
+
+	if (rte_mp_channel_init() < 0) {
+		rte_eal_init_alert("failed to init mp channel\n");
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			rte_errno = EFAULT;
+			return -1;
+		}
 	}
 
 #ifdef VFIO_PRESENT

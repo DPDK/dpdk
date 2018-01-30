@@ -220,6 +220,9 @@ EXPERIMENTAL {
 	rte_eal_devargs_remove;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
+	rte_mp_action_register;
+	rte_mp_action_unregister;
+	rte_mp_sendmsg;
 	rte_service_attr_get;
 	rte_service_attr_reset_all;
 	rte_service_component_register;

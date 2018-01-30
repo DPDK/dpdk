@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2018 Intel Corporation
  */
 
 #ifndef _EAL_PRIVATE_H_
@@ -194,5 +194,15 @@ int rte_eal_hugepage_attach(void);
  *   NULL if no bus is able to parse this device.
  */
 struct rte_bus *rte_bus_find_by_device_name(const char *str);
+
+/**
+ * Create the unix channel for primary/secondary communication.
+ *
+ * @return
+ *   0 on success;
+ *   (<0) on failure.
+ */
+
+int rte_mp_channel_init(void);
 
 #endif /* _EAL_PRIVATE_H_ */

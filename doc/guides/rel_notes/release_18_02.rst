@@ -166,6 +166,15 @@ New Features
   renamed the application from SW PMD specific ``eventdev_pipeline_sw_pmd``
   to PMD agnostic ``eventdev_pipeline``.
 
+* **Added new multi-process communication channel**
+
+  Added a generic channel in EAL for multi-process (primary/secondary) communication.
+  Consumers of this channel need to register an action with an action name to response
+  a message received; the actions will be identified by the action name and executed
+  in the context of a new dedicated thread for this channel. The list of new APIs:
+
+  * ``rte_mp_register`` and ``rte_mp_unregister`` are for action (un)registration.
+  * ``rte_mp_sendmsg`` is for sending a message without blocking for a response.
 
 API Changes
 -----------
