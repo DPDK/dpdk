@@ -141,7 +141,7 @@ scan_one_fslmc_device(char *dev_name)
 		dev->dev_type = DPAA2_BPOOL;
 	else if (!strncmp("dpio", t_ptr, 4))
 		dev->dev_type = DPAA2_IO;
-	else if (!strncmp("dpci", t_ptr, 5))
+	else if (!strncmp("dpci", t_ptr, 4))
 		dev->dev_type = DPAA2_CI;
 	else if (!strncmp("dpmcp", t_ptr, 5))
 		dev->dev_type = DPAA2_MPORTAL;
