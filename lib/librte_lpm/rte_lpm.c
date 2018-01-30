@@ -180,6 +180,7 @@ rte_lpm_create_v20(const char *name, int socket_id, int max_rules,
 	}
 
 	if (te != NULL) {
+		lpm = NULL;
 		rte_errno = EEXIST;
 		goto exit;
 	}
@@ -256,6 +257,7 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 	}
 
 	if (te != NULL) {
+		lpm = NULL;
 		rte_errno = EEXIST;
 		goto exit;
 	}
