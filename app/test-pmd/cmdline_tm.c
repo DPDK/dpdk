@@ -1500,7 +1500,7 @@ struct cmd_add_port_tm_nonleaf_node_result {
 	uint32_t priority;
 	uint32_t weight;
 	uint32_t level_id;
-	uint32_t shaper_profile_id;
+	int32_t shaper_profile_id;
 	uint32_t n_sp_priorities;
 	uint64_t stats_mask;
 	cmdline_multi_string_t multi_shared_shaper_id;
@@ -1542,7 +1542,7 @@ cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_level_id =
 		 level_id, UINT32);
 cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_shaper_profile_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
-		 shaper_profile_id, UINT32);
+		 shaper_profile_id, INT32);
 cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_n_sp_priorities =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 n_sp_priorities, UINT32);
@@ -1593,7 +1593,11 @@ static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
 		return;
 	}
 
-	np.shaper_profile_id = res->shaper_profile_id;
+	if (res->shaper_profile_id < 0)
+		np.shaper_profile_id = UINT32_MAX;
+	else
+		np.shaper_profile_id = res->shaper_profile_id;
+
 	np.n_shared_shapers = n_shared_shapers;
 	if (np.n_shared_shapers)
 		np.shared_shaper_id = &shared_shaper_id[0];
@@ -1651,7 +1655,7 @@ struct cmd_add_port_tm_leaf_node_result {
 	uint32_t priority;
 	uint32_t weight;
 	uint32_t level_id;
-	uint32_t shaper_profile_id;
+	int32_t shaper_profile_id;
 	uint32_t cman_mode;
 	uint32_t wred_profile_id;
 	uint64_t stats_mask;
@@ -1693,7 +1697,7 @@ cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_level_id =
 		 level_id, UINT32);
 cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_shaper_profile_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
-		 shaper_profile_id, UINT32);
+		 shaper_profile_id, INT32);
 cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_cman_mode =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 cman_mode, UINT32);
@@ -1747,7 +1751,11 @@ static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
 		return;
 	}
 
-	np.shaper_profile_id = res->shaper_profile_id;
+	if (res->shaper_profile_id < 0)
+		np.shaper_profile_id = UINT32_MAX;
+	else
+		np.shaper_profile_id = res->shaper_profile_id;
+
 	np.n_shared_shapers = n_shared_shapers;
 
 	if (np.n_shared_shapers)
