@@ -115,6 +115,9 @@ int rte_cycles_vmware_tsc_map;
 const char *
 rte_eal_mbuf_default_mempool_ops(void)
 {
+	if (internal_config.user_mbuf_pool_ops_name == NULL)
+		return RTE_MBUF_DEFAULT_MEMPOOL_OPS;
+
 	return internal_config.user_mbuf_pool_ops_name;
 }
 
