@@ -33,18 +33,25 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 # Library name.
 LIB = librte_pmd_mlx4.a
+LIB_GLUE = librte_pmd_mlx4_glue.so
 
 # Sources.
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_flow.c
+ifneq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_glue.c
+endif
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_intr.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_mr.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_rxq.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_txq.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_utils.c
+
+ifeq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
+INSTALL-$(CONFIG_RTE_LIBRTE_MLX4_PMD)-lib += $(LIB_GLUE)
+endif
 
 # Basic CFLAGS.
 CFLAGS += -O3
@@ -55,7 +62,13 @@ CFLAGS += -D_BSD_SOURCE
 CFLAGS += -D_DEFAULT_SOURCE
 CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
+ifeq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
+CFLAGS += -DMLX4_GLUE='"$(LIB_GLUE)"'
+CFLAGS_mlx4_glue.o += -fPIC
+LDLIBS += -ldl
+else
 LDLIBS += -libverbs -lmlx4
+endif
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_bus_pci
@@ -109,7 +122,23 @@ mlx4_autoconf.h: mlx4_autoconf.h.new
 
 $(SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD):.c=.o): mlx4_autoconf.h
 
+# Generate dependency plug-in for rdma-core when the PMD must not be linked
+# directly, so that applications do not inherit this dependency.
+
+ifeq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
+
+$(LIB): $(LIB_GLUE)
+
+$(LIB_GLUE): mlx4_glue.o
+	$Q $(LD) $(LDFLAGS) $(EXTRA_LDFLAGS) \
+		-s -shared -o $@ $< -libverbs -lmlx4
+
+mlx4_glue.o: mlx4_autoconf.h
+
+endif
+
 clean_mlx4: FORCE
 	$Q rm -f -- mlx4_autoconf.h mlx4_autoconf.h.new
+	$Q rm -f -- mlx4_glue.o $(LIB_GLUE)
 
 clean: clean_mlx4

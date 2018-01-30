@@ -86,6 +86,19 @@ These options can be modified in the ``.config`` file.
 
   Toggle compilation of librte_pmd_mlx4 itself.
 
+- ``CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS`` (default **n**)
+
+  Build PMD with additional code to make it loadable without hard
+  dependencies on **libibverbs** nor **libmlx4**, which may not be installed
+  on the target system.
+
+  In this mode, their presence is still required for it to run properly,
+  however their absence won't prevent a DPDK application from starting (with
+  ``CONFIG_RTE_BUILD_SHARED_LIB`` disabled) and they won't show up as
+  missing with ``ldd(1)``.
+
+  This option has no performance impact.
+
 - ``CONFIG_RTE_LIBRTE_MLX4_DEBUG`` (default **n**)
 
   Toggle debugging code and stricter compilation flags. Enabling this option
