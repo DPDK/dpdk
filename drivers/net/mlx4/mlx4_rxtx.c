@@ -57,7 +57,8 @@ uint32_t mlx4_ptype_table[0x100] __rte_cache_aligned = {
 	 * giving a total of up to 256 entries.
 	 */
 	[0x00] = RTE_PTYPE_L2_ETHER,
-	[0x01] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+	[0x01] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_NONFRAG,
 	[0x02] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_L4_FRAG,
 	[0x03] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
