@@ -8,7 +8,9 @@
 #ifndef __RTA_OPERATION_CMD_H__
 #define __RTA_OPERATION_CMD_H__
 
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 70000)
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
 
 extern enum rta_sec_era rta_sec_era;
 
