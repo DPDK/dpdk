@@ -611,9 +611,10 @@ avf_dev_link_update(struct rte_eth_dev *dev,
 	new_link.link_autoneg = !!(dev->data->dev_conf.link_speeds &
 				ETH_LINK_SPEED_FIXED);
 
-	rte_atomic64_cmpset((uint64_t *)&dev->data->dev_link,
-			    *(uint64_t *)&dev->data->dev_link,
-			    *(uint64_t *)&new_link);
+	if (rte_atomic64_cmpset((uint64_t *)&dev->data->dev_link,
+				*(uint64_t *)&dev->data->dev_link,
+				*(uint64_t *)&new_link) == 0)
+		return -1;
 
 	return 0;
 }
