@@ -175,6 +175,8 @@ New Features
 
   * ``rte_mp_register`` and ``rte_mp_unregister`` are for action (un)registration.
   * ``rte_mp_sendmsg`` is for sending a message without blocking for a response.
+  * ``rte_mp_request`` is for sending a request message and will block until
+    it gets a reply message which is sent from the peer by ``rte_mp_reply``.
 
 API Changes
 -----------

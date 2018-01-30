@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 #include <sched.h>
+#include <time.h>
 
 #include <rte_config.h>
 #include <rte_compat.h>
@@ -214,13 +215,19 @@ struct rte_mp_msg {
 	int fds[RTE_MP_MAX_FD_NUM];
 };
 
+struct rte_mp_reply {
+	int nb_sent;
+	int nb_received;
+	struct rte_mp_msg *msgs; /* caller to free */
+};
+
 /**
  * Action function typedef used by other components.
  *
  * As we create  socket channel for primary/secondary communication, use
  * this function typedef to register action for coming messages.
  */
-typedef int (*rte_mp_t)(const struct rte_mp_msg *msg);
+typedef int (*rte_mp_t)(const struct rte_mp_msg *msg, const void *peer);
 
 /**
  * @warning
@@ -280,6 +287,57 @@ rte_mp_action_unregister(const char *name);
  */
 int __rte_experimental
 rte_mp_sendmsg(struct rte_mp_msg *msg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Send a request to the peer process and expect a reply.
+ *
+ * This function sends a request message to the peer process, and will
+ * block until receiving reply message from the peer process.
+ *
+ * @note The caller is responsible to free reply->replies.
+ *
+ * @param req
+ *   The req argument contains the customized request message.
+ *
+ * @param reply
+ *   The reply argument will be for storing all the replied messages;
+ *   the caller is responsible for free reply->replies.
+ *
+ * @param ts
+ *   The ts argument specifies how long we can wait for the peer(s) to reply.
+ *
+ * @return
+ *  - On success, return 0.
+ *  - On failure, return -1, and the reason will be stored in rte_errno.
+ */
+int __rte_experimental
+rte_mp_request(struct rte_mp_msg *req, struct rte_mp_reply *reply,
+	       const struct timespec *ts);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Send a reply to the peer process.
+ *
+ * This function will send a reply message in response to a request message
+ * received previously.
+ *
+ * @param msg
+ *   The msg argument contains the customized message.
+ *
+ * @param peer
+ *   The peer argument is the pointer to the peer socket path.
+ *
+ * @return
+ *  - On success, return 0.
+ *  - On failure, return -1, and the reason will be stored in rte_errno.
+ */
+int __rte_experimental
+rte_mp_reply(struct rte_mp_msg *msg, const char *peer);
 
 /**
  * Usage function typedef used by the application usage function.

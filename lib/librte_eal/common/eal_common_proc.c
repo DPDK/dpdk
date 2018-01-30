@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -45,6 +46,50 @@ TAILQ_HEAD(action_entry_list, action_entry);
 
 static struct action_entry_list action_entry_list =
 	TAILQ_HEAD_INITIALIZER(action_entry_list);
+
+enum mp_type {
+	MP_MSG, /* Share message with peers, will not block */
+	MP_REQ, /* Request for information, Will block for a reply */
+	MP_REP, /* Response to previously-received request */
+};
+
+struct mp_msg_internal {
+	int type;
+	struct rte_mp_msg msg;
+};
+
+struct sync_request {
+	TAILQ_ENTRY(sync_request) next;
+	int reply_received;
+	char dst[PATH_MAX];
+	struct rte_mp_msg *request;
+	struct rte_mp_msg *reply;
+	pthread_cond_t cond;
+};
+
+TAILQ_HEAD(sync_request_list, sync_request);
+
+static struct {
+	struct sync_request_list requests;
+	pthread_mutex_t lock;
+} sync_requests = {
+	.requests = TAILQ_HEAD_INITIALIZER(sync_requests.requests),
+	.lock = PTHREAD_MUTEX_INITIALIZER
+};
+
+static struct sync_request *
+find_sync_request(const char *dst, const char *act_name)
+{
+	struct sync_request *r;
+
+	TAILQ_FOREACH(r, &sync_requests.requests, next) {
+		if (!strcmp(r->dst, dst) &&
+		    !strcmp(r->request->name, act_name))
+			break;
+	}
+
+	return r;
+}
 
 int
 rte_eal_primary_proc_alive(const char *config_file_path)
@@ -149,19 +194,21 @@ rte_mp_action_unregister(const char *name)
 }
 
 static int
-read_msg(struct rte_mp_msg *msg)
+read_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 {
 	int msglen;
 	struct iovec iov;
 	struct msghdr msgh;
-	char control[CMSG_SPACE(sizeof(msg->fds))];
+	char control[CMSG_SPACE(sizeof(m->msg.fds))];
 	struct cmsghdr *cmsg;
-	int buflen = sizeof(*msg) - sizeof(msg->fds);
+	int buflen = sizeof(*m) - sizeof(m->msg.fds);
 
 	memset(&msgh, 0, sizeof(msgh));
-	iov.iov_base = msg;
+	iov.iov_base = m;
 	iov.iov_len  = buflen;
 
+	msgh.msg_name = s;
+	msgh.msg_namelen = sizeof(*s);
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
 	msgh.msg_control = control;
@@ -183,7 +230,7 @@ read_msg(struct rte_mp_msg *msg)
 		cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
 		if ((cmsg->cmsg_level == SOL_SOCKET) &&
 			(cmsg->cmsg_type == SCM_RIGHTS)) {
-			memcpy(msg->fds, CMSG_DATA(cmsg), sizeof(msg->fds));
+			memcpy(m->msg.fds, CMSG_DATA(cmsg), sizeof(m->msg.fds));
 			break;
 		}
 	}
@@ -192,12 +239,28 @@ read_msg(struct rte_mp_msg *msg)
 }
 
 static void
-process_msg(struct rte_mp_msg *msg)
+process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 {
+	struct sync_request *sync_req;
 	struct action_entry *entry;
+	struct rte_mp_msg *msg = &m->msg;
 	rte_mp_t action = NULL;
 
 	RTE_LOG(DEBUG, EAL, "msg: %s\n", msg->name);
+
+	if (m->type == MP_REP) {
+		pthread_mutex_lock(&sync_requests.lock);
+		sync_req = find_sync_request(s->sun_path, msg->name);
+		if (sync_req) {
+			memcpy(sync_req->reply, msg, sizeof(*msg));
+			sync_req->reply_received = 1;
+			pthread_cond_signal(&sync_req->cond);
+		} else
+			RTE_LOG(ERR, EAL, "Drop mp reply: %s\n", msg->name);
+		pthread_mutex_unlock(&sync_requests.lock);
+		return;
+	}
+
 	pthread_mutex_lock(&mp_mutex_action);
 	entry = find_action_entry_by_name(msg->name);
 	if (entry != NULL)
@@ -206,18 +269,19 @@ process_msg(struct rte_mp_msg *msg)
 
 	if (!action)
 		RTE_LOG(ERR, EAL, "Cannot find action: %s\n", msg->name);
-	else if (action(msg) < 0)
+	else if (action(msg, s->sun_path) < 0)
 		RTE_LOG(ERR, EAL, "Fail to handle message: %s\n", msg->name);
 }
 
 static void *
 mp_handle(void *arg __rte_unused)
 {
-	struct rte_mp_msg msg;
+	struct mp_msg_internal msg;
+	struct sockaddr_un sa;
 
 	while (1) {
-		if (read_msg(&msg) == 0)
-			process_msg(&msg);
+		if (read_msg(&msg, &sa) == 0)
+			process_msg(&msg, &sa);
 	}
 
 	return NULL;
@@ -336,15 +400,19 @@ rte_mp_channel_init(void)
  *
  */
 static int
-send_msg(const char *dst_path, struct rte_mp_msg *msg)
+send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 {
 	int snd;
 	struct iovec iov;
 	struct msghdr msgh;
 	struct cmsghdr *cmsg;
 	struct sockaddr_un dst;
+	struct mp_msg_internal m;
 	int fd_size = msg->num_fds * sizeof(int);
 	char control[CMSG_SPACE(fd_size)];
+
+	m.type = type;
+	memcpy(&m.msg, msg, sizeof(*msg));
 
 	memset(&dst, 0, sizeof(dst));
 	dst.sun_family = AF_UNIX;
@@ -353,8 +421,8 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg)
 	memset(&msgh, 0, sizeof(msgh));
 	memset(control, 0, sizeof(control));
 
-	iov.iov_base = msg;
-	iov.iov_len = sizeof(*msg) - sizeof(msg->fds);
+	iov.iov_base = &m;
+	iov.iov_len = sizeof(m) - sizeof(msg->fds);
 
 	msgh.msg_name = &dst;
 	msgh.msg_namelen = sizeof(dst);
@@ -396,14 +464,17 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg)
 }
 
 static int
-mp_send(struct rte_mp_msg *msg)
+mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 {
 	int ret = 0;
 	DIR *mp_dir;
 	struct dirent *ent;
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		if (send_msg(eal_mp_socket_path(), msg) < 0)
+	if (!peer && (rte_eal_process_type() == RTE_PROC_SECONDARY))
+		peer = eal_mp_socket_path();
+
+	if (peer) {
+		if (send_msg(peer, msg, type) < 0)
 			return -1;
 		else
 			return 0;
@@ -421,11 +492,11 @@ mp_send(struct rte_mp_msg *msg)
 		if (fnmatch(mp_filter, ent->d_name, 0) != 0)
 			continue;
 
-		if (send_msg(ent->d_name, msg) < 0)
+		if (send_msg(ent->d_name, msg, type) < 0)
 			ret = -1;
 	}
-	closedir(mp_dir);
 
+	closedir(mp_dir);
 	return ret;
 }
 
@@ -464,5 +535,150 @@ rte_mp_sendmsg(struct rte_mp_msg *msg)
 		return -1;
 
 	RTE_LOG(DEBUG, EAL, "sendmsg: %s\n", msg->name);
-	return mp_send(msg);
+	return mp_send(msg, NULL, MP_MSG);
+}
+
+static int
+mp_request_one(const char *dst, struct rte_mp_msg *req,
+	       struct rte_mp_reply *reply, const struct timespec *ts)
+{
+	int ret;
+	struct timeval now;
+	struct rte_mp_msg msg, *tmp;
+	struct sync_request sync_req, *exist;
+
+	sync_req.reply_received = 0;
+	strcpy(sync_req.dst, dst);
+	sync_req.request = req;
+	sync_req.reply = &msg;
+	pthread_cond_init(&sync_req.cond, NULL);
+
+	pthread_mutex_lock(&sync_requests.lock);
+	exist = find_sync_request(dst, req->name);
+	if (!exist)
+		TAILQ_INSERT_TAIL(&sync_requests.requests, &sync_req, next);
+	pthread_mutex_unlock(&sync_requests.lock);
+	if (exist) {
+		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
+		rte_errno = -EEXIST;
+		return -1;
+	}
+
+	ret = send_msg(dst, req, MP_REQ);
+	if (ret < 0) {
+		RTE_LOG(ERR, EAL, "Fail to send request %s:%s\n",
+			dst, req->name);
+		return -1;
+	} else if (ret == 0)
+		return 0;
+
+	reply->nb_sent++;
+
+	pthread_mutex_lock(&sync_requests.lock);
+	do {
+		pthread_cond_timedwait(&sync_req.cond, &sync_requests.lock, ts);
+		/* Check spurious wakeups */
+		if (sync_req.reply_received == 1)
+			break;
+		/* Check if time is out */
+		if (gettimeofday(&now, NULL) < 0)
+			break;
+		if (now.tv_sec < ts->tv_sec)
+			break;
+		else if (now.tv_sec == ts->tv_sec &&
+			 now.tv_usec * 1000 < ts->tv_nsec)
+			break;
+	} while (1);
+	/* We got the lock now */
+	TAILQ_REMOVE(&sync_requests.requests, &sync_req, next);
+	pthread_mutex_unlock(&sync_requests.lock);
+
+	if (sync_req.reply_received == 0) {
+		RTE_LOG(ERR, EAL, "Fail to recv reply for request %s:%s\n",
+			dst, req->name);
+		rte_errno = -ETIMEDOUT;
+		return -1;
+	}
+
+	tmp = realloc(reply->msgs, sizeof(msg) * (reply->nb_received + 1));
+	if (!tmp) {
+		RTE_LOG(ERR, EAL, "Fail to alloc reply for request %s:%s\n",
+			dst, req->name);
+		rte_errno = -ENOMEM;
+		return -1;
+	}
+	memcpy(&tmp[reply->nb_received], &msg, sizeof(msg));
+	reply->msgs = tmp;
+	reply->nb_received++;
+	return 0;
+}
+
+int __rte_experimental
+rte_mp_request(struct rte_mp_msg *req, struct rte_mp_reply *reply,
+		const struct timespec *ts)
+{
+	int ret = 0;
+	DIR *mp_dir;
+	struct dirent *ent;
+	struct timeval now;
+	struct timespec end;
+
+	RTE_LOG(DEBUG, EAL, "request: %s\n", req->name);
+
+	if (check_input(req) == false)
+		return -1;
+	if (gettimeofday(&now, NULL) < 0) {
+		RTE_LOG(ERR, EAL, "Faile to get current time\n");
+		rte_errno = errno;
+		return -1;
+	}
+
+	end.tv_nsec = (now.tv_usec * 1000 + ts->tv_nsec) % 1000000000;
+	end.tv_sec = now.tv_sec + ts->tv_sec +
+			(now.tv_usec * 1000 + ts->tv_nsec) / 1000000000;
+
+	reply->nb_sent = 0;
+	reply->nb_received = 0;
+	reply->msgs = NULL;
+
+	/* for secondary process, send request to the primary process only */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		return mp_request_one(eal_mp_socket_path(), req, reply, &end);
+
+	/* for primary process, broadcast request, and collect reply 1 by 1 */
+	mp_dir = opendir(mp_dir_path);
+	if (!mp_dir) {
+		RTE_LOG(ERR, EAL, "Unable to open directory %s\n", mp_dir_path);
+		rte_errno = errno;
+		return -1;
+	}
+
+	while ((ent = readdir(mp_dir))) {
+		if (fnmatch(mp_filter, ent->d_name, 0) != 0)
+			continue;
+
+		if (mp_request_one(ent->d_name, req, reply, &end))
+			ret = -1;
+	}
+
+	closedir(mp_dir);
+	return ret;
+}
+
+int __rte_experimental
+rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
+{
+
+	RTE_LOG(DEBUG, EAL, "reply: %s\n", msg->name);
+
+	if (check_input(msg) == false)
+		return -1;
+
+	if (peer == NULL) {
+		RTE_LOG(ERR, EAL, "peer is not specified\n");
+		rte_errno = -EINVAL;
+		return -1;
+	}
+
+	return mp_send(msg, peer, MP_REP);
 }
