@@ -10,6 +10,7 @@
 #include <rte_debug.h>
 #include <rte_common.h>
 #include <rte_eal.h>
+#include <rte_service_component.h>
 
 #include "test.h"
 
@@ -49,6 +50,11 @@ test_exit_val(int exit_val)
 {
 	int pid;
 	int status;
+
+	/* manually cleanup EAL memory, as the fork() below would otherwise
+	 * cause the same hugepages to be free()-ed multiple times.
+	 */
+	rte_service_finalize();
 
 	pid = fork();
 
