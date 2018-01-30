@@ -756,11 +756,14 @@ port_offload_cap_display(portid_t port_id)
 int
 port_id_is_invalid(portid_t port_id, enum print_warning warning)
 {
+	uint16_t pid;
+
 	if (port_id == (portid_t)RTE_PORT_ALL)
 		return 0;
 
-	if (rte_eth_dev_is_valid_port(port_id))
-		return 0;
+	RTE_ETH_FOREACH_DEV(pid)
+		if (port_id == pid)
+			return 0;
 
 	if (warning == ENABLED_WARN)
 		printf("Invalid port %d\n", port_id);
