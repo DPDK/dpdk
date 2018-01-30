@@ -473,10 +473,10 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	/* Function receive frames for a given device and VQ*/
 	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
-	struct qbman_result *dq_storage, *dq_storage1 = 0;
+	struct qbman_result *dq_storage, *dq_storage1 = NULL;
 	uint32_t fqid = dpaa2_q->fqid;
-	int ret, num_rx = 0, next_pull = 0, num_pulled, num_to_pull;
-	uint8_t pending, is_repeat, status;
+	int ret, num_rx = 0;
+	uint8_t pending, status;
 	struct qbman_swp *swp;
 	const struct qbman_fd *fd, *next_fd;
 	struct qbman_pull_desc pulldesc;
@@ -491,19 +491,6 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
-
-	/* if the original request for this q was from another portal */
-	if (unlikely(DPAA2_PER_LCORE_DPIO->index !=
-		q_storage->active_dpio_id)) {
-		if (check_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)) {
-			while (!qbman_check_command_complete(get_swp_active_dqs
-				(DPAA2_PER_LCORE_DPIO->index)))
-				;
-			clear_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index);
-		}
-		q_storage->active_dpio_id = DPAA2_PER_LCORE_DPIO->index;
-	}
-
 	if (unlikely(!q_storage->active_dqs)) {
 		q_storage->toggle = 0;
 		dq_storage = q_storage->dq_storage[q_storage->toggle];
@@ -515,27 +502,41 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		qbman_pull_desc_set_fq(&pulldesc, fqid);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 			(dma_addr_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
+		if (check_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)) {
+			while (!qbman_check_command_complete(
+			       get_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)))
+				;
+			clear_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index);
+		}
 		while (1) {
 			if (qbman_swp_pull(swp, &pulldesc)) {
-				PMD_RX_LOG(WARNING,
-					"VDQ command not issued.QBMAN busy\n");
+				PMD_RX_LOG(WARNING, "VDQ command is not issued."
+					   "QBMAN is busy\n");
 				/* Portal was busy, try again */
 				continue;
 			}
 			break;
 		}
 		q_storage->active_dqs = dq_storage;
+		q_storage->active_dpio_id = DPAA2_PER_LCORE_DPIO->index;
 		set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage);
 	}
 
-	/* pkt to pull in current pull request */
-	num_to_pull = q_storage->last_num_pkts;
-
-	/* Number of packet requested is more than current pull request */
-	if (nb_pkts > num_to_pull)
-		next_pull = nb_pkts - num_to_pull;
-
 	dq_storage = q_storage->active_dqs;
+	rte_prefetch0((void *)((uint64_t)(dq_storage)));
+	rte_prefetch0((void *)((uint64_t)(dq_storage + 1)));
+
+	/* Prepare next pull descriptor. This will give space for the
+	 * prefething done on DQRR entries
+	 */
+	q_storage->toggle ^= 1;
+	dq_storage1 = q_storage->dq_storage[q_storage->toggle];
+	qbman_pull_desc_clear(&pulldesc);
+	qbman_pull_desc_set_numframes(&pulldesc, DPAA2_DQRR_RING_SIZE);
+	qbman_pull_desc_set_fq(&pulldesc, fqid);
+	qbman_pull_desc_set_storage(&pulldesc, dq_storage1,
+		(dma_addr_t)(DPAA2_VADDR_TO_IOVA(dq_storage1)), 1);
+
 	/* Check if the previous issued command is completed.
 	 * Also seems like the SWP is shared between the Ethernet Driver
 	 * and the SEC driver.
@@ -545,45 +546,6 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	if (dq_storage == get_swp_active_dqs(q_storage->active_dpio_id))
 		clear_swp_active_dqs(q_storage->active_dpio_id);
 
-repeat:
-	is_repeat = 0;
-
-	/* issue the deq command one more time to get another set of packets */
-	if (next_pull) {
-		q_storage->toggle ^= 1;
-		dq_storage1 = q_storage->dq_storage[q_storage->toggle];
-		qbman_pull_desc_clear(&pulldesc);
-
-		if (next_pull > DPAA2_DQRR_RING_SIZE) {
-			qbman_pull_desc_set_numframes(&pulldesc,
-					DPAA2_DQRR_RING_SIZE);
-			next_pull = next_pull - DPAA2_DQRR_RING_SIZE;
-			q_storage->last_num_pkts = DPAA2_DQRR_RING_SIZE;
-		} else {
-			qbman_pull_desc_set_numframes(&pulldesc, next_pull);
-			q_storage->last_num_pkts = next_pull;
-			next_pull = 0;
-		}
-		qbman_pull_desc_set_fq(&pulldesc, fqid);
-		qbman_pull_desc_set_storage(&pulldesc, dq_storage1,
-			(dma_addr_t)(DPAA2_VADDR_TO_IOVA(dq_storage1)), 1);
-		while (1) {
-			if (qbman_swp_pull(swp, &pulldesc)) {
-				PMD_RX_LOG(WARNING,
-					"VDQ command not issued.QBMAN busy\n");
-				/* Portal was busy, try again */
-				continue;
-			}
-			break;
-		}
-		is_repeat = 1;
-		q_storage->active_dqs = dq_storage1;
-		set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage1);
-	}
-
-	rte_prefetch0((void *)((uint64_t)(dq_storage + 1)));
-
-	num_pulled = 0;
 	pending = 1;
 
 	do {
@@ -621,36 +583,14 @@ repeat:
 
 		dq_storage++;
 		num_rx++;
-		num_pulled++;
 	} while (pending);
 
-	/* Another VDQ request pending and this request returned full */
-	if (is_repeat) {
-		/* all packets pulled from this pull request */
-		if (num_pulled == num_to_pull)  {
-			/* pkt to pull in current pull request */
-			num_to_pull = q_storage->last_num_pkts;
-
-			dq_storage = dq_storage1;
-
-			while (!qbman_check_command_complete(dq_storage))
-				;
-			goto repeat;
-		} else {
-			/* if this request did not returned all pkts */
-			goto next_time;
-		}
+	if (check_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)) {
+		while (!qbman_check_command_complete(
+		       get_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)))
+			;
+		clear_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index);
 	}
-
-	q_storage->toggle ^= 1;
-	dq_storage = q_storage->dq_storage[q_storage->toggle];
-	q_storage->last_num_pkts = (nb_pkts > DPAA2_DQRR_RING_SIZE) ?
-				       DPAA2_DQRR_RING_SIZE : nb_pkts;
-	qbman_pull_desc_clear(&pulldesc);
-	qbman_pull_desc_set_numframes(&pulldesc, q_storage->last_num_pkts);
-	qbman_pull_desc_set_fq(&pulldesc, fqid);
-	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
-			(dma_addr_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
 	/* issue a volatile dequeue command for next pull */
 	while (1) {
 		if (qbman_swp_pull(swp, &pulldesc)) {
@@ -660,10 +600,10 @@ repeat:
 		}
 		break;
 	}
-	q_storage->active_dqs = dq_storage;
-	set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage);
+	q_storage->active_dqs = dq_storage1;
+	q_storage->active_dpio_id = DPAA2_PER_LCORE_DPIO->index;
+	set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage1);
 
-next_time:
 	dpaa2_q->rx_pkts += num_rx;
 
 	return num_rx;
