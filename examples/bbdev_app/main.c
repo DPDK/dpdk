@@ -282,12 +282,12 @@ print_mac(unsigned int portid, struct ether_addr *bbdev_ports_eth_address)
 {
 	printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
 			(unsigned int) portid,
-			bbdev_ports_eth_address[portid].addr_bytes[0],
-			bbdev_ports_eth_address[portid].addr_bytes[1],
-			bbdev_ports_eth_address[portid].addr_bytes[2],
-			bbdev_ports_eth_address[portid].addr_bytes[3],
-			bbdev_ports_eth_address[portid].addr_bytes[4],
-			bbdev_ports_eth_address[portid].addr_bytes[5]);
+			bbdev_ports_eth_address->addr_bytes[0],
+			bbdev_ports_eth_address->addr_bytes[1],
+			bbdev_ports_eth_address->addr_bytes[2],
+			bbdev_ports_eth_address->addr_bytes[3],
+			bbdev_ports_eth_address->addr_bytes[4],
+			bbdev_ports_eth_address->addr_bytes[5]);
 }
 
 static inline void
