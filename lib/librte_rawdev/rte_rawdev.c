@@ -364,6 +364,16 @@ rte_rawdev_firmware_unload(uint16_t dev_id)
 }
 
 int __rte_experimental
+rte_rawdev_selftest(uint16_t dev_id)
+{
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_selftest, -ENOTSUP);
+	return (*dev->dev_ops->dev_selftest)();
+}
+
+int __rte_experimental
 rte_rawdev_start(uint16_t dev_id)
 {
 	struct rte_rawdev *dev;

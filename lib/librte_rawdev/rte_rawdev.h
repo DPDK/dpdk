@@ -589,6 +589,19 @@ rte_rawdev_firmware_load(uint16_t dev_id, rte_rawdev_obj_t firmware_image);
 int __rte_experimental
 rte_rawdev_firmware_unload(uint16_t dev_id);
 
+/**
+ * Trigger the rawdev self test.
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @return
+ *   - 0: Selftest successful
+ *   - -ENOTSUP if the device doesn't support selftest
+ *   - other values < 0 on failure.
+ */
+int __rte_experimental
+rte_rawdev_selftest(uint16_t dev_id);
+
 #ifdef __cplusplus
 }
 #endif

@@ -477,6 +477,14 @@ typedef int (*rawdev_firmware_load_t)(struct rte_rawdev *dev,
  */
 typedef int (*rawdev_firmware_unload_t)(struct rte_rawdev *dev);
 
+/**
+ * Start rawdev selftest
+ *
+ * @return
+ *   Return 0 on success
+ */
+typedef int (*rawdev_selftest_t)(void);
+
 /** Rawdevice operations function pointer table */
 struct rte_rawdev_ops {
 	/**< Get device info. */
@@ -530,6 +538,9 @@ struct rte_rawdev_ops {
 	rawdev_firmware_load_t firmware_load;
 	/**< Unload firmware */
 	rawdev_firmware_unload_t firmware_unload;
+
+	/**< Device selftest function */
+	rawdev_selftest_t dev_selftest;
 };
 
 /**

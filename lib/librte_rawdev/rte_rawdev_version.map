@@ -19,6 +19,7 @@ EXPERIMENTAL {
 	rte_rawdev_queue_setup;
 	rte_rawdev_queue_release;
 	rte_rawdev_reset;
+	rte_rawdev_selftest;
 	rte_rawdev_set_attr;
 	rte_rawdev_socket_id;
 	rte_rawdev_start;
