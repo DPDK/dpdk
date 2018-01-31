@@ -616,8 +616,16 @@ print_stats(struct stats_lcore_params *stats_lcore)
 					xstats[i].value);
 	}
 
+	ret = rte_bbdev_stats_get(bbdev_id, &bbstats);
+	if (ret < 0) {
+		free(xstats);
+		free(xstats_names);
+		rte_exit(EXIT_FAILURE,
+				"ERROR(%d): Failure to get BBDEV %u statistics\n",
+				ret, bbdev_id);
+	}
+
 	printf("\nBBDEV STATISTICS:\n=================\n");
-	rte_bbdev_stats_get(bbdev_id, &bbstats);
 	printf("BBDEV %u: %s enqueue count:\t\t%"PRIu64"\n",
 			bbdev_id, stats_border,
 			bbstats.enqueued_count);
