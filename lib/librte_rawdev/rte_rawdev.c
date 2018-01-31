@@ -204,6 +204,36 @@ rte_rawdev_set_attr(uint16_t dev_id,
 }
 
 int __rte_experimental
+rte_rawdev_enqueue_buffers(uint16_t dev_id,
+			   struct rte_rawdev_buf **buffers,
+			   unsigned int count,
+			   rte_rawdev_obj_t context)
+{
+	struct rte_rawdev *dev;
+
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->enqueue_bufs, -ENOTSUP);
+	return (*dev->dev_ops->enqueue_bufs)(dev, buffers, count, context);
+}
+
+int __rte_experimental
+rte_rawdev_dequeue_buffers(uint16_t dev_id,
+			   struct rte_rawdev_buf **buffers,
+			   unsigned int count,
+			   rte_rawdev_obj_t context)
+{
+	struct rte_rawdev *dev;
+
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dequeue_bufs, -ENOTSUP);
+	return (*dev->dev_ops->dequeue_bufs)(dev, buffers, count, context);
+}
+
+int __rte_experimental
 rte_rawdev_dump(uint16_t dev_id, FILE *f)
 {
 	struct rte_rawdev *dev;

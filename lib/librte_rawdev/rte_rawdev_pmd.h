@@ -251,6 +251,58 @@ typedef int (*rawdev_queue_release_t)(struct rte_rawdev *dev,
 				      uint16_t queue_id);
 
 /**
+ * Enqueue an array of raw buffers to the device.
+ *
+ * Buffer being used is opaque - it can be obtained from mempool or from
+ * any other source. Interpretation of buffer is responsibility of driver.
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param bufs
+ *   array of buffers
+ * @param count
+ *   number of buffers passed
+ * @param context
+ *   an opaque object representing context of the call; for example, an
+ *   application can pass information about the queues on which enqueue needs
+ *   to be done. Or, the enqueue operation might be passed reference to an
+ *   object containing a callback (agreed upon between applicatio and driver).
+ *
+ * @return
+ *   >=0 Count of buffers successfully enqueued (0: no buffers enqueued)
+ *   <0 Error count in case of error
+ */
+typedef int (*rawdev_enqueue_bufs_t)(struct rte_rawdev *dev,
+				     struct rte_rawdev_buf **buffers,
+				     unsigned int count,
+				     rte_rawdev_obj_t context);
+
+/**
+ * Dequeue an array of raw buffers from the device.
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param bufs
+ *   array of buffers
+ * @param count
+ *   Max buffers expected to be dequeued
+ * @param context
+ *   an opaque object representing context of the call. Based on this object,
+ *   the application and driver can coordinate for dequeue operation involving
+ *   agreed upon semantics. For example, queue information/id on which Dequeue
+ *   needs to be performed.
+ * @return
+ *   >0, ~0: Count of buffers returned
+ *   <0: Error
+ *   Whether short dequeue is success or failure is decided between app and
+ *   driver.
+ */
+typedef int (*rawdev_dequeue_bufs_t)(struct rte_rawdev *dev,
+				     struct rte_rawdev_buf **buffers,
+				     unsigned int count,
+				     rte_rawdev_obj_t context);
+
+/**
  * Dump internal information
  *
  * @param dev
@@ -322,6 +374,12 @@ struct rte_rawdev_ops {
 	rawdev_queue_setup_t queue_setup;
 	/**< Release an raw queue. */
 	rawdev_queue_release_t queue_release;
+
+	/**< Enqueue an array of raw buffers to device. */
+	rawdev_enqueue_bufs_t enqueue_bufs;
+	/**< Dequeue an array of raw buffers from device. */
+	/** TODO: Callback based enqueue and dequeue support */
+	rawdev_dequeue_bufs_t dequeue_bufs;
 
 	/* Dump internal information */
 	rawdev_dump_t dump;

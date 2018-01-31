@@ -4,6 +4,8 @@ EXPERIMENTAL {
 	rte_rawdev_close;
 	rte_rawdev_configure;
 	rte_rawdev_count;
+	rte_rawdev_dequeue_buffers;
+	rte_rawdev_enqueue_buffers;
 	rte_rawdev_get_attr;
 	rte_rawdev_get_dev_id;
 	rte_rawdev_info_get;

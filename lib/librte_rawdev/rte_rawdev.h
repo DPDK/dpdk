@@ -362,6 +362,64 @@ rte_rawdev_set_attr(uint16_t dev_id,
 		    const char *attr_name,
 		    const uint64_t attr_value);
 
+/**
+ * Enqueue a stream of buffers to the device.
+ *
+ * Rather than specifying a queue, this API passes along an opaque object
+ * to the driver implementation. That object can be a queue or any other
+ * contextual information necessary for the device to enqueue buffers.
+ *
+ * @param dev_id
+ *   The identifier of the device to configure.
+ * @param buffers
+ *   Collection of buffers for enqueueing
+ * @param count
+ *   Count of buffers to enqueue
+ * @param context
+ *   Opaque context information.
+ * @return
+ *   >=0 for buffers enqueued
+ *  !0 for failure.
+ *  Whether partial enqueue is failure or success is defined between app
+ *  and driver implementation.
+ */
+int __rte_experimental
+rte_rawdev_enqueue_buffers(uint16_t dev_id,
+			   struct rte_rawdev_buf **buffers,
+			   unsigned int count,
+			   rte_rawdev_obj_t context);
+
+/**
+ * Dequeue a stream of buffers from the device.
+ *
+ * Rather than specifying a queue, this API passes along an opaque object
+ * to the driver implementation. That object can be a queue or any other
+ * contextual information necessary for the device to dequeue buffers.
+ *
+ * Application should have allocated enough space to store `count` response
+ * buffers.
+ * Releasing buffers dequeued is responsibility of the application.
+ *
+ * @param dev_id
+ *   The identifier of the device to configure.
+ * @param buffers
+ *   Collection of buffers dequeued
+ * @param count
+ *   Max buffers expected to be dequeued
+ * @param context
+ *   Opaque context information.
+ * @return
+ *   >=0 for buffers dequeued
+ *  !0 for failure.
+ *  Whether partial enqueue is failure or success is defined between app
+ *  and driver implementation.
+ */
+int __rte_experimental
+rte_rawdev_dequeue_buffers(uint16_t dev_id,
+			   struct rte_rawdev_buf **buffers,
+			   unsigned int count,
+			   rte_rawdev_obj_t context);
+
 #ifdef __cplusplus
 }
 #endif
