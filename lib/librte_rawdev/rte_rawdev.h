@@ -525,6 +525,70 @@ rte_rawdev_xstats_reset(uint16_t dev_id,
 			const uint32_t ids[],
 			uint32_t nb_ids);
 
+/**
+ * Get Firmware status of the device..
+ * Returns a memory allocated by driver/implementation containing status
+ * information block. It is responsibility of caller to release the buffer.
+ *
+ * @param dev_id
+ *   Raw device identifier
+ * @param status_info
+ *   Pointer to status information area. Caller is responsible for releasing
+ *   the memory associated.
+ * @return
+ *   0 for success,
+ *  !0 for failure, `status_info` argument state is undefined
+ */
+int __rte_experimental
+rte_rawdev_firmware_status_get(uint16_t dev_id,
+			       rte_rawdev_obj_t status_info);
+
+/**
+ * Get Firmware version of the device.
+ * Returns a memory allocated by driver/implementation containing version
+ * information block. It is responsibility of caller to release the buffer.
+ *
+ * @param dev_id
+ *   Raw device identifier
+ * @param version_info
+ *   Pointer to version information area. Caller is responsible for releasing
+ *   the memory associated.
+ * @return
+ *   0 for success,
+ *  !0 for failure, `version_info` argument state is undefined
+ */
+int __rte_experimental
+rte_rawdev_firmware_version_get(uint16_t dev_id,
+				rte_rawdev_obj_t version_info);
+
+/**
+ * Load firmware on the device.
+ * TODO: In future, methods like directly flashing from file too can be
+ * supported.
+ *
+ * @param dev_id
+ *   Raw device identifier
+ * @param firmware_image
+ *   Pointer to buffer containing image binary data
+ * @return
+ *   0 for successful load
+ *  !0 for failure to load the provided image, or image incorrect.
+ */
+int __rte_experimental
+rte_rawdev_firmware_load(uint16_t dev_id, rte_rawdev_obj_t firmware_image);
+
+/**
+ * Unload firmware from the device.
+ *
+ * @param dev_id
+ *   Raw device identifiers
+ * @return
+ *   0 for successful Unload
+ *  !0 for failure in unloading
+ */
+int __rte_experimental
+rte_rawdev_firmware_unload(uint16_t dev_id);
+
 #ifdef __cplusplus
 }
 #endif

@@ -416,6 +416,67 @@ typedef int (*rawdev_xstats_get_names_t)(const struct rte_rawdev *dev,
 typedef uint64_t (*rawdev_xstats_get_by_name_t)(const struct rte_rawdev *dev,
 						const char *name,
 						unsigned int *id);
+
+/**
+ * Get firmware/device-stack status.
+ * Implementation to allocate buffer for returning information.
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param status
+ *   void block containing device specific status information
+ * @return
+ *   0 for success,
+ *   !0 for failure, with undefined value in `status_info`
+ */
+typedef int (*rawdev_firmware_status_get_t)(struct rte_rawdev *dev,
+					    rte_rawdev_obj_t status_info);
+
+/**
+ * Get firmware version information
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param version_info
+ *   void pointer to version information returned by device
+ * @return
+ *   0 for success,
+ *   !0 for failure, with undefined value in `version_info`
+ */
+typedef int (*rawdev_firmware_version_get_t)(struct rte_rawdev *dev,
+					     rte_rawdev_obj_t version_info);
+
+/**
+ * Load firwmare from a buffer (DMA'able)
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param firmware_file
+ *   file pointer to firmware area
+ * @return
+ *   >0, ~0: for successful load
+ *   <0: for failure
+ *
+ * @see Application may use 'firmware_version_get` for ascertaining successful
+ * load
+ */
+typedef int (*rawdev_firmware_load_t)(struct rte_rawdev *dev,
+				      rte_rawdev_obj_t firmware_buf);
+
+/**
+ * Unload firwmare
+ *
+ * @param dev
+ *   Raw device pointer
+ * @return
+ *   >0, ~0 for successful unloading
+ *   <0 for failure in unloading
+ *
+ * Note: Application can use the `firmware_status_get` or
+ * `firmware_version_get` to get result of unload.
+ */
+typedef int (*rawdev_firmware_unload_t)(struct rte_rawdev *dev);
+
 /** Rawdevice operations function pointer table */
 struct rte_rawdev_ops {
 	/**< Get device info. */
@@ -460,6 +521,15 @@ struct rte_rawdev_ops {
 	rawdev_xstats_get_by_name_t xstats_get_by_name;
 	/**< Reset the statistics values in xstats. */
 	rawdev_xstats_reset_t xstats_reset;
+
+	/**< Obtainer firmware status */
+	rawdev_firmware_status_get_t firmware_status_get;
+	/**< Obtain firmware version information */
+	rawdev_firmware_version_get_t firmware_version_get;
+	/**< Load firmware */
+	rawdev_firmware_load_t firmware_load;
+	/**< Unload firmware */
+	rawdev_firmware_unload_t firmware_unload;
 };
 
 /**

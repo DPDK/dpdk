@@ -321,6 +321,49 @@ rte_rawdev_xstats_reset(uint16_t dev_id,
 }
 
 int __rte_experimental
+rte_rawdev_firmware_status_get(uint16_t dev_id, rte_rawdev_obj_t status_info)
+{
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->firmware_status_get, -ENOTSUP);
+	return (*dev->dev_ops->firmware_status_get)(dev, status_info);
+}
+
+int __rte_experimental
+rte_rawdev_firmware_version_get(uint16_t dev_id, rte_rawdev_obj_t version_info)
+{
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->firmware_version_get, -ENOTSUP);
+	return (*dev->dev_ops->firmware_version_get)(dev, version_info);
+}
+
+int __rte_experimental
+rte_rawdev_firmware_load(uint16_t dev_id, rte_rawdev_obj_t firmware_image)
+{
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+
+	if (!firmware_image)
+		return -EINVAL;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->firmware_load, -ENOTSUP);
+	return (*dev->dev_ops->firmware_load)(dev, firmware_image);
+}
+
+int __rte_experimental
+rte_rawdev_firmware_unload(uint16_t dev_id)
+{
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->firmware_load, -ENOTSUP);
+	return (*dev->dev_ops->firmware_unload)(dev);
+}
+
+int __rte_experimental
 rte_rawdev_start(uint16_t dev_id)
 {
 	struct rte_rawdev *dev;
