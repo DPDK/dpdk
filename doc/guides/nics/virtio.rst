@@ -78,8 +78,9 @@ In this release, the virtio PMD driver provides the basic functionality of packe
     by default. Tx queue size is still hard-coded to be 256.
 
 *   Features of mac/vlan filter are supported, negotiation with vhost/backend are needed to support them.
-    When backend can't support vlan filter, virtio app on guest should disable vlan filter to make sure
-    the virtio port is configured correctly. E.g. specify '--disable-hw-vlan' in testpmd command line.
+    When backend can't support vlan filter, virtio app on guest should not enable vlan filter in order
+    to make sure the virtio port is configured correctly. E.g. do not specify '--enable-hw-vlan' in testpmd
+    command line.
 
 *   "RTE_PKTMBUF_HEADROOM" should be defined
     no less than "sizeof(struct virtio_net_hdr_mrg_rxbuf)", which is 12 bytes when mergeable or

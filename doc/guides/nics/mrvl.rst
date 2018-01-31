@@ -215,7 +215,7 @@ Usage example
 .. code-block:: console
 
    ./testpmd --vdev=eth_mrvl,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
-     -c 7 -- -i -a --disable-hw-vlan-strip --rxq=2
+     -c 7 -- -i -a --rxq=2
 
 
 Building DPDK
@@ -272,4 +272,4 @@ In order to run testpmd example application following command can be used:
 
    ./testpmd --vdev=eth_mrvl,iface=eth0,iface=eth2 -c 7 -- \
      --burst=128 --txd=2048 --rxd=1024 --rxq=2 --txq=2  --nb-cores=2 \
-     -i -a --disable-hw-vlan-strip --rss-udp
+     -i -a --rss-udp

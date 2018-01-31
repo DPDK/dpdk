@@ -315,21 +315,21 @@ The commandline options are:
 
     Enable scatter (multi-segment) RX.
 
-*   ``--disable-hw-vlan``
+*   ``--enable-hw-vlan``
 
-    Disable hardware VLAN.
+    Enable hardware VLAN.
 
-*   ``--disable-hw-vlan-filter``
+*   ``--enable-hw-vlan-filter``
 
-    Disable hardware VLAN filter.
+    Enable hardware VLAN filter.
 
-*   ``--disable-hw-vlan-strip``
+*   ``--enable-hw-vlan-strip``
 
-    Disable hardware VLAN strip.
+    Enable hardware VLAN strip.
 
-*   ``--disable-hw-vlan-extend``
+*   ``--enable-hw-vlan-extend``
 
-    Disable hardware VLAN extend.
+    Enable hardware VLAN extend.
 
 *   ``--enable-drop-en``
 

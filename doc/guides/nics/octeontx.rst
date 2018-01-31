@@ -88,8 +88,8 @@ following ``make`` command:
                 --mbuf-pool-ops-name="octeontx_fpavf" \
                 --vdev='event_octeontx' \
                 --vdev='eth_octeontx,nr_port=2' \
-                -- --rxq=1 --txq=1 --nb-core=2 --total-num-mbufs=16384 \
-                --disable-hw-vlan-filter -i
+                -- --rxq=1 --txq=1 --nb-core=2 \
+                --total-num-mbufs=16384 -i
       .....
       EAL: Detected 24 lcore(s)
       EAL: Probing VFIO support...

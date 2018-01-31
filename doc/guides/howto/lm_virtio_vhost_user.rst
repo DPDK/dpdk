@@ -466,4 +466,4 @@ run_testpmd_in_vm.sh
    # test system has 8 cpus (0-7), use cpus 2-7 for VM
 
    /root/dpdk/x86_64-default-linuxapp-gcc/app/testpmd \
-   -l 0-5 -n 4 --socket-mem 350 -- --burst=64 --i --disable-hw-vlan-filter
+   -l 0-5 -n 4 --socket-mem 350 -- --burst=64 --i

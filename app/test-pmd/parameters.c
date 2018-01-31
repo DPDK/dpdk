@@ -133,10 +133,10 @@ usage(char* progname)
 	printf("  --enable-lro: enable large receive offload.\n");
 	printf("  --enable-rx-cksum: enable rx hardware checksum offload.\n");
 	printf("  --enable-rx-timestamp: enable rx hardware timestamp offload.\n");
-	printf("  --disable-hw-vlan: disable hardware vlan.\n");
-	printf("  --disable-hw-vlan-filter: disable hardware vlan filter.\n");
-	printf("  --disable-hw-vlan-strip: disable hardware vlan strip.\n");
-	printf("  --disable-hw-vlan-extend: disable hardware vlan extend.\n");
+	printf("  --enable-hw-vlan: enable hardware vlan.\n");
+	printf("  --enable-hw-vlan-filter: enable hardware vlan filter.\n");
+	printf("  --enable-hw-vlan-strip: enable hardware vlan strip.\n");
+	printf("  --enable-hw-vlan-extend: enable hardware vlan extend.\n");
 	printf("  --enable-drop-en: enable per queue packet drop.\n");
 	printf("  --disable-rss: disable rss.\n");
 	printf("  --port-topology=N: set port topology (N: paired (default) or "
@@ -585,10 +585,10 @@ launch_args_parse(int argc, char** argv)
 		{ "enable-rx-cksum",            0, 0, 0 },
 		{ "enable-rx-timestamp",        0, 0, 0 },
 		{ "enable-scatter",             0, 0, 0 },
-		{ "disable-hw-vlan",            0, 0, 0 },
-		{ "disable-hw-vlan-filter",     0, 0, 0 },
-		{ "disable-hw-vlan-strip",      0, 0, 0 },
-		{ "disable-hw-vlan-extend",     0, 0, 0 },
+		{ "enable-hw-vlan",             0, 0, 0 },
+		{ "enable-hw-vlan-filter",      0, 0, 0 },
+		{ "enable-hw-vlan-strip",       0, 0, 0 },
+		{ "enable-hw-vlan-extend",      0, 0, 0 },
 		{ "enable-drop-en",            0, 0, 0 },
 		{ "disable-rss",                0, 0, 0 },
 		{ "port-topology",              1, 0, 0 },
@@ -886,20 +886,20 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name,
 					"enable-rx-timestamp"))
 				rx_offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
-			if (!strcmp(lgopts[opt_idx].name, "disable-hw-vlan"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN;
+			if (!strcmp(lgopts[opt_idx].name, "enable-hw-vlan"))
+				rx_offloads |= DEV_RX_OFFLOAD_VLAN;
 
 			if (!strcmp(lgopts[opt_idx].name,
-					"disable-hw-vlan-filter"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
+					"enable-hw-vlan-filter"))
+				rx_offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
 
 			if (!strcmp(lgopts[opt_idx].name,
-					"disable-hw-vlan-strip"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+					"enable-hw-vlan-strip"))
+				rx_offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
 
 			if (!strcmp(lgopts[opt_idx].name,
-					"disable-hw-vlan-extend"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_EXTEND;
+					"enable-hw-vlan-extend"))
+				rx_offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
 
 			if (!strcmp(lgopts[opt_idx].name, "enable-drop-en"))
 				rx_drop_en = 1;

@@ -177,7 +177,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
    .. code-block:: console
 
       ./arm64-thunderx-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -w 0002:01:00.2 \
-        -- -i --disable-hw-vlan-filter --disable-crc-strip --no-flush-rx \
+        -- -i --no-flush-rx \
         --port-topology=loop
 
       ...

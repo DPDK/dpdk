@@ -306,9 +306,7 @@ lcoreid_t latencystats_lcore_id = -1;
  */
 struct rte_eth_rxmode rx_mode = {
 	.max_rx_pkt_len = ETHER_MAX_LEN, /**< Default maximum frame length. */
-	.offloads = (DEV_RX_OFFLOAD_VLAN_FILTER |
-		     DEV_RX_OFFLOAD_VLAN_STRIP |
-		     DEV_RX_OFFLOAD_CRC_STRIP),
+	.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	.ignore_offload_bitfield = 1,
 };
 
@@ -670,7 +668,7 @@ init_config(void)
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
-		/* Apply default Tx configuration for all ports */
+		/* Apply default TxRx configuration for all ports */
 		port->dev_conf.txmode = tx_mode;
 		port->dev_conf.rxmode = rx_mode;
 		rte_eth_dev_info_get(pid, &port->dev_info);
@@ -678,7 +676,10 @@ init_config(void)
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
 			port->dev_conf.txmode.offloads &=
 				~DEV_TX_OFFLOAD_MBUF_FAST_FREE;
-
+		if (!(port->dev_info.rx_offload_capa &
+		      DEV_RX_OFFLOAD_CRC_STRIP))
+			port->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_CRC_STRIP;
 		if (numa_support) {
 			if (port_numa[pid] != NUMA_NO_CONFIG)
 				port_per_socket[port_numa[pid]]++;

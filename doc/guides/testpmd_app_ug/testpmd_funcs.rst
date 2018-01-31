@@ -1706,9 +1706,9 @@ Set hardware VLAN on or off for all ports::
 
    testpmd> port config all hw-vlan (on|off)
 
-Hardware VLAN is on by default.
+Hardware VLAN is off by default.
 
-The ``off`` option is equivalent to the ``--disable-hw-vlan`` command-line option.
+The ``on`` option is equivalent to the ``--enable-hw-vlan`` command-line option.
 
 port config - VLAN filter
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1717,9 +1717,9 @@ Set hardware VLAN filter on or off for all ports::
 
    testpmd> port config all hw-vlan-filter (on|off)
 
-Hardware VLAN filter is on by default.
+Hardware VLAN filter is off by default.
 
-The ``off`` option is equivalent to the ``--disable-hw-vlan-filter`` command-line option.
+The ``on`` option is equivalent to the ``--enable-hw-vlan-filter`` command-line option.
 
 port config - VLAN strip
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1728,9 +1728,9 @@ Set hardware VLAN strip on or off for all ports::
 
    testpmd> port config all hw-vlan-strip (on|off)
 
-Hardware VLAN strip is on by default.
+Hardware VLAN strip is off by default.
 
-The ``off`` option is equivalent to the ``--disable-hw-vlan-strip`` command-line option.
+The ``on`` option is equivalent to the ``--enable-hw-vlan-strip`` command-line option.
 
 port config - VLAN extend
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1741,7 +1741,7 @@ Set hardware VLAN extend on or off for all ports::
 
 Hardware VLAN extend is off by default.
 
-The ``off`` option is equivalent to the ``--disable-hw-vlan-extend`` command-line option.
+The ``on`` option is equivalent to the ``--enable-hw-vlan-extend`` command-line option.
 
 port config - Drop Packets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
