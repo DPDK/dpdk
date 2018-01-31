@@ -394,17 +394,17 @@ The DDP functionality requires a NIC firmware version of 6.0 or greater.
 Current implementation supports MPLSoUDP/MPLSoGRE/GTP-C/GTP-U/PPPoE/PPPoL2TP,
 steering can be used with rte_flow API.
 
-Load a profile which supports MPLSoUDP/MPLSoGRE:
+Load a profile which supports MPLSoUDP/MPLSoGRE and store backup profile:
 
 .. code-block:: console
 
-   testpmd> ddp add 0 ./mpls.pkgo
+   testpmd> ddp add 0 ./mpls.pkgo,./backup.pkgo
 
-Delete a MPLS profile:
+Delete a MPLS profile and restore backup profile:
 
 .. code-block:: console
 
-   testpmd> ddp del 0 ./mpls.pkgo
+   testpmd> ddp del 0 ./backup.pkgo
 
 Get loaded DDP package info list:
 

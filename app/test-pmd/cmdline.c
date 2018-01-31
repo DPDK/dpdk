@@ -645,10 +645,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"	Set default traffic Management hierarchy on a port\n\n"
 
 #endif
-			"ddp add (port_id) (profile_path[,output_path])\n"
+			"ddp add (port_id) (profile_path[,backup_profile_path])\n"
 			"    Load a profile package on a port\n\n"
 
-			"ddp del (port_id) (profile_path)\n"
+			"ddp del (port_id) (backup_profile_path)\n"
 			"    Delete a profile package from a port\n\n"
 
 			"ptype mapping get (port_id) (valid_only)\n"
@@ -14511,7 +14511,7 @@ cmd_ddp_add_parsed(
 cmdline_parse_inst_t cmd_ddp_add = {
 	.f = cmd_ddp_add_parsed,
 	.data = NULL,
-	.help_str = "ddp add <port_id> <profile_path[,output_path]>",
+	.help_str = "ddp add <port_id> <profile_path[,backup_profile_path]>",
 	.tokens = {
 		(void *)&cmd_ddp_add_ddp,
 		(void *)&cmd_ddp_add_add,
@@ -14581,7 +14581,7 @@ cmd_ddp_del_parsed(
 cmdline_parse_inst_t cmd_ddp_del = {
 	.f = cmd_ddp_del_parsed,
 	.data = NULL,
-	.help_str = "ddp del <port_id> <profile_path>",
+	.help_str = "ddp del <port_id> <backup_profile_path>",
 	.tokens = {
 		(void *)&cmd_ddp_del_ddp,
 		(void *)&cmd_ddp_del_del,

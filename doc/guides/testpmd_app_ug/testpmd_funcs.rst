@@ -1423,16 +1423,16 @@ Delete an E-tag forwarding filter on a port::
 ddp add
 ~~~~~~~
 
-Load a dynamic device personalization (DDP) package::
+Load a dynamic device personalization (DDP) profile and store backup profile::
 
-   testpmd> ddp add (port_id) (package_path[,output_path])
+   testpmd> ddp add (port_id) (profile_path[,backup_profile_path])
 
 ddp del
 ~~~~~~~
 
-Delete a dynamic device personalization package::
+Delete a dynamic device personalization profile and restore backup profile::
 
-   testpmd> ddp del (port_id) (package_path)
+   testpmd> ddp del (port_id) (backup_profile_path)
 
 ptype mapping
 ~~~~~~~~~~~~~
