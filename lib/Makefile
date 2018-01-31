@@ -32,6 +32,8 @@ DEPDIRS-librte_security += librte_ether
 DEPDIRS-librte_security += librte_cryptodev
 DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += librte_eventdev
 DEPDIRS-librte_eventdev := librte_eal librte_ring librte_ether librte_hash
+DIRS-$(CONFIG_RTE_LIBRTE_RAWDEV) += librte_rawdev
+DEPDIRS-librte_rawdev := librte_eal librte_ether
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += librte_vhost
 DEPDIRS-librte_vhost := librte_eal librte_mempool librte_mbuf librte_ether \
 			librte_net
