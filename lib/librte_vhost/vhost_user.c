@@ -187,7 +187,8 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 		(dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)) ? "on" : "off",
 		(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ? "on" : "off");
 
-	if (!(dev->features & (1ULL << VIRTIO_NET_F_MQ))) {
+	if ((dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET) &&
+	    !(dev->features & (1ULL << VIRTIO_NET_F_MQ))) {
 		/*
 		 * Remove all but first queue pair if MQ hasn't been
 		 * negotiated. This is safe because the device is not
