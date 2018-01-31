@@ -288,7 +288,7 @@ parse_data_entry(const char *key_token, char *token,
 	struct op_data_buf *op_data;
 	unsigned int *nb_ops;
 
-	if (type > DATA_NUM_TYPES) {
+	if (type >= DATA_NUM_TYPES) {
 		printf("Unknown op type: %d!\n", type);
 		return -1;
 	}
