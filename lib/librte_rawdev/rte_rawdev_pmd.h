@@ -264,6 +264,43 @@ typedef int (*rawdev_queue_release_t)(struct rte_rawdev *dev,
  */
 typedef int (*rawdev_dump_t)(struct rte_rawdev *dev, FILE *f);
 
+/**
+ * Get an attribute value from implementation.
+ * Attribute is an opaque handle agreed upon between application and PMD.
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param attr_name
+ *   Opaque object representing an attribute in implementation.
+ * @param attr_value [out]
+ *   Opaque response to the attribute value. In case of error, this remains
+ *   untouched. This is double pointer of void type.
+ * @return
+ *   0 for success
+ *  !0 Error; attr_value remains untouched in case of error.
+ */
+typedef int (*rawdev_get_attr_t)(struct rte_rawdev *dev,
+				 const char *attr_name,
+				 uint64_t *attr_value);
+
+/**
+ * Set an attribute value.
+ * Attribute is an opaque handle agreed upon between application and PMD.
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param attr_name
+ *   Opaque object representing an attribute in implementation.
+ * @param attr_value
+ *   Value of the attribute represented by attr_name
+ * @return
+ *   0 for success
+ *  !0 Error
+ */
+typedef int (*rawdev_set_attr_t)(struct rte_rawdev *dev,
+				 const char *attr_name,
+				 const uint64_t attr_value);
+
 /** Rawdevice operations function pointer table */
 struct rte_rawdev_ops {
 	/**< Get device info. */
@@ -288,6 +325,11 @@ struct rte_rawdev_ops {
 
 	/* Dump internal information */
 	rawdev_dump_t dump;
+
+	/**< Get an attribute managed by the implementation */
+	rawdev_get_attr_t attr_get;
+	/**< Set an attribute managed by the implementation */
+	rawdev_set_attr_t attr_set;
 };
 
 /**

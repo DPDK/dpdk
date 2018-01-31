@@ -4,6 +4,7 @@ EXPERIMENTAL {
 	rte_rawdev_close;
 	rte_rawdev_configure;
 	rte_rawdev_count;
+	rte_rawdev_get_attr;
 	rte_rawdev_get_dev_id;
 	rte_rawdev_info_get;
 	rte_rawdev_pmd_allocate;
@@ -12,6 +13,7 @@ EXPERIMENTAL {
 	rte_rawdev_queue_setup;
 	rte_rawdev_queue_release;
 	rte_rawdev_reset;
+	rte_rawdev_set_attr;
 	rte_rawdev_socket_id;
 	rte_rawdev_start;
 	rte_rawdev_stop;

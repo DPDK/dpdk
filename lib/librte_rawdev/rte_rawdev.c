@@ -176,6 +176,34 @@ rte_rawdev_queue_release(uint16_t dev_id, uint16_t queue_id)
 }
 
 int __rte_experimental
+rte_rawdev_get_attr(uint16_t dev_id,
+		    const char *attr_name,
+		    uint64_t *attr_value)
+{
+	struct rte_rawdev *dev;
+
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->attr_get, -ENOTSUP);
+	return (*dev->dev_ops->attr_get)(dev, attr_name, attr_value);
+}
+
+int __rte_experimental
+rte_rawdev_set_attr(uint16_t dev_id,
+		    const char *attr_name,
+		    const uint64_t attr_value)
+{
+	struct rte_rawdev *dev;
+
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->attr_set, -ENOTSUP);
+	return (*dev->dev_ops->attr_set)(dev, attr_name, attr_value);
+}
+
+int __rte_experimental
 rte_rawdev_dump(uint16_t dev_id, FILE *f)
 {
 	struct rte_rawdev *dev;

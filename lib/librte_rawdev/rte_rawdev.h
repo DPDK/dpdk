@@ -319,6 +319,49 @@ struct rte_rawdev_buf {
 int __rte_experimental
 rte_rawdev_dump(uint16_t dev_id, FILE *f);
 
+/**
+ * Get an attribute value from implementation.
+ * Attribute is an opaque handle agreed upon between application and PMD.
+ *
+ * Implementations are expected to maintain an array of attribute-value pairs
+ * based on application calls. Memory management for this structure is
+ * shared responsibility of implementation and application.
+ *
+ * @param dev_id
+ *   The identifier of the device to configure.
+ * @param attr_name
+ *   Opaque object representing an attribute in implementation.
+ * @param attr_value [out]
+ *   Opaque response to the attribute value. In case of error, this remains
+ *   untouched. This is double pointer of void type.
+ * @return
+ *   0 for success
+ *  !0 Error; attr_value remains untouched in case of error.
+ */
+int __rte_experimental
+rte_rawdev_get_attr(uint16_t dev_id,
+		    const char *attr_name,
+		    uint64_t *attr_value);
+
+/**
+ * Set an attribute value.
+ * Attribute is an opaque handle agreed upon between application and PMD.
+ *
+ * @param dev_id
+ *   The identifier of the device to configure.
+ * @param attr_name
+ *   Opaque object representing an attribute in implementation.
+ * @param attr_value
+ *   Value of the attribute represented by attr_name
+ * @return
+ *   0 for success
+ *  !0 Error
+ */
+int __rte_experimental
+rte_rawdev_set_attr(uint16_t dev_id,
+		    const char *attr_name,
+		    const uint64_t attr_value);
+
 #ifdef __cplusplus
 }
 #endif
