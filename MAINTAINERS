@@ -320,6 +320,7 @@ M: Shreyansh Jain <shreyansh.jain@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: lib/librte_rawdev/
 F: drivers/raw/skeleton_rawdev/
+F: test/test/test_rawdev.c
 
 
 Bus Drivers
