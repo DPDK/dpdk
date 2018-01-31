@@ -226,8 +226,9 @@ parse_args(int argc, char **argv, struct test_params *tp)
 			TEST_ASSERT(strlen(optarg) > 0,
 					"Config file name is null");
 
-			strncpy(tp->test_vector_filename, optarg,
-					sizeof(tp->test_vector_filename));
+			snprintf(tp->test_vector_filename,
+					sizeof(tp->test_vector_filename),
+					"%s", optarg);
 			break;
 		case 'l':
 			TEST_ASSERT(strlen(optarg) > 0,
