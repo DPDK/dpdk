@@ -1030,6 +1030,8 @@ mlx4_flow_toggle(struct priv *priv,
 		flow->drop = missing;
 	}
 	if (flow->drop) {
+		if (flow->ibv_flow)
+			return 0;
 		mlx4_drop_get(priv);
 		if (!priv->drop) {
 			err = rte_errno;
