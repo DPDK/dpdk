@@ -21,7 +21,6 @@
 #include "scsi_spec.h"
 
 #define VIRTIO_SCSI_FEATURES ((1 << VIRTIO_F_NOTIFY_ON_EMPTY) |\
-			      (1 << VIRTIO_RING_F_EVENT_IDX) |\
 			      (1 << VIRTIO_SCSI_F_INOUT) |\
 			      (1 << VIRTIO_SCSI_F_CHANGE))
 
