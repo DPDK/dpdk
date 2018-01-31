@@ -34,7 +34,8 @@ if arch_subdir == 'x86'
 	elif cc.has_argument('-mavx2')
 		i40e_avx2_lib = static_library('i40e_avx2_lib',
 				'i40e_rxtx_vec_avx2.c',
-				dependencies: static_rte_eal,
+				dependencies: [static_rte_ethdev,
+					static_rte_kvargs, static_rte_hash],
 				c_args: '-mavx2')
 		objs += i40e_avx2_lib.extract_objects('i40e_rxtx_vec_avx2.c')
 	endif
