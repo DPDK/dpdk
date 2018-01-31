@@ -24,6 +24,8 @@
 #define VIRTIO_DEV_RUNNING 1
 /* Used to indicate that the device is ready to operate */
 #define VIRTIO_DEV_READY 2
+/* Used to indicate that the built-in vhost net device backend is enabled */
+#define VIRTIO_DEV_BUILTIN_VIRTIO_NET 4
 
 /* Backend value set by guest. */
 #define VIRTIO_DEV_STOPPED -1
@@ -357,6 +359,7 @@ int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 void vhost_enable_dequeue_zero_copy(int vid);
+void vhost_set_builtin_virtio_net(int vid, bool enable);
 
 struct vhost_device_ops const *vhost_driver_callback_get(const char *path);
 

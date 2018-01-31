@@ -251,7 +251,7 @@ reset_device(struct virtio_net *dev)
 
 	dev->features = 0;
 	dev->protocol_features = 0;
-	dev->flags = 0;
+	dev->flags &= VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 
 	for (i = 0; i < dev->nr_vring; i++)
 		reset_vring_queue(dev, i);
@@ -287,6 +287,7 @@ vhost_new_device(void)
 
 	vhost_devices[i] = dev;
 	dev->vid = i;
+	dev->flags = VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 	dev->slave_req_fd = -1;
 
 	return i;
@@ -341,6 +342,20 @@ vhost_enable_dequeue_zero_copy(int vid)
 		return;
 
 	dev->dequeue_zero_copy = 1;
+}
+
+void
+vhost_set_builtin_virtio_net(int vid, bool enable)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return;
+
+	if (enable)
+		dev->flags |= VIRTIO_DEV_BUILTIN_VIRTIO_NET;
+	else
+		dev->flags &= ~VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 }
 
 int

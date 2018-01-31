@@ -703,6 +703,13 @@ rte_vhost_enqueue_burst(int vid, uint16_t queue_id,
 	if (!dev)
 		return 0;
 
+	if (unlikely(!(dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"(%d) %s: built-in vhost net backend is disabled.\n",
+			dev->vid, __func__);
+		return 0;
+	}
+
 	if (dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF))
 		return virtio_dev_merge_rx(dev, queue_id, pkts, count);
 	else
@@ -1127,6 +1134,13 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	dev = get_device(vid);
 	if (!dev)
 		return 0;
+
+	if (unlikely(!(dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"(%d) %s: built-in vhost net backend is disabled.\n",
+			dev->vid, __func__);
+		return 0;
+	}
 
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->nr_vring))) {
 		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
