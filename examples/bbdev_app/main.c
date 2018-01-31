@@ -585,21 +585,28 @@ print_stats(struct stats_lcore_params *stats_lcore)
 				"Failed to calloc memory for xstats");
 
 	ret = rte_eth_xstats_get(port_id, xstats, len);
-	if (ret < 0 || ret > len)
+	if (ret < 0 || ret > len) {
+		free(xstats);
 		rte_exit(EXIT_FAILURE,
 				"rte_eth_xstats_get(%u) len%i failed: %d",
 				port_id, len, ret);
+	}
 
 	xstats_names = calloc(len, sizeof(*xstats_names));
-	if (xstats_names == NULL)
+	if (xstats_names == NULL) {
+		free(xstats);
 		rte_exit(EXIT_FAILURE,
 				"Failed to calloc memory for xstats_names");
+	}
 
 	ret = rte_eth_xstats_get_names(port_id, xstats_names, len);
-	if (ret < 0 || ret > len)
+	if (ret < 0 || ret > len) {
+		free(xstats);
+		free(xstats_names);
 		rte_exit(EXIT_FAILURE,
 				"rte_eth_xstats_get_names(%u) len%i failed: %d",
 				port_id, len, ret);
+	}
 
 	for (i = 0; i < len; i++) {
 		if (xstats[i].value > 0)
@@ -630,6 +637,9 @@ print_stats(struct stats_lcore_params *stats_lcore)
 			continue;
 		print_lcore_stats(stats_lcore->lconf[l_id].lcore_stats, l_id);
 	}
+
+	free(xstats);
+	free(xstats_names);
 }
 
 static int
