@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2017 NXP
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
+#
+# library name
+#
+LIB = librte_pmd_skeleton_rawdev.a
+
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_eal
+LDLIBS += -lrte_rawdev
+LDLIBS += -lrte_bus_vdev
+LDLIBS += -lrte_kvargs
+
+EXPORT_MAP := rte_pmd_skeleton_rawdev_version.map
+
+LIBABIVER := 1
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SKELETON_RAWDEV) += skeleton_rawdev.c
+
+include $(RTE_SDK)/mk/rte.lib.mk
