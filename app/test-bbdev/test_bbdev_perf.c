@@ -1557,9 +1557,11 @@ throughput_test(struct active_device *ad,
 			throughput_function = throughput_intr_lcore_enc;
 
 		/* Dequeue interrupt callback registration */
-		rte_bbdev_callback_register(ad->dev_id, RTE_BBDEV_EVENT_DEQUEUE,
-				dequeue_event_callback,
+		ret = rte_bbdev_callback_register(ad->dev_id,
+				RTE_BBDEV_EVENT_DEQUEUE, dequeue_event_callback,
 				&t_params);
+		if (ret < 0)
+			return ret;
 	} else {
 		if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
 			throughput_function = throughput_pmd_lcore_dec;
