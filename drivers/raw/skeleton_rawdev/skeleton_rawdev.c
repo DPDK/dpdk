@@ -542,6 +542,8 @@ static const struct rte_rawdev_ops skeleton_rawdev_ops = {
 	.firmware_version_get = skeleton_rawdev_firmware_version_get,
 	.firmware_load = skeleton_rawdev_firmware_load,
 	.firmware_unload = skeleton_rawdev_firmware_unload,
+
+	.dev_selftest = test_rawdev_skeldev,
 };
 
 static int
@@ -632,10 +634,61 @@ skeleton_rawdev_destroy(const char *name)
 }
 
 static int
+skeldev_get_selftest(const char *key __rte_unused,
+		     const char *value,
+		     void *opaque)
+{
+	int *flag = opaque;
+	*flag = atoi(value);
+	return 0;
+}
+
+static int
+skeldev_parse_vdev_args(struct rte_vdev_device *vdev)
+{
+	int selftest = 0;
+	const char *name;
+	const char *params;
+
+	static const char *const args[] = {
+		SKELETON_SELFTEST_ARG,
+		NULL
+	};
+
+	name = rte_vdev_device_name(vdev);
+
+	params = rte_vdev_device_args(vdev);
+	if (params != NULL && params[0] != '\0') {
+		struct rte_kvargs *kvlist = rte_kvargs_parse(params, args);
+
+		if (!kvlist) {
+			SKELETON_PMD_INFO(
+				"Ignoring unsupported params supplied '%s'",
+				name);
+		} else {
+			int ret = rte_kvargs_process(kvlist,
+					SKELETON_SELFTEST_ARG,
+					skeldev_get_selftest, &selftest);
+			if (ret != 0 || (selftest < 0 || selftest > 1)) {
+				SKELETON_PMD_ERR("%s: Error in parsing args",
+						 name);
+				rte_kvargs_free(kvlist);
+				ret = -1; /* enforce if selftest is invalid */
+				return ret;
+			}
+		}
+
+		rte_kvargs_free(kvlist);
+	}
+
+	return selftest;
+}
+
+static int
 skeleton_rawdev_probe(struct rte_vdev_device *vdev)
 {
 	const char *name;
-	int ret = 0;
+	int selftest = 0, ret = 0;
 
 
 	name = rte_vdev_device_name(vdev);
@@ -648,7 +701,18 @@ skeleton_rawdev_probe(struct rte_vdev_device *vdev)
 
 	SKELETON_PMD_INFO("Init %s on NUMA node %d", name, rte_socket_id());
 
+	selftest = skeldev_parse_vdev_args(vdev);
+	/* In case of invalid argument, selftest != 1; ignore other values */
+
 	ret = skeleton_rawdev_create(name, vdev, rte_socket_id());
+	if (!ret) {
+		/* In case command line argument for 'selftest' was passed;
+		 * if invalid arguments were passed, execution continues but
+		 * without selftest.
+		 */
+		if (selftest == 1)
+			test_rawdev_skeldev();
+	}
 
 	/* Device instance created; Second instance not possible */
 	skeldev_init_once = 1;

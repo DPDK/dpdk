@@ -24,5 +24,6 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SKELETON_RAWDEV) += skeleton_rawdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SKELETON_RAWDEV) += skeleton_rawdev_test.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
