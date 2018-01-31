@@ -47,6 +47,7 @@ The public API headers are grouped by topics:
   [security]           (@ref rte_security.h),
   [eventdev]           (@ref rte_eventdev.h),
   [event_eth_rx_adapter]   (@ref rte_event_eth_rx_adapter.h),
+  [rawdev]             (@ref rte_rawdev.h),
   [metrics]            (@ref rte_metrics.h),
   [bitrate]            (@ref rte_bitrate.h),
   [latency]            (@ref rte_latencystats.h),

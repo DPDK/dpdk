@@ -49,6 +49,7 @@ Programmer's Guide
     bbdev
     cryptodev_lib
     rte_security
+    rawdev
     link_bonding_poll_mode_drv_lib
     timer_lib
     hash_lib

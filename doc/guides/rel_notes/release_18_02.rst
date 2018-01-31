@@ -166,6 +166,18 @@ New Features
   renamed the application from SW PMD specific ``eventdev_pipeline_sw_pmd``
   to PMD agnostic ``eventdev_pipeline``.
 
+* **Added Rawdev, a generic device support library.**
+
+  Rawdev library provides support for integrating any generic device type with
+  DPDK framework. Generic devices are those which do not have a pre-defined
+  type within DPDK, for example, ethernet, crypto, event etc.
+  A set of northbound APIs have been defined which encompass a generic set of
+  operations by allowing applications to interact with device using opaque
+  structures/buffers. Also, southbound APIs provide APIs for integrating device
+  either as as part of a physical bus (PCI, FSLMC etc) or through ``vdev``.
+
+  See the :doc:`../prog_guide/rawdev` programmer's guide for more details.
+
 * **Added new multi-process communication channel**
 
   Added a generic channel in EAL for multi-process (primary/secondary) communication.
@@ -308,6 +320,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_pmd_vhost.so.2
      librte_port.so.3
      librte_power.so.1
+     librte_rawdev.so.1
      librte_reorder.so.1
      librte_ring.so.1
      librte_sched.so.1

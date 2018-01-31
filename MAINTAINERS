@@ -321,6 +321,7 @@ M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: lib/librte_rawdev/
 F: drivers/raw/skeleton_rawdev/
 F: test/test/test_rawdev.c
+F: doc/guides/prog_guide/rawdev.rst
 
 
 Bus Drivers
