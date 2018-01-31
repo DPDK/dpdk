@@ -1704,7 +1704,7 @@ app_init_pipelines(struct app_params *app)
 		data->ptype = ptype;
 
 		data->timer_period = (rte_get_tsc_hz() *
-			params->timer_period) / 100;
+			params->timer_period) / 1000;
 	}
 }
 
