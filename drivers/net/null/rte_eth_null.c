@@ -278,6 +278,11 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	return 0;
 }
 
+static int
+eth_mtu_set(struct rte_eth_dev *dev __rte_unused, uint16_t mtu __rte_unused)
+{
+	return 0;
+}
 
 static void
 eth_dev_info(struct rte_eth_dev *dev,
@@ -465,6 +470,7 @@ static const struct eth_dev_ops ops = {
 	.tx_queue_setup = eth_tx_queue_setup,
 	.rx_queue_release = eth_queue_release,
 	.tx_queue_release = eth_queue_release,
+	.mtu_set = eth_mtu_set,
 	.link_update = eth_link_update,
 	.stats_get = eth_stats_get,
 	.stats_reset = eth_stats_reset,
