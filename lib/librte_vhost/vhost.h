@@ -130,6 +130,10 @@ struct vhost_virtqueue {
  #define VIRTIO_NET_F_MTU 3
 #endif
 
+#ifndef VIRTIO_F_ANY_LAYOUT
+ #define VIRTIO_F_ANY_LAYOUT		27
+#endif
+
 /* Declare IOMMU related bits for older kernels */
 #ifndef VIRTIO_F_IOMMU_PLATFORM
 
