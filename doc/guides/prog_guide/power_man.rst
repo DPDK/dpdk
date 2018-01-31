@@ -97,6 +97,14 @@ basis. This is achieved by enabling Turbo Boost Technology in the BIOS, then
 looping through the relevant cores and enabling/disabling Turbo Boost on each
 core.
 
+Use of Power Library in a Hyper-Threaded Environment
+----------------------------------------------------
+
+In the case where the power library is in use on a system with Hyper-Threading enabled,
+the frequency on the physical core is set to the highest frequency of the Hyper-Thread siblings.
+So even though an application may request a scale down, the core frequency will
+remain at the highest frequency until all Hyper-Threads on that core request a scale down.
+
 API Overview of the Power Library
 ---------------------------------
 
