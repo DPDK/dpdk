@@ -1805,7 +1805,7 @@ operation_latency_test(struct active_device *ad,
 				op_params->ref_enc_op, ad->dev_id, queue_id,
 				num_to_process, burst_sz, &total_time);
 
-	if (iter < 0)
+	if (iter <= 0)
 		return TEST_FAILED;
 
 	printf("\toperation avg. latency: %lg cycles, %lg us\n",
@@ -1955,7 +1955,7 @@ offload_latency_test(struct active_device *ad,
 				num_to_process, burst_sz, &enq_total_time,
 				&deq_total_time);
 
-	if (iter < 0)
+	if (iter <= 0)
 		return TEST_FAILED;
 
 	printf("\tenq offload avg. latency: %lg cycles, %lg us\n",
@@ -2047,7 +2047,7 @@ offload_latency_empty_q_test(struct active_device *ad,
 		iter = offload_latency_empty_q_test_enc(ad->dev_id, queue_id,
 				num_to_process, burst_sz, &deq_total_time);
 
-	if (iter < 0)
+	if (iter <= 0)
 		return TEST_FAILED;
 
 	printf("\tempty deq offload avg. latency: %lg cycles, %lg us\n",
