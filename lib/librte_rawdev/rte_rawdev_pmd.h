@@ -353,6 +353,69 @@ typedef int (*rawdev_set_attr_t)(struct rte_rawdev *dev,
 				 const char *attr_name,
 				 const uint64_t attr_value);
 
+/**
+ * Retrieve a set of statistics from device.
+ * Note: Being a raw device, the stats are specific to the device being
+ * implemented thus represented as xstats.
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param ids
+ *   The stat ids to retrieve
+ * @param values
+ *   The returned stat values
+ * @param n
+ *   The number of id values and entries in the values array
+ * @return
+ *   The number of stat values successfully filled into the values array
+ */
+typedef int (*rawdev_xstats_get_t)(const struct rte_rawdev *dev,
+		const unsigned int ids[], uint64_t values[], unsigned int n);
+
+/**
+ * Resets the statistic values in xstats for the device.
+ */
+typedef int (*rawdev_xstats_reset_t)(struct rte_rawdev *dev,
+		const uint32_t ids[],
+		uint32_t nb_ids);
+
+/**
+ * Get names of extended stats of an raw device
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param xstats_names
+ *   Array of name values to be filled in
+ * @param size
+ *   Number of values in the xstats_names array
+ * @return
+ *   When size >= the number of stats, return the number of stat values filled
+ *   into the array.
+ *   When size < the number of available stats, return the number of stats
+ *   values, and do not fill in any data into xstats_names.
+ */
+typedef int (*rawdev_xstats_get_names_t)(const struct rte_rawdev *dev,
+		struct rte_rawdev_xstats_name *xstats_names,
+		unsigned int size);
+
+/**
+ * Get value of one stats and optionally return its id
+ *
+ * @param dev
+ *   Raw device pointer
+ * @param name
+ *   The name of the stat to retrieve
+ * @param id
+ *   Pointer to an unsigned int where we store the stat-id.
+ *   This pointer may be null if the id is not required.
+ * @return
+ *   The value of the stat, or (uint64_t)-1 if the stat is not found.
+ *   If the stat is not found, the id value will be returned as (unsigned)-1,
+ *   if id pointer is non-NULL
+ */
+typedef uint64_t (*rawdev_xstats_get_by_name_t)(const struct rte_rawdev *dev,
+						const char *name,
+						unsigned int *id);
 /** Rawdevice operations function pointer table */
 struct rte_rawdev_ops {
 	/**< Get device info. */
@@ -388,6 +451,15 @@ struct rte_rawdev_ops {
 	rawdev_get_attr_t attr_get;
 	/**< Set an attribute managed by the implementation */
 	rawdev_set_attr_t attr_set;
+
+	/**< Get extended device statistics. */
+	rawdev_xstats_get_t xstats_get;
+	/**< Get names of extended stats. */
+	rawdev_xstats_get_names_t xstats_get_names;
+	/**< Get one value by name. */
+	rawdev_xstats_get_by_name_t xstats_get_by_name;
+	/**< Reset the statistics values in xstats. */
+	rawdev_xstats_reset_t xstats_reset;
 };
 
 /**

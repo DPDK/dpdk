@@ -19,6 +19,10 @@ EXPERIMENTAL {
 	rte_rawdev_socket_id;
 	rte_rawdev_start;
 	rte_rawdev_stop;
+	rte_rawdev_xstats_by_name_get;
+	rte_rawdev_xstats_get;
+	rte_rawdev_xstats_names_get;
+	rte_rawdev_xstats_reset;
 	rte_rawdevs;
 
 	local: *;

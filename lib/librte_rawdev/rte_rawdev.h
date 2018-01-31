@@ -420,6 +420,111 @@ rte_rawdev_dequeue_buffers(uint16_t dev_id,
 			   unsigned int count,
 			   rte_rawdev_obj_t context);
 
+/** Maximum name length for extended statistics counters */
+#define RTE_RAW_DEV_XSTATS_NAME_SIZE 64
+
+/**
+ * A name-key lookup element for extended statistics.
+ *
+ * This structure is used to map between names and ID numbers
+ * for extended ethdev statistics.
+ */
+struct rte_rawdev_xstats_name {
+	char name[RTE_RAW_DEV_XSTATS_NAME_SIZE];
+};
+
+/**
+ * Retrieve names of extended statistics of a raw device.
+ *
+ * @param dev_id
+ *   The identifier of the raw device.
+ * @param[out] xstats_names
+ *   Block of memory to insert names into. Must be at least size in capacity.
+ *   If set to NULL, function returns required capacity.
+ * @param size
+ *   Capacity of xstats_names (number of names).
+ * @return
+ *   - positive value lower or equal to size: success. The return value
+ *     is the number of entries filled in the stats table.
+ *   - positive value higher than size: error, the given statistics table
+ *     is too small. The return value corresponds to the size that should
+ *     be given to succeed. The entries in the table are not valid and
+ *     shall not be used by the caller.
+ *   - negative value on error:
+ *        -ENODEV for invalid *dev_id*
+ *        -ENOTSUP if the device doesn't support this function.
+ */
+int __rte_experimental
+rte_rawdev_xstats_names_get(uint16_t dev_id,
+			    struct rte_rawdev_xstats_name *xstats_names,
+			    unsigned int size);
+
+/**
+ * Retrieve extended statistics of a raw device.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param ids
+ *   The id numbers of the stats to get. The ids can be got from the stat
+ *   position in the stat list from rte_rawdev_get_xstats_names(), or
+ *   by using rte_rawdev_get_xstats_by_name()
+ * @param[out] values
+ *   The values for each stats request by ID.
+ * @param n
+ *   The number of stats requested
+ * @return
+ *   - positive value: number of stat entries filled into the values array
+ *   - negative value on error:
+ *        -ENODEV for invalid *dev_id*
+ *        -ENOTSUP if the device doesn't support this function.
+ */
+int __rte_experimental
+rte_rawdev_xstats_get(uint16_t dev_id,
+		      const unsigned int ids[],
+		      uint64_t values[],
+		      unsigned int n);
+
+/**
+ * Retrieve the value of a single stat by requesting it by name.
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param name
+ *   The stat name to retrieve
+ * @param[out] id
+ *   If non-NULL, the numerical id of the stat will be returned, so that further
+ *   requests for the stat can be got using rte_rawdev_xstats_get, which will
+ *   be faster as it doesn't need to scan a list of names for the stat.
+ *   If the stat cannot be found, the id returned will be (unsigned)-1.
+ * @return
+ *   - positive value or zero: the stat value
+ *   - negative value: -EINVAL if stat not found, -ENOTSUP if not supported.
+ */
+uint64_t __rte_experimental
+rte_rawdev_xstats_by_name_get(uint16_t dev_id,
+			      const char *name,
+			      unsigned int *id);
+
+/**
+ * Reset the values of the xstats of the selected component in the device.
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param ids
+ *   Selects specific statistics to be reset. When NULL, all statistics
+ *   will be reset. If non-NULL, must point to array of at least
+ *   *nb_ids* size.
+ * @param nb_ids
+ *   The number of ids available from the *ids* array. Ignored when ids is NULL.
+ * @return
+ *   - zero: successfully reset the statistics to zero
+ *   - negative value: -EINVAL invalid parameters, -ENOTSUP if not supported.
+ */
+int __rte_experimental
+rte_rawdev_xstats_reset(uint16_t dev_id,
+			const uint32_t ids[],
+			uint32_t nb_ids);
+
 #ifdef __cplusplus
 }
 #endif

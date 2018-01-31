@@ -245,6 +245,81 @@ rte_rawdev_dump(uint16_t dev_id, FILE *f)
 	return (*dev->dev_ops->dump)(dev, f);
 }
 
+static int
+xstats_get_count(uint16_t dev_id)
+{
+	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_get_names, -ENOTSUP);
+	return (*dev->dev_ops->xstats_get_names)(dev, NULL, 0);
+}
+
+int __rte_experimental
+rte_rawdev_xstats_names_get(uint16_t dev_id,
+		struct rte_rawdev_xstats_name *xstats_names,
+		unsigned int size)
+{
+	const struct rte_rawdev *dev;
+	int cnt_expected_entries;
+
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -ENODEV);
+
+	cnt_expected_entries = xstats_get_count(dev_id);
+
+	if (xstats_names == NULL || cnt_expected_entries < 0 ||
+	    (int)size < cnt_expected_entries || size <= 0)
+		return cnt_expected_entries;
+
+	dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_get_names, -ENOTSUP);
+	return (*dev->dev_ops->xstats_get_names)(dev, xstats_names, size);
+}
+
+/* retrieve rawdev extended statistics */
+int __rte_experimental
+rte_rawdev_xstats_get(uint16_t dev_id,
+		      const unsigned int ids[],
+		      uint64_t values[],
+		      unsigned int n)
+{
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -ENODEV);
+	const struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_get, -ENOTSUP);
+	return (*dev->dev_ops->xstats_get)(dev, ids, values, n);
+}
+
+uint64_t __rte_experimental
+rte_rawdev_xstats_by_name_get(uint16_t dev_id,
+			      const char *name,
+			      unsigned int *id)
+{
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, 0);
+	const struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+	unsigned int temp = -1;
+
+	if (id != NULL)
+		*id = (unsigned int)-1;
+	else
+		id = &temp; /* driver never gets a NULL value */
+
+	/* implemented by driver */
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_get_by_name, -ENOTSUP);
+	return (*dev->dev_ops->xstats_get_by_name)(dev, name, id);
+}
+
+int __rte_experimental
+rte_rawdev_xstats_reset(uint16_t dev_id,
+			const uint32_t ids[], uint32_t nb_ids)
+{
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_reset, -ENOTSUP);
+	return (*dev->dev_ops->xstats_reset)(dev, ids, nb_ids);
+}
+
 int __rte_experimental
 rte_rawdev_start(uint16_t dev_id)
 {
