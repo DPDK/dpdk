@@ -230,6 +230,9 @@ endif
 if dpdk_conf.has('RTE_LIBRTE_POWER')
 	test_deps += 'power'
 endif
+if dpdk_conf.has('RTE_LIBRTE_KNI')
+	test_deps += 'kni'
+endif
 
 test_dep_objs = []
 foreach d:test_deps
