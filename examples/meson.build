@@ -6,12 +6,13 @@ if get_option('default_library') == 'static'
 	driver_libs = dpdk_drivers
 endif
 
+execinfo = cc.find_library('execinfo', required: false)
 foreach example: get_option('examples').split(',')
 	name = example
 	sources = []
 	allow_experimental_apis = false
 	cflags = machine_args
-	ext_deps = []
+	ext_deps = [execinfo]
 	includes = [include_directories(example)]
 	deps = ['eal', 'mempool', 'net', 'mbuf', 'ethdev', 'cmdline']
 	subdir(example)

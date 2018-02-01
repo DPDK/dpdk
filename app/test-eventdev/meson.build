@@ -13,6 +13,7 @@ sources = files('evt_main.c',
 		'test_perf_queue.c')
 
 dep_objs = [get_variable(get_option('default_library') + '_rte_eventdev')]
+dep_objs += cc.find_library('execinfo', required: false) # BSD only
 
 link_libs = []
 if get_option('default_library') == 'static'

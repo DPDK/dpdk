@@ -37,6 +37,7 @@ dep_objs = []
 foreach d:deps
 	dep_objs += get_variable(get_option('default_library') + '_rte_' + d)
 endforeach
+dep_objs += cc.find_library('execinfo', required: false) # for BSD only
 
 link_libs = []
 if get_option('default_library') == 'static'
