@@ -10,6 +10,17 @@
 
 #include "test.h"
 
+#ifndef RTE_LIBRTE_KNI
+
+static int
+test_kni(void)
+{
+	printf("KNI not supported, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_string_fns.h>
 #include <rte_mempool.h>
 #include <rte_ethdev.h>
@@ -608,5 +619,7 @@ fail:
 
 	return ret;
 }
+
+#endif
 
 REGISTER_TEST_COMMAND(kni_autotest, test_kni);

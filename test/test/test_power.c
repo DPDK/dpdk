@@ -10,6 +10,17 @@
 
 #include "test.h"
 
+#ifndef RTE_LIBRTE_POWER
+
+static int
+test_power(void)
+{
+	printf("Power management library not supported, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_power.h>
 
 static int
@@ -74,5 +85,6 @@ fail_all:
 	rte_power_unset_env();
 	return -1;
 }
+#endif
 
 REGISTER_TEST_COMMAND(power_autotest, test_power);

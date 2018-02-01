@@ -10,6 +10,16 @@
 
 #include "test.h"
 
+#ifndef RTE_LIBRTE_POWER
+
+static int
+test_power_kvm_vm(void)
+{
+	printf("Power management library not supported, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
 #include <rte_power.h>
 
 #define TEST_POWER_VM_LCORE_ID            0U
@@ -270,5 +280,6 @@ fail_all:
 	rte_power_unset_env();
 	return -1;
 }
+#endif
 
 REGISTER_TEST_COMMAND(power_kvm_vm_autotest, test_power_kvm_vm);
