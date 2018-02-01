@@ -3788,7 +3788,7 @@ ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 	/* for SFP+ modules and DA cables on 82599 it can take up to 500usecs
 	 * before the link status is correct
 	 */
-	if (mac->type == ixgbe_mac_82599_vf) {
+	if (mac->type == ixgbe_mac_82599_vf && wait_to_complete) {
 		int i;
 
 		for (i = 0; i < 5; i++) {
