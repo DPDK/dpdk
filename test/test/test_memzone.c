@@ -841,6 +841,9 @@ test_memzone_basic(void)
 	const struct rte_memzone *memzone3;
 	const struct rte_memzone *memzone4;
 	const struct rte_memzone *mz;
+	int memzone_cnt_after, memzone_cnt_expected;
+	int memzone_cnt_before =
+			rte_eal_get_configuration()->mem_config->memzone_cnt;
 
 	memzone1 = rte_memzone_reserve("testzone1", 100,
 				SOCKET_ID_ANY, 0);
@@ -857,6 +860,18 @@ test_memzone_basic(void)
 	/* memzone3 may be NULL if we don't have NUMA */
 	if (memzone1 == NULL || memzone2 == NULL || memzone4 == NULL)
 		return -1;
+
+	/* check how many memzones we are expecting */
+	memzone_cnt_expected = memzone_cnt_before +
+			(memzone1 != NULL) + (memzone2 != NULL) +
+			(memzone3 != NULL) + (memzone4 != NULL);
+
+	memzone_cnt_after =
+			rte_eal_get_configuration()->mem_config->memzone_cnt;
+
+	if (memzone_cnt_after != memzone_cnt_expected)
+		return -1;
+
 
 	rte_memzone_dump(stdout);
 
@@ -929,6 +944,11 @@ test_memzone_basic(void)
 		printf("Fail memzone free - memzone4\n");
 		return -1;
 	}
+
+	memzone_cnt_after =
+			rte_eal_get_configuration()->mem_config->memzone_cnt;
+	if (memzone_cnt_after != memzone_cnt_before)
+		return -1;
 
 	return 0;
 }
