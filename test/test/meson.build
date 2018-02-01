@@ -111,7 +111,6 @@ test_deps = ['acl',
 	'member',
 	'pipeline',
 	'port',
-	'power',
 	'reorder',
 	'ring',
 	'timer'
@@ -227,6 +226,9 @@ if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
 endif
 if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
 	test_deps += 'pmd_ring'
+endif
+if dpdk_conf.has('RTE_LIBRTE_POWER')
+	test_deps += 'power'
 endif
 
 test_dep_objs = []
