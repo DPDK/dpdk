@@ -36,7 +36,6 @@ elif host_machine.system() == 'freebsd'
 			command: ['make', '-f', '@INPUT0@',
 				'KMOD_SRC=@INPUT1@',
 				'KMOD=' + k,
-				'VPATH=' + join_paths(meson.current_source_dir(), k),
 				'KMOD_CFLAGS=' + ' '.join(kmod_cflags)],
 			build_by_default: get_option('enable_kmods'))
 	endforeach
