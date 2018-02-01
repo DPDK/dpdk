@@ -1930,6 +1930,7 @@ static int bpf_rss_key(enum bpf_rss_key_e cmd, __u32 *key_idx)
 	static __u32 num_used_keys;
 	static __u32 rss_keys[MAX_RSS_KEYS] = {KEY_STAT_UNSPEC};
 	static __u32 rss_keys_initialized;
+	__u32 key;
 
 	switch (cmd) {
 	case KEY_CMD_GET:
@@ -1975,7 +1976,7 @@ static int bpf_rss_key(enum bpf_rss_key_e cmd, __u32 *key_idx)
 		 * map index as an out-of-range value and the release operation
 		 * will be silently ignored.
 		 */
-		__u32 key = *key_idx - KEY_IDX_OFFSET;
+		key = *key_idx - KEY_IDX_OFFSET;
 		if (key >= RTE_DIM(rss_keys))
 			break;
 
