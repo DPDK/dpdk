@@ -867,9 +867,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("VLAN stripping is %ssupported",
 		      (config.hw_vlan_strip ? "" : "not "));
 
-		config.hw_fcs_strip =
-				!!(device_attr_ex.orig_attr.device_cap_flags &
-				IBV_WQ_FLAGS_SCATTER_FCS);
+		config.hw_fcs_strip = !!(device_attr_ex.raw_packet_caps &
+					 IBV_RAW_PACKET_CAP_SCATTER_FCS);
 		DEBUG("FCS stripping configuration is %ssupported",
 		      (config.hw_fcs_strip ? "" : "not "));
 
