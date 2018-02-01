@@ -194,6 +194,8 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	/* Force full Tx path in the driver, required for IEEE1588 */
+	port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 
 	/* Configure the Ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
