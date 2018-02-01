@@ -216,6 +216,11 @@ static void
 virtual_ethdev_promiscuous_mode_disable(struct rte_eth_dev *dev __rte_unused)
 {}
 
+static void
+virtual_ethdev_mac_address_set(__rte_unused struct rte_eth_dev *dev,
+			       __rte_unused struct ether_addr *addr)
+{
+}
 
 static const struct eth_dev_ops virtual_ethdev_default_dev_ops = {
 	.dev_configure = virtual_ethdev_configure_success,
@@ -228,12 +233,12 @@ static const struct eth_dev_ops virtual_ethdev_default_dev_ops = {
 	.rx_queue_release = virtual_ethdev_rx_queue_release,
 	.tx_queue_release = virtual_ethdev_tx_queue_release,
 	.link_update = virtual_ethdev_link_update_success,
+	.mac_addr_set = virtual_ethdev_mac_address_set,
 	.stats_get = virtual_ethdev_stats_get,
 	.stats_reset = virtual_ethdev_stats_reset,
 	.promiscuous_enable = virtual_ethdev_promiscuous_mode_enable,
 	.promiscuous_disable = virtual_ethdev_promiscuous_mode_disable
 };
-
 
 void
 virtual_ethdev_start_fn_set_success(uint16_t port_id, uint8_t success)
