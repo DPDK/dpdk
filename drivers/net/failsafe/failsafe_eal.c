@@ -79,9 +79,9 @@ fs_bus_init(struct rte_eth_dev *dev)
 			      " %d named %s", i, da->name);
 		}
 		ret = rte_eth_dev_owner_set(pid, &PRIV(dev)->my_owner);
-		if (ret) {
+		if (ret < 0) {
 			INFO("sub_device %d owner set failed (%s),"
-			     " will try again later", i, strerror(ret));
+			     " will try again later", i, strerror(-ret));
 			continue;
 		} else if (strncmp(rte_eth_devices[pid].device->name, da->name,
 			   strlen(da->name)) != 0) {
