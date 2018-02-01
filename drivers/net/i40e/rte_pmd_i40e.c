@@ -1496,7 +1496,14 @@ i40e_check_profile_info(uint16_t port, uint8_t *profile_info_sec)
 	struct rte_pmd_i40e_profile_info *pinfo, *p;
 	uint32_t i;
 	int ret;
+	static const uint32_t group_mask = 0x00ff0000;
 
+	pinfo = (struct rte_pmd_i40e_profile_info *)(profile_info_sec +
+			     sizeof(struct i40e_profile_section_header));
+	if (pinfo->track_id == 0) {
+		PMD_DRV_LOG(INFO, "Read-only profile.");
+		return 0;
+	}
 	buff = rte_zmalloc("pinfo_list",
 			   (I40E_PROFILE_INFO_SIZE * I40E_MAX_PROFILE_NUM + 4),
 			   0);
@@ -1515,14 +1522,29 @@ i40e_check_profile_info(uint16_t port, uint8_t *profile_info_sec)
 		return -1;
 	}
 	p_list = (struct rte_pmd_i40e_profile_list *)buff;
-	pinfo = (struct rte_pmd_i40e_profile_info *)(profile_info_sec +
-			     sizeof(struct i40e_profile_section_header));
 	for (i = 0; i < p_list->p_count; i++) {
 		p = &p_list->p_info[i];
 		if (pinfo->track_id == p->track_id) {
 			PMD_DRV_LOG(INFO, "Profile exists.");
 			rte_free(buff);
 			return 1;
+		}
+	}
+	for (i = 0; i < p_list->p_count; i++) {
+		p = &p_list->p_info[i];
+		if ((p->track_id & group_mask) == 0) {
+			PMD_DRV_LOG(INFO, "Profile of the group 0 exists.");
+			rte_free(buff);
+			return 2;
+		}
+	}
+	for (i = 0; i < p_list->p_count; i++) {
+		p = &p_list->p_info[i];
+		if ((pinfo->track_id & group_mask) !=
+		    (p->track_id & group_mask)) {
+			PMD_DRV_LOG(INFO, "Profile of different group exists.");
+			rte_free(buff);
+			return 3;
 		}
 	}
 
@@ -1544,6 +1566,7 @@ rte_pmd_i40e_process_ddp_package(uint16_t port, uint8_t *buff,
 	uint8_t *profile_info_sec;
 	int is_exist;
 	enum i40e_status_code status = I40E_SUCCESS;
+	static const uint32_t type_mask = 0xff000000;
 
 	if (op != RTE_PMD_I40E_PKG_OP_WR_ADD &&
 		op != RTE_PMD_I40E_PKG_OP_WR_ONLY &&
@@ -1595,6 +1618,10 @@ rte_pmd_i40e_process_ddp_package(uint16_t port, uint8_t *buff,
 		return -EINVAL;
 	}
 
+	/* force read-only track_id for type 0 */
+	if ((track_id & type_mask) == 0)
+		track_id = 0;
+
 	/* Find profile segment */
 	profile_seg_hdr = i40e_find_segment_in_package(SEGMENT_TYPE_I40E,
 						       pkg_hdr);
@@ -1628,12 +1655,17 @@ rte_pmd_i40e_process_ddp_package(uint16_t port, uint8_t *buff,
 
 	if (op == RTE_PMD_I40E_PKG_OP_WR_ADD) {
 		if (is_exist) {
-			PMD_DRV_LOG(ERR, "Profile already exists.");
+			if (is_exist == 1)
+				PMD_DRV_LOG(ERR, "Profile already exists.");
+			else if (is_exist == 2)
+				PMD_DRV_LOG(ERR, "Profile of group 0 already exists.");
+			else if (is_exist == 3)
+				PMD_DRV_LOG(ERR, "Profile of different group already exists");
 			rte_free(profile_info_sec);
 			return -EEXIST;
 		}
 	} else if (op == RTE_PMD_I40E_PKG_OP_WR_DEL) {
-		if (!is_exist) {
+		if (is_exist != 1) {
 			PMD_DRV_LOG(ERR, "Profile does not exist.");
 			rte_free(profile_info_sec);
 			return -EACCES;
