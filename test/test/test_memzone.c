@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <inttypes.h>
 #include <sys/queue.h>
 
@@ -47,6 +48,8 @@
  * - Check flags for specific huge page size reservation
  */
 
+#define TEST_MEMZONE_NAME(suffix) "MZ_TEST_" suffix
+
 /* Test if memory overlaps: return 1 if true, or 0 if false. */
 static int
 is_memory_overlap(rte_iova_t ptr1, size_t len1, rte_iova_t ptr2, size_t len2)
@@ -63,14 +66,14 @@ test_memzone_invalid_alignment(void)
 {
 	const struct rte_memzone * mz;
 
-	mz = rte_memzone_lookup("invalid_alignment");
+	mz = rte_memzone_lookup(TEST_MEMZONE_NAME("invalid_alignment"));
 	if (mz != NULL) {
 		printf("Zone with invalid alignment has been reserved\n");
 		return -1;
 	}
 
-	mz = rte_memzone_reserve_aligned("invalid_alignment", 100,
-			SOCKET_ID_ANY, 0, 100);
+	mz = rte_memzone_reserve_aligned(TEST_MEMZONE_NAME("invalid_alignment"),
+					 100, SOCKET_ID_ANY, 0, 100);
 	if (mz != NULL) {
 		printf("Zone with invalid alignment has been reserved\n");
 		return -1;
@@ -83,14 +86,16 @@ test_memzone_reserving_zone_size_bigger_than_the_maximum(void)
 {
 	const struct rte_memzone * mz;
 
-	mz = rte_memzone_lookup("zone_size_bigger_than_the_maximum");
+	mz = rte_memzone_lookup(
+			TEST_MEMZONE_NAME("zone_size_bigger_than_the_maximum"));
 	if (mz != NULL) {
 		printf("zone_size_bigger_than_the_maximum has been reserved\n");
 		return -1;
 	}
 
-	mz = rte_memzone_reserve("zone_size_bigger_than_the_maximum", (size_t)-1,
-			SOCKET_ID_ANY, 0);
+	mz = rte_memzone_reserve(
+			TEST_MEMZONE_NAME("zone_size_bigger_than_the_maximum"),
+			(size_t)-1, SOCKET_ID_ANY, 0);
 	if (mz != NULL) {
 		printf("It is impossible to reserve such big a memzone\n");
 		return -1;
@@ -137,8 +142,8 @@ test_memzone_reserve_flags(void)
 	 * available page size (i.e 1GB ) when 2MB pages are unavailable.
 	 */
 	if (hugepage_2MB_avail) {
-		mz = rte_memzone_reserve("flag_zone_2M", size, SOCKET_ID_ANY,
-				RTE_MEMZONE_2MB);
+		mz = rte_memzone_reserve(TEST_MEMZONE_NAME("flag_zone_2M"),
+				size, SOCKET_ID_ANY, RTE_MEMZONE_2MB);
 		if (mz == NULL) {
 			printf("MEMZONE FLAG 2MB\n");
 			return -1;
@@ -152,7 +157,8 @@ test_memzone_reserve_flags(void)
 			return -1;
 		}
 
-		mz = rte_memzone_reserve("flag_zone_2M_HINT", size, SOCKET_ID_ANY,
+		mz = rte_memzone_reserve(TEST_MEMZONE_NAME("flag_zone_2M_HINT"),
+				size, SOCKET_ID_ANY,
 				RTE_MEMZONE_2MB|RTE_MEMZONE_SIZE_HINT_ONLY);
 		if (mz == NULL) {
 			printf("MEMZONE FLAG 2MB\n");
@@ -171,7 +177,9 @@ test_memzone_reserve_flags(void)
 		 * HINT flag is indicated
 		 */
 		if (!hugepage_1GB_avail) {
-			mz = rte_memzone_reserve("flag_zone_1G_HINT", size, SOCKET_ID_ANY,
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_1G_HINT"),
+					size, SOCKET_ID_ANY,
 					RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY);
 			if (mz == NULL) {
 				printf("MEMZONE FLAG 1GB & HINT\n");
@@ -186,8 +194,9 @@ test_memzone_reserve_flags(void)
 				return -1;
 			}
 
-			mz = rte_memzone_reserve("flag_zone_1G", size, SOCKET_ID_ANY,
-					RTE_MEMZONE_1GB);
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_1G"), size,
+					SOCKET_ID_ANY, RTE_MEMZONE_1GB);
 			if (mz != NULL) {
 				printf("MEMZONE FLAG 1GB\n");
 				return -1;
@@ -197,8 +206,8 @@ test_memzone_reserve_flags(void)
 
 	/*As with 2MB tests above for 1GB huge page requests*/
 	if (hugepage_1GB_avail) {
-		mz = rte_memzone_reserve("flag_zone_1G", size, SOCKET_ID_ANY,
-				RTE_MEMZONE_1GB);
+		mz = rte_memzone_reserve(TEST_MEMZONE_NAME("flag_zone_1G"),
+				size, SOCKET_ID_ANY, RTE_MEMZONE_1GB);
 		if (mz == NULL) {
 			printf("MEMZONE FLAG 1GB\n");
 			return -1;
@@ -212,7 +221,8 @@ test_memzone_reserve_flags(void)
 			return -1;
 		}
 
-		mz = rte_memzone_reserve("flag_zone_1G_HINT", size, SOCKET_ID_ANY,
+		mz = rte_memzone_reserve(TEST_MEMZONE_NAME("flag_zone_1G_HINT"),
+				size, SOCKET_ID_ANY,
 				RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY);
 		if (mz == NULL) {
 			printf("MEMZONE FLAG 1GB\n");
@@ -231,7 +241,9 @@ test_memzone_reserve_flags(void)
 		 * HINT flag is indicated
 		 */
 		if (!hugepage_2MB_avail) {
-			mz = rte_memzone_reserve("flag_zone_2M_HINT", size, SOCKET_ID_ANY,
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_2M_HINT"),
+					size, SOCKET_ID_ANY,
 					RTE_MEMZONE_2MB|RTE_MEMZONE_SIZE_HINT_ONLY);
 			if (mz == NULL){
 				printf("MEMZONE FLAG 2MB & HINT\n");
@@ -245,8 +257,9 @@ test_memzone_reserve_flags(void)
 				printf("Fail memzone free\n");
 				return -1;
 			}
-			mz = rte_memzone_reserve("flag_zone_2M", size, SOCKET_ID_ANY,
-					RTE_MEMZONE_2MB);
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_2M"), size,
+					SOCKET_ID_ANY, RTE_MEMZONE_2MB);
 			if (mz != NULL) {
 				printf("MEMZONE FLAG 2MB\n");
 				return -1;
@@ -254,8 +267,10 @@ test_memzone_reserve_flags(void)
 		}
 
 		if (hugepage_2MB_avail && hugepage_1GB_avail) {
-			mz = rte_memzone_reserve("flag_zone_2M_HINT", size, SOCKET_ID_ANY,
-								RTE_MEMZONE_2MB|RTE_MEMZONE_1GB);
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_2M_HINT"),
+					size, SOCKET_ID_ANY,
+					RTE_MEMZONE_2MB|RTE_MEMZONE_1GB);
 			if (mz == NULL) {
 				printf("BOTH SIZES SET\n");
 				return -1;
@@ -279,8 +294,8 @@ test_memzone_reserve_flags(void)
 	 * page size (i.e 16GB ) when 16MB pages are unavailable.
 	 */
 	if (hugepage_16MB_avail) {
-		mz = rte_memzone_reserve("flag_zone_16M", size, SOCKET_ID_ANY,
-				RTE_MEMZONE_16MB);
+		mz = rte_memzone_reserve(TEST_MEMZONE_NAME("flag_zone_16M"),
+				size, SOCKET_ID_ANY, RTE_MEMZONE_16MB);
 		if (mz == NULL) {
 			printf("MEMZONE FLAG 16MB\n");
 			return -1;
@@ -294,8 +309,10 @@ test_memzone_reserve_flags(void)
 			return -1;
 		}
 
-		mz = rte_memzone_reserve("flag_zone_16M_HINT", size,
-		SOCKET_ID_ANY, RTE_MEMZONE_16MB|RTE_MEMZONE_SIZE_HINT_ONLY);
+		mz = rte_memzone_reserve(
+				TEST_MEMZONE_NAME("flag_zone_16M_HINT"), size,
+				SOCKET_ID_ANY,
+				RTE_MEMZONE_16MB|RTE_MEMZONE_SIZE_HINT_ONLY);
 		if (mz == NULL) {
 			printf("MEMZONE FLAG 16MB\n");
 			return -1;
@@ -313,9 +330,11 @@ test_memzone_reserve_flags(void)
 		 * unless HINT flag is indicated
 		 */
 		if (!hugepage_16GB_avail) {
-			mz = rte_memzone_reserve("flag_zone_16G_HINT", size,
-				SOCKET_ID_ANY,
-				RTE_MEMZONE_16GB|RTE_MEMZONE_SIZE_HINT_ONLY);
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_16G_HINT"),
+					size, SOCKET_ID_ANY,
+					RTE_MEMZONE_16GB |
+					RTE_MEMZONE_SIZE_HINT_ONLY);
 			if (mz == NULL) {
 				printf("MEMZONE FLAG 16GB & HINT\n");
 				return -1;
@@ -329,8 +348,10 @@ test_memzone_reserve_flags(void)
 				return -1;
 			}
 
-			mz = rte_memzone_reserve("flag_zone_16G", size,
-				SOCKET_ID_ANY, RTE_MEMZONE_16GB);
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_16G"),
+					size,
+					SOCKET_ID_ANY, RTE_MEMZONE_16GB);
 			if (mz != NULL) {
 				printf("MEMZONE FLAG 16GB\n");
 				return -1;
@@ -339,8 +360,8 @@ test_memzone_reserve_flags(void)
 	}
 	/*As with 16MB tests above for 16GB huge page requests*/
 	if (hugepage_16GB_avail) {
-		mz = rte_memzone_reserve("flag_zone_16G", size, SOCKET_ID_ANY,
-				RTE_MEMZONE_16GB);
+		mz = rte_memzone_reserve(TEST_MEMZONE_NAME("flag_zone_16G"),
+				size, SOCKET_ID_ANY, RTE_MEMZONE_16GB);
 		if (mz == NULL) {
 			printf("MEMZONE FLAG 16GB\n");
 			return -1;
@@ -354,8 +375,10 @@ test_memzone_reserve_flags(void)
 			return -1;
 		}
 
-		mz = rte_memzone_reserve("flag_zone_16G_HINT", size,
-		SOCKET_ID_ANY, RTE_MEMZONE_16GB|RTE_MEMZONE_SIZE_HINT_ONLY);
+		mz = rte_memzone_reserve(
+				TEST_MEMZONE_NAME("flag_zone_16G_HINT"), size,
+				SOCKET_ID_ANY,
+				RTE_MEMZONE_16GB|RTE_MEMZONE_SIZE_HINT_ONLY);
 		if (mz == NULL) {
 			printf("MEMZONE FLAG 16GB\n");
 			return -1;
@@ -373,9 +396,11 @@ test_memzone_reserve_flags(void)
 		 * unless HINT flag is indicated
 		 */
 		if (!hugepage_16MB_avail) {
-			mz = rte_memzone_reserve("flag_zone_16M_HINT", size,
-				SOCKET_ID_ANY,
-				RTE_MEMZONE_16MB|RTE_MEMZONE_SIZE_HINT_ONLY);
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_16M_HINT"),
+					size, SOCKET_ID_ANY,
+					RTE_MEMZONE_16MB |
+					RTE_MEMZONE_SIZE_HINT_ONLY);
 			if (mz == NULL) {
 				printf("MEMZONE FLAG 16MB & HINT\n");
 				return -1;
@@ -388,8 +413,9 @@ test_memzone_reserve_flags(void)
 				printf("Fail memzone free\n");
 				return -1;
 			}
-			mz = rte_memzone_reserve("flag_zone_16M", size,
-				SOCKET_ID_ANY, RTE_MEMZONE_16MB);
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_16M"),
+					size, SOCKET_ID_ANY, RTE_MEMZONE_16MB);
 			if (mz != NULL) {
 				printf("MEMZONE FLAG 16MB\n");
 				return -1;
@@ -397,9 +423,10 @@ test_memzone_reserve_flags(void)
 		}
 
 		if (hugepage_16MB_avail && hugepage_16GB_avail) {
-			mz = rte_memzone_reserve("flag_zone_16M_HINT", size,
-				SOCKET_ID_ANY,
-				RTE_MEMZONE_16MB|RTE_MEMZONE_16GB);
+			mz = rte_memzone_reserve(
+					TEST_MEMZONE_NAME("flag_zone_16M_HINT"),
+					size, SOCKET_ID_ANY,
+					RTE_MEMZONE_16MB|RTE_MEMZONE_16GB);
 			if (mz == NULL) {
 				printf("BOTH SIZES SET\n");
 				return -1;
@@ -455,7 +482,8 @@ test_memzone_reserve_max(void)
 		return 0;
 	}
 
-	mz = rte_memzone_reserve("max_zone", 0, SOCKET_ID_ANY, 0);
+	mz = rte_memzone_reserve(TEST_MEMZONE_NAME("max_zone"), 0,
+			SOCKET_ID_ANY, 0);
 	if (mz == NULL){
 		printf("Failed to reserve a big chunk of memory - %s\n",
 				rte_strerror(rte_errno));
@@ -497,8 +525,8 @@ test_memzone_reserve_max_aligned(void)
 		return 0;
 	}
 
-	mz = rte_memzone_reserve_aligned("max_zone_aligned", 0,
-			SOCKET_ID_ANY, 0, align);
+	mz = rte_memzone_reserve_aligned(TEST_MEMZONE_NAME("max_zone_aligned"),
+			0, SOCKET_ID_ANY, 0, align);
 	if (mz == NULL){
 		printf("Failed to reserve a big chunk of memory - %s\n",
 				rte_strerror(rte_errno));
@@ -535,24 +563,29 @@ test_memzone_aligned(void)
 	const struct rte_memzone *memzone_aligned_1024;
 
 	/* memzone that should automatically be adjusted to align on 64 bytes */
-	memzone_aligned_32 = rte_memzone_reserve_aligned("aligned_32", 100,
-				SOCKET_ID_ANY, 0, 32);
+	memzone_aligned_32 = rte_memzone_reserve_aligned(
+			TEST_MEMZONE_NAME("aligned_32"), 100, SOCKET_ID_ANY, 0,
+			32);
 
 	/* memzone that is supposed to be aligned on a 128 byte boundary */
-	memzone_aligned_128 = rte_memzone_reserve_aligned("aligned_128", 100,
-				SOCKET_ID_ANY, 0, 128);
+	memzone_aligned_128 = rte_memzone_reserve_aligned(
+			TEST_MEMZONE_NAME("aligned_128"), 100, SOCKET_ID_ANY, 0,
+			128);
 
 	/* memzone that is supposed to be aligned on a 256 byte boundary */
-	memzone_aligned_256 = rte_memzone_reserve_aligned("aligned_256", 100,
-				SOCKET_ID_ANY, 0, 256);
+	memzone_aligned_256 = rte_memzone_reserve_aligned(
+			TEST_MEMZONE_NAME("aligned_256"), 100, SOCKET_ID_ANY, 0,
+			256);
 
 	/* memzone that is supposed to be aligned on a 512 byte boundary */
-	memzone_aligned_512 = rte_memzone_reserve_aligned("aligned_512", 100,
-				SOCKET_ID_ANY, 0, 512);
+	memzone_aligned_512 = rte_memzone_reserve_aligned(
+			TEST_MEMZONE_NAME("aligned_512"), 100, SOCKET_ID_ANY, 0,
+			512);
 
 	/* memzone that is supposed to be aligned on a 1024 byte boundary */
-	memzone_aligned_1024 = rte_memzone_reserve_aligned("aligned_1024", 100,
-				SOCKET_ID_ANY, 0, 1024);
+	memzone_aligned_1024 = rte_memzone_reserve_aligned(
+			TEST_MEMZONE_NAME("aligned_1024"), 100, SOCKET_ID_ANY,
+			0, 1024);
 
 	printf("check alignments and lengths\n");
 	if (memzone_aligned_32 == NULL) {
@@ -721,37 +754,46 @@ static int
 test_memzone_bounded(void)
 {
 	const struct rte_memzone *memzone_err;
-	const char *name;
 	int rc;
 
 	/* should fail as boundary is not power of two */
-	name = "bounded_error_31";
-	if ((memzone_err = rte_memzone_reserve_bounded(name,
-			100, SOCKET_ID_ANY, 0, 32, UINT32_MAX)) != NULL) {
+	memzone_err = rte_memzone_reserve_bounded(
+			TEST_MEMZONE_NAME("bounded_error_31"), 100,
+			SOCKET_ID_ANY, 0, 32, UINT32_MAX);
+	if (memzone_err != NULL) {
 		printf("%s(%s)created a memzone with invalid boundary "
 			"conditions\n", __func__, memzone_err->name);
 		return -1;
 	}
 
 	/* should fail as len is greater then boundary */
-	name = "bounded_error_32";
-	if ((memzone_err = rte_memzone_reserve_bounded(name,
-			100, SOCKET_ID_ANY, 0, 32, 32)) != NULL) {
+	memzone_err = rte_memzone_reserve_bounded(
+			TEST_MEMZONE_NAME("bounded_error_32"), 100,
+			SOCKET_ID_ANY, 0, 32, 32);
+	if (memzone_err != NULL) {
 		printf("%s(%s)created a memzone with invalid boundary "
 			"conditions\n", __func__, memzone_err->name);
 		return -1;
 	}
 
-	if ((rc = check_memzone_bounded("bounded_128", 100, 128, 128)) != 0)
+	rc = check_memzone_bounded(TEST_MEMZONE_NAME("bounded_128"), 100, 128,
+			128);
+	if (rc != 0)
 		return rc;
 
-	if ((rc = check_memzone_bounded("bounded_256", 100, 256, 128)) != 0)
+	rc = check_memzone_bounded(TEST_MEMZONE_NAME("bounded_256"), 100, 256,
+			128);
+	if (rc != 0)
 		return rc;
 
-	if ((rc = check_memzone_bounded("bounded_1K", 100, 64, 1024)) != 0)
+	rc = check_memzone_bounded(TEST_MEMZONE_NAME("bounded_1K"), 100, 64,
+			1024);
+	if (rc != 0)
 		return rc;
 
-	if ((rc = check_memzone_bounded("bounded_1K_MAX", 0, 64, 1024)) != 0)
+	rc = check_memzone_bounded(TEST_MEMZONE_NAME("bounded_1K_MAX"), 0, 64,
+			1024);
+	if (rc != 0)
 		return rc;
 
 	return 0;
@@ -764,25 +806,28 @@ test_memzone_free(void)
 	int i;
 	char name[20];
 
-	mz[0] = rte_memzone_reserve("tempzone0", 2000, SOCKET_ID_ANY, 0);
-	mz[1] = rte_memzone_reserve("tempzone1", 4000, SOCKET_ID_ANY, 0);
+	mz[0] = rte_memzone_reserve(TEST_MEMZONE_NAME("tempzone0"), 2000,
+			SOCKET_ID_ANY, 0);
+	mz[1] = rte_memzone_reserve(TEST_MEMZONE_NAME("tempzone1"), 4000,
+			SOCKET_ID_ANY, 0);
 
 	if (mz[0] > mz[1])
 		return -1;
-	if (!rte_memzone_lookup("tempzone0"))
+	if (!rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone0")))
 		return -1;
-	if (!rte_memzone_lookup("tempzone1"))
+	if (!rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone1")))
 		return -1;
 
 	if (rte_memzone_free(mz[0])) {
 		printf("Fail memzone free - tempzone0\n");
 		return -1;
 	}
-	if (rte_memzone_lookup("tempzone0")) {
+	if (rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone0"))) {
 		printf("Found previously free memzone - tempzone0\n");
 		return -1;
 	}
-	mz[2] = rte_memzone_reserve("tempzone2", 2000, SOCKET_ID_ANY, 0);
+	mz[2] = rte_memzone_reserve(TEST_MEMZONE_NAME("tempzone2"), 2000,
+			SOCKET_ID_ANY, 0);
 
 	if (mz[2] > mz[1]) {
 		printf("tempzone2 should have gotten the free entry from tempzone0\n");
@@ -792,7 +837,7 @@ test_memzone_free(void)
 		printf("Fail memzone free - tempzone2\n");
 		return -1;
 	}
-	if (rte_memzone_lookup("tempzone2")) {
+	if (rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone2"))) {
 		printf("Found previously free memzone - tempzone2\n");
 		return -1;
 	}
@@ -800,14 +845,15 @@ test_memzone_free(void)
 		printf("Fail memzone free - tempzone1\n");
 		return -1;
 	}
-	if (rte_memzone_lookup("tempzone1")) {
+	if (rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone1"))) {
 		printf("Found previously free memzone - tempzone1\n");
 		return -1;
 	}
 
 	i = 0;
 	do {
-		snprintf(name, sizeof(name), "tempzone%u", i);
+		snprintf(name, sizeof(name), TEST_MEMZONE_NAME("tempzone%u"),
+				i);
 		mz[i] = rte_memzone_reserve(name, 1, SOCKET_ID_ANY, 0);
 	} while (mz[i++] != NULL);
 
@@ -815,7 +861,8 @@ test_memzone_free(void)
 		printf("Fail memzone free - tempzone0\n");
 		return -1;
 	}
-	mz[0] = rte_memzone_reserve("tempzone0new", 0, SOCKET_ID_ANY, 0);
+	mz[0] = rte_memzone_reserve(TEST_MEMZONE_NAME("tempzone0new"), 0,
+			SOCKET_ID_ANY, 0);
 
 	if (mz[0] == NULL) {
 		printf("Fail to create memzone - tempzone0new - when MAX memzones were "
@@ -845,16 +892,16 @@ test_memzone_basic(void)
 	int memzone_cnt_before =
 			rte_eal_get_configuration()->mem_config->memzone_cnt;
 
-	memzone1 = rte_memzone_reserve("testzone1", 100,
+	memzone1 = rte_memzone_reserve(TEST_MEMZONE_NAME("testzone1"), 100,
 				SOCKET_ID_ANY, 0);
 
-	memzone2 = rte_memzone_reserve("testzone2", 1000,
+	memzone2 = rte_memzone_reserve(TEST_MEMZONE_NAME("testzone2"), 1000,
 				0, 0);
 
-	memzone3 = rte_memzone_reserve("testzone3", 1000,
+	memzone3 = rte_memzone_reserve(TEST_MEMZONE_NAME("testzone3"), 1000,
 				1, 0);
 
-	memzone4 = rte_memzone_reserve("testzone4", 1024,
+	memzone4 = rte_memzone_reserve(TEST_MEMZONE_NAME("testzone4"), 1024,
 				SOCKET_ID_ANY, 0);
 
 	/* memzone3 may be NULL if we don't have NUMA */
@@ -918,12 +965,12 @@ test_memzone_basic(void)
 		return -1;
 
 	printf("test zone lookup\n");
-	mz = rte_memzone_lookup("testzone1");
+	mz = rte_memzone_lookup(TEST_MEMZONE_NAME("testzone1"));
 	if (mz != memzone1)
 		return -1;
 
 	printf("test duplcate zone name\n");
-	mz = rte_memzone_reserve("testzone1", 100,
+	mz = rte_memzone_reserve(TEST_MEMZONE_NAME("testzone1"), 100,
 			SOCKET_ID_ANY, 0);
 	if (mz != NULL)
 		return -1;
@@ -953,16 +1000,22 @@ test_memzone_basic(void)
 	return 0;
 }
 
-static int memzone_walk_called;
-static void memzone_walk_clb(const struct rte_memzone *mz __rte_unused,
+static int test_memzones_left;
+static int memzone_walk_cnt;
+static void memzone_walk_clb(const struct rte_memzone *mz,
 			     void *arg __rte_unused)
 {
-	memzone_walk_called = 1;
+	memzone_walk_cnt++;
+	if (!strncmp(TEST_MEMZONE_NAME(""), mz->name, RTE_MEMZONE_NAMESIZE))
+		test_memzones_left++;
 }
 
 static int
 test_memzone(void)
 {
+	/* take note of how many memzones were allocated before running */
+	int memzone_cnt = rte_eal_get_configuration()->mem_config->memzone_cnt;
+
 	printf("test basic memzone API\n");
 	if (test_memzone_basic() < 0)
 		return -1;
@@ -1000,8 +1053,10 @@ test_memzone(void)
 		return -1;
 
 	printf("check memzone cleanup\n");
+	memzone_walk_cnt = 0;
+	test_memzones_left = 0;
 	rte_memzone_walk(memzone_walk_clb, NULL);
-	if (memzone_walk_called) {
+	if (memzone_walk_cnt != memzone_cnt || test_memzones_left > 0) {
 		printf("there are some memzones left after test\n");
 		rte_memzone_dump(stdout);
 		return -1;
