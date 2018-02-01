@@ -347,7 +347,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_pmd_vhost.so.2
      librte_port.so.3
      librte_power.so.1
-     librte_rawdev.so.1
+   + librte_rawdev.so.1
      librte_reorder.so.1
      librte_ring.so.1
      librte_sched.so.1
