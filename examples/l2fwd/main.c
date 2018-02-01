@@ -549,6 +549,11 @@ main(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
+	/* check port mask to possible port mask */
+	if (l2fwd_enabled_port_mask & ~((1 << nb_ports) - 1))
+		rte_exit(EXIT_FAILURE, "Invalid portmask; possible (0x%x)\n",
+			(1 << nb_ports) - 1);
+
 	/* reset l2fwd_dst_ports */
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
 		l2fwd_dst_ports[portid] = 0;
