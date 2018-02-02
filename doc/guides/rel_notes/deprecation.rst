@@ -50,6 +50,15 @@ Deprecation Notices
   ``rte_memzone`` member ``memseg_id`` will no longer serve any useful purpose
   and will be removed.
 
+* eal: a new set of mbuf mempool ops name APIs for user, platform and best
+  mempool names have been defined in ``rte_mbuf`` in v18.02. The uses of
+  ``rte_eal_mbuf_default_mempool_ops`` shall be replaced by
+  ``rte_mbuf_best_mempool_ops``.
+  The following function is now redundant and it is target to be deprecated
+  in 18.05:
+
+  - ``rte_eal_mbuf_default_mempool_ops``
+
 * ethdev: a new Tx and Rx offload API was introduced on 17.11.
   In the new API, offloads are divided into per-port and per-queue offloads.
   Offloads are disabled by default and enabled per application request.
