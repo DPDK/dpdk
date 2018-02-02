@@ -692,6 +692,23 @@ static inline void i40e_GLQF_reg_init(struct i40e_hw *hw)
 	i40e_global_cfg_warning(I40E_WARNING_QINQ_PARSER);
 }
 
+static inline void i40e_config_automask(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint32_t val;
+
+	/* INTENA flag is not auto-cleared for interrupt */
+	val = I40E_READ_REG(hw, I40E_GLINT_CTL);
+	val |= I40E_GLINT_CTL_DIS_AUTOMASK_PF0_MASK |
+		I40E_GLINT_CTL_DIS_AUTOMASK_VF0_MASK;
+
+	/* If support multi-driver, PF will use INT0. */
+	if (!pf->support_multi_driver)
+		val |= I40E_GLINT_CTL_DIS_AUTOMASK_N_MASK;
+
+	I40E_WRITE_REG(hw, I40E_GLINT_CTL, val);
+}
+
 #define I40E_FLOW_CONTROL_ETHERTYPE  0x8808
 
 /*
@@ -1172,6 +1189,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Failed to init shared code (base driver): %d", ret);
 		return ret;
 	}
+
+	i40e_config_automask(pf);
 
 	i40e_set_default_pctype_table(dev);
 
@@ -1705,6 +1724,7 @@ __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
 	int i;
 	uint32_t val;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 
 	/* Bind all RX queues to allocated MSIX interrupt */
 	for (i = 0; i < nb_queue; i++) {
@@ -1723,7 +1743,8 @@ __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
 	/* Write first RX queue to Link list register as the head element */
 	if (vsi->type != I40E_VSI_SRIOV) {
 		uint16_t interval =
-			i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 1);
+			i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 1,
+					       pf->support_multi_driver);
 
 		if (msix_vect == I40E_MISC_VEC_ID) {
 			I40E_WRITE_REG(hw, I40E_PFINT_LNKLST0,
@@ -1782,20 +1803,12 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t itr_idx)
 	uint16_t nb_msix = RTE_MIN(vsi->nb_msix, intr_handle->nb_efd);
 	uint16_t queue_idx = 0;
 	int record = 0;
-	uint32_t val;
 	int i;
 
 	for (i = 0; i < vsi->nb_qps; i++) {
 		I40E_WRITE_REG(hw, I40E_QINT_TQCTL(vsi->base_queue + i), 0);
 		I40E_WRITE_REG(hw, I40E_QINT_RQCTL(vsi->base_queue + i), 0);
 	}
-
-	/* INTENA flag is not auto-cleared for interrupt */
-	val = I40E_READ_REG(hw, I40E_GLINT_CTL);
-	val |= I40E_GLINT_CTL_DIS_AUTOMASK_PF0_MASK |
-		I40E_GLINT_CTL_DIS_AUTOMASK_N_MASK |
-		I40E_GLINT_CTL_DIS_AUTOMASK_VF0_MASK;
-	I40E_WRITE_REG(hw, I40E_GLINT_CTL, val);
 
 	/* VF bind interrupt */
 	if (vsi->type == I40E_VSI_SRIOV) {
@@ -1853,27 +1866,22 @@ i40e_vsi_enable_queues_intr(struct i40e_vsi *vsi)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	uint16_t interval = i40e_calc_itr_interval(\
-		RTE_LIBRTE_I40E_ITR_INTERVAL, 1);
+	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	uint16_t msix_intr, i;
 
-	if (rte_intr_allow_others(intr_handle))
+	if (rte_intr_allow_others(intr_handle) || !pf->support_multi_driver)
 		for (i = 0; i < vsi->nb_msix; i++) {
 			msix_intr = vsi->msix_intr + i;
 			I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTLN(msix_intr - 1),
 				I40E_PFINT_DYN_CTLN_INTENA_MASK |
 				I40E_PFINT_DYN_CTLN_CLEARPBA_MASK |
-				(0 << I40E_PFINT_DYN_CTLN_ITR_INDX_SHIFT) |
-				(interval <<
-				 I40E_PFINT_DYN_CTLN_INTERVAL_SHIFT));
+				I40E_PFINT_DYN_CTLN_ITR_INDX_MASK);
 		}
 	else
 		I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTL0,
 			       I40E_PFINT_DYN_CTL0_INTENA_MASK |
 			       I40E_PFINT_DYN_CTL0_CLEARPBA_MASK |
-			       (0 << I40E_PFINT_DYN_CTL0_ITR_INDX_SHIFT) |
-			       (interval <<
-				I40E_PFINT_DYN_CTL0_INTERVAL_SHIFT));
+			       I40E_PFINT_DYN_CTL0_ITR_INDX_MASK);
 
 	I40E_WRITE_FLUSH(hw);
 }
@@ -1885,16 +1893,18 @@ i40e_vsi_disable_queues_intr(struct i40e_vsi *vsi)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	uint16_t msix_intr, i;
 
-	if (rte_intr_allow_others(intr_handle))
+	if (rte_intr_allow_others(intr_handle) || !pf->support_multi_driver)
 		for (i = 0; i < vsi->nb_msix; i++) {
 			msix_intr = vsi->msix_intr + i;
 			I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTLN(msix_intr - 1),
-				       0);
+				       I40E_PFINT_DYN_CTLN_ITR_INDX_MASK);
 		}
 	else
-		I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTL0, 0);
+		I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTL0,
+			       I40E_PFINT_DYN_CTL0_ITR_INDX_MASK);
 
 	I40E_WRITE_FLUSH(hw);
 }
@@ -5177,16 +5187,28 @@ i40e_vsi_setup(struct i40e_pf *pf,
 
 	/* VF has MSIX interrupt in VF range, don't allocate here */
 	if (type == I40E_VSI_MAIN) {
-		ret = i40e_res_pool_alloc(&pf->msix_pool,
-					  RTE_MIN(vsi->nb_qps,
-						  RTE_MAX_RXTX_INTR_VEC_ID));
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "VSI MAIN %d get heap failed %d",
-				    vsi->seid, ret);
-			goto fail_queue_alloc;
+		if (pf->support_multi_driver) {
+			/* If support multi-driver, need to use INT0 instead of
+			 * allocating from msix pool. The Msix pool is init from
+			 * INT1, so it's OK just set msix_intr to 0 and nb_msix
+			 * to 1 without calling i40e_res_pool_alloc.
+			 */
+			vsi->msix_intr = 0;
+			vsi->nb_msix = 1;
+		} else {
+			ret = i40e_res_pool_alloc(&pf->msix_pool,
+						  RTE_MIN(vsi->nb_qps,
+						     RTE_MAX_RXTX_INTR_VEC_ID));
+			if (ret < 0) {
+				PMD_DRV_LOG(ERR,
+					    "VSI MAIN %d get heap failed %d",
+					    vsi->seid, ret);
+				goto fail_queue_alloc;
+			}
+			vsi->msix_intr = ret;
+			vsi->nb_msix = RTE_MIN(vsi->nb_qps,
+					       RTE_MAX_RXTX_INTR_VEC_ID);
 		}
-		vsi->msix_intr = ret;
-		vsi->nb_msix = RTE_MIN(vsi->nb_qps, RTE_MAX_RXTX_INTR_VEC_ID);
 	} else if (type != I40E_VSI_SRIOV) {
 		ret = i40e_res_pool_alloc(&pf->msix_pool, 1);
 		if (ret < 0) {
@@ -6103,7 +6125,8 @@ void
 i40e_pf_disable_irq0(struct i40e_hw *hw)
 {
 	/* Disable all interrupt types */
-	I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTL0, 0);
+	I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTL0,
+		       I40E_PFINT_DYN_CTL0_ITR_INDX_MASK);
 	I40E_WRITE_FLUSH(hw);
 }
 
@@ -11091,11 +11114,13 @@ i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 static int
 i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t interval =
-		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 1);
+		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 1,
+				       pf->support_multi_driver);
 	uint16_t msix_intr;
 
 	msix_intr = intr_handle->intr_vec[queue_id];

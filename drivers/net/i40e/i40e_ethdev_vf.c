@@ -1138,7 +1138,7 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	uint16_t interval =
-		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 0);
+		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 0, 0);
 
 	vf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	vf->dev_data = dev->data;
@@ -1841,7 +1841,7 @@ i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t interval =
-		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 0);
+		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 0, 0);
 	uint16_t msix_intr;
 
 	msix_intr = intr_handle->intr_vec[queue_id];

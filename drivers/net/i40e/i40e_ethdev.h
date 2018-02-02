@@ -1292,13 +1292,17 @@ i40e_align_floor(int n)
 }
 
 static inline uint16_t
-i40e_calc_itr_interval(int16_t interval, bool is_pf)
+i40e_calc_itr_interval(int16_t interval, bool is_pf, bool is_multi_drv)
 {
 	if (interval < 0 || interval > I40E_QUEUE_ITR_INTERVAL_MAX) {
-		if (is_pf)
-			interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
-		else
-			interval = I40E_VF_QUEUE_ITR_INTERVAL_DEFAULT;
+		if (is_multi_drv) {
+			interval = I40E_QUEUE_ITR_INTERVAL_MAX;
+		} else {
+			if (is_pf)
+				interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
+			else
+				interval = I40E_VF_QUEUE_ITR_INTERVAL_DEFAULT;
+		}
 	}
 
 	/* Convert to hardware count, as writing each 1 represents 2 us */
