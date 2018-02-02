@@ -57,7 +57,14 @@ RTE_DECLARE_PER_LCORE(unsigned, _lcore_id);  /**< Per thread "lcore id". */
 RTE_DECLARE_PER_LCORE(rte_cpuset_t, _cpuset); /**< Per thread "cpuset". */
 
 /**
- * Return the ID of the execution unit we are running on.
+ * Return the Application thread ID of the execution unit.
+ *
+ * Note: in most cases the lcore id returned here will also correspond
+ *   to the processor id of the CPU on which the thread is pinned, this
+ *   will not be the case if the user has explicitly changed the thread to
+ *   core affinities using --lcores EAL argument e.g. --lcores '(0-3)@10'
+ *   to run threads with lcore IDs 0, 1, 2 and 3 on physical core 10..
+ *
  * @return
  *  Logical core ID (in EAL thread) or LCORE_ID_ANY (in non-EAL thread)
  */
@@ -94,7 +101,12 @@ rte_lcore_count(void)
 
 /**
  * Return the index of the lcore starting from zero.
- * The order is physical or given by command line (-l option).
+ *
+ * When option -c or -l is given, the index corresponds
+ * to the order in the list.
+ * For example:
+ * -c 0x30, lcore 4 has index 0, and 5 has index 1.
+ * -l 22,18 lcore 22 has index 0, and 18 has index 1.
  *
  * @param lcore_id
  *   The targeted lcore, or -1 for the current one.
