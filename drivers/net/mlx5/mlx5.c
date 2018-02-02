@@ -1113,6 +1113,15 @@ rte_mlx5_pmd_init(void)
 		return;
 	assert(mlx5_glue);
 #endif
+#ifndef NDEBUG
+	/* Glue structure must not contain any NULL pointers. */
+	{
+		unsigned int i;
+
+		for (i = 0; i != sizeof(*mlx5_glue) / sizeof(void *); ++i)
+			assert(((const void *const *)mlx5_glue)[i]);
+	}
+#endif
 	mlx5_glue->fork_init();
 	rte_pci_register(&mlx5_driver);
 }

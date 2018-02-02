@@ -771,6 +771,15 @@ rte_mlx4_pmd_init(void)
 		return;
 	assert(mlx4_glue);
 #endif
+#ifndef NDEBUG
+	/* Glue structure must not contain any NULL pointers. */
+	{
+		unsigned int i;
+
+		for (i = 0; i != sizeof(*mlx4_glue) / sizeof(void *); ++i)
+			assert(((const void *const *)mlx4_glue)[i]);
+	}
+#endif
 	mlx4_glue->fork_init();
 	rte_pci_register(&mlx4_driver);
 }
