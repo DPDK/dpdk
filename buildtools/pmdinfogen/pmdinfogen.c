@@ -50,20 +50,24 @@ static void *grab_file(const char *filename, unsigned long *size)
 		/* from stdin, use a temporary file to mmap */
 		FILE *infile;
 		char buffer[1024];
-		size_t n;
+		int n;
 
 		infile = tmpfile();
 		if (infile == NULL) {
 			perror("tmpfile");
 			return NULL;
 		}
-		while (!feof(stdin)) {
-			n = fread(buffer, 1, sizeof(buffer), stdin);
-			if (fwrite(buffer, 1, n, infile) != n)
+		fd = dup(fileno(infile));
+		fclose(infile);
+		if (fd < 0)
+			return NULL;
+
+		n = read(STDIN_FILENO, buffer, sizeof(buffer));
+		while (n > 0) {
+			if (write(fd, buffer, n) != n)
 				goto failed;
+			n = read(STDIN_FILENO, buffer, sizeof(buffer));
 		}
-		fflush(infile);
-		fd = fileno(infile);
 	}
 
 	if (fstat(fd, &st))
