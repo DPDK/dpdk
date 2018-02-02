@@ -78,6 +78,15 @@
 	(((vf)->version_major == VIRTCHNL_VERSION_MAJOR) && \
 	((vf)->version_minor == 1))
 
+#define I40E_WRITE_GLB_REG(hw, reg, value)				\
+	do {								\
+		I40E_PCI_REG_WRITE(I40E_PCI_REG_ADDR((hw),		\
+						     (reg)), (value));	\
+		PMD_DRV_LOG(DEBUG, "Global register 0x%08x is modified " \
+			    "with value 0x%08x",			\
+			    (reg), (value));				\
+	} while (0)
+
 /* index flex payload per layer */
 enum i40e_flxpld_layer_idx {
 	I40E_FLXPLD_L2_IDX    = 0,
@@ -1187,6 +1196,8 @@ int i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask,
 				 uint8_t nb_elem);
 uint64_t i40e_translate_input_set_reg(enum i40e_mac_type type, uint64_t input);
 void i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val);
+void i40e_check_write_global_reg(struct i40e_hw *hw,
+				 uint32_t addr, uint32_t val);
 
 int i40e_tm_ops_get(struct rte_eth_dev *dev, void *ops);
 void i40e_tm_conf_init(struct rte_eth_dev *dev);
