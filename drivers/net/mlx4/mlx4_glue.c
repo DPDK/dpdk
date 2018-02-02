@@ -240,6 +240,7 @@ mlx4_glue_dv_set_context_attr(struct ibv_context *context,
 }
 
 const struct mlx4_glue *mlx4_glue = &(const struct mlx4_glue){
+	.version = MLX4_GLUE_VERSION,
 	.fork_init = mlx4_glue_fork_init,
 	.get_async_event = mlx4_glue_get_async_event,
 	.ack_async_event = mlx4_glue_ack_async_event,

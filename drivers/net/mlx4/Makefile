@@ -33,7 +33,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 # Library name.
 LIB = librte_pmd_mlx4.a
-LIB_GLUE = librte_pmd_mlx4_glue.so
+LIB_GLUE = $(LIB_GLUE_BASE).$(LIB_GLUE_VERSION)
+LIB_GLUE_BASE = librte_pmd_mlx4_glue.so
+LIB_GLUE_VERSION = 18.02.0
 
 # Sources.
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4.c
@@ -64,6 +66,7 @@ CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
 ifeq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
 CFLAGS += -DMLX4_GLUE='"$(LIB_GLUE)"'
+CFLAGS += -DMLX4_GLUE_VERSION='"$(LIB_GLUE_VERSION)"'
 CFLAGS_mlx4_glue.o += -fPIC
 LDLIBS += -ldl
 else
@@ -131,6 +134,7 @@ $(LIB): $(LIB_GLUE)
 
 $(LIB_GLUE): mlx4_glue.o
 	$Q $(LD) $(LDFLAGS) $(EXTRA_LDFLAGS) \
+		-Wl,-h,$(LIB_GLUE) \
 		-s -shared -o $@ $< -libverbs -lmlx4
 
 mlx4_glue.o: mlx4_autoconf.h
@@ -139,6 +143,6 @@ endif
 
 clean_mlx4: FORCE
 	$Q rm -f -- mlx4_autoconf.h mlx4_autoconf.h.new
-	$Q rm -f -- mlx4_glue.o $(LIB_GLUE)
+	$Q rm -f -- mlx4_glue.o $(LIB_GLUE_BASE)*
 
 clean: clean_mlx4

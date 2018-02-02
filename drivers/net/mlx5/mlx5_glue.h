@@ -19,6 +19,10 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#ifndef MLX5_GLUE_VERSION
+#define MLX5_GLUE_VERSION ""
+#endif
+
 #ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
 struct ibv_counter_set;
 struct ibv_counter_set_data;
@@ -27,7 +31,9 @@ struct ibv_counter_set_init_attr;
 struct ibv_query_counter_set_attr;
 #endif
 
+/* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
+	const char *version;
 	int (*fork_init)(void);
 	struct ibv_pd *(*alloc_pd)(struct ibv_context *context);
 	int (*dealloc_pd)(struct ibv_pd *pd);

@@ -19,7 +19,13 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#ifndef MLX4_GLUE_VERSION
+#define MLX4_GLUE_VERSION ""
+#endif
+
+/* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx4_glue {
+	const char *version;
 	int (*fork_init)(void);
 	int (*get_async_event)(struct ibv_context *context,
 			       struct ibv_async_event *event);

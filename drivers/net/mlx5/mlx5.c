@@ -1122,6 +1122,11 @@ rte_mlx5_pmd_init(void)
 			assert(((const void *const *)mlx5_glue)[i]);
 	}
 #endif
+	if (strcmp(mlx5_glue->version, MLX5_GLUE_VERSION)) {
+		ERROR("rdma-core glue \"%s\" mismatch: \"%s\" is required",
+		      mlx5_glue->version, MLX5_GLUE_VERSION);
+		return;
+	}
 	mlx5_glue->fork_init();
 	rte_pci_register(&mlx5_driver);
 }

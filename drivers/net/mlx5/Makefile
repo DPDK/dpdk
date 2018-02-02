@@ -33,7 +33,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 # Library name.
 LIB = librte_pmd_mlx5.a
-LIB_GLUE = librte_pmd_mlx5_glue.so
+LIB_GLUE = $(LIB_GLUE_BASE).$(LIB_GLUE_VERSION)
+LIB_GLUE_BASE = librte_pmd_mlx5_glue.so
+LIB_GLUE_VERSION = 18.02.0
 
 # Sources.
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5.c
@@ -74,6 +76,7 @@ CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -Wno-strict-prototypes
 ifeq ($(CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS),y)
 CFLAGS += -DMLX5_GLUE='"$(LIB_GLUE)"'
+CFLAGS += -DMLX5_GLUE_VERSION='"$(LIB_GLUE_VERSION)"'
 CFLAGS_mlx5_glue.o += -fPIC
 LDLIBS += -ldl
 else
@@ -180,6 +183,7 @@ $(LIB): $(LIB_GLUE)
 
 $(LIB_GLUE): mlx5_glue.o
 	$Q $(LD) $(LDFLAGS) $(EXTRA_LDFLAGS) \
+		-Wl,-h,$(LIB_GLUE) \
 		-s -shared -o $@ $< -libverbs -lmlx5
 
 mlx5_glue.o: mlx5_autoconf.h
@@ -188,6 +192,6 @@ endif
 
 clean_mlx5: FORCE
 	$Q rm -f -- mlx5_autoconf.h mlx5_autoconf.h.new
-	$Q rm -f -- mlx5_glue.o $(LIB_GLUE)
+	$Q rm -f -- mlx5_glue.o $(LIB_GLUE_BASE)*
 
 clean: clean_mlx5

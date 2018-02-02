@@ -780,6 +780,11 @@ rte_mlx4_pmd_init(void)
 			assert(((const void *const *)mlx4_glue)[i]);
 	}
 #endif
+	if (strcmp(mlx4_glue->version, MLX4_GLUE_VERSION)) {
+		ERROR("rdma-core glue \"%s\" mismatch: \"%s\" is required",
+		      mlx4_glue->version, MLX4_GLUE_VERSION);
+		return;
+	}
 	mlx4_glue->fork_init();
 	rte_pci_register(&mlx4_driver);
 }

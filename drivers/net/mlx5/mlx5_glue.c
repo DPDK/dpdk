@@ -308,6 +308,7 @@ mlx5_glue_dv_init_obj(struct mlx5dv_obj *obj, uint64_t obj_type)
 }
 
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
+	.version = MLX5_GLUE_VERSION,
 	.fork_init = mlx5_glue_fork_init,
 	.alloc_pd = mlx5_glue_alloc_pd,
 	.dealloc_pd = mlx5_glue_dealloc_pd,
