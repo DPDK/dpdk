@@ -6,6 +6,9 @@
 #ifndef MLX4_GLUE_H_
 #define MLX4_GLUE_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
 /* Verbs headers do not support -pedantic. */
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"

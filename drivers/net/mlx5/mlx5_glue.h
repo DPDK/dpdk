@@ -6,6 +6,7 @@
 #ifndef MLX5_GLUE_H_
 #define MLX5_GLUE_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 /* Verbs headers do not support -pedantic. */

@@ -3,6 +3,9 @@
  * Copyright 2018 Mellanox
  */
 
+#include <stddef.h>
+#include <stdint.h>
+
 /* Verbs headers do not support -pedantic. */
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
