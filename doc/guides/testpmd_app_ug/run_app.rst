@@ -62,6 +62,10 @@ See the DPDK Getting Started Guides for more information on these options.
     The grouping ``()`` can be omitted for single element group.
     The ``@`` can be omitted if cpus and lcores have the same value.
 
+.. Note::
+    At a given instance only one core option ``--lcores``, ``-l`` or ``-c`` can be used.
+
+
 *   ``--master-lcore ID``
 
     Core ID that is used as master.

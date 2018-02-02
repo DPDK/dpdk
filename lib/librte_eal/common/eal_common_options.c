@@ -29,6 +29,9 @@
 #include "eal_filesystem.h"
 
 #define BITS_PER_HEX 4
+#define LCORE_OPT_LST 1
+#define LCORE_OPT_MSK 2
+#define LCORE_OPT_MAP 3
 
 const char
 eal_short_options[] =
@@ -1000,7 +1003,16 @@ eal_parse_common_option(int opt, const char *optarg,
 			RTE_LOG(ERR, EAL, "invalid coremask\n");
 			return -1;
 		}
-		core_parsed = 1;
+
+		if (core_parsed) {
+			RTE_LOG(ERR, EAL, "Option -c is ignored, because (%s) is set!\n",
+				(core_parsed == LCORE_OPT_LST) ? "-l" :
+				(core_parsed == LCORE_OPT_MAP) ? "--lcore" :
+				"-c");
+			return -1;
+		}
+
+		core_parsed = LCORE_OPT_MSK;
 		break;
 	/* corelist */
 	case 'l':
@@ -1008,7 +1020,16 @@ eal_parse_common_option(int opt, const char *optarg,
 			RTE_LOG(ERR, EAL, "invalid core list\n");
 			return -1;
 		}
-		core_parsed = 1;
+
+		if (core_parsed) {
+			RTE_LOG(ERR, EAL, "Option -l is ignored, because (%s) is set!\n",
+				(core_parsed == LCORE_OPT_MSK) ? "-c" :
+				(core_parsed == LCORE_OPT_MAP) ? "--lcore" :
+				"-l");
+			return -1;
+		}
+
+		core_parsed = LCORE_OPT_LST;
 		break;
 	/* service coremask */
 	case 's':
@@ -1128,7 +1149,16 @@ eal_parse_common_option(int opt, const char *optarg,
 				OPT_LCORES "\n");
 			return -1;
 		}
-		core_parsed = 1;
+
+		if (core_parsed) {
+			RTE_LOG(ERR, EAL, "Option --lcore is ignored, because (%s) is set!\n",
+				(core_parsed == LCORE_OPT_LST) ? "-l" :
+				(core_parsed == LCORE_OPT_MSK) ? "-c" :
+				"--lcore");
+			return -1;
+		}
+
+		core_parsed = LCORE_OPT_MAP;
 		break;
 
 	/* don't know what to do, leave this to caller */
