@@ -680,6 +680,7 @@ static inline void i40e_GLQF_reg_init(struct i40e_hw *hw)
 	 */
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(40), 0x00000029);
 	I40E_WRITE_REG(hw, I40E_GLQF_PIT(9), 0x00009420);
+	i40e_global_cfg_warning(I40E_WARNING_QINQ_PARSER);
 }
 
 #define I40E_FLOW_CONTROL_ETHERTYPE  0x8808
@@ -1133,6 +1134,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 				   0x00000028,	NULL);
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to write L3 MAP register %d", ret);
+	i40e_global_cfg_warning(I40E_WARNING_QINQ_CLOUD_FILTER);
 
 	/* Need the special FW version to support floating VEB */
 	config_floating_veb(dev);
@@ -1413,6 +1415,7 @@ void i40e_flex_payload_reg_set_default(struct i40e_hw *hw)
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(33), 0x00000000);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(34), 0x00000000);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(35), 0x00000000);
+	i40e_global_cfg_warning(I40E_WARNING_DIS_FLX_PLD);
 }
 
 static int
@@ -3262,6 +3265,7 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 		/* If NVM API < 1.7, keep the register setting */
 		ret = i40e_vlan_tpid_set_by_registers(dev, vlan_type,
 						      tpid, qinq);
+	i40e_global_cfg_warning(I40E_WARNING_TPID);
 
 	return ret;
 }
@@ -3504,6 +3508,7 @@ i40e_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	I40E_WRITE_REG(hw, I40E_GLRPB_GLW,
 		       pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS]
 		       << I40E_KILOSHIFT);
+	i40e_global_cfg_warning(I40E_WARNING_FLOW_CTL);
 
 	I40E_WRITE_FLUSH(hw);
 
@@ -7286,6 +7291,8 @@ i40e_status_code i40e_replace_mpls_l1_filter(struct i40e_pf *pf)
 
 	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 					       &filter_replace_buf);
+	if (!status)
+		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
 	return status;
 }
 
@@ -7340,6 +7347,8 @@ i40e_status_code i40e_replace_mpls_cloud_filter(struct i40e_pf *pf)
 
 	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 					       &filter_replace_buf);
+	if (!status)
+		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
 	return status;
 }
 
@@ -7407,6 +7416,8 @@ i40e_replace_gtp_l1_filter(struct i40e_pf *pf)
 
 	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 					       &filter_replace_buf);
+	if (!status)
+		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
 	return status;
 }
 
@@ -7459,6 +7470,8 @@ i40e_status_code i40e_replace_gtp_cloud_filter(struct i40e_pf *pf)
 
 	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 					       &filter_replace_buf);
+	if (!status)
+		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
 	return status;
 }
 
@@ -8008,6 +8021,7 @@ i40e_dev_set_gre_key_len(struct i40e_hw *hw, uint8_t len)
 						   reg, NULL);
 		if (ret != 0)
 			return ret;
+		i40e_global_cfg_warning(I40E_WARNING_GRE_KEY_LEN);
 	} else {
 		ret = 0;
 	}
@@ -8267,6 +8281,7 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 							  I40E_GLQF_HSYM(j),
 							  reg);
 			}
+			i40e_global_cfg_warning(I40E_WARNING_HSYM);
 		}
 	}
 
@@ -8292,6 +8307,7 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 		goto out;
 
 	i40e_write_rx_ctl(hw, I40E_GLQF_CTL, reg);
+	i40e_global_cfg_warning(I40E_WARNING_QF_CTL);
 
 out:
 	I40E_WRITE_FLUSH(hw);
@@ -8936,6 +8952,10 @@ i40e_filter_input_set_init(struct i40e_pf *pf)
 		pf->hash_input_set[pctype] = input_set;
 		pf->fdir.input_set[pctype] = input_set;
 	}
+
+	i40e_global_cfg_warning(I40E_WARNING_HASH_INSET);
+	i40e_global_cfg_warning(I40E_WARNING_FD_MSK);
+	i40e_global_cfg_warning(I40E_WARNING_HASH_MSK);
 }
 
 int
@@ -8996,6 +9016,7 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 	i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(1, pctype),
 			     (uint32_t)((inset_reg >>
 			     I40E_32_BIT_WIDTH) & UINT32_MAX));
+	i40e_global_cfg_warning(I40E_WARNING_HASH_INSET);
 
 	for (i = 0; i < num; i++)
 		i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
@@ -9004,6 +9025,7 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 	for (i = num; i < I40E_INSET_MASK_NUM_REG; i++)
 		i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
 				     0);
+	i40e_global_cfg_warning(I40E_WARNING_HASH_MSK);
 	I40E_WRITE_FLUSH(hw);
 
 	pf->hash_input_set[pctype] = input_set;
@@ -9077,6 +9099,7 @@ i40e_fdir_filter_inset_select(struct i40e_pf *pf,
 	for (i = num; i < I40E_INSET_MASK_NUM_REG; i++)
 		i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
 				     0);
+	i40e_global_cfg_warning(I40E_WARNING_FD_MSK);
 	I40E_WRITE_FLUSH(hw);
 
 	pf->fdir.input_set[pctype] = input_set;
@@ -11644,6 +11667,8 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
 	ret = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 			&filter_replace_buf);
+	if (!ret)
+		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
 	return ret;
 }
 
