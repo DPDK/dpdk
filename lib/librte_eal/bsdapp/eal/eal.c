@@ -82,6 +82,13 @@ struct internal_config internal_config;
 /* used by rte_rdtsc() */
 int rte_cycles_vmware_tsc_map;
 
+/* Return user provided mbuf pool ops name */
+const char * __rte_experimental
+rte_eal_mbuf_user_pool_ops(void)
+{
+	return internal_config.user_mbuf_pool_ops_name;
+}
+
 /* Return mbuf pool ops name */
 const char *
 rte_eal_mbuf_default_mempool_ops(void)

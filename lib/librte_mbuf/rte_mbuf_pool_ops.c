@@ -74,7 +74,7 @@ rte_mbuf_user_mempool_ops(void)
 
 	mz = rte_memzone_lookup("mbuf_user_pool_ops");
 	if (mz == NULL)
-		return rte_eal_mbuf_default_mempool_ops();
+		return rte_eal_mbuf_user_pool_ops();
 	return mz->addr;
 }
 

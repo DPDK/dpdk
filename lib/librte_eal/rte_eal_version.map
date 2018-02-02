@@ -220,6 +220,7 @@ EXPERIMENTAL {
 	rte_eal_devargs_remove;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
+	rte_eal_mbuf_user_pool_ops;
 	rte_mp_action_register;
 	rte_mp_action_unregister;
 	rte_mp_sendmsg;
