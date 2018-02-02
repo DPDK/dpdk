@@ -97,6 +97,11 @@ These options can be modified in the ``.config`` file.
   ``CONFIG_RTE_BUILD_SHARED_LIB`` disabled) and they won't show up as
   missing with ``ldd(1)``.
 
+  It works by moving these dependencies to a purpose-built rdma-core "glue"
+  plug-in, which must either be installed in ``CONFIG_RTE_EAL_PMD_PATH`` if
+  set, or in a standard location for the dynamic linker (e.g. ``/lib``) if
+  left to the default empty string (``""``).
+
   This option has no performance impact.
 
 - ``CONFIG_RTE_LIBRTE_MLX4_DEBUG`` (default **n**)
@@ -112,6 +117,18 @@ These options can be modified in the ``.config`` file.
   (MRs). This is a slow operation that must be cached.
 
   This value is always 1 for RX queues since they use a single MP.
+
+Environment variables
+~~~~~~~~~~~~~~~~~~~~~
+
+- ``MLX4_GLUE_PATH``
+
+  A list of directories in which to search for the rdma-core "glue" plug-in,
+  separated by colons or semi-colons.
+
+  Only matters when compiled with ``CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS``
+  enabled and most useful when ``CONFIG_RTE_EAL_PMD_PATH`` is also set,
+  since ``LD_LIBRARY_PATH`` has no effect in this case.
 
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~

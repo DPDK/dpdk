@@ -1056,11 +1056,52 @@ static struct rte_pci_driver mlx5_driver = {
 static int
 mlx5_glue_init(void)
 {
+	const char *path[] = {
+		/*
+		 * A basic security check is necessary before trusting
+		 * MLX5_GLUE_PATH, which may override RTE_EAL_PMD_PATH.
+		 */
+		(geteuid() == getuid() && getegid() == getgid() ?
+		 getenv("MLX5_GLUE_PATH") : NULL),
+		RTE_EAL_PMD_PATH,
+	};
+	unsigned int i = 0;
 	void *handle = NULL;
 	void **sym;
 	const char *dlmsg;
 
-	handle = dlopen(MLX5_GLUE, RTLD_LAZY);
+	while (!handle && i != RTE_DIM(path)) {
+		const char *end;
+		size_t len;
+		int ret;
+
+		if (!path[i]) {
+			++i;
+			continue;
+		}
+		end = strpbrk(path[i], ":;");
+		if (!end)
+			end = path[i] + strlen(path[i]);
+		len = end - path[i];
+		ret = 0;
+		do {
+			char name[ret + 1];
+
+			ret = snprintf(name, sizeof(name), "%.*s%s" MLX5_GLUE,
+				       (int)len, path[i],
+				       (!len || *(end - 1) == '/') ? "" : "/");
+			if (ret == -1)
+				break;
+			if (sizeof(name) != (size_t)ret + 1)
+				continue;
+			DEBUG("looking for rdma-core glue as \"%s\"", name);
+			handle = dlopen(name, RTLD_LAZY);
+			break;
+		} while (1);
+		path[i] = end + 1;
+		if (!*end)
+			++i;
+	}
 	if (!handle) {
 		rte_errno = EINVAL;
 		dlmsg = dlerror();
