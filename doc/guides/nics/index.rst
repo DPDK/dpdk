@@ -23,6 +23,7 @@ Network Interface Controller Drivers
     enic
     fm10k
     i40e
+    igb
     ixgbe
     intel_vf
     kni
