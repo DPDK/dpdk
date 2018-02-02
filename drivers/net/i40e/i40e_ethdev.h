@@ -950,6 +950,7 @@ struct i40e_pf {
 	bool gtp_replace_flag;   /* 1 - GTP-C/U filter replace is done */
 	bool qinq_replace_flag;  /* QINQ filter replace is done */
 	struct i40e_tm_conf tm_conf;
+	bool support_multi_driver; /* 1 - support multiple driver */
 
 	/* Dynamic Device Personalization */
 	bool gtp_support; /* 1 - support GTP-C and GTP-U */

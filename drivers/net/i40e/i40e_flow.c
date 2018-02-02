@@ -2851,6 +2851,14 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				return -rte_errno;
 			}
 
+			if (pf->support_multi_driver) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Unsupported flexible payload.");
+				return -rte_errno;
+			}
+
 			ret = i40e_flow_check_raw_item(item, raw_spec, error);
 			if (ret < 0)
 				return ret;

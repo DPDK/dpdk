@@ -649,22 +649,31 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, " invalid configuration arguments.");
 		return -EINVAL;
 	}
-	/* configure flex payload */
-	for (i = 0; i < conf->nb_payloads; i++)
-		i40e_set_flx_pld_cfg(pf, &conf->flex_set[i]);
-	/* configure flex mask*/
-	for (i = 0; i < conf->nb_flexmasks; i++) {
-		if (hw->mac.type == I40E_MAC_X722) {
-			/* get translated pctype value in fd pctype register */
-			pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(
-				hw, I40E_GLQF_FD_PCTYPES(
-				(int)i40e_flowtype_to_pctype(pf->adapter,
-				conf->flex_mask[i].flow_type)));
-		} else
-			pctype = i40e_flowtype_to_pctype(pf->adapter,
-						conf->flex_mask[i].flow_type);
 
-		i40e_set_flex_mask_on_pctype(pf, pctype, &conf->flex_mask[i]);
+	if (!pf->support_multi_driver) {
+		/* configure flex payload */
+		for (i = 0; i < conf->nb_payloads; i++)
+			i40e_set_flx_pld_cfg(pf, &conf->flex_set[i]);
+		/* configure flex mask*/
+		for (i = 0; i < conf->nb_flexmasks; i++) {
+			if (hw->mac.type == I40E_MAC_X722) {
+				/* get pctype value in fd pctype register */
+				pctype = (enum i40e_filter_pctype)
+					  i40e_read_rx_ctl(hw,
+						I40E_GLQF_FD_PCTYPES(
+						(int)i40e_flowtype_to_pctype(
+						pf->adapter,
+						conf->flex_mask[i].flow_type)));
+			} else {
+				pctype = i40e_flowtype_to_pctype(pf->adapter,
+						  conf->flex_mask[i].flow_type);
+			}
+
+			i40e_set_flex_mask_on_pctype(pf, pctype,
+						     &conf->flex_mask[i]);
+		}
+	} else {
+		PMD_DRV_LOG(ERR, "Not support flexible payload.");
 	}
 
 	return ret;
