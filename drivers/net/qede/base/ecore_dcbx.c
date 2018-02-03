@@ -216,10 +216,9 @@ ecore_dcbx_get_app_protocol_type(struct ecore_hwfn *p_hwfn,
 		*type = DCBX_PROTOCOL_ETH;
 	} else {
 		*type = DCBX_MAX_PROTOCOL_TYPE;
-		DP_ERR(p_hwfn,
-		       "No action required, App TLV id = 0x%x"
-		       " app_prio_bitmap = 0x%x\n",
-		       id, app_prio_bitmap);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
+			    "No action required, App TLV entry = 0x%x\n",
+			   app_prio_bitmap);
 		return false;
 	}
 
