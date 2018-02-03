@@ -417,6 +417,8 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 
 	for (sb_idx = 0; sb_idx < QEDE_RXTX_MAX(qdev); sb_idx++) {
 		fp = &qdev->fp_array[sb_idx];
+		if (!fp)
+			continue;
 		fp->sb_info = rte_calloc("sb", 1, sizeof(struct ecore_sb_info),
 				RTE_CACHE_LINE_SIZE);
 		if (!fp->sb_info) {
@@ -448,6 +450,8 @@ void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev)
 
 	for (sb_idx = 0; sb_idx < QEDE_RXTX_MAX(qdev); sb_idx++) {
 		fp = &qdev->fp_array[sb_idx];
+		if (!fp)
+			continue;
 		DP_INFO(edev, "Free sb_info index 0x%x\n",
 				fp->sb_info->igu_sb_id);
 		if (fp->sb_info) {

@@ -187,7 +187,6 @@ struct qede_dev {
 	struct ecore_sb_info *sb_array;
 	struct qede_fastpath *fp_array;
 	uint16_t mtu;
-	uint16_t new_mtu;
 	bool enable_tx_switching;
 	bool rss_enable;
 	struct rte_eth_rss_conf rss_conf;
@@ -211,6 +210,8 @@ struct qede_dev {
 	struct qede_fdir_info fdir_info;
 	bool vlan_strip_flg;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
+	bool vport_started;
+	int vlan_offload_mask;
 	void *ethdev;
 };
 
