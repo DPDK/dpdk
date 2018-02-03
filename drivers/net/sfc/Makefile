@@ -60,7 +60,7 @@ BASE_DRIVER_OBJS=$(sort $(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.
 $(foreach obj, $(BASE_DRIVER_OBJS), \
   $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 
-EXPORT_MAP := rte_pmd_sfc_efx_version.map
+EXPORT_MAP := rte_pmd_sfc_version.map
 
 LIBABIVER := 1
 
