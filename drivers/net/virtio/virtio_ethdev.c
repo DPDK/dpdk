@@ -1975,6 +1975,9 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 	struct rte_mbuf *buf;
 	int queue_type;
 
+	if (hw->vqs == NULL)
+		return;
+
 	for (i = 0; i < nr_vq; i++) {
 		vq = hw->vqs[i];
 		if (!vq)
