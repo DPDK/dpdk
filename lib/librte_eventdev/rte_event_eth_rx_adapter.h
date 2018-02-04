@@ -321,6 +321,12 @@ int rte_event_eth_rx_adapter_free(uint8_t id);
  * @return
  *  - 0: Success, Receive queue added correctly.
  *  - <0: Error code on failure.
+ *  - (-EIO) device reconfiguration and restart error. The adapter reconfigures
+ *  the event device with an additional port if it is required to use a service
+ *  function for packet transfer from the ethernet device to the event device.
+ *  If the device had been started before this call, this error code indicates
+ *  an error in restart following an error in reconfiguration, i.e., a
+ *  combination of the two error codes.
  */
 int rte_event_eth_rx_adapter_queue_add(uint8_t id,
 			uint8_t eth_dev_id,

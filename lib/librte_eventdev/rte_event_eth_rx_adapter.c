@@ -602,8 +602,10 @@ default_conf_cb(uint8_t id, uint8_t dev_id,
 	if (ret) {
 		RTE_EDEV_LOG_ERR("failed to configure event dev %u\n",
 						dev_id);
-		if (started)
-			rte_event_dev_start(dev_id);
+		if (started) {
+			if (rte_event_dev_start(dev_id))
+				return -EIO;
+		}
 		return ret;
 	}
 
@@ -617,7 +619,7 @@ default_conf_cb(uint8_t id, uint8_t dev_id,
 	conf->event_port_id = port_id;
 	conf->max_nb_rx = 128;
 	if (started)
-		rte_event_dev_start(dev_id);
+		ret = rte_event_dev_start(dev_id);
 	rx_adapter->default_cb_arg = 1;
 	return ret;
 }
