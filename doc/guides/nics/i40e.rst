@@ -109,6 +109,17 @@ Runtime Config Options
   1, 2, 4, 8 or 16. If no such parameter is configured, the number of queues
   per VF is 4 by default.
 
+- ``Support multiple driver`` (default ``disable``)
+
+  There was a multiple driver support issue during use of 700 series Ethernet
+  Adapter with both Linux kernel and DPDK PMD. To fix this issue, ``devargs``
+  parameter ``support-multi-driver`` is introduced, for example::
+
+    -w 84:00.0,support-multi-driver=1
+
+  With the above configuration, DPDK PMD will not change global registers, and
+  will switch PF interrupt from IntN to Int0 to avoid interrupt conflict between
+  DPDK and Linux Kernel.
 
 Driver compilation and testing
 ------------------------------
