@@ -495,10 +495,16 @@ rte_dpaa_bus_probe(void)
 			ret = drv->probe(drv, dev);
 			if (ret)
 				DPAA_BUS_ERR("Unable to probe.\n");
+
 			break;
 		}
 	}
-	rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
+
+	/* Register DPAA mempool ops only if any DPAA device has
+	 * been detected.
+	 */
+	if (!TAILQ_EMPTY(&rte_dpaa_bus.device_list))
+		rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
 
 	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
 	if (svr_file) {
