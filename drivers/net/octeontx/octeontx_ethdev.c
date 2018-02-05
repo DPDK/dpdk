@@ -16,6 +16,7 @@
 #include <rte_dev.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
+#include <rte_mbuf_pool_ops.h>
 #include <rte_prefetch.h>
 #include <rte_bus_vdev.h>
 
@@ -1326,6 +1327,7 @@ octeontx_probe(struct rte_vdev_device *dev)
 		res = -ENOTSUP;
 		goto parse_error;
 	}
+	rte_mbuf_set_platform_mempool_ops("octeontx_fpavf");
 	probe_once = 1;
 
 	return 0;
