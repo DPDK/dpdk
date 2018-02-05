@@ -663,6 +663,12 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	uint32_t i;
 	int fd;
 
+	if (memory.nregions > VHOST_MEMORY_MAX_NREGIONS) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"too many memory regions (%u)\n", memory.nregions);
+		return -1;
+	}
+
 	if (dev->mem && !vhost_memory_changed(&memory, dev->mem)) {
 		RTE_LOG(INFO, VHOST_CONFIG,
 			"(%d) memory regions not changed\n", dev->vid);
