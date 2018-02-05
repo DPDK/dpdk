@@ -199,6 +199,14 @@ To run the application in linuxapp environment with 2 lcores, 2 ports and 2 cryp
 Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
 
+.. Note::
+
+    * The ``l2fwd-crypto`` sample application requires IPv4 packets for crypto operation.
+
+    * If multiple Ethernet ports is passed, then equal number of crypto devices are to be passed.
+
+    * All crypto devices shall use the same session.
+
 Explanation
 -----------
 
