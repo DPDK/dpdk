@@ -1916,19 +1916,6 @@ static void
 simple_fwd_config_setup(void)
 {
 	portid_t i;
-	portid_t j;
-	portid_t inc = 2;
-
-	if (port_topology == PORT_TOPOLOGY_CHAINED ||
-	    port_topology == PORT_TOPOLOGY_LOOP) {
-		inc = 1;
-	} else if (nb_fwd_ports % 2) {
-		printf("\nWarning! Cannot handle an odd number of ports "
-		       "with the current port topology. Configuration "
-		       "must be changed to have an even number of ports, "
-		       "or relaunch application with "
-		       "--port-topology=chained\n\n");
-	}
 
 	cur_fwd_config.nb_fwd_ports = (portid_t) nb_fwd_ports;
 	cur_fwd_config.nb_fwd_streams =
@@ -1947,26 +1934,14 @@ simple_fwd_config_setup(void)
 			(lcoreid_t) cur_fwd_config.nb_fwd_ports;
 	setup_fwd_config_of_each_lcore(&cur_fwd_config);
 
-	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i = (portid_t) (i + inc)) {
-		if (port_topology != PORT_TOPOLOGY_LOOP)
-			j = (portid_t) ((i + 1) % cur_fwd_config.nb_fwd_ports);
-		else
-			j = i;
+	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
 		fwd_streams[i]->rx_port   = fwd_ports_ids[i];
 		fwd_streams[i]->rx_queue  = 0;
-		fwd_streams[i]->tx_port   = fwd_ports_ids[j];
+		fwd_streams[i]->tx_port   =
+				fwd_ports_ids[fwd_topology_tx_port_get(i)];
 		fwd_streams[i]->tx_queue  = 0;
 		fwd_streams[i]->peer_addr = fwd_streams[i]->tx_port;
 		fwd_streams[i]->retry_enabled = retry_enabled;
-
-		if (port_topology == PORT_TOPOLOGY_PAIRED) {
-			fwd_streams[j]->rx_port   = fwd_ports_ids[j];
-			fwd_streams[j]->rx_queue  = 0;
-			fwd_streams[j]->tx_port   = fwd_ports_ids[i];
-			fwd_streams[j]->tx_queue  = 0;
-			fwd_streams[j]->peer_addr = fwd_streams[j]->tx_port;
-			fwd_streams[j]->retry_enabled = retry_enabled;
-		}
 	}
 }
 
