@@ -238,6 +238,17 @@ vhost_user_set_vring_num(struct virtio_net *dev,
 
 	vq->size = msg->payload.state.num;
 
+	/* VIRTIO 1.0, 2.4 Virtqueues says:
+	 *
+	 *   Queue Size value is always a power of 2. The maximum Queue Size
+	 *   value is 32768.
+	 */
+	if ((vq->size & (vq->size - 1)) || vq->size > 32768) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"invalid virtqueue size %u\n", vq->size);
+		return -1;
+	}
+
 	if (dev->dequeue_zero_copy) {
 		vq->nr_zmbuf = 0;
 		vq->last_zmbuf_idx = 0;
