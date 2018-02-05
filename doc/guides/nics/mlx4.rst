@@ -219,7 +219,7 @@ Current RDMA core package and Linux kernel (recommended)
 Mellanox OFED as a fallback
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- `Mellanox OFED`_ version: **4.2**.
+- `Mellanox OFED`_ version: **4.2, 4.3**.
 - firmware version: **2.42.5000** and above.
 
 .. _`Mellanox OFED`: http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers

@@ -131,7 +131,7 @@ Limitations
 - A multi segment packet must have less than 6 segments in case the Tx burst function
   is set to multi-packet send or Enhanced multi-packet send. Otherwise it must have
   less than 50 segments.
-- Count action for RTE flow is only supported in Mellanox OFED 4.2.
+- Count action for RTE flow is **only supported in Mellanox OFED**.
 - Flows with a VXLAN Network Identifier equal (or ends to be equal)
   to 0 are not supported.
 - VXLAN TSO and checksum offloads are not supported on VM.
@@ -392,7 +392,7 @@ RMDA Core with Linux Kernel
 Mellanox OFED
 ^^^^^^^^^^^^^
 
-- Mellanox OFED version: **4.2**.
+- Mellanox OFED version: **4.2, 4.3**.
 - firmware version:
 
   - ConnectX-4: **12.21.1000** and above.
