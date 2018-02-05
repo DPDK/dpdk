@@ -115,6 +115,19 @@ Deprecation Notices
   The new API add rss_level field to ``rte_eth_rss_conf`` to enable a choice
   of RSS hash calculation on outer or inner header of tunneled packet.
 
+* ethdev:  Currently, if the  rte_eth_rx_burst() function returns a value less
+  than *nb_pkts*, the application will assume that no more packets are present.
+  Some of the hw queue based hardware can only support smaller burst for RX
+  and TX and thus break the expectation of the rx_burst API. Similar is the
+  case for TX burst as well as ring sizes. ``rte_eth_dev_info`` will be added
+  with following new parameters so as to support semantics for drivers to
+  define a preferred size for Rx/Tx burst and rings.
+
+  - Member ``struct preferred_size`` would be added to enclose all preferred
+    size to be fetched from driver/implementation.
+  - Members ``uint16_t rx_burst``,  ``uint16_t tx_burst``, ``uint16_t rx_ring``,
+    and ``uint16_t tx_ring`` would be added to ``struct preferred_size``.
+
 * i40e: The default flexible payload configuration which extracts the first 16
   bytes of the payload for RSS will be deprecated starting from 18.02. If
   required the previous behavior can be configured using existing flow
