@@ -25,6 +25,7 @@
 #include <rte_mempool.h>
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
+#include <rte_mbuf_pool_ops.h>
 
 #include "test.h"
 
@@ -308,7 +309,7 @@ test_mempool_perf(void)
 	if (mp_cache == NULL)
 		goto err;
 
-	default_pool_ops = rte_eal_mbuf_default_mempool_ops();
+	default_pool_ops = rte_mbuf_best_mempool_ops();
 	/* Create a mempool based on Default handler */
 	default_pool = rte_mempool_create_empty("default_pool",
 						MEMPOOL_SIZE,

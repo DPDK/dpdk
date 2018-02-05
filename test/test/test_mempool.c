@@ -25,6 +25,7 @@
 #include <rte_mempool.h>
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
+#include <rte_mbuf_pool_ops.h>
 
 #include "test.h"
 
@@ -485,7 +486,7 @@ test_mempool(void)
 	struct rte_mempool *mp_nocache = NULL;
 	struct rte_mempool *mp_stack = NULL;
 	struct rte_mempool *default_pool = NULL;
-	const char *default_pool_ops = rte_eal_mbuf_default_mempool_ops();
+	const char *default_pool_ops = rte_mbuf_best_mempool_ops();
 
 	rte_atomic32_init(&synchro);
 
