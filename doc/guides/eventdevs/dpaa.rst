@@ -111,16 +111,16 @@ The dpaa eventdev is exposed as a vdev device which consists of a set of channel
 and queues. On EAL initialization, dpaa components will be
 probed and then vdev device can be created from the application code by
 
-* Invoking ``rte_vdev_init("event_dpaa")`` from the application
+* Invoking ``rte_vdev_init("event_dpaa1")`` from the application
 
-* Using ``--vdev="event_dpaa"`` in the EAL options, which will call
+* Using ``--vdev="event_dpaa1"`` in the EAL options, which will call
   rte_vdev_init() internally
 
 Example:
 
 .. code-block:: console
 
-    ./your_eventdev_application --vdev="event_dpaa"
+    ./your_eventdev_application --vdev="event_dpaa1"
 
 Limitations
 -----------

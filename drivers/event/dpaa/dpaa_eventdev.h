@@ -10,7 +10,7 @@
 #include <rte_atomic.h>
 #include <rte_per_lcore.h>
 
-#define EVENTDEV_NAME_DPAA_PMD		event_dpaa
+#define EVENTDEV_NAME_DPAA_PMD		event_dpaa1
 
 #define EVENTDEV_DRV_LOG(fmt, args...)	\
 		DPAA_EVENTDEV_INFO(fmt, ## args)
