@@ -730,7 +730,17 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		reg->fd              = fd;
 
 		mmap_offset = memory.regions[i].mmap_offset;
-		mmap_size   = reg->size + mmap_offset;
+
+		/* Check for memory_size + mmap_offset overflow */
+		if (mmap_offset >= -reg->size) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"mmap_offset (%#"PRIx64") and memory_size "
+				"(%#"PRIx64") overflow\n",
+				mmap_offset, reg->size);
+			goto err_mmap;
+		}
+
+		mmap_size = reg->size + mmap_offset;
 
 		/* mmap() without flag of MAP_ANONYMOUS, should be called
 		 * with length argument aligned with hugepagesz at older
