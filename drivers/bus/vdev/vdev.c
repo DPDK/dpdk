@@ -364,6 +364,7 @@ static int
 vdev_probe(void)
 {
 	struct rte_vdev_device *dev;
+	int ret = 0;
 
 	/* call the init function for each virtual device */
 	TAILQ_FOREACH(dev, &vdev_device_list, next) {
@@ -374,11 +375,11 @@ vdev_probe(void)
 		if (vdev_probe_all_drivers(dev)) {
 			VDEV_LOG(ERR, "failed to initialize %s device\n",
 				rte_vdev_device_name(dev));
-			return -1;
+			ret = -1;
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 static struct rte_device *
