@@ -83,6 +83,33 @@ New Features
   profiles which can be programmed by dynamic device personalization (DDP)
   process.
 
+* **Updated mlx5 driver.**
+
+  Updated the mlx5 driver including the following changes:
+
+  * Enabled compilation as a plugin, thus removed the mandatory dependency with rdma-core.
+    With the special compilation, the rdma-core libraries will be loaded only in case
+    Mellanox device is being used. For binaries creation the PMD can be enabled, still not
+    requiring from every end user to install rdma-core.
+  * Improved multi-segment packet performance.
+  * Changed driver name to use the PCI address to be compatible with OVS-DPDK APIs.
+  * Extended statistics for physical port packet/byte counters.
+  * Supported IPv4 time-to-live filter.
+  * Converted to the new offloads API.
+  * Supported device removal check operation.
+
+* **Updated mlx4 driver.**
+
+  Updated the mlx4 driver including the following changes:
+
+  * Enabled compilation as a plugin, thus removed the mandatory dependency with rdma-core.
+    With the special compilation, the rdma-core libraries will be loaded only in case
+    Mellanox device is being used. For binaries creation the PMD can be enabled, still not
+    requiring from every end user to install rdma-core.
+  * Improved data path performance.
+  * Converted to the new offloads API.
+  * Supported device removal check operation.
+
 * **Added NVGRE and UDP tunnels support in Solarflare network PMD.**
 
   Added support for NVGRE, VXLAN and GENEVE tunnels.
