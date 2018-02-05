@@ -2,6 +2,23 @@
  * Copyright(c) 2010-2016 Intel Corporation
  */
 
+/* Security model
+ * --------------
+ * The vhost-user protocol connection is an external interface, so it must be
+ * robust against invalid inputs.
+ *
+ * This is important because the vhost-user master is only one step removed
+ * from the guest.  Malicious guests that have escaped will then launch further
+ * attacks from the vhost-user master.
+ *
+ * Even in deployments where guests are trusted, a bug in the vhost-user master
+ * can still cause invalid messages to be sent.  Such messages must not
+ * compromise the stability of the DPDK application by causing crashes, memory
+ * corruption, or other problematic behavior.
+ *
+ * Do not assume received VhostUserMsg fields contain sensible values!
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
