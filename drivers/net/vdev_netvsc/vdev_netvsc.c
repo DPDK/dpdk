@@ -388,7 +388,7 @@ vdev_netvsc_alarm(__rte_unused void *arg)
 
 	LIST_FOREACH(ctx, &vdev_netvsc_ctx_list, entry) {
 		ret = vdev_netvsc_foreach_iface(vdev_netvsc_device_probe, ctx);
-		if (ret)
+		if (ret < 0)
 			break;
 	}
 	if (!vdev_netvsc_ctx_count)
