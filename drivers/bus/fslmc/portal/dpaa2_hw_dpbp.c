@@ -77,8 +77,8 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 	RTE_LOG(DEBUG, PMD, "DPAA2: Added [dpbp.%d]\n", dpbp_id);
 
 	if (!register_once) {
-		if (rte_mbuf_set_platform_mempool_ops(DPAA2_MEMPOOL_OPS_NAME))
-			register_once = 1;
+		rte_mbuf_set_platform_mempool_ops(DPAA2_MEMPOOL_OPS_NAME);
+		register_once = 1;
 	}
 
 	return 0;
