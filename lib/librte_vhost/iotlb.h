@@ -71,6 +71,9 @@ bool vhost_user_iotlb_pending_miss(struct vhost_virtqueue *vq, uint64_t iova,
 						uint8_t perm);
 void vhost_user_iotlb_pending_insert(struct vhost_virtqueue *vq, uint64_t iova,
 						uint8_t perm);
+void vhost_user_iotlb_pending_remove(struct vhost_virtqueue *vq, uint64_t iova,
+						uint64_t size, uint8_t perm);
+
 int vhost_user_iotlb_init(struct virtio_net *dev, int vq_index);
 
 #endif /* _VHOST_IOTLB_H_ */

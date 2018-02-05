@@ -120,7 +120,7 @@ vhost_user_iotlb_pending_insert(struct vhost_virtqueue *vq,
 	rte_rwlock_write_unlock(&vq->iotlb_pending_lock);
 }
 
-static void
+void
 vhost_user_iotlb_pending_remove(struct vhost_virtqueue *vq,
 				uint64_t iova, uint64_t size, uint8_t perm)
 {

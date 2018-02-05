@@ -42,7 +42,9 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	if (tmp_size == size)
 		return vva;
 
-	if (!vhost_user_iotlb_pending_miss(vq, iova + tmp_size, perm)) {
+	iova += tmp_size;
+
+	if (!vhost_user_iotlb_pending_miss(vq, iova, perm)) {
 		/*
 		 * iotlb_lock is read-locked for a full burst,
 		 * but it only protects the iotlb cache.
@@ -52,8 +54,13 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		 */
 		vhost_user_iotlb_rd_unlock(vq);
 
-		vhost_user_iotlb_pending_insert(vq, iova + tmp_size, perm);
-		vhost_user_iotlb_miss(dev, iova + tmp_size, perm);
+		vhost_user_iotlb_pending_insert(vq, iova, perm);
+		if (vhost_user_iotlb_miss(dev, iova, perm)) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"IOTLB miss req failed for IOVA 0x%" PRIx64 "\n",
+				iova);
+			vhost_user_iotlb_pending_remove(vq, iova, 1, perm);
+		}
 
 		vhost_user_iotlb_rd_lock(vq);
 	}
