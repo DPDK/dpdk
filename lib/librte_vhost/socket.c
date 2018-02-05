@@ -97,6 +97,7 @@ read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 	size_t fdsize = fd_num * sizeof(int);
 	char control[CMSG_SPACE(fdsize)];
 	struct cmsghdr *cmsg;
+	int got_fds = 0;
 	int ret;
 
 	memset(&msgh, 0, sizeof(msgh));
@@ -123,10 +124,15 @@ read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 		cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
 		if ((cmsg->cmsg_level == SOL_SOCKET) &&
 			(cmsg->cmsg_type == SCM_RIGHTS)) {
-			memcpy(fds, CMSG_DATA(cmsg), fdsize);
+			got_fds = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
+			memcpy(fds, CMSG_DATA(cmsg), got_fds * sizeof(int));
 			break;
 		}
 	}
+
+	/* Clear out unused file descriptors */
+	while (got_fds < fd_num)
+		fds[got_fds++] = -1;
 
 	return ret;
 }
