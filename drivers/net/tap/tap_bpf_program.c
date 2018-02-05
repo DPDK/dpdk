@@ -28,10 +28,10 @@
 		((b) & 0xff))
 
 /*
- * The queue number is offset by 1, to distinguish packets that have
- * gone through this rule (skb->cb[1] != 0) from others.
+ * The queue number is offset by a unique QUEUE_OFFSET, to distinguish
+ * packets that have gone through this rule (skb->cb[1] != 0) from others.
  */
-#define QUEUE_OFFSET		1
+#define QUEUE_OFFSET		0x7cafe800
 #define PIN_GLOBAL_NS		2
 
 #define KEY_IDX			0
@@ -63,6 +63,9 @@ match_q(struct __sk_buff *skb)
 
 	if (queue != match_queue)
 		return TC_ACT_OK;
+
+	/* queue match */
+	skb->cb[1] = 0;
 	return TC_ACT_UNSPEC;
 }
 
