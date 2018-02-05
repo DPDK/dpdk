@@ -1882,6 +1882,36 @@ setup_fwd_config_of_each_lcore(struct fwd_config *cfg)
 	}
 }
 
+static portid_t
+fwd_topology_tx_port_get(portid_t rxp)
+{
+	static int warning_once = 1;
+
+	RTE_ASSERT(rxp < cur_fwd_config.nb_fwd_ports);
+
+	switch (port_topology) {
+	default:
+	case PORT_TOPOLOGY_PAIRED:
+		if ((rxp & 0x1) == 0) {
+			if (rxp + 1 < cur_fwd_config.nb_fwd_ports)
+				return rxp + 1;
+			if (warning_once) {
+				printf("\nWarning! port-topology=paired"
+				       " and odd forward ports number,"
+				       " the last port will pair with"
+				       " itself.\n\n");
+				warning_once = 0;
+			}
+			return rxp;
+		}
+		return rxp - 1;
+	case PORT_TOPOLOGY_CHAINED:
+		return (rxp + 1) % cur_fwd_config.nb_fwd_ports;
+	case PORT_TOPOLOGY_LOOP:
+		return rxp;
+	}
+}
+
 static void
 simple_fwd_config_setup(void)
 {
@@ -1944,11 +1974,6 @@ simple_fwd_config_setup(void)
  * For the RSS forwarding test all streams distributed over lcores. Each stream
  * being composed of a RX queue to poll on a RX port for input messages,
  * associated with a TX queue of a TX port where to send forwarded packets.
- * All packets received on the RX queue of index "RxQj" of the RX port "RxPi"
- * are sent on the TX queue "TxQl" of the TX port "TxPk" according to the two
- * following rules:
- *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd
- *    - TxQl = RxQj
  */
 static void
 rss_fwd_config_setup(void)
@@ -1980,19 +2005,7 @@ rss_fwd_config_setup(void)
 		struct fwd_stream *fs;
 
 		fs = fwd_streams[sm_id];
-
-		if ((rxp & 0x1) == 0)
-			txp = (portid_t) (rxp + 1);
-		else
-			txp = (portid_t) (rxp - 1);
-		/*
-		 * if we are in loopback, simply send stuff out through the
-		 * ingress port
-		 */
-		if (port_topology == PORT_TOPOLOGY_LOOP ||
-		    txp >= cur_fwd_config.nb_fwd_ports)
-			txp = rxp;
-
+		txp = fwd_topology_tx_port_get(rxp);
 		fs->rx_port = fwd_ports_ids[rxp];
 		fs->rx_queue = rxq;
 		fs->tx_port = fwd_ports_ids[txp];
