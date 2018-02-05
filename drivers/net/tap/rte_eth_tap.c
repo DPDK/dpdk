@@ -1349,13 +1349,13 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	data = rte_zmalloc_socket(tap_name, sizeof(*data), 0, numa_node);
 	if (!data) {
 		RTE_LOG(ERR, PMD, "TAP Failed to allocate data\n");
-		goto error_exit;
+		goto error_exit_nodev;
 	}
 
 	dev = rte_eth_vdev_allocate(vdev, sizeof(*pmd));
 	if (!dev) {
 		RTE_LOG(ERR, PMD, "TAP Unable to allocate device struct\n");
-		goto error_exit;
+		goto error_exit_nodev;
 	}
 
 	pmd = dev->data->dev_private;
@@ -1526,6 +1526,11 @@ error_remote:
 	tap_flow_implicit_flush(pmd, NULL);
 
 error_exit:
+	if (pmd->ioctl_sock > 0)
+		close(pmd->ioctl_sock);
+	rte_eth_dev_release_port(dev);
+
+error_exit_nodev:
 	RTE_LOG(ERR, PMD, "TAP Unable to initialize %s\n",
 		rte_vdev_device_name(vdev));
 
