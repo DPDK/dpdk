@@ -81,8 +81,8 @@ typedef struct VhostUserLog {
 
 typedef struct VhostUserMsg {
 	union {
-		VhostUserRequest master;
-		VhostUserSlaveRequest slave;
+		uint32_t master; /* a VhostUserRequest value */
+		uint32_t slave;  /* a VhostUserSlaveRequest value*/
 	} request;
 
 #define VHOST_USER_VERSION_MASK     0x3
