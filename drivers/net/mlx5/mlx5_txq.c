@@ -296,6 +296,8 @@ priv_tx_uar_remap(struct priv *priv, int fd)
 	 * Ref to libmlx5 function: mlx5_init_context()
 	 */
 	for (i = 0; i != priv->txqs_n; ++i) {
+		if (!(*priv->txqs)[i])
+			continue;
 		txq = (*priv->txqs)[i];
 		txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
 		/* UAR addr form verbs used to find dup and offset in page. */
