@@ -158,6 +158,9 @@ test_bitmap(void)
 	if (test_bitmap_scan_operations(bmp) < 0)
 		return TEST_FAILED;
 
+	rte_bitmap_free(bmp);
+	rte_free(mem);
+
 	return TEST_SUCCESS;
 }
 
