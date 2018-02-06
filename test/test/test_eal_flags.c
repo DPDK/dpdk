@@ -33,7 +33,7 @@
 #define memtest "memtest"
 #define memtest1 "memtest1"
 #define memtest2 "memtest2"
-#define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
+#define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 20)
 #define launch_proc(ARGV) process_dup(ARGV, \
 		sizeof(ARGV)/(sizeof(ARGV[0])), __func__)
 
@@ -1138,10 +1138,11 @@ test_memory_flags(void)
 #ifdef RTE_EXEC_ENV_BSDAPP
 	int i, num_sockets = 1;
 #else
-	int i, num_sockets = get_number_of_sockets();
+	int i, num_sockets = RTE_MIN(get_number_of_sockets(),
+			RTE_MAX_NUMA_NODES);
 #endif
 
-	if (num_sockets <= 0 || num_sockets > RTE_MAX_NUMA_NODES) {
+	if (num_sockets <= 0) {
 		printf("Error - cannot get number of sockets!\n");
 		return -1;
 	}
