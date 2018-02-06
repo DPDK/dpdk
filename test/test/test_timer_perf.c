@@ -127,6 +127,7 @@ test_timer_perf(void)
 	printf("Time per rte_timer_manage with zero callbacks: %"PRIu64" cycles\n",
 			(end_tsc - start_tsc + iterations/2) / iterations);
 
+	rte_free(tms);
 	return 0;
 }
 
