@@ -28,6 +28,17 @@
 #define DEV_NAME "BBDEV"
 
 
+/* BBDev library logging ID */
+static int bbdev_logtype;
+
+/* Helper macro for logging */
+#define rte_bbdev_log(level, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, bbdev_logtype, fmt "\n", ##__VA_ARGS__)
+
+#define rte_bbdev_log_debug(fmt, ...) \
+	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \
+		##__VA_ARGS__)
+
 /* Helper macro to check dev_id is valid */
 #define VALID_DEV_OR_RET_ERR(dev, dev_id) do { \
 	if (dev == NULL) { \
@@ -1104,9 +1115,6 @@ rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type)
 	rte_bbdev_log(ERR, "Invalid operation type");
 	return NULL;
 }
-
-
-int bbdev_logtype;
 
 RTE_INIT(rte_bbdev_init_log);
 static void

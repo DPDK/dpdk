@@ -463,12 +463,7 @@ rte_bbdev_enqueue_enc_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	uint16_t n = dev->enqueue_enc_ops(q_data, ops, num_ops);
-
-	rte_bbdev_log_verbose("%u encode ops enqueued to dev%u,q%u.\n",
-			num_ops, dev_id, queue_id);
-
-	return n;
+	return dev->enqueue_enc_ops(q_data, ops, num_ops);
 }
 
 /**
@@ -498,12 +493,7 @@ rte_bbdev_enqueue_dec_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	uint16_t n = dev->enqueue_dec_ops(q_data, ops, num_ops);
-
-	rte_bbdev_log_verbose("%u decode ops enqueued to dev%u,q%u.\n",
-			num_ops, dev_id, queue_id);
-
-	return n;
+	return dev->enqueue_dec_ops(q_data, ops, num_ops);
 }
 
 /**
@@ -533,12 +523,7 @@ rte_bbdev_dequeue_enc_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	uint16_t n = dev->dequeue_enc_ops(q_data, ops, num_ops);
-
-	rte_bbdev_log_verbose("%u encode ops dequeued to dev%u,q%u\n",
-			n, dev_id, queue_id);
-
-	return n;
+	return dev->dequeue_enc_ops(q_data, ops, num_ops);
 }
 
 /**
@@ -569,12 +554,7 @@ rte_bbdev_dequeue_dec_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	uint16_t n = dev->dequeue_dec_ops(q_data, ops, num_ops);
-
-	rte_bbdev_log_verbose("%u decode ops dequeued to dev%u,q%u\n",
-			n, dev_id, queue_id);
-
-	return n;
+	return dev->dequeue_dec_ops(q_data, ops, num_ops);
 }
 
 /** Definitions of device event types */

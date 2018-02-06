@@ -20,6 +20,18 @@
 
 #define DRIVER_NAME turbo_sw
 
+/* Turbo SW PMD logging ID */
+static int bbdev_turbo_sw_logtype;
+
+/* Helper macro for logging */
+#define rte_bbdev_log(level, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, bbdev_turbo_sw_logtype, fmt "\n", \
+		##__VA_ARGS__)
+
+#define rte_bbdev_log_debug(fmt, ...) \
+	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \
+		##__VA_ARGS__)
+
 /* Number of columns in sub-block interleaver (36.212, section 5.1.4.1.1) */
 #define C_SUBBLOCK (32)
 #define MAX_TB_SIZE (391656)
@@ -1195,12 +1207,11 @@ RTE_PMD_REGISTER_PARAM_STRING(DRIVER_NAME,
 	TURBO_SW_MAX_NB_QUEUES_ARG"=<int> "
 	TURBO_SW_SOCKET_ID_ARG"=<int>");
 
-int bbdev_logtype;
 RTE_INIT(null_bbdev_init_log);
 static void
 null_bbdev_init_log(void)
 {
-	bbdev_logtype = rte_log_register("pmd.bb.turbo_sw");
-	if (bbdev_logtype >= 0)
-		rte_log_set_level(bbdev_logtype, RTE_LOG_NOTICE);
+	bbdev_turbo_sw_logtype = rte_log_register("pmd.bb.turbo_sw");
+	if (bbdev_turbo_sw_logtype >= 0)
+		rte_log_set_level(bbdev_turbo_sw_logtype, RTE_LOG_NOTICE);
 }

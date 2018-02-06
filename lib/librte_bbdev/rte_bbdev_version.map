@@ -1,7 +1,6 @@
 EXPERIMENTAL {
 	global:
 
-	bbdev_logtype;
 	rte_bbdev_allocate;
 	rte_bbdev_callback_register;
 	rte_bbdev_callback_unregister;

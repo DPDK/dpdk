@@ -27,58 +27,6 @@ extern "C" {
 
 #define RTE_BBDEV_MAX_CODE_BLOCKS 64
 
-extern int bbdev_logtype;
-
-/**
- * Helper macro for logging
- *
- * @param level
- *   Log level: EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INFO, or DEBUG
- * @param fmt
- *   The format string, as in printf(3).
- * @param ...
- *   The variable arguments required by the format string.
- *
- * @return
- *   - 0 on success
- *   - Negative on error
- */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, bbdev_logtype, fmt "\n", ##__VA_ARGS__)
-
-/**
- * Helper macro for debug logging with extra source info
- *
- * @param fmt
- *   The format string, as in printf(3).
- * @param ...
- *   The variable arguments required by the format string.
- *
- * @return
- *   - 0 on success
- *   - Negative on error
- */
-#define rte_bbdev_log_debug(fmt, ...) \
-	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \
-		##__VA_ARGS__)
-
-/**
- * Helper macro for extra conditional logging from datapath
- *
- * @param fmt
- *   The format string, as in printf(3).
- * @param ...
- *   The variable arguments required by the format string.
- *
- * @return
- *   - 0 on success
- *   - Negative on error
- */
-#define rte_bbdev_log_verbose(fmt, ...) \
-	(void)((RTE_LOG_DEBUG <= RTE_LOG_DP_LEVEL) ? \
-	rte_log(RTE_LOG_DEBUG, \
-		bbdev_logtype, ": " fmt "\n", ##__VA_ARGS__) : 0)
-
 /** Flags for turbo decoder operation and capability structure */
 enum rte_bbdev_op_td_flag_bitmasks {
 	/**< If sub block de-interleaving is to be performed. */
@@ -547,9 +495,6 @@ rte_bbdev_enc_op_alloc_bulk(struct rte_mempool *mempool,
 	if (unlikely(ret < 0))
 		return ret;
 
-	rte_bbdev_log_verbose("%u encode ops allocated from %s\n",
-			num_ops, mempool->name);
-
 	return 0;
 }
 
@@ -585,9 +530,6 @@ rte_bbdev_dec_op_alloc_bulk(struct rte_mempool *mempool,
 	if (unlikely(ret < 0))
 		return ret;
 
-	rte_bbdev_log_verbose("%u encode ops allocated from %s\n",
-			num_ops, mempool->name);
-
 	return 0;
 }
 
@@ -604,11 +546,8 @@ rte_bbdev_dec_op_alloc_bulk(struct rte_mempool *mempool,
 static inline void
 rte_bbdev_dec_op_free_bulk(struct rte_bbdev_dec_op **ops, unsigned int num_ops)
 {
-	if (num_ops > 0) {
+	if (num_ops > 0)
 		rte_mempool_put_bulk(ops[0]->mempool, (void **)ops, num_ops);
-		rte_bbdev_log_verbose("%u decode ops freed to %s\n", num_ops,
-				ops[0]->mempool->name);
-	}
 }
 
 /**
@@ -624,11 +563,8 @@ rte_bbdev_dec_op_free_bulk(struct rte_bbdev_dec_op **ops, unsigned int num_ops)
 static inline void
 rte_bbdev_enc_op_free_bulk(struct rte_bbdev_enc_op **ops, unsigned int num_ops)
 {
-	if (num_ops > 0) {
+	if (num_ops > 0)
 		rte_mempool_put_bulk(ops[0]->mempool, (void **)ops, num_ops);
-		rte_bbdev_log_verbose("%u encode ops freed to %s\n", num_ops,
-				ops[0]->mempool->name);
-	}
 }
 
 #ifdef __cplusplus

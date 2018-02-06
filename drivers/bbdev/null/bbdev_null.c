@@ -15,6 +15,17 @@
 
 #define DRIVER_NAME bbdev_null
 
+/* NULL BBDev logging ID */
+static int bbdev_null_logtype;
+
+/* Helper macro for logging */
+#define rte_bbdev_log(level, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, bbdev_null_logtype, fmt "\n", ##__VA_ARGS__)
+
+#define rte_bbdev_log_debug(fmt, ...) \
+	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \
+		##__VA_ARGS__)
+
 /*  Initialisation params structure that can be used by null BBDEV driver */
 struct bbdev_null_params {
 	int socket_id;  /*< Null BBDEV socket */
@@ -335,12 +346,11 @@ RTE_PMD_REGISTER_PARAM_STRING(DRIVER_NAME,
 	BBDEV_NULL_MAX_NB_QUEUES_ARG"=<int> "
 	BBDEV_NULL_SOCKET_ID_ARG"=<int>");
 
-int bbdev_logtype;
 RTE_INIT(null_bbdev_init_log);
 static void
 null_bbdev_init_log(void)
 {
-	bbdev_logtype = rte_log_register("pmd.bb.null");
-	if (bbdev_logtype >= 0)
-		rte_log_set_level(bbdev_logtype, RTE_LOG_NOTICE);
+	bbdev_null_logtype = rte_log_register("pmd.bb.null");
+	if (bbdev_null_logtype >= 0)
+		rte_log_set_level(bbdev_null_logtype, RTE_LOG_NOTICE);
 }
