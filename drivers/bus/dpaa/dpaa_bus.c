@@ -541,6 +541,10 @@ rte_dpaa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 static enum rte_iova_mode
 rte_dpaa_get_iommu_class(void)
 {
+	if ((access(DPAA_DEV_PATH1, F_OK) != 0) &&
+	    (access(DPAA_DEV_PATH2, F_OK) != 0)) {
+		return RTE_IOVA_DC;
+	}
 	return RTE_IOVA_PA;
 }
 
