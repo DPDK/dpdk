@@ -2045,7 +2045,7 @@ rte_eth_xstats_get_names_by_id(uint16_t port_id,
 
 	if (ids) {
 		for (i = 0; i < size; i++) {
-			if (ids[i] > basic_count) {
+			if (ids[i] >= basic_count) {
 				no_ext_stat_requested = 0;
 				break;
 			}
@@ -2225,7 +2225,7 @@ rte_eth_xstats_get_by_id(uint16_t port_id, const uint64_t *ids,
 
 	if (ids) {
 		for (i = 0; i < size; i++) {
-			if (ids[i] > basic_count) {
+			if (ids[i] >= basic_count) {
 				no_ext_stat_requested = 0;
 				break;
 			}
