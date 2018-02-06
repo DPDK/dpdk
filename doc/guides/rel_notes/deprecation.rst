@@ -111,6 +111,10 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
+* ethdev: A new rss level field planned in 18.05.
+  The new API add rss_level field to ``rte_eth_rss_conf`` to enable a choice
+  of RSS hash calculation on outer or inner header of tunneled packet.
+
 * i40e: The default flexible payload configuration which extracts the first 16
   bytes of the payload for RSS will be deprecated starting from 18.02. If
   required the previous behavior can be configured using existing flow
