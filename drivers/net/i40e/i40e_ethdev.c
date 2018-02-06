@@ -1869,7 +1869,7 @@ i40e_vsi_enable_queues_intr(struct i40e_vsi *vsi)
 	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	uint16_t msix_intr, i;
 
-	if (rte_intr_allow_others(intr_handle) || !pf->support_multi_driver)
+	if (rte_intr_allow_others(intr_handle) && !pf->support_multi_driver)
 		for (i = 0; i < vsi->nb_msix; i++) {
 			msix_intr = vsi->msix_intr + i;
 			I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTLN(msix_intr - 1),
@@ -1896,7 +1896,7 @@ i40e_vsi_disable_queues_intr(struct i40e_vsi *vsi)
 	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
 	uint16_t msix_intr, i;
 
-	if (rte_intr_allow_others(intr_handle) || !pf->support_multi_driver)
+	if (rte_intr_allow_others(intr_handle) && !pf->support_multi_driver)
 		for (i = 0; i < vsi->nb_msix; i++) {
 			msix_intr = vsi->msix_intr + i;
 			I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTLN(msix_intr - 1),
@@ -11114,32 +11114,24 @@ i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 static int
 i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint16_t interval =
-		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 1,
-				       pf->support_multi_driver);
 	uint16_t msix_intr;
 
 	msix_intr = intr_handle->intr_vec[queue_id];
 	if (msix_intr == I40E_MISC_VEC_ID)
 		I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTL0,
-			       I40E_PFINT_DYN_CTLN_INTENA_MASK |
-			       I40E_PFINT_DYN_CTLN_CLEARPBA_MASK |
-			       (0 << I40E_PFINT_DYN_CTLN_ITR_INDX_SHIFT) |
-			       (interval <<
-				I40E_PFINT_DYN_CTLN_INTERVAL_SHIFT));
+			       I40E_PFINT_DYN_CTL0_INTENA_MASK |
+			       I40E_PFINT_DYN_CTL0_CLEARPBA_MASK |
+			       I40E_PFINT_DYN_CTL0_ITR_INDX_MASK);
 	else
 		I40E_WRITE_REG(hw,
 			       I40E_PFINT_DYN_CTLN(msix_intr -
 						   I40E_RX_VEC_START),
 			       I40E_PFINT_DYN_CTLN_INTENA_MASK |
 			       I40E_PFINT_DYN_CTLN_CLEARPBA_MASK |
-			       (0 << I40E_PFINT_DYN_CTLN_ITR_INDX_SHIFT) |
-			       (interval <<
-				I40E_PFINT_DYN_CTLN_INTERVAL_SHIFT));
+			       I40E_PFINT_DYN_CTLN_ITR_INDX_MASK);
 
 	I40E_WRITE_FLUSH(hw);
 	rte_intr_enable(&pci_dev->intr_handle);
@@ -11157,12 +11149,13 @@ i40e_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	msix_intr = intr_handle->intr_vec[queue_id];
 	if (msix_intr == I40E_MISC_VEC_ID)
-		I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTL0, 0);
+		I40E_WRITE_REG(hw, I40E_PFINT_DYN_CTL0,
+			       I40E_PFINT_DYN_CTL0_ITR_INDX_MASK);
 	else
 		I40E_WRITE_REG(hw,
 			       I40E_PFINT_DYN_CTLN(msix_intr -
 						   I40E_RX_VEC_START),
-			       0);
+			       I40E_PFINT_DYN_CTLN_ITR_INDX_MASK);
 	I40E_WRITE_FLUSH(hw);
 
 	return 0;
