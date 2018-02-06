@@ -297,9 +297,24 @@ test_rawdev_start_stop(void)
 	int ret;
 	struct rte_rawdev_info rdev_info = {0};
 	struct skeleton_rawdev_conf rdev_conf_get = {0};
+	char *dummy_firmware = NULL;
 
 	/* Get the current configuration */
 	rdev_info.dev_private = &rdev_conf_get;
+
+	/* Load a firmware using a dummy address area */
+	dummy_firmware = rte_zmalloc("RAWDEV SKELETON", sizeof(int) * 10, 0);
+	RTE_TEST_ASSERT(dummy_firmware != NULL,
+			"Failed to create firmware memory backing");
+
+	ret = rte_rawdev_firmware_load(TEST_DEV_ID, dummy_firmware);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Firmware loading failed (%d)", ret);
+
+	/* Skeleton doesn't do anything with the firmware area - that is dummy
+	 * and can be removed.
+	 */
+	rte_free(dummy_firmware);
+	dummy_firmware = NULL;
 
 	rte_rawdev_start(TEST_DEV_ID);
 	ret = rte_rawdev_info_get(TEST_DEV_ID, (rte_rawdev_obj_t)&rdev_info);
@@ -318,6 +333,10 @@ test_rawdev_start_stop(void)
 	RTE_TEST_ASSERT_EQUAL(rdev_conf_get.device_state, SKELETON_DEV_STOPPED,
 			      "Device stop failed. State is (%d)",
 			      rdev_conf_get.device_state);
+
+	/* Unloading the firmware once device is stopped */
+	ret = rte_rawdev_firmware_unload(TEST_DEV_ID);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to unload firmware (%d)", ret);
 
 	return TEST_SUCCESS;
 }
