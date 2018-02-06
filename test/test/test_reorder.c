@@ -331,9 +331,20 @@ test_setup(void)
 	return 0;
 }
 
+static void
+test_teardown(void)
+{
+	rte_reorder_free(test_params->b);
+	test_params->b = NULL;
+	rte_mempool_free(test_params->p);
+	test_params->p = NULL;
+}
+
+
 static struct unit_test_suite reorder_test_suite  = {
 
 	.setup = test_setup,
+	.teardown = test_teardown,
 	.suite_name = "Reorder Unit Test Suite",
 	.unit_test_cases = {
 		TEST_CASE(test_reorder_create),
