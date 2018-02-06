@@ -57,8 +57,6 @@
 
 static rte_atomic32_t synchro;
 
-static struct rte_ring *r;
-
 #define	TEST_RING_VERIFY(exp)						\
 	if (!(exp)) {							\
 		printf("error at %s:%d\tcondition " #exp " failed\n",	\
@@ -73,7 +71,7 @@ static struct rte_ring *r;
  * helper routine for test_ring_basic
  */
 static int
-test_ring_basic_full_empty(void * const src[], void *dst[])
+test_ring_basic_full_empty(struct rte_ring *r, void * const src[], void *dst[])
 {
 	unsigned i, rand;
 	const unsigned rsz = RING_SIZE - 1;
@@ -114,7 +112,7 @@ test_ring_basic_full_empty(void * const src[], void *dst[])
 }
 
 static int
-test_ring_basic(void)
+test_ring_basic(struct rte_ring *r)
 {
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
 	int ret;
@@ -250,7 +248,7 @@ test_ring_basic(void)
 		goto fail;
 	}
 
-	if (test_ring_basic_full_empty(src, dst) != 0)
+	if (test_ring_basic_full_empty(r, src, dst) != 0)
 		goto fail;
 
 	cur_src = src;
@@ -317,7 +315,7 @@ test_ring_basic(void)
 }
 
 static int
-test_ring_burst_basic(void)
+test_ring_burst_basic(struct rte_ring *r)
 {
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
 	int ret;
@@ -671,7 +669,7 @@ test_ring_basic_ex(void)
 {
 	int ret = -1;
 	unsigned i;
-	struct rte_ring * rp;
+	struct rte_ring *rp = NULL;
 	void **obj = NULL;
 
 	obj = rte_calloc("test_ring_basic_ex_malloc", RING_SIZE, sizeof(void *), 0);
@@ -731,6 +729,7 @@ test_ring_basic_ex(void)
 
 	ret = 0;
 fail_test:
+	rte_ring_free(rp);
 	if (obj != NULL)
 		rte_free(obj);
 
@@ -811,61 +810,67 @@ end:
 static int
 test_ring(void)
 {
+	struct rte_ring *r = NULL;
+
 	/* some more basic operations */
 	if (test_ring_basic_ex() < 0)
-		return -1;
+		goto test_fail;
 
 	rte_atomic32_init(&synchro);
 
+	r = rte_ring_create("test", RING_SIZE, SOCKET_ID_ANY, 0);
 	if (r == NULL)
-		r = rte_ring_create("test", RING_SIZE, SOCKET_ID_ANY, 0);
-	if (r == NULL)
-		return -1;
+		goto test_fail;
 
 	/* retrieve the ring from its name */
 	if (rte_ring_lookup("test") != r) {
 		printf("Cannot lookup ring from its name\n");
-		return -1;
+		goto test_fail;
 	}
 
 	/* burst operations */
-	if (test_ring_burst_basic() < 0)
-		return -1;
+	if (test_ring_burst_basic(r) < 0)
+		goto test_fail;
 
 	/* basic operations */
-	if (test_ring_basic() < 0)
-		return -1;
+	if (test_ring_basic(r) < 0)
+		goto test_fail;
 
 	/* basic operations */
 	if ( test_create_count_odd() < 0){
-			printf ("Test failed to detect odd count\n");
-			return -1;
-		}
-		else
-			printf ( "Test detected odd count\n");
+		printf("Test failed to detect odd count\n");
+		goto test_fail;
+	} else
+		printf("Test detected odd count\n");
 
 	if ( test_lookup_null() < 0){
-				printf ("Test failed to detect NULL ring lookup\n");
-				return -1;
-			}
-			else
-				printf ( "Test detected NULL ring lookup \n");
+		printf("Test failed to detect NULL ring lookup\n");
+		goto test_fail;
+	} else
+		printf("Test detected NULL ring lookup\n");
 
 	/* test of creating ring with wrong size */
 	if (test_ring_creation_with_wrong_size() < 0)
-		return -1;
+		goto test_fail;
 
 	/* test of creation ring with an used name */
 	if (test_ring_creation_with_an_used_name() < 0)
-		return -1;
+		goto test_fail;
 
 	if (test_ring_with_exact_size() < 0)
-		return -1;
+		goto test_fail;
 
 	/* dump the ring status */
 	rte_ring_list_dump(stdout);
 
+	rte_ring_free(r);
+
 	return 0;
+
+test_fail:
+	rte_ring_free(r);
+
+	return -1;
 }
 
 REGISTER_TEST_COMMAND(ring_autotest, test_ring);
