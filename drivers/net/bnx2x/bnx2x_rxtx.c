@@ -141,7 +141,8 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			return -ENOMEM;
 		}
 		rxq->sw_ring[idx] = mbuf;
-		rxq->rx_ring[idx] = mbuf->buf_iova;
+		rxq->rx_ring[idx] =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 	}
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
@@ -401,7 +402,8 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		rx_mb = rxq->sw_ring[bd_cons];
 		rxq->sw_ring[bd_cons] = new_mb;
-		rxq->rx_ring[bd_prod] = new_mb->buf_iova;
+		rxq->rx_ring[bd_prod] =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
 
 		rx_pref = NEXT_RX_BD(bd_cons) & MAX_RX_BD(rxq);
 		rte_prefetch0(rxq->sw_ring[rx_pref]);
@@ -410,7 +412,7 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rte_prefetch0(&rxq->sw_ring[rx_pref]);
 		}
 
-		rx_mb->data_off = pad;
+		rx_mb->data_off = pad + RTE_PKTMBUF_HEADROOM;
 		rx_mb->nb_segs = 1;
 		rx_mb->next = NULL;
 		rx_mb->pkt_len = rx_mb->data_len = len;
