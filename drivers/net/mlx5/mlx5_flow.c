@@ -514,7 +514,8 @@ mlx5_flow_item_validate(const struct rte_flow_item *item,
 }
 
 /**
- * Copy the RSS configuration from the user ones.
+ * Copy the RSS configuration from the user ones, of the rss_conf is null,
+ * uses the driver one.
  *
  * @param priv
  *   Pointer to private structure.
@@ -531,21 +532,25 @@ priv_flow_convert_rss_conf(struct priv *priv,
 			   struct mlx5_flow_parse *parser,
 			   const struct rte_eth_rss_conf *rss_conf)
 {
-	const struct rte_eth_rss_conf *rss;
-
+	/*
+	 * This function is also called at the beginning of
+	 * priv_flow_convert_actions() to initialize the parser with the
+	 * device default RSS configuration.
+	 */
+	(void)priv;
 	if (rss_conf) {
 		if (rss_conf->rss_hf & MLX5_RSS_HF_MASK)
 			return EINVAL;
-		rss = rss_conf;
-	} else {
-		rss = &priv->rss_conf;
+		if (rss_conf->rss_key_len != 40)
+			return EINVAL;
+		if (rss_conf->rss_key_len && rss_conf->rss_key) {
+			parser->rss_conf.rss_key_len = rss_conf->rss_key_len;
+			memcpy(parser->rss_key, rss_conf->rss_key,
+			       rss_conf->rss_key_len);
+			parser->rss_conf.rss_key = parser->rss_key;
+		}
+		parser->rss_conf.rss_hf = rss_conf->rss_hf;
 	}
-	if (rss->rss_key_len > 40)
-		return EINVAL;
-	parser->rss_conf.rss_key_len = rss->rss_key_len;
-	parser->rss_conf.rss_hf = rss->rss_hf;
-	memcpy(parser->rss_key, rss->rss_key, rss->rss_key_len);
-	parser->rss_conf.rss_key = parser->rss_key;
 	return 0;
 }
 
