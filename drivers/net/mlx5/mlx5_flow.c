@@ -1881,6 +1881,7 @@ priv_flow_create(struct priv *priv,
 	DEBUG("Flow created %p", (void *)flow);
 	return flow;
 exit:
+	ERROR("flow creation error: %s", error->message);
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (parser.queue[i].ibv_attr)
 			rte_free(parser.queue[i].ibv_attr);
