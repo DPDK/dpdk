@@ -70,6 +70,15 @@ From the command line using the --vdev EAL option
 
    --vdev  'crypto_aesni_mb0,max_nb_queue_pairs=2,max_nb_sessions=1024,socket_id=0'
 
+.. Note::
+
+   * If DPDK application requires multiple software crypto PMD devices then required
+     number of ``--vdev`` with appropriate libraries are to be added.
+
+   * An Application with crypto PMD instaces sharing the same library requires unique ID.
+
+   Example: ``--vdev  'crypto_aesni_mb0' --vdev  'crypto_aesni_mb1'``
+
 Our using the rte_vdev_init API within the application code.
 
 .. code-block:: c
