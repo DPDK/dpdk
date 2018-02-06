@@ -27,7 +27,6 @@ struct fsl_mc_io {
 #else /* __linux_driver__ */
 
 #include <stdio.h>
-#include <libio.h>
 #include <stdint.h>
 #include <errno.h>
 #include <sys/uio.h>
