@@ -727,7 +727,7 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 		if (filter->mac_index == index) {
 			PMD_DRV_LOG(ERR,
 				"MAC addr already existed for pool %d\n", pool);
-			return -EINVAL;
+			return 0;
 		}
 	}
 	filter = bnxt_alloc_filter(bp);
