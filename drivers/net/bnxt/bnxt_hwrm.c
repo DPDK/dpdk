@@ -2043,6 +2043,10 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed)
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_50GB;
 		break;
+	case ETH_LINK_SPEED_100G:
+		eth_link_speed =
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100GB;
+		break;
 	default:
 		PMD_DRV_LOG(ERR,
 			"Unsupported link speed %d; default to AUTO\n",
@@ -2055,7 +2059,7 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed)
 #define BNXT_SUPPORTED_SPEEDS (ETH_LINK_SPEED_100M | ETH_LINK_SPEED_100M_HD | \
 		ETH_LINK_SPEED_1G | ETH_LINK_SPEED_2_5G | \
 		ETH_LINK_SPEED_10G | ETH_LINK_SPEED_20G | ETH_LINK_SPEED_25G | \
-		ETH_LINK_SPEED_40G | ETH_LINK_SPEED_50G)
+		ETH_LINK_SPEED_40G | ETH_LINK_SPEED_50G | ETH_LINK_SPEED_100G)
 
 static int bnxt_valid_link_speed(uint32_t link_speed, uint16_t port_id)
 {
@@ -2119,6 +2123,8 @@ bnxt_parse_eth_link_speed_mask(struct bnxt *bp, uint32_t link_speed)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_40GB;
 	if (link_speed & ETH_LINK_SPEED_50G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_50GB;
+	if (link_speed & ETH_LINK_SPEED_100G)
+		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100GB;
 	return ret;
 }
 
