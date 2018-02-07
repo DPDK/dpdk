@@ -8,18 +8,23 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
-* eal: several API and ABI changes are planned for ``rte_devargs`` in v18.02.
-  The format of device command line parameters will change. The bus will need
-  to be explicitly stated in the device declaration. The enum ``rte_devtype``
-  was used to identify a bus and will disappear.
-  The structure ``rte_devargs`` will change.
-  The ``rte_devargs_list`` will be made private.
-  The following functions are deprecated starting from 17.08 and will either be
-  modified or removed in 18.02:
+* eal: both declaring and identifying devices will be streamlined in v18.05.
+  New functions will appear to query a specific port from buses, classes of
+  device and device drivers. Device declaration will be made coherent with the
+  new scheme of device identification.
+  As such, ``rte_devargs`` device representation will change.
 
-  - ``rte_eal_devargs_add``
-  - ``rte_eal_devargs_type_count``
-  - ``rte_eal_parse_devargs_str``, replaced by ``rte_eal_devargs_parse``
+  - removal of ``name`` and ``args`` fields.
+  - The enum ``rte_devtype`` was used to identify a bus and will disappear.
+  - The ``rte_devargs_list`` will be made private.
+  - Functions previously deprecated will change or disappear:
+
+    + ``rte_eal_devargs_add``
+    + ``rte_eal_devargs_type_count``
+    + ``rte_eal_parse_devargs_str``, replaced by ``rte_eal_devargs_parse``
+    + ``rte_eal_devargs_parse`` will change its format and use.
+    + all ``rte_devargs`` related functions will be renamed, changing the
+      ``rte_eal_devargs_`` prefix to ``rte_devargs_``.
 
 * pci: Several exposed functions are misnamed.
   The following functions are deprecated starting from v17.11 and are replaced:
