@@ -831,7 +831,8 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_ALL_SPEEDS;
 		}
 		/* AutoNeg - Advertise speeds specified. */
-		if (conf->auto_link_speed_mask) {
+		if (conf->auto_link_speed_mask &&
+		    !(conf->phy_flags & HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE)) {
 			req.auto_mode =
 				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
 			req.auto_link_speed_mask =
@@ -894,11 +895,21 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 	link_info->support_speeds = rte_le_to_cpu_16(resp->support_speeds);
 	link_info->auto_link_speed = rte_le_to_cpu_16(resp->auto_link_speed);
 	link_info->preemphasis = rte_le_to_cpu_32(resp->preemphasis);
+	link_info->force_link_speed = rte_le_to_cpu_16(resp->force_link_speed);
 	link_info->phy_ver[0] = resp->phy_maj;
 	link_info->phy_ver[1] = resp->phy_min;
 	link_info->phy_ver[2] = resp->phy_bld;
 
 	HWRM_UNLOCK();
+
+	PMD_DRV_LOG(DEBUG, "Link Speed %d\n", link_info->link_speed);
+	PMD_DRV_LOG(DEBUG, "Auto Mode %d\n", link_info->auto_mode);
+	PMD_DRV_LOG(DEBUG, "Support Speeds %x\n", link_info->support_speeds);
+	PMD_DRV_LOG(DEBUG, "Auto Link Speed %x\n", link_info->auto_link_speed);
+	PMD_DRV_LOG(DEBUG, "Auto Link Speed Mask %x\n",
+		    link_info->auto_link_speed_mask);
+	PMD_DRV_LOG(DEBUG, "Forced Link Speed %x\n",
+		    link_info->force_link_speed);
 
 	return rc;
 }
@@ -2220,7 +2231,9 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	autoneg = bnxt_check_eth_link_autoneg(dev_conf->link_speeds);
 	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds);
 	link_req.phy_flags = HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY;
-	if (autoneg == 1) {
+	/* Autoneg can be done only when the FW allows */
+	if (autoneg == 1 && !(bp->link_info.auto_link_speed ||
+				bp->link_info.force_link_speed)) {
 		link_req.phy_flags |=
 				HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG;
 		link_req.auto_link_speed_mask =
@@ -2238,7 +2251,13 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		}
 
 		link_req.phy_flags |= HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE;
-		link_req.link_speed = speed;
+		/* If user wants a particular speed try that first. */
+		if (speed)
+			link_req.link_speed = speed;
+		else if (bp->link_info.force_link_speed)
+			link_req.link_speed = bp->link_info.force_link_speed;
+		else
+			link_req.link_speed = bp->link_info.auto_link_speed;
 	}
 	link_req.duplex = bnxt_parse_eth_link_duplex(dev_conf->link_speeds);
 	link_req.auto_pause = bp->link_info.auto_pause;

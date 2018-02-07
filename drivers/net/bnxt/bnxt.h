@@ -163,6 +163,7 @@ struct bnxt_link_info {
 	uint16_t		link_speed;
 	uint16_t		support_speeds;
 	uint16_t		auto_link_speed;
+	uint16_t		force_link_speed;
 	uint16_t		auto_link_speed_mask;
 	uint32_t		preemphasis;
 	uint8_t			phy_type;
