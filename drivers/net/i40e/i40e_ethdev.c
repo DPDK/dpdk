@@ -11536,7 +11536,8 @@ i40e_find_customized_pctype(struct i40e_pf *pf, uint8_t index)
 static int
 i40e_update_customized_pctype(struct rte_eth_dev *dev, uint8_t *pkg,
 			      uint32_t pkg_size, uint32_t proto_num,
-			      struct rte_pmd_i40e_proto_info *proto)
+			      struct rte_pmd_i40e_proto_info *proto,
+			      enum rte_pmd_i40e_package_op op)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	uint32_t pctype_num;
@@ -11548,6 +11549,12 @@ i40e_update_customized_pctype(struct rte_eth_dev *dev, uint8_t *pkg,
 	char name[64];
 	uint32_t i, j, n;
 	int ret;
+
+	if (op != RTE_PMD_I40E_PKG_OP_WR_ADD &&
+	    op != RTE_PMD_I40E_PKG_OP_WR_DEL) {
+		PMD_DRV_LOG(ERR, "Unsupported operation.");
+		return -1;
+	}
 
 	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
 				(uint8_t *)&pctype_num, sizeof(pctype_num),
@@ -11611,8 +11618,13 @@ i40e_update_customized_pctype(struct rte_eth_dev *dev, uint8_t *pkg,
 				i40e_find_customized_pctype(pf,
 						      I40E_CUSTOMIZED_GTPU);
 		if (new_pctype) {
-			new_pctype->pctype = pctype_value;
-			new_pctype->valid = true;
+			if (op == RTE_PMD_I40E_PKG_OP_WR_ADD) {
+				new_pctype->pctype = pctype_value;
+				new_pctype->valid = true;
+			} else {
+				new_pctype->pctype = I40E_FILTER_PCTYPE_INVALID;
+				new_pctype->valid = false;
+			}
 		}
 	}
 
@@ -11622,8 +11634,9 @@ i40e_update_customized_pctype(struct rte_eth_dev *dev, uint8_t *pkg,
 
 static int
 i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
-			       uint32_t pkg_size, uint32_t proto_num,
-			       struct rte_pmd_i40e_proto_info *proto)
+			     uint32_t pkg_size, uint32_t proto_num,
+			     struct rte_pmd_i40e_proto_info *proto,
+			     enum rte_pmd_i40e_package_op op)
 {
 	struct rte_pmd_i40e_ptype_mapping *ptype_mapping;
 	uint16_t port_id = dev->data->port_id;
@@ -11635,6 +11648,17 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 	uint32_t i, j, n;
 	bool in_tunnel;
 	int ret;
+
+	if (op != RTE_PMD_I40E_PKG_OP_WR_ADD &&
+	    op != RTE_PMD_I40E_PKG_OP_WR_DEL) {
+		PMD_DRV_LOG(ERR, "Unsupported operation.");
+		return -1;
+	}
+
+	if (op == RTE_PMD_I40E_PKG_OP_WR_DEL) {
+		rte_pmd_i40e_ptype_mapping_reset(port_id);
+		return 0;
+	}
 
 	/* get information about new ptype num */
 	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
@@ -11808,7 +11832,7 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 
 void
 i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
-			      uint32_t pkg_size)
+			    uint32_t pkg_size, enum rte_pmd_i40e_package_op op)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	uint32_t proto_num;
@@ -11816,6 +11840,12 @@ i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
 	uint32_t buff_size;
 	uint32_t i;
 	int ret;
+
+	if (op != RTE_PMD_I40E_PKG_OP_WR_ADD &&
+	    op != RTE_PMD_I40E_PKG_OP_WR_DEL) {
+		PMD_DRV_LOG(ERR, "Unsupported operation.");
+		return;
+	}
 
 	/* get information about protocol number */
 	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
@@ -11850,20 +11880,23 @@ i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
 	/* Check if GTP is supported. */
 	for (i = 0; i < proto_num; i++) {
 		if (!strncmp(proto[i].name, "GTP", 3)) {
-			pf->gtp_support = true;
+			if (op == RTE_PMD_I40E_PKG_OP_WR_ADD)
+				pf->gtp_support = true;
+			else
+				pf->gtp_support = false;
 			break;
 		}
 	}
 
 	/* Update customized pctype info */
 	ret = i40e_update_customized_pctype(dev, pkg, pkg_size,
-					    proto_num, proto);
+					    proto_num, proto, op);
 	if (ret)
 		PMD_DRV_LOG(INFO, "No pctype is updated.");
 
 	/* Update customized ptype info */
 	ret = i40e_update_customized_ptype(dev, pkg, pkg_size,
-					   proto_num, proto);
+					   proto_num, proto, op);
 	if (ret)
 		PMD_DRV_LOG(INFO, "No ptype is updated.");
 

@@ -11,6 +11,7 @@
 #include <rte_hash.h>
 #include <rte_flow_driver.h>
 #include <rte_tm_driver.h>
+#include "rte_pmd_i40e.h"
 
 #define I40E_VLAN_TAG_SIZE        4
 
@@ -1209,7 +1210,8 @@ void i40e_tm_conf_uninit(struct rte_eth_dev *dev);
 struct i40e_customized_pctype*
 i40e_find_customized_pctype(struct i40e_pf *pf, uint8_t index);
 void i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
-				 uint32_t pkg_size);
+				 uint32_t pkg_size,
+				 enum rte_pmd_i40e_package_op op);
 int i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb);
 int i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
 		struct i40e_hw *hw, struct i40e_pf *pf, uint16_t on);

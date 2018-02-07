@@ -2401,7 +2401,7 @@ i40e_flow_fdir_get_pctype_value(struct i40e_pf *pf,
 		break;
 	}
 
-	if (cus_pctype)
+	if (cus_pctype && cus_pctype->valid)
 		return cus_pctype->pctype;
 
 	return I40E_FILTER_PCTYPE_INVALID;
