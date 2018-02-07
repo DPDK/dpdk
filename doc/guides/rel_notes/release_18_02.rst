@@ -94,7 +94,6 @@ New Features
   * Improved multi-segment packet performance.
   * Changed driver name to use the PCI address to be compatible with OVS-DPDK APIs.
   * Extended statistics for physical port packet/byte counters.
-  * Supported IPv4 time-to-live filter.
   * Converted to the new offloads API.
   * Supported device removal check operation.
 
