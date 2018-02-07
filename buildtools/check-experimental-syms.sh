@@ -22,9 +22,11 @@ do
 	IN_EXP=$?
 	if [ $IN_TEXT -eq 0 -a $IN_EXP -ne 0 ]
 	then
-		echo "$SYM is not flagged as experimental"
-		echo "but is listed in version map"
-		echo "Please add __rte_experimental to the definition of $SYM"
+		cat >&2 <<- END_OF_MESSAGE
+		$SYM is not flagged as experimental
+		but is listed in version map
+		Please add __rte_experimental to the definition of $SYM
+		END_OF_MESSAGE
 		exit 1
 	fi
 done
