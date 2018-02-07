@@ -3123,16 +3123,22 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	adapter->vport_started = false;
 
 	/* VF tunnel offloads is enabled by default in PF driver */
-	adapter->vxlan.enable = true;
 	adapter->vxlan.num_filters = 0;
-	adapter->vxlan.filter_type = ETH_TUNNEL_FILTER_IMAC |
-				     ETH_TUNNEL_FILTER_IVLAN;
-	adapter->vxlan.udp_port = QEDE_VXLAN_DEF_PORT;
-	adapter->geneve.enable = true;
-	adapter->vxlan.num_filters = 0;
-	adapter->vxlan.filter_type = ETH_TUNNEL_FILTER_IMAC |
-				     ETH_TUNNEL_FILTER_IVLAN;
-	adapter->vxlan.udp_port = QEDE_GENEVE_DEF_PORT;
+	adapter->geneve.num_filters = 0;
+	if (is_vf) {
+		adapter->vxlan.enable = true;
+		adapter->vxlan.filter_type = ETH_TUNNEL_FILTER_IMAC |
+					     ETH_TUNNEL_FILTER_IVLAN;
+		adapter->vxlan.udp_port = QEDE_VXLAN_DEF_PORT;
+		adapter->geneve.enable = true;
+
+		adapter->geneve.filter_type = ETH_TUNNEL_FILTER_IMAC |
+					      ETH_TUNNEL_FILTER_IVLAN;
+		adapter->geneve.udp_port = QEDE_GENEVE_DEF_PORT;
+	} else {
+		adapter->vxlan.enable = false;
+		adapter->geneve.enable = false;
+	}
 
 	DP_INFO(edev, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
 		adapter->primary_mac.addr_bytes[0],
