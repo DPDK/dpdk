@@ -10,17 +10,6 @@ statistics, resetting port statistics and printing DPDK memory information.
 This application extends the original functionality that was supported by
 dump_cfg.
 
-.. note::
-
-    dpdk-procinfo should run alongside primary process with same DPDK version.
-
-.. note::
-
-   When running `dpdk-procinfo`` with shared library mode, it is required to
-   pass the same NIC PMD libraries as used for the primary application. Any
-   mismatch in PMD library arguments can lead to undefined behaviour and results
-   affecting primary application too.
-
 Running the Application
 -----------------------
 The application has a number of command line options:
@@ -52,6 +41,17 @@ If no port mask is specified xstats are reset for all DPDK ports.
 
 **-m**: Print DPDK memory information.
 
-.. note::
+Limitations
+-----------
 
-   Stats retrieval using ``dpdk-procinfo`` is not supported for virtual devices like PCAP and TAP.
+* dpdk-procinfo should run alongside primary process with same DPDK version.
+
+* When running ``dpdk-procinfo`` with shared library mode, it is required to
+  pass the same NIC PMD libraries as used for the primary application. Any
+  mismatch in PMD library arguments can lead to undefined behaviour and results
+  affecting primary application too.
+
+* Stats retrieval using ``dpdk-procinfo`` is not supported for virtual devices like PCAP and TAP.
+
+* Since default DPDK EAL arguments for ``dpdk-procinfo`` are ``-c1, -n4 & --proc-type=secondary``,
+  It is not expected that the user passes any EAL arguments.
