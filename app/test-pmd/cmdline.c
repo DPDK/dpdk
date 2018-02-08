@@ -9900,11 +9900,11 @@ struct cmd_flow_director_result {
 	uint16_t port_dst;
 	cmdline_fixed_string_t verify_tag;
 	uint32_t verify_tag_value;
-	cmdline_ipaddr_t tos;
+	cmdline_fixed_string_t tos;
 	uint8_t tos_value;
-	cmdline_ipaddr_t proto;
+	cmdline_fixed_string_t proto;
 	uint8_t proto_value;
-	cmdline_ipaddr_t ttl;
+	cmdline_fixed_string_t ttl;
 	uint8_t ttl_value;
 	cmdline_fixed_string_t vlan;
 	uint16_t vlan_value;
@@ -10515,7 +10515,7 @@ cmdline_parse_inst_t cmd_add_del_sctp_flow_director = {
 		(void *)&cmd_flow_director_flow_type,
 		(void *)&cmd_flow_director_src,
 		(void *)&cmd_flow_director_ip_src,
-		(void *)&cmd_flow_director_port_dst,
+		(void *)&cmd_flow_director_port_src,
 		(void *)&cmd_flow_director_dst,
 		(void *)&cmd_flow_director_ip_dst,
 		(void *)&cmd_flow_director_port_dst,
