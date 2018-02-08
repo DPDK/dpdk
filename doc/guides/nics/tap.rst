@@ -100,7 +100,7 @@ Supported actions:
 - DROP
 - QUEUE
 - PASSTHRU
-- RSS
+- RSS (requires kernel 4.9)
 
 It is generally not possible to provide a "last" item. However, if the "last"
 item, once masked, is identical to the masked spec, then it is supported.
@@ -240,4 +240,24 @@ Please refer to ``iproute2`` package file ``lib/bpf.c`` function
 
 An example utility for eBPF instruction generation in the format of C arrays will
 be added in next releases
+
+Systems supporting flow API
+---------------------------
+
+- "tc flower" classifier requires linux kernel above 4.2
+- eBPF/RSS requires linux kernel above 4.9
+
++--------------------+-----------------------+
+| RH7.3              | No flow rule support  |
++--------------------+-----------------------+
+| RH7.4              | No RSS action support |
++--------------------+-----------------------+
+| RH7.5              | No RSS action support |
++--------------------+-----------------------+
+| SLES 15,           | No limitation         |
+| kernel 4.12        |                       |
++--------------------+-----------------------+
+| Azure Ubuntu 16.04,| No limitation         |
+| kernel 4.13        |                       |
++--------------------+-----------------------+
 
