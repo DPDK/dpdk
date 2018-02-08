@@ -1107,8 +1107,12 @@ i40e_support_multi_driver(struct rte_eth_dev *dev)
 			    "the first invalid or last valid one is used !",
 			    ETH_I40E_SUPPORT_MULTI_DRIVER);
 
-	rte_kvargs_process(kvlist, ETH_I40E_SUPPORT_MULTI_DRIVER,
-			   i40e_parse_multi_drv_handler, pf);
+	if (rte_kvargs_process(kvlist, ETH_I40E_SUPPORT_MULTI_DRIVER,
+			       i40e_parse_multi_drv_handler, pf) < 0) {
+		rte_kvargs_free(kvlist);
+		return -EINVAL;
+	}
+
 	rte_kvargs_free(kvlist);
 	return 0;
 }
