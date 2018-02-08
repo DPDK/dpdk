@@ -395,6 +395,7 @@ where each options means:
 
    * *null*: NULL algorithm
    * *aes-128-cbc*: AES-CBC 128-bit algorithm
+   * *aes-256-cbc*: AES-CBC 256-bit algorithm
    * *aes-128-ctr*: AES-CTR 128-bit algorithm
 
  * Syntax: *cipher_algo <your algorithm>*
