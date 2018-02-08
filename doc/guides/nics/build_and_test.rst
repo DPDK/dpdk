@@ -151,3 +151,7 @@ This section demonstrates how to setup and run ``testpmd`` in Linux.
 
    Refer to the :ref:`testpmd runtime functions <testpmd_runtime>` for a list
    of available commands.
+
+   .. note::
+      When ``testpmd`` is built with shared library, use option ``-d`` to load
+      the dynamic PMD for ``rte_eal_init``.
