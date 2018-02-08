@@ -132,167 +132,6 @@ try_dev_id:
 }
 
 /**
- * Read from sysfs entry.
- *
- * @param[in] priv
- *   Pointer to private structure.
- * @param[in] entry
- *   Entry name relative to sysfs path.
- * @param[out] buf
- *   Data output buffer.
- * @param size
- *   Buffer size.
- *
- * @return
- *   Number of bytes read on success, negative errno value otherwise and
- *   rte_errno is set.
- */
-static int
-mlx4_sysfs_read(const struct priv *priv, const char *entry,
-		char *buf, size_t size)
-{
-	char ifname[IF_NAMESIZE];
-	FILE *file;
-	int ret;
-
-	ret = mlx4_get_ifname(priv, &ifname);
-	if (ret)
-		return ret;
-
-	MKSTR(path, "%s/device/net/%s/%s", priv->ctx->device->ibdev_path,
-	      ifname, entry);
-
-	file = fopen(path, "rb");
-	if (file == NULL) {
-		rte_errno = errno;
-		return -rte_errno;
-	}
-	ret = fread(buf, 1, size, file);
-	if ((size_t)ret < size && ferror(file)) {
-		rte_errno = EIO;
-		ret = -rte_errno;
-	} else {
-		ret = size;
-	}
-	fclose(file);
-	return ret;
-}
-
-/**
- * Write to sysfs entry.
- *
- * @param[in] priv
- *   Pointer to private structure.
- * @param[in] entry
- *   Entry name relative to sysfs path.
- * @param[in] buf
- *   Data buffer.
- * @param size
- *   Buffer size.
- *
- * @return
- *   Number of bytes written on success, negative errno value otherwise and
- *   rte_errno is set.
- */
-static int
-mlx4_sysfs_write(const struct priv *priv, const char *entry,
-		 char *buf, size_t size)
-{
-	char ifname[IF_NAMESIZE];
-	FILE *file;
-	int ret;
-
-	ret = mlx4_get_ifname(priv, &ifname);
-	if (ret)
-		return ret;
-
-	MKSTR(path, "%s/device/net/%s/%s", priv->ctx->device->ibdev_path,
-	      ifname, entry);
-
-	file = fopen(path, "wb");
-	if (file == NULL) {
-		rte_errno = errno;
-		return -rte_errno;
-	}
-	ret = fwrite(buf, 1, size, file);
-	if ((size_t)ret < size || ferror(file)) {
-		rte_errno = EIO;
-		ret = -rte_errno;
-	} else {
-		ret = size;
-	}
-	fclose(file);
-	return ret;
-}
-
-/**
- * Get unsigned long sysfs property.
- *
- * @param priv
- *   Pointer to private structure.
- * @param[in] name
- *   Entry name relative to sysfs path.
- * @param[out] value
- *   Value output buffer.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx4_get_sysfs_ulong(struct priv *priv, const char *name, unsigned long *value)
-{
-	int ret;
-	unsigned long value_ret;
-	char value_str[32];
-
-	ret = mlx4_sysfs_read(priv, name, value_str, (sizeof(value_str) - 1));
-	if (ret < 0) {
-		DEBUG("cannot read %s value from sysfs: %s",
-		      name, strerror(rte_errno));
-		return ret;
-	}
-	value_str[ret] = '\0';
-	errno = 0;
-	value_ret = strtoul(value_str, NULL, 0);
-	if (errno) {
-		rte_errno = errno;
-		DEBUG("invalid %s value `%s': %s", name, value_str,
-		      strerror(rte_errno));
-		return -rte_errno;
-	}
-	*value = value_ret;
-	return 0;
-}
-
-/**
- * Set unsigned long sysfs property.
- *
- * @param priv
- *   Pointer to private structure.
- * @param[in] name
- *   Entry name relative to sysfs path.
- * @param value
- *   Value to set.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx4_set_sysfs_ulong(struct priv *priv, const char *name, unsigned long value)
-{
-	int ret;
-	MKSTR(value_str, "%lu", value);
-
-	ret = mlx4_sysfs_write(priv, name, value_str, (sizeof(value_str) - 1));
-	if (ret < 0) {
-		DEBUG("cannot write %s `%s' (%lu) to sysfs: %s",
-		      name, value_str, value, strerror(rte_errno));
-		return ret;
-	}
-	return 0;
-}
-
-/**
  * Perform ifreq ioctl() on associated Ethernet device.
  *
  * @param[in] priv
@@ -361,12 +200,12 @@ mlx4_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
 int
 mlx4_mtu_get(struct priv *priv, uint16_t *mtu)
 {
-	unsigned long ulong_mtu = 0;
-	int ret = mlx4_get_sysfs_ulong(priv, "mtu", &ulong_mtu);
+	struct ifreq request;
+	int ret = mlx4_ifreq(priv, SIOCGIFMTU, &request);
 
 	if (ret)
 		return ret;
-	*mtu = ulong_mtu;
+	*mtu = request.ifr_mtu;
 	return 0;
 }
 
@@ -385,20 +224,13 @@ int
 mlx4_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct priv *priv = dev->data->dev_private;
-	uint16_t new_mtu;
-	int ret = mlx4_set_sysfs_ulong(priv, "mtu", mtu);
+	struct ifreq request = { .ifr_mtu = mtu, };
+	int ret = mlx4_ifreq(priv, SIOCSIFMTU, &request);
 
 	if (ret)
 		return ret;
-	ret = mlx4_mtu_get(priv, &new_mtu);
-	if (ret)
-		return ret;
-	if (new_mtu == mtu) {
-		priv->mtu = mtu;
-		return 0;
-	}
-	rte_errno = EINVAL;
-	return -rte_errno;
+	priv->mtu = mtu;
+	return 0;
 }
 
 /**
@@ -417,14 +249,14 @@ mlx4_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 static int
 mlx4_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
 {
-	unsigned long tmp = 0;
-	int ret = mlx4_get_sysfs_ulong(priv, "flags", &tmp);
+	struct ifreq request;
+	int ret = mlx4_ifreq(priv, SIOCGIFFLAGS, &request);
 
 	if (ret)
 		return ret;
-	tmp &= keep;
-	tmp |= (flags & (~keep));
-	return mlx4_set_sysfs_ulong(priv, "flags", tmp);
+	request.ifr_flags &= keep;
+	request.ifr_flags |= flags & ~keep;
+	return mlx4_ifreq(priv, SIOCSIFFLAGS, &request);
 }
 
 /**

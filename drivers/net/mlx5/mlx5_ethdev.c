@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <assert.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -173,181 +174,6 @@ try_dev_id:
 }
 
 /**
- * Check if the counter is located on ib counters file.
- *
- * @param[in] cntr
- *   Counter name.
- *
- * @return
- *   1 if counter is located on ib counters file , 0 otherwise.
- */
-int
-priv_is_ib_cntr(const char *cntr)
-{
-	if (!strcmp(cntr, "out_of_buffer"))
-		return 1;
-	return 0;
-}
-
-/**
- * Read from sysfs entry.
- *
- * @param[in] priv
- *   Pointer to private structure.
- * @param[in] entry
- *   Entry name relative to sysfs path.
- * @param[out] buf
- *   Data output buffer.
- * @param size
- *   Buffer size.
- *
- * @return
- *   0 on success, -1 on failure and errno is set.
- */
-static int
-priv_sysfs_read(const struct priv *priv, const char *entry,
-		char *buf, size_t size)
-{
-	char ifname[IF_NAMESIZE];
-	FILE *file;
-	int ret;
-	int err;
-
-	if (priv_get_ifname(priv, &ifname))
-		return -1;
-
-	if (priv_is_ib_cntr(entry)) {
-		MKSTR(path, "%s/ports/1/hw_counters/%s",
-		      priv->ibdev_path, entry);
-		file = fopen(path, "rb");
-	} else {
-		MKSTR(path, "%s/device/net/%s/%s",
-		      priv->ibdev_path, ifname, entry);
-		file = fopen(path, "rb");
-	}
-	if (file == NULL)
-		return -1;
-	ret = fread(buf, 1, size, file);
-	err = errno;
-	if (((size_t)ret < size) && (ferror(file)))
-		ret = -1;
-	else
-		ret = size;
-	fclose(file);
-	errno = err;
-	return ret;
-}
-
-/**
- * Write to sysfs entry.
- *
- * @param[in] priv
- *   Pointer to private structure.
- * @param[in] entry
- *   Entry name relative to sysfs path.
- * @param[in] buf
- *   Data buffer.
- * @param size
- *   Buffer size.
- *
- * @return
- *   0 on success, -1 on failure and errno is set.
- */
-static int
-priv_sysfs_write(const struct priv *priv, const char *entry,
-		 char *buf, size_t size)
-{
-	char ifname[IF_NAMESIZE];
-	FILE *file;
-	int ret;
-	int err;
-
-	if (priv_get_ifname(priv, &ifname))
-		return -1;
-
-	MKSTR(path, "%s/device/net/%s/%s", priv->ibdev_path, ifname, entry);
-
-	file = fopen(path, "wb");
-	if (file == NULL)
-		return -1;
-	ret = fwrite(buf, 1, size, file);
-	err = errno;
-	if (((size_t)ret < size) || (ferror(file)))
-		ret = -1;
-	else
-		ret = size;
-	fclose(file);
-	errno = err;
-	return ret;
-}
-
-/**
- * Get unsigned long sysfs property.
- *
- * @param priv
- *   Pointer to private structure.
- * @param[in] name
- *   Entry name relative to sysfs path.
- * @param[out] value
- *   Value output buffer.
- *
- * @return
- *   0 on success, -1 on failure and errno is set.
- */
-static int
-priv_get_sysfs_ulong(struct priv *priv, const char *name, unsigned long *value)
-{
-	int ret;
-	unsigned long value_ret;
-	char value_str[32];
-
-	ret = priv_sysfs_read(priv, name, value_str, (sizeof(value_str) - 1));
-	if (ret == -1) {
-		DEBUG("cannot read %s value from sysfs: %s",
-		      name, strerror(errno));
-		return -1;
-	}
-	value_str[ret] = '\0';
-	errno = 0;
-	value_ret = strtoul(value_str, NULL, 0);
-	if (errno) {
-		DEBUG("invalid %s value `%s': %s", name, value_str,
-		      strerror(errno));
-		return -1;
-	}
-	*value = value_ret;
-	return 0;
-}
-
-/**
- * Set unsigned long sysfs property.
- *
- * @param priv
- *   Pointer to private structure.
- * @param[in] name
- *   Entry name relative to sysfs path.
- * @param value
- *   Value to set.
- *
- * @return
- *   0 on success, -1 on failure and errno is set.
- */
-static int
-priv_set_sysfs_ulong(struct priv *priv, const char *name, unsigned long value)
-{
-	int ret;
-	MKSTR(value_str, "%lu", value);
-
-	ret = priv_sysfs_write(priv, name, value_str, (sizeof(value_str) - 1));
-	if (ret == -1) {
-		DEBUG("cannot write %s `%s' (%lu) to sysfs: %s",
-		      name, value_str, value, strerror(errno));
-		return -1;
-	}
-	return 0;
-}
-
-/**
  * Perform ifreq ioctl() on associated Ethernet device.
  *
  * @param[in] priv
@@ -390,20 +216,25 @@ priv_get_num_vfs(struct priv *priv, uint16_t *num_vfs)
 {
 	/* The sysfs entry name depends on the operating system. */
 	const char **name = (const char *[]){
-		"device/sriov_numvfs",
-		"device/mlx5_num_vfs",
+		"sriov_numvfs",
+		"mlx5_num_vfs",
 		NULL,
 	};
-	int ret;
 
 	do {
-		unsigned long ulong_num_vfs;
+		int n;
+		FILE *file;
+		MKSTR(path, "%s/device/%s", priv->ibdev_path, *name);
 
-		ret = priv_get_sysfs_ulong(priv, *name, &ulong_num_vfs);
-		if (!ret)
-			*num_vfs = ulong_num_vfs;
-	} while (*(++name) && ret);
-	return ret;
+		file = fopen(path, "rb");
+		if (!file)
+			continue;
+		n = fscanf(file, "%" SCNu16, num_vfs);
+		fclose(file);
+		if (n == 1)
+			return 0;
+	} while (*(++name));
+	return -1;
 }
 
 /**
@@ -420,35 +251,12 @@ priv_get_num_vfs(struct priv *priv, uint16_t *num_vfs)
 int
 priv_get_mtu(struct priv *priv, uint16_t *mtu)
 {
-	unsigned long ulong_mtu;
+	struct ifreq request;
+	int ret = priv_ifreq(priv, SIOCGIFMTU, &request);
 
-	if (priv_get_sysfs_ulong(priv, "mtu", &ulong_mtu) == -1)
-		return -1;
-	*mtu = ulong_mtu;
-	return 0;
-}
-
-/**
- * Read device counter from sysfs.
- *
- * @param priv
- *   Pointer to private structure.
- * @param name
- *   Counter name.
- * @param[out] cntr
- *   Counter output buffer.
- *
- * @return
- *   0 on success, -1 on failure and errno is set.
- */
-int
-priv_get_cntr_sysfs(struct priv *priv, const char *name, uint64_t *cntr)
-{
-	unsigned long ulong_ctr;
-
-	if (priv_get_sysfs_ulong(priv, name, &ulong_ctr) == -1)
-		return -1;
-	*cntr = ulong_ctr;
+	if (ret)
+		return ret;
+	*mtu = request.ifr_mtu;
 	return 0;
 }
 
@@ -466,15 +274,9 @@ priv_get_cntr_sysfs(struct priv *priv, const char *name, uint64_t *cntr)
 static int
 priv_set_mtu(struct priv *priv, uint16_t mtu)
 {
-	uint16_t new_mtu;
+	struct ifreq request = { .ifr_mtu = mtu, };
 
-	if (priv_set_sysfs_ulong(priv, "mtu", mtu) ||
-	    priv_get_mtu(priv, &new_mtu))
-		return -1;
-	if (new_mtu == mtu)
-		return 0;
-	errno = EINVAL;
-	return -1;
+	return priv_ifreq(priv, SIOCSIFMTU, &request);
 }
 
 /**
@@ -493,13 +295,14 @@ priv_set_mtu(struct priv *priv, uint16_t mtu)
 int
 priv_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
 {
-	unsigned long tmp;
+	struct ifreq request;
+	int ret = priv_ifreq(priv, SIOCGIFFLAGS, &request);
 
-	if (priv_get_sysfs_ulong(priv, "flags", &tmp) == -1)
-		return -1;
-	tmp &= keep;
-	tmp |= (flags & (~keep));
-	return priv_set_sysfs_ulong(priv, "flags", tmp);
+	if (ret)
+		return ret;
+	request.ifr_flags &= keep;
+	request.ifr_flags |= flags & ~keep;
+	return priv_ifreq(priv, SIOCSIFFLAGS, &request);
 }
 
 /**

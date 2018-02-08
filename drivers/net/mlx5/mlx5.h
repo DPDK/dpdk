@@ -209,8 +209,6 @@ struct priv *mlx5_get_priv(struct rte_eth_dev *dev);
 int mlx5_is_secondary(void);
 int priv_get_ifname(const struct priv *, char (*)[IF_NAMESIZE]);
 int priv_ifreq(const struct priv *, int req, struct ifreq *);
-int priv_is_ib_cntr(const char *);
-int priv_get_cntr_sysfs(struct priv *, const char *, uint64_t *);
 int priv_get_num_vfs(struct priv *, uint16_t *);
 int priv_get_mtu(struct priv *, uint16_t *);
 int priv_set_flags(struct priv *, unsigned int, unsigned int);
