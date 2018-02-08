@@ -849,8 +849,6 @@ The front-end communicates with the back-end through message queues.
    |            |                  | of some requests which are mandatory for all pipelines (e.g.       |
    |            |                  | ping, statistics).                                                 |
    +------------+------------------+--------------------------------------------------------------------+
-   | f_track    | Function pointer | See section Tracking pipeline output port to physical link         |
-   +------------+------------------+--------------------------------------------------------------------+
 
 
 .. _table_ip_pipelines_front_end:
@@ -864,6 +862,10 @@ The front-end communicates with the back-end through message queues.
    +============+=======================+===================================================================+
    | f_init     | Function pointer      | Function to initialize the front-end of the current pipeline      |
    |            |                       | instance.                                                         |
+   +------------+-----------------------+-------------------------------------------------------------------+
+   | f_post_init| Function pointer      | Function to run once after f_init.                                |
+   +------------+-----------------------+-------------------------------------------------------------------+
+   | f_track    | Function pointer      | See section Tracking pipeline output port to physical link.       |
    +------------+-----------------------+-------------------------------------------------------------------+
    | f_free     | Function pointer      | Function to free the resources allocated by the front-end of      |
    |            |                       | the current pipeline instance.                                    |
