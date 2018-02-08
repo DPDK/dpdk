@@ -216,6 +216,13 @@ New Features
   * ``rte_mp_request`` is for sending a request message and will block until
     it gets a reply message which is sent from the peer by ``rte_mp_reply``.
 
+* **Increased default Rx and Tx ring size in sample applications.**
+
+  Increased the default ``RX_RING_SIZE`` and ``TX_RING_SIZE`` to 1024 entries
+  in testpmd and the sample applications to give better performance in the
+  general case. The user should experiment with various Rx and Tx ring sizes
+  for their specific application to get best performance.
+
 * **Added new DPDK build system using the tools "meson" and "ninja" [EXPERIMENTAL]**
 
   Added in support for building DPDK using ``meson`` and ``ninja``, which gives
