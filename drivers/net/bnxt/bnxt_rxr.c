@@ -338,41 +338,57 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 static uint32_t
 bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 {
-	uint32_t pkt_type = 0;
-	uint32_t t_ipcs = 0, ip = 0, ip6 = 0;
-	uint32_t tcp = 0, udp = 0, icmp = 0;
-	uint32_t vlan = 0;
+	uint32_t l3, pkt_type = 0;
+	uint32_t t_ipcs = 0, ip6 = 0, vlan = 0;
+	uint32_t flags_type;
 
 	vlan = !!(rxcmp1->flags2 &
 		rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN));
+	pkt_type |= vlan ? RTE_PTYPE_L2_ETHER_VLAN : RTE_PTYPE_L2_ETHER;
+
 	t_ipcs = !!(rxcmp1->flags2 &
 		rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC));
 	ip6 = !!(rxcmp1->flags2 &
 		 rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_IP_TYPE));
-	icmp = !!(rxcmp->flags_type &
-		  rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_ITYPE_ICMP));
-	tcp = !!(rxcmp->flags_type &
-		 rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_ITYPE_TCP));
-	udp = !!(rxcmp->flags_type &
-		 rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_ITYPE_UDP));
-	ip = !!(rxcmp->flags_type &
-		rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_ITYPE_IP));
 
-	pkt_type |= ((ip || tcp || udp || icmp) && !t_ipcs && !ip6) ?
-		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN : 0;
-	pkt_type |= ((ip || tcp || udp || icmp) && !t_ipcs && ip6) ?
-		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN : 0;
-	pkt_type |= (!t_ipcs &&  icmp) ? RTE_PTYPE_L4_ICMP : 0;
-	pkt_type |= (!t_ipcs &&  udp) ? RTE_PTYPE_L4_UDP : 0;
-	pkt_type |= (!t_ipcs &&  tcp) ? RTE_PTYPE_L4_TCP : 0;
-	pkt_type |= ((ip || tcp || udp || icmp) && t_ipcs && !ip6) ?
-		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN : 0;
-	pkt_type |= ((ip || tcp || udp || icmp) && t_ipcs && ip6) ?
-		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN : 0;
-	pkt_type |= (t_ipcs &&  icmp) ? RTE_PTYPE_INNER_L4_ICMP : 0;
-	pkt_type |= (t_ipcs &&  udp) ? RTE_PTYPE_INNER_L4_UDP : 0;
-	pkt_type |= (t_ipcs &&  tcp) ? RTE_PTYPE_INNER_L4_TCP : 0;
-	pkt_type |= vlan ? RTE_PTYPE_L2_ETHER_VLAN : 0;
+	flags_type = rxcmp->flags_type &
+		rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS_ITYPE_MASK);
+
+	if (!t_ipcs && !ip6)
+		l3 = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+	else if (!t_ipcs && ip6)
+		l3 = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+	else if (t_ipcs && !ip6)
+		l3 = RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
+	else
+		l3 = RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
+
+	switch (flags_type) {
+	case RTE_LE32(RX_PKT_CMPL_FLAGS_ITYPE_ICMP):
+		if (!t_ipcs)
+			pkt_type |= l3 | RTE_PTYPE_L4_ICMP;
+		else
+			pkt_type |= l3 | RTE_PTYPE_INNER_L4_ICMP;
+		break;
+
+	case RTE_LE32(RX_PKT_CMPL_FLAGS_ITYPE_TCP):
+		if (!t_ipcs)
+			pkt_type |= l3 | RTE_PTYPE_L4_TCP;
+		else
+			pkt_type |= l3 | RTE_PTYPE_INNER_L4_TCP;
+		break;
+
+	case RTE_LE32(RX_PKT_CMPL_FLAGS_ITYPE_UDP):
+		if (!t_ipcs)
+			pkt_type |= l3 | RTE_PTYPE_L4_UDP;
+		else
+			pkt_type |= l3 | RTE_PTYPE_INNER_L4_UDP;
+		break;
+
+	case RTE_LE32(RX_PKT_CMPL_FLAGS_ITYPE_IP):
+		pkt_type |= l3;
+		break;
+	}
 
 	return pkt_type;
 }
