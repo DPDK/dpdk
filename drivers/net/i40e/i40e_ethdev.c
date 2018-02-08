@@ -33,7 +33,6 @@
 #include "base/i40e_type.h"
 #include "base/i40e_register.h"
 #include "base/i40e_dcb.h"
-#include "base/i40e_diag.h"
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
@@ -2097,7 +2096,6 @@ i40e_dev_start(struct rte_eth_dev *dev)
 
 	/* Enable all queues which have been configured */
 	ret = i40e_dev_switch_queues(pf, TRUE);
-
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to enable VSI");
 		goto err_up;
@@ -2127,7 +2125,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	/* Enable mac loopback mode */
 	if (dev->data->dev_conf.lpbk_mode == I40E_AQ_LB_MODE_NONE ||
 	    dev->data->dev_conf.lpbk_mode == I40E_AQ_LB_PHY_LOCAL) {
-		ret = i40e_diag_set_loopback(hw, dev->data->dev_conf.lpbk_mode);
+		ret = i40e_aq_set_lb_modes(hw, dev->data->dev_conf.lpbk_mode, NULL);
 		if (ret != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "fail to set loopback link");
 			goto err_up;

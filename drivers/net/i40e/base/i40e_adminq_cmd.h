@@ -2130,28 +2130,11 @@ I40E_CHECK_CMD_LENGTH(i40e_aqc_an_advt_reg);
 
 /* Set Loopback mode (0x0618) */
 struct i40e_aqc_set_lb_mode {
-	u8	lb_level;
-#define I40E_AQ_LB_NONE	0
-#define I40E_AQ_LB_MAC	1
-#define I40E_AQ_LB_SERDES	2
-#define I40E_AQ_LB_PHY_INT	3
-#define I40E_AQ_LB_PHY_EXT	4
-#define I40E_AQ_LB_CPVL_PCS	5
-#define I40E_AQ_LB_CPVL_EXT	6
+	__le16	lb_mode;
 #define I40E_AQ_LB_PHY_LOCAL	0x01
 #define I40E_AQ_LB_PHY_REMOTE	0x02
 #define I40E_AQ_LB_MAC_LOCAL	0x04
-	u8	lb_type;
-#define I40E_AQ_LB_LOCAL	0
-#define I40E_AQ_LB_FAR	0x01
-	u8	speed;
-#define I40E_AQ_LB_SPEED_NONE	0
-#define I40E_AQ_LB_SPEED_1G	1
-#define I40E_AQ_LB_SPEED_10G	2
-#define I40E_AQ_LB_SPEED_40G	3
-#define I40E_AQ_LB_SPEED_20G	4
-	u8	force_speed;
-	u8	reserved[12];
+	u8	reserved[14];
 };
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_set_lb_mode);

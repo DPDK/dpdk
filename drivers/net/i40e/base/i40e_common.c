@@ -2172,9 +2172,9 @@ aq_get_partner_advt_exit:
  *
  * Sets loopback modes.
  **/
-enum i40e_status_code
-i40e_aq_set_lb_modes(struct i40e_hw *hw, u8 lb_level, u8 lb_type, u8 speed,
-		     struct i40e_asq_cmd_details *cmd_details)
+enum i40e_status_code i40e_aq_set_lb_modes(struct i40e_hw *hw,
+				u16 lb_modes,
+				struct i40e_asq_cmd_details *cmd_details)
 {
 	struct i40e_aq_desc desc;
 	struct i40e_aqc_set_lb_mode *cmd =
@@ -2184,11 +2184,7 @@ i40e_aq_set_lb_modes(struct i40e_hw *hw, u8 lb_level, u8 lb_type, u8 speed,
 	i40e_fill_default_direct_cmd_desc(&desc,
 					  i40e_aqc_opc_set_lb_modes);
 
-	cmd->lb_level = lb_level;
-	cmd->lb_type = lb_type;
-	cmd->speed = speed;
-	if (speed)
-		cmd->force_speed = 1;
+	cmd->lb_mode = CPU_TO_LE16(lb_modes);
 
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 

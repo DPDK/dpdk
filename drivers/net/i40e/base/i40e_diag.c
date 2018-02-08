@@ -45,21 +45,8 @@ enum i40e_status_code i40e_diag_set_loopback(struct i40e_hw *hw,
 					     enum i40e_lb_mode mode)
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
-	u8 speed = I40E_AQ_LB_SPEED_10G;
-	u8 level = 0;
-	u8 type = 0;
 
-	if (mode == I40E_LB_MODE_PHY_LOCAL) {
-		level = I40E_AQ_LB_PHY_INT;
-		type = I40E_AQ_LB_LOCAL;
-	} else if (mode == I40E_LB_MODE_PHY_REMOTE) {
-		level = I40E_AQ_LB_PHY_INT;
-		type = I40E_AQ_LB_FAR;
-	} else if (mode == I40E_LB_MODE_MAC_LOCAL) {
-		level = I40E_AQ_LB_MAC;
-		type = I40E_AQ_LB_LOCAL;
-	}
-	if (i40e_aq_set_lb_modes(hw, level, type, speed, NULL))
+	if (i40e_aq_set_lb_modes(hw, mode, NULL))
 		ret_code = I40E_ERR_DIAG_TEST_FAILED;
 
 	return ret_code;
