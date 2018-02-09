@@ -295,7 +295,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	uint16_t used_idx;
 	uint32_t i, sz;
 
-	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
 		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
 			dev->vid, __func__, queue_id);
@@ -327,7 +327,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	if (count == 0)
 		goto out;
 
-	LOG_DEBUG(VHOST_DATA, "(%d) start_idx %d | end_idx %d\n",
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) start_idx %d | end_idx %d\n",
 		dev->vid, start_idx, start_idx + count);
 
 	vq->batch_copy_nb_elems = 0;
@@ -524,7 +524,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	hdr_phys_addr = buf_vec[vec_idx].buf_addr;
 	rte_prefetch0((void *)(uintptr_t)hdr_addr);
 
-	LOG_DEBUG(VHOST_DATA, "(%d) RX: num merge buffers %d\n",
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) RX: num merge buffers %d\n",
 		dev->vid, num_buffers);
 
 	desc_avail  = buf_vec[vec_idx].buf_len - dev->vhost_hlen;
@@ -620,7 +620,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 	uint16_t avail_head;
 
-	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
 		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
 			dev->vid, __func__, queue_id);
@@ -657,14 +657,14 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 		if (unlikely(reserve_avail_buf_mergeable(dev, vq,
 						pkt_len, buf_vec, &num_buffers,
 						avail_head) < 0)) {
-			LOG_DEBUG(VHOST_DATA,
+			VHOST_LOG_DEBUG(VHOST_DATA,
 				"(%d) failed to get enough desc from vring\n",
 				dev->vid);
 			vq->shadow_used_idx -= num_buffers;
 			break;
 		}
 
-		LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
+		VHOST_LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
 			dev->vid, vq->last_avail_idx,
 			vq->last_avail_idx + num_buffers);
 
@@ -1224,7 +1224,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	if (free_entries == 0)
 		goto out;
 
-	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 
 	/* Prefetch available and used ring */
 	avail_idx = vq->last_avail_idx & (vq->size - 1);
@@ -1234,7 +1234,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	count = RTE_MIN(count, MAX_PKT_BURST);
 	count = RTE_MIN(count, free_entries);
-	LOG_DEBUG(VHOST_DATA, "(%d) about to dequeue %u buffers\n",
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) about to dequeue %u buffers\n",
 			dev->vid, count);
 
 	/* Retrieve all of the head indexes first to avoid caching issues. */
