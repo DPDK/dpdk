@@ -941,6 +941,11 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 
 	vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 
+	if (vq->callfd >= 0)
+		close(vq->callfd);
+
+	vq->callfd = VIRTIO_UNINITIALIZED_EVENTFD;
+
 	if (dev->dequeue_zero_copy)
 		free_zmbufs(vq);
 	rte_free(vq->shadow_used_ring);
