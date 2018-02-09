@@ -942,8 +942,8 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 
 	dev->flags &= ~VIRTIO_DEV_READY;
 
-	/* Here we are safe to get the last used index */
-	msg->payload.state.num = vq->last_used_idx;
+	/* Here we are safe to get the last avail index */
+	msg->payload.state.num = vq->last_avail_idx;
 
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring base idx:%d file:%d\n", msg->payload.state.index,
