@@ -140,6 +140,17 @@ New Features
   * Rx/Tx descriptor status
   * Link status update/event
 
+* **Add feature supports for live migration from vhost-net to vhost-user.**
+
+  To make live migration from vhost-net to vhost-user possible, added
+  feature supports for vhost-user. The features include:
+
+  * VIRTIO_F_ANY_LAYOUT
+  * VIRTIO_F_EVENT_IDX
+  * VIRTIO_NET_F_GUEST_ECN, VIRTIO_NET_F_HOST_ECN
+  * VIRTIO_NET_F_GUEST_UFO, VIRTIO_NET_F_HOST_UFO
+  * VIRTIO_NET_F_GSO
+
 * **Updated the AESNI-MB PMD.**
 
   The AESNI-MB PMD has been updated with additional support for:
