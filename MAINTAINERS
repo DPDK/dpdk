@@ -89,6 +89,7 @@ F: devtools/validate-abi.sh
 F: buildtools/check-experimental-syms.sh
 
 Driver information
+M: Neil Horman <nhorman@tuxdriver.com>
 F: buildtools/pmdinfogen/
 F: usertools/dpdk-pmdinfo.py
 F: doc/guides/tools/pmdinfo.rst
