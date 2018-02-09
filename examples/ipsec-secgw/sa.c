@@ -631,7 +631,8 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 	printf("\tspi_%s(%3u):", inbound?"in":"out", sa->spi);
 
 	for (i = 0; i < RTE_DIM(cipher_algos); i++) {
-		if (cipher_algos[i].algo == sa->cipher_algo) {
+		if (cipher_algos[i].algo == sa->cipher_algo &&
+				cipher_algos[i].key_len == sa->cipher_key_len) {
 			printf("%s ", cipher_algos[i].keyword);
 			break;
 		}
