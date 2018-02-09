@@ -142,6 +142,13 @@ Deprecation Notices
   successful. This modification will only impact the PMDs, not the
   applications.
 
+* ethdev: functions add rx/tx callback will return named opaque type
+  ``rte_eth_add_rx_callback()``, ``rte_eth_add_first_rx_callback()`` and
+  ``rte_eth_add_tx_callback()`` functions currently return callback object as
+  ``void \*`` but APIs to delete callbacks get ``struct rte_eth_rxtx_callback \*``
+  as parameter. For consistency functions adding callback will return
+  ``struct rte_eth_rxtx_callback \*`` instead of ``void \*``.
+
 * i40e: The default flexible payload configuration which extracts the first 16
   bytes of the payload for RSS will be deprecated starting from 18.02. If
   required the previous behavior can be configured using existing flow
