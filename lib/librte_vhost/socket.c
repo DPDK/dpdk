@@ -159,6 +159,11 @@ send_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 		msgh.msg_control = control;
 		msgh.msg_controllen = sizeof(control);
 		cmsg = CMSG_FIRSTHDR(&msgh);
+		if (cmsg == NULL) {
+			RTE_LOG(ERR, VHOST_CONFIG, "cmsg == NULL\n");
+			errno = EINVAL;
+			return -1;
+		}
 		cmsg->cmsg_len = CMSG_LEN(fdsize);
 		cmsg->cmsg_level = SOL_SOCKET;
 		cmsg->cmsg_type = SCM_RIGHTS;
