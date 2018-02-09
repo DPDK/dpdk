@@ -192,7 +192,13 @@ Supported NICs
 
    - Solarflare SFN8522 Dual Port SFP+ Server Adapter
 
+   - Solarflare SFN8522M Dual Port SFP+ Server Adapter
+
+   - Solarflare SFN8042 Dual Port QSFP+ Server Adapter
+
    - Solarflare SFN8542 Dual Port QSFP+ Server Adapter
+
+   - Solarflare SFN8722 Dual Port SFP+ OCP Server Adapter
 
    - Solarflare SFN7002F Dual Port SFP+ Server Adapter
 
