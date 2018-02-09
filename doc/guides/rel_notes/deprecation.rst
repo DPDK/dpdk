@@ -89,6 +89,11 @@ Deprecation Notices
 
   The packet mbuf API should be used as a replacement.
 
+* mbuf: The opaque ``mbuf->hash.sched`` field will be updated to support generic
+  definition in line with the ethdev TM and MTR APIs. Currently, this field
+  is defined in librte_sched in a non-generic way. The new generic format
+  will contain: queue ID, traffic class, color. Field size will not change.
+
 * ethdev: a new Tx and Rx offload API was introduced on 17.11.
   In the new API, offloads are divided into per-port and per-queue offloads.
   Offloads are disabled by default and enabled per application request.
