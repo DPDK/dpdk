@@ -216,6 +216,15 @@ New Features
   * ``rte_mp_request`` is for sending a request message and will block until
     it gets a reply message which is sent from the peer by ``rte_mp_reply``.
 
+* **Add GRO support for VxLAN-tunneled packets.**
+
+  Add GRO support for VxLAN-tunneled packets. Supported VxLAN packets
+  must contain an outer IPv4 header and inner TCP/IPv4 headers. VxLAN
+  GRO doesn't check if input packets have correct checksums and doesn't
+  update checksums for output packets. Additionally, it assumes the
+  packets are complete (i.e., MF==0 && frag_off==0), when IP
+  fragmentation is possible (i.e., DF==0).
+
 * **Increased default Rx and Tx ring size in sample applications.**
 
   Increased the default ``RX_RING_SIZE`` and ``TX_RING_SIZE`` to 1024 entries
