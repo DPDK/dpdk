@@ -131,16 +131,16 @@ validate_action_name(const char *name)
 {
 	if (name == NULL) {
 		RTE_LOG(ERR, EAL, "Action name cannot be NULL\n");
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return -1;
 	}
 	if (strnlen(name, RTE_MP_MAX_NAME_LEN) == 0) {
 		RTE_LOG(ERR, EAL, "Length of action name is zero\n");
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return -1;
 	}
 	if (strnlen(name, RTE_MP_MAX_NAME_LEN) == RTE_MP_MAX_NAME_LEN) {
-		rte_errno = -E2BIG;
+		rte_errno = E2BIG;
 		return -1;
 	}
 	return 0;
@@ -156,7 +156,7 @@ rte_mp_action_register(const char *name, rte_mp_t action)
 
 	entry = malloc(sizeof(struct action_entry));
 	if (entry == NULL) {
-		rte_errno = -ENOMEM;
+		rte_errno = ENOMEM;
 		return -1;
 	}
 	strcpy(entry->action_name, name);
@@ -165,7 +165,7 @@ rte_mp_action_register(const char *name, rte_mp_t action)
 	pthread_mutex_lock(&mp_mutex_action);
 	if (find_action_entry_by_name(name) != NULL) {
 		pthread_mutex_unlock(&mp_mutex_action);
-		rte_errno = -EEXIST;
+		rte_errno = EEXIST;
 		free(entry);
 		return -1;
 	}
@@ -505,7 +505,7 @@ check_input(const struct rte_mp_msg *msg)
 {
 	if (msg == NULL) {
 		RTE_LOG(ERR, EAL, "Msg cannot be NULL\n");
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return false;
 	}
 
@@ -514,14 +514,14 @@ check_input(const struct rte_mp_msg *msg)
 
 	if (msg->len_param > RTE_MP_MAX_PARAM_LEN) {
 		RTE_LOG(ERR, EAL, "Message data is too long\n");
-		rte_errno = -E2BIG;
+		rte_errno = E2BIG;
 		return false;
 	}
 
 	if (msg->num_fds > RTE_MP_MAX_FD_NUM) {
 		RTE_LOG(ERR, EAL, "Cannot send more than %d FDs\n",
 			RTE_MP_MAX_FD_NUM);
-		rte_errno = -E2BIG;
+		rte_errno = E2BIG;
 		return false;
 	}
 
@@ -560,7 +560,7 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 	pthread_mutex_unlock(&sync_requests.lock);
 	if (exist) {
 		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
-		rte_errno = -EEXIST;
+		rte_errno = EEXIST;
 		return -1;
 	}
 
@@ -596,7 +596,7 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 	if (sync_req.reply_received == 0) {
 		RTE_LOG(ERR, EAL, "Fail to recv reply for request %s:%s\n",
 			dst, req->name);
-		rte_errno = -ETIMEDOUT;
+		rte_errno = ETIMEDOUT;
 		return -1;
 	}
 
@@ -604,7 +604,7 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 	if (!tmp) {
 		RTE_LOG(ERR, EAL, "Fail to alloc reply for request %s:%s\n",
 			dst, req->name);
-		rte_errno = -ENOMEM;
+		rte_errno = ENOMEM;
 		return -1;
 	}
 	memcpy(&tmp[reply->nb_received], &msg, sizeof(msg));
@@ -676,7 +676,7 @@ rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 
 	if (peer == NULL) {
 		RTE_LOG(ERR, EAL, "peer is not specified\n");
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return -1;
 	}
 
