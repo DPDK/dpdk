@@ -110,7 +110,8 @@ fs_dev_configure(struct rte_eth_dev *dev)
 		int lsc_interrupt = 0;
 		int lsc_enabled;
 
-		if (sdev->state != DEV_PROBED)
+		if (sdev->state != DEV_PROBED &&
+		    !(PRIV(dev)->alarm_lock == 0 && sdev->state == DEV_ACTIVE))
 			continue;
 
 		rmv_interrupt = ETH(sdev)->data->dev_flags &
