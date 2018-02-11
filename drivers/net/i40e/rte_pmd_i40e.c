@@ -3071,6 +3071,7 @@ rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
 {
 	struct rte_eth_dev *dev;
 	struct i40e_hw *hw;
+	struct i40e_pf *pf;
 	uint64_t inset_reg;
 	uint32_t mask_reg[2];
 	int i;
@@ -3086,6 +3087,12 @@ rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
 		return -EINVAL;
 
 	hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (pf->support_multi_driver) {
+		PMD_DRV_LOG(ERR, "Input set configuration is not supported.");
+		return -ENOTSUP;
+	}
 
 	/* Clear mask first */
 	for (i = 0; i < 2; i++)
@@ -3098,14 +3105,17 @@ rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
 
 	switch (inset_type) {
 	case INSET_HASH:
-		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(0, pctype),
-				     (uint32_t)(inset_reg & UINT32_MAX));
-		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(1, pctype),
-				     (uint32_t)((inset_reg >>
-					      I40E_32_BIT_WIDTH) & UINT32_MAX));
+		i40e_check_write_global_reg(hw, I40E_GLQF_HASH_INSET(0, pctype),
+					    (uint32_t)(inset_reg & UINT32_MAX));
+		i40e_check_write_global_reg(hw, I40E_GLQF_HASH_INSET(1, pctype),
+					    (uint32_t)((inset_reg >>
+					     I40E_32_BIT_WIDTH) & UINT32_MAX));
 		for (i = 0; i < 2; i++)
-			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
-					     mask_reg[i]);
+			i40e_check_write_global_reg(hw,
+						  I40E_GLQF_HASH_MSK(i, pctype),
+						  mask_reg[i]);
+		i40e_global_cfg_warning(I40E_WARNING_HASH_INSET);
+		i40e_global_cfg_warning(I40E_WARNING_HASH_MSK);
 		break;
 	case INSET_FDIR:
 		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
@@ -3114,8 +3124,10 @@ rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
 				     (uint32_t)((inset_reg >>
 					      I40E_32_BIT_WIDTH) & UINT32_MAX));
 		for (i = 0; i < 2; i++)
-			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
-					     mask_reg[i]);
+			i40e_check_write_global_reg(hw,
+						    I40E_GLQF_FD_MSK(i, pctype),
+						    mask_reg[i]);
+		i40e_global_cfg_warning(I40E_WARNING_FD_MSK);
 		break;
 	case INSET_FDIR_FLX:
 		i40e_check_write_reg(hw, I40E_PRTQF_FD_FLXINSET(pctype),
