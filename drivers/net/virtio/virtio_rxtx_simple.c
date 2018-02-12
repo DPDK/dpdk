@@ -36,6 +36,7 @@ virtqueue_enqueue_recv_refill_simple(struct virtqueue *vq,
 	uint16_t desc_idx;
 
 	cookie->port = vq->rxq.port_id;
+	cookie->data_off = RTE_PKTMBUF_HEADROOM;
 
 	desc_idx = vq->vq_avail_idx & (vq->vq_nentries - 1);
 	dxp = &vq->vq_descx[desc_idx];
