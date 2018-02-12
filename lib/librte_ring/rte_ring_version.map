@@ -7,7 +7,6 @@ DPDK_2.0 {
 	rte_ring_init;
 	rte_ring_list_dump;
 	rte_ring_lookup;
-	rte_ring_set_water_mark;
 
 	local: *;
 };

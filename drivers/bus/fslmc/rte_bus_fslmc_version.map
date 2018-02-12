@@ -28,7 +28,6 @@ DPDK_17.05 {
 	qbman_eq_desc_set_no_orp;
 	qbman_eq_desc_set_qd;
 	qbman_eq_desc_set_response;
-	qbman_get_version;
 	qbman_pull_desc_clear;
 	qbman_pull_desc_set_fq;
 	qbman_pull_desc_set_numframes;
@@ -41,7 +40,6 @@ DPDK_17.05 {
 	qbman_swp_acquire;
 	qbman_swp_pull;
 	qbman_swp_release;
-	qbman_swp_send_multiple;
 	rte_fslmc_driver_register;
 	rte_fslmc_driver_unregister;
 	rte_fslmc_vfio_dmamap;

@@ -248,7 +248,6 @@ EXPERIMENTAL {
 	rte_service_map_lcore_get;
 	rte_service_map_lcore_set;
 	rte_service_probe_capability;
-	rte_service_reset;
 	rte_service_run_iter_on_app_lcore;
 	rte_service_runstate_get;
 	rte_service_runstate_set;

@@ -156,7 +156,6 @@ DPDK_17.08 {
 	rte_flow_copy;
 	rte_flow_isolate;
 	rte_tm_capabilities_get;
-	rte_tm_get_leaf_nodes;
 	rte_tm_hierarchy_commit;
 	rte_tm_level_capabilities_get;
 	rte_tm_mark_ip_dscp;
