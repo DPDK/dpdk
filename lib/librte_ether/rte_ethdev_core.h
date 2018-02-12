@@ -601,7 +601,7 @@ struct rte_eth_dev_data {
 	struct rte_vlan_filter_conf vlan_filter_conf;
 	/**< VLAN filter configuration. */
 	struct rte_eth_dev_owner owner; /**< The port owner. */
-};
+} __rte_cache_aligned;
 
 /**
  * @internal
