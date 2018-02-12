@@ -1348,16 +1348,16 @@ vhost_user_msg_handler(int vid, int fd)
 	}
 
 	/*
-	 * Note: we don't lock all queues on VHOST_USER_GET_VRING_BASE,
-	 * since it is sent when virtio stops and device is destroyed.
-	 * destroy_device waits for queues to be inactive, so it is safe.
-	 * Otherwise taking the access_lock would cause a dead lock.
+	 * Note: we don't lock all queues on VHOST_USER_GET_VRING_BASE
+	 * and VHOST_USER_RESET_OWNER, since it is sent when virtio stops
+	 * and device is destroyed. destroy_device waits for queues to be
+	 * inactive, so it is safe. Otherwise taking the access_lock
+	 * would cause a dead lock.
 	 */
 	switch (msg.request.master) {
 	case VHOST_USER_SET_FEATURES:
 	case VHOST_USER_SET_PROTOCOL_FEATURES:
 	case VHOST_USER_SET_OWNER:
-	case VHOST_USER_RESET_OWNER:
 	case VHOST_USER_SET_MEM_TABLE:
 	case VHOST_USER_SET_LOG_BASE:
 	case VHOST_USER_SET_LOG_FD:
