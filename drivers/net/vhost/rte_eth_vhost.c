@@ -607,7 +607,7 @@ new_device(int vid)
 	rte_atomic32_set(&internal->dev_attached, 1);
 	update_queuing_status(eth_dev);
 
-	RTE_LOG(INFO, PMD, "New connection established\n");
+	RTE_LOG(INFO, PMD, "Vhost device %d created\n", vid);
 
 	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 
@@ -661,7 +661,7 @@ destroy_device(int vid)
 	state->max_vring = 0;
 	rte_spinlock_unlock(&state->lock);
 
-	RTE_LOG(INFO, PMD, "Connection closed\n");
+	RTE_LOG(INFO, PMD, "Vhost device %d destroyed\n", vid);
 
 	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
