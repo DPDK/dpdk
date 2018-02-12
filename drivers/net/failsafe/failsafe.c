@@ -85,16 +85,14 @@ failsafe_hotplug_alarm_cancel(struct rte_eth_dev *dev)
 {
 	int ret = 0;
 
-	if (PRIV(dev)->pending_alarm) {
-		rte_errno = 0;
-		rte_eal_alarm_cancel(fs_hotplug_alarm, dev);
-		if (rte_errno) {
-			ERROR("rte_eal_alarm_cancel failed (errno: %s)",
-			      strerror(rte_errno));
-			ret = -rte_errno;
-		} else {
-			PRIV(dev)->pending_alarm = 0;
-		}
+	rte_errno = 0;
+	rte_eal_alarm_cancel(fs_hotplug_alarm, dev);
+	if (rte_errno) {
+		ERROR("rte_eal_alarm_cancel failed (errno: %s)",
+		      strerror(rte_errno));
+		ret = -rte_errno;
+	} else {
+		PRIV(dev)->pending_alarm = 0;
 	}
 	return ret;
 }
