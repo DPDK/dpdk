@@ -280,6 +280,7 @@ fs_dev_remove(struct sub_device *sdev)
 		/* the end */
 		break;
 	}
+	sdev->remove = 0;
 	failsafe_hotplug_alarm_install(sdev->fs_dev);
 }
 

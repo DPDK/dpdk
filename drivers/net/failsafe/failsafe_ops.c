@@ -131,7 +131,6 @@ fs_dev_configure(struct rte_eth_dev *dev)
 			dev->data->dev_conf.intr_conf.lsc = 0;
 		}
 		DEBUG("Configuring sub-device %d", i);
-		sdev->remove = 0;
 		ret = rte_eth_dev_configure(PORT_ID(sdev),
 					dev->data->nb_rx_queues,
 					dev->data->nb_tx_queues,
