@@ -391,3 +391,5 @@ def setup(app):
         app.add_role('numref', numref_role)
         # Process the numref references once the doctree has been created.
         app.connect('doctree-resolved', process_numref)
+
+    app.add_stylesheet('css/custom.css')

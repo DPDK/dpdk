@@ -117,7 +117,13 @@ guides-pdf-%:
 	$(Q)mv $(RTE_OUTPUT)/doc/pdf/guides/$*/doc.pdf \
 		$(RTE_OUTPUT)/doc/pdf/guides/$*.pdf
 
-guides-%:
+guides-html-prepare:
+	$(Q)install -D -m0644 $(RTE_SDK)/doc/guides/custom.css \
+		$(RTE_OUTPUT)/doc/html/guides/_static/css/custom.css
+
+guides-%-prepare: ;
+
+guides-%: guides-%-prepare
 	@echo 'sphinx processing $@...'
 	$(Q)$(RTE_SPHINX_BUILD) -b $* $(RTE_SPHINX_VERBOSE) \
 		-c $(RTE_SDK)/doc/guides $(RTE_SDK)/doc/guides \

@@ -1,0 +1,7 @@
+/* Override readthedocs theme */
+
+/* Spacing before a list item must be bigger than spacing inside the item.
+ * Complex list items start with a p.first element. */
+.section li > .first {
+	margin-top: 18px;
+}
