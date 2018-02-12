@@ -7,6 +7,7 @@
 #define _RTE_ETH_FAILSAFE_PRIVATE_H_
 
 #include <sys/queue.h>
+#include <pthread.h>
 
 #include <rte_atomic.h>
 #include <rte_dev.h>
@@ -161,6 +162,9 @@ struct fs_priv {
 	 * appropriate failsafe Rx queue.
 	 */
 	struct rx_proxy rxp;
+	pthread_mutex_t hotplug_mutex;
+	/* Hot-plug mutex is locked by the alarm mechanism. */
+	volatile unsigned int alarm_lock:1;
 	unsigned int pending_alarm:1; /* An alarm is pending */
 	/* flow isolation state */
 	int flow_isolated:1;
@@ -344,6 +348,58 @@ fs_find_next(struct rte_eth_dev *dev,
 	if (sid >= tail)
 		return NULL;
 	return &subs[sid];
+}
+
+/*
+ * Lock hot-plug mutex.
+ * is_alarm means that the caller is, for sure, the hot-plug alarm mechanism.
+ */
+static inline int
+fs_lock(struct rte_eth_dev *dev, unsigned int is_alarm)
+{
+	int ret;
+
+	if (is_alarm) {
+		ret = pthread_mutex_trylock(&PRIV(dev)->hotplug_mutex);
+		if (ret) {
+			DEBUG("Hot-plug mutex lock trying failed(%s), will try"
+			      " again later...", strerror(ret));
+			return ret;
+		}
+		PRIV(dev)->alarm_lock = 1;
+	} else {
+		ret = pthread_mutex_lock(&PRIV(dev)->hotplug_mutex);
+		if (ret) {
+			ERROR("Cannot lock mutex(%s)", strerror(ret));
+			return ret;
+		}
+	}
+	DEBUG("Hot-plug mutex was locked by thread %lu%s", pthread_self(),
+	      PRIV(dev)->alarm_lock ? " by the hot-plug alarm" : "");
+	return ret;
+}
+
+/*
+ * Unlock hot-plug mutex.
+ * is_alarm means that the caller is, for sure, the hot-plug alarm mechanism.
+ */
+static inline void
+fs_unlock(struct rte_eth_dev *dev, unsigned int is_alarm)
+{
+	int ret;
+	unsigned int prev_alarm_lock = PRIV(dev)->alarm_lock;
+
+	if (is_alarm) {
+		RTE_ASSERT(PRIV(dev)->alarm_lock == 1);
+		PRIV(dev)->alarm_lock = 0;
+	}
+	ret = pthread_mutex_unlock(&PRIV(dev)->hotplug_mutex);
+	if (ret)
+		ERROR("Cannot unlock hot-plug mutex(%s)", strerror(ret));
+	else
+		DEBUG("Hot-plug mutex was unlocked by thread %lu%s",
+		      pthread_self(),
+		      prev_alarm_lock ? " by the hot-plug alarm" : "");
 }
 
 /*

@@ -113,14 +113,43 @@ fs_hotplug_alarm(void *arg)
 			break;
 	/* if we have non-probed device */
 	if (i != PRIV(dev)->subs_tail) {
+		if (fs_lock(dev, 1) != 0)
+			goto reinstall;
 		ret = failsafe_eth_dev_state_sync(dev);
+		fs_unlock(dev, 1);
 		if (ret)
 			ERROR("Unable to synchronize sub_device state");
 	}
 	failsafe_dev_remove(dev);
+reinstall:
 	ret = failsafe_hotplug_alarm_install(dev);
 	if (ret)
 		ERROR("Unable to set up next alarm");
+}
+
+static int
+fs_mutex_init(struct fs_priv *priv)
+{
+	int ret;
+	pthread_mutexattr_t attr;
+
+	ret = pthread_mutexattr_init(&attr);
+	if (ret) {
+		ERROR("Cannot initiate mutex attributes - %s", strerror(ret));
+		return ret;
+	}
+	/* Allow mutex relocks for the thread holding the mutex. */
+	ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	if (ret) {
+		ERROR("Cannot set mutex type - %s", strerror(ret));
+		return ret;
+	}
+	ret = pthread_mutex_init(&priv->hotplug_mutex, &attr);
+	if (ret) {
+		ERROR("Cannot initiate mutex - %s", strerror(ret));
+		return ret;
+	}
+	return 0;
 }
 
 static int
@@ -174,6 +203,9 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 	snprintf(priv->my_owner.name, sizeof(priv->my_owner.name),
 		 FAILSAFE_OWNER_NAME);
 	ret = failsafe_eal_init(dev);
+	if (ret)
+		goto free_args;
+	ret = fs_mutex_init(priv);
 	if (ret)
 		goto free_args;
 	ret = failsafe_hotplug_alarm_install(dev);
@@ -250,6 +282,9 @@ fs_rte_eth_free(const char *name)
 		ERROR("Error while uninitializing sub-EAL");
 	failsafe_args_free(dev);
 	fs_sub_device_free(dev);
+	ret = pthread_mutex_destroy(&PRIV(dev)->hotplug_mutex);
+	if (ret)
+		ERROR("Error while destroying hotplug mutex");
 	rte_free(PRIV(dev));
 	rte_eth_dev_release_port(dev);
 	return ret;
