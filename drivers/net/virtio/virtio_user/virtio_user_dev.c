@@ -99,6 +99,9 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	uint64_t features;
 	int ret;
 
+	/* Do not check return as already done in init, or reset in stop */
+	dev->ops->send_request(dev, VHOST_USER_SET_OWNER, NULL);
+
 	/* Step 0: tell vhost to create queues */
 	if (virtio_user_queue_setup(dev, virtio_user_create_queue) < 0)
 		goto error;
@@ -332,6 +335,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		PMD_INIT_LOG(ERR, "backend set up fails");
 		return -1;
 	}
+
 	if (dev->ops->send_request(dev, VHOST_USER_SET_OWNER, NULL) < 0) {
 		PMD_INIT_LOG(ERR, "set_owner fails: %s", strerror(errno));
 		return -1;
