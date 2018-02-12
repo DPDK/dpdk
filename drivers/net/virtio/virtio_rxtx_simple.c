@@ -27,35 +27,6 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 
-int __attribute__((cold))
-virtqueue_enqueue_recv_refill_simple(struct virtqueue *vq,
-	struct rte_mbuf *cookie)
-{
-	struct vq_desc_extra *dxp;
-	struct vring_desc *start_dp;
-	uint16_t desc_idx;
-
-	cookie->port = vq->rxq.port_id;
-	cookie->data_off = RTE_PKTMBUF_HEADROOM;
-
-	desc_idx = vq->vq_avail_idx & (vq->vq_nentries - 1);
-	dxp = &vq->vq_descx[desc_idx];
-	dxp->cookie = (void *)cookie;
-	vq->sw_ring[desc_idx] = cookie;
-
-	start_dp = vq->vq_ring.desc;
-	start_dp[desc_idx].addr =
-		VIRTIO_MBUF_ADDR(cookie, vq) +
-		RTE_PKTMBUF_HEADROOM - vq->hw->vtnet_hdr_size;
-	start_dp[desc_idx].len = cookie->buf_len -
-		RTE_PKTMBUF_HEADROOM + vq->hw->vtnet_hdr_size;
-
-	vq->vq_free_cnt--;
-	vq->vq_avail_idx++;
-
-	return 0;
-}
-
 uint16_t
 virtio_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts)
@@ -78,7 +49,7 @@ virtio_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 	rte_compiler_barrier();
 
 	if (nb_used >= VIRTIO_TX_FREE_THRESH)
-		virtio_xmit_cleanup(vq);
+		virtio_xmit_cleanup_simple(vq);
 
 	nb_commit = nb_pkts = RTE_MIN((vq->vq_free_cnt >> 1), nb_pkts);
 	desc_idx = (uint16_t)(vq->vq_avail_idx & desc_idx_max);

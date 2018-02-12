@@ -60,7 +60,7 @@ virtio_rxq_rearm_vec(struct virtnet_rx *rxvq)
 #define VIRTIO_TX_FREE_NR 32
 /* TODO: vq->tx_free_cnt could mean num of free slots so we could avoid shift */
 static inline void
-virtio_xmit_cleanup(struct virtqueue *vq)
+virtio_xmit_cleanup_simple(struct virtqueue *vq)
 {
 	uint16_t i, desc_idx;
 	uint32_t nb_free = 0;
