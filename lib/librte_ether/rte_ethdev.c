@@ -277,12 +277,12 @@ rte_eth_dev_allocate(const char *name)
 
 	port_id = rte_eth_dev_find_free_port();
 	if (port_id == RTE_MAX_ETHPORTS) {
-		RTE_PMD_DEBUG_TRACE("Reached maximum number of Ethernet ports\n");
+		RTE_LOG(ERR, EAL, "Reached maximum number of Ethernet ports\n");
 		goto unlock;
 	}
 
 	if (rte_eth_dev_allocated(name) != NULL) {
-		RTE_PMD_DEBUG_TRACE("Ethernet Device with name %s already allocated!\n",
+		RTE_LOG(ERR, EAL, "Ethernet Device with name %s already allocated!\n",
 				name);
 		goto unlock;
 	}
