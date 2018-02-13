@@ -261,7 +261,8 @@ tap_rx_offload_get_port_capa(void)
 	return DEV_RX_OFFLOAD_SCATTER |
 	       DEV_RX_OFFLOAD_IPV4_CKSUM |
 	       DEV_RX_OFFLOAD_UDP_CKSUM |
-	       DEV_RX_OFFLOAD_TCP_CKSUM;
+	       DEV_RX_OFFLOAD_TCP_CKSUM |
+	       DEV_RX_OFFLOAD_CRC_STRIP;
 }
 
 static uint64_t
@@ -270,7 +271,8 @@ tap_rx_offload_get_queue_capa(void)
 	return DEV_RX_OFFLOAD_SCATTER |
 	       DEV_RX_OFFLOAD_IPV4_CKSUM |
 	       DEV_RX_OFFLOAD_UDP_CKSUM |
-	       DEV_RX_OFFLOAD_TCP_CKSUM;
+	       DEV_RX_OFFLOAD_TCP_CKSUM |
+	       DEV_RX_OFFLOAD_CRC_STRIP;
 }
 
 static bool
