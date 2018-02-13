@@ -108,7 +108,7 @@ struct stats {
 	uint64_t rx;
 	uint64_t tx;
 	uint64_t dropped;
-};
+} __rte_cache_aligned;
 
 /* Array of lcore-specific stats */
 static struct stats lcore_stats[RTE_MAX_LCORE];
