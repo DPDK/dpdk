@@ -2634,6 +2634,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	if (err)
 		goto error;
 
+	ixgbe_dev_link_update(dev, 0);
+
 skip_link_setup:
 
 	if (rte_intr_allow_others(intr_handle)) {
@@ -4974,6 +4976,8 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	}
 
 	ixgbevf_dev_rxtx_start(dev);
+
+	ixgbevf_dev_link_update(dev, 0);
 
 	/* check and configure queue intr-vector mapping */
 	if (rte_intr_cap_multiple(intr_handle) &&
