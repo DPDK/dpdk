@@ -318,6 +318,14 @@ extern int mac_from_arg;
 	 &((struct txq *)((s)->fs_dev->data->tx_queues[i]))->refcnt[(s)->sid] \
 	)
 
+#ifdef RTE_EXEC_ENV_BSDAPP
+#define FS_THREADID_TYPE void*
+#define FS_THREADID_FMT  "p"
+#else
+#define FS_THREADID_TYPE unsigned long
+#define FS_THREADID_FMT  "lu"
+#endif
+
 #define LOG__(level, m, ...) \
 	RTE_LOG(level, PMD, "net_failsafe: " m "%c", __VA_ARGS__)
 #define LOG_(level, ...) LOG__(level, __VA_ARGS__, '\n')
@@ -374,7 +382,8 @@ fs_lock(struct rte_eth_dev *dev, unsigned int is_alarm)
 			return ret;
 		}
 	}
-	DEBUG("Hot-plug mutex was locked by thread %lu%s", pthread_self(),
+	DEBUG("Hot-plug mutex was locked by thread %" FS_THREADID_FMT "%s",
+	      (FS_THREADID_TYPE)pthread_self(),
 	      PRIV(dev)->alarm_lock ? " by the hot-plug alarm" : "");
 	return ret;
 }
@@ -397,8 +406,8 @@ fs_unlock(struct rte_eth_dev *dev, unsigned int is_alarm)
 	if (ret)
 		ERROR("Cannot unlock hot-plug mutex(%s)", strerror(ret));
 	else
-		DEBUG("Hot-plug mutex was unlocked by thread %lu%s",
-		      pthread_self(),
+		DEBUG("Hot-plug mutex was unlocked by thread %" FS_THREADID_FMT "%s",
+		      (FS_THREADID_TYPE)pthread_self(),
 		      prev_alarm_lock ? " by the hot-plug alarm" : "");
 }
 
