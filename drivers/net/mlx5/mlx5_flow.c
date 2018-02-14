@@ -912,6 +912,16 @@ priv_flow_convert_finalise(struct priv *priv, struct mlx5_flow_parse *parser)
 	unsigned int i;
 
 	(void)priv;
+	/* Remove any other flow not matching the pattern. */
+	if (parser->queues_n == 1) {
+		for (i = 0; i != hash_rxq_init_n; ++i) {
+			if (i == HASH_RXQ_ETH)
+				continue;
+			rte_free(parser->queue[i].ibv_attr);
+			parser->queue[i].ibv_attr = NULL;
+		}
+		return;
+	}
 	if (parser->layer == HASH_RXQ_ETH) {
 		goto fill;
 	} else {
@@ -1758,6 +1768,7 @@ priv_flow_create_action_queue(struct priv *priv,
 {
 	int err = 0;
 	unsigned int i;
+	unsigned int flows_n = 0;
 
 	assert(priv->pd);
 	assert(priv->ctx);
@@ -1782,10 +1793,16 @@ priv_flow_create_action_queue(struct priv *priv,
 			err = ENOMEM;
 			goto error;
 		}
+		++flows_n;
 		DEBUG("%p type %d QP %p ibv_flow %p",
 		      (void *)flow, i,
 		      (void *)flow->frxq[i].hrxq,
 		      (void *)flow->frxq[i].ibv_flow);
+	}
+	if (!flows_n) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "internal error in flow creation");
+		goto error;
 	}
 	for (i = 0; i != parser->queues_n; ++i) {
 		struct mlx5_rxq_data *q =
