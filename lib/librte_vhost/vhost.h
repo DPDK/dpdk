@@ -296,7 +296,6 @@ vhost_log_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 #ifdef RTE_LIBRTE_VHOST_DEBUG
 #define VHOST_MAX_PRINT_BUFF 6072
-#define LOG_LEVEL RTE_LOG_DEBUG
 #define LOG_DEBUG(log_type, fmt, args...) RTE_LOG(DEBUG, log_type, fmt, ##args)
 #define PRINT_PACKET(device, addr, size, header) do { \
 	char *pkt_addr = (char *)(addr); \
@@ -316,7 +315,6 @@ vhost_log_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	LOG_DEBUG(VHOST_DATA, "%s", packet); \
 } while (0)
 #else
-#define LOG_LEVEL RTE_LOG_INFO
 #define LOG_DEBUG(log_type, fmt, args...) do {} while (0)
 #define PRINT_PACKET(device, addr, size, header) do {} while (0)
 #endif
