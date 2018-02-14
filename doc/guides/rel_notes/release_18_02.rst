@@ -41,7 +41,7 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
-* **Add function to allow releasing internal EAL resources on exit**
+* **Added function to allow releasing internal EAL resources on exit.**
 
   During ``rte_eal_init()`` EAL allocates memory from hugepages to enable its
   core libraries to perform their tasks. The ``rte_eal_cleanup()`` function
@@ -50,38 +50,32 @@ New Features
   exiting. Not calling this function could result in leaking hugepages, leading
   to failure during initialization of secondary processes.
 
-* **Added the ixgbe ethernet driver to support RSS with flow API.**
+* **Added igb, ixgbe and i40e ethernet driver to support RSS with flow API.**
 
-  Rte_flow actually defined to include RSS, but till now, RSS is out of
-  rte_flow. This patch is to support igb and ixgbe NIC with existing RSS
-  configuration using rte_flow API.
+  Added support for igb, ixgbe and i40e NICs with existing RSS configuration
+  using the ``rte_flow`` API.
 
-* **Add MAC loopback support for i40e.**
-
-  Add MAC loopback support for i40e in order to support test task asked by
-  users. According to the device configuration, it will setup TX->RX loopback
-  link or not.
-
-* **Add the support of run time determination of number of queues per i40e VF**
-
-  The number of queue per VF is determined by its host PF. If the PCI address
-  of an i40e PF is aaaa:bb.cc, the number of queues per VF can be configured
-  with EAL parameter like -w aaaa:bb.cc,queue-num-per-vf=n. The value n can be
-  1, 2, 4, 8 or 16. If no such parameter is configured, the number of queues
-  per VF is 4 by default.
-
-* **Added the i40e ethernet driver to support RSS with flow API.**
-
-  Rte_flow actually defined to include RSS, but till now, RSS is out of
-  rte_flow. This patch is to support i40e NIC with existing RSS
-  configuration using rte_flow API.It also enable queue region configuration
-  using flow API for i40e.
+  Also enabled queue region configuration using the ``rte_flow`` API for i40e.
 
 * **Updated i40e driver to support PPPoE/PPPoL2TP.**
 
   Updated i40e PMD to support PPPoE/PPPoL2TP with PPPoE/PPPoL2TP supporting
   profiles which can be programmed by dynamic device personalization (DDP)
   process.
+
+* **Added MAC loopback support for i40e.**
+
+  Added MAC loopback support for i40e in order to support test tasks requested
+  by users. It will setup ``Tx -> Rx`` loopback link according to the device
+  configuration.
+
+* **Added support of run time determination of number of queues per i40e VF.**
+
+  The number of queue per VF is determined by its host PF. If the PCI address
+  of an i40e PF is ``aaaa:bb.cc``, the number of queues per VF can be
+  configured with EAL parameter like ``-w aaaa:bb.cc,queue-num-per-vf=n``. The
+  value n can be 1, 2, 4, 8 or 16. If no such parameter is configured, the
+  number of queues per VF is 4 by default.
 
 * **Updated mlx5 driver.**
 
@@ -117,16 +111,10 @@ New Features
   * Added tunneled packets classification.
   * Added inner checksum offload.
 
-* **Added the igb ethernet driver to support RSS with flow API.**
+* **Added AVF (Adaptive Virtual Function) net PMD.**
 
-  Rte_flow actually defined to include RSS, but till now, RSS is out of
-  rte_flow. This patch is to support igb NIC with existing RSS configuration
-  using rte_flow API.
-
-* **Add AVF (Adaptive Virtual Function) net PMD.**
-
-  A new net PMD has been added, which supports Intel® Ethernet Adaptive
-  Virtual Function (AVF) with features list below:
+  Added a new net PMD called AVF (Adaptive Virtual Function), which supports
+  Intel® Ethernet Adaptive Virtual Function (AVF) with features such as:
 
   * Basic Rx/Tx burst
   * SSE vectorized Rx/Tx burst
@@ -140,22 +128,21 @@ New Features
   * Rx/Tx descriptor status
   * Link status update/event
 
-* **Add feature supports for live migration from vhost-net to vhost-user.**
+* **Added feature supports for live migration from vhost-net to vhost-user.**
 
-  To make live migration from vhost-net to vhost-user possible, added
-  feature supports for vhost-user. The features include:
+  Added feature supports for vhost-user to make live migration from vhost-net
+  to vhost-user possible. The features include:
 
-  * VIRTIO_F_ANY_LAYOUT
-  * VIRTIO_F_EVENT_IDX
-  * VIRTIO_NET_F_GUEST_ECN, VIRTIO_NET_F_HOST_ECN
-  * VIRTIO_NET_F_GUEST_UFO, VIRTIO_NET_F_HOST_UFO
-  * VIRTIO_NET_F_GSO
+  * ``VIRTIO_F_ANY_LAYOUT``
+  * ``VIRTIO_F_EVENT_IDX``
+  * ``VIRTIO_NET_F_GUEST_ECN``, ``VIRTIO_NET_F_HOST_ECN``
+  * ``VIRTIO_NET_F_GUEST_UFO``, ``VIRTIO_NET_F_HOST_UFO``
+  * ``VIRTIO_NET_F_GSO``
 
-* **Added VIRTIO_NET_F_GUEST_ANNOUNCE feature support in virtio pmd.**
-
-  In scenario where the vhost backend doesn't have the ability to generate RARP
-  packet, the VM running virtio pmd can still be live migrated if
-  VIRTIO_NET_F_GUEST_ANNOUNCE feature is negotiated.
+  Also added ``VIRTIO_NET_F_GUEST_ANNOUNCE`` feature support in virtio pmd.
+  In a scenario where the vhost backend doesn't have the ability to generate
+  RARP packets, the VM running virtio pmd can still be live migrated if
+  ``VIRTIO_NET_F_GUEST_ANNOUNCE`` feature is negotiated.
 
 * **Updated the AESNI-MB PMD.**
 
@@ -166,62 +153,65 @@ New Features
 * **Updated the DPAA_SEC crypto driver to support rte_security.**
 
   Updated the ``dpaa_sec`` crypto PMD to support ``rte_security`` lookaside
-  protocol offload for IPSec.
+  protocol offload for IPsec.
 
 * **Added Wireless Base Band Device (bbdev) abstraction.**
 
   The Wireless Baseband Device library is an acceleration abstraction
   framework for 3gpp Layer 1 processing functions that provides a common
-  programming interface for seamless opeartion on integrated or discrete
+  programming interface for seamless operation on integrated or discrete
   hardware accelerators or using optimized software libraries for signal
   processing.
+
   The current release only supports 3GPP CRC, Turbo Coding and Rate
   Matching operations, as specified in 3GPP TS 36.212.
 
   See the :doc:`../prog_guide/bbdev` programmer's guide for more details.
 
-* **Added New eventdev OPDL PMD**
+* **Added New eventdev Ordered Packet Distribution Library (OPDL) PMD.**
 
   The OPDL (Ordered Packet Distribution Library) eventdev is a specific
   implementation of the eventdev API. It is particularly suited to packet
   processing workloads that have high throughput and low latency requirements.
   All packets follow the same path through the device. The order in which
-  packets  follow is determinted by the order in which queues are set up.
+  packets follow is determined by the order in which queues are set up.
   Events are left on the ring until they are transmitted. As a result packets
   do not go out of order.
 
-  With this change, application can use OPDL PMD by eventdev api.
+  With this change, applications can use the OPDL PMD via the eventdev api.
 
-* **Added New pipeline use case for dpdk-test-eventdev application**
+* **Added new pipeline use case for dpdk-test-eventdev application.**
 
+  Added a new "pipeline" use case for the ``dpdk-test-eventdev`` application.
   The pipeline case can be used to simulate various stages in a real world
   application from packet receive to transmit while maintaining the packet
-  ordering also measure the performance of the event device across the stages
-  of the pipeline.
+  ordering. It can also be used to measure the performance of the event device
+  across the stages of the pipeline.
 
-  The pipeline use case has been made generic to work will all the event
+  The pipeline use case has been made generic to work with all the event
   devices based on the capabilities.
 
-* **Updated Eventdev Sample application to support event devices based on capability**
+* **Updated Eventdev sample application to support event devices based on capability.**
 
-  Updated Eventdev pipeline sample application to support various types of pipelines
-  based on the capabilities of the attached event and ethernet devices. Also,
-  renamed the application from SW PMD specific ``eventdev_pipeline_sw_pmd``
-  to PMD agnostic ``eventdev_pipeline``.
+  Updated the Eventdev pipeline sample application to support various types of
+  pipelines based on the capabilities of the attached event and ethernet
+  devices. Also, renamed the application from software PMD specific
+  ``eventdev_pipeline_sw_pmd`` to the more generic ``eventdev_pipeline``.
 
 * **Added Rawdev, a generic device support library.**
 
-  Rawdev library provides support for integrating any generic device type with
-  DPDK framework. Generic devices are those which do not have a pre-defined
+  The Rawdev library provides support for integrating any generic device type with
+  the DPDK framework. Generic devices are those which do not have a pre-defined
   type within DPDK, for example, ethernet, crypto, event etc.
+
   A set of northbound APIs have been defined which encompass a generic set of
   operations by allowing applications to interact with device using opaque
-  structures/buffers. Also, southbound APIs provide APIs for integrating device
+  structures/buffers. Also, southbound APIs provide a means of integrating devices
   either as as part of a physical bus (PCI, FSLMC etc) or through ``vdev``.
 
   See the :doc:`../prog_guide/rawdev` programmer's guide for more details.
 
-* **Added new multi-process communication channel**
+* **Added new multi-process communication channel.**
 
   Added a generic channel in EAL for multi-process (primary/secondary) communication.
   Consumers of this channel need to register an action with an action name to response
@@ -233,14 +223,14 @@ New Features
   * ``rte_mp_request`` is for sending a request message and will block until
     it gets a reply message which is sent from the peer by ``rte_mp_reply``.
 
-* **Add GRO support for VxLAN-tunneled packets.**
+* **Added GRO support for VxLAN-tunneled packets.**
 
-  Add GRO support for VxLAN-tunneled packets. Supported VxLAN packets
+  Added GRO support for VxLAN-tunneled packets. Supported VxLAN packets
   must contain an outer IPv4 header and inner TCP/IPv4 headers. VxLAN
   GRO doesn't check if input packets have correct checksums and doesn't
   update checksums for output packets. Additionally, it assumes the
-  packets are complete (i.e., MF==0 && frag_off==0), when IP
-  fragmentation is possible (i.e., DF==0).
+  packets are complete (i.e., ``MF==0 && frag_off==0``), when IP
+  fragmentation is possible (i.e., ``DF==0``).
 
 * **Increased default Rx and Tx ring size in sample applications.**
 
@@ -249,75 +239,19 @@ New Features
   general case. The user should experiment with various Rx and Tx ring sizes
   for their specific application to get best performance.
 
-* **Added new DPDK build system using the tools "meson" and "ninja" [EXPERIMENTAL]**
+* **Added new DPDK build system using the tools "meson" and "ninja" [EXPERIMENTAL].**
 
-  Added in support for building DPDK using ``meson`` and ``ninja``, which gives
+  Added support for building DPDK using ``meson`` and ``ninja``, which gives
   additional features, such as automatic build-time configuration, over the
   current build system using ``make``. For instructions on how to do a DPDK build
   using the new system, see the instructions in ``doc/build-sdk-meson.txt``.
 
-.. note::
+  .. note::
 
-    This new build system support is incomplete at this point and is added
-    as experimental in this release. The existing build system using ``make``
-    is unaffected by these changes, and can continue to be used for this
-    and subsequent releases until such time as it's deprecation is announced.
-
-
-API Changes
------------
-
-.. This section should contain API changes. Sample format:
-
-   * Add a short 1-2 sentence description of the API change. Use fixed width
-     quotes for ``rte_function_names`` or ``rte_struct_names``. Use the past
-     tense.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
-ABI Changes
------------
-
-.. This section should contain ABI changes. Sample format:
-
-   * Add a short 1-2 sentence description of the ABI change that was announced
-     in the previous releases and made in this release. Use fixed width quotes
-     for ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
-Removed Items
--------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item in the past
-     tense.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue in the present
-     tense. Add information on any known workarounds.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
+      This new build system support is incomplete at this point and is added
+      as experimental in this release. The existing build system using ``make``
+      is unaffected by these changes, and can continue to be used for this
+      and subsequent releases until such time as it's deprecation is announced.
 
 
 Shared Library Versions
@@ -434,10 +368,10 @@ Tested Platforms
      * Red Hat Enterprise Linux Server release 7.3
      * SUSE Enterprise Linux 12
      * Wind River Linux 8
-     * Ubantu 14.04
+     * Ubuntu 14.04
      * Ubuntu 16.04
      * Ubuntu 16.10
-     * Ubantu 17.10
+     * Ubuntu 17.10
 
    * NICs:
 
