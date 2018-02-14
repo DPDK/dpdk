@@ -523,7 +523,7 @@ failsafe_rx_intr_install(struct rte_eth_dev *dev)
 	const struct rte_intr_conf *const intr_conf =
 			&priv->dev->data->dev_conf.intr_conf;
 
-	if (intr_conf->rxq == 0)
+	if (intr_conf->rxq == 0 || dev->intr_handle != NULL)
 		return 0;
 	if (fs_rx_intr_vec_install(priv) < 0)
 		return -rte_errno;
