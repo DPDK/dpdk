@@ -68,19 +68,6 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return 0;
 }
 
-struct virtio_net *
-get_device(int vid)
-{
-	struct virtio_net *dev = vhost_devices[vid];
-
-	if (unlikely(!dev)) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) device not found.\n", vid);
-	}
-
-	return dev;
-}
-
 void
 cleanup_vq(struct vhost_virtqueue *vq, int destroy)
 {

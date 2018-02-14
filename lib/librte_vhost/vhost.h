@@ -343,7 +343,18 @@ gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
 	return 0;
 }
 
-struct virtio_net *get_device(int vid);
+static __rte_always_inline struct virtio_net *
+get_device(int vid)
+{
+	struct virtio_net *dev = vhost_devices[vid];
+
+	if (unlikely(!dev)) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%d) device not found.\n", vid);
+	}
+
+	return dev;
+}
 
 int vhost_new_device(void);
 void cleanup_device(struct virtio_net *dev, int destroy);
