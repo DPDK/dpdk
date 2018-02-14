@@ -34,8 +34,8 @@ Compilation of the DPDK
 
 .. note::
 
-    Testing has been performed using Fedora 18. The setup commands and installed packages needed on other systems may be different.
-    For details on other Linux distributions and the versions tested, please consult the DPDK Release Notes.
+    The setup commands and installed packages needed on various systems may be different.
+    For details on Linux distributions and the versions tested, please consult the DPDK Release Notes.
 
 *   GNU ``make``.
 
