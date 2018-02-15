@@ -1390,16 +1390,16 @@ rte_eal_hugepage_attach(void)
 			max_seg = s;
 			if (base_addr != MAP_FAILED) {
 				/* errno is stale, don't use */
-				RTE_LOG(ERR, EAL, "Could not mmap %llu bytes "
+				RTE_LOG(ERR, EAL, "Could not mmap %zu bytes "
 					"in /dev/zero at [%p], got [%p] - "
 					"please use '--base-virtaddr' option\n",
-					(unsigned long long)mcfg->memseg[s].len,
+					mcfg->memseg[s].len,
 					mcfg->memseg[s].addr, base_addr);
 				munmap(base_addr, mcfg->memseg[s].len);
 			} else {
-				RTE_LOG(ERR, EAL, "Could not mmap %llu bytes "
+				RTE_LOG(ERR, EAL, "Could not mmap %zu bytes "
 					"in /dev/zero at [%p]: '%s'\n",
-					(unsigned long long)mcfg->memseg[s].len,
+					mcfg->memseg[s].len,
 					mcfg->memseg[s].addr, strerror(errno));
 			}
 			if (aslr_enabled() > 0) {
