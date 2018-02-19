@@ -23,6 +23,7 @@ extern cmdline_parse_inst_t cmd_add_port_tm_leaf_node;
 extern cmdline_parse_inst_t cmd_del_port_tm_node;
 extern cmdline_parse_inst_t cmd_set_port_tm_node_parent;
 extern cmdline_parse_inst_t cmd_suspend_port_tm_node;
+extern cmdline_parse_inst_t cmd_resume_port_tm_node;
 extern cmdline_parse_inst_t cmd_port_tm_hierarchy_commit;
 
 #endif /* _CMDLINE_TM_H_ */

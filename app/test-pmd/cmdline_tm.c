@@ -2030,6 +2030,70 @@ cmdline_parse_inst_t cmd_suspend_port_tm_node = {
 	},
 };
 
+/* *** Resume Port TM Node *** */
+struct cmd_resume_port_tm_node_result {
+	cmdline_fixed_string_t resume;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t tm;
+	cmdline_fixed_string_t node;
+	uint16_t port_id;
+	uint32_t node_id;
+};
+
+cmdline_parse_token_string_t cmd_resume_port_tm_node_resume =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_resume_port_tm_node_result, resume, "resume");
+cmdline_parse_token_string_t cmd_resume_port_tm_node_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_resume_port_tm_node_result, port, "port");
+cmdline_parse_token_string_t cmd_resume_port_tm_node_tm =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_resume_port_tm_node_result, tm, "tm");
+cmdline_parse_token_string_t cmd_resume_port_tm_node_node =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_resume_port_tm_node_result, node, "node");
+cmdline_parse_token_num_t cmd_resume_port_tm_node_port_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_resume_port_tm_node_result, port_id, UINT16);
+cmdline_parse_token_num_t cmd_resume_port_tm_node_node_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_resume_port_tm_node_result, node_id, UINT32);
+
+static void cmd_resume_port_tm_node_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_resume_port_tm_node_result *res = parsed_result;
+	struct rte_tm_error error;
+	uint32_t node_id = res->node_id;
+	portid_t port_id = res->port_id;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	ret = rte_tm_node_resume(port_id, node_id, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_resume_port_tm_node = {
+	.f = cmd_resume_port_tm_node_parsed,
+	.data = NULL,
+	.help_str = "Resume port tm node",
+	.tokens = {
+		(void *)&cmd_resume_port_tm_node_resume,
+		(void *)&cmd_resume_port_tm_node_port,
+		(void *)&cmd_resume_port_tm_node_tm,
+		(void *)&cmd_resume_port_tm_node_node,
+		(void *)&cmd_resume_port_tm_node_port_id,
+		(void *)&cmd_resume_port_tm_node_node_id,
+		NULL,
+	},
+};
+
 /* *** Port TM Hierarchy Commit *** */
 struct cmd_port_tm_hierarchy_commit_result {
 	cmdline_fixed_string_t port;

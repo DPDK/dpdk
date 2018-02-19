@@ -2512,6 +2512,11 @@ Suspend port traffic management hierarchy node
 
    testpmd> suspend port tm node (port_id) (node_id)
 
+Resume port traffic management hierarchy node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   testpmd> resume port tm node (port_id) (node_id)
+
 Commit port traffic management hierarchy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

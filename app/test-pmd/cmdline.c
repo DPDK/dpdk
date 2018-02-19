@@ -774,6 +774,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"suspend port tm node (port_id) (node_id)"
 			"       Suspend tm node.\n\n"
 
+			"resume port tm node (port_id) (node_id)"
+			"       Resume tm node.\n\n"
+
 			"port tm hierarchy commit (port_id) (clean_on_fail)\n"
 			"	Commit tm hierarchy.\n\n"
 
@@ -16697,6 +16700,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_del_port_tm_node,
 	(cmdline_parse_inst_t *)&cmd_set_port_tm_node_parent,
 	(cmdline_parse_inst_t *)&cmd_suspend_port_tm_node,
+	(cmdline_parse_inst_t *)&cmd_resume_port_tm_node,
 	(cmdline_parse_inst_t *)&cmd_port_tm_hierarchy_commit,
 	(cmdline_parse_inst_t *)&cmd_cfg_tunnel_udp_port,
 	NULL,
