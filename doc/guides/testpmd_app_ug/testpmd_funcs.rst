@@ -2507,6 +2507,11 @@ success depends on the port support for this operation, as advertised through
 the port capability set. This function is valid for all nodes of the traffic
 management hierarchy except root node.
 
+Suspend port traffic management hierarchy node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   testpmd> suspend port tm node (port_id) (node_id)
+
 Commit port traffic management hierarchy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
