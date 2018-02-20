@@ -165,7 +165,7 @@ static const efx_lic_ops_t	__efx_lic_v2_ops = {
 
 #endif	/* EFSYS_OPT_HUNTINGTON */
 
-#if EFSYS_OPT_MEDFORD
+#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
 
 static	__checkReturn	efx_rc_t
 efx_mcdi_licensing_v3_update_licenses(
@@ -289,7 +289,7 @@ static const efx_lic_ops_t	__efx_lic_v3_ops = {
 	efx_lic_v3_finish_partition,		/* elo_finish_partition */
 };
 
-#endif	/* EFSYS_OPT_MEDFORD */
+#endif	/* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 
 
 /* V1 Licensing - used in Siena Modena only */
@@ -822,7 +822,7 @@ fail1:
 
 /* V3 Licensing - used starting from Medford family. See SF-114884-SW */
 
-#if EFSYS_OPT_MEDFORD
+#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
 
 static	__checkReturn	efx_rc_t
 efx_mcdi_licensing_v3_update_licenses(
@@ -832,7 +832,8 @@ efx_mcdi_licensing_v3_update_licenses(
 	uint8_t payload[MC_CMD_LICENSING_V3_IN_LEN];
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_MEDFORD);
+	EFSYS_ASSERT((enp->en_family == EFX_FAMILY_MEDFORD) ||
+	    (enp->en_family == EFX_FAMILY_MEDFORD2));
 
 	(void) memset(payload, 0, sizeof (payload));
 	req.emr_cmd = MC_CMD_LICENSING_V3;
@@ -869,7 +870,8 @@ efx_mcdi_licensing_v3_report_license(
 			    MC_CMD_LICENSING_V3_OUT_LEN)];
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_MEDFORD);
+	EFSYS_ASSERT((enp->en_family == EFX_FAMILY_MEDFORD) ||
+	    (enp->en_family == EFX_FAMILY_MEDFORD2));
 
 	(void) memset(payload, 0, sizeof (payload));
 	req.emr_cmd = MC_CMD_LICENSING_V3;
@@ -933,7 +935,8 @@ efx_mcdi_licensing_v3_app_state(
 	uint32_t app_state;
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_MEDFORD);
+	EFSYS_ASSERT((enp->en_family == EFX_FAMILY_MEDFORD) ||
+	    (enp->en_family == EFX_FAMILY_MEDFORD2));
 
 	(void) memset(payload, 0, sizeof (payload));
 	req.emr_cmd = MC_CMD_GET_LICENSED_V3_APP_STATE;
@@ -1265,7 +1268,7 @@ fail1:
 }
 
 
-#endif	/* EFSYS_OPT_MEDFORD */
+#endif	/* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 
 	__checkReturn		efx_rc_t
 efx_lic_init(
@@ -1298,6 +1301,12 @@ efx_lic_init(
 		elop = &__efx_lic_v3_ops;
 		break;
 #endif	/* EFSYS_OPT_MEDFORD */
+
+#if EFSYS_OPT_MEDFORD2
+	case EFX_FAMILY_MEDFORD2:
+		elop = &__efx_lic_v3_ops;
+		break;
+#endif	/* EFSYS_OPT_MEDFORD2 */
 
 	default:
 		EFSYS_ASSERT(0);
