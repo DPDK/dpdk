@@ -6,6 +6,7 @@
 #include <sys/queue.h>
 
 #include <rte_common.h>
+#include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_metrics.h>
 #include <rte_lcore.h>
@@ -113,10 +114,7 @@ rte_metrics_reg_names(const char * const *names, uint16_t cnt_names)
 
 	for (idx_name = 0; idx_name < cnt_names; idx_name++) {
 		entry = &stats->metadata[idx_name + stats->cnt_stats];
-		strncpy(entry->name, names[idx_name],
-			RTE_METRICS_MAX_NAME_LEN);
-		/* Enforce NULL-termination */
-		entry->name[RTE_METRICS_MAX_NAME_LEN - 1] = '\0';
+		strlcpy(entry->name, names[idx_name], RTE_METRICS_MAX_NAME_LEN);
 		memset(entry->value, 0, sizeof(entry->value));
 		entry->idx_next_stat = idx_name + stats->cnt_stats + 1;
 	}
@@ -215,7 +213,7 @@ rte_metrics_get_names(struct rte_metric_name *names,
 			return return_value;
 		}
 		for (idx_name = 0; idx_name < stats->cnt_stats; idx_name++)
-			strncpy(names[idx_name].name,
+			strlcpy(names[idx_name].name,
 				stats->metadata[idx_name].name,
 				RTE_METRICS_MAX_NAME_LEN);
 	}
