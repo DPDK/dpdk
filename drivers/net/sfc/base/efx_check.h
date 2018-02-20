@@ -338,8 +338,8 @@
 
 /* Support hardware assistance for tunnels */
 #if EFSYS_OPT_TUNNEL
-# if !EFSYS_OPT_MEDFORD
-#  error "TUNNEL requires MEDFORD"
+# if !(EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2)
+#  error "TUNNEL requires MEDFORD or MEDFORD2"
 # endif
 #endif /* EFSYS_OPT_TUNNEL */
 
