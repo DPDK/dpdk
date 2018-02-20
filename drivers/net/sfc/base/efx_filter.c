@@ -959,6 +959,7 @@ siena_filter_build(
 
 	default:
 		EFSYS_ASSERT(B_FALSE);
+		EFX_ZERO_OWORD(*filter);
 		return (0);
 	}
 
