@@ -122,7 +122,7 @@ octeontx_port_open(struct octeontx_nic *nic)
 	int res;
 
 	res = 0;
-
+	memset(&bgx_port_conf, 0x0, sizeof(bgx_port_conf));
 	PMD_INIT_FUNC_TRACE();
 
 	res = octeontx_bgx_port_open(nic->port_id, &bgx_port_conf);
