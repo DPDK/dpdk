@@ -156,6 +156,8 @@ extern "C" {
 #define	ER_FZ_EVQ_TMR_REG_64K_RESET 0x0
 
 
+#define	ERF_FZ_TC_TMR_REL_VAL_LBN 16
+#define	ERF_FZ_TC_TMR_REL_VAL_WIDTH 14
 #define	ERF_FZ_TC_TIMER_MODE_LBN 14
 #define	ERF_FZ_TC_TIMER_MODE_WIDTH 2
 #define	ERF_FZ_TC_TIMER_VAL_LBN 0
@@ -174,6 +176,8 @@ extern "C" {
 #define	ER_FZ_EVQ_TMR_REG_16K_RESET 0x0
 
 
+/* defined as ERF_FZ_TC_TMR_REL_VAL_LBN 16; */
+/* defined as ERF_FZ_TC_TMR_REL_VAL_WIDTH 14 */
 /* defined as ERF_FZ_TC_TIMER_MODE_LBN 14; */
 /* defined as ERF_FZ_TC_TIMER_MODE_WIDTH 2 */
 /* defined as ERF_FZ_TC_TIMER_VAL_LBN 0; */
@@ -192,6 +196,8 @@ extern "C" {
 #define	ER_DZ_EVQ_TMR_REG_RESET 0x0
 
 
+/* defined as ERF_FZ_TC_TMR_REL_VAL_LBN 16; */
+/* defined as ERF_FZ_TC_TMR_REL_VAL_WIDTH 14 */
 #define	ERF_DZ_TC_TIMER_MODE_LBN 14
 #define	ERF_DZ_TC_TIMER_MODE_WIDTH 2
 #define	ERF_DZ_TC_TIMER_VAL_LBN 0
