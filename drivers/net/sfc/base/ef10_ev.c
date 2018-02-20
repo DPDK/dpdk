@@ -788,8 +788,8 @@ ef10_ev_rx_packed_stream(
 	current_id = eersp->eers_rx_read_ptr & eersp->eers_rx_mask;
 
 	/* Check for errors that invalidate checksum and L3/L4 fields */
-	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_ECC_ERR) != 0) {
-		/* RX frame truncated (error flag is misnamed) */
+	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_TRUNC_ERR) != 0) {
+		/* RX frame truncated */
 		EFX_EV_QSTAT_INCR(eep, EV_RX_FRM_TRUNC);
 		flags |= EFX_DISCARD;
 		goto deliver;
@@ -926,8 +926,8 @@ ef10_ev_rx(
 	last_used_id = (eersp->eers_rx_read_ptr - 1) & eersp->eers_rx_mask;
 
 	/* Check for errors that invalidate checksum and L3/L4 fields */
-	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_ECC_ERR) != 0) {
-		/* RX frame truncated (error flag is misnamed) */
+	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_TRUNC_ERR) != 0) {
+		/* RX frame truncated */
 		EFX_EV_QSTAT_INCR(eep, EV_RX_FRM_TRUNC);
 		flags |= EFX_DISCARD;
 		goto deliver;
