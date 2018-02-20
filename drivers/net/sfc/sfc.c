@@ -530,27 +530,18 @@ sfc_close(struct sfc_adapter *sa)
 }
 
 static int
-sfc_mem_bar_init(struct sfc_adapter *sa)
+sfc_mem_bar_init(struct sfc_adapter *sa, unsigned int membar)
 {
 	struct rte_eth_dev *eth_dev = sa->eth_dev;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	efsys_bar_t *ebp = &sa->mem_bar;
-	unsigned int i;
-	struct rte_mem_resource *res;
+	struct rte_mem_resource *res = &pci_dev->mem_resource[membar];
 
-	for (i = 0; i < RTE_DIM(pci_dev->mem_resource); i++) {
-		res = &pci_dev->mem_resource[i];
-		if ((res->len != 0) && (res->phys_addr != 0)) {
-			/* Found first memory BAR */
-			SFC_BAR_LOCK_INIT(ebp, eth_dev->data->name);
-			ebp->esb_rid = i;
-			ebp->esb_dev = pci_dev;
-			ebp->esb_base = res->addr;
-			return 0;
-		}
-	}
-
-	return EFAULT;
+	SFC_BAR_LOCK_INIT(ebp, eth_dev->data->name);
+	ebp->esb_rid = membar;
+	ebp->esb_dev = pci_dev;
+	ebp->esb_base = res->addr;
+	return 0;
 }
 
 static void
@@ -753,6 +744,7 @@ int
 sfc_probe(struct sfc_adapter *sa)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(sa->eth_dev);
+	unsigned int membar;
 	efx_nic_t *enp;
 	int rc;
 
@@ -763,17 +755,17 @@ sfc_probe(struct sfc_adapter *sa)
 	sa->socket_id = rte_socket_id();
 	rte_atomic32_init(&sa->restart_required);
 
-	sfc_log_init(sa, "init mem bar");
-	rc = sfc_mem_bar_init(sa);
-	if (rc != 0)
-		goto fail_mem_bar_init;
-
 	sfc_log_init(sa, "get family");
 	rc = efx_family(pci_dev->id.vendor_id, pci_dev->id.device_id,
-			&sa->family);
+			&sa->family, &membar);
 	if (rc != 0)
 		goto fail_family;
-	sfc_log_init(sa, "family is %u", sa->family);
+	sfc_log_init(sa, "family is %u, membar is %u", sa->family, membar);
+
+	sfc_log_init(sa, "init mem bar");
+	rc = sfc_mem_bar_init(sa, membar);
+	if (rc != 0)
+		goto fail_mem_bar_init;
 
 	sfc_log_init(sa, "create nic");
 	rte_spinlock_init(&sa->nic_lock);
@@ -804,10 +796,10 @@ fail_mcdi_init:
 	efx_nic_destroy(enp);
 
 fail_nic_create:
-fail_family:
 	sfc_mem_bar_fini(sa);
 
 fail_mem_bar_init:
+fail_family:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
 }
