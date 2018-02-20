@@ -479,6 +479,8 @@ static const struct rte_tm_capabilities tm_cap = {
 	.sched_wfq_n_groups_max = 1,
 	.sched_wfq_weight_max = UINT32_MAX,
 
+	.cman_wred_packet_mode_supported = WRED_SUPPORTED,
+	.cman_wred_byte_mode_supported = 0,
 	.cman_head_drop_supported = 0,
 	.cman_wred_context_n_max = 0,
 	.cman_wred_context_private_n_max = 0,
@@ -667,6 +669,8 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.shaper_shared_n_max = 0,
 
 			.cman_head_drop_supported = 0,
+			.cman_wred_packet_mode_supported = WRED_SUPPORTED,
+			.cman_wred_byte_mode_supported = 0,
 			.cman_wred_context_private_supported = WRED_SUPPORTED,
 			.cman_wred_context_shared_n_max = 0,
 
@@ -828,6 +832,8 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 
 		{.leaf = {
 			.cman_head_drop_supported = 0,
+			.cman_wred_packet_mode_supported = WRED_SUPPORTED,
+			.cman_wred_byte_mode_supported = 0,
 			.cman_wred_context_private_supported = WRED_SUPPORTED,
 			.cman_wred_context_shared_n_max = 0,
 		} },
@@ -1243,12 +1249,23 @@ wred_profile_check(struct rte_eth_dev *dev,
 			NULL,
 			rte_strerror(EINVAL));
 
+        /* WRED profile should be in packet mode */
+        if (profile->packet_mode == 0)
+                return -rte_tm_error_set(error,
+                        ENOTSUP,
+                        RTE_TM_ERROR_TYPE_WRED_PROFILE,
+                        NULL,
+                        rte_strerror(ENOTSUP));
+
 	/* min_th <= max_th, max_th > 0  */
 	for (color = RTE_TM_GREEN; color < RTE_TM_COLORS; color++) {
-		uint16_t min_th = profile->red_params[color].min_th;
-		uint16_t max_th = profile->red_params[color].max_th;
+		uint32_t min_th = profile->red_params[color].min_th;
+		uint32_t max_th = profile->red_params[color].max_th;
 
-		if (min_th > max_th || max_th == 0)
+		if (min_th > max_th ||
+			max_th == 0 ||
+			min_th > UINT16_MAX ||
+			max_th > UINT16_MAX)
 			return -rte_tm_error_set(error,
 				EINVAL,
 				RTE_TM_ERROR_TYPE_WRED_PROFILE,

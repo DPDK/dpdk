@@ -377,6 +377,22 @@ struct rte_tm_capabilities {
 	 */
 	uint32_t sched_wfq_weight_max;
 
+	/** WRED packet mode support. When non-zero, this parameter indicates
+	 * that there is atleast one leaf node that supports the WRED packet
+	 * mode, which might not be true for all the leaf nodes. In packet
+	 * mode, the WRED thresholds specify the queue length in packets, as
+	 * opposed to bytes.
+	 */
+	int cman_wred_packet_mode_supported;
+
+	/** WRED byte mode support. When non-zero, this parameter indicates that
+	 * there is atleast one leaf node that supports the WRED byte mode,
+	 * which might not be true for all the leaf nodes. In byte mode, the
+	 * WRED thresholds specify the queue length in bytes, as opposed to
+	 * packets.
+	 */
+	int cman_wred_byte_mode_supported;
+
 	/** Head drop algorithm support. When non-zero, this parameter
 	 * indicates that there is at least one leaf node that supports the head
 	 * drop algorithm, which might not be true for all the leaf nodes.
@@ -628,6 +644,24 @@ struct rte_tm_level_capabilities {
 			 */
 			uint32_t shaper_shared_n_max;
 
+			/** WRED packet mode support. When non-zero, this
+			 * parameter indicates that there is atleast one leaf
+			 * node on this level that supports the WRED packet
+			 * mode, which might not be true for all the leaf
+			 * nodes. In packet mode, the WRED thresholds specify
+			 * the queue length in packets, as opposed to bytes.
+			 */
+			int cman_wred_packet_mode_supported;
+
+			/** WRED byte mode support. When non-zero, this
+			 * parameter indicates that there is atleast one leaf
+			 * node on this level that supports the WRED byte mode,
+			 * which might not be true for all the leaf nodes. In
+			 * byte mode, the WRED thresholds specify the queue
+			 * length in bytes, as opposed to packets.
+			 */
+			int cman_wred_byte_mode_supported;
+
 			/** Head drop algorithm support. When non-zero, this
 			 * parameter indicates that there is at least one leaf
 			 * node on this level that supports the head drop
@@ -743,6 +777,12 @@ struct rte_tm_node_capabilities {
 
 		/** Items valid only for leaf nodes. */
 		struct {
+			/** WRED packet mode support for current node. */
+			int cman_wred_packet_mode_supported;
+
+			/** WRED byte mode support for current node. */
+			int cman_wred_byte_mode_supported;
+
 			/** Head drop algorithm support for current node. */
 			int cman_head_drop_supported;
 
@@ -791,10 +831,10 @@ enum rte_tm_cman_mode {
  */
 struct rte_tm_red_params {
 	/** Minimum queue threshold */
-	uint16_t min_th;
+	uint32_t min_th;
 
 	/** Maximum queue threshold */
-	uint16_t max_th;
+	uint32_t max_th;
 
 	/** Inverse of packet marking probability maximum value (maxp), i.e.
 	 * maxp_inv = 1 / maxp
@@ -815,10 +855,19 @@ struct rte_tm_red_params {
  * WRED context is used to perform congestion management for a single leaf
  * node, while a shared WRED context is used to perform congestion management
  * for a group of leaf nodes.
+ *
+ * @see struct rte_tm_capabilities::cman_wred_packet_mode_supported
+ * @see struct rte_tm_capabilities::cman_wred_byte_mode_supported
  */
 struct rte_tm_wred_params {
 	/** One set of RED parameters per packet color */
 	struct rte_tm_red_params red_params[RTE_TM_COLORS];
+
+	/** When non-zero, the *min_th* and *max_th* thresholds are specified
+	 * in packets (WRED packet mode). When zero, the *min_th* and *max_th*
+	 * thresholds are specified in bytes (WRED byte mode)
+	 */
+	int packet_mode;
 };
 
 /**
