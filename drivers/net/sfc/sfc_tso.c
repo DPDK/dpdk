@@ -164,7 +164,8 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	rte_memcpy(&sent_seq, &th->sent_seq, sizeof(uint32_t));
 	sent_seq = rte_be_to_cpu_32(sent_seq);
 
-	efx_tx_qdesc_tso2_create(txq->common, packet_id, sent_seq, m->tso_segsz,
+	efx_tx_qdesc_tso2_create(txq->common, packet_id, 0, sent_seq,
+				 m->tso_segsz,
 				 *pend, EFX_TX_FATSOV2_OPT_NDESCS);
 
 	*pend += EFX_TX_FATSOV2_OPT_NDESCS;
