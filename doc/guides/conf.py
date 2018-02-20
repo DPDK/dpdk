@@ -310,7 +310,7 @@ def print_table_css(outfile, table_id):
          text-align: center;
       }
       table#idx th {
-         font-size: 80%;
+         font-size: 72%;
          white-space: pre-wrap;
          vertical-align: top;
          padding: 0.5em 0;
