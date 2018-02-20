@@ -32,6 +32,7 @@
  *        1: dynamic configuration
  *        2: firmware internal use
  *        3: license partition
+ *        4: tsa configuration
  *
  *   -  TTT is a type, which is just a unique value.  The same type value
  *      might appear in both locations, indicating a relationship between
@@ -565,6 +566,7 @@ struct tlv_global_port_mode {
 #define TLV_PORT_MODE_1x2_1x4                    (16) /* Single 50G on mdi0, single 40G on mdi1 */
 #define TLV_PORT_MODE_1x2_2x1                    (17) /* Single 50G on mdi0, dual 10G/25G on mdi1 */
 #define TLV_PORT_MODE_2x1_1x2                    (18) /* Dual 10G/25G on mdi0, single 50G on mdi1 */
+/* Below modes are eftest only, to allow snapper explicit selection between multi-channel and LLPCS. In production, this selection is automatic and outside world should not care about LLPCS */
 #define TLV_PORT_MODE_2x1_2x1_LL                 (19) /* Dual 10G/25G on mdi0, dual 10G/25G on mdi1, low-latency PCS */
 #define TLV_PORT_MODE_4x1_NA_LL                  (20) /* Quad 10G/25G on mdi0, low-latency PCS */
 #define TLV_PORT_MODE_NA_4x1_LL                  (21) /* Quad 10G/25G on mdi1, low-latency PCS */
@@ -603,6 +605,7 @@ struct tlv_global_port_mode {
 #define TLV_PORT_MODE_50G_40G                    TLV_PORT_MODE_1x2_1x4    /* Single 50G on mdi0, single 40G on mdi1 */
 #define TLV_PORT_MODE_50G_25G_25G                TLV_PORT_MODE_1x2_2x1    /* Single 50G on mdi0, dual 25G on mdi1 */
 #define TLV_PORT_MODE_25G_25G_50G                TLV_PORT_MODE_2x1_1x2    /* Dual 25G on mdi0, single 50G on mdi1 */
+/* eftest only, see comments for _LL modes above */
 #define TLV_PORT_MODE_25G_25G_25G_25G_Q1_Q2_LL   TLV_PORT_MODE_2x1_2x1_LL /* Dual 25G on mdi0, dual 25G on mdi1, low-latency PCS */
 #define TLV_PORT_MODE_25G_25G_25G_25G_Q1_LL      TLV_PORT_MODE_4x1_NA_LL  /* Quad 25G on mdi0, low-latency PCS */
 #define TLV_PORT_MODE_25G_25G_25G_25G_Q2_LL      TLV_PORT_MODE_NA_4x1_LL  /* Quad 25G on mdi1, low-latency PCS */
@@ -852,7 +855,7 @@ typedef struct tlv_license {
   uint8_t   data[];
 } tlv_license_t;
 
-/* TSA NIC IP address configuration
+/* TSA NIC IP address configuration (DEPRECATED)
  *
  * Sets the TSA NIC IP address statically via configuration tool or dynamically
  * via DHCP via snooping based on the mode selection (0=Static, 1=DHCP, 2=Snoop)
@@ -862,7 +865,7 @@ typedef struct tlv_license {
  * released code yet.
  */
 
-#define TLV_TAG_TMP_TSAN_CONFIG         (0x10220000)
+#define TLV_TAG_TMP_TSAN_CONFIG         (0x10220000) /* DEPRECATED */
 
 #define TLV_TSAN_IP_MODE_STATIC         (0)
 #define TLV_TSAN_IP_MODE_DHCP           (1)
@@ -879,7 +882,7 @@ typedef struct tlv_tsan_config {
   uint32_t bind_bkout;  /* DEPRECATED */
 } tlv_tsan_config_t;
 
-/* TSA Controller IP address configuration
+/* TSA Controller IP address configuration (DEPRECATED)
  *
  * Sets the TSA Controller IP address statically via configuration tool
  *
@@ -888,7 +891,7 @@ typedef struct tlv_tsan_config {
  * released code yet.
  */
 
-#define TLV_TAG_TMP_TSAC_CONFIG         (0x10230000)
+#define TLV_TAG_TMP_TSAC_CONFIG         (0x10230000) /* DEPRECATED */
 
 #define TLV_MAX_TSACS (4)
 typedef struct tlv_tsac_config {
@@ -899,7 +902,7 @@ typedef struct tlv_tsac_config {
   uint32_t port[TLV_MAX_TSACS];
 } tlv_tsac_config_t;
 
-/* Binding ticket
+/* Binding ticket (DEPRECATED)
  *
  * Sets the TSA NIC binding ticket used for binding process between the TSA NIC
  * and the TSA Controller
@@ -909,7 +912,7 @@ typedef struct tlv_tsac_config {
  * released code yet.
  */
 
-#define TLV_TAG_TMP_BINDING_TICKET      (0x10240000)
+#define TLV_TAG_TMP_BINDING_TICKET      (0x10240000) /* DEPRECATED */
 
 typedef struct tlv_binding_ticket {
   uint32_t tag;
@@ -934,7 +937,7 @@ typedef struct tlv_pik_sf {
   uint8_t  bytes[];
 } tlv_pik_sf_t;
 
-/* CA root certificate
+/* CA root certificate (DEPRECATED)
  *
  * Sets the CA root certificate used for TSA Controller verfication during
  * TLS connection setup between the TSA NIC and the TSA Controller
@@ -944,7 +947,7 @@ typedef struct tlv_pik_sf {
  * released code yet.
  */
 
-#define TLV_TAG_TMP_CA_ROOT_CERT        (0x10260000)
+#define TLV_TAG_TMP_CA_ROOT_CERT        (0x10260000) /* DEPRECATED */
 
 typedef struct tlv_ca_root_cert {
   uint32_t tag;
