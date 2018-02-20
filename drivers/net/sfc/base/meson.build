@@ -44,7 +44,8 @@ sources = [
 	'ef10_tx.c',
 	'ef10_vpd.c',
 	'hunt_nic.c',
-	'medford_nic.c'
+	'medford_nic.c',
+	'medford2_nic.c'
 ]
 
 extra_flags = [
