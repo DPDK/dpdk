@@ -190,18 +190,23 @@ def generate_overview_table(output_filename, table_id, section, table_name, titl
     ini_files.sort()
 
     # Build up a list of the table header names from the ini filenames.
-    header_names = []
+    pmd_names = []
     for ini_filename in ini_files:
         name = ini_filename[:-4]
         name = name.replace('_vf', 'vf')
+        pmd_names.append(name)
 
-        # Pad the table header names to match the existing format.
+    # Pad the table header names.
+    max_header_len = len(max(pmd_names, key=len))
+    header_names = []
+    for name in pmd_names:
         if '_vec' in name:
             pmd, vec = name.split('_')
-            name = '{0:{fill}{align}7}vec'.format(pmd, fill='.', align='<')
+            name = '{0:{fill}{align}{width}}vec'.format(pmd,
+                    fill='.', align='<', width=max_header_len-3)
         else:
-            name = '{0:{fill}{align}10}'.format(name, fill=' ', align='<')
-
+            name = '{0:{fill}{align}{width}}'.format(name,
+                    fill=' ', align='<', width=max_header_len)
         header_names.append(name)
 
     # Create a dict of the defined features for each driver from the ini files.
@@ -253,7 +258,7 @@ def print_table_header(outfile, num_cols, header_names, title):
 
     print_table_row(outfile, title, line)
 
-    for i in range(1, 10):
+    for i in range(1, len(header_names[0])):
         line = ''
         for name in header_names:
             line += ' ' + name[i]
