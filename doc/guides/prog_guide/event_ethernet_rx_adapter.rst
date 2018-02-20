@@ -12,7 +12,11 @@ be supported in hardware or require a software thread to receive packets from
 the ethdev port using ethdev poll mode APIs and enqueue these as events to the
 event device using the eventdev API. Both transfer mechanisms may be present on
 the same platform depending on the particular combination of the ethdev and
-the event device.
+the event device. For SW based packet transfer, if the mbuf does not have a
+timestamp set, the adapter adds a timestamp to the mbuf using
+rte_get_tsc_cycles(), this provides a more accurate timestamp as compared to
+if the application were to set the timestamp since it avoids event device
+schedule latency.
 
 The Event Ethernet Rx Adapter library is intended for the application code to
 configure both transfer mechanisms using a common API. A capability API allows

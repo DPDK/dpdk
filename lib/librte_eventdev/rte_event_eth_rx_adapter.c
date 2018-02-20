@@ -434,10 +434,21 @@ fill_event_buffer(struct rte_event_eth_rx_adapter *rx_adapter,
 	uint32_t rss_mask;
 	uint32_t rss;
 	int do_rss;
+	uint64_t ts;
 
 	/* 0xffff ffff if PKT_RX_RSS_HASH is set, otherwise 0 */
 	rss_mask = ~(((m->ol_flags & PKT_RX_RSS_HASH) != 0) - 1);
 	do_rss = !rss_mask && !eth_rx_queue_info->flow_id_mask;
+
+	if ((m->ol_flags & PKT_RX_TIMESTAMP) == 0) {
+		ts = rte_get_tsc_cycles();
+		for (i = 0; i < num; i++) {
+			m = mbufs[i];
+
+			m->timestamp = ts;
+			m->ol_flags |= PKT_RX_TIMESTAMP;
+		}
+	}
 
 	for (i = 0; i < num; i++) {
 		m = mbufs[i];
@@ -449,7 +460,6 @@ fill_event_buffer(struct rte_event_eth_rx_adapter *rx_adapter,
 		    eth_rx_queue_info->flow_id &
 				eth_rx_queue_info->flow_id_mask;
 		flow_id |= rss & ~eth_rx_queue_info->flow_id_mask;
-
 		ev->flow_id = flow_id;
 		ev->op = RTE_EVENT_OP_NEW;
 		ev->sched_type = sched_type;
