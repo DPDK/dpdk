@@ -1149,7 +1149,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	return data->port_id;
 
 err:
-	if (port)
+	if (nic)
 		octeontx_port_close(nic);
 
 	if (eth_dev != NULL) {
