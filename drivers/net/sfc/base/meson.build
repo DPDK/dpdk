@@ -34,6 +34,7 @@ sources = [
 	'siena_vpd.c',
 	'ef10_ev.c',
 	'ef10_filter.c',
+	'ef10_image.c',
 	'ef10_intr.c',
 	'ef10_mac.c',
 	'ef10_mcdi.c',
