@@ -374,6 +374,9 @@ typedef struct efsys_mem_s {
 	} while (B_FALSE)
 
 
+#define	EFSYS_MEM_SIZE(_esmp)						\
+	((_esmp)->esm_mz->len)
+
 #define EFSYS_MEM_ADDR(_esmp)						\
 	((_esmp)->esm_addr)
 
