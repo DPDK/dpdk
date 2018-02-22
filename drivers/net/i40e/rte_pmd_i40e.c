@@ -1530,6 +1530,11 @@ i40e_check_profile_info(uint16_t port, uint8_t *profile_info_sec)
 			return 1;
 		}
 	}
+	/* profile with group id 0xff is compatible with any other profile */
+	if ((pinfo->track_id & group_mask) == group_mask) {
+		rte_free(buff);
+		return 0;
+	}
 	for (i = 0; i < p_list->p_count; i++) {
 		p = &p_list->p_info[i];
 		if ((p->track_id & group_mask) == 0) {
@@ -1540,6 +1545,8 @@ i40e_check_profile_info(uint16_t port, uint8_t *profile_info_sec)
 	}
 	for (i = 0; i < p_list->p_count; i++) {
 		p = &p_list->p_info[i];
+		if ((p->track_id & group_mask) == group_mask)
+			continue;
 		if ((pinfo->track_id & group_mask) !=
 		    (p->track_id & group_mask)) {
 			PMD_DRV_LOG(INFO, "Profile of different group exists.");
