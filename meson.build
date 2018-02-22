@@ -26,6 +26,7 @@ subdir('config')
 
 # build libs and drivers
 subdir('lib')
+subdir('kernel')
 subdir('buildtools')
 subdir('drivers')
 

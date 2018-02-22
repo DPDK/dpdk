@@ -18,7 +18,7 @@ custom_target('igb_uio',
 		'M=' + meson.current_build_dir(),
 		'src=' + meson.current_source_dir(),
 		'EXTRA_CFLAGS=-I' + meson.current_source_dir() +
-			'/../../common/include',
+			'/../../../lib/librte_eal/common/include',
 		'modules'],
 	depends: mkfile,
 	build_by_default: get_option('enable_kmods'))

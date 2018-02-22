@@ -209,7 +209,7 @@ F: doc/guides/linux_gsg/
 
 Linux UIO
 M: Ferruh Yigit <ferruh.yigit@intel.com>
-F: lib/librte_eal/linuxapp/igb_uio/
+F: kernel/linux/igb_uio/
 F: drivers/bus/pci/linux/*uio*
 
 Linux VFIO
@@ -225,11 +225,11 @@ F: doc/guides/freebsd_gsg/
 
 FreeBSD contigmem
 M: Bruce Richardson <bruce.richardson@intel.com>
-F: lib/librte_eal/bsdapp/contigmem/
+F: kernel/freebsd/contigmem/
 
 FreeBSD UIO
 M: Bruce Richardson <bruce.richardson@intel.com>
-F: lib/librte_eal/bsdapp/nic_uio/
+F: kernel/freebsd/nic_uio/
 
 
 Core Libraries
@@ -359,7 +359,7 @@ F: doc/guides/nics/features/bonding.ini
 
 Linux KNI
 M: Ferruh Yigit <ferruh.yigit@intel.com>
-F: lib/librte_eal/linuxapp/kni/
+F: kernel/linux/kni/
 F: lib/librte_kni/
 F: doc/guides/prog_guide/kernel_nic_interface.rst
 F: test/test/test_kni.c
