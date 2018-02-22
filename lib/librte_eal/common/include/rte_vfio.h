@@ -28,6 +28,10 @@
 #define VFIO_NOIOMMU_MODE      \
 	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Setup vfio_cfg for the device identified by its address.
  * It discovers the configured I/O MMU groups or sets a new one for the device.
@@ -122,6 +126,10 @@ int rte_vfio_noiommu_is_enabled(void);
 /* remove group fd from internal VFIO group fd array */
 int
 rte_vfio_clear_group(int vfio_group_fd);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* VFIO_PRESENT */
 
