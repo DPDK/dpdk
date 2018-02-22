@@ -34,14 +34,14 @@ NFP poll mode driver library
 Netronome's sixth generation of flow processors pack 216 programmable
 cores and over 100 hardware accelerators that uniquely combine packet,
 flow, security and content processing in a single device that scales
-up to 400 Gbps.
+up to 400-Gb/s.
 
 This document explains how to use DPDK with the Netronome Poll Mode
 Driver (PMD) supporting Netronome's Network Flow Processor 6xxx
 (NFP-6xxx) and Netronome's Flow Processor 4xxx (NFP-4xxx).
 
 NFP is a SRIOV capable device and the PMD driver supports the physical
-function (PF) and virtual functions (VFs).
+function (PF) and the virtual functions (VFs).
 
 Dependencies
 ------------
@@ -49,17 +49,18 @@ Dependencies
 Before using the Netronome's DPDK PMD some NFP configuration,
 which is not related to DPDK, is required. The system requires
 installation of **Netronome's BSP (Board Support Package)** along
-with some specific NFP firmware application. Netronome's NSP ABI
+with a specific NFP firmware application. Netronome's NSP ABI
 version should be 0.20 or higher.
 
 If you have a NFP device you should already have the code and
-documentation for doing all this configuration. Contact
+documentation for this configuration. Contact
 **support@netronome.com** to obtain the latest available firmware.
 
-The NFP Linux netdev kernel driver for VFs is part of vanilla kernel
-since kernel version 4.5, and support for the PF since kernel version
-4.11. Support for older kernels can be obtained on Github at
-**https://github.com/Netronome/nfp-drv-kmods** along with build
+The NFP Linux netdev kernel driver for VFs has been a part of the
+vanilla kernel since kernel version 4.5, and support for the PF
+since kernel version 4.11. Support for older kernels can be obtained
+on Github at
+**https://github.com/Netronome/nfp-drv-kmods** along with the build
 instructions.
 
 NFP PMD needs to be used along with UIO ``igb_uio`` or VFIO (``vfio-pci``)
@@ -70,15 +71,15 @@ Building the software
 
 Netronome's PMD code is provided in the **drivers/net/nfp** directory.
 Although NFP PMD has Netronome´s BSP dependencies, it is possible to
-compile it along with other DPDK PMDs even if no BSP was installed before.
+compile it along with other DPDK PMDs even if no BSP was installed previously.
 Of course, a DPDK app will require such a BSP installed for using the
 NFP PMD, along with a specific NFP firmware application.
 
-Default PMD configuration is at **common_linuxapp configuration** file:
+Default PMD configuration is at the **common_linuxapp configuration** file:
 
 - **CONFIG_RTE_LIBRTE_NFP_PMD=y**
 
-Once DPDK is built all the DPDK apps and examples include support for
+Once the DPDK is built all the DPDK apps and examples include support for
 the NFP PMD.
 
 
@@ -91,18 +92,18 @@ for details.
 Using the PF
 ------------
 
-NFP PMD has support for using the NFP PF as another DPDK port, but it does not
+NFP PMD supports using the NFP PF as another DPDK port, but it does not
 have any functionality for controlling VFs. In fact, it is not possible to use
 the PMD with the VFs if the PF is being used by DPDK, that is, with the NFP PF
-bound to ``igb_uio`` or ``vfio-pci`` kernel drivers. Future DPDK version will
+bound to ``igb_uio`` or ``vfio-pci`` kernel drivers. Future DPDK versions will
 have a PMD able to work with the PF and VFs at the same time and with the PF
 implementing VF management along with other PF-only functionalities/offloads.
 
-The PMD PF has extra work to do which will delay the DPDK app initialization
-like checking if a firmware is already available in the device, uploading the
-firmware if necessary, and configure the Link state properly when starting or
-stopping a PF port. Note that firmware upload is not always necessary which is
-the main delay for NFP PF PMD initialization.
+The PMD PF has extra work to do which will delay the DPDK app initialization.
+This additional effort could be checking if a firmware is already available in
+the device, uploading the firmware if necessary or configuring the Link state
+properly when starting or stopping a PF port. Note that firmware upload is not
+always necessary which is the main delay for NFP PF PMD initialization.
 
 Depending on the Netronome product installed in the system, firmware files
 should be available under ``/lib/firmware/netronome``. DPDK PMD supporting the
@@ -114,14 +115,14 @@ PF multiport support
 --------------------
 
 Some NFP cards support several physical ports with just one single PCI device.
-DPDK core is designed with the 1:1 relationship between PCI devices and DPDK
+The DPDK core is designed with a 1:1 relationship between PCI devices and DPDK
 ports, so NFP PMD PF support requires handling the multiport case specifically.
 During NFP PF initialization, the PMD will extract the information about the
 number of PF ports from the firmware and will create as many DPDK ports as
 needed.
 
 Because the unusual relationship between a single PCI device and several DPDK
-ports, there are some limitations when using more than one PF DPDK ports: there
+ports, there are some limitations when using more than one PF DPDK port: there
 is no support for RX interrupts and it is not possible either to use those PF
 ports with the device hotplug functionality.
 
@@ -136,7 +137,7 @@ System configuration
    get the drivers from the above Github repository and follow the instructions
    for building and installing it.
 
-   Virtual Functions need to be enabled before they can be used with the PMD.
+   VFs need to be enabled before they can be used with the PMD.
    Before enabling the VFs it is useful to obtain information about the
    current NFP PCI device detected by the system:
 
