@@ -2019,15 +2019,15 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			break;
 		}
 
+		rxds = &rxq->rxds[rxq->rd_p];
+		if ((rxds->rxd.meta_len_dd & PCIE_DESC_RX_DD) == 0)
+			break;
+
 		/*
 		 * Memory barrier to ensure that we won't do other
 		 * reads before the DD bit.
 		 */
 		rte_rmb();
-
-		rxds = &rxq->rxds[rxq->rd_p];
-		if ((rxds->rxd.meta_len_dd & PCIE_DESC_RX_DD) == 0)
-			break;
 
 		/*
 		 * We got a packet. Let's alloc a new mbuff for refilling the
