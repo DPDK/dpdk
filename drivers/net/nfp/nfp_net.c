@@ -2089,6 +2089,8 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		mb->nb_segs = 1;
 		mb->next = NULL;
 
+		mb->port = rxq->port_id;
+
 		/* Checking the RSS flag */
 		nfp_net_set_hash(rxq, rxds, mb);
 
