@@ -60,7 +60,7 @@
 #include <rte_eth_bond.h>
 #include <rte_eth_bond_8023ad.h>
 #endif
-#ifdef RTE_LIBRTE_DPAA_PMD
+#if defined RTE_LIBRTE_DPAA_BUS && defined RTE_LIBRTE_DPAA_PMD
 #include <rte_pmd_dpaa.h>
 #endif
 #ifdef RTE_LIBRTE_IXGBE_PMD
@@ -12861,7 +12861,7 @@ cmd_set_tx_loopback_parsed(
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_tx_loopback(res->port_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_DPAA_PMD
+#if defined RTE_LIBRTE_DPAA_BUS && defined RTE_LIBRTE_DPAA_PMD
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_dpaa_set_tx_loopback(res->port_id, is_on);
 #endif
