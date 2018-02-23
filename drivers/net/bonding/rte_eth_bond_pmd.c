@@ -1831,6 +1831,14 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 		}
 	}
 
+	errval = rte_eth_dev_set_mtu(slave_eth_dev->data->port_id,
+				     bonded_eth_dev->data->mtu);
+	if (errval != 0 && errval != -ENOTSUP) {
+		RTE_BOND_LOG(ERR, "rte_eth_dev_set_mtu: port %u, err (%d)",
+				slave_eth_dev->data->port_id, errval);
+		return errval;
+	}
+
 	/* Configure device */
 	errval = rte_eth_dev_configure(slave_eth_dev->data->port_id,
 			nb_rx_queues, nb_tx_queues,
