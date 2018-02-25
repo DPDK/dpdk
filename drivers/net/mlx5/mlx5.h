@@ -75,13 +75,13 @@ TAILQ_HEAD(mlx5_flows, rte_flow);
  */
 struct mlx5_dev_config {
 	unsigned int hw_csum:1; /* Checksum offload is supported. */
-	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int hw_vlan_strip:1; /* VLAN stripping is supported. */
 	unsigned int hw_fcs_strip:1; /* FCS stripping is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
 	unsigned int sriov:1; /* This is a VF or PF with VF devices. */
 	unsigned int mps:2; /* Multi-packet send supported mode. */
-	unsigned int tunnel_en:1; /* Whether tunnel is supported. */
+	unsigned int tunnel_en:1;
+	/* Whether tunnel stateless offloads are supported. */
 	unsigned int flow_counter_en:1; /* Whether flow counter is supported. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
 	unsigned int tso:1; /* Whether TSO is supported. */

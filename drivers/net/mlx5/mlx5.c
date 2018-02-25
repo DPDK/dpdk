@@ -584,7 +584,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	unsigned int tunnel_en = 0;
 	int idx;
 	int i;
-	struct mlx5dv_context attrs_out;
+	struct mlx5dv_context attrs_out = {0};
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
 	struct ibv_counter_set_description cs_desc;
 #endif
@@ -633,20 +633,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX5VF) ||
 		      (pci_dev->id.device_id ==
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF));
-		switch (pci_dev->id.device_id) {
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
-			tunnel_en = 1;
-			break;
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX5:
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX5EX:
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
-			tunnel_en = 1;
-			break;
-		default:
-			break;
-		}
 		INFO("PCI information matches, using device \"%s\""
 		     " (SR-IOV: %s)",
 		     list[i]->name,
@@ -675,6 +661,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
 	 * as all ConnectX-5 devices.
 	 */
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	attrs_out.comp_mask |= MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS;
+#endif
 	mlx5_glue->dv_query_device(attr_ctx, &attrs_out);
 	if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
 		if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
@@ -693,6 +682,17 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		cqe_comp = 0;
 	else
 		cqe_comp = 1;
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	if (attrs_out.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
+		tunnel_en = ((attrs_out.tunnel_offloads_caps &
+			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN) &&
+			     (attrs_out.tunnel_offloads_caps &
+			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE));
+	}
+	DEBUG("Tunnel offloading is %ssupported", tunnel_en ? "" : "not ");
+#else
+	WARN("Tunnel offloading disabled due to old OFED/rdma-core version");
+#endif
 	if (mlx5_glue->query_device_ex(attr_ctx, NULL, &device_attr))
 		goto error;
 	INFO("%u port(s) detected", device_attr.orig_attr.phys_port_cnt);
@@ -838,15 +838,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 				    IBV_DEVICE_RAW_IP_CSUM);
 		DEBUG("checksum offloading is %ssupported",
 		      (config.hw_csum ? "" : "not "));
-
-#ifdef HAVE_IBV_DEVICE_VXLAN_SUPPORT
-		config.hw_csum_l2tun =
-				!!(exp_device_attr.exp_device_cap_flags &
-				   IBV_DEVICE_VXLAN_SUPPORT);
-#endif
-		DEBUG("Rx L2 tunnel checksum offloads are %ssupported",
-		      (config.hw_csum_l2tun ? "" : "not "));
-
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
 		config.flow_counter_en = !!(device_attr.max_counter_sets);
 		mlx5_glue->describe_counter_set(ctx, 0, &cs_desc);

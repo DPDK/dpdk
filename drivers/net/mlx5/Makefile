@@ -125,9 +125,9 @@ mlx5_autoconf.h.new: FORCE
 mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
-		HAVE_IBV_DEVICE_VXLAN_SUPPORT \
-		infiniband/verbs.h \
-		enum IBV_DEVICE_VXLAN_SUPPORT \
+		HAVE_IBV_DEVICE_TUNNEL_SUPPORT \
+		infiniband/mlx5dv.h \
+		enum MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_IBV_WQ_FLAG_RX_END_PADDING \
