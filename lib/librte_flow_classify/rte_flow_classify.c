@@ -635,9 +635,7 @@ action_apply(struct rte_flow_classifier *cls,
 		}
 		if (count) {
 			ret = 0;
-			ntuple_stats =
-				(struct rte_flow_classify_ipv4_5tuple_stats *)
-				stats->stats;
+			ntuple_stats = stats->stats;
 			ntuple_stats->counter1 = count;
 			ntuple_stats->ipv4_5tuple = rule->rules.u.ipv4_5tuple;
 		}

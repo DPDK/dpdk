@@ -279,7 +279,7 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 
 	}
 
-	ipv4_mask = (const struct rte_flow_item_ipv4 *)item->mask;
+	ipv4_mask = item->mask;
 	/**
 	 * Only support src & dst addresses, protocol,
 	 * others should be masked.
@@ -301,7 +301,7 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	filter->src_ip_mask = ipv4_mask->hdr.src_addr;
 	filter->proto_mask  = ipv4_mask->hdr.next_proto_id;
 
-	ipv4_spec = (const struct rte_flow_item_ipv4 *)item->spec;
+	ipv4_spec = item->spec;
 	filter->dst_ip = ipv4_spec->hdr.dst_addr;
 	filter->src_ip = ipv4_spec->hdr.src_addr;
 	filter->proto  = ipv4_spec->hdr.next_proto_id;
@@ -339,7 +339,7 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	}
 
 	if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
-		tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+		tcp_mask = item->mask;
 
 		/**
 		 * Only support src & dst ports, tcp flags,
@@ -373,12 +373,12 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 			return -EINVAL;
 		}
 
-		tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
+		tcp_spec = item->spec;
 		filter->dst_port  = tcp_spec->hdr.dst_port;
 		filter->src_port  = tcp_spec->hdr.src_port;
 		filter->tcp_flags = tcp_spec->hdr.tcp_flags;
 	} else if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
-		udp_mask = (const struct rte_flow_item_udp *)item->mask;
+		udp_mask = item->mask;
 
 		/**
 		 * Only support src & dst ports,
@@ -397,11 +397,11 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		filter->dst_port_mask = udp_mask->hdr.dst_port;
 		filter->src_port_mask = udp_mask->hdr.src_port;
 
-		udp_spec = (const struct rte_flow_item_udp *)item->spec;
+		udp_spec = item->spec;
 		filter->dst_port = udp_spec->hdr.dst_port;
 		filter->src_port = udp_spec->hdr.src_port;
 	} else {
-		sctp_mask = (const struct rte_flow_item_sctp *)item->mask;
+		sctp_mask = item->mask;
 
 		/**
 		 * Only support src & dst ports,
@@ -420,7 +420,7 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		filter->dst_port_mask = sctp_mask->hdr.dst_port;
 		filter->src_port_mask = sctp_mask->hdr.src_port;
 
-		sctp_spec = (const struct rte_flow_item_sctp *)item->spec;
+		sctp_spec = item->spec;
 		filter->dst_port = sctp_spec->hdr.dst_port;
 		filter->src_port = sctp_spec->hdr.src_port;
 	}
@@ -480,12 +480,12 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		action.action_mask |= 1LLU << RTE_FLOW_ACTION_TYPE_COUNT;
-		count = (const struct rte_flow_action_count *)act->conf;
+		count = act->conf;
 		memcpy(&action.act.counter, count, sizeof(action.act.counter));
 		break;
 	case RTE_FLOW_ACTION_TYPE_MARK:
 		action.action_mask |= 1LLU << RTE_FLOW_ACTION_TYPE_MARK;
-		mark_spec = (const struct rte_flow_action_mark *)act->conf;
+		mark_spec = act->conf;
 		memcpy(&action.act.mark, mark_spec, sizeof(action.act.mark));
 		break;
 	default:
@@ -502,12 +502,12 @@ classify_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		action.action_mask |= 1LLU << RTE_FLOW_ACTION_TYPE_COUNT;
-		count = (const struct rte_flow_action_count *)act->conf;
+		count = act->conf;
 		memcpy(&action.act.counter, count, sizeof(action.act.counter));
 		break;
 	case RTE_FLOW_ACTION_TYPE_MARK:
 		action.action_mask |= 1LLU << RTE_FLOW_ACTION_TYPE_MARK;
-		mark_spec = (const struct rte_flow_action_mark *)act->conf;
+		mark_spec = act->conf;
 		memcpy(&action.act.mark, mark_spec, sizeof(action.act.mark));
 		break;
 	case RTE_FLOW_ACTION_TYPE_END:
