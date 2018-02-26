@@ -847,6 +847,9 @@ main(int argc, char **argv)
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
 
+	if (rte_eth_dev_count_avail() == 0)
+		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
+
 	argc -= diag;
 	argv += (diag - 3);
 
