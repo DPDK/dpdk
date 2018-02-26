@@ -354,8 +354,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 		}
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth_spec = (const struct rte_flow_item_eth *)item->spec;
-			eth_mask = (const struct rte_flow_item_eth *)item->mask;
+			eth_spec = item->spec;
+			eth_mask = item->mask;
 
 			/* Source MAC address mask cannot be partially set.
 			 * Should be All 0's or all 1's.
@@ -410,10 +410,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			vlan_spec =
-				(const struct rte_flow_item_vlan *)item->spec;
-			vlan_mask =
-				(const struct rte_flow_item_vlan *)item->mask;
+			vlan_spec = item->spec;
+			vlan_mask = item->mask;
 			if (vlan_mask->tci & 0xFFFF && !vlan_mask->tpid) {
 				/* Only the VLAN ID can be matched. */
 				filter->l2_ovlan =
@@ -431,10 +429,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			/* If mask is not involved, we could use EM filters. */
-			ipv4_spec =
-				(const struct rte_flow_item_ipv4 *)item->spec;
-			ipv4_mask =
-				(const struct rte_flow_item_ipv4 *)item->mask;
+			ipv4_spec = item->spec;
+			ipv4_mask = item->mask;
 			/* Only IP DST and SRC fields are maskable. */
 			if (ipv4_mask->hdr.version_ihl ||
 			    ipv4_mask->hdr.type_of_service ||
@@ -483,10 +479,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			ipv6_spec =
-				(const struct rte_flow_item_ipv6 *)item->spec;
-			ipv6_mask =
-				(const struct rte_flow_item_ipv6 *)item->mask;
+			ipv6_spec = item->spec;
+			ipv6_mask = item->mask;
 
 			/* Only IP DST and SRC fields are maskable. */
 			if (ipv6_mask->hdr.vtc_flow ||
@@ -527,8 +521,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				EM_FLOW_ALLOC_INPUT_IP_ADDR_TYPE_IPV6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
-			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+			tcp_spec = item->spec;
+			tcp_mask = item->mask;
 
 			/* Check TCP mask. Only DST & SRC ports are maskable */
 			if (tcp_mask->hdr.sent_seq ||
@@ -564,8 +558,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			udp_spec = (const struct rte_flow_item_udp *)item->spec;
-			udp_mask = (const struct rte_flow_item_udp *)item->mask;
+			udp_spec = item->spec;
+			udp_mask = item->mask;
 
 			if (udp_mask->hdr.dgram_len ||
 			    udp_mask->hdr.dgram_cksum) {
@@ -597,10 +591,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			vxlan_spec =
-				(const struct rte_flow_item_vxlan *)item->spec;
-			vxlan_mask =
-				(const struct rte_flow_item_vxlan *)item->mask;
+			vxlan_spec = item->spec;
+			vxlan_mask = item->mask;
 			/* Check if VXLAN item is used to describe protocol.
 			 * If yes, both spec and mask should be NULL.
 			 * If no, both spec and mask shouldn't be NULL.
@@ -646,10 +638,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
-			nvgre_spec =
-				(const struct rte_flow_item_nvgre *)item->spec;
-			nvgre_mask =
-				(const struct rte_flow_item_nvgre *)item->mask;
+			nvgre_spec = item->spec;
+			nvgre_mask = item->mask;
 			/* Check if NVGRE item is used to describe protocol.
 			 * If yes, both spec and mask should be NULL.
 			 * If no, both spec and mask shouldn't be NULL.
@@ -692,7 +682,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VF:
-			vf_spec = (const struct rte_flow_item_vf *)item->spec;
+			vf_spec = item->spec;
 			vf = vf_spec->id;
 			if (!BNXT_PF(bp)) {
 				rte_flow_error_set(error, EINVAL,
