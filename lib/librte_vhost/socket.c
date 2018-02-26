@@ -329,6 +329,16 @@ vhost_user_start_server(struct vhost_user_socket *vsocket)
 	int fd = vsocket->socket_fd;
 	const char *path = vsocket->path;
 
+	/*
+	 * bind () may fail if the socket file with the same name already
+	 * exists. But the library obviously should not delete the file
+	 * provided by the user, since we can not be sure that it is not
+	 * being used by other applications. Moreover, many applications form
+	 * socket names based on user input, which is prone to errors.
+	 *
+	 * The user must ensure that the socket does not exist before
+	 * registering the vhost driver in server mode.
+	 */
 	ret = bind(fd, (struct sockaddr *)&vsocket->un, sizeof(vsocket->un));
 	if (ret < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
