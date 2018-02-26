@@ -175,7 +175,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	ipv4_mask = (const struct rte_flow_item_ipv4 *)item->mask;
+	ipv4_mask = item->mask;
 	/**
 	 * Only support src & dst addresses, protocol,
 	 * others should be masked.
@@ -198,7 +198,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	filter->src_ip_mask = ipv4_mask->hdr.src_addr;
 	filter->proto_mask  = ipv4_mask->hdr.next_proto_id;
 
-	ipv4_spec = (const struct rte_flow_item_ipv4 *)item->spec;
+	ipv4_spec = item->spec;
 	filter->dst_ip = ipv4_spec->hdr.dst_addr;
 	filter->src_ip = ipv4_spec->hdr.src_addr;
 	filter->proto  = ipv4_spec->hdr.next_proto_id;
@@ -228,7 +228,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	/* get the TCP/UDP/SCTP info */
 	if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
 		if (item->spec && item->mask) {
-			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+			tcp_mask = item->mask;
 
 			/**
 			 * Only support src & dst ports, tcp flags,
@@ -263,14 +263,14 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 				return -rte_errno;
 			}
 
-			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
+			tcp_spec = item->spec;
 			filter->dst_port  = tcp_spec->hdr.dst_port;
 			filter->src_port  = tcp_spec->hdr.src_port;
 			filter->tcp_flags = tcp_spec->hdr.tcp_flags;
 		}
 	} else if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
 		if (item->spec && item->mask) {
-			udp_mask = (const struct rte_flow_item_udp *)item->mask;
+			udp_mask = item->mask;
 
 			/**
 			 * Only support src & dst ports,
@@ -289,14 +289,13 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 			filter->dst_port_mask = udp_mask->hdr.dst_port;
 			filter->src_port_mask = udp_mask->hdr.src_port;
 
-			udp_spec = (const struct rte_flow_item_udp *)item->spec;
+			udp_spec = item->spec;
 			filter->dst_port = udp_spec->hdr.dst_port;
 			filter->src_port = udp_spec->hdr.src_port;
 		}
 	} else {
 		if (item->spec && item->mask) {
-			sctp_mask = (const struct rte_flow_item_sctp *)
-					item->mask;
+			sctp_mask = item->mask;
 
 			/**
 			 * Only support src & dst ports,
@@ -533,8 +532,8 @@ cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	eth_spec = (const struct rte_flow_item_eth *)item->spec;
-	eth_mask = (const struct rte_flow_item_eth *)item->mask;
+	eth_spec = item->spec;
+	eth_mask = item->mask;
 
 	/* Mask bits of source MAC address must be full of 0.
 	 * Mask bits of destination MAC address must be full
@@ -848,8 +847,8 @@ cons_parse_syn_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
-	tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+	tcp_spec = item->spec;
+	tcp_mask = item->mask;
 	if (!(tcp_spec->hdr.tcp_flags & TCP_SYN_FLAG) ||
 	    tcp_mask->hdr.src_port ||
 	    tcp_mask->hdr.dst_port ||
@@ -1065,8 +1064,8 @@ item_loop:
 		return -rte_errno;
 	}
 
-	raw_spec = (const struct rte_flow_item_raw *)item->spec;
-	raw_mask = (const struct rte_flow_item_raw *)item->mask;
+	raw_spec = item->spec;
+	raw_mask = item->mask;
 
 	if (!raw_mask->length ||
 	    !raw_mask->relative) {
