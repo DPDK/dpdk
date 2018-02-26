@@ -115,13 +115,13 @@ sfc_flow_parse_init(const struct rte_flow_item *item,
 			return -rte_errno;
 		}
 
-		mask = (const uint8_t *)def_mask;
+		mask = def_mask;
 	} else {
-		mask = (const uint8_t *)item->mask;
+		mask = item->mask;
 	}
 
-	spec = (const uint8_t *)item->spec;
-	last = (const uint8_t *)item->last;
+	spec = item->spec;
+	last = item->last;
 
 	if (spec == NULL)
 		goto exit;
