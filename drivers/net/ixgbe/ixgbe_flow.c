@@ -264,8 +264,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	}
 	/* Skip Ethernet */
 	if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
-		eth_spec = (const struct rte_flow_item_eth *)item->spec;
-		eth_mask = (const struct rte_flow_item_eth *)item->mask;
+		eth_spec = item->spec;
+		eth_mask = item->mask;
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error,
@@ -298,8 +298,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	}
 
 	if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
-		vlan_spec = (const struct rte_flow_item_vlan *)item->spec;
-		vlan_mask = (const struct rte_flow_item_vlan *)item->mask;
+		vlan_spec = item->spec;
+		vlan_mask = item->mask;
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error,
@@ -346,7 +346,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 
-		ipv4_mask = (const struct rte_flow_item_ipv4 *)item->mask;
+		ipv4_mask = item->mask;
 		/**
 		 * Only support src & dst addresses, protocol,
 		 * others should be masked.
@@ -368,7 +368,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		filter->src_ip_mask = ipv4_mask->hdr.src_addr;
 		filter->proto_mask  = ipv4_mask->hdr.next_proto_id;
 
-		ipv4_spec = (const struct rte_flow_item_ipv4 *)item->spec;
+		ipv4_spec = item->spec;
 		filter->dst_ip = ipv4_spec->hdr.dst_addr;
 		filter->src_ip = ipv4_spec->hdr.src_addr;
 		filter->proto  = ipv4_spec->hdr.next_proto_id;
@@ -413,7 +413,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	}
 
 	if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
-		tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+		tcp_mask = item->mask;
 
 		/**
 		 * Only support src & dst ports, tcp flags,
@@ -447,12 +447,12 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 
-		tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
+		tcp_spec = item->spec;
 		filter->dst_port  = tcp_spec->hdr.dst_port;
 		filter->src_port  = tcp_spec->hdr.src_port;
 		filter->tcp_flags = tcp_spec->hdr.tcp_flags;
 	} else if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
-		udp_mask = (const struct rte_flow_item_udp *)item->mask;
+		udp_mask = item->mask;
 
 		/**
 		 * Only support src & dst ports,
@@ -471,11 +471,11 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		filter->dst_port_mask = udp_mask->hdr.dst_port;
 		filter->src_port_mask = udp_mask->hdr.src_port;
 
-		udp_spec = (const struct rte_flow_item_udp *)item->spec;
+		udp_spec = item->spec;
 		filter->dst_port = udp_spec->hdr.dst_port;
 		filter->src_port = udp_spec->hdr.src_port;
 	} else if (item->type == RTE_FLOW_ITEM_TYPE_SCTP) {
-		sctp_mask = (const struct rte_flow_item_sctp *)item->mask;
+		sctp_mask = item->mask;
 
 		/**
 		 * Only support src & dst ports,
@@ -494,7 +494,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		filter->dst_port_mask = sctp_mask->hdr.dst_port;
 		filter->src_port_mask = sctp_mask->hdr.src_port;
 
-		sctp_spec = (const struct rte_flow_item_sctp *)item->spec;
+		sctp_spec = item->spec;
 		filter->dst_port = sctp_spec->hdr.dst_port;
 		filter->src_port = sctp_spec->hdr.src_port;
 	} else {
@@ -699,8 +699,8 @@ cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	eth_spec = (const struct rte_flow_item_eth *)item->spec;
-	eth_mask = (const struct rte_flow_item_eth *)item->mask;
+	eth_spec = item->spec;
+	eth_mask = item->mask;
 
 	/* Mask bits of source MAC address must be full of 0.
 	 * Mask bits of destination MAC address must be full
@@ -1000,8 +1000,8 @@ cons_parse_syn_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
-	tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+	tcp_spec = item->spec;
+	tcp_mask = item->mask;
 	if (!(tcp_spec->hdr.tcp_flags & TCP_SYN_FLAG) ||
 	    tcp_mask->hdr.src_port ||
 	    tcp_mask->hdr.dst_port ||
@@ -1198,8 +1198,8 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	e_tag_spec = (const struct rte_flow_item_e_tag *)item->spec;
-	e_tag_mask = (const struct rte_flow_item_e_tag *)item->mask;
+	e_tag_spec = item->spec;
+	e_tag_mask = item->mask;
 
 	/* Only care about GRP and E cid base. */
 	if (e_tag_mask->epcp_edei_in_ecid_b ||
@@ -1447,12 +1447,9 @@ static inline uint8_t signature_match(const struct rte_flow_item pattern[])
 			break;
 
 		if (item->type == RTE_FLOW_ITEM_TYPE_FUZZY) {
-			spec =
-			(const struct rte_flow_item_fuzzy *)item->spec;
-			last =
-			(const struct rte_flow_item_fuzzy *)item->last;
-			mask =
-			(const struct rte_flow_item_fuzzy *)item->mask;
+			spec = item->spec;
+			last = item->last;
+			mask = item->mask;
 
 			if (!spec || !mask)
 				return 0;
@@ -1632,7 +1629,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
-			eth_spec = (const struct rte_flow_item_eth *)item->spec;
+			eth_spec = item->spec;
 
 			/* Get the dst MAC. */
 			for (j = 0; j < ETHER_ADDR_LEN; j++) {
@@ -1645,7 +1642,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 		if (item->mask) {
 
 			rule->b_mask = TRUE;
-			eth_mask = (const struct rte_flow_item_eth *)item->mask;
+			eth_mask = item->mask;
 
 			/* Ether type should be masked. */
 			if (eth_mask->type ||
@@ -1725,8 +1722,8 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 
-		vlan_spec = (const struct rte_flow_item_vlan *)item->spec;
-		vlan_mask = (const struct rte_flow_item_vlan *)item->mask;
+		vlan_spec = item->spec;
+		vlan_mask = item->mask;
 
 		rule->ixgbe_fdir.formatted.vlan_id = vlan_spec->tci;
 
@@ -1772,8 +1769,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 		rule->b_mask = TRUE;
-		ipv4_mask =
-			(const struct rte_flow_item_ipv4 *)item->mask;
+		ipv4_mask = item->mask;
 		if (ipv4_mask->hdr.version_ihl ||
 		    ipv4_mask->hdr.type_of_service ||
 		    ipv4_mask->hdr.total_length ||
@@ -1793,8 +1789,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
-			ipv4_spec =
-				(const struct rte_flow_item_ipv4 *)item->spec;
+			ipv4_spec = item->spec;
 			rule->ixgbe_fdir.formatted.dst_ip[0] =
 				ipv4_spec->hdr.dst_addr;
 			rule->ixgbe_fdir.formatted.src_ip[0] =
@@ -1844,8 +1839,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 		}
 
 		rule->b_mask = TRUE;
-		ipv6_mask =
-			(const struct rte_flow_item_ipv6 *)item->mask;
+		ipv6_mask = item->mask;
 		if (ipv6_mask->hdr.vtc_flow ||
 		    ipv6_mask->hdr.payload_len ||
 		    ipv6_mask->hdr.proto ||
@@ -1885,8 +1879,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
-			ipv6_spec =
-				(const struct rte_flow_item_ipv6 *)item->spec;
+			ipv6_spec = item->spec;
 			rte_memcpy(rule->ixgbe_fdir.formatted.src_ip,
 				   ipv6_spec->hdr.src_addr, 16);
 			rte_memcpy(rule->ixgbe_fdir.formatted.dst_ip,
@@ -1938,7 +1931,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 		rule->b_mask = TRUE;
-		tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+		tcp_mask = item->mask;
 		if (tcp_mask->hdr.sent_seq ||
 		    tcp_mask->hdr.recv_ack ||
 		    tcp_mask->hdr.data_off ||
@@ -1957,7 +1950,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
-			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
+			tcp_spec = item->spec;
 			rule->ixgbe_fdir.formatted.src_port =
 				tcp_spec->hdr.src_port;
 			rule->ixgbe_fdir.formatted.dst_port =
@@ -2003,7 +1996,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 		rule->b_mask = TRUE;
-		udp_mask = (const struct rte_flow_item_udp *)item->mask;
+		udp_mask = item->mask;
 		if (udp_mask->hdr.dgram_len ||
 		    udp_mask->hdr.dgram_cksum) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
@@ -2017,7 +2010,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
-			udp_spec = (const struct rte_flow_item_udp *)item->spec;
+			udp_spec = item->spec;
 			rule->ixgbe_fdir.formatted.src_port =
 				udp_spec->hdr.src_port;
 			rule->ixgbe_fdir.formatted.dst_port =
@@ -2068,8 +2061,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 				return -rte_errno;
 			}
 			rule->b_mask = TRUE;
-			sctp_mask =
-				(const struct rte_flow_item_sctp *)item->mask;
+			sctp_mask = item->mask;
 			if (sctp_mask->hdr.tag ||
 				sctp_mask->hdr.cksum) {
 				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
@@ -2083,8 +2075,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 
 			if (item->spec) {
 				rule->b_spec = TRUE;
-				sctp_spec =
-				(const struct rte_flow_item_sctp *)item->spec;
+				sctp_spec = item->spec;
 				rule->ixgbe_fdir.formatted.src_port =
 					sctp_spec->hdr.src_port;
 				rule->ixgbe_fdir.formatted.dst_port =
@@ -2092,8 +2083,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			}
 		/* others even sctp port is not supported */
 		} else {
-			sctp_mask =
-				(const struct rte_flow_item_sctp *)item->mask;
+			sctp_mask = item->mask;
 			if (sctp_mask &&
 				(sctp_mask->hdr.src_port ||
 				 sctp_mask->hdr.dst_port ||
@@ -2136,7 +2126,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 
-		raw_mask = (const struct rte_flow_item_raw *)item->mask;
+		raw_mask = item->mask;
 
 		/* check mask */
 		if (raw_mask->relative != 0x1 ||
@@ -2152,7 +2142,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 
-		raw_spec = (const struct rte_flow_item_raw *)item->spec;
+		raw_spec = item->spec;
 
 		/* check spec */
 		if (raw_spec->relative != 0 ||
@@ -2425,8 +2415,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		/* Tunnel type is always meaningful. */
 		rule->mask.tunnel_type_mask = 1;
 
-		vxlan_mask =
-			(const struct rte_flow_item_vxlan *)item->mask;
+		vxlan_mask = item->mask;
 		if (vxlan_mask->flags) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
@@ -2452,8 +2441,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
-			vxlan_spec = (const struct rte_flow_item_vxlan *)
-					item->spec;
+			vxlan_spec = item->spec;
 			rte_memcpy(((uint8_t *)
 				&rule->ixgbe_fdir.formatted.tni_vni + 1),
 				vxlan_spec->vni, RTE_DIM(vxlan_spec->vni));
@@ -2490,8 +2478,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		/* Tunnel type is always meaningful. */
 		rule->mask.tunnel_type_mask = 1;
 
-		nvgre_mask =
-			(const struct rte_flow_item_nvgre *)item->mask;
+		nvgre_mask = item->mask;
 		if (nvgre_mask->flow_id) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
@@ -2534,8 +2521,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
-			nvgre_spec =
-				(const struct rte_flow_item_nvgre *)item->spec;
+			nvgre_spec = item->spec;
 			if (nvgre_spec->c_k_s_rsvd0_ver !=
 			    rte_cpu_to_be_16(0x2000) &&
 				nvgre_mask->c_k_s_rsvd0_ver) {
@@ -2591,7 +2577,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 	rule->b_mask = TRUE;
-	eth_mask = (const struct rte_flow_item_eth *)item->mask;
+	eth_mask = item->mask;
 
 	/* Ether type should be masked. */
 	if (eth_mask->type) {
@@ -2632,7 +2618,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 
 	if (item->spec) {
 		rule->b_spec = TRUE;
-		eth_spec = (const struct rte_flow_item_eth *)item->spec;
+		eth_spec = item->spec;
 
 		/* Get the dst MAC. */
 		for (j = 0; j < ETHER_ADDR_LEN; j++) {
@@ -2671,8 +2657,8 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 
-		vlan_spec = (const struct rte_flow_item_vlan *)item->spec;
-		vlan_mask = (const struct rte_flow_item_vlan *)item->mask;
+		vlan_spec = item->spec;
+		vlan_mask = item->mask;
 
 		rule->ixgbe_fdir.formatted.vlan_id = vlan_spec->tci;
 
