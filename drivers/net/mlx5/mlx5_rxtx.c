@@ -1382,7 +1382,7 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 				(!txq->mpw_hdr_dseg ||
 				 mpw.total_len >= MLX5_WQE_SIZE);
 		}
-		if (do_inline) {
+		if (max_inline && do_inline) {
 			/* Inline packet into WQE. */
 			unsigned int max;
 
