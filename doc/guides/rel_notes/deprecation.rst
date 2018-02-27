@@ -149,12 +149,6 @@ Deprecation Notices
   as parameter. For consistency functions adding callback will return
   ``struct rte_eth_rxtx_callback \*`` instead of ``void \*``.
 
-* ethdev: The size of variables ``flow_types_mask`` in
-  ``rte_eth_fdir_info structure``, ``sym_hash_enable_mask`` and
-  ``valid_bit_mask`` in ``rte_eth_hash_global_conf`` structure
-  will be increased from 32 to 64 bits to fulfill hardware requirements.
-  This change will break existing ABI as size of the structures will increase.
-
 * ethdev: ``rte_eth_dev_get_sec_ctx()`` fix port id storage
   ``rte_eth_dev_get_sec_ctx()`` is using ``uint8_t`` for ``port_id``,
   which should be ``uint16_t``.

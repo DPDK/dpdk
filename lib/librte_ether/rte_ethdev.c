@@ -34,7 +34,6 @@
 #include <rte_errno.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
-#include <rte_compat.h>
 
 #include "rte_ether.h"
 #include "rte_ethdev.h"
@@ -3489,153 +3488,8 @@ rte_eth_dev_filter_supported(uint16_t port_id,
 }
 
 int
-rte_eth_dev_filter_ctrl_v22(uint16_t port_id,
-			    enum rte_filter_type filter_type,
-			    enum rte_filter_op filter_op, void *arg);
-
-int
-rte_eth_dev_filter_ctrl_v22(uint16_t port_id,
-			    enum rte_filter_type filter_type,
-			    enum rte_filter_op filter_op, void *arg)
-{
-	struct rte_eth_fdir_info_v22 {
-		enum rte_fdir_mode mode;
-		struct rte_eth_fdir_masks mask;
-		struct rte_eth_fdir_flex_conf flex_conf;
-		uint32_t guarant_spc;
-		uint32_t best_spc;
-		uint32_t flow_types_mask[1];
-		uint32_t max_flexpayload;
-		uint32_t flex_payload_unit;
-		uint32_t max_flex_payload_segment_num;
-		uint16_t flex_payload_limit;
-		uint32_t flex_bitmask_unit;
-		uint32_t max_flex_bitmask_num;
-	};
-
-	struct rte_eth_hash_global_conf_v22 {
-		enum rte_eth_hash_function hash_func;
-		uint32_t sym_hash_enable_mask[1];
-		uint32_t valid_bit_mask[1];
-	};
-
-	struct rte_eth_hash_filter_info_v22 {
-		enum rte_eth_hash_filter_info_type info_type;
-		union {
-			uint8_t enable;
-			struct rte_eth_hash_global_conf_v22 global_conf;
-			struct rte_eth_input_set_conf input_set_conf;
-		} info;
-	};
-
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->filter_ctrl, -ENOTSUP);
-	if (filter_op == RTE_ETH_FILTER_INFO) {
-		int retval;
-		struct rte_eth_fdir_info_v22 *fdir_info_v22;
-		struct rte_eth_fdir_info fdir_info;
-
-		fdir_info_v22 = (struct rte_eth_fdir_info_v22 *)arg;
-
-		retval = (*dev->dev_ops->filter_ctrl)(dev, filter_type,
-			  filter_op, (void *)&fdir_info);
-		fdir_info_v22->mode = fdir_info.mode;
-		fdir_info_v22->mask = fdir_info.mask;
-		fdir_info_v22->flex_conf = fdir_info.flex_conf;
-		fdir_info_v22->guarant_spc = fdir_info.guarant_spc;
-		fdir_info_v22->best_spc = fdir_info.best_spc;
-		fdir_info_v22->flow_types_mask[0] =
-			(uint32_t)fdir_info.flow_types_mask[0];
-		fdir_info_v22->max_flexpayload = fdir_info.max_flexpayload;
-		fdir_info_v22->flex_payload_unit = fdir_info.flex_payload_unit;
-		fdir_info_v22->max_flex_payload_segment_num =
-			fdir_info.max_flex_payload_segment_num;
-		fdir_info_v22->flex_payload_limit =
-			fdir_info.flex_payload_limit;
-		fdir_info_v22->flex_bitmask_unit = fdir_info.flex_bitmask_unit;
-		fdir_info_v22->max_flex_bitmask_num =
-			fdir_info.max_flex_bitmask_num;
-		return retval;
-	} else if (filter_op == RTE_ETH_FILTER_GET) {
-		int retval;
-		struct rte_eth_hash_filter_info f_info;
-		struct rte_eth_hash_filter_info_v22 *f_info_v22 =
-			(struct rte_eth_hash_filter_info_v22 *)arg;
-
-		f_info.info_type = f_info_v22->info_type;
-		retval = (*dev->dev_ops->filter_ctrl)(dev, filter_type,
-			  filter_op, (void *)&f_info);
-
-		switch (f_info_v22->info_type) {
-		case RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT:
-			f_info_v22->info.enable = f_info.info.enable;
-			break;
-		case RTE_ETH_HASH_FILTER_GLOBAL_CONFIG:
-			f_info_v22->info.global_conf.hash_func =
-				f_info.info.global_conf.hash_func;
-			f_info_v22->info.global_conf.sym_hash_enable_mask[0] =
-				(uint32_t)
-				f_info.info.global_conf.sym_hash_enable_mask[0];
-			f_info_v22->info.global_conf.valid_bit_mask[0] =
-				(uint32_t)
-				f_info.info.global_conf.valid_bit_mask[0];
-			break;
-		case RTE_ETH_HASH_FILTER_INPUT_SET_SELECT:
-			f_info_v22->info.input_set_conf =
-				f_info.info.input_set_conf;
-			break;
-		default:
-			break;
-		}
-		return retval;
-	} else if (filter_op == RTE_ETH_FILTER_SET) {
-		struct rte_eth_hash_filter_info f_info;
-		struct rte_eth_hash_filter_info_v22 *f_v22 =
-			(struct rte_eth_hash_filter_info_v22 *)arg;
-
-		f_info.info_type = f_v22->info_type;
-		switch (f_v22->info_type) {
-		case RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT:
-			f_info.info.enable = f_v22->info.enable;
-			break;
-		case RTE_ETH_HASH_FILTER_GLOBAL_CONFIG:
-			f_info.info.global_conf.hash_func =
-				f_v22->info.global_conf.hash_func;
-			f_info.info.global_conf.sym_hash_enable_mask[0] =
-				(uint32_t)
-				f_v22->info.global_conf.sym_hash_enable_mask[0];
-			f_info.info.global_conf.valid_bit_mask[0] =
-				(uint32_t)
-				f_v22->info.global_conf.valid_bit_mask[0];
-			break;
-		case RTE_ETH_HASH_FILTER_INPUT_SET_SELECT:
-			f_info.info.input_set_conf =
-				f_v22->info.input_set_conf;
-			break;
-		default:
-			break;
-		}
-		return (*dev->dev_ops->filter_ctrl)(dev, filter_type, filter_op,
-						    (void *)&f_info);
-	} else
-		return (*dev->dev_ops->filter_ctrl)(dev, filter_type, filter_op,
-						    arg);
-}
-VERSION_SYMBOL(rte_eth_dev_filter_ctrl, _v22, 2.2);
-
-int
-rte_eth_dev_filter_ctrl_v1802(uint16_t port_id,
-			      enum rte_filter_type filter_type,
-			      enum rte_filter_op filter_op, void *arg);
-
-int
-rte_eth_dev_filter_ctrl_v1802(uint16_t port_id,
-			      enum rte_filter_type filter_type,
-			      enum rte_filter_op filter_op, void *arg)
+rte_eth_dev_filter_ctrl(uint16_t port_id, enum rte_filter_type filter_type,
+			enum rte_filter_op filter_op, void *arg)
 {
 	struct rte_eth_dev *dev;
 
@@ -3646,11 +3500,6 @@ rte_eth_dev_filter_ctrl_v1802(uint16_t port_id,
 	return eth_err(port_id, (*dev->dev_ops->filter_ctrl)(dev, filter_type,
 							     filter_op, arg));
 }
-BIND_DEFAULT_SYMBOL(rte_eth_dev_filter_ctrl, _v1802, 18.02);
-MAP_STATIC_SYMBOL(int rte_eth_dev_filter_ctrl(uint16_t port_id,
-		  enum rte_filter_type filter_type,
-		  enum rte_filter_op filter_op, void *arg),
-		  rte_eth_dev_filter_ctrl_v1802);
 
 void *
 rte_eth_add_rx_callback(uint16_t port_id, uint16_t queue_id,

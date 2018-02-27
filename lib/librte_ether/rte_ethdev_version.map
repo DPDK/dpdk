@@ -16,7 +16,6 @@ DPDK_2.2 {
 	rte_eth_dev_count;
 	rte_eth_dev_default_mac_addr_set;
 	rte_eth_dev_detach;
-	rte_eth_dev_filter_ctrl;
 	rte_eth_dev_filter_supported;
 	rte_eth_dev_flow_ctrl_get;
 	rte_eth_dev_flow_ctrl_set;

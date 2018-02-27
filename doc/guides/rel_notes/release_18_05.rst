@@ -128,7 +128,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cryptodev.so.4
      librte_distributor.so.1
      librte_eal.so.6
-     librte_ethdev.so.8
+   + librte_ethdev.so.9
      librte_eventdev.so.3
      librte_flow_classify.so.1
      librte_gro.so.1
