@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <linux/sockios.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <netinet/ip.h>
@@ -207,36 +209,96 @@ vdev_netvsc_iface_is_netvsc(const struct if_nameindex *iface)
  *
  * @param[in] name
  *   Network device name.
+ * @param[in] family
+ *   Address family: AF_INET for IPv4 or AF_INET6 for IPv6.
  *
  * @return
- *   A nonzero value when interface has an route. In case of error,
- *   rte_errno is updated and 0 returned.
+ *   1 when interface has a route, negative errno value in case of error and
+ *   0 otherwise.
  */
 static int
-vdev_netvsc_has_route(const char *name)
+vdev_netvsc_has_route(const struct if_nameindex *iface,
+		      const unsigned char family)
 {
-	FILE *fp;
+	/*
+	 * The implementation can be simpler by getifaddrs() function usage but
+	 * it works for IPv6 only starting from glibc 2.3.3.
+	 */
+	char buf[4096];
+	int len;
 	int ret = 0;
-	char route[NETVSC_MAX_ROUTE_LINE_SIZE];
-	char *netdev;
+	int res;
+	int sock;
+	struct nlmsghdr *retmsg = (struct nlmsghdr *)buf;
+	struct sockaddr_nl sa;
+	struct {
+		struct nlmsghdr nlhdr;
+		struct ifaddrmsg addrmsg;
+	} msg;
 
-	fp = fopen("/proc/net/route", "r");
-	if (!fp) {
-		rte_errno = errno;
-		return 0;
+	if (!iface || (family != AF_INET && family != AF_INET6)) {
+		DRV_LOG(ERR, "%s", rte_strerror(EINVAL));
+		return -EINVAL;
 	}
-	while (fgets(route, NETVSC_MAX_ROUTE_LINE_SIZE, fp) != NULL) {
-		netdev = strtok(route, "\t");
-		if (strcmp(netdev, name) == 0) {
-			ret = 1;
-			break;
+	sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+	if (sock == -1) {
+		DRV_LOG(ERR, "cannot open socket: %s", rte_strerror(errno));
+		return -errno;
+	}
+	memset(&sa, 0, sizeof(sa));
+	sa.nl_family = AF_NETLINK;
+	sa.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
+	res = bind(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (res == -1) {
+		ret = -errno;
+		DRV_LOG(ERR, "cannot bind socket: %s", rte_strerror(errno));
+		goto close;
+	}
+	memset(&msg, 0, sizeof(msg));
+	msg.nlhdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
+	msg.nlhdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	msg.nlhdr.nlmsg_type = RTM_GETADDR;
+	msg.nlhdr.nlmsg_pid = getpid();
+	msg.addrmsg.ifa_family = family;
+	msg.addrmsg.ifa_index = iface->if_index;
+	res = send(sock, &msg, msg.nlhdr.nlmsg_len, 0);
+	if (res == -1) {
+		ret = -errno;
+		DRV_LOG(ERR, "cannot send socket message: %s",
+			rte_strerror(errno));
+		goto close;
+	}
+	memset(buf, 0, sizeof(buf));
+	len = recv(sock, buf, sizeof(buf), 0);
+	if (len == -1) {
+		ret = -errno;
+		DRV_LOG(ERR, "cannot receive socket message: %s",
+			rte_strerror(errno));
+		goto close;
+	}
+	while (NLMSG_OK(retmsg, (unsigned int)len)) {
+		struct ifaddrmsg *retaddr =
+				(struct ifaddrmsg *)NLMSG_DATA(retmsg);
+
+		if (retaddr->ifa_family == family &&
+		    retaddr->ifa_index == iface->if_index) {
+			struct rtattr *retrta = IFA_RTA(retaddr);
+			int attlen = IFA_PAYLOAD(retmsg);
+
+			while (RTA_OK(retrta, attlen)) {
+				if (retrta->rta_type == IFA_ADDRESS) {
+					ret = 1;
+					DRV_LOG(DEBUG, "interface %s has IP",
+						iface->if_name);
+					goto close;
+				}
+				retrta = RTA_NEXT(retrta, attlen);
+			}
 		}
-		/* Move file pointer to the next line. */
-		while (strchr(route, '\n') == NULL &&
-		       fgets(route, NETVSC_MAX_ROUTE_LINE_SIZE, fp) != NULL)
-			;
+		retmsg = NLMSG_NEXT(retmsg, len);
 	}
-	fclose(fp);
+close:
+	close(sock);
 	return ret;
 }
 
@@ -505,10 +567,11 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 			iface->if_name, iface->if_index);
 	}
 	/* Routed NetVSC should not be probed. */
-	if (vdev_netvsc_has_route(iface->if_name)) {
+	if (vdev_netvsc_has_route(iface, AF_INET) ||
+	    vdev_netvsc_has_route(iface, AF_INET6)) {
 		if (!specified || !force)
 			return 0;
-		DRV_LOG(WARNING, "using routed NetVSC interface \"%s\""
+		DRV_LOG(WARNING, "probably using routed NetVSC interface \"%s\""
 			" (index %u)", iface->if_name, iface->if_index);
 	}
 	/* Create interface context. */
