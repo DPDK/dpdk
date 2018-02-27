@@ -183,6 +183,8 @@ Supported actions:
 
 - RSS
 
+- DROP
+
 Validating flow rules depends on the firmware variant.
 
 Ethernet destinaton individual/group match

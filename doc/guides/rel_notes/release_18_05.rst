@@ -50,6 +50,7 @@ New Features
   Updated the sfc_efx driver including the following changes:
 
   * Added support for NVGRE, VXLAN and GENEVE filters in flow API.
+  * Added support for DROP action in flow API.
 
 
 API Changes

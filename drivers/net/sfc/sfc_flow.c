@@ -1497,6 +1497,13 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 			break;
 #endif /* EFSYS_OPT_RX_SCALE */
 
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			flow->spec.template.efs_dmaq_id =
+				EFX_FILTER_SPEC_RX_DMAQ_ID_DROP;
+
+			is_specified = B_TRUE;
+			break;
+
 		default:
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION, actions,
