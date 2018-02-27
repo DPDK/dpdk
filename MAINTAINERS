@@ -791,7 +791,6 @@ F: doc/guides/prog_guide/generic_receive_offload_lib.rst
 
 Generic Segmentation Offload
 M: Jiayu Hu <jiayu.hu@intel.com>
-M: Mark Kavanagh <mark.b.kavanagh@intel.com>
 F: lib/librte_gso/
 F: doc/guides/prog_guide/generic_segmentation_offload_lib.rst
 
