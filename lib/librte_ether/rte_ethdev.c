@@ -572,8 +572,7 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id)
 
 	for (pid = 0; pid < RTE_MAX_ETHPORTS; pid++) {
 		if (rte_eth_devices[pid].state != RTE_ETH_DEV_UNUSED &&
-		    !strncmp(name, rte_eth_dev_shared_data->data[pid].name,
-			     strlen(name))) {
+		    !strcmp(name, rte_eth_dev_shared_data->data[pid].name)) {
 			*port_id = pid;
 			return 0;
 		}
