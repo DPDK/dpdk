@@ -532,8 +532,7 @@ sw_event_schedule(struct rte_eventdev *dev)
 		} while (in_pkts > 4 &&
 				(int)in_pkts_this_iteration < sched_quanta);
 
-		out_pkts = 0;
-		out_pkts += sw_schedule_qid_to_cq(sw);
+		out_pkts = sw_schedule_qid_to_cq(sw);
 		out_pkts_total += out_pkts;
 		in_pkts_total += in_pkts_this_iteration;
 
