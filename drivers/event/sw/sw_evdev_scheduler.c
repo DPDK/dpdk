@@ -508,7 +508,7 @@ sw_event_schedule(struct rte_eventdev *dev)
 	uint32_t i;
 
 	sw->sched_called++;
-	if (!sw->started)
+	if (unlikely(!sw->started))
 		return;
 
 	do {
