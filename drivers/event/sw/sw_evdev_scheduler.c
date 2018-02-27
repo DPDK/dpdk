@@ -541,6 +541,12 @@ sw_event_schedule(struct rte_eventdev *dev)
 			break;
 	} while ((int)out_pkts_total < sched_quanta);
 
+	sw->stats.tx_pkts += out_pkts_total;
+	sw->stats.rx_pkts += in_pkts_total;
+
+	sw->sched_no_iq_enqueues += (in_pkts_total == 0);
+	sw->sched_no_cq_enqueues += (out_pkts_total == 0);
+
 	/* push all the internal buffered QEs in port->cq_ring to the
 	 * worker cores: aka, do the ring transfers batched.
 	 */
@@ -551,11 +557,5 @@ sw_event_schedule(struct rte_eventdev *dev)
 				&sw->cq_ring_space[i]);
 		sw->ports[i].cq_buf_count = 0;
 	}
-
-	sw->stats.tx_pkts += out_pkts_total;
-	sw->stats.rx_pkts += in_pkts_total;
-
-	sw->sched_no_iq_enqueues += (in_pkts_total == 0);
-	sw->sched_no_cq_enqueues += (out_pkts_total == 0);
 
 }
