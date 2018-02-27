@@ -55,7 +55,7 @@ extern "C" {
  * Guarantees that the LOAD and STORE operations generated before the
  * barrier occur before the LOAD and STORE operations generated after.
  */
-#define	rte_mb()  {asm volatile("sync" : : : "memory"); }
+#define	rte_mb()  asm volatile("sync" : : : "memory")
 
 /**
  * Write memory barrier.
