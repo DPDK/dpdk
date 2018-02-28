@@ -491,7 +491,8 @@ enum fw_params_param_dev {
  * physical and virtual function parameters
  */
 enum fw_params_param_pfvf {
-	FW_PARAMS_PARAM_PFVF_CPLFW4MSG_ENCAP = 0x31
+	FW_PARAMS_PARAM_PFVF_CPLFW4MSG_ENCAP = 0x31,
+	FW_PARAMS_PARAM_PFVF_PORT_CAPS32 = 0x3A
 };
 
 /*
@@ -1226,6 +1227,8 @@ enum fw_port_mdi32 {
 enum fw_port_action {
 	FW_PORT_ACTION_L1_CFG		= 0x0001,
 	FW_PORT_ACTION_GET_PORT_INFO	= 0x0003,
+	FW_PORT_ACTION_L1_CFG32         = 0x0009,
+	FW_PORT_ACTION_GET_PORT_INFO32  = 0x000a,
 };
 
 struct fw_port_cmd {
@@ -1314,6 +1317,18 @@ struct fw_port_cmd {
 				__be64 r12;
 			} control;
 		} dcb;
+		struct fw_port_l1cfg32 {
+			__be32 rcap32;
+			__be32 r;
+		} l1cfg32;
+		struct fw_port_info32 {
+			__be32 lstatus32_to_cbllen32;
+			__be32 auxlinfo32_mtu32;
+			__be32 linkattr32;
+			__be32 pcaps32;
+			__be32 acaps32;
+			__be32 lpacaps32;
+		} info32;
 	} u;
 };
 
@@ -1386,6 +1401,36 @@ struct fw_port_cmd {
 #define V_FW_PORT_CMD_MODTYPE(x)	((x) << S_FW_PORT_CMD_MODTYPE)
 #define G_FW_PORT_CMD_MODTYPE(x)	\
 	(((x) >> S_FW_PORT_CMD_MODTYPE) & M_FW_PORT_CMD_MODTYPE)
+
+#define S_FW_PORT_CMD_LSTATUS32                31
+#define M_FW_PORT_CMD_LSTATUS32                0x1
+#define V_FW_PORT_CMD_LSTATUS32(x)     ((x) << S_FW_PORT_CMD_LSTATUS32)
+#define F_FW_PORT_CMD_LSTATUS32        V_FW_PORT_CMD_LSTATUS32(1U)
+
+#define S_FW_PORT_CMD_LINKDNRC32       28
+#define M_FW_PORT_CMD_LINKDNRC32       0x7
+#define G_FW_PORT_CMD_LINKDNRC32(x)    \
+	(((x) >> S_FW_PORT_CMD_LINKDNRC32) & M_FW_PORT_CMD_LINKDNRC32)
+
+#define S_FW_PORT_CMD_MDIOCAP32                26
+#define M_FW_PORT_CMD_MDIOCAP32                0x1
+#define V_FW_PORT_CMD_MDIOCAP32(x)     ((x) << S_FW_PORT_CMD_MDIOCAP32)
+#define F_FW_PORT_CMD_MDIOCAP32        V_FW_PORT_CMD_MDIOCAP32(1U)
+
+#define S_FW_PORT_CMD_MDIOADDR32       21
+#define M_FW_PORT_CMD_MDIOADDR32       0x1f
+#define G_FW_PORT_CMD_MDIOADDR32(x)    \
+	(((x) >> S_FW_PORT_CMD_MDIOADDR32) & M_FW_PORT_CMD_MDIOADDR32)
+
+#define S_FW_PORT_CMD_PORTTYPE32        13
+#define M_FW_PORT_CMD_PORTTYPE32        0xff
+#define G_FW_PORT_CMD_PORTTYPE32(x)     \
+	(((x) >> S_FW_PORT_CMD_PORTTYPE32) & M_FW_PORT_CMD_PORTTYPE32)
+
+#define S_FW_PORT_CMD_MODTYPE32                8
+#define M_FW_PORT_CMD_MODTYPE32                0x1f
+#define G_FW_PORT_CMD_MODTYPE32(x)     \
+	(((x) >> S_FW_PORT_CMD_MODTYPE32) & M_FW_PORT_CMD_MODTYPE32)
 
 /*
  * These are configured into the VPD and hence tools that generate

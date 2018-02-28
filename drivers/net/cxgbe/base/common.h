@@ -239,12 +239,19 @@ struct adapter_params {
 	struct arch_specific_params arch; /* chip specific params */
 
 	bool ulptx_memwrite_dsgl;          /* use of T5 DSGL allowed */
+	u8 fw_caps_support;		  /* 32-bit Port Capabilities */
 };
 
 /* Firmware Port Capabilities types.
  */
 typedef u16 fw_port_cap16_t;    /* 16-bit Port Capabilities integral value */
 typedef u32 fw_port_cap32_t;    /* 32-bit Port Capabilities integral value */
+
+enum fw_caps {
+	FW_CAPS_UNKNOWN = 0,    /* 0'ed out initial state */
+	FW_CAPS16       = 1,    /* old Firmware: 16-bit Port Capabilities */
+	FW_CAPS32       = 2,    /* new Firmware: 32-bit Port Capabilities */
+};
 
 struct link_config {
 	fw_port_cap32_t pcaps;          /* link capabilities */
@@ -265,6 +272,7 @@ struct link_config {
 	unsigned char autoneg;          /* autonegotiating? */
 
 	unsigned char link_ok;          /* link up? */
+	unsigned char link_down_rc;     /* link down reason */
 };
 
 #include "adapter.h"
