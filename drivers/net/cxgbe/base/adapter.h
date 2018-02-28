@@ -308,7 +308,7 @@ struct adapter {
 	struct rte_pci_device *pdev;       /* associated rte pci device */
 	struct rte_eth_dev *eth_dev;       /* first port's rte eth device */
 	struct adapter_params params;      /* adapter parameters */
-	struct port_info port[MAX_NPORTS]; /* ports belonging to this adapter */
+	struct port_info *port[MAX_NPORTS];/* ports belonging to this adapter */
 	struct sge sge;                    /* associated SGE */
 
 	/* support for single-threading access to adapter mailbox registers */
@@ -326,6 +326,18 @@ struct adapter {
 
 	int use_unpacked_mode; /* unpacked rx mode state */
 };
+
+/**
+ * adap2pinfo - return the port_info of a port
+ * @adap: the adapter
+ * @idx: the port index
+ *
+ * Return the port_info structure for the port of the given index.
+ */
+static inline struct port_info *adap2pinfo(const struct adapter *adap, int idx)
+{
+	return adap->port[idx];
+}
 
 #define CXGBE_PCI_REG(reg) rte_read32(reg)
 
@@ -602,7 +614,7 @@ static inline int t4_os_find_pci_capability(struct adapter *adapter, int cap)
 static inline void t4_os_set_hw_addr(struct adapter *adapter, int port_idx,
 				     u8 hw_addr[])
 {
-	struct port_info *pi = &adapter->port[port_idx];
+	struct port_info *pi = adap2pinfo(adapter, port_idx);
 
 	ether_addr_copy((struct ether_addr *)hw_addr,
 			&pi->eth_dev->data->mac_addrs[0]);
@@ -685,18 +697,6 @@ static inline void t4_os_atomic_list_del(struct mbox_entry *entry,
 	t4_os_lock(lock);
 	TAILQ_REMOVE(head, entry, next);
 	t4_os_unlock(lock);
-}
-
-/**
- * adap2pinfo - return the port_info of a port
- * @adap: the adapter
- * @idx: the port index
- *
- * Return the port_info structure for the port of the given index.
- */
-static inline struct port_info *adap2pinfo(struct adapter *adap, int idx)
-{
-	return &adap->port[idx];
 }
 
 void *t4_alloc_mem(size_t size);

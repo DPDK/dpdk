@@ -382,7 +382,7 @@ static void print_port_info(struct adapter *adap)
 	struct rte_pci_addr *loc = &adap->pdev->addr;
 
 	for_each_port(adap, i) {
-		const struct port_info *pi = &adap->port[i];
+		const struct port_info *pi = adap2pinfo(adap, i);
 		char *bufp = buf;
 
 		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_100M)
@@ -860,7 +860,7 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 		NULL, "LR", "SR", "ER", "passive DA", "active DA", "LRM"
 	};
 
-	const struct port_info *pi = &adap->port[port_id];
+	const struct port_info *pi = adap2pinfo(adap, port_id);
 
 	if (pi->mod_type == FW_PORT_MOD_TYPE_NONE)
 		dev_info(adap, "Port%d: port module unplugged\n", pi->port_id);
@@ -1190,6 +1190,11 @@ void cxgbe_close(struct adapter *adapter)
 				t4_free_vi(adapter, adapter->mbox,
 					   adapter->pf, 0, pi->viid);
 			rte_free(pi->eth_dev->data->mac_addrs);
+			/* Skip first port since it'll be freed by DPDK stack */
+			if (i) {
+				rte_free(pi->eth_dev->data->dev_private);
+				rte_eth_dev_release_port(pi->eth_dev);
+			}
 		}
 		adapter->flags &= ~FULL_INIT_DONE;
 	}
@@ -1265,21 +1270,16 @@ int cxgbe_probe(struct adapter *adapter)
 	}
 
 	for_each_port(adapter, i) {
-		char name[RTE_ETH_NAME_MAX_LEN];
-		struct rte_eth_dev_data *data = NULL;
 		const unsigned int numa_node = rte_socket_id();
+		char name[RTE_ETH_NAME_MAX_LEN];
+		struct rte_eth_dev *eth_dev;
 
-		pi = &adapter->port[i];
-		pi->adapter = adapter;
-		pi->xact_addr_filt = -1;
-		pi->port_id = i;
-
-		snprintf(name, sizeof(name), "cxgbe%d",
-			 adapter->eth_dev->data->port_id + i);
+		snprintf(name, sizeof(name), "%s_%d",
+			 adapter->pdev->device.name, i);
 
 		if (i == 0) {
 			/* First port is already allocated by DPDK */
-			pi->eth_dev = adapter->eth_dev;
+			eth_dev = adapter->eth_dev;
 			goto allocate_mac;
 		}
 
@@ -1289,21 +1289,25 @@ int cxgbe_probe(struct adapter *adapter)
 		 */
 
 		/* reserve an ethdev entry */
-		pi->eth_dev = rte_eth_dev_allocate(name);
-		if (!pi->eth_dev)
+		eth_dev = rte_eth_dev_allocate(name);
+		if (!eth_dev)
 			goto out_free;
 
-		data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
-		if (!data)
+		eth_dev->data->dev_private =
+			rte_zmalloc_socket(name, sizeof(struct port_info),
+					   RTE_CACHE_LINE_SIZE, numa_node);
+		if (!eth_dev->data->dev_private)
 			goto out_free;
-
-		data->port_id = adapter->eth_dev->data->port_id + i;
-
-		pi->eth_dev->data = data;
 
 allocate_mac:
+		pi = (struct port_info *)eth_dev->data->dev_private;
+		adapter->port[i] = pi;
+		pi->eth_dev = eth_dev;
+		pi->adapter = adapter;
+		pi->xact_addr_filt = -1;
+		pi->port_id = i;
+
 		pi->eth_dev->device = &adapter->pdev->device;
-		pi->eth_dev->data->dev_private = pi;
 		pi->eth_dev->dev_ops = adapter->eth_dev->dev_ops;
 		pi->eth_dev->tx_pkt_burst = adapter->eth_dev->tx_pkt_burst;
 		pi->eth_dev->rx_pkt_burst = adapter->eth_dev->rx_pkt_burst;
@@ -1349,8 +1353,11 @@ out_free:
 		/* Skip first port since it'll be de-allocated by DPDK */
 		if (i == 0)
 			continue;
-		if (pi->eth_dev->data)
-			rte_free(pi->eth_dev->data);
+		if (pi->eth_dev) {
+			if (pi->eth_dev->data->dev_private)
+				rte_free(pi->eth_dev->data->dev_private);
+			rte_eth_dev_release_port(pi->eth_dev);
+		}
 	}
 
 	if (adapter->flags & FW_OK)
