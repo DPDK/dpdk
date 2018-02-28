@@ -69,9 +69,9 @@ enum {
 };
 
 enum {
-	FEC_RS        = 1 << 0,
-	FEC_BASER_RS  = 1 << 1,
-	FEC_RESERVED  = 1 << 2,
+	FEC_AUTO     = 1 << 0,    /* IEEE 802.3 "automatic" */
+	FEC_RS       = 1 << 1,    /* Reed-Solomon */
+	FEC_BASER_RS = 1 << 2,    /* BaseR/Reed-Solomon */
 };
 
 struct port_stats {
@@ -248,8 +248,11 @@ struct link_config {
 	unsigned int   speed;            /* actual link speed */
 	unsigned char  requested_fc;     /* flow control user has requested */
 	unsigned char  fc;               /* actual link flow control */
-	unsigned char  requested_fec;    /* Forward Error Correction user */
-	unsigned char  fec;              /* has requested and actual FEC */
+	unsigned char  auto_fec;         /* Forward Error Correction (FEC)
+					  * "automatic" (IEEE 802.3)
+					  */
+	unsigned char  requested_fec;    /* FEC requested */
+	unsigned char  fec;              /* FEC actual */
 	unsigned char  autoneg;          /* autonegotiating? */
 	unsigned char  link_ok;          /* link up? */
 };

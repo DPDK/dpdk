@@ -2792,6 +2792,58 @@ void t4_dump_version_info(struct adapter *adapter)
 #define ADVERT_MASK (V_FW_PORT_CAP_SPEED(M_FW_PORT_CAP_SPEED) | \
 		     FW_PORT_CAP_ANEG)
 
+/* Translate Firmware Pause specification to Common Code */
+static inline unsigned int fwcap_to_cc_pause(unsigned int fw_pause)
+{
+	unsigned int cc_pause = 0;
+
+	if (fw_pause & F_FW_PORT_CMD_RXPAUSE)
+		cc_pause |= PAUSE_RX;
+	if (fw_pause & F_FW_PORT_CMD_TXPAUSE)
+		cc_pause |= PAUSE_TX;
+
+	return cc_pause;
+}
+
+/* Translate Common Code Pause Frame specification into Firmware */
+static inline unsigned int cc_to_fwcap_pause(unsigned int cc_pause)
+{
+	unsigned int fw_pause = 0;
+
+	if (cc_pause & PAUSE_RX)
+		fw_pause |= F_FW_PORT_CMD_RXPAUSE;
+	if (cc_pause & PAUSE_TX)
+		fw_pause |= F_FW_PORT_CMD_TXPAUSE;
+
+	return fw_pause;
+}
+
+/* Translate Firmware Forward Error Correction specification to Common Code */
+static inline unsigned int fwcap_to_cc_fec(unsigned int fw_fec)
+{
+	unsigned int cc_fec = 0;
+
+	if (fw_fec & FW_PORT_CAP_FEC_RS)
+		cc_fec |= FEC_RS;
+	if (fw_fec & FW_PORT_CAP_FEC_BASER_RS)
+		cc_fec |= FEC_BASER_RS;
+
+	return cc_fec;
+}
+
+/* Translate Common Code Forward Error Correction specification to Firmware */
+static inline unsigned int cc_to_fwcap_fec(unsigned int cc_fec)
+{
+	unsigned int fw_fec = 0;
+
+	if (cc_fec & FEC_RS)
+		fw_fec |= FW_PORT_CAP_FEC_RS;
+	if (cc_fec & FEC_BASER_RS)
+		fw_fec |= FW_PORT_CAP_FEC_BASER_RS;
+
+	return fw_fec;
+}
+
 /**
  * t4_link_l1cfg - apply link configuration to MAC/PHY
  * @phy: the PHY to setup
@@ -2809,23 +2861,25 @@ int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
 		  struct link_config *lc)
 {
 	struct fw_port_cmd c;
-	unsigned int mdi = V_FW_PORT_CAP_MDI(FW_PORT_CAP_MDI_AUTO);
-	unsigned int fc, fec;
+	unsigned int fw_mdi = V_FW_PORT_CAP_MDI(FW_PORT_CAP_MDI_AUTO);
+	unsigned int fw_fc, cc_fec, fw_fec;
 
 	lc->link_ok = 0;
-	fc = 0;
-	if (lc->requested_fc & PAUSE_RX)
-		fc |= FW_PORT_CAP_FC_RX;
-	if (lc->requested_fc & PAUSE_TX)
-		fc |= FW_PORT_CAP_FC_TX;
 
-	fec = 0;
-	if (lc->requested_fec & FEC_RS)
-		fec |= FW_PORT_CAP_FEC_RS;
-	if (lc->requested_fec & FEC_BASER_RS)
-		fec |= FW_PORT_CAP_FEC_BASER_RS;
-	if (lc->requested_fec & FEC_RESERVED)
-		fec |= FW_PORT_CAP_FEC_RESERVED;
+	fw_fc = cc_to_fwcap_pause(lc->requested_fc);
+
+	/* Convert Common Code Forward Error Control settings into the
+	 * Firmware's API.  If the current Requested FEC has "Automatic"
+	 * (IEEE 802.3) specified, then we use whatever the Firmware
+	 * sent us as part of it's IEEE 802.3-based interpratation of
+	 * the Transceiver Module EPROM FEC parameters.  Otherwise we
+	 * use whatever is in the current Requested FEC settings.
+	 */
+	if (lc->requested_fec & FEC_AUTO)
+		cc_fec = lc->auto_fec;
+	else
+		cc_fec = lc->requested_fec;
+	fw_fec = cc_to_fwcap_fec(cc_fec);
 
 	memset(&c, 0, sizeof(c));
 	c.op_to_portid = cpu_to_be32(V_FW_CMD_OP(FW_PORT_CMD) |
@@ -2837,16 +2891,17 @@ int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
 
 	if (!(lc->supported & FW_PORT_CAP_ANEG)) {
 		c.u.l1cfg.rcap = cpu_to_be32((lc->supported & ADVERT_MASK) |
-					     fc | fec);
+					     fw_fc | fw_fec);
 		lc->fc = lc->requested_fc & ~PAUSE_AUTONEG;
-		lc->fec = lc->requested_fec;
+		lc->fec = cc_fec;
 	} else if (lc->autoneg == AUTONEG_DISABLE) {
-		c.u.l1cfg.rcap = cpu_to_be32(lc->requested_speed | fc |
-					     fec | mdi);
+		c.u.l1cfg.rcap = cpu_to_be32(lc->requested_speed | fw_fc |
+					     fw_fec | fw_mdi);
 		lc->fc = lc->requested_fc & ~PAUSE_AUTONEG;
-		lc->fec = lc->requested_fec;
+		lc->fec = cc_fec;
 	} else {
-		c.u.l1cfg.rcap = cpu_to_be32(lc->advertising | fc | fec | mdi);
+		c.u.l1cfg.rcap = cpu_to_be32(lc->advertising | fw_fc | fw_fec |
+					     fw_mdi);
 	}
 
 	return t4_wr_mbox(adap, mbox, &c, sizeof(c), NULL);
@@ -4212,11 +4267,11 @@ int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl)
 		u32 stat = be32_to_cpu(p->u.info.lstatus_to_modtype);
 		int link_ok = (stat & F_FW_PORT_CMD_LSTATUS) != 0;
 		u32 mod = G_FW_PORT_CMD_MODTYPE(stat);
+		unsigned int fec;
 
-		if (stat & F_FW_PORT_CMD_RXPAUSE)
-			fc |= PAUSE_RX;
-		if (stat & F_FW_PORT_CMD_TXPAUSE)
-			fc |= PAUSE_TX;
+		fc = fwcap_to_cc_pause(stat);
+		fec = fwcap_to_cc_fec(stat);
+
 		if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_100M))
 			speed = ETH_SPEED_NUM_100M;
 		else if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_1G))
@@ -4238,11 +4293,12 @@ int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl)
 		lc = &pi->link_cfg;
 
 		if (mod != pi->mod_type) {
+			lc->auto_fec = fec;
 			pi->mod_type = mod;
 			t4_os_portmod_changed(adap, i);
 		}
 		if (link_ok != lc->link_ok || speed != lc->speed ||
-		    fc != lc->fc) {                    /* something changed */
+		    fc != lc->fc || fec != lc->fec) { /* something changed */
 			if (!link_ok && lc->link_ok) {
 				static const char * const reason[] = {
 					"Link Down",
@@ -4262,6 +4318,7 @@ int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl)
 			lc->link_ok = link_ok;
 			lc->speed = speed;
 			lc->fc = fc;
+			lc->fec = fec;
 			lc->supported = be16_to_cpu(p->u.info.pcap);
 		}
 	} else {
@@ -4295,8 +4352,6 @@ void t4_reset_link_config(struct adapter *adap, int idx)
 static void init_link_config(struct link_config *lc, unsigned int pcaps,
 			     unsigned int acaps)
 {
-	unsigned int fec;
-
 	lc->supported = pcaps;
 	lc->requested_speed = 0;
 	lc->speed = 0;
@@ -4307,15 +4362,9 @@ static void init_link_config(struct link_config *lc, unsigned int pcaps,
 	 * For Forward Error Control, we default to whatever the Firmware
 	 * tells us the Link is currently advertising.
 	 */
-	fec = 0;
-	if (acaps & FW_PORT_CAP_FEC_RS)
-		fec |= FEC_RS;
-	if (acaps & FW_PORT_CAP_FEC_BASER_RS)
-		fec |= FEC_BASER_RS;
-	if (acaps & FW_PORT_CAP_FEC_RESERVED)
-		fec |= FEC_RESERVED;
-	lc->requested_fec = fec;
-	lc->fec = fec;
+	lc->auto_fec = fwcap_to_cc_fec(acaps);
+	lc->requested_fec = FEC_AUTO;
+	lc->fec = lc->auto_fec;
 
 	if (lc->supported & FW_PORT_CAP_ANEG) {
 		lc->advertising = lc->supported & ADVERT_MASK;
