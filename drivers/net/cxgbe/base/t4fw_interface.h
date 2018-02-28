@@ -1154,7 +1154,7 @@ struct fw_vi_stats_cmd {
 	} u;
 };
 
-/* port capabilities bitmap */
+/* old 16-bit port capabilities bitmap */
 enum fw_port_cap {
 	FW_PORT_CAP_SPEED_100M		= 0x0001,
 	FW_PORT_CAP_SPEED_1G		= 0x0002,
@@ -1188,6 +1188,40 @@ enum fw_port_mdi {
 #define M_FW_PORT_CAP_MDI 3
 #define V_FW_PORT_CAP_MDI(x) ((x) << S_FW_PORT_CAP_MDI)
 #define G_FW_PORT_CAP_MDI(x) (((x) >> S_FW_PORT_CAP_MDI) & M_FW_PORT_CAP_MDI)
+
+/* new 32-bit port capabilities bitmap (fw_port_cap32_t) */
+#define FW_PORT_CAP32_SPEED_100M        0x00000001UL
+#define FW_PORT_CAP32_SPEED_1G          0x00000002UL
+#define FW_PORT_CAP32_SPEED_10G         0x00000004UL
+#define FW_PORT_CAP32_SPEED_25G         0x00000008UL
+#define FW_PORT_CAP32_SPEED_40G         0x00000010UL
+#define FW_PORT_CAP32_SPEED_50G         0x00000020UL
+#define FW_PORT_CAP32_SPEED_100G        0x00000040UL
+#define FW_PORT_CAP32_FC_RX             0x00010000UL
+#define FW_PORT_CAP32_FC_TX             0x00020000UL
+#define FW_PORT_CAP32_802_3_PAUSE       0x00040000UL
+#define FW_PORT_CAP32_802_3_ASM_DIR     0x00080000UL
+#define FW_PORT_CAP32_ANEG              0x00100000UL
+#define FW_PORT_CAP32_MDIX              0x00200000UL
+#define FW_PORT_CAP32_MDIAUTO           0x00400000UL
+#define FW_PORT_CAP32_FEC_RS            0x00800000UL
+#define FW_PORT_CAP32_FEC_BASER_RS      0x01000000UL
+
+#define S_FW_PORT_CAP32_SPEED           0
+#define M_FW_PORT_CAP32_SPEED           0xfff
+#define V_FW_PORT_CAP32_SPEED(x)        ((x) << S_FW_PORT_CAP32_SPEED)
+#define G_FW_PORT_CAP32_SPEED(x) \
+	(((x) >> S_FW_PORT_CAP32_SPEED) & M_FW_PORT_CAP32_SPEED)
+
+enum fw_port_mdi32 {
+	FW_PORT_CAP32_MDI_AUTO,
+};
+
+#define S_FW_PORT_CAP32_MDI 21
+#define M_FW_PORT_CAP32_MDI 3
+#define V_FW_PORT_CAP32_MDI(x) ((x) << S_FW_PORT_CAP32_MDI)
+#define G_FW_PORT_CAP32_MDI(x) \
+	(((x) >> S_FW_PORT_CAP32_MDI) & M_FW_PORT_CAP32_MDI)
 
 enum fw_port_action {
 	FW_PORT_ACTION_L1_CFG		= 0x0001,

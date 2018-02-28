@@ -62,13 +62,13 @@ enum dev_master { MASTER_CANT, MASTER_MAY, MASTER_MUST };
 
 enum dev_state { DEV_STATE_UNINIT, DEV_STATE_INIT, DEV_STATE_ERR };
 
-enum {
+enum cc_pause {
 	PAUSE_RX      = 1 << 0,
 	PAUSE_TX      = 1 << 1,
 	PAUSE_AUTONEG = 1 << 2
 };
 
-enum {
+enum cc_fec {
 	FEC_AUTO     = 1 << 0,    /* IEEE 802.3 "automatic" */
 	FEC_RS       = 1 << 1,    /* Reed-Solomon */
 	FEC_BASER_RS = 1 << 2,    /* BaseR/Reed-Solomon */
@@ -241,20 +241,30 @@ struct adapter_params {
 	bool ulptx_memwrite_dsgl;          /* use of T5 DSGL allowed */
 };
 
+/* Firmware Port Capabilities types.
+ */
+typedef u16 fw_port_cap16_t;    /* 16-bit Port Capabilities integral value */
+typedef u32 fw_port_cap32_t;    /* 32-bit Port Capabilities integral value */
+
 struct link_config {
-	unsigned short supported;        /* link capabilities */
-	unsigned short advertising;      /* advertised capabilities */
-	unsigned int   requested_speed;  /* speed user has requested */
-	unsigned int   speed;            /* actual link speed */
-	unsigned char  requested_fc;     /* flow control user has requested */
-	unsigned char  fc;               /* actual link flow control */
-	unsigned char  auto_fec;         /* Forward Error Correction (FEC)
-					  * "automatic" (IEEE 802.3)
-					  */
-	unsigned char  requested_fec;    /* FEC requested */
-	unsigned char  fec;              /* FEC actual */
-	unsigned char  autoneg;          /* autonegotiating? */
-	unsigned char  link_ok;          /* link up? */
+	fw_port_cap32_t pcaps;          /* link capabilities */
+	fw_port_cap32_t acaps;          /* advertised capabilities */
+
+	u32 requested_speed;            /* speed (Mb/s) user has requested */
+	u32 speed;                      /* actual link speed (Mb/s) */
+
+	enum cc_pause requested_fc;     /* flow control user has requested */
+	enum cc_pause fc;               /* actual link flow control */
+
+	enum cc_fec auto_fec;           /* Forward Error Correction
+					 * "automatic" (IEEE 802.3)
+					 */
+	enum cc_fec requested_fec;      /* Forward Error Correction requested */
+	enum cc_fec fec;                /* Forward Error Correction actual */
+
+	unsigned char autoneg;          /* autonegotiating? */
+
+	unsigned char link_ok;          /* link up? */
 };
 
 #include "adapter.h"

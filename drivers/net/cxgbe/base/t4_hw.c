@@ -2789,66 +2789,105 @@ void t4_dump_version_info(struct adapter *adapter)
 			 G_FW_HDR_FW_VER_BUILD(adapter->params.er_vers));
 }
 
-#define ADVERT_MASK (V_FW_PORT_CAP_SPEED(M_FW_PORT_CAP_SPEED) | \
-		     FW_PORT_CAP_ANEG)
+#define ADVERT_MASK (V_FW_PORT_CAP32_SPEED(M_FW_PORT_CAP32_SPEED) | \
+		     FW_PORT_CAP32_ANEG)
+/**
+ *     fwcaps32_to_caps16 - convert 32-bit Port Capabilities to 16-bits
+ *     @caps32: a 32-bit Port Capabilities value
+ *
+ *     Returns the equivalent 16-bit Port Capabilities value.  Note that
+ *     not all 32-bit Port Capabilities can be represented in the 16-bit
+ *     Port Capabilities and some fields/values may not make it.
+ */
+static fw_port_cap16_t fwcaps32_to_caps16(fw_port_cap32_t caps32)
+{
+	fw_port_cap16_t caps16 = 0;
+
+#define CAP32_TO_CAP16(__cap) \
+	do { \
+		if (caps32 & FW_PORT_CAP32_##__cap) \
+			caps16 |= FW_PORT_CAP_##__cap; \
+	} while (0)
+
+	CAP32_TO_CAP16(SPEED_100M);
+	CAP32_TO_CAP16(SPEED_1G);
+	CAP32_TO_CAP16(SPEED_10G);
+	CAP32_TO_CAP16(SPEED_25G);
+	CAP32_TO_CAP16(SPEED_40G);
+	CAP32_TO_CAP16(SPEED_100G);
+	CAP32_TO_CAP16(FC_RX);
+	CAP32_TO_CAP16(FC_TX);
+	CAP32_TO_CAP16(802_3_PAUSE);
+	CAP32_TO_CAP16(802_3_ASM_DIR);
+	CAP32_TO_CAP16(ANEG);
+	CAP32_TO_CAP16(MDIX);
+	CAP32_TO_CAP16(MDIAUTO);
+	CAP32_TO_CAP16(FEC_RS);
+	CAP32_TO_CAP16(FEC_BASER_RS);
+
+#undef CAP32_TO_CAP16
+
+	return caps16;
+}
 
 /* Translate Firmware Pause specification to Common Code */
-static inline unsigned int fwcap_to_cc_pause(unsigned int fw_pause)
+static inline enum cc_pause fwcap_to_cc_pause(fw_port_cap32_t fw_pause)
 {
-	unsigned int cc_pause = 0;
+	enum cc_pause cc_pause = 0;
 
-	if (fw_pause & F_FW_PORT_CMD_RXPAUSE)
+	if (fw_pause & FW_PORT_CAP32_FC_RX)
 		cc_pause |= PAUSE_RX;
-	if (fw_pause & F_FW_PORT_CMD_TXPAUSE)
+	if (fw_pause & FW_PORT_CAP32_FC_TX)
 		cc_pause |= PAUSE_TX;
 
 	return cc_pause;
 }
 
 /* Translate Common Code Pause Frame specification into Firmware */
-static inline unsigned int cc_to_fwcap_pause(unsigned int cc_pause)
+static inline fw_port_cap32_t cc_to_fwcap_pause(enum cc_pause cc_pause)
 {
-	unsigned int fw_pause = 0;
+	fw_port_cap32_t fw_pause = 0;
 
 	if (cc_pause & PAUSE_RX)
-		fw_pause |= F_FW_PORT_CMD_RXPAUSE;
+		fw_pause |= FW_PORT_CAP32_FC_RX;
 	if (cc_pause & PAUSE_TX)
-		fw_pause |= F_FW_PORT_CMD_TXPAUSE;
+		fw_pause |= FW_PORT_CAP32_FC_TX;
 
 	return fw_pause;
 }
 
 /* Translate Firmware Forward Error Correction specification to Common Code */
-static inline unsigned int fwcap_to_cc_fec(unsigned int fw_fec)
+static inline enum cc_fec fwcap_to_cc_fec(fw_port_cap32_t fw_fec)
 {
-	unsigned int cc_fec = 0;
+	enum cc_fec cc_fec = 0;
 
-	if (fw_fec & FW_PORT_CAP_FEC_RS)
+	if (fw_fec & FW_PORT_CAP32_FEC_RS)
 		cc_fec |= FEC_RS;
-	if (fw_fec & FW_PORT_CAP_FEC_BASER_RS)
+	if (fw_fec & FW_PORT_CAP32_FEC_BASER_RS)
 		cc_fec |= FEC_BASER_RS;
 
 	return cc_fec;
 }
 
 /* Translate Common Code Forward Error Correction specification to Firmware */
-static inline unsigned int cc_to_fwcap_fec(unsigned int cc_fec)
+static inline fw_port_cap32_t cc_to_fwcap_fec(enum cc_fec cc_fec)
 {
-	unsigned int fw_fec = 0;
+	fw_port_cap32_t fw_fec = 0;
 
 	if (cc_fec & FEC_RS)
-		fw_fec |= FW_PORT_CAP_FEC_RS;
+		fw_fec |= FW_PORT_CAP32_FEC_RS;
 	if (cc_fec & FEC_BASER_RS)
-		fw_fec |= FW_PORT_CAP_FEC_BASER_RS;
+		fw_fec |= FW_PORT_CAP32_FEC_BASER_RS;
 
 	return fw_fec;
 }
 
 /**
  * t4_link_l1cfg - apply link configuration to MAC/PHY
- * @phy: the PHY to setup
- * @mac: the MAC to setup
- * @lc: the requested link configuration
+ * @adapter: the adapter
+ * @mbox: the Firmware Mailbox to use
+ * @port: the Port ID
+ * @lc: the Port's Link Configuration
  *
  * Set up a port's MAC and PHY according to a desired link configuration.
  * - If the PHY can auto-negotiate first decide what to advertise, then
@@ -2860,9 +2899,9 @@ static inline unsigned int cc_to_fwcap_fec(unsigned int cc_fec)
 int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
 		  struct link_config *lc)
 {
-	struct fw_port_cmd c;
-	unsigned int fw_mdi = V_FW_PORT_CAP_MDI(FW_PORT_CAP_MDI_AUTO);
-	unsigned int fw_fc, cc_fec, fw_fec;
+	unsigned int fw_mdi = V_FW_PORT_CAP32_MDI(FW_PORT_CAP32_MDI_AUTO);
+	fw_port_cap32_t fw_fc, cc_fec, fw_fec, rcap;
+	struct fw_port_cmd cmd;
 
 	lc->link_ok = 0;
 
@@ -2881,30 +2920,32 @@ int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
 		cc_fec = lc->requested_fec;
 	fw_fec = cc_to_fwcap_fec(cc_fec);
 
-	memset(&c, 0, sizeof(c));
-	c.op_to_portid = cpu_to_be32(V_FW_CMD_OP(FW_PORT_CMD) |
-				     F_FW_CMD_REQUEST | F_FW_CMD_EXEC |
-				     V_FW_PORT_CMD_PORTID(port));
-	c.action_to_len16 =
-		cpu_to_be32(V_FW_PORT_CMD_ACTION(FW_PORT_ACTION_L1_CFG) |
-			    FW_LEN16(c));
-
-	if (!(lc->supported & FW_PORT_CAP_ANEG)) {
-		c.u.l1cfg.rcap = cpu_to_be32((lc->supported & ADVERT_MASK) |
-					     fw_fc | fw_fec);
+	/* Figure out what our Requested Port Capabilities are going to be.
+	 */
+	if (!(lc->pcaps & FW_PORT_CAP32_ANEG)) {
+		rcap = (lc->pcaps & ADVERT_MASK) | fw_fc | fw_fec;
 		lc->fc = lc->requested_fc & ~PAUSE_AUTONEG;
 		lc->fec = cc_fec;
 	} else if (lc->autoneg == AUTONEG_DISABLE) {
-		c.u.l1cfg.rcap = cpu_to_be32(lc->requested_speed | fw_fc |
-					     fw_fec | fw_mdi);
+		rcap = lc->requested_speed | fw_fc | fw_fec | fw_mdi;
 		lc->fc = lc->requested_fc & ~PAUSE_AUTONEG;
 		lc->fec = cc_fec;
 	} else {
-		c.u.l1cfg.rcap = cpu_to_be32(lc->advertising | fw_fc | fw_fec |
-					     fw_mdi);
+		rcap = lc->acaps | fw_fc | fw_fec | fw_mdi;
 	}
 
-	return t4_wr_mbox(adap, mbox, &c, sizeof(c), NULL);
+	/* And send that on to the Firmware ...
+	 */
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.op_to_portid = cpu_to_be32(V_FW_CMD_OP(FW_PORT_CMD) |
+				       F_FW_CMD_REQUEST | F_FW_CMD_EXEC |
+				       V_FW_PORT_CMD_PORTID(port));
+	cmd.action_to_len16 =
+		cpu_to_be32(V_FW_PORT_CMD_ACTION(FW_PORT_ACTION_L1_CFG) |
+			    FW_LEN16(cmd));
+	cmd.u.l1cfg.rcap = cpu_to_be32(fwcaps32_to_caps16(rcap));
+
+	return t4_wr_mbox(adap, mbox, &cmd, sizeof(cmd), NULL);
 }
 
 /**
@@ -4237,6 +4278,28 @@ int t4_eth_eq_free(struct adapter *adap, unsigned int mbox, unsigned int pf,
 	return t4_wr_mbox(adap, mbox, &c, sizeof(c), NULL);
 }
 
+/* Return the highest speed set in the port capabilities, in Mb/s. */
+static unsigned int fwcap_to_speed(fw_port_cap32_t caps)
+{
+#define TEST_SPEED_RETURN(__caps_speed, __speed) \
+	do { \
+		if (caps & FW_PORT_CAP32_SPEED_##__caps_speed) \
+			return __speed; \
+	} while (0)
+
+	TEST_SPEED_RETURN(100G, 100000);
+	TEST_SPEED_RETURN(50G,   50000);
+	TEST_SPEED_RETURN(40G,   40000);
+	TEST_SPEED_RETURN(25G,   25000);
+	TEST_SPEED_RETURN(10G,   10000);
+	TEST_SPEED_RETURN(1G,     1000);
+	TEST_SPEED_RETURN(100M,    100);
+
+#undef TEST_SPEED_RETURN
+
+	return 0;
+}
+
 /**
  * t4_handle_fw_rpl - process a FW reply message
  * @adap: the adapter
@@ -4319,7 +4382,21 @@ int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl)
 			lc->speed = speed;
 			lc->fc = fc;
 			lc->fec = fec;
-			lc->supported = be16_to_cpu(p->u.info.pcap);
+			lc->pcaps = be16_to_cpu(p->u.info.pcap);
+			lc->acaps = be16_to_cpu(p->u.info.acap) & ADVERT_MASK;
+			if (lc->acaps & FW_PORT_CAP32_ANEG) {
+				lc->autoneg = AUTONEG_ENABLE;
+			} else {
+				/* When Autoneg is disabled, user needs to set
+				 * single speed.
+				 */
+				lc->acaps = 0;
+				lc->requested_speed =
+					be16_to_cpu(p->u.info.acap);
+				lc->requested_speed =
+					fwcap_to_speed(lc->requested_speed);
+				lc->autoneg = AUTONEG_DISABLE;
+			}
 		}
 	} else {
 		dev_warn(adap, "Unknown firmware reply %d\n", opcode);
@@ -4352,7 +4429,7 @@ void t4_reset_link_config(struct adapter *adap, int idx)
 static void init_link_config(struct link_config *lc, unsigned int pcaps,
 			     unsigned int acaps)
 {
-	lc->supported = pcaps;
+	lc->pcaps = pcaps;
 	lc->requested_speed = 0;
 	lc->speed = 0;
 	lc->requested_fc = 0;
@@ -4366,11 +4443,12 @@ static void init_link_config(struct link_config *lc, unsigned int pcaps,
 	lc->requested_fec = FEC_AUTO;
 	lc->fec = lc->auto_fec;
 
-	if (lc->supported & FW_PORT_CAP_ANEG) {
-		lc->advertising = lc->supported & ADVERT_MASK;
+	if (lc->pcaps & FW_PORT_CAP32_ANEG) {
+		lc->acaps = lc->pcaps & ADVERT_MASK;
 		lc->autoneg = AUTONEG_ENABLE;
+		lc->requested_fc |= PAUSE_AUTONEG;
 	} else {
-		lc->advertising = 0;
+		lc->acaps = 0;
 		lc->autoneg = AUTONEG_DISABLE;
 	}
 }

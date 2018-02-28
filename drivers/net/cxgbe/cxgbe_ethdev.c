@@ -752,7 +752,7 @@ static int cxgbe_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	struct adapter *adapter = pi->adapter;
 	struct link_config *lc = &pi->link_cfg;
 
-	if (lc->supported & FW_PORT_CAP_ANEG) {
+	if (lc->pcaps & FW_PORT_CAP32_ANEG) {
 		if (fc_conf->autoneg)
 			lc->requested_fc |= PAUSE_AUTONEG;
 		else

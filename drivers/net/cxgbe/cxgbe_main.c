@@ -199,15 +199,16 @@ int cxgb4_set_rspq_intr_params(struct sge_rspq *q, unsigned int us,
 
 static inline bool is_x_1g_port(const struct link_config *lc)
 {
-	return (lc->supported & FW_PORT_CAP_SPEED_1G) != 0;
+	return (lc->pcaps & FW_PORT_CAP32_SPEED_1G) != 0;
 }
 
 static inline bool is_x_10g_port(const struct link_config *lc)
 {
 	unsigned int speeds, high_speeds;
 
-	speeds = V_FW_PORT_CAP_SPEED(G_FW_PORT_CAP_SPEED(lc->supported));
-	high_speeds = speeds & ~(FW_PORT_CAP_SPEED_100M | FW_PORT_CAP_SPEED_1G);
+	speeds = V_FW_PORT_CAP32_SPEED(G_FW_PORT_CAP32_SPEED(lc->pcaps));
+	high_speeds = speeds &
+		      ~(FW_PORT_CAP32_SPEED_100M | FW_PORT_CAP32_SPEED_1G);
 
 	return high_speeds != 0;
 }
@@ -387,17 +388,19 @@ static void print_port_info(struct adapter *adap)
 		const struct port_info *pi = adap2pinfo(adap, i);
 		char *bufp = buf;
 
-		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_100M)
+		if (pi->link_cfg.pcaps & FW_PORT_CAP32_SPEED_100M)
 			bufp += sprintf(bufp, "100M/");
-		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_1G)
+		if (pi->link_cfg.pcaps & FW_PORT_CAP32_SPEED_1G)
 			bufp += sprintf(bufp, "1G/");
-		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_10G)
+		if (pi->link_cfg.pcaps & FW_PORT_CAP32_SPEED_10G)
 			bufp += sprintf(bufp, "10G/");
-		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_25G)
+		if (pi->link_cfg.pcaps & FW_PORT_CAP32_SPEED_25G)
 			bufp += sprintf(bufp, "25G/");
-		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_40G)
+		if (pi->link_cfg.pcaps & FW_PORT_CAP32_SPEED_40G)
 			bufp += sprintf(bufp, "40G/");
-		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_100G)
+		if (pi->link_cfg.pcaps & FW_PORT_CAP32_SPEED_50G)
+			bufp += sprintf(bufp, "50G/");
+		if (pi->link_cfg.pcaps & FW_PORT_CAP32_SPEED_100G)
 			bufp += sprintf(bufp, "100G/");
 		if (bufp != buf)
 			--bufp;
@@ -1100,7 +1103,7 @@ static void fw_caps_to_speed_caps(enum fw_port_type port_type,
 
 #define FW_CAPS_TO_SPEED(__fw_name) \
 	do { \
-		if (fw_caps & FW_PORT_CAP_ ## __fw_name) \
+		if (fw_caps & FW_PORT_CAP32_ ## __fw_name) \
 			SET_SPEED(__fw_name); \
 	} while (0)
 
@@ -1155,6 +1158,7 @@ static void fw_caps_to_speed_caps(enum fw_port_type port_type,
 	case FW_PORT_TYPE_CR4_QSFP:
 		FW_CAPS_TO_SPEED(SPEED_25G);
 		FW_CAPS_TO_SPEED(SPEED_40G);
+		FW_CAPS_TO_SPEED(SPEED_50G);
 		FW_CAPS_TO_SPEED(SPEED_100G);
 		break;
 
@@ -1177,10 +1181,10 @@ void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps)
 {
 	*speed_caps = 0;
 
-	fw_caps_to_speed_caps(pi->port_type, pi->link_cfg.supported,
+	fw_caps_to_speed_caps(pi->port_type, pi->link_cfg.pcaps,
 			      speed_caps);
 
-	if (!(pi->link_cfg.supported & FW_PORT_CAP_ANEG))
+	if (!(pi->link_cfg.pcaps & FW_PORT_CAP32_ANEG))
 		*speed_caps |= ETH_LINK_SPEED_FIXED;
 }
 
