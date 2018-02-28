@@ -1517,12 +1517,12 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 				HWRM_VNIC_TPA_CFG_INPUT_FLAGS_GRO |
 				HWRM_VNIC_TPA_CFG_INPUT_FLAGS_AGG_WITH_ECN |
 			HWRM_VNIC_TPA_CFG_INPUT_FLAGS_AGG_WITH_SAME_GRE_SEQ);
-		req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
 		req.max_agg_segs = rte_cpu_to_le_16(5);
 		req.max_aggs =
 			rte_cpu_to_le_16(HWRM_VNIC_TPA_CFG_INPUT_MAX_AGGS_MAX);
 		req.min_agg_len = rte_cpu_to_le_32(512);
 	}
+	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
