@@ -410,9 +410,12 @@ int t4_config_rss_range(struct adapter *adapter, int mbox, unsigned int viid,
 			int start, int n, const u16 *rspq, unsigned int nrspq);
 int t4_config_vi_rss(struct adapter *adapter, int mbox, unsigned int viid,
 		     unsigned int flags, unsigned int defq);
+int t4_read_config_vi_rss(struct adapter *adapter, int mbox, unsigned int viid,
+			  u64 *flags, unsigned int *defq);
 void t4_fw_tp_pio_rw(struct adapter *adap, u32 *vals, unsigned int nregs,
 		     unsigned int start_index, unsigned int rw);
 void t4_write_rss_key(struct adapter *adap, u32 *key, int idx);
+void t4_read_rss_key(struct adapter *adap, u32 *key);
 
 enum t4_bar2_qtype { T4_BAR2_QTYPE_EGRESS, T4_BAR2_QTYPE_INGRESS };
 int t4_bar2_sge_qregs(struct adapter *adapter, unsigned int qid,

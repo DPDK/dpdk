@@ -819,6 +819,58 @@ static int cxgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* Get RSS hash configuration
+ */
+static int cxgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+				       struct rte_eth_rss_conf *rss_conf)
+{
+	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	u64 rss_hf = 0;
+	u64 flags = 0;
+	int err;
+
+	err = t4_read_config_vi_rss(adapter, adapter->mbox, pi->viid,
+				    &flags, NULL);
+
+	if (err)
+		return err;
+
+	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN) {
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+		if (flags & F_FW_RSS_VI_CONFIG_CMD_UDPEN)
+			rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+	}
+
+	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP6TWOTUPEN)
+		rss_hf |= ETH_RSS_IPV6;
+
+	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN) {
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		if (flags & F_FW_RSS_VI_CONFIG_CMD_UDPEN)
+			rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+	}
+
+	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP4TWOTUPEN)
+		rss_hf |= ETH_RSS_IPV4;
+
+	rss_conf->rss_hf = rss_hf;
+
+	if (rss_conf->rss_key) {
+		u32 key[10], mod_key[10];
+		int i, j;
+
+		t4_read_rss_key(adapter, key);
+
+		for (i = 9, j = 0; i >= 0; i--, j++)
+			mod_key[j] = be32_to_cpu(key[i]);
+
+		memcpy(rss_conf->rss_key, mod_key, CXGBE_DEFAULT_RSS_KEY_LEN);
+	}
+
+	return 0;
+}
+
 static int cxgbe_get_eeprom_length(struct rte_eth_dev *dev)
 {
 	RTE_SET_USED(dev);
@@ -1018,6 +1070,7 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.set_eeprom		= cxgbe_set_eeprom,
 	.get_reg		= cxgbe_get_regs,
 	.rss_hash_update	= cxgbe_dev_rss_hash_update,
+	.rss_hash_conf_get	= cxgbe_dev_rss_hash_conf_get,
 };
 
 /*

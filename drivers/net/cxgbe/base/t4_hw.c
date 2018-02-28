@@ -2204,6 +2204,18 @@ void t4_fw_tp_pio_rw(struct adapter *adap, u32 *vals, unsigned int nregs,
 }
 
 /**
+ * t4_read_rss_key - read the global RSS key
+ * @adap: the adapter
+ * @key: 10-entry array holding the 320-bit RSS key
+ *
+ * Reads the global 320-bit RSS key.
+ */
+void t4_read_rss_key(struct adapter *adap, u32 *key)
+{
+	t4_fw_tp_pio_rw(adap, key, 10, A_TP_RSS_SECRET_KEY0, 1);
+}
+
+/**
  * t4_write_rss_key - program one of the RSS keys
  * @adap: the adapter
  * @key: 10-entry array holding the 320-bit RSS key
@@ -2361,6 +2373,40 @@ int t4_config_vi_rss(struct adapter *adapter, int mbox, unsigned int viid,
 	c.u.basicvirtual.defaultq_to_udpen = cpu_to_be32(flags |
 			V_FW_RSS_VI_CONFIG_CMD_DEFAULTQ(defq));
 	return t4_wr_mbox(adapter, mbox, &c, sizeof(c), NULL);
+}
+
+/**
+ * t4_read_config_vi_rss - read the configured per VI RSS settings
+ * @adapter: the adapter
+ * @mbox: mbox to use for the FW command
+ * @viid: the VI id
+ * @flags: where to place the configured flags
+ * @defq: where to place the id of the default RSS queue for the VI.
+ *
+ * Read configured VI-specific RSS properties.
+ */
+int t4_read_config_vi_rss(struct adapter *adapter, int mbox, unsigned int viid,
+			  u64 *flags, unsigned int *defq)
+{
+	struct fw_rss_vi_config_cmd c;
+	unsigned int result;
+	int ret;
+
+	memset(&c, 0, sizeof(c));
+	c.op_to_viid = cpu_to_be32(V_FW_CMD_OP(FW_RSS_VI_CONFIG_CMD) |
+				   F_FW_CMD_REQUEST | F_FW_CMD_READ |
+				   V_FW_RSS_VI_CONFIG_CMD_VIID(viid));
+	c.retval_len16 = cpu_to_be32(FW_LEN16(c));
+	ret = t4_wr_mbox(adapter, mbox, &c, sizeof(c), &c);
+	if (!ret) {
+		result = be32_to_cpu(c.u.basicvirtual.defaultq_to_udpen);
+		if (defq)
+			*defq = G_FW_RSS_VI_CONFIG_CMD_DEFAULTQ(result);
+		if (flags)
+			*flags = result & M_FW_RSS_VI_CONFIG_CMD_DEFAULTQ;
+	}
+
+	return ret;
 }
 
 /**
