@@ -1004,14 +1004,33 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &cxgbe_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &cxgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &cxgbe_xmit_pkts;
-
-	/* for secondary processes, we don't initialise any further as primary
-	 * has already done this work.
-	 */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
-
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	/* for secondary processes, we attach to ethdevs allocated by primary
+	 * and do minimal initialization.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		int i;
+
+		for (i = 1; i < MAX_NPORTS; i++) {
+			struct rte_eth_dev *rest_eth_dev;
+			char namei[RTE_ETH_NAME_MAX_LEN];
+
+			snprintf(namei, sizeof(namei), "%s_%d",
+				 pci_dev->device.name, i);
+			rest_eth_dev = rte_eth_dev_attach_secondary(namei);
+			if (rest_eth_dev) {
+				rest_eth_dev->device = &pci_dev->device;
+				rest_eth_dev->dev_ops =
+					eth_dev->dev_ops;
+				rest_eth_dev->rx_pkt_burst =
+					eth_dev->rx_pkt_burst;
+				rest_eth_dev->tx_pkt_burst =
+					eth_dev->tx_pkt_burst;
+			}
+		}
+		return 0;
+	}
 
 	snprintf(name, sizeof(name), "cxgbeadapter%d", eth_dev->data->port_id);
 	adapter = rte_zmalloc(name, sizeof(*adapter), 0);

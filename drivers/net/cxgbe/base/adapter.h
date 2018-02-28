@@ -267,6 +267,7 @@ struct sge_eth_tx_stats {	/* Ethernet tx queue statistics */
 struct sge_eth_txq {                   /* state for an SGE Ethernet Tx queue */
 	struct sge_txq q;
 	struct rte_eth_dev *eth_dev;   /* port that this queue belongs to */
+	struct rte_eth_dev_data *data;
 	struct sge_eth_tx_stats stats; /* queue statistics */
 	rte_spinlock_t txq_lock;
 

@@ -1095,7 +1095,7 @@ int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf,
 	u32 wr_mid;
 	u64 cntrl, *end;
 	bool v6;
-	u32 max_pkt_len = txq->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	u32 max_pkt_len = txq->data->dev_conf.rxmode.max_rx_pkt_len;
 
 	/* Reject xmit if queue is stopped */
 	if (unlikely(txq->flags & EQ_STOPPED))
@@ -1115,7 +1115,7 @@ out_free:
 	    (unlikely(m->pkt_len > max_pkt_len)))
 		goto out_free;
 
-	pi = (struct port_info *)txq->eth_dev->data->dev_private;
+	pi = (struct port_info *)txq->data->dev_private;
 	adap = pi->adapter;
 
 	cntrl = F_TXPKT_L4CSUM_DIS | F_TXPKT_IPCSUM_DIS;
@@ -1997,6 +1997,7 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 	txq->stats.mapping_err = 0;
 	txq->flags |= EQ_STOPPED;
 	txq->eth_dev = eth_dev;
+	txq->data = eth_dev->data;
 	t4_os_lock_init(&txq->txq_lock);
 	return 0;
 }
