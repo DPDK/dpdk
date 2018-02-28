@@ -45,6 +45,8 @@ CXGBE PMD has support for:
 
 - Multiple queues for TX and RX
 - Receiver Side Steering (RSS)
+  Receiver Side Steering (RSS) on IPv4, IPv6, IPv4-TCP/UDP, IPv6-TCP/UDP.
+  For 4-tuple, enabling 'RSS on TCP' and 'RSS on TCP + UDP' is supported.
 - VLAN filtering
 - Checksum offload
 - Promiscuous mode

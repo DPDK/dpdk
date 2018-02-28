@@ -171,6 +171,7 @@ struct fw_eth_tx_pkts_wr {
 #define FW_CMD_HELLO_RETRIES	3
 
 enum fw_cmd_opcodes {
+	FW_LDST_CMD		       = 0x01,
 	FW_RESET_CMD                   = 0x03,
 	FW_HELLO_CMD                   = 0x04,
 	FW_BYE_CMD                     = 0x05,
@@ -237,6 +238,94 @@ struct fw_cmd_hdr {
 #define G_FW_CMD_LEN16(x)	(((x) >> S_FW_CMD_LEN16) & M_FW_CMD_LEN16)
 
 #define FW_LEN16(fw_struct) V_FW_CMD_LEN16(sizeof(fw_struct) / 16)
+
+/* address spaces
+ */
+enum fw_ldst_addrspc {
+	FW_LDST_ADDRSPC_TP_PIO    = 0x0010,
+};
+
+struct fw_ldst_cmd {
+	__be32 op_to_addrspace;
+	__be32 cycles_to_len16;
+	union fw_ldst {
+		struct fw_ldst_addrval {
+			__be32 addr;
+			__be32 val;
+		} addrval;
+		struct fw_ldst_idctxt {
+			__be32 physid;
+			__be32 msg_ctxtflush;
+			__be32 ctxt_data7;
+			__be32 ctxt_data6;
+			__be32 ctxt_data5;
+			__be32 ctxt_data4;
+			__be32 ctxt_data3;
+			__be32 ctxt_data2;
+			__be32 ctxt_data1;
+			__be32 ctxt_data0;
+		} idctxt;
+		struct fw_ldst_mdio {
+			__be16 paddr_mmd;
+			__be16 raddr;
+			__be16 vctl;
+			__be16 rval;
+		} mdio;
+		struct fw_ldst_mps {
+			__be16 fid_ctl;
+			__be16 rplcpf_pkd;
+			__be32 rplc127_96;
+			__be32 rplc95_64;
+			__be32 rplc63_32;
+			__be32 rplc31_0;
+			__be32 atrb;
+			__be16 vlan[16];
+		} mps;
+		struct fw_ldst_func {
+			__u8   access_ctl;
+			__u8   mod_index;
+			__be16 ctl_id;
+			__be32 offset;
+			__be64 data0;
+			__be64 data1;
+		} func;
+		struct fw_ldst_pcie {
+			__u8   ctrl_to_fn;
+			__u8   bnum;
+			__u8   r;
+			__u8   ext_r;
+			__u8   select_naccess;
+			__u8   pcie_fn;
+			__be16 nset_pkd;
+			__be32 data[12];
+		} pcie;
+		struct fw_ldst_i2c_deprecated {
+			__u8   pid_pkd;
+			__u8   base;
+			__u8   boffset;
+			__u8   data;
+			__be32 r9;
+		} i2c_deprecated;
+		struct fw_ldst_i2c {
+			__u8   pid;
+			__u8   did;
+			__u8   boffset;
+			__u8   blen;
+			__be32 r9;
+			__u8   data[48];
+		} i2c;
+		struct fw_ldst_le {
+			__be32 index;
+			__be32 r9;
+			__u8   val[33];
+			__u8   r11[7];
+		} le;
+	} u;
+};
+
+#define S_FW_LDST_CMD_ADDRSPACE         0
+#define M_FW_LDST_CMD_ADDRSPACE         0xff
+#define V_FW_LDST_CMD_ADDRSPACE(x)      ((x) << S_FW_LDST_CMD_ADDRSPACE)
 
 struct fw_reset_cmd {
 	__be32 op_to_write;

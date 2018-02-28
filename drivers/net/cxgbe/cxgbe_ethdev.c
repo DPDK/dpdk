@@ -171,6 +171,8 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 				       DEV_TX_OFFLOAD_TCP_TSO;
 
 	device_info->reta_size = pi->rss_size;
+	device_info->hash_key_size = CXGBE_DEFAULT_RSS_KEY_LEN;
+	device_info->flow_type_rss_offloads = CXGBE_RSS_HF_ALL;
 
 	device_info->rx_desc_lim = cxgbe_desc_lim;
 	device_info->tx_desc_lim = cxgbe_desc_lim;
@@ -787,6 +789,36 @@ cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 	return NULL;
 }
 
+/* Update RSS hash configuration
+ */
+static int cxgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+				     struct rte_eth_rss_conf *rss_conf)
+{
+	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	int err;
+
+	err = cxgbe_write_rss_conf(pi, rss_conf->rss_hf);
+	if (err)
+		return err;
+
+	pi->rss_hf = rss_conf->rss_hf;
+
+	if (rss_conf->rss_key) {
+		u32 key[10], mod_key[10];
+		int i, j;
+
+		memcpy(key, rss_conf->rss_key, CXGBE_DEFAULT_RSS_KEY_LEN);
+
+		for (i = 9, j = 0; i >= 0; i--, j++)
+			mod_key[j] = cpu_to_be32(key[i]);
+
+		t4_write_rss_key(adapter, mod_key, -1);
+	}
+
+	return 0;
+}
+
 static int cxgbe_get_eeprom_length(struct rte_eth_dev *dev)
 {
 	RTE_SET_USED(dev);
@@ -985,6 +1017,7 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.get_eeprom		= cxgbe_get_eeprom,
 	.set_eeprom		= cxgbe_set_eeprom,
 	.get_reg		= cxgbe_get_regs,
+	.rss_hash_update	= cxgbe_dev_rss_hash_update,
 };
 
 /*

@@ -503,8 +503,33 @@
 #define V_MTUVALUE(x) ((x) << S_MTUVALUE)
 #define G_MTUVALUE(x) (((x) >> S_MTUVALUE) & M_MTUVALUE)
 
+#define A_TP_RSS_CONFIG_VRT 0x7e00
+
+#define S_KEYMODE    6
+#define M_KEYMODE    0x3U
+#define G_KEYMODE(x) (((x) >> S_KEYMODE) & M_KEYMODE)
+
+#define S_KEYWRADDR    0
+#define V_KEYWRADDR(x) ((x) << S_KEYWRADDR)
+
+#define S_KEYWREN    4
+#define V_KEYWREN(x) ((x) << S_KEYWREN)
+#define F_KEYWREN    V_KEYWREN(1U)
+
+#define S_KEYWRADDRX    30
+#define V_KEYWRADDRX(x) ((x) << S_KEYWRADDRX)
+
+#define S_KEYEXTEND    26
+#define V_KEYEXTEND(x) ((x) << S_KEYEXTEND)
+#define F_KEYEXTEND    V_KEYEXTEND(1U)
+
+#define S_T6_VFWRADDR    8
+#define V_T6_VFWRADDR(x) ((x) << S_T6_VFWRADDR)
+
 #define A_TP_PIO_ADDR 0x7e40
 #define A_TP_PIO_DATA 0x7e44
+
+#define A_TP_RSS_SECRET_KEY0 0x40
 
 #define A_TP_VLAN_PRI_MAP 0x140
 

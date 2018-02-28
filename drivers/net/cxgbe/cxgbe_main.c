@@ -360,6 +360,8 @@ static int init_rss(struct adapter *adap)
 		pi->rss = rte_zmalloc(NULL, pi->rss_size * sizeof(u16), 0);
 		if (!pi->rss)
 			return -ENOMEM;
+
+		pi->rss_hf = CXGBE_RSS_HF_ALL;
 	}
 	return 0;
 }
@@ -930,14 +932,71 @@ int link_start(struct port_info *pi)
 }
 
 /**
- * cxgb4_write_rss - write the RSS table for a given port
+ * cxgbe_write_rss_conf - flash the RSS configuration for a given port
+ * @pi: the port
+ * @rss_hf: Hash configuration to apply
+ */
+int cxgbe_write_rss_conf(const struct port_info *pi, uint64_t rss_hf)
+{
+	struct adapter *adapter = pi->adapter;
+	const struct sge_eth_rxq *rxq;
+	u64 flags = 0;
+	u16 rss;
+	int err;
+
+	/*  Should never be called before setting up sge eth rx queues */
+	if (!(adapter->flags & FULL_INIT_DONE)) {
+		dev_err(adap, "%s No RXQs available on port %d\n",
+			__func__, pi->port_id);
+		return -EINVAL;
+	}
+
+	/* Don't allow unsupported hash functions */
+	if (rss_hf & ~CXGBE_RSS_HF_ALL)
+		return -EINVAL;
+
+	if (rss_hf & ETH_RSS_IPV4)
+		flags |= F_FW_RSS_VI_CONFIG_CMD_IP4TWOTUPEN;
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+		flags |= F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN;
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+		flags |= F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN |
+			 F_FW_RSS_VI_CONFIG_CMD_UDPEN;
+
+	if (rss_hf & ETH_RSS_IPV6)
+		flags |= F_FW_RSS_VI_CONFIG_CMD_IP6TWOTUPEN;
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+		flags |= F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN;
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+		flags |= F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN |
+			 F_FW_RSS_VI_CONFIG_CMD_UDPEN;
+
+	rxq = &adapter->sge.ethrxq[pi->first_qset];
+	rss = rxq[0].rspq.abs_id;
+
+	/* If Tunnel All Lookup isn't specified in the global RSS
+	 * Configuration, then we need to specify a default Ingress
+	 * Queue for any ingress packets which aren't hashed.  We'll
+	 * use our first ingress queue ...
+	 */
+	err = t4_config_vi_rss(adapter, adapter->mbox, pi->viid,
+			       flags, rss);
+	return err;
+}
+
+/**
+ * cxgbe_write_rss - write the RSS table for a given port
  * @pi: the port
  * @queues: array of queue indices for RSS
  *
  * Sets up the portion of the HW RSS table for the port's VI to distribute
  * packets to the Rx queues in @queues.
  */
-int cxgb4_write_rss(const struct port_info *pi, const u16 *queues)
+int cxgbe_write_rss(const struct port_info *pi, const u16 *queues)
 {
 	u16 *rss;
 	int i, err;
@@ -958,20 +1017,6 @@ int cxgb4_write_rss(const struct port_info *pi, const u16 *queues)
 
 	err = t4_config_rss_range(adapter, adapter->pf, pi->viid, 0,
 				  pi->rss_size, rss, pi->rss_size);
-	/*
-	 * If Tunnel All Lookup isn't specified in the global RSS
-	 * Configuration, then we need to specify a default Ingress
-	 * Queue for any ingress packets which aren't hashed.  We'll
-	 * use our first ingress queue ...
-	 */
-	if (!err)
-		err = t4_config_vi_rss(adapter, adapter->mbox, pi->viid,
-				       F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN |
-				       F_FW_RSS_VI_CONFIG_CMD_IP6TWOTUPEN |
-				       F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN |
-				       F_FW_RSS_VI_CONFIG_CMD_IP4TWOTUPEN |
-				       F_FW_RSS_VI_CONFIG_CMD_UDPEN,
-				       rss[0]);
 	rte_free(rss);
 	return err;
 }
@@ -1001,7 +1046,11 @@ int setup_rss(struct port_info *pi)
 			for (j = 0; j < pi->rss_size; j++)
 				pi->rss[j] = j % pi->n_rx_qsets;
 
-			err = cxgb4_write_rss(pi, pi->rss);
+			err = cxgbe_write_rss(pi, pi->rss);
+			if (err)
+				return err;
+
+			err = cxgbe_write_rss_conf(pi, pi->rss_hf);
 			if (err)
 				return err;
 			pi->flags |= PORT_RSS_DONE;

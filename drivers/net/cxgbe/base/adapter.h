@@ -77,6 +77,7 @@ struct port_info {
 	u16    *rss;                    /* rss table */
 	u8     rss_mode;                /* rss mode */
 	u16    rss_size;                /* size of VI's RSS table slice */
+	u64    rss_hf;			/* RSS Hash Function */
 };
 
 /* Enable or disable autonegotiation.  If this is set to enable,
@@ -736,6 +737,7 @@ int cxgb4_set_rspq_intr_params(struct sge_rspq *q, unsigned int us,
 			       unsigned int cnt);
 int cxgbe_poll(struct sge_rspq *q, struct rte_mbuf **rx_pkts,
 	       unsigned int budget, unsigned int *work_done);
-int cxgb4_write_rss(const struct port_info *pi, const u16 *queues);
+int cxgbe_write_rss(const struct port_info *pi, const u16 *queues);
+int cxgbe_write_rss_conf(const struct port_info *pi, uint64_t flags);
 
 #endif /* __T4_ADAPTER_H__ */

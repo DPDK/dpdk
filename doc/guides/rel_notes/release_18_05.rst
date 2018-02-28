@@ -41,6 +41,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added RSS hash and key update to CXGBE PMD.**
+
+  Support to update RSS hash and key has been added to CXGBE PMD.
+
 
 API Changes
 -----------

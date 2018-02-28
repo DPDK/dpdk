@@ -2167,6 +2167,79 @@ int t4_seeprom_wp(struct adapter *adapter, int enable)
 }
 
 /**
+ * t4_fw_tp_pio_rw - Access TP PIO through LDST
+ * @adap: the adapter
+ * @vals: where the indirect register values are stored/written
+ * @nregs: how many indirect registers to read/write
+ * @start_idx: index of first indirect register to read/write
+ * @rw: Read (1) or Write (0)
+ *
+ * Access TP PIO registers through LDST
+ */
+void t4_fw_tp_pio_rw(struct adapter *adap, u32 *vals, unsigned int nregs,
+		     unsigned int start_index, unsigned int rw)
+{
+	int cmd = FW_LDST_ADDRSPC_TP_PIO;
+	struct fw_ldst_cmd c;
+	unsigned int i;
+	int ret;
+
+	for (i = 0 ; i < nregs; i++) {
+		memset(&c, 0, sizeof(c));
+		c.op_to_addrspace = cpu_to_be32(V_FW_CMD_OP(FW_LDST_CMD) |
+						F_FW_CMD_REQUEST |
+						(rw ? F_FW_CMD_READ :
+						      F_FW_CMD_WRITE) |
+						V_FW_LDST_CMD_ADDRSPACE(cmd));
+		c.cycles_to_len16 = cpu_to_be32(FW_LEN16(c));
+
+		c.u.addrval.addr = cpu_to_be32(start_index + i);
+		c.u.addrval.val  = rw ? 0 : cpu_to_be32(vals[i]);
+		ret = t4_wr_mbox(adap, adap->mbox, &c, sizeof(c), &c);
+		if (ret == 0) {
+			if (rw)
+				vals[i] = be32_to_cpu(c.u.addrval.val);
+		}
+	}
+}
+
+/**
+ * t4_write_rss_key - program one of the RSS keys
+ * @adap: the adapter
+ * @key: 10-entry array holding the 320-bit RSS key
+ * @idx: which RSS key to write
+ *
+ * Writes one of the RSS keys with the given 320-bit value.  If @idx is
+ * 0..15 the corresponding entry in the RSS key table is written,
+ * otherwise the global RSS key is written.
+ */
+void t4_write_rss_key(struct adapter *adap, u32 *key, int idx)
+{
+	u32 vrt = t4_read_reg(adap, A_TP_RSS_CONFIG_VRT);
+	u8 rss_key_addr_cnt = 16;
+
+	/* T6 and later: for KeyMode 3 (per-vf and per-vf scramble),
+	 * allows access to key addresses 16-63 by using KeyWrAddrX
+	 * as index[5:4](upper 2) into key table
+	 */
+	if ((CHELSIO_CHIP_VERSION(adap->params.chip) > CHELSIO_T5) &&
+	    (vrt & F_KEYEXTEND) && (G_KEYMODE(vrt) == 3))
+		rss_key_addr_cnt = 32;
+
+	t4_fw_tp_pio_rw(adap, key, 10, A_TP_RSS_SECRET_KEY0, 0);
+
+	if (idx >= 0 && idx < rss_key_addr_cnt) {
+		if (rss_key_addr_cnt > 16)
+			t4_write_reg(adap, A_TP_RSS_CONFIG_VRT,
+				     V_KEYWRADDRX(idx >> 4) |
+				     V_T6_VFWRADDR(idx) | F_KEYWREN);
+		else
+			t4_write_reg(adap, A_TP_RSS_CONFIG_VRT,
+				     V_KEYWRADDR(idx) | F_KEYWREN);
+	}
+}
+
+/**
  * t4_config_rss_range - configure a portion of the RSS mapping table
  * @adapter: the adapter
  * @mbox: mbox to use for the FW command

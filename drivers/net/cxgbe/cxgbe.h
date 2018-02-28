@@ -46,6 +46,13 @@
 #define CXGBE_MIN_RX_BUFSIZE ETHER_MIN_MTU /* min buf size */
 #define CXGBE_MAX_RX_PKTLEN (9000 + ETHER_HDR_LEN + ETHER_CRC_LEN) /* max pkt */
 
+#define CXGBE_DEFAULT_RSS_KEY_LEN     40 /* 320-bits */
+#define CXGBE_RSS_HF_ALL (ETH_RSS_IPV4 | ETH_RSS_IPV6 | \
+			  ETH_RSS_NONFRAG_IPV4_TCP | \
+			  ETH_RSS_NONFRAG_IPV4_UDP | \
+			  ETH_RSS_NONFRAG_IPV6_TCP | \
+			  ETH_RSS_NONFRAG_IPV6_UDP)
+
 int cxgbe_probe(struct adapter *adapter);
 void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps);
 int cxgbe_up(struct adapter *adap);
