@@ -101,6 +101,11 @@
 #undef NET_NAME_UNKNOWN
 #endif
 
+#if (defined(RHEL_RELEASE_CODE) && \
+	(RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 5)))
+#define ndo_change_mtu ndo_change_mtu_rh74
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #define HAVE_SIGNAL_FUNCTIONS_OWN_HEADER
 #endif
