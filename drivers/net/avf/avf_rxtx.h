@@ -22,8 +22,12 @@
 #define AVF_VPMD_DESCS_PER_LOOP  4
 #define AVF_VPMD_TX_MAX_FREE_BUF 64
 
-#define AVF_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
-			  ETH_TXQ_FLAGS_NOOFFLOADS)
+#define AVF_NO_VECTOR_FLAGS (				 \
+		DEV_TX_OFFLOAD_MULTI_SEGS |		 \
+		DEV_TX_OFFLOAD_VLAN_INSERT |		 \
+		DEV_TX_OFFLOAD_SCTP_CKSUM |		 \
+		DEV_TX_OFFLOAD_UDP_CKSUM |		 \
+		DEV_TX_OFFLOAD_TCP_CKSUM)
 
 #define DEFAULT_TX_RS_THRESH     32
 #define DEFAULT_TX_FREE_THRESH   32
@@ -125,7 +129,7 @@ struct avf_tx_queue {
 
 	uint16_t port_id;
 	uint16_t queue_id;
-	uint32_t txq_flags;
+	uint64_t offloads;
 	uint16_t next_dd;              /* next to set RS, for VPMD */
 	uint16_t next_rs;              /* next to check DD,  for VPMD */
 

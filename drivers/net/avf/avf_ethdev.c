@@ -532,13 +532,13 @@ avf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = AVF_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = 0,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = AVF_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = AVF_DEFAULT_TX_RS_THRESH,
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-				ETH_TXQ_FLAGS_NOOFFLOADS,
+		.offloads = 0,
 	};
 
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
@@ -759,7 +759,7 @@ avf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	/* Vlan stripping setting */
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
-		if (dev_conf->rxmode.hw_vlan_strip)
+		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			err = avf_enable_vlan_strip(adapter);
 		else
 			err = avf_disable_vlan_strip(adapter);
