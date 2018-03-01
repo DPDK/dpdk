@@ -221,9 +221,9 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t desc_avail, desc_offset;
 	uint32_t mbuf_avail, mbuf_offset;
 	uint32_t cpy_len;
-	uint64_t dlen;
+	uint64_t desc_chunck_len;
 	struct vring_desc *desc;
-	uint64_t desc_addr;
+	uint64_t desc_addr, desc_gaddr;
 	/* A counter to avoid desc dead loop chain */
 	uint16_t nr_desc = 1;
 	struct batch_copy_elem *batch_copy = vq->batch_copy_elems;
@@ -231,28 +231,74 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	int error = 0;
 
 	desc = &descs[desc_idx];
-	dlen = desc->len;
-	desc_addr = vhost_iova_to_vva(dev, vq, desc->addr,
-					&dlen, VHOST_ACCESS_RW);
+	desc_chunck_len = desc->len;
+	desc_gaddr = desc->addr;
+	desc_addr = vhost_iova_to_vva(dev, vq, desc_gaddr,
+					&desc_chunck_len, VHOST_ACCESS_RW);
 	/*
 	 * Checking of 'desc_addr' placed outside of 'unlikely' macro to avoid
 	 * performance issue with some versions of gcc (4.8.4 and 5.3.0) which
 	 * otherwise stores offset on the stack instead of in a register.
 	 */
-	if (unlikely(dlen != desc->len || desc->len < dev->vhost_hlen) ||
-			!desc_addr) {
+	if (unlikely(desc->len < dev->vhost_hlen) || !desc_addr) {
 		error = -1;
 		goto out;
 	}
 
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
-	virtio_enqueue_offload(m, (struct virtio_net_hdr *)(uintptr_t)desc_addr);
-	vhost_log_write(dev, desc->addr, dev->vhost_hlen);
-	PRINT_PACKET(dev, (uintptr_t)desc_addr, dev->vhost_hlen, 0);
+	if (likely(desc_chunck_len >= dev->vhost_hlen)) {
+		virtio_enqueue_offload(m,
+				(struct virtio_net_hdr *)(uintptr_t)desc_addr);
+		PRINT_PACKET(dev, (uintptr_t)desc_addr, dev->vhost_hlen, 0);
+		vhost_log_write(dev, desc_gaddr, dev->vhost_hlen);
+	} else {
+		struct virtio_net_hdr vnet_hdr;
+		uint64_t remain = dev->vhost_hlen;
+		uint64_t len;
+		uint64_t src = (uint64_t)(uintptr_t)&vnet_hdr, dst;
+		uint64_t guest_addr = desc_gaddr;
 
-	desc_offset = dev->vhost_hlen;
+		virtio_enqueue_offload(m, &vnet_hdr);
+
+		while (remain) {
+			len = remain;
+			dst = vhost_iova_to_vva(dev, vq, guest_addr,
+					&len, VHOST_ACCESS_RW);
+			if (unlikely(!dst || !len)) {
+				error = -1;
+				goto out;
+			}
+
+			rte_memcpy((void *)(uintptr_t)dst,
+					(void *)(uintptr_t)src, len);
+
+			PRINT_PACKET(dev, (uintptr_t)dst, (uint32_t)len, 0);
+			vhost_log_write(dev, guest_addr, len);
+			remain -= len;
+			guest_addr += len;
+			dst += len;
+		}
+	}
+
 	desc_avail  = desc->len - dev->vhost_hlen;
+	if (unlikely(desc_chunck_len < dev->vhost_hlen)) {
+		desc_chunck_len = desc_avail;
+		desc_gaddr = desc->addr + dev->vhost_hlen;
+		desc_addr = vhost_iova_to_vva(dev,
+				vq, desc_gaddr,
+				&desc_chunck_len,
+				VHOST_ACCESS_RW);
+		if (unlikely(!desc_addr)) {
+			error = -1;
+			goto out;
+		}
+
+		desc_offset = 0;
+	} else {
+		desc_offset = dev->vhost_hlen;
+		desc_chunck_len -= dev->vhost_hlen;
+	}
 
 	mbuf_avail  = rte_pktmbuf_data_len(m);
 	mbuf_offset = 0;
@@ -278,26 +324,38 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			}
 
 			desc = &descs[desc->next];
-			dlen = desc->len;
-			desc_addr = vhost_iova_to_vva(dev, vq, desc->addr,
-							&dlen,
+			desc_chunck_len = desc->len;
+			desc_gaddr = desc->addr;
+			desc_addr = vhost_iova_to_vva(dev, vq, desc_gaddr,
+							&desc_chunck_len,
 							VHOST_ACCESS_RW);
-			if (unlikely(!desc_addr || dlen != desc->len)) {
+			if (unlikely(!desc_addr)) {
 				error = -1;
 				goto out;
 			}
 
 			desc_offset = 0;
 			desc_avail  = desc->len;
+		} else if (unlikely(desc_chunck_len == 0)) {
+			desc_chunck_len = desc_avail;
+			desc_gaddr += desc_offset;
+			desc_addr = vhost_iova_to_vva(dev,
+					vq, desc_gaddr,
+					&desc_chunck_len, VHOST_ACCESS_RW);
+			if (unlikely(!desc_addr)) {
+				error = -1;
+				goto out;
+			}
+			desc_offset = 0;
 		}
 
-		cpy_len = RTE_MIN(desc_avail, mbuf_avail);
+		cpy_len = RTE_MIN(desc_chunck_len, mbuf_avail);
 		if (likely(cpy_len > MAX_BATCH_LEN || copy_nb >= vq->size)) {
 			rte_memcpy((void *)((uintptr_t)(desc_addr +
 							desc_offset)),
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset),
 				cpy_len);
-			vhost_log_write(dev, desc->addr + desc_offset, cpy_len);
+			vhost_log_write(dev, desc_gaddr + desc_offset, cpy_len);
 			PRINT_PACKET(dev, (uintptr_t)(desc_addr + desc_offset),
 				     cpy_len, 0);
 		} else {
@@ -305,7 +363,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				(void *)((uintptr_t)(desc_addr + desc_offset));
 			batch_copy[copy_nb].src =
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset);
-			batch_copy[copy_nb].log_addr = desc->addr + desc_offset;
+			batch_copy[copy_nb].log_addr = desc_gaddr + desc_offset;
 			batch_copy[copy_nb].len = cpy_len;
 			copy_nb++;
 		}
@@ -314,6 +372,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		mbuf_offset += cpy_len;
 		desc_avail  -= cpy_len;
 		desc_offset += cpy_len;
+		desc_chunck_len -= cpy_len;
 	}
 
 out:
