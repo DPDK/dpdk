@@ -444,13 +444,13 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 	if (snd < 0) {
 		rte_errno = errno;
 		/* Check if it caused by peer process exits */
-		if (errno == -ECONNREFUSED) {
+		if (errno == ECONNREFUSED) {
 			/* We don't unlink the primary's socket here */
 			if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 				unlink_socket_by_path(dst_path);
 			return 0;
 		}
-		if (errno == -ENOBUFS) {
+		if (errno == ENOBUFS) {
 			RTE_LOG(ERR, EAL, "Peer cannot receive message %s\n",
 				dst_path);
 			return 0;
