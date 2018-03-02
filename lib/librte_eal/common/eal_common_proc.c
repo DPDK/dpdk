@@ -561,10 +561,10 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 	exist = find_sync_request(dst, req->name);
 	if (!exist)
 		TAILQ_INSERT_TAIL(&sync_requests.requests, &sync_req, next);
-	pthread_mutex_unlock(&sync_requests.lock);
 	if (exist) {
 		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
 		rte_errno = EEXIST;
+		pthread_mutex_unlock(&sync_requests.lock);
 		return -1;
 	}
 
@@ -578,7 +578,6 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 
 	reply->nb_sent++;
 
-	pthread_mutex_lock(&sync_requests.lock);
 	do {
 		pthread_cond_timedwait(&sync_req.cond, &sync_requests.lock, ts);
 		/* Check spurious wakeups */
