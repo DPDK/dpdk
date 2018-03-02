@@ -583,7 +583,7 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 		/* Check if time is out */
 		if (gettimeofday(&now, NULL) < 0)
 			break;
-		if (now.tv_sec < ts->tv_sec)
+		if (ts->tv_sec < now.tv_sec)
 			break;
 		else if (now.tv_sec == ts->tv_sec &&
 			 now.tv_usec * 1000 < ts->tv_nsec)
