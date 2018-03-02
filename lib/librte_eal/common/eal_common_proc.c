@@ -658,10 +658,15 @@ rte_mp_request(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	}
 
 	while ((ent = readdir(mp_dir))) {
+		char path[PATH_MAX];
+
 		if (fnmatch(mp_filter, ent->d_name, 0) != 0)
 			continue;
 
-		if (mp_request_one(ent->d_name, req, reply, &end))
+		snprintf(path, sizeof(path), "%s/%s", mp_dir_path,
+			 ent->d_name);
+
+		if (mp_request_one(path, req, reply, &end))
 			ret = -1;
 	}
 
