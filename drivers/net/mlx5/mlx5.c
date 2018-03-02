@@ -1043,11 +1043,53 @@ static struct rte_pci_driver mlx5_driver = {
 #ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
 
 /**
+ * Suffix RTE_EAL_PMD_PATH with "-glue".
+ *
+ * This function performs a sanity check on RTE_EAL_PMD_PATH before
+ * suffixing its last component.
+ *
+ * @param buf[out]
+ *   Output buffer, should be large enough otherwise NULL is returned.
+ * @param size
+ *   Size of @p out.
+ *
+ * @return
+ *   Pointer to @p buf or @p NULL in case suffix cannot be appended.
+ */
+static char *
+mlx5_glue_path(char *buf, size_t size)
+{
+	static const char *const bad[] = { "/", ".", "..", NULL };
+	const char *path = RTE_EAL_PMD_PATH;
+	size_t len = strlen(path);
+	size_t off;
+	int i;
+
+	while (len && path[len - 1] == '/')
+		--len;
+	for (off = len; off && path[off - 1] != '/'; --off)
+		;
+	for (i = 0; bad[i]; ++i)
+		if (!strncmp(path + off, bad[i], (int)(len - off)))
+			goto error;
+	i = snprintf(buf, size, "%.*s-glue", (int)len, path);
+	if (i == -1 || (size_t)i >= size)
+		goto error;
+	return buf;
+error:
+	ERROR("unable to append \"-glue\" to last component of"
+	      " RTE_EAL_PMD_PATH (\"" RTE_EAL_PMD_PATH "\"),"
+	      " please re-configure DPDK");
+	return NULL;
+}
+
+/**
  * Initialization routine for run-time dependency on rdma-core.
  */
 static int
 mlx5_glue_init(void)
 {
+	char glue_path[sizeof(RTE_EAL_PMD_PATH) - 1 + sizeof("-glue")];
 	const char *path[] = {
 		/*
 		 * A basic security check is necessary before trusting
@@ -1055,7 +1097,13 @@ mlx5_glue_init(void)
 		 */
 		(geteuid() == getuid() && getegid() == getgid() ?
 		 getenv("MLX5_GLUE_PATH") : NULL),
-		RTE_EAL_PMD_PATH,
+		/*
+		 * When RTE_EAL_PMD_PATH is set, use its glue-suffixed
+		 * variant, otherwise let dlopen() look up libraries on its
+		 * own.
+		 */
+		(*RTE_EAL_PMD_PATH ?
+		 mlx5_glue_path(glue_path, sizeof(glue_path)) : ""),
 	};
 	unsigned int i = 0;
 	void *handle = NULL;

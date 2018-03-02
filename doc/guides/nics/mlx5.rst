@@ -171,9 +171,10 @@ These options can be modified in the ``.config`` file.
   missing with ``ldd(1)``.
 
   It works by moving these dependencies to a purpose-built rdma-core "glue"
-  plug-in, which must either be installed in ``CONFIG_RTE_EAL_PMD_PATH`` if
-  set, or in a standard location for the dynamic linker (e.g. ``/lib``) if
-  left to the default empty string (``""``).
+  plug-in which must either be installed in a directory whose name is based
+  on ``CONFIG_RTE_EAL_PMD_PATH`` suffixed with ``-glue`` if set, or in a
+  standard location for the dynamic linker (e.g. ``/lib``) if left to the
+  default empty string (``""``).
 
   This option has no performance impact.
 
