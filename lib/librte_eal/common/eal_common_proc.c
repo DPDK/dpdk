@@ -489,10 +489,14 @@ mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 		return -1;
 	}
 	while ((ent = readdir(mp_dir))) {
+		char path[PATH_MAX];
+
 		if (fnmatch(mp_filter, ent->d_name, 0) != 0)
 			continue;
 
-		if (send_msg(ent->d_name, msg, type) < 0)
+		snprintf(path, sizeof(path), "%s/%s", mp_dir_path,
+			 ent->d_name);
+		if (send_msg(path, msg, type) < 0)
 			ret = -1;
 	}
 
