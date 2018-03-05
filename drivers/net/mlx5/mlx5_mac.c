@@ -35,8 +35,8 @@
 /**
  * Get MAC address by querying netdevice.
  *
- * @param[in] priv
- *   struct priv for the requested device.
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  * @param[out] mac
  *   MAC address output buffer.
  *
@@ -44,11 +44,11 @@
  *   0 on success, -1 on failure and errno is set.
  */
 int
-priv_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
+mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN])
 {
 	struct ifreq request;
 
-	if (priv_ifreq(priv, SIOCGIFHWADDR, &request))
+	if (mlx5_ifreq(dev, SIOCGIFHWADDR, &request))
 		return -1;
 	memcpy(mac, request.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
 	return 0;

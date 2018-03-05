@@ -83,10 +83,6 @@ mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
  * Register a Memory Region (MR) <-> Memory Pool (MP) association in
  * txq->mp2mr[]. If mp2mr[] is full, remove an entry first.
  *
- * This function should only be called by txq_mp2mr().
- *
- * @param priv
- *   Pointer to private structure.
  * @param txq
  *   Pointer to TX queue structure.
  * @param[in] mp
@@ -98,29 +94,35 @@ mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
  *   mr on success, NULL on failure.
  */
 struct mlx5_mr *
-priv_txq_mp2mr_reg(struct priv *priv, struct mlx5_txq_data *txq,
-		   struct rte_mempool *mp, unsigned int idx)
+mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
+		   unsigned int idx)
 {
 	struct mlx5_txq_ctrl *txq_ctrl =
 		container_of(txq, struct mlx5_txq_ctrl, txq);
+	struct rte_eth_dev *dev;
 	struct mlx5_mr *mr;
 
+	rte_spinlock_lock(&txq_ctrl->priv->mr_lock);
 	/* Add a new entry, register MR first. */
 	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
 	      (void *)txq_ctrl, mp->name, (void *)mp);
-	mr = priv_mr_get(priv, mp);
+	dev = txq_ctrl->priv->dev;
+	mr = mlx5_mr_get(dev, mp);
 	if (mr == NULL) {
 		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-			DEBUG("Using unregistered mempool 0x%p(%s) in secondary process,"
-			     " please create mempool before rte_eth_dev_start()",
+			DEBUG("Using unregistered mempool 0x%p(%s) in "
+			      "secondary process, please create mempool before "
+			      " rte_eth_dev_start()",
 			     (void *)mp, mp->name);
+			rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 			return NULL;
 		}
-		mr = priv_mr_new(priv, mp);
+		mr = mlx5_mr_new(dev, mp);
 	}
 	if (unlikely(mr == NULL)) {
 		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
 		      (void *)txq_ctrl);
+		rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 		return NULL;
 	}
 	if (unlikely(idx == RTE_DIM(txq->mp2mr))) {
@@ -128,7 +130,7 @@ priv_txq_mp2mr_reg(struct priv *priv, struct mlx5_txq_data *txq,
 		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
 		      (void *)txq_ctrl);
 		--idx;
-		priv_mr_release(priv, txq->mp2mr[0]);
+		mlx5_mr_release(txq->mp2mr[0]);
 		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
 			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
 	}
@@ -137,35 +139,6 @@ priv_txq_mp2mr_reg(struct priv *priv, struct mlx5_txq_data *txq,
 	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
 	      (void *)txq_ctrl, mp->name, (void *)mp,
 	      txq_ctrl->txq.mp2mr[idx]->lkey);
-	return mr;
-}
-
-/**
- * Register a Memory Region (MR) <-> Memory Pool (MP) association in
- * txq->mp2mr[]. If mp2mr[] is full, remove an entry first.
- *
- * This function should only be called by txq_mp2mr().
- *
- * @param txq
- *   Pointer to TX queue structure.
- * @param[in] mp
- *   Memory Pool for which a Memory Region lkey must be returned.
- * @param idx
- *   Index of the next available entry.
- *
- * @return
- *   mr on success, NULL on failure.
- */
-struct mlx5_mr*
-mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
-		   unsigned int idx)
-{
-	struct mlx5_txq_ctrl *txq_ctrl =
-		container_of(txq, struct mlx5_txq_ctrl, txq);
-	struct mlx5_mr *mr;
-
-	rte_spinlock_lock(&txq_ctrl->priv->mr_lock);
-	mr = priv_txq_mp2mr_reg(txq_ctrl->priv, txq, mp, idx);
 	rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 	return mr;
 }
@@ -225,20 +198,20 @@ mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg)
 	if (rte_mempool_obj_iter(mp, txq_mp2mr_mbuf_check, &data) == 0 ||
 			data.ret == -1)
 		return;
-	mr = priv_mr_get(priv, mp);
+	mr = mlx5_mr_get(priv->dev, mp);
 	if (mr) {
-		priv_mr_release(priv, mr);
+		mlx5_mr_release(mr);
 		return;
 	}
-	priv_mr_new(priv, mp);
+	mlx5_mr_new(priv->dev, mp);
 }
 
 /**
  * Register a new memory region from the mempool and store it in the memory
  * region list.
  *
- * @param  priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param mp
  *   Pointer to the memory pool to register.
  *
@@ -246,8 +219,9 @@ mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg)
  *   The memory region on success.
  */
 struct mlx5_mr *
-priv_mr_new(struct priv *priv, struct rte_mempool *mp)
+mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
 {
+	struct priv *priv = dev->data->dev_private;
 	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
 	uintptr_t start;
 	uintptr_t end;
@@ -289,7 +263,7 @@ priv_mr_new(struct priv *priv, struct rte_mempool *mp)
 	mr->mp = mp;
 	mr->lkey = rte_cpu_to_be_32(mr->mr->lkey);
 	rte_atomic32_inc(&mr->refcnt);
-	DEBUG("%p: new Memory Region %p refcnt: %d", (void *)priv,
+	DEBUG("%p: new Memory Region %p refcnt: %d", (void *)dev,
 	      (void *)mr, rte_atomic32_read(&mr->refcnt));
 	LIST_INSERT_HEAD(&priv->mr, mr, next);
 	return mr;
@@ -298,8 +272,8 @@ priv_mr_new(struct priv *priv, struct rte_mempool *mp)
 /**
  * Search the memory region object in the memory region list.
  *
- * @param  priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param mp
  *   Pointer to the memory pool to register.
  *
@@ -307,8 +281,9 @@ priv_mr_new(struct priv *priv, struct rte_mempool *mp)
  *   The memory region on success.
  */
 struct mlx5_mr *
-priv_mr_get(struct priv *priv, struct rte_mempool *mp)
+mlx5_mr_get(struct rte_eth_dev *dev, struct rte_mempool *mp)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct mlx5_mr *mr;
 
 	assert(mp);
@@ -335,7 +310,7 @@ priv_mr_get(struct priv *priv, struct rte_mempool *mp)
  *   0 on success, errno on failure.
  */
 int
-priv_mr_release(struct priv *priv __rte_unused, struct mlx5_mr *mr)
+mlx5_mr_release(struct mlx5_mr *mr)
 {
 	assert(mr);
 	DEBUG("Memory Region %p refcnt: %d",
@@ -352,20 +327,21 @@ priv_mr_release(struct priv *priv __rte_unused, struct mlx5_mr *mr)
 /**
  * Verify the flow list is empty
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  *
  * @return
  *   The number of object not released.
  */
 int
-priv_mr_verify(struct priv *priv)
+mlx5_mr_verify(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	int ret = 0;
 	struct mlx5_mr *mr;
 
 	LIST_FOREACH(mr, &priv->mr, next) {
-		DEBUG("%p: mr %p still referenced", (void *)priv,
+		DEBUG("%p: mr %p still referenced", (void *)dev,
 		      (void *)mr);
 		++ret;
 	}

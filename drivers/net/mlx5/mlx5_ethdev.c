@@ -95,8 +95,8 @@ struct ethtool_link_settings {
 /**
  * Get interface name from private structure.
  *
- * @param[in] priv
- *   Pointer to private structure.
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  * @param[out] ifname
  *   Interface name output buffer.
  *
@@ -104,8 +104,9 @@ struct ethtool_link_settings {
  *   0 on success, -1 on failure and errno is set.
  */
 int
-priv_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE])
+mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 {
+	struct priv *priv = dev->data->dev_private;
 	DIR *dir;
 	struct dirent *dent;
 	unsigned int dev_type = 0;
@@ -176,8 +177,8 @@ try_dev_id:
 /**
  * Perform ifreq ioctl() on associated Ethernet device.
  *
- * @param[in] priv
- *   Pointer to private structure.
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  * @param req
  *   Request number to pass to ioctl().
  * @param[out] ifr
@@ -187,14 +188,14 @@ try_dev_id:
  *   0 on success, -1 on failure and errno is set.
  */
 int
-priv_ifreq(const struct priv *priv, int req, struct ifreq *ifr)
+mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr)
 {
 	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 	int ret = -1;
 
 	if (sock == -1)
 		return ret;
-	if (priv_get_ifname(priv, &ifr->ifr_name) == 0)
+	if (mlx5_get_ifname(dev, &ifr->ifr_name) == 0)
 		ret = ioctl(sock, req, ifr);
 	close(sock);
 	return ret;
@@ -203,8 +204,8 @@ priv_ifreq(const struct priv *priv, int req, struct ifreq *ifr)
 /**
  * Get device MTU.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param[out] mtu
  *   MTU value output buffer.
  *
@@ -212,10 +213,10 @@ priv_ifreq(const struct priv *priv, int req, struct ifreq *ifr)
  *   0 on success, -1 on failure and errno is set.
  */
 int
-priv_get_mtu(struct priv *priv, uint16_t *mtu)
+mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu)
 {
 	struct ifreq request;
-	int ret = priv_ifreq(priv, SIOCGIFMTU, &request);
+	int ret = mlx5_ifreq(dev, SIOCGIFMTU, &request);
 
 	if (ret)
 		return ret;
@@ -226,8 +227,8 @@ priv_get_mtu(struct priv *priv, uint16_t *mtu)
 /**
  * Set device MTU.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param mtu
  *   MTU value to set.
  *
@@ -235,18 +236,18 @@ priv_get_mtu(struct priv *priv, uint16_t *mtu)
  *   0 on success, -1 on failure and errno is set.
  */
 static int
-priv_set_mtu(struct priv *priv, uint16_t mtu)
+mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct ifreq request = { .ifr_mtu = mtu, };
 
-	return priv_ifreq(priv, SIOCSIFMTU, &request);
+	return mlx5_ifreq(dev, SIOCSIFMTU, &request);
 }
 
 /**
  * Set device flags.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param keep
  *   Bitmask for flags that must remain untouched.
  * @param flags
@@ -256,16 +257,16 @@ priv_set_mtu(struct priv *priv, uint16_t mtu)
  *   0 on success, -1 on failure and errno is set.
  */
 int
-priv_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
+mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep, unsigned int flags)
 {
 	struct ifreq request;
-	int ret = priv_ifreq(priv, SIOCGIFFLAGS, &request);
+	int ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &request);
 
 	if (ret)
 		return ret;
 	request.ifr_flags &= keep;
 	request.ifr_flags |= flags & ~keep;
-	return priv_ifreq(priv, SIOCSIFFLAGS, &request);
+	return mlx5_ifreq(dev, SIOCSIFFLAGS, &request);
 }
 
 /**
@@ -288,11 +289,11 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	unsigned int reta_idx_n;
 	const uint8_t use_app_rss_key =
 		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
-	uint64_t supp_tx_offloads = mlx5_priv_get_tx_port_offloads(priv);
+	uint64_t supp_tx_offloads = mlx5_get_tx_port_offloads(dev);
 	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 	uint64_t supp_rx_offloads =
-		(mlx5_priv_get_rx_port_offloads(priv) |
-		 mlx5_priv_get_rx_queue_offloads(priv));
+		(mlx5_get_rx_port_offloads() |
+		 mlx5_get_rx_queue_offloads(dev));
 	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 
 	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
@@ -349,7 +350,7 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	reta_idx_n = (1 << log2above((rxqs_n & (rxqs_n - 1)) ?
 				     priv->config.ind_table_max_size :
 				     rxqs_n));
-	if (priv_rss_reta_index_resize(priv, reta_idx_n))
+	if (mlx5_rss_reta_index_resize(dev, reta_idx_n))
 		return ENOMEM;
 	/* When the number of RX queues is not a power of two, the remaining
 	 * table entries are padded with reused WQs and hashes are not spread
@@ -395,12 +396,11 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
 	info->max_mac_addrs = RTE_DIM(priv->mac);
-	info->rx_queue_offload_capa =
-		mlx5_priv_get_rx_queue_offloads(priv);
-	info->rx_offload_capa = (mlx5_priv_get_rx_port_offloads(priv) |
+	info->rx_queue_offload_capa = mlx5_get_rx_queue_offloads(dev);
+	info->rx_offload_capa = (mlx5_get_rx_port_offloads() |
 				 info->rx_queue_offload_capa);
-	info->tx_offload_capa = mlx5_priv_get_tx_port_offloads(priv);
-	if (priv_get_ifname(priv, &ifname) == 0)
+	info->tx_offload_capa = mlx5_get_tx_port_offloads(dev);
+	if (mlx5_get_ifname(dev, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	info->reta_size = priv->reta_idx_n ?
 		priv->reta_idx_n : config->ind_table_max_size;
@@ -465,7 +465,7 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
 	struct rte_eth_link dev_link;
 	int link_speed = 0;
 
-	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
+	if (mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr)) {
 		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
 		return -1;
 	}
@@ -473,7 +473,7 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
 	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
 				(ifr.ifr_flags & IFF_RUNNING));
 	ifr.ifr_data = (void *)&edata;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
 		     strerror(errno));
 		return -1;
@@ -527,7 +527,7 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 	struct rte_eth_link dev_link;
 	uint64_t sc;
 
-	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
+	if (mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr)) {
 		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
 		return -1;
 	}
@@ -535,7 +535,7 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
 				(ifr.ifr_flags & IFF_RUNNING));
 	ifr.ifr_data = (void *)&gcmd;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
 		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
 		      strerror(errno));
 		return -1;
@@ -549,7 +549,7 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 
 	*ecmd = gcmd;
 	ifr.ifr_data = (void *)ecmd;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
 		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
 		      strerror(errno));
 		return -1;
@@ -608,90 +608,50 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 /**
  * Enable receiving and transmitting traffic.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  */
 static void
-priv_link_start(struct priv *priv)
+mlx5_link_start(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev *dev = priv->dev;
+	struct priv *priv = dev->data->dev_private;
 	int err;
 
-	dev->tx_pkt_burst = priv_select_tx_function(priv, dev);
-	dev->rx_pkt_burst = priv_select_rx_function(priv, dev);
-	err = priv_dev_traffic_enable(priv, dev);
+	dev->tx_pkt_burst = mlx5_select_tx_function(dev);
+	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
+	err = mlx5_traffic_enable(dev);
 	if (err)
 		ERROR("%p: error occurred while configuring control flows: %s",
-		      (void *)priv, strerror(err));
-	err = priv_flow_start(priv, &priv->flows);
+		      (void *)dev, strerror(err));
+	err = mlx5_flow_start(dev, &priv->flows);
 	if (err)
 		ERROR("%p: error occurred while configuring flows: %s",
-		      (void *)priv, strerror(err));
+		      (void *)dev, strerror(err));
 }
 
 /**
  * Disable receiving and transmitting traffic.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  */
 static void
-priv_link_stop(struct priv *priv)
+mlx5_link_stop(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev *dev = priv->dev;
+	struct priv *priv = dev->data->dev_private;
 
-	priv_flow_stop(priv, &priv->flows);
-	priv_dev_traffic_disable(priv, dev);
+	mlx5_flow_stop(dev, &priv->flows);
+	mlx5_traffic_disable(dev);
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
-}
-
-/**
- * Retrieve physical link information and update rx/tx_pkt_burst callbacks
- * accordingly.
- *
- * @param priv
- *   Pointer to private structure.
- * @param wait_to_complete
- *   Wait for request completion (ignored).
- */
-int
-priv_link_update(struct priv *priv, int wait_to_complete __rte_unused)
-{
-	struct rte_eth_dev *dev = priv->dev;
-	struct utsname utsname;
-	int ver[3];
-	int ret;
-	struct rte_eth_link dev_link = dev->data->dev_link;
-
-	if (uname(&utsname) == -1 ||
-	    sscanf(utsname.release, "%d.%d.%d",
-		   &ver[0], &ver[1], &ver[2]) != 3 ||
-	    KERNEL_VERSION(ver[0], ver[1], ver[2]) < KERNEL_VERSION(4, 9, 0))
-		ret = mlx5_link_update_unlocked_gset(dev);
-	else
-		ret = mlx5_link_update_unlocked_gs(dev);
-	/* If lsc interrupt is disabled, should always be ready for traffic. */
-	if (!dev->data->dev_conf.intr_conf.lsc) {
-		priv_link_start(priv);
-		return ret;
-	}
-	/* Re-select burst callbacks only if link status has been changed. */
-	if (!ret && dev_link.link_status != dev->data->dev_link.link_status) {
-		if (dev->data->dev_link.link_status == ETH_LINK_UP)
-			priv_link_start(priv);
-		else
-			priv_link_stop(priv);
-	}
-	return ret;
 }
 
 /**
  * Querying the link status till it changes to the desired state.
  * Number of query attempts is bounded by MLX5_MAX_LINK_QUERY_ATTEMPTS.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param status
  *   Link desired status.
  *
@@ -699,13 +659,13 @@ priv_link_update(struct priv *priv, int wait_to_complete __rte_unused)
  *   0 on success, negative errno value on failure.
  */
 int
-priv_force_link_status_change(struct priv *priv, int status)
+mlx5_force_link_status_change(struct rte_eth_dev *dev, int status)
 {
 	int try = 0;
 
 	while (try < MLX5_MAX_LINK_QUERY_ATTEMPTS) {
-		priv_link_update(priv, 0);
-		if (priv->dev->data->dev_link.link_status == status)
+		mlx5_link_update(dev, 0);
+		if (dev->data->dev_link.link_status == status)
 			return 0;
 		try++;
 		sleep(1);
@@ -727,10 +687,30 @@ priv_force_link_status_change(struct priv *priv, int status)
 int
 mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct utsname utsname;
+	int ver[3];
 	int ret;
+	struct rte_eth_link dev_link = dev->data->dev_link;
 
-	ret = priv_link_update(priv, wait_to_complete);
+	if (uname(&utsname) == -1 ||
+	    sscanf(utsname.release, "%d.%d.%d",
+		   &ver[0], &ver[1], &ver[2]) != 3 ||
+	    KERNEL_VERSION(ver[0], ver[1], ver[2]) < KERNEL_VERSION(4, 9, 0))
+		ret = mlx5_link_update_unlocked_gset(dev);
+	else
+		ret = mlx5_link_update_unlocked_gs(dev);
+	/* If lsc interrupt is disabled, should always be ready for traffic. */
+	if (!dev->data->dev_conf.intr_conf.lsc) {
+		mlx5_link_start(dev);
+		return ret;
+	}
+	/* Re-select burst callbacks only if link status has been changed. */
+	if (!ret && dev_link.link_status != dev->data->dev_link.link_status) {
+		if (dev->data->dev_link.link_status == ETH_LINK_UP)
+			mlx5_link_start(dev);
+		else
+			mlx5_link_stop(dev);
+	}
 	return ret;
 }
 
@@ -752,14 +732,14 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	uint16_t kern_mtu;
 	int ret = 0;
 
-	ret = priv_get_mtu(priv, &kern_mtu);
+	ret = mlx5_get_mtu(dev, &kern_mtu);
 	if (ret)
 		goto out;
 	/* Set kernel interface MTU first. */
-	ret = priv_set_mtu(priv, mtu);
+	ret = mlx5_set_mtu(dev, mtu);
 	if (ret)
 		goto out;
-	ret = priv_get_mtu(priv, &kern_mtu);
+	ret = mlx5_get_mtu(dev, &kern_mtu);
 	if (ret)
 		goto out;
 	if (kern_mtu == mtu) {
@@ -789,7 +769,6 @@ out:
 int
 mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
-	struct priv *priv = dev->data->dev_private;
 	struct ifreq ifr;
 	struct ethtool_pauseparam ethpause = {
 		.cmd = ETHTOOL_GPAUSEPARAM
@@ -797,10 +776,9 @@ mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	int ret;
 
 	ifr.ifr_data = (void *)&ethpause;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
 		ret = errno;
-		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM)"
-		     " failed: %s",
+		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM) failed: %s",
 		     strerror(ret));
 		goto out;
 	}
@@ -833,7 +811,6 @@ out:
 int
 mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
-	struct priv *priv = dev->data->dev_private;
 	struct ifreq ifr;
 	struct ethtool_pauseparam ethpause = {
 		.cmd = ETHTOOL_SPAUSEPARAM
@@ -853,7 +830,7 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		ethpause.tx_pause = 1;
 	else
 		ethpause.tx_pause = 0;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
 		ret = errno;
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_SPAUSEPARAM)"
 		     " failed: %s",
@@ -919,18 +896,19 @@ mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
 /**
  * Update the link status.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  *
  * @return
  *   Zero if the callback process can be called immediately.
  */
 static int
-priv_link_status_update(struct priv *priv)
+mlx5_link_status_update(struct rte_eth_dev *dev)
 {
-	struct rte_eth_link *link = &priv->dev->data->dev_link;
+	struct priv *priv = dev->data->dev_private;
+	struct rte_eth_link *link = &dev->data->dev_link;
 
-	priv_link_update(priv, 0);
+	mlx5_link_update(dev, 0);
 	if (((link->link_speed == 0) && link->link_status) ||
 		((link->link_speed != 0) && !link->link_status)) {
 		/*
@@ -955,8 +933,8 @@ priv_link_status_update(struct priv *priv)
 /**
  * Device status handler.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param events
  *   Pointer to event flags holder.
  *
@@ -964,8 +942,9 @@ priv_link_status_update(struct priv *priv)
  *   Events bitmap of callback process which can be called immediately.
  */
 static uint32_t
-priv_dev_status_handler(struct priv *priv)
+mlx5_dev_status_handler(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct ibv_async_event event;
 	uint32_t ret = 0;
 
@@ -975,10 +954,10 @@ priv_dev_status_handler(struct priv *priv)
 			break;
 		if ((event.event_type == IBV_EVENT_PORT_ACTIVE ||
 			event.event_type == IBV_EVENT_PORT_ERR) &&
-			(priv->dev->data->dev_conf.intr_conf.lsc == 1))
+			(dev->data->dev_conf.intr_conf.lsc == 1))
 			ret |= (1 << RTE_ETH_EVENT_INTR_LSC);
 		else if (event.event_type == IBV_EVENT_DEVICE_FATAL &&
-			priv->dev->data->dev_conf.intr_conf.rmv == 1)
+			dev->data->dev_conf.intr_conf.rmv == 1)
 			ret |= (1 << RTE_ETH_EVENT_INTR_RMV);
 		else
 			DEBUG("event type %d on port %d not handled",
@@ -986,7 +965,7 @@ priv_dev_status_handler(struct priv *priv)
 		mlx5_glue->ack_async_event(&event);
 	}
 	if (ret & (1 << RTE_ETH_EVENT_INTR_LSC))
-		if (priv_link_status_update(priv))
+		if (mlx5_link_status_update(dev))
 			ret &= ~(1 << RTE_ETH_EVENT_INTR_LSC);
 	return ret;
 }
@@ -1005,7 +984,7 @@ mlx5_dev_link_status_handler(void *arg)
 	int ret;
 
 	priv->pending_alarm = 0;
-	ret = priv_link_status_update(priv);
+	ret = mlx5_link_status_update(dev);
 	if (!ret)
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
@@ -1022,10 +1001,9 @@ void
 mlx5_dev_interrupt_handler(void *cb_arg)
 {
 	struct rte_eth_dev *dev = cb_arg;
-	struct priv *priv = dev->data->dev_private;
 	uint32_t events;
 
-	events = priv_dev_status_handler(priv);
+	events = mlx5_dev_status_handler(dev);
 	if (events & (1 << RTE_ETH_EVENT_INTR_LSC))
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	if (events & (1 << RTE_ETH_EVENT_INTR_RMV))
@@ -1042,22 +1020,21 @@ static void
 mlx5_dev_handler_socket(void *cb_arg)
 {
 	struct rte_eth_dev *dev = cb_arg;
-	struct priv *priv = dev->data->dev_private;
 
-	priv_socket_handle(priv);
+	mlx5_socket_handle(dev);
 }
 
 /**
  * Uninstall interrupt handler.
  *
- * @param priv
- *   Pointer to private structure.
  * @param dev
- *   Pointer to the rte_eth_dev structure.
+ *   Pointer to Ethernet device.
  */
 void
-priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
+mlx5_dev_interrupt_handler_uninstall(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
+
 	if (dev->data->dev_conf.intr_conf.lsc ||
 	    dev->data->dev_conf.intr_conf.rmv)
 		rte_intr_callback_unregister(&priv->intr_handle,
@@ -1078,14 +1055,13 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
 /**
  * Install interrupt handler.
  *
- * @param priv
- *   Pointer to private structure.
  * @param dev
- *   Pointer to the rte_eth_dev structure.
+ *   Pointer to Ethernet device.
  */
 void
-priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
+mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	int rc, flags;
 
 	assert(priv->ctx->async_fd > 0);
@@ -1103,30 +1079,13 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 		rte_intr_callback_register(&priv->intr_handle,
 					   mlx5_dev_interrupt_handler, dev);
 	}
-	rc = priv_socket_init(priv);
+	rc = mlx5_socket_init(dev);
 	if (!rc && priv->primary_socket) {
 		priv->intr_handle_socket.fd = priv->primary_socket;
 		priv->intr_handle_socket.type = RTE_INTR_HANDLE_EXT;
 		rte_intr_callback_register(&priv->intr_handle_socket,
 					   mlx5_dev_handler_socket, dev);
 	}
-}
-
-/**
- * Change the link state (UP / DOWN).
- *
- * @param priv
- *   Pointer to private data structure.
- * @param up
- *   Nonzero for link up, otherwise link down.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-priv_dev_set_link(struct priv *priv, int up)
-{
-	return priv_set_flags(priv, ~IFF_UP, up ? IFF_UP : ~IFF_UP);
 }
 
 /**
@@ -1141,11 +1100,7 @@ priv_dev_set_link(struct priv *priv, int up)
 int
 mlx5_set_link_down(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
-	int err;
-
-	err = priv_dev_set_link(priv, 0);
-	return err;
+	return mlx5_set_flags(dev, ~IFF_UP, ~IFF_UP);
 }
 
 /**
@@ -1160,27 +1115,22 @@ mlx5_set_link_down(struct rte_eth_dev *dev)
 int
 mlx5_set_link_up(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
-	int err;
-
-	err = priv_dev_set_link(priv, 1);
-	return err;
+	return mlx5_set_flags(dev, ~IFF_UP, IFF_UP);
 }
 
 /**
  * Configure the TX function to use.
  *
- * @param priv
- *   Pointer to private data structure.
  * @param dev
- *   Pointer to rte_eth_dev structure.
+ *   Pointer to private data structure.
  *
  * @return
  *   Pointer to selected Tx burst function.
  */
 eth_tx_burst_t
-priv_select_tx_function(struct priv *priv, struct rte_eth_dev *dev)
+mlx5_select_tx_function(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	eth_tx_burst_t tx_pkt_burst = mlx5_tx_burst;
 	struct mlx5_dev_config *config = &priv->config;
 	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
@@ -1194,8 +1144,8 @@ priv_select_tx_function(struct priv *priv, struct rte_eth_dev *dev)
 	if (vlan_insert || tso)
 		return tx_pkt_burst;
 	if (config->mps == MLX5_MPW_ENHANCED) {
-		if (priv_check_vec_tx_support(priv, dev) > 0) {
-			if (priv_check_raw_vec_tx_support(priv, dev) > 0)
+		if (mlx5_check_vec_tx_support(dev) > 0) {
+			if (mlx5_check_raw_vec_tx_support(dev) > 0)
 				tx_pkt_burst = mlx5_tx_burst_raw_vec;
 			else
 				tx_pkt_burst = mlx5_tx_burst_vec;
@@ -1217,21 +1167,19 @@ priv_select_tx_function(struct priv *priv, struct rte_eth_dev *dev)
 /**
  * Configure the RX function to use.
  *
- * @param priv
- *   Pointer to private data structure.
  * @param dev
- *   Pointer to rte_eth_dev structure.
+ *   Pointer to private data structure.
  *
  * @return
  *   Pointer to selected Rx burst function.
  */
 eth_rx_burst_t
-priv_select_rx_function(struct priv *priv, __rte_unused struct rte_eth_dev *dev)
+mlx5_select_rx_function(struct rte_eth_dev *dev)
 {
 	eth_rx_burst_t rx_pkt_burst = mlx5_rx_burst;
 
-	assert(priv != NULL);
-	if (priv_check_vec_rx_support(priv) > 0) {
+	assert(dev != NULL);
+	if (mlx5_check_vec_rx_support(dev) > 0) {
 		rx_pkt_burst = mlx5_rx_burst_vec;
 		DEBUG("selected RX vectorized function");
 	}

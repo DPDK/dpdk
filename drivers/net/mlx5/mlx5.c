@@ -169,8 +169,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
 	/* In case mlx5_dev_stop() has not been called. */
-	priv_dev_interrupt_handler_uninstall(priv, dev);
-	priv_dev_traffic_disable(priv, dev);
+	mlx5_dev_interrupt_handler_uninstall(dev);
+	mlx5_traffic_disable(dev);
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
@@ -178,7 +178,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		/* XXX race condition if mlx5_rx_burst() is still running. */
 		usleep(1000);
 		for (i = 0; (i != priv->rxqs_n); ++i)
-			mlx5_priv_rxq_release(priv, i);
+			mlx5_rxq_release(dev, i);
 		priv->rxqs_n = 0;
 		priv->rxqs = NULL;
 	}
@@ -186,7 +186,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		/* XXX race condition if mlx5_tx_burst() is still running. */
 		usleep(1000);
 		for (i = 0; (i != priv->txqs_n); ++i)
-			mlx5_priv_txq_release(priv, i);
+			mlx5_txq_release(dev, i);
 		priv->txqs_n = 0;
 		priv->txqs = NULL;
 	}
@@ -201,31 +201,31 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->reta_idx != NULL)
 		rte_free(priv->reta_idx);
 	if (priv->primary_socket)
-		priv_socket_uninit(priv);
-	ret = mlx5_priv_hrxq_ibv_verify(priv);
+		mlx5_socket_uninit(dev);
+	ret = mlx5_hrxq_ibv_verify(dev);
 	if (ret)
-		WARN("%p: some Hash Rx queue still remain", (void *)priv);
-	ret = mlx5_priv_ind_table_ibv_verify(priv);
+		WARN("%p: some Hash Rx queue still remain", (void *)dev);
+	ret = mlx5_ind_table_ibv_verify(dev);
 	if (ret)
-		WARN("%p: some Indirection table still remain", (void *)priv);
-	ret = mlx5_priv_rxq_ibv_verify(priv);
+		WARN("%p: some Indirection table still remain", (void *)dev);
+	ret = mlx5_rxq_ibv_verify(dev);
 	if (ret)
-		WARN("%p: some Verbs Rx queue still remain", (void *)priv);
-	ret = mlx5_priv_rxq_verify(priv);
+		WARN("%p: some Verbs Rx queue still remain", (void *)dev);
+	ret = mlx5_rxq_verify(dev);
 	if (ret)
-		WARN("%p: some Rx Queues still remain", (void *)priv);
-	ret = mlx5_priv_txq_ibv_verify(priv);
+		WARN("%p: some Rx Queues still remain", (void *)dev);
+	ret = mlx5_txq_ibv_verify(dev);
 	if (ret)
-		WARN("%p: some Verbs Tx queue still remain", (void *)priv);
-	ret = mlx5_priv_txq_verify(priv);
+		WARN("%p: some Verbs Tx queue still remain", (void *)dev);
+	ret = mlx5_txq_verify(dev);
 	if (ret)
-		WARN("%p: some Tx Queues still remain", (void *)priv);
-	ret = priv_flow_verify(priv);
+		WARN("%p: some Tx Queues still remain", (void *)dev);
+	ret = mlx5_flow_verify(dev);
 	if (ret)
-		WARN("%p: some flows still remain", (void *)priv);
-	ret = priv_mr_verify(priv);
+		WARN("%p: some flows still remain", (void *)dev);
+	ret = mlx5_mr_verify(dev);
 	if (ret)
-		WARN("%p: some Memory Region still remain", (void *)priv);
+		WARN("%p: some Memory Region still remain", (void *)dev);
 	memset(priv, 0, sizeof(*priv));
 }
 
@@ -466,15 +466,16 @@ static void *uar_base;
 /**
  * Reserve UAR address space for primary process.
  *
- * @param[in] priv
- *   Pointer to private structure.
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
-priv_uar_init_primary(struct priv *priv)
+mlx5_uar_init_primary(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	void *addr = (void *)0;
 	int i;
 	const struct rte_mem_config *mcfg;
@@ -516,15 +517,16 @@ priv_uar_init_primary(struct priv *priv)
  * Reserve UAR address space for secondary process, align with
  * primary process.
  *
- * @param[in] priv
- *   Pointer to private structure.
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
-priv_uar_init_secondary(struct priv *priv)
+mlx5_uar_init_secondary(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	void *addr;
 	int ret;
 
@@ -690,7 +692,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct ibv_port_attr port_attr;
 		struct ibv_pd *pd = NULL;
 		struct priv *priv = NULL;
-		struct rte_eth_dev *eth_dev;
+		struct rte_eth_dev *eth_dev = NULL;
 		struct ibv_device_attr_ex device_attr_ex;
 		struct ether_addr mac;
 		struct ibv_device_attr_ex device_attr;
@@ -721,20 +723,19 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			}
 			eth_dev->device = &pci_dev->device;
 			eth_dev->dev_ops = &mlx5_dev_sec_ops;
-			priv = eth_dev->data->dev_private;
-			err = priv_uar_init_secondary(priv);
+			err = mlx5_uar_init_secondary(eth_dev);
 			if (err < 0) {
 				err = -err;
 				goto error;
 			}
 			/* Receive command fd from primary process */
-			err = priv_socket_connect(priv);
+			err = mlx5_socket_connect(eth_dev);
 			if (err < 0) {
 				err = -err;
 				goto error;
 			}
 			/* Remap UAR for Tx queues. */
-			err = priv_tx_uar_remap(priv, err);
+			err = mlx5_tx_uar_remap(eth_dev, err);
 			if (err)
 				goto error;
 			/*
@@ -743,9 +744,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			 * secondary process.
 			 */
 			eth_dev->rx_pkt_burst =
-				priv_select_rx_function(priv, eth_dev);
+				mlx5_select_rx_function(eth_dev);
 			eth_dev->tx_pkt_burst =
-				priv_select_tx_function(priv, eth_dev);
+				mlx5_select_tx_function(eth_dev);
 			continue;
 		}
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
@@ -859,11 +860,23 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			WARN("Rx CQE compression isn't supported");
 			config.cqe_comp = 0;
 		}
-		err = priv_uar_init_primary(priv);
+		eth_dev = rte_eth_dev_allocate(name);
+		if (eth_dev == NULL) {
+			ERROR("can not allocate rte ethdev");
+			err = ENOMEM;
+			goto port_error;
+		}
+		eth_dev->data->dev_private = priv;
+		priv->dev = eth_dev;
+		eth_dev->data->mac_addrs = priv->mac;
+		eth_dev->device = &pci_dev->device;
+		rte_eth_copy_pci_info(eth_dev, pci_dev);
+		eth_dev->device->driver = &mlx5_driver.driver;
+		err = mlx5_uar_init_primary(eth_dev);
 		if (err)
 			goto port_error;
 		/* Configure the first MAC address by default. */
-		if (priv_get_mac(priv, &mac.addr_bytes)) {
+		if (mlx5_get_mac(eth_dev, &mac.addr_bytes)) {
 			ERROR("cannot get MAC address, is mlx5_en loaded?"
 			      " (errno: %s)", strerror(errno));
 			err = ENODEV;
@@ -878,7 +891,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		{
 			char ifname[IF_NAMESIZE];
 
-			if (priv_get_ifname(priv, &ifname) == 0)
+			if (mlx5_get_ifname(eth_dev, &ifname) == 0)
 				DEBUG("port %u ifname is \"%s\"",
 				      priv->port, ifname);
 			else
@@ -886,25 +899,13 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		}
 #endif
 		/* Get actual MTU if possible. */
-		priv_get_mtu(priv, &priv->mtu);
+		mlx5_get_mtu(eth_dev, &priv->mtu);
 		DEBUG("port %u MTU is %u", priv->port, priv->mtu);
-		eth_dev = rte_eth_dev_allocate(name);
-		if (eth_dev == NULL) {
-			ERROR("can not allocate rte ethdev");
-			err = ENOMEM;
-			goto port_error;
-		}
-		eth_dev->data->dev_private = priv;
-		eth_dev->data->mac_addrs = priv->mac;
-		eth_dev->device = &pci_dev->device;
-		rte_eth_copy_pci_info(eth_dev, pci_dev);
-		eth_dev->device->driver = &mlx5_driver.driver;
 		/*
 		 * Initialize burst functions to prevent crashes before link-up.
 		 */
 		eth_dev->rx_pkt_burst = removed_rx_burst;
 		eth_dev->tx_pkt_burst = removed_tx_burst;
-		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
 		/* Register MAC address. */
 		claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
@@ -919,10 +920,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		mlx5_glue->dv_set_context_attr(ctx,
 					       MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
 					       (void *)((uintptr_t)&alctr));
-
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
-		priv_set_flags(priv, ~IFF_UP, IFF_UP);
+		mlx5_set_flags(eth_dev, ~IFF_UP, IFF_UP);
 		/* Store device configuration on private structure. */
 		priv->config = config;
 		continue;

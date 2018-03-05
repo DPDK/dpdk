@@ -1962,27 +1962,25 @@ mlx5_rx_burst_vec(void *dpdk_txq __rte_unused,
 }
 
 int __attribute__((weak))
-priv_check_raw_vec_tx_support(struct priv *priv __rte_unused,
-			      struct rte_eth_dev *dev __rte_unused)
+mlx5_check_raw_vec_tx_support(struct rte_eth_dev *dev __rte_unused)
 {
 	return -ENOTSUP;
 }
 
 int __attribute__((weak))
-priv_check_vec_tx_support(struct priv *priv __rte_unused,
-			  struct rte_eth_dev *dev __rte_unused)
+mlx5_check_vec_tx_support(struct rte_eth_dev *dev __rte_unused)
 {
 	return -ENOTSUP;
 }
 
 int __attribute__((weak))
-rxq_check_vec_support(struct mlx5_rxq_data *rxq __rte_unused)
+mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq __rte_unused)
 {
 	return -ENOTSUP;
 }
 
 int __attribute__((weak))
-priv_check_vec_rx_support(struct priv *priv __rte_unused)
+mlx5_check_vec_rx_support(struct rte_eth_dev *dev __rte_unused)
 {
 	return -ENOTSUP;
 }

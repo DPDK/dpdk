@@ -18,15 +18,16 @@
 /**
  * Initialise the socket to communicate with the secondary process
  *
- * @param[in] priv
- *   Pointer to private structure.
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 int
-priv_socket_init(struct priv *priv)
+mlx5_socket_init(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct sockaddr_un sun = {
 		.sun_family = AF_UNIX,
 	};
@@ -79,15 +80,17 @@ out:
 /**
  * Un-Initialise the socket to communicate with the secondary process
  *
- * @param[in] priv
- *   Pointer to private structure.
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 int
-priv_socket_uninit(struct priv *priv)
+mlx5_socket_uninit(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
+
 	MKSTR(path, "/var/tmp/%s_%d", MLX5_DRIVER_NAME, priv->primary_socket);
 	claim_zero(close(priv->primary_socket));
 	priv->primary_socket = 0;
@@ -98,12 +101,13 @@ priv_socket_uninit(struct priv *priv)
 /**
  * Handle socket interrupts.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  */
 void
-priv_socket_handle(struct priv *priv)
+mlx5_socket_handle(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	int conn_sock;
 	int ret = 0;
 	struct cmsghdr *cmsg = NULL;
@@ -179,15 +183,16 @@ out:
 /**
  * Connect to the primary process.
  *
- * @param[in] priv
- *   Pointer to private structure.
+ * @param[in] dev
+ *   Pointer to Ethernet structure.
  *
  * @return
  *   fd on success, negative errno value on failure.
  */
 int
-priv_socket_connect(struct priv *priv)
+mlx5_socket_connect(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct sockaddr_un sun = {
 		.sun_family = AF_UNIX,
 	};

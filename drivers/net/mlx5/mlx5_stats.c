@@ -122,8 +122,8 @@ static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
 /**
  * Read device counters table.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param[out] stats
  *   Counters table output buffer.
  *
@@ -131,8 +131,9 @@ static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
  *   0 on success and stats is filled, negative on error.
  */
 static int
-priv_read_dev_counters(struct priv *priv, uint64_t *stats)
+mlx5_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	unsigned int i;
 	struct ifreq ifr;
@@ -143,7 +144,7 @@ priv_read_dev_counters(struct priv *priv, uint64_t *stats)
 	et_stats->cmd = ETHTOOL_GSTATS;
 	et_stats->n_stats = xstats_ctrl->stats_n;
 	ifr.ifr_data = (caddr_t)et_stats;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr) != 0) {
+	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr) != 0) {
 		WARN("unable to read statistic values from device");
 		return -1;
 	}
@@ -173,20 +174,20 @@ priv_read_dev_counters(struct priv *priv, uint64_t *stats)
 /**
  * Query the number of statistics provided by ETHTOOL.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  *
  * @return
  *   Number of statistics on success, -1 on error.
  */
 static int
-priv_ethtool_get_stats_n(struct priv *priv) {
+mlx5_ethtool_get_stats_n(struct rte_eth_dev *dev) {
 	struct ethtool_drvinfo drvinfo;
 	struct ifreq ifr;
 
 	drvinfo.cmd = ETHTOOL_GDRVINFO;
 	ifr.ifr_data = (caddr_t)&drvinfo;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr) != 0) {
+	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr) != 0) {
 		WARN("unable to query number of statistics");
 		return -1;
 	}
@@ -196,12 +197,13 @@ priv_ethtool_get_stats_n(struct priv *priv) {
 /**
  * Init the structures to read device counters.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  */
 void
-priv_xstats_init(struct priv *priv)
+mlx5_xstats_init(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	unsigned int i;
 	unsigned int j;
@@ -210,7 +212,7 @@ priv_xstats_init(struct priv *priv)
 	unsigned int dev_stats_n;
 	unsigned int str_sz;
 
-	dev_stats_n = priv_ethtool_get_stats_n(priv);
+	dev_stats_n = mlx5_ethtool_get_stats_n(dev);
 	if (dev_stats_n < 1) {
 		WARN("no extended statistics available");
 		return;
@@ -229,7 +231,7 @@ priv_xstats_init(struct priv *priv)
 	strings->string_set = ETH_SS_STATS;
 	strings->len = dev_stats_n;
 	ifr.ifr_data = (caddr_t)strings;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr) != 0) {
+	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr) != 0) {
 		WARN("unable to get statistic names");
 		goto free;
 	}
@@ -258,58 +260,52 @@ priv_xstats_init(struct priv *priv)
 	}
 	/* Copy to base at first time. */
 	assert(xstats_n <= MLX5_MAX_XSTATS);
-	priv_read_dev_counters(priv, xstats_ctrl->base);
+	mlx5_read_dev_counters(dev, xstats_ctrl->base);
 free:
 	rte_free(strings);
 }
 
 /**
- * Get device extended statistics.
+ * DPDK callback to get extended device statistics.
  *
- * @param priv
- *   Pointer to private structure.
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param[out] stats
  *   Pointer to rte extended stats table.
+ * @param n
+ *   The size of the stats table.
  *
  * @return
  *   Number of extended stats on success and stats is filled,
  *   negative on error.
  */
-static int
-priv_xstats_get(struct priv *priv, struct rte_eth_xstat *stats)
+int
+mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
+		unsigned int n)
 {
-	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
-	unsigned int n = xstats_n;
 	uint64_t counters[n];
+	int ret = 0;
 
-	if (priv_read_dev_counters(priv, counters) < 0)
-		return -1;
-	for (i = 0; i != xstats_n; ++i) {
-		stats[i].id = i;
-		stats[i].value = (counters[i] - xstats_ctrl->base[i]);
+	if (n >= xstats_n && stats) {
+		struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+		int stats_n;
+
+		stats_n = mlx5_ethtool_get_stats_n(dev);
+		if (stats_n < 0)
+			return -1;
+		if (xstats_ctrl->stats_n != stats_n)
+			mlx5_xstats_init(dev);
+		ret = mlx5_read_dev_counters(dev, counters);
+		if (ret)
+			return ret;
+		for (i = 0; i != xstats_n; ++i) {
+			stats[i].id = i;
+			stats[i].value = (counters[i] - xstats_ctrl->base[i]);
+		}
 	}
 	return n;
-}
-
-/**
- * Reset device extended statistics.
- *
- * @param priv
- *   Pointer to private structure.
- */
-static void
-priv_xstats_reset(struct priv *priv)
-{
-	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
-	unsigned int i;
-	unsigned int n = xstats_n;
-	uint64_t counters[n];
-
-	if (priv_read_dev_counters(priv, counters) < 0)
-		return;
-	for (i = 0; i != n; ++i)
-		xstats_ctrl->base[i] = counters[i];
 }
 
 /**
@@ -409,41 +405,6 @@ mlx5_stats_reset(struct rte_eth_dev *dev)
 }
 
 /**
- * DPDK callback to get extended device statistics.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param[out] stats
- *   Stats table output buffer.
- * @param n
- *   The size of the stats table.
- *
- * @return
- *   Number of xstats on success, negative on failure.
- */
-int
-mlx5_xstats_get(struct rte_eth_dev *dev,
-		struct rte_eth_xstat *stats, unsigned int n)
-{
-	struct priv *priv = dev->data->dev_private;
-	int ret = xstats_n;
-
-	if (n >= xstats_n && stats) {
-		struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
-		int stats_n;
-
-		stats_n = priv_ethtool_get_stats_n(priv);
-		if (stats_n < 0) {
-			return -1;
-		}
-		if (xstats_ctrl->stats_n != stats_n)
-			priv_xstats_init(priv);
-		ret = priv_xstats_get(priv, stats);
-	}
-	return ret;
-}
-
-/**
  * DPDK callback to clear device extended statistics.
  *
  * @param dev
@@ -455,13 +416,19 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	int stats_n;
+	unsigned int i;
+	unsigned int n = xstats_n;
+	uint64_t counters[n];
 
-	stats_n = priv_ethtool_get_stats_n(priv);
+	stats_n = mlx5_ethtool_get_stats_n(dev);
 	if (stats_n < 0)
 		return;
 	if (xstats_ctrl->stats_n != stats_n)
-		priv_xstats_init(priv);
-	priv_xstats_reset(priv);
+		mlx5_xstats_init(dev);
+	if (mlx5_read_dev_counters(dev, counters) < 0)
+		return;
+	for (i = 0; i != n; ++i)
+		xstats_ctrl->base[i] = counters[i];
 }
 
 /**
