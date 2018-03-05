@@ -91,7 +91,7 @@ mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
  *   Index of the next available entry.
  *
  * @return
- *   mr on success, NULL on failure.
+ *   mr on success, NULL on failure and rte_errno is set.
  */
 struct mlx5_mr *
 mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
@@ -115,6 +115,7 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 			      " rte_eth_dev_start()",
 			     (void *)mp, mp->name);
 			rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
+			rte_errno = ENOTSUP;
 			return NULL;
 		}
 		mr = mlx5_mr_new(dev, mp);
@@ -203,7 +204,9 @@ mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg)
 		mlx5_mr_release(mr);
 		return;
 	}
-	mlx5_mr_new(priv->dev, mp);
+	mr = mlx5_mr_new(priv->dev, mp);
+	if (!mr)
+		ERROR("cannot create memory region: %s", strerror(rte_errno));
 }
 
 /**
@@ -216,7 +219,7 @@ mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg)
  *   Pointer to the memory pool to register.
  *
  * @return
- *   The memory region on success.
+ *   The memory region on success, NULL on failure and rte_errno is set.
  */
 struct mlx5_mr *
 mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
@@ -231,11 +234,13 @@ mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
 	mr = rte_zmalloc_socket(__func__, sizeof(*mr), 0, mp->socket_id);
 	if (!mr) {
 		DEBUG("unable to configure MR, ibv_reg_mr() failed.");
+		rte_errno = ENOMEM;
 		return NULL;
 	}
 	if (mlx5_check_mempool(mp, &start, &end) != 0) {
 		ERROR("mempool %p: not virtually contiguous",
 		      (void *)mp);
+		rte_errno = ENOMEM;
 		return NULL;
 	}
 	DEBUG("mempool %p area start=%p end=%p size=%zu",
@@ -260,6 +265,10 @@ mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
 	      (size_t)(end - start));
 	mr->mr = mlx5_glue->reg_mr(priv->pd, (void *)start, end - start,
 				   IBV_ACCESS_LOCAL_WRITE);
+	if (!mr->mr) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
 	mr->mp = mp;
 	mr->lkey = rte_cpu_to_be_32(mr->mr->lkey);
 	rte_atomic32_inc(&mr->refcnt);

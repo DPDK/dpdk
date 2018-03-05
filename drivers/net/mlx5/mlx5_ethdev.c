@@ -101,7 +101,7 @@ struct ethtool_link_settings {
  *   Interface name output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
@@ -117,8 +117,10 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 		MKSTR(path, "%s/device/net", priv->ibdev_path);
 
 		dir = opendir(path);
-		if (dir == NULL)
-			return -1;
+		if (dir == NULL) {
+			rte_errno = errno;
+			return -rte_errno;
+		}
 	}
 	while ((dent = readdir(dir)) != NULL) {
 		char *name = dent->d_name;
@@ -168,8 +170,10 @@ try_dev_id:
 			snprintf(match, sizeof(match), "%s", name);
 	}
 	closedir(dir);
-	if (match[0] == '\0')
-		return -1;
+	if (match[0] == '\0') {
+		rte_errno = ENOENT;
+		return -rte_errno;
+	}
 	strncpy(*ifname, match, sizeof(*ifname));
 	return 0;
 }
@@ -185,20 +189,31 @@ try_dev_id:
  *   Interface request structure output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr)
 {
 	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-	int ret = -1;
+	int ret = 0;
 
-	if (sock == -1)
-		return ret;
-	if (mlx5_get_ifname(dev, &ifr->ifr_name) == 0)
-		ret = ioctl(sock, req, ifr);
+	if (sock == -1) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	ret = mlx5_get_ifname(dev, &ifr->ifr_name);
+	if (ret)
+		goto error;
+	ret = ioctl(sock, req, ifr);
+	if (ret == -1) {
+		rte_errno = errno;
+		goto error;
+	}
 	close(sock);
-	return ret;
+	return 0;
+error:
+	close(sock);
+	return -rte_errno;
 }
 
 /**
@@ -210,7 +225,7 @@ mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr)
  *   MTU value output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu)
@@ -233,7 +248,7 @@ mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu)
  *   MTU value to set.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
@@ -254,7 +269,7 @@ mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
  *   Bitmask for flags to modify.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep, unsigned int flags)
@@ -276,7 +291,7 @@ mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep, unsigned int flags)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_dev_configure(struct rte_eth_dev *dev)
@@ -295,31 +310,36 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		(mlx5_get_rx_port_offloads() |
 		 mlx5_get_rx_queue_offloads(dev));
 	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	int ret = 0;
 
 	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
 		ERROR("Some Tx offloads are not supported "
 		      "requested 0x%" PRIx64 " supported 0x%" PRIx64,
 		      tx_offloads, supp_tx_offloads);
-		return ENOTSUP;
+		rte_errno = ENOTSUP;
+		return -rte_errno;
 	}
 	if ((rx_offloads & supp_rx_offloads) != rx_offloads) {
 		ERROR("Some Rx offloads are not supported "
 		      "requested 0x%" PRIx64 " supported 0x%" PRIx64,
 		      rx_offloads, supp_rx_offloads);
-		return ENOTSUP;
+		rte_errno = ENOTSUP;
+		return -rte_errno;
 	}
 	if (use_app_rss_key &&
 	    (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len !=
 	     rss_hash_default_key_len)) {
 		/* MLX5 RSS only support 40bytes key. */
-		return EINVAL;
+		rte_errno = EINVAL;
+		return -rte_errno;
 	}
 	priv->rss_conf.rss_key =
 		rte_realloc(priv->rss_conf.rss_key,
 			    rss_hash_default_key_len, 0);
 	if (!priv->rss_conf.rss_key) {
 		ERROR("cannot allocate RSS hash key memory (%u)", rxqs_n);
-		return ENOMEM;
+		rte_errno = ENOMEM;
+		return -rte_errno;
 	}
 	memcpy(priv->rss_conf.rss_key,
 	       use_app_rss_key ?
@@ -337,7 +357,8 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	}
 	if (rxqs_n > priv->config.ind_table_max_size) {
 		ERROR("cannot handle this many RX queues (%u)", rxqs_n);
-		return EINVAL;
+		rte_errno = EINVAL;
+		return -rte_errno;
 	}
 	if (rxqs_n == priv->rxqs_n)
 		return 0;
@@ -350,8 +371,9 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	reta_idx_n = (1 << log2above((rxqs_n & (rxqs_n - 1)) ?
 				     priv->config.ind_table_max_size :
 				     rxqs_n));
-	if (mlx5_rss_reta_index_resize(dev, reta_idx_n))
-		return ENOMEM;
+	ret = mlx5_rss_reta_index_resize(dev, reta_idx_n);
+	if (ret)
+		return ret;
 	/* When the number of RX queues is not a power of two, the remaining
 	 * table entries are padded with reused WQs and hashes are not spread
 	 * uniformly. */
@@ -361,7 +383,6 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 			j = 0;
 	}
 	return 0;
-
 }
 
 /**
@@ -452,7 +473,7 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, -1 on error.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
@@ -464,19 +485,22 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
 	struct ifreq ifr;
 	struct rte_eth_link dev_link;
 	int link_speed = 0;
+	int ret;
 
-	if (mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr)) {
-		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
-		return -1;
+	ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr);
+	if (ret) {
+		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(rte_errno));
+		return ret;
 	}
 	memset(&dev_link, 0, sizeof(dev_link));
 	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
 				(ifr.ifr_flags & IFF_RUNNING));
 	ifr.ifr_data = (void *)&edata;
-	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
-		     strerror(errno));
-		return -1;
+		     strerror(rte_errno));
+		return ret;
 	}
 	link_speed = ethtool_cmd_speed(&edata);
 	if (link_speed == -1)
@@ -506,7 +530,8 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
 		return 0;
 	}
 	/* Link status is still the same. */
-	return -1;
+	rte_errno = EAGAIN;
+	return -rte_errno;
 }
 
 /**
@@ -516,7 +541,7 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, -1 on error.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
@@ -526,19 +551,22 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 	struct ifreq ifr;
 	struct rte_eth_link dev_link;
 	uint64_t sc;
+	int ret;
 
-	if (mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr)) {
-		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
-		return -1;
+	ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr);
+	if (ret) {
+		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(rte_errno));
+		return ret;
 	}
 	memset(&dev_link, 0, sizeof(dev_link));
 	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
 				(ifr.ifr_flags & IFF_RUNNING));
 	ifr.ifr_data = (void *)&gcmd;
-	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
 		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
-		      strerror(errno));
-		return -1;
+		      strerror(rte_errno));
+		return ret;
 	}
 	gcmd.link_mode_masks_nwords = -gcmd.link_mode_masks_nwords;
 
@@ -549,10 +577,11 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 
 	*ecmd = gcmd;
 	ifr.ifr_data = (void *)ecmd;
-	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
 		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
-		      strerror(errno));
-		return -1;
+		      strerror(rte_errno));
+		return ret;
 	}
 	dev_link.link_speed = ecmd->speed;
 	sc = ecmd->link_mode_masks[0] |
@@ -602,7 +631,8 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 		return 0;
 	}
 	/* Link status is still the same. */
-	return -1;
+	rte_errno = EAGAIN;
+	return -rte_errno;
 }
 
 /**
@@ -615,18 +645,21 @@ static void
 mlx5_link_start(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
-	int err;
+	int ret;
 
 	dev->tx_pkt_burst = mlx5_select_tx_function(dev);
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
-	err = mlx5_traffic_enable(dev);
-	if (err)
+	ret = mlx5_traffic_enable(dev);
+	if (ret) {
 		ERROR("%p: error occurred while configuring control flows: %s",
-		      (void *)dev, strerror(err));
-	err = mlx5_flow_start(dev, &priv->flows);
-	if (err)
+		      (void *)dev, strerror(rte_errno));
+		return;
+	}
+	ret = mlx5_flow_start(dev, &priv->flows);
+	if (ret) {
 		ERROR("%p: error occurred while configuring flows: %s",
-		      (void *)dev, strerror(err));
+		      (void *)dev, strerror(rte_errno));
+	}
 }
 
 /**
@@ -656,7 +689,7 @@ mlx5_link_stop(struct rte_eth_dev *dev)
  *   Link desired status.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_force_link_status_change(struct rte_eth_dev *dev, int status)
@@ -670,7 +703,8 @@ mlx5_force_link_status_change(struct rte_eth_dev *dev, int status)
 		try++;
 		sleep(1);
 	}
-	return -EAGAIN;
+	rte_errno = EAGAIN;
+	return -rte_errno;
 }
 
 /**
@@ -682,7 +716,7 @@ mlx5_force_link_status_change(struct rte_eth_dev *dev, int status)
  *   Wait for request completion (ignored).
  *
  * @return
- *   0 on success, -1 on error.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
@@ -699,10 +733,12 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 		ret = mlx5_link_update_unlocked_gset(dev);
 	else
 		ret = mlx5_link_update_unlocked_gs(dev);
+	if (ret)
+		return ret;
 	/* If lsc interrupt is disabled, should always be ready for traffic. */
 	if (!dev->data->dev_conf.intr_conf.lsc) {
 		mlx5_link_start(dev);
-		return ret;
+		return 0;
 	}
 	/* Re-select burst callbacks only if link status has been changed. */
 	if (!ret && dev_link.link_status != dev->data->dev_link.link_status) {
@@ -711,7 +747,7 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 		else
 			mlx5_link_stop(dev);
 	}
-	return ret;
+	return 0;
 }
 
 /**
@@ -723,36 +759,32 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
  *   New MTU.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct priv *priv = dev->data->dev_private;
-	uint16_t kern_mtu;
-	int ret = 0;
+	uint16_t kern_mtu = 0;
+	int ret;
 
 	ret = mlx5_get_mtu(dev, &kern_mtu);
 	if (ret)
-		goto out;
+		return ret;
 	/* Set kernel interface MTU first. */
 	ret = mlx5_set_mtu(dev, mtu);
 	if (ret)
-		goto out;
+		return ret;
 	ret = mlx5_get_mtu(dev, &kern_mtu);
 	if (ret)
-		goto out;
+		return ret;
 	if (kern_mtu == mtu) {
 		priv->mtu = mtu;
 		DEBUG("adapter port %u MTU set to %u", priv->port, mtu);
+		return 0;
 	}
-	return 0;
-out:
-	ret = errno;
-	WARN("cannot set port %u MTU to %u: %s", priv->port, mtu,
-	     strerror(ret));
-	assert(ret >= 0);
-	return -ret;
+	rte_errno = EAGAIN;
+	return -rte_errno;
 }
 
 /**
@@ -764,7 +796,7 @@ out:
  *   Flow control output buffer.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
@@ -776,11 +808,11 @@ mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	int ret;
 
 	ifr.ifr_data = (void *)&ethpause;
-	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
-		ret = errno;
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM) failed: %s",
-		     strerror(ret));
-		goto out;
+		     strerror(rte_errno));
+		return ret;
 	}
 	fc_conf->autoneg = ethpause.autoneg;
 	if (ethpause.rx_pause && ethpause.tx_pause)
@@ -791,10 +823,7 @@ mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		fc_conf->mode = RTE_FC_TX_PAUSE;
 	else
 		fc_conf->mode = RTE_FC_NONE;
-	ret = 0;
-out:
-	assert(ret >= 0);
-	return -ret;
+	return 0;
 }
 
 /**
@@ -806,7 +835,7 @@ out:
  *   Flow control parameters.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
@@ -830,17 +859,14 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		ethpause.tx_pause = 1;
 	else
 		ethpause.tx_pause = 0;
-	if (mlx5_ifreq(dev, SIOCETHTOOL, &ifr)) {
-		ret = errno;
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_SPAUSEPARAM)"
 		     " failed: %s",
-		     strerror(ret));
-		goto out;
+		     strerror(rte_errno));
+		return ret;
 	}
-	ret = 0;
-out:
-	assert(ret >= 0);
-	return -ret;
+	return 0;
 }
 
 /**
@@ -852,7 +878,7 @@ out:
  *   PCI bus address output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
@@ -863,8 +889,10 @@ mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
 	MKSTR(path, "%s/device/uevent", device->ibdev_path);
 
 	file = fopen(path, "rb");
-	if (file == NULL)
-		return -1;
+	if (file == NULL) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
 	while (fgets(line, sizeof(line), file) == line) {
 		size_t len = strlen(line);
 		int ret;
@@ -900,15 +928,19 @@ mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
  *   Pointer to Ethernet device.
  *
  * @return
- *   Zero if the callback process can be called immediately.
+ *   Zero if the callback process can be called immediately, negative errno
+ *   value otherwise and rte_errno is set.
  */
 static int
 mlx5_link_status_update(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct rte_eth_link *link = &dev->data->dev_link;
+	int ret;
 
-	mlx5_link_update(dev, 0);
+	ret = mlx5_link_update(dev, 0);
+	if (ret)
+		return ret;
 	if (((link->link_speed == 0) && link->link_status) ||
 		((link->link_speed != 0) && !link->link_status)) {
 		/*
@@ -1062,12 +1094,13 @@ void
 mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
-	int rc, flags;
+	int ret;
+	int flags;
 
 	assert(priv->ctx->async_fd > 0);
 	flags = fcntl(priv->ctx->async_fd, F_GETFL);
-	rc = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
-	if (rc < 0) {
+	ret = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret) {
 		INFO("failed to change file descriptor async event queue");
 		dev->data->dev_conf.intr_conf.lsc = 0;
 		dev->data->dev_conf.intr_conf.rmv = 0;
@@ -1079,8 +1112,10 @@ mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 		rte_intr_callback_register(&priv->intr_handle,
 					   mlx5_dev_interrupt_handler, dev);
 	}
-	rc = mlx5_socket_init(dev);
-	if (!rc && priv->primary_socket) {
+	ret = mlx5_socket_init(dev);
+	if (ret)
+		ERROR("cannot initialise socket: %s", strerror(rte_errno));
+	else if (priv->primary_socket) {
 		priv->intr_handle_socket.fd = priv->primary_socket;
 		priv->intr_handle_socket.type = RTE_INTR_HANDLE_EXT;
 		rte_intr_callback_register(&priv->intr_handle_socket,
@@ -1095,7 +1130,7 @@ mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_set_link_down(struct rte_eth_dev *dev)
@@ -1110,7 +1145,7 @@ mlx5_set_link_down(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_set_link_up(struct rte_eth_dev *dev)

@@ -22,7 +22,7 @@
  *   Pointer to Ethernet device.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_socket_init(struct rte_eth_dev *dev)
@@ -41,16 +41,21 @@ mlx5_socket_init(struct rte_eth_dev *dev)
 	 */
 	ret = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ret < 0) {
+		rte_errno = errno;
 		WARN("secondary process not supported: %s", strerror(errno));
-		return ret;
+		goto error;
 	}
 	priv->primary_socket = ret;
 	flags = fcntl(priv->primary_socket, F_GETFL, 0);
-	if (flags == -1)
-		goto out;
+	if (flags == -1) {
+		rte_errno = errno;
+		goto error;
+	}
 	ret = fcntl(priv->primary_socket, F_SETFL, flags | O_NONBLOCK);
-	if (ret < 0)
-		goto out;
+	if (ret < 0) {
+		rte_errno = errno;
+		goto error;
+	}
 	snprintf(sun.sun_path, sizeof(sun.sun_path), "/var/tmp/%s_%d",
 		 MLX5_DRIVER_NAME, priv->primary_socket);
 	ret = stat(sun.sun_path, &file_stat);
@@ -59,29 +64,30 @@ mlx5_socket_init(struct rte_eth_dev *dev)
 	ret = bind(priv->primary_socket, (const struct sockaddr *)&sun,
 		   sizeof(sun));
 	if (ret < 0) {
+		rte_errno = errno;
 		WARN("cannot bind socket, secondary process not supported: %s",
 		     strerror(errno));
 		goto close;
 	}
 	ret = listen(priv->primary_socket, 0);
 	if (ret < 0) {
+		rte_errno = errno;
 		WARN("Secondary process not supported: %s", strerror(errno));
 		goto close;
 	}
-	return ret;
+	return 0;
 close:
 	remove(sun.sun_path);
-out:
+error:
 	claim_zero(close(priv->primary_socket));
 	priv->primary_socket = 0;
-	return -(ret);
+	return -rte_errno;
 }
 
 /**
  * Un-Initialise the socket to communicate with the secondary process
  *
  * @param[in] dev
- *   Pointer to Ethernet device.
  */
 void
 mlx5_socket_uninit(struct rte_eth_dev *dev)
@@ -131,19 +137,21 @@ mlx5_socket_handle(struct rte_eth_dev *dev)
 	ret = setsockopt(conn_sock, SOL_SOCKET, SO_PASSCRED, &(int){1},
 					 sizeof(int));
 	if (ret < 0) {
-		WARN("cannot change socket options");
-		goto out;
+		ret = errno;
+		WARN("cannot change socket options: %s", strerror(rte_errno));
+		goto error;
 	}
 	ret = recvmsg(conn_sock, &msg, MSG_WAITALL);
 	if (ret < 0) {
-		WARN("received an empty message: %s", strerror(errno));
-		goto out;
+		ret = errno;
+		WARN("received an empty message: %s", strerror(rte_errno));
+		goto error;
 	}
 	/* Expect to receive credentials only. */
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (cmsg == NULL) {
 		WARN("no message");
-		goto out;
+		goto error;
 	}
 	if ((cmsg->cmsg_type == SCM_CREDENTIALS) &&
 		(cmsg->cmsg_len >= sizeof(*cred))) {
@@ -153,13 +161,13 @@ mlx5_socket_handle(struct rte_eth_dev *dev)
 	cmsg = CMSG_NXTHDR(&msg, cmsg);
 	if (cmsg != NULL) {
 		WARN("Message wrongly formatted");
-		goto out;
+		goto error;
 	}
 	/* Make sure all the ancillary data was received and valid. */
 	if ((cred == NULL) || (cred->uid != getuid()) ||
 	    (cred->gid != getgid())) {
 		WARN("wrong credentials");
-		goto out;
+		goto error;
 	}
 	/* Set-up the ancillary data. */
 	cmsg = CMSG_FIRSTHDR(&msg);
@@ -172,7 +180,7 @@ mlx5_socket_handle(struct rte_eth_dev *dev)
 	ret = sendmsg(conn_sock, &msg, 0);
 	if (ret < 0)
 		WARN("cannot send response");
-out:
+error:
 	close(conn_sock);
 }
 
@@ -183,7 +191,7 @@ out:
  *   Pointer to Ethernet structure.
  *
  * @return
- *   fd on success, negative errno value on failure.
+ *   fd on success, negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_socket_connect(struct rte_eth_dev *dev)
@@ -192,7 +200,7 @@ mlx5_socket_connect(struct rte_eth_dev *dev)
 	struct sockaddr_un sun = {
 		.sun_family = AF_UNIX,
 	};
-	int socket_fd;
+	int socket_fd = -1;
 	int *fd = NULL;
 	int ret;
 	struct ucred *cred;
@@ -212,57 +220,67 @@ mlx5_socket_connect(struct rte_eth_dev *dev)
 
 	ret = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ret < 0) {
+		rte_errno = errno;
 		WARN("cannot connect to primary");
-		return ret;
+		goto error;
 	}
 	socket_fd = ret;
 	snprintf(sun.sun_path, sizeof(sun.sun_path), "/var/tmp/%s_%d",
 		 MLX5_DRIVER_NAME, priv->primary_socket);
 	ret = connect(socket_fd, (const struct sockaddr *)&sun, sizeof(sun));
 	if (ret < 0) {
+		rte_errno = errno;
 		WARN("cannot connect to primary");
-		goto out;
+		goto error;
 	}
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (cmsg == NULL) {
+		rte_errno = EINVAL;
 		DEBUG("cannot get first message");
-		goto out;
+		goto error;
 	}
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_CREDENTIALS;
 	cmsg->cmsg_len = CMSG_LEN(sizeof(*cred));
 	cred = (struct ucred *)CMSG_DATA(cmsg);
 	if (cred == NULL) {
+		rte_errno = EINVAL;
 		DEBUG("no credentials received");
-		goto out;
+		goto error;
 	}
 	cred->pid = getpid();
 	cred->uid = getuid();
 	cred->gid = getgid();
 	ret = sendmsg(socket_fd, &msg, MSG_DONTWAIT);
 	if (ret < 0) {
+		rte_errno = errno;
 		WARN("cannot send credentials to primary: %s",
 		     strerror(errno));
-		goto out;
+		goto error;
 	}
 	ret = recvmsg(socket_fd, &msg, MSG_WAITALL);
 	if (ret <= 0) {
+		rte_errno = errno;
 		WARN("no message from primary: %s", strerror(errno));
-		goto out;
+		goto error;
 	}
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (cmsg == NULL) {
+		rte_errno = EINVAL;
 		WARN("No file descriptor received");
-		goto out;
+		goto error;
 	}
 	fd = (int *)CMSG_DATA(cmsg);
-	if (*fd <= 0) {
+	if (*fd < 0) {
 		WARN("no file descriptor received: %s", strerror(errno));
-		ret = *fd;
-		goto out;
+		rte_errno = *fd;
+		goto error;
 	}
 	ret = *fd;
-out:
 	close(socket_fd);
-	return ret;
+	return 0;
+error:
+	if (socket_fd != -1)
+		close(socket_fd);
+	return -rte_errno;
 }

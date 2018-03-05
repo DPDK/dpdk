@@ -108,7 +108,7 @@ mlx5_getenv_int(const char *name)
  *   A pointer to the callback data.
  *
  * @return
- *   a pointer to the allocate space.
+ *   Allocated buffer, NULL otherwise and rte_errno is set.
  */
 static void *
 mlx5_alloc_verbs_buf(size_t size, void *data)
@@ -130,6 +130,8 @@ mlx5_alloc_verbs_buf(size_t size, void *data)
 	}
 	assert(data != NULL);
 	ret = rte_malloc_socket(__func__, size, alignment, socket);
+	if (!ret && size)
+		rte_errno = ENOMEM;
 	DEBUG("Extern alloc size: %lu, align: %lu: %p", size, alignment, ret);
 	return ret;
 }
@@ -365,7 +367,7 @@ mlx5_dev_idx(struct rte_pci_addr *pci_addr)
  *   User data.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_args_check(const char *key, const char *val, void *opaque)
@@ -376,8 +378,9 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	errno = 0;
 	tmp = strtoul(val, NULL, 0);
 	if (errno) {
+		rte_errno = errno;
 		WARN("%s: \"%s\" is not a valid integer", key, val);
-		return errno;
+		return -rte_errno;
 	}
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
 		config->cqe_comp = !!tmp;
@@ -397,7 +400,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->rx_vec_en = !!tmp;
 	} else {
 		WARN("%s: unknown parameter", key);
-		return -EINVAL;
+		rte_errno = EINVAL;
+		return -rte_errno;
 	}
 	return 0;
 }
@@ -411,7 +415,7 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
  *   Device arguments structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
@@ -442,9 +446,10 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		if (rte_kvargs_count(kvlist, params[i])) {
 			ret = rte_kvargs_process(kvlist, params[i],
 						 mlx5_args_check, config);
-			if (ret != 0) {
+			if (ret) {
+				rte_errno = EINVAL;
 				rte_kvargs_free(kvlist);
-				return ret;
+				return -rte_errno;
 			}
 		}
 	}
@@ -470,7 +475,7 @@ static void *uar_base;
  *   Pointer to Ethernet device.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_uar_init_primary(struct rte_eth_dev *dev)
@@ -479,7 +484,6 @@ mlx5_uar_init_primary(struct rte_eth_dev *dev)
 	void *addr = (void *)0;
 	int i;
 	const struct rte_mem_config *mcfg;
-	int ret;
 
 	if (uar_base) { /* UAR address space mapped. */
 		priv->uar_base = uar_base;
@@ -501,8 +505,8 @@ mlx5_uar_init_primary(struct rte_eth_dev *dev)
 	if (addr == MAP_FAILED) {
 		ERROR("Failed to reserve UAR address space, please adjust "
 		      "MLX5_UAR_SIZE or try --base-virtaddr");
-		ret = ENOMEM;
-		return ret;
+		rte_errno = ENOMEM;
+		return -rte_errno;
 	}
 	/* Accept either same addr or a new addr returned from mmap if target
 	 * range occupied.
@@ -521,14 +525,13 @@ mlx5_uar_init_primary(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_uar_init_secondary(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	void *addr;
-	int ret;
 
 	assert(priv->uar_base);
 	if (uar_base) { /* already reserved. */
@@ -541,15 +544,15 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
 	if (addr == MAP_FAILED) {
 		ERROR("UAR mmap failed: %p size: %llu",
 		      priv->uar_base, MLX5_UAR_SIZE);
-		ret = ENXIO;
-		return ret;
+		rte_errno = ENXIO;
+		return -rte_errno;
 	}
 	if (priv->uar_base != addr) {
 		ERROR("UAR address %p size %llu occupied, please adjust "
 		      "MLX5_UAR_OFFSET or try EAL parameter --base-virtaddr",
 		      priv->uar_base, MLX5_UAR_SIZE);
-		ret = ENXIO;
-		return ret;
+		rte_errno = ENXIO;
+		return -rte_errno;
 	}
 	uar_base = addr; /* process local, don't reserve again */
 	INFO("Reserved UAR address space: %p", addr);
@@ -568,13 +571,13 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
  *   PCI device information.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	       struct rte_pci_device *pci_dev)
 {
-	struct ibv_device **list;
+	struct ibv_device **list = NULL;
 	struct ibv_device *ibv_dev;
 	int err = 0;
 	struct ibv_context *attr_ctx = NULL;
@@ -594,7 +597,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	idx = mlx5_dev_idx(&pci_dev->addr);
 	if (idx == -1) {
 		ERROR("this driver cannot support any more adapters");
-		return -ENOMEM;
+		err = ENOMEM;
+		goto error;
 	}
 	DEBUG("using driver device index %d", idx);
 	/* Save PCI address. */
@@ -602,9 +606,10 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	list = mlx5_glue->get_device_list(&i);
 	if (list == NULL) {
 		assert(errno);
+		err = errno;
 		if (errno == ENOSYS)
 			ERROR("cannot list devices, is ib_uverbs loaded?");
-		return -errno;
+		goto error;
 	}
 	assert(i >= 0);
 	/*
@@ -626,7 +631,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		INFO("PCI information matches, using device \"%s\"",
 		     list[i]->name);
 		attr_ctx = mlx5_glue->open_device(list[i]);
-		err = errno;
+		rte_errno = errno;
+		err = rte_errno;
 		break;
 	}
 	if (attr_ctx == NULL) {
@@ -634,13 +640,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		switch (err) {
 		case 0:
 			ERROR("cannot access device, is mlx5_ib loaded?");
-			return -ENODEV;
+			err = ENODEV;
+			goto error;
 		case EINVAL:
 			ERROR("cannot use device, are drivers up to date?");
-			return -EINVAL;
+			goto error;
 		}
-		assert(err > 0);
-		return -err;
 	}
 	ibv_dev = list[i];
 	DEBUG("device opened");
@@ -680,8 +685,10 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 #else
 	WARN("Tunnel offloading disabled due to old OFED/rdma-core version");
 #endif
-	if (mlx5_glue->query_device_ex(attr_ctx, NULL, &device_attr))
+	if (mlx5_glue->query_device_ex(attr_ctx, NULL, &device_attr)) {
+		err = errno;
 		goto error;
+	}
 	INFO("%u port(s) detected", device_attr.orig_attr.phys_port_cnt);
 	for (i = 0; i < device_attr.orig_attr.phys_port_cnt; i++) {
 		char name[RTE_ETH_NAME_MAX_LEN];
@@ -718,22 +725,19 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			eth_dev = rte_eth_dev_attach_secondary(name);
 			if (eth_dev == NULL) {
 				ERROR("can not attach rte ethdev");
-				err = ENOMEM;
+				rte_errno = ENOMEM;
+				err = rte_errno;
 				goto error;
 			}
 			eth_dev->device = &pci_dev->device;
 			eth_dev->dev_ops = &mlx5_dev_sec_ops;
 			err = mlx5_uar_init_secondary(eth_dev);
-			if (err < 0) {
-				err = -err;
+			if (err)
 				goto error;
-			}
 			/* Receive command fd from primary process */
 			err = mlx5_socket_connect(eth_dev);
-			if (err < 0) {
-				err = -err;
+			if (err)
 				goto error;
-			}
 			/* Remap UAR for Tx queues. */
 			err = mlx5_tx_uar_remap(eth_dev, err);
 			if (err)
@@ -804,6 +808,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		}
 		if (mlx5_glue->query_device_ex(ctx, NULL, &device_attr_ex)) {
 			ERROR("ibv_query_device_ex() failed");
+			err = errno;
 			goto port_error;
 		}
 		config.hw_csum = !!(device_attr_ex.device_cap_flags_ex &
@@ -899,7 +904,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		}
 #endif
 		/* Get actual MTU if possible. */
-		mlx5_get_mtu(eth_dev, &priv->mtu);
+		err = mlx5_get_mtu(eth_dev, &priv->mtu);
+		if (err)
+			goto port_error;
 		DEBUG("port %u MTU is %u", priv->port, priv->mtu);
 		/*
 		 * Initialize burst functions to prevent crashes before link-up.
@@ -943,16 +950,19 @@ port_error:
 	 */
 	/* no port found, complain */
 	if (!mlx5_dev[idx].ports) {
-		err = ENODEV;
-		goto error;
+		rte_errno = ENODEV;
+		err = rte_errno;
 	}
 error:
 	if (attr_ctx)
 		claim_zero(mlx5_glue->close_device(attr_ctx));
 	if (list)
 		mlx5_glue->free_device_list(list);
-	assert(err >= 0);
-	return -err;
+	if (err) {
+		rte_errno = err;
+		return -rte_errno;
+	}
+	return 0;
 }
 
 static const struct rte_pci_id mlx5_pci_id_map[] = {

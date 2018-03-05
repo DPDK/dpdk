@@ -35,33 +35,31 @@
  *   RSS configuration data.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_rss_hash_update(struct rte_eth_dev *dev,
 		     struct rte_eth_rss_conf *rss_conf)
 {
 	struct priv *priv = dev->data->dev_private;
-	int ret = 0;
 
 	if (rss_conf->rss_hf & MLX5_RSS_HF_MASK) {
-		ret = -EINVAL;
-		goto out;
+		rte_errno = EINVAL;
+		return -rte_errno;
 	}
 	if (rss_conf->rss_key && rss_conf->rss_key_len) {
 		priv->rss_conf.rss_key = rte_realloc(priv->rss_conf.rss_key,
 						     rss_conf->rss_key_len, 0);
 		if (!priv->rss_conf.rss_key) {
-			ret = -ENOMEM;
-			goto out;
+			rte_errno = ENOMEM;
+			return -rte_errno;
 		}
 		memcpy(priv->rss_conf.rss_key, rss_conf->rss_key,
 		       rss_conf->rss_key_len);
 		priv->rss_conf.rss_key_len = rss_conf->rss_key_len;
 	}
 	priv->rss_conf.rss_hf = rss_conf->rss_hf;
-out:
-	return ret;
+	return 0;
 }
 
 /**
@@ -73,7 +71,7 @@ out:
  *   RSS configuration data.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_rss_hash_conf_get(struct rte_eth_dev *dev,
@@ -81,8 +79,10 @@ mlx5_rss_hash_conf_get(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 
-	if (!rss_conf)
-		return -EINVAL;
+	if (!rss_conf) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	if (rss_conf->rss_key &&
 	    (rss_conf->rss_key_len >= priv->rss_conf.rss_key_len)) {
 		memcpy(rss_conf->rss_key, priv->rss_conf.rss_key,
@@ -102,7 +102,7 @@ mlx5_rss_hash_conf_get(struct rte_eth_dev *dev,
  *   The size of the array to allocate.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_rss_reta_index_resize(struct rte_eth_dev *dev, unsigned int reta_size)
@@ -116,8 +116,10 @@ mlx5_rss_reta_index_resize(struct rte_eth_dev *dev, unsigned int reta_size)
 
 	mem = rte_realloc(priv->reta_idx,
 			  reta_size * sizeof((*priv->reta_idx)[0]), 0);
-	if (!mem)
-		return ENOMEM;
+	if (!mem) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
 	priv->reta_idx = mem;
 	priv->reta_idx_n = reta_size;
 	if (old_size < reta_size)
@@ -138,7 +140,7 @@ mlx5_rss_reta_index_resize(struct rte_eth_dev *dev, unsigned int reta_size)
  *   Size of the RETA table.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_dev_rss_reta_query(struct rte_eth_dev *dev,
@@ -149,8 +151,10 @@ mlx5_dev_rss_reta_query(struct rte_eth_dev *dev,
 	unsigned int idx;
 	unsigned int i;
 
-	if (!reta_size || reta_size > priv->reta_idx_n)
-		return -EINVAL;
+	if (!reta_size || reta_size > priv->reta_idx_n) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	/* Fill each entry of the table even if its bit is not set. */
 	for (idx = 0, i = 0; (i != reta_size); ++i) {
 		idx = i / RTE_RETA_GROUP_SIZE;
@@ -171,7 +175,7 @@ mlx5_dev_rss_reta_query(struct rte_eth_dev *dev,
  *   Size of the RETA table.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
@@ -184,8 +188,10 @@ mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
 	unsigned int i;
 	unsigned int pos;
 
-	if (!reta_size)
-		return -EINVAL;
+	if (!reta_size) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	ret = mlx5_rss_reta_index_resize(dev, reta_size);
 	if (ret)
 		return ret;
@@ -199,7 +205,7 @@ mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
 	}
 	if (dev->data->dev_started) {
 		mlx5_dev_stop(dev);
-		mlx5_dev_start(dev);
+		return mlx5_dev_start(dev);
 	}
-	return -ret;
+	return 0;
 }

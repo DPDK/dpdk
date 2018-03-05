@@ -37,14 +37,14 @@ mlx5_txq_stop(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, errno on error.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_txq_start(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
-	int ret = 0;
+	int ret;
 
 	/* Add memory regions to Tx queues. */
 	for (i = 0; i != priv->txqs_n; ++i) {
@@ -62,17 +62,19 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 		txq_alloc_elts(txq_ctrl);
 		txq_ctrl->ibv = mlx5_txq_ibv_new(dev, i);
 		if (!txq_ctrl->ibv) {
-			ret = ENOMEM;
+			rte_errno = ENOMEM;
 			goto error;
 		}
 	}
 	ret = mlx5_tx_uar_remap(dev, priv->ctx->cmd_fd);
 	if (ret)
 		goto error;
-	return ret;
+	return 0;
 error:
+	ret = rte_errno; /* Save rte_errno before cleanup. */
 	mlx5_txq_stop(dev);
-	return ret;
+	rte_errno = ret; /* Restore rte_errno. */
+	return -rte_errno;
 }
 
 /**
@@ -98,7 +100,7 @@ mlx5_rxq_stop(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, errno on error.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_rxq_start(struct rte_eth_dev *dev)
@@ -116,15 +118,15 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		if (ret)
 			goto error;
 		rxq_ctrl->ibv = mlx5_rxq_ibv_new(dev, i);
-		if (!rxq_ctrl->ibv) {
-			ret = ENOMEM;
+		if (!rxq_ctrl->ibv)
 			goto error;
-		}
 	}
-	return -ret;
+	return 0;
 error:
+	ret = rte_errno; /* Save rte_errno before cleanup. */
 	mlx5_rxq_stop(dev);
-	return -ret;
+	rte_errno = ret; /* Restore rte_errno. */
+	return -rte_errno;
 }
 
 /**
@@ -136,48 +138,48 @@ error:
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_dev_start(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_mr *mr = NULL;
-	int err;
+	int ret;
 
 	dev->data->dev_started = 1;
-	err = mlx5_flow_create_drop_queue(dev);
-	if (err) {
+	ret = mlx5_flow_create_drop_queue(dev);
+	if (ret) {
 		ERROR("%p: Drop queue allocation failed: %s",
-		      (void *)dev, strerror(err));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	DEBUG("%p: allocating and configuring hash RX queues", (void *)dev);
 	rte_mempool_walk(mlx5_mp2mr_iter, priv);
-	err = mlx5_txq_start(dev);
-	if (err) {
-		ERROR("%p: TXQ allocation failed: %s",
-		      (void *)dev, strerror(err));
+	ret = mlx5_txq_start(dev);
+	if (ret) {
+		ERROR("%p: Tx Queue allocation failed: %s",
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	err = mlx5_rxq_start(dev);
-	if (err) {
-		ERROR("%p: RXQ allocation failed: %s",
-		      (void *)dev, strerror(err));
+	ret = mlx5_rxq_start(dev);
+	if (ret) {
+		ERROR("%p: Rx Queue allocation failed: %s",
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
-	err = mlx5_rx_intr_vec_enable(dev);
-	if (err) {
-		ERROR("%p: RX interrupt vector creation failed",
-		      (void *)priv);
+	ret = mlx5_rx_intr_vec_enable(dev);
+	if (ret) {
+		ERROR("%p: Rx interrupt vector creation failed",
+		      (void *)dev);
 		goto error;
 	}
 	mlx5_xstats_init(dev);
 	/* Update link status and Tx/Rx callbacks for the first time. */
 	memset(&dev->data->dev_link, 0, sizeof(struct rte_eth_link));
 	INFO("Forcing port %u link to be up", dev->data->port_id);
-	err = mlx5_force_link_status_change(dev, ETH_LINK_UP);
-	if (err) {
+	ret = mlx5_force_link_status_change(dev, ETH_LINK_UP);
+	if (ret) {
 		DEBUG("Failed to set port %u link to be up",
 		      dev->data->port_id);
 		goto error;
@@ -185,6 +187,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	mlx5_dev_interrupt_handler_install(dev);
 	return 0;
 error:
+	ret = rte_errno; /* Save rte_errno before cleanup. */
 	/* Rollback. */
 	dev->data->dev_started = 0;
 	for (mr = LIST_FIRST(&priv->mr); mr; mr = LIST_FIRST(&priv->mr))
@@ -194,7 +197,8 @@ error:
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
 	mlx5_flow_delete_drop_queue(dev);
-	return err;
+	rte_errno = ret; /* Restore rte_errno. */
+	return -rte_errno;
 }
 
 /**
@@ -238,7 +242,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_traffic_enable(struct rte_eth_dev *dev)
@@ -276,8 +280,9 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 			.type = 0,
 		};
 
-		claim_zero(mlx5_ctrl_flow(dev, &promisc, &promisc));
-		return 0;
+		ret = mlx5_ctrl_flow(dev, &promisc, &promisc);
+		if (ret)
+			goto error;
 	}
 	if (dev->data->all_multicast) {
 		struct rte_flow_item_eth multicast = {
@@ -286,7 +291,9 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 			.type = 0,
 		};
 
-		claim_zero(mlx5_ctrl_flow(dev, &multicast, &multicast));
+		ret = mlx5_ctrl_flow(dev, &multicast, &multicast);
+		if (ret)
+			goto error;
 	} else {
 		/* Add broadcast/multicast flows. */
 		for (i = 0; i != vlan_filter_n; ++i) {
@@ -346,15 +353,17 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 				goto error;
 		}
 		if (!vlan_filter_n) {
-			ret = mlx5_ctrl_flow(dev, &unicast,
-					     &unicast_mask);
+			ret = mlx5_ctrl_flow(dev, &unicast, &unicast_mask);
 			if (ret)
 				goto error;
 		}
 	}
 	return 0;
 error:
-	return rte_errno;
+	ret = rte_errno; /* Save rte_errno before cleanup. */
+	mlx5_flow_list_flush(dev, &priv->ctrl_flows);
+	rte_errno = ret; /* Restore rte_errno. */
+	return -rte_errno;
 }
 
 
@@ -379,14 +388,14 @@ mlx5_traffic_disable(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device private data.
  *
  * @return
- *   0 on success.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_traffic_restart(struct rte_eth_dev *dev)
 {
 	if (dev->data->dev_started) {
 		mlx5_traffic_disable(dev);
-		mlx5_traffic_enable(dev);
+		return mlx5_traffic_enable(dev);
 	}
 	return 0;
 }

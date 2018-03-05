@@ -37,14 +37,13 @@
  *   Toggle filter.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
-	int ret = 0;
 
 	DEBUG("%p: %s VLAN filter ID %" PRIu16,
 	      (void *)dev, (on ? "enable" : "disable"), vlan_id);
@@ -54,8 +53,8 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 			break;
 	/* Check if there's room for another VLAN filter. */
 	if (i == RTE_DIM(priv->vlan_filter)) {
-		ret = -ENOMEM;
-		goto out;
+		rte_errno = ENOMEM;
+		return -rte_errno;
 	}
 	if (i < priv->vlan_filter_n) {
 		assert(priv->vlan_filter_n != 0);
@@ -78,10 +77,10 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		priv->vlan_filter[priv->vlan_filter_n] = vlan_id;
 		++priv->vlan_filter_n;
 	}
-	if (dev->data->dev_started)
-		mlx5_traffic_restart(dev);
 out:
-	return ret;
+	if (dev->data->dev_started)
+		return mlx5_traffic_restart(dev);
+	return 0;
 }
 
 /**
@@ -105,7 +104,7 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 	uint16_t vlan_offloads =
 		(on ? IBV_WQ_FLAGS_CVLAN_STRIPPING : 0) |
 		0;
-	int err;
+	int ret;
 
 	/* Validate hw support */
 	if (!priv->config.hw_vlan_strip) {
@@ -129,10 +128,10 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 		.flags_mask = IBV_WQ_FLAGS_CVLAN_STRIPPING,
 		.flags = vlan_offloads,
 	};
-	err = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
-	if (err) {
+	ret = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
+	if (ret) {
 		ERROR("%p: failed to modified stripping mode: %s",
-		      (void *)dev, strerror(err));
+		      (void *)dev, strerror(rte_errno));
 		return;
 	}
 	/* Update related bits in RX queue. */
@@ -146,6 +145,9 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
  *   Pointer to Ethernet device structure.
  * @param mask
  *   VLAN offload bit mask.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
