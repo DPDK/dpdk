@@ -363,17 +363,13 @@ error:
  *
  * @param dev
  *   Pointer to Ethernet device private data.
- *
- * @return
- *   0 on success.
  */
-int
+void
 mlx5_traffic_disable(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 
 	mlx5_flow_list_flush(dev, &priv->ctrl_flows);
-	return 0;
 }
 
 /**

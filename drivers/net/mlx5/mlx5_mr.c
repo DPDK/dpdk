@@ -307,7 +307,7 @@ mlx5_mr_get(struct rte_eth_dev *dev, struct rte_mempool *mp)
  *   Pointer to memory region to release.
  *
  * @return
- *   0 on success, errno on failure.
+ *   1 while a reference on it exists, 0 when freed.
  */
 int
 mlx5_mr_release(struct mlx5_mr *mr)
@@ -321,7 +321,7 @@ mlx5_mr_release(struct mlx5_mr *mr)
 		rte_free(mr);
 		return 0;
 	}
-	return EBUSY;
+	return 1;
 }
 
 /**

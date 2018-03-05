@@ -242,7 +242,7 @@ int mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 int mlx5_dev_start(struct rte_eth_dev *dev);
 void mlx5_dev_stop(struct rte_eth_dev *dev);
 int mlx5_traffic_enable(struct rte_eth_dev *dev);
-int mlx5_traffic_disable(struct rte_eth_dev *dev);
+void mlx5_traffic_disable(struct rte_eth_dev *dev);
 int mlx5_traffic_restart(struct rte_eth_dev *dev);
 
 /* mlx5_flow.c */
@@ -287,7 +287,7 @@ void mlx5_flow_delete_drop_queue(struct rte_eth_dev *dev);
 /* mlx5_socket.c */
 
 int mlx5_socket_init(struct rte_eth_dev *priv);
-int mlx5_socket_uninit(struct rte_eth_dev *priv);
+void mlx5_socket_uninit(struct rte_eth_dev *priv);
 void mlx5_socket_handle(struct rte_eth_dev *priv);
 int mlx5_socket_connect(struct rte_eth_dev *priv);
 
