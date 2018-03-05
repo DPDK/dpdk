@@ -165,7 +165,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	unsigned int i;
 	int ret;
 
-	priv_lock(priv);
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
@@ -227,7 +226,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	ret = priv_mr_verify(priv);
 	if (ret)
 		WARN("%p: some Memory Region still remain", (void *)priv);
-	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }
 

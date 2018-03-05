@@ -44,7 +44,6 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	int ret = 0;
 
-	priv_lock(priv);
 	if (rss_conf->rss_hf & MLX5_RSS_HF_MASK) {
 		ret = -EINVAL;
 		goto out;
@@ -62,7 +61,6 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 	}
 	priv->rss_conf.rss_hf = rss_conf->rss_hf;
 out:
-	priv_unlock(priv);
 	return ret;
 }
 
@@ -85,7 +83,6 @@ mlx5_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	if (!rss_conf)
 		return -EINVAL;
-	priv_lock(priv);
 	if (rss_conf->rss_key &&
 	    (rss_conf->rss_key_len >= priv->rss_conf.rss_key_len)) {
 		memcpy(rss_conf->rss_key, priv->rss_conf.rss_key,
@@ -93,7 +90,6 @@ mlx5_rss_hash_conf_get(struct rte_eth_dev *dev,
 	}
 	rss_conf->rss_key_len = priv->rss_conf.rss_key_len;
 	rss_conf->rss_hf = priv->rss_conf.rss_hf;
-	priv_unlock(priv);
 	return 0;
 }
 
@@ -222,9 +218,7 @@ mlx5_dev_rss_reta_query(struct rte_eth_dev *dev,
 	int ret;
 	struct priv *priv = dev->data->dev_private;
 
-	priv_lock(priv);
 	ret = priv_dev_rss_reta_query(priv, reta_conf, reta_size);
-	priv_unlock(priv);
 	return -ret;
 }
 
@@ -249,9 +243,7 @@ mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
 	int ret;
 	struct priv *priv = dev->data->dev_private;
 
-	priv_lock(priv);
 	ret = priv_dev_rss_reta_update(priv, reta_conf, reta_size);
-	priv_unlock(priv);
 	if (dev->data->dev_started) {
 		mlx5_dev_stop(dev);
 		mlx5_dev_start(dev);

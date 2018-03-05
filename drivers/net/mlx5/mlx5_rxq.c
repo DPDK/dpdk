@@ -286,7 +286,6 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	int ret = 0;
 
-	priv_lock(priv);
 	if (!rte_is_power_of_2(desc)) {
 		desc = 1 << log2above(desc);
 		WARN("%p: increased number of descriptors in RX queue %u"
@@ -298,7 +297,6 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (idx >= priv->rxqs_n) {
 		ERROR("%p: queue index out of range (%u >= %u)",
 		      (void *)dev, idx, priv->rxqs_n);
-		priv_unlock(priv);
 		return -EOVERFLOW;
 	}
 	if (!priv_is_rx_queue_offloads_allowed(priv, conf->offloads)) {
@@ -329,7 +327,6 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	      (void *)dev, (void *)rxq_ctrl);
 	(*priv->rxqs)[idx] = &rxq_ctrl->rxq;
 out:
-	priv_unlock(priv);
 	return -ret;
 }
 
@@ -350,12 +347,10 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 		return;
 	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	priv = rxq_ctrl->priv;
-	priv_lock(priv);
 	if (!mlx5_priv_rxq_releasable(priv, rxq_ctrl->rxq.stats.idx))
 		rte_panic("Rx queue %p is still used by a flow and cannot be"
 			  " removed\n", (void *)rxq_ctrl);
 	mlx5_priv_rxq_release(priv, rxq_ctrl->rxq.stats.idx);
-	priv_unlock(priv);
 }
 
 /**
@@ -512,7 +507,6 @@ mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct mlx5_rxq_ctrl *rxq_ctrl;
 	int ret = 0;
 
-	priv_lock(priv);
 	rxq_data = (*priv->rxqs)[rx_queue_id];
 	if (!rxq_data) {
 		ret = EINVAL;
@@ -531,7 +525,6 @@ mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		mlx5_priv_rxq_ibv_release(priv, rxq_ibv);
 	}
 exit:
-	priv_unlock(priv);
 	if (ret)
 		WARN("unable to arm interrupt on rx queue %d", rx_queue_id);
 	return -ret;
@@ -559,7 +552,6 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	void *ev_ctx;
 	int ret = 0;
 
-	priv_lock(priv);
 	rxq_data = (*priv->rxqs)[rx_queue_id];
 	if (!rxq_data) {
 		ret = EINVAL;
@@ -583,7 +575,6 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 exit:
 	if (rxq_ibv)
 		mlx5_priv_rxq_ibv_release(priv, rxq_ibv);
-	priv_unlock(priv);
 	if (ret)
 		WARN("unable to disable interrupt on rx queue %d",
 		     rx_queue_id);

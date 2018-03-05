@@ -1919,9 +1919,7 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 	int ret;
 	struct mlx5_flow_parse parser = { .create = 0, };
 
-	priv_lock(priv);
 	ret = priv_flow_convert(priv, attr, items, actions, error, &parser);
-	priv_unlock(priv);
 	return ret;
 }
 
@@ -1941,10 +1939,8 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	struct rte_flow *flow;
 
-	priv_lock(priv);
 	flow = priv_flow_create(priv, &priv->flows, attr, items, actions,
 				error);
-	priv_unlock(priv);
 	return flow;
 }
 
@@ -2431,9 +2427,7 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 
-	priv_lock(priv);
 	priv_flow_destroy(priv, &priv->flows, flow);
-	priv_unlock(priv);
 	return 0;
 }
 
@@ -2449,9 +2443,7 @@ mlx5_flow_flush(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 
-	priv_lock(priv);
 	priv_flow_flush(priv, &priv->flows);
-	priv_unlock(priv);
 	return 0;
 }
 
@@ -2509,16 +2501,14 @@ priv_flow_query_count(struct ibv_counter_set *cs,
  * @see rte_flow_ops
  */
 int
-mlx5_flow_query(struct rte_eth_dev *dev,
+mlx5_flow_query(struct rte_eth_dev *dev __rte_unused,
 		struct rte_flow *flow,
 		enum rte_flow_action_type action __rte_unused,
 		void *data,
 		struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
 	int res = EINVAL;
 
-	priv_lock(priv);
 	if (flow->cs) {
 		res = priv_flow_query_count(flow->cs,
 					&flow->counter_stats,
@@ -2530,7 +2520,6 @@ mlx5_flow_query(struct rte_eth_dev *dev,
 				   NULL,
 				   "no counter found for flow");
 	}
-	priv_unlock(priv);
 	return -res;
 }
 #endif
@@ -2548,13 +2537,11 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 
-	priv_lock(priv);
 	if (dev->data->dev_started) {
 		rte_flow_error_set(error, EBUSY,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,
 				   "port must be stopped first");
-		priv_unlock(priv);
 		return -rte_errno;
 	}
 	priv->isolated = !!enable;
@@ -2562,7 +2549,6 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 		priv->dev->dev_ops = &mlx5_dev_ops_isolate;
 	else
 		priv->dev->dev_ops = &mlx5_dev_ops;
-	priv_unlock(priv);
 	return 0;
 }
 
@@ -3044,9 +3030,7 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 		*(const void **)arg = &mlx5_flow_ops;
 		return 0;
 	case RTE_ETH_FILTER_FDIR:
-		priv_lock(priv);
 		ret = priv_fdir_ctrl_func(priv, filter_op, arg);
-		priv_unlock(priv);
 		break;
 	default:
 		ERROR("%p: filter type (%d) not supported",

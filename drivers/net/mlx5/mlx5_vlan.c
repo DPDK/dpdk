@@ -46,7 +46,6 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	unsigned int i;
 	int ret = 0;
 
-	priv_lock(priv);
 	DEBUG("%p: %s VLAN filter ID %" PRIu16,
 	      (void *)dev, (on ? "enable" : "disable"), vlan_id);
 	assert(priv->vlan_filter_n <= RTE_DIM(priv->vlan_filter));
@@ -82,7 +81,6 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	if (dev->data->dev_started)
 		priv_dev_traffic_restart(priv, dev);
 out:
-	priv_unlock(priv);
 	return ret;
 }
 
@@ -155,9 +153,7 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 		ERROR("VLAN stripping, invalid queue number %d", queue);
 		return;
 	}
-	priv_lock(priv);
 	priv_vlan_strip_queue_set(priv, queue, on);
-	priv_unlock(priv);
 }
 
 /**
@@ -183,10 +179,8 @@ mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			return 0;
 		}
 		/* Run on every RX queue and set/reset VLAN stripping. */
-		priv_lock(priv);
 		for (i = 0; (i != priv->rxqs_n); i++)
 			priv_vlan_strip_queue_set(priv, i, hw_vlan_strip);
-		priv_unlock(priv);
 	}
 	return 0;
 }

@@ -148,7 +148,7 @@ struct priv {
 	LIST_HEAD(ind_tables, mlx5_ind_table_ibv) ind_tbls;
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
-	rte_spinlock_t lock; /* Lock for control functions. */
+	rte_spinlock_t mr_lock; /* MR Lock. */
 	int primary_socket; /* Unix socket for primary process. */
 	void *uar_base; /* Reserved address space for UAR mapping */
 	struct rte_intr_handle intr_handle_socket; /* Interrupt handler. */
@@ -156,47 +156,6 @@ struct priv {
 	struct mlx5_verbs_alloc_ctx verbs_alloc_ctx;
 	/* Context for Verbs allocator. */
 };
-
-/**
- * Lock private structure to protect it from concurrent access in the
- * control path.
- *
- * @param priv
- *   Pointer to private structure.
- */
-static inline void
-priv_lock(struct priv *priv)
-{
-	rte_spinlock_lock(&priv->lock);
-}
-
-/**
- * Try to lock private structure to protect it from concurrent access in the
- * control path.
- *
- * @param priv
- *   Pointer to private structure.
- *
- * @return
- *   1 if the lock is successfully taken; 0 otherwise.
- */
-static inline int
-priv_trylock(struct priv *priv)
-{
-	return rte_spinlock_trylock(&priv->lock);
-}
-
-/**
- * Unlock private structure.
- *
- * @param priv
- *   Pointer to private structure.
- */
-static inline void
-priv_unlock(struct priv *priv)
-{
-	rte_spinlock_unlock(&priv->lock);
-}
 
 /* mlx5.c */
 

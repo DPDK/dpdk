@@ -172,7 +172,6 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		container_of(txq, struct mlx5_txq_ctrl, txq);
 	int ret = 0;
 
-	priv_lock(priv);
 	/*
 	 * Don't verify port offloads for application which
 	 * use the old API.
@@ -205,7 +204,6 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (idx >= priv->txqs_n) {
 		ERROR("%p: queue index out of range (%u >= %u)",
 		      (void *)dev, idx, priv->txqs_n);
-		priv_unlock(priv);
 		return -EOVERFLOW;
 	}
 	if (!mlx5_priv_txq_releasable(priv, idx)) {
@@ -226,7 +224,6 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	      (void *)dev, (void *)txq_ctrl);
 	(*priv->txqs)[idx] = &txq_ctrl->txq;
 out:
-	priv_unlock(priv);
 	return -ret;
 }
 
@@ -248,7 +245,6 @@ mlx5_tx_queue_release(void *dpdk_txq)
 		return;
 	txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
 	priv = txq_ctrl->priv;
-	priv_lock(priv);
 	for (i = 0; (i != priv->txqs_n); ++i)
 		if ((*priv->txqs)[i] == txq) {
 			DEBUG("%p: removing TX queue %p from list",
@@ -256,7 +252,6 @@ mlx5_tx_queue_release(void *dpdk_txq)
 			mlx5_priv_txq_release(priv, i);
 			break;
 		}
-	priv_unlock(priv);
 }
 
 

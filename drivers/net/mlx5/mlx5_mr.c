@@ -164,9 +164,9 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 		container_of(txq, struct mlx5_txq_ctrl, txq);
 	struct mlx5_mr *mr;
 
-	priv_lock(txq_ctrl->priv);
+	rte_spinlock_lock(&txq_ctrl->priv->mr_lock);
 	mr = priv_txq_mp2mr_reg(txq_ctrl->priv, txq, mp, idx);
-	priv_unlock(txq_ctrl->priv);
+	rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 	return mr;
 }
 

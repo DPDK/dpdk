@@ -142,7 +142,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	int err;
 
 	dev->data->dev_started = 1;
-	priv_lock(priv);
 	err = priv_flow_create_drop_queue(priv);
 	if (err) {
 		ERROR("%p: Drop queue allocation failed: %s",
@@ -180,7 +179,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 	priv_dev_interrupt_handler_install(priv, dev);
-	priv_unlock(priv);
 	return 0;
 error:
 	/* Rollback. */
@@ -192,7 +190,6 @@ error:
 	priv_txq_stop(priv);
 	priv_rxq_stop(priv);
 	priv_flow_delete_drop_queue(priv);
-	priv_unlock(priv);
 	return err;
 }
 
@@ -210,7 +207,6 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_mr *mr;
 
-	priv_lock(priv);
 	dev->data->dev_started = 0;
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
@@ -227,7 +223,6 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	for (mr = LIST_FIRST(&priv->mr); mr; mr = LIST_FIRST(&priv->mr))
 		priv_mr_release(priv, mr);
 	priv_flow_delete_drop_queue(priv);
-	priv_unlock(priv);
 }
 
 /**
@@ -412,8 +407,6 @@ mlx5_traffic_restart(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 
-	priv_lock(priv);
 	priv_dev_traffic_restart(priv, dev);
-	priv_unlock(priv);
 	return 0;
 }
