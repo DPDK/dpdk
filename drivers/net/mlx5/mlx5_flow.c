@@ -526,7 +526,7 @@ mlx5_flow_item_validate(const struct rte_flow_item *item,
  *   0 on success, errno value on failure.
  */
 static int
-priv_flow_convert_rss_conf(struct priv *priv,
+priv_flow_convert_rss_conf(struct priv *priv __rte_unused,
 			   struct mlx5_flow_parse *parser,
 			   const struct rte_eth_rss_conf *rss_conf)
 {
@@ -535,7 +535,6 @@ priv_flow_convert_rss_conf(struct priv *priv,
 	 * priv_flow_convert_actions() to initialize the parser with the
 	 * device default RSS configuration.
 	 */
-	(void)priv;
 	if (rss_conf) {
 		if (rss_conf->rss_hf & MLX5_RSS_HF_MASK)
 			return EINVAL;
@@ -568,13 +567,11 @@ priv_flow_convert_rss_conf(struct priv *priv,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_flow_convert_attributes(struct priv *priv,
+priv_flow_convert_attributes(struct priv *priv __rte_unused,
 			     const struct rte_flow_attr *attr,
 			     struct rte_flow_error *error,
-			     struct mlx5_flow_parse *parser)
+			     struct mlx5_flow_parse *parser __rte_unused)
 {
-	(void)priv;
-	(void)parser;
 	if (attr->group) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
@@ -779,7 +776,7 @@ exit_action_not_supported:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_flow_convert_items_validate(struct priv *priv,
+priv_flow_convert_items_validate(struct priv *priv __rte_unused,
 				 const struct rte_flow_item items[],
 				 struct rte_flow_error *error,
 				 struct mlx5_flow_parse *parser)
@@ -787,7 +784,6 @@ priv_flow_convert_items_validate(struct priv *priv,
 	const struct mlx5_flow_items *cur_item = mlx5_flow_items;
 	unsigned int i;
 
-	(void)priv;
 	/* Initialise the offsets to start after verbs attribute. */
 	for (i = 0; i != hash_rxq_init_n; ++i)
 		parser->queue[i].offset = sizeof(struct ibv_flow_attr);
@@ -871,14 +867,13 @@ exit_item_not_supported:
  *   A verbs flow attribute on success, NULL otherwise.
  */
 static struct ibv_flow_attr*
-priv_flow_convert_allocate(struct priv *priv,
+priv_flow_convert_allocate(struct priv *priv __rte_unused,
 			   unsigned int priority,
 			   unsigned int size,
 			   struct rte_flow_error *error)
 {
 	struct ibv_flow_attr *ibv_attr;
 
-	(void)priv;
 	ibv_attr = rte_calloc(__func__, 1, size, 0);
 	if (!ibv_attr) {
 		rte_flow_error_set(error, ENOMEM,
@@ -900,7 +895,8 @@ priv_flow_convert_allocate(struct priv *priv,
  *   Internal parser structure.
  */
 static void
-priv_flow_convert_finalise(struct priv *priv, struct mlx5_flow_parse *parser)
+priv_flow_convert_finalise(struct priv *priv __rte_unused,
+			   struct mlx5_flow_parse *parser)
 {
 	const unsigned int ipv4 =
 		hash_rxq_init[parser->layer].ip_version == MLX5_IPV4;
@@ -911,7 +907,6 @@ priv_flow_convert_finalise(struct priv *priv, struct mlx5_flow_parse *parser)
 	const enum hash_rxq_type ip = ipv4 ? HASH_RXQ_IPV4 : HASH_RXQ_IPV6;
 	unsigned int i;
 
-	(void)priv;
 	/* Remove any other flow not matching the pattern. */
 	if (parser->queues_n == 1) {
 		for (i = 0; i != hash_rxq_init_n; ++i) {
@@ -2432,11 +2427,10 @@ mlx5_ctrl_flow(struct rte_eth_dev *dev,
 int
 mlx5_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
-		  struct rte_flow_error *error)
+		  struct rte_flow_error *error __rte_unused)
 {
 	struct priv *priv = dev->data->dev_private;
 
-	(void)error;
 	priv_lock(priv);
 	priv_flow_destroy(priv, &priv->flows, flow);
 	priv_unlock(priv);
@@ -2451,11 +2445,10 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
  */
 int
 mlx5_flow_flush(struct rte_eth_dev *dev,
-		struct rte_flow_error *error)
+		struct rte_flow_error *error __rte_unused)
 {
 	struct priv *priv = dev->data->dev_private;
 
-	(void)error;
 	priv_lock(priv);
 	priv_flow_flush(priv, &priv->flows);
 	priv_unlock(priv);

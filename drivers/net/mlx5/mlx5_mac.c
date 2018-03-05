@@ -88,12 +88,11 @@ mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
  */
 int
 mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
-		  uint32_t index, uint32_t vmdq)
+		  uint32_t index, uint32_t vmdq __rte_unused)
 {
 	unsigned int i;
 	int ret = 0;
 
-	(void)vmdq;
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
 	/* First, make sure this address isn't already configured. */
 	for (i = 0; (i != MLX5_MAX_MAC_ADDRESSES); ++i) {

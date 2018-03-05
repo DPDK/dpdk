@@ -26,14 +26,11 @@ struct mlx5_check_mempool_data {
 
 /* Called by mlx5_check_mempool() when iterating the memory chunks. */
 static void
-mlx5_check_mempool_cb(struct rte_mempool *mp,
+mlx5_check_mempool_cb(struct rte_mempool *mp __rte_unused,
 		      void *opaque, struct rte_mempool_memhdr *memhdr,
-		      unsigned int mem_idx)
+		      unsigned int mem_idx __rte_unused)
 {
 	struct mlx5_check_mempool_data *data = opaque;
-
-	(void)mp;
-	(void)mem_idx;
 
 	/* It already failed, skip the next chunks. */
 	if (data->ret != 0)
@@ -336,9 +333,8 @@ priv_mr_get(struct priv *priv, struct rte_mempool *mp)
  *   0 on success, errno on failure.
  */
 int
-priv_mr_release(struct priv *priv, struct mlx5_mr *mr)
+priv_mr_release(struct priv *priv __rte_unused, struct mlx5_mr *mr)
 {
-	(void)priv;
 	assert(mr);
 	DEBUG("Memory Region %p refcnt: %d",
 	      (void *)mr, rte_atomic32_read(&mr->refcnt));

@@ -467,11 +467,9 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- * @param wait_to_complete
- *   Wait for request completion (ignored).
  */
 static int
-mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev, int wait_to_complete)
+mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct ethtool_cmd edata = {
@@ -483,7 +481,6 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev, int wait_to_complete)
 
 	/* priv_lock() is not taken to allow concurrent calls. */
 
-	(void)wait_to_complete;
 	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
 		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
 		return -1;
@@ -533,11 +530,9 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev, int wait_to_complete)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- * @param wait_to_complete
- *   Wait for request completion (ignored).
  */
 static int
-mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
+mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct ethtool_link_settings gcmd = { .cmd = ETHTOOL_GLINKSETTINGS };
@@ -545,7 +540,6 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 	struct rte_eth_link dev_link;
 	uint64_t sc;
 
-	(void)wait_to_complete;
 	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
 		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
 		return -1;
@@ -675,7 +669,7 @@ priv_link_stop(struct priv *priv)
  *   Wait for request completion (ignored).
  */
 int
-priv_link_update(struct priv *priv, int wait_to_complete)
+priv_link_update(struct priv *priv, int wait_to_complete __rte_unused)
 {
 	struct rte_eth_dev *dev = priv->dev;
 	struct utsname utsname;
@@ -687,9 +681,9 @@ priv_link_update(struct priv *priv, int wait_to_complete)
 	    sscanf(utsname.release, "%d.%d.%d",
 		   &ver[0], &ver[1], &ver[2]) != 3 ||
 	    KERNEL_VERSION(ver[0], ver[1], ver[2]) < KERNEL_VERSION(4, 9, 0))
-		ret = mlx5_link_update_unlocked_gset(dev, wait_to_complete);
+		ret = mlx5_link_update_unlocked_gset(dev);
 	else
-		ret = mlx5_link_update_unlocked_gs(dev, wait_to_complete);
+		ret = mlx5_link_update_unlocked_gs(dev);
 	/* If lsc interrupt is disabled, should always be ready for traffic. */
 	if (!dev->data->dev_conf.intr_conf.lsc) {
 		priv_link_start(priv);
@@ -741,7 +735,7 @@ priv_force_link_status_change(struct priv *priv, int status)
  *   Wait for request completion (ignored).
  */
 int
-mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
 	struct priv *priv = dev->data->dev_private;
 	int ret;

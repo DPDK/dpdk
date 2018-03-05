@@ -578,9 +578,9 @@ mlx5_priv_txq_ibv_get(struct priv *priv, uint16_t idx)
  *   0 on success, errno on failure.
  */
 int
-mlx5_priv_txq_ibv_release(struct priv *priv, struct mlx5_txq_ibv *txq_ibv)
+mlx5_priv_txq_ibv_release(struct priv *priv __rte_unused,
+			  struct mlx5_txq_ibv *txq_ibv)
 {
-	(void)priv;
 	assert(txq_ibv);
 	DEBUG("%p: Verbs Tx queue %p: refcnt %d", (void *)priv,
 	      (void *)txq_ibv, rte_atomic32_read(&txq_ibv->refcnt));
@@ -603,9 +603,9 @@ mlx5_priv_txq_ibv_release(struct priv *priv, struct mlx5_txq_ibv *txq_ibv)
  *   Verbs Tx queue object.
  */
 int
-mlx5_priv_txq_ibv_releasable(struct priv *priv, struct mlx5_txq_ibv *txq_ibv)
+mlx5_priv_txq_ibv_releasable(struct priv *priv __rte_unused,
+			     struct mlx5_txq_ibv *txq_ibv)
 {
-	(void)priv;
 	assert(txq_ibv);
 	return (rte_atomic32_read(&txq_ibv->refcnt) == 1);
 }
@@ -806,13 +806,10 @@ mlx5_priv_txq_get(struct priv *priv, uint16_t idx)
 
 		mlx5_priv_txq_ibv_get(priv, idx);
 		for (i = 0; i != MLX5_PMD_TX_MP_CACHE; ++i) {
-			struct mlx5_mr *mr = NULL;
-
-			(void)mr;
-			if (ctrl->txq.mp2mr[i]) {
-				mr = priv_mr_get(priv, ctrl->txq.mp2mr[i]->mp);
-				assert(mr);
-			}
+			if (ctrl->txq.mp2mr[i])
+				claim_nonzero
+					(priv_mr_get(priv,
+						     ctrl->txq.mp2mr[i]->mp));
 		}
 		rte_atomic32_inc(&ctrl->refcnt);
 		DEBUG("%p: Tx queue %p: refcnt %d", (void *)priv,

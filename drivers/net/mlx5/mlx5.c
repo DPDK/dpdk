@@ -571,7 +571,8 @@ priv_uar_init_secondary(struct priv *priv)
  *   0 on success, negative errno value on failure.
  */
 static int
-mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
+mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	       struct rte_pci_device *pci_dev)
 {
 	struct ibv_device **list;
 	struct ibv_device *ibv_dev;
@@ -588,7 +589,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	struct ibv_counter_set_description cs_desc;
 #endif
 
-	(void)pci_drv;
 	assert(pci_drv == &mlx5_driver);
 	/* Get mlx5_dev[] index. */
 	idx = mlx5_dev_idx(&pci_dev->addr);

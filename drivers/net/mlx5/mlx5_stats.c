@@ -488,7 +488,7 @@ unlock:
  *   Number of xstats names.
  */
 int
-mlx5_xstats_get_names(struct rte_eth_dev *dev,
+mlx5_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 		struct rte_eth_xstat_name *xstats_names, unsigned int n)
 {
 	struct priv *priv = dev->data->dev_private;

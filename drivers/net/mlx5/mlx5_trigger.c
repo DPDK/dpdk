@@ -340,9 +340,9 @@ error:
  *   0 on success.
  */
 int
-priv_dev_traffic_disable(struct priv *priv, struct rte_eth_dev *dev)
+priv_dev_traffic_disable(struct priv *priv,
+			 struct rte_eth_dev *dev __rte_unused)
 {
-	(void)dev;
 	priv_flow_flush(priv, &priv->ctrl_flows);
 	return 0;
 }

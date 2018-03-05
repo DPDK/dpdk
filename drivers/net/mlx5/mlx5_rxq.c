@@ -910,9 +910,9 @@ mlx5_priv_rxq_ibv_verify(struct priv *priv)
  *   Verbs Rx queue object.
  */
 int
-mlx5_priv_rxq_ibv_releasable(struct priv *priv, struct mlx5_rxq_ibv *rxq_ibv)
+mlx5_priv_rxq_ibv_releasable(struct priv *priv __rte_unused,
+			     struct mlx5_rxq_ibv *rxq_ibv)
 {
-	(void)priv;
 	assert(rxq_ibv);
 	return (rte_atomic32_read(&rxq_ibv->refcnt) == 1);
 }

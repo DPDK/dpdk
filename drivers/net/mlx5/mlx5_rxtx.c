@@ -1899,11 +1899,10 @@ skip:
  *   Number of packets successfully transmitted (<= pkts_n).
  */
 uint16_t
-removed_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
+removed_tx_burst(void *dpdk_txq __rte_unused,
+		 struct rte_mbuf **pkts __rte_unused,
+		 uint16_t pkts_n __rte_unused)
 {
-	(void)dpdk_txq;
-	(void)pkts;
-	(void)pkts_n;
 	return 0;
 }
 
@@ -1924,11 +1923,10 @@ removed_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
  *   Number of packets successfully received (<= pkts_n).
  */
 uint16_t
-removed_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
+removed_rx_burst(void *dpdk_txq __rte_unused,
+		 struct rte_mbuf **pkts __rte_unused,
+		 uint16_t pkts_n __rte_unused)
 {
-	(void)dpdk_rxq;
-	(void)pkts;
-	(void)pkts_n;
 	return 0;
 }
 
@@ -1940,58 +1938,51 @@ removed_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
  */
 
 uint16_t __attribute__((weak))
-mlx5_tx_burst_raw_vec(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
+mlx5_tx_burst_raw_vec(void *dpdk_txq __rte_unused,
+		      struct rte_mbuf **pkts __rte_unused,
+		      uint16_t pkts_n __rte_unused)
 {
-	(void)dpdk_txq;
-	(void)pkts;
-	(void)pkts_n;
 	return 0;
 }
 
 uint16_t __attribute__((weak))
-mlx5_tx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
+mlx5_tx_burst_vec(void *dpdk_txq __rte_unused,
+		  struct rte_mbuf **pkts __rte_unused,
+		  uint16_t pkts_n __rte_unused)
 {
-	(void)dpdk_txq;
-	(void)pkts;
-	(void)pkts_n;
 	return 0;
 }
 
 uint16_t __attribute__((weak))
-mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
+mlx5_rx_burst_vec(void *dpdk_txq __rte_unused,
+		  struct rte_mbuf **pkts __rte_unused,
+		  uint16_t pkts_n __rte_unused)
 {
-	(void)dpdk_rxq;
-	(void)pkts;
-	(void)pkts_n;
 	return 0;
 }
 
 int __attribute__((weak))
-priv_check_raw_vec_tx_support(struct priv *priv, struct rte_eth_dev *dev)
+priv_check_raw_vec_tx_support(struct priv *priv __rte_unused,
+			      struct rte_eth_dev *dev __rte_unused)
 {
-	(void)priv;
-	(void)dev;
 	return -ENOTSUP;
 }
 
 int __attribute__((weak))
-priv_check_vec_tx_support(struct priv *priv, struct rte_eth_dev *dev)
+priv_check_vec_tx_support(struct priv *priv __rte_unused,
+			  struct rte_eth_dev *dev __rte_unused)
 {
-	(void)priv;
-	(void)dev;
 	return -ENOTSUP;
 }
 
 int __attribute__((weak))
-rxq_check_vec_support(struct mlx5_rxq_data *rxq)
+rxq_check_vec_support(struct mlx5_rxq_data *rxq __rte_unused)
 {
-	(void)rxq;
 	return -ENOTSUP;
 }
 
 int __attribute__((weak))
-priv_check_vec_rx_support(struct priv *priv)
+priv_check_vec_rx_support(struct priv *priv __rte_unused)
 {
-	(void)priv;
 	return -ENOTSUP;
 }
