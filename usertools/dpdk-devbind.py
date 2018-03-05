@@ -22,8 +22,10 @@ cavium_fpa = {'Class': '08', 'Vendor': '177d', 'Device': 'a053',
               'SVendor': None, 'SDevice': None}
 cavium_pkx = {'Class': '08', 'Vendor': '177d', 'Device': 'a0dd,a049',
               'SVendor': None, 'SDevice': None}
+avp_vnic = {'Class': '05', 'Vendor': '1af4', 'Device': '1110',
+              'SVendor': None, 'SDevice': None}
 
-network_devices = [network_class, cavium_pkx]
+network_devices = [network_class, cavium_pkx, avp_vnic]
 crypto_devices = [encryption_class, intel_processor_class]
 eventdev_devices = [cavium_sso]
 mempool_devices = [cavium_fpa]
