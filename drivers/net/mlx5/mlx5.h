@@ -78,7 +78,6 @@ struct mlx5_dev_config {
 	unsigned int hw_vlan_strip:1; /* VLAN stripping is supported. */
 	unsigned int hw_fcs_strip:1; /* FCS stripping is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
-	unsigned int sriov:1; /* This is a VF or PF with VF devices. */
 	unsigned int mps:2; /* Multi-packet send supported mode. */
 	unsigned int tunnel_en:1;
 	/* Whether tunnel stateless offloads are supported. */
@@ -209,7 +208,6 @@ struct priv *mlx5_get_priv(struct rte_eth_dev *dev);
 int mlx5_is_secondary(void);
 int priv_get_ifname(const struct priv *, char (*)[IF_NAMESIZE]);
 int priv_ifreq(const struct priv *, int req, struct ifreq *);
-int priv_get_num_vfs(struct priv *, uint16_t *);
 int priv_get_mtu(struct priv *, uint16_t *);
 int priv_set_flags(struct priv *, unsigned int, unsigned int);
 int mlx5_dev_configure(struct rte_eth_dev *);

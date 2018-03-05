@@ -201,43 +201,6 @@ priv_ifreq(const struct priv *priv, int req, struct ifreq *ifr)
 }
 
 /**
- * Return the number of active VFs for the current device.
- *
- * @param[in] priv
- *   Pointer to private structure.
- * @param[out] num_vfs
- *   Number of active VFs.
- *
- * @return
- *   0 on success, -1 on failure and errno is set.
- */
-int
-priv_get_num_vfs(struct priv *priv, uint16_t *num_vfs)
-{
-	/* The sysfs entry name depends on the operating system. */
-	const char **name = (const char *[]){
-		"sriov_numvfs",
-		"mlx5_num_vfs",
-		NULL,
-	};
-
-	do {
-		int n;
-		FILE *file;
-		MKSTR(path, "%s/device/%s", priv->ibdev_path, *name);
-
-		file = fopen(path, "rb");
-		if (!file)
-			continue;
-		n = fscanf(file, "%" SCNu16, num_vfs);
-		fclose(file);
-		if (n == 1)
-			return 0;
-	} while (*(++name));
-	return -1;
-}
-
-/**
  * Get device MTU.
  *
  * @param priv
