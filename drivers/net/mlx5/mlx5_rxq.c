@@ -601,7 +601,7 @@ exit:
  * @return
  *   The Verbs object initialised if it can be created.
  */
-struct mlx5_rxq_ibv*
+struct mlx5_rxq_ibv *
 mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 {
 	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
@@ -819,7 +819,7 @@ error:
  * @return
  *   The Verbs object if it exists.
  */
-struct mlx5_rxq_ibv*
+struct mlx5_rxq_ibv *
 mlx5_priv_rxq_ibv_get(struct priv *priv, uint16_t idx)
 {
 	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
@@ -932,7 +932,7 @@ mlx5_priv_rxq_ibv_releasable(struct priv *priv __rte_unused,
  * @return
  *   A DPDK queue object on success.
  */
-struct mlx5_rxq_ctrl*
+struct mlx5_rxq_ctrl *
 mlx5_priv_rxq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 		  unsigned int socket, const struct rte_eth_rxconf *conf,
 		  struct rte_mempool *mp)
@@ -1057,7 +1057,7 @@ error:
  * @return
  *   A pointer to the queue if it exists.
  */
-struct mlx5_rxq_ctrl*
+struct mlx5_rxq_ctrl *
 mlx5_priv_rxq_get(struct priv *priv, uint16_t idx)
 {
 	struct mlx5_rxq_ctrl *rxq_ctrl = NULL;
@@ -1170,7 +1170,7 @@ mlx5_priv_rxq_verify(struct priv *priv)
  * @return
  *   A new indirection table.
  */
-struct mlx5_ind_table_ibv*
+struct mlx5_ind_table_ibv *
 mlx5_priv_ind_table_ibv_new(struct priv *priv, uint16_t queues[],
 			    uint16_t queues_n)
 {
@@ -1232,7 +1232,7 @@ error:
  * @return
  *   An indirection table if found.
  */
-struct mlx5_ind_table_ibv*
+struct mlx5_ind_table_ibv *
 mlx5_priv_ind_table_ibv_get(struct priv *priv, uint16_t queues[],
 			    uint16_t queues_n)
 {
@@ -1331,7 +1331,7 @@ mlx5_priv_ind_table_ibv_verify(struct priv *priv)
  * @return
  *   An hash Rx queue on success.
  */
-struct mlx5_hrxq*
+struct mlx5_hrxq *
 mlx5_priv_hrxq_new(struct priv *priv, uint8_t *rss_key, uint8_t rss_key_len,
 		   uint64_t hash_fields, uint16_t queues[], uint16_t queues_n)
 {
@@ -1400,7 +1400,7 @@ error:
  * @return
  *   An hash Rx queue on success.
  */
-struct mlx5_hrxq*
+struct mlx5_hrxq *
 mlx5_priv_hrxq_get(struct priv *priv, uint8_t *rss_key, uint8_t rss_key_len,
 		   uint64_t hash_fields, uint16_t queues[], uint16_t queues_n)
 {

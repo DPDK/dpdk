@@ -66,8 +66,9 @@ mlx5_check_mempool_cb(struct rte_mempool *mp __rte_unused,
  * @return
  *   0 on success (mempool is virtually contiguous), -1 on error.
  */
-static int mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
-	uintptr_t *end)
+static int
+mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
+		   uintptr_t *end)
 {
 	struct mlx5_check_mempool_data data;
 
@@ -97,7 +98,7 @@ static int mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
  * @return
  *   mr on success, NULL on failure.
  */
-struct mlx5_mr*
+struct mlx5_mr *
 priv_txq_mp2mr_reg(struct priv *priv, struct mlx5_txq_data *txq,
 		   struct rte_mempool *mp, unsigned int idx)
 {
@@ -244,7 +245,7 @@ mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg)
  * @return
  *   The memory region on success.
  */
-struct mlx5_mr*
+struct mlx5_mr *
 priv_mr_new(struct priv *priv, struct rte_mempool *mp)
 {
 	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
@@ -304,7 +305,7 @@ priv_mr_new(struct priv *priv, struct rte_mempool *mp)
  * @return
  *   The memory region on success.
  */
-struct mlx5_mr*
+struct mlx5_mr *
 priv_mr_get(struct priv *priv, struct rte_mempool *mp)
 {
 	struct mlx5_mr *mr;

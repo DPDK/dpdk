@@ -369,7 +369,7 @@ is_empw_burst_func(eth_tx_burst_t tx_pkt_burst)
  * @return
  *   The Verbs object initialised if it can be created.
  */
-struct mlx5_txq_ibv*
+struct mlx5_txq_ibv *
 mlx5_priv_txq_ibv_new(struct priv *priv, uint16_t idx)
 {
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
@@ -547,7 +547,7 @@ error:
  * @return
  *   The Verbs object if it exists.
  */
-struct mlx5_txq_ibv*
+struct mlx5_txq_ibv *
 mlx5_priv_txq_ibv_get(struct priv *priv, uint16_t idx)
 {
 	struct mlx5_txq_ctrl *txq_ctrl;
@@ -749,7 +749,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
  * @return
  *   A DPDK queue object on success.
  */
-struct mlx5_txq_ctrl*
+struct mlx5_txq_ctrl *
 mlx5_priv_txq_new(struct priv *priv, uint16_t idx, uint16_t desc,
 		  unsigned int socket,
 		  const struct rte_eth_txconf *conf)
@@ -794,7 +794,7 @@ mlx5_priv_txq_new(struct priv *priv, uint16_t idx, uint16_t desc,
  * @return
  *   A pointer to the queue if it exists.
  */
-struct mlx5_txq_ctrl*
+struct mlx5_txq_ctrl *
 mlx5_priv_txq_get(struct priv *priv, uint16_t idx)
 {
 	struct mlx5_txq_ctrl *ctrl = NULL;

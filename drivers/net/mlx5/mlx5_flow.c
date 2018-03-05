@@ -866,7 +866,7 @@ exit_item_not_supported:
  * @return
  *   A verbs flow attribute on success, NULL otherwise.
  */
-static struct ibv_flow_attr*
+static struct ibv_flow_attr *
 priv_flow_convert_allocate(struct priv *priv __rte_unused,
 			   unsigned int priority,
 			   unsigned int size,
