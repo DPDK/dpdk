@@ -435,6 +435,15 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	priv_unlock(priv);
 }
 
+/**
+ * Get supported packet types.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   A pointer to the supported Packet types array.
+ */
 const uint32_t *
 mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
@@ -467,6 +476,9 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, -1 on error.
  */
 static int
 mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
@@ -530,6 +542,9 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, -1 on error.
  */
 static int
 mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
@@ -733,6 +748,9 @@ priv_force_link_status_change(struct priv *priv, int status)
  *   Pointer to Ethernet device structure.
  * @param wait_to_complete
  *   Wait for request completion (ignored).
+ *
+ * @return
+ *   0 on success, -1 on error.
  */
 int
 mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)

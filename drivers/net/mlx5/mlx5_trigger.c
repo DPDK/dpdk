@@ -14,6 +14,12 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 
+/**
+ * Stop traffic on Tx queues.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
 static void
 priv_txq_stop(struct priv *priv)
 {
@@ -23,6 +29,15 @@ priv_txq_stop(struct priv *priv)
 		mlx5_priv_txq_release(priv, i);
 }
 
+/**
+ * Start traffic on Tx queues.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, errno on error.
+ */
 static int
 priv_txq_start(struct priv *priv)
 {
@@ -58,6 +73,12 @@ error:
 	return ret;
 }
 
+/**
+ * Stop traffic on Rx queues.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
 static void
 priv_rxq_stop(struct priv *priv)
 {
@@ -67,6 +88,15 @@ priv_rxq_stop(struct priv *priv)
 		mlx5_priv_rxq_release(priv, i);
 }
 
+/**
+ * Start traffic on Rx queues.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, errno on error.
+ */
 static int
 priv_rxq_start(struct priv *priv)
 {

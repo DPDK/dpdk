@@ -614,9 +614,10 @@ mlx5_priv_txq_ibv_releasable(struct priv *priv __rte_unused,
  * Verify the Verbs Tx queue list is empty
  *
  * @param priv
- *  Pointer to private structure.
+ *   Pointer to private structure.
  *
- * @return the number of object not released.
+ * @return
+ *   The number of object not released.
  */
 int
 mlx5_priv_txq_ibv_verify(struct priv *priv)
@@ -893,9 +894,10 @@ mlx5_priv_txq_releasable(struct priv *priv, uint16_t idx)
  * Verify the Tx Queue list is empty
  *
  * @param priv
- *  Pointer to private structure.
+ *   Pointer to private structure.
  *
- * @return the number of object not released.
+ * @return
+ *   The number of object not released.
  */
 int
 mlx5_priv_txq_verify(struct priv *priv)
