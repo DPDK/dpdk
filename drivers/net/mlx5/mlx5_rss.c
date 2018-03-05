@@ -123,7 +123,6 @@ priv_rss_reta_index_resize(struct priv *priv, unsigned int reta_size)
 		return ENOMEM;
 	priv->reta_idx = mem;
 	priv->reta_idx_n = reta_size;
-
 	if (old_size < reta_size)
 		memset(&(*priv->reta_idx)[old_size], 0,
 		       (reta_size - old_size) *
@@ -191,7 +190,6 @@ priv_dev_rss_reta_update(struct priv *priv,
 	ret = priv_rss_reta_index_resize(priv, reta_size);
 	if (ret)
 		return ret;
-
 	for (idx = 0, i = 0; (i != reta_size); ++i) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		pos = i % RTE_RETA_GROUP_SIZE;

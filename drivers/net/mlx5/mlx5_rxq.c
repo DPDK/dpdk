@@ -1067,7 +1067,6 @@ mlx5_priv_rxq_get(struct priv *priv, uint16_t idx)
 		rxq_ctrl = container_of((*priv->rxqs)[idx],
 					struct mlx5_rxq_ctrl,
 					rxq);
-
 		mlx5_priv_rxq_ibv_get(priv, idx);
 		rte_atomic32_inc(&rxq_ctrl->refcnt);
 		DEBUG("%p: Rx queue %p: refcnt %d", (void *)priv,

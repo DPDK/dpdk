@@ -120,14 +120,12 @@ priv_vlan_strip_queue_set(struct priv *priv, uint16_t idx, int on)
 		.flags_mask = IBV_WQ_FLAGS_CVLAN_STRIPPING,
 		.flags = vlan_offloads,
 	};
-
 	err = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
 	if (err) {
 		ERROR("%p: failed to modified stripping mode: %s",
 		      (void *)priv, strerror(err));
 		return;
 	}
-
 	/* Update related bits in RX queue. */
 	rxq->vlan_strip = !!on;
 }
@@ -152,13 +150,11 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 		ERROR("VLAN stripping is not supported");
 		return;
 	}
-
 	/* Validate queue number */
 	if (queue >= priv->rxqs_n) {
 		ERROR("VLAN stripping, invalid queue number %d", queue);
 		return;
 	}
-
 	priv_lock(priv);
 	priv_vlan_strip_queue_set(priv, queue, on);
 	priv_unlock(priv);
@@ -186,13 +182,11 @@ mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			ERROR("VLAN stripping is not supported");
 			return 0;
 		}
-
 		/* Run on every RX queue and set/reset VLAN stripping. */
 		priv_lock(priv);
 		for (i = 0; (i != priv->rxqs_n); i++)
 			priv_vlan_strip_queue_set(priv, i, hw_vlan_strip);
 		priv_unlock(priv);
 	}
-
 	return 0;
 }

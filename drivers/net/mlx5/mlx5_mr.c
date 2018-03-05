@@ -76,7 +76,6 @@ mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
 	rte_mempool_mem_iter(mp, mlx5_check_mempool_cb, &data);
 	*start = (uintptr_t)data.start;
 	*end = (uintptr_t)data.end;
-
 	return data.ret;
 }
 
