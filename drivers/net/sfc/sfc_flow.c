@@ -1919,6 +1919,77 @@ sfc_flow_spec_filters_complete(struct sfc_adapter *sa,
 	return 0;
 }
 
+/**
+ * Check that set of match flags is referred to by a filter. Filter is
+ * described by match flags with the ability to add OUTER_VID and INNER_VID
+ * flags.
+ *
+ * @param match_flags[in]
+ *   Set of match flags.
+ * @param flags_pattern[in]
+ *   Pattern of filter match flags.
+ */
+static boolean_t
+sfc_flow_is_match_with_vids(efx_filter_match_flags_t match_flags,
+			    efx_filter_match_flags_t flags_pattern)
+{
+	if ((match_flags & flags_pattern) != flags_pattern)
+		return B_FALSE;
+
+	switch (match_flags & ~flags_pattern) {
+	case 0:
+	case EFX_FILTER_MATCH_OUTER_VID:
+	case EFX_FILTER_MATCH_OUTER_VID | EFX_FILTER_MATCH_INNER_VID:
+		return B_TRUE;
+	default:
+		return B_FALSE;
+	}
+}
+
+/**
+ * Check whether the spec maps to a hardware filter which is known to be
+ * ineffective despite being valid.
+ *
+ * @param spec[in]
+ *   SFC flow specification.
+ */
+static boolean_t
+sfc_flow_is_match_flags_exception(struct sfc_flow_spec *spec)
+{
+	unsigned int i;
+	uint16_t ether_type;
+	uint8_t ip_proto;
+	efx_filter_match_flags_t match_flags;
+
+	for (i = 0; i < spec->count; i++) {
+		match_flags = spec->filters[i].efs_match_flags;
+
+		if (sfc_flow_is_match_with_vids(match_flags,
+						EFX_FILTER_MATCH_ETHER_TYPE) ||
+		    sfc_flow_is_match_with_vids(match_flags,
+						EFX_FILTER_MATCH_ETHER_TYPE |
+						EFX_FILTER_MATCH_LOC_MAC)) {
+			ether_type = spec->filters[i].efs_ether_type;
+			if (ether_type == EFX_ETHER_TYPE_IPV4 ||
+			    ether_type == EFX_ETHER_TYPE_IPV6)
+				return B_TRUE;
+		} else if (sfc_flow_is_match_with_vids(match_flags,
+				EFX_FILTER_MATCH_ETHER_TYPE |
+				EFX_FILTER_MATCH_IP_PROTO) ||
+			   sfc_flow_is_match_with_vids(match_flags,
+				EFX_FILTER_MATCH_ETHER_TYPE |
+				EFX_FILTER_MATCH_IP_PROTO |
+				EFX_FILTER_MATCH_LOC_MAC)) {
+			ip_proto = spec->filters[i].efs_ip_proto;
+			if (ip_proto == EFX_IPPROTO_TCP ||
+			    ip_proto == EFX_IPPROTO_UDP)
+				return B_TRUE;
+		}
+	}
+
+	return B_FALSE;
+}
+
 static int
 sfc_flow_validate_match_flags(struct sfc_adapter *sa,
 			      struct rte_flow *flow,
@@ -1936,6 +2007,13 @@ sfc_flow_validate_match_flags(struct sfc_adapter *sa,
 		rc = sfc_flow_spec_filters_complete(sa, &flow->spec, error);
 		if (rc != 0)
 			return rc;
+	}
+
+	if (sfc_flow_is_match_flags_exception(&flow->spec)) {
+		rte_flow_error_set(error, ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"The flow rule pattern is unsupported");
+		return -rte_errno;
 	}
 
 	return 0;

@@ -193,6 +193,23 @@ in the mask of destination address. If destinaton address in the spec is
 multicast, it matches all multicast (and broadcast) packets, oherwise it
 matches unicast packets that are not filtered by other flow rules.
 
+Exceptions to flow rules
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+There is a list of exceptional flow rule patterns which will not be
+accepted by the PMD. A pattern will be rejected if at least one of the
+conditions is met:
+
+- Filtering by IPv4 or IPv6 EtherType without pattern items of internet
+  layer and above.
+
+- The last item is IPV4 or IPV6, and it's empty.
+
+- Filtering by TCP or UDP IP transport protocol without pattern items of
+  transport layer and above.
+
+- The last item is TCP or UDP, and it's empty.
+
 
 Supported NICs
 --------------
