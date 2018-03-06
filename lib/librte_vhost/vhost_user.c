@@ -1275,13 +1275,13 @@ read_vhost_message(int sockfd, struct VhostUserMsg *msg)
 }
 
 static int
-send_vhost_message(int sockfd, struct VhostUserMsg *msg)
+send_vhost_message(int sockfd, struct VhostUserMsg *msg, int *fds, int fd_num)
 {
 	if (!msg)
 		return 0;
 
 	return send_fd_message(sockfd, (char *)msg,
-		VHOST_USER_HDR_SIZE + msg->size, NULL, 0);
+		VHOST_USER_HDR_SIZE + msg->size, fds, fd_num);
 }
 
 static int
@@ -1295,7 +1295,7 @@ send_vhost_reply(int sockfd, struct VhostUserMsg *msg)
 	msg->flags |= VHOST_USER_VERSION;
 	msg->flags |= VHOST_USER_REPLY_MASK;
 
-	return send_vhost_message(sockfd, msg);
+	return send_vhost_message(sockfd, msg, NULL, 0);
 }
 
 /*
@@ -1598,7 +1598,7 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 		},
 	};
 
-	ret = send_vhost_message(dev->slave_req_fd, &msg);
+	ret = send_vhost_message(dev->slave_req_fd, &msg, NULL, 0);
 	if (ret < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 				"Failed to send IOTLB miss message (%d)\n",
