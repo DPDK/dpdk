@@ -86,6 +86,8 @@ struct sfc_flow_copy_flag {
 	sfc_flow_spec_check *spec_check;
 };
 
+static sfc_flow_spec_set_vals sfc_flow_set_unknown_dst_flags;
+static sfc_flow_spec_check sfc_flow_check_unknown_dst_flags;
 static sfc_flow_spec_set_vals sfc_flow_set_ethertypes;
 static sfc_flow_spec_set_vals sfc_flow_set_ifrm_unknown_dst_flags;
 static sfc_flow_spec_check sfc_flow_check_ifrm_unknown_dst_flags;
@@ -1514,6 +1516,80 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 }
 
 /**
+ * Set the EFX_FILTER_MATCH_UNKNOWN_UCAST_DST
+ * and EFX_FILTER_MATCH_UNKNOWN_MCAST_DST match flags in the same
+ * specifications after copying.
+ *
+ * @param spec[in, out]
+ *   SFC flow specification to update.
+ * @param filters_count_for_one_val[in]
+ *   How many specifications should have the same match flag, what is the
+ *   number of specifications before copying.
+ * @param error[out]
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_set_unknown_dst_flags(struct sfc_flow_spec *spec,
+			       unsigned int filters_count_for_one_val,
+			       struct rte_flow_error *error)
+{
+	unsigned int i;
+	static const efx_filter_match_flags_t vals[] = {
+		EFX_FILTER_MATCH_UNKNOWN_UCAST_DST,
+		EFX_FILTER_MATCH_UNKNOWN_MCAST_DST
+	};
+
+	if (filters_count_for_one_val * RTE_DIM(vals) != spec->count) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Number of specifications is incorrect while copying "
+			"by unknown destination flags");
+		return -rte_errno;
+	}
+
+	for (i = 0; i < spec->count; i++) {
+		/* The check above ensures that divisor can't be zero here */
+		spec->filters[i].efs_match_flags |=
+			vals[i / filters_count_for_one_val];
+	}
+
+	return 0;
+}
+
+/**
+ * Check that the following conditions are met:
+ * - the list of supported filters has a filter
+ *   with EFX_FILTER_MATCH_UNKNOWN_MCAST_DST flag instead of
+ *   EFX_FILTER_MATCH_UNKNOWN_UCAST_DST, since this filter will also
+ *   be inserted.
+ *
+ * @param match[in]
+ *   The match flags of filter.
+ * @param spec[in]
+ *   Specification to be supplemented.
+ * @param filter[in]
+ *   SFC filter with list of supported filters.
+ */
+static boolean_t
+sfc_flow_check_unknown_dst_flags(efx_filter_match_flags_t match,
+				 __rte_unused efx_filter_spec_t *spec,
+				 struct sfc_filter *filter)
+{
+	unsigned int i;
+	efx_filter_match_flags_t match_mcast_dst;
+
+	match_mcast_dst =
+		(match & ~EFX_FILTER_MATCH_UNKNOWN_UCAST_DST) |
+		EFX_FILTER_MATCH_UNKNOWN_MCAST_DST;
+	for (i = 0; i < filter->supported_match_num; i++) {
+		if (match_mcast_dst == filter->supported_match[i])
+			return B_TRUE;
+	}
+
+	return B_FALSE;
+}
+
+/**
  * Set the EFX_FILTER_MATCH_ETHER_TYPE match flag and EFX_ETHER_TYPE_IPV4 and
  * EFX_ETHER_TYPE_IPV6 values of the corresponding field in the same
  * specifications after copying.
@@ -1638,8 +1714,21 @@ sfc_flow_check_ifrm_unknown_dst_flags(efx_filter_match_flags_t match,
 	return B_FALSE;
 }
 
-/* Match flags that can be automatically added to filters */
+/*
+ * Match flags that can be automatically added to filters.
+ * Selecting the last minimum when searching for the copy flag ensures that the
+ * EFX_FILTER_MATCH_UNKNOWN_UCAST_DST flag has a higher priority than
+ * EFX_FILTER_MATCH_ETHER_TYPE. This is because the filter
+ * EFX_FILTER_MATCH_UNKNOWN_UCAST_DST is at the end of the list of supported
+ * filters.
+ */
 static const struct sfc_flow_copy_flag sfc_flow_copy_flags[] = {
+	{
+		.flag = EFX_FILTER_MATCH_UNKNOWN_UCAST_DST,
+		.vals_count = 2,
+		.set_vals = sfc_flow_set_unknown_dst_flags,
+		.spec_check = sfc_flow_check_unknown_dst_flags,
+	},
 	{
 		.flag = EFX_FILTER_MATCH_ETHER_TYPE,
 		.vals_count = 2,
