@@ -19,6 +19,13 @@
 extern "C" {
 #endif
 
+/*
+ * The maximum number of fully elaborated hardware filter specifications
+ * which can be produced from a template by means of multiplication, if
+ * missing match flags are needed to be taken into account
+ */
+#define SF_FLOW_SPEC_NB_FILTERS_MAX 1
+
 #if EFSYS_OPT_RX_SCALE
 /* RSS configuration storage */
 struct sfc_flow_rss {
@@ -30,9 +37,19 @@ struct sfc_flow_rss {
 };
 #endif /* EFSYS_OPT_RX_SCALE */
 
+/* Filter specification storage */
+struct sfc_flow_spec {
+	/* partial specification from flow rule */
+	efx_filter_spec_t template;
+	/* fully elaborated hardware filters specifications */
+	efx_filter_spec_t filters[SF_FLOW_SPEC_NB_FILTERS_MAX];
+	/* number of complete specifications */
+	unsigned int count;
+};
+
 /* PMD-specific definition of the opaque type from rte_flow.h */
 struct rte_flow {
-	efx_filter_spec_t spec;		/* filter specification */
+	struct sfc_flow_spec spec;	/* flow spec for hardware filter(s) */
 #if EFSYS_OPT_RX_SCALE
 	boolean_t rss;			/* RSS toggle */
 	struct sfc_flow_rss rss_conf;	/* RSS configuration */

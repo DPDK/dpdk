@@ -25,10 +25,13 @@
 
 /*
  * At now flow API is implemented in such a manner that each
- * flow rule is converted to a hardware filter.
+ * flow rule is converted to one or more hardware filters.
  * All elements of flow rule (attributes, pattern items, actions)
  * correspond to one or more fields in the efx_filter_spec_s structure
  * that is responsible for the hardware filter.
+ * If some required field is unset in the flow rule, then a handful
+ * of filter copies will be created to cover all possible values
+ * of such a field.
  */
 
 enum sfc_flow_item_layers {
@@ -1095,8 +1098,8 @@ sfc_flow_parse_attr(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	flow->spec.efs_flags |= EFX_FILTER_FLAG_RX;
-	flow->spec.efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
+	flow->spec.template.efs_flags |= EFX_FILTER_FLAG_RX;
+	flow->spec.template.efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 
 	return 0;
 }
@@ -1187,7 +1190,7 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 			break;
 		}
 
-		rc = item->parse(pattern, &flow->spec, error);
+		rc = item->parse(pattern, &flow->spec.template, error);
 		if (rc != 0)
 			return rc;
 
@@ -1209,7 +1212,7 @@ sfc_flow_parse_queue(struct sfc_adapter *sa,
 		return -EINVAL;
 
 	rxq = sa->rxq_info[queue->index].rxq;
-	flow->spec.efs_dmaq_id = (uint16_t)rxq->hw_index;
+	flow->spec.template.efs_dmaq_id = (uint16_t)rxq->hw_index;
 
 	return 0;
 }
@@ -1285,13 +1288,57 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 #endif /* EFSYS_OPT_RX_SCALE */
 
 static int
+sfc_flow_spec_flush(struct sfc_adapter *sa, struct sfc_flow_spec *spec,
+		    unsigned int filters_count)
+{
+	unsigned int i;
+	int ret = 0;
+
+	for (i = 0; i < filters_count; i++) {
+		int rc;
+
+		rc = efx_filter_remove(sa->nic, &spec->filters[i]);
+		if (ret == 0 && rc != 0) {
+			sfc_err(sa, "failed to remove filter specification "
+				"(rc = %d)", rc);
+			ret = rc;
+		}
+	}
+
+	return ret;
+}
+
+static int
+sfc_flow_spec_insert(struct sfc_adapter *sa, struct sfc_flow_spec *spec)
+{
+	unsigned int i;
+	int rc = 0;
+
+	for (i = 0; i < spec->count; i++) {
+		rc = efx_filter_insert(sa->nic, &spec->filters[i]);
+		if (rc != 0) {
+			sfc_flow_spec_flush(sa, spec, i);
+			break;
+		}
+	}
+
+	return rc;
+}
+
+static int
+sfc_flow_spec_remove(struct sfc_adapter *sa, struct sfc_flow_spec *spec)
+{
+	return sfc_flow_spec_flush(sa, spec, spec->count);
+}
+
+static int
 sfc_flow_filter_insert(struct sfc_adapter *sa,
 		       struct rte_flow *flow)
 {
-	efx_filter_spec_t *spec = &flow->spec;
-
 #if EFSYS_OPT_RX_SCALE
 	struct sfc_flow_rss *rss = &flow->rss_conf;
+	uint32_t efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
+	unsigned int i;
 	int rc = 0;
 
 	if (flow->rss) {
@@ -1302,27 +1349,38 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 		rc = efx_rx_scale_context_alloc(sa->nic,
 						EFX_RX_SCALE_EXCLUSIVE,
 						rss_spread,
-						&spec->efs_rss_context);
+						&efs_rss_context);
 		if (rc != 0)
 			goto fail_scale_context_alloc;
 
-		rc = efx_rx_scale_mode_set(sa->nic, spec->efs_rss_context,
+		rc = efx_rx_scale_mode_set(sa->nic, efs_rss_context,
 					   EFX_RX_HASHALG_TOEPLITZ,
 					   rss->rss_hash_types, B_TRUE);
 		if (rc != 0)
 			goto fail_scale_mode_set;
 
-		rc = efx_rx_scale_key_set(sa->nic, spec->efs_rss_context,
+		rc = efx_rx_scale_key_set(sa->nic, efs_rss_context,
 					  rss->rss_key,
 					  sizeof(sa->rss_key));
 		if (rc != 0)
 			goto fail_scale_key_set;
 
-		spec->efs_dmaq_id = rss->rxq_hw_index_min;
-		spec->efs_flags |= EFX_FILTER_FLAG_RX_RSS;
+		/*
+		 * At this point, fully elaborated filter specifications
+		 * have been produced from the template. To make sure that
+		 * RSS behaviour is consistent between them, set the same
+		 * RSS context value everywhere.
+		 */
+		for (i = 0; i < flow->spec.count; i++) {
+			efx_filter_spec_t *spec = &flow->spec.filters[i];
+
+			spec->efs_rss_context = efs_rss_context;
+			spec->efs_dmaq_id = rss->rxq_hw_index_min;
+			spec->efs_flags |= EFX_FILTER_FLAG_RX_RSS;
+		}
 	}
 
-	rc = efx_filter_insert(sa->nic, spec);
+	rc = sfc_flow_spec_insert(sa, &flow->spec);
 	if (rc != 0)
 		goto fail_filter_insert;
 
@@ -1335,7 +1393,7 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 		 * the HW knows all the information needed to verify
 		 * the table entries, and the operation will succeed
 		 */
-		rc = efx_rx_scale_tbl_set(sa->nic, spec->efs_rss_context,
+		rc = efx_rx_scale_tbl_set(sa->nic, efs_rss_context,
 					  rss->rss_tbl, RTE_DIM(rss->rss_tbl));
 		if (rc != 0)
 			goto fail_scale_tbl_set;
@@ -1344,18 +1402,18 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 	return 0;
 
 fail_scale_tbl_set:
-	efx_filter_remove(sa->nic, spec);
+	sfc_flow_spec_remove(sa, &flow->spec);
 
 fail_filter_insert:
 fail_scale_key_set:
 fail_scale_mode_set:
-	if (flow->rss)
-		efx_rx_scale_context_free(sa->nic, spec->efs_rss_context);
+	if (efs_rss_context != EFX_RSS_CONTEXT_DEFAULT)
+		efx_rx_scale_context_free(sa->nic, efs_rss_context);
 
 fail_scale_context_alloc:
 	return rc;
 #else /* !EFSYS_OPT_RX_SCALE */
-	return efx_filter_insert(sa->nic, spec);
+	return sfc_flow_spec_insert(sa, &flow->spec);
 #endif /* EFSYS_OPT_RX_SCALE */
 }
 
@@ -1363,16 +1421,23 @@ static int
 sfc_flow_filter_remove(struct sfc_adapter *sa,
 		       struct rte_flow *flow)
 {
-	efx_filter_spec_t *spec = &flow->spec;
 	int rc = 0;
 
-	rc = efx_filter_remove(sa->nic, spec);
+	rc = sfc_flow_spec_remove(sa, &flow->spec);
 	if (rc != 0)
 		return rc;
 
 #if EFSYS_OPT_RX_SCALE
-	if (flow->rss)
+	if (flow->rss) {
+		/*
+		 * All specifications for a given flow rule have the same RSS
+		 * context, so that RSS context value is taken from the first
+		 * filter specification
+		 */
+		efx_filter_spec_t *spec = &flow->spec.filters[0];
+
 		rc = efx_rx_scale_context_free(sa->nic, spec->efs_rss_context);
+	}
 #endif /* EFSYS_OPT_RX_SCALE */
 
 	return rc;
@@ -1452,6 +1517,8 @@ sfc_flow_parse(struct rte_eth_dev *dev,
 	       struct rte_flow_error *error)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	efx_filter_match_flags_t match_flags =
+		flow->spec.template.efs_match_flags;
 	int rc;
 
 	rc = sfc_flow_parse_attr(attr, flow, error);
@@ -1466,12 +1533,19 @@ sfc_flow_parse(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto fail_bad_value;
 
-	if (!sfc_filter_is_match_supported(sa, flow->spec.efs_match_flags)) {
+	if (!sfc_filter_is_match_supported(sa, match_flags)) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "Flow rule pattern is not supported");
 		return -rte_errno;
 	}
+
+	/*
+	 * At this point, template specification simply becomes the first
+	 * fully elaborated spec
+	 */
+	flow->spec.filters[0] = flow->spec.template;
+	flow->spec.count = 1;
 
 fail_bad_value:
 	return rc;
