@@ -57,6 +57,7 @@ static sfc_flow_item_parse sfc_flow_parse_ipv4;
 static sfc_flow_item_parse sfc_flow_parse_ipv6;
 static sfc_flow_item_parse sfc_flow_parse_tcp;
 static sfc_flow_item_parse sfc_flow_parse_udp;
+static sfc_flow_item_parse sfc_flow_parse_vxlan;
 
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
@@ -696,6 +697,132 @@ fail_bad_mask:
 	return -rte_errno;
 }
 
+/*
+ * Filters for encapsulated packets match based on the EtherType and IP
+ * protocol in the outer frame.
+ */
+static int
+sfc_flow_set_match_flags_for_encap_pkts(const struct rte_flow_item *item,
+					efx_filter_spec_t *efx_spec,
+					uint8_t ip_proto,
+					struct rte_flow_error *error)
+{
+	if (!(efx_spec->efs_match_flags & EFX_FILTER_MATCH_IP_PROTO)) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_IP_PROTO;
+		efx_spec->efs_ip_proto = ip_proto;
+	} else if (efx_spec->efs_ip_proto != ip_proto) {
+		switch (ip_proto) {
+		case EFX_IPPROTO_UDP:
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Outer IP header protocol must be UDP "
+				"in VxLAN pattern");
+			return -rte_errno;
+
+		default:
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Only VxLAN tunneling patterns "
+				"are supported");
+			return -rte_errno;
+		}
+	}
+
+	if (!(efx_spec->efs_match_flags & EFX_FILTER_MATCH_ETHER_TYPE)) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Outer frame EtherType in pattern with tunneling "
+			"must be set");
+		return -rte_errno;
+	} else if (efx_spec->efs_ether_type != EFX_ETHER_TYPE_IPV4 &&
+		   efx_spec->efs_ether_type != EFX_ETHER_TYPE_IPV6) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Outer frame EtherType in pattern with tunneling "
+			"must be IPv4 or IPv6");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+sfc_flow_set_efx_spec_vni_or_vsid(efx_filter_spec_t *efx_spec,
+				  const uint8_t *vni_or_vsid_val,
+				  const uint8_t *vni_or_vsid_mask,
+				  const struct rte_flow_item *item,
+				  struct rte_flow_error *error)
+{
+	const uint8_t vni_or_vsid_full_mask[EFX_VNI_OR_VSID_LEN] = {
+		0xff, 0xff, 0xff
+	};
+
+	if (memcmp(vni_or_vsid_mask, vni_or_vsid_full_mask,
+		   EFX_VNI_OR_VSID_LEN) == 0) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_VNI_OR_VSID;
+		rte_memcpy(efx_spec->efs_vni_or_vsid, vni_or_vsid_val,
+			   EFX_VNI_OR_VSID_LEN);
+	} else if (!sfc_flow_is_zero(vni_or_vsid_mask, EFX_VNI_OR_VSID_LEN)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM, item,
+				   "Unsupported VNI/VSID mask");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+/**
+ * Convert VXLAN item to EFX filter specification.
+ *
+ * @param item[in]
+ *   Item specification. Only VXLAN network identifier field is supported.
+ *   If the mask is NULL, default mask will be used.
+ *   Ranging is not supported.
+ * @param efx_spec[in, out]
+ *   EFX filter specification to update.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_parse_vxlan(const struct rte_flow_item *item,
+		     efx_filter_spec_t *efx_spec,
+		     struct rte_flow_error *error)
+{
+	int rc;
+	const struct rte_flow_item_vxlan *spec = NULL;
+	const struct rte_flow_item_vxlan *mask = NULL;
+	const struct rte_flow_item_vxlan supp_mask = {
+		.vni = { 0xff, 0xff, 0xff }
+	};
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec,
+				 (const void **)&mask,
+				 &supp_mask,
+				 &rte_flow_item_vxlan_mask,
+				 sizeof(struct rte_flow_item_vxlan),
+				 error);
+	if (rc != 0)
+		return rc;
+
+	rc = sfc_flow_set_match_flags_for_encap_pkts(item, efx_spec,
+						     EFX_IPPROTO_UDP, error);
+	if (rc != 0)
+		return rc;
+
+	efx_spec->efs_encap_type = EFX_TUNNEL_PROTOCOL_VXLAN;
+	efx_spec->efs_match_flags |= EFX_FILTER_MATCH_ENCAP_TYPE;
+
+	if (spec == NULL)
+		return 0;
+
+	rc = sfc_flow_set_efx_spec_vni_or_vsid(efx_spec, spec->vni,
+					       mask->vni, item, error);
+
+	return rc;
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VOID,
@@ -738,6 +865,12 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_L4,
 		.parse = sfc_flow_parse_udp,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
+		.prev_layer = SFC_FLOW_ITEM_L4,
+		.layer = SFC_FLOW_ITEM_START_LAYER,
+		.parse = sfc_flow_parse_vxlan,
 	},
 };
 
@@ -806,6 +939,7 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 {
 	int rc;
 	unsigned int prev_layer = SFC_FLOW_ITEM_ANY_LAYER;
+	boolean_t is_ifrm = B_FALSE;
 	const struct sfc_flow_item *item;
 
 	if (pattern == NULL) {
@@ -835,6 +969,37 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 					   RTE_FLOW_ERROR_TYPE_ITEM, pattern,
 					   "Unexpected sequence of pattern items");
 			return -rte_errno;
+		}
+
+		/*
+		 * Allow only VOID pattern item in the inner frame.
+		 * Also check that there is only one tunneling protocol.
+		 */
+		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			if (is_ifrm) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					pattern,
+					"More than one tunneling protocol");
+				return -rte_errno;
+			}
+			is_ifrm = B_TRUE;
+			break;
+
+		default:
+			if (is_ifrm) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					pattern,
+					"There is an unsupported pattern item "
+					"in the inner frame");
+				return -rte_errno;
+			}
+			break;
 		}
 
 		rc = item->parse(pattern, &flow->spec, error);

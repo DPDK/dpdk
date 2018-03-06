@@ -166,6 +166,8 @@ Supported pattern items:
 
 - UDP (exact match of source/destination ports)
 
+- VXLAN (exact match of VXLAN network identifier)
+
 Supported actions:
 
 - VOID
