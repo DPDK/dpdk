@@ -45,6 +45,12 @@ New Features
 
   Support to update RSS hash and key has been added to CXGBE PMD.
 
+* **Updated Solarflare network PMD.**
+
+  Updated the sfc_efx driver including the following changes:
+
+  * Added support for NVGRE, VXLAN and GENEVE filters in flow API.
+
 
 API Changes
 -----------
