@@ -174,7 +174,7 @@ send_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 	}
 
 	do {
-		ret = sendmsg(sockfd, &msgh, 0);
+		ret = sendmsg(sockfd, &msgh, MSG_NOSIGNAL);
 	} while (ret < 0 && errno == EINTR);
 
 	if (ret < 0) {
