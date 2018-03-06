@@ -58,6 +58,7 @@ static sfc_flow_item_parse sfc_flow_parse_ipv6;
 static sfc_flow_item_parse sfc_flow_parse_tcp;
 static sfc_flow_item_parse sfc_flow_parse_udp;
 static sfc_flow_item_parse sfc_flow_parse_vxlan;
+static sfc_flow_item_parse sfc_flow_parse_nvgre;
 
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
@@ -719,10 +720,17 @@ sfc_flow_set_match_flags_for_encap_pkts(const struct rte_flow_item *item,
 				"in VxLAN pattern");
 			return -rte_errno;
 
+		case EFX_IPPROTO_GRE:
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Outer IP header protocol must be GRE "
+				"in NVGRE pattern");
+			return -rte_errno;
+
 		default:
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Only VxLAN tunneling patterns "
+				"Only VxLAN/NVGRE tunneling patterns "
 				"are supported");
 			return -rte_errno;
 		}
@@ -823,6 +831,57 @@ sfc_flow_parse_vxlan(const struct rte_flow_item *item,
 	return rc;
 }
 
+/**
+ * Convert NVGRE item to EFX filter specification.
+ *
+ * @param item[in]
+ *   Item specification. Only virtual subnet ID field is supported.
+ *   If the mask is NULL, default mask will be used.
+ *   Ranging is not supported.
+ * @param efx_spec[in, out]
+ *   EFX filter specification to update.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_parse_nvgre(const struct rte_flow_item *item,
+		     efx_filter_spec_t *efx_spec,
+		     struct rte_flow_error *error)
+{
+	int rc;
+	const struct rte_flow_item_nvgre *spec = NULL;
+	const struct rte_flow_item_nvgre *mask = NULL;
+	const struct rte_flow_item_nvgre supp_mask = {
+		.tni = { 0xff, 0xff, 0xff }
+	};
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec,
+				 (const void **)&mask,
+				 &supp_mask,
+				 &rte_flow_item_nvgre_mask,
+				 sizeof(struct rte_flow_item_nvgre),
+				 error);
+	if (rc != 0)
+		return rc;
+
+	rc = sfc_flow_set_match_flags_for_encap_pkts(item, efx_spec,
+						     EFX_IPPROTO_GRE, error);
+	if (rc != 0)
+		return rc;
+
+	efx_spec->efs_encap_type = EFX_TUNNEL_PROTOCOL_NVGRE;
+	efx_spec->efs_match_flags |= EFX_FILTER_MATCH_ENCAP_TYPE;
+
+	if (spec == NULL)
+		return 0;
+
+	rc = sfc_flow_set_efx_spec_vni_or_vsid(efx_spec, spec->tni,
+					       mask->tni, item, error);
+
+	return rc;
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VOID,
@@ -871,6 +930,12 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.prev_layer = SFC_FLOW_ITEM_L4,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
 		.parse = sfc_flow_parse_vxlan,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_NVGRE,
+		.prev_layer = SFC_FLOW_ITEM_L3,
+		.layer = SFC_FLOW_ITEM_START_LAYER,
+		.parse = sfc_flow_parse_nvgre,
 	},
 };
 
@@ -980,6 +1045,7 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			if (is_ifrm) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,

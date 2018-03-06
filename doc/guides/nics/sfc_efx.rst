@@ -168,6 +168,8 @@ Supported pattern items:
 
 - VXLAN (exact match of VXLAN network identifier)
 
+- NVGRE (exact match of virtual subnet ID)
+
 Supported actions:
 
 - VOID
