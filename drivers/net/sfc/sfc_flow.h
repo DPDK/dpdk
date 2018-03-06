@@ -24,7 +24,7 @@ extern "C" {
  * which can be produced from a template by means of multiplication, if
  * missing match flags are needed to be taken into account
  */
-#define SF_FLOW_SPEC_NB_FILTERS_MAX 2
+#define SF_FLOW_SPEC_NB_FILTERS_MAX 4
 
 #if EFSYS_OPT_RX_SCALE
 /* RSS configuration storage */

@@ -68,6 +68,10 @@ typedef int (sfc_flow_spec_set_vals)(struct sfc_flow_spec *spec,
 				     unsigned int filters_count_for_one_val,
 				     struct rte_flow_error *error);
 
+typedef boolean_t (sfc_flow_spec_check)(efx_filter_match_flags_t match,
+					efx_filter_spec_t *spec,
+					struct sfc_filter *filter);
+
 struct sfc_flow_copy_flag {
 	/* EFX filter specification match flag */
 	efx_filter_match_flags_t flag;
@@ -75,9 +79,16 @@ struct sfc_flow_copy_flag {
 	unsigned int vals_count;
 	/* Function to set values in specifications */
 	sfc_flow_spec_set_vals *set_vals;
+	/*
+	 * Function to check that the specification is suitable
+	 * for adding this match flag
+	 */
+	sfc_flow_spec_check *spec_check;
 };
 
 static sfc_flow_spec_set_vals sfc_flow_set_ethertypes;
+static sfc_flow_spec_set_vals sfc_flow_set_ifrm_unknown_dst_flags;
+static sfc_flow_spec_check sfc_flow_check_ifrm_unknown_dst_flags;
 
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
@@ -1548,12 +1559,98 @@ sfc_flow_set_ethertypes(struct sfc_flow_spec *spec,
 	return 0;
 }
 
+/**
+ * Set the EFX_FILTER_MATCH_IFRM_UNKNOWN_UCAST_DST and
+ * EFX_FILTER_MATCH_IFRM_UNKNOWN_MCAST_DST match flags in the same
+ * specifications after copying.
+ *
+ * @param spec[in, out]
+ *   SFC flow specification to update.
+ * @param filters_count_for_one_val[in]
+ *   How many specifications should have the same match flag, what is the
+ *   number of specifications before copying.
+ * @param error[out]
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_set_ifrm_unknown_dst_flags(struct sfc_flow_spec *spec,
+				    unsigned int filters_count_for_one_val,
+				    struct rte_flow_error *error)
+{
+	unsigned int i;
+	static const efx_filter_match_flags_t vals[] = {
+		EFX_FILTER_MATCH_IFRM_UNKNOWN_UCAST_DST,
+		EFX_FILTER_MATCH_IFRM_UNKNOWN_MCAST_DST
+	};
+
+	if (filters_count_for_one_val * RTE_DIM(vals) != spec->count) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Number of specifications is incorrect while copying "
+			"by inner frame unknown destination flags");
+		return -rte_errno;
+	}
+
+	for (i = 0; i < spec->count; i++) {
+		/* The check above ensures that divisor can't be zero here */
+		spec->filters[i].efs_match_flags |=
+			vals[i / filters_count_for_one_val];
+	}
+
+	return 0;
+}
+
+/**
+ * Check that the following conditions are met:
+ * - the specification corresponds to a filter for encapsulated traffic
+ * - the list of supported filters has a filter
+ *   with EFX_FILTER_MATCH_IFRM_UNKNOWN_MCAST_DST flag instead of
+ *   EFX_FILTER_MATCH_IFRM_UNKNOWN_UCAST_DST, since this filter will also
+ *   be inserted.
+ *
+ * @param match[in]
+ *   The match flags of filter.
+ * @param spec[in]
+ *   Specification to be supplemented.
+ * @param filter[in]
+ *   SFC filter with list of supported filters.
+ */
+static boolean_t
+sfc_flow_check_ifrm_unknown_dst_flags(efx_filter_match_flags_t match,
+				      efx_filter_spec_t *spec,
+				      struct sfc_filter *filter)
+{
+	unsigned int i;
+	efx_tunnel_protocol_t encap_type = spec->efs_encap_type;
+	efx_filter_match_flags_t match_mcast_dst;
+
+	if (encap_type == EFX_TUNNEL_PROTOCOL_NONE)
+		return B_FALSE;
+
+	match_mcast_dst =
+		(match & ~EFX_FILTER_MATCH_IFRM_UNKNOWN_UCAST_DST) |
+		EFX_FILTER_MATCH_IFRM_UNKNOWN_MCAST_DST;
+	for (i = 0; i < filter->supported_match_num; i++) {
+		if (match_mcast_dst == filter->supported_match[i])
+			return B_TRUE;
+	}
+
+	return B_FALSE;
+}
+
 /* Match flags that can be automatically added to filters */
 static const struct sfc_flow_copy_flag sfc_flow_copy_flags[] = {
 	{
 		.flag = EFX_FILTER_MATCH_ETHER_TYPE,
 		.vals_count = 2,
 		.set_vals = sfc_flow_set_ethertypes,
+		.spec_check = NULL,
+	},
+	{
+		.flag = EFX_FILTER_MATCH_IFRM_UNKNOWN_UCAST_DST,
+		.vals_count = 2,
+		.set_vals = sfc_flow_set_ifrm_unknown_dst_flags,
+		.spec_check = sfc_flow_check_ifrm_unknown_dst_flags,
 	},
 };
 
@@ -1630,21 +1727,33 @@ sfc_flow_spec_add_match_flag(struct sfc_flow_spec *spec,
  *
  * @param miss_flags[in]
  *   Flags that are missing until the supported filter.
+ * @param spec[in]
+ *   Specification to be supplemented.
+ * @param filter[in]
+ *   SFC filter.
  *
  * @return
  *   Number of specifications after copy or 0, if the flags can not be added.
  */
 static unsigned int
-sfc_flow_check_missing_flags(efx_filter_match_flags_t miss_flags)
+sfc_flow_check_missing_flags(efx_filter_match_flags_t miss_flags,
+			     efx_filter_spec_t *spec,
+			     struct sfc_filter *filter)
 {
 	unsigned int i;
 	efx_filter_match_flags_t copy_flags = 0;
 	efx_filter_match_flags_t flag;
+	efx_filter_match_flags_t match = spec->efs_match_flags | miss_flags;
+	sfc_flow_spec_check *check;
 	unsigned int multiplier = 1;
 
 	for (i = 0; i < RTE_DIM(sfc_flow_copy_flags); i++) {
 		flag = sfc_flow_copy_flags[i].flag;
+		check = sfc_flow_copy_flags[i].spec_check;
 		if ((flag & miss_flags) == flag) {
+			if (check != NULL && (!check(match, spec, filter)))
+				continue;
+
 			copy_flags |= flag;
 			multiplier *= sfc_flow_copy_flags[i].vals_count;
 		}
@@ -1690,7 +1799,8 @@ sfc_flow_spec_filters_complete(struct sfc_adapter *sa,
 	for (i = 0; i < filter->supported_match_num; i++) {
 		if ((match & filter->supported_match[i]) == match) {
 			miss_flags = filter->supported_match[i] & (~match);
-			multiplier = sfc_flow_check_missing_flags(miss_flags);
+			multiplier = sfc_flow_check_missing_flags(miss_flags,
+				&spec->template, filter);
 			if (multiplier > 0) {
 				if (multiplier <= min_multiplier) {
 					min_multiplier = multiplier;
