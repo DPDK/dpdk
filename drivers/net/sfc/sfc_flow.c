@@ -187,11 +187,11 @@ sfc_flow_parse_void(__rte_unused const struct rte_flow_item *item,
  * Convert Ethernet item to EFX filter specification.
  *
  * @param item[in]
- *   Item specification. Only source and destination addresses and
- *   Ethernet type fields are supported. In addition to full and
- *   empty masks of destination address, individual/group mask is
- *   also supported. If the mask is NULL, default mask will be used.
- *   Ranging is not supported.
+ *   Item specification. Outer frame specification may only comprise
+ *   source/destination addresses and Ethertype field.
+ *   Inner frame specification may contain destination address only.
+ *   There is support for individual/group mask as well as for empty and full.
+ *   If the mask is NULL, default mask will be used. Ranging is not supported.
  * @param efx_spec[in, out]
  *   EFX filter specification to update.
  * @param[out] error
@@ -210,40 +210,75 @@ sfc_flow_parse_eth(const struct rte_flow_item *item,
 		.src.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 		.type = 0xffff,
 	};
+	const struct rte_flow_item_eth ifrm_supp_mask = {
+		.dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+	};
 	const uint8_t ig_mask[EFX_MAC_ADDR_LEN] = {
 		0x01, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
+	const struct rte_flow_item_eth *supp_mask_p;
+	const struct rte_flow_item_eth *def_mask_p;
+	uint8_t *loc_mac = NULL;
+	boolean_t is_ifrm = (efx_spec->efs_encap_type !=
+		EFX_TUNNEL_PROTOCOL_NONE);
+
+	if (is_ifrm) {
+		supp_mask_p = &ifrm_supp_mask;
+		def_mask_p = &ifrm_supp_mask;
+		loc_mac = efx_spec->efs_ifrm_loc_mac;
+	} else {
+		supp_mask_p = &supp_mask;
+		def_mask_p = &rte_flow_item_eth_mask;
+		loc_mac = efx_spec->efs_loc_mac;
+	}
 
 	rc = sfc_flow_parse_init(item,
 				 (const void **)&spec,
 				 (const void **)&mask,
-				 &supp_mask,
-				 &rte_flow_item_eth_mask,
+				 supp_mask_p, def_mask_p,
 				 sizeof(struct rte_flow_item_eth),
 				 error);
 	if (rc != 0)
 		return rc;
 
-	/* If "spec" is not set, could be any Ethernet */
-	if (spec == NULL)
-		return 0;
+	/*
+	 * If "spec" is not set, could be any Ethernet, but for the inner frame
+	 * type of destination MAC must be set
+	 */
+	if (spec == NULL) {
+		if (is_ifrm)
+			goto fail_bad_ifrm_dst_mac;
+		else
+			return 0;
+	}
 
 	if (is_same_ether_addr(&mask->dst, &supp_mask.dst)) {
-		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_LOC_MAC;
-		rte_memcpy(efx_spec->efs_loc_mac, spec->dst.addr_bytes,
+		efx_spec->efs_match_flags |= is_ifrm ?
+			EFX_FILTER_MATCH_IFRM_LOC_MAC :
+			EFX_FILTER_MATCH_LOC_MAC;
+		rte_memcpy(loc_mac, spec->dst.addr_bytes,
 			   EFX_MAC_ADDR_LEN);
 	} else if (memcmp(mask->dst.addr_bytes, ig_mask,
 			  EFX_MAC_ADDR_LEN) == 0) {
 		if (is_unicast_ether_addr(&spec->dst))
-			efx_spec->efs_match_flags |=
+			efx_spec->efs_match_flags |= is_ifrm ?
+				EFX_FILTER_MATCH_IFRM_UNKNOWN_UCAST_DST :
 				EFX_FILTER_MATCH_UNKNOWN_UCAST_DST;
 		else
-			efx_spec->efs_match_flags |=
+			efx_spec->efs_match_flags |= is_ifrm ?
+				EFX_FILTER_MATCH_IFRM_UNKNOWN_MCAST_DST :
 				EFX_FILTER_MATCH_UNKNOWN_MCAST_DST;
 	} else if (!is_zero_ether_addr(&mask->dst)) {
 		goto fail_bad_mask;
+	} else if (is_ifrm) {
+		goto fail_bad_ifrm_dst_mac;
 	}
 
+	/*
+	 * ifrm_supp_mask ensures that the source address and
+	 * ethertype masks are equal to zero in inner frame,
+	 * so these fields are filled in only for the outer frame
+	 */
 	if (is_same_ether_addr(&mask->src, &supp_mask.src)) {
 		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_REM_MAC;
 		rte_memcpy(efx_spec->efs_rem_mac, spec->src.addr_bytes,
@@ -269,6 +304,13 @@ fail_bad_mask:
 	rte_flow_error_set(error, EINVAL,
 			   RTE_FLOW_ERROR_TYPE_ITEM, item,
 			   "Bad mask in the ETH pattern item");
+	return -rte_errno;
+
+fail_bad_ifrm_dst_mac:
+	rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ITEM, item,
+			   "Type of destination MAC address in inner frame "
+			   "must be set");
 	return -rte_errno;
 }
 
@@ -1112,11 +1154,12 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 		}
 
 		/*
-		 * Allow only VOID pattern item in the inner frame.
+		 * Allow only VOID and ETH pattern items in the inner frame.
 		 * Also check that there is only one tunneling protocol.
 		 */
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
+		case RTE_FLOW_ITEM_TYPE_ETH:
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_VXLAN:

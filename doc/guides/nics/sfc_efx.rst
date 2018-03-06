@@ -152,7 +152,9 @@ Supported pattern items:
 - VOID
 
 - ETH (exact match of source/destination addresses, individual/group match
-  of destination address, EtherType)
+  of destination address, EtherType in the outer frame and exact match of
+  destination addresses, individual/group match of destination address in
+  the inner frame)
 
 - VLAN (exact match of VID, double-tagging is supported)
 
