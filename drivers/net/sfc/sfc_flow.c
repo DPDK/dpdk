@@ -58,6 +58,7 @@ static sfc_flow_item_parse sfc_flow_parse_ipv6;
 static sfc_flow_item_parse sfc_flow_parse_tcp;
 static sfc_flow_item_parse sfc_flow_parse_udp;
 static sfc_flow_item_parse sfc_flow_parse_vxlan;
+static sfc_flow_item_parse sfc_flow_parse_geneve;
 static sfc_flow_item_parse sfc_flow_parse_nvgre;
 
 static boolean_t
@@ -717,7 +718,7 @@ sfc_flow_set_match_flags_for_encap_pkts(const struct rte_flow_item *item,
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
 				"Outer IP header protocol must be UDP "
-				"in VxLAN pattern");
+				"in VxLAN/GENEVE pattern");
 			return -rte_errno;
 
 		case EFX_IPPROTO_GRE:
@@ -730,7 +731,7 @@ sfc_flow_set_match_flags_for_encap_pkts(const struct rte_flow_item *item,
 		default:
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Only VxLAN/NVGRE tunneling patterns "
+				"Only VxLAN/GENEVE/NVGRE tunneling patterns "
 				"are supported");
 			return -rte_errno;
 		}
@@ -824,6 +825,74 @@ sfc_flow_parse_vxlan(const struct rte_flow_item *item,
 
 	if (spec == NULL)
 		return 0;
+
+	rc = sfc_flow_set_efx_spec_vni_or_vsid(efx_spec, spec->vni,
+					       mask->vni, item, error);
+
+	return rc;
+}
+
+/**
+ * Convert GENEVE item to EFX filter specification.
+ *
+ * @param item[in]
+ *   Item specification. Only Virtual Network Identifier and protocol type
+ *   fields are supported. But protocol type can be only Ethernet (0x6558).
+ *   If the mask is NULL, default mask will be used.
+ *   Ranging is not supported.
+ * @param efx_spec[in, out]
+ *   EFX filter specification to update.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_parse_geneve(const struct rte_flow_item *item,
+		      efx_filter_spec_t *efx_spec,
+		      struct rte_flow_error *error)
+{
+	int rc;
+	const struct rte_flow_item_geneve *spec = NULL;
+	const struct rte_flow_item_geneve *mask = NULL;
+	const struct rte_flow_item_geneve supp_mask = {
+		.protocol = RTE_BE16(0xffff),
+		.vni = { 0xff, 0xff, 0xff }
+	};
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec,
+				 (const void **)&mask,
+				 &supp_mask,
+				 &rte_flow_item_geneve_mask,
+				 sizeof(struct rte_flow_item_geneve),
+				 error);
+	if (rc != 0)
+		return rc;
+
+	rc = sfc_flow_set_match_flags_for_encap_pkts(item, efx_spec,
+						     EFX_IPPROTO_UDP, error);
+	if (rc != 0)
+		return rc;
+
+	efx_spec->efs_encap_type = EFX_TUNNEL_PROTOCOL_GENEVE;
+	efx_spec->efs_match_flags |= EFX_FILTER_MATCH_ENCAP_TYPE;
+
+	if (spec == NULL)
+		return 0;
+
+	if (mask->protocol == supp_mask.protocol) {
+		if (spec->protocol != rte_cpu_to_be_16(ETHER_TYPE_TEB)) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"GENEVE encap. protocol must be Ethernet "
+				"(0x6558) in the GENEVE pattern item");
+			return -rte_errno;
+		}
+	} else if (mask->protocol != 0) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Unsupported mask for GENEVE encap. protocol");
+		return -rte_errno;
+	}
 
 	rc = sfc_flow_set_efx_spec_vni_or_vsid(efx_spec, spec->vni,
 					       mask->vni, item, error);
@@ -930,6 +999,12 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.prev_layer = SFC_FLOW_ITEM_L4,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
 		.parse = sfc_flow_parse_vxlan,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_GENEVE,
+		.prev_layer = SFC_FLOW_ITEM_L4,
+		.layer = SFC_FLOW_ITEM_START_LAYER,
+		.parse = sfc_flow_parse_geneve,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_NVGRE,
@@ -1045,6 +1120,7 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			if (is_ifrm) {
 				rte_flow_error_set(error, EINVAL,

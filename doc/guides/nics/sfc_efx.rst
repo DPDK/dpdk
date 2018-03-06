@@ -168,6 +168,9 @@ Supported pattern items:
 
 - VXLAN (exact match of VXLAN network identifier)
 
+- GENEVE (exact match of virtual network identifier, only Ethernet (0x6558)
+  protocol type is supported)
+
 - NVGRE (exact match of virtual subnet ID)
 
 Supported actions:
