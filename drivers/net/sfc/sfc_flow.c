@@ -64,6 +64,21 @@ static sfc_flow_item_parse sfc_flow_parse_vxlan;
 static sfc_flow_item_parse sfc_flow_parse_geneve;
 static sfc_flow_item_parse sfc_flow_parse_nvgre;
 
+typedef int (sfc_flow_spec_set_vals)(struct sfc_flow_spec *spec,
+				     unsigned int filters_count_for_one_val,
+				     struct rte_flow_error *error);
+
+struct sfc_flow_copy_flag {
+	/* EFX filter specification match flag */
+	efx_filter_match_flags_t flag;
+	/* Number of values of corresponding field */
+	unsigned int vals_count;
+	/* Function to set values in specifications */
+	sfc_flow_spec_set_vals *set_vals;
+};
+
+static sfc_flow_spec_set_vals sfc_flow_set_ethertypes;
+
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
 {
@@ -244,16 +259,9 @@ sfc_flow_parse_eth(const struct rte_flow_item *item,
 	if (rc != 0)
 		return rc;
 
-	/*
-	 * If "spec" is not set, could be any Ethernet, but for the inner frame
-	 * type of destination MAC must be set
-	 */
-	if (spec == NULL) {
-		if (is_ifrm)
-			goto fail_bad_ifrm_dst_mac;
-		else
-			return 0;
-	}
+	/* If "spec" is not set, could be any Ethernet */
+	if (spec == NULL)
+		return 0;
 
 	if (is_same_ether_addr(&mask->dst, &supp_mask.dst)) {
 		efx_spec->efs_match_flags |= is_ifrm ?
@@ -273,8 +281,6 @@ sfc_flow_parse_eth(const struct rte_flow_item *item,
 				EFX_FILTER_MATCH_UNKNOWN_MCAST_DST;
 	} else if (!is_zero_ether_addr(&mask->dst)) {
 		goto fail_bad_mask;
-	} else if (is_ifrm) {
-		goto fail_bad_ifrm_dst_mac;
 	}
 
 	/*
@@ -307,13 +313,6 @@ fail_bad_mask:
 	rte_flow_error_set(error, EINVAL,
 			   RTE_FLOW_ERROR_TYPE_ITEM, item,
 			   "Bad mask in the ETH pattern item");
-	return -rte_errno;
-
-fail_bad_ifrm_dst_mac:
-	rte_flow_error_set(error, EINVAL,
-			   RTE_FLOW_ERROR_TYPE_ITEM, item,
-			   "Type of destination MAC address in inner frame "
-			   "must be set");
 	return -rte_errno;
 }
 
@@ -782,14 +781,9 @@ sfc_flow_set_match_flags_for_encap_pkts(const struct rte_flow_item *item,
 		}
 	}
 
-	if (!(efx_spec->efs_match_flags & EFX_FILTER_MATCH_ETHER_TYPE)) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM, item,
-			"Outer frame EtherType in pattern with tunneling "
-			"must be set");
-		return -rte_errno;
-	} else if (efx_spec->efs_ether_type != EFX_ETHER_TYPE_IPV4 &&
-		   efx_spec->efs_ether_type != EFX_ETHER_TYPE_IPV6) {
+	if (efx_spec->efs_match_flags & EFX_FILTER_MATCH_ETHER_TYPE &&
+	    efx_spec->efs_ether_type != EFX_ETHER_TYPE_IPV4 &&
+	    efx_spec->efs_ether_type != EFX_ETHER_TYPE_IPV6) {
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM, item,
 			"Outer frame EtherType in pattern with tunneling "
@@ -1508,6 +1502,246 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 	return 0;
 }
 
+/**
+ * Set the EFX_FILTER_MATCH_ETHER_TYPE match flag and EFX_ETHER_TYPE_IPV4 and
+ * EFX_ETHER_TYPE_IPV6 values of the corresponding field in the same
+ * specifications after copying.
+ *
+ * @param spec[in, out]
+ *   SFC flow specification to update.
+ * @param filters_count_for_one_val[in]
+ *   How many specifications should have the same EtherType value, what is the
+ *   number of specifications before copying.
+ * @param error[out]
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_set_ethertypes(struct sfc_flow_spec *spec,
+			unsigned int filters_count_for_one_val,
+			struct rte_flow_error *error)
+{
+	unsigned int i;
+	static const uint16_t vals[] = {
+		EFX_ETHER_TYPE_IPV4, EFX_ETHER_TYPE_IPV6
+	};
+
+	if (filters_count_for_one_val * RTE_DIM(vals) != spec->count) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Number of specifications is incorrect "
+			"while copying by Ethertype");
+		return -rte_errno;
+	}
+
+	for (i = 0; i < spec->count; i++) {
+		spec->filters[i].efs_match_flags |=
+			EFX_FILTER_MATCH_ETHER_TYPE;
+
+		/*
+		 * The check above ensures that
+		 * filters_count_for_one_val is not 0
+		 */
+		spec->filters[i].efs_ether_type =
+			vals[i / filters_count_for_one_val];
+	}
+
+	return 0;
+}
+
+/* Match flags that can be automatically added to filters */
+static const struct sfc_flow_copy_flag sfc_flow_copy_flags[] = {
+	{
+		.flag = EFX_FILTER_MATCH_ETHER_TYPE,
+		.vals_count = 2,
+		.set_vals = sfc_flow_set_ethertypes,
+	},
+};
+
+/* Get item from array sfc_flow_copy_flags */
+static const struct sfc_flow_copy_flag *
+sfc_flow_get_copy_flag(efx_filter_match_flags_t flag)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(sfc_flow_copy_flags); i++) {
+		if (sfc_flow_copy_flags[i].flag == flag)
+			return &sfc_flow_copy_flags[i];
+	}
+
+	return NULL;
+}
+
+/**
+ * Make copies of the specifications, set match flag and values
+ * of the field that corresponds to it.
+ *
+ * @param spec[in, out]
+ *   SFC flow specification to update.
+ * @param flag[in]
+ *   The match flag to add.
+ * @param error[out]
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_spec_add_match_flag(struct sfc_flow_spec *spec,
+			     efx_filter_match_flags_t flag,
+			     struct rte_flow_error *error)
+{
+	unsigned int i;
+	unsigned int new_filters_count;
+	unsigned int filters_count_for_one_val;
+	const struct sfc_flow_copy_flag *copy_flag;
+	int rc;
+
+	copy_flag = sfc_flow_get_copy_flag(flag);
+	if (copy_flag == NULL) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Unsupported spec field for copying");
+		return -rte_errno;
+	}
+
+	new_filters_count = spec->count * copy_flag->vals_count;
+	if (new_filters_count > SF_FLOW_SPEC_NB_FILTERS_MAX) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Too much EFX specifications in the flow rule");
+		return -rte_errno;
+	}
+
+	/* Copy filters specifications */
+	for (i = spec->count; i < new_filters_count; i++)
+		spec->filters[i] = spec->filters[i - spec->count];
+
+	filters_count_for_one_val = spec->count;
+	spec->count = new_filters_count;
+
+	rc = copy_flag->set_vals(spec, filters_count_for_one_val, error);
+	if (rc != 0)
+		return rc;
+
+	return 0;
+}
+
+/**
+ * Check that the given set of match flags missing in the original filter spec
+ * could be covered by adding spec copies which specify the corresponding
+ * flags and packet field values to match.
+ *
+ * @param miss_flags[in]
+ *   Flags that are missing until the supported filter.
+ *
+ * @return
+ *   Number of specifications after copy or 0, if the flags can not be added.
+ */
+static unsigned int
+sfc_flow_check_missing_flags(efx_filter_match_flags_t miss_flags)
+{
+	unsigned int i;
+	efx_filter_match_flags_t copy_flags = 0;
+	efx_filter_match_flags_t flag;
+	unsigned int multiplier = 1;
+
+	for (i = 0; i < RTE_DIM(sfc_flow_copy_flags); i++) {
+		flag = sfc_flow_copy_flags[i].flag;
+		if ((flag & miss_flags) == flag) {
+			copy_flags |= flag;
+			multiplier *= sfc_flow_copy_flags[i].vals_count;
+		}
+	}
+
+	if (copy_flags == miss_flags)
+		return multiplier;
+
+	return 0;
+}
+
+/**
+ * Attempt to supplement the specification template to the minimally
+ * supported set of match flags. To do this, it is necessary to copy
+ * the specifications, filling them with the values of fields that
+ * correspond to the missing flags.
+ * The necessary and sufficient filter is built from the fewest number
+ * of copies which could be made to cover the minimally required set
+ * of flags.
+ *
+ * @param sa[in]
+ *   SFC adapter.
+ * @param spec[in, out]
+ *   SFC flow specification to update.
+ * @param error[out]
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_spec_filters_complete(struct sfc_adapter *sa,
+			       struct sfc_flow_spec *spec,
+			       struct rte_flow_error *error)
+{
+	struct sfc_filter *filter = &sa->filter;
+	efx_filter_match_flags_t miss_flags;
+	efx_filter_match_flags_t min_miss_flags = 0;
+	efx_filter_match_flags_t match;
+	unsigned int min_multiplier = UINT_MAX;
+	unsigned int multiplier;
+	unsigned int i;
+	int rc;
+
+	match = spec->template.efs_match_flags;
+	for (i = 0; i < filter->supported_match_num; i++) {
+		if ((match & filter->supported_match[i]) == match) {
+			miss_flags = filter->supported_match[i] & (~match);
+			multiplier = sfc_flow_check_missing_flags(miss_flags);
+			if (multiplier > 0) {
+				if (multiplier <= min_multiplier) {
+					min_multiplier = multiplier;
+					min_miss_flags = miss_flags;
+				}
+			}
+		}
+	}
+
+	if (min_multiplier == UINT_MAX) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Flow rule pattern is not supported");
+		return -rte_errno;
+	}
+
+	for (i = 0; i < RTE_DIM(sfc_flow_copy_flags); i++) {
+		efx_filter_match_flags_t flag = sfc_flow_copy_flags[i].flag;
+
+		if ((flag & min_miss_flags) == flag) {
+			rc = sfc_flow_spec_add_match_flag(spec, flag, error);
+			if (rc != 0)
+				return rc;
+		}
+	}
+
+	return 0;
+}
+
+static int
+sfc_flow_validate_match_flags(struct sfc_adapter *sa,
+			      struct rte_flow *flow,
+			      struct rte_flow_error *error)
+{
+	efx_filter_spec_t *spec_tmpl = &flow->spec.template;
+	efx_filter_match_flags_t match_flags = spec_tmpl->efs_match_flags;
+	int rc;
+
+	/* Initialize the first filter spec with template */
+	flow->spec.filters[0] = *spec_tmpl;
+	flow->spec.count = 1;
+
+	if (!sfc_filter_is_match_supported(sa, match_flags)) {
+		rc = sfc_flow_spec_filters_complete(sa, &flow->spec, error);
+		if (rc != 0)
+			return rc;
+	}
+
+	return 0;
+}
+
 static int
 sfc_flow_parse(struct rte_eth_dev *dev,
 	       const struct rte_flow_attr *attr,
@@ -1517,8 +1751,6 @@ sfc_flow_parse(struct rte_eth_dev *dev,
 	       struct rte_flow_error *error)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
-	efx_filter_match_flags_t match_flags =
-		flow->spec.template.efs_match_flags;
 	int rc;
 
 	rc = sfc_flow_parse_attr(attr, flow, error);
@@ -1533,19 +1765,11 @@ sfc_flow_parse(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto fail_bad_value;
 
-	if (!sfc_filter_is_match_supported(sa, match_flags)) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Flow rule pattern is not supported");
-		return -rte_errno;
-	}
+	rc = sfc_flow_validate_match_flags(sa, flow, error);
+	if (rc != 0)
+		goto fail_bad_value;
 
-	/*
-	 * At this point, template specification simply becomes the first
-	 * fully elaborated spec
-	 */
-	flow->spec.filters[0] = flow->spec.template;
-	flow->spec.count = 1;
+	return 0;
 
 fail_bad_value:
 	return rc;
