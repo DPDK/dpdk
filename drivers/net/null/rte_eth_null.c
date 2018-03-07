@@ -73,6 +73,7 @@ struct pmd_internals {
 	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 	struct null_queue tx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 
+	struct ether_addr eth_addr;
 	/** Bit mask of RSS offloads, the bit offset also means flow type */
 	uint64_t flow_type_rss_offloads;
 
@@ -84,9 +85,6 @@ struct pmd_internals {
 
 	uint8_t rss_key[40];                /**< 40-byte hash key. */
 };
-
-
-static struct ether_addr eth_addr = { .addr_bytes = {0} };
 static struct rte_eth_link pmd_link = {
 	.link_speed = ETH_SPEED_NUM_10G,
 	.link_duplex = ETH_LINK_FULL_DUPLEX,
@@ -526,7 +524,6 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 		rte_free(data);
 		return -ENOMEM;
 	}
-
 	/* now put it all together
 	 * - store queue data in internals,
 	 * - store numa_node info in ethdev data
@@ -540,6 +537,7 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 	internals->packet_size = packet_size;
 	internals->packet_copy = packet_copy;
 	internals->port_id = eth_dev->data->port_id;
+	eth_random_addr(internals->eth_addr.addr_bytes);
 
 	internals->flow_type_rss_offloads =  ETH_RSS_PROTO_MASK;
 	internals->reta_size = RTE_DIM(internals->reta_conf) * RTE_RETA_GROUP_SIZE;
@@ -550,7 +548,7 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
-	data->mac_addrs = &eth_addr;
+	data->mac_addrs = &internals->eth_addr;
 
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
