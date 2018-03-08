@@ -2437,77 +2437,139 @@ i40e_dev_set_link_down(struct rte_eth_dev *dev)
 	return i40e_phy_conf_link(hw, abilities, speed, false);
 }
 
-int
-i40e_dev_link_update(struct rte_eth_dev *dev,
-		     int wait_to_complete)
+static __rte_always_inline void
+update_link_no_wait(struct i40e_hw *hw, struct rte_eth_link *link)
 {
-#define CHECK_INTERVAL 100  /* 100ms */
-#define MAX_REPEAT_TIME 10  /* 1s (10 * 100ms) in total */
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_link_status link_status;
-	struct rte_eth_link link, old;
-	int status;
-	unsigned rep_cnt = MAX_REPEAT_TIME;
-	bool enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
+/* Link status registers and values*/
+#define I40E_PRTMAC_LINKSTA		0x001E2420
+#define I40E_REG_LINK_UP		0x40000080
+#define I40E_PRTMAC_MACC		0x001E24E0
+#define I40E_REG_MACC_25GB		0x00020000
+#define I40E_REG_SPEED_MASK		0x38000000
+#define I40E_REG_SPEED_100MB		0x00000000
+#define I40E_REG_SPEED_1GB		0x08000000
+#define I40E_REG_SPEED_10GB		0x10000000
+#define I40E_REG_SPEED_20GB		0x20000000
+#define I40E_REG_SPEED_25_40GB		0x18000000
+	uint32_t link_speed;
+	uint32_t reg_val;
 
-	memset(&link, 0, sizeof(link));
-	memset(&old, 0, sizeof(old));
+	reg_val = I40E_READ_REG(hw, I40E_PRTMAC_LINKSTA);
+	link_speed = reg_val & I40E_REG_SPEED_MASK;
+	reg_val &= I40E_REG_LINK_UP;
+	link->link_status = (reg_val == I40E_REG_LINK_UP) ? 1 : 0;
+
+	if (unlikely(link->link_status != 0))
+		return;
+
+	/* Parse the link status */
+	switch (link_speed) {
+	case I40E_REG_SPEED_100MB:
+		link->link_speed = ETH_SPEED_NUM_100M;
+		break;
+	case I40E_REG_SPEED_1GB:
+		link->link_speed = ETH_SPEED_NUM_1G;
+		break;
+	case I40E_REG_SPEED_10GB:
+		link->link_speed = ETH_SPEED_NUM_10G;
+		break;
+	case I40E_REG_SPEED_20GB:
+		link->link_speed = ETH_SPEED_NUM_20G;
+		break;
+	case I40E_REG_SPEED_25_40GB:
+		reg_val = I40E_READ_REG(hw, I40E_PRTMAC_MACC);
+
+		if (reg_val & I40E_REG_MACC_25GB)
+			link->link_speed = ETH_SPEED_NUM_25G;
+		else
+			link->link_speed = ETH_SPEED_NUM_40G;
+
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unknown link speed info %u", link_speed);
+		break;
+	}
+}
+
+static __rte_always_inline void
+update_link_wait(struct i40e_hw *hw, struct rte_eth_link *link,
+	bool enable_lse)
+{
+#define CHECK_INTERVAL             100  /* 100ms */
+#define MAX_REPEAT_TIME            10  /* 1s (10 * 100ms) in total */
+	uint32_t rep_cnt = MAX_REPEAT_TIME;
+	struct i40e_link_status link_status;
+	int status;
+
 	memset(&link_status, 0, sizeof(link_status));
-	rte_i40e_dev_atomic_read_link_status(dev, &old);
 
 	do {
 		/* Get link status information from hardware */
 		status = i40e_aq_get_link_info(hw, enable_lse,
 						&link_status, NULL);
-		if (status != I40E_SUCCESS) {
-			link.link_speed = ETH_SPEED_NUM_100M;
-			link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		if (unlikely(status != I40E_SUCCESS)) {
+			link->link_speed = ETH_SPEED_NUM_100M;
+			link->link_duplex = ETH_LINK_FULL_DUPLEX;
 			PMD_DRV_LOG(ERR, "Failed to get link info");
-			goto out;
+			return;
 		}
 
-		link.link_status = link_status.link_info & I40E_AQ_LINK_UP;
-		if (!wait_to_complete || link.link_status)
-			break;
+		link->link_status = link_status.link_info & I40E_AQ_LINK_UP;
+		if (unlikely(link->link_status != 0))
+			return;
 
 		rte_delay_ms(CHECK_INTERVAL);
 	} while (--rep_cnt);
 
-	if (!link.link_status)
-		goto out;
-
-	/* i40e uses full duplex only */
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-
 	/* Parse the link status */
 	switch (link_status.link_speed) {
 	case I40E_LINK_SPEED_100MB:
-		link.link_speed = ETH_SPEED_NUM_100M;
+		link->link_speed = ETH_SPEED_NUM_100M;
 		break;
 	case I40E_LINK_SPEED_1GB:
-		link.link_speed = ETH_SPEED_NUM_1G;
+		link->link_speed = ETH_SPEED_NUM_1G;
 		break;
 	case I40E_LINK_SPEED_10GB:
-		link.link_speed = ETH_SPEED_NUM_10G;
+		link->link_speed = ETH_SPEED_NUM_10G;
 		break;
 	case I40E_LINK_SPEED_20GB:
-		link.link_speed = ETH_SPEED_NUM_20G;
+		link->link_speed = ETH_SPEED_NUM_20G;
 		break;
 	case I40E_LINK_SPEED_25GB:
-		link.link_speed = ETH_SPEED_NUM_25G;
+		link->link_speed = ETH_SPEED_NUM_25G;
 		break;
 	case I40E_LINK_SPEED_40GB:
-		link.link_speed = ETH_SPEED_NUM_40G;
+		link->link_speed = ETH_SPEED_NUM_40G;
 		break;
 	default:
-		link.link_speed = ETH_SPEED_NUM_100M;
+		link->link_speed = ETH_SPEED_NUM_100M;
 		break;
 	}
+}
 
+int
+i40e_dev_link_update(struct rte_eth_dev *dev,
+		     int wait_to_complete)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_link link, old;
+	bool enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
+
+	memset(&link, 0, sizeof(link));
+	memset(&old, 0, sizeof(old));
+
+	rte_i40e_dev_atomic_read_link_status(dev, &old);
+
+	/* i40e uses full duplex only */
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 			ETH_LINK_SPEED_FIXED);
 
-out:
+	if (!wait_to_complete)
+		update_link_no_wait(hw, &link);
+	else
+		update_link_wait(hw, &link, enable_lse);
+
 	rte_i40e_dev_atomic_write_link_status(dev, &link);
 	if (link.link_status == old.link_status)
 		return -1;
