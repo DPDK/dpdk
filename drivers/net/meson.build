@@ -2,7 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 drivers = ['af_packet', 'bonding', 'dpaa', 'dpaa2',
-	'e1000', 'fm10k', 'i40e', 'ixgbe',
+	'e1000', 'enic', 'fm10k', 'i40e', 'ixgbe',
 	'null', 'octeontx', 'pcap', 'ring',
 	'sfc', 'thunderx', 'virtio']
 std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
