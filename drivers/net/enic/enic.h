@@ -49,6 +49,15 @@
 
 #define ENICPMD_FDIR_MAX           64
 
+/*
+ * Interrupt 0: LSC and errors
+ * Interrupt 1: rx queue 0
+ * Interrupt 2: rx queue 1
+ * ...
+ */
+#define ENICPMD_LSC_INTR_OFFSET 0
+#define ENICPMD_RXQ_INTR_OFFSET 1
+
 struct enic_fdir_node {
 	struct rte_eth_fdir_filter filter;
 	u16 fltr_id;
@@ -126,9 +135,9 @@ struct enic {
 	struct vnic_cq *cq;
 	unsigned int cq_count; /* equals rq_count + wq_count */
 
-	/* interrupt resource */
-	struct vnic_intr intr;
-	unsigned int intr_count;
+	/* interrupt vectors (len = conf_intr_count) */
+	struct vnic_intr *intr;
+	unsigned int intr_count; /* equals enabled interrupts (lsc + rxqs) */
 
 	/* software counters */
 	struct enic_soft_stats soft_stats;

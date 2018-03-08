@@ -200,10 +200,16 @@ void enic_init_vnic_resources(struct enic *enic)
 {
 	unsigned int error_interrupt_enable = 1;
 	unsigned int error_interrupt_offset = 0;
+	unsigned int rxq_interrupt_enable = 0;
+	unsigned int rxq_interrupt_offset;
 	unsigned int index = 0;
 	unsigned int cq_idx;
 	struct vnic_rq *data_rq;
 
+	if (enic->rte_dev->data->dev_conf.intr_conf.rxq) {
+		rxq_interrupt_enable = 1;
+		rxq_interrupt_offset = ENICPMD_RXQ_INTR_OFFSET;
+	}
 	for (index = 0; index < enic->rq_count; index++) {
 		cq_idx = enic_cq_rq(enic, enic_rte_rq_idx_to_sop_idx(index));
 
@@ -225,11 +231,13 @@ void enic_init_vnic_resources(struct enic *enic)
 			0 /* cq_head */,
 			0 /* cq_tail */,
 			1 /* cq_tail_color */,
-			0 /* interrupt_enable */,
+			rxq_interrupt_enable,
 			1 /* cq_entry_enable */,
 			0 /* cq_message_enable */,
-			0 /* interrupt offset */,
+			rxq_interrupt_offset,
 			0 /* cq_message_addr */);
+		if (rxq_interrupt_enable)
+			rxq_interrupt_offset++;
 	}
 
 	for (index = 0; index < enic->wq_count; index++) {
@@ -252,10 +260,12 @@ void enic_init_vnic_resources(struct enic *enic)
 			(u64)enic->wq[index].cqmsg_rz->iova);
 	}
 
-	vnic_intr_init(&enic->intr,
-		enic->config.intr_timer_usec,
-		enic->config.intr_timer_type,
-		/*mask_on_assertion*/1);
+	for (index = 0; index < enic->intr_count; index++) {
+		vnic_intr_init(&enic->intr[index],
+			       enic->config.intr_timer_usec,
+			       enic->config.intr_timer_type,
+			       /*mask_on_assertion*/1);
+	}
 }
 
 
@@ -411,11 +421,60 @@ enic_intr_handler(void *arg)
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)arg;
 	struct enic *enic = pmd_priv(dev);
 
-	vnic_intr_return_all_credits(&enic->intr);
+	vnic_intr_return_all_credits(&enic->intr[ENICPMD_LSC_INTR_OFFSET]);
 
 	enic_link_update(enic);
 	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	enic_log_q_error(enic);
+}
+
+static int enic_rxq_intr_init(struct enic *enic)
+{
+	struct rte_intr_handle *intr_handle;
+	uint32_t rxq_intr_count, i;
+	int err;
+
+	intr_handle = enic->rte_dev->intr_handle;
+	if (!enic->rte_dev->data->dev_conf.intr_conf.rxq)
+		return 0;
+	/*
+	 * Rx queue interrupts only work when we have MSI-X interrupts,
+	 * one per queue. Sharing one interrupt is technically
+	 * possible with VIC, but it is not worth the complications it brings.
+	 */
+	if (!rte_intr_cap_multiple(intr_handle)) {
+		dev_err(enic, "Rx queue interrupts require MSI-X interrupts"
+			" (vfio-pci driver)\n");
+		return -ENOTSUP;
+	}
+	rxq_intr_count = enic->intr_count - ENICPMD_RXQ_INTR_OFFSET;
+	err = rte_intr_efd_enable(intr_handle, rxq_intr_count);
+	if (err) {
+		dev_err(enic, "Failed to enable event fds for Rx queue"
+			" interrupts\n");
+		return err;
+	}
+	intr_handle->intr_vec = rte_zmalloc("enic_intr_vec",
+					    rxq_intr_count * sizeof(int), 0);
+	if (intr_handle->intr_vec == NULL) {
+		dev_err(enic, "Failed to allocate intr_vec\n");
+		return -ENOMEM;
+	}
+	for (i = 0; i < rxq_intr_count; i++)
+		intr_handle->intr_vec[i] = i + ENICPMD_RXQ_INTR_OFFSET;
+	return 0;
+}
+
+static void enic_rxq_intr_deinit(struct enic *enic)
+{
+	struct rte_intr_handle *intr_handle;
+
+	intr_handle = enic->rte_dev->intr_handle;
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
 }
 
 int enic_enable(struct enic *enic)
@@ -434,6 +493,9 @@ int enic_enable(struct enic *enic)
 	if (eth_dev->data->dev_conf.intr_conf.lsc)
 		vnic_dev_notify_set(enic->vdev, 0);
 
+	err = enic_rxq_intr_init(enic);
+	if (err)
+		return err;
 	if (enic_clsf_init(enic))
 		dev_warning(enic, "Init of hash table for clsf failed."\
 			"Flow director feature will not work\n");
@@ -471,7 +533,8 @@ int enic_enable(struct enic *enic)
 		enic_intr_handler, (void *)enic->rte_dev);
 
 	rte_intr_enable(&(enic->pdev->intr_handle));
-	vnic_intr_unmask(&enic->intr);
+	/* Unmask LSC interrupt */
+	vnic_intr_unmask(&enic->intr[ENICPMD_LSC_INTR_OFFSET]);
 
 	return 0;
 }
@@ -479,17 +542,21 @@ int enic_enable(struct enic *enic)
 int enic_alloc_intr_resources(struct enic *enic)
 {
 	int err;
+	unsigned int i;
 
 	dev_info(enic, "vNIC resources used:  "\
 		"wq %d rq %d cq %d intr %d\n",
 		enic->wq_count, enic_vnic_rq_count(enic),
 		enic->cq_count, enic->intr_count);
 
-	err = vnic_intr_alloc(enic->vdev, &enic->intr, 0);
-	if (err)
-		enic_free_vnic_resources(enic);
-
-	return err;
+	for (i = 0; i < enic->intr_count; i++) {
+		err = vnic_intr_alloc(enic->vdev, &enic->intr[i], i);
+		if (err) {
+			enic_free_vnic_resources(enic);
+			return err;
+		}
+	}
+	return 0;
 }
 
 void enic_free_rq(void *rxq)
@@ -837,8 +904,11 @@ int enic_disable(struct enic *enic)
 	unsigned int i;
 	int err;
 
-	vnic_intr_mask(&enic->intr);
-	(void)vnic_intr_masked(&enic->intr); /* flush write */
+	for (i = 0; i < enic->intr_count; i++) {
+		vnic_intr_mask(&enic->intr[i]);
+		(void)vnic_intr_masked(&enic->intr[i]); /* flush write */
+	}
+	enic_rxq_intr_deinit(enic);
 	rte_intr_disable(&enic->pdev->intr_handle);
 	rte_intr_callback_unregister(&enic->pdev->intr_handle,
 				     enic_intr_handler,
@@ -881,7 +951,8 @@ int enic_disable(struct enic *enic)
 			vnic_rq_clean(&enic->rq[i], enic_free_rq_buf);
 	for (i = 0; i < enic->cq_count; i++)
 		vnic_cq_clean(&enic->cq[i]);
-	vnic_intr_clean(&enic->intr);
+	for (i = 0; i < enic->intr_count; i++)
+		vnic_intr_clean(&enic->intr[i]);
 
 	return 0;
 }
@@ -1170,6 +1241,7 @@ static void enic_dev_deinit(struct enic *enic)
 
 	rte_free(eth_dev->data->mac_addrs);
 	rte_free(enic->cq);
+	rte_free(enic->intr);
 	rte_free(enic->rq);
 	rte_free(enic->wq);
 }
@@ -1179,12 +1251,16 @@ int enic_set_vnic_res(struct enic *enic)
 {
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 	int rc = 0;
-	unsigned int required_rq, required_wq, required_cq;
+	unsigned int required_rq, required_wq, required_cq, required_intr;
 
 	/* Always use two vNIC RQs per eth_dev RQ, regardless of Rx scatter. */
 	required_rq = eth_dev->data->nb_rx_queues * 2;
 	required_wq = eth_dev->data->nb_tx_queues;
 	required_cq = eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues;
+	required_intr = 1; /* 1 for LSC even if intr_conf.lsc is 0 */
+	if (eth_dev->data->dev_conf.intr_conf.rxq) {
+		required_intr += eth_dev->data->nb_rx_queues;
+	}
 
 	if (enic->conf_rq_count < required_rq) {
 		dev_err(dev, "Not enough Receive queues. Requested:%u which uses %d RQs on VIC, Configured:%u\n",
@@ -1203,11 +1279,18 @@ int enic_set_vnic_res(struct enic *enic)
 			required_cq, enic->conf_cq_count);
 		rc = -EINVAL;
 	}
+	if (enic->conf_intr_count < required_intr) {
+		dev_err(dev, "Not enough Interrupts to support Rx queue"
+			" interrupts. Required:%u, Configured:%u\n",
+			required_intr, enic->conf_intr_count);
+		rc = -EINVAL;
+	}
 
 	if (rc == 0) {
 		enic->rq_count = eth_dev->data->nb_rx_queues;
 		enic->wq_count = eth_dev->data->nb_tx_queues;
 		enic->cq_count = enic->rq_count + enic->wq_count;
+		enic->intr_count = required_intr;
 	}
 
 	return rc;
@@ -1409,12 +1492,18 @@ static int enic_dev_init(struct enic *enic)
 	/* Queue counts may be zeros. rte_zmalloc returns NULL in that case. */
 	enic->cq = rte_zmalloc("enic_vnic_cq", sizeof(struct vnic_cq) *
 			       enic->conf_cq_count, 8);
+	enic->intr = rte_zmalloc("enic_vnic_intr", sizeof(struct vnic_intr) *
+				 enic->conf_intr_count, 8);
 	enic->rq = rte_zmalloc("enic_vnic_rq", sizeof(struct vnic_rq) *
 			       enic->conf_rq_count, 8);
 	enic->wq = rte_zmalloc("enic_vnic_wq", sizeof(struct vnic_wq) *
 			       enic->conf_wq_count, 8);
 	if (enic->conf_cq_count > 0 && enic->cq == NULL) {
 		dev_err(enic, "failed to allocate vnic_cq, aborting.\n");
+		return -1;
+	}
+	if (enic->conf_intr_count > 0 && enic->intr == NULL) {
+		dev_err(enic, "failed to allocate vnic_intr, aborting.\n");
 		return -1;
 	}
 	if (enic->conf_rq_count > 0 && enic->rq == NULL) {

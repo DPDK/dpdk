@@ -738,6 +738,26 @@ static void enicpmd_dev_txq_info_get(struct rte_eth_dev *dev,
 	/* tx_thresh, and all the other fields are not applicable for enic */
 }
 
+static int enicpmd_dev_rx_queue_intr_enable(struct rte_eth_dev *eth_dev,
+					    uint16_t rx_queue_id)
+{
+	struct enic *enic = pmd_priv(eth_dev);
+
+	ENICPMD_FUNC_TRACE();
+	vnic_intr_unmask(&enic->intr[rx_queue_id + ENICPMD_RXQ_INTR_OFFSET]);
+	return 0;
+}
+
+static int enicpmd_dev_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
+					     uint16_t rx_queue_id)
+{
+	struct enic *enic = pmd_priv(eth_dev);
+
+	ENICPMD_FUNC_TRACE();
+	vnic_intr_mask(&enic->intr[rx_queue_id + ENICPMD_RXQ_INTR_OFFSET]);
+	return 0;
+}
+
 static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_configure        = enicpmd_dev_configure,
 	.dev_start            = enicpmd_dev_start,
@@ -770,6 +790,8 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.rx_descriptor_done   = NULL,
 	.tx_queue_setup       = enicpmd_dev_tx_queue_setup,
 	.tx_queue_release     = enicpmd_dev_tx_queue_release,
+	.rx_queue_intr_enable = enicpmd_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable = enicpmd_dev_rx_queue_intr_disable,
 	.rxq_info_get         = enicpmd_dev_rxq_info_get,
 	.txq_info_get         = enicpmd_dev_txq_info_get,
 	.dev_led_on           = NULL,

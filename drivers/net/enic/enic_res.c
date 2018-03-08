@@ -222,7 +222,8 @@ void enic_free_vnic_resources(struct enic *enic)
 			vnic_rq_free(&enic->rq[i]);
 	for (i = 0; i < enic->cq_count; i++)
 		vnic_cq_free(&enic->cq[i]);
-	vnic_intr_free(&enic->intr);
+	for (i = 0; i < enic->intr_count; i++)
+		vnic_intr_free(&enic->intr[i]);
 }
 
 void enic_get_res_counts(struct enic *enic)

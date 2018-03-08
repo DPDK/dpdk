@@ -114,10 +114,15 @@ Configuration information
 
   - **Interrupts**
 
-    Only one interrupt per vNIC interface should be configured in the UCS
+    At least one interrupt per vNIC interface should be configured in the UCS
     manager regardless of the number receive/transmit queues. The ENIC PMD
     uses this interrupt to get information about link status and errors
     in the fast path.
+
+    In addition to the interrupt for link status and errors, when using Rx queue
+    interrupts, increase the number of configured interrupts so that there is at
+    least one interrupt for each Rx queue. For example, if the app uses 3 Rx
+    queues and wants to use per-queue interrupts, configure 4 (3 + 1) interrupts.
 
 .. _enic-flow-director:
 
