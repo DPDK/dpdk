@@ -266,6 +266,8 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 	struct rq_enet_desc *rqd = rq->ring.descs;
 	unsigned i;
 	dma_addr_t dma_addr;
+	uint32_t max_rx_pkt_len;
+	uint16_t rq_buf_len;
 
 	if (!rq->in_use)
 		return 0;
@@ -273,6 +275,18 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 	dev_debug(enic, "queue %u, allocating %u rx queue mbufs\n", rq->index,
 		  rq->ring.desc_count);
 
+	/*
+	 * If *not* using scatter and the mbuf size is smaller than the
+	 * requested max packet size (max_rx_pkt_len), then reduce the
+	 * posted buffer size to max_rx_pkt_len. HW still receives packets
+	 * larger than max_rx_pkt_len, but they will be truncated, which we
+	 * drop in the rx handler. Not ideal, but better than returning
+	 * large packets when the user is not expecting them.
+	 */
+	max_rx_pkt_len = enic->rte_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	rq_buf_len = rte_pktmbuf_data_room_size(rq->mp) - RTE_PKTMBUF_HEADROOM;
+	if (max_rx_pkt_len < rq_buf_len && !rq->data_queue_enable)
+		rq_buf_len = max_rx_pkt_len;
 	for (i = 0; i < rq->ring.desc_count; i++, rqd++) {
 		mb = rte_mbuf_raw_alloc(rq->mp);
 		if (mb == NULL) {
@@ -287,7 +301,7 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 		rq_enet_desc_enc(rqd, dma_addr,
 				(rq->is_sop ? RQ_ENET_TYPE_ONLY_SOP
 				: RQ_ENET_TYPE_NOT_SOP),
-				mb->buf_len - RTE_PKTMBUF_HEADROOM);
+				rq_buf_len);
 		rq->mbuf_ring[i] = mb;
 	}
 
@@ -581,7 +595,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	unsigned int mbuf_size, mbufs_per_pkt;
 	unsigned int nb_sop_desc, nb_data_desc;
 	uint16_t min_sop, max_sop, min_data, max_data;
-	uint16_t mtu = enic->rte_dev->data->mtu;
+	uint32_t max_rx_pkt_len;
 
 	rq_sop->is_sop = 1;
 	rq_sop->data_queue_idx = data_queue_idx;
@@ -599,22 +613,42 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 
 	mbuf_size = (uint16_t)(rte_pktmbuf_data_room_size(mp) -
 			       RTE_PKTMBUF_HEADROOM);
+	/* max_rx_pkt_len includes the ethernet header and CRC. */
+	max_rx_pkt_len = enic->rte_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 
 	if (enic->rte_dev->data->dev_conf.rxmode.offloads &
 	    DEV_RX_OFFLOAD_SCATTER) {
 		dev_info(enic, "Rq %u Scatter rx mode enabled\n", queue_idx);
-		/* ceil((mtu + ETHER_HDR_LEN + 4)/mbuf_size) */
-		mbufs_per_pkt = ((mtu + ETHER_HDR_LEN + 4) +
-				 (mbuf_size - 1)) / mbuf_size;
+		/* ceil((max pkt len)/mbuf_size) */
+		mbufs_per_pkt = (max_rx_pkt_len + mbuf_size - 1) / mbuf_size;
 	} else {
 		dev_info(enic, "Scatter rx mode disabled\n");
 		mbufs_per_pkt = 1;
+		if (max_rx_pkt_len > mbuf_size) {
+			dev_warning(enic, "The maximum Rx packet size (%u) is"
+				    " larger than the mbuf size (%u), and"
+				    " scatter is disabled. Larger packets will"
+				    " be truncated.\n",
+				    max_rx_pkt_len, mbuf_size);
+		}
 	}
 
 	if (mbufs_per_pkt > 1) {
 		dev_info(enic, "Rq %u Scatter rx mode in use\n", queue_idx);
 		rq_sop->data_queue_enable = 1;
 		rq_data->in_use = 1;
+		/*
+		 * HW does not directly support rxmode.max_rx_pkt_len. HW always
+		 * receives packet sizes up to the "max" MTU.
+		 * If not using scatter, we can achieve the effect of dropping
+		 * larger packets by reducing the size of posted buffers.
+		 * See enic_alloc_rx_queue_mbufs().
+		 */
+		if (max_rx_pkt_len <
+		    enic_mtu_to_max_rx_pktlen(enic->rte_dev->data->mtu)) {
+			dev_warning(enic, "rxmode.max_rx_pkt_len is ignored"
+				    " when scatter rx mode is in use.\n");
+		}
 	} else {
 		dev_info(enic, "Rq %u Scatter rx mode not being used\n",
 			 queue_idx);
@@ -654,8 +688,9 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 		nb_data_desc = max_data;
 	}
 	if (mbufs_per_pkt > 1) {
-		dev_info(enic, "For mtu %d and mbuf size %d valid rx descriptor range is %d to %d\n",
-			 mtu, mbuf_size, min_sop + min_data,
+		dev_info(enic, "For max packet size %u and mbuf size %u valid"
+			 " rx descriptor range is %u to %u\n",
+			 max_rx_pkt_len, mbuf_size, min_sop + min_data,
 			 max_sop + max_data);
 	}
 	dev_info(enic, "Using %d rx descriptors (sop %d, data %d)\n",

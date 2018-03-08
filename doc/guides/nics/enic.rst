@@ -371,6 +371,7 @@ Known bugs and unsupported features in this release
 - Setting of extended VLAN
 - UDP RSS hashing
 - MTU update only works if Scattered Rx mode is disabled
+- Maximum receive packet length is ignored if Scattered Rx mode is used
 
 Prerequisites
 -------------

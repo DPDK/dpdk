@@ -470,7 +470,14 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->max_rx_queues = enic->conf_rq_count / 2;
 	device_info->max_tx_queues = enic->conf_wq_count;
 	device_info->min_rx_bufsize = ENIC_MIN_MTU;
-	device_info->max_rx_pktlen = enic->max_mtu + ETHER_HDR_LEN + 4;
+	/* "Max" mtu is not a typo. HW receives packet sizes up to the
+	 * max mtu regardless of the current mtu (vNIC's mtu). vNIC mtu is
+	 * a hint to the driver to size receive buffers accordingly so that
+	 * larger-than-vnic-mtu packets get truncated.. For DPDK, we let
+	 * the user decide the buffer size via rxmode.max_rx_pkt_len, basically
+	 * ignoring vNIC mtu.
+	 */
+	device_info->max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->max_mtu);
 	device_info->max_mac_addrs = ENIC_MAX_MAC_ADDR;
 	device_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |

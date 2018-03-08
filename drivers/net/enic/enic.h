@@ -162,6 +162,13 @@ struct enic {
 	union vnic_rss_cpu rss_cpu;
 };
 
+/* Compute ethdev's max packet size from MTU */
+static inline uint32_t enic_mtu_to_max_rx_pktlen(uint32_t mtu)
+{
+	/* ethdev max size includes eth and crc whereas NIC MTU does not */
+	return mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+}
+
 /* Get the CQ index from a Start of Packet(SOP) RQ index */
 static inline unsigned int enic_sop_rq_idx_to_cq_idx(unsigned int sop_idx)
 {
