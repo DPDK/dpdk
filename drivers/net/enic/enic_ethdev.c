@@ -39,6 +39,19 @@ static const struct rte_pci_id pci_id_enic_map[] = {
 	{.vendor_id = 0, /* sentinel */},
 };
 
+#define ENIC_TX_OFFLOAD_CAPA (			\
+		DEV_TX_OFFLOAD_VLAN_INSERT |	\
+		DEV_TX_OFFLOAD_IPV4_CKSUM  |	\
+		DEV_TX_OFFLOAD_UDP_CKSUM   |	\
+		DEV_TX_OFFLOAD_TCP_CKSUM   |	\
+		DEV_TX_OFFLOAD_TCP_TSO)
+
+#define ENIC_RX_OFFLOAD_CAPA (			\
+		DEV_RX_OFFLOAD_VLAN_STRIP |	\
+		DEV_RX_OFFLOAD_IPV4_CKSUM |	\
+		DEV_RX_OFFLOAD_UDP_CKSUM  |	\
+		DEV_RX_OFFLOAD_TCP_CKSUM)
+
 RTE_INIT(enicpmd_init_log);
 static void
 enicpmd_init_log(void)
@@ -473,17 +486,8 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	 */
 	device_info->max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->max_mtu);
 	device_info->max_mac_addrs = ENIC_MAX_MAC_ADDR;
-	device_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM  |
-		DEV_RX_OFFLOAD_TCP_CKSUM;
-	device_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM  |
-		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_TSO;
+	device_info->rx_offload_capa = ENIC_RX_OFFLOAD_CAPA;
+	device_info->tx_offload_capa = ENIC_TX_OFFLOAD_CAPA;
 	device_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = ENIC_DEFAULT_RX_FREE_THRESH
 	};
@@ -686,6 +690,54 @@ static int enicpmd_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void enicpmd_dev_rxq_info_get(struct rte_eth_dev *dev,
+				     uint16_t rx_queue_id,
+				     struct rte_eth_rxq_info *qinfo)
+{
+	struct enic *enic = pmd_priv(dev);
+	struct vnic_rq *rq_sop;
+	struct vnic_rq *rq_data;
+	struct rte_eth_rxconf *conf;
+	uint16_t sop_queue_idx;
+	uint16_t data_queue_idx;
+
+	ENICPMD_FUNC_TRACE();
+	sop_queue_idx = enic_rte_rq_idx_to_sop_idx(rx_queue_id);
+	data_queue_idx = enic_rte_rq_idx_to_data_idx(rx_queue_id);
+	rq_sop = &enic->rq[sop_queue_idx];
+	rq_data = &enic->rq[data_queue_idx]; /* valid if data_queue_enable */
+	qinfo->mp = rq_sop->mp;
+	qinfo->scattered_rx = rq_sop->data_queue_enable;
+	qinfo->nb_desc = rq_sop->ring.desc_count;
+	if (qinfo->scattered_rx)
+		qinfo->nb_desc += rq_data->ring.desc_count;
+	conf = &qinfo->conf;
+	memset(conf, 0, sizeof(*conf));
+	conf->rx_free_thresh = rq_sop->rx_free_thresh;
+	conf->rx_drop_en = 1;
+	/*
+	 * Except VLAN stripping (port setting), all the checksum offloads
+	 * are always enabled.
+	 */
+	conf->offloads = ENIC_RX_OFFLOAD_CAPA;
+	if (!enic->ig_vlan_strip_en)
+		conf->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+	/* rx_thresh and other fields are not applicable for enic */
+}
+
+static void enicpmd_dev_txq_info_get(struct rte_eth_dev *dev,
+				     __rte_unused uint16_t tx_queue_id,
+				     struct rte_eth_txq_info *qinfo)
+{
+	struct enic *enic = pmd_priv(dev);
+
+	ENICPMD_FUNC_TRACE();
+	qinfo->nb_desc = enic->config.wq_desc_count;
+	memset(&qinfo->conf, 0, sizeof(qinfo->conf));
+	qinfo->conf.offloads = ENIC_TX_OFFLOAD_CAPA; /* not configurable */
+	/* tx_thresh, and all the other fields are not applicable for enic */
+}
+
 static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_configure        = enicpmd_dev_configure,
 	.dev_start            = enicpmd_dev_start,
@@ -718,6 +770,8 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.rx_descriptor_done   = NULL,
 	.tx_queue_setup       = enicpmd_dev_tx_queue_setup,
 	.tx_queue_release     = enicpmd_dev_tx_queue_release,
+	.rxq_info_get         = enicpmd_dev_rxq_info_get,
+	.txq_info_get         = enicpmd_dev_txq_info_get,
 	.dev_led_on           = NULL,
 	.dev_led_off          = NULL,
 	.flow_ctrl_get        = NULL,
