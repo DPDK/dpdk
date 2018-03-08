@@ -111,7 +111,6 @@ copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 	     struct rte_eth_fdir_masks *masks)
 {
 	struct filter_generic_1 *gp = &fltr->u.generic_1;
-	int i;
 
 	fltr->type = FILTER_DPDK_1;
 	memset(gp, 0, sizeof(*gp));
@@ -273,18 +272,14 @@ copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 			ipv6_mask.proto = masks->ipv6_mask.proto;
 			ipv6_val.proto = input->flow.ipv6_flow.proto;
 		}
-		for (i = 0; i < 4; i++) {
-			*(uint32_t *)&ipv6_mask.src_addr[i * 4] =
-					masks->ipv6_mask.src_ip[i];
-			*(uint32_t *)&ipv6_val.src_addr[i * 4] =
-					input->flow.ipv6_flow.src_ip[i];
-		}
-		for (i = 0; i < 4; i++) {
-			*(uint32_t *)&ipv6_mask.dst_addr[i * 4] =
-					masks->ipv6_mask.src_ip[i];
-			*(uint32_t *)&ipv6_val.dst_addr[i * 4] =
-					input->flow.ipv6_flow.dst_ip[i];
-		}
+		memcpy(ipv6_mask.src_addr, masks->ipv6_mask.src_ip,
+		       sizeof(ipv6_mask.src_addr));
+		memcpy(ipv6_val.src_addr, input->flow.ipv6_flow.src_ip,
+		       sizeof(ipv6_val.src_addr));
+		memcpy(ipv6_mask.dst_addr, masks->ipv6_mask.dst_ip,
+		       sizeof(ipv6_mask.dst_addr));
+		memcpy(ipv6_val.dst_addr, input->flow.ipv6_flow.dst_ip,
+		       sizeof(ipv6_val.dst_addr));
 		if (input->flow.ipv6_flow.tc) {
 			ipv6_mask.vtc_flow = masks->ipv6_mask.tc << 12;
 			ipv6_val.vtc_flow = input->flow.ipv6_flow.tc << 12;
