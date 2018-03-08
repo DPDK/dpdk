@@ -318,40 +318,29 @@ static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return enicpmd_dev_setup_intr(enic);
 }
 
-static int enicpmd_vlan_filter_set(struct rte_eth_dev *eth_dev,
-	uint16_t vlan_id, int on)
-{
-	struct enic *enic = pmd_priv(eth_dev);
-	int err;
-
-	ENICPMD_FUNC_TRACE();
-	if (on)
-		err = enic_add_vlan(enic, vlan_id);
-	else
-		err = enic_del_vlan(enic, vlan_id);
-	return err;
-}
-
 static int enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	uint64_t offloads;
 
 	ENICPMD_FUNC_TRACE();
 
+	offloads = eth_dev->data->dev_conf.rxmode.offloads;
 	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (eth_dev->data->dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_VLAN_STRIP)
+		if (offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			enic->ig_vlan_strip_en = 1;
 		else
 			enic->ig_vlan_strip_en = 0;
 	}
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
+	if ((mask & ETH_VLAN_FILTER_MASK) &&
+	    (offloads & DEV_RX_OFFLOAD_VLAN_FILTER)) {
 		dev_warning(enic,
 			"Configuration of VLAN filter is not supported\n");
 	}
 
-	if (mask & ETH_VLAN_EXTEND_MASK) {
+	if ((mask & ETH_VLAN_EXTEND_MASK) &&
+	    (offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)) {
 		dev_warning(enic,
 			"Configuration of extended VLAN is not supported\n");
 	}
@@ -362,6 +351,7 @@ static int enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	int ret;
+	int mask;
 	struct enic *enic = pmd_priv(eth_dev);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -376,7 +366,11 @@ static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 
 	enic->hw_ip_checksum = !!(eth_dev->data->dev_conf.rxmode.offloads &
 				  DEV_RX_OFFLOAD_CHECKSUM);
-	ret = enicpmd_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK);
+	/* All vlan offload masks to apply the current settings */
+	mask = ETH_VLAN_STRIP_MASK |
+		ETH_VLAN_FILTER_MASK |
+		ETH_VLAN_EXTEND_MASK;
+	ret = enicpmd_vlan_offload_set(eth_dev, mask);
 	if (ret) {
 		dev_err(enic, "Failed to configure VLAN offloads\n");
 		return ret;
@@ -710,7 +704,7 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_infos_get        = enicpmd_dev_info_get,
 	.dev_supported_ptypes_get = enicpmd_dev_supported_ptypes_get,
 	.mtu_set              = enicpmd_mtu_set,
-	.vlan_filter_set      = enicpmd_vlan_filter_set,
+	.vlan_filter_set      = NULL,
 	.vlan_tpid_set        = NULL,
 	.vlan_offload_set     = enicpmd_vlan_offload_set,
 	.vlan_strip_queue_set = NULL,
