@@ -587,17 +587,9 @@ int vnic_dev_stats_dump(struct vnic_dev *vdev, struct vnic_stats **stats)
 {
 	u64 a0, a1;
 	int wait = 1000;
-	static u32 instance;
-	char name[NAME_MAX];
 
-	if (!vdev->stats) {
-		snprintf((char *)name, sizeof(name),
-			"vnic_stats-%u", instance++);
-		vdev->stats = vdev->alloc_consistent(vdev->priv,
-			sizeof(struct vnic_stats), &vdev->stats_pa, (u8 *)name);
-		if (!vdev->stats)
-			return -ENOMEM;
-	}
+	if (!vdev->stats)
+		return -ENOMEM;
 
 	*stats = vdev->stats;
 	a0 = vdev->stats_pa;
@@ -920,6 +912,18 @@ u32 vnic_dev_intr_coal_timer_hw_to_usec(struct vnic_dev *vdev, u32 hw_cycles)
 u32 vnic_dev_get_intr_coal_timer_max(struct vnic_dev *vdev)
 {
 	return vdev->intr_coal_timer_info.max_usec;
+}
+
+int vnic_dev_alloc_stats_mem(struct vnic_dev *vdev)
+{
+	char name[NAME_MAX];
+	static u32 instance;
+
+	snprintf((char *)name, sizeof(name), "vnic_stats-%u", instance++);
+	vdev->stats = vdev->alloc_consistent(vdev->priv,
+					     sizeof(struct vnic_stats),
+					     &vdev->stats_pa, (u8 *)name);
+	return vdev->stats == NULL ? -ENOMEM : 0;
 }
 
 void vnic_dev_unregister(struct vnic_dev *vdev)

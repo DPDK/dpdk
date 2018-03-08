@@ -165,6 +165,7 @@ struct vnic_dev *vnic_dev_register(struct vnic_dev *vdev,
 	void *priv, struct rte_pci_device *pdev, struct vnic_dev_bar *bar,
 	unsigned int num_bars);
 struct rte_pci_device *vnic_dev_get_pdev(struct vnic_dev *vdev);
+int vnic_dev_alloc_stats_mem(struct vnic_dev *vdev);
 int vnic_dev_cmd_init(struct vnic_dev *vdev, int fallback);
 int vnic_dev_get_size(void);
 int vnic_dev_int13(struct vnic_dev *vdev, u64 arg, u32 op);
