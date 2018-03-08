@@ -103,10 +103,10 @@ eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		return 0;
 
 	packet_size = h->internals->packet_size;
+	if (rte_pktmbuf_alloc_bulk(h->mb_pool, bufs, nb_bufs) != 0)
+		return 0;
+
 	for (i = 0; i < nb_bufs; i++) {
-		bufs[i] = rte_pktmbuf_alloc(h->mb_pool);
-		if (!bufs[i])
-			break;
 		bufs[i]->data_len = (uint16_t)packet_size;
 		bufs[i]->pkt_len = packet_size;
 		bufs[i]->port = h->internals->port_id;
@@ -128,10 +128,10 @@ eth_null_copy_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		return 0;
 
 	packet_size = h->internals->packet_size;
+	if (rte_pktmbuf_alloc_bulk(h->mb_pool, bufs, nb_bufs) != 0)
+		return 0;
+
 	for (i = 0; i < nb_bufs; i++) {
-		bufs[i] = rte_pktmbuf_alloc(h->mb_pool);
-		if (!bufs[i])
-			break;
 		rte_memcpy(rte_pktmbuf_mtod(bufs[i], void *), h->dummy_packet,
 					packet_size);
 		bufs[i]->data_len = (uint16_t)packet_size;
