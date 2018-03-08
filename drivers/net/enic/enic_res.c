@@ -128,6 +128,26 @@ int enic_get_vnic_config(struct enic *enic)
 		c->intr_timer_usec,
 		c->loop_tag);
 
+	/* RSS settings from vNIC */
+	enic->reta_size = ENIC_RSS_RETA_SIZE;
+	enic->hash_key_size = ENIC_RSS_HASH_KEY_SIZE;
+	enic->flow_type_rss_offloads = 0;
+	if (ENIC_SETTING(enic, RSSHASH_IPV4))
+		enic->flow_type_rss_offloads |= ETH_RSS_IPV4;
+	if (ENIC_SETTING(enic, RSSHASH_TCPIPV4))
+		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV4_TCP;
+	if (ENIC_SETTING(enic, RSSHASH_IPV6))
+		enic->flow_type_rss_offloads |= ETH_RSS_IPV6;
+	if (ENIC_SETTING(enic, RSSHASH_TCPIPV6))
+		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV6_TCP;
+	if (ENIC_SETTING(enic, RSSHASH_IPV6_EX))
+		enic->flow_type_rss_offloads |= ETH_RSS_IPV6_EX;
+	if (ENIC_SETTING(enic, RSSHASH_TCPIPV6_EX))
+		enic->flow_type_rss_offloads |= ETH_RSS_IPV6_TCP_EX;
+	/* Zero offloads if RSS is not enabled */
+	if (!ENIC_SETTING(enic, RSS))
+		enic->flow_type_rss_offloads = 0;
+
 	return 0;
 }
 

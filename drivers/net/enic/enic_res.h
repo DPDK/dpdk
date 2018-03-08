@@ -31,6 +31,12 @@
 #define ENIC_DEFAULT_RX_FREE_THRESH	32
 #define ENIC_TX_XMIT_MAX		64
 
+#define ENIC_RSS_DEFAULT_CPU    0
+#define ENIC_RSS_BASE_CPU       0
+#define ENIC_RSS_HASH_BITS      7
+#define ENIC_RSS_RETA_SIZE      (1 << ENIC_RSS_HASH_BITS)
+#define ENIC_RSS_HASH_KEY_SIZE  40
+
 #define ENIC_SETTING(enic, f) ((enic->config.flags & VENETF_##f) ? 1 : 0)
 
 

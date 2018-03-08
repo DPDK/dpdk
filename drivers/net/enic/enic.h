@@ -146,6 +146,20 @@ struct enic {
 
 	LIST_HEAD(enic_flows, rte_flow) flows;
 	rte_spinlock_t flows_lock;
+
+	/* RSS */
+	uint16_t reta_size;
+	uint8_t hash_key_size;
+	uint64_t flow_type_rss_offloads; /* 0 indicates RSS not supported */
+	/*
+	 * Keep a copy of current RSS config for queries, as we cannot retrieve
+	 * it from the NIC.
+	 */
+	uint8_t rss_hash_type; /* NIC_CFG_RSS_HASH_TYPE flags */
+	uint8_t rss_enable;
+	uint64_t rss_hf; /* ETH_RSS flags */
+	union vnic_rss_key rss_key;
+	union vnic_rss_cpu rss_cpu;
 };
 
 /* Get the CQ index from a Start of Packet(SOP) RQ index */
@@ -239,8 +253,12 @@ void enic_free_rq(void *rxq);
 int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 		  unsigned int socket_id, struct rte_mempool *mp,
 		  uint16_t nb_desc, uint16_t free_thresh);
-int enic_set_rss_nic_cfg(struct enic *enic);
 int enic_set_vnic_res(struct enic *enic);
+int enic_init_rss_nic_cfg(struct enic *enic);
+int enic_set_rss_conf(struct enic *enic,
+		      struct rte_eth_rss_conf *rss_conf);
+int enic_set_rss_reta(struct enic *enic, union vnic_rss_cpu *rss_cpu);
+int enic_set_vlan_strip(struct enic *enic);
 int enic_enable(struct enic *enic);
 int enic_disable(struct enic *enic);
 void enic_remove(struct enic *enic);

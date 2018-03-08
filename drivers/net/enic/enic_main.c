@@ -889,44 +889,42 @@ static int enic_dev_open(struct enic *enic)
 	return err;
 }
 
-static int enic_set_rsskey(struct enic *enic)
+static int enic_set_rsskey(struct enic *enic, uint8_t *user_key)
 {
 	dma_addr_t rss_key_buf_pa;
 	union vnic_rss_key *rss_key_buf_va = NULL;
-	static union vnic_rss_key rss_key = {
-		.key = {
-			[0] = {.b = {85, 67, 83, 97, 119, 101, 115, 111, 109, 101}},
-			[1] = {.b = {80, 65, 76, 79, 117, 110, 105, 113, 117, 101}},
-			[2] = {.b = {76, 73, 78, 85, 88, 114, 111, 99, 107, 115}},
-			[3] = {.b = {69, 78, 73, 67, 105, 115, 99, 111, 111, 108}},
-		}
-	};
-	int err;
+	int err, i;
 	u8 name[NAME_MAX];
 
+	RTE_ASSERT(user_key != NULL);
 	snprintf((char *)name, NAME_MAX, "rss_key-%s", enic->bdf_name);
 	rss_key_buf_va = enic_alloc_consistent(enic, sizeof(union vnic_rss_key),
 		&rss_key_buf_pa, name);
 	if (!rss_key_buf_va)
 		return -ENOMEM;
 
-	rte_memcpy(rss_key_buf_va, &rss_key, sizeof(union vnic_rss_key));
+	for (i = 0; i < ENIC_RSS_HASH_KEY_SIZE; i++)
+		rss_key_buf_va->key[i / 10].b[i % 10] = user_key[i];
 
 	err = enic_set_rss_key(enic,
 		rss_key_buf_pa,
 		sizeof(union vnic_rss_key));
 
+	/* Save for later queries */
+	if (!err) {
+		rte_memcpy(&enic->rss_key, rss_key_buf_va,
+			   sizeof(union vnic_rss_key));
+	}
 	enic_free_consistent(enic, sizeof(union vnic_rss_key),
 		rss_key_buf_va, rss_key_buf_pa);
 
 	return err;
 }
 
-static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
+int enic_set_rss_reta(struct enic *enic, union vnic_rss_cpu *rss_cpu)
 {
 	dma_addr_t rss_cpu_buf_pa;
 	union vnic_rss_cpu *rss_cpu_buf_va = NULL;
-	int i;
 	int err;
 	u8 name[NAME_MAX];
 
@@ -936,9 +934,7 @@ static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
 	if (!rss_cpu_buf_va)
 		return -ENOMEM;
 
-	for (i = 0; i < (1 << rss_hash_bits); i++)
-		(*rss_cpu_buf_va).cpu[i / 4].b[i % 4] =
-			enic_rte_rq_idx_to_sop_idx(i % enic->rq_count);
+	rte_memcpy(rss_cpu_buf_va, rss_cpu, sizeof(union vnic_rss_cpu));
 
 	err = enic_set_rss_cpu(enic,
 		rss_cpu_buf_pa,
@@ -947,6 +943,9 @@ static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
 	enic_free_consistent(enic, sizeof(union vnic_rss_cpu),
 		rss_cpu_buf_va, rss_cpu_buf_pa);
 
+	/* Save for later queries */
+	if (!err)
+		rte_memcpy(&enic->rss_cpu, rss_cpu, sizeof(union vnic_rss_cpu));
 	return err;
 }
 
@@ -955,8 +954,6 @@ static int enic_set_niccfg(struct enic *enic, u8 rss_default_cpu,
 {
 	const u8 tso_ipid_split_en = 0;
 	int err;
-
-	/* Enable VLAN tag stripping */
 
 	err = enic_set_nic_cfg(enic,
 		rss_default_cpu, rss_hash_type,
@@ -967,46 +964,49 @@ static int enic_set_niccfg(struct enic *enic, u8 rss_default_cpu,
 	return err;
 }
 
-int enic_set_rss_nic_cfg(struct enic *enic)
+/* Initialize RSS with defaults, called from dev_configure */
+int enic_init_rss_nic_cfg(struct enic *enic)
 {
-	const u8 rss_default_cpu = 0;
-	const u8 rss_hash_type = NIC_CFG_RSS_HASH_TYPE_IPV4 |
-	    NIC_CFG_RSS_HASH_TYPE_TCP_IPV4 |
-	    NIC_CFG_RSS_HASH_TYPE_IPV6 |
-	    NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
-	const u8 rss_hash_bits = 7;
-	const u8 rss_base_cpu = 0;
-	u8 rss_enable = ENIC_SETTING(enic, RSS) && (enic->rq_count > 1);
+	static uint8_t default_rss_key[] = {
+		85, 67, 83, 97, 119, 101, 115, 111, 109, 101,
+		80, 65, 76, 79, 117, 110, 105, 113, 117, 101,
+		76, 73, 78, 85, 88, 114, 111, 99, 107, 115,
+		69, 78, 73, 67, 105, 115, 99, 111, 111, 108,
+	};
+	struct rte_eth_rss_conf rss_conf;
+	union vnic_rss_cpu rss_cpu;
+	int ret, i;
 
-	if (rss_enable) {
-		if (!enic_set_rsskey(enic)) {
-			if (enic_set_rsscpu(enic, rss_hash_bits)) {
-				rss_enable = 0;
-				dev_warning(enic, "RSS disabled, "\
-					"Failed to set RSS cpu indirection table.");
-			}
-		} else {
-			rss_enable = 0;
-			dev_warning(enic,
-				"RSS disabled, Failed to set RSS key.\n");
-		}
+	rss_conf = enic->rte_dev->data->dev_conf.rx_adv_conf.rss_conf;
+	/*
+	 * If setting key for the first time, and the user gives us none, then
+	 * push the default key to NIC.
+	 */
+	if (rss_conf.rss_key == NULL) {
+		rss_conf.rss_key = default_rss_key;
+		rss_conf.rss_key_len = ENIC_RSS_HASH_KEY_SIZE;
 	}
-
-	return enic_set_niccfg(enic, rss_default_cpu, rss_hash_type,
-		rss_hash_bits, rss_base_cpu, rss_enable);
+	ret = enic_set_rss_conf(enic, &rss_conf);
+	if (ret) {
+		dev_err(enic, "Failed to configure RSS\n");
+		return ret;
+	}
+	if (enic->rss_enable) {
+		/* If enabling RSS, use the default reta */
+		for (i = 0; i < ENIC_RSS_RETA_SIZE; i++) {
+			rss_cpu.cpu[i / 4].b[i % 4] =
+				enic_rte_rq_idx_to_sop_idx(i % enic->rq_count);
+		}
+		ret = enic_set_rss_reta(enic, &rss_cpu);
+		if (ret)
+			dev_err(enic, "Failed to set RSS indirection table\n");
+	}
+	return ret;
 }
 
 int enic_setup_finish(struct enic *enic)
 {
-	int ret;
-
 	enic_init_soft_stats(enic);
-
-	ret = enic_set_rss_nic_cfg(enic);
-	if (ret) {
-		dev_err(enic, "Failed to config nic, aborting.\n");
-		return -1;
-	}
 
 	/* Default conf */
 	vnic_dev_packet_filter(enic->vdev,
@@ -1020,6 +1020,98 @@ int enic_setup_finish(struct enic *enic)
 	enic->allmulti = 1;
 
 	return 0;
+}
+
+static int enic_rss_conf_valid(struct enic *enic,
+			       struct rte_eth_rss_conf *rss_conf)
+{
+	/* RSS is disabled per VIC settings. Ignore rss_conf. */
+	if (enic->flow_type_rss_offloads == 0)
+		return 0;
+	if (rss_conf->rss_key != NULL &&
+	    rss_conf->rss_key_len != ENIC_RSS_HASH_KEY_SIZE) {
+		dev_err(enic, "Given rss_key is %d bytes, it must be %d\n",
+			rss_conf->rss_key_len, ENIC_RSS_HASH_KEY_SIZE);
+		return -EINVAL;
+	}
+	if (rss_conf->rss_hf != 0 &&
+	    (rss_conf->rss_hf & enic->flow_type_rss_offloads) == 0) {
+		dev_err(enic, "Given rss_hf contains none of the supported"
+			" types\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/* Set hash type and key according to rss_conf */
+int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
+{
+	struct rte_eth_dev *eth_dev;
+	uint64_t rss_hf;
+	u8 rss_hash_type;
+	u8 rss_enable;
+	int ret;
+
+	RTE_ASSERT(rss_conf != NULL);
+	ret = enic_rss_conf_valid(enic, rss_conf);
+	if (ret) {
+		dev_err(enic, "RSS configuration (rss_conf) is invalid\n");
+		return ret;
+	}
+
+	eth_dev = enic->rte_dev;
+	rss_hash_type = 0;
+	rss_hf = rss_conf->rss_hf & enic->flow_type_rss_offloads;
+	if (enic->rq_count > 1 &&
+	    (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) &&
+	    rss_hf != 0) {
+		rss_enable = 1;
+		if (rss_hf & ETH_RSS_IPV4)
+			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_IPV4;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
+		if (rss_hf & ETH_RSS_IPV6)
+			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_IPV6;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
+		if (rss_hf & ETH_RSS_IPV6_EX)
+			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_IPV6_EX;
+		if (rss_hf & ETH_RSS_IPV6_TCP_EX)
+			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6_EX;
+	} else {
+		rss_enable = 0;
+		rss_hf = 0;
+	}
+
+	/* Set the hash key if provided */
+	if (rss_enable && rss_conf->rss_key) {
+		ret = enic_set_rsskey(enic, rss_conf->rss_key);
+		if (ret) {
+			dev_err(enic, "Failed to set RSS key\n");
+			return ret;
+		}
+	}
+
+	ret = enic_set_niccfg(enic, ENIC_RSS_DEFAULT_CPU, rss_hash_type,
+			      ENIC_RSS_HASH_BITS, ENIC_RSS_BASE_CPU,
+			      rss_enable);
+	if (!ret) {
+		enic->rss_hf = rss_hf;
+		enic->rss_hash_type = rss_hash_type;
+		enic->rss_enable = rss_enable;
+	}
+	return 0;
+}
+
+int enic_set_vlan_strip(struct enic *enic)
+{
+	/*
+	 * Unfortunately, VLAN strip on/off and RSS on/off are configured
+	 * together. So, re-do niccfg, preserving the current RSS settings.
+	 */
+	return enic_set_niccfg(enic, ENIC_RSS_DEFAULT_CPU, enic->rss_hash_type,
+			       ENIC_RSS_HASH_BITS, ENIC_RSS_BASE_CPU,
+			       enic->rss_enable);
 }
 
 void enic_add_packet_filter(struct enic *enic)

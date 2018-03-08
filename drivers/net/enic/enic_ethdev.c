@@ -345,8 +345,6 @@ static int enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 		else
 			enic->ig_vlan_strip_en = 0;
 	}
-	enic_set_rss_nic_cfg(enic);
-
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		dev_warning(enic,
@@ -358,7 +356,7 @@ static int enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 			"Configuration of extended VLAN is not supported\n");
 	}
 
-	return 0;
+	return enic_set_vlan_strip(enic);
 }
 
 static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
@@ -379,8 +377,16 @@ static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 	enic->hw_ip_checksum = !!(eth_dev->data->dev_conf.rxmode.offloads &
 				  DEV_RX_OFFLOAD_CHECKSUM);
 	ret = enicpmd_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK);
-
-	return ret;
+	if (ret) {
+		dev_err(enic, "Failed to configure VLAN offloads\n");
+		return ret;
+	}
+	/*
+	 * Initialize RSS with the default reta and key. If the user key is
+	 * given (rx_adv_conf.rss_conf.rss_key), will use that instead of the
+	 * default key.
+	 */
+	return enic_init_rss_nic_cfg(enic);
 }
 
 /* Start the device.
@@ -480,6 +486,9 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = ENIC_DEFAULT_RX_FREE_THRESH
 	};
+	device_info->reta_size = enic->reta_size;
+	device_info->hash_key_size = enic->hash_key_size;
+	device_info->flow_type_rss_offloads = enic->flow_type_rss_offloads;
 }
 
 static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
@@ -582,6 +591,100 @@ static int enicpmd_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	return enic_set_mtu(enic, mtu);
 }
 
+static int enicpmd_dev_rss_reta_query(struct rte_eth_dev *dev,
+				      struct rte_eth_rss_reta_entry64
+				      *reta_conf,
+				      uint16_t reta_size)
+{
+	struct enic *enic = pmd_priv(dev);
+	uint16_t i, idx, shift;
+
+	ENICPMD_FUNC_TRACE();
+	if (reta_size != ENIC_RSS_RETA_SIZE) {
+		dev_err(enic, "reta_query: wrong reta_size. given=%u expected=%u\n",
+			reta_size, ENIC_RSS_RETA_SIZE);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = enic_sop_rq_idx_to_rte_idx(
+				enic->rss_cpu.cpu[i / 4].b[i % 4]);
+	}
+
+	return 0;
+}
+
+static int enicpmd_dev_rss_reta_update(struct rte_eth_dev *dev,
+				       struct rte_eth_rss_reta_entry64
+				       *reta_conf,
+				       uint16_t reta_size)
+{
+	struct enic *enic = pmd_priv(dev);
+	union vnic_rss_cpu rss_cpu;
+	uint16_t i, idx, shift;
+
+	ENICPMD_FUNC_TRACE();
+	if (reta_size != ENIC_RSS_RETA_SIZE) {
+		dev_err(enic, "reta_update: wrong reta_size. given=%u"
+			" expected=%u\n",
+			reta_size, ENIC_RSS_RETA_SIZE);
+		return -EINVAL;
+	}
+	/*
+	 * Start with the current reta and modify it per reta_conf, as we
+	 * need to push the entire reta even if we only modify one entry.
+	 */
+	rss_cpu = enic->rss_cpu;
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			rss_cpu.cpu[i / 4].b[i % 4] =
+				enic_rte_rq_idx_to_sop_idx(
+					reta_conf[idx].reta[shift]);
+	}
+	return enic_set_rss_reta(enic, &rss_cpu);
+}
+
+static int enicpmd_dev_rss_hash_update(struct rte_eth_dev *dev,
+				       struct rte_eth_rss_conf *rss_conf)
+{
+	struct enic *enic = pmd_priv(dev);
+
+	ENICPMD_FUNC_TRACE();
+	return enic_set_rss_conf(enic, rss_conf);
+}
+
+static int enicpmd_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+					 struct rte_eth_rss_conf *rss_conf)
+{
+	struct enic *enic = pmd_priv(dev);
+
+	ENICPMD_FUNC_TRACE();
+	if (rss_conf == NULL)
+		return -EINVAL;
+	if (rss_conf->rss_key != NULL &&
+	    rss_conf->rss_key_len < ENIC_RSS_HASH_KEY_SIZE) {
+		dev_err(enic, "rss_hash_conf_get: wrong rss_key_len. given=%u"
+			" expected=%u+\n",
+			rss_conf->rss_key_len, ENIC_RSS_HASH_KEY_SIZE);
+		return -EINVAL;
+	}
+	rss_conf->rss_hf = enic->rss_hf;
+	if (rss_conf->rss_key != NULL) {
+		int i;
+		for (i = 0; i < ENIC_RSS_HASH_KEY_SIZE; i++) {
+			rss_conf->rss_key[i] =
+				enic->rss_key.key[i / 10].b[i % 10];
+		}
+		rss_conf->rss_key_len = ENIC_RSS_HASH_KEY_SIZE;
+	}
+	return 0;
+}
+
 static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_configure        = enicpmd_dev_configure,
 	.dev_start            = enicpmd_dev_start,
@@ -622,6 +725,10 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.mac_addr_add         = enicpmd_add_mac_addr,
 	.mac_addr_remove      = enicpmd_remove_mac_addr,
 	.filter_ctrl          = enicpmd_dev_filter_ctrl,
+	.reta_query           = enicpmd_dev_rss_reta_query,
+	.reta_update          = enicpmd_dev_rss_reta_update,
+	.rss_hash_conf_get    = enicpmd_dev_rss_hash_conf_get,
+	.rss_hash_update      = enicpmd_dev_rss_hash_update,
 };
 
 struct enic *enicpmd_list_head = NULL;
