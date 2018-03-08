@@ -310,6 +310,14 @@ Limitations
     were added. Since there currently is no grouping or priority support,
     'catch-all' filters should be added last.
 
+- **Statistics**
+
+  - ``rx_good_bytes`` (ibytes) always includes VLAN header (4B) and CRC bytes (4B).
+  - When the NIC drops a packet because the Rx queue has no free buffers,
+    ``rx_good_bytes`` still increments by 4B if the packet is not VLAN tagged or
+    VLAN stripping is disabled, or by 8B if the packet is VLAN tagged and stripping
+    is enabled.
+
 How to build the suite
 ----------------------
 
