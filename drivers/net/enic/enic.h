@@ -220,54 +220,54 @@ enic_ring_incr(uint32_t n_descriptors, uint32_t idx)
 	return idx;
 }
 
-extern void enic_fdir_stats_get(struct enic *enic,
-	struct rte_eth_fdir_stats *stats);
-extern int enic_fdir_add_fltr(struct enic *enic,
-	struct rte_eth_fdir_filter *params);
-extern int enic_fdir_del_fltr(struct enic *enic,
-	struct rte_eth_fdir_filter *params);
-extern void enic_free_wq(void *txq);
-extern int enic_alloc_intr_resources(struct enic *enic);
-extern int enic_setup_finish(struct enic *enic);
-extern int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
-	unsigned int socket_id, uint16_t nb_desc);
-extern void enic_start_wq(struct enic *enic, uint16_t queue_idx);
-extern int enic_stop_wq(struct enic *enic, uint16_t queue_idx);
-extern void enic_start_rq(struct enic *enic, uint16_t queue_idx);
-extern int enic_stop_rq(struct enic *enic, uint16_t queue_idx);
-extern void enic_free_rq(void *rxq);
-extern int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
-	unsigned int socket_id, struct rte_mempool *mp,
-	uint16_t nb_desc, uint16_t free_thresh);
-extern int enic_set_rss_nic_cfg(struct enic *enic);
-extern int enic_set_vnic_res(struct enic *enic);
-extern int enic_enable(struct enic *enic);
-extern int enic_disable(struct enic *enic);
-extern void enic_remove(struct enic *enic);
-extern int enic_get_link_status(struct enic *enic);
-extern int enic_dev_stats_get(struct enic *enic,
-	struct rte_eth_stats *r_stats);
-extern void enic_dev_stats_clear(struct enic *enic);
-extern void enic_add_packet_filter(struct enic *enic);
+void enic_fdir_stats_get(struct enic *enic,
+			 struct rte_eth_fdir_stats *stats);
+int enic_fdir_add_fltr(struct enic *enic,
+		       struct rte_eth_fdir_filter *params);
+int enic_fdir_del_fltr(struct enic *enic,
+		       struct rte_eth_fdir_filter *params);
+void enic_free_wq(void *txq);
+int enic_alloc_intr_resources(struct enic *enic);
+int enic_setup_finish(struct enic *enic);
+int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
+		  unsigned int socket_id, uint16_t nb_desc);
+void enic_start_wq(struct enic *enic, uint16_t queue_idx);
+int enic_stop_wq(struct enic *enic, uint16_t queue_idx);
+void enic_start_rq(struct enic *enic, uint16_t queue_idx);
+int enic_stop_rq(struct enic *enic, uint16_t queue_idx);
+void enic_free_rq(void *rxq);
+int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
+		  unsigned int socket_id, struct rte_mempool *mp,
+		  uint16_t nb_desc, uint16_t free_thresh);
+int enic_set_rss_nic_cfg(struct enic *enic);
+int enic_set_vnic_res(struct enic *enic);
+int enic_enable(struct enic *enic);
+int enic_disable(struct enic *enic);
+void enic_remove(struct enic *enic);
+int enic_get_link_status(struct enic *enic);
+int enic_dev_stats_get(struct enic *enic,
+		       struct rte_eth_stats *r_stats);
+void enic_dev_stats_clear(struct enic *enic);
+void enic_add_packet_filter(struct enic *enic);
 int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr);
 void enic_del_mac_address(struct enic *enic, int mac_index);
-extern unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq);
-extern void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
-			  struct rte_mbuf *tx_pkt, unsigned short len,
-			  uint8_t sop, uint8_t eop, uint8_t cq_entry,
-			  uint16_t ol_flags, uint16_t vlan_tag);
+unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq);
+void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
+		   struct rte_mbuf *tx_pkt, unsigned short len,
+		   uint8_t sop, uint8_t eop, uint8_t cq_entry,
+		   uint16_t ol_flags, uint16_t vlan_tag);
 
-extern void enic_post_wq_index(struct vnic_wq *wq);
-extern int enic_probe(struct enic *enic);
-extern int enic_clsf_init(struct enic *enic);
-extern void enic_clsf_destroy(struct enic *enic);
+void enic_post_wq_index(struct vnic_wq *wq);
+int enic_probe(struct enic *enic);
+int enic_clsf_init(struct enic *enic);
+void enic_clsf_destroy(struct enic *enic);
 uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
 uint16_t enic_dummy_recv_pkts(void *rx_queue,
 			      struct rte_mbuf **rx_pkts,
 			      uint16_t nb_pkts);
 uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
-			       uint16_t nb_pkts);
+			uint16_t nb_pkts);
 uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu);
