@@ -520,7 +520,7 @@ rte_eth_dev_socket_id(uint16_t port_id)
 }
 
 void *
-rte_eth_dev_get_sec_ctx(uint8_t port_id)
+rte_eth_dev_get_sec_ctx(uint16_t port_id)
 {
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, NULL);
 	return rte_eth_devices[port_id].security_ctx;

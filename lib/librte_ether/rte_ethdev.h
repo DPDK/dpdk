@@ -3530,7 +3530,7 @@ rte_eth_dev_pool_ops_supported(uint16_t port_id, const char *pool);
  *   - pointer to security context on success.
  */
 void *
-rte_eth_dev_get_sec_ctx(uint8_t port_id);
+rte_eth_dev_get_sec_ctx(uint16_t port_id);
 
 
 #include <rte_ethdev_core.h>

@@ -149,10 +149,6 @@ Deprecation Notices
   as parameter. For consistency functions adding callback will return
   ``struct rte_eth_rxtx_callback \*`` instead of ``void \*``.
 
-* ethdev: ``rte_eth_dev_get_sec_ctx()`` fix port id storage
-  ``rte_eth_dev_get_sec_ctx()`` is using ``uint8_t`` for ``port_id``,
-  which should be ``uint16_t``.
-
 * i40e: The default flexible payload configuration which extracts the first 16
   bytes of the payload for RSS will be deprecated starting from 18.02. If
   required the previous behavior can be configured using existing flow
