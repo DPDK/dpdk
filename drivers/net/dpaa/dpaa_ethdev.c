@@ -275,9 +275,9 @@ static int dpaa_eth_link_update(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpaa_intf->fif->mac_type == fman_mac_1g)
-		link->link_speed = 1000;
+		link->link_speed = ETH_SPEED_NUM_1G;
 	else if (dpaa_intf->fif->mac_type == fman_mac_10g)
-		link->link_speed = 10000;
+		link->link_speed = ETH_SPEED_NUM_10G;
 	else
 		DPAA_PMD_ERR("invalid link_speed: %s, %d",
 			     dpaa_intf->name, dpaa_intf->fif->mac_type);
