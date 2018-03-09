@@ -931,5 +931,5 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_MB_PMD,
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(aesni_mb_crypto_drv,
-		cryptodev_aesni_mb_pmd_drv,
+		cryptodev_aesni_mb_pmd_drv.driver,
 		cryptodev_driver_id);

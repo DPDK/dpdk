@@ -850,5 +850,5 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_ARMV8_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
-RTE_PMD_REGISTER_CRYPTO_DRIVER(armv8_crypto_drv, armv8_crypto_pmd_drv,
+RTE_PMD_REGISTER_CRYPTO_DRIVER(armv8_crypto_drv, armv8_crypto_pmd_drv.driver,
 		cryptodev_driver_id);

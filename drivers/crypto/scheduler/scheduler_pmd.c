@@ -468,5 +468,5 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SCHEDULER_PMD,
 	"socket_id=<int> "
 	"slave=<name>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(scheduler_crypto_drv,
-		cryptodev_scheduler_pmd_drv,
+		cryptodev_scheduler_pmd_drv.driver,
 		cryptodev_driver_id);

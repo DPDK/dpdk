@@ -619,5 +619,5 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_KASUMI_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
-RTE_PMD_REGISTER_CRYPTO_DRIVER(kasumi_crypto_drv, cryptodev_kasumi_pmd_drv,
-		cryptodev_driver_id);
+RTE_PMD_REGISTER_CRYPTO_DRIVER(kasumi_crypto_drv,
+		cryptodev_kasumi_pmd_drv.driver, cryptodev_driver_id);

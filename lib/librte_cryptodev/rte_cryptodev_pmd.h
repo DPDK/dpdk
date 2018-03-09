@@ -519,7 +519,7 @@ uint8_t rte_cryptodev_allocate_driver(struct cryptodev_driver *crypto_drv,
 RTE_INIT(init_ ##driver_id);\
 static void init_ ##driver_id(void)\
 {\
-	driver_id = rte_cryptodev_allocate_driver(&crypto_drv, &(drv).driver);\
+	driver_id = rte_cryptodev_allocate_driver(&crypto_drv, &(drv));\
 }
 
 static inline void *
