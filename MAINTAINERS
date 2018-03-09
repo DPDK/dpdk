@@ -282,7 +282,7 @@ Baseband API - EXPERIMENTAL
 M: Amr Mokhtar <amr.mokhtar@intel.com>
 F: lib/librte_bbdev/
 F: doc/guides/prog_guide/bbdev.rst
-F: drivers/bbdev/
+F: drivers/baseband/
 F: doc/guides/bbdevs/
 F: app/test-bbdev/
 F: doc/guides/tools/testbbdev.rst
