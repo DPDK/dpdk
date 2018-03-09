@@ -130,7 +130,7 @@ static int crypto_qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
-		.socket_id = rte_socket_id(),
+		.socket_id = pci_dev->device.numa_node,
 		.private_data_size = sizeof(struct qat_pmd_private),
 		.max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS
 	};
