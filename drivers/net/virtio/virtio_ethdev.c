@@ -1751,6 +1751,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct virtio_hw *hw = dev->data->dev_private;
+	uint64_t rx_offloads = rxmode->offloads;
 	uint64_t req_features;
 	int ret;
 
@@ -1763,14 +1764,11 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return ret;
 	}
 
-	/* The name hw_ip_checksum is a bit confusing since it can be
-	 * set by the application to request L3 and/or L4 checksums. In
-	 * case of virtio, only L4 checksum is supported.
-	 */
-	if (rxmode->hw_ip_checksum)
+	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
+			   DEV_RX_OFFLOAD_TCP_CKSUM))
 		req_features |= (1ULL << VIRTIO_NET_F_GUEST_CSUM);
 
-	if (rxmode->enable_lro)
+	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
 		req_features |=
 			(1ULL << VIRTIO_NET_F_GUEST_TSO4) |
 			(1ULL << VIRTIO_NET_F_GUEST_TSO6);
@@ -1782,14 +1780,15 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return ret;
 	}
 
-	if (rxmode->hw_ip_checksum &&
+	if ((rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
+			    DEV_RX_OFFLOAD_TCP_CKSUM)) &&
 		!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM)) {
 		PMD_DRV_LOG(ERR,
 			"rx checksum not available on this host");
 		return -ENOTSUP;
 	}
 
-	if (rxmode->enable_lro &&
+	if ((rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) &&
 		(!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4) ||
 		 !vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO6))) {
 		PMD_DRV_LOG(ERR,
@@ -1801,9 +1800,10 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VQ))
 		virtio_dev_cq_start(dev);
 
-	hw->vlan_strip = rxmode->hw_vlan_strip;
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		hw->vlan_strip = 1;
 
-	if (rxmode->hw_vlan_filter
+	if ((rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 	    && !vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN)) {
 		PMD_DRV_LOG(ERR,
 			    "vlan filtering not available on this host");
@@ -1834,7 +1834,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		hw->use_simple_tx = 0;
 	}
 
-	if (rxmode->hw_ip_checksum)
+	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
+			   DEV_RX_OFFLOAD_TCP_CKSUM))
 		hw->use_simple_rx = 0;
 
 	return 0;
@@ -2036,9 +2037,10 @@ virtio_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct virtio_hw *hw = dev->data->dev_private;
+	uint64_t offloads = rxmode->offloads;
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (rxmode->hw_vlan_filter &&
+		if ((offloads & DEV_RX_OFFLOAD_VLAN_FILTER) &&
 				!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN)) {
 
 			PMD_DRV_LOG(NOTICE,
@@ -2049,7 +2051,7 @@ virtio_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	if (mask & ETH_VLAN_STRIP_MASK)
-		hw->vlan_strip = rxmode->hw_vlan_strip;
+		hw->vlan_strip = !!(offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 
 	return 0;
 }
@@ -2075,18 +2077,21 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 
 	host_features = VTPCI_OPS(hw)->get_features(hw);
-	dev_info->rx_offload_capa = 0;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
 	if (host_features & (1ULL << VIRTIO_NET_F_GUEST_CSUM)) {
 		dev_info->rx_offload_capa |=
 			DEV_RX_OFFLOAD_TCP_CKSUM |
 			DEV_RX_OFFLOAD_UDP_CKSUM;
 	}
+	if (host_features & (1ULL << VIRTIO_NET_F_CTRL_VLAN))
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_VLAN_FILTER;
 	tso_mask = (1ULL << VIRTIO_NET_F_GUEST_TSO4) |
 		(1ULL << VIRTIO_NET_F_GUEST_TSO6);
 	if ((host_features & tso_mask) == tso_mask)
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
 
-	dev_info->tx_offload_capa = 0;
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
+				    DEV_TX_OFFLOAD_VLAN_INSERT;
 	if (hw->guest_features & (1ULL << VIRTIO_NET_F_CSUM)) {
 		dev_info->tx_offload_capa |=
 			DEV_TX_OFFLOAD_UDP_CKSUM |

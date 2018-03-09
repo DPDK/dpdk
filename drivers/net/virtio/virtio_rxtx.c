@@ -38,10 +38,6 @@
 #define  VIRTIO_DUMP_PACKET(m, len) do { } while (0)
 #endif
 
-
-#define VIRTIO_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
-	ETH_TXQ_FLAGS_NOOFFLOADS)
-
 int
 virtio_dev_rx_queue_done(void *rxq, uint16_t offset)
 {
@@ -389,9 +385,10 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id __rte_unused,
-			__rte_unused const struct rte_eth_rxconf *rx_conf,
+			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
+	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint16_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
@@ -410,6 +407,11 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		rte_exit(EXIT_FAILURE,
 			"Cannot allocate mbufs for rx virtqueue");
 	}
+
+	if ((rx_conf->offloads ^ rxmode->offloads) &
+	    VIRTIO_PMD_PER_DEVICE_RX_OFFLOADS)
+		return -EINVAL;
+
 	dev->data->rx_queues[queue_idx] = rxvq;
 
 	return 0;
@@ -502,7 +504,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	/* cannot use simple rxtx funcs with multisegs or offloads */
-	if ((tx_conf->txq_flags & VIRTIO_SIMPLE_FLAGS) != VIRTIO_SIMPLE_FLAGS)
+	if (tx_conf->offloads)
 		hw->use_simple_tx = 0;
 
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
