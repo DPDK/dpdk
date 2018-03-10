@@ -1031,6 +1031,22 @@ static int cxgbe_get_regs(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+void cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
+{
+	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	int ret;
+
+	ret = t4_change_mac(adapter, adapter->mbox, pi->viid,
+			    pi->xact_addr_filt, (u8 *)addr, true, true);
+	if (ret < 0) {
+		dev_err(adapter, "failed to set mac addr; err = %d\n",
+			ret);
+		return;
+	}
+	pi->xact_addr_filt = ret;
+}
+
 static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
@@ -1062,6 +1078,7 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.get_reg		= cxgbe_get_regs,
 	.rss_hash_update	= cxgbe_dev_rss_hash_update,
 	.rss_hash_conf_get	= cxgbe_dev_rss_hash_conf_get,
+	.mac_addr_set		= cxgbe_mac_addr_set,
 };
 
 /*

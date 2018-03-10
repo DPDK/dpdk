@@ -95,6 +95,7 @@ static const struct eth_dev_ops cxgbevf_eth_dev_ops = {
 	.rx_queue_stop          = cxgbe_dev_rx_queue_stop,
 	.rx_queue_release       = cxgbe_dev_rx_queue_release,
 	.stats_get		= cxgbevf_dev_stats_get,
+	.mac_addr_set		= cxgbe_mac_addr_set,
 };
 
 /*
