@@ -249,6 +249,7 @@ struct sge_txq {
 	unsigned int equeidx;	   /* last sent credit request */
 	unsigned int last_pidx;	   /* last pidx recorded by tx monitor */
 	unsigned int last_coal_idx;/* last coal-idx recorded by tx monitor */
+	unsigned int abs_id;
 
 	int db_disabled;            /* doorbell state */
 	unsigned short db_pidx;     /* doorbell producer index */
@@ -719,6 +720,7 @@ int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf,
 int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 		     const struct pkt_gl *gl);
 int t4_sge_init(struct adapter *adap);
+int t4vf_sge_init(struct adapter *adap);
 int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 			 struct rte_eth_dev *eth_dev, uint16_t queue_id,
 			 unsigned int iqid, int socket_id);

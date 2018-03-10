@@ -1689,6 +1689,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	char z_name_sw[RTE_MEMZONE_NAMESIZE];
 	unsigned int nb_refill;
+	u8 pciechan;
 
 	/* Size needs to be multiple of 16, including status entry. */
 	iq->size = cxgbe_roundup(iq->size, 16);
@@ -1706,8 +1707,19 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 
 	memset(&c, 0, sizeof(c));
 	c.op_to_vfn = htonl(V_FW_CMD_OP(FW_IQ_CMD) | F_FW_CMD_REQUEST |
-			    F_FW_CMD_WRITE | F_FW_CMD_EXEC |
-			    V_FW_IQ_CMD_PFN(adap->pf) | V_FW_IQ_CMD_VFN(0));
+			    F_FW_CMD_WRITE | F_FW_CMD_EXEC);
+
+	if (is_pf4(adap)) {
+		pciechan = cong > 0 ? cxgbe_ffs(cong) - 1 : pi->tx_chan;
+		c.op_to_vfn |= htonl(V_FW_IQ_CMD_PFN(adap->pf) |
+				     V_FW_IQ_CMD_VFN(0));
+		if (cong >= 0)
+			c.iqns_to_fl0congen = htonl(F_FW_IQ_CMD_IQFLINTCONGEN |
+						    F_FW_IQ_CMD_IQRO);
+	} else {
+		pciechan = pi->port_id;
+	}
+
 	c.alloc_to_len16 = htonl(F_FW_IQ_CMD_ALLOC | F_FW_IQ_CMD_IQSTART |
 				 (sizeof(c) / 16));
 	c.type_to_iqandstindex =
@@ -1719,16 +1731,12 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		      V_FW_IQ_CMD_IQANDSTINDEX(intr_idx >= 0 ? intr_idx :
 							       -intr_idx - 1));
 	c.iqdroprss_to_iqesize =
-		htons(V_FW_IQ_CMD_IQPCIECH(cong > 0 ? cxgbe_ffs(cong) - 1 :
-						      pi->tx_chan) |
+		htons(V_FW_IQ_CMD_IQPCIECH(pciechan) |
 		      F_FW_IQ_CMD_IQGTSMODE |
 		      V_FW_IQ_CMD_IQINTCNTTHRESH(iq->pktcnt_idx) |
 		      V_FW_IQ_CMD_IQESIZE(ilog2(iq->iqe_len) - 4));
 	c.iqsize = htons(iq->size);
 	c.iqaddr = cpu_to_be64(iq->phys_addr);
-	if (cong >= 0)
-		c.iqns_to_fl0congen = htonl(F_FW_IQ_CMD_IQFLINTCONGEN |
-					    F_FW_IQ_CMD_IQRO);
 
 	if (fl) {
 		struct sge_eth_rxq *rxq = container_of(fl, struct sge_eth_rxq,
@@ -1768,7 +1776,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 			       0 : F_FW_IQ_CMD_FL0PACKEN) |
 			      F_FW_IQ_CMD_FL0FETCHRO | F_FW_IQ_CMD_FL0DATARO |
 			      F_FW_IQ_CMD_FL0PADEN);
-		if (cong >= 0)
+		if (is_pf4(adap) && cong >= 0)
 			c.iqns_to_fl0congen |=
 				htonl(V_FW_IQ_CMD_FL0CNGCHMAP(cong) |
 				      F_FW_IQ_CMD_FL0CONGCIF |
@@ -1789,7 +1797,10 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		c.fl0addr = cpu_to_be64(fl->addr);
 	}
 
-	ret = t4_wr_mbox(adap, adap->mbox, &c, sizeof(c), &c);
+	if (is_pf4(adap))
+		ret = t4_wr_mbox(adap, adap->mbox, &c, sizeof(c), &c);
+	else
+		ret = t4vf_wr_mbox(adap, &c, sizeof(c), &c);
 	if (ret)
 		goto err;
 
@@ -1806,7 +1817,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	iq->stat = (void *)&iq->desc[iq->size * 8];
 	iq->eth_dev = eth_dev;
 	iq->handler = hnd;
-	iq->port_id = pi->port_id;
+	iq->port_id = pi->pidx;
 	iq->mb_pool = mp;
 
 	/* set offset to -1 to distinguish ingress queues without FL */
@@ -1846,7 +1857,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	 * a lot easier to fix in one place ...  For now we do something very
 	 * simple (and hopefully less wrong).
 	 */
-	if (!is_t4(adap->params.chip) && cong >= 0) {
+	if (is_pf4(adap) && !is_t4(adap->params.chip) && cong >= 0) {
 		u32 param, val;
 		int i;
 
@@ -1893,9 +1904,11 @@ err:
 	return ret;
 }
 
-static void init_txq(struct adapter *adap, struct sge_txq *q, unsigned int id)
+static void init_txq(struct adapter *adap, struct sge_txq *q, unsigned int id,
+		     unsigned int abs_id)
 {
 	q->cntxt_id = id;
+	q->abs_id = abs_id;
 	q->bar2_addr = bar2_address(adap, q->cntxt_id, T4_BAR2_QTYPE_EGRESS,
 				    &q->bar2_qid);
 	q->cidx = 0;
@@ -1943,6 +1956,7 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	char z_name_sw[RTE_MEMZONE_NAMESIZE];
+	u8 pciechan;
 
 	/* Add status entries */
 	nentries = txq->q.size + s->stat_len / sizeof(struct tx_desc);
@@ -1961,16 +1975,22 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 
 	memset(&c, 0, sizeof(c));
 	c.op_to_vfn = htonl(V_FW_CMD_OP(FW_EQ_ETH_CMD) | F_FW_CMD_REQUEST |
-			    F_FW_CMD_WRITE | F_FW_CMD_EXEC |
-			    V_FW_EQ_ETH_CMD_PFN(adap->pf) |
-			    V_FW_EQ_ETH_CMD_VFN(0));
+			    F_FW_CMD_WRITE | F_FW_CMD_EXEC);
+	if (is_pf4(adap)) {
+		pciechan = pi->tx_chan;
+		c.op_to_vfn |= htonl(V_FW_EQ_ETH_CMD_PFN(adap->pf) |
+				     V_FW_EQ_ETH_CMD_VFN(0));
+	} else {
+		pciechan = pi->port_id;
+	}
+
 	c.alloc_to_len16 = htonl(F_FW_EQ_ETH_CMD_ALLOC |
 				 F_FW_EQ_ETH_CMD_EQSTART | (sizeof(c) / 16));
 	c.autoequiqe_to_viid = htonl(F_FW_EQ_ETH_CMD_AUTOEQUEQE |
 				     V_FW_EQ_ETH_CMD_VIID(pi->viid));
 	c.fetchszm_to_iqid =
 		htonl(V_FW_EQ_ETH_CMD_HOSTFCMODE(X_HOSTFCMODE_NONE) |
-		      V_FW_EQ_ETH_CMD_PCIECHN(pi->tx_chan) |
+		      V_FW_EQ_ETH_CMD_PCIECHN(pciechan) |
 		      F_FW_EQ_ETH_CMD_FETCHRO | V_FW_EQ_ETH_CMD_IQID(iqid));
 	c.dcaen_to_eqsize =
 		htonl(V_FW_EQ_ETH_CMD_FBMIN(X_FETCHBURSTMIN_64B) |
@@ -1978,7 +1998,10 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 		      V_FW_EQ_ETH_CMD_EQSIZE(nentries));
 	c.eqaddr = rte_cpu_to_be_64(txq->q.phys_addr);
 
-	ret = t4_wr_mbox(adap, adap->mbox, &c, sizeof(c), &c);
+	if (is_pf4(adap))
+		ret = t4_wr_mbox(adap, adap->mbox, &c, sizeof(c), &c);
+	else
+		ret = t4vf_wr_mbox(adap, &c, sizeof(c), &c);
 	if (ret) {
 		rte_free(txq->q.sdesc);
 		txq->q.sdesc = NULL;
@@ -1986,7 +2009,8 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 		return ret;
 	}
 
-	init_txq(adap, &txq->q, G_FW_EQ_ETH_CMD_EQID(ntohl(c.eqid_pkd)));
+	init_txq(adap, &txq->q, G_FW_EQ_ETH_CMD_EQID(ntohl(c.eqid_pkd)),
+		 G_FW_EQ_ETH_CMD_PHYSEQID(ntohl(c.physeqid_pkd)));
 	txq->stats.tso = 0;
 	txq->stats.pkts = 0;
 	txq->stats.tx_cso = 0;
@@ -2279,5 +2303,184 @@ int t4_sge_init(struct adapter *adap)
 		egress_threshold = G_EGRTHRESHOLDPACKING(sge_conm_ctrl);
 	s->fl_starve_thres = 2 * egress_threshold + 1;
 
+	return 0;
+}
+
+int t4vf_sge_init(struct adapter *adap)
+{
+	struct sge_params *sge_params = &adap->params.sge;
+	u32 sge_ingress_queues_per_page;
+	u32 sge_egress_queues_per_page;
+	u32 sge_control, sge_control2;
+	u32 fl_small_pg, fl_large_pg;
+	u32 sge_ingress_rx_threshold;
+	u32 sge_timer_value_0_and_1;
+	u32 sge_timer_value_2_and_3;
+	u32 sge_timer_value_4_and_5;
+	u32 sge_congestion_control;
+	struct sge *s = &adap->sge;
+	unsigned int s_hps, s_qpp;
+	u32 sge_host_page_size;
+	u32 params[7], vals[7];
+	int v;
+
+	/* query basic params from fw */
+	params[0] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_CONTROL));
+	params[1] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_HOST_PAGE_SIZE));
+	params[2] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_FL_BUFFER_SIZE0));
+	params[3] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_FL_BUFFER_SIZE1));
+	params[4] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_TIMER_VALUE_0_AND_1));
+	params[5] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_TIMER_VALUE_2_AND_3));
+	params[6] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_TIMER_VALUE_4_AND_5));
+	v = t4vf_query_params(adap, 7, params, vals);
+	if (v != FW_SUCCESS)
+		return v;
+
+	sge_control = vals[0];
+	sge_host_page_size = vals[1];
+	fl_small_pg = vals[2];
+	fl_large_pg = vals[3];
+	sge_timer_value_0_and_1 = vals[4];
+	sge_timer_value_2_and_3 = vals[5];
+	sge_timer_value_4_and_5 = vals[6];
+
+	/*
+	 * Start by vetting the basic SGE parameters which have been set up by
+	 * the Physical Function Driver.
+	 */
+
+	/* We only bother using the Large Page logic if the Large Page Buffer
+	 * is larger than our Page Size Buffer.
+	 */
+	if (fl_large_pg <= fl_small_pg)
+		fl_large_pg = 0;
+
+	/* The Page Size Buffer must be exactly equal to our Page Size and the
+	 * Large Page Size Buffer should be 0 (per above) or a power of 2.
+	 */
+	if (fl_small_pg != CXGBE_PAGE_SIZE ||
+	    (fl_large_pg & (fl_large_pg - 1)) != 0) {
+		dev_err(adapter->pdev_dev, "bad SGE FL buffer sizes [%d, %d]\n",
+			fl_small_pg, fl_large_pg);
+		return -EINVAL;
+	}
+
+	if ((sge_control & F_RXPKTCPLMODE) !=
+	    V_RXPKTCPLMODE(X_RXPKTCPLMODE_SPLIT)) {
+		dev_err(adapter->pdev_dev, "bad SGE CPL MODE\n");
+		return -EINVAL;
+	}
+
+
+	/* Grab ingress packing boundary from SGE_CONTROL2 for */
+	params[0] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_CONTROL2));
+	v = t4vf_query_params(adap, 1, params, vals);
+	if (v != FW_SUCCESS) {
+		dev_err(adapter, "Unable to get SGE Control2; "
+			"probably old firmware.\n");
+		return v;
+	}
+	sge_control2 = vals[0];
+
+	params[0] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_INGRESS_RX_THRESHOLD));
+	params[1] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_CONM_CTRL));
+	v = t4vf_query_params(adap, 2, params, vals);
+	if (v != FW_SUCCESS)
+		return v;
+	sge_ingress_rx_threshold = vals[0];
+	sge_congestion_control = vals[1];
+	params[0] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_EGRESS_QUEUES_PER_PAGE_VF));
+	params[1] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+		     V_FW_PARAMS_PARAM_XYZ(A_SGE_INGRESS_QUEUES_PER_PAGE_VF));
+	v = t4vf_query_params(adap, 2, params, vals);
+	if (v != FW_SUCCESS) {
+		dev_warn(adap, "Unable to get VF SGE Queues/Page; "
+			 "probably old firmware.\n");
+		return v;
+	}
+	sge_egress_queues_per_page = vals[0];
+	sge_ingress_queues_per_page = vals[1];
+
+	/*
+	 * We need the Queues/Page for our VF.  This is based on the
+	 * PF from which we're instantiated and is indexed in the
+	 * register we just read.
+	 */
+	s_hps = (S_HOSTPAGESIZEPF0 +
+		 (S_HOSTPAGESIZEPF1 - S_HOSTPAGESIZEPF0) * adap->pf);
+	sge_params->hps =
+		((sge_host_page_size >> s_hps) & M_HOSTPAGESIZEPF0);
+
+	s_qpp = (S_QUEUESPERPAGEPF0 +
+		 (S_QUEUESPERPAGEPF1 - S_QUEUESPERPAGEPF0) * adap->pf);
+	sge_params->eq_qpp =
+		((sge_egress_queues_per_page >> s_qpp)
+		 & M_QUEUESPERPAGEPF0);
+	sge_params->iq_qpp =
+		((sge_ingress_queues_per_page >> s_qpp)
+		 & M_QUEUESPERPAGEPF0);
+
+	/*
+	 * Now translate the queried parameters into our internal forms.
+	 */
+	if (fl_large_pg)
+		s->fl_pg_order = ilog2(fl_large_pg) - PAGE_SHIFT;
+	s->stat_len = ((sge_control & F_EGRSTATUSPAGESIZE)
+			? 128 : 64);
+	s->pktshift = G_PKTSHIFT(sge_control);
+	s->fl_align = t4vf_fl_pkt_align(adap, sge_control, sge_control2);
+
+	/*
+	 * A FL with <= fl_starve_thres buffers is starving and a periodic
+	 * timer will attempt to refill it.  This needs to be larger than the
+	 * SGE's Egress Congestion Threshold.  If it isn't, then we can get
+	 * stuck waiting for new packets while the SGE is waiting for us to
+	 * give it more Free List entries.  (Note that the SGE's Egress
+	 * Congestion Threshold is in units of 2 Free List pointers.)
+	 */
+	switch (CHELSIO_CHIP_VERSION(adap->params.chip)) {
+	case CHELSIO_T5:
+		s->fl_starve_thres =
+			G_EGRTHRESHOLDPACKING(sge_congestion_control);
+		break;
+	case CHELSIO_T6:
+	default:
+		s->fl_starve_thres =
+			G_T6_EGRTHRESHOLDPACKING(sge_congestion_control);
+		break;
+	}
+	s->fl_starve_thres = s->fl_starve_thres * 2 + 1;
+
+	/*
+	 * Save RX interrupt holdoff timer values and counter
+	 * threshold values from the SGE parameters.
+	 */
+	s->timer_val[0] = core_ticks_to_us(adap,
+			G_TIMERVALUE0(sge_timer_value_0_and_1));
+	s->timer_val[1] = core_ticks_to_us(adap,
+			G_TIMERVALUE1(sge_timer_value_0_and_1));
+	s->timer_val[2] = core_ticks_to_us(adap,
+			G_TIMERVALUE2(sge_timer_value_2_and_3));
+	s->timer_val[3] = core_ticks_to_us(adap,
+			G_TIMERVALUE3(sge_timer_value_2_and_3));
+	s->timer_val[4] = core_ticks_to_us(adap,
+			G_TIMERVALUE4(sge_timer_value_4_and_5));
+	s->timer_val[5] = core_ticks_to_us(adap,
+			G_TIMERVALUE5(sge_timer_value_4_and_5));
+	s->counter_val[0] = G_THRESHOLD_0(sge_ingress_rx_threshold);
+	s->counter_val[1] = G_THRESHOLD_1(sge_ingress_rx_threshold);
+	s->counter_val[2] = G_THRESHOLD_2(sge_ingress_rx_threshold);
+	s->counter_val[3] = G_THRESHOLD_3(sge_ingress_rx_threshold);
 	return 0;
 }

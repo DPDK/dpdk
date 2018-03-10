@@ -108,6 +108,11 @@ static int adap_init0vf(struct adapter *adapter)
 	}
 
 	adapter->pf = t4vf_get_pf_from_vf(adapter);
+	err = t4vf_sge_init(adapter);
+	if (err) {
+		dev_err(adapter->pdev_dev, "error in sge init\n");
+		return err;
+	}
 
 	/* If we're running on newer firmware, let it know that we're
 	 * prepared to deal with encapsulated CPL messages.  Older

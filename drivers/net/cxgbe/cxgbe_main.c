@@ -1068,7 +1068,8 @@ int setup_rss(struct port_info *pi)
 static void enable_rx(struct adapter *adap, struct sge_rspq *q)
 {
 	/* 0-increment GTS to start the timer and enable interrupts */
-	t4_write_reg(adap, MYPF_REG(A_SGE_PF_GTS),
+	t4_write_reg(adap, is_pf4(adap) ? MYPF_REG(A_SGE_PF_GTS) :
+					  T4VF_SGE_BASE_ADDR + A_SGE_VF_GTS,
 		     V_SEINTARM(q->intr_params) |
 		     V_INGRESSQID(q->cntxt_id));
 }

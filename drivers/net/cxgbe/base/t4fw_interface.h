@@ -480,6 +480,7 @@ struct fw_caps_config_cmd {
 enum fw_params_mnem {
 	FW_PARAMS_MNEM_DEV		= 1,	/* device params */
 	FW_PARAMS_MNEM_PFVF		= 2,	/* function params */
+	FW_PARAMS_MNEM_REG		= 3,	/* limited register access */
 	FW_PARAMS_MNEM_DMAQ		= 4,	/* dma queue params */
 };
 
@@ -886,6 +887,11 @@ struct fw_eq_eth_cmd {
 #define V_FW_EQ_ETH_CMD_EQID(x)	((x) << S_FW_EQ_ETH_CMD_EQID)
 #define G_FW_EQ_ETH_CMD_EQID(x)	\
 	(((x) >> S_FW_EQ_ETH_CMD_EQID) & M_FW_EQ_ETH_CMD_EQID)
+
+#define S_FW_EQ_ETH_CMD_PHYSEQID        0
+#define M_FW_EQ_ETH_CMD_PHYSEQID        0xfffff
+#define G_FW_EQ_ETH_CMD_PHYSEQID(x)     \
+	(((x) >> S_FW_EQ_ETH_CMD_PHYSEQID) & M_FW_EQ_ETH_CMD_PHYSEQID)
 
 #define S_FW_EQ_ETH_CMD_FETCHRO		22
 #define M_FW_EQ_ETH_CMD_FETCHRO		0x1

@@ -482,9 +482,8 @@ int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	err = t4_sge_alloc_eth_txq(adapter, txq, eth_dev, queue_idx,
 				   s->fw_evtq.cntxt_id, socket_id);
 
-	dev_debug(adapter, "%s: txq->q.cntxt_id= %d err = %d\n",
-		  __func__, txq->q.cntxt_id, err);
-
+	dev_debug(adapter, "%s: txq->q.cntxt_id= %u txq->q.abs_id= %u err = %d\n",
+		  __func__, txq->q.cntxt_id, txq->q.abs_id, err);
 	return err;
 }
 
@@ -611,11 +610,13 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	err = t4_sge_alloc_rxq(adapter, &rxq->rspq, false, eth_dev, msi_idx,
 			       &rxq->fl, t4_ethrx_handler,
-			       t4_get_tp_ch_map(adapter, pi->tx_chan), mp,
+			       is_pf4(adapter) ?
+			       t4_get_tp_ch_map(adapter, pi->tx_chan) : 0, mp,
 			       queue_idx, socket_id);
 
-	dev_debug(adapter, "%s: err = %d; port_id = %d; cntxt_id = %u\n",
-		  __func__, err, pi->port_id, rxq->rspq.cntxt_id);
+	dev_debug(adapter, "%s: err = %d; port_id = %d; cntxt_id = %u; abs_id = %u\n",
+		  __func__, err, pi->port_id, rxq->rspq.cntxt_id,
+		  rxq->rspq.abs_id);
 	return err;
 }
 
