@@ -337,7 +337,11 @@ static inline void ring_fl_db(struct adapter *adap, struct sge_fl *q)
 		 * mechanism.
 		 */
 		if (unlikely(!q->bar2_addr)) {
-			t4_write_reg_relaxed(adap, MYPF_REG(A_SGE_PF_KDOORBELL),
+			u32 reg = is_pf4(adap) ? MYPF_REG(A_SGE_PF_KDOORBELL) :
+						 T4VF_SGE_BASE_ADDR +
+						 A_SGE_VF_KDOORBELL;
+
+			t4_write_reg_relaxed(adap, reg,
 					     val | V_QID(q->cntxt_id));
 		} else {
 			writel_relaxed(val | V_QID(q->bar2_qid),
@@ -570,12 +574,16 @@ static inline int is_eth_imm(const struct rte_mbuf *m)
 /**
  * calc_tx_flits - calculate the number of flits for a packet Tx WR
  * @m: the packet
+ * @adap: adapter structure pointer
  *
  * Returns the number of flits needed for a Tx WR for the given Ethernet
  * packet, including the needed WR and CPL headers.
  */
-static inline unsigned int calc_tx_flits(const struct rte_mbuf *m)
+static inline unsigned int calc_tx_flits(const struct rte_mbuf *m,
+					 struct adapter *adap)
 {
+	size_t wr_size = is_pf4(adap) ? sizeof(struct fw_eth_tx_pkt_wr) :
+					sizeof(struct fw_eth_tx_pkt_vm_wr);
 	unsigned int flits;
 	int hdrlen;
 
@@ -600,11 +608,10 @@ static inline unsigned int calc_tx_flits(const struct rte_mbuf *m)
 	 */
 	flits = sgl_len(m->nb_segs);
 	if (m->tso_segsz)
-		flits += (sizeof(struct fw_eth_tx_pkt_wr) +
-			  sizeof(struct cpl_tx_pkt_lso_core) +
+		flits += (wr_size + sizeof(struct cpl_tx_pkt_lso_core) +
 			  sizeof(struct cpl_tx_pkt_core)) / sizeof(__be64);
 	else
-		flits += (sizeof(struct fw_eth_tx_pkt_wr) +
+		flits += (wr_size +
 			  sizeof(struct cpl_tx_pkt_core)) / sizeof(__be64);
 	return flits;
 }
@@ -848,14 +855,20 @@ static void tx_timer_cb(void *data)
 static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
 					   struct sge_eth_txq *txq)
 {
-	u32 wr_mid;
-	struct sge_txq *q = &txq->q;
+	struct fw_eth_tx_pkts_vm_wr *vmwr;
+	const size_t fw_hdr_copy_len = (sizeof(vmwr->ethmacdst) +
+					sizeof(vmwr->ethmacsrc) +
+					sizeof(vmwr->ethtype) +
+					sizeof(vmwr->vlantci));
 	struct fw_eth_tx_pkts_wr *wr;
+	struct sge_txq *q = &txq->q;
 	unsigned int ndesc;
+	u32 wr_mid;
 
 	/* fill the pkts WR header */
 	wr = (void *)&q->desc[q->pidx];
 	wr->op_pkd = htonl(V_FW_WR_OP(FW_ETH_TX_PKTS2_WR));
+	vmwr = (void *)&q->desc[q->pidx];
 
 	wr_mid = V_FW_WR_LEN16(DIV_ROUND_UP(q->coalesce.flits, 2));
 	ndesc = flits_to_desc(q->coalesce.flits);
@@ -863,12 +876,18 @@ static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
 	wr->plen = cpu_to_be16(q->coalesce.len);
 	wr->npkt = q->coalesce.idx;
 	wr->r3 = 0;
-	wr->type = q->coalesce.type;
+	if (is_pf4(adap)) {
+		wr->op_pkd = htonl(V_FW_WR_OP(FW_ETH_TX_PKTS2_WR));
+		wr->type = q->coalesce.type;
+	} else {
+		wr->op_pkd = htonl(V_FW_WR_OP(FW_ETH_TX_PKTS_VM_WR));
+		vmwr->r4 = 0;
+		memcpy((void *)vmwr->ethmacdst, (void *)q->coalesce.ethmacdst,
+		       fw_hdr_copy_len);
+	}
 
 	/* zero out coalesce structure members */
-	q->coalesce.idx = 0;
-	q->coalesce.flits = 0;
-	q->coalesce.len = 0;
+	memset((void *)&q->coalesce, 0, sizeof(struct eth_coalesce));
 
 	txq_advance(q, ndesc);
 	txq->stats.coal_wr++;
@@ -896,13 +915,27 @@ static inline int should_tx_packet_coalesce(struct sge_eth_txq *txq,
 					    unsigned int *nflits,
 					    struct adapter *adap)
 {
+	struct fw_eth_tx_pkts_vm_wr *wr;
+	const size_t fw_hdr_copy_len = (sizeof(wr->ethmacdst) +
+					sizeof(wr->ethmacsrc) +
+					sizeof(wr->ethtype) +
+					sizeof(wr->vlantci));
 	struct sge_txq *q = &txq->q;
 	unsigned int flits, ndesc;
 	unsigned char type = 0;
-	int credits;
+	int credits, wr_size;
 
 	/* use coal WR type 1 when no frags are present */
 	type = (mbuf->nb_segs == 1) ? 1 : 0;
+	if (!is_pf4(adap)) {
+		if (!type)
+			return 0;
+
+		if (q->coalesce.idx && memcmp((void *)q->coalesce.ethmacdst,
+					      rte_pktmbuf_mtod(mbuf, void *),
+					      fw_hdr_copy_len))
+			ship_tx_pkt_coalesce_wr(adap, txq);
+	}
 
 	if (unlikely(type != q->coalesce.type && q->coalesce.idx))
 		ship_tx_pkt_coalesce_wr(adap, txq);
@@ -948,16 +981,21 @@ static inline int should_tx_packet_coalesce(struct sge_eth_txq *txq,
 
 new:
 	/* start a new pkts WR, the WR header is not filled below */
-	flits += sizeof(struct fw_eth_tx_pkts_wr) / sizeof(__be64);
+	wr_size = is_pf4(adap) ? sizeof(struct fw_eth_tx_pkts_wr) :
+				 sizeof(struct fw_eth_tx_pkts_vm_wr);
+	flits += wr_size / sizeof(__be64);
 	ndesc = flits_to_desc(q->coalesce.flits + flits);
 	credits = txq_avail(q) - ndesc;
 
 	if (unlikely(credits < 0 || wraps_around(q, ndesc)))
 		return 0;
-	q->coalesce.flits += 2;
+	q->coalesce.flits += wr_size / sizeof(__be64);
 	q->coalesce.type = type;
 	q->coalesce.ptr = (unsigned char *)&q->desc[q->pidx] +
-			   2 * sizeof(__be64);
+			   q->coalesce.flits * sizeof(__be64);
+	if (!is_pf4(adap))
+		memcpy((void *)q->coalesce.ethmacdst,
+		       rte_pktmbuf_mtod(mbuf, void *), fw_hdr_copy_len);
 	return 1;
 }
 
@@ -987,6 +1025,8 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 	struct cpl_tx_pkt_core *cpl;
 	struct tx_sw_desc *sd;
 	unsigned int idx = q->coalesce.idx, len = mbuf->pkt_len;
+	unsigned int max_coal_pkt_num = is_pf4(adap) ? ETH_COALESCE_PKT_NUM :
+						       ETH_COALESCE_VF_PKT_NUM;
 
 #ifdef RTE_LIBRTE_CXGBE_TPUT
 	RTE_SET_USED(nb_pkts);
@@ -1030,9 +1070,12 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 		cntrl |= F_TXPKT_VLAN_VLD | V_TXPKT_VLAN(mbuf->vlan_tci);
 	}
 
-	cpl->ctrl0 = htonl(V_TXPKT_OPCODE(CPL_TX_PKT_XT) |
-			   V_TXPKT_INTF(pi->tx_chan) |
-			   V_TXPKT_PF(adap->pf));
+	cpl->ctrl0 = htonl(V_TXPKT_OPCODE(CPL_TX_PKT_XT));
+	if (is_pf4(adap))
+		cpl->ctrl0 |= htonl(V_TXPKT_INTF(pi->tx_chan) |
+				    V_TXPKT_PF(adap->pf));
+	else
+		cpl->ctrl0 |= htonl(V_TXPKT_INTF(pi->port_id));
 	cpl->pack = htons(0);
 	cpl->len = htons(len);
 	cpl->ctrl1 = cpu_to_be64(cntrl);
@@ -1061,7 +1104,7 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 	sd->coalesce.idx = (idx & 1) + 1;
 
 	/* send the coaelsced work request if max reached */
-	if (++q->coalesce.idx == ETH_COALESCE_PKT_NUM
+	if (++q->coalesce.idx == max_coal_pkt_num
 #ifndef RTE_LIBRTE_CXGBE_TPUT
 	    || q->coalesce.idx >= nb_pkts
 #endif
@@ -1085,6 +1128,7 @@ int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf,
 	struct adapter *adap;
 	struct rte_mbuf *m = mbuf;
 	struct fw_eth_tx_pkt_wr *wr;
+	struct fw_eth_tx_pkt_vm_wr *vmwr;
 	struct cpl_tx_pkt_core *cpl;
 	struct tx_sw_desc *d;
 	dma_addr_t addr[m->nb_segs];
@@ -1141,7 +1185,7 @@ out_free:
 	if (txq->q.coalesce.idx)
 		ship_tx_pkt_coalesce_wr(adap, txq);
 
-	flits = calc_tx_flits(m);
+	flits = calc_tx_flits(m, adap);
 	ndesc = flits_to_desc(flits);
 	credits = txq_avail(&txq->q) - ndesc;
 
@@ -1163,31 +1207,55 @@ out_free:
 	}
 
 	wr = (void *)&txq->q.desc[txq->q.pidx];
+	vmwr = (void *)&txq->q.desc[txq->q.pidx];
 	wr->equiq_to_len16 = htonl(wr_mid);
-	wr->r3 = rte_cpu_to_be_64(0);
-	end = (u64 *)wr + flits;
+	if (is_pf4(adap)) {
+		wr->r3 = rte_cpu_to_be_64(0);
+		end = (u64 *)wr + flits;
+	} else {
+		const size_t fw_hdr_copy_len = (sizeof(vmwr->ethmacdst) +
+						sizeof(vmwr->ethmacsrc) +
+						sizeof(vmwr->ethtype) +
+						sizeof(vmwr->vlantci));
+
+		vmwr->r3[0] = rte_cpu_to_be_32(0);
+		vmwr->r3[1] = rte_cpu_to_be_32(0);
+		memcpy((void *)vmwr->ethmacdst, rte_pktmbuf_mtod(m, void *),
+		       fw_hdr_copy_len);
+		end = (u64 *)vmwr + flits;
+	}
 
 	len = 0;
 	len += sizeof(*cpl);
 
 	/* Coalescing skipped and we send through normal path */
 	if (!(m->ol_flags & PKT_TX_TCP_SEG)) {
-		wr->op_immdlen = htonl(V_FW_WR_OP(FW_ETH_TX_PKT_WR) |
+		wr->op_immdlen = htonl(V_FW_WR_OP(is_pf4(adap) ?
+						  FW_ETH_TX_PKT_WR :
+						  FW_ETH_TX_PKT_VM_WR) |
 				       V_FW_WR_IMMDLEN(len));
-		cpl = (void *)(wr + 1);
+		if (is_pf4(adap))
+			cpl = (void *)(wr + 1);
+		else
+			cpl = (void *)(vmwr + 1);
 		if (m->ol_flags & PKT_TX_IP_CKSUM) {
 			cntrl = hwcsum(adap->params.chip, m) |
 				F_TXPKT_IPCSUM_DIS;
 			txq->stats.tx_cso++;
 		}
 	} else {
-		lso = (void *)(wr + 1);
+		if (is_pf4(adap))
+			lso = (void *)(wr + 1);
+		else
+			lso = (void *)(vmwr + 1);
 		v6 = (m->ol_flags & PKT_TX_IPV6) != 0;
 		l3hdr_len = m->l3_len;
 		l4hdr_len = m->l4_len;
 		eth_xtra_len = m->l2_len - ETHER_HDR_LEN;
 		len += sizeof(*lso);
-		wr->op_immdlen = htonl(V_FW_WR_OP(FW_ETH_TX_PKT_WR) |
+		wr->op_immdlen = htonl(V_FW_WR_OP(is_pf4(adap) ?
+						  FW_ETH_TX_PKT_WR :
+						  FW_ETH_TX_PKT_VM_WR) |
 				       V_FW_WR_IMMDLEN(len));
 		lso->lso_ctrl = htonl(V_LSO_OPCODE(CPL_TX_PKT_LSO) |
 				      F_LSO_FIRST_SLICE | F_LSO_LAST_SLICE |
@@ -1221,9 +1289,14 @@ out_free:
 		cntrl |= F_TXPKT_VLAN_VLD | V_TXPKT_VLAN(m->vlan_tci);
 	}
 
-	cpl->ctrl0 = htonl(V_TXPKT_OPCODE(CPL_TX_PKT_XT) |
-			   V_TXPKT_INTF(pi->tx_chan) |
-			   V_TXPKT_PF(adap->pf));
+	cpl->ctrl0 = htonl(V_TXPKT_OPCODE(CPL_TX_PKT_XT));
+	if (is_pf4(adap))
+		cpl->ctrl0 |= htonl(V_TXPKT_INTF(pi->tx_chan) |
+				    V_TXPKT_PF(adap->pf));
+	else
+		cpl->ctrl0 |= htonl(V_TXPKT_INTF(pi->port_id) |
+				    V_TXPKT_PF(0));
+
 	cpl->pack = htons(0);
 	cpl->len = htons(m->pkt_len);
 	cpl->ctrl1 = cpu_to_be64(cntrl);
@@ -1468,6 +1541,7 @@ static int process_responses(struct sge_rspq *q, int budget,
 		rsp_type = G_RSPD_TYPE(rc->u.type_gen);
 
 		if (likely(rsp_type == X_RSPD_TYPE_FLBUF)) {
+			struct sge *s = &q->adapter->sge;
 			unsigned int stat_pidx;
 			int stat_pidx_diff;
 
@@ -1554,6 +1628,7 @@ static int process_responses(struct sge_rspq *q, int budget,
 					pkt->vlan_tci = ntohs(cpl->vlan);
 				}
 
+				rte_pktmbuf_adj(pkt, s->pktshift);
 				rxq->stats.pkts++;
 				rxq->stats.rx_bytes += pkt->pkt_len;
 				rx_pkts[budget - budget_left] = pkt;
@@ -1612,7 +1687,11 @@ int cxgbe_poll(struct sge_rspq *q, struct rte_mbuf **rx_pkts,
 		val = V_CIDXINC(cidx_inc) | V_SEINTARM(params);
 
 		if (unlikely(!q->bar2_addr)) {
-			t4_write_reg(q->adapter, MYPF_REG(A_SGE_PF_GTS),
+			u32 reg = is_pf4(q->adapter) ? MYPF_REG(A_SGE_PF_GTS) :
+						       T4VF_SGE_BASE_ADDR +
+						       A_SGE_VF_GTS;
+
+			t4_write_reg(q->adapter, reg,
 				     val | V_INGRESSQID((u32)q->cntxt_id));
 		} else {
 			writel(val | V_INGRESSQID(q->bar2_qid),

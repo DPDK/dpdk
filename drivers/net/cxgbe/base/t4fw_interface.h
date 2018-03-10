@@ -84,6 +84,8 @@ enum fw_memtype {
 enum fw_wr_opcodes {
 	FW_ETH_TX_PKT_WR	= 0x08,
 	FW_ETH_TX_PKTS_WR	= 0x09,
+	FW_ETH_TX_PKT_VM_WR	= 0x11,
+	FW_ETH_TX_PKTS_VM_WR	= 0x12,
 	FW_ETH_TX_PKTS2_WR      = 0x78,
 };
 
@@ -144,6 +146,29 @@ struct fw_eth_tx_pkts_wr {
 	__be16 plen;
 	__u8   npkt;
 	__u8   type;
+};
+
+struct fw_eth_tx_pkt_vm_wr {
+	__be32 op_immdlen;
+	__be32 equiq_to_len16;
+	__be32 r3[2];
+	__u8   ethmacdst[6];
+	__u8   ethmacsrc[6];
+	__be16 ethtype;
+	__be16 vlantci;
+};
+
+struct fw_eth_tx_pkts_vm_wr {
+	__be32 op_pkd;
+	__be32 equiq_to_len16;
+	__be32 r3;
+	__be16 plen;
+	__u8   npkt;
+	__u8   r4;
+	__u8   ethmacdst[6];
+	__u8   ethmacsrc[6];
+	__be16 ethtype;
+	__be16 vlantci;
 };
 
 /******************************************************************************

@@ -34,5 +34,9 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
 int cxgbe_dev_start(struct rte_eth_dev *eth_dev);
 int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 			  int wait_to_complete);
+uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			 uint16_t nb_pkts);
+uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts);
 const uint32_t *cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev);
 #endif /* _CXGBE_PFVF_H_ */

@@ -198,6 +198,7 @@ struct sge_eth_rxq {                /* a SW Ethernet Rx queue */
  * scenario where a packet needs 32 bytes.
  */
 #define ETH_COALESCE_PKT_NUM 15
+#define ETH_COALESCE_VF_PKT_NUM 7
 #define ETH_COALESCE_PKT_PER_DESC 2
 
 struct tx_eth_coal_desc {
@@ -227,6 +228,10 @@ struct eth_coalesce {
 	unsigned int len;
 	unsigned int flits;
 	unsigned int max;
+	__u8 ethmacdst[ETHER_ADDR_LEN];
+	__u8 ethmacsrc[ETHER_ADDR_LEN];
+	__be16 ethtype;
+	__be16 vlantci;
 };
 
 struct sge_txq {

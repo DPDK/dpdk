@@ -86,8 +86,8 @@
  */
 #include "t4_pci_id_tbl.h"
 
-static uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
-				uint16_t nb_pkts)
+uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			 uint16_t nb_pkts)
 {
 	struct sge_eth_txq *txq = (struct sge_eth_txq *)tx_queue;
 	uint16_t pkts_sent, pkts_remain;
@@ -120,8 +120,8 @@ static uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return total_sent;
 }
 
-static uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-				uint16_t nb_pkts)
+uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
 {
 	struct sge_eth_rxq *rxq = (struct sge_eth_rxq *)rx_queue;
 	unsigned int work_done;

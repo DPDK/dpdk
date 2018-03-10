@@ -68,8 +68,8 @@ static int eth_cxgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	CXGBE_FUNC_TRACE();
 
 	eth_dev->dev_ops = &cxgbevf_eth_dev_ops;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
+	eth_dev->rx_pkt_burst = &cxgbe_recv_pkts;
+	eth_dev->tx_pkt_burst = &cxgbe_xmit_pkts;
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	/* for secondary processes, we attach to ethdevs allocated by primary
