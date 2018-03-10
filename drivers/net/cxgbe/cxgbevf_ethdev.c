@@ -30,6 +30,49 @@
  */
 #include "t4_pci_id_tbl.h"
 
+/*
+ * Get port statistics.
+ */
+static int cxgbevf_dev_stats_get(struct rte_eth_dev *eth_dev,
+				 struct rte_eth_stats *eth_stats)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct sge *s = &adapter->sge;
+	struct port_stats ps;
+	unsigned int i;
+
+	cxgbevf_stats_get(pi, &ps);
+
+	/* RX Stats */
+	eth_stats->ierrors  = ps.rx_len_err;
+
+	/* TX Stats */
+	eth_stats->opackets = ps.tx_bcast_frames + ps.tx_mcast_frames +
+			      ps.tx_ucast_frames;
+	eth_stats->oerrors  = ps.tx_drop;
+
+	for (i = 0; i < pi->n_rx_qsets; i++) {
+		struct sge_eth_rxq *rxq =
+			&s->ethrxq[pi->first_qset + i];
+
+		eth_stats->q_ipackets[i] = rxq->stats.pkts;
+		eth_stats->q_ibytes[i] = rxq->stats.rx_bytes;
+		eth_stats->ipackets += eth_stats->q_ipackets[i];
+		eth_stats->ibytes += eth_stats->q_ibytes[i];
+	}
+
+	for (i = 0; i < pi->n_tx_qsets; i++) {
+		struct sge_eth_txq *txq =
+			&s->ethtxq[pi->first_qset + i];
+
+		eth_stats->q_opackets[i] = txq->stats.pkts;
+		eth_stats->q_obytes[i] = txq->stats.tx_bytes;
+		eth_stats->q_errors[i] = txq->stats.mapping_err;
+	}
+	return 0;
+}
+
 static const struct eth_dev_ops cxgbevf_eth_dev_ops = {
 	.dev_start              = cxgbe_dev_start,
 	.dev_stop               = cxgbe_dev_stop,
@@ -51,6 +94,7 @@ static const struct eth_dev_ops cxgbevf_eth_dev_ops = {
 	.rx_queue_start         = cxgbe_dev_rx_queue_start,
 	.rx_queue_stop          = cxgbe_dev_rx_queue_stop,
 	.rx_queue_release       = cxgbe_dev_rx_queue_release,
+	.stats_get		= cxgbevf_dev_stats_get,
 };
 
 /*

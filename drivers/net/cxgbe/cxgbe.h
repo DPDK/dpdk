@@ -60,6 +60,7 @@ int cxgbe_up(struct adapter *adap);
 int cxgbe_down(struct port_info *pi);
 void cxgbe_close(struct adapter *adapter);
 void cxgbe_stats_get(struct port_info *pi, struct port_stats *stats);
+void cxgbevf_stats_get(struct port_info *pi, struct port_stats *stats);
 void cxgbe_stats_reset(struct port_info *pi);
 int link_start(struct port_info *pi);
 void init_rspq(struct adapter *adap, struct sge_rspq *q, unsigned int us,

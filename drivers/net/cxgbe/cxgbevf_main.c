@@ -74,6 +74,11 @@ static void size_nports_qsets(struct adapter *adapter)
 	}
 }
 
+void cxgbevf_stats_get(struct port_info *pi, struct port_stats *stats)
+{
+	t4vf_get_port_stats(pi->adapter, pi->pidx, stats);
+}
+
 static int adap_init0vf(struct adapter *adapter)
 {
 	u32 param, val = 0;

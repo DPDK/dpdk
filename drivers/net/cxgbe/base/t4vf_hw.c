@@ -630,6 +630,111 @@ int t4vf_get_vfres(struct adapter *adapter)
 	return 0;
 }
 
+/**
+ * t4vf_get_port_stats_fw - collect "port" statistics via Firmware
+ * @adapter: the adapter
+ * @pidx: the port index
+ * @s: the stats structure to fill
+ *
+ * Collect statistics for the "port"'s Virtual Interface via Firmware
+ * commands.
+ */
+static int t4vf_get_port_stats_fw(struct adapter *adapter, int pidx,
+				  struct port_stats *p)
+{
+	struct port_info *pi = adap2pinfo(adapter, pidx);
+	unsigned int rem = VI_VF_NUM_STATS;
+	struct fw_vi_stats_vf fwstats;
+	__be64 *fwsp = (__be64 *)&fwstats;
+
+	/*
+	 * Grab the Virtual Interface statistics a chunk at a time via mailbox
+	 * commands.  We could use a Work Request and get all of them at once
+	 * but that's an asynchronous interface which is awkward to use.
+	 */
+	while (rem) {
+		unsigned int ix = VI_VF_NUM_STATS - rem;
+		unsigned int nstats = min(6U, rem);
+		struct fw_vi_stats_cmd cmd, rpl;
+		size_t len = (offsetof(struct fw_vi_stats_cmd, u) +
+			      sizeof(struct fw_vi_stats_ctl));
+		size_t len16 = DIV_ROUND_UP(len, 16);
+		int ret;
+
+		memset(&cmd, 0, sizeof(cmd));
+		cmd.op_to_viid = cpu_to_be32(V_FW_CMD_OP(FW_VI_STATS_CMD) |
+					     V_FW_VI_STATS_CMD_VIID(pi->viid) |
+					     F_FW_CMD_REQUEST |
+					     F_FW_CMD_READ);
+		cmd.retval_len16 = cpu_to_be32(V_FW_CMD_LEN16(len16));
+		cmd.u.ctl.nstats_ix =
+			cpu_to_be16(V_FW_VI_STATS_CMD_IX(ix) |
+				    V_FW_VI_STATS_CMD_NSTATS(nstats));
+		ret = t4vf_wr_mbox_ns(adapter, &cmd, len, &rpl);
+		if (ret != FW_SUCCESS)
+			return ret;
+
+		memcpy(fwsp, &rpl.u.ctl.stat0, sizeof(__be64) * nstats);
+
+		rem -= nstats;
+		fwsp += nstats;
+	}
+
+	/*
+	 * Translate firmware statistics into host native statistics.
+	 */
+	p->tx_bcast_frames = be64_to_cpu(fwstats.tx_bcast_frames);
+	p->tx_mcast_frames = be64_to_cpu(fwstats.tx_mcast_frames);
+	p->tx_ucast_frames = be64_to_cpu(fwstats.tx_ucast_frames);
+	p->tx_drop = be64_to_cpu(fwstats.tx_drop_frames);
+
+	p->rx_bcast_frames = be64_to_cpu(fwstats.rx_bcast_frames);
+	p->rx_mcast_frames = be64_to_cpu(fwstats.rx_mcast_frames);
+	p->rx_ucast_frames = be64_to_cpu(fwstats.rx_ucast_frames);
+	p->rx_len_err = be64_to_cpu(fwstats.rx_err_frames);
+
+	return 0;
+}
+
+/**
+ *      t4vf_get_port_stats - collect "port" statistics
+ *      @adapter: the adapter
+ *      @pidx: the port index
+ *      @s: the stats structure to fill
+ *
+ *      Collect statistics for the "port"'s Virtual Interface.
+ */
+void t4vf_get_port_stats(struct adapter *adapter, int pidx,
+			 struct port_stats *p)
+{
+	/*
+	 * If this is not the first Virtual Interface for our Virtual
+	 * Function, we need to use Firmware commands to retrieve its
+	 * MPS statistics.
+	 */
+	if (pidx != 0)
+		t4vf_get_port_stats_fw(adapter, pidx, p);
+
+	/*
+	 * But for the first VI, we can grab its statistics via the MPS
+	 * register mapped into the VF register space.
+	 */
+#define GET_STAT(name) \
+	t4_read_reg64(adapter, \
+			T4VF_MPS_BASE_ADDR + A_MPS_VF_STAT_##name##_L)
+	p->tx_bcast_frames = GET_STAT(TX_VF_BCAST_FRAMES);
+	p->tx_mcast_frames = GET_STAT(TX_VF_MCAST_FRAMES);
+	p->tx_ucast_frames = GET_STAT(TX_VF_UCAST_FRAMES);
+	p->tx_drop = GET_STAT(TX_VF_DROP_FRAMES);
+
+	p->rx_bcast_frames = GET_STAT(RX_VF_BCAST_FRAMES);
+	p->rx_mcast_frames = GET_STAT(RX_VF_MCAST_FRAMES);
+	p->rx_ucast_frames = GET_STAT(RX_VF_UCAST_FRAMES);
+
+	p->rx_len_err = GET_STAT(RX_VF_ERR_FRAMES);
+#undef GET_STAT
+}
+
 static int t4vf_alloc_vi(struct adapter *adapter, int port_id)
 {
 	struct fw_vi_cmd cmd, rpl;

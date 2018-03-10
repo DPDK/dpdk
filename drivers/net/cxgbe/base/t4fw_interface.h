@@ -210,6 +210,7 @@ enum fw_cmd_opcodes {
 	FW_VI_MAC_CMD                  = 0x15,
 	FW_VI_RXMODE_CMD               = 0x16,
 	FW_VI_ENABLE_CMD               = 0x17,
+	FW_VI_STATS_CMD		       = 0x1a,
 	FW_PORT_CMD                    = 0x1b,
 	FW_RSS_IND_TBL_CMD             = 0x20,
 	FW_RSS_GLB_CONFIG_CMD	       = 0x22,
@@ -1183,6 +1184,9 @@ struct fw_vi_enable_cmd {
 	(((x) >> S_FW_VI_ENABLE_CMD_DCB_INFO) & M_FW_VI_ENABLE_CMD_DCB_INFO)
 #define F_FW_VI_ENABLE_CMD_DCB_INFO	V_FW_VI_ENABLE_CMD_DCB_INFO(1U)
 
+/* VI VF stats offset definitions */
+#define VI_VF_NUM_STATS 16
+
 /* VI PF stats offset definitions */
 #define VI_PF_NUM_STATS	17
 enum fw_vi_stats_pf_index {
@@ -1259,6 +1263,15 @@ struct fw_vi_stats_cmd {
 		} vf;
 	} u;
 };
+
+#define S_FW_VI_STATS_CMD_VIID		0
+#define V_FW_VI_STATS_CMD_VIID(x)	((x) << S_FW_VI_STATS_CMD_VIID)
+
+#define S_FW_VI_STATS_CMD_NSTATS	12
+#define V_FW_VI_STATS_CMD_NSTATS(x)	((x) << S_FW_VI_STATS_CMD_NSTATS)
+
+#define S_FW_VI_STATS_CMD_IX		0
+#define V_FW_VI_STATS_CMD_IX(x)		((x) << S_FW_VI_STATS_CMD_IX)
 
 /* old 16-bit port capabilities bitmap */
 enum fw_port_cap {
