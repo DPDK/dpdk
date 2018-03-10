@@ -36,6 +36,7 @@
 
 #include "cxgbe_compat.h"
 #include "t4_hw.h"
+#include "t4vf_hw.h"
 #include "t4_chip_type.h"
 #include "t4fw_interface.h"
 
@@ -290,6 +291,11 @@ static inline int t4_wait_op_done(struct adapter *adapter, int reg, u32 mask,
 				   delay, NULL);
 }
 
+static inline int is_pf4(struct adapter *adap)
+{
+	return adap->pf == 4;
+}
+
 #define for_each_port(adapter, iter) \
 	for (iter = 0; iter < (adapter)->params.nports; ++iter)
 
@@ -399,6 +405,21 @@ static inline int t4_wr_mbox_ns(struct adapter *adap, int mbox, const void *cmd,
 {
 	return t4_wr_mbox_meat(adap, mbox, cmd, size, rpl, false);
 }
+
+int t4vf_wr_mbox_core(struct adapter *, const void *, int, void *, bool);
+
+static inline int t4vf_wr_mbox(struct adapter *adapter, const void *cmd,
+			       int size, void *rpl)
+{
+	return t4vf_wr_mbox_core(adapter, cmd, size, rpl, true);
+}
+
+static inline int t4vf_wr_mbox_ns(struct adapter *adapter, const void *cmd,
+				  int size, void *rpl)
+{
+	return t4vf_wr_mbox_core(adapter, cmd, size, rpl, false);
+}
+
 
 void t4_read_indirect(struct adapter *adap, unsigned int addr_reg,
 		      unsigned int data_reg, u32 *vals, unsigned int nregs,

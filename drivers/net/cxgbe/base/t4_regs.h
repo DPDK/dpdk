@@ -443,6 +443,8 @@
 /* registers for module CIM */
 #define CIM_BASE_ADDR 0x7b00
 
+#define A_CIM_VF_EXT_MAILBOX_CTRL 0x0
+
 #define A_CIM_PF_MAILBOX_DATA 0x240
 #define A_CIM_PF_MAILBOX_CTRL 0x280
 
@@ -461,6 +463,8 @@
 #define S_UPCRST    0
 #define V_UPCRST(x) ((x) << S_UPCRST)
 #define F_UPCRST    V_UPCRST(1U)
+
+#define NUM_CIM_PF_MAILBOX_DATA_INSTANCES 16
 
 /* registers for module TP */
 #define A_TP_OUT_CONFIG 0x7d04
