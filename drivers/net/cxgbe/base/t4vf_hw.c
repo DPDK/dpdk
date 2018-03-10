@@ -510,6 +510,77 @@ unsigned int t4vf_get_pf_from_vf(struct adapter *adapter)
 }
 
 /**
+ * t4vf_get_rss_glb_config - retrieve adapter RSS Global Configuration
+ * @adapter: the adapter
+ *
+ * Retrieves global RSS mode and parameters with which we have to live
+ * and stores them in the @adapter's RSS parameters.
+ */
+int t4vf_get_rss_glb_config(struct adapter *adapter)
+{
+	struct rss_params *rss = &adapter->params.rss;
+	struct fw_rss_glb_config_cmd cmd, rpl;
+	int v;
+
+	/*
+	 * Execute an RSS Global Configuration read command to retrieve
+	 * our RSS configuration.
+	 */
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.op_to_write = cpu_to_be32(V_FW_CMD_OP(FW_RSS_GLB_CONFIG_CMD) |
+				      F_FW_CMD_REQUEST |
+				      F_FW_CMD_READ);
+	cmd.retval_len16 = cpu_to_be32(FW_LEN16(cmd));
+	v = t4vf_wr_mbox(adapter, &cmd, sizeof(cmd), &rpl);
+	if (v != FW_SUCCESS)
+		return v;
+
+	/*
+	 * Translate the big-endian RSS Global Configuration into our
+	 * cpu-endian format based on the RSS mode.  We also do first level
+	 * filtering at this point to weed out modes which don't support
+	 * VF Drivers ...
+	 */
+	rss->mode = G_FW_RSS_GLB_CONFIG_CMD_MODE
+			(be32_to_cpu(rpl.u.manual.mode_pkd));
+	switch (rss->mode) {
+	case FW_RSS_GLB_CONFIG_CMD_MODE_BASICVIRTUAL: {
+		u32 word = be32_to_cpu
+				(rpl.u.basicvirtual.synmapen_to_hashtoeplitz);
+
+		rss->u.basicvirtual.synmapen =
+			((word & F_FW_RSS_GLB_CONFIG_CMD_SYNMAPEN) != 0);
+		rss->u.basicvirtual.syn4tupenipv6 =
+			((word & F_FW_RSS_GLB_CONFIG_CMD_SYN4TUPENIPV6) != 0);
+		rss->u.basicvirtual.syn2tupenipv6 =
+			((word & F_FW_RSS_GLB_CONFIG_CMD_SYN2TUPENIPV6) != 0);
+		rss->u.basicvirtual.syn4tupenipv4 =
+			((word & F_FW_RSS_GLB_CONFIG_CMD_SYN4TUPENIPV4) != 0);
+		rss->u.basicvirtual.syn2tupenipv4 =
+			((word & F_FW_RSS_GLB_CONFIG_CMD_SYN2TUPENIPV4) != 0);
+		rss->u.basicvirtual.ofdmapen =
+			((word & F_FW_RSS_GLB_CONFIG_CMD_OFDMAPEN) != 0);
+		rss->u.basicvirtual.tnlmapen =
+			((word & F_FW_RSS_GLB_CONFIG_CMD_TNLMAPEN) != 0);
+		rss->u.basicvirtual.tnlalllookup =
+			((word  & F_FW_RSS_GLB_CONFIG_CMD_TNLALLLKP) != 0);
+		rss->u.basicvirtual.hashtoeplitz =
+			((word & F_FW_RSS_GLB_CONFIG_CMD_HASHTOEPLITZ) != 0);
+
+		/* we need at least Tunnel Map Enable to be set */
+		if (!rss->u.basicvirtual.tnlmapen)
+			return -EINVAL;
+		break;
+	}
+
+	default:
+		/* all unknown/unsupported RSS modes result in an error */
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/**
  * t4vf_get_vfres - retrieve VF resource limits
  * @adapter: the adapter
  *

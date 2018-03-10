@@ -67,6 +67,7 @@ void init_rspq(struct adapter *adap, struct sge_rspq *q, unsigned int us,
 int setup_sge_fwevtq(struct adapter *adapter);
 void cfg_queues(struct rte_eth_dev *eth_dev);
 int cfg_queue_count(struct rte_eth_dev *eth_dev);
+int init_rss(struct adapter *adap);
 int setup_rss(struct port_info *pi);
 void cxgbe_enable_rx_queues(struct port_info *pi);
 void print_port_info(struct adapter *adap);

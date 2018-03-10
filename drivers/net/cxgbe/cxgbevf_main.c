@@ -114,6 +114,19 @@ static int adap_init0vf(struct adapter *adapter)
 		return err;
 	}
 
+	err = t4vf_get_rss_glb_config(adapter);
+	if (err) {
+		dev_err(adapter->pdev_dev, "unable to retrieve adapter"
+			" RSS parameters: err=%d\n", err);
+		return err;
+	}
+	if (adapter->params.rss.mode !=
+	    FW_RSS_GLB_CONFIG_CMD_MODE_BASICVIRTUAL) {
+		dev_err(adapter->pdev_dev, "unable to operate with global RSS"
+			" mode %d\n", adapter->params.rss.mode);
+		return -EINVAL;
+	}
+
 	/* If we're running on newer firmware, let it know that we're
 	 * prepared to deal with encapsulated CPL messages.  Older
 	 * firmware won't understand this and we'll just get
@@ -264,6 +277,9 @@ allocate_mac:
 	print_adapter_info(adapter);
 	print_port_info(adapter);
 
+	err = init_rss(adapter);
+	if (err)
+		goto out_free;
 	return 0;
 
 out_free:

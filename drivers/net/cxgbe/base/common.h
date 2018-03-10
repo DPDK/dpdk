@@ -211,6 +211,26 @@ struct arch_specific_params {
 };
 
 /*
+ * Global Receive Side Scaling (RSS) parameters in host-native format.
+ */
+struct rss_params {
+	unsigned int mode;			/* RSS mode */
+	union {
+		struct {
+			uint synmapen:1;	/* SYN Map Enable */
+			uint syn4tupenipv6:1;	/* en 4-tuple IPv6 SYNs hash */
+			uint syn2tupenipv6:1;	/* en 2-tuple IPv6 SYNs hash */
+			uint syn4tupenipv4:1;	/* en 4-tuple IPv4 SYNs hash */
+			uint syn2tupenipv4:1;	/* en 2-tuple IPv4 SYNs hash */
+			uint ofdmapen:1;	/* Offload Map Enable */
+			uint tnlmapen:1;	/* Tunnel Map Enable */
+			uint tnlalllookup:1;	/* Tunnel All Lookup */
+			uint hashtoeplitz:1;	/* use Toeplitz hash */
+		} basicvirtual;
+	} u;
+};
+
+/*
  * Maximum resources provisioned for a PCI VF.
  */
 struct vf_resources {
@@ -232,6 +252,7 @@ struct adapter_params {
 	struct vpd_params vpd;
 	struct pci_params pci;
 	struct devlog_params devlog;
+	struct rss_params rss;
 	struct vf_resources vfres;
 	enum pcie_memwin drv_memwin;
 
@@ -348,6 +369,7 @@ int t4vf_query_params(struct adapter *adap, unsigned int nparams,
 		      const u32 *params, u32 *vals);
 int t4vf_get_dev_params(struct adapter *adap);
 int t4vf_get_vpd_params(struct adapter *adap);
+int t4vf_get_rss_glb_config(struct adapter *adap);
 int t4vf_set_params(struct adapter *adapter, unsigned int nparams,
 		    const u32 *params, const u32 *vals);
 int t4_set_params_timeout(struct adapter *adap, unsigned int mbox,

@@ -346,14 +346,17 @@ static void setup_memwin(struct adapter *adap)
 					MEMWIN_NIC));
 }
 
-static int init_rss(struct adapter *adap)
+int init_rss(struct adapter *adap)
 {
 	unsigned int i;
-	int err;
 
-	err = t4_init_rss_mode(adap, adap->mbox);
-	if (err)
-		return err;
+	if (is_pf4(adap)) {
+		int err;
+
+		err = t4_init_rss_mode(adap, adap->mbox);
+		if (err)
+			return err;
+	}
 
 	for_each_port(adap, i) {
 		struct port_info *pi = adap2pinfo(adap, i);
