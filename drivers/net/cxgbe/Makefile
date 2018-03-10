@@ -80,6 +80,7 @@ VPATH += $(SRCDIR)/base
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbe_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbevf_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbe_main.c
 SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += sge.c
 SRCS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += t4_hw.c

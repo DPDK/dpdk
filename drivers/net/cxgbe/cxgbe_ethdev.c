@@ -63,6 +63,7 @@
 #include <rte_dev.h>
 
 #include "cxgbe.h"
+#include "cxgbe_pfvf.h"
 
 /*
  * Macros needed to support the PCI Device ID Table ...
@@ -135,8 +136,8 @@ static uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return work_done;
 }
 
-static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
-			       struct rte_eth_dev_info *device_info)
+void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
+			struct rte_eth_dev_info *device_info)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -179,7 +180,7 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 	cxgbe_get_speed_caps(pi, &device_info->speed_capa);
 }
 
-static void cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
+void cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -188,7 +189,7 @@ static void cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 		      1, -1, 1, -1, false);
 }
 
-static void cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
+void cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -197,7 +198,7 @@ static void cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 		      0, -1, 1, -1, false);
 }
 
-static void cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
+void cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -208,7 +209,7 @@ static void cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 		      -1, 1, 1, -1, false);
 }
 
-static void cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
+void cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -219,8 +220,8 @@ static void cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 		      -1, 0, 1, -1, false);
 }
 
-static int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
-				 __rte_unused int wait_to_complete)
+int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
+			  __rte_unused int wait_to_complete)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -240,7 +241,7 @@ static int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
+int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -268,17 +269,10 @@ static int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	return err;
 }
 
-static int cxgbe_dev_tx_queue_start(struct rte_eth_dev *eth_dev,
-				    uint16_t tx_queue_id);
-static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
-				    uint16_t tx_queue_id);
-static void cxgbe_dev_tx_queue_release(void *q);
-static void cxgbe_dev_rx_queue_release(void *q);
-
 /*
  * Stop device.
  */
-static void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
+void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -317,7 +311,7 @@ static void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
 /* Start the device.
  * It returns 0 on success.
  */
-static int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
+int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -369,7 +363,7 @@ out:
 /*
  * Stop device: disable rx and tx functions to allow for reconfiguring.
  */
-static void cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
+void cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -388,7 +382,7 @@ static void cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
 	t4_sge_eth_clear_queues(pi);
 }
 
-static int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
+int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -410,8 +404,7 @@ static int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int cxgbe_dev_tx_queue_start(struct rte_eth_dev *eth_dev,
-				    uint16_t tx_queue_id)
+int cxgbe_dev_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
 	int ret;
 	struct sge_eth_txq *txq = (struct sge_eth_txq *)
@@ -426,8 +419,7 @@ static int cxgbe_dev_tx_queue_start(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
-static int cxgbe_dev_tx_queue_stop(struct rte_eth_dev *eth_dev,
-				   uint16_t tx_queue_id)
+int cxgbe_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
 	int ret;
 	struct sge_eth_txq *txq = (struct sge_eth_txq *)
@@ -442,10 +434,10 @@ static int cxgbe_dev_tx_queue_stop(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
-static int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
-				    uint16_t queue_idx,	uint16_t nb_desc,
-				    unsigned int socket_id,
-				    const struct rte_eth_txconf *tx_conf)
+int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
+			     uint16_t queue_idx, uint16_t nb_desc,
+			     unsigned int socket_id,
+			     const struct rte_eth_txconf *tx_conf)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -496,7 +488,7 @@ static int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	return err;
 }
 
-static void cxgbe_dev_tx_queue_release(void *q)
+void cxgbe_dev_tx_queue_release(void *q)
 {
 	struct sge_eth_txq *txq = (struct sge_eth_txq *)q;
 
@@ -512,8 +504,7 @@ static void cxgbe_dev_tx_queue_release(void *q)
 	}
 }
 
-static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
-				    uint16_t rx_queue_id)
+int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
 	int ret;
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
@@ -532,8 +523,7 @@ static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
-static int cxgbe_dev_rx_queue_stop(struct rte_eth_dev *eth_dev,
-				   uint16_t rx_queue_id)
+int cxgbe_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
 	int ret;
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
@@ -551,11 +541,11 @@ static int cxgbe_dev_rx_queue_stop(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
-static int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
-				    uint16_t queue_idx,	uint16_t nb_desc,
-				    unsigned int socket_id,
-				    const struct rte_eth_rxconf *rx_conf,
-				    struct rte_mempool *mp)
+int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
+			     uint16_t queue_idx, uint16_t nb_desc,
+			     unsigned int socket_id,
+			     const struct rte_eth_rxconf *rx_conf,
+			     struct rte_mempool *mp)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -629,7 +619,7 @@ static int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return err;
 }
 
-static void cxgbe_dev_rx_queue_release(void *q)
+void cxgbe_dev_rx_queue_release(void *q)
 {
 	struct sge_eth_rxq *rxq = (struct sge_eth_rxq *)q;
 	struct sge_rspq *rq = &rxq->rspq;
@@ -775,7 +765,7 @@ static int cxgbe_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			     &pi->link_cfg);
 }
 
-static const uint32_t *
+const uint32_t *
 cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 {
 	static const uint32_t ptypes[] = {

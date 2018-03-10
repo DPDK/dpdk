@@ -45,6 +45,11 @@ New Features
 
   Support to update RSS hash and key has been added to CXGBE PMD.
 
+* **Added CXGBE VF PMD.**
+
+  CXGBE VF Poll Mode Driver has been added to run DPDK over Chelsio
+  T5/T6 NIC VF instances.
+
 * **Updated Solarflare network PMD.**
 
   Updated the sfc_efx driver including the following changes:
