@@ -370,7 +370,7 @@ static int init_rss(struct adapter *adap)
 /**
  * Dump basic information about the adapter.
  */
-static void print_adapter_info(struct adapter *adap)
+void print_adapter_info(struct adapter *adap)
 {
 	/**
 	 * Hardware/Firmware/etc. Version/Revision IDs.
@@ -378,7 +378,7 @@ static void print_adapter_info(struct adapter *adap)
 	t4_dump_version_info(adap);
 }
 
-static void print_port_info(struct adapter *adap)
+void print_port_info(struct adapter *adap)
 {
 	int i;
 	char buf[80];
@@ -917,7 +917,7 @@ int link_start(struct port_info *pi)
 			ret = 0;
 		}
 	}
-	if (ret == 0)
+	if (ret == 0 && is_pf4(adapter))
 		ret = t4_link_l1cfg(adapter, adapter->mbox, pi->tx_chan,
 				    &pi->link_cfg);
 	if (ret == 0) {
@@ -1200,7 +1200,8 @@ int cxgbe_up(struct adapter *adap)
 {
 	enable_rx(adap, &adap->sge.fw_evtq);
 	t4_sge_tx_monitor_start(adap);
-	t4_intr_enable(adap);
+	if (is_pf4(adap))
+		t4_intr_enable(adap);
 	adap->flags |= FULL_INIT_DONE;
 
 	/* TODO: deadman watchdog ?? */
@@ -1221,7 +1222,7 @@ int cxgbe_down(struct port_info *pi)
 		return err;
 	}
 
-	t4_reset_link_config(adapter, pi->port_id);
+	t4_reset_link_config(adapter, pi->pidx);
 	return 0;
 }
 
@@ -1234,7 +1235,8 @@ void cxgbe_close(struct adapter *adapter)
 	int i;
 
 	if (adapter->flags & FULL_INIT_DONE) {
-		t4_intr_disable(adapter);
+		if (is_pf4(adapter))
+			t4_intr_disable(adapter);
 		t4_sge_tx_monitor_stop(adapter);
 		t4_free_sge_resources(adapter);
 		for_each_port(adapter, i) {
@@ -1252,7 +1254,7 @@ void cxgbe_close(struct adapter *adapter)
 		adapter->flags &= ~FULL_INIT_DONE;
 	}
 
-	if (adapter->flags & FW_OK)
+	if (is_pf4(adapter) && (adapter->flags & FW_OK))
 		t4_fw_bye(adapter, adapter->mbox);
 }
 
@@ -1359,6 +1361,7 @@ allocate_mac:
 		pi->adapter = adapter;
 		pi->xact_addr_filt = -1;
 		pi->port_id = i;
+		pi->pidx = i;
 
 		pi->eth_dev->device = &adapter->pdev->device;
 		pi->eth_dev->dev_ops = adapter->eth_dev->dev_ops;

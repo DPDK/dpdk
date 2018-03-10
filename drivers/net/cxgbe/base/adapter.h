@@ -68,6 +68,7 @@ struct port_info {
 	u8     port_type;               /* firmware port type */
 	u8     mod_type;                /* firmware module type */
 	u8     port_id;                 /* physical port ID */
+	u8     pidx;			/* port index for this PF */
 	u8     tx_chan;                 /* associated channel */
 
 	u8     n_rx_qsets;              /* # of rx qsets */

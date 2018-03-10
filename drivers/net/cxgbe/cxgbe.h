@@ -54,6 +54,7 @@
 			  ETH_RSS_NONFRAG_IPV6_UDP)
 
 int cxgbe_probe(struct adapter *adapter);
+int cxgbevf_probe(struct adapter *adapter);
 void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps);
 int cxgbe_up(struct adapter *adap);
 int cxgbe_down(struct port_info *pi);
@@ -68,5 +69,7 @@ void cfg_queues(struct rte_eth_dev *eth_dev);
 int cfg_queue_count(struct rte_eth_dev *eth_dev);
 int setup_rss(struct port_info *pi);
 void cxgbe_enable_rx_queues(struct port_info *pi);
+void print_port_info(struct adapter *adap);
+void print_adapter_info(struct adapter *adap);
 
 #endif /* _CXGBE_H_ */

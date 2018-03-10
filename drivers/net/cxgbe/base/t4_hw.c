@@ -4488,7 +4488,7 @@ static void t4_handle_get_port_info(struct port_info *pi, const __be64 *rpl)
 		lc->auto_fec = fec;
 		pi->port_type = port_type;
 		pi->mod_type = mod_type;
-		t4_os_portmod_changed(adapter, pi->port_id);
+		t4_os_portmod_changed(adapter, pi->pidx);
 	}
 	if (link_ok != lc->link_ok || speed != lc->speed ||
 	    fc != lc->fc || fec != lc->fec) { /* something changed */
