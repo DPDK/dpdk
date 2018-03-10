@@ -178,6 +178,7 @@ enum fw_cmd_opcodes {
 	FW_INITIALIZE_CMD              = 0x06,
 	FW_CAPS_CONFIG_CMD             = 0x07,
 	FW_PARAMS_CMD                  = 0x08,
+	FW_PFVF_CMD		       = 0x09,
 	FW_IQ_CMD                      = 0x10,
 	FW_EQ_ETH_CMD                  = 0x12,
 	FW_VI_CMD                      = 0x14,
@@ -188,6 +189,10 @@ enum fw_cmd_opcodes {
 	FW_RSS_IND_TBL_CMD             = 0x20,
 	FW_RSS_VI_CONFIG_CMD           = 0x23,
 	FW_DEBUG_CMD                   = 0x81,
+};
+
+enum fw_cmd_cap {
+	FW_CMD_CAP_PORT		= 0x04,
 };
 
 /*
@@ -484,6 +489,8 @@ enum fw_params_mnem {
 enum fw_params_param_dev {
 	FW_PARAMS_PARAM_DEV_CCLK	= 0x00, /* chip core clock in khz */
 	FW_PARAMS_PARAM_DEV_PORTVEC	= 0x01, /* the port vector */
+	FW_PARAMS_PARAM_DEV_FWREV	= 0x0B, /* fw version */
+	FW_PARAMS_PARAM_DEV_TPREV	= 0x0C, /* tp version */
 	FW_PARAMS_PARAM_DEV_ULPTX_MEMWRITE_DSGL = 0x17,
 };
 
@@ -533,6 +540,10 @@ enum fw_params_param_dmaq {
 #define G_FW_PARAMS_PARAM_YZ(x) \
 	(((x) >> S_FW_PARAMS_PARAM_YZ) & M_FW_PARAMS_PARAM_YZ)
 
+#define S_FW_PARAMS_PARAM_XYZ		0
+#define M_FW_PARAMS_PARAM_XYZ		0xffffff
+#define V_FW_PARAMS_PARAM_XYZ(x)	((x) << S_FW_PARAMS_PARAM_XYZ)
+
 struct fw_params_cmd {
 	__be32 op_to_vfn;
 	__be32 retval_len16;
@@ -553,6 +564,68 @@ struct fw_params_cmd {
 #define V_FW_PARAMS_CMD_VFN(x)	((x) << S_FW_PARAMS_CMD_VFN)
 #define G_FW_PARAMS_CMD_VFN(x)	\
 	(((x) >> S_FW_PARAMS_CMD_VFN) & M_FW_PARAMS_CMD_VFN)
+
+struct fw_pfvf_cmd {
+	__be32 op_to_vfn;
+	__be32 retval_len16;
+	__be32 niqflint_niq;
+	__be32 type_to_neq;
+	__be32 tc_to_nexactf;
+	__be32 r_caps_to_nethctrl;
+	__be16 nricq;
+	__be16 nriqp;
+	__be32 r4;
+};
+
+#define S_FW_PFVF_CMD_NIQFLINT          20
+#define M_FW_PFVF_CMD_NIQFLINT          0xfff
+#define G_FW_PFVF_CMD_NIQFLINT(x)       \
+	(((x) >> S_FW_PFVF_CMD_NIQFLINT) & M_FW_PFVF_CMD_NIQFLINT)
+
+#define S_FW_PFVF_CMD_NIQ               0
+#define M_FW_PFVF_CMD_NIQ               0xfffff
+#define G_FW_PFVF_CMD_NIQ(x)            \
+	(((x) >> S_FW_PFVF_CMD_NIQ) & M_FW_PFVF_CMD_NIQ)
+
+#define S_FW_PFVF_CMD_PMASK             20
+#define M_FW_PFVF_CMD_PMASK             0xf
+#define G_FW_PFVF_CMD_PMASK(x)          \
+	(((x) >> S_FW_PFVF_CMD_PMASK) & M_FW_PFVF_CMD_PMASK)
+
+#define S_FW_PFVF_CMD_NEQ               0
+#define M_FW_PFVF_CMD_NEQ               0xfffff
+#define G_FW_PFVF_CMD_NEQ(x)            \
+	(((x) >> S_FW_PFVF_CMD_NEQ) & M_FW_PFVF_CMD_NEQ)
+
+#define S_FW_PFVF_CMD_TC                24
+#define M_FW_PFVF_CMD_TC                0xff
+#define G_FW_PFVF_CMD_TC(x)             \
+	(((x) >> S_FW_PFVF_CMD_TC) & M_FW_PFVF_CMD_TC)
+
+#define S_FW_PFVF_CMD_NVI               16
+#define M_FW_PFVF_CMD_NVI               0xff
+#define G_FW_PFVF_CMD_NVI(x)            \
+	(((x) >> S_FW_PFVF_CMD_NVI) & M_FW_PFVF_CMD_NVI)
+
+#define S_FW_PFVF_CMD_NEXACTF           0
+#define M_FW_PFVF_CMD_NEXACTF           0xffff
+#define G_FW_PFVF_CMD_NEXACTF(x)        \
+	(((x) >> S_FW_PFVF_CMD_NEXACTF) & M_FW_PFVF_CMD_NEXACTF)
+
+#define S_FW_PFVF_CMD_R_CAPS            24
+#define M_FW_PFVF_CMD_R_CAPS            0xff
+#define G_FW_PFVF_CMD_R_CAPS(x)         \
+	(((x) >> S_FW_PFVF_CMD_R_CAPS) & M_FW_PFVF_CMD_R_CAPS)
+
+#define S_FW_PFVF_CMD_WX_CAPS           16
+#define M_FW_PFVF_CMD_WX_CAPS           0xff
+#define G_FW_PFVF_CMD_WX_CAPS(x)        \
+	(((x) >> S_FW_PFVF_CMD_WX_CAPS) & M_FW_PFVF_CMD_WX_CAPS)
+
+#define S_FW_PFVF_CMD_NETHCTRL          0
+#define M_FW_PFVF_CMD_NETHCTRL          0xffff
+#define G_FW_PFVF_CMD_NETHCTRL(x)       \
+	(((x) >> S_FW_PFVF_CMD_NETHCTRL) & M_FW_PFVF_CMD_NETHCTRL)
 
 /*
  * ingress queue type; the first 1K ingress queues can have associated 0,

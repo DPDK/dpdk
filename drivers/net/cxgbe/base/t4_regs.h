@@ -852,6 +852,7 @@
 #define F_PFCIM    V_PFCIM(1U)
 
 #define A_PL_WHOAMI 0x19400
+#define A_PL_VF_WHOAMI 0x0
 
 #define A_PL_RST 0x19428
 
@@ -866,6 +867,7 @@
 #define F_PIORSTMODE    V_PIORSTMODE(1U)
 
 #define A_PL_REV 0x1943c
+#define A_PL_VF_REV 0x4
 
 #define S_REV    0
 #define M_REV    0xfU

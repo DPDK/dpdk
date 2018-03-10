@@ -210,12 +210,29 @@ struct arch_specific_params {
 	u16 mps_tcam_size;
 };
 
+/*
+ * Maximum resources provisioned for a PCI VF.
+ */
+struct vf_resources {
+	unsigned int nvi;		/* N virtual interfaces */
+	unsigned int neq;		/* N egress Qs */
+	unsigned int nethctrl;		/* N egress ETH or CTRL Qs */
+	unsigned int niqflint;		/* N ingress Qs/w free list(s) & intr */
+	unsigned int niq;		/* N ingress Qs */
+	unsigned int tc;		/* PCI-E traffic class */
+	unsigned int pmask;		/* port access rights mask */
+	unsigned int nexactf;		/* N exact MPS filters */
+	unsigned int r_caps;		/* read capabilities */
+	unsigned int wx_caps;		/* write/execute capabilities */
+};
+
 struct adapter_params {
 	struct sge_params sge;
 	struct tp_params  tp;
 	struct vpd_params vpd;
 	struct pci_params pci;
 	struct devlog_params devlog;
+	struct vf_resources vfres;
 	enum pcie_memwin drv_memwin;
 
 	unsigned int sf_size;             /* serial flash size in bytes */
@@ -312,9 +329,11 @@ int t4_fw_hello(struct adapter *adap, unsigned int mbox, unsigned int evt_mbox,
 		enum dev_master master, enum dev_state *state);
 int t4_fw_bye(struct adapter *adap, unsigned int mbox);
 int t4_fw_reset(struct adapter *adap, unsigned int mbox, int reset);
+int t4vf_fw_reset(struct adapter *adap);
 int t4_fw_halt(struct adapter *adap, unsigned int mbox, int reset);
 int t4_fw_restart(struct adapter *adap, unsigned int mbox, int reset);
 int t4_fl_pkt_align(struct adapter *adap);
+int t4vf_get_vfres(struct adapter *adap);
 int t4_fixup_host_params_compat(struct adapter *adap, unsigned int page_size,
 				unsigned int cache_line_size,
 				enum chip_type chip_compat);
@@ -324,6 +343,12 @@ int t4_fw_initialize(struct adapter *adap, unsigned int mbox);
 int t4_query_params(struct adapter *adap, unsigned int mbox, unsigned int pf,
 		    unsigned int vf, unsigned int nparams, const u32 *params,
 		    u32 *val);
+int t4vf_query_params(struct adapter *adap, unsigned int nparams,
+		      const u32 *params, u32 *vals);
+int t4vf_get_dev_params(struct adapter *adap);
+int t4vf_get_vpd_params(struct adapter *adap);
+int t4vf_set_params(struct adapter *adapter, unsigned int nparams,
+		    const u32 *params, const u32 *vals);
 int t4_set_params_timeout(struct adapter *adap, unsigned int mbox,
 			  unsigned int pf, unsigned int vf,
 			  unsigned int nparams, const u32 *params,
@@ -440,13 +465,17 @@ void t4_get_port_stats_offset(struct adapter *adap, int idx,
 			      struct port_stats *stats,
 			      struct port_stats *offset);
 void t4_clr_port_stats(struct adapter *adap, int idx);
+void init_link_config(struct link_config *lc, fw_port_cap32_t pcaps,
+		      fw_port_cap32_t acaps);
 void t4_reset_link_config(struct adapter *adap, int idx);
 int t4_get_version_info(struct adapter *adapter);
 void t4_dump_version_info(struct adapter *adapter);
 int t4_get_flash_params(struct adapter *adapter);
 int t4_get_chip_type(struct adapter *adap, int ver);
 int t4_prep_adapter(struct adapter *adapter);
+int t4vf_prep_adapter(struct adapter *adapter);
 int t4_port_init(struct adapter *adap, int mbox, int pf, int vf);
+int t4vf_port_init(struct adapter *adap);
 int t4_init_rss_mode(struct adapter *adap, int mbox);
 int t4_config_rss_range(struct adapter *adapter, int mbox, unsigned int viid,
 			int start, int n, const u16 *rspq, unsigned int nrspq);
@@ -469,8 +498,10 @@ int t4_init_tp_params(struct adapter *adap);
 int t4_filter_field_shift(const struct adapter *adap, unsigned int filter_sel);
 int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl);
 unsigned int t4_get_regs_len(struct adapter *adap);
+unsigned int t4vf_get_pf_from_vf(struct adapter *adap);
 void t4_get_regs(struct adapter *adap, void *buf, size_t buf_size);
 int t4_seeprom_read(struct adapter *adapter, u32 addr, u32 *data);
 int t4_seeprom_write(struct adapter *adapter, u32 addr, u32 data);
 int t4_seeprom_wp(struct adapter *adapter, int enable);
+fw_port_cap32_t fwcaps16_to_caps32(fw_port_cap16_t caps16);
 #endif /* __CHELSIO_COMMON_H */

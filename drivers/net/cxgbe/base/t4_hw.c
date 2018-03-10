@@ -55,9 +55,6 @@
 #include "t4_regs_values.h"
 #include "t4fw_interface.h"
 
-static void init_link_config(struct link_config *lc, unsigned int pcaps,
-			     unsigned int acaps);
-
 /**
  * t4_read_mtu_tbl - returns the values in the HW path MTU table
  * @adap: the adapter
@@ -2804,7 +2801,7 @@ void t4_dump_version_info(struct adapter *adapter)
  *
  *     Returns the equivalent 32-bit Port Capabilities value.
  */
-static fw_port_cap32_t fwcaps16_to_caps32(fw_port_cap16_t caps16)
+fw_port_cap32_t fwcaps16_to_caps32(fw_port_cap16_t caps16)
 {
 	fw_port_cap32_t caps32 = 0;
 
@@ -4585,8 +4582,8 @@ void t4_reset_link_config(struct adapter *adap, int idx)
  * Initializes the SW state maintained for each link, including the link's
  * capabilities and default speed/flow-control/autonegotiation settings.
  */
-static void init_link_config(struct link_config *lc, fw_port_cap32_t pcaps,
-			     fw_port_cap32_t acaps)
+void init_link_config(struct link_config *lc, fw_port_cap32_t pcaps,
+		      fw_port_cap32_t acaps)
 {
 	lc->pcaps = pcaps;
 	lc->requested_speed = 0;
