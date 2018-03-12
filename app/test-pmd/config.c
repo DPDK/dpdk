@@ -1698,10 +1698,6 @@ rxtx_config_display(void)
 		struct rte_eth_txconf *tx_conf = &ports[pid].tx_conf;
 
 		printf("  port %d:\n", (unsigned int)pid);
-		printf("  CRC stripping %s\n",
-				(ports[pid].dev_conf.rxmode.offloads &
-				 DEV_RX_OFFLOAD_CRC_STRIP) ?
-				"enabled" : "disabled");
 		printf("  RX queues=%d - RX desc=%d - RX free threshold=%d\n",
 				nb_rxq, nb_rxd, rx_conf->rx_free_thresh);
 		printf("  RX threshold registers: pthresh=%d hthresh=%d "
@@ -1709,6 +1705,9 @@ rxtx_config_display(void)
 				rx_conf->rx_thresh.pthresh,
 				rx_conf->rx_thresh.hthresh,
 				rx_conf->rx_thresh.wthresh);
+		printf("  Rx offloads=0x%"PRIx64" RXQ offloads=0x%"PRIx64"\n",
+				ports[pid].dev_conf.rxmode.offloads,
+				rx_conf->offloads);
 		printf("  TX queues=%d - TX desc=%d - TX free threshold=%d\n",
 				nb_txq, nb_txd, tx_conf->tx_free_thresh);
 		printf("  TX threshold registers: pthresh=%d hthresh=%d "
@@ -1716,8 +1715,10 @@ rxtx_config_display(void)
 				tx_conf->tx_thresh.pthresh,
 				tx_conf->tx_thresh.hthresh,
 				tx_conf->tx_thresh.wthresh);
-		printf("  TX RS bit threshold=%d - TXQ offloads=0x%"PRIx64"\n",
-				tx_conf->tx_rs_thresh, tx_conf->offloads);
+		printf("  TX RS bit threshold=%d\n", tx_conf->tx_rs_thresh);
+		printf("  Tx offloads=0x%"PRIx64" TXQ offloads=0x%"PRIx64"\n",
+				ports[pid].dev_conf.txmode.offloads,
+				tx_conf->offloads);
 	}
 }
 
