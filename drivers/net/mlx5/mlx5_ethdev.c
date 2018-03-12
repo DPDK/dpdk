@@ -18,11 +18,9 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/utsname.h>
 #include <netinet/in.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
-#include <linux/version.h>
 #include <fcntl.h>
 #include <stdalign.h>
 #include <sys/un.h>
@@ -734,20 +732,15 @@ mlx5_force_link_status_change(struct rte_eth_dev *dev, int status)
 int
 mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
-	struct utsname utsname;
-	int ver[3];
 	int ret;
 	struct rte_eth_link dev_link = dev->data->dev_link;
 
-	if (uname(&utsname) == -1 ||
-	    sscanf(utsname.release, "%d.%d.%d",
-		   &ver[0], &ver[1], &ver[2]) != 3 ||
-	    KERNEL_VERSION(ver[0], ver[1], ver[2]) < KERNEL_VERSION(4, 9, 0))
-		ret = mlx5_link_update_unlocked_gset(dev);
-	else
+	ret = mlx5_link_update_unlocked_gset(dev);
+	if (ret) {
 		ret = mlx5_link_update_unlocked_gs(dev);
-	if (ret)
-		return ret;
+		if (ret)
+			return ret;
+	}
 	/* If lsc interrupt is disabled, should always be ready for traffic. */
 	if (!dev->data->dev_conf.intr_conf.lsc) {
 		mlx5_link_start(dev);
