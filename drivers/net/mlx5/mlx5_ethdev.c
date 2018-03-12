@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <stdalign.h>
 #include <sys/un.h>
+#include <time.h>
 
 #include <rte_atomic.h>
 #include <rte_ethdev_driver.h>
@@ -31,7 +32,6 @@
 #include <rte_mbuf.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
-#include <rte_alarm.h>
 #include <rte_malloc.h>
 
 #include "mlx5.h"
@@ -473,12 +473,15 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ * @param[out] link
+ *   Storage for current link status.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
+mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
+			       struct rte_eth_link *link)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct ethtool_cmd edata = {
@@ -528,14 +531,13 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 			ETH_LINK_SPEED_FIXED);
-	if (memcmp(&dev_link, &dev->data->dev_link, sizeof(dev_link))) {
-		/* Link status changed. */
-		dev->data->dev_link = dev_link;
-		return 0;
+	if ((dev_link.link_speed && !dev_link.link_status) ||
+	    (!dev_link.link_speed && dev_link.link_status)) {
+		rte_errno = EAGAIN;
+		return -rte_errno;
 	}
-	/* Link status is still the same. */
-	rte_errno = EAGAIN;
-	return -rte_errno;
+	*link = dev_link;
+	return 0;
 }
 
 /**
@@ -543,12 +545,16 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ * @param[out] link
+ *   Storage for current link status.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
+mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
+			     struct rte_eth_link *link)
+
 {
 	struct priv *priv = dev->data->dev_private;
 	struct ethtool_link_settings gcmd = { .cmd = ETHTOOL_GLINKSETTINGS };
@@ -634,14 +640,13 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 				  ETH_LINK_SPEED_FIXED);
-	if (memcmp(&dev_link, &dev->data->dev_link, sizeof(dev_link))) {
-		/* Link status changed. */
-		dev->data->dev_link = dev_link;
-		return 0;
+	if ((dev_link.link_speed && !dev_link.link_status) ||
+	    (!dev_link.link_speed && dev_link.link_status)) {
+		rte_errno = EAGAIN;
+		return -rte_errno;
 	}
-	/* Link status is still the same. */
-	rte_errno = EAGAIN;
-	return -rte_errno;
+	*link = dev_link;
+	return 0;
 }
 
 /**
@@ -650,20 +655,43 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  * @param wait_to_complete
- *   Wait for request completion (ignored).
+ *   Wait for request completion.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   0 if link status was not updated, positive if it was, a negative errno
+ *   value otherwise and rte_errno is set.
  */
 int
-mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
+mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	int ret;
+	struct rte_eth_link dev_link;
+	time_t start_time = time(NULL);
 
-	ret = mlx5_link_update_unlocked_gset(dev);
-	if (ret)
-		ret = mlx5_link_update_unlocked_gs(dev);
-	return 0;
+	do {
+		ret = mlx5_link_update_unlocked_gset(dev, &dev_link);
+		if (ret)
+			ret = mlx5_link_update_unlocked_gs(dev, &dev_link);
+		if (ret == 0)
+			break;
+		/* Handle wait to complete situation. */
+		if (wait_to_complete && ret == -EAGAIN) {
+			if (abs((int)difftime(time(NULL), start_time)) <
+			    MLX5_LINK_STATUS_TIMEOUT) {
+				usleep(0);
+				continue;
+			} else {
+				rte_errno = EBUSY;
+				return -rte_errno;
+			}
+		} else if (ret < 0) {
+			return ret;
+		}
+	} while (wait_to_complete);
+	ret = !!memcmp(&dev->data->dev_link, &dev_link,
+		       sizeof(struct rte_eth_link));
+	dev->data->dev_link = dev_link;
+	return ret;
 }
 
 /**
@@ -842,47 +870,6 @@ mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
 }
 
 /**
- * Update the link status.
- *
- * @param dev
- *   Pointer to Ethernet device.
- *
- * @return
- *   Zero if the callback process can be called immediately, negative errno
- *   value otherwise and rte_errno is set.
- */
-static int
-mlx5_link_status_update(struct rte_eth_dev *dev)
-{
-	struct priv *priv = dev->data->dev_private;
-	struct rte_eth_link *link = &dev->data->dev_link;
-	int ret;
-
-	ret = mlx5_link_update(dev, 0);
-	if (ret)
-		return ret;
-	if (((link->link_speed == 0) && link->link_status) ||
-		((link->link_speed != 0) && !link->link_status)) {
-		/*
-		 * Inconsistent status. Event likely occurred before the
-		 * kernel netdevice exposes the new status.
-		 */
-		if (!priv->pending_alarm) {
-			priv->pending_alarm = 1;
-			rte_eal_alarm_set(MLX5_ALARM_TIMEOUT_US,
-					  mlx5_dev_link_status_handler,
-					  priv->dev);
-		}
-		return 1;
-	} else if (unlikely(priv->pending_alarm)) {
-		/* Link interrupt occurred while alarm is already scheduled. */
-		priv->pending_alarm = 0;
-		rte_eal_alarm_cancel(mlx5_dev_link_status_handler, priv->dev);
-	}
-	return 0;
-}
-
-/**
  * Device status handler.
  *
  * @param dev
@@ -900,6 +887,10 @@ mlx5_dev_status_handler(struct rte_eth_dev *dev)
 	struct ibv_async_event event;
 	uint32_t ret = 0;
 
+	if (mlx5_link_update(dev, 0) == -EAGAIN) {
+		usleep(0);
+		return 0;
+	}
 	/* Read all message and acknowledge them. */
 	for (;;) {
 		if (mlx5_glue->get_async_event(priv->ctx, &event))
@@ -917,29 +908,7 @@ mlx5_dev_status_handler(struct rte_eth_dev *dev)
 				dev->data->port_id, event.event_type);
 		mlx5_glue->ack_async_event(&event);
 	}
-	if (ret & (1 << RTE_ETH_EVENT_INTR_LSC))
-		if (mlx5_link_status_update(dev))
-			ret &= ~(1 << RTE_ETH_EVENT_INTR_LSC);
 	return ret;
-}
-
-/**
- * Handle delayed link status event.
- *
- * @param arg
- *   Registered argument.
- */
-void
-mlx5_dev_link_status_handler(void *arg)
-{
-	struct rte_eth_dev *dev = arg;
-	struct priv *priv = dev->data->dev_private;
-	int ret;
-
-	priv->pending_alarm = 0;
-	ret = mlx5_link_status_update(dev);
-	if (!ret)
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 /**
@@ -995,10 +964,6 @@ mlx5_dev_interrupt_handler_uninstall(struct rte_eth_dev *dev)
 	if (priv->primary_socket)
 		rte_intr_callback_unregister(&priv->intr_handle_socket,
 					     mlx5_dev_handler_socket, dev);
-	if (priv->pending_alarm) {
-		priv->pending_alarm = 0;
-		rte_eal_alarm_cancel(mlx5_dev_link_status_handler, dev);
-	}
 	priv->intr_handle.fd = 0;
 	priv->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 	priv->intr_handle_socket.fd = 0;

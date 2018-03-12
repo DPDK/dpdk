@@ -82,8 +82,8 @@
 /* Supported RSS */
 #define MLX5_RSS_HF_MASK (~(ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP))
 
-/* Maximum number of attempts to query link status before giving up. */
-#define MLX5_MAX_LINK_QUERY_ATTEMPTS 5
+/* Timeout in seconds to get a valid link status. */
+#define MLX5_LINK_STATUS_TIMEOUT 10
 
 /* Reserved address space for UAR mapping. */
 #define MLX5_UAR_SIZE (1ULL << 32)

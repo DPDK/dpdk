@@ -124,7 +124,6 @@ struct priv {
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
-	unsigned int pending_alarm:1; /* An alarm is pending. */
 	unsigned int isolated:1; /* Whether isolated mode is enabled. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
