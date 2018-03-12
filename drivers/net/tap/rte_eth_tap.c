@@ -621,7 +621,9 @@ apply:
 	case SIOCSIFMTU:
 		break;
 	default:
-		RTE_ASSERT(!"unsupported request type: must not happen");
+		RTE_LOG(WARNING, PMD, "%s: ioctl() called with wrong arg\n",
+			pmd->name);
+		return -EINVAL;
 	}
 	if (ioctl(pmd->ioctl_sock, request, ifr) < 0)
 		goto error;
