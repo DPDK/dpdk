@@ -77,8 +77,10 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 		rte_atomic32_add(&sw->inflights, credit_update_quanta);
 		p->inflight_credits += (credit_update_quanta);
 
-		if (p->inflight_credits < new)
-			return 0;
+		/* If there are fewer inflight credits than new events, limit
+		 * the number of enqueued events.
+		 */
+		num = (p->inflight_credits < new) ? p->inflight_credits : new;
 	}
 
 	for (i = 0; i < num; i++) {
