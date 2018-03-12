@@ -188,7 +188,7 @@ find_vdev(const char *name)
 	TAILQ_FOREACH(dev, &vdev_device_list, next) {
 		const char *devname = rte_vdev_device_name(dev);
 
-		if (!strncmp(devname, name, strlen(name)))
+		if (!strcmp(devname, name))
 			return dev;
 	}
 
