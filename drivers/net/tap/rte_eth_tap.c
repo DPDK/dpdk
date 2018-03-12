@@ -48,6 +48,10 @@
 #define ETH_TAP_MAC_ARG         "mac"
 #define ETH_TAP_MAC_FIXED       "fixed"
 
+#define ETH_TAP_USR_MAC_FMT     "xx:xx:xx:xx:xx:xx"
+#define ETH_TAP_CMP_MAC_FMT     "0123456789ABCDEFabcdef"
+#define ETH_TAP_MAC_ARG_FMT     ETH_TAP_MAC_FIXED "|" ETH_TAP_USR_MAC_FMT
+
 static struct rte_vdev_driver pmd_tap_drv;
 
 static const char *valid_arguments[] = {
@@ -1337,7 +1341,7 @@ static const struct eth_dev_ops ops = {
 
 static int
 eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
-		   char *remote_iface, int fixed_mac_type)
+		   char *remote_iface, struct ether_addr *mac_addr)
 {
 	int numa_node = rte_socket_id();
 	struct rte_eth_dev *dev;
@@ -1399,16 +1403,10 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		pmd->txq[i].fd = -1;
 	}
 
-	if (fixed_mac_type) {
-		/* fixed mac = 00:64:74:61:70:<iface_idx> */
-		static int iface_idx;
-		char mac[ETHER_ADDR_LEN] = "\0dtap";
-
-		mac[ETHER_ADDR_LEN - 1] = iface_idx++;
-		rte_memcpy(&pmd->eth_addr, mac, ETHER_ADDR_LEN);
-	} else {
+	if (is_zero_ether_addr(mac_addr))
 		eth_random_addr((uint8_t *)&pmd->eth_addr);
-	}
+	else
+		rte_memcpy(&pmd->eth_addr, mac_addr, sizeof(mac_addr));
 
 	/* Immediately create the netdevice (this will create the 1st queue). */
 	/* rx queue */
@@ -1569,15 +1567,58 @@ set_remote_iface(const char *key __rte_unused,
 	return 0;
 }
 
+static int parse_user_mac(struct ether_addr *user_mac,
+		const char *value)
+{
+	unsigned int index = 0;
+	char mac_temp[strlen(ETH_TAP_USR_MAC_FMT) + 1], *mac_byte = NULL;
+
+	if (user_mac == NULL || value == NULL)
+		return 0;
+
+	snprintf(mac_temp, sizeof(mac_temp), "%s", value);
+	mac_byte = strtok(mac_temp, ":");
+
+	while ((mac_byte != NULL) &&
+			(strlen(mac_byte) <= 2) &&
+			(strlen(mac_byte) == strspn(mac_byte,
+					ETH_TAP_CMP_MAC_FMT))) {
+		user_mac->addr_bytes[index++] = strtoul(mac_byte, NULL, 16);
+		mac_byte = strtok(NULL, ":");
+	}
+
+	return index;
+}
+
 static int
 set_mac_type(const char *key __rte_unused,
 	     const char *value,
 	     void *extra_args)
 {
-	if (value &&
-	    !strncasecmp(ETH_TAP_MAC_FIXED, value, strlen(ETH_TAP_MAC_FIXED)))
-		*(int *)extra_args = 1;
+	struct ether_addr *user_mac = extra_args;
+
+	if (!value)
+		return 0;
+
+	if (!strncasecmp(ETH_TAP_MAC_FIXED, value, strlen(ETH_TAP_MAC_FIXED))) {
+		static int iface_idx;
+
+		/* fixed mac = 00:64:74:61:70:<iface_idx> */
+		memcpy((char *)user_mac->addr_bytes, "\0dtap", ETHER_ADDR_LEN);
+		user_mac->addr_bytes[ETHER_ADDR_LEN - 1] = iface_idx++ + '0';
+		goto success;
+	}
+
+	if (parse_user_mac(user_mac, value) != 6)
+		goto error;
+success:
+	RTE_LOG(DEBUG, PMD, "TAP user MAC param (%s)\n", value);
 	return 0;
+
+error:
+	RTE_LOG(ERR, PMD, "TAP user MAC (%s) is not in format (%s|%s)\n",
+		value, ETH_TAP_MAC_FIXED, ETH_TAP_USR_MAC_FMT);
+	return -1;
 }
 
 /* Open a TAP interface device.
@@ -1591,7 +1632,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	int speed;
 	char tap_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
-	int fixed_mac_type = 0;
+	struct ether_addr user_mac = { .addr_bytes = {0} };
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
@@ -1628,7 +1669,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 				ret = rte_kvargs_process(kvlist,
 							 ETH_TAP_MAC_ARG,
 							 &set_mac_type,
-							 &fixed_mac_type);
+							 &user_mac);
 				if (ret == -1)
 					goto leave;
 			}
@@ -1639,7 +1680,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	RTE_LOG(NOTICE, PMD, "Initializing pmd_tap for %s as %s\n",
 		name, tap_name);
 
-	ret = eth_dev_tap_create(dev, tap_name, remote_iface, fixed_mac_type);
+	ret = eth_dev_tap_create(dev, tap_name, remote_iface, &user_mac);
 
 leave:
 	if (ret == -1) {
@@ -1703,5 +1744,5 @@ RTE_PMD_REGISTER_VDEV(net_tap, pmd_tap_drv);
 RTE_PMD_REGISTER_ALIAS(net_tap, eth_tap);
 RTE_PMD_REGISTER_PARAM_STRING(net_tap,
 			      ETH_TAP_IFACE_ARG "=<string> "
-			      ETH_TAP_MAC_ARG "=" ETH_TAP_MAC_FIXED " "
+			      ETH_TAP_MAC_ARG "=" ETH_TAP_MAC_ARG_FMT " "
 			      ETH_TAP_REMOTE_ARG "=<string>");
