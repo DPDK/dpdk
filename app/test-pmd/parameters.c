@@ -658,9 +658,8 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "cmdline-file")) {
 				printf("CLI commands to be read from %s\n",
 				       optarg);
-				snprintf(cmdline_filename,
-					 sizeof(cmdline_filename), "%s",
-					 optarg);
+				strlcpy(cmdline_filename, optarg,
+					sizeof(cmdline_filename));
 			}
 			if (!strcmp(lgopts[opt_idx].name, "auto-start")) {
 				printf("Auto-start selected\n");

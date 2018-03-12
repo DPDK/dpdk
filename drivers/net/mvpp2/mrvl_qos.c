@@ -242,7 +242,7 @@ get_entry_values(const char *entry, uint8_t *tab,
 		return -1;
 
 	/* Copy the entry to safely use rte_strsplit(). */
-	snprintf(entry_cpy, RTE_DIM(entry_cpy), "%s", entry);
+	strlcpy(entry_cpy, entry, RTE_DIM(entry_cpy));
 
 	/*
 	 * If there are more tokens than array size, rte_strsplit will

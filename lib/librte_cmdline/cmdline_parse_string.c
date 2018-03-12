@@ -125,10 +125,10 @@ cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
 	if (res) {
 		if ((sd->str != NULL) && (strcmp(sd->str, TOKEN_STRING_MULTI) == 0))
 			/* we are sure that token_len is < STR_MULTI_TOKEN_SIZE-1 */
-			snprintf(res, STR_MULTI_TOKEN_SIZE, "%s", buf);
+			strlcpy(res, buf, STR_MULTI_TOKEN_SIZE);
 		else
 			/* we are sure that token_len is < STR_TOKEN_SIZE-1 */
-			snprintf(res, STR_TOKEN_SIZE, "%s", buf);
+			strlcpy(res, buf, STR_TOKEN_SIZE);
 
 		*((char *)res + token_len) = 0;
 	}

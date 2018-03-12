@@ -17,6 +17,7 @@
 #include <rte_bus_vdev.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
+#include <rte_string_fns.h>
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
@@ -617,7 +618,7 @@ mode6_debug(const char __attribute__((unused)) *info, struct ether_hdr *eth_h,
 	uint16_t offset = get_vlan_offset(eth_h, &ether_type);
 
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
-	snprintf(buf, 16, "%s", info);
+	strlcpy(buf, info, 16);
 #endif
 
 	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {

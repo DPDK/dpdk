@@ -39,6 +39,7 @@
 #include <rte_ether.h>
 #include <rte_flow.h>
 #include <rte_pci.h>
+#include <rte_string_fns.h>
 
 #include "mlx4.h"
 #include "mlx4_flow.h"
@@ -120,7 +121,7 @@ try_dev_id:
 			goto try_dev_id;
 		dev_port_prev = dev_port;
 		if (dev_port == (priv->port - 1u))
-			snprintf(match, sizeof(match), "%s", name);
+			strlcpy(match, name, sizeof(match));
 	}
 	closedir(dir);
 	if (match[0] == '\0') {

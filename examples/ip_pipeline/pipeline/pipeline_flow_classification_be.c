@@ -8,6 +8,7 @@
 #include <rte_malloc.h>
 #include <rte_table_hash.h>
 #include <rte_byteorder.h>
+#include <rte_string_fns.h>
 #include <pipeline.h>
 
 #include "pipeline_flow_classification_be.h"
@@ -280,8 +281,7 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 				"\"%s\" is too long", params->name,
 				arg_name);
 
-			snprintf(key_mask_str, mask_str_len + 1, "%s",
-				arg_value);
+			strlcpy(key_mask_str, arg_value, mask_str_len + 1);
 
 			continue;
 		}

@@ -24,6 +24,7 @@
 #include <rte_kvargs.h>
 #include <rte_mempool.h>
 #include <rte_ring.h>
+#include <rte_string_fns.h>
 #include <rte_pdump.h>
 
 #define CMD_LINE_OPT_PDUMP "pdump"
@@ -408,17 +409,15 @@ launch_args_parse(int argc, char **argv, char *prgname)
 			if (!strncmp(long_option[option_index].name,
 					CMD_LINE_OPT_SER_SOCK_PATH,
 					sizeof(CMD_LINE_OPT_SER_SOCK_PATH))) {
-				snprintf(server_socket_path,
-					sizeof(server_socket_path), "%s",
-					optarg);
+				strlcpy(server_socket_path, optarg,
+					sizeof(server_socket_path));
 			}
 
 			if (!strncmp(long_option[option_index].name,
 					CMD_LINE_OPT_CLI_SOCK_PATH,
 					sizeof(CMD_LINE_OPT_CLI_SOCK_PATH))) {
-				snprintf(client_socket_path,
-					sizeof(client_socket_path), "%s",
-					optarg);
+				strlcpy(client_socket_path, optarg,
+					sizeof(client_socket_path));
 			}
 
 			break;

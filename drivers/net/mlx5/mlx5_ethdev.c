@@ -33,6 +33,7 @@
 #include <rte_common.h>
 #include <rte_interrupts.h>
 #include <rte_malloc.h>
+#include <rte_string_fns.h>
 
 #include "mlx5.h"
 #include "mlx5_glue.h"
@@ -165,7 +166,7 @@ try_dev_id:
 			goto try_dev_id;
 		dev_port_prev = dev_port;
 		if (dev_port == (priv->port - 1u))
-			snprintf(match, sizeof(match), "%s", name);
+			strlcpy(match, name, sizeof(match));
 	}
 	closedir(dir);
 	if (match[0] == '\0') {

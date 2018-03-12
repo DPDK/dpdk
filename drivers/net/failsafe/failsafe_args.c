@@ -14,6 +14,7 @@
 #include <rte_devargs.h>
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
+#include <rte_string_fns.h>
 
 #include "failsafe_private.h"
 
@@ -340,7 +341,7 @@ fs_remove_sub_devices_definition(char params[DEVARGS_MAXLEN])
 		a = b + 1;
 	}
 out:
-	snprintf(params, DEVARGS_MAXLEN, "%s", buffer);
+	strlcpy(params, buffer, DEVARGS_MAXLEN);
 	return 0;
 }
 
@@ -392,7 +393,7 @@ failsafe_args_parse(struct rte_eth_dev *dev, const char *params)
 	ret = 0;
 	priv->subs_tx = FAILSAFE_MAX_ETHPORTS;
 	/* default parameters */
-	n = snprintf(mut_params, sizeof(mut_params), "%s", params);
+	n = strlcpy(mut_params, params, sizeof(mut_params));
 	if (n >= sizeof(mut_params)) {
 		ERROR("Parameter string too long (>=%zu)",
 				sizeof(mut_params));

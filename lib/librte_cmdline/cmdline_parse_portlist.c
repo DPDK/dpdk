@@ -94,7 +94,7 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 	if (token_len >= PORTLIST_TOKEN_SIZE)
 		return -1;
 
-	snprintf(portlist_str, token_len+1, "%s", buf);
+	strlcpy(portlist_str, buf, token_len + 1);
 
 	if (pl) {
 		pl->map = 0;

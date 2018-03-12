@@ -277,7 +277,7 @@ cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
 	if (token_len >= INET6_ADDRSTRLEN+4)
 		return -1;
 
-	snprintf(ip_str, token_len+1, "%s", buf);
+	strlcpy(ip_str, buf, token_len + 1);
 
 	/* convert the network prefix */
 	if (tk2->ipaddr_data.flags & CMDLINE_IPADDR_NETWORK) {

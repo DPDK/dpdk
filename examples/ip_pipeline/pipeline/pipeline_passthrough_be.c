@@ -8,6 +8,7 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_byteorder.h>
+#include <rte_string_fns.h>
 #include <rte_table_stub.h>
 #include <rte_table_hash.h>
 #include <rte_pipeline.h>
@@ -524,8 +525,7 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 				"\"%s\" too long", params->name,
 				arg_name);
 
-			snprintf(dma_mask_str, mask_str_len + 1,
-				"%s", arg_value);
+			strlcpy(dma_mask_str, arg_value, mask_str_len + 1);
 
 			p->dma_enabled = 1;
 

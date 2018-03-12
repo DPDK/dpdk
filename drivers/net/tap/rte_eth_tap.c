@@ -15,6 +15,7 @@
 #include <rte_net.h>
 #include <rte_debug.h>
 #include <rte_ip.h>
+#include <rte_string_fns.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1546,7 +1547,7 @@ set_interface_name(const char *key __rte_unused,
 	char *name = (char *)extra_args;
 
 	if (value)
-		snprintf(name, RTE_ETH_NAME_MAX_LEN - 1, "%s", value);
+		strlcpy(name, value, RTE_ETH_NAME_MAX_LEN - 1);
 	else
 		snprintf(name, RTE_ETH_NAME_MAX_LEN - 1, "%s%d",
 			 DEFAULT_TAP_NAME, (tap_unit - 1));
@@ -1562,7 +1563,7 @@ set_remote_iface(const char *key __rte_unused,
 	char *name = (char *)extra_args;
 
 	if (value)
-		snprintf(name, RTE_ETH_NAME_MAX_LEN, "%s", value);
+		strlcpy(name, value, RTE_ETH_NAME_MAX_LEN);
 
 	return 0;
 }
@@ -1576,7 +1577,7 @@ static int parse_user_mac(struct ether_addr *user_mac,
 	if (user_mac == NULL || value == NULL)
 		return 0;
 
-	snprintf(mac_temp, sizeof(mac_temp), "%s", value);
+	strlcpy(mac_temp, value, sizeof(mac_temp));
 	mac_byte = strtok(mac_temp, ":");
 
 	while ((mac_byte != NULL) &&

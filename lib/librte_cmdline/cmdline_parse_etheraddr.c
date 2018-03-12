@@ -102,7 +102,7 @@ cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 			(token_len != ETHER_ADDRSTRLENSHORT - 1))
 		return -1;
 
-	snprintf(ether_str, token_len+1, "%s", buf);
+	strlcpy(ether_str, buf, token_len + 1);
 
 	tmp = my_ether_aton(ether_str);
 	if (tmp == NULL)

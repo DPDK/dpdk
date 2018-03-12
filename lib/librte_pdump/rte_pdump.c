@@ -17,6 +17,7 @@
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_errno.h>
+#include <rte_string_fns.h>
 
 #include "rte_pdump.h"
 
@@ -401,9 +402,9 @@ pdump_get_socket_path(char *buffer, int bufsz, enum rte_pdump_socktype type)
 	int ret = 0;
 
 	if (type == RTE_PDUMP_SOCKET_SERVER && server_socket_dir[0] != 0)
-		snprintf(dir, sizeof(dir), "%s", server_socket_dir);
+		strlcpy(dir, server_socket_dir, sizeof(dir));
 	else if (type == RTE_PDUMP_SOCKET_CLIENT && client_socket_dir[0] != 0)
-		snprintf(dir, sizeof(dir), "%s", client_socket_dir);
+		strlcpy(dir, client_socket_dir, sizeof(dir));
 	else {
 		if (getuid() != 0) {
 			dir_home = getenv(SOCKET_PATH_HOME);
@@ -891,10 +892,10 @@ rte_pdump_set_socket_dir(const char *path, enum rte_pdump_socktype type)
 	if (path != NULL) {
 		if (type == RTE_PDUMP_SOCKET_SERVER) {
 			count = sizeof(server_socket_dir);
-			ret = snprintf(server_socket_dir, count, "%s", path);
+			ret = strlcpy(server_socket_dir, path, count);
 		} else {
 			count = sizeof(client_socket_dir);
-			ret = snprintf(client_socket_dir, count, "%s", path);
+			ret = strlcpy(client_socket_dir, path, count);
 		}
 
 		if (ret < 0  || ret >= count) {

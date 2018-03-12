@@ -36,6 +36,7 @@
 
 #include <rte_bus.h>
 #include <rte_debug.h>
+#include <rte_string_fns.h>
 
 #include "eal_private.h"
 
@@ -212,7 +213,7 @@ rte_bus_find_by_device_name(const char *str)
 	char name[RTE_DEV_NAME_MAX_LEN];
 	char *c;
 
-	snprintf(name, sizeof(name), "%s", str);
+	strlcpy(name, str, sizeof(name));
 	c = strchr(name, ',');
 	if (c != NULL)
 		c[0] = '\0';

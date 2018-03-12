@@ -1151,11 +1151,12 @@ test_memory_flags(void)
 	/* add one extra socket */
 	for (i = 0; i < num_sockets + 1; i++) {
 		snprintf(buf, sizeof(buf), "%s%s", invalid_socket_mem, DEFAULT_MEM_SIZE);
-		snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "%s", buf);
+		strlcpy(invalid_socket_mem, buf, sizeof(invalid_socket_mem));
 
 		if (num_sockets + 1 - i > 1) {
 			snprintf(buf, sizeof(buf), "%s,", invalid_socket_mem);
-			snprintf(invalid_socket_mem, sizeof(invalid_socket_mem), "%s", buf);
+			strlcpy(invalid_socket_mem, buf,
+				sizeof(invalid_socket_mem));
 		}
 	}
 
@@ -1167,11 +1168,12 @@ test_memory_flags(void)
 	/* add one extra socket */
 	for (i = 0; i < num_sockets; i++) {
 		snprintf(buf, sizeof(buf), "%s%s", valid_socket_mem, DEFAULT_MEM_SIZE);
-		snprintf(valid_socket_mem, sizeof(valid_socket_mem), "%s", buf);
+		strlcpy(valid_socket_mem, buf, sizeof(valid_socket_mem));
 
 		if (num_sockets - i > 1) {
 			snprintf(buf, sizeof(buf), "%s,", valid_socket_mem);
-			snprintf(valid_socket_mem, sizeof(valid_socket_mem), "%s", buf);
+			strlcpy(valid_socket_mem, buf,
+				sizeof(valid_socket_mem));
 		}
 	}
 
