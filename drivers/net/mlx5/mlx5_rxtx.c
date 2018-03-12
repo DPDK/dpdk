@@ -1360,7 +1360,6 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 	do {
 		struct rte_mbuf *buf = *(pkts++);
 		uintptr_t addr;
-		unsigned int n;
 		unsigned int do_inline = 0; /* Whether inline is possible. */
 		uint32_t length;
 		uint8_t cs_flags;
@@ -1480,11 +1479,8 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 					((uintptr_t)mpw.data.raw +
 					 inl_pad);
 			(*txq->elts)[elts_head++ & elts_m] = buf;
-			addr = rte_pktmbuf_mtod(buf, uintptr_t);
-			for (n = 0; n * RTE_CACHE_LINE_SIZE < length; n++)
-				rte_prefetch2((void *)(addr +
-						n * RTE_CACHE_LINE_SIZE));
-			addr = rte_cpu_to_be_64(addr);
+			addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
+								 uintptr_t));
 			*dseg = (rte_v128u32_t) {
 				rte_cpu_to_be_32(length),
 				mlx5_tx_mb2mr(txq, buf),
