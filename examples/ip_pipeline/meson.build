@@ -7,6 +7,7 @@
 # DPDK instance, use 'make'
 
 deps += ['cfgfile', 'pipeline', 'bus_pci']
+allow_experimental_apis = true
 includes += include_directories('pipeline')
 sources = files(
 	'config_check.c',
