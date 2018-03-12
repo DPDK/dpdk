@@ -645,80 +645,6 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 }
 
 /**
- * Enable receiving and transmitting traffic.
- *
- * @param dev
- *   Pointer to Ethernet device.
- */
-static void
-mlx5_link_start(struct rte_eth_dev *dev)
-{
-	struct priv *priv = dev->data->dev_private;
-	int ret;
-
-	dev->tx_pkt_burst = mlx5_select_tx_function(dev);
-	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
-	ret = mlx5_traffic_enable(dev);
-	if (ret) {
-		DRV_LOG(ERR,
-			"port %u error occurred while configuring control"
-			" flows: %s",
-			dev->data->port_id, strerror(rte_errno));
-		return;
-	}
-	ret = mlx5_flow_start(dev, &priv->flows);
-	if (ret)
-		DRV_LOG(ERR,
-			"port %u error occurred while configuring flows: %s",
-			dev->data->port_id, strerror(rte_errno));
-}
-
-/**
- * Disable receiving and transmitting traffic.
- *
- * @param dev
- *   Pointer to Ethernet device.
- */
-static void
-mlx5_link_stop(struct rte_eth_dev *dev)
-{
-	struct priv *priv = dev->data->dev_private;
-
-	mlx5_flow_stop(dev, &priv->flows);
-	mlx5_traffic_disable(dev);
-	dev->rx_pkt_burst = removed_rx_burst;
-	dev->tx_pkt_burst = removed_tx_burst;
-}
-
-/**
- * Querying the link status till it changes to the desired state.
- * Number of query attempts is bounded by MLX5_MAX_LINK_QUERY_ATTEMPTS.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param status
- *   Link desired status.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-int
-mlx5_force_link_status_change(struct rte_eth_dev *dev, int status)
-{
-	int try = 0;
-
-	while (try < MLX5_MAX_LINK_QUERY_ATTEMPTS) {
-		mlx5_link_update(dev, 0);
-		if (dev->data->dev_link.link_status == status)
-			return 0;
-		try++;
-		sleep(1);
-	}
-	rte_errno = EAGAIN;
-	return -rte_errno;
-}
-
-/**
  * DPDK callback to retrieve physical link information.
  *
  * @param dev
@@ -733,26 +659,10 @@ int
 mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
 	int ret;
-	struct rte_eth_link dev_link = dev->data->dev_link;
 
 	ret = mlx5_link_update_unlocked_gset(dev);
-	if (ret) {
+	if (ret)
 		ret = mlx5_link_update_unlocked_gs(dev);
-		if (ret)
-			return ret;
-	}
-	/* If lsc interrupt is disabled, should always be ready for traffic. */
-	if (!dev->data->dev_conf.intr_conf.lsc) {
-		mlx5_link_start(dev);
-		return 0;
-	}
-	/* Re-select burst callbacks only if link status has been changed. */
-	if (!ret && dev_link.link_status != dev->data->dev_link.link_status) {
-		if (dev->data->dev_link.link_status == ETH_LINK_UP)
-			mlx5_link_start(dev);
-		else
-			mlx5_link_stop(dev);
-	}
 	return 0;
 }
 

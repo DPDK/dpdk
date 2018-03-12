@@ -176,15 +176,20 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 	mlx5_xstats_init(dev);
-	/* Update link status and Tx/Rx callbacks for the first time. */
-	memset(&dev->data->dev_link, 0, sizeof(struct rte_eth_link));
-	DRV_LOG(INFO, "forcing port %u link to be up", dev->data->port_id);
-	ret = mlx5_force_link_status_change(dev, ETH_LINK_UP);
+	ret = mlx5_traffic_enable(dev);
 	if (ret) {
-		DRV_LOG(DEBUG, "failed to set port %u link to be up",
+		DRV_LOG(DEBUG, "port %u failed to set defaults flows",
 			dev->data->port_id);
 		goto error;
 	}
+	ret = mlx5_flow_start(dev, &priv->flows);
+	if (ret) {
+		DRV_LOG(DEBUG, "port %u failed to set flows",
+			dev->data->port_id);
+		goto error;
+	}
+	dev->tx_pkt_burst = mlx5_select_tx_function(dev);
+	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
 	mlx5_dev_interrupt_handler_install(dev);
 	return 0;
 error:
