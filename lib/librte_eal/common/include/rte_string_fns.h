@@ -15,6 +15,8 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
+
 /**
  * Takes string "string" parameter and splits it at character "delim"
  * up to maxtokens-1 times - to give "maxtokens" resulting tokens. Like
@@ -44,6 +46,35 @@ extern "C" {
 int
 rte_strsplit(char *string, int stringlen,
              char **tokens, int maxtokens, char delim);
+
+/**
+ * @internal
+ * DPDK-specific version of strlcpy for systems without
+ * libc or libbsd copies of the function
+ */
+static inline size_t
+rte_strlcpy(char *dst, const char *src, size_t size)
+{
+	return snprintf(dst, size, "%s", src);
+}
+
+/* pull in a strlcpy function */
+#ifdef RTE_EXEC_ENV_BSDAPP
+#include <string.h>
+#ifndef __BSD_VISIBLE /* non-standard functions are hidden */
+#define strlcpy(dst, src, size) rte_strlcpy(dst, src, size)
+#endif
+
+
+#else /* non-BSD platforms */
+#ifdef RTE_USE_LIBBSD
+#include <bsd/string.h>
+
+#else /* no BSD header files, create own */
+#define strlcpy(dst, src, size) rte_strlcpy(dst, src, size)
+
+#endif /* RTE_USE_LIBBSD */
+#endif /* BSDAPP */
 
 #ifdef __cplusplus
 }
