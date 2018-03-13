@@ -52,6 +52,7 @@ enum mp_type {
 	MP_MSG, /* Share message with peers, will not block */
 	MP_REQ, /* Request for information, Will block for a reply */
 	MP_REP, /* Response to previously-received request */
+	MP_IGN, /* Response telling requester to ignore this response */
 };
 
 struct mp_msg_internal {
@@ -77,6 +78,11 @@ static struct {
 	.requests = TAILQ_HEAD_INITIALIZER(sync_requests.requests),
 	.lock = PTHREAD_MUTEX_INITIALIZER
 };
+
+/* forward declarations */
+static int
+mp_send(struct rte_mp_msg *msg, const char *peer, int type);
+
 
 static struct sync_request *
 find_sync_request(const char *dst, const char *act_name)
@@ -260,12 +266,13 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 
 	RTE_LOG(DEBUG, EAL, "msg: %s\n", msg->name);
 
-	if (m->type == MP_REP) {
+	if (m->type == MP_REP || m->type == MP_IGN) {
 		pthread_mutex_lock(&sync_requests.lock);
 		sync_req = find_sync_request(s->sun_path, msg->name);
 		if (sync_req) {
 			memcpy(sync_req->reply, msg, sizeof(*msg));
-			sync_req->reply_received = 1;
+			/* -1 indicates that we've been asked to ignore */
+			sync_req->reply_received = m->type == MP_REP ? 1 : -1;
 			pthread_cond_signal(&sync_req->cond);
 		} else
 			RTE_LOG(ERR, EAL, "Drop mp reply: %s\n", msg->name);
@@ -279,10 +286,23 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 		action = entry->action;
 	pthread_mutex_unlock(&mp_mutex_action);
 
-	if (!action)
-		RTE_LOG(ERR, EAL, "Cannot find action: %s\n", msg->name);
-	else if (action(msg, s->sun_path) < 0)
+	if (!action) {
+		if (m->type == MP_REQ && !internal_config.init_complete) {
+			/* if this is a request, and init is not yet complete,
+			 * and callback wasn't registered, we should tell the
+			 * requester to ignore our existence because we're not
+			 * yet ready to process this request.
+			 */
+			struct rte_mp_msg dummy;
+			memset(&dummy, 0, sizeof(dummy));
+			mp_send(&dummy, s->sun_path, MP_IGN);
+		} else {
+			RTE_LOG(ERR, EAL, "Cannot find action: %s\n",
+				msg->name);
+		}
+	} else if (action(msg, s->sun_path) < 0) {
 		RTE_LOG(ERR, EAL, "Fail to handle message: %s\n", msg->name);
+	}
 }
 
 static void *
@@ -630,6 +650,14 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 			dst, req->name);
 		rte_errno = ETIMEDOUT;
 		return -1;
+	}
+	if (sync_req.reply_received == -1) {
+		RTE_LOG(DEBUG, EAL, "Asked to ignore response\n");
+		/* not receiving this message is not an error, so decrement
+		 * number of sent messages
+		 */
+		reply->nb_sent--;
+		return 0;
 	}
 
 	tmp = realloc(reply->msgs, sizeof(msg) * (reply->nb_received + 1));
