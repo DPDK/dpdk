@@ -44,40 +44,46 @@ struct ibv_flow_spec_counter_action {
 extern const struct eth_dev_ops mlx5_dev_ops;
 extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
+/** Structure give to the conversion functions. */
+struct mlx5_flow_data {
+	struct mlx5_flow_parse *parser; /** Parser context. */
+	struct rte_flow_error *error; /** Error context. */
+};
+
 static int
 mlx5_flow_create_eth(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data);
+		     struct mlx5_flow_data *data);
 
 static int
 mlx5_flow_create_vlan(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      void *data);
+		      struct mlx5_flow_data *data);
 
 static int
 mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      void *data);
+		      struct mlx5_flow_data *data);
 
 static int
 mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      void *data);
+		      struct mlx5_flow_data *data);
 
 static int
 mlx5_flow_create_udp(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data);
+		     struct mlx5_flow_data *data);
 
 static int
 mlx5_flow_create_tcp(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data);
+		     struct mlx5_flow_data *data);
 
 static int
 mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 		       const void *default_mask,
-		       void *data);
+		       struct mlx5_flow_data *data);
 
 struct mlx5_flow_parse;
 
@@ -252,7 +258,7 @@ struct mlx5_flow_items {
 	 */
 	int (*convert)(const struct rte_flow_item *item,
 		       const void *default_mask,
-		       void *data);
+		       struct mlx5_flow_data *data);
 	/** Size in bytes of the destination structure. */
 	const unsigned int dst_sz;
 	/** List of possible following items.  */
@@ -1118,6 +1124,11 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 	/* Third step. Conversion parse, fill the specifications. */
 	parser->inner = 0;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
+		struct mlx5_flow_data data = {
+			.parser = parser,
+			.error = error,
+		};
+
 		if (items->type == RTE_FLOW_ITEM_TYPE_VOID)
 			continue;
 		cur_item = &mlx5_flow_items[items->type];
@@ -1125,13 +1136,9 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 					(cur_item->default_mask ?
 					 cur_item->default_mask :
 					 cur_item->mask),
-					parser);
-		if (ret) {
-			rte_flow_error_set(error, rte_errno,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   items, "item not supported");
+					 &data);
+		if (ret)
 			goto exit_free;
-		}
 	}
 	if (parser->mark)
 		mlx5_flow_create_flag_mark(parser, parser->mark_id);
@@ -1224,11 +1231,11 @@ mlx5_flow_create_copy(struct mlx5_flow_parse *parser, void *src,
 static int
 mlx5_flow_create_eth(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data)
+		     struct mlx5_flow_data *data)
 {
 	const struct rte_flow_item_eth *spec = item->spec;
 	const struct rte_flow_item_eth *mask = item->mask;
-	struct mlx5_flow_parse *parser = (struct mlx5_flow_parse *)data;
+	struct mlx5_flow_parse *parser = data->parser;
 	const unsigned int eth_size = sizeof(struct ibv_flow_spec_eth);
 	struct ibv_flow_spec_eth eth = {
 		.type = parser->inner | IBV_FLOW_SPEC_ETH,
@@ -1276,11 +1283,11 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 static int
 mlx5_flow_create_vlan(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      void *data)
+		      struct mlx5_flow_data *data)
 {
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
-	struct mlx5_flow_parse *parser = (struct mlx5_flow_parse *)data;
+	struct mlx5_flow_parse *parser = data->parser;
 	struct ibv_flow_spec_eth *eth;
 	const unsigned int eth_size = sizeof(struct ibv_flow_spec_eth);
 
@@ -1319,11 +1326,11 @@ mlx5_flow_create_vlan(const struct rte_flow_item *item,
 static int
 mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      void *data)
+		      struct mlx5_flow_data *data)
 {
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
-	struct mlx5_flow_parse *parser = (struct mlx5_flow_parse *)data;
+	struct mlx5_flow_parse *parser = data->parser;
 	unsigned int ipv4_size = sizeof(struct ibv_flow_spec_ipv4_ext);
 	struct ibv_flow_spec_ipv4_ext ipv4 = {
 		.type = parser->inner | IBV_FLOW_SPEC_IPV4_EXT,
@@ -1374,11 +1381,11 @@ mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 static int
 mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 		      const void *default_mask,
-		      void *data)
+		      struct mlx5_flow_data *data)
 {
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 *mask = item->mask;
-	struct mlx5_flow_parse *parser = (struct mlx5_flow_parse *)data;
+	struct mlx5_flow_parse *parser = data->parser;
 	unsigned int ipv6_size = sizeof(struct ibv_flow_spec_ipv6);
 	struct ibv_flow_spec_ipv6 ipv6 = {
 		.type = parser->inner | IBV_FLOW_SPEC_IPV6,
@@ -1449,11 +1456,11 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 static int
 mlx5_flow_create_udp(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data)
+		     struct mlx5_flow_data *data)
 {
 	const struct rte_flow_item_udp *spec = item->spec;
 	const struct rte_flow_item_udp *mask = item->mask;
-	struct mlx5_flow_parse *parser = (struct mlx5_flow_parse *)data;
+	struct mlx5_flow_parse *parser = data->parser;
 	unsigned int udp_size = sizeof(struct ibv_flow_spec_tcp_udp);
 	struct ibv_flow_spec_tcp_udp udp = {
 		.type = parser->inner | IBV_FLOW_SPEC_UDP,
@@ -1498,11 +1505,11 @@ mlx5_flow_create_udp(const struct rte_flow_item *item,
 static int
 mlx5_flow_create_tcp(const struct rte_flow_item *item,
 		     const void *default_mask,
-		     void *data)
+		     struct mlx5_flow_data *data)
 {
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
-	struct mlx5_flow_parse *parser = (struct mlx5_flow_parse *)data;
+	struct mlx5_flow_parse *parser = data->parser;
 	unsigned int tcp_size = sizeof(struct ibv_flow_spec_tcp_udp);
 	struct ibv_flow_spec_tcp_udp tcp = {
 		.type = parser->inner | IBV_FLOW_SPEC_TCP,
@@ -1547,11 +1554,11 @@ mlx5_flow_create_tcp(const struct rte_flow_item *item,
 static int
 mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 		       const void *default_mask,
-		       void *data)
+		       struct mlx5_flow_data *data)
 {
 	const struct rte_flow_item_vxlan *spec = item->spec;
 	const struct rte_flow_item_vxlan *mask = item->mask;
-	struct mlx5_flow_parse *parser = (struct mlx5_flow_parse *)data;
+	struct mlx5_flow_parse *parser = data->parser;
 	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
 	struct ibv_flow_spec_tunnel vxlan = {
 		.type = parser->inner | IBV_FLOW_SPEC_VXLAN_TUNNEL,
@@ -1582,10 +1589,11 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 	 * before will also match this rule.
 	 * To avoid such situation, VNI 0 is currently refused.
 	 */
-	if (!vxlan.val.tunnel_id) {
-		rte_errno = EINVAL;
-		return -rte_errno;
-	}
+	if (!vxlan.val.tunnel_id)
+		return rte_flow_error_set(data->error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "VxLAN vni cannot be 0");
 	mlx5_flow_create_copy(parser, &vxlan, size);
 	return 0;
 }
