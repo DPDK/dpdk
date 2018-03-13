@@ -313,16 +313,16 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	int ret = 0;
 
 	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
-		ERROR("Some Tx offloads are not supported "
+		ERROR("port %u some Tx offloads are not supported "
 		      "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-		      tx_offloads, supp_tx_offloads);
+		      dev->data->port_id, tx_offloads, supp_tx_offloads);
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
 	if ((rx_offloads & supp_rx_offloads) != rx_offloads) {
-		ERROR("Some Rx offloads are not supported "
+		ERROR("port %u some Rx offloads are not supported "
 		      "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-		      rx_offloads, supp_rx_offloads);
+		      dev->data->port_id, rx_offloads, supp_rx_offloads);
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
@@ -337,7 +337,8 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		rte_realloc(priv->rss_conf.rss_key,
 			    rss_hash_default_key_len, 0);
 	if (!priv->rss_conf.rss_key) {
-		ERROR("cannot allocate RSS hash key memory (%u)", rxqs_n);
+		ERROR("port %u cannot allocate RSS hash key memory (%u)",
+		      dev->data->port_id, rxqs_n);
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
@@ -351,19 +352,20 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
 	if (txqs_n != priv->txqs_n) {
-		INFO("%p: TX queues number update: %u -> %u",
-		     (void *)dev, priv->txqs_n, txqs_n);
+		INFO("port %u Tx queues number update: %u -> %u",
+		     dev->data->port_id, priv->txqs_n, txqs_n);
 		priv->txqs_n = txqs_n;
 	}
 	if (rxqs_n > priv->config.ind_table_max_size) {
-		ERROR("cannot handle this many RX queues (%u)", rxqs_n);
+		ERROR("port %u cannot handle this many Rx queues (%u)",
+		      dev->data->port_id, rxqs_n);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
 	if (rxqs_n == priv->rxqs_n)
 		return 0;
-	INFO("%p: RX queues number update: %u -> %u",
-	     (void *)dev, priv->rxqs_n, rxqs_n);
+	INFO("port %u Rx queues number update: %u -> %u",
+	     dev->data->port_id, priv->rxqs_n, rxqs_n);
 	priv->rxqs_n = rxqs_n;
 	/* If the requested number of RX queues is not a power of two, use the
 	 * maximum indirection table size for better balancing.
@@ -489,7 +491,8 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
 
 	ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr);
 	if (ret) {
-		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(rte_errno));
+		WARN("port %u ioctl(SIOCGIFFLAGS) failed: %s",
+		     dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
 	memset(&dev_link, 0, sizeof(dev_link));
@@ -498,8 +501,8 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev)
 	ifr.ifr_data = (void *)&edata;
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
-		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
-		     strerror(rte_errno));
+		WARN("port %u ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
+		     dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
 	link_speed = ethtool_cmd_speed(&edata);
@@ -555,7 +558,8 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 
 	ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr);
 	if (ret) {
-		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(rte_errno));
+		WARN("port %u ioctl(SIOCGIFFLAGS) failed: %s",
+		     dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
 	memset(&dev_link, 0, sizeof(dev_link));
@@ -564,8 +568,8 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 	ifr.ifr_data = (void *)&gcmd;
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
-		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
-		      strerror(rte_errno));
+		DEBUG("port %u ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS)"
+		      " failed: %s", dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
 	gcmd.link_mode_masks_nwords = -gcmd.link_mode_masks_nwords;
@@ -579,8 +583,8 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev)
 	ifr.ifr_data = (void *)ecmd;
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
-		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
-		      strerror(rte_errno));
+		DEBUG("port %u ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS)"
+		      " failed: %s", dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
 	dev_link.link_speed = ecmd->speed;
@@ -651,15 +655,14 @@ mlx5_link_start(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
 	ret = mlx5_traffic_enable(dev);
 	if (ret) {
-		ERROR("%p: error occurred while configuring control flows: %s",
-		      (void *)dev, strerror(rte_errno));
+		ERROR("port %u error occurred while configuring control flows:"
+		      " %s", dev->data->port_id, strerror(rte_errno));
 		return;
 	}
 	ret = mlx5_flow_start(dev, &priv->flows);
-	if (ret) {
-		ERROR("%p: error occurred while configuring flows: %s",
-		      (void *)dev, strerror(rte_errno));
-	}
+	if (ret)
+		ERROR("port %u error occurred while configuring flows: %s",
+		       dev->data->port_id, strerror(rte_errno));
 }
 
 /**
@@ -780,7 +783,7 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		return ret;
 	if (kern_mtu == mtu) {
 		priv->mtu = mtu;
-		DEBUG("adapter port %u MTU set to %u", priv->port, mtu);
+		DEBUG("port %u adapter MTU set to %u", dev->data->port_id, mtu);
 		return 0;
 	}
 	rte_errno = EAGAIN;
@@ -810,8 +813,8 @@ mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	ifr.ifr_data = (void *)&ethpause;
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
-		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM) failed: %s",
-		     strerror(rte_errno));
+		WARN("port %u ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM) failed:"
+		     " %s", dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
 	fc_conf->autoneg = ethpause.autoneg;
@@ -861,9 +864,8 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		ethpause.tx_pause = 0;
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
-		WARN("ioctl(SIOCETHTOOL, ETHTOOL_SPAUSEPARAM)"
-		     " failed: %s",
-		     strerror(rte_errno));
+		WARN("port %u ioctl(SIOCETHTOOL, ETHTOOL_SPAUSEPARAM)"
+		     " failed: %s", dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
 	return 0;
@@ -992,8 +994,8 @@ mlx5_dev_status_handler(struct rte_eth_dev *dev)
 			dev->data->dev_conf.intr_conf.rmv == 1)
 			ret |= (1 << RTE_ETH_EVENT_INTR_RMV);
 		else
-			DEBUG("event type %d on port %d not handled",
-			      event.event_type, event.element.port_num);
+			DEBUG("port %u event type %d on not handled",
+			      dev->data->port_id, event.event_type);
 		mlx5_glue->ack_async_event(&event);
 	}
 	if (ret & (1 << RTE_ETH_EVENT_INTR_LSC))
@@ -1101,7 +1103,8 @@ mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 	flags = fcntl(priv->ctx->async_fd, F_GETFL);
 	ret = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
-		INFO("failed to change file descriptor async event queue");
+		INFO("port %u failed to change file descriptor async event"
+		     " queue", dev->data->port_id);
 		dev->data->dev_conf.intr_conf.lsc = 0;
 		dev->data->dev_conf.intr_conf.rmv = 0;
 	}
@@ -1114,7 +1117,8 @@ mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 	}
 	ret = mlx5_socket_init(dev);
 	if (ret)
-		ERROR("cannot initialise socket: %s", strerror(rte_errno));
+		ERROR("port %u cannot initialise socket: %s",
+		      dev->data->port_id, strerror(rte_errno));
 	else if (priv->primary_socket) {
 		priv->intr_handle_socket.fd = priv->primary_socket;
 		priv->intr_handle_socket.type = RTE_INTR_HANDLE_EXT;
@@ -1184,17 +1188,20 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 				tx_pkt_burst = mlx5_tx_burst_raw_vec;
 			else
 				tx_pkt_burst = mlx5_tx_burst_vec;
-			DEBUG("selected Enhanced MPW TX vectorized function");
+			DEBUG("port %u selected enhanced MPW Tx vectorized"
+			      " function", dev->data->port_id);
 		} else {
 			tx_pkt_burst = mlx5_tx_burst_empw;
-			DEBUG("selected Enhanced MPW TX function");
+			DEBUG("port %u selected enhanced MPW Tx function",
+			      dev->data->port_id);
 		}
 	} else if (config->mps && (config->txq_inline > 0)) {
 		tx_pkt_burst = mlx5_tx_burst_mpw_inline;
-		DEBUG("selected MPW inline TX function");
+		DEBUG("port %u selected MPW inline Tx function",
+		      dev->data->port_id);
 	} else if (config->mps) {
 		tx_pkt_burst = mlx5_tx_burst_mpw;
-		DEBUG("selected MPW TX function");
+		DEBUG("port %u selected MPW Tx function", dev->data->port_id);
 	}
 	return tx_pkt_burst;
 }
@@ -1216,7 +1223,8 @@ mlx5_select_rx_function(struct rte_eth_dev *dev)
 	assert(dev != NULL);
 	if (mlx5_check_vec_rx_support(dev) > 0) {
 		rx_pkt_burst = mlx5_rx_burst_vec;
-		DEBUG("selected RX vectorized function");
+		DEBUG("port %u selected Rx vectorized function",
+		      dev->data->port_id);
 	}
 	return rx_pkt_burst;
 }

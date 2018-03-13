@@ -126,6 +126,7 @@ struct mlx5_rxq_ctrl {
 	struct mlx5_rxq_data rxq; /* Data path structure. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
+	uint16_t idx; /* Queue index. */
 };
 
 /* Indirection table. */
@@ -187,6 +188,7 @@ struct mlx5_txq_data {
 struct mlx5_txq_ibv {
 	LIST_ENTRY(mlx5_txq_ibv) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
+	struct mlx5_txq_ctrl *txq_ctrl; /* Pointer to the control queue. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
 };
@@ -203,6 +205,7 @@ struct mlx5_txq_ctrl {
 	struct mlx5_txq_data txq; /* Data path structure. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	volatile void *bf_reg_orig; /* Blueflame register from verbs. */
+	uint16_t idx; /* Queue index. */
 };
 
 /* mlx5_rxq.c */
@@ -446,7 +449,7 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 	if ((MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_RESP_ERR) ||
 	    (MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_REQ_ERR)) {
 		if (!check_cqe_seen(cqe)) {
-			ERROR("unexpected error CQE, TX stopped");
+			ERROR("unexpected error CQE, Tx stopped");
 			rte_hexdump(stderr, "MLX5 TXQ:",
 				    (const void *)((uintptr_t)txq->wqes),
 				    ((1 << txq->wqe_n) *
@@ -563,7 +566,7 @@ mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 	} else {
 		struct rte_mempool *mp = mlx5_tx_mb2mp(mb);
 
-		WARN("Failed to register mempool 0x%p(%s)",
+		WARN("failed to register mempool 0x%p(%s)",
 		      (void *)mp, mp->name);
 	}
 	return (uint32_t)-1;

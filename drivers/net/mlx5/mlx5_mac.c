@@ -73,8 +73,8 @@ mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 		int ret = mlx5_traffic_restart(dev);
 
 		if (ret)
-			ERROR("%p cannot remove mac address: %s", (void *)dev,
-			      strerror(rte_errno));
+			ERROR("port %u cannot remove mac address: %s",
+			      dev->data->port_id, strerror(rte_errno));
 	}
 }
 
@@ -130,8 +130,9 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	int ret;
 
-	DEBUG("%p: setting primary MAC address", (void *)dev);
+	DEBUG("port %u setting primary MAC address", dev->data->port_id);
 	ret = mlx5_mac_addr_add(dev, mac_addr, 0, 0);
 	if (ret)
-		ERROR("cannot set mac address: %s", strerror(rte_errno));
+		ERROR("port %u cannot set mac address: %s",
+		      dev->data->port_id, strerror(rte_errno));
 }
