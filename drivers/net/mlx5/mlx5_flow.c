@@ -118,7 +118,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_SRC_PORT_TCP |
 				IBV_RX_HASH_DST_PORT_TCP),
 		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV4_TCP,
-		.flow_priority = 0,
+		.flow_priority = 1,
 		.ip_version = MLX5_IPV4,
 	},
 	[HASH_RXQ_UDPV4] = {
@@ -127,7 +127,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_SRC_PORT_UDP |
 				IBV_RX_HASH_DST_PORT_UDP),
 		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV4_UDP,
-		.flow_priority = 0,
+		.flow_priority = 1,
 		.ip_version = MLX5_IPV4,
 	},
 	[HASH_RXQ_IPV4] = {
@@ -135,7 +135,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_DST_IPV4),
 		.dpdk_rss_hf = (ETH_RSS_IPV4 |
 				ETH_RSS_FRAG_IPV4),
-		.flow_priority = 1,
+		.flow_priority = 2,
 		.ip_version = MLX5_IPV4,
 	},
 	[HASH_RXQ_TCPV6] = {
@@ -144,7 +144,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_SRC_PORT_TCP |
 				IBV_RX_HASH_DST_PORT_TCP),
 		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV6_TCP,
-		.flow_priority = 0,
+		.flow_priority = 1,
 		.ip_version = MLX5_IPV6,
 	},
 	[HASH_RXQ_UDPV6] = {
@@ -153,7 +153,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_SRC_PORT_UDP |
 				IBV_RX_HASH_DST_PORT_UDP),
 		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV6_UDP,
-		.flow_priority = 0,
+		.flow_priority = 1,
 		.ip_version = MLX5_IPV6,
 	},
 	[HASH_RXQ_IPV6] = {
@@ -161,13 +161,13 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_DST_IPV6),
 		.dpdk_rss_hf = (ETH_RSS_IPV6 |
 				ETH_RSS_FRAG_IPV6),
-		.flow_priority = 1,
+		.flow_priority = 2,
 		.ip_version = MLX5_IPV6,
 	},
 	[HASH_RXQ_ETH] = {
 		.hash_fields = 0,
 		.dpdk_rss_hf = 0,
-		.flow_priority = 2,
+		.flow_priority = 3,
 	},
 };
 
@@ -861,8 +861,6 @@ exit_item_not_supported:
 /**
  * Allocate memory space to store verbs flow attributes.
  *
- * @param[in] priority
- *   Flow priority.
  * @param[in] size
  *   Amount of byte to allocate.
  * @param[out] error
@@ -872,9 +870,7 @@ exit_item_not_supported:
  *   A verbs flow attribute on success, NULL otherwise and rte_errno is set.
  */
 static struct ibv_flow_attr *
-mlx5_flow_convert_allocate(unsigned int priority,
-			   unsigned int size,
-			   struct rte_flow_error *error)
+mlx5_flow_convert_allocate(unsigned int size, struct rte_flow_error *error)
 {
 	struct ibv_flow_attr *ibv_attr;
 
@@ -886,8 +882,38 @@ mlx5_flow_convert_allocate(unsigned int priority,
 				   "cannot allocate verbs spec attributes");
 		return NULL;
 	}
-	ibv_attr->priority = priority;
 	return ibv_attr;
+}
+
+/**
+ * Make inner packet matching with an higher priority from the non Inner
+ * matching.
+ *
+ * @param[in, out] parser
+ *   Internal parser structure.
+ * @param attr
+ *   User flow attribute.
+ */
+static void
+mlx5_flow_update_priority(struct mlx5_flow_parse *parser,
+			  const struct rte_flow_attr *attr)
+{
+	unsigned int i;
+
+	if (parser->drop) {
+		parser->queue[HASH_RXQ_ETH].ibv_attr->priority =
+			attr->priority +
+			hash_rxq_init[HASH_RXQ_ETH].flow_priority;
+		return;
+	}
+	for (i = 0; i != hash_rxq_init_n; ++i) {
+		if (parser->queue[i].ibv_attr) {
+			parser->queue[i].ibv_attr->priority =
+				attr->priority +
+				hash_rxq_init[i].flow_priority -
+				(parser->inner ? 1 : 0);
+		}
+	}
 }
 
 /**
@@ -1065,22 +1091,16 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 	 * Allocate the memory space to store verbs specifications.
 	 */
 	if (parser->drop) {
-		unsigned int priority =
-			attr->priority +
-			hash_rxq_init[HASH_RXQ_ETH].flow_priority;
 		unsigned int offset = parser->queue[HASH_RXQ_ETH].offset;
 
 		parser->queue[HASH_RXQ_ETH].ibv_attr =
-			mlx5_flow_convert_allocate(priority, offset, error);
+			mlx5_flow_convert_allocate(offset, error);
 		if (!parser->queue[HASH_RXQ_ETH].ibv_attr)
 			goto exit_enomem;
 		parser->queue[HASH_RXQ_ETH].offset =
 			sizeof(struct ibv_flow_attr);
 	} else {
 		for (i = 0; i != hash_rxq_init_n; ++i) {
-			unsigned int priority =
-				attr->priority +
-				hash_rxq_init[i].flow_priority;
 			unsigned int offset;
 
 			if (!(parser->rss_conf.rss_hf &
@@ -1089,8 +1109,7 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 				continue;
 			offset = parser->queue[i].offset;
 			parser->queue[i].ibv_attr =
-				mlx5_flow_convert_allocate(priority,
-							   offset, error);
+				mlx5_flow_convert_allocate(offset, error);
 			if (!parser->queue[i].ibv_attr)
 				goto exit_enomem;
 			parser->queue[i].offset = sizeof(struct ibv_flow_attr);
@@ -1125,13 +1144,9 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 	 * Last step. Complete missing specification to reach the RSS
 	 * configuration.
 	 */
-	if (!parser->drop) {
+	if (!parser->drop)
 		mlx5_flow_convert_finalise(parser);
-	} else {
-		parser->queue[HASH_RXQ_ETH].ibv_attr->priority =
-			attr->priority +
-			hash_rxq_init[parser->layer].flow_priority;
-	}
+	mlx5_flow_update_priority(parser, attr);
 exit_free:
 	/* Only verification is expected, all resources should be released. */
 	if (!parser->create) {
