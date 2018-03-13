@@ -91,6 +91,17 @@ find_sync_request(const char *dst, const char *act_name)
 	return r;
 }
 
+static void
+create_socket_path(const char *name, char *buf, int len)
+{
+	const char *prefix = eal_mp_socket_path();
+
+	if (strlen(name) > 0)
+		snprintf(buf, len, "%s_%s", prefix, name);
+	else
+		snprintf(buf, len, "%s", prefix);
+}
+
 int
 rte_eal_primary_proc_alive(const char *config_file_path)
 {
@@ -290,8 +301,12 @@ mp_handle(void *arg __rte_unused)
 static int
 open_socket_fd(void)
 {
+	char peer_name[PATH_MAX] = {0};
 	struct sockaddr_un un;
-	const char *prefix = eal_mp_socket_path();
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		snprintf(peer_name, sizeof(peer_name),
+				"%d_%"PRIx64, getpid(), rte_rdtsc());
 
 	mp_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (mp_fd < 0) {
@@ -301,13 +316,11 @@ open_socket_fd(void)
 
 	memset(&un, 0, sizeof(un));
 	un.sun_family = AF_UNIX;
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		snprintf(un.sun_path, sizeof(un.sun_path), "%s", prefix);
-	else {
-		snprintf(un.sun_path, sizeof(un.sun_path), "%s_%d_%"PRIx64,
-			 prefix, getpid(), rte_rdtsc());
-	}
+
+	create_socket_path(peer_name, un.sun_path, sizeof(un.sun_path));
+
 	unlink(un.sun_path); /* May still exist since last run */
+
 	if (bind(mp_fd, (struct sockaddr *)&un, sizeof(un)) < 0) {
 		RTE_LOG(ERR, EAL, "failed to bind %s: %s\n",
 			un.sun_path, strerror(errno));
@@ -340,20 +353,6 @@ unlink_sockets(const char *filter)
 
 	closedir(mp_dir);
 	return 0;
-}
-
-static void
-unlink_socket_by_path(const char *path)
-{
-	char *filename;
-	char *fullpath = strdup(path);
-
-	if (!fullpath)
-		return;
-	filename = basename(fullpath);
-	unlink_sockets(filename);
-	free(fullpath);
-	RTE_LOG(INFO, EAL, "Remove socket %s\n", path);
 }
 
 int
@@ -444,10 +443,9 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 	if (snd < 0) {
 		rte_errno = errno;
 		/* Check if it caused by peer process exits */
-		if (errno == ECONNREFUSED) {
-			/* We don't unlink the primary's socket here */
-			if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-				unlink_socket_by_path(dst_path);
+		if (errno == ECONNREFUSED &&
+				rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			unlink(dst_path);
 			return 0;
 		}
 		if (errno == ENOBUFS) {
