@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -360,6 +361,7 @@ rte_mp_channel_init(void)
 {
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 	char path[PATH_MAX];
+	int dir_fd;
 	pthread_t tid;
 
 	/* create filter path */
@@ -370,19 +372,38 @@ rte_mp_channel_init(void)
 	create_socket_path("*", path, sizeof(path));
 	snprintf(mp_dir_path, sizeof(mp_dir_path), "%s", dirname(path));
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
-			unlink_sockets(mp_filter)) {
-		RTE_LOG(ERR, EAL, "failed to unlink mp sockets\n");
+	/* lock the directory */
+	dir_fd = open(mp_dir_path, O_RDONLY);
+	if (dir_fd < 0) {
+		RTE_LOG(ERR, EAL, "failed to open %s: %s\n",
+			mp_dir_path, strerror(errno));
 		return -1;
 	}
 
-	if (open_socket_fd() < 0)
+	if (flock(dir_fd, LOCK_EX)) {
+		RTE_LOG(ERR, EAL, "failed to lock %s: %s\n",
+			mp_dir_path, strerror(errno));
+		close(dir_fd);
 		return -1;
+	}
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
+			unlink_sockets(mp_filter)) {
+		RTE_LOG(ERR, EAL, "failed to unlink mp sockets\n");
+		close(dir_fd);
+		return -1;
+	}
+
+	if (open_socket_fd() < 0) {
+		close(dir_fd);
+		return -1;
+	}
 
 	if (pthread_create(&tid, NULL, mp_handle, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "failed to create mp thead: %s\n",
 			strerror(errno));
 		close(mp_fd);
+		close(dir_fd);
 		mp_fd = -1;
 		return -1;
 	}
@@ -390,6 +411,11 @@ rte_mp_channel_init(void)
 	/* try best to set thread name */
 	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "rte_mp_handle");
 	rte_thread_setname(tid, thread_name);
+
+	/* unlock the directory */
+	flock(dir_fd, LOCK_UN);
+	close(dir_fd);
+
 	return 0;
 }
 
@@ -465,7 +491,7 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 static int
 mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 {
-	int ret = 0;
+	int dir_fd, ret = 0;
 	DIR *mp_dir;
 	struct dirent *ent;
 
@@ -487,6 +513,17 @@ mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 		rte_errno = errno;
 		return -1;
 	}
+
+	dir_fd = dirfd(mp_dir);
+	/* lock the directory to prevent processes spinning up while we send */
+	if (flock(dir_fd, LOCK_EX)) {
+		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
+			mp_dir_path);
+		rte_errno = errno;
+		closedir(mp_dir);
+		return -1;
+	}
+
 	while ((ent = readdir(mp_dir))) {
 		char path[PATH_MAX];
 
@@ -498,7 +535,10 @@ mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 		if (send_msg(path, msg, type) < 0)
 			ret = -1;
 	}
+	/* unlock the dir */
+	flock(dir_fd, LOCK_UN);
 
+	/* dir_fd automatically closed on closedir */
 	closedir(mp_dir);
 	return ret;
 }
@@ -619,7 +659,7 @@ int __rte_experimental
 rte_mp_request(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		const struct timespec *ts)
 {
-	int ret = 0;
+	int dir_fd, ret = 0;
 	DIR *mp_dir;
 	struct dirent *ent;
 	struct timeval now;
@@ -655,6 +695,16 @@ rte_mp_request(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		return -1;
 	}
 
+	dir_fd = dirfd(mp_dir);
+	/* lock the directory to prevent processes spinning up while we send */
+	if (flock(dir_fd, LOCK_EX)) {
+		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
+			mp_dir_path);
+		closedir(mp_dir);
+		rte_errno = errno;
+		return -1;
+	}
+
 	while ((ent = readdir(mp_dir))) {
 		char path[PATH_MAX];
 
@@ -667,7 +717,10 @@ rte_mp_request(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		if (mp_request_one(path, req, reply, &end))
 			ret = -1;
 	}
+	/* unlock the directory */
+	flock(dir_fd, LOCK_UN);
 
+	/* dir_fd automatically closed on closedir */
 	closedir(mp_dir);
 	return ret;
 }
