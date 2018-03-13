@@ -61,14 +61,21 @@ pmd_drv_log_basename(const char *s)
 	return s;
 }
 
+extern int mlx5_logtype;
+
+#define PMD_DRV_LOG___(level, ...) \
+	rte_log(RTE_LOG_ ## level, \
+		mlx5_logtype, \
+		RTE_FMT(MLX5_DRIVER_NAME ": " \
+			RTE_FMT_HEAD(__VA_ARGS__,), \
+		RTE_FMT_TAIL(__VA_ARGS__,)))
+
 /*
  * When debugging is enabled (NDEBUG not defined), file, line and function
  * information replace the driver name (MLX5_DRIVER_NAME) in log messages.
  */
 #ifndef NDEBUG
 
-#define PMD_DRV_LOG___(level, ...) \
-	ERRNO_SAFE(RTE_LOG(level, PMD, __VA_ARGS__))
 #define PMD_DRV_LOG__(level, ...) \
 	PMD_DRV_LOG___(level, "%s:%u: %s(): " __VA_ARGS__)
 #define PMD_DRV_LOG_(level, s, ...) \
@@ -80,9 +87,6 @@ pmd_drv_log_basename(const char *s)
 		__VA_ARGS__)
 
 #else /* NDEBUG */
-
-#define PMD_DRV_LOG___(level, ...) \
-	ERRNO_SAFE(RTE_LOG(level, PMD, MLX5_DRIVER_NAME ": " __VA_ARGS__))
 #define PMD_DRV_LOG__(level, ...) \
 	PMD_DRV_LOG___(level, __VA_ARGS__)
 #define PMD_DRV_LOG_(level, s, ...) \
@@ -91,32 +95,23 @@ pmd_drv_log_basename(const char *s)
 #endif /* NDEBUG */
 
 /* Generic printf()-like logging macro with automatic line feed. */
-#define PMD_DRV_LOG(level, ...) \
+#define DRV_LOG(level, ...) \
 	PMD_DRV_LOG_(level, \
 		__VA_ARGS__ PMD_DRV_LOG_STRIP PMD_DRV_LOG_OPAREN, \
 		PMD_DRV_LOG_CPAREN)
 
-/*
- * Like assert(), DEBUG() becomes a no-op and claim_zero() does not perform
- * any check when debugging is disabled.
- */
+/* claim_zero() does not perform any check when debugging is disabled. */
 #ifndef NDEBUG
 
-#define DEBUG(...) PMD_DRV_LOG(DEBUG, __VA_ARGS__)
 #define claim_zero(...) assert((__VA_ARGS__) == 0)
 #define claim_nonzero(...) assert((__VA_ARGS__) != 0)
 
 #else /* NDEBUG */
 
-#define DEBUG(...) (void)0
 #define claim_zero(...) (__VA_ARGS__)
 #define claim_nonzero(...) (__VA_ARGS__)
 
 #endif /* NDEBUG */
-
-#define INFO(...) PMD_DRV_LOG(INFO, __VA_ARGS__)
-#define WARN(...) PMD_DRV_LOG(WARNING, __VA_ARGS__)
-#define ERROR(...) PMD_DRV_LOG(ERR, __VA_ARGS__)
 
 /* Convenience macros for accessing mbuf fields. */
 #define NEXT(m) ((m)->next)

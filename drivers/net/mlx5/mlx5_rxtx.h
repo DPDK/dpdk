@@ -377,9 +377,10 @@ check_cqe(volatile struct mlx5_cqe *cqe,
 		    (syndrome == MLX5_CQE_SYNDROME_REMOTE_ABORTED_ERR))
 			return 0;
 		if (!check_cqe_seen(cqe)) {
-			ERROR("unexpected CQE error %u (0x%02x)"
-			      " syndrome 0x%02x",
-			      op_code, op_code, syndrome);
+			DRV_LOG(ERR,
+				"unexpected CQE error %u (0x%02x) syndrome"
+				" 0x%02x",
+				op_code, op_code, syndrome);
 			rte_hexdump(stderr, "MLX5 Error CQE:",
 				    (const void *)((uintptr_t)err_cqe),
 				    sizeof(*err_cqe));
@@ -388,8 +389,8 @@ check_cqe(volatile struct mlx5_cqe *cqe,
 	} else if ((op_code != MLX5_CQE_RESP_SEND) &&
 		   (op_code != MLX5_CQE_REQ)) {
 		if (!check_cqe_seen(cqe)) {
-			ERROR("unexpected CQE opcode %u (0x%02x)",
-			      op_code, op_code);
+			DRV_LOG(ERR, "unexpected CQE opcode %u (0x%02x)",
+				op_code, op_code);
 			rte_hexdump(stderr, "MLX5 CQE:",
 				    (const void *)((uintptr_t)cqe),
 				    sizeof(*cqe));
@@ -449,7 +450,7 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 	if ((MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_RESP_ERR) ||
 	    (MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_REQ_ERR)) {
 		if (!check_cqe_seen(cqe)) {
-			ERROR("unexpected error CQE, Tx stopped");
+			DRV_LOG(ERR, "unexpected error CQE, Tx stopped");
 			rte_hexdump(stderr, "MLX5 TXQ:",
 				    (const void *)((uintptr_t)txq->wqes),
 				    ((1 << txq->wqe_n) *
@@ -566,8 +567,8 @@ mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 	} else {
 		struct rte_mempool *mp = mlx5_tx_mb2mp(mb);
 
-		WARN("failed to register mempool 0x%p(%s)",
-		      (void *)mp, mp->name);
+		DRV_LOG(WARNING, "failed to register mempool 0x%p(%s)",
+			(void *)mp, mp->name);
 	}
 	return (uint32_t)-1;
 }

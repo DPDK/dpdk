@@ -42,8 +42,8 @@ mlx5_socket_init(struct rte_eth_dev *dev)
 	ret = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ret < 0) {
 		rte_errno = errno;
-		WARN("port %u secondary process not supported: %s",
-		     dev->data->port_id, strerror(errno));
+		DRV_LOG(WARNING, "port %u secondary process not supported: %s",
+			dev->data->port_id, strerror(errno));
 		goto error;
 	}
 	priv->primary_socket = ret;
@@ -66,15 +66,17 @@ mlx5_socket_init(struct rte_eth_dev *dev)
 		   sizeof(sun));
 	if (ret < 0) {
 		rte_errno = errno;
-		WARN("port %u cannot bind socket, secondary process not"
-		     " supported: %s", dev->data->port_id, strerror(errno));
+		DRV_LOG(WARNING,
+			"port %u cannot bind socket, secondary process not"
+			" supported: %s",
+			dev->data->port_id, strerror(errno));
 		goto close;
 	}
 	ret = listen(priv->primary_socket, 0);
 	if (ret < 0) {
 		rte_errno = errno;
-		WARN("port %u secondary process not supported: %s",
-		     dev->data->port_id, strerror(errno));
+		DRV_LOG(WARNING, "port %u secondary process not supported: %s",
+			dev->data->port_id, strerror(errno));
 		goto close;
 	}
 	return 0;
@@ -133,29 +135,29 @@ mlx5_socket_handle(struct rte_eth_dev *dev)
 	/* Accept the connection from the client. */
 	conn_sock = accept(priv->primary_socket, NULL, NULL);
 	if (conn_sock < 0) {
-		WARN("port %u connection failed: %s", dev->data->port_id,
-		     strerror(errno));
+		DRV_LOG(WARNING, "port %u connection failed: %s",
+			dev->data->port_id, strerror(errno));
 		return;
 	}
 	ret = setsockopt(conn_sock, SOL_SOCKET, SO_PASSCRED, &(int){1},
 					 sizeof(int));
 	if (ret < 0) {
 		ret = errno;
-		WARN("port %u cannot change socket options: %s",
-		     dev->data->port_id, strerror(rte_errno));
+		DRV_LOG(WARNING, "port %u cannot change socket options: %s",
+			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
 	ret = recvmsg(conn_sock, &msg, MSG_WAITALL);
 	if (ret < 0) {
 		ret = errno;
-		WARN("port %u received an empty message: %s",
-		     dev->data->port_id, strerror(rte_errno));
+		DRV_LOG(WARNING, "port %u received an empty message: %s",
+			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
 	/* Expect to receive credentials only. */
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (cmsg == NULL) {
-		WARN("port %u no message", dev->data->port_id);
+		DRV_LOG(WARNING, "port %u no message", dev->data->port_id);
 		goto error;
 	}
 	if ((cmsg->cmsg_type == SCM_CREDENTIALS) &&
@@ -165,13 +167,15 @@ mlx5_socket_handle(struct rte_eth_dev *dev)
 	}
 	cmsg = CMSG_NXTHDR(&msg, cmsg);
 	if (cmsg != NULL) {
-		WARN("port %u message wrongly formatted", dev->data->port_id);
+		DRV_LOG(WARNING, "port %u message wrongly formatted",
+			dev->data->port_id);
 		goto error;
 	}
 	/* Make sure all the ancillary data was received and valid. */
 	if ((cred == NULL) || (cred->uid != getuid()) ||
 	    (cred->gid != getgid())) {
-		WARN("port %u wrong credentials", dev->data->port_id);
+		DRV_LOG(WARNING, "port %u wrong credentials",
+			dev->data->port_id);
 		goto error;
 	}
 	/* Set-up the ancillary data. */
@@ -184,7 +188,8 @@ mlx5_socket_handle(struct rte_eth_dev *dev)
 	*fd = priv->ctx->cmd_fd;
 	ret = sendmsg(conn_sock, &msg, 0);
 	if (ret < 0)
-		WARN("port %u cannot send response", dev->data->port_id);
+		DRV_LOG(WARNING, "port %u cannot send response",
+			dev->data->port_id);
 error:
 	close(conn_sock);
 }
@@ -226,7 +231,8 @@ mlx5_socket_connect(struct rte_eth_dev *dev)
 	ret = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ret < 0) {
 		rte_errno = errno;
-		WARN("port %u cannot connect to primary", dev->data->port_id);
+		DRV_LOG(WARNING, "port %u cannot connect to primary",
+			dev->data->port_id);
 		goto error;
 	}
 	socket_fd = ret;
@@ -235,13 +241,15 @@ mlx5_socket_connect(struct rte_eth_dev *dev)
 	ret = connect(socket_fd, (const struct sockaddr *)&sun, sizeof(sun));
 	if (ret < 0) {
 		rte_errno = errno;
-		WARN("port %u cannot connect to primary", dev->data->port_id);
+		DRV_LOG(WARNING, "port %u cannot connect to primary",
+			dev->data->port_id);
 		goto error;
 	}
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (cmsg == NULL) {
 		rte_errno = EINVAL;
-		DEBUG("port %u cannot get first message", dev->data->port_id);
+		DRV_LOG(DEBUG, "port %u cannot get first message",
+			dev->data->port_id);
 		goto error;
 	}
 	cmsg->cmsg_level = SOL_SOCKET;
@@ -250,7 +258,8 @@ mlx5_socket_connect(struct rte_eth_dev *dev)
 	cred = (struct ucred *)CMSG_DATA(cmsg);
 	if (cred == NULL) {
 		rte_errno = EINVAL;
-		DEBUG("port %u no credentials received", dev->data->port_id);
+		DRV_LOG(DEBUG, "port %u no credentials received",
+			dev->data->port_id);
 		goto error;
 	}
 	cred->pid = getpid();
@@ -259,27 +268,29 @@ mlx5_socket_connect(struct rte_eth_dev *dev)
 	ret = sendmsg(socket_fd, &msg, MSG_DONTWAIT);
 	if (ret < 0) {
 		rte_errno = errno;
-		WARN("port %u cannot send credentials to primary: %s",
-		     dev->data->port_id, strerror(errno));
+		DRV_LOG(WARNING,
+			"port %u cannot send credentials to primary: %s",
+			dev->data->port_id, strerror(errno));
 		goto error;
 	}
 	ret = recvmsg(socket_fd, &msg, MSG_WAITALL);
 	if (ret <= 0) {
 		rte_errno = errno;
-		WARN("port %u no message from primary: %s",
-		     dev->data->port_id, strerror(errno));
+		DRV_LOG(WARNING, "port %u no message from primary: %s",
+			dev->data->port_id, strerror(errno));
 		goto error;
 	}
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (cmsg == NULL) {
 		rte_errno = EINVAL;
-		WARN("port %u no file descriptor received", dev->data->port_id);
+		DRV_LOG(WARNING, "port %u no file descriptor received",
+			dev->data->port_id);
 		goto error;
 	}
 	fd = (int *)CMSG_DATA(cmsg);
 	if (*fd < 0) {
-		WARN("port %u no file descriptor received: %s",
-		     dev->data->port_id, strerror(errno));
+		DRV_LOG(WARNING, "port %u no file descriptor received: %s",
+			dev->data->port_id, strerror(errno));
 		rte_errno = *fd;
 		goto error;
 	}

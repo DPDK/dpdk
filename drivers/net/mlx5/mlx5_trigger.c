@@ -150,39 +150,39 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	dev->data->dev_started = 1;
 	ret = mlx5_flow_create_drop_queue(dev);
 	if (ret) {
-		ERROR("port %u drop queue allocation failed: %s",
-		      dev->data->port_id, strerror(rte_errno));
+		DRV_LOG(ERR, "port %u drop queue allocation failed: %s",
+			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
-	DEBUG("port %u allocating and configuring hash Rx queues",
-	      dev->data->port_id);
+	DRV_LOG(DEBUG, "port %u allocating and configuring hash Rx queues",
+		dev->data->port_id);
 	rte_mempool_walk(mlx5_mp2mr_iter, priv);
 	ret = mlx5_txq_start(dev);
 	if (ret) {
-		ERROR("port %u Tx queue allocation failed: %s",
-		      dev->data->port_id, strerror(rte_errno));
+		DRV_LOG(ERR, "port %u Tx queue allocation failed: %s",
+			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
 	ret = mlx5_rxq_start(dev);
 	if (ret) {
-		ERROR("port %u Rx queue allocation failed: %s",
-		      dev->data->port_id, strerror(rte_errno));
+		DRV_LOG(ERR, "port %u Rx queue allocation failed: %s",
+			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
 	ret = mlx5_rx_intr_vec_enable(dev);
 	if (ret) {
-		ERROR("port %u Rx interrupt vector creation failed",
-		      dev->data->port_id);
+		DRV_LOG(ERR, "port %u Rx interrupt vector creation failed",
+			dev->data->port_id);
 		goto error;
 	}
 	mlx5_xstats_init(dev);
 	/* Update link status and Tx/Rx callbacks for the first time. */
 	memset(&dev->data->dev_link, 0, sizeof(struct rte_eth_link));
-	INFO("port %u forcing link to be up", dev->data->port_id);
+	DRV_LOG(INFO, "forcing port %u link to be up", dev->data->port_id);
 	ret = mlx5_force_link_status_change(dev, ETH_LINK_UP);
 	if (ret) {
-		DEBUG("failed to set port %u link to be up",
-		      dev->data->port_id);
+		DRV_LOG(DEBUG, "failed to set port %u link to be up",
+			dev->data->port_id);
 		goto error;
 	}
 	mlx5_dev_interrupt_handler_install(dev);
@@ -222,8 +222,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = removed_tx_burst;
 	rte_wmb();
 	usleep(1000 * priv->rxqs_n);
-	DEBUG("port %u cleaning up and destroying hash Rx queues",
-	      dev->data->port_id);
+	DRV_LOG(DEBUG, "port %u cleaning up and destroying hash Rx queues",
+		dev->data->port_id);
 	mlx5_flow_stop(dev, &priv->flows);
 	mlx5_traffic_disable(dev);
 	mlx5_rx_intr_vec_disable(dev);

@@ -104,17 +104,18 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 
 	rte_spinlock_lock(&txq_ctrl->priv->mr_lock);
 	/* Add a new entry, register MR first. */
-	DEBUG("port %u discovered new memory pool \"%s\" (%p)",
-	      txq_ctrl->priv->dev->data->port_id, mp->name, (void *)mp);
+	DRV_LOG(DEBUG, "port %u discovered new memory pool \"%s\" (%p)",
+		txq_ctrl->priv->dev->data->port_id, mp->name, (void *)mp);
 	dev = txq_ctrl->priv->dev;
 	mr = mlx5_mr_get(dev, mp);
 	if (mr == NULL) {
 		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-			DEBUG("port %u using unregistered mempool 0x%p(%s) in "
-			      "secondary process, please create mempool before "
-			      " rte_eth_dev_start()",
-			      txq_ctrl->priv->dev->data->port_id,
-			     (void *)mp, mp->name);
+			DRV_LOG(DEBUG,
+				"port %u using unregistered mempool 0x%p(%s)"
+				" in secondary process, please create mempool"
+				" before rte_eth_dev_start()",
+				txq_ctrl->priv->dev->data->port_id,
+				(void *)mp, mp->name);
 			rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 			rte_errno = ENOTSUP;
 			return NULL;
@@ -122,17 +123,19 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 		mr = mlx5_mr_new(dev, mp);
 	}
 	if (unlikely(mr == NULL)) {
+		DRV_LOG(DEBUG,
+			"port %u unable to configure memory region,"
+			" ibv_reg_mr() failed.",
+			txq_ctrl->priv->dev->data->port_id);
 		rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
-		DEBUG("port %u unable to configure memory region, ibv_reg_mr()"
-		      " failed",
-		      txq_ctrl->priv->dev->data->port_id);
 		return NULL;
 	}
 	if (unlikely(idx == RTE_DIM(txq->mp2mr))) {
 		/* Table is full, remove oldest entry. */
-		DEBUG("port %u memroy region <-> memory pool table full, "
-		      " dropping oldest entry",
-		      txq_ctrl->priv->dev->data->port_id);
+		DRV_LOG(DEBUG,
+			"port %u memory region <-> memory pool table full, "
+			" dropping oldest entry",
+			txq_ctrl->priv->dev->data->port_id);
 		--idx;
 		mlx5_mr_release(txq->mp2mr[0]);
 		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
@@ -140,9 +143,11 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 	}
 	/* Store the new entry. */
 	txq_ctrl->txq.mp2mr[idx] = mr;
-	DEBUG("port %u new memory region lkey for MP \"%s\" (%p): 0x%08" PRIu32,
-	      txq_ctrl->priv->dev->data->port_id, mp->name, (void *)mp,
-	      txq_ctrl->txq.mp2mr[idx]->lkey);
+	DRV_LOG(DEBUG,
+		"port %u new memory region lkey for MP \"%s\" (%p): 0x%08"
+		PRIu32,
+		txq_ctrl->priv->dev->data->port_id, mp->name, (void *)mp,
+		txq_ctrl->txq.mp2mr[idx]->lkey);
 	rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 	return mr;
 }
@@ -209,8 +214,8 @@ mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg)
 	}
 	mr = mlx5_mr_new(priv->dev, mp);
 	if (!mr)
-		ERROR("port %u cannot create memory region: %s",
-		      priv->dev->data->port_id, strerror(rte_errno));
+		DRV_LOG(ERR, "port %u cannot create memory region: %s",
+			priv->dev->data->port_id, strerror(rte_errno));
 }
 
 /**
@@ -237,21 +242,22 @@ mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
 
 	mr = rte_zmalloc_socket(__func__, sizeof(*mr), 0, mp->socket_id);
 	if (!mr) {
-		DEBUG("port %u unable to configure memory region, ibv_reg_mr()"
-		      " failed",
-		      dev->data->port_id);
+		DRV_LOG(DEBUG,
+			"port %u unable to configure memory region,"
+			" ibv_reg_mr() failed.",
+			dev->data->port_id);
 		rte_errno = ENOMEM;
 		return NULL;
 	}
 	if (mlx5_check_mempool(mp, &start, &end) != 0) {
-		ERROR("port %u mempool %p: not virtually contiguous",
-		      dev->data->port_id, (void *)mp);
+		DRV_LOG(ERR, "port %u mempool %p: not virtually contiguous",
+			dev->data->port_id, (void *)mp);
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	DEBUG("port %u mempool %p area start=%p end=%p size=%zu",
-	      dev->data->port_id, (void *)mp, (void *)start, (void *)end,
-	      (size_t)(end - start));
+	DRV_LOG(DEBUG, "port %u mempool %p area start=%p end=%p size=%zu",
+		dev->data->port_id, (void *)mp, (void *)start, (void *)end,
+		(size_t)(end - start));
 	/* Save original addresses for exact MR lookup. */
 	mr->start = start;
 	mr->end = end;
@@ -266,10 +272,11 @@ mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
 		if ((end > addr) && (end < addr + len))
 			end = RTE_ALIGN_CEIL(end, align);
 	}
-	DEBUG("port %u mempool %p using start=%p end=%p size=%zu for memory"
-	      " region",
-	      dev->data->port_id, (void *)mp, (void *)start, (void *)end,
-	      (size_t)(end - start));
+	DRV_LOG(DEBUG,
+		"port %u mempool %p using start=%p end=%p size=%zu for memory"
+		" region",
+		dev->data->port_id, (void *)mp, (void *)start, (void *)end,
+		(size_t)(end - start));
 	mr->mr = mlx5_glue->reg_mr(priv->pd, (void *)start, end - start,
 				   IBV_ACCESS_LOCAL_WRITE);
 	if (!mr->mr) {
@@ -279,8 +286,8 @@ mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
 	mr->mp = mp;
 	mr->lkey = rte_cpu_to_be_32(mr->mr->lkey);
 	rte_atomic32_inc(&mr->refcnt);
-	DEBUG("port %u new memory region %p refcnt: %d",
-	      dev->data->port_id, (void *)mr, rte_atomic32_read(&mr->refcnt));
+	DRV_LOG(DEBUG, "port %u new memory Region %p refcnt: %d",
+		dev->data->port_id, (void *)mr, rte_atomic32_read(&mr->refcnt));
 	LIST_INSERT_HEAD(&priv->mr, mr, next);
 	return mr;
 }
@@ -308,9 +315,9 @@ mlx5_mr_get(struct rte_eth_dev *dev, struct rte_mempool *mp)
 	LIST_FOREACH(mr, &priv->mr, next) {
 		if (mr->mp == mp) {
 			rte_atomic32_inc(&mr->refcnt);
-			DEBUG("port %u memory region %p refcnt: %d",
-			      dev->data->port_id, (void *)mr,
-			      rte_atomic32_read(&mr->refcnt));
+			DRV_LOG(DEBUG, "port %u memory region %p refcnt: %d",
+				dev->data->port_id, (void *)mr,
+				rte_atomic32_read(&mr->refcnt));
 			return mr;
 		}
 	}
@@ -330,8 +337,8 @@ int
 mlx5_mr_release(struct mlx5_mr *mr)
 {
 	assert(mr);
-	DEBUG("memory region %p refcnt: %d", (void *)mr,
-	      rte_atomic32_read(&mr->refcnt));
+	DRV_LOG(DEBUG, "memory region %p refcnt: %d", (void *)mr,
+		rte_atomic32_read(&mr->refcnt));
 	if (rte_atomic32_dec_and_test(&mr->refcnt)) {
 		claim_zero(mlx5_glue->dereg_mr(mr->mr));
 		LIST_REMOVE(mr, next);
@@ -358,8 +365,8 @@ mlx5_mr_verify(struct rte_eth_dev *dev)
 	struct mlx5_mr *mr;
 
 	LIST_FOREACH(mr, &priv->mr, next) {
-		DEBUG("port %u memory region %p still referenced",
-		      dev->data->port_id, (void *)mr);
+		DRV_LOG(DEBUG, "port %u memory region %p still referenced",
+			dev->data->port_id, (void *)mr);
 		++ret;
 	}
 	return ret;

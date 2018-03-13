@@ -1818,11 +1818,11 @@ mlx5_flow_create_action_queue(struct rte_eth_dev *dev,
 			goto error;
 		}
 		++flows_n;
-		DEBUG("port %u %p type %d QP %p ibv_flow %p",
-		      dev->data->port_id,
-		      (void *)flow, i,
-		      (void *)flow->frxq[i].hrxq,
-		      (void *)flow->frxq[i].ibv_flow);
+		DRV_LOG(DEBUG, "port %u %p type %d QP %p ibv_flow %p",
+			dev->data->port_id,
+			(void *)flow, i,
+			(void *)flow->frxq[i].hrxq,
+			(void *)flow->frxq[i].ibv_flow);
 	}
 	if (!flows_n) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -1922,11 +1922,12 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	if (ret)
 		goto exit;
 	TAILQ_INSERT_TAIL(list, flow, next);
-	DEBUG("port %u flow created %p", dev->data->port_id, (void *)flow);
+	DRV_LOG(DEBUG, "port %u flow created %p", dev->data->port_id,
+		(void *)flow);
 	return flow;
 exit:
-	ERROR("port %u flow creation error: %s", dev->data->port_id,
-	      error->message);
+	DRV_LOG(ERR, "port %u flow creation error: %s", dev->data->port_id,
+		error->message);
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (parser.queue[i].ibv_attr)
 			rte_free(parser.queue[i].ibv_attr);
@@ -2044,7 +2045,8 @@ free:
 		flow->cs = NULL;
 	}
 	TAILQ_REMOVE(list, flow, next);
-	DEBUG("port %u flow destroyed %p", dev->data->port_id, (void *)flow);
+	DRV_LOG(DEBUG, "port %u flow destroyed %p", dev->data->port_id,
+		(void *)flow);
 	rte_free(flow);
 }
 
@@ -2086,15 +2088,16 @@ mlx5_flow_create_drop_queue(struct rte_eth_dev *dev)
 	assert(priv->ctx);
 	fdq = rte_calloc(__func__, 1, sizeof(*fdq), 0);
 	if (!fdq) {
-		WARN("port %u cannot allocate memory for drop queue",
-		     dev->data->port_id);
+		DRV_LOG(WARNING,
+			"port %u cannot allocate memory for drop queue",
+			dev->data->port_id);
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
 	fdq->cq = mlx5_glue->create_cq(priv->ctx, 1, NULL, NULL, 0);
 	if (!fdq->cq) {
-		WARN("port %u cannot allocate CQ for drop queue",
-		     dev->data->port_id);
+		DRV_LOG(WARNING, "port %u cannot allocate CQ for drop queue",
+			dev->data->port_id);
 		rte_errno = errno;
 		goto error;
 	}
@@ -2108,8 +2111,8 @@ mlx5_flow_create_drop_queue(struct rte_eth_dev *dev)
 			.cq = fdq->cq,
 		 });
 	if (!fdq->wq) {
-		WARN("port %u cannot allocate WQ for drop queue",
-		     dev->data->port_id);
+		DRV_LOG(WARNING, "port %u cannot allocate WQ for drop queue",
+			dev->data->port_id);
 		rte_errno = errno;
 		goto error;
 	}
@@ -2121,8 +2124,10 @@ mlx5_flow_create_drop_queue(struct rte_eth_dev *dev)
 			.comp_mask = 0,
 		 });
 	if (!fdq->ind_table) {
-		WARN("port %u cannot allocate indirection table for drop"
-		     " queue", dev->data->port_id);
+		DRV_LOG(WARNING,
+			"port %u cannot allocate indirection table for drop"
+			" queue",
+			dev->data->port_id);
 		rte_errno = errno;
 		goto error;
 	}
@@ -2145,8 +2150,8 @@ mlx5_flow_create_drop_queue(struct rte_eth_dev *dev)
 			.pd = priv->pd
 		 });
 	if (!fdq->qp) {
-		WARN("port %u cannot allocate QP for drop queue",
-		     dev->data->port_id);
+		DRV_LOG(WARNING, "port %u cannot allocate QP for drop queue",
+			dev->data->port_id);
 		rte_errno = errno;
 		goto error;
 	}
@@ -2217,8 +2222,8 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 			claim_zero(mlx5_glue->destroy_flow
 				   (flow->frxq[HASH_RXQ_ETH].ibv_flow));
 			flow->frxq[HASH_RXQ_ETH].ibv_flow = NULL;
-			DEBUG("port %u flow %p removed", dev->data->port_id,
-			      (void *)flow);
+			DRV_LOG(DEBUG, "port %u flow %p removed",
+				dev->data->port_id, (void *)flow);
 			/* Next flow. */
 			continue;
 		}
@@ -2251,8 +2256,8 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 			mlx5_hrxq_release(dev, flow->frxq[i].hrxq);
 			flow->frxq[i].hrxq = NULL;
 		}
-		DEBUG("port %u flow %p removed", dev->data->port_id,
-		      (void *)flow);
+		DRV_LOG(DEBUG, "port %u flow %p removed", dev->data->port_id,
+			(void *)flow);
 	}
 }
 
@@ -2282,14 +2287,14 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 				(priv->flow_drop_queue->qp,
 				 flow->frxq[HASH_RXQ_ETH].ibv_attr);
 			if (!flow->frxq[HASH_RXQ_ETH].ibv_flow) {
-				DEBUG("port %u flow %p cannot be applied",
-				      dev->data->port_id,
-				      (void *)flow);
+				DRV_LOG(DEBUG,
+					"port %u flow %p cannot be applied",
+					dev->data->port_id, (void *)flow);
 				rte_errno = EINVAL;
 				return -rte_errno;
 			}
-			DEBUG("port %u flow %p applied", dev->data->port_id,
-			      (void *)flow);
+			DRV_LOG(DEBUG, "port %u flow %p applied",
+				dev->data->port_id, (void *)flow);
 			/* Next flow. */
 			continue;
 		}
@@ -2311,8 +2316,9 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 					      (*flow->queues),
 					      flow->queues_n);
 			if (!flow->frxq[i].hrxq) {
-				DEBUG("port %u flow %p cannot be applied",
-				      dev->data->port_id, (void *)flow);
+				DRV_LOG(DEBUG,
+					"port %u flow %p cannot be applied",
+					dev->data->port_id, (void *)flow);
 				rte_errno = EINVAL;
 				return -rte_errno;
 			}
@@ -2321,13 +2327,14 @@ flow_create:
 				mlx5_glue->create_flow(flow->frxq[i].hrxq->qp,
 						       flow->frxq[i].ibv_attr);
 			if (!flow->frxq[i].ibv_flow) {
-				DEBUG("port %u flow %p cannot be applied",
-				      dev->data->port_id, (void *)flow);
+				DRV_LOG(DEBUG,
+					"port %u flow %p cannot be applied",
+					dev->data->port_id, (void *)flow);
 				rte_errno = EINVAL;
 				return -rte_errno;
 			}
-			DEBUG("port %u flow %p applied",
-			      dev->data->port_id, (void *)flow);
+			DRV_LOG(DEBUG, "port %u flow %p applied",
+				dev->data->port_id, (void *)flow);
 		}
 		if (!flow->mark)
 			continue;
@@ -2353,8 +2360,8 @@ mlx5_flow_verify(struct rte_eth_dev *dev)
 	int ret = 0;
 
 	TAILQ_FOREACH(flow, &priv->flows, next) {
-		DEBUG("port %u flow %p still referenced",
-		      dev->data->port_id, (void *)flow);
+		DRV_LOG(DEBUG, "port %u flow %p still referenced",
+			dev->data->port_id, (void *)flow);
 		++ret;
 	}
 	return ret;
@@ -2625,8 +2632,8 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 
 	/* Validate queue number. */
 	if (fdir_filter->action.rx_queue >= priv->rxqs_n) {
-		ERROR("port %u invalid queue number %d",
-		      dev->data->port_id, fdir_filter->action.rx_queue);
+		DRV_LOG(ERR, "port %u invalid queue number %d",
+			dev->data->port_id, fdir_filter->action.rx_queue);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -2649,9 +2656,9 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 		};
 		break;
 	default:
-		ERROR("port %u invalid behavior %d",
-		      dev->data->port_id,
-		      fdir_filter->action.behavior);
+		DRV_LOG(ERR, "port %u invalid behavior %d",
+			dev->data->port_id,
+			fdir_filter->action.behavior);
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
@@ -2787,8 +2794,8 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 		};
 		break;
 	default:
-		ERROR("port %u invalid flow type%d",
-		      dev->data->port_id, fdir_filter->input.flow_type);
+		DRV_LOG(ERR, "port %u invalid flow type%d",
+			dev->data->port_id, fdir_filter->input.flow_type);
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
@@ -2837,8 +2844,8 @@ mlx5_fdir_filter_add(struct rte_eth_dev *dev,
 				     attributes.items, attributes.actions,
 				     &error);
 	if (flow) {
-		DEBUG("port %u FDIR created %p", dev->data->port_id,
-		      (void *)flow);
+		DRV_LOG(DEBUG, "port %u FDIR created %p", dev->data->port_id,
+			(void *)flow);
 		return 0;
 	}
 	return -rte_errno;
@@ -3032,8 +3039,8 @@ mlx5_fdir_ctrl_func(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 		return 0;
 	if (fdir_mode != RTE_FDIR_MODE_PERFECT &&
 	    fdir_mode != RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
-		ERROR("port %u flow director mode %d not supported",
-		      dev->data->port_id, fdir_mode);
+		DRV_LOG(ERR, "port %u flow director mode %d not supported",
+			dev->data->port_id, fdir_mode);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -3051,8 +3058,8 @@ mlx5_fdir_ctrl_func(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 		mlx5_fdir_info_get(dev, arg);
 		break;
 	default:
-		DEBUG("port %u unknown operation %u", dev->data->port_id,
-		      filter_op);
+		DRV_LOG(DEBUG, "port %u unknown operation %u",
+			dev->data->port_id, filter_op);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -3091,8 +3098,8 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_FDIR:
 		return mlx5_fdir_ctrl_func(dev, filter_op, arg);
 	default:
-		ERROR("port %u filter type (%d) not supported",
-		      dev->data->port_id, filter_type);
+		DRV_LOG(ERR, "port %u filter type (%d) not supported",
+			dev->data->port_id, filter_type);
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
