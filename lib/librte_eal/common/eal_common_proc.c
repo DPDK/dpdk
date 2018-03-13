@@ -586,7 +586,6 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 	       struct rte_mp_reply *reply, const struct timespec *ts)
 {
 	int ret;
-	struct timeval now;
 	struct rte_mp_msg msg, *tmp;
 	struct sync_request sync_req, *exist;
 
@@ -618,19 +617,10 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 	reply->nb_sent++;
 
 	do {
-		pthread_cond_timedwait(&sync_req.cond, &sync_requests.lock, ts);
-		/* Check spurious wakeups */
-		if (sync_req.reply_received == 1)
-			break;
-		/* Check if time is out */
-		if (gettimeofday(&now, NULL) < 0)
-			break;
-		if (ts->tv_sec < now.tv_sec)
-			break;
-		else if (now.tv_sec == ts->tv_sec &&
-			 now.tv_usec * 1000 < ts->tv_nsec)
-			break;
-	} while (1);
+		ret = pthread_cond_timedwait(&sync_req.cond,
+				&sync_requests.lock, ts);
+	} while (ret != 0 && ret != ETIMEDOUT);
+
 	/* We got the lock now */
 	TAILQ_REMOVE(&sync_requests.requests, &sync_req, next);
 	pthread_mutex_unlock(&sync_requests.lock);
