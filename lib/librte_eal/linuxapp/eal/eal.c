@@ -669,6 +669,8 @@ rte_eal_mcfg_complete(void)
 	/* ALL shared mem_config related INIT DONE */
 	if (rte_config.process_type == RTE_PROC_PRIMARY)
 		rte_config.mem_config->magic = RTE_MAGIC;
+
+	internal_config.init_complete = 1;
 }
 
 /*

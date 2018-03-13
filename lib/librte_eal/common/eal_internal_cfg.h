@@ -56,6 +56,8 @@ struct internal_config {
 			/**< user defined mbuf pool ops name */
 	unsigned num_hugepage_sizes;      /**< how many sizes on this system */
 	struct hugepage_info hugepage_info[MAX_HUGEPAGE_SIZES];
+	volatile unsigned int init_complete;
+	/**< indicates whether EAL has completed initialization */
 };
 extern struct internal_config internal_config; /**< Global EAL configuration. */
 

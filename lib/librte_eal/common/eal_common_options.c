@@ -194,6 +194,7 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->vmware_tsc_map = 0;
 	internal_cfg->create_uio_dev = 0;
 	internal_cfg->user_mbuf_pool_ops_name = NULL;
+	internal_cfg->init_complete = 0;
 }
 
 static int
