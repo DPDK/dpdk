@@ -40,6 +40,11 @@
 #include "rte_ethdev_driver.h"
 #include "ethdev_profile.h"
 
+static int ethdev_logtype;
+
+#define ethdev_log(level, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, ethdev_logtype, fmt "\n", ## __VA_ARGS__)
+
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
 static uint8_t eth_dev_last_created_port;
@@ -276,13 +281,14 @@ rte_eth_dev_allocate(const char *name)
 
 	port_id = rte_eth_dev_find_free_port();
 	if (port_id == RTE_MAX_ETHPORTS) {
-		RTE_LOG(ERR, EAL, "Reached maximum number of Ethernet ports\n");
+		ethdev_log(ERR, "Reached maximum number of Ethernet ports");
 		goto unlock;
 	}
 
 	if (rte_eth_dev_allocated(name) != NULL) {
-		RTE_LOG(ERR, EAL, "Ethernet Device with name %s already allocated!\n",
-				name);
+		ethdev_log(ERR,
+			"Ethernet Device with name %s already allocated!",
+			name);
 		goto unlock;
 	}
 
@@ -614,7 +620,7 @@ rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
 
 	/* no point looking at the port count if no port exists */
 	if (!rte_eth_dev_count()) {
-		RTE_LOG(ERR, EAL, "No port found for device (%s)\n", name);
+		ethdev_log(ERR, "No port found for device (%s)", name);
 		ret = -1;
 		goto err;
 	}
@@ -652,8 +658,8 @@ rte_eth_dev_detach(uint16_t port_id, char *name)
 
 	dev_flags = rte_eth_devices[port_id].data->dev_flags;
 	if (dev_flags & RTE_ETH_DEV_BONDED_SLAVE) {
-		RTE_LOG(ERR, EAL, "Port %" PRIu16 " is bonded, cannot detach\n",
-			port_id);
+		ethdev_log(ERR,
+			"Port %" PRIu16 " is bonded, cannot detach", port_id);
 		ret = -ENOTSUP;
 		goto err;
 	}
@@ -3200,7 +3206,7 @@ rte_eth_dev_callback_register(uint16_t port_id,
 		return -EINVAL;
 
 	if (!rte_eth_dev_is_valid_port(port_id) && port_id != RTE_ETH_ALL) {
-		RTE_LOG(ERR, EAL, "Invalid port_id=%d\n", port_id);
+		ethdev_log(ERR, "Invalid port_id=%d", port_id);
 		return -EINVAL;
 	}
 
@@ -3263,7 +3269,7 @@ rte_eth_dev_callback_unregister(uint16_t port_id,
 		return -EINVAL;
 
 	if (!rte_eth_dev_is_valid_port(port_id) && port_id != RTE_ETH_ALL) {
-		RTE_LOG(ERR, EAL, "Invalid port_id=%d\n", port_id);
+		ethdev_log(ERR, "Invalid port_id=%d", port_id);
 		return -EINVAL;
 	}
 
@@ -4001,4 +4007,13 @@ rte_eth_dev_pool_ops_supported(uint16_t port_id, const char *pool)
 		return 1; /* all pools are supported */
 
 	return (*dev->dev_ops->pool_ops_supported)(dev, pool);
+}
+
+RTE_INIT(ethdev_init_log);
+static void
+ethdev_init_log(void)
+{
+	ethdev_logtype = rte_log_register("lib.ethdev");
+	if (ethdev_logtype >= 0)
+		rte_log_set_level(ethdev_logtype, RTE_LOG_INFO);
 }
