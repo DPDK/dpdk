@@ -1305,9 +1305,18 @@ mlx5_flow_create_vlan(const struct rte_flow_item *item,
 			eth->val.vlan_tag = spec->tci;
 			eth->mask.vlan_tag = mask->tci;
 			eth->val.vlan_tag &= eth->mask.vlan_tag;
+			/*
+			 * From verbs perspective an empty VLAN is equivalent
+			 * to a packet without VLAN layer.
+			 */
+			if (!eth->mask.vlan_tag)
+				goto error;
 		}
+		return 0;
 	}
-	return 0;
+error:
+	return rte_flow_error_set(data->error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+				  item, "VLAN cannot be empty");
 }
 
 /**
