@@ -359,18 +359,19 @@ int
 rte_mp_channel_init(void)
 {
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
-	char *path;
+	char path[PATH_MAX];
 	pthread_t tid;
 
-	snprintf(mp_filter, PATH_MAX, ".%s_unix_*",
-		 internal_config.hugefile_prefix);
+	/* create filter path */
+	create_socket_path("*", path, sizeof(path));
+	snprintf(mp_filter, sizeof(mp_filter), "%s", basename(path));
 
-	path = strdup(eal_mp_socket_path());
-	snprintf(mp_dir_path, PATH_MAX, "%s", dirname(path));
-	free(path);
+	/* path may have been modified, so recreate it */
+	create_socket_path("*", path, sizeof(path));
+	snprintf(mp_dir_path, sizeof(mp_dir_path), "%s", dirname(path));
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
-	    unlink_sockets(mp_filter)) {
+			unlink_sockets(mp_filter)) {
 		RTE_LOG(ERR, EAL, "failed to unlink mp sockets\n");
 		return -1;
 	}
