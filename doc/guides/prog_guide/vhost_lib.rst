@@ -83,6 +83,11 @@ The following is an overview of some key Vhost API functions:
       of those segments, thus the fewer the segments, the quicker we will get
       the mapping. NOTE: we may speed it by using tree searching in future.
 
+    * zero copy can not work when using vfio-pci with iommu mode currently, this
+      is because we don't setup iommu dma mapping for guest memory. If you have
+      to use vfio-pci driver, please insert vfio-pci kernel module in noiommu
+      mode.
+
   - ``RTE_VHOST_USER_IOMMU_SUPPORT``
 
     IOMMU support will be enabled when this flag is set. It is disabled by

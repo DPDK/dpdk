@@ -147,7 +147,10 @@ retries on an RX burst, it takes effect only when rx retry is enabled. The
 default value is 15.
 
 **--dequeue-zero-copy**
-Dequeue zero copy will be enabled when this option is given.
+Dequeue zero copy will be enabled when this option is given. it is worth to
+note that if NIC is binded to driver with iommu enabled, dequeue zero copy
+cannot work at VM2NIC mode (vm2vm=0) due to currently we don't setup iommu
+dma mapping for guest memory.
 
 **--vlan-strip 0|1**
 VLAN strip option is removed, because different NICs have different behaviors
