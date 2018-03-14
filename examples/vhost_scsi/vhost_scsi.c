@@ -38,7 +38,7 @@ vhost_scsi_ctrlr_find(__rte_unused const char *ctrlr_name)
 	return g_vhost_ctrlr;
 }
 
-static uint64_t gpa_to_vva(int vid, uint64_t gpa)
+static uint64_t gpa_to_vva(int vid, uint64_t gpa, uint64_t *len)
 {
 	char path[PATH_MAX];
 	struct vhost_scsi_ctrlr *ctrlr;
@@ -58,7 +58,7 @@ static uint64_t gpa_to_vva(int vid, uint64_t gpa)
 
 	assert(ctrlr->mem != NULL);
 
-	return rte_vhost_gpa_to_vva(ctrlr->mem, gpa);
+	return rte_vhost_va_from_guest_pa(ctrlr->mem, gpa, len);
 }
 
 static struct vring_desc *
@@ -108,15 +108,29 @@ static void
 vhost_process_read_payload_chain(struct vhost_scsi_task *task)
 {
 	void *data;
+	uint64_t chunck_len;
 
 	task->iovs_cnt = 0;
+	chunck_len = task->desc->len;
 	task->resp = (void *)(uintptr_t)gpa_to_vva(task->bdev->vid,
-						   task->desc->addr);
+						   task->desc->addr,
+						   &chunck_len);
+	if (!task->resp || chunck_len != task->desc->len) {
+		fprintf(stderr, "failed to translate desc address.\n");
+		return;
+	}
 
 	while (descriptor_has_next(task->desc)) {
 		task->desc = descriptor_get_next(task->vq->desc, task->desc);
+		chunck_len = task->desc->len;
 		data = (void *)(uintptr_t)gpa_to_vva(task->bdev->vid,
-						     task->desc->addr);
+						     task->desc->addr,
+							 &chunck_len);
+		if (!data || chunck_len != task->desc->len) {
+			fprintf(stderr, "failed to translate desc address.\n");
+			return;
+		}
+
 		task->iovs[task->iovs_cnt].iov_base = data;
 		task->iovs[task->iovs_cnt].iov_len = task->desc->len;
 		task->data_len += task->desc->len;
@@ -128,12 +142,20 @@ static void
 vhost_process_write_payload_chain(struct vhost_scsi_task *task)
 {
 	void *data;
+	uint64_t chunck_len;
 
 	task->iovs_cnt = 0;
 
 	do {
+		chunck_len = task->desc->len;
 		data = (void *)(uintptr_t)gpa_to_vva(task->bdev->vid,
-						     task->desc->addr);
+						     task->desc->addr,
+							 &chunck_len);
+		if (!data || chunck_len != task->desc->len) {
+			fprintf(stderr, "failed to translate desc address.\n");
+			return;
+		}
+
 		task->iovs[task->iovs_cnt].iov_base = data;
 		task->iovs[task->iovs_cnt].iov_len = task->desc->len;
 		task->data_len += task->desc->len;
@@ -141,8 +163,12 @@ vhost_process_write_payload_chain(struct vhost_scsi_task *task)
 		task->desc = descriptor_get_next(task->vq->desc, task->desc);
 	} while (descriptor_has_next(task->desc));
 
+	chunck_len = task->desc->len;
 	task->resp = (void *)(uintptr_t)gpa_to_vva(task->bdev->vid,
-						   task->desc->addr);
+						   task->desc->addr,
+						   &chunck_len);
+	if (!task->resp || chunck_len != task->desc->len)
+		fprintf(stderr, "failed to translate desc address.\n");
 }
 
 static struct vhost_block_dev *
@@ -188,6 +214,7 @@ process_requestq(struct vhost_scsi_ctrlr *ctrlr, uint32_t q_idx)
 		int req_idx;
 		uint16_t last_idx;
 		struct vhost_scsi_task *task;
+		uint64_t chunck_len;
 
 		last_idx = scsi_vq->last_used_idx & (vq->size - 1);
 		req_idx = vq->avail->ring[last_idx];
@@ -205,16 +232,27 @@ process_requestq(struct vhost_scsi_ctrlr *ctrlr, uint32_t q_idx)
 		assert((task->desc->flags & VRING_DESC_F_INDIRECT) == 0);
 		scsi_vq->last_used_idx++;
 
+		chunck_len = task->desc->len;
 		task->req = (void *)(uintptr_t)gpa_to_vva(task->bdev->vid,
-							  task->desc->addr);
+							  task->desc->addr,
+							  &chunck_len);
+		if (!task->req || chunck_len != task->desc->len) {
+			fprintf(stderr, "failed to translate desc address.\n");
+			return;
+		}
 
 		task->desc = descriptor_get_next(task->vq->desc, task->desc);
 		if (!descriptor_has_next(task->desc)) {
 			task->dxfer_dir = SCSI_DIR_NONE;
+			chunck_len = task->desc->len;
 			task->resp = (void *)(uintptr_t)
 					      gpa_to_vva(task->bdev->vid,
-							 task->desc->addr);
-
+							 task->desc->addr,
+							 &chunck_len);
+			if (!task->resp || chunck_len != task->desc->len) {
+				fprintf(stderr, "failed to translate desc address.\n");
+				return;
+			}
 		} else if (!descriptor_is_wr(task->desc)) {
 			task->dxfer_dir = SCSI_DIR_TO_DEV;
 			vhost_process_write_payload_chain(task);
