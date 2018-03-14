@@ -74,9 +74,19 @@
 
 /*
  * Number of sessions to create in the session memory pool
- * on a single QuickAssist device.
+ * on a single instance of crypto HW device.
  */
+/* QuickAssist device */
 #define RTE_QAT_PMD_MAX_NB_SESSIONS 2048
+
+/* DPAA2_SEC */
+#define RTE_DPAA2_SEC_PMD_MAX_NB_SESSIONS 2048
+
+/* DPAA_SEC */
+#define RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS 2048
+
+/* DPAA SEC max cryptodev devices*/
+#define RTE_LIBRTE_DPAA_MAX_CRYPTODEV	4
 
 /* fm10k defines */
 #define RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE 1

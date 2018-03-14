@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-drivers = ['af_packet', 'bonding',
+drivers = ['af_packet', 'bonding', 'dpaa', 'dpaa2',
 	'e1000', 'fm10k', 'i40e', 'ixgbe',
 	'null', 'octeontx', 'pcap', 'ring',
 	'sfc', 'thunderx', 'virtio']
