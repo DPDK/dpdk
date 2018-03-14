@@ -29,7 +29,7 @@
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_dpaa_bus.h>
 #include <rte_dpaa_logs.h>
-#include <rte_cycles_64.h>
+#include <rte_cycles.h>
 
 #include <dpaa_ethdev.h>
 #include "dpaa_eventdev.h"
