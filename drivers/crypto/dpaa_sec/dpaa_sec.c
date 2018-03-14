@@ -84,7 +84,7 @@ dpaa_sec_alloc_ctx(dpaa_sec_session *ses)
 	dcbz_64(&ctx->job.sg[SG_CACHELINE_3]);
 
 	ctx->ctx_pool = ses->ctx_pool;
-	ctx->vtop_offset = (uint64_t) ctx
+	ctx->vtop_offset = (size_t) ctx
 				- rte_mempool_virt2iova(ctx);
 
 	return ctx;
@@ -97,7 +97,7 @@ dpaa_mem_vtop(void *vaddr)
 	uint64_t vaddr_64, paddr;
 	int i;
 
-	vaddr_64 = (uint64_t)vaddr;
+	vaddr_64 = (size_t)vaddr;
 	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
 		if (vaddr_64 >= memseg[i].addr_64 &&
 		    vaddr_64 < memseg[i].addr_64 + memseg[i].len) {
@@ -107,14 +107,14 @@ dpaa_mem_vtop(void *vaddr)
 			return (rte_iova_t)paddr;
 		}
 	}
-	return (rte_iova_t)(NULL);
+	return (size_t)NULL;
 }
 
 /* virtual address conversin when mempool support is available for ctx */
 static inline phys_addr_t
 dpaa_mem_vtop_ctx(struct dpaa_sec_op_ctx *ctx, void *vaddr)
 {
-	return (uint64_t)vaddr - ctx->vtop_offset;
+	return (size_t)vaddr - ctx->vtop_offset;
 }
 
 static inline void *
@@ -125,8 +125,8 @@ dpaa_mem_ptov(rte_iova_t paddr)
 
 	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
 		if (paddr >= memseg[i].iova &&
-		    (char *)paddr < (char *)memseg[i].iova + memseg[i].len)
-			return (void *)(memseg[i].addr_64 +
+		    paddr < memseg[i].iova + memseg[i].len)
+			return (void *)(size_t)(memseg[i].addr_64 +
 					(paddr - memseg[i].iova));
 	}
 	return NULL;
@@ -406,7 +406,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 			return -ENOTSUP;
 		}
 
-		alginfo_c.key = (uint64_t)ses->cipher_key.data;
+		alginfo_c.key = (size_t)ses->cipher_key.data;
 		alginfo_c.keylen = ses->cipher_key.length;
 		alginfo_c.key_enc_flags = 0;
 		alginfo_c.key_type = RTA_DATA_IMM;
@@ -424,7 +424,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 			return -ENOTSUP;
 		}
 
-		alginfo_a.key = (uint64_t)ses->auth_key.data;
+		alginfo_a.key = (size_t)ses->auth_key.data;
 		alginfo_a.keylen = ses->auth_key.length;
 		alginfo_a.key_enc_flags = 0;
 		alginfo_a.key_type = RTA_DATA_IMM;
@@ -439,7 +439,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 			PMD_TX_LOG(ERR, "not supported aead alg\n");
 			return -ENOTSUP;
 		}
-		alginfo.key = (uint64_t)ses->aead_key.data;
+		alginfo.key = (size_t)ses->aead_key.data;
 		alginfo.keylen = ses->aead_key.length;
 		alginfo.key_enc_flags = 0;
 		alginfo.key_type = RTA_DATA_IMM;
@@ -463,7 +463,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 			return -ENOTSUP;
 		}
 
-		alginfo_c.key = (uint64_t)ses->cipher_key.data;
+		alginfo_c.key = (size_t)ses->cipher_key.data;
 		alginfo_c.keylen = ses->cipher_key.length;
 		alginfo_c.key_enc_flags = 0;
 		alginfo_c.key_type = RTA_DATA_IMM;
@@ -474,7 +474,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 			return -ENOTSUP;
 		}
 
-		alginfo_a.key = (uint64_t)ses->auth_key.data;
+		alginfo_a.key = (size_t)ses->auth_key.data;
 		alginfo_a.keylen = ses->auth_key.length;
 		alginfo_a.key_enc_flags = 0;
 		alginfo_a.key_type = RTA_DATA_IMM;
@@ -493,15 +493,15 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 		if (cdb->sh_desc[2] & 1)
 			alginfo_c.key_type = RTA_DATA_IMM;
 		else {
-			alginfo_c.key = (uint64_t)dpaa_mem_vtop(
-							(void *)alginfo_c.key);
+			alginfo_c.key = (size_t)dpaa_mem_vtop(
+						(void *)(size_t)alginfo_c.key);
 			alginfo_c.key_type = RTA_DATA_PTR;
 		}
 		if (cdb->sh_desc[2] & (1<<1))
 			alginfo_a.key_type = RTA_DATA_IMM;
 		else {
-			alginfo_a.key = (uint64_t)dpaa_mem_vtop(
-							(void *)alginfo_a.key);
+			alginfo_a.key = (size_t)dpaa_mem_vtop(
+						(void *)(size_t)alginfo_a.key);
 			alginfo_a.key_type = RTA_DATA_PTR;
 		}
 		cdb->sh_desc[0] = 0;

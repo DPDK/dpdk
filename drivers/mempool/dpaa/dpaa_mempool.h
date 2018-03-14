@@ -46,7 +46,7 @@ static inline void *
 DPAA_MEMPOOL_PTOV(struct dpaa_bp_info *bp_info, uint64_t addr)
 {
 	if (bp_info->ptov_off)
-		return ((void *)(addr + bp_info->ptov_off));
+		return ((void *) (size_t)(addr + bp_info->ptov_off));
 	return rte_dpaa_mem_ptov(addr);
 }
 

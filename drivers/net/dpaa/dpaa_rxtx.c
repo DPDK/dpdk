@@ -59,7 +59,7 @@
 	} while (0)
 
 #if (defined RTE_LIBRTE_DPAA_DEBUG_DRIVER)
-void dpaa_display_frame(const struct qm_fd *fd)
+static void dpaa_display_frame(const struct qm_fd *fd)
 {
 	int ii;
 	char *ptr;
@@ -90,11 +90,10 @@ static inline void dpaa_slow_parsing(struct rte_mbuf *m __rte_unused,
 	/*TBD:XXX: to be implemented*/
 }
 
-static inline void dpaa_eth_packet_info(struct rte_mbuf *m,
-					uint64_t fd_virt_addr)
+static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 {
 	struct annotations_t *annot = GET_ANNOTATIONS(fd_virt_addr);
-	uint64_t prs = *((uint64_t *)(&annot->parse)) & DPAA_PARSE_MASK;
+	uint64_t prs = *((uintptr_t *)(&annot->parse)) & DPAA_PARSE_MASK;
 
 	DPAA_DP_LOG(DEBUG, " Parsing mbuf: %p with annotations: %p", m, annot);
 
@@ -351,7 +350,7 @@ dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 		prev_seg = cur_seg;
 	}
 
-	dpaa_eth_packet_info(first_seg, (uint64_t)vaddr);
+	dpaa_eth_packet_info(first_seg, vaddr);
 	rte_pktmbuf_free_seg(temp);
 
 	return first_seg;
@@ -394,7 +393,7 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	mbuf->ol_flags = 0;
 	mbuf->next = NULL;
 	rte_mbuf_refcnt_set(mbuf, 1);
-	dpaa_eth_packet_info(mbuf, (uint64_t)mbuf->buf_addr);
+	dpaa_eth_packet_info(mbuf, mbuf->buf_addr);
 
 	return mbuf;
 }
@@ -455,7 +454,7 @@ dpaa_rx_cb(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
 		mbuf->ol_flags = 0;
 		mbuf->next = NULL;
 		rte_mbuf_refcnt_set(mbuf, 1);
-		dpaa_eth_packet_info(mbuf, (uint64_t)mbuf->buf_addr);
+		dpaa_eth_packet_info(mbuf, mbuf->buf_addr);
 	}
 }
 
@@ -593,7 +592,7 @@ uint16_t dpaa_eth_queue_rx(void *q,
 static void *dpaa_get_pktbuf(struct dpaa_bp_info *bp_info)
 {
 	int ret;
-	uint64_t buf = 0;
+	size_t buf = 0;
 	struct bm_buffer bufs;
 
 	ret = bman_acquire(bp_info->bp, &bufs, 1, 0);
@@ -602,10 +601,10 @@ static void *dpaa_get_pktbuf(struct dpaa_bp_info *bp_info)
 		return (void *)buf;
 	}
 
-	DPAA_DP_LOG(DEBUG, "got buffer 0x%lx from pool %d",
+	DPAA_DP_LOG(DEBUG, "got buffer 0x%" PRIx64 " from pool %d",
 		    (uint64_t)bufs.addr, bufs.bpid);
 
-	buf = (uint64_t)DPAA_MEMPOOL_PTOV(bp_info, bufs.addr)
+	buf = (size_t)DPAA_MEMPOOL_PTOV(bp_info, bufs.addr)
 				- bp_info->meta_data_size;
 	if (!buf)
 		goto out;

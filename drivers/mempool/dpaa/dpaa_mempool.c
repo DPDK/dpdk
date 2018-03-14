@@ -115,7 +115,8 @@ dpaa_buf_free(struct dpaa_bp_info *bp_info, uint64_t addr)
 	struct bm_buffer buf;
 	int ret;
 
-	DPAA_MEMPOOL_DEBUG("Free 0x%lx to bpid: %d", addr, bp_info->bpid);
+	DPAA_MEMPOOL_DEBUG("Free 0x%" PRIx64 " to bpid: %d",
+			   addr, bp_info->bpid);
 
 	bm_buffer_set64(&buf, addr);
 retry:
@@ -154,8 +155,7 @@ dpaa_mbuf_free_bulk(struct rte_mempool *pool,
 		if (unlikely(!bp_info->ptov_off)) {
 			/* buffers are from single mem segment */
 			if (bp_info->flags & DPAA_MPOOL_SINGLE_SEGMENT) {
-				bp_info->ptov_off
-						= (uint64_t)obj_table[i] - phy;
+				bp_info->ptov_off = (size_t)obj_table[i] - phy;
 				rte_dpaa_bpid_info[bp_info->bpid].ptov_off
 						= bp_info->ptov_off;
 			}
@@ -282,8 +282,8 @@ dpaa_register_memory_area(const struct rte_mempool *mp,
 	bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
 
-	DPAA_MEMPOOL_DEBUG("Req size %lu vs Available %u\n",
-			   len, total_elt_sz * mp->size);
+	DPAA_MEMPOOL_DEBUG("Req size %" PRIx64 " vs Available %u\n",
+			   (uint64_t)len, total_elt_sz * mp->size);
 
 	/* Detect pool area has sufficient space for elements in this memzone */
 	if (len >= total_elt_sz * mp->size)

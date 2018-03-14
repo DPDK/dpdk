@@ -300,7 +300,7 @@ fman_if_init(const struct device_node *dpa_node)
 
 	_errno = fman_get_mac_index(regs_addr_host, &__if->__if.mac_idx);
 	if (_errno) {
-		FMAN_ERR(-EINVAL, "Invalid register address: %lu",
+		FMAN_ERR(-EINVAL, "Invalid register address: %" PRIx64,
 			 regs_addr_host);
 		goto err;
 	}
