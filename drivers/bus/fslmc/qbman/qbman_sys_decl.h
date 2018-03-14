@@ -36,4 +36,18 @@ static inline void prefetch_for_store(void *p)
 #define dccivac(p)	RTE_SET_USED(p)
 #define prefetch_for_load(p) { asm volatile ("pld [%0]" : : "r" (p)); }
 #define prefetch_for_store(p) { asm volatile ("pld [%0]" : : "r" (p)); }
+
+#else
+#define dcbz(p)	RTE_SET_USED(p)
+#define lwsync()
+#define dcbf(p)	RTE_SET_USED(p)
+#define dccivac(p)	RTE_SET_USED(p)
+static inline void prefetch_for_load(void *p)
+{
+	RTE_SET_USED(p);
+}
+static inline void prefetch_for_store(void *p)
+{
+	RTE_SET_USED(p);
+}
 #endif
