@@ -242,7 +242,7 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 #endif
 	struct qbman_swp *swp;
 	uint16_t bpid;
-	uint64_t bufs[DPAA2_MBUF_MAX_ACQ_REL];
+	size_t bufs[DPAA2_MBUF_MAX_ACQ_REL];
 	int i, ret;
 	unsigned int n = 0;
 	struct dpaa2_bp_info *bp_info;
@@ -270,10 +270,10 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 		 * then the remainder.
 		 */
 		if ((count - n) > DPAA2_MBUF_MAX_ACQ_REL) {
-			ret = qbman_swp_acquire(swp, bpid, bufs,
+			ret = qbman_swp_acquire(swp, bpid, (void *)bufs,
 						DPAA2_MBUF_MAX_ACQ_REL);
 		} else {
-			ret = qbman_swp_acquire(swp, bpid, bufs,
+			ret = qbman_swp_acquire(swp, bpid, (void *)bufs,
 						count - n);
 		}
 		/* In case of less than requested number of buffers available
@@ -290,7 +290,7 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 		}
 		/* assigning mbuf from the acquired objects */
 		for (i = 0; (i < ret) && bufs[i]; i++) {
-			DPAA2_MODIFY_IOVA_TO_VADDR(bufs[i], uint64_t);
+			DPAA2_MODIFY_IOVA_TO_VADDR(bufs[i], size_t);
 			obj_table[n] = (struct rte_mbuf *)
 				       (bufs[i] - bp_info->meta_data_size);
 			PMD_TX_LOG(DEBUG, "Acquired %p address %p from BMAN",

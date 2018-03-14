@@ -291,7 +291,7 @@ struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(int cpu_id)
 	if (!dpio_dev)
 		return NULL;
 
-	PMD_DRV_LOG(DEBUG, "New Portal=0x%x (%d) affined thread - %lu",
+	PMD_DRV_LOG(DEBUG, "New Portal %p (%d) affined thread - %lu",
 		    dpio_dev, dpio_dev->index, syscall(SYS_gettid));
 
 	ret = dpaa2_configure_stashing(dpio_dev, cpu_id);
@@ -314,8 +314,9 @@ dpaa2_affine_qbman_swp(void)
 		return -1;
 
 	if (dpaa2_io_portal[lcore_id].dpio_dev) {
-		PMD_DRV_LOG(INFO, "DPAA Portal=0x%x (%d) is being shared"
-			    " between thread %lu and current  %lu",
+		PMD_DRV_LOG(INFO, "DPAAPortal=%p (%d) is being shared"
+			    " between thread %" PRIu64 " and current "
+			    "%" PRIu64 "\n",
 			    dpaa2_io_portal[lcore_id].dpio_dev,
 			    dpaa2_io_portal[lcore_id].dpio_dev->index,
 			    dpaa2_io_portal[lcore_id].net_tid,
@@ -326,7 +327,8 @@ dpaa2_affine_qbman_swp(void)
 				 [lcore_id].dpio_dev->ref_count);
 		dpaa2_io_portal[lcore_id].net_tid = tid;
 
-		PMD_DRV_LOG(DEBUG, "Old Portal=0x%x (%d) affined thread - %lu",
+		PMD_DRV_LOG(DEBUG, "Old Portal=%p (%d)"
+			    "affined thread - %" PRIu64 "\n",
 			    dpaa2_io_portal[lcore_id].dpio_dev,
 			    dpaa2_io_portal[lcore_id].dpio_dev->index,
 			    tid);
@@ -360,8 +362,9 @@ dpaa2_affine_qbman_swp_sec(void)
 		return -1;
 
 	if (dpaa2_io_portal[lcore_id].sec_dpio_dev) {
-		PMD_DRV_LOG(INFO, "DPAA Portal=0x%x (%d) is being shared"
-			    " between thread %lu and current  %lu",
+		PMD_DRV_LOG(INFO, "DPAAPortal=%p (%d) is being shared"
+			    " between thread %" PRIu64 " and current "
+			    "%" PRIu64 "\n",
 			    dpaa2_io_portal[lcore_id].sec_dpio_dev,
 			    dpaa2_io_portal[lcore_id].sec_dpio_dev->index,
 			    dpaa2_io_portal[lcore_id].sec_tid,
@@ -372,7 +375,8 @@ dpaa2_affine_qbman_swp_sec(void)
 				 [lcore_id].sec_dpio_dev->ref_count);
 		dpaa2_io_portal[lcore_id].sec_tid = tid;
 
-		PMD_DRV_LOG(DEBUG, "Old Portal=0x%x (%d) affined thread - %lu",
+		PMD_DRV_LOG(DEBUG, "Old Portal=%p (%d) "
+			    "affined thread - %" PRIu64 "\n",
 			    dpaa2_io_portal[lcore_id].sec_dpio_dev,
 			    dpaa2_io_portal[lcore_id].sec_dpio_dev->index,
 			    tid);
@@ -427,7 +431,7 @@ dpaa2_create_dpio_device(int vdev_fd,
 	}
 
 	dpio_dev->ce_size = reg_info.size;
-	dpio_dev->qbman_portal_ce_paddr = (uint64_t)mmap(NULL, reg_info.size,
+	dpio_dev->qbman_portal_ce_paddr = (size_t)mmap(NULL, reg_info.size,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
 				vdev_fd, reg_info.offset);
 
@@ -439,7 +443,7 @@ dpaa2_create_dpio_device(int vdev_fd,
 	}
 
 	dpio_dev->ci_size = reg_info.size;
-	dpio_dev->qbman_portal_ci_paddr = (uint64_t)mmap(NULL, reg_info.size,
+	dpio_dev->qbman_portal_ci_paddr = (size_t)mmap(NULL, reg_info.size,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
 				vdev_fd, reg_info.offset);
 

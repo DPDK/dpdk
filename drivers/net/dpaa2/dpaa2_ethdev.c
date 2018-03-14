@@ -445,7 +445,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	memset(&cfg, 0, sizeof(struct dpni_queue));
 
 	options = options | DPNI_QUEUE_OPT_USER_CTX;
-	cfg.user_context = (uint64_t)(dpaa2_q);
+	cfg.user_context = (size_t)(dpaa2_q);
 
 	/*if ls2088 or rev2 device, enable the stashing */
 
@@ -560,7 +560,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		 */
 		cong_notif_cfg.threshold_exit = CONG_EXIT_TX_THRESHOLD;
 		cong_notif_cfg.message_ctx = 0;
-		cong_notif_cfg.message_iova = (uint64_t)dpaa2_q->cscn;
+		cong_notif_cfg.message_iova = (size_t)dpaa2_q->cscn;
 		cong_notif_cfg.dest_cfg.dest_type = DPNI_DEST_NONE;
 		cong_notif_cfg.notification_mode =
 					 DPNI_CONG_OPT_WRITE_MEM_ON_ENTER |
@@ -1702,7 +1702,7 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 	}
 
 	options |= DPNI_QUEUE_OPT_USER_CTX;
-	cfg.user_context = (uint64_t)(dpaa2_ethq);
+	cfg.user_context = (size_t)(dpaa2_ethq);
 
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, eth_priv->token, DPNI_QUEUE_RX,
 			     dpaa2_ethq->tc_index, flow_id, options, &cfg);

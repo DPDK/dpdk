@@ -50,7 +50,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 
 	ret = dpaa2_distset_to_dpkg_profile_cfg(req_dist_set, &kg_cfg);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "given rss_hf (%lx) not supported",
+		PMD_INIT_LOG(ERR, "given rss_hf (%" PRIx64 ") not supported",
 			     req_dist_set);
 		rte_free(p_params);
 		return ret;

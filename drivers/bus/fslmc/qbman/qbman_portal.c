@@ -553,10 +553,9 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 
 	/* Flush all the cacheline without load/store in between */
 	eqcr_pi = s->eqcr.pi;
-	addr_cena = (uint64_t)s->sys.addr_cena;
+	addr_cena = (size_t)s->sys.addr_cena;
 	for (i = 0; i < num_enqueued; i++) {
-		dcbf((uint64_t *)(addr_cena +
-				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7)));
+		dcbf((addr_cena + QBMAN_CENA_SWP_EQCR(eqcr_pi & 7)));
 		eqcr_pi++;
 		eqcr_pi &= 0xF;
 	}
@@ -620,10 +619,9 @@ int qbman_swp_enqueue_multiple_desc(struct qbman_swp *s,
 
 	/* Flush all the cacheline without load/store in between */
 	eqcr_pi = s->eqcr.pi;
-	addr_cena = (uint64_t)s->sys.addr_cena;
+	addr_cena = (size_t)s->sys.addr_cena;
 	for (i = 0; i < num_enqueued; i++) {
-		dcbf((uint64_t *)(addr_cena +
-				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7)));
+		dcbf((addr_cena + QBMAN_CENA_SWP_EQCR(eqcr_pi & 7)));
 		eqcr_pi++;
 		eqcr_pi &= 0xF;
 	}
@@ -690,7 +688,7 @@ void qbman_pull_desc_set_storage(struct qbman_pull_desc *d,
 				 dma_addr_t storage_phys,
 				 int stash)
 {
-	d->pull.rsp_addr_virt = (uint64_t)storage;
+	d->pull.rsp_addr_virt = (size_t)storage;
 
 	if (!storage) {
 		d->pull.verb &= ~(1 << QB_VDQCR_VERB_RLS_SHIFT);
@@ -749,7 +747,7 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 	}
 
 	d->pull.tok = s->sys.idx + 1;
-	s->vdq.storage = (void *)d->pull.rsp_addr_virt;
+	s->vdq.storage = (void *)(size_t)d->pull.rsp_addr_virt;
 	p = qbman_cena_write_start_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR);
 	memcpy(&p[1], &cl[1], 12);
 

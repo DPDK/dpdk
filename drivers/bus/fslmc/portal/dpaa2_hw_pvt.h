@@ -174,7 +174,7 @@ enum qbman_fd_format {
 };
 /*Macros to define operations on FD*/
 #define DPAA2_SET_FD_ADDR(fd, addr) do {			\
-	(fd)->simple.addr_lo = lower_32_bits((uint64_t)(addr));	\
+	(fd)->simple.addr_lo = lower_32_bits((size_t)(addr));	\
 	(fd)->simple.addr_hi = upper_32_bits((uint64_t)(addr));	\
 } while (0)
 #define DPAA2_SET_FD_LEN(fd, length)	((fd)->simple.len = length)
@@ -193,33 +193,32 @@ enum qbman_fd_format {
 
 #define	DPAA2_SET_FD_ASAL(fd, asal)	((fd)->simple.ctrl |= (asal << 16))
 #define DPAA2_SET_FD_FLC(fd, addr)	do { \
-	(fd)->simple.flc_lo = lower_32_bits((uint64_t)(addr));	\
+	(fd)->simple.flc_lo = lower_32_bits((size_t)(addr));	\
 	(fd)->simple.flc_hi = upper_32_bits((uint64_t)(addr));	\
 } while (0)
 #define DPAA2_SET_FLE_INTERNAL_JD(fle, len) ((fle)->frc = (0x80000000 | (len)))
 #define DPAA2_GET_FLE_ADDR(fle)					\
 	(uint64_t)((((uint64_t)((fle)->addr_hi)) << 32) + (fle)->addr_lo)
 #define DPAA2_SET_FLE_ADDR(fle, addr) do { \
-	(fle)->addr_lo = lower_32_bits((uint64_t)addr);     \
-	(fle)->addr_hi = upper_32_bits((uint64_t)addr);	  \
+	(fle)->addr_lo = lower_32_bits((size_t)addr);		\
+	(fle)->addr_hi = upper_32_bits((uint64_t)addr);		\
 } while (0)
 #define DPAA2_GET_FLE_CTXT(fle)					\
-	(uint64_t)((((uint64_t)((fle)->reserved[1])) << 32) + \
-			(fle)->reserved[0])
+	((((uint64_t)((fle)->reserved[1])) << 32) + (fle)->reserved[0])
 #define DPAA2_FLE_SAVE_CTXT(fle, addr) do { \
-	(fle)->reserved[0] = lower_32_bits((uint64_t)addr);     \
-	(fle)->reserved[1] = upper_32_bits((uint64_t)addr);	  \
+	(fle)->reserved[0] = lower_32_bits((size_t)addr);	\
+	(fle)->reserved[1] = upper_32_bits((uint64_t)addr);	\
 } while (0)
 #define DPAA2_SET_FLE_OFFSET(fle, offset) \
 	((fle)->fin_bpid_offset |= (uint32_t)(offset) << 16)
-#define DPAA2_SET_FLE_BPID(fle, bpid) ((fle)->fin_bpid_offset |= (uint64_t)bpid)
+#define DPAA2_SET_FLE_BPID(fle, bpid) ((fle)->fin_bpid_offset |= (size_t)bpid)
 #define DPAA2_GET_FLE_BPID(fle) ((fle)->fin_bpid_offset & 0x000000ff)
-#define DPAA2_SET_FLE_FIN(fle)	((fle)->fin_bpid_offset |= (uint64_t)1 << 31)
+#define DPAA2_SET_FLE_FIN(fle)	((fle)->fin_bpid_offset |= 1 << 31)
 #define DPAA2_SET_FLE_IVP(fle)   (((fle)->fin_bpid_offset |= 0x00004000))
 #define DPAA2_SET_FD_COMPOUND_FMT(fd)	\
 	((fd)->simple.bpid_offset |= (uint32_t)1 << 28)
 #define DPAA2_GET_FD_ADDR(fd)	\
-((uint64_t)((((uint64_t)((fd)->simple.addr_hi)) << 32) + (fd)->simple.addr_lo))
+(((((uint64_t)((fd)->simple.addr_hi)) << 32) + (fd)->simple.addr_lo))
 
 #define DPAA2_GET_FD_LEN(fd)	((fd)->simple.len)
 #define DPAA2_GET_FD_BPID(fd)	(((fd)->simple.bpid_offset & 0x00003FFF))
@@ -231,7 +230,7 @@ enum qbman_fd_format {
 	(((fle)->fin_bpid_offset & ((uint64_t)1 << 29)) ? 1 : 0)
 
 #define DPAA2_INLINE_MBUF_FROM_BUF(buf, meta_data_size) \
-	((struct rte_mbuf *)((uint64_t)(buf) - (meta_data_size)))
+	((struct rte_mbuf *)((size_t)(buf) - (meta_data_size)))
 
 #define DPAA2_ASAL_VAL (DPAA2_MBUF_HW_ANNOTATION / 64)
 
@@ -265,14 +264,14 @@ static void *dpaa2_mem_ptov(phys_addr_t paddr)
 	int i;
 
 	if (dpaa2_virt_mode)
-		return (void *)paddr;
+		return (void *)(size_t)paddr;
 
 	memseg = rte_eal_get_physmem_layout();
 
 	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
 		if (paddr >= memseg[i].iova &&
-		   (char *)paddr < (char *)memseg[i].iova + memseg[i].len)
-			return (void *)(memseg[i].addr_64
+		    paddr < memseg[i].iova + memseg[i].len)
+			return (void *)(size_t)(memseg[i].addr_64
 				+ (paddr - memseg[i].iova));
 	}
 	return NULL;
@@ -295,7 +294,7 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 			return memseg[i].iova
 				+ (vaddr - memseg[i].addr_64);
 	}
-	return (phys_addr_t)(NULL);
+	return (size_t)(NULL);
 }
 
 /**
@@ -311,18 +310,18 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 /**
  * macro to convert Virtual address to IOVA
  */
-#define DPAA2_VADDR_TO_IOVA(_vaddr) dpaa2_mem_vtop((uint64_t)(_vaddr))
+#define DPAA2_VADDR_TO_IOVA(_vaddr) dpaa2_mem_vtop((size_t)(_vaddr))
 
 /**
  * macro to convert IOVA to Virtual address
  */
-#define DPAA2_IOVA_TO_VADDR(_iova) dpaa2_mem_ptov((phys_addr_t)(_iova))
+#define DPAA2_IOVA_TO_VADDR(_iova) dpaa2_mem_ptov((size_t)(_iova))
 
 /**
  * macro to convert modify the memory containing IOVA to Virtual address
  */
 #define DPAA2_MODIFY_IOVA_TO_VADDR(_mem, _type) \
-	{_mem = (_type)(dpaa2_mem_ptov((phys_addr_t)(_mem))); }
+	{_mem = (_type)(dpaa2_mem_ptov((size_t)(_mem))); }
 
 #else	/* RTE_LIBRTE_DPAA2_USE_PHYS_IOVA */
 

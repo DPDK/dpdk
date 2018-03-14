@@ -76,7 +76,7 @@ fslmc_get_container_group(int *groupid)
 	if (!g_container) {
 		container = getenv("DPRC");
 		if (container == NULL) {
-			RTE_LOG(WARNING, EAL, "DPAA2: DPRC not available\n");
+			RTE_LOG(DEBUG, EAL, "DPAA2: DPRC not available\n");
 			return -EINVAL;
 		}
 
@@ -270,7 +270,7 @@ int rte_fslmc_vfio_dmamap(void)
 
 static int64_t vfio_map_mcp_obj(struct fslmc_vfio_group *group, char *mcp_obj)
 {
-	int64_t v_addr = (int64_t)MAP_FAILED;
+	intptr_t v_addr = (intptr_t)MAP_FAILED;
 	int32_t ret, mc_fd;
 
 	struct vfio_device_info d_info = { .argsz = sizeof(d_info) };
@@ -301,7 +301,7 @@ static int64_t vfio_map_mcp_obj(struct fslmc_vfio_group *group, char *mcp_obj)
 	FSLMC_VFIO_LOG(DEBUG, "region offset = %llx  , region size = %llx",
 		       reg_info.offset, reg_info.size);
 
-	v_addr = (uint64_t)mmap(NULL, reg_info.size,
+	v_addr = (size_t)mmap(NULL, reg_info.size,
 		PROT_WRITE | PROT_READ, MAP_SHARED,
 		mc_fd, reg_info.offset);
 
@@ -469,7 +469,7 @@ fslmc_process_iodevices(struct rte_dpaa2_device *dev)
 static int
 fslmc_process_mcp(struct rte_dpaa2_device *dev)
 {
-	int64_t v_addr;
+	intptr_t v_addr;
 	char *dev_name;
 	struct fsl_mc_io dpmng  = {0};
 	struct mc_version mc_ver_info = {0};
@@ -489,7 +489,7 @@ fslmc_process_mcp(struct rte_dpaa2_device *dev)
 	}
 
 	v_addr = vfio_map_mcp_obj(&vfio_group, dev_name);
-	if (v_addr == (int64_t)MAP_FAILED) {
+	if (v_addr == (intptr_t)MAP_FAILED) {
 		FSLMC_VFIO_LOG(ERR, "Error mapping region  (errno = %d)",
 			       errno);
 		free(rte_mcp_ptr_list);
