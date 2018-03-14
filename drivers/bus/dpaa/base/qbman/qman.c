@@ -1087,7 +1087,7 @@ unsigned int qman_portal_poll_rx(unsigned int poll_limit,
 		shadow[rx_number]->fd.opaque =
 			be32_to_cpu(dq[rx_number]->fd.opaque);
 #else
-		shadow = dq;
+		shadow[rx_number] = dq[rx_number];
 #endif
 
 		/* SDQCR: context_b points to the FQ */
@@ -1095,7 +1095,8 @@ unsigned int qman_portal_poll_rx(unsigned int poll_limit,
 		fq[rx_number] = qman_fq_lookup_table[be32_to_cpu(
 						dq[rx_number]->contextB)];
 #else
-		fq[rx_number] = (void *)(uintptr_t)be32_to_cpu(dq->contextB);
+		fq[rx_number] = (void *)be32_to_cpu(
+						dq[rx_number]->contextB);
 #endif
 		fq[rx_number]->cb.dqrr_prepare(shadow[rx_number],
 						 &bufs[rx_number]);

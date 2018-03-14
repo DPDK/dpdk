@@ -246,7 +246,6 @@ int fsl_qman_portal_destroy(struct qman_portal *qp)
 int qman_global_init(void)
 {
 	const struct device_node *dt_node;
-	int ret = 0;
 	size_t lenp;
 	const u32 *chanid;
 	static int ccsr_map_fd;
@@ -352,9 +351,7 @@ int qman_global_init(void)
 		qman_clk = be32_to_cpu(*clk);
 
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
-	ret = qman_setup_fq_lookup_table(CONFIG_FSL_QMAN_FQ_LOOKUP_MAX);
-	if (ret)
-		return ret;
+	return qman_setup_fq_lookup_table(CONFIG_FSL_QMAN_FQ_LOOKUP_MAX);
 #endif
 	return 0;
 }
