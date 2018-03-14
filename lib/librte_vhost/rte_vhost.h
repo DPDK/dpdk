@@ -124,6 +124,11 @@ struct vhost_device_ops {
 /**
  * Convert guest physical address to host virtual address
  *
+ * This function is deprecated because unsafe.
+ * New rte_vhost_va_from_guest_pa() should be used instead to ensure
+ * guest physical ranges are fully and contiguously mapped into
+ * process virtual address space.
+ *
  * @param mem
  *  the guest memory regions
  * @param gpa
@@ -131,6 +136,7 @@ struct vhost_device_ops {
  * @return
  *  the host virtual address on success, 0 on failure
  */
+__rte_deprecated
 static __rte_always_inline uint64_t
 rte_vhost_gpa_to_vva(struct rte_vhost_memory *mem, uint64_t gpa)
 {
