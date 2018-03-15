@@ -72,6 +72,7 @@ Features of the MRVL PMD are:
 - Basic stats
 - Extended stats
 - QoS
+- RX flow control
 
 
 Limitations

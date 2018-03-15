@@ -1696,6 +1696,82 @@ mrvl_tx_queue_release(void *txq)
 }
 
 /**
+ * DPDK callback to get flow control configuration.
+ *
+ * @param dev
+ *  Pointer to Ethernet device structure.
+ * @param fc_conf
+ *  Pointer to the flow control configuration.
+ *
+ * @return
+ *  0 on success, negative error value otherwise.
+ */
+static int
+mrvl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret, en;
+
+	if (!priv)
+		return -EPERM;
+
+	ret = pp2_ppio_get_rx_pause(priv->ppio, &en);
+	if (ret) {
+		RTE_LOG(ERR, PMD, "Failed to read rx pause state\n");
+		return ret;
+	}
+
+	fc_conf->mode = en ? RTE_FC_RX_PAUSE : RTE_FC_NONE;
+
+	return 0;
+}
+
+/**
+ * DPDK callback to set flow control configuration.
+ *
+ * @param dev
+ *  Pointer to Ethernet device structure.
+ * @param fc_conf
+ *  Pointer to the flow control configuration.
+ *
+ * @return
+ *  0 on success, negative error value otherwise.
+ */
+static int
+mrvl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+
+	if (!priv)
+		return -EPERM;
+
+	if (fc_conf->high_water ||
+	    fc_conf->low_water ||
+	    fc_conf->pause_time ||
+	    fc_conf->mac_ctrl_frame_fwd ||
+	    fc_conf->autoneg) {
+		RTE_LOG(ERR, PMD, "Flowctrl parameter is not supported\n");
+
+		return -EINVAL;
+	}
+
+	if (fc_conf->mode == RTE_FC_NONE ||
+	    fc_conf->mode == RTE_FC_RX_PAUSE) {
+		int ret, en;
+
+		en = fc_conf->mode == RTE_FC_NONE ? 0 : 1;
+		ret = pp2_ppio_set_rx_pause(priv->ppio, en);
+		if (ret)
+			RTE_LOG(ERR, PMD,
+				"Failed to change flowctrl on RX side\n");
+
+		return ret;
+	}
+
+	return 0;
+}
+
+/**
  * Update RSS hash configuration
  *
  * @param dev
@@ -1814,6 +1890,8 @@ static const struct eth_dev_ops mrvl_ops = {
 	.rx_queue_release = mrvl_rx_queue_release,
 	.tx_queue_setup = mrvl_tx_queue_setup,
 	.tx_queue_release = mrvl_tx_queue_release,
+	.flow_ctrl_get = mrvl_flow_ctrl_get,
+	.flow_ctrl_set = mrvl_flow_ctrl_set,
 	.rss_hash_update = mrvl_rss_hash_update,
 	.rss_hash_conf_get = mrvl_rss_hash_conf_get,
 	.filter_ctrl = mrvl_eth_filter_ctrl,
