@@ -1462,8 +1462,8 @@ mrvl_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 static int
 mrvl_fill_bpool(struct mrvl_rxq *rxq, int num)
 {
-	struct buff_release_entry entries[MRVL_PP2_TXD_MAX];
-	struct rte_mbuf *mbufs[MRVL_PP2_TXD_MAX];
+	struct buff_release_entry entries[MRVL_PP2_RXD_MAX];
+	struct rte_mbuf *mbufs[MRVL_PP2_RXD_MAX];
 	int i, ret;
 	unsigned int core_id;
 	struct pp2_hif *hif;
