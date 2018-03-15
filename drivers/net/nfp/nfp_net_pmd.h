@@ -248,15 +248,13 @@ struct nfp_net_txq {
 	/*
 	 * At this point 48 bytes have been used for all the fields in the
 	 * TX critical path. We have room for 8 bytes and still all placed
-	 * in a cache line. We are not using the threshold values below nor
-	 * the txq_flags but if we need to, we can add the most used in the
-	 * remaining bytes.
+	 * in a cache line. We are not using the threshold values below but
+	 * if we need to, we can add the most used in the remaining bytes.
 	 */
 	uint32_t tx_rs_thresh; /* not used by now. Future? */
 	uint32_t tx_pthresh;   /* not used by now. Future? */
 	uint32_t tx_hthresh;   /* not used by now. Future? */
 	uint32_t tx_wthresh;   /* not used by now. Future? */
-	uint32_t txq_flags;    /* not used by now. Future? */
 	uint16_t port_id;
 	int qidx;
 	int tx_qcidx;
