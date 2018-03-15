@@ -113,6 +113,9 @@ Prerequisites
   approval has been granted, library can be found by typing ``musdk`` in
   the search box.
 
+  To get better understanding of the library one can consult documentation
+  available in the ``doc`` top level directory of the MUSDK sources.
+
   MUSDK must be configured with the following features:
 
   .. code-block:: console
@@ -317,6 +320,171 @@ the path to the MUSDK installation directory needs to be exported.
    make config T=arm64-armv8a-linuxapp-gcc
    sed -ri 's,(MRVL_PMD=)n,\1y,' build/.config
    make
+
+Flow API
+--------
+
+PPv2 offers packet classification capabilities via classifier engine which
+can be configured via generic flow API offered by DPDK.
+
+Supported flow actions
+~~~~~~~~~~~~~~~~~~~~~~
+
+Following flow action items are supported by the driver:
+
+* DROP
+* QUEUE
+
+Supported flow items
+~~~~~~~~~~~~~~~~~~~~
+
+Following flow items and their respective fields are supported by the driver:
+
+* ETH
+
+  * source MAC
+  * destination MAC
+  * ethertype
+
+* VLAN
+
+  * PCP
+  * VID
+
+* IPV4
+
+  * DSCP
+  * protocol
+  * source address
+  * destination address
+
+* IPV6
+
+  * flow label
+  * next header
+  * source address
+  * destination address
+
+* UDP
+
+  * source port
+  * destination port
+
+* TCP
+
+  * source port
+  * destination port
+
+Classifier match engine
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Classifier has an internal match engine which can be configured to
+operate in either exact or maskable mode.
+
+Mode is selected upon creation of the first unique flow rule as follows:
+
+* maskable, if key size is up to 8 bytes.
+* exact, otherwise, i.e for keys bigger than 8 bytes.
+
+Where the key size equals the number of bytes of all fields specified
+in the flow items.
+
+.. table:: Examples of key size calculation
+
+   +----------------------------------------------------------------------------+-------------------+-------------+
+   | Flow pattern                                                               | Key size in bytes | Used engine |
+   +============================================================================+===================+=============+
+   | ETH (destination MAC) / VLAN (VID)                                         | 6 + 2 = 8         | Maskable    |
+   +----------------------------------------------------------------------------+-------------------+-------------+
+   | VLAN (VID) / IPV4 (source address)                                         | 2 + 4 = 6         | Maskable    |
+   +----------------------------------------------------------------------------+-------------------+-------------+
+   | TCP (source port, destination port)                                        | 2 + 2 = 4         | Maskable    |
+   +----------------------------------------------------------------------------+-------------------+-------------+
+   | VLAN (priority) / IPV4 (source address)                                    | 1 + 4 = 5         | Maskable    |
+   +----------------------------------------------------------------------------+-------------------+-------------+
+   | IPV4 (destination address) / UDP (source port, destination port)           | 6 + 2 + 2 = 10    | Exact       |
+   +----------------------------------------------------------------------------+-------------------+-------------+
+   | VLAN (VID) / IPV6 (flow label, destination address)                        | 2 + 3 + 16 = 21   | Exact       |
+   +----------------------------------------------------------------------------+-------------------+-------------+
+   | IPV4 (DSCP, source address, destination address)                           | 1 + 4 + 4 = 9     | Exact       |
+   +----------------------------------------------------------------------------+-------------------+-------------+
+   | IPV6 (flow label, source address, destination address)                     | 3 + 16 + 16 = 35  | Exact       |
+   +----------------------------------------------------------------------------+-------------------+-------------+
+
+From the user perspective maskable mode means that masks specified
+via flow rules are respected. In case of exact match mode, masks
+which do not provide exact matching (all bits masked) are ignored.
+
+If the flow matches more than one classifier rule the first
+(with the lowest index) matched takes precedence.
+
+Flow rules usage example
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before proceeding run testpmd user application:
+
+.. code-block:: console
+
+   ./testpmd --vdev=net_mrvl,iface=eth0,iface=eth2 -c 3 -- -i --p 3 -a --disable-hw-vlan-strip
+
+Example #1
+^^^^^^^^^^
+
+.. code-block:: console
+
+   testpmd> flow create 0 ingress pattern eth src is 10:11:12:13:14:15 / end actions drop / end
+
+In this case key size is 6 bytes thus maskable type is selected. Testpmd
+will set mask to ff:ff:ff:ff:ff:ff i.e traffic explicitly matching
+above rule will be dropped.
+
+Example #2
+^^^^^^^^^^
+
+.. code-block:: console
+
+   testpmd> flow create 0 ingress pattern ipv4 src spec 10.10.10.0 src mask 255.255.255.0 / tcp src spec 0x10 src mask 0x10 / end action drop / end
+
+In this case key size is 8 bytes thus maskable type is selected.
+Flows which have IPv4 source addresses ranging from 10.10.10.0 to 10.10.10.255
+and tcp source port set to 16 will be dropped.
+
+Example #3
+^^^^^^^^^^
+
+.. code-block:: console
+
+   testpmd> flow create 0 ingress pattern vlan vid spec 0x10 vid mask 0x10 / ipv4 src spec 10.10.1.1 src mask 255.255.0.0 dst spec 11.11.11.1 dst mask 255.255.255.0 / end actions drop / end
+
+In this case key size is 10 bytes thus exact type is selected.
+Even though each item has partial mask set, masks will be ignored.
+As a result only flows with VID set to 16 and IPv4 source and destination
+addresses set to 10.10.1.1 and 11.11.11.1 respectively will be dropped.
+
+Limitations
+~~~~~~~~~~~
+
+Following limitations need to be taken into account while creating flow rules:
+
+* For IPv4 exact match type the key size must be up to 12 bytes.
+* For IPv6 exact match type the key size must be up to 36 bytes.
+* Following fields cannot be partially masked (all masks are treated as
+  if they were exact):
+
+  * ETH: ethertype
+  * VLAN: PCP, VID
+  * IPv4: protocol
+  * IPv6: next header
+  * TCP/UDP: source port, destination port
+
+* Only one classifier table can be created thus all rules in the table
+  have to match table format. Table format is set during creation of
+  the first unique flow rule.
+* Up to 5 fields can be specified per flow rule.
+* Up to 20 flow rules can be added.
+
+For additional information about classifier please consult
+``doc/musdk_cls_user_guide.txt``.
 
 Usage Example
 -------------

@@ -8,6 +8,7 @@
 #define _MRVL_ETHDEV_H_
 
 #include <rte_spinlock.h>
+#include <rte_flow_driver.h>
 
 #include <env/mv_autogen_comp_flags.h>
 #include <drivers/mv_pp2.h>
@@ -80,12 +81,21 @@ struct mrvl_priv {
 	uint8_t rss_hf_tcp;
 	uint8_t uc_mc_flushed;
 	uint8_t vlan_flushed;
+	uint8_t isolated;
 
 	struct pp2_ppio_params ppio_params;
 	struct pp2_cls_qos_tbl_params qos_tbl_params;
 	struct pp2_cls_tbl *qos_tbl;
 	uint16_t nb_rx_queues;
+
+	struct pp2_cls_tbl_params cls_tbl_params;
+	struct pp2_cls_tbl *cls_tbl;
+	uint32_t cls_tbl_pattern;
+	LIST_HEAD(mrvl_flows, rte_flow) flows;
+
 	struct pp2_cls_plcr *policer;
 };
 
+/** Flow operations forward declaration. */
+extern const struct rte_flow_ops mrvl_flow_ops;
 #endif /* _MRVL_ETHDEV_H_ */
