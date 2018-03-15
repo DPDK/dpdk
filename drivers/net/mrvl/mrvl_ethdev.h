@@ -85,6 +85,7 @@ struct mrvl_priv {
 	struct pp2_cls_qos_tbl_params qos_tbl_params;
 	struct pp2_cls_tbl *qos_tbl;
 	uint16_t nb_rx_queues;
+	struct pp2_cls_plcr *policer;
 };
 
 #endif /* _MRVL_ETHDEV_H_ */

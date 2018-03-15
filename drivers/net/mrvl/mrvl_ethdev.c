@@ -661,6 +661,12 @@ mrvl_dev_stop(struct rte_eth_dev *dev)
 	if (priv->ppio)
 		pp2_ppio_deinit(priv->ppio);
 	priv->ppio = NULL;
+
+	/* policer must be released after ppio deinitialization */
+	if (priv->policer) {
+		pp2_cls_plcr_deinit(priv->policer);
+		priv->policer = NULL;
+	}
 }
 
 /**

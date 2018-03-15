@@ -27,6 +27,7 @@ struct mrvl_qos_cfg {
 			uint8_t inqs;
 			uint8_t dscps;
 			uint8_t pcps;
+			enum pp2_ppio_color color;
 		} tc[MRVL_PP2_TC_MAX];
 		struct {
 			uint8_t weight;
@@ -36,6 +37,8 @@ struct mrvl_qos_cfg {
 		uint16_t outqs;
 		uint8_t default_tc;
 		uint8_t use_global_defaults;
+		struct pp2_cls_plcr_params policer_params;
+		uint8_t policer_enable;
 	} port[RTE_MAX_ETHPORTS];
 };
 
