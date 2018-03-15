@@ -149,16 +149,35 @@ Configuration syntax
    [port <portnum> default]
    default_tc = <default_tc>
    mapping_priority = <mapping_priority>
+   policer_enable = <policer_enable>
+   token_unit = <token_unit>
+   color = <color_mode>
+   cir = <cir>
+   ebs = <ebs>
+   cbs = <cbs>
+
+   rate_limit_enable = <rate_limit_enable>
+   rate_limit = <rate_limit>
+   burst_size = <burst_size>
+
+   [port <portnum> tc <traffic_class>]
+   rxq = <rx_queue_list>
+   pcp = <pcp_list>
+   dscp = <dscp_list>
+   default_color = <default_color>
 
    [port <portnum> tc <traffic_class>]
    rxq = <rx_queue_list>
    pcp = <pcp_list>
    dscp = <dscp_list>
 
-   [port <portnum> tc <traffic_class>]
-   rxq = <rx_queue_list>
-   pcp = <pcp_list>
-   dscp = <dscp_list>
+   [port <portnum> txq <txqnum>]
+   sched_mode = <sched_mode>
+   wrr_weight = <wrr_weight>
+
+   rate_limit_enable = <rate_limit_enable>
+   rate_limit = <rate_limit>
+   burst_size = <burst_size>
 
 Where:
 
@@ -176,6 +195,30 @@ Where:
 
 - ``<dscp_list>``: List of DSCP values to handle in particular TC (e.g. 0-12 32-48 63).
 
+- ``<policer_enable>``: Enable ingress policer.
+
+- ``<token_unit>``: Policer token unit (`bytes` or `packets`).
+
+- ``<color_mode>``: Policer color mode (`aware` or `blind`).
+
+- ``<cir>``: Committed information rate in unit of kilo bits per second (data rate) or packets per second.
+
+- ``<cbs>``: Committed burst size in unit of kilo bytes or number of packets.
+
+- ``<ebs>``: Excess burst size in unit of kilo bytes or number of packets.
+
+- ``<default_color>``: Default color for specific tc.
+
+- ``<rate_limit_enable>``: Enables per port or per txq rate limiting.
+
+- ``<rate_limit>``: Committed information rate, in kilo bits per second.
+
+- ``<burst_size>``: Committed burst size, in kilo bytes.
+
+- ``<sched_mode>``: Egress scheduler mode (`wrr` or `sp`).
+
+- ``<wrr_weight>``: Txq weight.
+
 Setting PCP/DSCP values for the default TC is not required. All PCP/DSCP
 values not assigned explicitly to particular TC will be handled by the
 default TC.
@@ -187,10 +230,25 @@ Configuration file example
 
    [port 0 default]
    default_tc = 0
-   qos_mode = ip
+   mapping_priority = ip
+
+   rate_limit_enable = 1
+   rate_limit = 1000
+   burst_size = 2000
 
    [port 0 tc 0]
    rxq = 0 1
+
+   [port 0 txq 0]
+   sched_mode = wrr
+   wrr_weight = 10
+
+   [port 0 txq 1]
+   sched_mode = wrr
+   wrr_weight = 100
+
+   [port 0 txq 2]
+   sched_mode = sp
 
    [port 0 tc 1]
    rxq = 2
@@ -199,15 +257,31 @@ Configuration file example
 
    [port 1 default]
    default_tc = 0
-   qos_mode = vlan/ip
+   mapping_priority = vlan/ip
+
+   policer_enable = 1
+   token_unit = bytes
+   color = blind
+   cir = 100000
+   ebs = 64
+   cbs = 64
 
    [port 1 tc 0]
    rxq = 0
+   dscp = 10
 
    [port 1 tc 1]
-   rxq = 1 2
-   pcp = 5 6 7
-   dscp = 26-38
+   rxq = 1
+   dscp = 11-20
+
+   [port 1 tc 2]
+   rxq = 2
+   dscp = 30
+
+   [port 1 txq 0]
+   rate_limit_enable = 1
+   rate_limit = 10000
+   burst_size = 2000
 
 Usage example
 ^^^^^^^^^^^^^
@@ -215,7 +289,7 @@ Usage example
 .. code-block:: console
 
    ./testpmd --vdev=eth_mrvl,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
-     -c 7 -- -i -a --rxq=2
+     -c 7 -- -i -a --disable-hw-vlan-strip --rxq=3 --txq=3
 
 
 Building DPDK
