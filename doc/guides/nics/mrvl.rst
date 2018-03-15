@@ -70,6 +70,7 @@ Features of the MRVL PMD are:
 - L4 checksum offload
 - Packet type parsing
 - Basic stats
+- Extended stats
 - QoS
 
 
