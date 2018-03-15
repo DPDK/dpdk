@@ -20,6 +20,8 @@
 /* QoS config. */
 struct mrvl_qos_cfg {
 	struct port_cfg {
+		int rate_limit_enable;
+		struct pp2_ppio_rate_limit_params rate_limit_params;
 		struct {
 			uint8_t inq[MRVL_PP2_RXQ_MAX];
 			uint8_t dscp[MRVL_CP_PER_TC];
@@ -30,7 +32,10 @@ struct mrvl_qos_cfg {
 			enum pp2_ppio_color color;
 		} tc[MRVL_PP2_TC_MAX];
 		struct {
+			enum pp2_ppio_outq_sched_mode sched_mode;
 			uint8_t weight;
+			int rate_limit_enable;
+			struct pp2_ppio_rate_limit_params rate_limit_params;
 		} outq[MRVL_PP2_RXQ_MAX];
 		enum pp2_cls_qos_tbl_type mapping_priority;
 		uint16_t inqs;
@@ -71,6 +76,20 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
  */
 int
 mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
+		    uint16_t max_queues);
+
+/**
+ * Configure TX Queues in a given port.
+ *
+ * Sets up TX queues egress scheduler and limiter.
+ *
+ * @param priv Port's private data
+ * @param portid DPDK port ID
+ * @param max_queues Maximum number of queues to configure.
+ * @returns 0 in case of success, negative value otherwise.
+ */
+int
+mrvl_configure_txqs(struct mrvl_priv *priv, uint16_t portid,
 		    uint16_t max_queues);
 
 /**

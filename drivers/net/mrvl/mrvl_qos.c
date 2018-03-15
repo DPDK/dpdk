@@ -36,12 +36,19 @@
 #define MRVL_TOK_PCP "pcp"
 #define MRVL_TOK_PORT "port"
 #define MRVL_TOK_RXQ "rxq"
-#define MRVL_TOK_SP "SP"
 #define MRVL_TOK_TC "tc"
 #define MRVL_TOK_TXQ "txq"
 #define MRVL_TOK_VLAN "vlan"
 #define MRVL_TOK_VLAN_IP "vlan/ip"
-#define MRVL_TOK_WEIGHT "weight"
+
+/* egress specific configuration tokens */
+#define MRVL_TOK_BURST_SIZE "burst_size"
+#define MRVL_TOK_RATE_LIMIT "rate_limit"
+#define MRVL_TOK_RATE_LIMIT_ENABLE "rate_limit_enable"
+#define MRVL_TOK_SCHED_MODE "sched_mode"
+#define MRVL_TOK_SCHED_MODE_SP "sp"
+#define MRVL_TOK_SCHED_MODE_WRR "wrr"
+#define MRVL_TOK_WRR_WEIGHT "wrr_weight"
 
 /* policer specific configuration tokens */
 #define MRVL_TOK_PLCR_ENABLE "policer_enable"
@@ -119,12 +126,69 @@ get_outq_cfg(struct rte_cfgfile *file, int port, int outq,
 	if (rte_cfgfile_num_sections(file, sec_name, strlen(sec_name)) <= 0)
 		return 0;
 
+	/* Read scheduling mode */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_SCHED_MODE);
+	if (entry) {
+		if (!strncmp(entry, MRVL_TOK_SCHED_MODE_SP,
+					strlen(MRVL_TOK_SCHED_MODE_SP))) {
+			cfg->port[port].outq[outq].sched_mode =
+				PP2_PPIO_SCHED_M_SP;
+		} else if (!strncmp(entry, MRVL_TOK_SCHED_MODE_WRR,
+					strlen(MRVL_TOK_SCHED_MODE_WRR))) {
+			cfg->port[port].outq[outq].sched_mode =
+				PP2_PPIO_SCHED_M_WRR;
+		} else {
+			RTE_LOG(ERR, PMD, "Unknown token: %s\n", entry);
+			return -1;
+		}
+	}
+
+	/* Read wrr weight */
+	if (cfg->port[port].outq[outq].sched_mode == PP2_PPIO_SCHED_M_WRR) {
+		entry = rte_cfgfile_get_entry(file, sec_name,
+				MRVL_TOK_WRR_WEIGHT);
+		if (entry) {
+			if (get_val_securely(entry, &val) < 0)
+				return -1;
+			cfg->port[port].outq[outq].weight = val;
+		}
+	}
+
+	/*
+	 * There's no point in setting rate limiting for specific outq as
+	 * global port rate limiting has priority.
+	 */
+	if (cfg->port[port].rate_limit_enable) {
+		RTE_LOG(WARNING, PMD, "Port %d rate limiting already enabled\n",
+			port);
+		return 0;
+	}
+
 	entry = rte_cfgfile_get_entry(file, sec_name,
-			MRVL_TOK_WEIGHT);
+			MRVL_TOK_RATE_LIMIT_ENABLE);
 	if (entry) {
 		if (get_val_securely(entry, &val) < 0)
 			return -1;
-		cfg->port[port].outq[outq].weight = (uint8_t)val;
+		cfg->port[port].outq[outq].rate_limit_enable = val;
+	}
+
+	if (!cfg->port[port].outq[outq].rate_limit_enable)
+		return 0;
+
+	/* Read CBS (in kB) */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_BURST_SIZE);
+	if (entry) {
+		if (get_val_securely(entry, &val) < 0)
+			return -1;
+		cfg->port[port].outq[outq].rate_limit_params.cbs = val;
+	}
+
+	/* Read CIR (in kbps) */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_RATE_LIMIT);
+	if (entry) {
+		if (get_val_securely(entry, &val) < 0)
+			return -1;
+		cfg->port[port].outq[outq].rate_limit_params.cir = val;
 	}
 
 	return 0;
@@ -484,6 +548,36 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 			}
 		}
 
+		/*
+		 * Read per-port rate limiting. Setting that will
+		 * disable per-queue rate limiting.
+		 */
+		entry = rte_cfgfile_get_entry(file, sec_name,
+				MRVL_TOK_RATE_LIMIT_ENABLE);
+		if (entry) {
+			if (get_val_securely(entry, &val) < 0)
+				return -1;
+			(*cfg)->port[n].rate_limit_enable = val;
+		}
+
+		if ((*cfg)->port[n].rate_limit_enable) {
+			entry = rte_cfgfile_get_entry(file, sec_name,
+					MRVL_TOK_BURST_SIZE);
+			if (entry) {
+				if (get_val_securely(entry, &val) < 0)
+					return -1;
+				(*cfg)->port[n].rate_limit_params.cbs = val;
+			}
+
+			entry = rte_cfgfile_get_entry(file, sec_name,
+					MRVL_TOK_RATE_LIMIT);
+			if (entry) {
+				if (get_val_securely(entry, &val) < 0)
+					return -1;
+				(*cfg)->port[n].rate_limit_params.cir = val;
+			}
+		}
+
 		entry = rte_cfgfile_get_entry(file, sec_name,
 				MRVL_TOK_MAPPING_PRIORITY);
 		if (entry) {
@@ -726,6 +820,45 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 
 	if (port_cfg->policer_enable)
 		return setup_policer(priv, &port_cfg->policer_params);
+
+	return 0;
+}
+
+/**
+ * Configure TX Queues in a given port.
+ *
+ * Sets up TX queues egress scheduler and limiter.
+ *
+ * @param priv Port's private data
+ * @param portid DPDK port ID
+ * @param max_queues Maximum number of queues to configure.
+ * @returns 0 in case of success, negative value otherwise.
+ */
+int
+mrvl_configure_txqs(struct mrvl_priv *priv, uint16_t portid,
+		uint16_t max_queues)
+{
+	/* We need only a subset of configuration. */
+	struct port_cfg *port_cfg = &mrvl_qos_cfg->port[portid];
+	int i;
+
+	if (mrvl_qos_cfg == NULL)
+		return 0;
+
+	priv->ppio_params.rate_limit_enable = port_cfg->rate_limit_enable;
+	if (port_cfg->rate_limit_enable)
+		priv->ppio_params.rate_limit_params =
+			port_cfg->rate_limit_params;
+
+	for (i = 0; i < max_queues; i++) {
+		struct pp2_ppio_outq_params *params =
+			&priv->ppio_params.outqs_params.outqs_params[i];
+
+		params->sched_mode = port_cfg->outq[i].sched_mode;
+		params->weight = port_cfg->outq[i].weight;
+		params->rate_limit_enable = port_cfg->outq[i].rate_limit_enable;
+		params->rate_limit_params = port_cfg->outq[i].rate_limit_params;
+	}
 
 	return 0;
 }

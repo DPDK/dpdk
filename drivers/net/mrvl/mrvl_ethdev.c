@@ -320,6 +320,11 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	if (ret < 0)
 		return ret;
 
+	ret = mrvl_configure_txqs(priv, dev->data->port_id,
+				  dev->data->nb_tx_queues);
+	if (ret < 0)
+		return ret;
+
 	priv->ppio_params.outqs_params.num_outqs = dev->data->nb_tx_queues;
 	priv->ppio_params.maintain_stats = 1;
 	priv->nb_rx_queues = dev->data->nb_rx_queues;
@@ -1537,7 +1542,6 @@ mrvl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	dev->data->tx_queues[idx] = txq;
 
 	priv->ppio_params.outqs_params.outqs_params[idx].size = desc;
-	priv->ppio_params.outqs_params.outqs_params[idx].weight = 1;
 
 	return 0;
 }
