@@ -134,6 +134,7 @@ struct mrvl_txq {
 	int port_id;
 	uint64_t bytes_sent;
 	struct mrvl_shadow_txq shadow_txqs[RTE_MAX_LCORE];
+	int tx_deferred_start;
 };
 
 static int mrvl_lcore_first;
@@ -459,6 +460,70 @@ mrvl_dev_set_link_down(struct rte_eth_dev *dev)
 }
 
 /**
+ * DPDK callback to start tx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param queue_id
+ *   Transmit queue index.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_tx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (!priv)
+		return -EPERM;
+
+	/* passing 1 enables given tx queue */
+	ret = pp2_ppio_set_outq_state(priv->ppio, queue_id, 1);
+	if (ret) {
+		RTE_LOG(ERR, PMD, "Failed to start txq %d\n", queue_id);
+		return ret;
+	}
+
+	dev->data->tx_queue_state[queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+/**
+ * DPDK callback to stop tx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param queue_id
+ *   Transmit queue index.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (!priv->ppio)
+		return -EPERM;
+
+	/* passing 0 disables given tx queue */
+	ret = pp2_ppio_set_outq_state(priv->ppio, queue_id, 0);
+	if (ret) {
+		RTE_LOG(ERR, PMD, "Failed to stop txq %d\n", queue_id);
+		return ret;
+	}
+
+	dev->data->tx_queue_state[queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+/**
  * DPDK callback to start the device.
  *
  * @param dev
@@ -472,7 +537,7 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	char match[MRVL_MATCH_LEN];
-	int ret = 0, def_init_size;
+	int ret = 0, i, def_init_size;
 
 	snprintf(match, sizeof(match), "ppio-%d:%d",
 		 priv->pp_id, priv->ppio_id);
@@ -557,6 +622,24 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	if (ret) {
 		RTE_LOG(ERR, PMD, "Failed to set link up\n");
 		goto out;
+	}
+
+	/* start tx queues */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct mrvl_txq *txq = dev->data->tx_queues[i];
+
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
+		if (!txq->tx_deferred_start)
+			continue;
+
+		/*
+		 * All txqs are started by default. Stop them
+		 * so that tx_deferred_start works as expected.
+		 */
+		ret = mrvl_tx_queue_stop(dev, i);
+		if (ret)
+			goto out;
 	}
 
 	return 0;
@@ -1330,9 +1413,11 @@ static void mrvl_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			      struct rte_eth_txq_info *qinfo)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
+	struct mrvl_txq *txq = dev->data->tx_queues[tx_queue_id];
 
 	qinfo->nb_desc =
 		priv->ppio_params.outqs_params.outqs_params[tx_queue_id].size;
+	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
 
 /**
@@ -1643,7 +1728,7 @@ mrvl_tx_queue_offloads_okay(struct rte_eth_dev *dev, uint64_t requested)
  * @param socket
  *   NUMA socket on which memory must be allocated.
  * @param conf
- *   Thresholds parameters.
+ *   Tx queue configuration parameters.
  *
  * @return
  *   0 on success, negative error value otherwise.
@@ -1671,6 +1756,7 @@ mrvl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	txq->priv = priv;
 	txq->queue_id = idx;
 	txq->port_id = dev->data->port_id;
+	txq->tx_deferred_start = conf->tx_deferred_start;
 	dev->data->tx_queues[idx] = txq;
 
 	priv->ppio_params.outqs_params.outqs_params[idx].size = desc;
@@ -1886,6 +1972,8 @@ static const struct eth_dev_ops mrvl_ops = {
 	.rxq_info_get = mrvl_rxq_info_get,
 	.txq_info_get = mrvl_txq_info_get,
 	.vlan_filter_set = mrvl_vlan_filter_set,
+	.tx_queue_start = mrvl_tx_queue_start,
+	.tx_queue_stop = mrvl_tx_queue_stop,
 	.rx_queue_setup = mrvl_rx_queue_setup,
 	.rx_queue_release = mrvl_rx_queue_release,
 	.tx_queue_setup = mrvl_tx_queue_setup,
