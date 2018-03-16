@@ -1117,8 +1117,6 @@ struct rte_eth_dcb_info {
 #define RTE_ETH_QUEUE_STATE_STOPPED 0
 #define RTE_ETH_QUEUE_STATE_STARTED 1
 
-struct rte_eth_dev;
-
 #define RTE_ETH_ALL RTE_MAX_ETHPORTS
 
 /* Macros to check for valid port */
