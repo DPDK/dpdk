@@ -1105,7 +1105,7 @@ __vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 		link.link_status = ETH_LINK_UP;
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	link.link_speed = ETH_SPEED_NUM_10G;
-	link.link_autoneg = ETH_LINK_AUTONEG;
+	link.link_autoneg = ETH_LINK_FIXED;
 
 	return rte_eth_linkstatus_set(dev, &link);
 }
