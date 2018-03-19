@@ -59,7 +59,9 @@ ipv4_frag_reassemble(struct ip_frag_pkt *fp)
 	/* chain with the first fragment. */
 	rte_pktmbuf_adj(m, (uint16_t)(m->l2_len + m->l3_len));
 	rte_pktmbuf_chain(fp->frags[IP_FIRST_FRAG_IDX].mb, m);
+	fp->frags[curr_idx].mb = NULL;
 	m = fp->frags[IP_FIRST_FRAG_IDX].mb;
+	fp->frags[IP_FIRST_FRAG_IDX].mb = NULL;
 
 	/* update mbuf fields for reassembled packet. */
 	m->ol_flags |= PKT_TX_IP_CKSUM;
