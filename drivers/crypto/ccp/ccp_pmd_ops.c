@@ -42,6 +42,36 @@ ccp_pmd_close(struct rte_cryptodev *dev __rte_unused)
 }
 
 static void
+ccp_pmd_stats_get(struct rte_cryptodev *dev,
+		  struct rte_cryptodev_stats *stats)
+{
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct ccp_qp *qp = dev->data->queue_pairs[qp_id];
+
+		stats->enqueued_count += qp->qp_stats.enqueued_count;
+		stats->dequeued_count += qp->qp_stats.dequeued_count;
+
+		stats->enqueue_err_count += qp->qp_stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->qp_stats.dequeue_err_count;
+	}
+
+}
+
+static void
+ccp_pmd_stats_reset(struct rte_cryptodev *dev)
+{
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct ccp_qp *qp = dev->data->queue_pairs[qp_id];
+
+		memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
+	}
+}
+
+static void
 ccp_pmd_info_get(struct rte_cryptodev *dev,
 		 struct rte_cryptodev_info *dev_info)
 {
@@ -255,8 +285,8 @@ struct rte_cryptodev_ops ccp_ops = {
 		.dev_stop		= ccp_pmd_stop,
 		.dev_close		= ccp_pmd_close,
 
-		.stats_get		= NULL,
-		.stats_reset		= NULL,
+		.stats_get		= ccp_pmd_stats_get,
+		.stats_reset		= ccp_pmd_stats_reset,
 
 		.dev_infos_get		= ccp_pmd_info_get,
 
