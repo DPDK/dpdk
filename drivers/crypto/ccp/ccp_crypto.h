@@ -20,7 +20,20 @@
 
 #include "ccp_dev.h"
 
+#define AES_BLOCK_SIZE 16
+#define CMAC_PAD_VALUE 0x80
+#define CTR_NONCE_SIZE 4
+#define CTR_IV_SIZE 8
 #define CCP_SHA3_CTX_SIZE 200
+
+/**Macro helpers for CCP command creation*/
+#define	CCP_AES_SIZE(p)		((p)->aes.size)
+#define	CCP_AES_ENCRYPT(p)	((p)->aes.encrypt)
+#define	CCP_AES_MODE(p)		((p)->aes.mode)
+#define	CCP_AES_TYPE(p)		((p)->aes.type)
+#define	CCP_PT_BYTESWAP(p)	((p)->pt.byteswap)
+#define	CCP_PT_BITWISE(p)	((p)->pt.bitwise)
+
 /**
  * CCP supported AES modes
  */

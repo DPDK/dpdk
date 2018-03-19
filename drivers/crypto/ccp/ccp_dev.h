@@ -22,6 +22,7 @@
 /**< CCP sspecific */
 #define MAX_HW_QUEUES                   5
 #define CCP_MAX_TRNG_RETRIES		10
+#define CCP_ALIGN(x, y) ((((x) + (y - 1)) / y) * y)
 
 /**< CCP Register Mappings */
 #define Q_MASK_REG                      0x000
@@ -78,10 +79,52 @@
 #define LSB_SIZE                        16
 #define LSB_ITEM_SIZE                   32
 #define SLSB_MAP_SIZE                   (MAX_LSB_CNT * LSB_SIZE)
+#define LSB_ENTRY_NUMBER(LSB_ADDR)      (LSB_ADDR / LSB_ITEM_SIZE)
 
 /* General CCP Defines */
 
 #define CCP_SB_BYTES                    32
+/* Word 0 */
+#define CCP_CMD_DW0(p)		((p)->dw0)
+#define CCP_CMD_SOC(p)		(CCP_CMD_DW0(p).soc)
+#define CCP_CMD_IOC(p)		(CCP_CMD_DW0(p).ioc)
+#define CCP_CMD_INIT(p)	        (CCP_CMD_DW0(p).init)
+#define CCP_CMD_EOM(p)		(CCP_CMD_DW0(p).eom)
+#define CCP_CMD_FUNCTION(p)	(CCP_CMD_DW0(p).function)
+#define CCP_CMD_ENGINE(p)	(CCP_CMD_DW0(p).engine)
+#define CCP_CMD_PROT(p)	        (CCP_CMD_DW0(p).prot)
+
+/* Word 1 */
+#define CCP_CMD_DW1(p)		((p)->length)
+#define CCP_CMD_LEN(p)		(CCP_CMD_DW1(p))
+
+/* Word 2 */
+#define CCP_CMD_DW2(p)		((p)->src_lo)
+#define CCP_CMD_SRC_LO(p)	(CCP_CMD_DW2(p))
+
+/* Word 3 */
+#define CCP_CMD_DW3(p)		((p)->dw3)
+#define CCP_CMD_SRC_MEM(p)	((p)->dw3.src_mem)
+#define CCP_CMD_SRC_HI(p)	((p)->dw3.src_hi)
+#define CCP_CMD_LSB_ID(p)	((p)->dw3.lsb_cxt_id)
+#define CCP_CMD_FIX_SRC(p)	((p)->dw3.fixed)
+
+/* Words 4/5 */
+#define CCP_CMD_DW4(p)		((p)->dw4)
+#define CCP_CMD_DST_LO(p)	(CCP_CMD_DW4(p).dst_lo)
+#define CCP_CMD_DW5(p)		((p)->dw5.fields.dst_hi)
+#define CCP_CMD_DST_HI(p)	(CCP_CMD_DW5(p))
+#define CCP_CMD_DST_MEM(p)	((p)->dw5.fields.dst_mem)
+#define CCP_CMD_FIX_DST(p)	((p)->dw5.fields.fixed)
+#define CCP_CMD_SHA_LO(p)	((p)->dw4.sha_len_lo)
+#define CCP_CMD_SHA_HI(p)	((p)->dw5.sha_len_hi)
+
+/* Word 6/7 */
+#define CCP_CMD_DW6(p)		((p)->key_lo)
+#define CCP_CMD_KEY_LO(p)	(CCP_CMD_DW6(p))
+#define CCP_CMD_DW7(p)		((p)->dw7)
+#define CCP_CMD_KEY_HI(p)	((p)->dw7.key_hi)
+#define CCP_CMD_KEY_MEM(p)	((p)->dw7.key_mem)
 
 /* bitmap */
 enum {
@@ -383,6 +426,16 @@ struct ccp_desc {
 	union dword5 dw5;
 	uint32_t key_lo;
 	struct dword7 dw7;
+};
+
+/**
+ * ccp memory type
+ */
+enum ccp_memtype {
+	CCP_MEMTYPE_SYSTEM = 0,
+	CCP_MEMTYPE_SB,
+	CCP_MEMTYPE_LOCAL,
+	CCP_MEMTYPE_LAST,
 };
 
 /**

@@ -54,6 +54,7 @@ ccp_configure_session_cipher(struct ccp_session *sess,
 			     const struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_crypto_cipher_xform *cipher_xform = NULL;
+	size_t i;
 
 	cipher_xform = &xform->cipher;
 
@@ -73,6 +74,21 @@ ccp_configure_session_cipher(struct ccp_session *sess,
 	sess->iv.length = cipher_xform->iv.length;
 
 	switch (cipher_xform->algo) {
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		sess->cipher.algo = CCP_CIPHER_ALGO_AES_CTR;
+		sess->cipher.um.aes_mode = CCP_AES_MODE_CTR;
+		sess->cipher.engine = CCP_ENGINE_AES;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_ECB:
+		sess->cipher.algo = CCP_CIPHER_ALGO_AES_CBC;
+		sess->cipher.um.aes_mode = CCP_AES_MODE_ECB;
+		sess->cipher.engine = CCP_ENGINE_AES;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CBC:
+		sess->cipher.algo = CCP_CIPHER_ALGO_AES_CBC;
+		sess->cipher.um.aes_mode = CCP_AES_MODE_CBC;
+		sess->cipher.engine = CCP_ENGINE_AES;
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported cipher algo");
 		return -1;
@@ -80,10 +96,27 @@ ccp_configure_session_cipher(struct ccp_session *sess,
 
 
 	switch (sess->cipher.engine) {
+	case CCP_ENGINE_AES:
+		if (sess->cipher.key_length == 16)
+			sess->cipher.ut.aes_type = CCP_AES_TYPE_128;
+		else if (sess->cipher.key_length == 24)
+			sess->cipher.ut.aes_type = CCP_AES_TYPE_192;
+		else if (sess->cipher.key_length == 32)
+			sess->cipher.ut.aes_type = CCP_AES_TYPE_256;
+		else {
+			CCP_LOG_ERR("Invalid cipher key length");
+			return -1;
+		}
+		for (i = 0; i < sess->cipher.key_length ; i++)
+			sess->cipher.key_ccp[sess->cipher.key_length - i - 1] =
+				sess->cipher.key[i];
+		break;
 	default:
 		CCP_LOG_ERR("Invalid CCP Engine");
 		return -ENOTSUP;
 	}
+	sess->cipher.nonce_phys = rte_mem_virt2phy(sess->cipher.nonce);
+	sess->cipher.key_phys = rte_mem_virt2phy(sess->cipher.key_ccp);
 	return 0;
 }
 
@@ -209,6 +242,18 @@ ccp_cipher_slot(struct ccp_session *session)
 	int count = 0;
 
 	switch (session->cipher.algo) {
+	case CCP_CIPHER_ALGO_AES_CBC:
+		count = 2;
+		/**< op + passthrough for iv */
+		break;
+	case CCP_CIPHER_ALGO_AES_ECB:
+		count = 1;
+		/**<only op*/
+		break;
+	case CCP_CIPHER_ALGO_AES_CTR:
+		count = 2;
+		/**< op + passthrough for iv */
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported cipher algo %d",
 			    session->cipher.algo);
@@ -271,10 +316,146 @@ ccp_compute_slot_count(struct ccp_session *session)
 	return count;
 }
 
+static void
+ccp_perform_passthru(struct ccp_passthru *pst,
+		     struct ccp_queue *cmd_q)
+{
+	struct ccp_desc *desc;
+	union ccp_function function;
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_PASSTHRU;
+
+	CCP_CMD_SOC(desc) = 0;
+	CCP_CMD_IOC(desc) = 0;
+	CCP_CMD_INIT(desc) = 0;
+	CCP_CMD_EOM(desc) = 0;
+	CCP_CMD_PROT(desc) = 0;
+
+	function.raw = 0;
+	CCP_PT_BYTESWAP(&function) = pst->byte_swap;
+	CCP_PT_BITWISE(&function) = pst->bit_mod;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = pst->len;
+
+	if (pst->dir) {
+		CCP_CMD_SRC_LO(desc) = (uint32_t)(pst->src_addr);
+		CCP_CMD_SRC_HI(desc) = high32_value(pst->src_addr);
+		CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+		CCP_CMD_DST_LO(desc) = (uint32_t)(pst->dest_addr);
+		CCP_CMD_DST_HI(desc) = 0;
+		CCP_CMD_DST_MEM(desc) = CCP_MEMTYPE_SB;
+
+		if (pst->bit_mod != CCP_PASSTHRU_BITWISE_NOOP)
+			CCP_CMD_LSB_ID(desc) = cmd_q->sb_key;
+	} else {
+
+		CCP_CMD_SRC_LO(desc) = (uint32_t)(pst->src_addr);
+		CCP_CMD_SRC_HI(desc) = 0;
+		CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SB;
+
+		CCP_CMD_DST_LO(desc) = (uint32_t)(pst->dest_addr);
+		CCP_CMD_DST_HI(desc) = high32_value(pst->dest_addr);
+		CCP_CMD_DST_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+	}
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+}
+
+static int
+ccp_perform_aes(struct rte_crypto_op *op,
+		struct ccp_queue *cmd_q,
+		struct ccp_batch_info *b_info)
+{
+	struct ccp_session *session;
+	union ccp_function function;
+	uint8_t *lsb_buf;
+	struct ccp_passthru pst = {0};
+	struct ccp_desc *desc;
+	phys_addr_t src_addr, dest_addr, key_addr;
+	uint8_t *iv;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+	function.raw = 0;
+
+	iv = rte_crypto_op_ctod_offset(op, uint8_t *, session->iv.offset);
+	if (session->cipher.um.aes_mode != CCP_AES_MODE_ECB) {
+		if (session->cipher.um.aes_mode == CCP_AES_MODE_CTR) {
+			rte_memcpy(session->cipher.nonce + AES_BLOCK_SIZE,
+				   iv, session->iv.length);
+			pst.src_addr = (phys_addr_t)session->cipher.nonce_phys;
+			CCP_AES_SIZE(&function) = 0x1F;
+		} else {
+			lsb_buf =
+			&(b_info->lsb_buf[b_info->lsb_buf_idx*CCP_SB_BYTES]);
+			rte_memcpy(lsb_buf +
+				   (CCP_SB_BYTES - session->iv.length),
+				   iv, session->iv.length);
+			pst.src_addr = b_info->lsb_buf_phys +
+				(b_info->lsb_buf_idx * CCP_SB_BYTES);
+			b_info->lsb_buf_idx++;
+		}
+
+		pst.dest_addr = (phys_addr_t)(cmd_q->sb_iv * CCP_SB_BYTES);
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 1;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+		ccp_perform_passthru(&pst, cmd_q);
+	}
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+
+	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+					      op->sym->cipher.data.offset);
+	if (likely(op->sym->m_dst != NULL))
+		dest_addr = rte_pktmbuf_mtophys_offset(op->sym->m_dst,
+						op->sym->cipher.data.offset);
+	else
+		dest_addr = src_addr;
+	key_addr = session->cipher.key_phys;
+
+	/* prepare desc for aes command */
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_AES;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_EOM(desc) = 1;
+
+	CCP_AES_ENCRYPT(&function) = session->cipher.dir;
+	CCP_AES_MODE(&function) = session->cipher.um.aes_mode;
+	CCP_AES_TYPE(&function) = session->cipher.ut.aes_type;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = op->sym->cipher.data.length;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+	CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_DST_LO(desc) = ((uint32_t)dest_addr);
+	CCP_CMD_DST_HI(desc) = high32_value(dest_addr);
+	CCP_CMD_DST_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_KEY_LO(desc) = ((uint32_t)key_addr);
+	CCP_CMD_KEY_HI(desc) = high32_value(key_addr);
+	CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	if (session->cipher.um.aes_mode != CCP_AES_MODE_ECB)
+		CCP_CMD_LSB_ID(desc) = cmd_q->sb_iv;
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	return 0;
+}
+
 static inline int
 ccp_crypto_cipher(struct rte_crypto_op *op,
-		  struct ccp_queue *cmd_q __rte_unused,
-		  struct ccp_batch_info *b_info __rte_unused)
+		  struct ccp_queue *cmd_q,
+		  struct ccp_batch_info *b_info)
 {
 	int result = 0;
 	struct ccp_session *session;
@@ -284,6 +465,18 @@ ccp_crypto_cipher(struct rte_crypto_op *op,
 					 ccp_cryptodev_driver_id);
 
 	switch (session->cipher.algo) {
+	case CCP_CIPHER_ALGO_AES_CBC:
+		result = ccp_perform_aes(op, cmd_q, b_info);
+		b_info->desccnt += 2;
+		break;
+	case CCP_CIPHER_ALGO_AES_CTR:
+		result = ccp_perform_aes(op, cmd_q, b_info);
+		b_info->desccnt += 2;
+		break;
+	case CCP_CIPHER_ALGO_AES_ECB:
+		result = ccp_perform_aes(op, cmd_q, b_info);
+		b_info->desccnt += 1;
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported cipher algo %d",
 			    session->cipher.algo);
