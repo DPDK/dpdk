@@ -26,5 +26,8 @@ EXPORT_MAP := rte_pmd_ccp_version.map
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_CCP) += rte_ccp_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CCP) += ccp_pmd_ops.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CCP) += ccp_dev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CCP) += ccp_pci.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
