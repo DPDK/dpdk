@@ -55,6 +55,174 @@ static const struct rte_cryptodev_capabilities ccp_pmd_capabilities[] = {
 			 }, }
 		}, }
 	},
+	{	/* SHA224 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_SHA224,
+				 .block_size = 64,
+				 .key_size = {
+					 .min = 0,
+					 .max = 0,
+					 .increment = 0
+				 },
+				 .digest_size = {
+					 .min = 28,
+					 .max = 28,
+					 .increment = 0
+				 },
+				 .aad_size = { 0 }
+			 }, }
+		}, }
+	},
+	{	/* SHA224 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_SHA224_HMAC,
+				 .block_size = 64,
+				 .key_size = {
+					 .min = 1,
+					 .max = 64,
+					 .increment = 1
+				 },
+				 .digest_size = {
+					 .min = 28,
+					 .max = 28,
+					 .increment = 0
+				 },
+				 .aad_size = { 0 }
+			 }, }
+		}, }
+	},
+	{	/* SHA256 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_SHA256,
+				 .block_size = 64,
+				 .key_size = {
+					 .min = 0,
+					 .max = 0,
+					 .increment = 0
+				 },
+				 .digest_size = {
+					 .min = 32,
+					 .max = 32,
+					 .increment = 0
+				 },
+				 .aad_size = { 0 }
+			 }, }
+		}, }
+	},
+	{	/* SHA256 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_SHA256_HMAC,
+				 .block_size = 64,
+				 .key_size = {
+					 .min = 1,
+					 .max = 64,
+					 .increment = 1
+				 },
+				 .digest_size = {
+					 .min = 32,
+					 .max = 32,
+					 .increment = 0
+				 },
+				 .aad_size = { 0 }
+			 }, }
+		}, }
+	},
+	{	/* SHA384 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_SHA384,
+				 .block_size = 128,
+				 .key_size = {
+					 .min = 0,
+					 .max = 0,
+					 .increment = 0
+				 },
+				 .digest_size = {
+					 .min = 48,
+					 .max = 48,
+					 .increment = 0
+				 },
+				 .aad_size = { 0 }
+			 }, }
+		}, }
+	},
+	{	/* SHA384 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_SHA384_HMAC,
+				 .block_size = 128,
+				 .key_size = {
+					 .min = 1,
+					 .max = 128,
+					 .increment = 1
+				 },
+				 .digest_size = {
+					 .min = 48,
+					 .max = 48,
+					 .increment = 0
+				 },
+				 .aad_size = { 0 }
+			 }, }
+		}, }
+	},
+	{	/* SHA512  */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_SHA512,
+				 .block_size = 128,
+				 .key_size = {
+					 .min = 0,
+					 .max = 0,
+					 .increment = 0
+				 },
+				 .digest_size = {
+					 .min = 64,
+					 .max = 64,
+					 .increment = 0
+				 },
+				 .aad_size = { 0 }
+			 }, }
+		}, }
+	},
+	{	/* SHA512 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_SHA512_HMAC,
+				 .block_size = 128,
+				 .key_size = {
+					 .min = 1,
+					 .max = 128,
+					 .increment = 1
+				 },
+				 .digest_size = {
+					 .min = 64,
+					 .max = 64,
+					 .increment = 0
+				 },
+				 .aad_size = { 0 }
+			 }, }
+		}, }
+	},
 	{	/*AES-CMAC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
