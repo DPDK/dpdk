@@ -687,6 +687,10 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: doc/guides/cryptodevs/features/default.ini
 
+AMD CCP Crypto
+M: Ravi Kumar <ravi1.kumar@amd.com>
+F: drivers/crypto/ccp/
+
 ARMv8 Crypto
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: drivers/crypto/armv8/

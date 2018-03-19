@@ -96,6 +96,10 @@ New Features
   including session creation/deletion handling and translating virtio-crypto
   request into DPDK crypto operations. A sample application is also introduced.
 
+* **Added AMD CCP Crypto PMD.**
+
+  Added the new ``ccp`` crypto driver for AMD CCP devices.
+
 * **Updated AESNI MB PMD.**
 
   The AESNI MB PMD has been updated with additional support for:

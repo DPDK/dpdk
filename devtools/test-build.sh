@@ -193,6 +193,8 @@ config () # <directory> <target> <options>
 		test -z "$LIBSSO_ZUC_PATH" || \
 		sed -ri            's,(PMD_ZUC=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
+		sed -ri            's,(PMD_CCP=)n,\1y,' $1/.config
+		test "$DPDK_DEP_SSL" != y || \
 		sed -ri        's,(PMD_OPENSSL=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
