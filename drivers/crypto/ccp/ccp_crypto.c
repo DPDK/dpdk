@@ -10,6 +10,8 @@
 #include <sys/queue.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <openssl/cmac.h> /*sub key apis*/
+#include <openssl/evp.h> /*sub key apis*/
 
 #include <rte_hexdump.h>
 #include <rte_memzone.h>
@@ -46,6 +48,84 @@ ccp_get_cmd_id(const struct rte_crypto_sym_xform *xform)
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
 		return CCP_CMD_COMBINED;
 	return res;
+}
+
+/* prepare temporary keys K1 and K2 */
+static void prepare_key(unsigned char *k, unsigned char *l, int bl)
+{
+	int i;
+	/* Shift block to left, including carry */
+	for (i = 0; i < bl; i++) {
+		k[i] = l[i] << 1;
+		if (i < bl - 1 && l[i + 1] & 0x80)
+			k[i] |= 1;
+	}
+	/* If MSB set fixup with R */
+	if (l[0] & 0x80)
+		k[bl - 1] ^= bl == 16 ? 0x87 : 0x1b;
+}
+
+/* subkeys K1 and K2 generation for CMAC */
+static int
+generate_cmac_subkeys(struct ccp_session *sess)
+{
+	const EVP_CIPHER *algo;
+	EVP_CIPHER_CTX *ctx;
+	unsigned char *ccp_ctx;
+	size_t i;
+	int dstlen, totlen;
+	unsigned char zero_iv[AES_BLOCK_SIZE] = {0};
+	unsigned char dst[2 * AES_BLOCK_SIZE] = {0};
+	unsigned char k1[AES_BLOCK_SIZE] = {0};
+	unsigned char k2[AES_BLOCK_SIZE] = {0};
+
+	if (sess->auth.ut.aes_type == CCP_AES_TYPE_128)
+		algo =  EVP_aes_128_cbc();
+	else if (sess->auth.ut.aes_type == CCP_AES_TYPE_192)
+		algo =  EVP_aes_192_cbc();
+	else if (sess->auth.ut.aes_type == CCP_AES_TYPE_256)
+		algo =  EVP_aes_256_cbc();
+	else {
+		CCP_LOG_ERR("Invalid CMAC type length");
+		return -1;
+	}
+
+	ctx = EVP_CIPHER_CTX_new();
+	if (!ctx) {
+		CCP_LOG_ERR("ctx creation failed");
+		return -1;
+	}
+	if (EVP_EncryptInit(ctx, algo, (unsigned char *)sess->auth.key,
+			    (unsigned char *)zero_iv) <= 0)
+		goto key_generate_err;
+	if (EVP_CIPHER_CTX_set_padding(ctx, 0) <= 0)
+		goto key_generate_err;
+	if (EVP_EncryptUpdate(ctx, dst, &dstlen, zero_iv,
+			      AES_BLOCK_SIZE) <= 0)
+		goto key_generate_err;
+	if (EVP_EncryptFinal_ex(ctx, dst + dstlen, &totlen) <= 0)
+		goto key_generate_err;
+
+	memset(sess->auth.pre_compute, 0, CCP_SB_BYTES * 2);
+
+	ccp_ctx = (unsigned char *)(sess->auth.pre_compute + CCP_SB_BYTES - 1);
+	prepare_key(k1, dst, AES_BLOCK_SIZE);
+	for (i = 0; i < AES_BLOCK_SIZE;  i++, ccp_ctx--)
+		*ccp_ctx = k1[i];
+
+	ccp_ctx = (unsigned char *)(sess->auth.pre_compute +
+				   (2 * CCP_SB_BYTES) - 1);
+	prepare_key(k2, k1, AES_BLOCK_SIZE);
+	for (i = 0; i < AES_BLOCK_SIZE;  i++, ccp_ctx--)
+		*ccp_ctx = k2[i];
+
+	EVP_CIPHER_CTX_free(ctx);
+
+	return 0;
+
+key_generate_err:
+	CCP_LOG_ERR("CMAC Init failed");
+		return -1;
 }
 
 /* configure session */
@@ -144,6 +224,7 @@ ccp_configure_session_auth(struct ccp_session *sess,
 			   const struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_crypto_auth_xform *auth_xform = NULL;
+	size_t i;
 
 	auth_xform = &xform->auth;
 
@@ -153,6 +234,33 @@ ccp_configure_session_auth(struct ccp_session *sess,
 	else
 		sess->auth.op = CCP_AUTH_OP_VERIFY;
 	switch (auth_xform->algo) {
+	case RTE_CRYPTO_AUTH_AES_CMAC:
+		sess->auth.algo = CCP_AUTH_ALGO_AES_CMAC;
+		sess->auth.engine = CCP_ENGINE_AES;
+		sess->auth.um.aes_mode = CCP_AES_MODE_CMAC;
+		sess->auth.key_length = auth_xform->key.length;
+		/**<padding and hash result*/
+		sess->auth.ctx_len = CCP_SB_BYTES << 1;
+		sess->auth.offset = AES_BLOCK_SIZE;
+		sess->auth.block_size = AES_BLOCK_SIZE;
+		if (sess->auth.key_length == 16)
+			sess->auth.ut.aes_type = CCP_AES_TYPE_128;
+		else if (sess->auth.key_length == 24)
+			sess->auth.ut.aes_type = CCP_AES_TYPE_192;
+		else if (sess->auth.key_length == 32)
+			sess->auth.ut.aes_type = CCP_AES_TYPE_256;
+		else {
+			CCP_LOG_ERR("Invalid CMAC key length");
+			return -1;
+		}
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   sess->auth.key_length);
+		for (i = 0; i < sess->auth.key_length; i++)
+			sess->auth.key_ccp[sess->auth.key_length - i - 1] =
+				sess->auth.key[i];
+		if (generate_cmac_subkeys(sess))
+			return -1;
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported hash algo");
 		return -ENOTSUP;
@@ -290,6 +398,15 @@ ccp_auth_slot(struct ccp_session *session)
 	int count = 0;
 
 	switch (session->auth.algo) {
+	case CCP_AUTH_ALGO_AES_CMAC:
+		count = 4;
+		/**
+		 * op
+		 * extra descriptor in padding case
+		 * (k1/k2(255:128) with iv(127:0))
+		 * Retrieve result
+		 */
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported auth algo %d",
 			    session->auth.algo);
@@ -386,6 +503,158 @@ ccp_perform_passthru(struct ccp_passthru *pst,
 	}
 
 	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+}
+
+static int
+ccp_perform_aes_cmac(struct rte_crypto_op *op,
+		     struct ccp_queue *cmd_q)
+{
+	struct ccp_session *session;
+	union ccp_function function;
+	struct ccp_passthru pst;
+	struct ccp_desc *desc;
+	uint32_t tail;
+	uint8_t *src_tb, *append_ptr, *ctx_addr;
+	phys_addr_t src_addr, dest_addr, key_addr;
+	int length, non_align_len;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+	key_addr = rte_mem_virt2phy(session->auth.key_ccp);
+
+	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+					      op->sym->auth.data.offset);
+	append_ptr = (uint8_t *)rte_pktmbuf_append(op->sym->m_src,
+						session->auth.ctx_len);
+	dest_addr = (phys_addr_t)rte_mem_virt2phy((void *)append_ptr);
+
+	function.raw = 0;
+	CCP_AES_ENCRYPT(&function) = CCP_CIPHER_DIR_ENCRYPT;
+	CCP_AES_MODE(&function) = session->auth.um.aes_mode;
+	CCP_AES_TYPE(&function) = session->auth.ut.aes_type;
+
+	if (op->sym->auth.data.length % session->auth.block_size == 0) {
+
+		ctx_addr = session->auth.pre_compute;
+		memset(ctx_addr, 0, AES_BLOCK_SIZE);
+		pst.src_addr = (phys_addr_t)rte_mem_virt2phy((void *)ctx_addr);
+		pst.dest_addr = (phys_addr_t)(cmd_q->sb_iv * CCP_SB_BYTES);
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 1;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+		ccp_perform_passthru(&pst, cmd_q);
+
+		desc = &cmd_q->qbase_desc[cmd_q->qidx];
+		memset(desc, 0, Q_DESC_SIZE);
+
+		/* prepare desc for aes-cmac command */
+		CCP_CMD_ENGINE(desc) = CCP_ENGINE_AES;
+		CCP_CMD_EOM(desc) = 1;
+		CCP_CMD_FUNCTION(desc) = function.raw;
+
+		CCP_CMD_LEN(desc) = op->sym->auth.data.length;
+		CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+		CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+		CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+		CCP_CMD_KEY_LO(desc) = ((uint32_t)key_addr);
+		CCP_CMD_KEY_HI(desc) = high32_value(key_addr);
+		CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+		CCP_CMD_LSB_ID(desc) = cmd_q->sb_iv;
+
+		cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+		rte_wmb();
+
+		tail =
+		(uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+		CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+		CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+			      cmd_q->qcontrol | CMD_Q_RUN);
+	} else {
+		ctx_addr = session->auth.pre_compute + CCP_SB_BYTES;
+		memset(ctx_addr, 0, AES_BLOCK_SIZE);
+		pst.src_addr = (phys_addr_t)rte_mem_virt2phy((void *)ctx_addr);
+		pst.dest_addr = (phys_addr_t)(cmd_q->sb_iv * CCP_SB_BYTES);
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 1;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+		ccp_perform_passthru(&pst, cmd_q);
+
+		length = (op->sym->auth.data.length / AES_BLOCK_SIZE);
+		length *= AES_BLOCK_SIZE;
+		non_align_len = op->sym->auth.data.length - length;
+		/* prepare desc for aes-cmac command */
+		/*Command 1*/
+		desc = &cmd_q->qbase_desc[cmd_q->qidx];
+		memset(desc, 0, Q_DESC_SIZE);
+
+		CCP_CMD_ENGINE(desc) = CCP_ENGINE_AES;
+		CCP_CMD_INIT(desc) = 1;
+		CCP_CMD_FUNCTION(desc) = function.raw;
+
+		CCP_CMD_LEN(desc) = length;
+		CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+		CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+		CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+		CCP_CMD_KEY_LO(desc) = ((uint32_t)key_addr);
+		CCP_CMD_KEY_HI(desc) = high32_value(key_addr);
+		CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+		CCP_CMD_LSB_ID(desc) = cmd_q->sb_iv;
+
+		cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+		/*Command 2*/
+		append_ptr = append_ptr + CCP_SB_BYTES;
+		memset(append_ptr, 0, AES_BLOCK_SIZE);
+		src_tb = rte_pktmbuf_mtod_offset(op->sym->m_src,
+						 uint8_t *,
+						 op->sym->auth.data.offset +
+						 length);
+		rte_memcpy(append_ptr, src_tb, non_align_len);
+		append_ptr[non_align_len] = CMAC_PAD_VALUE;
+
+		desc = &cmd_q->qbase_desc[cmd_q->qidx];
+		memset(desc, 0, Q_DESC_SIZE);
+
+		CCP_CMD_ENGINE(desc) = CCP_ENGINE_AES;
+		CCP_CMD_EOM(desc) = 1;
+		CCP_CMD_FUNCTION(desc) = function.raw;
+		CCP_CMD_LEN(desc) = AES_BLOCK_SIZE;
+
+		CCP_CMD_SRC_LO(desc) = ((uint32_t)(dest_addr + CCP_SB_BYTES));
+		CCP_CMD_SRC_HI(desc) = high32_value(dest_addr + CCP_SB_BYTES);
+		CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+		CCP_CMD_KEY_LO(desc) = ((uint32_t)key_addr);
+		CCP_CMD_KEY_HI(desc) = high32_value(key_addr);
+		CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+		CCP_CMD_LSB_ID(desc) = cmd_q->sb_iv;
+
+		cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+		rte_wmb();
+		tail =
+		(uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+		CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+		CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+			      cmd_q->qcontrol | CMD_Q_RUN);
+	}
+	/* Retrieve result */
+	pst.dest_addr = dest_addr;
+	pst.src_addr = (phys_addr_t)(cmd_q->sb_iv * CCP_SB_BYTES);
+	pst.len = CCP_SB_BYTES;
+	pst.dir = 0;
+	pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+	pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+	ccp_perform_passthru(&pst, cmd_q);
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	return 0;
 }
 
 static int
@@ -617,8 +886,8 @@ ccp_crypto_cipher(struct rte_crypto_op *op,
 
 static inline int
 ccp_crypto_auth(struct rte_crypto_op *op,
-		struct ccp_queue *cmd_q __rte_unused,
-		struct ccp_batch_info *b_info __rte_unused)
+		struct ccp_queue *cmd_q,
+		struct ccp_batch_info *b_info)
 {
 
 	int result = 0;
@@ -629,6 +898,10 @@ ccp_crypto_auth(struct rte_crypto_op *op,
 					ccp_cryptodev_driver_id);
 
 	switch (session->auth.algo) {
+	case CCP_AUTH_ALGO_AES_CMAC:
+		result = ccp_perform_aes_cmac(op, cmd_q);
+		b_info->desccnt += 4;
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported auth algo %d",
 			    session->auth.algo);

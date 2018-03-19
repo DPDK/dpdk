@@ -13,6 +13,26 @@
 #include "ccp_crypto.h"
 
 static const struct rte_cryptodev_capabilities ccp_pmd_capabilities[] = {
+	{	/*AES-CMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				 .algo = RTE_CRYPTO_AUTH_AES_CMAC,
+				 .block_size = 16,
+				 .key_size = {
+					 .min = 16,
+					 .max = 32,
+					 .increment = 8
+				 },
+				 .digest_size = {
+					 .min = 16,
+					 .max = 16,
+					 .increment = 0
+				 },
+			}, }
+		}, }
+	},
 	{       /* AES ECB */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
