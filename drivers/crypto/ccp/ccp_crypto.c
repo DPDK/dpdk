@@ -54,7 +54,7 @@ ccp_configure_session_cipher(struct ccp_session *sess,
 			     const struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_crypto_cipher_xform *cipher_xform = NULL;
-	size_t i;
+	size_t i, j, x;
 
 	cipher_xform = &xform->cipher;
 
@@ -89,6 +89,11 @@ ccp_configure_session_cipher(struct ccp_session *sess,
 		sess->cipher.um.aes_mode = CCP_AES_MODE_CBC;
 		sess->cipher.engine = CCP_ENGINE_AES;
 		break;
+	case RTE_CRYPTO_CIPHER_3DES_CBC:
+		sess->cipher.algo = CCP_CIPHER_ALGO_3DES_CBC;
+		sess->cipher.um.des_mode = CCP_DES_MODE_CBC;
+		sess->cipher.engine = CCP_ENGINE_3DES;
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported cipher algo");
 		return -1;
@@ -110,6 +115,20 @@ ccp_configure_session_cipher(struct ccp_session *sess,
 		for (i = 0; i < sess->cipher.key_length ; i++)
 			sess->cipher.key_ccp[sess->cipher.key_length - i - 1] =
 				sess->cipher.key[i];
+		break;
+	case CCP_ENGINE_3DES:
+		if (sess->cipher.key_length == 16)
+			sess->cipher.ut.des_type = CCP_DES_TYPE_128;
+		else if (sess->cipher.key_length == 24)
+			sess->cipher.ut.des_type = CCP_DES_TYPE_192;
+		else {
+			CCP_LOG_ERR("Invalid cipher key length");
+			return -1;
+		}
+		for (j = 0, x = 0; j < sess->cipher.key_length/8; j++, x += 8)
+			for (i = 0; i < 8; i++)
+				sess->cipher.key_ccp[(8 + x) - i - 1] =
+					sess->cipher.key[i + x];
 		break;
 	default:
 		CCP_LOG_ERR("Invalid CCP Engine");
@@ -251,6 +270,10 @@ ccp_cipher_slot(struct ccp_session *session)
 		/**<only op*/
 		break;
 	case CCP_CIPHER_ALGO_AES_CTR:
+		count = 2;
+		/**< op + passthrough for iv */
+		break;
+	case CCP_CIPHER_ALGO_3DES_CBC:
 		count = 2;
 		/**< op + passthrough for iv */
 		break;
@@ -452,6 +475,109 @@ ccp_perform_aes(struct rte_crypto_op *op,
 	return 0;
 }
 
+static int
+ccp_perform_3des(struct rte_crypto_op *op,
+		struct ccp_queue *cmd_q,
+		struct ccp_batch_info *b_info)
+{
+	struct ccp_session *session;
+	union ccp_function function;
+	unsigned char *lsb_buf;
+	struct ccp_passthru pst;
+	struct ccp_desc *desc;
+	uint32_t tail;
+	uint8_t *iv;
+	phys_addr_t src_addr, dest_addr, key_addr;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+
+	iv = rte_crypto_op_ctod_offset(op, uint8_t *, session->iv.offset);
+	switch (session->cipher.um.des_mode) {
+	case CCP_DES_MODE_CBC:
+		lsb_buf = &(b_info->lsb_buf[b_info->lsb_buf_idx*CCP_SB_BYTES]);
+		b_info->lsb_buf_idx++;
+
+		rte_memcpy(lsb_buf + (CCP_SB_BYTES - session->iv.length),
+			   iv, session->iv.length);
+
+		pst.src_addr = (phys_addr_t)rte_mem_virt2phy((void *) lsb_buf);
+		pst.dest_addr = (phys_addr_t)(cmd_q->sb_iv * CCP_SB_BYTES);
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 1;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+		ccp_perform_passthru(&pst, cmd_q);
+		break;
+	case CCP_DES_MODE_CFB:
+	case CCP_DES_MODE_ECB:
+		CCP_LOG_ERR("Unsupported DES cipher mode");
+		return -ENOTSUP;
+	}
+
+	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+					      op->sym->cipher.data.offset);
+	if (unlikely(op->sym->m_dst != NULL))
+		dest_addr =
+			rte_pktmbuf_mtophys_offset(op->sym->m_dst,
+						   op->sym->cipher.data.offset);
+	else
+		dest_addr = src_addr;
+
+	key_addr = rte_mem_virt2phy(session->cipher.key_ccp);
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+
+	memset(desc, 0, Q_DESC_SIZE);
+
+	/* prepare desc for des command */
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_3DES;
+
+	CCP_CMD_SOC(desc) = 0;
+	CCP_CMD_IOC(desc) = 0;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_EOM(desc) = 1;
+	CCP_CMD_PROT(desc) = 0;
+
+	function.raw = 0;
+	CCP_DES_ENCRYPT(&function) = session->cipher.dir;
+	CCP_DES_MODE(&function) = session->cipher.um.des_mode;
+	CCP_DES_TYPE(&function) = session->cipher.ut.des_type;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = op->sym->cipher.data.length;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+	CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_DST_LO(desc) = ((uint32_t)dest_addr);
+	CCP_CMD_DST_HI(desc) = high32_value(dest_addr);
+	CCP_CMD_DST_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_KEY_LO(desc) = ((uint32_t)key_addr);
+	CCP_CMD_KEY_HI(desc) = high32_value(key_addr);
+	CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	if (session->cipher.um.des_mode)
+		CCP_CMD_LSB_ID(desc) = cmd_q->sb_iv;
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+	rte_wmb();
+
+	/* Write the new tail address back to the queue register */
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	/* Turn the queue back on using our cached control register */
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	return 0;
+}
+
 static inline int
 ccp_crypto_cipher(struct rte_crypto_op *op,
 		  struct ccp_queue *cmd_q,
@@ -476,6 +602,10 @@ ccp_crypto_cipher(struct rte_crypto_op *op,
 	case CCP_CIPHER_ALGO_AES_ECB:
 		result = ccp_perform_aes(op, cmd_q, b_info);
 		b_info->desccnt += 1;
+		break;
+	case CCP_CIPHER_ALGO_3DES_CBC:
+		result = ccp_perform_3des(op, cmd_q, b_info);
+		b_info->desccnt += 2;
 		break;
 	default:
 		CCP_LOG_ERR("Unsupported cipher algo %d",

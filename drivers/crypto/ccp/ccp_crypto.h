@@ -31,6 +31,9 @@
 #define	CCP_AES_ENCRYPT(p)	((p)->aes.encrypt)
 #define	CCP_AES_MODE(p)		((p)->aes.mode)
 #define	CCP_AES_TYPE(p)		((p)->aes.type)
+#define	CCP_DES_ENCRYPT(p)	((p)->des.encrypt)
+#define	CCP_DES_MODE(p)		((p)->des.mode)
+#define	CCP_DES_TYPE(p)		((p)->des.type)
 #define	CCP_PT_BYTESWAP(p)	((p)->pt.byteswap)
 #define	CCP_PT_BITWISE(p)	((p)->pt.bitwise)
 
