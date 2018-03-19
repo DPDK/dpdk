@@ -199,6 +199,123 @@ struct ccp_device {
 	/**< current queue index */
 } __rte_cache_aligned;
 
+/**< CCP H/W engine related */
+/**
+ * ccp_engine - CCP operation identifiers
+ *
+ * @CCP_ENGINE_AES: AES operation
+ * @CCP_ENGINE_XTS_AES: 128-bit XTS AES operation
+ * @CCP_ENGINE_3DES: DES/3DES operation
+ * @CCP_ENGINE_SHA: SHA operation
+ * @CCP_ENGINE_RSA: RSA operation
+ * @CCP_ENGINE_PASSTHRU: pass-through operation
+ * @CCP_ENGINE_ZLIB_DECOMPRESS: unused
+ * @CCP_ENGINE_ECC: ECC operation
+ */
+enum ccp_engine {
+	CCP_ENGINE_AES = 0,
+	CCP_ENGINE_XTS_AES_128,
+	CCP_ENGINE_3DES,
+	CCP_ENGINE_SHA,
+	CCP_ENGINE_RSA,
+	CCP_ENGINE_PASSTHRU,
+	CCP_ENGINE_ZLIB_DECOMPRESS,
+	CCP_ENGINE_ECC,
+	CCP_ENGINE__LAST,
+};
+
+/* Passthru engine */
+/**
+ * ccp_passthru_bitwise - type of bitwise passthru operation
+ *
+ * @CCP_PASSTHRU_BITWISE_NOOP: no bitwise operation performed
+ * @CCP_PASSTHRU_BITWISE_AND: perform bitwise AND of src with mask
+ * @CCP_PASSTHRU_BITWISE_OR: perform bitwise OR of src with mask
+ * @CCP_PASSTHRU_BITWISE_XOR: perform bitwise XOR of src with mask
+ * @CCP_PASSTHRU_BITWISE_MASK: overwrite with mask
+ */
+enum ccp_passthru_bitwise {
+	CCP_PASSTHRU_BITWISE_NOOP = 0,
+	CCP_PASSTHRU_BITWISE_AND,
+	CCP_PASSTHRU_BITWISE_OR,
+	CCP_PASSTHRU_BITWISE_XOR,
+	CCP_PASSTHRU_BITWISE_MASK,
+	CCP_PASSTHRU_BITWISE__LAST,
+};
+
+/**
+ * ccp_passthru_byteswap - type of byteswap passthru operation
+ *
+ * @CCP_PASSTHRU_BYTESWAP_NOOP: no byte swapping performed
+ * @CCP_PASSTHRU_BYTESWAP_32BIT: swap bytes within 32-bit words
+ * @CCP_PASSTHRU_BYTESWAP_256BIT: swap bytes within 256-bit words
+ */
+enum ccp_passthru_byteswap {
+	CCP_PASSTHRU_BYTESWAP_NOOP = 0,
+	CCP_PASSTHRU_BYTESWAP_32BIT,
+	CCP_PASSTHRU_BYTESWAP_256BIT,
+	CCP_PASSTHRU_BYTESWAP__LAST,
+};
+
+/**
+ * CCP passthru
+ */
+struct ccp_passthru {
+	phys_addr_t src_addr;
+	phys_addr_t dest_addr;
+	enum ccp_passthru_bitwise bit_mod;
+	enum ccp_passthru_byteswap byte_swap;
+	int len;
+	int dir;
+};
+
+/* CCP version 5: Union to define the function field (cmd_reg1/dword0) */
+union ccp_function {
+	struct {
+		uint16_t size:7;
+		uint16_t encrypt:1;
+		uint16_t mode:5;
+		uint16_t type:2;
+	} aes;
+	struct {
+		uint16_t size:7;
+		uint16_t encrypt:1;
+		uint16_t mode:5;
+		uint16_t type:2;
+	} des;
+	struct {
+		uint16_t size:7;
+		uint16_t encrypt:1;
+		uint16_t rsvd:5;
+		uint16_t type:2;
+	} aes_xts;
+	struct {
+		uint16_t rsvd1:10;
+		uint16_t type:4;
+		uint16_t rsvd2:1;
+	} sha;
+	struct {
+		uint16_t mode:3;
+		uint16_t size:12;
+	} rsa;
+	struct {
+		uint16_t byteswap:2;
+		uint16_t bitwise:3;
+		uint16_t reflect:2;
+		uint16_t rsvd:8;
+	} pt;
+	struct  {
+		uint16_t rsvd:13;
+	} zlib;
+	struct {
+		uint16_t size:10;
+		uint16_t type:2;
+		uint16_t mode:3;
+	} ecc;
+	uint16_t raw;
+};
+
+
 /**
  * descriptor for version 5 CPP commands
  * 8 32-bit words:
@@ -263,6 +380,18 @@ struct ccp_desc {
 	union dword5 dw5;
 	uint32_t key_lo;
 	struct dword7 dw7;
+};
+
+/**
+ * cmd id to follow order
+ */
+enum ccp_cmd_order {
+	CCP_CMD_CIPHER = 0,
+	CCP_CMD_AUTH,
+	CCP_CMD_CIPHER_HASH,
+	CCP_CMD_HASH_CIPHER,
+	CCP_CMD_COMBINED,
+	CCP_CMD_NOT_SUPPORTED,
 };
 
 static inline uint32_t
