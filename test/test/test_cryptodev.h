@@ -61,6 +61,7 @@
 #define CRYPTODEV_NAME_DPAA2_SEC_PMD	crypto_dpaa2_sec
 #define CRYPTODEV_NAME_SCHEDULER_PMD	crypto_scheduler
 #define CRYPTODEV_NAME_MRVL_PMD		crypto_mrvl
+#define CRYPTODEV_NAME_CCP_PMD		crypto_ccp
 
 /**
  * Write (spread) data from buffer to mbuf data
