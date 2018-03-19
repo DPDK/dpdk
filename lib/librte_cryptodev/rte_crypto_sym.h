@@ -245,6 +245,23 @@ enum rte_crypto_auth_algorithm {
 	RTE_CRYPTO_AUTH_ZUC_EIA3,
 	/**< ZUC algorithm in EIA3 mode */
 
+	RTE_CRYPTO_AUTH_SHA3_224,
+	/**< 224 bit SHA3 algorithm. */
+	RTE_CRYPTO_AUTH_SHA3_224_HMAC,
+	/**< HMAC using 224 bit SHA3 algorithm. */
+	RTE_CRYPTO_AUTH_SHA3_256,
+	/**< 256 bit SHA3 algorithm. */
+	RTE_CRYPTO_AUTH_SHA3_256_HMAC,
+	/**< HMAC using 256 bit SHA3 algorithm. */
+	RTE_CRYPTO_AUTH_SHA3_384,
+	/**< 384 bit SHA3 algorithm. */
+	RTE_CRYPTO_AUTH_SHA3_384_HMAC,
+	/**< HMAC using 384 bit SHA3 algorithm. */
+	RTE_CRYPTO_AUTH_SHA3_512,
+	/**< 512 bit SHA3 algorithm. */
+	RTE_CRYPTO_AUTH_SHA3_512_HMAC,
+	/**< HMAC using 512 bit SHA3 algorithm. */
+
 	RTE_CRYPTO_AUTH_LIST_END
 };
 

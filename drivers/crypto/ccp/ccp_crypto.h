@@ -54,15 +54,19 @@
 
 #define SHA224_DIGEST_SIZE      28
 #define SHA224_BLOCK_SIZE       64
+#define SHA3_224_BLOCK_SIZE     144
 
 #define SHA256_DIGEST_SIZE      32
 #define SHA256_BLOCK_SIZE       64
+#define SHA3_256_BLOCK_SIZE     136
 
 #define SHA384_DIGEST_SIZE      48
 #define SHA384_BLOCK_SIZE       128
+#define SHA3_384_BLOCK_SIZE	104
 
 #define SHA512_DIGEST_SIZE      64
 #define SHA512_BLOCK_SIZE       128
+#define SHA3_512_BLOCK_SIZE     72
 
 /* SHA LSB intialiazation values */
 
@@ -359,5 +363,23 @@ int process_ops_to_enqueue(const struct ccp_qp *qp,
 int process_ops_to_dequeue(struct ccp_qp *qp,
 			   struct rte_crypto_op **op,
 			   uint16_t nb_ops);
+
+
+/**
+ * Apis for SHA3 partial hash generation
+ * @param data_in buffer pointer on which phash is applied
+ * @param data_out phash result in ccp be format is written
+ */
+int partial_hash_sha3_224(uint8_t *data_in,
+			  uint8_t *data_out);
+
+int partial_hash_sha3_256(uint8_t *data_in,
+			  uint8_t *data_out);
+
+int partial_hash_sha3_384(uint8_t *data_in,
+			  uint8_t *data_out);
+
+int partial_hash_sha3_512(uint8_t *data_in,
+			  uint8_t *data_out);
 
 #endif /* _CCP_CRYPTO_H_ */

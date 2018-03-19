@@ -63,6 +63,74 @@ uint64_t ccp_sha512_init[SHA512_DIGEST_SIZE / sizeof(uint64_t)] = {
 	SHA512_H1, SHA512_H0,
 };
 
+#if defined(_MSC_VER)
+#define SHA3_CONST(x) x
+#else
+#define SHA3_CONST(x) x##L
+#endif
+
+/** 'Words' here refers to uint64_t */
+#define SHA3_KECCAK_SPONGE_WORDS \
+	(((1600) / 8) / sizeof(uint64_t))
+typedef struct sha3_context_ {
+	uint64_t saved;
+	/**
+	 * The portion of the input message that we
+	 * didn't consume yet
+	 */
+	union {
+		uint64_t s[SHA3_KECCAK_SPONGE_WORDS];
+		/* Keccak's state */
+		uint8_t sb[SHA3_KECCAK_SPONGE_WORDS * 8];
+		/**total 200 ctx size**/
+	};
+	unsigned int byteIndex;
+	/**
+	 * 0..7--the next byte after the set one
+	 * (starts from 0; 0--none are buffered)
+	 */
+	unsigned int wordIndex;
+	/**
+	 * 0..24--the next word to integrate input
+	 * (starts from 0)
+	 */
+	unsigned int capacityWords;
+	/**
+	 * the double size of the hash output in
+	 * words (e.g. 16 for Keccak 512)
+	 */
+} sha3_context;
+
+#ifndef SHA3_ROTL64
+#define SHA3_ROTL64(x, y) \
+	(((x) << (y)) | ((x) >> ((sizeof(uint64_t)*8) - (y))))
+#endif
+
+static const uint64_t keccakf_rndc[24] = {
+	SHA3_CONST(0x0000000000000001UL), SHA3_CONST(0x0000000000008082UL),
+	SHA3_CONST(0x800000000000808aUL), SHA3_CONST(0x8000000080008000UL),
+	SHA3_CONST(0x000000000000808bUL), SHA3_CONST(0x0000000080000001UL),
+	SHA3_CONST(0x8000000080008081UL), SHA3_CONST(0x8000000000008009UL),
+	SHA3_CONST(0x000000000000008aUL), SHA3_CONST(0x0000000000000088UL),
+	SHA3_CONST(0x0000000080008009UL), SHA3_CONST(0x000000008000000aUL),
+	SHA3_CONST(0x000000008000808bUL), SHA3_CONST(0x800000000000008bUL),
+	SHA3_CONST(0x8000000000008089UL), SHA3_CONST(0x8000000000008003UL),
+	SHA3_CONST(0x8000000000008002UL), SHA3_CONST(0x8000000000000080UL),
+	SHA3_CONST(0x000000000000800aUL), SHA3_CONST(0x800000008000000aUL),
+	SHA3_CONST(0x8000000080008081UL), SHA3_CONST(0x8000000000008080UL),
+	SHA3_CONST(0x0000000080000001UL), SHA3_CONST(0x8000000080008008UL)
+};
+
+static const unsigned int keccakf_rotc[24] = {
+	1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14, 27, 41, 56, 8, 25, 43, 62,
+	18, 39, 61, 20, 44
+};
+
+static const unsigned int keccakf_piln[24] = {
+	10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15, 23, 19, 13, 12, 2, 20,
+	14, 22, 9, 6, 1
+};
+
 static enum ccp_cmd_order
 ccp_get_cmd_id(const struct rte_crypto_sym_xform *xform)
 {
@@ -147,6 +215,223 @@ static int partial_hash_sha512(uint8_t *data_in, uint8_t *data_out)
 	return 0;
 }
 
+static void
+keccakf(uint64_t s[25])
+{
+	int i, j, round;
+	uint64_t t, bc[5];
+#define KECCAK_ROUNDS 24
+
+	for (round = 0; round < KECCAK_ROUNDS; round++) {
+
+		/* Theta */
+		for (i = 0; i < 5; i++)
+			bc[i] = s[i] ^ s[i + 5] ^ s[i + 10] ^ s[i + 15] ^
+				s[i + 20];
+
+		for (i = 0; i < 5; i++) {
+			t = bc[(i + 4) % 5] ^ SHA3_ROTL64(bc[(i + 1) % 5], 1);
+			for (j = 0; j < 25; j += 5)
+				s[j + i] ^= t;
+		}
+
+		/* Rho Pi */
+		t = s[1];
+		for (i = 0; i < 24; i++) {
+			j = keccakf_piln[i];
+			bc[0] = s[j];
+			s[j] = SHA3_ROTL64(t, keccakf_rotc[i]);
+			t = bc[0];
+		}
+
+		/* Chi */
+		for (j = 0; j < 25; j += 5) {
+			for (i = 0; i < 5; i++)
+				bc[i] = s[j + i];
+			for (i = 0; i < 5; i++)
+				s[j + i] ^= (~bc[(i + 1) % 5]) &
+					    bc[(i + 2) % 5];
+		}
+
+		/* Iota */
+		s[0] ^= keccakf_rndc[round];
+	}
+}
+
+static void
+sha3_Init224(void *priv)
+{
+	sha3_context *ctx = (sha3_context *) priv;
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->capacityWords = 2 * 224 / (8 * sizeof(uint64_t));
+}
+
+static void
+sha3_Init256(void *priv)
+{
+	sha3_context *ctx = (sha3_context *) priv;
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->capacityWords = 2 * 256 / (8 * sizeof(uint64_t));
+}
+
+static void
+sha3_Init384(void *priv)
+{
+	sha3_context *ctx = (sha3_context *) priv;
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->capacityWords = 2 * 384 / (8 * sizeof(uint64_t));
+}
+
+static void
+sha3_Init512(void *priv)
+{
+	sha3_context *ctx = (sha3_context *) priv;
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->capacityWords = 2 * 512 / (8 * sizeof(uint64_t));
+}
+
+
+/* This is simply the 'update' with the padding block.
+ * The padding block is 0x01 || 0x00* || 0x80. First 0x01 and last 0x80
+ * bytes are always present, but they can be the same byte.
+ */
+static void
+sha3_Update(void *priv, void const *bufIn, size_t len)
+{
+	sha3_context *ctx = (sha3_context *) priv;
+	unsigned int old_tail = (8 - ctx->byteIndex) & 7;
+	size_t words;
+	unsigned int tail;
+	size_t i;
+	const uint8_t *buf = bufIn;
+
+	if (len < old_tail) {
+		while (len--)
+			ctx->saved |= (uint64_t) (*(buf++)) <<
+				      ((ctx->byteIndex++) * 8);
+		return;
+	}
+
+	if (old_tail) {
+		len -= old_tail;
+		while (old_tail--)
+			ctx->saved |= (uint64_t) (*(buf++)) <<
+				      ((ctx->byteIndex++) * 8);
+
+		ctx->s[ctx->wordIndex] ^= ctx->saved;
+		ctx->byteIndex = 0;
+		ctx->saved = 0;
+		if (++ctx->wordIndex ==
+		   (SHA3_KECCAK_SPONGE_WORDS - ctx->capacityWords)) {
+			keccakf(ctx->s);
+			ctx->wordIndex = 0;
+		}
+	}
+
+	words = len / sizeof(uint64_t);
+	tail = len - words * sizeof(uint64_t);
+
+	for (i = 0; i < words; i++, buf += sizeof(uint64_t)) {
+		const uint64_t t = (uint64_t) (buf[0]) |
+			((uint64_t) (buf[1]) << 8 * 1) |
+			((uint64_t) (buf[2]) << 8 * 2) |
+			((uint64_t) (buf[3]) << 8 * 3) |
+			((uint64_t) (buf[4]) << 8 * 4) |
+			((uint64_t) (buf[5]) << 8 * 5) |
+			((uint64_t) (buf[6]) << 8 * 6) |
+			((uint64_t) (buf[7]) << 8 * 7);
+		ctx->s[ctx->wordIndex] ^= t;
+		if (++ctx->wordIndex ==
+		   (SHA3_KECCAK_SPONGE_WORDS - ctx->capacityWords)) {
+			keccakf(ctx->s);
+			ctx->wordIndex = 0;
+		}
+	}
+
+	while (tail--)
+		ctx->saved |= (uint64_t) (*(buf++)) << ((ctx->byteIndex++) * 8);
+}
+
+int partial_hash_sha3_224(uint8_t *data_in, uint8_t *data_out)
+{
+	sha3_context *ctx;
+	int i;
+
+	ctx = rte_zmalloc("sha3-ctx", sizeof(sha3_context), 0);
+	if (!ctx) {
+		CCP_LOG_ERR("sha3-ctx creation failed");
+		return -ENOMEM;
+	}
+	sha3_Init224(ctx);
+	sha3_Update(ctx, data_in, SHA3_224_BLOCK_SIZE);
+	for (i = 0; i < CCP_SHA3_CTX_SIZE; i++, data_out++)
+		*data_out = ctx->sb[CCP_SHA3_CTX_SIZE - i - 1];
+	rte_free(ctx);
+
+	return 0;
+}
+
+int partial_hash_sha3_256(uint8_t *data_in, uint8_t *data_out)
+{
+	sha3_context *ctx;
+	int i;
+
+	ctx = rte_zmalloc("sha3-ctx", sizeof(sha3_context), 0);
+	if (!ctx) {
+		CCP_LOG_ERR("sha3-ctx creation failed");
+		return -ENOMEM;
+	}
+	sha3_Init256(ctx);
+	sha3_Update(ctx, data_in, SHA3_256_BLOCK_SIZE);
+	for (i = 0; i < CCP_SHA3_CTX_SIZE; i++, data_out++)
+		*data_out = ctx->sb[CCP_SHA3_CTX_SIZE - i - 1];
+	rte_free(ctx);
+
+	return 0;
+}
+
+int partial_hash_sha3_384(uint8_t *data_in, uint8_t *data_out)
+{
+	sha3_context *ctx;
+	int i;
+
+	ctx = rte_zmalloc("sha3-ctx", sizeof(sha3_context), 0);
+	if (!ctx) {
+		CCP_LOG_ERR("sha3-ctx creation failed");
+		return -ENOMEM;
+	}
+	sha3_Init384(ctx);
+	sha3_Update(ctx, data_in, SHA3_384_BLOCK_SIZE);
+	for (i = 0; i < CCP_SHA3_CTX_SIZE; i++, data_out++)
+		*data_out = ctx->sb[CCP_SHA3_CTX_SIZE - i - 1];
+	rte_free(ctx);
+
+	return 0;
+}
+
+int partial_hash_sha3_512(uint8_t *data_in, uint8_t *data_out)
+{
+	sha3_context *ctx;
+	int i;
+
+	ctx = rte_zmalloc("sha3-ctx", sizeof(sha3_context), 0);
+	if (!ctx) {
+		CCP_LOG_ERR("sha3-ctx creation failed");
+		return -ENOMEM;
+	}
+	sha3_Init512(ctx);
+	sha3_Update(ctx, data_in, SHA3_512_BLOCK_SIZE);
+	for (i = 0; i < CCP_SHA3_CTX_SIZE; i++, data_out++)
+		*data_out = ctx->sb[CCP_SHA3_CTX_SIZE - i - 1];
+	rte_free(ctx);
+
+	return 0;
+}
+
 static int generate_partial_hash(struct ccp_session *sess)
 {
 
@@ -156,6 +441,7 @@ static int generate_partial_hash(struct ccp_session *sess)
 	uint32_t *hash_value_be32, hash_temp32[8];
 	uint64_t *hash_value_be64, hash_temp64[8];
 	int i, count;
+	uint8_t *hash_value_sha3;
 
 	opad_t = ipad_t = (uint8_t *)sess->auth.key;
 
@@ -199,6 +485,16 @@ static int generate_partial_hash(struct ccp_session *sess)
 		for (i = 0; i < count; i++, hash_value_be32++)
 			*hash_value_be32 = hash_temp32[count - 1 - i];
 		return 0;
+	case CCP_AUTH_ALGO_SHA3_224_HMAC:
+		hash_value_sha3 = sess->auth.pre_compute;
+		if (partial_hash_sha3_224(ipad, hash_value_sha3))
+			return -1;
+
+		hash_value_sha3 = (uint8_t *)(sess->auth.pre_compute
+					       + sess->auth.ctx_len);
+		if (partial_hash_sha3_224(opad, hash_value_sha3))
+			return -1;
+		return 0;
 	case CCP_AUTH_ALGO_SHA256_HMAC:
 		count = SHA256_DIGEST_SIZE >> 2;
 
@@ -213,6 +509,16 @@ static int generate_partial_hash(struct ccp_session *sess)
 			return -1;
 		for (i = 0; i < count; i++, hash_value_be32++)
 			*hash_value_be32 = hash_temp32[count - 1 - i];
+		return 0;
+	case CCP_AUTH_ALGO_SHA3_256_HMAC:
+		hash_value_sha3 = sess->auth.pre_compute;
+		if (partial_hash_sha3_256(ipad, hash_value_sha3))
+			return -1;
+
+		hash_value_sha3 = (uint8_t *)(sess->auth.pre_compute
+					      + sess->auth.ctx_len);
+		if (partial_hash_sha3_256(opad, hash_value_sha3))
+			return -1;
 		return 0;
 	case CCP_AUTH_ALGO_SHA384_HMAC:
 		count = SHA512_DIGEST_SIZE >> 3;
@@ -229,6 +535,16 @@ static int generate_partial_hash(struct ccp_session *sess)
 		for (i = 0; i < count; i++, hash_value_be64++)
 			*hash_value_be64 = hash_temp64[count - 1 - i];
 		return 0;
+	case CCP_AUTH_ALGO_SHA3_384_HMAC:
+		hash_value_sha3 = sess->auth.pre_compute;
+		if (partial_hash_sha3_384(ipad, hash_value_sha3))
+			return -1;
+
+		hash_value_sha3 = (uint8_t *)(sess->auth.pre_compute
+					      + sess->auth.ctx_len);
+		if (partial_hash_sha3_384(opad, hash_value_sha3))
+			return -1;
+		return 0;
 	case CCP_AUTH_ALGO_SHA512_HMAC:
 		count = SHA512_DIGEST_SIZE >> 3;
 
@@ -243,6 +559,16 @@ static int generate_partial_hash(struct ccp_session *sess)
 			return -1;
 		for (i = 0; i < count; i++, hash_value_be64++)
 			*hash_value_be64 = hash_temp64[count - 1 - i];
+		return 0;
+	case CCP_AUTH_ALGO_SHA3_512_HMAC:
+		hash_value_sha3 = sess->auth.pre_compute;
+		if (partial_hash_sha3_512(ipad, hash_value_sha3))
+			return -1;
+
+		hash_value_sha3 = (uint8_t *)(sess->auth.pre_compute
+					      + sess->auth.ctx_len);
+		if (partial_hash_sha3_512(opad, hash_value_sha3))
+			return -1;
 		return 0;
 	default:
 		CCP_LOG_ERR("Invalid auth algo");
@@ -484,6 +810,30 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		if (generate_partial_hash(sess))
 			return -1;
 		break;
+	case RTE_CRYPTO_AUTH_SHA3_224:
+		sess->auth.algo = CCP_AUTH_ALGO_SHA3_224;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.ut.sha_type = CCP_SHA3_TYPE_224;
+		sess->auth.ctx_len = CCP_SHA3_CTX_SIZE;
+		sess->auth.offset = CCP_SHA3_CTX_SIZE - SHA224_DIGEST_SIZE;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_224_HMAC:
+		if (auth_xform->key.length > SHA3_224_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA3_224_HMAC;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.ut.sha_type = CCP_SHA3_TYPE_224;
+		sess->auth.ctx_len = CCP_SHA3_CTX_SIZE;
+		sess->auth.offset = CCP_SHA3_CTX_SIZE - SHA224_DIGEST_SIZE;
+		sess->auth.block_size = SHA3_224_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		memset(sess->auth.pre_compute, 0, 2 * sess->auth.ctx_len);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+		if (generate_partial_hash(sess))
+			return -1;
+		break;
 	case RTE_CRYPTO_AUTH_SHA256:
 		sess->auth.algo = CCP_AUTH_ALGO_SHA256;
 		sess->auth.engine = CCP_ENGINE_SHA;
@@ -504,6 +854,30 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		sess->auth.key_length = auth_xform->key.length;
 		memset(sess->auth.key, 0, sess->auth.block_size);
 		memset(sess->auth.pre_compute, 0, sess->auth.ctx_len << 1);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+		if (generate_partial_hash(sess))
+			return -1;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_256:
+		sess->auth.algo = CCP_AUTH_ALGO_SHA3_256;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.ut.sha_type = CCP_SHA3_TYPE_256;
+		sess->auth.ctx_len = CCP_SHA3_CTX_SIZE;
+		sess->auth.offset = CCP_SHA3_CTX_SIZE - SHA256_DIGEST_SIZE;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_256_HMAC:
+		if (auth_xform->key.length > SHA3_256_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA3_256_HMAC;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.ut.sha_type = CCP_SHA3_TYPE_256;
+		sess->auth.ctx_len = CCP_SHA3_CTX_SIZE;
+		sess->auth.offset = CCP_SHA3_CTX_SIZE - SHA256_DIGEST_SIZE;
+		sess->auth.block_size = SHA3_256_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		memset(sess->auth.pre_compute, 0, 2 * sess->auth.ctx_len);
 		rte_memcpy(sess->auth.key, auth_xform->key.data,
 			   auth_xform->key.length);
 		if (generate_partial_hash(sess))
@@ -534,6 +908,30 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		if (generate_partial_hash(sess))
 			return -1;
 		break;
+	case RTE_CRYPTO_AUTH_SHA3_384:
+		sess->auth.algo = CCP_AUTH_ALGO_SHA3_384;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.ut.sha_type = CCP_SHA3_TYPE_384;
+		sess->auth.ctx_len = CCP_SHA3_CTX_SIZE;
+		sess->auth.offset = CCP_SHA3_CTX_SIZE - SHA384_DIGEST_SIZE;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_384_HMAC:
+		if (auth_xform->key.length > SHA3_384_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA3_384_HMAC;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.ut.sha_type = CCP_SHA3_TYPE_384;
+		sess->auth.ctx_len = CCP_SHA3_CTX_SIZE;
+		sess->auth.offset = CCP_SHA3_CTX_SIZE - SHA384_DIGEST_SIZE;
+		sess->auth.block_size = SHA3_384_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		memset(sess->auth.pre_compute, 0, 2 * sess->auth.ctx_len);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+		if (generate_partial_hash(sess))
+			return -1;
+		break;
 	case RTE_CRYPTO_AUTH_SHA512:
 		sess->auth.algo = CCP_AUTH_ALGO_SHA512;
 		sess->auth.engine = CCP_ENGINE_SHA;
@@ -559,7 +957,30 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		if (generate_partial_hash(sess))
 			return -1;
 		break;
-
+	case RTE_CRYPTO_AUTH_SHA3_512:
+		sess->auth.algo = CCP_AUTH_ALGO_SHA3_512;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.ut.sha_type = CCP_SHA3_TYPE_512;
+		sess->auth.ctx_len = CCP_SHA3_CTX_SIZE;
+		sess->auth.offset = CCP_SHA3_CTX_SIZE - SHA512_DIGEST_SIZE;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_512_HMAC:
+		if (auth_xform->key.length > SHA3_512_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA3_512_HMAC;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.ut.sha_type = CCP_SHA3_TYPE_512;
+		sess->auth.ctx_len = CCP_SHA3_CTX_SIZE;
+		sess->auth.offset = CCP_SHA3_CTX_SIZE - SHA512_DIGEST_SIZE;
+		sess->auth.block_size = SHA3_512_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		memset(sess->auth.pre_compute, 0, 2 * sess->auth.ctx_len);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+		if (generate_partial_hash(sess))
+			return -1;
+		break;
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 		sess->auth.algo = CCP_AUTH_ALGO_AES_CMAC;
 		sess->auth.engine = CCP_ENGINE_AES;
@@ -778,6 +1199,26 @@ ccp_auth_slot(struct ccp_session *session)
 		 * 5. generate FHash = H(hash on Ihash with Phash2
 		 * as init value);
 		 * 6. Retrieve HMAC output from LSB to host memory
+		 */
+		break;
+	case CCP_AUTH_ALGO_SHA3_224:
+	case CCP_AUTH_ALGO_SHA3_256:
+	case CCP_AUTH_ALGO_SHA3_384:
+	case CCP_AUTH_ALGO_SHA3_512:
+		count = 1;
+		/**< only op ctx and dst in host memory*/
+		break;
+	case CCP_AUTH_ALGO_SHA3_224_HMAC:
+	case CCP_AUTH_ALGO_SHA3_256_HMAC:
+		count = 3;
+		break;
+	case CCP_AUTH_ALGO_SHA3_384_HMAC:
+	case CCP_AUTH_ALGO_SHA3_512_HMAC:
+		count = 4;
+		/**
+		 * 1. Op to Perform Ihash
+		 * 2. Retrieve result from LSB to host memory
+		 * 3. Perform final hash
 		 */
 		break;
 	case CCP_AUTH_ALGO_AES_CMAC:
@@ -1167,6 +1608,213 @@ ccp_perform_sha(struct rte_crypto_op *op,
 	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 	return 0;
 
+}
+
+static int
+ccp_perform_sha3_hmac(struct rte_crypto_op *op,
+		      struct ccp_queue *cmd_q)
+{
+	struct ccp_session *session;
+	struct ccp_passthru pst;
+	union ccp_function function;
+	struct ccp_desc *desc;
+	uint8_t *append_ptr;
+	uint32_t tail;
+	phys_addr_t src_addr, dest_addr, ctx_paddr, dest_addr_t;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+
+	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+					      op->sym->auth.data.offset);
+	append_ptr = (uint8_t *)rte_pktmbuf_append(op->sym->m_src,
+						session->auth.ctx_len);
+	if (!append_ptr) {
+		CCP_LOG_ERR("CCP MBUF append failed\n");
+		return -1;
+	}
+	dest_addr = (phys_addr_t)rte_mem_virt2phy((void *)append_ptr);
+	dest_addr_t = dest_addr + (session->auth.ctx_len / 2);
+	ctx_paddr = (phys_addr_t)rte_mem_virt2phy((void
+						   *)session->auth.pre_compute);
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	/*desc1 for SHA3-Ihash operation */
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_SHA;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_EOM(desc) = 1;
+
+	function.raw = 0;
+	CCP_SHA_TYPE(&function) = session->auth.ut.sha_type;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+	CCP_CMD_LEN(desc) = op->sym->auth.data.length;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+	CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_DST_LO(desc) = (cmd_q->sb_sha * CCP_SB_BYTES);
+	CCP_CMD_DST_HI(desc) = 0;
+	CCP_CMD_DST_MEM(desc) = CCP_MEMTYPE_SB;
+
+	CCP_CMD_KEY_LO(desc) = ((uint32_t)ctx_paddr);
+	CCP_CMD_KEY_HI(desc) = high32_value(ctx_paddr);
+	CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+	rte_wmb();
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	/* Intermediate Hash value retrieve */
+	if ((session->auth.ut.sha_type == CCP_SHA3_TYPE_384) ||
+	    (session->auth.ut.sha_type == CCP_SHA3_TYPE_512)) {
+
+		pst.src_addr =
+			(phys_addr_t)((cmd_q->sb_sha + 1) * CCP_SB_BYTES);
+		pst.dest_addr = dest_addr_t;
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 0;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+		ccp_perform_passthru(&pst, cmd_q);
+
+		pst.src_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+		pst.dest_addr = dest_addr_t + CCP_SB_BYTES;
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 0;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+		ccp_perform_passthru(&pst, cmd_q);
+
+	} else {
+		pst.src_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+		pst.dest_addr = dest_addr_t;
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 0;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+		ccp_perform_passthru(&pst, cmd_q);
+	}
+
+	/**sha engine command descriptor for FinalHash*/
+	ctx_paddr += CCP_SHA3_CTX_SIZE;
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_SHA;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_EOM(desc) = 1;
+
+	function.raw = 0;
+	CCP_SHA_TYPE(&function) = session->auth.ut.sha_type;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	if (session->auth.ut.sha_type == CCP_SHA3_TYPE_224) {
+		dest_addr_t += (CCP_SB_BYTES - SHA224_DIGEST_SIZE);
+		CCP_CMD_LEN(desc) = SHA224_DIGEST_SIZE;
+	} else if (session->auth.ut.sha_type == CCP_SHA3_TYPE_256) {
+		CCP_CMD_LEN(desc) = SHA256_DIGEST_SIZE;
+	} else if (session->auth.ut.sha_type == CCP_SHA3_TYPE_384) {
+		dest_addr_t += (2 * CCP_SB_BYTES - SHA384_DIGEST_SIZE);
+		CCP_CMD_LEN(desc) = SHA384_DIGEST_SIZE;
+	} else {
+		CCP_CMD_LEN(desc) = SHA512_DIGEST_SIZE;
+	}
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)dest_addr_t);
+	CCP_CMD_SRC_HI(desc) = high32_value(dest_addr_t);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_DST_LO(desc) = (uint32_t)dest_addr;
+	CCP_CMD_DST_HI(desc) = high32_value(dest_addr);
+	CCP_CMD_DST_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_KEY_LO(desc) = ((uint32_t)ctx_paddr);
+	CCP_CMD_KEY_HI(desc) = high32_value(ctx_paddr);
+	CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+	rte_wmb();
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	return 0;
+}
+
+static int
+ccp_perform_sha3(struct rte_crypto_op *op,
+		 struct ccp_queue *cmd_q)
+{
+	struct ccp_session *session;
+	union ccp_function function;
+	struct ccp_desc *desc;
+	uint8_t *ctx_addr, *append_ptr;
+	uint32_t tail;
+	phys_addr_t src_addr, dest_addr, ctx_paddr;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+
+	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+					      op->sym->auth.data.offset);
+	append_ptr = (uint8_t *)rte_pktmbuf_append(op->sym->m_src,
+						session->auth.ctx_len);
+	if (!append_ptr) {
+		CCP_LOG_ERR("CCP MBUF append failed\n");
+		return -1;
+	}
+	dest_addr = (phys_addr_t)rte_mem_virt2phy((void *)append_ptr);
+	ctx_addr = session->auth.sha3_ctx;
+	ctx_paddr = (phys_addr_t)rte_mem_virt2phy((void *)ctx_addr);
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	/* prepare desc for SHA3 operation */
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_SHA;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_EOM(desc) = 1;
+
+	function.raw = 0;
+	CCP_SHA_TYPE(&function) = session->auth.ut.sha_type;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = op->sym->auth.data.length;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+	CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_DST_LO(desc) = ((uint32_t)dest_addr);
+	CCP_CMD_DST_HI(desc) = high32_value(dest_addr);
+	CCP_CMD_DST_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_KEY_LO(desc) = ((uint32_t)ctx_paddr);
+	CCP_CMD_KEY_HI(desc) = high32_value(ctx_paddr);
+	CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+	rte_wmb();
+
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	return 0;
 }
 
 static int
@@ -1753,6 +2401,23 @@ ccp_crypto_auth(struct rte_crypto_op *op,
 	case CCP_AUTH_ALGO_SHA512_HMAC:
 		result = ccp_perform_hmac(op, cmd_q);
 		b_info->desccnt += 7;
+		break;
+	case CCP_AUTH_ALGO_SHA3_224:
+	case CCP_AUTH_ALGO_SHA3_256:
+	case CCP_AUTH_ALGO_SHA3_384:
+	case CCP_AUTH_ALGO_SHA3_512:
+		result = ccp_perform_sha3(op, cmd_q);
+		b_info->desccnt += 1;
+		break;
+	case CCP_AUTH_ALGO_SHA3_224_HMAC:
+	case CCP_AUTH_ALGO_SHA3_256_HMAC:
+		result = ccp_perform_sha3_hmac(op, cmd_q);
+		b_info->desccnt += 3;
+		break;
+	case CCP_AUTH_ALGO_SHA3_384_HMAC:
+	case CCP_AUTH_ALGO_SHA3_512_HMAC:
+		result = ccp_perform_sha3_hmac(op, cmd_q);
+		b_info->desccnt += 4;
 		break;
 	case CCP_AUTH_ALGO_AES_CMAC:
 		result = ccp_perform_aes_cmac(op, cmd_q);
