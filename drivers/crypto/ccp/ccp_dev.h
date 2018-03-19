@@ -419,4 +419,13 @@ int ccp_dev_start(struct rte_cryptodev *dev);
  */
 int ccp_probe_devices(const struct rte_pci_id *ccp_id);
 
+/**
+ * allocate a ccp command queue
+ *
+ * @dev rte crypto device
+ * @param slot_req number of required
+ * @return allotted CCP queue on success otherwise NULL
+ */
+struct ccp_queue *ccp_allot_queue(struct rte_cryptodev *dev, int slot_req);
+
 #endif /* _CCP_DEV_H_ */

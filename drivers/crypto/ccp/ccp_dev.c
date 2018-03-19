@@ -35,6 +35,33 @@ ccp_dev_start(struct rte_cryptodev *dev)
 	return 0;
 }
 
+struct ccp_queue *
+ccp_allot_queue(struct rte_cryptodev *cdev, int slot_req)
+{
+	int i, ret = 0;
+	struct ccp_device *dev;
+	struct ccp_private *priv = cdev->data->dev_private;
+
+	dev = TAILQ_NEXT(priv->last_dev, next);
+	if (unlikely(dev == NULL))
+		dev = TAILQ_FIRST(&ccp_list);
+	priv->last_dev = dev;
+	if (dev->qidx >= dev->cmd_q_count)
+		dev->qidx = 0;
+	ret = rte_atomic64_read(&dev->cmd_q[dev->qidx].free_slots);
+	if (ret >= slot_req)
+		return &dev->cmd_q[dev->qidx];
+	for (i = 0; i < dev->cmd_q_count; i++) {
+		dev->qidx++;
+		if (dev->qidx >= dev->cmd_q_count)
+			dev->qidx = 0;
+		ret = rte_atomic64_read(&dev->cmd_q[dev->qidx].free_slots);
+		if (ret >= slot_req)
+			return &dev->cmd_q[dev->qidx];
+	}
+	return NULL;
+}
+
 static const struct rte_memzone *
 ccp_queue_dma_zone_reserve(const char *queue_name,
 			   uint32_t queue_size,

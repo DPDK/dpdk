@@ -12,6 +12,7 @@
 #include <rte_dev.h>
 #include <rte_malloc.h>
 
+#include "ccp_crypto.h"
 #include "ccp_dev.h"
 #include "ccp_pmd_private.h"
 
@@ -21,22 +22,71 @@
 static unsigned int ccp_pmd_init_done;
 uint8_t ccp_cryptodev_driver_id;
 
-static uint16_t
-ccp_pmd_enqueue_burst(void *queue_pair __rte_unused,
-		      struct rte_crypto_op **ops __rte_unused,
-		      uint16_t nb_ops __rte_unused)
+static struct ccp_session *
+get_ccp_session(struct ccp_qp *qp __rte_unused, struct rte_crypto_op *op)
 {
-	uint16_t enq_cnt = 0;
+	struct ccp_session *sess = NULL;
 
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		if (unlikely(op->sym->session == NULL))
+			return NULL;
+
+		sess = (struct ccp_session *)
+			get_session_private_data(
+				op->sym->session,
+				ccp_cryptodev_driver_id);
+	}
+
+	return sess;
+}
+
+static uint16_t
+ccp_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
+		      uint16_t nb_ops)
+{
+	struct ccp_session *sess = NULL;
+	struct ccp_qp *qp = queue_pair;
+	struct ccp_queue *cmd_q;
+	struct rte_cryptodev *dev = qp->dev;
+	uint16_t i, enq_cnt = 0, slots_req = 0;
+
+	if (nb_ops == 0)
+		return 0;
+
+	if (unlikely(rte_ring_full(qp->processed_pkts) != 0))
+		return 0;
+
+	for (i = 0; i < nb_ops; i++) {
+		sess = get_ccp_session(qp, ops[i]);
+		if (unlikely(sess == NULL) && (i == 0)) {
+			qp->qp_stats.enqueue_err_count++;
+			return 0;
+		} else if (sess == NULL) {
+			nb_ops = i;
+			break;
+		}
+		slots_req += ccp_compute_slot_count(sess);
+	}
+
+	cmd_q = ccp_allot_queue(dev, slots_req);
+	if (unlikely(cmd_q == NULL))
+		return 0;
+
+	enq_cnt = process_ops_to_enqueue(qp, ops, cmd_q, nb_ops, slots_req);
+	qp->qp_stats.enqueued_count += enq_cnt;
 	return enq_cnt;
 }
 
 static uint16_t
-ccp_pmd_dequeue_burst(void *queue_pair __rte_unused,
-		      struct rte_crypto_op **ops __rte_unused,
-		      uint16_t nb_ops __rte_unused)
+ccp_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
 {
+	struct ccp_qp *qp = queue_pair;
 	uint16_t nb_dequeued = 0;
+
+	nb_dequeued = process_ops_to_dequeue(qp, ops, nb_ops);
+
+	qp->qp_stats.dequeued_count += nb_dequeued;
 
 	return nb_dequeued;
 }

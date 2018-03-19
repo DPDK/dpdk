@@ -201,3 +201,363 @@ ccp_set_session_parameters(struct ccp_session *sess,
 	}
 	return ret;
 }
+
+/* calculate CCP descriptors requirement */
+static inline int
+ccp_cipher_slot(struct ccp_session *session)
+{
+	int count = 0;
+
+	switch (session->cipher.algo) {
+	default:
+		CCP_LOG_ERR("Unsupported cipher algo %d",
+			    session->cipher.algo);
+	}
+	return count;
+}
+
+static inline int
+ccp_auth_slot(struct ccp_session *session)
+{
+	int count = 0;
+
+	switch (session->auth.algo) {
+	default:
+		CCP_LOG_ERR("Unsupported auth algo %d",
+			    session->auth.algo);
+	}
+
+	return count;
+}
+
+static int
+ccp_aead_slot(struct ccp_session *session)
+{
+	int count = 0;
+
+	switch (session->aead_algo) {
+	default:
+		CCP_LOG_ERR("Unsupported aead algo %d",
+			    session->aead_algo);
+	}
+	return count;
+}
+
+int
+ccp_compute_slot_count(struct ccp_session *session)
+{
+	int count = 0;
+
+	switch (session->cmd_id) {
+	case CCP_CMD_CIPHER:
+		count = ccp_cipher_slot(session);
+		break;
+	case CCP_CMD_AUTH:
+		count = ccp_auth_slot(session);
+		break;
+	case CCP_CMD_CIPHER_HASH:
+	case CCP_CMD_HASH_CIPHER:
+		count = ccp_cipher_slot(session);
+		count += ccp_auth_slot(session);
+		break;
+	case CCP_CMD_COMBINED:
+		count = ccp_aead_slot(session);
+		break;
+	default:
+		CCP_LOG_ERR("Unsupported cmd_id");
+
+	}
+
+	return count;
+}
+
+static inline int
+ccp_crypto_cipher(struct rte_crypto_op *op,
+		  struct ccp_queue *cmd_q __rte_unused,
+		  struct ccp_batch_info *b_info __rte_unused)
+{
+	int result = 0;
+	struct ccp_session *session;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					 ccp_cryptodev_driver_id);
+
+	switch (session->cipher.algo) {
+	default:
+		CCP_LOG_ERR("Unsupported cipher algo %d",
+			    session->cipher.algo);
+		return -ENOTSUP;
+	}
+	return result;
+}
+
+static inline int
+ccp_crypto_auth(struct rte_crypto_op *op,
+		struct ccp_queue *cmd_q __rte_unused,
+		struct ccp_batch_info *b_info __rte_unused)
+{
+
+	int result = 0;
+	struct ccp_session *session;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+
+	switch (session->auth.algo) {
+	default:
+		CCP_LOG_ERR("Unsupported auth algo %d",
+			    session->auth.algo);
+		return -ENOTSUP;
+	}
+
+	return result;
+}
+
+static inline int
+ccp_crypto_aead(struct rte_crypto_op *op,
+		struct ccp_queue *cmd_q __rte_unused,
+		struct ccp_batch_info *b_info __rte_unused)
+{
+	int result = 0;
+	struct ccp_session *session;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+
+	switch (session->aead_algo) {
+	default:
+		CCP_LOG_ERR("Unsupported aead algo %d",
+			    session->aead_algo);
+		return -ENOTSUP;
+	}
+	return result;
+}
+
+int
+process_ops_to_enqueue(const struct ccp_qp *qp,
+		       struct rte_crypto_op **op,
+		       struct ccp_queue *cmd_q,
+		       uint16_t nb_ops,
+		       int slots_req)
+{
+	int i, result = 0;
+	struct ccp_batch_info *b_info;
+	struct ccp_session *session;
+
+	if (rte_mempool_get(qp->batch_mp, (void **)&b_info)) {
+		CCP_LOG_ERR("batch info allocation failed");
+		return 0;
+	}
+	/* populate batch info necessary for dequeue */
+	b_info->op_idx = 0;
+	b_info->lsb_buf_idx = 0;
+	b_info->desccnt = 0;
+	b_info->cmd_q = cmd_q;
+	b_info->lsb_buf_phys =
+		(phys_addr_t)rte_mem_virt2phy((void *)b_info->lsb_buf);
+	rte_atomic64_sub(&b_info->cmd_q->free_slots, slots_req);
+
+	b_info->head_offset = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx *
+					 Q_DESC_SIZE);
+	for (i = 0; i < nb_ops; i++) {
+		session = (struct ccp_session *)get_session_private_data(
+						 op[i]->sym->session,
+						 ccp_cryptodev_driver_id);
+		switch (session->cmd_id) {
+		case CCP_CMD_CIPHER:
+			result = ccp_crypto_cipher(op[i], cmd_q, b_info);
+			break;
+		case CCP_CMD_AUTH:
+			result = ccp_crypto_auth(op[i], cmd_q, b_info);
+			break;
+		case CCP_CMD_CIPHER_HASH:
+			result = ccp_crypto_cipher(op[i], cmd_q, b_info);
+			if (result)
+				break;
+			result = ccp_crypto_auth(op[i], cmd_q, b_info);
+			break;
+		case CCP_CMD_HASH_CIPHER:
+			result = ccp_crypto_auth(op[i], cmd_q, b_info);
+			if (result)
+				break;
+			result = ccp_crypto_cipher(op[i], cmd_q, b_info);
+			break;
+		case CCP_CMD_COMBINED:
+			result = ccp_crypto_aead(op[i], cmd_q, b_info);
+			break;
+		default:
+			CCP_LOG_ERR("Unsupported cmd_id");
+			result = -1;
+		}
+		if (unlikely(result < 0)) {
+			rte_atomic64_add(&b_info->cmd_q->free_slots,
+					 (slots_req - b_info->desccnt));
+			break;
+		}
+		b_info->op[i] = op[i];
+	}
+
+	b_info->opcnt = i;
+	b_info->tail_offset = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx *
+					 Q_DESC_SIZE);
+
+	rte_wmb();
+	/* Write the new tail address back to the queue register */
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE,
+			      b_info->tail_offset);
+	/* Turn the queue back on using our cached control register */
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+			      cmd_q->qcontrol | CMD_Q_RUN);
+
+	rte_ring_enqueue(qp->processed_pkts, (void *)b_info);
+
+	return i;
+}
+
+static inline void ccp_auth_dq_prepare(struct rte_crypto_op *op)
+{
+	struct ccp_session *session;
+	uint8_t *digest_data, *addr;
+	struct rte_mbuf *m_last;
+	int offset, digest_offset;
+	uint8_t digest_le[64];
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+
+	if (session->cmd_id == CCP_CMD_COMBINED) {
+		digest_data = op->sym->aead.digest.data;
+		digest_offset = op->sym->aead.data.offset +
+					op->sym->aead.data.length;
+	} else {
+		digest_data = op->sym->auth.digest.data;
+		digest_offset = op->sym->auth.data.offset +
+					op->sym->auth.data.length;
+	}
+	m_last = rte_pktmbuf_lastseg(op->sym->m_src);
+	addr = (uint8_t *)((char *)m_last->buf_addr + m_last->data_off +
+			   m_last->data_len - session->auth.ctx_len);
+
+	rte_mb();
+	offset = session->auth.offset;
+
+	if (session->auth.engine == CCP_ENGINE_SHA)
+		if ((session->auth.ut.sha_type != CCP_SHA_TYPE_1) &&
+		    (session->auth.ut.sha_type != CCP_SHA_TYPE_224) &&
+		    (session->auth.ut.sha_type != CCP_SHA_TYPE_256)) {
+			/* All other algorithms require byte
+			 * swap done by host
+			 */
+			unsigned int i;
+
+			offset = session->auth.ctx_len -
+				session->auth.offset - 1;
+			for (i = 0; i < session->auth.digest_length; i++)
+				digest_le[i] = addr[offset - i];
+			offset = 0;
+			addr = digest_le;
+		}
+
+	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	if (session->auth.op == CCP_AUTH_OP_VERIFY) {
+		if (memcmp(addr + offset, digest_data,
+			   session->auth.digest_length) != 0)
+			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+
+	} else {
+		if (unlikely(digest_data == 0))
+			digest_data = rte_pktmbuf_mtod_offset(
+					op->sym->m_dst, uint8_t *,
+					digest_offset);
+		rte_memcpy(digest_data, addr + offset,
+			   session->auth.digest_length);
+	}
+	/* Trim area used for digest from mbuf. */
+	rte_pktmbuf_trim(op->sym->m_src,
+			 session->auth.ctx_len);
+}
+
+static int
+ccp_prepare_ops(struct rte_crypto_op **op_d,
+		struct ccp_batch_info *b_info,
+		uint16_t nb_ops)
+{
+	int i, min_ops;
+	struct ccp_session *session;
+
+	min_ops = RTE_MIN(nb_ops, b_info->opcnt);
+
+	for (i = 0; i < min_ops; i++) {
+		op_d[i] = b_info->op[b_info->op_idx++];
+		session = (struct ccp_session *)get_session_private_data(
+						 op_d[i]->sym->session,
+						ccp_cryptodev_driver_id);
+		switch (session->cmd_id) {
+		case CCP_CMD_CIPHER:
+			op_d[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+			break;
+		case CCP_CMD_AUTH:
+		case CCP_CMD_CIPHER_HASH:
+		case CCP_CMD_HASH_CIPHER:
+		case CCP_CMD_COMBINED:
+			ccp_auth_dq_prepare(op_d[i]);
+			break;
+		default:
+			CCP_LOG_ERR("Unsupported cmd_id");
+		}
+	}
+
+	b_info->opcnt -= min_ops;
+	return min_ops;
+}
+
+int
+process_ops_to_dequeue(struct ccp_qp *qp,
+		       struct rte_crypto_op **op,
+		       uint16_t nb_ops)
+{
+	struct ccp_batch_info *b_info;
+	uint32_t cur_head_offset;
+
+	if (qp->b_info != NULL) {
+		b_info = qp->b_info;
+		if (unlikely(b_info->op_idx > 0))
+			goto success;
+	} else if (rte_ring_dequeue(qp->processed_pkts,
+				    (void **)&b_info))
+		return 0;
+	cur_head_offset = CCP_READ_REG(b_info->cmd_q->reg_base,
+				       CMD_Q_HEAD_LO_BASE);
+
+	if (b_info->head_offset < b_info->tail_offset) {
+		if ((cur_head_offset >= b_info->head_offset) &&
+		    (cur_head_offset < b_info->tail_offset)) {
+			qp->b_info = b_info;
+			return 0;
+		}
+	} else {
+		if ((cur_head_offset >= b_info->head_offset) ||
+		    (cur_head_offset < b_info->tail_offset)) {
+			qp->b_info = b_info;
+			return 0;
+		}
+	}
+
+
+success:
+	nb_ops = ccp_prepare_ops(op, b_info, nb_ops);
+	rte_atomic64_add(&b_info->cmd_q->free_slots, b_info->desccnt);
+	b_info->desccnt = 0;
+	if (b_info->opcnt > 0) {
+		qp->b_info = b_info;
+	} else {
+		rte_mempool_put(qp->batch_mp, (void *)b_info);
+		qp->b_info = NULL;
+	}
+
+	return nb_ops;
+}

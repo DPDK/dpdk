@@ -238,4 +238,39 @@ struct ccp_qp;
 int ccp_set_session_parameters(struct ccp_session *sess,
 			       const struct rte_crypto_sym_xform *xform);
 
+/**
+ * Find count of slots
+ *
+ * @param session CCP private session
+ * @return count of free slots available
+ */
+int ccp_compute_slot_count(struct ccp_session *session);
+
+/**
+ * process crypto ops to be enqueued
+ *
+ * @param qp CCP crypto queue-pair
+ * @param op crypto ops table
+ * @param cmd_q CCP cmd queue
+ * @param nb_ops No. of ops to be submitted
+ * @return 0 on success otherwise -1
+ */
+int process_ops_to_enqueue(const struct ccp_qp *qp,
+			   struct rte_crypto_op **op,
+			   struct ccp_queue *cmd_q,
+			   uint16_t nb_ops,
+			   int slots_req);
+
+/**
+ * process crypto ops to be dequeued
+ *
+ * @param qp CCP crypto queue-pair
+ * @param op crypto ops table
+ * @param nb_ops requested no. of ops
+ * @return 0 on success otherwise -1
+ */
+int process_ops_to_dequeue(struct ccp_qp *qp,
+			   struct rte_crypto_op **op,
+			   uint16_t nb_ops);
+
 #endif /* _CCP_CRYPTO_H_ */
