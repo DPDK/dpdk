@@ -10,6 +10,7 @@
 #include <sys/queue.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <openssl/sha.h>
 #include <openssl/cmac.h> /*sub key apis*/
 #include <openssl/evp.h> /*sub key apis*/
 
@@ -25,6 +26,14 @@
 #include "ccp_crypto.h"
 #include "ccp_pci.h"
 #include "ccp_pmd_private.h"
+
+/* SHA initial context values */
+static uint32_t ccp_sha1_init[SHA_COMMON_DIGEST_SIZE / sizeof(uint32_t)] = {
+	SHA1_H4, SHA1_H3,
+	SHA1_H2, SHA1_H1,
+	SHA1_H0, 0x0U,
+	0x0U, 0x0U,
+};
 
 static enum ccp_cmd_order
 ccp_get_cmd_id(const struct rte_crypto_sym_xform *xform)
@@ -48,6 +57,59 @@ ccp_get_cmd_id(const struct rte_crypto_sym_xform *xform)
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
 		return CCP_CMD_COMBINED;
 	return res;
+}
+
+/* partial hash using openssl */
+static int partial_hash_sha1(uint8_t *data_in, uint8_t *data_out)
+{
+	SHA_CTX ctx;
+
+	if (!SHA1_Init(&ctx))
+		return -EFAULT;
+	SHA1_Transform(&ctx, data_in);
+	rte_memcpy(data_out, &ctx, SHA_DIGEST_LENGTH);
+	return 0;
+}
+
+static int generate_partial_hash(struct ccp_session *sess)
+{
+
+	uint8_t ipad[sess->auth.block_size];
+	uint8_t	opad[sess->auth.block_size];
+	uint8_t *ipad_t, *opad_t;
+	uint32_t *hash_value_be32, hash_temp32[8];
+	int i, count;
+
+	opad_t = ipad_t = (uint8_t *)sess->auth.key;
+
+	hash_value_be32 = (uint32_t *)((uint8_t *)sess->auth.pre_compute);
+
+	/* considering key size is always equal to block size of algorithm */
+	for (i = 0; i < sess->auth.block_size; i++) {
+		ipad[i] = (ipad_t[i] ^ HMAC_IPAD_VALUE);
+		opad[i] = (opad_t[i] ^ HMAC_OPAD_VALUE);
+	}
+
+	switch (sess->auth.algo) {
+	case CCP_AUTH_ALGO_SHA1_HMAC:
+		count = SHA1_DIGEST_SIZE >> 2;
+
+		if (partial_hash_sha1(ipad, (uint8_t *)hash_temp32))
+			return -1;
+		for (i = 0; i < count; i++, hash_value_be32++)
+			*hash_value_be32 = hash_temp32[count - 1 - i];
+
+		hash_value_be32 = (uint32_t *)((uint8_t *)sess->auth.pre_compute
+					       + sess->auth.ctx_len);
+		if (partial_hash_sha1(opad, (uint8_t *)hash_temp32))
+			return -1;
+		for (i = 0; i < count; i++, hash_value_be32++)
+			*hash_value_be32 = hash_temp32[count - 1 - i];
+		return 0;
+	default:
+		CCP_LOG_ERR("Invalid auth algo");
+		return -1;
+	}
 }
 
 /* prepare temporary keys K1 and K2 */
@@ -234,6 +296,31 @@ ccp_configure_session_auth(struct ccp_session *sess,
 	else
 		sess->auth.op = CCP_AUTH_OP_VERIFY;
 	switch (auth_xform->algo) {
+	case RTE_CRYPTO_AUTH_SHA1:
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA1;
+		sess->auth.ut.sha_type = CCP_SHA_TYPE_1;
+		sess->auth.ctx = (void *)ccp_sha1_init;
+		sess->auth.ctx_len = CCP_SB_BYTES;
+		sess->auth.offset = CCP_SB_BYTES - SHA1_DIGEST_SIZE;
+		break;
+	case RTE_CRYPTO_AUTH_SHA1_HMAC:
+		if (auth_xform->key.length > SHA1_BLOCK_SIZE)
+			return -1;
+		sess->auth.engine = CCP_ENGINE_SHA;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA1_HMAC;
+		sess->auth.ut.sha_type = CCP_SHA_TYPE_1;
+		sess->auth.ctx_len = CCP_SB_BYTES;
+		sess->auth.offset = CCP_SB_BYTES - SHA1_DIGEST_SIZE;
+		sess->auth.block_size = SHA1_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		memset(sess->auth.pre_compute, 0, sess->auth.ctx_len << 1);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+		if (generate_partial_hash(sess))
+			return -1;
+		break;
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 		sess->auth.algo = CCP_AUTH_ALGO_AES_CMAC;
 		sess->auth.engine = CCP_ENGINE_AES;
@@ -427,6 +514,13 @@ ccp_auth_slot(struct ccp_session *session)
 	int count = 0;
 
 	switch (session->auth.algo) {
+	case CCP_AUTH_ALGO_SHA1:
+		count = 3;
+		/**< op + lsb passthrough cpy to/from*/
+		break;
+	case CCP_AUTH_ALGO_SHA1_HMAC:
+		count = 6;
+		break;
 	case CCP_AUTH_ALGO_AES_CMAC:
 		count = 4;
 		/**
@@ -549,6 +643,271 @@ ccp_perform_passthru(struct ccp_passthru *pst,
 	}
 
 	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+}
+
+static int
+ccp_perform_hmac(struct rte_crypto_op *op,
+		 struct ccp_queue *cmd_q)
+{
+
+	struct ccp_session *session;
+	union ccp_function function;
+	struct ccp_desc *desc;
+	uint32_t tail;
+	phys_addr_t src_addr, dest_addr, dest_addr_t;
+	struct ccp_passthru pst;
+	uint64_t auth_msg_bits;
+	void *append_ptr;
+	uint8_t *addr;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					 ccp_cryptodev_driver_id);
+	addr = session->auth.pre_compute;
+
+	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+					      op->sym->auth.data.offset);
+	append_ptr = (void *)rte_pktmbuf_append(op->sym->m_src,
+						session->auth.ctx_len);
+	dest_addr = (phys_addr_t)rte_mem_virt2phy(append_ptr);
+	dest_addr_t = dest_addr;
+
+	/** Load PHash1 to LSB*/
+	pst.src_addr = (phys_addr_t)rte_mem_virt2phy((void *)addr);
+	pst.dest_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+	pst.len = session->auth.ctx_len;
+	pst.dir = 1;
+	pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+	pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+	ccp_perform_passthru(&pst, cmd_q);
+
+	/**sha engine command descriptor for IntermediateHash*/
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_SHA;
+
+	CCP_CMD_SOC(desc) = 0;
+	CCP_CMD_IOC(desc) = 0;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_EOM(desc) = 1;
+	CCP_CMD_PROT(desc) = 0;
+
+	function.raw = 0;
+	CCP_SHA_TYPE(&function) = session->auth.ut.sha_type;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = op->sym->auth.data.length;
+	auth_msg_bits = (op->sym->auth.data.length +
+			 session->auth.block_size)  * 8;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+	CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_LSB_ID(desc) = cmd_q->sb_sha;
+	CCP_CMD_SHA_LO(desc) = ((uint32_t)auth_msg_bits);
+	CCP_CMD_SHA_HI(desc) = high32_value(auth_msg_bits);
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+	rte_wmb();
+
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	/* Intermediate Hash value retrieve */
+	if ((session->auth.ut.sha_type == CCP_SHA_TYPE_384) ||
+	    (session->auth.ut.sha_type == CCP_SHA_TYPE_512)) {
+
+		pst.src_addr =
+			(phys_addr_t)((cmd_q->sb_sha + 1) * CCP_SB_BYTES);
+		pst.dest_addr = dest_addr_t;
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 0;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+		ccp_perform_passthru(&pst, cmd_q);
+
+		pst.src_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+		pst.dest_addr = dest_addr_t + CCP_SB_BYTES;
+		pst.len = CCP_SB_BYTES;
+		pst.dir = 0;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+		ccp_perform_passthru(&pst, cmd_q);
+
+	} else {
+		pst.src_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+		pst.dest_addr = dest_addr_t;
+		pst.len = session->auth.ctx_len;
+		pst.dir = 0;
+		pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+		ccp_perform_passthru(&pst, cmd_q);
+
+	}
+
+	/** Load PHash2 to LSB*/
+	addr += session->auth.ctx_len;
+	pst.src_addr = (phys_addr_t)rte_mem_virt2phy((void *)addr);
+	pst.dest_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+	pst.len = session->auth.ctx_len;
+	pst.dir = 1;
+	pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+	pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+	ccp_perform_passthru(&pst, cmd_q);
+
+	/**sha engine command descriptor for FinalHash*/
+	dest_addr_t += session->auth.offset;
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_SHA;
+
+	CCP_CMD_SOC(desc) = 0;
+	CCP_CMD_IOC(desc) = 0;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_EOM(desc) = 1;
+	CCP_CMD_PROT(desc) = 0;
+
+	function.raw = 0;
+	CCP_SHA_TYPE(&function) = session->auth.ut.sha_type;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = (session->auth.ctx_len -
+			     session->auth.offset);
+	auth_msg_bits = (session->auth.block_size +
+			 session->auth.ctx_len -
+			 session->auth.offset) * 8;
+
+	CCP_CMD_SRC_LO(desc) = (uint32_t)(dest_addr_t);
+	CCP_CMD_SRC_HI(desc) = high32_value(dest_addr_t);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_LSB_ID(desc) = cmd_q->sb_sha;
+	CCP_CMD_SHA_LO(desc) = ((uint32_t)auth_msg_bits);
+	CCP_CMD_SHA_HI(desc) = high32_value(auth_msg_bits);
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+	rte_wmb();
+
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	/* Retrieve hmac output */
+	pst.src_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+	pst.dest_addr = dest_addr;
+	pst.len = session->auth.ctx_len;
+	pst.dir = 0;
+	pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+	if ((session->auth.ut.sha_type == CCP_SHA_TYPE_384) ||
+	    (session->auth.ut.sha_type == CCP_SHA_TYPE_512))
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+	else
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+	ccp_perform_passthru(&pst, cmd_q);
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	return 0;
+
+}
+
+static int
+ccp_perform_sha(struct rte_crypto_op *op,
+		struct ccp_queue *cmd_q)
+{
+	struct ccp_session *session;
+	union ccp_function function;
+	struct ccp_desc *desc;
+	uint32_t tail;
+	phys_addr_t src_addr, dest_addr;
+	struct ccp_passthru pst;
+	void *append_ptr;
+	uint64_t auth_msg_bits;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					ccp_cryptodev_driver_id);
+
+	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+					      op->sym->auth.data.offset);
+
+	append_ptr = (void *)rte_pktmbuf_append(op->sym->m_src,
+						session->auth.ctx_len);
+	dest_addr = (phys_addr_t)rte_mem_virt2phy(append_ptr);
+
+	/** Passthru sha context*/
+
+	pst.src_addr = (phys_addr_t)rte_mem_virt2phy((void *)
+						     session->auth.ctx);
+	pst.dest_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+	pst.len = session->auth.ctx_len;
+	pst.dir = 1;
+	pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+	pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+	ccp_perform_passthru(&pst, cmd_q);
+
+	/**prepare sha command descriptor*/
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_SHA;
+
+	CCP_CMD_SOC(desc) = 0;
+	CCP_CMD_IOC(desc) = 0;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_EOM(desc) = 1;
+	CCP_CMD_PROT(desc) = 0;
+
+	function.raw = 0;
+	CCP_SHA_TYPE(&function) = session->auth.ut.sha_type;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = op->sym->auth.data.length;
+	auth_msg_bits = op->sym->auth.data.length * 8;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+	CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_LSB_ID(desc) = cmd_q->sb_sha;
+	CCP_CMD_SHA_LO(desc) = ((uint32_t)auth_msg_bits);
+	CCP_CMD_SHA_HI(desc) = high32_value(auth_msg_bits);
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+
+	rte_wmb();
+
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	/* Hash value retrieve */
+	pst.src_addr = (phys_addr_t)(cmd_q->sb_sha * CCP_SB_BYTES);
+	pst.dest_addr = dest_addr;
+	pst.len = session->auth.ctx_len;
+	pst.dir = 0;
+	pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+	if ((session->auth.ut.sha_type == CCP_SHA_TYPE_384) ||
+	    (session->auth.ut.sha_type == CCP_SHA_TYPE_512))
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+	else
+		pst.byte_swap = CCP_PASSTHRU_BYTESWAP_256BIT;
+	ccp_perform_passthru(&pst, cmd_q);
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	return 0;
+
 }
 
 static int
@@ -1117,6 +1476,14 @@ ccp_crypto_auth(struct rte_crypto_op *op,
 					ccp_cryptodev_driver_id);
 
 	switch (session->auth.algo) {
+	case CCP_AUTH_ALGO_SHA1:
+		result = ccp_perform_sha(op, cmd_q);
+		b_info->desccnt += 3;
+		break;
+	case CCP_AUTH_ALGO_SHA1_HMAC:
+		result = ccp_perform_hmac(op, cmd_q);
+		b_info->desccnt += 6;
+		break;
 	case CCP_AUTH_ALGO_AES_CMAC:
 		result = ccp_perform_aes_cmac(op, cmd_q);
 		b_info->desccnt += 4;

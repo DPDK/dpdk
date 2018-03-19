@@ -34,8 +34,31 @@
 #define	CCP_DES_ENCRYPT(p)	((p)->des.encrypt)
 #define	CCP_DES_MODE(p)		((p)->des.mode)
 #define	CCP_DES_TYPE(p)		((p)->des.type)
+#define	CCP_SHA_TYPE(p)		((p)->sha.type)
 #define	CCP_PT_BYTESWAP(p)	((p)->pt.byteswap)
 #define	CCP_PT_BITWISE(p)	((p)->pt.bitwise)
+
+/* HMAC */
+#define HMAC_IPAD_VALUE 0x36
+#define HMAC_OPAD_VALUE 0x5c
+
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+#define MD5_DIGEST_SIZE         16
+#define MD5_BLOCK_SIZE          64
+#endif
+
+/* SHA */
+#define SHA_COMMON_DIGEST_SIZE	32
+#define SHA1_DIGEST_SIZE        20
+#define SHA1_BLOCK_SIZE         64
+
+/* SHA LSB intialiazation values */
+
+#define SHA1_H0		0x67452301UL
+#define SHA1_H1		0xefcdab89UL
+#define SHA1_H2		0x98badcfeUL
+#define SHA1_H3		0x10325476UL
+#define SHA1_H4		0xc3d2e1f0UL
 
 /**
  * CCP supported AES modes
