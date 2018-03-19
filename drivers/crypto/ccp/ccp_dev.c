@@ -26,6 +26,15 @@
 struct ccp_list ccp_list = TAILQ_HEAD_INITIALIZER(ccp_list);
 static int ccp_dev_id;
 
+int
+ccp_dev_start(struct rte_cryptodev *dev)
+{
+	struct ccp_private *priv = dev->data->dev_private;
+
+	priv->last_dev = TAILQ_FIRST(&ccp_list);
+	return 0;
+}
+
 static const struct rte_memzone *
 ccp_queue_dma_zone_reserve(const char *queue_name,
 			   uint32_t queue_size,

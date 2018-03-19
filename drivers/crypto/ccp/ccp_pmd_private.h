@@ -34,12 +34,55 @@
 #define CCP_NB_MAX_DESCRIPTORS 1024
 #define CCP_MAX_BURST 64
 
+#include "ccp_dev.h"
+
 /* private data structure for each CCP crypto device */
 struct ccp_private {
 	unsigned int max_nb_qpairs;	/**< Max number of queue pairs */
 	unsigned int max_nb_sessions;	/**< Max number of sessions */
 	uint8_t crypto_num_dev;		/**< Number of working crypto devices */
+	struct ccp_device *last_dev;	/**< Last working crypto device */
 };
+
+/* CCP batch info */
+struct ccp_batch_info {
+	struct rte_crypto_op *op[CCP_MAX_BURST];
+	/**< optable populated at enque time from app*/
+	int op_idx;
+	struct ccp_queue *cmd_q;
+	uint16_t opcnt;
+	/**< no. of crypto ops in batch*/
+	int desccnt;
+	/**< no. of ccp queue descriptors*/
+	uint32_t head_offset;
+	/**< ccp queue head tail offsets time of enqueue*/
+	uint32_t tail_offset;
+	uint8_t lsb_buf[CCP_SB_BYTES * CCP_MAX_BURST];
+	phys_addr_t lsb_buf_phys;
+	/**< LSB intermediate buf for passthru */
+	int lsb_buf_idx;
+} __rte_cache_aligned;
+
+/**< CCP crypto queue pair */
+struct ccp_qp {
+	uint16_t id;
+	/**< Queue Pair Identifier */
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
+	/**< Unique Queue Pair Name */
+	struct rte_ring *processed_pkts;
+	/**< Ring for placing process packets */
+	struct rte_mempool *sess_mp;
+	/**< Session Mempool */
+	struct rte_mempool *batch_mp;
+	/**< Session Mempool for batch info */
+	struct rte_cryptodev_stats qp_stats;
+	/**< Queue pair statistics */
+	struct ccp_batch_info *b_info;
+	/**< Store ops pulled out of queue */
+	struct rte_cryptodev *dev;
+	/**< rte crypto device to which this qp belongs */
+} __rte_cache_aligned;
+
 
 /**< device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *ccp_pmd_ops;

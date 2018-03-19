@@ -78,6 +78,10 @@
 #define LSB_ITEM_SIZE                   32
 #define SLSB_MAP_SIZE                   (MAX_LSB_CNT * LSB_SIZE)
 
+/* General CCP Defines */
+
+#define CCP_SB_BYTES                    32
+
 /* bitmap */
 enum {
 	BITS_PER_WORD = sizeof(unsigned long) * CHAR_BIT
@@ -272,6 +276,11 @@ high32_value(unsigned long addr)
 {
 	return ((uint64_t)addr >> 32) & 0x00000ffff;
 }
+
+/*
+ * Start CCP device
+ */
+int ccp_dev_start(struct rte_cryptodev *dev);
 
 /**
  * Detect ccp platform and initialize all ccp devices
