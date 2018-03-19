@@ -21,6 +21,7 @@
 
 /**< CCP sspecific */
 #define MAX_HW_QUEUES                   5
+#define CCP_MAX_TRNG_RETRIES		10
 
 /**< CCP Register Mappings */
 #define Q_MASK_REG                      0x000
@@ -197,6 +198,8 @@ struct ccp_device {
 	/**< protection for shared lsb region allocation */
 	int qidx;
 	/**< current queue index */
+	int hwrng_retries;
+	/**< retry counter for CCP TRNG */
 } __rte_cache_aligned;
 
 /**< CCP H/W engine related */
@@ -427,5 +430,13 @@ int ccp_probe_devices(const struct rte_pci_id *ccp_id);
  * @return allotted CCP queue on success otherwise NULL
  */
 struct ccp_queue *ccp_allot_queue(struct rte_cryptodev *dev, int slot_req);
+
+/**
+ * read hwrng value
+ *
+ * @param trng_value data pointer to write RNG value
+ * @return 0 on success otherwise -1
+ */
+int ccp_read_hwrng(uint32_t *trng_value);
 
 #endif /* _CCP_DEV_H_ */

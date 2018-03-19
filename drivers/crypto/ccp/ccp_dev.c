@@ -62,6 +62,26 @@ ccp_allot_queue(struct rte_cryptodev *cdev, int slot_req)
 	return NULL;
 }
 
+int
+ccp_read_hwrng(uint32_t *value)
+{
+	struct ccp_device *dev;
+
+	TAILQ_FOREACH(dev, &ccp_list, next) {
+		void *vaddr = (void *)(dev->pci.mem_resource[2].addr);
+
+		while (dev->hwrng_retries++ < CCP_MAX_TRNG_RETRIES) {
+			*value = CCP_READ_REG(vaddr, TRNG_OUT_REG);
+			if (*value) {
+				dev->hwrng_retries = 0;
+				return 0;
+			}
+		}
+		dev->hwrng_retries = 0;
+	}
+	return -1;
+}
+
 static const struct rte_memzone *
 ccp_queue_dma_zone_reserve(const char *queue_name,
 			   uint32_t queue_size,
