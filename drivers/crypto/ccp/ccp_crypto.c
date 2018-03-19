@@ -27,6 +27,12 @@
 #include "ccp_pci.h"
 #include "ccp_pmd_private.h"
 
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+#include <openssl/conf.h>
+#include <openssl/err.h>
+#include <openssl/hmac.h>
+#endif
+
 /* SHA initial context values */
 static uint32_t ccp_sha1_init[SHA_COMMON_DIGEST_SIZE / sizeof(uint32_t)] = {
 	SHA1_H4, SHA1_H3,
@@ -760,6 +766,17 @@ ccp_configure_session_auth(struct ccp_session *sess,
 	else
 		sess->auth.op = CCP_AUTH_OP_VERIFY;
 	switch (auth_xform->algo) {
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	case RTE_CRYPTO_AUTH_MD5_HMAC:
+		sess->auth.algo = CCP_AUTH_ALGO_MD5_HMAC;
+		sess->auth.offset = (CCP_SB_BYTES << 1) - MD5_DIGEST_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		sess->auth.block_size = MD5_BLOCK_SIZE;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+		break;
+#endif
 	case RTE_CRYPTO_AUTH_SHA1:
 		sess->auth.engine = CCP_ENGINE_SHA;
 		sess->auth.algo = CCP_AUTH_ALGO_SHA1;
@@ -769,6 +786,17 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		sess->auth.offset = CCP_SB_BYTES - SHA1_DIGEST_SIZE;
 		break;
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+		if (auth_xform->key.length > SHA1_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA1_HMAC;
+		sess->auth.offset = CCP_SB_BYTES - SHA1_DIGEST_SIZE;
+		sess->auth.block_size = SHA1_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+#else
 		if (auth_xform->key.length > SHA1_BLOCK_SIZE)
 			return -1;
 		sess->auth.engine = CCP_ENGINE_SHA;
@@ -784,6 +812,7 @@ ccp_configure_session_auth(struct ccp_session *sess,
 			   auth_xform->key.length);
 		if (generate_partial_hash(sess))
 			return -1;
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA224:
 		sess->auth.algo = CCP_AUTH_ALGO_SHA224;
@@ -794,6 +823,17 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		sess->auth.offset = CCP_SB_BYTES - SHA224_DIGEST_SIZE;
 		break;
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+		if (auth_xform->key.length > SHA224_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA224_HMAC;
+		sess->auth.offset = CCP_SB_BYTES - SHA224_DIGEST_SIZE;
+		sess->auth.block_size = SHA224_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+#else
 		if (auth_xform->key.length > SHA224_BLOCK_SIZE)
 			return -1;
 		sess->auth.algo = CCP_AUTH_ALGO_SHA224_HMAC;
@@ -809,6 +849,7 @@ ccp_configure_session_auth(struct ccp_session *sess,
 			   auth_xform->key.length);
 		if (generate_partial_hash(sess))
 			return -1;
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA3_224:
 		sess->auth.algo = CCP_AUTH_ALGO_SHA3_224;
@@ -843,6 +884,17 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		sess->auth.offset = CCP_SB_BYTES - SHA256_DIGEST_SIZE;
 		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+		if (auth_xform->key.length > SHA256_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA256_HMAC;
+		sess->auth.offset = CCP_SB_BYTES - SHA256_DIGEST_SIZE;
+		sess->auth.block_size = SHA256_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+#else
 		if (auth_xform->key.length > SHA256_BLOCK_SIZE)
 			return -1;
 		sess->auth.algo = CCP_AUTH_ALGO_SHA256_HMAC;
@@ -858,6 +910,7 @@ ccp_configure_session_auth(struct ccp_session *sess,
 			   auth_xform->key.length);
 		if (generate_partial_hash(sess))
 			return -1;
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA3_256:
 		sess->auth.algo = CCP_AUTH_ALGO_SHA3_256;
@@ -892,6 +945,17 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		sess->auth.offset = (CCP_SB_BYTES << 1) - SHA384_DIGEST_SIZE;
 		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+		if (auth_xform->key.length > SHA384_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA384_HMAC;
+		sess->auth.offset = (CCP_SB_BYTES << 1) - SHA384_DIGEST_SIZE;
+		sess->auth.block_size = SHA384_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+#else
 		if (auth_xform->key.length > SHA384_BLOCK_SIZE)
 			return -1;
 		sess->auth.algo = CCP_AUTH_ALGO_SHA384_HMAC;
@@ -907,6 +971,7 @@ ccp_configure_session_auth(struct ccp_session *sess,
 			   auth_xform->key.length);
 		if (generate_partial_hash(sess))
 			return -1;
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA3_384:
 		sess->auth.algo = CCP_AUTH_ALGO_SHA3_384;
@@ -941,6 +1006,17 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		sess->auth.offset = (CCP_SB_BYTES << 1) - SHA512_DIGEST_SIZE;
 		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+		if (auth_xform->key.length > SHA512_BLOCK_SIZE)
+			return -1;
+		sess->auth.algo = CCP_AUTH_ALGO_SHA512_HMAC;
+		sess->auth.offset = (CCP_SB_BYTES << 1) - SHA512_DIGEST_SIZE;
+		sess->auth.block_size = SHA512_BLOCK_SIZE;
+		sess->auth.key_length = auth_xform->key.length;
+		memset(sess->auth.key, 0, sess->auth.block_size);
+		rte_memcpy(sess->auth.key, auth_xform->key.data,
+			   auth_xform->key.length);
+#else
 		if (auth_xform->key.length > SHA512_BLOCK_SIZE)
 			return -1;
 		sess->auth.algo = CCP_AUTH_ALGO_SHA512_HMAC;
@@ -956,6 +1032,7 @@ ccp_configure_session_auth(struct ccp_session *sess,
 			   auth_xform->key.length);
 		if (generate_partial_hash(sess))
 			return -1;
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA3_512:
 		sess->auth.algo = CCP_AUTH_ALGO_SHA3_512;
@@ -986,7 +1063,7 @@ ccp_configure_session_auth(struct ccp_session *sess,
 		sess->auth.engine = CCP_ENGINE_AES;
 		sess->auth.um.aes_mode = CCP_AES_MODE_CMAC;
 		sess->auth.key_length = auth_xform->key.length;
-		/**<padding and hash result*/
+		/* padding and hash result */
 		sess->auth.ctx_len = CCP_SB_BYTES << 1;
 		sess->auth.offset = AES_BLOCK_SIZE;
 		sess->auth.block_size = AES_BLOCK_SIZE;
@@ -1182,14 +1259,22 @@ ccp_auth_slot(struct ccp_session *session)
 		count = 3;
 		/**< op + lsb passthrough cpy to/from*/
 		break;
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	case CCP_AUTH_ALGO_MD5_HMAC:
+		break;
+#endif
 	case CCP_AUTH_ALGO_SHA1_HMAC:
 	case CCP_AUTH_ALGO_SHA224_HMAC:
 	case CCP_AUTH_ALGO_SHA256_HMAC:
+#ifndef RTE_LIBRTE_PMD_CCP_CPU_AUTH
 		count = 6;
+#endif
 		break;
 	case CCP_AUTH_ALGO_SHA384_HMAC:
 	case CCP_AUTH_ALGO_SHA512_HMAC:
+#ifndef RTE_LIBRTE_PMD_CCP_CPU_AUTH
 		count = 7;
+#endif
 		/**
 		 * 1. Load PHash1 = H(k ^ ipad); to LSB
 		 * 2. generate IHash = H(hash on meassage with PHash1
@@ -1295,6 +1380,122 @@ ccp_compute_slot_count(struct ccp_session *session)
 
 	return count;
 }
+
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+static uint8_t
+algo_select(int sessalgo,
+	    const EVP_MD **algo)
+{
+	int res = 0;
+
+	switch (sessalgo) {
+	case CCP_AUTH_ALGO_MD5_HMAC:
+		*algo = EVP_md5();
+		break;
+	case CCP_AUTH_ALGO_SHA1_HMAC:
+		*algo = EVP_sha1();
+		break;
+	case CCP_AUTH_ALGO_SHA224_HMAC:
+		*algo = EVP_sha224();
+		break;
+	case CCP_AUTH_ALGO_SHA256_HMAC:
+		*algo = EVP_sha256();
+		break;
+	case CCP_AUTH_ALGO_SHA384_HMAC:
+		*algo = EVP_sha384();
+		break;
+	case CCP_AUTH_ALGO_SHA512_HMAC:
+		*algo = EVP_sha512();
+		break;
+	default:
+		res = -EINVAL;
+		break;
+	}
+	return res;
+}
+
+static int
+process_cpu_auth_hmac(uint8_t *src, uint8_t *dst,
+		      __rte_unused uint8_t *iv,
+		      EVP_PKEY *pkey,
+		      int srclen,
+		      EVP_MD_CTX *ctx,
+		      const EVP_MD *algo,
+		      uint16_t d_len)
+{
+	size_t dstlen;
+	unsigned char temp_dst[64];
+
+	if (EVP_DigestSignInit(ctx, NULL, algo, NULL, pkey) <= 0)
+		goto process_auth_err;
+
+	if (EVP_DigestSignUpdate(ctx, (char *)src, srclen) <= 0)
+		goto process_auth_err;
+
+	if (EVP_DigestSignFinal(ctx, temp_dst, &dstlen) <= 0)
+		goto process_auth_err;
+
+	memcpy(dst, temp_dst, d_len);
+	return 0;
+process_auth_err:
+	CCP_LOG_ERR("Process cpu auth failed");
+	return -EINVAL;
+}
+
+static int cpu_crypto_auth(struct ccp_qp *qp,
+			   struct rte_crypto_op *op,
+			   struct ccp_session *sess,
+			   EVP_MD_CTX *ctx)
+{
+	uint8_t *src, *dst;
+	int srclen, status;
+	struct rte_mbuf *mbuf_src, *mbuf_dst;
+	const EVP_MD *algo = NULL;
+	EVP_PKEY *pkey;
+
+	algo_select(sess->auth.algo, &algo);
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, sess->auth.key,
+				    sess->auth.key_length);
+	mbuf_src = op->sym->m_src;
+	mbuf_dst = op->sym->m_dst ? op->sym->m_dst : op->sym->m_src;
+	srclen = op->sym->auth.data.length;
+	src = rte_pktmbuf_mtod_offset(mbuf_src, uint8_t *,
+				      op->sym->auth.data.offset);
+
+	if (sess->auth.op == CCP_AUTH_OP_VERIFY) {
+		dst = qp->temp_digest;
+	} else {
+		dst = op->sym->auth.digest.data;
+		if (dst == NULL) {
+			dst = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
+						     op->sym->auth.data.offset +
+						     sess->auth.digest_length);
+		}
+	}
+	status = process_cpu_auth_hmac(src, dst, NULL,
+				       pkey, srclen,
+				       ctx,
+				       algo,
+				       sess->auth.digest_length);
+	if (status) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return status;
+	}
+
+	if (sess->auth.op == CCP_AUTH_OP_VERIFY) {
+		if (memcmp(dst, op->sym->auth.digest.data,
+			   sess->auth.digest_length) != 0) {
+			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+		} else {
+			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+		}
+	} else {
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	}
+	EVP_PKEY_free(pkey);
+	return 0;
+}
+#endif
 
 static void
 ccp_perform_passthru(struct ccp_passthru *pst,
@@ -2391,14 +2592,24 @@ ccp_crypto_auth(struct rte_crypto_op *op,
 		result = ccp_perform_sha(op, cmd_q);
 		b_info->desccnt += 3;
 		break;
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	case CCP_AUTH_ALGO_MD5_HMAC:
+		break;
+#endif
 	case CCP_AUTH_ALGO_SHA1_HMAC:
 	case CCP_AUTH_ALGO_SHA224_HMAC:
 	case CCP_AUTH_ALGO_SHA256_HMAC:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+		break;
+#endif
 		result = ccp_perform_hmac(op, cmd_q);
 		b_info->desccnt += 6;
 		break;
 	case CCP_AUTH_ALGO_SHA384_HMAC:
 	case CCP_AUTH_ALGO_SHA512_HMAC:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+		break;
+#endif
 		result = ccp_perform_hmac(op, cmd_q);
 		b_info->desccnt += 7;
 		break;
@@ -2462,7 +2673,7 @@ ccp_crypto_aead(struct rte_crypto_op *op,
 }
 
 int
-process_ops_to_enqueue(const struct ccp_qp *qp,
+process_ops_to_enqueue(struct ccp_qp *qp,
 		       struct rte_crypto_op **op,
 		       struct ccp_queue *cmd_q,
 		       uint16_t nb_ops,
@@ -2471,11 +2682,22 @@ process_ops_to_enqueue(const struct ccp_qp *qp,
 	int i, result = 0;
 	struct ccp_batch_info *b_info;
 	struct ccp_session *session;
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	EVP_MD_CTX *auth_ctx = NULL;
+#endif
 
 	if (rte_mempool_get(qp->batch_mp, (void **)&b_info)) {
 		CCP_LOG_ERR("batch info allocation failed");
 		return 0;
 	}
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	auth_ctx = EVP_MD_CTX_create();
+	if (unlikely(!auth_ctx)) {
+		CCP_LOG_ERR("Unable to create auth ctx");
+		return 0;
+	}
+	b_info->auth_ctr = 0;
+#endif
 	/* populate batch info necessary for dequeue */
 	b_info->op_idx = 0;
 	b_info->lsb_buf_idx = 0;
@@ -2497,6 +2719,11 @@ process_ops_to_enqueue(const struct ccp_qp *qp,
 			break;
 		case CCP_CMD_AUTH:
 			result = ccp_crypto_auth(op[i], cmd_q, b_info);
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+			b_info->auth_ctr++;
+			result = cpu_crypto_auth(qp, op[i],
+						 session, auth_ctx);
+#endif
 			break;
 		case CCP_CMD_CIPHER_HASH:
 			result = ccp_crypto_cipher(op[i], cmd_q, b_info);
@@ -2506,6 +2733,12 @@ process_ops_to_enqueue(const struct ccp_qp *qp,
 			break;
 		case CCP_CMD_HASH_CIPHER:
 			result = ccp_crypto_auth(op[i], cmd_q, b_info);
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+			result = cpu_crypto_auth(qp, op[i],
+						 session, auth_ctx);
+			if (op[i]->status != RTE_CRYPTO_OP_STATUS_SUCCESS)
+				continue;
+#endif
 			if (result)
 				break;
 			result = ccp_crypto_cipher(op[i], cmd_q, b_info);
@@ -2539,6 +2772,9 @@ process_ops_to_enqueue(const struct ccp_qp *qp,
 
 	rte_ring_enqueue(qp->processed_pkts, (void *)b_info);
 
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	EVP_MD_CTX_destroy(auth_ctx);
+#endif
 	return i;
 }
 
@@ -2607,13 +2843,27 @@ static inline void ccp_auth_dq_prepare(struct rte_crypto_op *op)
 }
 
 static int
-ccp_prepare_ops(struct rte_crypto_op **op_d,
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+ccp_prepare_ops(struct ccp_qp *qp,
+#else
+ccp_prepare_ops(struct ccp_qp *qp __rte_unused,
+#endif
+		struct rte_crypto_op **op_d,
 		struct ccp_batch_info *b_info,
 		uint16_t nb_ops)
 {
 	int i, min_ops;
 	struct ccp_session *session;
 
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	EVP_MD_CTX *auth_ctx = NULL;
+
+	auth_ctx = EVP_MD_CTX_create();
+	if (unlikely(!auth_ctx)) {
+		CCP_LOG_ERR("Unable to create auth ctx");
+		return 0;
+	}
+#endif
 	min_ops = RTE_MIN(nb_ops, b_info->opcnt);
 
 	for (i = 0; i < min_ops; i++) {
@@ -2626,8 +2876,25 @@ ccp_prepare_ops(struct rte_crypto_op **op_d,
 			op_d[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 			break;
 		case CCP_CMD_AUTH:
+#ifndef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+			ccp_auth_dq_prepare(op_d[i]);
+#endif
+			break;
 		case CCP_CMD_CIPHER_HASH:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+			cpu_crypto_auth(qp, op_d[i],
+					session, auth_ctx);
+#else
+			ccp_auth_dq_prepare(op_d[i]);
+#endif
+			break;
 		case CCP_CMD_HASH_CIPHER:
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+			op_d[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+#else
+			ccp_auth_dq_prepare(op_d[i]);
+#endif
+			break;
 		case CCP_CMD_COMBINED:
 			ccp_auth_dq_prepare(op_d[i]);
 			break;
@@ -2636,6 +2903,9 @@ ccp_prepare_ops(struct rte_crypto_op **op_d,
 		}
 	}
 
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	EVP_MD_CTX_destroy(auth_ctx);
+#endif
 	b_info->opcnt -= min_ops;
 	return min_ops;
 }
@@ -2655,6 +2925,10 @@ process_ops_to_dequeue(struct ccp_qp *qp,
 	} else if (rte_ring_dequeue(qp->processed_pkts,
 				    (void **)&b_info))
 		return 0;
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	if (b_info->auth_ctr == b_info->opcnt)
+		goto success;
+#endif
 	cur_head_offset = CCP_READ_REG(b_info->cmd_q->reg_base,
 				       CMD_Q_HEAD_LO_BASE);
 
@@ -2674,7 +2948,7 @@ process_ops_to_dequeue(struct ccp_qp *qp,
 
 
 success:
-	nb_ops = ccp_prepare_ops(op, b_info, nb_ops);
+	nb_ops = ccp_prepare_ops(qp, op, b_info, nb_ops);
 	rte_atomic64_add(&b_info->cmd_q->free_slots, b_info->desccnt);
 	b_info->desccnt = 0;
 	if (b_info->opcnt > 0) {

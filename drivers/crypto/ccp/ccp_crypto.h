@@ -68,6 +68,9 @@
 #define SHA512_BLOCK_SIZE       128
 #define SHA3_512_BLOCK_SIZE     72
 
+/* Maximum length for digest */
+#define DIGEST_LENGTH_MAX	64
+
 /* SHA LSB intialiazation values */
 
 #define SHA1_H0		0x67452301UL
@@ -346,7 +349,7 @@ int ccp_compute_slot_count(struct ccp_session *session);
  * @param nb_ops No. of ops to be submitted
  * @return 0 on success otherwise -1
  */
-int process_ops_to_enqueue(const struct ccp_qp *qp,
+int process_ops_to_enqueue(struct ccp_qp *qp,
 			   struct rte_crypto_op **op,
 			   struct ccp_queue *cmd_q,
 			   uint16_t nb_ops,

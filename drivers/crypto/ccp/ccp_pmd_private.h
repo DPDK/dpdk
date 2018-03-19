@@ -6,6 +6,7 @@
 #define _CCP_PMD_PRIVATE_H_
 
 #include <rte_cryptodev.h>
+#include "ccp_crypto.h"
 
 #define CRYPTODEV_NAME_CCP_PMD crypto_ccp
 
@@ -61,6 +62,10 @@ struct ccp_batch_info {
 	phys_addr_t lsb_buf_phys;
 	/**< LSB intermediate buf for passthru */
 	int lsb_buf_idx;
+#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+	uint16_t auth_ctr;
+	/**< auth only ops batch */
+#endif
 } __rte_cache_aligned;
 
 /**< CCP crypto queue pair */
@@ -81,6 +86,11 @@ struct ccp_qp {
 	/**< Store ops pulled out of queue */
 	struct rte_cryptodev *dev;
 	/**< rte crypto device to which this qp belongs */
+	uint8_t temp_digest[DIGEST_LENGTH_MAX];
+	/**< Buffer used to store the digest generated
+	 * by the driver when verifying a digest provided
+	 * by the user (using authentication verify operation)
+	 */
 } __rte_cache_aligned;
 
 
