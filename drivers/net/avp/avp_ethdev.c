@@ -2074,12 +2074,6 @@ avp_dev_start(struct rte_eth_dev *eth_dev)
 		goto unlock;
 	}
 
-	/* disable features that we do not support */
-	eth_dev->data->dev_conf.rxmode.hw_ip_checksum = 0;
-	eth_dev->data->dev_conf.rxmode.hw_vlan_filter = 0;
-	eth_dev->data->dev_conf.rxmode.hw_vlan_extend = 0;
-	eth_dev->data->dev_conf.rxmode.hw_strip_crc = 0;
-
 	/* update link state */
 	ret = avp_dev_ctrl_set_link_state(eth_dev, 1);
 	if (ret < 0) {
@@ -2222,10 +2216,12 @@ static int
 avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_eth_conf *dev_conf = &eth_dev->data->dev_conf;
+	uint64_t offloads = dev_conf->rxmode.offloads;
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		if (avp->host_features & RTE_AVP_FEATURE_VLAN_OFFLOAD) {
-			if (eth_dev->data->dev_conf.rxmode.hw_vlan_strip)
+			if (offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 				avp->features |= RTE_AVP_FEATURE_VLAN_OFFLOAD;
 			else
 				avp->features &= ~RTE_AVP_FEATURE_VLAN_OFFLOAD;
@@ -2235,12 +2231,12 @@ avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 	}
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (eth_dev->data->dev_conf.rxmode.hw_vlan_filter)
+		if (offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 			PMD_DRV_LOG(ERR, "VLAN filter offload not supported\n");
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (eth_dev->data->dev_conf.rxmode.hw_vlan_extend)
+		if (offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
 			PMD_DRV_LOG(ERR, "VLAN extend offload not supported\n");
 	}
 
