@@ -273,6 +273,7 @@ ccp_configure_session_aead(struct ccp_session *sess,
 			   const struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_crypto_aead_xform *aead_xform = NULL;
+	size_t i;
 
 	aead_xform = &xform->aead;
 
@@ -287,6 +288,7 @@ ccp_configure_session_aead(struct ccp_session *sess,
 		sess->cipher.dir = CCP_CIPHER_DIR_DECRYPT;
 		sess->auth.op = CCP_AUTH_OP_VERIFY;
 	}
+	sess->aead_algo = aead_xform->algo;
 	sess->auth.aad_length = aead_xform->aad_length;
 	sess->auth.digest_length = aead_xform->digest_length;
 
@@ -295,10 +297,37 @@ ccp_configure_session_aead(struct ccp_session *sess,
 	sess->iv.length = aead_xform->iv.length;
 
 	switch (aead_xform->algo) {
+	case RTE_CRYPTO_AEAD_AES_GCM:
+		sess->cipher.algo = CCP_CIPHER_ALGO_AES_GCM;
+		sess->cipher.um.aes_mode = CCP_AES_MODE_GCTR;
+		sess->cipher.engine = CCP_ENGINE_AES;
+		if (sess->cipher.key_length == 16)
+			sess->cipher.ut.aes_type = CCP_AES_TYPE_128;
+		else if (sess->cipher.key_length == 24)
+			sess->cipher.ut.aes_type = CCP_AES_TYPE_192;
+		else if (sess->cipher.key_length == 32)
+			sess->cipher.ut.aes_type = CCP_AES_TYPE_256;
+		else {
+			CCP_LOG_ERR("Invalid aead key length");
+			return -1;
+		}
+		for (i = 0; i < sess->cipher.key_length; i++)
+			sess->cipher.key_ccp[sess->cipher.key_length - i - 1] =
+				sess->cipher.key[i];
+		sess->auth.algo = CCP_AUTH_ALGO_AES_GCM;
+		sess->auth.engine = CCP_ENGINE_AES;
+		sess->auth.um.aes_mode = CCP_AES_MODE_GHASH;
+		sess->auth.ctx_len = CCP_SB_BYTES;
+		sess->auth.offset = 0;
+		sess->auth.block_size = AES_BLOCK_SIZE;
+		sess->cmd_id = CCP_CMD_COMBINED;
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported aead algo");
 		return -ENOTSUP;
 	}
+	sess->cipher.nonce_phys = rte_mem_virt2phy(sess->cipher.nonce);
+	sess->cipher.key_phys = rte_mem_virt2phy(sess->cipher.key_ccp);
 	return 0;
 }
 
@@ -421,9 +450,26 @@ ccp_aead_slot(struct ccp_session *session)
 	int count = 0;
 
 	switch (session->aead_algo) {
+	case RTE_CRYPTO_AEAD_AES_GCM:
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported aead algo %d",
 			    session->aead_algo);
+	}
+	switch (session->auth.algo) {
+	case CCP_AUTH_ALGO_AES_GCM:
+		count = 5;
+		/**
+		 * 1. Passthru iv
+		 * 2. Hash AAD
+		 * 3. GCTR
+		 * 4. Reload passthru
+		 * 5. Hash Final tag
+		 */
+		break;
+	default:
+		CCP_LOG_ERR("Unsupported combined auth ALGO %d",
+			    session->auth.algo);
 	}
 	return count;
 }
@@ -847,6 +893,179 @@ ccp_perform_3des(struct rte_crypto_op *op,
 	return 0;
 }
 
+static int
+ccp_perform_aes_gcm(struct rte_crypto_op *op, struct ccp_queue *cmd_q)
+{
+	struct ccp_session *session;
+	union ccp_function function;
+	uint8_t *iv;
+	struct ccp_passthru pst;
+	struct ccp_desc *desc;
+	uint32_t tail;
+	uint64_t *temp;
+	phys_addr_t src_addr, dest_addr, key_addr, aad_addr;
+	phys_addr_t digest_dest_addr;
+	int length, non_align_len;
+
+	session = (struct ccp_session *)get_session_private_data(
+					 op->sym->session,
+					 ccp_cryptodev_driver_id);
+	iv = rte_crypto_op_ctod_offset(op, uint8_t *, session->iv.offset);
+	key_addr = session->cipher.key_phys;
+
+	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+					      op->sym->aead.data.offset);
+	if (unlikely(op->sym->m_dst != NULL))
+		dest_addr = rte_pktmbuf_mtophys_offset(op->sym->m_dst,
+						op->sym->aead.data.offset);
+	else
+		dest_addr = src_addr;
+	rte_pktmbuf_append(op->sym->m_src, session->auth.ctx_len);
+	digest_dest_addr = op->sym->aead.digest.phys_addr;
+	temp = (uint64_t *)(op->sym->aead.digest.data + AES_BLOCK_SIZE);
+	*temp++ = rte_bswap64(session->auth.aad_length << 3);
+	*temp = rte_bswap64(op->sym->aead.data.length << 3);
+
+	non_align_len = op->sym->aead.data.length % AES_BLOCK_SIZE;
+	length = CCP_ALIGN(op->sym->aead.data.length, AES_BLOCK_SIZE);
+
+	aad_addr = op->sym->aead.aad.phys_addr;
+
+	/* CMD1 IV Passthru */
+	rte_memcpy(session->cipher.nonce + AES_BLOCK_SIZE, iv,
+		   session->iv.length);
+	pst.src_addr = session->cipher.nonce_phys;
+	pst.dest_addr = (phys_addr_t)(cmd_q->sb_iv * CCP_SB_BYTES);
+	pst.len = CCP_SB_BYTES;
+	pst.dir = 1;
+	pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+	pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+	ccp_perform_passthru(&pst, cmd_q);
+
+	/* CMD2 GHASH-AAD */
+	function.raw = 0;
+	CCP_AES_ENCRYPT(&function) = CCP_AES_MODE_GHASH_AAD;
+	CCP_AES_MODE(&function) = CCP_AES_MODE_GHASH;
+	CCP_AES_TYPE(&function) = session->cipher.ut.aes_type;
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_AES;
+	CCP_CMD_INIT(desc) = 1;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = session->auth.aad_length;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)aad_addr);
+	CCP_CMD_SRC_HI(desc) = high32_value(aad_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_KEY_LO(desc) = ((uint32_t)key_addr);
+	CCP_CMD_KEY_HI(desc) = high32_value(key_addr);
+	CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_LSB_ID(desc) = cmd_q->sb_iv;
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+	rte_wmb();
+
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	/* CMD3 : GCTR Plain text */
+	function.raw = 0;
+	CCP_AES_ENCRYPT(&function) = session->cipher.dir;
+	CCP_AES_MODE(&function) = CCP_AES_MODE_GCTR;
+	CCP_AES_TYPE(&function) = session->cipher.ut.aes_type;
+	if (non_align_len == 0)
+		CCP_AES_SIZE(&function) = (AES_BLOCK_SIZE << 3) - 1;
+	else
+		CCP_AES_SIZE(&function) = (non_align_len << 3) - 1;
+
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_AES;
+	CCP_CMD_EOM(desc) = 1;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+
+	CCP_CMD_LEN(desc) = length;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)src_addr);
+	CCP_CMD_SRC_HI(desc) = high32_value(src_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_DST_LO(desc) = ((uint32_t)dest_addr);
+	CCP_CMD_DST_HI(desc) = high32_value(dest_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_KEY_LO(desc) = ((uint32_t)key_addr);
+	CCP_CMD_KEY_HI(desc) = high32_value(key_addr);
+	CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_LSB_ID(desc) = cmd_q->sb_iv;
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+	rte_wmb();
+
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	/* CMD4 : PT to copy IV */
+	pst.src_addr = session->cipher.nonce_phys;
+	pst.dest_addr = (phys_addr_t)(cmd_q->sb_iv * CCP_SB_BYTES);
+	pst.len = AES_BLOCK_SIZE;
+	pst.dir = 1;
+	pst.bit_mod = CCP_PASSTHRU_BITWISE_NOOP;
+	pst.byte_swap = CCP_PASSTHRU_BYTESWAP_NOOP;
+	ccp_perform_passthru(&pst, cmd_q);
+
+	/* CMD5 : GHASH-Final */
+	function.raw = 0;
+	CCP_AES_ENCRYPT(&function) = CCP_AES_MODE_GHASH_FINAL;
+	CCP_AES_MODE(&function) = CCP_AES_MODE_GHASH;
+	CCP_AES_TYPE(&function) = session->cipher.ut.aes_type;
+
+	desc = &cmd_q->qbase_desc[cmd_q->qidx];
+	memset(desc, 0, Q_DESC_SIZE);
+
+	CCP_CMD_ENGINE(desc) = CCP_ENGINE_AES;
+	CCP_CMD_FUNCTION(desc) = function.raw;
+	/* Last block (AAD_len || PT_len)*/
+	CCP_CMD_LEN(desc) = AES_BLOCK_SIZE;
+
+	CCP_CMD_SRC_LO(desc) = ((uint32_t)digest_dest_addr + AES_BLOCK_SIZE);
+	CCP_CMD_SRC_HI(desc) = high32_value(digest_dest_addr + AES_BLOCK_SIZE);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_DST_LO(desc) = ((uint32_t)digest_dest_addr);
+	CCP_CMD_DST_HI(desc) = high32_value(digest_dest_addr);
+	CCP_CMD_SRC_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_KEY_LO(desc) = ((uint32_t)key_addr);
+	CCP_CMD_KEY_HI(desc) = high32_value(key_addr);
+	CCP_CMD_KEY_MEM(desc) = CCP_MEMTYPE_SYSTEM;
+
+	CCP_CMD_LSB_ID(desc) = cmd_q->sb_iv;
+
+	cmd_q->qidx = (cmd_q->qidx + 1) % COMMANDS_PER_QUEUE;
+	rte_wmb();
+
+	tail = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx * Q_DESC_SIZE);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_TAIL_LO_BASE, tail);
+	CCP_WRITE_REG(cmd_q->reg_base, CMD_Q_CONTROL_BASE,
+		      cmd_q->qcontrol | CMD_Q_RUN);
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	return 0;
+}
+
 static inline int
 ccp_crypto_cipher(struct rte_crypto_op *op,
 		  struct ccp_queue *cmd_q,
@@ -913,17 +1132,25 @@ ccp_crypto_auth(struct rte_crypto_op *op,
 
 static inline int
 ccp_crypto_aead(struct rte_crypto_op *op,
-		struct ccp_queue *cmd_q __rte_unused,
-		struct ccp_batch_info *b_info __rte_unused)
+		struct ccp_queue *cmd_q,
+		struct ccp_batch_info *b_info)
 {
 	int result = 0;
 	struct ccp_session *session;
 
 	session = (struct ccp_session *)get_session_private_data(
-					 op->sym->session,
+					op->sym->session,
 					ccp_cryptodev_driver_id);
 
-	switch (session->aead_algo) {
+	switch (session->auth.algo) {
+	case CCP_AUTH_ALGO_AES_GCM:
+		if (session->cipher.algo != CCP_CIPHER_ALGO_AES_GCM) {
+			CCP_LOG_ERR("Incorrect chain order");
+			return -1;
+		}
+		result = ccp_perform_aes_gcm(op, cmd_q);
+		b_info->desccnt += 5;
+		break;
 	default:
 		CCP_LOG_ERR("Unsupported aead algo %d",
 			    session->aead_algo);
