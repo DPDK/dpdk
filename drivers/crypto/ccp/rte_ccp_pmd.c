@@ -23,7 +23,7 @@ static unsigned int ccp_pmd_init_done;
 uint8_t ccp_cryptodev_driver_id;
 
 static struct ccp_session *
-get_ccp_session(struct ccp_qp *qp __rte_unused, struct rte_crypto_op *op)
+get_ccp_session(struct ccp_qp *qp, struct rte_crypto_op *op)
 {
 	struct ccp_session *sess = NULL;
 
@@ -35,6 +35,27 @@ get_ccp_session(struct ccp_qp *qp __rte_unused, struct rte_crypto_op *op)
 			get_session_private_data(
 				op->sym->session,
 				ccp_cryptodev_driver_id);
+	} else if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
+		void *_sess;
+		void *_sess_private_data = NULL;
+
+		if (rte_mempool_get(qp->sess_mp, &_sess))
+			return NULL;
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+			return NULL;
+
+		sess = (struct ccp_session *)_sess_private_data;
+
+		if (unlikely(ccp_set_session_parameters(sess,
+							op->sym->xform) != 0)) {
+			rte_mempool_put(qp->sess_mp, _sess);
+			rte_mempool_put(qp->sess_mp, _sess_private_data);
+			sess = NULL;
+		}
+		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
+		set_session_private_data(op->sym->session,
+					 ccp_cryptodev_driver_id,
+					 _sess_private_data);
 	}
 
 	return sess;
@@ -82,10 +103,18 @@ ccp_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
 	struct ccp_qp *qp = queue_pair;
-	uint16_t nb_dequeued = 0;
+	uint16_t nb_dequeued = 0, i;
 
 	nb_dequeued = process_ops_to_dequeue(qp, ops, nb_ops);
 
+	/* Free session if a session-less crypto op */
+	for (i = 0; i < nb_dequeued; i++)
+		if (unlikely(ops[i]->sess_type ==
+			     RTE_CRYPTO_OP_SESSIONLESS)) {
+			rte_mempool_put(qp->sess_mp,
+					ops[i]->sym->session);
+			ops[i]->sym->session = NULL;
+		}
 	qp->qp_stats.dequeued_count += nb_dequeued;
 
 	return nb_dequeued;
