@@ -1700,14 +1700,14 @@ mrvl_tx_queue_offloads_okay(struct rte_eth_dev *dev, uint64_t requested)
 	uint64_t missing = mandatory & ~requested;
 
 	if (unsupported) {
-		RTE_LOG(ERR, PMD, "Some Rx offloads are not supported. "
+		RTE_LOG(ERR, PMD, "Some Tx offloads are not supported. "
 			"Requested 0x%" PRIx64 " supported 0x%" PRIx64 ".\n",
 			requested, supported);
 		return 0;
 	}
 
 	if (missing) {
-		RTE_LOG(ERR, PMD, "Some Rx offloads are missing. "
+		RTE_LOG(ERR, PMD, "Some Tx offloads are missing. "
 			"Requested 0x%" PRIx64 " missing 0x%" PRIx64 ".\n",
 			requested, missing);
 		return 0;
