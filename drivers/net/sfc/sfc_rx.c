@@ -887,7 +887,7 @@ sfc_rx_mbuf_data_alignment(struct rte_mempool *mb_pool)
 
 	order = MIN(order, rte_bsf32(data_off));
 
-	return 1u << (order - 1);
+	return 1u << order;
 }
 
 static uint16_t
