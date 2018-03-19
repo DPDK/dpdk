@@ -98,7 +98,9 @@ New Features
 
 * **Added AMD CCP Crypto PMD.**
 
-  Added the new ``ccp`` crypto driver for AMD CCP devices.
+  Added the new ``ccp`` crypto driver for AMD CCP devices. See the
+  :doc:`../cryptodevs/ccp` crypto driver guide for more details on
+  this new driver.
 
 * **Updated AESNI MB PMD.**
 

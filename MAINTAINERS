@@ -690,6 +690,8 @@ F: doc/guides/cryptodevs/features/default.ini
 AMD CCP Crypto
 M: Ravi Kumar <ravi1.kumar@amd.com>
 F: drivers/crypto/ccp/
+F: doc/guides/cryptodevs/ccp.rst
+F: doc/guides/cryptodevs/features/ccp.ini
 
 ARMv8 Crypto
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
