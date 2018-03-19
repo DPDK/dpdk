@@ -56,6 +56,145 @@ ccp_pmd_info_get(struct rte_cryptodev *dev,
 	}
 }
 
+static int
+ccp_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
+{
+	struct ccp_qp *qp;
+
+	if (dev->data->queue_pairs[qp_id] != NULL) {
+		qp = (struct ccp_qp *)dev->data->queue_pairs[qp_id];
+		rte_ring_free(qp->processed_pkts);
+		rte_mempool_free(qp->batch_mp);
+		rte_free(qp);
+		dev->data->queue_pairs[qp_id] = NULL;
+	}
+	return 0;
+}
+
+static int
+ccp_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
+		struct ccp_qp *qp)
+{
+	unsigned int n = snprintf(qp->name, sizeof(qp->name),
+			"ccp_pmd_%u_qp_%u",
+			dev->data->dev_id, qp->id);
+
+	if (n > sizeof(qp->name))
+		return -1;
+
+	return 0;
+}
+
+static struct rte_ring *
+ccp_pmd_qp_create_batch_info_ring(struct ccp_qp *qp,
+				  unsigned int ring_size, int socket_id)
+{
+	struct rte_ring *r;
+
+	r = rte_ring_lookup(qp->name);
+	if (r) {
+		if (r->size >= ring_size) {
+			CCP_LOG_INFO(
+				"Reusing ring %s for processed packets",
+				qp->name);
+			return r;
+		}
+		CCP_LOG_INFO(
+			"Unable to reuse ring %s for processed packets",
+			 qp->name);
+		return NULL;
+	}
+
+	return rte_ring_create(qp->name, ring_size, socket_id,
+			RING_F_SP_ENQ | RING_F_SC_DEQ);
+}
+
+static int
+ccp_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
+		 const struct rte_cryptodev_qp_conf *qp_conf,
+		 int socket_id, struct rte_mempool *session_pool)
+{
+	struct ccp_private *internals = dev->data->dev_private;
+	struct ccp_qp *qp;
+	int retval = 0;
+
+	if (qp_id >= internals->max_nb_qpairs) {
+		CCP_LOG_ERR("Invalid qp_id %u, should be less than %u",
+			    qp_id, internals->max_nb_qpairs);
+		return (-EINVAL);
+	}
+
+	/* Free memory prior to re-allocation if needed. */
+	if (dev->data->queue_pairs[qp_id] != NULL)
+		ccp_pmd_qp_release(dev, qp_id);
+
+	/* Allocate the queue pair data structure. */
+	qp = rte_zmalloc_socket("CCP Crypto PMD Queue Pair", sizeof(*qp),
+					RTE_CACHE_LINE_SIZE, socket_id);
+	if (qp == NULL) {
+		CCP_LOG_ERR("Failed to allocate queue pair memory");
+		return (-ENOMEM);
+	}
+
+	qp->dev = dev;
+	qp->id = qp_id;
+	dev->data->queue_pairs[qp_id] = qp;
+
+	retval = ccp_pmd_qp_set_unique_name(dev, qp);
+	if (retval) {
+		CCP_LOG_ERR("Failed to create unique name for ccp qp");
+		goto qp_setup_cleanup;
+	}
+
+	qp->processed_pkts = ccp_pmd_qp_create_batch_info_ring(qp,
+			qp_conf->nb_descriptors, socket_id);
+	if (qp->processed_pkts == NULL) {
+		CCP_LOG_ERR("Failed to create batch info ring");
+		goto qp_setup_cleanup;
+	}
+
+	qp->sess_mp = session_pool;
+
+	/* mempool for batch info */
+	qp->batch_mp = rte_mempool_create(
+				qp->name,
+				qp_conf->nb_descriptors,
+				sizeof(struct ccp_batch_info),
+				RTE_CACHE_LINE_SIZE,
+				0, NULL, NULL, NULL, NULL,
+				SOCKET_ID_ANY, 0);
+	if (qp->batch_mp == NULL)
+		goto qp_setup_cleanup;
+	memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
+	return 0;
+
+qp_setup_cleanup:
+	dev->data->queue_pairs[qp_id] = NULL;
+	if (qp)
+		rte_free(qp);
+	return -1;
+}
+
+static int
+ccp_pmd_qp_start(struct rte_cryptodev *dev __rte_unused,
+		 uint16_t queue_pair_id __rte_unused)
+{
+	return -ENOTSUP;
+}
+
+static int
+ccp_pmd_qp_stop(struct rte_cryptodev *dev __rte_unused,
+		uint16_t queue_pair_id __rte_unused)
+{
+	return -ENOTSUP;
+}
+
+static uint32_t
+ccp_pmd_qp_count(struct rte_cryptodev *dev)
+{
+	return dev->data->nb_queue_pairs;
+}
+
 static unsigned
 ccp_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
@@ -121,11 +260,11 @@ struct rte_cryptodev_ops ccp_ops = {
 
 		.dev_infos_get		= ccp_pmd_info_get,
 
-		.queue_pair_setup	= NULL,
-		.queue_pair_release	= NULL,
-		.queue_pair_start	= NULL,
-		.queue_pair_stop	= NULL,
-		.queue_pair_count	= NULL,
+		.queue_pair_setup	= ccp_pmd_qp_setup,
+		.queue_pair_release	= ccp_pmd_qp_release,
+		.queue_pair_start	= ccp_pmd_qp_start,
+		.queue_pair_stop	= ccp_pmd_qp_stop,
+		.queue_pair_count	= ccp_pmd_qp_count,
 
 		.session_get_size	= ccp_pmd_session_get_size,
 		.session_configure	= ccp_pmd_session_configure,
