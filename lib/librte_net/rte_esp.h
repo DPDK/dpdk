@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2016-2017, Mellanox Technologies.
+ * Copyright 2016 Mellanox Technologies, Ltd
  */
 
 #ifndef _RTE_ESP_H_

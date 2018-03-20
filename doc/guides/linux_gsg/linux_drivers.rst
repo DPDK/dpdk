@@ -1,6 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2015 Intel Corporation.
-    Copyright(c) 2017 Mellanox Corporation.
+    Copyright 2017 Mellanox Technologies, Ltd
     All rights reserved.
 
 .. _linux_gsg_linux_drivers:

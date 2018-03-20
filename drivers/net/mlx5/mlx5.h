@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2015 6WIND S.A.
- * Copyright 2015 Mellanox.
+ * Copyright 2015 Mellanox Technologies, Ltd
  */
 
 #ifndef RTE_PMD_MLX5_H_

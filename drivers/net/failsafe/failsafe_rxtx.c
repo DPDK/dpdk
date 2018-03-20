@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2017 6WIND S.A.
- * Copyright 2017 Mellanox.
+ * Copyright 2017 Mellanox Technologies, Ltd
  */
 
 #include <rte_atomic.h>

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2018 6WIND S.A.
- * Copyright 2018 Mellanox Technologies, Ltd.
+ * Copyright 2018 Mellanox Technologies, Ltd
  */
 
 #ifndef MLX5_GLUE_H_

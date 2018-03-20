@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017 Mellanox Technologies, Ltd.
+ * Copyright 2017 Mellanox Technologies, Ltd
  */
 
 #ifndef RTE_HYPERVISOR_H

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
- * Copyright 2017 Mellanox Technologies, Ltd.
+ * Copyright 2017 Mellanox Technologies, Ltd
  */
 
 #ifndef __TAP_BPF_H__
