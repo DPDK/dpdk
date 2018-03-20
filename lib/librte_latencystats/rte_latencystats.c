@@ -46,7 +46,7 @@ struct rte_latency_stats {
 static struct rte_latency_stats *glob_stats;
 
 struct rxtx_cbs {
-	struct rte_eth_rxtx_callback *cb;
+	const struct rte_eth_rxtx_callback *cb;
 };
 
 static struct rxtx_cbs rx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];

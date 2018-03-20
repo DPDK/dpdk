@@ -3002,6 +3002,8 @@ int rte_eth_dev_filter_ctrl(uint16_t port_id, enum rte_filter_type filter_type,
 int rte_eth_dev_get_dcb_info(uint16_t port_id,
 			     struct rte_eth_dcb_info *dcb_info);
 
+struct rte_eth_rxtx_callback;
+
 /**
  * Add a callback to be called on packet RX on a given port and queue.
  *
@@ -3026,7 +3028,8 @@ int rte_eth_dev_get_dcb_info(uint16_t port_id,
  *   NULL on error.
  *   On success, a pointer value which can later be used to remove the callback.
  */
-void *rte_eth_add_rx_callback(uint16_t port_id, uint16_t queue_id,
+const struct rte_eth_rxtx_callback *
+rte_eth_add_rx_callback(uint16_t port_id, uint16_t queue_id,
 		rte_rx_callback_fn fn, void *user_param);
 
 /**
@@ -3054,7 +3057,8 @@ void *rte_eth_add_rx_callback(uint16_t port_id, uint16_t queue_id,
  *   NULL on error.
  *   On success, a pointer value which can later be used to remove the callback.
  */
-void *rte_eth_add_first_rx_callback(uint16_t port_id, uint16_t queue_id,
+const struct rte_eth_rxtx_callback *
+rte_eth_add_first_rx_callback(uint16_t port_id, uint16_t queue_id,
 		rte_rx_callback_fn fn, void *user_param);
 
 /**
@@ -3081,10 +3085,9 @@ void *rte_eth_add_first_rx_callback(uint16_t port_id, uint16_t queue_id,
  *   NULL on error.
  *   On success, a pointer value which can later be used to remove the callback.
  */
-void *rte_eth_add_tx_callback(uint16_t port_id, uint16_t queue_id,
+const struct rte_eth_rxtx_callback *
+rte_eth_add_tx_callback(uint16_t port_id, uint16_t queue_id,
 		rte_tx_callback_fn fn, void *user_param);
-
-struct rte_eth_rxtx_callback;
 
 /**
  * Remove an RX packet callback from a given port and queue.
@@ -3117,7 +3120,7 @@ struct rte_eth_rxtx_callback;
  *               is NULL or not found for the port/queue.
  */
 int rte_eth_remove_rx_callback(uint16_t port_id, uint16_t queue_id,
-		struct rte_eth_rxtx_callback *user_cb);
+		const struct rte_eth_rxtx_callback *user_cb);
 
 /**
  * Remove a TX packet callback from a given port and queue.
@@ -3150,7 +3153,7 @@ int rte_eth_remove_rx_callback(uint16_t port_id, uint16_t queue_id,
  *               is NULL or not found for the port/queue.
  */
 int rte_eth_remove_tx_callback(uint16_t port_id, uint16_t queue_id,
-		struct rte_eth_rxtx_callback *user_cb);
+		const struct rte_eth_rxtx_callback *user_cb);
 
 /**
  * Retrieve information about given port's RX queue.

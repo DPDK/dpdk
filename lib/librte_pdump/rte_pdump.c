@@ -75,7 +75,7 @@ struct pdump_response {
 static struct pdump_rxtx_cbs {
 	struct rte_ring *ring;
 	struct rte_mempool *mp;
-	struct rte_eth_rxtx_callback *cb;
+	const struct rte_eth_rxtx_callback *cb;
 	void *filter;
 } rx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT],
 tx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];

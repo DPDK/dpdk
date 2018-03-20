@@ -3493,7 +3493,7 @@ rte_eth_dev_filter_ctrl(uint16_t port_id, enum rte_filter_type filter_type,
 							     filter_op, arg));
 }
 
-void *
+const struct rte_eth_rxtx_callback *
 rte_eth_add_rx_callback(uint16_t port_id, uint16_t queue_id,
 		rte_rx_callback_fn fn, void *user_param)
 {
@@ -3535,7 +3535,7 @@ rte_eth_add_rx_callback(uint16_t port_id, uint16_t queue_id,
 	return cb;
 }
 
-void *
+const struct rte_eth_rxtx_callback *
 rte_eth_add_first_rx_callback(uint16_t port_id, uint16_t queue_id,
 		rte_rx_callback_fn fn, void *user_param)
 {
@@ -3570,7 +3570,7 @@ rte_eth_add_first_rx_callback(uint16_t port_id, uint16_t queue_id,
 	return cb;
 }
 
-void *
+const struct rte_eth_rxtx_callback *
 rte_eth_add_tx_callback(uint16_t port_id, uint16_t queue_id,
 		rte_tx_callback_fn fn, void *user_param)
 {
@@ -3615,7 +3615,7 @@ rte_eth_add_tx_callback(uint16_t port_id, uint16_t queue_id,
 
 int
 rte_eth_remove_rx_callback(uint16_t port_id, uint16_t queue_id,
-		struct rte_eth_rxtx_callback *user_cb)
+		const struct rte_eth_rxtx_callback *user_cb)
 {
 #ifndef RTE_ETHDEV_RXTX_CALLBACKS
 	return -ENOTSUP;
@@ -3649,7 +3649,7 @@ rte_eth_remove_rx_callback(uint16_t port_id, uint16_t queue_id,
 
 int
 rte_eth_remove_tx_callback(uint16_t port_id, uint16_t queue_id,
-		struct rte_eth_rxtx_callback *user_cb)
+		const struct rte_eth_rxtx_callback *user_cb)
 {
 #ifndef RTE_ETHDEV_RXTX_CALLBACKS
 	return -ENOTSUP;
