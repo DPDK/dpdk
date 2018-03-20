@@ -174,7 +174,10 @@ uint16_t ssows_deq_timeout(void *port, struct rte_event *ev,
 		uint64_t timeout_ticks);
 uint16_t ssows_deq_timeout_burst(void *port, struct rte_event ev[],
 		uint16_t nb_events, uint64_t timeout_ticks);
-void ssows_flush_events(struct ssows *ws, uint8_t queue_id);
+
+typedef void (*ssows_handle_event_t)(void *arg, struct rte_event ev);
+void ssows_flush_events(struct ssows *ws, uint8_t queue_id,
+		ssows_handle_event_t fn, void *arg);
 void ssows_reset(struct ssows *ws);
 int ssovf_info(struct ssovf_info *info);
 void *ssovf_bar(enum ssovf_type, uint8_t id, uint8_t bar);

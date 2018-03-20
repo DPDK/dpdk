@@ -688,6 +688,40 @@ test_multi_queue_enq_multi_port_deq(void)
 					nr_ports, 0xff /* invalid */);
 }
 
+static
+void flush(uint8_t dev_id, struct rte_event event, void *arg)
+{
+	unsigned int *count = arg;
+
+	RTE_SET_USED(dev_id);
+	if (event.event_type == RTE_EVENT_TYPE_CPU)
+		*count = *count + 1;
+
+}
+
+static int
+test_dev_stop_flush(void)
+{
+	unsigned int total_events = MAX_EVENTS, count = 0;
+	int ret;
+
+	ret = generate_random_events(total_events);
+	if (ret)
+		return -1;
+
+	ret = rte_event_dev_stop_flush_callback_register(evdev, flush, &count);
+	if (ret)
+		return -2;
+	rte_event_dev_stop(evdev);
+	ret = rte_event_dev_stop_flush_callback_register(evdev, NULL, NULL);
+	if (ret)
+		return -3;
+	RTE_TEST_ASSERT_EQUAL(total_events, count,
+				"count mismatch total_events=%d count=%d",
+				total_events, count);
+	return 0;
+}
+
 static int
 validate_queue_to_port_single_link(uint32_t index, uint8_t port,
 			struct rte_event *ev)
@@ -1414,6 +1448,8 @@ test_eventdev_octeontx(void)
 			test_simple_enqdeq_parallel);
 	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
 			test_multi_queue_enq_single_port_deq);
+	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
+			test_dev_stop_flush);
 	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,
 			test_multi_queue_enq_multi_port_deq);
 	OCTEONTX_TEST_RUN(eventdev_setup, eventdev_teardown,

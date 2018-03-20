@@ -529,7 +529,7 @@ ssovf_start(struct rte_eventdev *dev)
 
 	for (i = 0; i < edev->nb_event_queues; i++) {
 		/* Consume all the events through HWS0 */
-		ssows_flush_events(dev->data->ports[0], i);
+		ssows_flush_events(dev->data->ports[0], i, NULL, NULL);
 
 		base = ssovf_bar(OCTEONTX_SSO_GROUP, i, 0);
 		base += SSO_VHGRP_QCTL;
@@ -538,6 +538,16 @@ ssovf_start(struct rte_eventdev *dev)
 
 	ssovf_fastpath_fns_set(dev);
 	return 0;
+}
+
+static void
+ssows_handle_event(void *arg, struct rte_event event)
+{
+	struct rte_eventdev *dev = arg;
+
+	if (dev->dev_ops->dev_stop_flush != NULL)
+		dev->dev_ops->dev_stop_flush(dev->data->dev_id, event,
+					dev->data->dev_stop_flush_arg);
 }
 
 static void
@@ -557,7 +567,8 @@ ssovf_stop(struct rte_eventdev *dev)
 
 	for (i = 0; i < edev->nb_event_queues; i++) {
 		/* Consume all the events through HWS0 */
-		ssows_flush_events(dev->data->ports[0], i);
+		ssows_flush_events(dev->data->ports[0], i,
+				ssows_handle_event, dev);
 
 		base = ssovf_bar(OCTEONTX_SSO_GROUP, i, 0);
 		base += SSO_VHGRP_QCTL;

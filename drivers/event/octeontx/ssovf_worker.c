@@ -198,12 +198,12 @@ ssows_enq_fwd_burst(void *port, const struct rte_event ev[], uint16_t nb_events)
 }
 
 void
-ssows_flush_events(struct ssows *ws, uint8_t queue_id)
+ssows_flush_events(struct ssows *ws, uint8_t queue_id,
+				ssows_handle_event_t fn, void *arg)
 {
 	uint32_t reg_off;
-	uint64_t aq_cnt = 1;
-	uint64_t cq_ds_cnt = 1;
-	uint64_t enable, get_work0, get_work1;
+	struct rte_event ev;
+	uint64_t enable, aq_cnt = 1, cq_ds_cnt = 1;
 	uint8_t *base = ssovf_bar(OCTEONTX_SSO_GROUP, queue_id, 0);
 
 	enable = ssovf_read64(base + SSO_VHGRP_QCTL);
@@ -219,11 +219,10 @@ ssows_flush_events(struct ssows *ws, uint8_t queue_id)
 		cq_ds_cnt = ssovf_read64(base + SSO_VHGRP_INT_CNT);
 		/* Extract cq and ds count */
 		cq_ds_cnt &= 0x1FFF1FFF0000;
-		ssovf_load_pair(get_work0, get_work1, ws->base + reg_off);
+		ssows_get_work(ws, &ev);
+		if (fn != NULL && ev.u64 != 0)
+			fn(arg, ev);
 	}
-
-	RTE_SET_USED(get_work0);
-	RTE_SET_USED(get_work1);
 }
 
 void
