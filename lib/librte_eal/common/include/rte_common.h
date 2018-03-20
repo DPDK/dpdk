@@ -191,6 +191,22 @@ static void __attribute__((constructor(prio), used)) func(void)
 #define RTE_ALIGN(val, align) RTE_ALIGN_CEIL(val, align)
 
 /**
+ * Macro to align a value to the multiple of given value. The resultant
+ * value will be of the same type as the first parameter and will be no lower
+ * than the first parameter.
+ */
+#define RTE_ALIGN_MUL_CEIL(v, mul) \
+	(((v + (typeof(v))(mul) - 1) / ((typeof(v))(mul))) * (typeof(v))(mul))
+
+/**
+ * Macro to align a value to the multiple of given value. The resultant
+ * value will be of the same type as the first parameter and will be no higher
+ * than the first parameter.
+ */
+#define RTE_ALIGN_MUL_FLOOR(v, mul) \
+	((v / ((typeof(v))(mul))) * (typeof(v))(mul))
+
+/**
  * Checks if a pointer is aligned to a given power-of-two value
  *
  * @param ptr

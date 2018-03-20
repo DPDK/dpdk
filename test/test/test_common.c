@@ -128,6 +128,18 @@ test_align(void)
 				FAIL("rte_is_aligned");
 		}
 	}
+
+	for (p = 1; p <= MAX_NUM / 2; p++) {
+		for (i = 1; i <= MAX_NUM / 2; i++) {
+			val = RTE_ALIGN_MUL_CEIL(i, p);
+			if (val % p != 0 || val < i)
+				FAIL_ALIGN("RTE_ALIGN_MUL_CEIL", i, p);
+			val = RTE_ALIGN_MUL_FLOOR(i, p);
+			if (val % p != 0 || val > i)
+				FAIL_ALIGN("RTE_ALIGN_MUL_FLOOR", i, p);
+		}
+	}
+
 	return 0;
 }
 
