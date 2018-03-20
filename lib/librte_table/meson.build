@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-version = 2
+version = 3
 sources = files('rte_table_lpm.c', 'rte_table_lpm_ipv6.c',
 		'rte_table_hash_cuckoo.c', 'rte_table_hash_key8.c',
 		'rte_table_hash_key16.c', 'rte_table_hash_key32.c',
