@@ -1296,7 +1296,8 @@ virtio_interrupt_handler(void *param)
 
 	if (isr & VIRTIO_NET_S_ANNOUNCE) {
 		virtio_notify_peers(dev);
-		virtio_ack_link_announce(dev);
+		if (hw->cvq)
+			virtio_ack_link_announce(dev);
 	}
 }
 
