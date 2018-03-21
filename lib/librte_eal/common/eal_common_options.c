@@ -947,6 +947,29 @@ eal_parse_log_level(const char *arg)
 		printf("cannot set log level %s,%lu\n",
 			type, tmp);
 		goto fail;
+	} else {
+		struct rte_eal_opt_loglevel *opt_ll;
+
+		/*
+		 * Save the type (regexp string) and the loglevel
+		 * in the global storage so that it could be used
+		 * to configure dynamic logtypes which are absent
+		 * at the moment of EAL option processing but may
+		 * be registered during runtime.
+		 */
+		opt_ll = malloc(sizeof(*opt_ll));
+		if (opt_ll == NULL)
+			goto fail;
+
+		opt_ll->re_type = strdup(type);
+		if (opt_ll->re_type == NULL) {
+			free(opt_ll);
+			goto fail;
+		}
+
+		opt_ll->level = tmp;
+
+		TAILQ_INSERT_HEAD(&opt_loglevel_list, opt_ll, next);
 	}
 
 	free(str);

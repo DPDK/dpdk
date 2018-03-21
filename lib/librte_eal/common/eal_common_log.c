@@ -23,6 +23,10 @@ struct rte_logs rte_logs = {
 	.file = NULL,
 };
 
+/** Global list of valid EAL log level options */
+struct rte_eal_opt_loglevel_list opt_loglevel_list =
+	TAILQ_HEAD_INITIALIZER(opt_loglevel_list);
+
 /* Stream to use for logging if rte_logs.file is NULL */
 static FILE *default_log_stream;
 
@@ -184,6 +188,38 @@ rte_log_register(const char *name)
 	rte_logs.dynamic_types_len++;
 
 	return ret;
+}
+
+/* Register an extended log type and try to pick its level from EAL options */
+int __rte_experimental
+rte_log_register_type_and_pick_level(const char *name, uint32_t level_def)
+{
+	struct rte_eal_opt_loglevel *opt_ll;
+	uint32_t level = level_def;
+	int type;
+
+	type = rte_log_register(name);
+	if (type < 0)
+		return type;
+
+	TAILQ_FOREACH(opt_ll, &opt_loglevel_list, next) {
+		regex_t r;
+
+		if (opt_ll->level > RTE_LOG_DEBUG)
+			continue;
+
+		if (regcomp(&r, opt_ll->re_type, 0) != 0)
+			continue;
+
+		if (regexec(&r, name, 0, NULL, 0) == 0)
+			level = opt_ll->level;
+
+		regfree(&r);
+	}
+
+	rte_logs.dynamic_types[type].loglevel = level;
+
+	return type;
 }
 
 struct logtype {
