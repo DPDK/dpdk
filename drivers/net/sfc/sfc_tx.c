@@ -606,7 +606,7 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 			sfc_err(sa, "TxQ %u flush timed out", sw_index);
 
 		if (txq->state & SFC_TXQ_FLUSHED)
-			sfc_info(sa, "TxQ %u flushed", sw_index);
+			sfc_notice(sa, "TxQ %u flushed", sw_index);
 	}
 
 	sa->dp_tx->qreap(txq->dp);

@@ -176,7 +176,7 @@ sfc_mcdi_do_log(const struct sfc_adapter *sa,
 			 * at the end which is required by netlogdecode.
 			 */
 			buffer[position] = '\0';
-			sfc_info(sa, "%s \\", buffer);
+			sfc_notice(sa, "%s \\", buffer);
 			/* Preserve prefix for the next log message */
 			position = pfxsize;
 		}
@@ -201,7 +201,7 @@ sfc_mcdi_logger(void *arg, efx_log_msg_t type,
 	if (!sa->mcdi.logging)
 		return;
 
-	/* The format including prefix added by sfc_info() is the format
+	/* The format including prefix added by sfc_notice() is the format
 	 * consumed by the Solarflare netlogdecode tool.
 	 */
 	pfxsize = snprintf(buffer, sizeof(buffer), "MCDI RPC %s:",
@@ -212,7 +212,7 @@ sfc_mcdi_logger(void *arg, efx_log_msg_t type,
 	start = sfc_mcdi_do_log(sa, buffer, data, data_size, pfxsize, start);
 	if (start != pfxsize) {
 		buffer[start] = '\0';
-		sfc_info(sa, "%s", buffer);
+		sfc_notice(sa, "%s", buffer);
 	}
 }
 

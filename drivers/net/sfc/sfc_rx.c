@@ -608,7 +608,7 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 			sfc_err(sa, "RxQ %u flush failed", sw_index);
 
 		if (rxq->state & SFC_RXQ_FLUSHED)
-			sfc_info(sa, "RxQ %u flushed", sw_index);
+			sfc_notice(sa, "RxQ %u flushed", sw_index);
 	}
 
 	sa->dp_rx->qpurge(rxq->dp);

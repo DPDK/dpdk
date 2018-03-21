@@ -344,7 +344,7 @@ sfc_start(struct sfc_adapter *sa)
 	case SFC_ADAPTER_CONFIGURED:
 		break;
 	case SFC_ADAPTER_STARTED:
-		sfc_info(sa, "already started");
+		sfc_notice(sa, "already started");
 		return 0;
 	default:
 		rc = EINVAL;
@@ -383,7 +383,7 @@ sfc_stop(struct sfc_adapter *sa)
 	case SFC_ADAPTER_STARTED:
 		break;
 	case SFC_ADAPTER_CONFIGURED:
-		sfc_info(sa, "already stopped");
+		sfc_notice(sa, "already stopped");
 		return;
 	default:
 		sfc_err(sa, "stop in unexpected state %u", sa->state);
@@ -454,7 +454,7 @@ sfc_schedule_restart(struct sfc_adapter *sa)
 	else if (rc != 0)
 		sfc_err(sa, "cannot arm restart alarm (rc=%d)", rc);
 	else
-		sfc_info(sa, "restart scheduled");
+		sfc_notice(sa, "restart scheduled");
 }
 
 int

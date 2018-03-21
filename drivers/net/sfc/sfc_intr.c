@@ -86,7 +86,7 @@ sfc_intr_line_handler(void *cb_arg)
 
 exit:
 	if (lsc_seq != sa->port.lsc_seq) {
-		sfc_info(sa, "link status change event: link %s",
+		sfc_notice(sa, "link status change event: link %s",
 			 sa->eth_dev->data->dev_link.link_status ?
 			 "UP" : "DOWN");
 		_rte_eth_dev_callback_process(sa->eth_dev,
@@ -130,7 +130,7 @@ sfc_intr_message_handler(void *cb_arg)
 
 exit:
 	if (lsc_seq != sa->port.lsc_seq) {
-		sfc_info(sa, "link status change event");
+		sfc_notice(sa, "link status change event");
 		_rte_eth_dev_callback_process(sa->eth_dev,
 					      RTE_ETH_EVENT_INTR_LSC,
 					      NULL);
@@ -251,7 +251,7 @@ sfc_intr_configure(struct sfc_adapter *sa)
 	intr->handler = NULL;
 	intr->lsc_intr = (sa->eth_dev->data->dev_conf.intr_conf.lsc != 0);
 	if (!intr->lsc_intr) {
-		sfc_info(sa, "LSC tracking using interrupts is disabled");
+		sfc_notice(sa, "LSC tracking using interrupts is disabled");
 		goto done;
 	}
 

@@ -259,8 +259,9 @@ sfc_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	ret = rte_eth_linkstatus_set(dev, &current_link);
 	if (ret == 0)
-		sfc_info(sa, "Link status is %s",
-			 current_link.link_status ? "UP" : "DOWN");
+		sfc_notice(sa, "Link status is %s",
+			   current_link.link_status ? "UP" : "DOWN");
+
 	return ret;
 }
 
@@ -931,8 +932,8 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	}
 
 	if (sa->state != SFC_ADAPTER_STARTED) {
-		sfc_info(sa, "the port is not started");
-		sfc_info(sa, "the new MAC address will be set on port start");
+		sfc_notice(sa, "the port is not started");
+		sfc_notice(sa, "the new MAC address will be set on port start");
 
 		goto unlock;
 	}
@@ -1737,7 +1738,7 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		goto fail_dp_rx_name;
 	}
 
-	sfc_info(sa, "use %s Rx datapath", sa->dp_rx_name);
+	sfc_notice(sa, "use %s Rx datapath", sa->dp_rx_name);
 
 	dev->rx_pkt_burst = sa->dp_rx->pkt_burst;
 
@@ -1776,7 +1777,7 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		goto fail_dp_tx_name;
 	}
 
-	sfc_info(sa, "use %s Tx datapath", sa->dp_tx_name);
+	sfc_notice(sa, "use %s Tx datapath", sa->dp_tx_name);
 
 	dev->tx_pkt_burst = sa->dp_tx->pkt_burst;
 
