@@ -1232,9 +1232,13 @@ static void
 virtio_notify_peers(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtnet_rx *rxvq = dev->data->rx_queues[0];
+	struct virtnet_rx *rxvq;
 	struct rte_mbuf *rarp_mbuf;
 
+	if (!dev->data->rx_queues)
+		return;
+
+	rxvq = dev->data->rx_queues[0];
 	rarp_mbuf = rte_net_make_rarp_packet(rxvq->mpool,
 			(struct ether_addr *)hw->mac_addr);
 	if (rarp_mbuf == NULL) {
