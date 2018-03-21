@@ -22,14 +22,17 @@ extern uint32_t sfc_logtype_driver;
 		RTE_FMT("PMD: " RTE_FMT_HEAD(__VA_ARGS__ ,) "\n",	\
 			RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
+/** Name prefix for the per-device log type used to report basic information */
+#define SFC_LOGTYPE_MAIN_STR	SFC_LOGTYPE_PREFIX "main"
+
 /* Log PMD message, automatically add prefix and \n */
-#define SFC_LOG(sa, level, ...) \
+#define SFC_LOG(sa, level, type, ...) \
 	do {								\
 		const struct sfc_adapter *__sa = (sa);			\
 									\
-		RTE_LOG(level, PMD,					\
-			RTE_FMT("sfc_efx " PCI_PRI_FMT " #%" PRIu8 ": "	\
-				RTE_FMT_HEAD(__VA_ARGS__,) "\n",	\
+		rte_log(level, type,					\
+			RTE_FMT("PMD: sfc_efx " PCI_PRI_FMT " #%" PRIu8	\
+				": " RTE_FMT_HEAD(__VA_ARGS__ ,) "\n",	\
 				__sa->pci_addr.domain,			\
 				__sa->pci_addr.bus,			\
 				__sa->pci_addr.devid,			\
@@ -39,23 +42,43 @@ extern uint32_t sfc_logtype_driver;
 	} while (0)
 
 #define sfc_err(sa, ...) \
-	SFC_LOG(sa, ERR, __VA_ARGS__)
+	do {								\
+		const struct sfc_adapter *_sa = (sa);			\
+									\
+		SFC_LOG(_sa, RTE_LOG_ERR, _sa->logtype_main,		\
+			__VA_ARGS__);					\
+	} while (0)
 
 #define sfc_warn(sa, ...) \
-	SFC_LOG(sa, WARNING, __VA_ARGS__)
+	do {								\
+		const struct sfc_adapter *_sa = (sa);			\
+									\
+		SFC_LOG(_sa, RTE_LOG_WARNING, _sa->logtype_main,	\
+			__VA_ARGS__);					\
+	} while (0)
 
 #define sfc_notice(sa, ...) \
-	SFC_LOG(sa, NOTICE, __VA_ARGS__)
+	do {								\
+		const struct sfc_adapter *_sa = (sa);			\
+									\
+		SFC_LOG(_sa, RTE_LOG_NOTICE, _sa->logtype_main,		\
+			__VA_ARGS__);					\
+	} while (0)
 
 #define sfc_info(sa, ...) \
-	SFC_LOG(sa, INFO, __VA_ARGS__)
+	do {								\
+		const struct sfc_adapter *_sa = (sa);			\
+									\
+		SFC_LOG(_sa, RTE_LOG_INFO, _sa->logtype_main,		\
+			__VA_ARGS__);					\
+	} while (0)
 
 #define sfc_log_init(sa, ...) \
 	do {								\
 		const struct sfc_adapter *_sa = (sa);			\
 									\
 		if (_sa->debug_init)					\
-			SFC_LOG(_sa, INFO,				\
+			SFC_LOG(_sa, RTE_LOG_INFO, _sa->logtype_main,	\
 				RTE_FMT("%s(): "			\
 					RTE_FMT_HEAD(__VA_ARGS__,),	\
 					__func__,			\

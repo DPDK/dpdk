@@ -170,6 +170,7 @@ struct sfc_adapter {
 	uint16_t			port_id;
 	struct rte_eth_dev		*eth_dev;
 	struct rte_kvargs		*kvargs;
+	uint32_t			logtype_main;
 	bool				debug_init;
 	int				socket_id;
 	efsys_bar_t			mem_bar;
@@ -301,6 +302,10 @@ sfc_get_system_msecs(void)
 int sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
 		  size_t len, int socket_id, efsys_mem_t *esmp);
 void sfc_dma_free(const struct sfc_adapter *sa, efsys_mem_t *esmp);
+
+uint32_t sfc_register_logtype(struct sfc_adapter *sa,
+			      const char *lt_prefix_str,
+			      uint32_t ll_default);
 
 int sfc_probe(struct sfc_adapter *sa);
 void sfc_unprobe(struct sfc_adapter *sa);

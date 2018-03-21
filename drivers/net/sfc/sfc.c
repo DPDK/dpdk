@@ -835,3 +835,35 @@ sfc_unprobe(struct sfc_adapter *sa)
 	sfc_flow_fini(sa);
 	sa->state = SFC_ADAPTER_UNINITIALIZED;
 }
+
+uint32_t
+sfc_register_logtype(struct sfc_adapter *sa, const char *lt_prefix_str,
+		     uint32_t ll_default)
+{
+	size_t lt_prefix_str_size = strlen(lt_prefix_str);
+	size_t lt_str_size_max;
+	char *lt_str = NULL;
+	int ret;
+
+	if (SIZE_MAX - PCI_PRI_STR_SIZE - 1 > lt_prefix_str_size) {
+		++lt_prefix_str_size; /* Reserve space for prefix separator */
+		lt_str_size_max = lt_prefix_str_size + PCI_PRI_STR_SIZE + 1;
+	} else {
+		return RTE_LOGTYPE_PMD;
+	}
+
+	lt_str = rte_zmalloc("logtype_str", lt_str_size_max, 0);
+	if (lt_str == NULL)
+		return RTE_LOGTYPE_PMD;
+
+	strncpy(lt_str, lt_prefix_str, lt_prefix_str_size);
+	lt_str[lt_prefix_str_size - 1] = '.';
+	rte_pci_device_name(&sa->pci_addr, lt_str + lt_prefix_str_size,
+			    lt_str_size_max - lt_prefix_str_size);
+	lt_str[lt_str_size_max - 1] = '\0';
+
+	ret = rte_log_register_type_and_pick_level(lt_str, ll_default);
+	rte_free(lt_str);
+
+	return (ret < 0) ? RTE_LOGTYPE_PMD : ret;
+}

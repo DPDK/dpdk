@@ -358,3 +358,9 @@ SFC EFX PMD provides the following log types available for control:
 - ``pmd.net.sfc.driver`` (default level is **6** - ``RTE_LOG_NOTICE``)
 
   Affects driver-wide messages unrelated to any particular devices.
+
+- ``pmd.net.sfc.main`` (default level is **6** - ``RTE_LOG_NOTICE``)
+
+  Matches a subset of per-port log types registered during runtime.
+  A full name for a particular type may be obtained by appending a
+  dot and a PCI device identifier (``XXXX:XX:XX.X``) to the prefix.

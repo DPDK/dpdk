@@ -50,7 +50,7 @@ CFLAGS_sfc_ef10_tx.o += -wd3656
 endif
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
-LDLIBS += -lrte_bus_pci
+LDLIBS += -lrte_bus_pci -lrte_pci
 
 #
 # List of base driver object files for which
