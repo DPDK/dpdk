@@ -474,8 +474,20 @@ sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
 		link_info->link_speed  = ETH_SPEED_NUM_10G;
 		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
 		break;
+	case EFX_LINK_25000FDX:
+		link_info->link_speed  = ETH_SPEED_NUM_25G;
+		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
 	case EFX_LINK_40000FDX:
 		link_info->link_speed  = ETH_SPEED_NUM_40G;
+		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
+	case EFX_LINK_50000FDX:
+		link_info->link_speed  = ETH_SPEED_NUM_50G;
+		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
+	case EFX_LINK_100000FDX:
+		link_info->link_speed  = ETH_SPEED_NUM_100G;
 		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
 		break;
 	default:
