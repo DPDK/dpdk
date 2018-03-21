@@ -27,6 +27,8 @@
 #include "sfc_dp.h"
 #include "sfc_dp_rx.h"
 
+uint32_t sfc_logtype_driver;
+
 static struct sfc_dp_list sfc_dp_head =
 	TAILQ_HEAD_INITIALIZER(sfc_dp_head);
 
@@ -2068,3 +2070,14 @@ RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,
 	SFC_KVARG_STATS_UPDATE_PERIOD_MS "=<long> "
 	SFC_KVARG_MCDI_LOGGING "=" SFC_KVARG_VALUES_BOOL " "
 	SFC_KVARG_DEBUG_INIT "=" SFC_KVARG_VALUES_BOOL);
+
+RTE_INIT(sfc_driver_register_logtype);
+static void
+sfc_driver_register_logtype(void)
+{
+	int ret;
+
+	ret = rte_log_register_type_and_pick_level(SFC_LOGTYPE_PREFIX "driver",
+						   RTE_LOG_NOTICE);
+	sfc_logtype_driver = (ret < 0) ? RTE_LOGTYPE_PMD : ret;
+}

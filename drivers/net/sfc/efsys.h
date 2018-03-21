@@ -26,6 +26,7 @@
 #include <rte_io.h>
 
 #include "sfc_debug.h"
+#include "sfc_log.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -729,7 +730,7 @@ typedef uint64_t	efsys_stat_t;
 #define EFSYS_ERR(_esip, _code, _dword0, _dword1)			\
 	do {								\
 		(void)(_esip);						\
-		RTE_LOG(ERR, PMD, "FATAL ERROR #%u (0x%08x%08x)\n",	\
+		SFC_GENERIC_LOG(ERR, "FATAL ERROR #%u (0x%08x%08x)",	\
 			(_code), (_dword0), (_dword1));			\
 		_NOTE(CONSTANTCONDITION);				\
 	} while (B_FALSE)

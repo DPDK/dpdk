@@ -597,8 +597,8 @@ sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
 	      1u << EFX_TUNNEL_PROTOCOL_NVGRE):
 		return ef10_overlay_ptypes;
 	default:
-		RTE_LOG(ERR, PMD,
-			"Unexpected set of supported tunnel encapsulations: %#x\n",
+		SFC_GENERIC_LOG(ERR,
+			"Unexpected set of supported tunnel encapsulations: %#x",
 			tunnel_encaps);
 		/* FALLTHROUGH */
 	case 0:

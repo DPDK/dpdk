@@ -10,6 +10,18 @@
 #ifndef _SFC_LOG_H_
 #define _SFC_LOG_H_
 
+/** Generic driver log type */
+extern uint32_t sfc_logtype_driver;
+
+/** Common log type name prefix */
+#define SFC_LOGTYPE_PREFIX	"pmd.net.sfc."
+
+/** Log PMD generic message, add a prefix and a line break */
+#define SFC_GENERIC_LOG(level, ...) \
+	rte_log(RTE_LOG_ ## level, sfc_logtype_driver,			\
+		RTE_FMT("PMD: " RTE_FMT_HEAD(__VA_ARGS__ ,) "\n",	\
+			RTE_FMT_TAIL(__VA_ARGS__ ,)))
+
 /* Log PMD message, automatically add prefix and \n */
 #define SFC_LOG(sa, level, ...) \
 	do {								\

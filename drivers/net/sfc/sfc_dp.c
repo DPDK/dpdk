@@ -14,6 +14,7 @@
 #include <rte_log.h>
 
 #include "sfc_dp.h"
+#include "sfc_log.h"
 
 void
 sfc_dp_queue_init(struct sfc_dp_queue *dpq, uint16_t port_id, uint16_t queue_id,
@@ -63,8 +64,8 @@ int
 sfc_dp_register(struct sfc_dp_list *head, struct sfc_dp *entry)
 {
 	if (sfc_dp_find_by_name(head, entry->type, entry->name) != NULL) {
-		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_PMD,
-			"sfc %s dapapath '%s' already registered\n",
+		SFC_GENERIC_LOG(ERR,
+			"sfc %s dapapath '%s' already registered",
 			entry->type == SFC_DP_RX ? "Rx" :
 			entry->type == SFC_DP_TX ? "Tx" :
 			"unknown",

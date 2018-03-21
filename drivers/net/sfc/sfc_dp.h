@@ -15,6 +15,8 @@
 
 #include <rte_pci.h>
 
+#include "sfc_log.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -58,10 +60,10 @@ void sfc_dp_queue_init(struct sfc_dp_queue *dpq,
 		const struct sfc_dp_queue *_dpq = (dpq);		\
 		const struct rte_pci_addr *_addr = &(_dpq)->pci_addr;	\
 									\
-		RTE_LOG(level, PMD,					\
+		SFC_GENERIC_LOG(level,					\
 			RTE_FMT("%s " PCI_PRI_FMT			\
 				" #%" PRIu16 ".%" PRIu16 ": "		\
-				RTE_FMT_HEAD(__VA_ARGS__,) "\n",	\
+				RTE_FMT_HEAD(__VA_ARGS__ ,),		\
 				dp_name,				\
 				_addr->domain, _addr->bus,		\
 				_addr->devid, _addr->function,		\

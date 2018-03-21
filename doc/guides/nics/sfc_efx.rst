@@ -339,3 +339,22 @@ boolean parameters value.
   only possible to set an arbitrary value on SFN8xxx provided that
   firmware version is 6.2.1.1033 or higher, otherwise any positive
   value will select a fixed update period of **1000** milliseconds
+
+
+Dynamic Logging Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One may leverage EAL option "--log-level" to change default levels
+for the log types supported by the driver. The option is used with
+an argument typically consisting of two parts separated by a comma.
+
+Level value is the last part which takes an integer greater than 0.
+Log type is the former part which may contain a regular expression.
+Depending on the choice of the expression, the given log level may
+be used either for some specific log type or for a subset of types.
+
+SFC EFX PMD provides the following log types available for control:
+
+- ``pmd.net.sfc.driver`` (default level is **6** - ``RTE_LOG_NOTICE``)
+
+  Affects driver-wide messages unrelated to any particular devices.
