@@ -42,6 +42,8 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 		     struct rte_eth_rss_conf *rss_conf)
 {
 	struct priv *priv = dev->data->dev_private;
+	unsigned int i;
+	unsigned int idx;
 
 	if (rss_conf->rss_hf & MLX5_RSS_HF_MASK) {
 		rte_errno = EINVAL;
@@ -59,6 +61,14 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 		priv->rss_conf.rss_key_len = rss_conf->rss_key_len;
 	}
 	priv->rss_conf.rss_hf = rss_conf->rss_hf;
+	/* Enable the RSS hash in all Rx queues. */
+	for (i = 0, idx = 0; idx != priv->rxqs_n; ++i) {
+		if (!(*priv->rxqs)[i])
+			continue;
+		(*priv->rxqs)[i]->rss_hash = !!rss_conf->rss_hf &&
+			!!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS);
+		++idx;
+	}
 	return 0;
 }
 

@@ -1070,7 +1070,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->rxq.crc_present ? "disabled" : "enabled",
 		tmpl->rxq.crc_present << 2);
 	/* Save port ID. */
-	tmpl->rxq.rss_hash = priv->rxqs_n > 1;
+	tmpl->rxq.rss_hash = !!priv->rss_conf.rss_hf &&
+		(!!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS));
 	tmpl->rxq.port_id = dev->data->port_id;
 	tmpl->priv = priv;
 	tmpl->rxq.mp = mp;

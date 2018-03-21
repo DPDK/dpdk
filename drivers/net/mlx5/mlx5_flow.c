@@ -941,7 +941,7 @@ mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 	unsigned int i;
 
 	/* Remove any other flow not matching the pattern. */
-	if (parser->queues_n == 1) {
+	if (parser->queues_n == 1 && !parser->rss_conf.rss_hf) {
 		for (i = 0; i != hash_rxq_init_n; ++i) {
 			if (i == HASH_RXQ_ETH)
 				continue;
