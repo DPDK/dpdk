@@ -151,8 +151,8 @@ prefetch_read_once(const volatile void *addr)
 #define EFSYS_OPT_HUNTINGTON 1
 /* Enable SFN8xxx support */
 #define EFSYS_OPT_MEDFORD 1
-/* Disable SFN2xxx support (not supported yet) */
-#define EFSYS_OPT_MEDFORD2 0
+/* Enable SFN2xxx support */
+#define EFSYS_OPT_MEDFORD2 1
 #ifdef RTE_LIBRTE_SFC_EFX_DEBUG
 #define EFSYS_OPT_CHECK_REG 1
 #else

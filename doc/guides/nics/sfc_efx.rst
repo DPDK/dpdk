@@ -30,7 +30,8 @@ Solarflare libefx-based Poll Mode Driver
 ========================================
 
 The SFC EFX PMD (**librte_pmd_sfc_efx**) provides poll mode driver support
-for **Solarflare SFN7xxx and SFN8xxx** family of 10/40 Gbps adapters.
+for **Solarflare SFN7xxx and SFN8xxx** family of 10/40 Gbps adapters and
+**Solarflare XtremeScale X2xxx** family of 10/25/40/50/100 Gbps adapters.
 SFC EFX PMD has support for the latest Linux and FreeBSD operating systems.
 
 More information can be found at `Solarflare Communications website
@@ -123,19 +124,19 @@ It should be taken into account when mbuf pool for receive is created.
 Tunnels support
 ---------------
 
-NVGRE, VXLAN and GENEVE tunnels are supported on SFN8xxx family adapters
-with full-feature firmware variant running.
+NVGRE, VXLAN and GENEVE tunnels are supported on SFN8xxx and X2xxx family
+adapters with full-feature firmware variant running.
 **sfboot** should be used to configure NIC to run full-feature firmware variant.
 See Solarflare Server Adapter User's Guide for details.
 
-SFN8xxx family adapters provide either inner or outer packet classes.
+SFN8xxx and X2xxx family adapters provide either inner or outer packet classes.
 If adapter firmware advertises support for tunnels then the PMD
 configures the hardware to report inner classes, and outer classes are
 not reported in received packets.
 However, for VXLAN and GENEVE tunnels the PMD does report UDP as the
 outer layer 4 packet type.
 
-SFN8xxx family adapters report GENEVE packets as VXLAN.
+SFN8xxx and X2xxx family adapters report GENEVE packets as VXLAN.
 If UDP ports are configured for only one tunnel type then it is safe to
 treat VXLAN packet type indication as the corresponding UDP tunnel type.
 
@@ -216,6 +217,10 @@ conditions is met:
 Supported NICs
 --------------
 
+- Solarflare XtremeScale Adapters:
+
+   - Solarflare X2522 Dual Port SFP28 10/25GbE Adapter
+
 - Solarflare Flareon [Ultra] Server Adapters:
 
    - Solarflare SFN8522 Dual Port SFP+ Server Adapter
@@ -292,7 +297,7 @@ boolean parameters value.
   **auto** allows the driver itself to make a choice based on firmware
   features available and required by the datapath implementation.
   **efx** chooses libefx-based datapath which supports Rx scatter.
-  **ef10** chooses EF10 (SFN7xxx, SFN8xxx) native datapath which is
+  **ef10** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which is
   more efficient than libefx-based and provides richer packet type
   classification, but lacks Rx scatter support.
 
@@ -305,12 +310,12 @@ boolean parameters value.
   (full-feature firmware variant only), TSO and multi-segment mbufs.
   Mbuf segments may come from different mempools, and mbuf reference
   counters are treated responsibly.
-  **ef10** chooses EF10 (SFN7xxx, SFN8xxx) native datapath which is
+  **ef10** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which is
   more efficient than libefx-based but has no VLAN insertion and TSO
   support yet.
   Mbuf segments may come from different mempools, and mbuf reference
   counters are treated responsibly.
-  **ef10_simple** chooses EF10 (SFN7xxx, SFN8xxx) native datapath which
+  **ef10_simple** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which
   is even more faster then **ef10** but does not support multi-segment
   mbufs, disallows multiple mempools and neglects mbuf reference counters.
 
@@ -326,7 +331,7 @@ boolean parameters value.
   Adjust period in milliseconds to update port hardware statistics.
   The accepted range is 0 to 65535. The value of **0** may be used
   to disable periodic statistics update. One should note that it's
-  only possible to set an arbitrary value on SFN8xxx provided that
+  only possible to set an arbitrary value on SFN8xxx and X2xxx provided that
   firmware version is 6.2.1.1033 or higher, otherwise any positive
   value will select a fixed update period of **1000** milliseconds
 
