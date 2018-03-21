@@ -1643,7 +1643,7 @@ rte_tm_node_stats_update(uint16_t port_id,
  * @param[in] port_id
  *   The port identifier of the Ethernet device.
  * @param[in] node_id
- *   Node ID. Needs to be valid leaf node ID.
+ *   Node ID. Needs to be valid non-leaf node ID.
  * @param[in] wfq_weight_mode
  *   WFQ weight mode for each SP priority. When NULL, it indicates that WFQ is
  *   to be used for all priorities. When non-NULL, it points to a pre-allocated
