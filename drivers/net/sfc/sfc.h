@@ -171,7 +171,6 @@ struct sfc_adapter {
 	struct rte_eth_dev		*eth_dev;
 	struct rte_kvargs		*kvargs;
 	uint32_t			logtype_main;
-	bool				debug_init;
 	int				socket_id;
 	efsys_bar_t			mem_bar;
 	efx_family_t			family;

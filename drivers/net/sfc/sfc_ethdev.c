@@ -1931,11 +1931,6 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	if (rc != 0)
 		goto fail_kvargs_parse;
 
-	rc = sfc_kvargs_process(sa, SFC_KVARG_DEBUG_INIT,
-				sfc_kvarg_bool_handler, &sa->debug_init);
-	if (rc != 0)
-		goto fail_kvarg_debug_init;
-
 	sfc_log_init(sa, "entry");
 
 	dev->data->mac_addrs = rte_zmalloc("sfc", ETHER_ADDR_LEN, 0);
@@ -1989,7 +1984,6 @@ fail_probe:
 	dev->data->mac_addrs = NULL;
 
 fail_mac_addrs:
-fail_kvarg_debug_init:
 	sfc_kvargs_cleanup(sa);
 
 fail_kvargs_parse:
@@ -2072,8 +2066,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,
 	SFC_KVARG_TX_DATAPATH "=" SFC_KVARG_VALUES_TX_DATAPATH " "
 	SFC_KVARG_PERF_PROFILE "=" SFC_KVARG_VALUES_PERF_PROFILE " "
 	SFC_KVARG_STATS_UPDATE_PERIOD_MS "=<long> "
-	SFC_KVARG_MCDI_LOGGING "=" SFC_KVARG_VALUES_BOOL " "
-	SFC_KVARG_DEBUG_INIT "=" SFC_KVARG_VALUES_BOOL);
+	SFC_KVARG_MCDI_LOGGING "=" SFC_KVARG_VALUES_BOOL);
 
 RTE_INIT(sfc_driver_register_logtype);
 static void

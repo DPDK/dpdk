@@ -77,12 +77,11 @@ extern uint32_t sfc_logtype_driver;
 	do {								\
 		const struct sfc_adapter *_sa = (sa);			\
 									\
-		if (_sa->debug_init)					\
-			SFC_LOG(_sa, RTE_LOG_INFO, _sa->logtype_main,	\
-				RTE_FMT("%s(): "			\
-					RTE_FMT_HEAD(__VA_ARGS__,),	\
-					__func__,			\
-					RTE_FMT_TAIL(__VA_ARGS__,)));	\
+		SFC_LOG(_sa, RTE_LOG_INFO, _sa->logtype_main,		\
+			RTE_FMT("%s(): "				\
+				RTE_FMT_HEAD(__VA_ARGS__ ,),		\
+				__func__,				\
+				RTE_FMT_TAIL(__VA_ARGS__ ,)));		\
 	} while (0)
 
 #endif /* _SFC_LOG_H_ */

@@ -321,10 +321,6 @@ boolean parameters value.
   **auto** allows NIC firmware to make a choice based on
   installed licences and firmware variant configured using **sfboot**.
 
-- ``debug_init`` [bool] (default **n**)
-
-  Enable extra logging during device initialization and startup.
-
 - ``mcdi_logging`` [bool] (default **n**)
 
   Enable extra logging of the communication with the NIC's management CPU.
