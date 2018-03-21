@@ -15,7 +15,6 @@
 
 #include "sfc.h"
 #include "sfc_log.h"
-#include "sfc_kvargs.h"
 #include "sfc_ev.h"
 
 #define SFC_MCDI_POLL_INTERVAL_MIN_US	10		/* 10us in 1us units */
@@ -176,7 +175,7 @@ sfc_mcdi_do_log(const struct sfc_adapter *sa,
 			 * at the end which is required by netlogdecode.
 			 */
 			buffer[position] = '\0';
-			sfc_notice(sa, "%s \\", buffer);
+			sfc_log_mcdi(sa, "%s \\", buffer);
 			/* Preserve prefix for the next log message */
 			position = pfxsize;
 		}
@@ -198,10 +197,17 @@ sfc_mcdi_logger(void *arg, efx_log_msg_t type,
 	size_t pfxsize;
 	size_t start;
 
-	if (!sa->mcdi.logging)
+	/*
+	 * Unlike the other cases, MCDI logging implies more onerous work
+	 * needed to produce a message. If the dynamic log level prevents
+	 * the end result from being printed, the CPU time will be wasted.
+	 *
+	 * To avoid wasting time, the actual level is examined in advance.
+	 */
+	if (rte_log_get_level(sa->mcdi.logtype) < (int)SFC_LOG_LEVEL_MCDI)
 		return;
 
-	/* The format including prefix added by sfc_notice() is the format
+	/* The format including prefix added by sfc_log_mcdi() is the format
 	 * consumed by the Solarflare netlogdecode tool.
 	 */
 	pfxsize = snprintf(buffer, sizeof(buffer), "MCDI RPC %s:",
@@ -212,7 +218,7 @@ sfc_mcdi_logger(void *arg, efx_log_msg_t type,
 	start = sfc_mcdi_do_log(sa, buffer, data, data_size, pfxsize, start);
 	if (start != pfxsize) {
 		buffer[start] = '\0';
-		sfc_notice(sa, "%s", buffer);
+		sfc_log_mcdi(sa, "%s", buffer);
 	}
 }
 
@@ -250,11 +256,8 @@ sfc_mcdi_init(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_dma_alloc;
 
-	/* Convert negative error to positive used in the driver */
-	rc = sfc_kvargs_process(sa, SFC_KVARG_MCDI_LOGGING,
-				sfc_kvarg_bool_handler, &mcdi->logging);
-	if (rc != 0)
-		goto fail_kvargs_process;
+	mcdi->logtype = sfc_register_logtype(sa, SFC_LOGTYPE_MCDI_STR,
+					     RTE_LOG_NOTICE);
 
 	emtp = &mcdi->transport;
 	emtp->emt_context = sa;
@@ -274,8 +277,6 @@ sfc_mcdi_init(struct sfc_adapter *sa)
 
 fail_mcdi_init:
 	memset(emtp, 0, sizeof(*emtp));
-
-fail_kvargs_process:
 	sfc_dma_free(sa, &mcdi->mem);
 
 fail_dma_alloc:

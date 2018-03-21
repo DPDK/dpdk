@@ -321,12 +321,6 @@ boolean parameters value.
   **auto** allows NIC firmware to make a choice based on
   installed licences and firmware variant configured using **sfboot**.
 
-- ``mcdi_logging`` [bool] (default **n**)
-
-  Enable extra logging of the communication with the NIC's management CPU.
-  The logging is done using RTE_LOG() with INFO level and PMD type.
-  The format is consumed by the Solarflare netlogdecode cross-platform tool.
-
 - ``stats_update_period_ms`` [long] (default **1000**)
 
   Adjust period in milliseconds to update port hardware statistics.
@@ -360,3 +354,9 @@ SFC EFX PMD provides the following log types available for control:
   Matches a subset of per-port log types registered during runtime.
   A full name for a particular type may be obtained by appending a
   dot and a PCI device identifier (``XXXX:XX:XX.X``) to the prefix.
+
+- ``pmd.net.sfc.mcdi`` (default level is **6** - ``RTE_LOG_NOTICE``)
+
+  Extra logging of the communication with the NIC's management CPU.
+  The format of the log is consumed by the Solarflare netlogdecode
+  cross-platform tool. May be managed per-port, as explained above.

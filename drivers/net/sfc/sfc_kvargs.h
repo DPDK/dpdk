@@ -18,8 +18,6 @@ extern "C" {
 
 #define SFC_KVARG_VALUES_BOOL		"[1|y|yes|on|0|n|no|off]"
 
-#define SFC_KVARG_MCDI_LOGGING		"mcdi_logging"
-
 #define SFC_KVARG_PERF_PROFILE		"perf_profile"
 
 #define SFC_KVARG_PERF_PROFILE_AUTO		"auto"
