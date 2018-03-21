@@ -229,6 +229,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.evq_hw_ring = evq->mem.esm_base;
 	info.hw_index = txq->hw_index;
 	info.mem_bar = sa->mem_bar.esb_base;
+	info.vi_window_shift = encp->enc_vi_window_shift;
 
 	rc = sa->dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				&RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,

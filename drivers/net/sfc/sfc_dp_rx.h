@@ -78,6 +78,8 @@ struct sfc_dp_rx_qcreate_info {
 	 * doorbell
 	 */
 	volatile void		*mem_bar;
+	/** VI window size shift */
+	unsigned int		vi_window_shift;
 };
 
 /**

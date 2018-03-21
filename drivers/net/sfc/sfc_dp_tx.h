@@ -57,6 +57,8 @@ struct sfc_dp_tx_qcreate_info {
 	unsigned int		hw_index;
 	/** Virtual address of the memory-mapped BAR to push Tx doorbell */
 	volatile void		*mem_bar;
+	/** VI window size shift */
+	unsigned int		vi_window_shift;
 };
 
 /**

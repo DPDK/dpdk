@@ -531,7 +531,7 @@ sfc_ef10_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 	txq->txq_hw_ring = info->txq_hw_ring;
 	txq->doorbell = (volatile uint8_t *)info->mem_bar +
 			ER_DZ_TX_DESC_UPD_REG_OFST +
-			info->hw_index * ER_DZ_TX_DESC_UPD_REG_STEP;
+			(info->hw_index << info->vi_window_shift);
 	txq->evq_hw_ring = info->evq_hw_ring;
 
 	*dp_txqp = &txq->dp;

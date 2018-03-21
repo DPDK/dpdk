@@ -726,7 +726,7 @@ sfc_ef10_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	rxq->rxq_hw_ring = info->rxq_hw_ring;
 	rxq->doorbell = (volatile uint8_t *)info->mem_bar +
 			ER_DZ_RX_DESC_UPD_REG_OFST +
-			info->hw_index * ER_DZ_RX_DESC_UPD_REG_STEP;
+			(info->hw_index << info->vi_window_shift);
 
 	*dp_rxqp = &rxq->dp;
 	return 0;
