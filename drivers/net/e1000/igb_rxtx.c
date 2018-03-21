@@ -2794,9 +2794,9 @@ igb_config_rss_filter(struct rte_eth_dev *dev,
 		} reta;
 		uint8_t q_idx;
 
-		q_idx = conf->queue[j];
 		if (j == conf->num)
 			j = 0;
+		q_idx = conf->queue[j];
 		reta.bytes[i & 3] = (uint8_t)(q_idx << shift);
 		if ((i & 3) == 3)
 			E1000_WRITE_REG(hw, E1000_RETA(i >> 2), reta.dword);
