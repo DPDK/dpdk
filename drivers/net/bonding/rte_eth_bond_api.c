@@ -194,7 +194,8 @@ slave_vlan_filter_set(uint16_t bonded_port_id, uint16_t slave_port_id)
 	uint16_t first;
 
 	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
-	if (bonded_eth_dev->data->dev_conf.rxmode.hw_vlan_filter == 0)
+	if ((bonded_eth_dev->data->dev_conf.rxmode.offloads &
+			DEV_RX_OFFLOAD_VLAN_FILTER) == 0)
 		return 0;
 
 	internals = bonded_eth_dev->data->dev_private;
@@ -287,6 +288,8 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		/* Take the first dev's offload capabilities */
 		internals->rx_offload_capa = dev_info.rx_offload_capa;
 		internals->tx_offload_capa = dev_info.tx_offload_capa;
+		internals->rx_queue_offload_capa = dev_info.rx_queue_offload_capa;
+		internals->tx_queue_offload_capa = dev_info.tx_queue_offload_capa;
 		internals->flow_type_rss_offloads = dev_info.flow_type_rss_offloads;
 
 		/* Inherit first slave's max rx packet size */
@@ -295,6 +298,8 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 	} else {
 		internals->rx_offload_capa &= dev_info.rx_offload_capa;
 		internals->tx_offload_capa &= dev_info.tx_offload_capa;
+		internals->rx_queue_offload_capa &= dev_info.rx_queue_offload_capa;
+		internals->tx_queue_offload_capa &= dev_info.tx_queue_offload_capa;
 		internals->flow_type_rss_offloads &= dev_info.flow_type_rss_offloads;
 
 		if (link_properties_valid(bonded_eth_dev,
@@ -461,6 +466,8 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 	if (internals->slave_count == 0) {
 		internals->rx_offload_capa = 0;
 		internals->tx_offload_capa = 0;
+		internals->rx_queue_offload_capa = 0;
+		internals->tx_queue_offload_capa = 0;
 		internals->flow_type_rss_offloads = ETH_RSS_PROTO_MASK;
 		internals->reta_size = 0;
 		internals->candidate_max_rx_pktlen = 0;

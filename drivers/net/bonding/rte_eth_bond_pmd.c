@@ -1819,8 +1819,13 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 				bonded_eth_dev->data->dev_conf.rxmode.mq_mode;
 	}
 
-	slave_eth_dev->data->dev_conf.rxmode.hw_vlan_filter =
-			bonded_eth_dev->data->dev_conf.rxmode.hw_vlan_filter;
+	if (bonded_eth_dev->data->dev_conf.rxmode.offloads &
+			DEV_RX_OFFLOAD_VLAN_FILTER)
+		slave_eth_dev->data->dev_conf.rxmode.offloads |=
+				DEV_RX_OFFLOAD_VLAN_FILTER;
+	else
+		slave_eth_dev->data->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_VLAN_FILTER;
 
 	nb_rx_queues = bonded_eth_dev->data->nb_rx_queues;
 	nb_tx_queues = bonded_eth_dev->data->nb_tx_queues;
@@ -2258,6 +2263,8 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->rx_offload_capa = internals->rx_offload_capa;
 	dev_info->tx_offload_capa = internals->tx_offload_capa;
+	dev_info->rx_queue_offload_capa = internals->rx_queue_offload_capa;
+	dev_info->tx_queue_offload_capa = internals->tx_queue_offload_capa;
 	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
 
 	dev_info->reta_size = internals->reta_size;
@@ -2950,6 +2957,8 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	internals->active_slave_count = 0;
 	internals->rx_offload_capa = 0;
 	internals->tx_offload_capa = 0;
+	internals->rx_queue_offload_capa = 0;
+	internals->tx_queue_offload_capa = 0;
 	internals->candidate_max_rx_pktlen = 0;
 	internals->max_rx_pktlen = 0;
 

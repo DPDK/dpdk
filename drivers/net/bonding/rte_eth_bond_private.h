@@ -128,8 +128,10 @@ struct bond_dev_private {
 	/**< TLB active slaves send order */
 	struct mode_alb_private mode6;
 
-	uint32_t rx_offload_capa;            /** Rx offload capability */
-	uint32_t tx_offload_capa;            /** Tx offload capability */
+	uint64_t rx_offload_capa;       /** Rx offload capability */
+	uint64_t tx_offload_capa;       /** Tx offload capability */
+	uint64_t rx_queue_offload_capa; /** per queue Rx offload capability */
+	uint64_t tx_queue_offload_capa; /** per queue Tx offload capability */
 
 	/** Bit mask of RSS offloads, the bit offset also means flow type */
 	uint64_t flow_type_rss_offloads;
