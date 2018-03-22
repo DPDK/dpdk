@@ -2298,6 +2298,7 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 		(struct ixgbe_adapter *)dev->data->dev_private;
 	struct rte_eth_dev_info dev_info;
 	uint64_t rx_offloads;
+	uint64_t tx_offloads;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2315,6 +2316,13 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
 			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
 			    rx_offloads, dev_info.rx_offload_capa);
+		return -ENOTSUP;
+	}
+	tx_offloads = dev->data->dev_conf.txmode.offloads;
+	if ((tx_offloads & dev_info.tx_offload_capa) != tx_offloads) {
+		PMD_DRV_LOG(ERR, "Some Tx offloads are not supported "
+			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			    tx_offloads, dev_info.tx_offload_capa);
 		return -ENOTSUP;
 	}
 
@@ -3610,28 +3618,8 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_queue_offload_capa = ixgbe_get_rx_queue_offloads(dev);
 	dev_info->rx_offload_capa = (ixgbe_get_rx_port_offloads(dev) |
 				     dev_info->rx_queue_offload_capa);
-
-	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM  |
-		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM   |
-		DEV_TX_OFFLOAD_SCTP_CKSUM  |
-		DEV_TX_OFFLOAD_TCP_TSO;
-
-	if (hw->mac.type == ixgbe_mac_82599EB ||
-	    hw->mac.type == ixgbe_mac_X540)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_MACSEC_INSERT;
-
-	if (hw->mac.type == ixgbe_mac_X550 ||
-	    hw->mac.type == ixgbe_mac_X550EM_x ||
-	    hw->mac.type == ixgbe_mac_X550EM_a)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
-
-#ifdef RTE_LIBRTE_SECURITY
-	if (dev->security_ctx)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_SECURITY;
-#endif
+	dev_info->tx_queue_offload_capa = ixgbe_get_tx_queue_offloads(dev);
+	dev_info->tx_offload_capa = ixgbe_get_tx_port_offloads(dev);
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -3653,7 +3641,9 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-				ETH_TXQ_FLAGS_NOOFFLOADS,
+			     ETH_TXQ_FLAGS_NOOFFLOADS |
+			     ETH_TXQ_FLAGS_IGNORE,
+		.offloads = 0,
 	};
 
 	dev_info->rx_desc_lim = rx_desc_lim;
@@ -3737,12 +3727,8 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->rx_queue_offload_capa = ixgbe_get_rx_queue_offloads(dev);
 	dev_info->rx_offload_capa = (ixgbe_get_rx_port_offloads(dev) |
 				     dev_info->rx_queue_offload_capa);
-	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
-				DEV_TX_OFFLOAD_IPV4_CKSUM  |
-				DEV_TX_OFFLOAD_UDP_CKSUM   |
-				DEV_TX_OFFLOAD_TCP_CKSUM   |
-				DEV_TX_OFFLOAD_SCTP_CKSUM  |
-				DEV_TX_OFFLOAD_TCP_TSO;
+	dev_info->tx_queue_offload_capa = ixgbe_get_tx_queue_offloads(dev);
+	dev_info->tx_offload_capa = ixgbe_get_tx_port_offloads(dev);
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -3764,7 +3750,9 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 		.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-				ETH_TXQ_FLAGS_NOOFFLOADS,
+			     ETH_TXQ_FLAGS_NOOFFLOADS |
+			     ETH_TXQ_FLAGS_IGNORE,
+		.offloads = 0,
 	};
 
 	dev_info->rx_desc_lim = rx_desc_lim;
@@ -4892,6 +4880,7 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 			(struct ixgbe_adapter *)dev->data->dev_private;
 	struct rte_eth_dev_info dev_info;
 	uint64_t rx_offloads;
+	uint64_t tx_offloads;
 
 	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
 		     dev->data->port_id);
@@ -4902,6 +4891,13 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
 			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
 			    rx_offloads, dev_info.rx_offload_capa);
+		return -ENOTSUP;
+	}
+	tx_offloads = dev->data->dev_conf.txmode.offloads;
+	if ((tx_offloads & dev_info.tx_offload_capa) != tx_offloads) {
+		PMD_DRV_LOG(ERR, "Some Tx offloads are not supported "
+			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			    tx_offloads, dev_info.tx_offload_capa);
 		return -ENOTSUP;
 	}
 

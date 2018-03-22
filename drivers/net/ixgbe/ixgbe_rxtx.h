@@ -223,6 +223,7 @@ struct ixgbe_tx_queue {
 	uint8_t             hthresh;       /**< Host threshold register. */
 	uint8_t             wthresh;       /**< Write-back threshold reg. */
 	uint32_t txq_flags; /**< Holds flags for this TXq */
+	uint64_t offloads; /**< Tx offload flags of DEV_TX_OFFLOAD_* */
 	uint32_t            ctx_curr;      /**< Hardware context states. */
 	/** Hardware context0 history. */
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
@@ -307,8 +308,10 @@ uint16_t ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 				    uint16_t nb_pkts);
 int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq);
 
+uint64_t ixgbe_get_tx_port_offloads(struct rte_eth_dev *dev);
 uint64_t ixgbe_get_rx_queue_offloads(struct rte_eth_dev *dev);
 uint64_t ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev);
+uint64_t ixgbe_get_tx_queue_offloads(struct rte_eth_dev *dev);
 
 #endif /* RTE_IXGBE_INC_VECTOR */
 #endif /* _IXGBE_RXTX_H_ */

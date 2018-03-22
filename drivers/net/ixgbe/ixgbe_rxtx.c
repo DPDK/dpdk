@@ -2379,7 +2379,7 @@ void __attribute__((cold))
 ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 {
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
-	if (((txq->txq_flags & IXGBE_SIMPLE_FLAGS) == IXGBE_SIMPLE_FLAGS) &&
+	if ((txq->offloads == 0) &&
 #ifdef RTE_LIBRTE_SECURITY
 			!(txq->using_ipsec) &&
 #endif
@@ -2398,9 +2398,8 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 	} else {
 		PMD_INIT_LOG(DEBUG, "Using full-featured tx code path");
 		PMD_INIT_LOG(DEBUG,
-				" - txq_flags = %lx " "[IXGBE_SIMPLE_FLAGS=%lx]",
-				(unsigned long)txq->txq_flags,
-				(unsigned long)IXGBE_SIMPLE_FLAGS);
+				" - offloads = 0x%" PRIx64,
+				txq->offloads);
 		PMD_INIT_LOG(DEBUG,
 				" - tx_rs_thresh = %lu " "[RTE_PMD_IXGBE_TX_MAX_BURST=%lu]",
 				(unsigned long)txq->tx_rs_thresh,
@@ -2408,6 +2407,60 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 		dev->tx_pkt_burst = ixgbe_xmit_pkts;
 		dev->tx_pkt_prepare = ixgbe_prep_pkts;
 	}
+}
+
+uint64_t
+ixgbe_get_tx_queue_offloads(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+
+	return 0;
+}
+
+uint64_t
+ixgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
+{
+	uint64_t tx_offload_capa;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	tx_offload_capa =
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_IPV4_CKSUM  |
+		DEV_TX_OFFLOAD_UDP_CKSUM   |
+		DEV_TX_OFFLOAD_TCP_CKSUM   |
+		DEV_TX_OFFLOAD_SCTP_CKSUM  |
+		DEV_TX_OFFLOAD_TCP_TSO;
+
+	if (hw->mac.type == ixgbe_mac_82599EB ||
+	    hw->mac.type == ixgbe_mac_X540)
+		tx_offload_capa |= DEV_TX_OFFLOAD_MACSEC_INSERT;
+
+	if (hw->mac.type == ixgbe_mac_X550 ||
+	    hw->mac.type == ixgbe_mac_X550EM_x ||
+	    hw->mac.type == ixgbe_mac_X550EM_a)
+		tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+#ifdef RTE_LIBRTE_SECURITY
+	if (dev->security_ctx)
+		tx_offload_capa |= DEV_TX_OFFLOAD_SECURITY;
+#endif
+	return tx_offload_capa;
+}
+
+static int
+ixgbe_check_tx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
+{
+	uint64_t port_offloads = dev->data->dev_conf.txmode.offloads;
+	uint64_t queue_supported = ixgbe_get_tx_queue_offloads(dev);
+	uint64_t port_supported = ixgbe_get_tx_port_offloads(dev);
+
+	if ((requested & (queue_supported | port_supported)) != requested)
+		return 0;
+
+	if ((port_offloads ^ requested) & port_supported)
+		return 0;
+
+	return 1;
 }
 
 int __attribute__((cold))
@@ -2424,6 +2477,22 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * Don't verify port offloads for application which
+	 * use the old API.
+	 */
+	if (!ixgbe_check_tx_queue_offloads(dev, tx_conf->offloads)) {
+		PMD_INIT_LOG(ERR, "%p: Tx queue offloads 0x%" PRIx64
+			" don't match port offloads 0x%" PRIx64
+			" or supported queue offloads 0x%" PRIx64
+			" or supported port offloads 0x%" PRIx64,
+			(void *)dev, tx_conf->offloads,
+			dev->data->dev_conf.txmode.offloads,
+			ixgbe_get_tx_queue_offloads(dev),
+			ixgbe_get_tx_port_offloads(dev));
+		return -ENOTSUP;
+	}
 
 	/*
 	 * Validate number of transmit descriptors.
@@ -2551,6 +2620,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	txq->port_id = dev->data->port_id;
 	txq->txq_flags = tx_conf->txq_flags;
+	txq->offloads = tx_conf->offloads;
 	txq->ops = &def_txq_ops;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 #ifdef RTE_LIBRTE_SECURITY
@@ -5371,6 +5441,7 @@ ixgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
 	qinfo->conf.txq_flags = txq->txq_flags;
+	qinfo->conf.offloads = txq->offloads;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
 
