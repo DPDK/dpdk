@@ -659,9 +659,7 @@ void ixgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev);
 
 void ixgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev);
 
-void ixgbe_vlan_hw_strip_enable_all(struct rte_eth_dev *dev);
-
-void ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev);
+void ixgbe_vlan_hw_strip_config(struct rte_eth_dev *dev);
 
 void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev);
 

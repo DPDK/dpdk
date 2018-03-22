@@ -2820,6 +2820,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 							0 : ETHER_CRC_LEN);
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
+	rxq->offloads = rx_conf->offloads;
 
 	/*
 	 * The packet type in RX descriptor is different for different NICs.

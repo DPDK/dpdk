@@ -329,10 +329,7 @@ set_rx_mode(struct rte_eth_dev *dev)
 
 	IXGBE_WRITE_REG(hw, IXGBE_FCTRL, fctrl);
 
-	if (dev->data->dev_conf.rxmode.hw_vlan_strip)
-		ixgbe_vlan_hw_strip_enable_all(dev);
-	else
-		ixgbe_vlan_hw_strip_disable_all(dev);
+	ixgbe_vlan_hw_strip_config(dev);
 }
 
 static inline void

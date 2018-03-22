@@ -129,6 +129,7 @@ struct ixgbe_rx_queue {
 	uint8_t             rx_deferred_start; /**< not in global dev start. */
 	/** flags to set in mbuf when a vlan is detected. */
 	uint64_t            vlan_flags;
+	uint64_t	    offloads; /**< Rx offloads with DEV_RX_OFFLOAD_* */
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
