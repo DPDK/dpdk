@@ -5166,15 +5166,17 @@ ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_rx_queue *rxq;
 	uint16_t i;
 	int on = 0;
 
 	/* VF function only support hw strip feature, others are not support */
 	if (mask & ETH_VLAN_STRIP_MASK) {
-		on = !!(dev->data->dev_conf.rxmode.hw_vlan_strip);
-
-		for (i = 0; i < hw->mac.max_rx_queues; i++)
+		for (i = 0; i < hw->mac.max_rx_queues; i++) {
+			rxq = dev->data->rx_queues[i];
+			on = !!(rxq->offloads &	DEV_RX_OFFLOAD_VLAN_STRIP);
 			ixgbevf_vlan_strip_queue_set(dev, i, on);
+		}
 	}
 
 	return 0;
