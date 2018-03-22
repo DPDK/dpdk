@@ -307,5 +307,8 @@ uint16_t ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 				    uint16_t nb_pkts);
 int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq);
 
+uint64_t ixgbe_get_rx_queue_offloads(struct rte_eth_dev *dev);
+uint64_t ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev);
+
 #endif /* RTE_IXGBE_INC_VECTOR */
 #endif /* _IXGBE_RXTX_H_ */

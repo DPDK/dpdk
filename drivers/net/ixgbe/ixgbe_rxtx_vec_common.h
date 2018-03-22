@@ -278,15 +278,10 @@ static inline int
 ixgbe_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 {
 #ifndef RTE_LIBRTE_IEEE1588
-	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 
 	/* no fdir support */
 	if (fconf->mode != RTE_FDIR_MODE_NONE)
-		return -1;
-
-	/* no header split support */
-	if (rxmode->header_split == 1)
 		return -1;
 
 	return 0;

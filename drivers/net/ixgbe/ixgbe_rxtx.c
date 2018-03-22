@@ -2769,6 +2769,97 @@ ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 #endif
 }
 
+static int
+ixgbe_is_vf(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	switch (hw->mac.type) {
+	case ixgbe_mac_82599_vf:
+	case ixgbe_mac_X540_vf:
+	case ixgbe_mac_X550_vf:
+	case ixgbe_mac_X550EM_x_vf:
+	case ixgbe_mac_X550EM_a_vf:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+uint64_t
+ixgbe_get_rx_queue_offloads(struct rte_eth_dev *dev)
+{
+	uint64_t offloads = 0;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->mac.type != ixgbe_mac_82598EB)
+		offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+
+	return offloads;
+}
+
+uint64_t
+ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
+{
+	uint64_t offloads;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	offloads = DEV_RX_OFFLOAD_IPV4_CKSUM  |
+		   DEV_RX_OFFLOAD_UDP_CKSUM   |
+		   DEV_RX_OFFLOAD_TCP_CKSUM   |
+		   DEV_RX_OFFLOAD_CRC_STRIP   |
+		   DEV_RX_OFFLOAD_JUMBO_FRAME |
+		   DEV_RX_OFFLOAD_SCATTER;
+
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+
+	if (ixgbe_is_vf(dev) == 0)
+		offloads |= (DEV_RX_OFFLOAD_VLAN_FILTER |
+			     DEV_RX_OFFLOAD_VLAN_EXTEND);
+
+	/*
+	 * RSC is only supported by 82599 and x540 PF devices in a non-SR-IOV
+	 * mode.
+	 */
+	if ((hw->mac.type == ixgbe_mac_82599EB ||
+	     hw->mac.type == ixgbe_mac_X540) &&
+	    !RTE_ETH_DEV_SRIOV(dev).active)
+		offloads |= DEV_RX_OFFLOAD_TCP_LRO;
+
+	if (hw->mac.type == ixgbe_mac_82599EB ||
+	    hw->mac.type == ixgbe_mac_X540)
+		offloads |= DEV_RX_OFFLOAD_MACSEC_STRIP;
+
+	if (hw->mac.type == ixgbe_mac_X550 ||
+	    hw->mac.type == ixgbe_mac_X550EM_x ||
+	    hw->mac.type == ixgbe_mac_X550EM_a)
+		offloads |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+#ifdef RTE_LIBRTE_SECURITY
+	if (dev->security_ctx)
+		offloads |= DEV_RX_OFFLOAD_SECURITY;
+#endif
+
+	return offloads;
+}
+
+static int
+ixgbe_check_rx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
+{
+	uint64_t port_offloads = dev->data->dev_conf.rxmode.offloads;
+	uint64_t queue_supported = ixgbe_get_rx_queue_offloads(dev);
+	uint64_t port_supported = ixgbe_get_rx_port_offloads(dev);
+
+	if ((requested & (queue_supported | port_supported)) != requested)
+		return 0;
+
+	if ((port_offloads ^ requested) & port_supported)
+		return 0;
+
+	return 1;
+}
+
 int __attribute__((cold))
 ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
@@ -2786,6 +2877,18 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!ixgbe_check_rx_queue_offloads(dev, rx_conf->offloads)) {
+		PMD_INIT_LOG(ERR, "%p: Rx queue offloads 0x%" PRIx64
+			" don't match port offloads 0x%" PRIx64
+			" or supported port offloads 0x%" PRIx64
+			" or supported queue offloads 0x%" PRIx64,
+			(void *)dev, rx_conf->offloads,
+			dev->data->dev_conf.rxmode.offloads,
+			ixgbe_get_rx_port_offloads(dev),
+			ixgbe_get_rx_queue_offloads(dev));
+		return -ENOTSUP;
+	}
 
 	/*
 	 * Validate number of receive descriptors.
@@ -2816,8 +2919,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
-	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ?
-							0 : ETHER_CRC_LEN);
+	rxq->crc_len = (uint8_t)((dev->data->dev_conf.rxmode.offloads &
+		DEV_RX_OFFLOAD_CRC_STRIP) ? 0 : ETHER_CRC_LEN);
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->offloads = rx_conf->offloads;
@@ -4575,7 +4678,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO)
 		rsc_capable = true;
 
-	if (!rsc_capable && rx_conf->enable_lro) {
+	if (!rsc_capable && (rx_conf->offloads & DEV_RX_OFFLOAD_TCP_LRO)) {
 		PMD_INIT_LOG(CRIT, "LRO is requested on HW that doesn't "
 				   "support it");
 		return -EINVAL;
@@ -4583,7 +4686,8 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 
 	/* RSC global configuration (chapter 4.6.7.2.1 of 82599 Spec) */
 
-	if (!rx_conf->hw_strip_crc && rx_conf->enable_lro) {
+	if (!(rx_conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP) &&
+	     (rx_conf->offloads & DEV_RX_OFFLOAD_TCP_LRO)) {
 		/*
 		 * According to chapter of 4.6.7.2.1 of the Spec Rev.
 		 * 3.0 RSC configuration requires HW CRC stripping being
@@ -4597,7 +4701,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 
 	/* RFCTL configuration  */
 	rfctl = IXGBE_READ_REG(hw, IXGBE_RFCTL);
-	if ((rsc_capable) && (rx_conf->enable_lro))
+	if ((rsc_capable) && (rx_conf->offloads & DEV_RX_OFFLOAD_TCP_LRO))
 		/*
 		 * Since NFS packets coalescing is not supported - clear
 		 * RFCTL.NFSW_DIS and RFCTL.NFSR_DIS when RSC is
@@ -4610,7 +4714,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 	IXGBE_WRITE_REG(hw, IXGBE_RFCTL, rfctl);
 
 	/* If LRO hasn't been requested - we are done here. */
-	if (!rx_conf->enable_lro)
+	if (!(rx_conf->offloads & DEV_RX_OFFLOAD_TCP_LRO))
 		return 0;
 
 	/* Set RDRXCTL.RSCACKC bit */
@@ -4730,7 +4834,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	 * Configure CRC stripping, if any.
 	 */
 	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
-	if (rx_conf->hw_strip_crc)
+	if (rx_conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP)
 		hlreg0 |= IXGBE_HLREG0_RXCRCSTRP;
 	else
 		hlreg0 &= ~IXGBE_HLREG0_RXCRCSTRP;
@@ -4738,7 +4842,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	/*
 	 * Configure jumbo frame support, if any.
 	 */
-	if (rx_conf->jumbo_frame == 1) {
+	if (rx_conf->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
 		maxfrs = IXGBE_READ_REG(hw, IXGBE_MAXFRS);
 		maxfrs &= 0x0000FFFF;
@@ -4758,6 +4862,11 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
+	/*
+	 * Assume no header split and no VLAN strip support
+	 * on any Rx queue first .
+	 */
+	rx_conf->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 	/* Setup RX queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
@@ -4766,7 +4875,8 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		 * Reset crc_len in case it was changed after queue setup by a
 		 * call to configure.
 		 */
-		rxq->crc_len = rx_conf->hw_strip_crc ? 0 : ETHER_CRC_LEN;
+		rxq->crc_len = (rx_conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP) ?
+				0 : ETHER_CRC_LEN;
 
 		/* Setup the Base and Length of the Rx Descriptor Rings */
 		bus_addr = rxq->rx_ring_phys_addr;
@@ -4780,28 +4890,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		IXGBE_WRITE_REG(hw, IXGBE_RDT(rxq->reg_idx), 0);
 
 		/* Configure the SRRCTL register */
-#ifdef RTE_HEADER_SPLIT_ENABLE
-		/*
-		 * Configure Header Split
-		 */
-		if (rx_conf->header_split) {
-			if (hw->mac.type == ixgbe_mac_82599EB) {
-				/* Must setup the PSRTYPE register */
-				uint32_t psrtype;
-
-				psrtype = IXGBE_PSRTYPE_TCPHDR |
-					IXGBE_PSRTYPE_UDPHDR   |
-					IXGBE_PSRTYPE_IPV4HDR  |
-					IXGBE_PSRTYPE_IPV6HDR;
-				IXGBE_WRITE_REG(hw, IXGBE_PSRTYPE(rxq->reg_idx), psrtype);
-			}
-			srrctl = ((rx_conf->split_hdr_size <<
-				IXGBE_SRRCTL_BSIZEHDRSIZE_SHIFT) &
-				IXGBE_SRRCTL_BSIZEHDR_MASK);
-			srrctl |= IXGBE_SRRCTL_DESCTYPE_HDR_SPLIT_ALWAYS;
-		} else
-#endif
-			srrctl = IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
+		srrctl = IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
 
 		/* Set if packets are dropped when no descriptors available */
 		if (rxq->drop_en)
@@ -4827,9 +4916,11 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		if (dev->data->dev_conf.rxmode.max_rx_pkt_len +
 					    2 * IXGBE_VLAN_TAG_SIZE > buf_size)
 			dev->data->scattered_rx = 1;
+		if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			rx_conf->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
 	}
 
-	if (rx_conf->enable_scatter)
+	if (rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER)
 		dev->data->scattered_rx = 1;
 
 	/*
@@ -4844,7 +4935,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	 */
 	rxcsum = IXGBE_READ_REG(hw, IXGBE_RXCSUM);
 	rxcsum |= IXGBE_RXCSUM_PCSD;
-	if (rx_conf->hw_ip_checksum)
+	if (rx_conf->offloads & DEV_RX_OFFLOAD_CHECKSUM)
 		rxcsum |= IXGBE_RXCSUM_IPPCSE;
 	else
 		rxcsum &= ~IXGBE_RXCSUM_IPPCSE;
@@ -4854,7 +4945,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	if (hw->mac.type == ixgbe_mac_82599EB ||
 	    hw->mac.type == ixgbe_mac_X540) {
 		rdrxctl = IXGBE_READ_REG(hw, IXGBE_RDRXCTL);
-		if (rx_conf->hw_strip_crc)
+		if (rx_conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP)
 			rdrxctl |= IXGBE_RDRXCTL_CRCSTRIP;
 		else
 			rdrxctl &= ~IXGBE_RDRXCTL_CRCSTRIP;
@@ -5260,6 +5351,7 @@ ixgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
 	qinfo->conf.rx_drop_en = rxq->drop_en;
 	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
+	qinfo->conf.offloads = rxq->offloads;
 }
 
 void
@@ -5290,6 +5382,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
 	struct ixgbe_rx_queue *rxq;
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint64_t bus_addr;
 	uint32_t srrctl, psrtype = 0;
 	uint16_t buf_size;
@@ -5329,6 +5422,11 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	ixgbevf_rlpml_set_vf(hw,
 		(uint16_t)dev->data->dev_conf.rxmode.max_rx_pkt_len);
 
+	/*
+	 * Assume no header split and no VLAN strip support
+	 * on any Rx queue first .
+	 */
+	rxmode->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 	/* Setup RX queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
@@ -5352,18 +5450,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 
 
 		/* Configure the SRRCTL register */
-#ifdef RTE_HEADER_SPLIT_ENABLE
-		/*
-		 * Configure Header Split
-		 */
-		if (dev->data->dev_conf.rxmode.header_split) {
-			srrctl = ((dev->data->dev_conf.rxmode.split_hdr_size <<
-				IXGBE_SRRCTL_BSIZEHDRSIZE_SHIFT) &
-				IXGBE_SRRCTL_BSIZEHDR_MASK);
-			srrctl |= IXGBE_SRRCTL_DESCTYPE_HDR_SPLIT_ALWAYS;
-		} else
-#endif
-			srrctl = IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
+		srrctl = IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
 
 		/* Set if packets are dropped when no descriptors available */
 		if (rxq->drop_en)
@@ -5388,24 +5475,18 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		buf_size = (uint16_t) ((srrctl & IXGBE_SRRCTL_BSIZEPKT_MASK) <<
 				       IXGBE_SRRCTL_BSIZEPKT_SHIFT);
 
-		if (dev->data->dev_conf.rxmode.enable_scatter ||
+		if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER ||
 		    /* It adds dual VLAN length for supporting dual VLAN */
-		    (dev->data->dev_conf.rxmode.max_rx_pkt_len +
+		    (rxmode->max_rx_pkt_len +
 				2 * IXGBE_VLAN_TAG_SIZE) > buf_size) {
 			if (!dev->data->scattered_rx)
 				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->data->scattered_rx = 1;
 		}
-	}
 
-#ifdef RTE_HEADER_SPLIT_ENABLE
-	if (dev->data->dev_conf.rxmode.header_split)
-		/* Must setup the PSRTYPE register */
-		psrtype = IXGBE_PSRTYPE_TCPHDR |
-			IXGBE_PSRTYPE_UDPHDR   |
-			IXGBE_PSRTYPE_IPV4HDR  |
-			IXGBE_PSRTYPE_IPV6HDR;
-#endif
+		if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			rxmode->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	}
 
 	/* Set RQPL for VF RSS according to max Rx queue */
 	psrtype |= (dev->data->nb_rx_queues >> 1) <<

@@ -598,13 +598,15 @@ ixgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t reg;
+	uint64_t rx_offloads;
 
+	rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	/* sanity checks */
-	if (dev->data->dev_conf.rxmode.enable_lro) {
+	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) {
 		PMD_DRV_LOG(ERR, "RSC and IPsec not supported");
 		return -1;
 	}
-	if (!dev->data->dev_conf.rxmode.hw_strip_crc) {
+	if (!(rx_offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
 		PMD_DRV_LOG(ERR, "HW CRC strip needs to be enabled for IPsec");
 		return -1;
 	}
@@ -624,7 +626,7 @@ ixgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 	reg |= IXGBE_HLREG0_TXCRCEN | IXGBE_HLREG0_RXCRCSTRP;
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, reg);
 
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
 		IXGBE_WRITE_REG(hw, IXGBE_SECRXCTRL, 0);
 		reg = IXGBE_READ_REG(hw, IXGBE_SECRXCTRL);
 		if (reg != 0) {

@@ -2066,19 +2066,22 @@ ixgbe_vlan_hw_strip_config(struct rte_eth_dev *dev)
 static int
 ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
+	struct rte_eth_rxmode *rxmode;
+	rxmode = &dev->data->dev_conf.rxmode;
+
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		ixgbe_vlan_hw_strip_config(dev);
 	}
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 			ixgbe_vlan_hw_filter_enable(dev);
 		else
 			ixgbe_vlan_hw_filter_disable(dev);
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
 			ixgbe_vlan_hw_extend_enable(dev);
 		else
 			ixgbe_vlan_hw_extend_disable(dev);
@@ -2293,6 +2296,8 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct ixgbe_adapter *adapter =
 		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct rte_eth_dev_info dev_info;
+	uint64_t rx_offloads;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2302,6 +2307,15 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "ixgbe_check_mq_mode fails with %d.",
 			    ret);
 		return ret;
+	}
+
+	ixgbe_dev_info_get(dev, &dev_info);
+	rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	if ((rx_offloads & dev_info.rx_offload_capa) != rx_offloads) {
+		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
+			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			    rx_offloads, dev_info.rx_offload_capa);
+		return -ENOTSUP;
 	}
 
 	/* set flag to update link status after init */
@@ -3593,30 +3607,9 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	else
 		dev_info->max_vmdq_pools = ETH_64_POOLS;
 	dev_info->vmdq_queue_num = dev_info->max_rx_queues;
-	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM  |
-		DEV_RX_OFFLOAD_TCP_CKSUM  |
-		DEV_RX_OFFLOAD_CRC_STRIP;
-
-	/*
-	 * RSC is only supported by 82599 and x540 PF devices in a non-SR-IOV
-	 * mode.
-	 */
-	if ((hw->mac.type == ixgbe_mac_82599EB ||
-	     hw->mac.type == ixgbe_mac_X540) &&
-	    !RTE_ETH_DEV_SRIOV(dev).active)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
-
-	if (hw->mac.type == ixgbe_mac_82599EB ||
-	    hw->mac.type == ixgbe_mac_X540)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_MACSEC_STRIP;
-
-	if (hw->mac.type == ixgbe_mac_X550 ||
-	    hw->mac.type == ixgbe_mac_X550EM_x ||
-	    hw->mac.type == ixgbe_mac_X550EM_a)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+	dev_info->rx_queue_offload_capa = ixgbe_get_rx_queue_offloads(dev);
+	dev_info->rx_offload_capa = (ixgbe_get_rx_port_offloads(dev) |
+				     dev_info->rx_queue_offload_capa);
 
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
@@ -3636,10 +3629,8 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 #ifdef RTE_LIBRTE_SECURITY
-	if (dev->security_ctx) {
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_SECURITY;
+	if (dev->security_ctx)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_SECURITY;
-	}
 #endif
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
@@ -3650,6 +3641,7 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.rx_free_thresh = IXGBE_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = 0,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -3742,11 +3734,9 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 		dev_info->max_vmdq_pools = ETH_16_POOLS;
 	else
 		dev_info->max_vmdq_pools = ETH_64_POOLS;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
-				DEV_RX_OFFLOAD_IPV4_CKSUM |
-				DEV_RX_OFFLOAD_UDP_CKSUM  |
-				DEV_RX_OFFLOAD_TCP_CKSUM  |
-				DEV_RX_OFFLOAD_CRC_STRIP;
+	dev_info->rx_queue_offload_capa = ixgbe_get_rx_queue_offloads(dev);
+	dev_info->rx_offload_capa = (ixgbe_get_rx_port_offloads(dev) |
+				     dev_info->rx_queue_offload_capa);
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
 				DEV_TX_OFFLOAD_IPV4_CKSUM  |
 				DEV_TX_OFFLOAD_UDP_CKSUM   |
@@ -3762,6 +3752,7 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 		},
 		.rx_free_thresh = IXGBE_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = 0,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -4845,10 +4836,12 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* switch to jumbo mode if needed */
 	if (frame_size > ETHER_MAX_LEN) {
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
 	} else {
-		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 		hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
 	}
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
@@ -4897,23 +4890,34 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 	struct ixgbe_adapter *adapter =
 			(struct ixgbe_adapter *)dev->data->dev_private;
+	struct rte_eth_dev_info dev_info;
+	uint64_t rx_offloads;
 
 	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
 		     dev->data->port_id);
+
+	ixgbevf_dev_info_get(dev, &dev_info);
+	rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	if ((rx_offloads & dev_info.rx_offload_capa) != rx_offloads) {
+		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
+			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			    rx_offloads, dev_info.rx_offload_capa);
+		return -ENOTSUP;
+	}
 
 	/*
 	 * VF has no ability to enable/disable HW CRC
 	 * Keep the persistent behavior the same as Host PF
 	 */
 #ifndef RTE_LIBRTE_IXGBE_PF_DISABLE_STRIP_CRC
-	if (!conf->rxmode.hw_strip_crc) {
+	if (!(conf->rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
 		PMD_INIT_LOG(NOTICE, "VF can't disable HW CRC Strip");
-		conf->rxmode.hw_strip_crc = 1;
+		conf->rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 #else
-	if (conf->rxmode.hw_strip_crc) {
+	if (conf->rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
 		PMD_INIT_LOG(NOTICE, "VF can't enable HW CRC Strip");
-		conf->rxmode.hw_strip_crc = 0;
+		conf->rxmode.offloads &= ~DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 #endif
 
@@ -5801,6 +5805,7 @@ ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 			   uint16_t queue_idx, uint16_t tx_rate)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_rxmode *rxmode;
 	uint32_t rf_dec, rf_int;
 	uint32_t bcnrc_val;
 	uint16_t link_speed = dev->data->dev_link.link_speed;
@@ -5822,14 +5827,14 @@ ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 		bcnrc_val = 0;
 	}
 
+	rxmode = &dev->data->dev_conf.rxmode;
 	/*
 	 * Set global transmit compensation time to the MMW_SIZE in RTTBCNRM
 	 * register. MMW_SIZE=0x014 if 9728-byte jumbo is supported, otherwise
 	 * set as 0x4.
 	 */
-	if ((dev->data->dev_conf.rxmode.jumbo_frame == 1) &&
-		(dev->data->dev_conf.rxmode.max_rx_pkt_len >=
-				IXGBE_MAX_JUMBO_FRAME_SIZE))
+	if ((rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) &&
+	    (rxmode->max_rx_pkt_len >= IXGBE_MAX_JUMBO_FRAME_SIZE))
 		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM,
 			IXGBE_MMW_SIZE_JUMBO_FRAME);
 	else
@@ -6176,7 +6181,7 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* refuse mtu that requires the support of scattered packets when this
 	 * feature has not been enabled before.
 	 */
-	if (!rx_conf->enable_scatter &&
+	if (!(rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) &&
 	    (max_frame + 2 * IXGBE_VLAN_TAG_SIZE >
 	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM))
 		return -EINVAL;
