@@ -58,10 +58,6 @@
 #define CDEV_MP_CACHE_SZ 64
 #define MAX_QUEUE_PAIRS 1
 
-#define OPTION_CONFIG		"config"
-#define OPTION_SINGLE_SA	"single-sa"
-#define OPTION_CRYPTODEV_MASK	"cryptodev_mask"
-
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
 #define NB_SOCKETS 4
@@ -122,6 +118,29 @@ struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
 	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x22, 0xa1, 0xd9) },
 	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x08, 0x69, 0x26) },
 	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x49, 0x9e, 0xdd) }
+};
+
+#define CMD_LINE_OPT_CONFIG		"config"
+#define CMD_LINE_OPT_SINGLE_SA		"single-sa"
+#define CMD_LINE_OPT_CRYPTODEV_MASK	"cryptodev_mask"
+
+enum {
+	/* long options mapped to a short option */
+
+	/* first long only option value must be >= 256, so that we won't
+	 * conflict with short options
+	 */
+	CMD_LINE_OPT_MIN_NUM = 256,
+	CMD_LINE_OPT_CONFIG_NUM,
+	CMD_LINE_OPT_SINGLE_SA_NUM,
+	CMD_LINE_OPT_CRYPTODEV_MASK_NUM,
+};
+
+static const struct option lgopts[] = {
+	{CMD_LINE_OPT_CONFIG, 1, 0, CMD_LINE_OPT_CONFIG_NUM},
+	{CMD_LINE_OPT_SINGLE_SA, 1, 0, CMD_LINE_OPT_SINGLE_SA_NUM},
+	{CMD_LINE_OPT_CRYPTODEV_MASK, 1, 0, CMD_LINE_OPT_CRYPTODEV_MASK_NUM},
+	{NULL, 0, 0, 0}
 };
 
 /* mask of enabled ports */
@@ -925,13 +944,13 @@ static void
 print_usage(const char *prgname)
 {
 	printf("%s [EAL options] -- -p PORTMASK -P -u PORTMASK"
-		"  --"OPTION_CONFIG" (port,queue,lcore)[,(port,queue,lcore]"
+		"  --"CMD_LINE_OPT_CONFIG" (port,queue,lcore)[,(port,queue,lcore]"
 		" --single-sa SAIDX -f CONFIG_FILE\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -P : enable promiscuous mode\n"
 		"  -u PORTMASK: hexadecimal bitmask of unprotected ports\n"
 		"  -j FRAMESIZE: jumbo frame maximum size\n"
-		"  --"OPTION_CONFIG": (port,queue,lcore): "
+		"  --"CMD_LINE_OPT_CONFIG": (port,queue,lcore): "
 		"rx queues configuration\n"
 		"  --single-sa SAIDX: use single SA index for outbound, "
 		"bypassing the SP\n"
@@ -1027,42 +1046,6 @@ parse_config(const char *q_arg)
 	return 0;
 }
 
-#define __STRNCMP(name, opt) (!strncmp(name, opt, sizeof(opt)))
-static int32_t
-parse_args_long_options(struct option *lgopts, int32_t option_index)
-{
-	int32_t ret = -1;
-	const char *optname = lgopts[option_index].name;
-
-	if (__STRNCMP(optname, OPTION_CONFIG)) {
-		ret = parse_config(optarg);
-		if (ret)
-			printf("invalid config\n");
-	}
-
-	if (__STRNCMP(optname, OPTION_SINGLE_SA)) {
-		ret = parse_decimal(optarg);
-		if (ret != -1) {
-			single_sa = 1;
-			single_sa_idx = ret;
-			printf("Configured with single SA index %u\n",
-					single_sa_idx);
-			ret = 0;
-		}
-	}
-
-	if (__STRNCMP(optname, OPTION_CRYPTODEV_MASK)) {
-		ret = parse_portmask(optarg);
-		if (ret != -1) {
-			enabled_cryptodev_mask = ret;
-			ret = 0;
-		}
-	}
-
-	return ret;
-}
-#undef __STRNCMP
-
 static int32_t
 parse_args(int32_t argc, char **argv)
 {
@@ -1070,12 +1053,6 @@ parse_args(int32_t argc, char **argv)
 	char **argvopt;
 	int32_t option_index;
 	char *prgname = argv[0];
-	static struct option lgopts[] = {
-		{OPTION_CONFIG, 1, 0, 0},
-		{OPTION_SINGLE_SA, 1, 0, 0},
-		{OPTION_CRYPTODEV_MASK, 1, 0, 0},
-		{NULL, 0, 0, 0}
-	};
 	int32_t f_present = 0;
 
 	argvopt = argv;
@@ -1136,11 +1113,38 @@ parse_args(int32_t argc, char **argv)
 			}
 			printf("Enabled jumbo frames size %u\n", frame_size);
 			break;
-		case 0:
-			if (parse_args_long_options(lgopts, option_index)) {
+		case CMD_LINE_OPT_CONFIG_NUM:
+			ret = parse_config(optarg);
+			if (ret) {
+				printf("Invalid config\n");
 				print_usage(prgname);
 				return -1;
 			}
+			break;
+		case CMD_LINE_OPT_SINGLE_SA_NUM:
+			ret = parse_decimal(optarg);
+			if (ret == -1) {
+				printf("Invalid argument[sa_idx]\n");
+				print_usage(prgname);
+				return -1;
+			}
+
+			/* else */
+			single_sa = 1;
+			single_sa_idx = ret;
+			printf("Configured with single SA index %u\n",
+					single_sa_idx);
+			break;
+		case CMD_LINE_OPT_CRYPTODEV_MASK_NUM:
+			ret = parse_portmask(optarg);
+			if (ret == -1) {
+				printf("Invalid argument[portmask]\n");
+				print_usage(prgname);
+				return -1;
+			}
+
+			/* else */
+			enabled_cryptodev_mask = ret;
 			break;
 		default:
 			print_usage(prgname);
