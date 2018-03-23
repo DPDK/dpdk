@@ -852,9 +852,11 @@ rte_vhost_driver_start(const char *path)
 	if (fdset_tid == 0) {
 		int ret = pthread_create(&fdset_tid, NULL, fdset_event_dispatch,
 				     &vhost_user.fdset);
-		if (ret != 0)
+		if (ret != 0) {
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"failed to create fdset handling thread");
+			return -1;
+		}
 	}
 
 	if (vsocket->is_server)
