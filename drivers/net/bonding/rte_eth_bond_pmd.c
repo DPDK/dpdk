@@ -2035,7 +2035,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 
 	if (internals->slave_count == 0) {
 		RTE_BOND_LOG(ERR, "Cannot start port since there are no slave devices");
-		return -1;
+		goto out_err;
 	}
 
 	if (internals->user_defined_mac == 0) {
@@ -2046,18 +2046,18 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 				new_mac_addr = &internals->slaves[i].persisted_mac_addr;
 
 		if (new_mac_addr == NULL)
-			return -1;
+			goto out_err;
 
 		if (mac_address_set(eth_dev, new_mac_addr) != 0) {
 			RTE_BOND_LOG(ERR, "bonded port (%d) failed to update MAC address",
 					eth_dev->data->port_id);
-			return -1;
+			goto out_err;
 		}
 	}
 
 	/* Update all slave devices MACs*/
 	if (mac_address_slaves_update(eth_dev) != 0)
-		return -1;
+		goto out_err;
 
 	/* If bonded device is configure in promiscuous mode then re-apply config */
 	if (internals->promiscuous_en)
@@ -2082,7 +2082,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 				"bonded port (%d) failed to reconfigure slave device (%d)",
 				eth_dev->data->port_id,
 				internals->slaves[i].port_id);
-			return -1;
+			goto out_err;
 		}
 		/* We will need to poll for link status if any slave doesn't
 		 * support interrupts
@@ -2090,6 +2090,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 		if (internals->slaves[i].link_status_poll_enabled)
 			internals->link_status_polling_enabled = 1;
 	}
+
 	/* start polling if needed */
 	if (internals->link_status_polling_enabled) {
 		rte_eal_alarm_set(
@@ -2109,6 +2110,10 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 		bond_tlb_enable(internals);
 
 	return 0;
+
+out_err:
+	eth_dev->data->dev_started = 0;
+	return -1;
 }
 
 static void
