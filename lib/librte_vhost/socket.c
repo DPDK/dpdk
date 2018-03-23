@@ -841,6 +841,7 @@ rte_vhost_driver_start(const char *path)
 {
 	struct vhost_user_socket *vsocket;
 	static pthread_t fdset_tid;
+	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
@@ -856,6 +857,14 @@ rte_vhost_driver_start(const char *path)
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"failed to create fdset handling thread");
 			return -1;
+		} else {
+			snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
+				 "vhost-events");
+
+			if (rte_thread_setname(fdset_tid, thread_name)) {
+				RTE_LOG(DEBUG, VHOST_CONFIG,
+					"failed to set vhost-event thread name");
+			}
 		}
 	}
 
