@@ -821,7 +821,7 @@ static int
 sfc_kvarg_perf_profile_handler(__rte_unused const char *key,
 			       const char *value_str, void *opaque)
 {
-	uint64_t *value = opaque;
+	uint32_t *value = opaque;
 
 	if (strcasecmp(value_str, SFC_KVARG_PERF_PROFILE_THROUGHPUT) == 0)
 		*value = EFX_EVQ_FLAGS_TYPE_THROUGHPUT;
