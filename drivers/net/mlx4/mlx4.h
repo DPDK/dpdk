@@ -105,6 +105,7 @@ struct priv {
 	uint32_t isolated:1; /**< Toggle isolated mode. */
 	uint32_t hw_csum:1; /**< Checksum offload is supported. */
 	uint32_t hw_csum_l2tun:1; /**< Checksum support for L2 tunnels. */
+	uint32_t hw_fcs_strip:1; /**< FCS stripping toggling is supported. */
 	uint64_t hw_rss_sup; /**< Supported RSS hash fields (Verbs format). */
 	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
 	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */

@@ -562,7 +562,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			(device_attr.vendor_part_id ==
 			 PCI_DEVICE_ID_MELLANOX_CONNECTX3PRO);
 		DEBUG("L2 tunnel checksum offloads are %ssupported",
-		      (priv->hw_csum_l2tun ? "" : "not "));
+		      priv->hw_csum_l2tun ? "" : "not ");
 		priv->hw_rss_sup = device_attr_ex.rss_caps.rx_hash_fields_mask;
 		if (!priv->hw_rss_sup) {
 			WARN("no RSS capabilities reported; disabling support"
@@ -578,6 +578,10 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		}
 		DEBUG("supported RSS hash fields mask: %016" PRIx64,
 		      priv->hw_rss_sup);
+		priv->hw_fcs_strip = !!(device_attr_ex.raw_packet_caps &
+					IBV_RAW_PACKET_CAP_SCATTER_FCS);
+		DEBUG("FCS stripping toggling is %ssupported",
+		      priv->hw_fcs_strip ? "" : "not ");
 		/* Configure the first MAC address by default. */
 		if (mlx4_get_mac(priv, &mac.addr_bytes)) {
 			ERROR("cannot get MAC address, is mlx4_en loaded?"

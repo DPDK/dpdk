@@ -934,11 +934,14 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				goto skip;
 			}
 			pkt = seg;
+			assert(len >= (rxq->crc_present << 2));
 			/* Update packet information. */
 			pkt->packet_type =
 				rxq_cq_to_pkt_type(cqe, rxq->l2tun_offload);
 			pkt->ol_flags = PKT_RX_RSS_HASH;
 			pkt->hash.rss = cqe->immed_rss_invalid;
+			if (rxq->crc_present)
+				len -= ETHER_CRC_LEN;
 			pkt->pkt_len = len;
 			if (rxq->csum | rxq->csum_l2tun) {
 				uint32_t flags =

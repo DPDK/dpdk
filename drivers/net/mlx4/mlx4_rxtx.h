@@ -52,6 +52,7 @@ struct rxq {
 	volatile uint32_t *rq_db; /**< RQ doorbell record. */
 	uint32_t csum:1; /**< Enable checksum offloading. */
 	uint32_t csum_l2tun:1; /**< Same for L2 tunnels. */
+	uint32_t crc_present:1; /**< CRC must be subtracted. */
 	uint32_t l2tun_offload:1; /**< L2 tunnel offload is enabled. */
 	struct mlx4_cq mcq;  /**< Info for directly manipulating the CQ. */
 	struct mlx4_rxq_stats stats; /**< Rx queue counters. */

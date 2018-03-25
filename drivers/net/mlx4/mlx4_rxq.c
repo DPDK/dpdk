@@ -491,6 +491,8 @@ mlx4_rxq_attach(struct rxq *rxq)
 	const char *msg;
 	struct ibv_cq *cq = NULL;
 	struct ibv_wq *wq = NULL;
+	uint32_t create_flags = 0;
+	uint32_t comp_mask = 0;
 	volatile struct mlx4_wqe_data_seg (*wqes)[];
 	unsigned int i;
 	int ret;
@@ -503,6 +505,11 @@ mlx4_rxq_attach(struct rxq *rxq)
 		msg = "CQ creation failure";
 		goto error;
 	}
+	/* By default, FCS (CRC) is stripped by hardware. */
+	if (rxq->crc_present) {
+		create_flags |= IBV_WQ_FLAGS_SCATTER_FCS;
+		comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
+	}
 	wq = mlx4_glue->create_wq
 		(priv->ctx,
 		 &(struct ibv_wq_init_attr){
@@ -511,6 +518,8 @@ mlx4_rxq_attach(struct rxq *rxq)
 			.max_sge = sges_n,
 			.pd = priv->pd,
 			.cq = cq,
+			.comp_mask = comp_mask,
+			.create_flags = create_flags,
 		 });
 	if (!wq) {
 		ret = errno ? errno : EINVAL;
@@ -649,9 +658,10 @@ mlx4_rxq_detach(struct rxq *rxq)
 uint64_t
 mlx4_get_rx_queue_offloads(struct priv *priv)
 {
-	uint64_t offloads = DEV_RX_OFFLOAD_SCATTER |
-			    DEV_RX_OFFLOAD_CRC_STRIP;
+	uint64_t offloads = DEV_RX_OFFLOAD_SCATTER;
 
+	if (priv->hw_fcs_strip)
+		offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	if (priv->hw_csum)
 		offloads |= DEV_RX_OFFLOAD_CHECKSUM;
 	return offloads;
@@ -736,6 +746,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		},
 	};
 	int ret;
+	uint32_t crc_present;
 
 	(void)conf; /* Thresholds configuration (ignored). */
 	DEBUG("%p: configuring queue %u for %u descriptors",
@@ -774,6 +785,23 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		     " to the next power of two (%u)",
 		     (void *)dev, idx, desc);
 	}
+	/* By default, FCS (CRC) is stripped by hardware. */
+	if (conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
+		crc_present = 0;
+	} else if (priv->hw_fcs_strip) {
+		crc_present = 1;
+	} else {
+		WARN("%p: CRC stripping has been disabled but will still"
+		     " be performed by hardware, make sure MLNX_OFED and"
+		     " firmware are up to date",
+		     (void *)dev);
+		crc_present = 0;
+	}
+	DEBUG("%p: CRC stripping is %s, %u bytes will be subtracted from"
+	      " incoming frames to hide it",
+	      (void *)dev,
+	      crc_present ? "disabled" : "enabled",
+	      crc_present << 2);
 	/* Allocate and initialize Rx queue. */
 	mlx4_zmallocv_socket("RXQ", vec, RTE_DIM(vec), socket);
 	if (!rxq) {
@@ -793,6 +821,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			(conf->offloads & DEV_RX_OFFLOAD_CHECKSUM),
 		.csum_l2tun = priv->hw_csum_l2tun &&
 			      (conf->offloads & DEV_RX_OFFLOAD_CHECKSUM),
+		.crc_present = crc_present,
 		.l2tun_offload = priv->hw_csum_l2tun,
 		.stats = {
 			.idx = idx,
