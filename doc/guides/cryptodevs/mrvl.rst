@@ -86,7 +86,7 @@ Currently there are two driver specific compilation options in
     Toggle display of debugging messages.
 
 For a list of prerequisites please refer to `Prerequisites` section in
-:ref:`MRVL Poll Mode Driver <mrvl_poll_mode_driver>` guide.
+:ref:`MVPP2 Poll Mode Driver <mvpp2_poll_mode_driver>` guide.
 
 MRVL CRYPTO PMD requires MUSDK built with EIP197 support thus following
 extra option must be passed to the library configuration script:
@@ -123,7 +123,7 @@ operation:
 
 .. code-block:: console
 
-   ./l2fwd-crypto --vdev=net_mrvl,iface=eth0 --vdev=crypto_mrvl -- \
+   ./l2fwd-crypto --vdev=eth_mvpp2,iface=eth0 --vdev=crypto_mrvl -- \
      --cipher_op ENCRYPT --cipher_algo aes-cbc \
      --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f  \
      --auth_op GENERATE --auth_algo sha1-hmac \

@@ -29,12 +29,12 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-.. _mrvl_poll_mode_driver:
+.. _mvpp2_poll_mode_driver:
 
-MRVL Poll Mode Driver
+MVPP2 Poll Mode Driver
 ======================
 
-The MRVL PMD (librte_pmd_mrvl) provides poll mode driver support
+The MVPP2 PMD (librte_pmd_mvpp2) provides poll mode driver support
 for the Marvell PPv2 (Packet Processor v2) 1/10 Gbps adapter.
 
 Detailed information about SoCs that use PPv2 can be obtained here:
@@ -52,7 +52,7 @@ Detailed information about SoCs that use PPv2 can be obtained here:
 Features
 --------
 
-Features of the MRVL PMD are:
+Features of the MVPP2 PMD are:
 
 - Speed capabilities
 - Link status
@@ -136,9 +136,9 @@ Config File Options
 
 The following options can be modified in the ``config`` file.
 
-- ``CONFIG_RTE_LIBRTE_MRVL_PMD`` (default ``n``)
+- ``CONFIG_RTE_LIBRTE_MVPP2_PMD`` (default ``n``)
 
-    Toggle compilation of the librte_pmd_mrvl driver.
+    Toggle compilation of the librte mvpp2 driver.
 
 
 QoS Configuration
@@ -294,7 +294,7 @@ Usage example
 
 .. code-block:: console
 
-   ./testpmd --vdev=eth_mrvl,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
+   ./testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
      -c 7 -- -i -a --disable-hw-vlan-strip --rxq=3 --txq=3
 
 
@@ -321,7 +321,7 @@ the path to the MUSDK installation directory needs to be exported.
    export LIBMUSDK_PATH=<musdk>/usr/local
    export CROSS=aarch64-linux-gnu-
    make config T=arm64-armv8a-linuxapp-gcc
-   sed -ri 's,(MRVL_PMD=)n,\1y,' build/.config
+   sed -ri 's,(MVPP2_PMD=)n,\1y,' build/.config
    make
 
 Flow API
@@ -428,7 +428,7 @@ Before proceeding run testpmd user application:
 
 .. code-block:: console
 
-   ./testpmd --vdev=net_mrvl,iface=eth0,iface=eth2 -c 3 -- -i --p 3 -a --disable-hw-vlan-strip
+   ./testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 3 -- -i --p 3 -a --disable-hw-vlan-strip
 
 Example #1
 ^^^^^^^^^^
@@ -492,7 +492,7 @@ For additional information about classifier please consult
 Usage Example
 -------------
 
-MRVL PMD requires extra out of tree kernel modules to function properly.
+MVPP2 PMD requires extra out of tree kernel modules to function properly.
 `musdk_uio` and `mv_pp_uio` sources are part of the MUSDK. Please consult
 ``doc/musdk_get_started.txt`` for the detailed build instructions.
 For `mvpp2x_sysfs` please consult ``Documentation/pp22_sysfs.txt`` for the
@@ -515,6 +515,6 @@ In order to run testpmd example application following command can be used:
 
 .. code-block:: console
 
-   ./testpmd --vdev=eth_mrvl,iface=eth0,iface=eth2 -c 7 -- \
+   ./testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 7 -- \
      --burst=128 --txd=2048 --rxd=1024 --rxq=2 --txq=2  --nb-cores=2 \
      -i -a --rss-udp

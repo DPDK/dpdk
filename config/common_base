@@ -383,7 +383,7 @@ CONFIG_RTE_LIBRTE_PMD_FAILSAFE=y
 #
 # Compile Marvell PMD driver
 #
-CONFIG_RTE_LIBRTE_MRVL_PMD=n
+CONFIG_RTE_LIBRTE_MVPP2_PMD=n
 
 #
 # Compile virtual device driver for NetVSC on Hyper-V/Azure

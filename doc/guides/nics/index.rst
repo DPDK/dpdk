@@ -30,7 +30,7 @@ Network Interface Controller Drivers
     liquidio
     mlx4
     mlx5
-    mrvl
+    mvpp2
     nfp
     octeontx
     qede

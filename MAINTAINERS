@@ -486,15 +486,15 @@ F: drivers/net/mlx5/
 F: doc/guides/nics/mlx5.rst
 F: doc/guides/nics/features/mlx5.ini
 
-Marvell mrvl
+Marvell mvpp2
 M: Jacek Siuda <jck@semihalf.com>
 M: Tomasz Duszynski <tdu@semihalf.com>
 M: Dmitri Epshtein <dima@marvell.com>
 M: Natalie Samsonov <nsamsono@marvell.com>
 M: Jianbo Liu <jianbo.liu@arm.com>
-F: drivers/net/mrvl/
-F: doc/guides/nics/mrvl.rst
-F: doc/guides/nics/features/mrvl.ini
+F: drivers/net/mvpp2/
+F: doc/guides/nics/mvpp2.rst
+F: doc/guides/nics/features/mvpp2.ini
 
 Microsoft vdev_netvsc - EXPERIMENTAL
 M: Matan Azrad <matan@mellanox.com>

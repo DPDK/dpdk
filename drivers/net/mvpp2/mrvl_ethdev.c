@@ -2828,5 +2828,5 @@ static struct rte_vdev_driver pmd_mrvl_drv = {
 	.remove = rte_pmd_mrvl_remove,
 };
 
-RTE_PMD_REGISTER_VDEV(net_mrvl, pmd_mrvl_drv);
-RTE_PMD_REGISTER_ALIAS(net_mrvl, eth_mrvl);
+RTE_PMD_REGISTER_VDEV(net_mvpp2, pmd_mrvl_drv);
+RTE_PMD_REGISTER_ALIAS(net_mvpp2, eth_mvpp2);

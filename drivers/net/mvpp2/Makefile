@@ -14,7 +14,7 @@ endif
 endif
 
 # library name
-LIB = librte_pmd_mrvl.a
+LIB = librte_pmd_mvpp2.a
 
 # library version
 LIBABIVER := 1
@@ -35,8 +35,8 @@ LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_cfgfile
 LDLIBS += -lrte_bus_vdev
 
 # library source files
-SRCS-$(CONFIG_RTE_LIBRTE_MRVL_PMD) += mrvl_ethdev.c
-SRCS-$(CONFIG_RTE_LIBRTE_MRVL_PMD) += mrvl_qos.c
-SRCS-$(CONFIG_RTE_LIBRTE_MRVL_PMD) += mrvl_flow.c
+SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_qos.c
+SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_flow.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
