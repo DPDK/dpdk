@@ -780,7 +780,7 @@ sfc_probe(struct sfc_adapter *sa)
 		goto fail_mcdi_init;
 
 	sfc_log_init(sa, "probe nic");
-	rc = efx_nic_probe(enp);
+	rc = efx_nic_probe(enp, EFX_FW_VARIANT_DONT_CARE);
 	if (rc != 0)
 		goto fail_nic_probe;
 
