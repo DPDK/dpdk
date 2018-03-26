@@ -20,6 +20,7 @@
 #include "sfc_ev.h"
 #include "sfc_rx.h"
 #include "sfc_tx.h"
+#include "sfc_kvargs.h"
 
 
 int
@@ -740,6 +741,126 @@ sfc_detach(struct sfc_adapter *sa)
 	sa->state = SFC_ADAPTER_UNINITIALIZED;
 }
 
+static int
+sfc_kvarg_fv_variant_handler(__rte_unused const char *key,
+			     const char *value_str, void *opaque)
+{
+	uint32_t *value = opaque;
+
+	if (strcasecmp(value_str, SFC_KVARG_FW_VARIANT_DONT_CARE) == 0)
+		*value = EFX_FW_VARIANT_DONT_CARE;
+	else if (strcasecmp(value_str, SFC_KVARG_FW_VARIANT_FULL_FEATURED) == 0)
+		*value = EFX_FW_VARIANT_FULL_FEATURED;
+	else if (strcasecmp(value_str, SFC_KVARG_FW_VARIANT_LOW_LATENCY) == 0)
+		*value = EFX_FW_VARIANT_LOW_LATENCY;
+	else if (strcasecmp(value_str, SFC_KVARG_FW_VARIANT_PACKED_STREAM) == 0)
+		*value = EFX_FW_VARIANT_PACKED_STREAM;
+	else
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+sfc_get_fw_variant(struct sfc_adapter *sa, efx_fw_variant_t *efv)
+{
+	efx_nic_fw_info_t enfi;
+	int rc;
+
+	rc = efx_nic_get_fw_version(sa->nic, &enfi);
+	if (rc != 0)
+		return rc;
+	else if (!enfi.enfi_dpcpu_fw_ids_valid)
+		return ENOTSUP;
+
+	/*
+	 * Firmware variant can be uniquely identified by the RxDPCPU
+	 * firmware id
+	 */
+	switch (enfi.enfi_rx_dpcpu_fw_id) {
+	case EFX_RXDP_FULL_FEATURED_FW_ID:
+		*efv = EFX_FW_VARIANT_FULL_FEATURED;
+		break;
+
+	case EFX_RXDP_LOW_LATENCY_FW_ID:
+		*efv = EFX_FW_VARIANT_LOW_LATENCY;
+		break;
+
+	case EFX_RXDP_PACKED_STREAM_FW_ID:
+		*efv = EFX_FW_VARIANT_PACKED_STREAM;
+		break;
+
+	default:
+		/*
+		 * Other firmware variants are not considered, since they are
+		 * not supported in the device parameters
+		 */
+		*efv = EFX_FW_VARIANT_DONT_CARE;
+		break;
+	}
+
+	return 0;
+}
+
+static const char *
+sfc_fw_variant2str(efx_fw_variant_t efv)
+{
+	switch (efv) {
+	case EFX_RXDP_FULL_FEATURED_FW_ID:
+		return SFC_KVARG_FW_VARIANT_FULL_FEATURED;
+	case EFX_RXDP_LOW_LATENCY_FW_ID:
+		return SFC_KVARG_FW_VARIANT_LOW_LATENCY;
+	case EFX_RXDP_PACKED_STREAM_FW_ID:
+		return SFC_KVARG_FW_VARIANT_PACKED_STREAM;
+	default:
+		return "unknown";
+	}
+}
+
+static int
+sfc_nic_probe(struct sfc_adapter *sa)
+{
+	efx_nic_t *enp = sa->nic;
+	efx_fw_variant_t preferred_efv;
+	efx_fw_variant_t efv;
+	int rc;
+
+	preferred_efv = EFX_FW_VARIANT_DONT_CARE;
+	rc = sfc_kvargs_process(sa, SFC_KVARG_FW_VARIANT,
+				sfc_kvarg_fv_variant_handler,
+				&preferred_efv);
+	if (rc != 0) {
+		sfc_err(sa, "invalid %s parameter value", SFC_KVARG_FW_VARIANT);
+		return rc;
+	}
+
+	rc = efx_nic_probe(enp, preferred_efv);
+	if (rc == EACCES) {
+		/* Unprivileged functions cannot set FW variant */
+		rc = efx_nic_probe(enp, EFX_FW_VARIANT_DONT_CARE);
+	}
+	if (rc != 0)
+		return rc;
+
+	rc = sfc_get_fw_variant(sa, &efv);
+	if (rc == ENOTSUP) {
+		sfc_warn(sa, "FW variant can not be obtained");
+		return 0;
+	}
+	if (rc != 0)
+		return rc;
+
+	/* Check that firmware variant was changed to the requested one */
+	if (preferred_efv != EFX_FW_VARIANT_DONT_CARE && preferred_efv != efv) {
+		sfc_warn(sa, "FW variant has not changed to the requested %s",
+			 sfc_fw_variant2str(preferred_efv));
+	}
+
+	sfc_notice(sa, "running FW variant is %s", sfc_fw_variant2str(efv));
+
+	return 0;
+}
+
 int
 sfc_probe(struct sfc_adapter *sa)
 {
@@ -780,7 +901,7 @@ sfc_probe(struct sfc_adapter *sa)
 		goto fail_mcdi_init;
 
 	sfc_log_init(sa, "probe nic");
-	rc = efx_nic_probe(enp, EFX_FW_VARIANT_DONT_CARE);
+	rc = sfc_nic_probe(sa);
 	if (rc != 0)
 		goto fail_nic_probe;
 

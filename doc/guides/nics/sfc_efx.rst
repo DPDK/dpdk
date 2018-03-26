@@ -330,6 +330,21 @@ boolean parameters value.
   firmware version is 6.2.1.1033 or higher, otherwise any positive
   value will select a fixed update period of **1000** milliseconds
 
+- ``fw_variant`` [dont-care|full-feature|ultra-low-latency|
+  capture-packed-stream] (default **dont-care**)
+
+  Choose the preferred firmware variant to use. In order for the selected
+  option to have an effect, the **sfboot** utility must be configured with the
+  **auto** firmware-variant option. The preferred firmware variant applies to
+  all ports on the NIC.
+  **dont-care** ensures that the driver can attach to an unprivileged function.
+  The datapath firmware type to use is controlled by the **sfboot**
+  utility.
+  **full-feature** chooses full featured firmware.
+  **ultra-low-latency** chooses firmware with fewer features but lower latency.
+  **capture-packed-stream** chooses firmware for SolarCapture packed stream
+  mode.
+
 
 Dynamic Logging Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
