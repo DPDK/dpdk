@@ -428,7 +428,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		info->if_index = if_nametoindex(ifname);
 	info->reta_size = priv->reta_idx_n ?
 		priv->reta_idx_n : config->ind_table_max_size;
-	info->hash_key_size = priv->rss_conf.rss_key_len;
+	info->hash_key_size = rss_hash_default_key_len;
 	info->speed_capa = priv->link_speed_capa;
 	info->flow_type_rss_offloads = ~MLX5_RSS_HF_MASK;
 }
