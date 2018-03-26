@@ -329,7 +329,8 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	if (use_app_rss_key &&
 	    (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len !=
 	     rss_hash_default_key_len)) {
-		/* MLX5 RSS only support 40bytes key. */
+		DRV_LOG(ERR, "port %u RSS key len must be %zu Bytes long",
+			dev->data->port_id, rss_hash_default_key_len);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
