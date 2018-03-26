@@ -2358,7 +2358,8 @@ bnxt_parse_fdir_filter(struct bnxt *bp,
 }
 
 static struct bnxt_filter_info *
-bnxt_match_fdir(struct bnxt *bp, struct bnxt_filter_info *nf)
+bnxt_match_fdir(struct bnxt *bp, struct bnxt_filter_info *nf,
+		struct bnxt_vnic_info **mvnic)
 {
 	struct bnxt_filter_info *mf = NULL;
 	int i;
@@ -2396,8 +2397,11 @@ bnxt_match_fdir(struct bnxt *bp, struct bnxt_filter_info *nf)
 			    !memcmp(mf->dst_ipaddr, nf->dst_ipaddr,
 				    sizeof(nf->dst_ipaddr)) &&
 			    !memcmp(mf->dst_ipaddr_mask, nf->dst_ipaddr_mask,
-				    sizeof(nf->dst_ipaddr_mask)))
+				    sizeof(nf->dst_ipaddr_mask))) {
+				if (mvnic)
+					*mvnic = vnic;
 				return mf;
+			}
 		}
 	}
 	return NULL;
@@ -2411,7 +2415,7 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct rte_eth_fdir_filter *fdir  = (struct rte_eth_fdir_filter *)arg;
 	struct bnxt_filter_info *filter, *match;
-	struct bnxt_vnic_info *vnic;
+	struct bnxt_vnic_info *vnic, *mvnic;
 	int ret = 0, i;
 
 	if (filter_op == RTE_ETH_FILTER_NOP)
@@ -2423,7 +2427,6 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 	switch (filter_op) {
 	case RTE_ETH_FILTER_ADD:
 	case RTE_ETH_FILTER_DELETE:
-		/* FALLTHROUGH */
 		filter = bnxt_get_unused_filter(bp);
 		if (filter == NULL) {
 			PMD_DRV_LOG(ERR,
@@ -2436,23 +2439,37 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 			goto free_filter;
 		filter->filter_type = HWRM_CFA_NTUPLE_FILTER;
 
-		match = bnxt_match_fdir(bp, filter);
+		if (fdir->action.behavior == RTE_ETH_FDIR_REJECT)
+			vnic = STAILQ_FIRST(&bp->ff_pool[0]);
+		else
+			vnic = STAILQ_FIRST(&bp->ff_pool[fdir->action.rx_queue]);
+
+		match = bnxt_match_fdir(bp, filter, &mvnic);
 		if (match != NULL && filter_op == RTE_ETH_FILTER_ADD) {
-			PMD_DRV_LOG(ERR, "Flow already exists.\n");
-			ret = -EEXIST;
-			goto free_filter;
+			if (match->dst_id == vnic->fw_vnic_id) {
+				PMD_DRV_LOG(ERR, "Flow already exists.\n");
+				ret = -EEXIST;
+				goto free_filter;
+			} else {
+				match->dst_id = vnic->fw_vnic_id;
+				ret = bnxt_hwrm_set_ntuple_filter(bp,
+								  match->dst_id,
+								  match);
+				STAILQ_REMOVE(&mvnic->filter, match,
+					      bnxt_filter_info, next);
+				STAILQ_INSERT_TAIL(&vnic->filter, match, next);
+				PMD_DRV_LOG(ERR,
+					"Filter with matching pattern exist\n");
+				PMD_DRV_LOG(ERR,
+					"Updated it to new destination q\n");
+				goto free_filter;
+			}
 		}
 		if (match == NULL && filter_op == RTE_ETH_FILTER_DELETE) {
 			PMD_DRV_LOG(ERR, "Flow does not exist.\n");
 			ret = -ENOENT;
 			goto free_filter;
 		}
-
-		if (fdir->action.behavior == RTE_ETH_FDIR_REJECT)
-			vnic = STAILQ_FIRST(&bp->ff_pool[0]);
-		else
-			vnic =
-			STAILQ_FIRST(&bp->ff_pool[fdir->action.rx_queue]);
 
 		if (filter_op == RTE_ETH_FILTER_ADD) {
 			ret = bnxt_hwrm_set_ntuple_filter(bp,
@@ -2489,7 +2506,6 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_UPDATE:
 	case RTE_ETH_FILTER_STATS:
 	case RTE_ETH_FILTER_INFO:
-		/* FALLTHROUGH */
 		PMD_DRV_LOG(ERR, "operation %u not implemented", filter_op);
 		break;
 	default:
