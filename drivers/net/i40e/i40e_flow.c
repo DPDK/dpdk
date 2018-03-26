@@ -4385,14 +4385,15 @@ i40e_config_rss_filter_set(struct rte_eth_dev *dev,
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
 
 	if (conf->queue_region_conf) {
-		i40e_flush_queue_region_all_conf(dev, hw, pf, 1);
+		ret = i40e_flush_queue_region_all_conf(dev, hw, pf, 1);
 		conf->queue_region_conf = 0;
 	} else {
-		i40e_config_rss_filter(pf, conf, 1);
+		ret = i40e_config_rss_filter(pf, conf, 1);
 	}
-	return 0;
+	return ret;
 }
 
 static int
@@ -4545,6 +4546,8 @@ i40e_flow_create(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_HASH:
 		ret = i40e_config_rss_filter_set(dev,
 			    &cons_filter.rss_conf);
+		if (ret)
+			goto free_flow;
 		flow->rule = &pf->rss_info;
 		break;
 	default:
