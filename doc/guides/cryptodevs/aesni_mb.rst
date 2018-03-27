@@ -56,12 +56,13 @@ Installation
 To build DPDK with the AESNI_MB_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v0.48, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v0.48.zip>`_.
+The latest version of the library supported by this PMD is v0.49, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v0.49.zip>`_.
 
 .. code-block:: console
 
-	make
+    make
+    make install
 
 As a reference, the following table shows a mapping between the past DPDK versions
 and the Multi-Buffer library version supported by them:
@@ -77,7 +78,8 @@ and the Multi-Buffer library version supported by them:
    17.02           0.44
    17.05 - 17.08   0.45 - 0.48
    17.11           0.47 - 0.48
-   18.02+          0.48
+   18.02           0.48
+   18.05           0.49
    ==============  ============================
 
 
@@ -85,9 +87,6 @@ Initialization
 --------------
 
 In order to enable this virtual crypto PMD, user must:
-
-* Export the environmental variable AESNI_MULTI_BUFFER_LIB_PATH with the path where
-  the library was extracted.
 
 * Build the multi buffer library (explained in Installation section).
 

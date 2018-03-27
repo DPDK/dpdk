@@ -43,6 +43,7 @@ default_path=$PATH
 # - DPDK_DEP_NUMA ([y]/n)
 # - DPDK_DEP_PCAP (y/[n])
 # - DPDK_DEP_SSL (y/[n])
+# - DPDK_DEP_IPSEC_MB (y/[n])
 # - DPDK_DEP_SZE (y/[n])
 # - DPDK_DEP_ZLIB (y/[n])
 # - DPDK_MAKE_JOBS (int)
@@ -127,6 +128,7 @@ reset_env ()
 	unset DPDK_DEP_NUMA
 	unset DPDK_DEP_PCAP
 	unset DPDK_DEP_SSL
+	unset DPDK_DEP_IPSEC_MB
 	unset DPDK_DEP_SZE
 	unset DPDK_DEP_ZLIB
 	unset AESNI_MULTI_BUFFER_LIB_PATH
@@ -182,7 +184,7 @@ config () # <directory> <target> <options>
 		sed -ri               's,(PCAP=)n,\1y,' $1/.config
 		test -z "$ARMV8_CRYPTO_LIB_PATH" || \
 		sed -ri   's,(PMD_ARMV8_CRYPTO=)n,\1y,' $1/.config
-		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
+		test "$DPDK_DEP_IPSEC_MB" != y || \
 		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
 		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
 		sed -ri      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config

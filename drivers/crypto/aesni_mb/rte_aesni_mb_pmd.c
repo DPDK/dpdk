@@ -2,7 +2,7 @@
  * Copyright(c) 2015-2017 Intel Corporation
  */
 
-#include <des.h>
+#include <intel-ipsec-mb.h>
 
 #include <rte_common.h>
 #include <rte_hexdump.h>
@@ -517,15 +517,15 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 	/* Set authentication parameters */
 	job->hash_alg = session->auth.algo;
 	if (job->hash_alg == AES_XCBC) {
-		job->_k1_expanded = session->auth.xcbc.k1_expanded;
-		job->_k2 = session->auth.xcbc.k2;
-		job->_k3 = session->auth.xcbc.k3;
+		job->u.XCBC._k1_expanded = session->auth.xcbc.k1_expanded;
+		job->u.XCBC._k2 = session->auth.xcbc.k2;
+		job->u.XCBC._k3 = session->auth.xcbc.k3;
 	} else if (job->hash_alg == AES_CCM) {
 		job->u.CCM.aad = op->sym->aead.aad.data + 18;
 		job->u.CCM.aad_len_in_bytes = session->aead.aad_len;
 	} else {
-		job->hashed_auth_key_xor_ipad = session->auth.pads.inner;
-		job->hashed_auth_key_xor_opad = session->auth.pads.outer;
+		job->u.HMAC._hashed_auth_key_xor_ipad = session->auth.pads.inner;
+		job->u.HMAC._hashed_auth_key_xor_opad = session->auth.pads.outer;
 	}
 
 	/* Mutable crypto operation parameters */

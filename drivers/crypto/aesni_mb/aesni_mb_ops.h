@@ -9,8 +9,7 @@
 #define LINUX
 #endif
 
-#include <mb_mgr.h>
-#include <aux_funcs.h>
+#include <intel-ipsec-mb.h>
 
 enum aesni_mb_vector_mode {
 	RTE_AESNI_MB_NOT_SUPPORTED = 0,
