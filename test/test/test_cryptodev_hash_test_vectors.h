@@ -319,6 +319,54 @@ hmac_sha512_test_vector = {
 	}
 };
 
+static const struct blockcipher_test_data
+cmac_test_vector = {
+	.auth_algo = RTE_CRYPTO_AUTH_AES_CMAC,
+	.ciphertext = {
+		.data = plaintext_hash,
+		.len = 512
+	},
+	.auth_key = {
+		.data = {
+			0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6,
+			0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C
+		},
+		.len = 16
+	},
+	.digest = {
+		.data = {
+			0x4C, 0x77, 0x87, 0xA0, 0x78, 0x8E, 0xEA, 0x96,
+			0xC1, 0xEB, 0x1E, 0x4E, 0x95, 0x8F, 0xED, 0x27
+		},
+		.len = 16,
+		.truncated_len = 16
+	}
+};
+
+static const struct blockcipher_test_data
+cmac_test_vector_12 = {
+	.auth_algo = RTE_CRYPTO_AUTH_AES_CMAC,
+	.ciphertext = {
+		.data = plaintext_hash,
+		.len = 512
+	},
+	.auth_key = {
+		.data = {
+			0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6,
+			0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C
+		},
+		.len = 16
+	},
+	.digest = {
+		.data = {
+			0x4C, 0x77, 0x87, 0xA0, 0x78, 0x8E, 0xEA, 0x96,
+			0xC1, 0xEB, 0x1E, 0x4E, 0x95, 0x8F, 0xED, 0x27
+		},
+		.len = 12,
+		.truncated_len = 12
+	}
+};
+
 static const struct blockcipher_test_case hash_test_cases[] = {
 	{
 		.test_descr = "MD5 Digest",
@@ -562,6 +610,30 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_MRVL
 	},
+	{
+		.test_descr = "CMAC Digest 12B",
+		.test_data = &cmac_test_vector_12,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+	},
+	{
+		.test_descr = "CMAC Digest Verify 12B",
+		.test_data = &cmac_test_vector_12,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+	},
+	{
+		.test_descr = "CMAC Digest 16B",
+		.test_data = &cmac_test_vector,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+	},
+	{
+		.test_descr = "CMAC Digest Verify 16B",
+		.test_data = &cmac_test_vector,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+	}
 };
 
 #endif /* TEST_CRYPTODEV_HASH_TEST_VECTORS_H_ */

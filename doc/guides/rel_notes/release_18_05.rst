@@ -96,6 +96,12 @@ New Features
   including session creation/deletion handling and translating virtio-crypto
   request into DPDK crypto operations. A sample application is also introduced.
 
+* **Updated AESNI MB PMD.**
+
+  The AESNI MB PMD has been updated with additional support for:
+
+  * AES-CMAC (128-bit key).
+
 * **Added the Event Timer Adapter Library.**
 
   The Event Timer Adapter Library extends the event-based model by introducing

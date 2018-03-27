@@ -66,8 +66,9 @@ static const unsigned auth_truncated_digest_byte_lengths[] = {
 		[SHA_384]	= 24,
 		[SHA_512]	= 32,
 		[AES_XCBC]	= 12,
+		[AES_CMAC]	= 16,
 		[AES_CCM]	= 8,
-		[NULL_HASH]     = 0
+		[NULL_HASH]	= 0
 };
 
 /**
@@ -91,7 +92,8 @@ static const unsigned auth_digest_byte_lengths[] = {
 		[SHA_384]	= 48,
 		[SHA_512]	= 64,
 		[AES_XCBC]	= 16,
-		[NULL_HASH]     = 0
+		[AES_CMAC]	= 16,
+		[NULL_HASH]		= 0
 };
 
 /**
@@ -211,14 +213,24 @@ struct aesni_mb_session {
 			    uint8_t k3[16] __rte_aligned(16);
 			    /**< k3. */
 			} xcbc;
+
+			struct {
+				uint32_t expkey[60] __rte_aligned(16);
+						    /**< k1 (expanded key). */
+				uint32_t skey1[4] __rte_aligned(16);
+						    /**< k2. */
+				uint32_t skey2[4] __rte_aligned(16);
+						    /**< k3. */
+			} cmac;
 			/**< Expanded XCBC authentication keys */
 		};
+	/** digest size */
+	uint16_t digest_len;
+
 	} auth;
 	struct {
 		/** AAD data length */
 		uint16_t aad_len;
-		/** digest size */
-		uint16_t digest_len;
 	} aead;
 } __rte_cache_aligned;
 

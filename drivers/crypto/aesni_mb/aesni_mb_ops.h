@@ -33,9 +33,12 @@ typedef void (*aes_keyexp_192_t)
 		(const void *key, void *enc_exp_keys, void *dec_exp_keys);
 typedef void (*aes_keyexp_256_t)
 		(const void *key, void *enc_exp_keys, void *dec_exp_keys);
-
 typedef void (*aes_xcbc_expand_key_t)
 		(const void *key, void *exp_k1, void *k2, void *k3);
+typedef void (*aes_cmac_sub_key_gen_t)
+		(const void *exp_key, void *k2, void *k3);
+typedef void (*aes_cmac_keyexp_t)
+		(const void *key, void *keyexp);
 
 /** Multi-buffer library function pointer table */
 struct aesni_mb_op_fns {
@@ -77,9 +80,12 @@ struct aesni_mb_op_fns {
 			/**< AES192 key expansions */
 			aes_keyexp_256_t aes256;
 			/**< AES256 key expansions */
-
 			aes_xcbc_expand_key_t aes_xcbc;
-			/**< AES XCBC key expansions */
+			/**< AES XCBC key epansions */
+			aes_cmac_sub_key_gen_t aes_cmac_subkey;
+			/**< AES CMAC subkey expansions */
+			aes_cmac_keyexp_t aes_cmac_expkey;
+			/**< AES CMAC key expansions */
 		} keyexp;
 		/**< Key expansion functions */
 	} aux;
@@ -122,7 +128,9 @@ static const struct aesni_mb_op_fns job_ops[] = {
 					aes_keyexp_128_sse,
 					aes_keyexp_192_sse,
 					aes_keyexp_256_sse,
-					aes_xcbc_expand_key_sse
+					aes_xcbc_expand_key_sse,
+					aes_cmac_subkey_gen_sse,
+					aes_keyexp_128_enc_sse
 				}
 			}
 		},
@@ -147,7 +155,9 @@ static const struct aesni_mb_op_fns job_ops[] = {
 					aes_keyexp_128_avx,
 					aes_keyexp_192_avx,
 					aes_keyexp_256_avx,
-					aes_xcbc_expand_key_avx
+					aes_xcbc_expand_key_avx,
+					aes_cmac_subkey_gen_avx,
+					aes_keyexp_128_enc_avx
 				}
 			}
 		},
@@ -172,7 +182,9 @@ static const struct aesni_mb_op_fns job_ops[] = {
 					aes_keyexp_128_avx2,
 					aes_keyexp_192_avx2,
 					aes_keyexp_256_avx2,
-					aes_xcbc_expand_key_avx2
+					aes_xcbc_expand_key_avx2,
+					aes_cmac_subkey_gen_avx2,
+					aes_keyexp_128_enc_avx2
 				}
 			}
 		},
@@ -197,7 +209,9 @@ static const struct aesni_mb_op_fns job_ops[] = {
 					aes_keyexp_128_avx512,
 					aes_keyexp_192_avx512,
 					aes_keyexp_256_avx512,
-					aes_xcbc_expand_key_avx512
+					aes_xcbc_expand_key_avx512,
+					aes_cmac_subkey_gen_avx512,
+					aes_keyexp_128_enc_avx512
 				}
 			}
 		}
