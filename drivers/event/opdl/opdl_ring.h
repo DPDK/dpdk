@@ -518,6 +518,20 @@ opdl_stage_find_num_available(struct opdl_stage *s, uint32_t num_entries);
 struct opdl_stage *
 opdl_stage_create(struct opdl_ring *t,  bool threadsafe);
 
+
+/**
+ * Set the internal queue id for each stage instance.
+ *
+ * @param s
+ *   The pointer of  stage instance.
+ *
+ * @param queue_id
+ *    The value of internal queue id.
+ */
+void
+opdl_stage_set_queue_id(struct opdl_stage *s,
+		uint32_t queue_id);
+
 /**
  * Prints information on opdl_ring instance and all its stages
  *
@@ -590,7 +604,7 @@ opdl_ring_set_stage_threadsafe(struct opdl_stage *s, bool threadsafe);
  */
 
 bool
-opdl_ring_cas_slot(const struct opdl_stage *s, const struct rte_event *ev,
+opdl_ring_cas_slot(struct opdl_stage *s, const struct rte_event *ev,
 		uint32_t index, bool atomic);
 
 #ifdef __cplusplus

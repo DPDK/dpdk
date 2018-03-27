@@ -733,6 +733,9 @@ initialise_all_other_ports(struct rte_eventdev *dev)
 				queue->ports[queue->nb_ports] = port;
 				port->instance_id = queue->nb_ports;
 				queue->nb_ports++;
+				opdl_stage_set_queue_id(stage_inst,
+						port->queue_id);
+
 			} else if (queue->q_pos == OPDL_Q_POS_END) {
 
 				/* tx port  */
