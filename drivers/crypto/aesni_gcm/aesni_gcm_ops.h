@@ -9,8 +9,7 @@
 #define LINUX
 #endif
 
-#include <gcm_defines.h>
-#include <aux_funcs.h>
+#include <intel-ipsec-mb.h>
 
 /** Supported vector modes */
 enum aesni_gcm_vector_mode {

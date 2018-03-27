@@ -33,7 +33,6 @@
 default_path=$PATH
 
 # Load config options:
-# - AESNI_MULTI_BUFFER_LIB_PATH
 # - ARMV8_CRYPTO_LIB_PATH
 # - DPDK_BUILD_TEST_CONFIGS (defconfig1+option1+option2 defconfig2)
 # - DPDK_DEP_ARCHIVE
@@ -131,7 +130,6 @@ reset_env ()
 	unset DPDK_DEP_IPSEC_MB
 	unset DPDK_DEP_SZE
 	unset DPDK_DEP_ZLIB
-	unset AESNI_MULTI_BUFFER_LIB_PATH
 	unset ARMV8_CRYPTO_LIB_PATH
 	unset FLEXRAN_SDK
 	unset LIBMUSDK_PATH
@@ -186,7 +184,7 @@ config () # <directory> <target> <options>
 		sed -ri   's,(PMD_ARMV8_CRYPTO=)n,\1y,' $1/.config
 		test "$DPDK_DEP_IPSEC_MB" != y || \
 		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
-		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
+		test "$DPDK_DEP_IPSEC_MB" != y || \
 		sed -ri      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config
 		test -z "$LIBSSO_SNOW3G_PATH" || \
 		sed -ri         's,(PMD_SNOW3G=)n,\1y,' $1/.config

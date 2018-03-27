@@ -3,12 +3,6 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-ifneq ($(MAKECMDGOALS),clean)
-ifeq ($(AESNI_MULTI_BUFFER_LIB_PATH),)
-$(error "Please define AESNI_MULTI_BUFFER_LIB_PATH environment variable")
-endif
-endif
-
 # library name
 LIB = librte_pmd_aesni_gcm.a
 
@@ -23,9 +17,7 @@ LIBABIVER := 1
 EXPORT_MAP := rte_pmd_aesni_gcm_version.map
 
 # external library dependencies
-CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)
-CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)/include
-LDLIBS += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
+LDLIBS += -lIPSec_MB
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_bus_vdev
