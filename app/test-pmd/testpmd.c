@@ -2368,7 +2368,10 @@ uint8_t port_is_bonding_slave(portid_t slave_pid)
 	struct rte_port *port;
 
 	port = &ports[slave_pid];
-	return port->slave_flag;
+	if ((rte_eth_devices[slave_pid].data->dev_flags &
+	    RTE_ETH_DEV_BONDED_SLAVE) || (port->slave_flag == 1))
+		return 1;
+	return 0;
 }
 
 const uint16_t vlan_tags[] = {
