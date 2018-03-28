@@ -170,7 +170,7 @@ struct qede_fdir_info {
 #define QEDE_VXLAN_DEF_PORT			(4789)
 #define QEDE_GENEVE_DEF_PORT			(6081)
 
-struct qede_udp_tunn {
+struct qede_tunn_params {
 	bool enable;
 	uint16_t num_filters;
 	uint16_t filter_type;
@@ -205,8 +205,9 @@ struct qede_dev {
 	SLIST_HEAD(uc_list_head, qede_ucast_entry) uc_list_head;
 	uint16_t num_uc_addr;
 	bool handle_hw_err;
-	struct qede_udp_tunn vxlan;
-	struct qede_udp_tunn geneve;
+	struct qede_tunn_params vxlan;
+	struct qede_tunn_params geneve;
+	struct qede_tunn_params ipgre;
 	struct qede_fdir_info fdir_info;
 	bool vlan_strip_flg;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];

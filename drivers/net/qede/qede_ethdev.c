@@ -782,6 +782,36 @@ qede_geneve_enable(struct rte_eth_dev *eth_dev, uint8_t clss,
 }
 
 static int
+qede_ipgre_enable(struct rte_eth_dev *eth_dev, uint8_t clss,
+		  bool enable)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	enum _ecore_status_t rc = ECORE_INVAL;
+	struct ecore_tunnel_info tunn;
+
+	memset(&tunn, 0, sizeof(struct ecore_tunnel_info));
+	tunn.ip_gre.b_update_mode = true;
+	tunn.ip_gre.b_mode_enabled = enable;
+	tunn.ip_gre.tun_cls = clss;
+	tunn.ip_gre.tun_cls = clss;
+	tunn.b_update_rx_cls = true;
+	tunn.b_update_tx_cls = true;
+
+	rc = qede_tunnel_update(qdev, &tunn);
+	if (rc == ECORE_SUCCESS) {
+		qdev->ipgre.enable = enable;
+		DP_INFO(edev, "IPGRE is %s\n",
+			enable ? "enabled" : "disabled");
+	} else {
+		DP_ERR(edev, "Failed to update tunn_clss %u\n",
+		       clss);
+	}
+
+	return rc;
+}
+
+static int
 qede_tunn_enable(struct rte_eth_dev *eth_dev, uint8_t clss,
 		 enum rte_eth_tunnel_type tunn_type, bool enable)
 {
@@ -793,6 +823,9 @@ qede_tunn_enable(struct rte_eth_dev *eth_dev, uint8_t clss,
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
 		rc = qede_geneve_enable(eth_dev, clss, enable);
+		break;
+	case RTE_TUNNEL_TYPE_IP_IN_GRE:
+		rc = qede_ipgre_enable(eth_dev, clss, enable);
 		break;
 	default:
 		rc = -EINVAL;
@@ -2078,6 +2111,7 @@ qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 		RTE_PTYPE_TUNNEL_VXLAN,
 		RTE_PTYPE_L4_FRAG,
 		RTE_PTYPE_TUNNEL_GENEVE,
+		RTE_PTYPE_TUNNEL_GRE,
 		/* Inner */
 		RTE_PTYPE_INNER_L2_ETHER,
 		RTE_PTYPE_INNER_L2_ETHER_VLAN,
@@ -2501,7 +2535,6 @@ qede_udp_dst_port_del(struct rte_eth_dev *eth_dev,
 					ECORE_TUNN_CLSS_MAC_VLAN, false);
 
 		break;
-
 	case RTE_TUNNEL_TYPE_GENEVE:
 		if (qdev->geneve.udp_port != tunnel_udp->udp_port) {
 			DP_ERR(edev, "UDP port %u doesn't exist\n",
@@ -2591,7 +2624,6 @@ qede_udp_dst_port_add(struct rte_eth_dev *eth_dev,
 
 		qdev->vxlan.udp_port = udp_port;
 		break;
-
 	case RTE_TUNNEL_TYPE_GENEVE:
 		if (qdev->geneve.udp_port == tunnel_udp->udp_port) {
 			DP_INFO(edev,
@@ -2629,7 +2661,6 @@ qede_udp_dst_port_add(struct rte_eth_dev *eth_dev,
 
 		qdev->geneve.udp_port = udp_port;
 		break;
-
 	default:
 		return ECORE_INVAL;
 	}
@@ -2795,7 +2826,8 @@ qede_tunn_filter_config(struct rte_eth_dev *eth_dev,
 			qdev->geneve.filter_type = conf->filter_type;
 		}
 
-		if (!qdev->vxlan.enable || !qdev->geneve.enable)
+		if (!qdev->vxlan.enable || !qdev->geneve.enable ||
+		    !qdev->ipgre.enable)
 			return qede_tunn_enable(eth_dev, clss,
 						conf->tunnel_type,
 						true);
@@ -2831,15 +2863,14 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 		switch (filter_conf->tunnel_type) {
 		case RTE_TUNNEL_TYPE_VXLAN:
 		case RTE_TUNNEL_TYPE_GENEVE:
+		case RTE_TUNNEL_TYPE_IP_IN_GRE:
 			DP_INFO(edev,
 				"Packet steering to the specified Rx queue"
 				" is not supported with UDP tunneling");
 			return(qede_tunn_filter_config(eth_dev, filter_op,
 						      filter_conf));
-		/* Place holders for future tunneling support */
 		case RTE_TUNNEL_TYPE_TEREDO:
 		case RTE_TUNNEL_TYPE_NVGRE:
-		case RTE_TUNNEL_TYPE_IP_IN_GRE:
 		case RTE_L2_TUNNEL_TYPE_E_TAG:
 			DP_ERR(edev, "Unsupported tunnel type %d\n",
 				filter_conf->tunnel_type);
@@ -3138,19 +3169,23 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	/* VF tunnel offloads is enabled by default in PF driver */
 	adapter->vxlan.num_filters = 0;
 	adapter->geneve.num_filters = 0;
+	adapter->ipgre.num_filters = 0;
 	if (is_vf) {
 		adapter->vxlan.enable = true;
 		adapter->vxlan.filter_type = ETH_TUNNEL_FILTER_IMAC |
 					     ETH_TUNNEL_FILTER_IVLAN;
 		adapter->vxlan.udp_port = QEDE_VXLAN_DEF_PORT;
 		adapter->geneve.enable = true;
-
 		adapter->geneve.filter_type = ETH_TUNNEL_FILTER_IMAC |
 					      ETH_TUNNEL_FILTER_IVLAN;
 		adapter->geneve.udp_port = QEDE_GENEVE_DEF_PORT;
+		adapter->ipgre.enable = true;
+		adapter->ipgre.filter_type = ETH_TUNNEL_FILTER_IMAC |
+					     ETH_TUNNEL_FILTER_IVLAN;
 	} else {
 		adapter->vxlan.enable = false;
 		adapter->geneve.enable = false;
+		adapter->ipgre.enable = false;
 	}
 
 	DP_INFO(edev, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
