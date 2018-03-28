@@ -28,6 +28,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_pmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_args.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_8023ad.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_alb.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_flow.c
 
 #
 # Export include files

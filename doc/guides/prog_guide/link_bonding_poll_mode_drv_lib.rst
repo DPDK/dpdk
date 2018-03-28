@@ -148,6 +148,8 @@ the RX and TX queues are also reconfigured using ``rte_eth_tx_queue_setup`` /
 ``rte_eth_rx_queue_setup`` with the parameters use to configure the bonding
 device. If RSS is enabled for bonding device, this mode is also enabled on new
 slave and configured as well.
+Any flow which was configured to the bond device also is configured to the added
+slave.
 
 Setting up multi-queue mode for bonding device to RSS, makes it fully
 RSS-capable, so all slaves are synchronized with its configuration. This mode is
@@ -165,6 +167,43 @@ supported by all bonded slaves. RETA size is a GCD of all its RETA's sizes, so
 it can be easily used as a pattern providing expected behavior, even if slave
 RETAs' sizes are different. If RSS Key is not set for bonded device, it's not
 changed on the slaves and default key for device is used.
+
+As RSS configurations, there is flow consistency in the bonded slaves for the
+next rte flow operations:
+
+Validate:
+	- Validate flow for each slave, failure at least for one slave causes to
+	  bond validation failure.
+
+Create:
+	- Create the flow in all slaves.
+	- Save all the slaves created flows objects in bonding internal flow
+	  structure.
+	- Failure in flow creation for existed slave rejects the flow.
+	- Failure in flow creation for new slaves in slave adding time rejects
+	  the slave.
+
+Destroy:
+	- Destroy the flow in all slaves and release the bond internal flow
+	  memory.
+
+Flush:
+	- Destroy all the bonding PMD flows in all the slaves.
+
+.. note::
+
+    Don't call slaves flush directly, It destroys all the slave flows which
+    may include external flows or the bond internal LACP flow.
+
+Query:
+	- Summarize flow counters from all the slaves, relevant only for
+	  ``RTE_FLOW_ACTION_TYPE_COUNT``.
+
+Isolate:
+	- Call to flow isolate for all slaves.
+	- Failure in flow isolation for existed slave rejects the isolate mode.
+	- Failure in flow isolation for new slaves in slave adding time rejects
+	  the slave.
 
 All settings are managed through the bonding port API and always are propagated
 in one direction (from bonding to slaves).
@@ -207,8 +246,8 @@ common hash function available for each of them. Changing RSS key is only
 possible, when all slave devices support the same key size.
 
 To prevent inconsistency on how slaves process packets, once a device is added
-to a bonding device, RSS configuration should be managed through the bonding
-device API, and not directly on the slave.
+to a bonding device, RSS and rte flow configurations should be managed through
+the bonding device API, and not directly on the slave.
 
 Like all other PMD, all functions exported by a PMD are lock-free functions
 that are assumed not to be invoked in parallel on different logical cores to

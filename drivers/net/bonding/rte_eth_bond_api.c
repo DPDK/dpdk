@@ -227,6 +227,49 @@ slave_vlan_filter_set(uint16_t bonded_port_id, uint16_t slave_port_id)
 }
 
 static int
+slave_rte_flow_prepare(uint16_t slave_id, struct bond_dev_private *internals)
+{
+	struct rte_flow *flow;
+	struct rte_flow_error ferror;
+	uint16_t slave_port_id = internals->slaves[slave_id].port_id;
+
+	if (internals->flow_isolated_valid != 0) {
+		rte_eth_dev_stop(slave_port_id);
+		if (rte_flow_isolate(slave_port_id, internals->flow_isolated,
+		    &ferror)) {
+			RTE_BOND_LOG(ERR, "rte_flow_isolate failed for slave"
+				     " %d: %s", slave_id, ferror.message ?
+				     ferror.message : "(no stated reason)");
+			return -1;
+		}
+	}
+	TAILQ_FOREACH(flow, &internals->flow_list, next) {
+		flow->flows[slave_id] = rte_flow_create(slave_port_id,
+							&flow->fd->attr,
+							flow->fd->items,
+							flow->fd->actions,
+							&ferror);
+		if (flow->flows[slave_id] == NULL) {
+			RTE_BOND_LOG(ERR, "Cannot create flow for slave"
+				     " %d: %s", slave_id,
+				     ferror.message ? ferror.message :
+				     "(no stated reason)");
+			/* Destroy successful bond flows from the slave */
+			TAILQ_FOREACH(flow, &internals->flow_list, next) {
+				if (flow->flows[slave_id] != NULL) {
+					rte_flow_destroy(slave_port_id,
+							 flow->flows[slave_id],
+							 &ferror);
+					flow->flows[slave_id] = NULL;
+				}
+			}
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int
 __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 {
 	struct rte_eth_dev *bonded_eth_dev, *slave_eth_dev;
@@ -324,6 +367,12 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 	bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf &=
 			internals->flow_type_rss_offloads;
 
+	if (slave_rte_flow_prepare(internals->slave_count, internals) != 0) {
+		RTE_BOND_LOG(ERR, "Failed to prepare new slave flows: port=%d",
+			     slave_port_id);
+		return -1;
+	}
+
 	internals->slave_count++;
 
 	if (bonded_eth_dev->data->dev_started) {
@@ -401,6 +450,8 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 	struct rte_eth_dev *bonded_eth_dev;
 	struct bond_dev_private *internals;
 	struct rte_eth_dev *slave_eth_dev;
+	struct rte_flow_error flow_error;
+	struct rte_flow *flow;
 	int i, slave_idx;
 
 	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
@@ -439,6 +490,18 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 	/* Restore original MAC address of slave device */
 	rte_eth_dev_default_mac_addr_set(slave_port_id,
 			&(internals->slaves[slave_idx].persisted_mac_addr));
+
+	/*
+	 * Remove bond device flows from slave device.
+	 * Note: don't restore flow isolate mode.
+	 */
+	TAILQ_FOREACH(flow, &internals->flow_list, next) {
+		if (flow->flows[slave_idx] != NULL) {
+			rte_flow_destroy(slave_port_id, flow->flows[slave_idx],
+					 &flow_error);
+			flow->flows[slave_idx] = NULL;
+		}
+	}
 
 	slave_eth_dev = &rte_eth_devices[slave_port_id];
 	slave_remove(internals, slave_eth_dev);

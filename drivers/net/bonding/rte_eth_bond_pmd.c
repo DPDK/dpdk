@@ -1964,10 +1964,19 @@ slave_remove(struct bond_dev_private *internals,
 				slave_eth_dev->data->port_id)
 			break;
 
-	if (i < (internals->slave_count - 1))
+	if (i < (internals->slave_count - 1)) {
+		struct rte_flow *flow;
+
 		memmove(&internals->slaves[i], &internals->slaves[i + 1],
 				sizeof(internals->slaves[0]) *
 				(internals->slave_count - i - 1));
+		TAILQ_FOREACH(flow, &internals->flow_list, next) {
+			memmove(&flow->flows[i], &flow->flows[i + 1],
+				sizeof(flow->flows[0]) *
+				(internals->slave_count - i - 1));
+			flow->flows[internals->slave_count - 1] = NULL;
+		}
+	}
 
 	internals->slave_count--;
 
@@ -2191,6 +2200,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	struct bond_dev_private *internals = dev->data->dev_private;
 	uint8_t bond_port_id = internals->port_id;
 	int skipped = 0;
+	struct rte_flow_error ferror;
 
 	RTE_LOG(INFO, EAL, "Closing bonded device %s\n", dev->device->name);
 	while (internals->slave_count != skipped) {
@@ -2205,6 +2215,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 			skipped++;
 		}
 	}
+	bond_flow_ops.flush(dev, &ferror);
 	bond_ethdev_free_queues(dev);
 	rte_bitmap_reset(internals->vlan_filter_bmp);
 }
@@ -2883,6 +2894,17 @@ bond_ethdev_mac_address_set(struct rte_eth_dev *dev, struct ether_addr *addr)
 	return 0;
 }
 
+static int
+bond_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
+		 enum rte_filter_type type, enum rte_filter_op op, void *arg)
+{
+	if (type == RTE_ETH_FILTER_GENERIC && op == RTE_ETH_FILTER_GET) {
+		*(const void **)arg = &bond_flow_ops;
+		return 0;
+	}
+	return -ENOTSUP;
+}
+
 const struct eth_dev_ops default_dev_ops = {
 	.dev_start            = bond_ethdev_start,
 	.dev_stop             = bond_ethdev_stop,
@@ -2904,7 +2926,8 @@ const struct eth_dev_ops default_dev_ops = {
 	.rss_hash_update      = bond_ethdev_rss_hash_update,
 	.rss_hash_conf_get    = bond_ethdev_rss_hash_conf_get,
 	.mtu_set              = bond_ethdev_mtu_set,
-	.mac_addr_set         = bond_ethdev_mac_address_set
+	.mac_addr_set         = bond_ethdev_mac_address_set,
+	.filter_ctrl          = bond_filter_ctrl
 };
 
 static int
@@ -2971,6 +2994,9 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));
+
+	TAILQ_INIT(&internals->flow_list);
+	internals->flow_isolated_valid = 0;
 
 	/* Set mode 4 default configuration */
 	bond_mode_8023ad_setup(eth_dev, NULL);

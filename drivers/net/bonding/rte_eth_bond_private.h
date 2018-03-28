@@ -5,9 +5,12 @@
 #ifndef _RTE_ETH_BOND_PRIVATE_H_
 #define _RTE_ETH_BOND_PRIVATE_H_
 
+#include <sys/queue.h>
+
 #include <rte_ethdev_driver.h>
 #include <rte_spinlock.h>
 #include <rte_bitmap.h>
+#include <rte_flow_driver.h>
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_8023ad_private.h"
@@ -36,6 +39,8 @@
 extern const char *pmd_bond_init_valid_arguments[];
 
 extern struct rte_vdev_driver pmd_bond_drv;
+
+extern const struct rte_flow_ops bond_flow_ops;
 
 /** Port Queue Mapping Structure */
 struct bond_rx_queue {
@@ -78,6 +83,14 @@ struct bond_slave_details {
 	struct ether_addr persisted_mac_addr;
 
 	uint16_t reta_size;
+};
+
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) next;
+	/* Slaves flows */
+	struct rte_flow *flows[RTE_MAX_ETHPORTS];
+	/* Flow description for synchronization */
+	struct rte_flow_desc *fd;
 };
 
 typedef void (*burst_xmit_hash_t)(struct rte_mbuf **buf, uint16_t nb_pkts,
@@ -132,6 +145,13 @@ struct bond_dev_private {
 	uint64_t tx_offload_capa;       /** Tx offload capability */
 	uint64_t rx_queue_offload_capa; /** per queue Rx offload capability */
 	uint64_t tx_queue_offload_capa; /** per queue Tx offload capability */
+
+	/**< List of the configured flows */
+	TAILQ_HEAD(sub_flows, rte_flow) flow_list;
+
+	/**< Flow isolation state */
+	int flow_isolated;
+	int flow_isolated_valid;
 
 	/** Bit mask of RSS offloads, the bit offset also means flow type */
 	uint64_t flow_type_rss_offloads;
