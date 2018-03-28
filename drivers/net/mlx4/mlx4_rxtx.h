@@ -83,7 +83,7 @@ struct txq_elt {
 	};
 };
 
-/** Rx queue counters. */
+/** Tx queue counters. */
 struct mlx4_txq_stats {
 	unsigned int idx; /**< Mapping index. */
 	uint64_t opackets; /**< Total of successfully sent packets. */
