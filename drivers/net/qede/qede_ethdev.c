@@ -591,6 +591,8 @@ int qede_enable_tpa(struct rte_eth_dev *eth_dev, bool flg)
 		}
 	}
 	qdev->enable_lro = flg;
+	eth_dev->data->lro = flg;
+
 	DP_INFO(edev, "LRO is %s\n", flg ? "enabled" : "disabled");
 
 	return 0;
@@ -1166,10 +1168,10 @@ static int qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
+	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rxmode->hw_vlan_strip)
+		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			(void)qede_vlan_stripping(eth_dev, 1);
 		else
 			(void)qede_vlan_stripping(eth_dev, 0);
@@ -1177,7 +1179,7 @@ static int qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		/* VLAN filtering kicks in when a VLAN is added */
-		if (rxmode->hw_vlan_filter) {
+		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
 			qede_vlan_filter_set(eth_dev, 0, 1);
 		} else {
 			if (qdev->configured_vlans > 1) { /* Excluding VLAN0 */
@@ -1187,7 +1189,8 @@ static int qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 				/* Signal app that VLAN filtering is still
 				 * enabled
 				 */
-				rxmode->hw_vlan_filter = true;
+				eth_dev->data->dev_conf.rxmode.offloads |=
+						DEV_RX_OFFLOAD_VLAN_FILTER;
 			} else {
 				qede_vlan_filter_set(eth_dev, 0, 0);
 			}
@@ -1195,13 +1198,11 @@ static int qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK)
-		DP_INFO(edev, "No offloads are supported with VLAN Q-in-Q"
-			" and classification is based on outer tag only\n");
+		DP_ERR(edev, "Extend VLAN not supported\n");
 
 	qdev->vlan_offload_mask = mask;
 
-	DP_INFO(edev, "vlan offload mask %d vlan-strip %d vlan-filter %d\n",
-		mask, rxmode->hw_vlan_strip, rxmode->hw_vlan_filter);
+	DP_INFO(edev, "VLAN offload mask %d\n", mask);
 
 	return 0;
 }
@@ -1267,19 +1268,19 @@ static void qede_fastpath_start(struct ecore_dev *edev)
 
 static int qede_dev_start(struct rte_eth_dev *eth_dev)
 {
-	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
 	/* Configure TPA parameters */
-	if (rxmode->enable_lro) {
+	if (rxmode->offloads & DEV_RX_OFFLOAD_TCP_LRO) {
 		if (qede_enable_tpa(eth_dev, true))
 			return -EINVAL;
 		/* Enable scatter mode for LRO */
-		if (!rxmode->enable_scatter)
-			eth_dev->data->scattered_rx = 1;
+		if (!eth_dev->data->scattered_rx)
+			rxmode->offloads |= DEV_RX_OFFLOAD_SCATTER;
 	}
 
 	/* Start queues */
@@ -1294,7 +1295,7 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 	 * Also, we would like to retain similar behavior in PF case, so we
 	 * don't do PF/VF specific check here.
 	 */
-	if (rxmode->mq_mode == ETH_MQ_RX_RSS)
+	if (eth_dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
 		if (qede_config_rss(eth_dev))
 			goto err;
 
@@ -1411,15 +1412,15 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	/* Check requirements for 100G mode */
 	if (ECORE_IS_CMT(edev)) {
 		if (eth_dev->data->nb_rx_queues < 2 ||
-				eth_dev->data->nb_tx_queues < 2) {
+		    eth_dev->data->nb_tx_queues < 2) {
 			DP_ERR(edev, "100G mode needs min. 2 RX/TX queues\n");
 			return -EINVAL;
 		}
 
 		if ((eth_dev->data->nb_rx_queues % 2 != 0) ||
-				(eth_dev->data->nb_tx_queues % 2 != 0)) {
+		    (eth_dev->data->nb_tx_queues % 2 != 0)) {
 			DP_ERR(edev,
-					"100G mode needs even no. of RX/TX queues\n");
+			       "100G mode needs even no. of RX/TX queues\n");
 			return -EINVAL;
 		}
 	}
@@ -1439,20 +1440,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (qede_args(eth_dev))
 		return -ENOTSUP;
 
-	/* Sanity checks and throw warnings */
-	if (rxmode->enable_scatter)
-		eth_dev->data->scattered_rx = 1;
-
-	if (!rxmode->hw_strip_crc)
-		DP_INFO(edev, "L2 CRC stripping is always enabled in hw\n");
-
-	if (!rxmode->hw_ip_checksum)
-		DP_INFO(edev, "IP/UDP/TCP checksum offload is always enabled "
-				"in hw\n");
-	if (rxmode->header_split)
-		DP_INFO(edev, "Header split enable is not supported\n");
-	if (!(rxmode->mq_mode == ETH_MQ_RX_NONE || rxmode->mq_mode ==
-				ETH_MQ_RX_RSS)) {
+	if (!(rxmode->mq_mode == ETH_MQ_RX_NONE ||
+	      rxmode->mq_mode == ETH_MQ_RX_RSS)) {
 		DP_ERR(edev, "Unsupported multi-queue mode\n");
 		return -ENOTSUP;
 	}
@@ -1467,19 +1456,23 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 
 	/* If jumbo enabled adjust MTU */
-	if (eth_dev->data->dev_conf.rxmode.jumbo_frame)
+	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		eth_dev->data->mtu =
-				eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
-				ETHER_HDR_LEN - ETHER_CRC_LEN;
+			eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
+			ETHER_HDR_LEN - ETHER_CRC_LEN;
+
+	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)
+		eth_dev->data->scattered_rx = 1;
 
 	if (qede_start_vport(qdev, eth_dev->data->mtu))
 		return -1;
+
 	qdev->mtu = eth_dev->data->mtu;
 
 	/* Enable VLAN offloads by default */
 	ret = qede_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK  |
-			ETH_VLAN_FILTER_MASK |
-			ETH_VLAN_EXTEND_MASK);
+					     ETH_VLAN_FILTER_MASK |
+					     ETH_VLAN_EXTEND_MASK);
 	if (ret)
 		return ret;
 
@@ -1534,26 +1527,46 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
 	dev_info->hash_key_size = ECORE_RSS_KEY_SIZE * sizeof(uint32_t);
 	dev_info->flow_type_rss_offloads = (uint64_t)QEDE_RSS_OFFLOAD_ALL;
-
-	dev_info->default_txconf = (struct rte_eth_txconf) {
-		.txq_flags = QEDE_TXQ_FLAGS,
-	};
-
-	dev_info->rx_offload_capa = (DEV_RX_OFFLOAD_VLAN_STRIP	|
-				     DEV_RX_OFFLOAD_IPV4_CKSUM	|
+	dev_info->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM	|
 				     DEV_RX_OFFLOAD_UDP_CKSUM	|
 				     DEV_RX_OFFLOAD_TCP_CKSUM	|
 				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-				     DEV_RX_OFFLOAD_TCP_LRO);
+				     DEV_RX_OFFLOAD_TCP_LRO	|
+				     DEV_RX_OFFLOAD_CRC_STRIP	|
+				     DEV_RX_OFFLOAD_SCATTER	|
+				     DEV_RX_OFFLOAD_JUMBO_FRAME |
+				     DEV_RX_OFFLOAD_VLAN_FILTER |
+				     DEV_RX_OFFLOAD_VLAN_STRIP);
+	dev_info->rx_queue_offload_capa = 0;
 
+	/* TX offloads are on a per-packet basis, so it is applicable
+	 * to both at port and queue levels.
+	 */
 	dev_info->tx_offload_capa = (DEV_TX_OFFLOAD_VLAN_INSERT	|
 				     DEV_TX_OFFLOAD_IPV4_CKSUM	|
 				     DEV_TX_OFFLOAD_UDP_CKSUM	|
 				     DEV_TX_OFFLOAD_TCP_CKSUM	|
 				     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				     DEV_TX_OFFLOAD_TCP_TSO |
+				     DEV_TX_OFFLOAD_QINQ_INSERT |
+				     DEV_TX_OFFLOAD_MULTI_SEGS  |
+				     DEV_TX_OFFLOAD_TCP_TSO	|
 				     DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 				     DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+	dev_info->tx_queue_offload_capa = dev_info->tx_offload_capa;
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.txq_flags = DEV_TX_OFFLOAD_MULTI_SEGS,
+	};
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		/* Packets are always dropped if no descriptors are available */
+		.rx_drop_en = 1,
+		/* The below RX offloads are always enabled */
+		.offloads = (DEV_RX_OFFLOAD_CRC_STRIP  |
+			     DEV_RX_OFFLOAD_IPV4_CKSUM |
+			     DEV_RX_OFFLOAD_TCP_CKSUM  |
+			     DEV_RX_OFFLOAD_UDP_CKSUM),
+	};
 
 	memset(&link, 0, sizeof(struct qed_link_output));
 	qdev->ops->common->get_link(edev, &link);
