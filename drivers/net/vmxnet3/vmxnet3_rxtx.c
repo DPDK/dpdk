@@ -648,28 +648,40 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 
 
 /* Receive side checksum and other offloads */
-static void
-vmxnet3_rx_offload(const Vmxnet3_RxCompDesc *rcd, struct rte_mbuf *rxm)
+static inline void
+vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
+		struct rte_mbuf *rxm, const uint8_t sop)
 {
-	/* Check for RSS */
-	if (rcd->rssType != VMXNET3_RCD_RSS_TYPE_NONE) {
-		rxm->ol_flags |= PKT_RX_RSS_HASH;
-		rxm->hash.rss = rcd->rssHash;
-	}
+	(void)hw;
 
-	/* Check packet type, checksum errors, etc. Only support IPv4 for now. */
-	if (rcd->v4) {
-		rxm->packet_type = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-
-		if (!rcd->cnc) {
-			if (!rcd->ipc)
-				rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-
-			if ((rcd->tcp || rcd->udp) && !rcd->tuc)
-				rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+	/* Offloads set in sop */
+	if (sop) {
+		/* Check for RSS */
+		if (rcd->rssType != VMXNET3_RCD_RSS_TYPE_NONE) {
+			rxm->ol_flags |= PKT_RX_RSS_HASH;
+			rxm->hash.rss = rcd->rssHash;
 		}
-	} else {
-		rxm->packet_type = RTE_PTYPE_UNKNOWN;
+
+		/* Check packet type, checksum errors. Only IPv4 for now. */
+		if (rcd->v4) {
+			rxm->packet_type = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+
+			if (!rcd->cnc) {
+				if (!rcd->ipc)
+					rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+
+				if ((rcd->tcp || rcd->udp) && !rcd->tuc)
+					rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			}
+		} else {
+			rxm->packet_type = RTE_PTYPE_UNKNOWN;
+		}
+	} else { /* Offloads set in eop */
+		/* Check for hardware stripped VLAN tag */
+		if (rcd->ts) {
+			rxm->ol_flags |= (PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
+			rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
+		}
 	}
 }
 
@@ -801,7 +813,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			}
 
 			rxq->start_seg = rxm;
-			vmxnet3_rx_offload(rcd, rxm);
+			vmxnet3_rx_offload(hw, rcd, rxm, 1);
 		} else {
 			struct rte_mbuf *start = rxq->start_seg;
 
@@ -817,13 +829,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (rcd->eop) {
 			struct rte_mbuf *start = rxq->start_seg;
 
-			/* Check for hardware stripped VLAN tag */
-			if (rcd->ts) {
-				start->ol_flags |= (PKT_RX_VLAN |
-						PKT_RX_VLAN_STRIPPED);
-				start->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
-			}
-
+			vmxnet3_rx_offload(hw, rcd, start, 0);
 			rx_pkts[nb_rx++] = start;
 			rxq->start_seg = NULL;
 		}
