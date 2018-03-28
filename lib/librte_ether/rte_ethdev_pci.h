@@ -123,9 +123,6 @@ rte_eth_dev_pci_allocate(struct rte_pci_device *dev, size_t private_data_size)
 static inline void
 rte_eth_dev_pci_release(struct rte_eth_dev *eth_dev)
 {
-	/* free ether device */
-	rte_eth_dev_release_port(eth_dev);
-
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(eth_dev->data->dev_private);
 
@@ -139,6 +136,9 @@ rte_eth_dev_pci_release(struct rte_eth_dev *eth_dev)
 
 	eth_dev->device = NULL;
 	eth_dev->intr_handle = NULL;
+
+	/* free ether device */
+	rte_eth_dev_release_port(eth_dev);
 }
 
 typedef int (*eth_dev_pci_callback_t)(struct rte_eth_dev *eth_dev);
