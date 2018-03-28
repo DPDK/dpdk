@@ -1466,6 +1466,8 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			 */
 			rx_mb->data_off = offset + RTE_PKTMBUF_HEADROOM;
 			packet_type |= qede_rx_cqe_to_pkt_type_outer(rx_mb);
+		} else {
+			packet_type |= qede_rx_cqe_to_pkt_type(parse_flag);
 		}
 
 		/* Common handling for non-tunnel packets and for inner
@@ -1487,7 +1489,6 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			ol_flags |= PKT_RX_IP_CKSUM_BAD;
 		} else {
 			ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-			packet_type |= qede_rx_cqe_to_pkt_type(parse_flag);
 		}
 
 		if (CQE_HAS_VLAN(parse_flag) ||
