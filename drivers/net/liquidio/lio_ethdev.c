@@ -478,9 +478,11 @@ lio_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	}
 
 	if (frame_len > ETHER_MAX_LEN)
-		eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		eth_dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_len;
 	eth_dev->data->mtu = mtu;
