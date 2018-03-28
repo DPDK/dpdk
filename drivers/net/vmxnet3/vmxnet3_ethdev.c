@@ -570,6 +570,8 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	uint32_t i;
 	int ret;
 
+	hw->mtu = mtu;
+
 	shared->magic = VMXNET3_REV1_MAGIC;
 	devRead->misc.driverInfo.version = VMXNET3_DRIVER_VERSION_NUM;
 

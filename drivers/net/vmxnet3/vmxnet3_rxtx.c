@@ -646,6 +646,59 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 		return i;
 }
 
+/* MSS not provided by vmxnet3, guess one with available information */
+static uint16_t
+vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
+		struct rte_mbuf *rxm)
+{
+	uint32_t hlen, slen;
+	struct ipv4_hdr *ipv4_hdr;
+	struct ipv6_hdr *ipv6_hdr;
+	struct tcp_hdr *tcp_hdr;
+	char *ptr;
+
+	RTE_ASSERT(rcd->tcp);
+
+	ptr = rte_pktmbuf_mtod(rxm, char *);
+	slen = rte_pktmbuf_data_len(rxm);
+	hlen = sizeof(struct ether_hdr);
+
+	if (rcd->v4) {
+		if (unlikely(slen < hlen + sizeof(struct ipv4_hdr)))
+			return hw->mtu - sizeof(struct ipv4_hdr)
+					- sizeof(struct tcp_hdr);
+
+		ipv4_hdr = (struct ipv4_hdr *)(ptr + hlen);
+		hlen += (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
+				IPV4_IHL_MULTIPLIER;
+	} else if (rcd->v6) {
+		if (unlikely(slen < hlen + sizeof(struct ipv6_hdr)))
+			return hw->mtu - sizeof(struct ipv6_hdr) -
+					sizeof(struct tcp_hdr);
+
+		ipv6_hdr = (struct ipv6_hdr *)(ptr + hlen);
+		hlen += sizeof(struct ipv6_hdr);
+		if (unlikely(ipv6_hdr->proto != IPPROTO_TCP)) {
+			int frag;
+
+			rte_net_skip_ip6_ext(ipv6_hdr->proto, rxm,
+					&hlen, &frag);
+		}
+	}
+
+	if (unlikely(slen < hlen + sizeof(struct tcp_hdr)))
+		return hw->mtu - hlen - sizeof(struct tcp_hdr) +
+				sizeof(struct ether_hdr);
+
+	tcp_hdr = (struct tcp_hdr *)(ptr + hlen);
+	hlen += (tcp_hdr->data_off & 0xf0) >> 2;
+
+	if (rxm->udata64 > 1)
+		return (rte_pktmbuf_pkt_len(rxm) - hlen +
+				rxm->udata64 - 1) / rxm->udata64;
+	else
+		return hw->mtu - hlen + sizeof(struct ether_hdr);
+}
 
 /* Receive side checksum and other offloads */
 static inline void
@@ -667,6 +720,7 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 					(const Vmxnet3_RxCompDescExt *)rcd;
 
 			rxm->tso_segsz = rcde->mss;
+			rxm->udata64 = rcde->segCnt;
 			ol_flags |= PKT_RX_LRO;
 		}
 	} else { /* Offloads set in eop */
@@ -730,6 +784,11 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 			} else {
 				packet_type |= RTE_PTYPE_UNKNOWN;
 			}
+
+			/* Old variants of vmxnet3 do not provide MSS */
+			if ((ol_flags & PKT_RX_LRO) && rxm->tso_segsz == 0)
+				rxm->tso_segsz = vmxnet3_guess_mss(hw,
+						rcd, rxm);
 		}
 	}
 
