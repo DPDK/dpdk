@@ -659,13 +659,7 @@ vmxnet3_rx_offload(const Vmxnet3_RxCompDesc *rcd, struct rte_mbuf *rxm)
 
 	/* Check packet type, checksum errors, etc. Only support IPv4 for now. */
 	if (rcd->v4) {
-		struct ether_hdr *eth = rte_pktmbuf_mtod(rxm, struct ether_hdr *);
-		struct ipv4_hdr *ip = (struct ipv4_hdr *)(eth + 1);
-
-		if (((ip->version_ihl & 0xf) << 2) > (int)sizeof(struct ipv4_hdr))
-			rxm->packet_type = RTE_PTYPE_L3_IPV4_EXT;
-		else
-			rxm->packet_type = RTE_PTYPE_L3_IPV4;
+		rxm->packet_type = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
 
 		if (!rcd->cnc) {
 			if (!rcd->ipc)
