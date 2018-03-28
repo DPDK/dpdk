@@ -1038,7 +1038,7 @@ qede_mac_addr_remove(struct rte_eth_dev *eth_dev, uint32_t index)
 	ether_addr_copy(&eth_dev->data->mac_addrs[index],
 			(struct ether_addr *)&ucast.mac);
 
-	ecore_filter_ucast_cmd(edev, &ucast, ECORE_SPQ_MODE_CB, NULL);
+	qede_mac_int_ops(eth_dev, &ucast, false);
 }
 
 static void
@@ -1374,6 +1374,9 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 
 	/* Disable traffic */
 	ecore_hw_stop_fastpath(edev); /* TBD - loop */
+
+	if (IS_PF(edev))
+		qede_mac_addr_remove(eth_dev, 0);
 
 	DP_INFO(edev, "Device is stopped\n");
 }
@@ -2443,6 +2446,9 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		dev->data->dev_started = 0;
 		qede_dev_stop(dev);
 		restart = true;
+	} else {
+		if (IS_PF(edev))
+			qede_mac_addr_remove(dev, 0);
 	}
 	rte_delay_ms(1000);
 	qede_start_vport(qdev, mtu); /* Recreate vport */
@@ -2470,7 +2476,9 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		dev->data->dev_conf.rxmode.jumbo_frame = 0;
 
 	/* Restore config lost due to vport stop */
-	qede_mac_addr_set(dev, &qdev->primary_mac);
+	if (IS_PF(edev))
+		qede_mac_addr_set(dev, &qdev->primary_mac);
+
 	if (dev->data->promiscuous)
 		qede_promiscuous_enable(dev);
 	else
