@@ -27,6 +27,38 @@ M: Thomas Monjalon <thomas@monjalon.net>
 M: Ferruh Yigit <ferruh.yigit@intel.com>
 T: git://dpdk.org/dpdk
 
+Next-net Tree
+M: Ferruh Yigit <ferruh.yigit@intel.com>
+T: git://dpdk.org/next/dpdk-next-net
+
+Next-net-intel Tree
+M: Helin Zhang <helin.zhang@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
+
+Next-net-mlx Tree
+M: Shahaf Shuler <shahafs@mellanox.com>
+T: git://dpdk.org/next/dpdk-next-net-mlx
+
+Next-virtio Tree
+Maxime Coquelin <maxime.coquelin@redhat.com>
+T: git://dpdk.org/next/dpdk-next-virtio
+
+Next-crypto Tree
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+
+Next-eventdev Tree
+M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+T: git://dpdk.org/next/dpdk-next-eventdev
+
+Next-qos Tree
+M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
+T: git://dpdk.org/next/dpdk-next-qos
+
+Next-pipeline Tree
+M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
+T: git://dpdk.org/next/dpdk-next-pipeline
+
 Stable Branches
 M: Yuanhan Liu <yliu@fridaylinux.org>
 M: Luca Boccassi <bluca@debian.org>
