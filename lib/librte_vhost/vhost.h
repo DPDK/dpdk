@@ -6,6 +6,7 @@
 #define _VHOST_NET_CDEV_H_
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <unistd.h>
