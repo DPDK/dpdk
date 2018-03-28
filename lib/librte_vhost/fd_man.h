@@ -25,6 +25,16 @@ struct fdset {
 	struct fdentry fd[MAX_FDS];
 	pthread_mutex_t fd_mutex;
 	int num;	/* current fd number of this fdset */
+
+	union pipefds {
+		struct {
+			int pipefd[2];
+		};
+		struct {
+			int readfd;
+			int writefd;
+		};
+	} u;
 };
 
 
@@ -36,5 +46,11 @@ int fdset_add(struct fdset *pfdset, int fd,
 void *fdset_del(struct fdset *pfdset, int fd);
 
 void *fdset_event_dispatch(void *arg);
+
+int fdset_pipe_init(struct fdset *fdset);
+
+void fdset_pipe_uninit(struct fdset *fdset);
+
+void fdset_pipe_notify(struct fdset *fdset);
 
 #endif

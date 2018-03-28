@@ -16,6 +16,9 @@
 
 #include "fd_man.h"
 
+
+#define RTE_LOGTYPE_VHOST_FDMAN RTE_LOGTYPE_USER1
+
 #define FDPOLLERR (POLLERR | POLLHUP | POLLNVAL)
 
 static int
@@ -271,4 +274,65 @@ fdset_event_dispatch(void *arg)
 	}
 
 	return NULL;
+}
+
+static void
+fdset_pipe_read_cb(int readfd, void *dat __rte_unused,
+		   int *remove __rte_unused)
+{
+	char charbuf[16];
+	int r = read(readfd, charbuf, sizeof(charbuf));
+	/*
+	 * Just an optimization, we don't care if read() failed
+	 * so ignore explicitly its return value to make the
+	 * compiler happy
+	 */
+	RTE_SET_USED(r);
+}
+
+void
+fdset_pipe_uninit(struct fdset *fdset)
+{
+	fdset_del(fdset, fdset->u.readfd);
+	close(fdset->u.readfd);
+	close(fdset->u.writefd);
+}
+
+int
+fdset_pipe_init(struct fdset *fdset)
+{
+	int ret;
+
+	if (pipe(fdset->u.pipefd) < 0) {
+		RTE_LOG(ERR, VHOST_FDMAN,
+			"failed to create pipe for vhost fdset\n");
+		return -1;
+	}
+
+	ret = fdset_add(fdset, fdset->u.readfd,
+			fdset_pipe_read_cb, NULL, NULL);
+
+	if (ret < 0) {
+		RTE_LOG(ERR, VHOST_FDMAN,
+			"failed to add pipe readfd %d into vhost server fdset\n",
+			fdset->u.readfd);
+
+		fdset_pipe_uninit(fdset);
+		return -1;
+	}
+
+	return 0;
+}
+
+void
+fdset_pipe_notify(struct fdset *fdset)
+{
+	int r = write(fdset->u.writefd, "1", 1);
+	/*
+	 * Just an optimization, we don't care if write() failed
+	 * so ignore explicitly its return value to make the
+	 * compiler happy
+	 */
+	RTE_SET_USED(r);
+
 }
