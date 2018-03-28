@@ -178,8 +178,8 @@ ip4_hlen(const struct ipv4_hdr *hdr)
 }
 
 /* parse ipv6 extended headers, update offset and return next proto */
-static uint16_t
-skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
+int __rte_experimental
+rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 	int *frag)
 {
 	struct ext_hdr {
@@ -201,7 +201,7 @@ skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 			xh = rte_pktmbuf_read(m, *off, sizeof(*xh),
 				&xh_copy);
 			if (xh == NULL)
-				return 0;
+				return -1;
 			*off += (xh->len + 1) * 8;
 			proto = xh->next_hdr;
 			break;
@@ -209,7 +209,7 @@ skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 			xh = rte_pktmbuf_read(m, *off, sizeof(*xh),
 				&xh_copy);
 			if (xh == NULL)
-				return 0;
+				return -1;
 			*off += 8;
 			proto = xh->next_hdr;
 			*frag = 1;
@@ -220,7 +220,7 @@ skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 			return proto;
 		}
 	}
-	return 0;
+	return -1;
 }
 
 /* parse mbuf data to get packet type */
@@ -233,6 +233,7 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	uint32_t pkt_type = RTE_PTYPE_L2_ETHER;
 	uint32_t off = 0;
 	uint16_t proto;
+	int ret;
 
 	if (hdr_lens == NULL)
 		hdr_lens = &local_hdr_lens;
@@ -316,7 +317,10 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 		off += hdr_lens->l3_len;
 		pkt_type |= ptype_l3_ip6(proto);
 		if ((pkt_type & RTE_PTYPE_L3_MASK) == RTE_PTYPE_L3_IPV6_EXT) {
-			proto = skip_ip6_ext(proto, m, &off, &frag);
+			ret = rte_net_skip_ip6_ext(proto, m, &off, &frag);
+			if (ret < 0)
+				return pkt_type;
+			proto = ret;
 			hdr_lens->l3_len = off - hdr_lens->l2_len;
 		}
 		if (proto == 0)
@@ -449,7 +453,10 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 			uint32_t prev_off;
 
 			prev_off = off;
-			proto = skip_ip6_ext(proto, m, &off, &frag);
+			ret = rte_net_skip_ip6_ext(proto, m, &off, &frag);
+			if (ret < 0)
+				return pkt_type;
+			proto = ret;
 			hdr_lens->inner_l3_len += off - prev_off;
 		}
 		if (proto == 0)

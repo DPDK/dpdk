@@ -29,6 +29,33 @@ struct rte_net_hdr_lens {
 };
 
 /**
+ * Skip IPv6 header extensions.
+ *
+ * This function skips all IPv6 extensions, returning size of
+ * complete header including options and final protocol value.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @param proto
+ *   Protocol field of IPv6 header.
+ * @param m
+ *   The packet mbuf to be parsed.
+ * @param off
+ *   On input, must contain the offset to the first byte following
+ *   IPv6 header, on output, contains offset to the first byte
+ *   of next layer (after any IPv6 extension header)
+ * @param frag
+ *   Contains 1 in output if packet is an IPv6 fragment.
+ * @return
+ *   Protocol that follows IPv6 header.
+ *   -1 if an error occurs during mbuf parsing.
+ */
+int __rte_experimental
+rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
+	int *frag);
+
+/**
  * Parse an Ethernet packet to get its packet type.
  *
  * This function parses the network headers in mbuf data and return its

@@ -17,4 +17,5 @@ EXPERIMENTAL {
 	global:
 
 	rte_net_make_rarp_packet;
+	rte_net_skip_ip6_ext;
 } DPDK_17.05;
