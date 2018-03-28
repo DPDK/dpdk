@@ -214,6 +214,27 @@ the vhost device from the data plane.
 
 When the socket connection is closed, vhost will destroy the device.
 
+Guest memory requirement
+------------------------
+
+* Memory pre-allocation
+
+  For non-zerocopy, guest memory pre-allocation is not a must. This can help
+  save of memory. If users really want the guest memory to be pre-allocated
+  (e.g., for performance reason), we can add option ``-mem-prealloc`` when
+  starting QEMU. Or, we can lock all memory at vhost side which will force
+  memory to be allocated when mmap at vhost side; option --mlockall in
+  ovs-dpdk is an example in hand.
+
+  For zerocopy, we force the VM memory to be pre-allocated at vhost lib when
+  mapping the guest memory; and also we need to lock the memory to prevent
+  pages being swapped out to disk.
+
+* Memory sharing
+
+  Make sure ``share=on`` QEMU option is given. vhost-user will not work with
+  a QEMU version without shared memory mapping.
+
 Vhost supported vSwitch reference
 ---------------------------------
 

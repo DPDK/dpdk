@@ -175,15 +175,6 @@ Common Issues
   The command above indicates how many hugepages are free to support QEMU's
   allocation request.
 
-* vhost-user will not work with QEMU without the ``-mem-prealloc`` option
-
-  The current implementation works properly only when the guest memory is
-  pre-allocated.
-
-* vhost-user will not work with a QEMU version without shared memory mapping:
-
-  Make sure ``share=on`` QEMU option is given.
-
 * Failed to build DPDK in VM
 
   Make sure "-cpu host" QEMU option is given.

@@ -684,6 +684,7 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	uint64_t mmap_offset;
 	uint64_t alignment;
 	uint32_t i;
+	int populate;
 	int fd;
 
 	if (memory.nregions > VHOST_MEMORY_MAX_NREGIONS) {
@@ -770,8 +771,9 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		}
 		mmap_size = RTE_ALIGN_CEIL(mmap_size, alignment);
 
+		populate = (dev->dequeue_zero_copy) ? MAP_POPULATE : 0;
 		mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
-				 MAP_SHARED | MAP_POPULATE, fd, 0);
+				 MAP_SHARED | populate, fd, 0);
 
 		if (mmap_addr == MAP_FAILED) {
 			RTE_LOG(ERR, VHOST_CONFIG,
