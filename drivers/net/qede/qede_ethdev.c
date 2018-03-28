@@ -499,6 +499,9 @@ qede_start_vport(struct qede_dev *qdev, uint16_t mtu)
 	return 0;
 }
 
+#define QEDE_NPAR_TX_SWITCHING		"npar_tx_switching"
+#define QEDE_VF_TX_SWITCHING		"vf_tx_switching"
+
 /* Activate or deactivate vport via vport-update */
 int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg)
 {
@@ -516,10 +519,12 @@ int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg)
 	params.vport_active_rx_flg = flg;
 	params.vport_active_tx_flg = flg;
 	if (!qdev->enable_tx_switching) {
-		if (IS_VF(edev)) {
+		if ((QEDE_NPAR_TX_SWITCHING != NULL) ||
+		    ((QEDE_VF_TX_SWITCHING != NULL) && IS_VF(edev))) {
 			params.update_tx_switching_flg = 1;
 			params.tx_switching_flg = !flg;
-			DP_INFO(edev, "VF tx-switching is disabled\n");
+			DP_INFO(edev, "%s tx-switching is disabled\n",
+				QEDE_NPAR_TX_SWITCHING ? "NPAR" : "VF");
 		}
 	}
 	for_each_hwfn(edev, i) {
@@ -1373,10 +1378,9 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 	DP_INFO(edev, "Device is stopped\n");
 }
 
-#define QEDE_TX_SWITCHING		"vf_txswitch"
-
 const char *valid_args[] = {
-	QEDE_TX_SWITCHING,
+	QEDE_NPAR_TX_SWITCHING,
+	QEDE_VF_TX_SWITCHING,
 	NULL,
 };
 
@@ -1395,7 +1399,8 @@ static int qede_args_check(const char *key, const char *val, void *opaque)
 		return errno;
 	}
 
-	if (strcmp(QEDE_TX_SWITCHING, key) == 0)
+	if ((strcmp(QEDE_NPAR_TX_SWITCHING, key) == 0) ||
+	    (strcmp(QEDE_VF_TX_SWITCHING, key) == 0))
 		qdev->enable_tx_switching = !!tmp;
 
 	return ret;
