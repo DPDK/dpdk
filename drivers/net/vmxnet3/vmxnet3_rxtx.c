@@ -925,18 +925,23 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			}
 
 			rxq->start_seg = rxm;
+			rxq->last_seg = rxm;
 			vmxnet3_rx_offload(hw, rcd, rxm, 1);
 		} else {
 			struct rte_mbuf *start = rxq->start_seg;
 
 			RTE_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_BODY);
 
-			start->pkt_len += rxm->data_len;
-			start->nb_segs++;
+			if (rxm->data_len) {
+				start->pkt_len += rxm->data_len;
+				start->nb_segs++;
 
-			rxq->last_seg->next = rxm;
+				rxq->last_seg->next = rxm;
+				rxq->last_seg = rxm;
+			} else {
+				rte_pktmbuf_free_seg(rxm);
+			}
 		}
-		rxq->last_seg = rxm;
 
 		if (rcd->eop) {
 			struct rte_mbuf *start = rxq->start_seg;
