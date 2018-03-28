@@ -210,7 +210,7 @@ fm10k_rx_vec_condition_check(struct rte_eth_dev *dev)
 
 #ifndef RTE_FM10K_RX_OLFLAGS_ENABLE
 	/* whithout rx ol_flags, no VP flag report */
-	if (rxmode->hw_vlan_extend != 0)
+	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
 		return -1;
 #endif
 
@@ -219,7 +219,7 @@ fm10k_rx_vec_condition_check(struct rte_eth_dev *dev)
 		return -1;
 
 	/* no header split support */
-	if (rxmode->header_split == 1)
+	if (rxmode->offloads & DEV_RX_OFFLOAD_HEADER_SPLIT)
 		return -1;
 
 	return 0;

@@ -180,6 +180,7 @@ struct fm10k_rx_queue {
 	uint8_t drop_en;
 	uint8_t rx_deferred_start; /* don't start this queue in dev start. */
 	uint16_t rx_ftag_en; /* indicates FTAG RX supported */
+	uint64_t offloads; /* offloads of DEV_RX_OFFLOAD_* */
 };
 
 /*
