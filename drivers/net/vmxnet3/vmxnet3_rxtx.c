@@ -656,10 +656,17 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 
 	/* Offloads set in sop */
 	if (sop) {
+	} else { /* Offloads set in eop */
 		/* Check for RSS */
 		if (rcd->rssType != VMXNET3_RCD_RSS_TYPE_NONE) {
 			rxm->ol_flags |= PKT_RX_RSS_HASH;
 			rxm->hash.rss = rcd->rssHash;
+		}
+
+		/* Check for hardware stripped VLAN tag */
+		if (rcd->ts) {
+			rxm->ol_flags |= (PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
+			rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
 		}
 
 		/* Check packet type, checksum errors. Only IPv4 for now. */
@@ -675,12 +682,6 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 			}
 		} else {
 			rxm->packet_type = RTE_PTYPE_UNKNOWN;
-		}
-	} else { /* Offloads set in eop */
-		/* Check for hardware stripped VLAN tag */
-		if (rcd->ts) {
-			rxm->ol_flags |= (PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
-			rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
 		}
 	}
 }
