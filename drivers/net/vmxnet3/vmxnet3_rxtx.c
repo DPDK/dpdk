@@ -457,6 +457,14 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		    rte_pktmbuf_pkt_len(txm) <= txq->txdata_desc_size) {
 			struct Vmxnet3_TxDataDesc *tdd;
 
+			/* Skip empty packets */
+			if (unlikely(rte_pktmbuf_pkt_len(txm) == 0)) {
+				txq->stats.drop_total++;
+				rte_pktmbuf_free(txm);
+				nb_tx++;
+				continue;
+			}
+
 			tdd = (struct Vmxnet3_TxDataDesc *)
 				((uint8 *)txq->data_ring.base +
 				 txq->cmd_ring.next2fill *
@@ -477,6 +485,11 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 * maximum size of mbuf segment size.
 			 */
 			gdesc = txq->cmd_ring.base + txq->cmd_ring.next2fill;
+
+			/* Skip empty segments */
+			if (unlikely(m_seg->data_len == 0))
+				continue;
+
 			if (copy_size) {
 				uint64 offset =
 					(uint64)txq->cmd_ring.next2fill *
