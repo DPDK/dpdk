@@ -324,7 +324,32 @@ struct Vmxnet3_RxCompDescExt {
    uint8  segCnt;       /* Number of aggregated packets */
    uint8  dupAckCnt;    /* Number of duplicate Acks */
    __le16 tsDelta;      /* TCP timestamp difference */
-   __le32 dword2[2];
+	__le32 dword2;
+#ifdef __BIG_ENDIAN_BITFIELD
+	uint32 gen : 1;     /* generation bit */
+	uint32 type : 7;    /* completion type */
+	uint32 fcs : 1;     /* Frame CRC correct */
+	uint32 frg : 1;     /* IP Fragment */
+	uint32 v4 : 1;      /* IPv4 */
+	uint32 v6 : 1;      /* IPv6 */
+	uint32 ipc : 1;     /* IP Checksum Correct */
+	uint32 tcp : 1;     /* TCP packet */
+	uint32 udp : 1;     /* UDP packet */
+	uint32 tuc : 1;     /* TCP/UDP Checksum Correct */
+	uint32 mss : 16;
+#else
+	uint32 mss : 16;
+	uint32 tuc : 1;     /* TCP/UDP Checksum Correct */
+	uint32 udp : 1;     /* UDP packet */
+	uint32 tcp : 1;     /* TCP packet */
+	uint32 ipc : 1;     /* IP Checksum Correct */
+	uint32 v6 : 1;      /* IPv6 */
+	uint32 v4 : 1;      /* IPv4 */
+	uint32 frg : 1;     /* IP Fragment */
+	uint32 fcs : 1;     /* Frame CRC correct */
+	uint32 type : 7;    /* completion type */
+	uint32 gen : 1;     /* generation bit */
+#endif  /* __BIG_ENDIAN_BITFIELD */
 }
 #include "vmware_pack_end.h"
 Vmxnet3_RxCompDescExt;

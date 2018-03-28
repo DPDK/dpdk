@@ -652,38 +652,89 @@ static inline void
 vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 		struct rte_mbuf *rxm, const uint8_t sop)
 {
-	(void)hw;
+	uint64_t ol_flags = rxm->ol_flags;
+	uint32_t packet_type = rxm->packet_type;
 
 	/* Offloads set in sop */
 	if (sop) {
+		/* Set packet type */
+		packet_type |= RTE_PTYPE_L2_ETHER;
+
+		/* Check large packet receive */
+		if (VMXNET3_VERSION_GE_2(hw) &&
+		    rcd->type == VMXNET3_CDTYPE_RXCOMP_LRO) {
+			const Vmxnet3_RxCompDescExt *rcde =
+					(const Vmxnet3_RxCompDescExt *)rcd;
+
+			rxm->tso_segsz = rcde->mss;
+			ol_flags |= PKT_RX_LRO;
+		}
 	} else { /* Offloads set in eop */
 		/* Check for RSS */
 		if (rcd->rssType != VMXNET3_RCD_RSS_TYPE_NONE) {
-			rxm->ol_flags |= PKT_RX_RSS_HASH;
+			ol_flags |= PKT_RX_RSS_HASH;
 			rxm->hash.rss = rcd->rssHash;
 		}
 
 		/* Check for hardware stripped VLAN tag */
 		if (rcd->ts) {
-			rxm->ol_flags |= (PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
+			ol_flags |= (PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
 			rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
 		}
 
-		/* Check packet type, checksum errors. Only IPv4 for now. */
-		if (rcd->v4) {
-			rxm->packet_type = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-
-			if (!rcd->cnc) {
-				if (!rcd->ipc)
-					rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-
-				if ((rcd->tcp || rcd->udp) && !rcd->tuc)
-					rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-			}
+		/* Check packet type, checksum errors, etc. */
+		if (rcd->cnc) {
+			ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
 		} else {
-			rxm->packet_type = RTE_PTYPE_UNKNOWN;
+			if (rcd->v4) {
+				packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+
+				if (rcd->ipc)
+					ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+				else
+					ol_flags |= PKT_RX_IP_CKSUM_BAD;
+
+				if (rcd->tuc) {
+					ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+					if (rcd->tcp)
+						packet_type |= RTE_PTYPE_L4_TCP;
+					else
+						packet_type |= RTE_PTYPE_L4_UDP;
+				} else {
+					if (rcd->tcp) {
+						packet_type |= RTE_PTYPE_L4_TCP;
+						ol_flags |= PKT_RX_L4_CKSUM_BAD;
+					} else if (rcd->udp) {
+						packet_type |= RTE_PTYPE_L4_UDP;
+						ol_flags |= PKT_RX_L4_CKSUM_BAD;
+					}
+				}
+			} else if (rcd->v6) {
+				packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+
+				if (rcd->tuc) {
+					ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+					if (rcd->tcp)
+						packet_type |= RTE_PTYPE_L4_TCP;
+					else
+						packet_type |= RTE_PTYPE_L4_UDP;
+				} else {
+					if (rcd->tcp) {
+						packet_type |= RTE_PTYPE_L4_TCP;
+						ol_flags |= PKT_RX_L4_CKSUM_BAD;
+					} else if (rcd->udp) {
+						packet_type |= RTE_PTYPE_L4_UDP;
+						ol_flags |= PKT_RX_L4_CKSUM_BAD;
+					}
+				}
+			} else {
+				packet_type |= RTE_PTYPE_UNKNOWN;
+			}
 		}
 	}
+
+	rxm->ol_flags = ol_flags;
+	rxm->packet_type = packet_type;
 }
 
 /*
@@ -783,6 +834,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rxm->ol_flags = 0;
 		rxm->vlan_tci = 0;
+		rxm->packet_type = 0;
 
 		/*
 		 * If this is the first buffer of the received packet,
