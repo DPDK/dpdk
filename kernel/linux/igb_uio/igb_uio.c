@@ -473,6 +473,11 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	void *map_addr;
 	int err;
 
+	if (pci_is_bridge(dev)) {
+		dev_warn(&dev->dev, "Ignoring PCI bridge device\n");
+		return -ENODEV;
+	}
+
 	udev = kzalloc(sizeof(struct rte_uio_pci_dev), GFP_KERNEL);
 	if (!udev)
 		return -ENOMEM;
