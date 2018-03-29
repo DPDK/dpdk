@@ -86,6 +86,9 @@ enum rte_table_action_type {
 
 	/** Statistics. */
 	RTE_TABLE_ACTION_STATS,
+
+	/** Timestamp. */
+	RTE_TABLE_ACTION_TIME,
 };
 
 /** Common action configuration (per table action profile). */
@@ -542,6 +545,15 @@ struct rte_table_action_stats_counters {
 };
 
 /**
+ * RTE_TABLE_ACTION_TIME
+ */
+/** Timestamp action parameters (per table rule). */
+struct rte_table_action_time_params {
+	/** Initial timestamp value. Typically set to current time. */
+	uint64_t time;
+};
+
+/**
  * Table action profile.
  */
 struct rte_table_action_profile;
@@ -814,6 +826,25 @@ rte_table_action_stats_read(struct rte_table_action *action,
 	void *data,
 	struct rte_table_action_stats_counters *stats,
 	int clear);
+
+/**
+ * Table action timestamp read.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[in] data
+ *   Data byte array (typically table rule data) with timestamp action
+ *   previously applied on it.
+ * @param[inout] timestamp
+ *   Pre-allocated memory where the timestamp read from *data* is saved (has to
+ *   be non-NULL).
+ * @return
+ *   Zero on success, non-zero error code otherwise.
+ */
+int __rte_experimental
+rte_table_action_time_read(struct rte_table_action *action,
+	void *data,
+	uint64_t *timestamp);
 
 #ifdef __cplusplus
 }

@@ -1149,6 +1149,28 @@ pkt_work_stats(struct stats_data *data,
 }
 
 /**
+ * RTE_TABLE_ACTION_TIME
+ */
+struct time_data {
+	uint64_t time;
+} __attribute__((__packed__));
+
+static int
+time_apply(struct time_data *data,
+	struct rte_table_action_time_params *p)
+{
+	data->time = p->time;
+	return 0;
+}
+
+static __rte_always_inline void
+pkt_work_time(struct time_data *data,
+	uint64_t time)
+{
+	data->time = time;
+}
+
+/**
  * Action profile
  */
 static int
@@ -1162,6 +1184,7 @@ action_valid(enum rte_table_action_type action)
 	case RTE_TABLE_ACTION_NAT:
 	case RTE_TABLE_ACTION_TTL:
 	case RTE_TABLE_ACTION_STATS:
+	case RTE_TABLE_ACTION_TIME:
 		return 1;
 	default:
 		return 0;
@@ -1275,6 +1298,9 @@ action_data_size(enum rte_table_action_type action,
 
 	case RTE_TABLE_ACTION_STATS:
 		return sizeof(struct stats_data);
+
+	case RTE_TABLE_ACTION_TIME:
+		return sizeof(struct time_data);
 
 	default:
 		return 0;
@@ -1512,6 +1538,10 @@ rte_table_action_apply(struct rte_table_action *action,
 		return stats_apply(action_data,
 			action_params);
 
+	case RTE_TABLE_ACTION_TIME:
+		return time_apply(action_data,
+			action_params);
+
 	default:
 		return -EINVAL;
 	}
@@ -1741,6 +1771,29 @@ rte_table_action_stats_read(struct rte_table_action *action,
 	return 0;
 }
 
+int
+rte_table_action_time_read(struct rte_table_action *action,
+	void *data,
+	uint64_t *timestamp)
+{
+	struct time_data *time_data;
+
+	/* Check input arguments */
+	if ((action == NULL) ||
+		((action->cfg.action_mask &
+		(1LLU << RTE_TABLE_ACTION_TIME)) == 0) ||
+		(data == NULL) ||
+		(timestamp == NULL))
+		return -EINVAL;
+
+	time_data = action_data_get(data, action, RTE_TABLE_ACTION_TIME);
+
+	/* Read */
+	*timestamp = time_data->time;
+
+	return 0;
+}
+
 static __rte_always_inline uint64_t
 pkt_work(struct rte_mbuf *mbuf,
 	struct rte_pipeline_table_entry *table_entry,
@@ -1829,6 +1882,13 @@ pkt_work(struct rte_mbuf *mbuf,
 			action_data_get(table_entry, action, RTE_TABLE_ACTION_STATS);
 
 		pkt_work_stats(data, total_length);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_TIME)) {
+		void *data =
+			action_data_get(table_entry, action, RTE_TABLE_ACTION_TIME);
+
+		pkt_work_time(data, time);
 	}
 
 	return drop_mask;
@@ -2076,6 +2136,22 @@ pkt4_work(struct rte_mbuf **mbufs,
 		pkt_work_stats(data3, total_length3);
 	}
 
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_TIME)) {
+		void *data0 =
+			action_data_get(table_entry0, action, RTE_TABLE_ACTION_TIME);
+		void *data1 =
+			action_data_get(table_entry1, action, RTE_TABLE_ACTION_TIME);
+		void *data2 =
+			action_data_get(table_entry2, action, RTE_TABLE_ACTION_TIME);
+		void *data3 =
+			action_data_get(table_entry3, action, RTE_TABLE_ACTION_TIME);
+
+		pkt_work_time(data0, time);
+		pkt_work_time(data1, time);
+		pkt_work_time(data2, time);
+		pkt_work_time(data3, time);
+	}
+
 	return drop_mask0 |
 		(drop_mask1 << 1) |
 		(drop_mask2 << 2) |
@@ -2093,7 +2169,8 @@ ah(struct rte_pipeline *p,
 	uint64_t pkts_drop_mask = 0;
 	uint64_t time = 0;
 
-	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_MTR))
+	if (cfg->action_mask & ((1LLU << RTE_TABLE_ACTION_MTR) |
+		(1LLU << RTE_TABLE_ACTION_TIME)))
 		time = rte_rdtsc();
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
