@@ -19,8 +19,6 @@ SRCS-y += pipeline_common_be.c
 SRCS-y += pipeline_common_fe.c
 SRCS-y += pipeline_master_be.c
 SRCS-y += pipeline_master.c
-SRCS-y += pipeline_firewall_be.c
-SRCS-y += pipeline_firewall.c
 
 # Build using pkg-config variables if possible
 $(shell pkg-config --exists libdpdk)

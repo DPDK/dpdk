@@ -21,8 +21,6 @@ sources = files(
 	'thread_fe.c',
 	'pipeline/pipeline_common_be.c',
 	'pipeline/pipeline_common_fe.c',
-	'pipeline/pipeline_firewall_be.c',
-	'pipeline/pipeline_firewall.c',
 	'pipeline/pipeline_master_be.c',
 	'pipeline/pipeline_master.c',
 )
