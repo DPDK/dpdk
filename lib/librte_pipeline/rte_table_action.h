@@ -194,6 +194,20 @@ int __rte_experimental
 rte_table_action_free(struct rte_table_action *action);
 
 /**
+ * Table action table params get.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[inout] params
+ *   Pipeline table parameters (needs to be pre-allocated).
+ * @return
+ *   Zero on success, non-zero error code otherwise.
+ */
+int __rte_experimental
+rte_table_action_table_params_get(struct rte_table_action *action,
+	struct rte_pipeline_table_params *params);
+
+/**
  * Table action apply.
  *
  * @param[in] action

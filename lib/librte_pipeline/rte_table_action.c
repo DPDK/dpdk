@@ -267,6 +267,136 @@ rte_table_action_apply(struct rte_table_action *action,
 	}
 }
 
+static __rte_always_inline uint64_t
+pkt_work(struct rte_mbuf *mbuf __rte_unused,
+	struct rte_pipeline_table_entry *table_entry __rte_unused,
+	uint64_t time __rte_unused,
+	struct rte_table_action *action __rte_unused,
+	struct ap_config *cfg __rte_unused)
+{
+	return 0;
+}
+
+static __rte_always_inline uint64_t
+pkt4_work(struct rte_mbuf **mbufs __rte_unused,
+	struct rte_pipeline_table_entry **table_entries __rte_unused,
+	uint64_t time __rte_unused,
+	struct rte_table_action *action __rte_unused,
+	struct ap_config *cfg __rte_unused)
+{
+	return 0;
+}
+
+static __rte_always_inline int
+ah(struct rte_pipeline *p,
+	struct rte_mbuf **pkts,
+	uint64_t pkts_mask,
+	struct rte_pipeline_table_entry **entries,
+	struct rte_table_action *action,
+	struct ap_config *cfg)
+{
+	uint64_t pkts_drop_mask = 0;
+	uint64_t time = 0;
+
+	if ((pkts_mask & (pkts_mask + 1)) == 0) {
+		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint32_t i;
+
+		for (i = 0; i < (n_pkts & (~0x3LLU)); i += 4) {
+			uint64_t drop_mask;
+
+			drop_mask = pkt4_work(&pkts[i],
+				&entries[i],
+				time,
+				action,
+				cfg);
+
+			pkts_drop_mask |= drop_mask << i;
+		}
+
+		for ( ; i < n_pkts; i++) {
+			uint64_t drop_mask;
+
+			drop_mask = pkt_work(pkts[i],
+				entries[i],
+				time,
+				action,
+				cfg);
+
+			pkts_drop_mask |= drop_mask << i;
+		}
+	} else
+		for ( ; pkts_mask; ) {
+			uint32_t pos = __builtin_ctzll(pkts_mask);
+			uint64_t pkt_mask = 1LLU << pos;
+			uint64_t drop_mask;
+
+			drop_mask = pkt_work(pkts[pos],
+				entries[pos],
+				time,
+				action,
+				cfg);
+
+			pkts_mask &= ~pkt_mask;
+			pkts_drop_mask |= drop_mask << pos;
+		}
+
+	rte_pipeline_ah_packet_drop(p, pkts_drop_mask);
+
+	return 0;
+}
+
+static int
+ah_default(struct rte_pipeline *p,
+	struct rte_mbuf **pkts,
+	uint64_t pkts_mask,
+	struct rte_pipeline_table_entry **entries,
+	void *arg)
+{
+	struct rte_table_action *action = arg;
+
+	return ah(p,
+		pkts,
+		pkts_mask,
+		entries,
+		action,
+		&action->cfg);
+}
+
+static rte_pipeline_table_action_handler_hit
+ah_selector(struct rte_table_action *action)
+{
+	if (action->cfg.action_mask == (1LLU << RTE_TABLE_ACTION_FWD))
+		return NULL;
+
+	return ah_default;
+}
+
+int
+rte_table_action_table_params_get(struct rte_table_action *action,
+	struct rte_pipeline_table_params *params)
+{
+	rte_pipeline_table_action_handler_hit f_action_hit;
+	uint32_t total_size;
+
+	/* Check input arguments */
+	if ((action == NULL) ||
+		(params == NULL))
+		return -EINVAL;
+
+	f_action_hit = ah_selector(action);
+	total_size = rte_align32pow2(action->data.total_size);
+
+	/* Fill in params */
+	params->f_action_hit = f_action_hit;
+	params->f_action_miss = NULL;
+	params->arg_ah = (f_action_hit) ? action : NULL;
+	params->action_data_size = total_size -
+		sizeof(struct rte_pipeline_table_entry);
+
+	return 0;
+}
+
 int
 rte_table_action_free(struct rte_table_action *action)
 {

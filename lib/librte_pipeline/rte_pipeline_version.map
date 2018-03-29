@@ -56,5 +56,6 @@ EXPERIMENTAL {
 	rte_table_action_profile_create;
 	rte_table_action_profile_free;
 	rte_table_action_profile_freeze;
+	rte_table_action_table_params_get;
 
 } DPDK_16.04;
