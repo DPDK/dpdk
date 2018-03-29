@@ -15,4 +15,5 @@ sources = files(
 	'mempool.c',
 	'parser.c',
 	'swq.c',
+	'tmgr.c'
 )

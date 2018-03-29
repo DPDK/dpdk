@@ -15,6 +15,7 @@
 #include "link.h"
 #include "mempool.h"
 #include "swq.h"
+#include "tmgr.h"
 
 static const char usage[] =
 	"%s EAL_ARGS -- [-h HOST] [-p PORT] [-s SCRIPT]\n";
@@ -180,6 +181,13 @@ main(int argc, char **argv)
 	status = swq_init();
 	if (status) {
 		printf("Error: SWQ initialization failed (%d)\n", status);
+		return status;
+	}
+
+	/* Traffic Manager */
+	status = tmgr_init();
+	if (status) {
+		printf("Error: TMGR initialization failed (%d)\n", status);
 		return status;
 	}
 

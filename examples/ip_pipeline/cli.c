@@ -14,6 +14,7 @@
 #include "mempool.h"
 #include "parser.h"
 #include "swq.h"
+#include "tmgr.h"
 
 #ifndef CMD_MAX_TOKENS
 #define CMD_MAX_TOKENS     256
@@ -277,6 +278,331 @@ cmd_swq(char **tokens,
 	}
 }
 
+/**
+ * tmgr subport profile
+ *  <tb_rate> <tb_size>
+ *  <tc0_rate> <tc1_rate> <tc2_rate> <tc3_rate>
+ *  <tc_period>
+ */
+static void
+cmd_tmgr_subport_profile(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_sched_subport_params p;
+	int status, i;
+
+	if (n_tokens != 10) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (parser_read_uint32(&p.tb_rate, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tb_rate");
+		return;
+	}
+
+	if (parser_read_uint32(&p.tb_size, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tb_size");
+		return;
+	}
+
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		if (parser_read_uint32(&p.tc_rate[i], tokens[5 + i]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "tc_rate");
+			return;
+		}
+
+	if (parser_read_uint32(&p.tc_period, tokens[9]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tc_period");
+		return;
+	}
+
+	status = tmgr_subport_profile_add(&p);
+	if (status != 0) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * tmgr pipe profile
+ *  <tb_rate> <tb_size>
+ *  <tc0_rate> <tc1_rate> <tc2_rate> <tc3_rate>
+ *  <tc_period>
+ *  <tc_ov_weight>
+ *  <wrr_weight0..15>
+ */
+static void
+cmd_tmgr_pipe_profile(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_sched_pipe_params p;
+	int status, i;
+
+	if (n_tokens != 27) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (parser_read_uint32(&p.tb_rate, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tb_rate");
+		return;
+	}
+
+	if (parser_read_uint32(&p.tb_size, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tb_size");
+		return;
+	}
+
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		if (parser_read_uint32(&p.tc_rate[i], tokens[5 + i]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "tc_rate");
+			return;
+		}
+
+	if (parser_read_uint32(&p.tc_period, tokens[9]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tc_period");
+		return;
+	}
+
+#ifdef RTE_SCHED_SUBPORT_TC_OV
+	if (parser_read_uint8(&p.tc_ov_weight, tokens[10]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tc_ov_weight");
+		return;
+	}
+#endif
+
+	for (i = 0; i < RTE_SCHED_QUEUES_PER_PIPE; i++)
+		if (parser_read_uint8(&p.wrr_weights[i], tokens[11 + i]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "wrr_weights");
+			return;
+		}
+
+	status = tmgr_pipe_profile_add(&p);
+	if (status != 0) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * tmgr <tmgr_name>
+ *  rate <rate>
+ *  spp <n_subports_per_port>
+ *  pps <n_pipes_per_subport>
+ *  qsize <qsize_tc0> <qsize_tc1> <qsize_tc2> <qsize_tc3>
+ *  fo <frame_overhead>
+ *  mtu <mtu>
+ *  cpu <cpu_id>
+ */
+static void
+cmd_tmgr(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct tmgr_port_params p;
+	char *name;
+	struct tmgr_port *tmgr_port;
+	int i;
+
+	if (n_tokens != 19) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	if (strcmp(tokens[2], "rate") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rate");
+		return;
+	}
+
+	if (parser_read_uint32(&p.rate, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "rate");
+		return;
+	}
+
+	if (strcmp(tokens[4], "spp") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "spp");
+		return;
+	}
+
+	if (parser_read_uint32(&p.n_subports_per_port, tokens[5]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_subports_per_port");
+		return;
+	}
+
+	if (strcmp(tokens[6], "pps") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pps");
+		return;
+	}
+
+	if (parser_read_uint32(&p.n_pipes_per_subport, tokens[7]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_pipes_per_subport");
+		return;
+	}
+
+	if (strcmp(tokens[8], "qsize") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "qsize");
+		return;
+	}
+
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		if (parser_read_uint16(&p.qsize[i], tokens[9 + i]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "qsize");
+			return;
+		}
+
+	if (strcmp(tokens[13], "fo") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "fo");
+		return;
+	}
+
+	if (parser_read_uint32(&p.frame_overhead, tokens[14]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "frame_overhead");
+		return;
+	}
+
+	if (strcmp(tokens[15], "mtu") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mtu");
+		return;
+	}
+
+	if (parser_read_uint32(&p.mtu, tokens[16]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "mtu");
+		return;
+	}
+
+	if (strcmp(tokens[17], "cpu") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cpu");
+		return;
+	}
+
+	if (parser_read_uint32(&p.cpu_id, tokens[18]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "cpu_id");
+		return;
+	}
+
+	tmgr_port = tmgr_port_create(name, &p);
+	if (tmgr_port == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * tmgr <tmgr_name> subport <subport_id>
+ *  profile <subport_profile_id>
+ */
+static void
+cmd_tmgr_subport(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	uint32_t subport_id, subport_profile_id;
+	int status;
+	char *name;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	if (parser_read_uint32(&subport_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "subport_id");
+		return;
+	}
+
+	if (parser_read_uint32(&subport_profile_id, tokens[5]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "subport_profile_id");
+		return;
+	}
+
+	status = tmgr_subport_config(name, subport_id, subport_profile_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * tmgr <tmgr_name> subport <subport_id> pipe
+ *  from <pipe_id_first> to <pipe_id_last>
+ *  profile <pipe_profile_id>
+ */
+static void
+cmd_tmgr_subport_pipe(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	uint32_t subport_id, pipe_id_first, pipe_id_last, pipe_profile_id;
+	int status;
+	char *name;
+
+	if (n_tokens != 11) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	if (parser_read_uint32(&subport_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "subport_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "pipe") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipe");
+		return;
+	}
+
+	if (strcmp(tokens[5], "from") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "from");
+		return;
+	}
+
+	if (parser_read_uint32(&pipe_id_first, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipe_id_first");
+		return;
+	}
+
+	if (strcmp(tokens[7], "to") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "to");
+		return;
+	}
+
+	if (parser_read_uint32(&pipe_id_last, tokens[8]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipe_id_last");
+		return;
+	}
+
+	if (strcmp(tokens[9], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	if (parser_read_uint32(&pipe_profile_id, tokens[10]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipe_profile_id");
+		return;
+	}
+
+	status = tmgr_pipe_config(name, subport_id, pipe_id_first,
+			pipe_id_last, pipe_profile_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 void
 cli_process(char *in, char *out, size_t out_size)
 {
@@ -308,6 +634,40 @@ cli_process(char *in, char *out, size_t out_size)
 
 	if (strcmp(tokens[0], "swq") == 0) {
 		cmd_swq(tokens, n_tokens, out, out_size);
+		return;
+	}
+
+	if (strcmp(tokens[0], "tmgr") == 0) {
+		if ((n_tokens >= 3) &&
+			(strcmp(tokens[1], "subport") == 0) &&
+			(strcmp(tokens[2], "profile") == 0)) {
+			cmd_tmgr_subport_profile(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 3) &&
+			(strcmp(tokens[1], "pipe") == 0) &&
+			(strcmp(tokens[2], "profile") == 0)) {
+			cmd_tmgr_pipe_profile(tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "subport") == 0) &&
+			(strcmp(tokens[4], "profile") == 0)) {
+			cmd_tmgr_subport(tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "subport") == 0) &&
+			(strcmp(tokens[4], "pipe") == 0)) {
+			cmd_tmgr_subport_pipe(tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		cmd_tmgr(tokens, n_tokens, out, out_size);
 		return;
 	}
 

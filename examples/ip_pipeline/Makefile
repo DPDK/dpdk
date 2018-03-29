@@ -12,6 +12,7 @@ SRCS-y += main.c
 SRCS-y += mempool.c
 SRCS-y += parser.c
 SRCS-y += swq.c
+SRCS-y += tmgr.c
 #SRCS-y += thread.c
 
 # Build using pkg-config variables if possible
