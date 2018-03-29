@@ -49,6 +49,14 @@ DPDK_16.04 {
 EXPERIMENTAL {
 	global:
 
+	rte_port_in_action_apply;
+	rte_port_in_action_create;
+	rte_port_in_action_free;
+	rte_port_in_action_params_get;
+	rte_port_in_action_profile_action_register;
+	rte_port_in_action_profile_create;
+	rte_port_in_action_profile_free;
+	rte_port_in_action_profile_freeze;
 	rte_table_action_apply;
 	rte_table_action_create;
 	rte_table_action_dscp_table_update;
