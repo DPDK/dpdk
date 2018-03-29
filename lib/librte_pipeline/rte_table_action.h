@@ -59,6 +59,7 @@ extern "C" {
 #include <stdint.h>
 
 #include <rte_compat.h>
+#include <rte_ether.h>
 #include <rte_meter.h>
 
 #include "rte_pipeline.h"
@@ -73,6 +74,9 @@ enum rte_table_action_type {
 
 	/**  Traffic Management. */
 	RTE_TABLE_ACTION_TM,
+
+	/** Packet encapsulations. */
+	RTE_TABLE_ACTION_ENCAP,
 };
 
 /** Common action configuration (per table action profile). */
@@ -277,6 +281,131 @@ struct rte_table_action_tm_params {
 
 	/** Pipe ID. */
 	uint32_t pipe_id;
+};
+
+/**
+ * RTE_TABLE_ACTION_ENCAP
+ */
+/** Supported packet encapsulation types. */
+enum rte_table_action_encap_type {
+	/** IP -> { Ether | IP } */
+	RTE_TABLE_ACTION_ENCAP_ETHER = 0,
+
+	/** IP -> { Ether | VLAN | IP } */
+	RTE_TABLE_ACTION_ENCAP_VLAN,
+
+	/** IP -> { Ether | S-VLAN | C-VLAN | IP } */
+	RTE_TABLE_ACTION_ENCAP_QINQ,
+
+	/** IP -> { Ether | MPLS | IP } */
+	RTE_TABLE_ACTION_ENCAP_MPLS,
+
+	/** IP -> { Ether | PPPoE | PPP | IP } */
+	RTE_TABLE_ACTION_ENCAP_PPPOE,
+};
+
+/** Pre-computed Ethernet header fields for encapsulation action. */
+struct rte_table_action_ether_hdr {
+	struct ether_addr da; /**< Destination address. */
+	struct ether_addr sa; /**< Source address. */
+};
+
+/** Pre-computed VLAN header fields for encapsulation action. */
+struct rte_table_action_vlan_hdr {
+	uint8_t pcp; /**< Priority Code Point (PCP). */
+	uint8_t dei; /**< Drop Eligibility Indicator (DEI). */
+	uint16_t vid; /**< VLAN Identifier (VID). */
+};
+
+/** Pre-computed MPLS header fields for encapsulation action. */
+struct rte_table_action_mpls_hdr {
+	uint32_t label; /**< Label. */
+	uint8_t tc; /**< Traffic Class (TC). */
+	uint8_t ttl; /**< Time to Live (TTL). */
+};
+
+/** Pre-computed PPPoE header fields for encapsulation action. */
+struct rte_table_action_pppoe_hdr {
+	uint16_t session_id; /**< Session ID. */
+};
+
+/** Ether encap parameters. */
+struct rte_table_action_encap_ether_params {
+	struct rte_table_action_ether_hdr ether; /**< Ethernet header. */
+};
+
+/** VLAN encap parameters. */
+struct rte_table_action_encap_vlan_params {
+	struct rte_table_action_ether_hdr ether; /**< Ethernet header. */
+	struct rte_table_action_vlan_hdr vlan; /**< VLAN header. */
+};
+
+/** QinQ encap parameters. */
+struct rte_table_action_encap_qinq_params {
+	struct rte_table_action_ether_hdr ether; /**< Ethernet header. */
+	struct rte_table_action_vlan_hdr svlan; /**< Service VLAN header. */
+	struct rte_table_action_vlan_hdr cvlan; /**< Customer VLAN header. */
+};
+
+/** Max number of MPLS labels per output packet for MPLS encapsulation. */
+#ifndef RTE_TABLE_ACTION_MPLS_LABELS_MAX
+#define RTE_TABLE_ACTION_MPLS_LABELS_MAX                   4
+#endif
+
+/** MPLS encap parameters. */
+struct rte_table_action_encap_mpls_params {
+	/** Ethernet header. */
+	struct rte_table_action_ether_hdr ether;
+
+	/** MPLS header. */
+	struct rte_table_action_mpls_hdr mpls[RTE_TABLE_ACTION_MPLS_LABELS_MAX];
+
+	/** Number of MPLS labels in MPLS header. */
+	uint32_t mpls_count;
+
+	/** Non-zero for MPLS unicast, zero for MPLS multicast. */
+	int unicast;
+};
+
+/** PPPoE encap parameters. */
+struct rte_table_action_encap_pppoe_params {
+	struct rte_table_action_ether_hdr ether; /**< Ethernet header. */
+	struct rte_table_action_pppoe_hdr pppoe; /**< PPPoE/PPP headers. */
+};
+
+/** Encap action configuration (per table action profile). */
+struct rte_table_action_encap_config {
+	/** Bit mask defining the set of packet encapsulations enabled for the
+	 * current table action profile. If bit (1 << N) is set in *encap_mask*,
+	 * then packet encapsulation N is enabled, otherwise it is disabled.
+	 *
+	 * @see enum rte_table_action_encap_type
+	 */
+	uint64_t encap_mask;
+};
+
+/** Encap action parameters (per table rule). */
+struct rte_table_action_encap_params {
+	/** Encapsulation type. */
+	enum rte_table_action_encap_type type;
+
+	RTE_STD_C11
+	union {
+		/** Only valid when *type* is set to Ether. */
+		struct rte_table_action_encap_ether_params ether;
+
+		/** Only valid when *type* is set to VLAN. */
+		struct rte_table_action_encap_vlan_params vlan;
+
+		/** Only valid when *type* is set to QinQ. */
+		struct rte_table_action_encap_qinq_params qinq;
+
+		/** Only valid when *type* is set to MPLS. */
+		struct rte_table_action_encap_mpls_params mpls;
+
+		/** Only valid when *type* is set to PPPoE. */
+		struct rte_table_action_encap_pppoe_params pppoe;
+	};
 };
 
 /**

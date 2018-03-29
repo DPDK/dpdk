@@ -9,8 +9,12 @@
 #include <rte_byteorder.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
+#include <rte_memcpy.h>
+#include <rte_ether.h>
 #include <rte_ip.h>
-
+#include <rte_esp.h>
+#include <rte_tcp.h>
+#include <rte_udp.h>
 
 #include "rte_table_action.h"
 
@@ -366,6 +370,369 @@ pkt_work_tm(struct rte_mbuf *mbuf,
 }
 
 /**
+ * RTE_TABLE_ACTION_ENCAP
+ */
+static int
+encap_valid(enum rte_table_action_encap_type encap)
+{
+	switch (encap) {
+	case RTE_TABLE_ACTION_ENCAP_ETHER:
+	case RTE_TABLE_ACTION_ENCAP_VLAN:
+	case RTE_TABLE_ACTION_ENCAP_QINQ:
+	case RTE_TABLE_ACTION_ENCAP_MPLS:
+	case RTE_TABLE_ACTION_ENCAP_PPPOE:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int
+encap_cfg_check(struct rte_table_action_encap_config *encap)
+{
+	if ((encap->encap_mask == 0) ||
+		(__builtin_popcountll(encap->encap_mask) != 1))
+		return -ENOTSUP;
+
+	return 0;
+}
+
+struct encap_ether_data {
+	struct ether_hdr ether;
+} __attribute__((__packed__));
+
+#define VLAN(pcp, dei, vid)                                \
+	((uint16_t)((((uint64_t)(pcp)) & 0x7LLU) << 13) |  \
+	((((uint64_t)(dei)) & 0x1LLU) << 12) |             \
+	(((uint64_t)(vid)) & 0xFFFLLU))                    \
+
+struct encap_vlan_data {
+	struct ether_hdr ether;
+	struct vlan_hdr vlan;
+} __attribute__((__packed__));
+
+struct encap_qinq_data {
+	struct ether_hdr ether;
+	struct vlan_hdr svlan;
+	struct vlan_hdr cvlan;
+} __attribute__((__packed__));
+
+#define ETHER_TYPE_MPLS_UNICAST                            0x8847
+
+#define ETHER_TYPE_MPLS_MULTICAST                          0x8848
+
+#define MPLS(label, tc, s, ttl)                            \
+	((uint32_t)(((((uint64_t)(label)) & 0xFFFFFLLU) << 12) |\
+	((((uint64_t)(tc)) & 0x7LLU) << 9) |               \
+	((((uint64_t)(s)) & 0x1LLU) << 8) |                \
+	(((uint64_t)(ttl)) & 0xFFLLU)))
+
+struct encap_mpls_data {
+	struct ether_hdr ether;
+	uint32_t mpls[RTE_TABLE_ACTION_MPLS_LABELS_MAX];
+	uint32_t mpls_count;
+} __attribute__((__packed__));
+
+#define ETHER_TYPE_PPPOE_SESSION                           0x8864
+
+#define PPP_PROTOCOL_IP                                    0x0021
+
+struct pppoe_ppp_hdr {
+	uint16_t ver_type_code;
+	uint16_t session_id;
+	uint16_t length;
+	uint16_t protocol;
+} __attribute__((__packed__));
+
+struct encap_pppoe_data {
+	struct ether_hdr ether;
+	struct pppoe_ppp_hdr pppoe_ppp;
+} __attribute__((__packed__));
+
+static size_t
+encap_data_size(struct rte_table_action_encap_config *encap)
+{
+	switch (encap->encap_mask) {
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_ETHER:
+		return sizeof(struct encap_ether_data);
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_VLAN:
+		return sizeof(struct encap_vlan_data);
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_QINQ:
+		return sizeof(struct encap_qinq_data);
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_MPLS:
+		return sizeof(struct encap_mpls_data);
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_PPPOE:
+		return sizeof(struct encap_pppoe_data);
+
+	default:
+		return 0;
+	}
+}
+
+static int
+encap_apply_check(struct rte_table_action_encap_params *p,
+	struct rte_table_action_encap_config *cfg)
+{
+	if ((encap_valid(p->type) == 0) ||
+		((cfg->encap_mask & (1LLU << p->type)) == 0))
+		return -EINVAL;
+
+	switch (p->type) {
+	case RTE_TABLE_ACTION_ENCAP_ETHER:
+		return 0;
+
+	case RTE_TABLE_ACTION_ENCAP_VLAN:
+		return 0;
+
+	case RTE_TABLE_ACTION_ENCAP_QINQ:
+		return 0;
+
+	case RTE_TABLE_ACTION_ENCAP_MPLS:
+		if ((p->mpls.mpls_count == 0) ||
+			(p->mpls.mpls_count > RTE_TABLE_ACTION_MPLS_LABELS_MAX))
+			return -EINVAL;
+
+		return 0;
+
+	case RTE_TABLE_ACTION_ENCAP_PPPOE:
+		return 0;
+
+	default:
+		return -EINVAL;
+	}
+}
+
+static int
+encap_ether_apply(void *data,
+	struct rte_table_action_encap_params *p,
+	struct rte_table_action_common_config *common_cfg)
+{
+	struct encap_ether_data *d = data;
+	uint16_t ethertype = (common_cfg->ip_version) ?
+		ETHER_TYPE_IPv4 :
+		ETHER_TYPE_IPv6;
+
+	/* Ethernet */
+	ether_addr_copy(&p->ether.ether.da, &d->ether.d_addr);
+	ether_addr_copy(&p->ether.ether.sa, &d->ether.s_addr);
+	d->ether.ether_type = rte_htons(ethertype);
+
+	return 0;
+}
+
+static int
+encap_vlan_apply(void *data,
+	struct rte_table_action_encap_params *p,
+	struct rte_table_action_common_config *common_cfg)
+{
+	struct encap_vlan_data *d = data;
+	uint16_t ethertype = (common_cfg->ip_version) ?
+		ETHER_TYPE_IPv4 :
+		ETHER_TYPE_IPv6;
+
+	/* Ethernet */
+	ether_addr_copy(&p->vlan.ether.da, &d->ether.d_addr);
+	ether_addr_copy(&p->vlan.ether.sa, &d->ether.s_addr);
+	d->ether.ether_type = rte_htons(ETHER_TYPE_VLAN);
+
+	/* VLAN */
+	d->vlan.vlan_tci = rte_htons(VLAN(p->vlan.vlan.pcp,
+		p->vlan.vlan.dei,
+		p->vlan.vlan.vid));
+	d->vlan.eth_proto = rte_htons(ethertype);
+
+	return 0;
+}
+
+static int
+encap_qinq_apply(void *data,
+	struct rte_table_action_encap_params *p,
+	struct rte_table_action_common_config *common_cfg)
+{
+	struct encap_qinq_data *d = data;
+	uint16_t ethertype = (common_cfg->ip_version) ?
+		ETHER_TYPE_IPv4 :
+		ETHER_TYPE_IPv6;
+
+	/* Ethernet */
+	ether_addr_copy(&p->qinq.ether.da, &d->ether.d_addr);
+	ether_addr_copy(&p->qinq.ether.sa, &d->ether.s_addr);
+	d->ether.ether_type = rte_htons(ETHER_TYPE_QINQ);
+
+	/* SVLAN */
+	d->svlan.vlan_tci = rte_htons(VLAN(p->qinq.svlan.pcp,
+		p->qinq.svlan.dei,
+		p->qinq.svlan.vid));
+	d->svlan.eth_proto = rte_htons(ETHER_TYPE_VLAN);
+
+	/* CVLAN */
+	d->cvlan.vlan_tci = rte_htons(VLAN(p->qinq.cvlan.pcp,
+		p->qinq.cvlan.dei,
+		p->qinq.cvlan.vid));
+	d->cvlan.eth_proto = rte_htons(ethertype);
+
+	return 0;
+}
+
+static int
+encap_mpls_apply(void *data,
+	struct rte_table_action_encap_params *p)
+{
+	struct encap_mpls_data *d = data;
+	uint16_t ethertype = (p->mpls.unicast) ?
+		ETHER_TYPE_MPLS_UNICAST :
+		ETHER_TYPE_MPLS_MULTICAST;
+	uint32_t i;
+
+	/* Ethernet */
+	ether_addr_copy(&p->mpls.ether.da, &d->ether.d_addr);
+	ether_addr_copy(&p->mpls.ether.sa, &d->ether.s_addr);
+	d->ether.ether_type = rte_htons(ethertype);
+
+	/* MPLS */
+	for (i = 0; i < p->mpls.mpls_count - 1; i++)
+		d->mpls[i] = rte_htonl(MPLS(p->mpls.mpls[i].label,
+			p->mpls.mpls[i].tc,
+			0,
+			p->mpls.mpls[i].ttl));
+
+	d->mpls[i] = rte_htonl(MPLS(p->mpls.mpls[i].label,
+		p->mpls.mpls[i].tc,
+		1,
+		p->mpls.mpls[i].ttl));
+
+	d->mpls_count = p->mpls.mpls_count;
+	return 0;
+}
+
+static int
+encap_pppoe_apply(void *data,
+	struct rte_table_action_encap_params *p)
+{
+	struct encap_pppoe_data *d = data;
+
+	/* Ethernet */
+	ether_addr_copy(&p->pppoe.ether.da, &d->ether.d_addr);
+	ether_addr_copy(&p->pppoe.ether.sa, &d->ether.s_addr);
+	d->ether.ether_type = rte_htons(ETHER_TYPE_PPPOE_SESSION);
+
+	/* PPPoE and PPP*/
+	d->pppoe_ppp.ver_type_code = rte_htons(0x1100);
+	d->pppoe_ppp.session_id = rte_htons(p->pppoe.pppoe.session_id);
+	d->pppoe_ppp.length = 0; /* not pre-computed */
+	d->pppoe_ppp.protocol = rte_htons(PPP_PROTOCOL_IP);
+
+	return 0;
+}
+
+static int
+encap_apply(void *data,
+	struct rte_table_action_encap_params *p,
+	struct rte_table_action_encap_config *cfg,
+	struct rte_table_action_common_config *common_cfg)
+{
+	int status;
+
+	/* Check input arguments */
+	status = encap_apply_check(p, cfg);
+	if (status)
+		return status;
+
+	switch (p->type) {
+	case RTE_TABLE_ACTION_ENCAP_ETHER:
+		return encap_ether_apply(data, p, common_cfg);
+
+	case RTE_TABLE_ACTION_ENCAP_VLAN:
+		return encap_vlan_apply(data, p, common_cfg);
+
+	case RTE_TABLE_ACTION_ENCAP_QINQ:
+		return encap_qinq_apply(data, p, common_cfg);
+
+	case RTE_TABLE_ACTION_ENCAP_MPLS:
+		return encap_mpls_apply(data, p);
+
+	case RTE_TABLE_ACTION_ENCAP_PPPOE:
+		return encap_pppoe_apply(data, p);
+
+	default:
+		return -EINVAL;
+	}
+}
+
+static __rte_always_inline void *
+encap(void *dst, const void *src, size_t n)
+{
+	dst = ((uint8_t *) dst) - n;
+	return rte_memcpy(dst, src, n);
+}
+
+static __rte_always_inline void
+pkt_work_encap(struct rte_mbuf *mbuf,
+	void *data,
+	struct rte_table_action_encap_config *cfg,
+	void *ip,
+	uint16_t total_length,
+	uint32_t ip_offset)
+{
+	switch (cfg->encap_mask) {
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_ETHER:
+		encap(ip, data, sizeof(struct encap_ether_data));
+		mbuf->data_off = ip_offset - (sizeof(struct rte_mbuf) +
+			sizeof(struct encap_ether_data));
+		mbuf->pkt_len = mbuf->data_len = total_length +
+			sizeof(struct encap_ether_data);
+		break;
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_VLAN:
+		encap(ip, data, sizeof(struct encap_vlan_data));
+		mbuf->data_off = ip_offset - (sizeof(struct rte_mbuf) +
+			sizeof(struct encap_vlan_data));
+		mbuf->pkt_len = mbuf->data_len = total_length +
+			sizeof(struct encap_vlan_data);
+		break;
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_QINQ:
+		encap(ip, data, sizeof(struct encap_qinq_data));
+		mbuf->data_off = ip_offset - (sizeof(struct rte_mbuf) +
+			sizeof(struct encap_qinq_data));
+		mbuf->pkt_len = mbuf->data_len = total_length +
+			sizeof(struct encap_qinq_data);
+		break;
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_MPLS:
+	{
+		struct encap_mpls_data *mpls = data;
+		size_t size = sizeof(struct ether_hdr) +
+			mpls->mpls_count * 4;
+
+		encap(ip, data, size);
+		mbuf->data_off = ip_offset - (sizeof(struct rte_mbuf) + size);
+		mbuf->pkt_len = mbuf->data_len = total_length + size;
+		break;
+	}
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_PPPOE:
+	{
+		struct encap_pppoe_data *pppoe =
+			encap(ip, data, sizeof(struct encap_pppoe_data));
+		pppoe->pppoe_ppp.length = rte_htons(total_length + 2);
+		mbuf->data_off = ip_offset - (sizeof(struct rte_mbuf) +
+			sizeof(struct encap_pppoe_data));
+		mbuf->pkt_len = mbuf->data_len = total_length +
+			sizeof(struct encap_pppoe_data);
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
+/**
  * Action profile
  */
 static int
@@ -375,6 +742,7 @@ action_valid(enum rte_table_action_type action)
 	case RTE_TABLE_ACTION_FWD:
 	case RTE_TABLE_ACTION_MTR:
 	case RTE_TABLE_ACTION_TM:
+	case RTE_TABLE_ACTION_ENCAP:
 		return 1;
 	default:
 		return 0;
@@ -389,6 +757,7 @@ struct ap_config {
 	struct rte_table_action_common_config common;
 	struct rte_table_action_mtr_config mtr;
 	struct rte_table_action_tm_config tm;
+	struct rte_table_action_encap_config encap;
 };
 
 static size_t
@@ -399,6 +768,8 @@ action_cfg_size(enum rte_table_action_type action)
 		return sizeof(struct rte_table_action_mtr_config);
 	case RTE_TABLE_ACTION_TM:
 		return sizeof(struct rte_table_action_tm_config);
+	case RTE_TABLE_ACTION_ENCAP:
+		return sizeof(struct rte_table_action_encap_config);
 	default:
 		return 0;
 	}
@@ -414,6 +785,9 @@ action_cfg_get(struct ap_config *ap_config,
 
 	case RTE_TABLE_ACTION_TM:
 		return &ap_config->tm;
+
+	case RTE_TABLE_ACTION_ENCAP:
+		return &ap_config->encap;
 
 	default:
 		return NULL;
@@ -451,6 +825,9 @@ action_data_size(enum rte_table_action_type action,
 
 	case RTE_TABLE_ACTION_TM:
 		return sizeof(struct tm_data);
+
+	case RTE_TABLE_ACTION_ENCAP:
+		return encap_data_size(&ap_config->encap);
 
 	default:
 		return 0;
@@ -529,6 +906,10 @@ rte_table_action_profile_action_register(struct rte_table_action_profile *profil
 
 	case RTE_TABLE_ACTION_TM:
 		status = tm_cfg_check(action_config);
+		break;
+
+	case RTE_TABLE_ACTION_ENCAP:
+		status = encap_cfg_check(action_config);
 		break;
 
 	default:
@@ -652,6 +1033,12 @@ rte_table_action_apply(struct rte_table_action *action,
 		return tm_apply(action_data,
 			action_params,
 			&action->cfg.tm);
+
+	case RTE_TABLE_ACTION_ENCAP:
+		return encap_apply(action_data,
+			action_params,
+			&action->cfg.encap,
+			&action->cfg.common);
 
 	default:
 		return -EINVAL;
@@ -870,6 +1257,18 @@ pkt_work(struct rte_mbuf *mbuf,
 			dscp);
 	}
 
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_ENCAP)) {
+		void *data =
+			action_data_get(table_entry, action, RTE_TABLE_ACTION_ENCAP);
+
+		pkt_work_encap(mbuf,
+			data,
+			&cfg->encap,
+			ip,
+			total_length,
+			ip_offset);
+	}
+
 	return drop_mask;
 }
 
@@ -1012,6 +1411,45 @@ pkt4_work(struct rte_mbuf **mbufs,
 			data3,
 			&action->dscp_table,
 			dscp3);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_ENCAP)) {
+		void *data0 =
+			action_data_get(table_entry0, action, RTE_TABLE_ACTION_ENCAP);
+		void *data1 =
+			action_data_get(table_entry1, action, RTE_TABLE_ACTION_ENCAP);
+		void *data2 =
+			action_data_get(table_entry2, action, RTE_TABLE_ACTION_ENCAP);
+		void *data3 =
+			action_data_get(table_entry3, action, RTE_TABLE_ACTION_ENCAP);
+
+		pkt_work_encap(mbuf0,
+			data0,
+			&cfg->encap,
+			ip0,
+			total_length0,
+			ip_offset);
+
+		pkt_work_encap(mbuf1,
+			data1,
+			&cfg->encap,
+			ip1,
+			total_length1,
+			ip_offset);
+
+		pkt_work_encap(mbuf2,
+			data2,
+			&cfg->encap,
+			ip2,
+			total_length2,
+			ip_offset);
+
+		pkt_work_encap(mbuf3,
+			data3,
+			&cfg->encap,
+			ip3,
+			total_length3,
+			ip_offset);
 	}
 
 	return drop_mask0 |
