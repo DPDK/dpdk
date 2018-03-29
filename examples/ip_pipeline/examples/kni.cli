@@ -1,0 +1,69 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2010-2018 Intel Corporation
+
+;                 _______________          ______________________
+;                |               |  KNI0  |                      |
+; LINK0 RXQ0 --->|...............|------->|--+                   |
+;                |               |  KNI1  |  | br0               |
+; LINK1 TXQ0 <---|...............|<-------|<-+                   |
+;                |               |        |     Linux Kernel     |
+;                |   PIPELINE0   |        |     Network Stack    |
+;                |               |  KNI1  |                      |
+; LINK1 RXQ0 --->|...............|------->|--+                   |
+;                |               |  KNI0  |  | br0               |
+; LINK0 TXQ0 <---|...............|<-------|<-+                   |
+;                |_______________|        |______________________|
+;
+; Insert Linux kernel KNI module:
+;    [Linux]$ insmod rte_kni.ko
+;
+; Configure Linux kernel bridge between KNI0 and KNI1 interfaces:
+;    [Linux]$ brctl addbr br0
+;    [Linux]$ brctl addif br0 KNI0
+;    [Linux]$ brctl addif br0 KNI1
+;    [Linux]$ ifconfig br0 up
+;    [Linux]$ ifconfig KNI0 up
+;    [Linux]$ ifconfig KNI1 up
+;
+; Monitor packet forwarding performed by Linux kernel between KNI0 and KNI1:
+;    [Linux]$ tcpdump -i KNI0
+;    [Linux]$ tcpdump -i KNI1
+
+mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 0
+
+link LINK0 dev 0000:02:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+link LINK1 dev 0000:02:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+
+kni KNI0 link LINK0 mempool MEMPOOL0
+kni KNI1 link LINK1 mempool MEMPOOL0
+
+table action profile AP0 ipv4 offset 270 fwd
+
+pipeline PIPELINE0 period 10 offset_port_id 0 cpu 0
+
+pipeline PIPELINE0 port in bsz 32 link LINK0 rxq 0
+pipeline PIPELINE0 port in bsz 32 kni KNI1
+pipeline PIPELINE0 port in bsz 32 link LINK1 rxq 0
+pipeline PIPELINE0 port in bsz 32 kni KNI0
+
+pipeline PIPELINE0 port out bsz 32 kni KNI0
+pipeline PIPELINE0 port out bsz 32 link LINK1 txq 0
+pipeline PIPELINE0 port out bsz 32 kni KNI1
+pipeline PIPELINE0 port out bsz 32 link LINK0 txq 0
+
+pipeline PIPELINE0 table match stub action AP0
+pipeline PIPELINE0 table match stub action AP0
+pipeline PIPELINE0 table match stub action AP0
+pipeline PIPELINE0 table match stub action AP0
+
+pipeline PIPELINE0 port in 0 table 0
+pipeline PIPELINE0 port in 1 table 1
+pipeline PIPELINE0 port in 2 table 2
+pipeline PIPELINE0 port in 3 table 3
+
+thread 1 pipeline PIPELINE0 enable
+
+pipeline PIPELINE0 table 0 rule add match default action fwd port 0
+pipeline PIPELINE0 table 1 rule add match default action fwd port 1
+pipeline PIPELINE0 table 2 rule add match default action fwd port 2
+pipeline PIPELINE0 table 3 rule add match default action fwd port 3
