@@ -45,6 +45,55 @@ fwd_apply(struct fwd_data *data,
 }
 
 /**
+ * RTE_TABLE_ACTION_LB
+ */
+static int
+lb_cfg_check(struct rte_table_action_lb_config *cfg)
+{
+	if ((cfg == NULL) ||
+		(cfg->key_size < RTE_TABLE_ACTION_LB_KEY_SIZE_MIN) ||
+		(cfg->key_size > RTE_TABLE_ACTION_LB_KEY_SIZE_MAX) ||
+		(!rte_is_power_of_2(cfg->key_size)) ||
+		(cfg->f_hash == NULL))
+		return -1;
+
+	return 0;
+}
+
+struct lb_data {
+	uint32_t out[RTE_TABLE_ACTION_LB_TABLE_SIZE];
+} __attribute__((__packed__));
+
+static int
+lb_apply(struct lb_data *data,
+	struct rte_table_action_lb_params *p)
+{
+	memcpy(data->out, p->out, sizeof(data->out));
+
+	return 0;
+}
+
+static __rte_always_inline void
+pkt_work_lb(struct rte_mbuf *mbuf,
+	struct lb_data *data,
+	struct rte_table_action_lb_config *cfg)
+{
+	uint8_t *pkt_key = RTE_MBUF_METADATA_UINT8_PTR(mbuf, cfg->key_offset);
+	uint32_t *out = RTE_MBUF_METADATA_UINT32_PTR(mbuf, cfg->out_offset);
+	uint64_t digest, pos;
+	uint32_t out_val;
+
+	digest = cfg->f_hash(pkt_key,
+		cfg->key_mask,
+		cfg->key_size,
+		cfg->seed);
+	pos = digest & (RTE_TABLE_ACTION_LB_TABLE_SIZE - 1);
+	out_val = data->out[pos];
+
+	*out = out_val;
+}
+
+/**
  * RTE_TABLE_ACTION_MTR
  */
 static int
@@ -1178,6 +1227,7 @@ action_valid(enum rte_table_action_type action)
 {
 	switch (action) {
 	case RTE_TABLE_ACTION_FWD:
+	case RTE_TABLE_ACTION_LB:
 	case RTE_TABLE_ACTION_MTR:
 	case RTE_TABLE_ACTION_TM:
 	case RTE_TABLE_ACTION_ENCAP:
@@ -1197,6 +1247,7 @@ action_valid(enum rte_table_action_type action)
 struct ap_config {
 	uint64_t action_mask;
 	struct rte_table_action_common_config common;
+	struct rte_table_action_lb_config lb;
 	struct rte_table_action_mtr_config mtr;
 	struct rte_table_action_tm_config tm;
 	struct rte_table_action_encap_config encap;
@@ -1209,6 +1260,8 @@ static size_t
 action_cfg_size(enum rte_table_action_type action)
 {
 	switch (action) {
+	case RTE_TABLE_ACTION_LB:
+		return sizeof(struct rte_table_action_lb_config);
 	case RTE_TABLE_ACTION_MTR:
 		return sizeof(struct rte_table_action_mtr_config);
 	case RTE_TABLE_ACTION_TM:
@@ -1231,6 +1284,9 @@ action_cfg_get(struct ap_config *ap_config,
 	enum rte_table_action_type type)
 {
 	switch (type) {
+	case RTE_TABLE_ACTION_LB:
+		return &ap_config->lb;
+
 	case RTE_TABLE_ACTION_MTR:
 		return &ap_config->mtr;
 
@@ -1279,6 +1335,9 @@ action_data_size(enum rte_table_action_type action,
 	switch (action) {
 	case RTE_TABLE_ACTION_FWD:
 		return sizeof(struct fwd_data);
+
+	case RTE_TABLE_ACTION_LB:
+		return sizeof(struct lb_data);
 
 	case RTE_TABLE_ACTION_MTR:
 		return mtr_data_size(&ap_config->mtr);
@@ -1373,6 +1432,10 @@ rte_table_action_profile_action_register(struct rte_table_action_profile *profil
 		return -EINVAL;
 
 	switch (type) {
+	case RTE_TABLE_ACTION_LB:
+		status = lb_cfg_check(action_config);
+		break;
+
 	case RTE_TABLE_ACTION_MTR:
 		status = mtr_cfg_check(action_config);
 		break;
@@ -1505,6 +1568,10 @@ rte_table_action_apply(struct rte_table_action *action,
 	switch (type) {
 	case RTE_TABLE_ACTION_FWD:
 		return fwd_apply(action_data,
+			action_params);
+
+	case RTE_TABLE_ACTION_LB:
+		return lb_apply(action_data,
 			action_params);
 
 	case RTE_TABLE_ACTION_MTR:
@@ -1822,6 +1889,14 @@ pkt_work(struct rte_mbuf *mbuf,
 			rte_ntohs(hdr->payload_len) + sizeof(struct ipv6_hdr);
 	}
 
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
+		void *data =
+			action_data_get(table_entry, action, RTE_TABLE_ACTION_LB);
+
+		pkt_work_lb(mbuf,
+			data,
+			&cfg->lb);
+	}
 	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) {
 		void *data =
 			action_data_get(table_entry, action, RTE_TABLE_ACTION_MTR);
@@ -1959,6 +2034,33 @@ pkt4_work(struct rte_mbuf **mbufs,
 			rte_ntohs(hdr2->payload_len) + sizeof(struct ipv6_hdr);
 		total_length3 =
 			rte_ntohs(hdr3->payload_len) + sizeof(struct ipv6_hdr);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
+		void *data0 =
+			action_data_get(table_entry0, action, RTE_TABLE_ACTION_LB);
+		void *data1 =
+			action_data_get(table_entry1, action, RTE_TABLE_ACTION_LB);
+		void *data2 =
+			action_data_get(table_entry2, action, RTE_TABLE_ACTION_LB);
+		void *data3 =
+			action_data_get(table_entry3, action, RTE_TABLE_ACTION_LB);
+
+		pkt_work_lb(mbuf0,
+			data0,
+			&cfg->lb);
+
+		pkt_work_lb(mbuf1,
+			data1,
+			&cfg->lb);
+
+		pkt_work_lb(mbuf2,
+			data2,
+			&cfg->lb);
+
+		pkt_work_lb(mbuf3,
+			data3,
+			&cfg->lb);
 	}
 
 	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) {

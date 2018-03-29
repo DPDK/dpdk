@@ -61,6 +61,7 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_ether.h>
 #include <rte_meter.h>
+#include <rte_table_hash.h>
 
 #include "rte_pipeline.h"
 
@@ -68,6 +69,9 @@ extern "C" {
 enum rte_table_action_type {
 	/** Forward to next pipeline table, output port or drop. */
 	RTE_TABLE_ACTION_FWD = 0,
+
+	/**  Load balance. */
+	RTE_TABLE_ACTION_LB,
 
 	/**  Traffic Metering and Policing. */
 	RTE_TABLE_ACTION_MTR,
@@ -114,6 +118,54 @@ struct rte_table_action_fwd_params {
 
 	/** Pipeline table ID or output port ID. */
 	uint32_t id;
+};
+
+/**
+ * RTE_TABLE_ACTION_LB
+ */
+/** Load balance key size min (number of bytes). */
+#define RTE_TABLE_ACTION_LB_KEY_SIZE_MIN                    8
+
+/** Load balance key size max (number of bytes). */
+#define RTE_TABLE_ACTION_LB_KEY_SIZE_MAX                    64
+
+/** Load balance table size. */
+#define RTE_TABLE_ACTION_LB_TABLE_SIZE                      8
+
+/** Load balance action configuration (per table action profile). */
+struct rte_table_action_lb_config {
+	/** Key size (number of bytes). */
+	uint32_t key_size;
+
+	/** Key offset within the input packet buffer. Offset 0 points to the
+	 * first byte of the MBUF structure.
+	 */
+	uint32_t key_offset;
+
+	/** Key mask (*key_size* bytes are valid). */
+	uint8_t key_mask[RTE_TABLE_ACTION_LB_KEY_SIZE_MAX];
+
+	/** Hash function. */
+	rte_table_hash_op_hash f_hash;
+
+	/** Seed value for *f_hash*. */
+	uint64_t seed;
+
+	/** Output value offset within the input packet buffer. Offset 0 points
+	 * to the first byte of the MBUF structure.
+	 */
+	uint32_t out_offset;
+};
+
+/** Load balance action parameters (per table rule). */
+struct rte_table_action_lb_params {
+	/** Table defining the output values and their weights. The weights are
+	 * set in 1/RTE_TABLE_ACTION_LB_TABLE_SIZE increments. To assign a
+	 * weight of N/RTE_TABLE_ACTION_LB_TABLE_SIZE to a given output value
+	 * (0 <= N <= RTE_TABLE_ACTION_LB_TABLE_SIZE), the same output value
+	 * needs to show up exactly N times in this table.
+	 */
+	uint32_t out[RTE_TABLE_ACTION_LB_TABLE_SIZE];
 };
 
 /**
