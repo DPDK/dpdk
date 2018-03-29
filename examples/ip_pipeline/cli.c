@@ -14,6 +14,7 @@
 #include "link.h"
 #include "mempool.h"
 #include "parser.h"
+#include "pipeline.h"
 #include "swq.h"
 #include "tap.h"
 #include "tmgr.h"
@@ -1157,6 +1158,784 @@ cmd_table_action_profile(char **tokens,
 	}
 }
 
+/**
+ * pipeline <pipeline_name>
+ *  period <timer_period_ms>
+ *  offset_port_id <offset_port_id>
+ *  cpu <cpu_id>
+ */
+static void
+cmd_pipeline(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline_params p;
+	char *name;
+	struct pipeline *pipeline;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	if (strcmp(tokens[2], "period") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "period");
+		return;
+	}
+
+	if (parser_read_uint32(&p.timer_period_ms, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "timer_period_ms");
+		return;
+	}
+
+	if (strcmp(tokens[4], "offset_port_id") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset_port_id");
+		return;
+	}
+
+	if (parser_read_uint32(&p.offset_port_id, tokens[5]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "offset_port_id");
+		return;
+	}
+
+	if (strcmp(tokens[6], "cpu") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cpu");
+		return;
+	}
+
+	if (parser_read_uint32(&p.cpu_id, tokens[7]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "cpu_id");
+		return;
+	}
+
+	pipeline = pipeline_create(name, &p);
+	if (pipeline == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> port in
+ *  bsz <burst_size>
+ *  link <link_name> rxq <queue_id>
+ *  | swq <swq_name>
+ *  | tmgr <tmgr_name>
+ *  | tap <tap_name> mempool <mempool_name> mtu <mtu>
+ *  | kni <kni_name>
+ *  | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>
+ *  [action <port_in_action_profile_name>]
+ *  [disabled]
+ */
+static void
+cmd_pipeline_port_in(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct port_in_params p;
+	char *pipeline_name;
+	uint32_t t0;
+	int enabled, status;
+
+	if (n_tokens < 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "port") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (strcmp(tokens[3], "in") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "in");
+		return;
+	}
+
+	if (strcmp(tokens[4], "bsz") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "bsz");
+		return;
+	}
+
+	if (parser_read_uint32(&p.burst_size, tokens[5]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "burst_size");
+		return;
+	}
+
+	t0 = 6;
+
+	if (strcmp(tokens[t0], "link") == 0) {
+		if (n_tokens < t0 + 4) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in link");
+			return;
+		}
+
+		p.type = PORT_IN_RXQ;
+
+		p.dev_name = tokens[t0 + 1];
+
+		if (strcmp(tokens[t0 + 2], "rxq") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rxq");
+			return;
+		}
+
+		if (parser_read_uint16(&p.rxq.queue_id, tokens[t0 + 3]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"queue_id");
+			return;
+		}
+		t0 += 4;
+	} else if (strcmp(tokens[t0], "swq") == 0) {
+		if (n_tokens < t0 + 2) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in swq");
+			return;
+		}
+
+		p.type = PORT_IN_SWQ;
+
+		p.dev_name = tokens[t0 + 1];
+
+		t0 += 2;
+	} else if (strcmp(tokens[t0], "tmgr") == 0) {
+		if (n_tokens < t0 + 2) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in tmgr");
+			return;
+		}
+
+		p.type = PORT_IN_TMGR;
+
+		p.dev_name = tokens[t0 + 1];
+
+		t0 += 2;
+	} else if (strcmp(tokens[t0], "tap") == 0) {
+		if (n_tokens < t0 + 6) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in tap");
+			return;
+		}
+
+		p.type = PORT_IN_TAP;
+
+		p.dev_name = tokens[t0 + 1];
+
+		if (strcmp(tokens[t0 + 2], "mempool") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"mempool");
+			return;
+		}
+
+		p.tap.mempool_name = tokens[t0 + 3];
+
+		if (strcmp(tokens[t0 + 4], "mtu") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"mtu");
+			return;
+		}
+
+		if (parser_read_uint32(&p.tap.mtu, tokens[t0 + 5]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "mtu");
+			return;
+		}
+
+		t0 += 6;
+	} else if (strcmp(tokens[t0], "kni") == 0) {
+		if (n_tokens < t0 + 2) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in kni");
+			return;
+		}
+
+		p.type = PORT_IN_KNI;
+
+		p.dev_name = tokens[t0 + 1];
+
+		t0 += 2;
+	} else if (strcmp(tokens[t0], "source") == 0) {
+		if (n_tokens < t0 + 6) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in source");
+			return;
+		}
+
+		p.type = PORT_IN_SOURCE;
+
+		p.dev_name = NULL;
+
+		if (strcmp(tokens[t0 + 1], "mempool") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"mempool");
+			return;
+		}
+
+		p.source.mempool_name = tokens[t0 + 2];
+
+		if (strcmp(tokens[t0 + 3], "file") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"file");
+			return;
+		}
+
+		p.source.file_name = tokens[t0 + 4];
+
+		if (strcmp(tokens[t0 + 5], "bpp") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"bpp");
+			return;
+		}
+
+		if (parser_read_uint32(&p.source.n_bytes_per_pkt, tokens[t0 + 6]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"n_bytes_per_pkt");
+			return;
+		}
+
+		t0 += 7;
+	} else {
+		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
+		return;
+	}
+
+	p.action_profile_name = NULL;
+	if ((n_tokens > t0) && (strcmp(tokens[t0], "action") == 0)) {
+		if (n_tokens < t0 + 2) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "action");
+			return;
+		}
+
+		p.action_profile_name = tokens[t0 + 1];
+
+		t0 += 2;
+	}
+
+	enabled = 1;
+	if ((n_tokens > t0) &&
+		(strcmp(tokens[t0], "disabled") == 0)) {
+		enabled = 0;
+
+		t0 += 1;
+	}
+
+	if (n_tokens != t0) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	status = pipeline_port_in_create(pipeline_name,
+		&p, enabled);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> port out
+ *  bsz <burst_size>
+ *  link <link_name> txq <txq_id>
+ *  | swq <swq_name>
+ *  | tmgr <tmgr_name>
+ *  | tap <tap_name>
+ *  | kni <kni_name>
+ *  | sink [file <file_name> pkts <max_n_pkts>]
+ */
+static void
+cmd_pipeline_port_out(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct port_out_params p;
+	char *pipeline_name;
+	int status;
+
+	memset(&p, 0, sizeof(p));
+
+	if (n_tokens < 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "port") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (strcmp(tokens[3], "out") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "out");
+		return;
+	}
+
+	if (strcmp(tokens[4], "bsz") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "bsz");
+		return;
+	}
+
+	if (parser_read_uint32(&p.burst_size, tokens[5]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "burst_size");
+		return;
+	}
+
+	if (strcmp(tokens[6], "link") == 0) {
+		if (n_tokens != 10) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out link");
+			return;
+		}
+
+		p.type = PORT_OUT_TXQ;
+
+		p.dev_name = tokens[7];
+
+		if (strcmp(tokens[8], "txq") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "txq");
+			return;
+		}
+
+		if (parser_read_uint16(&p.txq.queue_id, tokens[9]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "queue_id");
+			return;
+		}
+	} else if (strcmp(tokens[6], "swq") == 0) {
+		if (n_tokens != 8) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out swq");
+			return;
+		}
+
+		p.type = PORT_OUT_SWQ;
+
+		p.dev_name = tokens[7];
+	} else if (strcmp(tokens[6], "tmgr") == 0) {
+		if (n_tokens != 8) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out tmgr");
+			return;
+		}
+
+		p.type = PORT_OUT_TMGR;
+
+		p.dev_name = tokens[7];
+	} else if (strcmp(tokens[6], "tap") == 0) {
+		if (n_tokens != 8) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out tap");
+			return;
+		}
+
+		p.type = PORT_OUT_TAP;
+
+		p.dev_name = tokens[7];
+	} else if (strcmp(tokens[6], "kni") == 0) {
+		if (n_tokens != 8) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out kni");
+			return;
+		}
+
+		p.type = PORT_OUT_KNI;
+
+		p.dev_name = tokens[7];
+	} else if (strcmp(tokens[6], "sink") == 0) {
+		if ((n_tokens != 7) && (n_tokens != 11)) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out sink");
+			return;
+		}
+
+		p.type = PORT_OUT_SINK;
+
+		p.dev_name = NULL;
+
+		if (n_tokens == 7) {
+			p.sink.file_name = NULL;
+			p.sink.max_n_pkts = 0;
+		} else {
+			if (strcmp(tokens[7], "file") != 0) {
+				snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+					"file");
+				return;
+			}
+
+			p.sink.file_name = tokens[8];
+
+			if (strcmp(tokens[9], "pkts") != 0) {
+				snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pkts");
+				return;
+			}
+
+			if (parser_read_uint32(&p.sink.max_n_pkts, tokens[10]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "max_n_pkts");
+				return;
+			}
+		}
+	} else {
+		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
+		return;
+	}
+
+	status = pipeline_port_out_create(pipeline_name, &p);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> table
+ *      match
+ *      acl
+ *          ipv4 | ipv6
+ *          offset <ip_header_offset>
+ *          size <n_rules>
+ *      | array
+ *          offset <key_offset>
+ *          size <n_keys>
+ *      | hash
+ *          ext | lru
+ *          key <key_size>
+ *          mask <key_mask>
+ *          offset <key_offset>
+ *          buckets <n_buckets>
+ *          size <n_keys>
+ *      | lpm
+ *          ipv4 | ipv6
+ *          offset <ip_header_offset>
+ *          size <n_rules>
+ *      | stub
+ *  [action <table_action_profile_name>]
+ */
+static void
+cmd_pipeline_table(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	uint8_t key_mask[TABLE_RULE_MATCH_SIZE_MAX];
+	struct table_params p;
+	char *pipeline_name;
+	uint32_t t0;
+	int status;
+
+	if (n_tokens < 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (strcmp(tokens[3], "match") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "match");
+		return;
+	}
+
+	t0 = 4;
+	if (strcmp(tokens[t0], "acl") == 0) {
+		if (n_tokens < t0 + 6) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline table acl");
+			return;
+		}
+
+		p.match_type = TABLE_ACL;
+
+		if (strcmp(tokens[t0 + 1], "ipv4") == 0)
+			p.match.acl.ip_version = 1;
+		else if (strcmp(tokens[t0 + 1], "ipv6") == 0)
+			p.match.acl.ip_version = 0;
+		else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"ipv4 or ipv6");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 2], "offset") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.acl.ip_header_offset,
+			tokens[t0 + 3]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"ip_header_offset");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 4], "size") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "size");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.acl.n_rules,
+			tokens[t0 + 5]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "n_rules");
+			return;
+		}
+
+		t0 += 6;
+	} else if (strcmp(tokens[t0], "array") == 0) {
+		if (n_tokens < t0 + 5) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline table array");
+			return;
+		}
+
+		p.match_type = TABLE_ARRAY;
+
+		if (strcmp(tokens[t0 + 1], "offset") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.array.key_offset,
+			tokens[t0 + 2]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_offset");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 3], "size") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "size");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.array.n_keys,
+			tokens[t0 + 4]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "n_keys");
+			return;
+		}
+
+		t0 += 5;
+	} else if (strcmp(tokens[t0], "hash") == 0) {
+		uint32_t key_mask_size = TABLE_RULE_MATCH_SIZE_MAX;
+
+		if (n_tokens < t0 + 12) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline table hash");
+			return;
+		}
+
+		p.match_type = TABLE_HASH;
+
+		if (strcmp(tokens[t0 + 1], "ext") == 0)
+			p.match.hash.extendable_bucket = 1;
+		else if (strcmp(tokens[t0 + 1], "lru") == 0)
+			p.match.hash.extendable_bucket = 0;
+		else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"ext or lru");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 2], "key") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "key");
+			return;
+		}
+
+		if ((parser_read_uint32(&p.match.hash.key_size,
+			tokens[t0 + 3]) != 0) ||
+			(p.match.hash.key_size == 0) ||
+			(p.match.hash.key_size > TABLE_RULE_MATCH_SIZE_MAX)) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_size");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 4], "mask") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mask");
+			return;
+		}
+
+		if ((parse_hex_string(tokens[t0 + 5],
+			key_mask, &key_mask_size) != 0) ||
+			(key_mask_size != p.match.hash.key_size)) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_mask");
+			return;
+		}
+		p.match.hash.key_mask = key_mask;
+
+		if (strcmp(tokens[t0 + 6], "offset") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.hash.key_offset,
+			tokens[t0 + 7]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_offset");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 8], "buckets") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "buckets");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.hash.n_buckets,
+			tokens[t0 + 9]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "n_buckets");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 10], "size") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "size");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.hash.n_keys,
+			tokens[t0 + 11]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "n_keys");
+			return;
+		}
+
+		t0 += 12;
+	} else if (strcmp(tokens[t0], "lpm") == 0) {
+		if (n_tokens < t0 + 6) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline table lpm");
+			return;
+		}
+
+		p.match_type = TABLE_LPM;
+
+		if (strcmp(tokens[t0 + 1], "ipv4") == 0)
+			p.match.lpm.key_size = 4;
+		else if (strcmp(tokens[t0 + 1], "ipv6") == 0)
+			p.match.lpm.key_size = 16;
+		else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"ipv4 or ipv6");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 2], "offset") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.lpm.key_offset,
+			tokens[t0 + 3]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_offset");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 4], "size") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "size");
+			return;
+		}
+
+		if (parser_read_uint32(&p.match.lpm.n_rules,
+			tokens[t0 + 5]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "n_rules");
+			return;
+		}
+
+		t0 += 6;
+	} else if (strcmp(tokens[t0], "stub") == 0) {
+		if (n_tokens < t0 + 1) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline table stub");
+			return;
+		}
+
+		p.match_type = TABLE_STUB;
+
+		t0 += 1;
+	} else {
+		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
+		return;
+	}
+
+	p.action_profile_name = NULL;
+	if ((n_tokens > t0) && (strcmp(tokens[t0], "action") == 0)) {
+		if (n_tokens < t0 + 2) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "action");
+			return;
+		}
+
+		p.action_profile_name = tokens[t0 + 1];
+
+		t0 += 2;
+	}
+
+	if (n_tokens > t0) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	status = pipeline_table_create(pipeline_name, &p);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> port in <port_id> table <table_id>
+ */
+static void
+cmd_pipeline_port_in_table(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t port_id, table_id;
+	int status;
+
+	if (n_tokens != 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "port") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (strcmp(tokens[3], "in") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "in");
+		return;
+	}
+
+	if (parser_read_uint32(&port_id, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	status = pipeline_port_in_connect_to_table(pipeline_name,
+		port_id,
+		table_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 void
 cli_process(char *in, char *out, size_t out_size)
 {
@@ -1243,6 +2022,46 @@ cli_process(char *in, char *out, size_t out_size)
 	if (strcmp(tokens[0], "table") == 0) {
 		cmd_table_action_profile(tokens, n_tokens, out, out_size);
 		return;
+	}
+
+	if (strcmp(tokens[0], "pipeline") == 0) {
+		if ((n_tokens >= 3) &&
+			(strcmp(tokens[2], "period") == 0)) {
+			cmd_pipeline(tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "port") == 0) &&
+			(strcmp(tokens[3], "in") == 0) &&
+			(strcmp(tokens[4], "bsz") == 0)) {
+			cmd_pipeline_port_in(tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "port") == 0) &&
+			(strcmp(tokens[3], "out") == 0) &&
+			(strcmp(tokens[4], "bsz") == 0)) {
+			cmd_pipeline_port_out(tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 4) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[3], "match") == 0)) {
+			cmd_pipeline_table(tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 6) &&
+			(strcmp(tokens[2], "port") == 0) &&
+			(strcmp(tokens[3], "in") == 0) &&
+			(strcmp(tokens[5], "table") == 0)) {
+			cmd_pipeline_port_in_table(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
 	}
 
 	snprintf(out, out_size, MSG_CMD_UNKNOWN, tokens[0]);

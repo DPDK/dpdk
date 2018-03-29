@@ -15,6 +15,7 @@
 #include "kni.h"
 #include "link.h"
 #include "mempool.h"
+#include "pipeline.h"
 #include "swq.h"
 #include "tap.h"
 #include "tmgr.h"
@@ -218,6 +219,13 @@ main(int argc, char **argv)
 	if (status) {
 		printf("Error: Action profile initialization failed (%d)\n",
 			status);
+		return status;
+	}
+
+	/* Pipeline */
+	status = pipeline_init();
+	if (status) {
+		printf("Error: Pipeline initialization failed (%d)\n", status);
 		return status;
 	}
 

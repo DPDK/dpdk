@@ -13,6 +13,7 @@ SRCS-y += link.c
 SRCS-y += main.c
 SRCS-y += mempool.c
 SRCS-y += parser.c
+SRCS-y += pipeline.c
 SRCS-y += swq.c
 SRCS-y += tap.c
 SRCS-y += tmgr.c

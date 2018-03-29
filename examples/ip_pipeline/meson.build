@@ -17,6 +17,7 @@ sources = files(
 	'main.c',
 	'mempool.c',
 	'parser.c',
+	'pipeline.c',
 	'swq.c',
 	'tap.c',
 	'tmgr.c'

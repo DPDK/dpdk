@@ -7,8 +7,6 @@
 
 #include <stddef.h>
 
-#include "action.h"
-
 void
 cli_process(char *in, char *out, size_t out_size);
 
