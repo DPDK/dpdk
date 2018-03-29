@@ -1938,6 +1938,100 @@ cmd_pipeline_port_in_table(char **tokens,
 }
 
 /**
+ * pipeline <pipeline_name> port in <port_id> enable
+ */
+static void
+cmd_pipeline_port_in_enable(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t port_id;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "port") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (strcmp(tokens[3], "in") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "in");
+		return;
+	}
+
+	if (parser_read_uint32(&port_id, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "enable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "enable");
+		return;
+	}
+
+	status = pipeline_port_in_enable(pipeline_name, port_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> port in <port_id> disable
+ */
+static void
+cmd_pipeline_port_in_disable(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t port_id;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "port") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (strcmp(tokens[3], "in") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "in");
+		return;
+	}
+
+	if (parser_read_uint32(&port_id, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "disable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "disable");
+		return;
+	}
+
+	status = pipeline_port_in_disable(pipeline_name, port_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -2145,6 +2239,24 @@ cli_process(char *in, char *out, size_t out_size)
 			(strcmp(tokens[3], "in") == 0) &&
 			(strcmp(tokens[5], "table") == 0)) {
 			cmd_pipeline_port_in_table(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 6) &&
+			(strcmp(tokens[2], "port") == 0) &&
+			(strcmp(tokens[3], "in") == 0) &&
+			(strcmp(tokens[5], "enable") == 0)) {
+			cmd_pipeline_port_in_enable(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 6) &&
+			(strcmp(tokens[2], "port") == 0) &&
+			(strcmp(tokens[3], "in") == 0) &&
+			(strcmp(tokens[5], "disable") == 0)) {
+			cmd_pipeline_port_in_disable(tokens, n_tokens,
 				out, out_size);
 			return;
 		}

@@ -477,18 +477,147 @@ thread_msg_handle(struct thread_data *t)
 /**
  * Master thread & data plane threads: message passing
  */
-
 enum pipeline_req_type {
+	/* Port IN */
+	PIPELINE_REQ_PORT_IN_ENABLE,
+	PIPELINE_REQ_PORT_IN_DISABLE,
+
 	PIPELINE_REQ_MAX
 };
 
 struct pipeline_msg_req {
 	enum pipeline_req_type type;
+	uint32_t id; /* Port IN, port OUT or table ID */
 };
 
 struct pipeline_msg_rsp {
 	int status;
 };
+
+/**
+ * Master thread
+ */
+static struct pipeline_msg_req *
+pipeline_msg_alloc(void)
+{
+	size_t size = RTE_MAX(sizeof(struct pipeline_msg_req),
+		sizeof(struct pipeline_msg_rsp));
+
+	return calloc(1, size);
+}
+
+static void
+pipeline_msg_free(struct pipeline_msg_rsp *rsp)
+{
+	free(rsp);
+}
+
+static struct pipeline_msg_rsp *
+pipeline_msg_send_recv(struct pipeline *p,
+	struct pipeline_msg_req *req)
+{
+	struct rte_ring *msgq_req = p->msgq_req;
+	struct rte_ring *msgq_rsp = p->msgq_rsp;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* send */
+	do {
+		status = rte_ring_sp_enqueue(msgq_req, req);
+	} while (status == -ENOBUFS);
+
+	/* recv */
+	do {
+		status = rte_ring_sc_dequeue(msgq_rsp, (void **) &rsp);
+	} while (status != 0);
+
+	return rsp;
+}
+
+int
+pipeline_port_in_enable(const char *pipeline_name,
+	uint32_t port_id)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL)
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(p->enabled == 0) ||
+		(port_id >= p->n_ports_in))
+		return -1;
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_PORT_IN_ENABLE;
+	req->id = port_id;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
+int
+pipeline_port_in_disable(const char *pipeline_name,
+	uint32_t port_id)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL)
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(p->enabled == 0) ||
+		(port_id >= p->n_ports_in))
+		return -1;
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_PORT_IN_DISABLE;
+	req->id = port_id;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
 
 /**
  * Data plane threads: message handling
@@ -517,6 +646,32 @@ pipeline_msg_send(struct rte_ring *msgq_rsp,
 	} while (status == -ENOBUFS);
 }
 
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_port_in_enable(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
+	uint32_t port_id = req->id;
+
+	rsp->status = rte_pipeline_port_in_enable(p->p,
+		port_id);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_port_in_disable(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
+	uint32_t port_id = req->id;
+
+	rsp->status = rte_pipeline_port_in_disable(p->p,
+		port_id);
+
+	return rsp;
+}
+
 static void
 pipeline_msg_handle(struct pipeline_data *p)
 {
@@ -529,6 +684,14 @@ pipeline_msg_handle(struct pipeline_data *p)
 			break;
 
 		switch (req->type) {
+		case PIPELINE_REQ_PORT_IN_ENABLE:
+			rsp = pipeline_msg_handle_port_in_enable(p, req);
+			break;
+
+		case PIPELINE_REQ_PORT_IN_DISABLE:
+			rsp = pipeline_msg_handle_port_in_disable(p, req);
+			break;
+
 		default:
 			rsp = (struct pipeline_msg_rsp *) req;
 			rsp->status = -1;

@@ -269,4 +269,12 @@ struct table_rule_action {
 	struct rte_table_action_time_params time;
 };
 
+int
+pipeline_port_in_enable(const char *pipeline_name,
+	uint32_t port_id);
+
+int
+pipeline_port_in_disable(const char *pipeline_name,
+	uint32_t port_id);
+
 #endif /* _INCLUDE_PIPELINE_H_ */
