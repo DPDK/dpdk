@@ -496,6 +496,7 @@ enum pipeline_req_type {
 	PIPELINE_REQ_TABLE_RULE_STATS_READ,
 	PIPELINE_REQ_TABLE_MTR_PROFILE_ADD,
 	PIPELINE_REQ_TABLE_MTR_PROFILE_DELETE,
+	PIPELINE_REQ_TABLE_RULE_MTR_READ,
 	PIPELINE_REQ_MAX
 };
 
@@ -546,6 +547,11 @@ struct pipeline_msg_req_table_mtr_profile_delete {
 	uint32_t meter_profile_id;
 };
 
+struct pipeline_msg_req_table_rule_mtr_read {
+	void *data;
+	uint32_t tc_mask;
+	int clear;
+};
 struct pipeline_msg_req {
 	enum pipeline_req_type type;
 	uint32_t id; /* Port IN, port OUT or table ID */
@@ -562,6 +568,7 @@ struct pipeline_msg_req {
 		struct pipeline_msg_req_table_rule_stats_read table_rule_stats_read;
 		struct pipeline_msg_req_table_mtr_profile_add table_mtr_profile_add;
 		struct pipeline_msg_req_table_mtr_profile_delete table_mtr_profile_delete;
+		struct pipeline_msg_req_table_rule_mtr_read table_rule_mtr_read;
 	};
 };
 
@@ -593,6 +600,10 @@ struct pipeline_msg_rsp_table_rule_stats_read {
 	struct rte_table_action_stats_counters stats;
 };
 
+struct pipeline_msg_rsp_table_rule_mtr_read {
+	struct rte_table_action_mtr_counters stats;
+};
+
 struct pipeline_msg_rsp {
 	int status;
 
@@ -605,6 +616,7 @@ struct pipeline_msg_rsp {
 		struct pipeline_msg_rsp_table_rule_add_default table_rule_add_default;
 		struct pipeline_msg_rsp_table_rule_add_bulk table_rule_add_bulk;
 		struct pipeline_msg_rsp_table_rule_stats_read table_rule_stats_read;
+		struct pipeline_msg_rsp_table_rule_mtr_read table_rule_mtr_read;
 	};
 };
 
@@ -1430,6 +1442,59 @@ pipeline_table_mtr_profile_delete(const char *pipeline_name,
 
 	/* Read response */
 	status = rsp->status;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
+int
+pipeline_table_rule_mtr_read(const char *pipeline_name,
+	uint32_t table_id,
+	void *data,
+	uint32_t tc_mask,
+	struct rte_table_action_mtr_counters *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if ((pipeline_name == NULL) ||
+		(data == NULL) ||
+		(stats == NULL))
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(p->enabled == 0) ||
+		(table_id >= p->n_tables))
+		return -1;
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_RULE_MTR_READ;
+	req->id = table_id;
+	req->table_rule_mtr_read.data = data;
+	req->table_rule_mtr_read.tc_mask = tc_mask;
+	req->table_rule_mtr_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->table_rule_mtr_read.stats, sizeof(*stats));
 
 	/* Free response */
 	pipeline_msg_free(rsp);
@@ -2271,6 +2336,26 @@ pipeline_msg_handle_table_mtr_profile_delete(struct pipeline_data *p,
 	return rsp;
 }
 
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_rule_mtr_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
+	uint32_t table_id = req->id;
+	void *data = req->table_rule_mtr_read.data;
+	uint32_t tc_mask = req->table_rule_mtr_read.tc_mask;
+	int clear = req->table_rule_mtr_read.clear;
+	struct rte_table_action *a = p->table_data[table_id].a;
+
+	rsp->status = rte_table_action_meter_read(a,
+		data,
+		tc_mask,
+		&rsp->table_rule_mtr_read.stats,
+		clear);
+
+	return rsp;
+}
+
 static void
 pipeline_msg_handle(struct pipeline_data *p)
 {
@@ -2333,6 +2418,10 @@ pipeline_msg_handle(struct pipeline_data *p)
 
 		case PIPELINE_REQ_TABLE_MTR_PROFILE_DELETE:
 			rsp = pipeline_msg_handle_table_mtr_profile_delete(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_RULE_MTR_READ:
+			rsp = pipeline_msg_handle_table_rule_mtr_read(p, req);
 			break;
 
 		default:

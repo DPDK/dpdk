@@ -343,4 +343,12 @@ pipeline_table_mtr_profile_delete(const char *pipeline_name,
 	uint32_t table_id,
 	uint32_t meter_profile_id);
 
+int
+pipeline_table_rule_mtr_read(const char *pipeline_name,
+	uint32_t table_id,
+	void *data,
+	uint32_t tc_mask,
+	struct rte_table_action_mtr_counters *stats,
+	int clear);
+
 #endif /* _INCLUDE_PIPELINE_H_ */
