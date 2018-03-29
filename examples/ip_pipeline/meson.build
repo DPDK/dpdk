@@ -29,6 +29,4 @@ sources = files(
 	'pipeline/pipeline_flow_classification.c',
 	'pipeline/pipeline_master_be.c',
 	'pipeline/pipeline_master.c',
-	'pipeline/pipeline_routing_be.c',
-	'pipeline/pipeline_routing.c',
 )

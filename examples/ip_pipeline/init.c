@@ -29,7 +29,6 @@
 #include "pipeline_firewall.h"
 #include "pipeline_flow_classification.h"
 #include "pipeline_flow_actions.h"
-#include "pipeline_routing.h"
 #include "thread_fe.h"
 
 #define APP_NAME_SIZE	32
@@ -1824,7 +1823,6 @@ int app_init(struct app_params *app)
 	app_pipeline_type_register(app, &pipeline_flow_classification);
 	app_pipeline_type_register(app, &pipeline_flow_actions);
 	app_pipeline_type_register(app, &pipeline_firewall);
-	app_pipeline_type_register(app, &pipeline_routing);
 
 	app_init_pipelines(app);
 	app_init_threads(app);

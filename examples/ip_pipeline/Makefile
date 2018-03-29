@@ -25,8 +25,6 @@ SRCS-y += pipeline_flow_classification_be.c
 SRCS-y += pipeline_flow_classification.c
 SRCS-y += pipeline_flow_actions_be.c
 SRCS-y += pipeline_flow_actions.c
-SRCS-y += pipeline_routing_be.c
-SRCS-y += pipeline_routing.c
 
 # Build using pkg-config variables if possible
 $(shell pkg-config --exists libdpdk)
