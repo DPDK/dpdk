@@ -25,8 +25,6 @@ sources = files(
 	'pipeline/pipeline_firewall.c',
 	'pipeline/pipeline_flow_actions_be.c',
 	'pipeline/pipeline_flow_actions.c',
-	'pipeline/pipeline_flow_classification_be.c',
-	'pipeline/pipeline_flow_classification.c',
 	'pipeline/pipeline_master_be.c',
 	'pipeline/pipeline_master.c',
 )

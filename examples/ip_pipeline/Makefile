@@ -21,8 +21,6 @@ SRCS-y += pipeline_master_be.c
 SRCS-y += pipeline_master.c
 SRCS-y += pipeline_firewall_be.c
 SRCS-y += pipeline_firewall.c
-SRCS-y += pipeline_flow_classification_be.c
-SRCS-y += pipeline_flow_classification.c
 SRCS-y += pipeline_flow_actions_be.c
 SRCS-y += pipeline_flow_actions.c
 
