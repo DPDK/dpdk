@@ -83,6 +83,9 @@ enum rte_table_action_type {
 
 	/** Time to Live (TTL) update. */
 	RTE_TABLE_ACTION_TTL,
+
+	/** Statistics. */
+	RTE_TABLE_ACTION_STATS,
 };
 
 /** Common action configuration (per table action profile). */
@@ -489,6 +492,56 @@ struct rte_table_action_ttl_counters {
 };
 
 /**
+ * RTE_TABLE_ACTION_STATS
+ */
+/** Stats action configuration (per table action profile). */
+struct rte_table_action_stats_config {
+	/** When non-zero, the *n_packets* stats counter is enabled, otherwise
+	 * disabled.
+	 *
+	 * @see struct rte_table_action_stats_counters
+	 */
+	int n_packets_enabled;
+
+	/** When non-zero, the *n_bytes* stats counter is enabled, otherwise
+	 * disabled.
+	 *
+	 * @see struct rte_table_action_stats_counters
+	 */
+	int n_bytes_enabled;
+};
+
+/** Stats action parameters (per table rule). */
+struct rte_table_action_stats_params {
+	/** Initial value for the *n_packets* stats counter. Typically set to 0.
+	 *
+	 * @see struct rte_table_action_stats_counters
+	 */
+	uint64_t n_packets;
+
+	/** Initial value for the *n_bytes* stats counter. Typically set to 0.
+	 *
+	 * @see struct rte_table_action_stats_counters
+	 */
+	uint64_t n_bytes;
+};
+
+/** Stats action counters (per table rule). */
+struct rte_table_action_stats_counters {
+	/** Number of packets. Valid only when *n_packets_valid* is non-zero. */
+	uint64_t n_packets;
+
+	/** Number of bytes. Valid only when *n_bytes_valid* is non-zero. */
+	uint64_t n_bytes;
+
+	/** When non-zero, the *n_packets* field is valid, otherwise invalid. */
+	int n_packets_valid;
+
+	/** When non-zero, the *n_bytes* field is valid, otherwise invalid. */
+	int n_bytes_valid;
+};
+
+/**
  * Table action profile.
  */
 struct rte_table_action_profile;
@@ -735,6 +788,31 @@ int __rte_experimental
 rte_table_action_ttl_read(struct rte_table_action *action,
 	void *data,
 	struct rte_table_action_ttl_counters *stats,
+	int clear);
+
+/**
+ * Table action stats read.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[in] data
+ *   Data byte array (typically table rule data) with stats action previously
+ *   applied on it.
+ * @param[inout] stats
+ *   When non-NULL, it points to the area where the stats counters read from
+ *   *data* are saved.
+ * @param[in] clear
+ *   When non-zero, the stats counters are cleared (i.e. set to zero), otherwise
+ *   the counters are not modified. When the read operation is enabled (*stats*
+ *   is non-NULL), the clear operation is performed after the read operation is
+ *   completed.
+ * @return
+ *   Zero on success, non-zero error code otherwise.
+ */
+int __rte_experimental
+rte_table_action_stats_read(struct rte_table_action *action,
+	void *data,
+	struct rte_table_action_stats_counters *stats,
 	int clear);
 
 #ifdef __cplusplus

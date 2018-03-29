@@ -1114,6 +1114,41 @@ pkt_ipv6_work_ttl(struct ipv6_hdr *ip,
 }
 
 /**
+ * RTE_TABLE_ACTION_STATS
+ */
+static int
+stats_cfg_check(struct rte_table_action_stats_config *stats)
+{
+	if ((stats->n_packets_enabled == 0) && (stats->n_bytes_enabled == 0))
+		return -EINVAL;
+
+	return 0;
+}
+
+struct stats_data {
+	uint64_t n_packets;
+	uint64_t n_bytes;
+} __attribute__((__packed__));
+
+static int
+stats_apply(struct stats_data *data,
+	struct rte_table_action_stats_params *p)
+{
+	data->n_packets = p->n_packets;
+	data->n_bytes = p->n_bytes;
+
+	return 0;
+}
+
+static __rte_always_inline void
+pkt_work_stats(struct stats_data *data,
+	uint16_t total_length)
+{
+	data->n_packets++;
+	data->n_bytes += total_length;
+}
+
+/**
  * Action profile
  */
 static int
@@ -1126,6 +1161,7 @@ action_valid(enum rte_table_action_type action)
 	case RTE_TABLE_ACTION_ENCAP:
 	case RTE_TABLE_ACTION_NAT:
 	case RTE_TABLE_ACTION_TTL:
+	case RTE_TABLE_ACTION_STATS:
 		return 1;
 	default:
 		return 0;
@@ -1143,6 +1179,7 @@ struct ap_config {
 	struct rte_table_action_encap_config encap;
 	struct rte_table_action_nat_config nat;
 	struct rte_table_action_ttl_config ttl;
+	struct rte_table_action_stats_config stats;
 };
 
 static size_t
@@ -1159,6 +1196,8 @@ action_cfg_size(enum rte_table_action_type action)
 		return sizeof(struct rte_table_action_nat_config);
 	case RTE_TABLE_ACTION_TTL:
 		return sizeof(struct rte_table_action_ttl_config);
+	case RTE_TABLE_ACTION_STATS:
+		return sizeof(struct rte_table_action_stats_config);
 	default:
 		return 0;
 	}
@@ -1183,6 +1222,9 @@ action_cfg_get(struct ap_config *ap_config,
 
 	case RTE_TABLE_ACTION_TTL:
 		return &ap_config->ttl;
+
+	case RTE_TABLE_ACTION_STATS:
+		return &ap_config->stats;
 
 	default:
 		return NULL;
@@ -1230,6 +1272,9 @@ action_data_size(enum rte_table_action_type action,
 
 	case RTE_TABLE_ACTION_TTL:
 		return sizeof(struct ttl_data);
+
+	case RTE_TABLE_ACTION_STATS:
+		return sizeof(struct stats_data);
 
 	default:
 		return 0;
@@ -1320,6 +1365,10 @@ rte_table_action_profile_action_register(struct rte_table_action_profile *profil
 
 	case RTE_TABLE_ACTION_TTL:
 		status = ttl_cfg_check(action_config);
+		break;
+
+	case RTE_TABLE_ACTION_STATS:
+		status = stats_cfg_check(action_config);
 		break;
 
 	default:
@@ -1457,6 +1506,10 @@ rte_table_action_apply(struct rte_table_action *action,
 
 	case RTE_TABLE_ACTION_TTL:
 		return ttl_apply(action_data,
+			action_params);
+
+	case RTE_TABLE_ACTION_STATS:
+		return stats_apply(action_data,
 			action_params);
 
 	default:
@@ -1653,6 +1706,41 @@ rte_table_action_ttl_read(struct rte_table_action *action,
 	return 0;
 }
 
+int
+rte_table_action_stats_read(struct rte_table_action *action,
+	void *data,
+	struct rte_table_action_stats_counters *stats,
+	int clear)
+{
+	struct stats_data *stats_data;
+
+	/* Check input arguments */
+	if ((action == NULL) ||
+		((action->cfg.action_mask &
+		(1LLU << RTE_TABLE_ACTION_STATS)) == 0) ||
+		(data == NULL))
+		return -EINVAL;
+
+	stats_data = action_data_get(data, action,
+		RTE_TABLE_ACTION_STATS);
+
+	/* Read */
+	if (stats) {
+		stats->n_packets = stats_data->n_packets;
+		stats->n_bytes = stats_data->n_bytes;
+		stats->n_packets_valid = 1;
+		stats->n_bytes_valid = 1;
+	}
+
+	/* Clear */
+	if (clear) {
+		stats_data->n_packets = 0;
+		stats_data->n_bytes = 0;
+	}
+
+	return 0;
+}
+
 static __rte_always_inline uint64_t
 pkt_work(struct rte_mbuf *mbuf,
 	struct rte_pipeline_table_entry *table_entry,
@@ -1734,6 +1822,13 @@ pkt_work(struct rte_mbuf *mbuf,
 			drop_mask |= pkt_ipv4_work_ttl(ip, data);
 		else
 			drop_mask |= pkt_ipv6_work_ttl(ip, data);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_STATS)) {
+		void *data =
+			action_data_get(table_entry, action, RTE_TABLE_ACTION_STATS);
+
+		pkt_work_stats(data, total_length);
 	}
 
 	return drop_mask;
@@ -1963,6 +2058,22 @@ pkt4_work(struct rte_mbuf **mbufs,
 			drop_mask2 |= pkt_ipv6_work_ttl(ip2, data2);
 			drop_mask3 |= pkt_ipv6_work_ttl(ip3, data3);
 		}
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_STATS)) {
+		void *data0 =
+			action_data_get(table_entry0, action, RTE_TABLE_ACTION_STATS);
+		void *data1 =
+			action_data_get(table_entry1, action, RTE_TABLE_ACTION_STATS);
+		void *data2 =
+			action_data_get(table_entry2, action, RTE_TABLE_ACTION_STATS);
+		void *data3 =
+			action_data_get(table_entry3, action, RTE_TABLE_ACTION_STATS);
+
+		pkt_work_stats(data0, total_length0);
+		pkt_work_stats(data1, total_length1);
+		pkt_work_stats(data2, total_length2);
+		pkt_work_stats(data3, total_length3);
 	}
 
 	return drop_mask0 |
