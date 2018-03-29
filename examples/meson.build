@@ -32,8 +32,11 @@ foreach example: examples
 	if build
 		dep_objs = ext_deps
 		foreach d:deps
-			dep_objs += [get_variable(
-				get_option('default_library') + '_rte_' + d)]
+			var_name = get_option('default_library') + '_rte_' + d
+			if not is_variable(var_name)
+				error('Missing dependency "@0@" for example "@1@"'.format(d, name))
+			endif
+			dep_objs += [get_variable(var_name)]
 		endforeach
 		if allow_experimental_apis
 			cflags += '-DALLOW_EXPERIMENTAL_API'
