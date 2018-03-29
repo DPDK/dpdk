@@ -77,6 +77,9 @@ enum rte_table_action_type {
 
 	/** Packet encapsulations. */
 	RTE_TABLE_ACTION_ENCAP,
+
+	/** Network Address Translation (NAT). */
+	RTE_TABLE_ACTION_NAT,
 };
 
 /** Common action configuration (per table action profile). */
@@ -406,6 +409,42 @@ struct rte_table_action_encap_params {
 		/** Only valid when *type* is set to PPPoE. */
 		struct rte_table_action_encap_pppoe_params pppoe;
 	};
+};
+
+/**
+ * RTE_TABLE_ACTION_NAT
+ */
+/** NAT action configuration (per table action profile). */
+struct rte_table_action_nat_config {
+	/** When non-zero, the IP source address and L4 protocol source port are
+	 * translated. When zero, the IP destination address and L4 protocol
+	 * destination port are translated.
+	 */
+	int source_nat;
+
+	/** Layer 4 protocol, for example TCP (0x06) or UDP (0x11). The checksum
+	 * field is computed differently and placed at different header offset
+	 * by each layer 4 protocol.
+	 */
+	uint8_t proto;
+};
+
+/** NAT action parameters (per table rule). */
+struct rte_table_action_nat_params {
+	/** IP version for *addr*: non-zero for IPv4, zero for IPv6. */
+	int ip_version;
+
+	/** IP address. */
+	union {
+		/** IPv4 address; only valid when *ip_version* is non-zero. */
+		uint32_t ipv4;
+
+		/** IPv6 address; only valid when *ip_version* is set to 0. */
+		uint8_t ipv6[16];
+	} addr;
+
+	/** Port. */
+	uint16_t port;
 };
 
 /**

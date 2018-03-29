@@ -733,6 +733,304 @@ pkt_work_encap(struct rte_mbuf *mbuf,
 }
 
 /**
+ * RTE_TABLE_ACTION_NAT
+ */
+static int
+nat_cfg_check(struct rte_table_action_nat_config *nat)
+{
+	if ((nat->proto != 0x06) &&
+		(nat->proto != 0x11))
+		return -ENOTSUP;
+
+	return 0;
+}
+
+struct nat_ipv4_data {
+	uint32_t addr;
+	uint16_t port;
+} __attribute__((__packed__));
+
+struct nat_ipv6_data {
+	uint8_t addr[16];
+	uint16_t port;
+} __attribute__((__packed__));
+
+static size_t
+nat_data_size(struct rte_table_action_nat_config *nat __rte_unused,
+	struct rte_table_action_common_config *common)
+{
+	int ip_version = common->ip_version;
+
+	return (ip_version) ?
+		sizeof(struct nat_ipv4_data) :
+		sizeof(struct nat_ipv6_data);
+}
+
+static int
+nat_apply_check(struct rte_table_action_nat_params *p,
+	struct rte_table_action_common_config *cfg)
+{
+	if ((p->ip_version && (cfg->ip_version == 0)) ||
+		((p->ip_version == 0) && cfg->ip_version))
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+nat_apply(void *data,
+	struct rte_table_action_nat_params *p,
+	struct rte_table_action_common_config *cfg)
+{
+	int status;
+
+	/* Check input arguments */
+	status = nat_apply_check(p, cfg);
+	if (status)
+		return status;
+
+	/* Apply */
+	if (p->ip_version) {
+		struct nat_ipv4_data *d = data;
+
+		d->addr = rte_htonl(p->addr.ipv4);
+		d->port = rte_htons(p->port);
+	} else {
+		struct nat_ipv6_data *d = data;
+
+		memcpy(d->addr, p->addr.ipv6, sizeof(d->addr));
+		d->port = rte_htons(p->port);
+	}
+
+	return 0;
+}
+
+static __rte_always_inline uint16_t
+nat_ipv4_checksum_update(uint16_t cksum0,
+	uint32_t ip0,
+	uint32_t ip1)
+{
+	int32_t cksum1;
+
+	cksum1 = cksum0;
+	cksum1 = ~cksum1 & 0xFFFF;
+
+	/* Subtract ip0 (one's complement logic) */
+	cksum1 -= (ip0 >> 16) + (ip0 & 0xFFFF);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+
+	/* Add ip1 (one's complement logic) */
+	cksum1 += (ip1 >> 16) + (ip1 & 0xFFFF);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+
+	return (uint16_t)(~cksum1);
+}
+
+static __rte_always_inline uint16_t
+nat_ipv4_tcp_udp_checksum_update(uint16_t cksum0,
+	uint32_t ip0,
+	uint32_t ip1,
+	uint16_t port0,
+	uint16_t port1)
+{
+	int32_t cksum1;
+
+	cksum1 = cksum0;
+	cksum1 = ~cksum1 & 0xFFFF;
+
+	/* Subtract ip0 and port 0 (one's complement logic) */
+	cksum1 -= (ip0 >> 16) + (ip0 & 0xFFFF) + port0;
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+
+	/* Add ip1 and port1 (one's complement logic) */
+	cksum1 += (ip1 >> 16) + (ip1 & 0xFFFF) + port1;
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+
+	return (uint16_t)(~cksum1);
+}
+
+static __rte_always_inline uint16_t
+nat_ipv6_tcp_udp_checksum_update(uint16_t cksum0,
+	uint16_t *ip0,
+	uint16_t *ip1,
+	uint16_t port0,
+	uint16_t port1)
+{
+	int32_t cksum1;
+
+	cksum1 = cksum0;
+	cksum1 = ~cksum1 & 0xFFFF;
+
+	/* Subtract ip0 and port 0 (one's complement logic) */
+	cksum1 -= ip0[0] + ip0[1] + ip0[2] + ip0[3] +
+		ip0[4] + ip0[5] + ip0[6] + ip0[7] + port0;
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+
+	/* Add ip1 and port1 (one's complement logic) */
+	cksum1 += ip1[0] + ip1[1] + ip1[2] + ip1[3] +
+		ip1[4] + ip1[5] + ip1[6] + ip1[7] + port1;
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+
+	return (uint16_t)(~cksum1);
+}
+
+static __rte_always_inline void
+pkt_ipv4_work_nat(struct ipv4_hdr *ip,
+	struct nat_ipv4_data *data,
+	struct rte_table_action_nat_config *cfg)
+{
+	if (cfg->source_nat) {
+		if (cfg->proto == 0x6) {
+			struct tcp_hdr *tcp = (struct tcp_hdr *) &ip[1];
+			uint16_t ip_cksum, tcp_cksum;
+
+			ip_cksum = nat_ipv4_checksum_update(ip->hdr_checksum,
+				ip->src_addr,
+				data->addr);
+
+			tcp_cksum = nat_ipv4_tcp_udp_checksum_update(tcp->cksum,
+				ip->src_addr,
+				data->addr,
+				tcp->src_port,
+				data->port);
+
+			ip->src_addr = data->addr;
+			ip->hdr_checksum = ip_cksum;
+			tcp->src_port = data->port;
+			tcp->cksum = tcp_cksum;
+		} else {
+			struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+			uint16_t ip_cksum, udp_cksum;
+
+			ip_cksum = nat_ipv4_checksum_update(ip->hdr_checksum,
+				ip->src_addr,
+				data->addr);
+
+			udp_cksum = nat_ipv4_tcp_udp_checksum_update(udp->dgram_cksum,
+				ip->src_addr,
+				data->addr,
+				udp->src_port,
+				data->port);
+
+			ip->src_addr = data->addr;
+			ip->hdr_checksum = ip_cksum;
+			udp->src_port = data->port;
+			if (udp->dgram_cksum)
+				udp->dgram_cksum = udp_cksum;
+		}
+	} else {
+		if (cfg->proto == 0x6) {
+			struct tcp_hdr *tcp = (struct tcp_hdr *) &ip[1];
+			uint16_t ip_cksum, tcp_cksum;
+
+			ip_cksum = nat_ipv4_checksum_update(ip->hdr_checksum,
+				ip->dst_addr,
+				data->addr);
+
+			tcp_cksum = nat_ipv4_tcp_udp_checksum_update(tcp->cksum,
+				ip->dst_addr,
+				data->addr,
+				tcp->dst_port,
+				data->port);
+
+			ip->dst_addr = data->addr;
+			ip->hdr_checksum = ip_cksum;
+			tcp->dst_port = data->port;
+			tcp->cksum = tcp_cksum;
+		} else {
+			struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+			uint16_t ip_cksum, udp_cksum;
+
+			ip_cksum = nat_ipv4_checksum_update(ip->hdr_checksum,
+				ip->dst_addr,
+				data->addr);
+
+			udp_cksum = nat_ipv4_tcp_udp_checksum_update(udp->dgram_cksum,
+				ip->dst_addr,
+				data->addr,
+				udp->dst_port,
+				data->port);
+
+			ip->dst_addr = data->addr;
+			ip->hdr_checksum = ip_cksum;
+			udp->dst_port = data->port;
+			if (udp->dgram_cksum)
+				udp->dgram_cksum = udp_cksum;
+		}
+	}
+}
+
+static __rte_always_inline void
+pkt_ipv6_work_nat(struct ipv6_hdr *ip,
+	struct nat_ipv6_data *data,
+	struct rte_table_action_nat_config *cfg)
+{
+	if (cfg->source_nat) {
+		if (cfg->proto == 0x6) {
+			struct tcp_hdr *tcp = (struct tcp_hdr *) &ip[1];
+			uint16_t tcp_cksum;
+
+			tcp_cksum = nat_ipv6_tcp_udp_checksum_update(tcp->cksum,
+				(uint16_t *)ip->src_addr,
+				(uint16_t *)data->addr,
+				tcp->src_port,
+				data->port);
+
+			rte_memcpy(ip->src_addr, data->addr, 16);
+			tcp->src_port = data->port;
+			tcp->cksum = tcp_cksum;
+		} else {
+			struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+			uint16_t udp_cksum;
+
+			udp_cksum = nat_ipv6_tcp_udp_checksum_update(udp->dgram_cksum,
+				(uint16_t *)ip->src_addr,
+				(uint16_t *)data->addr,
+				udp->src_port,
+				data->port);
+
+			rte_memcpy(ip->src_addr, data->addr, 16);
+			udp->src_port = data->port;
+			udp->dgram_cksum = udp_cksum;
+		}
+	} else {
+		if (cfg->proto == 0x6) {
+			struct tcp_hdr *tcp = (struct tcp_hdr *) &ip[1];
+			uint16_t tcp_cksum;
+
+			tcp_cksum = nat_ipv6_tcp_udp_checksum_update(tcp->cksum,
+				(uint16_t *)ip->dst_addr,
+				(uint16_t *)data->addr,
+				tcp->dst_port,
+				data->port);
+
+			rte_memcpy(ip->dst_addr, data->addr, 16);
+			tcp->dst_port = data->port;
+			tcp->cksum = tcp_cksum;
+		} else {
+			struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+			uint16_t udp_cksum;
+
+			udp_cksum = nat_ipv6_tcp_udp_checksum_update(udp->dgram_cksum,
+				(uint16_t *)ip->dst_addr,
+				(uint16_t *)data->addr,
+				udp->dst_port,
+				data->port);
+
+			rte_memcpy(ip->dst_addr, data->addr, 16);
+			udp->dst_port = data->port;
+			udp->dgram_cksum = udp_cksum;
+		}
+	}
+}
+
+/**
  * Action profile
  */
 static int
@@ -743,6 +1041,7 @@ action_valid(enum rte_table_action_type action)
 	case RTE_TABLE_ACTION_MTR:
 	case RTE_TABLE_ACTION_TM:
 	case RTE_TABLE_ACTION_ENCAP:
+	case RTE_TABLE_ACTION_NAT:
 		return 1;
 	default:
 		return 0;
@@ -758,6 +1057,7 @@ struct ap_config {
 	struct rte_table_action_mtr_config mtr;
 	struct rte_table_action_tm_config tm;
 	struct rte_table_action_encap_config encap;
+	struct rte_table_action_nat_config nat;
 };
 
 static size_t
@@ -770,6 +1070,8 @@ action_cfg_size(enum rte_table_action_type action)
 		return sizeof(struct rte_table_action_tm_config);
 	case RTE_TABLE_ACTION_ENCAP:
 		return sizeof(struct rte_table_action_encap_config);
+	case RTE_TABLE_ACTION_NAT:
+		return sizeof(struct rte_table_action_nat_config);
 	default:
 		return 0;
 	}
@@ -788,6 +1090,9 @@ action_cfg_get(struct ap_config *ap_config,
 
 	case RTE_TABLE_ACTION_ENCAP:
 		return &ap_config->encap;
+
+	case RTE_TABLE_ACTION_NAT:
+		return &ap_config->nat;
 
 	default:
 		return NULL;
@@ -828,6 +1133,10 @@ action_data_size(enum rte_table_action_type action,
 
 	case RTE_TABLE_ACTION_ENCAP:
 		return encap_data_size(&ap_config->encap);
+
+	case RTE_TABLE_ACTION_NAT:
+		return nat_data_size(&ap_config->nat,
+			&ap_config->common);
 
 	default:
 		return 0;
@@ -910,6 +1219,10 @@ rte_table_action_profile_action_register(struct rte_table_action_profile *profil
 
 	case RTE_TABLE_ACTION_ENCAP:
 		status = encap_cfg_check(action_config);
+		break;
+
+	case RTE_TABLE_ACTION_NAT:
+		status = nat_cfg_check(action_config);
 		break;
 
 	default:
@@ -1038,6 +1351,11 @@ rte_table_action_apply(struct rte_table_action *action,
 		return encap_apply(action_data,
 			action_params,
 			&action->cfg.encap,
+			&action->cfg.common);
+
+	case RTE_TABLE_ACTION_NAT:
+		return nat_apply(action_data,
+			action_params,
 			&action->cfg.common);
 
 	default:
@@ -1269,6 +1587,16 @@ pkt_work(struct rte_mbuf *mbuf,
 			ip_offset);
 	}
 
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_NAT)) {
+		void *data =
+			action_data_get(table_entry, action, RTE_TABLE_ACTION_NAT);
+
+		if (cfg->common.ip_version)
+			pkt_ipv4_work_nat(ip, data, &cfg->nat);
+		else
+			pkt_ipv6_work_nat(ip, data, &cfg->nat);
+	}
+
 	return drop_mask;
 }
 
@@ -1450,6 +1778,29 @@ pkt4_work(struct rte_mbuf **mbufs,
 			ip3,
 			total_length3,
 			ip_offset);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_NAT)) {
+		void *data0 =
+			action_data_get(table_entry0, action, RTE_TABLE_ACTION_NAT);
+		void *data1 =
+			action_data_get(table_entry1, action, RTE_TABLE_ACTION_NAT);
+		void *data2 =
+			action_data_get(table_entry2, action, RTE_TABLE_ACTION_NAT);
+		void *data3 =
+			action_data_get(table_entry3, action, RTE_TABLE_ACTION_NAT);
+
+		if (cfg->common.ip_version) {
+			pkt_ipv4_work_nat(ip0, data0, &cfg->nat);
+			pkt_ipv4_work_nat(ip1, data1, &cfg->nat);
+			pkt_ipv4_work_nat(ip2, data2, &cfg->nat);
+			pkt_ipv4_work_nat(ip3, data3, &cfg->nat);
+		} else {
+			pkt_ipv6_work_nat(ip0, data0, &cfg->nat);
+			pkt_ipv6_work_nat(ip1, data1, &cfg->nat);
+			pkt_ipv6_work_nat(ip2, data2, &cfg->nat);
+			pkt_ipv6_work_nat(ip3, data3, &cfg->nat);
+		}
 	}
 
 	return drop_mask0 |
