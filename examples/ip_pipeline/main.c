@@ -12,6 +12,7 @@
 
 #include "cli.h"
 #include "conn.h"
+#include "kni.h"
 #include "link.h"
 #include "mempool.h"
 #include "swq.h"
@@ -199,6 +200,13 @@ main(int argc, char **argv)
 		return status;
 	}
 
+	/* KNI */
+	status = kni_init();
+	if (status) {
+		printf("Error: KNI initialization failed (%d)\n", status);
+		return status;
+	}
+
 	/* Script */
 	if (app.script_name)
 		cli_script_process(app.script_name,
@@ -210,5 +218,7 @@ main(int argc, char **argv)
 		conn_poll_for_conn(conn);
 
 		conn_poll_for_msg(conn);
+
+		kni_handle_request();
 	}
 }

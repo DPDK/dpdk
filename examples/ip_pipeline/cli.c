@@ -10,6 +10,7 @@
 #include <rte_common.h>
 
 #include "cli.h"
+#include "kni.h"
 #include "link.h"
 #include "mempool.h"
 #include "parser.h"
@@ -630,6 +631,65 @@ cmd_tap(char **tokens,
 	}
 }
 
+/**
+ * kni <kni_name>
+ *  link <link_name>
+ *  mempool <mempool_name>
+ *  [thread <thread_id>]
+ */
+static void
+cmd_kni(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct kni_params p;
+	char *name;
+	struct kni *kni;
+
+	if ((n_tokens != 6) && (n_tokens != 8)) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	if (strcmp(tokens[2], "link") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "link");
+		return;
+	}
+
+	p.link_name = tokens[3];
+
+	if (strcmp(tokens[4], "mempool") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mempool");
+		return;
+	}
+
+	p.mempool_name = tokens[5];
+
+	if (n_tokens == 8) {
+		if (strcmp(tokens[6], "thread") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "thread");
+			return;
+		}
+
+		if (parser_read_uint32(&p.thread_id, tokens[7]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
+			return;
+		}
+
+		p.force_bind = 1;
+	} else
+		p.force_bind = 0;
+
+	kni = kni_create(name, &p);
+	if (kni == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 void
 cli_process(char *in, char *out, size_t out_size)
 {
@@ -700,6 +760,11 @@ cli_process(char *in, char *out, size_t out_size)
 
 	if (strcmp(tokens[0], "tap") == 0) {
 		cmd_tap(tokens, n_tokens, out, out_size);
+		return;
+	}
+
+	if (strcmp(tokens[0], "kni") == 0) {
+		cmd_kni(tokens, n_tokens, out, out_size);
 		return;
 	}
 

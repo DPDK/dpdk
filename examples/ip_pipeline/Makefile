@@ -7,6 +7,7 @@ APP = ip_pipeline
 # all source are stored in SRCS-y
 SRCS-y := cli.c
 SRCS-y += conn.c
+SRCS-y += kni.c
 SRCS-y += link.c
 SRCS-y += main.c
 SRCS-y += mempool.c
