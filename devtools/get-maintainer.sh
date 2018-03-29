@@ -31,7 +31,7 @@ if [ ! -x "$DPDK_GETMAINTAINER_PATH" ] ; then
 fi
 
 FILES="COPYING CREDITS Kbuild"
-FOLDERS="Documentation arch include fs init ipc kernel scripts"
+FOLDERS="Documentation arch include fs init ipc scripts"
 
 # Kernel script checks for some files and folders to run
 workaround () {
