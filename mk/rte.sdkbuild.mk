@@ -14,6 +14,7 @@ endif
 -include $(RTE_SDK)/mk/exec-env/$(RTE_EXEC_ENV)/rte.custom.mk
 
 buildtools: | lib
+kernel: | lib
 drivers: | lib buildtools
 app: | lib buildtools drivers
 test: | lib buildtools drivers
