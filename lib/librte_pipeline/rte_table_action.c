@@ -297,6 +297,73 @@ pkt_work_mtr(struct rte_mbuf *mbuf,
 	return drop_mask;
 }
 
+/**
+ * RTE_TABLE_ACTION_TM
+ */
+static int
+tm_cfg_check(struct rte_table_action_tm_config *tm)
+{
+	if ((tm->n_subports_per_port == 0) ||
+		(rte_is_power_of_2(tm->n_subports_per_port) == 0) ||
+		(tm->n_subports_per_port > UINT16_MAX) ||
+		(tm->n_pipes_per_subport == 0) ||
+		(rte_is_power_of_2(tm->n_pipes_per_subport) == 0))
+		return -ENOTSUP;
+
+	return 0;
+}
+
+struct tm_data {
+	uint16_t queue_tc_color;
+	uint16_t subport;
+	uint32_t pipe;
+} __attribute__((__packed__));
+
+static int
+tm_apply_check(struct rte_table_action_tm_params *p,
+	struct rte_table_action_tm_config *cfg)
+{
+	if ((p->subport_id >= cfg->n_subports_per_port) ||
+		(p->pipe_id >= cfg->n_pipes_per_subport))
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+tm_apply(struct tm_data *data,
+	struct rte_table_action_tm_params *p,
+	struct rte_table_action_tm_config *cfg)
+{
+	int status;
+
+	/* Check input arguments */
+	status = tm_apply_check(p, cfg);
+	if (status)
+		return status;
+
+	/* Apply */
+	data->queue_tc_color = 0;
+	data->subport = (uint16_t) p->subport_id;
+	data->pipe = p->pipe_id;
+
+	return 0;
+}
+
+static __rte_always_inline void
+pkt_work_tm(struct rte_mbuf *mbuf,
+	struct tm_data *data,
+	struct dscp_table_data *dscp_table,
+	uint32_t dscp)
+{
+	struct dscp_table_entry_data *dscp_entry = &dscp_table->entry[dscp];
+	struct tm_data *sched_ptr = (struct tm_data *) &mbuf->hash.sched;
+	struct tm_data sched;
+
+	sched = *data;
+	sched.queue_tc_color = dscp_entry->queue_tc_color;
+	*sched_ptr = sched;
+}
 
 /**
  * Action profile
@@ -307,6 +374,7 @@ action_valid(enum rte_table_action_type action)
 	switch (action) {
 	case RTE_TABLE_ACTION_FWD:
 	case RTE_TABLE_ACTION_MTR:
+	case RTE_TABLE_ACTION_TM:
 		return 1;
 	default:
 		return 0;
@@ -320,6 +388,7 @@ struct ap_config {
 	uint64_t action_mask;
 	struct rte_table_action_common_config common;
 	struct rte_table_action_mtr_config mtr;
+	struct rte_table_action_tm_config tm;
 };
 
 static size_t
@@ -328,6 +397,8 @@ action_cfg_size(enum rte_table_action_type action)
 	switch (action) {
 	case RTE_TABLE_ACTION_MTR:
 		return sizeof(struct rte_table_action_mtr_config);
+	case RTE_TABLE_ACTION_TM:
+		return sizeof(struct rte_table_action_tm_config);
 	default:
 		return 0;
 	}
@@ -340,6 +411,9 @@ action_cfg_get(struct ap_config *ap_config,
 	switch (type) {
 	case RTE_TABLE_ACTION_MTR:
 		return &ap_config->mtr;
+
+	case RTE_TABLE_ACTION_TM:
+		return &ap_config->tm;
 
 	default:
 		return NULL;
@@ -374,6 +448,9 @@ action_data_size(enum rte_table_action_type action,
 
 	case RTE_TABLE_ACTION_MTR:
 		return mtr_data_size(&ap_config->mtr);
+
+	case RTE_TABLE_ACTION_TM:
+		return sizeof(struct tm_data);
 
 	default:
 		return 0;
@@ -448,6 +525,10 @@ rte_table_action_profile_action_register(struct rte_table_action_profile *profil
 	switch (type) {
 	case RTE_TABLE_ACTION_MTR:
 		status = mtr_cfg_check(action_config);
+		break;
+
+	case RTE_TABLE_ACTION_TM:
+		status = tm_cfg_check(action_config);
 		break;
 
 	default:
@@ -567,6 +648,11 @@ rte_table_action_apply(struct rte_table_action *action,
 			action->mp,
 			RTE_DIM(action->mp));
 
+	case RTE_TABLE_ACTION_TM:
+		return tm_apply(action_data,
+			action_params,
+			&action->cfg.tm);
+
 	default:
 		return -EINVAL;
 	}
@@ -581,7 +667,8 @@ rte_table_action_dscp_table_update(struct rte_table_action *action,
 
 	/* Check input arguments */
 	if ((action == NULL) ||
-		(action->cfg.action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) ||
+		((action->cfg.action_mask & ((1LLU << RTE_TABLE_ACTION_MTR) |
+		(1LLU << RTE_TABLE_ACTION_TM))) == 0) ||
 		(dscp_mask == 0) ||
 		(table == NULL))
 		return -EINVAL;
@@ -773,6 +860,16 @@ pkt_work(struct rte_mbuf *mbuf,
 			total_length);
 	}
 
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_TM)) {
+		void *data =
+			action_data_get(table_entry, action, RTE_TABLE_ACTION_TM);
+
+		pkt_work_tm(mbuf,
+			data,
+			&action->dscp_table,
+			dscp);
+	}
+
 	return drop_mask;
 }
 
@@ -884,6 +981,37 @@ pkt4_work(struct rte_mbuf **mbufs,
 			time,
 			dscp3,
 			total_length3);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_TM)) {
+		void *data0 =
+			action_data_get(table_entry0, action, RTE_TABLE_ACTION_TM);
+		void *data1 =
+			action_data_get(table_entry1, action, RTE_TABLE_ACTION_TM);
+		void *data2 =
+			action_data_get(table_entry2, action, RTE_TABLE_ACTION_TM);
+		void *data3 =
+			action_data_get(table_entry3, action, RTE_TABLE_ACTION_TM);
+
+		pkt_work_tm(mbuf0,
+			data0,
+			&action->dscp_table,
+			dscp0);
+
+		pkt_work_tm(mbuf1,
+			data1,
+			&action->dscp_table,
+			dscp1);
+
+		pkt_work_tm(mbuf2,
+			data2,
+			&action->dscp_table,
+			dscp2);
+
+		pkt_work_tm(mbuf3,
+			data3,
+			&action->dscp_table,
+			dscp3);
 	}
 
 	return drop_mask0 |

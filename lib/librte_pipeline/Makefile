@@ -12,7 +12,7 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf -lrte_table
-LDLIBS += -lrte_port -lrte_meter
+LDLIBS += -lrte_port -lrte_meter -lrte_sched
 
 EXPORT_MAP := rte_pipeline_version.map
 

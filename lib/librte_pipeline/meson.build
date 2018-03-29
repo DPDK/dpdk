@@ -5,4 +5,4 @@ version = 3
 allow_experimental_apis = true
 sources = files('rte_pipeline.c', 'rte_table_action.c')
 headers = files('rte_pipeline.h', 'rte_table_action.h')
-deps += ['port', 'table', 'meter']
+deps += ['port', 'table', 'meter', 'sched']

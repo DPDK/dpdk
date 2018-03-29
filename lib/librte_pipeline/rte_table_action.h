@@ -70,6 +70,9 @@ enum rte_table_action_type {
 
 	/**  Traffic Metering and Policing. */
 	RTE_TABLE_ACTION_MTR,
+
+	/**  Traffic Management. */
+	RTE_TABLE_ACTION_TM,
 };
 
 /** Common action configuration (per table action profile). */
@@ -253,6 +256,27 @@ struct rte_table_action_mtr_counters {
 	 * valid in *mtr*.
 	 */
 	uint32_t tc_mask;
+};
+
+/**
+ * RTE_TABLE_ACTION_TM
+ */
+/** Traffic management action configuration (per table action profile). */
+struct rte_table_action_tm_config {
+	/** Number of subports per port. */
+	uint32_t n_subports_per_port;
+
+	/** Number of pipes per subport. */
+	uint32_t n_pipes_per_subport;
+};
+
+/** Traffic management action parameters (per table rule). */
+struct rte_table_action_tm_params {
+	/** Subport ID. */
+	uint32_t subport_id;
+
+	/** Pipe ID. */
+	uint32_t pipe_id;
 };
 
 /**
