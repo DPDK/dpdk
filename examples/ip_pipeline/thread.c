@@ -497,6 +497,7 @@ enum pipeline_req_type {
 	PIPELINE_REQ_TABLE_MTR_PROFILE_ADD,
 	PIPELINE_REQ_TABLE_MTR_PROFILE_DELETE,
 	PIPELINE_REQ_TABLE_RULE_MTR_READ,
+	PIPELINE_REQ_TABLE_DSCP_TABLE_UPDATE,
 	PIPELINE_REQ_MAX
 };
 
@@ -552,6 +553,12 @@ struct pipeline_msg_req_table_rule_mtr_read {
 	uint32_t tc_mask;
 	int clear;
 };
+
+struct pipeline_msg_req_table_dscp_table_update {
+	uint64_t dscp_mask;
+	struct rte_table_action_dscp_table dscp_table;
+};
+
 struct pipeline_msg_req {
 	enum pipeline_req_type type;
 	uint32_t id; /* Port IN, port OUT or table ID */
@@ -569,6 +576,7 @@ struct pipeline_msg_req {
 		struct pipeline_msg_req_table_mtr_profile_add table_mtr_profile_add;
 		struct pipeline_msg_req_table_mtr_profile_delete table_mtr_profile_delete;
 		struct pipeline_msg_req_table_rule_mtr_read table_rule_mtr_read;
+		struct pipeline_msg_req_table_dscp_table_update table_dscp_table_update;
 	};
 };
 
@@ -1502,6 +1510,54 @@ pipeline_table_rule_mtr_read(const char *pipeline_name,
 	return status;
 }
 
+int
+pipeline_table_dscp_table_update(const char *pipeline_name,
+	uint32_t table_id,
+	uint64_t dscp_mask,
+	struct rte_table_action_dscp_table *dscp_table)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if ((pipeline_name == NULL) ||
+		(dscp_table == NULL))
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(p->enabled == 0) ||
+		(table_id >= p->n_tables))
+		return -1;
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_DSCP_TABLE_UPDATE;
+	req->id = table_id;
+	req->table_dscp_table_update.dscp_mask = dscp_mask;
+	memcpy(&req->table_dscp_table_update.dscp_table,
+		dscp_table, sizeof(*dscp_table));
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
 /**
  * Data plane threads: message handling
  */
@@ -2356,6 +2412,24 @@ pipeline_msg_handle_table_rule_mtr_read(struct pipeline_data *p,
 	return rsp;
 }
 
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_dscp_table_update(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
+	uint32_t table_id = req->id;
+	uint64_t dscp_mask = req->table_dscp_table_update.dscp_mask;
+	struct rte_table_action_dscp_table *dscp_table =
+		&req->table_dscp_table_update.dscp_table;
+	struct rte_table_action *a = p->table_data[table_id].a;
+
+	rsp->status = rte_table_action_dscp_table_update(a,
+		dscp_mask,
+		dscp_table);
+
+	return rsp;
+}
+
 static void
 pipeline_msg_handle(struct pipeline_data *p)
 {
@@ -2422,6 +2496,10 @@ pipeline_msg_handle(struct pipeline_data *p)
 
 		case PIPELINE_REQ_TABLE_RULE_MTR_READ:
 			rsp = pipeline_msg_handle_table_rule_mtr_read(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_DSCP_TABLE_UPDATE:
+			rsp = pipeline_msg_handle_table_dscp_table_update(p, req);
 			break;
 
 		default:

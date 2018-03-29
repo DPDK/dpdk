@@ -4032,6 +4032,152 @@ cmd_pipeline_table_rule_meter_read(char **tokens,
 }
 
 /**
+ * pipeline <pipeline_name> table <table_id> dscp <file_name>
+ *
+ * File <file_name>:
+ *  - exactly 64 lines
+ *  - line format: <tc_id> <tc_queue_id> <color>, with <color> as: g | y | r
+ */
+static int
+load_dscp_table(struct rte_table_action_dscp_table *dscp_table,
+	const char *file_name,
+	uint32_t *line_number)
+{
+	FILE *f = NULL;
+	uint32_t dscp, l;
+
+	/* Check input arguments */
+	if ((dscp_table == NULL) ||
+		(file_name == NULL) ||
+		(line_number == NULL)) {
+		if (line_number)
+			*line_number = 0;
+		return -EINVAL;
+	}
+
+	/* Open input file */
+	f = fopen(file_name, "r");
+	if (f == NULL) {
+		*line_number = 0;
+		return -EINVAL;
+	}
+
+	/* Read file */
+	for (dscp = 0, l = 1; ; l++) {
+		char line[64];
+		char *tokens[3];
+		enum rte_meter_color color;
+		uint32_t tc_id, tc_queue_id, n_tokens = RTE_DIM(tokens);
+
+		if (fgets(line, sizeof(line), f) == NULL)
+			break;
+
+		if (is_comment(line))
+			continue;
+
+		if (parse_tokenize_string(line, tokens, &n_tokens)) {
+			*line_number = l;
+			return -EINVAL;
+		}
+
+		if (n_tokens == 0)
+			continue;
+
+		if ((dscp >= RTE_DIM(dscp_table->entry)) ||
+			(n_tokens != RTE_DIM(tokens)) ||
+			parser_read_uint32(&tc_id, tokens[0]) ||
+			(tc_id >= RTE_TABLE_ACTION_TC_MAX) ||
+			parser_read_uint32(&tc_queue_id, tokens[1]) ||
+			(tc_queue_id >= RTE_TABLE_ACTION_TC_QUEUE_MAX) ||
+			(strlen(tokens[2]) != 1)) {
+			*line_number = l;
+			return -EINVAL;
+		}
+
+		switch (tokens[2][0]) {
+		case 'g':
+		case 'G':
+			color = e_RTE_METER_GREEN;
+			break;
+
+		case 'y':
+		case 'Y':
+			color = e_RTE_METER_YELLOW;
+			break;
+
+		case 'r':
+		case 'R':
+			color = e_RTE_METER_RED;
+			break;
+
+		default:
+			*line_number = l;
+			return -EINVAL;
+		}
+
+		dscp_table->entry[dscp].tc_id = tc_id;
+		dscp_table->entry[dscp].tc_queue_id = tc_queue_id;
+		dscp_table->entry[dscp].color = color;
+		dscp++;
+	}
+
+	/* Close file */
+	fclose(f);
+	return 0;
+}
+
+static void
+cmd_pipeline_table_dscp(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_table_action_dscp_table dscp_table;
+	char *pipeline_name, *file_name;
+	uint32_t table_id, line_number;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "dscp") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "dscp");
+		return;
+	}
+
+	file_name = tokens[5];
+
+	status = load_dscp_table(&dscp_table, file_name, &line_number);
+	if (status) {
+		snprintf(out, out_size, MSG_FILE_ERR, file_name, line_number);
+		return;
+	}
+
+	status = pipeline_table_dscp_table_update(pipeline_name,
+		table_id,
+		UINT64_MAX,
+		&dscp_table);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -4367,6 +4513,14 @@ cli_process(char *in, char *out, size_t out_size)
 			(strcmp(tokens[5], "read") == 0) &&
 			(strcmp(tokens[6], "meter") == 0)) {
 			cmd_pipeline_table_rule_meter_read(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "dscp") == 0)) {
+			cmd_pipeline_table_dscp(tokens, n_tokens,
 				out, out_size);
 			return;
 		}
