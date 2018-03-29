@@ -8,6 +8,8 @@
 
 deps += ['pipeline', 'bus_pci']
 sources = files(
+	'cli.c',
+	'conn.c',
 	'main.c',
 	'parser.c',
 )
