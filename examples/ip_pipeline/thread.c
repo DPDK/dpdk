@@ -6,46 +6,8 @@
 #include <rte_cycles.h>
 #include <rte_pipeline.h>
 
-#include "pipeline_common_be.h"
 #include "app.h"
 #include "thread.h"
-
-#if APP_THREAD_HEADROOM_STATS_COLLECT
-
-#define PIPELINE_RUN_REGULAR(thread, pipeline)		\
-do {							\
-	uint64_t t0 = rte_rdtsc_precise();		\
-	int n_pkts = rte_pipeline_run(pipeline->p);	\
-							\
-	if (n_pkts == 0) {				\
-		uint64_t t1 = rte_rdtsc_precise();	\
-							\
-		thread->headroom_cycles += t1 - t0;	\
-	}						\
-} while (0)
-
-
-#define PIPELINE_RUN_CUSTOM(thread, data)		\
-do {							\
-	uint64_t t0 = rte_rdtsc_precise();		\
-	int n_pkts = data->f_run(data->be);		\
-							\
-	if (n_pkts == 0) {				\
-		uint64_t t1 = rte_rdtsc_precise();	\
-							\
-		thread->headroom_cycles += t1 - t0;	\
-	}						\
-} while (0)
-
-#else
-
-#define PIPELINE_RUN_REGULAR(thread, pipeline)		\
-	rte_pipeline_run(pipeline->p)
-
-#define PIPELINE_RUN_CUSTOM(thread, data)		\
-	data->f_run(data->be)
-
-#endif
 
 static inline void *
 thread_msg_recv(struct rte_ring *r)
@@ -213,21 +175,6 @@ app_thread(void *arg)
 	for (i = 0; ; i++) {
 		uint32_t n_regular = RTE_MIN(t->n_regular, RTE_DIM(t->regular));
 		uint32_t n_custom = RTE_MIN(t->n_custom, RTE_DIM(t->custom));
-
-		/* Run regular pipelines */
-		for (j = 0; j < n_regular; j++) {
-			struct app_thread_pipeline_data *data = &t->regular[j];
-			struct pipeline *p = data->be;
-
-			PIPELINE_RUN_REGULAR(t, p);
-		}
-
-		/* Run custom pipelines */
-		for (j = 0; j < n_custom; j++) {
-			struct app_thread_pipeline_data *data = &t->custom[j];
-
-			PIPELINE_RUN_CUSTOM(t, data);
-		}
 
 		/* Timer */
 		if ((i & 0xF) == 0) {

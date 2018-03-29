@@ -12,13 +12,7 @@ SRCS-y += config_parse_tm.c
 SRCS-y += config_check.c
 SRCS-y += init.c
 SRCS-y += thread.c
-SRCS-y += thread_fe.c
 SRCS-y += cpu_core_map.c
-
-SRCS-y += pipeline_common_be.c
-SRCS-y += pipeline_common_fe.c
-SRCS-y += pipeline_master_be.c
-SRCS-y += pipeline_master.c
 
 # Build using pkg-config variables if possible
 $(shell pkg-config --exists libdpdk)

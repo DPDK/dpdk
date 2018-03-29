@@ -1359,10 +1359,6 @@ app_core_build_core_mask_string(struct app_params *app, char *mask_buffer)
 	}
 }
 
-void app_pipeline_params_get(struct app_params *app,
-	struct app_pipeline_params *p_in,
-	struct pipeline_params *p_out);
-
 int app_config_init(struct app_params *app);
 
 int app_config_args(struct app_params *app,
@@ -1382,15 +1378,7 @@ int app_config_check(struct app_params *app);
 
 int app_init(struct app_params *app);
 
-int app_post_init(struct app_params *app);
-
 int app_thread(void *arg);
-
-int app_pipeline_type_register(struct app_params *app,
-	struct pipeline_type *ptype);
-
-struct pipeline_type *app_pipeline_type_find(struct app_params *app,
-	char *name);
 
 void app_link_up_internal(struct app_params *app,
 	struct app_link_params *cp);

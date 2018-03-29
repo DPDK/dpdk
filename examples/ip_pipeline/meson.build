@@ -6,9 +6,7 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-deps += ['cfgfile', 'pipeline', 'bus_pci']
-allow_experimental_apis = true
-includes += include_directories('pipeline')
+deps += ['cfgfile', 'bus_pci']
 sources = files(
 	'config_check.c',
 	'config_parse.c',
@@ -18,9 +16,4 @@ sources = files(
 	'main.c',
 	'parser.c',
 	'thread.c',
-	'thread_fe.c',
-	'pipeline/pipeline_common_be.c',
-	'pipeline/pipeline_common_fe.c',
-	'pipeline/pipeline_master_be.c',
-	'pipeline/pipeline_master.c',
 )

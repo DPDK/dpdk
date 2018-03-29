@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2015 Intel Corporation
+ * Copyright(c) 2010-2018 Intel Corporation
  */
+
 #ifndef __INCLUDE_HASH_FUNC_H__
 #define __INCLUDE_HASH_FUNC_H__
 
