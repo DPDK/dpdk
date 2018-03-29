@@ -18,6 +18,7 @@
 #include "pipeline.h"
 #include "swq.h"
 #include "tap.h"
+#include "thread.h"
 #include "tmgr.h"
 
 static const char usage[] =
@@ -226,6 +227,13 @@ main(int argc, char **argv)
 	status = pipeline_init();
 	if (status) {
 		printf("Error: Pipeline initialization failed (%d)\n", status);
+		return status;
+	}
+
+	/* Thread */
+	status = thread_init();
+	if (status) {
+		printf("Error: Thread initialization failed (%d)\n", status);
 		return status;
 	}
 

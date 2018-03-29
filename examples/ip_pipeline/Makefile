@@ -16,8 +16,8 @@ SRCS-y += parser.c
 SRCS-y += pipeline.c
 SRCS-y += swq.c
 SRCS-y += tap.c
+SRCS-y += thread.c
 SRCS-y += tmgr.c
-#SRCS-y += thread.c
 
 # Build using pkg-config variables if possible
 $(shell pkg-config --exists libdpdk)

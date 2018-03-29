@@ -20,5 +20,6 @@ sources = files(
 	'pipeline.c',
 	'swq.c',
 	'tap.c',
+	'thread.c',
 	'tmgr.c'
 )
