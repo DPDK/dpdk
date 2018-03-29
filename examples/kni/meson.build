@@ -6,6 +6,9 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
+if host_machine.system() != 'linux'
+	build = false
+endif
 deps += ['kni', 'bus_pci']
 allow_experimental_apis = true
 sources = files(
