@@ -1031,6 +1031,89 @@ pkt_ipv6_work_nat(struct ipv6_hdr *ip,
 }
 
 /**
+ * RTE_TABLE_ACTION_TTL
+ */
+static int
+ttl_cfg_check(struct rte_table_action_ttl_config *ttl)
+{
+	if (ttl->drop == 0)
+		return -ENOTSUP;
+
+	return 0;
+}
+
+struct ttl_data {
+	uint32_t n_packets;
+} __attribute__((__packed__));
+
+#define TTL_INIT(data, decrement)                         \
+	((data)->n_packets = (decrement) ? 1 : 0)
+
+#define TTL_DEC_GET(data)                                  \
+	((uint8_t)((data)->n_packets & 1))
+
+#define TTL_STATS_RESET(data)                             \
+	((data)->n_packets = ((data)->n_packets & 1))
+
+#define TTL_STATS_READ(data)                               \
+	((data)->n_packets >> 1)
+
+#define TTL_STATS_ADD(data, value)                        \
+	((data)->n_packets =                                  \
+		(((((data)->n_packets >> 1) + (value)) << 1) |    \
+		((data)->n_packets & 1)))
+
+static int
+ttl_apply(void *data,
+	struct rte_table_action_ttl_params *p)
+{
+	struct ttl_data *d = data;
+
+	TTL_INIT(d, p->decrement);
+
+	return 0;
+}
+
+static __rte_always_inline uint64_t
+pkt_ipv4_work_ttl(struct ipv4_hdr *ip,
+	struct ttl_data *data)
+{
+	uint32_t drop;
+	uint16_t cksum = ip->hdr_checksum;
+	uint8_t ttl = ip->time_to_live;
+	uint8_t ttl_diff = TTL_DEC_GET(data);
+
+	cksum += ttl_diff;
+	ttl -= ttl_diff;
+
+	ip->hdr_checksum = cksum;
+	ip->time_to_live = ttl;
+
+	drop = (ttl == 0) ? 1 : 0;
+	TTL_STATS_ADD(data, drop);
+
+	return drop;
+}
+
+static __rte_always_inline uint64_t
+pkt_ipv6_work_ttl(struct ipv6_hdr *ip,
+	struct ttl_data *data)
+{
+	uint32_t drop;
+	uint8_t ttl = ip->hop_limits;
+	uint8_t ttl_diff = TTL_DEC_GET(data);
+
+	ttl -= ttl_diff;
+
+	ip->hop_limits = ttl;
+
+	drop = (ttl == 0) ? 1 : 0;
+	TTL_STATS_ADD(data, drop);
+
+	return drop;
+}
+
+/**
  * Action profile
  */
 static int
@@ -1042,6 +1125,7 @@ action_valid(enum rte_table_action_type action)
 	case RTE_TABLE_ACTION_TM:
 	case RTE_TABLE_ACTION_ENCAP:
 	case RTE_TABLE_ACTION_NAT:
+	case RTE_TABLE_ACTION_TTL:
 		return 1;
 	default:
 		return 0;
@@ -1058,6 +1142,7 @@ struct ap_config {
 	struct rte_table_action_tm_config tm;
 	struct rte_table_action_encap_config encap;
 	struct rte_table_action_nat_config nat;
+	struct rte_table_action_ttl_config ttl;
 };
 
 static size_t
@@ -1072,6 +1157,8 @@ action_cfg_size(enum rte_table_action_type action)
 		return sizeof(struct rte_table_action_encap_config);
 	case RTE_TABLE_ACTION_NAT:
 		return sizeof(struct rte_table_action_nat_config);
+	case RTE_TABLE_ACTION_TTL:
+		return sizeof(struct rte_table_action_ttl_config);
 	default:
 		return 0;
 	}
@@ -1093,6 +1180,9 @@ action_cfg_get(struct ap_config *ap_config,
 
 	case RTE_TABLE_ACTION_NAT:
 		return &ap_config->nat;
+
+	case RTE_TABLE_ACTION_TTL:
+		return &ap_config->ttl;
 
 	default:
 		return NULL;
@@ -1137,6 +1227,9 @@ action_data_size(enum rte_table_action_type action,
 	case RTE_TABLE_ACTION_NAT:
 		return nat_data_size(&ap_config->nat,
 			&ap_config->common);
+
+	case RTE_TABLE_ACTION_TTL:
+		return sizeof(struct ttl_data);
 
 	default:
 		return 0;
@@ -1223,6 +1316,10 @@ rte_table_action_profile_action_register(struct rte_table_action_profile *profil
 
 	case RTE_TABLE_ACTION_NAT:
 		status = nat_cfg_check(action_config);
+		break;
+
+	case RTE_TABLE_ACTION_TTL:
+		status = ttl_cfg_check(action_config);
 		break;
 
 	default:
@@ -1357,6 +1454,10 @@ rte_table_action_apply(struct rte_table_action *action,
 		return nat_apply(action_data,
 			action_params,
 			&action->cfg.common);
+
+	case RTE_TABLE_ACTION_TTL:
+		return ttl_apply(action_data,
+			action_params);
 
 	default:
 		return -EINVAL;
@@ -1524,6 +1625,34 @@ rte_table_action_meter_read(struct rte_table_action *action,
 	return 0;
 }
 
+int
+rte_table_action_ttl_read(struct rte_table_action *action,
+	void *data,
+	struct rte_table_action_ttl_counters *stats,
+	int clear)
+{
+	struct ttl_data *ttl_data;
+
+	/* Check input arguments */
+	if ((action == NULL) ||
+		((action->cfg.action_mask &
+		(1LLU << RTE_TABLE_ACTION_TTL)) == 0) ||
+		(data == NULL))
+		return -EINVAL;
+
+	ttl_data = action_data_get(data, action, RTE_TABLE_ACTION_TTL);
+
+	/* Read */
+	if (stats)
+		stats->n_packets = TTL_STATS_READ(ttl_data);
+
+	/* Clear */
+	if (clear)
+		TTL_STATS_RESET(ttl_data);
+
+	return 0;
+}
+
 static __rte_always_inline uint64_t
 pkt_work(struct rte_mbuf *mbuf,
 	struct rte_pipeline_table_entry *table_entry,
@@ -1595,6 +1724,16 @@ pkt_work(struct rte_mbuf *mbuf,
 			pkt_ipv4_work_nat(ip, data, &cfg->nat);
 		else
 			pkt_ipv6_work_nat(ip, data, &cfg->nat);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_TTL)) {
+		void *data =
+			action_data_get(table_entry, action, RTE_TABLE_ACTION_TTL);
+
+		if (cfg->common.ip_version)
+			drop_mask |= pkt_ipv4_work_ttl(ip, data);
+		else
+			drop_mask |= pkt_ipv6_work_ttl(ip, data);
 	}
 
 	return drop_mask;
@@ -1800,6 +1939,29 @@ pkt4_work(struct rte_mbuf **mbufs,
 			pkt_ipv6_work_nat(ip1, data1, &cfg->nat);
 			pkt_ipv6_work_nat(ip2, data2, &cfg->nat);
 			pkt_ipv6_work_nat(ip3, data3, &cfg->nat);
+		}
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_TTL)) {
+		void *data0 =
+			action_data_get(table_entry0, action, RTE_TABLE_ACTION_TTL);
+		void *data1 =
+			action_data_get(table_entry1, action, RTE_TABLE_ACTION_TTL);
+		void *data2 =
+			action_data_get(table_entry2, action, RTE_TABLE_ACTION_TTL);
+		void *data3 =
+			action_data_get(table_entry3, action, RTE_TABLE_ACTION_TTL);
+
+		if (cfg->common.ip_version) {
+			drop_mask0 |= pkt_ipv4_work_ttl(ip0, data0);
+			drop_mask1 |= pkt_ipv4_work_ttl(ip1, data1);
+			drop_mask2 |= pkt_ipv4_work_ttl(ip2, data2);
+			drop_mask3 |= pkt_ipv4_work_ttl(ip3, data3);
+		} else {
+			drop_mask0 |= pkt_ipv6_work_ttl(ip0, data0);
+			drop_mask1 |= pkt_ipv6_work_ttl(ip1, data1);
+			drop_mask2 |= pkt_ipv6_work_ttl(ip2, data2);
+			drop_mask3 |= pkt_ipv6_work_ttl(ip3, data3);
 		}
 	}
 

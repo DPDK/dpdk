@@ -80,6 +80,9 @@ enum rte_table_action_type {
 
 	/** Network Address Translation (NAT). */
 	RTE_TABLE_ACTION_NAT,
+
+	/** Time to Live (TTL) update. */
+	RTE_TABLE_ACTION_TTL,
 };
 
 /** Common action configuration (per table action profile). */
@@ -448,6 +451,44 @@ struct rte_table_action_nat_params {
 };
 
 /**
+ * RTE_TABLE_ACTION_TTL
+ */
+/** TTL action configuration (per table action profile). */
+struct rte_table_action_ttl_config {
+	/** When non-zero, the input packets whose updated IPv4 Time to Live
+	 * (TTL) field or IPv6 Hop Limit (HL) field is zero are dropped.
+	 * When zero, the input packets whose updated IPv4 TTL field or IPv6 HL
+	 * field is zero are forwarded as usual (typically for debugging
+	 * purpose).
+	 */
+	int drop;
+
+	/** When non-zero, the *n_packets* stats counter for TTL action is
+	 * enabled, otherwise disabled.
+	 *
+	 * @see struct rte_table_action_ttl_counters
+	 */
+	int n_packets_enabled;
+};
+
+/** TTL action parameters (per table rule). */
+struct rte_table_action_ttl_params {
+	/** When non-zero, decrement the IPv4 TTL field and update the checksum
+	 * field, or decrement the IPv6 HL field. When zero, the IPv4 TTL field
+	 * or the IPv6 HL field is not changed.
+	 */
+	int decrement;
+};
+
+/** TTL action statistics packets (per table rule). */
+struct rte_table_action_ttl_counters {
+	/** Number of IPv4 packets whose updated TTL field is zero or IPv6
+	 * packets whose updated HL field is zero.
+	 */
+	uint64_t n_packets;
+};
+
+/**
  * Table action profile.
  */
 struct rte_table_action_profile;
@@ -669,6 +710,31 @@ rte_table_action_meter_read(struct rte_table_action *action,
 	void *data,
 	uint32_t tc_mask,
 	struct rte_table_action_mtr_counters *stats,
+	int clear);
+
+/**
+ * Table action TTL read.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[in] data
+ *   Data byte array (typically table rule data) with TTL action previously
+ *   applied on it.
+ * @param[inout] stats
+ *   When non-NULL, it points to the area where the TTL stats counters read from
+ *   *data* are saved.
+ * @param[in] clear
+ *   When non-zero, the TTL stats counters are cleared (i.e. set to zero),
+ *   otherwise the counters are not modified. When the read operation is enabled
+ *   (*stats* is non-NULL), the clear operation is performed after the read
+ *   operation is completed.
+ * @return
+ *   Zero on success, non-zero error code otherwise.
+ */
+int __rte_experimental
+rte_table_action_ttl_read(struct rte_table_action *action,
+	void *data,
+	struct rte_table_action_ttl_counters *stats,
 	int clear);
 
 #ifdef __cplusplus
