@@ -4,7 +4,7 @@
 if host_machine.system() != 'linux'
 	build = false
 endif
-deps += ['mempool_dpaa2', 'bus_fslmc', 'bus_vdev', 'pmd_dpaa2']
+deps += ['bus_vdev', 'pmd_dpaa2']
 sources = files('dpaa2_hw_dpcon.c',
 		'dpaa2_eventdev.c')
 

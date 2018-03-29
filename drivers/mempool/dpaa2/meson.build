@@ -5,7 +5,7 @@ if host_machine.system() != 'linux'
         build = false
 endif
 
-deps += ['mbuf', 'bus_fslmc']
+deps += ['bus_fslmc']
 sources = files('dpaa2_hw_mempool.c')
 
 # depends on fslmc bus which uses experimental API

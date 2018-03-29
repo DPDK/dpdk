@@ -5,7 +5,7 @@ if host_machine.system() != 'linux'
         build = false
 endif
 
-deps += ['ethdev', 'eventdev', 'kvargs']
+deps += ['eventdev', 'kvargs']
 sources = files('fslmc_bus.c',
 		'fslmc_vfio.c',
 		'mc/dpbp.c',

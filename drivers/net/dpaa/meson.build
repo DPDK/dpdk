@@ -4,7 +4,7 @@
 if host_machine.system() != 'linux'
 	build = false
 endif
-deps += ['bus_dpaa', 'mempool_dpaa']
+deps += ['mempool_dpaa']
 
 sources = files('dpaa_ethdev.c',
 		'dpaa_rxtx.c')

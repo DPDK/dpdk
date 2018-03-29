@@ -4,7 +4,7 @@
 if host_machine.system() != 'linux'
 	build = false
 endif
-deps += ['mempool_dpaa', 'bus_dpaa', 'pmd_dpaa']
+deps += ['pmd_dpaa']
 sources = files('dpaa_eventdev.c')
 
 allow_experimental_apis = true

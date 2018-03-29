@@ -5,7 +5,7 @@ if host_machine.system() != 'linux'
         build = false
 endif
 
-deps += ['bus_fslmc', 'security', 'mempool_dpaa2']
+deps += ['security', 'mempool_dpaa2']
 sources = files('dpaa2_sec_dpseci.c',
 		'mc/dpseci.c')
 
