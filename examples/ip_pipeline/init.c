@@ -27,7 +27,6 @@
 #include "pipeline_common_fe.h"
 #include "pipeline_master.h"
 #include "pipeline_firewall.h"
-#include "pipeline_flow_actions.h"
 #include "thread_fe.h"
 
 #define APP_NAME_SIZE	32
@@ -1819,7 +1818,6 @@ int app_init(struct app_params *app)
 	app_pipeline_common_cmd_push(app);
 	app_pipeline_thread_cmd_push(app);
 	app_pipeline_type_register(app, &pipeline_master);
-	app_pipeline_type_register(app, &pipeline_flow_actions);
 	app_pipeline_type_register(app, &pipeline_firewall);
 
 	app_init_pipelines(app);

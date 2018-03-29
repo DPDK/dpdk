@@ -23,8 +23,6 @@ sources = files(
 	'pipeline/pipeline_common_fe.c',
 	'pipeline/pipeline_firewall_be.c',
 	'pipeline/pipeline_firewall.c',
-	'pipeline/pipeline_flow_actions_be.c',
-	'pipeline/pipeline_flow_actions.c',
 	'pipeline/pipeline_master_be.c',
 	'pipeline/pipeline_master.c',
 )
