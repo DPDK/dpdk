@@ -690,6 +690,473 @@ cmd_kni(char **tokens,
 	}
 }
 
+/**
+ * port in action profile <profile_name>
+ *  [filter match | mismatch offset <key_offset> mask <key_mask> key <key_value> port <port_id>]
+ *  [balance offset <key_offset> mask <key_mask> port <port_id0> ... <port_id15>]
+ */
+static void
+cmd_port_in_action_profile(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct port_in_action_profile_params p;
+	struct port_in_action_profile *ap;
+	char *name;
+	uint32_t t0;
+
+	memset(&p, 0, sizeof(p));
+
+	if (n_tokens < 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "in") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "in");
+		return;
+	}
+
+	if (strcmp(tokens[2], "action") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "action");
+		return;
+	}
+
+	if (strcmp(tokens[3], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	name = tokens[4];
+
+	t0 = 5;
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "filter") == 0)) {
+		uint32_t size;
+
+		if (n_tokens < t0 + 10) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "port in action profile filter");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "match") == 0)
+			p.fltr.filter_on_match = 1;
+		else if (strcmp(tokens[t0 + 1], "mismatch") == 0)
+			p.fltr.filter_on_match = 0;
+		else {
+			snprintf(out, out_size, MSG_ARG_INVALID, "match or mismatch");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 2], "offset") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
+			return;
+		}
+
+		if (parser_read_uint32(&p.fltr.key_offset, tokens[t0 + 3]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_offset");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 4], "mask") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mask");
+			return;
+		}
+
+		size = RTE_PORT_IN_ACTION_FLTR_KEY_SIZE;
+		if ((parse_hex_string(tokens[t0 + 5], p.fltr.key_mask, &size) != 0) ||
+			(size != RTE_PORT_IN_ACTION_FLTR_KEY_SIZE)) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_mask");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 6], "key") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "key");
+			return;
+		}
+
+		size = RTE_PORT_IN_ACTION_FLTR_KEY_SIZE;
+		if ((parse_hex_string(tokens[t0 + 7], p.fltr.key, &size) != 0) ||
+			(size != RTE_PORT_IN_ACTION_FLTR_KEY_SIZE)) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_value");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 8], "port") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+			return;
+		}
+
+		if (parser_read_uint32(&p.fltr.port_id, tokens[t0 + 9]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+			return;
+		}
+
+		p.action_mask |= 1LLU << RTE_PORT_IN_ACTION_FLTR;
+		t0 += 10;
+	} /* filter */
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "balance") == 0)) {
+		uint32_t i;
+
+		if (n_tokens < t0 + 22) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "port in action profile balance");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "offset") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
+			return;
+		}
+
+		if (parser_read_uint32(&p.lb.key_offset, tokens[t0 + 2]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_offset");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 3], "mask") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mask");
+			return;
+		}
+
+		p.lb.key_size = RTE_PORT_IN_ACTION_LB_KEY_SIZE_MAX;
+		if (parse_hex_string(tokens[t0 + 4], p.lb.key_mask, &p.lb.key_size) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_mask");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 5], "port") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+			return;
+		}
+
+		for (i = 0; i < 16; i++)
+			if (parser_read_uint32(&p.lb.port_id[i], tokens[t0 + 6 + i]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+				return;
+			}
+
+		p.action_mask |= 1LLU << RTE_PORT_IN_ACTION_LB;
+		t0 += 22;
+	} /* balance */
+
+	if (t0 < n_tokens) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	ap = port_in_action_profile_create(name, &p);
+	if (ap == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * table action profile <profile_name>
+ *  ipv4 | ipv6
+ *  offset <ip_offset>
+ *  fwd
+ *  [meter srtcm | trtcm
+ *      tc <n_tc>
+ *      stats none | pkts | bytes | both]
+ *  [tm spp <n_subports_per_port> pps <n_pipes_per_subport>]
+ *  [encap ether | vlan | qinq | mpls | pppoe]
+ *  [nat src | dst
+ *      proto udp | tcp]
+ *  [ttl drop | fwd
+ *      stats none | pkts]
+ *  [stats pkts | bytes | both]
+ *  [time]
+ */
+static void
+cmd_table_action_profile(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct table_action_profile_params p;
+	struct table_action_profile *ap;
+	char *name;
+	uint32_t t0;
+
+	memset(&p, 0, sizeof(p));
+
+	if (n_tokens < 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "action") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "action");
+		return;
+	}
+
+	if (strcmp(tokens[2], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	name = tokens[3];
+
+	if (strcmp(tokens[4], "ipv4") == 0)
+		p.common.ip_version = 1;
+	else if (strcmp(tokens[4], "ipv6") == 0)
+		p.common.ip_version = 0;
+	else {
+		snprintf(out, out_size, MSG_ARG_INVALID, "ipv4 or ipv6");
+		return;
+	}
+
+	if (strcmp(tokens[5], "offset") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
+		return;
+	}
+
+	if (parser_read_uint32(&p.common.ip_offset, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "ip_offset");
+		return;
+	}
+
+	if (strcmp(tokens[7], "fwd") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "fwd");
+		return;
+	}
+
+	p.action_mask |= 1LLU << RTE_TABLE_ACTION_FWD;
+
+	t0 = 8;
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "meter") == 0)) {
+		if (n_tokens < t0 + 6) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"table action profile meter");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "srtcm") == 0)
+			p.mtr.alg = RTE_TABLE_ACTION_METER_SRTCM;
+		else if (strcmp(tokens[t0 + 1], "trtcm") == 0)
+			p.mtr.alg = RTE_TABLE_ACTION_METER_TRTCM;
+		else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"srtcm or trtcm");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 2], "tc") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc");
+			return;
+		}
+
+		if (parser_read_uint32(&p.mtr.n_tc, tokens[t0 + 3]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "n_tc");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 4], "stats") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "stats");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 5], "none") == 0) {
+			p.mtr.n_packets_enabled = 0;
+			p.mtr.n_bytes_enabled = 0;
+		} else if (strcmp(tokens[t0 + 5], "pkts") == 0) {
+			p.mtr.n_packets_enabled = 1;
+			p.mtr.n_bytes_enabled = 0;
+		} else if (strcmp(tokens[t0 + 5], "bytes") == 0) {
+			p.mtr.n_packets_enabled = 0;
+			p.mtr.n_bytes_enabled = 1;
+		} else if (strcmp(tokens[t0 + 5], "both") == 0) {
+			p.mtr.n_packets_enabled = 1;
+			p.mtr.n_bytes_enabled = 1;
+		} else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"none or pkts or bytes or both");
+			return;
+		}
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_MTR;
+		t0 += 6;
+	} /* meter */
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "tm") == 0)) {
+		if (n_tokens < t0 + 5) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"table action profile tm");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "spp") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "spp");
+			return;
+		}
+
+		if (parser_read_uint32(&p.tm.n_subports_per_port,
+			tokens[t0 + 2]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"n_subports_per_port");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 3], "pps") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pps");
+			return;
+		}
+
+		if (parser_read_uint32(&p.tm.n_pipes_per_subport,
+			tokens[t0 + 4]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"n_pipes_per_subport");
+			return;
+		}
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_TM;
+		t0 += 5;
+	} /* tm */
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "encap") == 0)) {
+		if (n_tokens < t0 + 2) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"action profile encap");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "ether") == 0)
+			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_ETHER;
+		else if (strcmp(tokens[t0 + 1], "vlan") == 0)
+			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_VLAN;
+		else if (strcmp(tokens[t0 + 1], "qinq") == 0)
+			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_QINQ;
+		else if (strcmp(tokens[t0 + 1], "mpls") == 0)
+			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_MPLS;
+		else if (strcmp(tokens[t0 + 1], "pppoe") == 0)
+			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_PPPOE;
+		else {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "encap");
+			return;
+		}
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_ENCAP;
+		t0 += 2;
+	} /* encap */
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "nat") == 0)) {
+		if (n_tokens < t0 + 4) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"table action profile nat");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "src") == 0)
+			p.nat.source_nat = 1;
+		else if (strcmp(tokens[t0 + 1], "dst") == 0)
+			p.nat.source_nat = 0;
+		else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"src or dst");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 2], "proto") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "proto");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 3], "tcp") == 0)
+			p.nat.proto = 0x06;
+		else if (strcmp(tokens[t0 + 3], "udp") == 0)
+			p.nat.proto = 0x11;
+		else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"tcp or udp");
+			return;
+		}
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_NAT;
+		t0 += 4;
+	} /* nat */
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "ttl") == 0)) {
+		if (n_tokens < t0 + 4) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"table action profile ttl");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "drop") == 0)
+			p.ttl.drop = 1;
+		else if (strcmp(tokens[t0 + 1], "fwd") == 0)
+			p.ttl.drop = 0;
+		else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"drop or fwd");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 2], "stats") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "stats");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 3], "none") == 0)
+			p.ttl.n_packets_enabled = 0;
+		else if (strcmp(tokens[t0 + 3], "pkts") == 0)
+			p.ttl.n_packets_enabled = 1;
+		else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"none or pkts");
+			return;
+		}
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_TTL;
+		t0 += 4;
+	} /* ttl */
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "stats") == 0)) {
+		if (n_tokens < t0 + 2) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"table action profile stats");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "pkts") == 0) {
+			p.stats.n_packets_enabled = 1;
+			p.stats.n_bytes_enabled = 0;
+		} else if (strcmp(tokens[t0 + 1], "bytes") == 0) {
+			p.stats.n_packets_enabled = 0;
+			p.stats.n_bytes_enabled = 1;
+		} else if (strcmp(tokens[t0 + 1], "both") == 0) {
+			p.stats.n_packets_enabled = 1;
+			p.stats.n_bytes_enabled = 1;
+		} else {
+			snprintf(out, out_size,	MSG_ARG_NOT_FOUND,
+				"pkts or bytes or both");
+			return;
+		}
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_STATS;
+		t0 += 2;
+	} /* stats */
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "time") == 0)) {
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_TIME;
+		t0 += 1;
+	} /* time */
+
+	if (t0 < n_tokens) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	ap = table_action_profile_create(name, &p);
+	if (ap == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 void
 cli_process(char *in, char *out, size_t out_size)
 {
@@ -765,6 +1232,16 @@ cli_process(char *in, char *out, size_t out_size)
 
 	if (strcmp(tokens[0], "kni") == 0) {
 		cmd_kni(tokens, n_tokens, out, out_size);
+		return;
+	}
+
+	if (strcmp(tokens[0], "port") == 0) {
+		cmd_port_in_action_profile(tokens, n_tokens, out, out_size);
+		return;
+	}
+
+	if (strcmp(tokens[0], "table") == 0) {
+		cmd_table_action_profile(tokens, n_tokens, out, out_size);
 		return;
 	}
 

@@ -7,7 +7,9 @@
 # DPDK instance, use 'make'
 
 deps += ['pipeline', 'bus_pci']
+allow_experimental_apis = true
 sources = files(
+	'action.c',
 	'cli.c',
 	'conn.c',
 	'kni.c',

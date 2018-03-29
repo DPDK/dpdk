@@ -5,7 +5,8 @@
 APP = ip_pipeline
 
 # all source are stored in SRCS-y
-SRCS-y := cli.c
+SRCS-y := action.c
+SRCS-y += cli.c
 SRCS-y += conn.c
 SRCS-y += kni.c
 SRCS-y += link.c
@@ -69,6 +70,7 @@ INC += $(sort $(wildcard *.h))
 
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := $(SRCS-y)
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -I$(SRCDIR)
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

@@ -207,6 +207,20 @@ main(int argc, char **argv)
 		return status;
 	}
 
+	/* Action */
+	status = port_in_action_profile_init();
+	if (status) {
+		printf("Error: Input port action profile initialization failed (%d)\n", status);
+		return status;
+	}
+
+	status = table_action_profile_init();
+	if (status) {
+		printf("Error: Action profile initialization failed (%d)\n",
+			status);
+		return status;
+	}
+
 	/* Script */
 	if (app.script_name)
 		cli_script_process(app.script_name,
