@@ -50,6 +50,14 @@ int parse_ipv6_addr(const char *token, struct in6_addr *ipv6);
 int parse_mac_addr(const char *token, struct ether_addr *addr);
 int parse_mpls_labels(char *string, uint32_t *labels, uint32_t *n_labels);
 
+struct cpu_core_params {
+	uint32_t socket_id;
+	uint32_t core_id;
+	uint32_t thread_id;
+};
+
+int parse_cpu_core(const char *entry, struct cpu_core_params *p);
+
 int parse_tokenize_string(char *string, char *tokens[], uint32_t *n_tokens);
 
 #endif

@@ -36,10 +36,8 @@
 #include <sys/wait.h>
 
 #include <rte_errno.h>
-#include <rte_cfgfile.h>
 #include <rte_string_fns.h>
 
-#include "app.h"
 #include "parser.h"
 
 static uint32_t
@@ -596,10 +594,8 @@ parse_mac_addr(const char *token, struct ether_addr *addr)
 }
 
 int
-parse_pipeline_core(uint32_t *socket,
-	uint32_t *core,
-	uint32_t *ht,
-	const char *entry)
+parse_cpu_core(const char *entry,
+	struct cpu_core_params *p)
 {
 	size_t num_len;
 	char num[8];
@@ -608,6 +604,9 @@ parse_pipeline_core(uint32_t *socket,
 	uint8_t s_parsed = 0, c_parsed = 0, h_parsed = 0;
 	const char *next = skip_white_spaces(entry);
 	char type;
+
+	if (p == NULL)
+		return -EINVAL;
 
 	/* Expect <CORE> or [sX][cY][h]. At least one parameter is required. */
 	while (*next != '\0') {
@@ -682,8 +681,8 @@ parse_pipeline_core(uint32_t *socket,
 		}
 	}
 
-	*socket = s;
-	*core = c;
-	*ht = h;
+	p->socket_id = s;
+	p->core_id = c;
+	p->thread_id = h;
 	return 0;
 }
