@@ -479,19 +479,64 @@ thread_msg_handle(struct thread_data *t)
  */
 enum pipeline_req_type {
 	/* Port IN */
+	PIPELINE_REQ_PORT_IN_STATS_READ,
 	PIPELINE_REQ_PORT_IN_ENABLE,
 	PIPELINE_REQ_PORT_IN_DISABLE,
 
+	/* Port OUT */
+	PIPELINE_REQ_PORT_OUT_STATS_READ,
+
+	/* Table */
+	PIPELINE_REQ_TABLE_STATS_READ,
+
 	PIPELINE_REQ_MAX
+};
+
+struct pipeline_msg_req_port_in_stats_read {
+	int clear;
+};
+
+struct pipeline_msg_req_port_out_stats_read {
+	int clear;
+};
+
+struct pipeline_msg_req_table_stats_read {
+	int clear;
 };
 
 struct pipeline_msg_req {
 	enum pipeline_req_type type;
 	uint32_t id; /* Port IN, port OUT or table ID */
+
+	RTE_STD_C11
+	union {
+		struct pipeline_msg_req_port_in_stats_read port_in_stats_read;
+		struct pipeline_msg_req_port_out_stats_read port_out_stats_read;
+		struct pipeline_msg_req_table_stats_read table_stats_read;
+	};
+};
+
+struct pipeline_msg_rsp_port_in_stats_read {
+	struct rte_pipeline_port_in_stats stats;
+};
+
+struct pipeline_msg_rsp_port_out_stats_read {
+	struct rte_pipeline_port_out_stats stats;
+};
+
+struct pipeline_msg_rsp_table_stats_read {
+	struct rte_pipeline_table_stats stats;
 };
 
 struct pipeline_msg_rsp {
 	int status;
+
+	RTE_STD_C11
+	union {
+		struct pipeline_msg_rsp_port_in_stats_read port_in_stats_read;
+		struct pipeline_msg_rsp_port_out_stats_read port_out_stats_read;
+		struct pipeline_msg_rsp_table_stats_read table_stats_read;
+	};
 };
 
 /**
@@ -532,6 +577,54 @@ pipeline_msg_send_recv(struct pipeline *p,
 	} while (status != 0);
 
 	return rsp;
+}
+
+int
+pipeline_port_in_stats_read(const char *pipeline_name,
+	uint32_t port_id,
+	struct rte_pipeline_port_in_stats *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if ((pipeline_name == NULL) ||
+		(stats == NULL))
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(p->enabled == 0) ||
+		(port_id >= p->n_ports_in))
+		return -1;
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_PORT_IN_STATS_READ;
+	req->id = port_id;
+	req->port_in_stats_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->port_in_stats_read.stats, sizeof(*stats));
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
 }
 
 int
@@ -618,6 +711,101 @@ pipeline_port_in_disable(const char *pipeline_name,
 	return status;
 }
 
+int
+pipeline_port_out_stats_read(const char *pipeline_name,
+	uint32_t port_id,
+	struct rte_pipeline_port_out_stats *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if ((pipeline_name == NULL) ||
+		(stats == NULL))
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(p->enabled == 0) ||
+		(port_id >= p->n_ports_out))
+		return -1;
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_PORT_OUT_STATS_READ;
+	req->id = port_id;
+	req->port_out_stats_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->port_out_stats_read.stats, sizeof(*stats));
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
+int
+pipeline_table_stats_read(const char *pipeline_name,
+	uint32_t table_id,
+	struct rte_pipeline_table_stats *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if ((pipeline_name == NULL) ||
+		(stats == NULL))
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(p->enabled == 0) ||
+		(table_id >= p->n_tables))
+		return -1;
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_STATS_READ;
+	req->id = table_id;
+	req->table_stats_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->table_stats_read.stats, sizeof(*stats));
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
 
 /**
  * Data plane threads: message handling
@@ -647,6 +835,22 @@ pipeline_msg_send(struct rte_ring *msgq_rsp,
 }
 
 static struct pipeline_msg_rsp *
+pipeline_msg_handle_port_in_stats_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
+	uint32_t port_id = req->id;
+	int clear = req->port_in_stats_read.clear;
+
+	rsp->status = rte_pipeline_port_in_stats_read(p->p,
+		port_id,
+		&rsp->port_in_stats_read.stats,
+		clear);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
 pipeline_msg_handle_port_in_enable(struct pipeline_data *p,
 	struct pipeline_msg_req *req)
 {
@@ -672,6 +876,38 @@ pipeline_msg_handle_port_in_disable(struct pipeline_data *p,
 	return rsp;
 }
 
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_port_out_stats_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
+	uint32_t port_id = req->id;
+	int clear = req->port_out_stats_read.clear;
+
+	rsp->status = rte_pipeline_port_out_stats_read(p->p,
+		port_id,
+		&rsp->port_out_stats_read.stats,
+		clear);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_stats_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
+	uint32_t port_id = req->id;
+	int clear = req->table_stats_read.clear;
+
+	rsp->status = rte_pipeline_table_stats_read(p->p,
+		port_id,
+		&rsp->table_stats_read.stats,
+		clear);
+
+	return rsp;
+}
+
 static void
 pipeline_msg_handle(struct pipeline_data *p)
 {
@@ -684,6 +920,10 @@ pipeline_msg_handle(struct pipeline_data *p)
 			break;
 
 		switch (req->type) {
+		case PIPELINE_REQ_PORT_IN_STATS_READ:
+			rsp = pipeline_msg_handle_port_in_stats_read(p, req);
+			break;
+
 		case PIPELINE_REQ_PORT_IN_ENABLE:
 			rsp = pipeline_msg_handle_port_in_enable(p, req);
 			break;
@@ -691,6 +931,15 @@ pipeline_msg_handle(struct pipeline_data *p)
 		case PIPELINE_REQ_PORT_IN_DISABLE:
 			rsp = pipeline_msg_handle_port_in_disable(p, req);
 			break;
+
+		case PIPELINE_REQ_PORT_OUT_STATS_READ:
+			rsp = pipeline_msg_handle_port_out_stats_read(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_STATS_READ:
+			rsp = pipeline_msg_handle_table_stats_read(p, req);
+			break;
+
 
 		default:
 			rsp = (struct pipeline_msg_rsp *) req;

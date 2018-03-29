@@ -270,11 +270,29 @@ struct table_rule_action {
 };
 
 int
+pipeline_port_in_stats_read(const char *pipeline_name,
+	uint32_t port_id,
+	struct rte_pipeline_port_in_stats *stats,
+	int clear);
+
+int
 pipeline_port_in_enable(const char *pipeline_name,
 	uint32_t port_id);
 
 int
 pipeline_port_in_disable(const char *pipeline_name,
 	uint32_t port_id);
+
+int
+pipeline_port_out_stats_read(const char *pipeline_name,
+	uint32_t port_id,
+	struct rte_pipeline_port_out_stats *stats,
+	int clear);
+
+int
+pipeline_table_stats_read(const char *pipeline_name,
+	uint32_t table_id,
+	struct rte_pipeline_table_stats *stats,
+	int clear);
 
 #endif /* _INCLUDE_PIPELINE_H_ */
