@@ -15,6 +15,7 @@
 #include "link.h"
 #include "mempool.h"
 #include "swq.h"
+#include "tap.h"
 #include "tmgr.h"
 
 static const char usage[] =
@@ -188,6 +189,13 @@ main(int argc, char **argv)
 	status = tmgr_init();
 	if (status) {
 		printf("Error: TMGR initialization failed (%d)\n", status);
+		return status;
+	}
+
+	/* TAP */
+	status = tap_init();
+	if (status) {
+		printf("Error: TAP initialization failed (%d)\n", status);
 		return status;
 	}
 

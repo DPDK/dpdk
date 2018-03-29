@@ -14,6 +14,7 @@
 #include "mempool.h"
 #include "parser.h"
 #include "swq.h"
+#include "tap.h"
 #include "tmgr.h"
 
 #ifndef CMD_MAX_TOKENS
@@ -603,6 +604,32 @@ cmd_tmgr_subport_pipe(char **tokens,
 	}
 }
 
+/**
+ * tap <tap_name>
+ */
+static void
+cmd_tap(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *name;
+	struct tap *tap;
+
+	if (n_tokens != 2) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	tap = tap_create(name);
+	if (tap == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 void
 cli_process(char *in, char *out, size_t out_size)
 {
@@ -668,6 +695,11 @@ cli_process(char *in, char *out, size_t out_size)
 		}
 
 		cmd_tmgr(tokens, n_tokens, out, out_size);
+		return;
+	}
+
+	if (strcmp(tokens[0], "tap") == 0) {
+		cmd_tap(tokens, n_tokens, out, out_size);
 		return;
 	}
 
