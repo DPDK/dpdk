@@ -472,12 +472,6 @@ rte_table_acl_entry_add_bulk(
 			return -EINVAL;
 		}
 
-		if (entries_ptr[i] == NULL) {
-			RTE_LOG(ERR, TABLE, "%s: entries_ptr[%" PRIu32 "] parameter is NULL\n",
-					__func__, i);
-			return -EINVAL;
-		}
-
 		rule = keys[i];
 		if (rule->priority > RTE_ACL_MAX_PRIORITY) {
 			RTE_LOG(ERR, TABLE, "%s: Priority is too high\n", __func__);
