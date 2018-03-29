@@ -303,6 +303,14 @@ pipeline_table_rule_add(const char *pipeline_name,
 	void **data);
 
 int
+pipeline_table_rule_add_bulk(const char *pipeline_name,
+	uint32_t table_id,
+	struct table_rule_match *match,
+	struct table_rule_action *action,
+	void **data,
+	uint32_t *n_rules);
+
+int
 pipeline_table_rule_add_default(const char *pipeline_name,
 	uint32_t table_id,
 	struct table_rule_action *action,

@@ -25,16 +25,17 @@
 #define CMD_MAX_TOKENS     256
 #endif
 
-#define MSG_OUT_OF_MEMORY  "Not enough memory.\n"
-#define MSG_CMD_UNKNOWN    "Unknown command \"%s\".\n"
-#define MSG_CMD_UNIMPLEM   "Command \"%s\" not implemented.\n"
-#define MSG_ARG_NOT_ENOUGH "Not enough arguments for command \"%s\".\n"
-#define MSG_ARG_TOO_MANY   "Too many arguments for command \"%s\".\n"
-#define MSG_ARG_MISMATCH   "Wrong number of arguments for command \"%s\".\n"
-#define MSG_ARG_NOT_FOUND  "Argument \"%s\" not found.\n"
-#define MSG_ARG_INVALID    "Invalid value for argument \"%s\".\n"
-#define MSG_FILE_ERR       "Error in file \"%s\" at line %u.\n"
-#define MSG_CMD_FAIL       "Command \"%s\" failed.\n"
+#define MSG_OUT_OF_MEMORY   "Not enough memory.\n"
+#define MSG_CMD_UNKNOWN     "Unknown command \"%s\".\n"
+#define MSG_CMD_UNIMPLEM    "Command \"%s\" not implemented.\n"
+#define MSG_ARG_NOT_ENOUGH  "Not enough arguments for command \"%s\".\n"
+#define MSG_ARG_TOO_MANY    "Too many arguments for command \"%s\".\n"
+#define MSG_ARG_MISMATCH    "Wrong number of arguments for command \"%s\".\n"
+#define MSG_ARG_NOT_FOUND   "Argument \"%s\" not found.\n"
+#define MSG_ARG_INVALID     "Invalid value for argument \"%s\".\n"
+#define MSG_FILE_ERR        "Error in file \"%s\" at line %u.\n"
+#define MSG_FILE_NOT_ENOUGH "Not enough rules in file \"%s\".\n"
+#define MSG_CMD_FAIL        "Command \"%s\" failed.\n"
 
 static int
 is_comment(char *in)
@@ -3540,6 +3541,133 @@ cmd_pipeline_table_rule_add_default(char **tokens,
 }
 
 /**
+ * pipeline <pipeline_name> table <table_id> rule add bulk <file_name> <n_rules>
+ *
+ * File <file_name>:
+ * - line format: match <match> action <action>
+ */
+static int
+cli_rule_file_process(const char *file_name,
+	size_t line_len_max,
+	struct table_rule_match *m,
+	struct table_rule_action *a,
+	uint32_t *n_rules,
+	uint32_t *line_number,
+	char *out,
+	size_t out_size);
+
+static void
+cmd_pipeline_table_rule_add_bulk(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct table_rule_match *match;
+	struct table_rule_action *action;
+	void **data;
+	char *pipeline_name, *file_name;
+	uint32_t table_id, n_rules, n_rules_parsed, line_number;
+	int status;
+
+	if (n_tokens != 9) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "rule") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rule");
+		return;
+	}
+
+	if (strcmp(tokens[5], "add") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "add");
+		return;
+	}
+
+	if (strcmp(tokens[6], "bulk") != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "bulk");
+		return;
+	}
+
+	file_name = tokens[7];
+
+	if ((parser_read_uint32(&n_rules, tokens[8]) != 0) ||
+		(n_rules == 0)) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_rules");
+		return;
+	}
+
+	/* Memory allocation. */
+	match = calloc(n_rules, sizeof(struct table_rule_match));
+	action = calloc(n_rules, sizeof(struct table_rule_action));
+	data = calloc(n_rules, sizeof(void *));
+	if ((match == NULL) || (action == NULL) || (data == NULL)) {
+		snprintf(out, out_size, MSG_OUT_OF_MEMORY);
+		free(data);
+		free(action);
+		free(match);
+		return;
+	}
+
+	/* Load rule file */
+	n_rules_parsed = n_rules;
+	status = cli_rule_file_process(file_name,
+		1024,
+		match,
+		action,
+		&n_rules_parsed,
+		&line_number,
+		out,
+		out_size);
+	if (status) {
+		snprintf(out, out_size, MSG_FILE_ERR, file_name, line_number);
+		free(data);
+		free(action);
+		free(match);
+		return;
+	}
+	if (n_rules_parsed != n_rules) {
+		snprintf(out, out_size, MSG_FILE_NOT_ENOUGH, file_name);
+		free(data);
+		free(action);
+		free(match);
+		return;
+	}
+
+	/* Rule bulk add */
+	status = pipeline_table_rule_add_bulk(pipeline_name,
+		table_id,
+		match,
+		action,
+		data,
+		&n_rules);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		free(data);
+		free(action);
+		free(match);
+		return;
+	}
+
+	/* Memory free */
+	free(data);
+	free(action);
+	free(match);
+}
+
+/**
  * pipeline <pipeline_name> table <table_id> rule delete
  *    match <match>
  */
@@ -3943,6 +4071,16 @@ cli_process(char *in, char *out, size_t out_size)
 		if ((n_tokens >= 7) &&
 			(strcmp(tokens[2], "table") == 0) &&
 			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "add") == 0) &&
+			(strcmp(tokens[6], "bulk") == 0)) {
+			cmd_pipeline_table_rule_add_bulk(tokens,
+				n_tokens, out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 7) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
 			(strcmp(tokens[5], "delete") == 0) &&
 			(strcmp(tokens[6], "match") == 0)) {
 			if ((n_tokens >= 8) &&
@@ -4030,4 +4168,113 @@ cli_script_process(const char *file_name,
 	free(msg_out);
 	free(msg_in);
 	return 0;
+}
+
+static int
+cli_rule_file_process(const char *file_name,
+	size_t line_len_max,
+	struct table_rule_match *m,
+	struct table_rule_action *a,
+	uint32_t *n_rules,
+	uint32_t *line_number,
+	char *out,
+	size_t out_size)
+{
+	FILE *f = NULL;
+	char *line = NULL;
+	uint32_t rule_id, line_id;
+	int status = 0;
+
+	/* Check input arguments */
+	if ((file_name == NULL) ||
+		(strlen(file_name) == 0) ||
+		(line_len_max == 0)) {
+		*line_number = 0;
+		return -EINVAL;
+	}
+
+	/* Memory allocation */
+	line = malloc(line_len_max + 1);
+	if (line == NULL) {
+		*line_number = 0;
+		return -ENOMEM;
+	}
+
+	/* Open file */
+	f = fopen(file_name, "r");
+	if (f == NULL) {
+		*line_number = 0;
+		free(line);
+		return -EIO;
+	}
+
+	/* Read file */
+	for (line_id = 1, rule_id = 0; rule_id < *n_rules; line_id++) {
+		char *tokens[CMD_MAX_TOKENS];
+		uint32_t n_tokens, n_tokens_parsed, t0;
+
+		/* Read next line from file. */
+		if (fgets(line, line_len_max + 1, f) == NULL)
+			break;
+
+		/* Comment. */
+		if (is_comment(line))
+			continue;
+
+		/* Parse line. */
+		n_tokens = RTE_DIM(tokens);
+		status = parse_tokenize_string(line, tokens, &n_tokens);
+		if (status) {
+			status = -EINVAL;
+			break;
+		}
+
+		/* Empty line. */
+		if (n_tokens == 0)
+			continue;
+		t0 = 0;
+
+		/* Rule match. */
+		n_tokens_parsed = parse_match(tokens + t0,
+			n_tokens - t0,
+			out,
+			out_size,
+			&m[rule_id]);
+		if (n_tokens_parsed == 0) {
+			status = -EINVAL;
+			break;
+		}
+		t0 += n_tokens_parsed;
+
+		/* Rule action. */
+		n_tokens_parsed = parse_table_action(tokens + t0,
+			n_tokens - t0,
+			out,
+			out_size,
+			&a[rule_id]);
+		if (n_tokens_parsed == 0) {
+			status = -EINVAL;
+			break;
+		}
+		t0 += n_tokens_parsed;
+
+		/* Line completed. */
+		if (t0 < n_tokens) {
+			status = -EINVAL;
+			break;
+		}
+
+		/* Increment rule count */
+		rule_id++;
+	}
+
+	/* Close file */
+	fclose(f);
+
+	/* Memory free */
+	free(line);
+
+	*n_rules = rule_id;
+	*line_number = line_id;
+	return status;
 }
