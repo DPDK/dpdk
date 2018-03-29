@@ -14,6 +14,7 @@
 #include "conn.h"
 #include "link.h"
 #include "mempool.h"
+#include "swq.h"
 
 static const char usage[] =
 	"%s EAL_ARGS -- [-h HOST] [-p PORT] [-s SCRIPT]\n";
@@ -172,6 +173,13 @@ main(int argc, char **argv)
 	status = link_init();
 	if (status) {
 		printf("Error: Link initialization failed (%d)\n", status);
+		return status;
+	}
+
+	/* SWQ */
+	status = swq_init();
+	if (status) {
+		printf("Error: SWQ initialization failed (%d)\n", status);
 		return status;
 	}
 

@@ -13,6 +13,7 @@
 #include "link.h"
 #include "mempool.h"
 #include "parser.h"
+#include "swq.h"
 
 #ifndef CMD_MAX_TOKENS
 #define CMD_MAX_TOKENS     256
@@ -227,6 +228,55 @@ cmd_link(char **tokens,
 	}
 }
 
+/**
+ * swq <swq_name>
+ *  size <size>
+ *  cpu <cpu_id>
+ */
+static void
+cmd_swq(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct swq_params p;
+	char *name;
+	struct swq *swq;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	if (strcmp(tokens[2], "size") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "size");
+		return;
+	}
+
+	if (parser_read_uint32(&p.size, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "size");
+		return;
+	}
+
+	if (strcmp(tokens[4], "cpu") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cpu");
+		return;
+	}
+
+	if (parser_read_uint32(&p.cpu_id, tokens[5]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "cpu_id");
+		return;
+	}
+
+	swq = swq_create(name, &p);
+	if (swq == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 void
 cli_process(char *in, char *out, size_t out_size)
 {
@@ -253,6 +303,11 @@ cli_process(char *in, char *out, size_t out_size)
 
 	if (strcmp(tokens[0], "link") == 0) {
 		cmd_link(tokens, n_tokens, out, out_size);
+		return;
+	}
+
+	if (strcmp(tokens[0], "swq") == 0) {
+		cmd_swq(tokens, n_tokens, out, out_size);
 		return;
 	}
 
