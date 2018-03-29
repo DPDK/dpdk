@@ -119,6 +119,7 @@ struct pmd_internal {
 	uint16_t max_queues;
 	uint16_t vid;
 	rte_atomic32_t started;
+	uint8_t vlan_strip;
 };
 
 struct internal_list {
@@ -422,6 +423,12 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 
 	for (i = 0; likely(i < nb_rx); i++) {
 		bufs[i]->port = r->port;
+		bufs[i]->ol_flags = 0;
+		bufs[i]->vlan_tci = 0;
+
+		if (r->internal->vlan_strip)
+			rte_vlan_strip(bufs[i]);
+
 		r->stats.bytes += bufs[i]->pkt_len;
 	}
 
@@ -438,7 +445,7 @@ eth_vhost_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	struct vhost_queue *r = q;
 	uint16_t i, nb_tx = 0;
-	uint16_t nb_send = nb_bufs;
+	uint16_t nb_send = 0;
 
 	if (unlikely(rte_atomic32_read(&r->allow_queuing) == 0))
 		return 0;
@@ -447,6 +454,22 @@ eth_vhost_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 
 	if (unlikely(rte_atomic32_read(&r->allow_queuing) == 0))
 		goto out;
+
+	for (i = 0; i < nb_bufs; i++) {
+		struct rte_mbuf *m = bufs[i];
+
+		/* Do VLAN tag insertion */
+		if (m->ol_flags & PKT_TX_VLAN_PKT) {
+			int error = rte_vlan_insert(&m);
+			if (unlikely(error)) {
+				rte_pktmbuf_free(m);
+				continue;
+			}
+		}
+
+		bufs[nb_send] = m;
+		++nb_send;
+	}
 
 	/* Enqueue packets to guest RX queue */
 	while (nb_send) {
@@ -489,6 +512,16 @@ out:
 static int
 eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 {
+	struct pmd_internal *internal = dev->data->dev_private;
+	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+
+	internal->vlan_strip = rxmode->hw_vlan_strip;
+
+	if (rxmode->hw_vlan_filter)
+		RTE_LOG(WARNING, PMD,
+			"vhost(%s): vlan filtering not available\n",
+			internal->dev_name);
+
 	return 0;
 }
 
