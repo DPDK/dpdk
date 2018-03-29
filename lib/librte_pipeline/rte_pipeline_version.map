@@ -51,7 +51,11 @@ EXPERIMENTAL {
 
 	rte_table_action_apply;
 	rte_table_action_create;
+	rte_table_action_dscp_table_update;
 	rte_table_action_free;
+	rte_table_action_meter_profile_add;
+	rte_table_action_meter_profile_delete;
+	rte_table_action_meter_read;
 	rte_table_action_profile_action_register;
 	rte_table_action_profile_create;
 	rte_table_action_profile_free;

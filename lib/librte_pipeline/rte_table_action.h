@@ -59,6 +59,7 @@ extern "C" {
 #include <stdint.h>
 
 #include <rte_compat.h>
+#include <rte_meter.h>
 
 #include "rte_pipeline.h"
 
@@ -66,6 +67,9 @@ extern "C" {
 enum rte_table_action_type {
 	/** Forward to next pipeline table, output port or drop. */
 	RTE_TABLE_ACTION_FWD = 0,
+
+	/**  Traffic Metering and Policing. */
+	RTE_TABLE_ACTION_MTR,
 };
 
 /** Common action configuration (per table action profile). */
@@ -91,6 +95,164 @@ struct rte_table_action_fwd_params {
 
 	/** Pipeline table ID or output port ID. */
 	uint32_t id;
+};
+
+/**
+ * RTE_TABLE_ACTION_MTR
+ */
+/** Max number of traffic classes (TCs). */
+#define RTE_TABLE_ACTION_TC_MAX                                  4
+
+/** Max number of queues per traffic class. */
+#define RTE_TABLE_ACTION_TC_QUEUE_MAX                            4
+
+/** Differentiated Services Code Point (DSCP) translation table entry. */
+struct rte_table_action_dscp_table_entry {
+	/** Traffic class. Used by the meter or the traffic management actions.
+	 * Has to be strictly smaller than *RTE_TABLE_ACTION_TC_MAX*. Traffic
+	 * class 0 is the highest priority.
+	 */
+	uint32_t tc_id;
+
+	/** Traffic class queue. Used by the traffic management action. Has to
+	 * be strictly smaller than *RTE_TABLE_ACTION_TC_QUEUE_MAX*.
+	 */
+	uint32_t tc_queue_id;
+
+	/** Packet color. Used by the meter action as the packet input color
+	 * for the color aware mode of the traffic metering algorithm.
+	 */
+	enum rte_meter_color color;
+};
+
+/** DSCP translation table. */
+struct rte_table_action_dscp_table {
+	/** Array of DSCP table entries */
+	struct rte_table_action_dscp_table_entry entry[64];
+};
+
+/** Supported traffic metering algorithms. */
+enum rte_table_action_meter_algorithm {
+	/** Single Rate Three Color Marker (srTCM) - IETF RFC 2697. */
+	RTE_TABLE_ACTION_METER_SRTCM,
+
+	/** Two Rate Three Color Marker (trTCM) - IETF RFC 2698. */
+	RTE_TABLE_ACTION_METER_TRTCM,
+};
+
+/** Traffic metering profile (configuration template). */
+struct rte_table_action_meter_profile {
+	/** Traffic metering algorithm. */
+	enum rte_table_action_meter_algorithm alg;
+
+	RTE_STD_C11
+	union {
+		/** Only valid when *alg* is set to srTCM - IETF RFC 2697. */
+		struct rte_meter_srtcm_params srtcm;
+
+		/** Only valid when *alg* is set to trTCM - IETF RFC 2698. */
+		struct rte_meter_trtcm_params trtcm;
+	};
+};
+
+/** Policer actions. */
+enum rte_table_action_policer {
+	/** Recolor the packet as green. */
+	RTE_TABLE_ACTION_POLICER_COLOR_GREEN = 0,
+
+	/** Recolor the packet as yellow. */
+	RTE_TABLE_ACTION_POLICER_COLOR_YELLOW,
+
+	/** Recolor the packet as red. */
+	RTE_TABLE_ACTION_POLICER_COLOR_RED,
+
+	/** Drop the packet. */
+	RTE_TABLE_ACTION_POLICER_DROP,
+
+	/** Number of policer actions. */
+	RTE_TABLE_ACTION_POLICER_MAX
+};
+
+/** Meter action configuration per traffic class. */
+struct rte_table_action_mtr_tc_params {
+	/** Meter profile ID. */
+	uint32_t meter_profile_id;
+
+	/** Policer actions. */
+	enum rte_table_action_policer policer[e_RTE_METER_COLORS];
+};
+
+/** Meter action statistics counters per traffic class. */
+struct rte_table_action_mtr_counters_tc {
+	/** Number of packets per color at the output of the traffic metering
+	 * and before the policer actions are executed. Only valid when
+	 * *n_packets_valid* is non-zero.
+	 */
+	uint64_t n_packets[e_RTE_METER_COLORS];
+
+	/** Number of packet bytes per color at the output of the traffic
+	 * metering and before the policer actions are executed. Only valid when
+	 * *n_bytes_valid* is non-zero.
+	 */
+	uint64_t n_bytes[e_RTE_METER_COLORS];
+
+	/** When non-zero, the *n_packets* field is valid. */
+	int n_packets_valid;
+
+	/** When non-zero, the *n_bytes* field is valid. */
+	int n_bytes_valid;
+};
+
+/** Meter action configuration (per table action profile). */
+struct rte_table_action_mtr_config {
+	/** Meter algorithm. */
+	enum rte_table_action_meter_algorithm alg;
+
+	/** Number of traffic classes. Each traffic class has its own traffic
+	 * meter and policer instances. Needs to be equal to either 1 or to
+	 * *RTE_TABLE_ACTION_TC_MAX*.
+	 */
+	uint32_t n_tc;
+
+	/** When non-zero, the *n_packets* meter stats counter is enabled,
+	 * otherwise it is disabled.
+	 *
+	 * @see struct rte_table_action_mtr_counters_tc
+	 */
+	int n_packets_enabled;
+
+	/** When non-zero, the *n_bytes* meter stats counter is enabled,
+	 * otherwise it is disabled.
+	 *
+	 * @see struct rte_table_action_mtr_counters_tc
+	 */
+	int n_bytes_enabled;
+};
+
+/** Meter action parameters (per table rule). */
+struct rte_table_action_mtr_params {
+	/** Traffic meter and policer parameters for each of the *tc_mask*
+	 * traffic classes.
+	 */
+	struct rte_table_action_mtr_tc_params mtr[RTE_TABLE_ACTION_TC_MAX];
+
+	/** Bit mask defining which traffic class parameters are valid in *mtr*.
+	 * If bit N is set in *tc_mask*, then parameters for traffic class N are
+	 * valid in *mtr*.
+	 */
+	uint32_t tc_mask;
+};
+
+/** Meter action statistics counters (per table rule). */
+struct rte_table_action_mtr_counters {
+	/** Stats counters for each of the *tc_mask* traffic classes. */
+	struct rte_table_action_mtr_counters_tc stats[RTE_TABLE_ACTION_TC_MAX];
+
+	/** Bit mask defining which traffic class parameters are valid in *mtr*.
+	 * If bit N is set in *tc_mask*, then parameters for traffic class N are
+	 * valid in *mtr*.
+	 */
+	uint32_t tc_mask;
 };
 
 /**
@@ -230,6 +392,92 @@ rte_table_action_apply(struct rte_table_action *action,
 	void *data,
 	enum rte_table_action_type type,
 	void *action_params);
+
+/**
+ * Table action DSCP table update.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[in] dscp_mask
+ *   64-bit mask defining the DSCP table entries to be updated. If bit N is set
+ *   in this bit mask, then DSCP table entry N is to be updated, otherwise not.
+ * @param[in] table
+ *   DSCP table.
+ * @return
+ *   Zero on success, non-zero error code otherwise.
+ */
+int __rte_experimental
+rte_table_action_dscp_table_update(struct rte_table_action *action,
+	uint64_t dscp_mask,
+	struct rte_table_action_dscp_table *table);
+
+/**
+ * Table action meter profile add.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[in] meter_profile_id
+ *   Meter profile ID to be used for the *profile* once it is successfully added
+ *   to the *action* object (needs to be unused by the set of meter profiles
+ *   currently registered for the *action* object).
+ * @param[in] profile
+ *   Meter profile to be added.
+ * @return
+ *   Zero on success, non-zero error code otherwise.
+ */
+int __rte_experimental
+rte_table_action_meter_profile_add(struct rte_table_action *action,
+	uint32_t meter_profile_id,
+	struct rte_table_action_meter_profile *profile);
+
+/**
+ * Table action meter profile delete.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[in] meter_profile_id
+ *   Meter profile ID of the meter profile to be deleted from the *action*
+ *   object (needs to be valid for the *action* object).
+ * @return
+ *   Zero on success, non-zero error code otherwise.
+ */
+int __rte_experimental
+rte_table_action_meter_profile_delete(struct rte_table_action *action,
+	uint32_t meter_profile_id);
+
+/**
+ * Table action meter read.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[in] data
+ *   Data byte array (typically table rule data) with meter action previously
+ *   applied on it.
+ * @param[in] tc_mask
+ *   Bit mask defining which traffic classes should have the meter stats
+ *   counters read from *data* and stored into *stats*. If bit N is set in this
+ *   bit mask, then traffic class N is part of this operation, otherwise it is
+ *   not. If bit N is set in this bit mask, then traffic class N must be one of
+ *   the traffic classes that are enabled for the meter action in the table
+ *   action profile used by the *action* object.
+ * @param[inout] stats
+ *   When non-NULL, it points to the area where the meter stats counters read
+ *   from *data* are saved. Only the meter stats counters for the *tc_mask*
+ *   traffic classes are read and stored to *stats*.
+ * @param[in] clear
+ *   When non-zero, the meter stats counters are cleared (i.e. set to zero),
+ *   otherwise the counters are not modified. When the read operation is enabled
+ *   (*stats* is non-NULL), the clear operation is performed after the read
+ *   operation is completed.
+ * @return
+ *   Zero on success, non-zero error code otherwise.
+ */
+int __rte_experimental
+rte_table_action_meter_read(struct rte_table_action *action,
+	void *data,
+	uint32_t tc_mask,
+	struct rte_table_action_mtr_counters *stats,
+	int clear);
 
 #ifdef __cplusplus
 }
