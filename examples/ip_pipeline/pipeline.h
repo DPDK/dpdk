@@ -295,4 +295,17 @@ pipeline_table_stats_read(const char *pipeline_name,
 	struct rte_pipeline_table_stats *stats,
 	int clear);
 
+int
+pipeline_table_rule_add(const char *pipeline_name,
+	uint32_t table_id,
+	struct table_rule_match *match,
+	struct table_rule_action *action,
+	void **data);
+
+int
+pipeline_table_rule_add_default(const char *pipeline_name,
+	uint32_t table_id,
+	struct table_rule_action *action,
+	void **data);
+
 #endif /* _INCLUDE_PIPELINE_H_ */

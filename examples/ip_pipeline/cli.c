@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include <rte_common.h>
+#include <rte_cycles.h>
 
 #include "cli.h"
 #include "kni.h"
@@ -2262,6 +2263,1283 @@ cmd_pipeline_table_stats(char **tokens,
 }
 
 /**
+ * <match> ::=
+ *
+ * match
+ *    acl
+ *       priority <priority>
+ *       ipv4 | ipv6 <sa> <sa_depth> <da> <da_depth>
+ *       <sp0> <sp1> <dp0> <dp1> <proto>
+ *    | array
+ *       pos
+ *    | hash
+ *       raw <key>
+ *       | ipv4_5tuple <sa> <da> <sp> <dp> <proto>
+ *       | ipv6_5tuple <sa> <da> <sp> <dp> <proto>
+ *       | ipv4_addr <addr>
+ *       | ipv6_addr <addr>
+ *       | qinq <svlan> <cvlan>
+ *    | lpm
+ *       ipv4 | ipv6 <addr> <depth>
+ */
+struct pkt_key_qinq {
+	uint16_t ethertype_svlan;
+	uint16_t svlan;
+	uint16_t ethertype_cvlan;
+	uint16_t cvlan;
+} __attribute__((__packed__));
+
+struct pkt_key_ipv4_5tuple {
+	uint8_t time_to_live;
+	uint8_t proto;
+	uint16_t hdr_checksum;
+	uint32_t sa;
+	uint32_t da;
+	uint16_t sp;
+	uint16_t dp;
+} __attribute__((__packed__));
+
+struct pkt_key_ipv6_5tuple {
+	uint16_t payload_length;
+	uint8_t proto;
+	uint8_t hop_limit;
+	uint8_t sa[16];
+	uint8_t da[16];
+	uint16_t sp;
+	uint16_t dp;
+} __attribute__((__packed__));
+
+struct pkt_key_ipv4_addr {
+	uint32_t addr;
+} __attribute__((__packed__));
+
+struct pkt_key_ipv6_addr {
+	uint8_t addr[16];
+} __attribute__((__packed__));
+
+static uint32_t
+parse_match(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	struct table_rule_match *m)
+{
+	memset(m, 0, sizeof(*m));
+
+	if (n_tokens < 2)
+		return 0;
+
+	if (strcmp(tokens[0], "match") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "match");
+		return 0;
+	}
+
+	if (strcmp(tokens[1], "acl") == 0) {
+		if (n_tokens < 14) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return 0;
+		}
+
+		m->match_type = TABLE_ACL;
+
+		if (strcmp(tokens[2], "priority") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "priority");
+			return 0;
+		}
+
+		if (parser_read_uint32(&m->match.acl.priority,
+			tokens[3]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "priority");
+			return 0;
+		}
+
+		if (strcmp(tokens[4], "ipv4") == 0) {
+			struct in_addr saddr, daddr;
+
+			m->match.acl.ip_version = 1;
+
+			if (parse_ipv4_addr(tokens[5], &saddr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "sa");
+				return 0;
+			}
+			m->match.acl.ipv4.sa = rte_be_to_cpu_32(saddr.s_addr);
+
+			if (parse_ipv4_addr(tokens[7], &daddr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "da");
+				return 0;
+			}
+			m->match.acl.ipv4.da = rte_be_to_cpu_32(daddr.s_addr);
+		} else if (strcmp(tokens[4], "ipv6") == 0) {
+			struct in6_addr saddr, daddr;
+
+			m->match.acl.ip_version = 0;
+
+			if (parse_ipv6_addr(tokens[5], &saddr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "sa");
+				return 0;
+			}
+			memcpy(m->match.acl.ipv6.sa, saddr.s6_addr, 16);
+
+			if (parse_ipv6_addr(tokens[7], &daddr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "da");
+				return 0;
+			}
+			memcpy(m->match.acl.ipv6.da, daddr.s6_addr, 16);
+		} else {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"ipv4 or ipv6");
+			return 0;
+		}
+
+		if (parser_read_uint32(&m->match.acl.sa_depth,
+			tokens[6]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "sa_depth");
+			return 0;
+		}
+
+		if (parser_read_uint32(&m->match.acl.da_depth,
+			tokens[8]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "da_depth");
+			return 0;
+		}
+
+		if (parser_read_uint16(&m->match.acl.sp0, tokens[9]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "sp0");
+			return 0;
+		}
+
+		if (parser_read_uint16(&m->match.acl.sp1, tokens[10]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "sp1");
+			return 0;
+		}
+
+		if (parser_read_uint16(&m->match.acl.dp0, tokens[11]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "dp0");
+			return 0;
+		}
+
+		if (parser_read_uint16(&m->match.acl.dp1, tokens[12]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "dp1");
+			return 0;
+		}
+
+		if (parser_read_uint8(&m->match.acl.proto, tokens[13]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "proto");
+			return 0;
+		}
+
+		m->match.acl.proto_mask = 0xff;
+
+		return 14;
+	} /* acl */
+
+	if (strcmp(tokens[1], "array") == 0) {
+		if (n_tokens < 3) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return 0;
+		}
+
+		m->match_type = TABLE_ARRAY;
+
+		if (parser_read_uint32(&m->match.array.pos, tokens[2]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "pos");
+			return 0;
+		}
+
+		return 3;
+	} /* array */
+
+	if (strcmp(tokens[1], "hash") == 0) {
+		if (n_tokens < 3) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return 0;
+		}
+
+		m->match_type = TABLE_HASH;
+
+		if (strcmp(tokens[2], "raw") == 0) {
+			uint32_t key_size = TABLE_RULE_MATCH_SIZE_MAX;
+
+			if (n_tokens < 4) {
+				snprintf(out, out_size, MSG_ARG_MISMATCH,
+					tokens[0]);
+				return 0;
+			}
+
+			if (parse_hex_string(tokens[3],
+				m->match.hash.key, &key_size) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "key");
+				return 0;
+			}
+
+			return 4;
+		} /* hash raw */
+
+		if (strcmp(tokens[2], "ipv4_5tuple") == 0) {
+			struct pkt_key_ipv4_5tuple *ipv4 =
+				(struct pkt_key_ipv4_5tuple *) m->match.hash.key;
+			struct in_addr saddr, daddr;
+			uint16_t sp, dp;
+			uint8_t proto;
+
+			if (n_tokens < 8) {
+				snprintf(out, out_size, MSG_ARG_MISMATCH,
+					tokens[0]);
+				return 0;
+			}
+
+			if (parse_ipv4_addr(tokens[3], &saddr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "sa");
+				return 0;
+			}
+
+			if (parse_ipv4_addr(tokens[4], &daddr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "da");
+				return 0;
+			}
+
+			if (parser_read_uint16(&sp, tokens[5]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "sp");
+				return 0;
+			}
+
+			if (parser_read_uint16(&dp, tokens[6]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "dp");
+				return 0;
+			}
+
+			if (parser_read_uint8(&proto, tokens[7]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"proto");
+				return 0;
+			}
+
+			ipv4->sa = saddr.s_addr;
+			ipv4->da = daddr.s_addr;
+			ipv4->sp = rte_cpu_to_be_16(sp);
+			ipv4->dp = rte_cpu_to_be_16(dp);
+			ipv4->proto = proto;
+
+			return 8;
+		} /* hash ipv4_5tuple */
+
+		if (strcmp(tokens[2], "ipv6_5tuple") == 0) {
+			struct pkt_key_ipv6_5tuple *ipv6 =
+				(struct pkt_key_ipv6_5tuple *) m->match.hash.key;
+			struct in6_addr saddr, daddr;
+			uint16_t sp, dp;
+			uint8_t proto;
+
+			if (n_tokens < 8) {
+				snprintf(out, out_size, MSG_ARG_MISMATCH,
+					tokens[0]);
+				return 0;
+			}
+
+			if (parse_ipv6_addr(tokens[3], &saddr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "sa");
+				return 0;
+			}
+
+			if (parse_ipv6_addr(tokens[4], &daddr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "da");
+				return 0;
+			}
+
+			if (parser_read_uint16(&sp, tokens[5]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "sp");
+				return 0;
+			}
+
+			if (parser_read_uint16(&dp, tokens[6]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "dp");
+				return 0;
+			}
+
+			if (parser_read_uint8(&proto, tokens[7]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"proto");
+				return 0;
+			}
+
+			memcpy(ipv6->sa, saddr.s6_addr, 16);
+			memcpy(ipv6->da, daddr.s6_addr, 16);
+			ipv6->sp = rte_cpu_to_be_16(sp);
+			ipv6->dp = rte_cpu_to_be_16(dp);
+			ipv6->proto = proto;
+
+			return 8;
+		} /* hash ipv6_5tuple */
+
+		if (strcmp(tokens[2], "ipv4_addr") == 0) {
+			struct pkt_key_ipv4_addr *ipv4_addr =
+				(struct pkt_key_ipv4_addr *) m->match.hash.key;
+			struct in_addr addr;
+
+			if (n_tokens < 4) {
+				snprintf(out, out_size, MSG_ARG_MISMATCH,
+					tokens[0]);
+				return 0;
+			}
+
+			if (parse_ipv4_addr(tokens[3], &addr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"addr");
+				return 0;
+			}
+
+			ipv4_addr->addr = addr.s_addr;
+
+			return 4;
+		} /* hash ipv4_addr */
+
+		if (strcmp(tokens[2], "ipv6_addr") == 0) {
+			struct pkt_key_ipv6_addr *ipv6_addr =
+				(struct pkt_key_ipv6_addr *) m->match.hash.key;
+			struct in6_addr addr;
+
+			if (n_tokens < 4) {
+				snprintf(out, out_size, MSG_ARG_MISMATCH,
+					tokens[0]);
+				return 0;
+			}
+
+			if (parse_ipv6_addr(tokens[3], &addr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"addr");
+				return 0;
+			}
+
+			memcpy(ipv6_addr->addr, addr.s6_addr, 16);
+
+			return 4;
+		} /* hash ipv6_5tuple */
+
+		if (strcmp(tokens[2], "qinq") == 0) {
+			struct pkt_key_qinq *qinq =
+				(struct pkt_key_qinq *) m->match.hash.key;
+			uint16_t svlan, cvlan;
+
+			if (n_tokens < 5) {
+				snprintf(out, out_size, MSG_ARG_MISMATCH,
+					tokens[0]);
+				return 0;
+			}
+
+			if ((parser_read_uint16(&svlan, tokens[3]) != 0) ||
+				(svlan > 0xFFF)) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"svlan");
+				return 0;
+			}
+
+			if ((parser_read_uint16(&cvlan, tokens[4]) != 0) ||
+				(cvlan > 0xFFF)) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"cvlan");
+				return 0;
+			}
+
+			qinq->svlan = rte_cpu_to_be_16(svlan);
+			qinq->cvlan = rte_cpu_to_be_16(cvlan);
+
+			return 5;
+		} /* hash qinq */
+
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return 0;
+	} /* hash */
+
+	if (strcmp(tokens[1], "lpm") == 0) {
+		if (n_tokens < 5) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return 0;
+		}
+
+		m->match_type = TABLE_LPM;
+
+		if (strcmp(tokens[2], "ipv4") == 0) {
+			struct in_addr addr;
+
+			m->match.lpm.ip_version = 1;
+
+			if (parse_ipv4_addr(tokens[3], &addr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"addr");
+				return 0;
+			}
+
+			m->match.lpm.ipv4 = rte_be_to_cpu_32(addr.s_addr);
+		} else if (strcmp(tokens[2], "ipv6") == 0) {
+			struct in6_addr addr;
+
+			m->match.lpm.ip_version = 0;
+
+			if (parse_ipv6_addr(tokens[3], &addr) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"addr");
+				return 0;
+			}
+
+			memcpy(m->match.lpm.ipv6, addr.s6_addr, 16);
+		} else {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"ipv4 or ipv6");
+			return 0;
+		}
+
+		if (parser_read_uint8(&m->match.lpm.depth, tokens[4]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "depth");
+			return 0;
+		}
+
+		return 5;
+	} /* lpm */
+
+	snprintf(out, out_size, MSG_ARG_MISMATCH,
+		"acl or array or hash or lpm");
+	return 0;
+}
+
+/**
+ * table_action ::=
+ *
+ * action
+ *    fwd
+ *       drop
+ *       | port <port_id>
+ *       | meta
+ *       | table <table_id>
+ *    [balance <out0> ... <out7>]
+ *    [meter
+ *       tc0 meter <meter_profile_id> policer g <pa> y <pa> r <pa>
+ *       [tc1 meter <meter_profile_id> policer g <pa> y <pa> r <pa>
+ *       tc2 meter <meter_profile_id> policer g <pa> y <pa> r <pa>
+ *       tc3 meter <meter_profile_id> policer g <pa> y <pa> r <pa>]]
+ *    [tm subport <subport_id> pipe <pipe_id>]
+ *    [encap
+ *       ether <da> <sa>
+ *       | vlan <da> <sa> <pcp> <dei> <vid>
+ *       | qinq <da> <sa> <pcp> <dei> <vid> <pcp> <dei> <vid>
+ *       | mpls unicast | multicast
+ *          <da> <sa>
+ *          label0 <label> <tc> <ttl>
+ *          [label1 <label> <tc> <ttl>
+ *          [label2 <label> <tc> <ttl>
+ *          [label3 <label> <tc> <ttl>]]]
+ *       | pppoe <da> <sa> <session_id>]
+ *    [nat ipv4 | ipv6 <addr> <port>]
+ *    [ttl dec | keep]
+ *    [stats]
+ *    [time]
+ *
+ * where:
+ *    <pa> ::= g | y | r | drop
+ */
+static uint32_t
+parse_table_action_fwd(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	if ((n_tokens == 0) || (strcmp(tokens[0], "fwd") != 0))
+		return 0;
+
+	tokens++;
+	n_tokens--;
+
+	if (n_tokens && (strcmp(tokens[0], "drop") == 0)) {
+		a->fwd.action = RTE_PIPELINE_ACTION_DROP;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_FWD;
+		return 1 + 1;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "port") == 0)) {
+		uint32_t id;
+
+		if ((n_tokens < 2) ||
+			parser_read_uint32(&id, tokens[1]))
+			return 0;
+
+		a->fwd.action = RTE_PIPELINE_ACTION_PORT;
+		a->fwd.id = id;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_FWD;
+		return 1 + 2;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "meta") == 0)) {
+		a->fwd.action = RTE_PIPELINE_ACTION_PORT_META;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_FWD;
+		return 1 + 1;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "table") == 0)) {
+		uint32_t id;
+
+		if ((n_tokens < 2) ||
+			parser_read_uint32(&id, tokens[1]))
+			return 0;
+
+		a->fwd.action = RTE_PIPELINE_ACTION_TABLE;
+		a->fwd.id = id;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_FWD;
+		return 1 + 2;
+	}
+
+	return 0;
+}
+
+static int
+parse_policer_action(char *token, enum rte_table_action_policer *a)
+{
+	if (strcmp(token, "g") == 0) {
+		*a = RTE_TABLE_ACTION_POLICER_COLOR_GREEN;
+		return 0;
+	}
+
+	if (strcmp(token, "y") == 0) {
+		*a = RTE_TABLE_ACTION_POLICER_COLOR_YELLOW;
+		return 0;
+	}
+
+	if (strcmp(token, "r") == 0) {
+		*a = RTE_TABLE_ACTION_POLICER_COLOR_RED;
+		return 0;
+	}
+
+	if (strcmp(token, "drop") == 0) {
+		*a = RTE_TABLE_ACTION_POLICER_DROP;
+		return 0;
+	}
+
+	return -1;
+}
+
+static uint32_t
+parse_table_action_meter_tc(char **tokens,
+	uint32_t n_tokens,
+	struct rte_table_action_mtr_tc_params *mtr)
+{
+	if ((n_tokens < 9) ||
+		strcmp(tokens[0], "meter") ||
+		parser_read_uint32(&mtr->meter_profile_id, tokens[1]) ||
+		strcmp(tokens[2], "policer") ||
+		strcmp(tokens[3], "g") ||
+		parse_policer_action(tokens[4], &mtr->policer[e_RTE_METER_GREEN]) ||
+		strcmp(tokens[5], "y") ||
+		parse_policer_action(tokens[6], &mtr->policer[e_RTE_METER_YELLOW]) ||
+		strcmp(tokens[7], "r") ||
+		parse_policer_action(tokens[8], &mtr->policer[e_RTE_METER_RED]))
+		return 0;
+
+	return 9;
+}
+
+static uint32_t
+parse_table_action_meter(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	if ((n_tokens == 0) || strcmp(tokens[0], "meter"))
+		return 0;
+
+	tokens++;
+	n_tokens--;
+
+	if ((n_tokens < 10) ||
+		strcmp(tokens[0], "tc0") ||
+		(parse_table_action_meter_tc(tokens + 1,
+			n_tokens - 1,
+			&a->mtr.mtr[0]) == 0))
+		return 0;
+
+	tokens += 10;
+	n_tokens -= 10;
+
+	if ((n_tokens == 0) || strcmp(tokens[0], "tc1")) {
+		a->mtr.tc_mask = 1;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_MTR;
+		return 1 + 10;
+	}
+
+	if ((n_tokens < 30) ||
+		(parse_table_action_meter_tc(tokens + 1,
+			n_tokens - 1, &a->mtr.mtr[1]) == 0) ||
+		strcmp(tokens[10], "tc2") ||
+		(parse_table_action_meter_tc(tokens + 11,
+			n_tokens - 11, &a->mtr.mtr[2]) == 0) ||
+		strcmp(tokens[20], "tc3") ||
+		(parse_table_action_meter_tc(tokens + 21,
+			n_tokens - 21, &a->mtr.mtr[3]) == 0))
+		return 0;
+
+	a->mtr.tc_mask = 0xF;
+	a->action_mask |= 1 << RTE_TABLE_ACTION_MTR;
+	return 1 + 10 + 3 * 10;
+}
+
+static uint32_t
+parse_table_action_tm(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	uint32_t subport_id, pipe_id;
+
+	if ((n_tokens < 5) ||
+		strcmp(tokens[0], "tm") ||
+		strcmp(tokens[1], "subport") ||
+		parser_read_uint32(&subport_id, tokens[2]) ||
+		strcmp(tokens[3], "pipe") ||
+		parser_read_uint32(&pipe_id, tokens[4]))
+		return 0;
+
+	a->tm.subport_id = subport_id;
+	a->tm.pipe_id = pipe_id;
+	a->action_mask |= 1 << RTE_TABLE_ACTION_TM;
+	return 5;
+}
+
+static uint32_t
+parse_table_action_encap(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	if ((n_tokens == 0) || strcmp(tokens[0], "encap"))
+		return 0;
+
+	tokens++;
+	n_tokens--;
+
+	/* ether */
+	if (n_tokens && (strcmp(tokens[0], "ether") == 0)) {
+		if ((n_tokens < 3) ||
+			parse_mac_addr(tokens[1], &a->encap.ether.ether.da) ||
+			parse_mac_addr(tokens[2], &a->encap.ether.ether.sa))
+			return 0;
+
+		a->encap.type = RTE_TABLE_ACTION_ENCAP_ETHER;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+		return 1 + 3;
+	}
+
+	/* vlan */
+	if (n_tokens && (strcmp(tokens[0], "vlan") == 0)) {
+		uint32_t pcp, dei, vid;
+
+		if ((n_tokens < 6) ||
+			parse_mac_addr(tokens[1], &a->encap.vlan.ether.da) ||
+			parse_mac_addr(tokens[2], &a->encap.vlan.ether.sa) ||
+			parser_read_uint32(&pcp, tokens[3]) ||
+			(pcp > 0x7) ||
+			parser_read_uint32(&dei, tokens[4]) ||
+			(dei > 0x1) ||
+			parser_read_uint32(&vid, tokens[5]) ||
+			(vid > 0xFFF))
+			return 0;
+
+		a->encap.vlan.vlan.pcp = pcp & 0x7;
+		a->encap.vlan.vlan.dei = dei & 0x1;
+		a->encap.vlan.vlan.vid = vid & 0xFFF;
+		a->encap.type = RTE_TABLE_ACTION_ENCAP_VLAN;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+		return 1 + 6;
+	}
+
+	/* qinq */
+	if (n_tokens && (strcmp(tokens[0], "qinq") == 0)) {
+		uint32_t svlan_pcp, svlan_dei, svlan_vid;
+		uint32_t cvlan_pcp, cvlan_dei, cvlan_vid;
+
+		if ((n_tokens < 9) ||
+			parse_mac_addr(tokens[1], &a->encap.qinq.ether.da) ||
+			parse_mac_addr(tokens[2], &a->encap.qinq.ether.sa) ||
+			parser_read_uint32(&svlan_pcp, tokens[3]) ||
+			(svlan_pcp > 0x7) ||
+			parser_read_uint32(&svlan_dei, tokens[4]) ||
+			(svlan_dei > 0x1) ||
+			parser_read_uint32(&svlan_vid, tokens[5]) ||
+			(svlan_vid > 0xFFF) ||
+			parser_read_uint32(&cvlan_pcp, tokens[6]) ||
+			(cvlan_pcp > 0x7) ||
+			parser_read_uint32(&cvlan_dei, tokens[7]) ||
+			(cvlan_dei > 0x1) ||
+			parser_read_uint32(&cvlan_vid, tokens[8]) ||
+			(cvlan_vid > 0xFFF))
+			return 0;
+
+		a->encap.qinq.svlan.pcp = svlan_pcp & 0x7;
+		a->encap.qinq.svlan.dei = svlan_dei & 0x1;
+		a->encap.qinq.svlan.vid = svlan_vid & 0xFFF;
+		a->encap.qinq.cvlan.pcp = cvlan_pcp & 0x7;
+		a->encap.qinq.cvlan.dei = cvlan_dei & 0x1;
+		a->encap.qinq.cvlan.vid = cvlan_vid & 0xFFF;
+		a->encap.type = RTE_TABLE_ACTION_ENCAP_QINQ;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+		return 1 + 9;
+	}
+
+	/* mpls */
+	if (n_tokens && (strcmp(tokens[0], "mpls") == 0)) {
+		uint32_t label, tc, ttl;
+
+		if (n_tokens < 8)
+			return 0;
+
+		if (strcmp(tokens[1], "unicast") == 0)
+			a->encap.mpls.unicast = 1;
+		else if (strcmp(tokens[1], "multicast") == 0)
+			a->encap.mpls.unicast = 0;
+		else
+			return 0;
+
+		if (parse_mac_addr(tokens[2], &a->encap.mpls.ether.da) ||
+			parse_mac_addr(tokens[3], &a->encap.mpls.ether.sa) ||
+			strcmp(tokens[4], "label0") ||
+			parser_read_uint32(&label, tokens[5]) ||
+			(label > 0xFFFFF) ||
+			parser_read_uint32(&tc, tokens[6]) ||
+			(tc > 0x7) ||
+			parser_read_uint32(&ttl, tokens[7]) ||
+			(ttl > 0x3F))
+			return 0;
+
+		a->encap.mpls.mpls[0].label = label;
+		a->encap.mpls.mpls[0].tc = tc;
+		a->encap.mpls.mpls[0].ttl = ttl;
+
+		tokens += 8;
+		n_tokens -= 8;
+
+		if ((n_tokens == 0) || strcmp(tokens[0], "label1")) {
+			a->encap.mpls.mpls_count = 1;
+			a->encap.type = RTE_TABLE_ACTION_ENCAP_MPLS;
+			a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+			return 1 + 8;
+		}
+
+		if ((n_tokens < 4) ||
+			parser_read_uint32(&label, tokens[1]) ||
+			(label > 0xFFFFF) ||
+			parser_read_uint32(&tc, tokens[2]) ||
+			(tc > 0x7) ||
+			parser_read_uint32(&ttl, tokens[3]) ||
+			(ttl > 0x3F))
+			return 0;
+
+		a->encap.mpls.mpls[1].label = label;
+		a->encap.mpls.mpls[1].tc = tc;
+		a->encap.mpls.mpls[1].ttl = ttl;
+
+		tokens += 4;
+		n_tokens -= 4;
+
+		if ((n_tokens == 0) || strcmp(tokens[0], "label2")) {
+			a->encap.mpls.mpls_count = 2;
+			a->encap.type = RTE_TABLE_ACTION_ENCAP_MPLS;
+			a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+			return 1 + 8 + 4;
+		}
+
+		if ((n_tokens < 4) ||
+			parser_read_uint32(&label, tokens[1]) ||
+			(label > 0xFFFFF) ||
+			parser_read_uint32(&tc, tokens[2]) ||
+			(tc > 0x7) ||
+			parser_read_uint32(&ttl, tokens[3]) ||
+			(ttl > 0x3F))
+			return 0;
+
+		a->encap.mpls.mpls[2].label = label;
+		a->encap.mpls.mpls[2].tc = tc;
+		a->encap.mpls.mpls[2].ttl = ttl;
+
+		tokens += 4;
+		n_tokens -= 4;
+
+		if ((n_tokens == 0) || strcmp(tokens[0], "label3")) {
+			a->encap.mpls.mpls_count = 3;
+			a->encap.type = RTE_TABLE_ACTION_ENCAP_MPLS;
+			a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+			return 1 + 8 + 4 + 4;
+		}
+
+		if ((n_tokens < 4) ||
+			parser_read_uint32(&label, tokens[1]) ||
+			(label > 0xFFFFF) ||
+			parser_read_uint32(&tc, tokens[2]) ||
+			(tc > 0x7) ||
+			parser_read_uint32(&ttl, tokens[3]) ||
+			(ttl > 0x3F))
+			return 0;
+
+		a->encap.mpls.mpls[3].label = label;
+		a->encap.mpls.mpls[3].tc = tc;
+		a->encap.mpls.mpls[3].ttl = ttl;
+
+		a->encap.mpls.mpls_count = 4;
+		a->encap.type = RTE_TABLE_ACTION_ENCAP_MPLS;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+		return 1 + 8 + 4 + 4 + 4;
+	}
+
+	/* pppoe */
+	if (n_tokens && (strcmp(tokens[0], "pppoe") == 0)) {
+		if ((n_tokens < 4) ||
+			parse_mac_addr(tokens[1], &a->encap.pppoe.ether.da) ||
+			parse_mac_addr(tokens[2], &a->encap.pppoe.ether.sa) ||
+			parser_read_uint16(&a->encap.pppoe.pppoe.session_id,
+				tokens[3]))
+			return 0;
+
+		a->encap.type = RTE_TABLE_ACTION_ENCAP_PPPOE;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+		return 1 + 4;
+	}
+
+	return 0;
+}
+
+static uint32_t
+parse_table_action_nat(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	if ((n_tokens < 4) ||
+		strcmp(tokens[0], "nat"))
+		return 0;
+
+	if (strcmp(tokens[1], "ipv4") == 0) {
+		struct in_addr addr;
+		uint16_t port;
+
+		if (parse_ipv4_addr(tokens[2], &addr) ||
+			parser_read_uint16(&port, tokens[3]))
+			return 0;
+
+		a->nat.ip_version = 1;
+		a->nat.addr.ipv4 = rte_be_to_cpu_32(addr.s_addr);
+		a->nat.port = port;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_NAT;
+		return 4;
+	}
+
+	if (strcmp(tokens[1], "ipv6") == 0) {
+		struct in6_addr addr;
+		uint16_t port;
+
+		if (parse_ipv6_addr(tokens[2], &addr) ||
+			parser_read_uint16(&port, tokens[3]))
+			return 0;
+
+		a->nat.ip_version = 0;
+		memcpy(a->nat.addr.ipv6, addr.s6_addr, 16);
+		a->nat.port = port;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_NAT;
+		return 4;
+	}
+
+	return 0;
+}
+
+static uint32_t
+parse_table_action_ttl(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	if ((n_tokens < 2) ||
+		strcmp(tokens[0], "ttl"))
+		return 0;
+
+	if (strcmp(tokens[1], "dec") == 0)
+		a->ttl.decrement = 1;
+	else if (strcmp(tokens[1], "keep") == 0)
+		a->ttl.decrement = 0;
+	else
+		return 0;
+
+	a->action_mask |= 1 << RTE_TABLE_ACTION_TTL;
+	return 2;
+}
+
+static uint32_t
+parse_table_action_stats(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	if ((n_tokens < 1) ||
+		strcmp(tokens[0], "stats"))
+		return 0;
+
+	a->stats.n_packets = 0;
+	a->stats.n_bytes = 0;
+	a->action_mask |= 1 << RTE_TABLE_ACTION_STATS;
+	return 1;
+}
+
+static uint32_t
+parse_table_action_time(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	if ((n_tokens < 1) ||
+		strcmp(tokens[0], "time"))
+		return 0;
+
+	a->time.time = rte_rdtsc();
+	a->action_mask |= 1 << RTE_TABLE_ACTION_TIME;
+	return 1;
+}
+
+static uint32_t
+parse_table_action(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	struct table_rule_action *a)
+{
+	uint32_t n_tokens0 = n_tokens;
+
+	memset(a, 0, sizeof(*a));
+
+	if ((n_tokens < 2) ||
+		strcmp(tokens[0], "action"))
+		return 0;
+
+	tokens++;
+	n_tokens--;
+
+	if (n_tokens && (strcmp(tokens[0], "fwd") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_fwd(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action fwd");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "meter") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_meter(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action meter");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "tm") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_tm(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action tm");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "encap") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_encap(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action encap");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "nat") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_nat(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action nat");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "ttl") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_ttl(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action ttl");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "stats") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_stats(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action stats");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "time") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_time(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action time");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens0 - n_tokens == 1) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "action");
+		return 0;
+	}
+
+	return n_tokens0 - n_tokens;
+}
+
+/**
+ * pipeline <pipeline_name> table <table_id> rule add
+ *    match <match>
+ *    action <table_action>
+ */
+static void
+cmd_pipeline_table_rule_add(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct table_rule_match m;
+	struct table_rule_action a;
+	char *pipeline_name;
+	void *data;
+	uint32_t table_id, t0, n_tokens_parsed;
+	int status;
+
+	if (n_tokens < 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "rule") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rule");
+		return;
+	}
+
+	if (strcmp(tokens[5], "add") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "add");
+		return;
+	}
+
+	t0 = 6;
+
+	/* match */
+	n_tokens_parsed = parse_match(tokens + t0,
+		n_tokens - t0,
+		out,
+		out_size,
+		&m);
+	if (n_tokens_parsed == 0)
+		return;
+	t0 += n_tokens_parsed;
+
+	/* action */
+	n_tokens_parsed = parse_table_action(tokens + t0,
+		n_tokens - t0,
+		out,
+		out_size,
+		&a);
+	if (n_tokens_parsed == 0)
+		return;
+	t0 += n_tokens_parsed;
+
+	if (t0 != n_tokens) {
+		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
+		return;
+	}
+
+	status = pipeline_table_rule_add(pipeline_name, table_id,
+		&m, &a, &data);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> table <table_id> rule add
+ *    match
+ *       default
+ *    action
+ *       fwd
+ *          drop
+ *          | port <port_id>
+ *          | meta
+ *          | table <table_id>
+ */
+static void
+cmd_pipeline_table_rule_add_default(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct table_rule_action action;
+	void *data;
+	char *pipeline_name;
+	uint32_t table_id;
+	int status;
+
+	if ((n_tokens != 11) && (n_tokens != 12)) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "rule") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rule");
+		return;
+	}
+
+	if (strcmp(tokens[5], "add") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "add");
+		return;
+	}
+
+	if (strcmp(tokens[6], "match") != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "match");
+		return;
+	}
+
+	if (strcmp(tokens[7], "default") != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "default");
+		return;
+	}
+
+	if (strcmp(tokens[8], "action") != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "action");
+		return;
+	}
+
+	if (strcmp(tokens[9], "fwd") != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "fwd");
+		return;
+	}
+
+	action.action_mask = 1 << RTE_TABLE_ACTION_FWD;
+
+	if (strcmp(tokens[10], "drop") == 0) {
+		if (n_tokens != 11) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		action.fwd.action = RTE_PIPELINE_ACTION_DROP;
+	} else if (strcmp(tokens[10], "port") == 0) {
+		uint32_t id;
+
+		if (n_tokens != 12) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		if (parser_read_uint32(&id, tokens[11]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+			return;
+		}
+
+		action.fwd.action = RTE_PIPELINE_ACTION_PORT;
+		action.fwd.id = id;
+	} else if (strcmp(tokens[10], "meta") == 0) {
+		if (n_tokens != 11) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		action.fwd.action = RTE_PIPELINE_ACTION_PORT_META;
+	} else if (strcmp(tokens[10], "table") == 0) {
+		uint32_t id;
+
+		if (n_tokens != 12) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		if (parser_read_uint32(&id, tokens[11]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+			return;
+		}
+
+		action.fwd.action = RTE_PIPELINE_ACTION_TABLE;
+		action.fwd.id = id;
+	} else {
+		snprintf(out, out_size, MSG_ARG_INVALID,
+			"drop or port or meta or table");
+		return;
+	}
+
+	status = pipeline_table_rule_add_default(pipeline_name,
+		table_id,
+		&action,
+		&data);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -2513,6 +3791,23 @@ cli_process(char *in, char *out, size_t out_size)
 			(strcmp(tokens[2], "table") == 0) &&
 			(strcmp(tokens[4], "stats") == 0)) {
 			cmd_pipeline_table_stats(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 7) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "add") == 0) &&
+			(strcmp(tokens[6], "match") == 0)) {
+			if ((n_tokens >= 8) &&
+				(strcmp(tokens[7], "default") == 0)) {
+				cmd_pipeline_table_rule_add_default(tokens,
+					n_tokens, out, out_size);
+				return;
+			}
+
+			cmd_pipeline_table_rule_add(tokens, n_tokens,
 				out, out_size);
 			return;
 		}
