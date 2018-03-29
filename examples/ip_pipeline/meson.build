@@ -10,6 +10,7 @@ deps += ['pipeline', 'bus_pci']
 sources = files(
 	'cli.c',
 	'conn.c',
+	'link.c',
 	'main.c',
 	'mempool.c',
 	'parser.c',

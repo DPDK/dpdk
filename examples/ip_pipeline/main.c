@@ -12,6 +12,7 @@
 
 #include "cli.h"
 #include "conn.h"
+#include "link.h"
 #include "mempool.h"
 
 static const char usage[] =
@@ -164,6 +165,13 @@ main(int argc, char **argv)
 	status = mempool_init();
 	if (status) {
 		printf("Error: Mempool initialization failed (%d)\n", status);
+		return status;
+	}
+
+	/* Link */
+	status = link_init();
+	if (status) {
+		printf("Error: Link initialization failed (%d)\n", status);
 		return status;
 	}
 
