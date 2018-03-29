@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include <rte_launch.h>
 #include <rte_eal.h>
 
 #include "cli.h"
@@ -236,6 +237,11 @@ main(int argc, char **argv)
 		printf("Error: Thread initialization failed (%d)\n", status);
 		return status;
 	}
+
+	rte_eal_mp_remote_launch(
+		thread_main,
+		NULL,
+		SKIP_MASTER);
 
 	/* Script */
 	if (app.script_name)

@@ -10,4 +10,7 @@
 int
 thread_init(void);
 
+int
+thread_main(void *arg);
+
 #endif /* _INCLUDE_THREAD_H_ */
