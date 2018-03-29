@@ -3540,6 +3540,134 @@ cmd_pipeline_table_rule_add_default(char **tokens,
 }
 
 /**
+ * pipeline <pipeline_name> table <table_id> rule delete
+ *    match <match>
+ */
+static void
+cmd_pipeline_table_rule_delete(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct table_rule_match m;
+	char *pipeline_name;
+	uint32_t table_id, n_tokens_parsed, t0;
+	int status;
+
+	if (n_tokens < 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "rule") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rule");
+		return;
+	}
+
+	if (strcmp(tokens[5], "delete") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "delete");
+		return;
+	}
+
+	t0 = 6;
+
+	/* match */
+	n_tokens_parsed = parse_match(tokens + t0,
+		n_tokens - t0,
+		out,
+		out_size,
+		&m);
+	if (n_tokens_parsed == 0)
+		return;
+	t0 += n_tokens_parsed;
+
+	if (n_tokens != t0) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	status = pipeline_table_rule_delete(pipeline_name,
+		table_id,
+		&m);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> table <table_id> rule delete
+ *    match
+ *       default
+ */
+static void
+cmd_pipeline_table_rule_delete_default(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t table_id;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "rule") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rule");
+		return;
+	}
+
+	if (strcmp(tokens[5], "delete") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "delete");
+		return;
+	}
+
+	if (strcmp(tokens[6], "match") != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "match");
+		return;
+	}
+
+	if (strcmp(tokens[7], "default") != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "default");
+		return;
+	}
+
+	status = pipeline_table_rule_delete_default(pipeline_name,
+		table_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -3808,6 +3936,23 @@ cli_process(char *in, char *out, size_t out_size)
 			}
 
 			cmd_pipeline_table_rule_add(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 7) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "delete") == 0) &&
+			(strcmp(tokens[6], "match") == 0)) {
+			if ((n_tokens >= 8) &&
+				(strcmp(tokens[7], "default") == 0)) {
+				cmd_pipeline_table_rule_delete_default(tokens,
+					n_tokens, out, out_size);
+				return;
+				}
+
+			cmd_pipeline_table_rule_delete(tokens, n_tokens,
 				out, out_size);
 			return;
 		}

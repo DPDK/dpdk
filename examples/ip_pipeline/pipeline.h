@@ -308,4 +308,13 @@ pipeline_table_rule_add_default(const char *pipeline_name,
 	struct table_rule_action *action,
 	void **data);
 
+int
+pipeline_table_rule_delete(const char *pipeline_name,
+	uint32_t table_id,
+	struct table_rule_match *match);
+
+int
+pipeline_table_rule_delete_default(const char *pipeline_name,
+	uint32_t table_id);
+
 #endif /* _INCLUDE_PIPELINE_H_ */
