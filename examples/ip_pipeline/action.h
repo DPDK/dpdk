@@ -46,6 +46,7 @@ port_in_action_profile_create(const char *name,
 struct table_action_profile_params {
 	uint64_t action_mask;
 	struct rte_table_action_common_config common;
+	struct rte_table_action_lb_config lb;
 	struct rte_table_action_mtr_config mtr;
 	struct rte_table_action_tm_config tm;
 	struct rte_table_action_encap_config encap;

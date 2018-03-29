@@ -260,6 +260,7 @@ struct table_rule_match {
 struct table_rule_action {
 	uint64_t action_mask;
 	struct rte_table_action_fwd_params fwd;
+	struct rte_table_action_lb_params lb;
 	struct rte_table_action_mtr_params mtr;
 	struct rte_table_action_tm_params tm;
 	struct rte_table_action_encap_params encap;

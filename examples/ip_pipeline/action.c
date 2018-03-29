@@ -202,6 +202,17 @@ table_action_profile_create(const char *name,
 		}
 	}
 
+	if (params->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
+		status = rte_table_action_profile_action_register(ap,
+			RTE_TABLE_ACTION_LB,
+			&params->lb);
+
+		if (status) {
+			rte_table_action_profile_free(ap);
+			return NULL;
+		}
+	}
+
 	if (params->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) {
 		status = rte_table_action_profile_action_register(ap,
 			RTE_TABLE_ACTION_MTR,

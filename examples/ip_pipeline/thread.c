@@ -2031,6 +2031,18 @@ pipeline_msg_handle_table_rule_add(struct pipeline_data *p,
 		}
 	}
 
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
+		status = rte_table_action_apply(a,
+			data_in,
+			RTE_TABLE_ACTION_LB,
+			&action->lb);
+
+		if (status) {
+			rsp->status = -1;
+			return rsp;
+		}
+	}
+
 	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) {
 		status = rte_table_action_apply(a,
 			data_in,
@@ -2238,6 +2250,16 @@ pipeline_msg_handle_table_rule_add_bulk(struct pipeline_data *p,
 				data_in,
 				RTE_TABLE_ACTION_FWD,
 				&act->fwd);
+
+			if (status)
+				goto fail;
+		}
+
+		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
+			status = rte_table_action_apply(a,
+				data_in,
+				RTE_TABLE_ACTION_LB,
+				&act->lb);
 
 			if (status)
 				goto fail;

@@ -805,7 +805,8 @@ cmd_port_in_action_profile(char **tokens,
 		uint32_t i;
 
 		if (n_tokens < t0 + 22) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH, "port in action profile balance");
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"port in action profile balance");
 			return;
 		}
 
@@ -862,6 +863,7 @@ cmd_port_in_action_profile(char **tokens,
  *  ipv4 | ipv6
  *  offset <ip_offset>
  *  fwd
+ *  [balance offset <key_offset> mask <key_mask> outoffset <out_offset>]
  *  [meter srtcm | trtcm
  *      tc <n_tc>
  *      stats none | pkts | bytes | both]
@@ -931,6 +933,47 @@ cmd_table_action_profile(char **tokens,
 	p.action_mask |= 1LLU << RTE_TABLE_ACTION_FWD;
 
 	t0 = 8;
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "balance") == 0)) {
+		if (n_tokens < t0 + 7) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "table action profile balance");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 1], "offset") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
+			return;
+		}
+
+		if (parser_read_uint32(&p.lb.key_offset, tokens[t0 + 2]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_offset");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 3], "mask") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mask");
+			return;
+		}
+
+		p.lb.key_size = RTE_PORT_IN_ACTION_LB_KEY_SIZE_MAX;
+		if (parse_hex_string(tokens[t0 + 4], p.lb.key_mask, &p.lb.key_size) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key_mask");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 5], "outoffset") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "outoffset");
+			return;
+		}
+
+		if (parser_read_uint32(&p.lb.out_offset, tokens[t0 + 6]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "out_offset");
+			return;
+		}
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_LB;
+		t0 += 7;
+	} /* balance */
+
 	if ((t0 < n_tokens) && (strcmp(tokens[t0], "meter") == 0)) {
 		if (n_tokens < t0 + 6) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -2789,6 +2832,31 @@ parse_table_action_fwd(char **tokens,
 	return 0;
 }
 
+static uint32_t
+parse_table_action_balance(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	uint32_t i;
+
+	if ((n_tokens == 0) || (strcmp(tokens[0], "balance") != 0))
+		return 0;
+
+	tokens++;
+	n_tokens--;
+
+	if (n_tokens < RTE_TABLE_ACTION_LB_KEY_SIZE_MAX)
+		return 0;
+
+	for (i = 0; i < RTE_TABLE_ACTION_LB_KEY_SIZE_MAX; i++)
+		if (parser_read_uint32(&a->lb.out[i], tokens[i]) != 0)
+			return 0;
+
+	a->action_mask |= 1 << RTE_TABLE_ACTION_LB;
+	return 1 + RTE_TABLE_ACTION_LB_KEY_SIZE_MAX;
+
+}
+
 static int
 parse_policer_action(char *token, enum rte_table_action_policer *a)
 {
@@ -3215,6 +3283,20 @@ parse_table_action(char **tokens,
 		if (n == 0) {
 			snprintf(out, out_size, MSG_ARG_INVALID,
 				"action fwd");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "balance") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_balance(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action balance");
 			return 0;
 		}
 
