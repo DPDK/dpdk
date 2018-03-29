@@ -106,8 +106,13 @@ ifeq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
 
 $(LIB): $(LIB_GLUE)
 
+ifeq ($(LINK_USING_CC),1)
+GLUE_LDFLAGS := $(call linkerprefix,$(LDFLAGS))
+else
+GLUE_LDFLAGS := $(LDFLAGS)
+endif
 $(LIB_GLUE): mlx4_glue.o
-	$Q $(LD) $(LDFLAGS) $(EXTRA_LDFLAGS) \
+	$Q $(LD) $(GLUE_LDFLAGS) $(EXTRA_LDFLAGS) \
 		-Wl,-h,$(LIB_GLUE) \
 		-s -shared -o $@ $< -libverbs -lmlx4
 
