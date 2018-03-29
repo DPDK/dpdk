@@ -357,4 +357,11 @@ pipeline_table_dscp_table_update(const char *pipeline_name,
 	uint64_t dscp_mask,
 	struct rte_table_action_dscp_table *dscp_table);
 
+int
+pipeline_table_rule_ttl_read(const char *pipeline_name,
+	uint32_t table_id,
+	void *data,
+	struct rte_table_action_ttl_counters *stats,
+	int clear);
+
 #endif /* _INCLUDE_PIPELINE_H_ */

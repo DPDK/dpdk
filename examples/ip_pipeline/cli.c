@@ -4178,6 +4178,18 @@ cmd_pipeline_table_dscp(char **tokens,
 }
 
 /**
+ * pipeline <pipeline_name> table <table_id> rule read ttl [clear]
+ */
+static void
+cmd_pipeline_table_rule_ttl_read(char **tokens,
+	uint32_t n_tokens __rte_unused,
+	char *out,
+	size_t out_size)
+{
+	snprintf(out, out_size, MSG_CMD_UNIMPLEM, tokens[0]);
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -4521,6 +4533,16 @@ cli_process(char *in, char *out, size_t out_size)
 			(strcmp(tokens[2], "table") == 0) &&
 			(strcmp(tokens[4], "dscp") == 0)) {
 			cmd_pipeline_table_dscp(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 7) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "read") == 0) &&
+			(strcmp(tokens[6], "ttl") == 0)) {
+			cmd_pipeline_table_rule_ttl_read(tokens, n_tokens,
 				out, out_size);
 			return;
 		}
