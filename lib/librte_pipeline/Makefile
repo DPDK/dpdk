@@ -21,8 +21,9 @@ LIBABIVER := 3
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := rte_pipeline.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += rte_table_action.c
 
 # install includes
-SYMLINK-$(CONFIG_RTE_LIBRTE_PIPELINE)-include += rte_pipeline.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_PIPELINE)-include += rte_pipeline.h rte_table_action.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

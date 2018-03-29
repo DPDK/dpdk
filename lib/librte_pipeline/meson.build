@@ -2,6 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 version = 3
-sources = files('rte_pipeline.c')
-headers = files('rte_pipeline.h')
+allow_experimental_apis = true
+sources = files('rte_pipeline.c', 'rte_table_action.c')
+headers = files('rte_pipeline.h', 'rte_table_action.h')
 deps += ['port', 'table']

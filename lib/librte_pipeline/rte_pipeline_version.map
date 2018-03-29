@@ -45,3 +45,16 @@ DPDK_16.04 {
 	rte_pipeline_ah_packet_drop;
 
 } DPDK_2.2;
+
+EXPERIMENTAL {
+	global:
+
+	rte_table_action_apply;
+	rte_table_action_create;
+	rte_table_action_free;
+	rte_table_action_profile_action_register;
+	rte_table_action_profile_create;
+	rte_table_action_profile_free;
+	rte_table_action_profile_freeze;
+
+} DPDK_16.04;

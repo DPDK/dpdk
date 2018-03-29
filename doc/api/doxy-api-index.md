@@ -159,6 +159,7 @@ The public API headers are grouped by topics:
     [array]            (@ref rte_table_array.h),
     [stub]             (@ref rte_table_stub.h)
   * [pipeline]         (@ref rte_pipeline.h)
+    [table_action]     (@ref rte_table_action.h)
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),
