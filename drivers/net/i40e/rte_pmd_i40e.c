@@ -3101,10 +3101,6 @@ rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
 		return -ENOTSUP;
 	}
 
-	/* Clear mask first */
-	for (i = 0; i < 2; i++)
-		i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype), 0);
-
 	inset_reg = inset->inset;
 	for (i = 0; i < 2; i++)
 		mask_reg[i] = (inset->mask[i].field_idx << 16) |
