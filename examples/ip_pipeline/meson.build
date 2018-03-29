@@ -11,5 +11,6 @@ sources = files(
 	'cli.c',
 	'conn.c',
 	'main.c',
+	'mempool.c',
 	'parser.c',
 )

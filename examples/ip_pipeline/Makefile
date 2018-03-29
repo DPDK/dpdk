@@ -8,6 +8,7 @@ APP = ip_pipeline
 SRCS-y := cli.c
 SRCS-y += conn.c
 SRCS-y += main.c
+SRCS-y += mempool.c
 SRCS-y += parser.c
 #SRCS-y += thread.c
 

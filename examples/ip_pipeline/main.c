@@ -12,6 +12,7 @@
 
 #include "cli.h"
 #include "conn.h"
+#include "mempool.h"
 
 static const char usage[] =
 	"%s EAL_ARGS -- [-h HOST] [-p PORT] [-s SCRIPT]\n";
@@ -158,6 +159,13 @@ main(int argc, char **argv)
 			status);
 		return status;
 	};
+
+	/* Mempool */
+	status = mempool_init();
+	if (status) {
+		printf("Error: Mempool initialization failed (%d)\n", status);
+		return status;
+	}
 
 	/* Script */
 	if (app.script_name)
