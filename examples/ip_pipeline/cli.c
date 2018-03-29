@@ -3808,6 +3808,218 @@ cmd_pipeline_table_rule_stats_read(char **tokens,
 }
 
 /**
+ * pipeline <pipeline_name> table <table_id> meter profile <meter_profile_id>
+ *  add srtcm cir <cir> cbs <cbs> ebs <ebs>
+ *  | trtcm cir <cir> pir <pir> cbs <cbs> pbs <pbs>
+ */
+static void
+cmd_pipeline_table_meter_profile_add(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_table_action_meter_profile p;
+	char *pipeline_name;
+	uint32_t table_id, meter_profile_id;
+	int status;
+
+	if (n_tokens < 9) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "meter") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	if (strcmp(tokens[5], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	if (parser_read_uint32(&meter_profile_id, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "meter_profile_id");
+		return;
+	}
+
+	if (strcmp(tokens[7], "add") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "add");
+		return;
+	}
+
+	if (strcmp(tokens[8], "srtcm") == 0) {
+		if (n_tokens != 15) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				tokens[0]);
+			return;
+		}
+
+		p.alg = RTE_TABLE_ACTION_METER_SRTCM;
+
+		if (strcmp(tokens[9], "cir") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cir");
+			return;
+		}
+
+		if (parser_read_uint64(&p.srtcm.cir, tokens[10]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "cir");
+			return;
+		}
+
+		if (strcmp(tokens[11], "cbs") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cbs");
+			return;
+		}
+
+		if (parser_read_uint64(&p.srtcm.cbs, tokens[12]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "cbs");
+			return;
+		}
+
+		if (strcmp(tokens[13], "ebs") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "ebs");
+			return;
+		}
+
+		if (parser_read_uint64(&p.srtcm.ebs, tokens[14]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "ebs");
+			return;
+		}
+	} else if (strcmp(tokens[8], "trtcm") == 0) {
+		if (n_tokens != 17) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		p.alg = RTE_TABLE_ACTION_METER_TRTCM;
+
+		if (strcmp(tokens[9], "cir") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cir");
+			return;
+		}
+
+		if (parser_read_uint64(&p.trtcm.cir, tokens[10]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "cir");
+			return;
+		}
+
+		if (strcmp(tokens[11], "pir") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pir");
+			return;
+		}
+
+		if (parser_read_uint64(&p.trtcm.pir, tokens[12]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "pir");
+			return;
+		}
+		if (strcmp(tokens[13], "cbs") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cbs");
+			return;
+		}
+
+		if (parser_read_uint64(&p.trtcm.cbs, tokens[14]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "cbs");
+			return;
+		}
+
+		if (strcmp(tokens[15], "pbs") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pbs");
+			return;
+		}
+
+		if (parser_read_uint64(&p.trtcm.pbs, tokens[16]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "pbs");
+			return;
+		}
+	} else {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	status = pipeline_table_mtr_profile_add(pipeline_name,
+		table_id,
+		meter_profile_id,
+		&p);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> table <table_id>
+ *  meter profile <meter_profile_id> delete
+ */
+static void
+cmd_pipeline_table_meter_profile_delete(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t table_id, meter_profile_id;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "meter") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	if (strcmp(tokens[5], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	if (parser_read_uint32(&meter_profile_id, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "meter_profile_id");
+		return;
+	}
+
+	if (strcmp(tokens[7], "delete") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "delete");
+		return;
+	}
+
+	status = pipeline_table_mtr_profile_delete(pipeline_name,
+		table_id,
+		meter_profile_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -4114,6 +4326,26 @@ cli_process(char *in, char *out, size_t out_size)
 			(strcmp(tokens[6], "stats") == 0)) {
 			cmd_pipeline_table_rule_stats_read(tokens, n_tokens,
 				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 8) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "meter") == 0) &&
+			(strcmp(tokens[5], "profile") == 0) &&
+			(strcmp(tokens[7], "add") == 0)) {
+			cmd_pipeline_table_meter_profile_add(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 8) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "meter") == 0) &&
+			(strcmp(tokens[5], "profile") == 0) &&
+			(strcmp(tokens[7], "delete") == 0)) {
+			cmd_pipeline_table_meter_profile_delete(tokens,
+				n_tokens, out, out_size);
 			return;
 		}
 	}

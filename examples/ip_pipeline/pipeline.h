@@ -332,4 +332,15 @@ pipeline_table_rule_stats_read(const char *pipeline_name,
 	struct rte_table_action_stats_counters *stats,
 	int clear);
 
+int
+pipeline_table_mtr_profile_add(const char *pipeline_name,
+	uint32_t table_id,
+	uint32_t meter_profile_id,
+	struct rte_table_action_meter_profile *profile);
+
+int
+pipeline_table_mtr_profile_delete(const char *pipeline_name,
+	uint32_t table_id,
+	uint32_t meter_profile_id);
+
 #endif /* _INCLUDE_PIPELINE_H_ */
