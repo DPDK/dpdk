@@ -23,7 +23,7 @@ rte_mbuf_set_platform_mempool_ops(const char *ops_name)
 			RTE_MEMPOOL_OPS_NAMESIZE, SOCKET_ID_ANY, 0);
 		if (mz == NULL)
 			return -rte_errno;
-		strncpy(mz->addr, ops_name, strlen(ops_name));
+		strcpy(mz->addr, ops_name);
 		return 0;
 	} else if (strcmp(mz->addr, ops_name) == 0) {
 		return 0;
@@ -62,7 +62,7 @@ rte_mbuf_set_user_mempool_ops(const char *ops_name)
 			return -rte_errno;
 	}
 
-	strncpy(mz->addr, ops_name, strlen(ops_name));
+	strcpy(mz->addr, ops_name);
 	return 0;
 
 }
