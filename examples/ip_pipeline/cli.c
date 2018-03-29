@@ -17,6 +17,7 @@
 #include "pipeline.h"
 #include "swq.h"
 #include "tap.h"
+#include "thread.h"
 #include "tmgr.h"
 
 #ifndef CMD_MAX_TOKENS
@@ -1936,6 +1937,91 @@ cmd_pipeline_port_in_table(char **tokens,
 	}
 }
 
+/**
+ * thread <thread_id> pipeline <pipeline_name> enable
+ */
+static void
+cmd_thread_pipeline_enable(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t thread_id;
+	int status;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (parser_read_uint32(&thread_id, tokens[1]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
+		return;
+	}
+
+	if (strcmp(tokens[2], "pipeline") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
+		return;
+	}
+
+	pipeline_name = tokens[3];
+
+	if (strcmp(tokens[4], "enable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "enable");
+		return;
+	}
+
+	status = thread_pipeline_enable(thread_id, pipeline_name);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, "thread pipeline enable");
+		return;
+	}
+}
+
+/**
+ * thread <thread_id> pipeline <pipeline_name> disable
+ */
+static void
+cmd_thread_pipeline_disable(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t thread_id;
+	int status;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (parser_read_uint32(&thread_id, tokens[1]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
+		return;
+	}
+
+	if (strcmp(tokens[2], "pipeline") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
+		return;
+	}
+
+	pipeline_name = tokens[3];
+
+	if (strcmp(tokens[4], "disable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "disable");
+		return;
+	}
+
+	status = thread_pipeline_disable(thread_id, pipeline_name);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL,
+			"thread pipeline disable");
+		return;
+	}
+}
+
 void
 cli_process(char *in, char *out, size_t out_size)
 {
@@ -2059,6 +2145,22 @@ cli_process(char *in, char *out, size_t out_size)
 			(strcmp(tokens[3], "in") == 0) &&
 			(strcmp(tokens[5], "table") == 0)) {
 			cmd_pipeline_port_in_table(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+	}
+
+	if (strcmp(tokens[0], "thread") == 0) {
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[4], "enable") == 0)) {
+			cmd_thread_pipeline_enable(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[4], "disable") == 0)) {
+			cmd_thread_pipeline_disable(tokens, n_tokens,
 				out, out_size);
 			return;
 		}
