@@ -1,0 +1,66 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2010-2018 Intel Corporation
+
+;                 _______________          ______________________
+;                |               |  TAP0  |                      |
+; LINK0 RXQ0 --->|...............|------->|--+                   |
+;                |               |  TAP1  |  | br0               |
+; LINK1 TXQ0 <---|...............|<-------|<-+                   |
+;                |               |        |     Linux Kernel     |
+;                |   PIPELINE0   |        |     Network Stack    |
+;                |               |  TAP1  |                      |
+; LINK1 RXQ0 --->|...............|------->|--+                   |
+;                |               |  TAP0  |  | br0               |
+; LINK0 TXQ0 <---|...............|<-------|<-+                   |
+;                |_______________|        |______________________|
+;
+; Configure Linux kernel bridge between TAP0 and TAP1 interfaces:
+;    [Linux]$ brctl addbr br0
+;    [Linux]$ brctl addif br0 TAP0
+;    [Linux]$ brctl addif br0 TAP1
+;    [Linux]$ ifconfig TAP0 up
+;    [Linux]$ ifconfig TAP1 up
+;    [Linux]$ ifconfig br0 up
+;
+; Monitor packet forwarding performed by Linux kernel between TAP0 and TAP1:
+;    [Linux]$ tcpdump -i TAP0
+;    [Linux]$ tcpdump -i TAP1
+
+mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 0
+
+link LINK0 dev 0000:02:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+link LINK1 dev 0000:02:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+
+tap TAP0
+tap TAP1
+
+table action profile AP0 ipv4 offset 270 fwd
+
+pipeline PIPELINE0 period 10 offset_port_id 0 cpu 0
+
+pipeline PIPELINE0 port in bsz 32 link LINK0 rxq 0
+pipeline PIPELINE0 port in bsz 32 tap TAP1 mempool MEMPOOL0 mtu 1500
+pipeline PIPELINE0 port in bsz 32 link LINK1 rxq 0
+pipeline PIPELINE0 port in bsz 32 tap TAP0 mempool MEMPOOL0 mtu 1500
+
+pipeline PIPELINE0 port out bsz 32 tap TAP0
+pipeline PIPELINE0 port out bsz 32 link LINK1 txq 0
+pipeline PIPELINE0 port out bsz 32 tap TAP1
+pipeline PIPELINE0 port out bsz 32 link LINK0 txq 0
+
+pipeline PIPELINE0 table match stub action AP0
+pipeline PIPELINE0 table match stub action AP0
+pipeline PIPELINE0 table match stub action AP0
+pipeline PIPELINE0 table match stub action AP0
+
+pipeline PIPELINE0 port in 0 table 0
+pipeline PIPELINE0 port in 1 table 1
+pipeline PIPELINE0 port in 2 table 2
+pipeline PIPELINE0 port in 3 table 3
+
+thread 1 pipeline PIPELINE0 enable
+
+pipeline PIPELINE0 table 0 rule add match default action fwd port 0
+pipeline PIPELINE0 table 1 rule add match default action fwd port 1
+pipeline PIPELINE0 table 2 rule add match default action fwd port 2
+pipeline PIPELINE0 table 3 rule add match default action fwd port 3
