@@ -2314,8 +2314,7 @@ cmd_pipeline_table_stats(char **tokens,
  *       priority <priority>
  *       ipv4 | ipv6 <sa> <sa_depth> <da> <da_depth>
  *       <sp0> <sp1> <dp0> <dp1> <proto>
- *    | array
- *       pos
+ *    | array <pos>
  *    | hash
  *       raw <key>
  *       | ipv4_5tuple <sa> <da> <sp> <dp> <proto>
@@ -2845,15 +2844,15 @@ parse_table_action_balance(char **tokens,
 	tokens++;
 	n_tokens--;
 
-	if (n_tokens < RTE_TABLE_ACTION_LB_KEY_SIZE_MAX)
+	if (n_tokens < RTE_TABLE_ACTION_LB_TABLE_SIZE)
 		return 0;
 
-	for (i = 0; i < RTE_TABLE_ACTION_LB_KEY_SIZE_MAX; i++)
+	for (i = 0; i < RTE_TABLE_ACTION_LB_TABLE_SIZE; i++)
 		if (parser_read_uint32(&a->lb.out[i], tokens[i]) != 0)
 			return 0;
 
 	a->action_mask |= 1 << RTE_TABLE_ACTION_LB;
-	return 1 + RTE_TABLE_ACTION_LB_KEY_SIZE_MAX;
+	return 1 + RTE_TABLE_ACTION_LB_TABLE_SIZE;
 
 }
 
