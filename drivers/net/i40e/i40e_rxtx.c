@@ -1998,6 +1998,20 @@ i40e_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 	return RTE_ETH_TX_DESC_FULL;
 }
 
+static int
+i40e_check_tx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
+{
+	struct rte_eth_dev_info dev_info;
+	uint64_t mandatory = dev->data->dev_conf.txmode.offloads;
+	uint64_t supported; /* All per port offloads */
+
+	dev->dev_ops->dev_infos_get(dev, &dev_info);
+	supported = dev_info.tx_offload_capa ^ dev_info.tx_queue_offload_capa;
+	if ((requested & dev_info.tx_offload_capa) != requested)
+		return 0; /* requested range check */
+	return !((mandatory ^ requested) & supported);
+}
+
 int
 i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
@@ -2015,6 +2029,16 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t tx_rs_thresh, tx_free_thresh;
 	uint16_t reg_idx, i, base, bsf, tc_mapping;
 	int q_offset;
+	struct rte_eth_dev_info dev_info;
+
+	if (!i40e_check_tx_queue_offloads(dev, tx_conf->offloads)) {
+		dev->dev_ops->dev_infos_get(dev, &dev_info);
+		PMD_INIT_LOG(ERR, "%p: Tx queue offloads 0x%" PRIx64
+			" don't match port  offloads 0x%" PRIx64
+			" or supported offloads 0x%" PRIx64,
+			(void *)dev, tx_conf->offloads,
+			dev->data->dev_conf.txmode.offloads,
+			dev_info.tx_offload_capa); }
 
 	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF) {
 		vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
