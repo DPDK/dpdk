@@ -1536,7 +1536,7 @@ i40evf_dev_configure(struct rte_eth_dev *dev)
 	/* For non-DPDK PF drivers, VF has no ability to disable HW
 	 * CRC strip, and is implicitly enabled by the PF.
 	 */
-	if (!conf->rxmode.hw_strip_crc) {
+	if (!(conf->rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
 		vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 		if ((vf->version_major == VIRTCHNL_VERSION_MAJOR) &&
 		    (vf->version_minor <= VIRTCHNL_VERSION_MINOR)) {
@@ -1570,7 +1570,7 @@ i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	/* Vlan stripping setting */
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
-		if (dev_conf->rxmode.hw_vlan_strip)
+		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			i40evf_enable_vlan_strip(dev);
 		else
 			i40evf_disable_vlan_strip(dev);
@@ -1727,7 +1727,7 @@ i40evf_rxq_init(struct rte_eth_dev *dev, struct i40e_rx_queue *rxq)
 	/**
 	 * Check if the jumbo frame and maximum packet length are set correctly
 	 */
-	if (dev_data->dev_conf.rxmode.jumbo_frame == 1) {
+	if (dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		if (rxq->max_pkt_len <= ETHER_MAX_LEN ||
 		    rxq->max_pkt_len > I40E_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
@@ -1747,7 +1747,7 @@ i40evf_rxq_init(struct rte_eth_dev *dev, struct i40e_rx_queue *rxq)
 		}
 	}
 
-	if (dev_data->dev_conf.rxmode.enable_scatter ||
+	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
 	    (rxq->max_pkt_len + 2 * I40E_VLAN_TAG_SIZE) > buf_size) {
 		dev_data->scattered_rx = 1;
 	}
@@ -2192,6 +2192,7 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->reta_size = ETH_RSS_RETA_SIZE_64;
 	dev_info->flow_type_rss_offloads = vf->adapter->flow_types_mask;
 	dev_info->max_mac_addrs = I40E_NUM_MACADDR_MAX;
+	dev_info->rx_queue_offload_capa = 0;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_QINQ_STRIP |
@@ -2199,7 +2200,9 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM |
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_CRC_STRIP;
+		DEV_RX_OFFLOAD_CRC_STRIP |
+		DEV_RX_OFFLOAD_SCATTER;
+
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_QINQ_INSERT |
@@ -2222,6 +2225,7 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.rx_free_thresh = I40E_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = 0,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -2652,10 +2656,11 @@ i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	if (frame_size > ETHER_MAX_LEN)
-		dev_data->dev_conf.rxmode.jumbo_frame = 1;
+		dev_data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		dev_data->dev_conf.rxmode.jumbo_frame = 0;
-
+		dev_data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	return ret;

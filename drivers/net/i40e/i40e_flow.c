@@ -1939,7 +1939,8 @@ static uint16_t
 i40e_get_outer_vlan(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int qinq = dev->data->dev_conf.rxmode.hw_vlan_extend;
+	int qinq = dev->data->dev_conf.rxmode.offloads &
+		DEV_RX_OFFLOAD_VLAN_EXTEND;
 	uint64_t reg_r = 0;
 	uint16_t reg_id;
 	uint16_t tpid;

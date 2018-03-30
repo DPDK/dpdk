@@ -3219,6 +3219,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen = I40E_FRAME_SIZE_MAX;
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
 	dev_info->max_vfs = pci_dev->max_vfs;
+	dev_info->rx_queue_offload_capa = 0;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_QINQ_STRIP |
@@ -3226,7 +3227,10 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM |
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_CRC_STRIP;
+		DEV_RX_OFFLOAD_CRC_STRIP |
+		DEV_RX_OFFLOAD_VLAN_EXTEND |
+		DEV_RX_OFFLOAD_VLAN_FILTER;
+
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_QINQ_INSERT |
@@ -3253,6 +3257,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.rx_free_thresh = I40E_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = 0,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -3372,7 +3377,8 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	int qinq = dev->data->dev_conf.rxmode.hw_vlan_extend;
+	int qinq = dev->data->dev_conf.rxmode.offloads &
+		   DEV_RX_OFFLOAD_VLAN_EXTEND;
 	int ret = 0;
 
 	if ((vlan_type != ETH_VLAN_TYPE_INNER &&
@@ -3420,9 +3426,11 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_vsi *vsi = pf->main_vsi;
+	struct rte_eth_rxmode *rxmode;
 
+	rxmode = &dev->data->dev_conf.rxmode;
 	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 			i40e_vsi_config_vlan_filter(vsi, TRUE);
 		else
 			i40e_vsi_config_vlan_filter(vsi, FALSE);
@@ -3430,14 +3438,14 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
-		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			i40e_vsi_config_vlan_stripping(vsi, TRUE);
 		else
 			i40e_vsi_config_vlan_stripping(vsi, FALSE);
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_extend) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND) {
 			i40e_vsi_config_double_vlan(vsi, TRUE);
 			/* Set global registers with default ethertype. */
 			i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_OUTER,
@@ -3684,6 +3692,7 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_mac_filter_info mac_filter;
 	struct i40e_vsi *vsi;
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	int ret;
 
 	/* If VMDQ not enabled or configured, return */
@@ -3702,7 +3711,7 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 	}
 
 	rte_memcpy(&mac_filter.mac_addr, mac_addr, ETHER_ADDR_LEN);
-	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
 	else
 		mac_filter.filter_type = RTE_MAC_PERFECT_MATCH;
@@ -11354,9 +11363,11 @@ i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	if (frame_size > ETHER_MAX_LEN)
-		dev_data->dev_conf.rxmode.jumbo_frame = 1;
+		dev_data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		dev_data->dev_conf.rxmode.jumbo_frame = 0;
+		dev_data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
