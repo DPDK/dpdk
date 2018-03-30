@@ -31,7 +31,7 @@ struct virtio_user_dev {
 				   */
 	uint64_t	device_features; /* supported features by device */
 	uint8_t		status;
-	uint8_t		port_id;
+	uint16_t	port_id;
 	uint8_t		mac_addr[ETHER_ADDR_LEN];
 	char		path[PATH_MAX];
 	struct vring	vrings[VIRTIO_MAX_VIRTQUEUES];
