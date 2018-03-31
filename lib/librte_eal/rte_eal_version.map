@@ -226,6 +226,7 @@ EXPERIMENTAL {
 	rte_mp_action_unregister;
 	rte_mp_reply;
 	rte_mp_request_sync;
+	rte_mp_request_async;
 	rte_mp_sendmsg;
 	rte_service_attr_get;
 	rte_service_attr_reset_all;

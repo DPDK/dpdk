@@ -230,6 +230,16 @@ struct rte_mp_reply {
 typedef int (*rte_mp_t)(const struct rte_mp_msg *msg, const void *peer);
 
 /**
+ * Asynchronous reply function typedef used by other components.
+ *
+ * As we create socket channel for primary/secondary communication, use
+ * this function typedef to register action for coming responses to asynchronous
+ * requests.
+ */
+typedef int (*rte_mp_async_reply_t)(const struct rte_mp_msg *request,
+		const struct rte_mp_reply *reply);
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
@@ -316,6 +326,32 @@ rte_mp_sendmsg(struct rte_mp_msg *msg);
 int __rte_experimental
 rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	       const struct timespec *ts);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Send a request to the peer process and expect a reply in a separate callback.
+ *
+ * This function sends a request message to the peer process, and will not
+ * block. Instead, reply will be received in a separate callback.
+ *
+ * @param req
+ *   The req argument contains the customized request message.
+ *
+ * @param ts
+ *   The ts argument specifies how long we can wait for the peer(s) to reply.
+ *
+ * @param clb
+ *   The callback to trigger when all responses for this request have arrived.
+ *
+ * @return
+ *  - On success, return 0.
+ *  - On failure, return -1, and the reason will be stored in rte_errno.
+ */
+int __rte_experimental
+rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
+		rte_mp_async_reply_t clb);
 
 /**
  * @warning
