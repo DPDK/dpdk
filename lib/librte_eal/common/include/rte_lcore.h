@@ -132,6 +132,36 @@ rte_lcore_index(int lcore_id)
 unsigned rte_socket_id(void);
 
 /**
+ * Return number of physical sockets detected on the system.
+ *
+ * Note that number of nodes may not be correspondent to their physical id's:
+ * for example, a system may report two socket id's, but the actual socket id's
+ * may be 0 and 8.
+ *
+ * @return
+ *   the number of physical sockets as recognized by EAL
+ */
+unsigned int __rte_experimental
+rte_socket_count(void);
+
+/**
+ * Return socket id with a particular index.
+ *
+ * This will return socket id at a particular position in list of all detected
+ * physical socket id's. For example, on a machine with sockets [0, 8], passing
+ * 1 as a parameter will return 8.
+ *
+ * @param idx
+ *   index of physical socket id to return
+ *
+ * @return
+ *   - physical socket id as recognized by EAL
+ *   - -1 on error, with errno set to EINVAL
+ */
+int __rte_experimental
+rte_socket_id_by_idx(unsigned int idx);
+
+/**
  * Get the ID of the physical socket of the specified lcore
  *
  * @param lcore_id

@@ -256,5 +256,7 @@ EXPERIMENTAL {
 	rte_service_set_runstate_mapped_check;
 	rte_service_set_stats_enable;
 	rte_service_start_with_defaults;
+	rte_socket_count;
+	rte_socket_id_by_idx;
 
 } DPDK_18.02;

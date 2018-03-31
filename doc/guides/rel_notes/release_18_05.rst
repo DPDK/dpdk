@@ -145,7 +145,7 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_common_octeontx.so.1
      librte_cryptodev.so.4
      librte_distributor.so.1
-     librte_eal.so.6
+   + librte_eal.so.7
    + librte_ethdev.so.9
      librte_eventdev.so.3
      librte_flow_classify.so.1

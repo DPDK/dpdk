@@ -38,9 +38,6 @@ Deprecation Notices
   success and failure, respectively.  This will change to 1 and 0 for true and
   false, respectively, to make use of the function more intuitive.
 
-* eal: new ``numa_node_count`` member will be added to ``rte_config`` structure
-  in v18.05.
-
 * eal: due to internal data layout reorganization, there will be changes to
   several structures and functions as a result of coming changes to support
   memory hotplug in v18.05.

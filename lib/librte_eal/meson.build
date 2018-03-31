@@ -21,7 +21,7 @@ else
 	error('unsupported system type @0@'.format(hostmachine.system()))
 endif
 
-version = 6  # the version of the EAL API
+version = 7  # the version of the EAL API
 allow_experimental_apis = true
 deps += 'compat'
 cflags += '-D_GNU_SOURCE'
