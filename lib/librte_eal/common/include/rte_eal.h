@@ -314,7 +314,7 @@ rte_mp_sendmsg(struct rte_mp_msg *msg);
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
 int __rte_experimental
-rte_mp_request(struct rte_mp_msg *req, struct rte_mp_reply *reply,
+rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	       const struct timespec *ts);
 
 /**

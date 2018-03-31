@@ -224,9 +224,9 @@ EXPERIMENTAL {
 	rte_log_register_type_and_pick_level;
 	rte_mp_action_register;
 	rte_mp_action_unregister;
-	rte_mp_sendmsg;
-	rte_mp_request;
 	rte_mp_reply;
+	rte_mp_request_sync;
+	rte_mp_sendmsg;
 	rte_service_attr_get;
 	rte_service_attr_reset_all;
 	rte_service_component_register;
