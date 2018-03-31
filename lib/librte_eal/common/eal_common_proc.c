@@ -60,8 +60,8 @@ struct mp_msg_internal {
 	struct rte_mp_msg msg;
 };
 
-struct sync_request {
-	TAILQ_ENTRY(sync_request) next;
+struct pending_request {
+	TAILQ_ENTRY(pending_request) next;
 	int reply_received;
 	char dst[PATH_MAX];
 	struct rte_mp_msg *request;
@@ -69,13 +69,13 @@ struct sync_request {
 	pthread_cond_t cond;
 };
 
-TAILQ_HEAD(sync_request_list, sync_request);
+TAILQ_HEAD(pending_request_list, pending_request);
 
 static struct {
-	struct sync_request_list requests;
+	struct pending_request_list requests;
 	pthread_mutex_t lock;
-} sync_requests = {
-	.requests = TAILQ_HEAD_INITIALIZER(sync_requests.requests),
+} pending_requests = {
+	.requests = TAILQ_HEAD_INITIALIZER(pending_requests.requests),
 	.lock = PTHREAD_MUTEX_INITIALIZER
 };
 
@@ -84,12 +84,12 @@ static int
 mp_send(struct rte_mp_msg *msg, const char *peer, int type);
 
 
-static struct sync_request *
+static struct pending_request *
 find_sync_request(const char *dst, const char *act_name)
 {
-	struct sync_request *r;
+	struct pending_request *r;
 
-	TAILQ_FOREACH(r, &sync_requests.requests, next) {
+	TAILQ_FOREACH(r, &pending_requests.requests, next) {
 		if (!strcmp(r->dst, dst) &&
 		    !strcmp(r->request->name, act_name))
 			break;
@@ -259,7 +259,7 @@ read_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 static void
 process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 {
-	struct sync_request *sync_req;
+	struct pending_request *sync_req;
 	struct action_entry *entry;
 	struct rte_mp_msg *msg = &m->msg;
 	rte_mp_t action = NULL;
@@ -267,7 +267,7 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 	RTE_LOG(DEBUG, EAL, "msg: %s\n", msg->name);
 
 	if (m->type == MP_REP || m->type == MP_IGN) {
-		pthread_mutex_lock(&sync_requests.lock);
+		pthread_mutex_lock(&pending_requests.lock);
 		sync_req = find_sync_request(s->sun_path, msg->name);
 		if (sync_req) {
 			memcpy(sync_req->reply, msg, sizeof(*msg));
@@ -276,7 +276,7 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			pthread_cond_signal(&sync_req->cond);
 		} else
 			RTE_LOG(ERR, EAL, "Drop mp reply: %s\n", msg->name);
-		pthread_mutex_unlock(&sync_requests.lock);
+		pthread_mutex_unlock(&pending_requests.lock);
 		return;
 	}
 
@@ -607,7 +607,7 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 {
 	int ret;
 	struct rte_mp_msg msg, *tmp;
-	struct sync_request sync_req, *exist;
+	struct pending_request sync_req, *exist;
 
 	sync_req.reply_received = 0;
 	strcpy(sync_req.dst, dst);
@@ -615,14 +615,14 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 	sync_req.reply = &msg;
 	pthread_cond_init(&sync_req.cond, NULL);
 
-	pthread_mutex_lock(&sync_requests.lock);
+	pthread_mutex_lock(&pending_requests.lock);
 	exist = find_sync_request(dst, req->name);
 	if (!exist)
-		TAILQ_INSERT_TAIL(&sync_requests.requests, &sync_req, next);
+		TAILQ_INSERT_TAIL(&pending_requests.requests, &sync_req, next);
 	if (exist) {
 		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
 		rte_errno = EEXIST;
-		pthread_mutex_unlock(&sync_requests.lock);
+		pthread_mutex_unlock(&pending_requests.lock);
 		return -1;
 	}
 
@@ -638,12 +638,12 @@ mp_request_one(const char *dst, struct rte_mp_msg *req,
 
 	do {
 		ret = pthread_cond_timedwait(&sync_req.cond,
-				&sync_requests.lock, ts);
+				&pending_requests.lock, ts);
 	} while (ret != 0 && ret != ETIMEDOUT);
 
 	/* We got the lock now */
-	TAILQ_REMOVE(&sync_requests.requests, &sync_req, next);
-	pthread_mutex_unlock(&sync_requests.lock);
+	TAILQ_REMOVE(&pending_requests.requests, &sync_req, next);
+	pthread_mutex_unlock(&pending_requests.lock);
 
 	if (sync_req.reply_received == 0) {
 		RTE_LOG(ERR, EAL, "Fail to recv reply for request %s:%s\n",
