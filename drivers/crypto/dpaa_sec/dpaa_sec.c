@@ -2151,10 +2151,31 @@ dpaa_sec_security_session_destroy(void *dev __rte_unused,
 
 
 static int
-dpaa_sec_dev_configure(struct rte_cryptodev *dev __rte_unused,
+dpaa_sec_dev_configure(struct rte_cryptodev *dev,
 		       struct rte_cryptodev_config *config __rte_unused)
 {
+
+	char str[20];
+	struct dpaa_sec_dev_private *internals;
+
 	PMD_INIT_FUNC_TRACE();
+
+	internals = dev->data->dev_private;
+	sprintf(str, "ctx_pool_%d", dev->data->dev_id);
+	if (!internals->ctx_pool) {
+		internals->ctx_pool = rte_mempool_create((const char *)str,
+							CTX_POOL_NUM_BUFS,
+							CTX_POOL_BUF_SIZE,
+							CTX_POOL_CACHE_SIZE, 0,
+							NULL, NULL, NULL, NULL,
+							SOCKET_ID_ANY, 0);
+		if (!internals->ctx_pool) {
+			RTE_LOG(ERR, PMD, "%s create failed\n", str);
+			return -ENOMEM;
+		}
+	} else
+		RTE_LOG(INFO, PMD, "mempool already created for dev_id : %d\n",
+			dev->data->dev_id);
 
 	return 0;
 }
@@ -2173,9 +2194,19 @@ dpaa_sec_dev_stop(struct rte_cryptodev *dev __rte_unused)
 }
 
 static int
-dpaa_sec_dev_close(struct rte_cryptodev *dev __rte_unused)
+dpaa_sec_dev_close(struct rte_cryptodev *dev)
 {
+	struct dpaa_sec_dev_private *internals;
+
 	PMD_INIT_FUNC_TRACE();
+
+	if (dev == NULL)
+		return -ENOMEM;
+
+	internals = dev->data->dev_private;
+	rte_mempool_free(internals->ctx_pool);
+	internals->ctx_pool = NULL;
+
 	return 0;
 }
 
@@ -2242,6 +2273,7 @@ dpaa_sec_uninit(struct rte_cryptodev *dev)
 	internals = dev->data->dev_private;
 	rte_free(dev->security_ctx);
 
+	/* In case close has been called, internals->ctx_pool would be NULL */
 	rte_mempool_free(internals->ctx_pool);
 	rte_free(internals);
 
@@ -2259,7 +2291,6 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 	struct dpaa_sec_qp *qp;
 	uint32_t i, flags;
 	int ret;
-	char str[20];
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2317,18 +2348,6 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 			PMD_INIT_LOG(ERR, "sec qman_create_fq failed");
 			goto init_error;
 		}
-	}
-
-	sprintf(str, "ctx_pool_%d", cryptodev->data->dev_id);
-	internals->ctx_pool = rte_mempool_create((const char *)str,
-			CTX_POOL_NUM_BUFS,
-			CTX_POOL_BUF_SIZE,
-			CTX_POOL_CACHE_SIZE, 0,
-			NULL, NULL, NULL, NULL,
-			SOCKET_ID_ANY, 0);
-	if (!internals->ctx_pool) {
-		RTE_LOG(ERR, PMD, "%s create failed\n", str);
-		goto init_error;
 	}
 
 	PMD_INIT_LOG(DEBUG, "driver %s: created\n", cryptodev->data->name);
