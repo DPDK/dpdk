@@ -18,9 +18,9 @@
 
 #include <rte_fslmc.h>
 #include <fslmc_vfio.h>
+#include "fslmc_logs.h"
 
-#define FSLMC_BUS_LOG(level, fmt, args...) \
-	RTE_LOG(level, EAL, fmt "\n", ##args)
+int dpaa2_logtype_bus;
 
 #define VFIO_IOMMU_GROUP_PATH "/sys/kernel/iommu_groups"
 
@@ -93,6 +93,25 @@ insert_in_device_list(struct rte_dpaa2_device *newdev)
 		TAILQ_INSERT_TAIL(&rte_fslmc_bus.device_list, newdev, next);
 }
 
+static void
+dump_device_list(void)
+{
+	struct rte_dpaa2_device *dev;
+	uint32_t global_log_level;
+	int local_log_level;
+
+	/* Only if the log level has been set to Debugging, print list */
+	global_log_level = rte_log_get_global_level();
+	local_log_level = rte_log_get_level(dpaa2_logtype_bus);
+	if (global_log_level == RTE_LOG_DEBUG ||
+	    local_log_level == RTE_LOG_DEBUG) {
+		DPAA2_BUS_DEBUG("List of devices scanned on bus:");
+		TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
+			DPAA2_BUS_DEBUG("%s", dev->device.name);
+		}
+	}
+}
+
 static int
 scan_one_fslmc_device(char *dev_name)
 {
@@ -109,7 +128,7 @@ scan_one_fslmc_device(char *dev_name)
 	/* Creating a temporary copy to perform cut-parse over string */
 	dup_dev_name = strdup(dev_name);
 	if (!dup_dev_name) {
-		FSLMC_BUS_LOG(ERR, "Out of memory.");
+		DPAA2_BUS_ERR("Unable to allocate device name memory");
 		return -ENOMEM;
 	}
 
@@ -120,7 +139,7 @@ scan_one_fslmc_device(char *dev_name)
 	 */
 	dev = calloc(1, sizeof(struct rte_dpaa2_device));
 	if (!dev) {
-		FSLMC_BUS_LOG(ERR, "Out of memory.");
+		DPAA2_BUS_ERR("Unable to allocate device object");
 		free(dup_dev_name);
 		return -ENOMEM;
 	}
@@ -128,7 +147,7 @@ scan_one_fslmc_device(char *dev_name)
 	/* Parse the device name and ID */
 	t_ptr = strtok(dup_dev_name, ".");
 	if (!t_ptr) {
-		FSLMC_BUS_LOG(ERR, "Incorrect device string observed.");
+		DPAA2_BUS_ERR("Incorrect device name observed");
 		goto cleanup;
 	}
 	if (!strncmp("dpni", t_ptr, 4))
@@ -153,15 +172,14 @@ scan_one_fslmc_device(char *dev_name)
 
 	t_ptr = strtok(NULL, ".");
 	if (!t_ptr) {
-		FSLMC_BUS_LOG(ERR, "Incorrect device string observed (%s).",
-			      t_ptr);
+		DPAA2_BUS_ERR("Incorrect device string observed (%s)", t_ptr);
 		goto cleanup;
 	}
 
 	sscanf(t_ptr, "%hu", &dev->object_id);
 	dev->device.name = strdup(dev_name);
 	if (!dev->device.name) {
-		FSLMC_BUS_LOG(ERR, "Out of memory.");
+		DPAA2_BUS_ERR("Unable to clone device name. Out of memory");
 		goto cleanup;
 	}
 
@@ -193,8 +211,7 @@ rte_fslmc_scan(void)
 	int groupid;
 
 	if (process_once) {
-		FSLMC_BUS_LOG(DEBUG,
-			      "Fslmc bus already scanned. Not rescanning");
+		DPAA2_BUS_DEBUG("Fslmc bus already scanned. Not rescanning");
 		return 0;
 	}
 	process_once = 1;
@@ -208,7 +225,7 @@ rte_fslmc_scan(void)
 		groupid);
 	dir = opendir(fslmc_dirpath);
 	if (!dir) {
-		FSLMC_BUS_LOG(ERR, "Unable to open VFIO group dir.");
+		DPAA2_BUS_ERR("Unable to open VFIO group directory");
 		goto scan_fail;
 	}
 
@@ -224,9 +241,12 @@ rte_fslmc_scan(void)
 		device_count += 1;
 	}
 
-	FSLMC_BUS_LOG(INFO, "fslmc: Bus scan completed");
-
 	closedir(dir);
+
+	DPAA2_BUS_INFO("FSLMC Bus scan completed");
+	/* If debugging is enabled, device list is dumped to log output */
+	dump_device_list();
+
 	return 0;
 
 scan_fail_cleanup:
@@ -235,7 +255,7 @@ scan_fail_cleanup:
 	/* Remove all devices in the list */
 	cleanup_fslmc_device_list();
 scan_fail:
-	FSLMC_BUS_LOG(DEBUG, "FSLMC Bus Not Available. Skipping.");
+	DPAA2_BUS_INFO("FSLMC Bus Not Available. Skipping");
 	/* Irrespective of failure, scan only return success */
 	return 0;
 }
@@ -262,13 +282,13 @@ rte_fslmc_probe(void)
 
 	ret = fslmc_vfio_setup_group();
 	if (ret) {
-		FSLMC_BUS_LOG(ERR, "Unable to setup VFIO %d", ret);
+		DPAA2_BUS_ERR("Unable to setup VFIO %d", ret);
 		return 0;
 	}
 
 	ret = fslmc_vfio_process_group();
 	if (ret) {
-		FSLMC_BUS_LOG(ERR, "Unable to setup devices %d", ret);
+		DPAA2_BUS_ERR("Unable to setup devices %d", ret);
 		return 0;
 	}
 
@@ -283,7 +303,7 @@ rte_fslmc_probe(void)
 
 			ret = drv->probe(drv, dev);
 			if (ret)
-				FSLMC_BUS_LOG(ERR, "Unable to probe.\n");
+				DPAA2_BUS_ERR("Unable to probe");
 			break;
 		}
 	}
@@ -399,3 +419,13 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 };
 
 RTE_REGISTER_BUS(fslmc, rte_fslmc_bus.bus);
+
+RTE_INIT(fslmc_init_log);
+static void
+fslmc_init_log(void)
+{
+	/* Bus level logs */
+	dpaa2_logtype_bus = rte_log_register("bus.fslmc");
+	if (dpaa2_logtype_bus >= 0)
+		rte_log_set_level(dpaa2_logtype_bus, RTE_LOG_NOTICE);
+}

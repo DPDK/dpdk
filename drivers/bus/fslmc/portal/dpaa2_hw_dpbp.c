@@ -44,7 +44,7 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 	/* Allocate DPAA2 dpbp handle */
 	dpbp_node = rte_malloc(NULL, sizeof(struct dpaa2_dpbp_dev), 0);
 	if (!dpbp_node) {
-		PMD_INIT_LOG(ERR, "Memory allocation failed for DPBP Device");
+		DPAA2_BUS_ERR("Memory allocation failed for DPBP Device");
 		return -1;
 	}
 
@@ -53,8 +53,8 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 	ret = dpbp_open(&dpbp_node->dpbp,
 			CMD_PRI_LOW, dpbp_id, &dpbp_node->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Resource alloc failure with err code: %d",
-			     ret);
+		DPAA2_BUS_ERR("Unable to open buffer pool object: err(%d)",
+			      ret);
 		rte_free(dpbp_node);
 		return -1;
 	}
@@ -62,8 +62,8 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 	/* Clean the device first */
 	ret = dpbp_reset(&dpbp_node->dpbp, CMD_PRI_LOW, dpbp_node->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failure cleaning dpbp device with"
-					" error code %d\n", ret);
+		DPAA2_BUS_ERR("Unable to reset buffer pool device. err(%d)",
+			      ret);
 		dpbp_close(&dpbp_node->dpbp, CMD_PRI_LOW, dpbp_node->token);
 		rte_free(dpbp_node);
 		return -1;
@@ -73,8 +73,6 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 	rte_atomic16_init(&dpbp_node->in_use);
 
 	TAILQ_INSERT_TAIL(&dpbp_dev_list, dpbp_node, next);
-
-	RTE_LOG(DEBUG, PMD, "DPAA2: Added [dpbp.%d]\n", dpbp_id);
 
 	if (!register_once) {
 		rte_mbuf_set_platform_mempool_ops(DPAA2_MEMPOOL_OPS_NAME);
