@@ -18,7 +18,7 @@
 #include <rte_dev.h>
 #include <rte_fslmc.h>
 
-#include <fslmc_logs.h>
+#include "dpaa2_pmd_logs.h"
 #include <fslmc_vfio.h>
 #include <dpaa2_hw_pvt.h>
 #include <dpaa2_hw_mempool.h>
@@ -57,6 +57,8 @@ static int dpaa2_dev_set_link_up(struct rte_eth_dev *dev);
 static int dpaa2_dev_set_link_down(struct rte_eth_dev *dev);
 static int dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
+int dpaa2_logtype_pmd;
+
 static int
 dpaa2_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
@@ -67,7 +69,7 @@ dpaa2_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return -1;
 	}
 
@@ -79,8 +81,8 @@ dpaa2_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 					  priv->token, vlan_id);
 
 	if (ret < 0)
-		PMD_DRV_LOG(ERR, "ret = %d Unable to add/rem vlan %d hwid =%d",
-			    ret, vlan_id, priv->hw_id);
+		DPAA2_PMD_ERR("ret = %d Unable to add/rem vlan %d hwid =%d",
+			      ret, vlan_id, priv->hw_id);
 
 	return ret;
 }
@@ -97,7 +99,7 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		/* VLAN Filter not avaialble */
 		if (!priv->max_vlan_filters) {
-			RTE_LOG(INFO, PMD, "VLAN filter not available\n");
+			DPAA2_PMD_INFO("VLAN filter not available");
 			goto next_mask;
 		}
 
@@ -108,14 +110,12 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			ret = dpni_enable_vlan_filter(dpni, CMD_PRI_LOW,
 						      priv->token, false);
 		if (ret < 0)
-			RTE_LOG(ERR, PMD, "Unable to set vlan filter = %d\n",
-				ret);
+			DPAA2_PMD_INFO("Unable to set vlan filter = %d", ret);
 	}
 next_mask:
 	if (mask & ETH_VLAN_EXTEND_MASK) {
 		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
-			RTE_LOG(INFO, PMD,
-				"VLAN extend offload not supported\n");
+			DPAA2_PMD_INFO("VLAN extend offload not supported");
 	}
 
 	return 0;
@@ -135,10 +135,10 @@ dpaa2_fw_version_get(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (mc_get_soc_version(dpni, CMD_PRI_LOW, &mc_plat_info))
-		RTE_LOG(WARNING, PMD, "\tmc_get_soc_version failed\n");
+		DPAA2_PMD_WARN("\tmc_get_soc_version failed");
 
 	if (mc_get_version(dpni, CMD_PRI_LOW, &mc_ver_info))
-		RTE_LOG(WARNING, PMD, "\tmc_get_version failed\n");
+		DPAA2_PMD_WARN("\tmc_get_version failed");
 
 	ret = snprintf(fw_version, fw_size,
 		       "%x-%d.%d.%d",
@@ -201,7 +201,7 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	mc_q = rte_malloc(NULL, sizeof(struct dpaa2_queue) * tot_queues,
 			  RTE_CACHE_LINE_SIZE);
 	if (!mc_q) {
-		PMD_INIT_LOG(ERR, "malloc failed for rx/tx queues\n");
+		DPAA2_PMD_ERR("Memory allocation failed for rx/tx queues");
 		return -1;
 	}
 
@@ -278,8 +278,8 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 			ret = dpni_set_max_frame_length(dpni, CMD_PRI_LOW,
 				priv->token, eth_conf->rxmode.max_rx_pkt_len);
 			if (ret) {
-				PMD_INIT_LOG(ERR,
-					     "unable to set mtu. check config\n");
+				DPAA2_PMD_ERR(
+					"Unable to set mtu. check config");
 				return ret;
 			}
 		} else {
@@ -291,8 +291,8 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		ret = dpaa2_setup_flow_dist(dev,
 				eth_conf->rx_adv_conf.rss_conf.rss_hf);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "unable to set flow distribution."
-				     "please check queue config\n");
+			DPAA2_PMD_ERR("Unable to set flow distribution."
+				      "Check queue config");
 			return ret;
 		}
 	}
@@ -303,28 +303,28 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
 			       DPNI_OFF_RX_L3_CSUM, rx_ip_csum_offload);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to set RX l3 csum:Error = %d\n", ret);
+		DPAA2_PMD_ERR("Error to set RX l3 csum:Error = %d", ret);
 		return ret;
 	}
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
 			       DPNI_OFF_RX_L4_CSUM, rx_ip_csum_offload);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to get RX l4 csum:Error = %d\n", ret);
+		DPAA2_PMD_ERR("Error to get RX l4 csum:Error = %d", ret);
 		return ret;
 	}
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
 			       DPNI_OFF_TX_L3_CSUM, true);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to set TX l3 csum:Error = %d\n", ret);
+		DPAA2_PMD_ERR("Error to set TX l3 csum:Error = %d", ret);
 		return ret;
 	}
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
 			       DPNI_OFF_TX_L4_CSUM, true);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to get TX l4 csum:Error = %d\n", ret);
+		DPAA2_PMD_ERR("Error to get TX l4 csum:Error = %d", ret);
 		return ret;
 	}
 
@@ -338,8 +338,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
 				       DPNI_FLCTYPE_HASH, true);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "Error setting FLCTYPE: Err = %d\n",
-				     ret);
+			DPAA2_PMD_ERR("Error setting FLCTYPE: Err = %d", ret);
 			return ret;
 		}
 	}
@@ -375,8 +374,8 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	PMD_DRV_LOG(DEBUG, "dev =%p, queue =%d, pool = %p, conf =%p",
-		    dev, rx_queue_id, mb_pool, rx_conf);
+	DPAA2_PMD_DEBUG("dev =%p, queue =%d, pool = %p, conf =%p",
+			dev, rx_queue_id, mb_pool, rx_conf);
 
 	if (!priv->bp_list || priv->bp_list->mp != mb_pool) {
 		bpid = mempool_to_bpid(mb_pool);
@@ -415,7 +414,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_RX,
 			     dpaa2_q->tc_index, flow_id, options, &cfg);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error in setting the rx flow: = %d\n", ret);
+		DPAA2_PMD_ERR("Error in setting the rx flow: = %d", ret);
 		return -1;
 	}
 
@@ -427,14 +426,14 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		taildrop.threshold = CONG_THRESHOLD_RX_Q;
 		taildrop.units = DPNI_CONGESTION_UNIT_BYTES;
 		taildrop.oal = CONG_RX_OAL;
-		PMD_DRV_LOG(DEBUG, "Enabling Early Drop on queue = %d",
-			    rx_queue_id);
+		DPAA2_PMD_DEBUG("Enabling Early Drop on queue = %d",
+				rx_queue_id);
 		ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
 					DPNI_CP_QUEUE, DPNI_QUEUE_RX,
 					dpaa2_q->tc_index, flow_id, &taildrop);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "Error in setting the rx flow"
-				     " err : = %d\n", ret);
+			DPAA2_PMD_ERR("Error in setting taildrop. err=(%d)",
+				      ret);
 			return -1;
 		}
 	}
@@ -477,9 +476,9 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_TX,
 			     tc_id, flow_id, options, &tx_flow_cfg);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error in setting the tx flow: "
-			     "tc_id=%d, flow =%d ErrorCode = %x\n",
-			     tc_id, flow_id, -ret);
+		DPAA2_PMD_ERR("Error in setting the tx flow: "
+			      "tc_id=%d, flow=%d err=%d",
+			      tc_id, flow_id, ret);
 			return -1;
 	}
 
@@ -491,8 +490,8 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 						    priv->token,
 						    DPNI_CONF_DISABLE);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "Error in set tx conf mode settings"
-				     " ErrorCode = %x", ret);
+			DPAA2_PMD_ERR("Error in set tx conf mode settings: "
+				      "err=%d", ret);
 			return -1;
 		}
 	}
@@ -521,9 +520,9 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 						       tc_id,
 						       &cong_notif_cfg);
 		if (ret) {
-			PMD_INIT_LOG(ERR,
-			   "Error in setting tx congestion notification: = %d",
-			   -ret);
+			DPAA2_PMD_ERR(
+			   "Error in setting tx congestion notification: "
+			   "err=%d", ret);
 			return -ret;
 		}
 	}
@@ -558,7 +557,7 @@ dpaa2_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failure in affining portal\n");
+			DPAA2_PMD_ERR("Failure in affining portal");
 			return -EINVAL;
 		}
 	}
@@ -568,8 +567,8 @@ dpaa2_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	if (qbman_fq_query_state(swp, dpaa2_q->fqid, &state) == 0) {
 		frame_cnt = qbman_fq_state_frame_count(&state);
-		RTE_LOG(DEBUG, PMD, "RX frame count for q(%d) is %u\n",
-			rx_queue_id, frame_cnt);
+		DPAA2_PMD_DEBUG("RX frame count for q(%d) is %u",
+				rx_queue_id, frame_cnt);
 	}
 	return frame_cnt;
 }
@@ -618,14 +617,14 @@ dpaa2_interrupt_handler(void *param)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return;
 	}
 
 	ret = dpni_get_irq_status(dpni, CMD_PRI_LOW, priv->token,
 				  irq_index, &status);
 	if (unlikely(ret)) {
-		RTE_LOG(ERR, PMD, "Can't get irq status (err %d)", ret);
+		DPAA2_PMD_ERR("Can't get irq status (err %d)", ret);
 		clear = 0xffffffff;
 		goto out;
 	}
@@ -641,7 +640,7 @@ out:
 	ret = dpni_clear_irq_status(dpni, CMD_PRI_LOW, priv->token,
 				    irq_index, clear);
 	if (unlikely(ret))
-		RTE_LOG(ERR, PMD, "Can't clear irq status (err %d)", ret);
+		DPAA2_PMD_ERR("Can't clear irq status (err %d)", ret);
 }
 
 static int
@@ -658,16 +657,16 @@ dpaa2_eth_setup_irqs(struct rte_eth_dev *dev, int enable)
 	err = dpni_set_irq_mask(dpni, CMD_PRI_LOW, priv->token,
 				irq_index, mask);
 	if (err < 0) {
-		PMD_INIT_LOG(ERR, "Error: dpni_set_irq_mask():%d (%s)", err,
-			     strerror(-err));
+		DPAA2_PMD_ERR("Error: dpni_set_irq_mask():%d (%s)", err,
+			      strerror(-err));
 		return err;
 	}
 
 	err = dpni_set_irq_enable(dpni, CMD_PRI_LOW, priv->token,
 				  irq_index, enable);
 	if (err < 0)
-		PMD_INIT_LOG(ERR, "Error: dpni_set_irq_enable():%d (%s)", err,
-			     strerror(-err));
+		DPAA2_PMD_ERR("Error: dpni_set_irq_enable():%d (%s)", err,
+			      strerror(-err));
 
 	return err;
 }
@@ -695,8 +694,8 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 
 	ret = dpni_enable(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failure %d in enabling dpni %d device\n",
-			     ret, priv->hw_id);
+		DPAA2_PMD_ERR("Failure in enabling dpni %d device: err=%d",
+			      priv->hw_id, ret);
 		return ret;
 	}
 
@@ -706,7 +705,7 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	ret = dpni_get_qdid(dpni, CMD_PRI_LOW, priv->token,
 			    DPNI_QUEUE_TX, &qdid);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to get qdid:ErrorCode = %d\n", ret);
+		DPAA2_PMD_ERR("Error in getting qdid: err=%d", ret);
 		return ret;
 	}
 	priv->qdid = qdid;
@@ -717,8 +716,8 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 				     DPNI_QUEUE_RX, dpaa2_q->tc_index,
 				       dpaa2_q->flow_id, &cfg, &qid);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "Error to get flow "
-				     "information Error code = %d\n", ret);
+			DPAA2_PMD_ERR("Error in getting flow information: "
+				      "err=%d", ret);
 			return ret;
 		}
 		dpaa2_q->fqid = qid.fqid;
@@ -733,8 +732,8 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	ret = dpni_set_errors_behavior(dpni, CMD_PRI_LOW,
 				       priv->token, &err_cfg);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to dpni_set_errors_behavior:"
-			     "code = %d\n", ret);
+		DPAA2_PMD_ERR("Error to dpni_set_errors_behavior: code = %d",
+			      ret);
 		return ret;
 	}
 
@@ -793,8 +792,8 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 
 	ret = dpni_disable(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failure (ret %d) in disabling dpni %d dev\n",
-			     ret, priv->hw_id);
+		DPAA2_PMD_ERR("Failure (ret %d) in disabling dpni %d dev",
+			      ret, priv->hw_id);
 		return;
 	}
 
@@ -826,8 +825,7 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 	/* Clean the device first */
 	ret = dpni_reset(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failure cleaning dpni device with"
-			     " error code %d\n", ret);
+		DPAA2_PMD_ERR("Failure cleaning dpni device: err=%d", ret);
 		return;
 	}
 
@@ -846,17 +844,17 @@ dpaa2_dev_promiscuous_enable(
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return;
 	}
 
 	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to enable U promisc mode %d\n", ret);
+		DPAA2_PMD_ERR("Unable to enable U promisc mode %d", ret);
 
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to enable M promisc mode %d\n", ret);
+		DPAA2_PMD_ERR("Unable to enable M promisc mode %d", ret);
 }
 
 static void
@@ -870,21 +868,20 @@ dpaa2_dev_promiscuous_disable(
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return;
 	}
 
 	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to disable U promisc mode %d\n", ret);
+		DPAA2_PMD_ERR("Unable to disable U promisc mode %d", ret);
 
 	if (dev->data->all_multicast == 0) {
 		ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW,
 						 priv->token, false);
 		if (ret < 0)
-			RTE_LOG(ERR, PMD,
-				"Unable to disable M promisc mode %d\n",
-				ret);
+			DPAA2_PMD_ERR("Unable to disable M promisc mode %d",
+				      ret);
 	}
 }
 
@@ -899,13 +896,13 @@ dpaa2_dev_allmulticast_enable(
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return;
 	}
 
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to enable multicast mode %d\n", ret);
+		DPAA2_PMD_ERR("Unable to enable multicast mode %d", ret);
 }
 
 static void
@@ -918,7 +915,7 @@ dpaa2_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return;
 	}
 
@@ -928,7 +925,7 @@ dpaa2_dev_allmulticast_disable(struct rte_eth_dev *dev)
 
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to disable multicast mode %d\n", ret);
+		DPAA2_PMD_ERR("Unable to disable multicast mode %d", ret);
 }
 
 static int
@@ -943,7 +940,7 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return -EINVAL;
 	}
 
@@ -964,10 +961,10 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	ret = dpni_set_max_frame_length(dpni, CMD_PRI_LOW, priv->token,
 					frame_size);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "setting the max frame length failed");
+		DPAA2_PMD_ERR("Setting the max frame length failed");
 		return -1;
 	}
-	PMD_DRV_LOG(INFO, "MTU is configured %d for the device", mtu);
+	DPAA2_PMD_INFO("MTU configured for the device: %d", mtu);
 	return 0;
 }
 
@@ -984,15 +981,15 @@ dpaa2_dev_add_mac_addr(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return -1;
 	}
 
 	ret = dpni_add_mac_addr(dpni, CMD_PRI_LOW,
 				priv->token, addr->addr_bytes);
 	if (ret)
-		RTE_LOG(ERR, PMD,
-			"error: Adding the MAC ADDR failed: err = %d\n", ret);
+		DPAA2_PMD_ERR(
+			"error: Adding the MAC ADDR failed: err = %d", ret);
 	return 0;
 }
 
@@ -1011,15 +1008,15 @@ dpaa2_dev_remove_mac_addr(struct rte_eth_dev *dev,
 	macaddr = &data->mac_addrs[index];
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return;
 	}
 
 	ret = dpni_remove_mac_addr(dpni, CMD_PRI_LOW,
 				   priv->token, macaddr->addr_bytes);
 	if (ret)
-		RTE_LOG(ERR, PMD,
-			"error: Removing the MAC ADDR failed: err = %d\n", ret);
+		DPAA2_PMD_ERR(
+			"error: Removing the MAC ADDR failed: err = %d", ret);
 }
 
 static void
@@ -1033,7 +1030,7 @@ dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return;
 	}
 
@@ -1041,9 +1038,10 @@ dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 					priv->token, addr->addr_bytes);
 
 	if (ret)
-		RTE_LOG(ERR, PMD,
-			"error: Setting the MAC ADDR failed %d\n", ret);
+		DPAA2_PMD_ERR(
+			"error: Setting the MAC ADDR failed %d", ret);
 }
+
 static
 int dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 			 struct rte_eth_stats *stats)
@@ -1059,12 +1057,12 @@ int dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (!dpni) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return -EINVAL;
 	}
 
 	if (!stats) {
-		RTE_LOG(ERR, PMD, "stats is NULL\n");
+		DPAA2_PMD_ERR("stats is NULL");
 		return -EINVAL;
 	}
 
@@ -1103,7 +1101,7 @@ int dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 	return 0;
 
 err:
-	RTE_LOG(ERR, PMD, "Operation not completed:Error Code = %d\n", retcode);
+	DPAA2_PMD_ERR("Operation not completed:Error Code = %d", retcode);
 	return retcode;
 };
 
@@ -1148,7 +1146,7 @@ dpaa2_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	}
 	return i;
 err:
-	RTE_LOG(ERR, PMD, "Error in obtaining extended stats (%d)\n", retcode);
+	DPAA2_PMD_ERR("Error in obtaining extended stats (%d)", retcode);
 	return retcode;
 }
 
@@ -1217,7 +1215,7 @@ dpaa2_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 
 	for (i = 0; i < n; i++) {
 		if (ids[i] >= stat_cnt) {
-			PMD_INIT_LOG(ERR, "id value isn't valid");
+			DPAA2_PMD_ERR("xstats id value isn't valid");
 			return -1;
 		}
 		values[i] = values_copy[ids[i]];
@@ -1242,7 +1240,7 @@ dpaa2_xstats_get_names_by_id(
 
 	for (i = 0; i < limit; i++) {
 		if (ids[i] >= stat_cnt) {
-			PMD_INIT_LOG(ERR, "id value isn't valid");
+			DPAA2_PMD_ERR("xstats id value isn't valid");
 			return -1;
 		}
 		strcpy(xstats_names[i].name, xstats_names_copy[ids[i]].name);
@@ -1260,7 +1258,7 @@ dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return;
 	}
 
@@ -1271,7 +1269,7 @@ dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 	return;
 
 error:
-	RTE_LOG(ERR, PMD, "Operation not completed:Error Code = %d\n", retcode);
+	DPAA2_PMD_ERR("Operation not completed:Error Code = %d", retcode);
 	return;
 };
 
@@ -1287,13 +1285,13 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 	struct dpni_link_state state = {0};
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return 0;
 	}
 
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d\n", ret);
+		DPAA2_PMD_ERR("error: dpni_get_link_state %d", ret);
 		return -1;
 	}
 
@@ -1308,10 +1306,10 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == -1)
-		RTE_LOG(DEBUG, PMD, "No change in status\n");
+		DPAA2_PMD_DEBUG("No change in status");
 	else
-		PMD_DRV_LOG(INFO, "Port %d Link is %s\n", dev->data->port_id,
-			    link.link_status ? "Up" : "Down");
+		DPAA2_PMD_INFO("Port %d Link is %s\n", dev->data->port_id,
+			       link.link_status ? "Up" : "Down");
 
 	return ret;
 }
@@ -1333,7 +1331,7 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	dpni = (struct fsl_mc_io *)priv->hw;
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "DPNI is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return ret;
 	}
 
@@ -1341,7 +1339,7 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	ret = dpni_is_enabled(dpni, CMD_PRI_LOW, priv->token, &en);
 	if (ret) {
 		/* Unable to obtain dpni status; Not continuing */
-		PMD_DRV_LOG(ERR, "Interface Link UP failed (%d)", ret);
+		DPAA2_PMD_ERR("Interface Link UP failed (%d)", ret);
 		return -EINVAL;
 	}
 
@@ -1349,13 +1347,13 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	if (!en) {
 		ret = dpni_enable(dpni, CMD_PRI_LOW, priv->token);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Interface Link UP failed (%d)", ret);
+			DPAA2_PMD_ERR("Interface Link UP failed (%d)", ret);
 			return -EINVAL;
 		}
 	}
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d\n", ret);
+		DPAA2_PMD_ERR("Unable to get link state (%d)", ret);
 		return -1;
 	}
 
@@ -1364,10 +1362,9 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	dev->data->dev_link.link_status = state.up;
 
 	if (state.up)
-		PMD_DRV_LOG(INFO, "Port %d Link is set as UP",
-			    dev->data->port_id);
+		DPAA2_PMD_INFO("Port %d Link is Up", dev->data->port_id);
 	else
-		PMD_DRV_LOG(INFO, "Port %d Link is DOWN", dev->data->port_id);
+		DPAA2_PMD_INFO("Port %d Link is Down", dev->data->port_id);
 	return ret;
 }
 
@@ -1390,7 +1387,7 @@ dpaa2_dev_set_link_down(struct rte_eth_dev *dev)
 	dpni = (struct fsl_mc_io *)priv->hw;
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "Device has not yet been configured\n");
+		DPAA2_PMD_ERR("Device has not yet been configured");
 		return ret;
 	}
 
@@ -1403,12 +1400,12 @@ dpaa2_dev_set_link_down(struct rte_eth_dev *dev)
 	do {
 		ret = dpni_disable(dpni, 0, priv->token);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "dpni disable failed (%d)", ret);
+			DPAA2_PMD_ERR("dpni disable failed (%d)", ret);
 			return ret;
 		}
 		ret = dpni_is_enabled(dpni, 0, priv->token, &dpni_enabled);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "dpni_is_enabled failed (%d)", ret);
+			DPAA2_PMD_ERR("dpni enable check failed (%d)", ret);
 			return ret;
 		}
 		if (dpni_enabled)
@@ -1417,12 +1414,12 @@ dpaa2_dev_set_link_down(struct rte_eth_dev *dev)
 	} while (dpni_enabled && --retries);
 
 	if (!retries) {
-		PMD_DRV_LOG(WARNING, "Retry count exceeded disabling DPNI\n");
+		DPAA2_PMD_WARN("Retry count exceeded disabling dpni");
 		/* todo- we may have to manually cleanup queues.
 		 */
 	} else {
-		PMD_DRV_LOG(INFO, "Port %d Link DOWN successful",
-			    dev->data->port_id);
+		DPAA2_PMD_INFO("Port %d Link DOWN successful",
+			       dev->data->port_id);
 	}
 
 	dev->data->dev_link.link_status = 0;
@@ -1444,13 +1441,13 @@ dpaa2_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	dpni = (struct fsl_mc_io *)priv->hw;
 
 	if (dpni == NULL || fc_conf == NULL) {
-		RTE_LOG(ERR, PMD, "device not configured\n");
+		DPAA2_PMD_ERR("device not configured");
 		return ret;
 	}
 
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d\n", ret);
+		DPAA2_PMD_ERR("error: dpni_get_link_state %d", ret);
 		return ret;
 	}
 
@@ -1500,7 +1497,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	dpni = (struct fsl_mc_io *)priv->hw;
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL\n");
+		DPAA2_PMD_ERR("dpni is NULL");
 		return ret;
 	}
 
@@ -1510,7 +1507,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	 */
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Unable to get link state (err=%d)\n", ret);
+		DPAA2_PMD_ERR("Unable to get link state (err=%d)", ret);
 		return -1;
 	}
 
@@ -1555,16 +1552,15 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		cfg.options &= ~DPNI_LINK_OPT_ASYM_PAUSE;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "Incorrect Flow control flag (%d)\n",
-			fc_conf->mode);
+		DPAA2_PMD_ERR("Incorrect Flow control flag (%d)",
+			      fc_conf->mode);
 		return -1;
 	}
 
 	ret = dpni_set_link_cfg(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret)
-		RTE_LOG(ERR, PMD,
-			"Unable to set Link configuration (err=%d)\n",
-			ret);
+		DPAA2_PMD_ERR("Unable to set Link configuration (err=%d)",
+			      ret);
 
 	/* Enable link */
 	dpaa2_dev_set_link_up(dev);
@@ -1585,13 +1581,13 @@ dpaa2_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (rss_conf->rss_hf) {
 		ret = dpaa2_setup_flow_dist(dev, rss_conf->rss_hf);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "unable to set flow dist");
+			DPAA2_PMD_ERR("Unable to set flow dist");
 			return ret;
 		}
 	} else {
 		ret = dpaa2_remove_flow_dist(dev, 0);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "unable to remove flow dist");
+			DPAA2_PMD_ERR("Unable to remove flow dist");
 			return ret;
 		}
 	}
@@ -1649,7 +1645,7 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, eth_priv->token, DPNI_QUEUE_RX,
 			     dpaa2_ethq->tc_index, flow_id, options, &cfg);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Error in dpni_set_queue: ret: %d\n", ret);
+		DPAA2_PMD_ERR("Error in dpni_set_queue: ret: %d", ret);
 		return ret;
 	}
 
@@ -1676,7 +1672,7 @@ int dpaa2_eth_eventq_detach(const struct rte_eth_dev *dev,
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, eth_priv->token, DPNI_QUEUE_RX,
 			     dpaa2_ethq->tc_index, flow_id, options, &cfg);
 	if (ret)
-		RTE_LOG(ERR, PMD, "Error in dpni_set_queue: ret: %d\n", ret);
+		DPAA2_PMD_ERR("Error in dpni_set_queue: ret: %d", ret);
 
 	return ret;
 }
@@ -1743,15 +1739,15 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	dpni_dev = rte_malloc(NULL, sizeof(struct fsl_mc_io), 0);
 	if (!dpni_dev) {
-		PMD_INIT_LOG(ERR, "malloc failed for dpni device\n");
+		DPAA2_PMD_ERR("Memory allocation failed for dpni device");
 		return -1;
 	}
 
 	dpni_dev->regs = rte_mcp_ptr_list[0];
 	ret = dpni_open(dpni_dev, CMD_PRI_LOW, hw_id, &priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR,
-			     "Failure in opening dpni@%d with err code %d\n",
+		DPAA2_PMD_ERR(
+			     "Failure in opening dpni@%d with err code %d",
 			     hw_id, ret);
 		rte_free(dpni_dev);
 		return -1;
@@ -1760,16 +1756,15 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	/* Clean the device first */
 	ret = dpni_reset(dpni_dev, CMD_PRI_LOW, priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR,
-			     "Failure cleaning dpni@%d with err code %d\n",
-			     hw_id, ret);
+		DPAA2_PMD_ERR("Failure cleaning dpni@%d with err code %d",
+			      hw_id, ret);
 		goto init_err;
 	}
 
 	ret = dpni_get_attributes(dpni_dev, CMD_PRI_LOW, priv->token, &attr);
 	if (ret) {
-		PMD_INIT_LOG(ERR,
-			     "Failure in get dpni@%d attribute, err code %d\n",
+		DPAA2_PMD_ERR(
+			     "Failure in get dpni@%d attribute, err code %d",
 			     hw_id, ret);
 		goto init_err;
 	}
@@ -1785,8 +1780,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	/* Using number of TX queues as number of TX TCs */
 	priv->nb_tx_queues = attr.num_tx_tcs;
 
-	PMD_DRV_LOG(DEBUG, "RX-TC= %d, nb_rx_queues= %d, nb_tx_queues=%d",
-		    priv->num_rx_tc, priv->nb_rx_queues, priv->nb_tx_queues);
+	DPAA2_PMD_DEBUG("RX-TC= %d, nb_rx_queues= %d, nb_tx_queues=%d",
+			priv->num_rx_tc, priv->nb_rx_queues,
+			priv->nb_tx_queues);
 
 	priv->hw = dpni_dev;
 	priv->hw_id = hw_id;
@@ -1798,7 +1794,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	/* Allocate memory for hardware structure for queues */
 	ret = dpaa2_alloc_rx_tx_queues(eth_dev);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "dpaa2_alloc_rx_tx_queuesFailed\n");
+		DPAA2_PMD_ERR("Queue allocation Failed");
 		goto init_err;
 	}
 
@@ -1806,9 +1802,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = rte_zmalloc("dpni",
 		ETHER_ADDR_LEN * attr.mac_filter_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR,
+		DPAA2_PMD_ERR(
 		   "Failed to allocate %d bytes needed to store MAC addresses",
-			     ETHER_ADDR_LEN * attr.mac_filter_entries);
+		   ETHER_ADDR_LEN * attr.mac_filter_entries);
 		ret = -ENOMEM;
 		goto init_err;
 	}
@@ -1817,7 +1813,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 					priv->token,
 			(uint8_t *)(eth_dev->data->mac_addrs[0].addr_bytes));
 	if (ret) {
-		PMD_INIT_LOG(ERR, "DPNI get mac address failed:Err Code = %d\n",
+		DPAA2_PMD_ERR("DPNI get mac address failed:Err Code = %d",
 			     ret);
 		goto init_err;
 	}
@@ -1829,8 +1825,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
 				     DPNI_QUEUE_TX, &layout);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error (%d) in setting tx buffer layout",
-			     ret);
+		DPAA2_PMD_ERR("Error (%d) in setting tx buffer layout", ret);
 		goto init_err;
 	}
 
@@ -1841,7 +1836,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
 				     DPNI_QUEUE_TX_CONFIRM, &layout);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error (%d) in setting tx-conf buffer layout",
+		DPAA2_PMD_ERR("Error (%d) in setting tx-conf buffer layout",
 			     ret);
 		goto init_err;
 	}
@@ -1852,7 +1847,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 	rte_fslmc_vfio_dmamap();
 
-	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
+	DPAA2_PMD_INFO("%s: netdev created", eth_dev->data->name);
 	return 0;
 init_err:
 	dpaa2_dev_uninit(eth_dev);
@@ -1873,7 +1868,7 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	if (!dpni) {
-		PMD_INIT_LOG(WARNING, "Already closed or not started");
+		DPAA2_PMD_WARN("Already closed or not started");
 		return -1;
 	}
 
@@ -1900,8 +1895,8 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* Close the device at underlying layer*/
 	ret = dpni_close(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR,
-			     "Failure closing dpni device with err code %d\n",
+		DPAA2_PMD_ERR(
+			     "Failure closing dpni device with err code %d",
 			     ret);
 	}
 
@@ -1913,7 +1908,7 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 
-	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
+	DPAA2_PMD_INFO("%s: netdev deleted", eth_dev->data->name);
 	return 0;
 }
 
@@ -1933,8 +1928,8 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 						sizeof(struct dpaa2_dev_priv),
 						RTE_CACHE_LINE_SIZE);
 		if (eth_dev->data->dev_private == NULL) {
-			PMD_INIT_LOG(CRIT, "Cannot allocate memzone for"
-				     " private port data\n");
+			DPAA2_PMD_CRIT(
+				"Unable to allocate memory for private data");
 			rte_eth_dev_release_port(eth_dev);
 			return -ENOMEM;
 		}
@@ -1987,3 +1982,12 @@ static struct rte_dpaa2_driver rte_dpaa2_pmd = {
 };
 
 RTE_PMD_REGISTER_DPAA2(net_dpaa2, rte_dpaa2_pmd);
+
+RTE_INIT(dpaa2_pmd_init_log);
+static void
+dpaa2_pmd_init_log(void)
+{
+	dpaa2_logtype_pmd = rte_log_register("pmd.net.dpaa2");
+	if (dpaa2_logtype_pmd >= 0)
+		rte_log_set_level(dpaa2_logtype_pmd, RTE_LOG_NOTICE);
+}

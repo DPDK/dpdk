@@ -494,27 +494,11 @@ Please note that enabling debugging options may affect system performance.
 
 - ``CONFIG_RTE_LIBRTE_DPAA2_DEBUG_DRIVER`` (default ``n``)
 
-  Toggle display of generic debugging messages
+  Toggle display of debugging messages/logic
 
 - ``CONFIG_RTE_LIBRTE_DPAA2_USE_PHYS_IOVA`` (default ``y``)
 
   Toggle to use physical address vs virtual address for hardware accelerators.
-
-- ``CONFIG_RTE_LIBRTE_DPAA2_DEBUG_INIT`` (default ``n``)
-
-  Toggle display of initialization related messages.
-
-- ``CONFIG_RTE_LIBRTE_DPAA2_DEBUG_RX`` (default ``n``)
-
-  Toggle display of receive fast path run-time message
-
-- ``CONFIG_RTE_LIBRTE_DPAA2_DEBUG_TX`` (default ``n``)
-
-  Toggle display of transmit fast path run-time message
-
-- ``CONFIG_RTE_LIBRTE_DPAA2_DEBUG_TX_FREE`` (default ``n``)
-
-  Toggle display of transmit fast path buffer free run-time message
 
 Driver compilation and testing
 ------------------------------
@@ -532,8 +516,7 @@ for details.
 
    .. code-block:: console
 
-      ./arm64-dpaa2-linuxapp-gcc/testpmd -c 0xff -n 1 \
-        -- -i --portmask=0x3 --nb-cores=1 --no-flush-rx
+      ./testpmd -c 0xff -n 1 -- -i --portmask=0x3 --nb-cores=1 --no-flush-rx
 
       .....
       EAL: Registered [pci] bus.
@@ -556,6 +539,27 @@ for details.
       Port 1 Link Up - speed 10000 Mbps - full-duplex
       Done
       testpmd>
+
+Enabling logs
+-------------
+
+For enabling logging for DPAA2 PMD, following log-level prefix can be used:
+
+ .. code-block:: console
+
+    <dpdk app> <EAL args> --log-level=bus.fslmc,<level> -- ...
+
+Using ``bus.fslmc`` as log matching criteria, all FSLMC bus logs can be enabled
+which are lower than logging ``level``.
+
+ Or
+
+ .. code-block:: console
+
+    <dpdk app> <EAL args> --log-level=pmd.net.dpaa2,<level> -- ...
+
+Using ``pmd.dpaa2`` as log matching criteria, all PMD logs can be enabled
+which are lower than logging ``level``.
 
 Limitations
 -----------
