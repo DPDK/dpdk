@@ -29,6 +29,36 @@ extern "C" {
 #define RTE_VHOST_USER_DEQUEUE_ZERO_COPY	(1ULL << 2)
 #define RTE_VHOST_USER_IOMMU_SUPPORT	(1ULL << 3)
 
+/** Protocol features. */
+#ifndef VHOST_USER_PROTOCOL_F_MQ
+#define VHOST_USER_PROTOCOL_F_MQ	0
+#endif
+
+#ifndef VHOST_USER_PROTOCOL_F_LOG_SHMFD
+#define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
+#endif
+
+#ifndef VHOST_USER_PROTOCOL_F_RARP
+#define VHOST_USER_PROTOCOL_F_RARP	2
+#endif
+
+#ifndef VHOST_USER_PROTOCOL_F_REPLY_ACK
+#define VHOST_USER_PROTOCOL_F_REPLY_ACK	3
+#endif
+
+#ifndef VHOST_USER_PROTOCOL_F_NET_MTU
+#define VHOST_USER_PROTOCOL_F_NET_MTU	4
+#endif
+
+#ifndef VHOST_USER_PROTOCOL_F_SLAVE_REQ
+#define VHOST_USER_PROTOCOL_F_SLAVE_REQ	5
+#endif
+
+/** Indicate whether protocol features negotiation is supported. */
+#ifndef VHOST_USER_F_PROTOCOL_FEATURES
+#define VHOST_USER_F_PROTOCOL_FEATURES	30
+#endif
+
 /**
  * Information relating to memory regions including offsets to
  * addresses in QEMUs memory file.

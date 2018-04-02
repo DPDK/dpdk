@@ -175,8 +175,6 @@ struct vhost_msg {
  #define VIRTIO_F_VERSION_1 32
 #endif
 
-#define VHOST_USER_F_PROTOCOL_FEATURES	30
-
 /* Features supported by this builtin vhost-user net driver. */
 #define VIRTIO_NET_SUPPORTED_FEATURES ((1ULL << VIRTIO_NET_F_MRG_RXBUF) | \
 				(1ULL << VIRTIO_F_ANY_LAYOUT) | \
