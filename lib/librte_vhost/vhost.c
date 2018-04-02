@@ -656,3 +656,66 @@ int rte_vhost_get_vdpa_device_id(int vid)
 
 	return dev->vdpa_dev_id;
 }
+
+int rte_vhost_get_log_base(int vid, uint64_t *log_base,
+		uint64_t *log_size)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (!dev)
+		return -1;
+
+	if (unlikely(!(dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"(%d) %s: built-in vhost net backend is disabled.\n",
+			dev->vid, __func__);
+		return -1;
+	}
+
+	*log_base = dev->log_base;
+	*log_size = dev->log_size;
+
+	return 0;
+}
+
+int rte_vhost_get_vring_base(int vid, uint16_t queue_id,
+		uint16_t *last_avail_idx, uint16_t *last_used_idx)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (!dev)
+		return -1;
+
+	if (unlikely(!(dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"(%d) %s: built-in vhost net backend is disabled.\n",
+			dev->vid, __func__);
+		return -1;
+	}
+
+	*last_avail_idx = dev->virtqueue[queue_id]->last_avail_idx;
+	*last_used_idx = dev->virtqueue[queue_id]->last_used_idx;
+
+	return 0;
+}
+
+int rte_vhost_set_vring_base(int vid, uint16_t queue_id,
+		uint16_t last_avail_idx, uint16_t last_used_idx)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (!dev)
+		return -1;
+
+	if (unlikely(!(dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"(%d) %s: built-in vhost net backend is disabled.\n",
+			dev->vid, __func__);
+		return -1;
+	}
+
+	dev->virtqueue[queue_id]->last_avail_idx = last_avail_idx;
+	dev->virtqueue[queue_id]->last_used_idx = last_used_idx;
+
+	return 0;
+}

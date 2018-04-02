@@ -527,6 +527,57 @@ int rte_vhost_vring_call(int vid, uint16_t vring_idx);
 uint32_t rte_vhost_rx_queue_count(int vid, uint16_t qid);
 
 /**
+ * Get log base and log size of the vhost device
+ *
+ * @param vid
+ *  vhost device ID
+ * @param log_base
+ *  vhost log base
+ * @param log_size
+ *  vhost log size
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_get_log_base(int vid, uint64_t *log_base, uint64_t *log_size);
+
+/**
+ * Get last_avail/used_idx of the vhost virtqueue
+ *
+ * @param vid
+ *  vhost device ID
+ * @param queue_id
+ *  vhost queue index
+ * @param last_avail_idx
+ *  vhost last_avail_idx to get
+ * @param last_used_idx
+ *  vhost last_used_idx to get
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_get_vring_base(int vid, uint16_t queue_id,
+		uint16_t *last_avail_idx, uint16_t *last_used_idx);
+
+/**
+ * Set last_avail/used_idx of the vhost virtqueue
+ *
+ * @param vid
+ *  vhost device ID
+ * @param queue_id
+ *  vhost queue index
+ * @param last_avail_idx
+ *  last_avail_idx to set
+ * @param last_used_idx
+ *  last_used_idx to set
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_set_vring_base(int vid, uint16_t queue_id,
+		uint16_t last_avail_idx, uint16_t last_used_idx);
+
+/**
  * Get vdpa device id for vhost device.
  *
  * @param vid
