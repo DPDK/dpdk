@@ -27,9 +27,13 @@
 #include <portal/dpaa2_hw_pvt.h>
 #include <portal/dpaa2_hw_dpio.h>
 #include "dpaa2_hw_mempool.h"
+#include "dpaa2_hw_mempool_logs.h"
 
 struct dpaa2_bp_info rte_dpaa2_bpid_info[MAX_BPID];
 static struct dpaa2_bp_list *h_bp_list;
+
+/* Dynamic logging identified for mempool */
+int dpaa2_logtype_mempool;
 
 static int
 rte_hw_mbuf_create_pool(struct rte_mempool *mp)
@@ -44,30 +48,30 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	avail_dpbp = dpaa2_alloc_dpbp_dev();
 
 	if (!avail_dpbp) {
-		PMD_DRV_LOG(ERR, "DPAA2 resources not available");
+		DPAA2_MEMPOOL_ERR("DPAA2 pool not available!");
 		return -ENOENT;
 	}
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failure in affining portal\n");
+			DPAA2_MEMPOOL_ERR("Failure in affining portal");
 			goto err1;
 		}
 	}
 
 	ret = dpbp_enable(&avail_dpbp->dpbp, CMD_PRI_LOW, avail_dpbp->token);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Resource enable failure with"
-			" err code: %d\n", ret);
+		DPAA2_MEMPOOL_ERR("Resource enable failure with err code: %d",
+				  ret);
 		goto err1;
 	}
 
 	ret = dpbp_get_attributes(&avail_dpbp->dpbp, CMD_PRI_LOW,
 				  avail_dpbp->token, &dpbp_attr);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Resource read failure with"
-			     " err code: %d\n", ret);
+		DPAA2_MEMPOOL_ERR("Resource read failure with err code: %d",
+				  ret);
 		goto err2;
 	}
 
@@ -75,7 +79,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 			     sizeof(struct dpaa2_bp_info),
 			     RTE_CACHE_LINE_SIZE);
 	if (!bp_info) {
-		PMD_INIT_LOG(ERR, "No heap memory available for bp_info");
+		DPAA2_MEMPOOL_ERR("Unable to allocate buffer pool memory");
 		ret = -ENOMEM;
 		goto err2;
 	}
@@ -84,7 +88,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	bp_list = rte_malloc(NULL, sizeof(struct dpaa2_bp_list),
 			     RTE_CACHE_LINE_SIZE);
 	if (!bp_list) {
-		PMD_INIT_LOG(ERR, "No heap memory available");
+		DPAA2_MEMPOOL_ERR("Unable to allocate buffer pool memory");
 		ret = -ENOMEM;
 		goto err3;
 	}
@@ -112,7 +116,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 		   sizeof(struct dpaa2_bp_info));
 	mp->pool_data = (void *)bp_info;
 
-	PMD_INIT_LOG(DEBUG, "BP List created for bpid =%d", dpbp_attr.bpid);
+	DPAA2_MEMPOOL_DEBUG("BP List created for bpid =%d", dpbp_attr.bpid);
 
 	h_bp_list = bp_list;
 	return 0;
@@ -134,7 +138,7 @@ rte_hw_mbuf_free_pool(struct rte_mempool *mp)
 	struct dpaa2_dpbp_dev *dpbp_node;
 
 	if (!mp->pool_data) {
-		PMD_DRV_LOG(ERR, "Not a valid dpaa22 pool");
+		DPAA2_MEMPOOL_ERR("Not a valid dpaa2 buffer pool");
 		return;
 	}
 
@@ -180,7 +184,7 @@ rte_dpaa2_mbuf_release(struct rte_mempool *pool __rte_unused,
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret != 0) {
-			RTE_LOG(ERR, PMD, "Failed to allocate IO portal\n");
+			DPAA2_MEMPOOL_ERR("Failed to allocate IO portal");
 			return;
 		}
 	}
@@ -250,7 +254,7 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 	bp_info = mempool_to_bpinfo(pool);
 
 	if (!(bp_info->bp_list)) {
-		RTE_LOG(ERR, PMD, "DPAA2 buffer pool not configured\n");
+		DPAA2_MEMPOOL_ERR("DPAA2 buffer pool not configured");
 		return -ENOENT;
 	}
 
@@ -259,7 +263,7 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret != 0) {
-			RTE_LOG(ERR, PMD, "Failed to allocate IO portal\n");
+			DPAA2_MEMPOOL_ERR("Failed to allocate IO portal");
 			return ret;
 		}
 	}
@@ -280,8 +284,8 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 		 * in pool, qbman_swp_acquire returns 0
 		 */
 		if (ret <= 0) {
-			PMD_TX_LOG(ERR, "Buffer acquire failed with"
-				   " err code: %d", ret);
+			DPAA2_MEMPOOL_ERR("Buffer acquire failed with"
+					  " err code: %d", ret);
 			/* The API expect the exact number of requested bufs */
 			/* Releasing all buffers allocated */
 			rte_dpaa2_mbuf_release(pool, obj_table, bpid,
@@ -293,7 +297,8 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 			DPAA2_MODIFY_IOVA_TO_VADDR(bufs[i], size_t);
 			obj_table[n] = (struct rte_mbuf *)
 				       (bufs[i] - bp_info->meta_data_size);
-			PMD_TX_LOG(DEBUG, "Acquired %p address %p from BMAN",
+			DPAA2_MEMPOOL_DP_DEBUG(
+				   "Acquired %p address %p from BMAN\n",
 				   (void *)bufs[i], (void *)obj_table[n]);
 			n++;
 		}
@@ -301,8 +306,8 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 
 #ifdef RTE_LIBRTE_DPAA2_DEBUG_DRIVER
 	alloc += n;
-	PMD_TX_LOG(DEBUG, "Total = %d , req = %d done = %d",
-		   alloc, count, n);
+	DPAA2_MEMPOOL_DP_DEBUG("Total = %d , req = %d done = %d\n",
+			       alloc, count, n);
 #endif
 	return 0;
 }
@@ -315,7 +320,7 @@ rte_hw_mbuf_free_bulk(struct rte_mempool *pool,
 
 	bp_info = mempool_to_bpinfo(pool);
 	if (!(bp_info->bp_list)) {
-		RTE_LOG(ERR, PMD, "DPAA2 buffer pool not configured\n");
+		DPAA2_MEMPOOL_ERR("DPAA2 buffer pool not configured");
 		return -ENOENT;
 	}
 	rte_dpaa2_mbuf_release(pool, obj_table, bp_info->bpid,
@@ -333,7 +338,7 @@ rte_hw_mbuf_get_count(const struct rte_mempool *mp)
 	struct dpaa2_dpbp_dev *dpbp_node;
 
 	if (!mp || !mp->pool_data) {
-		RTE_LOG(ERR, PMD, "Invalid mempool provided\n");
+		DPAA2_MEMPOOL_ERR("Invalid mempool provided");
 		return 0;
 	}
 
@@ -343,12 +348,12 @@ rte_hw_mbuf_get_count(const struct rte_mempool *mp)
 	ret = dpbp_get_num_free_bufs(&dpbp_node->dpbp, CMD_PRI_LOW,
 				     dpbp_node->token, &num_of_bufs);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Unable to obtain free buf count (err=%d)\n",
-			ret);
+		DPAA2_MEMPOOL_ERR("Unable to obtain free buf count (err=%d)",
+				  ret);
 		return 0;
 	}
 
-	RTE_LOG(DEBUG, PMD, "Free bufs = %u\n", num_of_bufs);
+	DPAA2_MEMPOOL_DP_DEBUG("Free bufs = %u\n", num_of_bufs);
 
 	return num_of_bufs;
 }
@@ -363,3 +368,12 @@ struct rte_mempool_ops dpaa2_mpool_ops = {
 };
 
 MEMPOOL_REGISTER_OPS(dpaa2_mpool_ops);
+
+RTE_INIT(dpaa2_mempool_init_log);
+static void
+dpaa2_mempool_init_log(void)
+{
+	dpaa2_logtype_mempool = rte_log_register("mempool.dpaa2");
+	if (dpaa2_logtype_mempool >= 0)
+		rte_log_set_level(dpaa2_logtype_mempool, RTE_LOG_NOTICE);
+}
