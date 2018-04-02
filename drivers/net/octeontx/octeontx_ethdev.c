@@ -611,7 +611,6 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 			ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
 			ETH_LINK_SPEED_40G;
 
-	dev_info->driver_name = RTE_STR(rte_octeontx_pmd);
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = PKI_MAX_PKTLEN;
 	dev_info->max_rx_queues = 1;
