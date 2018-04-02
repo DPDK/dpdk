@@ -104,19 +104,8 @@ const struct feature_entry rte_cpu_feature_table[] = {
 static void
 rte_cpu_get_features(hwcap_registers_t out)
 {
-	int auxv_fd;
-	Elf64_auxv_t auxv;
-
-	auxv_fd = open("/proc/self/auxv", O_RDONLY);
-	assert(auxv_fd != -1);
-	while (read(auxv_fd, &auxv,
-		sizeof(Elf64_auxv_t)) == sizeof(Elf64_auxv_t)) {
-		if (auxv.a_type == AT_HWCAP)
-			out[REG_HWCAP] = auxv.a_un.a_val;
-		else if (auxv.a_type == AT_HWCAP2)
-			out[REG_HWCAP2] = auxv.a_un.a_val;
-	}
-	close(auxv_fd);
+	out[REG_HWCAP] = rte_cpu_getauxval(AT_HWCAP);
+	out[REG_HWCAP2] = rte_cpu_getauxval(AT_HWCAP2);
 }
 
 /*

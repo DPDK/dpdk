@@ -64,4 +64,25 @@ rte_cpu_check_supported(void);
 int
 rte_cpu_is_supported(void);
 
+/**
+ * This function attempts to retrieve a value from the auxiliary vector.
+ * If it is unsuccessful, the result will be 0, and errno will be set.
+ *
+ * @return A value from the auxiliary vector.  When the value is 0, check
+ * errno to determine if an error occurred.
+ */
+unsigned long
+rte_cpu_getauxval(unsigned long type);
+
+/**
+ * This function retrieves a value from the auxiliary vector, and compares it
+ * as a string against the value retrieved.
+ *
+ * @return The result of calling strcmp() against the value retrieved from
+ * the auxiliary vector.  When the value is 0 (meaning a match is found),
+ * check errno to determine if an error occurred.
+ */
+int
+rte_cpu_strcmp_auxval(unsigned long type, const char *str);
+
 #endif /* _RTE_CPUFLAGS_H_ */
