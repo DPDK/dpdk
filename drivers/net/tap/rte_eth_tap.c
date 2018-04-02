@@ -122,17 +122,19 @@ tun_alloc(struct pmd_internals *pmd)
 
 	fd = open(TUN_TAP_DEV_PATH, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, PMD, "Unable to create TAP interface\n");
+		RTE_LOG(ERR, PMD, "Unable to create %s interface\n",
+				tuntap_name);
 		goto error;
 	}
 
 #ifdef IFF_MULTI_QUEUE
 	/* Grab the TUN features to verify we can work multi-queue */
 	if (ioctl(fd, TUNGETFEATURES, &features) < 0) {
-		RTE_LOG(ERR, PMD, "TAP unable to get TUN/TAP features\n");
+		RTE_LOG(ERR, PMD, "%s unable to get TUN/TAP features\n",
+				tuntap_name);
 		goto error;
 	}
-	RTE_LOG(DEBUG, PMD, "  TAP Features %08x\n", features);
+	RTE_LOG(DEBUG, PMD, "%s Features %08x\n", tuntap_name, features);
 
 	if (features & IFF_MULTI_QUEUE) {
 		RTE_LOG(DEBUG, PMD, "  Multi-queue support for %d queues\n",
@@ -1134,7 +1136,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		tmp = &(*tmp)->next;
 	}
 
-	RTE_LOG(DEBUG, PMD, "  RX TAP device name %s, qid %d on fd %d\n",
+	RTE_LOG(DEBUG, PMD, "  RX TUNTAP device name %s, qid %d on fd %d\n",
 		internals->name, rx_queue_id, internals->rxq[rx_queue_id].fd);
 
 	return 0;
@@ -1189,7 +1191,7 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 	if (ret == -1)
 		return -1;
 	RTE_LOG(DEBUG, PMD,
-		"  TX TAP device name %s, qid %d on fd %d csum %s\n",
+		"  TX TUNTAP device name %s, qid %d on fd %d csum %s\n",
 		internals->name, tx_queue_id, internals->txq[tx_queue_id].fd,
 		txq->csum ? "on" : "off");
 
@@ -1372,17 +1374,19 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	struct ifreq ifr;
 	int i;
 
-	RTE_LOG(DEBUG, PMD, "  TAP device on numa %u\n", rte_socket_id());
+	RTE_LOG(DEBUG, PMD, "%s device on numa %u\n",
+			tuntap_name, rte_socket_id());
 
 	data = rte_zmalloc_socket(tap_name, sizeof(*data), 0, numa_node);
 	if (!data) {
-		RTE_LOG(ERR, PMD, "TAP Failed to allocate data\n");
+		RTE_LOG(ERR, PMD, "%s Failed to allocate data\n", tuntap_name);
 		goto error_exit_nodev;
 	}
 
 	dev = rte_eth_vdev_allocate(vdev, sizeof(*pmd));
 	if (!dev) {
-		RTE_LOG(ERR, PMD, "TAP Unable to allocate device struct\n");
+		RTE_LOG(ERR, PMD, "%s Unable to allocate device struct\n",
+				tuntap_name);
 		goto error_exit_nodev;
 	}
 
@@ -1393,8 +1397,8 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (pmd->ioctl_sock == -1) {
 		RTE_LOG(ERR, PMD,
-			"TAP Unable to get a socket for management: %s\n",
-			strerror(errno));
+			"%s Unable to get a socket for management: %s\n",
+			tuntap_name, strerror(errno));
 		goto error_exit;
 	}
 
@@ -1558,8 +1562,8 @@ error_exit:
 	rte_eth_dev_release_port(dev);
 
 error_exit_nodev:
-	RTE_LOG(ERR, PMD, "TAP Unable to initialize %s\n",
-		rte_vdev_device_name(vdev));
+	RTE_LOG(ERR, PMD, "%s Unable to initialize %s\n",
+		tuntap_name, rte_vdev_device_name(vdev));
 
 	rte_free(data);
 	return -EINVAL;
