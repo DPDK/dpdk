@@ -122,7 +122,7 @@ build_authenc_gcm_sg_fd(dpaa2_sec_session *sess,
 		return -1;
 	}
 	memset(fle, 0, FLE_SG_MEM_SIZE);
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
 	DPAA2_FLE_SAVE_CTXT(fle, (size_t)priv);
 
 	op_fle = fle + 1;
@@ -273,7 +273,7 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		return -1;
 	}
 	memset(fle, 0, FLE_POOL_BUF_SIZE);
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
 	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
 	fle = fle + 1;
 	sge = fle + 2;
@@ -418,7 +418,7 @@ build_authenc_sg_fd(dpaa2_sec_session *sess,
 		return -1;
 	}
 	memset(fle, 0, FLE_SG_MEM_SIZE);
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
 	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
 
 	op_fle = fle + 1;
@@ -567,7 +567,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 		return -1;
 	}
 	memset(fle, 0, FLE_POOL_BUF_SIZE);
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
 	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
 	fle = fle + 1;
 	sge = fle + 2;
@@ -697,7 +697,7 @@ static inline int build_auth_sg_fd(
 	}
 	memset(fle, 0, FLE_SG_MEM_SIZE);
 	/* first FLE entry used to store mbuf and session ctxt */
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
 	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
 	op_fle = fle + 1;
 	ip_fle = fle + 2;
@@ -778,7 +778,7 @@ build_auth_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	 * to get the MBUF Addr from the previous FLE.
 	 * We can have a better approach to use the inline Mbuf
 	 */
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
 	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
 	fle = fle + 1;
 
@@ -870,7 +870,7 @@ build_cipher_sg_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	}
 	memset(fle, 0, FLE_SG_MEM_SIZE);
 	/* first FLE entry used to store mbuf and session ctxt */
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
 	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
 
 	op_fle = fle + 1;
@@ -994,7 +994,7 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	 * to get the MBUF Addr from the previous FLE.
 	 * We can have a better approach to use the inline Mbuf
 	 */
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_OP_VADDR_TO_IOVA(op));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
 	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
 	fle = fle + 1;
 	sge = fle + 2;

@@ -288,7 +288,6 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
  */
 
 #define DPAA2_MBUF_VADDR_TO_IOVA(mbuf) ((mbuf)->buf_iova)
-#define DPAA2_OP_VADDR_TO_IOVA(op) (op->phys_addr)
 
 /**
  * macro to convert Virtual address to IOVA
@@ -309,7 +308,6 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 #else	/* RTE_LIBRTE_DPAA2_USE_PHYS_IOVA */
 
 #define DPAA2_MBUF_VADDR_TO_IOVA(mbuf) ((mbuf)->buf_addr)
-#define DPAA2_OP_VADDR_TO_IOVA(op) (op)
 #define DPAA2_VADDR_TO_IOVA(_vaddr) (_vaddr)
 #define DPAA2_IOVA_TO_VADDR(_iova) (_iova)
 #define DPAA2_MODIFY_IOVA_TO_VADDR(_mem, _type)
