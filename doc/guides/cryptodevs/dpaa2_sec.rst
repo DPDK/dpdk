@@ -189,15 +189,6 @@ Please note that enabling debugging options may affect system performance.
   By default it is only enabled in defconfig_arm64-dpaa2-* config.
   Toggle compilation of the ``librte_pmd_dpaa2_sec`` driver.
 
-* ``CONFIG_RTE_LIBRTE_DPAA2_SEC_DEBUG_INIT`` (default ``n``)
-  Toggle display of initialization related driver messages
-
-* ``CONFIG_RTE_LIBRTE_DPAA2_SEC_DEBUG_DRIVER`` (default ``n``)
-  Toggle display of driver runtime messages
-
-* ``CONFIG_RTE_LIBRTE_DPAA2_SEC_DEBUG_RX`` (default ``n``)
-  Toggle display of receive fast path run-time message
-
 * ``CONFIG_RTE_DPAA2_SEC_PMD_MAX_NB_SESSIONS``
   By default it is set as 2048 in defconfig_arm64-dpaa2-* config.
   It indicates Number of sessions to create in the session memory pool
@@ -212,3 +203,15 @@ following ``make`` command:
 
    cd <DPDK-source-directory>
    make config T=arm64-dpaa2-linuxapp-gcc install
+
+Enabling logs
+-------------
+
+For enabling logs, use the following EAL parameter:
+
+.. code-block:: console
+
+   ./your_crypto_application <EAL args> --log-level=pmd.crypto.dpaa2,<level>
+
+Using ``crypto.dpaa2`` as log matching criteria, all Crypto PMD logs can be
+enabled which are lower than logging ``level``.
