@@ -772,7 +772,7 @@ static int32_t sw_sched_service_func(void *args)
 static int
 sw_probe(struct rte_vdev_device *vdev)
 {
-	static const struct rte_eventdev_ops evdev_sw_ops = {
+	static struct rte_eventdev_ops evdev_sw_ops = {
 			.dev_configure = sw_dev_configure,
 			.dev_infos_get = sw_info_get,
 			.dev_close = sw_close,

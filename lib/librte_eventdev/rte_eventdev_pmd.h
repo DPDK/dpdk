@@ -642,6 +642,9 @@ struct rte_eventdev_ops {
 
 	eventdev_selftest dev_selftest;
 	/**< Start eventdev Selftest */
+
+	eventdev_stop_flush_t dev_stop_flush;
+	/**< User-provided event flush function */
 };
 
 /**

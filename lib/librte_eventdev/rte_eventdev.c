@@ -1123,6 +1123,23 @@ rte_event_dev_start(uint8_t dev_id)
 	return 0;
 }
 
+int
+rte_event_dev_stop_flush_callback_register(uint8_t dev_id,
+		eventdev_stop_flush_t callback, void *userdata)
+{
+	struct rte_eventdev *dev;
+
+	RTE_EDEV_LOG_DEBUG("Stop flush register dev_id=%" PRIu8, dev_id);
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_eventdevs[dev_id];
+
+	dev->dev_ops->dev_stop_flush = callback;
+	dev->data->dev_stop_flush_arg = userdata;
+
+	return 0;
+}
+
 void
 rte_event_dev_stop(uint8_t dev_id)
 {

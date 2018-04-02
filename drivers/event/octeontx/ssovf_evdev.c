@@ -591,7 +591,7 @@ ssovf_selftest(const char *key __rte_unused, const char *value,
 }
 
 /* Initialize and register event driver with DPDK Application */
-static const struct rte_eventdev_ops ssovf_ops = {
+static struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
 	.dev_configure    = ssovf_configure,
 	.queue_def_conf   = ssovf_queue_def_conf,

@@ -74,3 +74,9 @@ DPDK_18.02 {
 
 	rte_event_dev_selftest;
 } DPDK_17.11;
+
+DPDK_18.05 {
+	global:
+
+	rte_event_dev_stop_flush_callback_register;
+} DPDK_18.02;

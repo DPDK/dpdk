@@ -571,7 +571,7 @@ dpaa_event_eth_rx_adapter_stop(const struct rte_eventdev *dev,
 	return 0;
 }
 
-static const struct rte_eventdev_ops dpaa_eventdev_ops = {
+static struct rte_eventdev_ops dpaa_eventdev_ops = {
 	.dev_infos_get    = dpaa_event_dev_info_get,
 	.dev_configure    = dpaa_event_dev_configure,
 	.dev_start        = dpaa_event_dev_start,

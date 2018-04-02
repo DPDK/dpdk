@@ -607,7 +607,7 @@ set_do_test(const char *key __rte_unused, const char *value, void *opaque)
 static int
 opdl_probe(struct rte_vdev_device *vdev)
 {
-	static const struct rte_eventdev_ops evdev_opdl_ops = {
+	static struct rte_eventdev_ops evdev_opdl_ops = {
 		.dev_configure = opdl_dev_configure,
 		.dev_infos_get = opdl_info_get,
 		.dev_close = opdl_close,

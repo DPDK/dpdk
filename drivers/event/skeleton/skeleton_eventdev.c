@@ -319,7 +319,7 @@ skeleton_eventdev_dump(struct rte_eventdev *dev, FILE *f)
 
 
 /* Initialize and register event driver with DPDK Application */
-static const struct rte_eventdev_ops skeleton_eventdev_ops = {
+static struct rte_eventdev_ops skeleton_eventdev_ops = {
 	.dev_infos_get    = skeleton_eventdev_info_get,
 	.dev_configure    = skeleton_eventdev_configure,
 	.dev_start        = skeleton_eventdev_start,

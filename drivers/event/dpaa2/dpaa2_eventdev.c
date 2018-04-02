@@ -696,7 +696,7 @@ dpaa2_eventdev_eth_stop(const struct rte_eventdev *dev,
 	return 0;
 }
 
-static const struct rte_eventdev_ops dpaa2_eventdev_ops = {
+static struct rte_eventdev_ops dpaa2_eventdev_ops = {
 	.dev_infos_get    = dpaa2_eventdev_info_get,
 	.dev_configure    = dpaa2_eventdev_configure,
 	.dev_start        = dpaa2_eventdev_start,

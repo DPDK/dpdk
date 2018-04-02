@@ -244,6 +244,7 @@ extern "C" {
 #include <rte_errno.h>
 
 struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
+struct rte_event;
 
 /* Event device capability bitmap flags */
 #define RTE_EVENT_DEV_CAP_QUEUE_QOS           (1ULL << 0)
@@ -835,14 +836,59 @@ int
 rte_event_dev_start(uint8_t dev_id);
 
 /**
- * Stop an event device. The device can be restarted with a call to
- * rte_event_dev_start()
+ * Stop an event device.
+ *
+ * This function causes all queued events to be drained, including those
+ * residing in event ports. While draining events out of the device, this
+ * function calls the user-provided flush callback (if one was registered) once
+ * per event.
+ *
+ * The device can be restarted with a call to rte_event_dev_start(). Threads
+ * that continue to enqueue/dequeue while the device is stopped, or being
+ * stopped, will result in undefined behavior. This includes event adapters,
+ * which must be stopped prior to stopping the eventdev.
  *
  * @param dev_id
  *   Event device identifier.
+ *
+ * @see rte_event_dev_stop_flush_callback_register()
  */
 void
 rte_event_dev_stop(uint8_t dev_id);
+
+typedef void (*eventdev_stop_flush_t)(uint8_t dev_id, struct rte_event event,
+		void *arg);
+/**< Callback function called during rte_event_dev_stop(), invoked once per
+ * flushed event.
+ */
+
+/**
+ * Registers a callback function to be invoked during rte_event_dev_stop() for
+ * each flushed event. This function can be used to properly dispose of queued
+ * events, for example events containing memory pointers.
+ *
+ * The callback function is only registered for the calling process. The
+ * callback function must be registered in every process that can call
+ * rte_event_dev_stop().
+ *
+ * To unregister a callback, call this function with a NULL callback pointer.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param callback
+ *   Callback function invoked once per flushed event.
+ * @param userdata
+ *   Argument supplied to callback.
+ *
+ * @return
+ *  - 0 on success.
+ *  - -EINVAL if *dev_id* is invalid
+ *
+ * @see rte_event_dev_stop()
+ */
+int
+rte_event_dev_stop_flush_callback_register(uint8_t dev_id,
+		eventdev_stop_flush_t callback, void *userdata);
 
 /**
  * Close an event device. The device cannot be restarted!
@@ -1152,6 +1198,8 @@ struct rte_eventdev_data {
 	/* Service initialization state */
 	uint32_t service_id;
 	/* Service ID*/
+	void *dev_stop_flush_arg;
+	/**< User-provided argument for event flush function */
 
 	RTE_STD_C11
 	uint8_t dev_started : 1;
@@ -1178,7 +1226,7 @@ struct rte_eventdev {
 
 	struct rte_eventdev_data *data;
 	/**< Pointer to device data */
-	const struct rte_eventdev_ops *dev_ops;
+	struct rte_eventdev_ops *dev_ops;
 	/**< Functions exported by PMD */
 	struct rte_device *dev;
 	/**< Device info. supplied by probing */
