@@ -80,12 +80,12 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 
 	nb_lcores = rte_lcore_count() - 1;
 
-	if (enabled_cdev_count > nb_lcores) {
-		printf("Number of capable crypto devices (%d) "
-				"has to be less or equal to number of slave "
-				"cores (%d)\n", enabled_cdev_count, nb_lcores);
-		return -EINVAL;
-	}
+	/*
+	 * Use less number of devices,
+	 * if there are more available than cores.
+	 */
+	if (enabled_cdev_count > nb_lcores)
+		enabled_cdev_count = nb_lcores;
 
 	/* Create a mempool shared by all the devices */
 	uint32_t max_sess_size = 0, sess_size;
