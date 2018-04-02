@@ -9,7 +9,8 @@ if has_libnuma == 1
 endif
 version = 4
 allow_experimental_apis = true
-sources = files('fd_man.c', 'iotlb.c', 'socket.c', 'vhost.c', 'vhost_user.c',
+sources = files('fd_man.c', 'iotlb.c', 'socket.c', 'vdpa.c',
+		'vhost.c', 'vhost_user.c',
 		'virtio_net.c')
-headers = files('rte_vhost.h')
-deps += ['ethdev']
+headers = files('rte_vhost.h', 'rte_vdpa.h')
+deps += ['ethdev', 'pci']

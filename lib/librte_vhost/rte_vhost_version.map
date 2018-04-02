@@ -59,3 +59,10 @@ DPDK_18.02 {
 	rte_vhost_vring_call;
 
 } DPDK_17.08;
+
+EXPERIMENTAL {
+	rte_vdpa_register_device;
+	rte_vdpa_unregister_device;
+	rte_vdpa_find_device_id;
+	rte_vdpa_get_device;
+} DPDK_18.02;

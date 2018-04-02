@@ -22,9 +22,9 @@ LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf -lrte_ethdev -lrte_net
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := fd_man.c iotlb.c socket.c vhost.c \
-					vhost_user.c virtio_net.c
+					vhost_user.c virtio_net.c vdpa.c
 
 # install includes
-SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_vhost.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_vhost.h rte_vdpa.h
 
 include $(RTE_SDK)/mk/rte.lib.mk
