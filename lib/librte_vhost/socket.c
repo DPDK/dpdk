@@ -51,6 +51,13 @@ struct vhost_user_socket {
 	uint64_t supported_features;
 	uint64_t features;
 
+	/*
+	 * Device id to identify a specific backend device.
+	 * It's set to -1 for the default software implementation.
+	 * If valid, one socket can have 1 connection only.
+	 */
+	int vdpa_dev_id;
+
 	struct vhost_device_ops const *notify_ops;
 };
 
@@ -543,6 +550,52 @@ find_vhost_user_socket(const char *path)
 	}
 
 	return NULL;
+}
+
+int
+rte_vhost_driver_attach_vdpa_device(const char *path, int did)
+{
+	struct vhost_user_socket *vsocket;
+
+	if (rte_vdpa_get_device(did) == NULL)
+		return -1;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket)
+		vsocket->vdpa_dev_id = did;
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return vsocket ? 0 : -1;
+}
+
+int
+rte_vhost_driver_detach_vdpa_device(const char *path)
+{
+	struct vhost_user_socket *vsocket;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket)
+		vsocket->vdpa_dev_id = -1;
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return vsocket ? 0 : -1;
+}
+
+int
+rte_vhost_driver_get_vdpa_device_id(const char *path)
+{
+	struct vhost_user_socket *vsocket;
+	int did = -1;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket)
+		did = vsocket->vdpa_dev_id;
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return did;
 }
 
 int

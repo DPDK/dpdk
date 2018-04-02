@@ -283,6 +283,7 @@ vhost_new_device(void)
 	dev->vid = i;
 	dev->flags = VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 	dev->slave_req_fd = -1;
+	dev->vdpa_dev_id = -1;
 
 	return i;
 }
@@ -308,6 +309,31 @@ vhost_destroy_device(int vid)
 	free_device(dev);
 
 	vhost_devices[vid] = NULL;
+}
+
+void
+vhost_attach_vdpa_device(int vid, int did)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return;
+
+	if (rte_vdpa_get_device(did) == NULL)
+		return;
+
+	dev->vdpa_dev_id = did;
+}
+
+void
+vhost_detach_vdpa_device(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return;
+
+	dev->vdpa_dev_id = -1;
 }
 
 void
@@ -613,4 +639,14 @@ rte_vhost_rx_queue_count(int vid, uint16_t qid)
 		return 0;
 
 	return *((volatile uint16_t *)&vq->avail->idx) - vq->last_avail_idx;
+}
+
+int rte_vhost_get_vdpa_device_id(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return -1;
+
+	return dev->vdpa_dev_id;
 }

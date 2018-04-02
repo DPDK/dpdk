@@ -200,6 +200,41 @@ int rte_vhost_driver_register(const char *path, uint64_t flags);
 int rte_vhost_driver_unregister(const char *path);
 
 /**
+ * Set the vdpa device id, enforce single connection per socket
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @param did
+ *  Device id
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_driver_attach_vdpa_device(const char *path, int did);
+
+/**
+ * Unset the vdpa device id
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_driver_detach_vdpa_device(const char *path);
+
+/**
+ * Get the device id
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @return
+ *  Device id, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_driver_get_vdpa_device_id(const char *path);
+
+/**
  * Set the feature bits the vhost-user driver supports.
  *
  * @param path
@@ -463,6 +498,17 @@ int rte_vhost_vring_call(int vid, uint16_t vring_idx);
  *  num of desc available
  */
 uint32_t rte_vhost_rx_queue_count(int vid, uint16_t qid);
+
+/**
+ * Get vdpa device id for vhost device.
+ *
+ * @param vid
+ *  vhost device id
+ * @return
+ *  device id
+ */
+int __rte_experimental
+rte_vhost_get_vdpa_device_id(int vid);
 
 #ifdef __cplusplus
 }

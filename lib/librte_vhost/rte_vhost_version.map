@@ -65,4 +65,8 @@ EXPERIMENTAL {
 	rte_vdpa_unregister_device;
 	rte_vdpa_find_device_id;
 	rte_vdpa_get_device;
+	rte_vhost_driver_attach_vdpa_device;
+	rte_vhost_driver_detach_vdpa_device;
+	rte_vhost_driver_get_vdpa_device_id;
+	rte_vhost_get_vdpa_device_id;
 } DPDK_18.02;

@@ -20,6 +20,7 @@
 #include <rte_rwlock.h>
 
 #include "rte_vhost.h"
+#include "rte_vdpa.h"
 
 /* Used to indicate that the device is running on a data core */
 #define VIRTIO_DEV_RUNNING 1
@@ -240,6 +241,12 @@ struct virtio_net {
 	struct guest_page       *guest_pages;
 
 	int			slave_req_fd;
+
+	/*
+	 * Device id to identify a specific backend device.
+	 * It's set to -1 for the default software implementation.
+	 */
+	int			vdpa_dev_id;
 } __rte_cache_aligned;
 
 
@@ -361,6 +368,9 @@ void cleanup_vq(struct vhost_virtqueue *vq, int destroy);
 void free_vq(struct vhost_virtqueue *vq);
 
 int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
+
+void vhost_attach_vdpa_device(int vid, int did);
+void vhost_detach_vdpa_device(int vid);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 void vhost_enable_dequeue_zero_copy(int vid);
