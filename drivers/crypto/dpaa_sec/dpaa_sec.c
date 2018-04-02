@@ -1741,7 +1741,13 @@ dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess)
 		PMD_DRV_LOG(ERR, "Unable to prepare sec cdb");
 		return -1;
 	}
-
+	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+		ret = rte_dpaa_portal_init((void *)0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failure in affining portal");
+			return ret;
+		}
+	}
 	ret = dpaa_sec_init_rx(sess->inq, dpaa_mem_vtop(&sess->cdb),
 			       qman_fq_fqid(&qp->outq));
 	if (ret)
