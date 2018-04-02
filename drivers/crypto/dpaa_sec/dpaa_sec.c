@@ -2234,11 +2234,12 @@ struct rte_security_ops dpaa_sec_security_ops = {
 static int
 dpaa_sec_uninit(struct rte_cryptodev *dev)
 {
-	struct dpaa_sec_dev_private *internals = dev->data->dev_private;
+	struct dpaa_sec_dev_private *internals;
 
 	if (dev == NULL)
 		return -ENODEV;
 
+	internals = dev->data->dev_private;
 	rte_free(dev->security_ctx);
 
 	rte_mempool_free(internals->ctx_pool);
