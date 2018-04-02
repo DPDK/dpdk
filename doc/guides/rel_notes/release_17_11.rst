@@ -56,7 +56,7 @@ New Features
 * **Added a new driver for Marvell Armada 7k/8k devices.**
 
   Added the new ``mrvl`` net driver for Marvell Armada 7k/8k devices. See the
-  :doc:`../nics/mrvl` NIC guide for more details on this new driver.
+  :doc:`../nics/mvpp2` NIC guide for more details on this new driver.
 
 * **Updated mlx4 driver.**
 
