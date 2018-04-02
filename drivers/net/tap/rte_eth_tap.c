@@ -43,6 +43,7 @@
 /* Linux based path to the TUN device */
 #define TUN_TAP_DEV_PATH        "/dev/net/tun"
 #define DEFAULT_TAP_NAME        "dtap"
+#define DEFAULT_TUN_NAME        "dtun"
 
 #define ETH_TAP_IFACE_ARG       "iface"
 #define ETH_TAP_REMOTE_ARG      "remote"
@@ -54,6 +55,7 @@
 #define ETH_TAP_MAC_ARG_FMT     ETH_TAP_MAC_FIXED "|" ETH_TAP_USR_MAC_FMT
 
 static struct rte_vdev_driver pmd_tap_drv;
+static struct rte_vdev_driver pmd_tun_drv;
 
 static const char *valid_arguments[] = {
 	ETH_TAP_IFACE_ARG,
@@ -63,6 +65,10 @@ static const char *valid_arguments[] = {
 };
 
 static int tap_unit;
+static int tun_unit;
+
+static int tap_type;
+static char tuntap_name[8];
 
 static volatile uint32_t tap_trigger;	/* Rx trigger */
 
@@ -109,7 +115,7 @@ tun_alloc(struct pmd_internals *pmd)
 	 * Do not set IFF_NO_PI as packet information header will be needed
 	 * to check if a received packet has been truncated.
 	 */
-	ifr.ifr_flags = IFF_TAP;
+	ifr.ifr_flags = (tap_type) ? IFF_TAP : IFF_TUN | IFF_POINTOPOINT;
 	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", pmd->name);
 
 	RTE_LOG(DEBUG, PMD, "ifr_name '%s'\n", ifr.ifr_name);
@@ -496,7 +502,7 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	for (i = 0; i < nb_pkts; i++) {
 		struct rte_mbuf *mbuf = bufs[num_tx];
 		struct iovec iovecs[mbuf->nb_segs + 1];
-		struct tun_pi pi = { .flags = 0 };
+		struct tun_pi pi = { .flags = 0, .proto = 0x00 };
 		struct rte_mbuf *seg = mbuf;
 		char m_copy[mbuf->data_len];
 		int n;
@@ -505,6 +511,21 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		/* stats.errs will be incremented */
 		if (rte_pktmbuf_pkt_len(mbuf) > max_size)
 			break;
+
+		/*
+		 * TUN and TAP are created with IFF_NO_PI disabled.
+		 * For TUN PMD this mandatory as fields are used by
+		 * Kernel tun.c to determine whether its IP or non IP
+		 * packets.
+		 *
+		 * The logic fetches the first byte of data from mbuf.
+		 * compares whether its v4 or v6. If none matches default
+		 * value 0x00 is taken for protocol field.
+		 */
+		char *buff_data = rte_pktmbuf_mtod(seg, void *);
+		j = (*buff_data & 0xf0);
+		if (j & (0x40 | 0x60))
+			pi.proto = (j == 0x40) ? 0x0008 : 0xdd86;
 
 		iovecs[0].iov_base = &pi;
 		iovecs[0].iov_len = sizeof(pi);
@@ -1404,10 +1425,12 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		pmd->txq[i].fd = -1;
 	}
 
-	if (is_zero_ether_addr(mac_addr))
-		eth_random_addr((uint8_t *)&pmd->eth_addr);
-	else
-		rte_memcpy(&pmd->eth_addr, mac_addr, sizeof(*mac_addr));
+	if (tap_type) {
+		if (is_zero_ether_addr(mac_addr))
+			eth_random_addr((uint8_t *)&pmd->eth_addr);
+		else
+			rte_memcpy(&pmd->eth_addr, mac_addr, sizeof(*mac_addr));
+	}
 
 	/* Immediately create the netdevice (this will create the 1st queue). */
 	/* rx queue */
@@ -1421,11 +1444,14 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1, LOCAL_AND_REMOTE) < 0)
 		goto error_exit;
 
-	memset(&ifr, 0, sizeof(struct ifreq));
-	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
-	rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr, ETHER_ADDR_LEN);
-	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
-		goto error_exit;
+	if (tap_type) {
+		memset(&ifr, 0, sizeof(struct ifreq));
+		ifr.ifr_hwaddr.sa_family = AF_LOCAL;
+		rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr,
+				ETHER_ADDR_LEN);
+		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
+			goto error_exit;
+	}
 
 	/*
 	 * Set up everything related to rte_flow:
@@ -1622,6 +1648,62 @@ error:
 	return -1;
 }
 
+/*
+ * Open a TUN interface device. TUN PMD
+ * 1) sets tap_type as false
+ * 2) intakes iface as argument.
+ * 3) as interface is virtual set speed to 10G
+ */
+static int
+rte_pmd_tun_probe(struct rte_vdev_device *dev)
+{
+	const char *name, *params;
+	int ret;
+	struct rte_kvargs *kvlist = NULL;
+	char tun_name[RTE_ETH_NAME_MAX_LEN];
+	char remote_iface[RTE_ETH_NAME_MAX_LEN];
+
+	tap_type = 0;
+	strcpy(tuntap_name, "TUN");
+
+	name = rte_vdev_device_name(dev);
+	params = rte_vdev_device_args(dev);
+	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
+
+	if (params && (params[0] != '\0')) {
+		RTE_LOG(DEBUG, PMD, "parameters (%s)\n", params);
+
+		kvlist = rte_kvargs_parse(params, valid_arguments);
+		if (kvlist) {
+			if (rte_kvargs_count(kvlist, ETH_TAP_IFACE_ARG) == 1) {
+				ret = rte_kvargs_process(kvlist,
+					ETH_TAP_IFACE_ARG,
+					&set_interface_name,
+					tun_name);
+
+				if (ret == -1)
+					goto leave;
+			}
+		}
+	}
+	pmd_link.link_speed = ETH_SPEED_NUM_10G;
+
+	RTE_LOG(NOTICE, PMD, "Initializing pmd_tun for %s as %s\n",
+		name, tun_name);
+
+	ret = eth_dev_tap_create(dev, tun_name, remote_iface, 0);
+
+leave:
+	if (ret == -1) {
+		RTE_LOG(ERR, PMD, "Failed to create pmd for %s as %s\n",
+			name, tun_name);
+		tun_unit--; /* Restore the unit number */
+	}
+	rte_kvargs_free(kvlist);
+
+	return ret;
+}
+
 /* Open a TAP interface device.
  */
 static int
@@ -1634,6 +1716,9 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	char tap_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
 	struct ether_addr user_mac = { .addr_bytes = {0} };
+
+	tap_type = 1;
+	strcpy(tuntap_name, "TAP");
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
@@ -1694,7 +1779,7 @@ leave:
 	return ret;
 }
 
-/* detach a TAP device.
+/* detach a TUNTAP device.
  */
 static int
 rte_pmd_tap_remove(struct rte_vdev_device *dev)
@@ -1737,12 +1822,20 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	return 0;
 }
 
+static struct rte_vdev_driver pmd_tun_drv = {
+	.probe = rte_pmd_tun_probe,
+	.remove = rte_pmd_tap_remove,
+};
+
 static struct rte_vdev_driver pmd_tap_drv = {
 	.probe = rte_pmd_tap_probe,
 	.remove = rte_pmd_tap_remove,
 };
 RTE_PMD_REGISTER_VDEV(net_tap, pmd_tap_drv);
+RTE_PMD_REGISTER_VDEV(net_tun, pmd_tun_drv);
 RTE_PMD_REGISTER_ALIAS(net_tap, eth_tap);
+RTE_PMD_REGISTER_PARAM_STRING(net_tun,
+			      ETH_TAP_IFACE_ARG "=<string> ");
 RTE_PMD_REGISTER_PARAM_STRING(net_tap,
 			      ETH_TAP_IFACE_ARG "=<string> "
 			      ETH_TAP_MAC_ARG "=" ETH_TAP_MAC_ARG_FMT " "
