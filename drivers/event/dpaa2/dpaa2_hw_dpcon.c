@@ -20,11 +20,11 @@
 #include <rte_dev.h>
 #include <rte_ethdev_driver.h>
 
-#include <fslmc_logs.h>
 #include <rte_fslmc.h>
 #include <mc/fsl_dpcon.h>
 #include <portal/dpaa2_hw_pvt.h>
 #include "dpaa2_eventdev.h"
+#include "dpaa2_eventdev_logs.h"
 
 TAILQ_HEAD(dpcon_dev_list, dpaa2_dpcon_dev);
 static struct dpcon_dev_list dpcon_dev_list
@@ -42,7 +42,8 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 	/* Allocate DPAA2 dpcon handle */
 	dpcon_node = rte_malloc(NULL, sizeof(struct dpaa2_dpcon_dev), 0);
 	if (!dpcon_node) {
-		PMD_DRV_LOG(ERR, "Memory allocation failed for DPCON Device");
+		DPAA2_EVENTDEV_ERR(
+				"Memory allocation failed for dpcon device");
 		return -1;
 	}
 
@@ -51,8 +52,8 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 	ret = dpcon_open(&dpcon_node->dpcon,
 			 CMD_PRI_LOW, dpcon_id, &dpcon_node->token);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "Resource alloc failure with err code: %d",
-			    ret);
+		DPAA2_EVENTDEV_ERR("Unable to open dpcon device: err(%d)",
+				   ret);
 		rte_free(dpcon_node);
 		return -1;
 	}
@@ -61,8 +62,8 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 	ret = dpcon_get_attributes(&dpcon_node->dpcon,
 				   CMD_PRI_LOW, dpcon_node->token, &attr);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Reading device failed with err code: %d",
-			    ret);
+		DPAA2_EVENTDEV_ERR("dpcon attribute fetch failed: err(%d)",
+				   ret);
 		rte_free(dpcon_node);
 		return -1;
 	}
@@ -74,8 +75,6 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 	rte_atomic16_init(&dpcon_node->in_use);
 
 	TAILQ_INSERT_TAIL(&dpcon_dev_list, dpcon_node, next);
-
-	RTE_LOG(DEBUG, PMD, "DPAA2: Added [dpcon.%d]\n", dpcon_id);
 
 	return 0;
 }

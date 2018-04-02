@@ -9,13 +9,15 @@
 extern int dpaa2_logtype_event;
 
 #define DPAA2_EVENTDEV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa2_logtype_event, "%s(): " fmt "\n", \
-		__func__, ##args)
+	rte_log(RTE_LOG_ ## level, dpaa2_logtype_event, "dpaa2_event: " \
+		fmt "\n", ##args)
+
+#define DPAA2_EVENTDEV_DEBUG(fmt, args...) \
+	rte_log(RTE_LOG_DEBUG, dpaa2_logtype_event, "dpaa2_event: %s(): " \
+		fmt "\n", __func__, ##args)
 
 #define EVENTDEV_INIT_FUNC_TRACE() DPAA2_EVENTDEV_LOG(DEBUG, " >>")
 
-#define DPAA2_EVENTDEV_DEBUG(fmt, args...) \
-	DPAA2_EVENTDEV_LOG(DEBUG, fmt, ## args)
 #define DPAA2_EVENTDEV_INFO(fmt, args...) \
 	DPAA2_EVENTDEV_LOG(INFO, fmt, ## args)
 #define DPAA2_EVENTDEV_ERR(fmt, args...) \

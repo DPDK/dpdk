@@ -129,7 +129,19 @@ Example:
 
 .. code-block:: console
 
-    ./your_eventdev_application --vdev="event_dpaa2"
+   ./your_eventdev_application --vdev="event_dpaa2"
+
+Enabling logs
+-------------
+
+For enabling logs, use the following EAL parameter:
+
+.. code-block:: console
+
+   ./your_eventdev_application <EAL args> --log-level=pmd.event.dpaa2,<level>
+
+Using ``eventdev.dpaa2`` as log matching criteria, all Event PMD logs can be
+enabled which are lower than logging ``level``.
 
 Limitations
 -----------
