@@ -136,7 +136,7 @@ build_authenc_gcm_sg_fd(dpaa2_sec_session *sess,
 		   "iv-len=%d data_off: 0x%x\n",
 		   sym_op->aead.data.offset,
 		   sym_op->aead.data.length,
-		   sym_op->aead.digest.length,
+		   sess->digest_length,
 		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
@@ -301,7 +301,7 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		   "iv-len=%d data_off: 0x%x\n",
 		   sym_op->aead.data.offset,
 		   sym_op->aead.data.length,
-		   sym_op->aead.digest.length,
+		   sess->digest_length,
 		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
@@ -433,10 +433,10 @@ build_authenc_sg_fd(dpaa2_sec_session *sess,
 			"cipher_off: 0x%x/length %d, iv-len=%d data_off: 0x%x\n",
 		   sym_op->auth.data.offset,
 		   sym_op->auth.data.length,
-		   sym_op->auth.digest.length,
+		   sess->digest_length,
 		   sym_op->cipher.data.offset,
 		   sym_op->cipher.data.length,
-		   sym_op->cipher.iv.length,
+		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
 	/* Configure Output FLE with Scatter/Gather Entry */
@@ -877,7 +877,7 @@ build_cipher_sg_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 			"CIPHER SG: cipher_off: 0x%x/length %d,ivlen=%d data_off: 0x%x",
 		   sym_op->cipher.data.offset,
 		   sym_op->cipher.data.length,
-		   sym_op->cipher.iv.length,
+		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
 	/* o/p fle */
