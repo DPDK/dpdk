@@ -7,6 +7,9 @@
 #ifndef _DPAA_SEC_H_
 #define _DPAA_SEC_H_
 
+#define CRYPTODEV_NAME_DPAA_SEC_PMD	crypto_dpaa_sec
+/**< NXP DPAA - SEC PMD device name */
+
 #define NUM_POOL_CHANNELS	4
 #define DPAA_SEC_BURST		7
 #define DPAA_SEC_ALG_UNSUPPORT	(-1)
