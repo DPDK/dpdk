@@ -215,6 +215,8 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	vhost_set_builtin_virtio_net(vid, vsocket->use_builtin_virtio_net);
 
+	vhost_attach_vdpa_device(vid, vsocket->vdpa_dev_id);
+
 	if (vsocket->dequeue_zero_copy)
 		vhost_enable_dequeue_zero_copy(vid);
 
@@ -666,20 +668,123 @@ int
 rte_vhost_driver_get_features(const char *path, uint64_t *features)
 {
 	struct vhost_user_socket *vsocket;
+	uint64_t vdpa_features;
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
+	int ret = 0;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
-	if (vsocket)
-		*features = vsocket->features;
-	pthread_mutex_unlock(&vhost_user.mutex);
-
 	if (!vsocket) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"socket file %s is not registered yet.\n", path);
-		return -1;
-	} else {
-		return 0;
+		ret = -1;
+		goto unlock_exit;
 	}
+
+	did = vsocket->vdpa_dev_id;
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (!vdpa_dev || !vdpa_dev->ops->get_features) {
+		*features = vsocket->features;
+		goto unlock_exit;
+	}
+
+	if (vdpa_dev->ops->get_features(did, &vdpa_features) < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to get vdpa features "
+				"for socket file %s.\n", path);
+		ret = -1;
+		goto unlock_exit;
+	}
+
+	*features = vsocket->features & vdpa_features;
+
+unlock_exit:
+	pthread_mutex_unlock(&vhost_user.mutex);
+	return ret;
+}
+
+int
+rte_vhost_driver_get_protocol_features(const char *path,
+		uint64_t *protocol_features)
+{
+	struct vhost_user_socket *vsocket;
+	uint64_t vdpa_protocol_features;
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
+	int ret = 0;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (!vsocket) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"socket file %s is not registered yet.\n", path);
+		ret = -1;
+		goto unlock_exit;
+	}
+
+	did = vsocket->vdpa_dev_id;
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (!vdpa_dev || !vdpa_dev->ops->get_protocol_features) {
+		*protocol_features = VHOST_USER_PROTOCOL_FEATURES;
+		goto unlock_exit;
+	}
+
+	if (vdpa_dev->ops->get_protocol_features(did,
+				&vdpa_protocol_features) < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to get vdpa protocol features "
+				"for socket file %s.\n", path);
+		ret = -1;
+		goto unlock_exit;
+	}
+
+	*protocol_features = VHOST_USER_PROTOCOL_FEATURES
+		& vdpa_protocol_features;
+
+unlock_exit:
+	pthread_mutex_unlock(&vhost_user.mutex);
+	return ret;
+}
+
+int
+rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num)
+{
+	struct vhost_user_socket *vsocket;
+	uint32_t vdpa_queue_num;
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
+	int ret = 0;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (!vsocket) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"socket file %s is not registered yet.\n", path);
+		ret = -1;
+		goto unlock_exit;
+	}
+
+	did = vsocket->vdpa_dev_id;
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (!vdpa_dev || !vdpa_dev->ops->get_queue_num) {
+		*queue_num = VHOST_MAX_QUEUE_PAIRS;
+		goto unlock_exit;
+	}
+
+	if (vdpa_dev->ops->get_queue_num(did, &vdpa_queue_num) < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to get vdpa queue number "
+				"for socket file %s.\n", path);
+		ret = -1;
+		goto unlock_exit;
+	}
+
+	*queue_num = RTE_MIN((uint32_t)VHOST_MAX_QUEUE_PAIRS, vdpa_queue_num);
+
+unlock_exit:
+	pthread_mutex_unlock(&vhost_user.mutex);
+	return ret;
 }
 
 /*

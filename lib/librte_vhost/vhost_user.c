@@ -133,7 +133,14 @@ vhost_user_set_owner(void)
 static int
 vhost_user_reset_owner(struct virtio_net *dev)
 {
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
+
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
+		did = dev->vdpa_dev_id;
+		vdpa_dev = rte_vdpa_get_device(did);
+		if (vdpa_dev && vdpa_dev->ops->dev_close)
+			vdpa_dev->ops->dev_close(dev->vid);
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
 		dev->notify_ops->destroy_device(dev->vid);
 	}
@@ -156,12 +163,26 @@ vhost_user_get_features(struct virtio_net *dev)
 }
 
 /*
+ * The queue number that we support are requested.
+ */
+static uint32_t
+vhost_user_get_queue_num(struct virtio_net *dev)
+{
+	uint32_t queue_num = 0;
+
+	rte_vhost_driver_get_queue_num(dev->ifname, &queue_num);
+	return queue_num;
+}
+
+/*
  * We receive the negotiated features supported by us and the virtio device.
  */
 static int
 vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 {
 	uint64_t vhost_features = 0;
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
 
 	rte_vhost_driver_get_features(dev->ifname, &vhost_features);
 	if (features & ~vhost_features) {
@@ -190,6 +211,11 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 		if (dev->notify_ops->features_changed)
 			dev->notify_ops->features_changed(dev->vid, features);
 	}
+
+	did = dev->vdpa_dev_id;
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (vdpa_dev && vdpa_dev->ops->set_features)
+		vdpa_dev->ops->set_features(dev->vid);
 
 	dev->features = features;
 	if (dev->features &
@@ -935,14 +961,21 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 			  VhostUserMsg *msg)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[msg->payload.state.index];
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
 
 	/* We have to stop the queue (virtio) if it is running. */
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
+		did = dev->vdpa_dev_id;
+		vdpa_dev = rte_vdpa_get_device(did);
+		if (vdpa_dev && vdpa_dev->ops->dev_close)
+			vdpa_dev->ops->dev_close(dev->vid);
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
 		dev->notify_ops->destroy_device(dev->vid);
 	}
 
 	dev->flags &= ~VIRTIO_DEV_READY;
+	dev->flags &= ~VIRTIO_DEV_VDPA_CONFIGURED;
 
 	/* Here we are safe to get the last avail index */
 	msg->payload.state.num = vq->last_avail_idx;
@@ -985,16 +1018,24 @@ vhost_user_set_vring_enable(struct virtio_net *dev,
 			    VhostUserMsg *msg)
 {
 	int enable = (int)msg->payload.state.num;
+	int index = (int)msg->payload.state.index;
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
 
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"set queue enable: %d to qp idx: %d\n",
-		enable, msg->payload.state.index);
+		enable, index);
+
+	did = dev->vdpa_dev_id;
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (vdpa_dev && vdpa_dev->ops->set_vring_state)
+		vdpa_dev->ops->set_vring_state(dev->vid, index, enable);
 
 	if (dev->notify_ops->vring_state_changed)
 		dev->notify_ops->vring_state_changed(dev->vid,
-				msg->payload.state.index, enable);
+				index, enable);
 
-	dev->virtqueue[msg->payload.state.index]->enabled = enable;
+	dev->virtqueue[index]->enabled = enable;
 
 	return 0;
 }
@@ -1003,9 +1044,10 @@ static void
 vhost_user_get_protocol_features(struct virtio_net *dev,
 				 struct VhostUserMsg *msg)
 {
-	uint64_t features, protocol_features = VHOST_USER_PROTOCOL_FEATURES;
+	uint64_t features, protocol_features;
 
 	rte_vhost_driver_get_features(dev->ifname, &features);
+	rte_vhost_driver_get_protocol_features(dev->ifname, &protocol_features);
 
 	/*
 	 * REPLY_ACK protocol feature is only mandatory for now
@@ -1101,6 +1143,8 @@ static int
 vhost_user_send_rarp(struct virtio_net *dev, struct VhostUserMsg *msg)
 {
 	uint8_t *mac = (uint8_t *)&msg->payload.u64;
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
 
 	RTE_LOG(DEBUG, VHOST_CONFIG,
 		":: mac: %02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -1116,6 +1160,10 @@ vhost_user_send_rarp(struct virtio_net *dev, struct VhostUserMsg *msg)
 	 */
 	rte_smp_wmb();
 	rte_atomic16_set(&dev->broadcast_rarp, 1);
+	did = dev->vdpa_dev_id;
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (vdpa_dev && vdpa_dev->ops->migration_done)
+		vdpa_dev->ops->migration_done(dev->vid);
 
 	return 0;
 }
@@ -1377,6 +1425,8 @@ vhost_user_msg_handler(int vid, int fd)
 {
 	struct virtio_net *dev;
 	struct VhostUserMsg msg;
+	struct rte_vdpa_device *vdpa_dev;
+	int did = -1;
 	int ret;
 	int unlock_required = 0;
 
@@ -1529,7 +1579,7 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_GET_QUEUE_NUM:
-		msg.payload.u64 = VHOST_MAX_QUEUE_PAIRS;
+		msg.payload.u64 = (uint64_t)vhost_user_get_queue_num(dev);
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_reply(fd, &msg);
 		break;
@@ -1580,6 +1630,16 @@ vhost_user_msg_handler(int vid, int fd)
 			if (dev->notify_ops->new_device(dev->vid) == 0)
 				dev->flags |= VIRTIO_DEV_RUNNING;
 		}
+	}
+
+	did = dev->vdpa_dev_id;
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (vdpa_dev && virtio_is_ready(dev) &&
+			!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED) &&
+			msg.request.master == VHOST_USER_SET_VRING_ENABLE) {
+		if (vdpa_dev->ops->dev_conf)
+			vdpa_dev->ops->dev_conf(dev->vid);
+		dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
 	}
 
 	return 0;

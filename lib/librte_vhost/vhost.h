@@ -28,6 +28,8 @@
 #define VIRTIO_DEV_READY 2
 /* Used to indicate that the built-in vhost net device backend is enabled */
 #define VIRTIO_DEV_BUILTIN_VIRTIO_NET 4
+/* Used to indicate that the device has its own data path and configured */
+#define VIRTIO_DEV_VDPA_CONFIGURED 8
 
 /* Backend value set by guest. */
 #define VIRTIO_DEV_STOPPED -1

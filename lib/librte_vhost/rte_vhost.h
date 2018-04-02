@@ -290,6 +290,33 @@ int rte_vhost_driver_disable_features(const char *path, uint64_t features);
 int rte_vhost_driver_get_features(const char *path, uint64_t *features);
 
 /**
+ * Get the protocol feature bits before feature negotiation.
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @param protocol_features
+ *  A pointer to store the queried protocol feature bits
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_driver_get_protocol_features(const char *path,
+		uint64_t *protocol_features);
+
+/**
+ * Get the queue number bits before feature negotiation.
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @param queue_num
+ *  A pointer to store the queried queue number bits
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num);
+
+/**
  * Get the feature bits after negotiation
  *
  * @param vid

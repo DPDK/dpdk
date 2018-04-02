@@ -69,4 +69,6 @@ EXPERIMENTAL {
 	rte_vhost_driver_detach_vdpa_device;
 	rte_vhost_driver_get_vdpa_device_id;
 	rte_vhost_get_vdpa_device_id;
+	rte_vhost_driver_get_protocol_features;
+	rte_vhost_driver_get_queue_num;
 } DPDK_18.02;
