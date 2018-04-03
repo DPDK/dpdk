@@ -11,6 +11,10 @@ dpdk_conf.set('RTE_MACHINE', machine)
 machine_args = []
 machine_args += '-march=' + machine
 
+toolchain = cc.get_id()
+dpdk_conf.set_quoted('RTE_TOOLCHAIN', toolchain)
+dpdk_conf.set('RTE_TOOLCHAIN_' + toolchain.to_upper(), 1)
+
 # use pthreads
 add_project_link_arguments('-pthread', language: 'c')
 dpdk_extra_ldflags += '-pthread'

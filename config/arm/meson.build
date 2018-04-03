@@ -83,15 +83,6 @@ impl_0x69 = ['Intel', flags_generic, machine_args_generic]
 impl_dpaa = ['NXP DPAA', flags_dpaa, machine_args_generic]
 impl_dpaa2 = ['NXP DPAA2', flags_dpaa2, machine_args_generic]
 
-
-if cc.get_define('__clang__') != ''
-	dpdk_conf.set_quoted('RTE_TOOLCHAIN', 'clang')
-	dpdk_conf.set('RTE_TOOLCHAIN_CLANG', 1)
-else
-	dpdk_conf.set_quoted('RTE_TOOLCHAIN', 'gcc')
-	dpdk_conf.set('RTE_TOOLCHAIN_GCC', 1)
-endif
-
 dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
 if cc.sizeof('void *') != 8
