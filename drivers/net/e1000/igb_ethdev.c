@@ -2148,11 +2148,9 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
 	dev_info->max_rx_pktlen  = 0x3FFF; /* See RLPML register. */
 	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
-	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM  |
-		DEV_RX_OFFLOAD_TCP_CKSUM;
+	dev_info->rx_queue_offload_capa = igb_get_rx_queue_offloads_capa(dev);
+	dev_info->rx_offload_capa = igb_get_rx_port_offloads_capa(dev) |
+				    dev_info->rx_queue_offload_capa;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM  |
@@ -2222,6 +2220,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.rx_free_thresh = IGB_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = 0,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -2277,10 +2276,6 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
 	dev_info->max_rx_pktlen  = 0x3FFF; /* See RLPML register. */
 	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
-				DEV_RX_OFFLOAD_IPV4_CKSUM |
-				DEV_RX_OFFLOAD_UDP_CKSUM  |
-				DEV_RX_OFFLOAD_TCP_CKSUM;
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
 				DEV_TX_OFFLOAD_IPV4_CKSUM  |
 				DEV_TX_OFFLOAD_UDP_CKSUM   |
@@ -2301,6 +2296,10 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		break;
 	}
 
+	dev_info->rx_queue_offload_capa = igb_get_rx_queue_offloads_capa(dev);
+	dev_info->rx_offload_capa = igb_get_rx_port_offloads_capa(dev) |
+				    dev_info->rx_queue_offload_capa;
+
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
 			.pthresh = IGB_DEFAULT_RX_PTHRESH,
@@ -2309,6 +2308,7 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.rx_free_thresh = IGB_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = 0,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -2644,7 +2644,7 @@ igb_vlan_hw_extend_disable(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
 
 	/* Update maximum packet length */
-	if (dev->data->dev_conf.rxmode.jumbo_frame == 1)
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		E1000_WRITE_REG(hw, E1000_RLPML,
 			dev->data->dev_conf.rxmode.max_rx_pkt_len +
 						VLAN_TAG_SIZE);
@@ -2663,7 +2663,7 @@ igb_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
 
 	/* Update maximum packet length */
-	if (dev->data->dev_conf.rxmode.jumbo_frame == 1)
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		E1000_WRITE_REG(hw, E1000_RLPML,
 			dev->data->dev_conf.rxmode.max_rx_pkt_len +
 						2 * VLAN_TAG_SIZE);
@@ -2672,22 +2672,25 @@ igb_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 static int
 eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
+	struct rte_eth_rxmode *rxmode;
+
+	rxmode = &dev->data->dev_conf.rxmode;
 	if(mask & ETH_VLAN_STRIP_MASK){
-		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			igb_vlan_hw_strip_enable(dev);
 		else
 			igb_vlan_hw_strip_disable(dev);
 	}
 
 	if(mask & ETH_VLAN_FILTER_MASK){
-		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 			igb_vlan_hw_filter_enable(dev);
 		else
 			igb_vlan_hw_filter_disable(dev);
 	}
 
 	if(mask & ETH_VLAN_EXTEND_MASK){
-		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
 			igb_vlan_hw_extend_enable(dev);
 		else
 			igb_vlan_hw_extend_disable(dev);
@@ -3189,14 +3192,14 @@ igbvf_dev_configure(struct rte_eth_dev *dev)
 	 * Keep the persistent behavior the same as Host PF
 	 */
 #ifndef RTE_LIBRTE_E1000_PF_DISABLE_STRIP_CRC
-	if (!conf->rxmode.hw_strip_crc) {
+	if (!(conf->rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
 		PMD_INIT_LOG(NOTICE, "VF can't disable HW CRC Strip");
-		conf->rxmode.hw_strip_crc = 1;
+		conf->rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 #else
-	if (conf->rxmode.hw_strip_crc) {
+	if (conf->rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
 		PMD_INIT_LOG(NOTICE, "VF can't enable HW CRC Strip");
-		conf->rxmode.hw_strip_crc = 0;
+		conf->rxmode.offloads &= ~DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 #endif
 
@@ -4438,10 +4441,12 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* switch to jumbo mode if needed */
 	if (frame_size > ETHER_MAX_LEN) {
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		rctl |= E1000_RCTL_LPE;
 	} else {
-		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 		rctl &= ~E1000_RCTL_LPE;
 	}
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);

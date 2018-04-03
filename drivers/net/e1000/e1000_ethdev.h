@@ -357,6 +357,9 @@ void eth_igb_rx_queue_release(void *rxq);
 void igb_dev_clear_queues(struct rte_eth_dev *dev);
 void igb_dev_free_queues(struct rte_eth_dev *dev);
 
+uint64_t igb_get_rx_port_offloads_capa(struct rte_eth_dev *dev);
+uint64_t igb_get_rx_queue_offloads_capa(struct rte_eth_dev *dev);
+
 int eth_igb_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,
 		const struct rte_eth_rxconf *rx_conf,
@@ -417,6 +420,8 @@ void igb_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 void igb_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 
+uint32_t em_get_max_pktlen(struct rte_eth_dev *dev);
+
 /*
  * RX/TX EM function prototypes
  */
@@ -425,6 +430,9 @@ void eth_em_rx_queue_release(void *rxq);
 
 void em_dev_clear_queues(struct rte_eth_dev *dev);
 void em_dev_free_queues(struct rte_eth_dev *dev);
+
+uint64_t em_get_rx_port_offloads_capa(struct rte_eth_dev *dev);
+uint64_t em_get_rx_queue_offloads_capa(struct rte_eth_dev *dev);
 
 int eth_em_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,

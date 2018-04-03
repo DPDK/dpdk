@@ -451,9 +451,21 @@ eth_em_configure(struct rte_eth_dev *dev)
 {
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct rte_eth_dev_info dev_info;
+	uint64_t rx_offloads;
 
 	PMD_INIT_FUNC_TRACE();
 	intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
+
+	eth_em_infos_get(dev, &dev_info);
+	rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	if ((rx_offloads & dev_info.rx_offload_capa) != rx_offloads) {
+		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
+			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			    rx_offloads, dev_info.rx_offload_capa);
+		return -ENOTSUP;
+	}
+
 	PMD_INIT_FUNC_TRACE();
 
 	return 0;
@@ -1017,9 +1029,11 @@ eth_em_rx_queue_intr_disable(struct rte_eth_dev *dev, __rte_unused uint16_t queu
 	return 0;
 }
 
-static uint32_t
-em_get_max_pktlen(const struct e1000_hw *hw)
+uint32_t
+em_get_max_pktlen(struct rte_eth_dev *dev)
 {
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	switch (hw->mac.type) {
 	case e1000_82571:
 	case e1000_82572:
@@ -1050,13 +1064,8 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
-	dev_info->max_rx_pktlen = em_get_max_pktlen(hw);
+	dev_info->max_rx_pktlen = em_get_max_pktlen(dev);
 	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
-	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM  |
-		DEV_RX_OFFLOAD_TCP_CKSUM;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM  |
@@ -1082,6 +1091,10 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_rx_queues = 1;
 	dev_info->max_tx_queues = 1;
+
+	dev_info->rx_queue_offload_capa = em_get_rx_queue_offloads_capa(dev);
+	dev_info->rx_offload_capa = em_get_rx_port_offloads_capa(dev) |
+				    dev_info->rx_queue_offload_capa;
 
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = E1000_MAX_RING_DESC,
@@ -1400,15 +1413,18 @@ em_vlan_hw_strip_enable(struct rte_eth_dev *dev)
 static int
 eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
+	struct rte_eth_rxmode *rxmode;
+
+	rxmode = &dev->data->dev_conf.rxmode;
 	if(mask & ETH_VLAN_STRIP_MASK){
-		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			em_vlan_hw_strip_enable(dev);
 		else
 			em_vlan_hw_strip_disable(dev);
 	}
 
 	if(mask & ETH_VLAN_FILTER_MASK){
-		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 			em_vlan_hw_filter_enable(dev);
 		else
 			em_vlan_hw_filter_disable(dev);
@@ -1775,10 +1791,12 @@ eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* switch to jumbo mode if needed */
 	if (frame_size > ETHER_MAX_LEN) {
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		rctl |= E1000_RCTL_LPE;
 	} else {
-		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 		rctl &= ~E1000_RCTL_LPE;
 	}
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);

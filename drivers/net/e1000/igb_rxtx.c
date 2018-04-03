@@ -107,6 +107,7 @@ struct igb_rx_queue {
 	uint8_t             crc_len;    /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
 	uint32_t            flags;      /**< RX flags. */
+	uint64_t	    offloads;   /**< offloads of DEV_RX_OFFLOAD_* */
 };
 
 /**
@@ -1593,6 +1594,61 @@ igb_reset_rx_queue(struct igb_rx_queue *rxq)
 	rxq->pkt_last_seg = NULL;
 }
 
+uint64_t
+igb_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
+{
+	uint64_t rx_offload_capa;
+
+	RTE_SET_USED(dev);
+	rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP  |
+			  DEV_RX_OFFLOAD_VLAN_FILTER |
+			  DEV_RX_OFFLOAD_IPV4_CKSUM  |
+			  DEV_RX_OFFLOAD_UDP_CKSUM   |
+			  DEV_RX_OFFLOAD_TCP_CKSUM   |
+			  DEV_RX_OFFLOAD_JUMBO_FRAME |
+			  DEV_RX_OFFLOAD_CRC_STRIP   |
+			  DEV_RX_OFFLOAD_SCATTER;
+
+	return rx_offload_capa;
+}
+
+uint64_t
+igb_get_rx_queue_offloads_capa(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint64_t rx_queue_offload_capa;
+
+	switch (hw->mac.type) {
+	case e1000_vfadapt_i350:
+		/*
+		 * As only one Rx queue can be used, let per queue offloading
+		 * capability be same to per port queue offloading capability
+		 * for better convenience.
+		 */
+		rx_queue_offload_capa = igb_get_rx_port_offloads_capa(dev);
+		break;
+	default:
+		rx_queue_offload_capa = 0;
+	}
+	return rx_queue_offload_capa;
+}
+
+static int
+igb_check_rx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
+{
+	uint64_t port_offloads = dev->data->dev_conf.rxmode.offloads;
+	uint64_t queue_supported = igb_get_rx_queue_offloads_capa(dev);
+	uint64_t port_supported = igb_get_rx_port_offloads_capa(dev);
+
+	if ((requested & (queue_supported | port_supported)) != requested)
+		return 0;
+
+	if ((port_offloads ^ requested) & port_supported)
+		return 0;
+
+	return 1;
+}
+
 int
 eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
@@ -1605,6 +1661,19 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	struct igb_rx_queue *rxq;
 	struct e1000_hw     *hw;
 	unsigned int size;
+
+	if (!igb_check_rx_queue_offloads(dev, rx_conf->offloads)) {
+		PMD_INIT_LOG(ERR, "%p: Rx queue offloads 0x%" PRIx64
+			" don't match port offloads 0x%" PRIx64
+			" or supported port offloads 0x%" PRIx64
+			" or supported queue offloads 0x%" PRIx64,
+			(void *)dev,
+			rx_conf->offloads,
+			dev->data->dev_conf.rxmode.offloads,
+			igb_get_rx_port_offloads_capa(dev),
+			igb_get_rx_queue_offloads_capa(dev));
+		return -ENOTSUP;
+	}
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1630,6 +1699,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 			  RTE_CACHE_LINE_SIZE);
 	if (rxq == NULL)
 		return -ENOMEM;
+	rxq->offloads = rx_conf->offloads;
 	rxq->mb_pool = mp;
 	rxq->nb_rx_desc = nb_desc;
 	rxq->pthresh = rx_conf->rx_thresh.pthresh;
@@ -1644,8 +1714,8 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
-	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ? 0 :
-				  ETHER_CRC_LEN);
+	rxq->crc_len = (uint8_t)((dev->data->dev_conf.rxmode.offloads &
+			DEV_RX_OFFLOAD_CRC_STRIP) ? 0 : ETHER_CRC_LEN);
 
 	/*
 	 *  Allocate RX ring hardware descriptors. A memzone large enough to
@@ -2227,6 +2297,7 @@ igb_dev_mq_rx_configure(struct rte_eth_dev *dev)
 int
 eth_igb_rx_init(struct rte_eth_dev *dev)
 {
+	struct rte_eth_rxmode *rxmode;
 	struct e1000_hw     *hw;
 	struct igb_rx_queue *rxq;
 	uint32_t rctl;
@@ -2247,10 +2318,12 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
 
+	rxmode = &dev->data->dev_conf.rxmode;
+
 	/*
 	 * Configure support of jumbo frames, if any.
 	 */
-	if (dev->data->dev_conf.rxmode.jumbo_frame == 1) {
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		rctl |= E1000_RCTL_LPE;
 
 		/*
@@ -2292,9 +2365,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		 * Reset crc_len in case it was changed after queue setup by a
 		 *  call to configure
 		 */
-		rxq->crc_len =
-			(uint8_t)(dev->data->dev_conf.rxmode.hw_strip_crc ?
-							0 : ETHER_CRC_LEN);
+		rxq->crc_len = (uint8_t)(dev->data->dev_conf.rxmode.offloads &
+				DEV_RX_OFFLOAD_CRC_STRIP ? 0 : ETHER_CRC_LEN);
 
 		bus_addr = rxq->rx_ring_phys_addr;
 		E1000_WRITE_REG(hw, E1000_RDLEN(rxq->reg_idx),
@@ -2362,7 +2434,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_RXDCTL(rxq->reg_idx), rxdctl);
 	}
 
-	if (dev->data->dev_conf.rxmode.enable_scatter) {
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) {
 		if (!dev->data->scattered_rx)
 			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 		dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
@@ -2406,16 +2478,24 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	rxcsum |= E1000_RXCSUM_PCSD;
 
 	/* Enable both L3/L4 rx checksum offload */
-	if (dev->data->dev_conf.rxmode.hw_ip_checksum)
-		rxcsum |= (E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
-				E1000_RXCSUM_CRCOFL);
+	if (rxmode->offloads & DEV_RX_OFFLOAD_IPV4_CKSUM)
+		rxcsum |= E1000_RXCSUM_IPOFL;
 	else
-		rxcsum &= ~(E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
-				E1000_RXCSUM_CRCOFL);
+		rxcsum &= ~E1000_RXCSUM_IPOFL;
+	if (rxmode->offloads &
+		(DEV_RX_OFFLOAD_TCP_CKSUM | DEV_RX_OFFLOAD_UDP_CKSUM))
+		rxcsum |= E1000_RXCSUM_TUOFL;
+	else
+		rxcsum &= ~E1000_RXCSUM_TUOFL;
+	if (rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM)
+		rxcsum |= E1000_RXCSUM_CRCOFL;
+	else
+		rxcsum &= ~E1000_RXCSUM_CRCOFL;
+
 	E1000_WRITE_REG(hw, E1000_RXCSUM, rxcsum);
 
 	/* Setup the Receive Control Register. */
-	if (dev->data->dev_conf.rxmode.hw_strip_crc) {
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
 		rctl |= E1000_RCTL_SECRC; /* Strip Ethernet CRC. */
 
 		/* set STRCRC bit in all queues */
@@ -2654,7 +2734,7 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
 	}
 
-	if (dev->data->dev_conf.rxmode.enable_scatter) {
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) {
 		if (!dev->data->scattered_rx)
 			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 		dev->rx_pkt_burst = eth_igb_recv_scattered_pkts;
@@ -2741,6 +2821,7 @@ igb_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
 	qinfo->conf.rx_drop_en = rxq->drop_en;
+	qinfo->conf.offloads = rxq->offloads;
 }
 
 void
