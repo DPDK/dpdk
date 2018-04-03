@@ -105,9 +105,3 @@ Deprecation Notices
   required the previous behavior can be configured using existing flow
   director APIs. There is no ABI/API break. This change will just remove a
   global configuration setting and require explicit configuration.
-
-* ring: The alignment constraints on the ring structure will be relaxed
-  to one cache line instead of two, and an empty cache line padding will
-  be added between the producer and consumer structures. The size of the
-  structure and the offset of the fields will remain the same on
-  platforms with 64B cache line, but will change on other platforms.

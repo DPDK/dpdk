@@ -194,6 +194,12 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* ring: the alignment constraints on the ring structure has been relaxed
+  to one cache line instead of two, and an empty cache line padding is
+  added between the producer and consumer structures. The size of the
+  structure and the offset of the fields remains the same on platforms
+  with 64B cache line, but change on other platforms.
+
 * **Additional fields in rte_eth_dev_info.**
 
   The ``rte_eth_dev_info`` structure has had two extra entries appended to the
@@ -201,6 +207,7 @@ ABI Changes
   in turn are ``rte_eth_dev_portconf`` structures containing three fields of
   type ``uint16_t``: ``burst_size``, ``ring_size``, and ``nb_queues``. These
   are parameter values recommended for use by the PMD.
+
 
 Removed Items
 -------------
@@ -292,7 +299,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_power.so.1
      librte_rawdev.so.1
      librte_reorder.so.1
-     librte_ring.so.1
+   + librte_ring.so.2
      librte_sched.so.1
      librte_security.so.1
      librte_table.so.3
