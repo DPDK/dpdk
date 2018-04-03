@@ -2151,13 +2151,9 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_queue_offload_capa = igb_get_rx_queue_offloads_capa(dev);
 	dev_info->rx_offload_capa = igb_get_rx_port_offloads_capa(dev) |
 				    dev_info->rx_queue_offload_capa;
-	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM  |
-		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM   |
-		DEV_TX_OFFLOAD_SCTP_CKSUM  |
-		DEV_TX_OFFLOAD_TCP_TSO;
+	dev_info->tx_queue_offload_capa = igb_get_tx_queue_offloads_capa(dev);
+	dev_info->tx_offload_capa = igb_get_tx_port_offloads_capa(dev) |
+				    dev_info->tx_queue_offload_capa;
 
 	switch (hw->mac.type) {
 	case e1000_82575:
@@ -2230,6 +2226,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			.wthresh = IGB_DEFAULT_TX_WTHRESH,
 		},
 		.txq_flags = 0,
+		.offloads = 0,
 	};
 
 	dev_info->rx_desc_lim = rx_desc_lim;
@@ -2299,6 +2296,9 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_queue_offload_capa = igb_get_rx_queue_offloads_capa(dev);
 	dev_info->rx_offload_capa = igb_get_rx_port_offloads_capa(dev) |
 				    dev_info->rx_queue_offload_capa;
+	dev_info->tx_queue_offload_capa = igb_get_tx_queue_offloads_capa(dev);
+	dev_info->tx_offload_capa = igb_get_tx_port_offloads_capa(dev) |
+				    dev_info->tx_queue_offload_capa;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -2318,6 +2318,7 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			.wthresh = IGB_DEFAULT_TX_WTHRESH,
 		},
 		.txq_flags = 0,
+		.offloads = 0,
 	};
 
 	dev_info->rx_desc_lim = rx_desc_lim;

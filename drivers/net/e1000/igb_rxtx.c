@@ -181,6 +181,7 @@ struct igb_tx_queue {
 	/**< Start context position for transmit queue. */
 	struct igb_advctx_info ctx_cache[IGB_CTX_NUM];
 	/**< Hardware context history.*/
+	uint64_t	       offloads; /**< offloads of DEV_TX_OFFLOAD_* */
 };
 
 #if 1
@@ -1448,6 +1449,48 @@ igb_reset_tx_queue(struct igb_tx_queue *txq, struct rte_eth_dev *dev)
 	igb_reset_tx_queue_stat(txq);
 }
 
+uint64_t
+igb_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
+{
+	uint64_t rx_offload_capa;
+
+	RTE_SET_USED(dev);
+	rx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
+			  DEV_TX_OFFLOAD_IPV4_CKSUM  |
+			  DEV_TX_OFFLOAD_UDP_CKSUM   |
+			  DEV_TX_OFFLOAD_TCP_CKSUM   |
+			  DEV_TX_OFFLOAD_SCTP_CKSUM  |
+			  DEV_TX_OFFLOAD_TCP_TSO;
+
+	return rx_offload_capa;
+}
+
+uint64_t
+igb_get_tx_queue_offloads_capa(struct rte_eth_dev *dev)
+{
+	uint64_t rx_queue_offload_capa;
+
+	rx_queue_offload_capa = igb_get_tx_port_offloads_capa(dev);
+
+	return rx_queue_offload_capa;
+}
+
+static int
+igb_check_tx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
+{
+	uint64_t port_offloads = dev->data->dev_conf.txmode.offloads;
+	uint64_t queue_supported = igb_get_tx_queue_offloads_capa(dev);
+	uint64_t port_supported = igb_get_tx_port_offloads_capa(dev);
+
+	if ((requested & (queue_supported | port_supported)) != requested)
+		return 0;
+
+	if ((port_offloads ^ requested) & port_supported)
+		return 0;
+
+	return 1;
+}
+
 int
 eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
@@ -1459,6 +1502,19 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	struct igb_tx_queue *txq;
 	struct e1000_hw     *hw;
 	uint32_t size;
+
+	if (!igb_check_tx_queue_offloads(dev, tx_conf->offloads)) {
+		PMD_INIT_LOG(ERR, "%p: Tx queue offloads 0x%" PRIx64
+			" don't match port offloads 0x%" PRIx64
+			" or supported port offloads 0x%" PRIx64
+			" or supported queue offloads 0x%" PRIx64,
+			(void *)dev,
+			tx_conf->offloads,
+			dev->data->dev_conf.txmode.offloads,
+			igb_get_tx_port_offloads_capa(dev),
+			igb_get_tx_queue_offloads_capa(dev));
+		return -ENOTSUP;
+	}
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1543,6 +1599,7 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	dev->tx_pkt_burst = eth_igb_xmit_pkts;
 	dev->tx_pkt_prepare = &eth_igb_prep_pkts;
 	dev->data->tx_queues[queue_idx] = txq;
+	txq->offloads = tx_conf->offloads;
 
 	return 0;
 }
@@ -2837,6 +2894,7 @@ igb_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_thresh.pthresh = txq->pthresh;
 	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
 	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
+	qinfo->conf.offloads = txq->offloads;
 }
 
 int

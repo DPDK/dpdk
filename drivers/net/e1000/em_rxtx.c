@@ -164,6 +164,7 @@ struct em_tx_queue {
 	uint8_t                wthresh;  /**< Write-back threshold register. */
 	struct em_ctx_info ctx_cache;
 	/**< Hardware context history.*/
+	uint64_t	       offloads; /**< offloads of DEV_TX_OFFLOAD_* */
 };
 
 #if 1
@@ -1152,6 +1153,52 @@ em_reset_tx_queue(struct em_tx_queue *txq)
 	memset((void*)&txq->ctx_cache, 0, sizeof (txq->ctx_cache));
 }
 
+uint64_t
+em_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
+{
+	uint64_t tx_offload_capa;
+
+	RTE_SET_USED(dev);
+	tx_offload_capa =
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_IPV4_CKSUM  |
+		DEV_TX_OFFLOAD_UDP_CKSUM   |
+		DEV_TX_OFFLOAD_TCP_CKSUM;
+
+	return tx_offload_capa;
+}
+
+uint64_t
+em_get_tx_queue_offloads_capa(struct rte_eth_dev *dev)
+{
+	uint64_t tx_queue_offload_capa;
+
+	/*
+	 * As only one Tx queue can be used, let per queue offloading
+	 * capability be same to per port queue offloading capability
+	 * for better convenience.
+	 */
+	tx_queue_offload_capa = em_get_tx_port_offloads_capa(dev);
+
+	return tx_queue_offload_capa;
+}
+
+static int
+em_check_tx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
+{
+	uint64_t port_offloads = dev->data->dev_conf.txmode.offloads;
+	uint64_t queue_supported = em_get_tx_queue_offloads_capa(dev);
+	uint64_t port_supported = em_get_tx_port_offloads_capa(dev);
+
+	if ((requested & (queue_supported | port_supported)) != requested)
+		return 0;
+
+	if ((port_offloads ^ requested) & port_supported)
+		return 0;
+
+	return 1;
+}
+
 int
 eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
@@ -1166,6 +1213,19 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t tx_rs_thresh, tx_free_thresh;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!em_check_tx_queue_offloads(dev, tx_conf->offloads)) {
+		PMD_INIT_LOG(ERR, "%p: Tx queue offloads 0x%" PRIx64
+			" don't match port offloads 0x%" PRIx64
+			" or supported port offloads 0x%" PRIx64
+			" or supported queue offloads 0x%" PRIx64,
+			(void *)dev,
+			tx_conf->offloads,
+			dev->data->dev_conf.txmode.offloads,
+			em_get_tx_port_offloads_capa(dev),
+			em_get_tx_queue_offloads_capa(dev));
+		return -ENOTSUP;
+	}
 
 	/*
 	 * Validate number of transmit descriptors.
@@ -1270,6 +1330,7 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	em_reset_tx_queue(txq);
 
 	dev->data->tx_queues[queue_idx] = txq;
+	txq->offloads = tx_conf->offloads;
 	return 0;
 }
 
@@ -1982,4 +2043,5 @@ em_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
+	qinfo->conf.offloads = txq->offloads;
 }

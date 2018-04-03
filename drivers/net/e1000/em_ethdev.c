@@ -453,6 +453,7 @@ eth_em_configure(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct rte_eth_dev_info dev_info;
 	uint64_t rx_offloads;
+	uint64_t tx_offloads;
 
 	PMD_INIT_FUNC_TRACE();
 	intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
@@ -463,6 +464,13 @@ eth_em_configure(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
 			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
 			    rx_offloads, dev_info.rx_offload_capa);
+		return -ENOTSUP;
+	}
+	tx_offloads = dev->data->dev_conf.txmode.offloads;
+	if ((tx_offloads & dev_info.tx_offload_capa) != tx_offloads) {
+		PMD_DRV_LOG(ERR, "Some Tx offloads are not supported "
+			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			    tx_offloads, dev_info.tx_offload_capa);
 		return -ENOTSUP;
 	}
 
@@ -1066,11 +1074,6 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
 	dev_info->max_rx_pktlen = em_get_max_pktlen(dev);
 	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
-	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM  |
-		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM;
 
 	/*
 	 * Starting with 631xESB hw supports 2 TX/RX queues per port.
@@ -1095,6 +1098,9 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_queue_offload_capa = em_get_rx_queue_offloads_capa(dev);
 	dev_info->rx_offload_capa = em_get_rx_port_offloads_capa(dev) |
 				    dev_info->rx_queue_offload_capa;
+	dev_info->tx_queue_offload_capa = em_get_tx_queue_offloads_capa(dev);
+	dev_info->tx_offload_capa = em_get_tx_port_offloads_capa(dev) |
+				    dev_info->tx_queue_offload_capa;
 
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = E1000_MAX_RING_DESC,
