@@ -1016,7 +1016,7 @@ static int
 eth_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
-	if (data->dev_conf.rxmode.enable_scatter == 1) {
+	if (data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) {
 		dev->rx_pkt_burst = eth_szedata2_rx_scattered;
 		data->scattered_rx = 1;
 	} else {
@@ -1031,6 +1031,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
+
 	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	dev_info->if_index = 0;
 	dev_info->max_mac_addrs = 1;
@@ -1038,6 +1039,10 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = internals->max_rx_queues;
 	dev_info->max_tx_queues = internals->max_tx_queues;
 	dev_info->min_rx_bufsize = 0;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_SCATTER;
+	dev_info->tx_offload_capa = 0;
+	dev_info->rx_queue_offload_capa = 0;
+	dev_info->tx_queue_offload_capa = 0;
 	dev_info->speed_capa = ETH_LINK_SPEED_100G;
 }
 
@@ -1514,14 +1519,10 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 			internals->max_rx_queues, internals->max_tx_queues);
 
 	/* Set rx, tx burst functions */
-	if (data->dev_conf.rxmode.enable_scatter == 1 ||
-		data->scattered_rx == 1) {
+	if (data->scattered_rx == 1)
 		dev->rx_pkt_burst = eth_szedata2_rx_scattered;
-		data->scattered_rx = 1;
-	} else {
+	else
 		dev->rx_pkt_burst = eth_szedata2_rx;
-		data->scattered_rx = 0;
-	}
 	dev->tx_pkt_burst = eth_szedata2_tx;
 
 	/* Set function callbacks for Ethernet API */
