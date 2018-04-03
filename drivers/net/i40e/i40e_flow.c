@@ -4239,7 +4239,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 			}
 
 			if (rss_info->num < rss->num ||
-				rss_info->queue[0] < rss->queue[0] ||
+				rss->queue[0] < rss_info->queue[0] ||
 				(rss->queue[0] + rss->num >
 					rss_info->num + rss_info->queue[0])) {
 				rte_flow_error_set(error, EINVAL,
