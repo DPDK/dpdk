@@ -130,8 +130,8 @@ The mbuf library provides the facility to create and destroy buffers
 that may be used by the DPDK application to store message buffers.
 The message buffers are created at startup time and stored in a mempool, using the DPDK mempool library.
 
-This library provides an API to allocate/free mbufs, manipulate control message buffers (ctrlmbuf) which are generic message buffers,
-and packet buffers (pktmbuf) which are used to carry network packets.
+This library provides an API to allocate/free mbufs, manipulate
+packet buffers which are used to carry network packets.
 
 Network Packet Buffer Management is described in :ref:`Mbuf Library <Mbuf_Library>`.
 

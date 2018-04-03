@@ -46,7 +46,7 @@ The lib directory contains::
     +-- librte_kni          # Kernel NIC interface
     +-- librte_kvargs       # Argument parsing library
     +-- librte_lpm          # Longest prefix match library
-    +-- librte_mbuf         # Packet and control mbuf manipulation
+    +-- librte_mbuf         # Packet buffer manipulation
     +-- librte_mempool      # Memory pool manager (fixed sized objects)
     +-- librte_meter        # QoS metering library
     +-- librte_net          # Various IP-related headers

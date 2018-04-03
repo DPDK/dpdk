@@ -33,21 +33,6 @@
 #include <rte_memcpy.h>
 
 /*
- * ctrlmbuf constructor, given as a callback function to
- * rte_mempool_obj_iter() or rte_mempool_create()
- */
-void
-rte_ctrlmbuf_init(struct rte_mempool *mp,
-		__attribute__((unused)) void *opaque_arg,
-		void *_m,
-		__attribute__((unused)) unsigned i)
-{
-	struct rte_mbuf *m = _m;
-	rte_pktmbuf_init(mp, opaque_arg, _m, i);
-	m->ol_flags |= CTRL_MBUF_FLAG;
-}
-
-/*
  * pktmbuf pool constructor, given as a callback function to
  * rte_mempool_create(), or called directly if using
  * rte_mempool_create_empty()/rte_mempool_populate()

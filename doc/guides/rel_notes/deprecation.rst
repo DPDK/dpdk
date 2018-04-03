@@ -64,19 +64,6 @@ Deprecation Notices
     customize objects population and allocate contiguous
     block of objects if underlying driver supports it.
 
-* mbuf: The control mbuf API will be removed in v18.05. The impacted
-  functions and macros are:
-
-  - ``rte_ctrlmbuf_init()``
-  - ``rte_ctrlmbuf_alloc()``
-  - ``rte_ctrlmbuf_free()``
-  - ``rte_ctrlmbuf_data()``
-  - ``rte_ctrlmbuf_len()``
-  - ``rte_is_ctrlmbuf()``
-  - ``CTRL_MBUF_FLAG``
-
-  The packet mbuf API should be used as a replacement.
-
 * mbuf: The opaque ``mbuf->hash.sched`` field will be updated to support generic
   definition in line with the ethdev TM and MTR APIs. Currently, this field
   is defined in librte_sched in a non-generic way. The new generic format

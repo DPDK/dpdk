@@ -72,6 +72,19 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* mbuf: The control mbuf API has been removed in v18.05. The impacted
+  functions and macros are:
+
+  - ``rte_ctrlmbuf_init()``
+  - ``rte_ctrlmbuf_alloc()``
+  - ``rte_ctrlmbuf_free()``
+  - ``rte_ctrlmbuf_data()``
+  - ``rte_ctrlmbuf_len()``
+  - ``rte_is_ctrlmbuf()``
+  - ``CTRL_MBUF_FLAG``
+
+  The packet mbuf API should be used as a replacement.
+
 * meter: updated to accommodate configuration profiles.
 
   The meter API is changed to support meter configuration profiles. The
@@ -169,7 +182,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_kvargs.so.1
      librte_latencystats.so.1
      librte_lpm.so.2
-     librte_mbuf.so.3
+   + librte_mbuf.so.4
      librte_mempool.so.3
    + librte_meter.so.2
      librte_metrics.so.1

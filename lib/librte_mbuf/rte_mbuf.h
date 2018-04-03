@@ -330,9 +330,6 @@ extern "C" {
 
 #define IND_ATTACHED_MBUF    (1ULL << 62) /**< Indirect attached mbuf */
 
-/* Use final bit of flags to indicate a control mbuf */
-#define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
-
 /** Alignment constraint of mbuf private area. */
 #define RTE_MBUF_PRIV_ALIGN 8
 
@@ -914,89 +911,6 @@ __rte_mbuf_raw_free(struct rte_mbuf *m)
 {
 	rte_mbuf_raw_free(m);
 }
-
-/* Operations on ctrl mbuf */
-
-/**
- * The control mbuf constructor.
- *
- * This function initializes some fields in an mbuf structure that are
- * not modified by the user once created (mbuf type, origin pool, buffer
- * start address, and so on). This function is given as a callback function
- * to rte_mempool_obj_iter() or rte_mempool_create() at pool creation time.
- *
- * @param mp
- *   The mempool from which the mbuf is allocated.
- * @param opaque_arg
- *   A pointer that can be used by the user to retrieve useful information
- *   for mbuf initialization. This pointer is the opaque argument passed to
- *   rte_mempool_obj_iter() or rte_mempool_create().
- * @param m
- *   The mbuf to initialize.
- * @param i
- *   The index of the mbuf in the pool table.
- */
-void rte_ctrlmbuf_init(struct rte_mempool *mp, void *opaque_arg,
-		void *m, unsigned i);
-
-/**
- * Allocate a new mbuf (type is ctrl) from mempool *mp*.
- *
- * This new mbuf is initialized with data pointing to the beginning of
- * buffer, and with a length of zero.
- *
- * @param mp
- *   The mempool from which the mbuf is allocated.
- * @return
- *   - The pointer to the new mbuf on success.
- *   - NULL if allocation failed.
- */
-#define rte_ctrlmbuf_alloc(mp) rte_pktmbuf_alloc(mp)
-
-/**
- * Free a control mbuf back into its original mempool.
- *
- * @param m
- *   The control mbuf to be freed.
- */
-#define rte_ctrlmbuf_free(m) rte_pktmbuf_free(m)
-
-/**
- * A macro that returns the pointer to the carried data.
- *
- * The value that can be read or assigned.
- *
- * @param m
- *   The control mbuf.
- */
-#define rte_ctrlmbuf_data(m) ((char *)((m)->buf_addr) + (m)->data_off)
-
-/**
- * A macro that returns the length of the carried data.
- *
- * The value that can be read or assigned.
- *
- * @param m
- *   The control mbuf.
- */
-#define rte_ctrlmbuf_len(m) rte_pktmbuf_data_len(m)
-
-/**
- * Tests if an mbuf is a control mbuf
- *
- * @param m
- *   The mbuf to be tested
- * @return
- *   - True (1) if the mbuf is a control mbuf
- *   - False(0) otherwise
- */
-static inline int
-rte_is_ctrlmbuf(struct rte_mbuf *m)
-{
-	return !!(m->ol_flags & CTRL_MBUF_FLAG);
-}
-
-/* Operations on pkt mbuf */
 
 /**
  * The packet mbuf constructor.

@@ -10,9 +10,8 @@ The mbuf library provides the ability to allocate and free buffers (mbufs)
 that may be used by the DPDK application to store message buffers.
 The message buffers are stored in a mempool, using the :ref:`Mempool Library <Mempool_Library>`.
 
-A rte_mbuf struct can carry network packet buffers
-or generic control buffers (indicated by the CTRL_MBUF_FLAG).
-This can be extended to other types.
+A rte_mbuf struct generally carries network packet buffers, but it can actually
+be any data (control data, events, ...).
 The rte_mbuf header structure is kept as small as possible and currently uses
 just two cache lines, with the most frequently used fields being on the first
 of the two cache lines.
@@ -68,13 +67,13 @@ Buffers Stored in Memory Pools
 The Buffer Manager uses the :ref:`Mempool Library <Mempool_Library>` to allocate buffers.
 Therefore, it ensures that the packet header is interleaved optimally across the channels and ranks for L3 processing.
 An mbuf contains a field indicating the pool that it originated from.
-When calling rte_ctrlmbuf_free(m) or rte_pktmbuf_free(m), the mbuf returns to its original pool.
+When calling rte_pktmbuf_free(m), the mbuf returns to its original pool.
 
 Constructors
 ------------
 
-Packet and control mbuf constructors are provided by the API.
-The rte_pktmbuf_init() and rte_ctrlmbuf_init() functions initialize some fields in the mbuf structure that
+Packet mbuf constructors are provided by the API.
+The rte_pktmbuf_init() function initializes some fields in the mbuf structure that
 are not modified by the user once created (mbuf type, origin pool, buffer start address, and so on).
 This function is given as a callback function to the rte_mempool_create() function at pool creation time.
 

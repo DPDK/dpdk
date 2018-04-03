@@ -1,7 +1,6 @@
 DPDK_2.0 {
 	global:
 
-	rte_ctrlmbuf_init;
 	rte_get_rx_ol_flag_name;
 	rte_get_tx_ol_flag_name;
 	rte_mbuf_sanity_check;

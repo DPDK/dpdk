@@ -41,9 +41,6 @@ CPU
 CRC
    Cyclic Redundancy Check
 
-ctrlmbuf
-   An *mbuf* carrying control data.
-
 Data Plane
    In contrast to the control plane, the data plane in a network architecture
    are the layers involved when forwarding packets.  These layers must be
