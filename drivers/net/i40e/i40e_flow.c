@@ -4151,7 +4151,8 @@ i40e_flow_parse_rss_pattern(__rte_unused struct rte_eth_dev *dev,
 				if (vlan_mask->tci ==
 					rte_cpu_to_be_16(I40E_TCI_MASK)) {
 					info->region[0].user_priority[0] =
-						(vlan_spec->tci >> 13) & 0x7;
+						(rte_be_to_cpu_16(
+						vlan_spec->tci) >> 13) & 0x7;
 					info->region[0].user_priority_num = 1;
 					info->queue_region_number = 1;
 					*action_flag = 0;
