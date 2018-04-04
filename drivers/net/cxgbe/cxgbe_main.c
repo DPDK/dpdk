@@ -32,11 +32,14 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_dev.h>
+#include <rte_kvargs.h>
 
 #include "common.h"
 #include "t4_regs.h"
 #include "t4_msg.h"
 #include "cxgbe.h"
+
+#define CXGBE_DEVARG_KEEP_OVLAN "keep_ovlan"
 
 /*
  * Response queue handler for the FW event queue.
@@ -390,6 +393,84 @@ void print_port_info(struct adapter *adap)
 			 (adap->flags & USING_MSIX) ? " MSI-X" :
 			 (adap->flags & USING_MSI) ? " MSI" : "");
 	}
+}
+
+static int
+check_devargs_handler(__rte_unused const char *key, const char *value,
+		      __rte_unused void *opaque)
+{
+	if (strcmp(value, "1"))
+		return -1;
+
+	return 0;
+}
+
+static int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key)
+{
+	struct rte_kvargs *kvlist;
+
+	if (!devargs)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (!kvlist)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, key)) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+
+	if (rte_kvargs_process(kvlist, key,
+			       check_devargs_handler, NULL) < 0) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	rte_kvargs_free(kvlist);
+
+	return 1;
+}
+
+static void configure_vlan_types(struct adapter *adapter)
+{
+	struct rte_pci_device *pdev = adapter->pdev;
+	int i;
+
+	for_each_port(adapter, i) {
+		/* OVLAN Type 0x88a8 */
+		t4_set_reg_field(adapter, MPS_PORT_RX_OVLAN_REG(i, A_RX_OVLAN0),
+				 V_OVLAN_MASK(M_OVLAN_MASK) |
+				 V_OVLAN_ETYPE(M_OVLAN_ETYPE),
+				 V_OVLAN_MASK(M_OVLAN_MASK) |
+				 V_OVLAN_ETYPE(0x88a8));
+		/* OVLAN Type 0x9100 */
+		t4_set_reg_field(adapter, MPS_PORT_RX_OVLAN_REG(i, A_RX_OVLAN1),
+				 V_OVLAN_MASK(M_OVLAN_MASK) |
+				 V_OVLAN_ETYPE(M_OVLAN_ETYPE),
+				 V_OVLAN_MASK(M_OVLAN_MASK) |
+				 V_OVLAN_ETYPE(0x9100));
+		/* OVLAN Type 0x8100 */
+		t4_set_reg_field(adapter, MPS_PORT_RX_OVLAN_REG(i, A_RX_OVLAN2),
+				 V_OVLAN_MASK(M_OVLAN_MASK) |
+				 V_OVLAN_ETYPE(M_OVLAN_ETYPE),
+				 V_OVLAN_MASK(M_OVLAN_MASK) |
+				 V_OVLAN_ETYPE(0x8100));
+
+		/* IVLAN 0X8100 */
+		t4_set_reg_field(adapter, MPS_PORT_RX_IVLAN(i),
+				 V_IVLAN_ETYPE(M_IVLAN_ETYPE),
+				 V_IVLAN_ETYPE(0x8100));
+
+		t4_set_reg_field(adapter, MPS_PORT_RX_CTL(i),
+				 F_OVLAN_EN0 | F_OVLAN_EN1 |
+				 F_OVLAN_EN2 | F_IVLAN_EN,
+				 F_OVLAN_EN0 | F_OVLAN_EN1 |
+				 F_OVLAN_EN2 | F_IVLAN_EN);
+	}
+
+	if (cxgbe_get_devargs(pdev->device.devargs, CXGBE_DEVARG_KEEP_OVLAN))
+		t4_tp_wr_bits_indirect(adapter, A_TP_INGRESS_CONFIG,
+				       V_RM_OVLAN(1), V_RM_OVLAN(0));
 }
 
 static void configure_pcie_ext_tag(struct adapter *adapter)
@@ -808,6 +889,7 @@ static int adap_init0(struct adapter *adap)
 	t4_init_sge_params(adap);
 	t4_init_tp_params(adap);
 	configure_pcie_ext_tag(adap);
+	configure_vlan_types(adap);
 
 	adap->params.drv_memwin = MEMWIN_NIC;
 	adap->flags |= FW_OK;

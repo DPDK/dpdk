@@ -1597,7 +1597,8 @@ static int process_responses(struct sge_rspq *q, int budget,
 				}
 
 				if (cpl->vlan_ex) {
-					pkt->ol_flags |= PKT_RX_VLAN;
+					pkt->ol_flags |= PKT_RX_VLAN |
+							 PKT_RX_VLAN_STRIPPED;
 					pkt->vlan_tci = ntohs(cpl->vlan);
 				}
 

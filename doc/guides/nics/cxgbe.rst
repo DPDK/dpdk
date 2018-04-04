@@ -127,6 +127,22 @@ enabling debugging options may affect system performance.
 
   Toggle behaviour to prefer Throughput or Latency.
 
+Runtime Options
+~~~~~~~~~~~~~~~
+
+The following ``devargs`` options can be enabled at runtime. They must
+be passed as part of EAL arguments. For example,
+
+.. code-block:: console
+
+   testpmd -w 02:00.4,keep_ovlan=1 -- -i
+
+- ``keep_ovlan`` (default **0**)
+
+  Toggle behaviour to keep/strip outer VLAN in Q-in-Q packets. If
+  enabled, the outer VLAN tag is preserved in Q-in-Q packets. Otherwise,
+  the outer VLAN tag is stripped in Q-in-Q packets.
+
 .. _driver-compilation:
 
 Driver compilation and testing
