@@ -473,6 +473,9 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 			hugepg_tbl[i].orig_va = virtaddr;
 		}
 		else {
+			/* rewrite physical addresses in IOVA as VA mode */
+			if (rte_eal_iova_mode() == RTE_IOVA_VA)
+				hugepg_tbl[i].physaddr = (uintptr_t)virtaddr;
 			hugepg_tbl[i].final_va = virtaddr;
 		}
 
@@ -1091,7 +1094,8 @@ rte_eal_hugepage_init(void)
 				continue;
 		}
 
-		if (phys_addrs_available) {
+		if (phys_addrs_available &&
+				rte_eal_iova_mode() != RTE_IOVA_VA) {
 			/* find physical addresses for each hugepage */
 			if (find_physaddrs(&tmp_hp[hp_offset], hpi) < 0) {
 				RTE_LOG(DEBUG, EAL, "Failed to find phys addr "
