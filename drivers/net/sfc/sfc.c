@@ -260,6 +260,58 @@ sfc_set_drv_limits(struct sfc_adapter *sa)
 }
 
 static int
+sfc_set_fw_subvariant(struct sfc_adapter *sa)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint64_t tx_offloads = sa->eth_dev->data->dev_conf.txmode.offloads;
+	unsigned int txq_index;
+	efx_nic_fw_subvariant_t req_fw_subvariant;
+	efx_nic_fw_subvariant_t cur_fw_subvariant;
+	int rc;
+
+	if (!encp->enc_fw_subvariant_no_tx_csum_supported) {
+		sfc_info(sa, "no-Tx-checksum subvariant not supported");
+		return 0;
+	}
+
+	for (txq_index = 0; txq_index < sa->txq_count; ++txq_index) {
+		struct sfc_txq_info *txq_info = &sa->txq_info[txq_index];
+
+		if (txq_info->txq != NULL)
+			tx_offloads |= txq_info->txq->offloads;
+	}
+
+	if (tx_offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |
+			   DEV_TX_OFFLOAD_TCP_CKSUM |
+			   DEV_TX_OFFLOAD_UDP_CKSUM |
+			   DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM))
+		req_fw_subvariant = EFX_NIC_FW_SUBVARIANT_DEFAULT;
+	else
+		req_fw_subvariant = EFX_NIC_FW_SUBVARIANT_NO_TX_CSUM;
+
+	rc = efx_nic_get_fw_subvariant(sa->nic, &cur_fw_subvariant);
+	if (rc != 0) {
+		sfc_err(sa, "failed to get FW subvariant: %d", rc);
+		return rc;
+	}
+	sfc_info(sa, "FW subvariant is %u vs required %u",
+		 cur_fw_subvariant, req_fw_subvariant);
+
+	if (cur_fw_subvariant == req_fw_subvariant)
+		return 0;
+
+	rc = efx_nic_set_fw_subvariant(sa->nic, req_fw_subvariant);
+	if (rc != 0) {
+		sfc_err(sa, "failed to set FW subvariant %u: %d",
+			req_fw_subvariant, rc);
+		return rc;
+	}
+	sfc_info(sa, "FW subvariant set to %u", req_fw_subvariant);
+
+	return 0;
+}
+
+static int
 sfc_try_start(struct sfc_adapter *sa)
 {
 	const efx_nic_cfg_t *encp;
@@ -269,6 +321,11 @@ sfc_try_start(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 	SFC_ASSERT(sa->state == SFC_ADAPTER_STARTING);
+
+	sfc_log_init(sa, "set FW subvariant");
+	rc = sfc_set_fw_subvariant(sa);
+	if (rc != 0)
+		goto fail_set_fw_subvariant;
 
 	sfc_log_init(sa, "set resource limits");
 	rc = sfc_set_drv_limits(sa);
@@ -336,6 +393,7 @@ fail_tunnel_reconfigure:
 
 fail_nic_init:
 fail_set_drv_limits:
+fail_set_fw_subvariant:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
 }
