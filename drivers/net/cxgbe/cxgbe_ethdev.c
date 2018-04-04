@@ -58,6 +58,19 @@
  */
 #include "t4_pci_id_tbl.h"
 
+#define CXGBE_TX_OFFLOADS (DEV_TX_OFFLOAD_VLAN_INSERT |\
+			   DEV_TX_OFFLOAD_IPV4_CKSUM |\
+			   DEV_TX_OFFLOAD_UDP_CKSUM |\
+			   DEV_TX_OFFLOAD_TCP_CKSUM |\
+			   DEV_TX_OFFLOAD_TCP_TSO)
+
+#define CXGBE_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_STRIP |\
+			   DEV_RX_OFFLOAD_CRC_STRIP |\
+			   DEV_RX_OFFLOAD_IPV4_CKSUM |\
+			   DEV_RX_OFFLOAD_JUMBO_FRAME |\
+			   DEV_RX_OFFLOAD_UDP_CKSUM |\
+			   DEV_RX_OFFLOAD_TCP_CKSUM)
+
 uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts)
 {
@@ -132,16 +145,11 @@ void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->max_vfs = adapter->params.arch.vfcount;
 	device_info->max_vmdq_pools = 0; /* XXX: For now no support for VMDQ */
 
-	device_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
-				       DEV_RX_OFFLOAD_IPV4_CKSUM |
-				       DEV_RX_OFFLOAD_UDP_CKSUM |
-				       DEV_RX_OFFLOAD_TCP_CKSUM;
+	device_info->rx_queue_offload_capa = 0UL;
+	device_info->rx_offload_capa = CXGBE_RX_OFFLOADS;
 
-	device_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
-				       DEV_TX_OFFLOAD_IPV4_CKSUM |
-				       DEV_TX_OFFLOAD_UDP_CKSUM |
-				       DEV_TX_OFFLOAD_TCP_CKSUM |
-				       DEV_TX_OFFLOAD_TCP_TSO;
+	device_info->tx_queue_offload_capa = 0UL;
+	device_info->tx_offload_capa = CXGBE_TX_OFFLOADS;
 
 	device_info->reta_size = pi->rss_size;
 	device_info->hash_key_size = CXGBE_DEFAULT_RSS_KEY_LEN;
@@ -229,9 +237,11 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 
 	/* set to jumbo mode if needed */
 	if (new_mtu > ETHER_MAX_LEN)
-		eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		eth_dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	err = t4_set_rxmode(adapter, adapter->mbox, pi->viid, new_mtu, -1, -1,
 			    -1, -1, true);
@@ -358,9 +368,32 @@ int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
+	uint64_t unsupported_offloads, configured_offloads;
 	int err;
 
 	CXGBE_FUNC_TRACE();
+	configured_offloads = eth_dev->data->dev_conf.rxmode.offloads;
+	if (!(configured_offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
+		dev_info(adapter, "can't disable hw crc strip\n");
+		configured_offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+	}
+
+	unsupported_offloads = configured_offloads & ~CXGBE_RX_OFFLOADS;
+	if (unsupported_offloads) {
+		dev_err(adapter, "Rx offloads 0x%" PRIx64 " are not supported. "
+			"Supported:0x%" PRIx64 "\n",
+			unsupported_offloads, (uint64_t)CXGBE_RX_OFFLOADS);
+		return -ENOTSUP;
+	}
+
+	configured_offloads = eth_dev->data->dev_conf.txmode.offloads;
+	unsupported_offloads = configured_offloads & ~CXGBE_TX_OFFLOADS;
+	if (unsupported_offloads) {
+		dev_err(adapter, "Tx offloads 0x%" PRIx64 " are not supported. "
+			"Supported:0x%" PRIx64 "\n",
+			unsupported_offloads, (uint64_t)CXGBE_TX_OFFLOADS);
+		return -ENOTSUP;
+	}
 
 	if (!(adapter->flags & FW_QUEUE_BOUND)) {
 		err = setup_sge_fwevtq(adapter);
@@ -417,8 +450,15 @@ int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	struct sge_eth_txq *txq = &s->ethtxq[pi->first_qset + queue_idx];
 	int err = 0;
 	unsigned int temp_nb_desc;
+	uint64_t unsupported_offloads;
 
-	RTE_SET_USED(tx_conf);
+	unsupported_offloads = tx_conf->offloads & ~CXGBE_TX_OFFLOADS;
+	if (unsupported_offloads) {
+		dev_err(adapter, "Tx offloads 0x%" PRIx64 " are not supported. "
+			"Supported:0x%" PRIx64 "\n",
+			unsupported_offloads, (uint64_t)CXGBE_TX_OFFLOADS);
+		return -ENOTSUP;
+	}
 
 	dev_debug(adapter, "%s: eth_dev->data->nb_tx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; pi->first_qset = %u\n",
 		  __func__, eth_dev->data->nb_tx_queues, queue_idx, nb_desc,
@@ -527,8 +567,21 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	unsigned int temp_nb_desc;
 	struct rte_eth_dev_info dev_info;
 	unsigned int pkt_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	uint64_t unsupported_offloads, configured_offloads;
 
-	RTE_SET_USED(rx_conf);
+	configured_offloads = rx_conf->offloads;
+	if (!(configured_offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
+		dev_info(adapter, "can't disable hw crc strip\n");
+		configured_offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+	}
+
+	unsupported_offloads = configured_offloads & ~CXGBE_RX_OFFLOADS;
+	if (unsupported_offloads) {
+		dev_err(adapter, "Rx offloads 0x%" PRIx64 " are not supported. "
+			"Supported:0x%" PRIx64 "\n",
+			unsupported_offloads, (uint64_t)CXGBE_RX_OFFLOADS);
+		return -ENOTSUP;
+	}
 
 	dev_debug(adapter, "%s: eth_dev->data->nb_rx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; mp = %p\n",
 		  __func__, eth_dev->data->nb_rx_queues, queue_idx, nb_desc,
@@ -576,9 +629,11 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	/* Set to jumbo mode if necessary */
 	if (pkt_len > ETHER_MAX_LEN)
-		eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		eth_dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	err = t4_sge_alloc_rxq(adapter, &rxq->rspq, false, eth_dev, msi_idx,
 			       &rxq->fl, t4_ethrx_handler,

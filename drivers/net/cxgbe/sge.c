@@ -361,7 +361,8 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 	struct rte_mbuf *buf_bulk[n];
 	int ret, i;
 	struct rte_pktmbuf_pool_private *mbp_priv;
-	u8 jumbo_en = rxq->rspq.eth_dev->data->dev_conf.rxmode.jumbo_frame;
+	u8 jumbo_en = rxq->rspq.eth_dev->data->dev_conf.rxmode.offloads &
+		DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	/* Use jumbo mtu buffers if mbuf data room size can fit jumbo data. */
 	mbp_priv = rte_mempool_get_priv(rxq->rspq.mb_pool);
