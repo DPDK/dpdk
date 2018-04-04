@@ -600,6 +600,7 @@ enum filter_cap_mode {
 
 /* flags for CMD_OPEN */
 #define CMD_OPENF_OPROM		0x1	/* open coming from option rom */
+#define CMD_OPENF_IG_DESCCACHE	0x2	/* Do not flush IG DESC cache */
 
 /* flags for CMD_INIT */
 #define CMD_INITF_DEFAULT_MAC	0x1	/* init with default mac addr */
