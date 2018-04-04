@@ -1058,22 +1058,29 @@ eth_stats_get(struct rte_eth_dev *dev,
 	uint64_t tx_err_total = 0;
 	uint64_t rx_total_bytes = 0;
 	uint64_t tx_total_bytes = 0;
-	const struct pmd_internals *internals = dev->data->dev_private;
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS && i < nb_rx; i++) {
-		stats->q_ipackets[i] = internals->rx_queue[i].rx_pkts;
-		stats->q_ibytes[i] = internals->rx_queue[i].rx_bytes;
-		rx_total += stats->q_ipackets[i];
-		rx_total_bytes += stats->q_ibytes[i];
+	for (i = 0; i < nb_rx; i++) {
+		struct szedata2_rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_ipackets[i] = rxq->rx_pkts;
+			stats->q_ibytes[i] = rxq->rx_bytes;
+		}
+		rx_total += rxq->rx_pkts;
+		rx_total_bytes += rxq->rx_bytes;
 	}
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS && i < nb_tx; i++) {
-		stats->q_opackets[i] = internals->tx_queue[i].tx_pkts;
-		stats->q_obytes[i] = internals->tx_queue[i].tx_bytes;
-		stats->q_errors[i] = internals->tx_queue[i].err_pkts;
-		tx_total += stats->q_opackets[i];
-		tx_total_bytes += stats->q_obytes[i];
-		tx_err_total += stats->q_errors[i];
+	for (i = 0; i < nb_tx; i++) {
+		struct szedata2_tx_queue *txq = dev->data->tx_queues[i];
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_opackets[i] = txq->tx_pkts;
+			stats->q_obytes[i] = txq->tx_bytes;
+			stats->q_errors[i] = txq->err_pkts;
+		}
+		tx_total += txq->tx_pkts;
+		tx_total_bytes += txq->tx_bytes;
+		tx_err_total += txq->err_pkts;
 	}
 
 	stats->ipackets = rx_total;
