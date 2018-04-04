@@ -26,6 +26,7 @@ extern "C" {
 #include <rte_malloc.h>
 
 #include "rte_eventdev.h"
+#include "rte_event_timer_adapter_pmd.h"
 
 /* Logging Macros */
 #define RTE_EDEV_LOG_ERR(...) \
@@ -449,6 +450,37 @@ typedef int (*eventdev_eth_rx_adapter_caps_get_t)
 struct rte_event_eth_rx_adapter_queue_conf *queue_conf;
 
 /**
+ * Retrieve the event device's timer adapter capabilities, as well as the ops
+ * structure that an event timer adapter should call through to enter the
+ * driver
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param flags
+ *   Flags that can be used to determine how to select an event timer
+ *   adapter ops structure
+ *
+ * @param[out] caps
+ *   A pointer to memory filled with Rx event adapter capabilities.
+ *
+ * @param[out] ops
+ *   A pointer to the ops pointer to set with the address of the desired ops
+ *   structure
+ *
+ * @return
+ *   - 0: Success, driver provides Rx event adapter capabilities for the
+ *	ethernet device.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+typedef int (*eventdev_timer_adapter_caps_get_t)(
+				const struct rte_eventdev *dev,
+				uint64_t flags,
+				uint32_t *caps,
+				const struct rte_event_timer_adapter_ops **ops);
+
+/**
  * Add ethernet Rx queues to event device. This callback is invoked if
  * the caps returned from rte_eventdev_eth_rx_adapter_caps_get(, eth_port_id)
  * has RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT set.
@@ -639,6 +671,9 @@ struct rte_eventdev_ops {
 	/**< Get ethernet Rx stats */
 	eventdev_eth_rx_adapter_stats_reset eth_rx_adapter_stats_reset;
 	/**< Reset ethernet Rx stats */
+
+	eventdev_timer_adapter_caps_get_t timer_adapter_caps_get;
+	/**< Get timer adapter capabilities */
 
 	eventdev_selftest dev_selftest;
 	/**< Start eventdev Selftest */

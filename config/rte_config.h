@@ -59,6 +59,7 @@
 /* eventdev defines */
 #define RTE_EVENT_MAX_DEVS 16
 #define RTE_EVENT_MAX_QUEUES_PER_DEV 64
+#define RTE_EVENT_TIMER_ADAPTER_NUM_MAX 32
 
 /* ip_fragmentation defines */
 #define RTE_LIBRTE_IP_FRAG_MAX_FRAG 4

@@ -123,6 +123,28 @@ rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint8_t eth_port_id,
 				: 0;
 }
 
+int __rte_experimental
+rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps)
+{
+	struct rte_eventdev *dev;
+	const struct rte_event_timer_adapter_ops *ops;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+
+	dev = &rte_eventdevs[dev_id];
+
+	if (caps == NULL)
+		return -EINVAL;
+	*caps = 0;
+
+	return dev->dev_ops->timer_adapter_caps_get ?
+				(*dev->dev_ops->timer_adapter_caps_get)(dev,
+									0,
+									caps,
+									&ops)
+				: 0;
+}
+
 static inline int
 rte_event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 {

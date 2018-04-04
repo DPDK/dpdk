@@ -215,6 +215,7 @@ extern "C" {
 #include <rte_config.h>
 #include <rte_memory.h>
 #include <rte_errno.h>
+#include <rte_compat.h>
 
 struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
 struct rte_event;
@@ -1114,6 +1115,25 @@ struct rte_event {
 int
 rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint8_t eth_port_id,
 				uint32_t *caps);
+
+#define RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT (1ULL << 0)
+/**< This flag is set when the timer mechanism is in HW. */
+
+/**
+ * Retrieve the event device's timer adapter capabilities.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @param[out] caps
+ *   A pointer to memory to be filled with event timer adapter capabilities.
+ *
+ * @return
+ *   - 0: Success, driver provided event timer adapter capabilities.
+ *   - <0: Error code returned by the driver function.
+ */
+int __rte_experimental
+rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
 
 struct rte_eventdev_driver;
 struct rte_eventdev_ops;

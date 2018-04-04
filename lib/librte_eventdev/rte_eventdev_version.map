@@ -66,7 +66,6 @@ DPDK_17.11 {
 	rte_event_eth_rx_adapter_stats_get;
 	rte_event_eth_rx_adapter_stats_reset;
 	rte_event_eth_rx_adapter_stop;
-
 } DPDK_17.08;
 
 DPDK_18.02 {
@@ -80,3 +79,22 @@ DPDK_18.05 {
 
 	rte_event_dev_stop_flush_callback_register;
 } DPDK_18.02;
+
+EXPERIMENTAL {
+	global:
+
+	rte_event_timer_adapter_caps_get;
+	rte_event_timer_adapter_create;
+	rte_event_timer_adapter_create_ext;
+	rte_event_timer_adapter_free;
+	rte_event_timer_adapter_get_info;
+	rte_event_timer_adapter_lookup;
+	rte_event_timer_adapter_service_id_get;
+	rte_event_timer_adapter_start;
+	rte_event_timer_adapter_stats_get;
+	rte_event_timer_adapter_stats_reset;
+	rte_event_timer_adapter_stop;
+	rte_event_timer_arm_burst;
+	rte_event_timer_arm_tmo_tick_burst;
+	rte_event_timer_cancel_burst;
+} DPDK_18.05;
