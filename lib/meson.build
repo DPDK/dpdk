@@ -19,7 +19,7 @@ libraries = [ 'compat', # just a header, used for versioning
 	'distributor', 'efd', 'eventdev',
 	'gro', 'gso', 'ip_frag', 'jobstats',
 	'kni', 'latencystats', 'lpm', 'member',
-	'meter', 'power', 'pdump',
+	'meter', 'power', 'pdump', 'rawdev',
 	'reorder', 'sched', 'security', 'vhost',
 	# add pkt framework libs which use other libs from above
 	'port', 'table', 'pipeline',
