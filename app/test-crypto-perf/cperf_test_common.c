@@ -91,7 +91,7 @@ mempool_obj_init(struct rte_mempool *mp,
 	op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 	op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
-	op->phys_addr = rte_mem_virt2phy(obj);
+	op->phys_addr = rte_mem_virt2iova(obj);
 	op->mempool = mp;
 
 	/* Set source buffer */
