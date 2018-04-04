@@ -10,7 +10,7 @@
 #include <rte_bus_pci.h>
 
 #include "octeontx_mbox.h"
-#include "octeontx_pool_logs.h"
+#include "ssovf_evdev.h"
 
 #define PCI_VENDOR_ID_CAVIUM              0x177D
 #define PCI_DEVICE_ID_OCTEONTX_SSOGRP_VF  0xA04B
@@ -52,7 +52,7 @@ static struct ssodev sdev;
 
 /* Interface functions */
 int
-octeontx_ssovf_info(struct octeontx_ssovf_info *info)
+ssovf_info(struct ssovf_info *info)
 {
 	uint8_t i;
 	uint16_t domain;
@@ -97,7 +97,7 @@ octeontx_ssovf_info(struct octeontx_ssovf_info *info)
 }
 
 void*
-octeontx_ssovf_bar(enum octeontx_ssovf_type type, uint8_t id, uint8_t bar)
+ssovf_bar(enum ssovf_type type, uint8_t id, uint8_t bar)
 {
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY ||
 			type > OCTEONTX_SSO_HWS)
@@ -142,6 +142,7 @@ ssowvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	uint16_t vfid;
 	struct ssowvf_res *res;
 	struct ssowvf_identify *id;
+	uint8_t *ram_mbox_base;
 
 	RTE_SET_USED(pci_drv);
 
@@ -180,6 +181,14 @@ ssowvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	res->domain = id->domain;
 
 	sdev.total_ssowvfs++;
+	if (vfid == 0) {
+		ram_mbox_base = ssovf_bar(OCTEONTX_SSO_HWS, 0, 4);
+		if (octeontx_mbox_set_ram_mbox_base(ram_mbox_base)) {
+			mbox_log_err("Invalid Failed to set ram mbox base");
+			return -EINVAL;
+		}
+	}
+
 	rte_wmb();
 	mbox_log_dbg("Domain=%d hws=%d total_ssowvfs=%d", res->domain,
 			res->vfid, sdev.total_ssowvfs);
@@ -213,6 +222,7 @@ ssovf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	uint16_t vfid;
 	uint8_t *idreg;
 	struct ssovf_res *res;
+	uint8_t *reg;
 
 	RTE_SET_USED(pci_drv);
 
@@ -246,6 +256,15 @@ ssovf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	res->domain = val & 0xffff;
 
 	sdev.total_ssovfs++;
+	if (vfid == 0) {
+		reg = ssovf_bar(OCTEONTX_SSO_GROUP, 0, 0);
+		reg += SSO_VHGRP_PF_MBOX(1);
+		if (octeontx_mbox_set_reg(reg)) {
+			mbox_log_err("Invalid Failed to set mbox_reg");
+			return -EINVAL;
+		}
+	}
+
 	rte_wmb();
 	mbox_log_dbg("Domain=%d group=%d total_ssovfs=%d", res->domain,
 			res->vfid, sdev.total_ssovfs);

@@ -119,6 +119,16 @@ do {							\
 } while (0)
 #endif
 
+struct ssovf_info {
+	uint16_t domain; /* Domain id */
+	uint8_t total_ssovfs; /* Total sso groups available in domain */
+	uint8_t total_ssowvfs;/* Total sso hws available in domain */
+};
+
+enum ssovf_type {
+	OCTEONTX_SSO_GROUP, /* SSO group vf */
+	OCTEONTX_SSO_HWS,  /* SSO hardware workslot vf */
+};
 
 struct ssovf_evdev {
 	uint8_t max_event_queues;
@@ -166,6 +176,8 @@ uint16_t ssows_deq_timeout_burst(void *port, struct rte_event ev[],
 		uint16_t nb_events, uint64_t timeout_ticks);
 void ssows_flush_events(struct ssows *ws, uint8_t queue_id);
 void ssows_reset(struct ssows *ws);
+int ssovf_info(struct ssovf_info *info);
+void *ssovf_bar(enum ssovf_type, uint8_t id, uint8_t bar);
 int test_eventdev_octeontx(void);
 
 #endif /* __SSOVF_EVDEV_H__ */

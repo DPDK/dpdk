@@ -10,6 +10,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_octeontx.a
 
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx/
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx/
 
 EXPORT_MAP := rte_pmd_octeontx_version.map
@@ -46,7 +47,7 @@ endif
 CFLAGS_octeontx_ethdev.o += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
-LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
+LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_common_octeontx
 LDLIBS += -lrte_mempool_octeontx
 LDLIBS += -lrte_eventdev
 LDLIBS += -lrte_bus_pci

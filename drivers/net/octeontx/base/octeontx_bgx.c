@@ -19,7 +19,7 @@ octeontx_bgx_port_open(int port, octeontx_mbox_bgx_port_conf_t *conf)
 	hdr.msg = MBOX_BGX_PORT_OPEN;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, &bgx_conf, len);
+	res = octeontx_mbox_send(&hdr, NULL, 0, &bgx_conf, len);
 	if (res < 0)
 		return -EACCES;
 
@@ -49,7 +49,7 @@ octeontx_bgx_port_close(int port)
 	hdr.msg = MBOX_BGX_PORT_CLOSE;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, NULL, 0);
+	res = octeontx_mbox_send(&hdr, NULL, 0, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -66,7 +66,7 @@ octeontx_bgx_port_start(int port)
 	hdr.msg = MBOX_BGX_PORT_START;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, NULL, 0);
+	res = octeontx_mbox_send(&hdr, NULL, 0, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -83,7 +83,7 @@ octeontx_bgx_port_stop(int port)
 	hdr.msg = MBOX_BGX_PORT_STOP;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, NULL, 0);
+	res = octeontx_mbox_send(&hdr, NULL, 0, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -103,7 +103,7 @@ octeontx_bgx_port_get_config(int port, octeontx_mbox_bgx_port_conf_t *conf)
 	hdr.vfid = port;
 
 	memset(&bgx_conf, 0, sizeof(octeontx_mbox_bgx_port_conf_t));
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, &bgx_conf, len);
+	res = octeontx_mbox_send(&hdr, NULL, 0, &bgx_conf, len);
 	if (res < 0)
 		return -EACCES;
 
@@ -135,7 +135,7 @@ octeontx_bgx_port_status(int port, octeontx_mbox_bgx_port_status_t *stat)
 	hdr.msg = MBOX_BGX_PORT_GET_STATUS;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, &bgx_stat, len);
+	res = octeontx_mbox_send(&hdr, NULL, 0, &bgx_stat, len);
 	if (res < 0)
 		return -EACCES;
 
@@ -156,7 +156,7 @@ octeontx_bgx_port_stats(int port, octeontx_mbox_bgx_port_stats_t *stats)
 	hdr.msg = MBOX_BGX_PORT_GET_STATS;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, &bgx_stats, len);
+	res = octeontx_mbox_send(&hdr, NULL, 0, &bgx_stats, len);
 	if (res < 0)
 		return -EACCES;
 
@@ -181,7 +181,7 @@ octeontx_bgx_port_stats_clr(int port)
 	hdr.msg = MBOX_BGX_PORT_CLR_STATS;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, NULL, 0);
+	res = octeontx_mbox_send(&hdr, NULL, 0, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -200,7 +200,7 @@ octeontx_bgx_port_link_status(int port)
 	hdr.msg = MBOX_BGX_PORT_GET_LINK_STATUS;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, &link, len);
+	res = octeontx_mbox_send(&hdr, NULL, 0, &link, len);
 	if (res < 0)
 		return -EACCES;
 
@@ -219,7 +219,7 @@ octeontx_bgx_port_promisc_set(int port, int en)
 	hdr.vfid = port;
 	prom = en ? 1 : 0;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &prom, sizeof(prom), NULL, 0);
+	res = octeontx_mbox_send(&hdr, &prom, sizeof(prom), NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -237,7 +237,7 @@ octeontx_bgx_port_mac_set(int port, uint8_t *mac_addr)
 	hdr.msg = MBOX_BGX_PORT_SET_MACADDR;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, mac_addr, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, mac_addr, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 

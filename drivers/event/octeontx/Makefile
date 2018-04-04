@@ -10,10 +10,11 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_octeontx_ssovf.a
 
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx/
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx/
 CFLAGS += -I$(RTE_SDK)/drivers/net/octeontx/
 
-LDLIBS += -lrte_eal -lrte_eventdev -lrte_mempool_octeontx -lrte_pmd_octeontx
+LDLIBS += -lrte_eal -lrte_eventdev -lrte_common_octeontx -lrte_pmd_octeontx
 LDLIBS += -lrte_bus_pci -lrte_mempool -lrte_mbuf -lrte_kvargs
 LDLIBS += -lrte_bus_vdev
 
@@ -27,6 +28,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_worker.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_evdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_evdev_selftest.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_probe.c
 
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_ssovf_worker.o += -fno-prefetch-loop-arrays

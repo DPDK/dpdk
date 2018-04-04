@@ -19,7 +19,7 @@ octeontx_pki_port_open(int port)
 	hdr.msg = MBOX_PKI_PORT_OPEN;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, NULL, 0);
+	res = octeontx_mbox_send(&hdr, NULL, 0, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 	return res;
@@ -38,7 +38,7 @@ octeontx_pki_port_hash_config(int port, pki_hash_cfg_t *hash_cfg)
 	hdr.msg = MBOX_PKI_PORT_HASH_CONFIG;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &h_cfg, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &h_cfg, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -58,7 +58,7 @@ octeontx_pki_port_pktbuf_config(int port, pki_pktbuf_cfg_t *buf_cfg)
 	hdr.msg = MBOX_PKI_PORT_PKTBUF_CONFIG;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &b_cfg, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &b_cfg, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 	return res;
@@ -77,7 +77,7 @@ octeontx_pki_port_create_qos(int port, pki_qos_cfg_t *qos_cfg)
 	hdr.msg = MBOX_PKI_PORT_CREATE_QOS;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &q_cfg, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &q_cfg, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -99,7 +99,7 @@ octeontx_pki_port_errchk_config(int port, pki_errchk_cfg_t *cfg)
 	hdr.msg = MBOX_PKI_PORT_ERRCHK_CONFIG;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &e_cfg, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &e_cfg, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 

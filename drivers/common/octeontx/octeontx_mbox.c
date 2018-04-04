@@ -11,7 +11,6 @@
 #include <rte_spinlock.h>
 
 #include "octeontx_mbox.h"
-#include "octeontx_pool_logs.h"
 
 /* Mbox operation timeout in seconds */
 #define MBOX_WAIT_TIME_SEC	3
@@ -59,6 +58,17 @@ struct mbox_ram_hdr {
 		};
 	};
 };
+
+int octeontx_logtype_mbox;
+
+RTE_INIT(otx_init_log);
+static void
+otx_init_log(void)
+{
+	octeontx_logtype_mbox = rte_log_register("pmd.octeontx.mbox");
+	if (octeontx_logtype_mbox >= 0)
+		rte_log_set_level(octeontx_logtype_mbox, RTE_LOG_NOTICE);
+}
 
 static inline void
 mbox_msgcpy(volatile uint8_t *d, volatile const uint8_t *s, uint16_t size)
@@ -181,33 +191,60 @@ mbox_send(struct mbox *m, struct octeontx_mbox_hdr *hdr, const void *txmsg,
 	return res;
 }
 
-static inline int
-mbox_setup(struct mbox *m)
+int
+octeontx_mbox_set_ram_mbox_base(uint8_t *ram_mbox_base)
 {
-	if (unlikely(m->init_once == 0)) {
-		rte_spinlock_init(&m->lock);
-		m->ram_mbox_base = octeontx_ssovf_bar(OCTEONTX_SSO_HWS, 0, 4);
-		m->reg = octeontx_ssovf_bar(OCTEONTX_SSO_GROUP, 0, 0);
-		m->reg += SSO_VHGRP_PF_MBOX(1);
+	struct mbox *m = &octeontx_mbox;
 
-		if (m->ram_mbox_base == NULL || m->reg == NULL) {
-			mbox_log_err("Invalid ram_mbox_base=%p or reg=%p",
-				m->ram_mbox_base, m->reg);
-			return -EINVAL;
-		}
+	if (m->init_once)
+		return -EALREADY;
+
+	if (ram_mbox_base == NULL) {
+		mbox_log_err("Invalid ram_mbox_base=%p", ram_mbox_base);
+		return -EINVAL;
+	}
+
+	m->ram_mbox_base = ram_mbox_base;
+
+	if (m->reg != NULL) {
+		rte_spinlock_init(&m->lock);
 		m->init_once = 1;
 	}
+
 	return 0;
 }
 
 int
-octeontx_ssovf_mbox_send(struct octeontx_mbox_hdr *hdr, void *txdata,
+octeontx_mbox_set_reg(uint8_t *reg)
+{
+	struct mbox *m = &octeontx_mbox;
+
+	if (m->init_once)
+		return -EALREADY;
+
+	if (reg == NULL) {
+		mbox_log_err("Invalid reg=%p", reg);
+		return -EINVAL;
+	}
+
+	m->reg = reg;
+
+	if (m->ram_mbox_base != NULL) {
+		rte_spinlock_init(&m->lock);
+		m->init_once = 1;
+	}
+
+	return 0;
+}
+
+int
+octeontx_mbox_send(struct octeontx_mbox_hdr *hdr, void *txdata,
 				 uint16_t txlen, void *rxdata, uint16_t rxlen)
 {
 	struct mbox *m = &octeontx_mbox;
 
 	RTE_BUILD_BUG_ON(sizeof(struct mbox_ram_hdr) != 8);
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY || mbox_setup(m))
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EINVAL;
 
 	return mbox_send(m, hdr, txdata, txlen, rxdata, rxlen);

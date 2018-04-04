@@ -115,10 +115,6 @@ otx_pool_init_log(void)
 	octeontx_logtype_fpavf = rte_log_register("pmd.mempool.octeontx");
 	if (octeontx_logtype_fpavf >= 0)
 		rte_log_set_level(octeontx_logtype_fpavf, RTE_LOG_NOTICE);
-
-	octeontx_logtype_fpavf_mbox = rte_log_register("pmd.mempool.octeontx.mbox");
-	if (octeontx_logtype_fpavf_mbox >= 0)
-		rte_log_set_level(octeontx_logtype_fpavf_mbox, RTE_LOG_NOTICE);
 }
 
 /* lock is taken by caller */
@@ -253,7 +249,7 @@ octeontx_fpapf_pool_setup(unsigned int gpool, unsigned int buf_size,
 	cfg.pool_stack_end = phys_addr + memsz;
 	cfg.aura_cfg = (1 << 9);
 
-	ret = octeontx_ssovf_mbox_send(&hdr, &cfg,
+	ret = octeontx_mbox_send(&hdr, &cfg,
 					sizeof(struct octeontx_mbox_fpa_cfg),
 					&resp, sizeof(resp));
 	if (ret < 0) {
@@ -298,7 +294,7 @@ octeontx_fpapf_pool_destroy(unsigned int gpool_index)
 	cfg.pool_stack_end = 0;
 	cfg.aura_cfg = 0;
 
-	ret = octeontx_ssovf_mbox_send(&hdr, &cfg,
+	ret = octeontx_mbox_send(&hdr, &cfg,
 					sizeof(struct octeontx_mbox_fpa_cfg),
 					&resp, sizeof(resp));
 	if (ret < 0) {
@@ -333,7 +329,7 @@ octeontx_fpapf_aura_attach(unsigned int gpool_index)
 	memset(&cfg, 0x0, sizeof(struct octeontx_mbox_fpa_cfg));
 	cfg.aid = gpool_index; /* gpool is guara */
 
-	ret = octeontx_ssovf_mbox_send(&hdr, &cfg,
+	ret = octeontx_mbox_send(&hdr, &cfg,
 					sizeof(struct octeontx_mbox_fpa_cfg),
 					&resp, sizeof(resp));
 	if (ret < 0) {
@@ -363,7 +359,7 @@ octeontx_fpapf_aura_detach(unsigned int gpool_index)
 	hdr.coproc = FPA_COPROC;
 	hdr.msg = FPA_DETACHAURA;
 	hdr.vfid = gpool_index;
-	ret = octeontx_ssovf_mbox_send(&hdr, &cfg, sizeof(cfg), NULL, 0);
+	ret = octeontx_mbox_send(&hdr, &cfg, sizeof(cfg), NULL, 0);
 	if (ret < 0) {
 		fpavf_log_err("Couldn't detach FPA aura %d Err=%d FuncErr=%d\n",
 			      gpool_index, ret, hdr.res_code);
@@ -410,7 +406,7 @@ octeontx_fpapf_start_count(uint16_t gpool_index)
 	hdr.coproc = FPA_COPROC;
 	hdr.msg = FPA_START_COUNT;
 	hdr.vfid = gpool_index;
-	ret = octeontx_ssovf_mbox_send(&hdr, NULL, 0, NULL, 0);
+	ret = octeontx_mbox_send(&hdr, NULL, 0, NULL, 0);
 	if (ret < 0) {
 		fpavf_log_err("Could not start buffer counting for ");
 		fpavf_log_err("FPA pool %d. Err=%d. FuncErr=%d\n",

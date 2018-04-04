@@ -422,7 +422,7 @@ octeontx_pki_port_modify_qos(int port, pki_mod_qos_t *qos_cfg)
 	hdr.msg = MBOX_PKI_PORT_MODIFY_QOS;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &q_cfg, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &q_cfg, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -442,7 +442,7 @@ octeontx_pki_port_delete_qos(int port, pki_del_qos_t *qos_cfg)
 	hdr.msg = MBOX_PKI_PORT_DELETE_QOS;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &q_cfg, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &q_cfg, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -464,7 +464,7 @@ octeontx_pki_port_close(int port)
 	hdr.msg = MBOX_PKI_PORT_CLOSE;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &ptype, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -486,7 +486,7 @@ octeontx_pki_port_start(int port)
 	hdr.msg = MBOX_PKI_PORT_START;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &ptype, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
@@ -508,7 +508,7 @@ octeontx_pki_port_stop(int port)
 	hdr.msg = MBOX_PKI_PORT_STOP;
 	hdr.vfid = port;
 
-	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &ptype, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 

@@ -10,6 +10,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_mempool_octeontx.a
 
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx/
 EXPORT_MAP := rte_mempool_octeontx_version.map
 
 LIBABIVER := 1
@@ -17,8 +18,6 @@ LIBABIVER := 1
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx_ssovf.c
-SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx_mbox.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx_fpavf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += rte_mempool_octeontx.c
 
@@ -36,6 +35,6 @@ CFLAGS_rte_mempool_octeontx.o += -Ofast
 endif
 
 LDLIBS += -lrte_eal -lrte_mempool -lrte_ring -lrte_mbuf
-LDLIBS += -lrte_bus_pci
+LDLIBS += -lrte_bus_pci -lrte_common_octeontx
 
 include $(RTE_SDK)/mk/rte.lib.mk
