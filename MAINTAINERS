@@ -468,6 +468,7 @@ F: doc/guides/nics/features/fm10k*.ini
 Intel avf
 M: Jingjing Wu <jingjing.wu@intel.com>
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/avf/
 F: doc/guides/nics/features/avf*.ini
 
