@@ -86,8 +86,6 @@ struct szedata2_tx_queue {
 };
 
 struct pmd_internals {
-	struct szedata2_rx_queue rx_queue[RTE_ETH_SZEDATA2_MAX_RX_QUEUES];
-	struct szedata2_tx_queue tx_queue[RTE_ETH_SZEDATA2_MAX_TX_QUEUES];
 	uint16_t max_rx_queues;
 	uint16_t max_tx_queues;
 	char sze_dev[PATH_MAX];
@@ -1098,17 +1096,18 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	uint16_t i;
 	uint16_t nb_rx = dev->data->nb_rx_queues;
 	uint16_t nb_tx = dev->data->nb_tx_queues;
-	struct pmd_internals *internals = dev->data->dev_private;
 
 	for (i = 0; i < nb_rx; i++) {
-		internals->rx_queue[i].rx_pkts = 0;
-		internals->rx_queue[i].rx_bytes = 0;
-		internals->rx_queue[i].err_pkts = 0;
+		struct szedata2_rx_queue *rxq = dev->data->rx_queues[i];
+		rxq->rx_pkts = 0;
+		rxq->rx_bytes = 0;
+		rxq->err_pkts = 0;
 	}
 	for (i = 0; i < nb_tx; i++) {
-		internals->tx_queue[i].tx_pkts = 0;
-		internals->tx_queue[i].tx_bytes = 0;
-		internals->tx_queue[i].err_pkts = 0;
+		struct szedata2_tx_queue *txq = dev->data->tx_queues[i];
+		txq->tx_pkts = 0;
+		txq->tx_bytes = 0;
+		txq->err_pkts = 0;
 	}
 }
 
@@ -1116,9 +1115,11 @@ static void
 eth_rx_queue_release(void *q)
 {
 	struct szedata2_rx_queue *rxq = (struct szedata2_rx_queue *)q;
-	if (rxq->sze != NULL) {
-		szedata_close(rxq->sze);
-		rxq->sze = NULL;
+
+	if (rxq != NULL) {
+		if (rxq->sze != NULL)
+			szedata_close(rxq->sze);
+		rte_free(rxq);
 	}
 }
 
@@ -1126,9 +1127,11 @@ static void
 eth_tx_queue_release(void *q)
 {
 	struct szedata2_tx_queue *txq = (struct szedata2_tx_queue *)q;
-	if (txq->sze != NULL) {
-		szedata_close(txq->sze);
-		txq->sze = NULL;
+
+	if (txq != NULL) {
+		if (txq->sze != NULL)
+			szedata_close(txq->sze);
+		rte_free(txq);
 	}
 }
 
@@ -1263,23 +1266,42 @@ static int
 eth_rx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t rx_queue_id,
 		uint16_t nb_rx_desc __rte_unused,
-		unsigned int socket_id __rte_unused,
+		unsigned int socket_id,
 		const struct rte_eth_rxconf *rx_conf __rte_unused,
 		struct rte_mempool *mb_pool)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-	struct szedata2_rx_queue *rxq = &internals->rx_queue[rx_queue_id];
+	struct szedata2_rx_queue *rxq;
 	int ret;
 	uint32_t rx = 1 << rx_queue_id;
 	uint32_t tx = 0;
 
+	if (dev->data->rx_queues[rx_queue_id] != NULL) {
+		eth_rx_queue_release(dev->data->rx_queues[rx_queue_id]);
+		dev->data->rx_queues[rx_queue_id] = NULL;
+	}
+
+	rxq = rte_zmalloc_socket("szedata2 rx queue",
+			sizeof(struct szedata2_rx_queue),
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (rxq == NULL) {
+		RTE_LOG(ERR, PMD, "rte_zmalloc_socket() failed for rx queue id "
+				"%" PRIu16 "!\n", rx_queue_id);
+		return -ENOMEM;
+	}
+
 	rxq->sze = szedata_open(internals->sze_dev);
-	if (rxq->sze == NULL)
+	if (rxq->sze == NULL) {
+		RTE_LOG(ERR, PMD, "szedata_open() failed for rx queue id "
+				"%" PRIu16 "!\n", rx_queue_id);
+		eth_rx_queue_release(rxq);
 		return -EINVAL;
+	}
 	ret = szedata_subscribe3(rxq->sze, &rx, &tx);
 	if (ret != 0 || rx == 0) {
-		szedata_close(rxq->sze);
-		rxq->sze = NULL;
+		RTE_LOG(ERR, PMD, "szedata_subscribe3() failed for rx queue id "
+				"%" PRIu16 "!\n", rx_queue_id);
+		eth_rx_queue_release(rxq);
 		return -EINVAL;
 	}
 	rxq->rx_channel = rx_queue_id;
@@ -1290,6 +1312,10 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->err_pkts = 0;
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
+
+	RTE_LOG(DEBUG, PMD, "Configured rx queue id %" PRIu16 " on socket "
+			"%u.\n", rx_queue_id, socket_id);
+
 	return 0;
 }
 
@@ -1297,22 +1323,41 @@ static int
 eth_tx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t tx_queue_id,
 		uint16_t nb_tx_desc __rte_unused,
-		unsigned int socket_id __rte_unused,
+		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf __rte_unused)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-	struct szedata2_tx_queue *txq = &internals->tx_queue[tx_queue_id];
+	struct szedata2_tx_queue *txq;
 	int ret;
 	uint32_t rx = 0;
 	uint32_t tx = 1 << tx_queue_id;
 
+	if (dev->data->tx_queues[tx_queue_id] != NULL) {
+		eth_tx_queue_release(dev->data->tx_queues[tx_queue_id]);
+		dev->data->tx_queues[tx_queue_id] = NULL;
+	}
+
+	txq = rte_zmalloc_socket("szedata2 tx queue",
+			sizeof(struct szedata2_tx_queue),
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq == NULL) {
+		RTE_LOG(ERR, PMD, "rte_zmalloc_socket() failed for tx queue id "
+				"%" PRIu16 "!\n", tx_queue_id);
+		return -ENOMEM;
+	}
+
 	txq->sze = szedata_open(internals->sze_dev);
-	if (txq->sze == NULL)
+	if (txq->sze == NULL) {
+		RTE_LOG(ERR, PMD, "szedata_open() failed for tx queue id "
+				"%" PRIu16 "!\n", tx_queue_id);
+		eth_tx_queue_release(txq);
 		return -EINVAL;
+	}
 	ret = szedata_subscribe3(txq->sze, &rx, &tx);
 	if (ret != 0 || tx == 0) {
-		szedata_close(txq->sze);
-		txq->sze = NULL;
+		RTE_LOG(ERR, PMD, "szedata_subscribe3() failed for tx queue id "
+				"%" PRIu16 "!\n", tx_queue_id);
+		eth_tx_queue_release(txq);
 		return -EINVAL;
 	}
 	txq->tx_channel = tx_queue_id;
@@ -1321,6 +1366,10 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->err_pkts = 0;
 
 	dev->data->tx_queues[tx_queue_id] = txq;
+
+	RTE_LOG(DEBUG, PMD, "Configured tx queue id %" PRIu16 " on socket "
+			"%u.\n", tx_queue_id, socket_id);
+
 	return 0;
 }
 
