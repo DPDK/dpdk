@@ -67,7 +67,16 @@
 
 #define SZEDATA2_DEV_PATH_FMT "/dev/szedataII%u"
 
+struct pmd_internals {
+	struct rte_eth_dev *dev;
+	uint16_t max_rx_queues;
+	uint16_t max_tx_queues;
+	char sze_dev[PATH_MAX];
+	struct rte_mem_resource *pci_rsc;
+};
+
 struct szedata2_rx_queue {
+	struct pmd_internals *priv;
 	struct szedata *sze;
 	uint8_t rx_channel;
 	uint16_t in_port;
@@ -78,18 +87,12 @@ struct szedata2_rx_queue {
 };
 
 struct szedata2_tx_queue {
+	struct pmd_internals *priv;
 	struct szedata *sze;
 	uint8_t tx_channel;
 	volatile uint64_t tx_pkts;
 	volatile uint64_t tx_bytes;
 	volatile uint64_t err_pkts;
-};
-
-struct pmd_internals {
-	uint16_t max_rx_queues;
-	uint16_t max_tx_queues;
-	char sze_dev[PATH_MAX];
-	struct rte_mem_resource *pci_rsc;
 };
 
 static struct ether_addr eth_addr = {
@@ -130,8 +133,10 @@ eth_szedata2_rx(void *queue,
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = rte_pktmbuf_alloc(sze_q->mb_pool);
 
-		if (unlikely(mbuf == NULL))
+		if (unlikely(mbuf == NULL)) {
+			sze_q->priv->dev->data->rx_mbuf_alloc_failed++;
 			break;
+		}
 
 		/* get the next sze packet */
 		if (sze->ct_rx_lck != NULL && !sze->ct_rx_rem_bytes &&
@@ -351,6 +356,8 @@ eth_szedata2_rx_scattered(void *queue,
 	uint16_t packet_len1 = 0;
 	uint16_t packet_len2 = 0;
 	uint16_t hw_data_align;
+	uint64_t *mbuf_failed_ptr =
+		&sze_q->priv->dev->data->rx_mbuf_alloc_failed;
 
 	if (unlikely(sze_q->sze == NULL || nb_pkts == 0))
 		return 0;
@@ -538,6 +545,7 @@ eth_szedata2_rx_scattered(void *queue,
 			sze->ct_rx_lck = ct_rx_lck_backup;
 			sze->ct_rx_rem_bytes = ct_rx_rem_bytes_backup;
 			sze->ct_rx_cur_ptr = ct_rx_cur_ptr_backup;
+			sze_q->priv->dev->data->rx_mbuf_alloc_failed++;
 			break;
 		}
 
@@ -587,6 +595,7 @@ eth_szedata2_rx_scattered(void *queue,
 						ct_rx_rem_bytes_backup;
 					sze->ct_rx_cur_ptr =
 						ct_rx_cur_ptr_backup;
+					(*mbuf_failed_ptr)++;
 					goto finish;
 				}
 
@@ -630,6 +639,7 @@ eth_szedata2_rx_scattered(void *queue,
 							ct_rx_rem_bytes_backup;
 						sze->ct_rx_cur_ptr =
 							ct_rx_cur_ptr_backup;
+						(*mbuf_failed_ptr)++;
 						goto finish;
 					}
 
@@ -1086,6 +1096,7 @@ eth_stats_get(struct rte_eth_dev *dev,
 	stats->ibytes = rx_total_bytes;
 	stats->obytes = tx_total_bytes;
 	stats->oerrors = tx_err_total;
+	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
 
 	return 0;
 }
@@ -1290,6 +1301,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	rxq->priv = internals;
 	rxq->sze = szedata_open(internals->sze_dev);
 	if (rxq->sze == NULL) {
 		RTE_LOG(ERR, PMD, "szedata_open() failed for rx queue id "
@@ -1346,6 +1358,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	txq->priv = internals;
 	txq->sze = szedata_open(internals->sze_dev);
 	if (txq->sze == NULL) {
 		RTE_LOG(ERR, PMD, "szedata_open() failed for tx queue id "
@@ -1542,6 +1555,8 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	RTE_LOG(INFO, PMD, "Initializing szedata2 device (" PCI_PRI_FMT ")\n",
 			pci_addr->domain, pci_addr->bus, pci_addr->devid,
 			pci_addr->function);
+
+	internals->dev = dev;
 
 	/* Get index of szedata2 device file and create path to device file */
 	ret = get_szedata2_index(pci_addr, &szedata2_index);
