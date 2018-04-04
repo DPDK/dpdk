@@ -96,6 +96,13 @@ New Features
   including session creation/deletion handling and translating virtio-crypto
   request into DPDK crypto operations. A sample application is also introduced.
 
+* **Added the Event Timer Adapter Library.**
+
+  The Event Timer Adapter Library extends the event-based model by introducing
+  APIs that allow applications to arm/cancel event timers that generate
+  timer expiry events. This new type of event is scheduled by an event device
+  along with existing types of events.
+
 * **Added device event monitor framework.**
 
   Added a general device event monitor framework at EAL, for device dynamic management.

@@ -11,5 +11,6 @@ headers = files('rte_eventdev.h',
 		'rte_eventdev_pmd_pci.h',
 		'rte_eventdev_pmd_vdev.h',
 		'rte_event_ring.h',
-		'rte_event_eth_rx_adapter.h')
+		'rte_event_eth_rx_adapter.h',
+		'rte_event_timer_adapter.h')
 deps += ['ring', 'ethdev', 'hash']

@@ -969,8 +969,8 @@ rte_event_dev_close(uint8_t dev_id);
 /**< The event generated from ethdev subsystem */
 #define RTE_EVENT_TYPE_CRYPTODEV        0x1
 /**< The event generated from crypodev subsystem */
-#define RTE_EVENT_TYPE_TIMERDEV         0x2
-/**< The event generated from timerdev subsystem */
+#define RTE_EVENT_TYPE_TIMER		0x2
+/**< The event generated from event timer adapter */
 #define RTE_EVENT_TYPE_CPU              0x3
 /**< The event generated from cpu for pipelining.
  * Application may use *sub_event_type* to further classify the event
