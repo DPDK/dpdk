@@ -23,6 +23,7 @@
 #include <rte_dev.h>
 
 #include "rte_eth_szedata2.h"
+#include "szedata2_logs.h"
 #include "szedata2_iobuf.h"
 
 #define RTE_ETH_SZEDATA2_MAX_RX_QUEUES 32
@@ -65,6 +66,9 @@ struct szedata2_tx_queue {
 	volatile uint64_t tx_bytes;
 	volatile uint64_t err_pkts;
 };
+
+int szedata2_logtype_init;
+int szedata2_logtype_driver;
 
 static struct ether_addr eth_addr = {
 	.addr_bytes = { 0x00, 0x11, 0x17, 0x00, 0x00, 0x00 }
@@ -291,10 +295,10 @@ eth_szedata2_rx(void *queue,
 			 * sze packet will not fit in one mbuf,
 			 * scattered mode is not enabled, drop packet
 			 */
-			RTE_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				"SZE segment %d bytes will not fit in one mbuf "
 				"(%d bytes), scattered mode is not enabled, "
-				"drop packet!!\n",
+				"drop packet!!",
 				packet_size, buf_size);
 			rte_pktmbuf_free(mbuf);
 		}
@@ -1267,23 +1271,23 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 			sizeof(struct szedata2_rx_queue),
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL) {
-		RTE_LOG(ERR, PMD, "rte_zmalloc_socket() failed for rx queue id "
-				"%" PRIu16 "!\n", rx_queue_id);
+		PMD_INIT_LOG(ERR, "rte_zmalloc_socket() failed for rx queue id "
+				"%" PRIu16 "!", rx_queue_id);
 		return -ENOMEM;
 	}
 
 	rxq->priv = internals;
 	rxq->sze = szedata_open(internals->sze_dev);
 	if (rxq->sze == NULL) {
-		RTE_LOG(ERR, PMD, "szedata_open() failed for rx queue id "
-				"%" PRIu16 "!\n", rx_queue_id);
+		PMD_INIT_LOG(ERR, "szedata_open() failed for rx queue id "
+				"%" PRIu16 "!", rx_queue_id);
 		eth_rx_queue_release(rxq);
 		return -EINVAL;
 	}
 	ret = szedata_subscribe3(rxq->sze, &rx, &tx);
 	if (ret != 0 || rx == 0) {
-		RTE_LOG(ERR, PMD, "szedata_subscribe3() failed for rx queue id "
-				"%" PRIu16 "!\n", rx_queue_id);
+		PMD_INIT_LOG(ERR, "szedata_subscribe3() failed for rx queue id "
+				"%" PRIu16 "!", rx_queue_id);
 		eth_rx_queue_release(rxq);
 		return -EINVAL;
 	}
@@ -1296,8 +1300,8 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
 
-	RTE_LOG(DEBUG, PMD, "Configured rx queue id %" PRIu16 " on socket "
-			"%u.\n", rx_queue_id, socket_id);
+	PMD_INIT_LOG(DEBUG, "Configured rx queue id %" PRIu16 " on socket "
+			"%u.", rx_queue_id, socket_id);
 
 	return 0;
 }
@@ -1324,23 +1328,23 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 			sizeof(struct szedata2_tx_queue),
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL) {
-		RTE_LOG(ERR, PMD, "rte_zmalloc_socket() failed for tx queue id "
-				"%" PRIu16 "!\n", tx_queue_id);
+		PMD_INIT_LOG(ERR, "rte_zmalloc_socket() failed for tx queue id "
+				"%" PRIu16 "!", tx_queue_id);
 		return -ENOMEM;
 	}
 
 	txq->priv = internals;
 	txq->sze = szedata_open(internals->sze_dev);
 	if (txq->sze == NULL) {
-		RTE_LOG(ERR, PMD, "szedata_open() failed for tx queue id "
-				"%" PRIu16 "!\n", tx_queue_id);
+		PMD_INIT_LOG(ERR, "szedata_open() failed for tx queue id "
+				"%" PRIu16 "!", tx_queue_id);
 		eth_tx_queue_release(txq);
 		return -EINVAL;
 	}
 	ret = szedata_subscribe3(txq->sze, &rx, &tx);
 	if (ret != 0 || tx == 0) {
-		RTE_LOG(ERR, PMD, "szedata_subscribe3() failed for tx queue id "
-				"%" PRIu16 "!\n", tx_queue_id);
+		PMD_INIT_LOG(ERR, "szedata_subscribe3() failed for tx queue id "
+				"%" PRIu16 "!", tx_queue_id);
 		eth_tx_queue_release(txq);
 		return -EINVAL;
 	}
@@ -1351,8 +1355,8 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->tx_queues[tx_queue_id] = txq;
 
-	RTE_LOG(DEBUG, PMD, "Configured tx queue id %" PRIu16 " on socket "
-			"%u.\n", tx_queue_id, socket_id);
+	PMD_INIT_LOG(DEBUG, "Configured tx queue id %" PRIu16 " on socket "
+			"%u.", tx_queue_id, socket_id);
 
 	return 0;
 }
@@ -1523,7 +1527,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	void *pci_resource_ptr = NULL;
 	int fd;
 
-	RTE_LOG(INFO, PMD, "Initializing szedata2 device (" PCI_PRI_FMT ")\n",
+	PMD_INIT_LOG(INFO, "Initializing szedata2 device (" PCI_PRI_FMT ")",
 			pci_addr->domain, pci_addr->bus, pci_addr->devid,
 			pci_addr->function);
 
@@ -1532,13 +1536,13 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	/* Get index of szedata2 device file and create path to device file */
 	ret = get_szedata2_index(pci_addr, &szedata2_index);
 	if (ret != 0) {
-		RTE_LOG(ERR, PMD, "Failed to get szedata2 device index!\n");
+		PMD_INIT_LOG(ERR, "Failed to get szedata2 device index!");
 		return -ENODEV;
 	}
 	snprintf(internals->sze_dev, PATH_MAX, SZEDATA2_DEV_PATH_FMT,
 			szedata2_index);
 
-	RTE_LOG(INFO, PMD, "SZEDATA2 path: %s\n", internals->sze_dev);
+	PMD_INIT_LOG(INFO, "SZEDATA2 path: %s", internals->sze_dev);
 
 	/*
 	 * Get number of available DMA RX and TX channels, which is maximum
@@ -1547,7 +1551,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	 */
 	szedata_temp = szedata_open(internals->sze_dev);
 	if (szedata_temp == NULL) {
-		RTE_LOG(ERR, PMD, "szedata_open(): failed to open %s",
+		PMD_INIT_LOG(ERR, "szedata_open(): failed to open %s",
 				internals->sze_dev);
 		return -EINVAL;
 	}
@@ -1557,7 +1561,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 			SZE2_DIR_TX);
 	szedata_close(szedata_temp);
 
-	RTE_LOG(INFO, PMD, "Available DMA channels RX: %u TX: %u\n",
+	PMD_INIT_LOG(INFO, "Available DMA channels RX: %u TX: %u",
 			internals->max_rx_queues, internals->max_tx_queues);
 
 	/* Set rx, tx burst functions */
@@ -1575,7 +1579,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	/* mmap pci resource0 file to rte_mem_resource structure */
 	if (pci_dev->mem_resource[PCI_RESOURCE_NUMBER].phys_addr ==
 			0) {
-		RTE_LOG(ERR, PMD, "Missing resource%u file\n",
+		PMD_INIT_LOG(ERR, "Missing resource%u file",
 				PCI_RESOURCE_NUMBER);
 		return -EINVAL;
 	}
@@ -1585,7 +1589,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 		pci_addr->devid, pci_addr->function, PCI_RESOURCE_NUMBER);
 	fd = open(rsc_filename, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, PMD, "Could not open file %s\n", rsc_filename);
+		PMD_INIT_LOG(ERR, "Could not open file %s", rsc_filename);
 		return -EINVAL;
 	}
 
@@ -1594,15 +1598,15 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 			PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	close(fd);
 	if (pci_resource_ptr == MAP_FAILED) {
-		RTE_LOG(ERR, PMD, "Could not mmap file %s (fd = %d)\n",
+		PMD_INIT_LOG(ERR, "Could not mmap file %s (fd = %d)",
 				rsc_filename, fd);
 		return -EINVAL;
 	}
 	pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr = pci_resource_ptr;
 	internals->pci_rsc = pci_rsc;
 
-	RTE_LOG(DEBUG, PMD, "resource%u phys_addr = 0x%llx len = %llu "
-			"virt addr = %llx\n", PCI_RESOURCE_NUMBER,
+	PMD_INIT_LOG(DEBUG, "resource%u phys_addr = 0x%llx len = %llu "
+			"virt addr = %llx", PCI_RESOURCE_NUMBER,
 			(unsigned long long)pci_rsc->phys_addr,
 			(unsigned long long)pci_rsc->len,
 			(unsigned long long)pci_rsc->addr);
@@ -1614,7 +1618,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct ether_addr),
 			RTE_CACHE_LINE_SIZE);
 	if (data->mac_addrs == NULL) {
-		RTE_LOG(ERR, PMD, "Could not alloc space for MAC address!\n");
+		PMD_INIT_LOG(ERR, "Could not alloc space for MAC address!");
 		munmap(pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr,
 		       pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len);
 		return -EINVAL;
@@ -1625,8 +1629,8 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	/* At initial state COMBO card is in promiscuous mode so disable it */
 	eth_promiscuous_disable(dev);
 
-	RTE_LOG(INFO, PMD, "szedata2 device ("
-			PCI_PRI_FMT ") successfully initialized\n",
+	PMD_INIT_LOG(INFO, "szedata2 device ("
+			PCI_PRI_FMT ") successfully initialized",
 			pci_addr->domain, pci_addr->bus, pci_addr->devid,
 			pci_addr->function);
 
@@ -1644,8 +1648,8 @@ rte_szedata2_eth_dev_uninit(struct rte_eth_dev *dev)
 	munmap(pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr,
 	       pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len);
 
-	RTE_LOG(INFO, PMD, "szedata2 device ("
-			PCI_PRI_FMT ") successfully uninitialized\n",
+	PMD_DRV_LOG(INFO, "szedata2 device ("
+			PCI_PRI_FMT ") successfully uninitialized",
 			pci_addr->domain, pci_addr->bus, pci_addr->devid,
 			pci_addr->function);
 
@@ -1693,3 +1697,15 @@ RTE_PMD_REGISTER_PCI(RTE_SZEDATA2_DRIVER_NAME, szedata2_eth_driver);
 RTE_PMD_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_SZEDATA2_DRIVER_NAME,
 	"* combo6core & combov3 & szedata2 & szedata2_cv3");
+
+RTE_INIT(szedata2_init_log);
+static void
+szedata2_init_log(void)
+{
+	szedata2_logtype_init = rte_log_register("pmd.net.szedata2.init");
+	if (szedata2_logtype_init >= 0)
+		rte_log_set_level(szedata2_logtype_init, RTE_LOG_NOTICE);
+	szedata2_logtype_driver = rte_log_register("pmd.net.szedata2.driver");
+	if (szedata2_logtype_driver >= 0)
+		rte_log_set_level(szedata2_logtype_driver, RTE_LOG_NOTICE);
+}
