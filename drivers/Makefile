@@ -3,18 +3,19 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+DIRS-y += common
 DIRS-y += bus
 DIRS-y += mempool
-DEPDIRS-mempool := bus
+DEPDIRS-mempool := common bus
 DIRS-y += net
-DEPDIRS-net := bus mempool
+DEPDIRS-net := common bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_BBDEV) += baseband
-DEPDIRS-baseband := bus mempool
+DEPDIRS-baseband := common bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
-DEPDIRS-crypto := bus mempool
+DEPDIRS-crypto := common bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += event
-DEPDIRS-event := bus mempool net
+DEPDIRS-event := common bus mempool net
 DIRS-$(CONFIG_RTE_LIBRTE_RAWDEV) += raw
-DEPDIRS-raw := bus mempool net event
+DEPDIRS-raw := common bus mempool net event
 
 include $(RTE_SDK)/mk/rte.subdir.mk
