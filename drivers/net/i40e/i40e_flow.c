@@ -4216,6 +4216,32 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 		}
 	}
 
+	if (conf_info->queue_region_number) {
+		for (i = 0; i < rss->num; i++) {
+			for (j = 0; j < rss_info->num; j++) {
+				if (rss->queue[i] == rss_info->queue[j])
+					break;
+			}
+			if (j == rss_info->num) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					act,
+					"no valid queues");
+				return -rte_errno;
+			}
+		}
+
+		for (i = 0; i < rss->num - 1; i++) {
+			if (rss->queue[i + 1] != rss->queue[i] + 1) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					act,
+					"no valid queues");
+				return -rte_errno;
+			}
+		}
+	}
+
 	for (n = 0; n < conf_info->queue_region_number; n++) {
 		if (conf_info->region[n].user_priority_num ||
 				conf_info->region[n].flowtype_num) {
