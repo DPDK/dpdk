@@ -13,13 +13,14 @@ libraries = [ 'compat', # just a header, used for versioning
 	'metrics', # bitrate/latency stats depends on this
 	'hash',    # efd depends on this
 	'kvargs',  # cryptodev depends on this
+	'timer',   # eventdev depends on this
 	'acl', 'bbdev', 'bitratestats', 'cfgfile',
 	'cmdline', 'cryptodev',
 	'distributor', 'efd', 'eventdev',
 	'gro', 'gso', 'ip_frag', 'jobstats',
 	'kni', 'latencystats', 'lpm', 'member',
 	'meter', 'power', 'pdump',
-	'reorder', 'sched', 'security', 'timer', 'vhost',
+	'reorder', 'sched', 'security', 'vhost',
 	# add pkt framework libs which use other libs from above
 	'port', 'table', 'pipeline',
 	# flow_classify lib depends on pkt framework table lib
