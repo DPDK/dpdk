@@ -200,6 +200,8 @@ prefetch_read_once(const volatile void *addr)
 
 #define EFSYS_OPT_TUNNEL 1
 
+#define EFSYS_OPT_FW_SUBVARIANT_AWARE 0
+
 /* ID */
 
 typedef struct __efsys_identifier_s efsys_identifier_t;
