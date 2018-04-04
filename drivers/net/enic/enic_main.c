@@ -1440,6 +1440,8 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 	/* free and reallocate RQs with the new MTU */
 	for (rq_idx = 0; rq_idx < enic->rq_count; rq_idx++) {
 		rq = &enic->rq[enic_rte_rq_idx_to_sop_idx(rq_idx)];
+		if (!rq->in_use)
+			continue;
 
 		enic_free_rq(rq);
 		rc = enic_alloc_rq(enic, rq_idx, rq->socket_id, rq->mp,
