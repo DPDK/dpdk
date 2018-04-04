@@ -369,6 +369,7 @@ Supported features
 - VLAN filtering (supported via UCSM/CIMC only)
 - Execution of application by unprivileged system users
 - IPV4, IPV6 and TCP RSS hashing
+- UDP hashing (1400 series and later adapters)
 - Scattered Rx
 - MTU update
 - SR-IOV on UCS managed servers connected to Fabric Interconnects
@@ -382,7 +383,6 @@ Known bugs and unsupported features in this release
 - VLAN based flow direction
 - Non-IPV4 flow direction
 - Setting of extended VLAN
-- UDP RSS hashing
 - MTU update only works if Scattered Rx mode is disabled
 - Maximum receive packet length is ignored if Scattered Rx mode is used
 

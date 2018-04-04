@@ -144,6 +144,11 @@ int enic_get_vnic_config(struct enic *enic)
 		enic->flow_type_rss_offloads |= ETH_RSS_IPV6_EX;
 	if (ENIC_SETTING(enic, RSSHASH_TCPIPV6_EX))
 		enic->flow_type_rss_offloads |= ETH_RSS_IPV6_TCP_EX;
+	if (vnic_dev_capable_udp_rss(enic->vdev)) {
+		enic->flow_type_rss_offloads |=
+			ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP;
+	}
+
 	/* Zero offloads if RSS is not enabled */
 	if (!ENIC_SETTING(enic, RSS))
 		enic->flow_type_rss_offloads = 0;

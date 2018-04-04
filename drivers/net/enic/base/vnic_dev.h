@@ -109,6 +109,7 @@ int vnic_dev_capable_adv_filters(struct vnic_dev *vdev);
 int vnic_dev_capable(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd);
 int vnic_dev_capable_filter_mode(struct vnic_dev *vdev, u32 *mode,
 				 u8 *filter_tags);
+int vnic_dev_capable_udp_rss(struct vnic_dev *vdev);
 int vnic_dev_asic_info(struct vnic_dev *vdev, u16 *asic_type, u16 *asic_rev);
 int vnic_dev_spec(struct vnic_dev *vdev, unsigned int offset, size_t size,
 	void *value);
