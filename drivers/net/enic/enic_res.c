@@ -76,19 +76,24 @@ int enic_get_vnic_config(struct enic *enic)
 		 ? "" : "not "));
 
 	err = vnic_dev_capable_filter_mode(enic->vdev, &enic->flow_filter_mode,
-					   &enic->filter_tags);
+					   &enic->filter_actions);
 	if (err) {
 		dev_err(enic_get_dev(enic),
 			"Error getting filter modes, %d\n", err);
 		return err;
 	}
 
-	dev_info(enic, "Flow api filter mode: %s, Filter tagging %savailable\n",
+	dev_info(enic, "Flow api filter mode: %s Actions: %s%s%s\n",
 		((enic->flow_filter_mode == FILTER_DPDK_1) ? "DPDK" :
 		((enic->flow_filter_mode == FILTER_USNIC_IP) ? "USNIC" :
 		((enic->flow_filter_mode == FILTER_IPV4_5TUPLE) ? "5TUPLE" :
 		"NONE"))),
-		((enic->filter_tags) ? "" : "not "));
+		((enic->filter_actions & FILTER_ACTION_RQ_STEERING_FLAG) ?
+		 "steer " : ""),
+		((enic->filter_actions & FILTER_ACTION_FILTER_ID_FLAG) ?
+		 "tag " : ""),
+		((enic->filter_actions & FILTER_ACTION_DROP_FLAG) ?
+		 "drop " : ""));
 
 	c->wq_desc_count =
 		min_t(u32, ENIC_MAX_WQ_DESCS,

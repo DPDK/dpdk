@@ -841,7 +841,9 @@ struct filter_action {
 
 #define FILTER_ACTION_RQ_STEERING_FLAG	(1 << 0)
 #define FILTER_ACTION_FILTER_ID_FLAG	(1 << 1)
+#define FILTER_ACTION_DROP_FLAG		(1 << 2)
 #define FILTER_ACTION_V2_ALL		(FILTER_ACTION_RQ_STEERING_FLAG \
+					 | FILTER_ACTION_DROP_FLAG \
 					 | FILTER_ACTION_FILTER_ID_FLAG)
 
 /* Version 2 of filter action must be a strict extension of struct filter_action

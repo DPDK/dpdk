@@ -485,7 +485,7 @@ int vnic_dev_capable_adv_filters(struct vnic_dev *vdev)
  *   Retrun true in filter_tags if supported
  */
 int vnic_dev_capable_filter_mode(struct vnic_dev *vdev, u32 *mode,
-				 u8 *filter_tags)
+				 u8 *filter_actions)
 {
 	u64 args[4];
 	int err;
@@ -493,14 +493,10 @@ int vnic_dev_capable_filter_mode(struct vnic_dev *vdev, u32 *mode,
 
 	err = vnic_dev_advanced_filters_cap(vdev, args, 4);
 
-	/* determine if filter tags are available */
-	if (err)
-		*filter_tags = 0;
-	if ((args[2] == FILTER_CAP_MODE_V1) &&
-	    (args[3] & FILTER_ACTION_FILTER_ID_FLAG))
-		*filter_tags = 1;
-	else
-		*filter_tags = 0;
+	/* determine supported filter actions */
+	*filter_actions = FILTER_ACTION_RQ_STEERING_FLAG; /* always available */
+	if (args[2] == FILTER_CAP_MODE_V1)
+		*filter_actions = args[3];
 
 	if (err || ((args[0] == 1) && (args[1] == 0))) {
 		/* Adv filter Command not supported or adv filters available but

@@ -247,7 +247,7 @@ Generic Flow API is supported. The baseline support is:
 
   - Attributes: ingress
   - Items: eth, ipv4, ipv6, udp, tcp, vxlan, inner eth, ipv4, ipv6, udp, tcp
-  - Actions: queue, mark, flag and void
+  - Actions: queue, mark, drop, flag and void
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
   - In total, up to 64 bytes of mask is allowed across all headers
 

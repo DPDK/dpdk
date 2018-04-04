@@ -118,7 +118,7 @@ struct enic {
 	u16 max_mtu;
 	u8 adv_filters;
 	u32 flow_filter_mode;
-	u8 filter_tags;
+	u8 filter_actions; /* HW supported actions */
 
 	unsigned int flags;
 	unsigned int priv_flags;

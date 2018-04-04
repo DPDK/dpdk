@@ -273,10 +273,18 @@ static const enum rte_flow_action_type enic_supported_actions_v1[] = {
 };
 
 /** Supported actions for newer NICs */
-static const enum rte_flow_action_type enic_supported_actions_v2[] = {
+static const enum rte_flow_action_type enic_supported_actions_v2_id[] = {
 	RTE_FLOW_ACTION_TYPE_QUEUE,
 	RTE_FLOW_ACTION_TYPE_MARK,
 	RTE_FLOW_ACTION_TYPE_FLAG,
+	RTE_FLOW_ACTION_TYPE_END,
+};
+
+static const enum rte_flow_action_type enic_supported_actions_v2_drop[] = {
+	RTE_FLOW_ACTION_TYPE_QUEUE,
+	RTE_FLOW_ACTION_TYPE_MARK,
+	RTE_FLOW_ACTION_TYPE_FLAG,
+	RTE_FLOW_ACTION_TYPE_DROP,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -286,8 +294,12 @@ static const struct enic_action_cap enic_action_cap[] = {
 		.actions = enic_supported_actions_v1,
 		.copy_fn = enic_copy_action_v1,
 	},
-	[FILTER_ACTION_V2_ALL] = {
-		.actions = enic_supported_actions_v2,
+	[FILTER_ACTION_FILTER_ID_FLAG] = {
+		.actions = enic_supported_actions_v2_id,
+		.copy_fn = enic_copy_action_v2,
+	},
+	[FILTER_ACTION_DROP_FLAG] = {
+		.actions = enic_supported_actions_v2_drop,
 		.copy_fn = enic_copy_action_v2,
 	},
 };
@@ -1021,6 +1033,10 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 			enic_action->flags |= FILTER_ACTION_FILTER_ID_FLAG;
 			break;
 		}
+		case RTE_FLOW_ACTION_TYPE_DROP: {
+			enic_action->flags |= FILTER_ACTION_DROP_FLAG;
+			break;
+		}
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			continue;
 		default:
@@ -1059,10 +1075,14 @@ enic_get_filter_cap(struct enic *enic)
 static const struct enic_action_cap *
 enic_get_action_cap(struct enic *enic)
 {
-	static const struct enic_action_cap *ea;
+	const struct enic_action_cap *ea;
+	uint8_t actions;
 
-	if (enic->filter_tags)
-		ea = &enic_action_cap[FILTER_ACTION_V2_ALL];
+	actions = enic->filter_actions;
+	if (actions & FILTER_ACTION_DROP_FLAG)
+		ea = &enic_action_cap[FILTER_ACTION_DROP_FLAG];
+	else if (actions & FILTER_ACTION_FILTER_ID_FLAG)
+		ea = &enic_action_cap[FILTER_ACTION_FILTER_ID_FLAG];
 	else
 		ea = &enic_action_cap[FILTER_ACTION_RQ_STEERING_FLAG];
 	return ea;
