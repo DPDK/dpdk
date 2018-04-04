@@ -353,6 +353,7 @@ Eventdev Timer Adapter API - EXPERIMENTAL
 M: Erik Gabriel Carrillo <erik.g.carrillo@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*timer_adapter*
+F: test/test/test_event_timer_adapter.c
 
 Raw device API - EXPERIMENTAL
 M: Shreyansh Jain <shreyansh.jain@nxp.com>

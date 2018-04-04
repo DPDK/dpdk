@@ -185,6 +185,7 @@ ifeq ($(CONFIG_RTE_LIBRTE_EVENTDEV),y)
 SRCS-y += test_eventdev.c
 SRCS-y += test_event_ring.c
 SRCS-y += test_event_eth_rx_adapter.c
+SRCS-y += test_event_timer_adapter.c
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_RAWDEV),y)
