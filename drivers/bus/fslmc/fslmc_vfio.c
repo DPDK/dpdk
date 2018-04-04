@@ -219,10 +219,7 @@ int rte_fslmc_vfio_dmamap(void)
 		dma_map.size = memseg[i].len;
 		dma_map.vaddr = memseg[i].addr_64;
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-		if (rte_eal_iova_mode() == RTE_IOVA_VA)
-			dma_map.iova = dma_map.vaddr;
-		else
-			dma_map.iova = memseg[i].iova;
+		dma_map.iova = memseg[i].iova;
 #else
 		dma_map.iova = dma_map.vaddr;
 #endif
