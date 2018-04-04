@@ -280,8 +280,6 @@ rte_event_timer_adapter_create_ext(
 struct rte_event_timer_adapter_info {
 	uint64_t min_resolution_ns;
 	/**< Minimum timer adapter resolution in ns */
-	uint64_t resolution_ns;
-	/**< Actual timer adapter resolution in ns */
 	uint64_t max_tmo_ns;
 	/**< Maximum timer timeout(expire) in ns */
 	struct rte_event_timer_adapter_conf conf;
@@ -339,6 +337,8 @@ rte_event_timer_adapter_get_info(
  *   - 0: Success, adapter started.
  *   - <0: Error code returned by the driver start function.
  *   - -EINVAL if adapter identifier invalid
+ *   - -ENOENT if software adapter but no service core mapped
+ *   - -ENOTSUP if software adapter and more than one service core mapped
  */
 int __rte_experimental
 rte_event_timer_adapter_start(
@@ -463,6 +463,59 @@ rte_event_timer_adapter_stats_get(struct rte_event_timer_adapter *adapter,
  */
 int __rte_experimental rte_event_timer_adapter_stats_reset(
 		struct rte_event_timer_adapter *adapter);
+
+/**
+ * Retrieve the service ID of the event timer adapter. If the adapter doesn't
+ * use an rte_service function, this function returns -ESRCH.
+ *
+ * @param adapter
+ *   A pointer to an event timer adapter.
+ *
+ * @param [out] service_id
+ *   A pointer to a uint32_t, to be filled in with the service id.
+ *
+ * @return
+ *   - 0: Success
+ *   - <0: Error code on failure, if the event dev doesn't use a rte_service
+ *   function, this function returns -ESRCH.
+ */
+int
+rte_event_timer_adapter_service_id_get(struct rte_event_timer_adapter *adapter,
+				       uint32_t *service_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Retrieve statistics for an event timer adapter instance.
+ *
+ * @param adapter
+ *   A pointer to an event timer adapter structure.
+ * @param[out] stats
+ *   A pointer to a structure to fill with statistics.
+ *
+ * @return
+ *   - 0: Successfully retrieved.
+ *   - <0: Failure; error code returned.
+ */
+int rte_event_timer_adapter_stats_get(struct rte_event_timer_adapter *adapter,
+				struct rte_event_timer_adapter_stats *stats);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Reset statistics for an event timer adapter instance.
+ *
+ * @param adapter
+ *   A pointer to an event timer adapter structure.
+ *
+ * @return
+ *   - 0: Successfully reset;
+ *   - <0: Failure; error code returned.
+ */
+int rte_event_timer_adapter_stats_reset(
+				struct rte_event_timer_adapter *adapter);
 
 /**
  * @warning

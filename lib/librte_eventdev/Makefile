@@ -14,7 +14,7 @@ LIBABIVER := 3
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-LDLIBS += -lrte_eal -lrte_ring -lrte_ethdev -lrte_hash
+LDLIBS += -lrte_eal -lrte_ring -lrte_ethdev -lrte_hash -lrte_mempool -lrte_timer
 
 # library source files
 SRCS-y += rte_eventdev.c
