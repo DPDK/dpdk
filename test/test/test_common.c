@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include <inttypes.h>
 #include <string.h>
 #include <math.h>
 #include <rte_common.h>
@@ -70,6 +71,9 @@ test_align(void)
 #define FAIL_ALIGN(x, i, p)\
 	{printf(x "() test failed: %u %u\n", i, p);\
 	return -1;}
+#define FAIL_ALIGN64(x, j, q)\
+	{printf(x "() test failed: %"PRIu64" %"PRIu64"\n", j, q);\
+	return -1; }
 #define ERROR_FLOOR(res, i, pow) \
 		(res % pow) || 						/* check if not aligned */ \
 		((res / pow) != (i / pow))  		/* check if correct alignment */
@@ -80,12 +84,34 @@ test_align(void)
 			val / pow != (i / pow) + 1)		/* if not aligned, hence +1 */
 
 	uint32_t i, p, val;
+	uint64_t j, q;
 
 	for (i = 1, p = 1; i <= MAX_NUM; i ++) {
 		if (rte_align32pow2(i) != p)
 			FAIL_ALIGN("rte_align32pow2", i, p);
 		if (i == p)
 			p <<= 1;
+	}
+
+	for (i = 1, p = 1; i <= MAX_NUM; i++) {
+		if (rte_align32prevpow2(i) != p)
+			FAIL_ALIGN("rte_align32prevpow2", i, p);
+		if (rte_is_power_of_2(i + 1))
+			p = i + 1;
+	}
+
+	for (j = 1, q = 1; j <= MAX_NUM ; j++) {
+		if (rte_align64pow2(j) != q)
+			FAIL_ALIGN64("rte_align64pow2", j, q);
+		if (j == q)
+			q <<= 1;
+	}
+
+	for (j = 1, q = 1; j <= MAX_NUM ; j++) {
+		if (rte_align64prevpow2(j) != q)
+			FAIL_ALIGN64("rte_align64prevpow2", j, q);
+		if (rte_is_power_of_2(j + 1))
+			q = j + 1;
 	}
 
 	for (p = 2; p <= MAX_NUM; p <<= 1) {
