@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015 Netronome Systems, Inc.
+ * Copyright (c) 2014-2018 Netronome Systems, Inc.
  * All rights reserved.
  *
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
@@ -55,7 +55,13 @@
 #include <rte_alarm.h>
 #include <rte_spinlock.h>
 
-#include "nfp_nfpu.h"
+#include "nfpcore/nfp_cpp.h"
+#include "nfpcore/nfp_nffw.h"
+#include "nfpcore/nfp_hwinfo.h"
+#include "nfpcore/nfp_mip.h"
+#include "nfpcore/nfp_rtsym.h"
+#include "nfpcore/nfp_nsp.h"
+
 #include "nfp_net_pmd.h"
 #include "nfp_net_logs.h"
 #include "nfp_net_ctrl.h"
@@ -104,12 +110,8 @@ static int nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 static int nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf);
 
-/*
- * The offset of the queue controller queues in the PCIe Target. These
- * happen to be at the same offset on the NFP6000 and the NFP3200 so
- * we use a single macro here.
- */
-#define NFP_PCIE_QUEUE(_q)	(0x800 * ((_q) & 0xff))
+/* The offset of the queue controller queues in the PCIe Target */
+#define NFP_PCIE_QUEUE(_q) (0x80000 + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & 0xff)))
 
 /* Maximum value which can be added to a queue with one transaction */
 #define NFP_QCP_MAX_ADD	0x7f
@@ -574,47 +576,29 @@ nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 #define ETH_ADDR_LEN	6
 
 static void
-nfp_eth_copy_mac_reverse(uint8_t *dst, const uint8_t *src)
+nfp_eth_copy_mac(uint8_t *dst, const uint8_t *src)
 {
 	int i;
 
 	for (i = 0; i < ETH_ADDR_LEN; i++)
-		dst[ETH_ADDR_LEN - i - 1] = src[i];
+		dst[i] = src[i];
 }
 
 static int
 nfp_net_pf_read_mac(struct nfp_net_hw *hw, int port)
 {
-	union eth_table_entry *entry;
-	int idx, i;
+	struct nfp_eth_table *nfp_eth_table;
 
-	idx = port;
-	entry = hw->eth_table;
-
-	/* Reading NFP ethernet table obtained before */
-	for (i = 0; i < NSP_ETH_MAX_COUNT; i++) {
-		if (!(entry->port & NSP_ETH_PORT_LANES_MASK)) {
-			/* port not in use */
-			entry++;
-			continue;
-		}
-		if (idx == 0)
-			break;
-		idx--;
-		entry++;
-	}
-
-	if (i == NSP_ETH_MAX_COUNT)
-		return -EINVAL;
-
+	nfp_eth_table = nfp_eth_read_ports(hw->cpp);
 	/*
 	 * hw points to port0 private data. We need hw now pointing to
 	 * right port.
 	 */
 	hw += port;
-	nfp_eth_copy_mac_reverse((uint8_t *)&hw->mac_addr,
-				 (uint8_t *)&entry->mac_addr);
+	nfp_eth_copy_mac((uint8_t *)&hw->mac_addr,
+			 (uint8_t *)&nfp_eth_table->ports[port].mac_addr);
 
+	free(nfp_eth_table);
 	return 0;
 }
 
@@ -780,7 +764,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	if (hw->is_pf)
 		/* Configure the physical port up */
-		nfp_nsp_eth_config(hw->nspu_desc, hw->pf_port_idx, 1);
+		nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 1);
 
 	hw->ctrl = new_ctrl;
 
@@ -831,7 +815,7 @@ nfp_net_stop(struct rte_eth_dev *dev)
 
 	if (hw->is_pf)
 		/* Configure the physical port down */
-		nfp_nsp_eth_config(hw->nspu_desc, hw->pf_port_idx, 0);
+		nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 0);
 }
 
 /* Reset and stop device. The device can not be restarted. */
@@ -2678,10 +2662,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	uint64_t tx_bar_off = 0, rx_bar_off = 0;
 	uint32_t start_q;
 	int stride = 4;
-
-	nspu_desc_t *nspu_desc = NULL;
-	uint64_t bar_offset;
 	int port = 0;
+	int err;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2702,7 +2684,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 		/* This points to the specific port private data */
 		hw = &hwport0[port];
-		hw->pf_port_idx = port;
 	} else {
 		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 		hwport0 = 0;
@@ -2736,19 +2717,14 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	}
 
 	if (hw->is_pf && port == 0) {
-		nspu_desc = hw->nspu_desc;
-
-		if (nfp_nsp_map_ctrl_bar(nspu_desc, &bar_offset) != 0) {
-			/*
-			 * A firmware should be there after PF probe so this
-			 * should not happen.
-			 */
-			RTE_LOG(ERR, PMD, "PF BAR symbol resolution failed\n");
-			return -ENODEV;
+		hw->ctrl_bar = nfp_rtsym_map(hw->sym_tbl, "_pf0_net_bar0",
+					     hw->total_ports * 32768,
+					     &hw->ctrl_area);
+		if (!hw->ctrl_bar) {
+			printf("nfp_rtsym_map fails for _pf0_net_ctrl_bar\n");
+			return -EIO;
 		}
 
-		/* vNIC PF control BAR is a subset of PF PCI device BAR */
-		hw->ctrl_bar += bar_offset;
 		PMD_INIT_LOG(DEBUG, "ctrl bar: %p\n", hw->ctrl_bar);
 	}
 
@@ -2772,13 +2748,14 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	case PCI_DEVICE_ID_NFP6000_PF_NIC:
 	case PCI_DEVICE_ID_NFP6000_VF_NIC:
 		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
-		tx_bar_off = NFP_PCIE_QUEUE(start_q);
+		tx_bar_off = start_q * NFP_QCP_QUEUE_ADDR_SZ;
 		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
-		rx_bar_off = NFP_PCIE_QUEUE(start_q);
+		rx_bar_off = start_q * NFP_QCP_QUEUE_ADDR_SZ;
 		break;
 	default:
 		RTE_LOG(ERR, PMD, "nfp_net: no device ID matching\n");
-		return -ENODEV;
+		err = -ENODEV;
+		goto dev_err_ctrl_map;
 	}
 
 	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "\n", tx_bar_off);
@@ -2786,17 +2763,19 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	if (hw->is_pf && port == 0) {
 		/* configure access to tx/rx vNIC BARs */
-		nfp_nsp_map_queues_bar(nspu_desc, &bar_offset);
-		PMD_INIT_LOG(DEBUG, "tx/rx bar_offset: %" PRIx64 "\n",
-				    bar_offset);
-		hwport0->hw_queues = (uint8_t *)pci_dev->mem_resource[0].addr;
+		hwport0->hw_queues = nfp_cpp_map_area(hw->cpp, 0, 0,
+						      NFP_PCIE_QUEUE(0),
+						      NFP_QCP_QUEUE_AREA_SZ,
+						      &hw->hwqueues_area);
 
-		/* vNIC PF tx/rx BARs are a subset of PF PCI device */
-		hwport0->hw_queues += bar_offset;
+		if (!hwport0->hw_queues) {
+			printf("nfp_rtsym_map fails for net.qc\n");
+			err = -EIO;
+			goto dev_err_ctrl_map;
+		}
 
-		/* Lets seize the chance to read eth table from hw */
-		if (nfp_nsp_eth_read_table(nspu_desc, &hw->eth_table))
-			return -ENODEV;
+		PMD_INIT_LOG(DEBUG, "tx/rx bar address: 0x%p\n",
+				    hwport0->hw_queues);
 	}
 
 	if (hw->is_pf) {
@@ -2856,7 +2835,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto dev_err_queues_map;
 	}
 
 	if (hw->is_pf) {
@@ -2867,6 +2847,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	}
 
 	if (!is_valid_assigned_ether_addr((struct ether_addr *)&hw->mac_addr)) {
+		PMD_INIT_LOG(INFO, "Using random mac address for port %d\n",
+				   port);
 		/* Using random mac addresses for VFs */
 		eth_random_addr(&hw->mac_addr[0]);
 		nfp_net_write_mac(hw, (uint8_t *)&hw->mac_addr);
@@ -2895,11 +2877,19 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	nfp_net_stats_reset(eth_dev);
 
 	return 0;
+
+dev_err_queues_map:
+		nfp_cpp_area_free(hw->hwqueues_area);
+dev_err_ctrl_map:
+		nfp_cpp_area_free(hw->ctrl_area);
+
+	return err;
 }
 
 static int
 nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
-		  nfpu_desc_t *nfpu_desc, void **priv)
+		  struct nfp_cpp *cpp, struct nfp_hwinfo *hwinfo,
+		  int phys_port, struct nfp_rtsym_table *sym_tbl, void **priv)
 {
 	struct rte_eth_dev *eth_dev;
 	struct nfp_net_hw *hw;
@@ -2937,11 +2927,15 @@ nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
 	 * Then dev_private is adjusted per port.
 	 */
 	hw = (struct nfp_net_hw *)(eth_dev->data->dev_private) + port;
-	hw->nspu_desc = nfpu_desc->nspu;
-	hw->nfpu_desc = nfpu_desc;
+	hw->cpp = cpp;
+	hw->hwinfo = hwinfo;
+	hw->sym_tbl = sym_tbl;
+	hw->pf_port_idx = phys_port;
 	hw->is_pf = 1;
 	if (ports > 1)
 		hw->pf_multiport_enabled = 1;
+
+	hw->total_ports = ports;
 
 	eth_dev->device = &dev->device;
 	rte_eth_copy_pci_info(eth_dev, dev);
@@ -2956,55 +2950,191 @@ nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
 	return ret;
 }
 
+#define DEFAULT_FW_PATH       "/lib/firmware/netronome"
+
+static int
+nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
+{
+	struct nfp_cpp *cpp = nsp->cpp;
+	int fw_f;
+	char *fw_buf;
+	char fw_name[100];
+	char serial[100];
+	struct stat file_stat;
+	off_t fsize, bytes;
+
+	/* Looking for firmware file in order of priority */
+
+	/* First try to find a firmware image specific for this device */
+	sprintf(serial, "serial-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
+		cpp->serial[0], cpp->serial[1], cpp->serial[2], cpp->serial[3],
+		cpp->serial[4], cpp->serial[5], cpp->interface >> 8,
+		cpp->interface & 0xff);
+
+	sprintf(fw_name, "%s/%s.nffw", DEFAULT_FW_PATH, serial);
+
+	RTE_LOG(DEBUG, PMD, "Trying with fw file: %s\n", fw_name);
+	fw_f = open(fw_name, O_RDONLY);
+	if (fw_f > 0)
+		goto read_fw;
+
+	/* Then try the PCI name */
+	sprintf(fw_name, "%s/pci-%s.nffw", DEFAULT_FW_PATH, dev->device.name);
+
+	RTE_LOG(DEBUG, PMD, "Trying with fw file: %s\n", fw_name);
+	fw_f = open(fw_name, O_RDONLY);
+	if (fw_f > 0)
+		goto read_fw;
+
+	/* Finally try the card type and media */
+	sprintf(fw_name, "%s/%s", DEFAULT_FW_PATH, card);
+	RTE_LOG(DEBUG, PMD, "Trying with fw file: %s\n", fw_name);
+	fw_f = open(fw_name, O_RDONLY);
+	if (fw_f < 0) {
+		RTE_LOG(INFO, PMD, "Firmware file %s not found.", fw_name);
+		return -ENOENT;
+	}
+
+read_fw:
+	if (fstat(fw_f, &file_stat) < 0) {
+		RTE_LOG(INFO, PMD, "Firmware file %s size is unknown", fw_name);
+		close(fw_f);
+		return -ENOENT;
+	}
+
+	fsize = file_stat.st_size;
+	RTE_LOG(INFO, PMD, "Firmware file found at %s with size: %" PRIu64 "\n",
+			    fw_name, (uint64_t)fsize);
+
+	fw_buf = malloc((size_t)fsize);
+	if (!fw_buf) {
+		RTE_LOG(INFO, PMD, "malloc failed for fw buffer");
+		close(fw_f);
+		return -ENOMEM;
+	}
+	memset(fw_buf, 0, fsize);
+
+	bytes = read(fw_f, fw_buf, fsize);
+	if (bytes != fsize) {
+		RTE_LOG(INFO, PMD, "Reading fw to buffer failed.\n"
+				   "Just %" PRIu64 " of %" PRIu64 " bytes read",
+				   (uint64_t)bytes, (uint64_t)fsize);
+		free(fw_buf);
+		close(fw_f);
+		return -EIO;
+	}
+
+	RTE_LOG(INFO, PMD, "Uploading the firmware ...");
+	nfp_nsp_load_fw(nsp, fw_buf, bytes);
+	RTE_LOG(INFO, PMD, "Done");
+
+	free(fw_buf);
+	close(fw_f);
+
+	return 0;
+}
+
+static int
+nfp_fw_setup(struct rte_pci_device *dev, struct nfp_cpp *cpp,
+	     struct nfp_eth_table *nfp_eth_table, struct nfp_hwinfo *hwinfo)
+{
+	struct nfp_nsp *nsp;
+	const char *nfp_fw_model;
+	char card_desc[100];
+	int err = 0;
+
+	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
+
+	if (nfp_fw_model) {
+		RTE_LOG(INFO, PMD, "firmware model found: %s\n", nfp_fw_model);
+	} else {
+		RTE_LOG(ERR, PMD, "firmware model NOT found\n");
+		return -EIO;
+	}
+
+	if (nfp_eth_table->count == 0 || nfp_eth_table->count > 8) {
+		RTE_LOG(ERR, PMD, "NFP ethernet table reports wrong ports: %u\n",
+		       nfp_eth_table->count);
+		return -EIO;
+	}
+
+	RTE_LOG(INFO, PMD, "NFP ethernet port table reports %u ports\n",
+			   nfp_eth_table->count);
+
+	RTE_LOG(INFO, PMD, "Port speed: %u\n", nfp_eth_table->ports[0].speed);
+
+	sprintf(card_desc, "nic_%s_%dx%d.nffw", nfp_fw_model,
+		nfp_eth_table->count, nfp_eth_table->ports[0].speed / 1000);
+
+	nsp = nfp_nsp_open(cpp);
+	if (!nsp) {
+		RTE_LOG(ERR, PMD, "NFP error when obtaining NSP handle\n");
+		return -EIO;
+	}
+
+	nfp_nsp_device_soft_reset(nsp);
+	err = nfp_fw_upload(dev, nsp, card_desc);
+
+	nfp_nsp_close(nsp);
+	return err;
+}
+
 static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			    struct rte_pci_device *dev)
 {
-	nfpu_desc_t *nfpu_desc;
-	nspu_desc_t *nspu_desc;
-	uint64_t offset_symbol;
-	uint8_t *bar_offset;
-	int major, minor;
+	struct nfp_cpp *cpp;
+	struct nfp_hwinfo *hwinfo;
+	struct nfp_rtsym_table *sym_tbl;
+	struct nfp_eth_table *nfp_eth_table = NULL;
 	int total_ports;
 	void *priv = 0;
 	int ret = -ENODEV;
+	int err;
 	int i;
 
 	if (!dev)
 		return ret;
 
-	nfpu_desc = rte_malloc("nfp nfpu", sizeof(nfpu_desc_t), 0);
-	if (!nfpu_desc)
-		return -ENOMEM;
-
-	if (nfpu_open(dev, nfpu_desc, 0) < 0) {
-		RTE_LOG(ERR, PMD,
-			"nfpu_open failed\n");
-		goto nfpu_error;
-	}
-
-	nspu_desc = nfpu_desc->nspu;
-
-
-	/* Check NSP ABI version */
-	if (nfp_nsp_get_abi_version(nspu_desc, &major, &minor) < 0) {
-		RTE_LOG(INFO, PMD, "NFP NSP not present\n");
-		goto error;
-	}
-	PMD_INIT_LOG(INFO, "nspu ABI version: %d.%d\n", major, minor);
-
-	if ((major == 0) && (minor < 20)) {
-		RTE_LOG(INFO, PMD, "NFP NSP ABI version too old. Required 0.20 or higher\n");
+	cpp = nfp_cpp_from_device_name(dev->device.name);
+	if (!cpp) {
+		RTE_LOG(ERR, PMD, "A CPP handle can not be obtained");
+		ret = -EIO;
 		goto error;
 	}
 
-	ret = nfp_nsp_fw_setup(nspu_desc, "nfd_cfg_pf0_num_ports",
-			       &offset_symbol);
-	if (ret)
-		goto error;
+	hwinfo = nfp_hwinfo_read(cpp);
+	if (!hwinfo) {
+		RTE_LOG(ERR, PMD, "Error reading hwinfo table");
+		return -EIO;
+	}
 
-	bar_offset = (uint8_t *)dev->mem_resource[0].addr;
-	bar_offset += offset_symbol;
-	total_ports = (uint32_t)*bar_offset;
+	nfp_eth_table = nfp_eth_read_ports(cpp);
+	if (!nfp_eth_table) {
+		RTE_LOG(ERR, PMD, "Error reading NFP ethernet table\n");
+		return -EIO;
+	}
+
+	if (nfp_fw_setup(dev, cpp, nfp_eth_table, hwinfo)) {
+		RTE_LOG(INFO, PMD, "Error when uploading firmware\n");
+		ret = -EIO;
+		goto error;
+	}
+
+	/* Now the symbol table should be there */
+	sym_tbl = nfp_rtsym_table_read(cpp);
+	if (!sym_tbl) {
+		RTE_LOG(ERR, PMD, "Something is wrong with the firmware"
+				" symbol table");
+		ret = -EIO;
+		goto error;
+	}
+
+	total_ports = nfp_rtsym_read_le(sym_tbl, "nfd_cfg_pf0_num_ports", &err);
+	if (total_ports != (int)nfp_eth_table->count) {
+		RTE_LOG(ERR, PMD, "Inconsistent number of ports\n");
+		ret = -EIO;
+		goto error;
+	}
 	PMD_INIT_LOG(INFO, "Total pf ports: %d\n", total_ports);
 
 	if (total_ports <= 0 || total_ports > 8) {
@@ -3014,18 +3144,15 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 
 	for (i = 0; i < total_ports; i++) {
-		ret = nfp_pf_create_dev(dev, i, total_ports, nfpu_desc, &priv);
+		ret = nfp_pf_create_dev(dev, i, total_ports, cpp, hwinfo,
+					nfp_eth_table->ports[i].index,
+					sym_tbl, &priv);
 		if (ret)
-			goto error;
+			break;
 	}
 
-	return 0;
-
 error:
-	nfpu_close(nfpu_desc);
-nfpu_error:
-	rte_free(nfpu_desc);
-
+	free(nfp_eth_table);
 	return ret;
 }
 
@@ -3073,8 +3200,19 @@ static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
 	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
 		port = get_pf_port_number(eth_dev->data->name);
+		/*
+		 * hotplug is not possible with multiport PF although freeing
+		 * data structures can be done for first port.
+		 */
+		if (port != 0)
+			return -ENOTSUP;
 		hwport0 = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 		hw = &hwport0[port];
+		nfp_cpp_area_free(hw->ctrl_area);
+		nfp_cpp_area_free(hw->hwqueues_area);
+		free(hw->hwinfo);
+		free(hw->sym_tbl);
+		nfp_cpp_free(hw->cpp);
 	} else {
 		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	}

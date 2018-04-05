@@ -20,11 +20,24 @@ EXPORT_MAP := rte_pmd_nfp_version.map
 
 LIBABIVER := 1
 
+VPATH += $(SRCDIR)/nfpcore
+
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_cppcore.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_cpp_pcie_ops.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_mutex.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_resource.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_crc.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_mip.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_nffw.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_hwinfo.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_rtsym.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_nsp.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_nsp_cmds.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_nsp_eth.c
+
 #
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_net.c
-SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_nfpu.c
-SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_nspu.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

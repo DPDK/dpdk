@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015 Netronome Systems, Inc.
+ * Copyright (c) 2014-2018 Netronome Systems, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -63,6 +63,7 @@ struct nfp_net_adapter;
 #define NFP_NET_CRTL_BAR        0
 #define NFP_NET_TX_BAR          2
 #define NFP_NET_RX_BAR          2
+#define NFP_QCP_QUEUE_AREA_SZ			0x80000
 
 /* Macros for accessing the Queue Controller Peripheral 'CSRs' */
 #define NFP_QCP_QUEUE_OFF(_x)                 ((_x) * 0x800)
@@ -430,20 +431,21 @@ struct nfp_net_hw {
 	/* Records starting point for counters */
 	struct rte_eth_stats eth_stats_base;
 
-#ifdef NFP_NET_LIBNFP
 	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
-	struct nfp_cpp_area *tx_area;
-	struct nfp_cpp_area *rx_area;
+	struct nfp_cpp_area *hwqueues_area;
 	struct nfp_cpp_area *msix_area;
-#endif
+
 	uint8_t *hw_queues;
 	uint8_t is_pf;
 	uint8_t pf_port_idx;
 	uint8_t pf_multiport_enabled;
+	uint8_t total_ports;
+
 	union eth_table_entry *eth_table;
-	nspu_desc_t *nspu_desc;
-	nfpu_desc_t *nfpu_desc;
+
+	struct nfp_hwinfo *hwinfo;
+	struct nfp_rtsym_table *sym_tbl;
 };
 
 struct nfp_net_adapter {
