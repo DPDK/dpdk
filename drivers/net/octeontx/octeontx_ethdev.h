@@ -28,6 +28,9 @@
 #define OCTEONTX_MAX_BGX_PORTS			4
 #define OCTEONTX_MAX_LMAC_PER_BGX		4
 
+#define OCTEONTX_RX_OFFLOADS			DEV_RX_OFFLOAD_CRC_STRIP
+#define OCTEONTX_TX_OFFLOADS			DEV_TX_OFFLOAD_MT_LOCKFREE
+
 static inline struct octeontx_nic *
 octeontx_pmd_priv(struct rte_eth_dev *dev)
 {
