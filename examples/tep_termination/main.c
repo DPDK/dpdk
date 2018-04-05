@@ -1156,7 +1156,7 @@ main(int argc, char *argv[])
 	nb_switching_cores = rte_lcore_count()-1;
 
 	/* Get the number of physical ports. */
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 
 	/*
 	 * Update the global var NB_PORTS and global array PORTS

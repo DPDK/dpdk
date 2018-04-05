@@ -320,7 +320,7 @@ main(int argc, char *argv[])
 	if (parse_app_args(argc, argv) < 0)
 		rte_exit(EXIT_FAILURE, "Invalid command-line arguments\n");
 
-	if (rte_eth_dev_count() == 0)
+	if (rte_eth_dev_count_avail() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
 	rx_ring = rte_ring_lookup(get_rx_queue_name(node_id));

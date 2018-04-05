@@ -535,6 +535,12 @@ rte_eth_dev_get_sec_ctx(uint16_t port_id)
 uint16_t
 rte_eth_dev_count(void)
 {
+	return rte_eth_dev_count_avail();
+}
+
+uint16_t
+rte_eth_dev_count_avail(void)
+{
 	uint16_t p;
 	uint16_t count;
 
@@ -542,6 +548,18 @@ rte_eth_dev_count(void)
 
 	RTE_ETH_FOREACH_DEV(p)
 		count++;
+
+	return count;
+}
+
+uint16_t
+rte_eth_dev_count_total(void)
+{
+	uint16_t port, count = 0;
+
+	for (port = 0; port < RTE_MAX_ETHPORTS; port++)
+		if (rte_eth_devices[port].state != RTE_ETH_DEV_UNUSED)
+			count++;
 
 	return count;
 }
@@ -601,7 +619,7 @@ int
 rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
 {
 	int ret = -1;
-	int current = rte_eth_dev_count();
+	int current = rte_eth_dev_count_total();
 	char *name = NULL;
 	char *args = NULL;
 
@@ -619,7 +637,7 @@ rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
 		goto err;
 
 	/* no point looking at the port count if no port exists */
-	if (!rte_eth_dev_count()) {
+	if (!rte_eth_dev_count_total()) {
 		ethdev_log(ERR, "No port found for device (%s)", name);
 		ret = -1;
 		goto err;
@@ -627,8 +645,9 @@ rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
 
 	/* if nothing happened, there is a bug here, since some driver told us
 	 * it did attach a device, but did not create a port.
+	 * FIXME: race condition in case of plug-out of another device
 	 */
-	if (current == rte_eth_dev_count()) {
+	if (current == rte_eth_dev_count_total()) {
 		ret = -1;
 		goto err;
 	}

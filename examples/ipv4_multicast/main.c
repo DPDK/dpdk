@@ -674,7 +674,7 @@ main(int argc, char **argv)
 	if (clone_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init clone mbuf pool\n");
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No physical ports!\n");
 	if (nb_ports > MAX_PORTS)

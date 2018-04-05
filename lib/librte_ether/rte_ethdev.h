@@ -1385,7 +1385,30 @@ int __rte_experimental rte_eth_dev_owner_get(const uint16_t port_id,
  * @return
  *   - The total number of usable Ethernet devices.
  */
+__rte_deprecated
 uint16_t rte_eth_dev_count(void);
+
+/**
+ * Get the number of ports which are usable for the application.
+ *
+ * These devices must be iterated by using the macro
+ * ``RTE_ETH_FOREACH_DEV`` or ``RTE_ETH_FOREACH_DEV_OWNED_BY``
+ * to deal with non-contiguous ranges of devices.
+ *
+ * @return
+ *   The count of available Ethernet devices.
+ */
+uint16_t __rte_experimental rte_eth_dev_count_avail(void);
+
+/**
+ * Get the total number of ports which are allocated.
+ *
+ * Some devices may not be available for the application.
+ *
+ * @return
+ *   The total count of Ethernet devices.
+ */
+uint16_t __rte_experimental rte_eth_dev_count_total(void);
 
 /**
  * Attach a new Ethernet device specified by arguments.

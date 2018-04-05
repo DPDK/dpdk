@@ -10,3 +10,5 @@ allow_experimental_apis = true
 sources = files(
 	'basicfwd.c'
 )
+
+allow_experimental_apis = true

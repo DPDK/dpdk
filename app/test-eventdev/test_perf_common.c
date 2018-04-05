@@ -700,7 +700,7 @@ perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 			opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR)
 		return 0;
 
-	if (!rte_eth_dev_count()) {
+	if (!rte_eth_dev_count_avail()) {
 		evt_err("No ethernet ports found.");
 		return -ENODEV;
 	}

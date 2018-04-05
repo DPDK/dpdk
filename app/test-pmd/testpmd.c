@@ -1916,7 +1916,7 @@ attach_port(char *identifier)
 	reconfig(pi, socket_id);
 	rte_eth_promiscuous_enable(pi);
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 
 	ports[pi].port_status = RTE_PORT_STOPPED;
 
@@ -1944,7 +1944,7 @@ detach_port(portid_t port_id)
 		return;
 	}
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 
 	printf("Port '%s' is detached. Now total ports is %d\n",
 			name, nb_ports);
@@ -2585,7 +2585,7 @@ main(int argc, char** argv)
 	rte_pdump_init(NULL);
 #endif
 
-	nb_ports = (portid_t) rte_eth_dev_count();
+	nb_ports = (portid_t) rte_eth_dev_count_avail();
 	if (nb_ports == 0)
 		TESTPMD_LOG(WARNING, "No probed ethernet devices\n");
 

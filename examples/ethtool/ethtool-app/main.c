@@ -251,7 +251,7 @@ int main(int argc, char **argv)
 	if (cnt_args_parsed < 0)
 		rte_exit(EXIT_FAILURE, "rte_eal_init(): Failed");
 
-	cnt_ports = rte_eth_dev_count();
+	cnt_ports = rte_eth_dev_count_avail();
 	printf("Number of NICs: %i\n", cnt_ports);
 	if (cnt_ports == 0)
 		rte_exit(EXIT_FAILURE, "No available NIC ports!\n");

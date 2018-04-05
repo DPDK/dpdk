@@ -418,7 +418,7 @@ main(int argc, char **argv)
 	argv += ret;
 
 	/* determine the NIC devices available */
-	if (rte_eth_dev_count() == 0)
+	if (rte_eth_dev_count_avail() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
 	/* parse application arguments (those after the EAL ones) */

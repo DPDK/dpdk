@@ -429,7 +429,7 @@ int
 main(int argc, char **argv)
 {
 	struct worker_data *worker_data;
-	unsigned int num_ports;
+	uint16_t num_ports;
 	int lcore_id;
 	int err;
 
@@ -451,7 +451,7 @@ main(int argc, char **argv)
 	/* Parse cli options*/
 	parse_app_args(argc, argv);
 
-	num_ports = rte_eth_dev_count();
+	num_ports = rte_eth_dev_count_avail();
 	if (num_ports == 0)
 		rte_panic("No ethernet ports found\n");
 

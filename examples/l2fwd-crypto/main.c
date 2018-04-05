@@ -2311,7 +2311,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 {
 	uint16_t last_portid = 0, portid;
 	unsigned enabled_portcount = 0;
-	unsigned nb_ports = rte_eth_dev_count();
+	unsigned nb_ports = rte_eth_dev_count_avail();
 
 	if (nb_ports == 0) {
 		printf("No Ethernet ports - bye\n");

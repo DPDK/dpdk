@@ -279,7 +279,7 @@ evt_dump_producer_type(struct evt_options *opt)
 	case EVT_PROD_TYPE_ETH_RX_ADPTR:
 		snprintf(name, EVT_PROD_MAX_NAME_LEN,
 				"Ethdev Rx Adapter producers");
-		evt_dump("nb_ethdev", "%d", rte_eth_dev_count());
+		evt_dump("nb_ethdev", "%d", rte_eth_dev_count_avail());
 		break;
 	case EVT_PROD_TYPE_EVENT_TIMER_ADPTR:
 		if (opt->timdev_use_burst)

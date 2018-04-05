@@ -9,3 +9,4 @@
 sources = files(
 	'main.c',
 )
+allow_experimental_apis = true

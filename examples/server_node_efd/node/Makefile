@@ -14,6 +14,7 @@ APP = node
 # all source are stored in SRCS-y
 SRCS-y := node.c
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS) -O3
 CFLAGS += -I$(SRCDIR)/../shared
 

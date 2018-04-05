@@ -941,7 +941,7 @@ main(int argc, char **argv)
 	for (i = 0; i < RTE_MAX_LCORE; i++)
 		lcore_resource[i].lcore_id = i;
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 

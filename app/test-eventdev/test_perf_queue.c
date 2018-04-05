@@ -11,7 +11,7 @@ perf_queue_nb_event_queues(struct evt_options *opt)
 {
 	/* nb_queues = number of producers * number of stages */
 	uint8_t nb_prod = opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ?
-		rte_eth_dev_count() : evt_nr_active_lcores(opt->plcores);
+		rte_eth_dev_count_avail() : evt_nr_active_lcores(opt->plcores);
 	return nb_prod * opt->nb_stages;
 }
 

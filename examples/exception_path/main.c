@@ -559,7 +559,7 @@ main(int argc, char** argv)
 	}
 
 	/* Get number of ports found in scan */
-	nb_sys_ports = rte_eth_dev_count();
+	nb_sys_ports = rte_eth_dev_count_avail();
 	if (nb_sys_ports == 0)
 		FATAL_ERROR("No supported Ethernet device found");
 	/* Find highest port set in portmask */

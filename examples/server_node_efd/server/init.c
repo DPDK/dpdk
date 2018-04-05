@@ -310,7 +310,7 @@ init(int argc, char *argv[])
 	argv += retval;
 
 	/* get total number of ports */
-	total_ports = rte_eth_dev_count();
+	total_ports = rte_eth_dev_count_avail();
 
 	/* set up array for port data */
 	mz = rte_memzone_reserve(MZ_SHARED_INFO, sizeof(*info),

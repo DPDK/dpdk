@@ -399,7 +399,7 @@ test_pmd_ring(void)
 	int port, cmdl_port0 = -1;
 	uint8_t nb_ports;
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	printf("nb_ports=%d\n", (int)nb_ports);
 
 	/*  create the rings and eth_rings in the test code.

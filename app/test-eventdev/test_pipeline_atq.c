@@ -12,7 +12,7 @@ pipeline_atq_nb_event_queues(struct evt_options *opt)
 {
 	RTE_SET_USED(opt);
 
-	return rte_eth_dev_count();
+	return rte_eth_dev_count_avail();
 }
 
 static int
@@ -324,7 +324,7 @@ pipeline_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	uint8_t nb_worker_queues = 0;
 
 	nb_ports = evt_nr_active_lcores(opt->wlcores);
-	nb_queues = rte_eth_dev_count();
+	nb_queues = rte_eth_dev_count_avail();
 
 	/* One extra port and queueu for Tx service */
 	if (t->mt_unsafe) {

@@ -206,6 +206,8 @@ DPDK_18.02 {
 EXPERIMENTAL {
 	global:
 
+	rte_eth_dev_count_avail;
+	rte_eth_dev_count_total;
 	rte_eth_dev_is_removed;
 	rte_eth_dev_owner_delete;
 	rte_eth_dev_owner_get;
@@ -228,4 +230,4 @@ EXPERIMENTAL {
 	rte_mtr_stats_read;
 	rte_mtr_stats_update;
 
-} DPDK_17.11;
+} DPDK_18.02;

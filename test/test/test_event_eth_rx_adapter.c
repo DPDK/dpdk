@@ -164,7 +164,7 @@ testsuite_setup(void)
 	 * so rte_eth_dev_start invokes rte_event_dev_start internally, so
 	 * call init_ports after rte_event_dev_configure
 	 */
-	err = init_ports(rte_eth_dev_count());
+	err = init_ports(rte_eth_dev_count_total());
 	TEST_ASSERT(err == 0, "Port initialization failed err %d\n", err);
 
 	err = rte_event_eth_rx_adapter_caps_get(TEST_DEV_ID, TEST_ETHDEV_ID,
@@ -273,7 +273,7 @@ adapter_queue_add_del(void)
 	queue_config.servicing_weight = 1;
 
 	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
-						rte_eth_dev_count(),
+						rte_eth_dev_count_total(),
 						-1, &queue_config);
 	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
 

@@ -430,7 +430,7 @@ rx_thread(struct rte_ring *ring_out)
 static int
 worker_thread(void *args_ptr)
 {
-	const uint8_t nb_ports = rte_eth_dev_count();
+	const uint16_t nb_ports = rte_eth_dev_count_avail();
 	uint16_t i, ret = 0;
 	uint16_t burst_size = 0;
 	struct worker_thread_args *args;
@@ -644,7 +644,7 @@ main(int argc, char **argv)
 				"1 lcore for packet TX\n"
 				"and at least 1 lcore for worker threads\n");
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "Error: no ethernet ports detected\n");
 	if (nb_ports != 1 && (nb_ports & 1))

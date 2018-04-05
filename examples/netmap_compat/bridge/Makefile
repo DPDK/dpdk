@@ -27,6 +27,7 @@ VPATH := $(SRCDIR)/../lib
 SRCS-y := bridge.c
 SRCS-y += compat_netmap.c
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3 -I$(SRCDIR)/../lib -I$(SRCDIR)/../netmap
 CFLAGS += $(WERROR_FLAGS)
 

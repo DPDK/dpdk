@@ -112,7 +112,7 @@ void configure_eth_port(uint16_t port_id)
 void
 init_dpdk(void)
 {
-	if (rte_eth_dev_count() < 2)
+	if (rte_eth_dev_count_avail() < 2)
 		rte_exit(EXIT_FAILURE, "Not enough ethernet port available\n");
 }
 

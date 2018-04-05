@@ -193,7 +193,7 @@ struct lcore_params {
 static int
 lcore_rx(struct lcore_params *p)
 {
-	const uint16_t nb_ports = rte_eth_dev_count();
+	const uint16_t nb_ports = rte_eth_dev_count_avail();
 	const int socket_id = rte_socket_id();
 	uint16_t port;
 	struct rte_mbuf *bufs[BURST_SIZE*2];
@@ -542,7 +542,7 @@ lcore_worker(struct lcore_params *p)
 	 * for single port, xor_val will be zero so we won't modify the output
 	 * port, otherwise we send traffic from 0 to 1, 2 to 3, and vice versa
 	 */
-	const unsigned xor_val = (rte_eth_dev_count() > 1);
+	const unsigned xor_val = (rte_eth_dev_count_avail() > 1);
 	struct rte_mbuf *buf[8] __rte_cache_aligned;
 
 	for (i = 0; i < 8; i++)
@@ -678,7 +678,7 @@ main(int argc, char *argv[])
 				"1 lcore for packet TX\n"
 				"and at least 1 lcore for worker threads\n");
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "Error: no ethernet ports detected\n");
 	if (nb_ports != 1 && (nb_ports & 1))

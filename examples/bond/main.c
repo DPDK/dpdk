@@ -748,7 +748,7 @@ main(int argc, char *argv[])
 	argc -= ret;
 	argv += ret;
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "Give at least one port\n");
 	else if (nb_ports > MAX_PORTS)

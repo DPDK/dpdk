@@ -900,7 +900,8 @@ rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 	rx_adapter->conf_arg = conf_arg;
 	strcpy(rx_adapter->mem_name, mem_name);
 	rx_adapter->eth_devices = rte_zmalloc_socket(rx_adapter->mem_name,
-					rte_eth_dev_count() *
+					/* FIXME: incompatible with hotplug */
+					rte_eth_dev_count_total() *
 					sizeof(struct eth_device_info), 0,
 					socket_id);
 	rte_convert_rss_key((const uint32_t *)default_rss_key,

@@ -489,7 +489,7 @@ test_kni(void)
 		return -1;
 	}
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0) {
 		printf("no supported nic port found\n");
 		return -1;

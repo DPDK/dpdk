@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
 	if (ports.num == 0)
 		rte_exit(EXIT_FAILURE, "no ports specified\n");
 
-	if (rte_eth_dev_count() < 1)
+	if (rte_eth_dev_count_avail() < 1)
 		rte_exit(EXIT_FAILURE, "Not enough ethernet ports available\n");
 
 	pool = rte_pktmbuf_pool_create("mbuf_pool", MBUF_PER_POOL, 32, 0,

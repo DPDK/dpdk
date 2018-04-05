@@ -843,7 +843,7 @@ main(int argc, char **argv)
 	struct rte_eth_txconf *txconf;
 	struct rx_queue *rxq;
 	int socket, ret;
-	unsigned nb_ports;
+	uint16_t nb_ports;
 	uint16_t queueid = 0;
 	unsigned lcore_id = 0, rx_lcore_id = 0;
 	uint32_t n_tx_queue, nb_lcores;
@@ -861,7 +861,7 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid arguments");
 
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No ports found!\n");
 

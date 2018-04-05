@@ -232,7 +232,7 @@ int
 main(int argc, char **argv)
 {
 	int ret;
-	uint8_t nr_ports;
+	uint16_t nr_ports;
 	struct rte_flow_error error;
 
 	ret = rte_eal_init(argc, argv);
@@ -243,7 +243,7 @@ main(int argc, char **argv)
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
-	nr_ports = rte_eth_dev_count();
+	nr_ports = rte_eth_dev_count_avail();
 	if (nr_ports == 0)
 		rte_exit(EXIT_FAILURE, ":: no Ethernet ports found\n");
 	port_id = 0;

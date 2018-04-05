@@ -166,7 +166,7 @@ pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues)
 	 */
 	lcores = 2;
 
-	if (!rte_eth_dev_count()) {
+	if (!rte_eth_dev_count_avail()) {
 		evt_err("test needs minimum 1 ethernet dev");
 		return -1;
 	}
@@ -234,7 +234,7 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 	};
 
 	RTE_SET_USED(opt);
-	if (!rte_eth_dev_count()) {
+	if (!rte_eth_dev_count_avail()) {
 		evt_err("No ethernet ports found.\n");
 		return -ENODEV;
 	}
@@ -419,7 +419,7 @@ pipeline_event_tx_service_setup(struct evt_test *test, struct evt_options *opt,
 	tx->dev_id = opt->dev_id;
 	tx->queue_id = tx_queue_id;
 	tx->port_id = tx_port_id;
-	tx->nb_ethports = rte_eth_dev_count();
+	tx->nb_ethports = rte_eth_dev_count_avail();
 	tx->t = t;
 
 	/* Register Tx service */

@@ -163,7 +163,7 @@ Then, a call to init_dpdk(), defined in init.c, is made to initialize the poll m
         if (ret < 0)
             rte_exit(EXIT_FAILURE, "rte_pci_probe(): error %d\n", ret);
 
-        if (rte_eth_dev_count() < 2)
+        if (rte_eth_dev_count_avail() < 2)
             rte_exit(EXIT_FAILURE, "Not enough Ethernet port available\n");
     }
 

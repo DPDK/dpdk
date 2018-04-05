@@ -298,7 +298,7 @@ int app_init(void)
 	char ring_name[MAX_NAME_LEN];
 	char pool_name[MAX_NAME_LEN];
 
-	if (rte_eth_dev_count() == 0)
+	if (rte_eth_dev_count_avail() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet port - bye\n");
 
 	/* load configuration profile */

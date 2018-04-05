@@ -153,6 +153,13 @@ API Changes
   memory footprint which helps in better cache utilization when large number
   of meter objects are used.
 
+* ethdev: The function ``rte_eth_dev_count``, often mis-used to iterate
+  over ports, is deprecated and replaced by ``rte_eth_dev_count_avail``.
+  There is also a new function ``rte_eth_dev_count_total`` to get the
+  total number of allocated ports, available or not.
+  The hotplug-proof applications should use ``RTE_ETH_FOREACH_DEV`` or
+  ``RTE_ETH_FOREACH_DEV_OWNED_BY`` as port iterators.
+
 * ethdev, in struct ``struct rte_eth_dev_info``, field ``rte_pci_device *pci_dev``
   replaced with field ``struct rte_device *device``.
 

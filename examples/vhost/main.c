@@ -1448,7 +1448,7 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE,"Not enough cores\n");
 
 	/* Get the number of physical ports. */
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 
 	/*
 	 * Update the global var NUM_PORTS and global array PORTS

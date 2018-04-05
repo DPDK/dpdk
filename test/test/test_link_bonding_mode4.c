@@ -425,7 +425,7 @@ test_setup(void)
 			TEST_ASSERT(retval >= 0,
 				"Failed to create ring ethdev '%s'\n", name);
 
-			port->port_id = rte_eth_dev_count() - 1;
+			port->port_id = rte_eth_dev_count_avail() - 1;
 		}
 
 		retval = configure_ethdev(port->port_id, 1);

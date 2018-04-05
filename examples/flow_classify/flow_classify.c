@@ -752,7 +752,7 @@ int
 main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
-	uint8_t nb_ports;
+	uint16_t nb_ports;
 	uint16_t portid;
 	int ret;
 	int socket_id;
@@ -776,7 +776,7 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Invalid flow_classify parameters\n");
 
 	/* Check that there is an even number of ports to send/receive on. */
-	nb_ports = rte_eth_dev_count();
+	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports < 2 || (nb_ports & 1))
 		rte_exit(EXIT_FAILURE, "Error: number of ports must be even\n");
 

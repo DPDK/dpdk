@@ -422,7 +422,7 @@ setup_eventdev_worker_tx(struct cons_data *cons_data,
 	const uint8_t dev_id = 0;
 	const uint8_t nb_ports = cdata.num_workers;
 	uint8_t nb_slots = 0;
-	uint8_t nb_queues = rte_eth_dev_count();
+	uint8_t nb_queues = rte_eth_dev_count_avail();
 
 	/*
 	 * In case where all type queues are not enabled, use queues equal to
@@ -431,7 +431,7 @@ setup_eventdev_worker_tx(struct cons_data *cons_data,
 	 */
 	if (!atq) {
 		nb_queues *= cdata.num_stages;
-		nb_queues += rte_eth_dev_count();
+		nb_queues += rte_eth_dev_count_avail();
 	}
 
 	struct rte_event_dev_config config = {

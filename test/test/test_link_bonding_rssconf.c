@@ -521,7 +521,7 @@ test_setup(void)
 	FOR_EACH_PORT(n, port) {
 		port = &test_params.slave_ports[n];
 
-		port_id = rte_eth_dev_count();
+		port_id = rte_eth_dev_count_avail();
 		snprintf(name, sizeof(name), SLAVE_DEV_NAME_FMT, port_id);
 
 		retval = rte_vdev_init(name, "size=64,copy=0");

@@ -10,7 +10,7 @@
 static __rte_always_inline int
 pipeline_queue_nb_event_queues(struct evt_options *opt)
 {
-	uint16_t eth_count = rte_eth_dev_count();
+	uint16_t eth_count = rte_eth_dev_count_avail();
 
 	return (eth_count * opt->nb_stages) + eth_count;
 }
@@ -333,7 +333,7 @@ pipeline_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	uint8_t nb_worker_queues = 0;
 
 	nb_ports = evt_nr_active_lcores(opt->wlcores);
-	nb_queues = rte_eth_dev_count() * (nb_stages);
+	nb_queues = rte_eth_dev_count_avail() * (nb_stages);
 
 	/* Extra port for Tx service. */
 	if (t->mt_unsafe) {
@@ -341,7 +341,7 @@ pipeline_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 		nb_ports++;
 		nb_queues++;
 	} else
-		nb_queues += rte_eth_dev_count();
+		nb_queues += rte_eth_dev_count_avail();
 
 	rte_event_dev_info_get(opt->dev_id, &info);
 

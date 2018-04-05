@@ -23,6 +23,7 @@ SRCS-y := main.c init.c args.c
 
 INC := $(sort $(wildcard *.h))
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS) -O3
 CFLAGS += -I$(SRCDIR)/../shared
 
