@@ -13,17 +13,11 @@
 #include <rte_service.h>
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Signature of callback function to run a service.
  */
 typedef int32_t (*rte_service_func)(void *args);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * The specification of a service.
  *
  * This struct contains metadata about the service itself, the callback
@@ -47,9 +41,6 @@ struct rte_service_spec {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Register a new service.
  *
  * A service represents a component that the requires CPU time periodically to
@@ -73,14 +64,10 @@ struct rte_service_spec {
  *         -EINVAL Attempted to register an invalid service (eg, no callback
  *         set)
  */
-int32_t __rte_experimental
-rte_service_component_register(const struct rte_service_spec *spec,
-			       uint32_t *service_id);
+int32_t rte_service_component_register(const struct rte_service_spec *spec,
+		uint32_t *service_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Unregister a service component.
  *
  * The service being removed must be stopped before calling this function.
@@ -89,12 +76,9 @@ rte_service_component_register(const struct rte_service_spec *spec,
  * @retval -EBUSY The service is currently running, stop the service before
  *          calling unregister. No action has been taken.
  */
-int32_t __rte_experimental rte_service_component_unregister(uint32_t id);
+int32_t rte_service_component_unregister(uint32_t id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Private function to allow EAL to initialized default mappings.
  *
  * This function iterates all the services, and maps then to the available
@@ -107,12 +91,9 @@ int32_t __rte_experimental rte_service_component_unregister(uint32_t id);
  * @retval -ENODEV Error in enabling service lcore on a service
  * @retval -ENOEXEC Error when starting services
  */
-int32_t __rte_experimental rte_service_start_with_defaults(void);
+int32_t rte_service_start_with_defaults(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Set the backend runstate of a component.
  *
  * This function allows services to be registered at startup, but not yet
@@ -124,13 +105,9 @@ int32_t __rte_experimental rte_service_start_with_defaults(void);
  *
  * @retval 0 Success
  */
-int32_t __rte_experimental rte_service_component_runstate_set(uint32_t id,
-							  uint32_t runstate);
+int32_t rte_service_component_runstate_set(uint32_t id, uint32_t runstate);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Initialize the service library.
  *
  * In order to use the service library, it must be initialized. EAL initializes
@@ -142,14 +119,11 @@ int32_t __rte_experimental rte_service_component_runstate_set(uint32_t id,
 int32_t rte_service_init(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * @internal Free up the memory that has been initialized.
  * This routine is to be invoked prior to process termination.
  *
  * @retval None
  */
-void __rte_experimental rte_service_finalize(void);
+void rte_service_finalize(void);
 
 #endif /* _RTE_SERVICE_PRIVATE_H_ */

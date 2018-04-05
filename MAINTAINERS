@@ -187,7 +187,7 @@ F: test/test/test_mp_secondary.c
 F: examples/multi_process/
 F: doc/guides/sample_app_ug/multi_process.rst
 
-Service Cores - EXPERIMENTAL
+Service Cores
 M: Harry van Haaren <harry.van.haaren@intel.com>
 F: lib/librte_eal/common/include/rte_service.h
 F: lib/librte_eal/common/include/rte_service_component.h

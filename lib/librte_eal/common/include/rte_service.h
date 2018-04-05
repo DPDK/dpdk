@@ -47,9 +47,6 @@ extern "C" {
 #define RTE_SERVICE_CAP_MT_SAFE (1 << 0)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  *  Return the number of services registered.
  *
  * The number of services registered can be passed to *rte_service_get_by_id*,
@@ -57,12 +54,9 @@ extern "C" {
  *
  * @return The number of services registered.
  */
-uint32_t __rte_experimental rte_service_get_count(void);
+uint32_t rte_service_get_count(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Return the id of a service by name.
  *
  * This function provides the id of the service using the service name as
@@ -84,24 +78,17 @@ uint32_t __rte_experimental rte_service_get_count(void);
  * @retval -EINVAL Null *service_id* pointer provided
  * @retval -ENODEV No such service registered
  */
-int32_t __rte_experimental rte_service_get_by_name(const char *name,
-					       uint32_t *service_id);
+int32_t rte_service_get_by_name(const char *name, uint32_t *service_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Return the name of the service.
  *
  * @return A pointer to the name of the service. The returned pointer remains
  *         in ownership of the service, and the application must not free it.
  */
-const char __rte_experimental *rte_service_get_name(uint32_t id);
+const char *rte_service_get_name(uint32_t id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Check if a service has a specific capability.
  *
  * This function returns if *service* has implements *capability*.
@@ -109,13 +96,9 @@ const char __rte_experimental *rte_service_get_name(uint32_t id);
  * @retval 1 Capability supported by this service instance
  * @retval 0 Capability not supported by this service instance
  */
-int32_t __rte_experimental rte_service_probe_capability(uint32_t id,
-						    uint32_t capability);
+int32_t rte_service_probe_capability(uint32_t id, uint32_t capability);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Map or unmap a lcore to a service.
  *
  * Each core can be added or removed from running a specific service. This
@@ -134,13 +117,10 @@ int32_t __rte_experimental rte_service_probe_capability(uint32_t id,
  * @retval 0 lcore map updated successfully
  * @retval -EINVAL An invalid service or lcore was provided.
  */
-int32_t __rte_experimental rte_service_map_lcore_set(uint32_t service_id,
-				  uint32_t lcore, uint32_t enable);
+int32_t rte_service_map_lcore_set(uint32_t service_id, uint32_t lcore,
+		uint32_t enable);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve the mapping of an lcore to a service.
  *
  * @param service_id the service to apply the lcore to
@@ -150,13 +130,9 @@ int32_t __rte_experimental rte_service_map_lcore_set(uint32_t service_id,
  * @retval 0 lcore is not mapped to service
  * @retval -EINVAL An invalid service or lcore was provided.
  */
-int32_t __rte_experimental rte_service_map_lcore_get(uint32_t service_id,
-						 uint32_t lcore);
+int32_t rte_service_map_lcore_get(uint32_t service_id, uint32_t lcore);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Set the runstate of the service.
  *
  * Each service is either running or stopped. Setting a non-zero runstate
@@ -168,12 +144,9 @@ int32_t __rte_experimental rte_service_map_lcore_get(uint32_t service_id,
  * @retval 0 The service was successfully started
  * @retval -EINVAL Invalid service id
  */
-int32_t __rte_experimental rte_service_runstate_set(uint32_t id, uint32_t runstate);
+int32_t rte_service_runstate_set(uint32_t id, uint32_t runstate);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get the runstate for the service with *id*. See *rte_service_runstate_set*
  * for details of runstates. A service can call this function to ensure that
  * the application has indicated that it will receive CPU cycles. Either a
@@ -186,12 +159,9 @@ int32_t __rte_experimental rte_service_runstate_set(uint32_t id, uint32_t runsta
  * @retval 0 Service is stopped
  * @retval -EINVAL Invalid service id
  */
-int32_t __rte_experimental rte_service_runstate_get(uint32_t id);
+int32_t rte_service_runstate_get(uint32_t id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Enable or disable the check for a service-core being mapped to the service.
  * An application can disable the check when takes the responsibility to run a
  * service itself using *rte_service_run_iter_on_app_lcore*.
@@ -202,13 +172,9 @@ int32_t __rte_experimental rte_service_runstate_get(uint32_t id);
  * @retval 0 Success
  * @retval -EINVAL Invalid service ID
  */
-int32_t __rte_experimental rte_service_set_runstate_mapped_check(uint32_t id,
-							     int32_t enable);
+int32_t rte_service_set_runstate_mapped_check(uint32_t id, int32_t enable);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * This function runs a service callback from a non-service lcore.
  *
  * This function is designed to enable gradual porting to service cores, and
@@ -241,13 +207,10 @@ int32_t __rte_experimental rte_service_set_runstate_mapped_check(uint32_t id,
  * @retval -ENOEXEC Service is not in a run-able state
  * @retval -EINVAL Invalid service id
  */
-int32_t __rte_experimental rte_service_run_iter_on_app_lcore(uint32_t id,
+int32_t rte_service_run_iter_on_app_lcore(uint32_t id,
 		uint32_t serialize_multithread_unsafe);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Start a service core.
  *
  * Starting a core makes the core begin polling. Any services assigned to it
@@ -259,12 +222,9 @@ int32_t __rte_experimental rte_service_run_iter_on_app_lcore(uint32_t id,
  * @retval -EINVAL Failed to start core. The *lcore_id* passed in is not
  *          currently assigned to be a service core.
  */
-int32_t __rte_experimental rte_service_lcore_start(uint32_t lcore_id);
+int32_t rte_service_lcore_start(uint32_t lcore_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Stop a service core.
  *
  * Stopping a core makes the core become idle, but remains  assigned as a
@@ -278,12 +238,9 @@ int32_t __rte_experimental rte_service_lcore_start(uint32_t lcore_id);
  *          The application must stop the service first, and then stop the
  *          lcore.
  */
-int32_t __rte_experimental rte_service_lcore_stop(uint32_t lcore_id);
+int32_t rte_service_lcore_stop(uint32_t lcore_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Adds lcore to the list of service cores.
  *
  * This functions can be used at runtime in order to modify the service core
@@ -294,12 +251,9 @@ int32_t __rte_experimental rte_service_lcore_stop(uint32_t lcore_id);
  * @retval -EALREADY lcore is already added to the service core list
  * @retval -EINVAL Invalid lcore provided
  */
-int32_t __rte_experimental rte_service_lcore_add(uint32_t lcore);
+int32_t rte_service_lcore_add(uint32_t lcore);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Removes lcore from the list of service cores.
  *
  * This can fail if the core is not stopped, see *rte_service_core_stop*.
@@ -308,12 +262,9 @@ int32_t __rte_experimental rte_service_lcore_add(uint32_t lcore);
  * @retval -EBUSY Lcore is not stopped, stop service core before removing.
  * @retval -EINVAL failed to add lcore to service core mask.
  */
-int32_t __rte_experimental rte_service_lcore_del(uint32_t lcore);
+int32_t rte_service_lcore_del(uint32_t lcore);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve the number of service cores currently available.
  *
  * This function returns the integer count of service cores available. The
@@ -325,24 +276,18 @@ int32_t __rte_experimental rte_service_lcore_del(uint32_t lcore);
  *
  * @return The number of service cores currently configured.
  */
-int32_t __rte_experimental rte_service_lcore_count(void);
+int32_t rte_service_lcore_count(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Resets all service core mappings. This does not remove the service cores
  * from duty, just unmaps all services / cores, and stops() the service cores.
  * The runstate of services is not modified.
  *
  * @retval 0 Success
  */
-int32_t __rte_experimental rte_service_lcore_reset_all(void);
+int32_t rte_service_lcore_reset_all(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Enable or disable statistics collection for *service*.
  *
  * This function enables per core, per-service cycle count collection.
@@ -351,13 +296,9 @@ int32_t __rte_experimental rte_service_lcore_reset_all(void);
  * @retval 0 Success
  * @retval -EINVAL Invalid service pointer passed
  */
-int32_t __rte_experimental rte_service_set_stats_enable(uint32_t id,
-						    int32_t enable);
+int32_t rte_service_set_stats_enable(uint32_t id, int32_t enable);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve the list of currently enabled service cores.
  *
  * This function fills in an application supplied array, with each element
@@ -373,12 +314,9 @@ int32_t __rte_experimental rte_service_set_stats_enable(uint32_t id,
  *          service core list. No items have been populated, call this function
  *          with a size of at least *rte_service_core_count* items.
  */
-int32_t __rte_experimental rte_service_lcore_list(uint32_t array[], uint32_t n);
+int32_t rte_service_lcore_list(uint32_t array[], uint32_t n);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get the numer of services running on the supplied lcore.
  *
  * @param lcore Id of the service core.
@@ -386,19 +324,16 @@ int32_t __rte_experimental rte_service_lcore_list(uint32_t array[], uint32_t n);
  * @retval -EINVAL Invalid lcore provided
  * @retval -ENOTSUP The provided lcore is not a service core.
  */
-int32_t __rte_experimental rte_service_lcore_count_services(uint32_t lcore);
+int32_t rte_service_lcore_count_services(uint32_t lcore);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Dumps any information available about the service. When id is UINT32_MAX,
  * this function dumps info for all services.
  *
  * @retval 0 Statistics have been successfully dumped
  * @retval -EINVAL Invalid service id provided
  */
-int32_t __rte_experimental rte_service_dump(FILE *f, uint32_t id);
+int32_t rte_service_dump(FILE *f, uint32_t id);
 
 /**
  * Returns the number of cycles that this service has consumed
@@ -411,28 +346,22 @@ int32_t __rte_experimental rte_service_dump(FILE *f, uint32_t id);
 #define RTE_SERVICE_ATTR_CALL_COUNT 1
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get an attribute from a service.
  *
  * @retval 0 Success, the attribute value has been written to *attr_value*.
  *         -EINVAL Invalid id, attr_id or attr_value was NULL.
  */
-int32_t __rte_experimental rte_service_attr_get(uint32_t id, uint32_t attr_id,
+int32_t rte_service_attr_get(uint32_t id, uint32_t attr_id,
 		uint32_t *attr_value);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Reset all attribute values of a service.
  *
  * @param id The service to reset all statistics of
  * @retval 0 Successfully reset attributes
  *         -EINVAL Invalid service id provided
  */
-int32_t __rte_experimental rte_service_attr_reset_all(uint32_t id);
+int32_t rte_service_attr_reset_all(uint32_t id);
 
 #ifdef __cplusplus
 }

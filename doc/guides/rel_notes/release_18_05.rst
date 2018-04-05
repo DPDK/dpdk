@@ -154,6 +154,13 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* service cores: no longer marked as experimental.
+
+  The service cores functions are no longer marked as experimental, and have
+  become part of the normal DPDK API and ABI. Any future ABI changes will be
+  announced at least one release before the ABI change is made. There are no
+  ABI breaking changes planned.
+
 * mempool: capability flags and related functions have been removed.
 
   Flags ``MEMPOOL_F_CAPA_PHYS_CONTIG`` and
