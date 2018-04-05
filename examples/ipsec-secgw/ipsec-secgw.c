@@ -848,7 +848,7 @@ static int32_t
 check_params(void)
 {
 	uint8_t lcore;
-	uint16_t portid, nb_ports;
+	uint16_t portid;
 	uint16_t i;
 	int32_t socket_id;
 
@@ -856,8 +856,6 @@ check_params(void)
 		printf("Error: No port/queue/core mappings\n");
 		return -1;
 	}
-
-	nb_ports = rte_eth_dev_count();
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
@@ -877,7 +875,7 @@ check_params(void)
 			printf("port %u is not enabled in port mask\n", portid);
 			return -1;
 		}
-		if (portid >= nb_ports) {
+		if (!rte_eth_dev_is_valid_port(portid)) {
 			printf("port %u is not present on the board\n", portid);
 			return -1;
 		}

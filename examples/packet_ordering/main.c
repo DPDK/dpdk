@@ -261,7 +261,6 @@ configure_eth_port(uint16_t port_id)
 {
 	struct ether_addr addr;
 	const uint16_t rxRings = 1, txRings = 1;
-	const uint8_t nb_ports = rte_eth_dev_count();
 	int ret;
 	uint16_t q;
 	uint16_t nb_rxd = RX_DESC_PER_QUEUE;
@@ -270,7 +269,7 @@ configure_eth_port(uint16_t port_id)
 	struct rte_eth_txconf txconf;
 	struct rte_eth_conf port_conf = port_conf_default;
 
-	if (port_id > nb_ports)
+	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
 
 	rte_eth_dev_info_get(port_id, &dev_info);

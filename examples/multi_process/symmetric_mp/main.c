@@ -204,7 +204,7 @@ smp_port_init(uint16_t port, struct rte_mempool *mbuf_pool,
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return 0;
 
-	if (port >= rte_eth_dev_count())
+	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
 
 	printf("# Initialising port %u... ", port);

@@ -294,7 +294,8 @@ port_init(uint16_t port)
 	printf("pf queue num: %u, configured vmdq pool num: %u, each vmdq pool has %u queues\n",
 		num_pf_queues, num_devices, queues_per_pool);
 
-	if (port >= rte_eth_dev_count()) return -1;
+	if (!rte_eth_dev_is_valid_port(port))
+		return -1;
 
 	rx_rings = (uint16_t)dev_info.max_rx_queues;
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
@@ -667,9 +668,10 @@ static unsigned check_ports_num(unsigned nb_ports)
 	}
 
 	for (portid = 0; portid < num_ports; portid ++) {
-		if (ports[portid] >= nb_ports) {
-			RTE_LOG(INFO, VHOST_PORT, "\nSpecified port ID(%u) exceeds max system port ID(%u)\n",
-				ports[portid], (nb_ports - 1));
+		if (!rte_eth_dev_is_valid_port(ports[portid])) {
+			RTE_LOG(INFO, VHOST_PORT,
+				"\nSpecified port ID(%u) is not valid\n",
+				ports[portid]);
 			ports[portid] = INVALID_PORT_ID;
 			valid_num_ports--;
 		}

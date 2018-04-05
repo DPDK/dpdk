@@ -91,10 +91,6 @@ To fully understand this code, it is recommended to study the chapters that rela
     if (rte_pci_probe() < 0)
         rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
-    nb_ports = rte_eth_dev_count();
-    if (nb_ports == 0)
-        rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
-
     /*
      * Each logical core is assigned a dedicated TX queue on each port.
      */

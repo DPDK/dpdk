@@ -119,7 +119,7 @@ Forwarding application is shown below:
         int retval;
         uint16_t q;
 
-        if (port >= rte_eth_dev_count())
+        if (!rte_eth_dev_is_valid_port(port))
             return -1;
 
         /* Configure the Ethernet device. */
@@ -192,7 +192,6 @@ looks like the following:
     static __attribute__((noreturn)) void
     lcore_main(void)
     {
-        const uint16_t nb_ports = rte_eth_dev_count();
         uint16_t port;
 
         /*

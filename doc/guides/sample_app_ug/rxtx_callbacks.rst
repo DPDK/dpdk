@@ -83,9 +83,6 @@ comments:
         int retval;
         uint16_t q;
 
-        if (port >= rte_eth_dev_count())
-            return -1;
-
         /* Configure the Ethernet device. */
         retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
         if (retval != 0)

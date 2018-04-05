@@ -1017,7 +1017,7 @@ int
 main(int argc, char **argv)
 {
 	int ret;
-	unsigned int nb_bbdevs, nb_ports, flags, lcore_id;
+	unsigned int nb_bbdevs, flags, lcore_id;
 	void *sigret;
 	struct app_config_params app_params = def_app_config;
 	struct rte_mempool *ethdev_mbuf_mempool, *bbdev_mbuf_mempool;
@@ -1079,12 +1079,10 @@ main(int argc, char **argv)
 				nb_bbdevs, app_params.bbdev_id);
 	printf("Number of bbdevs detected: %d\n", nb_bbdevs);
 
-	/* Get the number of available ethdev devices */
-	nb_ports = rte_eth_dev_count();
-	if (nb_ports <= app_params.port_id)
+	if (!rte_eth_dev_is_valid_port(app_params.port_id))
 		rte_exit(EXIT_FAILURE,
-				"%u ports detected, cannot use port with ID %u!\n",
-				nb_ports, app_params.port_id);
+				"cannot use port with ID %u!\n",
+				app_params.port_id);
 
 	/* create the mbuf mempool for ethdev pkts */
 	ethdev_mbuf_mempool = rte_pktmbuf_pool_create("ethdev_mbuf_pool",

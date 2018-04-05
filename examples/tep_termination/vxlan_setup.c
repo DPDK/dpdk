@@ -133,7 +133,7 @@ vxlan_port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	txconf = &dev_info.default_txconf;
 	txconf->txq_flags = ETH_TXQ_FLAGS_IGNORE;
 
-	if (port >= rte_eth_dev_count())
+	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
 
 	rx_rings = nb_devices;

@@ -511,11 +511,6 @@ Application may choose to not implement following callbacks:
         int ret;
         struct rte_eth_conf conf;
 
-        if (port_id >= rte_eth_dev_count()) {
-            RTE_LOG(ERR, APP, "Invalid port id %d\n", port_id);
-            return -EINVAL;
-        }
-
         RTE_LOG(INFO, APP, "Change MTU of port %d to %u\n", port_id, new_mtu);
 
         /* Stop specific port */
@@ -558,11 +553,6 @@ Application may choose to not implement following callbacks:
     kni_config_network_interface(uint16_t port_id, uint8_t if_up)
     {
         int ret = 0;
-
-        if (port_id >= rte_eth_dev_count() || port_id >= RTE_MAX_ETHPORTS) {
-            RTE_LOG(ERR, APP, "Invalid port id %d\n", port_id);
-            return -EINVAL;
-        }
 
         RTE_LOG(INFO, APP, "Configure network interface of %d %s\n",
 

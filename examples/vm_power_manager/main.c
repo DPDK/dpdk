@@ -61,7 +61,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf txq_conf;
 
-	if (port >= rte_eth_dev_count())
+	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
 
 	rte_eth_dev_info_get(port, &dev_info);

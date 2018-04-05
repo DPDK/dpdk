@@ -515,11 +515,10 @@ check_ports_num(unsigned max_nb_ports)
 	}
 
 	for (portid = 0; portid < nb_ports; portid++) {
-		if (ports[portid] >= max_nb_ports) {
+		if (!rte_eth_dev_is_valid_port(ports[portid])) {
 			RTE_LOG(INFO, VHOST_PORT,
-				"\nSpecified port ID(%u) exceeds max "
-				" system port ID(%u)\n",
-				ports[portid], (max_nb_ports - 1));
+				"\nSpecified port ID(%u) is not valid\n",
+				ports[portid]);
 			ports[portid] = INVALID_PORT_ID;
 			valid_nb_ports--;
 		}

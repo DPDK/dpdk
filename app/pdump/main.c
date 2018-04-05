@@ -553,11 +553,10 @@ configure_vdev(uint16_t port_id)
 {
 	struct ether_addr addr;
 	const uint16_t rxRings = 0, txRings = 1;
-	const uint8_t nb_ports = rte_eth_dev_count();
 	int ret;
 	uint16_t q;
 
-	if (port_id > nb_ports)
+	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
 
 	ret = rte_eth_dev_configure(port_id, rxRings, txRings,

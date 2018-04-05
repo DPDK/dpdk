@@ -187,7 +187,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	uint16_t nb_rxd = RX_RING_SIZE;
 	uint16_t nb_txd = TX_RING_SIZE;
 
-	if (port >= rte_eth_dev_count())
+	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
 
 	rte_eth_dev_info_get(port, &dev_info);

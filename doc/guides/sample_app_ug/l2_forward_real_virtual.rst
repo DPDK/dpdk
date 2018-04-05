@@ -197,11 +197,6 @@ in the *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
     if (rte_pci_probe() < 0)
         rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
-    nb_ports = rte_eth_dev_count();
-
-    if (nb_ports == 0)
-        rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
-
     /* reset l2fwd_dst_ports */
 
     for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)

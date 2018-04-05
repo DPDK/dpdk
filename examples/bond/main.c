@@ -147,7 +147,7 @@ slave_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 	struct rte_eth_txconf txq_conf;
 	struct rte_eth_conf local_port_conf = port_conf;
 
-	if (portid >= rte_eth_dev_count())
+	if (!rte_eth_dev_is_valid_port(portid))
 		rte_exit(EXIT_FAILURE, "Invalid port\n");
 
 	rte_eth_dev_info_get(portid, &dev_info);

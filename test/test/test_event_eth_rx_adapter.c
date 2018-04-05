@@ -51,7 +51,7 @@ port_init(uint8_t port, struct rte_mempool *mp)
 	uint16_t q;
 	struct rte_eth_dev_info dev_info;
 
-	if (port >= rte_eth_dev_count())
+	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
 
 	retval = rte_eth_dev_configure(port, 0, 0, &port_conf);

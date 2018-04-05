@@ -67,7 +67,7 @@ kni_config_network_interface(uint16_t port_id, uint8_t if_up)
 {
 	int ret = 0;
 
-	if (port_id >= rte_eth_dev_count())
+	if (!rte_eth_dev_is_valid_port(port_id))
 		return -EINVAL;
 
 	ret = (if_up) ?
@@ -82,7 +82,7 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 {
 	int ret;
 
-	if (port_id >= rte_eth_dev_count())
+	if (!rte_eth_dev_is_valid_port(port_id))
 		return -EINVAL;
 
 	if (new_mtu > ETHER_MAX_LEN)

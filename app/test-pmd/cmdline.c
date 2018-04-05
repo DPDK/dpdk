@@ -5655,11 +5655,6 @@ static void cmd_set_bond_mon_period_parsed(void *parsed_result,
 	struct cmd_set_bond_mon_period_result *res = parsed_result;
 	int ret;
 
-	if (res->port_num >= nb_ports) {
-		printf("Port id %d must be less than %d\n", res->port_num, nb_ports);
-		return;
-	}
-
 	ret = rte_eth_bond_link_monitoring_set(res->port_num, res->period_ms);
 
 	/* check the return value and print it if is < 0 */
@@ -5715,12 +5710,6 @@ cmd_set_bonding_agg_mode(void *parsed_result,
 {
 	struct cmd_set_bonding_agg_mode_policy_result *res = parsed_result;
 	uint8_t policy = AGG_BANDWIDTH;
-
-	if (res->port_num >= nb_ports) {
-		printf("Port id %d must be less than %d\n",
-				res->port_num, nb_ports);
-		return;
-	}
 
 	if (!strcmp(res->policy, "bandwidth"))
 		policy = AGG_BANDWIDTH;
@@ -10869,11 +10858,6 @@ cmd_flow_director_mask_parsed(void *parsed_result,
 	struct rte_eth_fdir_masks *mask;
 	struct rte_port *port;
 
-	if (res->port_id > nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
-		return;
-	}
-
 	port = &ports[res->port_id];
 	/** Check if the port is not started **/
 	if (port->port_status != RTE_PORT_STOPPED) {
@@ -11070,11 +11054,6 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 	uint16_t i;
 	int ret;
 
-	if (res->port_id > nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
-		return;
-	}
-
 	port = &ports[res->port_id];
 	/** Check if the port is not started **/
 	if (port->port_status != RTE_PORT_STOPPED) {
@@ -11225,11 +11204,6 @@ cmd_flow_director_flxpld_parsed(void *parsed_result,
 	struct rte_eth_flex_payload_cfg flex_cfg;
 	struct rte_port *port;
 	int ret = 0;
-
-	if (res->port_id > nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
-		return;
-	}
 
 	port = &ports[res->port_id];
 	/** Check if the port is not started **/
@@ -14611,11 +14585,6 @@ cmd_ddp_add_parsed(
 	int file_num;
 	int ret = -ENOTSUP;
 
-	if (res->port_id > nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
-		return;
-	}
-
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
 		return;
@@ -14692,11 +14661,6 @@ cmd_ddp_del_parsed(
 	uint8_t *buff;
 	uint32_t size;
 	int ret = -ENOTSUP;
-
-	if (res->port_id > nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
-		return;
-	}
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
@@ -15008,11 +14972,6 @@ cmd_ddp_get_list_parsed(
 #endif
 	int ret = -ENOTSUP;
 
-	if (res->port_id > nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
-		return;
-	}
-
 #ifdef RTE_LIBRTE_I40E_PMD
 	size = PROFILE_INFO_SIZE * MAX_PROFILE_NUM + 4;
 	p_list = (struct rte_pmd_i40e_profile_list *)malloc(size);
@@ -15085,11 +15044,6 @@ cmd_cfg_input_set_parsed(
 	struct rte_pmd_i40e_inset inset;
 #endif
 	int ret = -ENOTSUP;
-
-	if (res->port_id > nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
-		return;
-	}
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
@@ -15213,11 +15167,6 @@ cmd_clear_input_set_parsed(
 	struct rte_pmd_i40e_inset inset;
 #endif
 	int ret = -ENOTSUP;
-
-	if (res->port_id > nb_ports) {
-		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
-		return;
-	}
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
