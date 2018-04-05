@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2018 Intel Corporation
  */
 
 #ifndef _VHOST_NET_CDEV_H_
@@ -212,6 +212,51 @@ struct guest_page {
 };
 
 /**
+ * function prototype for the vhost backend to handler specific vhost user
+ * messages prior to the master message handling
+ *
+ * @param vid
+ *  vhost device id
+ * @param msg
+ *  Message pointer.
+ * @param require_reply
+ *  If the handler requires sending a reply, this varaible shall be written 1,
+ *  otherwise 0.
+ * @param skip_master
+ *  If the handler requires skipping the master message handling, this variable
+ *  shall be written 1, otherwise 0.
+ * @return
+ *  0 on success, -1 on failure
+ */
+typedef int (*vhost_msg_pre_handle)(int vid, void *msg,
+		uint32_t *require_reply, uint32_t *skip_master);
+
+/**
+ * function prototype for the vhost backend to handler specific vhost user
+ * messages after the master message handling is done
+ *
+ * @param vid
+ *  vhost device id
+ * @param msg
+ *  Message pointer.
+ * @param require_reply
+ *  If the handler requires sending a reply, this varaible shall be written 1,
+ *  otherwise 0.
+ * @return
+ *  0 on success, -1 on failure
+ */
+typedef int (*vhost_msg_post_handle)(int vid, void *msg,
+		uint32_t *require_reply);
+
+/**
+ * pre and post vhost user message handlers
+ */
+struct vhost_user_extern_ops {
+	vhost_msg_pre_handle pre_msg_handle;
+	vhost_msg_post_handle post_msg_handle;
+};
+
+/**
  * Device structure contains all configuration information relating
  * to the device.
  */
@@ -249,8 +294,12 @@ struct virtio_net {
 	 * It's set to -1 for the default software implementation.
 	 */
 	int			vdpa_dev_id;
-} __rte_cache_aligned;
 
+	/* private data for virtio device */
+	void			*extern_data;
+	/* pre and post vhost user message handlers for the device */
+	struct vhost_user_extern_ops extern_ops;
+} __rte_cache_aligned;
 
 #define VHOST_LOG_PAGE	4096
 

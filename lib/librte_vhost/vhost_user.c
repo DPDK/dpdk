@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2016 Intel Corporation
+ * Copyright(c) 2010-2018 Intel Corporation
  */
 
 /* Security model
@@ -1429,6 +1429,7 @@ vhost_user_msg_handler(int vid, int fd)
 	int did = -1;
 	int ret;
 	int unlock_required = 0;
+	uint32_t skip_master = 0;
 
 	dev = get_device(vid);
 	if (dev == NULL)
@@ -1504,6 +1505,21 @@ vhost_user_msg_handler(int vid, int fd)
 	default:
 		break;
 
+	}
+
+	if (dev->extern_ops.pre_msg_handle) {
+		uint32_t need_reply;
+
+		ret = (*dev->extern_ops.pre_msg_handle)(dev->vid,
+				(void *)&msg, &need_reply, &skip_master);
+		if (ret < 0)
+			goto skip_to_reply;
+
+		if (need_reply)
+			send_vhost_reply(fd, &msg);
+
+		if (skip_master)
+			goto skip_to_post_handle;
 	}
 
 	switch (msg.request.master) {
@@ -1606,9 +1622,22 @@ vhost_user_msg_handler(int vid, int fd)
 	default:
 		ret = -1;
 		break;
-
 	}
 
+skip_to_post_handle:
+	if (dev->extern_ops.post_msg_handle) {
+		uint32_t need_reply;
+
+		ret = (*dev->extern_ops.post_msg_handle)(
+				dev->vid, (void *)&msg, &need_reply);
+		if (ret < 0)
+			goto skip_to_reply;
+
+		if (need_reply)
+			send_vhost_reply(fd, &msg);
+	}
+
+skip_to_reply:
 	if (unlock_required)
 		vhost_user_unlock_all_queue_pairs(dev);
 
