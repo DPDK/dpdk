@@ -370,7 +370,7 @@ static int
 dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 {
 	struct alginfo alginfo_c = {0}, alginfo_a = {0}, alginfo = {0};
-	uint32_t shared_desc_len = 0;
+	int32_t shared_desc_len = 0;
 	struct sec_cdb *cdb = &ses->cdb;
 	int err;
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -512,6 +512,12 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 					ses->digest_length, ses->dir);
 		}
 	}
+
+	if (shared_desc_len < 0) {
+		PMD_TX_LOG(ERR, "error in preparing command block\n");
+		return shared_desc_len;
+	}
+
 	cdb->sh_hdr.hi.field.idlen = shared_desc_len;
 	cdb->sh_hdr.hi.word = rte_cpu_to_be_32(cdb->sh_hdr.hi.word);
 	cdb->sh_hdr.lo.word = rte_cpu_to_be_32(cdb->sh_hdr.lo.word);
