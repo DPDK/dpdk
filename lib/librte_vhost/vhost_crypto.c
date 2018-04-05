@@ -6,10 +6,12 @@
 #include <rte_mbuf.h>
 #include <rte_cryptodev.h>
 
+#include "rte_vhost_crypto.h"
 #include "vhost.h"
 #include "vhost_user.h"
 #include "virtio_crypto.h"
 
+#define INHDR_LEN		(sizeof(struct virtio_crypto_inhdr))
 #define IV_OFFSET		(sizeof(struct rte_crypto_op) + \
 				sizeof(struct rte_crypto_sym_op))
 
@@ -31,6 +33,8 @@
 	RTE_LOG(INFO, USER1, "[VHOST-Crypto]: " fmt "\n", ## args)
 #define VC_LOG_DBG(fmt, args...)
 #endif
+
+#define GPA_TO_VVA(t, m, a)	((t)(uintptr_t)rte_vhost_gpa_to_vva(m, a))
 
 static int
 cipher_algo_transform(uint32_t virtio_cipher_algo)
@@ -201,6 +205,18 @@ struct vhost_crypto {
 
 	uint8_t option;
 } __rte_cache_aligned;
+
+struct vhost_crypto_data_req {
+	struct vring_desc *head;
+	struct rte_vhost_memory *mem;
+	struct virtio_crypto_inhdr *inhdr;
+	struct vhost_virtqueue *vq;
+	struct vring_desc *wb_desc;
+	uint16_t wb_len;
+	uint16_t desc_idx;
+	uint16_t len;
+	uint16_t zero_copy;
+};
 
 static int
 transform_cipher_param(struct rte_crypto_sym_xform *xform,
@@ -431,4 +447,582 @@ vhost_crypto_msg_post_handler(int vid, void *msg, uint32_t *require_reply)
 		ret = -EINVAL;
 
 	return ret;
+}
+
+static __rte_always_inline struct vring_desc *
+find_write_desc(struct vring_desc *head, struct vring_desc *desc)
+{
+	if (desc->flags & VRING_DESC_F_WRITE)
+		return desc;
+
+	while (desc->flags & VRING_DESC_F_NEXT) {
+		desc = &head[desc->next];
+		if (desc->flags & VRING_DESC_F_WRITE)
+			return desc;
+	}
+
+	return NULL;
+}
+
+static struct virtio_crypto_inhdr *
+reach_inhdr(struct vring_desc *head, struct rte_vhost_memory *mem,
+		struct vring_desc *desc)
+{
+	while (desc->flags & VRING_DESC_F_NEXT)
+		desc = &head[desc->next];
+
+	return GPA_TO_VVA(struct virtio_crypto_inhdr *, mem, desc->addr);
+}
+
+static __rte_always_inline int
+move_desc(struct vring_desc *head, struct vring_desc **cur_desc,
+		uint32_t size)
+{
+	struct vring_desc *desc = *cur_desc;
+	int left = size;
+
+	rte_prefetch0(&head[desc->next]);
+	left -= desc->len;
+
+	while ((desc->flags & VRING_DESC_F_NEXT) && left > 0) {
+		desc = &head[desc->next];
+		rte_prefetch0(&head[desc->next]);
+		left -= desc->len;
+	}
+
+	if (unlikely(left < 0)) {
+		VC_LOG_ERR("Incorrect virtio descriptor");
+		return -1;
+	}
+
+	*cur_desc = &head[desc->next];
+	return 0;
+}
+
+static int
+copy_data(void *dst_data, struct vring_desc *head, struct rte_vhost_memory *mem,
+		struct vring_desc **cur_desc, uint32_t size)
+{
+	struct vring_desc *desc = *cur_desc;
+	uint32_t to_copy;
+	uint8_t *data = dst_data;
+	uint8_t *src;
+	int left = size;
+
+	rte_prefetch0(&head[desc->next]);
+	to_copy = RTE_MIN(desc->len, (uint32_t)left);
+	src = GPA_TO_VVA(uint8_t *, mem, desc->addr);
+	rte_memcpy((uint8_t *)data, src, to_copy);
+	left -= to_copy;
+
+	while ((desc->flags & VRING_DESC_F_NEXT) && left > 0) {
+		desc = &head[desc->next];
+		rte_prefetch0(&head[desc->next]);
+		to_copy = RTE_MIN(desc->len, (uint32_t)left);
+		src = GPA_TO_VVA(uint8_t *, mem, desc->addr);
+		rte_memcpy(data + size - left, src, to_copy);
+		left -= to_copy;
+	}
+
+	if (unlikely(left < 0)) {
+		VC_LOG_ERR("Incorrect virtio descriptor");
+		return -1;
+	}
+
+	*cur_desc = &head[desc->next];
+
+	return 0;
+}
+
+static __rte_always_inline void *
+get_data_ptr(struct vring_desc *head, struct rte_vhost_memory *mem,
+		struct vring_desc **cur_desc, uint32_t size)
+{
+	void *data;
+
+	data = GPA_TO_VVA(void *, mem, (*cur_desc)->addr);
+	if (unlikely(!data)) {
+		VC_LOG_ERR("Failed to get object");
+		return NULL;
+	}
+
+	if (unlikely(move_desc(head, cur_desc, size) < 0))
+		return NULL;
+
+	return data;
+}
+
+static int
+write_back_data(struct rte_crypto_op *op, struct vhost_crypto_data_req *vc_req)
+{
+	struct rte_mbuf *mbuf = op->sym->m_dst;
+	struct vring_desc *head = vc_req->head;
+	struct rte_vhost_memory *mem = vc_req->mem;
+	struct vring_desc *desc = vc_req->wb_desc;
+	int left = vc_req->wb_len;
+	uint32_t to_write;
+	uint8_t *src_data = mbuf->buf_addr, *dst;
+
+	rte_prefetch0(&head[desc->next]);
+	to_write = RTE_MIN(desc->len, (uint32_t)left);
+	dst = GPA_TO_VVA(uint8_t *, mem, desc->addr);
+	rte_memcpy(dst, src_data, to_write);
+	left -= to_write;
+	src_data += to_write;
+
+	while ((desc->flags & VRING_DESC_F_NEXT) && left > 0) {
+		desc = &head[desc->next];
+		rte_prefetch0(&head[desc->next]);
+		to_write = RTE_MIN(desc->len, (uint32_t)left);
+		dst = GPA_TO_VVA(uint8_t *, mem, desc->addr);
+		rte_memcpy(dst, src_data, to_write);
+		left -= to_write;
+		src_data += to_write;
+	}
+
+	if (unlikely(left < 0)) {
+		VC_LOG_ERR("Incorrect virtio descriptor");
+		return -1;
+	}
+
+	return 0;
+}
+
+static uint8_t
+prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
+		struct vhost_crypto_data_req *vc_req,
+		struct virtio_crypto_cipher_data_req *cipher,
+		struct vring_desc *cur_desc)
+{
+	struct vring_desc *head = vc_req->head;
+	struct vring_desc *desc = cur_desc;
+	struct rte_vhost_memory *mem = vc_req->mem;
+	struct rte_mbuf *m_src = op->sym->m_src, *m_dst = op->sym->m_dst;
+	uint8_t *iv_data = rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET);
+	uint8_t ret = 0;
+
+	/* prepare */
+	/* iv */
+	if (unlikely(copy_data(iv_data, head, mem, &desc,
+			cipher->para.iv_len) < 0)) {
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	m_src->data_len = cipher->para.src_data_len;
+
+	switch (vcrypto->option) {
+	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
+		m_src->buf_iova = gpa_to_hpa(vcrypto->dev, desc->addr,
+				cipher->para.src_data_len);
+		m_src->buf_addr = get_data_ptr(head, mem, &desc,
+				cipher->para.src_data_len);
+		if (unlikely(m_src->buf_iova == 0 ||
+				m_src->buf_addr == NULL)) {
+			VC_LOG_ERR("zero_copy may fail due to cross page data");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+		break;
+	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		if (unlikely(cipher->para.src_data_len >
+				RTE_MBUF_DEFAULT_BUF_SIZE)) {
+			VC_LOG_ERR("Not enough space to do data copy");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *), head,
+				mem, &desc, cipher->para.src_data_len))
+				< 0) {
+			ret = VIRTIO_CRYPTO_BADMSG;
+			goto error_exit;
+		}
+		break;
+	default:
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	/* dst */
+	desc = find_write_desc(head, desc);
+	if (unlikely(!desc)) {
+		VC_LOG_ERR("Cannot find write location");
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	switch (vcrypto->option) {
+	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
+		m_dst->buf_iova = gpa_to_hpa(vcrypto->dev,
+				desc->addr, cipher->para.dst_data_len);
+		m_dst->buf_addr = get_data_ptr(head, mem, &desc,
+				cipher->para.dst_data_len);
+		if (unlikely(m_dst->buf_iova == 0 || m_dst->buf_addr == NULL)) {
+			VC_LOG_ERR("zero_copy may fail due to cross page data");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+
+		m_dst->data_len = cipher->para.dst_data_len;
+		break;
+	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		vc_req->wb_desc = desc;
+		vc_req->wb_len = cipher->para.dst_data_len;
+		if (unlikely(move_desc(head, &desc, vc_req->wb_len) < 0)) {
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+		break;
+	default:
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	/* src data */
+	op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
+
+	op->sym->cipher.data.offset = 0;
+	op->sym->cipher.data.length = cipher->para.src_data_len;
+
+	vc_req->inhdr = get_data_ptr(head, mem, &desc, INHDR_LEN);
+	if (unlikely(vc_req->inhdr == NULL)) {
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	vc_req->inhdr->status = VIRTIO_CRYPTO_OK;
+	vc_req->len = cipher->para.dst_data_len + INHDR_LEN;
+
+	return 0;
+
+error_exit:
+	vc_req->len = INHDR_LEN;
+	return ret;
+}
+
+static uint8_t
+prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
+		struct vhost_crypto_data_req *vc_req,
+		struct virtio_crypto_alg_chain_data_req *chain,
+		struct vring_desc *cur_desc)
+{
+	struct vring_desc *head = vc_req->head;
+	struct vring_desc *desc = cur_desc;
+	struct rte_vhost_memory *mem = vc_req->mem;
+	struct rte_mbuf *m_src = op->sym->m_src, *m_dst = op->sym->m_dst;
+	uint8_t *iv_data = rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET);
+	uint32_t digest_offset;
+	void *digest_addr;
+	uint8_t ret = 0;
+
+	/* prepare */
+	/* iv */
+	if (unlikely(copy_data(iv_data, head, mem, &desc,
+			chain->para.iv_len) < 0)) {
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	m_src->data_len = chain->para.src_data_len;
+	m_dst->data_len = chain->para.dst_data_len;
+
+	switch (vcrypto->option) {
+	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
+		m_src->buf_iova = gpa_to_hpa(vcrypto->dev, desc->addr,
+				chain->para.src_data_len);
+		m_src->buf_addr = get_data_ptr(head, mem, &desc,
+				chain->para.src_data_len);
+		if (unlikely(m_src->buf_iova == 0 || m_src->buf_addr == NULL)) {
+			VC_LOG_ERR("zero_copy may fail due to cross page data");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+		break;
+	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		if (unlikely(chain->para.src_data_len >
+				RTE_MBUF_DEFAULT_BUF_SIZE)) {
+			VC_LOG_ERR("Not enough space to do data copy");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *), head,
+				mem, &desc, chain->para.src_data_len)) < 0) {
+			ret = VIRTIO_CRYPTO_BADMSG;
+			goto error_exit;
+		}
+		break;
+	default:
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	/* dst */
+	desc = find_write_desc(head, desc);
+	if (unlikely(!desc)) {
+		VC_LOG_ERR("Cannot find write location");
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	switch (vcrypto->option) {
+	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
+		m_dst->buf_iova = gpa_to_hpa(vcrypto->dev,
+				desc->addr, chain->para.dst_data_len);
+		m_dst->buf_addr = get_data_ptr(head, mem, &desc,
+				chain->para.dst_data_len);
+		if (unlikely(m_dst->buf_iova == 0 || m_dst->buf_addr == NULL)) {
+			VC_LOG_ERR("zero_copy may fail due to cross page data");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+
+		op->sym->auth.digest.phys_addr = gpa_to_hpa(vcrypto->dev,
+				desc->addr, chain->para.hash_result_len);
+		op->sym->auth.digest.data = get_data_ptr(head, mem, &desc,
+				chain->para.hash_result_len);
+		if (unlikely(op->sym->auth.digest.phys_addr == 0)) {
+			VC_LOG_ERR("zero_copy may fail due to cross page data");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+		break;
+	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		digest_offset = m_dst->data_len;
+		digest_addr = rte_pktmbuf_mtod_offset(m_dst, void *,
+				digest_offset);
+
+		vc_req->wb_desc = desc;
+		vc_req->wb_len = m_dst->data_len + chain->para.hash_result_len;
+
+		if (unlikely(move_desc(head, &desc,
+				chain->para.dst_data_len) < 0)) {
+			ret = VIRTIO_CRYPTO_BADMSG;
+			goto error_exit;
+		}
+
+		if (unlikely(copy_data(digest_addr, head, mem, &desc,
+				chain->para.hash_result_len)) < 0) {
+			ret = VIRTIO_CRYPTO_BADMSG;
+			goto error_exit;
+		}
+
+		op->sym->auth.digest.data = digest_addr;
+		op->sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m_dst,
+				digest_offset);
+		if (unlikely(move_desc(head, &desc,
+				chain->para.hash_result_len) < 0)) {
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+		break;
+	default:
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	/* record inhdr */
+	vc_req->inhdr = get_data_ptr(head, mem, &desc, INHDR_LEN);
+	if (unlikely(vc_req->inhdr == NULL)) {
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	vc_req->inhdr->status = VIRTIO_CRYPTO_OK;
+
+	op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
+
+	op->sym->cipher.data.offset = chain->para.cipher_start_src_offset;
+	op->sym->cipher.data.length = chain->para.src_data_len -
+			chain->para.cipher_start_src_offset;
+
+	op->sym->auth.data.offset = chain->para.hash_start_src_offset;
+	op->sym->auth.data.length = chain->para.len_to_hash;
+
+	vc_req->len = chain->para.dst_data_len + chain->para.hash_result_len +
+			INHDR_LEN;
+	return 0;
+
+error_exit:
+	vc_req->len = INHDR_LEN;
+	return ret;
+}
+
+/**
+ * Process on descriptor
+ */
+static __rte_always_inline int
+vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
+		struct vhost_virtqueue *vq, struct rte_crypto_op *op,
+		struct vring_desc *head, uint16_t desc_idx,
+		struct rte_vhost_memory *mem)
+{
+	struct vhost_crypto_data_req *vc_req = RTE_PTR_ADD(op->sym->m_src,
+			sizeof(struct rte_mbuf));
+	struct rte_cryptodev_sym_session *session;
+	struct virtio_crypto_op_data_req *req;
+	struct virtio_crypto_inhdr *inhdr;
+	struct vring_desc *desc = NULL;
+	uint64_t session_id;
+	int err = 0;
+
+	vc_req->desc_idx = desc_idx;
+
+	if (likely(head->flags & VRING_DESC_F_INDIRECT)) {
+		head = GPA_TO_VVA(struct vring_desc *, mem, head->addr);
+		if (unlikely(!head))
+			return 0;
+		desc_idx = 0;
+	}
+
+	desc = head;
+
+	vc_req->mem = mem;
+	vc_req->head = head;
+	vc_req->vq = vq;
+
+	vc_req->zero_copy = vcrypto->option;
+
+	req = get_data_ptr(head, mem, &desc, sizeof(*req));
+	if (unlikely(req == NULL)) {
+		err = VIRTIO_CRYPTO_ERR;
+		VC_LOG_ERR("Invalid descriptor");
+		goto error_exit;
+	}
+
+	switch (req->header.opcode) {
+	case VIRTIO_CRYPTO_CIPHER_ENCRYPT:
+	case VIRTIO_CRYPTO_CIPHER_DECRYPT:
+		session_id = req->header.session_id;
+
+		/* one branch to avoid unnecessary table lookup */
+		if (vcrypto->cache_session_id != session_id) {
+			err = rte_hash_lookup_data(vcrypto->session_map,
+					&session_id, (void **)&session);
+			if (unlikely(err < 0)) {
+				err = VIRTIO_CRYPTO_ERR;
+				VC_LOG_ERR("Failed to find session %"PRIu64,
+						session_id);
+				goto error_exit;
+			}
+
+			vcrypto->cache_session = session;
+			vcrypto->cache_session_id = session_id;
+		}
+
+		session = vcrypto->cache_session;
+
+		err = rte_crypto_op_attach_sym_session(op, session);
+		if (unlikely(err < 0)) {
+			err = VIRTIO_CRYPTO_ERR;
+			VC_LOG_ERR("Failed to attach session to op");
+			goto error_exit;
+		}
+
+		switch (req->u.sym_req.op_type) {
+		case VIRTIO_CRYPTO_SYM_OP_NONE:
+			err = VIRTIO_CRYPTO_NOTSUPP;
+			break;
+		case VIRTIO_CRYPTO_SYM_OP_CIPHER:
+			err = prepare_sym_cipher_op(vcrypto, op, vc_req,
+					&req->u.sym_req.u.cipher, desc);
+			break;
+		case VIRTIO_CRYPTO_SYM_OP_ALGORITHM_CHAINING:
+			err = prepare_sym_chain_op(vcrypto, op, vc_req,
+					&req->u.sym_req.u.chain, desc);
+			break;
+		}
+		if (unlikely(err != 0)) {
+			VC_LOG_ERR("Failed to process sym request");
+			goto error_exit;
+		}
+		break;
+	default:
+		VC_LOG_ERR("Unsupported symmetric crypto request type %u",
+				req->header.opcode);
+		goto error_exit;
+	}
+
+	return 0;
+
+error_exit:
+
+	inhdr = reach_inhdr(head, mem, desc);
+	if (likely(inhdr != NULL))
+		inhdr->status = (uint8_t)err;
+
+	return -1;
+}
+
+static __rte_always_inline struct vhost_virtqueue *
+vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
+		struct vhost_virtqueue *old_vq)
+{
+	struct rte_mbuf *m_src = op->sym->m_src;
+	struct rte_mbuf *m_dst = op->sym->m_dst;
+	struct vhost_crypto_data_req *vc_req = RTE_PTR_ADD(m_src,
+			sizeof(struct rte_mbuf));
+	uint16_t desc_idx;
+	int ret = 0;
+
+	if (unlikely(!vc_req)) {
+		VC_LOG_ERR("Failed to retrieve vc_req");
+		return NULL;
+	}
+
+	if (old_vq && (vc_req->vq != old_vq))
+		return vc_req->vq;
+
+	desc_idx = vc_req->desc_idx;
+
+	if (unlikely(op->status != RTE_CRYPTO_OP_STATUS_SUCCESS))
+		vc_req->inhdr->status = VIRTIO_CRYPTO_ERR;
+	else {
+		if (vc_req->zero_copy == 0) {
+			ret = write_back_data(op, vc_req);
+			if (unlikely(ret != 0))
+				vc_req->inhdr->status = VIRTIO_CRYPTO_ERR;
+		}
+	}
+
+	vc_req->vq->used->ring[desc_idx].id = desc_idx;
+	vc_req->vq->used->ring[desc_idx].len = vc_req->len;
+
+	rte_mempool_put(m_dst->pool, (void *)m_dst);
+	rte_mempool_put(m_src->pool, (void *)m_src);
+
+	return vc_req->vq;
+}
+
+static __rte_always_inline uint16_t
+vhost_crypto_complete_one_vm_requests(struct rte_crypto_op **ops,
+		uint16_t nb_ops, int *callfd)
+{
+	uint16_t processed = 1;
+	struct vhost_virtqueue *vq, *tmp_vq;
+
+	if (unlikely(nb_ops == 0))
+		return 0;
+
+	vq = vhost_crypto_finalize_one_request(ops[0], NULL);
+	if (unlikely(vq == NULL))
+		return 0;
+	tmp_vq = vq;
+
+	while ((processed < nb_ops)) {
+		tmp_vq = vhost_crypto_finalize_one_request(ops[processed],
+				tmp_vq);
+
+		if (unlikely(vq != tmp_vq))
+			break;
+
+		processed++;
+	}
+
+	*callfd = vq->callfd;
+
+	*(volatile uint16_t *)&vq->used->idx += processed;
+
+	return processed;
 }
