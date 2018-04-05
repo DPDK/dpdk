@@ -78,6 +78,7 @@ struct mlx5_dev_config {
 	unsigned int hw_vlan_strip:1; /* VLAN stripping is supported. */
 	unsigned int hw_fcs_strip:1; /* FCS stripping is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
+	unsigned int vf:1; /* This is a VF. */
 	unsigned int mps:2; /* Multi-packet send supported mode. */
 	unsigned int tunnel_en:1;
 	/* Whether tunnel stateless offloads are supported. */
@@ -119,6 +120,8 @@ struct priv {
 	struct ibv_pd *pd; /* Protection Domain. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
+	BITFIELD_DECLARE(mac_own, uint64_t, MLX5_MAX_MAC_ADDRESSES);
+	/* Bit-field of MAC addresses owned by the PMD. */
 	uint16_t vlan_filter[MLX5_MAX_VLAN_IDS]; /* VLAN filters table. */
 	unsigned int vlan_filter_n; /* Number of configured VLAN filters. */
 	/* Device properties. */
@@ -154,6 +157,8 @@ struct priv {
 	struct mlx5_dev_config config; /* Device configuration. */
 	struct mlx5_verbs_alloc_ctx verbs_alloc_ctx;
 	/* Context for Verbs allocator. */
+	int nl_socket; /* Netlink socket. */
+	uint32_t nl_sn; /* Netlink message sequence number. */
 };
 
 /* mlx5.c */
@@ -163,6 +168,7 @@ int mlx5_getenv_int(const char *);
 /* mlx5_ethdev.c */
 
 int mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE]);
+int mlx5_ifindex(const struct rte_eth_dev *dev);
 int mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
 int mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep,
@@ -296,5 +302,15 @@ struct mlx5_mr *mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp);
 struct mlx5_mr *mlx5_mr_get(struct rte_eth_dev *dev, struct rte_mempool *mp);
 int mlx5_mr_release(struct mlx5_mr *mr);
 int mlx5_mr_verify(struct rte_eth_dev *dev);
+
+/* mlx5_nl.c */
+
+int mlx5_nl_init(uint32_t nlgroups);
+int mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
+			 uint32_t index);
+int mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct ether_addr *mac,
+			    uint32_t index);
+void mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev);
+void mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev);
 
 #endif /* RTE_PMD_MLX5_H_ */

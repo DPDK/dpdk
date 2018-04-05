@@ -67,13 +67,19 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN])
 void
 mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
+	struct priv *priv = dev->data->dev_private;
+	const int vf = priv->config.vf;
+	int ret;
+
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
+	if (vf)
+		mlx5_nl_mac_addr_remove(dev, &dev->data->mac_addrs[index],
+					index);
 	memset(&dev->data->mac_addrs[index], 0, sizeof(struct ether_addr));
 	if (!dev->data->promiscuous) {
-		int ret = mlx5_traffic_restart(dev);
-
+		ret = mlx5_traffic_restart(dev);
 		if (ret)
-			DRV_LOG(ERR, "port %u cannot remove mac address: %s",
+			DRV_LOG(ERR, "port %u cannot restart traffic: %s",
 				dev->data->port_id, strerror(rte_errno));
 	}
 }
@@ -97,6 +103,8 @@ int
 mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 		  uint32_t index, uint32_t vmdq __rte_unused)
 {
+	struct priv *priv = dev->data->dev_private;
+	const int vf = priv->config.vf;
 	unsigned int i;
 
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
@@ -110,6 +118,12 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 		/* Address already configured elsewhere, return with error. */
 		rte_errno = EADDRINUSE;
 		return -rte_errno;
+	}
+	if (vf) {
+		int ret = mlx5_nl_mac_addr_add(dev, mac, index);
+
+		if (ret)
+			return ret;
 	}
 	dev->data->mac_addrs[index] = *mac;
 	if (!dev->data->promiscuous)

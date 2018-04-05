@@ -178,6 +178,33 @@ try_dev_id:
 }
 
 /**
+ * Get the interface index from device name.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   Interface index on success, a negative errno value otherwise and
+ *   rte_errno is set.
+ */
+int
+mlx5_ifindex(const struct rte_eth_dev *dev)
+{
+	char ifname[IF_NAMESIZE];
+	int ret;
+
+	ret = mlx5_get_ifname(dev, &ifname);
+	if (ret)
+		return ret;
+	ret = if_nametoindex(ifname);
+	if (ret == -1) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	return ret;
+}
+
+/**
  * Perform ifreq ioctl() on associated Ethernet device.
  *
  * @param[in] dev

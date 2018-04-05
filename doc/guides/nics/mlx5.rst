@@ -109,6 +109,15 @@ Limitations
 - Flows with a VXLAN Network Identifier equal (or ends to be equal)
   to 0 are not supported.
 - VXLAN TSO and checksum offloads are not supported on VM.
+- VF: flow rules created on VF devices can only match traffic targeted at the
+  configured MAC addresses (see ``rte_eth_dev_mac_addr_add()``).
+
+.. note::
+
+   MAC addresses not already present in the bridge table of the associated
+   kernel network device will be added and cleaned up by the PMD when closing
+   the device. In case of ungraceful program termination, some entries may
+   remain present and should be removed manually by other means.
 
 Statistics
 ----------

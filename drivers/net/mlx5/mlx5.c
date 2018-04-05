@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <net/if.h>
 #include <sys/mman.h>
+#include <linux/rtnetlink.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -205,6 +206,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		rte_free(priv->reta_idx);
 	if (priv->primary_socket)
 		mlx5_socket_uninit(dev);
+	if (priv->config.vf)
+		mlx5_nl_mac_addr_flush(dev);
+	if (priv->nl_socket >= 0)
+		close(priv->nl_socket);
 	ret = mlx5_hrxq_ibv_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some hash Rx queue still remain",
@@ -604,6 +609,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int err = 0;
 	struct ibv_context *attr_ctx = NULL;
 	struct ibv_device_attr_ex device_attr;
+	unsigned int vf;
 	unsigned int mps;
 	unsigned int cqe_comp;
 	unsigned int tunnel_en = 0;
@@ -653,6 +659,14 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			continue;
 		DRV_LOG(INFO, "PCI information matches, using device \"%s\"",
 			list[i]->name);
+		vf = ((pci_dev->id.device_id ==
+		       PCI_DEVICE_ID_MELLANOX_CONNECTX4VF) ||
+		      (pci_dev->id.device_id ==
+		       PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF) ||
+		      (pci_dev->id.device_id ==
+		       PCI_DEVICE_ID_MELLANOX_CONNECTX5VF) ||
+		      (pci_dev->id.device_id ==
+		       PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF));
 		attr_ctx = mlx5_glue->open_device(list[i]);
 		rte_errno = errno;
 		err = rte_errno;
@@ -876,6 +890,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(DEBUG,
 			"hardware Rx end alignment padding is %ssupported",
 			(config.hw_padding ? "" : "not "));
+		config.vf = vf;
 		config.tso = ((device_attr_ex.tso_caps.max_tso > 0) &&
 			      (device_attr_ex.tso_caps.supported_qpts &
 			      (1 << IBV_QPT_RAW_PACKET)));
@@ -953,6 +968,14 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		eth_dev->dev_ops = &mlx5_dev_ops;
 		/* Register MAC address. */
 		claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
+		priv->nl_socket = -1;
+		priv->nl_sn = 0;
+		if (vf) {
+			priv->nl_socket = mlx5_nl_init(RTMGRP_LINK);
+			if (priv->nl_socket < 0)
+				priv->nl_socket = -1;
+			mlx5_nl_mac_addr_sync(eth_dev);
+		}
 		TAILQ_INIT(&priv->flows);
 		TAILQ_INIT(&priv->ctrl_flows);
 		/* Hint libmlx5 to use PMD allocator for data plane resources */
