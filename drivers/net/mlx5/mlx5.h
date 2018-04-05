@@ -312,5 +312,7 @@ int mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct ether_addr *mac,
 			    uint32_t index);
 void mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev);
 void mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev);
+int mlx5_nl_promisc(struct rte_eth_dev *dev, int enable);
+int mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable);
 
 #endif /* RTE_PMD_MLX5_H_ */

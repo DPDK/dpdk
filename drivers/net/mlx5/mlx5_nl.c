@@ -531,3 +531,97 @@ mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev)
 			mlx5_nl_mac_addr_remove(dev, m, i);
 	}
 }
+
+/**
+ * Enable promiscuous / all multicast mode through Netlink.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param flags
+ *   IFF_PROMISC for promiscuous, IFF_ALLMULTI for allmulti.
+ * @param enable
+ *   Nonzero to enable, disable otherwise.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_nl_device_flags(struct rte_eth_dev *dev, uint32_t flags, int enable)
+{
+	struct priv *priv = dev->data->dev_private;
+	int iface_idx = mlx5_ifindex(dev);
+	struct {
+		struct nlmsghdr hdr;
+		struct ifinfomsg ifi;
+	} req = {
+		.hdr = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_type = RTM_NEWLINK,
+			.nlmsg_flags = NLM_F_REQUEST,
+		},
+		.ifi = {
+			.ifi_flags = enable ? flags : 0,
+			.ifi_change = flags,
+			.ifi_index = iface_idx,
+		},
+	};
+	int fd;
+	int ret;
+
+	assert(!(flags & ~(IFF_PROMISC | IFF_ALLMULTI)));
+	if (priv->nl_socket < 0)
+		return 0;
+	fd = priv->nl_socket;
+	ret = mlx5_nl_send(fd, &req.hdr, priv->nl_sn++);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+/**
+ * Enable promiscuous mode through Netlink.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param enable
+ *   Nonzero to enable, disable otherwise.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_nl_promisc(struct rte_eth_dev *dev, int enable)
+{
+	int ret = mlx5_nl_device_flags(dev, IFF_PROMISC, enable);
+
+	if (ret)
+		DRV_LOG(DEBUG,
+			"port %u cannot %s promisc mode: Netlink error %s",
+			dev->data->port_id, enable ? "enable" : "disable",
+			strerror(rte_errno));
+	return ret;
+}
+
+/**
+ * Enable all multicast mode through Netlink.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param enable
+ *   Nonzero to enable, disable otherwise.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable)
+{
+	int ret = mlx5_nl_device_flags(dev, IFF_ALLMULTI, enable);
+
+	if (ret)
+		DRV_LOG(DEBUG,
+			"port %u cannot %s allmulti mode: Netlink error %s",
+			dev->data->port_id, enable ? "enable" : "disable",
+			strerror(rte_errno));
+	return ret;
+}
