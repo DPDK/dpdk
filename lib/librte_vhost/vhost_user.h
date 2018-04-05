@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2018 Intel Corporation
  */
 
 #ifndef _VHOST_NET_USER_H
@@ -19,7 +19,8 @@
 					 (1ULL << VHOST_USER_PROTOCOL_F_RARP) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU) | \
-					 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ))
+					 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_CRYPTO_SESSION))
 
 typedef enum VhostUserRequest {
 	VHOST_USER_NONE = 0,
@@ -45,7 +46,9 @@ typedef enum VhostUserRequest {
 	VHOST_USER_NET_SET_MTU = 20,
 	VHOST_USER_SET_SLAVE_REQ_FD = 21,
 	VHOST_USER_IOTLB_MSG = 22,
-	VHOST_USER_MAX
+	VHOST_USER_CRYPTO_CREATE_SESS = 26,
+	VHOST_USER_CRYPTO_CLOSE_SESS = 27,
+	VHOST_USER_MAX = 28
 } VhostUserRequest;
 
 typedef enum VhostUserSlaveRequest {
@@ -72,6 +75,30 @@ typedef struct VhostUserLog {
 	uint64_t mmap_offset;
 } VhostUserLog;
 
+/* Comply with Cryptodev-Linux */
+#define VHOST_USER_CRYPTO_MAX_HMAC_KEY_LENGTH	512
+#define VHOST_USER_CRYPTO_MAX_CIPHER_KEY_LENGTH	64
+
+/* Same structure as vhost-user backend session info */
+typedef struct VhostUserCryptoSessionParam {
+	int64_t session_id;
+	uint32_t op_code;
+	uint32_t cipher_algo;
+	uint32_t cipher_key_len;
+	uint32_t hash_algo;
+	uint32_t digest_len;
+	uint32_t auth_key_len;
+	uint32_t aad_len;
+	uint8_t op_type;
+	uint8_t dir;
+	uint8_t hash_mode;
+	uint8_t chaining_dir;
+	uint8_t *ciphe_key;
+	uint8_t *auth_key;
+	uint8_t cipher_key_buf[VHOST_USER_CRYPTO_MAX_CIPHER_KEY_LENGTH];
+	uint8_t auth_key_buf[VHOST_USER_CRYPTO_MAX_HMAC_KEY_LENGTH];
+} VhostUserCryptoSessionParam;
+
 typedef struct VhostUserMsg {
 	union {
 		uint32_t master; /* a VhostUserRequest value */
@@ -92,6 +119,7 @@ typedef struct VhostUserMsg {
 		VhostUserMemory memory;
 		VhostUserLog    log;
 		struct vhost_iotlb_msg iotlb;
+		VhostUserCryptoSessionParam crypto_session;
 	} payload;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 } __attribute((packed)) VhostUserMsg;
