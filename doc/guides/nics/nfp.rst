@@ -99,17 +99,35 @@ bound to ``igb_uio`` or ``vfio-pci`` kernel drivers. Future DPDK versions will
 have a PMD able to work with the PF and VFs at the same time and with the PF
 implementing VF management along with other PF-only functionalities/offloads.
 
-The PMD PF has extra work to do which will delay the DPDK app initialization.
-This additional effort could be checking if a firmware is already available in
-the device, uploading the firmware if necessary or configuring the Link state
-properly when starting or stopping a PF port. Note that firmware upload is not
-always necessary which is the main delay for NFP PF PMD initialization.
+The PMD PF has extra work to do which will delay the DPDK app initialization
+like uploading the firmware and configure the Link state properly when starting or
+stopping a PF port. Since DPDK 18.05 the firmware upload happens when
+a PF is initialized, which was not always true with older DPDK versions.
 
 Depending on the Netronome product installed in the system, firmware files
 should be available under ``/lib/firmware/netronome``. DPDK PMD supporting the
-PF requires a specific link, ``/lib/firmware/netronome/nic_dpdk_default.nffw``,
-which should be created automatically with Netronome's Agilio products
-installation.
+PF looks for a firmware file in this order:
+
+	1) First try to find a firmware image specific for this device using the
+	   NFP serial number:
+
+		serial-00-15-4d-12-20-65-10-ff.nffw
+
+	2) Then try the PCI name:
+
+		pci-0000:04:00.0.nffw
+
+	3) Finally try the card type and media:
+
+		nic_AMDA0099-0001_2x25.nffw
+
+Netronome's software packages install firmware files under ``/lib/firmware/netronome``
+to support all the Netronome's SmartNICs and different firmware applications.
+This is usually done using file names based on SmartNIC type and media and with a
+directory per firmware application. Options 1 and 2 for firmware filenames allow
+more than one SmartNIC, same type of SmartNIC or different ones, and to upload a
+different firmware to each SmartNIC.
+
 
 PF multiport support
 --------------------
