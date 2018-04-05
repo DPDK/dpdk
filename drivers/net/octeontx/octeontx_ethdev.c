@@ -524,7 +524,6 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link link;
 	int res;
 
-	res = 0;
 	PMD_INIT_FUNC_TRACE();
 
 	res = octeontx_port_link_status(nic);
@@ -558,6 +557,7 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 	case OCTEONTX_LINK_SPEED_RESERVE1:
 	case OCTEONTX_LINK_SPEED_RESERVE2:
 	default:
+		link.link_speed = ETH_SPEED_NUM_NONE;
 		octeontx_log_err("incorrect link speed %d", nic->speed);
 		break;
 	}
