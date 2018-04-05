@@ -318,6 +318,15 @@ Run-time configuration
 
   Enabled by default.
 
+- ``vf_nl_en`` parameter [int]
+
+  A nonzero value enables Netlink requests from the VF to add/remove MAC
+  addresses or/and enable/disable promiscuous/all multicast on the Netdevice.
+  Otherwise the relevant configuration must be run with Linux iproute2 tools.
+  This is a prerequisite to receive this kind of traffic.
+
+  Enabled by default, valid only on VF devices ignored otherwise.
+
 Prerequisites
 -------------
 
