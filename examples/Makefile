@@ -93,6 +93,9 @@ DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += tep_termination
 endif
 DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += timer
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost vhost_scsi
+ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
+DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_crypto
+endif
 DIRS-y += vmdq
 DIRS-y += vmdq_dcb
 ifeq ($(CONFIG_RTE_LIBRTE_POWER), y)

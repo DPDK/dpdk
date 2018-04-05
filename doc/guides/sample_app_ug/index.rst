@@ -44,6 +44,7 @@ Sample Applications User Guides
     vmdq_dcb_forwarding
     vhost
     vhost_scsi
+    vhost_crypto
     netmap_compatibility
     ip_pipeline
     test_pipeline

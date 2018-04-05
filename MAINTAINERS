@@ -607,6 +607,7 @@ F: examples/vhost/
 F: doc/guides/sample_app_ug/vhost.rst
 F: examples/vhost_scsi/
 F: doc/guides/sample_app_ug/vhost_scsi.rst
+F: examples/vhost_crypto/
 
 Vhost PMD
 M: Tetsuya Mukawa <mtetsuyah@gmail.com>
