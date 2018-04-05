@@ -72,6 +72,17 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* meter: updated to accommodate configuration profiles.
+
+  The meter API is changed to support meter configuration profiles. The
+  configuration profile represents the set of configuration parameters
+  for a given meter object, such as the rates and sizes for the token
+  buckets. These configuration parameters were previously the part of meter
+  object internal data strcuture. The separation of the configuration
+  parameters from meter object data structure results in reducing its
+  memory footprint which helps in better cache utilization when large number
+  of meter objects are used.
+
 
 ABI Changes
 -----------
