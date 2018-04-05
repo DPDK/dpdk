@@ -119,7 +119,7 @@ init_ports(int num_ports)
 	if (!default_params.mp)
 		return -ENOMEM;
 
-	for (portid = 0; portid < num_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		retval = port_init(portid, default_params.mp);
 		if (retval)
 			return retval;
@@ -179,7 +179,7 @@ static void
 testsuite_teardown(void)
 {
 	uint32_t i;
-	for (i = 0; i < rte_eth_dev_count(); i++)
+	RTE_ETH_FOREACH_DEV(i)
 		rte_eth_dev_stop(i);
 
 	rte_mempool_free(default_params.mp);

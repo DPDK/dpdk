@@ -9,4 +9,6 @@ sources = files('rte_eth_bond_api.c', 'rte_eth_bond_pmd.c',
 deps += 'sched' # needed for rte_bitmap.h
 deps += ['ip_frag', 'cmdline']
 
+allow_experimental_apis = true
+
 install_headers('rte_eth_bond.h', 'rte_eth_bond_8023ad.h')

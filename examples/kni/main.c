@@ -275,7 +275,7 @@ kni_egress(struct kni_port_params *p)
 static int
 main_loop(__rte_unused void *arg)
 {
-	uint8_t i, nb_ports = rte_eth_dev_count();
+	uint16_t i;
 	int32_t f_stop;
 	const unsigned lcore_id = rte_lcore_id();
 	enum lcore_rxtx {
@@ -286,7 +286,7 @@ main_loop(__rte_unused void *arg)
 	};
 	enum lcore_rxtx flag = LCORE_NONE;
 
-	for (i = 0; i < nb_ports; i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		if (!kni_port_params_array[i])
 			continue;
 		if (kni_port_params_array[i]->lcore_rx == (uint8_t)lcore_id) {
@@ -626,7 +626,7 @@ init_port(uint16_t port)
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
@@ -638,7 +638,7 @@ check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 	fflush(stdout);
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
 		all_ports_up = 1;
-		for (portid = 0; portid < port_num; portid++) {
+		RTE_ETH_FOREACH_DEV(portid) {
 			if ((port_mask & (1 << portid)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
@@ -940,7 +940,7 @@ main(int argc, char** argv)
 	init_kni();
 
 	/* Initialise each port */
-	for (port = 0; port < nb_sys_ports; port++) {
+	RTE_ETH_FOREACH_DEV(port) {
 		/* Skip ports that are not enabled */
 		if (!(ports_mask & (1 << port)))
 			continue;
@@ -952,7 +952,7 @@ main(int argc, char** argv)
 
 		kni_alloc(port);
 	}
-	check_all_ports_link_status(nb_sys_ports, ports_mask);
+	check_all_ports_link_status(ports_mask);
 
 	/* Launch per-lcore function on every lcore */
 	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);
@@ -962,7 +962,7 @@ main(int argc, char** argv)
 	}
 
 	/* Release resources */
-	for (port = 0; port < nb_sys_ports; port++) {
+	RTE_ETH_FOREACH_DEV(port) {
 		if (!(ports_mask & (1 << port)))
 			continue;
 		kni_free_kni(port);

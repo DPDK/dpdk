@@ -7,6 +7,7 @@
 # DPDK instance, use 'make'
 
 deps += ['hash', 'vhost']
+allow_experimental_apis = true
 sources = files(
 	'main.c', 'vxlan.c', 'vxlan_setup.c'
 )

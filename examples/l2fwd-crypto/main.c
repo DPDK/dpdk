@@ -1721,7 +1721,7 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
@@ -1733,7 +1733,7 @@ check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 	fflush(stdout);
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
 		all_ports_up = 1;
-		for (portid = 0; portid < port_num; portid++) {
+		RTE_ETH_FOREACH_DEV(portid) {
 			if ((port_mask & (1 << portid)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
@@ -2309,7 +2309,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 static int
 initialize_ports(struct l2fwd_crypto_options *options)
 {
-	uint16_t last_portid, portid;
+	uint16_t last_portid = 0, portid;
 	unsigned enabled_portcount = 0;
 	unsigned nb_ports = rte_eth_dev_count();
 
@@ -2322,7 +2322,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
 		l2fwd_dst_ports[portid] = 0;
 
-	for (last_portid = 0, portid = 0; portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		int retval;
 		struct rte_eth_dev_info dev_info;
 		struct rte_eth_rxconf rxq_conf;
@@ -2426,7 +2426,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 		return -1;
 	}
 
-	check_all_ports_link_status(nb_ports, l2fwd_enabled_port_mask);
+	check_all_ports_link_status(l2fwd_enabled_port_mask);
 
 	return enabled_portcount;
 }
@@ -2470,12 +2470,12 @@ reserve_key_memory(struct l2fwd_crypto_options *options)
 int
 main(int argc, char **argv)
 {
-	struct lcore_queue_conf *qconf;
+	struct lcore_queue_conf *qconf = NULL;
 	struct l2fwd_crypto_options options;
 
 	uint8_t nb_cryptodevs, cdev_id;
-	uint16_t nb_ports, portid;
-	unsigned lcore_id, rx_lcore_id;
+	uint16_t portid;
+	unsigned lcore_id, rx_lcore_id = 0;
 	int ret, enabled_cdevcount, enabled_portcount;
 	uint8_t enabled_cdevs[RTE_CRYPTO_MAX_DEVS] = {0};
 
@@ -2516,10 +2516,8 @@ main(int argc, char **argv)
 	if (enabled_portcount < 1)
 		rte_exit(EXIT_FAILURE, "Failed to initial Ethernet ports\n");
 
-	nb_ports = rte_eth_dev_count();
 	/* Initialize the port/queue configuration of each logical core */
-	for (rx_lcore_id = 0, qconf = NULL, portid = 0;
-			portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 
 		/* skip ports that are not enabled */
 		if ((options.portmask & (1 << portid)) == 0)

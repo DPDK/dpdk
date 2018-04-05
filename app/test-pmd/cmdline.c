@@ -1999,7 +1999,7 @@ cmd_config_rss_parsed(void *parsed_result,
 	struct cmd_config_rss *res = parsed_result;
 	struct rte_eth_rss_conf rss_conf = { .rss_key_len = 0, };
 	int diag;
-	uint8_t i;
+	uint16_t i;
 
 	if (!strcmp(res->value, "all"))
 		rss_conf.rss_hf = ETH_RSS_IP | ETH_RSS_TCP |
@@ -2033,7 +2033,7 @@ cmd_config_rss_parsed(void *parsed_result,
 		return;
 	}
 	rss_conf.rss_key = NULL;
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		diag = rte_eth_dev_rss_hash_update(i, &rss_conf);
 		if (diag < 0)
 			printf("Configuration of RSS hash at ethernet port %d "

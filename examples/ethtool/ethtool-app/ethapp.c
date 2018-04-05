@@ -145,9 +145,9 @@ pcmd_drvinfo_callback(__rte_unused void *ptr_params,
 	__rte_unused void *ptr_data)
 {
 	struct ethtool_drvinfo info;
-	int id_port;
+	uint16_t id_port;
 
-	for (id_port = 0; id_port < rte_eth_dev_count(); id_port++) {
+	RTE_ETH_FOREACH_DEV(id_port) {
 		memset(&info, 0, sizeof(info));
 		if (rte_ethtool_get_drvinfo(id_port, &info)) {
 			printf("Error getting info for port %i\n", id_port);
@@ -167,10 +167,10 @@ pcmd_link_callback(__rte_unused void *ptr_params,
 	__rte_unused struct cmdline *ctx,
 	__rte_unused void *ptr_data)
 {
-	int num_ports = rte_eth_dev_count();
-	int id_port, stat_port;
+	uint16_t id_port;
+	int stat_port;
 
-	for (id_port = 0; id_port < num_ports; id_port++) {
+	RTE_ETH_FOREACH_DEV(id_port) {
 		if (!rte_eth_dev_is_valid_port(id_port))
 			continue;
 		stat_port = rte_ethtool_get_link(id_port);

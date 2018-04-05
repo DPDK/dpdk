@@ -259,8 +259,7 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 static __attribute__((noreturn)) void
 lcore_main(struct flow_classifier *cls_app)
 {
-	const uint8_t nb_ports = rte_eth_dev_count();
-	uint8_t port;
+	uint16_t port;
 	int ret;
 	int i = 0;
 
@@ -275,7 +274,7 @@ lcore_main(struct flow_classifier *cls_app)
 	 * Check that the port is on the same NUMA node as the polling thread
 	 * for best performance.
 	 */
-	for (port = 0; port < nb_ports; port++)
+	RTE_ETH_FOREACH_DEV(port)
 		if (rte_eth_dev_socket_id(port) > 0 &&
 			rte_eth_dev_socket_id(port) != (int)rte_socket_id()) {
 			printf("\n\n");
@@ -294,7 +293,7 @@ lcore_main(struct flow_classifier *cls_app)
 		 * on the paired port.
 		 * The mapping is 0 -> 1, 1 -> 0, 2 -> 3, 3 -> 2, etc.
 		 */
-		for (port = 0; port < nb_ports; port++) {
+		RTE_ETH_FOREACH_DEV(port) {
 			/* Get burst of RX packets, from first port of pair. */
 			struct rte_mbuf *bufs[BURST_SIZE];
 			const uint16_t nb_rx = rte_eth_rx_burst(port, 0,
@@ -754,7 +753,7 @@ main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
 	uint8_t nb_ports;
-	uint8_t portid;
+	uint16_t portid;
 	int ret;
 	int socket_id;
 	struct rte_table_acl_params table_acl_params;
@@ -789,7 +788,7 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
 	/* Initialize all ports. */
-	for (portid = 0; portid < nb_ports; portid++)
+	RTE_ETH_FOREACH_DEV(portid)
 		if (port_init(portid, mbuf_pool) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu8 "\n",
 					portid);

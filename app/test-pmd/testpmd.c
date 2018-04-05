@@ -1120,9 +1120,8 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 	uint64_t tics_per_1sec;
 	uint64_t tics_datum;
 	uint64_t tics_current;
-	uint8_t idx_port, cnt_ports;
+	uint16_t idx_port;
 
-	cnt_ports = rte_eth_dev_count();
 	tics_datum = rte_rdtsc();
 	tics_per_1sec = rte_get_timer_hz();
 #endif
@@ -1137,9 +1136,7 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 			tics_current = rte_rdtsc();
 			if (tics_current - tics_datum >= tics_per_1sec) {
 				/* Periodic bitrate calculation */
-				for (idx_port = 0;
-						idx_port < cnt_ports;
-						idx_port++)
+				RTE_ETH_FOREACH_DEV(idx_port)
 					rte_stats_bitrate_calc(bitrate_data,
 						idx_port);
 				tics_datum = tics_current;

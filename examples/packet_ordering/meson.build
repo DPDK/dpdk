@@ -7,6 +7,7 @@
 # DPDK instance, use 'make'
 
 deps += 'reorder'
+allow_experimental_apis = true
 sources = files(
 	'main.c'
 )

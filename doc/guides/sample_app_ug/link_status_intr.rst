@@ -99,7 +99,7 @@ To fully understand this code, it is recommended to study the chapters that rela
      * Each logical core is assigned a dedicated TX queue on each port.
      */
 
-    for (portid = 0; portid < nb_ports; portid++) {
+    RTE_ETH_FOREACH_DEV(portid) {
         /* skip ports that are not enabled */
 
         if ((lsi_enabled_port_mask & (1 << portid)) == 0)

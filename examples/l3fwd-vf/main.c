@@ -648,11 +648,10 @@ static void
 signal_handler(int signum)
 {
 	uint16_t portid;
-	uint16_t nb_ports = rte_eth_dev_count();
 
 	/* When we receive a SIGINT signal */
 	if (signum == SIGINT) {
-		for (portid = 0; portid < nb_ports; portid++) {
+		RTE_ETH_FOREACH_DEV(portid) {
 			/* skip ports that are not enabled */
 			if ((enabled_port_mask & (1 << portid)) == 0)
 				continue;
@@ -958,7 +957,7 @@ main(int argc, char **argv)
 	nb_lcores = rte_lcore_count();
 
 	/* initialize all ports */
-	for (portid = 0; portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		struct rte_eth_conf local_port_conf = port_conf;
 
 		/* skip ports that are not enabled */
@@ -1063,7 +1062,7 @@ main(int argc, char **argv)
 	printf("\n");
 
 	/* start ports */
-	for (portid = 0; portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		if ((enabled_port_mask & (1 << portid)) == 0) {
 			continue;
 		}

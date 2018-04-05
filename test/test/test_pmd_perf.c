@@ -698,7 +698,7 @@ test_pmd_perf(void)
 
 	reset_count();
 	num = 0;
-	for (portid = 0; portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		if (socketid == -1) {
 			socketid = rte_eth_dev_socket_id(portid);
 			slave_id = alloc_lcore(socketid);
@@ -791,7 +791,7 @@ test_pmd_perf(void)
 			return -1;
 
 	/* port tear down */
-	for (portid = 0; portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		if (socketid != rte_eth_dev_socket_id(portid))
 			continue;
 

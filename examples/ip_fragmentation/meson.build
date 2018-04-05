@@ -7,6 +7,7 @@
 # DPDK instance, use 'make'
 
 deps +=  ['ip_frag', 'lpm']
+allow_experimental_apis = true
 sources = files(
 	'main.c'
 )

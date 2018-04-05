@@ -7,6 +7,7 @@
 # DPDK instance, use 'make'
 
 deps += ['kni', 'bus_pci']
+allow_experimental_apis = true
 sources = files(
 	'main.c'
 )

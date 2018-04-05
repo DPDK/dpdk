@@ -110,12 +110,11 @@ static int
 get_pfid(struct policy *pol)
 {
 
-	int i, x, ret = 0, nb_ports;
+	int i, x, ret = 0;
 
-	nb_ports = rte_eth_dev_count();
 	for (i = 0; i < pol->pkt.nb_mac_to_monitor; i++) {
 
-		for (x = 0; x < nb_ports; x++) {
+		RTE_ETH_FOREACH_DEV(x) {
 			ret = rte_pmd_i40e_query_vfid_by_mac(x,
 				(struct ether_addr *)&(pol->pkt.vfid[i]));
 			if (ret != -EINVAL) {

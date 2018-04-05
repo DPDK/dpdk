@@ -2810,7 +2810,7 @@ rte_pmd_mrvl_remove(struct rte_vdev_device *vdev)
 
 	RTE_LOG(INFO, PMD, "Removing %s\n", name);
 
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) { /* FIXME: removing all devices! */
 		char ifname[RTE_ETH_NAME_MAX_LEN];
 
 		rte_eth_dev_get_name_by_port(i, ifname);

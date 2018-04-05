@@ -339,10 +339,9 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 }
 
 static int
-init_ports(unsigned int num_ports)
+init_ports(uint16_t num_ports)
 {
-	uint8_t portid;
-	unsigned int i;
+	uint16_t portid, i;
 
 	if (!cdata.num_mbuf)
 		cdata.num_mbuf = 16384 * num_ports;
@@ -354,12 +353,12 @@ init_ports(unsigned int num_ports)
 			/* data_room_size */ RTE_MBUF_DEFAULT_BUF_SIZE,
 			rte_socket_id());
 
-	for (portid = 0; portid < num_ports; portid++)
+	RTE_ETH_FOREACH_DEV(portid)
 		if (port_init(portid, mp) != 0)
-			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu8 "\n",
+			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16 "\n",
 					portid);
 
-	for (i = 0; i < num_ports; i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		void *userdata = (void *)(uintptr_t) i;
 		fdata->tx_buf[i] =
 			rte_malloc(NULL, RTE_ETH_TX_BUFFER_SIZE(32), 0);
@@ -375,13 +374,13 @@ init_ports(unsigned int num_ports)
 }
 
 static void
-do_capability_setup(uint16_t nb_ethdev, uint8_t eventdev_id)
+do_capability_setup(uint8_t eventdev_id)
 {
-	int i;
+	uint16_t i;
 	uint8_t mt_unsafe = 0;
 	uint8_t burst = 0;
 
-	for (i = 0; i < nb_ethdev; i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		struct rte_eth_dev_info dev_info;
 		memset(&dev_info, 0, sizeof(struct rte_eth_dev_info));
 
@@ -483,7 +482,7 @@ main(int argc, char **argv)
 		fprintf(stderr, "Warning: More than one eventdev, using idx 0");
 
 
-	do_capability_setup(num_ports, 0);
+	do_capability_setup(0);
 	fdata->cap.check_opt();
 
 	worker_data = rte_calloc(0, cdata.num_workers,

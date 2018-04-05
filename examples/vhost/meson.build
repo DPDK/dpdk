@@ -7,6 +7,7 @@
 # DPDK instance, use 'make'
 
 deps += 'vhost'
+allow_experimental_apis = true
 sources = files(
 	'main.c', 'virtio_net.c'
 )

@@ -32,7 +32,7 @@ find_port_id_by_pci_addr(const struct rte_pci_addr *pci_addr)
 	struct rte_pci_addr *eth_pci_addr;
 	unsigned i;
 
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		pci_dev = RTE_ETH_DEV_TO_PCI(&rte_eth_devices[i]);
 		eth_pci_addr = &pci_dev->addr;
 
@@ -50,7 +50,7 @@ find_port_id_by_dev_name(const char *name)
 {
 	unsigned i;
 
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		if (rte_eth_devices[i].data == NULL)
 			continue;
 

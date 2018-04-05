@@ -4,3 +4,4 @@
 sources = files('rte_latencystats.c')
 headers = files('rte_latencystats.h')
 deps += ['metrics', 'ethdev']
+allow_experimental_apis = true

@@ -738,7 +738,7 @@ int
 main(int argc, char *argv[])
 {
 	int ret;
-	uint8_t nb_ports, i;
+	uint16_t nb_ports, i;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -761,7 +761,7 @@ main(int argc, char *argv[])
 
 	/* initialize all ports */
 	slaves_count = nb_ports;
-	for (i = 0; i < nb_ports; i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		slave_port_init(i, mbuf_pool);
 		slaves[i] = i;
 	}

@@ -115,7 +115,7 @@ smp_parse_args(int argc, char **argv)
 	int opt, ret;
 	char **argvopt;
 	int option_index;
-	unsigned i, port_mask = 0;
+	uint16_t i, port_mask = 0;
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
 			{PARAM_NUM_PROCS, 1, 0, 0},
@@ -156,7 +156,7 @@ smp_parse_args(int argc, char **argv)
 		smp_usage(prgname, "Invalid or missing port mask\n");
 
 	/* get the port numbers from the port mask */
-	for(i = 0; i < rte_eth_dev_count(); i++)
+	RTE_ETH_FOREACH_DEV(i)
 		if(port_mask & (1 << i))
 			ports[num_ports++] = (uint8_t)i;
 

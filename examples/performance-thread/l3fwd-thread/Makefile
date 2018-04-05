@@ -18,6 +18,7 @@ SRCS-y := main.c
 
 include $(RTE_SDK)/examples/performance-thread/common/common.mk
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3 -g $(USER_FLAGS) $(INCLUDES) $(WERROR_FLAGS)
 
 # workaround for a gcc bug with noreturn attribute

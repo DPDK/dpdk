@@ -355,7 +355,7 @@ perf_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 	memset(&queue_conf, 0,
 			sizeof(struct rte_event_eth_rx_adapter_queue_conf));
 	queue_conf.ev.sched_type = opt->sched_type_list[0];
-	for (prod = 0; prod < rte_eth_dev_count(); prod++) {
+	RTE_ETH_FOREACH_DEV(prod) {
 		uint32_t cap;
 
 		ret = rte_event_eth_rx_adapter_caps_get(opt->dev_id,
@@ -673,7 +673,7 @@ perf_elt_init(struct rte_mempool *mp, void *arg __rte_unused,
 int
 perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 {
-	int i;
+	uint16_t i;
 	struct test_perf *t = evt_test_priv(test);
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
@@ -705,7 +705,7 @@ perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		return -ENODEV;
 	}
 
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 
 		if (rte_eth_dev_configure(i, 1, 1,
 					&port_conf)
@@ -736,11 +736,11 @@ perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 
 void perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
 {
-	int i;
+	uint16_t i;
 	RTE_SET_USED(test);
 
 	if (opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR) {
-		for (i = 0; i < rte_eth_dev_count(); i++) {
+		RTE_ETH_FOREACH_DEV(i) {
 			rte_event_eth_rx_adapter_stop(i);
 			rte_eth_dev_stop(i);
 			rte_eth_dev_close(i);

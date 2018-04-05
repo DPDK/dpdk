@@ -201,7 +201,6 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	uint16_t pid;
 	uint16_t qid;
 	struct rxtx_cbs *cbs = NULL;
-	const uint16_t nb_ports = rte_eth_dev_count();
 	const char *ptr_strings[NUM_LATENCY_STATS] = {0};
 	const struct rte_memzone *mz = NULL;
 	const unsigned int flags = 0;
@@ -234,7 +233,7 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	}
 
 	/** Register Rx/Tx callbacks */
-	for (pid = 0; pid < nb_ports; pid++) {
+	RTE_ETH_FOREACH_DEV(pid) {
 		struct rte_eth_dev_info dev_info;
 		rte_eth_dev_info_get(pid, &dev_info);
 		for (qid = 0; qid < dev_info.nb_rx_queues; qid++) {
@@ -266,10 +265,9 @@ rte_latencystats_uninit(void)
 	uint16_t qid;
 	int ret = 0;
 	struct rxtx_cbs *cbs = NULL;
-	const uint16_t nb_ports = rte_eth_dev_count();
 
 	/** De register Rx/Tx callbacks */
-	for (pid = 0; pid < nb_ports; pid++) {
+	RTE_ETH_FOREACH_DEV(pid) {
 		struct rte_eth_dev_info dev_info;
 		rte_eth_dev_info_get(pid, &dev_info);
 		for (qid = 0; qid < dev_info.nb_rx_queues; qid++) {

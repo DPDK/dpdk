@@ -213,7 +213,7 @@ pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues)
 int
 pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 {
-	int i;
+	uint16_t i;
 	uint8_t nb_queues = 1;
 	uint8_t mt_state = 0;
 	struct test_pipeline *t = evt_test_priv(test);
@@ -239,7 +239,7 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		return -ENODEV;
 	}
 
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		struct rte_eth_dev_info dev_info;
 
 		memset(&dev_info, 0, sizeof(struct rte_eth_dev_info));
@@ -337,7 +337,7 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 	memset(&queue_conf, 0,
 			sizeof(struct rte_event_eth_rx_adapter_queue_conf));
 	queue_conf.ev.sched_type = opt->sched_type_list[0];
-	for (prod = 0; prod < rte_eth_dev_count(); prod++) {
+	RTE_ETH_FOREACH_DEV(prod) {
 		uint32_t cap;
 
 		ret = rte_event_eth_rx_adapter_caps_get(opt->dev_id,
@@ -453,7 +453,7 @@ pipeline_event_tx_service_setup(struct evt_test *test, struct evt_options *opt,
 void
 pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
 {
-	int i;
+	uint16_t i;
 	RTE_SET_USED(test);
 	RTE_SET_USED(opt);
 	struct test_pipeline *t = evt_test_priv(test);
@@ -464,7 +464,7 @@ pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
 		rte_service_component_unregister(t->tx_service.service_id);
 	}
 
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		rte_event_eth_rx_adapter_stop(i);
 		rte_eth_dev_stop(i);
 		rte_eth_dev_close(i);

@@ -138,7 +138,7 @@ consumer(void)
 				&packet, 1, 0);
 
 		if (n == 0) {
-			for (i = 0; i < rte_eth_dev_count(); i++)
+			RTE_ETH_FOREACH_DEV(i)
 				rte_eth_tx_buffer_flush(i, 0, fdata->tx_buf[i]);
 			return 0;
 		}
@@ -196,14 +196,13 @@ consumer_burst(void)
 	unsigned int i, j;
 	uint8_t dev_id = cons_data.dev_id;
 	uint8_t port_id = cons_data.port_id;
-	uint16_t nb_ports = rte_eth_dev_count();
 
 	do {
 		uint16_t n = rte_event_dequeue_burst(dev_id, port_id,
 				packets, RTE_DIM(packets), 0);
 
 		if (n == 0) {
-			for (j = 0; j < nb_ports; j++)
+			RTE_ETH_FOREACH_DEV(j)
 				rte_eth_tx_buffer_flush(j, 0, fdata->tx_buf[j]);
 			return 0;
 		}
@@ -521,7 +520,7 @@ generic_opt_check(void)
 		rte_exit(EXIT_FAILURE,
 				"Event dev doesn't support all type queues\n");
 
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		ret = rte_event_eth_rx_adapter_caps_get(0, i, &cap);
 		if (ret)
 			rte_exit(EXIT_FAILURE,

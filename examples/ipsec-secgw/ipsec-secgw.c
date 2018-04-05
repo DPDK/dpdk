@@ -1173,7 +1173,7 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
@@ -1185,7 +1185,7 @@ check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 	fflush(stdout);
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
 		all_ports_up = 1;
-		for (portid = 0; portid < port_num; portid++) {
+		RTE_ETH_FOREACH_DEV(portid) {
 			if ((port_mask & (1 << portid)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
@@ -1383,7 +1383,7 @@ cryptodevs_init(void)
 		if (sess_sz > max_sess_sz)
 			max_sess_sz = sess_sz;
 	}
-	for (port_id = 0; port_id < rte_eth_dev_count(); port_id++) {
+	RTE_ETH_FOREACH_DEV(port_id) {
 		void *sec_ctx;
 
 		if ((enabled_port_mask & (1 << port_id)) == 0)
@@ -1470,7 +1470,7 @@ cryptodevs_init(void)
 	}
 
 	/* create session pools for eth devices that implement security */
-	for (port_id = 0; port_id < rte_eth_dev_count(); port_id++) {
+	RTE_ETH_FOREACH_DEV(port_id) {
 		if ((enabled_port_mask & (1 << port_id)) &&
 				rte_eth_dev_get_sec_ctx(port_id)) {
 			int socket_id = rte_eth_dev_socket_id(port_id);
@@ -1646,7 +1646,7 @@ main(int32_t argc, char **argv)
 	int32_t ret;
 	uint32_t lcore_id;
 	uint8_t socket_id;
-	uint16_t portid, nb_ports;
+	uint16_t portid;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1664,8 +1664,6 @@ main(int32_t argc, char **argv)
 			unprotected_port_mask)
 		rte_exit(EXIT_FAILURE, "Invalid unprotected portmask 0x%x\n",
 				unprotected_port_mask);
-
-	nb_ports = rte_eth_dev_count();
 
 	if (check_params() < 0)
 		rte_exit(EXIT_FAILURE, "check_params failed\n");
@@ -1700,7 +1698,7 @@ main(int32_t argc, char **argv)
 		pool_init(&socket_ctx[socket_id], socket_id, NB_MBUF);
 	}
 
-	for (portid = 0; portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 
@@ -1710,7 +1708,7 @@ main(int32_t argc, char **argv)
 	cryptodevs_init();
 
 	/* start ports */
-	for (portid = 0; portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 
@@ -1729,7 +1727,7 @@ main(int32_t argc, char **argv)
 			rte_eth_promiscuous_enable(portid);
 	}
 
-	check_all_ports_link_status(nb_ports, enabled_port_mask);
+	check_all_ports_link_status(enabled_port_mask);
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);

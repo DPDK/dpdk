@@ -198,7 +198,7 @@ lcore_rx(struct lcore_params *p)
 	uint16_t port;
 	struct rte_mbuf *bufs[BURST_SIZE*2];
 
-	for (port = 0; port < nb_ports; port++) {
+	RTE_ETH_FOREACH_DEV(port) {
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << port)) == 0)
 			continue;
@@ -295,11 +295,11 @@ flush_one_port(struct output_buffer *outbuf, uint8_t outp)
 }
 
 static inline void
-flush_all_ports(struct output_buffer *tx_buffers, uint16_t nb_ports)
+flush_all_ports(struct output_buffer *tx_buffers)
 {
 	uint16_t outp;
 
-	for (outp = 0; outp < nb_ports; outp++) {
+	RTE_ETH_FOREACH_DEV(outp) {
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << outp)) == 0)
 			continue;
@@ -367,11 +367,10 @@ static int
 lcore_tx(struct rte_ring *in_r)
 {
 	static struct output_buffer tx_buffers[RTE_MAX_ETHPORTS];
-	const uint16_t nb_ports = rte_eth_dev_count();
 	const int socket_id = rte_socket_id();
 	uint16_t port;
 
-	for (port = 0; port < nb_ports; port++) {
+	RTE_ETH_FOREACH_DEV(port) {
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << port)) == 0)
 			continue;
@@ -386,7 +385,7 @@ lcore_tx(struct rte_ring *in_r)
 	printf("\nCore %u doing packet TX.\n", rte_lcore_id());
 	while (!quit_signal) {
 
-		for (port = 0; port < nb_ports; port++) {
+		RTE_ETH_FOREACH_DEV(port) {
 			/* skip ports that are not enabled */
 			if ((enabled_port_mask & (1 << port)) == 0)
 				continue;
@@ -398,7 +397,7 @@ lcore_tx(struct rte_ring *in_r)
 
 			/* if we get no traffic, flush anything we have */
 			if (unlikely(nb_rx == 0)) {
-				flush_all_ports(tx_buffers, nb_ports);
+				flush_all_ports(tx_buffers);
 				continue;
 			}
 
@@ -446,14 +445,14 @@ print_stats(void)
 	unsigned int i, j;
 	const unsigned int num_workers = rte_lcore_count() - 4;
 
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		rte_eth_stats_get(i, &eth_stats);
 		app_stats.port_rx_pkts[i] = eth_stats.ipackets;
 		app_stats.port_tx_pkts[i] = eth_stats.opackets;
 	}
 
 	printf("\n\nRX Thread:\n");
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		printf("Port %u Pktsin : %5.2f\n", i,
 				(app_stats.port_rx_pkts[i] -
 				prev_app_stats.port_rx_pkts[i])/1000000.0);
@@ -492,7 +491,7 @@ print_stats(void)
 	printf(" - Dequeued:    %5.2f\n",
 			(app_stats.tx.dequeue_pkts -
 			prev_app_stats.tx.dequeue_pkts)/1000000.0);
-	for (i = 0; i < rte_eth_dev_count(); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		printf("Port %u Pktsout: %5.2f\n",
 				i, (app_stats.port_tx_pkts[i] -
 				prev_app_stats.port_tx_pkts[i])/1000000.0);
@@ -694,7 +693,7 @@ main(int argc, char *argv[])
 	nb_ports_available = nb_ports;
 
 	/* initialize all ports */
-	for (portid = 0; portid < nb_ports; portid++) {
+	RTE_ETH_FOREACH_DEV(portid) {
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << portid)) == 0) {
 			printf("\nSkipping disabled port %d\n", portid);
