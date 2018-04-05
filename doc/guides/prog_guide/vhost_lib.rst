@@ -160,6 +160,31 @@ The following is an overview of some key Vhost API functions:
 
   Receives (dequeues) ``count`` packets from guest, and stored them at ``pkts``.
 
+* ``rte_vhost_crypto_create(vid, cryptodev_id, sess_mempool, socket_id)``
+
+  As an extension of new_device(), this function adds virtio-crypto workload
+  acceleration capability to the device. All crypto workload is processed by
+  DPDK cryptodev with the device ID of ``cryptodev_id``.
+
+* ``rte_vhost_crypto_free(vid)``
+
+  Frees the memory and vhost-user message handlers created in
+  rte_vhost_crypto_create().
+
+* ``rte_vhost_crypto_fetch_requests(vid, queue_id, ops, nb_ops)``
+
+  Receives (dequeues) ``nb_ops`` virtio-crypto requests from guest, parses
+  them to DPDK Crypto Operations, and fills the ``ops`` with parsing results.
+
+* ``rte_vhost_crypto_finalize_requests(queue_id, ops, nb_ops)``
+
+  After the ``ops`` are dequeued from Cryptodev, finalizes the jobs and
+  notifies the guest(s).
+
+* ``rte_vhost_crypto_set_zero_copy(vid, option)``
+
+  Enable or disable zero copy feature of the vhost crypto backend.
+
 Vhost-user Implementations
 --------------------------
 

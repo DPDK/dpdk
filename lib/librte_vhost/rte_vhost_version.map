@@ -74,4 +74,10 @@ EXPERIMENTAL {
 	rte_vhost_get_log_base;
 	rte_vhost_get_vring_base;
 	rte_vhost_set_vring_base;
+	rte_vhost_crypto_create;
+	rte_vhost_crypto_free;
+	rte_vhost_crypto_fetch_requests;
+	rte_vhost_crypto_finalize_requests;
+	rte_vhost_crypto_set_zero_copy;
+
 } DPDK_18.02;

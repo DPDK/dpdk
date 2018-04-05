@@ -3,6 +3,7 @@
  */
 #include <rte_malloc.h>
 #include <rte_hash.h>
+#include <rte_jhash.h>
 #include <rte_mbuf.h>
 #include <rte_cryptodev.h>
 
@@ -33,6 +34,13 @@
 	RTE_LOG(INFO, USER1, "[VHOST-Crypto]: " fmt "\n", ## args)
 #define VC_LOG_DBG(fmt, args...)
 #endif
+
+#define VIRTIO_CRYPTO_FEATURES ((1 << VIRTIO_F_NOTIFY_ON_EMPTY) |	\
+		(1 << VIRTIO_RING_F_INDIRECT_DESC) |			\
+		(1 << VIRTIO_RING_F_EVENT_IDX) |			\
+		(1 << VIRTIO_CRYPTO_SERVICE_CIPHER) |			\
+		(1 << VIRTIO_CRYPTO_SERVICE_MAC) |			\
+		(1 << VIRTIO_NET_F_CTRL_VQ))
 
 #define GPA_TO_VVA(t, m, a)	((t)(uintptr_t)rte_vhost_gpa_to_vva(m, a))
 
@@ -1025,4 +1033,251 @@ vhost_crypto_complete_one_vm_requests(struct rte_crypto_op **ops,
 	*(volatile uint16_t *)&vq->used->idx += processed;
 
 	return processed;
+}
+
+int __rte_experimental
+rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
+		struct rte_mempool *sess_pool, int socket_id)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct rte_hash_parameters params = {0};
+	struct vhost_crypto *vcrypto;
+	char name[128];
+	int ret;
+
+	if (!dev) {
+		VC_LOG_ERR("Invalid vid %i", vid);
+		return -EINVAL;
+	}
+
+	ret = rte_vhost_driver_set_features(dev->ifname,
+			VIRTIO_CRYPTO_FEATURES);
+	if (ret < 0) {
+		VC_LOG_ERR("Error setting features");
+		return -1;
+	}
+
+	vcrypto = rte_zmalloc_socket(NULL, sizeof(*vcrypto),
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (!vcrypto) {
+		VC_LOG_ERR("Insufficient memory");
+		return -ENOMEM;
+	}
+
+	vcrypto->sess_pool = sess_pool;
+	vcrypto->cid = cryptodev_id;
+	vcrypto->cache_session_id = UINT64_MAX;
+	vcrypto->last_session_id = 1;
+	vcrypto->dev = dev;
+	vcrypto->option = RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE;
+
+	snprintf(name, 127, "HASH_VHOST_CRYPT_%u", (uint32_t)vid);
+	params.name = name;
+	params.entries = VHOST_CRYPTO_SESSION_MAP_ENTRIES;
+	params.hash_func = rte_jhash;
+	params.key_len = sizeof(uint64_t);
+	params.socket_id = socket_id;
+	vcrypto->session_map = rte_hash_create(&params);
+	if (!vcrypto->session_map) {
+		VC_LOG_ERR("Failed to creath session map");
+		ret = -ENOMEM;
+		goto error_exit;
+	}
+
+	snprintf(name, 127, "MBUF_POOL_VM_%u", (uint32_t)vid);
+	vcrypto->mbuf_pool = rte_pktmbuf_pool_create(name,
+			VHOST_CRYPTO_MBUF_POOL_SIZE, 512,
+			sizeof(struct vhost_crypto_data_req),
+			RTE_MBUF_DEFAULT_DATAROOM * 2 + RTE_PKTMBUF_HEADROOM,
+			rte_socket_id());
+	if (!vcrypto->mbuf_pool) {
+		VC_LOG_ERR("Failed to creath mbuf pool");
+		ret = -ENOMEM;
+		goto error_exit;
+	}
+
+	dev->extern_data = vcrypto;
+	dev->extern_ops.pre_msg_handle = NULL;
+	dev->extern_ops.post_msg_handle = vhost_crypto_msg_post_handler;
+
+	return 0;
+
+error_exit:
+	if (vcrypto->session_map)
+		rte_hash_free(vcrypto->session_map);
+	if (vcrypto->mbuf_pool)
+		rte_mempool_free(vcrypto->mbuf_pool);
+
+	rte_free(vcrypto);
+
+	return ret;
+}
+
+int __rte_experimental
+rte_vhost_crypto_free(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_crypto *vcrypto;
+
+	if (unlikely(dev == NULL)) {
+		VC_LOG_ERR("Invalid vid %i", vid);
+		return -EINVAL;
+	}
+
+	vcrypto = dev->extern_data;
+	if (unlikely(vcrypto == NULL)) {
+		VC_LOG_ERR("Cannot find required data, is it initialized?");
+		return -ENOENT;
+	}
+
+	rte_hash_free(vcrypto->session_map);
+	rte_mempool_free(vcrypto->mbuf_pool);
+	rte_free(vcrypto);
+
+	dev->extern_data = NULL;
+	dev->extern_ops.pre_msg_handle = NULL;
+	dev->extern_ops.post_msg_handle = NULL;
+
+	return 0;
+}
+
+int __rte_experimental
+rte_vhost_crypto_set_zero_copy(int vid, enum rte_vhost_crypto_zero_copy option)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_crypto *vcrypto;
+
+	if (unlikely(dev == NULL)) {
+		VC_LOG_ERR("Invalid vid %i", vid);
+		return -EINVAL;
+	}
+
+	if (unlikely(option < 0 || option >=
+			RTE_VHOST_CRYPTO_MAX_ZERO_COPY_OPTIONS)) {
+		VC_LOG_ERR("Invalid option %i", option);
+		return -EINVAL;
+	}
+
+	vcrypto = (struct vhost_crypto *)dev->extern_data;
+	if (unlikely(vcrypto == NULL)) {
+		VC_LOG_ERR("Cannot find required data, is it initialized?");
+		return -ENOENT;
+	}
+
+	if (vcrypto->option == (uint8_t)option)
+		return 0;
+
+	if (!(rte_mempool_full(vcrypto->mbuf_pool))) {
+		VC_LOG_ERR("Cannot update zero copy as mempool is not full");
+		return -EINVAL;
+	}
+
+	vcrypto->option = (uint8_t)option;
+
+	return 0;
+}
+
+uint16_t __rte_experimental
+rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
+		struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	struct rte_mbuf *mbufs[VHOST_CRYPTO_MAX_BURST_SIZE * 2];
+	struct virtio_net *dev = get_device(vid);
+	struct rte_vhost_memory *mem;
+	struct vhost_crypto *vcrypto;
+	struct vhost_virtqueue *vq;
+	uint16_t avail_idx;
+	uint16_t start_idx;
+	uint16_t required;
+	uint16_t count;
+	uint16_t i;
+
+	if (unlikely(dev == NULL)) {
+		VC_LOG_ERR("Invalid vid %i", vid);
+		return -EINVAL;
+	}
+
+	if (unlikely(qid >= VHOST_MAX_QUEUE_PAIRS)) {
+		VC_LOG_ERR("Invalid qid %u", qid);
+		return -EINVAL;
+	}
+
+	vcrypto = (struct vhost_crypto *)dev->extern_data;
+	if (unlikely(vcrypto == NULL)) {
+		VC_LOG_ERR("Cannot find required data, is it initialized?");
+		return -ENOENT;
+	}
+
+	vq = dev->virtqueue[qid];
+	mem = dev->mem;
+
+	avail_idx = *((volatile uint16_t *)&vq->avail->idx);
+	start_idx = vq->last_used_idx;
+	count = avail_idx - start_idx;
+	count = RTE_MIN(count, VHOST_CRYPTO_MAX_BURST_SIZE);
+	count = RTE_MIN(count, nb_ops);
+
+	if (unlikely(count == 0))
+		return 0;
+
+	/* for zero copy, we need 2 empty mbufs for src and dst, otherwise
+	 * we need only 1 mbuf as src and dst
+	 */
+	required = count * 2;
+	if (unlikely(rte_mempool_get_bulk(vcrypto->mbuf_pool, (void **)mbufs,
+			required) < 0)) {
+		VC_LOG_ERR("Insufficient memory");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < count; i++) {
+		uint16_t used_idx = (start_idx + i) & (vq->size - 1);
+		uint16_t desc_idx = vq->avail->ring[used_idx];
+		struct vring_desc *head = &vq->desc[desc_idx];
+		struct rte_crypto_op *op = ops[i];
+
+		op->sym->m_src = mbufs[i * 2];
+		op->sym->m_dst = mbufs[i * 2 + 1];
+		op->sym->m_src->data_off = 0;
+		op->sym->m_dst->data_off = 0;
+
+		if (unlikely(vhost_crypto_process_one_req(vcrypto, vq, op, head,
+				desc_idx, mem)) < 0)
+			break;
+	}
+
+	vq->last_used_idx += i;
+
+	return i;
+}
+
+uint16_t __rte_experimental
+rte_vhost_crypto_finalize_requests(struct rte_crypto_op **ops,
+		uint16_t nb_ops, int *callfds, uint16_t *nb_callfds)
+{
+	struct rte_crypto_op **tmp_ops = ops;
+	uint16_t count = 0, left = nb_ops;
+	int callfd;
+	uint16_t idx = 0;
+
+	while (left) {
+		count = vhost_crypto_complete_one_vm_requests(tmp_ops, left,
+				&callfd);
+		if (unlikely(count == 0))
+			break;
+
+		tmp_ops = &tmp_ops[count];
+		left -= count;
+
+		callfds[idx++] = callfd;
+
+		if (unlikely(idx >= VIRTIO_CRYPTO_MAX_NUM_BURST_VQS)) {
+			VC_LOG_ERR("Too many vqs");
+			break;
+		}
+	}
+
+	*nb_callfds = idx;
+
+	return nb_ops - left;
 }

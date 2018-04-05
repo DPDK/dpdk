@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2017 Intel Corporation
+# Copyright(c) 2017-2018 Intel Corporation
 
 if host_machine.system() != 'linux'
 	build = false
@@ -11,6 +11,6 @@ version = 4
 allow_experimental_apis = true
 sources = files('fd_man.c', 'iotlb.c', 'socket.c', 'vdpa.c',
 		'vhost.c', 'vhost_user.c',
-		'virtio_net.c')
-headers = files('rte_vhost.h', 'rte_vdpa.h')
-deps += ['ethdev', 'pci']
+		'virtio_net.c', 'vhost_crypto.c')
+headers = files('rte_vhost.h', 'rte_vdpa.h', 'rte_vhost_crypto.h')
+deps += ['ethdev', 'cryptodev', 'hash', 'pci']
