@@ -37,10 +37,10 @@ enum rte_pdump_socktype {
 /**
  * Initialize packet capturing handling
  *
- * Creates pthread and server socket for handling clients
- * requests to enable/disable rxtx callbacks.
+ * Register the IPC action for communication with target (primary) process.
  *
  * @param path
+ * This parameter is going to be deprecated; it was used for specifying the
  * directory path for server socket.
  *
  * @return
@@ -52,7 +52,7 @@ rte_pdump_init(const char *path);
 /**
  * Un initialize packet capturing handling
  *
- * Cancels pthread, close server socket, removes server socket address.
+ * Unregister the IPC action for communication with target (primary) process.
  *
  * @return
  *    0 on success, -1 on error
@@ -163,6 +163,7 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
 				uint32_t flags);
 
 /**
+ * @deprecated
  * Allows applications to set server and client socket paths.
  * If specified path is null default path will be selected, i.e.
  *"/var/run/" for root user and "$HOME" for non root user.
@@ -181,7 +182,7 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
  * 0 on success, -EINVAL on error
  *
  */
-int
+__rte_deprecated int
 rte_pdump_set_socket_dir(const char *path, enum rte_pdump_socktype type);
 
 #ifdef __cplusplus

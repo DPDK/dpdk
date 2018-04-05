@@ -1,15 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016 Intel Corporation
+ * Copyright(c) 2016-2018 Intel Corporation
  */
-
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <stdio.h>
 
 #include <rte_memcpy.h>
 #include <rte_mbuf.h>
@@ -21,15 +12,12 @@
 
 #include "rte_pdump.h"
 
-#define SOCKET_PATH_VAR_RUN "/var/run"
-#define SOCKET_PATH_HOME "HOME"
-#define DPDK_DIR         "/.dpdk"
-#define SOCKET_DIR       "/pdump_sockets"
-#define SERVER_SOCKET "%s/pdump_server_socket"
-#define CLIENT_SOCKET "%s/pdump_client_socket_%d_%u"
 #define DEVICE_ID_SIZE 64
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_PDUMP RTE_LOGTYPE_USER1
+
+/* Used for the multi-process communication */
+#define PDUMP_MP	"mp_pdump"
 
 enum pdump_operation {
 	DISABLE = 1,
@@ -39,11 +27,6 @@ enum pdump_operation {
 enum pdump_version {
 	V1 = 1
 };
-
-static pthread_t pdump_thread;
-static int pdump_socket_fd;
-static char server_socket_dir[PATH_MAX];
-static char client_socket_dir[PATH_MAX];
 
 struct pdump_request {
 	uint16_t ver;
@@ -308,7 +291,7 @@ pdump_register_tx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 }
 
 static int
-set_pdump_rxtx_cbs(struct pdump_request *p)
+set_pdump_rxtx_cbs(const struct pdump_request *p)
 {
 	uint16_t nb_rx_q = 0, nb_tx_q = 0, end_q, queue;
 	uint16_t port;
@@ -392,310 +375,48 @@ set_pdump_rxtx_cbs(struct pdump_request *p)
 	return ret;
 }
 
-/* get socket path (/var/run if root, $HOME otherwise) */
 static int
-pdump_get_socket_path(char *buffer, int bufsz, enum rte_pdump_socktype type)
+pdump_server(const struct rte_mp_msg *mp_msg, const void *peer)
 {
-	char dpdk_dir[PATH_MAX] = {0};
-	char dir[PATH_MAX] = {0};
-	char *dir_home = NULL;
-	int ret = 0;
+	struct rte_mp_msg mp_resp;
+	const struct pdump_request *cli_req;
+	struct pdump_response *resp = (struct pdump_response *)&mp_resp.param;
 
-	if (type == RTE_PDUMP_SOCKET_SERVER && server_socket_dir[0] != 0)
-		strlcpy(dir, server_socket_dir, sizeof(dir));
-	else if (type == RTE_PDUMP_SOCKET_CLIENT && client_socket_dir[0] != 0)
-		strlcpy(dir, client_socket_dir, sizeof(dir));
-	else {
-		if (getuid() != 0) {
-			dir_home = getenv(SOCKET_PATH_HOME);
-			if (!dir_home) {
-				RTE_LOG(ERR, PDUMP,
-					"Failed to get environment variable"
-					" value for %s, %s:%d\n",
-					SOCKET_PATH_HOME, __func__, __LINE__);
-				return -1;
-			}
-			snprintf(dpdk_dir, sizeof(dpdk_dir), "%s%s",
-					dir_home, DPDK_DIR);
-		} else
-			snprintf(dpdk_dir, sizeof(dpdk_dir), "%s%s",
-					SOCKET_PATH_VAR_RUN, DPDK_DIR);
-
-		mkdir(dpdk_dir, 0700);
-		snprintf(dir, sizeof(dir), "%s%s",
-					dpdk_dir, SOCKET_DIR);
+	/* recv client requests */
+	if (mp_msg->len_param != sizeof(*cli_req)) {
+		RTE_LOG(ERR, PDUMP, "failed to recv from client\n");
+		resp->err_value = -EINVAL;
+	} else {
+		cli_req = (const struct pdump_request *)mp_msg->param;
+		resp->ver = cli_req->ver;
+		resp->res_op = cli_req->op;
+		resp->err_value = set_pdump_rxtx_cbs(cli_req);
 	}
 
-	ret =  mkdir(dir, 0700);
-	/* if user passed socket path is invalid, return immediately */
-	if (ret < 0 && errno != EEXIST) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to create dir:%s:%s\n", dir,
-			strerror(errno));
-		rte_errno = errno;
+	strlcpy(mp_resp.name, PDUMP_MP, RTE_MP_MAX_NAME_LEN);
+	mp_resp.len_param = sizeof(*resp);
+	mp_resp.num_fds = 0;
+	if (rte_mp_reply(&mp_resp, peer) < 0) {
+		RTE_LOG(ERR, PDUMP, "failed to send to client:%s, %s:%d\n",
+			strerror(rte_errno), __func__, __LINE__);
 		return -1;
 	}
-
-	if (type == RTE_PDUMP_SOCKET_SERVER)
-		snprintf(buffer, bufsz, SERVER_SOCKET, dir);
-	else
-		snprintf(buffer, bufsz, CLIENT_SOCKET, dir, getpid(),
-				rte_sys_gettid());
 
 	return 0;
-}
-
-static int
-pdump_create_server_socket(void)
-{
-	int ret, socket_fd;
-	struct sockaddr_un addr;
-	socklen_t addr_len;
-
-	ret = pdump_get_socket_path(addr.sun_path, sizeof(addr.sun_path),
-				RTE_PDUMP_SOCKET_SERVER);
-	if (ret != 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to get server socket path: %s:%d\n",
-			__func__, __LINE__);
-		return -1;
-	}
-	addr.sun_family = AF_UNIX;
-
-	/* remove if file already exists */
-	unlink(addr.sun_path);
-
-	/* set up a server socket */
-	socket_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (socket_fd < 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to create server socket: %s, %s:%d\n",
-			strerror(errno), __func__, __LINE__);
-		return -1;
-	}
-
-	addr_len = sizeof(struct sockaddr_un);
-	ret = bind(socket_fd, (struct sockaddr *) &addr, addr_len);
-	if (ret) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to bind to server socket: %s, %s:%d\n",
-			strerror(errno), __func__, __LINE__);
-		close(socket_fd);
-		return -1;
-	}
-
-	/* save the socket in local configuration */
-	pdump_socket_fd = socket_fd;
-
-	return 0;
-}
-
-static __attribute__((noreturn)) void *
-pdump_thread_main(__rte_unused void *arg)
-{
-	struct sockaddr_un cli_addr;
-	socklen_t cli_len;
-	struct pdump_request cli_req;
-	struct pdump_response resp;
-	int n;
-	int ret = 0;
-
-	/* host thread, never break out */
-	for (;;) {
-		/* recv client requests */
-		cli_len = sizeof(cli_addr);
-		n = recvfrom(pdump_socket_fd, &cli_req,
-				sizeof(struct pdump_request), 0,
-				(struct sockaddr *)&cli_addr, &cli_len);
-		if (n < 0) {
-			RTE_LOG(ERR, PDUMP,
-				"failed to recv from client:%s, %s:%d\n",
-				strerror(errno), __func__, __LINE__);
-			continue;
-		}
-
-		ret = set_pdump_rxtx_cbs(&cli_req);
-
-		resp.ver = cli_req.ver;
-		resp.res_op = cli_req.op;
-		resp.err_value = ret;
-		n = sendto(pdump_socket_fd, &resp,
-				sizeof(struct pdump_response),
-				0, (struct sockaddr *)&cli_addr, cli_len);
-		if (n < 0) {
-			RTE_LOG(ERR, PDUMP,
-				"failed to send to client:%s, %s:%d\n",
-				strerror(errno), __func__, __LINE__);
-		}
-	}
 }
 
 int
-rte_pdump_init(const char *path)
+rte_pdump_init(const char *path __rte_unused)
 {
-	int ret = 0;
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
-
-	ret = rte_pdump_set_socket_dir(path, RTE_PDUMP_SOCKET_SERVER);
-	if (ret != 0)
-		return -1;
-
-	ret = pdump_create_server_socket();
-	if (ret != 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to create server socket:%s:%d\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	/* create the host thread to wait/handle pdump requests */
-	ret = pthread_create(&pdump_thread, NULL, pdump_thread_main, NULL);
-	if (ret != 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to create the pdump thread:%s, %s:%d\n",
-			strerror(ret), __func__, __LINE__);
-		return -1;
-	}
-	/* Set thread_name for aid in debugging. */
-	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "pdump-thread");
-	ret = rte_thread_setname(pdump_thread, thread_name);
-	if (ret != 0) {
-		RTE_LOG(DEBUG, PDUMP,
-			"Failed to set thread name for pdump handling\n");
-	}
-
-	return 0;
+	return rte_mp_action_register(PDUMP_MP, pdump_server);
 }
 
 int
 rte_pdump_uninit(void)
 {
-	int ret;
-
-	ret = pthread_cancel(pdump_thread);
-	if (ret != 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to cancel the pdump thread:%s, %s:%d\n",
-			strerror(ret), __func__, __LINE__);
-		return -1;
-	}
-
-	ret = close(pdump_socket_fd);
-	if (ret != 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to close server socket: %s, %s:%d\n",
-			strerror(errno), __func__, __LINE__);
-		return -1;
-	}
-
-	struct sockaddr_un addr;
-
-	ret = pdump_get_socket_path(addr.sun_path, sizeof(addr.sun_path),
-				RTE_PDUMP_SOCKET_SERVER);
-	if (ret != 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to get server socket path: %s:%d\n",
-			__func__, __LINE__);
-		return -1;
-	}
-	ret = unlink(addr.sun_path);
-	if (ret != 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to remove server socket addr: %s, %s:%d\n",
-			strerror(errno), __func__, __LINE__);
-		return -1;
-	}
+	rte_mp_action_unregister(PDUMP_MP);
 
 	return 0;
-}
-
-static int
-pdump_create_client_socket(struct pdump_request *p)
-{
-	int ret, socket_fd;
-	int pid;
-	int n;
-	struct pdump_response server_resp;
-	struct sockaddr_un addr, serv_addr, from;
-	socklen_t addr_len, serv_len;
-
-	pid = getpid();
-
-	socket_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (socket_fd < 0) {
-		RTE_LOG(ERR, PDUMP,
-			"client socket(): %s:pid(%d):tid(%u), %s:%d\n",
-			strerror(errno), pid, rte_sys_gettid(),
-			__func__, __LINE__);
-		rte_errno = errno;
-		return -1;
-	}
-
-	ret = pdump_get_socket_path(addr.sun_path, sizeof(addr.sun_path),
-				RTE_PDUMP_SOCKET_CLIENT);
-	if (ret != 0) {
-		RTE_LOG(ERR, PDUMP,
-			"Failed to get client socket path: %s:%d\n",
-			__func__, __LINE__);
-		rte_errno = errno;
-		goto exit;
-	}
-	addr.sun_family = AF_UNIX;
-	addr_len = sizeof(struct sockaddr_un);
-
-	do {
-		ret = bind(socket_fd, (struct sockaddr *) &addr, addr_len);
-		if (ret) {
-			RTE_LOG(ERR, PDUMP,
-				"client bind(): %s, %s:%d\n",
-				strerror(errno), __func__, __LINE__);
-			rte_errno = errno;
-			break;
-		}
-
-		serv_len = sizeof(struct sockaddr_un);
-		memset(&serv_addr, 0, sizeof(serv_addr));
-		ret = pdump_get_socket_path(serv_addr.sun_path,
-					sizeof(serv_addr.sun_path),
-					RTE_PDUMP_SOCKET_SERVER);
-		if (ret != 0) {
-			RTE_LOG(ERR, PDUMP,
-				"Failed to get server socket path: %s:%d\n",
-				__func__, __LINE__);
-			rte_errno = errno;
-			break;
-		}
-		serv_addr.sun_family = AF_UNIX;
-
-		n =  sendto(socket_fd, p, sizeof(struct pdump_request), 0,
-				(struct sockaddr *)&serv_addr, serv_len);
-		if (n < 0) {
-			RTE_LOG(ERR, PDUMP,
-				"failed to send to server:%s, %s:%d\n",
-				strerror(errno), __func__, __LINE__);
-			rte_errno = errno;
-			ret = -1;
-			break;
-		}
-
-		n = recvfrom(socket_fd, &server_resp,
-				sizeof(struct pdump_response), 0,
-				(struct sockaddr *)&from, &serv_len);
-		if (n < 0) {
-			RTE_LOG(ERR, PDUMP,
-				"failed to recv from server:%s, %s:%d\n",
-				strerror(errno), __func__, __LINE__);
-			rte_errno = errno;
-			ret = -1;
-			break;
-		}
-		ret = server_resp.err_value;
-	} while (0);
-
-exit:
-	close(socket_fd);
-	unlink(addr.sun_path);
-	return ret;
 }
 
 static int
@@ -769,36 +490,48 @@ pdump_prepare_client_request(char *device, uint16_t queue,
 				struct rte_mempool *mp,
 				void *filter)
 {
-	int ret;
-	struct pdump_request req = {.ver = 1,};
+	int ret = -1;
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply;
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	struct pdump_request *req = (struct pdump_request *)mp_req.param;
+	struct pdump_response *resp;
 
-	req.flags = flags;
-	req.op =  operation;
+	req->ver = 1;
+	req->flags = flags;
+	req->op = operation;
 	if ((operation & ENABLE) != 0) {
-		snprintf(req.data.en_v1.device, sizeof(req.data.en_v1.device),
-				"%s", device);
-		req.data.en_v1.queue = queue;
-		req.data.en_v1.ring = ring;
-		req.data.en_v1.mp = mp;
-		req.data.en_v1.filter = filter;
+		snprintf(req->data.en_v1.device,
+			 sizeof(req->data.en_v1.device), "%s", device);
+		req->data.en_v1.queue = queue;
+		req->data.en_v1.ring = ring;
+		req->data.en_v1.mp = mp;
+		req->data.en_v1.filter = filter;
 	} else {
-		snprintf(req.data.dis_v1.device, sizeof(req.data.dis_v1.device),
-				"%s", device);
-		req.data.dis_v1.queue = queue;
-		req.data.dis_v1.ring = NULL;
-		req.data.dis_v1.mp = NULL;
-		req.data.dis_v1.filter = NULL;
+		snprintf(req->data.dis_v1.device,
+			 sizeof(req->data.dis_v1.device), "%s", device);
+		req->data.dis_v1.queue = queue;
+		req->data.dis_v1.ring = NULL;
+		req->data.dis_v1.mp = NULL;
+		req->data.dis_v1.filter = NULL;
 	}
 
-	ret = pdump_create_client_socket(&req);
-	if (ret < 0) {
+	strlcpy(mp_req.name, PDUMP_MP, RTE_MP_MAX_NAME_LEN);
+	mp_req.len_param = sizeof(*req);
+	mp_req.num_fds = 0;
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0) {
+		mp_rep = &mp_reply.msgs[0];
+		resp = (struct pdump_response *)mp_rep->param;
+		rte_errno = resp->err_value;
+		if (!resp->err_value)
+			ret = 0;
+		free(mp_reply.msgs);
+	}
+
+	if (ret < 0)
 		RTE_LOG(ERR, PDUMP,
 			"client request for pdump enable/disable failed\n");
-		rte_errno = ret;
-		return -1;
-	}
-
-	return 0;
+	return ret;
 }
 
 int
@@ -885,30 +618,8 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
 }
 
 int
-rte_pdump_set_socket_dir(const char *path, enum rte_pdump_socktype type)
+rte_pdump_set_socket_dir(const char *path __rte_unused,
+			 enum rte_pdump_socktype type __rte_unused)
 {
-	int ret, count;
-
-	if (path != NULL) {
-		if (type == RTE_PDUMP_SOCKET_SERVER) {
-			count = sizeof(server_socket_dir);
-			ret = strlcpy(server_socket_dir, path, count);
-		} else {
-			count = sizeof(client_socket_dir);
-			ret = strlcpy(client_socket_dir, path, count);
-		}
-
-		if (ret < 0  || ret >= count) {
-			RTE_LOG(ERR, PDUMP,
-					"Invalid socket path:%s:%d\n",
-					__func__, __LINE__);
-			if (type == RTE_PDUMP_SOCKET_SERVER)
-				server_socket_dir[0] = 0;
-			else
-				client_socket_dir[0] = 0;
-			return -EINVAL;
-		}
-	}
-
 	return 0;
 }

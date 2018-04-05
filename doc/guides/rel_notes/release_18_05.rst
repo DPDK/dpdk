@@ -243,6 +243,13 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **pdump is not compatible with old applications.**
+
+  As we changed to use generic multi-process communication for pdump negotiation
+  instead of previous dedicated unix socket way, pdump applications, including
+  dpdk-pdump example and any other applications using librte_pdump, cannot work
+  with older version DPDK primary applications.
+
 
 Shared Library Versions
 -----------------------

@@ -156,9 +156,11 @@ pdump_usage(const char *prgname)
 			"[mbuf-size=<mbuf data size>default:2176],"
 			"[total-num-mbufs=<number of mbufs>default:65535]'\n"
 			"[--server-socket-path=<server socket dir>"
-				"default:/var/run/.dpdk/ (or) ~/.dpdk/]\n"
+				" which is deprecated and will be removed soon,"
+				" default:/var/run/.dpdk/ (or) ~/.dpdk/]\n"
 			"[--client-socket-path=<client socket dir>"
-				"default:/var/run/.dpdk/ (or) ~/.dpdk/]\n",
+				" which is deprecated and will be removed soon,"
+				" default:/var/run/.dpdk/ (or) ~/.dpdk/]\n",
 			prgname);
 }
 
@@ -742,22 +744,6 @@ enable_pdump(void)
 	int i;
 	struct pdump_tuples *pt;
 	int ret = 0, ret1 = 0;
-
-	if (server_socket_path[0] != 0)
-		ret = rte_pdump_set_socket_dir(server_socket_path,
-				RTE_PDUMP_SOCKET_SERVER);
-	if (ret == 0 && client_socket_path[0] != 0) {
-		ret = rte_pdump_set_socket_dir(client_socket_path,
-				RTE_PDUMP_SOCKET_CLIENT);
-	}
-	if (ret < 0) {
-		cleanup_pdump_resources();
-		rte_exit(EXIT_FAILURE,
-				"failed to set socket paths of server:%s, "
-				"client:%s\n",
-				server_socket_path,
-				client_socket_path);
-	}
 
 	for (i = 0; i < num_tuples; i++) {
 		pt = &pdump_t[i];

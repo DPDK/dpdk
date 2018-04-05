@@ -105,3 +105,10 @@ Deprecation Notices
   required the previous behavior can be configured using existing flow
   director APIs. There is no ABI/API break. This change will just remove a
   global configuration setting and require explicit configuration.
+
+* pdump: As we changed to use generic IPC, some changes in APIs and structure
+  are expected in subsequent release.
+
+  - ``rte_pdump_set_socket_dir`` will be removed;
+  - The parameter, ``path``, of ``rte_pdump_init`` will be removed;
+  - The enum ``rte_pdump_socktype`` will be removed.

@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2016 Intel Corporation
+# Copyright(c) 2016-2018 Intel Corporation
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # library name
 LIB = librte_pdump.a
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 CFLAGS += -D_GNU_SOURCE
 LDLIBS += -lpthread
