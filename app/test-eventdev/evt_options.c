@@ -99,6 +99,15 @@ evt_parse_timer_prod_type(struct evt_options *opt, const char *arg __rte_unused)
 }
 
 static int
+evt_parse_timer_prod_type_burst(struct evt_options *opt,
+		const char *arg __rte_unused)
+{
+	opt->prod_type = EVT_PROD_TYPE_EVENT_TIMER_ADPTR;
+	opt->timdev_use_burst = 1;
+	return 0;
+}
+
+static int
 evt_parse_test_name(struct evt_options *opt, const char *arg)
 {
 	snprintf(opt->test_name, EVT_TEST_NAME_MAX_LEN, "%s", arg);
@@ -185,6 +194,8 @@ usage(char *program)
 		"\t--prod_type_timerdev : use event timer device as producer.\n"
 		"\t                     expity_nsec would be the timeout\n"
 		"\t                     in ns.\n"
+		"\t--prod_type_timerdev_burst : use timer device as producer\n"
+		"\t                             burst mode.\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -247,6 +258,7 @@ static struct option lgopts[] = {
 	{ EVT_QUEUE_PRIORITY,      0, 0, 0 },
 	{ EVT_PROD_ETHDEV,         0, 0, 0 },
 	{ EVT_PROD_TIMERDEV,       0, 0, 0 },
+	{ EVT_PROD_TIMERDEV_BURST, 0, 0, 0 },
 	{ EVT_HELP,                0, 0, 0 },
 	{ NULL,                    0, 0, 0 }
 };
@@ -272,6 +284,7 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_QUEUE_PRIORITY, evt_parse_queue_priority},
 		{ EVT_PROD_ETHDEV, evt_parse_eth_prod_type},
 		{ EVT_PROD_TIMERDEV, evt_parse_timer_prod_type},
+		{ EVT_PROD_TIMERDEV_BURST, evt_parse_timer_prod_type_burst},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {

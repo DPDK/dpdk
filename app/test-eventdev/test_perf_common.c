@@ -133,6 +133,67 @@ perf_event_timer_producer(void *arg)
 	return 0;
 }
 
+static inline int
+perf_event_timer_producer_burst(void *arg)
+{
+	int i;
+	struct prod_data *p  = arg;
+	struct test_perf *t = p->t;
+	struct evt_options *opt = t->opt;
+	uint32_t flow_counter = 0;
+	uint64_t count = 0;
+	uint64_t arm_latency = 0;
+	const uint8_t nb_timer_adptrs = opt->nb_timer_adptrs;
+	const uint32_t nb_flows = t->nb_flows;
+	const uint64_t nb_timers = opt->nb_timers;
+	struct rte_mempool *pool = t->pool;
+	struct perf_elt *m[BURST_SIZE + 1] = {NULL};
+	struct rte_event_timer_adapter **adptr = t->timer_adptr;
+	uint64_t timeout_ticks = opt->expiry_nsec / opt->timer_tick_nsec;
+
+	timeout_ticks = opt->optm_timer_tick_nsec ?
+			(timeout_ticks * opt->timer_tick_nsec)
+			/ opt->optm_timer_tick_nsec : timeout_ticks;
+	timeout_ticks += timeout_ticks ? 0 : 1;
+	const struct rte_event_timer tim = {
+		.ev.op = RTE_EVENT_OP_NEW,
+		.ev.queue_id = p->queue_id,
+		.ev.sched_type = t->opt->sched_type_list[0],
+		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
+		.state = RTE_EVENT_TIMER_NOT_ARMED,
+		.timeout_ticks = timeout_ticks,
+	};
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d\n", __func__, rte_lcore_id());
+
+	while (count < nb_timers && t->done == false) {
+		if (rte_mempool_get_bulk(pool, (void **)m, BURST_SIZE) < 0)
+			continue;
+		for (i = 0; i < BURST_SIZE; i++) {
+			rte_prefetch0(m[i + 1]);
+			m[i]->tim = tim;
+			m[i]->tim.ev.flow_id = flow_counter++ % nb_flows;
+			m[i]->tim.ev.event_ptr = m[i];
+			m[i]->timestamp = rte_get_timer_cycles();
+		}
+		rte_event_timer_arm_tmo_tick_burst(
+				adptr[flow_counter % nb_timer_adptrs],
+				(struct rte_event_timer **)m,
+				tim.timeout_ticks,
+				BURST_SIZE);
+		arm_latency += rte_get_timer_cycles() - m[i - 1]->timestamp;
+		count += BURST_SIZE;
+	}
+	fflush(stdout);
+	rte_delay_ms(1000);
+	printf("%s(): lcore %d Average event timer arm latency = %.3f us\n",
+			__func__, rte_lcore_id(), (float)(arm_latency / count) /
+			(rte_get_timer_hz() / 1000000));
+	return 0;
+}
+
 static int
 perf_producer_wrapper(void *arg)
 {
@@ -141,8 +202,12 @@ perf_producer_wrapper(void *arg)
 	/* Launch the producer function only in case of synthetic producer. */
 	if (t->opt->prod_type == EVT_PROD_TYPE_SYNT)
 		return perf_producer(arg);
-	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR)
+	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR &&
+			!t->opt->timdev_use_burst)
 		return perf_event_timer_producer(arg);
+	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR &&
+			t->opt->timdev_use_burst)
+		return perf_event_timer_producer_burst(arg);
 	return 0;
 }
 

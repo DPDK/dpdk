@@ -127,6 +127,10 @@ The following are the application command-line options:
 
         Use event timer adapter as producer.
 
+ * ``--prod_type_timerdev_burst``
+
+        Use burst mode event timer adapter as producer.
+
 Eventdev Tests
 --------------
 
@@ -351,6 +355,7 @@ Supported application command line options are following::
         --fwd_latency
         --queue_priority
         --prod_type_ethdev
+        --prod_type_timerdev_burst
         --prod_type_timerdev
 
 Example
@@ -444,6 +449,7 @@ Supported application command line options are following::
         --worker_deq_depth
         --fwd_latency
         --prod_type_ethdev
+        --prod_type_timerdev_burst
         --prod_type_timerdev
 
 Example

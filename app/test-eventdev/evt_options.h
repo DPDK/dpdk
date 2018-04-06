@@ -33,6 +33,7 @@
 #define EVT_QUEUE_PRIORITY       ("queue_priority")
 #define EVT_PROD_ETHDEV          ("prod_type_ethdev")
 #define EVT_PROD_TIMERDEV        ("prod_type_timerdev")
+#define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
 #define EVT_HELP                 ("help")
 
 enum evt_prod_type {
@@ -66,6 +67,7 @@ struct evt_options {
 	uint32_t fwd_latency:1;
 	uint32_t q_priority:1;
 	enum evt_prod_type prod_type;
+	uint8_t timdev_use_burst;
 	uint8_t timdev_cnt;
 };
 
@@ -275,7 +277,11 @@ evt_dump_producer_type(struct evt_options *opt)
 		evt_dump("nb_ethdev", "%d", rte_eth_dev_count());
 		break;
 	case EVT_PROD_TYPE_EVENT_TIMER_ADPTR:
-		snprintf(name, EVT_PROD_MAX_NAME_LEN,
+		if (opt->timdev_use_burst)
+			snprintf(name, EVT_PROD_MAX_NAME_LEN,
+				"Event timer adapter burst mode producer");
+		else
+			snprintf(name, EVT_PROD_MAX_NAME_LEN,
 				"Event timer adapter producer");
 		evt_dump("nb_timer_adapters", "%d", opt->nb_timer_adptrs);
 		evt_dump("max_tmo_nsec", "%"PRIu64"", opt->max_tmo_nsec);
