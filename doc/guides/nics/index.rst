@@ -13,6 +13,7 @@ Network Interface Controller Drivers
     build_and_test
     ark
     avp
+    axgbe
     bnx2x
     bnxt
     cxgbe
