@@ -188,6 +188,30 @@ static void axgbe_write_mmd_regs(struct axgbe_port *pdata, int prtad,
 	}
 }
 
+static int axgbe_set_speed(struct axgbe_port *pdata, int speed)
+{
+	unsigned int ss;
+
+	switch (speed) {
+	case SPEED_1000:
+		ss = 0x03;
+		break;
+	case SPEED_2500:
+		ss = 0x02;
+		break;
+	case SPEED_10000:
+		ss = 0x00;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (AXGMAC_IOREAD_BITS(pdata, MAC_TCR, SS) != ss)
+		AXGMAC_IOWRITE_BITS(pdata, MAC_TCR, SS, ss);
+
+	return 0;
+}
+
 static int __axgbe_exit(struct axgbe_port *pdata)
 {
 	unsigned int count = 2000;
@@ -224,8 +248,11 @@ void axgbe_init_function_ptrs_dev(struct axgbe_hw_if *hw_if)
 {
 	hw_if->exit = axgbe_exit;
 
+
 	hw_if->read_mmd_regs = axgbe_read_mmd_regs;
 	hw_if->write_mmd_regs = axgbe_write_mmd_regs;
+
+	hw_if->set_speed = axgbe_set_speed;
 
 	hw_if->set_ext_mii_mode = axgbe_set_ext_mii_mode;
 	hw_if->read_ext_mii_regs = axgbe_read_ext_mii_regs;
