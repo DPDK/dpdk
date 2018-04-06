@@ -1,0 +1,27 @@
+#   SPDX-License-Identifier: BSD-3-Clause
+#   Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
+#
+# library name
+#
+LIB = librte_pmd_axgbe.a
+
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+EXPORT_MAP := rte_pmd_axgbe_version.map
+
+LIBABIVER := 1
+
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool
+LDLIBS += -lrte_pci -lrte_bus_pci
+LDLIBS += -lrte_ethdev
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_ethdev.c
+
+include $(RTE_SDK)/mk/rte.lib.mk

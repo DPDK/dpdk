@@ -381,6 +381,12 @@ M: Ferruh Yigit <ferruh.yigit@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: doc/guides/nics/features/default.ini
 
+AMD AXGBE PMD
+M: Ravi Kumar <ravi1.kumar@amd.com>
+F: drivers/net/axgbe/
+F: doc/guides/nics/axgbe.rst
+F: doc/guides/nics/features/axgbe.ini
+
 Link bonding
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/net/bonding/
