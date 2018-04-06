@@ -6,6 +6,7 @@
 #define _VIRTIO_USER_DEV_H
 
 #include <limits.h>
+#include <stdbool.h>
 #include "../virtio_pci.h"
 #include "../virtio_ring.h"
 #include "vhost.h"
@@ -13,6 +14,8 @@
 struct virtio_user_dev {
 	/* for vhost_user backend */
 	int		vhostfd;
+	int		listenfd;   /* listening fd */
+	bool		is_server;  /* server or client mode */
 
 	/* for vhost_kernel backend */
 	char		*ifname;

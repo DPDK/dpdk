@@ -378,6 +378,30 @@ vhost_user_sock(struct virtio_user_dev *dev,
 	return 0;
 }
 
+#define MAX_VIRTIO_USER_BACKLOG 1
+static int
+virtio_user_start_server(struct virtio_user_dev *dev, struct sockaddr_un *un)
+{
+	int ret;
+	int flag;
+	int fd = dev->listenfd;
+
+	ret = bind(fd, (struct sockaddr *)un, sizeof(*un));
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "failed to bind to %s: %s; remove it and try again\n",
+			    dev->path, strerror(errno));
+		return -1;
+	}
+	ret = listen(fd, MAX_VIRTIO_USER_BACKLOG);
+	if (ret < 0)
+		return -1;
+
+	flag = fcntl(fd, F_GETFL);
+	fcntl(fd, F_SETFL, flag | O_NONBLOCK);
+
+	return 0;
+}
+
 /**
  * Set up environment to talk with a vhost user backend.
  *
@@ -405,13 +429,24 @@ vhost_user_setup(struct virtio_user_dev *dev)
 	memset(&un, 0, sizeof(un));
 	un.sun_family = AF_UNIX;
 	snprintf(un.sun_path, sizeof(un.sun_path), "%s", dev->path);
-	if (connect(fd, (struct sockaddr *)&un, sizeof(un)) < 0) {
-		PMD_DRV_LOG(ERR, "connect error, %s", strerror(errno));
-		close(fd);
-		return -1;
+
+	if (dev->is_server) {
+		dev->listenfd = fd;
+		if (virtio_user_start_server(dev, &un) < 0) {
+			PMD_DRV_LOG(ERR, "virtio-user startup fails in server mode");
+			close(fd);
+			return -1;
+		}
+		dev->vhostfd = -1;
+	} else {
+		if (connect(fd, (struct sockaddr *)&un, sizeof(un)) < 0) {
+			PMD_DRV_LOG(ERR, "connect error, %s", strerror(errno));
+			close(fd);
+			return -1;
+		}
+		dev->vhostfd = fd;
 	}
 
-	dev->vhostfd = fd;
 	return 0;
 }
 

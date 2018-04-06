@@ -94,10 +94,24 @@ virtio_user_queue_setup(struct virtio_user_dev *dev,
 }
 
 int
+is_vhost_user_by_type(const char *path)
+{
+	struct stat sb;
+
+	if (stat(path, &sb) == -1)
+		return 0;
+
+	return S_ISSOCK(sb.st_mode);
+}
+
+int
 virtio_user_start_device(struct virtio_user_dev *dev)
 {
 	uint64_t features;
 	int ret;
+
+	if (is_vhost_user_by_type(dev->path) && dev->vhostfd < 0)
+		return -1;
 
 	/* Do not check return as already done in init, or reset in stop */
 	dev->ops->send_request(dev, VHOST_USER_SET_OWNER, NULL);
@@ -174,17 +188,6 @@ parse_mac(struct virtio_user_dev *dev, const char *mac)
 	}
 }
 
-int
-is_vhost_user_by_type(const char *path)
-{
-	struct stat sb;
-
-	if (stat(path, &sb) == -1)
-		return 0;
-
-	return S_ISSOCK(sb.st_mode);
-}
-
 static int
 virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 {
@@ -254,6 +257,8 @@ virtio_user_fill_intr_handle(struct virtio_user_dev *dev)
 	eth_dev->intr_handle->fd = -1;
 	if (dev->vhostfd >= 0)
 		eth_dev->intr_handle->fd = dev->vhostfd;
+	else if (dev->is_server)
+		eth_dev->intr_handle->fd = dev->listenfd;
 
 	return 0;
 }
@@ -267,21 +272,32 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	dev->vhostfds = NULL;
 	dev->tapfds = NULL;
 
-	if (is_vhost_user_by_type(dev->path)) {
-		dev->ops = &ops_user;
-	} else {
-		dev->ops = &ops_kernel;
-
-		dev->vhostfds = malloc(dev->max_queue_pairs * sizeof(int));
-		dev->tapfds = malloc(dev->max_queue_pairs * sizeof(int));
-		if (!dev->vhostfds || !dev->tapfds) {
-			PMD_INIT_LOG(ERR, "Failed to malloc");
+	if (dev->is_server) {
+		if (access(dev->path, F_OK) == 0 &&
+		    !is_vhost_user_by_type(dev->path)) {
+			PMD_DRV_LOG(ERR, "Server mode doesn't support vhost-kernel!");
 			return -1;
 		}
+		dev->ops = &ops_user;
+	} else {
+		if (is_vhost_user_by_type(dev->path)) {
+			dev->ops = &ops_user;
+		} else {
+			dev->ops = &ops_kernel;
 
-		for (q = 0; q < dev->max_queue_pairs; ++q) {
-			dev->vhostfds[q] = -1;
-			dev->tapfds[q] = -1;
+			dev->vhostfds = malloc(dev->max_queue_pairs *
+					       sizeof(int));
+			dev->tapfds = malloc(dev->max_queue_pairs *
+					     sizeof(int));
+			if (!dev->vhostfds || !dev->tapfds) {
+				PMD_INIT_LOG(ERR, "Failed to malloc");
+				return -1;
+			}
+
+			for (q = 0; q < dev->max_queue_pairs; ++q) {
+				dev->vhostfds[q] = -1;
+				dev->tapfds[q] = -1;
+			}
 		}
 	}
 
@@ -337,16 +353,29 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		return -1;
 	}
 
-	if (dev->ops->send_request(dev, VHOST_USER_SET_OWNER, NULL) < 0) {
-		PMD_INIT_LOG(ERR, "set_owner fails: %s", strerror(errno));
-		return -1;
+	if (dev->vhostfd >= 0) {
+		if (dev->ops->send_request(dev, VHOST_USER_SET_OWNER,
+					   NULL) < 0) {
+			PMD_INIT_LOG(ERR, "set_owner fails: %s",
+				     strerror(errno));
+			return -1;
+		}
+
+		if (dev->ops->send_request(dev, VHOST_USER_GET_FEATURES,
+					   &dev->device_features) < 0) {
+			PMD_INIT_LOG(ERR, "get_features failed: %s",
+				     strerror(errno));
+			return -1;
+		}
+	} else {
+		/* We just pretend vhost-user can support all these features.
+		 * Note that this could be problematic that if some feature is
+		 * negotiated but not supported by the vhost-user which comes
+		 * later.
+		 */
+		dev->device_features = VIRTIO_USER_SUPPORTED_FEATURES;
 	}
 
-	if (dev->ops->send_request(dev, VHOST_USER_GET_FEATURES,
-			    &dev->device_features) < 0) {
-		PMD_INIT_LOG(ERR, "get_features failed: %s", strerror(errno));
-		return -1;
-	}
 	if (dev->mac_specified)
 		dev->device_features |= (1ull << VIRTIO_NET_F_MAC);
 
@@ -388,6 +417,11 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 
 	close(dev->vhostfd);
 
+	if (dev->is_server && dev->listenfd >= 0) {
+		close(dev->listenfd);
+		dev->listenfd = -1;
+	}
+
 	if (dev->vhostfds) {
 		for (i = 0; i < dev->max_queue_pairs; ++i)
 			close(dev->vhostfds[i]);
@@ -396,6 +430,9 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 	}
 
 	free(dev->ifname);
+
+	if (dev->is_server)
+		unlink(dev->path);
 }
 
 static uint8_t

@@ -69,6 +69,13 @@ New Features
   See the :doc:`../nics/axgbe` nic driver guide for more details on this
   new driver.
 
+* **Added support for virtio-user server mode.**
+  In a container environment if the vhost-user backend restarts, there's no way
+  for it to reconnect to virtio-user. To address this, support for server mode
+  is added. In this mode the socket file is created by virtio-user, which the
+  backend connects to. This means that if the backend restarts, it can reconnect
+  to virtio-user and continue communications.
+
 * **Added crypto workload support to vhost library.**
 
   New APIs are introduced in vhost library to enable virtio crypto support
