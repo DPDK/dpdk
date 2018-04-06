@@ -15,6 +15,10 @@ static int  axgbe_dev_start(struct rte_eth_dev *dev);
 static void axgbe_dev_stop(struct rte_eth_dev *dev);
 static void axgbe_dev_interrupt_handler(void *param);
 static void axgbe_dev_close(struct rte_eth_dev *dev);
+static void axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static void axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static void axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static void axgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 				 int wait_to_complete);
 static void axgbe_dev_info_get(struct rte_eth_dev *dev,
@@ -73,6 +77,10 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.dev_start            = axgbe_dev_start,
 	.dev_stop             = axgbe_dev_stop,
 	.dev_close            = axgbe_dev_close,
+	.promiscuous_enable   = axgbe_dev_promiscuous_enable,
+	.promiscuous_disable  = axgbe_dev_promiscuous_disable,
+	.allmulticast_enable  = axgbe_dev_allmulticast_enable,
+	.allmulticast_disable = axgbe_dev_allmulticast_disable,
 	.link_update          = axgbe_dev_link_update,
 	.dev_infos_get        = axgbe_dev_info_get,
 	.rx_queue_setup       = axgbe_dev_rx_queue_setup,
@@ -217,6 +225,46 @@ static void
 axgbe_dev_close(struct rte_eth_dev *dev)
 {
 	axgbe_dev_clear_queues(dev);
+}
+
+static void
+axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PR, 1);
+}
+
+static void
+axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PR, 0);
+}
+
+static void
+axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	if (AXGMAC_IOREAD_BITS(pdata, MAC_PFR, PM))
+		return;
+	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PM, 1);
+}
+
+static void
+axgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	if (!AXGMAC_IOREAD_BITS(pdata, MAC_PFR, PM))
+		return;
+	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PM, 0);
 }
 
 /* return 0 means link status changed, -1 means not changed */

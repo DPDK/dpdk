@@ -19,6 +19,8 @@ AXGBE PMD has support for:
 
 - Base L2 features
 - TSS (Transmit Side Scaling)
+- Promiscuous mode
+- Multicast mode
 - RSS (Receive Side Scaling)
 - Checksum offload
 - Jumbo Frame upto 9K
