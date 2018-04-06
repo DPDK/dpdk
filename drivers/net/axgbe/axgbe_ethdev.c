@@ -21,6 +21,9 @@ static void axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void axgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 				 int wait_to_complete);
+static int axgbe_dev_stats_get(struct rte_eth_dev *dev,
+				struct rte_eth_stats *stats);
+static void axgbe_dev_stats_reset(struct rte_eth_dev *dev);
 static void axgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
 
@@ -82,6 +85,8 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.allmulticast_enable  = axgbe_dev_allmulticast_enable,
 	.allmulticast_disable = axgbe_dev_allmulticast_disable,
 	.link_update          = axgbe_dev_link_update,
+	.stats_get            = axgbe_dev_stats_get,
+	.stats_reset          = axgbe_dev_stats_reset,
 	.dev_infos_get        = axgbe_dev_info_get,
 	.rx_queue_setup       = axgbe_dev_rx_queue_setup,
 	.rx_queue_release     = axgbe_dev_rx_queue_release,
@@ -292,6 +297,53 @@ axgbe_dev_link_update(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "No change in link status\n");
 
 	return ret;
+}
+
+static int
+axgbe_dev_stats_get(struct rte_eth_dev *dev,
+		    struct rte_eth_stats *stats)
+{
+	struct axgbe_rx_queue *rxq;
+	struct axgbe_tx_queue *txq;
+	unsigned int i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		stats->q_ipackets[i] = rxq->pkts;
+		stats->ipackets += rxq->pkts;
+		stats->q_ibytes[i] = rxq->bytes;
+		stats->ibytes += rxq->bytes;
+	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		stats->q_opackets[i] = txq->pkts;
+		stats->opackets += txq->pkts;
+		stats->q_obytes[i] = txq->bytes;
+		stats->obytes += txq->bytes;
+	}
+
+	return 0;
+}
+
+static void
+axgbe_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct axgbe_rx_queue *rxq;
+	struct axgbe_tx_queue *txq;
+	unsigned int i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		rxq->pkts = 0;
+		rxq->bytes = 0;
+		rxq->errors = 0;
+	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		txq->pkts = 0;
+		txq->bytes = 0;
+		txq->errors = 0;
+	}
 }
 
 static void

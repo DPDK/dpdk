@@ -20,6 +20,7 @@ AXGBE PMD has support for:
 - Base L2 features
 - TSS (Transmit Side Scaling)
 - Promiscuous mode
+- Port statistics
 - Multicast mode
 - RSS (Receive Side Scaling)
 - Checksum offload
