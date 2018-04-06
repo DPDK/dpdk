@@ -589,10 +589,12 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	pdata->pci_dev = pci_dev;
 
 	pdata->xgmac_regs =
-		(uint64_t)pci_dev->mem_resource[AXGBE_AXGMAC_BAR].addr;
-	pdata->xprop_regs = pdata->xgmac_regs + AXGBE_MAC_PROP_OFFSET;
-	pdata->xi2c_regs = pdata->xgmac_regs + AXGBE_I2C_CTRL_OFFSET;
-	pdata->xpcs_regs = (uint64_t)pci_dev->mem_resource[AXGBE_XPCS_BAR].addr;
+		(void *)pci_dev->mem_resource[AXGBE_AXGMAC_BAR].addr;
+	pdata->xprop_regs = (void *)((uint8_t *)pdata->xgmac_regs
+				     + AXGBE_MAC_PROP_OFFSET);
+	pdata->xi2c_regs = (void *)((uint8_t *)pdata->xgmac_regs
+				    + AXGBE_I2C_CTRL_OFFSET);
+	pdata->xpcs_regs = (void *)pci_dev->mem_resource[AXGBE_XPCS_BAR].addr;
 
 	/* version specific driver data*/
 	if (pci_dev->id.device_id == AMD_PCI_AXGBE_DEVICE_V2A)

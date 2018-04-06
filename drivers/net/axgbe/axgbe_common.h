@@ -1385,7 +1385,7 @@ do {									\
  *  register definitions formed using the input names
  */
 #define AXGMAC_IOREAD(_pdata, _reg)					\
-	rte_read32((void *)((_pdata)->xgmac_regs + (_reg)))
+	rte_read32((uint8_t *)((_pdata)->xgmac_regs) + (_reg))
 
 #define AXGMAC_IOREAD_BITS(_pdata, _reg, _field)			\
 	GET_BITS(AXGMAC_IOREAD((_pdata), _reg),				\
@@ -1393,7 +1393,8 @@ do {									\
 		 _reg##_##_field##_WIDTH)
 
 #define AXGMAC_IOWRITE(_pdata, _reg, _val)				\
-	rte_write32((_val), (void *)((_pdata)->xgmac_regs + (_reg)))
+	rte_write32((_val),						\
+		    (uint8_t *)((_pdata)->xgmac_regs) + (_reg))
 
 #define AXGMAC_IOWRITE_BITS(_pdata, _reg, _field, _val)			\
 do {									\
@@ -1409,8 +1410,8 @@ do {									\
  *  base register value is calculated by the queue or traffic class number
  */
 #define AXGMAC_MTL_IOREAD(_pdata, _n, _reg)				\
-	rte_read32((void *)((_pdata)->xgmac_regs +			\
-		 MTL_Q_BASE + ((_n) * MTL_Q_INC) + (_reg)))
+	rte_read32((uint8_t *)((_pdata)->xgmac_regs) +		\
+		 MTL_Q_BASE + ((_n) * MTL_Q_INC) + (_reg))
 
 #define AXGMAC_MTL_IOREAD_BITS(_pdata, _n, _reg, _field)		\
 	GET_BITS(AXGMAC_MTL_IOREAD((_pdata), (_n), (_reg)),		\
@@ -1418,8 +1419,8 @@ do {									\
 		 _reg##_##_field##_WIDTH)
 
 #define AXGMAC_MTL_IOWRITE(_pdata, _n, _reg, _val)			\
-	rte_write32((_val), (void *)((_pdata)->xgmac_regs +		\
-		  MTL_Q_BASE + ((_n) * MTL_Q_INC) + (_reg)))
+	rte_write32((_val), (uint8_t *)((_pdata)->xgmac_regs) +\
+		  MTL_Q_BASE + ((_n) * MTL_Q_INC) + (_reg))
 
 #define AXGMAC_MTL_IOWRITE_BITS(_pdata, _n, _reg, _field, _val)		\
 do {									\
@@ -1435,7 +1436,7 @@ do {									\
  *  base register value is obtained from the ring
  */
 #define AXGMAC_DMA_IOREAD(_channel, _reg)				\
-	rte_read32((void *)((_channel)->dma_regs + (_reg)))
+	rte_read32((uint8_t *)((_channel)->dma_regs) + (_reg))
 
 #define AXGMAC_DMA_IOREAD_BITS(_channel, _reg, _field)			\
 	GET_BITS(AXGMAC_DMA_IOREAD((_channel), _reg),			\
@@ -1443,7 +1444,8 @@ do {									\
 		 _reg##_##_field##_WIDTH)
 
 #define AXGMAC_DMA_IOWRITE(_channel, _reg, _val)			\
-	rte_write32((_val), (void *)((_channel)->dma_regs + (_reg)))
+	rte_write32((_val),						\
+		    (uint8_t *)((_channel)->dma_regs) + (_reg))
 
 #define AXGMAC_DMA_IOWRITE_BITS(_channel, _reg, _field, _val)		\
 do {									\
@@ -1468,16 +1470,18 @@ do {									\
 		 _prefix##_##_field##_WIDTH, (_val))
 
 #define XPCS32_IOWRITE(_pdata, _off, _val)				\
-	rte_write32(_val, (void *)((_pdata)->xpcs_regs + (_off)))
+	rte_write32(_val,						\
+		    (uint8_t *)((_pdata)->xpcs_regs) + (_off))
 
 #define XPCS32_IOREAD(_pdata, _off)					\
-	rte_read32((void *)((_pdata)->xpcs_regs + (_off)))
+	rte_read32((uint8_t *)((_pdata)->xpcs_regs) + (_off))
 
 #define XPCS16_IOWRITE(_pdata, _off, _val)				\
-	rte_write16(_val, (void *)((_pdata)->xpcs_regs + (_off)))
+	rte_write16(_val,						\
+		    (uint8_t *)((_pdata)->xpcs_regs) + (_off))
 
 #define XPCS16_IOREAD(_pdata, _off)					\
-	rte_read16((void *)((_pdata)->xpcs_regs + (_off)))
+	rte_read16((uint8_t *)((_pdata)->xpcs_regs) + (_off))
 
 /* Macros for building, reading or writing register values or bits
  * within the register values of SerDes integration registers.
@@ -1493,7 +1497,7 @@ do {									\
 		 _prefix##_##_field##_WIDTH, (_val))
 
 #define XSIR0_IOREAD(_pdata, _reg)					\
-	rte_read16((void *)((_pdata)->sir0_regs + (_reg)))
+	rte_read16((uint8_t *)((_pdata)->sir0_regs) + (_reg))
 
 #define XSIR0_IOREAD_BITS(_pdata, _reg, _field)				\
 	GET_BITS(XSIR0_IOREAD((_pdata), _reg),				\
@@ -1501,7 +1505,8 @@ do {									\
 		 _reg##_##_field##_WIDTH)
 
 #define XSIR0_IOWRITE(_pdata, _reg, _val)				\
-	rte_write16((_val), (void *)((_pdata)->sir0_regs + (_reg)))
+	rte_write16((_val),						\
+		   (uint8_t *)((_pdata)->sir0_regs) + (_reg))
 
 #define XSIR0_IOWRITE_BITS(_pdata, _reg, _field, _val)			\
 do {									\
@@ -1513,7 +1518,7 @@ do {									\
 } while (0)
 
 #define XSIR1_IOREAD(_pdata, _reg)					\
-	rte_read16((void *)((_pdata)->sir1_regs + _reg))
+	rte_read16((uint8_t *)((_pdata)->sir1_regs) + _reg)
 
 #define XSIR1_IOREAD_BITS(_pdata, _reg, _field)				\
 	GET_BITS(XSIR1_IOREAD((_pdata), _reg),				\
@@ -1521,7 +1526,8 @@ do {									\
 		 _reg##_##_field##_WIDTH)
 
 #define XSIR1_IOWRITE(_pdata, _reg, _val)				\
-	rte_write16((_val), (void *)((_pdata)->sir1_regs + (_reg)))
+	rte_write16((_val),						\
+		   (uint8_t *)((_pdata)->sir1_regs) + (_reg))
 
 #define XSIR1_IOWRITE_BITS(_pdata, _reg, _field, _val)			\
 do {									\
@@ -1536,7 +1542,7 @@ do {									\
  * within the register values of SerDes RxTx registers.
  */
 #define XRXTX_IOREAD(_pdata, _reg)					\
-	rte_read16((void *)((_pdata)->rxtx_regs + (_reg)))
+	rte_read16((uint8_t *)((_pdata)->rxtx_regs) + (_reg))
 
 #define XRXTX_IOREAD_BITS(_pdata, _reg, _field)				\
 	GET_BITS(XRXTX_IOREAD((_pdata), _reg),				\
@@ -1544,7 +1550,8 @@ do {									\
 		 _reg##_##_field##_WIDTH)
 
 #define XRXTX_IOWRITE(_pdata, _reg, _val)				\
-	rte_write16((_val), (void *)((_pdata)->rxtx_regs + (_reg)))
+	rte_write16((_val),						\
+		    (uint8_t *)((_pdata)->rxtx_regs) + (_reg))
 
 #define XRXTX_IOWRITE_BITS(_pdata, _reg, _field, _val)			\
 do {									\
@@ -1569,7 +1576,7 @@ do {									\
 		 _prefix##_##_field##_WIDTH, (_val))
 
 #define XP_IOREAD(_pdata, _reg)						\
-	rte_read32((void *)((_pdata)->xprop_regs + (_reg)))
+	rte_read32((uint8_t *)((_pdata)->xprop_regs) + (_reg))
 
 #define XP_IOREAD_BITS(_pdata, _reg, _field)				\
 	GET_BITS(XP_IOREAD((_pdata), (_reg)),				\
@@ -1577,7 +1584,8 @@ do {									\
 		 _reg##_##_field##_WIDTH)
 
 #define XP_IOWRITE(_pdata, _reg, _val)					\
-	rte_write32((_val), (void *)((_pdata)->xprop_regs + (_reg)))
+	rte_write32((_val),						\
+		    (uint8_t *)((_pdata)->xprop_regs) + (_reg))
 
 #define XP_IOWRITE_BITS(_pdata, _reg, _field, _val)			\
 do {									\
@@ -1602,7 +1610,7 @@ do {									\
 		 _prefix##_##_field##_WIDTH, (_val))
 
 #define XI2C_IOREAD(_pdata, _reg)					\
-	rte_read32((void *)((_pdata)->xi2c_regs + (_reg)))
+	rte_read32((uint8_t *)((_pdata)->xi2c_regs) + (_reg))
 
 #define XI2C_IOREAD_BITS(_pdata, _reg, _field)				\
 	GET_BITS(XI2C_IOREAD((_pdata), (_reg)),				\
@@ -1610,7 +1618,8 @@ do {									\
 		 _reg##_##_field##_WIDTH)
 
 #define XI2C_IOWRITE(_pdata, _reg, _val)				\
-	rte_write32((_val), (void *)((_pdata)->xi2c_regs + (_reg)))
+	rte_write32((_val),						\
+		    (uint8_t *)((_pdata)->xi2c_regs) + (_reg))
 
 #define XI2C_IOWRITE_BITS(_pdata, _reg, _field, _val)			\
 do {									\

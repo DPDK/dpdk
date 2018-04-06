@@ -70,9 +70,9 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
 	rxq->nb_desc = rx_desc;
-	rxq->dma_regs = pdata->xgmac_regs + DMA_CH_BASE +
-		(DMA_CH_INC * rxq->queue_id);
-	rxq->dma_tail_reg = (volatile uint32_t *)(rxq->dma_regs +
+	rxq->dma_regs = (void *)((uint8_t *)pdata->xgmac_regs + DMA_CH_BASE +
+		(DMA_CH_INC * rxq->queue_id));
+	rxq->dma_tail_reg = (volatile uint32_t *)((uint8_t *)rxq->dma_regs +
 						  DMA_CH_RDTR_LO);
 	rxq->crc_len = (uint8_t)((dev->data->dev_conf.rxmode.offloads &
 			DEV_RX_OFFLOAD_CRC_STRIP) ? 0 : ETHER_CRC_LEN);
@@ -387,9 +387,9 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->desc = tz->addr;
 	txq->queue_id = queue_idx;
 	txq->port_id = dev->data->port_id;
-	txq->dma_regs = pdata->xgmac_regs + DMA_CH_BASE +
-		(DMA_CH_INC * txq->queue_id);
-	txq->dma_tail_reg = (volatile uint32_t *)(txq->dma_regs +
+	txq->dma_regs = (void *)((uint8_t *)pdata->xgmac_regs + DMA_CH_BASE +
+		(DMA_CH_INC * txq->queue_id));
+	txq->dma_tail_reg = (volatile uint32_t *)((uint8_t *)txq->dma_regs +
 						  DMA_CH_TDTR_LO);
 	txq->cur = 0;
 	txq->dirty = 0;

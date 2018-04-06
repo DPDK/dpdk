@@ -80,7 +80,7 @@ struct axgbe_rx_queue {
 	/* Ring physical address */
 	uint64_t ring_phys_addr;
 	/* Dma Channel register address */
-	uint64_t dma_regs;
+	void *dma_regs;
 	/* Dma channel tail register address*/
 	volatile uint32_t *dma_tail_reg;
 	/* DPDK queue index */
@@ -127,7 +127,7 @@ struct axgbe_tx_queue {
 	/* Physical address of ring */
 	uint64_t ring_phys_addr;
 	/* Dma channel register space */
-	uint64_t dma_regs;
+	void  *dma_regs;
 	/* Dma tail register address of ring*/
 	volatile uint32_t *dma_tail_reg;
 	/* Tx queue index/id*/

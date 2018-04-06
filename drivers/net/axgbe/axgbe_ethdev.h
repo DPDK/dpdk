@@ -445,10 +445,10 @@ struct axgbe_port {
 	struct axgbe_version_data *vdata;
 
 	/* AXGMAC/XPCS related mmio registers */
-	uint64_t xgmac_regs;	/* AXGMAC CSRs */
-	uint64_t xpcs_regs;	/* XPCS MMD registers */
-	uint64_t xprop_regs;	/* AXGBE property registers */
-	uint64_t xi2c_regs;	/* AXGBE I2C CSRs */
+	void *xgmac_regs;	/* AXGMAC CSRs */
+	void *xpcs_regs;	/* XPCS MMD registers */
+	void *xprop_regs;	/* AXGBE property registers */
+	void *xi2c_regs;	/* AXGBE I2C CSRs */
 
 	/* XPCS indirect addressing lock */
 	unsigned int xpcs_window_def_reg;
