@@ -4,6 +4,8 @@
  */
 
 #include "axgbe_ethdev.h"
+#include "axgbe_common.h"
+#include "axgbe_phy.h"
 
 static int eth_axgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -22,6 +24,190 @@ static const struct rte_pci_id pci_id_axgbe_map[] = {
 	{ .vendor_id = 0, },
 };
 
+static struct axgbe_version_data axgbe_v2a = {
+	.xpcs_access			= AXGBE_XPCS_ACCESS_V2,
+	.mmc_64bit			= 1,
+	.tx_max_fifo_size		= 229376,
+	.rx_max_fifo_size		= 229376,
+	.tx_tstamp_workaround		= 1,
+	.ecc_support			= 1,
+	.i2c_support			= 1,
+};
+
+static struct axgbe_version_data axgbe_v2b = {
+	.xpcs_access			= AXGBE_XPCS_ACCESS_V2,
+	.mmc_64bit			= 1,
+	.tx_max_fifo_size		= 65536,
+	.rx_max_fifo_size		= 65536,
+	.tx_tstamp_workaround		= 1,
+	.ecc_support			= 1,
+	.i2c_support			= 1,
+};
+
+static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
+{
+	unsigned int mac_hfr0, mac_hfr1, mac_hfr2;
+	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
+
+	mac_hfr0 = AXGMAC_IOREAD(pdata, MAC_HWF0R);
+	mac_hfr1 = AXGMAC_IOREAD(pdata, MAC_HWF1R);
+	mac_hfr2 = AXGMAC_IOREAD(pdata, MAC_HWF2R);
+
+	memset(hw_feat, 0, sizeof(*hw_feat));
+
+	hw_feat->version = AXGMAC_IOREAD(pdata, MAC_VR);
+
+	/* Hardware feature register 0 */
+	hw_feat->gmii        = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, GMIISEL);
+	hw_feat->vlhash      = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, VLHASH);
+	hw_feat->sma         = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, SMASEL);
+	hw_feat->rwk         = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, RWKSEL);
+	hw_feat->mgk         = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, MGKSEL);
+	hw_feat->mmc         = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, MMCSEL);
+	hw_feat->aoe         = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, ARPOFFSEL);
+	hw_feat->ts          = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, TSSEL);
+	hw_feat->eee         = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, EEESEL);
+	hw_feat->tx_coe      = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, TXCOESEL);
+	hw_feat->rx_coe      = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, RXCOESEL);
+	hw_feat->addn_mac    = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R,
+					      ADDMACADRSEL);
+	hw_feat->ts_src      = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, TSSTSSEL);
+	hw_feat->sa_vlan_ins = AXGMAC_GET_BITS(mac_hfr0, MAC_HWF0R, SAVLANINS);
+
+	/* Hardware feature register 1 */
+	hw_feat->rx_fifo_size  = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R,
+						RXFIFOSIZE);
+	hw_feat->tx_fifo_size  = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R,
+						TXFIFOSIZE);
+	hw_feat->adv_ts_hi     = AXGMAC_GET_BITS(mac_hfr1,
+						 MAC_HWF1R, ADVTHWORD);
+	hw_feat->dma_width     = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R, ADDR64);
+	hw_feat->dcb           = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R, DCBEN);
+	hw_feat->sph           = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R, SPHEN);
+	hw_feat->tso           = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R, TSOEN);
+	hw_feat->dma_debug     = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R, DBGMEMA);
+	hw_feat->rss           = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R, RSSEN);
+	hw_feat->tc_cnt	       = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R, NUMTC);
+	hw_feat->hash_table_size = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R,
+						  HASHTBLSZ);
+	hw_feat->l3l4_filter_num = AXGMAC_GET_BITS(mac_hfr1, MAC_HWF1R,
+						  L3L4FNUM);
+
+	/* Hardware feature register 2 */
+	hw_feat->rx_q_cnt     = AXGMAC_GET_BITS(mac_hfr2, MAC_HWF2R, RXQCNT);
+	hw_feat->tx_q_cnt     = AXGMAC_GET_BITS(mac_hfr2, MAC_HWF2R, TXQCNT);
+	hw_feat->rx_ch_cnt    = AXGMAC_GET_BITS(mac_hfr2, MAC_HWF2R, RXCHCNT);
+	hw_feat->tx_ch_cnt    = AXGMAC_GET_BITS(mac_hfr2, MAC_HWF2R, TXCHCNT);
+	hw_feat->pps_out_num  = AXGMAC_GET_BITS(mac_hfr2, MAC_HWF2R, PPSOUTNUM);
+	hw_feat->aux_snap_num = AXGMAC_GET_BITS(mac_hfr2, MAC_HWF2R,
+						AUXSNAPNUM);
+
+	/* Translate the Hash Table size into actual number */
+	switch (hw_feat->hash_table_size) {
+	case 0:
+		break;
+	case 1:
+		hw_feat->hash_table_size = 64;
+		break;
+	case 2:
+		hw_feat->hash_table_size = 128;
+		break;
+	case 3:
+		hw_feat->hash_table_size = 256;
+		break;
+	}
+
+	/* Translate the address width setting into actual number */
+	switch (hw_feat->dma_width) {
+	case 0:
+		hw_feat->dma_width = 32;
+		break;
+	case 1:
+		hw_feat->dma_width = 40;
+		break;
+	case 2:
+		hw_feat->dma_width = 48;
+		break;
+	default:
+		hw_feat->dma_width = 32;
+	}
+
+	/* The Queue, Channel and TC counts are zero based so increment them
+	 * to get the actual number
+	 */
+	hw_feat->rx_q_cnt++;
+	hw_feat->tx_q_cnt++;
+	hw_feat->rx_ch_cnt++;
+	hw_feat->tx_ch_cnt++;
+	hw_feat->tc_cnt++;
+
+	/* Translate the fifo sizes into actual numbers */
+	hw_feat->rx_fifo_size = 1 << (hw_feat->rx_fifo_size + 7);
+	hw_feat->tx_fifo_size = 1 << (hw_feat->tx_fifo_size + 7);
+}
+
+static void axgbe_init_all_fptrs(struct axgbe_port *pdata)
+{
+	axgbe_init_function_ptrs_dev(&pdata->hw_if);
+}
+
+static void axgbe_set_counts(struct axgbe_port *pdata)
+{
+	/* Set all the function pointers */
+	axgbe_init_all_fptrs(pdata);
+
+	/* Populate the hardware features */
+	axgbe_get_all_hw_features(pdata);
+
+	/* Set default max values if not provided */
+	if (!pdata->tx_max_channel_count)
+		pdata->tx_max_channel_count = pdata->hw_feat.tx_ch_cnt;
+	if (!pdata->rx_max_channel_count)
+		pdata->rx_max_channel_count = pdata->hw_feat.rx_ch_cnt;
+
+	if (!pdata->tx_max_q_count)
+		pdata->tx_max_q_count = pdata->hw_feat.tx_q_cnt;
+	if (!pdata->rx_max_q_count)
+		pdata->rx_max_q_count = pdata->hw_feat.rx_q_cnt;
+
+	/* Calculate the number of Tx and Rx rings to be created
+	 *  -Tx (DMA) Channels map 1-to-1 to Tx Queues so set
+	 *   the number of Tx queues to the number of Tx channels
+	 *   enabled
+	 *  -Rx (DMA) Channels do not map 1-to-1 so use the actual
+	 *   number of Rx queues or maximum allowed
+	 */
+	pdata->tx_ring_count = RTE_MIN(pdata->hw_feat.tx_ch_cnt,
+				     pdata->tx_max_channel_count);
+	pdata->tx_ring_count = RTE_MIN(pdata->tx_ring_count,
+				     pdata->tx_max_q_count);
+
+	pdata->tx_q_count = pdata->tx_ring_count;
+
+	pdata->rx_ring_count = RTE_MIN(pdata->hw_feat.rx_ch_cnt,
+				     pdata->rx_max_channel_count);
+
+	pdata->rx_q_count = RTE_MIN(pdata->hw_feat.rx_q_cnt,
+				  pdata->rx_max_q_count);
+}
+
+static void axgbe_default_config(struct axgbe_port *pdata)
+{
+	pdata->pblx8 = DMA_PBL_X8_ENABLE;
+	pdata->tx_sf_mode = MTL_TSF_ENABLE;
+	pdata->tx_threshold = MTL_TX_THRESHOLD_64;
+	pdata->tx_pbl = DMA_PBL_32;
+	pdata->tx_osp_mode = DMA_OSP_ENABLE;
+	pdata->rx_sf_mode = MTL_RSF_ENABLE;
+	pdata->rx_threshold = MTL_RX_THRESHOLD_64;
+	pdata->rx_pbl = DMA_PBL_32;
+	pdata->pause_autoneg = 1;
+	pdata->tx_pause = 0;
+	pdata->rx_pause = 0;
+	pdata->phy_speed = SPEED_UNKNOWN;
+	pdata->power_down = 0;
+}
+
 /*
  * It returns 0 on success.
  */
@@ -31,6 +217,8 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 	struct axgbe_port *pdata;
 	struct rte_pci_device *pci_dev;
+	uint32_t reg, mac_lo, mac_hi;
+	int ret;
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary
@@ -40,10 +228,113 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	pdata = (struct axgbe_port *)eth_dev->data->dev_private;
+	/* initial state */
+	axgbe_set_bit(AXGBE_DOWN, &pdata->dev_state);
+	axgbe_set_bit(AXGBE_STOPPED, &pdata->dev_state);
 	pdata->eth_dev = eth_dev;
 
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	pdata->pci_dev = pci_dev;
+
+	pdata->xgmac_regs =
+		(uint64_t)pci_dev->mem_resource[AXGBE_AXGMAC_BAR].addr;
+	pdata->xprop_regs = pdata->xgmac_regs + AXGBE_MAC_PROP_OFFSET;
+	pdata->xi2c_regs = pdata->xgmac_regs + AXGBE_I2C_CTRL_OFFSET;
+	pdata->xpcs_regs = (uint64_t)pci_dev->mem_resource[AXGBE_XPCS_BAR].addr;
+
+	/* version specific driver data*/
+	if (pci_dev->id.device_id == AMD_PCI_AXGBE_DEVICE_V2A)
+		pdata->vdata = &axgbe_v2a;
+	else
+		pdata->vdata = &axgbe_v2b;
+
+	/* Configure the PCS indirect addressing support */
+	reg = XPCS32_IOREAD(pdata, PCS_V2_WINDOW_DEF);
+	pdata->xpcs_window = XPCS_GET_BITS(reg, PCS_V2_WINDOW_DEF, OFFSET);
+	pdata->xpcs_window <<= 6;
+	pdata->xpcs_window_size = XPCS_GET_BITS(reg, PCS_V2_WINDOW_DEF, SIZE);
+	pdata->xpcs_window_size = 1 << (pdata->xpcs_window_size + 7);
+	pdata->xpcs_window_mask = pdata->xpcs_window_size - 1;
+	pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
+	pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
+	PMD_INIT_LOG(DEBUG,
+		     "xpcs window :%x, size :%x, mask :%x ", pdata->xpcs_window,
+		     pdata->xpcs_window_size, pdata->xpcs_window_mask);
+	XP_IOWRITE(pdata, XP_INT_EN, 0x1fffff);
+
+	/* Retrieve the MAC address */
+	mac_lo = XP_IOREAD(pdata, XP_MAC_ADDR_LO);
+	mac_hi = XP_IOREAD(pdata, XP_MAC_ADDR_HI);
+	pdata->mac_addr.addr_bytes[0] = mac_lo & 0xff;
+	pdata->mac_addr.addr_bytes[1] = (mac_lo >> 8) & 0xff;
+	pdata->mac_addr.addr_bytes[2] = (mac_lo >> 16) & 0xff;
+	pdata->mac_addr.addr_bytes[3] = (mac_lo >> 24) & 0xff;
+	pdata->mac_addr.addr_bytes[4] = mac_hi & 0xff;
+	pdata->mac_addr.addr_bytes[5] = (mac_hi >> 8)  &  0xff;
+
+	eth_dev->data->mac_addrs = rte_zmalloc("axgbe_mac_addr",
+					       ETHER_ADDR_LEN, 0);
+	if (!eth_dev->data->mac_addrs) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to alloc %u bytes needed to store MAC addr tbl",
+			     ETHER_ADDR_LEN);
+		return -ENOMEM;
+	}
+
+	if (!is_valid_assigned_ether_addr(&pdata->mac_addr))
+		eth_random_addr(pdata->mac_addr.addr_bytes);
+
+	/* Copy the permanent MAC address */
+	ether_addr_copy(&pdata->mac_addr, &eth_dev->data->mac_addrs[0]);
+
+	/* Clock settings */
+	pdata->sysclk_rate = AXGBE_V2_DMA_CLOCK_FREQ;
+	pdata->ptpclk_rate = AXGBE_V2_PTP_CLOCK_FREQ;
+
+	/* Set the DMA coherency values */
+	pdata->coherent = 1;
+	pdata->axdomain = AXGBE_DMA_OS_AXDOMAIN;
+	pdata->arcache = AXGBE_DMA_OS_ARCACHE;
+	pdata->awcache = AXGBE_DMA_OS_AWCACHE;
+
+	/* Set the maximum channels and queues */
+	reg = XP_IOREAD(pdata, XP_PROP_1);
+	pdata->tx_max_channel_count = XP_GET_BITS(reg, XP_PROP_1, MAX_TX_DMA);
+	pdata->rx_max_channel_count = XP_GET_BITS(reg, XP_PROP_1, MAX_RX_DMA);
+	pdata->tx_max_q_count = XP_GET_BITS(reg, XP_PROP_1, MAX_TX_QUEUES);
+	pdata->rx_max_q_count = XP_GET_BITS(reg, XP_PROP_1, MAX_RX_QUEUES);
+
+	/* Set the hardware channel and queue counts */
+	axgbe_set_counts(pdata);
+
+	/* Set the maximum fifo amounts */
+	reg = XP_IOREAD(pdata, XP_PROP_2);
+	pdata->tx_max_fifo_size = XP_GET_BITS(reg, XP_PROP_2, TX_FIFO_SIZE);
+	pdata->tx_max_fifo_size *= 16384;
+	pdata->tx_max_fifo_size = RTE_MIN(pdata->tx_max_fifo_size,
+					  pdata->vdata->tx_max_fifo_size);
+	pdata->rx_max_fifo_size = XP_GET_BITS(reg, XP_PROP_2, RX_FIFO_SIZE);
+	pdata->rx_max_fifo_size *= 16384;
+	pdata->rx_max_fifo_size = RTE_MIN(pdata->rx_max_fifo_size,
+					  pdata->vdata->rx_max_fifo_size);
+	/* Issue software reset to DMA */
+	ret = pdata->hw_if.exit(pdata);
+	if (ret)
+		PMD_DRV_LOG(ERR, "hw_if->exit EBUSY error\n");
+
+	/* Set default configuration data */
+	axgbe_default_config(pdata);
+
+	/* Set default max values if not provided */
+	if (!pdata->tx_max_fifo_size)
+		pdata->tx_max_fifo_size = pdata->hw_feat.tx_fifo_size;
+	if (!pdata->rx_max_fifo_size)
+		pdata->rx_max_fifo_size = pdata->hw_feat.rx_fifo_size;
+
+	pthread_mutex_init(&pdata->xpcs_mutex, NULL);
+	pthread_mutex_init(&pdata->i2c_mutex, NULL);
+	pthread_mutex_init(&pdata->an_mutex, NULL);
+	pthread_mutex_init(&pdata->phy_mutex, NULL);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
@@ -53,10 +344,16 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 }
 
 static int
-eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev __rte_unused)
+eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	/* stub function */
 	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	/*Free macaddres*/
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
 
 	return 0;
 }

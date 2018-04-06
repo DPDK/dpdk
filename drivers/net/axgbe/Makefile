@@ -23,5 +23,6 @@ LDLIBS += -lrte_ethdev
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_dev.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
