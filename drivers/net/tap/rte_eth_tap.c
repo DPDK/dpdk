@@ -1407,7 +1407,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	if (is_zero_ether_addr(mac_addr))
 		eth_random_addr((uint8_t *)&pmd->eth_addr);
 	else
-		rte_memcpy(&pmd->eth_addr, mac_addr, sizeof(mac_addr));
+		rte_memcpy(&pmd->eth_addr, mac_addr, sizeof(*mac_addr));
 
 	/* Immediately create the netdevice (this will create the 1st queue). */
 	/* rx queue */
