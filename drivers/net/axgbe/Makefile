@@ -28,5 +28,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_mdio.c
 SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_phy_impl.c
 SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_i2c.c
 SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_rxtx.c
+ifeq ($(CONFIG_RTE_ARCH_X86),y)
+SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_rxtx_vec_sse.c
+endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

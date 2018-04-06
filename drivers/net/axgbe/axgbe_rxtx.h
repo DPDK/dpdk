@@ -156,12 +156,31 @@ void axgbe_dev_tx_queue_release(void *txq);
 int  axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			      uint16_t nb_tx_desc, unsigned int socket_id,
 			      const struct rte_eth_txconf *tx_conf);
+void axgbe_dev_enable_tx(struct rte_eth_dev *dev);
+void axgbe_dev_disable_tx(struct rte_eth_dev *dev);
+int axgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int axgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+uint16_t axgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			 uint16_t nb_pkts);
+uint16_t axgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+			 uint16_t nb_pkts);
+
 
 void axgbe_dev_rx_queue_release(void *rxq);
 int  axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 			      uint16_t nb_rx_desc, unsigned int socket_id,
 			      const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mb_pool);
+void axgbe_dev_enable_rx(struct rte_eth_dev *dev);
+void axgbe_dev_disable_rx(struct rte_eth_dev *dev);
+int axgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int axgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+uint16_t axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts);
+uint16_t axgbe_recv_pkts_threshold_refresh(void *rx_queue,
+					   struct rte_mbuf **rx_pkts,
+					   uint16_t nb_pkts);
 void axgbe_dev_clear_queues(struct rte_eth_dev *dev);
 
 #endif /* _AXGBE_RXTX_H_ */

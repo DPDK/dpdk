@@ -102,9 +102,22 @@ axgbe_dev_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct axgbe_port *pdata = dev->data->dev_private;
+	unsigned int dma_isr, dma_ch_isr;
 
 	pdata->phy_if.an_isr(pdata);
-
+	/*DMA related interrupts*/
+	dma_isr = AXGMAC_IOREAD(pdata, DMA_ISR);
+	if (dma_isr) {
+		if (dma_isr & 1) {
+			dma_ch_isr =
+				AXGMAC_DMA_IOREAD((struct axgbe_rx_queue *)
+						  pdata->rx_queues[0],
+						  DMA_CH_SR);
+			AXGMAC_DMA_IOWRITE((struct axgbe_rx_queue *)
+					   pdata->rx_queues[0],
+					   DMA_CH_SR, dma_ch_isr);
+		}
+	}
 	/* Enable interrupts since disabled after generation*/
 	rte_intr_enable(&pdata->pci_dev->intr_handle);
 }
@@ -166,6 +179,8 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 
 	/* phy start*/
 	pdata->phy_if.phy_start(pdata);
+	axgbe_dev_enable_tx(dev);
+	axgbe_dev_enable_rx(dev);
 
 	axgbe_clear_bit(AXGBE_STOPPED, &pdata->dev_state);
 	axgbe_clear_bit(AXGBE_DOWN, &pdata->dev_state);
@@ -185,6 +200,8 @@ axgbe_dev_stop(struct rte_eth_dev *dev)
 		return;
 
 	axgbe_set_bit(AXGBE_STOPPED, &pdata->dev_state);
+	axgbe_dev_disable_tx(dev);
+	axgbe_dev_disable_rx(dev);
 
 	pdata->phy_if.phy_stop(pdata);
 	pdata->hw_if.exit(pdata);
@@ -423,6 +440,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	eth_dev->dev_ops = &axgbe_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &axgbe_recv_pkts;
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary
@@ -573,6 +591,8 @@ eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
 	axgbe_dev_clear_queues(eth_dev);
 
 	/* disable uio intr before callback unregister */
