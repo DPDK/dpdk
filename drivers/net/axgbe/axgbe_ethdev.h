@@ -189,6 +189,61 @@ enum axgbe_mdio_mode {
 	AXGBE_MDIO_MODE_CL45,
 };
 
+struct axgbe_phy {
+	uint32_t supported;
+	uint32_t advertising;
+	uint32_t lp_advertising;
+
+	int address;
+
+	int autoneg;
+	int speed;
+	int duplex;
+
+	int link;
+
+	int pause_autoneg;
+	int tx_pause;
+	int rx_pause;
+};
+
+enum axgbe_i2c_cmd {
+	AXGBE_I2C_CMD_READ = 0,
+	AXGBE_I2C_CMD_WRITE,
+};
+
+struct axgbe_i2c_op {
+	enum axgbe_i2c_cmd cmd;
+
+	unsigned int target;
+
+	uint8_t *buf;
+	unsigned int len;
+};
+
+struct axgbe_i2c_op_state {
+	struct axgbe_i2c_op *op;
+
+	unsigned int tx_len;
+	unsigned char *tx_buf;
+
+	unsigned int rx_len;
+	unsigned char *rx_buf;
+
+	unsigned int tx_abort_source;
+
+	int ret;
+};
+
+struct axgbe_i2c {
+	unsigned int started;
+	unsigned int max_speed_mode;
+	unsigned int rx_fifo_size;
+	unsigned int tx_fifo_size;
+
+	struct axgbe_i2c_op_state op_state;
+};
+
 struct axgbe_hw_if {
 	void (*config_flow_control)(struct axgbe_port *);
 	int (*config_rx_mode)(struct axgbe_port *);
@@ -209,6 +264,89 @@ struct axgbe_hw_if {
 	int (*config_rx_flow_control)(struct axgbe_port *);
 
 	int (*exit)(struct axgbe_port *);
+};
+
+/* This structure represents implementation specific routines for an
+ * implementation of a PHY. All routines are required unless noted below.
+ *   Optional routines:
+ *     kr_training_pre, kr_training_post
+ */
+struct axgbe_phy_impl_if {
+	/* Perform Setup/teardown actions */
+	int (*init)(struct axgbe_port *);
+	void (*exit)(struct axgbe_port *);
+
+	/* Perform start/stop specific actions */
+	int (*reset)(struct axgbe_port *);
+	int (*start)(struct axgbe_port *);
+	void (*stop)(struct axgbe_port *);
+
+	/* Return the link status */
+	int (*link_status)(struct axgbe_port *, int *);
+
+	/* Indicate if a particular speed is valid */
+	int (*valid_speed)(struct axgbe_port *, int);
+
+	/* Check if the specified mode can/should be used */
+	bool (*use_mode)(struct axgbe_port *, enum axgbe_mode);
+	/* Switch the PHY into various modes */
+	void (*set_mode)(struct axgbe_port *, enum axgbe_mode);
+	/* Retrieve mode needed for a specific speed */
+	enum axgbe_mode (*get_mode)(struct axgbe_port *, int);
+	/* Retrieve new/next mode when trying to auto-negotiate */
+	enum axgbe_mode (*switch_mode)(struct axgbe_port *);
+	/* Retrieve current mode */
+	enum axgbe_mode (*cur_mode)(struct axgbe_port *);
+
+	/* Retrieve current auto-negotiation mode */
+	enum axgbe_an_mode (*an_mode)(struct axgbe_port *);
+
+	/* Configure auto-negotiation settings */
+	int (*an_config)(struct axgbe_port *);
+
+	/* Set/override auto-negotiation advertisement settings */
+	unsigned int (*an_advertising)(struct axgbe_port *port);
+
+	/* Process results of auto-negotiation */
+	enum axgbe_mode (*an_outcome)(struct axgbe_port *);
+
+	/* Pre/Post KR training enablement support */
+	void (*kr_training_pre)(struct axgbe_port *);
+	void (*kr_training_post)(struct axgbe_port *);
+};
+
+struct axgbe_phy_if {
+	/* For PHY setup/teardown */
+	int (*phy_init)(struct axgbe_port *);
+	void (*phy_exit)(struct axgbe_port *);
+
+	/* For PHY support when setting device up/down */
+	int (*phy_reset)(struct axgbe_port *);
+	int (*phy_start)(struct axgbe_port *);
+	void (*phy_stop)(struct axgbe_port *);
+
+	/* For PHY support while device is up */
+	void (*phy_status)(struct axgbe_port *);
+	int (*phy_config_aneg)(struct axgbe_port *);
+
+	/* For PHY settings validation */
+	int (*phy_valid_speed)(struct axgbe_port *, int);
+	/* For single interrupt support */
+	void (*an_isr)(struct axgbe_port *);
+	/* PHY implementation specific services */
+	struct axgbe_phy_impl_if phy_impl;
+};
+
+struct axgbe_i2c_if {
+	/* For initial I2C setup */
+	int (*i2c_init)(struct axgbe_port *);
+
+	/* For I2C support when setting device up/down */
+	int (*i2c_start)(struct axgbe_port *);
+	void (*i2c_stop)(struct axgbe_port *);
+
+	/* For performing I2C operations */
+	int (*i2c_xfer)(struct axgbe_port *, struct axgbe_i2c_op *);
 };
 
 /* This structure contains flags that indicate what hardware features
@@ -258,6 +396,7 @@ struct axgbe_hw_features {
 };
 
 struct axgbe_version_data {
+	void (*init_function_ptrs_phy_impl)(struct axgbe_phy_if *);
 	enum axgbe_xpcs_access xpcs_access;
 	unsigned int mmc_64bit;
 	unsigned int tx_max_fifo_size;
@@ -295,6 +434,8 @@ struct axgbe_port {
 	unsigned long dev_state;
 
 	struct axgbe_hw_if hw_if;
+	struct axgbe_phy_if phy_if;
+	struct axgbe_i2c_if i2c_if;
 
 	/* AXI DMA settings */
 	unsigned int coherent;
@@ -366,7 +507,38 @@ struct axgbe_port {
 	struct axgbe_hw_features hw_feat;
 
 	struct ether_addr mac_addr;
+
+	/* MDIO/PHY related settings */
+	unsigned int phy_started;
+	void *phy_data;
+	struct axgbe_phy phy;
+	int mdio_mmd;
+	unsigned long link_check;
+	volatile int mdio_completion;
+
+	unsigned int kr_redrv;
+
+	/* Auto-negotiation atate machine support */
+	unsigned int an_int;
+	unsigned int an_status;
+	enum axgbe_an an_result;
+	enum axgbe_an an_state;
+	enum axgbe_rx kr_state;
+	enum axgbe_rx kx_state;
+	unsigned int an_supported;
+	unsigned int parallel_detect;
+	unsigned int fec_ability;
+	unsigned long an_start;
+	enum axgbe_an_mode an_mode;
+
+	/* I2C support */
+	struct axgbe_i2c i2c;
+	volatile int i2c_complete;
 };
 
 void axgbe_init_function_ptrs_dev(struct axgbe_hw_if *hw_if);
+void axgbe_init_function_ptrs_phy(struct axgbe_phy_if *phy_if);
+void axgbe_init_function_ptrs_phy_v2(struct axgbe_phy_if *phy_if);
+void axgbe_init_function_ptrs_i2c(struct axgbe_i2c_if *i2c_if);
+
 #endif /* RTE_ETH_AXGBE_H_ */

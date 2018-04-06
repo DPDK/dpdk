@@ -25,6 +25,7 @@ static const struct rte_pci_id pci_id_axgbe_map[] = {
 };
 
 static struct axgbe_version_data axgbe_v2a = {
+	.init_function_ptrs_phy_impl    = axgbe_init_function_ptrs_phy_v2,
 	.xpcs_access			= AXGBE_XPCS_ACCESS_V2,
 	.mmc_64bit			= 1,
 	.tx_max_fifo_size		= 229376,
@@ -35,6 +36,7 @@ static struct axgbe_version_data axgbe_v2a = {
 };
 
 static struct axgbe_version_data axgbe_v2b = {
+	.init_function_ptrs_phy_impl    = axgbe_init_function_ptrs_phy_v2,
 	.xpcs_access			= AXGBE_XPCS_ACCESS_V2,
 	.mmc_64bit			= 1,
 	.tx_max_fifo_size		= 65536,
@@ -149,6 +151,9 @@ static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
 static void axgbe_init_all_fptrs(struct axgbe_port *pdata)
 {
 	axgbe_init_function_ptrs_dev(&pdata->hw_if);
+	axgbe_init_function_ptrs_phy(&pdata->phy_if);
+	axgbe_init_function_ptrs_i2c(&pdata->i2c_if);
+	pdata->vdata->init_function_ptrs_phy_impl(&pdata->phy_if);
 }
 
 static void axgbe_set_counts(struct axgbe_port *pdata)
@@ -335,6 +340,12 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	pthread_mutex_init(&pdata->i2c_mutex, NULL);
 	pthread_mutex_init(&pdata->an_mutex, NULL);
 	pthread_mutex_init(&pdata->phy_mutex, NULL);
+
+	ret = pdata->phy_if.phy_init(pdata);
+	if (ret) {
+		rte_free(eth_dev->data->mac_addrs);
+		return ret;
+	}
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,

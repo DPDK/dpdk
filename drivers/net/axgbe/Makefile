@@ -24,5 +24,8 @@ LDLIBS += -lrte_ethdev
 #
 SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_dev.c
+SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_mdio.c
+SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_phy_impl.c
+SRCS-$(CONFIG_RTE_LIBRTE_AXGBE_PMD) += axgbe_i2c.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
