@@ -10,6 +10,16 @@
 #include <rte_lcore.h>
 #include "axgbe_common.h"
 
+#define IRQ				0xff
+#define VLAN_HLEN			4
+
+#define AXGBE_TX_MAX_BUF_SIZE		(0x3fff & ~(64 - 1))
+#define AXGBE_RX_MAX_BUF_SIZE		(0x3fff & ~(64 - 1))
+#define AXGBE_RX_MIN_BUF_SIZE		(ETHER_MAX_LEN + VLAN_HLEN)
+#define AXGBE_MAX_MAC_ADDRS		1
+
+#define AXGBE_RX_BUF_ALIGN		64
+
 #define AXGBE_MAX_DMA_CHANNELS		16
 #define AXGBE_MAX_QUEUES		16
 #define AXGBE_PRIORITY_QUEUES		8
@@ -24,6 +34,23 @@
 #define AXGBE_DMA_SYS_AXDOMAIN		0x3
 #define AXGBE_DMA_SYS_ARCACHE		0x0
 #define AXGBE_DMA_SYS_AWCACHE		0x0
+
+/* DMA channel interrupt modes */
+#define AXGBE_IRQ_MODE_EDGE		0
+#define AXGBE_IRQ_MODE_LEVEL		1
+
+#define AXGBE_DMA_INTERRUPT_MASK	0x31c7
+
+#define AXGMAC_MIN_PACKET		60
+#define AXGMAC_STD_PACKET_MTU		1500
+#define AXGMAC_MAX_STD_PACKET		1518
+#define AXGMAC_JUMBO_PACKET_MTU		9000
+#define AXGMAC_MAX_JUMBO_PACKET		9018
+/* Inter-frame gap + preamble */
+#define AXGMAC_ETH_PREAMBLE		(12 + 8)
+
+#define AXGMAC_PFC_DATA_LEN		46
+#define AXGMAC_PFC_DELAYS		14000
 
 /* PCI BAR mapping */
 #define AXGBE_AXGMAC_BAR		0
@@ -508,6 +535,10 @@ struct axgbe_port {
 
 	struct ether_addr mac_addr;
 
+	/* Software Tx/Rx structure pointers*/
+	void **rx_queues;
+	void **tx_queues;
+
 	/* MDIO/PHY related settings */
 	unsigned int phy_started;
 	void *phy_data;
@@ -534,6 +565,11 @@ struct axgbe_port {
 	/* I2C support */
 	struct axgbe_i2c i2c;
 	volatile int i2c_complete;
+
+	/* CRC stripping by H/w for Rx packet*/
+	int crc_strip_enable;
+	/* csum enable to hardware */
+	uint32_t rx_csum_enable;
 };
 
 void axgbe_init_function_ptrs_dev(struct axgbe_hw_if *hw_if);

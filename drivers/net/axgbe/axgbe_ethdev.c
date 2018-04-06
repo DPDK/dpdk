@@ -3,6 +3,7 @@
  *   Copyright(c) 2018 Synopsys, Inc. All rights reserved.
  */
 
+#include "axgbe_rxtx.h"
 #include "axgbe_ethdev.h"
 #include "axgbe_common.h"
 #include "axgbe_phy.h"
@@ -10,6 +11,9 @@
 static int eth_axgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev);
 static void axgbe_dev_interrupt_handler(void *param);
+static void axgbe_dev_close(struct rte_eth_dev *dev);
+static void axgbe_dev_info_get(struct rte_eth_dev *dev,
+			       struct rte_eth_dev_info *dev_info);
 
 /* The set of PCI devices this driver supports */
 #define AMD_PCI_VENDOR_ID       0x1022
@@ -47,6 +51,27 @@ static struct axgbe_version_data axgbe_v2b = {
 	.i2c_support			= 1,
 };
 
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = AXGBE_MAX_RING_DESC,
+	.nb_min = AXGBE_MIN_RING_DESC,
+	.nb_align = 8,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = AXGBE_MAX_RING_DESC,
+	.nb_min = AXGBE_MIN_RING_DESC,
+	.nb_align = 8,
+};
+
+static const struct eth_dev_ops axgbe_eth_dev_ops = {
+	.dev_close            = axgbe_dev_close,
+	.dev_infos_get        = axgbe_dev_info_get,
+	.rx_queue_setup       = axgbe_dev_rx_queue_setup,
+	.rx_queue_release     = axgbe_dev_rx_queue_release,
+	.tx_queue_setup       = axgbe_dev_tx_queue_setup,
+	.tx_queue_release     = axgbe_dev_tx_queue_release,
+};
+
 /*
  * Interrupt handler triggered by NIC  for handling
  * specific interrupt.
@@ -69,6 +94,57 @@ axgbe_dev_interrupt_handler(void *param)
 
 	/* Enable interrupts since disabled after generation*/
 	rte_intr_enable(&pdata->pci_dev->intr_handle);
+}
+
+/* Clear all resources like TX/RX queues. */
+static void
+axgbe_dev_close(struct rte_eth_dev *dev)
+{
+	axgbe_dev_clear_queues(dev);
+}
+
+static void
+axgbe_dev_info_get(struct rte_eth_dev *dev,
+		   struct rte_eth_dev_info *dev_info)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	dev_info->max_rx_queues = pdata->rx_ring_count;
+	dev_info->max_tx_queues = pdata->tx_ring_count;
+	dev_info->min_rx_bufsize = AXGBE_RX_MIN_BUF_SIZE;
+	dev_info->max_rx_pktlen = AXGBE_RX_MAX_BUF_SIZE;
+	dev_info->max_mac_addrs = AXGBE_MAX_MAC_ADDRS;
+	dev_info->speed_capa =  ETH_LINK_SPEED_10G;
+
+	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM  |
+		DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_IPV4_CKSUM  |
+		DEV_TX_OFFLOAD_UDP_CKSUM   |
+		DEV_TX_OFFLOAD_TCP_CKSUM;
+
+	if (pdata->hw_feat.rss) {
+		dev_info->flow_type_rss_offloads = AXGBE_RSS_OFFLOAD;
+		dev_info->reta_size = pdata->hw_feat.hash_table_size;
+		dev_info->hash_key_size =  AXGBE_RSS_HASH_KEY_SIZE;
+	}
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = AXGBE_RX_FREE_THRESH,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_free_thresh = AXGBE_TX_FREE_THRESH,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+				ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
 }
 
 static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
@@ -250,6 +326,8 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	uint32_t reg, mac_lo, mac_hi;
 	int ret;
 
+	eth_dev->dev_ops = &axgbe_eth_dev_ops;
+
 	/*
 	 * For secondary processes, we don't initialise any further as primary
 	 * has already done this work.
@@ -361,6 +439,8 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	if (!pdata->rx_max_fifo_size)
 		pdata->rx_max_fifo_size = pdata->hw_feat.rx_fifo_size;
 
+	pdata->tx_desc_count = AXGBE_MAX_RING_DESC;
+	pdata->rx_desc_count = AXGBE_MAX_RING_DESC;
 	pthread_mutex_init(&pdata->xpcs_mutex, NULL);
 	pthread_mutex_init(&pdata->i2c_mutex, NULL);
 	pthread_mutex_init(&pdata->an_mutex, NULL);
@@ -396,6 +476,8 @@ eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	/*Free macaddres*/
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
+	eth_dev->dev_ops = NULL;
+	axgbe_dev_clear_queues(eth_dev);
 
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(&pci_dev->intr_handle);
