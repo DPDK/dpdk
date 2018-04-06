@@ -131,6 +131,28 @@ The following are the application command-line options:
 
         Use burst mode event timer adapter as producer.
 
+ * ``--timer_tick_nsec``
+
+        Used to dictate number of nano seconds between bucket traversal of the
+        event timer adapter. Refer `rte_event_timer_adapter_conf`.
+
+ * ``--max_tmo_nsec``
+
+        Used to configure event timer adapter max arm timeout in nano seconds.
+
+ * ``--expiry_nsec``
+
+        Dictate the number of nano seconds after which the event timer expires.
+
+ * ``--nb_timers``
+
+        Number of event timers each producer core will generate.
+
+ * ``--nb_timer_adptrs``
+
+        Number of event timer adapters to be used. Each adapter is used in
+        round robin manner by the producer cores.
+
 Eventdev Tests
 --------------
 
@@ -357,6 +379,11 @@ Supported application command line options are following::
         --prod_type_ethdev
         --prod_type_timerdev_burst
         --prod_type_timerdev
+        --timer_tick_nsec
+        --max_tmo_nsec
+        --expiry_nsec
+        --nb_timers
+        --nb_timer_adptrs
 
 Example
 ^^^^^^^
@@ -451,6 +478,11 @@ Supported application command line options are following::
         --prod_type_ethdev
         --prod_type_timerdev_burst
         --prod_type_timerdev
+        --timer_tick_nsec
+        --max_tmo_nsec
+        --expiry_nsec
+        --nb_timers
+        --nb_timer_adptrs
 
 Example
 ^^^^^^^

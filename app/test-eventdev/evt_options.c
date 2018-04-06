@@ -141,6 +141,56 @@ evt_parse_nb_pkts(struct evt_options *opt, const char *arg)
 }
 
 static int
+evt_parse_nb_timers(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint64(&(opt->nb_timers), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_timer_tick_nsec(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint64(&(opt->timer_tick_nsec), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_max_tmo_nsec(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint64(&(opt->max_tmo_nsec), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_expiry_nsec(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint64(&(opt->expiry_nsec), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_nb_timer_adptrs(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint8(&(opt->nb_timer_adptrs), arg);
+
+	return ret;
+}
+
+static int
 evt_parse_pool_sz(struct evt_options *opt, const char *arg)
 {
 	opt->pool_sz = atoi(arg);
@@ -196,6 +246,11 @@ usage(char *program)
 		"\t                     in ns.\n"
 		"\t--prod_type_timerdev_burst : use timer device as producer\n"
 		"\t                             burst mode.\n"
+		"\t--nb_timers        : number of timers to arm.\n"
+		"\t--nb_timer_adptrs  : number of timer adapters to use.\n"
+		"\t--timer_tick_nsec  : timer tick interval in ns.\n"
+		"\t--max_tmo_nsec     : max timeout interval in ns.\n"
+		"\t--expiry_ns        : event timer expiry ns.\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -259,6 +314,11 @@ static struct option lgopts[] = {
 	{ EVT_PROD_ETHDEV,         0, 0, 0 },
 	{ EVT_PROD_TIMERDEV,       0, 0, 0 },
 	{ EVT_PROD_TIMERDEV_BURST, 0, 0, 0 },
+	{ EVT_NB_TIMERS,           1, 0, 0 },
+	{ EVT_NB_TIMER_ADPTRS,     1, 0, 0 },
+	{ EVT_TIMER_TICK_NSEC,     1, 0, 0 },
+	{ EVT_MAX_TMO_NSEC,        1, 0, 0 },
+	{ EVT_EXPIRY_NSEC,         1, 0, 0 },
 	{ EVT_HELP,                0, 0, 0 },
 	{ NULL,                    0, 0, 0 }
 };
@@ -285,6 +345,11 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_PROD_ETHDEV, evt_parse_eth_prod_type},
 		{ EVT_PROD_TIMERDEV, evt_parse_timer_prod_type},
 		{ EVT_PROD_TIMERDEV_BURST, evt_parse_timer_prod_type_burst},
+		{ EVT_NB_TIMERS, evt_parse_nb_timers},
+		{ EVT_NB_TIMER_ADPTRS, evt_parse_nb_timer_adptrs},
+		{ EVT_TIMER_TICK_NSEC, evt_parse_timer_tick_nsec},
+		{ EVT_MAX_TMO_NSEC, evt_parse_max_tmo_nsec},
+		{ EVT_EXPIRY_NSEC, evt_parse_expiry_nsec},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {

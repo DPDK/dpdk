@@ -34,6 +34,11 @@
 #define EVT_PROD_ETHDEV          ("prod_type_ethdev")
 #define EVT_PROD_TIMERDEV        ("prod_type_timerdev")
 #define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
+#define EVT_NB_TIMERS            ("nb_timers")
+#define EVT_NB_TIMER_ADPTRS      ("nb_timer_adptrs")
+#define EVT_TIMER_TICK_NSEC      ("timer_tick_ns")
+#define EVT_MAX_TMO_NSEC         ("max_tmo_nsec")
+#define EVT_EXPIRY_NSEC          ("expiry_ns")
 #define EVT_HELP                 ("help")
 
 enum evt_prod_type {
