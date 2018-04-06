@@ -10,6 +10,9 @@
 
 static int eth_axgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev);
+static int  axgbe_dev_configure(struct rte_eth_dev *dev);
+static int  axgbe_dev_start(struct rte_eth_dev *dev);
+static void axgbe_dev_stop(struct rte_eth_dev *dev);
 static void axgbe_dev_interrupt_handler(void *param);
 static void axgbe_dev_close(struct rte_eth_dev *dev);
 static void axgbe_dev_info_get(struct rte_eth_dev *dev,
@@ -64,6 +67,9 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 };
 
 static const struct eth_dev_ops axgbe_eth_dev_ops = {
+	.dev_configure        = axgbe_dev_configure,
+	.dev_start            = axgbe_dev_start,
+	.dev_stop             = axgbe_dev_stop,
 	.dev_close            = axgbe_dev_close,
 	.dev_infos_get        = axgbe_dev_info_get,
 	.rx_queue_setup       = axgbe_dev_rx_queue_setup,
@@ -71,6 +77,13 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.tx_queue_setup       = axgbe_dev_tx_queue_setup,
 	.tx_queue_release     = axgbe_dev_tx_queue_release,
 };
+
+static int axgbe_phy_reset(struct axgbe_port *pdata)
+{
+	pdata->phy_link = -1;
+	pdata->phy_speed = SPEED_UNKNOWN;
+	return pdata->phy_if.phy_reset(pdata);
+}
 
 /*
  * Interrupt handler triggered by NIC  for handling
@@ -94,6 +107,89 @@ axgbe_dev_interrupt_handler(void *param)
 
 	/* Enable interrupts since disabled after generation*/
 	rte_intr_enable(&pdata->pci_dev->intr_handle);
+}
+
+/*
+ * Configure device link speed and setup link.
+ * It returns 0 on success.
+ */
+static int
+axgbe_dev_configure(struct rte_eth_dev *dev)
+{
+	struct axgbe_port *pdata =  dev->data->dev_private;
+	/* Checksum offload to hardware */
+	pdata->rx_csum_enable = dev->data->dev_conf.rxmode.offloads &
+				DEV_RX_OFFLOAD_CHECKSUM;
+	return 0;
+}
+
+static int
+axgbe_dev_rx_mq_config(struct rte_eth_dev *dev)
+{
+	struct axgbe_port *pdata = (struct axgbe_port *)dev->data->dev_private;
+
+	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
+		pdata->rss_enable = 1;
+	else if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_NONE)
+		pdata->rss_enable = 0;
+	else
+		return  -1;
+	return 0;
+}
+
+static int
+axgbe_dev_start(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+	struct axgbe_port *pdata = (struct axgbe_port *)dev->data->dev_private;
+	int ret;
+
+	/* Multiqueue RSS */
+	ret = axgbe_dev_rx_mq_config(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Unable to config RX MQ\n");
+		return ret;
+	}
+	ret = axgbe_phy_reset(pdata);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "phy reset failed\n");
+		return ret;
+	}
+	ret = pdata->hw_if.init(pdata);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "dev_init failed\n");
+		return ret;
+	}
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rte_intr_enable(&pdata->pci_dev->intr_handle);
+
+	/* phy start*/
+	pdata->phy_if.phy_start(pdata);
+
+	axgbe_clear_bit(AXGBE_STOPPED, &pdata->dev_state);
+	axgbe_clear_bit(AXGBE_DOWN, &pdata->dev_state);
+	return 0;
+}
+
+/* Stop device: disable rx and tx functions to allow for reconfiguring. */
+static void
+axgbe_dev_stop(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	rte_intr_disable(&pdata->pci_dev->intr_handle);
+
+	if (axgbe_test_bit(AXGBE_STOPPED, &pdata->dev_state))
+		return;
+
+	axgbe_set_bit(AXGBE_STOPPED, &pdata->dev_state);
+
+	pdata->phy_if.phy_stop(pdata);
+	pdata->hw_if.exit(pdata);
+	memset(&dev->data->dev_link, 0, sizeof(struct rte_eth_link));
+	axgbe_set_bit(AXGBE_DOWN, &pdata->dev_state);
 }
 
 /* Clear all resources like TX/RX queues. */
