@@ -287,10 +287,14 @@ static void axgbe_an73_disable(struct axgbe_port *pdata)
 {
 	axgbe_an73_set(pdata, false, false);
 	axgbe_an73_disable_interrupts(pdata);
+	pdata->an_start = 0;
 }
 
 static void axgbe_an_restart(struct axgbe_port *pdata)
 {
+	if (pdata->phy_if.phy_impl.an_pre)
+		pdata->phy_if.phy_impl.an_pre(pdata);
+
 	switch (pdata->an_mode) {
 	case AXGBE_AN_MODE_CL73:
 	case AXGBE_AN_MODE_CL73_REDRV:
@@ -307,6 +311,9 @@ static void axgbe_an_restart(struct axgbe_port *pdata)
 
 static void axgbe_an_disable(struct axgbe_port *pdata)
 {
+	if (pdata->phy_if.phy_impl.an_post)
+		pdata->phy_if.phy_impl.an_post(pdata);
+
 	switch (pdata->an_mode) {
 	case AXGBE_AN_MODE_CL73:
 	case AXGBE_AN_MODE_CL73_REDRV:
@@ -482,9 +489,9 @@ static enum axgbe_an axgbe_an73_incompat_link(struct axgbe_port *pdata)
 			return AXGBE_AN_NO_LINK;
 	}
 
-	axgbe_an73_disable(pdata);
+	axgbe_an_disable(pdata);
 	axgbe_switch_mode(pdata);
-	axgbe_an73_restart(pdata);
+	axgbe_an_restart(pdata);
 
 	return AXGBE_AN_INCOMPAT_LINK;
 }
@@ -553,6 +560,8 @@ again:
 		pdata->kr_state = AXGBE_RX_BPA;
 		pdata->kx_state = AXGBE_RX_BPA;
 		pdata->an_start = 0;
+		if (pdata->phy_if.phy_impl.an_post)
+			pdata->phy_if.phy_impl.an_post(pdata);
 	}
 
 	if (cur_state != pdata->an_state)

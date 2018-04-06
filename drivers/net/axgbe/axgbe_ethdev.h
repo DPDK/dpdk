@@ -337,6 +337,10 @@ struct axgbe_phy_impl_if {
 	/* Process results of auto-negotiation */
 	enum axgbe_mode (*an_outcome)(struct axgbe_port *);
 
+	/* Pre/Post auto-negotiation support */
+	void (*an_pre)(struct axgbe_port *port);
+	void (*an_post)(struct axgbe_port *port);
+
 	/* Pre/Post KR training enablement support */
 	void (*kr_training_pre)(struct axgbe_port *);
 	void (*kr_training_post)(struct axgbe_port *);
@@ -431,6 +435,7 @@ struct axgbe_version_data {
 	unsigned int tx_tstamp_workaround;
 	unsigned int ecc_support;
 	unsigned int i2c_support;
+	unsigned int an_cdr_workaround;
 };
 
 /*
@@ -450,6 +455,7 @@ struct axgbe_port {
 	void *xprop_regs;	/* AXGBE property registers */
 	void *xi2c_regs;	/* AXGBE I2C CSRs */
 
+	bool cdr_track_early;
 	/* XPCS indirect addressing lock */
 	unsigned int xpcs_window_def_reg;
 	unsigned int xpcs_window_sel_reg;

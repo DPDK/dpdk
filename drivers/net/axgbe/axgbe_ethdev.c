@@ -50,6 +50,7 @@ static struct axgbe_version_data axgbe_v2a = {
 	.tx_tstamp_workaround		= 1,
 	.ecc_support			= 1,
 	.i2c_support			= 1,
+	.an_cdr_workaround		= 1,
 };
 
 static struct axgbe_version_data axgbe_v2b = {
@@ -61,6 +62,7 @@ static struct axgbe_version_data axgbe_v2b = {
 	.tx_tstamp_workaround		= 1,
 	.ecc_support			= 1,
 	.i2c_support			= 1,
+	.an_cdr_workaround		= 1,
 };
 
 static const struct rte_eth_desc_lim rx_desc_lim = {

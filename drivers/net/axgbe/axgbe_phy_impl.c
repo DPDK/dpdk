@@ -31,6 +31,11 @@
 /* Rate-change complete wait/retry count */
 #define AXGBE_RATECHANGE_COUNT		500
 
+/* CDR delay values for KR support (in usec) */
+#define AXGBE_CDR_DELAY_INIT		10000
+#define AXGBE_CDR_DELAY_INC		10000
+#define AXGBE_CDR_DELAY_MAX		100000
+
 enum axgbe_port_mode {
 	AXGBE_PORT_MODE_RSVD = 0,
 	AXGBE_PORT_MODE_BACKPLANE,
@@ -237,6 +242,10 @@ struct axgbe_phy_data {
 	unsigned int redrv_addr;
 	unsigned int redrv_lane;
 	unsigned int redrv_model;
+
+	/* KR AN support */
+	unsigned int phy_cdr_notrack;
+	unsigned int phy_cdr_delay;
 };
 
 static enum axgbe_an_mode axgbe_phy_an_mode(struct axgbe_port *pdata);
@@ -1766,6 +1775,100 @@ static bool axgbe_phy_port_enabled(struct axgbe_port *pdata)
 	return true;
 }
 
+static void axgbe_phy_cdr_track(struct axgbe_port *pdata)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+
+	if (!pdata->vdata->an_cdr_workaround)
+		return;
+
+	if (!phy_data->phy_cdr_notrack)
+		return;
+
+	rte_delay_us(phy_data->phy_cdr_delay + 400);
+
+	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_CDR_CONTROL,
+			 AXGBE_PMA_CDR_TRACK_EN_MASK,
+			 AXGBE_PMA_CDR_TRACK_EN_ON);
+
+	phy_data->phy_cdr_notrack = 0;
+}
+
+static void axgbe_phy_cdr_notrack(struct axgbe_port *pdata)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+
+	if (!pdata->vdata->an_cdr_workaround)
+		return;
+
+	if (phy_data->phy_cdr_notrack)
+		return;
+
+	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_CDR_CONTROL,
+			 AXGBE_PMA_CDR_TRACK_EN_MASK,
+			 AXGBE_PMA_CDR_TRACK_EN_OFF);
+
+	axgbe_phy_rrc(pdata);
+
+	phy_data->phy_cdr_notrack = 1;
+}
+
+static void axgbe_phy_kr_training_post(struct axgbe_port *pdata)
+{
+	if (!pdata->cdr_track_early)
+		axgbe_phy_cdr_track(pdata);
+}
+
+static void axgbe_phy_kr_training_pre(struct axgbe_port *pdata)
+{
+	if (pdata->cdr_track_early)
+		axgbe_phy_cdr_track(pdata);
+}
+
+static void axgbe_phy_an_post(struct axgbe_port *pdata)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+
+	switch (pdata->an_mode) {
+	case AXGBE_AN_MODE_CL73:
+	case AXGBE_AN_MODE_CL73_REDRV:
+		if (phy_data->cur_mode != AXGBE_MODE_KR)
+			break;
+
+		axgbe_phy_cdr_track(pdata);
+
+		switch (pdata->an_result) {
+		case AXGBE_AN_READY:
+		case AXGBE_AN_COMPLETE:
+			break;
+		default:
+			if (phy_data->phy_cdr_delay < AXGBE_CDR_DELAY_MAX)
+				phy_data->phy_cdr_delay += AXGBE_CDR_DELAY_INC;
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+static void axgbe_phy_an_pre(struct axgbe_port *pdata)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+
+	switch (pdata->an_mode) {
+	case AXGBE_AN_MODE_CL73:
+	case AXGBE_AN_MODE_CL73_REDRV:
+		if (phy_data->cur_mode != AXGBE_MODE_KR)
+			break;
+
+		axgbe_phy_cdr_notrack(pdata);
+		break;
+	default:
+		break;
+	}
+}
+
 static void axgbe_phy_stop(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
@@ -1773,6 +1876,9 @@ static void axgbe_phy_stop(struct axgbe_port *pdata)
 	/* Reset SFP data */
 	axgbe_phy_sfp_reset(phy_data);
 	axgbe_phy_sfp_mod_absent(pdata);
+
+	/* Reset CDR support */
+	axgbe_phy_cdr_track(pdata);
 
 	/* Power off the PHY */
 	axgbe_phy_power_off(pdata);
@@ -1793,6 +1899,9 @@ static int axgbe_phy_start(struct axgbe_port *pdata)
 
 	/* Start in highest supported mode */
 	axgbe_phy_set_mode(pdata, phy_data->start_mode);
+
+	/* Reset CDR support */
+	axgbe_phy_cdr_track(pdata);
 
 	/* After starting the I2C controller, we can check for an SFP */
 	switch (phy_data->port_mode) {
@@ -2051,6 +2160,8 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 			return -EINVAL;
 		}
 	}
+
+	phy_data->phy_cdr_delay = AXGBE_CDR_DELAY_INIT;
 	return 0;
 }
 void axgbe_init_function_ptrs_phy_v2(struct axgbe_phy_if *phy_if)
@@ -2071,4 +2182,10 @@ void axgbe_init_function_ptrs_phy_v2(struct axgbe_phy_if *phy_if)
 	phy_impl->an_config		= axgbe_phy_an_config;
 	phy_impl->an_advertising	= axgbe_phy_an_advertising;
 	phy_impl->an_outcome		= axgbe_phy_an_outcome;
+
+	phy_impl->an_pre		= axgbe_phy_an_pre;
+	phy_impl->an_post		= axgbe_phy_an_post;
+
+	phy_impl->kr_training_pre	= axgbe_phy_kr_training_pre;
+	phy_impl->kr_training_post	= axgbe_phy_kr_training_post;
 }
