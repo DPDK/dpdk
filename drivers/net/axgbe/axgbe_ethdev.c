@@ -15,6 +15,8 @@ static int  axgbe_dev_start(struct rte_eth_dev *dev);
 static void axgbe_dev_stop(struct rte_eth_dev *dev);
 static void axgbe_dev_interrupt_handler(void *param);
 static void axgbe_dev_close(struct rte_eth_dev *dev);
+static int axgbe_dev_link_update(struct rte_eth_dev *dev,
+				 int wait_to_complete);
 static void axgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
 
@@ -71,6 +73,7 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.dev_start            = axgbe_dev_start,
 	.dev_stop             = axgbe_dev_stop,
 	.dev_close            = axgbe_dev_close,
+	.link_update          = axgbe_dev_link_update,
 	.dev_infos_get        = axgbe_dev_info_get,
 	.rx_queue_setup       = axgbe_dev_rx_queue_setup,
 	.rx_queue_release     = axgbe_dev_rx_queue_release,
@@ -214,6 +217,33 @@ static void
 axgbe_dev_close(struct rte_eth_dev *dev)
 {
 	axgbe_dev_clear_queues(dev);
+}
+
+/* return 0 means link status changed, -1 means not changed */
+static int
+axgbe_dev_link_update(struct rte_eth_dev *dev,
+		      int wait_to_complete __rte_unused)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct rte_eth_link link;
+	int ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	rte_delay_ms(800);
+
+	pdata->phy_if.phy_status(pdata);
+
+	memset(&link, 0, sizeof(struct rte_eth_link));
+	link.link_duplex = pdata->phy.duplex;
+	link.link_status = pdata->phy_link;
+	link.link_speed = pdata->phy_speed;
+	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+			      ETH_LINK_SPEED_FIXED);
+	ret = rte_eth_linkstatus_set(dev, &link);
+	if (ret == -1)
+		PMD_DRV_LOG(ERR, "No change in link status\n");
+
+	return ret;
 }
 
 static void
