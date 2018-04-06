@@ -27,6 +27,11 @@ evt_options_default(struct evt_options *opt)
 	opt->pool_sz = 16 * 1024;
 	opt->wkr_deq_dep = 16;
 	opt->nb_pkts = (1ULL << 26); /* do ~64M packets */
+	opt->nb_timers = 1E8;
+	opt->nb_timer_adptrs = 1;
+	opt->timer_tick_nsec = 1E3; /* 1000ns ~ 1us */
+	opt->max_tmo_nsec = 1E5;  /* 100000ns ~100us */
+	opt->expiry_nsec = 1E4;   /* 10000ns ~10us */
 	opt->prod_type = EVT_PROD_TYPE_SYNT;
 }
 
@@ -83,6 +88,13 @@ static int
 evt_parse_eth_prod_type(struct evt_options *opt, const char *arg __rte_unused)
 {
 	opt->prod_type = EVT_PROD_TYPE_ETH_RX_ADPTR;
+	return 0;
+}
+
+static int
+evt_parse_timer_prod_type(struct evt_options *opt, const char *arg __rte_unused)
+{
+	opt->prod_type = EVT_PROD_TYPE_EVENT_TIMER_ADPTR;
 	return 0;
 }
 
@@ -169,7 +181,10 @@ usage(char *program)
 		"\t--worker_deq_depth : dequeue depth of the worker\n"
 		"\t--fwd_latency      : perform fwd_latency measurement\n"
 		"\t--queue_priority   : enable queue priority\n"
-		"\t--prod_type_ethdev : use ethernet device as producer\n."
+		"\t--prod_type_ethdev : use ethernet device as producer.\n"
+		"\t--prod_type_timerdev : use event timer device as producer.\n"
+		"\t                     expity_nsec would be the timeout\n"
+		"\t                     in ns.\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -217,22 +232,23 @@ evt_parse_sched_type_list(struct evt_options *opt, const char *arg)
 }
 
 static struct option lgopts[] = {
-	{ EVT_NB_FLOWS,         1, 0, 0 },
-	{ EVT_DEVICE,           1, 0, 0 },
-	{ EVT_VERBOSE,          1, 0, 0 },
-	{ EVT_TEST,             1, 0, 0 },
-	{ EVT_PROD_LCORES,      1, 0, 0 },
-	{ EVT_WORK_LCORES,      1, 0, 0 },
-	{ EVT_SOCKET_ID,        1, 0, 0 },
-	{ EVT_POOL_SZ,          1, 0, 0 },
-	{ EVT_NB_PKTS,          1, 0, 0 },
-	{ EVT_WKR_DEQ_DEP,      1, 0, 0 },
-	{ EVT_SCHED_TYPE_LIST,  1, 0, 0 },
-	{ EVT_FWD_LATENCY,      0, 0, 0 },
-	{ EVT_QUEUE_PRIORITY,   0, 0, 0 },
-	{ EVT_PROD_ETHDEV,      0, 0, 0 },
-	{ EVT_HELP,             0, 0, 0 },
-	{ NULL,                 0, 0, 0 }
+	{ EVT_NB_FLOWS,            1, 0, 0 },
+	{ EVT_DEVICE,              1, 0, 0 },
+	{ EVT_VERBOSE,             1, 0, 0 },
+	{ EVT_TEST,                1, 0, 0 },
+	{ EVT_PROD_LCORES,         1, 0, 0 },
+	{ EVT_WORK_LCORES,         1, 0, 0 },
+	{ EVT_SOCKET_ID,           1, 0, 0 },
+	{ EVT_POOL_SZ,             1, 0, 0 },
+	{ EVT_NB_PKTS,             1, 0, 0 },
+	{ EVT_WKR_DEQ_DEP,         1, 0, 0 },
+	{ EVT_SCHED_TYPE_LIST,     1, 0, 0 },
+	{ EVT_FWD_LATENCY,         0, 0, 0 },
+	{ EVT_QUEUE_PRIORITY,      0, 0, 0 },
+	{ EVT_PROD_ETHDEV,         0, 0, 0 },
+	{ EVT_PROD_TIMERDEV,       0, 0, 0 },
+	{ EVT_HELP,                0, 0, 0 },
+	{ NULL,                    0, 0, 0 }
 };
 
 static int
@@ -255,11 +271,12 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_FWD_LATENCY, evt_parse_fwd_latency},
 		{ EVT_QUEUE_PRIORITY, evt_parse_queue_priority},
 		{ EVT_PROD_ETHDEV, evt_parse_eth_prod_type},
+		{ EVT_PROD_TIMERDEV, evt_parse_timer_prod_type},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {
 		if (strncmp(lgopts[opt_idx].name, parsermap[i].lgopt_name,
-				strlen(parsermap[i].lgopt_name)) == 0)
+				strlen(lgopts[opt_idx].name)) == 0)
 			return parsermap[i].parser_fn(opt, optarg);
 	}
 
@@ -305,6 +322,7 @@ evt_options_dump(struct evt_options *opt)
 	evt_dump("pool_sz", "%d", opt->pool_sz);
 	evt_dump("master lcore", "%d", rte_get_master_lcore());
 	evt_dump("nb_pkts", "%"PRIu64, opt->nb_pkts);
+	evt_dump("nb_timers", "%"PRIu64, opt->nb_timers);
 	evt_dump_begin("available lcores");
 	RTE_LCORE_FOREACH(lcore_id)
 		printf("%d ", lcore_id);

@@ -49,7 +49,7 @@ perf_queue_worker(void *arg, const int enable_fwd_latency)
 			rte_pause();
 			continue;
 		}
-		if (enable_fwd_latency)
+		if (enable_fwd_latency && !prod_timer_type)
 		/* first q in pipeline, mark timestamp to compute fwd latency */
 			mark_fwd_latency(&ev, nb_stages);
 
@@ -88,7 +88,7 @@ perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
 		}
 
 		for (i = 0; i < nb_rx; i++) {
-			if (enable_fwd_latency) {
+			if (enable_fwd_latency && !prod_timer_type) {
 				rte_prefetch0(ev[i+1].event_ptr);
 				/* first queue in pipeline.
 				 * mark time stamp to compute fwd latency
@@ -161,7 +161,8 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	struct rte_event_dev_info dev_info;
 
 	nb_ports = evt_nr_active_lcores(opt->wlcores);
-	nb_ports += opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ? 0 :
+	nb_ports += opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ||
+		 opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR ? 0 :
 		evt_nr_active_lcores(opt->plcores);
 
 	nb_queues = perf_queue_nb_event_queues(opt);
