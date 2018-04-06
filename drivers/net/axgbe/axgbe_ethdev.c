@@ -9,6 +9,7 @@
 
 static int eth_axgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev);
+static void axgbe_dev_interrupt_handler(void *param);
 
 /* The set of PCI devices this driver supports */
 #define AMD_PCI_VENDOR_ID       0x1022
@@ -45,6 +46,30 @@ static struct axgbe_version_data axgbe_v2b = {
 	.ecc_support			= 1,
 	.i2c_support			= 1,
 };
+
+/*
+ * Interrupt handler triggered by NIC  for handling
+ * specific interrupt.
+ *
+ * @param handle
+ *  Pointer to interrupt handle.
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *
+ * @return
+ *  void
+ */
+static void
+axgbe_dev_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	pdata->phy_if.an_isr(pdata);
+
+	/* Enable interrupts since disabled after generation*/
+	rte_intr_enable(&pdata->pci_dev->intr_handle);
+}
 
 static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
 {
@@ -347,6 +372,9 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
+	rte_intr_callback_register(&pci_dev->intr_handle,
+				   axgbe_dev_interrupt_handler,
+				   (void *)eth_dev);
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id);
@@ -357,14 +385,23 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 static int
 eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 {
+	struct rte_pci_device *pci_dev;
+
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	/*Free macaddres*/
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(&pci_dev->intr_handle);
+	rte_intr_callback_unregister(&pci_dev->intr_handle,
+				     axgbe_dev_interrupt_handler,
+				     (void *)eth_dev);
 
 	return 0;
 }
