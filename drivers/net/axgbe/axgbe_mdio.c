@@ -674,6 +674,19 @@ static void axgbe_an_init(struct axgbe_port *pdata)
 static void axgbe_phy_adjust_link(struct axgbe_port *pdata)
 {
 	if (pdata->phy.link) {
+		/* Flow control support */
+		pdata->pause_autoneg = pdata->phy.pause_autoneg;
+
+		if (pdata->tx_pause != (unsigned int)pdata->phy.tx_pause) {
+			pdata->hw_if.config_tx_flow_control(pdata);
+			pdata->tx_pause = pdata->phy.tx_pause;
+		}
+
+		if (pdata->rx_pause != (unsigned int)pdata->phy.rx_pause) {
+			pdata->hw_if.config_rx_flow_control(pdata);
+			pdata->rx_pause = pdata->phy.rx_pause;
+		}
+
 		/* Speed support */
 		if (pdata->phy_speed != pdata->phy.speed)
 			pdata->phy_speed = pdata->phy.speed;
