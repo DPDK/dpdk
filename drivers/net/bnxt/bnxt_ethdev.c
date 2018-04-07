@@ -426,7 +426,8 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 			.wthresh = 0,
 		},
 		.rx_free_thresh = 32,
-		.rx_drop_en = 0,
+		/* If no descriptors available, pkts are dropped by default */
+		.rx_drop_en = 1,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
