@@ -118,6 +118,28 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	ETH_RSS_NONFRAG_IPV6_TCP |	\
 	ETH_RSS_NONFRAG_IPV6_UDP)
 
+#define BNXT_DEV_TX_OFFLOAD_SUPPORT (DEV_TX_OFFLOAD_VLAN_INSERT | \
+				     DEV_TX_OFFLOAD_IPV4_CKSUM | \
+				     DEV_TX_OFFLOAD_TCP_CKSUM | \
+				     DEV_TX_OFFLOAD_UDP_CKSUM | \
+				     DEV_TX_OFFLOAD_TCP_TSO | \
+				     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | \
+				     DEV_TX_OFFLOAD_VXLAN_TNL_TSO | \
+				     DEV_TX_OFFLOAD_GRE_TNL_TSO | \
+				     DEV_TX_OFFLOAD_IPIP_TNL_TSO | \
+				     DEV_TX_OFFLOAD_GENEVE_TNL_TSO | \
+				     DEV_TX_OFFLOAD_MULTI_SEGS)
+
+#define BNXT_DEV_RX_OFFLOAD_SUPPORT (DEV_RX_OFFLOAD_VLAN_FILTER | \
+				     DEV_RX_OFFLOAD_VLAN_STRIP | \
+				     DEV_RX_OFFLOAD_IPV4_CKSUM | \
+				     DEV_RX_OFFLOAD_UDP_CKSUM | \
+				     DEV_RX_OFFLOAD_TCP_CKSUM | \
+				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM | \
+				     DEV_RX_OFFLOAD_JUMBO_FRAME | \
+				     DEV_RX_OFFLOAD_CRC_STRIP | \
+				     DEV_RX_OFFLOAD_TCP_LRO)
+
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
 
@@ -187,10 +209,12 @@ static int bnxt_init_chip(struct bnxt *bp)
 	rte_intr_disable(intr_handle);
 
 	if (bp->eth_dev->data->mtu > ETHER_MTU) {
-		bp->eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		bp->eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		bp->flags |= BNXT_FLAG_JUMBO;
 	} else {
-		bp->eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		bp->eth_dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 		bp->flags &= ~BNXT_FLAG_JUMBO;
 	}
 
@@ -261,7 +285,8 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 		bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
 
-		if (bp->eth_dev->data->dev_conf.rxmode.enable_lro)
+		if (bp->eth_dev->data->dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_TCP_LRO)
 			bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 1);
 		else
 			bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 0);
@@ -402,21 +427,12 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->min_rx_bufsize = 1;
 	dev_info->max_rx_pktlen = BNXT_MAX_MTU + ETHER_HDR_LEN + ETHER_CRC_LEN
 				  + VLAN_TAG_SIZE;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
-					DEV_RX_OFFLOAD_IPV4_CKSUM |
-					DEV_RX_OFFLOAD_UDP_CKSUM |
-					DEV_RX_OFFLOAD_TCP_CKSUM |
-					DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
-	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
-					DEV_TX_OFFLOAD_IPV4_CKSUM |
-					DEV_TX_OFFLOAD_TCP_CKSUM |
-					DEV_TX_OFFLOAD_UDP_CKSUM |
-					DEV_TX_OFFLOAD_TCP_TSO |
-					DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-					DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-					DEV_TX_OFFLOAD_GRE_TNL_TSO |
-					DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-					DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
+
+	dev_info->rx_offload_capa = BNXT_DEV_RX_OFFLOAD_SUPPORT;
+	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
+	dev_info->tx_offload_capa = BNXT_DEV_TX_OFFLOAD_SUPPORT;
+	dev_info->flow_type_rss_offloads = BNXT_ETH_RSS_SUPPORT;
 
 	/* *INDENT-OFF* */
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
@@ -438,8 +454,6 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		},
 		.tx_free_thresh = 32,
 		.tx_rs_thresh = 32,
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-			     ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 	eth_dev->data->dev_conf.intr_conf.lsc = 1;
 
@@ -483,6 +497,24 @@ found:
 static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint64_t tx_offloads = eth_dev->data->dev_conf.txmode.offloads;
+	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
+
+	if (tx_offloads != (tx_offloads & BNXT_DEV_TX_OFFLOAD_SUPPORT)) {
+		PMD_DRV_LOG
+			(ERR,
+			 "Tx offloads requested 0x%" PRIx64 " supported 0x%x\n",
+			 tx_offloads, BNXT_DEV_TX_OFFLOAD_SUPPORT);
+		return -ENOTSUP;
+	}
+
+	if (rx_offloads != (rx_offloads & BNXT_DEV_RX_OFFLOAD_SUPPORT)) {
+		PMD_DRV_LOG
+			(ERR,
+			 "Rx offloads requested 0x%" PRIx64 " supported 0x%x\n",
+			    rx_offloads, BNXT_DEV_RX_OFFLOAD_SUPPORT);
+		return -ENOTSUP;
+	}
 
 	bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
@@ -513,7 +545,7 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
 	bp->tx_cp_nr_rings = bp->tx_nr_rings;
 
-	if (eth_dev->data->dev_conf.rxmode.jumbo_frame)
+	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		eth_dev->data->mtu =
 				eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
 				ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE;
@@ -544,6 +576,7 @@ static int bnxt_dev_lsc_intr_setup(struct rte_eth_dev *eth_dev)
 static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 	int vlan_mask = 0;
 	int rc;
 
@@ -560,9 +593,9 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	bnxt_link_update_op(eth_dev, 1);
 
-	if (eth_dev->data->dev_conf.rxmode.hw_vlan_filter)
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		vlan_mask |= ETH_VLAN_FILTER_MASK;
-	if (eth_dev->data->dev_conf.rxmode.hw_vlan_strip)
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 		vlan_mask |= ETH_VLAN_STRIP_MASK;
 	rc = bnxt_vlan_offload_set_op(eth_dev, vlan_mask);
 	if (rc)
@@ -1339,30 +1372,31 @@ static int
 bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	unsigned int i;
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (!dev->data->dev_conf.rxmode.hw_vlan_filter) {
+		if (!(rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)) {
 			/* Remove any VLAN filters programmed */
 			for (i = 0; i < 4095; i++)
 				bnxt_del_vlan_filter(bp, i);
 		}
 		PMD_DRV_LOG(DEBUG, "VLAN Filtering: %d\n",
-			dev->data->dev_conf.rxmode.hw_vlan_filter);
+			!!(rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER));
 	}
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
 		for (i = 0; i < bp->nr_vnics; i++) {
 			struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
-			if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+			if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 				vnic->vlan_strip = true;
 			else
 				vnic->vlan_strip = false;
 			bnxt_hwrm_vnic_cfg(bp, vnic);
 		}
 		PMD_DRV_LOG(DEBUG, "VLAN Strip Offload: %d\n",
-			dev->data->dev_conf.rxmode.hw_vlan_strip);
+			!!(rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP));
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK)
@@ -1513,9 +1547,11 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 
 	if (new_mtu > ETHER_MTU) {
 		bp->flags |= BNXT_FLAG_JUMBO;
-		eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		bp->eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	} else {
-		eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		bp->eth_dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 		bp->flags &= ~BNXT_FLAG_JUMBO;
 	}
 

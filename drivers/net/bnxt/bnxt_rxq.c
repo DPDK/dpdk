@@ -280,6 +280,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			       struct rte_mempool *mp)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 	struct bnxt_rx_queue *rxq;
 	int rc = 0;
 
@@ -322,8 +323,8 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	rxq->queue_id = queue_idx;
 	rxq->port_id = eth_dev->data->port_id;
-	rxq->crc_len = (uint8_t)((eth_dev->data->dev_conf.rxmode.hw_strip_crc) ?
-				0 : ETHER_CRC_LEN);
+	rxq->crc_len = rx_offloads & DEV_RX_OFFLOAD_CRC_STRIP ?
+		0 : ETHER_CRC_LEN;
 
 	eth_dev->data->rx_queues[queue_idx] = rxq;
 	/* Allocate RX ring hardware descriptors */

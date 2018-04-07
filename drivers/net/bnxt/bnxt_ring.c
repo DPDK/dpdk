@@ -70,6 +70,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	struct bnxt_ring *tx_ring;
 	struct bnxt_ring *rx_ring;
 	struct rte_pci_device *pdev = bp->pdev;
+	uint64_t rx_offloads = bp->eth_dev->data->dev_conf.rxmode.offloads;
 	const struct rte_memzone *mz = NULL;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	rte_iova_t mz_phys_addr;
@@ -127,7 +128,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 				       sizeof(struct bnxt_tpa_info)) : 0;
 
 	int total_alloc_len = tpa_info_start;
-	if (bp->eth_dev->data->dev_conf.rxmode.enable_lro)
+	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
 		total_alloc_len += tpa_info_len;
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
@@ -225,7 +226,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 				    ag_bitmap_start, ag_bitmap_len);
 
 		/* TPA info */
-		if (bp->eth_dev->data->dev_conf.rxmode.enable_lro)
+		if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
 			rx_ring_info->tpa_info =
 				((struct bnxt_tpa_info *)((char *)mz->addr +
 							  tpa_info_start));
