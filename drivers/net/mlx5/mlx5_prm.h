@@ -107,6 +107,30 @@
 /* Inner L4 checksum offload (Tunneled packets only). */
 #define MLX5_ETH_WQE_L4_INNER_CSUM (1u << 5)
 
+/* Outer L4 type is TCP. */
+#define MLX5_ETH_WQE_L4_OUTER_TCP  (0u << 5)
+
+/* Outer L4 type is UDP. */
+#define MLX5_ETH_WQE_L4_OUTER_UDP  (1u << 5)
+
+/* Outer L3 type is IPV4. */
+#define MLX5_ETH_WQE_L3_OUTER_IPV4 (0u << 4)
+
+/* Outer L3 type is IPV6. */
+#define MLX5_ETH_WQE_L3_OUTER_IPV6 (1u << 4)
+
+/* Inner L4 type is TCP. */
+#define MLX5_ETH_WQE_L4_INNER_TCP (0u << 1)
+
+/* Inner L4 type is UDP. */
+#define MLX5_ETH_WQE_L4_INNER_UDP (1u << 1)
+
+/* Inner L3 type is IPV4. */
+#define MLX5_ETH_WQE_L3_INNER_IPV4 (0u << 0)
+
+/* Inner L3 type is IPV6. */
+#define MLX5_ETH_WQE_L3_INNER_IPV6 (1u << 0)
+
 /* Is flow mark valid. */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #define MLX5_FLOW_MARK_IS_VALID(val) ((val) & 0xffffff00)

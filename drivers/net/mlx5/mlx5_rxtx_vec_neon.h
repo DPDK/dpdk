@@ -142,7 +142,7 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 			break;
 		wqe = &((volatile struct mlx5_wqe64 *)
 			 txq->wqes)[wqe_ci & wq_mask].hdr;
-		cs_flags = txq_ol_cksum_to_cs(txq, buf);
+		cs_flags = txq_ol_cksum_to_cs(buf);
 		/* Title WQEBB pointer. */
 		t_wqe = (uint8x16_t *)wqe;
 		dseg = (uint8_t *)(wqe + 1);

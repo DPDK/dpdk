@@ -42,8 +42,6 @@
 /**
  * Count the number of packets having same ol_flags and calculate cs_flags.
  *
- * @param txq
- *   Pointer to TX queue structure.
  * @param pkts
  *   Pointer to array of packets.
  * @param pkts_n
@@ -55,8 +53,7 @@
  *   Number of packets having same ol_flags.
  */
 static inline unsigned int
-txq_calc_offload(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
-		 uint16_t pkts_n, uint8_t *cs_flags)
+txq_calc_offload(struct rte_mbuf **pkts, uint16_t pkts_n, uint8_t *cs_flags)
 {
 	unsigned int pos;
 	const uint64_t ol_mask =
@@ -70,7 +67,7 @@ txq_calc_offload(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 	for (pos = 1; pos < pkts_n; ++pos)
 		if ((pkts[pos]->ol_flags ^ pkts[0]->ol_flags) & ol_mask)
 			break;
-	*cs_flags = txq_ol_cksum_to_cs(txq, pkts[0]);
+	*cs_flags = txq_ol_cksum_to_cs(pkts[0]);
 	return pos;
 }
 
@@ -141,7 +138,7 @@ mlx5_tx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (txq->offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
 			n = txq_count_contig_single_seg(&pkts[nb_tx], n);
 		if (txq->offloads & MLX5_VEC_TX_CKSUM_OFFLOAD_CAP)
-			n = txq_calc_offload(txq, &pkts[nb_tx], n, &cs_flags);
+			n = txq_calc_offload(&pkts[nb_tx], n, &cs_flags);
 		ret = txq_burst_v(txq, &pkts[nb_tx], n, cs_flags);
 		nb_tx += ret;
 		if (!ret)

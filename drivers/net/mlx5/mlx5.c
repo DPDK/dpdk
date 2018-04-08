@@ -621,6 +621,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	unsigned int mps;
 	unsigned int cqe_comp;
 	unsigned int tunnel_en = 0;
+	unsigned int swp = 0;
 	int idx;
 	int i;
 	struct mlx5dv_context attrs_out = {0};
@@ -696,6 +697,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	ibv_dev = list[i];
 	DRV_LOG(DEBUG, "device opened");
+#ifdef HAVE_IBV_MLX5_MOD_SWP
+	attrs_out.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
+#endif
 	/*
 	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
 	 * as all ConnectX-5 devices.
@@ -716,6 +720,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(DEBUG, "MPW isn't supported");
 		mps = MLX5_MPW_DISABLED;
 	}
+#ifdef HAVE_IBV_MLX5_MOD_SWP
+	if (attrs_out.comp_mask | MLX5DV_CONTEXT_MASK_SWP)
+		swp = attrs_out.sw_parsing_caps.sw_parsing_offloads;
+	DRV_LOG(DEBUG, "SWP support: %u", swp);
+#endif
 	if (RTE_CACHE_LINE_SIZE == 128 &&
 	    !(attrs_out.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP))
 		cqe_comp = 0;
@@ -763,6 +772,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			.txqs_inline = MLX5_ARG_UNSET,
 			.inline_max_packet_sz = MLX5_ARG_UNSET,
 			.vf_nl_en = 1,
+			.swp = !!swp,
 		};
 
 		len = snprintf(name, sizeof(name), PCI_PRI_FMT,
@@ -1227,8 +1237,10 @@ RTE_INIT(rte_mlx5_pmd_init);
 static void
 rte_mlx5_pmd_init(void)
 {
-	/* Build the static table for ptype conversion. */
+	/* Build the static tables for Verbs conversion. */
 	mlx5_set_ptype_table();
+	mlx5_set_cksum_table();
+	mlx5_set_swp_types_table();
 	/*
 	 * RDMAV_HUGEPAGES_SAFE tells ibv_fork_init() we intend to use
 	 * huge pages. Calling ibv_fork_init() during init allows

@@ -119,6 +119,9 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 		if (config->tso)
 			offloads |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 				     DEV_TX_OFFLOAD_GRE_TNL_TSO);
+		if (config->swp)
+			offloads |= (DEV_TX_OFFLOAD_IP_TNL_TSO |
+				     DEV_TX_OFFLOAD_UDP_TNL_TSO);
 	}
 	return offloads;
 }
@@ -686,7 +689,9 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	int is_empw_func = is_empw_burst_func(tx_pkt_burst);
 	int tso = !!(txq_ctrl->txq.offloads & (DEV_TX_OFFLOAD_TCP_TSO |
 					       DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-					       DEV_TX_OFFLOAD_GRE_TNL_TSO));
+					       DEV_TX_OFFLOAD_GRE_TNL_TSO |
+					       DEV_TX_OFFLOAD_IP_TNL_TSO |
+					       DEV_TX_OFFLOAD_UDP_TNL_TSO));
 
 	txq_inline = (config->txq_inline == MLX5_ARG_UNSET) ?
 		0 : config->txq_inline;
@@ -767,6 +772,9 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 		txq_ctrl->txq.tso_en = 1;
 	}
 	txq_ctrl->txq.tunnel_en = config->tunnel_en;
+	txq_ctrl->txq.swp_en = ((DEV_TX_OFFLOAD_IP_TNL_TSO |
+				 DEV_TX_OFFLOAD_UDP_TNL_TSO) &
+				txq_ctrl->txq.offloads) && config->swp;
 }
 
 /**

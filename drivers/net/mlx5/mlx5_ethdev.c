@@ -1090,11 +1090,14 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 	int tso = !!(tx_offloads & (DEV_TX_OFFLOAD_TCP_TSO |
 				    DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 				    DEV_TX_OFFLOAD_GRE_TNL_TSO));
+	int swp = !!(tx_offloads & (DEV_TX_OFFLOAD_IP_TNL_TSO |
+				    DEV_TX_OFFLOAD_UDP_TNL_TSO |
+				    DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM));
 	int vlan_insert = !!(tx_offloads & DEV_TX_OFFLOAD_VLAN_INSERT);
 
 	assert(priv != NULL);
 	/* Select appropriate TX function. */
-	if (vlan_insert || tso)
+	if (vlan_insert || tso || swp)
 		return tx_pkt_burst;
 	if (config->mps == MLX5_MPW_ENHANCED) {
 		if (mlx5_check_vec_tx_support(dev) > 0) {

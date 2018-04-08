@@ -168,6 +168,7 @@ struct mlx5_txq_data {
 	uint16_t tso_en:1; /* When set hardware TSO is enabled. */
 	uint16_t tunnel_en:1;
 	/* When set TX offload for tunneled packets are supported. */
+	uint16_t swp_en:1; /* Whether SW parser is enabled. */
 	uint16_t mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
 	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
 	uint16_t inline_max_packet_sz; /* Max packet size for inlining. */
@@ -280,8 +281,12 @@ uint64_t mlx5_get_tx_port_offloads(struct rte_eth_dev *dev);
 /* mlx5_rxtx.c */
 
 extern uint32_t mlx5_ptype_table[];
+extern uint8_t mlx5_cksum_table[];
+extern uint8_t mlx5_swp_types_table[];
 
 void mlx5_set_ptype_table(void);
+void mlx5_set_cksum_table(void);
+void mlx5_set_swp_types_table(void);
 uint16_t mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts,
 		       uint16_t pkts_n);
 uint16_t mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts,
@@ -614,38 +619,89 @@ mlx5_tx_dbrec(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe)
 }
 
 /**
- * Convert the Checksum offloads to Verbs.
+ * Convert mbuf to Verb SWP.
  *
  * @param txq_data
  *   Pointer to the Tx queue.
  * @param buf
  *   Pointer to the mbuf.
+ * @param tso
+ *   TSO offloads enabled.
+ * @param vlan
+ *   VLAN offloads enabled
+ * @param offsets
+ *   Pointer to the SWP header offsets.
+ * @param swp_types
+ *   Pointer to the SWP header types.
+ */
+static __rte_always_inline void
+txq_mbuf_to_swp(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
+		 uint8_t tso, uint64_t vlan,
+		 uint8_t *offsets, uint8_t *swp_types)
+{
+	uint64_t tunnel = buf->ol_flags & PKT_TX_TUNNEL_MASK;
+	uint16_t idx;
+	uint16_t off;
+	const uint64_t ol_flags_mask = PKT_TX_L4_MASK | PKT_TX_IPV6 |
+				       PKT_TX_OUTER_IPV6;
+
+	if (likely(!tunnel || !txq->swp_en ||
+		   (tunnel != PKT_TX_TUNNEL_UDP && tunnel != PKT_TX_TUNNEL_IP)))
+		return;
+	/*
+	 * The index should have:
+	 * bit[0:1] = PKT_TX_L4_MASK
+	 * bit[4] = PKT_TX_IPV6
+	 * bit[8] = PKT_TX_OUTER_IPV6
+	 * bit[9] = PKT_TX_OUTER_UDP
+	 */
+	idx = (buf->ol_flags & ol_flags_mask) >> 52;
+	if (tunnel == PKT_TX_TUNNEL_UDP)
+		idx |= 1 << 9;
+	*swp_types = mlx5_swp_types_table[idx];
+	/* swp offsets. */
+	off = buf->outer_l2_len + (vlan ? 4 : 0); /* Outer L3 offset. */
+	if (tso || (buf->ol_flags & PKT_TX_OUTER_IP_CKSUM))
+		offsets[1] = off >> 1;
+	off += buf->outer_l3_len; /* Outer L4 offset. */
+	if (tunnel == PKT_TX_TUNNEL_UDP)
+		offsets[0] = off >> 1;
+	off += buf->l2_len; /* Inner L3 offset. */
+	if (tso || (buf->ol_flags & PKT_TX_IP_CKSUM))
+		offsets[3] = off >> 1;
+	off += buf->l3_len; /* Inner L4 offset. */
+	if (tso || ((buf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM) ||
+	    ((buf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM))
+		offsets[2] = off >> 1;
+}
+
+/**
+ * Convert the Checksum offloads to Verbs.
+ *
+ * @param buf
+ *   Pointer to the mbuf.
  *
  * @return
- *   the converted cs_flags.
+ *   Converted checksum flags.
  */
 static __rte_always_inline uint8_t
-txq_ol_cksum_to_cs(struct mlx5_txq_data *txq_data, struct rte_mbuf *buf)
+txq_ol_cksum_to_cs(struct rte_mbuf *buf)
 {
-	uint8_t cs_flags = 0;
+	uint32_t idx;
+	uint8_t is_tunnel = !!(buf->ol_flags & PKT_TX_TUNNEL_MASK);
+	const uint64_t ol_flags_mask = PKT_TX_TCP_SEG | PKT_TX_L4_MASK |
+				       PKT_TX_IP_CKSUM | PKT_TX_OUTER_IP_CKSUM;
 
-	/* Should we enable HW CKSUM offload */
-	if (buf->ol_flags &
-	    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM |
-	     PKT_TX_OUTER_IP_CKSUM)) {
-		if (txq_data->tunnel_en &&
-		    (buf->ol_flags &
-		     (PKT_TX_TUNNEL_GRE | PKT_TX_TUNNEL_VXLAN))) {
-			cs_flags = MLX5_ETH_WQE_L3_INNER_CSUM |
-				   MLX5_ETH_WQE_L4_INNER_CSUM;
-			if (buf->ol_flags & PKT_TX_OUTER_IP_CKSUM)
-				cs_flags |= MLX5_ETH_WQE_L3_CSUM;
-		} else {
-			cs_flags = MLX5_ETH_WQE_L3_CSUM |
-				   MLX5_ETH_WQE_L4_CSUM;
-		}
-	}
-	return cs_flags;
+	/*
+	 * The index should have:
+	 * bit[0] = PKT_TX_TCP_SEG
+	 * bit[2:3] = PKT_TX_UDP_CKSUM, PKT_TX_TCP_CKSUM
+	 * bit[4] = PKT_TX_IP_CKSUM
+	 * bit[8] = PKT_TX_OUTER_IP_CKSUM
+	 * bit[9] = tunnel
+	 */
+	idx = ((buf->ol_flags & ol_flags_mask) >> 50) | (!!is_tunnel << 9);
+	return mlx5_cksum_table[idx];
 }
 
 /**
