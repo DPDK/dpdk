@@ -259,6 +259,66 @@ mlx5_copy_to_wq(void *dst, const void *src, size_t n,
 }
 
 /**
+ * Inline TSO headers into WQE.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int
+inline_tso(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
+	   uint32_t *length,
+	   uint8_t *cs_flags,
+	   uintptr_t *addr,
+	   uint16_t *pkt_inline_sz,
+	   uint8_t **raw,
+	   uint16_t *max_wqe,
+	   uint16_t *tso_segsz,
+	   uint16_t *tso_header_sz)
+{
+	uintptr_t end = (uintptr_t)(((uintptr_t)txq->wqes) +
+				    (1 << txq->wqe_n) * MLX5_WQE_SIZE);
+	unsigned int copy_b;
+	uint8_t vlan_sz = (buf->ol_flags & PKT_TX_VLAN_PKT) ? 4 : 0;
+	const uint8_t tunneled = txq->tunnel_en &&
+				 (buf->ol_flags & (PKT_TX_TUNNEL_GRE |
+						   PKT_TX_TUNNEL_VXLAN));
+	uint16_t n_wqe;
+
+	*tso_segsz = buf->tso_segsz;
+	*tso_header_sz = buf->l2_len + vlan_sz + buf->l3_len + buf->l4_len;
+	if (unlikely(*tso_segsz == 0 || *tso_header_sz == 0)) {
+		txq->stats.oerrors++;
+		return -EINVAL;
+	}
+	if (tunneled) {
+		*tso_header_sz += buf->outer_l2_len + buf->outer_l3_len;
+		*cs_flags |= MLX5_ETH_WQE_L4_INNER_CSUM;
+	} else {
+		*cs_flags |= MLX5_ETH_WQE_L4_CSUM;
+	}
+	if (unlikely(*tso_header_sz > MLX5_MAX_TSO_HEADER)) {
+		txq->stats.oerrors++;
+		return -EINVAL;
+	}
+	copy_b = *tso_header_sz - *pkt_inline_sz;
+	/* First seg must contain all TSO headers. */
+	assert(copy_b <= *length);
+	if (!copy_b || ((end - (uintptr_t)*raw) < copy_b))
+		return -EAGAIN;
+	n_wqe = (MLX5_WQE_DS(copy_b) - 1 + 3) / 4;
+	if (unlikely(*max_wqe < n_wqe))
+		return -EINVAL;
+	*max_wqe -= n_wqe;
+	rte_memcpy((void *)*raw, (void *)*addr, copy_b);
+	*length -= copy_b;
+	*addr += copy_b;
+	copy_b = MLX5_WQE_DS(copy_b) * MLX5_WQE_DWORD_SIZE;
+	*pkt_inline_sz += copy_b;
+	*raw += copy_b;
+	return 0;
+}
+
+/**
  * DPDK callback to check the status of a tx descriptor.
  *
  * @param tx_queue
@@ -392,6 +452,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		uint32_t total_length = 0;
 #endif
+		int ret;
 
 		/* first_seg */
 		buf = *pkts;
@@ -457,52 +518,13 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		raw += MLX5_WQE_DWORD_SIZE;
 		tso = txq->tso_en && (buf->ol_flags & PKT_TX_TCP_SEG);
 		if (tso) {
-			uintptr_t end =
-				(uintptr_t)(((uintptr_t)txq->wqes) +
-					    (1 << txq->wqe_n) * MLX5_WQE_SIZE);
-			unsigned int copy_b;
-			uint8_t vlan_sz =
-				(buf->ol_flags & PKT_TX_VLAN_PKT) ? 4 : 0;
-			const uint64_t is_tunneled =
-				buf->ol_flags & (PKT_TX_TUNNEL_GRE |
-						 PKT_TX_TUNNEL_VXLAN);
-
-			tso_header_sz = buf->l2_len + vlan_sz +
-					buf->l3_len + buf->l4_len;
-			tso_segsz = buf->tso_segsz;
-			if (unlikely(tso_segsz == 0)) {
-				txq->stats.oerrors++;
+			ret = inline_tso(txq, buf, &length, &cs_flags,
+					 &addr, &pkt_inline_sz,
+					 &raw, &max_wqe,
+					 &tso_segsz, &tso_header_sz);
+			if (ret == -EINVAL) {
 				break;
-			}
-			if (is_tunneled	&& txq->tunnel_en) {
-				tso_header_sz += buf->outer_l2_len +
-						 buf->outer_l3_len;
-				cs_flags |= MLX5_ETH_WQE_L4_INNER_CSUM;
-			} else {
-				cs_flags |= MLX5_ETH_WQE_L4_CSUM;
-			}
-			if (unlikely(tso_header_sz > MLX5_MAX_TSO_HEADER)) {
-				txq->stats.oerrors++;
-				break;
-			}
-			copy_b = tso_header_sz - pkt_inline_sz;
-			/* First seg must contain all headers. */
-			assert(copy_b <= length);
-			if (copy_b && ((end - (uintptr_t)raw) > copy_b)) {
-				uint16_t n = (MLX5_WQE_DS(copy_b) - 1 + 3) / 4;
-
-				if (unlikely(max_wqe < n))
-					break;
-				max_wqe -= n;
-				rte_memcpy((void *)raw, (void *)addr, copy_b);
-				addr += copy_b;
-				length -= copy_b;
-				/* Include padding for TSO header. */
-				copy_b = MLX5_WQE_DS(copy_b) *
-					 MLX5_WQE_DWORD_SIZE;
-				pkt_inline_sz += copy_b;
-				raw += copy_b;
-			} else {
+			} else if (ret == -EAGAIN) {
 				/* NOP WQE. */
 				wqe->ctrl = (rte_v128u32_t){
 					rte_cpu_to_be_32(txq->wqe_ci << 8),
