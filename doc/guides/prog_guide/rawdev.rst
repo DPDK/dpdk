@@ -43,7 +43,7 @@ Key factors guiding design of the Rawdevice library:
   * Firmware Management - Firmware load/unload/status
 
 2. Application API should be able to pass along arbitrary state information
-   to/fro device driver. This can be achieved by maintaining context
+   to/from device driver. This can be achieved by maintaining context
    information through opaque data or pointers.
 
 Figure below outlines the layout of the rawdevice library and device vis-a-vis
