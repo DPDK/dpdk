@@ -63,7 +63,7 @@
 #define MLX5_MAX_XSTATS 32
 
 /* Maximum Packet headers size (L2+L3+L4) for TSO. */
-#define MLX5_MAX_TSO_HEADER 128
+#define MLX5_MAX_TSO_HEADER 192
 
 /* Default minimum number of Tx queues for vectorized Tx. */
 #define MLX5_VPMD_MIN_TXQS 4
