@@ -113,3 +113,19 @@ Rx adapter support
 
 When eth_octeontx is used as Rx adapter event schedule type
 ``RTE_SCHED_TYPE_PARALLEL`` is not supported.
+
+Event timer adapter support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When timvf is used as Event timer adapter the clock source mapping is as
+follows:
+
+.. code-block:: console
+
+        RTE_EVENT_TIMER_ADAPTER_CPU_CLK  = TIM_CLK_SRC_SCLK
+        RTE_EVENT_TIMER_ADAPTER_EXT_CLK0 = TIM_CLK_SRC_GPIO
+        RTE_EVENT_TIMER_ADAPTER_EXT_CLK1 = TIM_CLK_SRC_GTI
+        RTE_EVENT_TIMER_ADAPTER_EXT_CLK2 = TIM_CLK_SRC_PTP
+
+When timvf is used as Event timer adapter event schedule type
+``RTE_SCHED_TYPE_PARALLEL`` is not supported.

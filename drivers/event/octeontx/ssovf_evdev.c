@@ -18,6 +18,7 @@
 #include <rte_bus_vdev.h>
 
 #include "ssovf_evdev.h"
+#include "timvf_evdev.h"
 
 int otx_logtype_ssovf;
 
@@ -601,6 +602,13 @@ ssovf_selftest(const char *key __rte_unused, const char *value,
 	return 0;
 }
 
+static int
+ssovf_timvf_caps_get(const struct rte_eventdev *dev, uint64_t flags,
+		uint32_t *caps, const struct rte_event_timer_adapter_ops **ops)
+{
+	return timvf_timer_adapter_caps_get(dev, flags, caps, ops, 0);
+}
+
 /* Initialize and register event driver with DPDK Application */
 static struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -620,6 +628,8 @@ static struct rte_eventdev_ops ssovf_ops = {
 	.eth_rx_adapter_queue_del = ssovf_eth_rx_adapter_queue_del,
 	.eth_rx_adapter_start = ssovf_eth_rx_adapter_start,
 	.eth_rx_adapter_stop = ssovf_eth_rx_adapter_stop,
+
+	.timer_adapter_caps_get = ssovf_timvf_caps_get,
 
 	.dev_selftest = test_eventdev_octeontx,
 
