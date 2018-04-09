@@ -1115,11 +1115,11 @@ dpaa2_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	union dpni_statistics value[3] = {};
 	unsigned int i = 0, num = RTE_DIM(dpaa2_xstats_strings);
 
-	if (xstats == NULL)
-		return 0;
-
 	if (n < num)
 		return num;
+
+	if (xstats == NULL)
+		return 0;
 
 	/* Get Counters from page_0*/
 	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
@@ -1153,9 +1153,12 @@ err:
 static int
 dpaa2_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		       struct rte_eth_xstat_name *xstats_names,
-		       __rte_unused unsigned int limit)
+		       unsigned int limit)
 {
 	unsigned int i, stat_cnt = RTE_DIM(dpaa2_xstats_strings);
+
+	if (limit < stat_cnt)
+		return stat_cnt;
 
 	if (xstats_names != NULL)
 		for (i = 0; i < stat_cnt; i++)
