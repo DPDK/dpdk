@@ -442,6 +442,7 @@ fman_if_init(const struct device_node *dpa_node)
 		if (!pool_node) {
 			FMAN_ERR(-ENXIO, "%s: bad fsl,bman-buffer-pools\n",
 				 dname);
+			free(bpool);
 			goto err;
 		}
 		pname = pool_node->full_name;
@@ -449,6 +450,7 @@ fman_if_init(const struct device_node *dpa_node)
 		prop = of_get_property(pool_node, "fsl,bpid", &proplen);
 		if (!prop) {
 			FMAN_ERR(-EINVAL, "%s: no fsl,bpid\n", pname);
+			free(bpool);
 			goto err;
 		}
 		assert(proplen == sizeof(*prop));
