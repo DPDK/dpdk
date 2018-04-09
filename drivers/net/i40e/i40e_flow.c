@@ -4267,20 +4267,29 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 				conf_info->region[n].flowtype_num) {
 			if (!((rte_is_power_of_2(rss->num)) &&
 					rss->num <= 64)) {
-				PMD_DRV_LOG(ERR, "The region sizes should be any of the following values: 1, 2, 4, 8, 16, 32, 64 as long as the "
-				"total number of queues do not exceed the VSI allocation");
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					act,
+					"The region sizes should be any of the following values: 1, 2, 4, 8, 16, 32, 64 as long as the "
+					"total number of queues do not exceed the VSI allocation");
 				return -rte_errno;
 			}
 
 			if (conf_info->region[n].user_priority[n] >=
 					I40E_MAX_USER_PRIORITY) {
-				PMD_DRV_LOG(ERR, "the user priority max index is 7");
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					act,
+					"the user priority max index is 7");
 				return -rte_errno;
 			}
 
 			if (conf_info->region[n].hw_flowtype[n] >=
 					I40E_FILTER_PCTYPE_MAX) {
-				PMD_DRV_LOG(ERR, "the hw_flowtype or PCTYPE max index is 63");
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					act,
+					"the hw_flowtype or PCTYPE max index is 63");
 				return -rte_errno;
 			}
 
@@ -4293,7 +4302,10 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 
 			if (i == info->queue_region_number) {
 				if (i > I40E_REGION_MAX_INDEX) {
-					PMD_DRV_LOG(ERR, "the queue region max index is 7");
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						act,
+						"the queue region max index is 7");
 					return -rte_errno;
 				}
 
