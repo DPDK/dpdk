@@ -1948,6 +1948,11 @@ static void __ecore_get_vport_port_stats(struct ecore_hwfn *p_hwfn,
 		p_ah->tx_1519_to_max_byte_packets =
 			port_stats.eth.u1.ah1.t1519_to_max;
 	}
+
+	p_common->link_change_count = ecore_rd(p_hwfn, p_ptt,
+					       p_hwfn->mcp_info->port_addr +
+					       OFFSETOF(struct public_port,
+							link_change_count));
 }
 
 void __ecore_get_vport_stats(struct ecore_hwfn *p_hwfn,
@@ -2064,11 +2069,14 @@ void ecore_reset_vport_stats(struct ecore_dev *p_dev)
 
 	/* PORT statistics are not necessarily reset, so we need to
 	 * read and create a baseline for future statistics.
+	 * Link change stat is maintained by MFW, return its value as is.
 	 */
 	if (!p_dev->reset_stats)
 		DP_INFO(p_dev, "Reset stats not allocated\n");
-	else
+	else {
 		_ecore_get_vport_stats(p_dev, p_dev->reset_stats);
+		p_dev->reset_stats->common.link_change_count = 0;
+	}
 }
 
 void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
