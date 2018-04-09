@@ -432,8 +432,10 @@ struct ecore_hw_info {
 #define DMAE_MAX_RW_SIZE	0x2000
 
 struct ecore_dmae_info {
-	/* Mutex for synchronizing access to functions */
-	osal_mutex_t	mutex;
+	/* Spinlock for synchronizing access to functions */
+	osal_spinlock_t lock;
+
+	bool b_mem_ready;
 
 	u8 channel;
 

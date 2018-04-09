@@ -423,9 +423,9 @@ void ecore_init_struct(struct ecore_dev *p_dev)
 		p_hwfn->b_active = false;
 
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-		OSAL_MUTEX_ALLOC(p_hwfn, &p_hwfn->dmae_info.mutex);
+		OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_hwfn->dmae_info.lock);
 #endif
-		OSAL_MUTEX_INIT(&p_hwfn->dmae_info.mutex);
+		OSAL_SPIN_LOCK_INIT(&p_hwfn->dmae_info.lock);
 	}
 
 	/* hwfn 0 is always active */
@@ -4238,7 +4238,7 @@ void ecore_hw_remove(struct ecore_dev *p_dev)
 		ecore_mcp_free(p_hwfn);
 
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-		OSAL_MUTEX_DEALLOC(&p_hwfn->dmae_info.mutex);
+		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->dmae_info.lock);
 #endif
 	}
 
