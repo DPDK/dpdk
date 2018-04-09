@@ -28,6 +28,9 @@ Features of the OCTEONTX SSOVF PMD are:
 - Open system with configurable amount of outstanding events
 - HW accelerated dequeue timeout support to enable power management
 - SR-IOV VF
+- HW managed event timers support through TIMVF, with high precision and
+  time granularity of 1us.
+- Up to 64 event timer adapters.
 
 Supported OCTEONTX SoCs
 -----------------------

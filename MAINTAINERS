@@ -784,6 +784,10 @@ M: Santosh Shukla <santosh.shukla@caviumnetworks.com>
 F: drivers/event/octeontx/
 F: doc/guides/eventdevs/octeontx.rst
 
+Cavium OCTEONTX timvf
+M: Pavan Nikhilesh <pbhagavatula@caviumnetworks.com>
+F: drivers/event/octeontx/timvf_*
+
 NXP DPAA2 eventdev
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 M: Nipun Gupta <nipun.gupta@nxp.com>
