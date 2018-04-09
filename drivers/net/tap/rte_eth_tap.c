@@ -760,7 +760,6 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = RTE_PMD_TAP_MAX_QUEUES;
 	dev_info->max_tx_queues = RTE_PMD_TAP_MAX_QUEUES;
 	dev_info->min_rx_bufsize = 0;
-	dev_info->pci_dev = NULL;
 	dev_info->speed_capa = tap_dev_speed_capa();
 	dev_info->rx_queue_offload_capa = tap_rx_offload_get_queue_capa();
 	dev_info->rx_offload_capa = tap_rx_offload_get_port_capa() |

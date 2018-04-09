@@ -771,7 +771,6 @@ eth_ark_dev_info_get(struct rte_eth_dev *dev,
 				ETH_LINK_SPEED_40G |
 				ETH_LINK_SPEED_50G |
 				ETH_LINK_SPEED_100G);
-	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 }
 
 static int

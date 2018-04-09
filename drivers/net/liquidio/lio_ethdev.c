@@ -373,8 +373,6 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
-	devinfo->pci_dev = pci_dev;
-
 	switch (pci_dev->id.subsystem_device_id) {
 	/* CN23xx 10G cards */
 	case PCI_SUBSYS_DEV_ID_CN2350_210:

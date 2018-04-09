@@ -1015,7 +1015,6 @@ eth_dev_info(struct rte_eth_dev *dev,
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 
-	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	dev_info->if_index = 0;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t)-1;

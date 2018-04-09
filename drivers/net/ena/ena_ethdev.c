@@ -1531,8 +1531,6 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 	ena_dev = &adapter->ena_dev;
 	ena_assert_msg(ena_dev != NULL, "Uninitialized device");
 
-	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-
 	dev_info->speed_capa =
 			ETH_LINK_SPEED_1G   |
 			ETH_LINK_SPEED_2_5G |

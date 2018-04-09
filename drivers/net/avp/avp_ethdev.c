@@ -2172,7 +2172,6 @@ avp_dev_info_get(struct rte_eth_dev *eth_dev,
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
-	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	dev_info->max_rx_queues = avp->max_rx_queues;
 	dev_info->max_tx_queues = avp->max_tx_queues;
 	dev_info->min_rx_bufsize = AVP_MIN_RX_BUFSIZE;

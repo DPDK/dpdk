@@ -471,7 +471,6 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
-	device_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	/* Scattered Rx uses two receive queues per rx queue exposed to dpdk */
 	device_info->max_rx_queues = enic->conf_rq_count / 2;
 	device_info->max_tx_queues = enic->conf_wq_count;

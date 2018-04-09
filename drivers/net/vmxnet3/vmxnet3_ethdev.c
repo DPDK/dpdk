@@ -1023,11 +1023,9 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 }
 
 static void
-vmxnet3_dev_info_get(struct rte_eth_dev *dev,
+vmxnet3_dev_info_get(struct rte_eth_dev *dev __rte_unused,
 		     struct rte_eth_dev_info *dev_info)
 {
-	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-
 	dev_info->max_rx_queues = VMXNET3_MAX_RX_QUEUES;
 	dev_info->max_tx_queues = VMXNET3_MAX_TX_QUEUES;
 	dev_info->min_rx_bufsize = 1518 + RTE_PKTMBUF_HEADROOM;

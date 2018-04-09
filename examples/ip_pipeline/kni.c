@@ -106,6 +106,8 @@ kni_create(const char *name, struct kni_params *params)
 	struct mempool *mempool;
 	struct link *link;
 	struct rte_kni *k;
+	const struct rte_pci_device *pci_dev;
+	const struct rte_bus *bus = NULL;
 
 	/* Check input params */
 	if ((name == NULL) ||
@@ -128,8 +130,13 @@ kni_create(const char *name, struct kni_params *params)
 	kni_conf.core_id = params->thread_id;
 	kni_conf.group_id = link->port_id;
 	kni_conf.mbuf_size = mempool->buffer_size;
-	kni_conf.addr = dev_info.pci_dev->addr;
-	kni_conf.id = dev_info.pci_dev->id;
+	if (dev_info.device)
+		bus = rte_bus_find_by_device(dev_info.device);
+	if (bus && !strcmp(bus->name, "pci")) {
+		pci_dev = RTE_DEV_TO_PCI(dev_info.device);
+		kni_conf.addr = pci_dev->addr;
+		kni_conf.id = pci_dev->id;
+	}
 
 	memset(&kni_ops, 0, sizeof(kni_ops));
 	kni_ops.port_id = link->port_id;

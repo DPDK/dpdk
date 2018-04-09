@@ -502,12 +502,25 @@ mbuf_pool_find(unsigned int sock_id)
 static inline uint32_t
 port_pci_reg_read(struct rte_port *port, uint32_t reg_off)
 {
+	const struct rte_pci_device *pci_dev;
+	const struct rte_bus *bus;
 	void *reg_addr;
 	uint32_t reg_v;
 
-	reg_addr = (void *)
-		((char *)port->dev_info.pci_dev->mem_resource[0].addr +
-			reg_off);
+	if (!port->dev_info.device) {
+		printf("Invalid device\n");
+		return 0;
+	}
+
+	bus = rte_bus_find_by_device(port->dev_info.device);
+	if (bus && !strcmp(bus->name, "pci")) {
+		pci_dev = RTE_DEV_TO_PCI(port->dev_info.device);
+	} else {
+		printf("Not a PCI device\n");
+		return 0;
+	}
+
+	reg_addr = ((char *)pci_dev->mem_resource[0].addr + reg_off);
 	reg_v = *((volatile uint32_t *)reg_addr);
 	return rte_le_to_cpu_32(reg_v);
 }
@@ -518,11 +531,24 @@ port_pci_reg_read(struct rte_port *port, uint32_t reg_off)
 static inline void
 port_pci_reg_write(struct rte_port *port, uint32_t reg_off, uint32_t reg_v)
 {
+	const struct rte_pci_device *pci_dev;
+	const struct rte_bus *bus;
 	void *reg_addr;
 
-	reg_addr = (void *)
-		((char *)port->dev_info.pci_dev->mem_resource[0].addr +
-			reg_off);
+	if (!port->dev_info.device) {
+		printf("Invalid device\n");
+		return;
+	}
+
+	bus = rte_bus_find_by_device(port->dev_info.device);
+	if (bus && !strcmp(bus->name, "pci")) {
+		pci_dev = RTE_DEV_TO_PCI(port->dev_info.device);
+	} else {
+		printf("Not a PCI device\n");
+		return;
+	}
+
+	reg_addr = ((char *)pci_dev->mem_resource[0].addr + reg_off);
 	*((volatile uint32_t *)reg_addr) = rte_cpu_to_le_32(reg_v);
 }
 

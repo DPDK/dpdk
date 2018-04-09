@@ -992,7 +992,7 @@ struct rte_pci_device;
  * Ethernet device information
  */
 struct rte_eth_dev_info {
-	struct rte_pci_device *pci_dev; /**< Device PCI information. */
+	struct rte_device *device; /** Generic device information */
 	const char *driver_name; /**< Device Driver name. */
 	unsigned int if_index; /**< Index to bound host interface, or 0 if none.
 		Use if_indextoname() to translate into an interface name. */

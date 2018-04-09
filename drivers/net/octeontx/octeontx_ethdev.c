@@ -616,7 +616,6 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = 1;
 	dev_info->max_tx_queues = PKO_MAX_NUM_DQ;
 	dev_info->min_rx_bufsize = 0;
-	dev_info->pci_dev = NULL;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = 0,

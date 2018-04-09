@@ -3212,7 +3212,6 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct i40e_vsi *vsi = pf->main_vsi;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
-	dev_info->pci_dev = pci_dev;
 	dev_info->max_rx_queues = vsi->nb_qps;
 	dev_info->max_tx_queues = vsi->nb_qps;
 	dev_info->min_rx_bufsize = I40E_BUF_SIZE_MIN;

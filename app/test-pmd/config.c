@@ -754,6 +754,8 @@ vlan_id_is_invalid(uint16_t vlan_id)
 static int
 port_reg_off_is_invalid(portid_t port_id, uint32_t reg_off)
 {
+	const struct rte_pci_device *pci_dev;
+	const struct rte_bus *bus;
 	uint64_t pci_len;
 
 	if (reg_off & 0x3) {
@@ -762,7 +764,21 @@ port_reg_off_is_invalid(portid_t port_id, uint32_t reg_off)
 		       (unsigned)reg_off);
 		return 1;
 	}
-	pci_len = ports[port_id].dev_info.pci_dev->mem_resource[0].len;
+
+	if (!ports[port_id].dev_info.device) {
+		printf("Invalid device\n");
+		return 0;
+	}
+
+	bus = rte_bus_find_by_device(ports[port_id].dev_info.device);
+	if (bus && !strcmp(bus->name, "pci")) {
+		pci_dev = RTE_DEV_TO_PCI(ports[port_id].dev_info.device);
+	} else {
+		printf("Not a PCI device\n");
+		return 1;
+	}
+
+	pci_len = pci_dev->mem_resource[0].len;
 	if (reg_off >= pci_len) {
 		printf("Port %d: register offset %u (0x%X) out of port PCI "
 		       "resource (length=%"PRIu64")\n",

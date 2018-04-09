@@ -1400,8 +1400,6 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-
 	/* Autonegotiation may be disabled */
 	dev_info->speed_capa = ETH_LINK_SPEED_FIXED;
 	dev_info->speed_capa |= ETH_LINK_SPEED_10M | ETH_LINK_SPEED_100M |

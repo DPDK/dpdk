@@ -349,12 +349,10 @@ axgbe_dev_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
-axgbe_dev_info_get(struct rte_eth_dev *dev,
-		   struct rte_eth_dev_info *dev_info)
+axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
 
-	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	dev_info->max_rx_queues = pdata->rx_ring_count;
 	dev_info->max_tx_queues = pdata->tx_ring_count;
 	dev_info->min_rx_bufsize = AXGBE_RX_MIN_BUF_SIZE;

@@ -834,13 +834,18 @@ kni_alloc(uint16_t port_id)
 		if (i == 0) {
 			struct rte_kni_ops ops;
 			struct rte_eth_dev_info dev_info;
+			const struct rte_pci_device *pci_dev;
+			const struct rte_bus *bus = NULL;
 
 			memset(&dev_info, 0, sizeof(dev_info));
 			rte_eth_dev_info_get(port_id, &dev_info);
 
-			if (dev_info.pci_dev) {
-				conf.addr = dev_info.pci_dev->addr;
-				conf.id = dev_info.pci_dev->id;
+			if (dev_info.device)
+				bus = rte_bus_find_by_device(dev_info.device);
+			if (bus && !strcmp(bus->name, "pci")) {
+				pci_dev = RTE_DEV_TO_PCI(dev_info.device);
+				conf.addr = pci_dev->addr;
+				conf.id = pci_dev->id;
 			}
 			/* Get the interface default mac address */
 			rte_eth_macaddr_get(port_id,

@@ -114,6 +114,9 @@ API Changes
   memory footprint which helps in better cache utilization when large number
   of meter objects are used.
 
+* ethdev, in struct ``struct rte_eth_dev_info``, field ``rte_pci_device *pci_dev``
+  replaced with field ``struct rte_device *device``.
+
 
 ABI Changes
 -----------

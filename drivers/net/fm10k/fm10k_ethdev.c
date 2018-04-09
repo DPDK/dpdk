@@ -1404,7 +1404,6 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	dev_info->pci_dev            = pdev;
 	dev_info->min_rx_bufsize     = FM10K_MIN_RX_BUF_SIZE;
 	dev_info->max_rx_pktlen      = FM10K_MAX_PKT_SIZE;
 	dev_info->max_rx_queues      = hw->mac.max_queues;

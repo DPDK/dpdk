@@ -404,8 +404,6 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	uint16_t max_vnics, i, j, vpool, vrxq;
 	unsigned int max_rx_rings;
 
-	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-
 	/* MAC Specifics */
 	dev_info->max_mac_addrs = bp->max_l2_ctx;
 	dev_info->max_hash_mac_addrs = 0;
