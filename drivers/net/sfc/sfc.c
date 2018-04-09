@@ -123,10 +123,12 @@ sfc_check_conf(struct sfc_adapter *sa)
 		rc = EINVAL;
 	}
 
+#if !EFSYS_OPT_LOOPBACK
 	if (conf->lpbk_mode != 0) {
 		sfc_err(sa, "Loopback not supported");
 		rc = EINVAL;
 	}
+#endif
 
 	if (conf->dcb_capability_en != 0) {
 		sfc_err(sa, "Priority-based flow control not supported");

@@ -88,6 +88,8 @@ SFC EFX PMD has support for:
 
 - Flow API
 
+- Loopback
+
 
 Non-supported Features
 ----------------------
@@ -97,8 +99,6 @@ The features not yet supported include:
 - Receive queue interupts
 
 - Priority-based flow control
-
-- Loopback
 
 - Configurable RX CRC stripping (always stripped)
 

@@ -121,6 +121,28 @@ sfc_port_init_dev_link(struct sfc_adapter *sa)
 	return 0;
 }
 
+#if EFSYS_OPT_LOOPBACK
+
+static efx_link_mode_t
+sfc_port_phy_caps_to_max_link_speed(uint32_t phy_caps)
+{
+	if (phy_caps & (1u << EFX_PHY_CAP_100000FDX))
+		return EFX_LINK_100000FDX;
+	if (phy_caps & (1u << EFX_PHY_CAP_50000FDX))
+		return EFX_LINK_50000FDX;
+	if (phy_caps & (1u << EFX_PHY_CAP_40000FDX))
+		return EFX_LINK_40000FDX;
+	if (phy_caps & (1u << EFX_PHY_CAP_25000FDX))
+		return EFX_LINK_25000FDX;
+	if (phy_caps & (1u << EFX_PHY_CAP_10000FDX))
+		return EFX_LINK_10000FDX;
+	if (phy_caps & (1u << EFX_PHY_CAP_1000FDX))
+		return EFX_LINK_1000FDX;
+	return EFX_LINK_UNKNOWN;
+}
+
+#endif
+
 int
 sfc_port_start(struct sfc_adapter *sa)
 {
@@ -142,6 +164,21 @@ sfc_port_start(struct sfc_adapter *sa)
 	rc = efx_port_init(sa->nic);
 	if (rc != 0)
 		goto fail_port_init;
+
+#if EFSYS_OPT_LOOPBACK
+	if (sa->eth_dev->data->dev_conf.lpbk_mode != 0) {
+		efx_link_mode_t link_mode;
+
+		link_mode =
+			sfc_port_phy_caps_to_max_link_speed(port->phy_adv_cap);
+		sfc_log_init(sa, "set loopback link_mode=%u type=%u", link_mode,
+			     sa->eth_dev->data->dev_conf.lpbk_mode);
+		rc = efx_port_loopback_set(sa->nic, link_mode,
+			sa->eth_dev->data->dev_conf.lpbk_mode);
+		if (rc != 0)
+			goto fail_loopback_set;
+	}
+#endif
 
 	sfc_log_init(sa, "set flow control to %#x autoneg=%u",
 		     port->flow_ctrl, port->flow_ctrl_autoneg);
@@ -268,6 +305,9 @@ fail_mac_addr_set:
 fail_mac_pdu_set:
 fail_phy_adv_cap_set:
 fail_mac_fcntl_set:
+#if EFSYS_OPT_LOOPBACK
+fail_loopback_set:
+#endif
 	efx_port_fini(sa->nic);
 
 fail_port_init:
