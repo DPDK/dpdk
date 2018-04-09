@@ -1188,11 +1188,20 @@ ecore_eth_pf_tx_queue_start(struct ecore_hwfn *p_hwfn,
 			    void OSAL_IOMEM * *pp_doorbell)
 {
 	enum _ecore_status_t rc;
+	u16 pq_id;
 
-	/* TODO - set tc in the pq_params for multi-cos */
-	rc = ecore_eth_txq_start_ramrod(p_hwfn, p_cid,
-					pbl_addr, pbl_size,
-					ecore_get_cm_pq_idx_mcos(p_hwfn, tc));
+	/* TODO - set tc in the pq_params for multi-cos.
+	 * If pacing is enabled then select queue according to
+	 * rate limiter availability otherwise select queue based
+	 * on multi cos.
+	 */
+	if (IS_ECORE_PACING(p_hwfn))
+		pq_id = ecore_get_cm_pq_idx_rl(p_hwfn, p_cid->rel.queue_id);
+	else
+		pq_id = ecore_get_cm_pq_idx_mcos(p_hwfn, tc);
+
+	rc = ecore_eth_txq_start_ramrod(p_hwfn, p_cid, pbl_addr,
+					pbl_size, pq_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
@@ -2277,4 +2286,23 @@ out:
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return rc;
+}
+
+enum _ecore_status_t
+ecore_eth_tx_queue_maxrate(struct ecore_hwfn *p_hwfn,
+			   struct ecore_ptt *p_ptt,
+			   struct ecore_queue_cid *p_cid, u32 rate)
+{
+	struct ecore_mcp_link_state *p_link;
+	u8 vport;
+
+	vport = (u8)ecore_get_qm_vport_idx_rl(p_hwfn, p_cid->rel.queue_id);
+	p_link = &ECORE_LEADING_HWFN(p_hwfn->p_dev)->mcp_info->link_output;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
+		   "About to rate limit qm vport %d for queue %d with rate %d\n",
+		   vport, p_cid->rel.queue_id, rate);
+
+	return ecore_init_vport_rl(p_hwfn, p_ptt, vport, rate,
+				   p_link->speed);
 }

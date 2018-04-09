@@ -270,6 +270,9 @@ struct ecore_hw_prepare_params {
 	 */
 	bool b_relaxed_probe;
 	enum ecore_hw_prepare_result p_relaxed_res;
+
+	/* Enable/disable request by ecore client for pacing */
+	bool b_en_pacing;
 };
 
 /**

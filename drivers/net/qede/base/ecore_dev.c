@@ -513,11 +513,14 @@ static u32 ecore_get_pq_flags(struct ecore_hwfn *p_hwfn)
 	/* feature flags */
 	if (IS_ECORE_SRIOV(p_hwfn->p_dev))
 		flags |= PQ_FLAGS_VFS;
+	if (IS_ECORE_PACING(p_hwfn))
+		flags |= PQ_FLAGS_RLS;
 
 	/* protocol flags */
 	switch (p_hwfn->hw_info.personality) {
 	case ECORE_PCI_ETH:
-		flags |= PQ_FLAGS_MCOS;
+		if (!IS_ECORE_PACING(p_hwfn))
+			flags |= PQ_FLAGS_MCOS;
 		break;
 	case ECORE_PCI_FCOE:
 		flags |= PQ_FLAGS_OFLD;
@@ -526,11 +529,14 @@ static u32 ecore_get_pq_flags(struct ecore_hwfn *p_hwfn)
 		flags |= PQ_FLAGS_ACK | PQ_FLAGS_OOO | PQ_FLAGS_OFLD;
 		break;
 	case ECORE_PCI_ETH_ROCE:
-		flags |= PQ_FLAGS_MCOS | PQ_FLAGS_OFLD;
+		flags |= PQ_FLAGS_OFLD | PQ_FLAGS_LLT;
+		if (!IS_ECORE_PACING(p_hwfn))
+			flags |= PQ_FLAGS_MCOS;
 		break;
 	case ECORE_PCI_ETH_IWARP:
-		flags |= PQ_FLAGS_MCOS | PQ_FLAGS_ACK | PQ_FLAGS_OOO |
-			 PQ_FLAGS_OFLD;
+		flags |= PQ_FLAGS_ACK | PQ_FLAGS_OOO | PQ_FLAGS_OFLD;
+		if (!IS_ECORE_PACING(p_hwfn))
+			flags |= PQ_FLAGS_MCOS;
 		break;
 	default:
 		DP_ERR(p_hwfn, "unknown personality %d\n",
@@ -837,7 +843,7 @@ u16 ecore_get_cm_pq_idx_vf(struct ecore_hwfn *p_hwfn, u16 vf)
 	return ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_VFS) + vf;
 }
 
-u16 ecore_get_cm_pq_idx_rl(struct ecore_hwfn *p_hwfn, u8 rl)
+u16 ecore_get_cm_pq_idx_rl(struct ecore_hwfn *p_hwfn, u16 rl)
 {
 	u16 max_rl = ecore_init_qm_get_num_pf_rls(p_hwfn);
 
@@ -845,6 +851,23 @@ u16 ecore_get_cm_pq_idx_rl(struct ecore_hwfn *p_hwfn, u8 rl)
 		DP_ERR(p_hwfn, "rl %d must be smaller than %d\n", rl, max_rl);
 
 	return ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_RLS) + rl;
+}
+
+u16 ecore_get_qm_vport_idx_rl(struct ecore_hwfn *p_hwfn, u16 rl)
+{
+	u16 start_pq, pq, qm_pq_idx;
+
+	pq = ecore_get_cm_pq_idx_rl(p_hwfn, rl);
+	start_pq = p_hwfn->qm_info.start_pq;
+	qm_pq_idx = pq - start_pq - CM_TX_PQ_BASE;
+
+	if (qm_pq_idx > p_hwfn->qm_info.num_pqs) {
+		DP_ERR(p_hwfn,
+		       "qm_pq_idx %d must be smaller than %d\n",
+			qm_pq_idx, p_hwfn->qm_info.num_pqs);
+	}
+
+	return p_hwfn->qm_info.qm_pq_params[qm_pq_idx].vport_id;
 }
 
 /* Functions for creating specific types of pqs */
@@ -3878,8 +3901,13 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	bool drv_resc_alloc = p_params->drv_resc_alloc;
 	enum _ecore_status_t rc;
 
+	if (IS_ECORE_PACING(p_hwfn)) {
+		DP_VERBOSE(p_hwfn->p_dev, ECORE_MSG_IOV,
+			   "Skipping IOV as packet pacing is requested\n");
+	}
+
 	/* Since all information is common, only first hwfns should do this */
-	if (IS_LEAD_HWFN(p_hwfn)) {
+	if (IS_LEAD_HWFN(p_hwfn) && !IS_ECORE_PACING(p_hwfn)) {
 		rc = ecore_iov_hw_info(p_hwfn);
 		if (rc != ECORE_SUCCESS) {
 			if (p_params->b_relaxed_probe)
@@ -3964,7 +3992,10 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	 * that can result in performance penalty in some cases. 4
 	 * represents a good tradeoff between performance and flexibility.
 	 */
-	p_hwfn->hw_info.num_hw_tc = NUM_PHYS_TCS_4PORT_K2;
+	if (IS_ECORE_PACING(p_hwfn))
+		p_hwfn->hw_info.num_hw_tc = 1;
+	else
+		p_hwfn->hw_info.num_hw_tc = NUM_PHYS_TCS_4PORT_K2;
 
 	/* start out with a single active tc. This can be increased either
 	 * by dcbx negotiation or by upper layer driver
@@ -4251,6 +4282,7 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 
 	p_dev->chk_reg_fifo = p_params->chk_reg_fifo;
 	p_dev->allow_mdump = p_params->allow_mdump;
+	p_hwfn->b_en_pacing = p_params->b_en_pacing;
 
 	if (p_params->b_relaxed_probe)
 		p_params->p_relaxed_res = ECORE_HW_PREPARE_SUCCESS;
@@ -4286,6 +4318,7 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 							  BAR_ID_1) / 2;
 		p_doorbell = (void OSAL_IOMEM *)addr;
 
+		p_dev->hwfns[1].b_en_pacing = p_params->b_en_pacing;
 		/* prepare second hw function */
 		rc = ecore_hw_prepare_single(&p_dev->hwfns[1], p_regview,
 					     p_doorbell, p_params);
