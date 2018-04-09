@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ */
 /* copied from ppc_64 */
 
 #ifndef _RTE_RWLOCK_ARM_H_

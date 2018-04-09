@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ */
 #ifndef _RTE_RWLOCK_PPC_64_H_
 #define _RTE_RWLOCK_PPC_64_H_
 
