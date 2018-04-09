@@ -1,9 +1,6 @@
-/*********************************************************
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) 2007 VMware, Inc. All rights reserved.
- *
- * SPDX-License-Identifier:    BSD-3-Clause
- *
- *********************************************************/
+ */
 
 /* upt1_defs.h
  *
