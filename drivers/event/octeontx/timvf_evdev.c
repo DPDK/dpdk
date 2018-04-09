@@ -130,6 +130,7 @@ timvf_ring_start(const struct rte_event_timer_adapter *adptr)
 
 	timvf_write64((uintptr_t)timr->bkt,
 			(uint8_t *)timr->vbar0 + TIM_VRING_BASE);
+	timvf_set_chunk_refill(timr);
 	if (timvf_ring_conf_set(&rctrl, timr->tim_ring_id)) {
 		ret = -EACCES;
 		goto error;
@@ -312,7 +313,13 @@ timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		timvf_ops.stats_reset = timvf_stats_reset;
 	}
 
+	if (enable_stats)
+		timvf_ops.arm_burst = timvf_timer_arm_burst_mp_stats;
+	else
+		timvf_ops.arm_burst = timvf_timer_arm_burst_mp;
+
+	timvf_ops.cancel_burst = timvf_timer_cancel_burst;
 	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT;
 	*ops = &timvf_ops;
-	return -EINVAL;
+	return 0;
 }

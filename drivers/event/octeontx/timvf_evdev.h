@@ -75,6 +75,33 @@
 #define TIM_VRING_AURA				(0x108)
 #define TIM_VRING_REL				(0x110)
 
+#define TIM_CTL1_W0_S_BUCKET			20
+#define TIM_CTL1_W0_M_BUCKET			((1ull << (40 - 20)) - 1)
+
+#define TIM_BUCKET_W1_S_NUM_ENTRIES		(0) /*Shift*/
+#define TIM_BUCKET_W1_M_NUM_ENTRIES		((1ull << (32 - 0)) - 1)
+#define TIM_BUCKET_W1_S_SBT			(32)
+#define TIM_BUCKET_W1_M_SBT			((1ull << (33 - 32)) - 1)
+#define TIM_BUCKET_W1_S_HBT			(33)
+#define TIM_BUCKET_W1_M_HBT			((1ull << (34 - 33)) - 1)
+#define TIM_BUCKET_W1_S_BSK			(34)
+#define TIM_BUCKET_W1_M_BSK			((1ull << (35 - 34)) - 1)
+#define TIM_BUCKET_W1_S_LOCK			(40)
+#define TIM_BUCKET_W1_M_LOCK			((1ull << (48 - 40)) - 1)
+#define TIM_BUCKET_W1_S_CHUNK_REMAINDER		(48)
+#define TIM_BUCKET_W1_M_CHUNK_REMAINDER		((1ull << (64 - 48)) - 1)
+
+#define TIM_BUCKET_SEMA	\
+	(TIM_BUCKET_CHUNK_REMAIN)
+
+#define TIM_BUCKET_CHUNK_REMAIN \
+	(TIM_BUCKET_W1_M_CHUNK_REMAINDER << TIM_BUCKET_W1_S_CHUNK_REMAINDER)
+
+#define TIM_BUCKET_LOCK \
+	(TIM_BUCKET_W1_M_LOCK << TIM_BUCKET_W1_S_LOCK)
+
+#define TIM_BUCKET_SEMA_WLOCK \
+	(TIM_BUCKET_CHUNK_REMAIN | (1ull << TIM_BUCKET_W1_S_LOCK))
 
 #define NSEC_PER_SEC 1E9
 #define NSEC2CLK(__ns, __freq) (((__ns) * (__freq)) / NSEC_PER_SEC)
@@ -168,5 +195,13 @@ void *timvf_bar(uint8_t id, uint8_t bar);
 int timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		uint32_t *caps, const struct rte_event_timer_adapter_ops **ops,
 		uint8_t enable_stats);
+uint16_t timvf_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint16_t nb_timers);
+uint16_t timvf_timer_arm_burst_mp(const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint16_t nb_timers);
+uint16_t timvf_timer_arm_burst_mp_stats(
+		const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint16_t nb_timers);
+void timvf_set_chunk_refill(struct timvf_ring * const timr);
 
 #endif /* __TIMVF_EVDEV_H__ */

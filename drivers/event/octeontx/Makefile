@@ -30,20 +30,25 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_worker.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_evdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_evdev_selftest.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_probe.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += timvf_worker.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += timvf_evdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += timvf_probe.c
 
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_ssovf_worker.o += -fno-prefetch-loop-arrays
+CFLAGS_timvf_worker.o += -fno-prefetch-loop-arrays
 
 ifeq ($(shell test $(GCC_VERSION) -ge 46 && echo 1), 1)
 CFLAGS_ssovf_worker.o += -Ofast
+CFLAGS_timvf_worker.o += -Ofast
 else
 CFLAGS_ssovf_worker.o += -O3 -ffast-math
+CFLAGS_timvf_worker.o += -O3 -ffast-math
 endif
 
 else
 CFLAGS_ssovf_worker.o += -Ofast
+CFLAGS_timvf_worker.o += -Ofast
 endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

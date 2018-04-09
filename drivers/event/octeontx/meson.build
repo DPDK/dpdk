@@ -5,6 +5,7 @@ sources = files('ssovf_worker.c',
 		'ssovf_evdev.c',
 		'ssovf_evdev_selftest.c',
 		'ssovf_probe.c',
+		'timvf_worker.c',
 		'timvf_evdev.c',
 		'timvf_probe.c'
 )
