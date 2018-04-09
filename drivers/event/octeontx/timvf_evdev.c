@@ -83,6 +83,45 @@ timvf_get_start_cyc(uint64_t *now, uint8_t ring_id)
 }
 
 static int
+optimize_bucket_parameters(struct timvf_ring *timr)
+{
+	uint32_t hbkts;
+	uint32_t lbkts;
+	uint64_t tck_nsec;
+
+	hbkts = rte_align32pow2(timr->nb_bkts);
+	tck_nsec = RTE_ALIGN_MUL_CEIL(timr->max_tout / (hbkts - 1), 10);
+
+	if ((tck_nsec < 1000 || hbkts > TIM_MAX_BUCKETS))
+		hbkts = 0;
+
+	lbkts = rte_align32prevpow2(timr->nb_bkts);
+	tck_nsec = RTE_ALIGN_MUL_CEIL((timr->max_tout / (lbkts - 1)), 10);
+
+	if ((tck_nsec < 1000 || hbkts > TIM_MAX_BUCKETS))
+		lbkts = 0;
+
+	if (!hbkts && !lbkts)
+		return 0;
+
+	if (!hbkts) {
+		timr->nb_bkts = lbkts;
+		goto end;
+	} else if (!lbkts) {
+		timr->nb_bkts = hbkts;
+		goto end;
+	}
+
+	timr->nb_bkts = (hbkts - timr->nb_bkts) <
+		(timr->nb_bkts - lbkts) ? hbkts : lbkts;
+end:
+	timr->get_target_bkt = bkt_and;
+	timr->tck_nsec = RTE_ALIGN_MUL_CEIL((timr->max_tout /
+				(timr->nb_bkts - 1)), 10);
+	return 1;
+}
+
+static int
 timvf_ring_start(const struct rte_event_timer_adapter *adptr)
 {
 	int ret;
@@ -204,7 +243,7 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 
 	timr->clk_src = (int) rcfg->clk_src;
 	timr->tim_ring_id = adptr->data->id;
-	timr->tck_nsec = rcfg->timer_tick_ns;
+	timr->tck_nsec = RTE_ALIGN_MUL_CEIL(rcfg->timer_tick_ns, 10);
 	timr->max_tout = rcfg->max_tmo_ns;
 	timr->nb_bkts = (timr->max_tout / timr->tck_nsec);
 	timr->vbar0 = timvf_bar(timr->tim_ring_id, 0);
@@ -213,6 +252,17 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 	timr->get_target_bkt = bkt_mod;
 
 	timr->nb_chunks = nb_timers / nb_chunk_slots;
+
+	/* Try to optimize the bucket parameters. */
+	if ((rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES)
+			&& !rte_is_power_of_2(timr->nb_bkts)) {
+		if (optimize_bucket_parameters(timr)) {
+			timvf_log_info("Optimized configured values");
+			timvf_log_dbg("nb_bkts  : %"PRIu32"", timr->nb_bkts);
+			timvf_log_dbg("tck_nsec : %"PRIu64"", timr->tck_nsec);
+		} else
+			timvf_log_info("Failed to Optimize configured values");
+	}
 
 	if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_SP_PUT) {
 		mp_flags = MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET;

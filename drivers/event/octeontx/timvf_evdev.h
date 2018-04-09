@@ -190,6 +190,12 @@ bkt_mod(const uint32_t rel_bkt, const uint32_t nb_bkts)
 	return rel_bkt % nb_bkts;
 }
 
+static __rte_always_inline uint32_t
+bkt_and(uint32_t rel_bkt, uint32_t nb_bkts)
+{
+	return rel_bkt & (nb_bkts - 1);
+}
+
 int timvf_info(struct timvf_info *tinfo);
 void *timvf_bar(uint8_t id, uint8_t bar);
 int timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
