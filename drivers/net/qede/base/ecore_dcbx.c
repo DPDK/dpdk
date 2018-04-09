@@ -149,6 +149,10 @@ ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 	}
 	p_data->arr[type].update = UPDATE_DCB_DSCP;
 
+	/* Do not add valn tag 0 when DCB is enabled and port is in UFP mode */
+	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
+		p_data->arr[type].dont_add_vlan0 = true;
+
 	/* QM reconf data */
 	if (p_hwfn->hw_info.personality == personality)
 		p_hwfn->hw_info.offload_tc = tc;
@@ -935,6 +939,7 @@ static void ecore_dcbx_update_protocol_data(struct protocol_dcb_data *p_data,
 	p_data->dcb_tc = p_src->arr[type].tc;
 	p_data->dscp_enable_flag = p_src->arr[type].dscp_enable;
 	p_data->dscp_val = p_src->arr[type].dscp_val;
+	p_data->dcb_dont_add_vlan0 = p_src->arr[type].dont_add_vlan0;
 }
 
 /* Set pf update ramrod command params */

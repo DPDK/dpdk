@@ -3588,9 +3588,14 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 		break;
 	case NVM_CFG1_GLOB_MF_MODE_UFP:
 		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_OVLAN_CLSS |
-					 1 << ECORE_MF_UFP_SPECIFIC;
+					 1 << ECORE_MF_UFP_SPECIFIC |
+					 1 << ECORE_MF_8021Q_TAGGING;
 		break;
-
+	case NVM_CFG1_GLOB_MF_MODE_BD:
+		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_OVLAN_CLSS |
+					 1 << ECORE_MF_LLH_PROTO_CLSS |
+					 1 << ECORE_MF_8021AD_TAGGING;
+		break;
 	case NVM_CFG1_GLOB_MF_MODE_NPAR1_0:
 		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_LLH_MAC_CLSS |
 					 1 << ECORE_MF_LLH_PROTO_CLSS |
@@ -3619,6 +3624,7 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	 */
 	switch (mf_mode) {
 	case NVM_CFG1_GLOB_MF_MODE_MF_ALLOWED:
+	case NVM_CFG1_GLOB_MF_MODE_BD:
 		p_hwfn->p_dev->mf_mode = ECORE_MF_OVLAN;
 		break;
 	case NVM_CFG1_GLOB_MF_MODE_NPAR1_0:

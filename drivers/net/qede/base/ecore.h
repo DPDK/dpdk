@@ -536,6 +536,12 @@ enum ecore_mf_mode_bit {
 	ECORE_MF_UFP_SPECIFIC,
 
 	ECORE_MF_DISABLE_ARFS,
+
+	/* Use vlan for steering */
+	ECORE_MF_8021Q_TAGGING,
+
+	/* Use stag for steering */
+	ECORE_MF_8021AD_TAGGING,
 };
 
 enum ecore_ufp_mode {
