@@ -1658,7 +1658,8 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 
 	ecore_init_cache_line_size(p_hwfn, p_ptt);
 
-	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_ENGINE, ANY_PHASE_ID, hw_mode);
+	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_ENGINE, ECORE_PATH_ID(p_hwfn),
+			    hw_mode);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
