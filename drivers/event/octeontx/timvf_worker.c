@@ -65,6 +65,43 @@ timvf_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 }
 
 uint16_t
+timvf_timer_arm_burst_sp(const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint16_t nb_timers)
+{
+	int ret;
+	uint16_t index;
+	struct tim_mem_entry entry;
+	struct timvf_ring *timr = adptr->data->adapter_priv;
+	for (index = 0; index < nb_timers; index++) {
+		if (timvf_timer_reg_checks(timr, tim[index]))
+			break;
+
+		timvf_format_event(tim[index], &entry);
+		ret = timvf_add_entry_sp(timr, tim[index]->timeout_ticks,
+				tim[index], &entry);
+		if (unlikely(ret)) {
+			rte_errno = -ret;
+			break;
+		}
+	}
+
+	return index;
+}
+
+uint16_t
+timvf_timer_arm_burst_sp_stats(const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint16_t nb_timers)
+{
+	uint16_t ret;
+	struct timvf_ring *timr = adptr->data->adapter_priv;
+
+	ret = timvf_timer_arm_burst_sp(adptr, tim, nb_timers);
+	timr->tim_arm_cnt += ret;
+
+	return ret;
+}
+
+uint16_t
 timvf_timer_arm_burst_mp(const struct rte_event_timer_adapter *adptr,
 		struct rte_event_timer **tim, const uint16_t nb_timers)
 {

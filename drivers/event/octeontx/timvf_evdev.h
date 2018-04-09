@@ -197,6 +197,11 @@ int timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		uint8_t enable_stats);
 uint16_t timvf_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 		struct rte_event_timer **tim, const uint16_t nb_timers);
+uint16_t timvf_timer_arm_burst_sp(const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint16_t nb_timers);
+uint16_t timvf_timer_arm_burst_sp_stats(
+		const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint16_t nb_timers);
 uint16_t timvf_timer_arm_burst_mp(const struct rte_event_timer_adapter *adptr,
 		struct rte_event_timer **tim, const uint16_t nb_timers);
 uint16_t timvf_timer_arm_burst_mp_stats(

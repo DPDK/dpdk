@@ -224,6 +224,53 @@ timvf_get_target_bucket(struct timvf_ring * const timr, const uint32_t rel_bkt)
 	return &timr->bkt[tbkt_id];
 }
 
+/* Single producer functions. */
+static inline int
+timvf_add_entry_sp(struct timvf_ring * const timr, const uint32_t rel_bkt,
+		struct rte_event_timer * const tim,
+		const struct tim_mem_entry * const pent)
+{
+	int16_t rem;
+	uint64_t lock_sema;
+	struct tim_mem_bucket *bkt;
+	struct tim_mem_entry *chunk;
+
+
+	bkt = timvf_get_target_bucket(timr, rel_bkt);
+__retry:
+	/*Get Bucket sema*/
+	lock_sema = timr_bkt_fetch_sema(bkt);
+	/* Bucket related checks. */
+	if (unlikely(timr_bkt_get_hbt(lock_sema)))
+		goto __retry;
+
+	/* Insert the work. */
+	rem = timr_bkt_fetch_rem(lock_sema);
+
+	if (!rem) {
+		chunk = timr->refill_chunk(bkt, timr);
+		if (unlikely(chunk == NULL)) {
+			timr_bkt_set_rem(bkt, 0);
+			tim->impl_opaque[0] = tim->impl_opaque[1] = 0;
+			tim->state = RTE_EVENT_TIMER_ERROR;
+			return -ENOMEM;
+		}
+		bkt->current_chunk = (uintptr_t) chunk;
+		timr_bkt_set_rem(bkt, nb_chunk_slots - 1);
+	} else {
+		chunk = (struct tim_mem_entry *)(uintptr_t)bkt->current_chunk;
+		chunk += nb_chunk_slots - rem;
+	}
+	/* Copy work entry. */
+	*chunk = *pent;
+	timr_bkt_inc_nent(bkt);
+
+	tim->impl_opaque[0] = (uintptr_t)chunk;
+	tim->impl_opaque[1] = (uintptr_t)bkt;
+	tim->state = RTE_EVENT_TIMER_ARMED;
+	return 0;
+}
+
 /* Multi producer functions. */
 static inline int
 timvf_add_entry_mp(struct timvf_ring * const timr, const uint32_t rel_bkt,

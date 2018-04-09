@@ -180,6 +180,7 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 	struct timvf_ring *timr;
 	struct timvf_info tinfo;
 	const char *mempool_ops;
+	unsigned int mp_flags = 0;
 
 	if (timvf_info(&tinfo) < 0)
 		return -ENODEV;
@@ -213,6 +214,11 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 
 	timr->nb_chunks = nb_timers / nb_chunk_slots;
 
+	if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_SP_PUT) {
+		mp_flags = MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET;
+		timvf_log_info("Using single producer mode");
+	}
+
 	timr->bkt = rte_zmalloc("octeontx_timvf_bucket",
 			(timr->nb_bkts) * sizeof(struct tim_mem_bucket),
 			0);
@@ -222,7 +228,7 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 	snprintf(pool_name, 30, "timvf_chunk_pool%d", timr->tim_ring_id);
 	timr->chunk_pool = (void *)rte_mempool_create_empty(pool_name,
 			timr->nb_chunks, TIM_CHUNK_SIZE, 0, 0, rte_socket_id(),
-			0);
+			mp_flags);
 
 	if (!timr->chunk_pool) {
 		rte_free(timr->bkt);
@@ -306,17 +312,20 @@ timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		uint8_t enable_stats)
 {
 	RTE_SET_USED(dev);
-	RTE_SET_USED(flags);
 
 	if (enable_stats) {
 		timvf_ops.stats_get   = timvf_stats_get;
 		timvf_ops.stats_reset = timvf_stats_reset;
 	}
 
-	if (enable_stats)
-		timvf_ops.arm_burst = timvf_timer_arm_burst_mp_stats;
+	if (flags & RTE_EVENT_TIMER_ADAPTER_F_SP_PUT)
+		timvf_ops.arm_burst = enable_stats ?
+			timvf_timer_arm_burst_sp_stats :
+			timvf_timer_arm_burst_sp;
 	else
-		timvf_ops.arm_burst = timvf_timer_arm_burst_mp;
+		timvf_ops.arm_burst = enable_stats ?
+			timvf_timer_arm_burst_mp_stats :
+			timvf_timer_arm_burst_mp;
 
 	timvf_ops.cancel_burst = timvf_timer_cancel_burst;
 	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT;
