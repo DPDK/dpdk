@@ -540,6 +540,17 @@ bool ecore_iov_is_valid_vfpf_msg_length(u32 length);
 u32 ecore_iov_pfvf_msg_length(void);
 
 /**
+ * @brief Returns MAC address if one is configured
+ *
+ * @parm p_hwfn
+ * @parm rel_vf_id
+ *
+ * @return OSAL_NULL if mac isn't set; Otherwise, returns MAC.
+ */
+u8 *ecore_iov_bulletin_get_mac(struct ecore_hwfn *p_hwfn,
+			       u16 rel_vf_id);
+
+/**
  * @brief Returns forced MAC address if one is configured
  *
  * @parm p_hwfn

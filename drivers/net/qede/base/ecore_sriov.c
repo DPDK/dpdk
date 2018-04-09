@@ -1968,7 +1968,8 @@ ecore_iov_configure_vport_forced(struct ecore_hwfn *p_hwfn,
 	if (!p_vf->vport_instance)
 		return ECORE_INVAL;
 
-	if (events & (1 << MAC_ADDR_FORCED)) {
+	if ((events & (1 << MAC_ADDR_FORCED)) ||
+	    p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change) {
 		/* Since there's no way [currently] of removing the MAC,
 		 * we can always assume this means we need to force it.
 		 */
@@ -1989,7 +1990,11 @@ ecore_iov_configure_vport_forced(struct ecore_hwfn *p_hwfn,
 			return rc;
 		}
 
-		p_vf->configured_features |= 1 << MAC_ADDR_FORCED;
+		if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change)
+			p_vf->configured_features |=
+				1 << VFPF_BULLETIN_MAC_ADDR;
+		else
+			p_vf->configured_features |= 1 << MAC_ADDR_FORCED;
 	}
 
 	if (events & (1 << VLAN_ADDR_FORCED)) {
@@ -4370,7 +4375,11 @@ void ecore_iov_bulletin_set_forced_mac(struct ecore_hwfn *p_hwfn,
 		return;
 	}
 
-	feature = 1 << MAC_ADDR_FORCED;
+	if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change)
+		feature = 1 << VFPF_BULLETIN_MAC_ADDR;
+	else
+		feature = 1 << MAC_ADDR_FORCED;
+
 	OSAL_MEMCPY(vf_info->bulletin.p_virt->mac, mac, ETH_ALEN);
 
 	vf_info->bulletin.p_virt->valid_bitmap |= feature;
@@ -4411,9 +4420,13 @@ enum _ecore_status_t ecore_iov_bulletin_set_mac(struct ecore_hwfn *p_hwfn,
 
 	vf_info->bulletin.p_virt->valid_bitmap |= feature;
 
+	if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change)
+		ecore_iov_configure_vport_forced(p_hwfn, vf_info, feature);
+
 	return ECORE_SUCCESS;
 }
 
+#ifndef LINUX_REMOVE
 enum _ecore_status_t
 ecore_iov_bulletin_set_forced_untagged_default(struct ecore_hwfn *p_hwfn,
 					       bool b_untagged_only, int vfid)
@@ -4470,6 +4483,7 @@ void ecore_iov_get_vfs_opaque_fid(struct ecore_hwfn *p_hwfn, int vfid,
 
 	*opaque_fid = vf_info->opaque_fid;
 }
+#endif
 
 void ecore_iov_bulletin_set_forced_vlan(struct ecore_hwfn *p_hwfn,
 					u16 pvid, int vfid)
@@ -4655,6 +4669,22 @@ bool ecore_iov_is_valid_vfpf_msg_length(u32 length)
 u32 ecore_iov_pfvf_msg_length(void)
 {
 	return sizeof(union pfvf_tlvs);
+}
+
+u8 *ecore_iov_bulletin_get_mac(struct ecore_hwfn *p_hwfn,
+				      u16 rel_vf_id)
+{
+	struct ecore_vf_info *p_vf;
+
+	p_vf = ecore_iov_get_vf_info(p_hwfn, rel_vf_id, true);
+	if (!p_vf || !p_vf->bulletin.p_virt)
+		return OSAL_NULL;
+
+	if (!(p_vf->bulletin.p_virt->valid_bitmap &
+		(1 << VFPF_BULLETIN_MAC_ADDR)))
+		return OSAL_NULL;
+
+	return p_vf->bulletin.p_virt->mac;
 }
 
 u8 *ecore_iov_bulletin_get_forced_mac(struct ecore_hwfn *p_hwfn, u16 rel_vf_id)

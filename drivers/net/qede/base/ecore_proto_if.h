@@ -31,6 +31,9 @@ struct ecore_eth_pf_params {
 	 * This will set the maximal number of configured steering-filters.
 	 */
 	u32	num_arfs_filters;
+
+	/* To allow VF to change its MAC despite of PF set forced MAC. */
+	bool	allow_vf_mac_change;
 };
 
 /* Most of the parameters below are described in the FW iSCSI / TCP HSI */
