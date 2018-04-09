@@ -268,6 +268,29 @@ timvf_ring_free(struct rte_event_timer_adapter *adptr)
 	return 0;
 }
 
+static int
+timvf_stats_get(const struct rte_event_timer_adapter *adapter,
+		struct rte_event_timer_adapter_stats *stats)
+{
+	struct timvf_ring *timr = adapter->data->adapter_priv;
+	uint64_t bkt_cyc = rte_rdtsc() - timr->ring_start_cyc;
+
+	stats->evtim_exp_count = timr->tim_arm_cnt;
+	stats->ev_enq_count = timr->tim_arm_cnt;
+	stats->adapter_tick_count = rte_reciprocal_divide_u64(bkt_cyc,
+				&timr->fast_div);
+	return 0;
+}
+
+static int
+timvf_stats_reset(const struct rte_event_timer_adapter *adapter)
+{
+	struct timvf_ring *timr = adapter->data->adapter_priv;
+
+	timr->tim_arm_cnt = 0;
+	return 0;
+}
+
 static struct rte_event_timer_adapter_ops timvf_ops = {
 	.init		= timvf_ring_create,
 	.uninit		= timvf_ring_free,
@@ -283,7 +306,12 @@ timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 {
 	RTE_SET_USED(dev);
 	RTE_SET_USED(flags);
-	RTE_SET_USED(enable_stats);
+
+	if (enable_stats) {
+		timvf_ops.stats_get   = timvf_stats_get;
+		timvf_ops.stats_reset = timvf_stats_reset;
+	}
+
 	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT;
 	*ops = &timvf_ops;
 	return -EINVAL;

@@ -83,6 +83,8 @@
 #define timvf_read64 rte_read64_relaxed
 #define timvf_write64 rte_write64_relaxed
 
+#define TIMVF_ENABLE_STATS_ARG               ("timvf_stats")
+
 extern int otx_logtype_timvf;
 static const uint16_t nb_chunk_slots = (TIM_CHUNK_SIZE / 16) - 1;
 
@@ -145,6 +147,7 @@ struct timvf_ring {
 	struct tim_mem_bucket *bkt;
 	void *chunk_pool;
 	uint64_t tck_int;
+	volatile uint64_t tim_arm_cnt;
 	uint64_t tck_nsec;
 	void  *vbar0;
 	void *bkt_pos;

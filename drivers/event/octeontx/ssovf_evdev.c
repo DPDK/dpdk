@@ -21,6 +21,7 @@
 #include "timvf_evdev.h"
 
 int otx_logtype_ssovf;
+static uint8_t timvf_enable_stats;
 
 RTE_INIT(otx_ssovf_init_log);
 static void
@@ -606,7 +607,8 @@ static int
 ssovf_timvf_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		uint32_t *caps, const struct rte_event_timer_adapter_ops **ops)
 {
-	return timvf_timer_adapter_caps_get(dev, flags, caps, ops, 0);
+	return timvf_timer_adapter_caps_get(dev, flags, caps, ops,
+			timvf_enable_stats);
 }
 
 /* Initialize and register event driver with DPDK Application */
@@ -654,6 +656,7 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 
 	static const char *const args[] = {
 		SSOVF_SELFTEST_ARG,
+		TIMVF_ENABLE_STATS_ARG,
 		NULL
 	};
 
@@ -678,6 +681,15 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 					ssovf_selftest, &selftest);
 			if (ret != 0) {
 				ssovf_log_err("%s: Error in selftest", name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist,
+					TIMVF_ENABLE_STATS_ARG,
+					ssovf_selftest, &timvf_enable_stats);
+			if (ret != 0) {
+				ssovf_log_err("%s: Error in timvf stats", name);
 				rte_kvargs_free(kvlist);
 				return ret;
 			}

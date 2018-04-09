@@ -99,6 +99,16 @@ The tests are run once the vdev creation is successfully complete.
     --vdev="event_octeontx,self_test=1"
 
 
+Enable TIMvf stats
+------------------
+TIMvf stats can be enabled by using this option, by default the stats are
+disabled.
+
+.. code-block:: console
+
+    --vdev="event_octeontx,timvf_stats=1"
+
+
 Limitations
 -----------
 
