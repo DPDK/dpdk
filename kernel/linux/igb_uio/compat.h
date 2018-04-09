@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Minimal wrappers to allow compiling igb_uio on older kernels.
  */
