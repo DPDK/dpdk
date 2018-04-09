@@ -8,7 +8,7 @@ march_opt = '-march=@0@'.format(machine)
 arm_force_native_march = false
 
 machine_args_generic = [
-	['default', ['-march=armv8-a']],
+	['default', ['-march=armv8-a+crc+crypto']],
 	['native', ['-march=native']],
 	['0xd03', ['-mcpu=cortex-a53']],
 	['0xd04', ['-mcpu=cortex-a35']],
