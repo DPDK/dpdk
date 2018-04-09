@@ -75,6 +75,11 @@
 #define TIM_VRING_AURA				(0x108)
 #define TIM_VRING_REL				(0x110)
 
+
+#define NSEC_PER_SEC 1E9
+#define NSEC2CLK(__ns, __freq) (((__ns) * (__freq)) / NSEC_PER_SEC)
+#define CLK2NSEC(__clk, __freq) (((__clk) * NSEC_PER_SEC) / (__freq))
+
 #define timvf_read64 rte_read64_relaxed
 #define timvf_write64 rte_write64_relaxed
 

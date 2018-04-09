@@ -16,6 +16,32 @@ otx_timvf_init_log(void)
 		rte_log_set_level(otx_logtype_timvf, RTE_LOG_NOTICE);
 }
 
+struct __rte_packed timvf_mbox_dev_info {
+	uint64_t ring_active[4];
+	uint64_t clk_freq;
+};
+
+/* Response messages */
+enum {
+	MBOX_RET_SUCCESS,
+	MBOX_RET_INVALID,
+	MBOX_RET_INTERNAL_ERR,
+};
+
+static int
+timvf_mbox_dev_info_get(struct timvf_mbox_dev_info *info)
+{
+	struct octeontx_mbox_hdr hdr = {0};
+	uint16_t len = sizeof(struct timvf_mbox_dev_info);
+
+	hdr.coproc = TIM_COPROC;
+	hdr.msg = TIM_GET_DEV_INFO;
+	hdr.vfid = 0; /* TIM DEV is always 0. TIM RING ID changes. */
+
+	memset(info, 0, len);
+	return octeontx_mbox_send(&hdr, NULL, 0, info, len);
+}
+
 static void
 timvf_ring_info_get(const struct rte_event_timer_adapter *adptr,
 		struct rte_event_timer_adapter_info *adptr_info)
@@ -25,6 +51,122 @@ timvf_ring_info_get(const struct rte_event_timer_adapter *adptr,
 	adptr_info->min_resolution_ns = timr->tck_nsec;
 	rte_memcpy(&adptr_info->conf, &adptr->data->conf,
 			sizeof(struct rte_event_timer_adapter_conf));
+}
+
+static int
+timvf_ring_conf_set(struct timvf_ctrl_reg *rctl, uint8_t ring_id)
+{
+	struct octeontx_mbox_hdr hdr = {0};
+	uint16_t len = sizeof(struct timvf_ctrl_reg);
+	int ret;
+
+	hdr.coproc = TIM_COPROC;
+	hdr.msg = TIM_SET_RING_INFO;
+	hdr.vfid = ring_id;
+
+	ret = octeontx_mbox_send(&hdr, rctl, len, NULL, 0);
+	if (ret < 0 || hdr.res_code != MBOX_RET_SUCCESS)
+		return -EACCES;
+	return 0;
+}
+
+static int
+timvf_get_start_cyc(uint64_t *now, uint8_t ring_id)
+{
+	struct octeontx_mbox_hdr hdr = {0};
+
+	hdr.coproc = TIM_COPROC;
+	hdr.msg = TIM_RING_START_CYC_GET;
+	hdr.vfid = ring_id;
+	*now = 0;
+	return octeontx_mbox_send(&hdr, NULL, 0, now, sizeof(uint64_t));
+}
+
+static int
+timvf_ring_start(const struct rte_event_timer_adapter *adptr)
+{
+	int ret;
+	uint64_t interval;
+	struct timvf_ctrl_reg rctrl;
+	struct timvf_mbox_dev_info dinfo;
+	struct timvf_ring *timr = adptr->data->adapter_priv;
+
+	ret = timvf_mbox_dev_info_get(&dinfo);
+	if (ret < 0 || ret != sizeof(struct timvf_mbox_dev_info))
+		return -EINVAL;
+
+	/* Calculate the interval cycles according to clock source. */
+	switch (timr->clk_src) {
+	case TIM_CLK_SRC_SCLK:
+		interval = NSEC2CLK(timr->tck_nsec, dinfo.clk_freq);
+		break;
+	case TIM_CLK_SRC_GPIO:
+		/* GPIO doesn't work on tck_nsec. */
+		interval = 0;
+		break;
+	case TIM_CLK_SRC_GTI:
+		interval = NSEC2CLK(timr->tck_nsec, dinfo.clk_freq);
+		break;
+	case TIM_CLK_SRC_PTP:
+		interval = NSEC2CLK(timr->tck_nsec, dinfo.clk_freq);
+		break;
+	default:
+		timvf_log_err("Unsupported clock source configured %d",
+				timr->clk_src);
+		return -EINVAL;
+	}
+
+	/*CTRL0 register.*/
+	rctrl.rctrl0 = interval;
+
+	/*CTRL1	register.*/
+	rctrl.rctrl1 =	(uint64_t)(timr->clk_src) << 51 |
+		1ull << 48 /* LOCK_EN (Enable hw bucket lock mechanism) */ |
+		1ull << 47 /* ENA */ |
+		1ull << 44 /* ENA_LDWB */ |
+		(timr->nb_bkts - 1);
+
+	rctrl.rctrl2 = (uint64_t)(TIM_CHUNK_SIZE / 16) << 40;
+
+	timvf_write64((uintptr_t)timr->bkt,
+			(uint8_t *)timr->vbar0 + TIM_VRING_BASE);
+	if (timvf_ring_conf_set(&rctrl, timr->tim_ring_id)) {
+		ret = -EACCES;
+		goto error;
+	}
+
+	if (timvf_get_start_cyc(&timr->ring_start_cyc,
+				timr->tim_ring_id) < 0) {
+		ret = -EACCES;
+		goto error;
+	}
+	timr->tck_int = NSEC2CLK(timr->tck_nsec, rte_get_timer_hz());
+	timr->fast_div = rte_reciprocal_value_u64(timr->tck_int);
+	timvf_log_info("nb_bkts %d min_ns %"PRIu64" min_cyc %"PRIu64""
+			" maxtmo %"PRIu64"\n",
+			timr->nb_bkts, timr->tck_nsec, interval,
+			timr->max_tout);
+
+	return 0;
+error:
+	rte_free(timr->bkt);
+	rte_mempool_free(timr->chunk_pool);
+	return ret;
+}
+
+static int
+timvf_ring_stop(const struct rte_event_timer_adapter *adptr)
+{
+	struct timvf_ring *timr = adptr->data->adapter_priv;
+	struct timvf_ctrl_reg rctrl = {0};
+	rctrl.rctrl0 = timvf_read64((uint8_t *)timr->vbar0 + TIM_VRING_CTL0);
+	rctrl.rctrl1 = timvf_read64((uint8_t *)timr->vbar0 + TIM_VRING_CTL1);
+	rctrl.rctrl1 &= ~(1ull << 47); /* Disable */
+	rctrl.rctrl2 = timvf_read64((uint8_t *)timr->vbar0 + TIM_VRING_CTL2);
+
+	if (timvf_ring_conf_set(&rctrl, timr->tim_ring_id))
+		return -EACCES;
+	return 0;
 }
 
 static int
@@ -129,6 +271,8 @@ timvf_ring_free(struct rte_event_timer_adapter *adptr)
 static struct rte_event_timer_adapter_ops timvf_ops = {
 	.init		= timvf_ring_create,
 	.uninit		= timvf_ring_free,
+	.start		= timvf_ring_start,
+	.stop		= timvf_ring_stop,
 	.get_info	= timvf_ring_info_get,
 };
 
