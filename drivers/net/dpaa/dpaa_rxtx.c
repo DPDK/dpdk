@@ -825,6 +825,8 @@ tx_on_external_pool(struct qman_fq *txq, struct rte_mbuf *mbuf,
 	}
 
 	DPAA_MBUF_TO_CONTIG_FD(dmable_mbuf, fd_arr, dpaa_intf->bp_info->bpid);
+	if (mbuf->ol_flags & DPAA_TX_CKSUM_OFFLOAD_MASK)
+		dpaa_unsegmented_checksum(mbuf, fd_arr);
 
 	return 0;
 }
