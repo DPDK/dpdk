@@ -324,3 +324,98 @@ __retry:
 	tim->state = RTE_EVENT_TIMER_ARMED;
 	return 0;
 }
+
+static inline uint16_t
+timvf_cpy_wrk(uint16_t index, uint16_t cpy_lmt,
+		struct tim_mem_entry *chunk,
+		struct rte_event_timer ** const tim,
+		const struct tim_mem_entry * const ents,
+		const struct tim_mem_bucket * const bkt)
+{
+	for (; index < cpy_lmt; index++) {
+		*chunk = *(ents + index);
+		tim[index]->impl_opaque[0] = (uintptr_t)chunk++;
+		tim[index]->impl_opaque[1] = (uintptr_t)bkt;
+		tim[index]->state = RTE_EVENT_TIMER_ARMED;
+	}
+
+	return index;
+}
+
+/* Burst mode functions */
+static inline int
+timvf_add_entry_brst(struct timvf_ring * const timr, const uint16_t rel_bkt,
+		struct rte_event_timer ** const tim,
+		const struct tim_mem_entry *ents,
+		const uint16_t nb_timers)
+{
+	int16_t rem;
+	int16_t crem;
+	uint8_t lock_cnt;
+	uint16_t index = 0;
+	uint16_t chunk_remainder;
+	uint64_t lock_sema;
+	struct tim_mem_bucket *bkt;
+	struct tim_mem_entry *chunk;
+
+__retry:
+	bkt = timvf_get_target_bucket(timr, rel_bkt);
+
+	/* Only one thread beyond this. */
+	lock_sema = timr_bkt_inc_lock(bkt);
+	lock_cnt = (uint8_t)
+		((lock_sema >> TIM_BUCKET_W1_S_LOCK) & TIM_BUCKET_W1_M_LOCK);
+
+	if (lock_cnt) {
+		timr_bkt_dec_lock(bkt);
+		goto __retry;
+	}
+
+	/* Bucket related checks. */
+	if (unlikely(timr_bkt_get_hbt(lock_sema))) {
+		timr_bkt_dec_lock(bkt);
+		goto __retry;
+	}
+
+	chunk_remainder = timr_bkt_fetch_rem(lock_sema);
+	rem = chunk_remainder - nb_timers;
+	if (rem < 0) {
+		crem = nb_chunk_slots - chunk_remainder;
+		if (chunk_remainder && crem) {
+			chunk = ((struct tim_mem_entry *)
+					(uintptr_t)bkt->current_chunk) + crem;
+
+			index = timvf_cpy_wrk(index, chunk_remainder,
+					chunk, tim, ents, bkt);
+			timr_bkt_sub_rem(bkt, chunk_remainder);
+			timr_bkt_add_nent(bkt, chunk_remainder);
+		}
+		rem = nb_timers - chunk_remainder;
+		ents = ents + chunk_remainder;
+
+		chunk = timr->refill_chunk(bkt, timr);
+		if (unlikely(chunk == NULL)) {
+			timr_bkt_dec_lock(bkt);
+			rte_errno = ENOMEM;
+			tim[index]->state = RTE_EVENT_TIMER_ERROR;
+			return crem;
+		}
+		*(uint64_t *)(chunk + nb_chunk_slots) = 0;
+		bkt->current_chunk = (uintptr_t) chunk;
+
+		index = timvf_cpy_wrk(index, nb_timers, chunk, tim, ents, bkt);
+		timr_bkt_set_rem(bkt, nb_chunk_slots - rem);
+		timr_bkt_add_nent(bkt, rem);
+	} else {
+		chunk = (struct tim_mem_entry *)(uintptr_t)bkt->current_chunk;
+		chunk += (nb_chunk_slots - chunk_remainder);
+
+		index = timvf_cpy_wrk(index, nb_timers,
+				chunk, tim, ents, bkt);
+		timr_bkt_sub_rem(bkt, nb_timers);
+		timr_bkt_add_nent(bkt, nb_timers);
+	}
+
+	timr_bkt_dec_lock(bkt);
+	return nb_timers;
+}

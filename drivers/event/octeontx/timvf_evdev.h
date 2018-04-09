@@ -207,6 +207,13 @@ uint16_t timvf_timer_arm_burst_mp(const struct rte_event_timer_adapter *adptr,
 uint16_t timvf_timer_arm_burst_mp_stats(
 		const struct rte_event_timer_adapter *adptr,
 		struct rte_event_timer **tim, const uint16_t nb_timers);
+uint16_t timvf_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint64_t timeout_tick,
+		const uint16_t nb_timers);
+uint16_t timvf_timer_arm_tmo_brst_stats(
+		const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint64_t timeout_tick,
+		const uint16_t nb_timers);
 void timvf_set_chunk_refill(struct timvf_ring * const timr);
 
 #endif /* __TIMVF_EVDEV_H__ */

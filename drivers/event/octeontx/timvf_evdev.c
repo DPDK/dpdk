@@ -327,6 +327,9 @@ timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 			timvf_timer_arm_burst_mp_stats :
 			timvf_timer_arm_burst_mp;
 
+	timvf_ops.arm_tmo_tick_burst = enable_stats ?
+		timvf_timer_arm_tmo_brst_stats :
+		timvf_timer_arm_tmo_brst;
 	timvf_ops.cancel_burst = timvf_timer_cancel_burst;
 	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT;
 	*ops = &timvf_ops;

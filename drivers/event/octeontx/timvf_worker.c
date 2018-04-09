@@ -137,6 +137,59 @@ timvf_timer_arm_burst_mp_stats(const struct rte_event_timer_adapter *adptr,
 	return ret;
 }
 
+uint16_t
+timvf_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint64_t timeout_tick,
+		const uint16_t nb_timers)
+{
+	int ret;
+	uint16_t set_timers = 0;
+	uint16_t idx;
+	uint16_t arr_idx = 0;
+	struct timvf_ring *timr = adptr->data->adapter_priv;
+	struct tim_mem_entry entry[TIMVF_MAX_BURST] __rte_cache_aligned;
+
+	if (unlikely(!timeout_tick || timeout_tick >= timr->nb_bkts)) {
+		const enum rte_event_timer_state state = timeout_tick ?
+			RTE_EVENT_TIMER_ERROR_TOOLATE :
+			RTE_EVENT_TIMER_ERROR_TOOEARLY;
+		for (idx = 0; idx < nb_timers; idx++)
+			tim[idx]->state = state;
+		rte_errno = EINVAL;
+		return 0;
+	}
+
+	while (arr_idx < nb_timers) {
+		for (idx = 0; idx < TIMVF_MAX_BURST && (arr_idx < nb_timers);
+				idx++, arr_idx++) {
+			timvf_format_event(tim[arr_idx], &entry[idx]);
+		}
+		ret = timvf_add_entry_brst(timr, timeout_tick, &tim[set_timers],
+				entry, idx);
+		set_timers += ret;
+		if (ret != idx)
+			break;
+	}
+
+	return set_timers;
+}
+
+
+uint16_t
+timvf_timer_arm_tmo_brst_stats(const struct rte_event_timer_adapter *adptr,
+		struct rte_event_timer **tim, const uint64_t timeout_tick,
+		const uint16_t nb_timers)
+{
+	uint16_t set_timers;
+	struct timvf_ring *timr = adptr->data->adapter_priv;
+
+	set_timers = timvf_timer_arm_tmo_brst(adptr, tim, timeout_tick,
+			nb_timers);
+	timr->tim_arm_cnt += set_timers;
+
+	return set_timers;
+}
+
 void
 timvf_set_chunk_refill(struct timvf_ring * const timr)
 {
