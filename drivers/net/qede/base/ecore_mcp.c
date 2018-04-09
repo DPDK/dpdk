@@ -9,6 +9,7 @@
 #include "bcm_osal.h"
 #include "ecore.h"
 #include "ecore_status.h"
+#include "nvm_cfg.h"
 #include "ecore_mcp.h"
 #include "mcp_public.h"
 #include "reg_addr.h"
@@ -602,7 +603,7 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 
 	/* MCP not initialized */
 	if (!ecore_mcp_is_init(p_hwfn)) {
-		DP_NOTICE(p_hwfn, true, "MFW is not initialized !\n");
+		DP_NOTICE(p_hwfn, true, "MFW is not initialized!\n");
 		return ECORE_BUSY;
 	}
 
@@ -2130,19 +2131,20 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
 					      u32 *p_media_type)
 {
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	/* TODO - Add support for VFs */
 	if (IS_VF(p_hwfn->p_dev))
 		return ECORE_INVAL;
 
 	if (!ecore_mcp_is_init(p_hwfn)) {
-		DP_NOTICE(p_hwfn, true, "MFW is not initialized !\n");
+		DP_NOTICE(p_hwfn, false, "MFW is not initialized!\n");
 		return ECORE_BUSY;
 	}
 
 	if (!p_ptt) {
 		*p_media_type = MEDIA_UNSPECIFIED;
-		return ECORE_INVAL;
+		rc = ECORE_INVAL;
 	} else {
 		*p_media_type = ecore_rd(p_hwfn, p_ptt,
 					 p_hwfn->mcp_info->port_addr +
@@ -2151,6 +2153,197 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
 	}
 
 	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_mcp_get_transceiver_data(struct ecore_hwfn *p_hwfn,
+						    struct ecore_ptt *p_ptt,
+						    u32 *p_tranceiver_type)
+{
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	/* TODO - Add support for VFs */
+	if (IS_VF(p_hwfn->p_dev))
+		return ECORE_INVAL;
+
+	if (!ecore_mcp_is_init(p_hwfn)) {
+		DP_NOTICE(p_hwfn, false, "MFW is not initialized!\n");
+		return ECORE_BUSY;
+	}
+	if (!p_ptt) {
+		*p_tranceiver_type = ETH_TRANSCEIVER_TYPE_NONE;
+		rc = ECORE_INVAL;
+	} else {
+		*p_tranceiver_type = ecore_rd(p_hwfn, p_ptt,
+				p_hwfn->mcp_info->port_addr +
+				offsetof(struct public_port,
+					transceiver_data));
+	}
+
+	return rc;
+}
+
+static int is_transceiver_ready(u32 transceiver_state, u32 transceiver_type)
+{
+	if ((transceiver_state & ETH_TRANSCEIVER_STATE_PRESENT) &&
+	    ((transceiver_state & ETH_TRANSCEIVER_STATE_UPDATING) == 0x0) &&
+	    (transceiver_type != ETH_TRANSCEIVER_TYPE_NONE))
+		return 1;
+
+	return 0;
+}
+
+enum _ecore_status_t ecore_mcp_trans_speed_mask(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt,
+						u32 *p_speed_mask)
+{
+	u32 transceiver_data, transceiver_type, transceiver_state;
+
+	ecore_mcp_get_transceiver_data(p_hwfn, p_ptt, &transceiver_data);
+
+	transceiver_state = GET_MFW_FIELD(transceiver_data,
+			    ETH_TRANSCEIVER_STATE);
+
+	transceiver_type = GET_MFW_FIELD(transceiver_data,
+			   ETH_TRANSCEIVER_TYPE);
+
+	if (is_transceiver_ready(transceiver_state, transceiver_type) == 0)
+		return ECORE_INVAL;
+
+	switch (transceiver_type) {
+	case ETH_TRANSCEIVER_TYPE_1G_LX:
+	case ETH_TRANSCEIVER_TYPE_1G_SX:
+	case ETH_TRANSCEIVER_TYPE_1G_PCC:
+	case ETH_TRANSCEIVER_TYPE_1G_ACC:
+	case ETH_TRANSCEIVER_TYPE_1000BASET:
+		*p_speed_mask = NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_1G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_10G_SR:
+	case ETH_TRANSCEIVER_TYPE_10G_LR:
+	case ETH_TRANSCEIVER_TYPE_10G_LRM:
+	case ETH_TRANSCEIVER_TYPE_10G_ER:
+	case ETH_TRANSCEIVER_TYPE_10G_PCC:
+	case ETH_TRANSCEIVER_TYPE_10G_ACC:
+	case ETH_TRANSCEIVER_TYPE_4x10G:
+		*p_speed_mask = NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_40G_LR4:
+	case ETH_TRANSCEIVER_TYPE_40G_SR4:
+	case ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_SR:
+	case ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_LR:
+		*p_speed_mask = NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_40G |
+		 NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_100G_AOC:
+	case ETH_TRANSCEIVER_TYPE_100G_SR4:
+	case ETH_TRANSCEIVER_TYPE_100G_LR4:
+	case ETH_TRANSCEIVER_TYPE_100G_ER4:
+	case ETH_TRANSCEIVER_TYPE_100G_ACC:
+		*p_speed_mask =
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_BB_100G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_25G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_25G_SR:
+	case ETH_TRANSCEIVER_TYPE_25G_LR:
+	case ETH_TRANSCEIVER_TYPE_25G_AOC:
+	case ETH_TRANSCEIVER_TYPE_25G_ACC_S:
+	case ETH_TRANSCEIVER_TYPE_25G_ACC_M:
+	case ETH_TRANSCEIVER_TYPE_25G_ACC_L:
+		*p_speed_mask = NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_25G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_25G_CA_N:
+	case ETH_TRANSCEIVER_TYPE_25G_CA_S:
+	case ETH_TRANSCEIVER_TYPE_25G_CA_L:
+	case ETH_TRANSCEIVER_TYPE_4x25G_CR:
+		*p_speed_mask = NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_25G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_1G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_40G_CR4:
+	case ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_CR:
+		*p_speed_mask = NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_40G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_1G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_100G_CR4:
+	case ETH_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_CR:
+		*p_speed_mask =
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_BB_100G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_50G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_40G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_25G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_20G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_1G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_SR:
+	case ETH_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_LR:
+	case ETH_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_AOC:
+		*p_speed_mask =
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_BB_100G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_40G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_25G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_XLPPI:
+		*p_speed_mask = NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_40G;
+		break;
+
+	case ETH_TRANSCEIVER_TYPE_10G_BASET:
+		*p_speed_mask = NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G |
+			NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_1G;
+		break;
+
+	default:
+		DP_INFO(p_hwfn, "Unknown transcevier type 0x%x\n",
+			transceiver_type);
+		*p_speed_mask = 0xff;
+		break;
+	}
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_mcp_get_board_config(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt,
+						u32 *p_board_config)
+{
+	u32 nvm_cfg_addr, nvm_cfg1_offset, port_cfg_addr;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	/* TODO - Add support for VFs */
+	if (IS_VF(p_hwfn->p_dev))
+		return ECORE_INVAL;
+
+	if (!ecore_mcp_is_init(p_hwfn)) {
+		DP_NOTICE(p_hwfn, false, "MFW is not initialized!\n");
+		return ECORE_BUSY;
+	}
+	if (!p_ptt) {
+		*p_board_config = NVM_CFG1_PORT_PORT_TYPE_UNDEFINED;
+		rc = ECORE_INVAL;
+	} else {
+		nvm_cfg_addr = ecore_rd(p_hwfn, p_ptt,
+					MISC_REG_GEN_PURP_CR0);
+		nvm_cfg1_offset = ecore_rd(p_hwfn, p_ptt,
+					   nvm_cfg_addr + 4);
+		port_cfg_addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
+			offsetof(struct nvm_cfg1, port[MFW_PORT(p_hwfn)]);
+		*p_board_config  =  ecore_rd(p_hwfn, p_ptt,
+					     port_cfg_addr +
+					     offsetof(struct nvm_cfg1_port,
+					     board_cfg));
+	}
+
+	return rc;
 }
 
 /* @DPDK */
