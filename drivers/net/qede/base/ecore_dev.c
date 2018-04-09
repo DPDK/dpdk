@@ -721,6 +721,7 @@ static void ecore_init_qm_pq(struct ecore_hwfn *p_hwfn,
 		       "pq overflow! pq %d, max pq %d\n", pq_idx, max_pq);
 
 	/* init pq params */
+	qm_info->qm_pq_params[pq_idx].port_id = p_hwfn->port_id;
 	qm_info->qm_pq_params[pq_idx].vport_id = qm_info->start_vport +
 						 qm_info->num_vports;
 	qm_info->qm_pq_params[pq_idx].tc_id = tc;
@@ -1025,10 +1026,9 @@ static void ecore_dp_init_qm_params(struct ecore_hwfn *p_hwfn)
 	for (i = 0; i < qm_info->num_pqs; i++) {
 		pq = &qm_info->qm_pq_params[i];
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
-			   "pq idx %d, vport_id %d, tc %d, wrr_grp %d,"
-			   " rl_valid %d\n",
-			   qm_info->start_pq + i, pq->vport_id, pq->tc_id,
-			   pq->wrr_group, pq->rl_valid);
+			   "pq idx %d, port %d, vport_id %d, tc %d, wrr_grp %d, rl_valid %d\n",
+			   qm_info->start_pq + i, pq->port_id, pq->vport_id,
+			   pq->tc_id, pq->wrr_group, pq->rl_valid);
 	}
 }
 
@@ -1083,7 +1083,7 @@ enum _ecore_status_t ecore_qm_reconf(struct ecore_hwfn *p_hwfn,
 	ecore_init_clear_rt_data(p_hwfn);
 
 	/* prepare QM portion of runtime array */
-	ecore_qm_init_pf(p_hwfn, p_ptt);
+	ecore_qm_init_pf(p_hwfn, p_ptt, false);
 
 	/* activate init tool on runtime array */
 	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_QM_PF, p_hwfn->rel_pf_id,

@@ -2150,7 +2150,7 @@ ecore_configure_rfs_ntuple_filter(struct ecore_hwfn *p_hwfn,
 	p_ramrod->flow_id_valid = 0;
 	p_ramrod->flow_id = 0;
 
-	p_ramrod->vport_id = abs_vport_id;
+	p_ramrod->vport_id = OSAL_CPU_TO_LE16((u16)abs_vport_id);
 	p_ramrod->filter_action = b_is_add ? GFT_ADD_FILTER
 					   : GFT_DELETE_FILTER;
 

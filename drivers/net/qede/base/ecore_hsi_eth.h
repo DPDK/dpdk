@@ -346,7 +346,7 @@ struct e4_xstorm_eth_conn_ag_ctx {
 	__le16 edpm_num_bds /* physical_q2 */;
 	__le16 tx_bd_cons /* word3 */;
 	__le16 tx_bd_prod /* word4 */;
-	__le16 tx_class /* word5 */;
+	__le16 updated_qm_pq_id /* word5 */;
 	__le16 conn_dpi /* conn_dpi */;
 	u8 byte3 /* byte3 */;
 	u8 byte4 /* byte4 */;
@@ -1034,7 +1034,6 @@ struct eth_vport_rx_mode {
 #define ETH_VPORT_RX_MODE_BCAST_ACCEPT_ALL_SHIFT       5
 #define ETH_VPORT_RX_MODE_RESERVED1_MASK               0x3FF
 #define ETH_VPORT_RX_MODE_RESERVED1_SHIFT              6
-	__le16 reserved2[3];
 };
 
 
@@ -1089,7 +1088,6 @@ struct eth_vport_tx_mode {
 #define ETH_VPORT_TX_MODE_BCAST_ACCEPT_ALL_SHIFT 4
 #define ETH_VPORT_TX_MODE_RESERVED1_MASK         0x7FF
 #define ETH_VPORT_TX_MODE_RESERVED1_SHIFT        5
-	__le16 reserved2[3];
 };
 
 
@@ -1216,7 +1214,9 @@ struct rx_queue_update_ramrod_data {
 	u8 complete_cqe_flg /* post completion to the CQE ring if set */;
 	u8 complete_event_flg /* post completion to the event ring if set */;
 	u8 vport_id /* ID of virtual port */;
-	u8 reserved[4];
+/* If set, update default rss queue to this RX queue. */
+	u8 set_default_rss_queue;
+	u8 reserved[3];
 	u8 reserved1 /* FW reserved. */;
 	u8 reserved2 /* FW reserved. */;
 	u8 reserved3 /* FW reserved. */;
@@ -1257,7 +1257,8 @@ struct rx_update_gft_filter_data {
 	__le16 action_icid;
 	__le16 rx_qid /* RX queue ID. Valid if rx_qid_valid set. */;
 	__le16 flow_id /* RX flow ID. Valid if flow_id_valid set. */;
-	u8 vport_id /* RX vport Id. */;
+/* RX vport Id. For drop flow, set to ETH_GFT_TRASHCAN_VPORT. */
+	__le16 vport_id;
 /* If set, action_icid will used for GFT filter update. */
 	u8 action_icid_valid;
 /* If set, rx_qid will used for traffic steering, in additional to vport_id.
@@ -1273,7 +1274,10 @@ struct rx_update_gft_filter_data {
  * case of error.
  */
 	u8 assert_on_error;
-	u8 reserved[2];
+/* If set, inner VLAN will be removed regardless to VPORT configuration.
+ * Supported by E4 only.
+ */
+	u8 inner_vlan_removal_en;
 };
 
 
@@ -1403,7 +1407,7 @@ struct vport_start_ramrod_data {
 	u8 ctl_frame_mac_check_en;
 /* If set, control frames will be filtered according to ethtype check. */
 	u8 ctl_frame_ethtype_check_en;
-	u8 reserved[5];
+	u8 reserved[1];
 };
 
 
@@ -1486,6 +1490,7 @@ struct vport_update_ramrod_data {
 	struct vport_update_ramrod_data_cmn common;
 	struct eth_vport_rx_mode rx_mode /* vport rx mode bitmap */;
 	struct eth_vport_tx_mode tx_mode /* vport tx mode bitmap */;
+	__le32 reserved[3];
 /* TPA configuration parameters */
 	struct eth_vport_tpa_param tpa_param;
 	struct vport_update_ramrod_mcast approx_mcast;
@@ -1809,7 +1814,7 @@ struct E4XstormEthConnAgCtxDqExtLdPart {
 	__le16 edpm_num_bds /* physical_q2 */;
 	__le16 tx_bd_cons /* word3 */;
 	__le16 tx_bd_prod /* word4 */;
-	__le16 tx_class /* word5 */;
+	__le16 updated_qm_pq_id /* word5 */;
 	__le16 conn_dpi /* conn_dpi */;
 	u8 byte3 /* byte3 */;
 	u8 byte4 /* byte4 */;
@@ -2153,7 +2158,7 @@ struct e4_xstorm_eth_hw_conn_ag_ctx {
 	__le16 edpm_num_bds /* physical_q2 */;
 	__le16 tx_bd_cons /* word3 */;
 	__le16 tx_bd_prod /* word4 */;
-	__le16 tx_class /* word5 */;
+	__le16 updated_qm_pq_id /* word5 */;
 	__le16 conn_dpi /* conn_dpi */;
 };
 

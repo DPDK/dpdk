@@ -114,6 +114,9 @@ struct init_qm_pq_params {
 	u8 wrr_group /* WRR group */;
 /* Indicates if a rate limiter should be allocated for the PQ (0/1) */
 	u8 rl_valid;
+	u8 port_id /* Port ID */;
+	u8 reserved0;
+	u16 reserved1;
 };
 
 

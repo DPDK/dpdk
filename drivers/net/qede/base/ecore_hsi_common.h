@@ -381,7 +381,7 @@ struct e4_xstorm_core_conn_ag_ctx {
 	__le16 reserved16 /* physical_q2 */;
 	__le16 tx_bd_cons /* word3 */;
 	__le16 tx_bd_or_spq_prod /* word4 */;
-	__le16 word5 /* word5 */;
+	__le16 updated_qm_pq_id /* word5 */;
 	__le16 conn_dpi /* conn_dpi */;
 	u8 byte3 /* byte3 */;
 	u8 byte4 /* byte4 */;
@@ -904,8 +904,10 @@ struct core_rx_start_ramrod_data {
 /* if set, 802.1q tags will be removed and copied to CQE */
 /* if set, 802.1q tags will be removed and copied to CQE */
 	u8 inner_vlan_stripping_en;
-/* if set, outer tag wont be stripped, valid only in MF OVLAN. */
-	u8 outer_vlan_stripping_dis;
+/* if set and inner vlan does not exist, the outer vlan will copied to CQE as
+ * inner vlan. should be used in MF_OVLAN mode only.
+ */
+	u8 report_outer_vlan;
 	u8 queue_id /* Light L2 RX Queue ID */;
 	u8 main_func_queue /* Is this the main queue for the PF */;
 /* Duplicate broadcast packets to LL2 main queue in mf_si mode. Valid if
@@ -1294,7 +1296,10 @@ enum gft_profile_type {
 	GFT_PROFILE_TYPE_4_TUPLE /* 4 tuple, IP type and L4 type match. */,
 /* L4 destination port, IP type and L4 type match. */
 	GFT_PROFILE_TYPE_L4_DST_PORT,
-	GFT_PROFILE_TYPE_IP_DST_PORT /* IP destination port and IP type. */,
+	GFT_PROFILE_TYPE_IP_DST_ADDR /* IP destination port and IP type. */,
+/* tunnel type, inner IP source address and IP type match. */
+	GFT_PROFILE_TYPE_IP_SRC_ADDR,
+	GFT_PROFILE_TYPE_TUNNEL_TYPE /* tunnel type and outer IP type match. */,
 	MAX_GFT_PROFILE_TYPE
 };
 
@@ -1515,7 +1520,10 @@ struct protocol_dcb_data {
 	u8 dcb_priority /* dcbPri flag value */;
 	u8 dcb_tc /* dcb TC value */;
 	u8 dscp_val /* dscp value to write if dscp_enable_flag is set */;
-	u8 reserved0;
+/* When DCB is enabled - if this flag is set, dont add VLAN 0 tag to untagged
+ * frames
+ */
+	u8 dcb_dont_add_vlan0;
 };
 
 /*
@@ -1739,6 +1747,7 @@ struct tstorm_per_port_stat {
 	struct regpair eth_vxlan_tunn_filter_discard;
 /* GENEVE dropped packets */
 	struct regpair eth_geneve_tunn_filter_discard;
+	struct regpair eth_gft_drop_pkt /* GFT dropped packets */;
 };
 
 

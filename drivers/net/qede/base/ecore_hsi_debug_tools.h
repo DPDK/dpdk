@@ -960,7 +960,8 @@ enum dbg_grc_params {
 	DBG_GRC_PARAM_DUMP_CAU /* dump CAU memories (0/1) */,
 	DBG_GRC_PARAM_DUMP_QM /* dump QM memories (0/1) */,
 	DBG_GRC_PARAM_DUMP_MCP /* dump MCP memories (0/1) */,
-	DBG_GRC_PARAM_RESERVED /* reserved */,
+/* MCP Trace meta data size in bytes */
+	DBG_GRC_PARAM_MCP_TRACE_META_SIZE,
 	DBG_GRC_PARAM_DUMP_CFC /* dump CFC memories (0/1) */,
 	DBG_GRC_PARAM_DUMP_IGU /* dump IGU memories (0/1) */,
 	DBG_GRC_PARAM_DUMP_BRB /* dump BRB memories (0/1) */,

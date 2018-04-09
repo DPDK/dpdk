@@ -61,9 +61,10 @@ int ecore_qm_common_rt_init(struct ecore_hwfn *p_hwfn,
  *
  * @param p_hwfn
  * @param p_ptt			- ptt window used for writing the registers
- * @param port_id		- port ID
  * @param pf_id			- PF ID
  * @param max_phys_tcs_per_port	- max number of physical TCs per port in HW
+ * @param is_pf_loading -	  indicates if the PF is currently loading,
+ *				  i.e. it has no allocated QM resources.
  * @param num_pf_cids		- number of connections used by this PF
  * @param num_vf_cids		- number of connections used by VFs of this PF
  * @param num_tids		- number of tasks used by this PF
@@ -87,9 +88,9 @@ int ecore_qm_common_rt_init(struct ecore_hwfn *p_hwfn,
  */
 int ecore_qm_pf_rt_init(struct ecore_hwfn *p_hwfn,
 			struct ecore_ptt *p_ptt,
-			u8 port_id,
 			u8 pf_id,
 			u8 max_phys_tcs_per_port,
+			bool is_pf_loading,
 			u32 num_pf_cids,
 			u32 num_vf_cids,
 			u32 num_tids,
@@ -258,6 +259,16 @@ void ecore_init_brb_ram(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt,
 						struct init_brb_ram_req *req);
 #endif /* UNUSED_HSI_FUNC */
+
+/**
+ * @brief ecore_set_vxlan_no_l2_enable - enable or disable VXLAN no L2 parsing
+ *
+ * @param p_ptt             - ptt window used for writing the registers.
+ * @param enable            - VXLAN no L2 enable flag.
+ */
+void ecore_set_vxlan_no_l2_enable(struct ecore_hwfn *p_hwfn,
+				  struct ecore_ptt *p_ptt,
+				  bool enable);
 
 #ifndef UNUSED_HSI_FUNC
 /**
@@ -462,4 +473,22 @@ void ecore_memset_session_ctx(void *p_ctx_mem,
 void ecore_memset_task_ctx(void *p_ctx_mem,
 			   u32 ctx_size,
 			   u8 ctx_type);
+
+/**
+ * @brief ecore_update_eth_rss_ind_table_entry - Update RSS indirection table
+ * entry.
+ * The function must run in exclusive mode to prevent wrong RSS configuration.
+ *
+ * @param p_hwfn    - HW device data
+ * @param p_ptt  - ptt window used for writing the registers.
+ * @param rss_id - RSS engine ID.
+ * @param ind_table_index -  RSS indirect table index.
+ * @param ind_table_value -  RSS indirect table new value.
+ */
+void ecore_update_eth_rss_ind_table_entry(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt,
+					  u8 rss_id,
+					  u8 ind_table_index,
+					  u16 ind_table_value);
+
 #endif

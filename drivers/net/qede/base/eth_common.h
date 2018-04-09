@@ -119,6 +119,9 @@
 /* Number of etherType values configured by driver for control frame check */
 #define ETH_CTL_FRAME_ETH_TYPE_NUM              4
 
+/* GFS constants */
+#define ETH_GFT_TRASHCAN_VPORT         0x1FF /* GFT drop flow vport number */
+
 
 
 /*

@@ -1427,7 +1427,8 @@ static void ecore_cdu_init_pf(struct ecore_hwfn *p_hwfn)
 	}
 }
 
-void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
+void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      bool is_pf_loading)
 {
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
 	struct ecore_mcp_link_state *p_link;
@@ -1438,8 +1439,9 @@ void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 
 	p_link = &ECORE_LEADING_HWFN(p_hwfn->p_dev)->mcp_info->link_output;
 
-	ecore_qm_pf_rt_init(p_hwfn, p_ptt, p_hwfn->port_id,
-			    p_hwfn->rel_pf_id, qm_info->max_phys_tcs_per_port,
+	ecore_qm_pf_rt_init(p_hwfn, p_ptt, p_hwfn->rel_pf_id,
+			    qm_info->max_phys_tcs_per_port,
+			    is_pf_loading,
 			    iids.cids, iids.vf_cids, iids.tids,
 			    qm_info->start_pq,
 			    qm_info->num_pqs - qm_info->num_vf_pqs,
@@ -1797,7 +1799,7 @@ void ecore_cxt_hw_init_common(struct ecore_hwfn *p_hwfn)
 
 void ecore_cxt_hw_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 {
-	ecore_qm_init_pf(p_hwfn, p_ptt);
+	ecore_qm_init_pf(p_hwfn, p_ptt, true);
 	ecore_cm_init_pf(p_hwfn);
 	ecore_dq_init_pf(p_hwfn);
 	ecore_cdu_init_pf(p_hwfn);
