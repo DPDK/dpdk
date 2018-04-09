@@ -38,6 +38,12 @@ struct ecore_ptt_pool {
 	struct ecore_ptt ptts[PXP_EXTERNAL_BAR_PF_WINDOW_NUM];
 };
 
+void __ecore_ptt_pool_free(struct ecore_hwfn *p_hwfn)
+{
+	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_ptt_pool);
+	p_hwfn->p_ptt_pool = OSAL_NULL;
+}
+
 enum _ecore_status_t ecore_ptt_pool_alloc(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_ptt_pool *p_pool = OSAL_ALLOC(p_hwfn->p_dev,
@@ -65,10 +71,12 @@ enum _ecore_status_t ecore_ptt_pool_alloc(struct ecore_hwfn *p_hwfn)
 
 	p_hwfn->p_ptt_pool = p_pool;
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_pool->lock);
+	if (OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_pool->lock)) {
+		__ecore_ptt_pool_free(p_hwfn);
+		return ECORE_NOMEM;
+	}
 #endif
 	OSAL_SPIN_LOCK_INIT(&p_pool->lock);
-
 	return ECORE_SUCCESS;
 }
 
@@ -89,7 +97,7 @@ void ecore_ptt_pool_free(struct ecore_hwfn *p_hwfn)
 	if (p_hwfn->p_ptt_pool)
 		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->p_ptt_pool->lock);
 #endif
-	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_ptt_pool);
+	__ecore_ptt_pool_free(p_hwfn);
 }
 
 struct ecore_ptt *ecore_ptt_acquire(struct ecore_hwfn *p_hwfn)
@@ -569,7 +577,7 @@ enum _ecore_status_t ecore_dmae_info_alloc(struct ecore_hwfn *p_hwfn)
 
 	*p_comp = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev, p_addr, sizeof(u32));
 	if (*p_comp == OSAL_NULL) {
-		DP_NOTICE(p_hwfn, true,
+		DP_NOTICE(p_hwfn, false,
 			  "Failed to allocate `p_completion_word'\n");
 		goto err;
 	}
@@ -578,7 +586,7 @@ enum _ecore_status_t ecore_dmae_info_alloc(struct ecore_hwfn *p_hwfn)
 	*p_cmd = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev, p_addr,
 					 sizeof(struct dmae_cmd));
 	if (*p_cmd == OSAL_NULL) {
-		DP_NOTICE(p_hwfn, true,
+		DP_NOTICE(p_hwfn, false,
 			  "Failed to allocate `struct dmae_cmd'\n");
 		goto err;
 	}
@@ -587,7 +595,7 @@ enum _ecore_status_t ecore_dmae_info_alloc(struct ecore_hwfn *p_hwfn)
 	*p_buff = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev, p_addr,
 					  sizeof(u32) * DMAE_MAX_RW_SIZE);
 	if (*p_buff == OSAL_NULL) {
-		DP_NOTICE(p_hwfn, true,
+		DP_NOTICE(p_hwfn, false,
 			  "Failed to allocate `intermediate_buffer'\n");
 		goto err;
 	}

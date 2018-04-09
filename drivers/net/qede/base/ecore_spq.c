@@ -401,7 +401,7 @@ enum _ecore_status_t ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 	/* Allocate EQ struct */
 	p_eq = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(*p_eq));
 	if (!p_eq) {
-		DP_NOTICE(p_hwfn, true,
+		DP_NOTICE(p_hwfn, false,
 			  "Failed to allocate `struct ecore_eq'\n");
 		return ECORE_NOMEM;
 	}
@@ -414,7 +414,7 @@ enum _ecore_status_t ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 			      num_elem,
 			      sizeof(union event_ring_element),
 			      &p_eq->chain, OSAL_NULL) != ECORE_SUCCESS) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate eq chain\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate eq chain\n");
 		goto eq_allocate_fail;
 	}
 
@@ -559,8 +559,7 @@ enum _ecore_status_t ecore_spq_alloc(struct ecore_hwfn *p_hwfn)
 	p_spq =
 	    OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(struct ecore_spq));
 	if (!p_spq) {
-		DP_NOTICE(p_hwfn, true,
-			  "Failed to allocate `struct ecore_spq'\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate `struct ecore_spq'\n");
 		return ECORE_NOMEM;
 	}
 
@@ -572,7 +571,7 @@ enum _ecore_status_t ecore_spq_alloc(struct ecore_hwfn *p_hwfn)
 			      0, /* N/A when the mode is SINGLE */
 			      sizeof(struct slow_path_element),
 			      &p_spq->chain, OSAL_NULL)) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate spq chain\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate spq chain\n");
 		goto spq_allocate_fail;
 	}
 
@@ -588,7 +587,8 @@ enum _ecore_status_t ecore_spq_alloc(struct ecore_hwfn *p_hwfn)
 	p_spq->p_phys = p_phys;
 
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_spq->lock);
+	if (OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_spq->lock))
+		goto spq_allocate_fail;
 #endif
 
 	p_hwfn->p_spq = p_spq;
@@ -642,9 +642,7 @@ ecore_spq_get_entry(struct ecore_hwfn *p_hwfn, struct ecore_spq_entry **pp_ent)
 	if (OSAL_LIST_IS_EMPTY(&p_spq->free_pool)) {
 		p_ent = OSAL_ZALLOC(p_hwfn->p_dev, GFP_ATOMIC, sizeof(*p_ent));
 		if (!p_ent) {
-			DP_NOTICE(p_hwfn, true,
-				 "Failed to allocate an SPQ entry for a pending"
-				 " ramrod\n");
+			DP_NOTICE(p_hwfn, false, "Failed to allocate an SPQ entry for a pending ramrod\n");
 			rc = ECORE_NOMEM;
 			goto out_unlock;
 		}
@@ -1025,7 +1023,7 @@ enum _ecore_status_t ecore_consq_alloc(struct ecore_hwfn *p_hwfn)
 	p_consq =
 	    OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(*p_consq));
 	if (!p_consq) {
-		DP_NOTICE(p_hwfn, true,
+		DP_NOTICE(p_hwfn, false,
 			  "Failed to allocate `struct ecore_consq'\n");
 		return ECORE_NOMEM;
 	}
@@ -1038,7 +1036,7 @@ enum _ecore_status_t ecore_consq_alloc(struct ecore_hwfn *p_hwfn)
 			      ECORE_CHAIN_PAGE_SIZE / 0x80,
 			      0x80,
 			      &p_consq->chain, OSAL_NULL) != ECORE_SUCCESS) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate consq chain");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate consq chain");
 		goto consq_allocate_fail;
 	}
 

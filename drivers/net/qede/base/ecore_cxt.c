@@ -834,7 +834,7 @@ static enum _ecore_status_t ecore_cxt_src_t2_alloc(struct ecore_hwfn *p_hwfn)
 				 p_mngr->t2_num_pages *
 				 sizeof(struct ecore_dma_mem));
 	if (!p_mngr->t2) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate t2 table\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate t2 table\n");
 		rc = ECORE_NOMEM;
 		goto t2_fail;
 	}
@@ -919,6 +919,9 @@ static void ecore_ilt_shadow_free(struct ecore_hwfn *p_hwfn)
 	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
 	u32 ilt_size, i;
 
+	if (p_mngr->ilt_shadow == OSAL_NULL)
+		return;
+
 	ilt_size = ecore_cxt_ilt_shadow_size(p_cli);
 
 	for (i = 0; p_mngr->ilt_shadow && i < ilt_size; i++) {
@@ -931,6 +934,7 @@ static void ecore_ilt_shadow_free(struct ecore_hwfn *p_hwfn)
 		p_dma->p_virt = OSAL_NULL;
 	}
 	OSAL_FREE(p_hwfn->p_dev, p_mngr->ilt_shadow);
+	p_mngr->ilt_shadow = OSAL_NULL;
 }
 
 static enum _ecore_status_t
@@ -1000,8 +1004,7 @@ static enum _ecore_status_t ecore_ilt_shadow_alloc(struct ecore_hwfn *p_hwfn)
 					 size * sizeof(struct ecore_dma_mem));
 
 	if (!p_mngr->ilt_shadow) {
-		DP_NOTICE(p_hwfn, true,
-			  "Failed to allocate ilt shadow table\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate ilt shadow table\n");
 		rc = ECORE_NOMEM;
 		goto ilt_shadow_fail;
 	}
@@ -1044,12 +1047,14 @@ static void ecore_cid_map_free(struct ecore_hwfn *p_hwfn)
 
 	for (type = 0; type < MAX_CONN_TYPES; type++) {
 		OSAL_FREE(p_hwfn->p_dev, p_mngr->acquired[type].cid_map);
+		p_mngr->acquired[type].cid_map = OSAL_NULL;
 		p_mngr->acquired[type].max_count = 0;
 		p_mngr->acquired[type].start_cid = 0;
 
 		for (vf = 0; vf < COMMON_MAX_NUM_VFS; vf++) {
 			OSAL_FREE(p_hwfn->p_dev,
 				  p_mngr->acquired_vf[type][vf].cid_map);
+			p_mngr->acquired_vf[type][vf].cid_map = OSAL_NULL;
 			p_mngr->acquired_vf[type][vf].max_count = 0;
 			p_mngr->acquired_vf[type][vf].start_cid = 0;
 		}
@@ -1126,8 +1131,7 @@ enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 
 	p_mngr = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(*p_mngr));
 	if (!p_mngr) {
-		DP_NOTICE(p_hwfn, true,
-			  "Failed to allocate `struct ecore_cxt_mngr'\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate `struct ecore_cxt_mngr'\n");
 		return ECORE_NOMEM;
 	}
 
@@ -1189,21 +1193,21 @@ enum _ecore_status_t ecore_cxt_tables_alloc(struct ecore_hwfn *p_hwfn)
 	/* Allocate the ILT shadow table */
 	rc = ecore_ilt_shadow_alloc(p_hwfn);
 	if (rc) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate ilt memory\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate ilt memory\n");
 		goto tables_alloc_fail;
 	}
 
 	/* Allocate the T2  table */
 	rc = ecore_cxt_src_t2_alloc(p_hwfn);
 	if (rc) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate T2 memory\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate T2 memory\n");
 		goto tables_alloc_fail;
 	}
 
 	/* Allocate and initialize the acquired cids bitmaps */
 	rc = ecore_cid_map_alloc(p_hwfn);
 	if (rc) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate cid maps\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate cid maps\n");
 		goto tables_alloc_fail;
 	}
 

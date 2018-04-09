@@ -1406,8 +1406,7 @@ static enum _ecore_status_t ecore_int_sb_attn_alloc(struct ecore_hwfn *p_hwfn,
 	/* SB struct */
 	p_sb = OSAL_ALLOC(p_dev, GFP_KERNEL, sizeof(*p_sb));
 	if (!p_sb) {
-		DP_NOTICE(p_dev, true,
-			  "Failed to allocate `struct ecore_sb_attn_info'\n");
+		DP_NOTICE(p_dev, false, "Failed to allocate `struct ecore_sb_attn_info'\n");
 		return ECORE_NOMEM;
 	}
 
@@ -1415,8 +1414,7 @@ static enum _ecore_status_t ecore_int_sb_attn_alloc(struct ecore_hwfn *p_hwfn,
 	p_virt = OSAL_DMA_ALLOC_COHERENT(p_dev, &p_phys,
 					 SB_ATTN_ALIGNED_SIZE(p_hwfn));
 	if (!p_virt) {
-		DP_NOTICE(p_dev, true,
-			  "Failed to allocate status block (attentions)\n");
+		DP_NOTICE(p_dev, false, "Failed to allocate status block (attentions)\n");
 		OSAL_FREE(p_dev, p_sb);
 		return ECORE_NOMEM;
 	}
@@ -1795,8 +1793,7 @@ static enum _ecore_status_t ecore_int_sp_sb_alloc(struct ecore_hwfn *p_hwfn,
 	    OSAL_ALLOC(p_hwfn->p_dev, GFP_KERNEL,
 		       sizeof(*p_sb));
 	if (!p_sb) {
-		DP_NOTICE(p_hwfn, true,
-			  "Failed to allocate `struct ecore_sb_info'\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate `struct ecore_sb_info'\n");
 		return ECORE_NOMEM;
 	}
 
@@ -1804,7 +1801,7 @@ static enum _ecore_status_t ecore_int_sp_sb_alloc(struct ecore_hwfn *p_hwfn,
 	p_virt = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
 					 &p_phys, SB_ALIGNED_SIZE(p_hwfn));
 	if (!p_virt) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate status block\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate status block\n");
 		OSAL_FREE(p_hwfn->p_dev, p_sb);
 		return ECORE_NOMEM;
 	}

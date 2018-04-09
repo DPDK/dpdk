@@ -32,7 +32,7 @@ void ecore_init_dp(struct ecore_dev *p_dev,
  *
  * @param p_dev
  */
-void ecore_init_struct(struct ecore_dev *p_dev);
+enum _ecore_status_t ecore_init_struct(struct ecore_dev *p_dev);
 
 /**
  * @brief ecore_resc_free -

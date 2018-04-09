@@ -39,7 +39,7 @@
  * there's more than a single compiled ecore component in system].
  */
 static osal_spinlock_t qm_lock;
-static bool qm_lock_init;
+static u32 qm_lock_ref_cnt;
 
 /******************** Doorbell Recovery *******************/
 /* The doorbell recovery mechanism consists of a list of entries which represent
@@ -227,7 +227,8 @@ enum _ecore_status_t ecore_db_recovery_setup(struct ecore_hwfn *p_hwfn)
 
 	OSAL_LIST_INIT(&p_hwfn->db_recovery_info.list);
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_hwfn->db_recovery_info.lock);
+	if (OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_hwfn->db_recovery_info.lock))
+		return ECORE_NOMEM;
 #endif
 	OSAL_SPIN_LOCK_INIT(&p_hwfn->db_recovery_info.lock);
 	p_hwfn->db_recovery_info.db_recovery_counter = 0;
@@ -411,7 +412,7 @@ void ecore_init_dp(struct ecore_dev *p_dev,
 	}
 }
 
-void ecore_init_struct(struct ecore_dev *p_dev)
+enum _ecore_status_t ecore_init_struct(struct ecore_dev *p_dev)
 {
 	u8 i;
 
@@ -423,7 +424,8 @@ void ecore_init_struct(struct ecore_dev *p_dev)
 		p_hwfn->b_active = false;
 
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-		OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_hwfn->dmae_info.lock);
+		if (OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_hwfn->dmae_info.lock))
+			goto handle_err;
 #endif
 		OSAL_SPIN_LOCK_INIT(&p_hwfn->dmae_info.lock);
 	}
@@ -433,6 +435,17 @@ void ecore_init_struct(struct ecore_dev *p_dev)
 
 	/* set the default cache alignment to 128 (may be overridden later) */
 	p_dev->cache_shift = 7;
+	return ECORE_SUCCESS;
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+handle_err:
+	while (--i) {
+		struct ecore_hwfn *p_hwfn = OSAL_NULL;
+
+		p_hwfn = &p_dev->hwfns[i];
+		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->dmae_info.lock);
+	}
+	return ECORE_NOMEM;
+#endif
 }
 
 static void ecore_qm_info_free(struct ecore_hwfn *p_hwfn)
@@ -1289,16 +1302,14 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 		/* DMA info initialization */
 		rc = ecore_dmae_info_alloc(p_hwfn);
 		if (rc) {
-			DP_NOTICE(p_hwfn, true,
-				  "Failed to allocate memory for dmae_info"
-				  " structure\n");
+			DP_NOTICE(p_hwfn, false, "Failed to allocate memory for dmae_info structure\n");
 			goto alloc_err;
 		}
 
 		/* DCBX initialization */
 		rc = ecore_dcbx_info_alloc(p_hwfn);
 		if (rc) {
-			DP_NOTICE(p_hwfn, true,
+			DP_NOTICE(p_hwfn, false,
 				  "Failed to allocate memory for dcbx structure\n");
 			goto alloc_err;
 		}
@@ -1307,7 +1318,7 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 	p_dev->reset_stats = OSAL_ZALLOC(p_dev, GFP_KERNEL,
 					 sizeof(*p_dev->reset_stats));
 	if (!p_dev->reset_stats) {
-		DP_NOTICE(p_dev, true, "Failed to allocate reset statistics\n");
+		DP_NOTICE(p_dev, false, "Failed to allocate reset statistics\n");
 		goto alloc_no_mem;
 	}
 
@@ -2211,42 +2222,43 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 			DP_NOTICE(p_hwfn, true,
 				  "Function start ramrod failed\n");
 		} else {
-			prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_TAG1);
-			DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
-				   "PRS_REG_SEARCH_TAG1: %x\n", prs_reg);
-
-			if (p_hwfn->hw_info.personality == ECORE_PCI_FCOE) {
-				ecore_wr(p_hwfn, p_ptt, PRS_REG_SEARCH_TAG1,
-					 (1 << 2));
-				ecore_wr(p_hwfn, p_ptt,
-				    PRS_REG_PKT_LEN_STAT_TAGS_NOT_COUNTED_FIRST,
-				    0x100);
-			}
-			DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
-				   "PRS_REG_SEARCH registers after start PFn\n");
-			prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_TCP);
-			DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
-				   "PRS_REG_SEARCH_TCP: %x\n", prs_reg);
-			prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_UDP);
-			DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
-				   "PRS_REG_SEARCH_UDP: %x\n", prs_reg);
-			prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_FCOE);
-			DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
-				   "PRS_REG_SEARCH_FCOE: %x\n", prs_reg);
-			prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_ROCE);
-			DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
-				   "PRS_REG_SEARCH_ROCE: %x\n", prs_reg);
-			prs_reg = ecore_rd(p_hwfn, p_ptt,
-					   PRS_REG_SEARCH_TCP_FIRST_FRAG);
-			DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
-				   "PRS_REG_SEARCH_TCP_FIRST_FRAG: %x\n",
-				   prs_reg);
-			prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_TAG1);
-			DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
-				   "PRS_REG_SEARCH_TAG1: %x\n", prs_reg);
+			return rc;
 		}
+		prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_TAG1);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+				"PRS_REG_SEARCH_TAG1: %x\n", prs_reg);
+
+		if (p_hwfn->hw_info.personality == ECORE_PCI_FCOE) {
+			ecore_wr(p_hwfn, p_ptt, PRS_REG_SEARCH_TAG1,
+					(1 << 2));
+			ecore_wr(p_hwfn, p_ptt,
+				 PRS_REG_PKT_LEN_STAT_TAGS_NOT_COUNTED_FIRST,
+				 0x100);
+		}
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+				"PRS_REG_SEARCH registers after start PFn\n");
+		prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_TCP);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+				"PRS_REG_SEARCH_TCP: %x\n", prs_reg);
+		prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_UDP);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+				"PRS_REG_SEARCH_UDP: %x\n", prs_reg);
+		prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_FCOE);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+				"PRS_REG_SEARCH_FCOE: %x\n", prs_reg);
+		prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_ROCE);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+				"PRS_REG_SEARCH_ROCE: %x\n", prs_reg);
+		prs_reg = ecore_rd(p_hwfn, p_ptt,
+				PRS_REG_SEARCH_TCP_FIRST_FRAG);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+				"PRS_REG_SEARCH_TCP_FIRST_FRAG: %x\n",
+				prs_reg);
+		prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_TAG1);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+				"PRS_REG_SEARCH_TAG1: %x\n", prs_reg);
 	}
-	return rc;
+	return ECORE_SUCCESS;
 }
 
 enum _ecore_status_t ecore_pglueb_set_pfid_enable(struct ecore_hwfn *p_hwfn,
@@ -2419,7 +2431,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		rc = ecore_mcp_load_req(p_hwfn, p_hwfn->p_main_ptt,
 					&load_req_params);
 		if (rc != ECORE_SUCCESS) {
-			DP_NOTICE(p_hwfn, true,
+			DP_NOTICE(p_hwfn, false,
 				  "Failed sending a LOAD_REQ command\n");
 			return rc;
 		}
@@ -2452,10 +2464,17 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		p_hwfn->first_on_engine = (load_code ==
 					   FW_MSG_CODE_DRV_LOAD_ENGINE);
 
-		if (!qm_lock_init) {
+		if (!qm_lock_ref_cnt) {
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+			rc = OSAL_SPIN_LOCK_ALLOC(p_hwfn, &qm_lock);
+			if (rc) {
+				DP_ERR(p_hwfn, "qm_lock allocation failed\n");
+				goto qm_lock_fail;
+			}
+#endif
 			OSAL_SPIN_LOCK_INIT(&qm_lock);
-			qm_lock_init = true;
 		}
+		++qm_lock_ref_cnt;
 
 		/* Clean up chip from previous driver if such remains exist.
 		 * This is not needed when the PF is the first one on the
@@ -2510,15 +2529,23 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		}
 
 		if (rc != ECORE_SUCCESS) {
-			DP_NOTICE(p_hwfn, true,
+			DP_NOTICE(p_hwfn, false,
 				  "init phase failed for loadcode 0x%x (rc %d)\n",
 				  load_code, rc);
 			goto load_err;
 		}
 
 		rc = ecore_mcp_load_done(p_hwfn, p_hwfn->p_main_ptt);
-		if (rc != ECORE_SUCCESS)
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_hwfn, false,
+				  "Sending load done failed, rc = %d\n", rc);
+			if (rc == ECORE_NOMEM) {
+				DP_NOTICE(p_hwfn, false,
+					  "Sending load done was failed due to memory allocation failure\n");
+				goto load_err;
+			}
 			return rc;
+		}
 
 		/* send DCBX attention request command */
 		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
@@ -2528,7 +2555,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 				   1 << DRV_MB_PARAM_DCBX_NOTIFY_OFFSET, &resp,
 				   &param);
 		if (rc != ECORE_SUCCESS) {
-			DP_NOTICE(p_hwfn, true,
+			DP_NOTICE(p_hwfn, false,
 				  "Failed to send DCBX attention request\n");
 			return rc;
 		}
@@ -2561,6 +2588,12 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 	return rc;
 
 load_err:
+	--qm_lock_ref_cnt;
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	if (!qm_lock_ref_cnt)
+		OSAL_SPIN_LOCK_DEALLOC(&qm_lock);
+qm_lock_fail:
+#endif
 	/* The MFW load lock should be released regardless of success or failure
 	 * of initialization.
 	 * TODO: replace this with an attempt to send cancel_load.
@@ -2595,8 +2628,8 @@ static void ecore_hw_timers_stop(struct ecore_dev *p_dev,
 	if (i < ECORE_HW_STOP_RETRY_LIMIT)
 		return;
 
-	DP_NOTICE(p_hwfn, true, "Timers linear scans are not over"
-		  " [Connection %02x Tasks %02x]\n",
+	DP_NOTICE(p_hwfn, false,
+		  "Timers linear scans are not over [Connection %02x Tasks %02x]\n",
 		  (u8)ecore_rd(p_hwfn, p_ptt, TM_REG_PF_SCAN_ACTIVE_CONN),
 		  (u8)ecore_rd(p_hwfn, p_ptt, TM_REG_PF_SCAN_ACTIVE_TASK));
 }
@@ -2661,7 +2694,7 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 		if (!p_dev->recov_in_prog) {
 			rc = ecore_mcp_unload_req(p_hwfn, p_ptt);
 			if (rc != ECORE_SUCCESS) {
-				DP_NOTICE(p_hwfn, true,
+				DP_NOTICE(p_hwfn, false,
 					  "Failed sending a UNLOAD_REQ command. rc = %d.\n",
 					  rc);
 				rc2 = ECORE_UNKNOWN_ERROR;
@@ -2676,7 +2709,7 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 
 		rc = ecore_sp_pf_stop(p_hwfn);
 		if (rc != ECORE_SUCCESS) {
-			DP_NOTICE(p_hwfn, true,
+			DP_NOTICE(p_hwfn, false,
 				  "Failed to close PF against FW [rc = %d]. Continue to stop HW to prevent illegal host access by the device.\n",
 				  rc);
 			rc2 = ECORE_UNKNOWN_ERROR;
@@ -2730,10 +2763,21 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 		ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_DB_ENABLE, 0);
 		ecore_wr(p_hwfn, p_ptt, QM_REG_PF_EN, 0);
 
+		--qm_lock_ref_cnt;
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+		if (!qm_lock_ref_cnt)
+			OSAL_SPIN_LOCK_DEALLOC(&qm_lock);
+#endif
+
 		if (!p_dev->recov_in_prog) {
-			ecore_mcp_unload_done(p_hwfn, p_ptt);
+			rc = ecore_mcp_unload_done(p_hwfn, p_ptt);
+			if (rc == ECORE_NOMEM) {
+				DP_NOTICE(p_hwfn, false,
+					 "Failed sending an UNLOAD_DONE command due to a memory allocation failure. Resending.\n");
+				rc = ecore_mcp_unload_done(p_hwfn, p_ptt);
+			}
 			if (rc != ECORE_SUCCESS) {
-				DP_NOTICE(p_hwfn, true,
+				DP_NOTICE(p_hwfn, false,
 					  "Failed sending a UNLOAD_DONE command. rc = %d.\n",
 					  rc);
 				rc2 = ECORE_UNKNOWN_ERROR;
@@ -2984,7 +3028,7 @@ __ecore_hw_set_soft_resc_size(struct ecore_hwfn *p_hwfn,
 	rc = ecore_mcp_set_resc_max_val(p_hwfn, p_ptt, res_id,
 					resc_max_val, p_mcp_resp);
 	if (rc != ECORE_SUCCESS) {
-		DP_NOTICE(p_hwfn, true,
+		DP_NOTICE(p_hwfn, false,
 			  "MFW response failure for a max value setting of resource %d [%s]\n",
 			  res_id, ecore_hw_get_resc_name(res_id));
 		return rc;
@@ -4085,7 +4129,7 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	/* Allocate PTT pool */
 	rc = ecore_ptt_pool_alloc(p_hwfn);
 	if (rc) {
-		DP_NOTICE(p_hwfn, true, "Failed to prepare hwfn's hw\n");
+		DP_NOTICE(p_hwfn, false, "Failed to prepare hwfn's hw\n");
 		if (p_params->b_relaxed_probe)
 			p_params->p_relaxed_res = ECORE_HW_PREPARE_FAILED_MEM;
 		goto err0;
@@ -4110,7 +4154,7 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	/* Initialize MCP structure */
 	rc = ecore_mcp_cmd_init(p_hwfn, p_hwfn->p_main_ptt);
 	if (rc) {
-		DP_NOTICE(p_hwfn, true, "Failed initializing mcp command\n");
+		DP_NOTICE(p_hwfn, false, "Failed initializing mcp command\n");
 		if (p_params->b_relaxed_probe)
 			p_params->p_relaxed_res = ECORE_HW_PREPARE_FAILED_MEM;
 		goto err1;
@@ -4120,7 +4164,7 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	rc = ecore_get_hw_info(p_hwfn, p_hwfn->p_main_ptt,
 			       p_params->personality, p_params);
 	if (rc) {
-		DP_NOTICE(p_hwfn, true, "Failed to get HW information\n");
+		DP_NOTICE(p_hwfn, false, "Failed to get HW information\n");
 		goto err2;
 	}
 
@@ -4163,7 +4207,7 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	/* Allocate the init RT array and initialize the init-ops engine */
 	rc = ecore_init_alloc(p_hwfn);
 	if (rc) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate the init array\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate the init array\n");
 		if (p_params->b_relaxed_probe)
 			p_params->p_relaxed_res = ECORE_HW_PREPARE_FAILED_MEM;
 		goto err2;
@@ -4253,8 +4297,7 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 				ecore_mcp_free(p_hwfn);
 				ecore_hw_hwfn_free(p_hwfn);
 			} else {
-				DP_NOTICE(p_dev, true,
-					  "What do we need to free when VF hwfn1 init fails\n");
+				DP_NOTICE(p_dev, false, "What do we need to free when VF hwfn1 init fails\n");
 			}
 			return rc;
 		}
@@ -4416,7 +4459,7 @@ ecore_chain_alloc_next_ptr(struct ecore_dev *p_dev, struct ecore_chain *p_chain)
 		p_virt = OSAL_DMA_ALLOC_COHERENT(p_dev, &p_phys,
 						 ECORE_CHAIN_PAGE_SIZE);
 		if (!p_virt) {
-			DP_NOTICE(p_dev, true,
+			DP_NOTICE(p_dev, false,
 				  "Failed to allocate chain memory\n");
 			return ECORE_NOMEM;
 		}
@@ -4449,7 +4492,7 @@ ecore_chain_alloc_single(struct ecore_dev *p_dev, struct ecore_chain *p_chain)
 
 	p_virt = OSAL_DMA_ALLOC_COHERENT(p_dev, &p_phys, ECORE_CHAIN_PAGE_SIZE);
 	if (!p_virt) {
-		DP_NOTICE(p_dev, true, "Failed to allocate chain memory\n");
+		DP_NOTICE(p_dev, false, "Failed to allocate chain memory\n");
 		return ECORE_NOMEM;
 	}
 
@@ -4473,7 +4516,7 @@ ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
 	size = page_cnt * sizeof(*pp_virt_addr_tbl);
 	pp_virt_addr_tbl = (void **)OSAL_VZALLOC(p_dev, size);
 	if (!pp_virt_addr_tbl) {
-		DP_NOTICE(p_dev, true,
+		DP_NOTICE(p_dev, false,
 			  "Failed to allocate memory for the chain virtual addresses table\n");
 		return ECORE_NOMEM;
 	}
@@ -4497,7 +4540,7 @@ ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
 	ecore_chain_init_pbl_mem(p_chain, p_pbl_virt, p_pbl_phys,
 				 pp_virt_addr_tbl);
 	if (!p_pbl_virt) {
-		DP_NOTICE(p_dev, true, "Failed to allocate chain pbl memory\n");
+		DP_NOTICE(p_dev, false, "Failed to allocate chain pbl memory\n");
 		return ECORE_NOMEM;
 	}
 
@@ -4505,7 +4548,7 @@ ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
 		p_virt = OSAL_DMA_ALLOC_COHERENT(p_dev, &p_phys,
 						 ECORE_CHAIN_PAGE_SIZE);
 		if (!p_virt) {
-			DP_NOTICE(p_dev, true,
+			DP_NOTICE(p_dev, false,
 				  "Failed to allocate chain memory\n");
 			return ECORE_NOMEM;
 		}
@@ -4545,7 +4588,7 @@ enum _ecore_status_t ecore_chain_alloc(struct ecore_dev *p_dev,
 	rc = ecore_chain_alloc_sanity_check(p_dev, cnt_type, elem_size,
 					    page_cnt);
 	if (rc) {
-		DP_NOTICE(p_dev, true,
+		DP_NOTICE(p_dev, false,
 			  "Cannot allocate a chain with the given arguments:\n"
 			  "[use_mode %d, mode %d, cnt_type %d, num_elems %d, elem_size %zu]\n",
 			  intended_use, mode, cnt_type, num_elems, elem_size);

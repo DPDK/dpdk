@@ -910,7 +910,7 @@ enum _ecore_status_t ecore_dcbx_info_alloc(struct ecore_hwfn *p_hwfn)
 	p_hwfn->p_dcbx_info = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,
 					  sizeof(*p_hwfn->p_dcbx_info));
 	if (!p_hwfn->p_dcbx_info) {
-		DP_NOTICE(p_hwfn, true,
+		DP_NOTICE(p_hwfn, false,
 			  "Failed to allocate `struct ecore_dcbx_info'");
 		return ECORE_NOMEM;
 	}

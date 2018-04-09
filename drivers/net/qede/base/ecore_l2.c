@@ -77,7 +77,8 @@ enum _ecore_status_t ecore_l2_alloc(struct ecore_hwfn *p_hwfn)
 	}
 
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_MUTEX_ALLOC(p_hwfn, &p_l2_info->lock);
+	if (OSAL_MUTEX_ALLOC(p_hwfn, &p_l2_info->lock))
+		return ECORE_NOMEM;
 #endif
 
 	return ECORE_SUCCESS;
@@ -110,6 +111,7 @@ void ecore_l2_free(struct ecore_hwfn *p_hwfn)
 			break;
 		OSAL_VFREE(p_hwfn->p_dev,
 			   p_hwfn->p_l2_info->pp_qid_usage[i]);
+		p_hwfn->p_l2_info->pp_qid_usage[i] = OSAL_NULL;
 	}
 
 #ifdef CONFIG_ECORE_LOCK_ALLOC
@@ -119,6 +121,7 @@ void ecore_l2_free(struct ecore_hwfn *p_hwfn)
 #endif
 
 	OSAL_VFREE(p_hwfn->p_dev, p_hwfn->p_l2_info->pp_qid_usage);
+	p_hwfn->p_l2_info->pp_qid_usage = OSAL_NULL;
 
 out_l2_info:
 	OSAL_VFREE(p_hwfn->p_dev, p_hwfn->p_l2_info);

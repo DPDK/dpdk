@@ -240,15 +240,24 @@ enum _ecore_status_t ecore_mcp_cmd_init(struct ecore_hwfn *p_hwfn,
 
 	/* Allocate mcp_info structure */
 	p_hwfn->mcp_info = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,
-				       sizeof(*p_hwfn->mcp_info));
-	if (!p_hwfn->mcp_info)
-		goto err;
+			sizeof(*p_hwfn->mcp_info));
+	if (!p_hwfn->mcp_info) {
+		DP_NOTICE(p_hwfn, false, "Failed to allocate mcp_info\n");
+		return ECORE_NOMEM;
+	}
 	p_info = p_hwfn->mcp_info;
 
 	/* Initialize the MFW spinlocks */
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->cmd_lock);
-	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->link_lock);
+	if (OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->cmd_lock)) {
+		OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info);
+		return ECORE_NOMEM;
+	}
+	if (OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->link_lock)) {
+		OSAL_SPIN_LOCK_DEALLOC(&p_info->cmd_lock);
+		OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info);
+		return ECORE_NOMEM;
+	}
 #endif
 	OSAL_SPIN_LOCK_INIT(&p_info->cmd_lock);
 	OSAL_SPIN_LOCK_INIT(&p_info->link_lock);
@@ -272,7 +281,7 @@ enum _ecore_status_t ecore_mcp_cmd_init(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 
 err:
-	DP_NOTICE(p_hwfn, true, "Failed to allocate mcp memory\n");
+	DP_NOTICE(p_hwfn, false, "Failed to allocate mcp memory\n");
 	ecore_mcp_free(p_hwfn);
 	return ECORE_NOMEM;
 }

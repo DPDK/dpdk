@@ -590,8 +590,7 @@ enum _ecore_status_t ecore_iov_alloc(struct ecore_hwfn *p_hwfn)
 
 	p_sriov = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(*p_sriov));
 	if (!p_sriov) {
-		DP_NOTICE(p_hwfn, true,
-			  "Failed to allocate `struct ecore_sriov'\n");
+		DP_NOTICE(p_hwfn, false, "Failed to allocate `struct ecore_sriov'\n");
 		return ECORE_NOMEM;
 	}
 
@@ -648,7 +647,7 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn)
 	p_dev->p_iov_info = OSAL_ZALLOC(p_dev, GFP_KERNEL,
 					sizeof(*p_dev->p_iov_info));
 	if (!p_dev->p_iov_info) {
-		DP_NOTICE(p_hwfn, true,
+		DP_NOTICE(p_hwfn, false,
 			  "Can't support IOV due to lack of memory\n");
 		return ECORE_NOMEM;
 	}
