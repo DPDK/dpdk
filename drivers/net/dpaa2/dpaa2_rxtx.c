@@ -481,14 +481,15 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
 	struct rte_eth_dev *dev = dpaa2_q->dev;
 
-	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
-		ret = dpaa2_affine_qbman_swp();
+	if (unlikely(!DPAA2_PER_LCORE_ETHRX_DPIO)) {
+		ret = dpaa2_affine_qbman_ethrx_swp();
 		if (ret) {
 			DPAA2_PMD_ERR("Failure in affining portal");
 			return 0;
 		}
 	}
-	swp = DPAA2_PER_LCORE_PORTAL;
+	swp = DPAA2_PER_LCORE_ETHRX_PORTAL;
+
 	if (unlikely(!q_storage->active_dqs)) {
 		q_storage->toggle = 0;
 		dq_storage = q_storage->dq_storage[q_storage->toggle];
@@ -500,11 +501,12 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		qbman_pull_desc_set_fq(&pulldesc, fqid);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 			(dma_addr_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
-		if (check_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)) {
+		if (check_swp_active_dqs(DPAA2_PER_LCORE_ETHRX_DPIO->index)) {
 			while (!qbman_check_command_complete(
-			       get_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)))
+			       get_swp_active_dqs(
+			       DPAA2_PER_LCORE_ETHRX_DPIO->index)))
 				;
-			clear_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index);
+			clear_swp_active_dqs(DPAA2_PER_LCORE_ETHRX_DPIO->index);
 		}
 		while (1) {
 			if (qbman_swp_pull(swp, &pulldesc)) {
@@ -516,8 +518,9 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			break;
 		}
 		q_storage->active_dqs = dq_storage;
-		q_storage->active_dpio_id = DPAA2_PER_LCORE_DPIO->index;
-		set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage);
+		q_storage->active_dpio_id = DPAA2_PER_LCORE_ETHRX_DPIO->index;
+		set_swp_active_dqs(DPAA2_PER_LCORE_ETHRX_DPIO->index,
+				   dq_storage);
 	}
 
 	dq_storage = q_storage->active_dqs;
@@ -583,11 +586,11 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		num_rx++;
 	} while (pending);
 
-	if (check_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)) {
+	if (check_swp_active_dqs(DPAA2_PER_LCORE_ETHRX_DPIO->index)) {
 		while (!qbman_check_command_complete(
-		       get_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)))
+		       get_swp_active_dqs(DPAA2_PER_LCORE_ETHRX_DPIO->index)))
 			;
-		clear_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index);
+		clear_swp_active_dqs(DPAA2_PER_LCORE_ETHRX_DPIO->index);
 	}
 	/* issue a volatile dequeue command for next pull */
 	while (1) {
@@ -599,8 +602,8 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		break;
 	}
 	q_storage->active_dqs = dq_storage1;
-	q_storage->active_dpio_id = DPAA2_PER_LCORE_DPIO->index;
-	set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage1);
+	q_storage->active_dpio_id = DPAA2_PER_LCORE_ETHRX_DPIO->index;
+	set_swp_active_dqs(DPAA2_PER_LCORE_ETHRX_DPIO->index, dq_storage1);
 
 	dpaa2_q->rx_pkts += num_rx;
 

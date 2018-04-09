@@ -13,7 +13,7 @@
 
 struct dpaa2_io_portal_t {
 	struct dpaa2_dpio_dev *dpio_dev;
-	struct dpaa2_dpio_dev *sec_dpio_dev;
+	struct dpaa2_dpio_dev *ethrx_dpio_dev;
 	uint64_t net_tid;
 	uint64_t sec_tid;
 	void *eventdev;
@@ -25,8 +25,8 @@ RTE_DECLARE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 #define DPAA2_PER_LCORE_DPIO RTE_PER_LCORE(_dpaa2_io).dpio_dev
 #define DPAA2_PER_LCORE_PORTAL DPAA2_PER_LCORE_DPIO->sw_portal
 
-#define DPAA2_PER_LCORE_SEC_DPIO RTE_PER_LCORE(_dpaa2_io).sec_dpio_dev
-#define DPAA2_PER_LCORE_SEC_PORTAL DPAA2_PER_LCORE_SEC_DPIO->sw_portal
+#define DPAA2_PER_LCORE_ETHRX_DPIO RTE_PER_LCORE(_dpaa2_io).ethrx_dpio_dev
+#define DPAA2_PER_LCORE_ETHRX_PORTAL DPAA2_PER_LCORE_ETHRX_DPIO->sw_portal
 
 /* Variable to store DPAA2 platform type */
 extern uint32_t dpaa2_svr_family;
@@ -39,7 +39,7 @@ struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(int cpu_id);
 int dpaa2_affine_qbman_swp(void);
 
 /* Affine additional DPIO portal to current crypto processing thread */
-int dpaa2_affine_qbman_swp_sec(void);
+int dpaa2_affine_qbman_ethrx_swp(void);
 
 /* allocate memory for FQ - dq storage */
 int

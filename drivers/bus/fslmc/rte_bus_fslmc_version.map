@@ -2,7 +2,6 @@ DPDK_17.05 {
 	global:
 
 	dpaa2_affine_qbman_swp;
-	dpaa2_affine_qbman_swp_sec;
 	dpaa2_alloc_dpbp_dev;
 	dpaa2_alloc_dq_storage;
 	dpaa2_free_dpbp_dev;
@@ -101,3 +100,10 @@ DPDK_18.02 {
 	rte_fslmc_get_device_count;
 
 } DPDK_17.11;
+
+DPDK_18.05 {
+	global:
+
+	dpaa2_affine_qbman_ethrx_swp;
+
+} DPDK_18.02;

@@ -350,7 +350,7 @@ dpaa2_affine_qbman_swp(void)
 }
 
 int
-dpaa2_affine_qbman_swp_sec(void)
+dpaa2_affine_qbman_ethrx_swp(void)
 {
 	unsigned int lcore_id = rte_lcore_id();
 	uint64_t tid = syscall(SYS_gettid);
@@ -361,35 +361,36 @@ dpaa2_affine_qbman_swp_sec(void)
 	else if (lcore_id >= RTE_MAX_LCORE)
 		return -1;
 
-	if (dpaa2_io_portal[lcore_id].sec_dpio_dev) {
+	if (dpaa2_io_portal[lcore_id].ethrx_dpio_dev) {
 		DPAA2_BUS_DP_INFO(
 			"DPAA Portal=%p (%d) is being shared between thread"
 			" %" PRIu64 " and current %" PRIu64 "\n",
-			dpaa2_io_portal[lcore_id].sec_dpio_dev,
-			dpaa2_io_portal[lcore_id].sec_dpio_dev->index,
+			dpaa2_io_portal[lcore_id].ethrx_dpio_dev,
+			dpaa2_io_portal[lcore_id].ethrx_dpio_dev->index,
 			dpaa2_io_portal[lcore_id].sec_tid,
 			tid);
-		RTE_PER_LCORE(_dpaa2_io).sec_dpio_dev
-			= dpaa2_io_portal[lcore_id].sec_dpio_dev;
+		RTE_PER_LCORE(_dpaa2_io).ethrx_dpio_dev
+			= dpaa2_io_portal[lcore_id].ethrx_dpio_dev;
 		rte_atomic16_inc(&dpaa2_io_portal
-				 [lcore_id].sec_dpio_dev->ref_count);
+				 [lcore_id].ethrx_dpio_dev->ref_count);
 		dpaa2_io_portal[lcore_id].sec_tid = tid;
 
 		DPAA2_BUS_DP_DEBUG(
 			"Old Portal=%p (%d) affined thread"
 			" - %" PRIu64 "\n",
-			dpaa2_io_portal[lcore_id].sec_dpio_dev,
-			dpaa2_io_portal[lcore_id].sec_dpio_dev->index,
+			dpaa2_io_portal[lcore_id].ethrx_dpio_dev,
+			dpaa2_io_portal[lcore_id].ethrx_dpio_dev->index,
 			tid);
 		return 0;
 	}
 
 	/* Populate the dpaa2_io_portal structure */
-	dpaa2_io_portal[lcore_id].sec_dpio_dev = dpaa2_get_qbman_swp(lcore_id);
+	dpaa2_io_portal[lcore_id].ethrx_dpio_dev =
+		dpaa2_get_qbman_swp(lcore_id);
 
-	if (dpaa2_io_portal[lcore_id].sec_dpio_dev) {
-		RTE_PER_LCORE(_dpaa2_io).sec_dpio_dev
-			= dpaa2_io_portal[lcore_id].sec_dpio_dev;
+	if (dpaa2_io_portal[lcore_id].ethrx_dpio_dev) {
+		RTE_PER_LCORE(_dpaa2_io).ethrx_dpio_dev
+			= dpaa2_io_portal[lcore_id].ethrx_dpio_dev;
 		dpaa2_io_portal[lcore_id].sec_tid = tid;
 		return 0;
 	} else {

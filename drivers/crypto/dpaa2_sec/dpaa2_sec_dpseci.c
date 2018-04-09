@@ -1159,14 +1159,14 @@ dpaa2_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 	qbman_eq_desc_set_response(&eqdesc, 0, 0);
 	qbman_eq_desc_set_fq(&eqdesc, dpaa2_qp->tx_vq.fqid);
 
-	if (!DPAA2_PER_LCORE_SEC_DPIO) {
-		ret = dpaa2_affine_qbman_swp_sec();
+	if (!DPAA2_PER_LCORE_DPIO) {
+		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			DPAA2_SEC_ERR("Failure in affining portal");
 			return 0;
 		}
 	}
-	swp = DPAA2_PER_LCORE_SEC_PORTAL;
+	swp = DPAA2_PER_LCORE_PORTAL;
 
 	while (nb_ops) {
 		frames_to_send = (nb_ops >> 3) ? MAX_TX_RING_SLOTS : nb_ops;
@@ -1307,14 +1307,14 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 	const struct qbman_fd *fd;
 	struct qbman_pull_desc pulldesc;
 
-	if (!DPAA2_PER_LCORE_SEC_DPIO) {
-		ret = dpaa2_affine_qbman_swp_sec();
+	if (!DPAA2_PER_LCORE_DPIO) {
+		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			DPAA2_SEC_ERR("Failure in affining portal");
 			return 0;
 		}
 	}
-	swp = DPAA2_PER_LCORE_SEC_PORTAL;
+	swp = DPAA2_PER_LCORE_PORTAL;
 	dq_storage = dpaa2_qp->rx_vq.q_storage->dq_storage[0];
 
 	qbman_pull_desc_clear(&pulldesc);
