@@ -1105,10 +1105,10 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 			dpaa_push_mode_max_queue = DPAA_MAX_PUSH_MODE_QUEUE;
 	}
 
-	/* Each device can not have more than DPAA_PCD_FQID_MULTIPLIER RX
+	/* Each device can not have more than DPAA_MAX_NUM_PCD_QUEUES RX
 	 * queues.
 	 */
-	if (num_rx_fqs <= 0 || num_rx_fqs > DPAA_PCD_FQID_MULTIPLIER) {
+	if (num_rx_fqs <= 0 || num_rx_fqs > DPAA_MAX_NUM_PCD_QUEUES) {
 		DPAA_PMD_ERR("Invalid number of RX queues\n");
 		return -EINVAL;
 	}
