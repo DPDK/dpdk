@@ -335,9 +335,12 @@ dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 static int
 dpaa_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		      struct rte_eth_xstat_name *xstats_names,
-		      __rte_unused unsigned int limit)
+		      unsigned int limit)
 {
 	unsigned int i, stat_cnt = RTE_DIM(dpaa_xstats_strings);
+
+	if (limit < stat_cnt)
+		return stat_cnt;
 
 	if (xstats_names != NULL)
 		for (i = 0; i < stat_cnt; i++)
@@ -366,7 +369,7 @@ dpaa_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 			return 0;
 
 		fman_if_stats_get_all(dpaa_intf->fif, values_copy,
-				      sizeof(struct dpaa_if_stats));
+				      sizeof(struct dpaa_if_stats) / 8);
 
 		for (i = 0; i < stat_cnt; i++)
 			values[i] =
