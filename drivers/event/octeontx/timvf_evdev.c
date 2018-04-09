@@ -125,7 +125,9 @@ static int
 timvf_ring_start(const struct rte_event_timer_adapter *adptr)
 {
 	int ret;
+	uint8_t use_fpa = 0;
 	uint64_t interval;
+	uintptr_t pool;
 	struct timvf_ctrl_reg rctrl;
 	struct timvf_mbox_dev_info dinfo;
 	struct timvf_ring *timr = adptr->data->adapter_priv;
@@ -155,6 +157,9 @@ timvf_ring_start(const struct rte_event_timer_adapter *adptr)
 		return -EINVAL;
 	}
 
+	if (!strcmp(rte_mbuf_best_mempool_ops(), "octeontx_fpavf"))
+		use_fpa = 1;
+
 	/*CTRL0 register.*/
 	rctrl.rctrl0 = interval;
 
@@ -167,9 +172,24 @@ timvf_ring_start(const struct rte_event_timer_adapter *adptr)
 
 	rctrl.rctrl2 = (uint64_t)(TIM_CHUNK_SIZE / 16) << 40;
 
+	if (use_fpa) {
+		pool = (uintptr_t)((struct rte_mempool *)
+				timr->chunk_pool)->pool_id;
+		ret = octeontx_fpa_bufpool_gpool(pool);
+		if (ret < 0) {
+			timvf_log_dbg("Unable to get gaura id");
+			ret = -ENOMEM;
+			goto error;
+		}
+		timvf_write64((uint64_t)ret,
+				(uint8_t *)timr->vbar0 + TIM_VRING_AURA);
+	} else {
+		rctrl.rctrl1 |= 1ull << 43 /* ENA_DFB (Enable don't free) */;
+	}
+
 	timvf_write64((uintptr_t)timr->bkt,
 			(uint8_t *)timr->vbar0 + TIM_VRING_BASE);
-	timvf_set_chunk_refill(timr);
+	timvf_set_chunk_refill(timr, use_fpa);
 	if (timvf_ring_conf_set(&rctrl, timr->tim_ring_id)) {
 		ret = -EACCES;
 		goto error;

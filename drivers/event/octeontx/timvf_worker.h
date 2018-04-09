@@ -213,6 +213,28 @@ timvf_refill_chunk_generic(struct tim_mem_bucket * const bkt,
 	return chunk;
 }
 
+static inline struct tim_mem_entry *
+timvf_refill_chunk_fpa(struct tim_mem_bucket * const bkt,
+		struct timvf_ring * const timr)
+{
+	struct tim_mem_entry *chunk;
+
+	if (unlikely(rte_mempool_get(timr->chunk_pool, (void **)&chunk)))
+		return NULL;
+
+	*(uint64_t *)(chunk + nb_chunk_slots) = 0;
+	if (bkt->nb_entry) {
+		*(uint64_t *)(((struct tim_mem_entry *)(uintptr_t)
+				bkt->current_chunk) +
+				nb_chunk_slots) =
+			(uintptr_t) chunk;
+	} else {
+		bkt->first_chunk = (uintptr_t) chunk;
+	}
+
+	return chunk;
+}
+
 static inline struct tim_mem_bucket *
 timvf_get_target_bucket(struct timvf_ring * const timr, const uint32_t rel_bkt)
 {

@@ -25,6 +25,7 @@
 #include <rte_reciprocal.h>
 
 #include <octeontx_mbox.h>
+#include <octeontx_fpavf.h>
 
 #define timvf_log(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, otx_logtype_timvf, \
@@ -220,6 +221,6 @@ uint16_t timvf_timer_arm_tmo_brst_stats(
 		const struct rte_event_timer_adapter *adptr,
 		struct rte_event_timer **tim, const uint64_t timeout_tick,
 		const uint16_t nb_timers);
-void timvf_set_chunk_refill(struct timvf_ring * const timr);
+void timvf_set_chunk_refill(struct timvf_ring * const timr, uint8_t use_fpa);
 
 #endif /* __TIMVF_EVDEV_H__ */

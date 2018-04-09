@@ -191,7 +191,10 @@ timvf_timer_arm_tmo_brst_stats(const struct rte_event_timer_adapter *adptr,
 }
 
 void
-timvf_set_chunk_refill(struct timvf_ring * const timr)
+timvf_set_chunk_refill(struct timvf_ring * const timr, uint8_t use_fpa)
 {
-	timr->refill_chunk = timvf_refill_chunk_generic;
+	if (use_fpa)
+		timr->refill_chunk = timvf_refill_chunk_fpa;
+	else
+		timr->refill_chunk = timvf_refill_chunk_generic;
 }
