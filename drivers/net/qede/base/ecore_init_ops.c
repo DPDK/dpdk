@@ -389,23 +389,29 @@ static void ecore_init_cmd_rd(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (i == ECORE_INIT_MAX_POLL_COUNT)
-		DP_ERR(p_hwfn,
-		       "Timeout when polling reg: 0x%08x [ Waiting-for: %08x"
-		       " Got: %08x (comparsion %08x)]\n",
+		DP_ERR(p_hwfn, "Timeout when polling reg: 0x%08x [ Waiting-for: %08x Got: %08x (comparison %08x)]\n",
 		       addr, OSAL_LE32_TO_CPU(cmd->expected_val), val,
 		       OSAL_LE32_TO_CPU(cmd->op_data));
 }
 
-/* init_ops callbacks entry point.
- * OSAL_UNUSED is temporary used to avoid unused-parameter compilation warnings.
- * Should be removed when the function is actually used.
- */
-static void ecore_init_cmd_cb(struct ecore_hwfn *p_hwfn,
-			      struct ecore_ptt OSAL_UNUSED * p_ptt,
-			      struct init_callback_op OSAL_UNUSED * p_cmd)
+/* init_ops callbacks entry point */
+static enum _ecore_status_t ecore_init_cmd_cb(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt,
+					      struct init_callback_op *p_cmd)
 {
-	DP_NOTICE(p_hwfn, true,
-		  "Currently init values have no need of callbacks\n");
+	enum _ecore_status_t rc;
+
+	switch (p_cmd->callback_id) {
+	case DMAE_READY_CB:
+		rc = ecore_dmae_sanity(p_hwfn, p_ptt, "engine_phase");
+		break;
+	default:
+		DP_NOTICE(p_hwfn, false, "Unexpected init op callback ID %d\n",
+			  p_cmd->callback_id);
+		return ECORE_INVAL;
+	}
+
+	return rc;
 }
 
 static u8 ecore_init_cmd_mode_match(struct ecore_hwfn *p_hwfn,
@@ -513,7 +519,7 @@ enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 			break;
 
 		case INIT_OP_CALLBACK:
-			ecore_init_cmd_cb(p_hwfn, p_ptt, &cmd->callback);
+			rc = ecore_init_cmd_cb(p_hwfn, p_ptt, &cmd->callback);
 			break;
 		}
 

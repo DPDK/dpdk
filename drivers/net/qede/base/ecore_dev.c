@@ -2161,6 +2161,11 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 	/* perform debug configuration when chip is out of reset */
 	OSAL_BEFORE_PF_START((void *)p_hwfn->p_dev, p_hwfn->my_id);
 
+	/* Sanity check before the PF init sequence that uses DMAE */
+	rc = ecore_dmae_sanity(p_hwfn, p_ptt, "pf_phase");
+	if (rc)
+		return rc;
+
 	/* PF Init sequence */
 	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_PF, rel_pf_id, hw_mode);
 	if (rc)

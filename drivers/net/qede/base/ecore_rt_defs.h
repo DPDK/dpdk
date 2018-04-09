@@ -530,4 +530,7 @@
 
 #define RUNTIME_ARRAY_SIZE 41743
 
+/* Init Callbacks */
+#define DMAE_READY_CB                                               0
+
 #endif /* __RT_DEFS_H__ */
