@@ -116,6 +116,9 @@ struct ecore_spq {
 	dma_addr_t			p_phys;
 	struct ecore_spq_entry		*p_virt;
 
+	/* SPQ max sleep iterations used in __ecore_spq_block() */
+	u32				block_sleep_max_iter;
+
 	/* Bitmap for handling out-of-order completions */
 #define SPQ_RING_SIZE		\
 	(CORE_SPQE_PAGE_SIZE_BYTES / sizeof(struct slow_path_element))
@@ -148,6 +151,16 @@ struct ecore_spq {
 
 struct ecore_port;
 struct ecore_hwfn;
+
+/**
+ * @brief ecore_set_spq_block_timeout - calculates the maximum sleep
+ * iterations used in __ecore_spq_block();
+ *
+ * @param p_hwfn
+ * @param spq_timeout_ms
+ */
+void ecore_set_spq_block_timeout(struct ecore_hwfn *p_hwfn,
+				 u32 spq_timeout_ms);
 
 /**
  * @brief ecore_spq_post - Posts a Slow hwfn request to FW, or lacking that

@@ -2289,14 +2289,15 @@ static void ecore_reset_mb_shadow(struct ecore_hwfn *p_hwfn,
 }
 
 static void ecore_pglueb_clear_err(struct ecore_hwfn *p_hwfn,
-				     struct ecore_ptt *p_ptt)
+				   struct ecore_ptt *p_ptt)
 {
 	ecore_wr(p_hwfn, p_ptt, PGLUE_B_REG_WAS_ERROR_PF_31_0_CLR,
 		 1 << p_hwfn->abs_pf_id);
 }
 
-static void
-ecore_fill_load_req_params(struct ecore_load_req_params *p_load_req,
+static enum _ecore_status_t
+ecore_fill_load_req_params(struct ecore_hwfn *p_hwfn,
+			   struct ecore_load_req_params *p_load_req,
 			   struct ecore_drv_load_params *p_drv_load)
 {
 	/* Make sure that if ecore-client didn't provide inputs, all the
@@ -2308,15 +2309,51 @@ ecore_fill_load_req_params(struct ecore_load_req_params *p_load_req,
 
 	OSAL_MEM_ZERO(p_load_req, sizeof(*p_load_req));
 
-	if (p_drv_load != OSAL_NULL) {
-		p_load_req->drv_role = p_drv_load->is_crash_kernel ?
-				       ECORE_DRV_ROLE_KDUMP :
-				       ECORE_DRV_ROLE_OS;
+	if (p_drv_load == OSAL_NULL)
+		goto out;
+
+	p_load_req->drv_role = p_drv_load->is_crash_kernel ?
+			       ECORE_DRV_ROLE_KDUMP :
+			       ECORE_DRV_ROLE_OS;
+	p_load_req->avoid_eng_reset = p_drv_load->avoid_eng_reset;
+	p_load_req->override_force_load = p_drv_load->override_force_load;
+
+	/* Old MFW versions don't support timeout values other than default and
+	 * none, so these values are replaced according to the fall-back action.
+	 */
+
+	if (p_drv_load->mfw_timeout_val == ECORE_LOAD_REQ_LOCK_TO_DEFAULT ||
+	    p_drv_load->mfw_timeout_val == ECORE_LOAD_REQ_LOCK_TO_NONE ||
+	    (p_hwfn->mcp_info->capabilities &
+	     FW_MB_PARAM_FEATURE_SUPPORT_DRV_LOAD_TO)) {
 		p_load_req->timeout_val = p_drv_load->mfw_timeout_val;
-		p_load_req->avoid_eng_reset = p_drv_load->avoid_eng_reset;
-		p_load_req->override_force_load =
-			p_drv_load->override_force_load;
+		goto out;
 	}
+
+	switch (p_drv_load->mfw_timeout_fallback) {
+	case ECORE_TO_FALLBACK_TO_NONE:
+		p_load_req->timeout_val = ECORE_LOAD_REQ_LOCK_TO_NONE;
+		break;
+	case ECORE_TO_FALLBACK_TO_DEFAULT:
+		p_load_req->timeout_val = ECORE_LOAD_REQ_LOCK_TO_DEFAULT;
+		break;
+	case ECORE_TO_FALLBACK_FAIL_LOAD:
+		DP_NOTICE(p_hwfn, false,
+			  "Received %d as a value for MFW timeout while the MFW supports only default [%d] or none [%d]. Abort.\n",
+			  p_drv_load->mfw_timeout_val,
+			  ECORE_LOAD_REQ_LOCK_TO_DEFAULT,
+			  ECORE_LOAD_REQ_LOCK_TO_NONE);
+		return ECORE_ABORTED;
+	}
+
+	DP_INFO(p_hwfn,
+		"Modified the MFW timeout value from %d to %s [%d] due to lack of MFW support\n",
+		p_drv_load->mfw_timeout_val,
+		(p_load_req->timeout_val == ECORE_LOAD_REQ_LOCK_TO_DEFAULT) ?
+		"default" : "none",
+		p_load_req->timeout_val);
+out:
+	return ECORE_SUCCESS;
 }
 
 enum _ecore_status_t ecore_vf_start(struct ecore_hwfn *p_hwfn,
@@ -2372,8 +2409,13 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		if (rc != ECORE_SUCCESS)
 			return rc;
 
-		ecore_fill_load_req_params(&load_req_params,
-					   p_params->p_drv_load_params);
+		ecore_set_spq_block_timeout(p_hwfn, p_params->spq_timeout_ms);
+
+		rc = ecore_fill_load_req_params(p_hwfn, &load_req_params,
+						p_params->p_drv_load_params);
+		if (rc != ECORE_SUCCESS)
+			return rc;
+
 		rc = ecore_mcp_load_req(p_hwfn, p_hwfn->p_main_ptt,
 					&load_req_params);
 		if (rc != ECORE_SUCCESS) {

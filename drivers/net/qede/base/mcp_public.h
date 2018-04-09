@@ -1777,6 +1777,8 @@ struct public_drv_mb {
 #define FW_MB_PARAM_FEATURE_SUPPORT_SMARTLINQ   0x00000001
 /* MFW supports EEE */
 #define FW_MB_PARAM_FEATURE_SUPPORT_EEE         0x00000002
+/* MFW supports DRV_LOAD Timeout */
+#define FW_MB_PARAM_FEATURE_SUPPORT_DRV_LOAD_TO  0x00000004
 /* MFW supports virtual link */
 #define FW_MB_PARAM_FEATURE_SUPPORT_VLINK       0x00010000
 

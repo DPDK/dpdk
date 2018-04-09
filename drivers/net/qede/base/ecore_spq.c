@@ -30,7 +30,7 @@
 
 #define SPQ_BLOCK_DELAY_MAX_ITER	(10)
 #define SPQ_BLOCK_DELAY_US		(10)
-#define SPQ_BLOCK_SLEEP_MAX_ITER	(1000)
+#define SPQ_BLOCK_SLEEP_MAX_ITER	(200)
 #define SPQ_BLOCK_SLEEP_MS		(5)
 
 /***************************************************************************
@@ -60,8 +60,12 @@ static enum _ecore_status_t __ecore_spq_block(struct ecore_hwfn *p_hwfn,
 	u32 iter_cnt;
 
 	comp_done = (struct ecore_spq_comp_done *)p_ent->comp_cb.cookie;
-	iter_cnt = sleep_between_iter ? SPQ_BLOCK_SLEEP_MAX_ITER
+	iter_cnt = sleep_between_iter ? p_hwfn->p_spq->block_sleep_max_iter
 				      : SPQ_BLOCK_DELAY_MAX_ITER;
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && sleep_between_iter)
+		iter_cnt *= 5;
+#endif
 
 	while (iter_cnt--) {
 		OSAL_POLL_MODE_DPC(p_hwfn);
@@ -136,6 +140,14 @@ err:
 	ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_RAMROD_FAIL);
 
 	return ECORE_BUSY;
+}
+
+void ecore_set_spq_block_timeout(struct ecore_hwfn *p_hwfn,
+				 u32 spq_timeout_ms)
+{
+	p_hwfn->p_spq->block_sleep_max_iter = spq_timeout_ms ?
+		spq_timeout_ms / SPQ_BLOCK_SLEEP_MS :
+		SPQ_BLOCK_SLEEP_MAX_ITER;
 }
 
 /***************************************************************************
