@@ -1045,11 +1045,11 @@ struct eth_vport_tpa_param {
 	u8 tpa_ipv6_en_flg /* Enable TPA for IPv6 packets */;
 	u8 tpa_ipv4_tunn_en_flg /* Enable TPA for IPv4 over tunnel */;
 	u8 tpa_ipv6_tunn_en_flg /* Enable TPA for IPv6 over tunnel */;
-/* If set, start each tpa segment on new SGE (GRO mode). One SGE per segment
- * allowed
+/* If set, start each TPA segment on new BD (GRO mode). One BD per segment
+ * allowed.
  */
 	u8 tpa_pkt_split_flg;
-/* If set, put header of first TPA segment on bd and data on SGE */
+/* If set, put header of first TPA segment on first BD and data on second BD. */
 	u8 tpa_hdr_data_split_flg;
 /* If set, GRO data consistent will checked for TPA continue */
 	u8 tpa_gro_consistent_flg;

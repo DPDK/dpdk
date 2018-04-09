@@ -948,7 +948,9 @@ struct core_tx_bd_data {
 /* Do not allow additional VLAN manipulations on this packet (DCB) */
 #define CORE_TX_BD_DATA_FORCE_VLAN_MODE_MASK         0x1
 #define CORE_TX_BD_DATA_FORCE_VLAN_MODE_SHIFT        0
-/* Insert VLAN into packet */
+/* Insert VLAN into packet. Cannot be set for LB packets
+ * (tx_dst == CORE_TX_DEST_LB)
+ */
 #define CORE_TX_BD_DATA_VLAN_INSERTION_MASK          0x1
 #define CORE_TX_BD_DATA_VLAN_INSERTION_SHIFT         1
 /* This is the first BD of the packet (for debug) */
@@ -1071,11 +1073,11 @@ struct core_tx_update_ramrod_data {
  * Enum flag for what type of dcb data to update
  */
 enum dcb_dscp_update_mode {
-/* use when no change should be done to dcb data */
+/* use when no change should be done to DCB data */
 	DONT_UPDATE_DCB_DSCP,
-	UPDATE_DCB /* use to update only l2 (vlan) priority */,
-	UPDATE_DSCP /* use to update only l3 dscp */,
-	UPDATE_DCB_DSCP /* update vlan pri and dscp */,
+	UPDATE_DCB /* use to update only L2 (vlan) priority */,
+	UPDATE_DSCP /* use to update only IP DSCP */,
+	UPDATE_DCB_DSCP /* update vlan pri and DSCP */,
 	MAX_DCB_DSCP_UPDATE_FLAG
 };
 
@@ -1293,10 +1295,12 @@ enum fw_flow_ctrl_mode {
  * GFT profile type.
  */
 enum gft_profile_type {
-	GFT_PROFILE_TYPE_4_TUPLE /* 4 tuple, IP type and L4 type match. */,
-/* L4 destination port, IP type and L4 type match. */
+/* tunnel type, inner 4 tuple, IP type and L4 type match. */
+	GFT_PROFILE_TYPE_4_TUPLE,
+/* tunnel type, inner L4 destination port, IP type and L4 type match. */
 	GFT_PROFILE_TYPE_L4_DST_PORT,
-	GFT_PROFILE_TYPE_IP_DST_ADDR /* IP destination port and IP type. */,
+/* tunnel type, inner IP destination address and IP type match. */
+	GFT_PROFILE_TYPE_IP_DST_ADDR,
 /* tunnel type, inner IP source address and IP type match. */
 	GFT_PROFILE_TYPE_IP_SRC_ADDR,
 	GFT_PROFILE_TYPE_TUNNEL_TYPE /* tunnel type and outer IP type match. */,
@@ -1416,8 +1420,9 @@ struct vlan_header {
  * outer tag configurations
  */
 struct outer_tag_config_struct {
-/* Enables the STAG Priority Change , Should be 1 for Bette Davis and UFP with
- * Host Control mode. Else - 0
+/* Enables updating S-tag priority from inner tag or DCB. Should be 1 for Bette
+ * Davis, UFP with Host Control mode, and UFP with DCB over base interface.
+ * else - 0.
  */
 	u8 enable_stag_pri_change;
 /* If inner_to_outer_pri_map is initialize then set pri_map_valid */
@@ -1512,14 +1517,14 @@ struct pf_start_ramrod_data {
 
 
 /*
- * Data for port update ramrod
+ * Per protocol DCB data
  */
 struct protocol_dcb_data {
-	u8 dcb_enable_flag /* dcbEnable flag value */;
-	u8 dscp_enable_flag /* If set use dscp value */;
-	u8 dcb_priority /* dcbPri flag value */;
-	u8 dcb_tc /* dcb TC value */;
-	u8 dscp_val /* dscp value to write if dscp_enable_flag is set */;
+	u8 dcb_enable_flag /* Enable DCB */;
+	u8 dscp_enable_flag /* Enable updating DSCP value */;
+	u8 dcb_priority /* DCB priority */;
+	u8 dcb_tc /* DCB TC */;
+	u8 dscp_val /* DSCP value to write if dscp_enable_flag is set */;
 /* When DCB is enabled - if this flag is set, dont add VLAN 0 tag to untagged
  * frames
  */
@@ -1583,8 +1588,9 @@ struct pf_update_ramrod_data {
 /* core iwarp related fields */
 	struct protocol_dcb_data iwarp_dcb_data;
 	__le16 mf_vlan /* new outer vlan id value */;
-/* enables the inner to outer TAG priority mapping. Should be 1 for Bette Davis
- * and UFP with Host Control mode, else - 0.
+/* enables updating S-tag priority from inner tag or DCB. Should be 1 for Bette
+ * Davis, UFP with Host Control mode, and UFP with DCB over base interface.
+ * else - 0
  */
 	u8 enable_stag_pri_change;
 	u8 reserved;
@@ -2137,6 +2143,53 @@ struct e4_ystorm_core_conn_ag_ctx {
 	__le32 reg2 /* reg2 */;
 	__le32 reg3 /* reg3 */;
 };
+
+
+struct fw_asserts_ram_section {
+/* The offset of the section in the RAM in RAM lines (64-bit units) */
+	__le16 section_ram_line_offset;
+/* The size of the section in RAM lines (64-bit units) */
+	__le16 section_ram_line_size;
+/* The offset of the asserts list within the section in dwords */
+	u8 list_dword_offset;
+/* The size of an assert list element in dwords */
+	u8 list_element_dword_size;
+	u8 list_num_elements /* The number of elements in the asserts list */;
+/* The offset of the next list index field within the section in dwords */
+	u8 list_next_index_dword_offset;
+};
+
+
+struct fw_ver_num {
+	u8 major /* Firmware major version number */;
+	u8 minor /* Firmware minor version number */;
+	u8 rev /* Firmware revision version number */;
+	u8 eng /* Firmware engineering version number (for bootleg versions) */;
+};
+
+struct fw_ver_info {
+	__le16 tools_ver /* Tools version number */;
+	u8 image_id /* FW image ID (e.g. main, l2b, kuku) */;
+	u8 reserved1;
+	struct fw_ver_num num /* FW version number */;
+	__le32 timestamp /* FW Timestamp in unix time  (sec. since 1970) */;
+	__le32 reserved2;
+};
+
+struct fw_info {
+	struct fw_ver_info ver /* FW version information */;
+/* Info regarding the FW asserts section in the Storm RAM */
+	struct fw_asserts_ram_section fw_asserts_section;
+};
+
+
+struct fw_info_location {
+	__le32 grc_addr /* GRC address where the fw_info struct is located. */;
+/* Size of the fw_info structure (thats located at the grc_addr). */
+	__le32 size;
+};
+
+
 
 
 /*

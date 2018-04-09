@@ -225,7 +225,7 @@ enum bin_dbg_buffer_type {
  * Attention bit mapping
  */
 struct dbg_attn_bit_mapping {
-	__le16 data;
+	u16 data;
 /* The index of an attention in the blocks attentions list
  * (if is_unused_bit_cnt=0), or a number of consecutive unused attention bits
  * (if is_unused_bit_cnt=1)
@@ -247,14 +247,14 @@ struct dbg_attn_block_type_data {
 /* Offset of this block attention names in the debug attention name offsets
  * array
  */
-	__le16 names_offset;
-	__le16 reserved1;
+	u16 names_offset;
+	u16 reserved1;
 	u8 num_regs /* Number of attention registers in this block */;
 	u8 reserved2;
 /* Offset of this blocks attention registers in the attention registers array
  * (in dbg_attn_reg units)
  */
-	__le16 regs_offset;
+	u16 regs_offset;
 };
 
 /*
@@ -272,20 +272,20 @@ struct dbg_attn_block {
  * Attention register result
  */
 struct dbg_attn_reg_result {
-	__le32 data;
+	u32 data;
 /* STS attention register GRC address (in dwords) */
 #define DBG_ATTN_REG_RESULT_STS_ADDRESS_MASK   0xFFFFFF
 #define DBG_ATTN_REG_RESULT_STS_ADDRESS_SHIFT  0
 /* Number of attention indexes in this register */
 #define DBG_ATTN_REG_RESULT_NUM_REG_ATTN_MASK  0xFF
 #define DBG_ATTN_REG_RESULT_NUM_REG_ATTN_SHIFT 24
-/* The offset of this registers attentions within the blocks attentions
- * list (a value in the range 0..number of block attentions-1)
+/* The offset of this registers attentions within the blocks attentions list
+ * (a value in the range 0..number of block attentions-1)
  */
-	__le16 attn_idx_offset;
-	__le16 reserved;
-	__le32 sts_val /* Value read from the STS attention register */;
-	__le32 mask_val /* Value read from the MASK attention register */;
+	u16 block_attn_offset;
+	u16 reserved;
+	u32 sts_val /* Value read from the STS attention register */;
+	u32 mask_val /* Value read from the MASK attention register */;
 };
 
 /*
@@ -303,7 +303,7 @@ struct dbg_attn_block_result {
 /* Offset of this registers block attention names in the attention name offsets
  * array
  */
-	__le16 names_offset;
+	u16 names_offset;
 /* result data for each register in the block in which at least one attention
  * bit is set
  */
@@ -316,7 +316,7 @@ struct dbg_attn_block_result {
  * mode header
  */
 struct dbg_mode_hdr {
-	__le16 data;
+	u16 data;
 /* indicates if a mode expression should be evaluated (0/1) */
 #define DBG_MODE_HDR_EVAL_MODE_MASK         0x1
 #define DBG_MODE_HDR_EVAL_MODE_SHIFT        0
@@ -331,12 +331,11 @@ struct dbg_mode_hdr {
  * Attention register
  */
 struct dbg_attn_reg {
-	struct dbg_mode_hdr mode /* Mode header */;
-/* The offset of this registers attentions within the blocks attentions
- * list (a value in the range 0..number of block attentions-1)
+/* The offset of this registers attentions within the blocks attentions list
+ * (a value in the range 0..number of block attentions-1)
  */
-	__le16 attn_idx_offset;
-	__le32 data;
+	u16 block_attn_offset;
+	u32 data;
 /* STS attention register GRC address (in dwords) */
 #define DBG_ATTN_REG_STS_ADDRESS_MASK   0xFFFFFF
 #define DBG_ATTN_REG_STS_ADDRESS_SHIFT  0
@@ -344,9 +343,8 @@ struct dbg_attn_reg {
 #define DBG_ATTN_REG_NUM_REG_ATTN_MASK  0xFF
 #define DBG_ATTN_REG_NUM_REG_ATTN_SHIFT 24
 /* STS_CLR attention register GRC address (in dwords) */
-	__le32 sts_clr_address;
-/* MASK attention register GRC address (in dwords) */
-	__le32 mask_address;
+	u32 sts_clr_address;
+	u32 mask_address /* MASK attention register GRC address (in dwords) */;
 };
 
 
@@ -370,7 +368,7 @@ struct dbg_bus_block {
 /* Indicates if this block has a latency events debug line (0/1). */
 	u8 has_latency_events;
 /* Offset of this blocks lines in the Debug Bus lines array. */
-	__le16 lines_offset;
+	u16 lines_offset;
 };
 
 
@@ -383,7 +381,7 @@ struct dbg_bus_block_user_data {
 /* Indicates if this block has a latency events debug line (0/1). */
 	u8 has_latency_events;
 /* Offset of this blocks lines in the debug bus line name offsets array. */
-	__le16 names_offset;
+	u16 names_offset;
 };
 
 
@@ -422,13 +420,13 @@ struct dbg_dump_cond_hdr {
  * memory data for registers dump
  */
 struct dbg_dump_mem {
-	__le32 dword0;
+	u32 dword0;
 /* register address (in dwords) */
 #define DBG_DUMP_MEM_ADDRESS_MASK       0xFFFFFF
 #define DBG_DUMP_MEM_ADDRESS_SHIFT      0
 #define DBG_DUMP_MEM_MEM_GROUP_ID_MASK  0xFF /* memory group ID */
 #define DBG_DUMP_MEM_MEM_GROUP_ID_SHIFT 24
-	__le32 dword1;
+	u32 dword1;
 /* register size (in dwords) */
 #define DBG_DUMP_MEM_LENGTH_MASK        0xFFFFFF
 #define DBG_DUMP_MEM_LENGTH_SHIFT       0
@@ -444,7 +442,7 @@ struct dbg_dump_mem {
  * register data for registers dump
  */
 struct dbg_dump_reg {
-	__le32 data;
+	u32 data;
 /* register address (in dwords) */
 #define DBG_DUMP_REG_ADDRESS_MASK   0x7FFFFF /* register address (in dwords) */
 #define DBG_DUMP_REG_ADDRESS_SHIFT  0
@@ -460,7 +458,7 @@ struct dbg_dump_reg {
  * split header for registers dump
  */
 struct dbg_dump_split_hdr {
-	__le32 hdr;
+	u32 hdr;
 /* size in dwords of the data following this header */
 #define DBG_DUMP_SPLIT_HDR_DATA_SIZE_MASK      0xFFFFFF
 #define DBG_DUMP_SPLIT_HDR_DATA_SIZE_SHIFT     0
@@ -474,8 +472,7 @@ struct dbg_dump_split_hdr {
  */
 struct dbg_idle_chk_cond_hdr {
 	struct dbg_mode_hdr mode /* Mode header */;
-/* size in dwords of the data following this header */
-	__le16 data_size;
+	u16 data_size /* size in dwords of the data following this header */;
 };
 
 
@@ -483,7 +480,7 @@ struct dbg_idle_chk_cond_hdr {
  * Idle Check condition register
  */
 struct dbg_idle_chk_cond_reg {
-	__le32 data;
+	u32 data;
 /* Register GRC address (in dwords) */
 #define DBG_IDLE_CHK_COND_REG_ADDRESS_MASK   0x7FFFFF
 #define DBG_IDLE_CHK_COND_REG_ADDRESS_SHIFT  0
@@ -493,7 +490,7 @@ struct dbg_idle_chk_cond_reg {
 /* value from block_id enum */
 #define DBG_IDLE_CHK_COND_REG_BLOCK_ID_MASK  0xFF
 #define DBG_IDLE_CHK_COND_REG_BLOCK_ID_SHIFT 24
-	__le16 num_entries /* number of registers entries to check */;
+	u16 num_entries /* number of registers entries to check */;
 	u8 entry_size /* size of registers entry (in dwords) */;
 	u8 start_entry /* index of the first entry to check */;
 };
@@ -503,7 +500,7 @@ struct dbg_idle_chk_cond_reg {
  * Idle Check info register
  */
 struct dbg_idle_chk_info_reg {
-	__le32 data;
+	u32 data;
 /* Register GRC address (in dwords) */
 #define DBG_IDLE_CHK_INFO_REG_ADDRESS_MASK   0x7FFFFF
 #define DBG_IDLE_CHK_INFO_REG_ADDRESS_SHIFT  0
@@ -513,7 +510,7 @@ struct dbg_idle_chk_info_reg {
 /* value from block_id enum */
 #define DBG_IDLE_CHK_INFO_REG_BLOCK_ID_MASK  0xFF
 #define DBG_IDLE_CHK_INFO_REG_BLOCK_ID_SHIFT 24
-	__le16 size /* register size in dwords */;
+	u16 size /* register size in dwords */;
 	struct dbg_mode_hdr mode /* Mode header */;
 };
 
@@ -531,8 +528,8 @@ union dbg_idle_chk_reg {
  * Idle Check result header
  */
 struct dbg_idle_chk_result_hdr {
-	__le16 rule_id /* Failing rule index */;
-	__le16 mem_entry_id /* Failing memory entry index */;
+	u16 rule_id /* Failing rule index */;
+	u16 mem_entry_id /* Failing memory entry index */;
 	u8 num_dumped_cond_regs /* number of dumped condition registers */;
 	u8 num_dumped_info_regs /* number of dumped condition registers */;
 	u8 severity /* from dbg_idle_chk_severity_types enum */;
@@ -552,7 +549,7 @@ struct dbg_idle_chk_result_reg_hdr {
 #define DBG_IDLE_CHK_RESULT_REG_HDR_REG_ID_MASK  0x7F
 #define DBG_IDLE_CHK_RESULT_REG_HDR_REG_ID_SHIFT 1
 	u8 start_entry /* index of the first checked entry */;
-	__le16 size /* register size in dwords */;
+	u16 size /* register size in dwords */;
 };
 
 
@@ -560,7 +557,7 @@ struct dbg_idle_chk_result_reg_hdr {
  * Idle Check rule
  */
 struct dbg_idle_chk_rule {
-	__le16 rule_id /* Idle Check rule ID */;
+	u16 rule_id /* Idle Check rule ID */;
 	u8 severity /* value from dbg_idle_chk_severity_types enum */;
 	u8 cond_id /* Condition ID */;
 	u8 num_cond_regs /* number of condition registers */;
@@ -570,11 +567,11 @@ struct dbg_idle_chk_rule {
 /* offset of this rules registers in the idle check register array
  * (in dbg_idle_chk_reg units)
  */
-	__le16 reg_offset;
+	u16 reg_offset;
 /* offset of this rules immediate values in the immediate values array
  * (in dwords)
  */
-	__le16 imm_offset;
+	u16 imm_offset;
 };
 
 
@@ -582,7 +579,7 @@ struct dbg_idle_chk_rule {
  * Idle Check rule parsing data
  */
 struct dbg_idle_chk_rule_parsing_data {
-	__le32 data;
+	u32 data;
 /* indicates if this register has a FW message */
 #define DBG_IDLE_CHK_RULE_PARSING_DATA_HAS_FW_MSG_MASK  0x1
 #define DBG_IDLE_CHK_RULE_PARSING_DATA_HAS_FW_MSG_SHIFT 0
@@ -693,8 +690,8 @@ struct dbg_bus_trigger_state_data {
  * Debug Bus memory address
  */
 struct dbg_bus_mem_addr {
-	__le32 lo;
-	__le32 hi;
+	u32 lo;
+	u32 hi;
 };
 
 /*
@@ -703,7 +700,7 @@ struct dbg_bus_mem_addr {
 struct dbg_bus_pci_buf_data {
 	struct dbg_bus_mem_addr phys_addr /* PCI buffer physical address */;
 	struct dbg_bus_mem_addr virt_addr /* PCI buffer virtual address */;
-	__le32 size /* PCI buffer size in bytes */;
+	u32 size /* PCI buffer size in bytes */;
 };
 
 /*
@@ -747,21 +744,20 @@ struct dbg_bus_storm_data {
 	u8 cid_filter_en /* Indicates if CID filtering is performed (0/1) */;
 /* EID filter params to filter on. Valid only if eid_filter_en is set. */
 	union dbg_bus_storm_eid_params eid_filter_params;
-/* CID to filter on. Valid only if cid_filter_en is set. */
-	__le32 cid;
+	u32 cid /* CID to filter on. Valid only if cid_filter_en is set. */;
 };
 
 /*
  * Debug Bus data
  */
 struct dbg_bus_data {
-	__le32 app_version /* The tools version number of the application */;
+	u32 app_version /* The tools version number of the application */;
 	u8 state /* The current debug bus state */;
 	u8 hw_dwords /* HW dwords per cycle */;
 /* The HW IDs of the recorded HW blocks, where bits i*3..i*3+2 contain the
  * HW ID of dword/qword i
  */
-	__le16 hw_id_mask;
+	u16 hw_id_mask;
 	u8 num_enabled_blocks /* Number of blocks enabled for recording */;
 	u8 num_enabled_storms /* Number of Storms enabled for recording */;
 	u8 target /* Output target */;
@@ -783,7 +779,7 @@ struct dbg_bus_data {
  * Valid only if both filter and trigger are enabled (0/1)
  */
 	u8 filter_post_trigger;
-	__le16 reserved;
+	u16 reserved;
 /* Indicates if the recording trigger is enabled (0/1) */
 	u8 trigger_en;
 /* trigger states data */
@@ -933,9 +929,10 @@ struct dbg_grc_data {
 /* Indicates if the GRC parameters were initialized */
 	u8 params_initialized;
 	u8 reserved1;
-	__le16 reserved2;
-/* Value of each GRC parameter. Array size must match enum dbg_grc_params. */
-	__le32 param_val[48];
+	u16 reserved2;
+/* Value of each GRC parameter. Array size must match the enum dbg_grc_params.
+ */
+	u32 param_val[48];
 };
 
 
@@ -1088,11 +1085,11 @@ enum dbg_storms {
  * Idle Check data
  */
 struct idle_chk_data {
-	__le32 buf_size /* Idle check buffer size in dwords */;
+	u32 buf_size /* Idle check buffer size in dwords */;
 /* Indicates if the idle check buffer size was set (0/1) */
 	u8 buf_size_set;
 	u8 reserved1;
-	__le16 reserved2;
+	u16 reserved2;
 };
 
 /*
@@ -1110,7 +1107,7 @@ struct dbg_tools_data {
 	u8 initialized /* Indicates if the data was initialized */;
 	u8 use_dmae /* Indicates if DMAE should be used */;
 /* Numbers of registers that were read since last log */
-	__le32 num_regs_read;
+	u32 num_regs_read;
 };
 
 
