@@ -160,6 +160,7 @@ struct qman_portal *fsl_qman_portal_create(void)
 				     &cpuset);
 	if (ret) {
 		error(0, ret, "pthread_getaffinity_np()");
+		kfree(q_pcfg);
 		return NULL;
 	}
 
@@ -168,12 +169,14 @@ struct qman_portal *fsl_qman_portal_create(void)
 		if (CPU_ISSET(loop, &cpuset)) {
 			if (q_pcfg->cpu != -1) {
 				pr_err("Thread is not affine to 1 cpu\n");
+				kfree(q_pcfg);
 				return NULL;
 			}
 			q_pcfg->cpu = loop;
 		}
 	if (q_pcfg->cpu == -1) {
 		pr_err("Bug in getaffinity handling!\n");
+		kfree(q_pcfg);
 		return NULL;
 	}
 
@@ -183,6 +186,7 @@ struct qman_portal *fsl_qman_portal_create(void)
 	ret = process_portal_map(&q_map);
 	if (ret) {
 		error(0, ret, "process_portal_map()");
+		kfree(q_pcfg);
 		return NULL;
 	}
 	q_pcfg->channel = q_map.channel;
@@ -217,6 +221,7 @@ err2:
 	close(q_fd);
 err1:
 	process_portal_unmap(&q_map.addr);
+	kfree(q_pcfg);
 	return NULL;
 }
 
