@@ -308,9 +308,15 @@ rte_dpaa_portal_fq_init(void *arg, struct qman_fq *fq)
 	/* Affine above created portal with channel*/
 	u32 sdqcr;
 	struct qman_portal *qp;
+	int ret;
 
-	if (unlikely(!RTE_PER_LCORE(dpaa_io)))
-		rte_dpaa_portal_init(arg);
+	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+		ret = rte_dpaa_portal_init(arg);
+		if (ret < 0) {
+			DPAA_BUS_LOG(ERR, "portal initialization failure");
+			return ret;
+		}
+	}
 
 	/* Initialise qman specific portals */
 	qp = fsl_qman_portal_create();
