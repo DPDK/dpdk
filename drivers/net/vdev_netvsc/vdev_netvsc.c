@@ -614,13 +614,13 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 		       name, ctx->id);
 	if (ret == -1 || (size_t)ret >= sizeof(ctx->name))
 		++i;
-	ret = snprintf(ctx->devname, sizeof(ctx->devname), "net_failsafe_%s",
-		       ctx->name);
+	ret = snprintf(ctx->devname, sizeof(ctx->devname), "net_failsafe_vsc%u",
+		       ctx->id);
 	if (ret == -1 || (size_t)ret >= sizeof(ctx->devname))
 		++i;
 	ret = snprintf(ctx->devargs, sizeof(ctx->devargs),
-		       "fd(%d),dev(net_tap_%s,remote=%s)",
-		       ctx->pipe[0], ctx->name, ctx->if_name);
+		       "fd(%d),dev(net_tap_vsc%u,remote=%s)",
+		       ctx->pipe[0], ctx->id, ctx->if_name);
 	if (ret == -1 || (size_t)ret >= sizeof(ctx->devargs))
 		++i;
 	if (i) {
