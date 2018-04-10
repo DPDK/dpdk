@@ -41,6 +41,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added PMD-recommended Tx and Rx parameters**
+
+  Applications can now query drivers for device-tuned values of
+  ring sizes, burst sizes, and number of queues.
+
 * **Added RSS hash and key update to CXGBE PMD.**
 
   Support to update RSS hash and key has been added to CXGBE PMD.
@@ -117,6 +122,30 @@ API Changes
 * ethdev, in struct ``struct rte_eth_dev_info``, field ``rte_pci_device *pci_dev``
   replaced with field ``struct rte_device *device``.
 
+* **Changes to semantics of rte_eth_dev_configure() parameters.**
+
+   If both the ``nb_rx_q`` and ``nb_tx_q`` parameters are zero,
+   ``rte_eth_dev_configure`` will now use PMD-recommended queue sizes, or if
+   recommendations are not provided by the PMD the function will use ethdev
+   fall-back values. Previously setting both of the parameters to zero would
+   have resulted in ``-EINVAL`` being returned.
+
+* **Changes to semantics of rte_eth_rx_queue_setup() parameters.**
+
+   If the ``nb_rx_desc`` parameter is zero, ``rte_eth_rx_queue_setup`` will
+   now use the PMD-recommended Rx ring size, or in the case where the PMD
+   does not provide a recommendation, will use an ethdev-provided
+   fall-back value. Previously, setting ``nb_rx_desc`` to zero would have
+   resulted in an error.
+
+* **Changes to semantics of rte_eth_tx_queue_setup() parameters.**
+
+   If the ``nb_tx_desc`` parameter is zero, ``rte_eth_tx_queue_setup`` will
+   now use the PMD-recommended Tx ring size, or in the case where the PMD
+   does not provide a recoomendation, will use an ethdev-provided
+   fall-back value. Previously, setting ``nb_tx_desc`` to zero would have
+   resulted in an error.
+
 
 ABI Changes
 -----------
@@ -131,6 +160,13 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Additional fields in rte_eth_dev_info.**
+
+  The ``rte_eth_dev_info`` structure has had two extra entries appended to the
+  end of it: ``default_rxportconf`` and ``default_txportconf``. Each of these
+  in turn are ``rte_eth_dev_portconf`` structures containing three fields of
+  type ``uint16_t``: ``burst_size``, ``ring_size``, and ``nb_queues``. These
+  are parameter values recommended for use by the PMD.
 
 Removed Items
 -------------

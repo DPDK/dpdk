@@ -988,6 +988,27 @@ struct rte_eth_conf {
 
 struct rte_pci_device;
 
+/*
+ * Fallback default preferred Rx/Tx port parameters.
+ * These are used if an application requests default parameters
+ * but the PMD does not provide preferred values.
+ */
+#define RTE_ETH_DEV_FALLBACK_RX_RINGSIZE 512
+#define RTE_ETH_DEV_FALLBACK_TX_RINGSIZE 512
+#define RTE_ETH_DEV_FALLBACK_RX_NBQUEUES 1
+#define RTE_ETH_DEV_FALLBACK_TX_NBQUEUES 1
+
+/**
+ * Preferred Rx/Tx port parameters.
+ * There are separate instances of this structure for transmission
+ * and reception respectively.
+ */
+struct rte_eth_dev_portconf {
+	uint16_t burst_size; /**< Device-preferred burst size */
+	uint16_t ring_size; /**< Device-preferred size of queue rings */
+	uint16_t nb_queues; /**< Device-preferred number of queues */
+};
+
 /**
  * Ethernet device information
  */
@@ -1029,6 +1050,10 @@ struct rte_eth_dev_info {
 	/** Configured number of rx/tx queues */
 	uint16_t nb_rx_queues; /**< Number of RX queues. */
 	uint16_t nb_tx_queues; /**< Number of TX queues. */
+	/** Rx parameter recommendations */
+	struct rte_eth_dev_portconf default_rxportconf;
+	/** Tx parameter recommendations */
+	struct rte_eth_dev_portconf default_txportconf;
 };
 
 /**

@@ -1061,6 +1061,26 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
+	dev = &rte_eth_devices[port_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
+	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+
+	/* If number of queues specified by application for both Rx and Tx is
+	 * zero, use driver preferred values. This cannot be done individually
+	 * as it is valid for either Tx or Rx (but not both) to be zero.
+	 * If driver does not provide any preferred valued, fall back on
+	 * EAL defaults.
+	 */
+	if (nb_rx_q == 0 && nb_tx_q == 0) {
+		nb_rx_q = dev_info.default_rxportconf.nb_queues;
+		if (nb_rx_q == 0)
+			nb_rx_q = RTE_ETH_DEV_FALLBACK_RX_NBQUEUES;
+		nb_tx_q = dev_info.default_txportconf.nb_queues;
+		if (nb_tx_q == 0)
+			nb_tx_q = RTE_ETH_DEV_FALLBACK_TX_NBQUEUES;
+	}
+
 	if (nb_rx_q > RTE_MAX_QUEUES_PER_PORT) {
 		RTE_PMD_DEBUG_TRACE(
 			"Number of RX queues requested (%u) is greater than max supported(%d)\n",
@@ -1074,8 +1094,6 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			nb_tx_q, RTE_MAX_QUEUES_PER_PORT);
 		return -EINVAL;
 	}
-
-	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
@@ -1106,13 +1124,6 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * than the maximum number of RX and TX queues supported by the
 	 * configured device.
 	 */
-	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
-
-	if (nb_rx_q == 0 && nb_tx_q == 0) {
-		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d both rx and tx queue cannot be 0\n", port_id);
-		return -EINVAL;
-	}
-
 	if (nb_rx_q > dev_info.max_rx_queues) {
 		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d nb_rx_queues=%d > %d\n",
 				port_id, nb_rx_q, dev_info.max_rx_queues);
@@ -1477,6 +1488,14 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		return -EINVAL;
 	}
 
+	/* Use default specified by driver, if nb_rx_desc is zero */
+	if (nb_rx_desc == 0) {
+		nb_rx_desc = dev_info.default_rxportconf.ring_size;
+		/* If driver default is also zero, fall back on EAL default */
+		if (nb_rx_desc == 0)
+			nb_rx_desc = RTE_ETH_DEV_FALLBACK_RX_RINGSIZE;
+	}
+
 	if (nb_rx_desc > dev_info.rx_desc_lim.nb_max ||
 			nb_rx_desc < dev_info.rx_desc_lim.nb_min ||
 			nb_rx_desc % dev_info.rx_desc_lim.nb_align != 0) {
@@ -1600,6 +1619,13 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 
 	rte_eth_dev_info_get(port_id, &dev_info);
 
+	/* Use default specified by driver, if nb_tx_desc is zero */
+	if (nb_tx_desc == 0) {
+		nb_tx_desc = dev_info.default_txportconf.ring_size;
+		/* If driver default is zero, fall back on EAL default */
+		if (nb_tx_desc == 0)
+			nb_tx_desc = RTE_ETH_DEV_FALLBACK_TX_RINGSIZE;
+	}
 	if (nb_tx_desc > dev_info.tx_desc_lim.nb_max ||
 	    nb_tx_desc < dev_info.tx_desc_lim.nb_min ||
 	    nb_tx_desc % dev_info.tx_desc_lim.nb_align != 0) {
