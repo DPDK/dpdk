@@ -192,6 +192,16 @@ sfc_port_start(struct sfc_adapter *sa)
 	SFC_ASSERT((port->phy_adv_cap & phy_pause_caps) == 0);
 	phy_adv_cap = port->phy_adv_cap | (phy_adv_cap & phy_pause_caps);
 
+	/*
+	 * No controls for FEC yet. Use default FEC mode.
+	 * I.e. advertise everything supported (*_FEC=1), but do not request
+	 * anything explicitly (*_FEC_REQUESTED=0).
+	 */
+	phy_adv_cap |= port->phy_adv_cap_mask &
+		(1u << EFX_PHY_CAP_BASER_FEC |
+		 1u << EFX_PHY_CAP_RS_FEC |
+		 1u << EFX_PHY_CAP_25G_BASER_FEC);
+
 	sfc_log_init(sa, "set phy adv caps to %#x", phy_adv_cap);
 	rc = efx_phy_adv_cap_set(sa->nic, phy_adv_cap);
 	if (rc != 0)
