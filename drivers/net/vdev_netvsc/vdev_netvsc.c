@@ -702,6 +702,11 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 			rte_kvargs_free(kvargs);
 		return 0;
 	}
+	if (specified > 1) {
+		DRV_LOG(ERR, "More than one way used to specify the netvsc"
+			" device.");
+		goto error;
+	}
 	rte_eal_alarm_cancel(vdev_netvsc_alarm, NULL);
 	/* Gather interfaces. */
 	ret = vdev_netvsc_foreach_iface(vdev_netvsc_netvsc_probe, name, kvargs,
