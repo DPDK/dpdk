@@ -67,6 +67,13 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+ifneq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
+$(info This application can only operate in a linuxapp environment, \
+please change the definition of the RTE_TARGET environment variable)
+all:
+clean:
+else
+
 INC += $(sort $(wildcard *.h))
 
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := $(SRCS-y)
@@ -78,4 +85,5 @@ CFLAGS += $(WERROR_FLAGS)
 
 include $(RTE_SDK)/mk/rte.extapp.mk
 
+endif
 endif
