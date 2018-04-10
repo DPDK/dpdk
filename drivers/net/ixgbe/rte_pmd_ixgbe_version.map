@@ -60,4 +60,5 @@ EXPERIMENTAL {
 	rte_pmd_ixgbe_mdio_unlock;
 	rte_pmd_ixgbe_mdio_unlocked_read;
 	rte_pmd_ixgbe_mdio_unlocked_write;
+	rte_pmd_ixgbe_upd_fctrl_sbp;
 };

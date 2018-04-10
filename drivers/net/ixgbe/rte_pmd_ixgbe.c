@@ -881,6 +881,34 @@ rte_pmd_ixgbe_set_tc_bw_alloc(uint16_t port,
 	return 0;
 }
 
+int __rte_experimental
+rte_pmd_ixgbe_upd_fctrl_sbp(uint16_t port, int enable)
+{
+	struct ixgbe_hw *hw;
+	struct rte_eth_dev *dev;
+	uint32_t fctrl;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+	dev = &rte_eth_devices[port];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (!hw)
+		return -ENOTSUP;
+
+	fctrl = IXGBE_READ_REG(hw, IXGBE_FCTRL);
+
+	/* If 'enable' set the SBP bit else clear it */
+	if (enable)
+		fctrl |= IXGBE_FCTRL_SBP;
+	else
+		fctrl &= ~(IXGBE_FCTRL_SBP);
+
+	IXGBE_WRITE_REG(hw, IXGBE_FCTRL, fctrl);
+	return 0;
+}
+
 #ifdef RTE_LIBRTE_IXGBE_BYPASS
 int
 rte_pmd_ixgbe_bypass_init(uint16_t port_id)

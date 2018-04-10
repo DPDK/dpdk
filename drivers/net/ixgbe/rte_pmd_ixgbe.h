@@ -708,4 +708,17 @@ enum {
 	((x) > RTE_PMD_IXGBE_BYPASS_TMT_OFF &&  \
 	(x) < RTE_PMD_IXGBE_BYPASS_TMT_NUM))
 
+/**
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param enable
+ *    0 to disable and nonzero to enable 'SBP' bit in FCTRL register
+ *    to receive all packets
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
+ */
+int __rte_experimental
+rte_pmd_ixgbe_upd_fctrl_sbp(uint16_t port, int enable);
 #endif /* _PMD_IXGBE_H_ */
