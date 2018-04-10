@@ -3296,15 +3296,42 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->max_tx_queues += dev_info->vmdq_queue_num;
 	}
 
-	if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types))
+	if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types)) {
 		/* For XL710 */
 		dev_info->speed_capa = ETH_LINK_SPEED_40G;
-	else if (I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types))
+		dev_info->default_rxportconf.nb_queues = 2;
+		dev_info->default_txportconf.nb_queues = 2;
+		if (dev->data->nb_rx_queues == 1)
+			dev_info->default_rxportconf.ring_size = 2048;
+		else
+			dev_info->default_rxportconf.ring_size = 1024;
+		if (dev->data->nb_tx_queues == 1)
+			dev_info->default_txportconf.ring_size = 1024;
+		else
+			dev_info->default_txportconf.ring_size = 512;
+
+	} else if (I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types)) {
 		/* For XXV710 */
 		dev_info->speed_capa = ETH_LINK_SPEED_25G;
-	else
+		dev_info->default_rxportconf.nb_queues = 1;
+		dev_info->default_txportconf.nb_queues = 1;
+		dev_info->default_rxportconf.ring_size = 256;
+		dev_info->default_txportconf.ring_size = 256;
+	} else {
 		/* For X710 */
 		dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G;
+		dev_info->default_rxportconf.nb_queues = 1;
+		dev_info->default_txportconf.nb_queues = 1;
+		if (dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_10G) {
+			dev_info->default_rxportconf.ring_size = 512;
+			dev_info->default_txportconf.ring_size = 256;
+		} else {
+			dev_info->default_rxportconf.ring_size = 256;
+			dev_info->default_txportconf.ring_size = 256;
+		}
+	}
+	dev_info->default_rxportconf.burst_size = 32;
+	dev_info->default_txportconf.burst_size = 32;
 }
 
 static int
