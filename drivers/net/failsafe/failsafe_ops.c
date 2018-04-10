@@ -81,7 +81,8 @@ static struct rte_eth_dev_info default_infos = {
 		DEV_TX_OFFLOAD_MULTI_SEGS |
 		DEV_TX_OFFLOAD_IPV4_CKSUM |
 		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM,
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_TSO,
 	.flow_type_rss_offloads = 0x0,
 };
 
