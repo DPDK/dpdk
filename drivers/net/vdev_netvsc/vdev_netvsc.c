@@ -569,7 +569,7 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 	/* Routed NetVSC should not be probed. */
 	if (vdev_netvsc_has_route(iface, AF_INET) ||
 	    vdev_netvsc_has_route(iface, AF_INET6)) {
-		if (!specified || !force)
+		if (!specified)
 			return 0;
 		DRV_LOG(WARNING, "probably using routed NetVSC interface \"%s\""
 			" (index %u)", iface->if_name, iface->if_index);
