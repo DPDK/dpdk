@@ -211,9 +211,10 @@ queueid_t nb_txq = 1; /**< Number of TX queues per port. */
 
 /*
  * Configurable number of RX/TX ring descriptors.
+ * Defaults are supplied by drivers via ethdev.
  */
-#define RTE_TEST_RX_DESC_DEFAULT 1024
-#define RTE_TEST_TX_DESC_DEFAULT 1024
+#define RTE_TEST_RX_DESC_DEFAULT 0
+#define RTE_TEST_TX_DESC_DEFAULT 0
 uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT; /**< Number of RX descriptors. */
 uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT; /**< Number of TX descriptors. */
 

@@ -2718,6 +2718,8 @@ cmd_config_burst_parsed(void *parsed_result,
 			__attribute__((unused)) void *data)
 {
 	struct cmd_config_burst *res = parsed_result;
+	struct rte_eth_dev_info dev_info;
+	uint16_t rec_nb_pkts;
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
@@ -2725,11 +2727,34 @@ cmd_config_burst_parsed(void *parsed_result,
 	}
 
 	if (!strcmp(res->name, "burst")) {
-		if (res->value < 1 || res->value > MAX_PKT_BURST) {
+		if (res->value == 0) {
+			/* If user gives a value of zero, query the PMD for
+			 * its recommended Rx burst size. Testpmd uses a single
+			 * size for all ports, so assume all ports are the same
+			 * NIC model and use the values from Port 0.
+			 */
+			rte_eth_dev_info_get(0, &dev_info);
+			rec_nb_pkts = dev_info.default_rxportconf.burst_size;
+
+			if (rec_nb_pkts == 0) {
+				printf("PMD does not recommend a burst size.\n"
+					"User provided value must be between"
+					" 1 and %d\n", MAX_PKT_BURST);
+				return;
+			} else if (rec_nb_pkts > MAX_PKT_BURST) {
+				printf("PMD recommended burst size of %d"
+					" exceeds maximum value of %d\n",
+					rec_nb_pkts, MAX_PKT_BURST);
+				return;
+			}
+			printf("Using PMD-provided burst value of %d\n",
+				rec_nb_pkts);
+			nb_pkt_per_burst = rec_nb_pkts;
+		} else if (res->value > MAX_PKT_BURST) {
 			printf("burst must be >= 1 && <= %d\n", MAX_PKT_BURST);
 			return;
-		}
-		nb_pkt_per_burst = res->value;
+		} else
+			nb_pkt_per_burst = res->value;
 	} else {
 		printf("Unknown parameter\n");
 		return;
