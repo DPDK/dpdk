@@ -441,49 +441,87 @@ trigger_async_action(struct pending_request *sr)
 	free(sr->request);
 }
 
+static struct pending_request *
+check_trigger(struct timespec *ts)
+{
+	struct pending_request *next, *cur, *trigger = NULL;
+
+	TAILQ_FOREACH_SAFE(cur, &pending_requests.requests, next, next) {
+		enum async_action action;
+		if (cur->type != REQUEST_TYPE_ASYNC)
+			continue;
+
+		action = process_async_request(cur, ts);
+		if (action == ACTION_FREE) {
+			TAILQ_REMOVE(&pending_requests.requests, cur, next);
+			free(cur);
+		} else if (action == ACTION_TRIGGER) {
+			TAILQ_REMOVE(&pending_requests.requests, cur, next);
+			trigger = cur;
+			break;
+		}
+	}
+	return trigger;
+}
+
+static void
+wait_for_async_messages(void)
+{
+	struct pending_request *sr;
+	struct timespec timeout;
+	bool timedwait = false;
+	bool nowait = false;
+	int ret;
+
+	/* scan through the list and see if there are any timeouts that
+	 * are earlier than our current timeout.
+	 */
+	TAILQ_FOREACH(sr, &pending_requests.requests, next) {
+		if (sr->type != REQUEST_TYPE_ASYNC)
+			continue;
+		if (!timedwait || timespec_cmp(&sr->async.param->end,
+				&timeout) < 0) {
+			memcpy(&timeout, &sr->async.param->end,
+				sizeof(timeout));
+			timedwait = true;
+		}
+
+		/* sometimes, we don't even wait */
+		if (sr->reply_received) {
+			nowait = true;
+			break;
+		}
+	}
+
+	if (nowait)
+		return;
+
+	do {
+		ret = timedwait ?
+			pthread_cond_timedwait(
+				&pending_requests.async_cond,
+				&pending_requests.lock,
+				&timeout) :
+			pthread_cond_wait(
+				&pending_requests.async_cond,
+				&pending_requests.lock);
+	} while (ret != 0 && ret != ETIMEDOUT);
+
+	/* we've been woken up or timed out */
+}
+
 static void *
 async_reply_handle(void *arg __rte_unused)
 {
-	struct pending_request *sr;
 	struct timeval now;
-	struct timespec timeout, ts_now;
+	struct timespec ts_now;
 	while (1) {
 		struct pending_request *trigger = NULL;
-		int ret;
-		bool nowait = false;
-		bool timedwait = false;
 
 		pthread_mutex_lock(&pending_requests.lock);
 
-		/* scan through the list and see if there are any timeouts that
-		 * are earlier than our current timeout.
-		 */
-		TAILQ_FOREACH(sr, &pending_requests.requests, next) {
-			if (sr->type != REQUEST_TYPE_ASYNC)
-				continue;
-			if (!timedwait || timespec_cmp(&sr->async.param->end,
-					&timeout) < 0) {
-				memcpy(&timeout, &sr->async.param->end,
-					sizeof(timeout));
-				timedwait = true;
-			}
-
-			/* sometimes, we don't even wait */
-			if (sr->reply_received) {
-				nowait = true;
-				break;
-			}
-		}
-
-		if (nowait)
-			ret = 0;
-		else if (timedwait)
-			ret = pthread_cond_timedwait(
-					&pending_requests.async_cond,
-					&pending_requests.lock, &timeout);
-		else
-			ret = pthread_cond_wait(&pending_requests.async_cond,
-					&pending_requests.lock);
+		/* we exit this function holding the lock */
+		wait_for_async_messages();
 
 		if (gettimeofday(&now, NULL) < 0) {
 			RTE_LOG(ERR, EAL, "Cannot get current time\n");
@@ -492,38 +530,22 @@ async_reply_handle(void *arg __rte_unused)
 		ts_now.tv_nsec = now.tv_usec * 1000;
 		ts_now.tv_sec = now.tv_sec;
 
-		if (ret == 0 || ret == ETIMEDOUT) {
-			struct pending_request *next;
-			/* we've either been woken up, or we timed out */
+		do {
+			trigger = check_trigger(&ts_now);
+			/* unlock request list */
+			pthread_mutex_unlock(&pending_requests.lock);
 
-			/* we have still the lock, check if anything needs
-			 * processing.
-			 */
-			TAILQ_FOREACH_SAFE(sr, &pending_requests.requests, next,
-					next) {
-				enum async_action action;
-				if (sr->type != REQUEST_TYPE_ASYNC)
-					continue;
+			if (trigger) {
+				trigger_async_action(trigger);
+				free(trigger);
 
-				action = process_async_request(sr, &ts_now);
-				if (action == ACTION_FREE) {
-					TAILQ_REMOVE(&pending_requests.requests,
-							sr, next);
-					free(sr);
-				} else if (action == ACTION_TRIGGER &&
-						trigger == NULL) {
-					TAILQ_REMOVE(&pending_requests.requests,
-							sr, next);
-					trigger = sr;
-				}
+				/* we've triggered a callback, but there may be
+				 * more, so lock the list and check again.
+				 */
+				pthread_mutex_lock(&pending_requests.lock);
 			}
-		}
-		pthread_mutex_unlock(&pending_requests.lock);
-		if (trigger) {
-			trigger_async_action(trigger);
-			free(trigger);
-		}
-	};
+		} while (trigger);
+	}
 
 	RTE_LOG(ERR, EAL, "ERROR: asynchronous requests disabled\n");
 
