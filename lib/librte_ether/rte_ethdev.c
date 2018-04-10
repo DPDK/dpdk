@@ -1789,7 +1789,8 @@ rte_eth_link_get(uint16_t port_id, struct rte_eth_link *eth_link)
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
 
-	if (dev->data->dev_conf.intr_conf.lsc)
+	if (dev->data->dev_conf.intr_conf.lsc &&
+	    dev->data->dev_started)
 		rte_eth_linkstatus_get(dev, eth_link);
 	else {
 		RTE_FUNC_PTR_OR_RET(*dev->dev_ops->link_update);
@@ -1806,7 +1807,8 @@ rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *eth_link)
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
 
-	if (dev->data->dev_conf.intr_conf.lsc)
+	if (dev->data->dev_conf.intr_conf.lsc &&
+	    dev->data->dev_started)
 		rte_eth_linkstatus_get(dev, eth_link);
 	else {
 		RTE_FUNC_PTR_OR_RET(*dev->dev_ops->link_update);
