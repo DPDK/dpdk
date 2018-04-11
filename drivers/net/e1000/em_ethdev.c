@@ -93,7 +93,7 @@ static int em_get_rx_buffer_size(struct e1000_hw *hw);
 static int eth_em_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 			  uint32_t index, uint32_t pool);
 static void eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index);
-static void eth_em_default_mac_addr_set(struct rte_eth_dev *dev,
+static int eth_em_default_mac_addr_set(struct rte_eth_dev *dev,
 					 struct ether_addr *addr);
 
 static int eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
@@ -1779,13 +1779,13 @@ eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 	e1000_rar_set(hw, addr, index);
 }
 
-static void
+static int
 eth_em_default_mac_addr_set(struct rte_eth_dev *dev,
 			    struct ether_addr *addr)
 {
 	eth_em_rar_clear(dev, 0);
 
-	eth_em_rar_set(dev, (void *)addr, 0, 0);
+	return eth_em_rar_set(dev, (void *)addr, 0, 0);
 }
 
 static int

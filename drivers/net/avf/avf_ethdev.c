@@ -65,7 +65,7 @@ static int avf_dev_rss_hash_update(struct rte_eth_dev *dev,
 static int avf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				     struct rte_eth_rss_conf *rss_conf);
 static int avf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
-static void avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
+static int avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 					 struct ether_addr *mac_addr);
 static int avf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					uint16_t queue_id);
@@ -925,7 +925,7 @@ avf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return ret;
 }
 
-static void
+static int
 avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 			     struct ether_addr *mac_addr)
 {
@@ -939,11 +939,11 @@ avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	perm_addr = (struct ether_addr *)hw->mac.perm_addr;
 
 	if (is_same_ether_addr(mac_addr, old_addr))
-		return;
+		return 0;
 
 	/* If the MAC address is configured by host, skip the setting */
 	if (is_valid_assigned_ether_addr(perm_addr))
-		return;
+		return -EPERM;
 
 	ret = avf_add_del_eth_addr(adapter, old_addr, FALSE);
 	if (ret)
@@ -967,7 +967,11 @@ avf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 			    mac_addr->addr_bytes[4],
 			    mac_addr->addr_bytes[5]);
 
+	if (ret)
+		return -EIO;
+
 	ether_addr_copy(mac_addr, (struct ether_addr *)hw->mac.addr);
+	return 0;
 }
 
 static int

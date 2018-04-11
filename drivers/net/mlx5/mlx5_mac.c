@@ -138,17 +138,14 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
  *   Pointer to Ethernet device structure.
  * @param mac_addr
  *   MAC address to register.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-void
+int
 mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
-	int ret;
-
 	DRV_LOG(DEBUG, "port %u setting primary MAC address",
 		dev->data->port_id);
-
-	ret = mlx5_mac_addr_add(dev, mac_addr, 0, 0);
-	if (ret)
-		DRV_LOG(ERR, "port %u cannot set mac address: %s",
-			dev->data->port_id, strerror(rte_errno));
+	return mlx5_mac_addr_add(dev, mac_addr, 0, 0);
 }

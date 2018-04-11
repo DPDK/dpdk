@@ -914,13 +914,14 @@ fail_inval:
 	SFC_ASSERT(rc > 0);
 	return -rc;
 }
-static void
+static int
 sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	struct sfc_port *port = &sa->port;
-	int rc;
+	struct ether_addr *old_addr = &dev->data->mac_addrs[0];
+	int rc = 0;
 
 	sfc_adapter_lock(sa);
 
@@ -930,9 +931,16 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	 */
 	ether_addr_copy(mac_addr, &port->default_mac_addr);
 
+	/*
+	 * Neither of the two following checks can return
+	 * an error. The new MAC address is preserved in
+	 * the device private data and can be activated
+	 * on the next port start if the user prevents
+	 * isolated mode from being enabled.
+	 */
 	if (port->isolated) {
-		sfc_err(sa, "isolated mode is active on the port");
-		sfc_err(sa, "will not set MAC address");
+		sfc_warn(sa, "isolated mode is active on the port");
+		sfc_warn(sa, "will not set MAC address");
 		goto unlock;
 	}
 
@@ -956,8 +964,12 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 		 * we also need to update unicast filters
 		 */
 		rc = sfc_set_rx_mode(sa);
-		if (rc != 0)
+		if (rc != 0) {
 			sfc_err(sa, "cannot set filter (rc = %u)", rc);
+			/* Rollback the old address */
+			(void)efx_mac_addr_set(sa->nic, old_addr->addr_bytes);
+			(void)sfc_set_rx_mode(sa);
+		}
 	} else {
 		sfc_warn(sa, "cannot set MAC address with filters installed");
 		sfc_warn(sa, "adapter will be restarted to pick the new MAC");
@@ -976,14 +988,13 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	}
 
 unlock:
-	/*
-	 * In the case of failure sa->port->default_mac_addr does not
-	 * need rollback since no error code is returned, and the upper
-	 * API will anyway update the external MAC address storage.
-	 * To be consistent with that new value it is better to keep
-	 * the device private value the same.
-	 */
+	if (rc != 0)
+		ether_addr_copy(old_addr, &port->default_mac_addr);
+
 	sfc_adapter_unlock(sa);
+
+	SFC_ASSERT(rc >= 0);
+	return -rc;
 }
 
 

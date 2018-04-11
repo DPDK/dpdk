@@ -2872,11 +2872,15 @@ bond_ethdev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
-static void
+static int
 bond_ethdev_mac_address_set(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
-	if (mac_address_set(dev, addr))
+	if (mac_address_set(dev, addr)) {
 		RTE_BOND_LOG(ERR, "Failed to update MAC address");
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 const struct eth_dev_ops default_dev_ops = {

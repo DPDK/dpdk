@@ -202,7 +202,7 @@ int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN]);
 void mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 int mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 		      uint32_t index, uint32_t vmdq);
-void mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr);
+int mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr);
 
 /* mlx5_rss.c */
 

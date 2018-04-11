@@ -1360,10 +1360,11 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 eth_mac_addr_set(struct rte_eth_dev *dev __rte_unused,
 		struct ether_addr *mac_addr __rte_unused)
 {
+	return 0;
 }
 
 static void

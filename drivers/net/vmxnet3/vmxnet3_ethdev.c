@@ -72,7 +72,7 @@ vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev,
 				       uint16_t vid, int on);
 static int vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
-static void vmxnet3_mac_addr_set(struct rte_eth_dev *dev,
+static int vmxnet3_mac_addr_set(struct rte_eth_dev *dev,
 				 struct ether_addr *mac_addr);
 static void vmxnet3_interrupt_handler(void *param);
 
@@ -1077,13 +1077,14 @@ vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
-static void
+static int
 vmxnet3_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	ether_addr_copy(mac_addr, (struct ether_addr *)(hw->perm_addr));
 	vmxnet3_write_mac(hw, mac_addr->addr_bytes);
+	return 0;
 }
 
 /* return 0 means link status changed, -1 means not changed */

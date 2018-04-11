@@ -956,48 +956,58 @@ tap_allmulti_disable(struct rte_eth_dev *dev)
 		tap_flow_implicit_destroy(pmd, TAP_REMOTE_ALLMULTI);
 }
 
-static void
+static int
 tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	enum ioctl_mode mode = LOCAL_ONLY;
 	struct ifreq ifr;
+	int ret;
 
 	if (is_zero_ether_addr(mac_addr)) {
 		RTE_LOG(ERR, PMD, "%s: can't set an empty MAC address\n",
 			dev->device->name);
-		return;
+		return -EINVAL;
 	}
 	/* Check the actual current MAC address on the tap netdevice */
-	if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
-		return;
+	ret = tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY);
+	if (ret < 0)
+		return ret;
 	if (is_same_ether_addr((struct ether_addr *)&ifr.ifr_hwaddr.sa_data,
 			       mac_addr))
-		return;
+		return 0;
 	/* Check the current MAC address on the remote */
-	if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0)
-		return;
+	ret = tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY);
+	if (ret < 0)
+		return ret;
 	if (!is_same_ether_addr((struct ether_addr *)&ifr.ifr_hwaddr.sa_data,
 			       mac_addr))
 		mode = LOCAL_AND_REMOTE;
 	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
 	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, ETHER_ADDR_LEN);
-	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, mode) < 0)
-		return;
+	ret = tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, mode);
+	if (ret < 0)
+		return ret;
 	rte_memcpy(&pmd->eth_addr, mac_addr, ETHER_ADDR_LEN);
 	if (pmd->remote_if_index && !pmd->flow_isolate) {
 		/* Replace MAC redirection rule after a MAC change */
-		if (tap_flow_implicit_destroy(pmd, TAP_REMOTE_LOCAL_MAC) < 0) {
+		ret = tap_flow_implicit_destroy(pmd, TAP_REMOTE_LOCAL_MAC);
+		if (ret < 0) {
 			RTE_LOG(ERR, PMD,
 				"%s: Couldn't delete MAC redirection rule\n",
 				dev->device->name);
-			return;
+			return ret;
 		}
-		if (tap_flow_implicit_create(pmd, TAP_REMOTE_LOCAL_MAC) < 0)
+		ret = tap_flow_implicit_create(pmd, TAP_REMOTE_LOCAL_MAC);
+		if (ret < 0) {
 			RTE_LOG(ERR, PMD,
 				"%s: Couldn't add MAC redirection rule\n",
 				dev->device->name);
+			return ret;
+		}
 	}
+
+	return 0;
 }
 
 static int

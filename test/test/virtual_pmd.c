@@ -216,10 +216,11 @@ static void
 virtual_ethdev_promiscuous_mode_disable(struct rte_eth_dev *dev __rte_unused)
 {}
 
-static void
+static int
 virtual_ethdev_mac_address_set(__rte_unused struct rte_eth_dev *dev,
 			       __rte_unused struct ether_addr *addr)
 {
+	return 0;
 }
 
 static const struct eth_dev_ops virtual_ethdev_default_dev_ops = {

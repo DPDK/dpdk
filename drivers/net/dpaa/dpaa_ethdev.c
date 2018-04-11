@@ -816,7 +816,7 @@ dpaa_dev_remove_mac_addr(struct rte_eth_dev *dev,
 	fman_if_clear_mac_addr(dpaa_intf->fif, index);
 }
 
-static void
+static int
 dpaa_dev_set_mac_addr(struct rte_eth_dev *dev,
 		       struct ether_addr *addr)
 {
@@ -828,6 +828,8 @@ dpaa_dev_set_mac_addr(struct rte_eth_dev *dev,
 	ret = fman_if_add_mac_addr(dpaa_intf->fif, addr->addr_bytes, 0);
 	if (ret)
 		RTE_LOG(ERR, PMD, "error: Setting the MAC ADDR failed %d", ret);
+
+	return ret;
 }
 
 static struct eth_dev_ops dpaa_devops = {

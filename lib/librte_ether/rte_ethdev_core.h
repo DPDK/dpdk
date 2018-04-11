@@ -255,7 +255,7 @@ typedef int (*eth_mac_addr_add_t)(struct rte_eth_dev *dev,
 				  uint32_t vmdq);
 /**< @internal Set a MAC address into Receive Address Address Register */
 
-typedef void (*eth_mac_addr_set_t)(struct rte_eth_dev *dev,
+typedef int (*eth_mac_addr_set_t)(struct rte_eth_dev *dev,
 				  struct ether_addr *mac_addr);
 /**< @internal Set a MAC address into Receive Address Address Register */
 

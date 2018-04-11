@@ -16,7 +16,7 @@ void cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev);
 void cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev);
 void cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev);
 void cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev);
-void cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr);
+int cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr);
 int cxgbe_dev_configure(struct rte_eth_dev *eth_dev);
 int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t queue_idx,
 			     uint16_t nb_desc, unsigned int socket_id,

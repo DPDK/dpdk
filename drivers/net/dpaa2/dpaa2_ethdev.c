@@ -1019,7 +1019,7 @@ dpaa2_dev_remove_mac_addr(struct rte_eth_dev *dev,
 			"error: Removing the MAC ADDR failed: err = %d", ret);
 }
 
-static void
+static int
 dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 		       struct ether_addr *addr)
 {
@@ -1031,7 +1031,7 @@ dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 
 	if (dpni == NULL) {
 		DPAA2_PMD_ERR("dpni is NULL");
-		return;
+		return -EINVAL;
 	}
 
 	ret = dpni_set_primary_mac_addr(dpni, CMD_PRI_LOW,
@@ -1040,6 +1040,8 @@ dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 	if (ret)
 		DPAA2_PMD_ERR(
 			"error: Setting the MAC ADDR failed %d", ret);
+
+	return ret;
 }
 
 static

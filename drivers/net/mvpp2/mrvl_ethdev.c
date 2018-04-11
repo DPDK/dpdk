@@ -1061,18 +1061,21 @@ mrvl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
  *   Pointer to Ethernet device structure.
  * @param mac_addr
  *   MAC address to register.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
  */
-static void
+static int
 mrvl_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
 	if (!priv->ppio)
-		return;
+		return 0;
 
 	if (priv->isolated)
-		return;
+		return -ENOTSUP;
 
 	ret = pp2_ppio_set_mac_addr(priv->ppio, mac_addr->addr_bytes);
 	if (ret) {
@@ -1080,6 +1083,8 @@ mrvl_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 		ether_format_addr(buf, sizeof(buf), mac_addr);
 		RTE_LOG(ERR, PMD, "Failed to set mac to %s\n", buf);
 	}
+
+	return ret;
 }
 
 /**

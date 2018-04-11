@@ -369,7 +369,7 @@ static int i40e_get_eeprom_length(struct rte_eth_dev *dev);
 static int i40e_get_eeprom(struct rte_eth_dev *dev,
 			   struct rte_dev_eeprom_info *eeprom);
 
-static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
+static int i40e_set_default_mac_addr(struct rte_eth_dev *dev,
 				      struct ether_addr *mac_addr);
 
 static int i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
@@ -11327,8 +11327,8 @@ static int i40e_get_eeprom(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
-				      struct ether_addr *mac_addr)
+static int i40e_set_default_mac_addr(struct rte_eth_dev *dev,
+				     struct ether_addr *mac_addr)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -11339,7 +11339,7 @@ static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
 
 	if (!is_valid_assigned_ether_addr(mac_addr)) {
 		PMD_DRV_LOG(ERR, "Tried to set invalid MAC address.");
-		return;
+		return -EINVAL;
 	}
 
 	TAILQ_FOREACH(f, &vsi->mac_list, next) {
@@ -11349,25 +11349,31 @@ static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
 
 	if (f == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to find filter for default mac");
-		return;
+		return -EIO;
 	}
 
 	mac_filter = f->mac_info;
 	ret = i40e_vsi_delete_mac(vsi, &mac_filter.mac_addr);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to delete mac filter");
-		return;
+		return -EIO;
 	}
 	memcpy(&mac_filter.mac_addr, mac_addr, ETH_ADDR_LEN);
 	ret = i40e_vsi_add_mac(vsi, &mac_filter);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to add mac filter");
-		return;
+		return -EIO;
 	}
 	memcpy(&pf->dev_addr, mac_addr, ETH_ADDR_LEN);
 
-	i40e_aq_mac_address_write(hw, I40E_AQC_WRITE_TYPE_LAA_WOL,
-				  mac_addr->addr_bytes, NULL);
+	ret = i40e_aq_mac_address_write(hw, I40E_AQC_WRITE_TYPE_LAA_WOL,
+					mac_addr->addr_bytes, NULL);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to change mac");
+		return -EIO;
+	}
+
+	return 0;
 }
 
 static int

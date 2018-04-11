@@ -534,11 +534,14 @@ mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
  *   Pointer to Ethernet device structure.
  * @param mac_addr
  *   MAC address to register.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
-void
+int
 mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
-	mlx4_mac_addr_add(dev, mac_addr, 0, 0);
+	return mlx4_mac_addr_add(dev, mac_addr, 0, 0);
 }
 
 /**

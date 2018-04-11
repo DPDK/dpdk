@@ -586,7 +586,7 @@ octeontx_dev_stats_reset(struct rte_eth_dev *dev)
 	octeontx_port_stats_clr(nic);
 }
 
-static void
+static int
 octeontx_dev_default_mac_addr_set(struct rte_eth_dev *dev,
 					struct ether_addr *addr)
 {
@@ -597,6 +597,8 @@ octeontx_dev_default_mac_addr_set(struct rte_eth_dev *dev,
 	if (ret != 0)
 		octeontx_log_err("failed to set MAC address on port %d",
 				nic->port_id);
+
+	return ret;
 }
 
 static void

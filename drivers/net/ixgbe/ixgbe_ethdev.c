@@ -227,7 +227,7 @@ static void ixgbe_dev_interrupt_delayed_handler(void *param);
 static int ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 			 uint32_t index, uint32_t pool);
 static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
-static void ixgbe_set_default_mac_addr(struct rte_eth_dev *dev,
+static int ixgbe_set_default_mac_addr(struct rte_eth_dev *dev,
 					   struct ether_addr *mac_addr);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw, struct ixgbe_dcb_config *dcb_config);
 static bool is_device_supported(struct rte_eth_dev *dev,
@@ -285,7 +285,7 @@ static int ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
 				struct ether_addr *mac_addr,
 				uint32_t index, uint32_t pool);
 static void ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
-static void ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
+static int ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
 					     struct ether_addr *mac_addr);
 static int ixgbe_syn_filter_get(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter);
@@ -4785,14 +4785,15 @@ ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
 	ixgbe_clear_rar(hw, index);
 }
 
-static void
+static int
 ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	ixgbe_remove_rar(dev, 0);
-
 	ixgbe_add_rar(dev, addr, 0, pci_dev->max_vfs);
+
+	return 0;
 }
 
 static bool
@@ -5941,12 +5942,14 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	}
 }
 
-static void
+static int
 ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	hw->mac.ops.set_rar(hw, 0, (void *)addr, 0, 0);
+
+	return 0;
 }
 
 int

@@ -997,16 +997,27 @@ fs_mac_addr_add(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 fs_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	struct sub_device *sdev;
 	uint8_t i;
+	int ret;
 
 	fs_lock(dev, 0);
-	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE)
-		rte_eth_dev_default_mac_addr_set(PORT_ID(sdev), mac_addr);
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_dev_default_mac_addr_set(PORT_ID(sdev), mac_addr);
+		ret = fs_err(sdev, ret);
+		if (ret) {
+			ERROR("Operation rte_eth_dev_mac_addr_set failed for sub_device %d with error %d",
+				i, ret);
+			fs_unlock(dev, 0);
+			return ret;
+		}
+	}
 	fs_unlock(dev, 0);
+
+	return 0;
 }
 
 static int

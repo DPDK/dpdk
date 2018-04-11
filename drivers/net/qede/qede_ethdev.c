@@ -1041,7 +1041,7 @@ qede_mac_addr_remove(struct rte_eth_dev *eth_dev, uint32_t index)
 	qede_mac_int_ops(eth_dev, &ucast, false);
 }
 
-static void
+static int
 qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
@@ -1050,12 +1050,11 @@ qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr)
 	if (IS_VF(edev) && !ecore_vf_check_mac(ECORE_LEADING_HWFN(edev),
 					       mac_addr->addr_bytes)) {
 		DP_ERR(edev, "Setting MAC address is not allowed\n");
-		ether_addr_copy(&qdev->primary_mac,
-				&eth_dev->data->mac_addrs[0]);
-		return;
+		return -EPERM;
 	}
 
 	qede_mac_addr_add(eth_dev, mac_addr, 0, 0);
+	return 0;
 }
 
 static void qede_config_accept_any_vlan(struct qede_dev *qdev, bool flg)

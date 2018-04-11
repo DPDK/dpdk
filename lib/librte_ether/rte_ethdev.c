@@ -3034,6 +3034,7 @@ int
 rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct ether_addr *addr)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
@@ -3043,10 +3044,12 @@ rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct ether_addr *addr)
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mac_addr_set, -ENOTSUP);
 
+	ret = (*dev->dev_ops->mac_addr_set)(dev, addr);
+	if (ret < 0)
+		return ret;
+
 	/* Update default address in NIC data structure */
 	ether_addr_copy(addr, &dev->data->mac_addrs[0]);
-
-	(*dev->dev_ops->mac_addr_set)(dev, addr);
 
 	return 0;
 }

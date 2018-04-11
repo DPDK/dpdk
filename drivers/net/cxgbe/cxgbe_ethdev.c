@@ -1056,7 +1056,7 @@ static int cxgbe_get_regs(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-void cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
+int cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
 	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -1067,9 +1067,10 @@ void cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
 	if (ret < 0) {
 		dev_err(adapter, "failed to set mac addr; err = %d\n",
 			ret);
-		return;
+		return ret;
 	}
 	pi->xact_addr_filt = ret;
+	return 0;
 }
 
 static const struct eth_dev_ops cxgbe_eth_dev_ops = {

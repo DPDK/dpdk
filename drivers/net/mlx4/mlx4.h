@@ -132,7 +132,7 @@ void mlx4_allmulticast_disable(struct rte_eth_dev *dev);
 void mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 int mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		      uint32_t index, uint32_t vmdq);
-void mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr);
+int mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr);
 int mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 int mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 void mlx4_stats_reset(struct rte_eth_dev *dev);

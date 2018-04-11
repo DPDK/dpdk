@@ -459,10 +459,11 @@ eth_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 eth_mac_address_set(__rte_unused struct rte_eth_dev *dev,
 		    __rte_unused struct ether_addr *addr)
 {
+	return 0;
 }
 
 static const struct eth_dev_ops ops = {

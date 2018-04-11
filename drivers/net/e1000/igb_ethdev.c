@@ -145,7 +145,7 @@ static int eth_igb_rar_set(struct rte_eth_dev *dev,
 			   struct ether_addr *mac_addr,
 			   uint32_t index, uint32_t pool);
 static void eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index);
-static void eth_igb_default_mac_addr_set(struct rte_eth_dev *dev,
+static int eth_igb_default_mac_addr_set(struct rte_eth_dev *dev,
 		struct ether_addr *addr);
 
 static void igbvf_intr_disable(struct e1000_hw *hw);
@@ -170,7 +170,7 @@ static int igbvf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on);
 static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on);
-static void igbvf_default_mac_addr_set(struct rte_eth_dev *dev,
+static int igbvf_default_mac_addr_set(struct rte_eth_dev *dev,
 		struct ether_addr *addr);
 static int igbvf_get_reg_length(struct rte_eth_dev *dev);
 static int igbvf_get_regs(struct rte_eth_dev *dev,
@@ -3087,13 +3087,14 @@ eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 	e1000_rar_set(hw, addr, index);
 }
 
-static void
+static int
 eth_igb_default_mac_addr_set(struct rte_eth_dev *dev,
 				struct ether_addr *addr)
 {
 	eth_igb_rar_clear(dev, 0);
-
 	eth_igb_rar_set(dev, (void *)addr, 0, 0);
+
+	return 0;
 }
 /*
  * Virtual Function operations
@@ -3445,7 +3446,7 @@ igbvf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	return 0;
 }
 
-static void
+static int
 igbvf_default_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
 	struct e1000_hw *hw =
@@ -3453,6 +3454,7 @@ igbvf_default_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
 
 	/* index is not used by rar_set() */
 	hw->mac.ops.rar_set(hw, (void *)addr, 0);
+	return 0;
 }
 
 

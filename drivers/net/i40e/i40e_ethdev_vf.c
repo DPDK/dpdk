@@ -120,7 +120,7 @@ static int i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
 static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 					struct rte_eth_rss_conf *rss_conf);
 static int i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
-static void i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
+static int i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
 					struct ether_addr *mac_addr);
 static int
 i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
@@ -2666,7 +2666,7 @@ i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return ret;
 }
 
-static void
+static int
 i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
 			    struct ether_addr *mac_addr)
 {
@@ -2675,17 +2675,19 @@ i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
 
 	if (!is_valid_assigned_ether_addr(mac_addr)) {
 		PMD_DRV_LOG(ERR, "Tried to set invalid MAC address.");
-		return;
+		return -EINVAL;
 	}
 
 	if (vf->flags & I40E_FLAG_VF_MAC_BY_PF)
-		return;
+		return -EPERM;
 
 	i40evf_del_mac_addr_by_addr(dev, (struct ether_addr *)hw->mac.addr);
 
-	i40evf_add_mac_addr(dev, mac_addr, 0, 0);
+	if (i40evf_add_mac_addr(dev, mac_addr, 0, 0) != 0)
+		return -EIO;
 
 	ether_addr_copy(mac_addr, (struct ether_addr *)hw->mac.addr);
+	return 0;
 }
 
 static int
