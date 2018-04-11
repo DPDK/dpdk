@@ -196,6 +196,15 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 	int allocd_pages;
 	void *ret, *map_addr;
 
+	alloc_sz = (size_t)pg_sz * n_segs;
+
+	/* first, check if we're allowed to allocate this memory */
+	if (eal_memalloc_mem_alloc_validate(socket,
+			heap->total_size + alloc_sz) < 0) {
+		RTE_LOG(DEBUG, EAL, "User has disallowed allocation\n");
+		return NULL;
+	}
+
 	allocd_pages = eal_memalloc_alloc_seg_bulk(ms, n_segs, pg_sz,
 			socket, true);
 
@@ -205,7 +214,6 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 
 	map_addr = ms[0]->addr;
 	msl = rte_mem_virt2memseg_list(map_addr);
-	alloc_sz = (size_t)msl->page_sz * allocd_pages;
 
 	/* check if we wanted contiguous memory but didn't get it */
 	if (contig && !eal_memalloc_is_contig(msl, map_addr, alloc_sz)) {
