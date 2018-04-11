@@ -20,6 +20,8 @@
 
 #ifdef VFIO_PRESENT
 
+#define VFIO_MEM_EVENT_CLB_NAME "vfio_mem_event_clb"
+
 /* per-process VFIO config */
 static struct vfio_config vfio_cfg;
 
@@ -69,12 +71,48 @@ struct user_mem_map {
 	uint64_t len;
 };
 static struct {
-	rte_spinlock_t lock;
+	rte_spinlock_recursive_t lock;
 	int n_maps;
 	struct user_mem_map maps[VFIO_MAX_USER_MEM_MAPS];
 } user_mem_maps = {
-	.lock = RTE_SPINLOCK_INITIALIZER
+	.lock = RTE_SPINLOCK_RECURSIVE_INITIALIZER
 };
+
+/* for sPAPR IOMMU, we will need to walk memseg list, but we cannot use
+ * rte_memseg_walk() because by the time we enter callback we will be holding a
+ * write lock, so regular rte-memseg_walk will deadlock. copying the same
+ * iteration code everywhere is not ideal as well. so, use a lockless copy of
+ * memseg walk here.
+ */
+static int
+memseg_walk_thread_unsafe(rte_memseg_walk_t func, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int i, ms_idx, ret = 0;
+
+	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
+		struct rte_memseg_list *msl = &mcfg->memsegs[i];
+		const struct rte_memseg *ms;
+		struct rte_fbarray *arr;
+
+		if (msl->memseg_arr.count == 0)
+			continue;
+
+		arr = &msl->memseg_arr;
+
+		ms_idx = rte_fbarray_find_next_used(arr, 0);
+		while (ms_idx >= 0) {
+			ms = rte_fbarray_get(arr, ms_idx);
+			ret = func(msl, ms, arg);
+			if (ret < 0)
+				return -1;
+			if (ret > 0)
+				return 1;
+			ms_idx = rte_fbarray_find_next_used(arr, ms_idx + 1);
+		}
+	}
+	return 0;
+}
 
 static int
 is_null_map(const struct user_mem_map *map)
@@ -406,6 +444,38 @@ vfio_group_device_count(int vfio_group_fd)
 	return vfio_cfg.vfio_groups[i].devices;
 }
 
+static void
+vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len)
+{
+	struct rte_memseg_list *msl;
+	struct rte_memseg *ms;
+	size_t cur_len = 0;
+
+	msl = rte_mem_virt2memseg_list(addr);
+
+	/* for IOVA as VA mode, no need to care for IOVA addresses */
+	if (rte_eal_iova_mode() == RTE_IOVA_VA) {
+		uint64_t vfio_va = (uint64_t)(uintptr_t)addr;
+		if (type == RTE_MEM_EVENT_ALLOC)
+			vfio_dma_mem_map(vfio_va, vfio_va, len, 1);
+		else
+			vfio_dma_mem_map(vfio_va, vfio_va, len, 0);
+		return;
+	}
+
+	/* memsegs are contiguous in memory */
+	ms = rte_mem_virt2memseg(addr, msl);
+	while (cur_len < len) {
+		if (type == RTE_MEM_EVENT_ALLOC)
+			vfio_dma_mem_map(ms->addr_64, ms->iova, ms->len, 1);
+		else
+			vfio_dma_mem_map(ms->addr_64, ms->iova, ms->len, 0);
+
+		cur_len += ms->len;
+		++ms;
+	}
+}
+
 int
 rte_vfio_clear_group(int vfio_group_fd)
 {
@@ -468,6 +538,8 @@ int
 rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info)
 {
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	rte_rwlock_t *mem_lock = &mcfg->memory_hotplug_lock;
 	struct vfio_group_status group_status = {
 			.argsz = sizeof(group_status)
 	};
@@ -555,6 +627,10 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 				rte_vfio_clear_group(vfio_group_fd);
 				return -1;
 			}
+			/* lock memory hotplug before mapping and release it
+			 * after registering callback, to prevent races
+			 */
+			rte_rwlock_read_lock(mem_lock);
 			ret = t->dma_map_func(vfio_cfg.vfio_container_fd);
 			if (ret) {
 				RTE_LOG(ERR, EAL,
@@ -562,13 +638,14 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 					dev_addr, errno, strerror(errno));
 				close(vfio_group_fd);
 				rte_vfio_clear_group(vfio_group_fd);
+				rte_rwlock_read_unlock(mem_lock);
 				return -1;
 			}
 
 			vfio_cfg.vfio_iommu_type = t;
 
 			/* re-map all user-mapped segments */
-			rte_spinlock_lock(&user_mem_maps.lock);
+			rte_spinlock_recursive_lock(&user_mem_maps.lock);
 
 			/* this IOMMU type may not support DMA mapping, but
 			 * if we have mappings in the list - that means we have
@@ -590,12 +667,29 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 							"len: 0x%" PRIu64 "\n",
 							map->addr, map->iova,
 							map->len);
-					rte_spinlock_unlock(
+					rte_spinlock_recursive_unlock(
 							&user_mem_maps.lock);
+					rte_rwlock_read_unlock(mem_lock);
 					return -1;
 				}
 			}
-			rte_spinlock_unlock(&user_mem_maps.lock);
+			rte_spinlock_recursive_unlock(&user_mem_maps.lock);
+
+			/* register callback for mem events */
+			ret = rte_mem_event_callback_register(
+					VFIO_MEM_EVENT_CLB_NAME,
+					vfio_mem_event_callback);
+			/* unlock memory hotplug */
+			rte_rwlock_read_unlock(mem_lock);
+
+			if (ret && rte_errno != ENOTSUP) {
+				RTE_LOG(ERR, EAL, "Could not install memory event callback for VFIO\n");
+				return -1;
+			}
+			if (ret)
+				RTE_LOG(DEBUG, EAL, "Memory event callbacks not supported\n");
+			else
+				RTE_LOG(DEBUG, EAL, "Installed memory event callback for VFIO\n");
 		}
 	}
 
@@ -633,6 +727,8 @@ int
 rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 		    int vfio_dev_fd)
 {
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	rte_rwlock_t *mem_lock = &mcfg->memory_hotplug_lock;
 	struct vfio_group_status group_status = {
 			.argsz = sizeof(group_status)
 	};
@@ -640,13 +736,20 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	int iommu_group_no;
 	int ret;
 
+	/* we don't want any DMA mapping messages to come while we're detaching
+	 * VFIO device, because this might be the last device and we might need
+	 * to unregister the callback.
+	 */
+	rte_rwlock_read_lock(mem_lock);
+
 	/* get group number */
 	ret = vfio_get_group_no(sysfs_base, dev_addr, &iommu_group_no);
 	if (ret <= 0) {
 		RTE_LOG(WARNING, EAL, "  %s not managed by VFIO driver\n",
 			dev_addr);
 		/* This is an error at this point. */
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	/* get the actual group fd */
@@ -654,7 +757,8 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	if (vfio_group_fd <= 0) {
 		RTE_LOG(INFO, EAL, "vfio_get_group_fd failed for %s\n",
 				   dev_addr);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	/* At this point we got an active group. Closing it will make the
@@ -666,7 +770,8 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	if (close(vfio_dev_fd) < 0) {
 		RTE_LOG(INFO, EAL, "Error when closing vfio_dev_fd for %s\n",
 				   dev_addr);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	/* An VFIO group can have several devices attached. Just when there is
@@ -678,17 +783,30 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 		if (close(vfio_group_fd) < 0) {
 			RTE_LOG(INFO, EAL, "Error when closing vfio_group_fd for %s\n",
 				dev_addr);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 
 		if (rte_vfio_clear_group(vfio_group_fd) < 0) {
 			RTE_LOG(INFO, EAL, "Error when clearing group for %s\n",
 					   dev_addr);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 	}
 
-	return 0;
+	/* if there are no active device groups, unregister the callback to
+	 * avoid spurious attempts to map/unmap memory from VFIO.
+	 */
+	if (vfio_cfg.vfio_active_groups == 0)
+		rte_mem_event_callback_unregister(VFIO_MEM_EVENT_CLB_NAME);
+
+	/* success */
+	ret = 0;
+
+out:
+	rte_rwlock_read_unlock(mem_lock);
+	return ret;
 }
 
 int
@@ -1104,12 +1222,13 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 	};
 	int i, ret = 0;
 
-	rte_spinlock_lock(&user_mem_maps.lock);
+	rte_spinlock_recursive_lock(&user_mem_maps.lock);
 
 	/* check if window size needs to be adjusted */
 	memset(&param, 0, sizeof(param));
 
-	if (rte_memseg_walk(vfio_spapr_window_size_walk, &param) < 0) {
+	if (memseg_walk_thread_unsafe(vfio_spapr_window_size_walk,
+				&param) < 0) {
 		RTE_LOG(ERR, EAL, "Could not get window size\n");
 		ret = -1;
 		goto out;
@@ -1137,7 +1256,7 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 				ret = -1;
 				goto out;
 			}
-			if (rte_memseg_walk(vfio_spapr_map_walk,
+			if (memseg_walk_thread_unsafe(vfio_spapr_map_walk,
 					&vfio_container_fd) < 0) {
 				RTE_LOG(ERR, EAL, "Could not recreate DMA maps\n");
 				ret = -1;
@@ -1187,7 +1306,7 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 		vfio_spapr_dma_do_map(vfio_container_fd, vaddr, iova, len, 0);
 	}
 out:
-	rte_spinlock_unlock(&user_mem_maps.lock);
+	rte_spinlock_recursive_unlock(&user_mem_maps.lock);
 	return ret;
 }
 
@@ -1272,7 +1391,7 @@ rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len)
 		return -1;
 	}
 
-	rte_spinlock_lock(&user_mem_maps.lock);
+	rte_spinlock_recursive_lock(&user_mem_maps.lock);
 	if (user_mem_maps.n_maps == VFIO_MAX_USER_MEM_MAPS) {
 		RTE_LOG(ERR, EAL, "No more space for user mem maps\n");
 		rte_errno = ENOMEM;
@@ -1300,7 +1419,7 @@ rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len)
 
 	compact_user_maps();
 out:
-	rte_spinlock_unlock(&user_mem_maps.lock);
+	rte_spinlock_recursive_unlock(&user_mem_maps.lock);
 	return ret;
 }
 
@@ -1315,7 +1434,7 @@ rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len)
 		return -1;
 	}
 
-	rte_spinlock_lock(&user_mem_maps.lock);
+	rte_spinlock_recursive_lock(&user_mem_maps.lock);
 
 	/* find our mapping */
 	map = find_user_mem_map(vaddr, iova, len);
@@ -1374,7 +1493,7 @@ rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len)
 	}
 
 out:
-	rte_spinlock_unlock(&user_mem_maps.lock);
+	rte_spinlock_recursive_unlock(&user_mem_maps.lock);
 	return ret;
 }
 
