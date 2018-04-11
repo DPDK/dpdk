@@ -2975,7 +2975,7 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	/* Set mode 4 default configuration */
 	bond_mode_8023ad_setup(eth_dev, NULL);
 	if (bond_ethdev_mode_set(eth_dev, mode)) {
-		RTE_BOND_LOG(ERR, "Failed to set bonded device %d mode too %d",
+		RTE_BOND_LOG(ERR, "Failed to set bonded device %d mode to %d\n",
 				 eth_dev->data->port_id, mode);
 		goto err;
 	}
