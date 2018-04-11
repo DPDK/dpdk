@@ -185,18 +185,28 @@ static inline void nn_writeq(uint64_t val, volatile void *addr)
 struct nfp_net_tx_desc {
 	union {
 		struct {
-			uint8_t dma_addr_hi;   /* High bits of host buf address */
+			uint8_t dma_addr_hi; /* High bits of host buf address */
 			__le16 dma_len;     /* Length to DMA for this desc */
-			uint8_t offset_eop;    /* Offset in buf where pkt starts +
+			uint8_t offset_eop; /* Offset in buf where pkt starts +
 					     * highest bit is eop flag.
 					     */
 			__le32 dma_addr_lo; /* Low 32bit of host buf addr */
 
-			__le16 lso;         /* MSS to be used for LSO */
-			uint8_t l4_offset;     /* LSO, where the L4 data starts */
-			uint8_t flags;         /* TX Flags, see @PCIE_DESC_TX_* */
+			__le16 mss;         /* MSS to be used for LSO */
+			uint8_t lso_hdrlen; /* LSO, where the data starts */
+			uint8_t flags;      /* TX Flags, see @PCIE_DESC_TX_* */
 
-			__le16 vlan;        /* VLAN tag to add if indicated */
+			union {
+				struct {
+					/*
+					 * L3 and L4 header offsets required
+					 * for TSOv2
+					 */
+					uint8_t l3_offset;
+					uint8_t l4_offset;
+				};
+				__le16 vlan; /* VLAN tag to add if indicated */
+			};
 			__le16 data_len;    /* Length of frame + meta data */
 		} __attribute__((__packed__));
 		__le32 vals[4];

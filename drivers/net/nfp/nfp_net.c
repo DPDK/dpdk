@@ -498,7 +498,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	}
 
 	if ((txmode->offloads & DEV_TX_OFFLOAD_TCP_TSO) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_LSO)) {
+	    !(hw->cap & NFP_NET_CFG_CTRL_LSO_ANY)) {
 		PMD_INIT_LOG(INFO, "TSO TCP offload not supported");
 		return -EINVAL;
 	}
@@ -774,8 +774,12 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 		ctrl |= NFP_NET_CFG_CTRL_TXCSUM;
 
 	/* LSO offload */
-	if (txmode->offloads & DEV_TX_OFFLOAD_TCP_TSO)
-		ctrl |= NFP_NET_CFG_CTRL_LSO;
+	if (txmode->offloads & DEV_TX_OFFLOAD_TCP_TSO) {
+		if (hw->cap & NFP_NET_CFG_CTRL_LSO)
+			ctrl |= NFP_NET_CFG_CTRL_LSO;
+		else
+			ctrl |= NFP_NET_CFG_CTRL_LSO2;
+	}
 
 	/* RX gather */
 	if (txmode->offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
@@ -1278,7 +1282,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 					     DEV_TX_OFFLOAD_UDP_CKSUM |
 					     DEV_TX_OFFLOAD_TCP_CKSUM;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_LSO)
+	if (hw->cap & NFP_NET_CFG_CTRL_LSO_ANY)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_GATHER)
@@ -1847,7 +1851,7 @@ nfp_net_tx_tso(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
 	uint64_t ol_flags;
 	struct nfp_net_hw *hw = txq->hw;
 
-	if (!(hw->cap & NFP_NET_CFG_CTRL_LSO))
+	if (!(hw->cap & NFP_NET_CFG_CTRL_LSO_ANY))
 		goto clean_txd;
 
 	ol_flags = mb->ol_flags;
@@ -1855,15 +1859,19 @@ nfp_net_tx_tso(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
 	if (!(ol_flags & PKT_TX_TCP_SEG))
 		goto clean_txd;
 
-	txd->l4_offset = mb->l2_len + mb->l3_len + mb->l4_len;
-	txd->lso = rte_cpu_to_le_16(mb->tso_segsz);
+	txd->l3_offset = mb->l2_len;
+	txd->l4_offset = mb->l2_len + mb->l3_len;
+	txd->lso_hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
+	txd->mss = rte_cpu_to_le_16(mb->tso_segsz);
 	txd->flags = PCIE_DESC_TX_LSO;
 	return;
 
 clean_txd:
 	txd->flags = 0;
+	txd->l3_offset = 0;
 	txd->l4_offset = 0;
-	txd->lso = 0;
+	txd->lso_hdrlen = 0;
+	txd->mss = 0;
 }
 
 /* nfp_net_tx_cksum - Set TX CSUM offload flags in TX descriptor */
@@ -2935,6 +2943,10 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->mtu = ETHER_MTU;
 
+	/* VLAN insertion is incompatible with LSOv2 */
+	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
+		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
+
 	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;
 	else
@@ -2942,7 +2954,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(INFO, "VER: %#x, Maximum supported MTU: %d",
 		     hw->ver, hw->max_mtu);
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s", hw->cap,
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
 		     hw->cap & NFP_NET_CFG_CTRL_PROMISC ? "PROMISC " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_L2BC    ? "L2BCFILT " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_L2MC    ? "L2MCFILT " : "",
@@ -2953,6 +2965,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     hw->cap & NFP_NET_CFG_CTRL_SCATTER ? "SCATTER " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_GATHER  ? "GATHER "  : "",
 		     hw->cap & NFP_NET_CFG_CTRL_LSO     ? "TSO "     : "",
+		     hw->cap & NFP_NET_CFG_CTRL_LSO2     ? "TSOv2 "     : "",
 		     hw->cap & NFP_NET_CFG_CTRL_RSS     ? "RSS "     : "");
 
 	hw->ctrl = 0;
