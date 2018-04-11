@@ -665,36 +665,33 @@ vfio_get_group_no(const char *sysfs_base,
 }
 
 static int
+type1_map(const struct rte_memseg *ms, void *arg)
+{
+	int *vfio_container_fd = arg;
+	struct vfio_iommu_type1_dma_map dma_map;
+	int ret;
+
+	memset(&dma_map, 0, sizeof(dma_map));
+	dma_map.argsz = sizeof(struct vfio_iommu_type1_dma_map);
+	dma_map.vaddr = ms->addr_64;
+	dma_map.size = ms->len;
+	dma_map.iova = ms->iova;
+	dma_map.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
+
+	ret = ioctl(*vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, error %i (%s)\n",
+				errno, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+static int
 vfio_type1_dma_map(int vfio_container_fd)
 {
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	int i, ret;
-
-	/* map all DPDK segments for DMA. use 1:1 PA to IOVA mapping */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		struct vfio_iommu_type1_dma_map dma_map;
-
-		if (ms[i].addr == NULL)
-			break;
-
-		memset(&dma_map, 0, sizeof(dma_map));
-		dma_map.argsz = sizeof(struct vfio_iommu_type1_dma_map);
-		dma_map.vaddr = ms[i].addr_64;
-		dma_map.size = ms[i].len;
-		dma_map.iova = ms[i].iova;
-		dma_map.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
-
-		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
-
-		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, "
-					  "error %i (%s)\n", errno,
-					  strerror(errno));
-			return -1;
-		}
-	}
-
-	return 0;
+	return rte_memseg_walk(type1_map, &vfio_container_fd);
 }
 
 static int
