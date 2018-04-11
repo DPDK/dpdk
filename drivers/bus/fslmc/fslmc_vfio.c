@@ -30,6 +30,7 @@
 #include <rte_kvargs.h>
 #include <rte_dev.h>
 #include <rte_bus.h>
+#include <rte_eal_memconfig.h>
 
 #include "rte_fslmc.h"
 #include "fslmc_vfio.h"
@@ -188,11 +189,62 @@ static int vfio_map_irq_region(struct fslmc_vfio_group *group)
 	return -errno;
 }
 
-static int
-fslmc_vfio_map(const struct rte_memseg_list *msl __rte_unused,
-		const struct rte_memseg *ms, void *arg)
+static int fslmc_map_dma(uint64_t vaddr, rte_iova_t iovaddr, size_t len);
+static int fslmc_unmap_dma(uint64_t vaddr, rte_iova_t iovaddr, size_t len);
+
+static void
+fslmc_memevent_cb(enum rte_mem_event type, const void *addr, size_t len)
 {
-	int *n_segs = arg;
+	struct rte_memseg_list *msl;
+	struct rte_memseg *ms;
+	size_t cur_len = 0, map_len = 0;
+	uint64_t virt_addr;
+	rte_iova_t iova_addr;
+	int ret;
+
+	msl = rte_mem_virt2memseg_list(addr);
+
+	while (cur_len < len) {
+		const void *va = RTE_PTR_ADD(addr, cur_len);
+
+		ms = rte_mem_virt2memseg(va, msl);
+		iova_addr = ms->iova;
+		virt_addr = ms->addr_64;
+		map_len = ms->len;
+
+		DPAA2_BUS_DEBUG("Request for %s, va=%p, "
+				"virt_addr=0x%" PRIx64 ", "
+				"iova=0x%" PRIx64 ", map_len=%zu",
+				type == RTE_MEM_EVENT_ALLOC ?
+					"alloc" : "dealloc",
+				va, virt_addr, iova_addr, map_len);
+
+		if (type == RTE_MEM_EVENT_ALLOC)
+			ret = fslmc_map_dma(virt_addr, iova_addr, map_len);
+		else
+			ret = fslmc_unmap_dma(virt_addr, iova_addr, map_len);
+
+		if (ret != 0) {
+			DPAA2_BUS_ERR("DMA Mapping/Unmapping failed. "
+					"Map=%d, addr=%p, len=%zu, err:(%d)",
+					type, va, map_len, ret);
+			return;
+		}
+
+		cur_len += map_len;
+	}
+
+	if (type == RTE_MEM_EVENT_ALLOC)
+		DPAA2_BUS_DEBUG("Total Mapped: addr=%p, len=%zu",
+				addr, len);
+	else
+		DPAA2_BUS_DEBUG("Total Unmapped: addr=%p, len=%zu",
+				addr, len);
+}
+
+static int
+fslmc_map_dma(uint64_t vaddr, rte_iova_t iovaddr __rte_unused, size_t len)
+{
 	struct fslmc_vfio_group *group;
 	struct vfio_iommu_type1_dma_map dma_map = {
 		.argsz = sizeof(struct vfio_iommu_type1_dma_map),
@@ -200,10 +252,11 @@ fslmc_vfio_map(const struct rte_memseg_list *msl __rte_unused,
 	};
 	int ret;
 
-	dma_map.size = ms->len;
-	dma_map.vaddr = ms->addr_64;
+	dma_map.size = len;
+	dma_map.vaddr = vaddr;
+
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-	dma_map.iova = ms->iova;
+	dma_map.iova = iovaddr;
 #else
 	dma_map.iova = dma_map.vaddr;
 #endif
@@ -216,32 +269,91 @@ fslmc_vfio_map(const struct rte_memseg_list *msl __rte_unused,
 		return -1;
 	}
 
-	DPAA2_BUS_DEBUG("-->Initial SHM Virtual ADDR %llX",
-			dma_map.vaddr);
-	DPAA2_BUS_DEBUG("-----> DMA size 0x%llX", dma_map.size);
-	ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA,
-			&dma_map);
+	DPAA2_BUS_DEBUG("--> Map address: %llX, size: 0x%llX",
+			dma_map.vaddr, dma_map.size);
+	ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA, &dma_map);
 	if (ret) {
 		DPAA2_BUS_ERR("VFIO_IOMMU_MAP_DMA API(errno = %d)",
 				errno);
 		return -1;
 	}
-	(*n_segs)++;
+
 	return 0;
+}
+
+static int
+fslmc_unmap_dma(uint64_t vaddr, uint64_t iovaddr __rte_unused, size_t len)
+{
+	struct fslmc_vfio_group *group;
+	struct vfio_iommu_type1_dma_unmap dma_unmap = {
+		.argsz = sizeof(struct vfio_iommu_type1_dma_unmap),
+		.flags = 0,
+	};
+	int ret;
+
+	dma_unmap.size = len;
+	dma_unmap.iova = vaddr;
+
+	/* SET DMA MAP for IOMMU */
+	group = &vfio_group;
+
+	if (!group->container) {
+		DPAA2_BUS_ERR("Container is not connected ");
+		return -1;
+	}
+
+	DPAA2_BUS_DEBUG("--> Unmap address: %llX, size: 0x%llX",
+			dma_unmap.iova, dma_unmap.size);
+	ret = ioctl(group->container->fd, VFIO_IOMMU_UNMAP_DMA, &dma_unmap);
+	if (ret) {
+		DPAA2_BUS_ERR("VFIO_IOMMU_UNMAP_DMA API(errno = %d)",
+				errno);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+fslmc_dmamap_seg(const struct rte_memseg_list *msl __rte_unused,
+		 const struct rte_memseg *ms, void *arg)
+{
+	int *n_segs = arg;
+	int ret;
+
+	ret = fslmc_map_dma(ms->addr_64, ms->iova, ms->len);
+	if (ret)
+		DPAA2_BUS_ERR("Unable to VFIO map (addr=%p, len=%zu)",
+				ms->addr, ms->len);
+	else
+		(*n_segs)++;
+
+	return ret;
 }
 
 int rte_fslmc_vfio_dmamap(void)
 {
-	int i = 0;
+	int i = 0, ret;
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	rte_rwlock_t *mem_lock = &mcfg->memory_hotplug_lock;
 
-	if (rte_memseg_walk(fslmc_vfio_map, &i) < 0)
-		return -1;
+	/* Lock before parsing and registering callback to memory subsystem */
+	rte_rwlock_read_lock(mem_lock);
 
-	/* Verifying that at least single segment is available */
-	if (i <= 0) {
-		DPAA2_BUS_ERR("No Segments found for VFIO Mapping");
+	if (rte_memseg_walk(fslmc_dmamap_seg, &i) < 0) {
+		rte_rwlock_read_unlock(mem_lock);
 		return -1;
 	}
+
+	ret = rte_mem_event_callback_register("fslmc_memevent_clb",
+					      fslmc_memevent_cb);
+	if (ret && rte_errno == ENOTSUP)
+		DPAA2_BUS_DEBUG("Memory event callbacks not supported");
+	else if (ret)
+		DPAA2_BUS_DEBUG("Unable to install memory handler");
+	else
+		DPAA2_BUS_DEBUG("Installed memory callback handler");
+
 	DPAA2_BUS_DEBUG("Total %d segments found.", i);
 
 	/* TODO - This is a W.A. as VFIO currently does not add the mapping of
@@ -249,6 +361,11 @@ int rte_fslmc_vfio_dmamap(void)
 	 * support is added in the Kernel.
 	 */
 	vfio_map_irq_region(&vfio_group);
+
+	/* Existing segments have been mapped and memory callback for hotplug
+	 * has been installed.
+	 */
+	rte_rwlock_read_unlock(mem_lock);
 
 	return 0;
 }
