@@ -222,6 +222,8 @@ struct rte_security_ipsec_xform {
 	/**< IPsec SA Mode - transport/tunnel */
 	struct rte_security_ipsec_tunnel_param tunnel;
 	/**< Tunnel parameters, NULL for transport mode */
+	uint64_t esn_soft_limit;
+	/**< ESN for which the overflow event need to be raised */
 };
 
 /**
