@@ -772,8 +772,6 @@ rte_eal_init(int argc, char **argv)
 		rte_atomic32_clear(&run_once);
 		return -1;
 	}
-	/* for now, always set legacy mem */
-	internal_config.legacy_mem = 1;
 
 	if (eal_plugins_init() < 0) {
 		rte_eal_init_alert("Cannot init plugins\n");
