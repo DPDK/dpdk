@@ -23,12 +23,20 @@
  */
 
 static int
+check_mem(const struct rte_memseg *ms, void *arg __rte_unused)
+{
+	volatile uint8_t *mem = (volatile uint8_t *) ms->addr;
+	size_t i;
+
+	for (i = 0; i < ms->len; i++, mem++)
+		*mem;
+	return 0;
+}
+
+static int
 test_memory(void)
 {
 	uint64_t s;
-	unsigned i;
-	size_t j;
-	const struct rte_memseg *mem;
 
 	/*
 	 * dump the mapped memory: the python-expect script checks
@@ -45,14 +53,7 @@ test_memory(void)
 	}
 
 	/* try to read memory (should not segfault) */
-	mem = rte_eal_get_physmem_layout();
-	for (i = 0; i < RTE_MAX_MEMSEG && mem[i].addr != NULL ; i++) {
-
-		/* check memory */
-		for (j = 0; j<mem[i].len; j++) {
-			*((volatile uint8_t *) mem[i].addr + j);
-		}
-	}
+	rte_memseg_walk(check_mem, NULL);
 
 	return 0;
 }

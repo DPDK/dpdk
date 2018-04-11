@@ -705,16 +705,34 @@ err_return:
 	return -1;
 }
 
+static int
+check_socket_mem(const struct rte_memseg *ms, void *arg)
+{
+	int32_t *socket = arg;
+
+	return *socket == ms->socket_id;
+}
+
 /* Check if memory is available on a specific socket */
 static int
 is_mem_on_socket(int32_t socket)
 {
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	unsigned i;
+	return rte_memseg_walk(check_socket_mem, &socket);
+}
 
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		if (socket == ms[i].socket_id)
-			return 1;
+struct walk_param {
+	void *addr;
+	int32_t socket;
+};
+static int
+find_socket(const struct rte_memseg *ms, void *arg)
+{
+	struct walk_param *param = arg;
+
+	if (param->addr >= ms->addr &&
+			param->addr < RTE_PTR_ADD(ms->addr, ms->len)) {
+		param->socket = ms->socket_id;
+		return 1;
 	}
 	return 0;
 }
@@ -726,15 +744,9 @@ is_mem_on_socket(int32_t socket)
 static int32_t
 addr_to_socket(void * addr)
 {
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	unsigned i;
-
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		if ((ms[i].addr <= addr) &&
-				((uintptr_t)addr <
-				((uintptr_t)ms[i].addr + (uintptr_t)ms[i].len)))
-			return ms[i].socket_id;
-	}
+	struct walk_param param = {.addr = addr, .socket = 0};
+	if (rte_memseg_walk(find_socket, &param) > 0)
+		return param.socket;
 	return -1;
 }
 
