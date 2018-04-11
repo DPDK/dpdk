@@ -30,7 +30,7 @@ void rte_free(void *addr)
 {
 	if (addr == NULL) return;
 	if (malloc_heap_free(malloc_elem_from_data(addr)) < 0)
-		rte_panic("Fatal error: Invalid memory\n");
+		RTE_LOG(ERR, EAL, "Error: Invalid memory\n");
 }
 
 /*
@@ -134,8 +134,10 @@ rte_realloc(void *ptr, size_t size, unsigned align)
 		return rte_malloc(NULL, size, align);
 
 	struct malloc_elem *elem = malloc_elem_from_data(ptr);
-	if (elem == NULL)
-		rte_panic("Fatal error: memory corruption detected\n");
+	if (elem == NULL) {
+		RTE_LOG(ERR, EAL, "Error: memory corruption detected\n");
+		return NULL;
+	}
 
 	size = RTE_CACHE_LINE_ROUNDUP(size), align = RTE_CACHE_LINE_ROUNDUP(align);
 	/* check alignment matches first, and if ok, see if we can resize block */
