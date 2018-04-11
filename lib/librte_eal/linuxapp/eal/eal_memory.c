@@ -1060,7 +1060,7 @@ get_socket_mem_size(int socket)
 
 	for (i = 0; i < internal_config.num_hugepage_sizes; i++){
 		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
-		if (hpi->hugedir != NULL)
+		if (strnlen(hpi->hugedir, sizeof(hpi->hugedir)) != 0)
 			size += hpi->hugepage_sz * hpi->num_pages[socket];
 	}
 
@@ -1160,7 +1160,8 @@ calc_num_pages_per_socket(uint64_t * memory,
 	for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_mem != 0; socket++) {
 		/* skips if the memory on specific socket wasn't requested */
 		for (i = 0; i < num_hp_info && memory[socket] != 0; i++){
-			hp_used[i].hugedir = hp_info[i].hugedir;
+			snprintf(hp_used[i].hugedir, sizeof(hp_used[i].hugedir),
+					"%s", hp_info[i].hugedir);
 			hp_used[i].num_pages[socket] = RTE_MIN(
 					memory[socket] / hp_info[i].hugepage_sz,
 					hp_info[i].num_pages[socket]);
@@ -1235,7 +1236,7 @@ eal_get_hugepage_mem_size(void)
 
 	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
 		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
-		if (hpi->hugedir != NULL) {
+		if (strnlen(hpi->hugedir, sizeof(hpi->hugedir)) != 0) {
 			for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
 				size += hpi->hugepage_sz * hpi->num_pages[j];
 			}
@@ -1509,7 +1510,7 @@ eal_legacy_hugepage_init(void)
 	}
 
 	/* create shared memory */
-	hugepage = create_shared_memory(eal_hugepage_info_path(),
+	hugepage = create_shared_memory(eal_hugepage_file_path(),
 			nr_hugefiles * sizeof(struct hugepage_file));
 
 	if (hugepage == NULL) {
@@ -1694,16 +1695,16 @@ eal_legacy_hugepage_attach(void)
 
 	test_phys_addrs_available();
 
-	fd_hugepage = open(eal_hugepage_info_path(), O_RDONLY);
+	fd_hugepage = open(eal_hugepage_file_path(), O_RDONLY);
 	if (fd_hugepage < 0) {
-		RTE_LOG(ERR, EAL, "Could not open %s\n", eal_hugepage_info_path());
+		RTE_LOG(ERR, EAL, "Could not open %s\n", eal_hugepage_file_path());
 		goto error;
 	}
 
 	size = getFileSize(fd_hugepage);
 	hp = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd_hugepage, 0);
 	if (hp == MAP_FAILED) {
-		RTE_LOG(ERR, EAL, "Could not mmap %s\n", eal_hugepage_info_path());
+		RTE_LOG(ERR, EAL, "Could not mmap %s\n", eal_hugepage_file_path());
 		goto error;
 	}
 

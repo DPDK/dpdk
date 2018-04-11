@@ -14,6 +14,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/mman.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
 
@@ -32,6 +33,39 @@
 
 static const char sys_dir_path[] = "/sys/kernel/mm/hugepages";
 static const char sys_pages_numa_dir_path[] = "/sys/devices/system/node";
+
+/*
+ * Uses mmap to create a shared memory area for storage of data
+ * Used in this file to store the hugepage file map on disk
+ */
+static void *
+map_shared_memory(const char *filename, const size_t mem_size, int flags)
+{
+	void *retval;
+	int fd = open(filename, flags, 0666);
+	if (fd < 0)
+		return NULL;
+	if (ftruncate(fd, mem_size) < 0) {
+		close(fd);
+		return NULL;
+	}
+	retval = mmap(NULL, mem_size, PROT_READ | PROT_WRITE,
+			MAP_SHARED, fd, 0);
+	close(fd);
+	return retval;
+}
+
+static void *
+open_shared_memory(const char *filename, const size_t mem_size)
+{
+	return map_shared_memory(filename, mem_size, O_RDWR);
+}
+
+static void *
+create_shared_memory(const char *filename, const size_t mem_size)
+{
+	return map_shared_memory(filename, mem_size, O_RDWR | O_CREAT);
+}
 
 /* this function is only called from eal_hugepage_info_init which itself
  * is only called from a primary process */
@@ -299,15 +333,9 @@ compare_hpi(const void *a, const void *b)
 	return hpi_b->hugepage_sz - hpi_a->hugepage_sz;
 }
 
-/*
- * when we initialize the hugepage info, everything goes
- * to socket 0 by default. it will later get sorted by memory
- * initialization procedure.
- */
-int
-eal_hugepage_info_init(void)
-{
-	const char dirent_start_text[] = "hugepages-";
+static int
+hugepage_info_init(void)
+{	const char dirent_start_text[] = "hugepages-";
 	const size_t dirent_start_len = sizeof(dirent_start_text) - 1;
 	unsigned int i, total_pages, num_sizes = 0;
 	DIR *dir;
@@ -323,6 +351,7 @@ eal_hugepage_info_init(void)
 
 	for (dirent = readdir(dir); dirent != NULL; dirent = readdir(dir)) {
 		struct hugepage_info *hpi;
+		const char *hugedir;
 
 		if (strncmp(dirent->d_name, dirent_start_text,
 			    dirent_start_len) != 0)
@@ -334,10 +363,10 @@ eal_hugepage_info_init(void)
 		hpi = &internal_config.hugepage_info[num_sizes];
 		hpi->hugepage_sz =
 			rte_str_to_size(&dirent->d_name[dirent_start_len]);
-		hpi->hugedir = get_hugepage_dir(hpi->hugepage_sz);
+		hugedir = get_hugepage_dir(hpi->hugepage_sz);
 
 		/* first, check if we have a mountpoint */
-		if (hpi->hugedir == NULL) {
+		if (hugedir == NULL) {
 			uint32_t num_pages;
 
 			num_pages = get_num_hugepages(dirent->d_name);
@@ -349,6 +378,7 @@ eal_hugepage_info_init(void)
 					num_pages, hpi->hugepage_sz);
 			continue;
 		}
+		snprintf(hpi->hugedir, sizeof(hpi->hugedir), "%s", hugedir);
 
 		/* try to obtain a writelock */
 		hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
@@ -411,17 +441,76 @@ eal_hugepage_info_init(void)
 	for (i = 0; i < num_sizes; i++) {
 		/* pages may no longer all be on socket 0, so check all */
 		unsigned int j, num_pages = 0;
+		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
 
-		for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
-			struct hugepage_info *hpi =
-					&internal_config.hugepage_info[i];
+		for (j = 0; j < RTE_MAX_NUMA_NODES; j++)
 			num_pages += hpi->num_pages[j];
-		}
-		if (internal_config.hugepage_info[i].hugedir != NULL &&
+		if (strnlen(hpi->hugedir, sizeof(hpi->hugedir)) != 0 &&
 				num_pages > 0)
 			return 0;
 	}
 
 	/* no valid hugepage mounts available, return error */
 	return -1;
+}
+
+/*
+ * when we initialize the hugepage info, everything goes
+ * to socket 0 by default. it will later get sorted by memory
+ * initialization procedure.
+ */
+int
+eal_hugepage_info_init(void)
+{
+	struct hugepage_info *hpi, *tmp_hpi;
+	unsigned int i;
+
+	if (hugepage_info_init() < 0)
+		return -1;
+
+	hpi = &internal_config.hugepage_info[0];
+
+	tmp_hpi = create_shared_memory(eal_hugepage_info_path(),
+			sizeof(internal_config.hugepage_info));
+	if (tmp_hpi == NULL) {
+		RTE_LOG(ERR, EAL, "Failed to create shared memory!\n");
+		return -1;
+	}
+
+	memcpy(tmp_hpi, hpi, sizeof(internal_config.hugepage_info));
+
+	/* we've copied file descriptors along with everything else, but they
+	 * will be invalid in secondary process, so overwrite them
+	 */
+	for (i = 0; i < RTE_DIM(internal_config.hugepage_info); i++) {
+		struct hugepage_info *tmp = &tmp_hpi[i];
+		tmp->lock_descriptor = -1;
+	}
+
+	if (munmap(tmp_hpi, sizeof(internal_config.hugepage_info)) < 0) {
+		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
+		return -1;
+	}
+	return 0;
+}
+
+int eal_hugepage_info_read(void)
+{
+	struct hugepage_info *hpi = &internal_config.hugepage_info[0];
+	struct hugepage_info *tmp_hpi;
+
+	tmp_hpi = open_shared_memory(eal_hugepage_info_path(),
+				  sizeof(internal_config.hugepage_info));
+	if (tmp_hpi == NULL) {
+		RTE_LOG(ERR, EAL, "Failed to open shared memory!\n");
+		return -1;
+	}
+
+	memcpy(hpi, tmp_hpi, sizeof(internal_config.hugepage_info));
+
+	if (munmap(tmp_hpi, sizeof(internal_config.hugepage_info)) < 0) {
+		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
+		return -1;
+	}
+	return 0;
 }

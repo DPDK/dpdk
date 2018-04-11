@@ -19,10 +19,10 @@
  * Used in this file to store the hugepage file map on disk
  */
 static void *
-create_shared_memory(const char *filename, const size_t mem_size)
+map_shared_memory(const char *filename, const size_t mem_size, int flags)
 {
 	void *retval;
-	int fd = open(filename, O_CREAT | O_RDWR, 0666);
+	int fd = open(filename, flags, 0666);
 	if (fd < 0)
 		return NULL;
 	if (ftruncate(fd, mem_size) < 0) {
@@ -32,6 +32,18 @@ create_shared_memory(const char *filename, const size_t mem_size)
 	retval = mmap(NULL, mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	close(fd);
 	return retval;
+}
+
+static void *
+open_shared_memory(const char *filename, const size_t mem_size)
+{
+	return map_shared_memory(filename, mem_size, O_RDWR);
+}
+
+static void *
+create_shared_memory(const char *filename, const size_t mem_size)
+{
+	return map_shared_memory(filename, mem_size, O_RDWR | O_CREAT);
 }
 
 /*
@@ -46,12 +58,9 @@ eal_hugepage_info_init(void)
 	/* re-use the linux "internal config" structure for our memory data */
 	struct hugepage_info *hpi = &internal_config.hugepage_info[0];
 	struct hugepage_info *tmp_hpi;
+	unsigned int i;
 
 	internal_config.num_hugepage_sizes = 1;
-
-	/* nothing more to be done for secondary */
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-		return 0;
 
 	sysctl_size = sizeof(num_buffers);
 	error = sysctlbyname("hw.contigmem.num_buffers", &num_buffers,
@@ -87,7 +96,7 @@ eal_hugepage_info_init(void)
 		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dKB\n",
 				num_buffers, (int)(buffer_size>>10));
 
-	hpi->hugedir = CONTIGMEM_DEV;
+	snprintf(hpi->hugedir, sizeof(hpi->hugedir), "%s", CONTIGMEM_DEV);
 	hpi->hugepage_sz = buffer_size;
 	hpi->num_pages[0] = num_buffers;
 	hpi->lock_descriptor = fd;
@@ -101,10 +110,43 @@ eal_hugepage_info_init(void)
 
 	memcpy(tmp_hpi, hpi, sizeof(internal_config.hugepage_info));
 
+	/* we've copied file descriptors along with everything else, but they
+	 * will be invalid in secondary process, so overwrite them
+	 */
+	for (i = 0; i < RTE_DIM(internal_config.hugepage_info); i++) {
+		struct hugepage_info *tmp = &tmp_hpi[i];
+		tmp->lock_descriptor = -1;
+	}
+
 	if (munmap(tmp_hpi, sizeof(internal_config.hugepage_info)) < 0) {
 		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
 		return -1;
 	}
 
+	return 0;
+}
+
+/* copy stuff from shared info into internal config */
+int
+eal_hugepage_info_read(void)
+{
+	struct hugepage_info *hpi = &internal_config.hugepage_info[0];
+	struct hugepage_info *tmp_hpi;
+
+	internal_config.num_hugepage_sizes = 1;
+
+	tmp_hpi = open_shared_memory(eal_hugepage_info_path(),
+				  sizeof(internal_config.hugepage_info));
+	if (tmp_hpi == NULL) {
+		RTE_LOG(ERR, EAL, "Failed to open shared memory!\n");
+		return -1;
+	}
+
+	memcpy(hpi, tmp_hpi, sizeof(internal_config.hugepage_info));
+
+	if (munmap(tmp_hpi, sizeof(internal_config.hugepage_info)) < 0) {
+		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
+		return -1;
+	}
 	return 0;
 }

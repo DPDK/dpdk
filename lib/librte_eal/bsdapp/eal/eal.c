@@ -289,7 +289,7 @@ eal_get_hugepage_mem_size(void)
 
 	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
 		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
-		if (hpi->hugedir != NULL) {
+		if (strnlen(hpi->hugedir, sizeof(hpi->hugedir)) != 0) {
 			for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
 				size += hpi->hugepage_sz * hpi->num_pages[j];
 			}
@@ -561,12 +561,17 @@ rte_eal_init(int argc, char **argv)
 	/* autodetect the iova mapping mode (default is iova_pa) */
 	rte_eal_get_configuration()->iova_mode = rte_bus_get_iommu_class();
 
-	if (internal_config.no_hugetlbfs == 0 &&
-			eal_hugepage_info_init() < 0) {
-		rte_eal_init_alert("Cannot get hugepage information.");
-		rte_errno = EACCES;
-		rte_atomic32_clear(&run_once);
-		return -1;
+	if (internal_config.no_hugetlbfs == 0) {
+		/* rte_config isn't initialized yet */
+		ret = internal_config.process_type == RTE_PROC_PRIMARY ?
+			eal_hugepage_info_init() :
+			eal_hugepage_info_read();
+		if (ret < 0) {
+			rte_eal_init_alert("Cannot get hugepage information.");
+			rte_errno = EACCES;
+			rte_atomic32_clear(&run_once);
+			return -1;
+		}
 	}
 
 	if (internal_config.memory == 0 && internal_config.force_sockets == 0) {

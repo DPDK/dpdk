@@ -179,8 +179,11 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
 		internal_cfg->socket_mem[i] = 0;
 	/* zero out hugedir descriptors */
-	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
+	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++) {
+		memset(&internal_cfg->hugepage_info[i], 0,
+				sizeof(internal_cfg->hugepage_info[0]));
 		internal_cfg->hugepage_info[i].lock_descriptor = -1;
+	}
 	internal_cfg->base_virtaddr = 0;
 
 	internal_cfg->syslog_facility = LOG_DAEMON;

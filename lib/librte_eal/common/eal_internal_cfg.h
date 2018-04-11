@@ -21,7 +21,7 @@
  */
 struct hugepage_info {
 	uint64_t hugepage_sz;   /**< size of a huge page */
-	const char *hugedir;    /**< dir where hugetlbfs is mounted */
+	char hugedir[PATH_MAX];    /**< dir where hugetlbfs is mounted */
 	uint32_t num_pages[RTE_MAX_NUMA_NODES];
 	/**< number of hugepages of that size on each socket */
 	int lock_descriptor;    /**< file descriptor for hugepage dir */

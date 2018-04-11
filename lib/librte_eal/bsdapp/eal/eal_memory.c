@@ -242,23 +242,10 @@ int
 rte_eal_hugepage_attach(void)
 {
 	const struct hugepage_info *hpi;
-	int fd_hugepage_info, fd_hugepage = -1;
+	int fd_hugepage = -1;
 	unsigned int i;
 
-	/* Obtain a file descriptor for hugepage_info */
-	fd_hugepage_info = open(eal_hugepage_info_path(), O_RDONLY);
-	if (fd_hugepage_info < 0) {
-		RTE_LOG(ERR, EAL, "Could not open %s\n", eal_hugepage_info_path());
-		return -1;
-	}
-
-	/* Map the shared hugepage_info into the process address spaces */
-	hpi = mmap(NULL, sizeof(internal_config.hugepage_info),
-			PROT_READ, MAP_PRIVATE, fd_hugepage_info, 0);
-	if (hpi == MAP_FAILED) {
-		RTE_LOG(ERR, EAL, "Could not mmap %s\n", eal_hugepage_info_path());
-		goto error;
-	}
+	hpi = &internal_config.hugepage_info[0];
 
 	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
 		const struct hugepage_info *cur_hpi = &hpi[i];
@@ -288,13 +275,9 @@ rte_eal_hugepage_attach(void)
 	}
 
 	/* hugepage_info is no longer required */
-	munmap((void *)(uintptr_t)hpi, sizeof(internal_config.hugepage_info));
-	close(fd_hugepage_info);
 	return 0;
 
 error:
-	if (fd_hugepage_info >= 0)
-		close(fd_hugepage_info);
 	if (fd_hugepage >= 0)
 		close(fd_hugepage);
 	return -1;

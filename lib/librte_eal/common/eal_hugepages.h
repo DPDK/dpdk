@@ -26,9 +26,15 @@ struct hugepage_file {
 };
 
 /**
- * Read the information from linux on what hugepages are available
- * for the EAL to use
+ * Read the information on what hugepages are available for the EAL to use,
+ * clearing out any unused ones.
  */
 int eal_hugepage_info_init(void);
+
+/**
+ * Read whatever information primary process has shared about hugepages into
+ * secondary process.
+ */
+int eal_hugepage_info_read(void);
 
 #endif /* EAL_HUGEPAGES_H */
