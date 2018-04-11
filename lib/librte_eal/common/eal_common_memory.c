@@ -242,6 +242,43 @@ rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 	return 0;
 }
 
+int __rte_experimental
+rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int i, j, ret;
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		const struct rte_memseg *ms = &mcfg->memseg[i];
+		size_t total_len;
+		void *end_addr;
+
+		if (ms->addr == NULL)
+			continue;
+
+		end_addr = RTE_PTR_ADD(ms->addr, ms->len);
+
+		/* check how many more segments are contiguous to this one */
+		for (j = i + 1; j < RTE_MAX_MEMSEG; j++) {
+			const struct rte_memseg *next = &mcfg->memseg[j];
+
+			if (next->addr != end_addr)
+				break;
+
+			end_addr = RTE_PTR_ADD(next->addr, next->len);
+			i++;
+		}
+		total_len = RTE_PTR_DIFF(end_addr, ms->addr);
+
+		ret = func(ms, total_len, arg);
+		if (ret < 0)
+			return -1;
+		if (ret > 0)
+			return 1;
+	}
+	return 0;
+}
+
 /* init memory subsystem */
 int
 rte_eal_memory_init(void)

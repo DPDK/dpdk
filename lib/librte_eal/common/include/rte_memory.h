@@ -140,6 +140,18 @@ rte_iova_t rte_mem_virt2iova(const void *virt);
 typedef int (*rte_memseg_walk_t)(const struct rte_memseg *ms, void *arg);
 
 /**
+ * Memseg contig walk function prototype. This will trigger a callback on every
+ * VA-contiguous are starting at memseg ``ms``, so total valid VA space at each
+ * callback call will be [``ms->addr``, ``ms->addr + len``).
+ *
+ * Returning 0 will continue walk
+ * Returning 1 will stop the walk
+ * Returning -1 will stop the walk and report error
+ */
+typedef int (*rte_memseg_contig_walk_t)(const struct rte_memseg *ms,
+		size_t len, void *arg);
+
+/**
  * Walk list of all memsegs.
  *
  * @param func
@@ -153,6 +165,21 @@ typedef int (*rte_memseg_walk_t)(const struct rte_memseg *ms, void *arg);
  */
 int __rte_experimental
 rte_memseg_walk(rte_memseg_walk_t func, void *arg);
+
+/**
+ * Walk each VA-contiguous area.
+ *
+ * @param func
+ *   Iterator function
+ * @param arg
+ *   Argument passed to iterator
+ * @return
+ *   0 if walked over the entire list
+ *   1 if stopped by the user
+ *   -1 if user function reported error
+ */
+int __rte_experimental
+rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg);
 
 /**
  * Get the layout of the available physical memory.
