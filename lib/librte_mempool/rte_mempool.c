@@ -3,6 +3,7 @@
  * Copyright(c) 2016 6WIND S.A.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -96,6 +97,27 @@ static unsigned optimize_object_size(unsigned obj_size)
 	while (get_gcd(new_obj_size, nrank * nchan) != 1)
 		new_obj_size++;
 	return new_obj_size * RTE_MEMPOOL_ALIGN;
+}
+
+static size_t
+get_min_page_size(void)
+{
+	const struct rte_mem_config *mcfg =
+			rte_eal_get_configuration()->mem_config;
+	int i;
+	size_t min_pagesz = SIZE_MAX;
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		const struct rte_memseg *ms = &mcfg->memseg[i];
+
+		if (ms->addr == NULL)
+			continue;
+
+		if (ms->hugepage_sz < min_pagesz)
+			min_pagesz = ms->hugepage_sz;
+	}
+
+	return min_pagesz == SIZE_MAX ? (size_t) getpagesize() : min_pagesz;
 }
 
 static void
@@ -367,16 +389,6 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	/* update mempool capabilities */
 	mp->flags |= mp_capa_flags;
 
-	/* Detect pool area has sufficient space for elements */
-	if (mp_capa_flags & MEMPOOL_F_CAPA_PHYS_CONTIG) {
-		if (len < total_elt_sz * mp->size) {
-			RTE_LOG(ERR, MEMPOOL,
-				"pool area %" PRIx64 " not enough\n",
-				(uint64_t)len);
-			return -ENOSPC;
-		}
-	}
-
 	memhdr = rte_zmalloc("MEMPOOL_MEMHDR", sizeof(*memhdr), 0);
 	if (memhdr == NULL)
 		return -ENOMEM;
@@ -549,6 +561,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	unsigned mz_id, n;
 	unsigned int mp_flags;
 	int ret;
+	bool force_contig, no_contig, try_contig, no_pageshift;
 
 	/* mempool must not be populated */
 	if (mp->nb_mem_chunks != 0)
@@ -563,9 +576,68 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	/* update mempool capabilities */
 	mp->flags |= mp_flags;
 
-	if (rte_eal_has_hugepages()) {
-		pg_shift = 0; /* not needed, zone is physically contiguous */
+	no_contig = mp->flags & MEMPOOL_F_NO_PHYS_CONTIG;
+	force_contig = mp->flags & MEMPOOL_F_CAPA_PHYS_CONTIG;
+
+	/*
+	 * the following section calculates page shift and page size values.
+	 *
+	 * these values impact the result of rte_mempool_xmem_size(), which
+	 * returns the amount of memory that should be allocated to store the
+	 * desired number of objects. when not zero, it allocates more memory
+	 * for the padding between objects, to ensure that an object does not
+	 * cross a page boundary. in other words, page size/shift are to be set
+	 * to zero if mempool elements won't care about page boundaries.
+	 * there are several considerations for page size and page shift here.
+	 *
+	 * if we don't need our mempools to have physically contiguous objects,
+	 * then just set page shift and page size to 0, because the user has
+	 * indicated that there's no need to care about anything.
+	 *
+	 * if we do need contiguous objects, there is also an option to reserve
+	 * the entire mempool memory as one contiguous block of memory, in
+	 * which case the page shift and alignment wouldn't matter as well.
+	 *
+	 * if we require contiguous objects, but not necessarily the entire
+	 * mempool reserved space to be contiguous, then there are two options.
+	 *
+	 * if our IO addresses are virtual, not actual physical (IOVA as VA
+	 * case), then no page shift needed - our memory allocation will give us
+	 * contiguous physical memory as far as the hardware is concerned, so
+	 * act as if we're getting contiguous memory.
+	 *
+	 * if our IO addresses are physical, we may get memory from bigger
+	 * pages, or we might get memory from smaller pages, and how much of it
+	 * we require depends on whether we want bigger or smaller pages.
+	 * However, requesting each and every memory size is too much work, so
+	 * what we'll do instead is walk through the page sizes available, pick
+	 * the smallest one and set up page shift to match that one. We will be
+	 * wasting some space this way, but it's much nicer than looping around
+	 * trying to reserve each and every page size.
+	 *
+	 * However, since size calculation will produce page-aligned sizes, it
+	 * makes sense to first try and see if we can reserve the entire memzone
+	 * in one contiguous chunk as well (otherwise we might end up wasting a
+	 * 1G page on a 10MB memzone). If we fail to get enough contiguous
+	 * memory, then we'll go and reserve space page-by-page.
+	 */
+	no_pageshift = no_contig || force_contig ||
+			rte_eal_iova_mode() == RTE_IOVA_VA;
+	try_contig = !no_contig && !no_pageshift && rte_eal_has_hugepages();
+	if (force_contig)
+		mz_flags |= RTE_MEMZONE_IOVA_CONTIG;
+
+	if (no_pageshift) {
 		pg_sz = 0;
+		pg_shift = 0;
+		align = RTE_CACHE_LINE_SIZE;
+	} else if (try_contig) {
+		pg_sz = get_min_page_size();
+		pg_shift = rte_bsf32(pg_sz);
+		/* we're trying to reserve contiguous memzone first, so try
+		 * align to cache line; if we fail to reserve a contiguous
+		 * memzone, we'll adjust alignment to equal pagesize later.
+		 */
 		align = RTE_CACHE_LINE_SIZE;
 	} else {
 		pg_sz = getpagesize();
@@ -575,8 +647,13 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
 	for (mz_id = 0, n = mp->size; n > 0; mz_id++, n -= ret) {
-		size = rte_mempool_xmem_size(n, total_elt_sz, pg_shift,
-						mp->flags);
+		unsigned int flags;
+		if (try_contig || no_pageshift)
+			size = rte_mempool_xmem_size(n, total_elt_sz, 0,
+				mp->flags);
+		else
+			size = rte_mempool_xmem_size(n, total_elt_sz, pg_shift,
+				mp->flags);
 
 		ret = snprintf(mz_name, sizeof(mz_name),
 			RTE_MEMPOOL_MZ_FORMAT "_%d", mp->name, mz_id);
@@ -585,23 +662,52 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 			goto fail;
 		}
 
-		mz = rte_memzone_reserve_aligned(mz_name, size,
-			mp->socket_id, mz_flags, align);
-		/* not enough memory, retry with the biggest zone we have */
-		if (mz == NULL)
+		flags = mz_flags;
+
+		/* if we're trying to reserve contiguous memory, add appropriate
+		 * memzone flag.
+		 */
+		if (try_contig)
+			flags |= RTE_MEMZONE_IOVA_CONTIG;
+
+		mz = rte_memzone_reserve_aligned(mz_name, size, mp->socket_id,
+				flags, align);
+
+		/* if we were trying to allocate contiguous memory, adjust
+		 * memzone size and page size to fit smaller page sizes, and
+		 * try again.
+		 */
+		if (mz == NULL && try_contig) {
+			try_contig = false;
+			flags &= ~RTE_MEMZONE_IOVA_CONTIG;
+			align = pg_sz;
+			size = rte_mempool_xmem_size(n, total_elt_sz,
+				pg_shift, mp->flags);
+
+			mz = rte_memzone_reserve_aligned(mz_name, size,
+				mp->socket_id, flags, align);
+		}
+		/* don't try reserving with 0 size if we were asked to reserve
+		 * IOVA-contiguous memory.
+		 */
+		if (!force_contig && mz == NULL) {
+			/* not enough memory, retry with the biggest zone we
+			 * have
+			 */
 			mz = rte_memzone_reserve_aligned(mz_name, 0,
-				mp->socket_id, mz_flags, align);
+					mp->socket_id, flags, align);
+		}
 		if (mz == NULL) {
 			ret = -rte_errno;
 			goto fail;
 		}
 
-		if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
+		if (no_contig)
 			iova = RTE_BAD_IOVA;
 		else
 			iova = mz->iova;
 
-		if (rte_eal_has_hugepages())
+		if (no_pageshift || try_contig)
 			ret = rte_mempool_populate_iova(mp, mz->addr,
 				iova, mz->len,
 				rte_mempool_memchunk_mz_free,
