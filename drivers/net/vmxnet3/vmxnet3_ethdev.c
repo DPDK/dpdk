@@ -150,13 +150,14 @@ gpa_zone_reserve(struct rte_eth_dev *dev, uint32_t size,
 		if (mz)
 			rte_memzone_free(mz);
 		return rte_memzone_reserve_aligned(z_name, size, socket_id,
-						   0, align);
+				RTE_MEMZONE_IOVA_CONTIG, align);
 	}
 
 	if (mz)
 		return mz;
 
-	return rte_memzone_reserve_aligned(z_name, size, socket_id, 0, align);
+	return rte_memzone_reserve_aligned(z_name, size, socket_id,
+			RTE_MEMZONE_IOVA_CONTIG, align);
 }
 
 /*
