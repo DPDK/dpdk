@@ -103,7 +103,8 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			goto next_mask;
 		}
 
-		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		if (dev->data->dev_conf.rxmode.offloads &
+			DEV_RX_OFFLOAD_VLAN_FILTER)
 			ret = dpni_enable_vlan_filter(dpni, CMD_PRI_LOW,
 						      priv->token, true);
 		else
@@ -114,7 +115,8 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 next_mask:
 	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+		if (dev->data->dev_conf.rxmode.offloads &
+			DEV_RX_OFFLOAD_VLAN_EXTEND)
 			DPAA2_PMD_INFO("VLAN extend offload not supported");
 	}
 
@@ -172,13 +174,20 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_VLAN_FILTER |
+		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_SCATTER;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_IPV4_CKSUM |
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM |
 		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_MBUF_FAST_FREE |
+		DEV_TX_OFFLOAD_MULTI_SEGS;
 	dev_info->speed_capa = ETH_LINK_SPEED_1G |
 			ETH_LINK_SPEED_2_5G |
 			ETH_LINK_SPEED_10G;
@@ -268,12 +277,33 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = priv->hw;
 	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
-	int rx_ip_csum_offload = false;
+	struct rte_eth_dev_info dev_info;
+	uint64_t rx_offloads = eth_conf->rxmode.offloads;
+	uint64_t tx_offloads = eth_conf->txmode.offloads;
+	int rx_l3_csum_offload = false;
+	int rx_l4_csum_offload = false;
+	int tx_l3_csum_offload = false;
+	int tx_l4_csum_offload = false;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (eth_conf->rxmode.jumbo_frame == 1) {
+	dpaa2_dev_info_get(dev, &dev_info);
+	if ((~(dev_info.rx_offload_capa) & rx_offloads) != 0) {
+		DPAA2_PMD_ERR("Some Rx offloads are not supported "
+			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			rx_offloads, dev_info.rx_offload_capa);
+		return -ENOTSUP;
+	}
+
+	if ((~(dev_info.tx_offload_capa) & tx_offloads) != 0) {
+		DPAA2_PMD_ERR("Some Tx offloads are not supported "
+			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			tx_offloads, dev_info.tx_offload_capa);
+		return -ENOTSUP;
+	}
+
+	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		if (eth_conf->rxmode.max_rx_pkt_len <= DPAA2_MAX_RX_PKT_LEN) {
 			ret = dpni_set_max_frame_length(dpni, CMD_PRI_LOW,
 				priv->token, eth_conf->rxmode.max_rx_pkt_len);
@@ -297,32 +327,44 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (eth_conf->rxmode.hw_ip_checksum)
-		rx_ip_csum_offload = true;
+	if (rx_offloads & DEV_RX_OFFLOAD_IPV4_CKSUM)
+		rx_l3_csum_offload = true;
+
+	if ((rx_offloads & DEV_RX_OFFLOAD_UDP_CKSUM) ||
+		(rx_offloads & DEV_RX_OFFLOAD_TCP_CKSUM))
+		rx_l4_csum_offload = true;
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
-			       DPNI_OFF_RX_L3_CSUM, rx_ip_csum_offload);
+			       DPNI_OFF_RX_L3_CSUM, rx_l3_csum_offload);
 	if (ret) {
 		DPAA2_PMD_ERR("Error to set RX l3 csum:Error = %d", ret);
 		return ret;
 	}
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
-			       DPNI_OFF_RX_L4_CSUM, rx_ip_csum_offload);
+			       DPNI_OFF_RX_L4_CSUM, rx_l4_csum_offload);
 	if (ret) {
 		DPAA2_PMD_ERR("Error to get RX l4 csum:Error = %d", ret);
 		return ret;
 	}
 
+	if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+		tx_l3_csum_offload = true;
+
+	if ((tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) ||
+		(tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ||
+		(tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM))
+		tx_l4_csum_offload = true;
+
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
-			       DPNI_OFF_TX_L3_CSUM, true);
+			       DPNI_OFF_TX_L3_CSUM, tx_l3_csum_offload);
 	if (ret) {
 		DPAA2_PMD_ERR("Error to set TX l3 csum:Error = %d", ret);
 		return ret;
 	}
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
-			       DPNI_OFF_TX_L4_CSUM, true);
+			       DPNI_OFF_TX_L4_CSUM, tx_l4_csum_offload);
 	if (ret) {
 		DPAA2_PMD_ERR("Error to get TX l4 csum:Error = %d", ret);
 		return ret;
@@ -343,8 +385,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (eth_conf->rxmode.hw_vlan_filter)
-		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
+	dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
 
 	/* update the current status */
 	dpaa2_dev_link_update(dev, 0);
@@ -949,9 +990,11 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 
 	if (frame_size > ETHER_MAX_LEN)
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		dev->data->dev_conf.rxmode.offloads &=
+						DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		dev->data->dev_conf.rxmode.offloads &=
+						~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 

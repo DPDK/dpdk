@@ -317,12 +317,6 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 	struct qbman_sge *sgt, *sge = NULL;
 	int i;
 
-	if (unlikely(mbuf->ol_flags & PKT_TX_VLAN_PKT)) {
-		int ret = rte_vlan_insert(&mbuf);
-		if (ret)
-			return ret;
-	}
-
 	temp = rte_pktmbuf_alloc(mbuf->pool);
 	if (temp == NULL) {
 		DPAA2_PMD_DP_DEBUG("No memory to allocate S/G table\n");
@@ -389,13 +383,6 @@ static void __attribute__ ((noinline)) __attribute__((hot))
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	       struct qbman_fd *fd, uint16_t bpid)
 {
-	if (unlikely(mbuf->ol_flags & PKT_TX_VLAN_PKT)) {
-		if (rte_vlan_insert(&mbuf)) {
-			rte_pktmbuf_free(mbuf);
-			return;
-		}
-	}
-
 	DPAA2_MBUF_TO_CONTIG_FD(mbuf, fd, bpid);
 
 	DPAA2_PMD_DP_DEBUG("mbuf =%p, mbuf->buf_addr =%p, off = %d,"
@@ -427,12 +414,6 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 {
 	struct rte_mbuf *m;
 	void *mb = NULL;
-
-	if (unlikely(mbuf->ol_flags & PKT_TX_VLAN_PKT)) {
-		int ret = rte_vlan_insert(&mbuf);
-		if (ret)
-			return ret;
-	}
 
 	if (rte_dpaa2_mbuf_alloc_bulk(
 		rte_dpaa2_bpid_info[bpid].bp_list->mp, &mb, 1)) {
@@ -737,8 +718,10 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				    priv->bp_list->dpaa2_ops_index &&
 				    (*bufs)->nb_segs == 1 &&
 				    rte_mbuf_refcnt_read((*bufs)) == 1)) {
-					if (unlikely((*bufs)->ol_flags
-						& PKT_TX_VLAN_PKT)) {
+					if (unlikely(((*bufs)->ol_flags
+						& PKT_TX_VLAN_PKT) ||
+						(dev->data->dev_conf.txmode.offloads
+						& DEV_TX_OFFLOAD_VLAN_INSERT))) {
 						ret = rte_vlan_insert(bufs);
 						if (ret)
 							goto send_n_return;
@@ -758,6 +741,13 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				goto send_n_return;
 			}
 
+			if (unlikely(((*bufs)->ol_flags & PKT_TX_VLAN_PKT) ||
+				(dev->data->dev_conf.txmode.offloads
+				& DEV_TX_OFFLOAD_VLAN_INSERT))) {
+				int ret = rte_vlan_insert(bufs);
+				if (ret)
+					goto send_n_return;
+			}
 			if (mp->ops_index != priv->bp_list->dpaa2_ops_index) {
 				DPAA2_PMD_WARN("Non DPAA2 buffer pool");
 				/* alloc should be from the default buffer pool
