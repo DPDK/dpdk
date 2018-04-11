@@ -40,6 +40,7 @@
 #include <rte_string_fns.h>
 
 #include "eal_private.h"
+#include "eal_memalloc.h"
 #include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
@@ -1601,6 +1602,61 @@ fail:
 	return -1;
 }
 
+static int
+eal_hugepage_init(void)
+{
+	struct hugepage_info used_hp[MAX_HUGEPAGE_SIZES];
+	uint64_t memory[RTE_MAX_NUMA_NODES];
+	int hp_sz_idx, socket_id;
+
+	test_phys_addrs_available();
+
+	memset(used_hp, 0, sizeof(used_hp));
+
+	for (hp_sz_idx = 0;
+			hp_sz_idx < (int) internal_config.num_hugepage_sizes;
+			hp_sz_idx++) {
+		/* also initialize used_hp hugepage sizes in used_hp */
+		struct hugepage_info *hpi;
+		hpi = &internal_config.hugepage_info[hp_sz_idx];
+		used_hp[hp_sz_idx].hugepage_sz = hpi->hugepage_sz;
+	}
+
+	/* make a copy of socket_mem, needed for balanced allocation. */
+	for (hp_sz_idx = 0; hp_sz_idx < RTE_MAX_NUMA_NODES; hp_sz_idx++)
+		memory[hp_sz_idx] = internal_config.socket_mem[hp_sz_idx];
+
+	/* calculate final number of pages */
+	if (calc_num_pages_per_socket(memory,
+			internal_config.hugepage_info, used_hp,
+			internal_config.num_hugepage_sizes) < 0)
+		return -1;
+
+	for (hp_sz_idx = 0;
+			hp_sz_idx < (int)internal_config.num_hugepage_sizes;
+			hp_sz_idx++) {
+		for (socket_id = 0; socket_id < RTE_MAX_NUMA_NODES;
+				socket_id++) {
+			struct hugepage_info *hpi = &used_hp[hp_sz_idx];
+			unsigned int num_pages = hpi->num_pages[socket_id];
+			int num_pages_alloc;
+
+			if (num_pages == 0)
+				continue;
+
+			RTE_LOG(DEBUG, EAL, "Allocating %u pages of size %" PRIu64 "M on socket %i\n",
+				num_pages, hpi->hugepage_sz >> 20, socket_id);
+
+			num_pages_alloc = eal_memalloc_alloc_seg_bulk(NULL,
+					num_pages, hpi->hugepage_sz,
+					socket_id, true);
+			if (num_pages_alloc < 0)
+				return -1;
+		}
+	}
+	return 0;
+}
+
 /*
  * uses fstat to report the size of a file on disk
  */
@@ -1723,9 +1779,9 @@ error:
 int
 rte_eal_hugepage_init(void)
 {
-	if (internal_config.legacy_mem)
-		return eal_legacy_hugepage_init();
-	return -1;
+	return internal_config.legacy_mem ?
+			eal_legacy_hugepage_init() :
+			eal_hugepage_init();
 }
 
 int
