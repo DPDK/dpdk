@@ -1365,8 +1365,8 @@ avf_allocate_dma_mem_d(__rte_unused struct avf_hw *hw,
 		return AVF_ERR_PARAM;
 
 	snprintf(z_name, sizeof(z_name), "avf_dma_%"PRIu64, rte_rand());
-	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY, 0,
-					 alignment, RTE_PGSIZE_2M);
+	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG, alignment, RTE_PGSIZE_2M);
 	if (!mz)
 		return AVF_ERR_NO_MEMORY;
 
