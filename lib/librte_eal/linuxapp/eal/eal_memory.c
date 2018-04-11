@@ -1638,21 +1638,33 @@ eal_hugepage_init(void)
 			hp_sz_idx++) {
 		for (socket_id = 0; socket_id < RTE_MAX_NUMA_NODES;
 				socket_id++) {
+			struct rte_memseg **pages;
 			struct hugepage_info *hpi = &used_hp[hp_sz_idx];
 			unsigned int num_pages = hpi->num_pages[socket_id];
-			int num_pages_alloc;
+			int num_pages_alloc, i;
 
 			if (num_pages == 0)
 				continue;
 
+			pages = malloc(sizeof(*pages) * num_pages);
+
 			RTE_LOG(DEBUG, EAL, "Allocating %u pages of size %" PRIu64 "M on socket %i\n",
 				num_pages, hpi->hugepage_sz >> 20, socket_id);
 
-			num_pages_alloc = eal_memalloc_alloc_seg_bulk(NULL,
+			num_pages_alloc = eal_memalloc_alloc_seg_bulk(pages,
 					num_pages, hpi->hugepage_sz,
 					socket_id, true);
-			if (num_pages_alloc < 0)
+			if (num_pages_alloc < 0) {
+				free(pages);
 				return -1;
+			}
+
+			/* mark preallocated pages as unfreeable */
+			for (i = 0; i < num_pages_alloc; i++) {
+				struct rte_memseg *ms = pages[i];
+				ms->flags |= RTE_MEMSEG_FLAG_DO_NOT_FREE;
+			}
+			free(pages);
 		}
 	}
 	return 0;

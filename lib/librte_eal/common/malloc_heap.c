@@ -606,6 +606,7 @@ malloc_heap_free(struct malloc_elem *elem)
 	void *start, *aligned_start, *end, *aligned_end;
 	size_t len, aligned_len, page_sz;
 	struct rte_memseg_list *msl;
+	unsigned int i, n_segs;
 	int ret;
 
 	if (!malloc_elem_cookies_ok(elem) || elem->state != ELEM_BUSY)
@@ -645,6 +646,28 @@ malloc_heap_free(struct malloc_elem *elem)
 
 	/* can't free anything */
 	if (aligned_len < page_sz)
+		goto free_unlock;
+
+	/* we can free something. however, some of these pages may be marked as
+	 * unfreeable, so also check that as well
+	 */
+	n_segs = aligned_len / page_sz;
+	for (i = 0; i < n_segs; i++) {
+		const struct rte_memseg *tmp =
+				rte_mem_virt2memseg(aligned_start, msl);
+
+		if (tmp->flags & RTE_MEMSEG_FLAG_DO_NOT_FREE) {
+			/* this is an unfreeable segment, so move start */
+			aligned_start = RTE_PTR_ADD(tmp->addr, tmp->len);
+		}
+	}
+
+	/* recalculate length and number of segments */
+	aligned_len = RTE_PTR_DIFF(aligned_end, aligned_start);
+	n_segs = aligned_len / page_sz;
+
+	/* check if we can still free some pages */
+	if (n_segs == 0)
 		goto free_unlock;
 
 	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);

@@ -807,6 +807,13 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 		struct free_walk_param wa;
 		int i, walk_res;
 
+		/* if this page is marked as unfreeable, fail */
+		if (cur->flags & RTE_MEMSEG_FLAG_DO_NOT_FREE) {
+			RTE_LOG(DEBUG, EAL, "Page is not allowed to be freed\n");
+			ret = -1;
+			continue;
+		}
+
 		memset(&wa, 0, sizeof(wa));
 
 		for (i = 0; i < (int)RTE_DIM(internal_config.hugepage_info);

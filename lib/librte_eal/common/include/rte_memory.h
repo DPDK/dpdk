@@ -83,6 +83,8 @@ typedef uint64_t rte_iova_t;
 /**
  * Physical memory segment descriptor.
  */
+#define RTE_MEMSEG_FLAG_DO_NOT_FREE (1 << 0)
+/**< Prevent this segment from being freed back to the OS. */
 struct rte_memseg {
 	RTE_STD_C11
 	union {
@@ -99,6 +101,7 @@ struct rte_memseg {
 	int32_t socket_id;          /**< NUMA socket ID. */
 	uint32_t nchannel;          /**< Number of channels. */
 	uint32_t nrank;             /**< Number of ranks. */
+	uint32_t flags;             /**< Memseg-specific flags */
 } __rte_packed;
 
 /**
