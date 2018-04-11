@@ -13,6 +13,7 @@
 
 /** Path of rte config file. */
 #define RUNTIME_CONFIG_FMT "%s/.%s_config"
+#define FBARRAY_FMT "%s/%s_%s"
 
 #include <stdint.h>
 #include <limits.h>
@@ -52,6 +53,18 @@ eal_mp_socket_path(void)
 	snprintf(buffer, sizeof(buffer) - 1, MP_SOCKET_PATH_FMT,
 		 directory, internal_config.hugefile_prefix);
 
+	return buffer;
+}
+
+static inline const char *
+eal_get_fbarray_path(char *buffer, size_t buflen, const char *name) {
+	const char *directory = "/tmp";
+	const char *home_dir = getenv("HOME");
+
+	if (getuid() != 0 && home_dir != NULL)
+		directory = home_dir;
+	snprintf(buffer, buflen - 1, FBARRAY_FMT, directory,
+			internal_config.hugefile_prefix, name);
 	return buffer;
 }
 
