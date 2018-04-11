@@ -3403,7 +3403,8 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 	if (mz)
 		return mz;
 
-	return rte_memzone_reserve_aligned(z_name, size, socket_id, 0, align);
+	return rte_memzone_reserve_aligned(z_name, size, socket_id,
+			RTE_MEMZONE_IOVA_CONTIG, align);
 }
 
 int
