@@ -27,7 +27,7 @@ test_power_acpi_cpufreq(void)
 #define TEST_POWER_FREQS_NUM_MAX ((unsigned)RTE_MAX_LCORE_FREQS)
 
 #define TEST_POWER_SYSFILE_CUR_FREQ \
-	"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_cur_freq"
+	"/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_cur_freq"
 
 static uint32_t total_freq_num;
 static uint32_t freqs[TEST_POWER_FREQS_NUM_MAX];

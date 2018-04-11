@@ -25,12 +25,17 @@ test_power_kvm_vm(void)
 #define TEST_POWER_VM_LCORE_ID            0U
 #define TEST_POWER_VM_LCORE_OUT_OF_BOUNDS (RTE_MAX_LCORE+1)
 #define TEST_POWER_VM_LCORE_INVALID       1U
+#define TEMP_POWER_MANAGER_FILE_PATH  "/tmp/testpm"
+
+int guest_channel_host_connect(const char *path, unsigned int lcore_id);
 
 static int
 test_power_kvm_vm(void)
 {
 	int ret;
 	enum power_management_env env;
+	char fPath[PATH_MAX];
+	FILE *fPtr = NULL;
 
 	ret = rte_power_set_env(PM_ENV_KVM_VM);
 	if (ret != 0) {
@@ -95,12 +100,31 @@ test_power_kvm_vm(void)
 	/* Test initialisation of a valid lcore */
 	ret = rte_power_init(TEST_POWER_VM_LCORE_ID);
 	if (ret < 0) {
-		printf("Cannot initialise power management for lcore %u, this "
-				"may occur if environment is not configured "
-				"correctly(KVM VM) or operating in another valid "
-				"Power management environment\n", TEST_POWER_VM_LCORE_ID);
-		rte_power_unset_env();
-		return -1;
+		printf("rte_power_init failed as expected in host\n");
+		/* This test would be successful when run on VM,
+		 * in order to run in Host itself, temporary file path
+		 * is created and same is used for further communication
+		 */
+
+		snprintf(fPath, PATH_MAX, "%s.%u",
+			TEMP_POWER_MANAGER_FILE_PATH, TEST_POWER_VM_LCORE_ID);
+		fPtr = fopen(fPath, "w");
+		if (fPtr == NULL) {
+			printf(" Unable to create file\n");
+			rte_power_unset_env();
+			return -1;
+		}
+		ret = guest_channel_host_connect(TEMP_POWER_MANAGER_FILE_PATH,
+			TEST_POWER_VM_LCORE_ID);
+		if (ret == 0)
+			printf("guest_channel_host_connect successful\n");
+		else {
+			printf("guest_channel_host_connect failed\n");
+			rte_power_unset_env();
+			fclose(fPtr);
+			remove(fPath);
+			return -1;
+		}
 	}
 
 	/* Test initialisation of previously initialised lcore */
@@ -172,6 +196,22 @@ test_power_kvm_vm(void)
 	if (ret == 1) {
 		printf("rte_power_freq_max unexpectedly succeeded on invalid lcore "
 				"%u\n", TEST_POWER_VM_LCORE_INVALID);
+		goto fail_all;
+	}
+
+	/* Test KVM_VM Enable Turbo of valid core */
+	ret = rte_power_freq_enable_turbo(TEST_POWER_VM_LCORE_ID);
+	if (ret == -1) {
+		printf("rte_power_freq_enable_turbo failed on valid lcore"
+			"%u\n", TEST_POWER_VM_LCORE_ID);
+		goto fail_all;
+	}
+
+	/* Test KVM_VM Disable Turbo of valid core */
+	ret = rte_power_freq_disable_turbo(TEST_POWER_VM_LCORE_ID);
+	if (ret == -1) {
+		printf("rte_power_freq_disable_turbo failed on valid lcore"
+		"%u\n", TEST_POWER_VM_LCORE_ID);
 		goto fail_all;
 	}
 
@@ -274,10 +314,18 @@ test_power_kvm_vm(void)
 		return -1;
 	}
 	rte_power_unset_env();
+	if (fPtr != NULL) {
+		fclose(fPtr);
+		remove(fPath);
+	}
 	return 0;
 fail_all:
 	rte_power_exit(TEST_POWER_VM_LCORE_ID);
 	rte_power_unset_env();
+	if (fPtr != NULL) {
+		fclose(fPtr);
+		remove(fPath);
+	}
 	return -1;
 }
 #endif
