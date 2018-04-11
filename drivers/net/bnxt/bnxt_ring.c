@@ -166,10 +166,11 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	mz = rte_memzone_lookup(mz_name);
 	if (!mz) {
 		mz = rte_memzone_reserve_aligned(mz_name, total_alloc_len,
-					 SOCKET_ID_ANY,
-					 RTE_MEMZONE_2MB |
-					 RTE_MEMZONE_SIZE_HINT_ONLY,
-					 getpagesize());
+				SOCKET_ID_ANY,
+				RTE_MEMZONE_2MB |
+				RTE_MEMZONE_SIZE_HINT_ONLY |
+				RTE_MEMZONE_IOVA_CONTIG,
+				getpagesize());
 		if (mz == NULL)
 			return -ENOMEM;
 	}

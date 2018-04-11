@@ -3147,9 +3147,10 @@ skip_init:
 				sizeof(struct rx_port_stats) + 512);
 		if (!mz) {
 			mz = rte_memzone_reserve(mz_name, total_alloc_len,
-						 SOCKET_ID_ANY,
-						 RTE_MEMZONE_2MB |
-						 RTE_MEMZONE_SIZE_HINT_ONLY);
+					SOCKET_ID_ANY,
+					RTE_MEMZONE_2MB |
+					RTE_MEMZONE_SIZE_HINT_ONLY |
+					RTE_MEMZONE_IOVA_CONTIG);
 			if (mz == NULL)
 				return -ENOMEM;
 		}
@@ -3181,10 +3182,12 @@ skip_init:
 		total_alloc_len = RTE_CACHE_LINE_ROUNDUP(
 				sizeof(struct tx_port_stats) + 512);
 		if (!mz) {
-			mz = rte_memzone_reserve(mz_name, total_alloc_len,
-						 SOCKET_ID_ANY,
-						 RTE_MEMZONE_2MB |
-						 RTE_MEMZONE_SIZE_HINT_ONLY);
+			mz = rte_memzone_reserve(mz_name,
+					total_alloc_len,
+					SOCKET_ID_ANY,
+					RTE_MEMZONE_2MB |
+					RTE_MEMZONE_SIZE_HINT_ONLY |
+					RTE_MEMZONE_IOVA_CONTIG);
 			if (mz == NULL)
 				return -ENOMEM;
 		}
