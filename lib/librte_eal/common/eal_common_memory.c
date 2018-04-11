@@ -20,6 +20,7 @@
 #include <rte_errno.h>
 #include <rte_log.h>
 
+#include "eal_memalloc.h"
 #include "eal_private.h"
 #include "eal_internal_cfg.h"
 

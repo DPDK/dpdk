@@ -1777,6 +1777,18 @@ error:
 	return -1;
 }
 
+static int
+eal_hugepage_attach(void)
+{
+	if (eal_memalloc_sync_with_primary()) {
+		RTE_LOG(ERR, EAL, "Could not map memory from primary process\n");
+		if (aslr_enabled() > 0)
+			RTE_LOG(ERR, EAL, "It is recommended to disable ASLR in the kernel and retry running both primary and secondary processes\n");
+		return -1;
+	}
+	return 0;
+}
+
 int
 rte_eal_hugepage_init(void)
 {
@@ -1788,9 +1800,9 @@ rte_eal_hugepage_init(void)
 int
 rte_eal_hugepage_attach(void)
 {
-	if (internal_config.legacy_mem)
-		return eal_legacy_hugepage_attach();
-	return -1;
+	return internal_config.legacy_mem ?
+			eal_legacy_hugepage_attach() :
+			eal_hugepage_attach();
 }
 
 int
