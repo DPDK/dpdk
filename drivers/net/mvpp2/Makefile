@@ -20,7 +20,7 @@ LIB = librte_pmd_mvpp2.a
 LIBABIVER := 1
 
 # versioning export map
-EXPORT_MAP := rte_pmd_mrvl_version.map
+EXPORT_MAP := rte_pmd_mvpp2_version.map
 
 # external library dependencies
 CFLAGS += -I$(LIBMUSDK_PATH)/include
