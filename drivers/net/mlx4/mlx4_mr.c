@@ -126,10 +126,9 @@ mlx4_check_mempool(struct rte_mempool *mp, uintptr_t *start, uintptr_t *end)
 struct mlx4_mr *
 mlx4_mr_get(struct priv *priv, struct rte_mempool *mp)
 {
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
+	const struct rte_memseg *ms;
 	uintptr_t start;
 	uintptr_t end;
-	unsigned int i;
 	struct mlx4_mr *mr;
 
 	if (mlx4_check_mempool(mp, &start, &end) != 0) {
@@ -142,16 +141,13 @@ mlx4_mr_get(struct priv *priv, struct rte_mempool *mp)
 	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
 	/* Round start and end to page boundary if found in memory segments. */
-	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
-		uintptr_t addr = (uintptr_t)ms[i].addr;
-		size_t len = ms[i].len;
-		unsigned int align = ms[i].hugepage_sz;
+	ms = rte_mem_virt2memseg((void *)start);
+	if (ms != NULL)
+		start = RTE_ALIGN_FLOOR(start, ms->hugepage_sz);
+	ms = rte_mem_virt2memseg((void *)end);
+	if (ms != NULL)
+		end = RTE_ALIGN_CEIL(end, ms->hugepage_sz);
 
-		if ((start > addr) && (start < addr + len))
-			start = RTE_ALIGN_FLOOR(start, align);
-		if ((end > addr) && (end < addr + len))
-			end = RTE_ALIGN_CEIL(end, align);
-	}
 	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
 	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
