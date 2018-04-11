@@ -2484,6 +2484,46 @@ int
 rte_eth_tx_done_cleanup(uint16_t port_id, uint16_t queue_id, uint32_t free_cnt);
 
 /**
+ * Subtypes for IPsec offload event(@ref RTE_ETH_EVENT_IPSEC) raised by
+ * eth device.
+ */
+enum rte_eth_event_ipsec_subtype {
+	RTE_ETH_EVENT_IPSEC_UNKNOWN = 0,
+			/**< Unknown event type */
+	RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW,
+			/**< Sequence number overflow */
+	RTE_ETH_EVENT_IPSEC_SA_TIME_EXPIRY,
+			/**< Soft time expiry of SA */
+	RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY,
+			/**< Soft byte expiry of SA */
+	RTE_ETH_EVENT_IPSEC_MAX
+			/**< Max value of this enum */
+};
+
+/**
+ * Descriptor for @ref RTE_ETH_EVENT_IPSEC event. Used by eth dev to send extra
+ * information of the IPsec offload event.
+ */
+struct rte_eth_event_ipsec_desc {
+	enum rte_eth_event_ipsec_subtype subtype;
+			/**< Type of RTE_ETH_EVENT_IPSEC_* event */
+	uint64_t metadata;
+			/**< Event specific metadata
+			 *
+			 * For the following events, *userdata* registered
+			 * with the *rte_security_session* would be returned
+			 * as metadata,
+			 *
+			 * - @ref RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW
+			 * - @ref RTE_ETH_EVENT_IPSEC_SA_TIME_EXPIRY
+			 * - @ref RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY
+			 *
+			 * @see struct rte_security_session_conf
+			 *
+			 */
+};
+
+/**
  * The eth device event type for interrupt, and maybe others in the future.
  */
 enum rte_eth_event_type {
@@ -2498,6 +2538,7 @@ enum rte_eth_event_type {
 	RTE_ETH_EVENT_INTR_RMV, /**< device removal event */
 	RTE_ETH_EVENT_NEW,      /**< port is probed */
 	RTE_ETH_EVENT_DESTROY,  /**< port is released */
+	RTE_ETH_EVENT_IPSEC,    /**< IPsec offload related event */
 	RTE_ETH_EVENT_MAX       /**< max value of this enum */
 };
 
