@@ -47,12 +47,18 @@ eal_hugepage_info_init(void)
 	struct hugepage_info *hpi = &internal_config.hugepage_info[0];
 	struct hugepage_info *tmp_hpi;
 
+	internal_config.num_hugepage_sizes = 1;
+
+	/* nothing more to be done for secondary */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		return 0;
+
 	sysctl_size = sizeof(num_buffers);
 	error = sysctlbyname("hw.contigmem.num_buffers", &num_buffers,
 			&sysctl_size, NULL, 0);
 
 	if (error != 0) {
-		RTE_LOG(ERR, EAL, "could not read sysctl hw.contigmem.num_buffers");
+		RTE_LOG(ERR, EAL, "could not read sysctl hw.contigmem.num_buffers\n");
 		return -1;
 	}
 
@@ -61,7 +67,7 @@ eal_hugepage_info_init(void)
 			&sysctl_size, NULL, 0);
 
 	if (error != 0) {
-		RTE_LOG(ERR, EAL, "could not read sysctl hw.contigmem.buffer_size");
+		RTE_LOG(ERR, EAL, "could not read sysctl hw.contigmem.buffer_size\n");
 		return -1;
 	}
 
@@ -81,22 +87,21 @@ eal_hugepage_info_init(void)
 		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dKB\n",
 				num_buffers, (int)(buffer_size>>10));
 
-	internal_config.num_hugepage_sizes = 1;
 	hpi->hugedir = CONTIGMEM_DEV;
 	hpi->hugepage_sz = buffer_size;
 	hpi->num_pages[0] = num_buffers;
 	hpi->lock_descriptor = fd;
 
 	tmp_hpi = create_shared_memory(eal_hugepage_info_path(),
-					sizeof(struct hugepage_info));
+			sizeof(internal_config.hugepage_info));
 	if (tmp_hpi == NULL ) {
 		RTE_LOG(ERR, EAL, "Failed to create shared memory!\n");
 		return -1;
 	}
 
-	memcpy(tmp_hpi, hpi, sizeof(struct hugepage_info));
+	memcpy(tmp_hpi, hpi, sizeof(internal_config.hugepage_info));
 
-	if ( munmap(tmp_hpi, sizeof(struct hugepage_info)) < 0) {
+	if (munmap(tmp_hpi, sizeof(internal_config.hugepage_info)) < 0) {
 		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
 		return -1;
 	}

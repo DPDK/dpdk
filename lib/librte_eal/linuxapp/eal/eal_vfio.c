@@ -908,7 +908,8 @@ vfio_get_group_no(const char *sysfs_base,
 }
 
 static int
-type1_map(const struct rte_memseg *ms, void *arg)
+type1_map(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
 {
 	int *vfio_container_fd = arg;
 
@@ -1021,7 +1022,8 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 }
 
 static int
-vfio_spapr_map_walk(const struct rte_memseg *ms, void *arg)
+vfio_spapr_map_walk(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
 {
 	int *vfio_container_fd = arg;
 
@@ -1034,7 +1036,8 @@ struct spapr_walk_param {
 	uint64_t hugepage_sz;
 };
 static int
-vfio_spapr_window_size_walk(const struct rte_memseg *ms, void *arg)
+vfio_spapr_window_size_walk(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
 {
 	struct spapr_walk_param *param = arg;
 	uint64_t max = ms->iova + ms->len;

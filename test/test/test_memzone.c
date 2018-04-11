@@ -111,17 +111,17 @@ struct walk_arg {
 	int hugepage_16GB_avail;
 };
 static int
-find_available_pagesz(const struct rte_memseg *ms, void *arg)
+find_available_pagesz(const struct rte_memseg_list *msl, void *arg)
 {
 	struct walk_arg *wa = arg;
 
-	if (ms->hugepage_sz == RTE_PGSIZE_2M)
+	if (msl->page_sz == RTE_PGSIZE_2M)
 		wa->hugepage_2MB_avail = 1;
-	if (ms->hugepage_sz == RTE_PGSIZE_1G)
+	if (msl->page_sz == RTE_PGSIZE_1G)
 		wa->hugepage_1GB_avail = 1;
-	if (ms->hugepage_sz == RTE_PGSIZE_16M)
+	if (msl->page_sz == RTE_PGSIZE_16M)
 		wa->hugepage_16MB_avail = 1;
-	if (ms->hugepage_sz == RTE_PGSIZE_16G)
+	if (msl->page_sz == RTE_PGSIZE_16G)
 		wa->hugepage_16GB_avail = 1;
 
 	return 0;
@@ -138,7 +138,7 @@ test_memzone_reserve_flags(void)
 
 	memset(&wa, 0, sizeof(wa));
 
-	rte_memseg_walk(find_available_pagesz, &wa);
+	rte_memseg_list_walk(find_available_pagesz, &wa);
 
 	hugepage_2MB_avail = wa.hugepage_2MB_avail;
 	hugepage_1GB_avail = wa.hugepage_1GB_avail;

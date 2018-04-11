@@ -478,7 +478,8 @@ static struct rte_pci_driver mlx5_driver;
 static void *uar_base;
 
 static int
-find_lower_va_bound(const struct rte_memseg *ms, void *arg)
+find_lower_va_bound(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
 {
 	void **addr = arg;
 

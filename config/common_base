@@ -61,7 +61,20 @@ CONFIG_RTE_CACHE_LINE_SIZE=64
 CONFIG_RTE_LIBRTE_EAL=y
 CONFIG_RTE_MAX_LCORE=128
 CONFIG_RTE_MAX_NUMA_NODES=8
-CONFIG_RTE_MAX_MEMSEG=256
+CONFIG_RTE_MAX_MEMSEG_LISTS=64
+# each memseg list will be limited to either RTE_MAX_MEMSEG_PER_LIST pages
+# or RTE_MAX_MEM_MB_PER_LIST megabytes worth of memory, whichever is smaller
+CONFIG_RTE_MAX_MEMSEG_PER_LIST=8192
+CONFIG_RTE_MAX_MEM_MB_PER_LIST=32768
+# a "type" is a combination of page size and NUMA node. total number of memseg
+# lists per type will be limited to either RTE_MAX_MEMSEG_PER_TYPE pages (split
+# over multiple lists of RTE_MAX_MEMSEG_PER_LIST pages), or
+# RTE_MAX_MEM_MB_PER_TYPE megabytes of memory (split over multiple lists of
+# RTE_MAX_MEM_MB_PER_LIST), whichever is smaller
+CONFIG_RTE_MAX_MEMSEG_PER_TYPE=32768
+CONFIG_RTE_MAX_MEM_MB_PER_TYPE=131072
+# global maximum usable amount of VA, in megabytes
+CONFIG_RTE_MAX_MEM_MB=524288
 CONFIG_RTE_MAX_MEMZONE=2560
 CONFIG_RTE_MAX_TAILQ=32
 CONFIG_RTE_ENABLE_ASSERT=n

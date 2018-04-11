@@ -7,7 +7,7 @@
 
 #include <stdbool.h>
 
-#include <rte_memory.h>
+#include <rte_eal_memconfig.h>
 
 /* dummy definition of struct so we can use pointers to it in malloc_elem struct */
 struct malloc_heap;
@@ -26,7 +26,7 @@ struct malloc_elem {
 	/**< points to next elem in memseg */
 	LIST_ENTRY(malloc_elem) free_list;
 	/**< list of free elements in heap */
-	const struct rte_memseg *ms;
+	struct rte_memseg_list *msl;
 	volatile enum elem_state state;
 	uint32_t pad;
 	size_t size;
@@ -113,7 +113,7 @@ malloc_elem_from_data(const void *data)
 void
 malloc_elem_init(struct malloc_elem *elem,
 		struct malloc_heap *heap,
-		const struct rte_memseg *ms,
+		struct rte_memseg_list *msl,
 		size_t size);
 
 void

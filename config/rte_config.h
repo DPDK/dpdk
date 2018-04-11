@@ -21,7 +21,12 @@
 /****** library defines ********/
 
 /* EAL defines */
-#define RTE_MAX_MEMSEG 512
+#define RTE_MAX_MEMSEG_LISTS 128
+#define RTE_MAX_MEMSEG_PER_LIST 8192
+#define RTE_MAX_MEM_MB_PER_LIST 32768
+#define RTE_MAX_MEMSEG_PER_TYPE 32768
+#define RTE_MAX_MEM_MB_PER_TYPE 65536
+#define RTE_MAX_MEM_MB 524288
 #define RTE_MAX_MEMZONE 2560
 #define RTE_MAX_TAILQ 32
 #define RTE_LOG_DP_LEVEL RTE_LOG_INFO

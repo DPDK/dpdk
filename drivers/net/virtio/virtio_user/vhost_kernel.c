@@ -75,7 +75,8 @@ struct walk_arg {
 	uint32_t region_nr;
 };
 static int
-add_memory_region(const struct rte_memseg *ms, size_t len, void *arg)
+add_memory_region(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, size_t len, void *arg)
 {
 	struct walk_arg *wa = arg;
 	struct vhost_memory_region *mr;
@@ -94,7 +95,6 @@ add_memory_region(const struct rte_memseg *ms, size_t len, void *arg)
 
 	return 0;
 }
-
 
 /* By default, vhost kernel module allows 64 regions, but DPDK allows
  * 256 segments. As a relief, below function merges those virtually

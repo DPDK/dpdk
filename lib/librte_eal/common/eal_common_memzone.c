@@ -239,10 +239,9 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	mz->iova = rte_malloc_virt2iova(mz_addr);
 	mz->addr = mz_addr;
 	mz->len = (requested_len == 0 ? elem->size : requested_len);
-	mz->hugepage_sz = elem->ms->hugepage_sz;
-	mz->socket_id = elem->ms->socket_id;
+	mz->hugepage_sz = elem->msl->page_sz;
+	mz->socket_id = elem->msl->socket_id;
 	mz->flags = 0;
-	mz->memseg_id = elem->ms - rte_eal_get_configuration()->mem_config->memseg;
 
 	return mz;
 }
@@ -364,20 +363,50 @@ static void
 dump_memzone(const struct rte_memzone *mz, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *msl = NULL;
+	void *cur_addr, *mz_end;
+	struct rte_memseg *ms;
+	int mz_idx, ms_idx;
+	size_t page_sz;
 	FILE *f = arg;
-	int mz_idx;
 
 	mz_idx = mz - mcfg->memzone;
 
-	fprintf(f, "Zone %u: name:<%s>, IO:0x%"PRIx64", len:0x%zx, virt:%p, "
+	fprintf(f, "Zone %u: name:<%s>, len:0x%zx, virt:%p, "
 				"socket_id:%"PRId32", flags:%"PRIx32"\n",
 			mz_idx,
 			mz->name,
-			mz->iova,
 			mz->len,
 			mz->addr,
 			mz->socket_id,
 			mz->flags);
+
+	/* go through each page occupied by this memzone */
+	msl = rte_mem_virt2memseg_list(mz->addr);
+	if (!msl) {
+		RTE_LOG(DEBUG, EAL, "Skipping bad memzone\n");
+		return;
+	}
+	page_sz = (size_t)mz->hugepage_sz;
+	cur_addr = RTE_PTR_ALIGN_FLOOR(mz->addr, page_sz);
+	mz_end = RTE_PTR_ADD(cur_addr, mz->len);
+
+	fprintf(f, "physical segments used:\n");
+	ms_idx = RTE_PTR_DIFF(mz->addr, msl->base_va) / page_sz;
+	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
+
+	do {
+		fprintf(f, "  addr: %p iova: 0x%" PRIx64 " "
+				"len: 0x%zx "
+				"pagesz: 0x%zx\n",
+			cur_addr, ms->iova, ms->len, page_sz);
+
+		/* advance VA to next page */
+		cur_addr = RTE_PTR_ADD(cur_addr, page_sz);
+
+		/* memzones occupy contiguous segments */
+		++ms;
+	} while (cur_addr < mz_end);
 }
 
 /* Dump all reserved memory zones on console */
@@ -394,7 +423,6 @@ int
 rte_eal_memzone_init(void)
 {
 	struct rte_mem_config *mcfg;
-	const struct rte_memseg *memseg;
 
 	/* get pointer to global configuration */
 	mcfg = rte_eal_get_configuration()->mem_config;
@@ -402,12 +430,6 @@ rte_eal_memzone_init(void)
 	/* secondary processes don't need to initialise anything */
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return 0;
-
-	memseg = rte_eal_get_physmem_layout();
-	if (memseg == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot get physical layout\n", __func__);
-		return -1;
-	}
 
 	rte_rwlock_write_lock(&mcfg->mlock);
 

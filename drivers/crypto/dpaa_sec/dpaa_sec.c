@@ -95,7 +95,7 @@ dpaa_mem_vtop(void *vaddr)
 {
 	const struct rte_memseg *ms;
 
-	ms = rte_mem_virt2memseg(vaddr);
+	ms = rte_mem_virt2memseg(vaddr, NULL);
 	if (ms)
 		return ms->iova + RTE_PTR_DIFF(vaddr, ms->addr);
 	return (size_t)NULL;

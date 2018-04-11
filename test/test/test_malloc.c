@@ -12,6 +12,7 @@
 
 #include <rte_common.h>
 #include <rte_memory.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
 #include <rte_eal.h>
@@ -706,36 +707,20 @@ err_return:
 }
 
 static int
-check_socket_mem(const struct rte_memseg *ms, void *arg)
+check_socket_mem(const struct rte_memseg_list *msl, void *arg)
 {
 	int32_t *socket = arg;
 
-	return *socket == ms->socket_id;
+	return *socket == msl->socket_id;
 }
 
 /* Check if memory is available on a specific socket */
 static int
 is_mem_on_socket(int32_t socket)
 {
-	return rte_memseg_walk(check_socket_mem, &socket);
+	return rte_memseg_list_walk(check_socket_mem, &socket);
 }
 
-struct walk_param {
-	void *addr;
-	int32_t socket;
-};
-static int
-find_socket(const struct rte_memseg *ms, void *arg)
-{
-	struct walk_param *param = arg;
-
-	if (param->addr >= ms->addr &&
-			param->addr < RTE_PTR_ADD(ms->addr, ms->len)) {
-		param->socket = ms->socket_id;
-		return 1;
-	}
-	return 0;
-}
 
 /*
  * Find what socket a memory address is on. Only works for addresses within
@@ -744,10 +729,9 @@ find_socket(const struct rte_memseg *ms, void *arg)
 static int32_t
 addr_to_socket(void * addr)
 {
-	struct walk_param param = {.addr = addr, .socket = 0};
-	if (rte_memseg_walk(find_socket, &param) > 0)
-		return param.socket;
-	return -1;
+	const struct rte_memseg *ms = rte_mem_virt2memseg(addr, NULL);
+	return ms == NULL ? -1 : ms->socket_id;
+
 }
 
 /* Test using rte_[c|m|zm]alloc_socket() on a specific socket */

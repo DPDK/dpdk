@@ -64,8 +64,8 @@ static int mem_cfg_fd = -1;
 static struct flock wr_lock = {
 		.l_type = F_WRLCK,
 		.l_whence = SEEK_SET,
-		.l_start = offsetof(struct rte_mem_config, memseg),
-		.l_len = sizeof(early_mem_config.memseg),
+		.l_start = offsetof(struct rte_mem_config, memsegs),
+		.l_len = sizeof(early_mem_config.memsegs),
 };
 
 /* Address of global and public configuration */
@@ -430,11 +430,11 @@ out:
 }
 
 static int
-check_socket(const struct rte_memseg *ms, void *arg)
+check_socket(const struct rte_memseg_list *msl, void *arg)
 {
 	int *socket_id = arg;
 
-	if (ms->socket_id == *socket_id)
+	if (msl->socket_id == *socket_id && msl->memseg_arr.count != 0)
 		return 1;
 
 	return 0;
@@ -447,9 +447,10 @@ eal_check_mem_on_local_socket(void)
 
 	socket_id = rte_lcore_to_socket_id(rte_config.master_lcore);
 
-	if (rte_memseg_walk(check_socket, &socket_id) == 0)
+	if (rte_memseg_list_walk(check_socket, &socket_id) == 0)
 		RTE_LOG(WARNING, EAL, "WARNING: Master core has no memory on local socket!\n");
 }
+
 
 static int
 sync_func(__attribute__((unused)) void *arg)
@@ -561,7 +562,6 @@ rte_eal_init(int argc, char **argv)
 	rte_eal_get_configuration()->iova_mode = rte_bus_get_iommu_class();
 
 	if (internal_config.no_hugetlbfs == 0 &&
-			internal_config.process_type != RTE_PROC_SECONDARY &&
 			eal_hugepage_info_init() < 0) {
 		rte_eal_init_alert("Cannot get hugepage information.");
 		rte_errno = EACCES;

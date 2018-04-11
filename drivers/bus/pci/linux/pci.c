@@ -117,9 +117,10 @@ rte_pci_unmap_device(struct rte_pci_device *dev)
 }
 
 static int
-find_max_end_va(const struct rte_memseg *ms, void *arg)
+find_max_end_va(const struct rte_memseg_list *msl, void *arg)
 {
-	void *end_va = RTE_PTR_ADD(ms->addr, ms->len);
+	size_t sz = msl->memseg_arr.len * msl->page_sz;
+	void *end_va = RTE_PTR_ADD(msl->base_va, sz);
 	void **max_va = arg;
 
 	if (*max_va < end_va)
@@ -132,9 +133,10 @@ pci_find_max_end_va(void)
 {
 	void *va = NULL;
 
-	rte_memseg_walk(find_max_end_va, &va);
+	rte_memseg_list_walk(find_max_end_va, &va);
 	return va;
 }
+
 
 /* parse one line of the "resource" sysfs file (note that the 'line'
  * string is modified)

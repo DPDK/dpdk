@@ -190,7 +190,8 @@ static int vfio_map_irq_region(struct fslmc_vfio_group *group)
 }
 
 static int
-fslmc_vfio_map(const struct rte_memseg *ms, void *arg)
+fslmc_vfio_map(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
 {
 	int *n_segs = arg;
 	struct fslmc_vfio_group *group;
@@ -232,17 +233,10 @@ fslmc_vfio_map(const struct rte_memseg *ms, void *arg)
 
 int rte_fslmc_vfio_dmamap(void)
 {
-	const struct rte_memseg *memseg;
 	int i = 0;
 
 	if (is_dma_done)
 		return 0;
-
-	memseg = rte_eal_get_physmem_layout();
-	if (memseg == NULL) {
-		DPAA2_BUS_ERR("Cannot get physical layout");
-		return -ENODEV;
-	}
 
 	if (rte_memseg_walk(fslmc_vfio_map, &i) < 0)
 		return -1;

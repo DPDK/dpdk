@@ -23,6 +23,9 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_config.h>
 
+/* forward declaration for pointers */
+struct rte_memseg_list;
+
 __extension__
 enum rte_page_sizes {
 	RTE_PGSIZE_4K    = 1ULL << 12,
@@ -147,11 +150,25 @@ rte_mem_iova2virt(rte_iova_t iova);
  *
  * @param virt
  *   The virtual address.
+ * @param msl
+ *   The memseg list in which to look up based on ``virt`` address
+ *   (can be NULL).
  * @return
  *   Memseg pointer on success, or NULL on error.
  */
 __rte_experimental struct rte_memseg *
-rte_mem_virt2memseg(const void *virt);
+rte_mem_virt2memseg(const void *virt, const struct rte_memseg_list *msl);
+
+/**
+ * Get memseg list corresponding to virtual memory address.
+ *
+ * @param virt
+ *   The virtual address.
+ * @return
+ *   Memseg list to which this virtual address belongs to.
+ */
+__rte_experimental struct rte_memseg_list *
+rte_mem_virt2memseg_list(const void *virt);
 
 /**
  * Memseg walk function prototype.
@@ -160,7 +177,8 @@ rte_mem_virt2memseg(const void *virt);
  * Returning 1 will stop the walk
  * Returning -1 will stop the walk and report error
  */
-typedef int (*rte_memseg_walk_t)(const struct rte_memseg *ms, void *arg);
+typedef int (*rte_memseg_walk_t)(const struct rte_memseg_list *msl,
+		const struct rte_memseg *ms, void *arg);
 
 /**
  * Memseg contig walk function prototype. This will trigger a callback on every
@@ -171,8 +189,19 @@ typedef int (*rte_memseg_walk_t)(const struct rte_memseg *ms, void *arg);
  * Returning 1 will stop the walk
  * Returning -1 will stop the walk and report error
  */
-typedef int (*rte_memseg_contig_walk_t)(const struct rte_memseg *ms,
-		size_t len, void *arg);
+typedef int (*rte_memseg_contig_walk_t)(const struct rte_memseg_list *msl,
+		const struct rte_memseg *ms, size_t len, void *arg);
+
+/**
+ * Memseg list walk function prototype. This will trigger a callback on every
+ * allocated memseg list.
+ *
+ * Returning 0 will continue walk
+ * Returning 1 will stop the walk
+ * Returning -1 will stop the walk and report error
+ */
+typedef int (*rte_memseg_list_walk_t)(const struct rte_memseg_list *msl,
+		void *arg);
 
 /**
  * Walk list of all memsegs.
@@ -205,21 +234,19 @@ int __rte_experimental
 rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg);
 
 /**
- * Get the layout of the available physical memory.
+ * Walk each allocated memseg list.
  *
- * It can be useful for an application to have the full physical
- * memory layout to decide the size of a memory zone to reserve. This
- * table is stored in rte_config (see rte_eal_get_configuration()).
- *
+ * @param func
+ *   Iterator function
+ * @param arg
+ *   Argument passed to iterator
  * @return
- *  - On success, return a pointer to a read-only table of struct
- *    rte_physmem_desc elements, containing the layout of all
- *    addressable physical memory. The last element of the table
- *    contains a NULL address.
- *  - On error, return NULL. This should not happen since it is a fatal
- *    error that will probably cause the entire system to panic.
+ *   0 if walked over the entire list
+ *   1 if stopped by the user
+ *   -1 if user function reported error
  */
-const struct rte_memseg *rte_eal_get_physmem_layout(void);
+int __rte_experimental
+rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg);
 
 /**
  * Dump the physical memory layout to a file.

@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -160,6 +161,18 @@ get_hugepage_dir(uint64_t hugepage_sz)
 }
 
 /*
+ * uses fstat to report the size of a file on disk
+ */
+static off_t
+get_file_size(int fd)
+{
+	struct stat st;
+	if (fstat(fd, &st) < 0)
+		return 0;
+	return st.st_size;
+}
+
+/*
  * Clear the hugepage directory of whatever hugepage files
  * there are. Checks if the file is locked (i.e.
  * if it's in use by another DPDK process).
@@ -189,6 +202,8 @@ clear_hugedir(const char * hugedir)
 	}
 
 	while(dirent != NULL){
+		struct flock lck = {0};
+
 		/* skip files that don't match the hugepage pattern */
 		if (fnmatch(filter, dirent->d_name, 0) > 0) {
 			dirent = readdir(dir);
@@ -205,11 +220,17 @@ clear_hugedir(const char * hugedir)
 		}
 
 		/* non-blocking lock */
-		lck_result = flock(fd, LOCK_EX | LOCK_NB);
+		lck.l_type = F_RDLCK;
+		lck.l_whence = SEEK_SET;
+		lck.l_start = 0;
+		lck.l_len = get_file_size(fd);
+
+		lck_result = fcntl(fd, F_SETLK, &lck);
 
 		/* if lock succeeds, unlock and remove the file */
 		if (lck_result != -1) {
-			flock(fd, LOCK_UN);
+			lck.l_type = F_UNLCK;
+			fcntl(fd, F_SETLK, &lck);
 			unlinkat(dir_fd, dirent->d_name, 0);
 		}
 		close (fd);

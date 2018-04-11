@@ -5,8 +5,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_memory.h>
 #include <rte_common.h>
+#include <rte_memzone.h>
 
 #include "test.h"
 
@@ -23,12 +26,13 @@
  */
 
 static int
-check_mem(const struct rte_memseg *ms, void *arg __rte_unused)
+check_mem(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg __rte_unused)
 {
 	volatile uint8_t *mem = (volatile uint8_t *) ms->addr;
-	size_t i;
+	size_t i, max = ms->len;
 
-	for (i = 0; i < ms->len; i++, mem++)
+	for (i = 0; i < max; i++, mem++)
 		*mem;
 	return 0;
 }

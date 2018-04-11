@@ -25,7 +25,6 @@ DPDK_2.0 {
 	rte_eal_devargs_type_count;
 	rte_eal_get_configuration;
 	rte_eal_get_lcore_state;
-	rte_eal_get_physmem_layout;
 	rte_eal_get_physmem_size;
 	rte_eal_has_hugepages;
 	rte_eal_hpet_init;
@@ -241,7 +240,9 @@ EXPERIMENTAL {
 	rte_malloc_dump_heaps;
 	rte_mem_iova2virt;
 	rte_mem_virt2memseg;
+	rte_mem_virt2memseg_list;
 	rte_memseg_contig_walk;
+	rte_memseg_list_walk;
 	rte_memseg_walk;
 	rte_mp_action_register;
 	rte_mp_action_unregister;

@@ -12,10 +12,28 @@
 #include <rte_malloc_heap.h>
 #include <rte_rwlock.h>
 #include <rte_pause.h>
+#include <rte_fbarray.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * memseg list is a special case as we need to store a bunch of other data
+ * together with the array itself.
+ */
+struct rte_memseg_list {
+	RTE_STD_C11
+	union {
+		void *base_va;
+		/**< Base virtual address for this memseg list. */
+		uint64_t addr_64;
+		/**< Makes sure addr is always 64-bits */
+	};
+	int socket_id; /**< Socket ID for all memsegs in this list. */
+	uint64_t page_sz; /**< Page size for all memsegs in this list. */
+	struct rte_fbarray memseg_arr;
+};
 
 /**
  * the structure for the memory configuration for the RTE.
@@ -43,8 +61,10 @@ struct rte_mem_config {
 	uint32_t memzone_cnt; /**< Number of allocated memzones */
 
 	/* memory segments and zones */
-	struct rte_memseg memseg[RTE_MAX_MEMSEG];    /**< Physmem descriptors. */
 	struct rte_memzone memzone[RTE_MAX_MEMZONE]; /**< Memzone descriptors. */
+
+	struct rte_memseg_list memsegs[RTE_MAX_MEMSEG_LISTS];
+	/**< list of dynamic arrays holding memsegs */
 
 	struct rte_tailq_head tailq_head[RTE_MAX_TAILQ]; /**< Tailqs for objects */
 

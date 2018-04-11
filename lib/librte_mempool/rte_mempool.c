@@ -100,12 +100,12 @@ static unsigned optimize_object_size(unsigned obj_size)
 }
 
 static int
-find_min_pagesz(const struct rte_memseg *ms, void *arg)
+find_min_pagesz(const struct rte_memseg_list *msl, void *arg)
 {
 	size_t *min = arg;
 
-	if (ms->hugepage_sz < *min)
-		*min = ms->hugepage_sz;
+	if (msl->page_sz < *min)
+		*min = msl->page_sz;
 
 	return 0;
 }
@@ -115,10 +115,11 @@ get_min_page_size(void)
 {
 	size_t min_pagesz = SIZE_MAX;
 
-	rte_memseg_walk(find_min_pagesz, &min_pagesz);
+	rte_memseg_list_walk(find_min_pagesz, &min_pagesz);
 
 	return min_pagesz == SIZE_MAX ? (size_t) getpagesize() : min_pagesz;
 }
+
 
 static void
 mempool_add_elem(struct rte_mempool *mp, void *obj, rte_iova_t iova)

@@ -13,6 +13,7 @@
 #include <sys/mman.h>
 #include <sys/queue.h>
 
+#include <rte_fbarray.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
@@ -29,6 +30,8 @@
  * 0. In this case, return NULL. Note: this function returns an address
  * which is a multiple of hugepage size.
  */
+
+#define MEMSEG_LIST_FMT "memseg-%" PRIu64 "k-%i-%i"
 
 static uint64_t baseaddr_offset;
 static uint64_t system_page_sz;
@@ -120,15 +123,394 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	return aligned_addr;
 }
 
-/*
- * Return a pointer to a read-only table of struct rte_physmem_desc
- * elements, containing the layout of all addressable physical
- * memory. The last element of the table contains a NULL address.
- */
-const struct rte_memseg *
-rte_eal_get_physmem_layout(void)
+static uint64_t
+get_mem_amount(uint64_t page_sz, uint64_t max_mem)
 {
-	return rte_eal_get_configuration()->mem_config->memseg;
+	uint64_t area_sz, max_pages;
+
+	/* limit to RTE_MAX_MEMSEG_PER_LIST pages or RTE_MAX_MEM_MB_PER_LIST */
+	max_pages = RTE_MAX_MEMSEG_PER_LIST;
+	max_mem = RTE_MIN((uint64_t)RTE_MAX_MEM_MB_PER_LIST << 20, max_mem);
+
+	area_sz = RTE_MIN(page_sz * max_pages, max_mem);
+
+	/* make sure the list isn't smaller than the page size */
+	area_sz = RTE_MAX(area_sz, page_sz);
+
+	return RTE_ALIGN(area_sz, page_sz);
+}
+
+static int
+alloc_memseg_list(struct rte_memseg_list *msl, uint64_t page_sz,
+		uint64_t max_mem, int socket_id, int type_msl_idx)
+{
+	char name[RTE_FBARRAY_NAME_LEN];
+	uint64_t mem_amount;
+	int max_segs;
+
+	mem_amount = get_mem_amount(page_sz, max_mem);
+	max_segs = mem_amount / page_sz;
+
+	snprintf(name, sizeof(name), MEMSEG_LIST_FMT, page_sz >> 10, socket_id,
+		 type_msl_idx);
+	if (rte_fbarray_init(&msl->memseg_arr, name, max_segs,
+			sizeof(struct rte_memseg))) {
+		RTE_LOG(ERR, EAL, "Cannot allocate memseg list: %s\n",
+			rte_strerror(rte_errno));
+		return -1;
+	}
+
+	msl->page_sz = page_sz;
+	msl->socket_id = socket_id;
+	msl->base_va = NULL;
+
+	RTE_LOG(DEBUG, EAL, "Memseg list allocated: 0x%zxkB at socket %i\n",
+			(size_t)page_sz >> 10, socket_id);
+
+	return 0;
+}
+
+static int
+alloc_va_space(struct rte_memseg_list *msl)
+{
+	uint64_t page_sz;
+	size_t mem_sz;
+	void *addr;
+	int flags = 0;
+
+#ifdef RTE_ARCH_PPC_64
+	flags |= MAP_HUGETLB;
+#endif
+
+	page_sz = msl->page_sz;
+	mem_sz = page_sz * msl->memseg_arr.len;
+
+	addr = eal_get_virtual_area(msl->base_va, &mem_sz, page_sz, 0, flags);
+	if (addr == NULL) {
+		if (rte_errno == EADDRNOTAVAIL)
+			RTE_LOG(ERR, EAL, "Could not mmap %llu bytes at [%p] - please use '--base-virtaddr' option\n",
+				(unsigned long long)mem_sz, msl->base_va);
+		else
+			RTE_LOG(ERR, EAL, "Cannot reserve memory\n");
+		return -1;
+	}
+	msl->base_va = addr;
+
+	return 0;
+}
+
+static int __rte_unused
+memseg_primary_init_32(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int active_sockets, hpi_idx, msl_idx = 0;
+	unsigned int socket_id, i;
+	struct rte_memseg_list *msl;
+	uint64_t extra_mem_per_socket, total_extra_mem, total_requested_mem;
+	uint64_t max_mem;
+
+	/* no-huge does not need this at all */
+	if (internal_config.no_hugetlbfs)
+		return 0;
+
+	/* this is a giant hack, but desperate times call for desperate
+	 * measures. in legacy 32-bit mode, we cannot preallocate VA space,
+	 * because having upwards of 2 gigabytes of VA space already mapped will
+	 * interfere with our ability to map and sort hugepages.
+	 *
+	 * therefore, in legacy 32-bit mode, we will be initializing memseg
+	 * lists much later - in eal_memory.c, right after we unmap all the
+	 * unneeded pages. this will not affect secondary processes, as those
+	 * should be able to mmap the space without (too many) problems.
+	 */
+	if (internal_config.legacy_mem)
+		return 0;
+
+	/* 32-bit mode is a very special case. we cannot know in advance where
+	 * the user will want to allocate their memory, so we have to do some
+	 * heuristics.
+	 */
+	active_sockets = 0;
+	total_requested_mem = 0;
+	if (internal_config.force_sockets)
+		for (i = 0; i < rte_socket_count(); i++) {
+			uint64_t mem;
+
+			socket_id = rte_socket_id_by_idx(i);
+			mem = internal_config.socket_mem[socket_id];
+
+			if (mem == 0)
+				continue;
+
+			active_sockets++;
+			total_requested_mem += mem;
+		}
+	else
+		total_requested_mem = internal_config.memory;
+
+	max_mem = (uint64_t) RTE_MAX_MEM_MB_PER_TYPE << 20;
+	if (total_requested_mem > max_mem) {
+		RTE_LOG(ERR, EAL, "Invalid parameters: 32-bit process can at most use %uM of memory\n",
+				(unsigned int)(max_mem >> 20));
+		return -1;
+	}
+	total_extra_mem = max_mem - total_requested_mem;
+	extra_mem_per_socket = active_sockets == 0 ? total_extra_mem :
+			total_extra_mem / active_sockets;
+
+	/* the allocation logic is a little bit convoluted, but here's how it
+	 * works, in a nutshell:
+	 *  - if user hasn't specified on which sockets to allocate memory via
+	 *    --socket-mem, we allocate all of our memory on master core socket.
+	 *  - if user has specified sockets to allocate memory on, there may be
+	 *    some "unused" memory left (e.g. if user has specified --socket-mem
+	 *    such that not all memory adds up to 2 gigabytes), so add it to all
+	 *    sockets that are in use equally.
+	 *
+	 * page sizes are sorted by size in descending order, so we can safely
+	 * assume that we dispense with bigger page sizes first.
+	 */
+
+	/* create memseg lists */
+	for (i = 0; i < rte_socket_count(); i++) {
+		int hp_sizes = (int) internal_config.num_hugepage_sizes;
+		uint64_t max_socket_mem, cur_socket_mem;
+		unsigned int master_lcore_socket;
+		struct rte_config *cfg = rte_eal_get_configuration();
+		bool skip;
+
+		socket_id = rte_socket_id_by_idx(i);
+
+#ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
+		if (socket_id > 0)
+			break;
+#endif
+
+		/* if we didn't specifically request memory on this socket */
+		skip = active_sockets != 0 &&
+				internal_config.socket_mem[socket_id] == 0;
+		/* ...or if we didn't specifically request memory on *any*
+		 * socket, and this is not master lcore
+		 */
+		master_lcore_socket = rte_lcore_to_socket_id(cfg->master_lcore);
+		skip |= active_sockets == 0 && socket_id != master_lcore_socket;
+
+		if (skip) {
+			RTE_LOG(DEBUG, EAL, "Will not preallocate memory on socket %u\n",
+					socket_id);
+			continue;
+		}
+
+		/* max amount of memory on this socket */
+		max_socket_mem = (active_sockets != 0 ?
+					internal_config.socket_mem[socket_id] :
+					internal_config.memory) +
+					extra_mem_per_socket;
+		cur_socket_mem = 0;
+
+		for (hpi_idx = 0; hpi_idx < hp_sizes; hpi_idx++) {
+			uint64_t max_pagesz_mem, cur_pagesz_mem = 0;
+			uint64_t hugepage_sz;
+			struct hugepage_info *hpi;
+			int type_msl_idx, max_segs, total_segs = 0;
+
+			hpi = &internal_config.hugepage_info[hpi_idx];
+			hugepage_sz = hpi->hugepage_sz;
+
+			max_segs = RTE_MAX_MEMSEG_PER_TYPE;
+			max_pagesz_mem = max_socket_mem - cur_socket_mem;
+
+			/* make it multiple of page size */
+			max_pagesz_mem = RTE_ALIGN_FLOOR(max_pagesz_mem,
+					hugepage_sz);
+
+			RTE_LOG(DEBUG, EAL, "Attempting to preallocate "
+					"%" PRIu64 "M on socket %i\n",
+					max_pagesz_mem >> 20, socket_id);
+
+			type_msl_idx = 0;
+			while (cur_pagesz_mem < max_pagesz_mem &&
+					total_segs < max_segs) {
+				if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
+					RTE_LOG(ERR, EAL,
+						"No more space in memseg lists, please increase %s\n",
+						RTE_STR(CONFIG_RTE_MAX_MEMSEG_LISTS));
+					return -1;
+				}
+
+				msl = &mcfg->memsegs[msl_idx++];
+
+				if (alloc_memseg_list(msl, hugepage_sz,
+						max_pagesz_mem, socket_id,
+						type_msl_idx))
+					return -1;
+
+				total_segs += msl->memseg_arr.len;
+				cur_pagesz_mem = total_segs * hugepage_sz;
+				type_msl_idx++;
+
+				if (alloc_va_space(msl)) {
+					RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list\n");
+					return -1;
+				}
+			}
+			cur_socket_mem += cur_pagesz_mem;
+		}
+	}
+
+	return 0;
+}
+
+static int __rte_unused
+memseg_primary_init(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int i, socket_id, hpi_idx, msl_idx = 0;
+	struct rte_memseg_list *msl;
+	uint64_t max_mem, total_mem;
+
+	/* no-huge does not need this at all */
+	if (internal_config.no_hugetlbfs)
+		return 0;
+
+	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
+	total_mem = 0;
+
+	/* create memseg lists */
+	for (hpi_idx = 0; hpi_idx < (int) internal_config.num_hugepage_sizes;
+			hpi_idx++) {
+		struct hugepage_info *hpi;
+		uint64_t hugepage_sz;
+
+		hpi = &internal_config.hugepage_info[hpi_idx];
+		hugepage_sz = hpi->hugepage_sz;
+
+		for (i = 0; i < (int) rte_socket_count(); i++) {
+			uint64_t max_type_mem, total_type_mem = 0;
+			int type_msl_idx, max_segs, total_segs = 0;
+
+			socket_id = rte_socket_id_by_idx(i);
+
+#ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
+			if (socket_id > 0)
+				break;
+#endif
+
+			max_type_mem = RTE_MIN(max_mem - total_mem,
+				(uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20);
+			max_segs = RTE_MAX_MEMSEG_PER_TYPE;
+
+			type_msl_idx = 0;
+			while (total_type_mem < max_type_mem &&
+					total_segs < max_segs) {
+				uint64_t cur_max_mem;
+				if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
+					RTE_LOG(ERR, EAL,
+						"No more space in memseg lists, please increase %s\n",
+						RTE_STR(CONFIG_RTE_MAX_MEMSEG_LISTS));
+					return -1;
+				}
+
+				msl = &mcfg->memsegs[msl_idx++];
+
+				cur_max_mem = max_type_mem - total_type_mem;
+				if (alloc_memseg_list(msl, hugepage_sz,
+						cur_max_mem, socket_id,
+						type_msl_idx))
+					return -1;
+
+				total_segs += msl->memseg_arr.len;
+				total_type_mem = total_segs * hugepage_sz;
+				type_msl_idx++;
+
+				if (alloc_va_space(msl)) {
+					RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list\n");
+					return -1;
+				}
+			}
+			total_mem += total_type_mem;
+		}
+	}
+	return 0;
+}
+
+static int
+memseg_secondary_init(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int msl_idx = 0;
+	struct rte_memseg_list *msl;
+
+	for (msl_idx = 0; msl_idx < RTE_MAX_MEMSEG_LISTS; msl_idx++) {
+
+		msl = &mcfg->memsegs[msl_idx];
+
+		/* skip empty memseg lists */
+		if (msl->memseg_arr.len == 0)
+			continue;
+
+		if (rte_fbarray_attach(&msl->memseg_arr)) {
+			RTE_LOG(ERR, EAL, "Cannot attach to primary process memseg lists\n");
+			return -1;
+		}
+
+		/* preallocate VA space */
+		if (alloc_va_space(msl)) {
+			RTE_LOG(ERR, EAL, "Cannot preallocate VA space for hugepage memory\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static struct rte_memseg *
+virt2memseg(const void *addr, const struct rte_memseg_list *msl)
+{
+	const struct rte_fbarray *arr;
+	void *start, *end;
+	int ms_idx;
+
+	/* a memseg list was specified, check if it's the right one */
+	start = msl->base_va;
+	end = RTE_PTR_ADD(start, (size_t)msl->page_sz * msl->memseg_arr.len);
+
+	if (addr < start || addr >= end)
+		return NULL;
+
+	/* now, calculate index */
+	arr = &msl->memseg_arr;
+	ms_idx = RTE_PTR_DIFF(addr, msl->base_va) / msl->page_sz;
+	return rte_fbarray_get(arr, ms_idx);
+}
+
+static struct rte_memseg_list *
+virt2memseg_list(const void *addr)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *msl;
+	int msl_idx;
+
+	for (msl_idx = 0; msl_idx < RTE_MAX_MEMSEG_LISTS; msl_idx++) {
+		void *start, *end;
+		msl = &mcfg->memsegs[msl_idx];
+
+		start = msl->base_va;
+		end = RTE_PTR_ADD(start,
+				(size_t)msl->page_sz * msl->memseg_arr.len);
+		if (addr >= start && addr < end)
+			break;
+	}
+	/* if we didn't find our memseg list */
+	if (msl_idx == RTE_MAX_MEMSEG_LISTS)
+		return NULL;
+	return msl;
+}
+
+__rte_experimental struct rte_memseg_list *
+rte_mem_virt2memseg_list(const void *addr)
+{
+	return virt2memseg_list(addr);
 }
 
 struct virtiova {
@@ -136,10 +518,24 @@ struct virtiova {
 	void *virt;
 };
 static int
-find_virt(const struct rte_memseg *ms, void *arg)
+find_virt(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
 {
 	struct virtiova *vi = arg;
 	if (vi->iova >= ms->iova && vi->iova < (ms->iova + ms->len)) {
+		size_t offset = vi->iova - ms->iova;
+		vi->virt = RTE_PTR_ADD(ms->addr, offset);
+		/* stop the walk */
+		return 1;
+	}
+	return 0;
+}
+static int
+find_virt_legacy(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, size_t len, void *arg)
+{
+	struct virtiova *vi = arg;
+	if (vi->iova >= ms->iova && vi->iova < (ms->iova + len)) {
 		size_t offset = vi->iova - ms->iova;
 		vi->virt = RTE_PTR_ADD(ms->addr, offset);
 		/* stop the walk */
@@ -156,54 +552,30 @@ rte_mem_iova2virt(rte_iova_t iova)
 	memset(&vi, 0, sizeof(vi));
 
 	vi.iova = iova;
-	rte_memseg_walk(find_virt, &vi);
+	/* for legacy mem, we can get away with scanning VA-contiguous segments,
+	 * as we know they are PA-contiguous as well
+	 */
+	if (internal_config.legacy_mem)
+		rte_memseg_contig_walk(find_virt_legacy, &vi);
+	else
+		rte_memseg_walk(find_virt, &vi);
 
 	return vi.virt;
 }
 
-struct virtms {
-	const void *virt;
-	struct rte_memseg *ms;
-};
-static int
-find_memseg(const struct rte_memseg *ms, void *arg)
-{
-	struct virtms *vm = arg;
-
-	if (arg >= ms->addr && arg < RTE_PTR_ADD(ms->addr, ms->len)) {
-		struct rte_memseg *memseg, *found_ms;
-		int idx;
-
-		memseg = rte_eal_get_configuration()->mem_config->memseg;
-		idx = ms - memseg;
-		found_ms = &memseg[idx];
-
-		vm->ms = found_ms;
-		return 1;
-	}
-	return 0;
-}
-
 __rte_experimental struct rte_memseg *
-rte_mem_virt2memseg(const void *addr)
+rte_mem_virt2memseg(const void *addr, const struct rte_memseg_list *msl)
 {
-	struct virtms vm;
-
-	memset(&vm, 0, sizeof(vm));
-
-	vm.virt = addr;
-
-	rte_memseg_walk(find_memseg, &vm);
-
-	return vm.ms;
+	return virt2memseg(addr, msl != NULL ? msl :
+			rte_mem_virt2memseg_list(addr));
 }
 
 static int
-physmem_size(const struct rte_memseg *ms, void *arg)
+physmem_size(const struct rte_memseg_list *msl, void *arg)
 {
 	uint64_t *total_len = arg;
 
-	*total_len += ms->len;
+	*total_len += msl->memseg_arr.count * msl->page_sz;
 
 	return 0;
 }
@@ -214,32 +586,39 @@ rte_eal_get_physmem_size(void)
 {
 	uint64_t total_len = 0;
 
-	rte_memseg_walk(physmem_size, &total_len);
+	rte_memseg_list_walk(physmem_size, &total_len);
 
 	return total_len;
 }
 
 static int
-dump_memseg(const struct rte_memseg *ms, void *arg)
+dump_memseg(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
+		void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	int i = ms - mcfg->memseg;
+	int msl_idx, ms_idx;
 	FILE *f = arg;
 
-	if (i < 0 || i >= RTE_MAX_MEMSEG)
+	msl_idx = msl - mcfg->memsegs;
+	if (msl_idx < 0 || msl_idx >= RTE_MAX_MEMSEG_LISTS)
 		return -1;
 
-	fprintf(f, "Segment %u: IOVA:0x%"PRIx64", len:%zu, "
+	ms_idx = rte_fbarray_find_idx(&msl->memseg_arr, ms);
+	if (ms_idx < 0)
+		return -1;
+
+	fprintf(f, "Segment %i-%i: IOVA:0x%"PRIx64", len:%zu, "
 			"virt:%p, socket_id:%"PRId32", "
 			"hugepage_sz:%"PRIu64", nchannel:%"PRIx32", "
-			"nrank:%"PRIx32"\n", i,
-			mcfg->memseg[i].iova,
-			mcfg->memseg[i].len,
-			mcfg->memseg[i].addr,
-			mcfg->memseg[i].socket_id,
-			mcfg->memseg[i].hugepage_sz,
-			mcfg->memseg[i].nchannel,
-			mcfg->memseg[i].nrank);
+			"nrank:%"PRIx32"\n",
+			msl_idx, ms_idx,
+			ms->iova,
+			ms->len,
+			ms->addr,
+			ms->socket_id,
+			ms->hugepage_sz,
+			ms->nchannel,
+			ms->nrank);
 
 	return 0;
 }
@@ -289,55 +668,89 @@ rte_mem_lock_page(const void *virt)
 }
 
 int __rte_experimental
-rte_memseg_walk(rte_memseg_walk_t func, void *arg)
+rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	int i, ret;
+	int i, ms_idx, ret = 0;
 
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		const struct rte_memseg *ms = &mcfg->memseg[i];
+	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
+		struct rte_memseg_list *msl = &mcfg->memsegs[i];
+		const struct rte_memseg *ms;
+		struct rte_fbarray *arr;
 
-		if (ms->addr == NULL)
+		if (msl->memseg_arr.count == 0)
 			continue;
 
-		ret = func(ms, arg);
-		if (ret < 0)
-			return -1;
-		if (ret > 0)
-			return 1;
+		arr = &msl->memseg_arr;
+
+		ms_idx = rte_fbarray_find_next_used(arr, 0);
+		while (ms_idx >= 0) {
+			int n_segs;
+			size_t len;
+
+			ms = rte_fbarray_get(arr, ms_idx);
+
+			/* find how many more segments there are, starting with
+			 * this one.
+			 */
+			n_segs = rte_fbarray_find_contig_used(arr, ms_idx);
+			len = n_segs * msl->page_sz;
+
+			ret = func(msl, ms, len, arg);
+			if (ret < 0)
+				return -1;
+			else if (ret > 0)
+				return 1;
+			ms_idx = rte_fbarray_find_next_used(arr,
+					ms_idx + n_segs);
+		}
 	}
 	return 0;
 }
 
 int __rte_experimental
-rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
+rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	int i, j, ret;
+	int i, ms_idx, ret = 0;
 
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		const struct rte_memseg *ms = &mcfg->memseg[i];
-		size_t total_len;
-		void *end_addr;
+	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
+		struct rte_memseg_list *msl = &mcfg->memsegs[i];
+		const struct rte_memseg *ms;
+		struct rte_fbarray *arr;
 
-		if (ms->addr == NULL)
+		if (msl->memseg_arr.count == 0)
 			continue;
 
-		end_addr = RTE_PTR_ADD(ms->addr, ms->len);
+		arr = &msl->memseg_arr;
 
-		/* check how many more segments are contiguous to this one */
-		for (j = i + 1; j < RTE_MAX_MEMSEG; j++) {
-			const struct rte_memseg *next = &mcfg->memseg[j];
-
-			if (next->addr != end_addr)
-				break;
-
-			end_addr = RTE_PTR_ADD(next->addr, next->len);
-			i++;
+		ms_idx = rte_fbarray_find_next_used(arr, 0);
+		while (ms_idx >= 0) {
+			ms = rte_fbarray_get(arr, ms_idx);
+			ret = func(msl, ms, arg);
+			if (ret < 0)
+				return -1;
+			else if (ret > 0)
+				return 1;
+			ms_idx = rte_fbarray_find_next_used(arr, ms_idx + 1);
 		}
-		total_len = RTE_PTR_DIFF(end_addr, ms->addr);
+	}
+	return 0;
+}
 
-		ret = func(ms, total_len, arg);
+int __rte_experimental
+rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int i, ret = 0;
+
+	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
+		struct rte_memseg_list *msl = &mcfg->memsegs[i];
+
+		if (msl->base_va == NULL)
+			continue;
+
+		ret = func(msl, arg);
 		if (ret < 0)
 			return -1;
 		if (ret > 0)
@@ -350,9 +763,25 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 int
 rte_eal_memory_init(void)
 {
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int retval;
 	RTE_LOG(DEBUG, EAL, "Setting up physically contiguous memory...\n");
 
-	const int retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
+	if (!mcfg)
+		return -1;
+
+	retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
+#ifndef RTE_ARCH_64
+			memseg_primary_init_32() :
+#else
+			memseg_primary_init() :
+#endif
+			memseg_secondary_init();
+
+	if (retval < 0)
+		return -1;
+
+	retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
 			rte_eal_hugepage_init() :
 			rte_eal_hugepage_attach();
 	if (retval < 0)

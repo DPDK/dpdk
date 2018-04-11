@@ -141,10 +141,10 @@ mlx4_mr_get(struct priv *priv, struct rte_mempool *mp)
 	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
 	/* Round start and end to page boundary if found in memory segments. */
-	ms = rte_mem_virt2memseg((void *)start);
+	ms = rte_mem_virt2memseg((void *)start, NULL);
 	if (ms != NULL)
 		start = RTE_ALIGN_FLOOR(start, ms->hugepage_sz);
-	ms = rte_mem_virt2memseg((void *)end);
+	ms = rte_mem_virt2memseg((void *)end, NULL);
 	if (ms != NULL)
 		end = RTE_ALIGN_CEIL(end, ms->hugepage_sz);
 

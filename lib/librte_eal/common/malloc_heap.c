@@ -21,6 +21,7 @@
 #include <rte_memcpy.h>
 #include <rte_atomic.h>
 
+#include "eal_internal_cfg.h"
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 
@@ -62,36 +63,49 @@ check_hugepage_sz(unsigned flags, uint64_t hugepage_sz)
 }
 
 /*
- * Expand the heap with a memseg.
- * This reserves the zone and sets a dummy malloc_elem header at the end
- * to prevent overflow. The rest of the zone is added to free list as a single
- * large free block
+ * Expand the heap with a memory area.
  */
+static struct malloc_elem *
+malloc_heap_add_memory(struct malloc_heap *heap, struct rte_memseg_list *msl,
+		void *start, size_t len)
+{
+	struct malloc_elem *elem = start;
+
+	malloc_elem_init(elem, heap, msl, len);
+
+	malloc_elem_insert(elem);
+
+	elem = malloc_elem_join_adjacent_free(elem);
+
+	malloc_elem_free_list_insert(elem);
+
+	heap->total_size += len;
+
+	return elem;
+}
+
 static int
-malloc_heap_add_memseg(const struct rte_memseg *ms, void *arg __rte_unused)
+malloc_add_seg(const struct rte_memseg_list *msl,
+		const struct rte_memseg *ms, size_t len, void *arg __rte_unused)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	struct malloc_elem *start_elem;
-	struct rte_memseg *found_ms;
+	struct rte_memseg_list *found_msl;
 	struct malloc_heap *heap;
-	size_t elem_size;
-	int ms_idx;
+	int msl_idx;
 
-	heap = &mcfg->malloc_heaps[ms->socket_id];
+	heap = &mcfg->malloc_heaps[msl->socket_id];
 
-	/* ms is const, so find it */
-	ms_idx = ms - mcfg->memseg;
-	found_ms = &mcfg->memseg[ms_idx];
+	/* msl is const, so find it */
+	msl_idx = msl - mcfg->memsegs;
+	found_msl = &mcfg->memsegs[msl_idx];
 
-	start_elem = (struct malloc_elem *)found_ms->addr;
-	elem_size = ms->len - MALLOC_ELEM_OVERHEAD;
+	if (msl_idx < 0 || msl_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
 
-	malloc_elem_init(start_elem, heap, found_ms, elem_size);
-	malloc_elem_insert(start_elem);
-	malloc_elem_free_list_insert(start_elem);
+	malloc_heap_add_memory(heap, found_msl, ms->addr, len);
 
-	heap->total_size += elem_size;
-
+	RTE_LOG(DEBUG, EAL, "Added %zuM to heap on socket %i\n", len >> 20,
+			msl->socket_id);
 	return 0;
 }
 
@@ -114,7 +128,8 @@ find_suitable_element(struct malloc_heap *heap, size_t size,
 				!!elem; elem = LIST_NEXT(elem, free_list)) {
 			if (malloc_elem_can_hold(elem, size, align, bound,
 					contig)) {
-				if (check_hugepage_sz(flags, elem->ms->hugepage_sz))
+				if (check_hugepage_sz(flags,
+						elem->msl->page_sz))
 					return elem;
 				if (alt_elem == NULL)
 					alt_elem = elem;
@@ -263,7 +278,6 @@ rte_eal_malloc_heap_init(void)
 	if (mcfg == NULL)
 		return -1;
 
-	rte_memseg_walk(malloc_heap_add_memseg, NULL);
-
-	return 0;
+	/* add all IOVA-contiguous areas to the heap */
+	return rte_memseg_contig_walk(malloc_add_seg, NULL);
 }

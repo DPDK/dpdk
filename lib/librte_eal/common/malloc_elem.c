@@ -27,11 +27,11 @@
  * Initialize a general malloc_elem header structure
  */
 void
-malloc_elem_init(struct malloc_elem *elem,
-		struct malloc_heap *heap, const struct rte_memseg *ms, size_t size)
+malloc_elem_init(struct malloc_elem *elem, struct malloc_heap *heap,
+		struct rte_memseg_list *msl, size_t size)
 {
 	elem->heap = heap;
-	elem->ms = ms;
+	elem->msl = msl;
 	elem->prev = NULL;
 	elem->next = NULL;
 	memset(&elem->free_list, 0, sizeof(elem->free_list));
@@ -100,7 +100,7 @@ malloc_elem_insert(struct malloc_elem *elem)
  * so we just check the page addresses.
  */
 static bool
-elem_check_phys_contig(const struct rte_memseg *ms __rte_unused,
+elem_check_phys_contig(const struct rte_memseg_list *msl __rte_unused,
 		void *start, size_t size)
 {
 	rte_iova_t cur, expected;
@@ -191,7 +191,7 @@ elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align,
 			 * couldn't fit all data into one physically contiguous
 			 * block, try again with lower addresses.
 			 */
-			if (!elem_check_phys_contig(elem->ms,
+			if (!elem_check_phys_contig(elem->msl,
 					(void *)new_data_start,
 					new_data_size)) {
 				elem_size -= align;
@@ -225,7 +225,7 @@ split_elem(struct malloc_elem *elem, struct malloc_elem *split_pt)
 	const size_t old_elem_size = (uintptr_t)split_pt - (uintptr_t)elem;
 	const size_t new_elem_size = elem->size - old_elem_size;
 
-	malloc_elem_init(split_pt, elem->heap, elem->ms, new_elem_size);
+	malloc_elem_init(split_pt, elem->heap, elem->msl, new_elem_size);
 	split_pt->prev = elem;
 	split_pt->next = next_elem;
 	if (next_elem)

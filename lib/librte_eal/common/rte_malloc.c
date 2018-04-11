@@ -242,17 +242,21 @@ rte_malloc_set_limit(__rte_unused const char *type,
 rte_iova_t
 rte_malloc_virt2iova(const void *addr)
 {
-	rte_iova_t iova;
-	const struct malloc_elem *elem = malloc_elem_from_data(addr);
+	const struct rte_memseg *ms;
+	struct malloc_elem *elem = malloc_elem_from_data(addr);
+
 	if (elem == NULL)
-		return RTE_BAD_IOVA;
-	if (elem->ms->iova == RTE_BAD_IOVA)
 		return RTE_BAD_IOVA;
 
 	if (rte_eal_iova_mode() == RTE_IOVA_VA)
-		iova = (uintptr_t)addr;
-	else
-		iova = elem->ms->iova +
-			RTE_PTR_DIFF(addr, elem->ms->addr);
-	return iova;
+		return (uintptr_t) addr;
+
+	ms = rte_mem_virt2memseg(addr, elem->msl);
+	if (ms == NULL)
+		return RTE_BAD_IOVA;
+
+	if (ms->iova == RTE_BAD_IOVA)
+		return RTE_BAD_IOVA;
+
+	return ms->iova + RTE_PTR_DIFF(addr, ms->addr);
 }

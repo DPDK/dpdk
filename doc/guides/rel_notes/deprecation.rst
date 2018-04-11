@@ -38,15 +38,6 @@ Deprecation Notices
   success and failure, respectively.  This will change to 1 and 0 for true and
   false, respectively, to make use of the function more intuitive.
 
-* eal: due to internal data layout reorganization, there will be changes to
-  several structures and functions as a result of coming changes to support
-  memory hotplug in v18.05.
-  ``rte_eal_get_physmem_layout`` will be deprecated and removed in subsequent
-  releases.
-  ``rte_mem_config`` contents will change due to switch to memseg lists.
-  ``rte_memzone`` member ``memseg_id`` will no longer serve any useful purpose
-  and will be removed.
-
 * eal: a new set of mbuf mempool ops name APIs for user, platform and best
   mempool names have been defined in ``rte_mbuf`` in v18.02. The uses of
   ``rte_eal_mbuf_default_mempool_ops`` shall be replaced by
