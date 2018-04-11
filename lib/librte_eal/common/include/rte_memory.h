@@ -20,6 +20,7 @@ extern "C" {
 #endif
 
 #include <rte_common.h>
+#include <rte_compat.h>
 #include <rte_config.h>
 
 __extension__
@@ -128,6 +129,30 @@ phys_addr_t rte_mem_virt2phy(const void *virt);
  *   The IO address or RTE_BAD_IOVA on error.
  */
 rte_iova_t rte_mem_virt2iova(const void *virt);
+
+/**
+ * Memseg walk function prototype.
+ *
+ * Returning 0 will continue walk
+ * Returning 1 will stop the walk
+ * Returning -1 will stop the walk and report error
+ */
+typedef int (*rte_memseg_walk_t)(const struct rte_memseg *ms, void *arg);
+
+/**
+ * Walk list of all memsegs.
+ *
+ * @param func
+ *   Iterator function
+ * @param arg
+ *   Argument passed to iterator
+ * @return
+ *   0 if walked over the entire list
+ *   1 if stopped by the user
+ *   -1 if user function reported error
+ */
+int __rte_experimental
+rte_memseg_walk(rte_memseg_walk_t func, void *arg);
 
 /**
  * Get the layout of the available physical memory.

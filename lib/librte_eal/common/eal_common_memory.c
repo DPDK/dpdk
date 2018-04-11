@@ -218,6 +218,27 @@ rte_mem_lock_page(const void *virt)
 	return mlock((void *)aligned, page_size);
 }
 
+int __rte_experimental
+rte_memseg_walk(rte_memseg_walk_t func, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int i, ret;
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		const struct rte_memseg *ms = &mcfg->memseg[i];
+
+		if (ms->addr == NULL)
+			continue;
+
+		ret = func(ms, arg);
+		if (ret < 0)
+			return -1;
+		if (ret > 0)
+			return 1;
+	}
+	return 0;
+}
+
 /* init memory subsystem */
 int
 rte_eal_memory_init(void)
