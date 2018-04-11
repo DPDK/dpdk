@@ -674,6 +674,9 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int i, ms_idx, ret = 0;
 
+	/* do not allow allocations/frees/init while we iterate */
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+
 	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
 		struct rte_memseg_list *msl = &mcfg->memsegs[i];
 		const struct rte_memseg *ms;
@@ -698,15 +701,20 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 			len = n_segs * msl->page_sz;
 
 			ret = func(msl, ms, len, arg);
-			if (ret < 0)
-				return -1;
-			else if (ret > 0)
-				return 1;
+			if (ret < 0) {
+				ret = -1;
+				goto out;
+			} else if (ret > 0) {
+				ret = 1;
+				goto out;
+			}
 			ms_idx = rte_fbarray_find_next_used(arr,
 					ms_idx + n_segs);
 		}
 	}
-	return 0;
+out:
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	return ret;
 }
 
 int __rte_experimental
@@ -714,6 +722,9 @@ rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int i, ms_idx, ret = 0;
+
+	/* do not allow allocations/frees/init while we iterate */
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
 
 	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
 		struct rte_memseg_list *msl = &mcfg->memsegs[i];
@@ -729,14 +740,19 @@ rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 		while (ms_idx >= 0) {
 			ms = rte_fbarray_get(arr, ms_idx);
 			ret = func(msl, ms, arg);
-			if (ret < 0)
-				return -1;
-			else if (ret > 0)
-				return 1;
+			if (ret < 0) {
+				ret = -1;
+				goto out;
+			} else if (ret > 0) {
+				ret = 1;
+				goto out;
+			}
 			ms_idx = rte_fbarray_find_next_used(arr, ms_idx + 1);
 		}
 	}
-	return 0;
+out:
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	return ret;
 }
 
 int __rte_experimental
@@ -745,6 +761,9 @@ rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int i, ret = 0;
 
+	/* do not allow allocations/frees/init while we iterate */
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+
 	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
 		struct rte_memseg_list *msl = &mcfg->memsegs[i];
 
@@ -752,12 +771,18 @@ rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
 			continue;
 
 		ret = func(msl, arg);
-		if (ret < 0)
-			return -1;
-		if (ret > 0)
-			return 1;
+		if (ret < 0) {
+			ret = -1;
+			goto out;
+		}
+		if (ret > 0) {
+			ret = 1;
+			goto out;
+		}
 	}
-	return 0;
+out:
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	return ret;
 }
 
 /* init memory subsystem */
@@ -771,6 +796,9 @@ rte_eal_memory_init(void)
 	if (!mcfg)
 		return -1;
 
+	/* lock mem hotplug here, to prevent races while we init */
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+
 	retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
 #ifndef RTE_ARCH_64
 			memseg_primary_init_32() :
@@ -780,16 +808,19 @@ rte_eal_memory_init(void)
 			memseg_secondary_init();
 
 	if (retval < 0)
-		return -1;
+		goto fail;
 
 	retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
 			rte_eal_hugepage_init() :
 			rte_eal_hugepage_attach();
 	if (retval < 0)
-		return -1;
+		goto fail;
 
 	if (internal_config.no_shconf == 0 && rte_eal_memdevice_init() < 0)
-		return -1;
+		goto fail;
 
 	return 0;
+fail:
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	return -1;
 }

@@ -212,6 +212,32 @@ is_zero_length(int fd)
 	return st.st_blocks == 0;
 }
 
+/* we cannot use rte_memseg_list_walk() here because we will be holding a
+ * write lock whenever we enter every function in this file, however copying
+ * the same iteration code everywhere is not ideal as well. so, use a lockless
+ * copy of memseg list walk here.
+ */
+static int
+memseg_list_walk_thread_unsafe(rte_memseg_list_walk_t func, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int i, ret = 0;
+
+	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
+		struct rte_memseg_list *msl = &mcfg->memsegs[i];
+
+		if (msl->base_va == NULL)
+			continue;
+
+		ret = func(msl, arg);
+		if (ret < 0)
+			return -1;
+		if (ret > 0)
+			return 1;
+	}
+	return 0;
+}
+
 static int
 get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 		unsigned int list_idx, unsigned int seg_idx)
@@ -740,7 +766,7 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs, size_t page_sz,
 	wa.socket = socket;
 	wa.segs_allocated = 0;
 
-	ret = rte_memseg_list_walk(alloc_seg_walk, &wa);
+	ret = memseg_list_walk_thread_unsafe(alloc_seg_walk, &wa);
 	if (ret == 0) {
 		RTE_LOG(ERR, EAL, "%s(): couldn't find suitable memseg_list\n",
 			__func__);
@@ -798,7 +824,7 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 		wa.ms = cur;
 		wa.hi = hi;
 
-		walk_res = rte_memseg_list_walk(free_seg_walk, &wa);
+		walk_res = memseg_list_walk_thread_unsafe(free_seg_walk, &wa);
 		if (walk_res == 1)
 			continue;
 		if (walk_res == 0)
@@ -1055,7 +1081,7 @@ eal_memalloc_sync_with_primary(void)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		return 0;
 
-	if (rte_memseg_list_walk(sync_walk, NULL))
+	if (memseg_list_walk_thread_unsafe(sync_walk, NULL))
 		return -1;
 	return 0;
 }

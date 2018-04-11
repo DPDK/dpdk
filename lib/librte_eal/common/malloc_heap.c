@@ -10,6 +10,7 @@
 #include <sys/queue.h>
 
 #include <rte_memory.h>
+#include <rte_errno.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_launch.h>
@@ -26,6 +27,7 @@
 #include "eal_memalloc.h"
 #include "malloc_elem.h"
 #include "malloc_heap.h"
+#include "malloc_mp.h"
 
 static unsigned
 check_hugepage_sz(unsigned flags, uint64_t hugepage_sz)
@@ -80,8 +82,6 @@ malloc_heap_add_memory(struct malloc_heap *heap, struct rte_memseg_list *msl,
 	elem = malloc_elem_join_adjacent_free(elem);
 
 	malloc_elem_free_list_insert(elem);
-
-	heap->total_size += len;
 
 	return elem;
 }
@@ -171,72 +171,175 @@ heap_alloc(struct malloc_heap *heap, const char *type __rte_unused, size_t size,
 	return elem == NULL ? NULL : (void *)(&elem[1]);
 }
 
-static int
-try_expand_heap(struct malloc_heap *heap, size_t pg_sz, size_t elt_size,
-		int socket, unsigned int flags, size_t align, size_t bound,
-		bool contig)
+/* this function is exposed in malloc_mp.h */
+void
+rollback_expand_heap(struct rte_memseg **ms, int n_segs,
+		struct malloc_elem *elem, void *map_addr, size_t map_len)
 {
-	size_t map_len;
+	if (elem != NULL) {
+		malloc_elem_free_list_remove(elem);
+		malloc_elem_hide_region(elem, map_addr, map_len);
+	}
+
+	eal_memalloc_free_seg_bulk(ms, n_segs);
+}
+
+/* this function is exposed in malloc_mp.h */
+struct malloc_elem *
+alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
+		int socket, unsigned int flags, size_t align, size_t bound,
+		bool contig, struct rte_memseg **ms, int n_segs)
+{
 	struct rte_memseg_list *msl;
-	struct rte_memseg **ms;
-	struct malloc_elem *elem;
-	int n_segs, allocd_pages;
+	struct malloc_elem *elem = NULL;
+	size_t alloc_sz;
+	int allocd_pages;
 	void *ret, *map_addr;
-
-	align = RTE_MAX(align, MALLOC_ELEM_HEADER_LEN);
-	map_len = RTE_ALIGN_CEIL(align + elt_size + MALLOC_ELEM_TRAILER_LEN,
-			pg_sz);
-
-	n_segs = map_len / pg_sz;
-
-	/* we can't know in advance how many pages we'll need, so malloc */
-	ms = malloc(sizeof(*ms) * n_segs);
 
 	allocd_pages = eal_memalloc_alloc_seg_bulk(ms, n_segs, pg_sz,
 			socket, true);
 
 	/* make sure we've allocated our pages... */
 	if (allocd_pages < 0)
-		goto free_ms;
+		return NULL;
 
 	map_addr = ms[0]->addr;
 	msl = rte_mem_virt2memseg_list(map_addr);
+	alloc_sz = (size_t)msl->page_sz * allocd_pages;
 
 	/* check if we wanted contiguous memory but didn't get it */
-	if (contig && !eal_memalloc_is_contig(msl, map_addr, map_len)) {
+	if (contig && !eal_memalloc_is_contig(msl, map_addr, alloc_sz)) {
 		RTE_LOG(DEBUG, EAL, "%s(): couldn't allocate physically contiguous space\n",
 				__func__);
-		goto free_pages;
+		goto fail;
 	}
 
 	/* add newly minted memsegs to malloc heap */
-	elem = malloc_heap_add_memory(heap, msl, map_addr, map_len);
+	elem = malloc_heap_add_memory(heap, msl, map_addr, alloc_sz);
 
 	/* try once more, as now we have allocated new memory */
 	ret = find_suitable_element(heap, elt_size, flags, align, bound,
 			contig);
 
 	if (ret == NULL)
+		goto fail;
+
+	return elem;
+
+fail:
+	rollback_expand_heap(ms, n_segs, elem, map_addr, alloc_sz);
+	return NULL;
+}
+
+static int
+try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
+		size_t elt_size, int socket, unsigned int flags, size_t align,
+		size_t bound, bool contig)
+{
+	struct malloc_elem *elem;
+	struct rte_memseg **ms;
+	void *map_addr;
+	size_t alloc_sz;
+	int n_segs;
+
+	alloc_sz = RTE_ALIGN_CEIL(align + elt_size +
+			MALLOC_ELEM_TRAILER_LEN, pg_sz);
+	n_segs = alloc_sz / pg_sz;
+
+	/* we can't know in advance how many pages we'll need, so we malloc */
+	ms = malloc(sizeof(*ms) * n_segs);
+
+	memset(ms, 0, sizeof(*ms) * n_segs);
+
+	if (ms == NULL)
+		return -1;
+
+	elem = alloc_pages_on_heap(heap, pg_sz, elt_size, socket, flags, align,
+			bound, contig, ms, n_segs);
+
+	if (elem == NULL)
+		goto free_ms;
+
+	map_addr = ms[0]->addr;
+
+	/* notify other processes that this has happened */
+	if (request_sync()) {
+		/* we couldn't ensure all processes have mapped memory,
+		 * so free it back and notify everyone that it's been
+		 * freed back.
+		 */
 		goto free_elem;
+	}
+	heap->total_size += alloc_sz;
 
 	RTE_LOG(DEBUG, EAL, "Heap on socket %d was expanded by %zdMB\n",
-		socket, map_len >> 20ULL);
+		socket, alloc_sz >> 20ULL);
 
 	free(ms);
 
 	return 0;
 
 free_elem:
-	malloc_elem_free_list_remove(elem);
-	malloc_elem_hide_region(elem, map_addr, map_len);
-	heap->total_size -= map_len;
+	rollback_expand_heap(ms, n_segs, elem, map_addr, alloc_sz);
 
-free_pages:
-	eal_memalloc_free_seg_bulk(ms, n_segs);
+	request_sync();
 free_ms:
 	free(ms);
 
 	return -1;
+}
+
+static int
+try_expand_heap_secondary(struct malloc_heap *heap, uint64_t pg_sz,
+		size_t elt_size, int socket, unsigned int flags, size_t align,
+		size_t bound, bool contig)
+{
+	struct malloc_mp_req req;
+	int req_result;
+
+	memset(&req, 0, sizeof(req));
+
+	req.t = REQ_TYPE_ALLOC;
+	req.alloc_req.align = align;
+	req.alloc_req.bound = bound;
+	req.alloc_req.contig = contig;
+	req.alloc_req.flags = flags;
+	req.alloc_req.elt_size = elt_size;
+	req.alloc_req.page_sz = pg_sz;
+	req.alloc_req.socket = socket;
+	req.alloc_req.heap = heap; /* it's in shared memory */
+
+	req_result = request_to_primary(&req);
+
+	if (req_result != 0)
+		return -1;
+
+	if (req.result != REQ_RESULT_SUCCESS)
+		return -1;
+
+	return 0;
+}
+
+static int
+try_expand_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
+		int socket, unsigned int flags, size_t align, size_t bound,
+		bool contig)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int ret;
+
+	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ret = try_expand_heap_primary(heap, pg_sz, elt_size, socket,
+				flags, align, bound, contig);
+	} else {
+		ret = try_expand_heap_secondary(heap, pg_sz, elt_size, socket,
+				flags, align, bound, contig);
+	}
+
+	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+	return ret;
 }
 
 static int
@@ -257,11 +360,10 @@ compare_pagesz(const void *a, const void *b)
 }
 
 static int
-alloc_mem_on_socket(size_t size, int socket, unsigned int flags, size_t align,
-		size_t bound, bool contig)
+alloc_more_mem_on_socket(struct malloc_heap *heap, size_t size, int socket,
+		unsigned int flags, size_t align, size_t bound, bool contig)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	struct malloc_heap *heap = &mcfg->malloc_heaps[socket];
 	struct rte_memseg_list *requested_msls[RTE_MAX_MEMSEG_LISTS];
 	struct rte_memseg_list *other_msls[RTE_MAX_MEMSEG_LISTS];
 	uint64_t requested_pg_sz[RTE_MAX_MEMSEG_LISTS];
@@ -393,7 +495,8 @@ heap_alloc_on_socket(const char *type, size_t size, int socket,
 	if (ret != NULL)
 		goto alloc_unlock;
 
-	if (!alloc_mem_on_socket(size, socket, flags, align, bound, contig)) {
+	if (!alloc_more_mem_on_socket(heap, size, socket, flags, align, bound,
+			contig)) {
 		ret = heap_alloc(heap, type, size, flags, align, bound, contig);
 
 		/* this should have succeeded */
@@ -446,14 +549,41 @@ malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 	return NULL;
 }
 
+/* this function is exposed in malloc_mp.h */
+int
+malloc_heap_free_pages(void *aligned_start, size_t aligned_len)
+{
+	int n_segs, seg_idx, max_seg_idx;
+	struct rte_memseg_list *msl;
+	size_t page_sz;
+
+	msl = rte_mem_virt2memseg_list(aligned_start);
+	if (msl == NULL)
+		return -1;
+
+	page_sz = (size_t)msl->page_sz;
+	n_segs = aligned_len / page_sz;
+	seg_idx = RTE_PTR_DIFF(aligned_start, msl->base_va) / page_sz;
+	max_seg_idx = seg_idx + n_segs;
+
+	for (; seg_idx < max_seg_idx; seg_idx++) {
+		struct rte_memseg *ms;
+
+		ms = rte_fbarray_get(&msl->memseg_arr, seg_idx);
+		eal_memalloc_free_seg(ms);
+	}
+	return 0;
+}
+
 int
 malloc_heap_free(struct malloc_elem *elem)
 {
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct malloc_heap *heap;
 	void *start, *aligned_start, *end, *aligned_end;
 	size_t len, aligned_len, page_sz;
 	struct rte_memseg_list *msl;
-	int n_segs, seg_idx, max_seg_idx, ret;
+	int ret;
 
 	if (!malloc_elem_cookies_ok(elem) || elem->state != ELEM_BUSY)
 		return -1;
@@ -494,25 +624,56 @@ malloc_heap_free(struct malloc_elem *elem)
 	if (aligned_len < page_sz)
 		goto free_unlock;
 
+	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+
+	/*
+	 * we allow secondary processes to clear the heap of this allocated
+	 * memory because it is safe to do so, as even if notifications about
+	 * unmapped pages don't make it to other processes, heap is shared
+	 * across all processes, and will become empty of this memory anyway,
+	 * and nothing can allocate it back unless primary process will be able
+	 * to deliver allocation message to every single running process.
+	 */
+
 	malloc_elem_free_list_remove(elem);
 
 	malloc_elem_hide_region(elem, (void *) aligned_start, aligned_len);
 
-	/* we don't really care if we fail to deallocate memory */
-	n_segs = aligned_len / page_sz;
-	seg_idx = RTE_PTR_DIFF(aligned_start, msl->base_va) / page_sz;
-	max_seg_idx = seg_idx + n_segs;
-
-	for (; seg_idx < max_seg_idx; seg_idx++) {
-		struct rte_memseg *ms;
-
-		ms = rte_fbarray_get(&msl->memseg_arr, seg_idx);
-		eal_memalloc_free_seg(ms);
-	}
 	heap->total_size -= aligned_len;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* don't care if any of this fails */
+		malloc_heap_free_pages(aligned_start, aligned_len);
+
+		request_sync();
+	} else {
+		struct malloc_mp_req req;
+
+		memset(&req, 0, sizeof(req));
+
+		req.t = REQ_TYPE_FREE;
+		req.free_req.addr = aligned_start;
+		req.free_req.len = aligned_len;
+
+		/*
+		 * we request primary to deallocate pages, but we don't do it
+		 * in this thread. instead, we notify primary that we would like
+		 * to deallocate pages, and this process will receive another
+		 * request (in parallel) that will do it for us on another
+		 * thread.
+		 *
+		 * we also don't really care if this succeeds - the data is
+		 * already removed from the heap, so it is, for all intents and
+		 * purposes, hidden from the rest of DPDK even if some other
+		 * process (including this one) may have these pages mapped.
+		 */
+		request_to_primary(&req);
+	}
 
 	RTE_LOG(DEBUG, EAL, "Heap on socket %d was shrunk by %zdMB\n",
 		msl->socket_id, aligned_len >> 20ULL);
+
+	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
 free_unlock:
 	rte_spinlock_unlock(&(heap->lock));
 	return ret;
@@ -600,8 +761,16 @@ rte_eal_malloc_heap_init(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 
-	if (mcfg == NULL)
+	if (register_mp_requests()) {
+		RTE_LOG(ERR, EAL, "Couldn't register malloc multiprocess actions\n");
 		return -1;
+	}
+
+	/* unlock mem hotplug here. it's safe for primary as no requests can
+	 * even come before primary itself is fully initialized, and secondaries
+	 * do not need to initialize the heap.
+	 */
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
 
 	/* secondary process does not need to initialize anything */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

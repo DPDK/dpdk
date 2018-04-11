@@ -59,6 +59,9 @@ struct rte_mem_config {
 	rte_rwlock_t qlock;   /**< used for tailq operation for thread safe. */
 	rte_rwlock_t mplock;  /**< only used by mempool LIB for thread-safe. */
 
+	rte_rwlock_t memory_hotplug_lock;
+	/**< indicates whether memory hotplug request is in progress. */
+
 	/* memory segments and zones */
 	struct rte_fbarray memzones; /**< Memzone descriptors. */
 

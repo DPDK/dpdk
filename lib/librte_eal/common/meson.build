@@ -27,6 +27,7 @@ common_sources = files(
 	'eal_common_timer.c',
 	'malloc_elem.c',
 	'malloc_heap.c',
+	'malloc_mp.c',
 	'rte_keepalive.c',
 	'rte_malloc.c',
 	'rte_reciprocal.c',
