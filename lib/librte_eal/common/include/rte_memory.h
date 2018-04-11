@@ -143,6 +143,17 @@ __rte_experimental void *
 rte_mem_iova2virt(rte_iova_t iova);
 
 /**
+ * Get memseg to which a particular virtual address belongs.
+ *
+ * @param virt
+ *   The virtual address.
+ * @return
+ *   Memseg pointer on success, or NULL on error.
+ */
+__rte_experimental struct rte_memseg *
+rte_mem_virt2memseg(const void *virt);
+
+/**
  * Memseg walk function prototype.
  *
  * Returning 0 will continue walk

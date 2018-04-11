@@ -161,6 +161,43 @@ rte_mem_iova2virt(rte_iova_t iova)
 	return vi.virt;
 }
 
+struct virtms {
+	const void *virt;
+	struct rte_memseg *ms;
+};
+static int
+find_memseg(const struct rte_memseg *ms, void *arg)
+{
+	struct virtms *vm = arg;
+
+	if (arg >= ms->addr && arg < RTE_PTR_ADD(ms->addr, ms->len)) {
+		struct rte_memseg *memseg, *found_ms;
+		int idx;
+
+		memseg = rte_eal_get_configuration()->mem_config->memseg;
+		idx = ms - memseg;
+		found_ms = &memseg[idx];
+
+		vm->ms = found_ms;
+		return 1;
+	}
+	return 0;
+}
+
+__rte_experimental struct rte_memseg *
+rte_mem_virt2memseg(const void *addr)
+{
+	struct virtms vm;
+
+	memset(&vm, 0, sizeof(vm));
+
+	vm.virt = addr;
+
+	rte_memseg_walk(find_memseg, &vm);
+
+	return vm.ms;
+}
+
 static int
 physmem_size(const struct rte_memseg *ms, void *arg)
 {
