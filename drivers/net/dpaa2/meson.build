@@ -13,3 +13,6 @@ sources = files('base/dpaa2_hw_dpni.c',
 		'mc/dpni.c')
 
 includes += include_directories('base', 'mc')
+
+# depends on fslmc bus which uses experimental API
+allow_experimental_apis = true

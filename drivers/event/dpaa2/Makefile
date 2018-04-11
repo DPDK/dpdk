@@ -28,6 +28,9 @@ EXPORT_MAP := rte_pmd_dpaa2_event_version.map
 
 LIBABIVER := 1
 
+# depends on fslmc bus which uses experimental API
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 #
 # all source are stored in SRCS-y
 #

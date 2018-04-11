@@ -260,21 +260,10 @@ static void *dpaa2_mem_ptov(phys_addr_t paddr) __attribute__((unused));
 /* todo - this is costly, need to write a fast coversion routine */
 static void *dpaa2_mem_ptov(phys_addr_t paddr)
 {
-	const struct rte_memseg *memseg;
-	int i;
-
 	if (dpaa2_virt_mode)
 		return (void *)(size_t)paddr;
 
-	memseg = rte_eal_get_physmem_layout();
-
-	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
-		if (paddr >= memseg[i].iova &&
-		    paddr < memseg[i].iova + memseg[i].len)
-			return (void *)(size_t)(memseg[i].addr_64
-				+ (paddr - memseg[i].iova));
-	}
-	return NULL;
+	return rte_mem_iova2virt(paddr);
 }
 
 static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr) __attribute__((unused));
