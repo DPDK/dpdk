@@ -120,16 +120,7 @@ dpaa_mem_vtop_ctx(struct dpaa_sec_op_ctx *ctx, void *vaddr)
 static inline void *
 dpaa_mem_ptov(rte_iova_t paddr)
 {
-	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
-	int i;
-
-	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
-		if (paddr >= memseg[i].iova &&
-		    paddr < memseg[i].iova + memseg[i].len)
-			return (void *)(size_t)(memseg[i].addr_64 +
-					(paddr - memseg[i].iova));
-	}
-	return NULL;
+	return rte_mem_iova2virt(paddr);
 }
 
 static void
