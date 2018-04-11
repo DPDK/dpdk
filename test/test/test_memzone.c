@@ -909,7 +909,7 @@ test_memzone_basic(void)
 	const struct rte_memzone *mz;
 	int memzone_cnt_after, memzone_cnt_expected;
 	int memzone_cnt_before =
-			rte_eal_get_configuration()->mem_config->memzone_cnt;
+			rte_eal_get_configuration()->mem_config->memzones.count;
 
 	memzone1 = rte_memzone_reserve(TEST_MEMZONE_NAME("testzone1"), 100,
 				SOCKET_ID_ANY, 0);
@@ -933,7 +933,7 @@ test_memzone_basic(void)
 			(memzone3 != NULL) + (memzone4 != NULL);
 
 	memzone_cnt_after =
-			rte_eal_get_configuration()->mem_config->memzone_cnt;
+			rte_eal_get_configuration()->mem_config->memzones.count;
 
 	if (memzone_cnt_after != memzone_cnt_expected)
 		return -1;
@@ -1012,7 +1012,7 @@ test_memzone_basic(void)
 	}
 
 	memzone_cnt_after =
-			rte_eal_get_configuration()->mem_config->memzone_cnt;
+			rte_eal_get_configuration()->mem_config->memzones.count;
 	if (memzone_cnt_after != memzone_cnt_before)
 		return -1;
 
@@ -1033,7 +1033,8 @@ static int
 test_memzone(void)
 {
 	/* take note of how many memzones were allocated before running */
-	int memzone_cnt = rte_eal_get_configuration()->mem_config->memzone_cnt;
+	int memzone_cnt =
+			rte_eal_get_configuration()->mem_config->memzones.count;
 
 	printf("test basic memzone API\n");
 	if (test_memzone_basic() < 0)

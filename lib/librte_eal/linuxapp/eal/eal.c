@@ -858,6 +858,15 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 #endif
+	/* in secondary processes, memory init may allocate additional fbarrays
+	 * not present in primary processes, so to avoid any potential issues,
+	 * initialize memzones first.
+	 */
+	if (rte_eal_memzone_init() < 0) {
+		rte_eal_init_alert("Cannot init memzone\n");
+		rte_errno = ENODEV;
+		return -1;
+	}
 
 	if (rte_eal_memory_init() < 0) {
 		rte_eal_init_alert("Cannot init memory\n");
@@ -868,8 +877,8 @@ rte_eal_init(int argc, char **argv)
 	/* the directories are locked during eal_hugepage_info_init */
 	eal_hugedirs_unlock();
 
-	if (rte_eal_memzone_init() < 0) {
-		rte_eal_init_alert("Cannot init memzone\n");
+	if (rte_eal_malloc_heap_init() < 0) {
+		rte_eal_init_alert("Cannot init malloc heap\n");
 		rte_errno = ENODEV;
 		return -1;
 	}

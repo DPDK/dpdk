@@ -278,6 +278,10 @@ rte_eal_malloc_heap_init(void)
 	if (mcfg == NULL)
 		return -1;
 
+	/* secondary process does not need to initialize anything */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	/* add all IOVA-contiguous areas to the heap */
 	return rte_memseg_contig_walk(malloc_add_seg, NULL);
 }
