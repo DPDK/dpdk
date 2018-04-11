@@ -70,6 +70,32 @@ static uint64_t vhost_req_user_to_kernel[] = {
 	[VHOST_USER_SET_MEM_TABLE] = VHOST_SET_MEM_TABLE,
 };
 
+struct walk_arg {
+	struct vhost_memory_kernel *vm;
+	uint32_t region_nr;
+};
+static int
+add_memory_region(const struct rte_memseg *ms, size_t len, void *arg)
+{
+	struct walk_arg *wa = arg;
+	struct vhost_memory_region *mr;
+	void *start_addr;
+
+	if (wa->region_nr >= max_regions)
+		return -1;
+
+	mr = &wa->vm->regions[wa->region_nr++];
+	start_addr = ms->addr;
+
+	mr->guest_phys_addr = (uint64_t)(uintptr_t)start_addr;
+	mr->userspace_addr = (uint64_t)(uintptr_t)start_addr;
+	mr->memory_size = len;
+	mr->mmap_offset = 0;
+
+	return 0;
+}
+
+
 /* By default, vhost kernel module allows 64 regions, but DPDK allows
  * 256 segments. As a relief, below function merges those virtually
  * adjacent memsegs into one region.
@@ -77,63 +103,24 @@ static uint64_t vhost_req_user_to_kernel[] = {
 static struct vhost_memory_kernel *
 prepare_vhost_memory_kernel(void)
 {
-	uint32_t i, j, k = 0;
-	struct rte_memseg *seg;
-	struct vhost_memory_region *mr;
 	struct vhost_memory_kernel *vm;
+	struct walk_arg wa;
 
 	vm = malloc(sizeof(struct vhost_memory_kernel) +
-		    max_regions *
-		    sizeof(struct vhost_memory_region));
+			max_regions *
+			sizeof(struct vhost_memory_region));
 	if (!vm)
 		return NULL;
 
-	for (i = 0; i < RTE_MAX_MEMSEG; ++i) {
-		seg = &rte_eal_get_configuration()->mem_config->memseg[i];
-		if (!seg->addr)
-			break;
+	wa.region_nr = 0;
+	wa.vm = vm;
 
-		int new_region = 1;
-
-		for (j = 0; j < k; ++j) {
-			mr = &vm->regions[j];
-
-			if (mr->userspace_addr + mr->memory_size ==
-			    (uint64_t)(uintptr_t)seg->addr) {
-				mr->memory_size += seg->len;
-				new_region = 0;
-				break;
-			}
-
-			if ((uint64_t)(uintptr_t)seg->addr + seg->len ==
-			    mr->userspace_addr) {
-				mr->guest_phys_addr =
-					(uint64_t)(uintptr_t)seg->addr;
-				mr->userspace_addr =
-					(uint64_t)(uintptr_t)seg->addr;
-				mr->memory_size += seg->len;
-				new_region = 0;
-				break;
-			}
-		}
-
-		if (new_region == 0)
-			continue;
-
-		mr = &vm->regions[k++];
-		/* use vaddr here! */
-		mr->guest_phys_addr = (uint64_t)(uintptr_t)seg->addr;
-		mr->userspace_addr = (uint64_t)(uintptr_t)seg->addr;
-		mr->memory_size = seg->len;
-		mr->mmap_offset = 0;
-
-		if (k >= max_regions) {
-			free(vm);
-			return NULL;
-		}
+	if (rte_memseg_contig_walk(add_memory_region, &wa) < 0) {
+		free(vm);
+		return NULL;
 	}
 
-	vm->nregions = k;
+	vm->nregions = wa.region_nr;
 	vm->padding = 0;
 	return vm;
 }
