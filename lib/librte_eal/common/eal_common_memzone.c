@@ -93,7 +93,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	struct rte_mem_config *mcfg;
 	struct rte_fbarray *arr;
 	size_t requested_len;
-	int socket, i, mz_idx;
+	int mz_idx;
 	bool contig;
 
 	/* get pointer to global configuration */
@@ -183,29 +183,9 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		}
 	}
 
-	if (socket_id == SOCKET_ID_ANY)
-		socket = malloc_get_numa_socket();
-	else
-		socket = socket_id;
-
 	/* allocate memory on heap */
-	void *mz_addr = malloc_heap_alloc(&mcfg->malloc_heaps[socket], NULL,
-			requested_len, flags, align, bound, contig);
-
-	if ((mz_addr == NULL) && (socket_id == SOCKET_ID_ANY)) {
-		/* try other heaps */
-		for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
-			if (socket == i)
-				continue;
-
-			mz_addr = malloc_heap_alloc(&mcfg->malloc_heaps[i],
-					NULL, requested_len, flags, align,
-					bound, contig);
-			if (mz_addr != NULL)
-				break;
-		}
-	}
-
+	void *mz_addr = malloc_heap_alloc(NULL, requested_len, socket_id, flags,
+			align, bound, contig);
 	if (mz_addr == NULL) {
 		rte_errno = ENOMEM;
 		return NULL;

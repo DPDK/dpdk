@@ -154,6 +154,9 @@ int
 malloc_elem_resize(struct malloc_elem *elem, size_t size);
 
 void
+malloc_elem_hide_region(struct malloc_elem *elem, void *start, size_t len);
+
+void
 malloc_elem_free_list_remove(struct malloc_elem *elem);
 
 /*

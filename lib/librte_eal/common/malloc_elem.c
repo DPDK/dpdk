@@ -447,6 +447,98 @@ malloc_elem_free(struct malloc_elem *elem)
 	return elem;
 }
 
+/* assume all checks were already done */
+void
+malloc_elem_hide_region(struct malloc_elem *elem, void *start, size_t len)
+{
+	struct malloc_elem *hide_start, *hide_end, *prev, *next;
+	size_t len_before, len_after;
+
+	hide_start = start;
+	hide_end = RTE_PTR_ADD(start, len);
+
+	prev = elem->prev;
+	next = elem->next;
+
+	/* we cannot do anything with non-adjacent elements */
+	if (next && next_elem_is_adjacent(elem)) {
+		len_after = RTE_PTR_DIFF(next, hide_end);
+		if (len_after >= MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE) {
+			/* split after */
+			split_elem(elem, hide_end);
+
+			malloc_elem_free_list_insert(hide_end);
+		} else if (len_after >= MALLOC_ELEM_HEADER_LEN) {
+			/* shrink current element */
+			elem->size -= len_after;
+			memset(hide_end, 0, sizeof(*hide_end));
+
+			/* copy next element's data to our pad */
+			memcpy(hide_end, next, sizeof(*hide_end));
+
+			/* pad next element */
+			next->state = ELEM_PAD;
+			next->pad = len_after;
+			next->size -= len_after;
+
+			/* next element busy, would've been merged otherwise */
+			hide_end->pad = len_after;
+			hide_end->size += len_after;
+
+			/* adjust pointers to point to our new pad */
+			if (next->next)
+				next->next->prev = hide_end;
+			elem->next = hide_end;
+		} else if (len_after > 0) {
+			RTE_LOG(ERR, EAL, "Unaligned element, heap is probably corrupt\n");
+			return;
+		}
+	}
+
+	/* we cannot do anything with non-adjacent elements */
+	if (prev && prev_elem_is_adjacent(elem)) {
+		len_before = RTE_PTR_DIFF(hide_start, elem);
+		if (len_before >= MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE) {
+			/* split before */
+			split_elem(elem, hide_start);
+
+			prev = elem;
+			elem = hide_start;
+
+			malloc_elem_free_list_insert(prev);
+		} else if (len_before > 0) {
+			/*
+			 * unlike with elements after current, here we don't
+			 * need to pad elements, but rather just increase the
+			 * size of previous element, copy the old header and set
+			 * up trailer.
+			 */
+			void *trailer = RTE_PTR_ADD(prev,
+					prev->size - MALLOC_ELEM_TRAILER_LEN);
+
+			memcpy(hide_start, elem, sizeof(*elem));
+			hide_start->size = len;
+
+			prev->size += len_before;
+			set_trailer(prev);
+
+			/* update pointers */
+			prev->next = hide_start;
+			if (next)
+				next->prev = hide_start;
+
+			/* erase old trailer */
+			memset(trailer, 0, MALLOC_ELEM_TRAILER_LEN);
+			/* erase old header */
+			memset(elem, 0, sizeof(*elem));
+
+			elem = hide_start;
+		}
+	}
+
+	remove_elem(elem);
+}
+
 /*
  * attempt to resize a malloc_elem by expanding into any free space
  * immediately after it in memory.
