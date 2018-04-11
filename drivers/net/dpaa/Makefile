@@ -27,6 +27,9 @@ EXPORT_MAP := rte_pmd_dpaa_version.map
 
 LIBABIVER := 1
 
+# depends on dpaa bus which uses experimental API
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 # Interfaces with DPDK
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA_PMD) += dpaa_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA_PMD) += dpaa_rxtx.c

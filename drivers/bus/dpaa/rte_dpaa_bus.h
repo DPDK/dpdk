@@ -98,17 +98,7 @@ struct dpaa_portal {
 /* TODO - this is costly, need to write a fast coversion routine */
 static inline void *rte_dpaa_mem_ptov(phys_addr_t paddr)
 {
-	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
-	int i;
-
-	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr != NULL; i++) {
-		if (paddr >= memseg[i].iova && paddr <
-			memseg[i].iova + memseg[i].len)
-			return (uint8_t *)(memseg[i].addr) +
-			       (paddr - memseg[i].iova);
-	}
-
-	return NULL;
+	return rte_mem_iova2virt(paddr);
 }
 
 /**
