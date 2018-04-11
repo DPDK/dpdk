@@ -145,6 +145,44 @@ malloc_heap_alloc(struct malloc_heap *heap,
 	return elem == NULL ? NULL : (void *)(&elem[1]);
 }
 
+int
+malloc_heap_free(struct malloc_elem *elem)
+{
+	struct malloc_heap *heap;
+	int ret;
+
+	if (!malloc_elem_cookies_ok(elem) || elem->state != ELEM_BUSY)
+		return -1;
+
+	/* elem may be merged with previous element, so keep heap address */
+	heap = elem->heap;
+
+	rte_spinlock_lock(&(heap->lock));
+
+	ret = malloc_elem_free(elem);
+
+	rte_spinlock_unlock(&(heap->lock));
+
+	return ret;
+}
+
+int
+malloc_heap_resize(struct malloc_elem *elem, size_t size)
+{
+	int ret;
+
+	if (!malloc_elem_cookies_ok(elem) || elem->state != ELEM_BUSY)
+		return -1;
+
+	rte_spinlock_lock(&(elem->heap->lock));
+
+	ret = malloc_elem_resize(elem, size);
+
+	rte_spinlock_unlock(&(elem->heap->lock));
+
+	return ret;
+}
+
 /*
  * Function to retrieve data for heap on given socket
  */

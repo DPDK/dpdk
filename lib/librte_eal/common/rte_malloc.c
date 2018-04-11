@@ -29,7 +29,7 @@
 void rte_free(void *addr)
 {
 	if (addr == NULL) return;
-	if (malloc_elem_free(malloc_elem_from_data(addr)) < 0)
+	if (malloc_heap_free(malloc_elem_from_data(addr)) < 0)
 		rte_panic("Fatal error: Invalid memory\n");
 }
 
@@ -140,7 +140,7 @@ rte_realloc(void *ptr, size_t size, unsigned align)
 	size = RTE_CACHE_LINE_ROUNDUP(size), align = RTE_CACHE_LINE_ROUNDUP(align);
 	/* check alignment matches first, and if ok, see if we can resize block */
 	if (RTE_PTR_ALIGN(ptr,align) == ptr &&
-			malloc_elem_resize(elem, size) == 0)
+			malloc_heap_resize(elem, size) == 0)
 		return ptr;
 
 	/* either alignment is off, or we have no room to expand,

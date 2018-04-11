@@ -28,6 +28,12 @@ malloc_heap_alloc(struct malloc_heap *heap,	const char *type, size_t size,
 		unsigned flags, size_t align, size_t bound);
 
 int
+malloc_heap_free(struct malloc_elem *elem);
+
+int
+malloc_heap_resize(struct malloc_elem *elem, size_t size);
+
+int
 malloc_heap_get_stats(struct malloc_heap *heap,
 		struct rte_malloc_socket_stats *socket_stats);
 

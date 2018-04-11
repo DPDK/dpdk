@@ -243,10 +243,6 @@ join_elem(struct malloc_elem *elem1, struct malloc_elem *elem2)
 int
 malloc_elem_free(struct malloc_elem *elem)
 {
-	if (!malloc_elem_cookies_ok(elem) || elem->state != ELEM_BUSY)
-		return -1;
-
-	rte_spinlock_lock(&(elem->heap->lock));
 	size_t sz = elem->size - sizeof(*elem) - MALLOC_ELEM_TRAILER_LEN;
 	uint8_t *ptr = (uint8_t *)&elem[1];
 	struct malloc_elem *next = RTE_PTR_ADD(elem, elem->size);
@@ -274,8 +270,6 @@ malloc_elem_free(struct malloc_elem *elem)
 
 	memset(ptr, 0, sz);
 
-	rte_spinlock_unlock(&(elem->heap->lock));
-
 	return 0;
 }
 
@@ -292,11 +286,10 @@ malloc_elem_resize(struct malloc_elem *elem, size_t size)
 		return 0;
 
 	struct malloc_elem *next = RTE_PTR_ADD(elem, elem->size);
-	rte_spinlock_lock(&elem->heap->lock);
 	if (next ->state != ELEM_FREE)
-		goto err_return;
+		return -1;
 	if (elem->size + next->size < new_size)
-		goto err_return;
+		return -1;
 
 	/* we now know the element fits, so remove from free list,
 	 * join the two
@@ -311,10 +304,5 @@ malloc_elem_resize(struct malloc_elem *elem, size_t size)
 		split_elem(elem, split_pt);
 		malloc_elem_free_list_insert(split_pt);
 	}
-	rte_spinlock_unlock(&elem->heap->lock);
 	return 0;
-
-err_return:
-	rte_spinlock_unlock(&elem->heap->lock);
-	return -1;
 }
