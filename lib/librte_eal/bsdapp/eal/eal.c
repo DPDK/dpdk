@@ -749,6 +749,8 @@ int rte_vfio_enable(const char *modname);
 int rte_vfio_is_enabled(const char *modname);
 int rte_vfio_noiommu_is_enabled(void);
 int rte_vfio_clear_group(int vfio_group_fd);
+int rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len);
+int rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len);
 
 int rte_vfio_setup_device(__rte_unused const char *sysfs_base,
 		      __rte_unused const char *dev_addr,
@@ -783,4 +785,18 @@ int rte_vfio_noiommu_is_enabled(void)
 int rte_vfio_clear_group(__rte_unused int vfio_group_fd)
 {
 	return 0;
+}
+
+int __rte_experimental
+rte_vfio_dma_map(uint64_t __rte_unused vaddr, __rte_unused uint64_t iova,
+		  __rte_unused uint64_t len)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_dma_unmap(uint64_t __rte_unused vaddr, uint64_t __rte_unused iova,
+		    __rte_unused uint64_t len)
+{
+	return -1;
 }

@@ -263,5 +263,7 @@ EXPERIMENTAL {
 	rte_service_start_with_defaults;
 	rte_socket_count;
 	rte_socket_id_by_idx;
+	rte_vfio_dma_map;
+	rte_vfio_dma_unmap;
 
 } DPDK_18.02;

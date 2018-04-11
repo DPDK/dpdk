@@ -127,6 +127,47 @@ int rte_vfio_noiommu_is_enabled(void);
 int
 rte_vfio_clear_group(int vfio_group_fd);
 
+/**
+ * Map memory region for use with VFIO.
+ *
+ * @note requires at least one device to be attached at the time of mapping.
+ *
+ * @param vaddr
+ *   Starting virtual address of memory to be mapped.
+ *
+ * @param iova
+ *   Starting IOVA address of memory to be mapped.
+ *
+ * @param len
+ *   Length of memory segment being mapped.
+ *
+ * @return
+ *   0 if success.
+ *   -1 on error.
+ */
+int  __rte_experimental
+rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len);
+
+
+/**
+ * Unmap memory region from VFIO.
+ *
+ * @param vaddr
+ *   Starting virtual address of memory to be unmapped.
+ *
+ * @param iova
+ *   Starting IOVA address of memory to be unmapped.
+ *
+ * @param len
+ *   Length of memory segment being unmapped.
+ *
+ * @return
+ *   0 if success.
+ *   -1 on error.
+ */
+int __rte_experimental
+rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len);
+
 #ifdef __cplusplus
 }
 #endif
