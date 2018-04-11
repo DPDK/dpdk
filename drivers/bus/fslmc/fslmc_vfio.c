@@ -51,7 +51,6 @@ static int container_device_fd;
 static char *g_container;
 static uint32_t *msi_intr_vaddr;
 void *(*rte_mcp_ptr_list);
-static int is_dma_done;
 
 static struct rte_dpaa2_object_list dpaa2_obj_list =
 	TAILQ_HEAD_INITIALIZER(dpaa2_obj_list);
@@ -235,9 +234,6 @@ int rte_fslmc_vfio_dmamap(void)
 {
 	int i = 0;
 
-	if (is_dma_done)
-		return 0;
-
 	if (rte_memseg_walk(fslmc_vfio_map, &i) < 0)
 		return -1;
 
@@ -253,8 +249,6 @@ int rte_fslmc_vfio_dmamap(void)
 	 * support is added in the Kernel.
 	 */
 	vfio_map_irq_region(&vfio_group);
-
-	is_dma_done = 1;
 
 	return 0;
 }

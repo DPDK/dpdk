@@ -286,6 +286,17 @@ rte_fslmc_probe(void)
 		return 0;
 	}
 
+	/* Map existing segments as well as, in case of hotpluggable memory,
+	 * install callback handler.
+	 */
+	ret = rte_fslmc_vfio_dmamap();
+	if (ret) {
+		DPAA2_BUS_ERR("Unable to DMA map existing VAs: (%d)", ret);
+		/* Not continuing ahead */
+		DPAA2_BUS_ERR("FSLMC VFIO Mapping failed");
+		return 0;
+	}
+
 	ret = fslmc_vfio_process_group();
 	if (ret) {
 		DPAA2_BUS_ERR("Unable to setup devices %d", ret);
