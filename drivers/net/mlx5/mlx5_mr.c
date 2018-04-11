@@ -234,10 +234,9 @@ struct mlx5_mr *
 mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
+	const struct rte_memseg *ms;
 	uintptr_t start;
 	uintptr_t end;
-	unsigned int i;
 	struct mlx5_mr *mr;
 
 	mr = rte_zmalloc_socket(__func__, sizeof(*mr), 0, mp->socket_id);
@@ -261,17 +260,15 @@ mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp)
 	/* Save original addresses for exact MR lookup. */
 	mr->start = start;
 	mr->end = end;
-	/* Round start and end to page boundary if found in memory segments. */
-	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
-		uintptr_t addr = (uintptr_t)ms[i].addr;
-		size_t len = ms[i].len;
-		unsigned int align = ms[i].hugepage_sz;
 
-		if ((start > addr) && (start < addr + len))
-			start = RTE_ALIGN_FLOOR(start, align);
-		if ((end > addr) && (end < addr + len))
-			end = RTE_ALIGN_CEIL(end, align);
-	}
+	/* Round start and end to page boundary if found in memory segments. */
+	ms = rte_mem_virt2memseg((void *)start);
+	if (ms != NULL)
+		start = RTE_ALIGN_FLOOR(start, ms->hugepage_sz);
+	ms = rte_mem_virt2memseg((void *)end);
+	if (ms != NULL)
+		end = RTE_ALIGN_CEIL(end, ms->hugepage_sz);
+
 	DRV_LOG(DEBUG,
 		"port %u mempool %p using start=%p end=%p size=%zu for memory"
 		" region",
