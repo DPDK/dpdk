@@ -364,6 +364,69 @@ rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb);
 int __rte_experimental
 rte_mem_event_callback_unregister(const char *name);
 
+
+#define RTE_MEM_ALLOC_VALIDATOR_NAME_LEN 64
+/**< maximum length of alloc validator name */
+/**
+ * Function typedef used to register memory allocation validation callbacks.
+ *
+ * Returning 0 will allow allocation attempt to continue. Returning -1 will
+ * prevent allocation from succeeding.
+ */
+typedef int (*rte_mem_alloc_validator_t)(int socket_id,
+		size_t cur_limit, size_t new_len);
+
+/**
+ * @brief Register validator callback for memory allocations.
+ *
+ * Callbacks registered by this function will be called right before memory
+ * allocator is about to trigger allocation of more pages from the system if
+ * said allocation will bring total memory usage above specified limit on
+ * specified socket. User will be able to cancel pending allocation if callback
+ * returns -1.
+ *
+ * @note callbacks will happen while memory hotplug subsystem is write-locked,
+ *       therefore some functions (e.g. `rte_memseg_walk()`) will cause a
+ *       deadlock when called from within such callbacks.
+ *
+ * @param name
+ *   Name associated with specified callback to be added to the list.
+ *
+ * @param clb
+ *   Callback function pointer.
+ *
+ * @param socket_id
+ *   Socket ID on which to watch for allocations.
+ *
+ * @param limit
+ *   Limit above which to trigger callbacks.
+ *
+ * @return
+ *   0 on successful callback register
+ *   -1 on unsuccessful callback register, with rte_errno value indicating
+ *   reason for failure.
+ */
+int __rte_experimental
+rte_mem_alloc_validator_register(const char *name,
+		rte_mem_alloc_validator_t clb, int socket_id, size_t limit);
+
+/**
+ * @brief Unregister validator callback for memory allocations.
+ *
+ * @param name
+ *   Name associated with specified callback to be removed from the list.
+ *
+ * @param socket_id
+ *   Socket ID on which to watch for allocations.
+ *
+ * @return
+ *   0 on successful callback unregister
+ *   -1 on unsuccessful callback unregister, with rte_errno value indicating
+ *   reason for failure.
+ */
+int __rte_experimental
+rte_mem_alloc_validator_unregister(const char *name, int socket_id);
+
 #ifdef __cplusplus
 }
 #endif

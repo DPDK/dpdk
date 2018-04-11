@@ -652,6 +652,32 @@ rte_mem_event_callback_unregister(const char *name)
 	return eal_memalloc_mem_event_callback_unregister(name);
 }
 
+int __rte_experimental
+rte_mem_alloc_validator_register(const char *name,
+		rte_mem_alloc_validator_t clb, int socket_id, size_t limit)
+{
+	/* FreeBSD boots with legacy mem enabled by default */
+	if (internal_config.legacy_mem) {
+		RTE_LOG(DEBUG, EAL, "Registering mem alloc validators not supported\n");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+	return eal_memalloc_mem_alloc_validator_register(name, clb, socket_id,
+			limit);
+}
+
+int __rte_experimental
+rte_mem_alloc_validator_unregister(const char *name, int socket_id)
+{
+	/* FreeBSD boots with legacy mem enabled by default */
+	if (internal_config.legacy_mem) {
+		RTE_LOG(DEBUG, EAL, "Registering mem alloc validators not supported\n");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+	return eal_memalloc_mem_alloc_validator_unregister(name, socket_id);
+}
+
 /* Dump the physical memory layout on console */
 void
 rte_dump_physmem_layout(FILE *f)

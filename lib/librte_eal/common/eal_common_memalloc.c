@@ -22,13 +22,25 @@ struct mem_event_callback_entry {
 	rte_mem_event_callback_t clb;
 };
 
+struct mem_alloc_validator_entry {
+	TAILQ_ENTRY(mem_alloc_validator_entry) next;
+	char name[RTE_MEM_ALLOC_VALIDATOR_NAME_LEN];
+	rte_mem_alloc_validator_t clb;
+	int socket_id;
+	size_t limit;
+};
+
 /** Double linked list of actions. */
 TAILQ_HEAD(mem_event_callback_entry_list, mem_event_callback_entry);
+TAILQ_HEAD(mem_alloc_validator_entry_list, mem_alloc_validator_entry);
 
 static struct mem_event_callback_entry_list mem_event_callback_list =
 	TAILQ_HEAD_INITIALIZER(mem_event_callback_list);
-
 static rte_rwlock_t mem_event_rwlock = RTE_RWLOCK_INITIALIZER;
+
+static struct mem_alloc_validator_entry_list mem_alloc_validator_list =
+	TAILQ_HEAD_INITIALIZER(mem_alloc_validator_list);
+static rte_rwlock_t mem_alloc_validator_rwlock = RTE_RWLOCK_INITIALIZER;
 
 static struct mem_event_callback_entry *
 find_mem_event_callback(const char *name)
@@ -37,6 +49,18 @@ find_mem_event_callback(const char *name)
 
 	TAILQ_FOREACH(r, &mem_event_callback_list, next) {
 		if (!strcmp(r->name, name))
+			break;
+	}
+	return r;
+}
+
+static struct mem_alloc_validator_entry *
+find_mem_alloc_validator(const char *name, int socket_id)
+{
+	struct mem_alloc_validator_entry *r;
+
+	TAILQ_FOREACH(r, &mem_alloc_validator_list, next) {
+		if (!strcmp(r->name, name) && r->socket_id == socket_id)
 			break;
 	}
 	return r;
@@ -220,4 +244,116 @@ eal_memalloc_mem_event_notify(enum rte_mem_event event, const void *start,
 	}
 
 	rte_rwlock_read_unlock(&mem_event_rwlock);
+}
+
+int
+eal_memalloc_mem_alloc_validator_register(const char *name,
+		rte_mem_alloc_validator_t clb, int socket_id, size_t limit)
+{
+	struct mem_alloc_validator_entry *entry;
+	int ret, len;
+	if (name == NULL || clb == NULL || socket_id < 0) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	len = strnlen(name, RTE_MEM_ALLOC_VALIDATOR_NAME_LEN);
+	if (len == 0) {
+		rte_errno = EINVAL;
+		return -1;
+	} else if (len == RTE_MEM_ALLOC_VALIDATOR_NAME_LEN) {
+		rte_errno = ENAMETOOLONG;
+		return -1;
+	}
+	rte_rwlock_write_lock(&mem_alloc_validator_rwlock);
+
+	entry = find_mem_alloc_validator(name, socket_id);
+	if (entry != NULL) {
+		rte_errno = EEXIST;
+		ret = -1;
+		goto unlock;
+	}
+
+	entry = malloc(sizeof(*entry));
+	if (entry == NULL) {
+		rte_errno = ENOMEM;
+		ret = -1;
+		goto unlock;
+	}
+
+	/* callback successfully created and is valid, add it to the list */
+	entry->clb = clb;
+	entry->socket_id = socket_id;
+	entry->limit = limit;
+	snprintf(entry->name, RTE_MEM_ALLOC_VALIDATOR_NAME_LEN, "%s", name);
+	TAILQ_INSERT_TAIL(&mem_alloc_validator_list, entry, next);
+
+	ret = 0;
+
+	RTE_LOG(DEBUG, EAL, "Mem alloc validator '%s' on socket %i with limit %zu registered\n",
+		name, socket_id, limit);
+
+unlock:
+	rte_rwlock_write_unlock(&mem_alloc_validator_rwlock);
+	return ret;
+}
+
+int
+eal_memalloc_mem_alloc_validator_unregister(const char *name, int socket_id)
+{
+	struct mem_alloc_validator_entry *entry;
+	int ret, len;
+
+	if (name == NULL || socket_id < 0) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	len = strnlen(name, RTE_MEM_ALLOC_VALIDATOR_NAME_LEN);
+	if (len == 0) {
+		rte_errno = EINVAL;
+		return -1;
+	} else if (len == RTE_MEM_ALLOC_VALIDATOR_NAME_LEN) {
+		rte_errno = ENAMETOOLONG;
+		return -1;
+	}
+	rte_rwlock_write_lock(&mem_alloc_validator_rwlock);
+
+	entry = find_mem_alloc_validator(name, socket_id);
+	if (entry == NULL) {
+		rte_errno = ENOENT;
+		ret = -1;
+		goto unlock;
+	}
+	TAILQ_REMOVE(&mem_alloc_validator_list, entry, next);
+	free(entry);
+
+	ret = 0;
+
+	RTE_LOG(DEBUG, EAL, "Mem alloc validator '%s' on socket %i unregistered\n",
+		name, socket_id);
+
+unlock:
+	rte_rwlock_write_unlock(&mem_alloc_validator_rwlock);
+	return ret;
+}
+
+int
+eal_memalloc_mem_alloc_validate(int socket_id, size_t new_len)
+{
+	struct mem_alloc_validator_entry *entry;
+	int ret = 0;
+
+	rte_rwlock_read_lock(&mem_alloc_validator_rwlock);
+
+	TAILQ_FOREACH(entry, &mem_alloc_validator_list, next) {
+		if (entry->socket_id != socket_id || entry->limit > new_len)
+			continue;
+		RTE_LOG(DEBUG, EAL, "Calling mem alloc validator '%s' on socket %i\n",
+			entry->name, entry->socket_id);
+		if (entry->clb(socket_id, entry->limit, new_len) < 0)
+			ret = -1;
+	}
+
+	rte_rwlock_read_unlock(&mem_alloc_validator_rwlock);
+
+	return ret;
 }

@@ -66,4 +66,14 @@ void
 eal_memalloc_mem_event_notify(enum rte_mem_event event, const void *start,
 		size_t len);
 
+int
+eal_memalloc_mem_alloc_validator_register(const char *name,
+		rte_mem_alloc_validator_t clb, int socket_id, size_t limit);
+
+int
+eal_memalloc_mem_alloc_validator_unregister(const char *name, int socket_id);
+
+int
+eal_memalloc_mem_alloc_validate(int socket_id, size_t new_len);
+
 #endif /* EAL_MEMALLOC_H */

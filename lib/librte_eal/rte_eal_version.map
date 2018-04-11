@@ -238,6 +238,8 @@ EXPERIMENTAL {
 	rte_fbarray_set_used;
 	rte_log_register_type_and_pick_level;
 	rte_malloc_dump_heaps;
+	rte_mem_alloc_validator_register;
+	rte_mem_alloc_validator_unregister;
 	rte_mem_event_callback_register;
 	rte_mem_event_callback_unregister;
 	rte_mem_iova2virt;
