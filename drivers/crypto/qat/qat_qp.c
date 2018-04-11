@@ -54,8 +54,6 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 			int socket_id)
 {
 	const struct rte_memzone *mz;
-	unsigned memzone_flags = 0;
-	const struct rte_memseg *ms;
 
 	PMD_INIT_FUNC_TRACE();
 	mz = rte_memzone_lookup(queue_name);
@@ -78,25 +76,8 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 
 	PMD_DRV_LOG(DEBUG, "Allocate memzone for %s, size %u on socket %u",
 					queue_name, queue_size, socket_id);
-	ms = rte_eal_get_physmem_layout();
-	switch (ms[0].hugepage_sz) {
-	case(RTE_PGSIZE_2M):
-		memzone_flags = RTE_MEMZONE_2MB;
-	break;
-	case(RTE_PGSIZE_1G):
-		memzone_flags = RTE_MEMZONE_1GB;
-	break;
-	case(RTE_PGSIZE_16M):
-		memzone_flags = RTE_MEMZONE_16MB;
-	break;
-	case(RTE_PGSIZE_16G):
-		memzone_flags = RTE_MEMZONE_16GB;
-	break;
-	default:
-		memzone_flags = RTE_MEMZONE_SIZE_HINT_ONLY;
-	}
-	return rte_memzone_reserve_aligned(queue_name, queue_size, socket_id,
-		memzone_flags, queue_size);
+	return rte_memzone_reserve_aligned(queue_name, queue_size,
+		socket_id, RTE_MEMZONE_IOVA_CONTIG, queue_size);
 }
 
 int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
