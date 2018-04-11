@@ -3,7 +3,7 @@
 
 drivers = ['af_packet', 'axgbe', 'bonding', 'dpaa', 'dpaa2',
 	'e1000', 'enic', 'fm10k', 'i40e', 'ixgbe',
-	'null', 'octeontx', 'pcap', 'ring',
+	'mvpp2', 'null', 'octeontx', 'pcap', 'ring',
 	'sfc', 'thunderx', 'virtio']
 std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
 std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
