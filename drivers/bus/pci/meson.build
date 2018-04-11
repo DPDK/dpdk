@@ -14,3 +14,6 @@ else
 	sources += files('bsd/pci.c')
 	includes += include_directories('bsd')
 endif
+
+# memseg walk is not part of stable API yet
+allow_experimental_apis = true

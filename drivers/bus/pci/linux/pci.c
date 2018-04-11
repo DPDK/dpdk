@@ -116,22 +116,24 @@ rte_pci_unmap_device(struct rte_pci_device *dev)
 	}
 }
 
+static int
+find_max_end_va(const struct rte_memseg *ms, void *arg)
+{
+	void *end_va = RTE_PTR_ADD(ms->addr, ms->len);
+	void **max_va = arg;
+
+	if (*max_va < end_va)
+		*max_va = end_va;
+	return 0;
+}
+
 void *
 pci_find_max_end_va(void)
 {
-	const struct rte_memseg *seg = rte_eal_get_physmem_layout();
-	const struct rte_memseg *last = seg;
-	unsigned i = 0;
+	void *va = NULL;
 
-	for (i = 0; i < RTE_MAX_MEMSEG; i++, seg++) {
-		if (seg->addr == NULL)
-			break;
-
-		if (seg->addr > last->addr)
-			last = seg;
-
-	}
-	return RTE_PTR_ADD(last->addr, last->len);
+	rte_memseg_walk(find_max_end_va, &va);
+	return va;
 }
 
 /* parse one line of the "resource" sysfs file (note that the 'line'
