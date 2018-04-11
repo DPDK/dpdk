@@ -343,8 +343,8 @@ enic_alloc_consistent(void *priv, size_t size,
 	struct enic *enic = (struct enic *)priv;
 	struct enic_memzone_entry *mze;
 
-	rz = rte_memzone_reserve_aligned((const char *)name,
-					 size, SOCKET_ID_ANY, 0, ENIC_ALIGN);
+	rz = rte_memzone_reserve_aligned((const char *)name, size,
+			SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG, ENIC_ALIGN);
 	if (!rz) {
 		pr_err("%s : Failed to allocate memory requested for %s\n",
 			__func__, name);
@@ -888,9 +888,8 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 		instance++);
 
 	wq->cqmsg_rz = rte_memzone_reserve_aligned((const char *)name,
-						   sizeof(uint32_t),
-						   SOCKET_ID_ANY, 0,
-						   ENIC_ALIGN);
+			sizeof(uint32_t), SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG, ENIC_ALIGN);
 	if (!wq->cqmsg_rz)
 		return -ENOMEM;
 
