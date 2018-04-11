@@ -1344,7 +1344,8 @@ static void *alloc_ring(size_t nelem, size_t elem_size,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	tz = rte_memzone_reserve_aligned(z_name, len, socket_id, 0, 4096);
+	tz = rte_memzone_reserve_aligned(z_name, len, socket_id,
+			RTE_MEMZONE_IOVA_CONTIG, 4096);
 	if (!tz)
 		return NULL;
 
