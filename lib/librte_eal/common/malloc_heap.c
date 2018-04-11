@@ -70,15 +70,11 @@ check_hugepage_sz(unsigned flags, uint64_t hugepage_sz)
 static void
 malloc_heap_add_memseg(struct malloc_heap *heap, struct rte_memseg *ms)
 {
-	/* allocate the memory block headers, one at end, one at start */
 	struct malloc_elem *start_elem = (struct malloc_elem *)ms->addr;
-	struct malloc_elem *end_elem = RTE_PTR_ADD(ms->addr,
-			ms->len - MALLOC_ELEM_OVERHEAD);
-	end_elem = RTE_PTR_ALIGN_FLOOR(end_elem, RTE_CACHE_LINE_SIZE);
-	const size_t elem_size = (uintptr_t)end_elem - (uintptr_t)start_elem;
+	const size_t elem_size = ms->len - MALLOC_ELEM_OVERHEAD;
 
 	malloc_elem_init(start_elem, heap, ms, elem_size);
-	malloc_elem_mkend(end_elem, start_elem);
+	malloc_elem_insert(start_elem);
 	malloc_elem_free_list_insert(start_elem);
 
 	heap->total_size += elem_size;

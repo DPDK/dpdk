@@ -31,6 +31,7 @@ malloc_elem_init(struct malloc_elem *elem,
 	elem->heap = heap;
 	elem->ms = ms;
 	elem->prev = NULL;
+	elem->next = NULL;
 	memset(&elem->free_list, 0, sizeof(elem->free_list));
 	elem->state = ELEM_FREE;
 	elem->size = size;
@@ -39,15 +40,56 @@ malloc_elem_init(struct malloc_elem *elem,
 	set_trailer(elem);
 }
 
-/*
- * Initialize a dummy malloc_elem header for the end-of-memseg marker
- */
 void
-malloc_elem_mkend(struct malloc_elem *elem, struct malloc_elem *prev)
+malloc_elem_insert(struct malloc_elem *elem)
 {
-	malloc_elem_init(elem, prev->heap, prev->ms, 0);
-	elem->prev = prev;
-	elem->state = ELEM_BUSY; /* mark busy so its never merged */
+	struct malloc_elem *prev_elem, *next_elem;
+	struct malloc_heap *heap = elem->heap;
+
+	if (heap->first == NULL && heap->last == NULL) {
+		/* if empty heap */
+		heap->first = elem;
+		heap->last = elem;
+		prev_elem = NULL;
+		next_elem = NULL;
+	} else if (elem < heap->first) {
+		/* if lower than start */
+		prev_elem = NULL;
+		next_elem = heap->first;
+		heap->first = elem;
+	} else if (elem > heap->last) {
+		/* if higher than end */
+		prev_elem = heap->last;
+		next_elem = NULL;
+		heap->last = elem;
+	} else {
+		/* the new memory is somewhere inbetween start and end */
+		uint64_t dist_from_start, dist_from_end;
+
+		dist_from_end = RTE_PTR_DIFF(heap->last, elem);
+		dist_from_start = RTE_PTR_DIFF(elem, heap->first);
+
+		/* check which is closer, and find closest list entries */
+		if (dist_from_start < dist_from_end) {
+			prev_elem = heap->first;
+			while (prev_elem->next < elem)
+				prev_elem = prev_elem->next;
+			next_elem = prev_elem->next;
+		} else {
+			next_elem = heap->last;
+			while (next_elem->prev > elem)
+				next_elem = next_elem->prev;
+			prev_elem = next_elem->prev;
+		}
+	}
+
+	/* insert new element */
+	elem->prev = prev_elem;
+	elem->next = next_elem;
+	if (prev_elem)
+		prev_elem->next = elem;
+	if (next_elem)
+		next_elem->prev = elem;
 }
 
 /*
@@ -98,15 +140,55 @@ malloc_elem_can_hold(struct malloc_elem *elem, size_t size,	unsigned align,
 static void
 split_elem(struct malloc_elem *elem, struct malloc_elem *split_pt)
 {
-	struct malloc_elem *next_elem = RTE_PTR_ADD(elem, elem->size);
+	struct malloc_elem *next_elem = elem->next;
 	const size_t old_elem_size = (uintptr_t)split_pt - (uintptr_t)elem;
 	const size_t new_elem_size = elem->size - old_elem_size;
 
 	malloc_elem_init(split_pt, elem->heap, elem->ms, new_elem_size);
 	split_pt->prev = elem;
-	next_elem->prev = split_pt;
+	split_pt->next = next_elem;
+	if (next_elem)
+		next_elem->prev = split_pt;
+	else
+		elem->heap->last = split_pt;
+	elem->next = split_pt;
 	elem->size = old_elem_size;
 	set_trailer(elem);
+}
+
+/*
+ * our malloc heap is a doubly linked list, so doubly remove our element.
+ */
+static void __rte_unused
+remove_elem(struct malloc_elem *elem)
+{
+	struct malloc_elem *next, *prev;
+	next = elem->next;
+	prev = elem->prev;
+
+	if (next)
+		next->prev = prev;
+	else
+		elem->heap->last = prev;
+	if (prev)
+		prev->next = next;
+	else
+		elem->heap->first = next;
+
+	elem->prev = NULL;
+	elem->next = NULL;
+}
+
+static int
+next_elem_is_adjacent(struct malloc_elem *elem)
+{
+	return elem->next == RTE_PTR_ADD(elem, elem->size);
+}
+
+static int
+prev_elem_is_adjacent(struct malloc_elem *elem)
+{
+	return elem == RTE_PTR_ADD(elem->prev, elem->prev->size);
 }
 
 /*
@@ -192,6 +274,9 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align,
 
 		split_elem(elem, new_free_elem);
 		malloc_elem_free_list_insert(new_free_elem);
+
+		if (elem == elem->heap->last)
+			elem->heap->last = new_free_elem;
 	}
 
 	if (old_elem_size < MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE) {
@@ -230,9 +315,62 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align,
 static inline void
 join_elem(struct malloc_elem *elem1, struct malloc_elem *elem2)
 {
-	struct malloc_elem *next = RTE_PTR_ADD(elem2, elem2->size);
+	struct malloc_elem *next = elem2->next;
 	elem1->size += elem2->size;
-	next->prev = elem1;
+	if (next)
+		next->prev = elem1;
+	else
+		elem1->heap->last = elem1;
+	elem1->next = next;
+}
+
+static struct malloc_elem *
+elem_join_adjacent_free(struct malloc_elem *elem)
+{
+	/*
+	 * check if next element exists, is adjacent and is free, if so join
+	 * with it, need to remove from free list.
+	 */
+	if (elem->next != NULL && elem->next->state == ELEM_FREE &&
+			next_elem_is_adjacent(elem)) {
+		void *erase;
+
+		/* we will want to erase the trailer and header */
+		erase = RTE_PTR_SUB(elem->next, MALLOC_ELEM_TRAILER_LEN);
+
+		/* remove from free list, join to this one */
+		elem_free_list_remove(elem->next);
+		join_elem(elem, elem->next);
+
+		/* erase header and trailer */
+		memset(erase, 0, MALLOC_ELEM_OVERHEAD);
+	}
+
+	/*
+	 * check if prev element exists, is adjacent and is free, if so join
+	 * with it, need to remove from free list.
+	 */
+	if (elem->prev != NULL && elem->prev->state == ELEM_FREE &&
+			prev_elem_is_adjacent(elem)) {
+		struct malloc_elem *new_elem;
+		void *erase;
+
+		/* we will want to erase trailer and header */
+		erase = RTE_PTR_SUB(elem, MALLOC_ELEM_TRAILER_LEN);
+
+		/* remove from free list, join to this one */
+		elem_free_list_remove(elem->prev);
+
+		new_elem = elem->prev;
+		join_elem(new_elem, elem);
+
+		/* erase header and trailer */
+		memset(erase, 0, MALLOC_ELEM_OVERHEAD);
+
+		elem = new_elem;
+	}
+
+	return elem;
 }
 
 /*
@@ -243,32 +381,20 @@ join_elem(struct malloc_elem *elem1, struct malloc_elem *elem2)
 int
 malloc_elem_free(struct malloc_elem *elem)
 {
-	size_t sz = elem->size - sizeof(*elem) - MALLOC_ELEM_TRAILER_LEN;
-	uint8_t *ptr = (uint8_t *)&elem[1];
-	struct malloc_elem *next = RTE_PTR_ADD(elem, elem->size);
-	if (next->state == ELEM_FREE){
-		/* remove from free list, join to this one */
-		elem_free_list_remove(next);
-		join_elem(elem, next);
-		sz += (sizeof(*elem) + MALLOC_ELEM_TRAILER_LEN);
-	}
+	void *ptr;
+	size_t data_len;
 
-	/* check if previous element is free, if so join with it and return,
-	 * need to re-insert in free list, as that element's size is changing
-	 */
-	if (elem->prev != NULL && elem->prev->state == ELEM_FREE) {
-		elem_free_list_remove(elem->prev);
-		join_elem(elem->prev, elem);
-		sz += (sizeof(*elem) + MALLOC_ELEM_TRAILER_LEN);
-		ptr -= (sizeof(*elem) + MALLOC_ELEM_TRAILER_LEN);
-		elem = elem->prev;
-	}
+	ptr = RTE_PTR_ADD(elem, sizeof(*elem));
+	data_len = elem->size - MALLOC_ELEM_OVERHEAD;
+
+	elem = elem_join_adjacent_free(elem);
+
 	malloc_elem_free_list_insert(elem);
 
 	/* decrease heap's count of allocated elements */
 	elem->heap->alloc_count--;
 
-	memset(ptr, 0, sz);
+	memset(ptr, 0, data_len);
 
 	return 0;
 }
@@ -281,21 +407,23 @@ int
 malloc_elem_resize(struct malloc_elem *elem, size_t size)
 {
 	const size_t new_size = size + elem->pad + MALLOC_ELEM_OVERHEAD;
+
 	/* if we request a smaller size, then always return ok */
 	if (elem->size >= new_size)
 		return 0;
 
-	struct malloc_elem *next = RTE_PTR_ADD(elem, elem->size);
-	if (next ->state != ELEM_FREE)
+	/* check if there is a next element, it's free and adjacent */
+	if (!elem->next || elem->next->state != ELEM_FREE ||
+			!next_elem_is_adjacent(elem))
 		return -1;
-	if (elem->size + next->size < new_size)
+	if (elem->size + elem->next->size < new_size)
 		return -1;
 
 	/* we now know the element fits, so remove from free list,
 	 * join the two
 	 */
-	elem_free_list_remove(next);
-	join_elem(elem, next);
+	elem_free_list_remove(elem->next);
+	join_elem(elem, elem->next);
 
 	if (elem->size - new_size >= MIN_DATA_SIZE + MALLOC_ELEM_OVERHEAD) {
 		/* now we have a big block together. Lets cut it down a bit, by splitting */

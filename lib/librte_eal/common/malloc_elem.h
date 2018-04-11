@@ -18,8 +18,12 @@ enum elem_state {
 
 struct malloc_elem {
 	struct malloc_heap *heap;
-	struct malloc_elem *volatile prev;      /* points to prev elem in memseg */
-	LIST_ENTRY(malloc_elem) free_list;      /* list of free elements in heap */
+	struct malloc_elem *volatile prev;
+	/**< points to prev elem in memseg */
+	struct malloc_elem *volatile next;
+	/**< points to next elem in memseg */
+	LIST_ENTRY(malloc_elem) free_list;
+	/**< list of free elements in heap */
 	const struct rte_memseg *ms;
 	volatile enum elem_state state;
 	uint32_t pad;
@@ -110,12 +114,8 @@ malloc_elem_init(struct malloc_elem *elem,
 		const struct rte_memseg *ms,
 		size_t size);
 
-/*
- * initialise a dummy malloc_elem header for the end-of-memseg marker
- */
 void
-malloc_elem_mkend(struct malloc_elem *elem,
-		struct malloc_elem *prev_free);
+malloc_elem_insert(struct malloc_elem *elem);
 
 /*
  * return true if the current malloc_elem can hold a block of data

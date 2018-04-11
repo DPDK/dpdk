@@ -13,12 +13,18 @@
 /* Number of free lists per heap, grouped by size. */
 #define RTE_HEAP_NUM_FREELISTS  13
 
+/* dummy definition, for pointers */
+struct malloc_elem;
+
 /**
  * Structure to hold malloc heap
  */
 struct malloc_heap {
 	rte_spinlock_t lock;
 	LIST_HEAD(, malloc_elem) free_head[RTE_HEAP_NUM_FREELISTS];
+	struct malloc_elem *volatile first;
+	struct malloc_elem *volatile last;
+
 	unsigned alloc_count;
 	size_t total_size;
 } __rte_cache_aligned;
