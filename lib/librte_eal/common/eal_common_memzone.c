@@ -360,31 +360,31 @@ rte_memzone_lookup(const char *name)
 	return memzone;
 }
 
+static void
+dump_memzone(const struct rte_memzone *mz, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	FILE *f = arg;
+	int mz_idx;
+
+	mz_idx = mz - mcfg->memzone;
+
+	fprintf(f, "Zone %u: name:<%s>, IO:0x%"PRIx64", len:0x%zx, virt:%p, "
+				"socket_id:%"PRId32", flags:%"PRIx32"\n",
+			mz_idx,
+			mz->name,
+			mz->iova,
+			mz->len,
+			mz->addr,
+			mz->socket_id,
+			mz->flags);
+}
+
 /* Dump all reserved memory zones on console */
 void
 rte_memzone_dump(FILE *f)
 {
-	struct rte_mem_config *mcfg;
-	unsigned i = 0;
-
-	/* get pointer to global configuration */
-	mcfg = rte_eal_get_configuration()->mem_config;
-
-	rte_rwlock_read_lock(&mcfg->mlock);
-	/* dump all zones */
-	for (i=0; i<RTE_MAX_MEMZONE; i++) {
-		if (mcfg->memzone[i].addr == NULL)
-			break;
-		fprintf(f, "Zone %u: name:<%s>, IO:0x%"PRIx64", len:0x%zx"
-		       ", virt:%p, socket_id:%"PRId32", flags:%"PRIx32"\n", i,
-		       mcfg->memzone[i].name,
-		       mcfg->memzone[i].iova,
-		       mcfg->memzone[i].len,
-		       mcfg->memzone[i].addr,
-		       mcfg->memzone[i].socket_id,
-		       mcfg->memzone[i].flags);
-	}
-	rte_rwlock_read_unlock(&mcfg->mlock);
+	rte_memzone_walk(dump_memzone, f);
 }
 
 /*
