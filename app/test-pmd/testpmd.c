@@ -296,6 +296,7 @@ uint32_t event_print_mask = (UINT32_C(1) << RTE_ETH_EVENT_UNKNOWN) |
 			    (UINT32_C(1) << RTE_ETH_EVENT_INTR_LSC) |
 			    (UINT32_C(1) << RTE_ETH_EVENT_QUEUE_STATE) |
 			    (UINT32_C(1) << RTE_ETH_EVENT_INTR_RESET) |
+			    (UINT32_C(1) << RTE_ETH_EVENT_IPSEC) |
 			    (UINT32_C(1) << RTE_ETH_EVENT_MACSEC) |
 			    (UINT32_C(1) << RTE_ETH_EVENT_INTR_RMV);
 
@@ -2078,6 +2079,7 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		[RTE_ETH_EVENT_QUEUE_STATE] = "Queue state",
 		[RTE_ETH_EVENT_INTR_RESET] = "Interrupt reset",
 		[RTE_ETH_EVENT_VF_MBOX] = "VF Mbox",
+		[RTE_ETH_EVENT_IPSEC] = "IPsec",
 		[RTE_ETH_EVENT_MACSEC] = "MACsec",
 		[RTE_ETH_EVENT_INTR_RMV] = "device removal",
 		[RTE_ETH_EVENT_NEW] = "device probed",

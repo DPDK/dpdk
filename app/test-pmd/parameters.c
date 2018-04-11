@@ -513,6 +513,8 @@ parse_event_printing_config(const char *optarg, int enable)
 		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_RESET;
 	else if (!strcmp(optarg, "vf_mbox"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_VF_MBOX;
+	else if (!strcmp(optarg, "ipsec"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_IPSEC;
 	else if (!strcmp(optarg, "macsec"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_MACSEC;
 	else if (!strcmp(optarg, "intr_rmv"))
