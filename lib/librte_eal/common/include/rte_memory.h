@@ -131,6 +131,18 @@ phys_addr_t rte_mem_virt2phy(const void *virt);
 rte_iova_t rte_mem_virt2iova(const void *virt);
 
 /**
+ * Get virtual memory address corresponding to iova address.
+ *
+ * @param iova
+ *   The iova address.
+ * @return
+ *   Virtual address corresponding to iova address (or NULL if address does not
+ *   exist within DPDK memory map).
+ */
+__rte_experimental void *
+rte_mem_iova2virt(rte_iova_t iova);
+
+/**
  * Memseg walk function prototype.
  *
  * Returning 0 will continue walk

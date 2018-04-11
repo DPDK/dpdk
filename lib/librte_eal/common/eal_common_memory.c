@@ -131,6 +131,36 @@ rte_eal_get_physmem_layout(void)
 	return rte_eal_get_configuration()->mem_config->memseg;
 }
 
+struct virtiova {
+	rte_iova_t iova;
+	void *virt;
+};
+static int
+find_virt(const struct rte_memseg *ms, void *arg)
+{
+	struct virtiova *vi = arg;
+	if (vi->iova >= ms->iova && vi->iova < (ms->iova + ms->len)) {
+		size_t offset = vi->iova - ms->iova;
+		vi->virt = RTE_PTR_ADD(ms->addr, offset);
+		/* stop the walk */
+		return 1;
+	}
+	return 0;
+}
+
+__rte_experimental void *
+rte_mem_iova2virt(rte_iova_t iova)
+{
+	struct virtiova vi;
+
+	memset(&vi, 0, sizeof(vi));
+
+	vi.iova = iova;
+	rte_memseg_walk(find_virt, &vi);
+
+	return vi.virt;
+}
+
 static int
 physmem_size(const struct rte_memseg *ms, void *arg)
 {

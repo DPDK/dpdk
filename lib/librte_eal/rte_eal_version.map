@@ -223,6 +223,7 @@ EXPERIMENTAL {
 	rte_eal_mbuf_user_pool_ops;
 	rte_log_register_type_and_pick_level;
 	rte_malloc_dump_heaps;
+	rte_mem_iova2virt;
 	rte_memseg_contig_walk;
 	rte_memseg_walk;
 	rte_mp_action_register;
