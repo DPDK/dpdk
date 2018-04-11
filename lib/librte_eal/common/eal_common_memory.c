@@ -131,54 +131,57 @@ rte_eal_get_physmem_layout(void)
 	return rte_eal_get_configuration()->mem_config->memseg;
 }
 
+static int
+physmem_size(const struct rte_memseg *ms, void *arg)
+{
+	uint64_t *total_len = arg;
+
+	*total_len += ms->len;
+
+	return 0;
+}
 
 /* get the total size of memory */
 uint64_t
 rte_eal_get_physmem_size(void)
 {
-	const struct rte_mem_config *mcfg;
-	unsigned i = 0;
 	uint64_t total_len = 0;
 
-	/* get pointer to global configuration */
-	mcfg = rte_eal_get_configuration()->mem_config;
-
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		if (mcfg->memseg[i].addr == NULL)
-			break;
-
-		total_len += mcfg->memseg[i].len;
-	}
+	rte_memseg_walk(physmem_size, &total_len);
 
 	return total_len;
+}
+
+static int
+dump_memseg(const struct rte_memseg *ms, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int i = ms - mcfg->memseg;
+	FILE *f = arg;
+
+	if (i < 0 || i >= RTE_MAX_MEMSEG)
+		return -1;
+
+	fprintf(f, "Segment %u: IOVA:0x%"PRIx64", len:%zu, "
+			"virt:%p, socket_id:%"PRId32", "
+			"hugepage_sz:%"PRIu64", nchannel:%"PRIx32", "
+			"nrank:%"PRIx32"\n", i,
+			mcfg->memseg[i].iova,
+			mcfg->memseg[i].len,
+			mcfg->memseg[i].addr,
+			mcfg->memseg[i].socket_id,
+			mcfg->memseg[i].hugepage_sz,
+			mcfg->memseg[i].nchannel,
+			mcfg->memseg[i].nrank);
+
+	return 0;
 }
 
 /* Dump the physical memory layout on console */
 void
 rte_dump_physmem_layout(FILE *f)
 {
-	const struct rte_mem_config *mcfg;
-	unsigned i = 0;
-
-	/* get pointer to global configuration */
-	mcfg = rte_eal_get_configuration()->mem_config;
-
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		if (mcfg->memseg[i].addr == NULL)
-			break;
-
-		fprintf(f, "Segment %u: IOVA:0x%"PRIx64", len:%zu, "
-		       "virt:%p, socket_id:%"PRId32", "
-		       "hugepage_sz:%"PRIu64", nchannel:%"PRIx32", "
-		       "nrank:%"PRIx32"\n", i,
-		       mcfg->memseg[i].iova,
-		       mcfg->memseg[i].len,
-		       mcfg->memseg[i].addr,
-		       mcfg->memseg[i].socket_id,
-		       mcfg->memseg[i].hugepage_sz,
-		       mcfg->memseg[i].nchannel,
-		       mcfg->memseg[i].nrank);
-	}
+	rte_memseg_walk(dump_memseg, f);
 }
 
 /* return the number of memory channels */

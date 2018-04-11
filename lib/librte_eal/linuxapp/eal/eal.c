@@ -638,23 +638,23 @@ out:
 	return ret;
 }
 
+static int
+check_mem(const struct rte_memseg *ms, void *arg)
+{
+	int *socket = arg;
+
+	return ms->socket_id == *socket;
+}
+
 static void
 eal_check_mem_on_local_socket(void)
 {
-	const struct rte_memseg *ms;
-	int i, socket_id;
+	int socket_id;
 
 	socket_id = rte_lcore_to_socket_id(rte_config.master_lcore);
 
-	ms = rte_eal_get_physmem_layout();
-
-	for (i = 0; i < RTE_MAX_MEMSEG; i++)
-		if (ms[i].socket_id == socket_id &&
-				ms[i].len > 0)
-			return;
-
-	RTE_LOG(WARNING, EAL, "WARNING: Master core has no "
-			"memory on local socket!\n");
+	if (rte_memseg_walk(check_mem, &socket_id) == 0)
+		RTE_LOG(WARNING, EAL, "WARNING: Master core has no memory on local socket!\n");
 }
 
 static int

@@ -67,17 +67,32 @@ check_hugepage_sz(unsigned flags, uint64_t hugepage_sz)
  * to prevent overflow. The rest of the zone is added to free list as a single
  * large free block
  */
-static void
-malloc_heap_add_memseg(struct malloc_heap *heap, struct rte_memseg *ms)
+static int
+malloc_heap_add_memseg(const struct rte_memseg *ms, void *arg __rte_unused)
 {
-	struct malloc_elem *start_elem = (struct malloc_elem *)ms->addr;
-	const size_t elem_size = ms->len - MALLOC_ELEM_OVERHEAD;
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct malloc_elem *start_elem;
+	struct rte_memseg *found_ms;
+	struct malloc_heap *heap;
+	size_t elem_size;
+	int ms_idx;
 
-	malloc_elem_init(start_elem, heap, ms, elem_size);
+	heap = &mcfg->malloc_heaps[ms->socket_id];
+
+	/* ms is const, so find it */
+	ms_idx = ms - mcfg->memseg;
+	found_ms = &mcfg->memseg[ms_idx];
+
+	start_elem = (struct malloc_elem *)found_ms->addr;
+	elem_size = ms->len - MALLOC_ELEM_OVERHEAD;
+
+	malloc_elem_init(start_elem, heap, found_ms, elem_size);
 	malloc_elem_insert(start_elem);
 	malloc_elem_free_list_insert(start_elem);
 
 	heap->total_size += elem_size;
+
+	return 0;
 }
 
 /*
@@ -244,17 +259,11 @@ int
 rte_eal_malloc_heap_init(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	unsigned ms_cnt;
-	struct rte_memseg *ms;
 
 	if (mcfg == NULL)
 		return -1;
 
-	for (ms = &mcfg->memseg[0], ms_cnt = 0;
-			(ms_cnt < RTE_MAX_MEMSEG) && (ms->len > 0);
-			ms_cnt++, ms++) {
-		malloc_heap_add_memseg(&mcfg->malloc_heaps[ms->socket_id], ms);
-	}
+	rte_memseg_walk(malloc_heap_add_memseg, NULL);
 
 	return 0;
 }
