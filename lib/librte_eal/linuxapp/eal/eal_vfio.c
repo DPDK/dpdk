@@ -1128,6 +1128,7 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 	create.levels = 1;
 
 	if (do_map) {
+		void *addr;
 		/* re-create window and remap the entire memory */
 		if (iova > create.window_size) {
 			if (vfio_spapr_create_new_dma_window(vfio_container_fd,
@@ -1158,9 +1159,19 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 
 		/* now that we've remapped all of the memory that was present
 		 * before, map the segment that we were requested to map.
+		 *
+		 * however, if we were called by the callback, the memory we
+		 * were called with was already in the memseg list, so previous
+		 * mapping should've mapped that segment already.
+		 *
+		 * virt2memseg_list is a relatively cheap check, so use that. if
+		 * memory is within any memseg list, it's a memseg, so it's
+		 * already mapped.
 		 */
-		if (vfio_spapr_dma_do_map(vfio_container_fd,
-				vaddr, iova, len, 1) < 0) {
+		addr = (void *)(uintptr_t)vaddr;
+		if (rte_mem_virt2memseg_list(addr) == NULL &&
+				vfio_spapr_dma_do_map(vfio_container_fd,
+					vaddr, iova, len, 1) < 0) {
 			RTE_LOG(ERR, EAL, "Could not map segment\n");
 			ret = -1;
 			goto out;

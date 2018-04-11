@@ -241,6 +241,7 @@ try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
 	void *map_addr;
 	size_t alloc_sz;
 	int n_segs;
+	bool callback_triggered = false;
 
 	alloc_sz = RTE_ALIGN_CEIL(align + elt_size +
 			MALLOC_ELEM_TRAILER_LEN, pg_sz);
@@ -262,12 +263,22 @@ try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
 
 	map_addr = ms[0]->addr;
 
+	/* notify user about changes in memory map */
+	eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC, map_addr, alloc_sz);
+
 	/* notify other processes that this has happened */
 	if (request_sync()) {
 		/* we couldn't ensure all processes have mapped memory,
 		 * so free it back and notify everyone that it's been
 		 * freed back.
+		 *
+		 * technically, we could've avoided adding memory addresses to
+		 * the map, but that would've led to inconsistent behavior
+		 * between primary and secondary processes, as those get
+		 * callbacks during sync. therefore, force primary process to
+		 * do alloc-and-rollback syncs as well.
 		 */
+		callback_triggered = true;
 		goto free_elem;
 	}
 	heap->total_size += alloc_sz;
@@ -280,6 +291,10 @@ try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
 	return 0;
 
 free_elem:
+	if (callback_triggered)
+		eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
+				map_addr, alloc_sz);
+
 	rollback_expand_heap(ms, n_segs, elem, map_addr, alloc_sz);
 
 	request_sync();
@@ -642,6 +657,10 @@ malloc_heap_free(struct malloc_elem *elem)
 	heap->total_size -= aligned_len;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* notify user about changes in memory map */
+		eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
+				aligned_start, aligned_len);
+
 		/* don't care if any of this fails */
 		malloc_heap_free_pages(aligned_start, aligned_len);
 
@@ -666,6 +685,8 @@ malloc_heap_free(struct malloc_elem *elem)
 		 * already removed from the heap, so it is, for all intents and
 		 * purposes, hidden from the rest of DPDK even if some other
 		 * process (including this one) may have these pages mapped.
+		 *
+		 * notifications about deallocated memory happen during sync.
 		 */
 		request_to_primary(&req);
 	}

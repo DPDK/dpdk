@@ -877,6 +877,21 @@ sync_chunk(struct rte_memseg_list *primary_msl,
 
 	diff_len = RTE_MIN(chunk_len, diff_len);
 
+	/* if we are freeing memory, notify the application */
+	if (!used) {
+		struct rte_memseg *ms;
+		void *start_va;
+		size_t len, page_sz;
+
+		ms = rte_fbarray_get(l_arr, start);
+		start_va = ms->addr;
+		page_sz = (size_t)primary_msl->page_sz;
+		len = page_sz * diff_len;
+
+		eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
+				start_va, len);
+	}
+
 	for (i = 0; i < diff_len; i++) {
 		struct rte_memseg *p_ms, *l_ms;
 		int seg_idx = start + i;
@@ -900,6 +915,21 @@ sync_chunk(struct rte_memseg_list *primary_msl,
 			if (ret < 0)
 				return -1;
 		}
+	}
+
+	/* if we just allocated memory, notify the application */
+	if (used) {
+		struct rte_memseg *ms;
+		void *start_va;
+		size_t len, page_sz;
+
+		ms = rte_fbarray_get(l_arr, start);
+		start_va = ms->addr;
+		page_sz = (size_t)primary_msl->page_sz;
+		len = page_sz * diff_len;
+
+		eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC,
+				start_va, len);
 	}
 
 	/* calculate how much we can advance until next chunk */
