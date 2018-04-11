@@ -217,6 +217,28 @@ malloc_heap_get_stats(struct malloc_heap *heap,
 	return 0;
 }
 
+/*
+ * Function to retrieve data for heap on given socket
+ */
+void
+malloc_heap_dump(struct malloc_heap *heap, FILE *f)
+{
+	struct malloc_elem *elem;
+
+	rte_spinlock_lock(&heap->lock);
+
+	fprintf(f, "Heap size: 0x%zx\n", heap->total_size);
+	fprintf(f, "Heap alloc count: %u\n", heap->alloc_count);
+
+	elem = heap->first;
+	while (elem) {
+		malloc_elem_dump(elem, f);
+		elem = elem->next;
+	}
+
+	rte_spinlock_unlock(&heap->lock);
+}
+
 int
 rte_eal_malloc_heap_init(void)
 {

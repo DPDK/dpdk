@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stddef.h>
+#include <rte_compat.h>
 #include <rte_memory.h>
 
 #ifdef __cplusplus
@@ -276,6 +277,15 @@ rte_malloc_get_socket_stats(int socket,
  */
 void
 rte_malloc_dump_stats(FILE *f, const char *type);
+
+/**
+ * Dump contents of all malloc heaps to a file.
+ *
+ * @param f
+ *   A pointer to a file for output
+ */
+void __rte_experimental
+rte_malloc_dump_heaps(FILE *f);
 
 /**
  * Set the maximum amount of allocated memory for this type.

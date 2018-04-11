@@ -149,6 +149,12 @@ int
 malloc_elem_resize(struct malloc_elem *elem, size_t size);
 
 /*
+ * dump contents of malloc elem to a file.
+ */
+void
+malloc_elem_dump(const struct malloc_elem *elem, FILE *f);
+
+/*
  * Given an element size, compute its freelist index.
  */
 size_t

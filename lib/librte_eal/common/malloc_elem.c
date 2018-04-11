@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
  */
+#include <inttypes.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -433,4 +434,27 @@ malloc_elem_resize(struct malloc_elem *elem, size_t size)
 		malloc_elem_free_list_insert(split_pt);
 	}
 	return 0;
+}
+
+static inline const char *
+elem_state_to_str(enum elem_state state)
+{
+	switch (state) {
+	case ELEM_PAD:
+		return "PAD";
+	case ELEM_BUSY:
+		return "BUSY";
+	case ELEM_FREE:
+		return "FREE";
+	}
+	return "ERROR";
+}
+
+void
+malloc_elem_dump(const struct malloc_elem *elem, FILE *f)
+{
+	fprintf(f, "Malloc element at %p (%s)\n", elem,
+			elem_state_to_str(elem->state));
+	fprintf(f, "  len: 0x%zx pad: 0x%" PRIx32 "\n", elem->size, elem->pad);
+	fprintf(f, "  prev: %p next: %p\n", elem->prev, elem->next);
 }

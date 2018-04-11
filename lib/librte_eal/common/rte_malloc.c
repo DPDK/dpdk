@@ -182,6 +182,23 @@ rte_malloc_get_socket_stats(int socket,
 }
 
 /*
+ * Function to dump contents of all heaps
+ */
+void __rte_experimental
+rte_malloc_dump_heaps(FILE *f)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	unsigned int idx;
+
+	for (idx = 0; idx < rte_socket_count(); idx++) {
+		unsigned int socket = rte_socket_id_by_idx(idx);
+		fprintf(f, "Heap on socket %i:\n", socket);
+		malloc_heap_dump(&mcfg->malloc_heaps[socket], f);
+	}
+
+}
+
+/*
  * Print stats on memory type. If type is NULL, info on all types is printed
  */
 void

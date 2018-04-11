@@ -37,6 +37,9 @@ int
 malloc_heap_get_stats(struct malloc_heap *heap,
 		struct rte_malloc_socket_stats *socket_stats);
 
+void
+malloc_heap_dump(struct malloc_heap *heap, FILE *f);
+
 int
 rte_eal_malloc_heap_init(void);
 
