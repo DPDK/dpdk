@@ -40,6 +40,7 @@
 #include <rte_hash.h>
 #include <rte_jhash.h>
 #include <rte_cryptodev.h>
+#include <rte_security.h>
 
 #include "ipsec.h"
 #include "parser.h"
@@ -1650,6 +1651,61 @@ pool_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t nb_mbuf)
 		printf("Allocated mbuf pool on socket %d\n", socket_id);
 }
 
+static inline int
+inline_ipsec_event_esn_overflow(struct rte_security_ctx *ctx, uint64_t md)
+{
+	struct ipsec_sa *sa;
+
+	/* For inline protocol processing, the metadata in the event will
+	 * uniquely identify the security session which raised the event.
+	 * Application would then need the userdata it had registered with the
+	 * security session to process the event.
+	 */
+
+	sa = (struct ipsec_sa *)rte_security_get_userdata(ctx, md);
+
+	if (sa == NULL) {
+		/* userdata could not be retrieved */
+		return -1;
+	}
+
+	/* Sequence number over flow. SA need to be re-established */
+	RTE_SET_USED(sa);
+	return 0;
+}
+
+static int
+inline_ipsec_event_callback(uint16_t port_id, enum rte_eth_event_type type,
+		 void *param, void *ret_param)
+{
+	uint64_t md;
+	struct rte_eth_event_ipsec_desc *event_desc = NULL;
+	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
+					rte_eth_dev_get_sec_ctx(port_id);
+
+	RTE_SET_USED(param);
+
+	if (type != RTE_ETH_EVENT_IPSEC)
+		return -1;
+
+	event_desc = ret_param;
+	if (event_desc == NULL) {
+		printf("Event descriptor not set\n");
+		return -1;
+	}
+
+	md = event_desc->metadata;
+
+	if (event_desc->subtype == RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW)
+		return inline_ipsec_event_esn_overflow(ctx, md);
+	else if (event_desc->subtype >= RTE_ETH_EVENT_IPSEC_MAX) {
+		printf("Invalid IPsec event reported\n");
+		return -1;
+	}
+
+	return -1;
+}
+
 int32_t
 main(int32_t argc, char **argv)
 {
@@ -1735,6 +1791,9 @@ main(int32_t argc, char **argv)
 		 */
 		if (promiscuous_on)
 			rte_eth_promiscuous_enable(portid);
+
+		rte_eth_dev_callback_register(portid,
+			RTE_ETH_EVENT_IPSEC, inline_ipsec_event_callback, NULL);
 	}
 
 	check_all_ports_link_status(enabled_port_mask);

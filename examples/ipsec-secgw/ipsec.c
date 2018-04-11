@@ -36,6 +36,7 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 		}
 		/* TODO support for Transport and IPV6 tunnel */
 	}
+	ipsec->esn_soft_limit = IPSEC_OFFLOAD_ESN_SOFTLIMIT;
 }
 
 static inline int
@@ -270,11 +271,14 @@ flow_create_failure:
 			 * the packet is received, this userdata will be
 			 * retrieved using the metadata from the packet.
 			 *
-			 * This is required only for inbound SAs.
+			 * The PMD is expected to set similar metadata for other
+			 * operations, like rte_eth_event, which are tied to
+			 * security session. In such cases, the userdata could
+			 * be obtained to uniquely identify the security
+			 * parameters denoted.
 			 */
 
-			if (sa->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
-				sess_conf.userdata = (void *) sa;
+			sess_conf.userdata = (void *) sa;
 
 			sa->sec_session = rte_security_session_create(ctx,
 					&sess_conf, ipsec_ctx->session_pool);
