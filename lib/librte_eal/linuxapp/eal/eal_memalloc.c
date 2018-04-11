@@ -289,6 +289,48 @@ resized:
 	return -1;
 }
 
+static int
+free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
+		unsigned int list_idx, unsigned int seg_idx)
+{
+	char path[PATH_MAX];
+	int fd, ret;
+
+	/* erase page data */
+	memset(ms->addr, 0, ms->len);
+
+	if (mmap(ms->addr, ms->len, PROT_READ,
+			MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0) ==
+				MAP_FAILED) {
+		RTE_LOG(DEBUG, EAL, "couldn't unmap page\n");
+		return -1;
+	}
+
+	fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx);
+	if (fd < 0)
+		return -1;
+
+	/* if we're able to take out a write lock, we're the last one
+	 * holding onto this page.
+	 */
+
+	ret = lock(fd, 0, ms->len, F_WRLCK);
+	if (ret >= 0) {
+		/* no one else is using this page */
+		if (ret == 1)
+			unlink(path);
+		ret = lock(fd, 0, ms->len, F_UNLCK);
+		if (ret != 1)
+			RTE_LOG(ERR, EAL, "%s(): unable to unlock file %s\n",
+				__func__, path);
+	}
+	close(fd);
+
+	memset(ms, 0, sizeof(*ms));
+
+	return ret;
+}
+
 struct alloc_walk_param {
 	struct hugepage_info *hi;
 	struct rte_memseg **ms;
@@ -305,7 +347,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	struct alloc_walk_param *wa = arg;
 	struct rte_memseg_list *cur_msl;
 	size_t page_sz;
-	int cur_idx;
+	int cur_idx, start_idx, j;
 	unsigned int msl_idx, need, i;
 
 	if (msl->page_sz != wa->page_sz)
@@ -324,6 +366,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	cur_idx = rte_fbarray_find_next_n_free(&cur_msl->memseg_arr, 0, need);
 	if (cur_idx < 0)
 		return 0;
+	start_idx = cur_idx;
 
 	for (i = 0; i < need; i++, cur_idx++) {
 		struct rte_memseg *cur;
@@ -341,6 +384,25 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 			/* if exact number wasn't requested, stop */
 			if (!wa->exact)
 				goto out;
+
+			/* clean up */
+			for (j = start_idx; j < cur_idx; j++) {
+				struct rte_memseg *tmp;
+				struct rte_fbarray *arr =
+						&cur_msl->memseg_arr;
+
+				tmp = rte_fbarray_get(arr, j);
+				if (free_seg(tmp, wa->hi, msl_idx,
+						start_idx + j)) {
+					RTE_LOG(ERR, EAL, "Cannot free page\n");
+					continue;
+				}
+
+				rte_fbarray_set_free(arr, j);
+			}
+			/* clear the list */
+			if (wa->ms)
+				memset(wa->ms, 0, sizeof(*wa->ms) * wa->n_segs);
 			return -1;
 		}
 		if (wa->ms)
@@ -351,7 +413,39 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 out:
 	wa->segs_allocated = i;
 	return 1;
+}
 
+struct free_walk_param {
+	struct hugepage_info *hi;
+	struct rte_memseg *ms;
+};
+static int
+free_seg_walk(const struct rte_memseg_list *msl, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *found_msl;
+	struct free_walk_param *wa = arg;
+	uintptr_t start_addr, end_addr;
+	int msl_idx, seg_idx;
+
+	start_addr = (uintptr_t) msl->base_va;
+	end_addr = start_addr + msl->memseg_arr.len * (size_t)msl->page_sz;
+
+	if ((uintptr_t)wa->ms->addr < start_addr ||
+			(uintptr_t)wa->ms->addr >= end_addr)
+		return 0;
+
+	msl_idx = msl - mcfg->memsegs;
+	seg_idx = RTE_PTR_DIFF(wa->ms->addr, start_addr) / msl->page_sz;
+
+	/* msl is const */
+	found_msl = &mcfg->memsegs[msl_idx];
+
+	rte_fbarray_set_free(&found_msl->memseg_arr, seg_idx);
+	if (free_seg(wa->ms, wa->hi, msl_idx, seg_idx))
+		return -1;
+
+	return 1;
 }
 
 int
@@ -426,4 +520,56 @@ eal_memalloc_alloc_seg(size_t page_sz, int socket)
 		return NULL;
 	/* return pointer to newly allocated memseg */
 	return ms;
+}
+
+int
+eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
+{
+	int seg, ret = 0;
+
+	/* dynamic free not supported in legacy mode */
+	if (internal_config.legacy_mem)
+		return -1;
+
+	for (seg = 0; seg < n_segs; seg++) {
+		struct rte_memseg *cur = ms[seg];
+		struct hugepage_info *hi = NULL;
+		struct free_walk_param wa;
+		int i, walk_res;
+
+		memset(&wa, 0, sizeof(wa));
+
+		for (i = 0; i < (int)RTE_DIM(internal_config.hugepage_info);
+				i++) {
+			hi = &internal_config.hugepage_info[i];
+			if (cur->hugepage_sz == hi->hugepage_sz)
+				break;
+		}
+		if (i == (int)RTE_DIM(internal_config.hugepage_info)) {
+			RTE_LOG(ERR, EAL, "Can't find relevant hugepage_info entry\n");
+			ret = -1;
+			continue;
+		}
+
+		wa.ms = cur;
+		wa.hi = hi;
+
+		walk_res = rte_memseg_list_walk(free_seg_walk, &wa);
+		if (walk_res == 1)
+			continue;
+		if (walk_res == 0)
+			RTE_LOG(ERR, EAL, "Couldn't find memseg list\n");
+		ret = -1;
+	}
+	return ret;
+}
+
+int
+eal_memalloc_free_seg(struct rte_memseg *ms)
+{
+	/* dynamic free not supported in legacy mode */
+	if (internal_config.legacy_mem)
+		return -1;
+
+	return eal_memalloc_free_seg_bulk(&ms, 1);
 }

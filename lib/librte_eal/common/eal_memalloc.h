@@ -28,4 +28,18 @@ int
 eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs, size_t page_sz,
 		int socket, bool exact);
 
+/*
+ * Deallocate segment
+ */
+int
+eal_memalloc_free_seg(struct rte_memseg *ms);
+
+/*
+ * Deallocate `n_segs` segments. Returns 0 on successful deallocation of all
+ * segments, returns -1 on error. Any segments that could have been deallocated,
+ * will be deallocated even in case of error.
+ */
+int
+eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs);
+
 #endif /* EAL_MEMALLOC_H */
