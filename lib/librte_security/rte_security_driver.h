@@ -134,9 +134,9 @@ typedef int (*security_set_pkt_metadata_t)(void *device,
 		void *params);
 
 /**
- * Get application specific userdata associated with the security session which
- * processed the packet. This would be retrieved using the metadata obtained
- * from packet.
+ * Get application specific userdata associated with the security session.
+ * Device specific metadata provided would be used to uniquely identify
+ * the security session being referred to.
  *
  * @param	device		Crypto/eth device pointer
  * @param	md		Metadata

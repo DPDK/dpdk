@@ -364,15 +364,17 @@ rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 			      struct rte_mbuf *mb, void *params);
 
 /**
- * Get userdata associated with the security session which processed the
- * packet. This userdata would be registered while creating the session, and
- * application can use this to identify the SA etc. Device-specific metadata
- * in the mbuf would be used for this.
+ * Get userdata associated with the security session. Device specific metadata
+ * provided would be used to uniquely identify the security session being
+ * referred to. This userdata would be registered while creating the session,
+ * and application can use this to identify the SA etc.
  *
- * This is valid only for inline processed ingress packets.
+ * Device specific metadata would be set in mbuf for inline processed inbound
+ * packets. In addition, the same metadata would be set for IPsec events
+ * reported by rte_eth_event framework.
  *
  * @param   instance	security instance
- * @param   md		device-specific metadata set in mbuf
+ * @param   md		device-specific metadata
  *
  * @return
  *  - On success, userdata
