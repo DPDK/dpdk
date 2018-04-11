@@ -32,6 +32,7 @@ struct rte_memseg_list {
 	};
 	int socket_id; /**< Socket ID for all memsegs in this list. */
 	uint64_t page_sz; /**< Page size for all memsegs in this list. */
+	volatile uint32_t version; /**< version number for multiprocess sync. */
 	struct rte_fbarray memseg_arr;
 };
 

@@ -51,4 +51,8 @@ bool
 eal_memalloc_is_contig(const struct rte_memseg_list *msl, void *start,
 		size_t len);
 
+/* synchronize local memory map to primary process */
+int
+eal_memalloc_sync_with_primary(void);
+
 #endif /* EAL_MEMALLOC_H */

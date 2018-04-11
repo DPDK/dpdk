@@ -39,3 +39,10 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms __rte_unused,
 	RTE_LOG(ERR, EAL, "Memory hotplug not supported on FreeBSD\n");
 	return -1;
 }
+
+int
+eal_memalloc_sync_with_primary(void)
+{
+	RTE_LOG(ERR, EAL, "Memory hotplug not supported on FreeBSD\n");
+	return -1;
+}

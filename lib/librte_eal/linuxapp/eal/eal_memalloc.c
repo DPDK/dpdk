@@ -65,6 +65,9 @@ static struct msl_entry_list msl_entry_list =
 		TAILQ_HEAD_INITIALIZER(msl_entry_list);
 static rte_spinlock_t tailq_lock = RTE_SPINLOCK_INITIALIZER;
 
+/** local copy of a memory map, used to synchronize memory hotplug in MP */
+static struct rte_memseg_list local_memsegs[RTE_MAX_MEMSEG_LISTS];
+
 static sigjmp_buf huge_jmpenv;
 
 static void __rte_unused huge_sigbus_handler(int signo __rte_unused)
@@ -648,6 +651,8 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	}
 out:
 	wa->segs_allocated = i;
+	if (i > 0)
+		cur_msl->version++;
 	return 1;
 }
 
@@ -677,7 +682,10 @@ free_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	/* msl is const */
 	found_msl = &mcfg->memsegs[msl_idx];
 
+	found_msl->version++;
+
 	rte_fbarray_set_free(&found_msl->memseg_arr, seg_idx);
+
 	if (free_seg(wa->ms, wa->hi, msl_idx, seg_idx))
 		return -1;
 
@@ -808,4 +816,246 @@ eal_memalloc_free_seg(struct rte_memseg *ms)
 		return -1;
 
 	return eal_memalloc_free_seg_bulk(&ms, 1);
+}
+
+static int
+sync_chunk(struct rte_memseg_list *primary_msl,
+		struct rte_memseg_list *local_msl, struct hugepage_info *hi,
+		unsigned int msl_idx, bool used, int start, int end)
+{
+	struct rte_fbarray *l_arr, *p_arr;
+	int i, ret, chunk_len, diff_len;
+
+	l_arr = &local_msl->memseg_arr;
+	p_arr = &primary_msl->memseg_arr;
+
+	/* we need to aggregate allocations/deallocations into bigger chunks,
+	 * as we don't want to spam the user with per-page callbacks.
+	 *
+	 * to avoid any potential issues, we also want to trigger
+	 * deallocation callbacks *before* we actually deallocate
+	 * memory, so that the user application could wrap up its use
+	 * before it goes away.
+	 */
+
+	chunk_len = end - start;
+
+	/* find how many contiguous pages we can map/unmap for this chunk */
+	diff_len = used ?
+			rte_fbarray_find_contig_free(l_arr, start) :
+			rte_fbarray_find_contig_used(l_arr, start);
+
+	/* has to be at least one page */
+	if (diff_len < 1)
+		return -1;
+
+	diff_len = RTE_MIN(chunk_len, diff_len);
+
+	for (i = 0; i < diff_len; i++) {
+		struct rte_memseg *p_ms, *l_ms;
+		int seg_idx = start + i;
+
+		l_ms = rte_fbarray_get(l_arr, seg_idx);
+		p_ms = rte_fbarray_get(p_arr, seg_idx);
+
+		if (l_ms == NULL || p_ms == NULL)
+			return -1;
+
+		if (used) {
+			ret = alloc_seg(l_ms, p_ms->addr,
+					p_ms->socket_id, hi,
+					msl_idx, seg_idx);
+			if (ret < 0)
+				return -1;
+			rte_fbarray_set_used(l_arr, seg_idx);
+		} else {
+			ret = free_seg(l_ms, hi, msl_idx, seg_idx);
+			rte_fbarray_set_free(l_arr, seg_idx);
+			if (ret < 0)
+				return -1;
+		}
+	}
+
+	/* calculate how much we can advance until next chunk */
+	diff_len = used ?
+			rte_fbarray_find_contig_used(l_arr, start) :
+			rte_fbarray_find_contig_free(l_arr, start);
+	ret = RTE_MIN(chunk_len, diff_len);
+
+	return ret;
+}
+
+static int
+sync_status(struct rte_memseg_list *primary_msl,
+		struct rte_memseg_list *local_msl, struct hugepage_info *hi,
+		unsigned int msl_idx, bool used)
+{
+	struct rte_fbarray *l_arr, *p_arr;
+	int p_idx, l_chunk_len, p_chunk_len, ret;
+	int start, end;
+
+	/* this is a little bit tricky, but the basic idea is - walk both lists
+	 * and spot any places where there are discrepancies. walking both lists
+	 * and noting discrepancies in a single go is a hard problem, so we do
+	 * it in two passes - first we spot any places where allocated segments
+	 * mismatch (i.e. ensure that everything that's allocated in the primary
+	 * is also allocated in the secondary), and then we do it by looking at
+	 * free segments instead.
+	 *
+	 * we also need to aggregate changes into chunks, as we have to call
+	 * callbacks per allocation, not per page.
+	 */
+	l_arr = &local_msl->memseg_arr;
+	p_arr = &primary_msl->memseg_arr;
+
+	if (used)
+		p_idx = rte_fbarray_find_next_used(p_arr, 0);
+	else
+		p_idx = rte_fbarray_find_next_free(p_arr, 0);
+
+	while (p_idx >= 0) {
+		int next_chunk_search_idx;
+
+		if (used) {
+			p_chunk_len = rte_fbarray_find_contig_used(p_arr,
+					p_idx);
+			l_chunk_len = rte_fbarray_find_contig_used(l_arr,
+					p_idx);
+		} else {
+			p_chunk_len = rte_fbarray_find_contig_free(p_arr,
+					p_idx);
+			l_chunk_len = rte_fbarray_find_contig_free(l_arr,
+					p_idx);
+		}
+		/* best case scenario - no differences (or bigger, which will be
+		 * fixed during next iteration), look for next chunk
+		 */
+		if (l_chunk_len >= p_chunk_len) {
+			next_chunk_search_idx = p_idx + p_chunk_len;
+			goto next_chunk;
+		}
+
+		/* if both chunks start at the same point, skip parts we know
+		 * are identical, and sync the rest. each call to sync_chunk
+		 * will only sync contiguous segments, so we need to call this
+		 * until we are sure there are no more differences in this
+		 * chunk.
+		 */
+		start = p_idx + l_chunk_len;
+		end = p_idx + p_chunk_len;
+		do {
+			ret = sync_chunk(primary_msl, local_msl, hi, msl_idx,
+					used, start, end);
+			start += ret;
+		} while (start < end && ret >= 0);
+		/* if ret is negative, something went wrong */
+		if (ret < 0)
+			return -1;
+
+		next_chunk_search_idx = p_idx + p_chunk_len;
+next_chunk:
+		/* skip to end of this chunk */
+		if (used) {
+			p_idx = rte_fbarray_find_next_used(p_arr,
+					next_chunk_search_idx);
+		} else {
+			p_idx = rte_fbarray_find_next_free(p_arr,
+					next_chunk_search_idx);
+		}
+	}
+	return 0;
+}
+
+static int
+sync_existing(struct rte_memseg_list *primary_msl,
+		struct rte_memseg_list *local_msl, struct hugepage_info *hi,
+		unsigned int msl_idx)
+{
+	int ret;
+
+	/* ensure all allocated space is the same in both lists */
+	ret = sync_status(primary_msl, local_msl, hi, msl_idx, true);
+	if (ret < 0)
+		return -1;
+
+	/* ensure all unallocated space is the same in both lists */
+	ret = sync_status(primary_msl, local_msl, hi, msl_idx, false);
+	if (ret < 0)
+		return -1;
+
+	/* update version number */
+	local_msl->version = primary_msl->version;
+
+	return 0;
+}
+
+static int
+sync_walk(const struct rte_memseg_list *msl, void *arg __rte_unused)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *primary_msl, *local_msl;
+	struct hugepage_info *hi = NULL;
+	unsigned int i;
+	int msl_idx;
+	bool new_msl = false;
+
+	msl_idx = msl - mcfg->memsegs;
+	primary_msl = &mcfg->memsegs[msl_idx];
+	local_msl = &local_memsegs[msl_idx];
+
+	/* check if secondary has this memseg list set up */
+	if (local_msl->base_va == NULL) {
+		char name[PATH_MAX];
+		int ret;
+		new_msl = true;
+
+		/* create distinct fbarrays for each secondary */
+		snprintf(name, RTE_FBARRAY_NAME_LEN, "%s_%i",
+			primary_msl->memseg_arr.name, getpid());
+
+		ret = rte_fbarray_init(&local_msl->memseg_arr, name,
+			primary_msl->memseg_arr.len,
+			primary_msl->memseg_arr.elt_sz);
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "Cannot initialize local memory map\n");
+			return -1;
+		}
+
+		local_msl->base_va = primary_msl->base_va;
+	}
+
+	for (i = 0; i < RTE_DIM(internal_config.hugepage_info); i++) {
+		uint64_t cur_sz =
+			internal_config.hugepage_info[i].hugepage_sz;
+		uint64_t msl_sz = primary_msl->page_sz;
+		if (msl_sz == cur_sz) {
+			hi = &internal_config.hugepage_info[i];
+			break;
+		}
+	}
+	if (!hi) {
+		RTE_LOG(ERR, EAL, "Can't find relevant hugepage_info entry\n");
+		return -1;
+	}
+
+	/* if versions don't match or if we have just allocated a new
+	 * memseg list, synchronize everything
+	 */
+	if ((new_msl || local_msl->version != primary_msl->version) &&
+			sync_existing(primary_msl, local_msl, hi, msl_idx))
+		return -1;
+	return 0;
+}
+
+
+int
+eal_memalloc_sync_with_primary(void)
+{
+	/* nothing to be done in primary */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		return 0;
+
+	if (rte_memseg_list_walk(sync_walk, NULL))
+		return -1;
+	return 0;
 }
