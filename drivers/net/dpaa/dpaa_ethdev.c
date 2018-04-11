@@ -95,6 +95,9 @@ static const struct rte_dpaa_xstats_name_off dpaa_xstats_strings[] = {
 
 static struct rte_dpaa_driver rte_dpaa_pmd;
 
+static void
+dpaa_eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info);
+
 static inline void
 dpaa_poll_queue_default_config(struct qm_mcc_initfq *opts)
 {
@@ -122,9 +125,11 @@ dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (mtu < ETHER_MIN_MTU || frame_size > DPAA_MAX_RX_PKT_LEN)
 		return -EINVAL;
 	if (frame_size > ETHER_MAX_LEN)
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		dev->data->dev_conf.rxmode.offloads &=
+						DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		dev->data->dev_conf.rxmode.offloads &=
+						~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
@@ -134,13 +139,42 @@ dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 }
 
 static int
-dpaa_eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
+dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	struct rte_eth_dev_info dev_info;
+	uint64_t rx_offloads = eth_conf->rxmode.offloads;
+	uint64_t tx_offloads = eth_conf->txmode.offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (dev->data->dev_conf.rxmode.jumbo_frame == 1) {
+	dpaa_eth_dev_info(dev, &dev_info);
+	if (((~(dev_info.rx_offload_capa) & rx_offloads) != 0)) {
+		DPAA_PMD_ERR("Some Rx offloads are not supported "
+			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			rx_offloads, dev_info.rx_offload_capa);
+		return -ENOTSUP;
+	}
+
+	if (((~(dev_info.tx_offload_capa) & tx_offloads) != 0)) {
+		DPAA_PMD_ERR("Some Tx offloads are not supported "
+			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
+			tx_offloads, dev_info.tx_offload_capa);
+		return -ENOTSUP;
+	}
+
+	if (((rx_offloads & DEV_RX_OFFLOAD_IPV4_CKSUM) == 0) ||
+		((rx_offloads & DEV_RX_OFFLOAD_UDP_CKSUM) == 0) ||
+		((rx_offloads & DEV_RX_OFFLOAD_TCP_CKSUM) == 0) ||
+		((tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0) ||
+		((tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) == 0) ||
+		((tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) == 0)) {
+			DPAA_PMD_ERR(" Cksum offloading is enabled by default "
+			" Cannot be disabled. So ignoring this configuration ");
+	}
+
+	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
 		    DPAA_MAX_RX_PKT_LEN) {
 			fman_if_set_maxfrm(dpaa_intf->fif,
@@ -259,11 +293,15 @@ static void dpaa_eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->rx_offload_capa =
 		(DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM   |
-		DEV_RX_OFFLOAD_TCP_CKSUM);
+		DEV_RX_OFFLOAD_TCP_CKSUM)  |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_SCATTER;
 	dev_info->tx_offload_capa =
 		(DEV_TX_OFFLOAD_IPV4_CKSUM  |
 		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM);
+		DEV_TX_OFFLOAD_TCP_CKSUM)  |
+		DEV_TX_OFFLOAD_MBUF_FAST_FREE |
+		DEV_TX_OFFLOAD_MULTI_SEGS;
 }
 
 static int dpaa_eth_link_update(struct rte_eth_dev *dev,
