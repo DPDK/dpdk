@@ -245,8 +245,8 @@ malloc_elem_free_list_insert(struct malloc_elem *elem)
 /*
  * Remove the specified element from its heap's free list.
  */
-static void
-elem_free_list_remove(struct malloc_elem *elem)
+void
+malloc_elem_free_list_remove(struct malloc_elem *elem)
 {
 	LIST_REMOVE(elem, free_list);
 }
@@ -266,7 +266,7 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align,
 	const size_t trailer_size = elem->size - old_elem_size - size -
 		MALLOC_ELEM_OVERHEAD;
 
-	elem_free_list_remove(elem);
+	malloc_elem_free_list_remove(elem);
 
 	if (trailer_size > MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE) {
 		/* split it, too much free space after elem */
@@ -340,7 +340,7 @@ malloc_elem_join_adjacent_free(struct malloc_elem *elem)
 		erase = RTE_PTR_SUB(elem->next, MALLOC_ELEM_TRAILER_LEN);
 
 		/* remove from free list, join to this one */
-		elem_free_list_remove(elem->next);
+		malloc_elem_free_list_remove(elem->next);
 		join_elem(elem, elem->next);
 
 		/* erase header and trailer */
@@ -360,7 +360,7 @@ malloc_elem_join_adjacent_free(struct malloc_elem *elem)
 		erase = RTE_PTR_SUB(elem, MALLOC_ELEM_TRAILER_LEN);
 
 		/* remove from free list, join to this one */
-		elem_free_list_remove(elem->prev);
+		malloc_elem_free_list_remove(elem->prev);
 
 		new_elem = elem->prev;
 		join_elem(new_elem, elem);
@@ -423,7 +423,7 @@ malloc_elem_resize(struct malloc_elem *elem, size_t size)
 	/* we now know the element fits, so remove from free list,
 	 * join the two
 	 */
-	elem_free_list_remove(elem->next);
+	malloc_elem_free_list_remove(elem->next);
 	join_elem(elem, elem->next);
 
 	if (elem->size - new_size >= MIN_DATA_SIZE + MALLOC_ELEM_OVERHEAD) {

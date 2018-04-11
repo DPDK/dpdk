@@ -151,6 +151,9 @@ malloc_elem_join_adjacent_free(struct malloc_elem *elem);
 int
 malloc_elem_resize(struct malloc_elem *elem, size_t size);
 
+void
+malloc_elem_free_list_remove(struct malloc_elem *elem);
+
 /*
  * dump contents of malloc elem to a file.
  */
