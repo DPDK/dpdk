@@ -325,8 +325,8 @@ join_elem(struct malloc_elem *elem1, struct malloc_elem *elem2)
 	elem1->next = next;
 }
 
-static struct malloc_elem *
-elem_join_adjacent_free(struct malloc_elem *elem)
+struct malloc_elem *
+malloc_elem_join_adjacent_free(struct malloc_elem *elem)
 {
 	/*
 	 * check if next element exists, is adjacent and is free, if so join
@@ -388,7 +388,7 @@ malloc_elem_free(struct malloc_elem *elem)
 	ptr = RTE_PTR_ADD(elem, sizeof(*elem));
 	data_len = elem->size - MALLOC_ELEM_OVERHEAD;
 
-	elem = elem_join_adjacent_free(elem);
+	elem = malloc_elem_join_adjacent_free(elem);
 
 	malloc_elem_free_list_insert(elem);
 

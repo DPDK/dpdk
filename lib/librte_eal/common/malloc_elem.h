@@ -141,6 +141,9 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size,
 int
 malloc_elem_free(struct malloc_elem *elem);
 
+struct malloc_elem *
+malloc_elem_join_adjacent_free(struct malloc_elem *elem);
+
 /*
  * attempt to resize a malloc_elem by expanding into any free space
  * immediately after it in memory.
