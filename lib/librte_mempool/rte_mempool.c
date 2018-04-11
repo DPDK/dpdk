@@ -99,23 +99,23 @@ static unsigned optimize_object_size(unsigned obj_size)
 	return new_obj_size * RTE_MEMPOOL_ALIGN;
 }
 
+static int
+find_min_pagesz(const struct rte_memseg *ms, void *arg)
+{
+	size_t *min = arg;
+
+	if (ms->hugepage_sz < *min)
+		*min = ms->hugepage_sz;
+
+	return 0;
+}
+
 static size_t
 get_min_page_size(void)
 {
-	const struct rte_mem_config *mcfg =
-			rte_eal_get_configuration()->mem_config;
-	int i;
 	size_t min_pagesz = SIZE_MAX;
 
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		const struct rte_memseg *ms = &mcfg->memseg[i];
-
-		if (ms->addr == NULL)
-			continue;
-
-		if (ms->hugepage_sz < min_pagesz)
-			min_pagesz = ms->hugepage_sz;
-	}
+	rte_memseg_walk(find_min_pagesz, &min_pagesz);
 
 	return min_pagesz == SIZE_MAX ? (size_t) getpagesize() : min_pagesz;
 }

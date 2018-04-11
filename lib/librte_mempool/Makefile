@@ -13,6 +13,9 @@ EXPORT_MAP := rte_mempool_version.map
 
 LIBABIVER := 3
 
+# memseg walk is not yet part of stable API
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool.c
 SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool_ops.c

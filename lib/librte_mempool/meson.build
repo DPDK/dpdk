@@ -5,3 +5,6 @@ version = 3
 sources = files('rte_mempool.c', 'rte_mempool_ops.c')
 headers = files('rte_mempool.h')
 deps += ['ring']
+
+# memseg walk is not yet part of stable API
+allow_experimental_apis = true
