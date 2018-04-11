@@ -188,7 +188,8 @@ typedef uint64_t dma_addr_t;
 		ENA_TOUCH(dmadev); ENA_TOUCH(handle);			\
 		snprintf(z_name, sizeof(z_name),			\
 				"ena_alloc_%d", ena_alloc_cnt++);	\
-		mz = rte_memzone_reserve(z_name, size, SOCKET_ID_ANY, 0); \
+		mz = rte_memzone_reserve(z_name, size, SOCKET_ID_ANY,	\
+				RTE_MEMZONE_IOVA_CONTIG);		\
 		memset(mz->addr, 0, size);				\
 		virt = mz->addr;					\
 		phys = mz->iova;					\
@@ -206,7 +207,8 @@ typedef uint64_t dma_addr_t;
 		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			\
 		snprintf(z_name, sizeof(z_name),			\
 				"ena_alloc_%d", ena_alloc_cnt++);	\
-		mz = rte_memzone_reserve(z_name, size, node, 0); \
+		mz = rte_memzone_reserve(z_name, size, node,		\
+				RTE_MEMZONE_IOVA_CONTIG);		\
 		memset(mz->addr, 0, size);				\
 		virt = mz->addr;					\
 		phys = mz->iova;					\
@@ -219,7 +221,8 @@ typedef uint64_t dma_addr_t;
 		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			\
 		snprintf(z_name, sizeof(z_name),			\
 				"ena_alloc_%d", ena_alloc_cnt++);	\
-		mz = rte_memzone_reserve(z_name, size, node, 0); \
+		mz = rte_memzone_reserve(z_name, size, node,		\
+				RTE_MEMZONE_IOVA_CONTIG);		\
 		memset(mz->addr, 0, size);				\
 		virt = mz->addr;					\
 	} while (0)
