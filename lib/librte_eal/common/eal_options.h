@@ -55,6 +55,8 @@ enum {
 	OPT_VFIO_INTR_NUM,
 #define OPT_VMWARE_TSC_MAP    "vmware-tsc-map"
 	OPT_VMWARE_TSC_MAP_NUM,
+#define OPT_LEGACY_MEM    "legacy-mem"
+	OPT_LEGACY_MEM_NUM,
 	OPT_LONG_MAX_NUM
 };
 

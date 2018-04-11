@@ -534,6 +534,9 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	/* FreeBSD always uses legacy memory model */
+	internal_config.legacy_mem = true;
+
 	if (eal_plugins_init() < 0) {
 		rte_eal_init_alert("Cannot init plugins\n");
 		rte_errno = EINVAL;

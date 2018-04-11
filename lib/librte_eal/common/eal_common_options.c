@@ -73,6 +73,7 @@ eal_long_options[] = {
 	{OPT_VDEV,              1, NULL, OPT_VDEV_NUM             },
 	{OPT_VFIO_INTR,         1, NULL, OPT_VFIO_INTR_NUM        },
 	{OPT_VMWARE_TSC_MAP,    0, NULL, OPT_VMWARE_TSC_MAP_NUM   },
+	{OPT_LEGACY_MEM,        0, NULL, OPT_LEGACY_MEM_NUM       },
 	{0,                     0, NULL, 0                        }
 };
 
@@ -1113,6 +1114,8 @@ eal_parse_common_option(int opt, const char *optarg,
 
 	case OPT_NO_HUGE_NUM:
 		conf->no_hugetlbfs = 1;
+		/* no-huge is legacy mem */
+		conf->legacy_mem = 1;
 		break;
 
 	case OPT_NO_PCI_NUM:
@@ -1183,6 +1186,9 @@ eal_parse_common_option(int opt, const char *optarg,
 		}
 
 		core_parsed = LCORE_OPT_MAP;
+		break;
+	case OPT_LEGACY_MEM_NUM:
+		conf->legacy_mem = 1;
 		break;
 
 	/* don't know what to do, leave this to caller */

@@ -922,8 +922,8 @@ huge_recover_sigbus(void)
  *  6. unmap the first mapping
  *  7. fill memsegs in configuration with contiguous zones
  */
-int
-rte_eal_hugepage_init(void)
+static int
+eal_legacy_hugepage_init(void)
 {
 	struct rte_mem_config *mcfg;
 	struct hugepage_file *hugepage = NULL, *tmp_hp = NULL;
@@ -1266,8 +1266,8 @@ getFileSize(int fd)
  * configuration and finds the hugepages which form that segment, mapping them
  * in order to form a contiguous block in the virtual memory space
  */
-int
-rte_eal_hugepage_attach(void)
+static int
+eal_legacy_hugepage_attach(void)
 {
 	const struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct hugepage_file *hp = NULL;
@@ -1399,6 +1399,22 @@ error:
 		munmap(hp, size);
 	if (fd_hugepage >= 0)
 		close(fd_hugepage);
+	return -1;
+}
+
+int
+rte_eal_hugepage_init(void)
+{
+	if (internal_config.legacy_mem)
+		return eal_legacy_hugepage_init();
+	return -1;
+}
+
+int
+rte_eal_hugepage_attach(void)
+{
+	if (internal_config.legacy_mem)
+		return eal_legacy_hugepage_attach();
 	return -1;
 }
 

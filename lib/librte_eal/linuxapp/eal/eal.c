@@ -348,6 +348,7 @@ eal_usage(const char *prgname)
 	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
 	       "  --"OPT_CREATE_UIO_DEV"    Create /dev/uioX (usually done by hotplug)\n"
 	       "  --"OPT_VFIO_INTR"         Interrupt mode for VFIO (legacy|msi|msix)\n"
+	       "  --"OPT_LEGACY_MEM"        Legacy memory mode (no dynamic allocation, contiguous segments)\n"
 	       "\n");
 	/* Allow the application to print its usage message too if hook is set */
 	if ( rte_application_usage_hook ) {
@@ -767,6 +768,8 @@ rte_eal_init(int argc, char **argv)
 		rte_atomic32_clear(&run_once);
 		return -1;
 	}
+	/* for now, always set legacy mem */
+	internal_config.legacy_mem = 1;
 
 	if (eal_plugins_init() < 0) {
 		rte_eal_init_alert("Cannot init plugins\n");

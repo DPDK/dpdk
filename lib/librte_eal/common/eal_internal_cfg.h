@@ -47,6 +47,10 @@ struct internal_config {
 	volatile unsigned force_sockets;
 	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket */
 	uintptr_t base_virtaddr;          /**< base address to try and reserve memory from */
+	volatile unsigned legacy_mem;
+	/**< true to enable legacy memory behavior (no dynamic allocation,
+	 * IOVA-contiguous segments).
+	 */
 	volatile int syslog_facility;	  /**< facility passed to openlog() */
 	/** default interrupt mode for VFIO */
 	volatile enum rte_intr_mode vfio_intr_mode;
