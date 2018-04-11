@@ -694,16 +694,69 @@ vfio_type1_dma_map(int vfio_container_fd)
 	return rte_memseg_walk(type1_map, &vfio_container_fd);
 }
 
+struct spapr_walk_param {
+	uint64_t window_size;
+	uint64_t hugepage_sz;
+};
 static int
-vfio_spapr_dma_map(int vfio_container_fd)
+spapr_window_size(const struct rte_memseg *ms, void *arg)
 {
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	int i, ret;
+	struct spapr_walk_param *param = arg;
+	uint64_t max = ms->iova + ms->len;
 
+	if (max > param->window_size) {
+		param->hugepage_sz = ms->hugepage_sz;
+		param->window_size = max;
+	}
+
+	return 0;
+}
+
+static int
+spapr_map(const struct rte_memseg *ms, void *arg)
+{
+	struct vfio_iommu_type1_dma_map dma_map;
 	struct vfio_iommu_spapr_register_memory reg = {
 		.argsz = sizeof(reg),
 		.flags = 0
 	};
+	int *vfio_container_fd = arg;
+	int ret;
+
+	reg.vaddr = (uintptr_t) ms->addr;
+	reg.size = ms->len;
+	ret = ioctl(*vfio_container_fd,
+		VFIO_IOMMU_SPAPR_REGISTER_MEMORY, &reg);
+	if (ret) {
+		RTE_LOG(ERR, EAL, "  cannot register vaddr for IOMMU, error %i (%s)\n",
+				errno, strerror(errno));
+		return -1;
+	}
+
+	memset(&dma_map, 0, sizeof(dma_map));
+	dma_map.argsz = sizeof(struct vfio_iommu_type1_dma_map);
+	dma_map.vaddr = ms->addr_64;
+	dma_map.size = ms->len;
+	dma_map.iova = ms->iova;
+	dma_map.flags = VFIO_DMA_MAP_FLAG_READ |
+			 VFIO_DMA_MAP_FLAG_WRITE;
+
+	ret = ioctl(*vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, error %i (%s)\n",
+				errno, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+vfio_spapr_dma_map(int vfio_container_fd)
+{
+	struct spapr_walk_param param;
+	int ret;
 	struct vfio_iommu_spapr_tce_info info = {
 		.argsz = sizeof(info),
 	};
@@ -713,6 +766,8 @@ vfio_spapr_dma_map(int vfio_container_fd)
 	struct vfio_iommu_spapr_tce_remove remove = {
 		.argsz = sizeof(remove),
 	};
+
+	memset(&param, 0, sizeof(param));
 
 	/* query spapr iommu info */
 	ret = ioctl(vfio_container_fd, VFIO_IOMMU_SPAPR_TCE_GET_INFO, &info);
@@ -732,17 +787,11 @@ vfio_spapr_dma_map(int vfio_container_fd)
 	}
 
 	/* create DMA window from 0 to max(phys_addr + len) */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		if (ms[i].addr == NULL)
-			break;
-
-		create.window_size = RTE_MAX(create.window_size,
-				ms[i].iova + ms[i].len);
-	}
+	rte_memseg_walk(spapr_window_size, &param);
 
 	/* sPAPR requires window size to be a power of 2 */
-	create.window_size = rte_align64pow2(create.window_size);
-	create.page_shift = __builtin_ctzll(ms->hugepage_sz);
+	create.window_size = rte_align64pow2(param.window_size);
+	create.page_shift = __builtin_ctzll(param.hugepage_sz);
 	create.levels = 1;
 
 	ret = ioctl(vfio_container_fd, VFIO_IOMMU_SPAPR_TCE_CREATE, &create);
@@ -758,39 +807,8 @@ vfio_spapr_dma_map(int vfio_container_fd)
 	}
 
 	/* map all DPDK segments for DMA. use 1:1 PA to IOVA mapping */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		struct vfio_iommu_type1_dma_map dma_map;
-
-		if (ms[i].addr == NULL)
-			break;
-
-		reg.vaddr = (uintptr_t) ms[i].addr;
-		reg.size = ms[i].len;
-		ret = ioctl(vfio_container_fd,
-			VFIO_IOMMU_SPAPR_REGISTER_MEMORY, &reg);
-		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot register vaddr for IOMMU, "
-				"error %i (%s)\n", errno, strerror(errno));
-			return -1;
-		}
-
-		memset(&dma_map, 0, sizeof(dma_map));
-		dma_map.argsz = sizeof(struct vfio_iommu_type1_dma_map);
-		dma_map.vaddr = ms[i].addr_64;
-		dma_map.size = ms[i].len;
-		dma_map.iova = ms[i].iova;
-		dma_map.flags = VFIO_DMA_MAP_FLAG_READ |
-				 VFIO_DMA_MAP_FLAG_WRITE;
-
-		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
-
-		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, "
-				"error %i (%s)\n", errno, strerror(errno));
-			return -1;
-		}
-
-	}
+	if (rte_memseg_walk(spapr_map, &vfio_container_fd) < 0)
+		return -1;
 
 	return 0;
 }
