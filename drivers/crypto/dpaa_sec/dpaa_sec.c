@@ -93,20 +93,11 @@ dpaa_sec_alloc_ctx(dpaa_sec_session *ses)
 static inline rte_iova_t
 dpaa_mem_vtop(void *vaddr)
 {
-	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
-	uint64_t vaddr_64, paddr;
-	int i;
+	const struct rte_memseg *ms;
 
-	vaddr_64 = (size_t)vaddr;
-	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
-		if (vaddr_64 >= memseg[i].addr_64 &&
-		    vaddr_64 < memseg[i].addr_64 + memseg[i].len) {
-			paddr = memseg[i].iova +
-				(vaddr_64 - memseg[i].addr_64);
-
-			return (rte_iova_t)paddr;
-		}
-	}
+	ms = rte_mem_virt2memseg(vaddr);
+	if (ms)
+		return ms->iova + RTE_PTR_DIFF(vaddr, ms->addr);
 	return (size_t)NULL;
 }
 
