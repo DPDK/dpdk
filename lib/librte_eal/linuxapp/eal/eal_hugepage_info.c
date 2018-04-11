@@ -31,6 +31,7 @@
 #include "eal_filesystem.h"
 
 static const char sys_dir_path[] = "/sys/kernel/mm/hugepages";
+static const char sys_pages_numa_dir_path[] = "/sys/devices/system/node";
 
 /* this function is only called from eal_hugepage_info_init which itself
  * is only called from a primary process */
@@ -65,6 +66,45 @@ get_num_hugepages(const char *subdir)
 
 	/* we want to return a uint32_t and more than this looks suspicious
 	 * anyway ... */
+	if (num_pages > UINT32_MAX)
+		num_pages = UINT32_MAX;
+
+	return num_pages;
+}
+
+static uint32_t
+get_num_hugepages_on_node(const char *subdir, unsigned int socket)
+{
+	char path[PATH_MAX], socketpath[PATH_MAX];
+	DIR *socketdir;
+	unsigned long num_pages = 0;
+	const char *nr_hp_file = "free_hugepages";
+
+	snprintf(socketpath, sizeof(socketpath), "%s/node%u/hugepages",
+		sys_pages_numa_dir_path, socket);
+
+	socketdir = opendir(socketpath);
+	if (socketdir) {
+		/* Keep calm and carry on */
+		closedir(socketdir);
+	} else {
+		/* Can't find socket dir, so ignore it */
+		return 0;
+	}
+
+	snprintf(path, sizeof(path), "%s/%s/%s",
+			socketpath, subdir, nr_hp_file);
+	if (eal_parse_sysfs_value(path, &num_pages) < 0)
+		return 0;
+
+	if (num_pages == 0)
+		RTE_LOG(WARNING, EAL, "No free hugepages reported in %s\n",
+				subdir);
+
+	/*
+	 * we want to return a uint32_t and more than this looks suspicious
+	 * anyway ...
+	 */
 	if (num_pages > UINT32_MAX)
 		num_pages = UINT32_MAX;
 
@@ -269,7 +309,7 @@ eal_hugepage_info_init(void)
 {
 	const char dirent_start_text[] = "hugepages-";
 	const size_t dirent_start_len = sizeof(dirent_start_text) - 1;
-	unsigned i, num_sizes = 0;
+	unsigned int i, total_pages, num_sizes = 0;
 	DIR *dir;
 	struct dirent *dirent;
 
@@ -323,9 +363,28 @@ eal_hugepage_info_init(void)
 		if (clear_hugedir(hpi->hugedir) == -1)
 			break;
 
-		/* for now, put all pages into socket 0,
-		 * later they will be sorted */
-		hpi->num_pages[0] = get_num_hugepages(dirent->d_name);
+		/*
+		 * first, try to put all hugepages into relevant sockets, but
+		 * if first attempts fails, fall back to collecting all pages
+		 * in one socket and sorting them later
+		 */
+		total_pages = 0;
+		/* we also don't want to do this for legacy init */
+		if (!internal_config.legacy_mem)
+			for (i = 0; i < rte_socket_count(); i++) {
+				int socket = rte_socket_id_by_idx(i);
+				unsigned int num_pages =
+						get_num_hugepages_on_node(
+							dirent->d_name, socket);
+				hpi->num_pages[socket] = num_pages;
+				total_pages += num_pages;
+			}
+		/*
+		 * we failed to sort memory from the get go, so fall
+		 * back to old way
+		 */
+		if (total_pages == 0)
+			hpi->num_pages[0] = get_num_hugepages(dirent->d_name);
 
 #ifndef RTE_ARCH_64
 		/* for 32-bit systems, limit number of hugepages to
@@ -349,10 +408,19 @@ eal_hugepage_info_init(void)
 	      sizeof(internal_config.hugepage_info[0]), compare_hpi);
 
 	/* now we have all info, check we have at least one valid size */
-	for (i = 0; i < num_sizes; i++)
+	for (i = 0; i < num_sizes; i++) {
+		/* pages may no longer all be on socket 0, so check all */
+		unsigned int j, num_pages = 0;
+
+		for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
+			struct hugepage_info *hpi =
+					&internal_config.hugepage_info[i];
+			num_pages += hpi->num_pages[j];
+		}
 		if (internal_config.hugepage_info[i].hugedir != NULL &&
-		    internal_config.hugepage_info[i].num_pages[0] > 0)
+				num_pages > 0)
 			return 0;
+	}
 
 	/* no valid hugepage mounts available, return error */
 	return -1;
