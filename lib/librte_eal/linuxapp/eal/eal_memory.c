@@ -28,6 +28,7 @@
 #include <numaif.h>
 #endif
 
+#include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_launch.h>
@@ -56,8 +57,6 @@
  * physical address and remap it in order to have a virtual contiguous
  * zone as well as a physical contiguous zone.
  */
-
-static uint64_t baseaddr_offset;
 
 static bool phys_addrs_available = true;
 
@@ -221,82 +220,6 @@ aslr_enabled(void)
 	}
 }
 
-/*
- * Try to mmap *size bytes in /dev/zero. If it is successful, return the
- * pointer to the mmap'd area and keep *size unmodified. Else, retry
- * with a smaller zone: decrease *size by hugepage_sz until it reaches
- * 0. In this case, return NULL. Note: this function returns an address
- * which is a multiple of hugepage size.
- */
-static void *
-get_virtual_area(size_t *size, size_t hugepage_sz)
-{
-	void *addr;
-	void *addr_hint;
-	int fd;
-	long aligned_addr;
-
-	if (internal_config.base_virtaddr != 0) {
-		int page_size = sysconf(_SC_PAGE_SIZE);
-		addr_hint = (void *) (uintptr_t)
-			(internal_config.base_virtaddr + baseaddr_offset);
-		addr_hint = RTE_PTR_ALIGN_FLOOR(addr_hint, page_size);
-	} else {
-		addr_hint = NULL;
-	}
-
-	RTE_LOG(DEBUG, EAL, "Ask a virtual area of 0x%zx bytes\n", *size);
-
-
-	fd = open("/dev/zero", O_RDONLY);
-	if (fd < 0){
-		RTE_LOG(ERR, EAL, "Cannot open /dev/zero\n");
-		return NULL;
-	}
-	do {
-		addr = mmap(addr_hint, (*size) + hugepage_sz, PROT_READ,
-#ifdef RTE_ARCH_PPC_64
-				MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB,
-#else
-				MAP_PRIVATE,
-#endif
-				fd, 0);
-		if (addr == MAP_FAILED) {
-			*size -= hugepage_sz;
-		} else if (addr_hint != NULL && addr != addr_hint) {
-			RTE_LOG(WARNING, EAL, "WARNING! Base virtual address "
-				"hint (%p != %p) not respected!\n",
-				addr_hint, addr);
-			RTE_LOG(WARNING, EAL, "   This may cause issues with "
-				"mapping memory into secondary processes\n");
-		}
-	} while (addr == MAP_FAILED && *size > 0);
-
-	if (addr == MAP_FAILED) {
-		close(fd);
-		RTE_LOG(ERR, EAL, "Cannot get a virtual area: %s\n",
-			strerror(errno));
-		return NULL;
-	}
-
-	munmap(addr, (*size) + hugepage_sz);
-	close(fd);
-
-	/* align addr to a huge page size boundary */
-	aligned_addr = (long)addr;
-	aligned_addr += (hugepage_sz - 1);
-	aligned_addr &= (~(hugepage_sz - 1));
-	addr = (void *)(aligned_addr);
-
-	RTE_LOG(DEBUG, EAL, "Virtual area found at %p (size = 0x%zx)\n",
-		addr, *size);
-
-	/* increment offset */
-	baseaddr_offset += *size;
-
-	return addr;
-}
-
 static sigjmp_buf huge_jmpenv;
 
 static void huge_sigbus_handler(int signo __rte_unused)
@@ -445,7 +368,16 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 			/* get the biggest virtual memory area up to
 			 * vma_len. If it fails, vma_addr is NULL, so
 			 * let the kernel provide the address. */
-			vma_addr = get_virtual_area(&vma_len, hpi->hugepage_sz);
+			vma_addr = eal_get_virtual_area(NULL, &vma_len,
+					hpi->hugepage_sz,
+					EAL_VIRTUAL_AREA_ALLOW_SHRINK |
+					EAL_VIRTUAL_AREA_UNMAP,
+#ifdef RTE_ARCH_PPC_64
+					MAP_HUGETLB
+#else
+					0
+#endif
+					);
 			if (vma_addr == NULL)
 				vma_len = hugepage_sz;
 		}
@@ -1343,7 +1275,7 @@ rte_eal_hugepage_attach(void)
 	unsigned i, s = 0; /* s used to track the segment number */
 	unsigned max_seg = RTE_MAX_MEMSEG;
 	off_t size = 0;
-	int fd, fd_zero = -1, fd_hugepage = -1;
+	int fd, fd_hugepage = -1;
 
 	if (aslr_enabled() > 0) {
 		RTE_LOG(WARNING, EAL, "WARNING: Address Space Layout Randomization "
@@ -1354,11 +1286,6 @@ rte_eal_hugepage_attach(void)
 
 	test_phys_addrs_available();
 
-	fd_zero = open("/dev/zero", O_RDONLY);
-	if (fd_zero < 0) {
-		RTE_LOG(ERR, EAL, "Could not open /dev/zero\n");
-		goto error;
-	}
 	fd_hugepage = open(eal_hugepage_info_path(), O_RDONLY);
 	if (fd_hugepage < 0) {
 		RTE_LOG(ERR, EAL, "Could not open %s\n", eal_hugepage_info_path());
@@ -1368,6 +1295,8 @@ rte_eal_hugepage_attach(void)
 	/* map all segments into memory to make sure we get the addrs */
 	for (s = 0; s < RTE_MAX_MEMSEG; ++s) {
 		void *base_addr;
+		size_t mmap_sz;
+		int mmap_flags = 0;
 
 		/*
 		 * the first memory segment with len==0 is the one that
@@ -1376,35 +1305,26 @@ rte_eal_hugepage_attach(void)
 		if (mcfg->memseg[s].len == 0)
 			break;
 
-		/*
-		 * fdzero is mmapped to get a contiguous block of virtual
-		 * addresses of the appropriate memseg size.
-		 * use mmap to get identical addresses as the primary process.
+		/* get identical addresses as the primary process.
 		 */
-		base_addr = mmap(mcfg->memseg[s].addr, mcfg->memseg[s].len,
-				 PROT_READ,
 #ifdef RTE_ARCH_PPC_64
-				 MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB,
-#else
-				 MAP_PRIVATE,
+		mmap_flags |= MAP_HUGETLB;
 #endif
-				 fd_zero, 0);
-		if (base_addr == MAP_FAILED ||
-		    base_addr != mcfg->memseg[s].addr) {
+		mmap_sz = mcfg->memseg[s].len;
+		base_addr = eal_get_virtual_area(mcfg->memseg[s].addr,
+				&mmap_sz, mcfg->memseg[s].hugepage_sz, 0,
+				mmap_flags);
+		if (base_addr == NULL) {
 			max_seg = s;
-			if (base_addr != MAP_FAILED) {
-				/* errno is stale, don't use */
-				RTE_LOG(ERR, EAL, "Could not mmap %zu bytes "
-					"in /dev/zero at [%p], got [%p] - "
-					"please use '--base-virtaddr' option\n",
+			if (rte_errno == EADDRNOTAVAIL) {
+				RTE_LOG(ERR, EAL, "Could not mmap %zu bytes at [%p] - please use '--base-virtaddr' option\n",
 					mcfg->memseg[s].len,
-					mcfg->memseg[s].addr, base_addr);
-				munmap(base_addr, mcfg->memseg[s].len);
+					mcfg->memseg[s].addr);
 			} else {
-				RTE_LOG(ERR, EAL, "Could not mmap %zu bytes "
-					"in /dev/zero at [%p]: '%s'\n",
+				RTE_LOG(ERR, EAL, "Could not mmap %zu bytes at [%p]: '%s'\n",
 					mcfg->memseg[s].len,
-					mcfg->memseg[s].addr, strerror(errno));
+					mcfg->memseg[s].addr,
+					rte_strerror(rte_errno));
 			}
 			if (aslr_enabled() > 0) {
 				RTE_LOG(ERR, EAL, "It is recommended to "
@@ -1469,7 +1389,6 @@ rte_eal_hugepage_attach(void)
 	}
 	/* unmap the hugepage config file, since we are done using it */
 	munmap(hp, size);
-	close(fd_zero);
 	close(fd_hugepage);
 	return 0;
 
@@ -1478,8 +1397,6 @@ error:
 		munmap(mcfg->memseg[i].addr, mcfg->memseg[i].len);
 	if (hp != NULL && hp != MAP_FAILED)
 		munmap(hp, size);
-	if (fd_zero >= 0)
-		close(fd_zero);
 	if (fd_hugepage >= 0)
 		close(fd_hugepage);
 	return -1;

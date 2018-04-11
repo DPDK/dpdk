@@ -127,6 +127,39 @@ int rte_eal_alarm_init(void);
 int rte_eal_check_module(const char *module_name);
 
 /**
+ * Get virtual area of specified size from the OS.
+ *
+ * This function is private to the EAL.
+ *
+ * @param requested_addr
+ *   Address where to request address space.
+ * @param size
+ *   Size of requested area.
+ * @param page_sz
+ *   Page size on which to align requested virtual area.
+ * @param flags
+ *   EAL_VIRTUAL_AREA_* flags.
+ * @param mmap_flags
+ *   Extra flags passed directly to mmap().
+ *
+ * @return
+ *   Virtual area address if successful.
+ *   NULL if unsuccessful.
+ */
+
+#define EAL_VIRTUAL_AREA_ADDR_IS_HINT (1 << 0)
+/**< don't fail if cannot get exact requested address. */
+#define EAL_VIRTUAL_AREA_ALLOW_SHRINK (1 << 1)
+/**< try getting smaller sized (decrement by page size) virtual areas if cannot
+ * get area of requested size.
+ */
+#define EAL_VIRTUAL_AREA_UNMAP (1 << 2)
+/**< immediately unmap reserved virtual area. */
+void *
+eal_get_virtual_area(void *requested_addr, size_t *size,
+		size_t page_sz, int flags, int mmap_flags);
+
+/**
  * Get cpu core_id.
  *
  * This function is private to the EAL.
