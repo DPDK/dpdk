@@ -27,6 +27,7 @@
 #include <numa.h>
 #include <numaif.h>
 #endif
+#include <linux/falloc.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
@@ -38,6 +39,31 @@
 #include "eal_filesystem.h"
 #include "eal_internal_cfg.h"
 #include "eal_memalloc.h"
+
+/*
+ * not all kernel version support fallocate on hugetlbfs, so fall back to
+ * ftruncate and disallow deallocation if fallocate is not supported.
+ */
+static int fallocate_supported = -1; /* unknown */
+
+/*
+ * If each page is in a separate file, we can close fd's since we need each fd
+ * only once. However, in single file segments mode, we can get away with using
+ * a single fd for entire segments, but we need to store them somewhere. Each
+ * fd is different within each process, so we'll store them in a local tailq.
+ */
+struct msl_entry {
+	TAILQ_ENTRY(msl_entry) next;
+	unsigned int msl_idx;
+	int fd;
+};
+
+/** Double linked list of memseg list fd's. */
+TAILQ_HEAD(msl_entry_list, msl_entry);
+
+static struct msl_entry_list msl_entry_list =
+		TAILQ_HEAD_INITIALIZER(msl_entry_list);
+static rte_spinlock_t tailq_lock = RTE_SPINLOCK_INITIALIZER;
 
 static sigjmp_buf huge_jmpenv;
 
@@ -129,18 +155,100 @@ resotre_numa(int *oldpolicy, struct bitmask *oldmask)
 }
 #endif
 
+static struct msl_entry *
+get_msl_entry_by_idx(unsigned int list_idx)
+{
+	struct msl_entry *te;
+
+	rte_spinlock_lock(&tailq_lock);
+
+	TAILQ_FOREACH(te, &msl_entry_list, next) {
+		if (te->msl_idx == list_idx)
+			break;
+	}
+	if (te == NULL) {
+		/* doesn't exist, so create it and set fd to -1 */
+
+		te = malloc(sizeof(*te));
+		if (te == NULL) {
+			RTE_LOG(ERR, EAL, "%s(): cannot allocate tailq entry for memseg list\n",
+				__func__);
+			goto unlock;
+		}
+		te->msl_idx = list_idx;
+		te->fd = -1;
+		TAILQ_INSERT_TAIL(&msl_entry_list, te, next);
+	}
+unlock:
+	rte_spinlock_unlock(&tailq_lock);
+	return te;
+}
+
+/*
+ * uses fstat to report the size of a file on disk
+ */
+static off_t
+get_file_size(int fd)
+{
+	struct stat st;
+	if (fstat(fd, &st) < 0)
+		return 0;
+	return st.st_size;
+}
+
+/*
+ * uses fstat to check if file size on disk is zero (regular fstat won't show
+ * true file size due to how fallocate works)
+ */
+static bool
+is_zero_length(int fd)
+{
+	struct stat st;
+	if (fstat(fd, &st) < 0)
+		return false;
+	return st.st_blocks == 0;
+}
+
 static int
 get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 		unsigned int list_idx, unsigned int seg_idx)
 {
 	int fd;
-	eal_get_hugefile_path(path, buflen, hi->hugedir,
-			list_idx * RTE_MAX_MEMSEG_PER_LIST + seg_idx);
-	fd = open(path, O_CREAT | O_RDWR, 0600);
-	if (fd < 0) {
-		RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n", __func__,
-				strerror(errno));
-		return -1;
+
+	if (internal_config.single_file_segments) {
+		/*
+		 * try to find a tailq entry, for this memseg list, or create
+		 * one if it doesn't exist.
+		 */
+		struct msl_entry *te = get_msl_entry_by_idx(list_idx);
+		if (te == NULL) {
+			RTE_LOG(ERR, EAL, "%s(): cannot allocate tailq entry for memseg list\n",
+				__func__);
+			return -1;
+		} else if (te->fd < 0) {
+			/* create a hugepage file */
+			eal_get_hugefile_path(path, buflen, hi->hugedir,
+					list_idx);
+			fd = open(path, O_CREAT | O_RDWR, 0600);
+			if (fd < 0) {
+				RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n",
+					__func__, strerror(errno));
+				return -1;
+			}
+			te->fd = fd;
+		} else {
+			fd = te->fd;
+		}
+	} else {
+		/* one file per page, just create it */
+		eal_get_hugefile_path(path, buflen, hi->hugedir,
+				list_idx * RTE_MAX_MEMSEG_PER_LIST + seg_idx);
+		fd = open(path, O_CREAT | O_RDWR, 0600);
+		if (fd < 0) {
+			RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n", __func__,
+					strerror(errno));
+			return -1;
+		}
 	}
 	return fd;
 }
@@ -173,6 +281,94 @@ static int lock(int fd, uint64_t offset, uint64_t len, int type)
 }
 
 static int
+resize_hugefile(int fd, uint64_t fa_offset, uint64_t page_sz,
+		bool grow)
+{
+	bool again = false;
+	do {
+		if (fallocate_supported == 0) {
+			/* we cannot deallocate memory if fallocate() is not
+			 * supported, but locks are still needed to prevent
+			 * primary process' initialization from clearing out
+			 * huge pages used by this process.
+			 */
+
+			if (!grow) {
+				RTE_LOG(DEBUG, EAL, "%s(): fallocate not supported, not freeing page back to the system\n",
+					__func__);
+				return -1;
+			}
+			uint64_t new_size = fa_offset + page_sz;
+			uint64_t cur_size = get_file_size(fd);
+
+			/* fallocate isn't supported, fall back to ftruncate */
+			if (new_size > cur_size &&
+					ftruncate(fd, new_size) < 0) {
+				RTE_LOG(DEBUG, EAL, "%s(): ftruncate() failed: %s\n",
+					__func__, strerror(errno));
+				return -1;
+			}
+			/* not being able to take out a read lock is an error */
+			if (lock(fd, fa_offset, page_sz, F_RDLCK) != 1)
+				return -1;
+		} else {
+			int flags = grow ? 0 : FALLOC_FL_PUNCH_HOLE |
+					FALLOC_FL_KEEP_SIZE;
+			int ret;
+
+			/* if fallocate() is supported, we need to take out a
+			 * read lock on allocate (to prevent other processes
+			 * from deallocating this page), and take out a write
+			 * lock on deallocate (to ensure nobody else is using
+			 * this page).
+			 *
+			 * we can't use flock() for this, as we actually need to
+			 * lock part of the file, not the entire file.
+			 */
+
+			if (!grow) {
+				ret = lock(fd, fa_offset, page_sz, F_WRLCK);
+
+				if (ret < 0)
+					return -1;
+				else if (ret == 0)
+					/* failed to lock, not an error */
+					return 0;
+			}
+			if (fallocate(fd, flags, fa_offset, page_sz) < 0) {
+				if (fallocate_supported == -1 &&
+						errno == ENOTSUP) {
+					RTE_LOG(ERR, EAL, "%s(): fallocate() not supported, hugepage deallocation will be disabled\n",
+						__func__);
+					again = true;
+					fallocate_supported = 0;
+				} else {
+					RTE_LOG(DEBUG, EAL, "%s(): fallocate() failed: %s\n",
+						__func__,
+						strerror(errno));
+					return -1;
+				}
+			} else {
+				fallocate_supported = 1;
+
+				if (grow) {
+					/* if can't read lock, it's an error */
+					if (lock(fd, fa_offset, page_sz,
+							F_RDLCK) != 1)
+						return -1;
+				} else {
+					/* if can't unlock, it's an error */
+					if (lock(fd, fa_offset, page_sz,
+							F_UNLCK) != 1)
+						return -1;
+				}
+			}
+		}
+	} while (again);
+	return 0;
+}
+
+static int
 alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		struct hugepage_info *hi, unsigned int list_idx,
 		unsigned int seg_idx)
@@ -191,34 +387,40 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		return -1;
 
 	alloc_sz = hi->hugepage_sz;
+	if (internal_config.single_file_segments) {
+		map_offset = seg_idx * alloc_sz;
+		ret = resize_hugefile(fd, map_offset, alloc_sz, true);
+		if (ret < 1)
+			goto resized;
+	} else {
+		map_offset = 0;
+		if (ftruncate(fd, alloc_sz) < 0) {
+			RTE_LOG(DEBUG, EAL, "%s(): ftruncate() failed: %s\n",
+				__func__, strerror(errno));
+			goto resized;
+		}
+		/* we've allocated a page - take out a read lock. we're using
+		 * fcntl() locks rather than flock() here because doing that
+		 * gives us one huge advantage - fcntl() locks are per-process,
+		 * not per-file descriptor, which means that we don't have to
+		 * keep the original fd's around to keep a lock on the file.
+		 *
+		 * this is useful, because when it comes to unmapping pages, we
+		 * will have to take out a write lock (to figure out if another
+		 * process still has this page mapped), and to do itwith flock()
+		 * we'll have to use original fd, as lock is associated with
+		 * that particular fd. with fcntl(), this is not necessary - we
+		 * can open a new fd and use fcntl() on that.
+		 */
+		ret = lock(fd, map_offset, alloc_sz, F_RDLCK);
 
-	map_offset = 0;
-	if (ftruncate(fd, alloc_sz) < 0) {
-		RTE_LOG(DEBUG, EAL, "%s(): ftruncate() failed: %s\n",
-			__func__, strerror(errno));
-		goto resized;
-	}
-	/* we've allocated a page - take out a read lock. we're using fcntl()
-	 * locks rather than flock() here because doing that gives us one huge
-	 * advantage - fcntl() locks are per-process, not per-file descriptor,
-	 * which means that we don't have to keep the original fd's around to
-	 * keep a lock on the file.
-	 *
-	 * this is useful, because when it comes to unmapping pages, we will
-	 * have to take out a write lock (to figure out if another process still
-	 * has this page mapped), and to do itwith flock() we'll have to use
-	 * original fd, as lock is associated with that particular fd. with
-	 * fcntl(), this is not necessary - we can open a new fd and use fcntl()
-	 * on that.
-	 */
-	ret = lock(fd, map_offset, alloc_sz, F_RDLCK);
-
-	/* this should not fail */
-	if (ret != 1) {
-		RTE_LOG(ERR, EAL, "%s(): error locking file: %s\n",
-			__func__,
-			strerror(errno));
-		goto resized;
+		/* this should not fail */
+		if (ret != 1) {
+			RTE_LOG(ERR, EAL, "%s(): error locking file: %s\n",
+				__func__,
+				strerror(errno));
+			goto resized;
+		}
 	}
 
 	/*
@@ -227,7 +429,9 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	 */
 	void *va = mmap(addr, alloc_sz, PROT_READ | PROT_WRITE,
 			MAP_SHARED | MAP_POPULATE | MAP_FIXED, fd, map_offset);
-	close(fd);
+	/* for non-single file segments, we can close fd here */
+	if (!internal_config.single_file_segments)
+		close(fd);
 
 	if (va == MAP_FAILED) {
 		RTE_LOG(DEBUG, EAL, "%s(): mmap() failed: %s\n", __func__,
@@ -284,8 +488,21 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 mapped:
 	munmap(addr, alloc_sz);
 resized:
-	close(fd);
-	unlink(path);
+	if (internal_config.single_file_segments) {
+		resize_hugefile(fd, map_offset, alloc_sz, false);
+		if (is_zero_length(fd)) {
+			struct msl_entry *te = get_msl_entry_by_idx(list_idx);
+			if (te != NULL && te->fd >= 0) {
+				close(te->fd);
+				te->fd = -1;
+			}
+			/* ignore errors, can't make it any worse */
+			unlink(path);
+		}
+	} else {
+		close(fd);
+		unlink(path);
+	}
 	return -1;
 }
 
@@ -293,6 +510,7 @@ static int
 free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		unsigned int list_idx, unsigned int seg_idx)
 {
+	uint64_t map_offset;
 	char path[PATH_MAX];
 	int fd, ret;
 
@@ -310,21 +528,39 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	if (fd < 0)
 		return -1;
 
-	/* if we're able to take out a write lock, we're the last one
-	 * holding onto this page.
-	 */
-
-	ret = lock(fd, 0, ms->len, F_WRLCK);
-	if (ret >= 0) {
-		/* no one else is using this page */
-		if (ret == 1)
+	if (internal_config.single_file_segments) {
+		map_offset = seg_idx * ms->len;
+		if (resize_hugefile(fd, map_offset, ms->len, false))
+			return -1;
+		/* if file is zero-length, we've already shrunk it, so it's
+		 * safe to remove.
+		 */
+		if (is_zero_length(fd)) {
+			struct msl_entry *te = get_msl_entry_by_idx(list_idx);
+			if (te != NULL && te->fd >= 0) {
+				close(te->fd);
+				te->fd = -1;
+			}
 			unlink(path);
-		ret = lock(fd, 0, ms->len, F_UNLCK);
-		if (ret != 1)
-			RTE_LOG(ERR, EAL, "%s(): unable to unlock file %s\n",
-				__func__, path);
+		}
+		ret = 0;
+	} else {
+		/* if we're able to take out a write lock, we're the last one
+		 * holding onto this page.
+		 */
+
+		ret = lock(fd, 0, ms->len, F_WRLCK);
+		if (ret >= 0) {
+			/* no one else is using this page */
+			if (ret == 1)
+				unlink(path);
+			ret = lock(fd, 0, ms->len, F_UNLCK);
+			if (ret != 1)
+				RTE_LOG(ERR, EAL, "%s(): unable to unlock file %s\n",
+					__func__, path);
+		}
+		close(fd);
 	}
-	close(fd);
 
 	memset(ms, 0, sizeof(*ms));
 

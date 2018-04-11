@@ -57,6 +57,8 @@ enum {
 	OPT_VMWARE_TSC_MAP_NUM,
 #define OPT_LEGACY_MEM    "legacy-mem"
 	OPT_LEGACY_MEM_NUM,
+#define OPT_SINGLE_FILE_SEGMENTS    "single-file-segments"
+	OPT_SINGLE_FILE_SEGMENTS_NUM,
 	OPT_LONG_MAX_NUM
 };
 
