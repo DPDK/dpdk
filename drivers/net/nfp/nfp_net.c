@@ -1957,14 +1957,10 @@ nfp_net_set_hash(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
 		return;
 
-	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) <= 3) {
-		if (!(rxd->rxd.flags & PCIE_DESC_RX_RSS))
-			return;
-
-		hash = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_OFFSET);
-		hash_type = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_TYPE_OFFSET);
-
-	} else if (NFP_DESC_META_LEN(rxd)) {
+	/* this is true for new firmwares */
+	if (likely(((hw->cap & NFP_NET_CFG_CTRL_RSS2) ||
+	    (NFD_CFG_MAJOR_VERSION_of(hw->ver) == 4)) &&
+	     NFP_DESC_META_LEN(rxd))) {
 		/*
 		 * new metadata api:
 		 * <----  32 bit  ----->
@@ -1997,7 +1993,11 @@ nfp_net_set_hash(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 			return;
 		}
 	} else {
-		return;
+		if (!(rxd->rxd.flags & PCIE_DESC_RX_RSS))
+			return;
+
+		hash = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_OFFSET);
+		hash_type = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_TYPE_OFFSET);
 	}
 
 	mbuf->hash.rss = hash;
@@ -2952,9 +2952,11 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	else
 		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);
 
-	PMD_INIT_LOG(INFO, "VER: %#x, Maximum supported MTU: %d",
-		     hw->ver, hw->max_mtu);
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
+	PMD_INIT_LOG(INFO, "VER: %u.%u, Maximum supported MTU: %d",
+			   NFD_CFG_MAJOR_VERSION_of(hw->ver),
+			   NFD_CFG_MINOR_VERSION_of(hw->ver), hw->max_mtu);
+
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
 		     hw->cap & NFP_NET_CFG_CTRL_PROMISC ? "PROMISC " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_L2BC    ? "L2BCFILT " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_L2MC    ? "L2MCFILT " : "",
@@ -2966,7 +2968,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     hw->cap & NFP_NET_CFG_CTRL_GATHER  ? "GATHER "  : "",
 		     hw->cap & NFP_NET_CFG_CTRL_LSO     ? "TSO "     : "",
 		     hw->cap & NFP_NET_CFG_CTRL_LSO2     ? "TSOv2 "     : "",
-		     hw->cap & NFP_NET_CFG_CTRL_RSS     ? "RSS "     : "");
+		     hw->cap & NFP_NET_CFG_CTRL_RSS     ? "RSS "     : "",
+		     hw->cap & NFP_NET_CFG_CTRL_RSS2     ? "RSSv2 "     : "");
 
 	hw->ctrl = 0;
 
