@@ -189,17 +189,51 @@ static int vfio_map_irq_region(struct fslmc_vfio_group *group)
 	return -errno;
 }
 
-int rte_fslmc_vfio_dmamap(void)
+static int
+fslmc_vfio_map(const struct rte_memseg *ms, void *arg)
 {
-	int ret;
+	int *n_segs = arg;
 	struct fslmc_vfio_group *group;
 	struct vfio_iommu_type1_dma_map dma_map = {
 		.argsz = sizeof(struct vfio_iommu_type1_dma_map),
 		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
 	};
+	int ret;
 
-	int i;
+	dma_map.size = ms->len;
+	dma_map.vaddr = ms->addr_64;
+#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
+	dma_map.iova = ms->iova;
+#else
+	dma_map.iova = dma_map.vaddr;
+#endif
+
+	/* SET DMA MAP for IOMMU */
+	group = &vfio_group;
+
+	if (!group->container) {
+		DPAA2_BUS_ERR("Container is not connected ");
+		return -1;
+	}
+
+	DPAA2_BUS_DEBUG("-->Initial SHM Virtual ADDR %llX",
+			dma_map.vaddr);
+	DPAA2_BUS_DEBUG("-----> DMA size 0x%llX", dma_map.size);
+	ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA,
+			&dma_map);
+	if (ret) {
+		DPAA2_BUS_ERR("VFIO_IOMMU_MAP_DMA API(errno = %d)",
+				errno);
+		return -1;
+	}
+	(*n_segs)++;
+	return 0;
+}
+
+int rte_fslmc_vfio_dmamap(void)
+{
 	const struct rte_memseg *memseg;
+	int i = 0;
 
 	if (is_dma_done)
 		return 0;
@@ -210,51 +244,21 @@ int rte_fslmc_vfio_dmamap(void)
 		return -ENODEV;
 	}
 
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		if (memseg[i].addr == NULL && memseg[i].len == 0) {
-			DPAA2_BUS_DEBUG("Total %d segments found", i);
-			break;
-		}
-
-		dma_map.size = memseg[i].len;
-		dma_map.vaddr = memseg[i].addr_64;
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-		dma_map.iova = memseg[i].iova;
-#else
-		dma_map.iova = dma_map.vaddr;
-#endif
-
-		/* SET DMA MAP for IOMMU */
-		group = &vfio_group;
-
-		if (!group->container) {
-			DPAA2_BUS_ERR("Container is not connected");
-			return -1;
-		}
-
-		DPAA2_BUS_DEBUG("-->Initial SHM Virtual ADDR %llX",
-				dma_map.vaddr);
-		DPAA2_BUS_DEBUG("-----> DMA size 0x%llX", dma_map.size);
-		ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA,
-			    &dma_map);
-		if (ret) {
-			DPAA2_BUS_ERR("Unable to map DMA address (errno = %d)",
-				      errno);
-			return ret;
-		}
-	}
+	if (rte_memseg_walk(fslmc_vfio_map, &i) < 0)
+		return -1;
 
 	/* Verifying that at least single segment is available */
 	if (i <= 0) {
 		DPAA2_BUS_ERR("No Segments found for VFIO Mapping");
 		return -1;
 	}
+	DPAA2_BUS_DEBUG("Total %d segments found.", i);
 
 	/* TODO - This is a W.A. as VFIO currently does not add the mapping of
 	 * the interrupt region to SMMU. This should be removed once the
 	 * support is added in the Kernel.
 	 */
-	vfio_map_irq_region(group);
+	vfio_map_irq_region(&vfio_group);
 
 	is_dma_done = 1;
 
