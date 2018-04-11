@@ -55,4 +55,15 @@ eal_memalloc_is_contig(const struct rte_memseg_list *msl, void *start,
 int
 eal_memalloc_sync_with_primary(void);
 
+int
+eal_memalloc_mem_event_callback_register(const char *name,
+		rte_mem_event_callback_t clb);
+
+int
+eal_memalloc_mem_event_callback_unregister(const char *name);
+
+void
+eal_memalloc_mem_event_notify(enum rte_mem_event event, const void *start,
+		size_t len);
+
 #endif /* EAL_MEMALLOC_H */

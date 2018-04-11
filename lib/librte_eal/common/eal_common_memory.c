@@ -624,6 +624,34 @@ dump_memseg(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 	return 0;
 }
 
+/*
+ * Defining here because declared in rte_memory.h, but the actual implementation
+ * is in eal_common_memalloc.c, like all other memalloc internals.
+ */
+int __rte_experimental
+rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb)
+{
+	/* FreeBSD boots with legacy mem enabled by default */
+	if (internal_config.legacy_mem) {
+		RTE_LOG(DEBUG, EAL, "Registering mem event callbacks not supported\n");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+	return eal_memalloc_mem_event_callback_register(name, clb);
+}
+
+int __rte_experimental
+rte_mem_event_callback_unregister(const char *name)
+{
+	/* FreeBSD boots with legacy mem enabled by default */
+	if (internal_config.legacy_mem) {
+		RTE_LOG(DEBUG, EAL, "Registering mem event callbacks not supported\n");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+	return eal_memalloc_mem_event_callback_unregister(name);
+}
+
 /* Dump the physical memory layout on console */
 void
 rte_dump_physmem_layout(FILE *f)

@@ -2,15 +2,45 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
+#include <string.h>
+
+#include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_fbarray.h>
 #include <rte_memzone.h>
 #include <rte_memory.h>
 #include <rte_eal_memconfig.h>
+#include <rte_rwlock.h>
 
 #include "eal_private.h"
 #include "eal_internal_cfg.h"
 #include "eal_memalloc.h"
+
+struct mem_event_callback_entry {
+	TAILQ_ENTRY(mem_event_callback_entry) next;
+	char name[RTE_MEM_EVENT_CALLBACK_NAME_LEN];
+	rte_mem_event_callback_t clb;
+};
+
+/** Double linked list of actions. */
+TAILQ_HEAD(mem_event_callback_entry_list, mem_event_callback_entry);
+
+static struct mem_event_callback_entry_list mem_event_callback_list =
+	TAILQ_HEAD_INITIALIZER(mem_event_callback_list);
+
+static rte_rwlock_t mem_event_rwlock = RTE_RWLOCK_INITIALIZER;
+
+static struct mem_event_callback_entry *
+find_mem_event_callback(const char *name)
+{
+	struct mem_event_callback_entry *r;
+
+	TAILQ_FOREACH(r, &mem_event_callback_list, next) {
+		if (!strcmp(r->name, name))
+			break;
+	}
+	return r;
+}
 
 bool
 eal_memalloc_is_contig(const struct rte_memseg_list *msl, void *start,
@@ -87,4 +117,107 @@ eal_memalloc_is_contig(const struct rte_memseg_list *msl, void *start,
 		}
 	}
 	return true;
+}
+
+int
+eal_memalloc_mem_event_callback_register(const char *name,
+		rte_mem_event_callback_t clb)
+{
+	struct mem_event_callback_entry *entry;
+	int ret, len;
+	if (name == NULL || clb == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	len = strnlen(name, RTE_MEM_EVENT_CALLBACK_NAME_LEN);
+	if (len == 0) {
+		rte_errno = EINVAL;
+		return -1;
+	} else if (len == RTE_MEM_EVENT_CALLBACK_NAME_LEN) {
+		rte_errno = ENAMETOOLONG;
+		return -1;
+	}
+	rte_rwlock_write_lock(&mem_event_rwlock);
+
+	entry = find_mem_event_callback(name);
+	if (entry != NULL) {
+		rte_errno = EEXIST;
+		ret = -1;
+		goto unlock;
+	}
+
+	entry = malloc(sizeof(*entry));
+	if (entry == NULL) {
+		rte_errno = ENOMEM;
+		ret = -1;
+		goto unlock;
+	}
+
+	/* callback successfully created and is valid, add it to the list */
+	entry->clb = clb;
+	snprintf(entry->name, RTE_MEM_EVENT_CALLBACK_NAME_LEN, "%s", name);
+	TAILQ_INSERT_TAIL(&mem_event_callback_list, entry, next);
+
+	ret = 0;
+
+	RTE_LOG(DEBUG, EAL, "Mem event callback '%s' registered\n", name);
+
+unlock:
+	rte_rwlock_write_unlock(&mem_event_rwlock);
+	return ret;
+}
+
+int
+eal_memalloc_mem_event_callback_unregister(const char *name)
+{
+	struct mem_event_callback_entry *entry;
+	int ret, len;
+
+	if (name == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	len = strnlen(name, RTE_MEM_EVENT_CALLBACK_NAME_LEN);
+	if (len == 0) {
+		rte_errno = EINVAL;
+		return -1;
+	} else if (len == RTE_MEM_EVENT_CALLBACK_NAME_LEN) {
+		rte_errno = ENAMETOOLONG;
+		return -1;
+	}
+	rte_rwlock_write_lock(&mem_event_rwlock);
+
+	entry = find_mem_event_callback(name);
+	if (entry == NULL) {
+		rte_errno = ENOENT;
+		ret = -1;
+		goto unlock;
+	}
+	TAILQ_REMOVE(&mem_event_callback_list, entry, next);
+	free(entry);
+
+	ret = 0;
+
+	RTE_LOG(DEBUG, EAL, "Mem event callback '%s' unregistered\n", name);
+
+unlock:
+	rte_rwlock_write_unlock(&mem_event_rwlock);
+	return ret;
+}
+
+void
+eal_memalloc_mem_event_notify(enum rte_mem_event event, const void *start,
+		size_t len)
+{
+	struct mem_event_callback_entry *entry;
+
+	rte_rwlock_read_lock(&mem_event_rwlock);
+
+	TAILQ_FOREACH(entry, &mem_event_callback_list, next) {
+		RTE_LOG(DEBUG, EAL, "Calling mem event callback %s",
+			entry->name);
+		entry->clb(event, start, len);
+	}
+
+	rte_rwlock_read_unlock(&mem_event_rwlock);
 }

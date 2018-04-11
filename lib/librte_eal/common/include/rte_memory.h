@@ -136,6 +136,9 @@ rte_iova_t rte_mem_virt2iova(const void *virt);
 /**
  * Get virtual memory address corresponding to iova address.
  *
+ * @note This function read-locks the memory hotplug subsystem, and thus cannot
+ *       be used within memory-related callback functions.
+ *
  * @param iova
  *   The iova address.
  * @return
@@ -206,6 +209,9 @@ typedef int (*rte_memseg_list_walk_t)(const struct rte_memseg_list *msl,
 /**
  * Walk list of all memsegs.
  *
+ * @note This function read-locks the memory hotplug subsystem, and thus cannot
+ *       be used within memory-related callback functions.
+ *
  * @param func
  *   Iterator function
  * @param arg
@@ -220,6 +226,9 @@ rte_memseg_walk(rte_memseg_walk_t func, void *arg);
 
 /**
  * Walk each VA-contiguous area.
+ *
+ * @note This function read-locks the memory hotplug subsystem, and thus cannot
+ *       be used within memory-related callback functions.
  *
  * @param func
  *   Iterator function
@@ -236,6 +245,9 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg);
 /**
  * Walk each allocated memseg list.
  *
+ * @note This function read-locks the memory hotplug subsystem, and thus cannot
+ *       be used within memory-related callback functions.
+ *
  * @param func
  *   Iterator function
  * @param arg
@@ -251,6 +263,9 @@ rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg);
 /**
  * Dump the physical memory layout to a file.
  *
+ * @note This function read-locks the memory hotplug subsystem, and thus cannot
+ *       be used within memory-related callback functions.
+ *
  * @param f
  *   A pointer to a file for output
  */
@@ -258,6 +273,9 @@ void rte_dump_physmem_layout(FILE *f);
 
 /**
  * Get the total amount of available physical memory.
+ *
+ * @note This function read-locks the memory hotplug subsystem, and thus cannot
+ *       be used within memory-related callback functions.
  *
  * @return
  *    The total amount of available physical memory in bytes.
@@ -292,6 +310,59 @@ unsigned rte_memory_get_nrank(void);
  *   0 if using DMA addresses through an IOMMU.
  */
 int rte_eal_using_phys_addrs(void);
+
+
+/**
+ * Enum indicating which kind of memory event has happened. Used by callbacks to
+ * distinguish between memory allocations and deallocations.
+ */
+enum rte_mem_event {
+	RTE_MEM_EVENT_ALLOC = 0, /**< Allocation event. */
+	RTE_MEM_EVENT_FREE,      /**< Deallocation event. */
+};
+#define RTE_MEM_EVENT_CALLBACK_NAME_LEN 64
+/**< maximum length of callback name */
+
+/**
+ * Function typedef used to register callbacks for memory events.
+ */
+typedef void (*rte_mem_event_callback_t)(enum rte_mem_event event_type,
+		const void *addr, size_t len);
+
+/**
+ * Function used to register callbacks for memory events.
+ *
+ * @note callbacks will happen while memory hotplug subsystem is write-locked,
+ *       therefore some functions (e.g. `rte_memseg_walk()`) will cause a
+ *       deadlock when called from within such callbacks.
+ *
+ * @param name
+ *   Name associated with specified callback to be added to the list.
+ *
+ * @param clb
+ *   Callback function pointer.
+ *
+ * @return
+ *   0 on successful callback register
+ *   -1 on unsuccessful callback register, with rte_errno value indicating
+ *   reason for failure.
+ */
+int __rte_experimental
+rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb);
+
+/**
+ * Function used to unregister callbacks for memory events.
+ *
+ * @param name
+ *   Name associated with specified callback to be removed from the list.
+ *
+ * @return
+ *   0 on successful callback unregister
+ *   -1 on unsuccessful callback unregister, with rte_errno value indicating
+ *   reason for failure.
+ */
+int __rte_experimental
+rte_mem_event_callback_unregister(const char *name);
 
 #ifdef __cplusplus
 }
