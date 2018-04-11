@@ -98,7 +98,8 @@ find_heap_max_free_elem(int *s, unsigned align)
 
 static const struct rte_memzone *
 memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
-		int socket_id, unsigned flags, unsigned align, unsigned bound)
+		int socket_id, unsigned int flags, unsigned int align,
+		unsigned int bound, bool contig)
 {
 	struct rte_memzone *mz;
 	struct rte_mem_config *mcfg;
@@ -188,7 +189,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 
 	/* allocate memory on heap */
 	void *mz_addr = malloc_heap_alloc(&mcfg->malloc_heaps[socket], NULL,
-			requested_len, flags, align, bound);
+			requested_len, flags, align, bound, contig);
 
 	if ((mz_addr == NULL) && (socket_id == SOCKET_ID_ANY)) {
 		/* try other heaps */
@@ -197,7 +198,8 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 				continue;
 
 			mz_addr = malloc_heap_alloc(&mcfg->malloc_heaps[i],
-					NULL, requested_len, flags, align, bound);
+					NULL, requested_len, flags, align,
+					bound, contig);
 			if (mz_addr != NULL)
 				break;
 		}
@@ -235,9 +237,9 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 }
 
 static const struct rte_memzone *
-rte_memzone_reserve_thread_safe(const char *name, size_t len,
-				int socket_id, unsigned flags, unsigned align,
-				unsigned bound)
+rte_memzone_reserve_thread_safe(const char *name, size_t len, int socket_id,
+		unsigned int flags, unsigned int align, unsigned int bound,
+		bool contig)
 {
 	struct rte_mem_config *mcfg;
 	const struct rte_memzone *mz = NULL;
@@ -248,7 +250,7 @@ rte_memzone_reserve_thread_safe(const char *name, size_t len,
 	rte_rwlock_write_lock(&mcfg->mlock);
 
 	mz = memzone_reserve_aligned_thread_unsafe(
-		name, len, socket_id, flags, align, bound);
+		name, len, socket_id, flags, align, bound, contig);
 
 	rte_rwlock_write_unlock(&mcfg->mlock);
 
@@ -265,7 +267,7 @@ rte_memzone_reserve_bounded(const char *name, size_t len, int socket_id,
 			    unsigned flags, unsigned align, unsigned bound)
 {
 	return rte_memzone_reserve_thread_safe(name, len, socket_id, flags,
-					       align, bound);
+					       align, bound, false);
 }
 
 /*
@@ -277,7 +279,7 @@ rte_memzone_reserve_aligned(const char *name, size_t len, int socket_id,
 			    unsigned flags, unsigned align)
 {
 	return rte_memzone_reserve_thread_safe(name, len, socket_id, flags,
-					       align, 0);
+					       align, 0, false);
 }
 
 /*
@@ -289,7 +291,8 @@ rte_memzone_reserve(const char *name, size_t len, int socket_id,
 		    unsigned flags)
 {
 	return rte_memzone_reserve_thread_safe(name, len, socket_id,
-					       flags, RTE_CACHE_LINE_SIZE, 0);
+					       flags, RTE_CACHE_LINE_SIZE, 0,
+					       false);
 }
 
 int

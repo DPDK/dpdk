@@ -5,6 +5,8 @@
 #ifndef MALLOC_HEAP_H_
 #define MALLOC_HEAP_H_
 
+#include <stdbool.h>
+
 #include <rte_malloc.h>
 #include <rte_malloc_heap.h>
 
@@ -25,7 +27,7 @@ malloc_get_numa_socket(void)
 
 void *
 malloc_heap_alloc(struct malloc_heap *heap,	const char *type, size_t size,
-		unsigned flags, size_t align, size_t bound);
+		unsigned int flags, size_t align, size_t bound, bool contig);
 
 int
 malloc_heap_free(struct malloc_elem *elem);

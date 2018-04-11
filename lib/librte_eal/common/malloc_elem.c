@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/queue.h>
 
 #include <rte_memory.h>
@@ -94,33 +95,112 @@ malloc_elem_insert(struct malloc_elem *elem)
 }
 
 /*
+ * Attempt to find enough physically contiguous memory in this block to store
+ * our data. Assume that element has at least enough space to fit in the data,
+ * so we just check the page addresses.
+ */
+static bool
+elem_check_phys_contig(const struct rte_memseg *ms __rte_unused,
+		void *start, size_t size)
+{
+	rte_iova_t cur, expected;
+	void *start_page, *end_page, *cur_page;
+	size_t pagesz;
+
+	/* for hugepage memory or IOVA as VA, it's always contiguous */
+	if (rte_eal_has_hugepages() || rte_eal_iova_mode() == RTE_IOVA_VA)
+		return true;
+
+	/* otherwise, check if start and end are within the same page */
+	pagesz = getpagesize();
+
+	start_page = RTE_PTR_ALIGN_FLOOR(start, pagesz);
+	end_page = RTE_PTR_ALIGN_FLOOR(RTE_PTR_ADD(start, size - 1), pagesz);
+
+	if (start_page == end_page)
+		return true;
+
+	/* if they are from different pages, check if they are contiguous */
+
+	/* if we can't access physical addresses, assume non-contiguous */
+	if (!rte_eal_using_phys_addrs())
+		return false;
+
+	/* skip first iteration */
+	cur = rte_mem_virt2iova(start_page);
+	expected = cur + pagesz;
+	cur_page = RTE_PTR_ADD(start_page, pagesz);
+
+	while (cur_page <= end_page) {
+		cur = rte_mem_virt2iova(cur_page);
+		if (cur != expected)
+			return false;
+		cur_page = RTE_PTR_ADD(cur_page, pagesz);
+		expected += pagesz;
+	}
+	return true;
+}
+
+/*
  * calculate the starting point of where data of the requested size
  * and alignment would fit in the current element. If the data doesn't
  * fit, return NULL.
  */
 static void *
 elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align,
-		size_t bound)
+		size_t bound, bool contig)
 {
-	const size_t bmask = ~(bound - 1);
-	uintptr_t end_pt = (uintptr_t)elem +
-			elem->size - MALLOC_ELEM_TRAILER_LEN;
-	uintptr_t new_data_start = RTE_ALIGN_FLOOR((end_pt - size), align);
-	uintptr_t new_elem_start;
+	size_t elem_size = elem->size;
 
-	/* check boundary */
-	if ((new_data_start & bmask) != ((end_pt - 1) & bmask)) {
-		end_pt = RTE_ALIGN_FLOOR(end_pt, bound);
-		new_data_start = RTE_ALIGN_FLOOR((end_pt - size), align);
-		end_pt = new_data_start + size;
-		if (((end_pt - 1) & bmask) != (new_data_start & bmask))
+	/*
+	 * we're allocating from the end, so adjust the size of element by
+	 * alignment size.
+	 */
+	while (elem_size >= size) {
+		const size_t bmask = ~(bound - 1);
+		uintptr_t end_pt = (uintptr_t)elem +
+				elem_size - MALLOC_ELEM_TRAILER_LEN;
+		uintptr_t new_data_start = RTE_ALIGN_FLOOR((end_pt - size),
+				align);
+		uintptr_t new_elem_start;
+
+		/* check boundary */
+		if ((new_data_start & bmask) != ((end_pt - 1) & bmask)) {
+			end_pt = RTE_ALIGN_FLOOR(end_pt, bound);
+			new_data_start = RTE_ALIGN_FLOOR((end_pt - size),
+					align);
+			end_pt = new_data_start + size;
+
+			if (((end_pt - 1) & bmask) != (new_data_start & bmask))
+				return NULL;
+		}
+
+		new_elem_start = new_data_start - MALLOC_ELEM_HEADER_LEN;
+
+		/* if the new start point is before the exist start,
+		 * it won't fit
+		 */
+		if (new_elem_start < (uintptr_t)elem)
 			return NULL;
+
+		if (contig) {
+			size_t new_data_size = end_pt - new_data_start;
+
+			/*
+			 * if physical contiguousness was requested and we
+			 * couldn't fit all data into one physically contiguous
+			 * block, try again with lower addresses.
+			 */
+			if (!elem_check_phys_contig(elem->ms,
+					(void *)new_data_start,
+					new_data_size)) {
+				elem_size -= align;
+				continue;
+			}
+		}
+		return (void *)new_elem_start;
 	}
-
-	new_elem_start = new_data_start - MALLOC_ELEM_HEADER_LEN;
-
-	/* if the new start point is before the exist start, it won't fit */
-	return (new_elem_start < (uintptr_t)elem) ? NULL : (void *)new_elem_start;
+	return NULL;
 }
 
 /*
@@ -129,9 +209,9 @@ elem_start_pt(struct malloc_elem *elem, size_t size, unsigned align,
  */
 int
 malloc_elem_can_hold(struct malloc_elem *elem, size_t size,	unsigned align,
-		size_t bound)
+		size_t bound, bool contig)
 {
-	return elem_start_pt(elem, size, align, bound) != NULL;
+	return elem_start_pt(elem, size, align, bound, contig) != NULL;
 }
 
 /*
@@ -259,9 +339,10 @@ malloc_elem_free_list_remove(struct malloc_elem *elem)
  */
 struct malloc_elem *
 malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align,
-		size_t bound)
+		size_t bound, bool contig)
 {
-	struct malloc_elem *new_elem = elem_start_pt(elem, size, align, bound);
+	struct malloc_elem *new_elem = elem_start_pt(elem, size, align, bound,
+			contig);
 	const size_t old_elem_size = (uintptr_t)new_elem - (uintptr_t)elem;
 	const size_t trailer_size = elem->size - old_elem_size - size -
 		MALLOC_ELEM_OVERHEAD;

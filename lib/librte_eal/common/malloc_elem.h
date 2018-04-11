@@ -5,6 +5,8 @@
 #ifndef MALLOC_ELEM_H_
 #define MALLOC_ELEM_H_
 
+#include <stdbool.h>
+
 #include <rte_memory.h>
 
 /* dummy definition of struct so we can use pointers to it in malloc_elem struct */
@@ -123,7 +125,7 @@ malloc_elem_insert(struct malloc_elem *elem);
  */
 int
 malloc_elem_can_hold(struct malloc_elem *elem, size_t size,
-		unsigned align, size_t bound);
+		unsigned int align, size_t bound, bool contig);
 
 /*
  * reserve a block of data in an existing malloc_elem. If the malloc_elem
@@ -131,7 +133,7 @@ malloc_elem_can_hold(struct malloc_elem *elem, size_t size,
  */
 struct malloc_elem *
 malloc_elem_alloc(struct malloc_elem *elem, size_t size,
-		unsigned align, size_t bound);
+		unsigned int align, size_t bound, bool contig);
 
 /*
  * free a malloc_elem block by adding it to the free list. If the

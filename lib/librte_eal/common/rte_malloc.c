@@ -37,7 +37,8 @@ void rte_free(void *addr)
  * Allocate memory on specified heap.
  */
 void *
-rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
+rte_malloc_socket(const char *type, size_t size, unsigned int align,
+		int socket_arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int socket, i;
@@ -60,7 +61,7 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
 		return NULL;
 
 	ret = malloc_heap_alloc(&mcfg->malloc_heaps[socket], type,
-				size, 0, align == 0 ? 1 : align, 0);
+				size, 0, align == 0 ? 1 : align, 0, false);
 	if (ret != NULL || socket_arg != SOCKET_ID_ANY)
 		return ret;
 
@@ -71,7 +72,7 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket_arg)
 			continue;
 
 		ret = malloc_heap_alloc(&mcfg->malloc_heaps[i], type,
-					size, 0, align == 0 ? 1 : align, 0);
+				size, 0, align == 0 ? 1 : align, 0, false);
 		if (ret != NULL)
 			return ret;
 	}

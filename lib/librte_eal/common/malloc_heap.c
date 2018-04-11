@@ -88,7 +88,7 @@ malloc_heap_add_memseg(struct malloc_heap *heap, struct rte_memseg *ms)
  */
 static struct malloc_elem *
 find_suitable_element(struct malloc_heap *heap, size_t size,
-		unsigned flags, size_t align, size_t bound)
+		unsigned int flags, size_t align, size_t bound, bool contig)
 {
 	size_t idx;
 	struct malloc_elem *elem, *alt_elem = NULL;
@@ -97,7 +97,8 @@ find_suitable_element(struct malloc_heap *heap, size_t size,
 			idx < RTE_HEAP_NUM_FREELISTS; idx++) {
 		for (elem = LIST_FIRST(&heap->free_head[idx]);
 				!!elem; elem = LIST_NEXT(elem, free_list)) {
-			if (malloc_elem_can_hold(elem, size, align, bound)) {
+			if (malloc_elem_can_hold(elem, size, align, bound,
+					contig)) {
 				if (check_hugepage_sz(flags, elem->ms->hugepage_sz))
 					return elem;
 				if (alt_elem == NULL)
@@ -121,7 +122,7 @@ find_suitable_element(struct malloc_heap *heap, size_t size,
 void *
 malloc_heap_alloc(struct malloc_heap *heap,
 		const char *type __attribute__((unused)), size_t size, unsigned flags,
-		size_t align, size_t bound)
+		size_t align, size_t bound, bool contig)
 {
 	struct malloc_elem *elem;
 
@@ -130,9 +131,9 @@ malloc_heap_alloc(struct malloc_heap *heap,
 
 	rte_spinlock_lock(&heap->lock);
 
-	elem = find_suitable_element(heap, size, flags, align, bound);
+	elem = find_suitable_element(heap, size, flags, align, bound, contig);
 	if (elem != NULL) {
-		elem = malloc_elem_alloc(elem, size, align, bound);
+		elem = malloc_elem_alloc(elem, size, align, bound, contig);
 		/* increase heap's count of allocated elements */
 		heap->alloc_count++;
 	}
