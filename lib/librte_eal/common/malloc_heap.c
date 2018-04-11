@@ -145,7 +145,7 @@ int
 malloc_heap_free(struct malloc_elem *elem)
 {
 	struct malloc_heap *heap;
-	int ret;
+	struct malloc_elem *ret;
 
 	if (!malloc_elem_cookies_ok(elem) || elem->state != ELEM_BUSY)
 		return -1;
@@ -159,7 +159,7 @@ malloc_heap_free(struct malloc_elem *elem)
 
 	rte_spinlock_unlock(&(heap->lock));
 
-	return ret;
+	return ret != NULL ? 0 : -1;
 }
 
 int

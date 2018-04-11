@@ -379,7 +379,7 @@ malloc_elem_join_adjacent_free(struct malloc_elem *elem)
  * blocks either immediately before or immediately after newly freed block
  * are also free, the blocks are merged together.
  */
-int
+struct malloc_elem *
 malloc_elem_free(struct malloc_elem *elem)
 {
 	void *ptr;
@@ -397,7 +397,7 @@ malloc_elem_free(struct malloc_elem *elem)
 
 	memset(ptr, 0, data_len);
 
-	return 0;
+	return elem;
 }
 
 /*

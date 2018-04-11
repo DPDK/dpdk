@@ -138,7 +138,7 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size,
  * blocks either immediately before or immediately after newly freed block
  * are also free, the blocks are merged together.
  */
-int
+struct malloc_elem *
 malloc_elem_free(struct malloc_elem *elem);
 
 struct malloc_elem *
