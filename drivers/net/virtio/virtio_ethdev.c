@@ -391,8 +391,8 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		     size, vq->vq_ring_size);
 
 	mz = rte_memzone_reserve_aligned(vq_name, vq->vq_ring_size,
-					 SOCKET_ID_ANY,
-					 0, VIRTIO_PCI_VRING_ALIGN);
+			SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG,
+			VIRTIO_PCI_VRING_ALIGN);
 	if (mz == NULL) {
 		if (rte_errno == EEXIST)
 			mz = rte_memzone_lookup(vq_name);
@@ -417,8 +417,8 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		snprintf(vq_hdr_name, sizeof(vq_hdr_name), "port%d_vq%d_hdr",
 			 dev->data->port_id, vtpci_queue_idx);
 		hdr_mz = rte_memzone_reserve_aligned(vq_hdr_name, sz_hdr_mz,
-						     SOCKET_ID_ANY, 0,
-						     RTE_CACHE_LINE_SIZE);
+				SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG,
+				RTE_CACHE_LINE_SIZE);
 		if (hdr_mz == NULL) {
 			if (rte_errno == EEXIST)
 				hdr_mz = rte_memzone_lookup(vq_hdr_name);
