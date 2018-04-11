@@ -561,10 +561,11 @@ update_queuing_status(struct rte_eth_dev *dev)
 	unsigned int i;
 	int allow_queuing = 1;
 
-	if (rte_atomic32_read(&internal->dev_attached) == 0)
+	if (!dev->data->rx_queues || !dev->data->tx_queues)
 		return;
 
-	if (rte_atomic32_read(&internal->started) == 0)
+	if (rte_atomic32_read(&internal->started) == 0 ||
+	    rte_atomic32_read(&internal->dev_attached) == 0)
 		allow_queuing = 0;
 
 	/* Wait until rx/tx_pkt_burst stops accessing vhost device */
@@ -640,13 +641,10 @@ new_device(int vid)
 #endif
 
 	internal->vid = vid;
-	if (eth_dev->data->rx_queues && eth_dev->data->tx_queues) {
+	if (rte_atomic32_read(&internal->started) == 1)
 		queue_setup(eth_dev, internal);
-		rte_atomic32_set(&internal->dev_attached, 1);
-	} else {
-		RTE_LOG(INFO, PMD, "RX/TX queues have not setup yet\n");
-		rte_atomic32_set(&internal->dev_attached, 0);
-	}
+	else
+		RTE_LOG(INFO, PMD, "RX/TX queues not exist yet\n");
 
 	for (i = 0; i < rte_vhost_get_vring_num(vid); i++)
 		rte_vhost_enable_guest_notification(vid, i, 0);
@@ -655,6 +653,7 @@ new_device(int vid)
 
 	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 
+	rte_atomic32_set(&internal->dev_attached, 1);
 	update_queuing_status(eth_dev);
 
 	RTE_LOG(INFO, PMD, "Vhost device %d created\n", vid);
@@ -684,23 +683,24 @@ destroy_device(int vid)
 	eth_dev = list->eth_dev;
 	internal = eth_dev->data->dev_private;
 
-	rte_atomic32_set(&internal->started, 0);
-	update_queuing_status(eth_dev);
 	rte_atomic32_set(&internal->dev_attached, 0);
+	update_queuing_status(eth_dev);
 
 	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 
-	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
-		vq = eth_dev->data->rx_queues[i];
-		if (vq == NULL)
-			continue;
-		vq->vid = -1;
-	}
-	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
-		vq = eth_dev->data->tx_queues[i];
-		if (vq == NULL)
-			continue;
-		vq->vid = -1;
+	if (eth_dev->data->rx_queues && eth_dev->data->tx_queues) {
+		for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+			vq = eth_dev->data->rx_queues[i];
+			if (!vq)
+				continue;
+			vq->vid = -1;
+		}
+		for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+			vq = eth_dev->data->tx_queues[i];
+			if (!vq)
+				continue;
+			vq->vid = -1;
+		}
 	}
 
 	state = vring_states[eth_dev->data->port_id];
@@ -825,11 +825,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct pmd_internal *internal = eth_dev->data->dev_private;
 
-	if (unlikely(rte_atomic32_read(&internal->dev_attached) == 0)) {
-		queue_setup(eth_dev, internal);
-		rte_atomic32_set(&internal->dev_attached, 1);
-	}
-
+	queue_setup(eth_dev, internal);
 	rte_atomic32_set(&internal->started, 1);
 	update_queuing_status(eth_dev);
 
@@ -869,10 +865,13 @@ eth_dev_close(struct rte_eth_dev *dev)
 	pthread_mutex_unlock(&internal_list_lock);
 	rte_free(list);
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		rte_free(dev->data->rx_queues[i]);
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		rte_free(dev->data->tx_queues[i]);
+	if (dev->data->rx_queues)
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			rte_free(dev->data->rx_queues[i]);
+
+	if (dev->data->tx_queues)
+		for (i = 0; i < dev->data->nb_tx_queues; i++)
+			rte_free(dev->data->tx_queues[i]);
 
 	rte_free(dev->data->mac_addrs);
 	free(internal->dev_name);
