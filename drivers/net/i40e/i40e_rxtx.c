@@ -2189,8 +2189,8 @@ i40e_memzone_reserve(const char *name, uint32_t len, int socket_id)
 	if (mz)
 		return mz;
 
-	mz = rte_memzone_reserve_aligned(name, len,
-					 socket_id, 0, I40E_RING_BASE_ALIGN);
+	mz = rte_memzone_reserve_aligned(name, len, socket_id,
+			RTE_MEMZONE_IOVA_CONTIG, I40E_RING_BASE_ALIGN);
 	return mz;
 }
 
