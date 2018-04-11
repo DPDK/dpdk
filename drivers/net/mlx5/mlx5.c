@@ -477,6 +477,19 @@ static struct rte_pci_driver mlx5_driver;
  */
 static void *uar_base;
 
+static int
+find_lower_va_bound(const struct rte_memseg *ms, void *arg)
+{
+	void **addr = arg;
+
+	if (*addr == NULL)
+		*addr = ms->addr;
+	else
+		*addr = RTE_MIN(*addr, ms->addr);
+
+	return 0;
+}
+
 /**
  * Reserve UAR address space for primary process.
  *
@@ -491,21 +504,14 @@ mlx5_uar_init_primary(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	void *addr = (void *)0;
-	int i;
-	const struct rte_mem_config *mcfg;
 
 	if (uar_base) { /* UAR address space mapped. */
 		priv->uar_base = uar_base;
 		return 0;
 	}
 	/* find out lower bound of hugepage segments */
-	mcfg = rte_eal_get_configuration()->mem_config;
-	for (i = 0; i < RTE_MAX_MEMSEG && mcfg->memseg[i].addr; i++) {
-		if (addr)
-			addr = RTE_MIN(addr, mcfg->memseg[i].addr);
-		else
-			addr = mcfg->memseg[i].addr;
-	}
+	rte_memseg_walk(find_lower_va_bound, &addr);
+
 	/* keep distance to hugepages to minimize potential conflicts. */
 	addr = RTE_PTR_SUB(addr, MLX5_UAR_OFFSET + MLX5_UAR_SIZE);
 	/* anonymous mmap, no real memory consumption. */
