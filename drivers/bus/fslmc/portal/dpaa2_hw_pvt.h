@@ -270,20 +270,14 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr) __attribute__((unused));
 static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 {
 	const struct rte_memseg *memseg;
-	int i;
 
 	if (dpaa2_virt_mode)
 		return vaddr;
 
-	memseg = rte_eal_get_physmem_layout();
-
-	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
-		if (vaddr >= memseg[i].addr_64 &&
-		    vaddr < memseg[i].addr_64 + memseg[i].len)
-			return memseg[i].iova
-				+ (vaddr - memseg[i].addr_64);
-	}
-	return (size_t)(NULL);
+	memseg = rte_mem_virt2memseg((void *)(uintptr_t)vaddr);
+	if (memseg)
+		return memseg->phys_addr + RTE_PTR_DIFF(vaddr, memseg->addr);
+	return (size_t)NULL;
 }
 
 /**
