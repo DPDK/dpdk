@@ -177,9 +177,9 @@ bnx2x_dma_alloc(struct bnx2x_softc *sc, size_t size, struct bnx2x_dma *dma,
 			rte_get_timer_cycles());
 
 	/* Caller must take care that strlen(mz_name) < RTE_MEMZONE_NAMESIZE */
-	z = rte_memzone_reserve_aligned(mz_name, (uint64_t) (size),
+	z = rte_memzone_reserve_aligned(mz_name, (uint64_t)size,
 					SOCKET_ID_ANY,
-					0, align);
+					RTE_MEMZONE_IOVA_CONTIG, align);
 	if (z == NULL) {
 		PMD_DRV_LOG(ERR, "DMA alloc failed for %s", msg);
 		return -ENOMEM;

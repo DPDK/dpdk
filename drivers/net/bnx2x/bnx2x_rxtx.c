@@ -26,7 +26,8 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	if (mz)
 		return mz;
 
-	return rte_memzone_reserve_aligned(z_name, ring_size, socket_id, 0, BNX2X_PAGE_SIZE);
+	return rte_memzone_reserve_aligned(z_name, ring_size, socket_id,
+			RTE_MEMZONE_IOVA_CONTIG, BNX2X_PAGE_SIZE);
 }
 
 static void
