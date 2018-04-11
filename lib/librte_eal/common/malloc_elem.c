@@ -18,6 +18,7 @@
 #include <rte_common.h>
 #include <rte_spinlock.h>
 
+#include "eal_memalloc.h"
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 
@@ -100,45 +101,10 @@ malloc_elem_insert(struct malloc_elem *elem)
  * so we just check the page addresses.
  */
 static bool
-elem_check_phys_contig(const struct rte_memseg_list *msl __rte_unused,
+elem_check_phys_contig(const struct rte_memseg_list *msl,
 		void *start, size_t size)
 {
-	rte_iova_t cur, expected;
-	void *start_page, *end_page, *cur_page;
-	size_t pagesz;
-
-	/* for hugepage memory or IOVA as VA, it's always contiguous */
-	if (rte_eal_has_hugepages() || rte_eal_iova_mode() == RTE_IOVA_VA)
-		return true;
-
-	/* otherwise, check if start and end are within the same page */
-	pagesz = getpagesize();
-
-	start_page = RTE_PTR_ALIGN_FLOOR(start, pagesz);
-	end_page = RTE_PTR_ALIGN_FLOOR(RTE_PTR_ADD(start, size - 1), pagesz);
-
-	if (start_page == end_page)
-		return true;
-
-	/* if they are from different pages, check if they are contiguous */
-
-	/* if we can't access physical addresses, assume non-contiguous */
-	if (!rte_eal_using_phys_addrs())
-		return false;
-
-	/* skip first iteration */
-	cur = rte_mem_virt2iova(start_page);
-	expected = cur + pagesz;
-	cur_page = RTE_PTR_ADD(start_page, pagesz);
-
-	while (cur_page <= end_page) {
-		cur = rte_mem_virt2iova(cur_page);
-		if (cur != expected)
-			return false;
-		cur_page = RTE_PTR_ADD(cur_page, pagesz);
-		expected += pagesz;
-	}
-	return true;
+	return eal_memalloc_is_contig(msl, start, size);
 }
 
 /*

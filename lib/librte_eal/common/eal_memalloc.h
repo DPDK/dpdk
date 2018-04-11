@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include <rte_memory.h>
+#include <rte_eal_memconfig.h>
 
 /*
  * Allocate segment of specified page size.
@@ -41,5 +42,13 @@ eal_memalloc_free_seg(struct rte_memseg *ms);
  */
 int
 eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs);
+
+/*
+ * Check if memory pointed to by `start` and of `length` that resides in
+ * memseg list `msl` is IOVA-contiguous.
+ */
+bool
+eal_memalloc_is_contig(const struct rte_memseg_list *msl, void *start,
+		size_t len);
 
 #endif /* EAL_MEMALLOC_H */
