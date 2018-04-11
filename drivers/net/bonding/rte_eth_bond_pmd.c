@@ -3145,6 +3145,10 @@ bond_remove(struct rte_vdev_device *dev)
 	eth_dev->tx_pkt_burst = NULL;
 
 	internals = eth_dev->data->dev_private;
+	/* Try to release mempool used in mode6. If the bond
+	 * device is not mode6, free the NULL is not problem.
+	 */
+	rte_mempool_free(internals->mode6.mempool);
 	rte_bitmap_free(internals->vlan_filter_bmp);
 	rte_free(internals->vlan_filter_bmpmem);
 	rte_free(eth_dev->data->dev_private);
