@@ -1329,7 +1329,7 @@ eal_legacy_hugepage_init(void)
 		}
 
 		addr = mmap(NULL, internal_config.memory, PROT_READ | PROT_WRITE,
-				MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		if (addr == MAP_FAILED) {
 			RTE_LOG(ERR, EAL, "%s: mmap() failed: %s\n", __func__,
 					strerror(errno));
