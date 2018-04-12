@@ -5,6 +5,11 @@
 #ifndef _RTE_VFIO_H_
 #define _RTE_VFIO_H_
 
+/**
+ * @file
+ * RTE VFIO. This library provides various VFIO related utility functions.
+ */
+
 /*
  * determine if VFIO is present on the system
  */

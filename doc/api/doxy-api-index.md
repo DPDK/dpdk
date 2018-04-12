@@ -52,7 +52,8 @@ The public API headers are grouped by topics:
   [bitrate]            (@ref rte_bitrate.h),
   [latency]            (@ref rte_latencystats.h),
   [devargs]            (@ref rte_devargs.h),
-  [PCI]                (@ref rte_pci.h)
+  [PCI]                (@ref rte_pci.h),
+  [vfio]               (@ref rte_vfio.h)
 
 - **device specific**:
   [softnic]            (@ref rte_eth_softnic.h),
