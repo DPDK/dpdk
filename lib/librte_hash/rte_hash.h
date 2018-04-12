@@ -328,7 +328,7 @@ rte_hash_lookup(const struct rte_hash *h, const void *key);
  * @param key
  *   Key to find.
  * @param sig
- *   Hash value to remove from the hash table.
+ *   Precomputed hash value for 'key'.
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
