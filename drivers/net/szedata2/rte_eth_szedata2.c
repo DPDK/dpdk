@@ -24,7 +24,6 @@
 
 #include "rte_eth_szedata2.h"
 #include "szedata2_logs.h"
-#include "szedata2_iobuf.h"
 
 #define RTE_ETH_SZEDATA2_MAX_RX_QUEUES 32
 #define RTE_ETH_SZEDATA2_MAX_TX_QUEUES 32
@@ -1141,78 +1140,17 @@ eth_dev_close(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
-/**
- * Function takes value from first IBUF status register.
- * Values in IBUF and OBUF should be same.
- *
- * @param internals
- *     Pointer to device private structure.
- * @return
- *     Link speed constant.
- */
-static inline enum szedata2_link_speed
-get_link_speed(const struct pmd_internals *internals)
-{
-	const volatile struct szedata2_ibuf *ibuf =
-		ibuf_ptr_by_index(internals->pci_rsc, 0);
-	uint32_t speed = (szedata2_read32(&ibuf->ibuf_st) & 0x70) >> 4;
-	switch (speed) {
-	case 0x03:
-		return SZEDATA2_LINK_SPEED_10G;
-	case 0x04:
-		return SZEDATA2_LINK_SPEED_40G;
-	case 0x05:
-		return SZEDATA2_LINK_SPEED_100G;
-	default:
-		return SZEDATA2_LINK_SPEED_DEFAULT;
-	}
-}
-
 static int
 eth_link_update(struct rte_eth_dev *dev,
 		int wait_to_complete __rte_unused)
 {
 	struct rte_eth_link link;
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->data->dev_private;
-	const volatile struct szedata2_ibuf *ibuf;
-	uint32_t i;
-	bool link_is_up = false;
 
 	memset(&link, 0, sizeof(link));
 
-	switch (get_link_speed(internals)) {
-	case SZEDATA2_LINK_SPEED_10G:
-		link.link_speed = ETH_SPEED_NUM_10G;
-		break;
-	case SZEDATA2_LINK_SPEED_40G:
-		link.link_speed = ETH_SPEED_NUM_40G;
-		break;
-	case SZEDATA2_LINK_SPEED_100G:
-		link.link_speed = ETH_SPEED_NUM_100G;
-		break;
-	default:
-		link.link_speed = ETH_SPEED_NUM_10G;
-		break;
-	}
-
-	/* szedata2 uses only full duplex */
+	link.link_speed = ETH_SPEED_NUM_100G;
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-
-	for (i = 0; i < szedata2_ibuf_count; i++) {
-		ibuf = ibuf_ptr_by_index(internals->pci_rsc, i);
-		/*
-		 * Link is considered up if at least one ibuf is enabled
-		 * and up.
-		 */
-		if (ibuf_is_enabled(ibuf) && ibuf_is_link_up(ibuf)) {
-			link_is_up = true;
-			break;
-		}
-	}
-
-	link.link_status = link_is_up ? ETH_LINK_UP : ETH_LINK_DOWN;
-
+	link.link_status = ETH_LINK_UP;
 	link.link_autoneg = ETH_LINK_FIXED;
 
 	rte_eth_linkstatus_set(dev, &link);
@@ -1220,30 +1158,16 @@ eth_link_update(struct rte_eth_dev *dev,
 }
 
 static int
-eth_dev_set_link_up(struct rte_eth_dev *dev)
+eth_dev_set_link_up(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->data->dev_private;
-	uint32_t i;
-
-	for (i = 0; i < szedata2_ibuf_count; i++)
-		ibuf_enable(ibuf_ptr_by_index(internals->pci_rsc, i));
-	for (i = 0; i < szedata2_obuf_count; i++)
-		obuf_enable(obuf_ptr_by_index(internals->pci_rsc, i));
+	PMD_DRV_LOG(WARNING, "Setting link up is not supported.");
 	return 0;
 }
 
 static int
-eth_dev_set_link_down(struct rte_eth_dev *dev)
+eth_dev_set_link_down(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->data->dev_private;
-	uint32_t i;
-
-	for (i = 0; i < szedata2_ibuf_count; i++)
-		ibuf_disable(ibuf_ptr_by_index(internals->pci_rsc, i));
-	for (i = 0; i < szedata2_obuf_count; i++)
-		obuf_disable(obuf_ptr_by_index(internals->pci_rsc, i));
+	PMD_DRV_LOG(WARNING, "Setting link down is not supported.");
 	return 0;
 }
 
@@ -1368,55 +1292,29 @@ eth_mac_addr_set(struct rte_eth_dev *dev __rte_unused,
 }
 
 static void
-eth_promiscuous_enable(struct rte_eth_dev *dev)
+eth_promiscuous_enable(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->data->dev_private;
-	uint32_t i;
-
-	for (i = 0; i < szedata2_ibuf_count; i++) {
-		ibuf_mac_mode_write(ibuf_ptr_by_index(internals->pci_rsc, i),
-				SZEDATA2_MAC_CHMODE_PROMISC);
-	}
+	PMD_DRV_LOG(WARNING, "Enabling promiscuous mode is not supported. "
+			"The card is always in promiscuous mode.");
 }
 
 static void
-eth_promiscuous_disable(struct rte_eth_dev *dev)
+eth_promiscuous_disable(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->data->dev_private;
-	uint32_t i;
-
-	for (i = 0; i < szedata2_ibuf_count; i++) {
-		ibuf_mac_mode_write(ibuf_ptr_by_index(internals->pci_rsc, i),
-				SZEDATA2_MAC_CHMODE_ONLY_VALID);
-	}
+	PMD_DRV_LOG(WARNING, "Disabling promiscuous mode is not supported. "
+			"The card is always in promiscuous mode.");
 }
 
 static void
-eth_allmulticast_enable(struct rte_eth_dev *dev)
+eth_allmulticast_enable(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->data->dev_private;
-	uint32_t i;
-
-	for (i = 0; i < szedata2_ibuf_count; i++) {
-		ibuf_mac_mode_write(ibuf_ptr_by_index(internals->pci_rsc, i),
-				SZEDATA2_MAC_CHMODE_ALL_MULTICAST);
-	}
+	PMD_DRV_LOG(WARNING, "Enabling allmulticast mode is not supported.");
 }
 
 static void
-eth_allmulticast_disable(struct rte_eth_dev *dev)
+eth_allmulticast_disable(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->data->dev_private;
-	uint32_t i;
-
-	for (i = 0; i < szedata2_ibuf_count; i++) {
-		ibuf_mac_mode_write(ibuf_ptr_by_index(internals->pci_rsc, i),
-				SZEDATA2_MAC_CHMODE_ONLY_VALID);
-	}
+	PMD_DRV_LOG(WARNING, "Disabling allmulticast mode is not supported.");
 }
 
 static const struct eth_dev_ops ops = {
@@ -1625,9 +1523,6 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	}
 
 	ether_addr_copy(&eth_addr, data->mac_addrs);
-
-	/* At initial state COMBO card is in promiscuous mode so disable it */
-	eth_promiscuous_disable(dev);
 
 	PMD_INIT_LOG(INFO, "szedata2 device ("
 			PCI_PRI_FMT ") successfully initialized",

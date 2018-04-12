@@ -23,7 +23,6 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2) += rte_eth_szedata2.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2) += szedata2_iobuf.c
 
 #
 # Export include files
