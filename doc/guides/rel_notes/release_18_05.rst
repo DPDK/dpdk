@@ -69,6 +69,10 @@ New Features
   See the :doc:`../nics/axgbe` nic driver guide for more details on this
   new driver.
 
+* **Updated szedata2 PMD.**
+
+  Added support for new NFB-200G2QL card.
+
 * **Added support for virtio-user server mode.**
   In a container environment if the vhost-user backend restarts, there's no way
   for it to reconnect to virtio-user. To address this, support for server mode

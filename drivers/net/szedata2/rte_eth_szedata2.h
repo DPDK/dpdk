@@ -18,9 +18,7 @@
 #define PCI_DEVICE_ID_NETCOPE_COMBO80G 0xcb80
 #define PCI_DEVICE_ID_NETCOPE_COMBO100G 0xc1c1
 #define PCI_DEVICE_ID_NETCOPE_COMBO100G2 0xc2c1
-
-/* number of PCI resource used by COMBO card */
-#define PCI_RESOURCE_NUMBER 0
+#define PCI_DEVICE_ID_NETCOPE_NFB200G2QL 0xc250
 
 /* szedata2_packet header length == 4 bytes == 2B segment size + 2B hw size */
 #define RTE_SZE2_PACKET_HEADER_SIZE 4

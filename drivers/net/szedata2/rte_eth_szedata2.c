@@ -38,18 +38,53 @@
 
 #define SZEDATA2_DEV_PATH_FMT "/dev/szedataII%u"
 
+/**
+ * Format string for suffix used to differentiate between Ethernet ports
+ * on the same PCI device.
+ */
+#define SZEDATA2_ETH_DEV_NAME_SUFFIX_FMT "-port%u"
+
+/**
+ * Maximum number of ports for one device.
+ */
+#define SZEDATA2_MAX_PORTS 2
+
+/**
+ * Entry in list of PCI devices for this driver.
+ */
+struct pci_dev_list_entry;
+struct pci_dev_list_entry {
+	LIST_ENTRY(pci_dev_list_entry) next;
+	struct rte_pci_device *pci_dev;
+	unsigned int port_count;
+};
+
+/* List of PCI devices with number of ports for this driver. */
+LIST_HEAD(pci_dev_list, pci_dev_list_entry) szedata2_pci_dev_list =
+	LIST_HEAD_INITIALIZER(szedata2_pci_dev_list);
+
+struct port_info {
+	unsigned int rx_base_id;
+	unsigned int tx_base_id;
+	unsigned int rx_count;
+	unsigned int tx_count;
+	int numa_node;
+};
+
 struct pmd_internals {
 	struct rte_eth_dev *dev;
 	uint16_t max_rx_queues;
 	uint16_t max_tx_queues;
-	char sze_dev[PATH_MAX];
-	struct rte_mem_resource *pci_rsc;
+	unsigned int rxq_base_id;
+	unsigned int txq_base_id;
+	char *sze_dev_path;
 };
 
 struct szedata2_rx_queue {
 	struct pmd_internals *priv;
 	struct szedata *sze;
 	uint8_t rx_channel;
+	uint16_t qid;
 	uint16_t in_port;
 	struct rte_mempool *mb_pool;
 	volatile uint64_t rx_pkts;
@@ -61,6 +96,7 @@ struct szedata2_tx_queue {
 	struct pmd_internals *priv;
 	struct szedata *sze;
 	uint8_t tx_channel;
+	uint16_t qid;
 	volatile uint64_t tx_pkts;
 	volatile uint64_t tx_bytes;
 	volatile uint64_t err_pkts;
@@ -870,7 +906,7 @@ eth_rx_queue_start(struct rte_eth_dev *dev, uint16_t rxq_id)
 	if (rxq->sze == NULL) {
 		uint32_t rx = 1 << rxq->rx_channel;
 		uint32_t tx = 0;
-		rxq->sze = szedata_open(internals->sze_dev);
+		rxq->sze = szedata_open(internals->sze_dev_path);
 		if (rxq->sze == NULL)
 			return -EINVAL;
 		ret = szedata_subscribe3(rxq->sze, &rx, &tx);
@@ -915,7 +951,7 @@ eth_tx_queue_start(struct rte_eth_dev *dev, uint16_t txq_id)
 	if (txq->sze == NULL) {
 		uint32_t rx = 0;
 		uint32_t tx = 1 << txq->tx_channel;
-		txq->sze = szedata_open(internals->sze_dev);
+		txq->sze = szedata_open(internals->sze_dev_path);
 		if (txq->sze == NULL)
 			return -EINVAL;
 		ret = szedata_subscribe3(txq->sze, &rx, &tx);
@@ -1179,11 +1215,14 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		const struct rte_eth_rxconf *rx_conf __rte_unused,
 		struct rte_mempool *mb_pool)
 {
-	struct pmd_internals *internals = dev->data->dev_private;
 	struct szedata2_rx_queue *rxq;
 	int ret;
-	uint32_t rx = 1 << rx_queue_id;
+	struct pmd_internals *internals = dev->data->dev_private;
+	uint8_t rx_channel = internals->rxq_base_id + rx_queue_id;
+	uint32_t rx = 1 << rx_channel;
 	uint32_t tx = 0;
+
+	PMD_INIT_FUNC_TRACE();
 
 	if (dev->data->rx_queues[rx_queue_id] != NULL) {
 		eth_rx_queue_release(dev->data->rx_queues[rx_queue_id]);
@@ -1200,7 +1239,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	rxq->priv = internals;
-	rxq->sze = szedata_open(internals->sze_dev);
+	rxq->sze = szedata_open(internals->sze_dev_path);
 	if (rxq->sze == NULL) {
 		PMD_INIT_LOG(ERR, "szedata_open() failed for rx queue id "
 				"%" PRIu16 "!", rx_queue_id);
@@ -1214,7 +1253,8 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		eth_rx_queue_release(rxq);
 		return -EINVAL;
 	}
-	rxq->rx_channel = rx_queue_id;
+	rxq->rx_channel = rx_channel;
+	rxq->qid = rx_queue_id;
 	rxq->in_port = dev->data->port_id;
 	rxq->mb_pool = mb_pool;
 	rxq->rx_pkts = 0;
@@ -1224,7 +1264,8 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	dev->data->rx_queues[rx_queue_id] = rxq;
 
 	PMD_INIT_LOG(DEBUG, "Configured rx queue id %" PRIu16 " on socket "
-			"%u.", rx_queue_id, socket_id);
+			"%u (channel id %u).", rxq->qid, socket_id,
+			rxq->rx_channel);
 
 	return 0;
 }
@@ -1236,11 +1277,14 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf __rte_unused)
 {
-	struct pmd_internals *internals = dev->data->dev_private;
 	struct szedata2_tx_queue *txq;
 	int ret;
+	struct pmd_internals *internals = dev->data->dev_private;
+	uint8_t tx_channel = internals->txq_base_id + tx_queue_id;
 	uint32_t rx = 0;
-	uint32_t tx = 1 << tx_queue_id;
+	uint32_t tx = 1 << tx_channel;
+
+	PMD_INIT_FUNC_TRACE();
 
 	if (dev->data->tx_queues[tx_queue_id] != NULL) {
 		eth_tx_queue_release(dev->data->tx_queues[tx_queue_id]);
@@ -1257,7 +1301,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	txq->priv = internals;
-	txq->sze = szedata_open(internals->sze_dev);
+	txq->sze = szedata_open(internals->sze_dev_path);
 	if (txq->sze == NULL) {
 		PMD_INIT_LOG(ERR, "szedata_open() failed for tx queue id "
 				"%" PRIu16 "!", tx_queue_id);
@@ -1271,7 +1315,8 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 		eth_tx_queue_release(txq);
 		return -EINVAL;
 	}
-	txq->tx_channel = tx_queue_id;
+	txq->tx_channel = tx_channel;
+	txq->qid = tx_queue_id;
 	txq->tx_pkts = 0;
 	txq->tx_bytes = 0;
 	txq->err_pkts = 0;
@@ -1279,7 +1324,8 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 	dev->data->tx_queues[tx_queue_id] = txq;
 
 	PMD_INIT_LOG(DEBUG, "Configured tx queue id %" PRIu16 " on socket "
-			"%u.", tx_queue_id, socket_id);
+			"%u (channel id %u).", txq->qid, socket_id,
+			txq->tx_channel);
 
 	return 0;
 }
@@ -1408,59 +1454,51 @@ get_szedata2_index(const struct rte_pci_addr *pcislot_addr, uint32_t *index)
 	return -1;
 }
 
+/**
+ * @brief Initializes rte_eth_dev device.
+ * @param dev Device to initialize.
+ * @param pi Structure with info about DMA queues.
+ * @return 0 on success, negative error code on error.
+ */
 static int
-rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
+rte_szedata2_eth_dev_init(struct rte_eth_dev *dev, struct port_info *pi)
 {
+	int ret;
+	uint32_t szedata2_index;
+	char name[PATH_MAX];
 	struct rte_eth_dev_data *data = dev->data;
 	struct pmd_internals *internals = (struct pmd_internals *)
 		data->dev_private;
-	struct szedata *szedata_temp;
-	int ret;
-	uint32_t szedata2_index;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_pci_addr *pci_addr = &pci_dev->addr;
-	struct rte_mem_resource *pci_rsc =
-		&pci_dev->mem_resource[PCI_RESOURCE_NUMBER];
-	char rsc_filename[PATH_MAX];
-	void *pci_resource_ptr = NULL;
-	int fd;
 
-	PMD_INIT_LOG(INFO, "Initializing szedata2 device (" PCI_PRI_FMT ")",
-			pci_addr->domain, pci_addr->bus, pci_addr->devid,
-			pci_addr->function);
+	PMD_INIT_FUNC_TRACE();
 
+	PMD_INIT_LOG(INFO, "Initializing eth_dev %s (driver %s)", data->name,
+			dev->device->driver->name);
+
+	/* Fill internal private structure. */
 	internals->dev = dev;
-
 	/* Get index of szedata2 device file and create path to device file */
-	ret = get_szedata2_index(pci_addr, &szedata2_index);
+	ret = get_szedata2_index(&pci_dev->addr, &szedata2_index);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to get szedata2 device index!");
 		return -ENODEV;
 	}
-	snprintf(internals->sze_dev, PATH_MAX, SZEDATA2_DEV_PATH_FMT,
-			szedata2_index);
-
-	PMD_INIT_LOG(INFO, "SZEDATA2 path: %s", internals->sze_dev);
-
-	/*
-	 * Get number of available DMA RX and TX channels, which is maximum
-	 * number of queues that can be created and store it in private device
-	 * data structure.
-	 */
-	szedata_temp = szedata_open(internals->sze_dev);
-	if (szedata_temp == NULL) {
-		PMD_INIT_LOG(ERR, "szedata_open(): failed to open %s",
-				internals->sze_dev);
-		return -EINVAL;
+	snprintf(name, PATH_MAX, SZEDATA2_DEV_PATH_FMT, szedata2_index);
+	internals->sze_dev_path = strdup(name);
+	if (internals->sze_dev_path == NULL) {
+		PMD_INIT_LOG(ERR, "strdup() failed!");
+		return -ENOMEM;
 	}
-	internals->max_rx_queues = szedata_ifaces_available(szedata_temp,
-			SZE2_DIR_RX);
-	internals->max_tx_queues = szedata_ifaces_available(szedata_temp,
-			SZE2_DIR_TX);
-	szedata_close(szedata_temp);
-
-	PMD_INIT_LOG(INFO, "Available DMA channels RX: %u TX: %u",
-			internals->max_rx_queues, internals->max_tx_queues);
+	PMD_INIT_LOG(INFO, "SZEDATA2 path: %s", internals->sze_dev_path);
+	internals->max_rx_queues = pi->rx_count;
+	internals->max_tx_queues = pi->tx_count;
+	internals->rxq_base_id = pi->rx_base_id;
+	internals->txq_base_id = pi->tx_base_id;
+	PMD_INIT_LOG(INFO, "%u RX DMA channels from id %u",
+			internals->max_rx_queues, internals->rxq_base_id);
+	PMD_INIT_LOG(INFO, "%u TX DMA channels from id %u",
+			internals->max_tx_queues, internals->txq_base_id);
 
 	/* Set rx, tx burst functions */
 	if (data->scattered_rx == 1)
@@ -1472,43 +1510,6 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	/* Set function callbacks for Ethernet API */
 	dev->dev_ops = &ops;
 
-	rte_eth_copy_pci_info(dev, pci_dev);
-
-	/* mmap pci resource0 file to rte_mem_resource structure */
-	if (pci_dev->mem_resource[PCI_RESOURCE_NUMBER].phys_addr ==
-			0) {
-		PMD_INIT_LOG(ERR, "Missing resource%u file",
-				PCI_RESOURCE_NUMBER);
-		return -EINVAL;
-	}
-	snprintf(rsc_filename, PATH_MAX,
-		"%s/" PCI_PRI_FMT "/resource%u", rte_pci_get_sysfs_path(),
-		pci_addr->domain, pci_addr->bus,
-		pci_addr->devid, pci_addr->function, PCI_RESOURCE_NUMBER);
-	fd = open(rsc_filename, O_RDWR);
-	if (fd < 0) {
-		PMD_INIT_LOG(ERR, "Could not open file %s", rsc_filename);
-		return -EINVAL;
-	}
-
-	pci_resource_ptr = mmap(0,
-			pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len,
-			PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	close(fd);
-	if (pci_resource_ptr == MAP_FAILED) {
-		PMD_INIT_LOG(ERR, "Could not mmap file %s (fd = %d)",
-				rsc_filename, fd);
-		return -EINVAL;
-	}
-	pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr = pci_resource_ptr;
-	internals->pci_rsc = pci_rsc;
-
-	PMD_INIT_LOG(DEBUG, "resource%u phys_addr = 0x%llx len = %llu "
-			"virt addr = %llx", PCI_RESOURCE_NUMBER,
-			(unsigned long long)pci_rsc->phys_addr,
-			(unsigned long long)pci_rsc->len,
-			(unsigned long long)pci_rsc->addr);
-
 	/* Get link state */
 	eth_link_update(dev, 0);
 
@@ -1517,36 +1518,36 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 			RTE_CACHE_LINE_SIZE);
 	if (data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Could not alloc space for MAC address!");
-		munmap(pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr,
-		       pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len);
-		return -EINVAL;
+		free(internals->sze_dev_path);
+		return -ENOMEM;
 	}
 
 	ether_addr_copy(&eth_addr, data->mac_addrs);
 
-	PMD_INIT_LOG(INFO, "szedata2 device ("
-			PCI_PRI_FMT ") successfully initialized",
-			pci_addr->domain, pci_addr->bus, pci_addr->devid,
-			pci_addr->function);
+	PMD_INIT_LOG(INFO, "%s device %s successfully initialized",
+			dev->device->driver->name, data->name);
 
 	return 0;
 }
 
+/**
+ * @brief Unitializes rte_eth_dev device.
+ * @param dev Device to uninitialize.
+ * @return 0 on success, negative error code on error.
+ */
 static int
 rte_szedata2_eth_dev_uninit(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_pci_addr *pci_addr = &pci_dev->addr;
+	struct pmd_internals *internals = (struct pmd_internals *)
+		dev->data->dev_private;
 
+	PMD_INIT_FUNC_TRACE();
+
+	free(internals->sze_dev_path);
 	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = NULL;
-	munmap(pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr,
-	       pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len);
 
-	PMD_DRV_LOG(INFO, "szedata2 device ("
-			PCI_PRI_FMT ") successfully uninitialized",
-			pci_addr->domain, pci_addr->bus, pci_addr->devid,
-			pci_addr->function);
+	PMD_DRV_LOG(INFO, "%s device %s successfully uninitialized",
+			dev->device->driver->name, dev->data->name);
 
 	return 0;
 }
@@ -1565,21 +1566,347 @@ static const struct rte_pci_id rte_szedata2_pci_id_table[] = {
 				PCI_DEVICE_ID_NETCOPE_COMBO100G2)
 	},
 	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETCOPE,
+				PCI_DEVICE_ID_NETCOPE_NFB200G2QL)
+	},
+	{
 		.vendor_id = 0,
 	}
 };
 
+/**
+ * @brief Gets info about DMA queues for ports.
+ * @param pci_dev PCI device structure.
+ * @param port_count Pointer to variable set with number of ports.
+ * @param pi Pointer to array of structures with info about DMA queues
+ *           for ports.
+ * @param max_ports Maximum number of ports.
+ * @return 0 on success, negative error code on error.
+ */
+static int
+get_port_info(struct rte_pci_device *pci_dev, unsigned int *port_count,
+		struct port_info *pi, unsigned int max_ports)
+{
+	struct szedata *szedata_temp;
+	char sze_dev_path[PATH_MAX];
+	uint32_t szedata2_index;
+	int ret;
+	uint16_t max_rx_queues;
+	uint16_t max_tx_queues;
+
+	if (max_ports == 0)
+		return -EINVAL;
+
+	memset(pi, 0, max_ports * sizeof(struct port_info));
+	*port_count = 0;
+
+	/* Get index of szedata2 device file and create path to device file */
+	ret = get_szedata2_index(&pci_dev->addr, &szedata2_index);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to get szedata2 device index!");
+		return -ENODEV;
+	}
+	snprintf(sze_dev_path, PATH_MAX, SZEDATA2_DEV_PATH_FMT, szedata2_index);
+
+	/*
+	 * Get number of available DMA RX and TX channels, which is maximum
+	 * number of queues that can be created.
+	 */
+	szedata_temp = szedata_open(sze_dev_path);
+	if (szedata_temp == NULL) {
+		PMD_INIT_LOG(ERR, "szedata_open(%s) failed", sze_dev_path);
+		return -EINVAL;
+	}
+	max_rx_queues = szedata_ifaces_available(szedata_temp, SZE2_DIR_RX);
+	max_tx_queues = szedata_ifaces_available(szedata_temp, SZE2_DIR_TX);
+	PMD_INIT_LOG(INFO, "Available DMA channels RX: %u TX: %u",
+			max_rx_queues, max_tx_queues);
+	if (max_rx_queues > RTE_ETH_SZEDATA2_MAX_RX_QUEUES) {
+		PMD_INIT_LOG(ERR, "%u RX queues exceeds supported number %u",
+				max_rx_queues, RTE_ETH_SZEDATA2_MAX_RX_QUEUES);
+		szedata_close(szedata_temp);
+		return -EINVAL;
+	}
+	if (max_tx_queues > RTE_ETH_SZEDATA2_MAX_TX_QUEUES) {
+		PMD_INIT_LOG(ERR, "%u TX queues exceeds supported number %u",
+				max_tx_queues, RTE_ETH_SZEDATA2_MAX_TX_QUEUES);
+		szedata_close(szedata_temp);
+		return -EINVAL;
+	}
+
+	if (pci_dev->id.device_id == PCI_DEVICE_ID_NETCOPE_NFB200G2QL) {
+		unsigned int i;
+		unsigned int rx_queues = max_rx_queues / max_ports;
+		unsigned int tx_queues = max_tx_queues / max_ports;
+
+		/*
+		 * Number of queues reported by szedata_ifaces_available()
+		 * is the number of all queues from all DMA controllers which
+		 * may reside at different numa locations.
+		 * All queues from the same DMA controller have the same numa
+		 * node.
+		 * Numa node from the first queue of each DMA controller is
+		 * retrieved.
+		 * If the numa node differs from the numa node of the queues
+		 * from the previous DMA controller the queues are assigned
+		 * to the next port.
+		 */
+
+		for (i = 0; i < max_ports; i++) {
+			int numa_rx = szedata_get_area_numa_node(szedata_temp,
+				SZE2_DIR_RX, rx_queues * i);
+			int numa_tx = szedata_get_area_numa_node(szedata_temp,
+				SZE2_DIR_TX, tx_queues * i);
+			unsigned int port_rx_queues = numa_rx != -1 ?
+				rx_queues : 0;
+			unsigned int port_tx_queues = numa_tx != -1 ?
+				tx_queues : 0;
+			PMD_INIT_LOG(DEBUG, "%u rx queues from id %u, numa %d",
+					rx_queues, rx_queues * i, numa_rx);
+			PMD_INIT_LOG(DEBUG, "%u tx queues from id %u, numa %d",
+					tx_queues, tx_queues * i, numa_tx);
+
+			if (port_rx_queues != 0 && port_tx_queues != 0 &&
+					numa_rx != numa_tx) {
+				PMD_INIT_LOG(ERR, "RX queue %u numa %d differs "
+						"from TX queue %u numa %d "
+						"unexpectedly",
+						rx_queues * i, numa_rx,
+						tx_queues * i, numa_tx);
+				szedata_close(szedata_temp);
+				return -EINVAL;
+			} else if (port_rx_queues == 0 && port_tx_queues == 0) {
+				continue;
+			} else {
+				unsigned int j;
+				unsigned int current = *port_count;
+				int port_numa = port_rx_queues != 0 ?
+					numa_rx : numa_tx;
+
+				for (j = 0; j < *port_count; j++) {
+					if (pi[j].numa_node ==
+							port_numa) {
+						current = j;
+						break;
+					}
+				}
+				if (pi[current].rx_count == 0 &&
+						pi[current].tx_count == 0) {
+					pi[current].rx_base_id = rx_queues * i;
+					pi[current].tx_base_id = tx_queues * i;
+					(*port_count)++;
+				} else if ((rx_queues * i !=
+						pi[current].rx_base_id +
+						pi[current].rx_count) ||
+						(tx_queues * i !=
+						 pi[current].tx_base_id +
+						 pi[current].tx_count)) {
+					PMD_INIT_LOG(ERR, "Queue ids does not "
+							"fulfill constraints");
+					szedata_close(szedata_temp);
+					return -EINVAL;
+				}
+				pi[current].rx_count += port_rx_queues;
+				pi[current].tx_count += port_tx_queues;
+				pi[current].numa_node = port_numa;
+			}
+		}
+	} else {
+		pi[0].rx_count = max_rx_queues;
+		pi[0].tx_count = max_tx_queues;
+		pi[0].numa_node = pci_dev->device.numa_node;
+		*port_count = 1;
+	}
+
+	szedata_close(szedata_temp);
+	return 0;
+}
+
+/**
+ * @brief Allocates rte_eth_dev device.
+ * @param pci_dev Corresponding PCI device.
+ * @param numa_node NUMA node on which device is allocated.
+ * @param port_no Id of rte_eth_device created on PCI device pci_dev.
+ * @return Pointer to allocated device or NULL on error.
+ */
+static struct rte_eth_dev *
+szedata2_eth_dev_allocate(struct rte_pci_device *pci_dev, int numa_node,
+		unsigned int port_no)
+{
+	struct rte_eth_dev *eth_dev;
+	char name[RTE_ETH_NAME_MAX_LEN];
+
+	PMD_INIT_FUNC_TRACE();
+
+	snprintf(name, RTE_ETH_NAME_MAX_LEN, "%s"
+			SZEDATA2_ETH_DEV_NAME_SUFFIX_FMT,
+			pci_dev->device.name, port_no);
+	PMD_INIT_LOG(DEBUG, "Allocating eth_dev %s", name);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eth_dev = rte_eth_dev_allocate(name);
+		if (!eth_dev)
+			return NULL;
+
+		eth_dev->data->dev_private = rte_zmalloc_socket(name,
+			sizeof(struct pmd_internals), RTE_CACHE_LINE_SIZE,
+			numa_node);
+		if (!eth_dev->data->dev_private) {
+			rte_eth_dev_release_port(eth_dev);
+			return NULL;
+		}
+	} else {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev)
+			return NULL;
+	}
+
+	eth_dev->device = &pci_dev->device;
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->numa_node = numa_node;
+	return eth_dev;
+}
+
+/**
+ * @brief Releases interval of rte_eth_dev devices from array.
+ * @param eth_devs Array of pointers to rte_eth_dev devices.
+ * @param from Index in array eth_devs to start with.
+ * @param to Index in array right after the last element to release.
+ *
+ * Used for releasing at failed initialization.
+ */
+static void
+szedata2_eth_dev_release_interval(struct rte_eth_dev **eth_devs,
+		unsigned int from, unsigned int to)
+{
+	unsigned int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = from; i < to; i++) {
+		rte_szedata2_eth_dev_uninit(eth_devs[i]);
+		rte_eth_dev_pci_release(eth_devs[i]);
+	}
+}
+
+/**
+ * @brief Callback .probe for struct rte_pci_driver.
+ */
 static int szedata2_eth_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_probe(pci_dev,
-		sizeof(struct pmd_internals), rte_szedata2_eth_dev_init);
+	struct port_info port_info[SZEDATA2_MAX_PORTS];
+	unsigned int port_count;
+	int ret;
+	unsigned int i;
+	struct pci_dev_list_entry *list_entry;
+	struct rte_eth_dev *eth_devs[SZEDATA2_MAX_PORTS] = {NULL,};
+
+	PMD_INIT_FUNC_TRACE();
+
+	ret = get_port_info(pci_dev, &port_count, port_info,
+			SZEDATA2_MAX_PORTS);
+	if (ret != 0)
+		return ret;
+
+	if (port_count == 0) {
+		PMD_INIT_LOG(ERR, "No available ports!");
+		return -ENODEV;
+	}
+
+	list_entry = rte_zmalloc(NULL, sizeof(struct pci_dev_list_entry),
+			RTE_CACHE_LINE_SIZE);
+	if (list_entry == NULL) {
+		PMD_INIT_LOG(ERR, "rte_zmalloc() failed!");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < port_count; i++) {
+		eth_devs[i] = szedata2_eth_dev_allocate(pci_dev,
+				port_info[i].numa_node, i);
+		if (eth_devs[i] == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to alloc eth_dev for port %u",
+					i);
+			szedata2_eth_dev_release_interval(eth_devs, 0, i);
+			rte_free(list_entry);
+			return -ENOMEM;
+		}
+
+		ret = rte_szedata2_eth_dev_init(eth_devs[i], &port_info[i]);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Failed to init eth_dev for port %u",
+					i);
+			rte_eth_dev_pci_release(eth_devs[i]);
+			szedata2_eth_dev_release_interval(eth_devs, 0, i);
+			rte_free(list_entry);
+			return ret;
+		}
+	}
+
+	/*
+	 * Add pci_dev to list of PCI devices for this driver
+	 * which is used at remove callback to release all created eth_devs.
+	 */
+	list_entry->pci_dev = pci_dev;
+	list_entry->port_count = port_count;
+	LIST_INSERT_HEAD(&szedata2_pci_dev_list, list_entry, next);
+	return 0;
 }
 
+/**
+ * @brief Callback .remove for struct rte_pci_driver.
+ */
 static int szedata2_eth_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev,
-		rte_szedata2_eth_dev_uninit);
+	unsigned int i;
+	unsigned int port_count;
+	char name[RTE_ETH_NAME_MAX_LEN];
+	struct rte_eth_dev *eth_dev;
+	int ret;
+	int retval = 0;
+	bool found = false;
+	struct pci_dev_list_entry *list_entry = NULL;
+
+	PMD_INIT_FUNC_TRACE();
+
+	LIST_FOREACH(list_entry, &szedata2_pci_dev_list, next) {
+		if (list_entry->pci_dev == pci_dev) {
+			port_count = list_entry->port_count;
+			found = true;
+			break;
+		}
+	}
+	LIST_REMOVE(list_entry, next);
+	rte_free(list_entry);
+
+	if (!found) {
+		PMD_DRV_LOG(ERR, "PCI device " PCI_PRI_FMT " not found",
+				pci_dev->addr.domain, pci_dev->addr.bus,
+				pci_dev->addr.devid, pci_dev->addr.function);
+		return -ENODEV;
+	}
+
+	for (i = 0; i < port_count; i++) {
+		snprintf(name, RTE_ETH_NAME_MAX_LEN, "%s"
+				SZEDATA2_ETH_DEV_NAME_SUFFIX_FMT,
+				pci_dev->device.name, i);
+		PMD_DRV_LOG(DEBUG, "Removing eth_dev %s", name);
+		eth_dev = rte_eth_dev_allocated(name);
+		if (!eth_dev) {
+			PMD_DRV_LOG(ERR, "eth_dev %s not found", name);
+			retval = retval ? retval : -ENODEV;
+		}
+
+		ret = rte_szedata2_eth_dev_uninit(eth_dev);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "eth_dev %s uninit failed", name);
+			retval = retval ? retval : ret;
+		}
+
+		rte_eth_dev_pci_release(eth_dev);
+	}
+
+	return retval;
 }
 
 static struct rte_pci_driver szedata2_eth_driver = {
