@@ -1918,7 +1918,7 @@ static struct rte_pci_driver szedata2_eth_driver = {
 RTE_PMD_REGISTER_PCI(RTE_SZEDATA2_DRIVER_NAME, szedata2_eth_driver);
 RTE_PMD_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_SZEDATA2_DRIVER_NAME,
-	"* combo6core & combov3 & szedata2 & szedata2_cv3");
+	"* combo6core & combov3 & szedata2 & ( szedata2_cv3 | szedata2_cv3_fdt )");
 
 RTE_INIT(szedata2_init_log);
 static void
