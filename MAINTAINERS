@@ -45,6 +45,7 @@ T: git://dpdk.org/next/dpdk-next-virtio
 
 Next-crypto Tree
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+M: Akhil Goyal <akhil.goyal@nxp.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
 Next-eventdev Tree
