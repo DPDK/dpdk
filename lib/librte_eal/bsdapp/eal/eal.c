@@ -818,3 +818,23 @@ rte_vfio_dma_unmap(uint64_t __rte_unused vaddr, uint64_t __rte_unused iova,
 {
 	return -1;
 }
+
+int __rte_experimental
+rte_vfio_get_group_num(__rte_unused const char *sysfs_base,
+		       __rte_unused const char *dev_addr,
+		       __rte_unused int *iommu_group_num)
+{
+	return -1;
+}
+
+int  __rte_experimental
+rte_vfio_get_container_fd(void)
+{
+	return -1;
+}
+
+int  __rte_experimental
+rte_vfio_get_group_fd(__rte_unused int iommu_group_num)
+{
+	return -1;
+}

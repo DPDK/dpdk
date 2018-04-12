@@ -286,5 +286,8 @@ EXPERIMENTAL {
 	rte_socket_id_by_idx;
 	rte_vfio_dma_map;
 	rte_vfio_dma_unmap;
+	rte_vfio_get_container_fd;
+	rte_vfio_get_group_fd;
+	rte_vfio_get_group_num;
 
 } DPDK_18.02;

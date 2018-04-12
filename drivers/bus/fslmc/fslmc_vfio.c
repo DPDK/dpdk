@@ -91,7 +91,8 @@ fslmc_get_container_group(int *groupid)
 	}
 
 	/* get group number */
-	ret = vfio_get_group_no(SYSFS_FSL_MC_DEVICES, g_container, groupid);
+	ret = rte_vfio_get_group_num(SYSFS_FSL_MC_DEVICES,
+				     g_container, groupid);
 	if (ret <= 0) {
 		DPAA2_BUS_ERR("Unable to find %s IOMMU group", g_container);
 		return -1;
@@ -124,7 +125,7 @@ vfio_connect_container(void)
 	}
 
 	/* Opens main vfio file descriptor which represents the "container" */
-	fd = vfio_get_container_fd();
+	fd = rte_vfio_get_container_fd();
 	if (fd < 0) {
 		DPAA2_BUS_ERR("Failed to open VFIO container");
 		return -errno;
@@ -726,7 +727,7 @@ fslmc_vfio_setup_group(void)
 	}
 
 	/* Get the actual group fd */
-	ret = vfio_get_group_fd(groupid);
+	ret = rte_vfio_get_group_fd(groupid);
 	if (ret < 0)
 		return ret;
 	vfio_group.fd = ret;

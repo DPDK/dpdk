@@ -81,12 +81,6 @@ struct vfio_iommu_spapr_tce_info {
 #define RTE_VFIO_SPAPR VFIO_SPAPR_TCE_v2_IOMMU
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-#define RTE_VFIO_NOIOMMU 8
-#else
-#define RTE_VFIO_NOIOMMU VFIO_NOIOMMU_IOMMU
-#endif
-
 #define VFIO_MAX_GROUPS RTE_MAX_VFIO_GROUPS
 
 /*
@@ -103,7 +97,7 @@ int vfio_mp_sync_connect_to_primary(void);
  * the group fd via an ioctl() call.
  */
 struct vfio_group {
-	int group_no;
+	int group_num;
 	int fd;
 	int devices;
 };
@@ -144,21 +138,6 @@ vfio_set_iommu_type(int vfio_container_fd);
 /* check if we have any supported extensions */
 int
 vfio_has_supported_extensions(int vfio_container_fd);
-
-/* open container fd or get an existing one */
-int
-vfio_get_container_fd(void);
-
-/* parse IOMMU group number for a device
- * returns 1 on success, -1 for errors, 0 for non-existent group
- */
-int
-vfio_get_group_no(const char *sysfs_base,
-		const char *dev_addr, int *iommu_group_no);
-
-/* open group fd or get an existing one */
-int
-vfio_get_group_fd(int iommu_group_no);
 
 int vfio_mp_sync_setup(void);
 

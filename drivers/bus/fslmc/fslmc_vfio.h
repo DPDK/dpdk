@@ -10,8 +10,6 @@
 
 #include <rte_vfio.h>
 
-#include "eal_vfio.h"
-
 #define DPAA2_MC_DPNI_DEVID	7
 #define DPAA2_MC_DPSECI_DEVID	3
 #define DPAA2_MC_DPCON_DEVID	5

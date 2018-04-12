@@ -284,7 +284,7 @@ compact_user_maps(void)
 }
 
 int
-vfio_get_group_fd(int iommu_group_no)
+rte_vfio_get_group_fd(int iommu_group_num)
 {
 	int i;
 	int vfio_group_fd;
@@ -293,7 +293,7 @@ vfio_get_group_fd(int iommu_group_no)
 
 	/* check if we already have the group descriptor open */
 	for (i = 0; i < VFIO_MAX_GROUPS; i++)
-		if (vfio_cfg.vfio_groups[i].group_no == iommu_group_no)
+		if (vfio_cfg.vfio_groups[i].group_num == iommu_group_num)
 			return vfio_cfg.vfio_groups[i].fd;
 
 	/* Lets see first if there is room for a new group */
@@ -304,7 +304,7 @@ vfio_get_group_fd(int iommu_group_no)
 
 	/* Now lets get an index for the new group */
 	for (i = 0; i < VFIO_MAX_GROUPS; i++)
-		if (vfio_cfg.vfio_groups[i].group_no == -1) {
+		if (vfio_cfg.vfio_groups[i].group_num == -1) {
 			cur_grp = &vfio_cfg.vfio_groups[i];
 			break;
 		}
@@ -318,7 +318,7 @@ vfio_get_group_fd(int iommu_group_no)
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
 		/* try regular group format */
 		snprintf(filename, sizeof(filename),
-				 VFIO_GROUP_FMT, iommu_group_no);
+				 VFIO_GROUP_FMT, iommu_group_num);
 		vfio_group_fd = open(filename, O_RDWR);
 		if (vfio_group_fd < 0) {
 			/* if file not found, it's not an error */
@@ -330,7 +330,8 @@ vfio_get_group_fd(int iommu_group_no)
 
 			/* special case: try no-IOMMU path as well */
 			snprintf(filename, sizeof(filename),
-					VFIO_NOIOMMU_GROUP_FMT, iommu_group_no);
+					VFIO_NOIOMMU_GROUP_FMT,
+					iommu_group_num);
 			vfio_group_fd = open(filename, O_RDWR);
 			if (vfio_group_fd < 0) {
 				if (errno != ENOENT) {
@@ -343,7 +344,7 @@ vfio_get_group_fd(int iommu_group_no)
 			/* noiommu group found */
 		}
 
-		cur_grp->group_no = iommu_group_no;
+		cur_grp->group_num = iommu_group_num;
 		cur_grp->fd = vfio_group_fd;
 		vfio_cfg.vfio_active_groups++;
 		return vfio_group_fd;
@@ -365,7 +366,7 @@ vfio_get_group_fd(int iommu_group_no)
 			close(socket_fd);
 			return -1;
 		}
-		if (vfio_mp_sync_send_request(socket_fd, iommu_group_no) < 0) {
+		if (vfio_mp_sync_send_request(socket_fd, iommu_group_num) < 0) {
 			RTE_LOG(ERR, EAL, "  cannot send group number!\n");
 			close(socket_fd);
 			return -1;
@@ -380,7 +381,7 @@ vfio_get_group_fd(int iommu_group_no)
 			/* if we got the fd, store it and return it */
 			if (vfio_group_fd > 0) {
 				close(socket_fd);
-				cur_grp->group_no = iommu_group_no;
+				cur_grp->group_num = iommu_group_num;
 				cur_grp->fd = vfio_group_fd;
 				vfio_cfg.vfio_active_groups++;
 				return vfio_group_fd;
@@ -487,7 +488,7 @@ rte_vfio_clear_group(int vfio_group_fd)
 		i = get_vfio_group_idx(vfio_group_fd);
 		if (i < 0)
 			return -1;
-		vfio_cfg.vfio_groups[i].group_no = -1;
+		vfio_cfg.vfio_groups[i].group_num = -1;
 		vfio_cfg.vfio_groups[i].fd = -1;
 		vfio_cfg.vfio_groups[i].devices = 0;
 		vfio_cfg.vfio_active_groups--;
@@ -544,11 +545,11 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			.argsz = sizeof(group_status)
 	};
 	int vfio_group_fd;
-	int iommu_group_no;
+	int iommu_group_num;
 	int i, ret;
 
 	/* get group number */
-	ret = vfio_get_group_no(sysfs_base, dev_addr, &iommu_group_no);
+	ret = rte_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
 	if (ret == 0) {
 		RTE_LOG(WARNING, EAL, "  %s not managed by VFIO driver, skipping\n",
 			dev_addr);
@@ -560,7 +561,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		return -1;
 
 	/* get the actual group fd */
-	vfio_group_fd = vfio_get_group_fd(iommu_group_no);
+	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_num);
 	if (vfio_group_fd < 0)
 		return -1;
 
@@ -733,7 +734,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 			.argsz = sizeof(group_status)
 	};
 	int vfio_group_fd;
-	int iommu_group_no;
+	int iommu_group_num;
 	int ret;
 
 	/* we don't want any DMA mapping messages to come while we're detaching
@@ -743,7 +744,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	rte_rwlock_read_lock(mem_lock);
 
 	/* get group number */
-	ret = vfio_get_group_no(sysfs_base, dev_addr, &iommu_group_no);
+	ret = rte_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
 	if (ret <= 0) {
 		RTE_LOG(WARNING, EAL, "  %s not managed by VFIO driver\n",
 			dev_addr);
@@ -753,9 +754,9 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	}
 
 	/* get the actual group fd */
-	vfio_group_fd = vfio_get_group_fd(iommu_group_no);
+	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_num);
 	if (vfio_group_fd <= 0) {
-		RTE_LOG(INFO, EAL, "vfio_get_group_fd failed for %s\n",
+		RTE_LOG(INFO, EAL, "rte_vfio_get_group_fd failed for %s\n",
 				   dev_addr);
 		ret = -1;
 		goto out;
@@ -818,7 +819,7 @@ rte_vfio_enable(const char *modname)
 
 	for (i = 0; i < VFIO_MAX_GROUPS; i++) {
 		vfio_cfg.vfio_groups[i].fd = -1;
-		vfio_cfg.vfio_groups[i].group_no = -1;
+		vfio_cfg.vfio_groups[i].group_num = -1;
 		vfio_cfg.vfio_groups[i].devices = 0;
 	}
 
@@ -841,7 +842,7 @@ rte_vfio_enable(const char *modname)
 		return 0;
 	}
 
-	vfio_cfg.vfio_container_fd = vfio_get_container_fd();
+	vfio_cfg.vfio_container_fd = rte_vfio_get_container_fd();
 
 	/* check if we have VFIO driver enabled */
 	if (vfio_cfg.vfio_container_fd != -1) {
@@ -919,7 +920,7 @@ vfio_has_supported_extensions(int vfio_container_fd)
 }
 
 int
-vfio_get_container_fd(void)
+rte_vfio_get_container_fd(void)
 {
 	int ret, vfio_container_fd;
 
@@ -983,8 +984,8 @@ vfio_get_container_fd(void)
 }
 
 int
-vfio_get_group_no(const char *sysfs_base,
-		const char *dev_addr, int *iommu_group_no)
+rte_vfio_get_group_num(const char *sysfs_base,
+		const char *dev_addr, int *iommu_group_num)
 {
 	char linkname[PATH_MAX];
 	char filename[PATH_MAX];
@@ -1016,7 +1017,7 @@ vfio_get_group_no(const char *sysfs_base,
 	errno = 0;
 	group_tok = tok[ret - 1];
 	end = group_tok;
-	*iommu_group_no = strtol(group_tok, &end, 10);
+	*iommu_group_num = strtol(group_tok, &end, 10);
 	if ((end != group_tok && *end != '\0') || errno != 0) {
 		RTE_LOG(ERR, EAL, "  %s error parsing IOMMU number!\n", dev_addr);
 		return -1;

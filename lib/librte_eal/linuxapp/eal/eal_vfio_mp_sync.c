@@ -267,7 +267,7 @@ vfio_mp_sync_thread(void __rte_unused * arg)
 
 		switch (ret) {
 		case SOCKET_REQ_CONTAINER:
-			fd = vfio_get_container_fd();
+			fd = rte_vfio_get_container_fd();
 			if (fd < 0)
 				vfio_mp_sync_send_request(conn_sock, SOCKET_ERR);
 			else
@@ -283,7 +283,7 @@ vfio_mp_sync_thread(void __rte_unused * arg)
 				continue;
 			}
 
-			fd = vfio_get_group_fd(vfio_data);
+			fd = rte_vfio_get_group_fd(vfio_data);
 
 			if (fd < 0)
 				vfio_mp_sync_send_request(conn_sock, SOCKET_ERR);
