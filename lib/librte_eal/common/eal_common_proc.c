@@ -323,6 +323,8 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			 */
 			struct rte_mp_msg dummy;
 			memset(&dummy, 0, sizeof(dummy));
+			snprintf(dummy.name, sizeof(dummy.name),
+					"%s", msg->name);
 			mp_send(&dummy, s->sun_path, MP_IGN);
 		} else {
 			RTE_LOG(ERR, EAL, "Cannot find action: %s\n",
