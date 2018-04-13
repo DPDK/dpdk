@@ -72,8 +72,12 @@ Deprecation Notices
 * ethdev: a new Tx and Rx offload API was introduced on 17.11.
   In the new API, offloads are divided into per-port and per-queue offloads.
   Offloads are disabled by default and enabled per application request.
-  The old offloads API is target to be deprecated on 18.05. This includes:
 
+  The old ethdev - drivers offload interface will be deprecated on 18.05.
+  This includes:
+  - removal of the conversion in ethdev from new offloading API to old API for drivers.
+
+  In later releases the old offloading API will be deprecated, which will include:
   - removal of ``ETH_TXQ_FLAGS_NO*`` flags.
   - removal of ``txq_flags`` field from ``rte_eth_txconf`` struct.
   - removal of the offloads bit-field from ``rte_eth_rxmode`` struct.
