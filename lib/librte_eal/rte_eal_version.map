@@ -213,6 +213,10 @@ DPDK_18.02 {
 EXPERIMENTAL {
 	global:
 
+	rte_dev_event_callback_register;
+	rte_dev_event_callback_unregister;
+	rte_dev_event_monitor_start;
+	rte_dev_event_monitor_stop;
 	rte_eal_cleanup;
 	rte_eal_devargs_insert;
 	rte_eal_devargs_parse;

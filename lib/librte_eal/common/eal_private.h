@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <rte_dev.h>
+
 /**
  * Initialize the memzone subsystem (private to eal).
  *
@@ -237,5 +239,17 @@ struct rte_bus *rte_bus_find_by_device_name(const char *str);
  */
 
 int rte_mp_channel_init(void);
+
+/**
+ * Internal Executes all the user application registered callbacks for
+ * the specific device. It is for DPDK internal user only. User
+ * application should not call it directly.
+ *
+ * @param device_name
+ *  The device name.
+ * @param event
+ *  the device event type.
+ */
+void dev_callback_process(char *device_name, enum rte_dev_event_type event);
 
 #endif /* _EAL_PRIVATE_H_ */

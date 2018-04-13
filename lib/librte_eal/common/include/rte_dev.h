@@ -24,6 +24,25 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_log.h>
 
+/**
+ * The device event type.
+ */
+enum rte_dev_event_type {
+	RTE_DEV_EVENT_ADD,	/**< device being added */
+	RTE_DEV_EVENT_REMOVE,	/**< device being removed */
+	RTE_DEV_EVENT_MAX	/**< max value of this enum */
+};
+
+struct rte_dev_event {
+	enum rte_dev_event_type type;	/**< device event type */
+	int subsystem;			/**< subsystem id */
+	char *devname;			/**< device name */
+};
+
+typedef void (*rte_dev_event_cb_fn)(char *device_name,
+					enum rte_dev_event_type event,
+					void *cb_arg);
+
 __attribute__((format(printf, 2, 0)))
 static inline void
 rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
@@ -266,5 +285,79 @@ __attribute__((used)) = str
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * It registers the callback for the specific device.
+ * Multiple callbacks cal be registered at the same time.
+ *
+ * @param device_name
+ *  The device name, that is the param name of the struct rte_device,
+ *  null value means for all devices.
+ * @param cb_fn
+ *  callback address.
+ * @param cb_arg
+ *  address of parameter for callback.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+int __rte_experimental
+rte_dev_event_callback_register(const char *device_name,
+				rte_dev_event_cb_fn cb_fn,
+				void *cb_arg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * It unregisters the callback according to the specified device.
+ *
+ * @param device_name
+ *  The device name, that is the param name of the struct rte_device,
+ *  null value means for all devices and their callbacks.
+ * @param cb_fn
+ *  callback address.
+ * @param cb_arg
+ *  address of parameter for callback, (void *)-1 means to remove all
+ *  registered which has the same callback address.
+ *
+ * @return
+ *  - On success, return the number of callback entities removed.
+ *  - On failure, a negative value.
+ */
+int __rte_experimental
+rte_dev_event_callback_unregister(const char *device_name,
+				  rte_dev_event_cb_fn cb_fn,
+				  void *cb_arg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Start the device event monitoring.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int __rte_experimental
+rte_dev_event_monitor_start(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Stop the device event monitoring.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int __rte_experimental
+rte_dev_event_monitor_stop(void);
 
 #endif /* _RTE_DEV_H_ */

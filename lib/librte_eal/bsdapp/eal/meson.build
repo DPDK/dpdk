@@ -13,4 +13,5 @@ env_sources = files('eal_alarm.c',
 		'eal_timer.c',
 		'eal.c',
 		'eal_memory.c',
+		'eal_dev.c'
 )

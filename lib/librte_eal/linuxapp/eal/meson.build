@@ -19,6 +19,7 @@ env_sources = files('eal_alarm.c',
 		'eal_vfio_mp_sync.c',
 		'eal.c',
 		'eal_memory.c',
+		'eal_dev.c',
 )
 
 if has_libnuma == 1

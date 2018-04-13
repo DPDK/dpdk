@@ -58,6 +58,16 @@ New Features
   * Added support for NVGRE, VXLAN and GENEVE filters in flow API.
   * Added support for DROP action in flow API.
 
+* **Added device event monitor framework.**
+
+  Added a general device event monitor framework at EAL, for device dynamic management.
+  Such as device hotplug awareness and actions adopted accordingly. The list of new APIs:
+
+  * ``rte_dev_event_monitor_start`` and ``rte_dev_event_monitor_stop`` are for
+    the event monitor enable and disable.
+  * ``rte_dev_event_callback_register`` and ``rte_dev_event_callback_unregister``
+    are for the user's callbacks register and unregister.
+
 
 API Changes
 -----------
