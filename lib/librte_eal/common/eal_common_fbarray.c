@@ -173,7 +173,10 @@ find_next_n(const struct rte_fbarray *arr, int start, int n, bool used)
 		 */
 
 		/* count leading zeroes on inverted mask */
-		clz = __builtin_clzll(~cur_msk);
+		if (~cur_msk == 0)
+			clz = sizeof(cur_msk) * 8;
+		else
+			clz = __builtin_clzll(~cur_msk);
 
 		/* if there aren't any runs at the end either, just continue */
 		if (clz == 0)
