@@ -826,8 +826,10 @@ mlx5_flow_convert_items_validate(const struct rte_flow_item items[],
 				break;
 			}
 		}
-		if (!token)
+		if (!token) {
+			ret = -ENOTSUP;
 			goto exit_item_not_supported;
+		}
 		cur_item = token;
 		ret = mlx5_flow_item_validate(items,
 					      (const uint8_t *)cur_item->mask,
