@@ -922,8 +922,6 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 
 	pthread_mutex_lock(&pending_requests.lock);
 	exist = find_sync_request(dst, req->name);
-	if (!exist)
-		TAILQ_INSERT_TAIL(&pending_requests.requests, &sync_req, next);
 	if (exist) {
 		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
 		rte_errno = EEXIST;
@@ -938,6 +936,8 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 		return -1;
 	} else if (ret == 0)
 		return 0;
+
+	TAILQ_INSERT_TAIL(&pending_requests.requests, &sync_req, next);
 
 	reply->nb_sent++;
 
