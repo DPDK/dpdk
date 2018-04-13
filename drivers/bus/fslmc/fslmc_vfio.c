@@ -270,8 +270,8 @@ fslmc_map_dma(uint64_t vaddr, rte_iova_t iovaddr __rte_unused, size_t len)
 		return -1;
 	}
 
-	DPAA2_BUS_DEBUG("--> Map address: %llX, size: 0x%llX",
-			dma_map.vaddr, dma_map.size);
+	DPAA2_BUS_DEBUG("--> Map address: 0x%"PRIx64", size: %"PRIu64"",
+			(uint64_t)dma_map.vaddr, (uint64_t)dma_map.size);
 	ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA, &dma_map);
 	if (ret) {
 		DPAA2_BUS_ERR("VFIO_IOMMU_MAP_DMA API(errno = %d)",
@@ -303,8 +303,8 @@ fslmc_unmap_dma(uint64_t vaddr, uint64_t iovaddr __rte_unused, size_t len)
 		return -1;
 	}
 
-	DPAA2_BUS_DEBUG("--> Unmap address: %llX, size: 0x%llX",
-			dma_unmap.iova, dma_unmap.size);
+	DPAA2_BUS_DEBUG("--> Unmap address: 0x%"PRIx64", size: %"PRIu64"",
+			(uint64_t)dma_unmap.iova, (uint64_t)dma_unmap.size);
 	ret = ioctl(group->container->fd, VFIO_IOMMU_UNMAP_DMA, &dma_unmap);
 	if (ret) {
 		DPAA2_BUS_ERR("VFIO_IOMMU_UNMAP_DMA API(errno = %d)",
@@ -401,8 +401,8 @@ static int64_t vfio_map_mcp_obj(struct fslmc_vfio_group *group, char *mcp_obj)
 		goto MC_FAILURE;
 	}
 
-	DPAA2_BUS_DEBUG("Region offset = %llx  , region size = %llx",
-			reg_info.offset, reg_info.size);
+	DPAA2_BUS_DEBUG("Region offset = 0x%"PRIx64"  , region size = %"PRIu64"",
+			(uint64_t)reg_info.offset, (uint64_t)reg_info.size);
 
 	v_addr = (size_t)mmap(NULL, reg_info.size,
 		PROT_WRITE | PROT_READ, MAP_SHARED,
