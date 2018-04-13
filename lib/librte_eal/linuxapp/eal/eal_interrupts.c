@@ -559,6 +559,9 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 			return -1;
 		break;
 #endif
+	/* not used at this moment */
+	case RTE_INTR_HANDLE_DEV_EVENT:
+		return -1;
 	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
@@ -606,6 +609,9 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 			return -1;
 		break;
 #endif
+	/* not used at this moment */
+	case RTE_INTR_HANDLE_DEV_EVENT:
+		return -1;
 	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
@@ -674,7 +680,10 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 			bytes_read = 0;
 			call = true;
 			break;
-
+		case RTE_INTR_HANDLE_DEV_EVENT:
+			bytes_read = 0;
+			call = true;
+			break;
 		default:
 			bytes_read = 1;
 			break;

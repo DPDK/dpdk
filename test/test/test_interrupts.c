@@ -20,6 +20,7 @@ enum test_interrupt_handle_type {
 	TEST_INTERRUPT_HANDLE_VALID,
 	TEST_INTERRUPT_HANDLE_VALID_UIO,
 	TEST_INTERRUPT_HANDLE_VALID_ALARM,
+	TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT,
 	TEST_INTERRUPT_HANDLE_CASE1,
 	TEST_INTERRUPT_HANDLE_MAX
 };
@@ -79,6 +80,10 @@ test_interrupt_init(void)
 	intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM].fd = pfds.readfd;
 	intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM].type =
 					RTE_INTR_HANDLE_ALARM;
+
+	intr_handles[TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT].fd = pfds.readfd;
+	intr_handles[TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT].type =
+					RTE_INTR_HANDLE_DEV_EVENT;
 
 	intr_handles[TEST_INTERRUPT_HANDLE_CASE1].fd = pfds.writefd;
 	intr_handles[TEST_INTERRUPT_HANDLE_CASE1].type = RTE_INTR_HANDLE_UIO;
@@ -250,6 +255,14 @@ test_interrupt_enable(void)
 		return -1;
 	}
 
+	/* check with specific valid intr_handle */
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT];
+	if (rte_intr_enable(&test_intr_handle) == 0) {
+		printf("unexpectedly enable a specific intr_handle "
+			"successfully\n");
+		return -1;
+	}
+
 	/* check with valid handler and its type */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_CASE1];
 	if (rte_intr_enable(&test_intr_handle) < 0) {
@@ -300,6 +313,14 @@ test_interrupt_disable(void)
 
 	/* check with specific valid intr_handle */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM];
+	if (rte_intr_disable(&test_intr_handle) == 0) {
+		printf("unexpectedly disable a specific intr_handle "
+			"successfully\n");
+		return -1;
+	}
+
+	/* check with specific valid intr_handle */
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT];
 	if (rte_intr_disable(&test_intr_handle) == 0) {
 		printf("unexpectedly disable a specific intr_handle "
 			"successfully\n");
@@ -393,9 +414,17 @@ test_interrupt(void)
 		goto out;
 	}
 
+	printf("Check valid device event interrupt full path\n");
+	if (test_interrupt_full_path_check(
+		TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT) < 0) {
+		printf("failure occurred during checking valid device event "
+						"interrupt full path\n");
+		goto out;
+	}
+
 	printf("Check valid alarm interrupt full path\n");
-	if (test_interrupt_full_path_check(TEST_INTERRUPT_HANDLE_VALID_ALARM)
-									< 0) {
+	if (test_interrupt_full_path_check(
+		TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT) < 0) {
 		printf("failure occurred during checking valid alarm "
 						"interrupt full path\n");
 		goto out;
@@ -508,6 +537,12 @@ out:
 			test_interrupt_callback_1, (void *)-1);
 
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_ALARM];
+	rte_intr_callback_unregister(&test_intr_handle,
+			test_interrupt_callback, (void *)-1);
+	rte_intr_callback_unregister(&test_intr_handle,
+			test_interrupt_callback_1, (void *)-1);
+
+	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT];
 	rte_intr_callback_unregister(&test_intr_handle,
 			test_interrupt_callback, (void *)-1);
 	rte_intr_callback_unregister(&test_intr_handle,
