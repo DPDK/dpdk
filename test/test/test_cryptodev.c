@@ -21,6 +21,8 @@
 #include <rte_cryptodev_scheduler_operations.h>
 #endif
 
+#include <rte_lcore.h>
+
 #include "test.h"
 #include "test_cryptodev.h"
 
@@ -35,6 +37,8 @@
 #include "test_cryptodev_zuc_test_vectors.h"
 #include "test_cryptodev_aead_test_vectors.h"
 #include "test_cryptodev_hmac_test_vectors.h"
+
+#define VDEV_ARGS_SIZE 100
 
 static int gbl_driver_id;
 
@@ -351,17 +355,46 @@ testsuite_setup(void)
 	}
 
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+	char vdev_args[VDEV_ARGS_SIZE] = {""};
+	char temp_str[VDEV_ARGS_SIZE] = {"mode=multi-core,"
+		"ordering=enable,name=cryptodev_test_scheduler,corelist="};
+	uint16_t slave_core_count = 0;
+	uint16_t socket_id = 0;
+
 	if (gbl_driver_id == rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD))) {
 
+		/* Identify the Slave Cores
+		 * Use 2 slave cores for the device args
+		 */
+		RTE_LCORE_FOREACH_SLAVE(i) {
+			if (slave_core_count > 1)
+				break;
+			snprintf(vdev_args, sizeof(vdev_args),
+					"%s%d", temp_str, i);
+			strcpy(temp_str, vdev_args);
+			strcat(temp_str, ";");
+			slave_core_count++;
+			socket_id = lcore_config[i].socket_id;
+		}
+		if (slave_core_count != 2) {
+			RTE_LOG(ERR, USER1,
+				"Cryptodev scheduler test require at least "
+				"two slave cores to run. "
+				"Please use the correct coremask.\n");
+			return TEST_FAILED;
+		}
+		strcpy(temp_str, vdev_args);
+		snprintf(vdev_args, sizeof(vdev_args), "%s,socket_id=%d",
+				temp_str, socket_id);
+		RTE_LOG(DEBUG, USER1, "vdev_args: %s\n", vdev_args);
 		nb_devs = rte_cryptodev_device_count_by_driver(
 				rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD),
-				NULL);
-
+					vdev_args);
 			TEST_ASSERT(ret == 0,
 				"Failed to create instance %u of"
 				" pmd : %s",
@@ -8554,33 +8587,47 @@ test_scheduler_detach_slave_op(void)
 }
 
 static int
-test_scheduler_mode_op(void)
+test_scheduler_mode_op(enum rte_cryptodev_scheduler_mode scheduler_mode)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint8_t sched_id = ts_params->valid_devs[0];
-	struct rte_cryptodev_scheduler_ops op = {0};
-	struct rte_cryptodev_scheduler dummy_scheduler = {
-		.description = "dummy scheduler to test mode",
-		.name = "dummy scheduler",
-		.mode = CDEV_SCHED_MODE_USERDEFINED,
-		.ops = &op
-	};
-	int ret;
+	/* set mode */
+	return rte_cryptodev_scheduler_mode_set(sched_id,
+		scheduler_mode);
+}
 
-	/* set user defined mode */
-	ret = rte_cryptodev_scheduler_load_user_scheduler(sched_id,
-			&dummy_scheduler);
-	TEST_ASSERT(ret == 0,
-		"Failed to set cdev %u to user defined mode", sched_id);
+static int
+test_scheduler_mode_roundrobin_op(void)
+{
+	TEST_ASSERT(test_scheduler_mode_op(CDEV_SCHED_MODE_ROUNDROBIN) ==
+			0, "Failed to set roundrobin mode");
+	return 0;
 
-	/* set round robin mode */
-	ret = rte_cryptodev_scheduler_mode_set(sched_id,
-			CDEV_SCHED_MODE_ROUNDROBIN);
-	TEST_ASSERT(ret == 0,
-		"Failed to set cdev %u to round-robin mode", sched_id);
-	TEST_ASSERT(rte_cryptodev_scheduler_mode_get(sched_id) ==
-			CDEV_SCHED_MODE_ROUNDROBIN, "Scheduling Mode "
-					"not match");
+}
+
+static int
+test_scheduler_mode_multicore_op(void)
+{
+	TEST_ASSERT(test_scheduler_mode_op(CDEV_SCHED_MODE_MULTICORE) ==
+			0, "Failed to set multicore mode");
+
+	return 0;
+}
+
+static int
+test_scheduler_mode_failover_op(void)
+{
+	TEST_ASSERT(test_scheduler_mode_op(CDEV_SCHED_MODE_FAILOVER) ==
+			0, "Failed to set failover mode");
+
+	return 0;
+}
+
+static int
+test_scheduler_mode_pkt_size_distr_op(void)
+{
+	TEST_ASSERT(test_scheduler_mode_op(CDEV_SCHED_MODE_PKT_SIZE_DISTR) ==
+			0, "Failed to set pktsize mode");
 
 	return 0;
 }
@@ -8590,8 +8637,20 @@ static struct unit_test_suite cryptodev_scheduler_testsuite  = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
+		/* Multi Core */
 		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_op),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_multicore_op),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_chain_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_cipheronly_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_authonly_scheduler_all),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
+
+		/* Round Robin */
+		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_roundrobin_op),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_AES_chain_scheduler_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -8599,6 +8658,29 @@ static struct unit_test_suite cryptodev_scheduler_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_authonly_scheduler_all),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
+
+		/* Fail over */
+		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_failover_op),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_chain_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_cipheronly_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_authonly_scheduler_all),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
+
+		/* PKT SIZE */
+		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_pkt_size_distr_op),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_chain_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_cipheronly_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+					test_authonly_scheduler_all),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
+
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
