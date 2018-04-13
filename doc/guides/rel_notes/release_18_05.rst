@@ -68,6 +68,8 @@ New Features
   * ``rte_dev_event_callback_register`` and ``rte_dev_event_callback_unregister``
     are for the user's callbacks register and unregister.
 
+  Linux uevent is supported as backend of this device event notification framework.
+
 
 API Changes
 -----------
