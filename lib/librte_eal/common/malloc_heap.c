@@ -815,6 +815,7 @@ rte_eal_malloc_heap_init(void)
 
 	if (register_mp_requests()) {
 		RTE_LOG(ERR, EAL, "Couldn't register malloc multiprocess actions\n");
+		rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
 		return -1;
 	}
 
