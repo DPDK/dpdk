@@ -526,8 +526,8 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		 */
 		char *buff_data = rte_pktmbuf_mtod(seg, void *);
 		j = (*buff_data & 0xf0);
-		if (j & (0x40 | 0x60))
-			pi.proto = (j == 0x40) ? 0x0008 : 0xdd86;
+		pi.proto = (j == 0x40) ? 0x0008 :
+				(j == 0x60) ? 0xdd86 : 0x00;
 
 		iovecs[0].iov_base = &pi;
 		iovecs[0].iov_len = sizeof(pi);
