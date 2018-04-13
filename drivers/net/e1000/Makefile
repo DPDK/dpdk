@@ -22,7 +22,7 @@ ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 #
 # CFLAGS for icc
 #
-CFLAGS_BASE_DRIVER  = -diag-disable 177 -diag-disable 181 -diag-disable 188
+CFLAGS_BASE_DRIVER  = -diag-disable 177 -diag-disable 181
 CFLAGS_BASE_DRIVER += -diag-disable 869 -diag-disable 2259
 else
 #

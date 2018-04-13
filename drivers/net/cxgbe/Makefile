@@ -18,12 +18,6 @@ EXPORT_MAP := rte_pmd_cxgbe_version.map
 
 LIBABIVER := 1
 
-ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
-#
-# CFLAGS for icc
-#
-CFLAGS_BASE_DRIVER = -diag-disable 188
-else
 #
 # CFLAGS for gcc/clang
 #
@@ -32,9 +26,7 @@ ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 endif
 endif
-CFLAGS_BASE_DRIVER =
 
-endif
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_bus_pci
