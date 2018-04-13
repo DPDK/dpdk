@@ -3,6 +3,7 @@
  */
 
 #include <inttypes.h>
+#include <limits.h>
 #include <sys/mman.h>
 #include <stdint.h>
 #include <errno.h>
@@ -21,7 +22,7 @@
 #include "rte_fbarray.h"
 
 #define MASK_SHIFT 6ULL
-#define MASK_ALIGN (1 << MASK_SHIFT)
+#define MASK_ALIGN (1ULL << MASK_SHIFT)
 #define MASK_LEN_TO_IDX(x) ((x) >> MASK_SHIFT)
 #define MASK_LEN_TO_MOD(x) ((x) - RTE_ALIGN_FLOOR(x, MASK_ALIGN))
 #define MASK_GET_IDX(idx, mod) ((idx << MASK_SHIFT) + mod)
@@ -32,12 +33,12 @@
  */
 
 struct used_mask {
-	int n_masks;
+	unsigned int n_masks;
 	uint64_t data[];
 };
 
 static size_t
-calc_mask_size(int len)
+calc_mask_size(unsigned int len)
 {
 	/* mask must be multiple of MASK_ALIGN, even though length of array
 	 * itself may not be aligned on that boundary.
@@ -48,7 +49,7 @@ calc_mask_size(int len)
 }
 
 static size_t
-calc_data_size(size_t page_sz, int elt_sz, int len)
+calc_data_size(size_t page_sz, unsigned int elt_sz, unsigned int len)
 {
 	size_t data_sz = elt_sz * len;
 	size_t msk_sz = calc_mask_size(len);
@@ -56,7 +57,7 @@ calc_data_size(size_t page_sz, int elt_sz, int len)
 }
 
 static struct used_mask *
-get_used_mask(void *data, int elt_sz, int len)
+get_used_mask(void *data, unsigned int elt_sz, unsigned int len)
 {
 	return (struct used_mask *) RTE_PTR_ADD(data, elt_sz * len);
 }
@@ -86,13 +87,14 @@ resize_and_map(int fd, void *addr, size_t len)
 }
 
 static int
-find_next_n(const struct rte_fbarray *arr, int start, int n, bool used)
+find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
+	    bool used)
 {
 	const struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz,
 			arr->len);
-	int msk_idx, lookahead_idx, first, first_mod;
-	int last, last_mod, last_msk;
-	uint64_t ignore_msk;
+	unsigned int msk_idx, lookahead_idx, first, first_mod;
+	unsigned int last, last_mod;
+	uint64_t last_msk, ignore_msk;
 
 	/*
 	 * mask only has granularity of MASK_ALIGN, but start may not be aligned
@@ -108,11 +110,11 @@ find_next_n(const struct rte_fbarray *arr, int start, int n, bool used)
 	 */
 	last = MASK_LEN_TO_IDX(arr->len);
 	last_mod = MASK_LEN_TO_MOD(arr->len);
-	last_msk = ~(-(1ULL) << last_mod);
+	last_msk = ~(-1ULL << last_mod);
 
 	for (msk_idx = first; msk_idx < msk->n_masks; msk_idx++) {
 		uint64_t cur_msk, lookahead_msk;
-		int run_start, clz, left;
+		unsigned int run_start, clz, left;
 		bool found = false;
 		/*
 		 * The process of getting n consecutive bits for arbitrary n is
@@ -157,7 +159,7 @@ find_next_n(const struct rte_fbarray *arr, int start, int n, bool used)
 		/* if n can fit in within a single mask, do a search */
 		if (n <= MASK_ALIGN) {
 			uint64_t tmp_msk = cur_msk;
-			int s_idx;
+			unsigned int s_idx;
 			for (s_idx = 0; s_idx < n - 1; s_idx++)
 				tmp_msk &= tmp_msk >> 1ULL;
 			/* we found what we were looking for */
@@ -188,7 +190,7 @@ find_next_n(const struct rte_fbarray *arr, int start, int n, bool used)
 
 		for (lookahead_idx = msk_idx + 1; lookahead_idx < msk->n_masks;
 				lookahead_idx++) {
-			int s_idx, need;
+			unsigned int s_idx, need;
 			lookahead_msk = msk->data[lookahead_idx];
 
 			/* if we're looking for free space, invert the mask */
@@ -234,13 +236,13 @@ find_next_n(const struct rte_fbarray *arr, int start, int n, bool used)
 }
 
 static int
-find_next(const struct rte_fbarray *arr, int start, bool used)
+find_next(const struct rte_fbarray *arr, unsigned int start, bool used)
 {
 	const struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz,
 			arr->len);
-	int idx, first, first_mod;
-	int last, last_mod, last_msk;
-	uint64_t ignore_msk;
+	unsigned int idx, first, first_mod;
+	unsigned int last, last_mod;
+	uint64_t last_msk, ignore_msk;
 
 	/*
 	 * mask only has granularity of MASK_ALIGN, but start may not be aligned
@@ -290,13 +292,14 @@ find_next(const struct rte_fbarray *arr, int start, bool used)
 }
 
 static int
-find_contig(const struct rte_fbarray *arr, int start, bool used)
+find_contig(const struct rte_fbarray *arr, unsigned int start, bool used)
 {
 	const struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz,
 			arr->len);
-	int idx, first, first_mod;
-	int last, last_mod, last_msk;
-	int need_len, result = 0;
+	unsigned int idx, first, first_mod;
+	unsigned int last, last_mod;
+	uint64_t last_msk;
+	unsigned int need_len, result = 0;
 
 	/* array length may not be aligned, so calculate ignore mask for last
 	 * mask index.
@@ -309,7 +312,7 @@ find_contig(const struct rte_fbarray *arr, int start, bool used)
 	first_mod = MASK_LEN_TO_MOD(start);
 	for (idx = first; idx < msk->n_masks; idx++, result += need_len) {
 		uint64_t cur = msk->data[idx];
-		int run_len;
+		unsigned int run_len;
 
 		need_len = MASK_ALIGN;
 
@@ -350,15 +353,15 @@ find_contig(const struct rte_fbarray *arr, int start, bool used)
 }
 
 static int
-set_used(struct rte_fbarray *arr, int idx, bool used)
+set_used(struct rte_fbarray *arr, unsigned int idx, bool used)
 {
 	struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz, arr->len);
 	uint64_t msk_bit = 1ULL << MASK_LEN_TO_MOD(idx);
-	int msk_idx = MASK_LEN_TO_IDX(idx);
+	unsigned int msk_idx = MASK_LEN_TO_IDX(idx);
 	bool already_used;
 	int ret = -1;
 
-	if (arr == NULL || idx < 0 || idx >= arr->len) {
+	if (arr == NULL || idx >= arr->len) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -389,7 +392,7 @@ out:
 static int
 fully_validate(const char *name, unsigned int elt_sz, unsigned int len)
 {
-	if (name == NULL || elt_sz == 0 || len == 0) {
+	if (name == NULL || elt_sz == 0 || len == 0 || len > INT_MAX) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -402,7 +405,8 @@ fully_validate(const char *name, unsigned int elt_sz, unsigned int len)
 }
 
 int __rte_experimental
-rte_fbarray_init(struct rte_fbarray *arr, const char *name, int len, int elt_sz)
+rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
+		unsigned int elt_sz)
 {
 	size_t page_sz, mmap_len;
 	char path[PATH_MAX];
@@ -419,6 +423,8 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, int len, int elt_sz)
 		return -1;
 
 	page_sz = sysconf(_SC_PAGESIZE);
+	if (page_sz == (size_t)-1)
+		goto fail;
 
 	/* calculate our memory limits */
 	mmap_len = calc_data_size(page_sz, elt_sz, len);
@@ -508,6 +514,8 @@ rte_fbarray_attach(struct rte_fbarray *arr)
 		return -1;
 
 	page_sz = sysconf(_SC_PAGESIZE);
+	if (page_sz == (size_t)-1)
+		goto fail;
 
 	mmap_len = calc_data_size(page_sz, arr->elt_sz, arr->len);
 
@@ -601,10 +609,10 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 }
 
 void * __rte_experimental
-rte_fbarray_get(const struct rte_fbarray *arr, int idx)
+rte_fbarray_get(const struct rte_fbarray *arr, unsigned int idx)
 {
 	void *ret = NULL;
-	if (arr == NULL || idx < 0) {
+	if (arr == NULL) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -620,26 +628,26 @@ rte_fbarray_get(const struct rte_fbarray *arr, int idx)
 }
 
 int __rte_experimental
-rte_fbarray_set_used(struct rte_fbarray *arr, int idx)
+rte_fbarray_set_used(struct rte_fbarray *arr, unsigned int idx)
 {
 	return set_used(arr, idx, true);
 }
 
 int __rte_experimental
-rte_fbarray_set_free(struct rte_fbarray *arr, int idx)
+rte_fbarray_set_free(struct rte_fbarray *arr, unsigned int idx)
 {
 	return set_used(arr, idx, false);
 }
 
 int __rte_experimental
-rte_fbarray_is_used(struct rte_fbarray *arr, int idx)
+rte_fbarray_is_used(struct rte_fbarray *arr, unsigned int idx)
 {
 	struct used_mask *msk;
 	int msk_idx;
 	uint64_t msk_bit;
 	int ret = -1;
 
-	if (arr == NULL || idx < 0 || idx >= arr->len) {
+	if (arr == NULL || idx >= arr->len) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -659,11 +667,11 @@ rte_fbarray_is_used(struct rte_fbarray *arr, int idx)
 }
 
 int __rte_experimental
-rte_fbarray_find_next_free(struct rte_fbarray *arr, int start)
+rte_fbarray_find_next_free(struct rte_fbarray *arr, unsigned int start)
 {
 	int ret = -1;
 
-	if (arr == NULL || start < 0 || start >= arr->len) {
+	if (arr == NULL || start >= arr->len) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -683,11 +691,11 @@ out:
 }
 
 int __rte_experimental
-rte_fbarray_find_next_used(struct rte_fbarray *arr, int start)
+rte_fbarray_find_next_used(struct rte_fbarray *arr, unsigned int start)
 {
 	int ret = -1;
 
-	if (arr == NULL || start < 0 || start >= arr->len) {
+	if (arr == NULL || start >= arr->len) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -707,12 +715,12 @@ out:
 }
 
 int __rte_experimental
-rte_fbarray_find_next_n_free(struct rte_fbarray *arr, int start, int n)
+rte_fbarray_find_next_n_free(struct rte_fbarray *arr, unsigned int start,
+		unsigned int n)
 {
 	int ret = -1;
 
-	if (arr == NULL || start < 0 || start >= arr->len ||
-			n < 0 || n > arr->len) {
+	if (arr == NULL || start >= arr->len || n > arr->len) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -732,12 +740,12 @@ out:
 }
 
 int __rte_experimental
-rte_fbarray_find_next_n_used(struct rte_fbarray *arr, int start, int n)
+rte_fbarray_find_next_n_used(struct rte_fbarray *arr, unsigned int start,
+		unsigned int n)
 {
 	int ret = -1;
 
-	if (arr == NULL || start < 0 || start >= arr->len ||
-			n < 0 || n > arr->len) {
+	if (arr == NULL || start >= arr->len || n > arr->len) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -757,11 +765,11 @@ out:
 }
 
 int __rte_experimental
-rte_fbarray_find_contig_free(struct rte_fbarray *arr, int start)
+rte_fbarray_find_contig_free(struct rte_fbarray *arr, unsigned int start)
 {
 	int ret = -1;
 
-	if (arr == NULL || start < 0 || start >= arr->len) {
+	if (arr == NULL || start >= arr->len) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -786,11 +794,11 @@ out:
 }
 
 int __rte_experimental
-rte_fbarray_find_contig_used(struct rte_fbarray *arr, int start)
+rte_fbarray_find_contig_used(struct rte_fbarray *arr, unsigned int start)
 {
 	int ret = -1;
 
-	if (arr == NULL || start < 0 || start >= arr->len) {
+	if (arr == NULL || start >= arr->len) {
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -834,7 +842,7 @@ void __rte_experimental
 rte_fbarray_dump_metadata(struct rte_fbarray *arr, FILE *f)
 {
 	struct used_mask *msk;
-	int i;
+	unsigned int i;
 
 	if (arr == NULL || f == NULL) {
 		rte_errno = EINVAL;
