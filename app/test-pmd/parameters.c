@@ -186,6 +186,7 @@ usage(char* progname)
 	printf("  --flow-isolate-all: "
 	       "requests flow API isolated mode on all ports at initialization time.\n");
 	printf("  --tx-offloads=0xXXXXXXXX: hexadecimal bitmask of TX queue offloads\n");
+	printf("  --hot-plug: enable hot plug for device.\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -621,6 +622,7 @@ launch_args_parse(int argc, char** argv)
 		{ "print-event",		1, 0, 0 },
 		{ "mask-event",			1, 0, 0 },
 		{ "tx-offloads",		1, 0, 0 },
+		{ "hot-plug",			0, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1101,7 +1103,8 @@ launch_args_parse(int argc, char** argv)
 					rte_exit(EXIT_FAILURE,
 						 "invalid mask-event argument\n");
 				}
-
+			if (!strcmp(lgopts[opt_idx].name, "hot-plug"))
+				hot_plug = 1;
 			break;
 		case 'h':
 			usage(argv[0]);

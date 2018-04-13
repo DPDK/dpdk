@@ -319,6 +319,8 @@ extern volatile int test_done; /* stop packet forwarding when set to 1. */
 extern uint8_t lsc_interrupt; /**< disabled by "--no-lsc-interrupt" parameter */
 extern uint8_t rmv_interrupt; /**< disabled by "--no-rmv-interrupt" parameter */
 extern uint32_t event_print_mask;
+extern uint8_t hot_plug; /**< enable by "--hot-plug" parameter */
+
 /**< set by "--print-event xxxx" and "--mask-event xxxx parameters */
 
 #ifdef RTE_LIBRTE_IXGBE_BYPASS

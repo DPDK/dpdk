@@ -479,3 +479,7 @@ The commandline options are:
 
     Set the hexadecimal bitmask of TX queue offloads.
     The default value is 0.
+
+*   ``--hot-plug``
+
+    Enable device event monitor machenism for hotplug.
