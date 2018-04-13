@@ -876,9 +876,7 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 	/* queue already locked by caller */
 
 	exist = find_sync_request(dst, req->name);
-	if (!exist) {
-		TAILQ_INSERT_TAIL(&pending_requests.requests, sync_req, next);
-	} else {
+	if (exist) {
 		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
 		rte_errno = EEXIST;
 		ret = -1;
@@ -895,6 +893,7 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 		ret = 0;
 		goto fail;
 	}
+	TAILQ_INSERT_TAIL(&pending_requests.requests, sync_req, next);
 
 	param->user_reply.nb_sent++;
 
