@@ -20,9 +20,10 @@ ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 #
 # CFLAGS for icc
 #
-CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
+CFLAGS_BASE_DRIVER  = -diag-disable 174 -diag-disable 593 -diag-disable 869
+CFLAGS_BASE_DRIVER += -diag-disable 981 -diag-disable 2259
 
-CFLAGS_ixgbe_rxtx.o += -wd3656
+CFLAGS_ixgbe_rxtx.o += -diag-disable 3656
 
 else ifeq ($(CONFIG_RTE_TOOLCHAIN_CLANG),y)
 #

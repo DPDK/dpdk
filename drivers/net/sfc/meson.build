@@ -32,7 +32,7 @@ extra_flags += [
 
 # Suppress ICC false positive warning on 'bulk' may be used before its
 # value is set
-extra_flags += '-wd3656'
+extra_flags += '-diag-disable 3656'
 
 foreach flag: extra_flags
 	if cc.has_argument(flag)

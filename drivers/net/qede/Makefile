@@ -73,8 +73,8 @@ ifeq ($(shell clang -Wno-pointer-bool-conversion -Werror -E - < /dev/null > /dev
 CFLAGS_BASE_DRIVER += -Wno-pointer-bool-conversion
 endif
 else #ICC
-CFLAGS_BASE_DRIVER += -wd188   #188: enumerated type mixed with another type
-CFLAGS_qede_ethdev.o += -wd279 #279: controlling expression is constant
+CFLAGS_BASE_DRIVER += -diag-disable 188   #188: enumerated type mixed with another type
+CFLAGS_qede_ethdev.o += -diag-disable 279 #279: controlling expression is constant
 endif
 
 #

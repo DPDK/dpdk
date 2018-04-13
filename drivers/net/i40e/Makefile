@@ -24,7 +24,7 @@ LIBABIVER := 2
 # to disable warnings
 #
 ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
-CFLAGS_BASE_DRIVER = -wd593 -wd188
+CFLAGS_BASE_DRIVER = -diag-disable 593 -diag-disable 188
 else ifeq ($(CONFIG_RTE_TOOLCHAIN_CLANG),y)
 CFLAGS_BASE_DRIVER += -Wno-sign-compare
 CFLAGS_BASE_DRIVER += -Wno-unused-value

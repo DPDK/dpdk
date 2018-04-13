@@ -46,7 +46,7 @@ else ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
 # Suppress ICC false positive warning on 'bulk' may be used before its
 # value is set
-CFLAGS_sfc_ef10_tx.o += -wd3656
+CFLAGS_sfc_ef10_tx.o += -diag-disable 3656
 endif
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
