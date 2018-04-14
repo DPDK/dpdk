@@ -1135,7 +1135,6 @@ rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint8_t eth_port_id,
 int __rte_experimental
 rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
 
-struct rte_eventdev_driver;
 struct rte_eventdev_ops;
 struct rte_eventdev;
 
