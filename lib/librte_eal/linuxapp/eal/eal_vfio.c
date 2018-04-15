@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2018 Intel Corporation
  */
 
 #include <inttypes.h>
@@ -290,6 +290,10 @@ rte_vfio_get_group_fd(int iommu_group_num)
 	int vfio_group_fd;
 	char filename[PATH_MAX];
 	struct vfio_group *cur_grp;
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply;
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
 
 	/* check if we already have the group descriptor open */
 	for (i = 0; i < VFIO_MAX_GROUPS; i++)
@@ -350,50 +354,34 @@ rte_vfio_get_group_fd(int iommu_group_num)
 		return vfio_group_fd;
 	}
 	/* if we're in a secondary process, request group fd from the primary
-	 * process via our socket
+	 * process via mp channel.
 	 */
-	else {
-		int socket_fd, ret;
+	p->req = SOCKET_REQ_GROUP;
+	p->group_num = iommu_group_num;
+	strcpy(mp_req.name, EAL_VFIO_MP);
+	mp_req.len_param = sizeof(*p);
+	mp_req.num_fds = 0;
 
-		socket_fd = vfio_mp_sync_connect_to_primary();
-
-		if (socket_fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot connect to primary process!\n");
-			return -1;
+	vfio_group_fd = -1;
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
+	    mp_reply.nb_received == 1) {
+		mp_rep = &mp_reply.msgs[0];
+		p = (struct vfio_mp_param *)mp_rep->param;
+		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
+			cur_grp->group_num = iommu_group_num;
+			vfio_group_fd = mp_rep->fds[0];
+			cur_grp->fd = vfio_group_fd;
+			vfio_cfg.vfio_active_groups++;
+		} else if (p->result == SOCKET_NO_FD) {
+			RTE_LOG(ERR, EAL, "  bad VFIO group fd\n");
+			vfio_group_fd = 0;
 		}
-		if (vfio_mp_sync_send_request(socket_fd, SOCKET_REQ_GROUP) < 0) {
-			RTE_LOG(ERR, EAL, "  cannot request container fd!\n");
-			close(socket_fd);
-			return -1;
-		}
-		if (vfio_mp_sync_send_request(socket_fd, iommu_group_num) < 0) {
-			RTE_LOG(ERR, EAL, "  cannot send group number!\n");
-			close(socket_fd);
-			return -1;
-		}
-		ret = vfio_mp_sync_receive_request(socket_fd);
-		switch (ret) {
-		case SOCKET_NO_FD:
-			close(socket_fd);
-			return 0;
-		case SOCKET_OK:
-			vfio_group_fd = vfio_mp_sync_receive_fd(socket_fd);
-			/* if we got the fd, store it and return it */
-			if (vfio_group_fd > 0) {
-				close(socket_fd);
-				cur_grp->group_num = iommu_group_num;
-				cur_grp->fd = vfio_group_fd;
-				vfio_cfg.vfio_active_groups++;
-				return vfio_group_fd;
-			}
-			/* fall-through on error */
-		default:
-			RTE_LOG(ERR, EAL, "  cannot get container fd!\n");
-			close(socket_fd);
-			return -1;
-		}
+		free(mp_reply.msgs);
 	}
-	return -1;
+
+	if (vfio_group_fd < 0)
+		RTE_LOG(ERR, EAL, "  cannot request group fd\n");
+	return vfio_group_fd;
 }
 
 
@@ -481,7 +469,10 @@ int
 rte_vfio_clear_group(int vfio_group_fd)
 {
 	int i;
-	int socket_fd, ret;
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply;
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
 
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
 
@@ -495,43 +486,27 @@ rte_vfio_clear_group(int vfio_group_fd)
 		return 0;
 	}
 
-	/* This is just for SECONDARY processes */
-	socket_fd = vfio_mp_sync_connect_to_primary();
+	p->req = SOCKET_CLR_GROUP;
+	p->group_num = vfio_group_fd;
+	strcpy(mp_req.name, EAL_VFIO_MP);
+	mp_req.len_param = sizeof(*p);
+	mp_req.num_fds = 0;
 
-	if (socket_fd < 0) {
-		RTE_LOG(ERR, EAL, "  cannot connect to primary process!\n");
-		return -1;
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
+	    mp_reply.nb_received == 1) {
+		mp_rep = &mp_reply.msgs[0];
+		p = (struct vfio_mp_param *)mp_rep->param;
+		if (p->result == SOCKET_OK) {
+			free(mp_reply.msgs);
+			return 0;
+		} else if (p->result == SOCKET_NO_FD)
+			RTE_LOG(ERR, EAL, "  BAD VFIO group fd!\n");
+		else
+			RTE_LOG(ERR, EAL, "  no such VFIO group fd!\n");
+
+		free(mp_reply.msgs);
 	}
 
-	if (vfio_mp_sync_send_request(socket_fd, SOCKET_CLR_GROUP) < 0) {
-		RTE_LOG(ERR, EAL, "  cannot request container fd!\n");
-		close(socket_fd);
-		return -1;
-	}
-
-	if (vfio_mp_sync_send_request(socket_fd, vfio_group_fd) < 0) {
-		RTE_LOG(ERR, EAL, "  cannot send group fd!\n");
-		close(socket_fd);
-		return -1;
-	}
-
-	ret = vfio_mp_sync_receive_request(socket_fd);
-	switch (ret) {
-	case SOCKET_NO_FD:
-		RTE_LOG(ERR, EAL, "  BAD VFIO group fd!\n");
-		close(socket_fd);
-		break;
-	case SOCKET_OK:
-		close(socket_fd);
-		return 0;
-	case SOCKET_ERR:
-		RTE_LOG(ERR, EAL, "  Socket error\n");
-		close(socket_fd);
-		break;
-	default:
-		RTE_LOG(ERR, EAL, "  UNKNOWN reply, %d\n", ret);
-		close(socket_fd);
-	}
 	return -1;
 }
 
@@ -924,6 +899,11 @@ int
 rte_vfio_get_container_fd(void)
 {
 	int ret, vfio_container_fd;
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply;
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
+
 
 	/* if we're in a primary process, try to open the container */
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
@@ -954,33 +934,29 @@ rte_vfio_get_container_fd(void)
 		}
 
 		return vfio_container_fd;
-	} else {
-		/*
-		 * if we're in a secondary process, request container fd from the
-		 * primary process via our socket
-		 */
-		int socket_fd;
+	}
+	/*
+	 * if we're in a secondary process, request container fd from the
+	 * primary process via mp channel
+	 */
+	p->req = SOCKET_REQ_CONTAINER;
+	strcpy(mp_req.name, EAL_VFIO_MP);
+	mp_req.len_param = sizeof(*p);
+	mp_req.num_fds = 0;
 
-		socket_fd = vfio_mp_sync_connect_to_primary();
-		if (socket_fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot connect to primary process!\n");
-			return -1;
+	vfio_container_fd = -1;
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
+	    mp_reply.nb_received == 1) {
+		mp_rep = &mp_reply.msgs[0];
+		p = (struct vfio_mp_param *)mp_rep->param;
+		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
+			free(mp_reply.msgs);
+			return mp_rep->fds[0];
 		}
-		if (vfio_mp_sync_send_request(socket_fd, SOCKET_REQ_CONTAINER) < 0) {
-			RTE_LOG(ERR, EAL, "  cannot request container fd!\n");
-			close(socket_fd);
-			return -1;
-		}
-		vfio_container_fd = vfio_mp_sync_receive_fd(socket_fd);
-		if (vfio_container_fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot get container fd!\n");
-			close(socket_fd);
-			return -1;
-		}
-		close(socket_fd);
-		return vfio_container_fd;
+		free(mp_reply.msgs);
 	}
 
+	RTE_LOG(ERR, EAL, "  cannot request container fd\n");
 	return -1;
 }
 

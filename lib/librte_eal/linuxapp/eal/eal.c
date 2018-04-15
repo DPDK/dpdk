@@ -696,24 +696,8 @@ rte_eal_iopl_init(void)
 #ifdef VFIO_PRESENT
 static int rte_eal_vfio_setup(void)
 {
-	int vfio_enabled = 0;
-
 	if (rte_vfio_enable("vfio"))
 		return -1;
-	vfio_enabled = rte_vfio_is_enabled("vfio");
-
-	if (vfio_enabled) {
-
-		/* if we are primary process, create a thread to communicate with
-		 * secondary processes. the thread will use a socket to wait for
-		 * requests from secondary process to send open file descriptors,
-		 * because VFIO does not allow multiple open descriptors on a group or
-		 * VFIO container.
-		 */
-		if (internal_config.process_type == RTE_PROC_PRIMARY &&
-				vfio_mp_sync_setup() < 0)
-			return -1;
-	}
 
 	return 0;
 }
@@ -969,6 +953,12 @@ rte_eal_init(int argc, char **argv)
 		rte_errno = ENOTSUP;
 		return -1;
 	}
+
+#ifdef VFIO_PRESENT
+	/* Register mp action after probe() so that we got enough info */
+	if (rte_vfio_is_enabled("vfio") && vfio_mp_sync_setup() < 0)
+		return -1;
+#endif
 
 	/* initialize default service/lcore mappings and start running. Ignore
 	 * -ENOTSUP, as it indicates no service coremask passed to EAL.
