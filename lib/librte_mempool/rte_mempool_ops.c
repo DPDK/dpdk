@@ -59,6 +59,7 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	ops->get_count = h->get_count;
 	ops->get_capabilities = h->get_capabilities;
 	ops->register_memory_area = h->register_memory_area;
+	ops->calc_mem_size = h->calc_mem_size;
 
 	rte_spinlock_unlock(&rte_mempool_ops_table.sl);
 
@@ -121,6 +122,23 @@ rte_mempool_ops_register_memory_area(const struct rte_mempool *mp, char *vaddr,
 
 	RTE_FUNC_PTR_OR_ERR_RET(ops->register_memory_area, -ENOTSUP);
 	return ops->register_memory_area(mp, vaddr, iova, len);
+}
+
+/* wrapper to notify new memory area to external mempool */
+ssize_t
+rte_mempool_ops_calc_mem_size(const struct rte_mempool *mp,
+				uint32_t obj_num, uint32_t pg_shift,
+				size_t *min_chunk_size, size_t *align)
+{
+	struct rte_mempool_ops *ops;
+
+	ops = rte_mempool_get_ops(mp->ops_index);
+
+	if (ops->calc_mem_size == NULL)
+		return rte_mempool_op_calc_mem_size_default(mp, obj_num,
+				pg_shift, min_chunk_size, align);
+
+	return ops->calc_mem_size(mp, obj_num, pg_shift, min_chunk_size, align);
 }
 
 /* sets mempool ops previously registered by rte_mempool_register_ops. */

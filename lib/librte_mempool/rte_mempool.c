@@ -574,12 +574,12 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	unsigned int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
-	size_t size, total_elt_sz, align, pg_sz, pg_shift;
+	ssize_t mem_size;
+	size_t align, pg_sz, pg_shift;
 	rte_iova_t iova;
 	unsigned mz_id, n;
-	unsigned int mp_flags;
 	int ret;
-	bool force_contig, no_contig, try_contig, no_pageshift;
+	bool no_contig, try_contig, no_pageshift;
 
 	ret = mempool_ops_alloc_once(mp);
 	if (ret != 0)
@@ -589,22 +589,12 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	if (mp->nb_mem_chunks != 0)
 		return -EEXIST;
 
-	/* Get mempool capabilities */
-	mp_flags = 0;
-	ret = rte_mempool_ops_get_capabilities(mp, &mp_flags);
-	if ((ret < 0) && (ret != -ENOTSUP))
-		return ret;
-
-	/* update mempool capabilities */
-	mp->flags |= mp_flags;
-
 	no_contig = mp->flags & MEMPOOL_F_NO_IOVA_CONTIG;
-	force_contig = mp->flags & MEMPOOL_F_CAPA_PHYS_CONTIG;
 
 	/*
 	 * the following section calculates page shift and page size values.
 	 *
-	 * these values impact the result of rte_mempool_xmem_size(), which
+	 * these values impact the result of calc_mem_size operation, which
 	 * returns the amount of memory that should be allocated to store the
 	 * desired number of objects. when not zero, it allocates more memory
 	 * for the padding between objects, to ensure that an object does not
@@ -625,7 +615,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	 *
 	 * if our IO addresses are virtual, not actual physical (IOVA as VA
 	 * case), then no page shift needed - our memory allocation will give us
-	 * contiguous physical memory as far as the hardware is concerned, so
+	 * contiguous IO memory as far as the hardware is concerned, so
 	 * act as if we're getting contiguous memory.
 	 *
 	 * if our IO addresses are physical, we may get memory from bigger
@@ -643,39 +633,35 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	 * 1G page on a 10MB memzone). If we fail to get enough contiguous
 	 * memory, then we'll go and reserve space page-by-page.
 	 */
-	no_pageshift = no_contig || force_contig ||
-			rte_eal_iova_mode() == RTE_IOVA_VA;
+	no_pageshift = no_contig || rte_eal_iova_mode() == RTE_IOVA_VA;
 	try_contig = !no_contig && !no_pageshift && rte_eal_has_hugepages();
-	if (force_contig)
-		mz_flags |= RTE_MEMZONE_IOVA_CONTIG;
 
 	if (no_pageshift) {
 		pg_sz = 0;
 		pg_shift = 0;
-		align = RTE_CACHE_LINE_SIZE;
 	} else if (try_contig) {
 		pg_sz = get_min_page_size();
 		pg_shift = rte_bsf32(pg_sz);
-		/* we're trying to reserve contiguous memzone first, so try
-		 * align to cache line; if we fail to reserve a contiguous
-		 * memzone, we'll adjust alignment to equal pagesize later.
-		 */
-		align = RTE_CACHE_LINE_SIZE;
 	} else {
 		pg_sz = getpagesize();
 		pg_shift = rte_bsf32(pg_sz);
-		align = pg_sz;
 	}
 
-	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
 	for (mz_id = 0, n = mp->size; n > 0; mz_id++, n -= ret) {
+		size_t min_chunk_size;
 		unsigned int flags;
+
 		if (try_contig || no_pageshift)
-			size = rte_mempool_xmem_size(n, total_elt_sz, 0,
-				mp->flags);
+			mem_size = rte_mempool_ops_calc_mem_size(mp, n,
+					0, &min_chunk_size, &align);
 		else
-			size = rte_mempool_xmem_size(n, total_elt_sz, pg_shift,
-				mp->flags);
+			mem_size = rte_mempool_ops_calc_mem_size(mp, n,
+					pg_shift, &min_chunk_size, &align);
+
+		if (mem_size < 0) {
+			ret = mem_size;
+			goto fail;
+		}
 
 		ret = snprintf(mz_name, sizeof(mz_name),
 			RTE_MEMPOOL_MZ_FORMAT "_%d", mp->name, mz_id);
@@ -692,27 +678,31 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 		if (try_contig)
 			flags |= RTE_MEMZONE_IOVA_CONTIG;
 
-		mz = rte_memzone_reserve_aligned(mz_name, size, mp->socket_id,
-				flags, align);
+		mz = rte_memzone_reserve_aligned(mz_name, mem_size,
+				mp->socket_id, flags, align);
 
-		/* if we were trying to allocate contiguous memory, adjust
-		 * memzone size and page size to fit smaller page sizes, and
-		 * try again.
+		/* if we were trying to allocate contiguous memory, failed and
+		 * minimum required contiguous chunk fits minimum page, adjust
+		 * memzone size to the page size, and try again.
 		 */
-		if (mz == NULL && try_contig) {
+		if (mz == NULL && try_contig && min_chunk_size <= pg_sz) {
 			try_contig = false;
 			flags &= ~RTE_MEMZONE_IOVA_CONTIG;
-			align = pg_sz;
-			size = rte_mempool_xmem_size(n, total_elt_sz,
-				pg_shift, mp->flags);
 
-			mz = rte_memzone_reserve_aligned(mz_name, size,
+			mem_size = rte_mempool_ops_calc_mem_size(mp, n,
+					pg_shift, &min_chunk_size, &align);
+			if (mem_size < 0) {
+				ret = mem_size;
+				goto fail;
+			}
+
+			mz = rte_memzone_reserve_aligned(mz_name, mem_size,
 				mp->socket_id, flags, align);
 		}
 		/* don't try reserving with 0 size if we were asked to reserve
 		 * IOVA-contiguous memory.
 		 */
-		if (!force_contig && mz == NULL) {
+		if (min_chunk_size < (size_t)mem_size && mz == NULL) {
 			/* not enough memory, retry with the biggest zone we
 			 * have
 			 */
@@ -721,6 +711,12 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 		}
 		if (mz == NULL) {
 			ret = -rte_errno;
+			goto fail;
+		}
+
+		if (mz->len < min_chunk_size) {
+			rte_memzone_free(mz);
+			ret = -ENOMEM;
 			goto fail;
 		}
 
@@ -753,16 +749,18 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 }
 
 /* return the memory size required for mempool objects in anonymous mem */
-static size_t
+static ssize_t
 get_anon_size(const struct rte_mempool *mp)
 {
-	size_t size, total_elt_sz, pg_sz, pg_shift;
+	ssize_t size;
+	size_t pg_sz, pg_shift;
+	size_t min_chunk_size;
+	size_t align;
 
 	pg_sz = getpagesize();
 	pg_shift = rte_bsf32(pg_sz);
-	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
-	size = rte_mempool_xmem_size(mp->size, total_elt_sz, pg_shift,
-					mp->flags);
+	size = rte_mempool_ops_calc_mem_size(mp, mp->size, pg_shift,
+					     &min_chunk_size, &align);
 
 	return size;
 }
@@ -772,14 +770,25 @@ static void
 rte_mempool_memchunk_anon_free(struct rte_mempool_memhdr *memhdr,
 	void *opaque)
 {
-	munmap(opaque, get_anon_size(memhdr->mp));
+	ssize_t size;
+
+	/*
+	 * Calculate size since memhdr->len has contiguous chunk length
+	 * which may be smaller if anon map is split into many contiguous
+	 * chunks. Result must be the same as we calculated on populate.
+	 */
+	size = get_anon_size(memhdr->mp);
+	if (size < 0)
+		return;
+
+	munmap(opaque, size);
 }
 
 /* populate the mempool with an anonymous mapping */
 int
 rte_mempool_populate_anon(struct rte_mempool *mp)
 {
-	size_t size;
+	ssize_t size;
 	int ret;
 	char *addr;
 
@@ -793,8 +802,13 @@ rte_mempool_populate_anon(struct rte_mempool *mp)
 	if (ret != 0)
 		return ret;
 
-	/* get chunk of virtually continuous memory */
 	size = get_anon_size(mp);
+	if (size < 0) {
+		rte_errno = -size;
+		return 0;
+	}
+
+	/* get chunk of virtually continuous memory */
 	addr = mmap(NULL, size, PROT_READ | PROT_WRITE,
 		MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 	if (addr == MAP_FAILED) {

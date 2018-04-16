@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-version = 3
-sources = files('rte_mempool.c', 'rte_mempool_ops.c')
+version = 4
+sources = files('rte_mempool.c', 'rte_mempool_ops.c',
+		'rte_mempool_ops_default.c')
 headers = files('rte_mempool.h')
 deps += ['ring']
 

@@ -51,3 +51,10 @@ DPDK_17.11 {
 	rte_mempool_populate_iova_tab;
 
 } DPDK_16.07;
+
+DPDK_18.05 {
+	global:
+
+	rte_mempool_op_calc_mem_size_default;
+
+} DPDK_17.11;

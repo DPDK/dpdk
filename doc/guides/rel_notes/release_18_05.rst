@@ -226,6 +226,11 @@ ABI Changes
   structure and the offset of the fields remains the same on platforms
   with 64B cache line, but change on other platforms.
 
+* mempool: ops have changed.
+
+  A new callback ``calc_mem_size`` has been added to ``rte_mempool_ops``
+  to allow to customize required memory size calculation.
+
 * **Additional fields in rte_eth_dev_info.**
 
   The ``rte_eth_dev_info`` structure has had two extra entries appended to the
@@ -314,7 +319,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_latencystats.so.1
      librte_lpm.so.2
    + librte_mbuf.so.4
-     librte_mempool.so.3
+   + librte_mempool.so.4
    + librte_meter.so.2
      librte_metrics.so.1
      librte_net.so.1

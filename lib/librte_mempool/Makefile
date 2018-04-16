@@ -11,7 +11,7 @@ LDLIBS += -lrte_eal -lrte_ring
 
 EXPORT_MAP := rte_mempool_version.map
 
-LIBABIVER := 3
+LIBABIVER := 4
 
 # memseg walk is not yet part of stable API
 CFLAGS += -DALLOW_EXPERIMENTAL_API
@@ -19,6 +19,7 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool.c
 SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool_ops.c
+SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool_ops_default.c
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_MEMPOOL)-include := rte_mempool.h
 

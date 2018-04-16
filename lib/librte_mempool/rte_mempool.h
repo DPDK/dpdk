@@ -400,6 +400,62 @@ typedef int (*rte_mempool_get_capabilities_t)(const struct rte_mempool *mp,
 typedef int (*rte_mempool_ops_register_memory_area_t)
 (const struct rte_mempool *mp, char *vaddr, rte_iova_t iova, size_t len);
 
+/**
+ * Calculate memory size required to store given number of objects.
+ *
+ * If mempool objects are not required to be IOVA-contiguous
+ * (the flag MEMPOOL_F_NO_IOVA_CONTIG is set), min_chunk_size defines
+ * virtually contiguous chunk size. Otherwise, if mempool objects must
+ * be IOVA-contiguous (the flag MEMPOOL_F_NO_IOVA_CONTIG is clear),
+ * min_chunk_size defines IOVA-contiguous chunk size.
+ *
+ * @param[in] mp
+ *   Pointer to the memory pool.
+ * @param[in] obj_num
+ *   Number of objects.
+ * @param[in] pg_shift
+ *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
+ * @param[out] min_chunk_size
+ *   Location for minimum size of the memory chunk which may be used to
+ *   store memory pool objects.
+ * @param[out] align
+ *   Location for required memory chunk alignment.
+ * @return
+ *   Required memory size aligned at page boundary.
+ */
+typedef ssize_t (*rte_mempool_calc_mem_size_t)(const struct rte_mempool *mp,
+		uint32_t obj_num,  uint32_t pg_shift,
+		size_t *min_chunk_size, size_t *align);
+
+/**
+ * Default way to calculate memory size required to store given number of
+ * objects.
+ *
+ * If page boundaries may be ignored, it is just a product of total
+ * object size including header and trailer and number of objects.
+ * Otherwise, it is a number of pages required to store given number of
+ * objects without crossing page boundary.
+ *
+ * Note that if object size is bigger than page size, then it assumes
+ * that pages are grouped in subsets of physically continuous pages big
+ * enough to store at least one object.
+ *
+ * If mempool driver requires object addresses to be block size aligned
+ * (MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS), space for one extra element is
+ * reserved to be able to meet the requirement.
+ *
+ * Minimum size of memory chunk is either all required space, if
+ * capabilities say that whole memory area must be physically contiguous
+ * (MEMPOOL_F_CAPA_PHYS_CONTIG), or a maximum of the page size and total
+ * element size.
+ *
+ * Required memory chunk alignment is a maximum of page size and cache
+ * line size.
+ */
+ssize_t rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
+		uint32_t obj_num, uint32_t pg_shift,
+		size_t *min_chunk_size, size_t *align);
+
 /** Structure defining mempool operations structure */
 struct rte_mempool_ops {
 	char name[RTE_MEMPOOL_OPS_NAMESIZE]; /**< Name of mempool ops struct. */
@@ -416,6 +472,11 @@ struct rte_mempool_ops {
 	 * Notify new memory area to mempool
 	 */
 	rte_mempool_ops_register_memory_area_t register_memory_area;
+	/**
+	 * Optional callback to calculate memory size required to
+	 * store specified number of objects.
+	 */
+	rte_mempool_calc_mem_size_t calc_mem_size;
 } __rte_cache_aligned;
 
 #define RTE_MEMPOOL_MAX_OPS_IDX 16  /**< Max registered ops structs */
@@ -563,6 +624,29 @@ rte_mempool_ops_get_capabilities(const struct rte_mempool *mp,
 int
 rte_mempool_ops_register_memory_area(const struct rte_mempool *mp,
 				char *vaddr, rte_iova_t iova, size_t len);
+
+/**
+ * @internal wrapper for mempool_ops calc_mem_size callback.
+ * API to calculate size of memory required to store specified number of
+ * object.
+ *
+ * @param[in] mp
+ *   Pointer to the memory pool.
+ * @param[in] obj_num
+ *   Number of objects.
+ * @param[in] pg_shift
+ *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
+ * @param[out] min_chunk_size
+ *   Location for minimum size of the memory chunk which may be used to
+ *   store memory pool objects.
+ * @param[out] align
+ *   Location for required memory chunk alignment.
+ * @return
+ *   Required memory size aligned at page boundary.
+ */
+ssize_t rte_mempool_ops_calc_mem_size(const struct rte_mempool *mp,
+				      uint32_t obj_num, uint32_t pg_shift,
+				      size_t *min_chunk_size, size_t *align);
 
 /**
  * @internal wrapper for mempool_ops free callback.
@@ -1534,7 +1618,7 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  * of objects. Assume that the memory buffer will be aligned at page
  * boundary.
  *
- * Note that if object size is bigger then page size, then it assumes
+ * Note that if object size is bigger than page size, then it assumes
  * that pages are grouped in subsets of physically continuous pages big
  * enough to store at least one object.
  *
