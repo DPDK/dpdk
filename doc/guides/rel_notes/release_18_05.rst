@@ -156,6 +156,13 @@ API Changes
   Now the new driver callbacks ``calc_mem_size`` and ``populate`` may be
   used to achieve it without specific knowledge in the generic code.
 
+* mempool: xmem functions have been deprecated:
+
+  - ``rte_mempool_xmem_create``
+  - ``rte_mempool_xmem_size``
+  - ``rte_mempool_xmem_usage``
+  - ``rte_mempool_populate_iova_tab``
+
 * mbuf: The control mbuf API has been removed in v18.05. The impacted
   functions and macros are:
 

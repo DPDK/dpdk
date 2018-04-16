@@ -427,6 +427,28 @@ ssize_t rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 		size_t *min_chunk_size, size_t *align);
 
 /**
+ * @internal Helper function to calculate memory size required to store
+ * specified number of objects in assumption that the memory buffer will
+ * be aligned at page boundary.
+ *
+ * Note that if object size is bigger than page size, then it assumes
+ * that pages are grouped in subsets of physically continuous pages big
+ * enough to store at least one object.
+ *
+ * @param elt_num
+ *   Number of elements.
+ * @param total_elt_sz
+ *   The size of each element, including header and trailer, as returned
+ *   by rte_mempool_calc_obj_size().
+ * @param pg_shift
+ *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
+ * @return
+ *   Required memory size aligned at page boundary.
+ */
+size_t rte_mempool_calc_mem_size_helper(uint32_t elt_num, size_t total_elt_sz,
+		uint32_t pg_shift);
+
+/**
  * Function to be called for each populated object.
  *
  * @param[in] mp
@@ -855,6 +877,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   int socket_id, unsigned flags);
 
 /**
+ * @deprecated
  * Create a new mempool named *name* in memory.
  *
  * The pool contains n elements of elt_size. Its size is set to n.
@@ -912,6 +935,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   The pointer to the new allocated mempool, on success. NULL on error
  *   with rte_errno set appropriately. See rte_mempool_create() for details.
  */
+__rte_deprecated
 struct rte_mempool *
 rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		unsigned cache_size, unsigned private_data_size,
@@ -1008,6 +1032,7 @@ int rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	void *opaque);
 
 /**
+ * @deprecated
  * Add physical memory for objects in the pool at init
  *
  * Add a virtually contiguous memory chunk in the pool where objects can
@@ -1033,6 +1058,7 @@ int rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
  *   On error, the chunks are not added in the memory list of the
  *   mempool and a negative errno is returned.
  */
+__rte_deprecated
 int rte_mempool_populate_iova_tab(struct rte_mempool *mp, char *vaddr,
 	const rte_iova_t iova[], uint32_t pg_num, uint32_t pg_shift,
 	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque);
@@ -1652,6 +1678,7 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	struct rte_mempool_objsz *sz);
 
 /**
+ * @deprecated
  * Get the size of memory required to store mempool elements.
  *
  * Calculate the maximum amount of memory required to store given number
@@ -1674,10 +1701,12 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  * @return
  *   Required memory size aligned at page boundary.
  */
+__rte_deprecated
 size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
 	uint32_t pg_shift, unsigned int flags);
 
 /**
+ * @deprecated
  * Get the size of memory required to store mempool elements.
  *
  * Calculate how much memory would be actually required with the given
@@ -1705,6 +1734,7 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
  *   buffer is too small, return a negative value whose absolute value
  *   is the actual number of elements that can be stored in that buffer.
  */
+__rte_deprecated
 ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num,
 	size_t total_elt_sz, const rte_iova_t iova[], uint32_t pg_num,
 	uint32_t pg_shift, unsigned int flags);

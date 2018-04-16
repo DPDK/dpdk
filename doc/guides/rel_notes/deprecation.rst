@@ -48,13 +48,6 @@ Deprecation Notices
   - ``rte_eal_mbuf_default_mempool_ops``
 
 * mempool: several API and ABI changes are planned in v18.05.
-  The following functions, introduced for Xen, which is not supported
-  anymore since v17.11, are hard to use, not used anywhere else in DPDK.
-  Therefore they will be deprecated in v18.05 and removed in v18.08:
-
-  - ``rte_mempool_xmem_create``
-  - ``rte_mempool_xmem_size``
-  - ``rte_mempool_xmem_usage``
 
   The following changes are planned:
 

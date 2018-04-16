@@ -444,34 +444,6 @@ test_mempool_same_name_twice_creation(void)
 	return 0;
 }
 
-/*
- * Basic test for mempool_xmem functions.
- */
-static int
-test_mempool_xmem_misc(void)
-{
-	uint32_t elt_num, total_size;
-	size_t sz;
-	ssize_t usz;
-
-	elt_num = MAX_KEEP;
-	total_size = rte_mempool_calc_obj_size(MEMPOOL_ELT_SIZE, 0, NULL);
-	sz = rte_mempool_xmem_size(elt_num, total_size, MEMPOOL_PG_SHIFT_MAX,
-					0);
-
-	usz = rte_mempool_xmem_usage(NULL, elt_num, total_size, 0, 1,
-		MEMPOOL_PG_SHIFT_MAX, 0);
-
-	if (sz != (size_t)usz)  {
-		printf("failure @ %s: rte_mempool_xmem_usage(%u, %u) "
-			"returns: %#zx, while expected: %#zx;\n",
-			__func__, elt_num, total_size, sz, (size_t)usz);
-		return -1;
-	}
-
-	return 0;
-}
-
 static void
 walk_cb(struct rte_mempool *mp, void *userdata __rte_unused)
 {
@@ -594,9 +566,6 @@ test_mempool(void)
 		goto err;
 
 	if (test_mempool_same_name_twice_creation() < 0)
-		goto err;
-
-	if (test_mempool_xmem_misc() < 0)
 		goto err;
 
 	/* test the stack handler */

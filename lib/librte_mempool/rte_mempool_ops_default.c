@@ -16,8 +16,8 @@ rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
 
-	mem_size = rte_mempool_xmem_size(obj_num, total_elt_sz, pg_shift,
-					 mp->flags);
+	mem_size = rte_mempool_calc_mem_size_helper(obj_num, total_elt_sz,
+						    pg_shift);
 
 	*min_chunk_size = RTE_MAX((size_t)1 << pg_shift, total_elt_sz);
 

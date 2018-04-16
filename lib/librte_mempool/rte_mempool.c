@@ -227,11 +227,13 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 
 
 /*
- * Calculate maximum amount of memory required to store given number of objects.
+ * Internal function to calculate required memory chunk size shared
+ * by default implementation of the corresponding callback and
+ * deprecated external function.
  */
 size_t
-rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift,
-		      __rte_unused unsigned int flags)
+rte_mempool_calc_mem_size_helper(uint32_t elt_num, size_t total_elt_sz,
+				 uint32_t pg_shift)
 {
 	size_t obj_per_page, pg_num, pg_sz;
 
@@ -248,6 +250,17 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift,
 
 	pg_num = (elt_num + obj_per_page - 1) / obj_per_page;
 	return pg_num << pg_shift;
+}
+
+/*
+ * Calculate maximum amount of memory required to store given number of objects.
+ */
+size_t
+rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift,
+		      __rte_unused unsigned int flags)
+{
+	return rte_mempool_calc_mem_size_helper(elt_num, total_elt_sz,
+						pg_shift);
 }
 
 /*
