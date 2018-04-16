@@ -522,13 +522,14 @@ resized:
 		resize_hugefile(fd, map_offset, alloc_sz, false);
 		if (is_zero_length(fd)) {
 			struct msl_entry *te = get_msl_entry_by_idx(list_idx);
-			if (te != NULL && te->fd >= 0) {
-				close(te->fd);
+			/* te->fd is equivalent to fd */
+			if (te != NULL && te->fd >= 0)
 				te->fd = -1;
-			}
 			/* ignore errors, can't make it any worse */
 			unlink(path);
+			close(fd);
 		}
+		/* if we're not removing the file, fd stays in the tailq */
 	} else {
 		close(fd);
 		unlink(path);
