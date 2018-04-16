@@ -45,7 +45,6 @@ DPDK_16.07 {
 DPDK_17.11 {
 	global:
 
-	rte_mempool_ops_register_memory_area;
 	rte_mempool_populate_iova;
 	rte_mempool_populate_iova_tab;
 

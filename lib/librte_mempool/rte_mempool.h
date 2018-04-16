@@ -371,12 +371,6 @@ typedef int (*rte_mempool_dequeue_t)(struct rte_mempool *mp,
 typedef unsigned (*rte_mempool_get_count)(const struct rte_mempool *mp);
 
 /**
- * Notify new memory area to mempool.
- */
-typedef int (*rte_mempool_ops_register_memory_area_t)
-(const struct rte_mempool *mp, char *vaddr, rte_iova_t iova, size_t len);
-
-/**
  * Calculate memory size required to store given number of objects.
  *
  * If mempool objects are not required to be IOVA-contiguous
@@ -514,10 +508,6 @@ struct rte_mempool_ops {
 	rte_mempool_dequeue_t dequeue;   /**< Dequeue an object. */
 	rte_mempool_get_count get_count; /**< Get qty of available objs. */
 	/**
-	 * Notify new memory area to mempool
-	 */
-	rte_mempool_ops_register_memory_area_t register_memory_area;
-	/**
 	 * Optional callback to calculate memory size required to
 	 * store specified number of objects.
 	 */
@@ -637,27 +627,6 @@ rte_mempool_ops_enqueue_bulk(struct rte_mempool *mp, void * const *obj_table,
  */
 unsigned
 rte_mempool_ops_get_count(const struct rte_mempool *mp);
-
-/**
- * @internal wrapper for mempool_ops register_memory_area callback.
- * API to notify the mempool handler when a new memory area is added to pool.
- *
- * @param mp
- *   Pointer to the memory pool.
- * @param vaddr
- *   Pointer to the buffer virtual address.
- * @param iova
- *   Pointer to the buffer IO address.
- * @param len
- *   Pool size.
- * @return
- *   - 0: Success;
- *   - -ENOTSUP - doesn't support register_memory_area ops (valid error case).
- *   - Otherwise, rte_mempool_populate_phys fails thus pool create fails.
- */
-int
-rte_mempool_ops_register_memory_area(const struct rte_mempool *mp,
-				char *vaddr, rte_iova_t iova, size_t len);
 
 /**
  * @internal wrapper for mempool_ops calc_mem_size callback.

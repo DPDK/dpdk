@@ -57,7 +57,6 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	ops->enqueue = h->enqueue;
 	ops->dequeue = h->dequeue;
 	ops->get_count = h->get_count;
-	ops->register_memory_area = h->register_memory_area;
 	ops->calc_mem_size = h->calc_mem_size;
 	ops->populate = h->populate;
 
@@ -96,19 +95,6 @@ rte_mempool_ops_get_count(const struct rte_mempool *mp)
 
 	ops = rte_mempool_get_ops(mp->ops_index);
 	return ops->get_count(mp);
-}
-
-/* wrapper to notify new memory area to external mempool */
-int
-rte_mempool_ops_register_memory_area(const struct rte_mempool *mp, char *vaddr,
-					rte_iova_t iova, size_t len)
-{
-	struct rte_mempool_ops *ops;
-
-	ops = rte_mempool_get_ops(mp->ops_index);
-
-	RTE_FUNC_PTR_OR_ERR_RET(ops->register_memory_area, -ENOTSUP);
-	return ops->register_memory_area(mp, vaddr, iova, len);
 }
 
 /* wrapper to notify new memory area to external mempool */

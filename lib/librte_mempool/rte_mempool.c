@@ -378,11 +378,6 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	if (ret != 0)
 		return ret;
 
-	/* Notify memory area to mempool */
-	ret = rte_mempool_ops_register_memory_area(mp, vaddr, iova, len);
-	if (ret != -ENOTSUP && ret < 0)
-		return ret;
-
 	/* mempool is already populated */
 	if (mp->populated_size >= mp->size)
 		return -ENOSPC;

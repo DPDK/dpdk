@@ -250,6 +250,8 @@ ABI Changes
   Callback ``get_capabilities`` has been removed from ``rte_mempool_ops``
   since its features are covered by ``calc_mem_size`` and ``populate``
   callbacks.
+  Callback ``register_memory_area`` has been removed from ``rte_mempool_ops``
+  since the new callback ``populate`` may be used instead of it.
 
 * **Additional fields in rte_eth_dev_info.**
 
