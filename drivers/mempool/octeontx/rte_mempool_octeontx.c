@@ -126,14 +126,29 @@ octeontx_fpavf_get_count(const struct rte_mempool *mp)
 	return octeontx_fpa_bufpool_free_count(pool);
 }
 
-static int
-octeontx_fpavf_get_capabilities(const struct rte_mempool *mp,
-				unsigned int *flags)
+static ssize_t
+octeontx_fpavf_calc_mem_size(const struct rte_mempool *mp,
+			     uint32_t obj_num, uint32_t pg_shift,
+			     size_t *min_chunk_size, size_t *align)
 {
-	RTE_SET_USED(mp);
-	*flags |= (MEMPOOL_F_CAPA_PHYS_CONTIG |
-			MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS);
-	return 0;
+	ssize_t mem_size;
+
+	/*
+	 * Simply need space for one more object to be able to
+	 * fulfil alignment requirements.
+	 */
+	mem_size = rte_mempool_op_calc_mem_size_default(mp, obj_num + 1,
+							pg_shift,
+							min_chunk_size, align);
+	if (mem_size >= 0) {
+		/*
+		 * Memory area which contains objects must be physically
+		 * contiguous.
+		 */
+		*min_chunk_size = mem_size;
+	}
+
+	return mem_size;
 }
 
 static int
@@ -150,6 +165,33 @@ octeontx_fpavf_register_memory_area(const struct rte_mempool *mp,
 	return octeontx_fpavf_pool_set_range(pool_bar, len, vaddr, gpool);
 }
 
+static int
+octeontx_fpavf_populate(struct rte_mempool *mp, unsigned int max_objs,
+			void *vaddr, rte_iova_t iova, size_t len,
+			rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg)
+{
+	size_t total_elt_sz;
+	size_t off;
+
+	if (iova == RTE_BAD_IOVA)
+		return -EINVAL;
+
+	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
+
+	/* align object start address to a multiple of total_elt_sz */
+	off = total_elt_sz - ((uintptr_t)vaddr % total_elt_sz);
+
+	if (len < off)
+		return -EINVAL;
+
+	vaddr = (char *)vaddr + off;
+	iova += off;
+	len -= off;
+
+	return rte_mempool_op_populate_default(mp, max_objs, vaddr, iova, len,
+					       obj_cb, obj_cb_arg);
+}
+
 static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.name = "octeontx_fpavf",
 	.alloc = octeontx_fpavf_alloc,
@@ -157,8 +199,9 @@ static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.enqueue = octeontx_fpavf_enqueue,
 	.dequeue = octeontx_fpavf_dequeue,
 	.get_count = octeontx_fpavf_get_count,
-	.get_capabilities = octeontx_fpavf_get_capabilities,
 	.register_memory_area = octeontx_fpavf_register_memory_area,
+	.calc_mem_size = octeontx_fpavf_calc_mem_size,
+	.populate = octeontx_fpavf_populate,
 };
 
 MEMPOOL_REGISTER_OPS(octeontx_fpavf_ops);

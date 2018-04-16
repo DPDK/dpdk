@@ -231,15 +231,9 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  */
 size_t
 rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift,
-		      unsigned int flags)
+		      __rte_unused unsigned int flags)
 {
 	size_t obj_per_page, pg_num, pg_sz;
-	unsigned int mask;
-
-	mask = MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS | MEMPOOL_F_CAPA_PHYS_CONTIG;
-	if ((flags & mask) == mask)
-		/* alignment need one additional object */
-		elt_num += 1;
 
 	if (total_elt_sz == 0)
 		return 0;
@@ -263,18 +257,12 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift,
 ssize_t
 rte_mempool_xmem_usage(__rte_unused void *vaddr, uint32_t elt_num,
 	size_t total_elt_sz, const rte_iova_t iova[], uint32_t pg_num,
-	uint32_t pg_shift, unsigned int flags)
+	uint32_t pg_shift, __rte_unused unsigned int flags)
 {
 	uint32_t elt_cnt = 0;
 	rte_iova_t start, end;
 	uint32_t iova_idx;
 	size_t pg_sz = (size_t)1 << pg_shift;
-	unsigned int mask;
-
-	mask = MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS | MEMPOOL_F_CAPA_PHYS_CONTIG;
-	if ((flags & mask) == mask)
-		/* alignment need one additional object */
-		elt_num += 1;
 
 	/* if iova is NULL, assume contiguous memory */
 	if (iova == NULL) {
@@ -368,8 +356,6 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque)
 {
-	unsigned total_elt_sz;
-	unsigned int mp_capa_flags;
 	unsigned i = 0;
 	size_t off;
 	struct rte_mempool_memhdr *memhdr;
@@ -388,17 +374,6 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	if (mp->populated_size >= mp->size)
 		return -ENOSPC;
 
-	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
-
-	/* Get mempool capabilities */
-	mp_capa_flags = 0;
-	ret = rte_mempool_ops_get_capabilities(mp, &mp_capa_flags);
-	if ((ret < 0) && (ret != -ENOTSUP))
-		return ret;
-
-	/* update mempool capabilities */
-	mp->flags |= mp_capa_flags;
-
 	memhdr = rte_zmalloc("MEMPOOL_MEMHDR", sizeof(*memhdr), 0);
 	if (memhdr == NULL)
 		return -ENOMEM;
@@ -410,10 +385,7 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	memhdr->free_cb = free_cb;
 	memhdr->opaque = opaque;
 
-	if (mp_capa_flags & MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS)
-		/* align object start address to a multiple of total_elt_sz */
-		off = total_elt_sz - ((uintptr_t)vaddr % total_elt_sz);
-	else if (mp->flags & MEMPOOL_F_NO_CACHE_ALIGN)
+	if (mp->flags & MEMPOOL_F_NO_CACHE_ALIGN)
 		off = RTE_PTR_ALIGN_CEIL(vaddr, 8) - vaddr;
 	else
 		off = RTE_PTR_ALIGN_CEIL(vaddr, RTE_CACHE_LINE_SIZE) - vaddr;

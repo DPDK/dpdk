@@ -58,7 +58,6 @@ Deprecation Notices
 
   The following changes are planned:
 
-  - removal of ``get_capabilities`` mempool ops and related flags.
   - substitute ``register_memory_area`` with ``populate`` ops.
   - addition of new op to allocate contiguous
     block of objects if underlying driver supports it.

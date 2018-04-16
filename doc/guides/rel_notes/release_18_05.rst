@@ -148,6 +148,14 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* mempool: capability flags and related functions have been removed.
+
+  Flags ``MEMPOOL_F_CAPA_PHYS_CONTIG`` and
+  ``MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS`` were used by octeontx mempool
+  driver to customize generic mempool library behaviour.
+  Now the new driver callbacks ``calc_mem_size`` and ``populate`` may be
+  used to achieve it without specific knowledge in the generic code.
+
 * mbuf: The control mbuf API has been removed in v18.05. The impacted
   functions and macros are:
 
@@ -232,6 +240,9 @@ ABI Changes
   to allow to customize required memory size calculation.
   A new callback ``populate`` has been added to ``rte_mempool_ops``
   to allow to customize objects population.
+  Callback ``get_capabilities`` has been removed from ``rte_mempool_ops``
+  since its features are covered by ``calc_mem_size`` and ``populate``
+  callbacks.
 
 * **Additional fields in rte_eth_dev_info.**
 

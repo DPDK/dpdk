@@ -246,24 +246,6 @@ struct rte_mempool {
 #define MEMPOOL_F_POOL_CREATED   0x0010 /**< Internal: pool is created. */
 #define MEMPOOL_F_NO_IOVA_CONTIG 0x0020 /**< Don't need IOVA contiguous objs. */
 #define MEMPOOL_F_NO_PHYS_CONTIG MEMPOOL_F_NO_IOVA_CONTIG /* deprecated */
-/**
- * This capability flag is advertised by a mempool handler, if the whole
- * memory area containing the objects must be physically contiguous.
- * Note: This flag should not be passed by application.
- */
-#define MEMPOOL_F_CAPA_PHYS_CONTIG 0x0040
-/**
- * This capability flag is advertised by a mempool handler. Used for a case
- * where mempool driver wants object start address(vaddr) aligned to block
- * size(/ total element size).
- *
- * Note:
- * - This flag should not be passed by application.
- *   Flag used for mempool driver only.
- * - Mempool driver must also set MEMPOOL_F_CAPA_PHYS_CONTIG flag along with
- *   MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS.
- */
-#define MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS 0x0080
 
 /**
  * @internal When debug is enabled, store some statistics.
@@ -389,12 +371,6 @@ typedef int (*rte_mempool_dequeue_t)(struct rte_mempool *mp,
 typedef unsigned (*rte_mempool_get_count)(const struct rte_mempool *mp);
 
 /**
- * Get the mempool capabilities.
- */
-typedef int (*rte_mempool_get_capabilities_t)(const struct rte_mempool *mp,
-		unsigned int *flags);
-
-/**
  * Notify new memory area to mempool.
  */
 typedef int (*rte_mempool_ops_register_memory_area_t)
@@ -440,13 +416,7 @@ typedef ssize_t (*rte_mempool_calc_mem_size_t)(const struct rte_mempool *mp,
  * that pages are grouped in subsets of physically continuous pages big
  * enough to store at least one object.
  *
- * If mempool driver requires object addresses to be block size aligned
- * (MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS), space for one extra element is
- * reserved to be able to meet the requirement.
- *
- * Minimum size of memory chunk is either all required space, if
- * capabilities say that whole memory area must be physically contiguous
- * (MEMPOOL_F_CAPA_PHYS_CONTIG), or a maximum of the page size and total
+ * Minimum size of memory chunk is a maximum of the page size and total
  * element size.
  *
  * Required memory chunk alignment is a maximum of page size and cache
@@ -521,10 +491,6 @@ struct rte_mempool_ops {
 	rte_mempool_enqueue_t enqueue;   /**< Enqueue an object. */
 	rte_mempool_dequeue_t dequeue;   /**< Dequeue an object. */
 	rte_mempool_get_count get_count; /**< Get qty of available objs. */
-	/**
-	 * Get the mempool capabilities
-	 */
-	rte_mempool_get_capabilities_t get_capabilities;
 	/**
 	 * Notify new memory area to mempool
 	 */
@@ -650,22 +616,6 @@ rte_mempool_ops_enqueue_bulk(struct rte_mempool *mp, void * const *obj_table,
 unsigned
 rte_mempool_ops_get_count(const struct rte_mempool *mp);
 
-/**
- * @internal wrapper for mempool_ops get_capabilities callback.
- *
- * @param mp [in]
- *   Pointer to the memory pool.
- * @param flags [out]
- *   Pointer to the mempool flags.
- * @return
- *   - 0: Success; The mempool driver has advertised his pool capabilities in
- *   flags param.
- *   - -ENOTSUP - doesn't support get_capabilities ops (valid case).
- *   - Otherwise, pool create fails.
- */
-int
-rte_mempool_ops_get_capabilities(const struct rte_mempool *mp,
-					unsigned int *flags);
 /**
  * @internal wrapper for mempool_ops register_memory_area callback.
  * API to notify the mempool handler when a new memory area is added to pool.
