@@ -60,6 +60,7 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	ops->get_capabilities = h->get_capabilities;
 	ops->register_memory_area = h->register_memory_area;
 	ops->calc_mem_size = h->calc_mem_size;
+	ops->populate = h->populate;
 
 	rte_spinlock_unlock(&rte_mempool_ops_table.sl);
 
@@ -139,6 +140,26 @@ rte_mempool_ops_calc_mem_size(const struct rte_mempool *mp,
 				pg_shift, min_chunk_size, align);
 
 	return ops->calc_mem_size(mp, obj_num, pg_shift, min_chunk_size, align);
+}
+
+/* wrapper to populate memory pool objects using provided memory chunk */
+int
+rte_mempool_ops_populate(struct rte_mempool *mp, unsigned int max_objs,
+				void *vaddr, rte_iova_t iova, size_t len,
+				rte_mempool_populate_obj_cb_t *obj_cb,
+				void *obj_cb_arg)
+{
+	struct rte_mempool_ops *ops;
+
+	ops = rte_mempool_get_ops(mp->ops_index);
+
+	if (ops->populate == NULL)
+		return rte_mempool_op_populate_default(mp, max_objs, vaddr,
+						       iova, len, obj_cb,
+						       obj_cb_arg);
+
+	return ops->populate(mp, max_objs, vaddr, iova, len, obj_cb,
+			     obj_cb_arg);
 }
 
 /* sets mempool ops previously registered by rte_mempool_register_ops. */

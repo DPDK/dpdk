@@ -230,6 +230,8 @@ ABI Changes
 
   A new callback ``calc_mem_size`` has been added to ``rte_mempool_ops``
   to allow to customize required memory size calculation.
+  A new callback ``populate`` has been added to ``rte_mempool_ops``
+  to allow to customize objects population.
 
 * **Additional fields in rte_eth_dev_info.**
 

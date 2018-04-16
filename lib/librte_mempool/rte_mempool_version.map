@@ -56,5 +56,6 @@ DPDK_18.05 {
 	global:
 
 	rte_mempool_op_calc_mem_size_default;
+	rte_mempool_op_populate_default;
 
 } DPDK_17.11;

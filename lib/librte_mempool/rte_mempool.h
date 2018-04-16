@@ -456,6 +456,63 @@ ssize_t rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 		uint32_t obj_num, uint32_t pg_shift,
 		size_t *min_chunk_size, size_t *align);
 
+/**
+ * Function to be called for each populated object.
+ *
+ * @param[in] mp
+ *   A pointer to the mempool structure.
+ * @param[in] opaque
+ *   An opaque pointer passed to iterator.
+ * @param[in] vaddr
+ *   Object virtual address.
+ * @param[in] iova
+ *   Input/output virtual address of the object or RTE_BAD_IOVA.
+ */
+typedef void (rte_mempool_populate_obj_cb_t)(struct rte_mempool *mp,
+		void *opaque, void *vaddr, rte_iova_t iova);
+
+/**
+ * Populate memory pool objects using provided memory chunk.
+ *
+ * Populated objects should be enqueued to the pool, e.g. using
+ * rte_mempool_ops_enqueue_bulk().
+ *
+ * If the given IO address is unknown (iova = RTE_BAD_IOVA),
+ * the chunk doesn't need to be physically contiguous (only virtually),
+ * and allocated objects may span two pages.
+ *
+ * @param[in] mp
+ *   A pointer to the mempool structure.
+ * @param[in] max_objs
+ *   Maximum number of objects to be populated.
+ * @param[in] vaddr
+ *   The virtual address of memory that should be used to store objects.
+ * @param[in] iova
+ *   The IO address
+ * @param[in] len
+ *   The length of memory in bytes.
+ * @param[in] obj_cb
+ *   Callback function to be executed for each populated object.
+ * @param[in] obj_cb_arg
+ *   An opaque pointer passed to the callback function.
+ * @return
+ *   The number of objects added on success.
+ *   On error, no objects are populated and a negative errno is returned.
+ */
+typedef int (*rte_mempool_populate_t)(struct rte_mempool *mp,
+		unsigned int max_objs,
+		void *vaddr, rte_iova_t iova, size_t len,
+		rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg);
+
+/**
+ * Default way to populate memory pool object using provided memory
+ * chunk: just slice objects one by one.
+ */
+int rte_mempool_op_populate_default(struct rte_mempool *mp,
+		unsigned int max_objs,
+		void *vaddr, rte_iova_t iova, size_t len,
+		rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg);
+
 /** Structure defining mempool operations structure */
 struct rte_mempool_ops {
 	char name[RTE_MEMPOOL_OPS_NAMESIZE]; /**< Name of mempool ops struct. */
@@ -477,6 +534,11 @@ struct rte_mempool_ops {
 	 * store specified number of objects.
 	 */
 	rte_mempool_calc_mem_size_t calc_mem_size;
+	/**
+	 * Optional callback to populate mempool objects using
+	 * provided memory chunk.
+	 */
+	rte_mempool_populate_t populate;
 } __rte_cache_aligned;
 
 #define RTE_MEMPOOL_MAX_OPS_IDX 16  /**< Max registered ops structs */
@@ -647,6 +709,34 @@ rte_mempool_ops_register_memory_area(const struct rte_mempool *mp,
 ssize_t rte_mempool_ops_calc_mem_size(const struct rte_mempool *mp,
 				      uint32_t obj_num, uint32_t pg_shift,
 				      size_t *min_chunk_size, size_t *align);
+
+/**
+ * @internal wrapper for mempool_ops populate callback.
+ *
+ * Populate memory pool objects using provided memory chunk.
+ *
+ * @param[in] mp
+ *   A pointer to the mempool structure.
+ * @param[in] max_objs
+ *   Maximum number of objects to be populated.
+ * @param[in] vaddr
+ *   The virtual address of memory that should be used to store objects.
+ * @param[in] iova
+ *   The IO address
+ * @param[in] len
+ *   The length of memory in bytes.
+ * @param[in] obj_cb
+ *   Callback function to be executed for each populated object.
+ * @param[in] obj_cb_arg
+ *   An opaque pointer passed to the callback function.
+ * @return
+ *   The number of objects added on success.
+ *   On error, no objects are populated and a negative errno is returned.
+ */
+int rte_mempool_ops_populate(struct rte_mempool *mp, unsigned int max_objs,
+			     void *vaddr, rte_iova_t iova, size_t len,
+			     rte_mempool_populate_obj_cb_t *obj_cb,
+			     void *obj_cb_arg);
 
 /**
  * @internal wrapper for mempool_ops free callback.

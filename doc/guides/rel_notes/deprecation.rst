@@ -60,7 +60,7 @@ Deprecation Notices
 
   - removal of ``get_capabilities`` mempool ops and related flags.
   - substitute ``register_memory_area`` with ``populate`` ops.
-  - addition of new ops to customize objects population and allocate contiguous
+  - addition of new op to allocate contiguous
     block of objects if underlying driver supports it.
 
 * mbuf: The opaque ``mbuf->hash.sched`` field will be updated to support generic

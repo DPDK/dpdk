@@ -122,7 +122,8 @@ get_min_page_size(void)
 
 
 static void
-mempool_add_elem(struct rte_mempool *mp, void *obj, rte_iova_t iova)
+mempool_add_elem(struct rte_mempool *mp, __rte_unused void *opaque,
+		 void *obj, rte_iova_t iova)
 {
 	struct rte_mempool_objhdr *hdr;
 	struct rte_mempool_objtlr *tlr __rte_unused;
@@ -139,9 +140,6 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, rte_iova_t iova)
 	tlr = __mempool_get_trailer(obj);
 	tlr->cookie = RTE_MEMPOOL_TRAILER_COOKIE;
 #endif
-
-	/* enqueue in ring */
-	rte_mempool_ops_enqueue_bulk(mp, &obj, 1);
 }
 
 /* call obj_cb() for each mempool element */
@@ -420,16 +418,15 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	else
 		off = RTE_PTR_ALIGN_CEIL(vaddr, RTE_CACHE_LINE_SIZE) - vaddr;
 
-	while (off + total_elt_sz <= len && mp->populated_size < mp->size) {
-		off += mp->header_size;
-		if (iova == RTE_BAD_IOVA)
-			mempool_add_elem(mp, (char *)vaddr + off,
-				RTE_BAD_IOVA);
-		else
-			mempool_add_elem(mp, (char *)vaddr + off, iova + off);
-		off += mp->elt_size + mp->trailer_size;
-		i++;
+	if (off > len) {
+		ret = -EINVAL;
+		goto fail;
 	}
+
+	i = rte_mempool_ops_populate(mp, mp->size - mp->populated_size,
+		(char *)vaddr + off,
+		(iova == RTE_BAD_IOVA) ? RTE_BAD_IOVA : (iova + off),
+		len - off, mempool_add_elem, NULL);
 
 	/* not enough room to store one object */
 	if (i == 0) {
