@@ -264,10 +264,9 @@ dpaa_mbuf_get_count(const struct rte_mempool *mp)
 }
 
 static int
-dpaa_register_memory_area(const struct rte_mempool *mp,
-			  char *vaddr __rte_unused,
-			  rte_iova_t paddr __rte_unused,
-			  size_t len)
+dpaa_populate(struct rte_mempool *mp, unsigned int max_objs,
+	      void *vaddr, rte_iova_t paddr, size_t len,
+	      rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg)
 {
 	struct dpaa_bp_info *bp_info;
 	unsigned int total_elt_sz;
@@ -289,7 +288,9 @@ dpaa_register_memory_area(const struct rte_mempool *mp,
 	if (len >= total_elt_sz * mp->size)
 		bp_info->flags |= DPAA_MPOOL_SINGLE_SEGMENT;
 
-	return 0;
+	return rte_mempool_op_populate_default(mp, max_objs, vaddr, paddr, len,
+					       obj_cb, obj_cb_arg);
+
 }
 
 struct rte_mempool_ops dpaa_mpool_ops = {
@@ -299,7 +300,7 @@ struct rte_mempool_ops dpaa_mpool_ops = {
 	.enqueue = dpaa_mbuf_free_bulk,
 	.dequeue = dpaa_mbuf_alloc_bulk,
 	.get_count = dpaa_mbuf_get_count,
-	.register_memory_area = dpaa_register_memory_area,
+	.populate = dpaa_populate,
 };
 
 MEMPOOL_REGISTER_OPS(dpaa_mpool_ops);
