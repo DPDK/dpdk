@@ -85,3 +85,10 @@ DPDK_17.11 {
 	rte_cryptodev_pmd_parse_input_args;
 
 } DPDK_17.08;
+
+EXPERIMENTAL {
+        global:
+
+	rte_cryptodev_sym_session_get_private_data;
+	rte_cryptodev_sym_session_set_private_data;
+} DPDK_17.11;
