@@ -84,8 +84,14 @@ struct rte_crypto_op {
 	 */
 	uint8_t sess_type;
 	/**< operation session type */
+	uint16_t private_data_offset;
+	/**< Offset to indicate start of private data (if any). The offset
+	 * is counted from the start of the rte_crypto_op including IV.
+	 * The private data may be used by the application to store
+	 * information which should remain untouched in the library/driver
+	 */
 
-	uint8_t reserved[5];
+	uint8_t reserved[3];
 	/**< Reserved bytes to fill 64 bits for future additions */
 	struct rte_mempool *mempool;
 	/**< crypto operation mempool which operation is allocated from */
