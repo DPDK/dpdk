@@ -49,6 +49,12 @@ malloc_elem_insert(struct malloc_elem *elem)
 	struct malloc_elem *prev_elem, *next_elem;
 	struct malloc_heap *heap = elem->heap;
 
+	/* first and last elements must be both NULL or both non-NULL */
+	if ((heap->first == NULL) != (heap->last == NULL)) {
+		RTE_LOG(ERR, EAL, "Heap is probably corrupt\n");
+		return;
+	}
+
 	if (heap->first == NULL && heap->last == NULL) {
 		/* if empty heap */
 		heap->first = elem;
