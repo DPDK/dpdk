@@ -1750,6 +1750,7 @@ eal_legacy_hugepage_attach(void)
 		if (map_addr == MAP_FAILED) {
 			RTE_LOG(ERR, EAL, "Could not map %s: %s\n",
 				hf->filepath, strerror(errno));
+			close(fd);
 			goto error;
 		}
 
