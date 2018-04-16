@@ -162,7 +162,7 @@ static int
 nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct nicvf *nic = nicvf_pmd_priv(dev);
-	uint32_t buffsz, frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	uint32_t buffsz, frame_size = mtu + NIC_HW_L2_OVERHEAD;
 	size_t i;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 
@@ -180,7 +180,7 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	 * Refuse mtu that requires the support of scattered packets
 	 * when this feature has not been enabled before.
 	 */
-	if (!dev->data->scattered_rx &&
+	if (dev->data->dev_started && !dev->data->scattered_rx &&
 		(frame_size + 2 * VLAN_TAG_SIZE > buffsz))
 		return -EINVAL;
 
@@ -194,11 +194,11 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	else
 		rxmode->offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
-	if (nicvf_mbox_update_hw_max_frs(nic, frame_size))
+	if (nicvf_mbox_update_hw_max_frs(nic, mtu))
 		return -EINVAL;
 
-	/* Update max frame size */
-	rxmode->max_rx_pkt_len = (uint32_t)frame_size;
+	/* Update max_rx_pkt_len */
+	rxmode->max_rx_pkt_len = mtu + ETHER_HDR_LEN;
 	nic->mtu = mtu;
 
 	for (i = 0; i < nic->sqs_count; i++)
@@ -1408,7 +1408,7 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->speed_capa |= ETH_LINK_SPEED_40G;
 
 	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
-	dev_info->max_rx_pktlen = NIC_HW_MAX_FRS;
+	dev_info->max_rx_pktlen = NIC_HW_MAX_MTU + ETHER_HDR_LEN;
 	dev_info->max_rx_queues =
 			(uint16_t)MAX_RCV_QUEUES_PER_QS * (MAX_SQS_PER_VF + 1);
 	dev_info->max_tx_queues =
@@ -1741,8 +1741,7 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	/* Setup MTU based on max_rx_pkt_len or default */
 	mtu = dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME ?
 		dev->data->dev_conf.rxmode.max_rx_pkt_len
-			-  ETHER_HDR_LEN - ETHER_CRC_LEN
-		: ETHER_MTU;
+			-  ETHER_HDR_LEN : ETHER_MTU;
 
 	if (nicvf_dev_set_mtu(dev, mtu)) {
 		PMD_INIT_LOG(ERR, "Failed to set default mtu size");

@@ -171,7 +171,10 @@
 
 /* Min/Max packet size */
 #define NIC_HW_MIN_FRS                  (64)
-#define NIC_HW_MAX_FRS                  (9200) /* 9216 max pkt including FCS */
+/* ETH_HLEN+ETH_FCS_LEN+2*VLAN_HLEN */
+#define NIC_HW_L2_OVERHEAD              (26)
+#define NIC_HW_MAX_MTU                  (9190)
+#define NIC_HW_MAX_FRS                  (NIC_HW_MAX_MTU + NIC_HW_L2_OVERHEAD)
 #define NIC_HW_MAX_SEGS                 (12)
 
 /* Descriptor alignments */
