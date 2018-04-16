@@ -346,6 +346,21 @@ rte_mempool_free_memchunks(struct rte_mempool *mp)
 	}
 }
 
+static int
+mempool_ops_alloc_once(struct rte_mempool *mp)
+{
+	int ret;
+
+	/* create the internal ring if not already done */
+	if ((mp->flags & MEMPOOL_F_POOL_CREATED) == 0) {
+		ret = rte_mempool_ops_alloc(mp);
+		if (ret != 0)
+			return ret;
+		mp->flags |= MEMPOOL_F_POOL_CREATED;
+	}
+	return 0;
+}
+
 /* Add objects in the pool, using a physically contiguous memory
  * zone. Return the number of objects added, or a negative value
  * on error.
@@ -362,13 +377,9 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	struct rte_mempool_memhdr *memhdr;
 	int ret;
 
-	/* create the internal ring if not already done */
-	if ((mp->flags & MEMPOOL_F_POOL_CREATED) == 0) {
-		ret = rte_mempool_ops_alloc(mp);
-		if (ret != 0)
-			return ret;
-		mp->flags |= MEMPOOL_F_POOL_CREATED;
-	}
+	ret = mempool_ops_alloc_once(mp);
+	if (ret != 0)
+		return ret;
 
 	/* Notify memory area to mempool */
 	ret = rte_mempool_ops_register_memory_area(mp, vaddr, iova, len);
@@ -569,6 +580,10 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	unsigned int mp_flags;
 	int ret;
 	bool force_contig, no_contig, try_contig, no_pageshift;
+
+	ret = mempool_ops_alloc_once(mp);
+	if (ret != 0)
+		return ret;
 
 	/* mempool must not be populated */
 	if (mp->nb_mem_chunks != 0)
@@ -773,6 +788,10 @@ rte_mempool_populate_anon(struct rte_mempool *mp)
 		rte_errno = EINVAL;
 		return 0;
 	}
+
+	ret = mempool_ops_alloc_once(mp);
+	if (ret != 0)
+		return ret;
 
 	/* get chunk of virtually continuous memory */
 	size = get_anon_size(mp);
