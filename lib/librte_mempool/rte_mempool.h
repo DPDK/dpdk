@@ -1169,22 +1169,6 @@ void
 rte_mempool_cache_free(struct rte_mempool_cache *cache);
 
 /**
- * Flush a user-owned mempool cache to the specified mempool.
- *
- * @param cache
- *   A pointer to the mempool cache.
- * @param mp
- *   A pointer to the mempool.
- */
-static __rte_always_inline void
-rte_mempool_cache_flush(struct rte_mempool_cache *cache,
-			struct rte_mempool *mp)
-{
-	rte_mempool_ops_enqueue_bulk(mp, cache->objs, cache->len);
-	cache->len = 0;
-}
-
-/**
  * Get a pointer to the per-lcore default mempool cache.
  *
  * @param mp
@@ -1204,6 +1188,26 @@ rte_mempool_default_cache(struct rte_mempool *mp, unsigned lcore_id)
 		return NULL;
 
 	return &mp->local_cache[lcore_id];
+}
+
+/**
+ * Flush a user-owned mempool cache to the specified mempool.
+ *
+ * @param cache
+ *   A pointer to the mempool cache.
+ * @param mp
+ *   A pointer to the mempool.
+ */
+static __rte_always_inline void
+rte_mempool_cache_flush(struct rte_mempool_cache *cache,
+			struct rte_mempool *mp)
+{
+	if (cache == NULL)
+		cache = rte_mempool_default_cache(mp, rte_lcore_id());
+	if (cache == NULL || cache->len == 0)
+		return;
+	rte_mempool_ops_enqueue_bulk(mp, cache->objs, cache->len);
+	cache->len = 0;
 }
 
 /**
