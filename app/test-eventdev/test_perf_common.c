@@ -87,21 +87,21 @@ perf_event_timer_producer(void *arg)
 	struct rte_mempool *pool = t->pool;
 	struct perf_elt *m;
 	struct rte_event_timer_adapter **adptr = t->timer_adptr;
+	struct rte_event_timer tim;
 	uint64_t timeout_ticks = opt->expiry_nsec / opt->timer_tick_nsec;
 
+	memset(&tim, 0, sizeof(struct rte_event_timer));
 	timeout_ticks = opt->optm_timer_tick_nsec ?
 			(timeout_ticks * opt->timer_tick_nsec)
 			/ opt->optm_timer_tick_nsec : timeout_ticks;
 	timeout_ticks += timeout_ticks ? 0 : 1;
-	const struct rte_event_timer tim = {
-		.ev.op = RTE_EVENT_OP_NEW,
-		.ev.queue_id = p->queue_id,
-		.ev.sched_type = t->opt->sched_type_list[0],
-		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
-		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
-		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = timeout_ticks,
-	};
+	tim.ev.event_type =  RTE_EVENT_TYPE_TIMER;
+	tim.ev.op = RTE_EVENT_OP_NEW;
+	tim.ev.sched_type = t->opt->sched_type_list[0];
+	tim.ev.queue_id = p->queue_id;
+	tim.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+	tim.state = RTE_EVENT_TIMER_NOT_ARMED;
+	tim.timeout_ticks = timeout_ticks;
 
 	if (opt->verbose_level > 1)
 		printf("%s(): lcore %d\n", __func__, rte_lcore_id());
@@ -149,21 +149,21 @@ perf_event_timer_producer_burst(void *arg)
 	struct rte_mempool *pool = t->pool;
 	struct perf_elt *m[BURST_SIZE + 1] = {NULL};
 	struct rte_event_timer_adapter **adptr = t->timer_adptr;
+	struct rte_event_timer tim;
 	uint64_t timeout_ticks = opt->expiry_nsec / opt->timer_tick_nsec;
 
+	memset(&tim, 0, sizeof(struct rte_event_timer));
 	timeout_ticks = opt->optm_timer_tick_nsec ?
 			(timeout_ticks * opt->timer_tick_nsec)
 			/ opt->optm_timer_tick_nsec : timeout_ticks;
 	timeout_ticks += timeout_ticks ? 0 : 1;
-	const struct rte_event_timer tim = {
-		.ev.op = RTE_EVENT_OP_NEW,
-		.ev.queue_id = p->queue_id,
-		.ev.sched_type = t->opt->sched_type_list[0],
-		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
-		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
-		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = timeout_ticks,
-	};
+	tim.ev.event_type =  RTE_EVENT_TYPE_TIMER;
+	tim.ev.op = RTE_EVENT_OP_NEW;
+	tim.ev.sched_type = t->opt->sched_type_list[0];
+	tim.ev.queue_id = p->queue_id;
+	tim.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+	tim.state = RTE_EVENT_TIMER_NOT_ARMED;
+	tim.timeout_ticks = timeout_ticks;
 
 	if (opt->verbose_level > 1)
 		printf("%s(): lcore %d\n", __func__, rte_lcore_id());
