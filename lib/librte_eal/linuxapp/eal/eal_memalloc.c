@@ -567,12 +567,13 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		 */
 		if (is_zero_length(fd)) {
 			struct msl_entry *te = get_msl_entry_by_idx(list_idx);
-			if (te != NULL && te->fd >= 0) {
-				close(te->fd);
+			/* te->fd is equivalent to fd */
+			if (te != NULL && te->fd >= 0)
 				te->fd = -1;
-			}
 			unlink(path);
+			close(fd);
 		}
+		/* if we're not removing the file, fd stays in the tailq */
 		ret = 0;
 	} else {
 		/* if we're able to take out a write lock, we're the last one
