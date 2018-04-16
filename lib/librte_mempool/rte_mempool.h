@@ -244,7 +244,8 @@ struct rte_mempool {
 #define MEMPOOL_F_SP_PUT         0x0004 /**< Default put is "single-producer".*/
 #define MEMPOOL_F_SC_GET         0x0008 /**< Default get is "single-consumer".*/
 #define MEMPOOL_F_POOL_CREATED   0x0010 /**< Internal: pool is created. */
-#define MEMPOOL_F_NO_PHYS_CONTIG 0x0020 /**< Don't need physically contiguous objs. */
+#define MEMPOOL_F_NO_IOVA_CONTIG 0x0020 /**< Don't need IOVA contiguous objs. */
+#define MEMPOOL_F_NO_PHYS_CONTIG MEMPOOL_F_NO_IOVA_CONTIG /* deprecated */
 /**
  * This capability flag is advertised by a mempool handler, if the whole
  * memory area containing the objects must be physically contiguous.
@@ -710,8 +711,8 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *   - MEMPOOL_F_SC_GET: If this flag is set, the default behavior
  *     when using rte_mempool_get() or rte_mempool_get_bulk() is
  *     "single-consumer". Otherwise, it is "multi-consumers".
- *   - MEMPOOL_F_NO_PHYS_CONTIG: If set, allocated objects won't
- *     necessarily be contiguous in physical memory.
+ *   - MEMPOOL_F_NO_IOVA_CONTIG: If set, allocated objects won't
+ *     necessarily be contiguous in IO memory.
  * @return
  *   The pointer to the new allocated mempool, on success. NULL on error
  *   with rte_errno set appropriately. Possible rte_errno values include:
@@ -1439,7 +1440,7 @@ rte_mempool_empty(const struct rte_mempool *mp)
  *   A pointer (virtual address) to the element of the pool.
  * @return
  *   The IO address of the elt element.
- *   If the mempool was created with MEMPOOL_F_NO_PHYS_CONTIG, the
+ *   If the mempool was created with MEMPOOL_F_NO_IOVA_CONTIG, the
  *   returned value is RTE_BAD_IOVA.
  */
 static inline rte_iova_t

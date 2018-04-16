@@ -1308,7 +1308,7 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	}
 
 	/* Mempool memory must be physically contiguous */
-	if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG) {
+	if (mp->flags & MEMPOOL_F_NO_IOVA_CONTIG) {
 		PMD_INIT_LOG(ERR, "Mempool memory must be physically contiguous");
 		return -EINVAL;
 	}

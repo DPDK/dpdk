@@ -459,7 +459,7 @@ rte_mempool_populate_iova_tab(struct rte_mempool *mp, char *vaddr,
 	if (mp->nb_mem_chunks != 0)
 		return -EEXIST;
 
-	if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
+	if (mp->flags & MEMPOOL_F_NO_IOVA_CONTIG)
 		return rte_mempool_populate_iova(mp, vaddr, RTE_BAD_IOVA,
 			pg_num * pg_sz, free_cb, opaque);
 
@@ -513,7 +513,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	if (RTE_ALIGN_CEIL(len, pg_sz) != len)
 		return -EINVAL;
 
-	if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
+	if (mp->flags & MEMPOOL_F_NO_IOVA_CONTIG)
 		return rte_mempool_populate_iova(mp, addr, RTE_BAD_IOVA,
 			len, free_cb, opaque);
 
@@ -583,7 +583,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	/* update mempool capabilities */
 	mp->flags |= mp_flags;
 
-	no_contig = mp->flags & MEMPOOL_F_NO_PHYS_CONTIG;
+	no_contig = mp->flags & MEMPOOL_F_NO_IOVA_CONTIG;
 	force_contig = mp->flags & MEMPOOL_F_CAPA_PHYS_CONTIG;
 
 	/*
