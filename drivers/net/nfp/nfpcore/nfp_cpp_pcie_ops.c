@@ -23,7 +23,6 @@
 #include <stdbool.h>
 #include <fcntl.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
 #include <libgen.h>
