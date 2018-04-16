@@ -36,9 +36,9 @@
 #define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
 #define EVT_NB_TIMERS            ("nb_timers")
 #define EVT_NB_TIMER_ADPTRS      ("nb_timer_adptrs")
-#define EVT_TIMER_TICK_NSEC      ("timer_tick_ns")
+#define EVT_TIMER_TICK_NSEC      ("timer_tick_nsec")
 #define EVT_MAX_TMO_NSEC         ("max_tmo_nsec")
-#define EVT_EXPIRY_NSEC          ("expiry_ns")
+#define EVT_EXPIRY_NSEC          ("expiry_nsec")
 #define EVT_HELP                 ("help")
 
 enum evt_prod_type {
@@ -292,10 +292,10 @@ evt_dump_producer_type(struct evt_options *opt)
 		evt_dump("max_tmo_nsec", "%"PRIu64"", opt->max_tmo_nsec);
 		evt_dump("expiry_nsec", "%"PRIu64"", opt->expiry_nsec);
 		if (opt->optm_timer_tick_nsec)
-			evt_dump("optm_timer_tick_ns", "%"PRIu64"",
+			evt_dump("optm_timer_tick_nsec", "%"PRIu64"",
 					opt->optm_timer_tick_nsec);
 		else
-			evt_dump("timer_tick_ns", "%"PRIu64"",
+			evt_dump("timer_tick_nsec", "%"PRIu64"",
 					opt->timer_tick_nsec);
 		break;
 	}

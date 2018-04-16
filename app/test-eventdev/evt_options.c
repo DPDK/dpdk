@@ -250,7 +250,7 @@ usage(char *program)
 		"\t--nb_timer_adptrs  : number of timer adapters to use.\n"
 		"\t--timer_tick_nsec  : timer tick interval in ns.\n"
 		"\t--max_tmo_nsec     : max timeout interval in ns.\n"
-		"\t--expiry_ns        : event timer expiry ns.\n"
+		"\t--expiry_nsec        : event timer expiry ns.\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
