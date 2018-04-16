@@ -466,7 +466,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	}
 	if (va != addr) {
 		RTE_LOG(DEBUG, EAL, "%s(): wrong mmap() address\n", __func__);
-		goto mapped;
+		munmap(va, alloc_sz);
+		goto resized;
 	}
 
 	rte_iova_t iova = rte_mem_virt2iova(addr);
