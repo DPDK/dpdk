@@ -44,6 +44,7 @@ struct vnic_wq_buf {
 
 struct vnic_wq {
 	unsigned int index;
+	uint64_t tx_offload_notsup_mask;
 	struct vnic_dev *vdev;
 	struct vnic_wq_ctrl __iomem *ctrl;              /* memory-mapped */
 	struct vnic_dev_ring ring;

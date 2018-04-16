@@ -158,6 +158,29 @@ int enic_get_vnic_config(struct enic *enic)
 	if (!ENIC_SETTING(enic, RSS))
 		enic->flow_type_rss_offloads = 0;
 
+	enic->vxlan = ENIC_SETTING(enic, VXLAN) &&
+		vnic_dev_capable_vxlan(enic->vdev);
+	/*
+	 * Default hardware capabilities. enic_dev_init() may add additional
+	 * flags if it enables overlay offloads.
+	 */
+	enic->tx_offload_capa =
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_TSO;
+	enic->rx_offload_capa =
+		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM;
+	enic->tx_offload_mask =
+		PKT_TX_VLAN_PKT |
+		PKT_TX_IP_CKSUM |
+		PKT_TX_L4_MASK |
+		PKT_TX_TCP_SEG;
+
 	return 0;
 }
 

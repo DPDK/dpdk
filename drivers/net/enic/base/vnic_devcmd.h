@@ -1081,6 +1081,18 @@ typedef enum {
 } vic_feature_t;
 
 /*
+ * These flags are used in args[1] of devcmd CMD_GET_SUPP_FEATURE_VER
+ * to indicate the host driver about the VxLAN and Multi WQ features
+ * supported
+ */
+#define FEATURE_VXLAN_IPV6_INNER	(1 << 0)
+#define FEATURE_VXLAN_IPV6_OUTER	(1 << 1)
+#define FEATURE_VXLAN_MULTI_WQ		(1 << 2)
+
+#define FEATURE_VXLAN_IPV6		(FEATURE_VXLAN_IPV6_INNER | \
+					 FEATURE_VXLAN_IPV6_OUTER)
+
+/*
  * CMD_CONFIG_GRPINTR subcommands
  */
 typedef enum {

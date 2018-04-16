@@ -15,15 +15,6 @@
 #include <rte_ip.h>
 #include <rte_tcp.h>
 
-#define	ENIC_TX_OFFLOAD_MASK (			 \
-		PKT_TX_VLAN_PKT |		 \
-		PKT_TX_IP_CKSUM |		 \
-		PKT_TX_L4_MASK |		 \
-		PKT_TX_TCP_SEG)
-
-#define	ENIC_TX_OFFLOAD_NOTSUP_MASK \
-	(PKT_TX_OFFLOAD_MASK ^ ENIC_TX_OFFLOAD_MASK)
-
 #define RTE_PMD_USE_PREFETCH
 
 #ifdef RTE_PMD_USE_PREFETCH
@@ -130,30 +121,73 @@ enic_cq_rx_check_err(struct cq_desc *cqd)
 
 /* Lookup table to translate RX CQ flags to mbuf flags. */
 static inline uint32_t
-enic_cq_rx_flags_to_pkt_type(struct cq_desc *cqd)
+enic_cq_rx_flags_to_pkt_type(struct cq_desc *cqd, uint8_t tnl)
 {
 	struct cq_enet_rq_desc *cqrd = (struct cq_enet_rq_desc *)cqd;
 	uint8_t cqrd_flags = cqrd->flags;
+	/*
+	 * Odd-numbered entries are for tunnel packets. All packet type info
+	 * applies to the inner packet, and there is no info on the outer
+	 * packet. The outer flags in these entries exist only to avoid
+	 * changing enic_cq_rx_to_pkt_flags(). They are cleared from mbuf
+	 * afterwards.
+	 *
+	 * Also, as there is no tunnel type info (VXLAN, NVGRE, or GENEVE), set
+	 * RTE_PTYPE_TUNNEL_GRENAT..
+	 */
 	static const uint32_t cq_type_table[128] __rte_cache_aligned = {
 		[0x00] = RTE_PTYPE_UNKNOWN,
 		[0x20] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_NONFRAG,
+		[0x21] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_NONFRAG |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_NONFRAG,
 		[0x22] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP,
+		[0x23] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_UDP,
 		[0x24] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_TCP,
+		[0x25] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_TCP |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_TCP,
 		[0x60] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_FRAG,
+		[0x61] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_FRAG |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_FRAG,
 		[0x62] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP,
+		[0x63] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_UDP,
 		[0x64] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_TCP,
+		[0x65] = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_TCP |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_TCP,
 		[0x10] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_NONFRAG,
+		[0x11] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_NONFRAG |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_NONFRAG,
 		[0x12] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_UDP,
+		[0x13] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_UDP,
 		[0x14] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_TCP,
-		[0x50] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_FRAG,
-		[0x52] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_UDP,
-		[0x54] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_TCP,
+		[0x15] = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_TCP |
+			 RTE_PTYPE_TUNNEL_GRENAT |
+			 RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+			 RTE_PTYPE_INNER_L4_TCP,
 		/* All others reserved */
 	};
 	cqrd_flags &= CQ_ENET_RQ_DESC_FLAGS_IPV4_FRAGMENT
 		| CQ_ENET_RQ_DESC_FLAGS_IPV4 | CQ_ENET_RQ_DESC_FLAGS_IPV6
 		| CQ_ENET_RQ_DESC_FLAGS_TCP | CQ_ENET_RQ_DESC_FLAGS_UDP;
-	return cq_type_table[cqrd_flags];
+	return cq_type_table[cqrd_flags + tnl];
 }
 
 static inline void
@@ -200,10 +234,18 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 			uint32_t l4_flags;
 			l4_flags = mbuf->packet_type & RTE_PTYPE_L4_MASK;
 
-			if (enic_cq_rx_desc_ipv4_csum_ok(cqrd))
-				pkt_flags |= PKT_RX_IP_CKSUM_GOOD;
-			else if (mbuf->packet_type & RTE_PTYPE_L3_IPV4)
-				pkt_flags |= PKT_RX_IP_CKSUM_BAD;
+			/*
+			 * When overlay offload is enabled, the NIC may
+			 * set ipv4_csum_ok=1 if the inner packet is IPv6..
+			 * So, explicitly check for IPv4 before checking
+			 * ipv4_csum_ok.
+			 */
+			if (mbuf->packet_type & RTE_PTYPE_L3_IPV4) {
+				if (enic_cq_rx_desc_ipv4_csum_ok(cqrd))
+					pkt_flags |= PKT_RX_IP_CKSUM_GOOD;
+				else
+					pkt_flags |= PKT_RX_IP_CKSUM_BAD;
+			}
 
 			if (l4_flags == RTE_PTYPE_L4_UDP ||
 			    l4_flags == RTE_PTYPE_L4_TCP) {
@@ -245,6 +287,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct vnic_cq *cq;
 	volatile struct cq_desc *cqd_ptr;
 	uint8_t color;
+	uint8_t tnl;
 	uint16_t seg_length;
 	struct rte_mbuf *first_seg = sop_rq->pkt_first_seg;
 	struct rte_mbuf *last_seg = sop_rq->pkt_last_seg;
@@ -336,10 +379,21 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			continue;
 		}
 
+		/*
+		 * When overlay offload is enabled, CQ.fcoe indicates the
+		 * packet is tunnelled.
+		 */
+		tnl = enic->overlay_offload &&
+			(ciflags & CQ_ENET_RQ_DESC_FLAGS_FCOE) != 0;
 		/* cq rx flags are only valid if eop bit is set */
-		first_seg->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
+		first_seg->packet_type =
+			enic_cq_rx_flags_to_pkt_type(&cqd, tnl);
 		enic_cq_rx_to_pkt_flags(&cqd, first_seg);
-
+		/* Wipe the outer types set by enic_cq_rx_flags_to_pkt_type() */
+		if (tnl) {
+			first_seg->packet_type &= ~(RTE_PTYPE_L3_MASK |
+						    RTE_PTYPE_L4_MASK);
+		}
 		if (unlikely(packet_error)) {
 			rte_pktmbuf_free(first_seg);
 			rte_atomic64_inc(&enic->soft_stats.rx_packet_errors);
@@ -443,9 +497,10 @@ unsigned int enic_cleanup_wq(__rte_unused struct enic *enic, struct vnic_wq *wq)
 	return 0;
 }
 
-uint16_t enic_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts)
 {
+	struct vnic_wq *wq = (struct vnic_wq *)tx_queue;
 	int32_t ret;
 	uint16_t i;
 	uint64_t ol_flags;
@@ -454,7 +509,7 @@ uint16_t enic_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (i = 0; i != nb_pkts; i++) {
 		m = tx_pkts[i];
 		ol_flags = m->ol_flags;
-		if (ol_flags & ENIC_TX_OFFLOAD_NOTSUP_MASK) {
+		if (ol_flags & wq->tx_offload_notsup_mask) {
 			rte_errno = -ENOTSUP;
 			return i;
 		}
@@ -558,6 +613,11 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			offload_mode = WQ_ENET_OFFLOAD_MODE_TSO;
 			mss = tx_pkt->tso_segsz;
+			/* For tunnel, need the size of outer+inner headers */
+			if (ol_flags & PKT_TX_TUNNEL_MASK) {
+				header_len += tx_pkt->outer_l2_len +
+					tx_pkt->outer_l3_len;
+			}
 		}
 
 		if ((ol_flags & ol_flags_mask) && (header_len == 0)) {

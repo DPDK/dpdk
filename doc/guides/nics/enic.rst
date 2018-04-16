@@ -254,6 +254,54 @@ Generic Flow API is supported. The baseline support is:
 More features may be added in future firmware and new versions of the VIC.
 Please refer to the release notes.
 
+.. _overlay_offload:
+
+Overlay Offload
+---------------
+
+Recent hardware models support overlay offload. When enabled, the NIC performs
+the following operations for VXLAN, NVGRE, and GENEVE packets. In all cases,
+inner and outer packets can be IPv4 or IPv6.
+
+- TSO for VXLAN and GENEVE packets.
+
+  Hardware supports NVGRE TSO, but DPDK currently has no NVGRE offload flags.
+
+- Tx checksum offloads.
+
+  The NIC fills in IPv4/UDP/TCP checksums for both inner and outer packets.
+
+- Rx checksum offloads.
+
+  The NIC validates IPv4/UDP/TCP checksums of both inner and outer packets.
+  Good checksum flags (e.g. ``PKT_RX_L4_CKSUM_GOOD``) indicate that the inner
+  packet has the correct checksum, and if applicable, the outer packet also
+  has the correct checksum. Bad checksum flags (e.g. ``PKT_RX_L4_CKSUM_BAD``)
+  indicate that the inner and/or outer packets have invalid checksum values.
+
+- Inner Rx packet type classification
+
+  PMD sets inner L3/L4 packet types (e.g. ``RTE_PTYPE_INNER_L4_TCP``), and
+  ``RTE_PTYPE_TUNNEL_GRENAT`` to indicate that the packet is tunneled.
+  PMD does not set L3/L4 packet types for outer packets.
+
+- Inner RSS
+
+  RSS hash calculation, therefore queue selection, is done on inner packets.
+
+In order to enable overlay offload, the 'Enable VXLAN' box should be checked
+via CIMC or UCSM followed by a reboot of the server. When PMD successfully
+enables overlay offload, it prints the following message on the console.
+
+.. code-block:: console
+
+    Overlay offload is enabled
+
+By default, PMD enables overlay offload if hardware supports it. To disable
+it, set ``devargs`` parameter ``disable-overlay=1``. For example::
+
+    -w 12:00.0,disable-overlay=1
+
 .. _enic_limitations:
 
 Limitations
@@ -376,6 +424,11 @@ Supported features
 - MTU update
 - SR-IOV on UCS managed servers connected to Fabric Interconnects
 - Flow API
+- Overlay offload
+
+  - Rx/Tx checksum offloads for VXLAN, NVGRE, GENEVE
+  - TSO for VXLAN and GENEVE packets
+  - Inner RSS
 
 Known bugs and unsupported features in this release
 ---------------------------------------------------

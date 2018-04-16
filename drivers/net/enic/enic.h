@@ -17,6 +17,7 @@
 #include "vnic_rss.h"
 #include "enic_res.h"
 #include "cq_enet_desc.h"
+#include <stdbool.h>
 #include <sys/queue.h>
 #include <rte_spinlock.h>
 
@@ -101,6 +102,7 @@ struct enic {
 	struct vnic_dev *vdev;
 
 	unsigned int port_id;
+	bool overlay_offload;
 	struct rte_eth_dev *rte_dev;
 	struct enic_fdir fdir;
 	char bdf_name[ENICPMD_BDF_LENGTH];
@@ -119,6 +121,8 @@ struct enic {
 	u8 adv_filters;
 	u32 flow_filter_mode;
 	u8 filter_actions; /* HW supported actions */
+	bool vxlan;
+	bool disable_overlay; /* devargs disable_overlay=1 */
 
 	unsigned int flags;
 	unsigned int priv_flags;
@@ -169,6 +173,10 @@ struct enic {
 	uint64_t rss_hf; /* ETH_RSS flags */
 	union vnic_rss_key rss_key;
 	union vnic_rss_cpu rss_cpu;
+
+	uint64_t rx_offload_capa; /* DEV_RX_OFFLOAD flags */
+	uint64_t tx_offload_capa; /* DEV_TX_OFFLOAD flags */
+	uint64_t tx_offload_mask; /* PKT_TX flags accepted */
 };
 
 /* Compute ethdev's max packet size from MTU */

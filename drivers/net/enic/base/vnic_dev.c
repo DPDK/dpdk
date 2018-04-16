@@ -1062,3 +1062,36 @@ int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 
 	return ret;
 }
+
+int vnic_dev_overlay_offload_ctrl(struct vnic_dev *vdev, u8 overlay, u8 config)
+{
+	u64 a0 = overlay;
+	u64 a1 = config;
+	int wait = 1000;
+
+	return vnic_dev_cmd(vdev, CMD_OVERLAY_OFFLOAD_CTRL, &a0, &a1, wait);
+}
+
+int vnic_dev_overlay_offload_cfg(struct vnic_dev *vdev, u8 overlay,
+				 u16 vxlan_udp_port_number)
+{
+	u64 a1 = vxlan_udp_port_number;
+	u64 a0 = overlay;
+	int wait = 1000;
+
+	return vnic_dev_cmd(vdev, CMD_OVERLAY_OFFLOAD_CFG, &a0, &a1, wait);
+}
+
+int vnic_dev_capable_vxlan(struct vnic_dev *vdev)
+{
+	u64 a0 = VIC_FEATURE_VXLAN;
+	u64 a1 = 0;
+	int wait = 1000;
+	int ret;
+
+	ret = vnic_dev_cmd(vdev, CMD_GET_SUPP_FEATURE_VER, &a0, &a1, wait);
+	/* 1 if the NIC can do VXLAN for both IPv4 and IPv6 with multiple WQs */
+	return ret == 0 &&
+		(a1 & (FEATURE_VXLAN_IPV6 | FEATURE_VXLAN_MULTI_WQ)) ==
+		(FEATURE_VXLAN_IPV6 | FEATURE_VXLAN_MULTI_WQ);
+}

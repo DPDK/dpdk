@@ -244,6 +244,9 @@ void enic_init_vnic_resources(struct enic *enic)
 			enic_cq_wq(enic, index),
 			error_interrupt_enable,
 			error_interrupt_offset);
+		/* Compute unsupported ol flags for enic_prep_pkts() */
+		enic->wq[index].tx_offload_notsup_mask =
+			PKT_TX_OFFLOAD_MASK ^ enic->tx_offload_mask;
 
 		cq_idx = enic_cq_wq(enic, index);
 		vnic_cq_init(&enic->cq[cq_idx],
@@ -1545,6 +1548,27 @@ static int enic_dev_init(struct enic *enic)
 
 	/* set up link status checking */
 	vnic_dev_notify_set(enic->vdev, -1); /* No Intr for notify */
+
+	enic->overlay_offload = false;
+	if (!enic->disable_overlay && enic->vxlan &&
+	    /* 'VXLAN feature' enables VXLAN, NVGRE, and GENEVE. */
+	    vnic_dev_overlay_offload_ctrl(enic->vdev,
+					  OVERLAY_FEATURE_VXLAN,
+					  OVERLAY_OFFLOAD_ENABLE) == 0) {
+		enic->tx_offload_capa |=
+			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+			DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
+			DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+		/*
+		 * Do not add PKT_TX_OUTER_{IPV4,IPV6} as they are not
+		 * 'offload' flags (i.e. not part of PKT_TX_OFFLOAD_MASK).
+		 */
+		enic->tx_offload_mask |=
+			PKT_TX_OUTER_IP_CKSUM |
+			PKT_TX_TUNNEL_MASK;
+		enic->overlay_offload = true;
+		dev_info(enic, "Overlay offload is enabled\n");
+	}
 
 	return 0;
 

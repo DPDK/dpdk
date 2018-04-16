@@ -11,6 +11,7 @@
 #include <rte_bus_pci.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
+#include <rte_kvargs.h>
 #include <rte_string_fns.h>
 
 #include "vnic_intr.h"
@@ -39,18 +40,7 @@ static const struct rte_pci_id pci_id_enic_map[] = {
 	{.vendor_id = 0, /* sentinel */},
 };
 
-#define ENIC_TX_OFFLOAD_CAPA (			\
-		DEV_TX_OFFLOAD_VLAN_INSERT |	\
-		DEV_TX_OFFLOAD_IPV4_CKSUM  |	\
-		DEV_TX_OFFLOAD_UDP_CKSUM   |	\
-		DEV_TX_OFFLOAD_TCP_CKSUM   |	\
-		DEV_TX_OFFLOAD_TCP_TSO)
-
-#define ENIC_RX_OFFLOAD_CAPA (			\
-		DEV_RX_OFFLOAD_VLAN_STRIP |	\
-		DEV_RX_OFFLOAD_IPV4_CKSUM |	\
-		DEV_RX_OFFLOAD_UDP_CKSUM  |	\
-		DEV_RX_OFFLOAD_TCP_CKSUM)
+#define ENIC_DEVARG_DISABLE_OVERLAY "disable-overlay"
 
 RTE_INIT(enicpmd_init_log);
 static void
@@ -484,8 +474,8 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	 */
 	device_info->max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->max_mtu);
 	device_info->max_mac_addrs = ENIC_MAX_MAC_ADDR;
-	device_info->rx_offload_capa = ENIC_RX_OFFLOAD_CAPA;
-	device_info->tx_offload_capa = ENIC_TX_OFFLOAD_CAPA;
+	device_info->rx_offload_capa = enic->rx_offload_capa;
+	device_info->tx_offload_capa = enic->tx_offload_capa;
 	device_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = ENIC_DEFAULT_RX_FREE_THRESH
 	};
@@ -734,7 +724,7 @@ static void enicpmd_dev_rxq_info_get(struct rte_eth_dev *dev,
 	 * Except VLAN stripping (port setting), all the checksum offloads
 	 * are always enabled.
 	 */
-	conf->offloads = ENIC_RX_OFFLOAD_CAPA;
+	conf->offloads = enic->rx_offload_capa;
 	if (!enic->ig_vlan_strip_en)
 		conf->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 	/* rx_thresh and other fields are not applicable for enic */
@@ -749,7 +739,7 @@ static void enicpmd_dev_txq_info_get(struct rte_eth_dev *dev,
 	ENICPMD_FUNC_TRACE();
 	qinfo->nb_desc = enic->config.wq_desc_count;
 	memset(&qinfo->conf, 0, sizeof(qinfo->conf));
-	qinfo->conf.offloads = ENIC_TX_OFFLOAD_CAPA; /* not configurable */
+	qinfo->conf.offloads = enic->tx_offload_capa;
 	/* tx_thresh, and all the other fields are not applicable for enic */
 }
 
@@ -824,6 +814,49 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.rss_hash_update      = enicpmd_dev_rss_hash_update,
 };
 
+static int enic_parse_disable_overlay(__rte_unused const char *key,
+				      const char *value,
+				      void *opaque)
+{
+	struct enic *enic;
+
+	enic = (struct enic *)opaque;
+	if (strcmp(value, "0") == 0) {
+		enic->disable_overlay = false;
+	} else if (strcmp(value, "1") == 0) {
+		enic->disable_overlay = true;
+	} else {
+		dev_err(enic, "Invalid value for " ENIC_DEVARG_DISABLE_OVERLAY
+			": expected=0|1 given=%s\n", value);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int enic_check_devargs(struct rte_eth_dev *dev)
+{
+	static const char *const valid_keys[] = {
+		ENIC_DEVARG_DISABLE_OVERLAY, NULL};
+	struct enic *enic = pmd_priv(dev);
+	struct rte_kvargs *kvlist;
+
+	ENICPMD_FUNC_TRACE();
+
+	enic->disable_overlay = false;
+	if (!dev->device->devargs)
+		return 0;
+	kvlist = rte_kvargs_parse(dev->device->devargs->args, valid_keys);
+	if (!kvlist)
+		return -EINVAL;
+	if (rte_kvargs_process(kvlist, ENIC_DEVARG_DISABLE_OVERLAY,
+			       enic_parse_disable_overlay, enic) < 0) {
+		rte_kvargs_free(kvlist);
+		return -EINVAL;
+	}
+	rte_kvargs_free(kvlist);
+	return 0;
+}
+
 struct enic *enicpmd_list_head = NULL;
 /* Initialize the driver
  * It returns 0 on success.
@@ -833,6 +866,7 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pdev;
 	struct rte_pci_addr *addr;
 	struct enic *enic = pmd_priv(eth_dev);
+	int err;
 
 	ENICPMD_FUNC_TRACE();
 
@@ -851,6 +885,9 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 	snprintf(enic->bdf_name, ENICPMD_BDF_LENGTH, "%04x:%02x:%02x.%x",
 		addr->domain, addr->bus, addr->devid, addr->function);
 
+	err = enic_check_devargs(eth_dev);
+	if (err)
+		return err;
 	return enic_probe(enic);
 }
 
@@ -876,3 +913,5 @@ static struct rte_pci_driver rte_enic_pmd = {
 RTE_PMD_REGISTER_PCI(net_enic, rte_enic_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enic, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_enic,
+			      ENIC_DEVARG_DISABLE_OVERLAY "=<0|1> ");
