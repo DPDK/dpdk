@@ -10,6 +10,10 @@
  * RTE VFIO. This library provides various VFIO related utility functions.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * determine if VFIO is present on the system
  */
@@ -33,16 +37,19 @@
 #define VFIO_NOIOMMU_MODE      \
 	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* NOIOMMU is defined from kernel version 4.5 onwards */
 #ifdef VFIO_NOIOMMU_IOMMU
 #define RTE_VFIO_NOIOMMU VFIO_NOIOMMU_IOMMU
 #else
 #define RTE_VFIO_NOIOMMU 8
 #endif
+
+#else /* not VFIO_PRESENT */
+
+/* we don't need an actual definition, only pointer is used */
+struct vfio_device_info;
+
+#endif /* VFIO_PRESENT */
 
 /**
  * Setup vfio_cfg for the device identified by its address.
@@ -248,7 +255,5 @@ rte_vfio_get_group_fd(int iommu_group_num);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* VFIO_PRESENT */
 
 #endif /* _RTE_VFIO_H_ */

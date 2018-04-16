@@ -1547,4 +1547,64 @@ rte_vfio_dma_unmap(uint64_t __rte_unused vaddr, uint64_t __rte_unused iova,
 	return -1;
 }
 
-#endif
+int
+rte_vfio_setup_device(__rte_unused const char *sysfs_base,
+		__rte_unused const char *dev_addr,
+		__rte_unused int *vfio_dev_fd,
+		__rte_unused struct vfio_device_info *device_info)
+{
+	return -1;
+}
+
+int
+rte_vfio_release_device(__rte_unused const char *sysfs_base,
+		__rte_unused const char *dev_addr, __rte_unused int fd)
+{
+	return -1;
+}
+
+int
+rte_vfio_enable(__rte_unused const char *modname)
+{
+	return -1;
+}
+
+int
+rte_vfio_is_enabled(__rte_unused const char *modname)
+{
+	return -1;
+}
+
+int
+rte_vfio_noiommu_is_enabled(void)
+{
+	return -1;
+}
+
+int
+rte_vfio_clear_group(__rte_unused int vfio_group_fd)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_get_group_num(__rte_unused const char *sysfs_base,
+		__rte_unused const char *dev_addr,
+		__rte_unused int *iommu_group_num)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_get_container_fd(void)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_get_group_fd(__rte_unused int iommu_group_num)
+{
+	return -1;
+}
+
+#endif /* VFIO_PRESENT */

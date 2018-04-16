@@ -40,6 +40,7 @@
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_version.h>
+#include <rte_vfio.h>
 #include <rte_atomic.h>
 #include <malloc_heap.h>
 
@@ -755,20 +756,6 @@ rte_eal_vfio_intr_mode(void)
 {
 	return RTE_INTR_MODE_NONE;
 }
-
-/* dummy forward declaration. */
-struct vfio_device_info;
-
-/* dummy prototypes. */
-int rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
-		int *vfio_dev_fd, struct vfio_device_info *device_info);
-int rte_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
-int rte_vfio_enable(const char *modname);
-int rte_vfio_is_enabled(const char *modname);
-int rte_vfio_noiommu_is_enabled(void);
-int rte_vfio_clear_group(int vfio_group_fd);
-int rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len);
-int rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len);
 
 int rte_vfio_setup_device(__rte_unused const char *sysfs_base,
 		      __rte_unused const char *dev_addr,
