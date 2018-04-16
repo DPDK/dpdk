@@ -152,26 +152,15 @@ octeontx_fpavf_calc_mem_size(const struct rte_mempool *mp,
 }
 
 static int
-octeontx_fpavf_register_memory_area(const struct rte_mempool *mp,
-				    char *vaddr, rte_iova_t paddr, size_t len)
-{
-	RTE_SET_USED(paddr);
-	uint8_t gpool;
-	uintptr_t pool_bar;
-
-	gpool = octeontx_fpa_bufpool_gpool(mp->pool_id);
-	pool_bar = mp->pool_id & ~(uint64_t)FPA_GPOOL_MASK;
-
-	return octeontx_fpavf_pool_set_range(pool_bar, len, vaddr, gpool);
-}
-
-static int
 octeontx_fpavf_populate(struct rte_mempool *mp, unsigned int max_objs,
 			void *vaddr, rte_iova_t iova, size_t len,
 			rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg)
 {
 	size_t total_elt_sz;
 	size_t off;
+	uint8_t gpool;
+	uintptr_t pool_bar;
+	int ret;
 
 	if (iova == RTE_BAD_IOVA)
 		return -EINVAL;
@@ -188,6 +177,13 @@ octeontx_fpavf_populate(struct rte_mempool *mp, unsigned int max_objs,
 	iova += off;
 	len -= off;
 
+	gpool = octeontx_fpa_bufpool_gpool(mp->pool_id);
+	pool_bar = mp->pool_id & ~(uint64_t)FPA_GPOOL_MASK;
+
+	ret = octeontx_fpavf_pool_set_range(pool_bar, len, vaddr, gpool);
+	if (ret < 0)
+		return ret;
+
 	return rte_mempool_op_populate_default(mp, max_objs, vaddr, iova, len,
 					       obj_cb, obj_cb_arg);
 }
@@ -199,7 +195,6 @@ static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.enqueue = octeontx_fpavf_enqueue,
 	.dequeue = octeontx_fpavf_dequeue,
 	.get_count = octeontx_fpavf_get_count,
-	.register_memory_area = octeontx_fpavf_register_memory_area,
 	.calc_mem_size = octeontx_fpavf_calc_mem_size,
 	.populate = octeontx_fpavf_populate,
 };
