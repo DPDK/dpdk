@@ -1893,12 +1893,6 @@ cmd_pipeline_table(char **tokens,
 
 		t0 += 6;
 	} else if (strcmp(tokens[t0], "stub") == 0) {
-		if (n_tokens < t0 + 1) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline table stub");
-			return;
-		}
-
 		p.match_type = TABLE_STUB;
 
 		t0 += 1;
