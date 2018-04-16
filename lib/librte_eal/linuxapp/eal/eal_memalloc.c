@@ -146,7 +146,7 @@ resotre_numa(int *oldpolicy, struct bitmask *oldmask)
 {
 	RTE_LOG(DEBUG, EAL,
 		"Restoring previous memory policy: %d\n", *oldpolicy);
-	if (oldpolicy == MPOL_DEFAULT) {
+	if (*oldpolicy == MPOL_DEFAULT) {
 		numa_set_localalloc();
 	} else if (set_mempolicy(*oldpolicy, oldmask->maskp,
 				 oldmask->size + 1) < 0) {
