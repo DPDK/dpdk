@@ -4158,6 +4158,7 @@ load_dscp_table(struct rte_table_action_dscp_table *dscp_table,
 
 		if (parse_tokenize_string(line, tokens, &n_tokens)) {
 			*line_number = l;
+			fclose(f);
 			return -EINVAL;
 		}
 
@@ -4172,6 +4173,7 @@ load_dscp_table(struct rte_table_action_dscp_table *dscp_table,
 			(tc_queue_id >= RTE_TABLE_ACTION_TC_QUEUE_MAX) ||
 			(strlen(tokens[2]) != 1)) {
 			*line_number = l;
+			fclose(f);
 			return -EINVAL;
 		}
 
@@ -4193,6 +4195,7 @@ load_dscp_table(struct rte_table_action_dscp_table *dscp_table,
 
 		default:
 			*line_number = l;
+			fclose(f);
 			return -EINVAL;
 		}
 
