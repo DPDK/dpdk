@@ -943,20 +943,28 @@ init_lcore_rx_queues(void)
 static void
 print_usage(const char *prgname)
 {
-	printf("%s [EAL options] -- -p PORTMASK -P -u PORTMASK"
-		"  --"CMD_LINE_OPT_CONFIG" (port,queue,lcore)[,(port,queue,lcore]"
-		" --single-sa SAIDX -f CONFIG_FILE\n"
-		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
-		"  -P : enable promiscuous mode\n"
-		"  -u PORTMASK: hexadecimal bitmask of unprotected ports\n"
-		"  -j FRAMESIZE: jumbo frame maximum size\n"
-		"  --"CMD_LINE_OPT_CONFIG": (port,queue,lcore): "
-		"rx queues configuration\n"
-		"  --single-sa SAIDX: use single SA index for outbound, "
-		"bypassing the SP\n"
-		"  --cryptodev_mask MASK: hexadecimal bitmask of the "
-		"crypto devices to configure\n"
-		"  -f CONFIG_FILE: Configuration file path\n",
+	fprintf(stderr, "%s [EAL options] --"
+		" -p PORTMASK"
+		" [-P]"
+		" [-u PORTMASK]"
+		" [-j FRAMESIZE]"
+		" -f CONFIG_FILE"
+		" --config (port,queue,lcore)[,(port,queue,lcore)]"
+		" [--single-sa SAIDX]"
+		" [--cryptodev_mask MASK]"
+		"\n\n"
+		"  -p PORTMASK: Hexadecimal bitmask of ports to configure\n"
+		"  -P : Enable promiscuous mode\n"
+		"  -u PORTMASK: Hexadecimal bitmask of unprotected ports\n"
+		"  -j FRAMESIZE: Enable jumbo frame with 'FRAMESIZE' as maximum\n"
+		"                packet size\n"
+		"  -f CONFIG_FILE: Configuration file\n"
+		"  --config (port,queue,lcore): Rx queue configuration\n"
+		"  --single-sa SAIDX: Use single SA index for outbound traffic,\n"
+		"                     bypassing the SP\n"
+		"  --cryptodev_mask MASK: Hexadecimal bitmask of the crypto\n"
+		"                         devices to configure\n"
+		"\n",
 		prgname);
 }
 
