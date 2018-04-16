@@ -458,9 +458,6 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	 */
 	void *va = mmap(addr, alloc_sz, PROT_READ | PROT_WRITE,
 			MAP_SHARED | MAP_POPULATE | MAP_FIXED, fd, map_offset);
-	/* for non-single file segments, we can close fd here */
-	if (!internal_config.single_file_segments)
-		close(fd);
 
 	if (va == MAP_FAILED) {
 		RTE_LOG(DEBUG, EAL, "%s(): mmap() failed: %s\n", __func__,
@@ -502,6 +499,10 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 			(unsigned int)(alloc_sz >> 20));
 		goto mapped;
 	}
+	/* for non-single file segments, we can close fd here */
+	if (!internal_config.single_file_segments)
+		close(fd);
+
 	*(int *)addr = *(int *)addr;
 
 	ms->addr = addr;
