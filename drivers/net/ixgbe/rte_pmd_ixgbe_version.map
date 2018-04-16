@@ -52,3 +52,12 @@ DPDK_17.08 {
 	rte_pmd_ixgbe_bypass_wd_timeout_show;
 	rte_pmd_ixgbe_bypass_wd_timeout_store;
 } DPDK_17.05;
+
+EXPERIMENTAL {
+	global:
+
+	rte_pmd_ixgbe_mdio_lock;
+	rte_pmd_ixgbe_mdio_unlock;
+	rte_pmd_ixgbe_mdio_unlocked_read;
+	rte_pmd_ixgbe_mdio_unlocked_write;
+};
