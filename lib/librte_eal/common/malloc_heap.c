@@ -99,10 +99,11 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 
 	/* msl is const, so find it */
 	msl_idx = msl - mcfg->memsegs;
-	found_msl = &mcfg->memsegs[msl_idx];
 
 	if (msl_idx < 0 || msl_idx >= RTE_MAX_MEMSEG_LISTS)
 		return -1;
+
+	found_msl = &mcfg->memsegs[msl_idx];
 
 	malloc_heap_add_memory(heap, found_msl, ms->addr, len);
 
