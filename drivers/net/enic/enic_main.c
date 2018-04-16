@@ -162,13 +162,12 @@ int enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
 	return 0;
 }
 
-void enic_del_mac_address(struct enic *enic, int mac_index)
+int enic_del_mac_address(struct enic *enic, int mac_index)
 {
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 	uint8_t *mac_addr = eth_dev->data->mac_addrs[mac_index].addr_bytes;
 
-	if (vnic_dev_del_addr(enic->vdev, mac_addr))
-		dev_err(enic, "del mac addr failed\n");
+	return vnic_dev_del_addr(enic->vdev, mac_addr);
 }
 
 int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)

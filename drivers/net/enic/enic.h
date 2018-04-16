@@ -284,7 +284,7 @@ int enic_dev_stats_get(struct enic *enic,
 void enic_dev_stats_clear(struct enic *enic);
 void enic_add_packet_filter(struct enic *enic);
 int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr);
-void enic_del_mac_address(struct enic *enic, int mac_index);
+int enic_del_mac_address(struct enic *enic, int mac_index);
 unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq);
 void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 		   struct rte_mbuf *tx_pkt, unsigned short len,

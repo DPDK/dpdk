@@ -583,7 +583,24 @@ static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, uint32_t index)
 		return;
 
 	ENICPMD_FUNC_TRACE();
-	enic_del_mac_address(enic, index);
+	if (enic_del_mac_address(enic, index))
+		dev_err(enic, "del mac addr failed\n");
+}
+
+static int enicpmd_set_mac_addr(struct rte_eth_dev *eth_dev,
+				struct ether_addr *addr)
+{
+	struct enic *enic = pmd_priv(eth_dev);
+	int ret;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
+	ENICPMD_FUNC_TRACE();
+	ret = enic_del_mac_address(enic, 0);
+	if (ret)
+		return ret;
+	return enic_set_mac_address(enic, addr->addr_bytes);
 }
 
 static int enicpmd_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
@@ -799,6 +816,7 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.priority_flow_ctrl_set = NULL,
 	.mac_addr_add         = enicpmd_add_mac_addr,
 	.mac_addr_remove      = enicpmd_remove_mac_addr,
+	.mac_addr_set         = enicpmd_set_mac_addr,
 	.filter_ctrl          = enicpmd_dev_filter_ctrl,
 	.reta_query           = enicpmd_dev_rss_reta_query,
 	.reta_update          = enicpmd_dev_rss_reta_update,
