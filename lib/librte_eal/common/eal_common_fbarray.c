@@ -572,6 +572,9 @@ rte_fbarray_detach(struct rte_fbarray *arr)
 
 	size_t page_sz = sysconf(_SC_PAGESIZE);
 
+	if (page_sz == (size_t)-1)
+		return -1;
+
 	/* this may already be unmapped (e.g. repeated call from previously
 	 * failed destroy(), but this is on user, we can't (easily) know if this
 	 * is still mapped.
