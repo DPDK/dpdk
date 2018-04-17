@@ -3900,7 +3900,7 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 
 	memset(&link, 0, sizeof(link));
 	link.link_status = ETH_LINK_DOWN;
-	link.link_speed = 0;
+	link.link_speed = ETH_SPEED_NUM_NONE;
 	link.link_duplex = ETH_LINK_HALF_DUPLEX;
 	link.link_autoneg = ETH_LINK_AUTONEG;
 

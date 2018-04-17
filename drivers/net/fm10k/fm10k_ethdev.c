@@ -1260,13 +1260,11 @@ fm10k_link_update(struct rte_eth_dev *dev,
 		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
 	PMD_INIT_FUNC_TRACE();
 
-	/* The speed is ~50Gbps per Gen3 x8 PCIe interface. For now, we
-	 * leave the speed undefined since there is no 50Gbps Ethernet.
-	 */
-	dev->data->dev_link.link_speed  = 0;
+	dev->data->dev_link.link_speed  = ETH_SPEED_NUM_50G;
 	dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	dev->data->dev_link.link_status =
 		dev_info->sm_down ? ETH_LINK_DOWN : ETH_LINK_UP;
+	dev->data->dev_link.link_autoneg = ETH_LINK_FIXED;
 
 	return 0;
 }

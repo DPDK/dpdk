@@ -2112,7 +2112,7 @@ i40evf_dev_link_update(struct rte_eth_dev *dev,
 	new_link.link_status = vf->link_up ? ETH_LINK_UP :
 					     ETH_LINK_DOWN;
 	new_link.link_autoneg =
-		dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED;
+		!(dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED);
 
 	return rte_eth_linkstatus_set(dev, &new_link);
 }
