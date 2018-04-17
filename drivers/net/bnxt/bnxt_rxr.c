@@ -727,7 +727,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	if (rxq->rx_buf_use_size <= size)
 		size = rxq->rx_buf_use_size;
 
-	type = RX_PROD_PKT_BD_TYPE_RX_PROD_PKT;
+	type = RX_PROD_PKT_BD_TYPE_RX_PROD_PKT | RX_PROD_PKT_BD_FLAGS_EOP_PAD;
 
 	rxr = rxq->rx_ring;
 	ring = rxr->rx_ring_struct;
