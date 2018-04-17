@@ -355,7 +355,7 @@ find_contig(const struct rte_fbarray *arr, unsigned int start, bool used)
 static int
 set_used(struct rte_fbarray *arr, unsigned int idx, bool used)
 {
-	struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz, arr->len);
+	struct used_mask *msk;
 	uint64_t msk_bit = 1ULL << MASK_LEN_TO_MOD(idx);
 	unsigned int msk_idx = MASK_LEN_TO_IDX(idx);
 	bool already_used;
@@ -365,6 +365,7 @@ set_used(struct rte_fbarray *arr, unsigned int idx, bool used)
 		rte_errno = EINVAL;
 		return -1;
 	}
+	msk = get_used_mask(arr->data, arr->elt_sz, arr->len);
 	ret = 0;
 
 	/* prevent array from changing under us */
