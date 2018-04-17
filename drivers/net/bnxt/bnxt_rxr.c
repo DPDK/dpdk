@@ -41,7 +41,7 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 
 	mbuf = __bnxt_alloc_rx_data(rxq->mb_pool);
 	if (!mbuf) {
-		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
+		rte_atomic64_inc(&rxq->rx_mbuf_alloc_fail);
 		return -ENOMEM;
 	}
 
@@ -62,7 +62,7 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 
 	mbuf = __bnxt_alloc_rx_data(rxq->mb_pool);
 	if (!mbuf) {
-		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
+		rte_atomic64_inc(&rxq->rx_mbuf_alloc_fail);
 		return -ENOMEM;
 	}
 
@@ -299,7 +299,7 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	struct rte_mbuf *new_data = __bnxt_alloc_rx_data(rxq->mb_pool);
 	RTE_ASSERT(new_data != NULL);
 	if (!new_data) {
-		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
+		rte_atomic64_inc(&rxq->rx_mbuf_alloc_fail);
 		return NULL;
 	}
 	tpa_info->mbuf = new_data;
@@ -767,7 +767,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 			rxr->tpa_info[i].mbuf =
 				__bnxt_alloc_rx_data(rxq->mb_pool);
 			if (!rxr->tpa_info[i].mbuf) {
-				rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
+				rte_atomic64_inc(&rxq->rx_mbuf_alloc_fail);
 				return -ENOMEM;
 			}
 		}

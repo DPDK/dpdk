@@ -3129,7 +3129,6 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 
 	bp = eth_dev->data->dev_private;
 
-	rte_atomic64_init(&bp->rx_mbuf_alloc_fail);
 	bp->dev_stopped = 1;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

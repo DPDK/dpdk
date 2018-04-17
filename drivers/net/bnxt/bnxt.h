@@ -295,7 +295,6 @@ struct bnxt {
 	uint16_t		geneve_fw_dst_port_id;
 	uint32_t		fw_ver;
 	uint32_t		hwrm_spec_code;
-	rte_atomic64_t		rx_mbuf_alloc_fail;
 
 	struct bnxt_led_info	leds[BNXT_MAX_LED];
 	uint8_t			num_leds;

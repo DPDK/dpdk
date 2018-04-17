@@ -221,6 +221,8 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 				     bnxt_stats, 1);
 		if (unlikely(rc))
 			return rc;
+		bnxt_stats->rx_nombuf +=
+				rte_atomic64_read(&rxq->rx_mbuf_alloc_fail);
 	}
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
@@ -235,13 +237,13 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	rc = bnxt_hwrm_func_qstats(bp, 0xffff, bnxt_stats);
 	if (unlikely(rc))
 		return rc;
-	bnxt_stats->rx_nombuf = rte_atomic64_read(&bp->rx_mbuf_alloc_fail);
 	return rc;
 }
 
 void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	unsigned int i;
 
 	if (!(bp->flags & BNXT_FLAG_INIT_DONE)) {
 		PMD_DRV_LOG(ERR, "Device Initialization not complete!\n");
@@ -249,7 +251,11 @@ void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 	}
 
 	bnxt_clear_all_hwrm_stat_ctxs(bp);
-	rte_atomic64_clear(&bp->rx_mbuf_alloc_fail);
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
+
+		rte_atomic64_clear(&rxq->rx_mbuf_alloc_fail);
+	}
 }
 
 int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,

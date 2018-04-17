@@ -336,6 +336,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		rc = -ENOMEM;
 		goto out;
 	}
+	rte_atomic64_init(&rxq->rx_mbuf_alloc_fail);
 
 out:
 	return rc;
