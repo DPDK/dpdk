@@ -109,6 +109,8 @@ static int nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 		    uint16_t reta_size);
 static int nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf);
+static int nfp_set_mac_addr(struct rte_eth_dev *dev,
+			     struct ether_addr *mac_addr);
 
 /* The offset of the queue controller queues in the PCIe Target */
 #define NFP_PCIE_QUEUE(_q) (0x80000 + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & 0xff)))
@@ -682,6 +684,37 @@ nfp_net_write_mac(struct nfp_net_hw *hw, uint8_t *mac)
 	mac1 = *(uint16_t *)mac;
 	nn_writew(rte_cpu_to_be_16(mac1),
 		  hw->ctrl_bar + NFP_NET_CFG_MACADDR + 6);
+}
+
+int
+nfp_set_mac_addr(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+{
+	struct nfp_net_hw *hw;
+	uint32_t update, ctrl;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) &&
+	    !(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR)) {
+		PMD_INIT_LOG(INFO, "MAC address unable to change when"
+				  " port enabled");
+		return -EBUSY;
+	}
+
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) &&
+	    !(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR))
+		return -EBUSY;
+
+	/* Writing new MAC to the specific port BAR address */
+	nfp_net_write_mac(hw, (uint8_t *)mac_addr);
+
+	/* Signal the NIC about the change */
+	update = NFP_NET_CFG_UPDATE_MACADDR;
+	ctrl = hw->ctrl | NFP_NET_CFG_CTRL_LIVE_ADDR;
+	if (nfp_net_reconfig(hw, ctrl, update) < 0) {
+		PMD_INIT_LOG(INFO, "MAC address update failed");
+		return -EIO;
+	}
+	return 0;
 }
 
 static int
@@ -2750,6 +2783,7 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.dev_infos_get		= nfp_net_infos_get,
 	.dev_supported_ptypes_get = nfp_net_supported_ptypes_get,
 	.mtu_set		= nfp_net_dev_mtu_set,
+	.mac_addr_set           = nfp_set_mac_addr,
 	.vlan_offload_set	= nfp_net_vlan_offload_set,
 	.reta_update		= nfp_net_reta_update,
 	.reta_query		= nfp_net_reta_query,
@@ -2956,7 +2990,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			   NFD_CFG_MAJOR_VERSION_of(hw->ver),
 			   NFD_CFG_MINOR_VERSION_of(hw->ver), hw->max_mtu);
 
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
 		     hw->cap & NFP_NET_CFG_CTRL_PROMISC ? "PROMISC " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_L2BC    ? "L2BCFILT " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_L2MC    ? "L2MCFILT " : "",
@@ -2966,6 +3000,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     hw->cap & NFP_NET_CFG_CTRL_TXVLAN  ? "TXVLAN "  : "",
 		     hw->cap & NFP_NET_CFG_CTRL_SCATTER ? "SCATTER " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_GATHER  ? "GATHER "  : "",
+		     hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR ? "LIVE_ADDR "  : "",
 		     hw->cap & NFP_NET_CFG_CTRL_LSO     ? "TSO "     : "",
 		     hw->cap & NFP_NET_CFG_CTRL_LSO2     ? "TSOv2 "     : "",
 		     hw->cap & NFP_NET_CFG_CTRL_RSS     ? "RSS "     : "",
