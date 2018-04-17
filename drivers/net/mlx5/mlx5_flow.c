@@ -444,9 +444,17 @@ struct mlx5_fdir {
 		struct rte_flow_item_ipv6 ipv6;
 	} l3;
 	union {
+		struct rte_flow_item_ipv4 ipv4;
+		struct rte_flow_item_ipv6 ipv6;
+	} l3_mask;
+	union {
 		struct rte_flow_item_udp udp;
 		struct rte_flow_item_tcp tcp;
 	} l4;
+	union {
+		struct rte_flow_item_udp udp;
+		struct rte_flow_item_tcp tcp;
+	} l4_mask;
 	struct rte_flow_action_queue queue;
 };
 
@@ -2672,6 +2680,8 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 	const struct rte_eth_fdir_input *input = &fdir_filter->input;
+	const struct rte_eth_fdir_masks *mask =
+		&dev->data->dev_conf.fdir_conf.mask;
 
 	/* Validate queue number. */
 	if (fdir_filter->action.rx_queue >= priv->rxqs_n) {
@@ -2718,29 +2728,43 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 			.type_of_service = input->flow.ip4_flow.tos,
 			.next_proto_id = input->flow.ip4_flow.proto,
 		};
+		attributes->l3_mask.ipv4.hdr = (struct ipv4_hdr){
+			.src_addr = mask->ipv4_mask.src_ip,
+			.dst_addr = mask->ipv4_mask.dst_ip,
+			.time_to_live = mask->ipv4_mask.ttl,
+			.type_of_service = mask->ipv4_mask.tos,
+			.next_proto_id = mask->ipv4_mask.proto,
+		};
 		attributes->items[1] = (struct rte_flow_item){
 			.type = RTE_FLOW_ITEM_TYPE_IPV4,
 			.spec = &attributes->l3,
-			.mask = &attributes->l3,
+			.mask = &attributes->l3_mask,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
 		attributes->l3.ipv6.hdr = (struct ipv6_hdr){
-			.hop_limits = input->flow.udp6_flow.ip.hop_limits,
-			.proto = input->flow.udp6_flow.ip.proto,
+			.hop_limits = input->flow.ipv6_flow.hop_limits,
+			.proto = input->flow.ipv6_flow.proto,
 		};
+
 		memcpy(attributes->l3.ipv6.hdr.src_addr,
 		       input->flow.ipv6_flow.src_ip,
 		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
 		memcpy(attributes->l3.ipv6.hdr.dst_addr,
 		       input->flow.ipv6_flow.dst_ip,
 		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
+		memcpy(attributes->l3_mask.ipv6.hdr.src_addr,
+		       mask->ipv6_mask.src_ip,
+		       RTE_DIM(attributes->l3_mask.ipv6.hdr.src_addr));
+		memcpy(attributes->l3_mask.ipv6.hdr.dst_addr,
+		       mask->ipv6_mask.dst_ip,
+		       RTE_DIM(attributes->l3_mask.ipv6.hdr.src_addr));
 		attributes->items[1] = (struct rte_flow_item){
 			.type = RTE_FLOW_ITEM_TYPE_IPV6,
 			.spec = &attributes->l3,
-			.mask = &attributes->l3,
+			.mask = &attributes->l3_mask,
 		};
 		break;
 	default:
@@ -2756,10 +2780,14 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 			.src_port = input->flow.udp4_flow.src_port,
 			.dst_port = input->flow.udp4_flow.dst_port,
 		};
+		attributes->l4_mask.udp.hdr = (struct udp_hdr){
+			.src_port = mask->src_port_mask,
+			.dst_port = mask->dst_port_mask,
+		};
 		attributes->items[2] = (struct rte_flow_item){
 			.type = RTE_FLOW_ITEM_TYPE_UDP,
 			.spec = &attributes->l4,
-			.mask = &attributes->l4,
+			.mask = &attributes->l4_mask,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
@@ -2767,10 +2795,14 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 			.src_port = input->flow.tcp4_flow.src_port,
 			.dst_port = input->flow.tcp4_flow.dst_port,
 		};
+		attributes->l4_mask.tcp.hdr = (struct tcp_hdr){
+			.src_port = mask->src_port_mask,
+			.dst_port = mask->dst_port_mask,
+		};
 		attributes->items[2] = (struct rte_flow_item){
 			.type = RTE_FLOW_ITEM_TYPE_TCP,
 			.spec = &attributes->l4,
-			.mask = &attributes->l4,
+			.mask = &attributes->l4_mask,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
@@ -2778,10 +2810,14 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 			.src_port = input->flow.udp6_flow.src_port,
 			.dst_port = input->flow.udp6_flow.dst_port,
 		};
+		attributes->l4_mask.udp.hdr = (struct udp_hdr){
+			.src_port = mask->src_port_mask,
+			.dst_port = mask->dst_port_mask,
+		};
 		attributes->items[2] = (struct rte_flow_item){
 			.type = RTE_FLOW_ITEM_TYPE_UDP,
 			.spec = &attributes->l4,
-			.mask = &attributes->l4,
+			.mask = &attributes->l4_mask,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
@@ -2789,10 +2825,14 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 			.src_port = input->flow.tcp6_flow.src_port,
 			.dst_port = input->flow.tcp6_flow.dst_port,
 		};
+		attributes->l4_mask.tcp.hdr = (struct tcp_hdr){
+			.src_port = mask->src_port_mask,
+			.dst_port = mask->dst_port_mask,
+		};
 		attributes->items[2] = (struct rte_flow_item){
 			.type = RTE_FLOW_ITEM_TYPE_TCP,
 			.spec = &attributes->l4,
-			.mask = &attributes->l4,
+			.mask = &attributes->l4_mask,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
