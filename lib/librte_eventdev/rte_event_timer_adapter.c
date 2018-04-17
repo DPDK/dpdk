@@ -695,7 +695,7 @@ check_destination_event_queue(struct rte_event_timer *evtim,
 static int
 sw_event_timer_adapter_service_func(void *arg)
 {
-	int ret, i, num_msgs;
+	int i, num_msgs;
 	uint64_t cycles, opaque;
 	uint16_t nb_evs_flushed = 0;
 	uint16_t nb_evs_invalid = 0;
@@ -704,8 +704,6 @@ sw_event_timer_adapter_service_func(void *arg)
 	struct rte_event_timer *evtim = NULL;
 	struct rte_timer *tim = NULL;
 	struct msg *msg, *msgs[NB_OBJS];
-
-	RTE_SET_USED(ret);
 
 	adapter = arg;
 	sw_data = adapter->data->adapter_priv;
@@ -720,6 +718,10 @@ sw_event_timer_adapter_service_func(void *arg)
 						  (void **)msgs, NB_OBJS, NULL);
 
 		for (i = 0; i < num_msgs; i++) {
+			int ret = 0;
+
+			RTE_SET_USED(ret);
+
 			msg = msgs[i];
 			evtim = msg->evtim;
 
