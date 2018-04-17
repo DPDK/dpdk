@@ -16,6 +16,13 @@
 
 #define NUM_ENTRY_VIRTIO_CRYPTO_OP 7
 
+enum virtio_crypto_cmd_id {
+	VIRTIO_CRYPTO_CMD_CIPHER = 0,
+	VIRTIO_CRYPTO_CMD_AUTH = 1,
+	VIRTIO_CRYPTO_CMD_CIPHER_HASH = 2,
+	VIRTIO_CRYPTO_CMD_HASH_CIPHER = 3
+};
+
 struct virtio_crypto_op_cookie {
 	struct virtio_crypto_op_data_req data_req;
 	struct virtio_crypto_inhdr inhdr;
