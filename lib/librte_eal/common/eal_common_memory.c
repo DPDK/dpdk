@@ -113,11 +113,11 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 		RTE_LOG(WARNING, EAL, "   This may cause issues with mapping memory into secondary processes\n");
 	}
 
-	if (unmap)
-		munmap(mapped_addr, map_sz);
-
 	RTE_LOG(DEBUG, EAL, "Virtual area found at %p (size = 0x%zx)\n",
 		aligned_addr, *size);
+
+	if (unmap)
+		munmap(mapped_addr, map_sz);
 
 	baseaddr_offset += *size;
 
