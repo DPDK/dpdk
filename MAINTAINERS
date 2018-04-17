@@ -775,6 +775,8 @@ F: doc/guides/cryptodevs/features/snow3g.ini
 Virtio
 M: Jay Zhou <jianjay.zhou@huawei.com>
 F: drivers/crypto/virtio/
+F: doc/guides/cryptodevs/virtio.rst
+F: doc/guides/cryptodevs/features/virtio.ini
 
 ZUC
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>

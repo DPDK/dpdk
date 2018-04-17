@@ -98,7 +98,10 @@ New Features
 
 * **Added virtio crypto PMD.**
 
-  Added a new poll mode driver for virtio crypto devices.
+  Added a new poll mode driver for virtio crypto devices, which provides
+  AES-CBC ciphering and AES-CBC with HMAC-SHA1 algorithm-chaining. See the
+  :doc:`../cryptodevs/virtio` crypto driver guide for more details on
+  this new driver.
 
 * **Added AMD CCP Crypto PMD.**
 
