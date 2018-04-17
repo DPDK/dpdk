@@ -29,6 +29,9 @@ static void virtio_crypto_dev_stop(struct rte_cryptodev *dev);
 static int virtio_crypto_dev_close(struct rte_cryptodev *dev);
 static void virtio_crypto_dev_info_get(struct rte_cryptodev *dev,
 		struct rte_cryptodev_info *dev_info);
+static void virtio_crypto_dev_stats_get(struct rte_cryptodev *dev,
+		struct rte_cryptodev_stats *stats);
+static void virtio_crypto_dev_stats_reset(struct rte_cryptodev *dev);
 static int virtio_crypto_qp_setup(struct rte_cryptodev *dev,
 		uint16_t queue_pair_id,
 		const struct rte_cryptodev_qp_conf *qp_conf,
@@ -501,8 +504,8 @@ static struct rte_cryptodev_ops virtio_crypto_dev_ops = {
 	.dev_close			 = virtio_crypto_dev_close,
 	.dev_infos_get			 = virtio_crypto_dev_info_get,
 
-	.stats_get			 = NULL,
-	.stats_reset			 = NULL,
+	.stats_get			 = virtio_crypto_dev_stats_get,
+	.stats_reset			 = virtio_crypto_dev_stats_reset,
 
 	.queue_pair_setup                = virtio_crypto_qp_setup,
 	.queue_pair_release              = virtio_crypto_qp_release,
@@ -517,6 +520,65 @@ static struct rte_cryptodev_ops virtio_crypto_dev_ops = {
 	.qp_attach_session = NULL,
 	.qp_detach_session = NULL
 };
+
+static void
+virtio_crypto_update_stats(struct rte_cryptodev *dev,
+		struct rte_cryptodev_stats *stats)
+{
+	unsigned int i;
+	struct virtio_crypto_hw *hw = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (stats == NULL) {
+		VIRTIO_CRYPTO_DRV_LOG_ERR("invalid pointer");
+		return;
+	}
+
+	for (i = 0; i < hw->max_dataqueues; i++) {
+		const struct virtqueue *data_queue
+			= dev->data->queue_pairs[i];
+		if (data_queue == NULL)
+			continue;
+
+		stats->enqueued_count += data_queue->packets_sent_total;
+		stats->enqueue_err_count += data_queue->packets_sent_failed;
+
+		stats->dequeued_count += data_queue->packets_received_total;
+		stats->dequeue_err_count
+			+= data_queue->packets_received_failed;
+	}
+}
+
+static void
+virtio_crypto_dev_stats_get(struct rte_cryptodev *dev,
+		struct rte_cryptodev_stats *stats)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	virtio_crypto_update_stats(dev, stats);
+}
+
+static void
+virtio_crypto_dev_stats_reset(struct rte_cryptodev *dev)
+{
+	unsigned int i;
+	struct virtio_crypto_hw *hw = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < hw->max_dataqueues; i++) {
+		struct virtqueue *data_queue = dev->data->queue_pairs[i];
+		if (data_queue == NULL)
+			continue;
+
+		data_queue->packets_sent_total = 0;
+		data_queue->packets_sent_failed = 0;
+
+		data_queue->packets_received_total = 0;
+		data_queue->packets_received_failed = 0;
+	}
+}
 
 static int
 virtio_crypto_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
