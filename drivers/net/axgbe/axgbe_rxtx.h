@@ -94,7 +94,7 @@ struct axgbe_rx_queue {
 	/* Number of mbufs allocated from pool*/
 	uint64_t mbuf_alloc;
 
-} ____cacheline_aligned;
+} __rte_cache_aligned;
 
 /*Tx descriptor format */
 struct axgbe_tx_desc {
