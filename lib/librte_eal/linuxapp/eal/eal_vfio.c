@@ -22,8 +22,36 @@
 
 #define VFIO_MEM_EVENT_CLB_NAME "vfio_mem_event_clb"
 
+/* hot plug/unplug of VFIO groups may cause all DMA maps to be dropped. we can
+ * recreate the mappings for DPDK segments, but we cannot do so for memory that
+ * was registered by the user themselves, so we need to store the user mappings
+ * somewhere, to recreate them later.
+ */
+#define VFIO_MAX_USER_MEM_MAPS 256
+struct user_mem_map {
+	uint64_t addr;
+	uint64_t iova;
+	uint64_t len;
+};
+
+struct user_mem_maps {
+	rte_spinlock_recursive_t lock;
+	int n_maps;
+	struct user_mem_map maps[VFIO_MAX_USER_MEM_MAPS];
+};
+
+struct vfio_config {
+	int vfio_enabled;
+	int vfio_container_fd;
+	int vfio_active_groups;
+	const struct vfio_iommu_type *vfio_iommu_type;
+	struct vfio_group vfio_groups[VFIO_MAX_GROUPS];
+	struct user_mem_maps mem_maps;
+};
+
 /* per-process VFIO config */
-static struct vfio_config vfio_cfg;
+static struct vfio_config vfio_cfgs[VFIO_MAX_CONTAINERS];
+static struct vfio_config *default_vfio_cfg = &vfio_cfgs[0];
 
 static int vfio_type1_dma_map(int);
 static int vfio_type1_dma_mem_map(int, uint64_t, uint64_t, uint64_t, int);
@@ -31,8 +59,8 @@ static int vfio_spapr_dma_map(int);
 static int vfio_spapr_dma_mem_map(int, uint64_t, uint64_t, uint64_t, int);
 static int vfio_noiommu_dma_map(int);
 static int vfio_noiommu_dma_mem_map(int, uint64_t, uint64_t, uint64_t, int);
-static int vfio_dma_mem_map(uint64_t vaddr, uint64_t iova, uint64_t len,
-		int do_map);
+static int vfio_dma_mem_map(struct vfio_config *vfio_cfg, uint64_t vaddr,
+		uint64_t iova, uint64_t len, int do_map);
 
 /* IOMMU types we support */
 static const struct vfio_iommu_type iommu_types[] = {
@@ -57,25 +85,6 @@ static const struct vfio_iommu_type iommu_types[] = {
 		.dma_map_func = &vfio_noiommu_dma_map,
 		.dma_user_map_func = &vfio_noiommu_dma_mem_map
 	},
-};
-
-/* hot plug/unplug of VFIO groups may cause all DMA maps to be dropped. we can
- * recreate the mappings for DPDK segments, but we cannot do so for memory that
- * was registered by the user themselves, so we need to store the user mappings
- * somewhere, to recreate them later.
- */
-#define VFIO_MAX_USER_MEM_MAPS 256
-struct user_mem_map {
-	uint64_t addr;
-	uint64_t iova;
-	uint64_t len;
-};
-static struct {
-	rte_spinlock_recursive_t lock;
-	int n_maps;
-	struct user_mem_map maps[VFIO_MAX_USER_MEM_MAPS];
-} user_mem_maps = {
-	.lock = RTE_SPINLOCK_RECURSIVE_INITIALIZER
 };
 
 /* for sPAPR IOMMU, we will need to walk memseg list, but we cannot use
@@ -206,14 +215,15 @@ merge_map(struct user_mem_map *left, struct user_mem_map *right)
 }
 
 static struct user_mem_map *
-find_user_mem_map(uint64_t addr, uint64_t iova, uint64_t len)
+find_user_mem_map(struct user_mem_maps *user_mem_maps, uint64_t addr,
+		uint64_t iova, uint64_t len)
 {
 	uint64_t va_end = addr + len;
 	uint64_t iova_end = iova + len;
 	int i;
 
-	for (i = 0; i < user_mem_maps.n_maps; i++) {
-		struct user_mem_map *map = &user_mem_maps.maps[i];
+	for (i = 0; i < user_mem_maps->n_maps; i++) {
+		struct user_mem_map *map = &user_mem_maps->maps[i];
 		uint64_t map_va_end = map->addr + map->len;
 		uint64_t map_iova_end = map->iova + map->len;
 
@@ -239,20 +249,20 @@ find_user_mem_map(uint64_t addr, uint64_t iova, uint64_t len)
 
 /* this will sort all user maps, and merge/compact any adjacent maps */
 static void
-compact_user_maps(void)
+compact_user_maps(struct user_mem_maps *user_mem_maps)
 {
 	int i, n_merged, cur_idx;
 
-	qsort(user_mem_maps.maps, user_mem_maps.n_maps,
-			sizeof(user_mem_maps.maps[0]), user_mem_map_cmp);
+	qsort(user_mem_maps->maps, user_mem_maps->n_maps,
+			sizeof(user_mem_maps->maps[0]), user_mem_map_cmp);
 
 	/* we'll go over the list backwards when merging */
 	n_merged = 0;
-	for (i = user_mem_maps.n_maps - 2; i >= 0; i--) {
+	for (i = user_mem_maps->n_maps - 2; i >= 0; i--) {
 		struct user_mem_map *l, *r;
 
-		l = &user_mem_maps.maps[i];
-		r = &user_mem_maps.maps[i + 1];
+		l = &user_mem_maps->maps[i];
+		r = &user_mem_maps->maps[i + 1];
 
 		if (is_null_map(l) || is_null_map(r))
 			continue;
@@ -266,12 +276,12 @@ compact_user_maps(void)
 	 */
 	if (n_merged > 0) {
 		cur_idx = 0;
-		for (i = 0; i < user_mem_maps.n_maps; i++) {
-			if (!is_null_map(&user_mem_maps.maps[i])) {
+		for (i = 0; i < user_mem_maps->n_maps; i++) {
+			if (!is_null_map(&user_mem_maps->maps[i])) {
 				struct user_mem_map *src, *dst;
 
-				src = &user_mem_maps.maps[i];
-				dst = &user_mem_maps.maps[cur_idx++];
+				src = &user_mem_maps->maps[i];
+				dst = &user_mem_maps->maps[cur_idx++];
 
 				if (src != dst) {
 					memcpy(dst, src, sizeof(*src));
@@ -279,45 +289,20 @@ compact_user_maps(void)
 				}
 			}
 		}
-		user_mem_maps.n_maps = cur_idx;
+		user_mem_maps->n_maps = cur_idx;
 	}
 }
 
-int
-rte_vfio_get_group_fd(int iommu_group_num)
+static int
+vfio_open_group_fd(int iommu_group_num)
 {
-	int i;
 	int vfio_group_fd;
 	char filename[PATH_MAX];
-	struct vfio_group *cur_grp;
 	struct rte_mp_msg mp_req, *mp_rep;
 	struct rte_mp_reply mp_reply;
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
 
-	/* check if we already have the group descriptor open */
-	for (i = 0; i < VFIO_MAX_GROUPS; i++)
-		if (vfio_cfg.vfio_groups[i].group_num == iommu_group_num)
-			return vfio_cfg.vfio_groups[i].fd;
-
-	/* Lets see first if there is room for a new group */
-	if (vfio_cfg.vfio_active_groups == VFIO_MAX_GROUPS) {
-		RTE_LOG(ERR, EAL, "Maximum number of VFIO groups reached!\n");
-		return -1;
-	}
-
-	/* Now lets get an index for the new group */
-	for (i = 0; i < VFIO_MAX_GROUPS; i++)
-		if (vfio_cfg.vfio_groups[i].group_num == -1) {
-			cur_grp = &vfio_cfg.vfio_groups[i];
-			break;
-		}
-
-	/* This should not happen */
-	if (i == VFIO_MAX_GROUPS) {
-		RTE_LOG(ERR, EAL, "No VFIO group free slot found\n");
-		return -1;
-	}
 	/* if primary, try to open the group */
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
 		/* try regular group format */
@@ -348,9 +333,6 @@ rte_vfio_get_group_fd(int iommu_group_num)
 			/* noiommu group found */
 		}
 
-		cur_grp->group_num = iommu_group_num;
-		cur_grp->fd = vfio_group_fd;
-		vfio_cfg.vfio_active_groups++;
 		return vfio_group_fd;
 	}
 	/* if we're in a secondary process, request group fd from the primary
@@ -368,10 +350,7 @@ rte_vfio_get_group_fd(int iommu_group_num)
 		mp_rep = &mp_reply.msgs[0];
 		p = (struct vfio_mp_param *)mp_rep->param;
 		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
-			cur_grp->group_num = iommu_group_num;
 			vfio_group_fd = mp_rep->fds[0];
-			cur_grp->fd = vfio_group_fd;
-			vfio_cfg.vfio_active_groups++;
 		} else if (p->result == SOCKET_NO_FD) {
 			RTE_LOG(ERR, EAL, "  bad VFIO group fd\n");
 			vfio_group_fd = 0;
@@ -384,45 +363,167 @@ rte_vfio_get_group_fd(int iommu_group_num)
 	return vfio_group_fd;
 }
 
+static struct vfio_config *
+get_vfio_cfg_by_group_num(int iommu_group_num)
+{
+	struct vfio_config *vfio_cfg;
+	int i, j;
+
+	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
+		vfio_cfg = &vfio_cfgs[i];
+		for (j = 0; j < VFIO_MAX_GROUPS; j++) {
+			if (vfio_cfg->vfio_groups[j].group_num ==
+					iommu_group_num)
+				return vfio_cfg;
+		}
+	}
+
+	return NULL;
+}
+
+static struct vfio_config *
+get_vfio_cfg_by_group_fd(int vfio_group_fd)
+{
+	struct vfio_config *vfio_cfg;
+	int i, j;
+
+	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
+		vfio_cfg = &vfio_cfgs[i];
+		for (j = 0; j < VFIO_MAX_GROUPS; j++)
+			if (vfio_cfg->vfio_groups[j].fd == vfio_group_fd)
+				return vfio_cfg;
+	}
+
+	return NULL;
+}
+
+static struct vfio_config *
+get_vfio_cfg_by_container_fd(int container_fd)
+{
+	int i;
+
+	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
+		if (vfio_cfgs[i].vfio_container_fd == container_fd)
+			return &vfio_cfgs[i];
+	}
+
+	return NULL;
+}
+
+int
+rte_vfio_get_group_fd(int iommu_group_num)
+{
+	int i;
+	int vfio_group_fd;
+	struct vfio_group *cur_grp;
+	struct vfio_config *vfio_cfg;
+
+	/* get the vfio_config it belongs to */
+	vfio_cfg = get_vfio_cfg_by_group_num(iommu_group_num);
+	vfio_cfg = vfio_cfg ? vfio_cfg : default_vfio_cfg;
+
+	/* check if we already have the group descriptor open */
+	for (i = 0; i < VFIO_MAX_GROUPS; i++)
+		if (vfio_cfg->vfio_groups[i].group_num == iommu_group_num)
+			return vfio_cfg->vfio_groups[i].fd;
+
+	/* Lets see first if there is room for a new group */
+	if (vfio_cfg->vfio_active_groups == VFIO_MAX_GROUPS) {
+		RTE_LOG(ERR, EAL, "Maximum number of VFIO groups reached!\n");
+		return -1;
+	}
+
+	/* Now lets get an index for the new group */
+	for (i = 0; i < VFIO_MAX_GROUPS; i++)
+		if (vfio_cfg->vfio_groups[i].group_num == -1) {
+			cur_grp = &vfio_cfg->vfio_groups[i];
+			break;
+		}
+
+	/* This should not happen */
+	if (i == VFIO_MAX_GROUPS) {
+		RTE_LOG(ERR, EAL, "No VFIO group free slot found\n");
+		return -1;
+	}
+
+	vfio_group_fd = vfio_open_group_fd(iommu_group_num);
+	if (vfio_group_fd < 0) {
+		RTE_LOG(ERR, EAL, "Failed to open group %d\n", iommu_group_num);
+		return -1;
+	}
+
+	cur_grp->group_num = iommu_group_num;
+	cur_grp->fd = vfio_group_fd;
+	vfio_cfg->vfio_active_groups++;
+
+	return vfio_group_fd;
+}
 
 static int
 get_vfio_group_idx(int vfio_group_fd)
 {
-	int i;
-	for (i = 0; i < VFIO_MAX_GROUPS; i++)
-		if (vfio_cfg.vfio_groups[i].fd == vfio_group_fd)
-			return i;
+	struct vfio_config *vfio_cfg;
+	int i, j;
+
+	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
+		vfio_cfg = &vfio_cfgs[i];
+		for (j = 0; j < VFIO_MAX_GROUPS; j++)
+			if (vfio_cfg->vfio_groups[j].fd == vfio_group_fd)
+				return j;
+	}
+
 	return -1;
 }
 
 static void
 vfio_group_device_get(int vfio_group_fd)
 {
+	struct vfio_config *vfio_cfg;
 	int i;
+
+	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
+	if (vfio_cfg == NULL) {
+		RTE_LOG(ERR, EAL, "  invalid group fd!\n");
+		return;
+	}
 
 	i = get_vfio_group_idx(vfio_group_fd);
 	if (i < 0 || i > (VFIO_MAX_GROUPS - 1))
 		RTE_LOG(ERR, EAL, "  wrong vfio_group index (%d)\n", i);
 	else
-		vfio_cfg.vfio_groups[i].devices++;
+		vfio_cfg->vfio_groups[i].devices++;
 }
 
 static void
 vfio_group_device_put(int vfio_group_fd)
 {
+	struct vfio_config *vfio_cfg;
 	int i;
+
+	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
+	if (vfio_cfg == NULL) {
+		RTE_LOG(ERR, EAL, "  invalid group fd!\n");
+		return;
+	}
 
 	i = get_vfio_group_idx(vfio_group_fd);
 	if (i < 0 || i > (VFIO_MAX_GROUPS - 1))
 		RTE_LOG(ERR, EAL, "  wrong vfio_group index (%d)\n", i);
 	else
-		vfio_cfg.vfio_groups[i].devices--;
+		vfio_cfg->vfio_groups[i].devices--;
 }
 
 static int
 vfio_group_device_count(int vfio_group_fd)
 {
+	struct vfio_config *vfio_cfg;
 	int i;
+
+	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
+	if (vfio_cfg == NULL) {
+		RTE_LOG(ERR, EAL, "  invalid group fd!\n");
+		return -1;
+	}
 
 	i = get_vfio_group_idx(vfio_group_fd);
 	if (i < 0 || i > (VFIO_MAX_GROUPS - 1)) {
@@ -430,7 +531,7 @@ vfio_group_device_count(int vfio_group_fd)
 		return -1;
 	}
 
-	return vfio_cfg.vfio_groups[i].devices;
+	return vfio_cfg->vfio_groups[i].devices;
 }
 
 static void
@@ -446,9 +547,11 @@ vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len)
 	if (rte_eal_iova_mode() == RTE_IOVA_VA) {
 		uint64_t vfio_va = (uint64_t)(uintptr_t)addr;
 		if (type == RTE_MEM_EVENT_ALLOC)
-			vfio_dma_mem_map(vfio_va, vfio_va, len, 1);
+			vfio_dma_mem_map(default_vfio_cfg, vfio_va, vfio_va,
+					len, 1);
 		else
-			vfio_dma_mem_map(vfio_va, vfio_va, len, 0);
+			vfio_dma_mem_map(default_vfio_cfg, vfio_va, vfio_va,
+					len, 0);
 		return;
 	}
 
@@ -456,9 +559,11 @@ vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len)
 	ms = rte_mem_virt2memseg(addr, msl);
 	while (cur_len < len) {
 		if (type == RTE_MEM_EVENT_ALLOC)
-			vfio_dma_mem_map(ms->addr_64, ms->iova, ms->len, 1);
+			vfio_dma_mem_map(default_vfio_cfg, ms->addr_64,
+					ms->iova, ms->len, 1);
 		else
-			vfio_dma_mem_map(ms->addr_64, ms->iova, ms->len, 0);
+			vfio_dma_mem_map(default_vfio_cfg, ms->addr_64,
+					ms->iova, ms->len, 0);
 
 		cur_len += ms->len;
 		++ms;
@@ -473,16 +578,23 @@ rte_vfio_clear_group(int vfio_group_fd)
 	struct rte_mp_reply mp_reply;
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
+	struct vfio_config *vfio_cfg;
+
+	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
+	if (vfio_cfg == NULL) {
+		RTE_LOG(ERR, EAL, "  invalid group fd!\n");
+		return -1;
+	}
 
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
 
 		i = get_vfio_group_idx(vfio_group_fd);
 		if (i < 0)
 			return -1;
-		vfio_cfg.vfio_groups[i].group_num = -1;
-		vfio_cfg.vfio_groups[i].fd = -1;
-		vfio_cfg.vfio_groups[i].devices = 0;
-		vfio_cfg.vfio_active_groups--;
+		vfio_cfg->vfio_groups[i].group_num = -1;
+		vfio_cfg->vfio_groups[i].fd = -1;
+		vfio_cfg->vfio_groups[i].devices = 0;
+		vfio_cfg->vfio_active_groups--;
 		return 0;
 	}
 
@@ -519,6 +631,9 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	struct vfio_group_status group_status = {
 			.argsz = sizeof(group_status)
 	};
+	struct vfio_config *vfio_cfg;
+	struct user_mem_maps *user_mem_maps;
+	int vfio_container_fd;
 	int vfio_group_fd;
 	int iommu_group_num;
 	int i, ret;
@@ -567,12 +682,18 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		return -1;
 	}
 
+	/* get the vfio_config it belongs to */
+	vfio_cfg = get_vfio_cfg_by_group_num(iommu_group_num);
+	vfio_cfg = vfio_cfg ? vfio_cfg : default_vfio_cfg;
+	vfio_container_fd = vfio_cfg->vfio_container_fd;
+	user_mem_maps = &vfio_cfg->mem_maps;
+
 	/* check if group does not have a container yet */
 	if (!(group_status.flags & VFIO_GROUP_FLAGS_CONTAINER_SET)) {
 
 		/* add group to a container */
 		ret = ioctl(vfio_group_fd, VFIO_GROUP_SET_CONTAINER,
-				&vfio_cfg.vfio_container_fd);
+				&vfio_container_fd);
 		if (ret) {
 			RTE_LOG(ERR, EAL, "  %s cannot add VFIO group to container, "
 					"error %i (%s)\n", dev_addr, errno, strerror(errno));
@@ -590,12 +711,12 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		 * functionality.
 		 */
 		if (internal_config.process_type == RTE_PROC_PRIMARY &&
-				vfio_cfg.vfio_active_groups == 1 &&
+				vfio_cfg->vfio_active_groups == 1 &&
 				vfio_group_device_count(vfio_group_fd) == 0) {
 			const struct vfio_iommu_type *t;
 
 			/* select an IOMMU type which we will be using */
-			t = vfio_set_iommu_type(vfio_cfg.vfio_container_fd);
+			t = vfio_set_iommu_type(vfio_container_fd);
 			if (!t) {
 				RTE_LOG(ERR, EAL,
 					"  %s failed to select IOMMU type\n",
@@ -608,7 +729,10 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			 * after registering callback, to prevent races
 			 */
 			rte_rwlock_read_lock(mem_lock);
-			ret = t->dma_map_func(vfio_cfg.vfio_container_fd);
+			if (vfio_cfg == default_vfio_cfg)
+				ret = t->dma_map_func(vfio_container_fd);
+			else
+				ret = 0;
 			if (ret) {
 				RTE_LOG(ERR, EAL,
 					"  %s DMA remapping failed, error %i (%s)\n",
@@ -619,22 +743,22 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 				return -1;
 			}
 
-			vfio_cfg.vfio_iommu_type = t;
+			vfio_cfg->vfio_iommu_type = t;
 
 			/* re-map all user-mapped segments */
-			rte_spinlock_recursive_lock(&user_mem_maps.lock);
+			rte_spinlock_recursive_lock(&user_mem_maps->lock);
 
 			/* this IOMMU type may not support DMA mapping, but
 			 * if we have mappings in the list - that means we have
 			 * previously mapped something successfully, so we can
 			 * be sure that DMA mapping is supported.
 			 */
-			for (i = 0; i < user_mem_maps.n_maps; i++) {
+			for (i = 0; i < user_mem_maps->n_maps; i++) {
 				struct user_mem_map *map;
-				map = &user_mem_maps.maps[i];
+				map = &user_mem_maps->maps[i];
 
 				ret = t->dma_user_map_func(
-						vfio_cfg.vfio_container_fd,
+						vfio_container_fd,
 						map->addr, map->iova, map->len,
 						1);
 				if (ret) {
@@ -645,17 +769,20 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 							map->addr, map->iova,
 							map->len);
 					rte_spinlock_recursive_unlock(
-							&user_mem_maps.lock);
+							&user_mem_maps->lock);
 					rte_rwlock_read_unlock(mem_lock);
 					return -1;
 				}
 			}
-			rte_spinlock_recursive_unlock(&user_mem_maps.lock);
+			rte_spinlock_recursive_unlock(&user_mem_maps->lock);
 
 			/* register callback for mem events */
-			ret = rte_mem_event_callback_register(
+			if (vfio_cfg == default_vfio_cfg)
+				ret = rte_mem_event_callback_register(
 					VFIO_MEM_EVENT_CLB_NAME,
 					vfio_mem_event_callback);
+			else
+				ret = 0;
 			/* unlock memory hotplug */
 			rte_rwlock_read_unlock(mem_lock);
 
@@ -709,6 +836,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	struct vfio_group_status group_status = {
 			.argsz = sizeof(group_status)
 	};
+	struct vfio_config *vfio_cfg;
 	int vfio_group_fd;
 	int iommu_group_num;
 	int ret;
@@ -737,6 +865,10 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 		ret = -1;
 		goto out;
 	}
+
+	/* get the vfio_config it belongs to */
+	vfio_cfg = get_vfio_cfg_by_group_num(iommu_group_num);
+	vfio_cfg = vfio_cfg ? vfio_cfg : default_vfio_cfg;
 
 	/* At this point we got an active group. Closing it will make the
 	 * container detachment. If this is the last active group, VFIO kernel
@@ -775,7 +907,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	/* if there are no active device groups, unregister the callback to
 	 * avoid spurious attempts to map/unmap memory from VFIO.
 	 */
-	if (vfio_cfg.vfio_active_groups == 0)
+	if (vfio_cfg == default_vfio_cfg && vfio_cfg->vfio_active_groups == 0)
 		rte_mem_event_callback_unregister(VFIO_MEM_EVENT_CLB_NAME);
 
 	/* success */
@@ -790,13 +922,22 @@ int
 rte_vfio_enable(const char *modname)
 {
 	/* initialize group list */
-	int i;
+	int i, j;
 	int vfio_available;
 
-	for (i = 0; i < VFIO_MAX_GROUPS; i++) {
-		vfio_cfg.vfio_groups[i].fd = -1;
-		vfio_cfg.vfio_groups[i].group_num = -1;
-		vfio_cfg.vfio_groups[i].devices = 0;
+	rte_spinlock_recursive_t lock = RTE_SPINLOCK_RECURSIVE_INITIALIZER;
+
+	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
+		vfio_cfgs[i].vfio_container_fd = -1;
+		vfio_cfgs[i].vfio_active_groups = 0;
+		vfio_cfgs[i].vfio_iommu_type = NULL;
+		vfio_cfgs[i].mem_maps.lock = lock;
+
+		for (j = 0; j < VFIO_MAX_GROUPS; j++) {
+			vfio_cfgs[i].vfio_groups[j].fd = -1;
+			vfio_cfgs[i].vfio_groups[j].group_num = -1;
+			vfio_cfgs[i].vfio_groups[j].devices = 0;
+		}
 	}
 
 	/* inform the user that we are probing for VFIO */
@@ -818,12 +959,12 @@ rte_vfio_enable(const char *modname)
 		return 0;
 	}
 
-	vfio_cfg.vfio_container_fd = rte_vfio_get_container_fd();
+	default_vfio_cfg->vfio_container_fd = rte_vfio_get_container_fd();
 
 	/* check if we have VFIO driver enabled */
-	if (vfio_cfg.vfio_container_fd != -1) {
+	if (default_vfio_cfg->vfio_container_fd != -1) {
 		RTE_LOG(NOTICE, EAL, "VFIO support initialized\n");
-		vfio_cfg.vfio_enabled = 1;
+		default_vfio_cfg->vfio_enabled = 1;
 	} else {
 		RTE_LOG(NOTICE, EAL, "VFIO support could not be initialized\n");
 	}
@@ -835,7 +976,7 @@ int
 rte_vfio_is_enabled(const char *modname)
 {
 	const int mod_available = rte_eal_check_module(modname) > 0;
-	return vfio_cfg.vfio_enabled && mod_available;
+	return default_vfio_cfg->vfio_enabled && mod_available;
 }
 
 const struct vfio_iommu_type *
@@ -1198,9 +1339,18 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 	struct vfio_iommu_spapr_tce_create create = {
 		.argsz = sizeof(create),
 	};
+	struct vfio_config *vfio_cfg;
+	struct user_mem_maps *user_mem_maps;
 	int i, ret = 0;
 
-	rte_spinlock_recursive_lock(&user_mem_maps.lock);
+	vfio_cfg = get_vfio_cfg_by_container_fd(vfio_container_fd);
+	if (vfio_cfg == NULL) {
+		RTE_LOG(ERR, EAL, "  invalid container fd!\n");
+		return -1;
+	}
+
+	user_mem_maps = &vfio_cfg->mem_maps;
+	rte_spinlock_recursive_lock(&user_mem_maps->lock);
 
 	/* check if window size needs to be adjusted */
 	memset(&param, 0, sizeof(param));
@@ -1213,9 +1363,9 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 	}
 
 	/* also check user maps */
-	for (i = 0; i < user_mem_maps.n_maps; i++) {
-		uint64_t max = user_mem_maps.maps[i].iova +
-				user_mem_maps.maps[i].len;
+	for (i = 0; i < user_mem_maps->n_maps; i++) {
+		uint64_t max = user_mem_maps->maps[i].iova +
+				user_mem_maps->maps[i].len;
 		create.window_size = RTE_MAX(create.window_size, max);
 	}
 
@@ -1241,9 +1391,9 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 				goto out;
 			}
 			/* remap all user maps */
-			for (i = 0; i < user_mem_maps.n_maps; i++) {
+			for (i = 0; i < user_mem_maps->n_maps; i++) {
 				struct user_mem_map *map =
-						&user_mem_maps.maps[i];
+						&user_mem_maps->maps[i];
 				if (vfio_spapr_dma_do_map(vfio_container_fd,
 						map->addr, map->iova, map->len,
 						1)) {
@@ -1284,7 +1434,7 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 		vfio_spapr_dma_do_map(vfio_container_fd, vaddr, iova, len, 0);
 	}
 out:
-	rte_spinlock_recursive_unlock(&user_mem_maps.lock);
+	rte_spinlock_recursive_unlock(&user_mem_maps->lock);
 	return ret;
 }
 
@@ -1336,9 +1486,10 @@ vfio_noiommu_dma_mem_map(int __rte_unused vfio_container_fd,
 }
 
 static int
-vfio_dma_mem_map(uint64_t vaddr, uint64_t iova, uint64_t len, int do_map)
+vfio_dma_mem_map(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
+		uint64_t len, int do_map)
 {
-	const struct vfio_iommu_type *t = vfio_cfg.vfio_iommu_type;
+	const struct vfio_iommu_type *t = vfio_cfg->vfio_iommu_type;
 
 	if (!t) {
 		RTE_LOG(ERR, EAL, "  VFIO support not initialized\n");
@@ -1354,7 +1505,7 @@ vfio_dma_mem_map(uint64_t vaddr, uint64_t iova, uint64_t len, int do_map)
 		return -1;
 	}
 
-	return t->dma_user_map_func(vfio_cfg.vfio_container_fd, vaddr, iova,
+	return t->dma_user_map_func(vfio_cfg->vfio_container_fd, vaddr, iova,
 			len, do_map);
 }
 
@@ -1362,6 +1513,7 @@ int __rte_experimental
 rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len)
 {
 	struct user_mem_map *new_map;
+	struct user_mem_maps *user_mem_maps;
 	int ret = 0;
 
 	if (len == 0) {
@@ -1369,15 +1521,16 @@ rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len)
 		return -1;
 	}
 
-	rte_spinlock_recursive_lock(&user_mem_maps.lock);
-	if (user_mem_maps.n_maps == VFIO_MAX_USER_MEM_MAPS) {
+	user_mem_maps = &default_vfio_cfg->mem_maps;
+	rte_spinlock_recursive_lock(&user_mem_maps->lock);
+	if (user_mem_maps->n_maps == VFIO_MAX_USER_MEM_MAPS) {
 		RTE_LOG(ERR, EAL, "No more space for user mem maps\n");
 		rte_errno = ENOMEM;
 		ret = -1;
 		goto out;
 	}
 	/* map the entry */
-	if (vfio_dma_mem_map(vaddr, iova, len, 1)) {
+	if (vfio_dma_mem_map(default_vfio_cfg, vaddr, iova, len, 1)) {
 		/* technically, this will fail if there are currently no devices
 		 * plugged in, even if a device were added later, this mapping
 		 * might have succeeded. however, since we cannot verify if this
@@ -1390,14 +1543,14 @@ rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len)
 		goto out;
 	}
 	/* create new user mem map entry */
-	new_map = &user_mem_maps.maps[user_mem_maps.n_maps++];
+	new_map = &user_mem_maps->maps[user_mem_maps->n_maps++];
 	new_map->addr = vaddr;
 	new_map->iova = iova;
 	new_map->len = len;
 
-	compact_user_maps();
+	compact_user_maps(user_mem_maps);
 out:
-	rte_spinlock_recursive_unlock(&user_mem_maps.lock);
+	rte_spinlock_recursive_unlock(&user_mem_maps->lock);
 	return ret;
 }
 
@@ -1405,6 +1558,7 @@ int __rte_experimental
 rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len)
 {
 	struct user_mem_map *map, *new_map = NULL;
+	struct user_mem_maps *user_mem_maps;
 	int ret = 0;
 
 	if (len == 0) {
@@ -1412,10 +1566,11 @@ rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len)
 		return -1;
 	}
 
-	rte_spinlock_recursive_lock(&user_mem_maps.lock);
+	user_mem_maps = &default_vfio_cfg->mem_maps;
+	rte_spinlock_recursive_lock(&user_mem_maps->lock);
 
 	/* find our mapping */
-	map = find_user_mem_map(vaddr, iova, len);
+	map = find_user_mem_map(user_mem_maps, vaddr, iova, len);
 	if (!map) {
 		RTE_LOG(ERR, EAL, "Couldn't find previously mapped region\n");
 		rte_errno = EINVAL;
@@ -1426,17 +1581,17 @@ rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len)
 		/* we're partially unmapping a previously mapped region, so we
 		 * need to split entry into two.
 		 */
-		if (user_mem_maps.n_maps == VFIO_MAX_USER_MEM_MAPS) {
+		if (user_mem_maps->n_maps == VFIO_MAX_USER_MEM_MAPS) {
 			RTE_LOG(ERR, EAL, "Not enough space to store partial mapping\n");
 			rte_errno = ENOMEM;
 			ret = -1;
 			goto out;
 		}
-		new_map = &user_mem_maps.maps[user_mem_maps.n_maps++];
+		new_map = &user_mem_maps->maps[user_mem_maps->n_maps++];
 	}
 
 	/* unmap the entry */
-	if (vfio_dma_mem_map(vaddr, iova, len, 0)) {
+	if (vfio_dma_mem_map(default_vfio_cfg, vaddr, iova, len, 0)) {
 		/* there may not be any devices plugged in, so unmapping will
 		 * fail with ENODEV/ENOTSUP rte_errno values, but that doesn't
 		 * stop us from removing the mapping, as the assumption is we
@@ -1459,19 +1614,19 @@ rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len)
 
 		/* if we've created a new map by splitting, sort everything */
 		if (!is_null_map(new_map)) {
-			compact_user_maps();
+			compact_user_maps(user_mem_maps);
 		} else {
 			/* we've created a new mapping, but it was unused */
-			user_mem_maps.n_maps--;
+			user_mem_maps->n_maps--;
 		}
 	} else {
 		memset(map, 0, sizeof(*map));
-		compact_user_maps();
-		user_mem_maps.n_maps--;
+		compact_user_maps(user_mem_maps);
+		user_mem_maps->n_maps--;
 	}
 
 out:
-	rte_spinlock_recursive_unlock(&user_mem_maps.lock);
+	rte_spinlock_recursive_unlock(&user_mem_maps->lock);
 	return ret;
 }
 

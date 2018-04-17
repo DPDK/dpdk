@@ -82,6 +82,7 @@ struct vfio_iommu_spapr_tce_info {
 #endif
 
 #define VFIO_MAX_GROUPS RTE_MAX_VFIO_GROUPS
+#define VFIO_MAX_CONTAINERS RTE_MAX_VFIO_CONTAINERS
 
 /*
  * we don't need to store device fd's anywhere since they can be obtained from
@@ -91,14 +92,6 @@ struct vfio_group {
 	int group_num;
 	int fd;
 	int devices;
-};
-
-struct vfio_config {
-	int vfio_enabled;
-	int vfio_container_fd;
-	int vfio_active_groups;
-	const struct vfio_iommu_type *vfio_iommu_type;
-	struct vfio_group vfio_groups[VFIO_MAX_GROUPS];
 };
 
 /* DMA mapping function prototype.
