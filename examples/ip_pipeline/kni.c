@@ -7,6 +7,7 @@
 
 #include <rte_ethdev.h>
 #include <rte_bus_pci.h>
+#include <rte_string_fns.h>
 
 #include "kni.h"
 #include "mempool.h"
@@ -153,7 +154,7 @@ kni_create(const char *name, struct kni_params *params)
 		return NULL;
 
 	/* Node fill in */
-	strncpy(kni->name, name, sizeof(kni->name));
+	strlcpy(kni->name, name, sizeof(kni->name));
 	kni->k = k;
 
 	/* Node add to list */

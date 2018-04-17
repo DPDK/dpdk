@@ -9,6 +9,7 @@
 #include <rte_ip.h>
 #include <rte_tcp.h>
 
+#include <rte_string_fns.h>
 #include <rte_port_ethdev.h>
 #ifdef RTE_LIBRTE_KNI
 #include <rte_port_kni.h>
@@ -129,7 +130,7 @@ pipeline_create(const char *name, struct pipeline_params *params)
 	}
 
 	/* Node fill in */
-	strncpy(pipeline->name, name, sizeof(pipeline->name));
+	strlcpy(pipeline->name, name, sizeof(pipeline->name));
 	pipeline->p = p;
 	pipeline->n_ports_in = 0;
 	pipeline->n_ports_out = 0;

@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <rte_mbuf.h>
+#include <rte_string_fns.h>
 
 #include "mempool.h"
 
@@ -70,7 +71,7 @@ mempool_create(const char *name, struct mempool_params *params)
 	}
 
 	/* Node fill in */
-	strncpy(mempool->name, name, sizeof(mempool->name));
+	strlcpy(mempool->name, name, sizeof(mempool->name));
 	mempool->m = m;
 	mempool->buffer_size = params->buffer_size;
 

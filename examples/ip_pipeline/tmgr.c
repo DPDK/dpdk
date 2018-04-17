@@ -4,6 +4,8 @@
 
 #include <stdlib.h>
 
+#include <rte_string_fns.h>
+
 #include "tmgr.h"
 
 static struct rte_sched_subport_params
@@ -148,7 +150,7 @@ tmgr_port_create(const char *name, struct tmgr_port_params *params)
 	}
 
 	/* Node fill in */
-	strncpy(tmgr_port->name, name, sizeof(tmgr_port->name));
+	strlcpy(tmgr_port->name, name, sizeof(tmgr_port->name));
 	tmgr_port->s = s;
 	tmgr_port->n_subports_per_port = params->n_subports_per_port;
 	tmgr_port->n_pipes_per_subport = params->n_pipes_per_subport;

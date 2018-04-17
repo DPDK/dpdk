@@ -15,6 +15,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <rte_string_fns.h>
+
 #include "tap.h"
 
 #define TAP_DEV                                            "/dev/net/tun"
@@ -88,7 +90,7 @@ tap_create(const char *name)
 		return NULL;
 	}
 	/* Node fill in */
-	strncpy(tap->name, name, sizeof(tap->name));
+	strlcpy(tap->name, name, sizeof(tap->name));
 	tap->fd = fd;
 
 	/* Node add to list */

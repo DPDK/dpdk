@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <rte_string_fns.h>
+
 #include "swq.h"
 
 static struct swq_list swq_list;
@@ -64,7 +66,7 @@ swq_create(const char *name, struct swq_params *params)
 	}
 
 	/* Node fill in */
-	strncpy(swq->name, name, sizeof(swq->name));
+	strlcpy(swq->name, name, sizeof(swq->name));
 	swq->r = r;
 
 	/* Node add to list */

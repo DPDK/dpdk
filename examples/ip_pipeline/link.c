@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <rte_ethdev.h>
+#include <rte_string_fns.h>
 
 #include "link.h"
 #include "mempool.h"
@@ -236,7 +237,7 @@ link_create(const char *name, struct link_params *params)
 	}
 
 	/* Node fill in */
-	strncpy(link->name, name, sizeof(link->name));
+	strlcpy(link->name, name, sizeof(link->name));
 	link->port_id = port_id;
 	link->n_rxq = params->rx.n_queues;
 	link->n_txq = params->tx.n_queues;

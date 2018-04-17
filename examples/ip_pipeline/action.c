@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <rte_string_fns.h>
+
 #include "action.h"
 #include "hash_func.h"
 
@@ -133,7 +135,7 @@ port_in_action_profile_create(const char *name,
 	}
 
 	/* Node fill in */
-	strncpy(profile->name, name, sizeof(profile->name));
+	strlcpy(profile->name, name, sizeof(profile->name));
 	memcpy(&profile->params, params, sizeof(*params));
 	profile->ap = ap;
 
@@ -345,7 +347,7 @@ table_action_profile_create(const char *name,
 	}
 
 	/* Node fill in */
-	strncpy(profile->name, name, sizeof(profile->name));
+	strlcpy(profile->name, name, sizeof(profile->name));
 	memcpy(&profile->params, params, sizeof(*params));
 	profile->ap = ap;
 
