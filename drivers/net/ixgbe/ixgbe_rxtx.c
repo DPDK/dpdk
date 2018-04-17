@@ -2429,7 +2429,8 @@ ixgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 		DEV_TX_OFFLOAD_UDP_CKSUM   |
 		DEV_TX_OFFLOAD_TCP_CKSUM   |
 		DEV_TX_OFFLOAD_SCTP_CKSUM  |
-		DEV_TX_OFFLOAD_TCP_TSO;
+		DEV_TX_OFFLOAD_TCP_TSO     |
+		DEV_TX_OFFLOAD_MULTI_SEGS;
 
 	if (hw->mac.type == ixgbe_mac_82599EB ||
 	    hw->mac.type == ixgbe_mac_X540)
