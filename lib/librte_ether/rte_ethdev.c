@@ -981,60 +981,6 @@ rte_eth_convert_rx_offload_bitfield(const struct rte_eth_rxmode *rxmode,
 	*rx_offloads = offloads;
 }
 
-/**
- * A conversion function from rxmode offloads API.
- */
-static void
-rte_eth_convert_rx_offloads(const uint64_t rx_offloads,
-			    struct rte_eth_rxmode *rxmode)
-{
-
-	if (rx_offloads & DEV_RX_OFFLOAD_HEADER_SPLIT)
-		rxmode->header_split = 1;
-	else
-		rxmode->header_split = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_CHECKSUM)
-		rxmode->hw_ip_checksum = 1;
-	else
-		rxmode->hw_ip_checksum = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
-		rxmode->hw_vlan_filter = 1;
-	else
-		rxmode->hw_vlan_filter = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-		rxmode->hw_vlan_strip = 1;
-	else
-		rxmode->hw_vlan_strip = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
-		rxmode->hw_vlan_extend = 1;
-	else
-		rxmode->hw_vlan_extend = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
-		rxmode->jumbo_frame = 1;
-	else
-		rxmode->jumbo_frame = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_CRC_STRIP)
-		rxmode->hw_strip_crc = 1;
-	else
-		rxmode->hw_strip_crc = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_SCATTER)
-		rxmode->enable_scatter = 1;
-	else
-		rxmode->enable_scatter = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
-		rxmode->enable_lro = 1;
-	else
-		rxmode->enable_lro = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP)
-		rxmode->hw_timestamp = 1;
-	else
-		rxmode->hw_timestamp = 0;
-	if (rx_offloads & DEV_RX_OFFLOAD_SECURITY)
-		rxmode->security = 1;
-	else
-		rxmode->security = 0;
-}
-
 const char * __rte_experimental
 rte_eth_dev_rx_offload_name(uint64_t offload)
 {
@@ -1125,13 +1071,9 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * Convert between the offloads API to enable PMDs to support
 	 * only one of them.
 	 */
-	if (dev_conf->rxmode.ignore_offload_bitfield == 0) {
+	if (dev_conf->rxmode.ignore_offload_bitfield == 0)
 		rte_eth_convert_rx_offload_bitfield(
 				&dev_conf->rxmode, &local_conf.rxmode.offloads);
-	} else {
-		rte_eth_convert_rx_offloads(dev_conf->rxmode.offloads,
-					    &local_conf.rxmode);
-	}
 
 	/* Copy the dev_conf parameter into the dev structure */
 	memcpy(&dev->data->dev_conf, &local_conf, sizeof(dev->data->dev_conf));
@@ -1583,30 +1525,6 @@ rte_eth_convert_txq_flags(const uint32_t txq_flags, uint64_t *tx_offloads)
 	*tx_offloads = offloads;
 }
 
-/**
- * A conversion function from offloads API.
- */
-static void
-rte_eth_convert_txq_offloads(const uint64_t tx_offloads, uint32_t *txq_flags)
-{
-	uint32_t flags = 0;
-
-	if (!(tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS))
-		flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
-	if (!(tx_offloads & DEV_TX_OFFLOAD_VLAN_INSERT))
-		flags |= ETH_TXQ_FLAGS_NOVLANOFFL;
-	if (!(tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM))
-		flags |= ETH_TXQ_FLAGS_NOXSUMSCTP;
-	if (!(tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM))
-		flags |= ETH_TXQ_FLAGS_NOXSUMUDP;
-	if (!(tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM))
-		flags |= ETH_TXQ_FLAGS_NOXSUMTCP;
-	if (tx_offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
-		flags |= (ETH_TXQ_FLAGS_NOREFCOUNT | ETH_TXQ_FLAGS_NOMULTMEMP);
-
-	*txq_flags = flags;
-}
-
 int
 rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 		       uint16_t nb_tx_desc, unsigned int socket_id,
@@ -1671,12 +1589,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	 * only one of them.
 	 */
 	local_conf = *tx_conf;
-	if (tx_conf->txq_flags & ETH_TXQ_FLAGS_IGNORE) {
-		rte_eth_convert_txq_offloads(tx_conf->offloads,
-					     &local_conf.txq_flags);
-		/* Keep the ignore flag. */
-		local_conf.txq_flags |= ETH_TXQ_FLAGS_IGNORE;
-	} else {
+	if (!(tx_conf->txq_flags & ETH_TXQ_FLAGS_IGNORE)) {
 		rte_eth_convert_txq_flags(tx_conf->txq_flags,
 					  &local_conf.offloads);
 	}
@@ -2649,19 +2562,10 @@ rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask)
 		return ret;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_offload_set, -ENOTSUP);
-
-	/*
-	 * Convert to the offload bitfield API just in case the underlying PMD
-	 * still supporting it.
-	 */
-	rte_eth_convert_rx_offloads(dev->data->dev_conf.rxmode.offloads,
-				    &dev->data->dev_conf.rxmode);
 	ret = (*dev->dev_ops->vlan_offload_set)(dev, mask);
 	if (ret) {
 		/* hit an error restore  original values */
 		dev->data->dev_conf.rxmode.offloads = orig_offloads;
-		rte_eth_convert_rx_offloads(dev->data->dev_conf.rxmode.offloads,
-					    &dev->data->dev_conf.rxmode);
 	}
 
 	return eth_err(port_id, ret);
