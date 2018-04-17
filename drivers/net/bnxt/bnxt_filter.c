@@ -1144,8 +1144,8 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 		ret = bnxt_hwrm_clear_em_filter(bp, filter);
 	if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
 		ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
-
-	bnxt_hwrm_clear_l2_filter(bp, filter);
+	else
+		ret = bnxt_hwrm_clear_l2_filter(bp, filter);
 	if (!ret) {
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);
