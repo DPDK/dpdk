@@ -65,6 +65,8 @@ void bnxt_tx_queue_release_op(void *tx_queue)
 		bnxt_free_ring(txq->cp_ring->cp_ring_struct);
 
 		bnxt_free_txq_stats(txq);
+		rte_memzone_free(txq->mz);
+		txq->mz = NULL;
 
 		rte_free(txq);
 	}
@@ -119,7 +121,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	txq->port_id = eth_dev->data->port_id;
 
 	/* Allocate TX ring hardware descriptors */
-	if (bnxt_alloc_rings(bp, queue_idx, txq->tx_ring, NULL, txq->cp_ring,
+	if (bnxt_alloc_rings(bp, queue_idx, txq, NULL, txq->cp_ring,
 			"txr")) {
 		PMD_DRV_LOG(ERR, "ring_dma_zone_reserve for tx_ring failed!");
 		bnxt_tx_queue_release_op(txq);
