@@ -16,6 +16,8 @@
 
 #define NUM_ENTRY_VIRTIO_CRYPTO_OP 7
 
+extern uint8_t cryptodev_virtio_driver_id;
+
 enum virtio_crypto_cmd_id {
 	VIRTIO_CRYPTO_CMD_CIPHER = 0,
 	VIRTIO_CRYPTO_CMD_AUTH = 1,
