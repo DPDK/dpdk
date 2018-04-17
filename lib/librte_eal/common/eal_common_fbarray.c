@@ -594,6 +594,11 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 	eal_get_fbarray_path(path, sizeof(path), arr->name);
 
 	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		RTE_LOG(ERR, EAL, "Could not open fbarray file: %s\n",
+			strerror(errno));
+		return -1;
+	}
 	if (flock(fd, LOCK_EX | LOCK_NB)) {
 		RTE_LOG(DEBUG, EAL, "Cannot destroy fbarray - another process is using it\n");
 		rte_errno = EBUSY;
