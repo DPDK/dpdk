@@ -2706,53 +2706,10 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	attributes->queue.index = fdir_filter->action.rx_queue;
+	/* Handle L3. */
 	switch (fdir_filter->input.flow_type) {
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
-		attributes->l3.ipv4.hdr = (struct ipv4_hdr){
-			.src_addr = input->flow.udp4_flow.ip.src_ip,
-			.dst_addr = input->flow.udp4_flow.ip.dst_ip,
-			.time_to_live = input->flow.udp4_flow.ip.ttl,
-			.type_of_service = input->flow.udp4_flow.ip.tos,
-			.next_proto_id = input->flow.udp4_flow.ip.proto,
-		};
-		attributes->l4.udp.hdr = (struct udp_hdr){
-			.src_port = input->flow.udp4_flow.src_port,
-			.dst_port = input->flow.udp4_flow.dst_port,
-		};
-		attributes->items[1] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_IPV4,
-			.spec = &attributes->l3,
-			.mask = &attributes->l3,
-		};
-		attributes->items[2] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_UDP,
-			.spec = &attributes->l4,
-			.mask = &attributes->l4,
-		};
-		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
-		attributes->l3.ipv4.hdr = (struct ipv4_hdr){
-			.src_addr = input->flow.tcp4_flow.ip.src_ip,
-			.dst_addr = input->flow.tcp4_flow.ip.dst_ip,
-			.time_to_live = input->flow.tcp4_flow.ip.ttl,
-			.type_of_service = input->flow.tcp4_flow.ip.tos,
-			.next_proto_id = input->flow.tcp4_flow.ip.proto,
-		};
-		attributes->l4.tcp.hdr = (struct tcp_hdr){
-			.src_port = input->flow.tcp4_flow.src_port,
-			.dst_port = input->flow.tcp4_flow.dst_port,
-		};
-		attributes->items[1] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_IPV4,
-			.spec = &attributes->l3,
-			.mask = &attributes->l3,
-		};
-		attributes->items[2] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_TCP,
-			.spec = &attributes->l4,
-			.mask = &attributes->l4,
-		};
-		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
 		attributes->l3.ipv4.hdr = (struct ipv4_hdr){
 			.src_addr = input->flow.ip4_flow.src_ip,
@@ -2768,61 +2725,11 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
 		attributes->l3.ipv6.hdr = (struct ipv6_hdr){
 			.hop_limits = input->flow.udp6_flow.ip.hop_limits,
 			.proto = input->flow.udp6_flow.ip.proto,
-		};
-		memcpy(attributes->l3.ipv6.hdr.src_addr,
-		       input->flow.udp6_flow.ip.src_ip,
-		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
-		memcpy(attributes->l3.ipv6.hdr.dst_addr,
-		       input->flow.udp6_flow.ip.dst_ip,
-		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
-		attributes->l4.udp.hdr = (struct udp_hdr){
-			.src_port = input->flow.udp6_flow.src_port,
-			.dst_port = input->flow.udp6_flow.dst_port,
-		};
-		attributes->items[1] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_IPV6,
-			.spec = &attributes->l3,
-			.mask = &attributes->l3,
-		};
-		attributes->items[2] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_UDP,
-			.spec = &attributes->l4,
-			.mask = &attributes->l4,
-		};
-		break;
-	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
-		attributes->l3.ipv6.hdr = (struct ipv6_hdr){
-			.hop_limits = input->flow.tcp6_flow.ip.hop_limits,
-			.proto = input->flow.tcp6_flow.ip.proto,
-		};
-		memcpy(attributes->l3.ipv6.hdr.src_addr,
-		       input->flow.tcp6_flow.ip.src_ip,
-		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
-		memcpy(attributes->l3.ipv6.hdr.dst_addr,
-		       input->flow.tcp6_flow.ip.dst_ip,
-		       RTE_DIM(attributes->l3.ipv6.hdr.src_addr));
-		attributes->l4.tcp.hdr = (struct tcp_hdr){
-			.src_port = input->flow.tcp6_flow.src_port,
-			.dst_port = input->flow.tcp6_flow.dst_port,
-		};
-		attributes->items[1] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_IPV6,
-			.spec = &attributes->l3,
-			.mask = &attributes->l3,
-		};
-		attributes->items[2] = (struct rte_flow_item){
-			.type = RTE_FLOW_ITEM_TYPE_TCP,
-			.spec = &attributes->l4,
-			.mask = &attributes->l4,
-		};
-		break;
-	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
-		attributes->l3.ipv6.hdr = (struct ipv6_hdr){
-			.hop_limits = input->flow.ipv6_flow.hop_limits,
-			.proto = input->flow.ipv6_flow.proto,
 		};
 		memcpy(attributes->l3.ipv6.hdr.src_addr,
 		       input->flow.ipv6_flow.src_ip,
@@ -2835,6 +2742,61 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 			.spec = &attributes->l3,
 			.mask = &attributes->l3,
 		};
+		break;
+	default:
+		DRV_LOG(ERR, "port %u invalid flow type%d",
+			dev->data->port_id, fdir_filter->input.flow_type);
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	/* Handle L4. */
+	switch (fdir_filter->input.flow_type) {
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
+		attributes->l4.udp.hdr = (struct udp_hdr){
+			.src_port = input->flow.udp4_flow.src_port,
+			.dst_port = input->flow.udp4_flow.dst_port,
+		};
+		attributes->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_UDP,
+			.spec = &attributes->l4,
+			.mask = &attributes->l4,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
+		attributes->l4.tcp.hdr = (struct tcp_hdr){
+			.src_port = input->flow.tcp4_flow.src_port,
+			.dst_port = input->flow.tcp4_flow.dst_port,
+		};
+		attributes->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_TCP,
+			.spec = &attributes->l4,
+			.mask = &attributes->l4,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+		attributes->l4.udp.hdr = (struct udp_hdr){
+			.src_port = input->flow.udp6_flow.src_port,
+			.dst_port = input->flow.udp6_flow.dst_port,
+		};
+		attributes->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_UDP,
+			.spec = &attributes->l4,
+			.mask = &attributes->l4,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
+		attributes->l4.tcp.hdr = (struct tcp_hdr){
+			.src_port = input->flow.tcp6_flow.src_port,
+			.dst_port = input->flow.tcp6_flow.dst_port,
+		};
+		attributes->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_TCP,
+			.spec = &attributes->l4,
+			.mask = &attributes->l4,
+		};
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
 		break;
 	default:
 		DRV_LOG(ERR, "port %u invalid flow type%d",
