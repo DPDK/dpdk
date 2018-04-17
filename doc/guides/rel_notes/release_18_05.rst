@@ -92,6 +92,15 @@ New Features
   The ARM CPU subsystem features eight ARMv8 Cortex-A72 CPUs at 3.0 GHz, arranged in a multi-cluster
   configuration.
 
+* **Added IFCVF vDPA driver.**
+
+  Added IFCVF vDPA driver to support Intel FPGA 100G VF device. IFCVF works
+  as a HW vhost data path accelerator, it supports live migration and is
+  compatible with virtio 0.95 and 1.0. This driver registers ifcvf vDPA driver
+  to vhost lib, when virtio connected, with the help of the registered vDPA
+  driver the assigned VF gets configured to Rx/Tx directly to VM's virtio
+  vrings.
+
 * **Added support for virtio-user server mode.**
   In a container environment if the vhost-user backend restarts, there's no way
   for it to reconnect to virtio-user. To address this, support for server mode
