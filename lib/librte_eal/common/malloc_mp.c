@@ -7,6 +7,7 @@
 
 #include <rte_alarm.h>
 #include <rte_errno.h>
+#include <rte_string_fns.h>
 
 #include "eal_memalloc.h"
 
@@ -159,7 +160,7 @@ handle_sync(const struct rte_mp_msg *msg, const void *peer)
 	memset(&reply, 0, sizeof(reply));
 
 	reply.num_fds = 0;
-	snprintf(reply.name, sizeof(reply.name), "%s", msg->name);
+	strlcpy(reply.name, msg->name, sizeof(reply.name));
 	reply.len_param = sizeof(*resp);
 
 	ret = eal_memalloc_sync_with_primary();
@@ -274,8 +275,8 @@ handle_request(const struct rte_mp_msg *msg, const void *peer __rte_unused)
 		/* send failure message straight away */
 		resp_msg.num_fds = 0;
 		resp_msg.len_param = sizeof(*resp);
-		snprintf(resp_msg.name, sizeof(resp_msg.name), "%s",
-				MP_ACTION_RESPONSE);
+		strlcpy(resp_msg.name, MP_ACTION_RESPONSE,
+				sizeof(resp_msg.name));
 
 		resp->t = m->t;
 		resp->result = REQ_RESULT_FAIL;
@@ -298,8 +299,7 @@ handle_request(const struct rte_mp_msg *msg, const void *peer __rte_unused)
 		/* we can do something, so send sync request asynchronously */
 		sr_msg.num_fds = 0;
 		sr_msg.len_param = sizeof(*sr);
-		snprintf(sr_msg.name, sizeof(sr_msg.name), "%s",
-				MP_ACTION_SYNC);
+		strlcpy(sr_msg.name, MP_ACTION_SYNC, sizeof(sr_msg.name));
 
 		ts.tv_nsec = 0;
 		ts.tv_sec = MP_TIMEOUT_S;
@@ -393,7 +393,7 @@ handle_sync_response(const struct rte_mp_msg *request,
 		resp->id = entry->user_req.id;
 		msg.num_fds = 0;
 		msg.len_param = sizeof(*resp);
-		snprintf(msg.name, sizeof(msg.name), "%s", MP_ACTION_RESPONSE);
+		strlcpy(msg.name, MP_ACTION_RESPONSE, sizeof(msg.name));
 
 		if (rte_mp_sendmsg(&msg))
 			RTE_LOG(ERR, EAL, "Could not send message to secondary process\n");
@@ -417,7 +417,7 @@ handle_sync_response(const struct rte_mp_msg *request,
 		resp->id = entry->user_req.id;
 		msg.num_fds = 0;
 		msg.len_param = sizeof(*resp);
-		snprintf(msg.name, sizeof(msg.name), "%s", MP_ACTION_RESPONSE);
+		strlcpy(msg.name, MP_ACTION_RESPONSE, sizeof(msg.name));
 
 		if (rte_mp_sendmsg(&msg))
 			RTE_LOG(ERR, EAL, "Could not send message to secondary process\n");
@@ -444,8 +444,7 @@ handle_sync_response(const struct rte_mp_msg *request,
 		/* send rollback request */
 		rb_msg.num_fds = 0;
 		rb_msg.len_param = sizeof(*rb);
-		snprintf(rb_msg.name, sizeof(rb_msg.name), "%s",
-				MP_ACTION_ROLLBACK);
+		strlcpy(rb_msg.name, MP_ACTION_ROLLBACK, sizeof(rb_msg.name));
 
 		ts.tv_nsec = 0;
 		ts.tv_sec = MP_TIMEOUT_S;
@@ -515,7 +514,7 @@ handle_rollback_response(const struct rte_mp_msg *request,
 	resp->id = mpreq->id;
 	msg.num_fds = 0;
 	msg.len_param = sizeof(*resp);
-	snprintf(msg.name, sizeof(msg.name), "%s", MP_ACTION_RESPONSE);
+	strlcpy(msg.name, MP_ACTION_RESPONSE, sizeof(msg.name));
 
 	if (rte_mp_sendmsg(&msg))
 		RTE_LOG(ERR, EAL, "Could not send message to secondary process\n");
@@ -577,7 +576,7 @@ request_sync(void)
 
 	msg.num_fds = 0;
 	msg.len_param = sizeof(*req);
-	snprintf(msg.name, sizeof(msg.name), "%s", MP_ACTION_SYNC);
+	strlcpy(msg.name, MP_ACTION_SYNC, sizeof(msg.name));
 
 	/* sync request carries no data */
 	req->t = REQ_TYPE_SYNC;
@@ -668,7 +667,7 @@ request_to_primary(struct malloc_mp_req *user_req)
 
 	msg.num_fds = 0;
 	msg.len_param = sizeof(*msg_req);
-	snprintf(msg.name, sizeof(msg.name), "%s", MP_ACTION_REQUEST);
+	strlcpy(msg.name, MP_ACTION_REQUEST, sizeof(msg.name));
 
 	/* (attempt to) get a unique id */
 	user_req->id = get_unique_id();
