@@ -318,3 +318,16 @@ Here we use l3fwd-power as an example to show how to get started.
 
         $ l3fwd-power -l 0-1 -- -p 1 -P --config="(0,0,1)" \
                                                --no-numa --parse-ptype
+
+
+Virtio PMD arguments
+--------------------
+
+The user can specify below argument in devargs.
+
+#.  ``vdpa``:
+
+    A virtio device could also be driven by vDPA (vhost data path acceleration)
+    driver, and works as a HW vhost backend. This argument is used to specify
+    a virtio device needs to work in vDPA mode.
+    (Default: 0 (disabled))

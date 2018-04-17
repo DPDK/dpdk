@@ -28,6 +28,7 @@
 #include <rte_eal.h>
 #include <rte_dev.h>
 #include <rte_cycles.h>
+#include <rte_kvargs.h>
 
 #include "virtio_ethdev.h"
 #include "virtio_pci.h"
@@ -1713,9 +1714,51 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int vdpa_check_handler(__rte_unused const char *key,
+		const char *value, __rte_unused void *opaque)
+{
+	if (strcmp(value, "1"))
+		return -1;
+
+	return 0;
+}
+
+static int
+vdpa_mode_selected(struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	const char *key = "vdpa";
+	int ret = 0;
+
+	if (devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, key))
+		goto exit;
+
+	/* vdpa mode selected when there's a key-value pair: vdpa=1 */
+	if (rte_kvargs_process(kvlist, key,
+				vdpa_check_handler, NULL) < 0) {
+		goto exit;
+	}
+	ret = 1;
+
+exit:
+	rte_kvargs_free(kvlist);
+	return ret;
+}
+
 static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
+	/* virtio pmd skips probe if device needs to work in vdpa mode */
+	if (vdpa_mode_selected(pci_dev->device.devargs))
+		return 1;
+
 	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct virtio_hw),
 		eth_virtio_dev_init);
 }
