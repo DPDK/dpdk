@@ -815,6 +815,7 @@ nfp6000_set_barsz(struct nfp_pcie_user *desc)
 
 	if (fscanf(fp, "0x%lx 0x%lx 0x%lx", &start, &end, &flags) == 0) {
 		printf("error reading resource file for bar size\n");
+		fclose(fp);
 		return -1;
 	}
 
