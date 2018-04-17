@@ -304,5 +304,11 @@ EXPERIMENTAL {
 	rte_vfio_get_container_fd;
 	rte_vfio_get_group_fd;
 	rte_vfio_get_group_num;
+	rte_vfio_container_create;
+	rte_vfio_container_destroy;
+	rte_vfio_container_dma_map;
+	rte_vfio_container_dma_unmap;
+	rte_vfio_container_group_bind;
+	rte_vfio_container_group_unbind;
 
 } DPDK_18.02;

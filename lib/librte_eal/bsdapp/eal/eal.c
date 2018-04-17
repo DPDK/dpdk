@@ -828,3 +828,47 @@ rte_vfio_get_group_fd(__rte_unused int iommu_group_num)
 {
 	return -1;
 }
+
+int __rte_experimental
+rte_vfio_container_create(void)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_container_destroy(__rte_unused int container_fd)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_container_group_bind(__rte_unused int container_fd,
+		__rte_unused int iommu_group_num)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_container_group_unbind(__rte_unused int container_fd,
+		__rte_unused int iommu_group_num)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_container_dma_map(__rte_unused int container_fd,
+			__rte_unused uint64_t vaddr,
+			__rte_unused uint64_t iova,
+			__rte_unused uint64_t len)
+{
+	return -1;
+}
+
+int __rte_experimental
+rte_vfio_container_dma_unmap(__rte_unused int container_fd,
+			__rte_unused uint64_t vaddr,
+			__rte_unused uint64_t iova,
+			__rte_unused uint64_t len)
+{
+	return -1;
+}
