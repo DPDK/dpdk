@@ -1196,11 +1196,13 @@ virtio_crypto_sym_pad_auth_param(
 	}
 
 	switch (auth_xform->algo) {
+	case RTE_CRYPTO_AUTH_SHA1_HMAC:
+		*algo = VIRTIO_CRYPTO_MAC_HMAC_SHA1;
+		break;
 	default:
 		VIRTIO_CRYPTO_SESSION_LOG_ERR(
 			"Crypto: Undefined Hash algo %u specified",
 			auth_xform->algo);
-		*algo = VIRTIO_CRYPTO_NO_MAC;
 		return -1;
 	}
 
