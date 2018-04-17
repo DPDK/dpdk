@@ -525,6 +525,7 @@ async_reply_handle(void *arg __rte_unused)
 		wait_for_async_messages();
 
 		if (gettimeofday(&now, NULL) < 0) {
+			pthread_mutex_unlock(&pending_requests.lock);
 			RTE_LOG(ERR, EAL, "Cannot get current time\n");
 			break;
 		}
