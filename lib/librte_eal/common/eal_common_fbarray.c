@@ -471,7 +471,7 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 	memset(data, 0, mmap_len);
 
 	/* populate data structure */
-	snprintf(arr->name, sizeof(arr->name), "%s", name);
+	strlcpy(arr->name, name, sizeof(arr->name));
 	arr->data = data;
 	arr->len = len;
 	arr->elt_sz = elt_sz;
