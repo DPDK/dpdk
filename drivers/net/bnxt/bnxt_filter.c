@@ -806,7 +806,8 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto ret;
 	//Since we support ingress attribute only - right now.
-	filter->flags = HWRM_CFA_EM_FLOW_ALLOC_INPUT_FLAGS_PATH_RX;
+	if (filter->filter_type == HWRM_CFA_EM_FILTER)
+		filter->flags = HWRM_CFA_EM_FLOW_ALLOC_INPUT_FLAGS_PATH_RX;
 
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
