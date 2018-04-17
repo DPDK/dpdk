@@ -525,6 +525,13 @@ T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/avf/
 F: doc/guides/nics/features/avf*.ini
 
+Intel ifc
+M: Xiao Wang <xiao.w.wang@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
+F: drivers/net/ifc/
+F: doc/guides/nics/ifcvf.rst
+F: doc/guides/nics/features/ifcvf.ini
+
 Marvell mvpp2
 M: Jacek Siuda <jck@semihalf.com>
 M: Tomasz Duszynski <tdu@semihalf.com>
