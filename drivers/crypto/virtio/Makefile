@@ -8,6 +8,10 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_virtio_crypto.a
 
+#
+# include virtio_crypto.h
+#
+CFLAGS += -I$(RTE_SDK)/lib/librte_vhost
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
@@ -18,6 +22,9 @@ LIBABIVER := 1
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO) += virtqueue.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO) += virtio_pci.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO) += virtio_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO) += virtio_cryptodev.c
 
 # this lib depends upon:
