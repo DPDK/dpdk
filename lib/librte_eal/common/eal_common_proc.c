@@ -658,6 +658,7 @@ rte_mp_channel_init(void)
 		RTE_LOG(ERR, EAL, "failed to create mp thead: %s\n",
 			strerror(errno));
 		close(mp_fd);
+		close(dir_fd);
 		mp_fd = -1;
 		return -1;
 	}
