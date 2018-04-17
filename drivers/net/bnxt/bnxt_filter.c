@@ -131,6 +131,14 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 
 	rte_free(bp->filter_info);
 	bp->filter_info = NULL;
+
+	for (i = 0; i < bp->pf.max_vfs; i++) {
+		STAILQ_FOREACH(filter, &bp->pf.vf_info[i].filter, next) {
+			rte_free(filter);
+			STAILQ_REMOVE(&bp->pf.vf_info[i].filter, filter,
+				      bnxt_filter_info, next);
+		}
+	}
 }
 
 int bnxt_alloc_filter_mem(struct bnxt *bp)
