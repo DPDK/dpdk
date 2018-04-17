@@ -26,6 +26,9 @@ struct bnxt_cp_ring_info;
 #define ASYNC_CMPL_EVENT_ID_VF_CFG_CHANGE	\
 	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_CFG_CHANGE - 32))
 
+#define HWRM_QUEUE_SERVICE_PROFILE_LOSSY \
+	HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSY
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,

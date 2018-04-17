@@ -6759,339 +6759,453 @@ struct hwrm_port_led_qcaps_output {
  * configured.
  */
 /* Input	(24 bytes) */
+/* hwrm_queue_qportcfg_input (size:192b/24B) */
 struct hwrm_queue_qportcfg_input {
-	uint16_t req_type;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
 	/*
-	 * This value indicates what type of request this is. The format
-	 * for the rest of the command is determined by this field.
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
 	 */
-	uint16_t cmpl_ring;
+	uint16_t	cmpl_ring;
 	/*
-	 * This value indicates the what completion ring the request
-	 * will be optionally completed on. If the value is -1, then no
-	 * CR completion will be generated. Any other value must be a
-	 * valid CR ring_id value for this function.
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
 	 */
-	uint16_t seq_id;
-	/* This value indicates the command sequence number. */
-	uint16_t target_id;
+	uint16_t	seq_id;
 	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
-	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
-	 * - HWRM
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
 	 */
-	uint64_t resp_addr;
+	uint16_t	target_id;
 	/*
-	 * This is the host address where the response will be written
-	 * when the request is complete. This area must be 16B aligned
-	 * and must be cleared to zero before the request is made.
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
 	 */
-	uint32_t flags;
+	uint64_t	resp_addr;
+	uint32_t	flags;
 	/*
-	 * Enumeration denoting the RX, TX type of the resource. This
-	 * enumeration is used for resources that are similar for both
+	 * Enumeration denoting the RX, TX type of the resource.
+	 * This enumeration is used for resources that are similar for both
 	 * TX and RX paths of the chip.
 	 */
-	#define HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH	UINT32_C(0x1)
+	#define HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH     UINT32_C(0x1)
 	/* tx path */
-	#define HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_TX	UINT32_C(0x0)
+	#define HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_TX    UINT32_C(0x0)
 	/* rx path */
-	#define HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_RX	UINT32_C(0x1)
+	#define HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_RX    UINT32_C(0x1)
 	#define HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_LAST \
-		QUEUE_QPORTCFG_INPUT_FLAGS_PATH_RX
-	uint16_t port_id;
+		HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_RX
 	/*
 	 * Port ID of port for which the queue configuration is being
-	 * queried. This field is only required when sent by IPC.
+	 * queried.  This field is only required when sent by IPC.
 	 */
-	uint16_t unused_0;
+	uint16_t	port_id;
+	/*
+	 * Drivers will set this capability when it can use
+	 * queue_idx_service_profile to map the queues to application.
+	 */
+	uint8_t	drv_qmap_cap;
+	/* disabled */
+	#define HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_DISABLED UINT32_C(0x0)
+	/* enabled */
+	#define HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_ENABLED  UINT32_C(0x1)
+	#define HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_LAST \
+		HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_ENABLED
+	uint8_t	unused_0;
 } __attribute__((packed));
 
 /* Output	(32 bytes) */
+/* hwrm_queue_qportcfg_output (size:256b/32B) */
 struct hwrm_queue_qportcfg_output {
-	uint16_t error_code;
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in
-	 * parameters, and fail the call with an error when appropriate
-	 */
-	uint16_t req_type;
-	/* This field returns the type of original request. */
-	uint16_t seq_id;
-	/* This field provides original sequence number of the command. */
-	uint16_t resp_len;
-	/*
-	 * This field is the length of the response in bytes. The last
-	 * byte of the response is a valid flag that will read as '1'
-	 * when the command has been completely written to memory.
-	 */
-	uint8_t max_configurable_queues;
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
 	/*
 	 * The maximum number of queues that can be configured on this
-	 * port. Valid values range from 1 through 8.
+	 * port.
+	 * Valid values range from 1 through 8.
 	 */
-	uint8_t max_configurable_lossless_queues;
+	uint8_t	max_configurable_queues;
 	/*
 	 * The maximum number of lossless queues that can be configured
-	 * on this port. Valid values range from 0 through 8.
+	 * on this port.
+	 * Valid values range from 0 through 8.
 	 */
-	uint8_t queue_cfg_allowed;
+	uint8_t	max_configurable_lossless_queues;
 	/*
 	 * Bitmask indicating which queues can be configured by the
-	 * hwrm_queue_cfg command. Each bit represents a specific queue
-	 * where bit 0 represents queue 0 and bit 7 represents queue 7.
+	 * hwrm_queue_cfg command.
+	 *
+	 * Each bit represents a specific queue where bit 0 represents
+	 * queue 0 and bit 7 represents queue 7.
 	 * # A value of 0 indicates that the queue is not configurable
-	 * by the hwrm_queue_cfg command. # A value of 1 indicates that
-	 * the queue is configurable. # A hwrm_queue_cfg command shall
-	 * return error when trying to configure a queue not
-	 * configurable.
+	 * by the hwrm_queue_cfg command.
+	 * # A value of 1 indicates that the queue is configurable.
+	 * # A hwrm_queue_cfg command shall return error when trying to
+	 * configure a queue not configurable.
 	 */
-	uint8_t queue_cfg_info;
+	uint8_t	queue_cfg_allowed;
 	/* Information about queue configuration. */
+	uint8_t	queue_cfg_info;
 	/*
-	 * If this flag is set to '1', then the queues are configured
-	 * asymmetrically on TX and RX sides. If this flag is set to
-	 * '0', then the queues are configured symmetrically on TX and
-	 * RX sides. For symmetric configuration, the queue
-	 * configuration including queue ids and service profiles on the
-	 * TX side is the same as the corresponding queue configuration
-	 * on the RX side.
+	 * If this flag is set to '1', then the queues are
+	 * configured asymmetrically on TX and RX sides.
+	 * If this flag is set to '0', then the queues are
+	 * configured symmetrically on TX and RX sides. For
+	 * symmetric configuration, the queue configuration
+	 * including queue ids and service profiles on the
+	 * TX side is the same as the corresponding queue
+	 * configuration on the RX side.
 	 */
-	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_CFG_INFO_ASYM_CFG UINT32_C(0x1)
-	uint8_t queue_pfcenable_cfg_allowed;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_CFG_INFO_ASYM_CFG \
+		UINT32_C(0x1)
 	/*
 	 * Bitmask indicating which queues can be configured by the
-	 * hwrm_queue_pfcenable_cfg command. Each bit represents a
-	 * specific priority where bit 0 represents priority 0 and bit 7
-	 * represents priority 7. # A value of 0 indicates that the
-	 * priority is not configurable by the hwrm_queue_pfcenable_cfg
-	 * command. # A value of 1 indicates that the priority is
-	 * configurable. # A hwrm_queue_pfcenable_cfg command shall
-	 * return error when trying to configure a priority that is not
-	 * configurable.
+	 * hwrm_queue_pfcenable_cfg command.
+	 *
+	 * Each bit represents a specific priority where bit 0 represents
+	 * priority 0 and bit 7 represents priority 7.
+	 * # A value of 0 indicates that the priority is not configurable by
+	 * the hwrm_queue_pfcenable_cfg command.
+	 * # A value of 1 indicates that the priority is configurable.
+	 * # A hwrm_queue_pfcenable_cfg command shall return error when
+	 * trying to configure a priority that is not configurable.
 	 */
-	uint8_t queue_pri2cos_cfg_allowed;
+	uint8_t	queue_pfcenable_cfg_allowed;
 	/*
 	 * Bitmask indicating which queues can be configured by the
-	 * hwrm_queue_pri2cos_cfg command. Each bit represents a
-	 * specific queue where bit 0 represents queue 0 and bit 7
-	 * represents queue 7. # A value of 0 indicates that the queue
-	 * is not configurable by the hwrm_queue_pri2cos_cfg command. #
-	 * A value of 1 indicates that the queue is configurable. # A
-	 * hwrm_queue_pri2cos_cfg command shall return error when trying
-	 * to configure a queue that is not configurable.
+	 * hwrm_queue_pri2cos_cfg command.
+	 *
+	 * Each bit represents a specific queue where bit 0 represents
+	 * queue 0 and bit 7 represents queue 7.
+	 * # A value of 0 indicates that the queue is not configurable
+	 * by the hwrm_queue_pri2cos_cfg command.
+	 * # A value of 1 indicates that the queue is configurable.
+	 * # A hwrm_queue_pri2cos_cfg command shall return error when
+	 * trying to configure a queue that is not configurable.
 	 */
-	uint8_t queue_cos2bw_cfg_allowed;
+	uint8_t	queue_pri2cos_cfg_allowed;
 	/*
 	 * Bitmask indicating which queues can be configured by the
-	 * hwrm_queue_pri2cos_cfg command. Each bit represents a
-	 * specific queue where bit 0 represents queue 0 and bit 7
-	 * represents queue 7. # A value of 0 indicates that the queue
-	 * is not configurable by the hwrm_queue_pri2cos_cfg command. #
-	 * A value of 1 indicates that the queue is configurable. # A
-	 * hwrm_queue_pri2cos_cfg command shall return error when trying
-	 * to configure a queue not configurable.
+	 * hwrm_queue_pri2cos_cfg command.
+	 *
+	 * Each bit represents a specific queue where bit 0 represents
+	 * queue 0 and bit 7 represents queue 7.
+	 * # A value of 0 indicates that the queue is not configurable
+	 * by the hwrm_queue_pri2cos_cfg command.
+	 * # A value of 1 indicates that the queue is configurable.
+	 * # A hwrm_queue_pri2cos_cfg command shall return error when
+	 * trying to configure a queue not configurable.
 	 */
-	uint8_t queue_id0;
+	uint8_t	queue_cos2bw_cfg_allowed;
 	/*
-	 * ID of CoS Queue 0. FF - Invalid id # This ID can be used on
-	 * any subsequent call to an hwrm command that takes a queue id.
+	 * ID of CoS Queue 0.
+	 * FF - Invalid id
+	 *
+	 * # This ID can be used on any subsequent call to an hwrm command
+	 * that takes a queue id.
 	 * # IDs must always be queried by this command before any use
-	 * by the driver or software. # Any driver or software should
-	 * not make any assumptions about queue IDs. # A value of 0xff
-	 * indicates that the queue is not available. # Available queues
-	 * may not be in sequential order.
+	 * by the driver or software.
+	 * # Any driver or software should not make any assumptions about
+	 * queue IDs.
+	 * # A value of 0xff indicates that the queue is not available.
+	 * # Available queues may not be in sequential order.
 	 */
-	uint8_t queue_id0_service_profile;
+	uint8_t	queue_id0;
 	/* This value is applicable to CoS queues only. */
-	/* Lossy	(best-effort) */
+	uint8_t	queue_id0_service_profile;
+	/* Lossy (best-effort) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSY \
 		UINT32_C(0x0)
-	/* Lossless */
+	/* Lossless (legacy) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSLESS \
 		UINT32_C(0x1)
-	/*
-	 * Set to 0xFF...	(All Fs) if there is no
-	 * service profile specified
-	 */
+	/* Lossless RoCE */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSLESS_ROCE \
+		UINT32_C(0x1)
+	/* Lossy RoCE CNP */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSY_ROCE_CNP \
+		UINT32_C(0x2)
+	/* Lossless NIC */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSLESS_NIC \
+		UINT32_C(0x3)
+	/* Set to 0xFF... (All Fs) if there is no service profile specified */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_UNKNOWN \
 		UINT32_C(0xff)
-	uint8_t queue_id1;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LAST \
+		HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_UNKNOWN
 	/*
-	 * ID of CoS Queue 1. FF - Invalid id # This ID can be used on
-	 * any subsequent call to an hwrm command that takes a queue id.
+	 * ID of CoS Queue 1.
+	 * FF - Invalid id
+	 *
+	 * # This ID can be used on any subsequent call to an hwrm command
+	 * that takes a queue id.
 	 * # IDs must always be queried by this command before any use
-	 * by the driver or software. # Any driver or software should
-	 * not make any assumptions about queue IDs. # A value of 0xff
-	 * indicates that the queue is not available. # Available queues
-	 * may not be in sequential order.
+	 * by the driver or software.
+	 * # Any driver or software should not make any assumptions about
+	 * queue IDs.
+	 * # A value of 0xff indicates that the queue is not available.
+	 * # Available queues may not be in sequential order.
 	 */
-	uint8_t queue_id1_service_profile;
+	uint8_t	queue_id1;
 	/* This value is applicable to CoS queues only. */
-	/* Lossy	(best-effort) */
+	uint8_t	queue_id1_service_profile;
+	/* Lossy (best-effort) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID1_SERVICE_PROFILE_LOSSY \
 		UINT32_C(0x0)
-	/* Lossless */
+	/* Lossless (legacy) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID1_SERVICE_PROFILE_LOSSLESS \
 		UINT32_C(0x1)
-	/*
-	 * Set to 0xFF...	(All Fs) if there is no
-	 * service profile specified
-	 */
+	/* Lossless RoCE */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID1_SERVICE_PROFILE_LOSSLESS_ROCE \
+		UINT32_C(0x1)
+	/* Lossy RoCE CNP */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID1_SERVICE_PROFILE_LOSSY_ROCE_CNP \
+		UINT32_C(0x2)
+	/* Lossless NIC */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID1_SERVICE_PROFILE_LOSSLESS_NIC \
+		UINT32_C(0x3)
+	/* Set to 0xFF... (All Fs) if there is no service profile specified */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID1_SERVICE_PROFILE_UNKNOWN \
 		UINT32_C(0xff)
-	uint8_t queue_id2;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID1_SERVICE_PROFILE_LAST \
+		HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID1_SERVICE_PROFILE_UNKNOWN
 	/*
-	 * ID of CoS Queue 2. FF - Invalid id # This ID can be used on
-	 * any subsequent call to an hwrm command that takes a queue id.
+	 * ID of CoS Queue 2.
+	 * FF - Invalid id
+	 *
+	 * # This ID can be used on any subsequent call to an hwrm command
+	 * that takes a queue id.
 	 * # IDs must always be queried by this command before any use
-	 * by the driver or software. # Any driver or software should
-	 * not make any assumptions about queue IDs. # A value of 0xff
-	 * indicates that the queue is not available. # Available queues
-	 * may not be in sequential order.
+	 * by the driver or software.
+	 * # Any driver or software should not make any assumptions about
+	 * queue IDs.
+	 * # A value of 0xff indicates that the queue is not available.
+	 * # Available queues may not be in sequential order.
 	 */
-	uint8_t queue_id2_service_profile;
+	uint8_t	queue_id2;
 	/* This value is applicable to CoS queues only. */
-	/* Lossy	(best-effort) */
+	uint8_t	queue_id2_service_profile;
+	/* Lossy (best-effort) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID2_SERVICE_PROFILE_LOSSY \
 		UINT32_C(0x0)
-	/* Lossless */
+	/* Lossless (legacy) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID2_SERVICE_PROFILE_LOSSLESS \
 		UINT32_C(0x1)
-	/*
-	 * Set to 0xFF...	(All Fs) if there is no
-	 * service profile specified
-	 */
+	/* Lossless RoCE */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID2_SERVICE_PROFILE_LOSSLESS_ROCE \
+		UINT32_C(0x1)
+	/* Lossy RoCE CNP */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID2_SERVICE_PROFILE_LOSSY_ROCE_CNP \
+		UINT32_C(0x2)
+	/* Lossless NIC */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID2_SERVICE_PROFILE_LOSSLESS_NIC \
+		UINT32_C(0x3)
+	/* Set to 0xFF... (All Fs) if there is no service profile specified */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID2_SERVICE_PROFILE_UNKNOWN \
 		UINT32_C(0xff)
-	uint8_t queue_id3;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID2_SERVICE_PROFILE_LAST \
+		HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID2_SERVICE_PROFILE_UNKNOWN
 	/*
-	 * ID of CoS Queue 3. FF - Invalid id # This ID can be used on
-	 * any subsequent call to an hwrm command that takes a queue id.
+	 * ID of CoS Queue 3.
+	 * FF - Invalid id
+	 *
+	 * # This ID can be used on any subsequent call to an hwrm command
+	 * that takes a queue id.
 	 * # IDs must always be queried by this command before any use
-	 * by the driver or software. # Any driver or software should
-	 * not make any assumptions about queue IDs. # A value of 0xff
-	 * indicates that the queue is not available. # Available queues
-	 * may not be in sequential order.
+	 * by the driver or software.
+	 * # Any driver or software should not make any assumptions about
+	 * queue IDs.
+	 * # A value of 0xff indicates that the queue is not available.
+	 * # Available queues may not be in sequential order.
 	 */
-	uint8_t queue_id3_service_profile;
+	uint8_t	queue_id3;
 	/* This value is applicable to CoS queues only. */
-	/* Lossy	(best-effort) */
+	uint8_t	queue_id3_service_profile;
+	/* Lossy (best-effort) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID3_SERVICE_PROFILE_LOSSY \
 		UINT32_C(0x0)
-	/* Lossless */
+	/* Lossless (legacy) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID3_SERVICE_PROFILE_LOSSLESS \
 		UINT32_C(0x1)
-	/*
-	 * Set to 0xFF...	(All Fs) if there is no
-	 * service profile specified
-	 */
+	/* Lossless RoCE */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID3_SERVICE_PROFILE_LOSSLESS_ROCE \
+		UINT32_C(0x1)
+	/* Lossy RoCE CNP */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID3_SERVICE_PROFILE_LOSSY_ROCE_CNP \
+		UINT32_C(0x2)
+	/* Lossless NIC */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID3_SERVICE_PROFILE_LOSSLESS_NIC \
+		UINT32_C(0x3)
+	/* Set to 0xFF... (All Fs) if there is no service profile specified */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID3_SERVICE_PROFILE_UNKNOWN \
 		UINT32_C(0xff)
-	uint8_t queue_id4;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID3_SERVICE_PROFILE_LAST \
+		HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID3_SERVICE_PROFILE_UNKNOWN
 	/*
-	 * ID of CoS Queue 4. FF - Invalid id # This ID can be used on
-	 * any subsequent call to an hwrm command that takes a queue id.
+	 * ID of CoS Queue 4.
+	 * FF - Invalid id
+	 *
+	 * # This ID can be used on any subsequent call to an hwrm command
+	 * that takes a queue id.
 	 * # IDs must always be queried by this command before any use
-	 * by the driver or software. # Any driver or software should
-	 * not make any assumptions about queue IDs. # A value of 0xff
-	 * indicates that the queue is not available. # Available queues
-	 * may not be in sequential order.
+	 * by the driver or software.
+	 * # Any driver or software should not make any assumptions about
+	 * queue IDs.
+	 * # A value of 0xff indicates that the queue is not available.
+	 * # Available queues may not be in sequential order.
 	 */
-	uint8_t queue_id4_service_profile;
+	uint8_t	queue_id4;
 	/* This value is applicable to CoS queues only. */
-	/* Lossy	(best-effort) */
+	uint8_t	queue_id4_service_profile;
+	/* Lossy (best-effort) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID4_SERVICE_PROFILE_LOSSY \
 		UINT32_C(0x0)
-	/* Lossless */
+	/* Lossless (legacy) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID4_SERVICE_PROFILE_LOSSLESS \
 		UINT32_C(0x1)
-	/*
-	 * Set to 0xFF...	(All Fs) if there is no
-	 * service profile specified
-	 */
+	/* Lossless RoCE */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID4_SERVICE_PROFILE_LOSSLESS_ROCE \
+		UINT32_C(0x1)
+	/* Lossy RoCE CNP */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID4_SERVICE_PROFILE_LOSSY_ROCE_CNP \
+		UINT32_C(0x2)
+	/* Lossless NIC */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID4_SERVICE_PROFILE_LOSSLESS_NIC \
+		UINT32_C(0x3)
+	/* Set to 0xFF... (All Fs) if there is no service profile specified */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID4_SERVICE_PROFILE_UNKNOWN \
 		UINT32_C(0xff)
-	uint8_t queue_id5;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID4_SERVICE_PROFILE_LAST \
+		HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID4_SERVICE_PROFILE_UNKNOWN
 	/*
-	 * ID of CoS Queue 5. FF - Invalid id # This ID can be used on
-	 * any subsequent call to an hwrm command that takes a queue id.
+	 * ID of CoS Queue 5.
+	 * FF - Invalid id
+	 *
+	 * # This ID can be used on any subsequent call to an hwrm command
+	 * that takes a queue id.
 	 * # IDs must always be queried by this command before any use
-	 * by the driver or software. # Any driver or software should
-	 * not make any assumptions about queue IDs. # A value of 0xff
-	 * indicates that the queue is not available. # Available queues
-	 * may not be in sequential order.
+	 * by the driver or software.
+	 * # Any driver or software should not make any assumptions about
+	 * queue IDs.
+	 * # A value of 0xff indicates that the queue is not available.
+	 * # Available queues may not be in sequential order.
 	 */
-	uint8_t queue_id5_service_profile;
+	uint8_t	queue_id5;
 	/* This value is applicable to CoS queues only. */
-	/* Lossy	(best-effort) */
+	uint8_t	queue_id5_service_profile;
+	/* Lossy (best-effort) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID5_SERVICE_PROFILE_LOSSY \
 		UINT32_C(0x0)
-	/* Lossless */
+	/* Lossless (legacy) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID5_SERVICE_PROFILE_LOSSLESS \
 		UINT32_C(0x1)
-	/*
-	 * Set to 0xFF...	(All Fs) if there is no
-	 * service profile specified
-	 */
+	/* Lossless RoCE */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID5_SERVICE_PROFILE_LOSSLESS_ROCE \
+		UINT32_C(0x1)
+	/* Lossy RoCE CNP */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID5_SERVICE_PROFILE_LOSSY_ROCE_CNP \
+		UINT32_C(0x2)
+	/* Lossless NIC */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID5_SERVICE_PROFILE_LOSSLESS_NIC \
+		UINT32_C(0x3)
+	/* Set to 0xFF... (All Fs) if there is no service profile specified */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID5_SERVICE_PROFILE_UNKNOWN \
 		UINT32_C(0xff)
-	uint8_t queue_id6;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID5_SERVICE_PROFILE_LAST \
+		HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID5_SERVICE_PROFILE_UNKNOWN
 	/*
-	 * ID of CoS Queue 6. FF - Invalid id # This ID can be used on
-	 * any subsequent call to an hwrm command that takes a queue id.
+	 * ID of CoS Queue 6.
+	 * FF - Invalid id
+	 *
+	 * # This ID can be used on any subsequent call to an hwrm command
+	 * that takes a queue id.
 	 * # IDs must always be queried by this command before any use
-	 * by the driver or software. # Any driver or software should
-	 * not make any assumptions about queue IDs. # A value of 0xff
-	 * indicates that the queue is not available. # Available queues
-	 * may not be in sequential order.
+	 * by the driver or software.
+	 * # Any driver or software should not make any assumptions about
+	 * queue IDs.
+	 * # A value of 0xff indicates that the queue is not available.
+	 * # Available queues may not be in sequential order.
 	 */
-	uint8_t queue_id6_service_profile;
+	uint8_t	queue_id6;
 	/* This value is applicable to CoS queues only. */
-	/* Lossy	(best-effort) */
+	uint8_t	queue_id6_service_profile;
+	/* Lossy (best-effort) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID6_SERVICE_PROFILE_LOSSY \
 		UINT32_C(0x0)
-	/* Lossless */
+	/* Lossless (legacy) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID6_SERVICE_PROFILE_LOSSLESS \
 		UINT32_C(0x1)
-	/*
-	 * Set to 0xFF...	(All Fs) if there is no
-	 * service profile specified
-	 */
+	/* Lossless RoCE */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID6_SERVICE_PROFILE_LOSSLESS_ROCE \
+		UINT32_C(0x1)
+	/* Lossy RoCE CNP */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID6_SERVICE_PROFILE_LOSSY_ROCE_CNP \
+		UINT32_C(0x2)
+	/* Lossless NIC */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID6_SERVICE_PROFILE_LOSSLESS_NIC \
+		UINT32_C(0x3)
+	/* Set to 0xFF... (All Fs) if there is no service profile specified */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID6_SERVICE_PROFILE_UNKNOWN \
 		UINT32_C(0xff)
-	uint8_t queue_id7;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID6_SERVICE_PROFILE_LAST \
+		HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID6_SERVICE_PROFILE_UNKNOWN
 	/*
-	 * ID of CoS Queue 7. FF - Invalid id # This ID can be used on
-	 * any subsequent call to an hwrm command that takes a queue id.
+	 * ID of CoS Queue 7.
+	 * FF - Invalid id
+	 *
+	 * # This ID can be used on any subsequent call to an hwrm command
+	 * that takes a queue id.
 	 * # IDs must always be queried by this command before any use
-	 * by the driver or software. # Any driver or software should
-	 * not make any assumptions about queue IDs. # A value of 0xff
-	 * indicates that the queue is not available. # Available queues
-	 * may not be in sequential order.
+	 * by the driver or software.
+	 * # Any driver or software should not make any assumptions about
+	 * queue IDs.
+	 * # A value of 0xff indicates that the queue is not available.
+	 * # Available queues may not be in sequential order.
 	 */
-	uint8_t queue_id7_service_profile;
+	uint8_t	queue_id7;
 	/* This value is applicable to CoS queues only. */
-	/* Lossy	(best-effort) */
+	uint8_t	queue_id7_service_profile;
+	/* Lossy (best-effort) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_LOSSY \
 		UINT32_C(0x0)
-	/* Lossless */
+	/* Lossless (legacy) */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_LOSSLESS \
 		UINT32_C(0x1)
-	/*
-	 * Set to 0xFF...	(All Fs) if there is no
-	 * service profile specified
-	 */
+	/* Lossless RoCE */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_LOSSLESS_ROCE \
+		UINT32_C(0x1)
+	/* Lossy RoCE CNP */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_LOSSY_ROCE_CNP \
+		UINT32_C(0x2)
+	/* Lossless NIC */
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_LOSSLESS_NIC \
+		UINT32_C(0x3)
+	/* Set to 0xFF... (All Fs) if there is no service profile specified */
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_UNKNOWN \
 		UINT32_C(0xff)
-	uint8_t valid;
+	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_LAST \
+		HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_UNKNOWN
 	/*
-	 * This field is used in Output records to indicate that the
-	 * output is completely written to RAM. This field should be
-	 * read as '1' to indicate that the output has been completely
-	 * written. When writing a command completion or response to an
-	 * internal processor, the order of writes has to be such that
-	 * this field is written last.
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal
+	 * processor,
+	 * the order of writes has to be such that this field is written last.
 	 */
+	uint8_t	valid;
 } __attribute__((packed));
 
 /*********************
