@@ -15,6 +15,7 @@
 #include "virtio_cryptodev.h"
 #include "virtqueue.h"
 #include "virtio_crypto_algs.h"
+#include "virtio_crypto_capabilities.h"
 
 int virtio_crypto_logtype_init;
 int virtio_crypto_logtype_session;
@@ -56,6 +57,11 @@ static const struct rte_pci_id pci_id_virtio_crypto_map[] = {
 	{ RTE_PCI_DEVICE(VIRTIO_CRYPTO_PCI_VENDORID,
 				VIRTIO_CRYPTO_PCI_DEVICEID) },
 	{ .vendor_id = 0, /* sentinel */ },
+};
+
+static const struct rte_cryptodev_capabilities virtio_capabilities[] = {
+	VIRTIO_SYM_CAPABILITIES,
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
 uint8_t cryptodev_virtio_driver_id;
@@ -746,6 +752,7 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 
 	hw = cryptodev->data->dev_private;
 	hw->dev_id = cryptodev->data->dev_id;
+	hw->virtio_dev_capabilities = virtio_capabilities;
 
 	VIRTIO_CRYPTO_INIT_LOG_DBG("dev %d vendorID=0x%x deviceID=0x%x",
 		cryptodev->data->dev_id, pci_dev->id.vendor_id,
@@ -1139,6 +1146,9 @@ virtio_crypto_sym_pad_cipher_param(
 		struct rte_crypto_cipher_xform *cipher_xform)
 {
 	switch (cipher_xform->algo) {
+	case RTE_CRYPTO_CIPHER_AES_CBC:
+		para->algo = VIRTIO_CRYPTO_CIPHER_AES_CBC;
+		break;
 	default:
 		VIRTIO_CRYPTO_SESSION_LOG_ERR("Crypto: Unsupported "
 				"Cipher alg %u", cipher_xform->algo);
@@ -1402,6 +1412,7 @@ virtio_crypto_dev_info_get(struct rte_cryptodev *dev,
 		info->max_nb_queue_pairs = hw->max_dataqueues;
 		info->sym.max_nb_sessions =
 			RTE_VIRTIO_CRYPTO_PMD_MAX_NB_SESSIONS;
+		info->capabilities = hw->virtio_dev_capabilities;
 	}
 }
 
