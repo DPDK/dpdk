@@ -10,6 +10,7 @@
 #include <rte_memzone.h>
 #include <rte_memory.h>
 #include <rte_eal_memconfig.h>
+#include <rte_string_fns.h>
 #include <rte_rwlock.h>
 
 #include "eal_private.h"
@@ -179,7 +180,7 @@ eal_memalloc_mem_event_callback_register(const char *name,
 
 	/* callback successfully created and is valid, add it to the list */
 	entry->clb = clb;
-	snprintf(entry->name, RTE_MEM_EVENT_CALLBACK_NAME_LEN, "%s", name);
+	strlcpy(entry->name, name, RTE_MEM_EVENT_CALLBACK_NAME_LEN);
 	TAILQ_INSERT_TAIL(&mem_event_callback_list, entry, next);
 
 	ret = 0;
@@ -284,7 +285,7 @@ eal_memalloc_mem_alloc_validator_register(const char *name,
 	entry->clb = clb;
 	entry->socket_id = socket_id;
 	entry->limit = limit;
-	snprintf(entry->name, RTE_MEM_ALLOC_VALIDATOR_NAME_LEN, "%s", name);
+	strlcpy(entry->name, name, RTE_MEM_ALLOC_VALIDATOR_NAME_LEN);
 	TAILQ_INSERT_TAIL(&mem_alloc_validator_list, entry, next);
 
 	ret = 0;
