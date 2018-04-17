@@ -677,6 +677,8 @@ sfc_set_rss_defaults(struct sfc_adapter *sa)
 
 fail_hash_support_get:
 fail_scale_support_get:
+	efx_rx_fini(sa->nic);
+
 fail_rx_init:
 	efx_ev_fini(sa->nic);
 
