@@ -3472,7 +3472,7 @@ bnxt_init_log(void)
 {
 	bnxt_logtype_driver = rte_log_register("pmd.bnxt.driver");
 	if (bnxt_logtype_driver >= 0)
-		rte_log_set_level(bnxt_logtype_driver, RTE_LOG_NOTICE);
+		rte_log_set_level(bnxt_logtype_driver, RTE_LOG_INFO);
 }
 
 RTE_PMD_REGISTER_PCI(net_bnxt, bnxt_rte_pmd);
