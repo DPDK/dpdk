@@ -317,7 +317,7 @@ int bnxt_hwrm_clear_l2_filter(struct bnxt *bp,
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
-	filter->fw_l2_filter_id = -1;
+	filter->fw_l2_filter_id = UINT64_MAX;
 
 	return 0;
 }
@@ -3583,8 +3583,8 @@ int bnxt_hwrm_clear_em_filter(struct bnxt *bp, struct bnxt_filter_info *filter)
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
-	filter->fw_em_filter_id = -1;
-	filter->fw_l2_filter_id = -1;
+	filter->fw_em_filter_id = UINT64_MAX;
+	filter->fw_l2_filter_id = UINT64_MAX;
 
 	return 0;
 }
@@ -3695,7 +3695,7 @@ int bnxt_hwrm_clear_ntuple_filter(struct bnxt *bp,
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
-	filter->fw_ntuple_filter_id = -1;
+	filter->fw_ntuple_filter_id = UINT64_MAX;
 	filter->fw_l2_filter_id = UINT64_MAX;
 
 	return 0;

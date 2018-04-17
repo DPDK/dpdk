@@ -68,9 +68,9 @@ void bnxt_init_filters(struct bnxt *bp)
 	STAILQ_INIT(&bp->free_filter_list);
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
-		filter->fw_l2_filter_id = -1;
-		filter->fw_em_filter_id = -1;
-		filter->fw_ntuple_filter_id = -1;
+		filter->fw_l2_filter_id = UINT64_MAX;
+		filter->fw_em_filter_id = UINT64_MAX;
+		filter->fw_ntuple_filter_id = UINT64_MAX;
 		STAILQ_INSERT_TAIL(&bp->free_filter_list, filter, next);
 	}
 }
@@ -963,7 +963,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 	ret = bnxt_validate_and_parse_flow(dev, pattern, actions, attr,
 					   error, filter);
 	/* No need to hold on to this filter if we are just validating flow */
-	filter->fw_l2_filter_id = -1;
+	filter->fw_l2_filter_id = UINT64_MAX;
 	bnxt_free_filter(bp, filter);
 
 	return ret;
