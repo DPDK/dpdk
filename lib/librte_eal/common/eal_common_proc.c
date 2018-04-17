@@ -129,7 +129,7 @@ create_socket_path(const char *name, char *buf, int len)
 	if (strlen(name) > 0)
 		snprintf(buf, len, "%s_%s", prefix, name);
 	else
-		snprintf(buf, len, "%s", prefix);
+		strlcpy(buf, prefix, len);
 }
 
 int
@@ -200,7 +200,7 @@ rte_mp_action_register(const char *name, rte_mp_t action)
 		rte_errno = ENOMEM;
 		return -1;
 	}
-	strcpy(entry->action_name, name);
+	strlcpy(entry->action_name, name, sizeof(entry->action_name));
 	entry->action = action;
 
 	pthread_mutex_lock(&mp_mutex_action);
@@ -323,8 +323,7 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			 */
 			struct rte_mp_msg dummy;
 			memset(&dummy, 0, sizeof(dummy));
-			snprintf(dummy.name, sizeof(dummy.name),
-					"%s", msg->name);
+			strlcpy(dummy.name, msg->name, sizeof(dummy.name));
 			mp_send(&dummy, s->sun_path, MP_IGN);
 		} else {
 			RTE_LOG(ERR, EAL, "Cannot find action: %s\n",
@@ -621,11 +620,11 @@ rte_mp_channel_init(void)
 
 	/* create filter path */
 	create_socket_path("*", path, sizeof(path));
-	snprintf(mp_filter, sizeof(mp_filter), "%s", basename(path));
+	strlcpy(mp_filter, basename(path), sizeof(mp_filter));
 
 	/* path may have been modified, so recreate it */
 	create_socket_path("*", path, sizeof(path));
-	snprintf(mp_dir_path, sizeof(mp_dir_path), "%s", dirname(path));
+	strlcpy(mp_dir_path, dirname(path), sizeof(mp_dir_path));
 
 	/* lock the directory */
 	dir_fd = open(mp_dir_path, O_RDONLY);
@@ -673,11 +672,11 @@ rte_mp_channel_init(void)
 	}
 
 	/* try best to set thread name */
-	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "rte_mp_handle");
+	strlcpy(thread_name, "rte_mp_handle", RTE_MAX_THREAD_NAME_LEN);
 	rte_thread_setname(mp_handle_tid, thread_name);
 
 	/* try best to set thread name */
-	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "rte_mp_async_handle");
+	strlcpy(thread_name, "rte_mp_async_handle", RTE_MAX_THREAD_NAME_LEN);
 	rte_thread_setname(async_reply_handle_tid, thread_name);
 
 	/* unlock the directory */
@@ -710,7 +709,7 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 
 	memset(&dst, 0, sizeof(dst));
 	dst.sun_family = AF_UNIX;
-	snprintf(dst.sun_path, sizeof(dst.sun_path), "%s", dst_path);
+	strlcpy(dst.sun_path, dst_path, sizeof(dst.sun_path));
 
 	memset(&msgh, 0, sizeof(msgh));
 	memset(control, 0, sizeof(control));
@@ -870,7 +869,7 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 	memset(reply_msg, 0, sizeof(*reply_msg));
 
 	sync_req->type = REQUEST_TYPE_ASYNC;
-	strcpy(sync_req->dst, dst);
+	strlcpy(sync_req->dst, dst, sizeof(sync_req->dst));
 	sync_req->request = req;
 	sync_req->reply = reply_msg;
 	sync_req->async.param = param;
@@ -916,7 +915,7 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 
 	sync_req.type = REQUEST_TYPE_SYNC;
 	sync_req.reply_received = 0;
-	strcpy(sync_req.dst, dst);
+	strlcpy(sync_req.dst, dst, sizeof(sync_req.dst));
 	sync_req.request = req;
 	sync_req.reply = &msg;
 	pthread_cond_init(&sync_req.sync.cond, NULL);
