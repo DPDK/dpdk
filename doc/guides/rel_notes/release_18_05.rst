@@ -96,6 +96,10 @@ New Features
   including session creation/deletion handling and translating virtio-crypto
   request into DPDK crypto operations. A sample application is also introduced.
 
+* **Added virtio crypto PMD.**
+
+  Added a new poll mode driver for virtio crypto devices.
+
 * **Added AMD CCP Crypto PMD.**
 
   Added the new ``ccp`` crypto driver for AMD CCP devices. See the

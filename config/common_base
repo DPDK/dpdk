@@ -494,6 +494,20 @@ CONFIG_RTE_LIBRTE_PMD_QAT_DEBUG_DRIVER=n
 CONFIG_RTE_QAT_PMD_MAX_NB_SESSIONS=2048
 
 #
+# Compile PMD for virtio crypto devices
+#
+CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO=y
+#
+# Number of maximum virtio crypto devices
+#
+CONFIG_RTE_MAX_VIRTIO_CRYPTO=32
+#
+# Number of sessions to create in the session memory pool
+# on a single virtio crypto device.
+#
+CONFIG_RTE_VIRTIO_CRYPTO_PMD_MAX_NB_SESSIONS=1024
+
+#
 # Compile PMD for AESNI backed device
 #
 CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n

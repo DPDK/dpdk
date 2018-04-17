@@ -21,5 +21,6 @@ endif
 ifeq ($(CONFIG_RTE_LIBRTE_DPAA_BUS),y)
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA_SEC) += dpaa_sec
 endif
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO) += virtio
 
 include $(RTE_SDK)/mk/rte.subdir.mk

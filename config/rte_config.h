@@ -87,6 +87,10 @@
 /* QuickAssist device */
 #define RTE_QAT_PMD_MAX_NB_SESSIONS 2048
 
+/* virtio crypto defines */
+#define RTE_VIRTIO_CRYPTO_PMD_MAX_NB_SESSIONS 1024
+#define RTE_MAX_VIRTIO_CRYPTO 32
+
 /* DPAA2_SEC */
 #define RTE_DPAA2_SEC_PMD_MAX_NB_SESSIONS 2048
 
