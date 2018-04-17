@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <linux/netlink.h>
 
+#include <rte_string_fns.h>
 #include <rte_log.h>
 #include <rte_compat.h>
 #include <rte_dev.h>
@@ -94,15 +95,15 @@ dev_uev_parse(const char *buf, struct rte_dev_event *event, int length)
 		if (!strncmp(buf, "ACTION=", 7)) {
 			buf += 7;
 			i += 7;
-			snprintf(action, sizeof(action), "%s", buf);
+			strlcpy(action, buf, sizeof(action));
 		} else if (!strncmp(buf, "SUBSYSTEM=", 10)) {
 			buf += 10;
 			i += 10;
-			snprintf(subsystem, sizeof(subsystem), "%s", buf);
+			strlcpy(subsystem, buf, sizeof(subsystem));
 		} else if (!strncmp(buf, "PCI_SLOT_NAME=", 14)) {
 			buf += 14;
 			i += 14;
-			snprintf(pci_slot_name, sizeof(subsystem), "%s", buf);
+			strlcpy(pci_slot_name, buf, sizeof(subsystem));
 			event->devname = strdup(pci_slot_name);
 		}
 		for (; i < length; i++) {
