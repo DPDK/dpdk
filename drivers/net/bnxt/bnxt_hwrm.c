@@ -1165,7 +1165,8 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_PREP(req, VNIC_ALLOC);
 
 	if (vnic->func_default)
-		req.flags = HWRM_VNIC_ALLOC_INPUT_FLAGS_DEFAULT;
+		req.flags =
+			rte_cpu_to_le_32(HWRM_VNIC_ALLOC_INPUT_FLAGS_DEFAULT);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT();
