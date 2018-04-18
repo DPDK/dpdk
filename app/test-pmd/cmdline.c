@@ -14958,12 +14958,12 @@ cmdline_parse_token_num_t cmd_ddp_get_list_port_id =
 
 static void
 cmd_ddp_get_list_parsed(
-	void *parsed_result,
+	__attribute__((unused)) void *parsed_result,
 	__attribute__((unused)) struct cmdline *cl,
 	__attribute__((unused)) void *data)
 {
-	struct cmd_ddp_get_list_result *res = parsed_result;
 #ifdef RTE_LIBRTE_I40E_PMD
+	struct cmd_ddp_get_list_result *res = parsed_result;
 	struct rte_pmd_i40e_profile_list *p_list;
 	struct rte_pmd_i40e_profile_info *p_info;
 	uint32_t p_num;
@@ -15034,12 +15034,12 @@ struct cmd_cfg_input_set_result {
 
 static void
 cmd_cfg_input_set_parsed(
-	void *parsed_result,
+	__attribute__((unused)) void *parsed_result,
 	__attribute__((unused)) struct cmdline *cl,
 	__attribute__((unused)) void *data)
 {
-	struct cmd_cfg_input_set_result *res = parsed_result;
 #ifdef RTE_LIBRTE_I40E_PMD
+	struct cmd_cfg_input_set_result *res = parsed_result;
 	enum rte_pmd_i40e_inset_type inset_type = INSET_NONE;
 	struct rte_pmd_i40e_inset inset;
 #endif
@@ -15157,12 +15157,12 @@ struct cmd_clear_input_set_result {
 
 static void
 cmd_clear_input_set_parsed(
-	void *parsed_result,
+	__attribute__((unused)) void *parsed_result,
 	__attribute__((unused)) struct cmdline *cl,
 	__attribute__((unused)) void *data)
 {
-	struct cmd_clear_input_set_result *res = parsed_result;
 #ifdef RTE_LIBRTE_I40E_PMD
+	struct cmd_clear_input_set_result *res = parsed_result;
 	enum rte_pmd_i40e_inset_type inset_type = INSET_NONE;
 	struct rte_pmd_i40e_inset inset;
 #endif
