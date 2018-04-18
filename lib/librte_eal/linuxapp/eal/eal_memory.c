@@ -1160,8 +1160,8 @@ calc_num_pages_per_socket(uint64_t * memory,
 	for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_mem != 0; socket++) {
 		/* skips if the memory on specific socket wasn't requested */
 		for (i = 0; i < num_hp_info && memory[socket] != 0; i++){
-			snprintf(hp_used[i].hugedir, sizeof(hp_used[i].hugedir),
-					"%s", hp_info[i].hugedir);
+			strlcpy(hp_used[i].hugedir, hp_info[i].hugedir,
+				sizeof(hp_used[i].hugedir));
 			hp_used[i].num_pages[socket] = RTE_MIN(
 					memory[socket] / hp_info[i].hugepage_sz,
 					hp_info[i].num_pages[socket]);

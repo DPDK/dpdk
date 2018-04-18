@@ -96,7 +96,7 @@ eal_hugepage_info_init(void)
 		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dKB\n",
 				num_buffers, (int)(buffer_size>>10));
 
-	snprintf(hpi->hugedir, sizeof(hpi->hugedir), "%s", CONTIGMEM_DEV);
+	strlcpy(hpi->hugedir, CONTIGMEM_DEV, sizeof(hpi->hugedir));
 	hpi->hugepage_sz = buffer_size;
 	hpi->num_pages[0] = num_buffers;
 	hpi->lock_descriptor = fd;

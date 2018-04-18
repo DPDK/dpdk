@@ -169,8 +169,8 @@ get_default_hp_size(void)
 	return size;
 }
 
-static const char *
-get_hugepage_dir(uint64_t hugepage_sz)
+static int
+get_hugepage_dir(uint64_t hugepage_sz, char *hugedir, int len)
 {
 	enum proc_mount_fieldnames {
 		DEVICE = 0,
@@ -188,7 +188,7 @@ get_hugepage_dir(uint64_t hugepage_sz)
 	const char split_tok = ' ';
 	char *splitstr[_FIELDNAME_MAX];
 	char buf[BUFSIZ];
-	char *retval = NULL;
+	int retval = -1;
 
 	FILE *fd = fopen(proc_mounts, "r");
 	if (fd == NULL)
@@ -215,7 +215,8 @@ get_hugepage_dir(uint64_t hugepage_sz)
 			/* if no explicit page size, the default page size is compared */
 			if (pagesz_str == NULL){
 				if (hugepage_sz == default_size){
-					retval = strdup(splitstr[MOUNTPT]);
+					strlcpy(hugedir, splitstr[MOUNTPT], len);
+					retval = 0;
 					break;
 				}
 			}
@@ -223,7 +224,8 @@ get_hugepage_dir(uint64_t hugepage_sz)
 			else {
 				uint64_t pagesz = rte_str_to_size(&pagesz_str[pagesize_opt_len]);
 				if (pagesz == hugepage_sz) {
-					retval = strdup(splitstr[MOUNTPT]);
+					strlcpy(hugedir, splitstr[MOUNTPT], len);
+					retval = 0;
 					break;
 				}
 			}
@@ -351,7 +353,6 @@ hugepage_info_init(void)
 
 	for (dirent = readdir(dir); dirent != NULL; dirent = readdir(dir)) {
 		struct hugepage_info *hpi;
-		const char *hugedir;
 
 		if (strncmp(dirent->d_name, dirent_start_text,
 			    dirent_start_len) != 0)
@@ -363,10 +364,10 @@ hugepage_info_init(void)
 		hpi = &internal_config.hugepage_info[num_sizes];
 		hpi->hugepage_sz =
 			rte_str_to_size(&dirent->d_name[dirent_start_len]);
-		hugedir = get_hugepage_dir(hpi->hugepage_sz);
 
 		/* first, check if we have a mountpoint */
-		if (hugedir == NULL) {
+		if (get_hugepage_dir(hpi->hugepage_sz,
+			hpi->hugedir, sizeof(hpi->hugedir)) < 0) {
 			uint32_t num_pages;
 
 			num_pages = get_num_hugepages(dirent->d_name);
@@ -378,7 +379,6 @@ hugepage_info_init(void)
 					num_pages, hpi->hugepage_sz);
 			continue;
 		}
-		snprintf(hpi->hugedir, sizeof(hpi->hugedir), "%s", hugedir);
 
 		/* try to obtain a writelock */
 		hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
