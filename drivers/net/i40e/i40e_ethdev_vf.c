@@ -2287,6 +2287,14 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 
 	i40evf_dev_stop(dev);
 	i40e_dev_free_queues(dev);
+	/*
+	 * disable promiscuous mode before reset vf
+	 * it is a workaround solution when work with kernel driver
+	 * and it is not the normal way
+	 */
+	i40evf_dev_promiscuous_disable(dev);
+	i40evf_dev_allmulticast_disable(dev);
+
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
 	/* disable uio intr before callback unregister */
