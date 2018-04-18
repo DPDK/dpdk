@@ -200,15 +200,14 @@ void enic_init_vnic_resources(struct enic *enic)
 	unsigned int error_interrupt_enable = 1;
 	unsigned int error_interrupt_offset = 0;
 	unsigned int rxq_interrupt_enable = 0;
-	unsigned int rxq_interrupt_offset;
+	unsigned int rxq_interrupt_offset = ENICPMD_RXQ_INTR_OFFSET;
 	unsigned int index = 0;
 	unsigned int cq_idx;
 	struct vnic_rq *data_rq;
 
-	if (enic->rte_dev->data->dev_conf.intr_conf.rxq) {
+	if (enic->rte_dev->data->dev_conf.intr_conf.rxq)
 		rxq_interrupt_enable = 1;
-		rxq_interrupt_offset = ENICPMD_RXQ_INTR_OFFSET;
-	}
+
 	for (index = 0; index < enic->rq_count; index++) {
 		cq_idx = enic_cq_rq(enic, enic_rte_rq_idx_to_sop_idx(index));
 
