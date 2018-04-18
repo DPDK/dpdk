@@ -76,14 +76,17 @@ tap_create(const char *name)
 	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", name);
 
 	status = ioctl(fd, TUNSETIFF, (void *) &ifr);
-	if (status < 0)
+	if (status < 0) {
+		close(fd);
 		return NULL;
+	}
 
 	/* Node allocation */
 	tap = calloc(1, sizeof(struct tap));
-	if (tap == NULL)
+	if (tap == NULL) {
+		close(fd);
 		return NULL;
-
+	}
 	/* Node fill in */
 	strncpy(tap->name, name, sizeof(tap->name));
 	tap->fd = fd;
