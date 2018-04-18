@@ -653,6 +653,7 @@ cmd_kni(char **tokens,
 	char *name;
 	struct kni *kni;
 
+	memset(&p, 0, sizeof(p));
 	if ((n_tokens != 6) && (n_tokens != 8)) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
