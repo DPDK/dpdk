@@ -697,10 +697,10 @@ RTE_INIT(bnx2x_init_log);
 static void
 bnx2x_init_log(void)
 {
-	bnx2x_logtype_init = rte_log_register("pmd.bnx2x.init");
+	bnx2x_logtype_init = rte_log_register("pmd.net.bnx2x.init");
 	if (bnx2x_logtype_init >= 0)
 		rte_log_set_level(bnx2x_logtype_init, RTE_LOG_NOTICE);
-	bnx2x_logtype_driver = rte_log_register("pmd.bnx2x.driver");
+	bnx2x_logtype_driver = rte_log_register("pmd.net.bnx2x.driver");
 	if (bnx2x_logtype_driver >= 0)
 		rte_log_set_level(bnx2x_logtype_driver, RTE_LOG_NOTICE);
 }
