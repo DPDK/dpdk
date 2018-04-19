@@ -1069,32 +1069,10 @@ sync_walk(const struct rte_memseg_list *msl, void *arg __rte_unused)
 	struct hugepage_info *hi = NULL;
 	unsigned int i;
 	int msl_idx;
-	bool new_msl = false;
 
 	msl_idx = msl - mcfg->memsegs;
 	primary_msl = &mcfg->memsegs[msl_idx];
 	local_msl = &local_memsegs[msl_idx];
-
-	/* check if secondary has this memseg list set up */
-	if (local_msl->base_va == NULL) {
-		char name[PATH_MAX];
-		int ret;
-		new_msl = true;
-
-		/* create distinct fbarrays for each secondary */
-		snprintf(name, RTE_FBARRAY_NAME_LEN, "%s_%i",
-			primary_msl->memseg_arr.name, getpid());
-
-		ret = rte_fbarray_init(&local_msl->memseg_arr, name,
-			primary_msl->memseg_arr.len,
-			primary_msl->memseg_arr.elt_sz);
-		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "Cannot initialize local memory map\n");
-			return -1;
-		}
-
-		local_msl->base_va = primary_msl->base_va;
-	}
 
 	for (i = 0; i < RTE_DIM(internal_config.hugepage_info); i++) {
 		uint64_t cur_sz =
@@ -1110,10 +1088,8 @@ sync_walk(const struct rte_memseg_list *msl, void *arg __rte_unused)
 		return -1;
 	}
 
-	/* if versions don't match or if we have just allocated a new
-	 * memseg list, synchronize everything
-	 */
-	if ((new_msl || local_msl->version != primary_msl->version) &&
+	/* if versions don't match, synchronize everything */
+	if (local_msl->version != primary_msl->version &&
 			sync_existing(primary_msl, local_msl, hi, msl_idx))
 		return -1;
 	return 0;
@@ -1129,5 +1105,43 @@ eal_memalloc_sync_with_primary(void)
 
 	if (memseg_list_walk_thread_unsafe(sync_walk, NULL))
 		return -1;
+	return 0;
+}
+
+static int
+secondary_msl_create_walk(const struct rte_memseg_list *msl,
+		void *arg __rte_unused)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *primary_msl, *local_msl;
+	char name[PATH_MAX];
+	int msl_idx, ret;
+
+	msl_idx = msl - mcfg->memsegs;
+	primary_msl = &mcfg->memsegs[msl_idx];
+	local_msl = &local_memsegs[msl_idx];
+
+	/* create distinct fbarrays for each secondary */
+	snprintf(name, RTE_FBARRAY_NAME_LEN, "%s_%i",
+		primary_msl->memseg_arr.name, getpid());
+
+	ret = rte_fbarray_init(&local_msl->memseg_arr, name,
+		primary_msl->memseg_arr.len,
+		primary_msl->memseg_arr.elt_sz);
+	if (ret < 0) {
+		RTE_LOG(ERR, EAL, "Cannot initialize local memory map\n");
+		return -1;
+	}
+	local_msl->base_va = primary_msl->base_va;
+
+	return 0;
+}
+
+int
+eal_memalloc_init(void)
+{
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		if (rte_memseg_list_walk(secondary_msl_create_walk, NULL) < 0)
+			return -1;
 	return 0;
 }

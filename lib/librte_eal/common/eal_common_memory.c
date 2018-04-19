@@ -896,6 +896,9 @@ rte_eal_memory_init(void)
 	if (retval < 0)
 		goto fail;
 
+	if (eal_memalloc_init() < 0)
+		goto fail;
+
 	retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
 			rte_eal_hugepage_init() :
 			rte_eal_hugepage_attach();

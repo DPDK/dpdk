@@ -76,4 +76,7 @@ eal_memalloc_mem_alloc_validator_unregister(const char *name, int socket_id);
 int
 eal_memalloc_mem_alloc_validate(int socket_id, size_t new_len);
 
+int
+eal_memalloc_init(void);
+
 #endif /* EAL_MEMALLOC_H */
