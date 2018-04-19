@@ -199,8 +199,8 @@ sfc_ef10_rx_prepared(struct sfc_ef10_rxq *rxq, struct rte_mbuf **rx_pkts,
 }
 
 static void
-sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
-			   struct rte_mbuf *m)
+sfc_ef10_rx_ev_to_offloads(const efx_qword_t rx_ev, struct rte_mbuf *m,
+			   uint64_t ol_mask)
 {
 	uint32_t tun_ptype = 0;
 	/* Which event bit is mapped to PKT_RX_IP_CKSUM_* */
@@ -330,12 +330,8 @@ sfc_ef10_rx_ev_to_offloads(struct sfc_ef10_rxq *rxq, const efx_qword_t rx_ev,
 		SFC_ASSERT(false);
 	}
 
-	/* Remove RSS hash offload flag if RSS is not enabled */
-	if (~rxq->flags & SFC_EF10_RXQ_RSS_HASH)
-		ol_flags &= ~PKT_RX_RSS_HASH;
-
 done:
-	m->ol_flags = ol_flags;
+	m->ol_flags = ol_flags & ol_mask;
 	m->packet_type = tun_ptype | l2_ptype | l3_ptype | l4_ptype;
 }
 
@@ -397,7 +393,10 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 	m->rearm_data[0] = rxq->rearm_data;
 
 	/* Classify packet based on Rx event */
-	sfc_ef10_rx_ev_to_offloads(rxq, rx_ev, m);
+	/* Mask RSS hash offload flag if RSS is not enabled */
+	sfc_ef10_rx_ev_to_offloads(rx_ev, m,
+				   (rxq->flags & SFC_EF10_RXQ_RSS_HASH) ?
+				   ~0ull : ~PKT_RX_RSS_HASH);
 
 	/* data_off already moved past pseudo header */
 	pseudo_hdr = (uint8_t *)m->buf_addr + RTE_PKTMBUF_HEADROOM;
