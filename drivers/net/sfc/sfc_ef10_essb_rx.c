@@ -391,6 +391,18 @@ sfc_ef10_essb_rx_get_dev_info(struct rte_eth_dev_info *dev_info)
 	dev_info->rx_desc_lim.nb_align = SFC_RX_REFILL_BULK;
 }
 
+static sfc_dp_rx_pool_ops_supported_t sfc_ef10_essb_rx_pool_ops_supported;
+static int
+sfc_ef10_essb_rx_pool_ops_supported(const char *pool)
+{
+	SFC_ASSERT(pool != NULL);
+
+	if (strcmp(pool, "bucket") == 0)
+		return 0;
+
+	return -ENOTSUP;
+}
+
 static sfc_dp_rx_qsize_up_rings_t sfc_ef10_essb_rx_qsize_up_rings;
 static int
 sfc_ef10_essb_rx_qsize_up_rings(uint16_t nb_rx_desc,
@@ -630,6 +642,7 @@ struct sfc_dp_rx sfc_ef10_essb_rx = {
 	},
 	.features		= 0,
 	.get_dev_info		= sfc_ef10_essb_rx_get_dev_info,
+	.pool_ops_supported	= sfc_ef10_essb_rx_pool_ops_supported,
 	.qsize_up_rings		= sfc_ef10_essb_rx_qsize_up_rings,
 	.qcreate		= sfc_ef10_essb_rx_qcreate,
 	.qdestroy		= sfc_ef10_essb_rx_qdestroy,
