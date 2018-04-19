@@ -42,7 +42,7 @@
 		(1 << VIRTIO_CRYPTO_SERVICE_MAC) |			\
 		(1 << VIRTIO_NET_F_CTRL_VQ))
 
-#define GPA_TO_VVA(t, m, a)	((t)(uintptr_t)rte_vhost_gpa_to_vva(m, a))
+#define GPA_TO_VVA(t, m, a, l)	((t)(uintptr_t)rte_vhost_va_from_guest_pa(m, a, l))
 
 static int
 cipher_algo_transform(uint32_t virtio_cipher_algo)
@@ -476,10 +476,18 @@ static struct virtio_crypto_inhdr *
 reach_inhdr(struct vring_desc *head, struct rte_vhost_memory *mem,
 		struct vring_desc *desc)
 {
+	uint64_t dlen;
+	struct virtio_crypto_inhdr *inhdr;
+
 	while (desc->flags & VRING_DESC_F_NEXT)
 		desc = &head[desc->next];
 
-	return GPA_TO_VVA(struct virtio_crypto_inhdr *, mem, desc->addr);
+	dlen = desc->len;
+	inhdr = GPA_TO_VVA(struct virtio_crypto_inhdr *, mem, desc->addr, &dlen);
+	if (unlikely(dlen != desc->len))
+		return NULL;
+
+	return inhdr;
 }
 
 static __rte_always_inline int
@@ -516,10 +524,17 @@ copy_data(void *dst_data, struct vring_desc *head, struct rte_vhost_memory *mem,
 	uint8_t *data = dst_data;
 	uint8_t *src;
 	int left = size;
+	uint64_t dlen;
 
 	rte_prefetch0(&head[desc->next]);
 	to_copy = RTE_MIN(desc->len, (uint32_t)left);
-	src = GPA_TO_VVA(uint8_t *, mem, desc->addr);
+	dlen = desc->len;
+	src = GPA_TO_VVA(uint8_t *, mem, desc->addr, &dlen);
+	if (unlikely(!src || dlen != desc->len)) {
+		VC_LOG_ERR("Failed to map descriptor");
+		return -1;
+	}
+
 	rte_memcpy((uint8_t *)data, src, to_copy);
 	left -= to_copy;
 
@@ -527,7 +542,13 @@ copy_data(void *dst_data, struct vring_desc *head, struct rte_vhost_memory *mem,
 		desc = &head[desc->next];
 		rte_prefetch0(&head[desc->next]);
 		to_copy = RTE_MIN(desc->len, (uint32_t)left);
-		src = GPA_TO_VVA(uint8_t *, mem, desc->addr);
+		dlen = desc->len;
+		src = GPA_TO_VVA(uint8_t *, mem, desc->addr, &dlen);
+		if (unlikely(!src || dlen != desc->len)) {
+			VC_LOG_ERR("Failed to map descriptor");
+			return -1;
+		}
+
 		rte_memcpy(data + size - left, src, to_copy);
 		left -= to_copy;
 	}
@@ -547,10 +568,11 @@ get_data_ptr(struct vring_desc *head, struct rte_vhost_memory *mem,
 		struct vring_desc **cur_desc, uint32_t size)
 {
 	void *data;
+	uint64_t dlen = (*cur_desc)->len;
 
-	data = GPA_TO_VVA(void *, mem, (*cur_desc)->addr);
-	if (unlikely(!data)) {
-		VC_LOG_ERR("Failed to get object");
+	data = GPA_TO_VVA(void *, mem, (*cur_desc)->addr, &dlen);
+	if (unlikely(!data || dlen != (*cur_desc)->len)) {
+		VC_LOG_ERR("Failed to map object");
 		return NULL;
 	}
 
@@ -570,10 +592,17 @@ write_back_data(struct rte_crypto_op *op, struct vhost_crypto_data_req *vc_req)
 	int left = vc_req->wb_len;
 	uint32_t to_write;
 	uint8_t *src_data = mbuf->buf_addr, *dst;
+	uint64_t dlen;
 
 	rte_prefetch0(&head[desc->next]);
 	to_write = RTE_MIN(desc->len, (uint32_t)left);
-	dst = GPA_TO_VVA(uint8_t *, mem, desc->addr);
+	dlen = desc->len;
+	dst = GPA_TO_VVA(uint8_t *, mem, desc->addr, &dlen);
+	if (unlikely(!dst || dlen != desc->len)) {
+		VC_LOG_ERR("Failed to map descriptor");
+		return -1;
+	}
+
 	rte_memcpy(dst, src_data, to_write);
 	left -= to_write;
 	src_data += to_write;
@@ -582,7 +611,13 @@ write_back_data(struct rte_crypto_op *op, struct vhost_crypto_data_req *vc_req)
 		desc = &head[desc->next];
 		rte_prefetch0(&head[desc->next]);
 		to_write = RTE_MIN(desc->len, (uint32_t)left);
-		dst = GPA_TO_VVA(uint8_t *, mem, desc->addr);
+		dlen = desc->len;
+		dst = GPA_TO_VVA(uint8_t *, mem, desc->addr, &dlen);
+		if (unlikely(!dst || dlen != desc->len)) {
+			VC_LOG_ERR("Failed to map descriptor");
+			return -1;
+		}
+
 		rte_memcpy(dst, src_data, to_write);
 		left -= to_write;
 		src_data += to_write;
@@ -873,18 +908,20 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 	struct virtio_crypto_inhdr *inhdr;
 	struct vring_desc *desc = NULL;
 	uint64_t session_id;
+	uint64_t dlen;
 	int err = 0;
 
 	vc_req->desc_idx = desc_idx;
 
 	if (likely(head->flags & VRING_DESC_F_INDIRECT)) {
-		head = GPA_TO_VVA(struct vring_desc *, mem, head->addr);
-		if (unlikely(!head))
-			return 0;
+		dlen = head->len;
+		desc = GPA_TO_VVA(struct vring_desc *, mem, head->addr, &dlen);
+		if (unlikely(!desc || dlen != head->len))
+			return -1;
 		desc_idx = 0;
+	} else {
+		desc = head;
 	}
-
-	desc = head;
 
 	vc_req->mem = mem;
 	vc_req->head = head;
