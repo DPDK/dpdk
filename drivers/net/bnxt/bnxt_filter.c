@@ -5,6 +5,7 @@
 
 #include <sys/queue.h>
 
+#include <rte_byteorder.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_flow.h>
@@ -354,7 +355,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 
 			/* Mask is not allowed. Only exact matches are */
-			if ((eth_mask->type & UINT16_MAX) != UINT16_MAX) {
+			if (eth_mask->type &&
+			    eth_mask->type != RTE_BE16(0xffff)) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -380,7 +382,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			   *  RTE_LOG(ERR, PMD, "Handle this condition\n");
 			   * }
 			   */
-			if (eth_spec->type) {
+			if (eth_mask->type) {
 				filter->ethertype =
 					rte_be_to_cpu_16(eth_spec->type);
 				en |= use_ntuple ?
@@ -392,13 +394,15 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			vlan_spec = item->spec;
 			vlan_mask = item->mask;
-			if (vlan_mask->tci & 0xFFFF && !vlan_mask->tpid) {
+			if (vlan_mask->tci &&
+			    vlan_mask->tci == RTE_BE16(0x0fff) &&
+			    !vlan_mask->tpid) {
 				/* Only the VLAN ID can be matched. */
 				filter->l2_ovlan =
 					rte_be_to_cpu_16(vlan_spec->tci &
-							 0xFFF);
+							 RTE_BE16(0x0fff));
 				en |= EM_FLOW_ALLOC_INPUT_EN_OVLAN_VID;
-			} else {
+			} else if (vlan_mask->tci || vlan_mask->tpid) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
