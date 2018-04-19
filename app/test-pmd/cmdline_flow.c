@@ -2692,6 +2692,7 @@ static const char *const boolean_name[] = {
 	"false", "true",
 	"no", "yes",
 	"N", "Y",
+	"off", "on",
 	NULL,
 };
 
