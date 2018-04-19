@@ -353,8 +353,7 @@ zuc_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		curr_c_op = ops[i];
 
 		curr_sess = zuc_get_session(qp, curr_c_op);
-		if (unlikely(curr_sess == NULL ||
-				curr_sess->op == ZUC_OP_NOT_SUPPORTED)) {
+		if (unlikely(curr_sess == NULL)) {
 			curr_c_op->status =
 					RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 			break;
