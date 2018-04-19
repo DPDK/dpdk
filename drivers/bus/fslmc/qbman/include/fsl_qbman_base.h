@@ -6,8 +6,6 @@
 #ifndef _FSL_QBMAN_BASE_H
 #define _FSL_QBMAN_BASE_H
 
-typedef uint64_t  dma_addr_t;
-
 /**
  * DOC: QBMan basic structures
  *

@@ -30,6 +30,9 @@
 #include "dpaa2_sec_priv.h"
 #include "dpaa2_sec_logs.h"
 
+/* Required types */
+typedef uint64_t	dma_addr_t;
+
 /* RTA header files */
 #include <hw/desc/ipsec.h>
 #include <hw/desc/algo.h>
