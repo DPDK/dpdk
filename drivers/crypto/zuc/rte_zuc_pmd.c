@@ -352,9 +352,6 @@ zuc_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	for (i = 0; i < nb_ops; i++) {
 		curr_c_op = ops[i];
 
-		/* Set status as enqueued (not processed yet) by default. */
-		curr_c_op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-
 		curr_sess = zuc_get_session(qp, curr_c_op);
 		if (unlikely(curr_sess == NULL ||
 				curr_sess->op == ZUC_OP_NOT_SUPPORTED)) {
