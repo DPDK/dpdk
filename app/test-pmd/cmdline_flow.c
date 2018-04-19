@@ -2663,17 +2663,15 @@ static int
 comp_vc_action_rss_queue(struct context *ctx, const struct token *token,
 			 unsigned int ent, char *buf, unsigned int size)
 {
-	static const char *const str[] = { "", "end", NULL };
-	unsigned int i;
-
 	(void)ctx;
 	(void)token;
-	for (i = 0; str[i] != NULL; ++i)
-		if (buf && i == ent)
-			return snprintf(buf, size, "%s", str[i]);
-	if (buf)
-		return -1;
-	return i;
+	if (!buf)
+		return nb_rxq + 1;
+	if (ent < nb_rxq)
+		return snprintf(buf, size, "%u", ent);
+	if (ent == nb_rxq)
+		return snprintf(buf, size, "end");
+	return -1;
 }
 
 /** Internal context. */
