@@ -12,13 +12,8 @@ LIB = librte_pmd_dpaa_sec.a
 # build flags
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -D _GNU_SOURCE
-ifeq ($(CONFIG_RTE_LIBRTE_DPAA_SEC_DEBUG_INIT),y)
-CFLAGS += -O0 -g
-CFLAGS += "-Wno-error"
-else
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-endif
 
 CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa
 CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa/include
