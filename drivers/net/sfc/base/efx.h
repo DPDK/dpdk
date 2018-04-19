@@ -2622,6 +2622,10 @@ efx_tx_qdestroy(
 #define	EFX_FILTER_FLAG_RX		0x08
 /* Filter is for TX */
 #define	EFX_FILTER_FLAG_TX		0x10
+/* Set match flag on the received packet */
+#define	EFX_FILTER_FLAG_ACTION_FLAG	0x20
+/* Set match mark on the received packet */
+#define	EFX_FILTER_FLAG_ACTION_MARK	0x40
 
 typedef uint8_t efx_filter_flags_t;
 
@@ -2707,6 +2711,7 @@ typedef struct efx_filter_spec_s {
 	efx_oword_t			efs_loc_host;
 	uint8_t				efs_vni_or_vsid[EFX_VNI_OR_VSID_LEN];
 	uint8_t				efs_ifrm_loc_mac[EFX_MAC_ADDR_LEN];
+	uint32_t			efs_mark;
 } efx_filter_spec_t;
 
 
