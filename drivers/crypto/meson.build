@@ -2,7 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 drivers = ['dpaa_sec', 'dpaa2_sec',
-	'openssl', 'null', 'qat']
+	'openssl', 'mrvl', 'null', 'qat']
 
 std_deps = ['cryptodev'] # cryptodev pulls in all other needed deps
 config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
