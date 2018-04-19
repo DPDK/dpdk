@@ -75,7 +75,7 @@ while getopts hn:qv ARG ; do
 done
 shift $(($OPTIND - 1))
 
-if [ ! -x "$DPDK_CHECKPATCH_PATH" ] ; then
+if [ ! -f "$DPDK_CHECKPATCH_PATH" ] || [ ! -x "$DPDK_CHECKPATCH_PATH" ] ; then
 	print_usage >&2
 	echo
 	echo 'Cannot execute DPDK_CHECKPATCH_PATH' >&2
