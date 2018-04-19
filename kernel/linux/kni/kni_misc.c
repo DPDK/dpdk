@@ -192,6 +192,8 @@ kni_dev_remove(struct kni_dev *dev)
 		free_netdev(dev->net_dev);
 	}
 
+	kni_net_release_fifo_phy(dev);
+
 	return 0;
 }
 

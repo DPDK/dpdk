@@ -92,6 +92,7 @@ struct kni_dev {
 	void *alloc_va[MBUF_BURST_SZ];
 };
 
+void kni_net_release_fifo_phy(struct kni_dev *kni);
 void kni_net_rx(struct kni_dev *kni);
 void kni_net_init(struct net_device *dev);
 void kni_net_config_lo_mode(char *lo_str);

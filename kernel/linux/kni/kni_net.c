@@ -163,6 +163,46 @@ kni_net_release(struct net_device *dev)
 	return (ret == 0) ? req.result : ret;
 }
 
+static void
+kni_fifo_trans_pa2va(struct kni_dev *kni,
+	struct rte_kni_fifo *src_pa, struct rte_kni_fifo *dst_va)
+{
+	uint32_t ret, i, num_dst, num_rx;
+	void *kva;
+	do {
+		num_dst = kni_fifo_free_count(dst_va);
+		if (num_dst == 0)
+			return;
+
+		num_rx = min_t(uint32_t, num_dst, MBUF_BURST_SZ);
+
+		num_rx = kni_fifo_get(src_pa, kni->pa, num_rx);
+		if (num_rx == 0)
+			return;
+
+		for (i = 0; i < num_rx; i++) {
+			kva = pa2kva(kni->pa[i]);
+			kni->va[i] = pa2va(kni->pa[i], kva);
+		}
+
+		ret = kni_fifo_put(dst_va, kni->va, num_rx);
+		if (ret != num_rx) {
+			/* Failing should not happen */
+			pr_err("Fail to enqueue entries into dst_va\n");
+			return;
+		}
+	} while (1);
+}
+
+/* Try to release mbufs when kni release */
+void kni_net_release_fifo_phy(struct kni_dev *kni)
+{
+	/* release rx_q first, because it can't release in userspace */
+	kni_fifo_trans_pa2va(kni, kni->rx_q, kni->free_q);
+	/* release alloc_q for speeding up kni release in userspace */
+	kni_fifo_trans_pa2va(kni, kni->alloc_q, kni->free_q);
+}
+
 /*
  * Configuration changes (passed on by ifconfig)
  */
