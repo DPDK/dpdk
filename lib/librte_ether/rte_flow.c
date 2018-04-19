@@ -255,60 +255,119 @@ rte_flow_error_set(struct rte_flow_error *error,
 	return -code;
 }
 
-/** Compute storage space needed by item specification. */
-static void
-flow_item_spec_size(const struct rte_flow_item *item,
-		    size_t *size, size_t *pad)
+/** Pattern item specification types. */
+enum item_spec_type {
+	ITEM_SPEC,
+	ITEM_LAST,
+	ITEM_MASK,
+};
+
+/** Compute storage space needed by item specification and copy it. */
+static size_t
+flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
+		    enum item_spec_type type)
 {
-	if (!item->spec) {
-		*size = 0;
+	size_t size = 0;
+	const void *item_spec =
+		type == ITEM_SPEC ? item->spec :
+		type == ITEM_LAST ? item->last :
+		type == ITEM_MASK ? item->mask :
+		NULL;
+
+	if (!item_spec)
 		goto empty;
-	}
 	switch (item->type) {
 		union {
 			const struct rte_flow_item_raw *raw;
-		} spec;
+		} src;
+		union {
+			struct rte_flow_item_raw *raw;
+		} dst;
 
-	/* Not a fall-through */
 	case RTE_FLOW_ITEM_TYPE_RAW:
-		spec.raw = item->spec;
-		*size = offsetof(struct rte_flow_item_raw, pattern) +
-			spec.raw->length * sizeof(*spec.raw->pattern);
+		src.raw = item_spec;
+		dst.raw = buf;
+		size = offsetof(struct rte_flow_item_raw, pattern) +
+			src.raw->length * sizeof(*src.raw->pattern);
+		if (dst.raw)
+			memcpy(dst.raw, src.raw, size);
 		break;
 	default:
-		*size = rte_flow_desc_item[item->type].size;
+		size = rte_flow_desc_item[item->type].size;
+		if (buf)
+			memcpy(buf, item_spec, size);
 		break;
 	}
 empty:
-	*pad = RTE_ALIGN_CEIL(*size, sizeof(double)) - *size;
+	return RTE_ALIGN_CEIL(size, sizeof(double));
 }
 
-/** Compute storage space needed by action configuration. */
-static void
-flow_action_conf_size(const struct rte_flow_action *action,
-		      size_t *size, size_t *pad)
+/** Compute storage space needed by action configuration and copy it. */
+static size_t
+flow_action_conf_copy(void *buf, const struct rte_flow_action *action)
 {
-	if (!action->conf) {
-		*size = 0;
+	size_t size = 0;
+
+	if (!action->conf)
 		goto empty;
-	}
 	switch (action->type) {
 		union {
 			const struct rte_flow_action_rss *rss;
-		} conf;
+		} src;
+		union {
+			struct rte_flow_action_rss *rss;
+		} dst;
+		size_t off;
 
-	/* Not a fall-through. */
 	case RTE_FLOW_ACTION_TYPE_RSS:
-		conf.rss = action->conf;
-		*size = offsetof(struct rte_flow_action_rss, queue) +
-			conf.rss->num * sizeof(*conf.rss->queue);
+		src.rss = action->conf;
+		dst.rss = buf;
+		off = 0;
+		if (dst.rss)
+			*dst.rss = (struct rte_flow_action_rss){
+				.num = src.rss->num,
+			};
+		off += offsetof(struct rte_flow_action_rss, queue);
+		if (src.rss->num) {
+			size = sizeof(*src.rss->queue) * src.rss->num;
+			if (dst.rss)
+				memcpy(dst.rss->queue, src.rss->queue, size);
+			off += size;
+		}
+		off = RTE_ALIGN_CEIL(off, sizeof(double));
+		if (dst.rss) {
+			dst.rss->rss_conf = (void *)((uintptr_t)dst.rss + off);
+			*(struct rte_eth_rss_conf *)(uintptr_t)
+				dst.rss->rss_conf = (struct rte_eth_rss_conf){
+				.rss_key_len = src.rss->rss_conf->rss_key_len,
+				.rss_hf = src.rss->rss_conf->rss_hf,
+			};
+		}
+		off += sizeof(*src.rss->rss_conf);
+		if (src.rss->rss_conf->rss_key_len) {
+			off = RTE_ALIGN_CEIL(off, sizeof(double));
+			size = sizeof(*src.rss->rss_conf->rss_key) *
+				src.rss->rss_conf->rss_key_len;
+			if (dst.rss) {
+				((struct rte_eth_rss_conf *)(uintptr_t)
+				 dst.rss->rss_conf)->rss_key =
+					(void *)((uintptr_t)dst.rss + off);
+				memcpy(dst.rss->rss_conf->rss_key,
+				       src.rss->rss_conf->rss_key,
+				       size);
+			}
+			off += size;
+		}
+		size = off;
 		break;
 	default:
-		*size = rte_flow_desc_action[action->type].size;
+		size = rte_flow_desc_action[action->type].size;
+		if (buf)
+			memcpy(buf, action->conf, size);
 		break;
 	}
 empty:
-	*pad = RTE_ALIGN_CEIL(*size, sizeof(double)) - *size;
+	return RTE_ALIGN_CEIL(size, sizeof(double));
 }
 
 /** Store a full rte_flow description. */
@@ -320,7 +379,6 @@ rte_flow_copy(struct rte_flow_desc *desc, size_t len,
 {
 	struct rte_flow_desc *fd = NULL;
 	size_t tmp;
-	size_t pad;
 	size_t off1 = 0;
 	size_t off2 = 0;
 	size_t size = 0;
@@ -345,24 +403,26 @@ store:
 				dst = memcpy(fd->data + off1, item,
 					     sizeof(*item));
 			off1 += sizeof(*item);
-			flow_item_spec_size(item, &tmp, &pad);
 			if (item->spec) {
 				if (fd)
-					dst->spec = memcpy(fd->data + off2,
-							   item->spec, tmp);
-				off2 += tmp + pad;
+					dst->spec = fd->data + off2;
+				off2 += flow_item_spec_copy
+					(fd ? fd->data + off2 : NULL, item,
+					 ITEM_SPEC);
 			}
 			if (item->last) {
 				if (fd)
-					dst->last = memcpy(fd->data + off2,
-							   item->last, tmp);
-				off2 += tmp + pad;
+					dst->last = fd->data + off2;
+				off2 += flow_item_spec_copy
+					(fd ? fd->data + off2 : NULL, item,
+					 ITEM_LAST);
 			}
 			if (item->mask) {
 				if (fd)
-					dst->mask = memcpy(fd->data + off2,
-							   item->mask, tmp);
-				off2 += tmp + pad;
+					dst->mask = fd->data + off2;
+				off2 += flow_item_spec_copy
+					(fd ? fd->data + off2 : NULL, item,
+					 ITEM_MASK);
 			}
 			off2 = RTE_ALIGN_CEIL(off2, sizeof(double));
 		} while ((item++)->type != RTE_FLOW_ITEM_TYPE_END);
@@ -387,12 +447,11 @@ store:
 				dst = memcpy(fd->data + off1, action,
 					     sizeof(*action));
 			off1 += sizeof(*action);
-			flow_action_conf_size(action, &tmp, &pad);
 			if (action->conf) {
 				if (fd)
-					dst->conf = memcpy(fd->data + off2,
-							   action->conf, tmp);
-				off2 += tmp + pad;
+					dst->conf = fd->data + off2;
+				off2 += flow_action_conf_copy
+					(fd ? fd->data + off2 : NULL, action);
 			}
 			off2 = RTE_ALIGN_CEIL(off2, sizeof(double));
 		} while ((action++)->type != RTE_FLOW_ACTION_TYPE_END);
