@@ -316,12 +316,21 @@ sfc_ef10_essb_rx_get_pending(struct sfc_ef10_essb_rxq *rxq,
 			m->ol_flags |=
 				(PKT_RX_RSS_HASH *
 				 !!EFX_TEST_QWORD_BIT(*qwordp,
-					ES_EZ_ESSB_RX_PREFIX_HASH_VALID_LBN));
+					ES_EZ_ESSB_RX_PREFIX_HASH_VALID_LBN)) |
+				(PKT_RX_FDIR_ID *
+				 !!EFX_TEST_QWORD_BIT(*qwordp,
+					ES_EZ_ESSB_RX_PREFIX_MARK_VALID_LBN)) |
+				(PKT_RX_FDIR *
+				 !!EFX_TEST_QWORD_BIT(*qwordp,
+					ES_EZ_ESSB_RX_PREFIX_MATCH_FLAG_LBN));
 
 			/* EFX_QWORD_FIELD converts little-endian to CPU */
 			m->hash.rss =
 				EFX_QWORD_FIELD(*qwordp,
 						ES_EZ_ESSB_RX_PREFIX_HASH);
+			m->hash.fdir.hi =
+				EFX_QWORD_FIELD(*qwordp,
+						ES_EZ_ESSB_RX_PREFIX_MARK);
 
 			m = sfc_ef10_essb_next_mbuf(rxq, m);
 		} while (todo_bufs-- > 0);
@@ -640,7 +649,8 @@ struct sfc_dp_rx sfc_ef10_essb_rx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10 |
 				  SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER,
 	},
-	.features		= 0,
+	.features		= SFC_DP_RX_FEAT_FLOW_FLAG |
+				  SFC_DP_RX_FEAT_FLOW_MARK,
 	.get_dev_info		= sfc_ef10_essb_rx_get_dev_info,
 	.pool_ops_supported	= sfc_ef10_essb_rx_pool_ops_supported,
 	.qsize_up_rings		= sfc_ef10_essb_rx_qsize_up_rings,

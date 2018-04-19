@@ -193,6 +193,8 @@ struct sfc_dp_rx {
 #define SFC_DP_RX_FEAT_SCATTER			0x1
 #define SFC_DP_RX_FEAT_MULTI_PROCESS		0x2
 #define SFC_DP_RX_FEAT_TUNNELS			0x4
+#define SFC_DP_RX_FEAT_FLOW_FLAG		0x8
+#define SFC_DP_RX_FEAT_FLOW_MARK		0x10
 	sfc_dp_rx_get_dev_info_t		*get_dev_info;
 	sfc_dp_rx_pool_ops_supported_t		*pool_ops_supported;
 	sfc_dp_rx_qsize_up_rings_t		*qsize_up_rings;
