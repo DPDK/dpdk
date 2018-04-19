@@ -79,6 +79,19 @@ struct pkt_burst_stats {
 };
 #endif
 
+/** Information for a given RSS type. */
+struct rss_type_info {
+	const char *str; /**< Type name. */
+	uint64_t rss_type; /**< Type value. */
+};
+
+/**
+ * RSS type information table.
+ *
+ * An entry with a NULL type name terminates the list.
+ */
+extern const struct rss_type_info rss_type_table[];
+
 /**
  * The data structure associated with a forwarding stream between a receive
  * port/queue and a transmit port/queue.

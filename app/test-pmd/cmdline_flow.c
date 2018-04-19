@@ -167,6 +167,10 @@ enum index {
 	ACTION_DUP,
 	ACTION_DUP_INDEX,
 	ACTION_RSS,
+	ACTION_RSS_TYPES,
+	ACTION_RSS_TYPE,
+	ACTION_RSS_KEY,
+	ACTION_RSS_KEY_LEN,
 	ACTION_RSS_QUEUES,
 	ACTION_RSS_QUEUE,
 	ACTION_PF,
@@ -223,6 +227,9 @@ struct context {
 struct arg {
 	uint32_t hton:1; /**< Use network byte ordering. */
 	uint32_t sign:1; /**< Value is signed. */
+	uint32_t bounded:1; /**< Value is bounded. */
+	uintmax_t min; /**< Minimum value if bounded. */
+	uintmax_t max; /**< Maximum value if bounded. */
 	uint32_t offset; /**< Relative offset from ctx->object. */
 	uint32_t size; /**< Field size. */
 	const uint8_t *mask; /**< Bit-mask to use instead of offset/size. */
@@ -325,6 +332,16 @@ struct token {
 /** Static initializer for ARGS() with arbitrary offset and size. */
 #define ARGS_ENTRY_ARB(o, s) \
 	(&(const struct arg){ \
+		.offset = (o), \
+		.size = (s), \
+	})
+
+/** Same as ARGS_ENTRY_ARB() with bounded values. */
+#define ARGS_ENTRY_ARB_BOUNDED(o, s, i, a) \
+	(&(const struct arg){ \
+		.bounded = 1, \
+		.min = (i), \
+		.max = (a), \
 		.offset = (o), \
 		.size = (s), \
 	})
@@ -635,6 +652,9 @@ static const enum index action_dup[] = {
 };
 
 static const enum index action_rss[] = {
+	ACTION_RSS_TYPES,
+	ACTION_RSS_KEY,
+	ACTION_RSS_KEY_LEN,
 	ACTION_RSS_QUEUES,
 	ACTION_NEXT,
 	ZERO,
@@ -666,6 +686,9 @@ static int parse_vc_conf(struct context *, const struct token *,
 static int parse_vc_action_rss(struct context *, const struct token *,
 			       const char *, unsigned int, void *,
 			       unsigned int);
+static int parse_vc_action_rss_type(struct context *, const struct token *,
+				    const char *, unsigned int, void *,
+				    unsigned int);
 static int parse_vc_action_rss_queue(struct context *, const struct token *,
 				     const char *, unsigned int, void *,
 				     unsigned int);
@@ -721,6 +744,8 @@ static int comp_port(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
 static int comp_rule_id(struct context *, const struct token *,
 			unsigned int, char *, unsigned int);
+static int comp_vc_action_rss_type(struct context *, const struct token *,
+				   unsigned int, char *, unsigned int);
 static int comp_vc_action_rss_queue(struct context *, const struct token *,
 				    unsigned int, char *, unsigned int);
 
@@ -1593,6 +1618,43 @@ static const struct token token_list[] = {
 		.next = NEXT(action_rss),
 		.call = parse_vc_action_rss,
 	},
+	[ACTION_RSS_TYPES] = {
+		.name = "types",
+		.help = "RSS hash types",
+		.next = NEXT(action_rss, NEXT_ENTRY(ACTION_RSS_TYPE)),
+	},
+	[ACTION_RSS_TYPE] = {
+		.name = "{type}",
+		.help = "RSS hash type",
+		.call = parse_vc_action_rss_type,
+		.comp = comp_vc_action_rss_type,
+	},
+	[ACTION_RSS_KEY] = {
+		.name = "key",
+		.help = "RSS hash key",
+		.next = NEXT(action_rss, NEXT_ENTRY(STRING)),
+		.args = ARGS(ARGS_ENTRY_ARB
+			     (((uintptr_t)&((union action_rss_data *)0)->
+			       s.rss_conf.rss_key_len),
+			      sizeof(((struct rte_eth_rss_conf *)0)->
+				     rss_key_len)),
+			     ARGS_ENTRY_ARB
+			     (((uintptr_t)((union action_rss_data *)0)->
+			       s.rss_key),
+			      RSS_HASH_KEY_LENGTH)),
+	},
+	[ACTION_RSS_KEY_LEN] = {
+		.name = "key_len",
+		.help = "RSS hash key length in bytes",
+		.next = NEXT(action_rss, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_ARB_BOUNDED
+			     (((uintptr_t)&((union action_rss_data *)0)->
+			       s.rss_conf.rss_key_len),
+			      sizeof(((struct rte_eth_rss_conf *)0)->
+				     rss_key_len),
+			      0,
+			      RSS_HASH_KEY_LENGTH)),
+	},
 	[ACTION_RSS_QUEUES] = {
 		.name = "queues",
 		.help = "queue indices to use",
@@ -2076,6 +2138,50 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 }
 
 /**
+ * Parse type field for RSS action.
+ *
+ * Valid tokens are type field names and the "end" token.
+ */
+static int
+parse_vc_action_rss_type(struct context *ctx, const struct token *token,
+			  const char *str, unsigned int len,
+			  void *buf, unsigned int size)
+{
+	static const enum index next[] = NEXT_ENTRY(ACTION_RSS_TYPE);
+	union action_rss_data *action_rss_data;
+	unsigned int i;
+
+	(void)token;
+	(void)buf;
+	(void)size;
+	if (ctx->curr != ACTION_RSS_TYPE)
+		return -1;
+	if (!(ctx->objdata >> 16) && ctx->object) {
+		action_rss_data = ctx->object;
+		action_rss_data->s.rss_conf.rss_hf = 0;
+	}
+	if (!strcmp_partial("end", str, len)) {
+		ctx->objdata &= 0xffff;
+		return len;
+	}
+	for (i = 0; rss_type_table[i].str; ++i)
+		if (!strcmp_partial(rss_type_table[i].str, str, len))
+			break;
+	if (!rss_type_table[i].str)
+		return -1;
+	ctx->objdata = 1 << 16 | (ctx->objdata & 0xffff);
+	/* Repeat token. */
+	if (ctx->next_num == RTE_DIM(ctx->next))
+		return -1;
+	ctx->next[ctx->next_num++] = next;
+	if (!ctx->object)
+		return len;
+	action_rss_data = ctx->object;
+	action_rss_data->s.rss_conf.rss_hf |= rss_type_table[i].rss_type;
+	return len;
+}
+
+/**
  * Parse queue field for RSS action.
  *
  * Valid tokens are queue indices and the "end" token.
@@ -2341,6 +2447,11 @@ parse_int(struct context *ctx, const struct token *token,
 		strtoumax(str, &end, 0);
 	if (errno || (size_t)(end - str) != len)
 		goto error;
+	if (arg->bounded &&
+	    ((arg->sign && ((intmax_t)u < (intmax_t)arg->min ||
+			    (intmax_t)u > (intmax_t)arg->max)) ||
+	     (!arg->sign && (u < arg->min || u > arg->max))))
+		goto error;
 	if (!ctx->object)
 		return len;
 	if (arg->mask) {
@@ -2434,7 +2545,7 @@ parse_string(struct context *ctx, const struct token *token,
 	buf = (uint8_t *)ctx->object + arg_data->offset;
 	/* Output buffer is not necessarily NUL-terminated. */
 	memcpy(buf, str, len);
-	memset((uint8_t *)buf + len, 0x55, size - len);
+	memset((uint8_t *)buf + len, 0x00, size - len);
 	if (ctx->objmask)
 		memset((uint8_t *)ctx->objmask + arg_data->offset, 0xff, len);
 	return len;
@@ -2728,6 +2839,26 @@ comp_rule_id(struct context *ctx, const struct token *token,
 	if (buf)
 		return -1;
 	return i;
+}
+
+/** Complete type field for RSS action. */
+static int
+comp_vc_action_rss_type(struct context *ctx, const struct token *token,
+			unsigned int ent, char *buf, unsigned int size)
+{
+	unsigned int i;
+
+	(void)ctx;
+	(void)token;
+	for (i = 0; rss_type_table[i].str; ++i)
+		;
+	if (!buf)
+		return i + 1;
+	if (ent < i)
+		return snprintf(buf, size, "%s", rss_type_table[ent].str);
+	if (ent == i)
+		return snprintf(buf, size, "end");
+	return -1;
 }
 
 /** Complete queue field for RSS action. */

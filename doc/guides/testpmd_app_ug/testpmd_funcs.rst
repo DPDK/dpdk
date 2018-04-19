@@ -3406,6 +3406,14 @@ This section lists supported actions and their attributes, if any.
 
 - ``rss``: spread packets among several queues.
 
+  - ``types [{RSS hash type} [...]] end``: RSS hash types, allowed tokens
+    are the same as `set_hash_input_set`_, an empty list means none (0).
+
+  - ``key {string}``: RSS hash key, overrides ``key_len``.
+
+  - ``key_len {unsigned}``: RSS hash key length in bytes, can be used in
+    conjunction with ``key`` to pad or truncate it.
+
   - ``queues [{unsigned} [...]] end``: queue indices to use.
 
 - ``pf``: redirect packets to physical device function.

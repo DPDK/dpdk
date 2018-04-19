@@ -73,12 +73,7 @@ static const struct {
 	},
 };
 
-struct rss_type_info {
-	char str[32];
-	uint64_t rss_type;
-};
-
-static const struct rss_type_info rss_type_table[] = {
+const struct rss_type_info rss_type_table[] = {
 	{ "ipv4", ETH_RSS_IPV4 },
 	{ "ipv4-frag", ETH_RSS_FRAG_IPV4 },
 	{ "ipv4-tcp", ETH_RSS_NONFRAG_IPV4_TCP },
@@ -99,7 +94,12 @@ static const struct rss_type_info rss_type_table[] = {
 	{ "vxlan", ETH_RSS_VXLAN },
 	{ "geneve", ETH_RSS_GENEVE },
 	{ "nvgre", ETH_RSS_NVGRE },
-
+	{ "ip", ETH_RSS_IP },
+	{ "udp", ETH_RSS_UDP },
+	{ "tcp", ETH_RSS_TCP },
+	{ "sctp", ETH_RSS_SCTP },
+	{ "tunnel", ETH_RSS_TUNNEL },
+	{ NULL, 0 },
 };
 
 static void
@@ -1836,7 +1836,7 @@ port_rss_hash_conf_show(portid_t port_id, char rss_info[], int show_rss_key)
 	}
 
 	rss_conf.rss_hf = 0;
-	for (i = 0; i < RTE_DIM(rss_type_table); i++) {
+	for (i = 0; rss_type_table[i].str; i++) {
 		if (!strcmp(rss_info, rss_type_table[i].str))
 			rss_conf.rss_hf = rss_type_table[i].rss_type;
 	}
@@ -1865,7 +1865,7 @@ port_rss_hash_conf_show(portid_t port_id, char rss_info[], int show_rss_key)
 		return;
 	}
 	printf("RSS functions:\n ");
-	for (i = 0; i < RTE_DIM(rss_type_table); i++) {
+	for (i = 0; rss_type_table[i].str; i++) {
 		if (rss_hf & rss_type_table[i].rss_type)
 			printf("%s ", rss_type_table[i].str);
 	}
@@ -1889,7 +1889,7 @@ port_rss_hash_key_update(portid_t port_id, char rss_type[], uint8_t *hash_key,
 	rss_conf.rss_key = NULL;
 	rss_conf.rss_key_len = hash_key_len;
 	rss_conf.rss_hf = 0;
-	for (i = 0; i < RTE_DIM(rss_type_table); i++) {
+	for (i = 0; rss_type_table[i].str; i++) {
 		if (!strcmp(rss_type_table[i].str, rss_type))
 			rss_conf.rss_hf = rss_type_table[i].rss_type;
 	}
