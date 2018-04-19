@@ -201,6 +201,10 @@ Supported actions:
 
 - DROP
 
+- FLAG (supported only with ef10_essb Rx datapath)
+
+- MARK (supported only with ef10_essb Rx datapath)
+
 Validating flow rules depends on the firmware variant.
 
 Ethernet destinaton individual/group match

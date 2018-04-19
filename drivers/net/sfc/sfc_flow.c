@@ -23,6 +23,7 @@
 #include "sfc_filter.h"
 #include "sfc_flow.h"
 #include "sfc_log.h"
+#include "sfc_dp_rx.h"
 
 /*
  * At now flow API is implemented in such a manner that each
@@ -1501,16 +1502,35 @@ sfc_flow_filter_remove(struct sfc_adapter *sa,
 }
 
 static int
+sfc_flow_parse_mark(struct sfc_adapter *sa,
+		    const struct rte_flow_action_mark *mark,
+		    struct rte_flow *flow)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+
+	if (mark == NULL || mark->id > encp->enc_filter_action_mark_max)
+		return EINVAL;
+
+	flow->spec.template.efs_flags |= EFX_FILTER_FLAG_ACTION_MARK;
+	flow->spec.template.efs_mark = mark->id;
+
+	return 0;
+}
+
+static int
 sfc_flow_parse_actions(struct sfc_adapter *sa,
 		       const struct rte_flow_action actions[],
 		       struct rte_flow *flow,
 		       struct rte_flow_error *error)
 {
 	int rc;
+	const unsigned int dp_rx_features = sa->dp_rx->features;
 	uint32_t actions_set = 0;
 	const uint32_t fate_actions_mask = (1UL << RTE_FLOW_ACTION_TYPE_QUEUE) |
 					   (1UL << RTE_FLOW_ACTION_TYPE_RSS) |
 					   (1UL << RTE_FLOW_ACTION_TYPE_DROP);
+	const uint32_t mark_actions_mask = (1UL << RTE_FLOW_ACTION_TYPE_MARK) |
+					   (1UL << RTE_FLOW_ACTION_TYPE_FLAG);
 
 	if (actions == NULL) {
 		rte_flow_error_set(error, EINVAL,
@@ -1569,6 +1589,45 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 				EFX_FILTER_SPEC_RX_DMAQ_ID_DROP;
 			break;
 
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_FLAG,
+					       actions_set);
+			if ((actions_set & mark_actions_mask) != 0)
+				goto fail_actions_overlap;
+
+			if ((dp_rx_features & SFC_DP_RX_FEAT_FLOW_FLAG) == 0) {
+				rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"FLAG action is not supported on the current Rx datapath");
+				return -rte_errno;
+			}
+
+			flow->spec.template.efs_flags |=
+				EFX_FILTER_FLAG_ACTION_FLAG;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_MARK,
+					       actions_set);
+			if ((actions_set & mark_actions_mask) != 0)
+				goto fail_actions_overlap;
+
+			if ((dp_rx_features & SFC_DP_RX_FEAT_FLOW_MARK) == 0) {
+				rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"MARK action is not supported on the current Rx datapath");
+				return -rte_errno;
+			}
+
+			rc = sfc_flow_parse_mark(sa, actions->conf, flow);
+			if (rc != 0) {
+				rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					"Bad MARK action");
+				return -rte_errno;
+			}
+			break;
+
 		default:
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION, actions,
@@ -1592,6 +1651,11 @@ fail_fate_actions:
 	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, actions,
 			   "Cannot combine several fate-deciding actions, "
 			   "choose between QUEUE, RSS or DROP");
+	return -rte_errno;
+
+fail_actions_overlap:
+	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, actions,
+			   "Overlapping actions are not supported");
 	return -rte_errno;
 }
 
