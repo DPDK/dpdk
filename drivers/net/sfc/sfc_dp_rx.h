@@ -90,6 +90,18 @@ struct sfc_dp_rx_qcreate_info {
 typedef void (sfc_dp_rx_get_dev_info_t)(struct rte_eth_dev_info *dev_info);
 
 /**
+ * Test if an Rx datapath supports specific mempool ops.
+ *
+ * @param pool			The name of the pool operations to test.
+ *
+ * @return Check status.
+ * @retval	0		Best mempool ops choice.
+ * @retval	1		Mempool ops are supported.
+ * @retval	-ENOTSUP	Mempool ops not supported.
+ */
+typedef int (sfc_dp_rx_pool_ops_supported_t)(const char *pool);
+
+/**
  * Get size of receive and event queue rings by the number of Rx
  * descriptors and mempool configuration.
  *
@@ -182,6 +194,7 @@ struct sfc_dp_rx {
 #define SFC_DP_RX_FEAT_MULTI_PROCESS		0x2
 #define SFC_DP_RX_FEAT_TUNNELS			0x4
 	sfc_dp_rx_get_dev_info_t		*get_dev_info;
+	sfc_dp_rx_pool_ops_supported_t		*pool_ops_supported;
 	sfc_dp_rx_qsize_up_rings_t		*qsize_up_rings;
 	sfc_dp_rx_qcreate_t			*qcreate;
 	sfc_dp_rx_qdestroy_t			*qdestroy;

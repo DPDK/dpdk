@@ -1630,6 +1630,21 @@ sfc_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
 	return -rc;
 }
 
+static int
+sfc_pool_ops_supported(struct rte_eth_dev *dev, const char *pool)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	/*
+	 * If Rx datapath does not provide callback to check mempool,
+	 * all pools are supported.
+	 */
+	if (sa->dp_rx->pool_ops_supported == NULL)
+		return 1;
+
+	return sa->dp_rx->pool_ops_supported(pool);
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -1678,6 +1693,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.fw_version_get			= sfc_fw_version_get,
 	.xstats_get_by_id		= sfc_xstats_get_by_id,
 	.xstats_get_names_by_id		= sfc_xstats_get_names_by_id,
+	.pool_ops_supported		= sfc_pool_ops_supported,
 };
 
 /**
