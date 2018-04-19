@@ -14,7 +14,7 @@
 #define VMXNET3_DEF_RX_RING_SIZE 128
 
 /* Default rx data ring desc size */
-#define VMXNET3_DEF_RXDATA_DESC_SIZE 128
+#define VMXNET3_DEF_RXDATA_DESC_SIZE 256
 
 #define VMXNET3_SUCCESS 0
 #define VMXNET3_FAIL   -1
