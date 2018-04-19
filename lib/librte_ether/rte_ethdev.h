@@ -3911,6 +3911,9 @@ static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
  * invoke this function concurrently on the same tx queue without SW lock.
  * @see rte_eth_dev_info_get, struct rte_eth_txconf::txq_flags
  *
+ * @see rte_eth_tx_prepare to perform some prior checks or adjustments
+ * for offloads.
+ *
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param queue_id
