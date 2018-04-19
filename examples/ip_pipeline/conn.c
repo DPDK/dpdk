@@ -96,12 +96,14 @@ conn_init(struct conn_params *p)
 		sizeof(server_address));
 	if (status == -1) {
 		conn_free(conn);
+		close(fd_server);
 		return NULL;
 	}
 
 	status = listen(fd_server, 16);
 	if (status == -1) {
 		conn_free(conn);
+		close(fd_server);
 		return NULL;
 	}
 
@@ -109,6 +111,7 @@ conn_init(struct conn_params *p)
 	fd_client_group = epoll_create(1);
 	if (fd_client_group == -1) {
 		conn_free(conn);
+		close(fd_server);
 		return NULL;
 	}
 
