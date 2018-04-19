@@ -79,6 +79,37 @@ sfc_ef10_ev_present(const efx_qword_t ev)
 	       ~EFX_QWORD_FIELD(ev, EFX_DWORD_1);
 }
 
+
+/**
+ * Alignment requirement for value written to RX WPTR:
+ * the WPTR must be aligned to an 8 descriptor boundary.
+ */
+#define SFC_EF10_RX_WPTR_ALIGN	8u
+
+static inline void
+sfc_ef10_rx_qpush(volatile void *doorbell, unsigned int added,
+		  unsigned int ptr_mask)
+{
+	efx_dword_t dword;
+
+	/* Hardware has alignment restriction for WPTR */
+	RTE_BUILD_BUG_ON(SFC_RX_REFILL_BULK % SFC_EF10_RX_WPTR_ALIGN != 0);
+	SFC_ASSERT(RTE_ALIGN(added, SFC_EF10_RX_WPTR_ALIGN) == added);
+
+	EFX_POPULATE_DWORD_1(dword, ERF_DZ_RX_DESC_WPTR, added & ptr_mask);
+
+	/* DMA sync to device is not required */
+
+	/*
+	 * rte_write32() has rte_io_wmb() which guarantees that the STORE
+	 * operations (i.e. Rx and event descriptor updates) that precede
+	 * the rte_io_wmb() call are visible to NIC before the STORE
+	 * operations that follow it (i.e. doorbell write).
+	 */
+	rte_write32(dword.ed_u32[0], doorbell);
+}
+
+
 #ifdef __cplusplus
 }
 #endif

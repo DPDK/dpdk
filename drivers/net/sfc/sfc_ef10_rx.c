@@ -30,12 +30,6 @@
 	SFC_DP_LOG(SFC_KVARG_DATAPATH_EF10, ERR, dpq, __VA_ARGS__)
 
 /**
- * Alignment requirement for value written to RX WPTR:
- * the WPTR must be aligned to an 8 descriptor boundary.
- */
-#define SFC_EF10_RX_WPTR_ALIGN	8
-
-/**
  * Maximum number of descriptors/buffers in the Rx ring.
  * It should guarantee that corresponding event queue never overfill.
  * EF10 native datapath uses event queue of the same size as Rx queue.
@@ -88,29 +82,6 @@ sfc_ef10_rxq_by_dp_rxq(struct sfc_dp_rxq *dp_rxq)
 }
 
 static void
-sfc_ef10_rx_qpush(struct sfc_ef10_rxq *rxq)
-{
-	efx_dword_t dword;
-
-	/* Hardware has alignment restriction for WPTR */
-	RTE_BUILD_BUG_ON(SFC_RX_REFILL_BULK % SFC_EF10_RX_WPTR_ALIGN != 0);
-	SFC_ASSERT(RTE_ALIGN(rxq->added, SFC_EF10_RX_WPTR_ALIGN) == rxq->added);
-
-	EFX_POPULATE_DWORD_1(dword, ERF_DZ_RX_DESC_WPTR,
-			     rxq->added & rxq->ptr_mask);
-
-	/* DMA sync to device is not required */
-
-	/*
-	 * rte_write32() has rte_io_wmb() which guarantees that the STORE
-	 * operations (i.e. Rx and event descriptor updates) that precede
-	 * the rte_io_wmb() call are visible to NIC before the STORE
-	 * operations that follow it (i.e. doorbell write).
-	 */
-	rte_write32(dword.ed_u32[0], rxq->doorbell);
-}
-
-static void
 sfc_ef10_rx_qrefill(struct sfc_ef10_rxq *rxq)
 {
 	const unsigned int ptr_mask = rxq->ptr_mask;
@@ -119,6 +90,8 @@ sfc_ef10_rx_qrefill(struct sfc_ef10_rxq *rxq)
 	unsigned int bulks;
 	void *objs[SFC_RX_REFILL_BULK];
 	unsigned int added = rxq->added;
+
+	RTE_BUILD_BUG_ON(SFC_RX_REFILL_BULK % SFC_EF10_RX_WPTR_ALIGN != 0);
 
 	free_space = rxq->max_fill_level - (added - rxq->completed);
 
@@ -178,7 +151,7 @@ sfc_ef10_rx_qrefill(struct sfc_ef10_rxq *rxq)
 
 	SFC_ASSERT(rxq->added != added);
 	rxq->added = added;
-	sfc_ef10_rx_qpush(rxq);
+	sfc_ef10_rx_qpush(rxq->doorbell, added, ptr_mask);
 }
 
 static void
