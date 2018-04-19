@@ -1507,7 +1507,10 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 		       struct rte_flow_error *error)
 {
 	int rc;
-	boolean_t is_specified = B_FALSE;
+	uint32_t actions_set = 0;
+	const uint32_t fate_actions_mask = (1UL << RTE_FLOW_ACTION_TYPE_QUEUE) |
+					   (1UL << RTE_FLOW_ACTION_TYPE_RSS) |
+					   (1UL << RTE_FLOW_ACTION_TYPE_DROP);
 
 	if (actions == NULL) {
 		rte_flow_error_set(error, EINVAL,
@@ -1516,21 +1519,22 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 		return -rte_errno;
 	}
 
+#define SFC_BUILD_SET_OVERFLOW(_action, _set) \
+	RTE_BUILD_BUG_ON(_action >= sizeof(_set) * CHAR_BIT)
+
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
-		/* This one may appear anywhere multiple times. */
-		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID)
-			continue;
-		/* Fate-deciding actions may appear exactly once. */
-		if (is_specified) {
-			rte_flow_error_set
-				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
-				 actions,
-				 "Cannot combine several fate-deciding actions,"
-				 "choose between QUEUE, RSS or DROP");
-			return -rte_errno;
-		}
 		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_VOID,
+					       actions_set);
+			break;
+
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_QUEUE,
+					       actions_set);
+			if ((actions_set & fate_actions_mask) != 0)
+				goto fail_fate_actions;
+
 			rc = sfc_flow_parse_queue(sa, actions->conf, flow);
 			if (rc != 0) {
 				rte_flow_error_set(error, EINVAL,
@@ -1538,11 +1542,14 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 					"Bad QUEUE action");
 				return -rte_errno;
 			}
-
-			is_specified = B_TRUE;
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_RSS:
+			SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_RSS,
+					       actions_set);
+			if ((actions_set & fate_actions_mask) != 0)
+				goto fail_fate_actions;
+
 			rc = sfc_flow_parse_rss(sa, actions->conf, flow);
 			if (rc != 0) {
 				rte_flow_error_set(error, rc,
@@ -1550,15 +1557,16 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 					"Bad RSS action");
 				return -rte_errno;
 			}
-
-			is_specified = B_TRUE;
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_DROP:
+			SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_DROP,
+					       actions_set);
+			if ((actions_set & fate_actions_mask) != 0)
+				goto fail_fate_actions;
+
 			flow->spec.template.efs_dmaq_id =
 				EFX_FILTER_SPEC_RX_DMAQ_ID_DROP;
-
-			is_specified = B_TRUE;
 			break;
 
 		default:
@@ -1567,15 +1575,24 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 					   "Action is not supported");
 			return -rte_errno;
 		}
+
+		actions_set |= (1UL << actions->type);
 	}
+#undef SFC_BUILD_SET_OVERFLOW
 
 	/* When fate is unknown, drop traffic. */
-	if (!is_specified) {
+	if ((actions_set & fate_actions_mask) == 0) {
 		flow->spec.template.efs_dmaq_id =
 			EFX_FILTER_SPEC_RX_DMAQ_ID_DROP;
 	}
 
 	return 0;
+
+fail_fate_actions:
+	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, actions,
+			   "Cannot combine several fate-deciding actions, "
+			   "choose between QUEUE, RSS or DROP");
+	return -rte_errno;
 }
 
 /**
