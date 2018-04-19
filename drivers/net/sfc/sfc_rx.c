@@ -384,6 +384,7 @@ sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 static sfc_dp_rx_qsize_up_rings_t sfc_efx_rx_qsize_up_rings;
 static int
 sfc_efx_rx_qsize_up_rings(uint16_t nb_rx_desc,
+			  __rte_unused struct rte_mempool *mb_pool,
 			  unsigned int *rxq_entries,
 			  unsigned int *evq_entries,
 			  unsigned int *rxq_max_fill_level)
@@ -982,8 +983,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	struct sfc_rxq *rxq;
 	struct sfc_dp_rx_qcreate_info info;
 
-	rc = sa->dp_rx->qsize_up_rings(nb_rx_desc, &rxq_entries, &evq_entries,
-				       &rxq_max_fill_level);
+	rc = sa->dp_rx->qsize_up_rings(nb_rx_desc, mb_pool, &rxq_entries,
+				       &evq_entries, &rxq_max_fill_level);
 	if (rc != 0)
 		goto fail_size_up_rings;
 	SFC_ASSERT(rxq_entries >= EFX_RXQ_MINNDESCS);

@@ -480,6 +480,7 @@ sfc_ef10_rx_get_dev_info(struct rte_eth_dev_info *dev_info)
 static sfc_dp_rx_qsize_up_rings_t sfc_ef10_rx_qsize_up_rings;
 static int
 sfc_ef10_rx_qsize_up_rings(uint16_t nb_rx_desc,
+			   __rte_unused struct rte_mempool *mb_pool,
 			   unsigned int *rxq_entries,
 			   unsigned int *evq_entries,
 			   unsigned int *rxq_max_fill_level)

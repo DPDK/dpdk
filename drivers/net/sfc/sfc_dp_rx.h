@@ -91,9 +91,10 @@ typedef void (sfc_dp_rx_get_dev_info_t)(struct rte_eth_dev_info *dev_info);
 
 /**
  * Get size of receive and event queue rings by the number of Rx
- * descriptors.
+ * descriptors and mempool configuration.
  *
  * @param nb_rx_desc		Number of Rx descriptors
+ * @param mb_pool		mbuf pool with Rx buffers
  * @param rxq_entries		Location for number of Rx ring entries
  * @param evq_entries		Location for number of event ring entries
  * @param rxq_max_fill_level	Location for maximum Rx ring fill level
@@ -101,6 +102,7 @@ typedef void (sfc_dp_rx_get_dev_info_t)(struct rte_eth_dev_info *dev_info);
  * @return 0 or positive errno.
  */
 typedef int (sfc_dp_rx_qsize_up_rings_t)(uint16_t nb_rx_desc,
+					 struct rte_mempool *mb_pool,
 					 unsigned int *rxq_entries,
 					 unsigned int *evq_entries,
 					 unsigned int *rxq_max_fill_level);
