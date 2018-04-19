@@ -706,6 +706,7 @@ fill:
 			const struct rte_flow_action_queue *queue;
 			const struct rte_flow_action_rss *rss;
 			const struct rte_eth_rss_conf *rss_conf;
+			uint64_t fields;
 			unsigned int i;
 
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -780,10 +781,15 @@ fill:
 					" of the context size";
 				goto exit_action_not_supported;
 			}
+			rte_errno = 0;
+			fields = mlx4_conv_rss_hf(priv, rss_conf->rss_hf);
+			if (fields == (uint64_t)-1 && rte_errno) {
+				msg = "unsupported RSS hash type requested";
+				goto exit_action_not_supported;
+			}
 			flow->rss = mlx4_rss_get
-				(priv,
-				 mlx4_conv_rss_hf(priv, rss_conf->rss_hf),
-				 rss_conf->rss_key, rss->num, rss->queue);
+				(priv, fields, rss_conf->rss_key, rss->num,
+				 rss->queue);
 			if (!flow->rss) {
 				msg = "either invalid parameters or not enough"
 					" resources for additional multi-queue"
