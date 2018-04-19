@@ -71,6 +71,8 @@ New Features
   * Added support for Solarflare XtremeScale X2xxx family adapters.
   * Added support for NVGRE, VXLAN and GENEVE filters in flow API.
   * Added support for DROP action in flow API.
+  * Added support for equal stride super-buffer Rx mode (X2xxx only).
+  * Added support for MARK and FLAG actions in flow API (X2xxx only).
 
 * **Added Ethernet poll mode driver for AMD XGBE devices.**
 
