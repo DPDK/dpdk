@@ -184,13 +184,19 @@ enum index {
 #define ITEM_RAW_SIZE \
 	(offsetof(struct rte_flow_item_raw, pattern) + ITEM_RAW_PATTERN_SIZE)
 
-/** Number of queue[] entries in struct rte_flow_action_rss. */
-#define ACTION_RSS_NUM 32
+/** Maximum number of queue indices in struct rte_flow_action_rss. */
+#define ACTION_RSS_QUEUE_NUM 32
 
-/** Storage size for struct rte_flow_action_rss including queues. */
-#define ACTION_RSS_SIZE \
-	(offsetof(struct rte_flow_action_rss, queue) + \
-	 sizeof(*((struct rte_flow_action_rss *)0)->queue) * ACTION_RSS_NUM)
+/** Storage for struct rte_flow_action_rss including external data. */
+union action_rss_data {
+	struct rte_flow_action_rss conf;
+	struct {
+		uint8_t conf_data[offsetof(struct rte_flow_action_rss, queue)];
+		uint16_t queue[ACTION_RSS_QUEUE_NUM];
+		struct rte_eth_rss_conf rss_conf;
+		uint8_t rss_key[RSS_HASH_KEY_LENGTH];
+	} s;
+};
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
 #define CTX_STACK_SIZE 16
@@ -314,6 +320,13 @@ struct token {
 	(&(const struct arg){ \
 		.offset = offsetof(s, f), \
 		.size = (sz), \
+	})
+
+/** Static initializer for ARGS() with arbitrary offset and size. */
+#define ARGS_ENTRY_ARB(o, s) \
+	(&(const struct arg){ \
+		.offset = (o), \
+		.size = (s), \
 	})
 
 /** Same as ARGS_ENTRY() using network byte ordering. */
@@ -650,6 +663,9 @@ static int parse_vc_spec(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
 static int parse_vc_conf(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
+static int parse_vc_action_rss(struct context *, const struct token *,
+			       const char *, unsigned int, void *,
+			       unsigned int);
 static int parse_vc_action_rss_queue(struct context *, const struct token *,
 				     const char *, unsigned int, void *,
 				     unsigned int);
@@ -1573,9 +1589,9 @@ static const struct token token_list[] = {
 	[ACTION_RSS] = {
 		.name = "rss",
 		.help = "spread packets among several queues",
-		.priv = PRIV_ACTION(RSS, ACTION_RSS_SIZE),
+		.priv = PRIV_ACTION(RSS, sizeof(union action_rss_data)),
 		.next = NEXT(action_rss),
-		.call = parse_vc,
+		.call = parse_vc_action_rss,
 	},
 	[ACTION_RSS_QUEUES] = {
 		.name = "queues",
@@ -2004,6 +2020,61 @@ parse_vc_conf(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse RSS action. */
+static int
+parse_vc_action_rss(struct context *ctx, const struct token *token,
+		    const char *str, unsigned int len,
+		    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	union action_rss_data *action_rss_data;
+	unsigned int i;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Set up default configuration. */
+	action_rss_data = ctx->object;
+	*action_rss_data = (union action_rss_data){
+		.conf = (struct rte_flow_action_rss){
+			.rss_conf = &action_rss_data->s.rss_conf,
+			.num = RTE_MIN(nb_rxq, ACTION_RSS_QUEUE_NUM),
+		},
+	};
+	action_rss_data->s.rss_conf = (struct rte_eth_rss_conf){
+		.rss_key = action_rss_data->s.rss_key,
+		.rss_key_len = sizeof(action_rss_data->s.rss_key),
+		.rss_hf = rss_hf,
+	};
+	strncpy((void *)action_rss_data->s.rss_key,
+		"testpmd's default RSS hash key",
+		sizeof(action_rss_data->s.rss_key));
+	for (i = 0; i < action_rss_data->conf.num; ++i)
+		action_rss_data->conf.queue[i] = i;
+	if (!port_id_is_invalid(ctx->port, DISABLED_WARN) &&
+	    ctx->port != (portid_t)RTE_PORT_ALL) {
+		struct rte_eth_dev_info info;
+
+		rte_eth_dev_info_get(ctx->port, &info);
+		action_rss_data->s.rss_conf.rss_key_len =
+			RTE_MIN(sizeof(action_rss_data->s.rss_key),
+				info.hash_key_size);
+	}
+	action->conf = &action_rss_data->conf;
+	return ret;
+}
+
 /**
  * Parse queue field for RSS action.
  *
@@ -2015,6 +2086,7 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 			  void *buf, unsigned int size)
 {
 	static const enum index next[] = NEXT_ENTRY(ACTION_RSS_QUEUE);
+	union action_rss_data *action_rss_data;
 	int ret;
 	int i;
 
@@ -2028,9 +2100,13 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 		ctx->objdata &= 0xffff;
 		return len;
 	}
-	if (i >= ACTION_RSS_NUM)
+	if (i >= ACTION_RSS_QUEUE_NUM)
 		return -1;
-	if (push_args(ctx, ARGS_ENTRY(struct rte_flow_action_rss, queue[i])))
+	if (push_args(ctx,
+		      ARGS_ENTRY_ARB(offsetof(struct rte_flow_action_rss,
+					      queue) +
+				     i * sizeof(action_rss_data->s.queue[i]),
+				     sizeof(action_rss_data->s.queue[i]))))
 		return -1;
 	ret = parse_int(ctx, token, str, len, NULL, 0);
 	if (ret < 0) {
@@ -2045,7 +2121,8 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 	ctx->next[ctx->next_num++] = next;
 	if (!ctx->object)
 		return len;
-	((struct rte_flow_action_rss *)ctx->object)->num = i;
+	action_rss_data = ctx->object;
+	action_rss_data->conf.num = i;
 	return len;
 }
 

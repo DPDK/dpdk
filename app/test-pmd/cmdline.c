@@ -2033,6 +2033,8 @@ cmd_config_rss_parsed(void *parsed_result,
 		return;
 	}
 	rss_conf.rss_key = NULL;
+	/* Update global configuration for RSS types. */
+	rss_hf = rss_conf.rss_hf;
 	RTE_ETH_FOREACH_DEV(i) {
 		diag = rte_eth_dev_rss_hash_update(i, &rss_conf);
 		if (diag < 0)
