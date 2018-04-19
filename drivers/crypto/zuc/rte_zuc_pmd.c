@@ -12,7 +12,7 @@
 
 #include "rte_zuc_pmd_private.h"
 
-#define ZUC_MAX_BURST 8
+#define ZUC_MAX_BURST 4
 #define BYTE_LEN 8
 
 static uint8_t cryptodev_driver_id;
@@ -168,10 +168,10 @@ zuc_get_session(struct zuc_qp *qp, struct rte_crypto_op *op)
 	return sess;
 }
 
-/** Encrypt/decrypt mbufs with same cipher key. */
+/** Encrypt/decrypt mbufs. */
 static uint8_t
 process_zuc_cipher_op(struct rte_crypto_op **ops,
-		struct zuc_session *session,
+		struct zuc_session **sessions,
 		uint8_t num_ops)
 {
 	unsigned i;
@@ -180,6 +180,7 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 	uint8_t *iv[ZUC_MAX_BURST];
 	uint32_t num_bytes[ZUC_MAX_BURST];
 	uint8_t *cipher_keys[ZUC_MAX_BURST];
+	struct zuc_session *sess;
 
 	for (i = 0; i < num_ops; i++) {
 		if (((ops[i]->sym->cipher.data.length % BYTE_LEN) != 0)
@@ -189,6 +190,8 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 			ZUC_LOG_ERR("Data Length or offset");
 			break;
 		}
+
+		sess = sessions[i];
 
 #ifdef RTE_LIBRTE_PMD_ZUC_DEBUG
 		if (!rte_pktmbuf_is_contiguous(ops[i]->sym->m_src) ||
@@ -211,10 +214,10 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->cipher.data.offset >> 3);
 		iv[i] = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
-				session->cipher_iv_offset);
+				sess->cipher_iv_offset);
 		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
 
-		cipher_keys[i] = session->pKey_cipher;
+		cipher_keys[i] = sess->pKey_cipher;
 
 		processed_ops++;
 	}
@@ -225,10 +228,10 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 	return processed_ops;
 }
 
-/** Generate/verify hash from mbufs with same hash key. */
+/** Generate/verify hash from mbufs. */
 static int
 process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
-		struct zuc_session *session,
+		struct zuc_session **sessions,
 		uint8_t num_ops)
 {
 	unsigned i;
@@ -237,6 +240,7 @@ process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 	uint32_t *dst;
 	uint32_t length_in_bits;
 	uint8_t *iv;
+	struct zuc_session *sess;
 
 	for (i = 0; i < num_ops; i++) {
 		/* Data must be byte aligned */
@@ -246,17 +250,19 @@ process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 			break;
 		}
 
+		sess = sessions[i];
+
 		length_in_bits = ops[i]->sym->auth.data.length;
 
 		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->auth.data.offset >> 3);
 		iv = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
-				session->auth_iv_offset);
+				sess->auth_iv_offset);
 
-		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
+		if (sess->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = (uint32_t *)qp->temp_digest;
 
-			sso_zuc_eia3_1_buffer(session->pKey_hash,
+			sso_zuc_eia3_1_buffer(sess->pKey_hash,
 					iv, src,
 					length_in_bits,	dst);
 			/* Verify digest. */
@@ -266,7 +272,7 @@ process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 		} else  {
 			dst = (uint32_t *)ops[i]->sym->auth.digest.data;
 
-			sso_zuc_eia3_1_buffer(session->pKey_hash,
+			sso_zuc_eia3_1_buffer(sess->pKey_hash,
 					iv, src,
 					length_in_bits, dst);
 		}
@@ -276,33 +282,34 @@ process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 	return processed_ops;
 }
 
-/** Process a batch of crypto ops which shares the same session. */
+/** Process a batch of crypto ops which shares the same operation type. */
 static int
-process_ops(struct rte_crypto_op **ops, struct zuc_session *session,
+process_ops(struct rte_crypto_op **ops, enum zuc_operation op_type,
+		struct zuc_session **sessions,
 		struct zuc_qp *qp, uint8_t num_ops,
 		uint16_t *accumulated_enqueued_ops)
 {
 	unsigned i;
 	unsigned enqueued_ops, processed_ops;
 
-	switch (session->op) {
+	switch (op_type) {
 	case ZUC_OP_ONLY_CIPHER:
 		processed_ops = process_zuc_cipher_op(ops,
-				session, num_ops);
+				sessions, num_ops);
 		break;
 	case ZUC_OP_ONLY_AUTH:
-		processed_ops = process_zuc_hash_op(qp, ops, session,
+		processed_ops = process_zuc_hash_op(qp, ops, sessions,
 				num_ops);
 		break;
 	case ZUC_OP_CIPHER_AUTH:
-		processed_ops = process_zuc_cipher_op(ops, session,
+		processed_ops = process_zuc_cipher_op(ops, sessions,
 				num_ops);
-		process_zuc_hash_op(qp, ops, session, processed_ops);
+		process_zuc_hash_op(qp, ops, sessions, processed_ops);
 		break;
 	case ZUC_OP_AUTH_CIPHER:
-		processed_ops = process_zuc_hash_op(qp, ops, session,
+		processed_ops = process_zuc_hash_op(qp, ops, sessions,
 				num_ops);
-		process_zuc_cipher_op(ops, session, processed_ops);
+		process_zuc_cipher_op(ops, sessions, processed_ops);
 		break;
 	default:
 		/* Operation not supported. */
@@ -318,10 +325,10 @@ process_ops(struct rte_crypto_op **ops, struct zuc_session *session,
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		/* Free session if a session-less crypto op. */
 		if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
-			memset(session, 0, sizeof(struct zuc_session));
+			memset(sessions[i], 0, sizeof(struct zuc_session));
 			memset(ops[i]->sym->session, 0,
 					rte_cryptodev_get_header_session_size());
-			rte_mempool_put(qp->sess_mp, session);
+			rte_mempool_put(qp->sess_mp, sessions[i]);
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;
 		}
@@ -342,7 +349,10 @@ zuc_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	struct rte_crypto_op *c_ops[ZUC_MAX_BURST];
 	struct rte_crypto_op *curr_c_op;
 
-	struct zuc_session *prev_sess = NULL, *curr_sess = NULL;
+	struct zuc_session *curr_sess;
+	struct zuc_session *sessions[ZUC_MAX_BURST];
+	enum zuc_operation prev_zuc_op = ZUC_OP_NOT_SUPPORTED;
+	enum zuc_operation curr_zuc_op;
 	struct zuc_qp *qp = queue_pair;
 	unsigned i;
 	uint8_t burst_size = 0;
@@ -359,50 +369,63 @@ zuc_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			break;
 		}
 
-		/* Batch ops that share the same session. */
-		if (prev_sess == NULL) {
-			prev_sess = curr_sess;
-			c_ops[burst_size++] = curr_c_op;
-		} else if (curr_sess == prev_sess) {
-			c_ops[burst_size++] = curr_c_op;
+		curr_zuc_op = curr_sess->op;
+
+		/*
+		 * Batch ops that share the same operation type
+		 * (cipher only, auth only...).
+		 */
+		if (burst_size == 0) {
+			prev_zuc_op = curr_zuc_op;
+			c_ops[0] = curr_c_op;
+			sessions[0] = curr_sess;
+			burst_size++;
+		} else if (curr_zuc_op == prev_zuc_op) {
+			c_ops[burst_size] = curr_c_op;
+			sessions[burst_size] = curr_sess;
+			burst_size++;
 			/*
 			 * When there are enough ops to process in a batch,
 			 * process them, and start a new batch.
 			 */
 			if (burst_size == ZUC_MAX_BURST) {
-				processed_ops = process_ops(c_ops, prev_sess,
-						qp, burst_size, &enqueued_ops);
+				processed_ops = process_ops(c_ops, curr_zuc_op,
+						sessions, qp, burst_size,
+						&enqueued_ops);
 				if (processed_ops < burst_size) {
 					burst_size = 0;
 					break;
 				}
 
 				burst_size = 0;
-				prev_sess = NULL;
 			}
 		} else {
 			/*
-			 * Different session, process the ops
-			 * of the previous session.
+			 * Different operation type, process the ops
+			 * of the previous type.
 			 */
-			processed_ops = process_ops(c_ops, prev_sess,
-					qp, burst_size, &enqueued_ops);
+			processed_ops = process_ops(c_ops, prev_zuc_op,
+					sessions, qp, burst_size,
+					&enqueued_ops);
 			if (processed_ops < burst_size) {
 				burst_size = 0;
 				break;
 			}
 
 			burst_size = 0;
-			prev_sess = curr_sess;
+			prev_zuc_op = curr_zuc_op;
 
-			c_ops[burst_size++] = curr_c_op;
+			c_ops[0] = curr_c_op;
+			sessions[0] = curr_sess;
+			burst_size++;
 		}
 	}
 
 	if (burst_size != 0) {
-		/* Process the crypto ops of the last session. */
-		processed_ops = process_ops(c_ops, prev_sess,
-				qp, burst_size, &enqueued_ops);
+		/* Process the crypto ops of the last operation type. */
+		processed_ops = process_ops(c_ops, prev_zuc_op,
+				sessions, qp, burst_size,
+				&enqueued_ops);
 	}
 
 	qp->qp_stats.enqueue_err_count += nb_ops - enqueued_ops;
