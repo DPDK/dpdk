@@ -829,6 +829,8 @@ sfc_kvarg_fv_variant_handler(__rte_unused const char *key,
 		*value = EFX_FW_VARIANT_LOW_LATENCY;
 	else if (strcasecmp(value_str, SFC_KVARG_FW_VARIANT_PACKED_STREAM) == 0)
 		*value = EFX_FW_VARIANT_PACKED_STREAM;
+	else if (strcasecmp(value_str, SFC_KVARG_FW_VARIANT_DPDK) == 0)
+		*value = EFX_FW_VARIANT_DPDK;
 	else
 		return -EINVAL;
 
@@ -864,6 +866,10 @@ sfc_get_fw_variant(struct sfc_adapter *sa, efx_fw_variant_t *efv)
 		*efv = EFX_FW_VARIANT_PACKED_STREAM;
 		break;
 
+	case EFX_RXDP_DPDK_FW_ID:
+		*efv = EFX_FW_VARIANT_DPDK;
+		break;
+
 	default:
 		/*
 		 * Other firmware variants are not considered, since they are
@@ -886,6 +892,8 @@ sfc_fw_variant2str(efx_fw_variant_t efv)
 		return SFC_KVARG_FW_VARIANT_LOW_LATENCY;
 	case EFX_RXDP_PACKED_STREAM_FW_ID:
 		return SFC_KVARG_FW_VARIANT_PACKED_STREAM;
+	case EFX_RXDP_DPDK_FW_ID:
+		return SFC_KVARG_FW_VARIANT_DPDK;
 	default:
 		return "unknown";
 	}

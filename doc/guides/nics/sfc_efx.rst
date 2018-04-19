@@ -354,7 +354,7 @@ boolean parameters value.
   value will select a fixed update period of **1000** milliseconds
 
 - ``fw_variant`` [dont-care|full-feature|ultra-low-latency|
-  capture-packed-stream] (default **dont-care**)
+  capture-packed-stream|dpdk] (default **dont-care**)
 
   Choose the preferred firmware variant to use. In order for the selected
   option to have an effect, the **sfboot** utility must be configured with the
@@ -367,6 +367,10 @@ boolean parameters value.
   **ultra-low-latency** chooses firmware with fewer features but lower latency.
   **capture-packed-stream** chooses firmware for SolarCapture packed stream
   mode.
+  **dpdk** chooses DPDK firmware with equal stride super-buffer Rx mode
+  for higher Rx packet rate and packet marks support and firmware subvariant
+  without checksumming on transmit for higher Tx packet rate if
+  checksumming is not required.
 
 
 Dynamic Logging Parameters
