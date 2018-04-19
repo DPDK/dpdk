@@ -61,6 +61,8 @@ extern "C" {
 	    SFC_KVARG_FW_VARIANT_PACKED_STREAM "|" \
 	    SFC_KVARG_FW_VARIANT_DPDK "]"
 
+#define SFC_KVARG_RXD_WAIT_TIMEOUT_NS	"rxd_wait_timeout_ns"
+
 struct sfc_adapter;
 
 int sfc_kvargs_parse(struct sfc_adapter *sa);

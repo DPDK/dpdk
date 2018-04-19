@@ -703,7 +703,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 		rc = efx_rx_qcreate_es_super_buffer(sa->nic, rxq->hw_index, 0,
 			mp_info.contig_block_size, rxq->buf_size,
 			mp->header_size + mp->elt_size + mp->trailer_size,
-			0 /* hol_block_timeout */,
+			sa->rxd_wait_timeout_ns,
 			&rxq->mem, rxq_info->entries, rxq_info->type_flags,
 			evq->common, &rxq->common);
 		break;

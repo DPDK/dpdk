@@ -372,6 +372,18 @@ boolean parameters value.
   without checksumming on transmit for higher Tx packet rate if
   checksumming is not required.
 
+- ``rxd_wait_timeout_ns`` [long] (default **200 us**)
+
+  Adjust timeout in nanoseconds to head-of-line block to wait for
+  Rx descriptors.
+  The accepted range is 0 to 400 ms.
+  Flow control should be enabled to make it work.
+  The value of **0** disables it and packets are dropped immediately.
+  When a packet is dropped because of no Rx descriptors,
+  ``rx_nodesc_drop_cnt`` counter grows.
+  The feature is supported only by the DPDK firmware variant when equal
+  stride super-buffer Rx mode is used.
+
 
 Dynamic Logging Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

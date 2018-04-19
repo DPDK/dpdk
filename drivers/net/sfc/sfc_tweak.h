@@ -34,4 +34,12 @@
 /** Number of mbufs to be freed in bulk in a single call */
 #define SFC_TX_REAP_BULK_SIZE		32
 
+/**
+ * Default head-of-line block timeout to wait for Rx descriptor before
+ * packet drop because of no descriptors available.
+ *
+ * DPDK FW variant only with equal stride super-buffer Rx mode.
+ */
+#define SFC_RXD_WAIT_TIMEOUT_NS_DEF	(200U * 1000)
+
 #endif /* _SFC_TWEAK_H_ */

@@ -238,6 +238,8 @@ struct sfc_adapter {
 
 	boolean_t			tso;
 
+	uint32_t			rxd_wait_timeout_ns;
+
 	struct sfc_rss			rss;
 
 	/*

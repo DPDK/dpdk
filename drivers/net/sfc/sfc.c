@@ -21,6 +21,7 @@
 #include "sfc_rx.h"
 #include "sfc_tx.h"
 #include "sfc_kvargs.h"
+#include "sfc_tweak.h"
 
 
 int
@@ -900,6 +901,32 @@ sfc_fw_variant2str(efx_fw_variant_t efv)
 }
 
 static int
+sfc_kvarg_rxd_wait_timeout_ns(struct sfc_adapter *sa)
+{
+	int rc;
+	long value;
+
+	value = SFC_RXD_WAIT_TIMEOUT_NS_DEF;
+
+	rc = sfc_kvargs_process(sa, SFC_KVARG_RXD_WAIT_TIMEOUT_NS,
+				sfc_kvarg_long_handler, &value);
+	if (rc != 0)
+		return rc;
+
+	if (value < 0 ||
+	    (unsigned long)value > EFX_RXQ_ES_SUPER_BUFFER_HOL_BLOCK_MAX) {
+		sfc_err(sa, "wrong '" SFC_KVARG_RXD_WAIT_TIMEOUT_NS "' "
+			    "was set (%ld);", value);
+		sfc_err(sa, "it must not be less than 0 or greater than %u",
+			    EFX_RXQ_ES_SUPER_BUFFER_HOL_BLOCK_MAX);
+		return EINVAL;
+	}
+
+	sa->rxd_wait_timeout_ns = value;
+	return 0;
+}
+
+static int
 sfc_nic_probe(struct sfc_adapter *sa)
 {
 	efx_nic_t *enp = sa->nic;
@@ -915,6 +942,10 @@ sfc_nic_probe(struct sfc_adapter *sa)
 		sfc_err(sa, "invalid %s parameter value", SFC_KVARG_FW_VARIANT);
 		return rc;
 	}
+
+	rc = sfc_kvarg_rxd_wait_timeout_ns(sa);
+	if (rc != 0)
+		return rc;
 
 	rc = efx_nic_probe(enp, preferred_efv);
 	if (rc == EACCES) {

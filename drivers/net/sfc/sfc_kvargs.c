@@ -27,6 +27,7 @@ sfc_kvargs_parse(struct sfc_adapter *sa)
 		SFC_KVARG_RX_DATAPATH,
 		SFC_KVARG_TX_DATAPATH,
 		SFC_KVARG_FW_VARIANT,
+		SFC_KVARG_RXD_WAIT_TIMEOUT_NS,
 		NULL,
 	};
 
