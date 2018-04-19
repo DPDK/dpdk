@@ -4,6 +4,14 @@
  * All rights reserved.
  */
 
+/*
+ * This is NOT the original source file. Do NOT edit it.
+ * To update the tlv layout, please edit the copy in
+ * the sfregistry repo and then, in that repo,
+ * "make tlv_headers" or "make export" to
+ * regenerate and export all types of headers.
+ */
+
 /* These structures define the layouts for the TLV items stored in static and
  * dynamic configuration partitions in NVRAM for EF10 (Huntington etc.).
  *
@@ -409,6 +417,7 @@ struct tlv_firmware_options {
                                              MC_CMD_FW_PACKED_STREAM_HASH_MODE_1
 #define TLV_FIRMWARE_VARIANT_RULES_ENGINE    MC_CMD_FW_RULES_ENGINE
 #define TLV_FIRMWARE_VARIANT_DPDK            MC_CMD_FW_DPDK
+#define TLV_FIRMWARE_VARIANT_L3XUDP          MC_CMD_FW_L3XUDP
 };
 
 /* Voltage settings
@@ -984,6 +993,19 @@ struct tlv_fastpd_mode {
 #define TLV_FASTPD_MODE_SOFT_ALL       0  /* All packets to the SoftPD */
 #define TLV_FASTPD_MODE_FAST_ALL       1  /* All packets to the FastPD */
 #define TLV_FASTPD_MODE_FAST_SUPPORTED 2  /* Supported packet types to the FastPD; everything else to the SoftPD  */
+};
+
+/* L3xUDP datapath firmware UDP port configuration
+ *
+ * Sets the list of UDP ports on which the encapsulation will be handled.
+ * The number of ports in the list is implied by the length of the TLV item.
+ */
+#define TLV_TAG_L3XUDP_PORTS            (0x102a0000)
+struct tlv_l3xudp_ports {
+  uint32_t tag;
+  uint32_t length;
+  uint16_t ports[];
+#define TLV_TAG_L3XUDP_PORTS_MAX_NUM_PORTS 16
 };
 
 #endif /* CI_MGMT_TLV_LAYOUT_H */
