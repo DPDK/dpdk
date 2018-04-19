@@ -25,6 +25,8 @@
 #include "sfc_dp_rx.h"
 #include "sfc_kvargs.h"
 #include "sfc_ef10.h"
+
+#define SFC_EF10_RX_EV_ENCAP_SUPPORT	1
 #include "sfc_ef10_rx_ev.h"
 
 #define sfc_ef10_rx_err(dpq, ...) \

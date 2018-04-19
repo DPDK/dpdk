@@ -37,6 +37,7 @@ sfc_ef10_rx_ev_to_offloads(const efx_qword_t rx_ev, struct rte_mbuf *m,
 	if (unlikely(EFX_TEST_QWORD_BIT(rx_ev, ESF_DZ_RX_PARSE_INCOMPLETE_LBN)))
 		goto done;
 
+#if SFC_EF10_RX_EV_ENCAP_SUPPORT
 	switch (EFX_QWORD_FIELD(rx_ev, ESF_EZ_RX_ENCAP_HDR)) {
 	default:
 		/* Unexpected encapsulation tag class */
@@ -58,6 +59,7 @@ sfc_ef10_rx_ev_to_offloads(const efx_qword_t rx_ev, struct rte_mbuf *m,
 		tun_ptype = RTE_PTYPE_TUNNEL_NVGRE;
 		break;
 	}
+#endif
 
 	if (tun_ptype == 0) {
 		ip_csum_err_bit = ESF_DZ_RX_IPCKSUM_ERR_LBN;
