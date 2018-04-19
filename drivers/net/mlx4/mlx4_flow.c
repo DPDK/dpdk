@@ -820,11 +820,14 @@ fill:
 			},
 		};
 
-		if (!mlx4_zmallocv(__func__, vec, RTE_DIM(vec)))
+		if (!mlx4_zmallocv(__func__, vec, RTE_DIM(vec))) {
+			if (temp.rss)
+				mlx4_rss_put(temp.rss);
 			return rte_flow_error_set
 				(error, -rte_errno,
 				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				 "flow rule handle allocation failure");
+		}
 		/* Most fields will be updated by second pass. */
 		*flow = (struct rte_flow){
 			.ibv_attr = temp.ibv_attr,
