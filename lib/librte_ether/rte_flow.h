@@ -14,6 +14,8 @@
  * associated actions in hardware through flow rules.
  */
 
+#include <stdint.h>
+
 #include <rte_arp.h>
 #include <rte_ether.h>
 #include <rte_icmp.h>
