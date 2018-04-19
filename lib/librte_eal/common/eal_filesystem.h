@@ -115,6 +115,23 @@ eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id
 	return buffer;
 }
 
+/** String format for hugepage map lock files. */
+#define HUGEFILE_LOCK_FMT "%s/.%smap_%d.lock"
+
+static inline const char *
+eal_get_hugefile_lock_path(char *buffer, size_t buflen, int f_id)
+{
+	const char *directory = default_config_dir;
+	const char *home_dir = getenv("HOME");
+
+	if (getuid() != 0 && home_dir != NULL)
+		directory = home_dir;
+	snprintf(buffer, buflen - 1, HUGEFILE_LOCK_FMT, directory,
+			internal_config.hugefile_prefix, f_id);
+	buffer[buflen - 1] = '\0';
+	return buffer;
+}
+
 /** define the default filename prefix for the %s values above */
 #define HUGEFILE_PREFIX_DEFAULT "rte"
 

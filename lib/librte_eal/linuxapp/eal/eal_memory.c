@@ -259,7 +259,6 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 	int fd;
 	unsigned i;
 	void *virtaddr;
-	struct flock lck = {0};
 #ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
 	int node_id = -1;
 	int essential_prev = 0;
@@ -378,13 +377,8 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 		}
 		*(int *)virtaddr = 0;
 
-
 		/* set shared lock on the file. */
-		lck.l_type = F_RDLCK;
-		lck.l_whence = SEEK_SET;
-		lck.l_start = 0;
-		lck.l_len = hugepage_sz;
-		if (fcntl(fd, F_SETLK, &lck) == -1) {
+		if (flock(fd, LOCK_SH) < 0) {
 			RTE_LOG(DEBUG, EAL, "%s(): Locking file failed:%s \n",
 				__func__, strerror(errno));
 			close(fd);
@@ -708,7 +702,6 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 #endif
 		struct hugepage_file *hfile = &hugepages[cur_page];
 		struct rte_memseg *ms = rte_fbarray_get(arr, ms_idx);
-		struct flock lck;
 		void *addr;
 		int fd;
 
@@ -719,11 +712,7 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 			return -1;
 		}
 		/* set shared lock on the file. */
-		lck.l_type = F_RDLCK;
-		lck.l_whence = SEEK_SET;
-		lck.l_start = 0;
-		lck.l_len = page_sz;
-		if (fcntl(fd, F_SETLK, &lck) == -1) {
+		if (flock(fd, LOCK_SH) < 0) {
 			RTE_LOG(DEBUG, EAL, "Could not lock '%s': %s\n",
 					hfile->filepath, strerror(errno));
 			close(fd);
@@ -1763,7 +1752,6 @@ eal_legacy_hugepage_attach(void)
 		struct hugepage_file *hf = &hp[i];
 		size_t map_sz = hf->size;
 		void *map_addr = hf->final_va;
-		struct flock lck;
 
 		/* if size is zero, no more pages left */
 		if (map_sz == 0)
@@ -1786,11 +1774,7 @@ eal_legacy_hugepage_attach(void)
 		}
 
 		/* set shared lock on the file. */
-		lck.l_type = F_RDLCK;
-		lck.l_whence = SEEK_SET;
-		lck.l_start = 0;
-		lck.l_len = map_sz;
-		if (fcntl(fd, F_SETLK, &lck) == -1) {
+		if (flock(fd, LOCK_SH) < 0) {
 			RTE_LOG(DEBUG, EAL, "%s(): Locking file failed: %s\n",
 				__func__, strerror(errno));
 			close(fd);
