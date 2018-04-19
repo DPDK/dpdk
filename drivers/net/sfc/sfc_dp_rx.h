@@ -150,6 +150,12 @@ typedef void (sfc_dp_rx_qstop_t)(struct sfc_dp_rxq *dp_rxq,
 typedef bool (sfc_dp_rx_qrx_ev_t)(struct sfc_dp_rxq *dp_rxq, unsigned int id);
 
 /**
+ * Packed stream receive event handler used during queue flush only.
+ */
+typedef bool (sfc_dp_rx_qrx_ps_ev_t)(struct sfc_dp_rxq *dp_rxq,
+				     unsigned int id);
+
+/**
  * Receive queue purge function called after queue flush.
  *
  * Should be used to free unused recevie buffers.
@@ -182,6 +188,7 @@ struct sfc_dp_rx {
 	sfc_dp_rx_qstart_t			*qstart;
 	sfc_dp_rx_qstop_t			*qstop;
 	sfc_dp_rx_qrx_ev_t			*qrx_ev;
+	sfc_dp_rx_qrx_ps_ev_t			*qrx_ps_ev;
 	sfc_dp_rx_qpurge_t			*qpurge;
 	sfc_dp_rx_supported_ptypes_get_t	*supported_ptypes_get;
 	sfc_dp_rx_qdesc_npending_t		*qdesc_npending;
@@ -207,6 +214,7 @@ sfc_dp_find_rx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 
 extern struct sfc_dp_rx sfc_efx_rx;
 extern struct sfc_dp_rx sfc_ef10_rx;
+extern struct sfc_dp_rx sfc_ef10_essb_rx;
 
 #ifdef __cplusplus
 }

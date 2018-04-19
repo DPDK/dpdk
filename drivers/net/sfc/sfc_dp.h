@@ -79,7 +79,8 @@ struct sfc_dp {
 	enum sfc_dp_type		type;
 	/* Mask of required hardware/firmware capabilities */
 	unsigned int			hw_fw_caps;
-#define SFC_DP_HW_FW_CAP_EF10		0x1
+#define SFC_DP_HW_FW_CAP_EF10				0x1
+#define SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER		0x2
 };
 
 /** List of datapath variants */

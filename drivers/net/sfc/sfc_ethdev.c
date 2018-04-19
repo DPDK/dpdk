@@ -1707,6 +1707,7 @@ static int
 sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	const efx_nic_cfg_t *encp;
 	unsigned int avail_caps = 0;
 	const char *rx_name = NULL;
 	const char *tx_name = NULL;
@@ -1721,6 +1722,10 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	default:
 		break;
 	}
+
+	encp = efx_nic_cfg_get(sa->nic);
+	if (encp->enc_rx_es_super_buffer_supported)
+		avail_caps |= SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER;
 
 	rc = sfc_kvargs_process(sa, SFC_KVARG_RX_DATAPATH,
 				sfc_kvarg_string_handler, &rx_name);
@@ -1911,6 +1916,7 @@ sfc_register_dp(void)
 	/* Register once */
 	if (TAILQ_EMPTY(&sfc_dp_head)) {
 		/* Prefer EF10 datapath */
+		sfc_dp_register(&sfc_dp_head, &sfc_ef10_essb_rx.dp);
 		sfc_dp_register(&sfc_dp_head, &sfc_ef10_rx.dp);
 		sfc_dp_register(&sfc_dp_head, &sfc_efx_rx.dp);
 

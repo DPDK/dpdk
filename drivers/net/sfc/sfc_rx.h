@@ -60,6 +60,7 @@ struct sfc_rxq {
 	unsigned int		hw_index;
 	unsigned int		refill_threshold;
 	struct rte_mempool	*refill_mb_pool;
+	uint16_t		buf_size;
 	struct sfc_dp_rxq	*dp;
 	unsigned int		state;
 };

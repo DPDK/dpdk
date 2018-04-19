@@ -121,6 +121,21 @@ required in the receive buffer.
 It should be taken into account when mbuf pool for receive is created.
 
 
+Equal stride super-buffer mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When the receive queue uses equal stride super-buffer DMA mode, one HW Rx
+descriptor carries many Rx buffers which contiguously follow each other
+with some stride (equal to total size of rte_mbuf as mempool object).
+Each Rx buffer is an independent rte_mbuf.
+However dedicated mempool manager must be used when mempool for the Rx
+queue is created. The manager must support dequeue of the contiguous
+block of objects and provide mempool info API to get the block size.
+
+Another limitation of a equal stride super-buffer mode, imposed by the
+firmware, is that it allows for a single RSS context.
+
+
 Tunnels support
 ---------------
 
@@ -291,7 +306,7 @@ whitelist option like "-w 02:00.0,arg1=value1,...".
 Case-insensitive 1/y/yes/on or 0/n/no/off may be used to specify
 boolean parameters value.
 
-- ``rx_datapath`` [auto|efx|ef10] (default **auto**)
+- ``rx_datapath`` [auto|efx|ef10|ef10_esps] (default **auto**)
 
   Choose receive datapath implementation.
   **auto** allows the driver itself to make a choice based on firmware
@@ -300,6 +315,9 @@ boolean parameters value.
   **ef10** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which is
   more efficient than libefx-based and provides richer packet type
   classification, but lacks Rx scatter support.
+  **ef10_esps** chooses SFNX2xxx equal stride packed stream datapath
+  which may be used on DPDK firmware variant only
+  (see notes about its limitations above).
 
 - ``tx_datapath`` [auto|efx|ef10|ef10_simple] (default **auto**)
 

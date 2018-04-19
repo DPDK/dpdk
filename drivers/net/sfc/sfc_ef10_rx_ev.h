@@ -34,7 +34,10 @@ sfc_ef10_rx_ev_to_offloads(const efx_qword_t rx_ev, struct rte_mbuf *m,
 	uint32_t l4_ptype = 0;
 	uint64_t ol_flags = 0;
 
-	if (unlikely(EFX_TEST_QWORD_BIT(rx_ev, ESF_DZ_RX_PARSE_INCOMPLETE_LBN)))
+	if (unlikely(rx_ev.eq_u64[0] &
+		rte_cpu_to_le_64((1ull << ESF_DZ_RX_ECC_ERR_LBN) |
+				 (1ull << ESF_DZ_RX_ECRC_ERR_LBN) |
+				 (1ull << ESF_DZ_RX_PARSE_INCOMPLETE_LBN))))
 		goto done;
 
 #if SFC_EF10_RX_EV_ENCAP_SUPPORT

@@ -386,7 +386,7 @@ sfc_ef10_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	return n_rx_pkts;
 }
 
-static const uint32_t *
+const uint32_t *
 sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
 {
 	static const uint32_t ef10_native_ptypes[] = {

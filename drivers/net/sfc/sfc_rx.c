@@ -680,10 +680,37 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (rc != 0)
 		goto fail_ev_qstart;
 
-	rc = efx_rx_qcreate(sa->nic, rxq->hw_index, 0, rxq_info->type,
-			    &rxq->mem, rxq_info->entries,
-			    0 /* not used on EF10 */, rxq_info->type_flags,
-			    evq->common, &rxq->common);
+	switch (rxq_info->type) {
+	case EFX_RXQ_TYPE_DEFAULT:
+		rc = efx_rx_qcreate(sa->nic, rxq->hw_index, 0, rxq_info->type,
+			&rxq->mem, rxq_info->entries, 0 /* not used on EF10 */,
+			rxq_info->type_flags, evq->common, &rxq->common);
+		break;
+	case EFX_RXQ_TYPE_ES_SUPER_BUFFER: {
+		struct rte_mempool *mp = rxq->refill_mb_pool;
+		struct rte_mempool_info mp_info;
+
+		rc = rte_mempool_ops_get_info(mp, &mp_info);
+		if (rc != 0) {
+			/* Positive errno is used in the driver */
+			rc = -rc;
+			goto fail_mp_get_info;
+		}
+		if (mp_info.contig_block_size <= 0) {
+			rc = EINVAL;
+			goto fail_bad_contig_block_size;
+		}
+		rc = efx_rx_qcreate_es_super_buffer(sa->nic, rxq->hw_index, 0,
+			mp_info.contig_block_size, rxq->buf_size,
+			mp->header_size + mp->elt_size + mp->trailer_size,
+			0 /* hol_block_timeout */,
+			&rxq->mem, rxq_info->entries, rxq_info->type_flags,
+			evq->common, &rxq->common);
+		break;
+	}
+	default:
+		rc = ENOTSUP;
+	}
 	if (rc != 0)
 		goto fail_rx_qcreate;
 
@@ -714,6 +741,8 @@ fail_dp_qstart:
 	sfc_rx_qflush(sa, sw_index);
 
 fail_rx_qcreate:
+fail_bad_contig_block_size:
+fail_mp_get_info:
 	sfc_ev_qstop(evq);
 
 fail_ev_qstart:
@@ -1020,7 +1049,12 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	SFC_ASSERT(rxq_entries <= rxq_info->max_entries);
 	rxq_info->entries = rxq_entries;
-	rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
+
+	if (sa->dp_rx->dp.hw_fw_caps & SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER)
+		rxq_info->type = EFX_RXQ_TYPE_ES_SUPER_BUFFER;
+	else
+		rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
+
 	rxq_info->type_flags =
 		(rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) ?
 		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
@@ -1047,6 +1081,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq->refill_threshold =
 		RTE_MAX(rx_conf->rx_free_thresh, SFC_RX_REFILL_BULK);
 	rxq->refill_mb_pool = mb_pool;
+	rxq->buf_size = buf_size;
 
 	rc = sfc_dma_alloc(sa, "rxq", sw_index, EFX_RXQ_SIZE(rxq_info->entries),
 			   socket_id, &rxq->mem);

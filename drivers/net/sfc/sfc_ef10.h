@@ -110,6 +110,9 @@ sfc_ef10_rx_qpush(volatile void *doorbell, unsigned int added,
 }
 
 
+const uint32_t * sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps);
+
+
 #ifdef __cplusplus
 }
 #endif
