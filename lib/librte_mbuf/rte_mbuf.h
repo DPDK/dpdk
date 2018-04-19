@@ -201,14 +201,17 @@ extern "C" {
 
 /**
  * Bits 45:48 used for the tunnel type.
- * When doing Tx offload like TSO or checksum, the HW needs to configure the
- * tunnel type into the HW descriptors.
+ * The tunnel type must be specified for TSO or checksum on the inner part
+ * of tunnel packets.
+ * These flags can be used with PKT_TX_TCP_SEG for TSO, or PKT_TX_xxx_CKSUM.
+ * The mbuf fields for inner and outer header lengths are required:
+ * outer_l2_len, outer_l3_len, l2_len, l3_len, l4_len and tso_segsz for TSO.
  */
 #define PKT_TX_TUNNEL_VXLAN   (0x1ULL << 45)
 #define PKT_TX_TUNNEL_GRE     (0x2ULL << 45)
 #define PKT_TX_TUNNEL_IPIP    (0x3ULL << 45)
 #define PKT_TX_TUNNEL_GENEVE  (0x4ULL << 45)
-/**< TX packet with MPLS-in-UDP RFC 7510 header. */
+/** TX packet with MPLS-in-UDP RFC 7510 header. */
 #define PKT_TX_TUNNEL_MPLSINUDP (0x5ULL << 45)
 /* add new TX TUNNEL type here */
 #define PKT_TX_TUNNEL_MASK    (0xFULL << 45)
