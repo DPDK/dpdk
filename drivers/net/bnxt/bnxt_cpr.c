@@ -144,7 +144,7 @@ int bnxt_alloc_def_cp_ring(struct bnxt *bp)
 				  HWRM_NA_SIGNATURE);
 	if (rc)
 		goto err_out;
-	cpr->cp_doorbell = bp->pdev->mem_resource[2].addr;
+	cpr->cp_doorbell = (char *)bp->doorbell_base;
 	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
 	if (BNXT_PF(bp))
 		rc = bnxt_hwrm_func_cfg_def_cp(bp);

@@ -3095,11 +3095,23 @@ static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 		rc = -ENOMEM;
 		goto init_err_release;
 	}
+
+	if (!pci_dev->mem_resource[2].addr) {
+		PMD_DRV_LOG(ERR,
+			    "Cannot find PCI device BAR 2 address, aborting\n");
+		rc = -ENODEV;
+		goto init_err_release;
+	} else {
+		bp->doorbell_base = (void *)pci_dev->mem_resource[2].addr;
+	}
+
 	return 0;
 
 init_err_release:
 	if (bp->bar0)
 		bp->bar0 = NULL;
+	if (bp->doorbell_base)
+		bp->doorbell_base = NULL;
 
 init_err_disable:
 
