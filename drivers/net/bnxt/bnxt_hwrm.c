@@ -221,6 +221,9 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp,
 	struct hwrm_cfa_l2_set_rx_mask_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t mask = 0;
 
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
+		return rc;
+
 	HWRM_PREP(req, CFA_L2_SET_RX_MASK);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 
