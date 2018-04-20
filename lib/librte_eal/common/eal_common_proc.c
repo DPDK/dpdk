@@ -419,7 +419,13 @@ process_async_request(struct pending_request *sr, const struct timespec *now)
 	} else if (sr->reply_received == -1) {
 		/* we were asked to ignore this process */
 		reply->nb_sent--;
+	} else if (timeout) {
+		/* count it as processed response, but don't increment
+		 * nb_received.
+		 */
+		param->n_responses_processed++;
 	}
+
 	free(sr->reply);
 
 	last_msg = param->n_responses_processed == reply->nb_sent;
