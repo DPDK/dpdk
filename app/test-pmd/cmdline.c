@@ -821,8 +821,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set crc-strip/scatter/rx-checksum/hardware-vlan/drop_en"
 			" for ports.\n\n"
 
-			"port config all rss (all|ip|tcp|udp|sctp|ether|port|vxlan|"
-			"geneve|nvgre|none|<flowtype_id>)\n"
+			"port config all rss (all|default|ip|tcp|udp|sctp|"
+			"ether|port|vxlan|geneve|nvgre|none|<flowtype_id>)\n"
 			"    Set the RSS mode.\n\n"
 
 			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
@@ -1998,6 +1998,7 @@ cmd_config_rss_parsed(void *parsed_result,
 {
 	struct cmd_config_rss *res = parsed_result;
 	struct rte_eth_rss_conf rss_conf = { .rss_key_len = 0, };
+	struct rte_eth_dev_info dev_info = { .flow_type_rss_offloads = 0, };
 	int diag;
 	uint16_t i;
 
@@ -2023,7 +2024,7 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_GENEVE;
 	else if (!strcmp(res->value, "nvgre"))
 		rss_conf.rss_hf = ETH_RSS_NVGRE;
-	else if (!strcmp(res->value, "none"))
+	else if (!strcmp(res->value, "none") || !strcmp(res->value, "default"))
 		rss_conf.rss_hf = 0;
 	else if (isdigit(res->value[0]) && atoi(res->value) > 0 &&
 						atoi(res->value) < 64)
@@ -2036,6 +2037,10 @@ cmd_config_rss_parsed(void *parsed_result,
 	/* Update global configuration for RSS types. */
 	rss_hf = rss_conf.rss_hf;
 	RTE_ETH_FOREACH_DEV(i) {
+		if (!strcmp(res->value, "default")) {
+			rte_eth_dev_info_get(i, &dev_info);
+			rss_conf.rss_hf = dev_info.flow_type_rss_offloads;
+		}
 		diag = rte_eth_dev_rss_hash_update(i, &rss_conf);
 		if (diag < 0)
 			printf("Configuration of RSS hash at ethernet port %d "
@@ -2059,7 +2064,7 @@ cmdline_parse_inst_t cmd_config_rss = {
 	.f = cmd_config_rss_parsed,
 	.data = NULL,
 	.help_str = "port config all rss "
-		"all|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none|<flowtype_id>",
+		"all|default|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none|<flowtype_id>",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
 		(void *)&cmd_config_rss_keyword,

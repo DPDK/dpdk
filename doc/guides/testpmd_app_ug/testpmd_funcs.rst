@@ -1751,10 +1751,12 @@ port config - RSS
 
 Set the RSS (Receive Side Scaling) mode on or off::
 
-   testpmd> port config all rss (all|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none)
+   testpmd> port config all rss (all|default|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none)
 
 RSS is on by default.
 
+The ``all`` option is equivalent to ip|tcp|udp|sctp|ether.
+The ``default`` option enables all supported RSS types reported by device info.
 The ``none`` option is equivalent to the ``--disable-rss`` command-line option.
 
 port config - RSS Reta
