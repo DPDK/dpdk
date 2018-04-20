@@ -138,6 +138,8 @@ cmd_link(char **tokens,
 	struct link *link;
 	char *name;
 
+	memset(&p, 0, sizeof(p));
+
 	if ((n_tokens < 13) || (n_tokens > 14 + LINK_RXQ_RSS_MAX)) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
