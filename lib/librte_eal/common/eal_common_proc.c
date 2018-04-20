@@ -108,7 +108,7 @@ mp_send(struct rte_mp_msg *msg, const char *peer, int type);
 
 
 static struct pending_request *
-find_sync_request(const char *dst, const char *act_name)
+find_pending_request(const char *dst, const char *act_name)
 {
 	struct pending_request *r;
 
@@ -282,7 +282,7 @@ read_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 static void
 process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 {
-	struct pending_request *sync_req;
+	struct pending_request *pending_req;
 	struct action_entry *entry;
 	struct rte_mp_msg *msg = &m->msg;
 	rte_mp_t action = NULL;
@@ -291,15 +291,16 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 
 	if (m->type == MP_REP || m->type == MP_IGN) {
 		pthread_mutex_lock(&pending_requests.lock);
-		sync_req = find_sync_request(s->sun_path, msg->name);
-		if (sync_req) {
-			memcpy(sync_req->reply, msg, sizeof(*msg));
+		pending_req = find_pending_request(s->sun_path, msg->name);
+		if (pending_req) {
+			memcpy(pending_req->reply, msg, sizeof(*msg));
 			/* -1 indicates that we've been asked to ignore */
-			sync_req->reply_received = m->type == MP_REP ? 1 : -1;
+			pending_req->reply_received =
+				m->type == MP_REP ? 1 : -1;
 
-			if (sync_req->type == REQUEST_TYPE_SYNC)
-				pthread_cond_signal(&sync_req->sync.cond);
-			else if (sync_req->type == REQUEST_TYPE_ASYNC)
+			if (pending_req->type == REQUEST_TYPE_SYNC)
+				pthread_cond_signal(&pending_req->sync.cond);
+			else if (pending_req->type == REQUEST_TYPE_ASYNC)
 				pthread_cond_signal(
 					&pending_requests.async_cond);
 		} else
@@ -322,6 +323,7 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			 * yet ready to process this request.
 			 */
 			struct rte_mp_msg dummy;
+
 			memset(&dummy, 0, sizeof(dummy));
 			strlcpy(dummy.name, msg->name, sizeof(dummy.name));
 			mp_send(&dummy, s->sun_path, MP_IGN);
@@ -855,30 +857,28 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 		struct async_request_param *param)
 {
 	struct rte_mp_msg *reply_msg;
-	struct pending_request *sync_req, *exist;
+	struct pending_request *pending_req, *exist;
 	int ret;
 
-	sync_req = malloc(sizeof(*sync_req));
-	reply_msg = malloc(sizeof(*reply_msg));
-	if (sync_req == NULL || reply_msg == NULL) {
+	pending_req = calloc(1, sizeof(*pending_req));
+	reply_msg = calloc(1, sizeof(*reply_msg));
+	if (pending_req == NULL || reply_msg == NULL) {
 		RTE_LOG(ERR, EAL, "Could not allocate space for sync request\n");
 		rte_errno = ENOMEM;
 		ret = -1;
 		goto fail;
 	}
 
-	memset(sync_req, 0, sizeof(*sync_req));
-	memset(reply_msg, 0, sizeof(*reply_msg));
-
-	sync_req->type = REQUEST_TYPE_ASYNC;
-	strlcpy(sync_req->dst, dst, sizeof(sync_req->dst));
-	sync_req->request = req;
-	sync_req->reply = reply_msg;
-	sync_req->async.param = param;
+	pending_req->type = REQUEST_TYPE_ASYNC;
+	strlcpy(pending_req->dst, dst, sizeof(pending_req->dst));
+	strcpy(pending_req->dst, dst);
+	pending_req->request = req;
+	pending_req->reply = reply_msg;
+	pending_req->async.param = param;
 
 	/* queue already locked by caller */
 
-	exist = find_sync_request(dst, req->name);
+	exist = find_pending_request(dst, req->name);
 	if (exist) {
 		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
 		rte_errno = EEXIST;
@@ -896,13 +896,13 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 		ret = 0;
 		goto fail;
 	}
-	TAILQ_INSERT_TAIL(&pending_requests.requests, sync_req, next);
+	TAILQ_INSERT_TAIL(&pending_requests.requests, pending_req, next);
 
 	param->user_reply.nb_sent++;
 
 	return 0;
 fail:
-	free(sync_req);
+	free(pending_req);
 	free(reply_msg);
 	return ret;
 }
@@ -913,16 +913,16 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 {
 	int ret;
 	struct rte_mp_msg msg, *tmp;
-	struct pending_request sync_req, *exist;
+	struct pending_request pending_req, *exist;
 
-	sync_req.type = REQUEST_TYPE_SYNC;
-	sync_req.reply_received = 0;
-	strlcpy(sync_req.dst, dst, sizeof(sync_req.dst));
-	sync_req.request = req;
-	sync_req.reply = &msg;
-	pthread_cond_init(&sync_req.sync.cond, NULL);
+	pending_req.type = REQUEST_TYPE_SYNC;
+	pending_req.reply_received = 0;
+	strlcpy(pending_req.dst, dst, sizeof(pending_req.dst));
+	pending_req.request = req;
+	pending_req.reply = &msg;
+	pthread_cond_init(&pending_req.sync.cond, NULL);
 
-	exist = find_sync_request(dst, req->name);
+	exist = find_pending_request(dst, req->name);
 	if (exist) {
 		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
 		rte_errno = EEXIST;
@@ -937,24 +937,24 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 	} else if (ret == 0)
 		return 0;
 
-	TAILQ_INSERT_TAIL(&pending_requests.requests, &sync_req, next);
+	TAILQ_INSERT_TAIL(&pending_requests.requests, &pending_req, next);
 
 	reply->nb_sent++;
 
 	do {
-		ret = pthread_cond_timedwait(&sync_req.sync.cond,
+		ret = pthread_cond_timedwait(&pending_req.sync.cond,
 				&pending_requests.lock, ts);
 	} while (ret != 0 && ret != ETIMEDOUT);
 
-	TAILQ_REMOVE(&pending_requests.requests, &sync_req, next);
+	TAILQ_REMOVE(&pending_requests.requests, &pending_req, next);
 
-	if (sync_req.reply_received == 0) {
+	if (pending_req.reply_received == 0) {
 		RTE_LOG(ERR, EAL, "Fail to recv reply for request %s:%s\n",
 			dst, req->name);
 		rte_errno = ETIMEDOUT;
 		return -1;
 	}
-	if (sync_req.reply_received == -1) {
+	if (pending_req.reply_received == -1) {
 		RTE_LOG(DEBUG, EAL, "Asked to ignore response\n");
 		/* not receiving this message is not an error, so decrement
 		 * number of sent messages
@@ -1079,18 +1079,14 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 		rte_errno = errno;
 		return -1;
 	}
-	copy = malloc(sizeof(*copy));
-	dummy = malloc(sizeof(*dummy));
-	param = malloc(sizeof(*param));
+	copy = calloc(1, sizeof(*copy));
+	dummy = calloc(1, sizeof(*dummy));
+	param = calloc(1, sizeof(*param));
 	if (copy == NULL || dummy == NULL || param == NULL) {
 		RTE_LOG(ERR, EAL, "Failed to allocate memory for async reply\n");
 		rte_errno = ENOMEM;
 		goto fail;
 	}
-
-	memset(copy, 0, sizeof(*copy));
-	memset(dummy, 0, sizeof(*dummy));
-	memset(param, 0, sizeof(*param));
 
 	/* copy message */
 	memcpy(copy, req, sizeof(*copy));
