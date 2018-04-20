@@ -146,6 +146,13 @@ New Features
   timer expiry events. This new type of event is scheduled by an event device
   along with existing types of events.
 
+* **Added OcteonTx TIM Driver (Event timer adapter).**
+
+  The OcteonTx Timer block enables software to schedule events for a future
+  time, it is exposed to an application via Event timer adapter library.
+
+  See the :doc:`../eventdevs/octeontx` guide for more details
+
 * **Added DPAA2 QDMA Driver (in rawdev).**
 
   The DPAA2 QDMA is an implementation of the rawdev API, that provide means
