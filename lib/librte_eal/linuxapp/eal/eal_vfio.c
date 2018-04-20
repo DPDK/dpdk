@@ -220,15 +220,15 @@ find_user_mem_map(uint64_t addr, uint64_t iova, uint64_t len)
 		/* check start VA */
 		if (addr < map->addr || addr >= map_va_end)
 			continue;
-		/* check if IOVA end is within boundaries */
-		if (va_end <= map->addr || va_end >= map_va_end)
+		/* check if VA end is within boundaries */
+		if (va_end <= map->addr || va_end > map_va_end)
 			continue;
 
-		/* check start PA */
+		/* check start IOVA */
 		if (iova < map->iova || iova >= map_iova_end)
 			continue;
 		/* check if IOVA end is within boundaries */
-		if (iova_end <= map->iova || iova_end >= map_iova_end)
+		if (iova_end <= map->iova || iova_end > map_iova_end)
 			continue;
 
 		/* we've found our map */
