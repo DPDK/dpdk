@@ -16,11 +16,11 @@ Common Offload HW Block Drivers
 -------------------------------
 
 1. **Eventdev Driver**
-   See :doc: `../eventdevs/octeontx.rst` for octeontx ssovf eventdev driver
+   See :doc:`../eventdevs/octeontx` for octeontx ssovf eventdev driver
    information.
 
 2. **Mempool Driver**
-   See :doc: `../mempool/octeontx.rst` for octeontx fpavf mempool driver
+   See :doc:`../mempool/octeontx` for octeontx fpavf mempool driver
    information.
 
 Steps To Setup Platform
@@ -52,4 +52,4 @@ OCTEONTX compatible board:
 
    SDK and related information can be obtained from: `Cavium support site <https://support.cavium.com/>`_.
 
-- Follow the DPDK :doc: `../linux_gsg/index.rst` to setup the basic DPDK environment.
+- Follow the DPDK :doc:`../linux_gsg/index` to setup the basic DPDK environment.
