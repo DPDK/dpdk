@@ -249,7 +249,7 @@ memseg_primary_init_32(void)
 	else
 		total_requested_mem = internal_config.memory;
 
-	max_mem = (uint64_t) RTE_MAX_MEM_MB_PER_TYPE << 20;
+	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
 	if (total_requested_mem > max_mem) {
 		RTE_LOG(ERR, EAL, "Invalid parameters: 32-bit process can at most use %uM of memory\n",
 				(unsigned int)(max_mem >> 20));
