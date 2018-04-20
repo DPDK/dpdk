@@ -1138,6 +1138,18 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 							ETHER_MAX_LEN;
 	}
 
+	/* Check that device supports requested rss hash functions. */
+	if ((dev_info.flow_type_rss_offloads |
+	     dev_conf->rx_adv_conf.rss_conf.rss_hf) !=
+	    dev_info.flow_type_rss_offloads) {
+		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d invalid rss_hf: "
+				    "0x%"PRIx64", valid value: 0x%"PRIx64"\n",
+				    port_id,
+				    dev_conf->rx_adv_conf.rss_conf.rss_hf,
+				    dev_info.flow_type_rss_offloads);
+		return -EINVAL;
+	}
+
 	/*
 	 * Setup new number of RX/TX queues and reconfigure device.
 	 */
@@ -2756,9 +2768,20 @@ rte_eth_dev_rss_hash_update(uint16_t port_id,
 			    struct rte_eth_rss_conf *rss_conf)
 {
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info = { .flow_type_rss_offloads = 0, };
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if ((dev_info.flow_type_rss_offloads | rss_conf->rss_hf) !=
+	    dev_info.flow_type_rss_offloads) {
+		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d invalid rss_hf: "
+				    "0x%"PRIx64", valid value: 0x%"PRIx64"\n",
+				    port_id,
+				    rss_conf->rss_hf,
+				    dev_info.flow_type_rss_offloads);
+		return -EINVAL;
+	}
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rss_hash_update, -ENOTSUP);
 	return eth_err(port_id, (*dev->dev_ops->rss_hash_update)(dev,
 								 rss_conf));
