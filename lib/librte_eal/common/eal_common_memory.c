@@ -142,6 +142,17 @@ get_mem_amount(uint64_t page_sz, uint64_t max_mem)
 }
 
 static int
+free_memseg_list(struct rte_memseg_list *msl)
+{
+	if (rte_fbarray_destroy(&msl->memseg_arr)) {
+		RTE_LOG(ERR, EAL, "Cannot destroy memseg list\n");
+		return -1;
+	}
+	memset(msl, 0, sizeof(*msl));
+	return 0;
+}
+
+static int
 alloc_memseg_list(struct rte_memseg_list *msl, uint64_t page_sz,
 		uint64_t max_mem, int socket_id, int type_msl_idx)
 {
@@ -339,23 +350,40 @@ memseg_primary_init_32(void)
 					return -1;
 				}
 
-				msl = &mcfg->memsegs[msl_idx++];
+				msl = &mcfg->memsegs[msl_idx];
 
 				if (alloc_memseg_list(msl, hugepage_sz,
 						max_pagesz_mem, socket_id,
-						type_msl_idx))
+						type_msl_idx)) {
+					/* failing to allocate a memseg list is
+					 * a serious error.
+					 */
+					RTE_LOG(ERR, EAL, "Cannot allocate memseg list\n");
 					return -1;
+				}
+
+				if (alloc_va_space(msl)) {
+					/* if we couldn't allocate VA space, we
+					 * can try with smaller page sizes.
+					 */
+					RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list, retrying with different page size\n");
+					/* deallocate memseg list */
+					if (free_memseg_list(msl))
+						return -1;
+					break;
+				}
 
 				total_segs += msl->memseg_arr.len;
 				cur_pagesz_mem = total_segs * hugepage_sz;
 				type_msl_idx++;
-
-				if (alloc_va_space(msl)) {
-					RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list\n");
-					return -1;
-				}
+				msl_idx++;
 			}
 			cur_socket_mem += cur_pagesz_mem;
+		}
+		if (cur_socket_mem == 0) {
+			RTE_LOG(ERR, EAL, "Cannot allocate VA space on socket %u\n",
+				socket_id);
+			return -1;
 		}
 	}
 
