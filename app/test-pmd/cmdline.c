@@ -881,6 +881,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config (port_id) pctype (pctype_id) hash_inset|"
 			"fdir_inset|fdir_flx_inset clear all"
 			"    Clear RSS|FDIR|FDIR_FLX input set completely for some pctype\n\n"
+
+			"port config (port_id) udp_tunnel_port add|rm vxlan|geneve (udp_port)\n\n"
+			"    Add/remove UDP tunnel port for tunneling offload\n\n"
 		);
 	}
 
@@ -8639,6 +8642,89 @@ cmdline_parse_inst_t cmd_tunnel_udp_config = {
 		(void *)&cmd_tunnel_udp_config_what,
 		(void *)&cmd_tunnel_udp_config_udp_port,
 		(void *)&cmd_tunnel_udp_config_port_id,
+		NULL,
+	},
+};
+
+struct cmd_config_tunnel_udp_port {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	portid_t port_id;
+	cmdline_fixed_string_t udp_tunnel_port;
+	cmdline_fixed_string_t action;
+	cmdline_fixed_string_t tunnel_type;
+	uint16_t udp_port;
+};
+
+static void
+cmd_cfg_tunnel_udp_port_parsed(void *parsed_result,
+			       __attribute__((unused)) struct cmdline *cl,
+			       __attribute__((unused)) void *data)
+{
+	struct cmd_config_tunnel_udp_port *res = parsed_result;
+	struct rte_eth_udp_tunnel tunnel_udp;
+	int ret = 0;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	tunnel_udp.udp_port = res->udp_port;
+
+	if (!strcmp(res->tunnel_type, "vxlan")) {
+		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
+	} else if (!strcmp(res->tunnel_type, "geneve")) {
+		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_GENEVE;
+	} else {
+		printf("Invalid tunnel type\n");
+		return;
+	}
+
+	if (!strcmp(res->action, "add"))
+		ret = rte_eth_dev_udp_tunnel_port_add(res->port_id,
+						      &tunnel_udp);
+	else
+		ret = rte_eth_dev_udp_tunnel_port_delete(res->port_id,
+							 &tunnel_udp);
+
+	if (ret < 0)
+		printf("udp tunneling port add error: (%s)\n", strerror(-ret));
+}
+
+cmdline_parse_token_string_t cmd_config_tunnel_udp_port_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tunnel_udp_port, port,
+				 "port");
+cmdline_parse_token_string_t cmd_config_tunnel_udp_port_config =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tunnel_udp_port, config,
+				 "config");
+cmdline_parse_token_num_t cmd_config_tunnel_udp_port_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_tunnel_udp_port, port_id,
+			      UINT16);
+cmdline_parse_token_string_t cmd_config_tunnel_udp_port_tunnel_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tunnel_udp_port,
+				 udp_tunnel_port,
+				 "udp_tunnel_port");
+cmdline_parse_token_string_t cmd_config_tunnel_udp_port_action =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tunnel_udp_port, action,
+				 "add#rm");
+cmdline_parse_token_string_t cmd_config_tunnel_udp_port_tunnel_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tunnel_udp_port, tunnel_type,
+				 "vxlan#geneve");
+cmdline_parse_token_num_t cmd_config_tunnel_udp_port_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_tunnel_udp_port, udp_port,
+			      UINT16);
+
+cmdline_parse_inst_t cmd_cfg_tunnel_udp_port = {
+	.f = cmd_cfg_tunnel_udp_port_parsed,
+	.data = NULL,
+	.help_str = "port config <port_id> udp_tunnel_port add|rm vxlan|geneve <udp_port>",
+	.tokens = {
+		(void *)&cmd_config_tunnel_udp_port_port,
+		(void *)&cmd_config_tunnel_udp_port_config,
+		(void *)&cmd_config_tunnel_udp_port_port_id,
+		(void *)&cmd_config_tunnel_udp_port_tunnel_port,
+		(void *)&cmd_config_tunnel_udp_port_action,
+		(void *)&cmd_config_tunnel_udp_port_tunnel_type,
+		(void *)&cmd_config_tunnel_udp_port_value,
 		NULL,
 	},
 };
@@ -16601,6 +16687,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_del_port_tm_node,
 	(cmdline_parse_inst_t *)&cmd_set_port_tm_node_parent,
 	(cmdline_parse_inst_t *)&cmd_port_tm_hierarchy_commit,
+	(cmdline_parse_inst_t *)&cmd_cfg_tunnel_udp_port,
 	NULL,
 };
 
