@@ -8754,7 +8754,7 @@ static void cmd_dump_parsed(void *parsed_result,
 	else if (!strcmp(res->dump, "dump_mempool"))
 		rte_mempool_list_dump(stdout);
 	else if (!strcmp(res->dump, "dump_devargs"))
-		rte_eal_devargs_dump(stdout);
+		rte_devargs_dump(stdout);
 	else if (!strcmp(res->dump, "dump_log_types"))
 		rte_log_dump(stdout);
 }

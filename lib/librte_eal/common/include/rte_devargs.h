@@ -60,6 +60,7 @@ struct rte_devargs {
 };
 
 /**
+ * @deprecated
  * Parse a devargs string.
  *
  * For PCI devices, the format of arguments string is "PCI_ADDR" or
@@ -84,6 +85,7 @@ struct rte_devargs {
  *   - 0 on success
  *   - A negative value on error
  */
+__rte_deprecated
 int rte_eal_parse_devargs_str(const char *devargs_str,
 				char **drvname, char **drvargs);
 
@@ -153,6 +155,24 @@ rte_devargs_insert(struct rte_devargs *da);
  *   - 0 on success
  *   - A negative value on error
  */
+__rte_experimental
+int rte_devargs_add(enum rte_devtype devtype, const char *devargs_str);
+
+/**
+ * @deprecated
+ * Add a device to the user device list
+ * See rte_devargs_parse() for details.
+ *
+ * @param devtype
+ *   The type of the device.
+ * @param devargs_str
+ *   The arguments as given by the user.
+ *
+ * @return
+ *   - 0 on success
+ *   - A negative value on error
+ */
+__rte_deprecated
 int rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str);
 
 /**
@@ -184,6 +204,21 @@ int rte_devargs_remove(const char *busname,
  * @return
  *   The number of devices.
  */
+__rte_experimental
+unsigned int
+rte_devargs_type_count(enum rte_devtype devtype);
+
+/**
+ * @deprecated
+ * Count the number of user devices of a specified type
+ *
+ * @param devtype
+ *   The type of the devices to counted.
+ *
+ * @return
+ *   The number of devices.
+ */
+__rte_deprecated
 unsigned int
 rte_eal_devargs_type_count(enum rte_devtype devtype);
 
@@ -193,6 +228,17 @@ rte_eal_devargs_type_count(enum rte_devtype devtype);
  * @param f
  *   A pointer to a file for output
  */
+__rte_experimental
+void rte_devargs_dump(FILE *f);
+
+/**
+ * @deprecated
+ * This function dumps the list of user device and their arguments.
+ *
+ * @param f
+ *   A pointer to a file for output
+ */
+__rte_deprecated
 void rte_eal_devargs_dump(FILE *f);
 
 /**

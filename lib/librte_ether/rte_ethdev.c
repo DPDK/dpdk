@@ -618,27 +618,28 @@ eth_err(uint16_t port_id, int ret)
 int
 rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
 {
-	int ret = -1;
 	int current = rte_eth_dev_count_total();
-	char *name = NULL;
-	char *args = NULL;
+	struct rte_devargs da;
+	int ret = -1;
+
+	memset(&da, 0, sizeof(da));
 
 	if ((devargs == NULL) || (port_id == NULL)) {
 		ret = -EINVAL;
 		goto err;
 	}
 
-	/* parse devargs, then retrieve device name and args */
-	if (rte_eal_parse_devargs_str(devargs, &name, &args))
+	/* parse devargs */
+	if (rte_devargs_parse(&da, "%s", devargs))
 		goto err;
 
-	ret = rte_eal_dev_attach(name, args);
+	ret = rte_eal_hotplug_add(da.bus->name, da.name, da.args);
 	if (ret < 0)
 		goto err;
 
 	/* no point looking at the port count if no port exists */
 	if (!rte_eth_dev_count_total()) {
-		ethdev_log(ERR, "No port found for device (%s)", name);
+		ethdev_log(ERR, "No port found for device (%s)", da.name);
 		ret = -1;
 		goto err;
 	}
@@ -656,45 +657,42 @@ rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
 	ret = 0;
 
 err:
-	free(name);
-	free(args);
+	free(da.args);
 	return ret;
 }
 
 /* detach the device, then store the name of the device */
 int
-rte_eth_dev_detach(uint16_t port_id, char *name)
+rte_eth_dev_detach(uint16_t port_id, char *name __rte_unused)
 {
+	struct rte_device *dev;
+	struct rte_bus *bus;
 	uint32_t dev_flags;
 	int ret = -1;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
-	if (name == NULL) {
-		ret = -EINVAL;
-		goto err;
-	}
-
 	dev_flags = rte_eth_devices[port_id].data->dev_flags;
 	if (dev_flags & RTE_ETH_DEV_BONDED_SLAVE) {
 		ethdev_log(ERR,
 			"Port %" PRIu16 " is bonded, cannot detach", port_id);
-		ret = -ENOTSUP;
-		goto err;
+		return -ENOTSUP;
 	}
 
-	snprintf(name, sizeof(rte_eth_devices[port_id].data->name),
-		 "%s", rte_eth_devices[port_id].data->name);
+	dev = rte_eth_devices[port_id].device;
+	if (dev == NULL)
+		return -EINVAL;
 
-	ret = rte_eal_dev_detach(rte_eth_devices[port_id].device);
+	bus = rte_bus_find_by_device(dev);
+	if (bus == NULL)
+		return -ENOENT;
+
+	ret = rte_eal_hotplug_remove(bus->name, dev->name);
 	if (ret < 0)
-		goto err;
+		return ret;
 
 	rte_eth_dev_release_port(&rte_eth_devices[port_id]);
 	return 0;
-
-err:
-	return ret;
 }
 
 static int

@@ -803,7 +803,7 @@ vdev_netvsc_scan_callback(__rte_unused void *arg)
 		vdev_netvsc_cmp_rte_device, VDEV_NETVSC_DRIVER_NAME);
 	if (dev)
 		return;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, VDEV_NETVSC_DRIVER_NAME))
+	if (rte_devargs_add(RTE_DEVTYPE_VIRTUAL, VDEV_NETVSC_DRIVER_NAME))
 		DRV_LOG(ERR, "unable to add netvsc devargs.");
 }
 

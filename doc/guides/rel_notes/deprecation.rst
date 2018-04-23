@@ -18,12 +18,8 @@ Deprecation Notices
   - The enum ``rte_devtype`` was used to identify a bus and will disappear.
   - Functions previously deprecated will change or disappear:
 
-    + ``rte_eal_devargs_add``
     + ``rte_eal_devargs_type_count``
-    + ``rte_eal_parse_devargs_str``, replaced by ``rte_eal_devargs_parse``
     + ``rte_eal_devargs_parse`` will change its format and use.
-    + all ``rte_devargs`` related functions will be renamed, changing the
-      ``rte_eal_devargs_`` prefix to ``rte_devargs_``.
 
 * pci: Several exposed functions are misnamed.
   The following functions are deprecated starting from v17.11 and are replaced:

@@ -153,7 +153,7 @@ eal_option_device_parse(void)
 
 	TAILQ_FOREACH_SAFE(devopt, &devopt_list, next, tmp) {
 		if (ret == 0) {
-			ret = rte_eal_devargs_add(devopt->type, devopt->arg);
+			ret = rte_devargs_add(devopt->type, devopt->arg);
 			if (ret)
 				RTE_LOG(ERR, EAL, "Unable to parse device '%s'\n",
 					devopt->arg);

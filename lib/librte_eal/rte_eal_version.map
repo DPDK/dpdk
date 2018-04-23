@@ -217,10 +217,13 @@ EXPERIMENTAL {
 	rte_dev_event_callback_unregister;
 	rte_dev_event_monitor_start;
 	rte_dev_event_monitor_stop;
+	rte_devargs_add;
+	rte_devargs_dump;
 	rte_devargs_insert;
 	rte_devargs_next;
 	rte_devargs_parse;
 	rte_devargs_remove;
+	rte_devargs_type_count;
 	rte_eal_cleanup;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;

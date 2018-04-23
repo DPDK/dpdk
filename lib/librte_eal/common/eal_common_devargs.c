@@ -137,8 +137,9 @@ rte_devargs_insert(struct rte_devargs *da)
 }
 
 /* store a whitelist parameter for later parsing */
+__rte_experimental
 int
-rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
+rte_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 {
 	struct rte_devargs *devargs = NULL;
 	struct rte_bus *bus = NULL;
@@ -192,8 +193,9 @@ rte_devargs_remove(const char *busname, const char *devname)
 }
 
 /* count the number of devices of a specified type */
+__rte_experimental
 unsigned int
-rte_eal_devargs_type_count(enum rte_devtype devtype)
+rte_devargs_type_count(enum rte_devtype devtype)
 {
 	struct rte_devargs *devargs;
 	unsigned int count = 0;
@@ -207,8 +209,9 @@ rte_eal_devargs_type_count(enum rte_devtype devtype)
 }
 
 /* dump the user devices on the console */
+__rte_experimental
 void
-rte_eal_devargs_dump(FILE *f)
+rte_devargs_dump(FILE *f)
 {
 	struct rte_devargs *devargs;
 
