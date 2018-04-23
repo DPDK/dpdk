@@ -4164,6 +4164,12 @@ check_tunnel_tso_nic_support(portid_t port_id)
 	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
 		printf("Warning: GENEVE TUNNEL TSO not supported therefore "
 		       "not enabled for port %d\n", port_id);
+	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IP_TNL_TSO))
+		printf("Warning: IP TUNNEL TSO not supported therefore "
+		       "not enabled for port %d\n", port_id);
+	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_TNL_TSO))
+		printf("Warning: UDP TUNNEL TSO not supported therefore "
+		       "not enabled for port %d\n", port_id);
 	return dev_info;
 }
 
@@ -4191,13 +4197,17 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 			~(DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 			  DEV_TX_OFFLOAD_GRE_TNL_TSO |
 			  DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-			  DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+			  DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
+			  DEV_TX_OFFLOAD_IP_TNL_TSO |
+			  DEV_TX_OFFLOAD_UDP_TNL_TSO);
 		printf("TSO for tunneled packets is disabled\n");
 	} else {
 		uint64_t tso_offloads = (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 					 DEV_TX_OFFLOAD_GRE_TNL_TSO |
 					 DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-					 DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+					 DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
+					 DEV_TX_OFFLOAD_IP_TNL_TSO |
+					 DEV_TX_OFFLOAD_UDP_TNL_TSO);
 
 		ports[res->port_id].dev_conf.txmode.offloads |=
 			(tso_offloads & dev_info.tx_offload_capa);
