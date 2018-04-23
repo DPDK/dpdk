@@ -229,7 +229,7 @@ insert_vdev(const char *name, const char *args, struct rte_vdev_device **p_dev)
 	}
 
 	TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
-	TAILQ_INSERT_TAIL(&devargs_list, devargs, next);
+	rte_eal_devargs_insert(devargs);
 
 	if (p_dev)
 		*p_dev = dev;
@@ -259,9 +259,7 @@ rte_vdev_init(const char *name, const char *args)
 			/* If fails, remove it from vdev list */
 			devargs = dev->device.devargs;
 			TAILQ_REMOVE(&vdev_device_list, dev, next);
-			TAILQ_REMOVE(&devargs_list, devargs, next);
-			free(devargs->args);
-			free(devargs);
+			rte_eal_devargs_remove(devargs->bus->name, devargs->name);
 			free(dev);
 		}
 	}
@@ -309,9 +307,7 @@ rte_vdev_uninit(const char *name)
 
 	TAILQ_REMOVE(&vdev_device_list, dev, next);
 	devargs = dev->device.devargs;
-	TAILQ_REMOVE(&devargs_list, devargs, next);
-	free(devargs->args);
-	free(devargs);
+	rte_eal_devargs_remove(devargs->bus->name, devargs->name);
 	free(dev);
 
 unlock:
@@ -443,10 +439,7 @@ vdev_scan(void)
 	rte_spinlock_unlock(&vdev_custom_scan_lock);
 
 	/* for virtual devices we scan the devargs_list populated via cmdline */
-	TAILQ_FOREACH(devargs, &devargs_list, next) {
-
-		if (devargs->bus != &rte_vdev_bus)
-			continue;
+	RTE_EAL_DEVARGS_FOREACH("vdev", devargs) {
 
 		dev = calloc(1, sizeof(*dev));
 		if (!dev)
