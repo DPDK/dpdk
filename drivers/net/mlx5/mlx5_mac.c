@@ -57,6 +57,76 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN])
 }
 
 /**
+ * Remove a MAC address from the internal array.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param index
+ *   MAC address index.
+ */
+static void
+mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct priv *priv = dev->data->dev_private;
+	const int vf = priv->config.vf;
+
+	assert(index < MLX5_MAX_MAC_ADDRESSES);
+	if (is_zero_ether_addr(&dev->data->mac_addrs[index]))
+		return;
+	if (vf)
+		mlx5_nl_mac_addr_remove(dev, &dev->data->mac_addrs[index],
+					index);
+	memset(&dev->data->mac_addrs[index], 0, sizeof(struct ether_addr));
+}
+
+/**
+ * Adds a MAC address to the internal array.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ * @param index
+ *   MAC address index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
+			   uint32_t index)
+{
+	struct priv *priv = dev->data->dev_private;
+	const int vf = priv->config.vf;
+	unsigned int i;
+
+	assert(index < MLX5_MAX_MAC_ADDRESSES);
+	if (is_zero_ether_addr(mac)) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	/* First, make sure this address isn't already configured. */
+	for (i = 0; (i != MLX5_MAX_MAC_ADDRESSES); ++i) {
+		/* Skip this index, it's going to be reconfigured. */
+		if (i == index)
+			continue;
+		if (memcmp(&dev->data->mac_addrs[i], mac, sizeof(*mac)))
+			continue;
+		/* Address already configured elsewhere, return with error. */
+		rte_errno = EADDRINUSE;
+		return -rte_errno;
+	}
+	if (vf) {
+		int ret = mlx5_nl_mac_addr_add(dev, mac, index);
+
+		if (ret)
+			return ret;
+	}
+	dev->data->mac_addrs[index] = *mac;
+	return 0;
+}
+
+/**
  * DPDK callback to remove a MAC address.
  *
  * @param dev
@@ -67,18 +137,11 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN])
 void
 mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
-	struct priv *priv = dev->data->dev_private;
-	const int vf = priv->config.vf;
 	int ret;
 
-	if (index >= MLX5_MAX_MAC_ADDRESSES)
+	if (index >= MLX5_MAX_UC_MAC_ADDRESSES)
 		return;
-	if (is_zero_ether_addr(&dev->data->mac_addrs[index]))
-		return;
-	if (vf)
-		mlx5_nl_mac_addr_remove(dev, &dev->data->mac_addrs[index],
-					index);
-	memset(&dev->data->mac_addrs[index], 0, sizeof(struct ether_addr));
+	mlx5_internal_mac_addr_remove(dev, index);
 	if (!dev->data->promiscuous) {
 		ret = mlx5_traffic_restart(dev);
 		if (ret)
@@ -106,36 +169,15 @@ int
 mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 		  uint32_t index, uint32_t vmdq __rte_unused)
 {
-	struct priv *priv = dev->data->dev_private;
-	const int vf = priv->config.vf;
-	unsigned int i;
+	int ret;
 
-	if (index >= MLX5_MAX_MAC_ADDRESSES) {
+	if (index >= MLX5_MAX_UC_MAC_ADDRESSES) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	if (is_zero_ether_addr(mac)) {
-		rte_errno = EINVAL;
-		return -rte_errno;
-	}
-	/* First, make sure this address isn't already configured. */
-	for (i = 0; (i != MLX5_MAX_MAC_ADDRESSES); ++i) {
-		/* Skip this index, it's going to be reconfigured. */
-		if (i == index)
-			continue;
-		if (memcmp(&dev->data->mac_addrs[i], mac, sizeof(*mac)))
-			continue;
-		/* Address already configured elsewhere, return with error. */
-		rte_errno = EADDRINUSE;
-		return -rte_errno;
-	}
-	if (vf) {
-		int ret = mlx5_nl_mac_addr_add(dev, mac, index);
-
-		if (ret)
-			return ret;
-	}
-	dev->data->mac_addrs[index] = *mac;
+	ret = mlx5_internal_mac_addr_add(dev, mac, index);
+	if (ret < 0)
+		return ret;
 	if (!dev->data->promiscuous)
 		return mlx5_traffic_restart(dev);
 	return 0;
