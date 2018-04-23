@@ -161,11 +161,15 @@ F: test/test/test_version.c
 
 Memory Allocation
 M: Anatoly Burakov <anatoly.burakov@intel.com>
+F: lib/librte_eal/common/include/rte_fbarray.h
 F: lib/librte_eal/common/include/rte_mem*
 F: lib/librte_eal/common/include/rte_malloc.h
 F: lib/librte_eal/common/*malloc*
+F: lib/librte_eal/common/eal_common_fbarray.c
 F: lib/librte_eal/common/eal_common_mem*
 F: lib/librte_eal/common/eal_hugepages.h
+F: lib/librte_eal/linuxapp/eal/eal_mem*
+F: lib/librte_eal/bsdapp/eal/eal_mem*
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: test/test/test_func_reentrancy.c
 F: test/test/test_malloc.c
