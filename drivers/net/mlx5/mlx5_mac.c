@@ -201,3 +201,32 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 		dev->data->port_id);
 	return mlx5_mac_addr_add(dev, mac_addr, 0, 0);
 }
+
+/**
+ * DPDK callback to set multicast addresses list.
+ *
+ * @see rte_eth_dev_set_mc_addr_list()
+ */
+int
+mlx5_set_mc_addr_list(struct rte_eth_dev *dev,
+		      struct ether_addr *mc_addr_set, uint32_t nb_mc_addr)
+{
+	uint32_t i;
+	int ret;
+
+	if (nb_mc_addr >= MLX5_MAX_MC_MAC_ADDRESSES) {
+		rte_errno = ENOSPC;
+		return -rte_errno;
+	}
+	for (i = MLX5_MAX_UC_MAC_ADDRESSES; i != MLX5_MAX_MAC_ADDRESSES; ++i)
+		mlx5_internal_mac_addr_remove(dev, i);
+	i = MLX5_MAX_UC_MAC_ADDRESSES;
+	while (nb_mc_addr--) {
+		ret = mlx5_internal_mac_addr_add(dev, mc_addr_set++, i++);
+		if (ret)
+			return ret;
+	}
+	if (!dev->data->promiscuous)
+		return mlx5_traffic_restart(dev);
+	return 0;
+}

@@ -15,8 +15,11 @@
 
 /* Maximum number of simultaneous unicast MAC addresses. */
 #define MLX5_MAX_UC_MAC_ADDRESSES 128
+/* Maximum number of simultaneous Multicast MAC addresses. */
+#define MLX5_MAX_MC_MAC_ADDRESSES 128
 /* Maximum number of simultaneous MAC addresses. */
-#define MLX5_MAX_MAC_ADDRESSES MLX5_MAX_UC_MAC_ADDRESSES
+#define MLX5_MAX_MAC_ADDRESSES \
+	(MLX5_MAX_UC_MAC_ADDRESSES + MLX5_MAX_MC_MAC_ADDRESSES)
 
 /* Maximum number of simultaneous VLAN filters. */
 #define MLX5_MAX_VLAN_IDS 128
