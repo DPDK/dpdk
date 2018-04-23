@@ -13,7 +13,7 @@
 
 /** Path of rte config file. */
 #define RUNTIME_CONFIG_FMT "%s/.%s_config"
-#define FBARRAY_FMT "%s/%s_%s"
+#define FBARRAY_FMT "%s/.%s_%s"
 
 #include <stdint.h>
 #include <limits.h>
