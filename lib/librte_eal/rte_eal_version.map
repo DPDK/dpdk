@@ -217,11 +217,11 @@ EXPERIMENTAL {
 	rte_dev_event_callback_unregister;
 	rte_dev_event_monitor_start;
 	rte_dev_event_monitor_stop;
+	rte_devargs_insert;
+	rte_devargs_next;
+	rte_devargs_parse;
+	rte_devargs_remove;
 	rte_eal_cleanup;
-	rte_eal_devargs_insert;
-	rte_eal_devargs_next;
-	rte_eal_devargs_parse;
-	rte_eal_devargs_remove;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
 	rte_eal_mbuf_user_pool_ops;

@@ -63,7 +63,7 @@ bus_name_cmp(const struct rte_bus *bus, const void *name)
 }
 
 int __rte_experimental
-rte_eal_devargs_parse(struct rte_devargs *da, const char *format, ...)
+rte_devargs_parse(struct rte_devargs *da, const char *format, ...)
 {
 	struct rte_bus *bus = NULL;
 	va_list ap;
@@ -125,11 +125,11 @@ rte_eal_devargs_parse(struct rte_devargs *da, const char *format, ...)
 }
 
 int __rte_experimental
-rte_eal_devargs_insert(struct rte_devargs *da)
+rte_devargs_insert(struct rte_devargs *da)
 {
 	int ret;
 
-	ret = rte_eal_devargs_remove(da->bus->name, da->name);
+	ret = rte_devargs_remove(da->bus->name, da->name);
 	if (ret < 0)
 		return ret;
 	TAILQ_INSERT_TAIL(&devargs_list, da, next);
@@ -149,7 +149,7 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	if (devargs == NULL)
 		goto fail;
 
-	if (rte_eal_devargs_parse(devargs, "%s", dev))
+	if (rte_devargs_parse(devargs, "%s", dev))
 		goto fail;
 	devargs->type = devtype;
 	bus = devargs->bus;
@@ -174,7 +174,7 @@ fail:
 }
 
 int __rte_experimental
-rte_eal_devargs_remove(const char *busname, const char *devname)
+rte_devargs_remove(const char *busname, const char *devname)
 {
 	struct rte_devargs *d;
 	void *tmp;
@@ -223,7 +223,7 @@ rte_eal_devargs_dump(FILE *f)
 /* bus-aware rte_devargs iterator. */
 __rte_experimental
 struct rte_devargs *
-rte_eal_devargs_next(const char *busname, const struct rte_devargs *start)
+rte_devargs_next(const char *busname, const struct rte_devargs *start)
 {
 	struct rte_devargs *da;
 

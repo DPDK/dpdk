@@ -229,7 +229,7 @@ insert_vdev(const char *name, const char *args, struct rte_vdev_device **p_dev)
 	}
 
 	TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
-	rte_eal_devargs_insert(devargs);
+	rte_devargs_insert(devargs);
 
 	if (p_dev)
 		*p_dev = dev;
@@ -259,7 +259,7 @@ rte_vdev_init(const char *name, const char *args)
 			/* If fails, remove it from vdev list */
 			devargs = dev->device.devargs;
 			TAILQ_REMOVE(&vdev_device_list, dev, next);
-			rte_eal_devargs_remove(devargs->bus->name, devargs->name);
+			rte_devargs_remove(devargs->bus->name, devargs->name);
 			free(dev);
 		}
 	}
@@ -307,7 +307,7 @@ rte_vdev_uninit(const char *name)
 
 	TAILQ_REMOVE(&vdev_device_list, dev, next);
 	devargs = dev->device.devargs;
-	rte_eal_devargs_remove(devargs->bus->name, devargs->name);
+	rte_devargs_remove(devargs->bus->name, devargs->name);
 	free(dev);
 
 unlock:
@@ -429,7 +429,7 @@ vdev_scan(void)
 		if (custom_scan->callback != NULL)
 			/*
 			 * the callback should update devargs list
-			 * by calling rte_eal_devargs_insert() with
+			 * by calling rte_devargs_insert() with
 			 *     devargs.bus = rte_bus_find_by_name("vdev");
 			 *     devargs.type = RTE_DEVTYPE_VIRTUAL;
 			 *     devargs.policy = RTE_DEV_WHITELISTED;

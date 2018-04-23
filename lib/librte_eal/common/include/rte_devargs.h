@@ -120,9 +120,10 @@ int rte_eal_parse_devargs_str(const char *devargs_str,
  *   - 0 on success.
  *   - Negative errno on error.
  */
-int __rte_experimental
-rte_eal_devargs_parse(struct rte_devargs *da,
-		      const char *format, ...)
+__rte_experimental
+int
+rte_devargs_parse(struct rte_devargs *da,
+		  const char *format, ...)
 __attribute__((format(printf, 2, 0)));
 
 /**
@@ -135,12 +136,13 @@ __attribute__((format(printf, 2, 0)));
  *   - 0 on success
  *   - Negative on error.
  */
-int __rte_experimental
-rte_eal_devargs_insert(struct rte_devargs *da);
+__rte_experimental
+int
+rte_devargs_insert(struct rte_devargs *da);
 
 /**
  * Add a device to the user device list
- * See rte_eal_devargs_parse() for details.
+ * See rte_devargs_parse() for details.
  *
  * @param devtype
  *   The type of the device.
@@ -169,8 +171,9 @@ int rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str);
  *   <0 on error.
  *   >0 if the devargs was not within the user device list.
  */
-int __rte_experimental rte_eal_devargs_remove(const char *busname,
-					  const char *devname);
+__rte_experimental
+int rte_devargs_remove(const char *busname,
+		       const char *devname);
 
 /**
  * Count the number of user devices of a specified type
@@ -210,15 +213,15 @@ void rte_eal_devargs_dump(FILE *f);
  */
 __rte_experimental
 struct rte_devargs *
-rte_eal_devargs_next(const char *busname, const struct rte_devargs *start);
+rte_devargs_next(const char *busname, const struct rte_devargs *start);
 
 /**
  * Iterate over all rte_devargs for a specific bus.
  */
 #define RTE_EAL_DEVARGS_FOREACH(busname, da) \
-	for (da = rte_eal_devargs_next(busname, NULL); \
+	for (da = rte_devargs_next(busname, NULL); \
 	     da != NULL; \
-	     da = rte_eal_devargs_next(busname, da)) \
+	     da = rte_devargs_next(busname, da)) \
 
 #ifdef __cplusplus
 }

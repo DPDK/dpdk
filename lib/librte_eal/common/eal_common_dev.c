@@ -138,12 +138,12 @@ int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devn
 	if (da == NULL)
 		return -ENOMEM;
 
-	ret = rte_eal_devargs_parse(da, "%s:%s,%s",
+	ret = rte_devargs_parse(da, "%s:%s,%s",
 				    busname, devname, devargs);
 	if (ret)
 		goto err_devarg;
 
-	ret = rte_eal_devargs_insert(da);
+	ret = rte_devargs_insert(da);
 	if (ret)
 		goto err_devarg;
 
@@ -168,7 +168,7 @@ int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devn
 	return 0;
 
 err_devarg:
-	if (rte_eal_devargs_remove(busname, devname)) {
+	if (rte_devargs_remove(busname, devname)) {
 		free(da->args);
 		free(da);
 	}
@@ -204,7 +204,7 @@ rte_eal_hotplug_remove(const char *busname, const char *devname)
 	if (ret)
 		RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n",
 			dev->name);
-	rte_eal_devargs_remove(busname, devname);
+	rte_devargs_remove(busname, devname);
 	return ret;
 }
 
