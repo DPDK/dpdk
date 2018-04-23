@@ -51,6 +51,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
 /** Structure give to the conversion functions. */
 struct mlx5_flow_data {
+	struct rte_eth_dev *dev; /** Ethernet device. */
 	struct mlx5_flow_parse *parser; /** Parser context. */
 	struct rte_flow_error *error; /** Error context. */
 };
@@ -116,6 +117,7 @@ enum hash_rxq_type {
 	HASH_RXQ_UDPV6,
 	HASH_RXQ_IPV6,
 	HASH_RXQ_ETH,
+	HASH_RXQ_TUNNEL,
 };
 
 /* Initialization data for hash RX queue. */
@@ -240,6 +242,14 @@ struct rte_flow {
 #define IS_TUNNEL(type) ( \
 	(type) == RTE_FLOW_ITEM_TYPE_VXLAN || \
 	(type) == RTE_FLOW_ITEM_TYPE_GRE)
+
+#define PTYPE_IDX(t) ((RTE_PTYPE_TUNNEL_MASK & (t)) >> 12)
+
+const uint32_t ptype_ext[] = {
+	[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN)] = RTE_PTYPE_TUNNEL_VXLAN |
+					      RTE_PTYPE_L4_UDP,
+	[PTYPE_IDX(RTE_PTYPE_TUNNEL_GRE)] = RTE_PTYPE_TUNNEL_GRE,
+};
 
 /** Structure to generate a simple graph of layers supported by the NIC. */
 struct mlx5_flow_items {
@@ -413,7 +423,9 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.dst_sz = sizeof(struct ibv_flow_spec_tunnel),
 	},
 	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
-		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH),
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_IPV4, /* For L3 VXLAN. */
+			       RTE_FLOW_ITEM_TYPE_IPV6), /* For L3 VXLAN. */
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_vxlan){
 			.vni = "\xff\xff\xff",
@@ -439,6 +451,7 @@ struct mlx5_flow_parse {
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
 	enum hash_rxq_type layer; /**< Last pattern layer detected. */
 	enum hash_rxq_type out_layer; /**< Last outer pattern layer detected. */
+	uint32_t tunnel; /**< Tunnel type of RTE_PTYPE_TUNNEL_XXX. */
 	struct ibv_counter_set *cs; /**< Holds the counter set for the rule */
 	struct {
 		struct ibv_flow_attr *ibv_attr;
@@ -1186,6 +1199,7 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 	parser->inner = 0;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
 		struct mlx5_flow_data data = {
+			.dev = dev,
 			.parser = parser,
 			.error = error,
 		};
@@ -1407,6 +1421,7 @@ mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 		      const void *default_mask,
 		      struct mlx5_flow_data *data)
 {
+	struct priv *priv = data->dev->data->dev_private;
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
 	struct mlx5_flow_parse *parser = data->parser;
@@ -1416,6 +1431,15 @@ mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 		.size = ipv4_size,
 	};
 
+	if (parser->layer == HASH_RXQ_TUNNEL &&
+	    parser->tunnel == ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN)] &&
+	    !priv->config.l3_vxlan_en)
+		return rte_flow_error_set(data->error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L3 VXLAN not enabled by device"
+					  " parameter and/or not configured"
+					  " in firmware");
 	/* Don't update layer for the inner pattern. */
 	if (!parser->inner)
 		parser->layer = HASH_RXQ_IPV4;
@@ -1462,6 +1486,7 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 		      const void *default_mask,
 		      struct mlx5_flow_data *data)
 {
+	struct priv *priv = data->dev->data->dev_private;
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 *mask = item->mask;
 	struct mlx5_flow_parse *parser = data->parser;
@@ -1471,6 +1496,15 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 		.size = ipv6_size,
 	};
 
+	if (parser->layer == HASH_RXQ_TUNNEL &&
+	    parser->tunnel == ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN)] &&
+	    !priv->config.l3_vxlan_en)
+		return rte_flow_error_set(data->error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L3 VXLAN not enabled by device"
+					  " parameter and/or not configured"
+					  " in firmware");
 	/* Don't update layer for the inner pattern. */
 	if (!parser->inner)
 		parser->layer = HASH_RXQ_IPV6;

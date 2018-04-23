@@ -327,6 +327,32 @@ Run-time configuration
 
   Enabled by default, valid only on VF devices ignored otherwise.
 
+- ``l3_vxlan_en`` parameter [int]
+
+  A nonzero value allows L3 VXLAN flow creation. To enable L3 VXLAN, users
+  has to configure firmware and enable this parameter. This is a prerequisite
+  to receive this kind of traffic.
+
+  Disabled by default.
+
+Firmware configuration
+~~~~~~~~~~~~~~~~~~~~~~
+
+- L3 VXLAN destination UDP port
+
+   .. code-block:: console
+
+     mlxconfig -d <mst device> set IP_OVER_VXLAN_EN=1
+     mlxconfig -d <mst device> set IP_OVER_VXLAN_PORT=<udp dport>
+
+  Verify configurations are set:
+
+   .. code-block:: console
+
+     mlxconfig -d <mst device> query | grep IP_OVER_VXLAN
+     IP_OVER_VXLAN_EN                    True(1)
+     IP_OVER_VXLAN_PORT                  <udp dport>
+
 Prerequisites
 -------------
 

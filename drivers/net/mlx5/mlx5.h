@@ -88,6 +88,7 @@ struct mlx5_dev_config {
 	unsigned int tx_vec_en:1; /* Tx vector is enabled. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
 	unsigned int mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
+	unsigned int l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
 	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
 	unsigned int max_verbs_prio; /* Number of Verb flow priorities. */

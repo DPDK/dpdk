@@ -69,6 +69,9 @@
 /* Device parameter to enable hardware Rx vector. */
 #define MLX5_RX_VEC_EN "rx_vec_en"
 
+/* Allow L3 VXLAN flow creation. */
+#define MLX5_L3_VXLAN_EN "l3_vxlan_en"
+
 /* Activate Netlink support in VF mode. */
 #define MLX5_VF_NL_EN "vf_nl_en"
 
@@ -418,6 +421,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->tx_vec_en = !!tmp;
 	} else if (strcmp(MLX5_RX_VEC_EN, key) == 0) {
 		config->rx_vec_en = !!tmp;
+	} else if (strcmp(MLX5_L3_VXLAN_EN, key) == 0) {
+		config->l3_vxlan_en = !!tmp;
 	} else if (strcmp(MLX5_VF_NL_EN, key) == 0) {
 		config->vf_nl_en = !!tmp;
 	} else {
@@ -451,6 +456,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_TXQ_MAX_INLINE_LEN,
 		MLX5_TX_VEC_EN,
 		MLX5_RX_VEC_EN,
+		MLX5_L3_VXLAN_EN,
 		MLX5_VF_NL_EN,
 		NULL,
 	};
