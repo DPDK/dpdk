@@ -16,7 +16,6 @@ Deprecation Notices
 
   - removal of ``name`` and ``args`` fields.
   - The enum ``rte_devtype`` was used to identify a bus and will disappear.
-  - The ``rte_devargs_list`` will be made private.
   - Functions previously deprecated will change or disappear:
 
     + ``rte_eal_devargs_add``

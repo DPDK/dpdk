@@ -18,6 +18,9 @@
 #include <rte_tailq.h>
 #include "eal_private.h"
 
+/** user device double-linked queue type definition */
+TAILQ_HEAD(rte_devargs_list, rte_devargs);
+
 /** Global list of user devices */
 struct rte_devargs_list devargs_list =
 	TAILQ_HEAD_INITIALIZER(devargs_list);

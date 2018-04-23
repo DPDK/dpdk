@@ -59,12 +59,6 @@ struct rte_devargs {
 	char *args;
 };
 
-/** user device double-linked queue type definition */
-TAILQ_HEAD(rte_devargs_list, rte_devargs);
-
-/** Global list of user devices */
-extern struct rte_devargs_list devargs_list;
-
 /**
  * Parse a devargs string.
  *
