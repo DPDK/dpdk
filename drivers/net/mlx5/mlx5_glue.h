@@ -31,6 +31,10 @@ struct ibv_counter_set_init_attr;
 struct ibv_query_counter_set_attr;
 #endif
 
+#ifndef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+struct mlx5dv_qp_init_attr;
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;
@@ -106,6 +110,10 @@ struct mlx5_glue {
 				   enum mlx5dv_set_ctx_attr_type type,
 				   void *attr);
 	int (*dv_init_obj)(struct mlx5dv_obj *obj, uint64_t obj_type);
+	struct ibv_qp *(*dv_create_qp)
+		(struct ibv_context *context,
+		 struct ibv_qp_init_attr_ex *qp_init_attr_ex,
+		 struct mlx5dv_qp_init_attr *dv_qp_init_attr);
 };
 
 const struct mlx5_glue *mlx5_glue;

@@ -464,6 +464,7 @@ struct mlx5_flow_parse {
 		/**< Pointer to Verbs attributes. */
 		unsigned int offset;
 		/**< Current position or total size of the attribute. */
+		uint64_t hash_fields; /**< Verbs hash fields. */
 	} queue[RTE_DIM(hash_rxq_init)];
 };
 
@@ -707,12 +708,22 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 						   " function is Toeplitz");
 				return -rte_errno;
 			}
-			if (rss->level) {
+#ifndef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+			if (parser->rss_conf.level > 1) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
 						   actions,
 						   "a nonzero RSS encapsulation"
 						   " level is not supported");
+				return -rte_errno;
+			}
+#endif
+			if (parser->rss_conf.level > 2) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "RSS encapsulation level"
+						   " > 1 is not supported");
 				return -rte_errno;
 			}
 			if (rss->types & MLX5_RSS_HF_MASK) {
@@ -765,7 +776,7 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 			}
 			parser->rss_conf = (struct rte_flow_action_rss){
 				.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
-				.level = 0,
+				.level = rss->level,
 				.types = rss->types,
 				.key_len = rss_key_len,
 				.queue_num = rss->queue_num,
@@ -849,10 +860,12 @@ exit_action_overlap:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_flow_convert_items_validate(const struct rte_flow_item items[],
+mlx5_flow_convert_items_validate(struct rte_eth_dev *dev,
+				 const struct rte_flow_item items[],
 				 struct rte_flow_error *error,
 				 struct mlx5_flow_parse *parser)
 {
+	struct priv *priv = dev->data->dev_private;
 	const struct mlx5_flow_items *cur_item = mlx5_flow_items;
 	unsigned int i;
 	int ret = 0;
@@ -892,6 +905,14 @@ mlx5_flow_convert_items_validate(const struct rte_flow_item items[],
 						   items,
 						   "Cannot recognize multiple"
 						   " tunnel encapsulations.");
+				return -rte_errno;
+			}
+			if (!priv->config.tunnel_en &&
+			    parser->rss_conf.level > 1) {
+				rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					items,
+					"RSS on tunnel is not supported");
 				return -rte_errno;
 			}
 			parser->inner = IBV_FLOW_SPEC_INNER;
@@ -1013,7 +1034,11 @@ static void
 mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 {
 	unsigned int i;
+	uint32_t inner = parser->inner;
 
+	/* Don't create extra flows for outer RSS. */
+	if (parser->tunnel && parser->rss_conf.level < 2)
+		return;
 	/*
 	 * Fill missing layers in verbs specifications, or compute the correct
 	 * offset to allocate the memory space for the attributes and
@@ -1024,23 +1049,25 @@ mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 			struct ibv_flow_spec_ipv4_ext ipv4;
 			struct ibv_flow_spec_ipv6 ipv6;
 			struct ibv_flow_spec_tcp_udp udp_tcp;
+			struct ibv_flow_spec_eth eth;
 		} specs;
 		void *dst;
 		uint16_t size;
 
 		if (i == parser->layer)
 			continue;
-		if (parser->layer == HASH_RXQ_ETH) {
+		if (parser->layer == HASH_RXQ_ETH ||
+		    parser->layer == HASH_RXQ_TUNNEL) {
 			if (hash_rxq_init[i].ip_version == MLX5_IPV4) {
 				size = sizeof(struct ibv_flow_spec_ipv4_ext);
 				specs.ipv4 = (struct ibv_flow_spec_ipv4_ext){
-					.type = IBV_FLOW_SPEC_IPV4_EXT,
+					.type = inner | IBV_FLOW_SPEC_IPV4_EXT,
 					.size = size,
 				};
 			} else {
 				size = sizeof(struct ibv_flow_spec_ipv6);
 				specs.ipv6 = (struct ibv_flow_spec_ipv6){
-					.type = IBV_FLOW_SPEC_IPV6,
+					.type = inner | IBV_FLOW_SPEC_IPV6,
 					.size = size,
 				};
 			}
@@ -1057,7 +1084,7 @@ mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 		    (i == HASH_RXQ_UDPV6) || (i == HASH_RXQ_TCPV6)) {
 			size = sizeof(struct ibv_flow_spec_tcp_udp);
 			specs.udp_tcp = (struct ibv_flow_spec_tcp_udp) {
-				.type = ((i == HASH_RXQ_UDPV4 ||
+				.type = inner | ((i == HASH_RXQ_UDPV4 ||
 					  i == HASH_RXQ_UDPV6) ?
 					 IBV_FLOW_SPEC_UDP :
 					 IBV_FLOW_SPEC_TCP),
@@ -1087,50 +1114,93 @@ mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 static int
 mlx5_flow_convert_rss(struct mlx5_flow_parse *parser)
 {
-	const unsigned int ipv4 =
-		hash_rxq_init[parser->layer].ip_version == MLX5_IPV4;
-	const enum hash_rxq_type hmin = ipv4 ? HASH_RXQ_TCPV4 : HASH_RXQ_TCPV6;
-	const enum hash_rxq_type hmax = ipv4 ? HASH_RXQ_IPV4 : HASH_RXQ_IPV6;
-	const enum hash_rxq_type ohmin = ipv4 ? HASH_RXQ_TCPV6 : HASH_RXQ_TCPV4;
-	const enum hash_rxq_type ohmax = ipv4 ? HASH_RXQ_IPV6 : HASH_RXQ_IPV4;
-	const enum hash_rxq_type ip = ipv4 ? HASH_RXQ_IPV4 : HASH_RXQ_IPV6;
 	unsigned int i;
+	enum hash_rxq_type start;
+	enum hash_rxq_type layer;
+	int outer = parser->tunnel && parser->rss_conf.level < 2;
+	uint64_t rss = parser->rss_conf.types;
 
-	/* Remove any other flow not matching the pattern. */
-	if (parser->rss_conf.queue_num == 1 && !parser->rss_conf.types) {
+	/* Default to outer RSS. */
+	if (!parser->rss_conf.level)
+		parser->rss_conf.level = 1;
+	layer = outer ? parser->out_layer : parser->layer;
+	if (layer == HASH_RXQ_TUNNEL)
+		layer = HASH_RXQ_ETH;
+	if (outer) {
+		/* Only one hash type for outer RSS. */
+		if (rss && layer == HASH_RXQ_ETH) {
+			start = HASH_RXQ_TCPV4;
+		} else if (rss && layer != HASH_RXQ_ETH &&
+			   !(rss & hash_rxq_init[layer].dpdk_rss_hf)) {
+			/* If RSS not match L4 pattern, try L3 RSS. */
+			if (layer < HASH_RXQ_IPV4)
+				layer = HASH_RXQ_IPV4;
+			else if (layer > HASH_RXQ_IPV4 && layer < HASH_RXQ_IPV6)
+				layer = HASH_RXQ_IPV6;
+			start = layer;
+		} else {
+			start = layer;
+		}
+		/* Scan first valid hash type. */
+		for (i = start; rss && i <= layer; ++i) {
+			if (!parser->queue[i].ibv_attr)
+				continue;
+			if (hash_rxq_init[i].dpdk_rss_hf & rss)
+				break;
+		}
+		if (rss && i <= layer)
+			parser->queue[layer].hash_fields =
+					hash_rxq_init[i].hash_fields;
+		/* Trim unused hash types. */
 		for (i = 0; i != hash_rxq_init_n; ++i) {
-			if (i == HASH_RXQ_ETH)
-				continue;
-			rte_free(parser->queue[i].ibv_attr);
-			parser->queue[i].ibv_attr = NULL;
+			if (parser->queue[i].ibv_attr && i != layer) {
+				rte_free(parser->queue[i].ibv_attr);
+				parser->queue[i].ibv_attr = NULL;
+			}
 		}
-		return 0;
-	}
-	if (parser->layer == HASH_RXQ_ETH)
-		return 0;
-	/* This layer becomes useless as the pattern define under layers. */
-	rte_free(parser->queue[HASH_RXQ_ETH].ibv_attr);
-	parser->queue[HASH_RXQ_ETH].ibv_attr = NULL;
-	/* Remove opposite kind of layer e.g. IPv6 if the pattern is IPv4. */
-	for (i = ohmin; i != (ohmax + 1); ++i) {
-		if (!parser->queue[i].ibv_attr)
-			continue;
-		rte_free(parser->queue[i].ibv_attr);
-		parser->queue[i].ibv_attr = NULL;
-	}
-	/* Remove impossible flow according to the RSS configuration. */
-	if (hash_rxq_init[parser->layer].dpdk_rss_hf &
-	    parser->rss_conf.types) {
-		/* Remove any other flow. */
-		for (i = hmin; i != (hmax + 1); ++i) {
-			if (i == parser->layer || !parser->queue[i].ibv_attr)
+	} else {
+		/* Expand for inner or normal RSS. */
+		if (rss && (layer == HASH_RXQ_ETH || layer == HASH_RXQ_IPV4))
+			start = HASH_RXQ_TCPV4;
+		else if (rss && layer == HASH_RXQ_IPV6)
+			start = HASH_RXQ_TCPV6;
+		else
+			start = layer;
+		/* For L4 pattern, try L3 RSS if no L4 RSS. */
+		/* Trim unused hash types. */
+		for (i = 0; i != hash_rxq_init_n; ++i) {
+			if (!parser->queue[i].ibv_attr)
 				continue;
-			rte_free(parser->queue[i].ibv_attr);
-			parser->queue[i].ibv_attr = NULL;
+			if (i < start || i > layer) {
+				rte_free(parser->queue[i].ibv_attr);
+				parser->queue[i].ibv_attr = NULL;
+				continue;
+			}
+			if (!rss)
+				continue;
+			if (hash_rxq_init[i].dpdk_rss_hf & rss) {
+				parser->queue[i].hash_fields =
+						hash_rxq_init[i].hash_fields;
+			} else if (i != layer) {
+				/* Remove unused RSS expansion. */
+				rte_free(parser->queue[i].ibv_attr);
+				parser->queue[i].ibv_attr = NULL;
+			} else if (layer < HASH_RXQ_IPV4 &&
+				   (hash_rxq_init[HASH_RXQ_IPV4].dpdk_rss_hf &
+				    rss)) {
+				/* Allow IPv4 RSS on L4 pattern. */
+				parser->queue[i].hash_fields =
+					hash_rxq_init[HASH_RXQ_IPV4]
+						.hash_fields;
+			} else if (i > HASH_RXQ_IPV4 && i < HASH_RXQ_IPV6 &&
+				   (hash_rxq_init[HASH_RXQ_IPV6].dpdk_rss_hf &
+				    rss)) {
+				/* Allow IPv4 RSS on L4 pattern. */
+				parser->queue[i].hash_fields =
+					hash_rxq_init[HASH_RXQ_IPV6]
+						.hash_fields;
+			}
 		}
-	} else if (!parser->queue[ip].ibv_attr) {
-		/* no RSS possible with the current configuration. */
-		parser->rss_conf.queue_num = 1;
 	}
 	return 0;
 }
@@ -1178,7 +1248,7 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 	ret = mlx5_flow_convert_actions(dev, actions, error, parser);
 	if (ret)
 		return ret;
-	ret = mlx5_flow_convert_items_validate(items, error, parser);
+	ret = mlx5_flow_convert_items_validate(dev, items, error, parser);
 	if (ret)
 		return ret;
 	mlx5_flow_convert_finalise(parser);
@@ -1199,10 +1269,6 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 		for (i = 0; i != hash_rxq_init_n; ++i) {
 			unsigned int offset;
 
-			if (!(parser->rss_conf.types &
-			      hash_rxq_init[i].dpdk_rss_hf) &&
-			    (i != HASH_RXQ_ETH))
-				continue;
 			offset = parser->queue[i].offset;
 			parser->queue[i].ibv_attr =
 				mlx5_flow_convert_allocate(offset, error);
@@ -1214,6 +1280,7 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 	/* Third step. Conversion parse, fill the specifications. */
 	parser->inner = 0;
 	parser->tunnel = 0;
+	parser->layer = HASH_RXQ_ETH;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
 		struct mlx5_flow_data data = {
 			.dev = dev,
@@ -1295,17 +1362,11 @@ mlx5_flow_create_copy(struct mlx5_flow_parse *parser, void *src,
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (!parser->queue[i].ibv_attr)
 			continue;
-		/* Specification must be the same l3 type or none. */
-		if (parser->layer == HASH_RXQ_ETH ||
-		    (hash_rxq_init[parser->layer].ip_version ==
-		     hash_rxq_init[i].ip_version) ||
-		    (hash_rxq_init[i].ip_version == 0)) {
-			dst = (void *)((uintptr_t)parser->queue[i].ibv_attr +
-					parser->queue[i].offset);
-			memcpy(dst, src, size);
-			++parser->queue[i].ibv_attr->num_of_specs;
-			parser->queue[i].offset += size;
-		}
+		dst = (void *)((uintptr_t)parser->queue[i].ibv_attr +
+				parser->queue[i].offset);
+		memcpy(dst, src, size);
+		++parser->queue[i].ibv_attr->num_of_specs;
+		parser->queue[i].offset += size;
 	}
 }
 
@@ -1336,9 +1397,7 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 		.size = eth_size,
 	};
 
-	/* Don't update layer for the inner pattern. */
-	if (!parser->inner)
-		parser->layer = HASH_RXQ_ETH;
+	parser->layer = HASH_RXQ_ETH;
 	if (spec) {
 		unsigned int i;
 
@@ -1459,9 +1518,7 @@ mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 					  "L3 VXLAN not enabled by device"
 					  " parameter and/or not configured"
 					  " in firmware");
-	/* Don't update layer for the inner pattern. */
-	if (!parser->inner)
-		parser->layer = HASH_RXQ_IPV4;
+	parser->layer = HASH_RXQ_IPV4;
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1524,9 +1581,7 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 					  "L3 VXLAN not enabled by device"
 					  " parameter and/or not configured"
 					  " in firmware");
-	/* Don't update layer for the inner pattern. */
-	if (!parser->inner)
-		parser->layer = HASH_RXQ_IPV6;
+	parser->layer = HASH_RXQ_IPV6;
 	if (spec) {
 		unsigned int i;
 		uint32_t vtc_flow_val;
@@ -1599,13 +1654,10 @@ mlx5_flow_create_udp(const struct rte_flow_item *item,
 		.size = udp_size,
 	};
 
-	/* Don't update layer for the inner pattern. */
-	if (!parser->inner) {
-		if (parser->layer == HASH_RXQ_IPV4)
-			parser->layer = HASH_RXQ_UDPV4;
-		else
-			parser->layer = HASH_RXQ_UDPV6;
-	}
+	if (parser->layer == HASH_RXQ_IPV4)
+		parser->layer = HASH_RXQ_UDPV4;
+	else
+		parser->layer = HASH_RXQ_UDPV6;
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1648,13 +1700,10 @@ mlx5_flow_create_tcp(const struct rte_flow_item *item,
 		.size = tcp_size,
 	};
 
-	/* Don't update layer for the inner pattern. */
-	if (!parser->inner) {
-		if (parser->layer == HASH_RXQ_IPV4)
-			parser->layer = HASH_RXQ_TCPV4;
-		else
-			parser->layer = HASH_RXQ_TCPV6;
-	}
+	if (parser->layer == HASH_RXQ_IPV4)
+		parser->layer = HASH_RXQ_TCPV4;
+	else
+		parser->layer = HASH_RXQ_TCPV6;
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1704,6 +1753,11 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 	id.vni[0] = 0;
 	parser->inner = IBV_FLOW_SPEC_INNER;
 	parser->tunnel = ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN)];
+	parser->out_layer = parser->layer;
+	parser->layer = HASH_RXQ_TUNNEL;
+	/* Default VXLAN to outer RSS. */
+	if (!parser->rss_conf.level)
+		parser->rss_conf.level = 1;
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1761,6 +1815,11 @@ mlx5_flow_create_gre(const struct rte_flow_item *item __rte_unused,
 
 	parser->inner = IBV_FLOW_SPEC_INNER;
 	parser->tunnel = ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_GRE)];
+	parser->out_layer = parser->layer;
+	parser->layer = HASH_RXQ_TUNNEL;
+	/* Default GRE to inner RSS. */
+	if (!parser->rss_conf.level)
+		parser->rss_conf.level = 2;
 	/* Update encapsulation IP layer protocol. */
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (!parser->queue[i].ibv_attr)
@@ -1952,33 +2011,33 @@ mlx5_flow_create_action_queue_rss(struct rte_eth_dev *dev,
 	unsigned int i;
 
 	for (i = 0; i != hash_rxq_init_n; ++i) {
-		uint64_t hash_fields;
-
 		if (!parser->queue[i].ibv_attr)
 			continue;
 		flow->frxq[i].ibv_attr = parser->queue[i].ibv_attr;
 		parser->queue[i].ibv_attr = NULL;
-		hash_fields = hash_rxq_init[i].hash_fields;
+		flow->frxq[i].hash_fields = parser->queue[i].hash_fields;
 		if (!priv->dev->data->dev_started)
 			continue;
 		flow->frxq[i].hrxq =
 			mlx5_hrxq_get(dev,
 				      parser->rss_conf.key,
 				      parser->rss_conf.key_len,
-				      hash_fields,
+				      flow->frxq[i].hash_fields,
 				      parser->rss_conf.queue,
 				      parser->rss_conf.queue_num,
-				      parser->tunnel);
+				      parser->tunnel,
+				      parser->rss_conf.level);
 		if (flow->frxq[i].hrxq)
 			continue;
 		flow->frxq[i].hrxq =
 			mlx5_hrxq_new(dev,
 				      parser->rss_conf.key,
 				      parser->rss_conf.key_len,
-				      hash_fields,
+				      flow->frxq[i].hash_fields,
 				      parser->rss_conf.queue,
 				      parser->rss_conf.queue_num,
-				      parser->tunnel);
+				      parser->tunnel,
+				      parser->rss_conf.level);
 		if (!flow->frxq[i].hrxq) {
 			return rte_flow_error_set(error, ENOMEM,
 						  RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -2083,7 +2142,7 @@ mlx5_flow_create_action_queue(struct rte_eth_dev *dev,
 		DRV_LOG(DEBUG, "port %u %p type %d QP %p ibv_flow %p",
 			dev->data->port_id,
 			(void *)flow, i,
-			(void *)flow->frxq[i].hrxq,
+			(void *)flow->frxq[i].hrxq->qp,
 			(void *)flow->frxq[i].ibv_flow);
 	}
 	if (!flows_n) {
@@ -2611,19 +2670,21 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 			flow->frxq[i].hrxq =
 				mlx5_hrxq_get(dev, flow->rss_conf.key,
 					      flow->rss_conf.key_len,
-					      hash_rxq_init[i].hash_fields,
+					      flow->frxq[i].hash_fields,
 					      flow->rss_conf.queue,
 					      flow->rss_conf.queue_num,
-					      flow->tunnel);
+					      flow->tunnel,
+					      flow->rss_conf.level);
 			if (flow->frxq[i].hrxq)
 				goto flow_create;
 			flow->frxq[i].hrxq =
 				mlx5_hrxq_new(dev, flow->rss_conf.key,
 					      flow->rss_conf.key_len,
-					      hash_rxq_init[i].hash_fields,
+					      flow->frxq[i].hash_fields,
 					      flow->rss_conf.queue,
 					      flow->rss_conf.queue_num,
-					      flow->tunnel);
+					      flow->tunnel,
+					      flow->rss_conf.level);
 			if (!flow->frxq[i].hrxq) {
 				DRV_LOG(DEBUG,
 					"port %u flow %p cannot be applied",

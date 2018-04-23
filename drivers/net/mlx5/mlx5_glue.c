@@ -313,6 +313,21 @@ mlx5_glue_dv_init_obj(struct mlx5dv_obj *obj, uint64_t obj_type)
 	return mlx5dv_init_obj(obj, obj_type);
 }
 
+static struct ibv_qp *
+mlx5_glue_dv_create_qp(struct ibv_context *context,
+		       struct ibv_qp_init_attr_ex *qp_init_attr_ex,
+		       struct mlx5dv_qp_init_attr *dv_qp_init_attr)
+{
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	return mlx5dv_create_qp(context, qp_init_attr_ex, dv_qp_init_attr);
+#else
+	(void)context;
+	(void)qp_init_attr_ex;
+	(void)dv_qp_init_attr;
+	return NULL;
+#endif
+}
+
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
 	.fork_init = mlx5_glue_fork_init,
@@ -356,4 +371,5 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.dv_query_device = mlx5_glue_dv_query_device,
 	.dv_set_context_attr = mlx5_glue_dv_set_context_attr,
 	.dv_init_obj = mlx5_glue_dv_init_obj,
+	.dv_create_qp = mlx5_glue_dv_create_qp,
 };

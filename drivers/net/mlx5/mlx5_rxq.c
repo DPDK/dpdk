@@ -1385,7 +1385,9 @@ mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev)
  * @param queues_n
  *   Number of queues.
  * @param tunnel
- *   Tunnel type.
+ *   Tunnel type, implies tunnel offloading like inner checksum if available.
+ * @param rss_level
+ *   RSS hash on tunnel level.
  *
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
@@ -1394,13 +1396,17 @@ struct mlx5_hrxq *
 mlx5_hrxq_new(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
-	      const uint16_t *queues, uint32_t queues_n, uint32_t tunnel)
+	      const uint16_t *queues, uint32_t queues_n,
+	      uint32_t tunnel, uint32_t rss_level)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
 	struct mlx5_ind_table_ibv *ind_tbl;
 	struct ibv_qp *qp;
 	int err;
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	struct mlx5dv_qp_init_attr qp_init_attr = {0};
+#endif
 
 	queues_n = hash_fields ? queues_n : 1;
 	ind_tbl = mlx5_ind_table_ibv_get(dev, queues, queues_n);
@@ -1414,6 +1420,36 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		rss_key_len = rss_hash_default_key_len;
 		rss_key = rss_hash_default_key;
 	}
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	if (tunnel) {
+		qp_init_attr.comp_mask =
+				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+		qp_init_attr.create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS;
+	}
+	qp = mlx5_glue->dv_create_qp
+		(priv->ctx,
+		 &(struct ibv_qp_init_attr_ex){
+			.qp_type = IBV_QPT_RAW_PACKET,
+			.comp_mask =
+				IBV_QP_INIT_ATTR_PD |
+				IBV_QP_INIT_ATTR_IND_TABLE |
+				IBV_QP_INIT_ATTR_RX_HASH,
+			.rx_hash_conf = (struct ibv_rx_hash_conf){
+				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
+				.rx_hash_key_len = rss_key_len ? rss_key_len :
+						   rss_hash_default_key_len,
+				.rx_hash_key = rss_key ?
+					       (void *)(uintptr_t)rss_key :
+					       rss_hash_default_key,
+				.rx_hash_fields_mask = hash_fields |
+					(tunnel && rss_level > 1 ?
+					(uint32_t)IBV_RX_HASH_INNER : 0),
+			},
+			.rwq_ind_tbl = ind_tbl->ind_table,
+			.pd = priv->pd,
+		 },
+		 &qp_init_attr);
+#else
 	qp = mlx5_glue->create_qp_ex
 		(priv->ctx,
 		 &(struct ibv_qp_init_attr_ex){
@@ -1424,13 +1460,17 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 				IBV_QP_INIT_ATTR_RX_HASH,
 			.rx_hash_conf = (struct ibv_rx_hash_conf){
 				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = rss_key_len,
-				.rx_hash_key = (void *)(uintptr_t)rss_key,
+				.rx_hash_key_len = rss_key_len ? rss_key_len :
+						   rss_hash_default_key_len,
+				.rx_hash_key = rss_key ?
+					       (void *)(uintptr_t)rss_key :
+					       rss_hash_default_key,
 				.rx_hash_fields_mask = hash_fields,
 			},
 			.rwq_ind_tbl = ind_tbl->ind_table,
 			.pd = priv->pd,
 		 });
+#endif
 	if (!qp) {
 		rte_errno = errno;
 		goto error;
@@ -1443,6 +1483,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	hrxq->rss_key_len = rss_key_len;
 	hrxq->hash_fields = hash_fields;
 	hrxq->tunnel = tunnel;
+	hrxq->rss_level = rss_level;
 	memcpy(hrxq->rss_key, rss_key, rss_key_len);
 	rte_atomic32_inc(&hrxq->refcnt);
 	LIST_INSERT_HEAD(&priv->hrxqs, hrxq, next);
@@ -1472,7 +1513,9 @@ error:
  * @param queues_n
  *   Number of queues.
  * @param tunnel
- *   Tunnel type.
+ *   Tunnel type, implies tunnel offloading like inner checksum if available.
+ * @param rss_level
+ *   RSS hash on tunnel level
  *
  * @return
  *   An hash Rx queue on success.
@@ -1481,7 +1524,8 @@ struct mlx5_hrxq *
 mlx5_hrxq_get(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
-	      const uint16_t *queues, uint32_t queues_n, uint32_t tunnel)
+	      const uint16_t *queues, uint32_t queues_n,
+	      uint32_t tunnel, uint32_t rss_level)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
@@ -1497,6 +1541,8 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 		if (hrxq->hash_fields != hash_fields)
 			continue;
 		if (hrxq->tunnel != tunnel)
+			continue;
+		if (hrxq->rss_level != rss_level)
 			continue;
 		ind_tbl = mlx5_ind_table_ibv_get(dev, queues, queues_n);
 		if (!ind_tbl)
