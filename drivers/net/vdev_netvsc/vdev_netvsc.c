@@ -796,7 +796,7 @@ vdev_netvsc_scan_callback(__rte_unused void *arg)
 	struct rte_devargs *devargs;
 	struct rte_bus *vbus = rte_bus_find_by_name("vdev");
 
-	TAILQ_FOREACH(devargs, &devargs_list, next)
+	RTE_EAL_DEVARGS_FOREACH("vdev", devargs)
 		if (!strcmp(devargs->name, VDEV_NETVSC_DRIVER_NAME))
 			return;
 	dev = (struct rte_vdev_device *)vbus->find_device(NULL,
