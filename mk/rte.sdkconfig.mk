@@ -36,7 +36,6 @@ notemplate:
 	@echo "use T=template from the following list:"
 	@$(MAKE) -rR showconfigs | sed 's,^,  ,'
 
-
 .PHONY: defconfig
 defconfig:
 	@$(MAKE) config T=$(shell \
@@ -47,15 +46,25 @@ defconfig:
                         print "arm-armv7a"} \
                 else if ($$0 == "ppc64") { \
                         print "ppc_64-power8"} \
+                else if ($$0 == "amd64") { \
+                        print "x86_64-native"} \
                 else { \
-                        printf "%s-native", $$0} }')-$(shell \
+                        printf "%s-native", $$0} }' \
+		)-$(shell \
                 uname | awk '{ \
                 if ($$0 == "Linux") { \
                         print "linuxapp"} \
                 else { \
-                        print "bsdapp"} }')-$(shell \
-                ${CC} -v 2>&1 | \
-                grep " version " | cut -d ' ' -f 1)
+                        print "bsdapp"} }' \
+		)-$(shell \
+		${CC} --version | grep -o 'cc\|gcc\|icc\|clang' | awk \
+		'{ \
+		if ($$1 == "cc") { \
+			print "gcc" } \
+		else { \
+			print $$1 } \
+		}' \
+		)
 
 .PHONY: config
 ifeq ($(RTE_CONFIG_TEMPLATE),)
