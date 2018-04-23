@@ -45,12 +45,8 @@ static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 {
 	struct rte_devargs *devargs;
 	struct rte_pci_addr addr;
-	struct rte_bus *pbus;
 
-	pbus = rte_bus_find_by_name("pci");
-	TAILQ_FOREACH(devargs, &devargs_list, next) {
-		if (devargs->bus != pbus)
-			continue;
+	RTE_EAL_DEVARGS_FOREACH("pci", devargs) {
 		devargs->bus->parse(devargs->name, &addr);
 		if (!rte_pci_addr_cmp(&dev->addr, &addr))
 			return devargs;
