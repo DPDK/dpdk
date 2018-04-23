@@ -74,12 +74,12 @@ Features
 - RX interrupts.
 - Statistics query including Basic, Extended and per queue.
 - Rx HW timestamp.
+- Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE.
+- Tunnel HW offloads: packet type, inner/outer RSS, IP and UDP checksum verification.
 
 Limitations
 -----------
 
-- Inner RSS for VXLAN frames is not supported yet.
-- Hardware checksum RX offloads for VXLAN inner header are not supported yet.
 - For secondary process:
 
   - Forked secondary process not supported.

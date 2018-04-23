@@ -278,6 +278,17 @@ Supports RSS hashing on RX.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_RSS_HASH``, ``mbuf.rss``.
 
 
+.. _nic_features_inner_rss:
+
+Inner RSS
+---------
+
+Supports RX RSS hashing on Inner headers.
+
+* **[users]    rte_flow_action_rss**: ``level``.
+* **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_RSS_HASH``, ``mbuf.rss``.
+
+
 .. _nic_features_rss_key_update:
 
 RSS key update
