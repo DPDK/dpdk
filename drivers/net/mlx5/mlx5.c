@@ -197,6 +197,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->txqs_n = 0;
 		priv->txqs = NULL;
 	}
+	mlx5_flow_delete_drop_queue(dev);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
 		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
@@ -622,6 +623,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	unsigned int cqe_comp;
 	unsigned int tunnel_en = 0;
 	unsigned int swp = 0;
+	unsigned int verb_priorities = 0;
 	int idx;
 	int i;
 	struct mlx5dv_context attrs_out = {0};
@@ -1018,6 +1020,22 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		mlx5_link_update(eth_dev, 0);
 		/* Store device configuration on private structure. */
 		priv->config = config;
+		/* Create drop queue. */
+		err = mlx5_flow_create_drop_queue(eth_dev);
+		if (err) {
+			DRV_LOG(ERR, "port %u drop queue allocation failed: %s",
+				eth_dev->data->port_id, strerror(rte_errno));
+			goto port_error;
+		}
+		/* Supported Verbs flow priority number detection. */
+		if (verb_priorities == 0)
+			verb_priorities = mlx5_get_max_verbs_prio(eth_dev);
+		if (verb_priorities < MLX5_VERBS_FLOW_PRIO_8) {
+			DRV_LOG(ERR, "port %u wrong Verbs flow priorities: %u",
+				eth_dev->data->port_id, verb_priorities);
+			goto port_error;
+		}
+		priv->config.max_verbs_prio = verb_priorities;
 		continue;
 port_error:
 		if (priv)

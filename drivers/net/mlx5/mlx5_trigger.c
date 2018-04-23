@@ -148,12 +148,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	int ret;
 
 	dev->data->dev_started = 1;
-	ret = mlx5_flow_create_drop_queue(dev);
-	if (ret) {
-		DRV_LOG(ERR, "port %u drop queue allocation failed: %s",
-			dev->data->port_id, strerror(rte_errno));
-		goto error;
-	}
 	DRV_LOG(DEBUG, "port %u allocating and configuring hash Rx queues",
 		dev->data->port_id);
 	rte_mempool_walk(mlx5_mp2mr_iter, priv);
@@ -202,7 +196,6 @@ error:
 	mlx5_traffic_disable(dev);
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
-	mlx5_flow_delete_drop_queue(dev);
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 }
@@ -237,7 +230,6 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	mlx5_rxq_stop(dev);
 	for (mr = LIST_FIRST(&priv->mr); mr; mr = LIST_FIRST(&priv->mr))
 		mlx5_mr_release(mr);
-	mlx5_flow_delete_drop_queue(dev);
 }
 
 /**

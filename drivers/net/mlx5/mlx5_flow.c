@@ -31,8 +31,8 @@
 #include "mlx5_prm.h"
 #include "mlx5_glue.h"
 
-/* Define minimal priority for control plane flows. */
-#define MLX5_CTRL_FLOW_PRIORITY 4
+/* Flow priority for control plane flows. */
+#define MLX5_CTRL_FLOW_PRIORITY 1
 
 /* Internet Protocol versions. */
 #define MLX5_IPV4 4
@@ -128,7 +128,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_SRC_PORT_TCP |
 				IBV_RX_HASH_DST_PORT_TCP),
 		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV4_TCP,
-		.flow_priority = 1,
+		.flow_priority = 0,
 		.ip_version = MLX5_IPV4,
 	},
 	[HASH_RXQ_UDPV4] = {
@@ -137,7 +137,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_SRC_PORT_UDP |
 				IBV_RX_HASH_DST_PORT_UDP),
 		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV4_UDP,
-		.flow_priority = 1,
+		.flow_priority = 0,
 		.ip_version = MLX5_IPV4,
 	},
 	[HASH_RXQ_IPV4] = {
@@ -145,7 +145,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_DST_IPV4),
 		.dpdk_rss_hf = (ETH_RSS_IPV4 |
 				ETH_RSS_FRAG_IPV4),
-		.flow_priority = 2,
+		.flow_priority = 1,
 		.ip_version = MLX5_IPV4,
 	},
 	[HASH_RXQ_TCPV6] = {
@@ -154,7 +154,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_SRC_PORT_TCP |
 				IBV_RX_HASH_DST_PORT_TCP),
 		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV6_TCP,
-		.flow_priority = 1,
+		.flow_priority = 0,
 		.ip_version = MLX5_IPV6,
 	},
 	[HASH_RXQ_UDPV6] = {
@@ -163,7 +163,7 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_SRC_PORT_UDP |
 				IBV_RX_HASH_DST_PORT_UDP),
 		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV6_UDP,
-		.flow_priority = 1,
+		.flow_priority = 0,
 		.ip_version = MLX5_IPV6,
 	},
 	[HASH_RXQ_IPV6] = {
@@ -171,13 +171,13 @@ const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_RX_HASH_DST_IPV6),
 		.dpdk_rss_hf = (ETH_RSS_IPV6 |
 				ETH_RSS_FRAG_IPV6),
-		.flow_priority = 2,
+		.flow_priority = 1,
 		.ip_version = MLX5_IPV6,
 	},
 	[HASH_RXQ_ETH] = {
 		.hash_fields = 0,
 		.dpdk_rss_hf = 0,
-		.flow_priority = 3,
+		.flow_priority = 2,
 	},
 };
 
@@ -909,30 +909,50 @@ mlx5_flow_convert_allocate(unsigned int size, struct rte_flow_error *error)
  * Make inner packet matching with an higher priority from the non Inner
  * matching.
  *
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param[in, out] parser
  *   Internal parser structure.
  * @param attr
  *   User flow attribute.
  */
 static void
-mlx5_flow_update_priority(struct mlx5_flow_parse *parser,
+mlx5_flow_update_priority(struct rte_eth_dev *dev,
+			  struct mlx5_flow_parse *parser,
 			  const struct rte_flow_attr *attr)
 {
+	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
+	uint16_t priority;
 
+	/*			8 priorities	>= 16 priorities
+	 * Control flow:	4-7		8-15
+	 * User normal flow:	1-3		4-7
+	 * User tunnel flow:	0-2		0-3
+	 */
+	priority = attr->priority * MLX5_VERBS_FLOW_PRIO_8;
+	if (priv->config.max_verbs_prio == MLX5_VERBS_FLOW_PRIO_8)
+		priority /= 2;
+	/*
+	 * Lower non-tunnel flow Verbs priority 1 if only support 8 Verbs
+	 * priorities, lower 4 otherwise.
+	 */
+	if (!parser->inner) {
+		if (priv->config.max_verbs_prio == MLX5_VERBS_FLOW_PRIO_8)
+			priority += 1;
+		else
+			priority += MLX5_VERBS_FLOW_PRIO_8 / 2;
+	}
 	if (parser->drop) {
-		parser->queue[HASH_RXQ_ETH].ibv_attr->priority =
-			attr->priority +
-			hash_rxq_init[HASH_RXQ_ETH].flow_priority;
+		parser->queue[HASH_RXQ_ETH].ibv_attr->priority = priority +
+				hash_rxq_init[HASH_RXQ_ETH].flow_priority;
 		return;
 	}
 	for (i = 0; i != hash_rxq_init_n; ++i) {
-		if (parser->queue[i].ibv_attr) {
-			parser->queue[i].ibv_attr->priority =
-				attr->priority +
-				hash_rxq_init[i].flow_priority -
-				(parser->inner ? 1 : 0);
-		}
+		if (!parser->queue[i].ibv_attr)
+			continue;
+		parser->queue[i].ibv_attr->priority = priority +
+				hash_rxq_init[i].flow_priority;
 	}
 }
 
@@ -1167,7 +1187,7 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 	 */
 	if (!parser->drop)
 		mlx5_flow_convert_finalise(parser);
-	mlx5_flow_update_priority(parser, attr);
+	mlx5_flow_update_priority(dev, parser, attr);
 exit_free:
 	/* Only verification is expected, all resources should be released. */
 	if (!parser->create) {
@@ -3161,4 +3181,57 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	return 0;
+}
+
+/**
+ * Detect number of Verbs flow priorities supported.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   number of supported Verbs flow priority.
+ */
+unsigned int
+mlx5_get_max_verbs_prio(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	unsigned int verb_priorities = MLX5_VERBS_FLOW_PRIO_8;
+	struct {
+		struct ibv_flow_attr attr;
+		struct ibv_flow_spec_eth eth;
+		struct ibv_flow_spec_action_drop drop;
+	} flow_attr = {
+		.attr = {
+			.num_of_specs = 2,
+		},
+		.eth = {
+			.type = IBV_FLOW_SPEC_ETH,
+			.size = sizeof(struct ibv_flow_spec_eth),
+		},
+		.drop = {
+			.size = sizeof(struct ibv_flow_spec_action_drop),
+			.type = IBV_FLOW_SPEC_ACTION_DROP,
+		},
+	};
+	struct ibv_flow *flow;
+
+	do {
+		flow_attr.attr.priority = verb_priorities - 1;
+		flow = mlx5_glue->create_flow(priv->flow_drop_queue->qp,
+					      &flow_attr.attr);
+		if (flow) {
+			claim_zero(mlx5_glue->destroy_flow(flow));
+			/* Try more priorities. */
+			verb_priorities *= 2;
+		} else {
+			/* Failed, restore last right number. */
+			verb_priorities /= 2;
+			break;
+		}
+	} while (1);
+	DRV_LOG(DEBUG, "port %u Verbs flow priorities: %d,"
+		" user flow priorities: %d",
+		dev->data->port_id, verb_priorities, MLX5_CTRL_FLOW_PRIORITY);
+	return verb_priorities;
 }

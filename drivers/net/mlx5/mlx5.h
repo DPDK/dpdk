@@ -90,6 +90,7 @@ struct mlx5_dev_config {
 	unsigned int mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
 	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
+	unsigned int max_verbs_prio; /* Number of Verb flow priorities. */
 	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	int txq_inline; /* Maximum packet size for inlining. */
@@ -105,6 +106,9 @@ enum mlx5_verbs_alloc_type {
 	MLX5_VERBS_ALLOC_TYPE_TX_QUEUE,
 	MLX5_VERBS_ALLOC_TYPE_RX_QUEUE,
 };
+
+/* 8 Verbs priorities. */
+#define MLX5_VERBS_FLOW_PRIO_8 8
 
 /**
  * Verbs allocator needs a context to know in the callback which kind of
@@ -256,6 +260,7 @@ int mlx5_traffic_restart(struct rte_eth_dev *dev);
 
 /* mlx5_flow.c */
 
+unsigned int mlx5_get_max_verbs_prio(struct rte_eth_dev *dev);
 int mlx5_flow_validate(struct rte_eth_dev *dev,
 		       const struct rte_flow_attr *attr,
 		       const struct rte_flow_item items[],
