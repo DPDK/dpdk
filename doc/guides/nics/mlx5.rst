@@ -329,16 +329,16 @@ Run-time configuration
 
 - ``l3_vxlan_en`` parameter [int]
 
-  A nonzero value allows L3 VXLAN flow creation. To enable L3 VXLAN, users
-  has to configure firmware and enable this parameter. This is a prerequisite
-  to receive this kind of traffic.
+  A nonzero value allows L3 VXLAN and VXLAN-GPE flow creation. To enable
+  L3 VXLAN or VXLAN-GPE, users has to configure firmware and enable this
+  parameter. This is a prerequisite to receive this kind of traffic.
 
   Disabled by default.
 
 Firmware configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
-- L3 VXLAN destination UDP port
+- L3 VXLAN and VXLAN-GPE destination UDP port
 
    .. code-block:: console
 

@@ -92,6 +92,11 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 		       struct mlx5_flow_data *data);
 
 static int
+mlx5_flow_create_vxlan_gpe(const struct rte_flow_item *item,
+			   const void *default_mask,
+			   struct mlx5_flow_data *data);
+
+static int
 mlx5_flow_create_gre(const struct rte_flow_item *item,
 		     const void *default_mask,
 		     struct mlx5_flow_data *data);
@@ -242,10 +247,12 @@ struct rte_flow {
 
 #define IS_TUNNEL(type) ( \
 	(type) == RTE_FLOW_ITEM_TYPE_VXLAN || \
+	(type) == RTE_FLOW_ITEM_TYPE_VXLAN_GPE || \
 	(type) == RTE_FLOW_ITEM_TYPE_GRE)
 
 const uint32_t flow_ptype[] = {
 	[RTE_FLOW_ITEM_TYPE_VXLAN] = RTE_PTYPE_TUNNEL_VXLAN,
+	[RTE_FLOW_ITEM_TYPE_VXLAN_GPE] = RTE_PTYPE_TUNNEL_VXLAN_GPE,
 	[RTE_FLOW_ITEM_TYPE_GRE] = RTE_PTYPE_TUNNEL_GRE,
 };
 
@@ -254,6 +261,8 @@ const uint32_t flow_ptype[] = {
 const uint32_t ptype_ext[] = {
 	[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN)] = RTE_PTYPE_TUNNEL_VXLAN |
 					      RTE_PTYPE_L4_UDP,
+	[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN_GPE)]	= RTE_PTYPE_TUNNEL_VXLAN_GPE |
+						  RTE_PTYPE_L4_UDP,
 	[PTYPE_IDX(RTE_PTYPE_TUNNEL_GRE)] = RTE_PTYPE_TUNNEL_GRE,
 };
 
@@ -311,6 +320,7 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
 			       RTE_FLOW_ITEM_TYPE_VXLAN,
+			       RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
 			       RTE_FLOW_ITEM_TYPE_GRE),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
@@ -389,7 +399,8 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.dst_sz = sizeof(struct ibv_flow_spec_ipv6),
 	},
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
-		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VXLAN),
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VXLAN,
+			       RTE_FLOW_ITEM_TYPE_VXLAN_GPE),
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_udp){
 			.hdr = {
@@ -439,6 +450,19 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.default_mask = &rte_flow_item_vxlan_mask,
 		.mask_sz = sizeof(struct rte_flow_item_vxlan),
 		.convert = mlx5_flow_create_vxlan,
+		.dst_sz = sizeof(struct ibv_flow_spec_tunnel),
+	},
+	[RTE_FLOW_ITEM_TYPE_VXLAN_GPE] = {
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_IPV6),
+		.actions = valid_actions,
+		.mask = &(const struct rte_flow_item_vxlan_gpe){
+			.vni = "\xff\xff\xff",
+		},
+		.default_mask = &rte_flow_item_vxlan_gpe_mask,
+		.mask_sz = sizeof(struct rte_flow_item_vxlan_gpe),
+		.convert = mlx5_flow_create_vxlan_gpe,
 		.dst_sz = sizeof(struct ibv_flow_spec_tunnel),
 	},
 };
@@ -1781,6 +1805,87 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "VxLAN vni cannot be 0");
+	mlx5_flow_create_copy(parser, &vxlan, size);
+	return 0;
+}
+
+/**
+ * Convert VXLAN-GPE item to Verbs specification.
+ *
+ * @param item[in]
+ *   Item specification.
+ * @param default_mask[in]
+ *   Default bit-masks to use when item->mask is not provided.
+ * @param data[in, out]
+ *   User structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_create_vxlan_gpe(const struct rte_flow_item *item,
+			   const void *default_mask,
+			   struct mlx5_flow_data *data)
+{
+	struct priv *priv = data->dev->data->dev_private;
+	const struct rte_flow_item_vxlan_gpe *spec = item->spec;
+	const struct rte_flow_item_vxlan_gpe *mask = item->mask;
+	struct mlx5_flow_parse *parser = data->parser;
+	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
+	struct ibv_flow_spec_tunnel vxlan = {
+		.type = parser->inner | IBV_FLOW_SPEC_VXLAN_TUNNEL,
+		.size = size,
+	};
+	union vni {
+		uint32_t vlan_id;
+		uint8_t vni[4];
+	} id;
+
+	if (!priv->config.l3_vxlan_en)
+		return rte_flow_error_set(data->error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L3 VXLAN not enabled by device"
+					  " parameter and/or not configured"
+					  " in firmware");
+	id.vni[0] = 0;
+	parser->inner = IBV_FLOW_SPEC_INNER;
+	parser->tunnel = ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN_GPE)];
+	parser->out_layer = parser->layer;
+	parser->layer = HASH_RXQ_TUNNEL;
+	/* Default VXLAN-GPE to outer RSS. */
+	if (!parser->rss_conf.level)
+		parser->rss_conf.level = 1;
+	if (spec) {
+		if (!mask)
+			mask = default_mask;
+		memcpy(&id.vni[1], spec->vni, 3);
+		vxlan.val.tunnel_id = id.vlan_id;
+		memcpy(&id.vni[1], mask->vni, 3);
+		vxlan.mask.tunnel_id = id.vlan_id;
+		if (spec->protocol)
+			return rte_flow_error_set(data->error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "VxLAN-GPE protocol not"
+						  " supported");
+		/* Remove unwanted bits from values. */
+		vxlan.val.tunnel_id &= vxlan.mask.tunnel_id;
+	}
+	/*
+	 * Tunnel id 0 is equivalent as not adding a VXLAN layer, if only this
+	 * layer is defined in the Verbs specification it is interpreted as
+	 * wildcard and all packets will match this rule, if it follows a full
+	 * stack layer (ex: eth / ipv4 / udp), all packets matching the layers
+	 * before will also match this rule.
+	 * To avoid such situation, VNI 0 is currently refused.
+	 */
+	/* Only allow tunnel w/o tunnel id pattern after proper outer spec. */
+	if (parser->out_layer == HASH_RXQ_ETH && !vxlan.val.tunnel_id)
+		return rte_flow_error_set(data->error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "VxLAN-GPE vni cannot be 0");
 	mlx5_flow_create_copy(parser, &vxlan, size);
 	return 0;
 }
