@@ -1045,8 +1045,6 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	/* Toggle RX checksum offload if hardware supports it. */
 	tmpl->rxq.csum = !!(conf->offloads & DEV_RX_OFFLOAD_CHECKSUM);
-	tmpl->rxq.csum_l2tun = (!!(conf->offloads & DEV_RX_OFFLOAD_CHECKSUM) &&
-				priv->config.tunnel_en);
 	tmpl->rxq.hw_timestamp = !!(conf->offloads & DEV_RX_OFFLOAD_TIMESTAMP);
 	/* Configure VLAN stripping. */
 	tmpl->rxq.vlan_strip = !!(conf->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);

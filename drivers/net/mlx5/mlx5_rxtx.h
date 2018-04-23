@@ -77,7 +77,6 @@ struct rxq_zip {
 /* RX queue descriptor. */
 struct mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
-	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int hw_timestamp:1; /* Enable HW timestamp. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	unsigned int crc_present:1; /* CRC must be subtracted. */

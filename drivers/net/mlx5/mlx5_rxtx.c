@@ -41,7 +41,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 		 uint16_t cqe_cnt, uint32_t *rss_hash);
 
 static __rte_always_inline uint32_t
-rxq_cq_to_ol_flags(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe);
+rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe);
 
 uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
 	[0xff] = RTE_PTYPE_ALL_MASK, /* Last entry for errored packet. */
@@ -1818,8 +1818,6 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 /**
  * Translate RX completion flags to offload flags.
  *
- * @param[in] rxq
- *   Pointer to RX queue structure.
  * @param[in] cqe
  *   Pointer to CQE.
  *
@@ -1827,7 +1825,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
  *   Offload flags (ol_flags) for struct rte_mbuf.
  */
 static inline uint32_t
-rxq_cq_to_ol_flags(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
+rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe)
 {
 	uint32_t ol_flags = 0;
 	uint16_t flags = rte_be_to_cpu_16(cqe->hdr_type_etc);
@@ -1839,14 +1837,6 @@ rxq_cq_to_ol_flags(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
 		TRANSPOSE(flags,
 			  MLX5_CQE_RX_L4_HDR_VALID,
 			  PKT_RX_L4_CKSUM_GOOD);
-	if ((cqe->pkt_info & MLX5_CQE_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
-		ol_flags |=
-			TRANSPOSE(flags,
-				  MLX5_CQE_RX_L3_HDR_VALID,
-				  PKT_RX_IP_CKSUM_GOOD) |
-			TRANSPOSE(flags,
-				  MLX5_CQE_RX_L4_HDR_VALID,
-				  PKT_RX_L4_CKSUM_GOOD);
 	return ol_flags;
 }
 
@@ -1945,8 +1935,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 						mlx5_flow_mark_get(mark);
 				}
 			}
-			if (rxq->csum | rxq->csum_l2tun)
-				pkt->ol_flags |= rxq_cq_to_ol_flags(rxq, cqe);
+			if (rxq->csum)
+				pkt->ol_flags |= rxq_cq_to_ol_flags(cqe);
 			if (rxq->vlan_strip &&
 			    (cqe->hdr_type_etc &
 			     rte_cpu_to_be_16(MLX5_CQE_VLAN_STRIPPED))) {
