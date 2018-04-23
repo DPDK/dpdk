@@ -49,9 +49,12 @@
 #define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
-#define GRE_KEY_PRESENT 0x2000
-#define GRE_KEY_LEN     4
-#define GRE_SUPPORTED_FIELDS GRE_KEY_PRESENT
+#define GRE_CHECKSUM_PRESENT	0x8000
+#define GRE_KEY_PRESENT		0x2000
+#define GRE_SEQUENCE_PRESENT	0x1000
+#define GRE_EXT_LEN		4
+#define GRE_SUPPORTED_FIELDS	(GRE_CHECKSUM_PRESENT | GRE_KEY_PRESENT |\
+				 GRE_SEQUENCE_PRESENT)
 
 /* We cannot use rte_cpu_to_be_16() on a constant in a switch/case */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
@@ -269,14 +272,14 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 	struct ipv6_hdr *ipv6_hdr;
 	uint8_t gre_len = 0;
 
-	/* check which fields are supported */
-	if ((gre_hdr->flags & _htons(~GRE_SUPPORTED_FIELDS)) != 0)
-		return;
-
 	gre_len += sizeof(struct simple_gre_hdr);
 
 	if (gre_hdr->flags & _htons(GRE_KEY_PRESENT))
-		gre_len += GRE_KEY_LEN;
+		gre_len += GRE_EXT_LEN;
+	if (gre_hdr->flags & _htons(GRE_SEQUENCE_PRESENT))
+		gre_len += GRE_EXT_LEN;
+	if (gre_hdr->flags & _htons(GRE_CHECKSUM_PRESENT))
+		gre_len += GRE_EXT_LEN;
 
 	if (gre_hdr->proto == _htons(ETHER_TYPE_IPv4)) {
 		info->is_tunnel = 1;
@@ -815,6 +818,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 		/* step 3: fill the mbuf meta data (flags and header lengths) */
 
+		m->tx_offload = 0;
 		if (info.is_tunnel == 1) {
 			if (info.tunnel_tso_segsz ||
 			    (tx_offloads &
