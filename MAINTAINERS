@@ -40,7 +40,7 @@ M: Shahaf Shuler <shahafs@mellanox.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
 
 Next-virtio Tree
-Maxime Coquelin <maxime.coquelin@redhat.com>
+M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 
 Next-crypto Tree
@@ -388,12 +388,6 @@ M: Ferruh Yigit <ferruh.yigit@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: doc/guides/nics/features/default.ini
 
-AMD AXGBE PMD
-M: Ravi Kumar <ravi1.kumar@amd.com>
-F: drivers/net/axgbe/
-F: doc/guides/nics/axgbe.rst
-F: doc/guides/nics/features/axgbe.ini
-
 Link bonding
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/net/bonding/
@@ -424,6 +418,12 @@ M: Evgeny Schemeilin <evgenys@amazon.com>
 F: drivers/net/ena/
 F: doc/guides/nics/ena.rst
 F: doc/guides/nics/features/ena.ini
+
+AMD axgbe
+M: Ravi Kumar <ravi1.kumar@amd.com>
+F: drivers/net/axgbe/
+F: doc/guides/nics/axgbe.rst
+F: doc/guides/nics/features/axgbe.ini
 
 Atomic Rules ARK
 M: Shepard Siegel <shepard.siegel@atomicrules.com>
@@ -517,6 +517,16 @@ T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/avf/
 F: doc/guides/nics/features/avf*.ini
 
+Marvell mvpp2
+M: Jacek Siuda <jck@semihalf.com>
+M: Tomasz Duszynski <tdu@semihalf.com>
+M: Dmitri Epshtein <dima@marvell.com>
+M: Natalie Samsonov <nsamsono@marvell.com>
+M: Jianbo Liu <jianbo.liu@arm.com>
+F: drivers/net/mvpp2/
+F: doc/guides/nics/mvpp2.rst
+F: doc/guides/nics/features/mvpp2.ini
+
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
@@ -532,16 +542,6 @@ T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/net/mlx5/
 F: doc/guides/nics/mlx5.rst
 F: doc/guides/nics/features/mlx5.ini
-
-Marvell mvpp2
-M: Jacek Siuda <jck@semihalf.com>
-M: Tomasz Duszynski <tdu@semihalf.com>
-M: Dmitri Epshtein <dima@marvell.com>
-M: Natalie Samsonov <nsamsono@marvell.com>
-M: Jianbo Liu <jianbo.liu@arm.com>
-F: drivers/net/mvpp2/
-F: doc/guides/nics/mvpp2.rst
-F: doc/guides/nics/features/mvpp2.ini
 
 Microsoft vdev_netvsc - EXPERIMENTAL
 M: Matan Azrad <matan@mellanox.com>
@@ -788,17 +788,17 @@ Cavium OCTEONTX timvf
 M: Pavan Nikhilesh <pbhagavatula@caviumnetworks.com>
 F: drivers/event/octeontx/timvf_*
 
-NXP DPAA2 eventdev
-M: Hemant Agrawal <hemant.agrawal@nxp.com>
-M: Nipun Gupta <nipun.gupta@nxp.com>
-F: drivers/event/dpaa2/
-F: doc/guides/eventdevs/dpaa2.rst
-
 NXP DPAA eventdev
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 M: Sunil Kumar Kori <sunil.kori@nxp.com>
 F: drivers/event/dpaa/
 F: doc/guides/eventdevs/dpaa.rst
+
+NXP DPAA2 eventdev
+M: Hemant Agrawal <hemant.agrawal@nxp.com>
+M: Nipun Gupta <nipun.gupta@nxp.com>
+F: drivers/event/dpaa2/
+F: doc/guides/eventdevs/dpaa2.rst
 
 Software Eventdev PMD
 M: Harry van Haaren <harry.van.haaren@intel.com>
@@ -887,6 +887,7 @@ F: doc/guides/prog_guide/pdump_lib.rst
 F: app/pdump/
 F: doc/guides/tools/pdump.rst
 
+
 Packet Framework
 ----------------
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
@@ -952,6 +953,7 @@ F: doc/guides/sample_app_ug/qos_scheduler.rst
 F: test/test/test_meter.c
 F: examples/qos_meter/
 F: doc/guides/sample_app_ug/qos_metering.rst
+
 
 Other libraries
 ---------------
