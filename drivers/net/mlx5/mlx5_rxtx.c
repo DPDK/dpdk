@@ -34,7 +34,7 @@
 #include "mlx5_prm.h"
 
 static __rte_always_inline uint32_t
-rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe);
+rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe);
 
 static __rte_always_inline int
 mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
@@ -128,12 +128,14 @@ mlx5_set_ptype_table(void)
 	(*p)[0x8a] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_L4_UDP;
 	/* Tunneled - L3 */
+	(*p)[0x40] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
 	(*p)[0x41] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L4_NONFRAG;
 	(*p)[0x42] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L4_NONFRAG;
+	(*p)[0xc0] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 	(*p)[0xc1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L4_NONFRAG;
@@ -1667,6 +1669,8 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 /**
  * Translate RX completion flags to packet type.
  *
+ * @param[in] rxq
+ *   Pointer to RX queue structure.
  * @param[in] cqe
  *   Pointer to CQE.
  *
@@ -1676,7 +1680,7 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
  *   Packet type for struct rte_mbuf.
  */
 static inline uint32_t
-rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
+rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
 {
 	uint8_t idx;
 	uint8_t pinfo = cqe->pkt_info;
@@ -1691,7 +1695,7 @@ rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
 	 * bit[7] = outer_l3_type
 	 */
 	idx = ((pinfo & 0x3) << 6) | ((ptype & 0xfc00) >> 10);
-	return mlx5_ptype_table[idx];
+	return mlx5_ptype_table[idx] | rxq->tunnel * !!(idx & (1 << 6));
 }
 
 /**
@@ -1923,7 +1927,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			pkt = seg;
 			assert(len >= (rxq->crc_present << 2));
 			/* Update packet information. */
-			pkt->packet_type = rxq_cq_to_pkt_type(cqe);
+			pkt->packet_type = rxq_cq_to_pkt_type(rxq, cqe);
 			pkt->ol_flags = 0;
 			if (rss_hash_res && rxq->rss_hash) {
 				pkt->hash.rss = rss_hash_res;

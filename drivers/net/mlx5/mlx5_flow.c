@@ -227,6 +227,7 @@ struct rte_flow {
 	struct rte_flow_action_rss rss_conf; /**< RSS configuration */
 	uint16_t (*queues)[]; /**< Queues indexes to use. */
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
+	uint32_t tunnel; /**< Tunnel type of RTE_PTYPE_TUNNEL_XXX. */
 	struct ibv_counter_set *cs; /**< Holds the counters for the rule. */
 	struct mlx5_flow_counter_stats counter_stats;/**<The counter stats. */
 	struct mlx5_flow frxq[RTE_DIM(hash_rxq_init)];
@@ -242,6 +243,11 @@ struct rte_flow {
 #define IS_TUNNEL(type) ( \
 	(type) == RTE_FLOW_ITEM_TYPE_VXLAN || \
 	(type) == RTE_FLOW_ITEM_TYPE_GRE)
+
+const uint32_t flow_ptype[] = {
+	[RTE_FLOW_ITEM_TYPE_VXLAN] = RTE_PTYPE_TUNNEL_VXLAN,
+	[RTE_FLOW_ITEM_TYPE_GRE] = RTE_PTYPE_TUNNEL_GRE,
+};
 
 #define PTYPE_IDX(t) ((RTE_PTYPE_TUNNEL_MASK & (t)) >> 12)
 
@@ -880,7 +886,7 @@ mlx5_flow_convert_items_validate(const struct rte_flow_item items[],
 		if (ret)
 			goto exit_item_not_supported;
 		if (IS_TUNNEL(items->type)) {
-			if (parser->inner) {
+			if (parser->tunnel) {
 				rte_flow_error_set(error, ENOTSUP,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   items,
@@ -889,6 +895,7 @@ mlx5_flow_convert_items_validate(const struct rte_flow_item items[],
 				return -rte_errno;
 			}
 			parser->inner = IBV_FLOW_SPEC_INNER;
+			parser->tunnel = flow_ptype[items->type];
 		}
 		if (parser->drop) {
 			parser->queue[HASH_RXQ_ETH].offset += cur_item->dst_sz;
@@ -1197,6 +1204,7 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 	}
 	/* Third step. Conversion parse, fill the specifications. */
 	parser->inner = 0;
+	parser->tunnel = 0;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
 		struct mlx5_flow_data data = {
 			.dev = dev,
@@ -1684,6 +1692,7 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 
 	id.vni[0] = 0;
 	parser->inner = IBV_FLOW_SPEC_INNER;
+	parser->tunnel = ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN)];
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1740,6 +1749,7 @@ mlx5_flow_create_gre(const struct rte_flow_item *item __rte_unused,
 	unsigned int i;
 
 	parser->inner = IBV_FLOW_SPEC_INNER;
+	parser->tunnel = ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_GRE)];
 	/* Update encapsulation IP layer protocol. */
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (!parser->queue[i].ibv_attr)
@@ -1946,7 +1956,8 @@ mlx5_flow_create_action_queue_rss(struct rte_eth_dev *dev,
 				      parser->rss_conf.key_len,
 				      hash_fields,
 				      parser->rss_conf.queue,
-				      parser->rss_conf.queue_num);
+				      parser->rss_conf.queue_num,
+				      parser->tunnel);
 		if (flow->frxq[i].hrxq)
 			continue;
 		flow->frxq[i].hrxq =
@@ -1955,7 +1966,8 @@ mlx5_flow_create_action_queue_rss(struct rte_eth_dev *dev,
 				      parser->rss_conf.key_len,
 				      hash_fields,
 				      parser->rss_conf.queue,
-				      parser->rss_conf.queue_num);
+				      parser->rss_conf.queue_num,
+				      parser->tunnel);
 		if (!flow->frxq[i].hrxq) {
 			return rte_flow_error_set(error, ENOMEM,
 						  RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -1964,6 +1976,48 @@ mlx5_flow_create_action_queue_rss(struct rte_eth_dev *dev,
 		}
 	}
 	return 0;
+}
+
+/**
+ * RXQ update after flow rule creation.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param flow
+ *   Pointer to the flow rule.
+ */
+static void
+mlx5_flow_create_update_rxqs(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct priv *priv = dev->data->dev_private;
+	unsigned int i;
+	unsigned int j;
+
+	if (!dev->data->dev_started)
+		return;
+	for (i = 0; i != flow->rss_conf.queue_num; ++i) {
+		struct mlx5_rxq_data *rxq_data = (*priv->rxqs)
+						 [(*flow->queues)[i]];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+		uint8_t tunnel = PTYPE_IDX(flow->tunnel);
+
+		rxq_data->mark |= flow->mark;
+		if (!tunnel)
+			continue;
+		rxq_ctrl->tunnel_types[tunnel] += 1;
+		/* Clear tunnel type if more than one tunnel types set. */
+		for (j = 0; j != RTE_DIM(rxq_ctrl->tunnel_types); ++j) {
+			if (j == tunnel)
+				continue;
+			if (rxq_ctrl->tunnel_types[j] > 0) {
+				rxq_data->tunnel = 0;
+				break;
+			}
+		}
+		if (j == RTE_DIM(rxq_ctrl->tunnel_types))
+			rxq_data->tunnel = flow->tunnel;
+	}
 }
 
 /**
@@ -2026,12 +2080,7 @@ mlx5_flow_create_action_queue(struct rte_eth_dev *dev,
 				   NULL, "internal error in flow creation");
 		goto error;
 	}
-	for (i = 0; i != parser->rss_conf.queue_num; ++i) {
-		struct mlx5_rxq_data *q =
-			(*priv->rxqs)[parser->rss_conf.queue[i]];
-
-		q->mark |= parser->mark;
-	}
+	mlx5_flow_create_update_rxqs(dev, flow);
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
@@ -2104,6 +2153,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	}
 	/* Copy configuration. */
 	flow->queues = (uint16_t (*)[])(flow + 1);
+	flow->tunnel = parser.tunnel;
 	flow->rss_conf = (struct rte_flow_action_rss){
 		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
 		.level = 0,
@@ -2195,9 +2245,38 @@ mlx5_flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
 
-	if (flow->drop || !flow->mark)
+	if (flow->drop || !dev->data->dev_started)
 		goto free;
-	for (i = 0; i != flow->rss_conf.queue_num; ++i) {
+	for (i = 0; flow->tunnel && i != flow->rss_conf.queue_num; ++i) {
+		/* Update queue tunnel type. */
+		struct mlx5_rxq_data *rxq_data = (*priv->rxqs)
+						 [(*flow->queues)[i]];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+		uint8_t tunnel = PTYPE_IDX(flow->tunnel);
+
+		assert(rxq_ctrl->tunnel_types[tunnel] > 0);
+		rxq_ctrl->tunnel_types[tunnel] -= 1;
+		if (!rxq_ctrl->tunnel_types[tunnel]) {
+			/* Update tunnel type. */
+			uint8_t j;
+			uint8_t types = 0;
+			uint8_t last;
+
+			for (j = 0; j < RTE_DIM(rxq_ctrl->tunnel_types); j++)
+				if (rxq_ctrl->tunnel_types[j]) {
+					types += 1;
+					last = j;
+				}
+			/* Keep same if more than one tunnel types left. */
+			if (types == 1)
+				rxq_data->tunnel = ptype_ext[last];
+			else if (types == 0)
+				/* No tunnel type left. */
+				rxq_data->tunnel = 0;
+		}
+	}
+	for (i = 0; flow->mark && i != flow->rss_conf.queue_num; ++i) {
 		struct rte_flow *tmp;
 		int mark = 0;
 
@@ -2416,9 +2495,9 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct rte_flow *flow;
+	unsigned int i;
 
 	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next) {
-		unsigned int i;
 		struct mlx5_ind_table_ibv *ind_tbl = NULL;
 
 		if (flow->drop) {
@@ -2463,6 +2542,18 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 		}
 		DRV_LOG(DEBUG, "port %u flow %p removed", dev->data->port_id,
 			(void *)flow);
+	}
+	/* Cleanup Rx queue tunnel info. */
+	for (i = 0; i != priv->rxqs_n; ++i) {
+		struct mlx5_rxq_data *q = (*priv->rxqs)[i];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(q, struct mlx5_rxq_ctrl, rxq);
+
+		if (!q)
+			continue;
+		memset((void *)rxq_ctrl->tunnel_types, 0,
+		       sizeof(rxq_ctrl->tunnel_types));
+		q->tunnel = 0;
 	}
 }
 
@@ -2511,7 +2602,8 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 					      flow->rss_conf.key_len,
 					      hash_rxq_init[i].hash_fields,
 					      flow->rss_conf.queue,
-					      flow->rss_conf.queue_num);
+					      flow->rss_conf.queue_num,
+					      flow->tunnel);
 			if (flow->frxq[i].hrxq)
 				goto flow_create;
 			flow->frxq[i].hrxq =
@@ -2519,7 +2611,8 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 					      flow->rss_conf.key_len,
 					      hash_rxq_init[i].hash_fields,
 					      flow->rss_conf.queue,
-					      flow->rss_conf.queue_num);
+					      flow->rss_conf.queue_num,
+					      flow->tunnel);
 			if (!flow->frxq[i].hrxq) {
 				DRV_LOG(DEBUG,
 					"port %u flow %p cannot be applied",
@@ -2541,10 +2634,7 @@ flow_create:
 			DRV_LOG(DEBUG, "port %u flow %p applied",
 				dev->data->port_id, (void *)flow);
 		}
-		if (!flow->mark)
-			continue;
-		for (i = 0; i != flow->rss_conf.queue_num; ++i)
-			(*priv->rxqs)[flow->rss_conf.queue[i]]->mark = 1;
+		mlx5_flow_create_update_rxqs(dev, flow);
 	}
 	return 0;
 }

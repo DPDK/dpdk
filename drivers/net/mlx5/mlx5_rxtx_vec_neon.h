@@ -551,6 +551,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	const uint64x1_t mbuf_init = vld1_u64(&rxq->mbuf_initializer);
 	const uint64x1_t r32_mask = vcreate_u64(0xffffffff);
 	uint64x2_t rearm0, rearm1, rearm2, rearm3;
+	uint8_t pt_idx0, pt_idx1, pt_idx2, pt_idx3;
 
 	if (rxq->mark) {
 		const uint32x4_t ft_def = vdupq_n_u32(MLX5_FLOW_MARK_DEFAULT);
@@ -583,14 +584,18 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	ptype = vshrn_n_u32(ptype_info, 10);
 	/* Errored packets will have RTE_PTYPE_ALL_MASK. */
 	ptype = vorr_u16(ptype, op_err);
-	pkts[0]->packet_type =
-		mlx5_ptype_table[vget_lane_u8(vreinterpret_u8_u16(ptype), 6)];
-	pkts[1]->packet_type =
-		mlx5_ptype_table[vget_lane_u8(vreinterpret_u8_u16(ptype), 4)];
-	pkts[2]->packet_type =
-		mlx5_ptype_table[vget_lane_u8(vreinterpret_u8_u16(ptype), 2)];
-	pkts[3]->packet_type =
-		mlx5_ptype_table[vget_lane_u8(vreinterpret_u8_u16(ptype), 0)];
+	pt_idx0 = vget_lane_u8(vreinterpret_u8_u16(ptype), 6);
+	pt_idx1 = vget_lane_u8(vreinterpret_u8_u16(ptype), 4);
+	pt_idx2 = vget_lane_u8(vreinterpret_u8_u16(ptype), 2);
+	pt_idx3 = vget_lane_u8(vreinterpret_u8_u16(ptype), 0);
+	pkts[0]->packet_type = mlx5_ptype_table[pt_idx0] |
+			       !!(pt_idx0 & (1 << 6)) * rxq->tunnel;
+	pkts[1]->packet_type = mlx5_ptype_table[pt_idx1] |
+			       !!(pt_idx1 & (1 << 6)) * rxq->tunnel;
+	pkts[2]->packet_type = mlx5_ptype_table[pt_idx2] |
+			       !!(pt_idx2 & (1 << 6)) * rxq->tunnel;
+	pkts[3]->packet_type = mlx5_ptype_table[pt_idx3] |
+			       !!(pt_idx3 & (1 << 6)) * rxq->tunnel;
 	/* Fill flags for checksum and VLAN. */
 	pinfo = vandq_u32(ptype_info, ptype_ol_mask);
 	pinfo = vreinterpretq_u32_u8(

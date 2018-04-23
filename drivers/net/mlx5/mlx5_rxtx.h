@@ -104,6 +104,7 @@ struct mlx5_rxq_data {
 	void *cq_uar; /* CQ user access region. */
 	uint32_t cqn; /* CQ number. */
 	uint8_t cq_arm_sn; /* CQ arm seq number. */
+	uint32_t tunnel; /* Tunnel information. */
 } __rte_cache_aligned;
 
 /* Verbs Rx queue elements. */
@@ -125,6 +126,7 @@ struct mlx5_rxq_ctrl {
 	struct mlx5_rxq_ibv *ibv; /* Verbs elements. */
 	struct mlx5_rxq_data rxq; /* Data path structure. */
 	unsigned int socket; /* CPU socket ID for allocations. */
+	uint32_t tunnel_types[16]; /* Tunnel type counter. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	uint16_t idx; /* Queue index. */
 };
@@ -145,6 +147,7 @@ struct mlx5_hrxq {
 	struct mlx5_ind_table_ibv *ind_table; /* Indirection table. */
 	struct ibv_qp *qp; /* Verbs queue pair. */
 	uint64_t hash_fields; /* Verbs Hash fields. */
+	uint32_t tunnel; /* Tunnel type. */
 	uint32_t rss_key_len; /* Hash key length in bytes. */
 	uint8_t rss_key[]; /* Hash key. */
 };
@@ -249,11 +252,13 @@ int mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev);
 struct mlx5_hrxq *mlx5_hrxq_new(struct rte_eth_dev *dev,
 				const uint8_t *rss_key, uint32_t rss_key_len,
 				uint64_t hash_fields,
-				const uint16_t *queues, uint32_t queues_n);
+				const uint16_t *queues, uint32_t queues_n,
+				uint32_t tunnel);
 struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
 				const uint8_t *rss_key, uint32_t rss_key_len,
 				uint64_t hash_fields,
-				const uint16_t *queues, uint32_t queues_n);
+				const uint16_t *queues, uint32_t queues_n,
+				uint32_t tunnel);
 int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
 int mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_port_offloads(void);

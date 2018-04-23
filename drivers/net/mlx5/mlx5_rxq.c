@@ -1386,6 +1386,8 @@ mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev)
  *   first queue index will be taken for the indirection table.
  * @param queues_n
  *   Number of queues.
+ * @param tunnel
+ *   Tunnel type.
  *
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
@@ -1394,7 +1396,7 @@ struct mlx5_hrxq *
 mlx5_hrxq_new(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
-	      const uint16_t *queues, uint32_t queues_n)
+	      const uint16_t *queues, uint32_t queues_n, uint32_t tunnel)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
@@ -1442,6 +1444,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	hrxq->qp = qp;
 	hrxq->rss_key_len = rss_key_len;
 	hrxq->hash_fields = hash_fields;
+	hrxq->tunnel = tunnel;
 	memcpy(hrxq->rss_key, rss_key, rss_key_len);
 	rte_atomic32_inc(&hrxq->refcnt);
 	LIST_INSERT_HEAD(&priv->hrxqs, hrxq, next);
@@ -1470,6 +1473,8 @@ error:
  *   first queue index will be taken for the indirection table.
  * @param queues_n
  *   Number of queues.
+ * @param tunnel
+ *   Tunnel type.
  *
  * @return
  *   An hash Rx queue on success.
@@ -1478,7 +1483,7 @@ struct mlx5_hrxq *
 mlx5_hrxq_get(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
-	      const uint16_t *queues, uint32_t queues_n)
+	      const uint16_t *queues, uint32_t queues_n, uint32_t tunnel)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
@@ -1492,6 +1497,8 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 		if (memcmp(hrxq->rss_key, rss_key, rss_key_len))
 			continue;
 		if (hrxq->hash_fields != hash_fields)
+			continue;
+		if (hrxq->tunnel != tunnel)
 			continue;
 		ind_tbl = mlx5_ind_table_ibv_get(dev, queues, queues_n);
 		if (!ind_tbl)

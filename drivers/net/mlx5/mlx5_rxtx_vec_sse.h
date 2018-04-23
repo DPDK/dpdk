@@ -542,6 +542,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 	const __m128i mbuf_init =
 		_mm_loadl_epi64((__m128i *)&rxq->mbuf_initializer);
 	__m128i rearm0, rearm1, rearm2, rearm3;
+	uint8_t pt_idx0, pt_idx1, pt_idx2, pt_idx3;
 
 	/* Extract pkt_info field. */
 	pinfo0 = _mm_unpacklo_epi32(cqes[0], cqes[1]);
@@ -595,10 +596,18 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 	/* Errored packets will have RTE_PTYPE_ALL_MASK. */
 	op_err = _mm_srli_epi16(op_err, 8);
 	ptype = _mm_or_si128(ptype, op_err);
-	pkts[0]->packet_type = mlx5_ptype_table[_mm_extract_epi8(ptype, 0)];
-	pkts[1]->packet_type = mlx5_ptype_table[_mm_extract_epi8(ptype, 2)];
-	pkts[2]->packet_type = mlx5_ptype_table[_mm_extract_epi8(ptype, 4)];
-	pkts[3]->packet_type = mlx5_ptype_table[_mm_extract_epi8(ptype, 6)];
+	pt_idx0 = _mm_extract_epi8(ptype, 0);
+	pt_idx1 = _mm_extract_epi8(ptype, 2);
+	pt_idx2 = _mm_extract_epi8(ptype, 4);
+	pt_idx3 = _mm_extract_epi8(ptype, 6);
+	pkts[0]->packet_type = mlx5_ptype_table[pt_idx0] |
+			       !!(pt_idx0 & (1 << 6)) * rxq->tunnel;
+	pkts[1]->packet_type = mlx5_ptype_table[pt_idx1] |
+			       !!(pt_idx1 & (1 << 6)) * rxq->tunnel;
+	pkts[2]->packet_type = mlx5_ptype_table[pt_idx2] |
+			       !!(pt_idx2 & (1 << 6)) * rxq->tunnel;
+	pkts[3]->packet_type = mlx5_ptype_table[pt_idx3] |
+			       !!(pt_idx3 & (1 << 6)) * rxq->tunnel;
 	/* Fill flags for checksum and VLAN. */
 	pinfo = _mm_and_si128(pinfo, ptype_ol_mask);
 	pinfo = _mm_shuffle_epi8(cv_flag_sel, pinfo);
