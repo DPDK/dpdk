@@ -154,6 +154,8 @@ enum index {
 	ITEM_GENEVE,
 	ITEM_GENEVE_VNI,
 	ITEM_GENEVE_PROTO,
+	ITEM_VXLAN_GPE,
+	ITEM_VXLAN_GPE_VNI,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -470,6 +472,7 @@ static const enum index next_item[] = {
 	ITEM_GTPC,
 	ITEM_GTPU,
 	ITEM_GENEVE,
+	ITEM_VXLAN_GPE,
 	ZERO,
 };
 
@@ -622,6 +625,12 @@ static const enum index item_gtp[] = {
 static const enum index item_geneve[] = {
 	ITEM_GENEVE_VNI,
 	ITEM_GENEVE_PROTO,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_vxlan_gpe[] = {
+	ITEM_VXLAN_GPE_VNI,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1559,6 +1568,21 @@ static const struct token token_list[] = {
 		.next = NEXT(item_geneve, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_geneve,
 					     protocol)),
+	},
+	[ITEM_VXLAN_GPE] = {
+		.name = "vxlan-gpe",
+		.help = "match VXLAN-GPE header",
+		.priv = PRIV_ITEM(VXLAN_GPE,
+				  sizeof(struct rte_flow_item_vxlan_gpe)),
+		.next = NEXT(item_vxlan_gpe),
+		.call = parse_vc,
+	},
+	[ITEM_VXLAN_GPE_VNI] = {
+		.name = "vni",
+		.help = "VXLAN-GPE identifier",
+		.next = NEXT(item_vxlan_gpe, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan_gpe,
+					     vni)),
 	},
 
 	/* Validate/create actions. */

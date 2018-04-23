@@ -485,3 +485,8 @@ The commandline options are:
 *   ``--hot-plug``
 
     Enable device event monitor machenism for hotplug.
+
+*   ``--vxlan-gpe-port=N``
+
+    Set the UDP port number of tunnel VXLAN-GPE to N.
+    The default value is 4790.

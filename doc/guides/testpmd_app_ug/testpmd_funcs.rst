@@ -3334,6 +3334,10 @@ This section lists supported pattern items and their attributes, if any.
   - ``vni {unsigned}``: virtual network identifier.
   - ``protocol {unsigned}``: protocol type.
 
+- ``vxlan-gpe``: match VXLAN-GPE header.
+
+  - ``vni {unsigned}``: VXLAN-GPE identifier.
+
 Actions list
 ^^^^^^^^^^^^
 

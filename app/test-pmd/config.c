@@ -1014,6 +1014,7 @@ static const struct {
 	MK_FLOW_ITEM(GTPC, sizeof(struct rte_flow_item_gtp)),
 	MK_FLOW_ITEM(GTPU, sizeof(struct rte_flow_item_gtp)),
 	MK_FLOW_ITEM(GENEVE, sizeof(struct rte_flow_item_geneve)),
+	MK_FLOW_ITEM(VXLAN_GPE, sizeof(struct rte_flow_item_vxlan_gpe)),
 };
 
 /** Pattern item specification types. */
@@ -3132,6 +3133,7 @@ flowtype_to_str(uint16_t flow_type)
 		{"vxlan", RTE_ETH_FLOW_VXLAN},
 		{"geneve", RTE_ETH_FLOW_GENEVE},
 		{"nvgre", RTE_ETH_FLOW_NVGRE},
+		{"vxlan-gpe", RTE_ETH_FLOW_VXLAN_GPE},
 	};
 
 	for (i = 0; i < RTE_DIM(flowtype_str_table); i++) {

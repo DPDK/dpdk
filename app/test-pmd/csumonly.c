@@ -60,6 +60,8 @@
 #define _htons(x) (x)
 #endif
 
+uint16_t vxlan_gpe_udp_port = 4790;
+
 /* structure that caches offload info for the current packet */
 struct testpmd_offload_info {
 	uint16_t ethertype;
@@ -192,6 +194,70 @@ parse_vxlan(struct udp_hdr *udp_hdr,
 
 	parse_ethernet(eth_hdr, info);
 	info->l2_len += ETHER_VXLAN_HLEN; /* add udp + vxlan */
+}
+
+/* Parse a vxlan-gpe header */
+static void
+parse_vxlan_gpe(struct udp_hdr *udp_hdr,
+	    struct testpmd_offload_info *info)
+{
+	struct ether_hdr *eth_hdr;
+	struct ipv4_hdr *ipv4_hdr;
+	struct ipv6_hdr *ipv6_hdr;
+	struct vxlan_gpe_hdr *vxlan_gpe_hdr;
+	uint8_t vxlan_gpe_len = sizeof(*vxlan_gpe_hdr);
+
+	/* Check udp destination port. */
+	if (udp_hdr->dst_port != _htons(vxlan_gpe_udp_port))
+		return;
+
+	vxlan_gpe_hdr = (struct vxlan_gpe_hdr *)((char *)udp_hdr +
+				sizeof(struct udp_hdr));
+
+	if (!vxlan_gpe_hdr->proto || vxlan_gpe_hdr->proto ==
+	    VXLAN_GPE_TYPE_IPV4) {
+		info->is_tunnel = 1;
+		info->outer_ethertype = info->ethertype;
+		info->outer_l2_len = info->l2_len;
+		info->outer_l3_len = info->l3_len;
+		info->outer_l4_proto = info->l4_proto;
+
+		ipv4_hdr = (struct ipv4_hdr *)((char *)vxlan_gpe_hdr +
+			   vxlan_gpe_len);
+
+		parse_ipv4(ipv4_hdr, info);
+		info->ethertype = _htons(ETHER_TYPE_IPv4);
+		info->l2_len = 0;
+
+	} else if (vxlan_gpe_hdr->proto == VXLAN_GPE_TYPE_IPV6) {
+		info->is_tunnel = 1;
+		info->outer_ethertype = info->ethertype;
+		info->outer_l2_len = info->l2_len;
+		info->outer_l3_len = info->l3_len;
+		info->outer_l4_proto = info->l4_proto;
+
+		ipv6_hdr = (struct ipv6_hdr *)((char *)vxlan_gpe_hdr +
+			   vxlan_gpe_len);
+
+		info->ethertype = _htons(ETHER_TYPE_IPv6);
+		parse_ipv6(ipv6_hdr, info);
+		info->l2_len = 0;
+
+	} else if (vxlan_gpe_hdr->proto == VXLAN_GPE_TYPE_ETH) {
+		info->is_tunnel = 1;
+		info->outer_ethertype = info->ethertype;
+		info->outer_l2_len = info->l2_len;
+		info->outer_l3_len = info->l3_len;
+		info->outer_l4_proto = info->l4_proto;
+
+		eth_hdr = (struct ether_hdr *)((char *)vxlan_gpe_hdr +
+			  vxlan_gpe_len);
+
+		parse_ethernet(eth_hdr, info);
+	} else
+		return;
+
+	info->l2_len += ETHER_VXLAN_GPE_HLEN;
 }
 
 /* Parse a gre header */
@@ -588,6 +654,10 @@ pkt_copy_split(const struct rte_mbuf *pkt)
  *   Ether / (vlan) / IP|IP6 / UDP|TCP|SCTP .
  *   Ether / (vlan) / outer IP|IP6 / outer UDP / VxLAN / Ether / IP|IP6 /
  *           UDP|TCP|SCTP
+ *   Ether / (vlan) / outer IP|IP6 / outer UDP / VXLAN-GPE / Ether / IP|IP6 /
+ *           UDP|TCP|SCTP
+ *   Ether / (vlan) / outer IP|IP6 / outer UDP / VXLAN-GPE / IP|IP6 /
+ *           UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / GRE / Ether / IP|IP6 / UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / GRE / IP|IP6 / UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / IP|IP6 / UDP|TCP|SCTP
@@ -691,9 +761,16 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 				udp_hdr = (struct udp_hdr *)((char *)l3_hdr +
 					info.l3_len);
-				parse_vxlan(udp_hdr, &info, m->packet_type);
-				if (info.is_tunnel)
-					tx_ol_flags |= PKT_TX_TUNNEL_VXLAN;
+				parse_vxlan_gpe(udp_hdr, &info);
+				if (info.is_tunnel) {
+					tx_ol_flags |= PKT_TX_TUNNEL_VXLAN_GPE;
+				} else {
+					parse_vxlan(udp_hdr, &info,
+						    m->packet_type);
+					if (info.is_tunnel)
+						tx_ol_flags |=
+							PKT_TX_TUNNEL_VXLAN;
+				}
 			} else if (info.l4_proto == IPPROTO_GRE) {
 				struct simple_gre_hdr *gre_hdr;
 
