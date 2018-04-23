@@ -1800,7 +1800,8 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 	 * before will also match this rule.
 	 * To avoid such situation, VNI 0 is currently refused.
 	 */
-	if (!vxlan.val.tunnel_id)
+	/* Only allow tunnel w/o tunnel id pattern after proper outer spec. */
+	if (parser->out_layer == HASH_RXQ_ETH && !vxlan.val.tunnel_id)
 		return rte_flow_error_set(data->error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
