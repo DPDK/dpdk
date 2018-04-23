@@ -1012,59 +1012,8 @@ mlx5_flow_update_priority(struct rte_eth_dev *dev,
 static void
 mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 {
-	const unsigned int ipv4 =
-		hash_rxq_init[parser->layer].ip_version == MLX5_IPV4;
-	const enum hash_rxq_type hmin = ipv4 ? HASH_RXQ_TCPV4 : HASH_RXQ_TCPV6;
-	const enum hash_rxq_type hmax = ipv4 ? HASH_RXQ_IPV4 : HASH_RXQ_IPV6;
-	const enum hash_rxq_type ohmin = ipv4 ? HASH_RXQ_TCPV6 : HASH_RXQ_TCPV4;
-	const enum hash_rxq_type ohmax = ipv4 ? HASH_RXQ_IPV6 : HASH_RXQ_IPV4;
-	const enum hash_rxq_type ip = ipv4 ? HASH_RXQ_IPV4 : HASH_RXQ_IPV6;
 	unsigned int i;
 
-	/* Remove any other flow not matching the pattern. */
-	if (parser->rss_conf.queue_num == 1 && !parser->rss_conf.types) {
-		for (i = 0; i != hash_rxq_init_n; ++i) {
-			if (i == HASH_RXQ_ETH)
-				continue;
-			rte_free(parser->queue[i].ibv_attr);
-			parser->queue[i].ibv_attr = NULL;
-		}
-		return;
-	}
-	if (parser->layer == HASH_RXQ_ETH) {
-		goto fill;
-	} else {
-		/*
-		 * This layer becomes useless as the pattern define under
-		 * layers.
-		 */
-		rte_free(parser->queue[HASH_RXQ_ETH].ibv_attr);
-		parser->queue[HASH_RXQ_ETH].ibv_attr = NULL;
-	}
-	/* Remove opposite kind of layer e.g. IPv6 if the pattern is IPv4. */
-	for (i = ohmin; i != (ohmax + 1); ++i) {
-		if (!parser->queue[i].ibv_attr)
-			continue;
-		rte_free(parser->queue[i].ibv_attr);
-		parser->queue[i].ibv_attr = NULL;
-	}
-	/* Remove impossible flow according to the RSS configuration. */
-	if (hash_rxq_init[parser->layer].dpdk_rss_hf &
-	    parser->rss_conf.types) {
-		/* Remove any other flow. */
-		for (i = hmin; i != (hmax + 1); ++i) {
-			if ((i == parser->layer) ||
-			     (!parser->queue[i].ibv_attr))
-				continue;
-			rte_free(parser->queue[i].ibv_attr);
-			parser->queue[i].ibv_attr = NULL;
-		}
-	} else  if (!parser->queue[ip].ibv_attr) {
-		/* no RSS possible with the current configuration. */
-		parser->rss_conf.queue_num = 1;
-		return;
-	}
-fill:
 	/*
 	 * Fill missing layers in verbs specifications, or compute the correct
 	 * offset to allocate the memory space for the attributes and
@@ -1124,6 +1073,66 @@ fill:
 			parser->queue[i].offset += size;
 		}
 	}
+}
+
+/**
+ * Update flows according to pattern and RSS hash fields.
+ *
+ * @param[in, out] parser
+ *   Internal parser structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_convert_rss(struct mlx5_flow_parse *parser)
+{
+	const unsigned int ipv4 =
+		hash_rxq_init[parser->layer].ip_version == MLX5_IPV4;
+	const enum hash_rxq_type hmin = ipv4 ? HASH_RXQ_TCPV4 : HASH_RXQ_TCPV6;
+	const enum hash_rxq_type hmax = ipv4 ? HASH_RXQ_IPV4 : HASH_RXQ_IPV6;
+	const enum hash_rxq_type ohmin = ipv4 ? HASH_RXQ_TCPV6 : HASH_RXQ_TCPV4;
+	const enum hash_rxq_type ohmax = ipv4 ? HASH_RXQ_IPV6 : HASH_RXQ_IPV4;
+	const enum hash_rxq_type ip = ipv4 ? HASH_RXQ_IPV4 : HASH_RXQ_IPV6;
+	unsigned int i;
+
+	/* Remove any other flow not matching the pattern. */
+	if (parser->rss_conf.queue_num == 1 && !parser->rss_conf.types) {
+		for (i = 0; i != hash_rxq_init_n; ++i) {
+			if (i == HASH_RXQ_ETH)
+				continue;
+			rte_free(parser->queue[i].ibv_attr);
+			parser->queue[i].ibv_attr = NULL;
+		}
+		return 0;
+	}
+	if (parser->layer == HASH_RXQ_ETH)
+		return 0;
+	/* This layer becomes useless as the pattern define under layers. */
+	rte_free(parser->queue[HASH_RXQ_ETH].ibv_attr);
+	parser->queue[HASH_RXQ_ETH].ibv_attr = NULL;
+	/* Remove opposite kind of layer e.g. IPv6 if the pattern is IPv4. */
+	for (i = ohmin; i != (ohmax + 1); ++i) {
+		if (!parser->queue[i].ibv_attr)
+			continue;
+		rte_free(parser->queue[i].ibv_attr);
+		parser->queue[i].ibv_attr = NULL;
+	}
+	/* Remove impossible flow according to the RSS configuration. */
+	if (hash_rxq_init[parser->layer].dpdk_rss_hf &
+	    parser->rss_conf.types) {
+		/* Remove any other flow. */
+		for (i = hmin; i != (hmax + 1); ++i) {
+			if (i == parser->layer || !parser->queue[i].ibv_attr)
+				continue;
+			rte_free(parser->queue[i].ibv_attr);
+			parser->queue[i].ibv_attr = NULL;
+		}
+	} else if (!parser->queue[ip].ibv_attr) {
+		/* no RSS possible with the current configuration. */
+		parser->rss_conf.queue_num = 1;
+	}
+	return 0;
 }
 
 /**
@@ -1223,6 +1232,15 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 		if (ret)
 			goto exit_free;
 	}
+	if (!parser->drop) {
+		/* RSS check, remove unused hash types. */
+		ret = mlx5_flow_convert_rss(parser);
+		if (ret)
+			goto exit_free;
+		/* Complete missing specification. */
+		mlx5_flow_convert_finalise(parser);
+	}
+	mlx5_flow_update_priority(dev, parser, attr);
 	if (parser->mark)
 		mlx5_flow_create_flag_mark(parser, parser->mark_id);
 	if (parser->count && parser->create) {
@@ -1230,13 +1248,6 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 		if (!parser->cs)
 			goto exit_count_error;
 	}
-	/*
-	 * Last step. Complete missing specification to reach the RSS
-	 * configuration.
-	 */
-	if (!parser->drop)
-		mlx5_flow_convert_finalise(parser);
-	mlx5_flow_update_priority(dev, parser, attr);
 exit_free:
 	/* Only verification is expected, all resources should be released. */
 	if (!parser->create) {
