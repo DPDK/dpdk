@@ -207,3 +207,23 @@ rte_eal_devargs_dump(FILE *f)
 			devargs->name, devargs->args);
 	}
 }
+
+/* bus-aware rte_devargs iterator. */
+__rte_experimental
+struct rte_devargs *
+rte_eal_devargs_next(const char *busname, const struct rte_devargs *start)
+{
+	struct rte_devargs *da;
+
+	if (start != NULL)
+		da = TAILQ_NEXT(start, next);
+	else
+		da = TAILQ_FIRST(&devargs_list);
+	while (da != NULL) {
+		if (busname == NULL ||
+		    (strcmp(busname, da->bus->name) == 0))
+			return da;
+		da = TAILQ_NEXT(da, next);
+	}
+	return NULL;
+}

@@ -189,6 +189,34 @@ rte_eal_devargs_type_count(enum rte_devtype devtype);
  */
 void rte_eal_devargs_dump(FILE *f);
 
+/**
+ * Find next rte_devargs matching the provided bus name.
+ *
+ * @param busname
+ *   Limit the iteration to devargs related to buses
+ *   matching this name.
+ *   Will return any next rte_devargs if NULL.
+ *
+ * @param start
+ *   Starting iteration point. The iteration will start at
+ *   the first rte_devargs if NULL.
+ *
+ * @return
+ *   Next rte_devargs entry matching the requested bus,
+ *   NULL if there is none.
+ */
+__rte_experimental
+struct rte_devargs *
+rte_eal_devargs_next(const char *busname, const struct rte_devargs *start);
+
+/**
+ * Iterate over all rte_devargs for a specific bus.
+ */
+#define RTE_EAL_DEVARGS_FOREACH(busname, da) \
+	for (da = rte_eal_devargs_next(busname, NULL); \
+	     da != NULL; \
+	     da = rte_eal_devargs_next(busname, da)) \
+
 #ifdef __cplusplus
 }
 #endif

@@ -220,6 +220,7 @@ EXPERIMENTAL {
 	rte_dev_event_monitor_stop;
 	rte_eal_cleanup;
 	rte_eal_devargs_insert;
+	rte_eal_devargs_next;
 	rte_eal_devargs_parse;
 	rte_eal_devargs_remove;
 	rte_eal_hotplug_add;
