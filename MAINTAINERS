@@ -145,7 +145,6 @@ F: test/test/test_common.c
 F: test/test/test_cpuflags.c
 F: test/test/test_cycles.c
 F: test/test/test_debug.c
-F: test/test/test_devargs.c
 F: test/test/test_eal*
 F: test/test/test_errno.c
 F: test/test/test_interrupts.c

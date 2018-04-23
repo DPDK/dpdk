@@ -161,7 +161,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += test_distributor_perf.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_REORDER) += test_reorder.c
 
-SRCS-y += test_devargs.c
 SRCS-y += virtual_pmd.c
 SRCS-y += packet_burst_generator.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
