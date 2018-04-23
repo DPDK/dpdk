@@ -71,7 +71,10 @@ mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	const int vf = priv->config.vf;
 	int ret;
 
-	assert(index < MLX5_MAX_MAC_ADDRESSES);
+	if (index >= MLX5_MAX_MAC_ADDRESSES)
+		return;
+	if (is_zero_ether_addr(&dev->data->mac_addrs[index]))
+		return;
 	if (vf)
 		mlx5_nl_mac_addr_remove(dev, &dev->data->mac_addrs[index],
 					index);
@@ -107,7 +110,14 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 	const int vf = priv->config.vf;
 	unsigned int i;
 
-	assert(index < MLX5_MAX_MAC_ADDRESSES);
+	if (index >= MLX5_MAX_MAC_ADDRESSES) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (is_zero_ether_addr(mac)) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	/* First, make sure this address isn't already configured. */
 	for (i = 0; (i != MLX5_MAX_MAC_ADDRESSES); ++i) {
 		/* Skip this index, it's going to be reconfigured. */
