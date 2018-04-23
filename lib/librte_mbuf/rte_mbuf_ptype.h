@@ -423,6 +423,19 @@ extern "C" {
  */
 #define RTE_PTYPE_TUNNEL_L2TP               0x0000a000
 /**
+ * VXLAN-GPE (VXLAN Generic Protocol Extension) tunneling packet type.
+ *
+ * Packet format:
+ * <'ether type'=0x0800
+ * | 'version'=4, 'protocol'=17
+ * | 'destination port'=4790>
+ * or,
+ * <'ether type'=0x86DD
+ * | 'version'=6, 'next header'=17
+ * | 'destination port'=4790>
+ */
+#define RTE_PTYPE_TUNNEL_VXLAN_GPE          0x0000b000
+/**
  * Mask of tunneling packet types.
  */
 #define RTE_PTYPE_TUNNEL_MASK               0x0000f000

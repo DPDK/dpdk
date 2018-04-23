@@ -339,6 +339,13 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_geneve.
 	 */
 	RTE_FLOW_ITEM_TYPE_GENEVE,
+
+	/**
+	 * Matches a VXLAN-GPE header.
+	 *
+	 * See struct rte_flow_item_vxlan_gpe.
+	 */
+	RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
 };
 
 /**
@@ -863,6 +870,26 @@ struct rte_flow_item_geneve {
 /** Default mask for RTE_FLOW_ITEM_TYPE_GENEVE. */
 #ifndef __cplusplus
 static const struct rte_flow_item_geneve rte_flow_item_geneve_mask = {
+	.vni = "\xff\xff\xff",
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_VXLAN_GPE (draft-ietf-nvo3-vxlan-gpe-05).
+ *
+ * Matches a VXLAN-GPE header.
+ */
+struct rte_flow_item_vxlan_gpe {
+	uint8_t flags; /**< Normally 0x0c (I and P flags). */
+	uint8_t rsvd0[2]; /**< Reserved, normally 0x0000. */
+	uint8_t protocol; /**< Protocol type. */
+	uint8_t vni[3]; /**< VXLAN identifier. */
+	uint8_t rsvd1; /**< Reserved, normally 0x00. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN_GPE. */
+#ifndef __cplusplus
+static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
 	.vni = "\xff\xff\xff",
 };
 #endif

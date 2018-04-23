@@ -1054,6 +1054,18 @@ Matches a GENEVE header.
 - ``rsvd1``: reserved, normally 0x00.
 - Default ``mask`` matches VNI only.
 
+Item: ``VXLAN-GPE``
+^^^^^^^^^^^^^^^^^^^
+
+Matches a VXLAN-GPE header (draft-ietf-nvo3-vxlan-gpe-05).
+
+- ``flags``: normally 0x0C (I and P flags).
+- ``rsvd0``: reserved, normally 0x0000.
+- ``protocol``: protocol type.
+- ``vni``: VXLAN network identifier.
+- ``rsvd1``: reserved, normally 0x00.
+- Default ``mask`` matches VNI only.
+
 Actions
 ~~~~~~~
 

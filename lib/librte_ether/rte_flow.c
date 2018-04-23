@@ -55,6 +55,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(E_TAG, sizeof(struct rte_flow_item_e_tag)),
 	MK_FLOW_ITEM(NVGRE, sizeof(struct rte_flow_item_nvgre)),
 	MK_FLOW_ITEM(GENEVE, sizeof(struct rte_flow_item_geneve)),
+	MK_FLOW_ITEM(VXLAN_GPE, sizeof(struct rte_flow_item_vxlan_gpe)),
 };
 
 /** Generate flow_action[] entry. */

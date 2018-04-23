@@ -54,7 +54,8 @@ extern "C" {
 #define RTE_ETH_FLOW_VXLAN              19 /**< VXLAN protocol based flow */
 #define RTE_ETH_FLOW_GENEVE             20 /**< GENEVE protocol based flow */
 #define RTE_ETH_FLOW_NVGRE              21 /**< NVGRE protocol based flow */
-#define RTE_ETH_FLOW_MAX                22
+#define RTE_ETH_FLOW_VXLAN_GPE          22 /**< VXLAN-GPE protocol based flow */
+#define RTE_ETH_FLOW_MAX                23
 
 /**
  * Feature filter types
