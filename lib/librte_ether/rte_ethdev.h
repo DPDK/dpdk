@@ -980,6 +980,18 @@ struct rte_eth_conf {
  *   the same mempool and has refcnt = 1.
  */
 #define DEV_TX_OFFLOAD_SECURITY         0x00020000
+/**
+ * Device supports generic UDP tunneled packet TSO.
+ * Application must set PKT_TX_TUNNEL_UDP and other mbuf fields required
+ * for tunnel TSO.
+ */
+#define DEV_TX_OFFLOAD_UDP_TNL_TSO      0x00040000
+/**
+ * Device supports generic IP tunneled packet TSO.
+ * Application must set PKT_TX_TUNNEL_IP and other mbuf fields required
+ * for tunnel TSO.
+ */
+#define DEV_TX_OFFLOAD_IP_TNL_TSO       0x00080000
 
 /*
  * If new Tx offload capabilities are defined, they also must be

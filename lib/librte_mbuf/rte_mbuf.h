@@ -213,6 +213,31 @@ extern "C" {
 #define PKT_TX_TUNNEL_GENEVE  (0x4ULL << 45)
 /** TX packet with MPLS-in-UDP RFC 7510 header. */
 #define PKT_TX_TUNNEL_MPLSINUDP (0x5ULL << 45)
+/**
+ * Generic IP encapsulated tunnel type, used for TSO and checksum offload.
+ * It can be used for tunnels which are not standards or listed above.
+ * It is preferred to use specific tunnel flags like PKT_TX_TUNNEL_GRE
+ * or PKT_TX_TUNNEL_IPIP if possible.
+ * The ethdev must be configured with DEV_TX_OFFLOAD_IP_TNL_TSO.
+ * Outer and inner checksums are done according to the existing flags like
+ * PKT_TX_xxx_CKSUM.
+ * Specific tunnel headers that contain payload length, sequence id
+ * or checksum are not expected to be updated.
+ */
+#define PKT_TX_TUNNEL_IP (0xDULL << 45)
+/**
+ * Generic UDP encapsulated tunnel type, used for TSO and checksum offload.
+ * UDP tunnel type implies outer IP layer.
+ * It can be used for tunnels which are not standards or listed above.
+ * It is preferred to use specific tunnel flags like PKT_TX_TUNNEL_VXLAN
+ * if possible.
+ * The ethdev must be configured with DEV_TX_OFFLOAD_UDP_TNL_TSO.
+ * Outer and inner checksums are done according to the existing flags like
+ * PKT_TX_xxx_CKSUM.
+ * Specific tunnel headers that contain payload length, sequence id
+ * or checksum are not expected to be updated.
+ */
+#define PKT_TX_TUNNEL_UDP (0xEULL << 45)
 /* add new TX TUNNEL type here */
 #define PKT_TX_TUNNEL_MASK    (0xFULL << 45)
 
