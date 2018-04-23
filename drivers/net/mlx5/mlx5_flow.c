@@ -37,6 +37,7 @@
 /* Internet Protocol versions. */
 #define MLX5_IPV4 4
 #define MLX5_IPV6 6
+#define MLX5_GRE 47
 
 #ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
 struct ibv_flow_spec_counter_action {
@@ -88,6 +89,11 @@ static int
 mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 		       const void *default_mask,
 		       struct mlx5_flow_data *data);
+
+static int
+mlx5_flow_create_gre(const struct rte_flow_item *item,
+		     const void *default_mask,
+		     struct mlx5_flow_data *data);
 
 struct mlx5_flow_parse;
 
@@ -231,6 +237,10 @@ struct rte_flow {
 		__VA_ARGS__, RTE_FLOW_ITEM_TYPE_END, \
 	}
 
+#define IS_TUNNEL(type) ( \
+	(type) == RTE_FLOW_ITEM_TYPE_VXLAN || \
+	(type) == RTE_FLOW_ITEM_TYPE_GRE)
+
 /** Structure to generate a simple graph of layers supported by the NIC. */
 struct mlx5_flow_items {
 	/** List of possible actions for these items. */
@@ -284,7 +294,8 @@ static const enum rte_flow_action_type valid_actions[] = {
 static const struct mlx5_flow_items mlx5_flow_items[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
-			       RTE_FLOW_ITEM_TYPE_VXLAN),
+			       RTE_FLOW_ITEM_TYPE_VXLAN,
+			       RTE_FLOW_ITEM_TYPE_GRE),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VLAN,
@@ -316,7 +327,8 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_UDP,
-			       RTE_FLOW_ITEM_TYPE_TCP),
+			       RTE_FLOW_ITEM_TYPE_TCP,
+			       RTE_FLOW_ITEM_TYPE_GRE),
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_ipv4){
 			.hdr = {
@@ -333,7 +345,8 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV6] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_UDP,
-			       RTE_FLOW_ITEM_TYPE_TCP),
+			       RTE_FLOW_ITEM_TYPE_TCP,
+			       RTE_FLOW_ITEM_TYPE_GRE),
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_ipv6){
 			.hdr = {
@@ -386,6 +399,19 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.convert = mlx5_flow_create_tcp,
 		.dst_sz = sizeof(struct ibv_flow_spec_tcp_udp),
 	},
+	[RTE_FLOW_ITEM_TYPE_GRE] = {
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_IPV6),
+		.actions = valid_actions,
+		.mask = &(const struct rte_flow_item_gre){
+			.protocol = -1,
+		},
+		.default_mask = &rte_flow_item_gre_mask,
+		.mask_sz = sizeof(struct rte_flow_item_gre),
+		.convert = mlx5_flow_create_gre,
+		.dst_sz = sizeof(struct ibv_flow_spec_tunnel),
+	},
 	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH),
 		.actions = valid_actions,
@@ -401,7 +427,7 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 
 /** Structure to pass to the conversion function. */
 struct mlx5_flow_parse {
-	uint32_t inner; /**< Set once VXLAN is encountered. */
+	uint32_t inner; /**< Verbs value, set once tunnel is encountered. */
 	uint32_t create:1;
 	/**< Whether resources should remain after a validate. */
 	uint32_t drop:1; /**< Target is a drop queue. */
@@ -412,6 +438,7 @@ struct mlx5_flow_parse {
 	uint16_t queues[RTE_MAX_QUEUES_PER_PORT]; /**< Queues indexes to use. */
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
 	enum hash_rxq_type layer; /**< Last pattern layer detected. */
+	enum hash_rxq_type out_layer; /**< Last outer pattern layer detected. */
 	struct ibv_counter_set *cs; /**< Holds the counter set for the rule */
 	struct {
 		struct ibv_flow_attr *ibv_attr;
@@ -839,13 +866,13 @@ mlx5_flow_convert_items_validate(const struct rte_flow_item items[],
 					      cur_item->mask_sz);
 		if (ret)
 			goto exit_item_not_supported;
-		if (items->type == RTE_FLOW_ITEM_TYPE_VXLAN) {
+		if (IS_TUNNEL(items->type)) {
 			if (parser->inner) {
 				rte_flow_error_set(error, ENOTSUP,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   items,
-						   "cannot recognize multiple"
-						   " VXLAN encapsulations");
+						   "Cannot recognize multiple"
+						   " tunnel encapsulations.");
 				return -rte_errno;
 			}
 			parser->inner = IBV_FLOW_SPEC_INNER;
@@ -1647,6 +1674,67 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 					  item,
 					  "VxLAN vni cannot be 0");
 	mlx5_flow_create_copy(parser, &vxlan, size);
+	return 0;
+}
+
+/**
+ * Convert GRE item to Verbs specification.
+ *
+ * @param item[in]
+ *   Item specification.
+ * @param default_mask[in]
+ *   Default bit-masks to use when item->mask is not provided.
+ * @param data[in, out]
+ *   User structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_create_gre(const struct rte_flow_item *item __rte_unused,
+		     const void *default_mask __rte_unused,
+		     struct mlx5_flow_data *data)
+{
+	struct mlx5_flow_parse *parser = data->parser;
+	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
+	struct ibv_flow_spec_tunnel tunnel = {
+		.type = parser->inner | IBV_FLOW_SPEC_VXLAN_TUNNEL,
+		.size = size,
+	};
+	struct ibv_flow_spec_ipv4_ext *ipv4;
+	struct ibv_flow_spec_ipv6 *ipv6;
+	unsigned int i;
+
+	parser->inner = IBV_FLOW_SPEC_INNER;
+	/* Update encapsulation IP layer protocol. */
+	for (i = 0; i != hash_rxq_init_n; ++i) {
+		if (!parser->queue[i].ibv_attr)
+			continue;
+		if (parser->out_layer == HASH_RXQ_IPV4) {
+			ipv4 = (void *)((uintptr_t)parser->queue[i].ibv_attr +
+				parser->queue[i].offset -
+				sizeof(struct ibv_flow_spec_ipv4_ext));
+			if (ipv4->mask.proto && ipv4->val.proto != MLX5_GRE)
+				break;
+			ipv4->val.proto = MLX5_GRE;
+			ipv4->mask.proto = 0xff;
+		} else if (parser->out_layer == HASH_RXQ_IPV6) {
+			ipv6 = (void *)((uintptr_t)parser->queue[i].ibv_attr +
+				parser->queue[i].offset -
+				sizeof(struct ibv_flow_spec_ipv6));
+			if (ipv6->mask.next_hdr &&
+			    ipv6->val.next_hdr != MLX5_GRE)
+				break;
+			ipv6->val.next_hdr = MLX5_GRE;
+			ipv6->mask.next_hdr = 0xff;
+		}
+	}
+	if (i != hash_rxq_init_n)
+		return rte_flow_error_set(data->error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "IP protocol of GRE must be 47");
+	mlx5_flow_create_copy(parser, &tunnel, size);
 	return 0;
 }
 
