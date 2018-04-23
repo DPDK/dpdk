@@ -66,6 +66,8 @@ const char *rte_get_ptype_tunnel_name(uint32_t ptype)
 	case RTE_PTYPE_TUNNEL_ESP: return "TUNNEL_ESP";
 	case RTE_PTYPE_TUNNEL_L2TP: return "TUNNEL_L2TP";
 	case RTE_PTYPE_TUNNEL_VXLAN_GPE: return "TUNNEL_VXLAN_GPE";
+	case RTE_PTYPE_TUNNEL_MPLS_IN_UDP: return "TUNNEL_MPLS_IN_UDP";
+	case RTE_PTYPE_TUNNEL_MPLS_IN_GRE: return "TUNNEL_MPLS_IN_GRE";
 	default: return "TUNNEL_UNKNOWN";
 	}
 }

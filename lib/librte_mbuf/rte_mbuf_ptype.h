@@ -436,6 +436,40 @@ extern "C" {
  */
 #define RTE_PTYPE_TUNNEL_VXLAN_GPE          0x0000b000
 /**
+ * MPLS-in-GRE tunneling packet type (RFC 4023).
+ *
+ * Packet format:
+ * <'ether type'=0x0800
+ * | 'version'=4, 'protocol'=47
+ * | 'protocol'=0x8847>
+ * or,
+ * <'ether type'=0x0800
+ * | 'version'=4, 'protocol'=47
+ * | 'protocol'=0x8848>
+ * or,
+ * <'ether type'=0x86DD
+ * | 'version'=6, 'protocol'=47
+ * | 'protocol'=0x8847>
+ * or,
+ * <'ether type'=0x86DD
+ * | 'version'=6, 'next header'=47
+ * | 'protocol'=0x8848>
+ */
+#define RTE_PTYPE_TUNNEL_MPLS_IN_GRE       0x0000c000
+/**
+ * MPLS-in-UDP tunneling packet type (RFC 7510).
+ *
+ * Packet format:
+ * <'ether type'=0x0800
+ * | 'version'=4, 'protocol'=17
+ * | 'destination port'=6635>
+ * or,
+ * <'ether type'=0x86DD
+ * | 'version'=6, 'next header'=17
+ * | 'destination port'=6635>
+ */
+#define RTE_PTYPE_TUNNEL_MPLS_IN_UDP      0x0000d000
+/**
  * Mask of tunneling packet types.
  */
 #define RTE_PTYPE_TUNNEL_MASK               0x0000f000
