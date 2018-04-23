@@ -114,29 +114,12 @@ int rte_eal_dev_detach(struct rte_device *dev)
 	return ret;
 }
 
-static char *
-full_dev_name(const char *bus, const char *dev, const char *args)
-{
-	char *name;
-	size_t len;
-
-	len = snprintf(NULL, 0, "%s:%s,%s", bus, dev, args) + 1;
-	name = calloc(1, len);
-	if (name == NULL) {
-		RTE_LOG(ERR, EAL, "Could not allocate full device name\n");
-		return NULL;
-	}
-	snprintf(name, len, "%s:%s,%s", bus, dev, args);
-	return name;
-}
-
 int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devname,
 			const char *devargs)
 {
 	struct rte_bus *bus;
 	struct rte_device *dev;
 	struct rte_devargs *da;
-	char *name;
 	int ret;
 
 	bus = rte_bus_find_by_name(busname);
@@ -151,17 +134,12 @@ int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devn
 		return -ENOTSUP;
 	}
 
-	name = full_dev_name(busname, devname, devargs);
-	if (name == NULL)
+	da = calloc(1, sizeof(*da));
+	if (da == NULL)
 		return -ENOMEM;
 
-	da = calloc(1, sizeof(*da));
-	if (da == NULL) {
-		ret = -ENOMEM;
-		goto err_name;
-	}
-
-	ret = rte_eal_devargs_parse(name, da);
+	ret = rte_eal_devargs_parse(da, "%s:%s,%s",
+				    busname, devname, devargs);
 	if (ret)
 		goto err_devarg;
 
@@ -187,7 +165,6 @@ int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devn
 			dev->name);
 		goto err_devarg;
 	}
-	free(name);
 	return 0;
 
 err_devarg:
@@ -195,8 +172,6 @@ err_devarg:
 		free(da->args);
 		free(da);
 	}
-err_name:
-	free(name);
 	return ret;
 }
 

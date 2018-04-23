@@ -94,18 +94,21 @@ int rte_eal_parse_devargs_str(const char *devargs_str,
  * in argument. Store which bus will handle the device, its name
  * and the eventual device parameters.
  *
- * @param dev
- *   The device declaration string.
+ * The device string is built with a printf-like syntax.
+ *
  * @param da
  *   The devargs structure holding the device information.
+ * @param format
+ *   Format string describing a device.
  *
  * @return
  *   - 0 on success.
  *   - Negative errno on error.
  */
 int __rte_experimental
-rte_eal_devargs_parse(const char *dev,
-		      struct rte_devargs *da);
+rte_eal_devargs_parse(struct rte_devargs *da,
+		      const char *format, ...)
+__attribute__((format(printf, 2, 0)));
 
 /**
  * Insert an rte_devargs in the global list.

@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include <rte_compat.h>
 #include <rte_dev.h>
@@ -62,15 +63,23 @@ bus_name_cmp(const struct rte_bus *bus, const void *name)
 }
 
 int __rte_experimental
-rte_eal_devargs_parse(const char *dev, struct rte_devargs *da)
+rte_eal_devargs_parse(struct rte_devargs *da, const char *format, ...)
 {
 	struct rte_bus *bus = NULL;
+	va_list ap;
+	va_start(ap, format);
+	char dev[vsnprintf(NULL, 0, format, ap) + 1];
 	const char *devname;
 	const size_t maxlen = sizeof(da->name);
 	size_t i;
 
-	if (dev == NULL || da == NULL)
+	va_end(ap);
+	if (da == NULL)
 		return -EINVAL;
+
+	va_start(ap, format);
+	vsnprintf(dev, sizeof(dev), format, ap);
+	va_end(ap);
 	/* Retrieve eventual bus info */
 	do {
 		devname = dev;
@@ -140,7 +149,7 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	if (devargs == NULL)
 		goto fail;
 
-	if (rte_eal_devargs_parse(dev, devargs))
+	if (rte_eal_devargs_parse(devargs, "%s", dev))
 		goto fail;
 	devargs->type = devtype;
 	bus = devargs->bus;
