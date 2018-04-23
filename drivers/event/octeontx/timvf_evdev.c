@@ -295,7 +295,8 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 	if (timr->bkt == NULL)
 		goto mem_err;
 
-	snprintf(pool_name, 30, "timvf_chunk_pool%d", timr->tim_ring_id);
+	snprintf(pool_name, sizeof(pool_name), "timvf_chunk_pool%d",
+			timr->tim_ring_id);
 	timr->chunk_pool = (void *)rte_mempool_create_empty(pool_name,
 			timr->nb_chunks, TIM_CHUNK_SIZE, 0, 0, rte_socket_id(),
 			mp_flags);
