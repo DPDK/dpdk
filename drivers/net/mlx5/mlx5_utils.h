@@ -103,15 +103,21 @@ extern int mlx5_logtype;
 /* claim_zero() does not perform any check when debugging is disabled. */
 #ifndef NDEBUG
 
+#define DEBUG(...) DRV_LOG(DEBUG, __VA_ARGS__)
 #define claim_zero(...) assert((__VA_ARGS__) == 0)
 #define claim_nonzero(...) assert((__VA_ARGS__) != 0)
 
 #else /* NDEBUG */
 
+#define DEBUG(...) (void)0
 #define claim_zero(...) (__VA_ARGS__)
 #define claim_nonzero(...) (__VA_ARGS__)
 
 #endif /* NDEBUG */
+
+#define INFO(...) DRV_LOG(INFO, __VA_ARGS__)
+#define WARN(...) DRV_LOG(WARNING, __VA_ARGS__)
+#define ERROR(...) DRV_LOG(ERR, __VA_ARGS__)
 
 /* Convenience macros for accessing mbuf fields. */
 #define NEXT(m) ((m)->next)

@@ -2091,6 +2091,57 @@ mlx5_flow_create_update_rxqs(struct rte_eth_dev *dev, struct rte_flow *flow)
 }
 
 /**
+ * Dump flow hash RX queue detail.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param flow
+ *   Pointer to the rte_flow.
+ * @param hrxq_idx
+ *   Hash RX queue index.
+ */
+static void
+mlx5_flow_dump(struct rte_eth_dev *dev __rte_unused,
+	       struct rte_flow *flow __rte_unused,
+	       unsigned int hrxq_idx __rte_unused)
+{
+#ifndef NDEBUG
+	uintptr_t spec_ptr;
+	uint16_t j;
+	char buf[256];
+	uint8_t off;
+
+	spec_ptr = (uintptr_t)(flow->frxq[hrxq_idx].ibv_attr + 1);
+	for (j = 0, off = 0; j < flow->frxq[hrxq_idx].ibv_attr->num_of_specs;
+	     j++) {
+		struct ibv_flow_spec *spec = (void *)spec_ptr;
+		off += sprintf(buf + off, " %x(%hu)", spec->hdr.type,
+			       spec->hdr.size);
+		spec_ptr += spec->hdr.size;
+	}
+	DRV_LOG(DEBUG,
+		"port %u Verbs flow %p type %u: hrxq:%p qp:%p ind:%p,"
+		" hash:%" PRIx64 "/%u specs:%hhu(%hu), priority:%hu, type:%d,"
+		" flags:%x, comp_mask:%x specs:%s",
+		dev->data->port_id, (void *)flow, hrxq_idx,
+		(void *)flow->frxq[hrxq_idx].hrxq,
+		(void *)flow->frxq[hrxq_idx].hrxq->qp,
+		(void *)flow->frxq[hrxq_idx].hrxq->ind_table,
+		flow->frxq[hrxq_idx].hash_fields |
+		(flow->tunnel &&
+		 flow->rss_conf.level > 1 ? (uint32_t)IBV_RX_HASH_INNER : 0),
+		flow->rss_conf.queue_num,
+		flow->frxq[hrxq_idx].ibv_attr->num_of_specs,
+		flow->frxq[hrxq_idx].ibv_attr->size,
+		flow->frxq[hrxq_idx].ibv_attr->priority,
+		flow->frxq[hrxq_idx].ibv_attr->type,
+		flow->frxq[hrxq_idx].ibv_attr->flags,
+		flow->frxq[hrxq_idx].ibv_attr->comp_mask,
+		buf);
+#endif
+}
+
+/**
  * Complete flow rule creation.
  *
  * @param dev
@@ -2132,6 +2183,7 @@ mlx5_flow_create_action_queue(struct rte_eth_dev *dev,
 		flow->frxq[i].ibv_flow =
 			mlx5_glue->create_flow(flow->frxq[i].hrxq->qp,
 					       flow->frxq[i].ibv_attr);
+		mlx5_flow_dump(dev, flow, i);
 		if (!flow->frxq[i].ibv_flow) {
 			rte_flow_error_set(error, ENOMEM,
 					   RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -2139,11 +2191,6 @@ mlx5_flow_create_action_queue(struct rte_eth_dev *dev,
 			goto error;
 		}
 		++flows_n;
-		DRV_LOG(DEBUG, "port %u %p type %d QP %p ibv_flow %p",
-			dev->data->port_id,
-			(void *)flow, i,
-			(void *)flow->frxq[i].hrxq->qp,
-			(void *)flow->frxq[i].ibv_flow);
 	}
 	if (!flows_n) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -2687,24 +2734,25 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 					      flow->rss_conf.level);
 			if (!flow->frxq[i].hrxq) {
 				DRV_LOG(DEBUG,
-					"port %u flow %p cannot be applied",
+					"port %u flow %p cannot create hash"
+					" rxq",
 					dev->data->port_id, (void *)flow);
 				rte_errno = EINVAL;
 				return -rte_errno;
 			}
 flow_create:
+			mlx5_flow_dump(dev, flow, i);
 			flow->frxq[i].ibv_flow =
 				mlx5_glue->create_flow(flow->frxq[i].hrxq->qp,
 						       flow->frxq[i].ibv_attr);
 			if (!flow->frxq[i].ibv_flow) {
 				DRV_LOG(DEBUG,
-					"port %u flow %p cannot be applied",
-					dev->data->port_id, (void *)flow);
+					"port %u flow %p type %u cannot be"
+					" applied",
+					dev->data->port_id, (void *)flow, i);
 				rte_errno = EINVAL;
 				return -rte_errno;
 			}
-			DRV_LOG(DEBUG, "port %u flow %p applied",
-				dev->data->port_id, (void *)flow);
 		}
 		mlx5_flow_create_update_rxqs(dev, flow);
 	}

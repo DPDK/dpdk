@@ -1259,9 +1259,9 @@ mlx5_ind_table_ibv_new(struct rte_eth_dev *dev, const uint16_t *queues,
 	}
 	rte_atomic32_inc(&ind_tbl->refcnt);
 	LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
-	DRV_LOG(DEBUG, "port %u indirection table %p: refcnt %d",
-		dev->data->port_id, (void *)ind_tbl,
-		rte_atomic32_read(&ind_tbl->refcnt));
+	DEBUG("port %u new indirection table %p: queues:%u refcnt:%d",
+	      dev->data->port_id, (void *)ind_tbl, 1 << wq_n,
+	      rte_atomic32_read(&ind_tbl->refcnt));
 	return ind_tbl;
 error:
 	rte_free(ind_tbl);
@@ -1330,9 +1330,12 @@ mlx5_ind_table_ibv_release(struct rte_eth_dev *dev,
 	DRV_LOG(DEBUG, "port %u indirection table %p: refcnt %d",
 		((struct priv *)dev->data->dev_private)->port,
 		(void *)ind_tbl, rte_atomic32_read(&ind_tbl->refcnt));
-	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt))
+	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt)) {
 		claim_zero(mlx5_glue->destroy_rwq_ind_table
 			   (ind_tbl->ind_table));
+		DEBUG("port %u delete indirection table %p: queues: %u",
+		      dev->data->port_id, (void *)ind_tbl, ind_tbl->queues_n);
+	}
 	for (i = 0; i != ind_tbl->queues_n; ++i)
 		claim_nonzero(mlx5_rxq_release(dev, ind_tbl->queues[i]));
 	if (!rte_atomic32_read(&ind_tbl->refcnt)) {
@@ -1449,6 +1452,13 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			.pd = priv->pd,
 		 },
 		 &qp_init_attr);
+	DEBUG("port %u new QP:%p ind_tbl:%p hash_fields:0x%" PRIx64
+	      " tunnel:0x%x level:%u dv_attr:comp_mask:0x%" PRIx64
+	      " create_flags:0x%x",
+	      dev->data->port_id, (void *)qp, (void *)ind_tbl,
+	      (tunnel && rss_level == 2 ? (uint32_t)IBV_RX_HASH_INNER : 0) |
+	      hash_fields, tunnel, rss_level,
+	      qp_init_attr.comp_mask, qp_init_attr.create_flags);
 #else
 	qp = mlx5_glue->create_qp_ex
 		(priv->ctx,
@@ -1470,6 +1480,10 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			.rwq_ind_tbl = ind_tbl->ind_table,
 			.pd = priv->pd,
 		 });
+	DEBUG("port %u new QP:%p ind_tbl:%p hash_fields:0x%" PRIx64
+	      " tunnel:0x%x level:%hhu",
+	      dev->data->port_id, (void *)qp, (void *)ind_tbl,
+	      hash_fields, tunnel, rss_level);
 #endif
 	if (!qp) {
 		rte_errno = errno;
@@ -1579,6 +1593,10 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 		(void *)hrxq, rte_atomic32_read(&hrxq->refcnt));
 	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
 		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
+		DEBUG("port %u delete QP %p: hash: 0x%" PRIx64 ", tunnel:"
+		      " 0x%x, level: %u",
+		      dev->data->port_id, (void *)hrxq, hrxq->hash_fields,
+		      hrxq->tunnel, hrxq->rss_level);
 		mlx5_ind_table_ibv_release(dev, hrxq->ind_table);
 		LIST_REMOVE(hrxq, next);
 		rte_free(hrxq);
