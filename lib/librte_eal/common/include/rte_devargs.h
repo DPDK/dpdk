@@ -96,6 +96,21 @@ int rte_eal_parse_devargs_str(const char *devargs_str,
  *
  * The device string is built with a printf-like syntax.
  *
+ * The syntax is:
+ *
+ *     bus:device_identifier,arg1=val1,arg2=val2
+ *
+ * where "bus:" is the bus name followed by any character separator.
+ * The bus name is optional. If no bus name is specified, each bus
+ * will attempt to recognize the device identifier. The first one
+ * to succeed will be used.
+ *
+ * Examples:
+ *
+ *     pci:0000:05.00.0,arg=val
+ *     05.00.0,arg=val
+ *     vdev:net_ring0
+ *
  * @param da
  *   The devargs structure holding the device information.
  * @param format
@@ -125,16 +140,7 @@ rte_eal_devargs_insert(struct rte_devargs *da);
 
 /**
  * Add a device to the user device list
- *
- * For PCI devices, the format of arguments string is "PCI_ADDR" or
- * "PCI_ADDR,key=val,key2=val2,...". Examples: "08:00.1", "0000:5:00.0",
- * "04:00.0,arg=val".
- *
- * For virtual devices, the format of arguments string is "DRIVER_NAME*"
- * or "DRIVER_NAME*,key=val,key2=val2,...". Examples: "net_ring",
- * "net_ring0", "net_pmdAnything,arg=0:arg2=1". The validity of the
- * driver name is not checked by this function, it is done when probing
- * the drivers.
+ * See rte_eal_devargs_parse() for details.
  *
  * @param devtype
  *   The type of the device.
