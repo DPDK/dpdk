@@ -1603,6 +1603,18 @@ fail:
 	return -1;
 }
 
+static int __rte_unused
+hugepage_count_walk(const struct rte_memseg_list *msl, void *arg)
+{
+	struct hugepage_info *hpi = arg;
+
+	if (msl->page_sz != hpi->hugepage_sz)
+		return 0;
+
+	hpi->num_pages[msl->socket_id] += msl->memseg_arr.len;
+	return 0;
+}
+
 static int
 eal_hugepage_init(void)
 {
@@ -1617,10 +1629,29 @@ eal_hugepage_init(void)
 	for (hp_sz_idx = 0;
 			hp_sz_idx < (int) internal_config.num_hugepage_sizes;
 			hp_sz_idx++) {
+#ifndef RTE_ARCH_64
+		struct hugepage_info dummy;
+		unsigned int i;
+#endif
 		/* also initialize used_hp hugepage sizes in used_hp */
 		struct hugepage_info *hpi;
 		hpi = &internal_config.hugepage_info[hp_sz_idx];
 		used_hp[hp_sz_idx].hugepage_sz = hpi->hugepage_sz;
+
+#ifndef RTE_ARCH_64
+		/* for 32-bit, limit number of pages on socket to whatever we've
+		 * preallocated, as we cannot allocate more.
+		 */
+		memset(&dummy, 0, sizeof(dummy));
+		dummy.hugepage_sz = hpi->hugepage_sz;
+		if (rte_memseg_list_walk(hugepage_count_walk, &dummy) < 0)
+			return -1;
+
+		for (i = 0; i < RTE_DIM(dummy.num_pages); i++) {
+			hpi->num_pages[i] = RTE_MIN(hpi->num_pages[i],
+					dummy.num_pages[i]);
+		}
+#endif
 	}
 
 	/* make a copy of socket_mem, needed for balanced allocation. */

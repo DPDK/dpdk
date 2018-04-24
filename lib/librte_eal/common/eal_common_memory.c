@@ -329,6 +329,10 @@ memseg_primary_init_32(void)
 			hpi = &internal_config.hugepage_info[hpi_idx];
 			hugepage_sz = hpi->hugepage_sz;
 
+			/* check if pages are actually available */
+			if (hpi->num_pages[socket_id] == 0)
+				continue;
+
 			max_segs = RTE_MAX_MEMSEG_PER_TYPE;
 			max_pagesz_mem = max_socket_mem - cur_socket_mem;
 
