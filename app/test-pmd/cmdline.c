@@ -846,6 +846,11 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config mtu X value\n"
 			"    Set the MTU of port X to a given value\n\n"
 
+			"port config (port_id) (rxq|txq) (queue_id) ring_size (value)\n"
+			"    Set a rx/tx queue's ring size configuration, the new"
+			" value will take effect after command that (re-)start the port"
+			" or command that setup the specific queue\n\n"
+
 			"port (port_id) (rxq|txq) (queue_id) (start|stop)\n"
 			"    Start/stop a rx/tx queue of port X. Only take effect"
 			" when port X is started\n\n"
@@ -2192,6 +2197,102 @@ cmdline_parse_inst_t cmd_config_rss_hash_key = {
 		(void *)&cmd_config_rss_hash_key_rss_hash_key,
 		(void *)&cmd_config_rss_hash_key_rss_type,
 		(void *)&cmd_config_rss_hash_key_value,
+		NULL,
+	},
+};
+
+/* *** configure port rxq/txq ring size *** */
+struct cmd_config_rxtx_ring_size {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	portid_t portid;
+	cmdline_fixed_string_t rxtxq;
+	uint16_t qid;
+	cmdline_fixed_string_t rsize;
+	uint16_t size;
+};
+
+static void
+cmd_config_rxtx_ring_size_parsed(void *parsed_result,
+				 __attribute__((unused)) struct cmdline *cl,
+				 __attribute__((unused)) void *data)
+{
+	struct cmd_config_rxtx_ring_size *res = parsed_result;
+	struct rte_port *port;
+	uint8_t isrx;
+
+	if (port_id_is_invalid(res->portid, ENABLED_WARN))
+		return;
+
+	if (res->portid == (portid_t)RTE_PORT_ALL) {
+		printf("Invalid port id\n");
+		return;
+	}
+
+	port = &ports[res->portid];
+
+	if (!strcmp(res->rxtxq, "rxq"))
+		isrx = 1;
+	else if (!strcmp(res->rxtxq, "txq"))
+		isrx = 0;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	if (isrx && rx_queue_id_is_invalid(res->qid))
+		return;
+	else if (!isrx && tx_queue_id_is_invalid(res->qid))
+		return;
+
+	if (isrx && res->size != 0 && res->size <= rx_free_thresh) {
+		printf("Invalid rx ring_size, must > rx_free_thresh: %d\n",
+		       rx_free_thresh);
+		return;
+	}
+
+	if (isrx)
+		port->nb_rx_desc[res->qid] = res->size;
+	else
+		port->nb_tx_desc[res->qid] = res->size;
+
+	cmd_reconfig_device_queue(res->portid, 0, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_rxtx_ring_size_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_ring_size,
+				 port, "port");
+cmdline_parse_token_string_t cmd_config_rxtx_ring_size_config =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_ring_size,
+				 config, "config");
+cmdline_parse_token_num_t cmd_config_rxtx_ring_size_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_ring_size,
+				 portid, UINT16);
+cmdline_parse_token_string_t cmd_config_rxtx_ring_size_rxtxq =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_ring_size,
+				 rxtxq, "rxq#txq");
+cmdline_parse_token_num_t cmd_config_rxtx_ring_size_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_ring_size,
+			      qid, UINT16);
+cmdline_parse_token_string_t cmd_config_rxtx_ring_size_rsize =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rxtx_ring_size,
+				 rsize, "ring_size");
+cmdline_parse_token_num_t cmd_config_rxtx_ring_size_size =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rxtx_ring_size,
+			      size, UINT16);
+
+cmdline_parse_inst_t cmd_config_rxtx_ring_size = {
+	.f = cmd_config_rxtx_ring_size_parsed,
+	.data = NULL,
+	.help_str = "port config <port_id> rxq|txq <queue_id> ring_size <value>",
+	.tokens = {
+		(void *)&cmd_config_rxtx_ring_size_port,
+		(void *)&cmd_config_rxtx_ring_size_config,
+		(void *)&cmd_config_rxtx_ring_size_portid,
+		(void *)&cmd_config_rxtx_ring_size_rxtxq,
+		(void *)&cmd_config_rxtx_ring_size_qid,
+		(void *)&cmd_config_rxtx_ring_size_rsize,
+		(void *)&cmd_config_rxtx_ring_size_size,
 		NULL,
 	},
 };
@@ -16361,6 +16462,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_max_pkt_len,
 	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
 	(cmdline_parse_inst_t *)&cmd_config_rss,
+	(cmdline_parse_inst_t *)&cmd_config_rxtx_ring_size,
 	(cmdline_parse_inst_t *)&cmd_config_rxtx_queue,
 	(cmdline_parse_inst_t *)&cmd_setup_rxtx_queue,
 	(cmdline_parse_inst_t *)&cmd_config_rss_reta,

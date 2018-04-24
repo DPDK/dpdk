@@ -1623,6 +1623,15 @@ Close all ports or a specific port::
 
    testpmd> port close (port_id|all)
 
+port config - queue ring size
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure a rx/tx queue ring size::
+
+   testpmd> port (port_id) (rxq|txq) (queue_id) ring_size (value)
+
+Only take effect after command that (re-)start the port or command that setup specific queue.
+
 port start/stop queue
 ~~~~~~~~~~~~~~~~~~~~~
 
