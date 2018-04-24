@@ -33,6 +33,8 @@ TAILQ_HEAD(vdev_device_list, rte_vdev_device);
 
 static struct vdev_device_list vdev_device_list =
 	TAILQ_HEAD_INITIALIZER(vdev_device_list);
+static rte_spinlock_t vdev_device_list_lock = RTE_SPINLOCK_INITIALIZER;
+
 struct vdev_driver_list vdev_driver_list =
 	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
 
@@ -149,6 +151,7 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 	return ret;
 }
 
+/* The caller shall be responsible for thread-safe */
 static struct rte_vdev_device *
 find_vdev(const char *name)
 {
@@ -193,8 +196,8 @@ alloc_devargs(const char *name, const char *args)
 	return devargs;
 }
 
-int
-rte_vdev_init(const char *name, const char *args)
+static int
+insert_vdev(const char *name, const char *args, struct rte_vdev_device **p_dev)
 {
 	struct rte_vdev_device *dev;
 	struct rte_devargs *devargs;
@@ -202,10 +205,6 @@ rte_vdev_init(const char *name, const char *args)
 
 	if (name == NULL)
 		return -EINVAL;
-
-	dev = find_vdev(name);
-	if (dev)
-		return -EEXIST;
 
 	devargs = alloc_devargs(name, args);
 	if (!devargs)
@@ -221,22 +220,49 @@ rte_vdev_init(const char *name, const char *args)
 	dev->device.numa_node = SOCKET_ID_ANY;
 	dev->device.name = devargs->name;
 
-	ret = vdev_probe_all_drivers(dev);
-	if (ret) {
-		if (ret > 0)
-			VDEV_LOG(ERR, "no driver found for %s\n", name);
+	if (find_vdev(name)) {
+		ret = -EEXIST;
 		goto fail;
 	}
 
+	TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
 	TAILQ_INSERT_TAIL(&devargs_list, devargs, next);
 
-	TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
-	return 0;
+	if (p_dev)
+		*p_dev = dev;
 
+	return 0;
 fail:
 	free(devargs->args);
 	free(devargs);
 	free(dev);
+	return ret;
+}
+
+int
+rte_vdev_init(const char *name, const char *args)
+{
+	struct rte_vdev_device *dev;
+	struct rte_devargs *devargs;
+	int ret;
+
+	rte_spinlock_lock(&vdev_device_list_lock);
+	ret = insert_vdev(name, args, &dev);
+	if (ret == 0) {
+		ret = vdev_probe_all_drivers(dev);
+		if (ret) {
+			if (ret > 0)
+				VDEV_LOG(ERR, "no driver found for %s\n", name);
+			/* If fails, remove it from vdev list */
+			devargs = dev->device.devargs;
+			TAILQ_REMOVE(&vdev_device_list, dev, next);
+			TAILQ_REMOVE(&devargs_list, devargs, next);
+			free(devargs->args);
+			free(devargs);
+			free(dev);
+		}
+	}
+	rte_spinlock_unlock(&vdev_device_list_lock);
 	return ret;
 }
 
@@ -266,24 +292,28 @@ rte_vdev_uninit(const char *name)
 	if (name == NULL)
 		return -EINVAL;
 
-	dev = find_vdev(name);
-	if (!dev)
-		return -ENOENT;
+	rte_spinlock_lock(&vdev_device_list_lock);
 
-	devargs = dev->device.devargs;
+	dev = find_vdev(name);
+	if (!dev) {
+		ret = -ENOENT;
+		goto unlock;
+	}
 
 	ret = vdev_remove_driver(dev);
 	if (ret)
-		return ret;
+		goto unlock;
 
 	TAILQ_REMOVE(&vdev_device_list, dev, next);
-
+	devargs = dev->device.devargs;
 	TAILQ_REMOVE(&devargs_list, devargs, next);
-
 	free(devargs->args);
 	free(devargs);
 	free(dev);
-	return 0;
+
+unlock:
+	rte_spinlock_unlock(&vdev_device_list_lock);
+	return ret;
 }
 
 static int
@@ -314,19 +344,25 @@ vdev_scan(void)
 		if (devargs->bus != &rte_vdev_bus)
 			continue;
 
-		dev = find_vdev(devargs->name);
-		if (dev)
-			continue;
-
 		dev = calloc(1, sizeof(*dev));
 		if (!dev)
 			return -1;
+
+		rte_spinlock_lock(&vdev_device_list_lock);
+
+		if (find_vdev(devargs->name)) {
+			rte_spinlock_unlock(&vdev_device_list_lock);
+			free(dev);
+			continue;
+		}
 
 		dev->device.devargs = devargs;
 		dev->device.numa_node = SOCKET_ID_ANY;
 		dev->device.name = devargs->name;
 
 		TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
+
+		rte_spinlock_unlock(&vdev_device_list_lock);
 	}
 
 	return 0;
@@ -340,6 +376,10 @@ vdev_probe(void)
 
 	/* call the init function for each virtual device */
 	TAILQ_FOREACH(dev, &vdev_device_list, next) {
+		/* we don't use the vdev lock here, as it's only used in DPDK
+		 * initialization; and we don't want to hold such a lock when
+		 * we call each driver probe.
+		 */
 
 		if (dev->device.driver)
 			continue;
@@ -360,15 +400,18 @@ vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 {
 	struct rte_vdev_device *dev;
 
+	rte_spinlock_lock(&vdev_device_list_lock);
 	TAILQ_FOREACH(dev, &vdev_device_list, next) {
 		if (start && &dev->device == start) {
 			start = NULL;
 			continue;
 		}
 		if (cmp(&dev->device, data) == 0)
-			return &dev->device;
+			break;
 	}
-	return NULL;
+	rte_spinlock_unlock(&vdev_device_list_lock);
+
+	return dev ? &dev->device : NULL;
 }
 
 static int
