@@ -279,7 +279,9 @@ int rte_thread_setname(pthread_t id, const char *name);
 /**
  * Create a control thread.
  *
- * Wrapper to pthread_create() and pthread_setname_np().
+ * Wrapper to pthread_create(), pthread_setname_np() and
+ * pthread_setaffinity_np(). The dataplane and service lcores are
+ * excluded from the affinity of the new thread.
  *
  * @param thread
  *   Filled with the thread id of the new created thread.

@@ -16,6 +16,7 @@
 #include <rte_memory.h>
 #include <rte_log.h>
 
+#include "eal_private.h"
 #include "eal_thread.h"
 
 RTE_DECLARE_PER_LCORE(unsigned , _socket_id);
@@ -169,7 +170,9 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		.start_routine = start_routine,
 		.arg = arg,
 	};
-	int ret;
+	unsigned int lcore_id;
+	rte_cpuset_t cpuset;
+	int cpu_found, ret;
 
 	pthread_barrier_init(&params.configured, NULL, 2);
 
@@ -182,6 +185,23 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		if (ret < 0)
 			goto fail;
 	}
+
+	cpu_found = 0;
+	CPU_ZERO(&cpuset);
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (eal_cpu_detected(lcore_id) &&
+				rte_lcore_has_role(lcore_id, ROLE_OFF)) {
+			CPU_SET(lcore_id, &cpuset);
+			cpu_found = 1;
+		}
+	}
+	/* if no detected cpu is off, use master core */
+	if (!cpu_found)
+		CPU_SET(rte_get_master_lcore(), &cpuset);
+
+	ret = pthread_setaffinity_np(*thread, sizeof(cpuset), &cpuset);
+	if (ret < 0)
+		goto fail;
 
 	pthread_barrier_wait(&params.configured);
 
