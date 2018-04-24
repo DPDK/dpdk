@@ -279,10 +279,12 @@ int rte_thread_setname(pthread_t id, const char *name);
 /**
  * Create a control thread.
  *
- * Wrapper to pthread_create().
+ * Wrapper to pthread_create() and pthread_setname_np().
  *
  * @param thread
  *   Filled with the thread id of the new created thread.
+ * @param name
+ *   The name of the control thread (max 16 characters including '\0').
  * @param attr
  *   Attributes for the new thread.
  * @param start_routine
@@ -294,7 +296,8 @@ int rte_thread_setname(pthread_t id, const char *name);
  *   corresponding to the error number.
  */
 __rte_experimental int
-rte_ctrl_thread_create(pthread_t *thread, const pthread_attr_t *attr,
+rte_ctrl_thread_create(pthread_t *thread, const char *name,
+		const pthread_attr_t *attr,
 		void *(*start_routine)(void *), void *arg);
 
 /**

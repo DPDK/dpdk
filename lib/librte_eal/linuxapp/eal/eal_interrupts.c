@@ -853,8 +853,7 @@ eal_intr_thread_main(__rte_unused void *arg)
 int
 rte_eal_intr_init(void)
 {
-	int ret = 0, ret_1 = 0;
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
+	int ret = 0;
 
 	/* init the global interrupt source head */
 	TAILQ_INIT(&intr_sources);
@@ -869,20 +868,12 @@ rte_eal_intr_init(void)
 	}
 
 	/* create the host thread to wait/handle the interrupt */
-	ret = rte_ctrl_thread_create(&intr_thread, NULL,
+	ret = rte_ctrl_thread_create(&intr_thread, "eal-intr-thread", NULL,
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
 		rte_errno = -ret;
 		RTE_LOG(ERR, EAL,
 			"Failed to create thread for interrupt handling\n");
-	} else {
-		/* Set thread_name for aid in debugging. */
-		snprintf(thread_name, sizeof(thread_name),
-			"eal-intr-thread");
-		ret_1 = rte_thread_setname(intr_thread, thread_name);
-		if (ret_1 != 0)
-			RTE_LOG(DEBUG, EAL,
-			"Failed to set thread name for interrupt handling\n");
 	}
 
 	return ret;

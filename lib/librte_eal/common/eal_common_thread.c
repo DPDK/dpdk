@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 #include <sched.h>
 #include <assert.h>
 #include <string.h>
@@ -141,10 +142,53 @@ exit:
 	return ret;
 }
 
-__rte_experimental int
-rte_ctrl_thread_create(pthread_t *thread,
-			const pthread_attr_t *attr,
-			void *(*start_routine)(void *), void *arg)
+
+struct rte_thread_ctrl_params {
+	void *(*start_routine)(void *);
+	void *arg;
+	pthread_barrier_t configured;
+};
+
+static void *rte_thread_init(void *arg)
 {
-	return pthread_create(thread, attr, start_routine, arg);
+	struct rte_thread_ctrl_params *params = arg;
+	void *(*start_routine)(void *) = params->start_routine;
+	void *routine_arg = params->arg;
+
+	pthread_barrier_wait(&params->configured);
+
+	return start_routine(routine_arg);
+}
+
+__rte_experimental int
+rte_ctrl_thread_create(pthread_t *thread, const char *name,
+		const pthread_attr_t *attr,
+		void *(*start_routine)(void *), void *arg)
+{
+	struct rte_thread_ctrl_params params = {
+		.start_routine = start_routine,
+		.arg = arg,
+	};
+	int ret;
+
+	pthread_barrier_init(&params.configured, NULL, 2);
+
+	ret = pthread_create(thread, attr, rte_thread_init, (void *)&params);
+	if (ret != 0)
+		return ret;
+
+	if (name != NULL) {
+		ret = rte_thread_setname(*thread, name);
+		if (ret < 0)
+			goto fail;
+	}
+
+	pthread_barrier_wait(&params.configured);
+
+	return 0;
+
+fail:
+	pthread_cancel(*thread);
+	pthread_join(*thread, NULL);
+	return ret;
 }

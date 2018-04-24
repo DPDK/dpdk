@@ -622,7 +622,6 @@ unlink_sockets(const char *filter)
 int
 rte_mp_channel_init(void)
 {
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 	char path[PATH_MAX];
 	int dir_fd;
 	pthread_t mp_handle_tid, async_reply_handle_tid;
@@ -662,7 +661,8 @@ rte_mp_channel_init(void)
 		return -1;
 	}
 
-	if (rte_ctrl_thread_create(&mp_handle_tid, NULL, mp_handle, NULL) < 0) {
+	if (rte_ctrl_thread_create(&mp_handle_tid, "rte_mp_handle",
+			NULL, mp_handle, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "failed to create mp thead: %s\n",
 			strerror(errno));
 		close(mp_fd);
@@ -671,7 +671,8 @@ rte_mp_channel_init(void)
 		return -1;
 	}
 
-	if (rte_ctrl_thread_create(&async_reply_handle_tid, NULL,
+	if (rte_ctrl_thread_create(&async_reply_handle_tid,
+			"rte_mp_async", NULL,
 			async_reply_handle, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "failed to create mp thead: %s\n",
 			strerror(errno));
@@ -680,14 +681,6 @@ rte_mp_channel_init(void)
 		mp_fd = -1;
 		return -1;
 	}
-
-	/* try best to set thread name */
-	strlcpy(thread_name, "rte_mp_handle", sizeof(thread_name));
-	rte_thread_setname(mp_handle_tid, thread_name);
-
-	/* try best to set thread name */
-	strlcpy(thread_name, "rte_mp_async_handle", sizeof(thread_name));
-	rte_thread_setname(async_reply_handle_tid, thread_name);
 
 	/* unlock the directory */
 	flock(dir_fd, LOCK_UN);
