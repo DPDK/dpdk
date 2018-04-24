@@ -3021,12 +3021,25 @@ bond_probe(struct rte_vdev_device *dev)
 	uint8_t bonding_mode, socket_id/*, agg_mode*/;
 	int  arg_count, port_id;
 	uint8_t agg_mode;
+	struct rte_eth_dev *eth_dev;
 
 	if (!dev)
 		return -EINVAL;
 
 	name = rte_vdev_device_name(dev);
 	RTE_LOG(INFO, EAL, "Initializing pmd_bond for %s\n", name);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(rte_vdev_device_args(dev)) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			return -1;
+		}
+		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->dev_ops = &default_dev_ops;
+		return 0;
+	}
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev),
 		pmd_bond_init_valid_arguments);

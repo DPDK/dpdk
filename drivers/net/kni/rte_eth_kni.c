@@ -404,6 +404,18 @@ eth_kni_probe(struct rte_vdev_device *vdev)
 	params = rte_vdev_device_args(vdev);
 	RTE_LOG(INFO, PMD, "Initializing eth_kni for %s\n", name);
 
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(params) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			return -1;
+		}
+		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->dev_ops = &eth_kni_ops;
+		return 0;
+	}
+
 	ret = eth_kni_kvargs_process(&args, params);
 	if (ret < 0)
 		return ret;

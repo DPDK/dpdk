@@ -1721,12 +1721,25 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	char tap_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
 	struct ether_addr user_mac = { .addr_bytes = {0} };
+	struct rte_eth_dev *eth_dev;
 
 	tap_type = 1;
 	strcpy(tuntap_name, "TAP");
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(params) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			return -1;
+		}
+		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->dev_ops = &ops;
+		return 0;
+	}
 
 	speed = ETH_SPEED_NUM_10G;
 	snprintf(tap_name, sizeof(tap_name), "%s%d",

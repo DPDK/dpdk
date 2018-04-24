@@ -1228,12 +1228,26 @@ octeontx_probe(struct rte_vdev_device *dev)
 	struct rte_event_dev_config dev_conf;
 	const char *eventdev_name = "event_octeontx";
 	struct rte_event_dev_info info;
+	struct rte_eth_dev *eth_dev;
 
 	struct octeontx_vdev_init_params init_params = {
 		OCTEONTX_VDEV_DEFAULT_MAX_NR_PORT
 	};
 
 	dev_name = rte_vdev_device_name(dev);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(rte_vdev_device_args(dev)) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(dev_name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", dev_name);
+			return -1;
+		}
+		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->dev_ops = &octeontx_dev_ops;
+		return 0;
+	}
+
 	res = octeontx_parse_vdev_init_params(&init_params, dev);
 	if (res < 0)
 		return -EINVAL;

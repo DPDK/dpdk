@@ -915,9 +915,22 @@ rte_pmd_af_packet_probe(struct rte_vdev_device *dev)
 	int ret = 0;
 	struct rte_kvargs *kvlist;
 	int sockfd = -1;
+	struct rte_eth_dev *eth_dev;
+	const char *name = rte_vdev_device_name(dev);
 
-	RTE_LOG(INFO, PMD, "Initializing pmd_af_packet for %s\n",
-		rte_vdev_device_name(dev));
+	RTE_LOG(INFO, PMD, "Initializing pmd_af_packet for %s\n", name);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(rte_vdev_device_args(dev)) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			return -1;
+		}
+		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->dev_ops = &ops;
+		return 0;
+	}
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
 	if (kvlist == NULL) {

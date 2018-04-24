@@ -294,10 +294,24 @@ static int
 rte_pmd_failsafe_probe(struct rte_vdev_device *vdev)
 {
 	const char *name;
+	struct rte_eth_dev *eth_dev;
 
 	name = rte_vdev_device_name(vdev);
 	INFO("Initializing " FAILSAFE_DRIVER_NAME " for %s",
 			name);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(rte_vdev_device_args(vdev)) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			return -1;
+		}
+		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->dev_ops = &failsafe_ops;
+		return 0;
+	}
+
 	return fs_eth_dev_create(vdev);
 }
 

@@ -725,13 +725,26 @@ pmd_probe(struct rte_vdev_device *vdev)
 	uint16_t hard_port_id;
 	int numa_node;
 	void *dev_private;
+	struct rte_eth_dev *eth_dev;
+	const char *name = rte_vdev_device_name(vdev);
 
-	RTE_LOG(INFO, PMD,
-		"Probing device \"%s\"\n",
-		rte_vdev_device_name(vdev));
+	RTE_LOG(INFO, PMD, "Probing device \"%s\"\n", name);
 
 	/* Parse input arguments */
 	params = rte_vdev_device_args(vdev);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(params) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			return -1;
+		}
+		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->dev_ops = &pmd_ops;
+		return 0;
+	}
+
 	if (!params)
 		return -EINVAL;
 

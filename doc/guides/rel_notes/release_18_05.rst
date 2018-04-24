@@ -134,6 +134,12 @@ New Features
 
   Linux uevent is supported as backend of this device event notification framework.
 
+* **Added support for procinfo and pdump on eth vdev.**
+
+  For ethernet virtual devices (like tap, pcap, etc), with this feature, we can get
+  stats/xstats on shared memory from secondary process, and also pdump packets on
+  those virtual devices.
+
 
 API Changes
 -----------

@@ -898,6 +898,7 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	struct rte_kvargs *kvlist;
 	struct pmd_devargs pcaps = {0};
 	struct pmd_devargs dumpers = {0};
+	struct rte_eth_dev *eth_dev;
 	int single_iface = 0;
 	int ret;
 
@@ -907,6 +908,18 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	gettimeofday(&start_time, NULL);
 	start_cycles = rte_get_timer_cycles();
 	hz = rte_get_timer_hz();
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(rte_vdev_device_args(dev)) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			return -1;
+		}
+		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->dev_ops = &ops;
+		return 0;
+	}
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
 	if (kvlist == NULL)
