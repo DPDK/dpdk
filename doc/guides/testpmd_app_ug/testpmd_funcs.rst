@@ -3338,6 +3338,44 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``vni {unsigned}``: VXLAN-GPE identifier.
 
+- ``arp_eth_ipv4``: match ARP header for Ethernet/IPv4.
+
+  - ``sha {MAC-48}``: sender hardware address.
+  - ``spa {ipv4 address}``: sender IPv4 address.
+  - ``tha {MAC-48}``: target hardware address.
+  - ``tpa {ipv4 address}``: target IPv4 address.
+
+- ``ipv6_ext``: match presence of any IPv6 extension header.
+
+  - ``next_hdr {unsigned}``: next header.
+
+- ``icmp6``: match any ICMPv6 header.
+
+  - ``type {unsigned}``: ICMPv6 type.
+  - ``code {unsigned}``: ICMPv6 code.
+
+- ``icmp6_nd_ns``: match ICMPv6 neighbor discovery solicitation.
+
+  - ``target_addr {ipv6 address}``: target address.
+
+- ``icmp6_nd_na``: match ICMPv6 neighbor discovery advertisement.
+
+  - ``target_addr {ipv6 address}``: target address.
+
+- ``icmp6_nd_opt``: match presence of any ICMPv6 neighbor discovery option.
+
+  - ``type {unsigned}``: ND option type.
+
+- ``icmp6_nd_opt_sla_eth``: match ICMPv6 neighbor discovery source Ethernet
+  link-layer address option.
+
+  - ``sla {MAC-48}``: source Ethernet LLA.
+
+- ``icmp6_nd_opt_sla_eth``: match ICMPv6 neighbor discovery target Ethernet
+  link-layer address option.
+
+  - ``tla {MAC-48}``: target Ethernet LLA.
+
 Actions list
 ^^^^^^^^^^^^
 

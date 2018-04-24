@@ -1015,6 +1015,16 @@ static const struct {
 	MK_FLOW_ITEM(GTPU, sizeof(struct rte_flow_item_gtp)),
 	MK_FLOW_ITEM(GENEVE, sizeof(struct rte_flow_item_geneve)),
 	MK_FLOW_ITEM(VXLAN_GPE, sizeof(struct rte_flow_item_vxlan_gpe)),
+	MK_FLOW_ITEM(ARP_ETH_IPV4, sizeof(struct rte_flow_item_arp_eth_ipv4)),
+	MK_FLOW_ITEM(IPV6_EXT, sizeof(struct rte_flow_item_ipv6_ext)),
+	MK_FLOW_ITEM(ICMP6, sizeof(struct rte_flow_item_icmp6)),
+	MK_FLOW_ITEM(ICMP6_ND_NS, sizeof(struct rte_flow_item_icmp6_nd_ns)),
+	MK_FLOW_ITEM(ICMP6_ND_NA, sizeof(struct rte_flow_item_icmp6_nd_na)),
+	MK_FLOW_ITEM(ICMP6_ND_OPT, sizeof(struct rte_flow_item_icmp6_nd_opt)),
+	MK_FLOW_ITEM(ICMP6_ND_OPT_SLA_ETH,
+		     sizeof(struct rte_flow_item_icmp6_nd_opt_sla_eth)),
+	MK_FLOW_ITEM(ICMP6_ND_OPT_TLA_ETH,
+		     sizeof(struct rte_flow_item_icmp6_nd_opt_tla_eth)),
 };
 
 /** Pattern item specification types. */

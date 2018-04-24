@@ -346,6 +346,64 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_vxlan_gpe.
 	 */
 	RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
+
+	/**
+	 * Matches an ARP header for Ethernet/IPv4.
+	 *
+	 * See struct rte_flow_item_arp_eth_ipv4.
+	 */
+	RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4,
+
+	/**
+	 * Matches the presence of any IPv6 extension header.
+	 *
+	 * See struct rte_flow_item_ipv6_ext.
+	 */
+	RTE_FLOW_ITEM_TYPE_IPV6_EXT,
+
+	/**
+	 * Matches any ICMPv6 header.
+	 *
+	 * See struct rte_flow_item_icmp6.
+	 */
+	RTE_FLOW_ITEM_TYPE_ICMP6,
+
+	/**
+	 * Matches an ICMPv6 neighbor discovery solicitation.
+	 *
+	 * See struct rte_flow_item_icmp6_nd_ns.
+	 */
+	RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS,
+
+	/**
+	 * Matches an ICMPv6 neighbor discovery advertisement.
+	 *
+	 * See struct rte_flow_item_icmp6_nd_na.
+	 */
+	RTE_FLOW_ITEM_TYPE_ICMP6_ND_NA,
+
+	/**
+	 * Matches the presence of any ICMPv6 neighbor discovery option.
+	 *
+	 * See struct rte_flow_item_icmp6_nd_opt.
+	 */
+	RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT,
+
+	/**
+	 * Matches an ICMPv6 neighbor discovery source Ethernet link-layer
+	 * address option.
+	 *
+	 * See struct rte_flow_item_icmp6_nd_opt_sla_eth.
+	 */
+	RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_SLA_ETH,
+
+	/**
+	 * Matches an ICMPv6 neighbor discovery target Ethernet link-layer
+	 * address option.
+	 *
+	 * See struct rte_flow_item_icmp6_nd_opt_tla_eth.
+	 */
+	RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_TLA_ETH,
 };
 
 /**
@@ -571,7 +629,8 @@ static const struct rte_flow_item_ipv4 rte_flow_item_ipv4_mask = {
  *
  * Matches an IPv6 header.
  *
- * Note: IPv6 options are handled by dedicated pattern items.
+ * Note: IPv6 options are handled by dedicated pattern items, see
+ * RTE_FLOW_ITEM_TYPE_IPV6_EXT.
  */
 struct rte_flow_item_ipv6 {
 	struct ipv6_hdr hdr; /**< IPv6 header definition. */
@@ -891,6 +950,199 @@ struct rte_flow_item_vxlan_gpe {
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
 	.vni = "\xff\xff\xff",
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4
+ *
+ * Matches an ARP header for Ethernet/IPv4.
+ */
+struct rte_flow_item_arp_eth_ipv4 {
+	rte_be16_t hrd; /**< Hardware type, normally 1. */
+	rte_be16_t pro; /**< Protocol type, normally 0x0800. */
+	uint8_t hln; /**< Hardware address length, normally 6. */
+	uint8_t pln; /**< Protocol address length, normally 4. */
+	rte_be16_t op; /**< Opcode (1 for request, 2 for reply). */
+	struct ether_addr sha; /**< Sender hardware address. */
+	rte_be32_t spa; /**< Sender IPv4 address. */
+	struct ether_addr tha; /**< Target hardware address. */
+	rte_be32_t tpa; /**< Target IPv4 address. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4. */
+#ifndef __cplusplus
+static const struct rte_flow_item_arp_eth_ipv4
+rte_flow_item_arp_eth_ipv4_mask = {
+	.sha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.spa = RTE_BE32(0xffffffff),
+	.tha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.tpa = RTE_BE32(0xffffffff),
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_IPV6_EXT
+ *
+ * Matches the presence of any IPv6 extension header.
+ *
+ * Normally preceded by any of:
+ *
+ * - RTE_FLOW_ITEM_TYPE_IPV6
+ * - RTE_FLOW_ITEM_TYPE_IPV6_EXT
+ */
+struct rte_flow_item_ipv6_ext {
+	uint8_t next_hdr; /**< Next header. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_IPV6_EXT. */
+#ifndef __cplusplus
+static const
+struct rte_flow_item_ipv6_ext rte_flow_item_ipv6_ext_mask = {
+	.next_hdr = 0xff,
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ICMP6
+ *
+ * Matches any ICMPv6 header.
+ */
+struct rte_flow_item_icmp6 {
+	uint8_t type; /**< ICMPv6 type. */
+	uint8_t code; /**< ICMPv6 code. */
+	uint16_t checksum; /**< ICMPv6 checksum. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6. */
+#ifndef __cplusplus
+static const struct rte_flow_item_icmp6 rte_flow_item_icmp6_mask = {
+	.type = 0xff,
+	.code = 0xff,
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS
+ *
+ * Matches an ICMPv6 neighbor discovery solicitation.
+ */
+struct rte_flow_item_icmp6_nd_ns {
+	uint8_t type; /**< ICMPv6 type, normally 135. */
+	uint8_t code; /**< ICMPv6 code, normally 0. */
+	rte_be16_t checksum; /**< ICMPv6 checksum. */
+	rte_be32_t reserved; /**< Reserved, normally 0. */
+	uint8_t target_addr[16]; /**< Target address. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS. */
+#ifndef __cplusplus
+static const
+struct rte_flow_item_icmp6_nd_ns rte_flow_item_icmp6_nd_ns_mask = {
+	.target_addr =
+		"\xff\xff\xff\xff\xff\xff\xff\xff"
+		"\xff\xff\xff\xff\xff\xff\xff\xff",
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ICMP6_ND_NA
+ *
+ * Matches an ICMPv6 neighbor discovery advertisement.
+ */
+struct rte_flow_item_icmp6_nd_na {
+	uint8_t type; /**< ICMPv6 type, normally 136. */
+	uint8_t code; /**< ICMPv6 code, normally 0. */
+	rte_be16_t checksum; /**< ICMPv6 checksum. */
+	/**
+	 * Route flag (1b), solicited flag (1b), override flag (1b),
+	 * reserved (29b).
+	 */
+	rte_be32_t rso_reserved;
+	uint8_t target_addr[16]; /**< Target address. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_NA. */
+#ifndef __cplusplus
+static const
+struct rte_flow_item_icmp6_nd_na rte_flow_item_icmp6_nd_na_mask = {
+	.target_addr =
+		"\xff\xff\xff\xff\xff\xff\xff\xff"
+		"\xff\xff\xff\xff\xff\xff\xff\xff",
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT
+ *
+ * Matches the presence of any ICMPv6 neighbor discovery option.
+ *
+ * Normally preceded by any of:
+ *
+ * - RTE_FLOW_ITEM_TYPE_ICMP6_ND_NA
+ * - RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS
+ * - RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT
+ */
+struct rte_flow_item_icmp6_nd_opt {
+	uint8_t type; /**< ND option type. */
+	uint8_t length; /**< ND option length. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT. */
+#ifndef __cplusplus
+static const struct rte_flow_item_icmp6_nd_opt
+rte_flow_item_icmp6_nd_opt_mask = {
+	.type = 0xff,
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_SLA_ETH
+ *
+ * Matches an ICMPv6 neighbor discovery source Ethernet link-layer address
+ * option.
+ *
+ * Normally preceded by any of:
+ *
+ * - RTE_FLOW_ITEM_TYPE_ICMP6_ND_NA
+ * - RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT
+ */
+struct rte_flow_item_icmp6_nd_opt_sla_eth {
+	uint8_t type; /**< ND option type, normally 1. */
+	uint8_t length; /**< ND option length, normally 1. */
+	struct ether_addr sla; /**< Source Ethernet LLA. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_SLA_ETH. */
+#ifndef __cplusplus
+static const struct rte_flow_item_icmp6_nd_opt_sla_eth
+rte_flow_item_icmp6_nd_opt_sla_eth_mask = {
+	.sla.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_TLA_ETH
+ *
+ * Matches an ICMPv6 neighbor discovery target Ethernet link-layer address
+ * option.
+ *
+ * Normally preceded by any of:
+ *
+ * - RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS
+ * - RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT
+ */
+struct rte_flow_item_icmp6_nd_opt_tla_eth {
+	uint8_t type; /**< ND option type, normally 2. */
+	uint8_t length; /**< ND option length, normally 1. */
+	struct ether_addr tla; /**< Target Ethernet LLA. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_TLA_ETH. */
+#ifndef __cplusplus
+static const struct rte_flow_item_icmp6_nd_opt_tla_eth
+rte_flow_item_icmp6_nd_opt_tla_eth_mask = {
+	.tla.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 };
 #endif
 

@@ -156,6 +156,26 @@ enum index {
 	ITEM_GENEVE_PROTO,
 	ITEM_VXLAN_GPE,
 	ITEM_VXLAN_GPE_VNI,
+	ITEM_ARP_ETH_IPV4,
+	ITEM_ARP_ETH_IPV4_SHA,
+	ITEM_ARP_ETH_IPV4_SPA,
+	ITEM_ARP_ETH_IPV4_THA,
+	ITEM_ARP_ETH_IPV4_TPA,
+	ITEM_IPV6_EXT,
+	ITEM_IPV6_EXT_NEXT_HDR,
+	ITEM_ICMP6,
+	ITEM_ICMP6_TYPE,
+	ITEM_ICMP6_CODE,
+	ITEM_ICMP6_ND_NS,
+	ITEM_ICMP6_ND_NS_TARGET_ADDR,
+	ITEM_ICMP6_ND_NA,
+	ITEM_ICMP6_ND_NA_TARGET_ADDR,
+	ITEM_ICMP6_ND_OPT,
+	ITEM_ICMP6_ND_OPT_TYPE,
+	ITEM_ICMP6_ND_OPT_SLA_ETH,
+	ITEM_ICMP6_ND_OPT_SLA_ETH_SLA,
+	ITEM_ICMP6_ND_OPT_TLA_ETH,
+	ITEM_ICMP6_ND_OPT_TLA_ETH_TLA,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -473,6 +493,14 @@ static const enum index next_item[] = {
 	ITEM_GTPU,
 	ITEM_GENEVE,
 	ITEM_VXLAN_GPE,
+	ITEM_ARP_ETH_IPV4,
+	ITEM_IPV6_EXT,
+	ITEM_ICMP6,
+	ITEM_ICMP6_ND_NS,
+	ITEM_ICMP6_ND_NA,
+	ITEM_ICMP6_ND_OPT,
+	ITEM_ICMP6_ND_OPT_SLA_ETH,
+	ITEM_ICMP6_ND_OPT_TLA_ETH,
 	ZERO,
 };
 
@@ -631,6 +659,58 @@ static const enum index item_geneve[] = {
 
 static const enum index item_vxlan_gpe[] = {
 	ITEM_VXLAN_GPE_VNI,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_arp_eth_ipv4[] = {
+	ITEM_ARP_ETH_IPV4_SHA,
+	ITEM_ARP_ETH_IPV4_SPA,
+	ITEM_ARP_ETH_IPV4_THA,
+	ITEM_ARP_ETH_IPV4_TPA,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ipv6_ext[] = {
+	ITEM_IPV6_EXT_NEXT_HDR,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp6[] = {
+	ITEM_ICMP6_TYPE,
+	ITEM_ICMP6_CODE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp6_nd_ns[] = {
+	ITEM_ICMP6_ND_NS_TARGET_ADDR,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp6_nd_na[] = {
+	ITEM_ICMP6_ND_NA_TARGET_ADDR,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp6_nd_opt[] = {
+	ITEM_ICMP6_ND_OPT_TYPE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp6_nd_opt_sla_eth[] = {
+	ITEM_ICMP6_ND_OPT_SLA_ETH_SLA,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp6_nd_opt_tla_eth[] = {
+	ITEM_ICMP6_ND_OPT_TLA_ETH_TLA,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1583,6 +1663,167 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vxlan_gpe, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan_gpe,
 					     vni)),
+	},
+	[ITEM_ARP_ETH_IPV4] = {
+		.name = "arp_eth_ipv4",
+		.help = "match ARP header for Ethernet/IPv4",
+		.priv = PRIV_ITEM(ARP_ETH_IPV4,
+				  sizeof(struct rte_flow_item_arp_eth_ipv4)),
+		.next = NEXT(item_arp_eth_ipv4),
+		.call = parse_vc,
+	},
+	[ITEM_ARP_ETH_IPV4_SHA] = {
+		.name = "sha",
+		.help = "sender hardware address",
+		.next = NEXT(item_arp_eth_ipv4, NEXT_ENTRY(MAC_ADDR),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_arp_eth_ipv4,
+					     sha)),
+	},
+	[ITEM_ARP_ETH_IPV4_SPA] = {
+		.name = "spa",
+		.help = "sender IPv4 address",
+		.next = NEXT(item_arp_eth_ipv4, NEXT_ENTRY(IPV4_ADDR),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_arp_eth_ipv4,
+					     spa)),
+	},
+	[ITEM_ARP_ETH_IPV4_THA] = {
+		.name = "tha",
+		.help = "target hardware address",
+		.next = NEXT(item_arp_eth_ipv4, NEXT_ENTRY(MAC_ADDR),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_arp_eth_ipv4,
+					     tha)),
+	},
+	[ITEM_ARP_ETH_IPV4_TPA] = {
+		.name = "tpa",
+		.help = "target IPv4 address",
+		.next = NEXT(item_arp_eth_ipv4, NEXT_ENTRY(IPV4_ADDR),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_arp_eth_ipv4,
+					     tpa)),
+	},
+	[ITEM_IPV6_EXT] = {
+		.name = "ipv6_ext",
+		.help = "match presence of any IPv6 extension header",
+		.priv = PRIV_ITEM(IPV6_EXT,
+				  sizeof(struct rte_flow_item_ipv6_ext)),
+		.next = NEXT(item_ipv6_ext),
+		.call = parse_vc,
+	},
+	[ITEM_IPV6_EXT_NEXT_HDR] = {
+		.name = "next_hdr",
+		.help = "next header",
+		.next = NEXT(item_ipv6_ext, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6_ext,
+					     next_hdr)),
+	},
+	[ITEM_ICMP6] = {
+		.name = "icmp6",
+		.help = "match any ICMPv6 header",
+		.priv = PRIV_ITEM(ICMP6, sizeof(struct rte_flow_item_icmp6)),
+		.next = NEXT(item_icmp6),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP6_TYPE] = {
+		.name = "type",
+		.help = "ICMPv6 type",
+		.next = NEXT(item_icmp6, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6,
+					     type)),
+	},
+	[ITEM_ICMP6_CODE] = {
+		.name = "code",
+		.help = "ICMPv6 code",
+		.next = NEXT(item_icmp6, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6,
+					     code)),
+	},
+	[ITEM_ICMP6_ND_NS] = {
+		.name = "icmp6_nd_ns",
+		.help = "match ICMPv6 neighbor discovery solicitation",
+		.priv = PRIV_ITEM(ICMP6_ND_NS,
+				  sizeof(struct rte_flow_item_icmp6_nd_ns)),
+		.next = NEXT(item_icmp6_nd_ns),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP6_ND_NS_TARGET_ADDR] = {
+		.name = "target_addr",
+		.help = "target address",
+		.next = NEXT(item_icmp6_nd_ns, NEXT_ENTRY(IPV6_ADDR),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6_nd_ns,
+					     target_addr)),
+	},
+	[ITEM_ICMP6_ND_NA] = {
+		.name = "icmp6_nd_na",
+		.help = "match ICMPv6 neighbor discovery advertisement",
+		.priv = PRIV_ITEM(ICMP6_ND_NA,
+				  sizeof(struct rte_flow_item_icmp6_nd_na)),
+		.next = NEXT(item_icmp6_nd_na),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP6_ND_NA_TARGET_ADDR] = {
+		.name = "target_addr",
+		.help = "target address",
+		.next = NEXT(item_icmp6_nd_na, NEXT_ENTRY(IPV6_ADDR),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6_nd_na,
+					     target_addr)),
+	},
+	[ITEM_ICMP6_ND_OPT] = {
+		.name = "icmp6_nd_opt",
+		.help = "match presence of any ICMPv6 neighbor discovery"
+			" option",
+		.priv = PRIV_ITEM(ICMP6_ND_OPT,
+				  sizeof(struct rte_flow_item_icmp6_nd_opt)),
+		.next = NEXT(item_icmp6_nd_opt),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP6_ND_OPT_TYPE] = {
+		.name = "type",
+		.help = "ND option type",
+		.next = NEXT(item_icmp6_nd_opt, NEXT_ENTRY(UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6_nd_opt,
+					     type)),
+	},
+	[ITEM_ICMP6_ND_OPT_SLA_ETH] = {
+		.name = "icmp6_nd_opt_sla_eth",
+		.help = "match ICMPv6 neighbor discovery source Ethernet"
+			" link-layer address option",
+		.priv = PRIV_ITEM
+			(ICMP6_ND_OPT_SLA_ETH,
+			 sizeof(struct rte_flow_item_icmp6_nd_opt_sla_eth)),
+		.next = NEXT(item_icmp6_nd_opt_sla_eth),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP6_ND_OPT_SLA_ETH_SLA] = {
+		.name = "sla",
+		.help = "source Ethernet LLA",
+		.next = NEXT(item_icmp6_nd_opt_sla_eth, NEXT_ENTRY(MAC_ADDR),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_item_icmp6_nd_opt_sla_eth, sla)),
+	},
+	[ITEM_ICMP6_ND_OPT_TLA_ETH] = {
+		.name = "icmp6_nd_opt_tla_eth",
+		.help = "match ICMPv6 neighbor discovery target Ethernet"
+			" link-layer address option",
+		.priv = PRIV_ITEM
+			(ICMP6_ND_OPT_TLA_ETH,
+			 sizeof(struct rte_flow_item_icmp6_nd_opt_tla_eth)),
+		.next = NEXT(item_icmp6_nd_opt_tla_eth),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP6_ND_OPT_TLA_ETH_TLA] = {
+		.name = "tla",
+		.help = "target Ethernet LLA",
+		.next = NEXT(item_icmp6_nd_opt_tla_eth, NEXT_ENTRY(MAC_ADDR),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_item_icmp6_nd_opt_tla_eth, tla)),
 	},
 
 	/* Validate/create actions. */

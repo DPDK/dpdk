@@ -874,7 +874,8 @@ Item: ``IPV6``
 
 Matches an IPv6 header.
 
-Note: IPv6 options are handled by dedicated pattern items.
+Note: IPv6 options are handled by dedicated pattern items, see `Item:
+IPV6_EXT`_.
 
 - ``hdr``: IPv6 header definition (``rte_ip.h``).
 - Default ``mask`` matches source and destination addresses only.
@@ -1065,6 +1066,117 @@ Matches a VXLAN-GPE header (draft-ietf-nvo3-vxlan-gpe-05).
 - ``vni``: VXLAN network identifier.
 - ``rsvd1``: reserved, normally 0x00.
 - Default ``mask`` matches VNI only.
+
+Item: ``ARP_ETH_IPV4``
+^^^^^^^^^^^^^^^^^^^^^^
+
+Matches an ARP header for Ethernet/IPv4.
+
+- ``hdr``: hardware type, normally 1.
+- ``pro``: protocol type, normally 0x0800.
+- ``hln``: hardware address length, normally 6.
+- ``pln``: protocol address length, normally 4.
+- ``op``: opcode (1 for request, 2 for reply).
+- ``sha``: sender hardware address.
+- ``spa``: sender IPv4 address.
+- ``tha``: target hardware address.
+- ``tpa``: target IPv4 address.
+- Default ``mask`` matches SHA, SPA, THA and TPA.
+
+Item: ``IPV6_EXT``
+^^^^^^^^^^^^^^^^^^
+
+Matches the presence of any IPv6 extension header.
+
+- ``next_hdr``: next header.
+- Default ``mask`` matches ``next_hdr``.
+
+Normally preceded by any of:
+
+- `Item: IPV6`_
+- `Item: IPV6_EXT`_
+
+Item: ``ICMP6``
+^^^^^^^^^^^^^^^
+
+Matches any ICMPv6 header.
+
+- ``type``: ICMPv6 type.
+- ``code``: ICMPv6 code.
+- ``checksum``: ICMPv6 checksum.
+- Default ``mask`` matches ``type`` and ``code``.
+
+Item: ``ICMP6_ND_NS``
+^^^^^^^^^^^^^^^^^^^^^
+
+Matches an ICMPv6 neighbor discovery solicitation.
+
+- ``type``: ICMPv6 type, normally 135.
+- ``code``: ICMPv6 code, normally 0.
+- ``checksum``: ICMPv6 checksum.
+- ``reserved``: reserved, normally 0.
+- ``target_addr``: target address.
+- Default ``mask`` matches target address only.
+
+Item: ``ICMP6_ND_NA``
+^^^^^^^^^^^^^^^^^^^^^
+
+Matches an ICMPv6 neighbor discovery advertisement.
+
+- ``type``: ICMPv6 type, normally 136.
+- ``code``: ICMPv6 code, normally 0.
+- ``checksum``: ICMPv6 checksum.
+- ``rso_reserved``: route flag (1b), solicited flag (1b), override flag
+  (1b), reserved (29b).
+- ``target_addr``: target address.
+- Default ``mask`` matches target address only.
+
+Item: ``ICMP6_ND_OPT``
+^^^^^^^^^^^^^^^^^^^^^^
+
+Matches the presence of any ICMPv6 neighbor discovery option.
+
+- ``type``: ND option type.
+- ``length``: ND option length.
+- Default ``mask`` matches type only.
+
+Normally preceded by any of:
+
+- `Item: ICMP6_ND_NA`_
+- `Item: ICMP6_ND_NS`_
+- `Item: ICMP6_ND_OPT`_
+
+Item: ``ICMP6_ND_OPT_SLA_ETH``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches an ICMPv6 neighbor discovery source Ethernet link-layer address
+option.
+
+- ``type``: ND option type, normally 1.
+- ``length``: ND option length, normally 1.
+- ``sla``: source Ethernet LLA.
+- Default ``mask`` matches source link-layer address only.
+
+Normally preceded by any of:
+
+- `Item: ICMP6_ND_NA`_
+- `Item: ICMP6_ND_OPT`_
+
+Item: ``ICMP6_ND_OPT_TLA_ETH``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches an ICMPv6 neighbor discovery target Ethernet link-layer address
+option.
+
+- ``type``: ND option type, normally 2.
+- ``length``: ND option length, normally 1.
+- ``tla``: target Ethernet LLA.
+- Default ``mask`` matches target link-layer address only.
+
+Normally preceded by any of:
+
+- `Item: ICMP6_ND_NS`_
+- `Item: ICMP6_ND_OPT`_
 
 Actions
 ~~~~~~~
