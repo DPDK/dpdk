@@ -27,6 +27,36 @@
 #include "dpaa2_ethdev.h"
 #include <fsl_qbman_debug.h>
 
+/* Supported Rx offloads */
+static uint64_t dev_rx_offloads_sup =
+		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_VLAN_FILTER |
+		DEV_RX_OFFLOAD_JUMBO_FRAME;
+
+/* Rx offloads which cannot be disabled */
+static uint64_t dev_rx_offloads_nodis =
+		DEV_RX_OFFLOAD_CRC_STRIP |
+		DEV_RX_OFFLOAD_SCATTER;
+
+/* Supported Tx offloads */
+static uint64_t dev_tx_offloads_sup =
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_SCTP_CKSUM |
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+/* Tx offloads which cannot be disabled */
+static uint64_t dev_tx_offloads_nodis =
+		DEV_TX_OFFLOAD_MULTI_SEGS |
+		DEV_TX_OFFLOAD_MT_LOCKFREE |
+		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
 struct rte_dpaa2_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	uint8_t page_id; /* dpni statistics page id */
@@ -170,24 +200,10 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = DPAA2_MIN_RX_BUF_SIZE;
 	dev_info->max_rx_queues = (uint16_t)priv->nb_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)priv->nb_tx_queues;
-	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_JUMBO_FRAME |
-		DEV_RX_OFFLOAD_SCATTER;
-	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_MBUF_FAST_FREE |
-		DEV_TX_OFFLOAD_MULTI_SEGS;
+	dev_info->rx_offload_capa = dev_rx_offloads_sup |
+					dev_rx_offloads_nodis;
+	dev_info->tx_offload_capa = dev_tx_offloads_sup |
+					dev_tx_offloads_nodis;
 	dev_info->speed_capa = ETH_LINK_SPEED_1G |
 			ETH_LINK_SPEED_2_5G |
 			ETH_LINK_SPEED_10G;
@@ -277,7 +293,6 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = priv->hw;
 	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
-	struct rte_eth_dev_info dev_info;
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	uint64_t tx_offloads = eth_conf->txmode.offloads;
 	int rx_l3_csum_offload = false;
@@ -288,19 +303,36 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa2_dev_info_get(dev, &dev_info);
-	if ((~(dev_info.rx_offload_capa) & rx_offloads) != 0) {
-		DPAA2_PMD_ERR("Some Rx offloads are not supported "
-			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			rx_offloads, dev_info.rx_offload_capa);
+	/* Rx offloads validation */
+	if (~(dev_rx_offloads_sup | dev_rx_offloads_nodis) & rx_offloads) {
+		DPAA2_PMD_ERR(
+		"Rx offloads non supported - requested 0x%" PRIx64
+		" supported 0x%" PRIx64,
+			rx_offloads,
+			dev_rx_offloads_sup | dev_rx_offloads_nodis);
 		return -ENOTSUP;
 	}
+	if (dev_rx_offloads_nodis & ~rx_offloads) {
+		DPAA2_PMD_WARN(
+		"Rx offloads non configurable - requested 0x%" PRIx64
+		" ignored 0x%" PRIx64,
+			rx_offloads, dev_rx_offloads_nodis);
+	}
 
-	if ((~(dev_info.tx_offload_capa) & tx_offloads) != 0) {
-		DPAA2_PMD_ERR("Some Tx offloads are not supported "
-			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			tx_offloads, dev_info.tx_offload_capa);
+	/* Tx offloads validation */
+	if (~(dev_tx_offloads_sup | dev_tx_offloads_nodis) & tx_offloads) {
+		DPAA2_PMD_ERR(
+		"Tx offloads non supported - requested 0x%" PRIx64
+		" supported 0x%" PRIx64,
+			tx_offloads,
+			dev_tx_offloads_sup | dev_tx_offloads_nodis);
 		return -ENOTSUP;
+	}
+	if (dev_tx_offloads_nodis & ~tx_offloads) {
+		DPAA2_PMD_WARN(
+		"Tx offloads non configurable - requested 0x%" PRIx64
+		" ignored 0x%" PRIx64,
+			tx_offloads, dev_tx_offloads_nodis);
 	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
