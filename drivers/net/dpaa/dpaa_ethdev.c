@@ -45,6 +45,33 @@
 #include <fsl_bman.h>
 #include <fsl_fman.h>
 
+/* Supported Rx offloads */
+static uint64_t dev_rx_offloads_sup =
+		DEV_RX_OFFLOAD_JUMBO_FRAME;
+
+/* Rx offloads which cannot be disabled */
+static uint64_t dev_rx_offloads_nodis =
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_CRC_STRIP |
+		DEV_RX_OFFLOAD_SCATTER;
+
+/* Supported Tx offloads */
+static uint64_t dev_tx_offloads_sup;
+
+/* Tx offloads which cannot be disabled */
+static uint64_t dev_tx_offloads_nodis =
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_SCTP_CKSUM |
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_MULTI_SEGS |
+		DEV_TX_OFFLOAD_MT_LOCKFREE |
+		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
 /* Keep track of whether QMAN and BMAN have been globally initialized */
 static int is_global_init;
 /* At present we only allow up to 4 push mode queues - as each of this queue
@@ -143,35 +170,41 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
-	struct rte_eth_dev_info dev_info;
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	uint64_t tx_offloads = eth_conf->txmode.offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_eth_dev_info(dev, &dev_info);
-	if (((~(dev_info.rx_offload_capa) & rx_offloads) != 0)) {
-		DPAA_PMD_ERR("Some Rx offloads are not supported "
-			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			rx_offloads, dev_info.rx_offload_capa);
+	/* Rx offloads validation */
+	if (~(dev_rx_offloads_sup | dev_rx_offloads_nodis) & rx_offloads) {
+		DPAA_PMD_ERR(
+		"Rx offloads non supported - requested 0x%" PRIx64
+		" supported 0x%" PRIx64,
+			rx_offloads,
+			dev_rx_offloads_sup | dev_rx_offloads_nodis);
 		return -ENOTSUP;
 	}
-
-	if (((~(dev_info.tx_offload_capa) & tx_offloads) != 0)) {
-		DPAA_PMD_ERR("Some Tx offloads are not supported "
-			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			tx_offloads, dev_info.tx_offload_capa);
-		return -ENOTSUP;
+	if (dev_rx_offloads_nodis & ~rx_offloads) {
+		DPAA_PMD_WARN(
+		"Rx offloads non configurable - requested 0x%" PRIx64
+		" ignored 0x%" PRIx64,
+			rx_offloads, dev_rx_offloads_nodis);
 	}
 
-	if (((rx_offloads & DEV_RX_OFFLOAD_IPV4_CKSUM) == 0) ||
-		((rx_offloads & DEV_RX_OFFLOAD_UDP_CKSUM) == 0) ||
-		((rx_offloads & DEV_RX_OFFLOAD_TCP_CKSUM) == 0) ||
-		((tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0) ||
-		((tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) == 0) ||
-		((tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) == 0)) {
-			DPAA_PMD_ERR(" Cksum offloading is enabled by default "
-			" Cannot be disabled. So ignoring this configuration ");
+	/* Tx offloads validation */
+	if (~(dev_tx_offloads_sup | dev_tx_offloads_nodis) & tx_offloads) {
+		DPAA_PMD_ERR(
+		"Tx offloads non supported - requested 0x%" PRIx64
+		" supported 0x%" PRIx64,
+			tx_offloads,
+			dev_tx_offloads_sup | dev_tx_offloads_nodis);
+		return -ENOTSUP;
+	}
+	if (dev_tx_offloads_nodis & ~tx_offloads) {
+		DPAA_PMD_WARN(
+		"Tx offloads non configurable - requested 0x%" PRIx64
+		" ignored 0x%" PRIx64,
+			tx_offloads, dev_tx_offloads_nodis);
 	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
@@ -290,18 +323,10 @@ static void dpaa_eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->flow_type_rss_offloads = DPAA_RSS_OFFLOAD_ALL;
 	dev_info->speed_capa = (ETH_LINK_SPEED_1G |
 				ETH_LINK_SPEED_10G);
-	dev_info->rx_offload_capa =
-		(DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM   |
-		DEV_RX_OFFLOAD_TCP_CKSUM)  |
-		DEV_RX_OFFLOAD_JUMBO_FRAME |
-		DEV_RX_OFFLOAD_SCATTER;
-	dev_info->tx_offload_capa =
-		(DEV_TX_OFFLOAD_IPV4_CKSUM  |
-		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM)  |
-		DEV_TX_OFFLOAD_MBUF_FAST_FREE |
-		DEV_TX_OFFLOAD_MULTI_SEGS;
+	dev_info->rx_offload_capa = dev_rx_offloads_sup |
+					dev_rx_offloads_nodis;
+	dev_info->tx_offload_capa = dev_tx_offloads_sup |
+					dev_tx_offloads_nodis;
 }
 
 static int dpaa_eth_link_update(struct rte_eth_dev *dev,
