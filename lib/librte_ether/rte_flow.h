@@ -1332,7 +1332,57 @@ enum rte_flow_action_type {
 	 *
 	 * See struct rte_flow_action_security.
 	 */
-	RTE_FLOW_ACTION_TYPE_SECURITY
+	RTE_FLOW_ACTION_TYPE_SECURITY,
+
+	/**
+	 * Implements OFPAT_SET_MPLS_TTL ("MPLS TTL") as defined by the
+	 * OpenFlow Switch Specification.
+	 *
+	 * See struct rte_flow_action_of_set_mpls_ttl.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL,
+
+	/**
+	 * Implements OFPAT_DEC_MPLS_TTL ("decrement MPLS TTL") as defined
+	 * by the OpenFlow Switch Specification.
+	 *
+	 * No associated configuration structure.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_DEC_MPLS_TTL,
+
+	/**
+	 * Implements OFPAT_SET_NW_TTL ("IP TTL") as defined by the OpenFlow
+	 * Switch Specification.
+	 *
+	 * See struct rte_flow_action_of_set_nw_ttl.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_SET_NW_TTL,
+
+	/**
+	 * Implements OFPAT_DEC_NW_TTL ("decrement IP TTL") as defined by
+	 * the OpenFlow Switch Specification.
+	 *
+	 * No associated configuration structure.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL,
+
+	/**
+	 * Implements OFPAT_COPY_TTL_OUT ("copy TTL "outwards" -- from
+	 * next-to-outermost to outermost") as defined by the OpenFlow
+	 * Switch Specification.
+	 *
+	 * No associated configuration structure.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_OUT,
+
+	/**
+	 * Implements OFPAT_COPY_TTL_IN ("copy TTL "inwards" -- from
+	 * outermost to next-to-outermost") as defined by the OpenFlow
+	 * Switch Specification.
+	 *
+	 * No associated configuration structure.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_IN,
 };
 
 /**
@@ -1507,6 +1557,26 @@ struct rte_flow_action_meter {
  */
 struct rte_flow_action_security {
 	void *security_session; /**< Pointer to security session structure. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL
+ *
+ * Implements OFPAT_SET_MPLS_TTL ("MPLS TTL") as defined by the OpenFlow
+ * Switch Specification.
+ */
+struct rte_flow_action_of_set_mpls_ttl {
+	uint8_t mpls_ttl; /**< MPLS TTL. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_OF_SET_NW_TTL
+ *
+ * Implements OFPAT_SET_NW_TTL ("IP TTL") as defined by the OpenFlow Switch
+ * Specification.
+ */
+struct rte_flow_action_of_set_nw_ttl {
+	uint8_t nw_ttl; /**< IP TTL. */
 };
 
 /**

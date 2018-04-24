@@ -90,6 +90,14 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),
 	MK_FLOW_ACTION(PHY_PORT, sizeof(struct rte_flow_action_phy_port)),
 	MK_FLOW_ACTION(PORT_ID, sizeof(struct rte_flow_action_port_id)),
+	MK_FLOW_ACTION(OF_SET_MPLS_TTL,
+		       sizeof(struct rte_flow_action_of_set_mpls_ttl)),
+	MK_FLOW_ACTION(OF_DEC_MPLS_TTL, 0),
+	MK_FLOW_ACTION(OF_SET_NW_TTL,
+		       sizeof(struct rte_flow_action_of_set_nw_ttl)),
+	MK_FLOW_ACTION(OF_DEC_NW_TTL, 0),
+	MK_FLOW_ACTION(OF_COPY_TTL_OUT, 0),
+	MK_FLOW_ACTION(OF_COPY_TTL_IN, 0),
 };
 
 static int

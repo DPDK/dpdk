@@ -214,6 +214,14 @@ enum index {
 	ACTION_PORT_ID_ID,
 	ACTION_METER,
 	ACTION_METER_ID,
+	ACTION_OF_SET_MPLS_TTL,
+	ACTION_OF_SET_MPLS_TTL_MPLS_TTL,
+	ACTION_OF_DEC_MPLS_TTL,
+	ACTION_OF_SET_NW_TTL,
+	ACTION_OF_SET_NW_TTL_NW_TTL,
+	ACTION_OF_DEC_NW_TTL,
+	ACTION_OF_COPY_TTL_OUT,
+	ACTION_OF_COPY_TTL_IN,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -730,6 +738,12 @@ static const enum index next_action[] = {
 	ACTION_PHY_PORT,
 	ACTION_PORT_ID,
 	ACTION_METER,
+	ACTION_OF_SET_MPLS_TTL,
+	ACTION_OF_DEC_MPLS_TTL,
+	ACTION_OF_SET_NW_TTL,
+	ACTION_OF_DEC_NW_TTL,
+	ACTION_OF_COPY_TTL_OUT,
+	ACTION_OF_COPY_TTL_IN,
 	ZERO,
 };
 
@@ -779,6 +793,18 @@ static const enum index action_port_id[] = {
 
 static const enum index action_meter[] = {
 	ACTION_METER_ID,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_of_set_mpls_ttl[] = {
+	ACTION_OF_SET_MPLS_TTL_MPLS_TTL,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_of_set_nw_ttl[] = {
+	ACTION_OF_SET_NW_TTL_NW_TTL,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -2085,6 +2111,68 @@ static const struct token token_list[] = {
 		.next = NEXT(action_meter, NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_meter, mtr_id)),
 		.call = parse_vc_conf,
+	},
+	[ACTION_OF_SET_MPLS_TTL] = {
+		.name = "of_set_mpls_ttl",
+		.help = "OpenFlow's OFPAT_SET_MPLS_TTL",
+		.priv = PRIV_ACTION
+			(OF_SET_MPLS_TTL,
+			 sizeof(struct rte_flow_action_of_set_mpls_ttl)),
+		.next = NEXT(action_of_set_mpls_ttl),
+		.call = parse_vc,
+	},
+	[ACTION_OF_SET_MPLS_TTL_MPLS_TTL] = {
+		.name = "mpls_ttl",
+		.help = "MPLS TTL",
+		.next = NEXT(action_of_set_mpls_ttl, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_of_set_mpls_ttl,
+					mpls_ttl)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_OF_DEC_MPLS_TTL] = {
+		.name = "of_dec_mpls_ttl",
+		.help = "OpenFlow's OFPAT_DEC_MPLS_TTL",
+		.priv = PRIV_ACTION(OF_DEC_MPLS_TTL, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_OF_SET_NW_TTL] = {
+		.name = "of_set_nw_ttl",
+		.help = "OpenFlow's OFPAT_SET_NW_TTL",
+		.priv = PRIV_ACTION
+			(OF_SET_NW_TTL,
+			 sizeof(struct rte_flow_action_of_set_nw_ttl)),
+		.next = NEXT(action_of_set_nw_ttl),
+		.call = parse_vc,
+	},
+	[ACTION_OF_SET_NW_TTL_NW_TTL] = {
+		.name = "nw_ttl",
+		.help = "IP TTL",
+		.next = NEXT(action_of_set_nw_ttl, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_of_set_nw_ttl,
+					nw_ttl)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_OF_DEC_NW_TTL] = {
+		.name = "of_dec_nw_ttl",
+		.help = "OpenFlow's OFPAT_DEC_NW_TTL",
+		.priv = PRIV_ACTION(OF_DEC_NW_TTL, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_OF_COPY_TTL_OUT] = {
+		.name = "of_copy_ttl_out",
+		.help = "OpenFlow's OFPAT_COPY_TTL_OUT",
+		.priv = PRIV_ACTION(OF_COPY_TTL_OUT, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_OF_COPY_TTL_IN] = {
+		.name = "of_copy_ttl_in",
+		.help = "OpenFlow's OFPAT_COPY_TTL_IN",
+		.priv = PRIV_ACTION(OF_COPY_TTL_IN, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
 	},
 };
 

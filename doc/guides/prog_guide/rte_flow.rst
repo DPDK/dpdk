@@ -1716,6 +1716,103 @@ fields in the pattern items.
    | 1     | END      |
    +-------+----------+
 
+Action: ``OF_SET_MPLS_TTL``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_SET_MPLS_TTL`` ("MPLS TTL") as defined by the `OpenFlow
+Switch Specification`_.
+
+.. _table_rte_flow_action_of_set_mpls_ttl:
+
+.. table:: OF_SET_MPLS_TTL
+
+   +--------------+----------+
+   | Field        | Value    |
+   +==============+==========+
+   | ``mpls_ttl`` | MPLS TTL |
+   +--------------+----------+
+
+Action: ``OF_DEC_MPLS_TTL``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_DEC_MPLS_TTL`` ("decrement MPLS TTL") as defined by the
+`OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_dec_mpls_ttl:
+
+.. table:: OF_DEC_MPLS_TTL
+
+   +---------------+
+   | Field         |
+   +===============+
+   | no properties |
+   +---------------+
+
+Action: ``OF_SET_NW_TTL``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_SET_NW_TTL`` ("IP TTL") as defined by the `OpenFlow
+Switch Specification`_.
+
+.. _table_rte_flow_action_of_set_nw_ttl:
+
+.. table:: OF_SET_NW_TTL
+
+   +------------+--------+
+   | Field      | Value  |
+   +============+========+
+   | ``nw_ttl`` | IP TTL |
+   +------------+--------+
+
+Action: ``OF_DEC_NW_TTL``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_DEC_NW_TTL`` ("decrement IP TTL") as defined by the
+`OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_dec_nw_ttl:
+
+.. table:: OF_DEC_NW_TTL
+
+   +---------------+
+   | Field         |
+   +===============+
+   | no properties |
+   +---------------+
+
+Action: ``OF_COPY_TTL_OUT``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_COPY_TTL_OUT`` ("copy TTL "outwards" -- from
+next-to-outermost to outermost") as defined by the `OpenFlow Switch
+Specification`_.
+
+.. _table_rte_flow_action_of_copy_ttl_out:
+
+.. table:: OF_COPY_TTL_OUT
+
+   +---------------+
+   | Field         |
+   +===============+
+   | no properties |
+   +---------------+
+
+Action: ``OF_COPY_TTL_IN``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_COPY_TTL_IN`` ("copy TTL "inwards" -- from outermost to
+next-to-outermost") as defined by the `OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_copy_ttl_in:
+
+.. table:: OF_COPY_TTL_IN
+
+   +---------------+
+   | Field         |
+   +===============+
+   | no properties |
+   +---------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 
@@ -2296,3 +2393,5 @@ Future evolutions
 
 - Optional software fallback when PMDs are unable to handle requested flow
   rules so applications do not have to implement their own.
+
+.. _OpenFlow Switch Specification: https://www.opennetworking.org/software-defined-standards/specifications/

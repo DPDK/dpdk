@@ -3503,6 +3503,22 @@ This section lists supported actions and their attributes, if any.
   - ``original {boolean}``: use original DPDK port ID if possible.
   - ``id {unsigned}``: DPDK port ID.
 
+- ``of_set_mpls_ttl``: OpenFlow's ``OFPAT_SET_MPLS_TTL``.
+
+  - ``mpls_ttl``: MPLS TTL.
+
+- ``of_dec_mpls_ttl``: OpenFlow's ``OFPAT_DEC_MPLS_TTL``.
+
+- ``of_set_nw_ttl``: OpenFlow's ``OFPAT_SET_NW_TTL``.
+
+  - ``nw_ttl``: IP TTL.
+
+- ``of_dec_nw_ttl``: OpenFlow's ``OFPAT_DEC_NW_TTL``.
+
+- ``of_copy_ttl_out``: OpenFlow's ``OFPAT_COPY_TTL_OUT``.
+
+- ``of_copy_ttl_in``: OpenFlow's ``OFPAT_COPY_TTL_IN``.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
