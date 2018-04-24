@@ -485,7 +485,7 @@ vhost_user_reconnect_init(void)
 				"failed to destroy reconnect mutex");
 		}
 	} else {
-		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
+		snprintf(thread_name, sizeof(thread_name),
 			 "vhost-reconn");
 
 		if (rte_thread_setname(reconn_tid, thread_name)) {
@@ -1029,7 +1029,7 @@ rte_vhost_driver_start(const char *path)
 			fdset_pipe_uninit(&vhost_user.fdset);
 			return -1;
 		} else {
-			snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
+			snprintf(thread_name, sizeof(thread_name),
 				 "vhost-events");
 
 			if (rte_thread_setname(fdset_tid, thread_name)) {

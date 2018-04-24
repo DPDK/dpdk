@@ -682,11 +682,11 @@ rte_mp_channel_init(void)
 	}
 
 	/* try best to set thread name */
-	strlcpy(thread_name, "rte_mp_handle", RTE_MAX_THREAD_NAME_LEN);
+	strlcpy(thread_name, "rte_mp_handle", sizeof(thread_name));
 	rte_thread_setname(mp_handle_tid, thread_name);
 
 	/* try best to set thread name */
-	strlcpy(thread_name, "rte_mp_async_handle", RTE_MAX_THREAD_NAME_LEN);
+	strlcpy(thread_name, "rte_mp_async_handle", sizeof(thread_name));
 	rte_thread_setname(async_reply_handle_tid, thread_name);
 
 	/* unlock the directory */

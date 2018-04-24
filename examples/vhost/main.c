@@ -1499,7 +1499,7 @@ main(int argc, char *argv[])
 				"Cannot create print-stats thread\n");
 
 		/* Set thread_name for aid in debugging.  */
-		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "print-stats");
+		snprintf(thread_name, sizeof(thread_name), "print-stats");
 		ret = rte_thread_setname(tid, thread_name);
 		if (ret != 0)
 			RTE_LOG(DEBUG, VHOST_CONFIG,

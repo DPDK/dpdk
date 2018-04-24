@@ -1208,7 +1208,7 @@ main(int argc, char *argv[])
 		ret = pthread_create(&tid, NULL, (void *)print_stats, NULL);
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE, "Cannot create print-stats thread\n");
-		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "print-stats");
+		snprintf(thread_name, sizeof(thread_name), "print-stats");
 		ret = rte_thread_setname(tid, thread_name);
 		if (ret != 0)
 			RTE_LOG(DEBUG, VHOST_CONFIG, "Cannot set print-stats name\n");

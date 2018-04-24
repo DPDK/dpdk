@@ -119,7 +119,7 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 	if (eal_thread_set_affinity() < 0)
 		rte_panic("cannot set affinity\n");
 
-	ret = eal_thread_dump_affinity(cpuset, RTE_CPU_AFFINITY_STR_LEN);
+	ret = eal_thread_dump_affinity(cpuset, sizeof(cpuset));
 
 	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%x;cpuset=[%s%s])\n",
 		lcore_id, (int)thread_id, cpuset, ret == 0 ? "" : "...");
