@@ -149,7 +149,7 @@ eth_kni_dev_start(struct rte_eth_dev *dev)
 	}
 
 	if (internals->no_request_thread == 0) {
-		ret = pthread_create(&internals->thread, NULL,
+		ret = rte_ctrl_thread_create(&internals->thread, NULL,
 			kni_handle_request, internals);
 		if (ret) {
 			RTE_LOG(ERR, PMD,

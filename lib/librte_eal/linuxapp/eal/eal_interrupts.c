@@ -869,10 +869,10 @@ rte_eal_intr_init(void)
 	}
 
 	/* create the host thread to wait/handle the interrupt */
-	ret = pthread_create(&intr_thread, NULL,
+	ret = rte_ctrl_thread_create(&intr_thread, NULL,
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
-		rte_errno = ret;
+		rte_errno = -ret;
 		RTE_LOG(ERR, EAL,
 			"Failed to create thread for interrupt handling\n");
 	} else {
@@ -885,7 +885,7 @@ rte_eal_intr_init(void)
 			"Failed to set thread name for interrupt handling\n");
 	}
 
-	return -ret;
+	return ret;
 }
 
 static void

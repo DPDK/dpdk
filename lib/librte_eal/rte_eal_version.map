@@ -213,6 +213,7 @@ DPDK_18.02 {
 EXPERIMENTAL {
 	global:
 
+	rte_ctrl_thread_create;
 	rte_dev_event_callback_register;
 	rte_dev_event_callback_unregister;
 	rte_dev_event_monitor_start;

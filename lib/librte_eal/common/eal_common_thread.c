@@ -140,3 +140,11 @@ exit:
 
 	return ret;
 }
+
+__rte_experimental int
+rte_ctrl_thread_create(pthread_t *thread,
+			const pthread_attr_t *attr,
+			void *(*start_routine)(void *), void *arg)
+{
+	return pthread_create(thread, attr, start_routine, arg);
+}

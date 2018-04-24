@@ -662,7 +662,7 @@ rte_mp_channel_init(void)
 		return -1;
 	}
 
-	if (pthread_create(&mp_handle_tid, NULL, mp_handle, NULL) < 0) {
+	if (rte_ctrl_thread_create(&mp_handle_tid, NULL, mp_handle, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "failed to create mp thead: %s\n",
 			strerror(errno));
 		close(mp_fd);
@@ -671,7 +671,7 @@ rte_mp_channel_init(void)
 		return -1;
 	}
 
-	if (pthread_create(&async_reply_handle_tid, NULL,
+	if (rte_ctrl_thread_create(&async_reply_handle_tid, NULL,
 			async_reply_handle, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "failed to create mp thead: %s\n",
 			strerror(errno));

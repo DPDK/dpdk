@@ -476,7 +476,7 @@ vhost_user_reconnect_init(void)
 	}
 	TAILQ_INIT(&reconn_list.head);
 
-	ret = pthread_create(&reconn_tid, NULL,
+	ret = rte_ctrl_thread_create(&reconn_tid, NULL,
 			     vhost_user_client_reconnect, NULL);
 	if (ret != 0) {
 		RTE_LOG(ERR, VHOST_CONFIG, "failed to create reconnect thread");
@@ -1020,8 +1020,8 @@ rte_vhost_driver_start(const char *path)
 			return -1;
 		}
 
-		int ret = pthread_create(&fdset_tid, NULL, fdset_event_dispatch,
-				     &vhost_user.fdset);
+		int ret = rte_ctrl_thread_create(&fdset_tid, NULL,
+			fdset_event_dispatch, &vhost_user.fdset);
 		if (ret != 0) {
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"failed to create fdset handling thread");
