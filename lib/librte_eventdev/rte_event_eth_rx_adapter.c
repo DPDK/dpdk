@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2017 Intel Corporation.
+ * All rights reserved.
+ */
 #include <rte_cycles.h>
 #include <rte_common.h>
 #include <rte_dev.h>
