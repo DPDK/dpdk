@@ -105,6 +105,7 @@ struct bond_dev_private {
 	uint8_t mode;						/**< Link Bonding Mode */
 
 	rte_spinlock_t lock;
+	rte_spinlock_t lsc_lock;
 
 	uint16_t primary_port;			/**< Primary Slave Port */
 	uint16_t current_primary_port;		/**< Primary Slave Port */
