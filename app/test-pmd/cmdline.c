@@ -1418,7 +1418,7 @@ cmdline_parse_inst_t cmd_config_speed_all = {
 struct cmd_config_speed_specific {
 	cmdline_fixed_string_t port;
 	cmdline_fixed_string_t keyword;
-	uint8_t id;
+	portid_t id;
 	cmdline_fixed_string_t item1;
 	cmdline_fixed_string_t item2;
 	cmdline_fixed_string_t value1;
@@ -1458,7 +1458,7 @@ cmdline_parse_token_string_t cmd_config_speed_specific_keyword =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, keyword,
 								"config");
 cmdline_parse_token_num_t cmd_config_speed_specific_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_config_speed_specific, id, UINT8);
+	TOKEN_NUM_INITIALIZER(struct cmd_config_speed_specific, id, UINT16);
 cmdline_parse_token_string_t cmd_config_speed_specific_item1 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, item1,
 								"speed");
@@ -11863,7 +11863,7 @@ struct cmd_config_l2_tunnel_eth_type_result {
 	cmdline_fixed_string_t port;
 	cmdline_fixed_string_t config;
 	cmdline_fixed_string_t all;
-	uint8_t id;
+	portid_t id;
 	cmdline_fixed_string_t l2_tunnel;
 	cmdline_fixed_string_t l2_tunnel_type;
 	cmdline_fixed_string_t eth_type;
@@ -11885,7 +11885,7 @@ cmdline_parse_token_string_t cmd_config_l2_tunnel_eth_type_all_str =
 cmdline_parse_token_num_t cmd_config_l2_tunnel_eth_type_id =
 	TOKEN_NUM_INITIALIZER
 		(struct cmd_config_l2_tunnel_eth_type_result,
-		 id, UINT8);
+		 id, UINT16);
 cmdline_parse_token_string_t cmd_config_l2_tunnel_eth_type_l2_tunnel =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_l2_tunnel_eth_type_result,
@@ -11998,7 +11998,7 @@ struct cmd_config_l2_tunnel_en_dis_result {
 	cmdline_fixed_string_t port;
 	cmdline_fixed_string_t config;
 	cmdline_fixed_string_t all;
-	uint8_t id;
+	portid_t id;
 	cmdline_fixed_string_t l2_tunnel;
 	cmdline_fixed_string_t l2_tunnel_type;
 	cmdline_fixed_string_t en_dis;
@@ -12019,7 +12019,7 @@ cmdline_parse_token_string_t cmd_config_l2_tunnel_en_dis_all_str =
 cmdline_parse_token_num_t cmd_config_l2_tunnel_en_dis_id =
 	TOKEN_NUM_INITIALIZER
 		(struct cmd_config_l2_tunnel_en_dis_result,
-		 id, UINT8);
+		 id, UINT16);
 cmdline_parse_token_string_t cmd_config_l2_tunnel_en_dis_l2_tunnel =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_l2_tunnel_en_dis_result,
