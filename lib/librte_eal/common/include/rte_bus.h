@@ -325,7 +325,7 @@ enum rte_iova_mode rte_bus_get_iommu_class(void);
  * The constructor has higher priority than PMD constructors.
  */
 #define RTE_REGISTER_BUS(nm, bus) \
-RTE_INIT_PRIO(businitfn_ ##nm, 110); \
+RTE_INIT_PRIO(businitfn_ ##nm, BUS); \
 static void businitfn_ ##nm(void) \
 {\
 	(bus).name = RTE_STR(nm);\

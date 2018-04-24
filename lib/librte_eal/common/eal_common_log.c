@@ -260,7 +260,7 @@ static const struct logtype logtype_strings[] = {
 };
 
 /* Logging should be first initializer (before drivers and bus) */
-RTE_INIT_PRIO(rte_log_init, 101);
+RTE_INIT_PRIO(rte_log_init, LOG);
 static void
 rte_log_init(void)
 {

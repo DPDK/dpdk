@@ -81,6 +81,12 @@ typedef uint16_t unaligned_uint16_t;
  */
 #define RTE_SET_USED(x) (void)(x)
 
+#define RTE_PRIORITY_LOG 101
+#define RTE_PRIORITY_BUS 110
+
+#define RTE_PRIO(prio) \
+	RTE_PRIORITY_ ## prio
+
 /**
  * Run function before main() with low priority.
  *
@@ -102,7 +108,7 @@ static void __attribute__((constructor, used)) func(void)
  *   Lowest number is the first to run.
  */
 #define RTE_INIT_PRIO(func, prio) \
-static void __attribute__((constructor(prio), used)) func(void)
+static void __attribute__((constructor(RTE_PRIO(prio)), used)) func(void)
 
 /**
  * Force a function to be inlined
