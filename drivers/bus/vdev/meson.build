@@ -3,3 +3,5 @@
 
 sources = files('vdev.c')
 install_headers('rte_bus_vdev.h')
+
+allow_experimental_apis = true

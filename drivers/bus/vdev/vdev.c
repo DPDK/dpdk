@@ -18,10 +18,13 @@
 #include <rte_memory.h>
 #include <rte_tailq.h>
 #include <rte_spinlock.h>
+#include <rte_string_fns.h>
 #include <rte_errno.h>
 
 #include "rte_bus_vdev.h"
 #include "vdev_logs.h"
+
+#define VDEV_MP_KEY	"bus_vdev_mp"
 
 int vdev_logtype_bus;
 
@@ -316,12 +319,113 @@ unlock:
 	return ret;
 }
 
+struct vdev_param {
+#define VDEV_SCAN_REQ	1
+#define VDEV_SCAN_ONE	2
+#define VDEV_SCAN_REP	3
+	int type;
+	int num;
+	char name[RTE_DEV_NAME_MAX_LEN];
+};
+
+static int vdev_plug(struct rte_device *dev);
+
+/**
+ * This function works as the action for both primary and secondary process
+ * for static vdev discovery when a secondary process is booting.
+ *
+ * step 1, secondary process sends a sync request to ask for vdev in primary;
+ * step 2, primary process receives the request, and send vdevs one by one;
+ * step 3, primary process sends back reply, which indicates how many vdevs
+ * are sent.
+ */
+static int
+vdev_action(const struct rte_mp_msg *mp_msg, const void *peer)
+{
+	struct rte_vdev_device *dev;
+	struct rte_mp_msg mp_resp;
+	struct vdev_param *ou = (struct vdev_param *)&mp_resp.param;
+	const struct vdev_param *in = (const struct vdev_param *)mp_msg->param;
+	const char *devname;
+	int num;
+
+	strlcpy(mp_resp.name, VDEV_MP_KEY, sizeof(mp_resp.name));
+	mp_resp.len_param = sizeof(*ou);
+	mp_resp.num_fds = 0;
+
+	switch (in->type) {
+	case VDEV_SCAN_REQ:
+		ou->type = VDEV_SCAN_ONE;
+		ou->num = 1;
+		num = 0;
+
+		rte_spinlock_lock(&vdev_device_list_lock);
+		TAILQ_FOREACH(dev, &vdev_device_list, next) {
+			devname = rte_vdev_device_name(dev);
+			if (strlen(devname) == 0) {
+				VDEV_LOG(INFO, "vdev with no name is not sent");
+				continue;
+			}
+			VDEV_LOG(INFO, "send vdev, %s", devname);
+			strlcpy(ou->name, devname, RTE_DEV_NAME_MAX_LEN);
+			if (rte_mp_sendmsg(&mp_resp) < 0)
+				VDEV_LOG(ERR, "send vdev, %s, failed, %s",
+					 devname, strerror(rte_errno));
+			num++;
+		}
+		rte_spinlock_unlock(&vdev_device_list_lock);
+
+		ou->type = VDEV_SCAN_REP;
+		ou->num = num;
+		if (rte_mp_reply(&mp_resp, peer) < 0)
+			VDEV_LOG(ERR, "Failed to reply a scan request");
+		break;
+	case VDEV_SCAN_ONE:
+		VDEV_LOG(INFO, "receive vdev, %s", in->name);
+		if (insert_vdev(in->name, NULL, NULL) < 0)
+			VDEV_LOG(ERR, "failed to add vdev, %s", in->name);
+		break;
+	default:
+		VDEV_LOG(ERR, "vdev cannot recognize this message");
+	}
+
+	return 0;
+}
+
 static int
 vdev_scan(void)
 {
 	struct rte_vdev_device *dev;
 	struct rte_devargs *devargs;
 	struct vdev_custom_scan *custom_scan;
+
+	if (rte_mp_action_register(VDEV_MP_KEY, vdev_action) < 0 &&
+	    rte_errno != EEXIST) {
+		VDEV_LOG(ERR, "Failed to add vdev mp action");
+		return -1;
+	}
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		struct rte_mp_msg mp_req, *mp_rep;
+		struct rte_mp_reply mp_reply;
+		struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+		struct vdev_param *req = (struct vdev_param *)mp_req.param;
+		struct vdev_param *resp;
+
+		strlcpy(mp_req.name, VDEV_MP_KEY, sizeof(mp_req.name));
+		mp_req.len_param = sizeof(*req);
+		mp_req.num_fds = 0;
+		req->type = VDEV_SCAN_REQ;
+		if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
+		    mp_reply.nb_received == 1) {
+			mp_rep = &mp_reply.msgs[0];
+			resp = (struct vdev_param *)mp_rep->param;
+			VDEV_LOG(INFO, "Received %d vdevs", resp->num);
+		} else
+			VDEV_LOG(ERR, "Failed to request vdev from primary");
+
+		/* Fall through to allow private vdevs in secondary process */
+	}
 
 	/* call custom scan callbacks if any */
 	rte_spinlock_lock(&vdev_custom_scan_lock);
