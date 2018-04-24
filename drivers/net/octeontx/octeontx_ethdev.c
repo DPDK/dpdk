@@ -1068,7 +1068,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	char octtx_name[OCTEONTX_MAX_NAME_LEN];
 	struct octeontx_nic *nic = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
-	struct rte_eth_dev_data *data = NULL;
+	struct rte_eth_dev_data *data;
 	const char *name = rte_vdev_device_name(dev);
 
 	PMD_INIT_FUNC_TRACE();
@@ -1082,13 +1082,6 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 		eth_dev->tx_pkt_burst = octeontx_xmit_pkts;
 		eth_dev->rx_pkt_burst = octeontx_recv_pkts;
 		return 0;
-	}
-
-	data = rte_zmalloc_socket(octtx_name, sizeof(*data), 0, socket_id);
-	if (data == NULL) {
-		octeontx_log_err("failed to allocate devdata");
-		res = -ENOMEM;
-		goto err;
 	}
 
 	nic = rte_zmalloc_socket(octtx_name, sizeof(*nic), 0, socket_id);
@@ -1126,11 +1119,9 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->numa_node = dev->device.numa_node;
 
-	rte_memcpy(data, (eth_dev)->data, sizeof(*data));
+	data = eth_dev->data;
 	data->dev_private = nic;
-
 	data->port_id = eth_dev->data->port_id;
-	snprintf(data->name, sizeof(data->name), "%s", eth_dev->data->name);
 
 	nic->ev_queues = 1;
 	nic->ev_ports = 1;
@@ -1149,7 +1140,6 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 		goto err;
 	}
 
-	eth_dev->data = data;
 	eth_dev->dev_ops = &octeontx_dev_ops;
 
 	/* Finally save ethdev pointer to the NIC structure */
@@ -1217,7 +1207,6 @@ octeontx_remove(struct rte_vdev_device *dev)
 
 		rte_free(eth_dev->data->mac_addrs);
 		rte_free(eth_dev->data->dev_private);
-		rte_free(eth_dev->data);
 		rte_eth_dev_release_port(eth_dev);
 		rte_event_dev_close(nic->evdev);
 	}

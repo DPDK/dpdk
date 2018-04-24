@@ -259,15 +259,6 @@ do_eth_dev_ring_create(const char *name,
 	RTE_LOG(INFO, PMD, "Creating rings-backed ethdev on numa socket %u\n",
 			numa_node);
 
-	/* now do all data allocation - for eth_dev structure, dummy pci driver
-	 * and internal (private) data
-	 */
-	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
-	if (data == NULL) {
-		rte_errno = ENOMEM;
-		goto error;
-	}
-
 	rx_queues_local = rte_zmalloc_socket(name,
 			sizeof(void *) * nb_rx_queues, 0, numa_node);
 	if (rx_queues_local == NULL) {
@@ -301,10 +292,8 @@ do_eth_dev_ring_create(const char *name,
 	 * - point eth_dev_data to internals
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
-	/* NOTE: we'll replace the data element, of originally allocated eth_dev
-	 * so the rings are local per-process */
 
-	rte_memcpy(data, eth_dev->data, sizeof(*data));
+	data = eth_dev->data;
 	data->rx_queues = rx_queues_local;
 	data->tx_queues = tx_queues_local;
 
@@ -326,7 +315,6 @@ do_eth_dev_ring_create(const char *name,
 	data->dev_link = pmd_link;
 	data->mac_addrs = &internals->address;
 
-	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
 	data->kdrv = RTE_KDRV_NONE;
 	data->numa_node = numa_node;
@@ -342,7 +330,6 @@ do_eth_dev_ring_create(const char *name,
 error:
 	rte_free(rx_queues_local);
 	rte_free(tx_queues_local);
-	rte_free(data);
 	rte_free(internals);
 
 	return -1;
@@ -674,8 +661,6 @@ rte_pmd_ring_remove(struct rte_vdev_device *dev)
 	rte_free(eth_dev->data->rx_queues);
 	rte_free(eth_dev->data->tx_queues);
 	rte_free(eth_dev->data->dev_private);
-
-	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
 	return 0;

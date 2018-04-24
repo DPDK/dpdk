@@ -773,27 +773,16 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 		struct pmd_internals **internals,
 		struct rte_eth_dev **eth_dev)
 {
-	struct rte_eth_dev_data *data = NULL;
+	struct rte_eth_dev_data *data;
 	unsigned int numa_node = vdev->device.numa_node;
-	const char *name;
 
-	name = rte_vdev_device_name(vdev);
 	RTE_LOG(INFO, PMD, "Creating pcap-backed ethdev on numa socket %d\n",
 		numa_node);
 
-	/* now do all data allocation - for eth_dev structure
-	 * and internal (private) data
-	 */
-	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
-	if (data == NULL)
-		return -1;
-
 	/* reserve an ethdev entry */
 	*eth_dev = rte_eth_vdev_allocate(vdev, sizeof(**internals));
-	if (*eth_dev == NULL) {
-		rte_free(data);
+	if (!(*eth_dev))
 		return -1;
-	}
 
 	/* now put it all together
 	 * - store queue data in internals,
@@ -802,7 +791,7 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
 	*internals = (*eth_dev)->data->dev_private;
-	rte_memcpy(data, (*eth_dev)->data, sizeof(*data));
+	data = (*eth_dev)->data;
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
@@ -812,7 +801,6 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 	 * NOTE: we'll replace the data element, of originally allocated
 	 * eth_dev so the rings are local per-process
 	 */
-	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
 
 	return 0;
@@ -1020,7 +1008,6 @@ pmd_pcap_remove(struct rte_vdev_device *dev)
 		return -1;
 
 	rte_free(eth_dev->data->dev_private);
-	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
 

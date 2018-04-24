@@ -495,7 +495,7 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 {
 	const unsigned nb_rx_queues = 1;
 	const unsigned nb_tx_queues = 1;
-	struct rte_eth_dev_data *data = NULL;
+	struct rte_eth_dev_data *data;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 
@@ -512,19 +512,10 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 	RTE_LOG(INFO, PMD, "Creating null ethdev on numa socket %u\n",
 		dev->device.numa_node);
 
-	/* now do all data allocation - for eth_dev structure, dummy pci driver
-	 * and internal (private) data
-	 */
-	data = rte_zmalloc_socket(rte_vdev_device_name(dev), sizeof(*data), 0,
-		dev->device.numa_node);
-	if (!data)
+	eth_dev = rte_eth_vdev_allocate(dev, sizeof(*internals));
+	if (!eth_dev)
 		return -ENOMEM;
 
-	eth_dev = rte_eth_vdev_allocate(dev, sizeof(*internals));
-	if (!eth_dev) {
-		rte_free(data);
-		return -ENOMEM;
-	}
 	/* now put it all together
 	 * - store queue data in internals,
 	 * - store numa_node info in ethdev data
@@ -545,13 +536,12 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 
 	rte_memcpy(internals->rss_key, default_rss_key, 40);
 
-	rte_memcpy(data, eth_dev->data, sizeof(*data));
+	data = eth_dev->data;
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &internals->eth_addr;
 
-	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
 
 	/* finally assign rx and tx ops */
@@ -669,7 +659,6 @@ rte_pmd_null_remove(struct rte_vdev_device *dev)
 		return -1;
 
 	rte_free(eth_dev->data->dev_private);
-	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
 

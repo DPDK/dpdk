@@ -564,25 +564,17 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		RTE_LOG(ERR, PMD,
 			"%s: no interface specified for AF_PACKET ethdev\n",
 		        name);
-		goto error_early;
+		return -1;
 	}
 
 	RTE_LOG(INFO, PMD,
 		"%s: creating AF_PACKET-backed ethdev on numa socket %u\n",
 		name, numa_node);
 
-	/*
-	 * now do all data allocation - for eth_dev structure, dummy pci driver
-	 * and internal (private) data
-	 */
-	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
-	if (data == NULL)
-		goto error_early;
-
 	*internals = rte_zmalloc_socket(name, sizeof(**internals),
 	                                0, numa_node);
 	if (*internals == NULL)
-		goto error_early;
+		return -1;
 
 	for (q = 0; q < nb_queues; q++) {
 		(*internals)->rx_queue[q].map = MAP_FAILED;
@@ -604,24 +596,24 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		RTE_LOG(ERR, PMD,
 			"%s: I/F name too long (%s)\n",
 			name, pair->value);
-		goto error_early;
+		return -1;
 	}
 	if (ioctl(sockfd, SIOCGIFINDEX, &ifr) == -1) {
 		RTE_LOG(ERR, PMD,
 			"%s: ioctl failed (SIOCGIFINDEX)\n",
 		        name);
-		goto error_early;
+		return -1;
 	}
 	(*internals)->if_name = strdup(pair->value);
 	if ((*internals)->if_name == NULL)
-		goto error_early;
+		return -1;
 	(*internals)->if_index = ifr.ifr_ifindex;
 
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
 		RTE_LOG(ERR, PMD,
 			"%s: ioctl failed (SIOCGIFHWADDR)\n",
 		        name);
-		goto error_early;
+		return -1;
 	}
 	memcpy(&(*internals)->eth_addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 
@@ -775,14 +767,13 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 
 	(*internals)->nb_queues = nb_queues;
 
-	rte_memcpy(data, (*eth_dev)->data, sizeof(*data));
+	data = (*eth_dev)->data;
 	data->dev_private = *internals;
 	data->nb_rx_queues = (uint16_t)nb_queues;
 	data->nb_tx_queues = (uint16_t)nb_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &(*internals)->eth_addr;
 
-	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
 
 	return 0;
@@ -802,8 +793,6 @@ error:
 	}
 	free((*internals)->if_name);
 	rte_free(*internals);
-error_early:
-	rte_free(data);
 	return -1;
 }
 
@@ -985,7 +974,6 @@ rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 	free(internals->if_name);
 
 	rte_free(eth_dev->data->dev_private);
-	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
 

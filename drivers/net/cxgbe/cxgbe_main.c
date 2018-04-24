@@ -29,7 +29,6 @@
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
-#include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_dev.h>
 #include <rte_kvargs.h>

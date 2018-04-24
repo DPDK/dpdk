@@ -1227,7 +1227,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	int16_t queues, const unsigned int numa_node, uint64_t flags)
 {
 	const char *name = rte_vdev_device_name(dev);
-	struct rte_eth_dev_data *data = NULL;
+	struct rte_eth_dev_data *data;
 	struct pmd_internal *internal = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 	struct ether_addr *eth_addr = NULL;
@@ -1236,13 +1236,6 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 
 	RTE_LOG(INFO, PMD, "Creating VHOST-USER backend on numa socket %u\n",
 		numa_node);
-
-	/* now do all data allocation - for eth_dev structure and internal
-	 * (private) data
-	 */
-	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
-	if (data == NULL)
-		goto error;
 
 	list = rte_zmalloc_socket(name, sizeof(*list), 0, numa_node);
 	if (list == NULL)
@@ -1285,12 +1278,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	rte_spinlock_init(&vring_state->lock);
 	vring_states[eth_dev->data->port_id] = vring_state;
 
-	/* We'll replace the 'data' originally allocated by eth_dev. So the
-	 * vhost PMD resources won't be shared between multi processes.
-	 */
-	rte_memcpy(data, eth_dev->data, sizeof(*data));
-	eth_dev->data = data;
-
+	data = eth_dev->data;
 	data->nb_rx_queues = queues;
 	data->nb_tx_queues = queues;
 	internal->max_queues = queues;
@@ -1331,7 +1319,6 @@ error:
 		rte_eth_dev_release_port(eth_dev);
 	rte_free(internal);
 	rte_free(list);
-	rte_free(data);
 
 	return -1;
 }
@@ -1461,8 +1448,6 @@ rte_pmd_vhost_remove(struct rte_vdev_device *dev)
 
 	rte_free(vring_states[eth_dev->data->port_id]);
 	vring_states[eth_dev->data->port_id] = NULL;
-
-	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
 

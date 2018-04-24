@@ -336,25 +336,17 @@ eth_kni_create(struct rte_vdev_device *vdev,
 	struct pmd_internals *internals;
 	struct rte_eth_dev_data *data;
 	struct rte_eth_dev *eth_dev;
-	const char *name;
 
 	RTE_LOG(INFO, PMD, "Creating kni ethdev on numa socket %u\n",
 			numa_node);
 
-	name = rte_vdev_device_name(vdev);
-	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
-	if (data == NULL)
-		return NULL;
-
 	/* reserve an ethdev entry */
 	eth_dev = rte_eth_vdev_allocate(vdev, sizeof(*internals));
-	if (eth_dev == NULL) {
-		rte_free(data);
+	if (!eth_dev)
 		return NULL;
-	}
 
 	internals = eth_dev->data->dev_private;
-	rte_memcpy(data, eth_dev->data, sizeof(*data));
+	data = eth_dev->data;
 	data->nb_rx_queues = 1;
 	data->nb_tx_queues = 1;
 	data->dev_link = pmd_link;
@@ -362,7 +354,6 @@ eth_kni_create(struct rte_vdev_device *vdev,
 
 	eth_random_addr(internals->eth_addr.addr_bytes);
 
-	eth_dev->data = data;
 	eth_dev->dev_ops = &eth_kni_ops;
 
 	internals->no_request_thread = args->no_request_thread;
@@ -458,7 +449,6 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 	rte_kni_release(internals->kni);
 
 	rte_free(internals);
-	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
 
