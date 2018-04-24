@@ -1706,6 +1706,75 @@ i40e_check_rx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
 	return !((mandatory ^ requested) & supported);
 }
 
+static int
+i40e_dev_first_queue(uint16_t idx, void **queues, int num)
+{
+	uint16_t i;
+
+	for (i = 0; i < num; i++) {
+		if (i != idx && queues[i])
+			return 0;
+	}
+
+	return 1;
+}
+
+static int
+i40e_dev_rx_queue_setup_runtime(struct rte_eth_dev *dev,
+				struct i40e_rx_queue *rxq)
+{
+	struct i40e_adapter *ad =
+		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	int use_def_burst_func =
+		check_rx_burst_bulk_alloc_preconditions(rxq);
+	uint16_t buf_size =
+		(uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
+			   RTE_PKTMBUF_HEADROOM);
+	int use_scattered_rx =
+		((rxq->max_pkt_len + 2 * I40E_VLAN_TAG_SIZE) > buf_size);
+
+	if (i40e_rx_queue_init(rxq) != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to do RX queue initialization");
+		return -EINVAL;
+	}
+
+	if (i40e_dev_first_queue(rxq->queue_id,
+				 dev->data->rx_queues,
+				 dev->data->nb_rx_queues)) {
+		/**
+		 * If it is the first queue to setup,
+		 * set all flags to default and call
+		 * i40e_set_rx_function.
+		 */
+		ad->rx_bulk_alloc_allowed = true;
+		ad->rx_vec_allowed = true;
+		dev->data->scattered_rx = use_scattered_rx;
+		if (use_def_burst_func)
+			ad->rx_bulk_alloc_allowed = false;
+		i40e_set_rx_function(dev);
+		return 0;
+	}
+
+	/* check bulk alloc conflict */
+	if (ad->rx_bulk_alloc_allowed && use_def_burst_func) {
+		PMD_DRV_LOG(ERR, "Can't use default burst.");
+		return -EINVAL;
+	}
+	/* check scatterred conflict */
+	if (!dev->data->scattered_rx && use_scattered_rx) {
+		PMD_DRV_LOG(ERR, "Scattered rx is required.");
+		return -EINVAL;
+	}
+	/* check vector conflict */
+	if (ad->rx_vec_allowed && i40e_rxq_vec_setup(rxq)) {
+		PMD_DRV_LOG(ERR, "Failed vector rx setup.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int
 i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
@@ -1834,25 +1903,6 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	i40e_reset_rx_queue(rxq);
 	rxq->q_set = TRUE;
-	dev->data->rx_queues[queue_idx] = rxq;
-
-	use_def_burst_func = check_rx_burst_bulk_alloc_preconditions(rxq);
-
-	if (!use_def_burst_func) {
-#ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
-		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
-			     "satisfied. Rx Burst Bulk Alloc function will be "
-			     "used on port=%d, queue=%d.",
-			     rxq->port_id, rxq->queue_id);
-#endif /* RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC */
-	} else {
-		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
-			     "not satisfied, Scattered Rx is requested, "
-			     "or RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC is "
-			     "not enabled on port=%d, queue=%d.",
-			     rxq->port_id, rxq->queue_id);
-		ad->rx_bulk_alloc_allowed = false;
-	}
 
 	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
 		if (!(vsi->enabled_tc & (1 << i)))
@@ -1867,6 +1917,34 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			rxq->dcb_tc = i;
 	}
 
+	if (dev->data->dev_started) {
+		if (i40e_dev_rx_queue_setup_runtime(dev, rxq)) {
+			i40e_dev_rx_queue_release(rxq);
+			return -EINVAL;
+		}
+	} else {
+		use_def_burst_func =
+			check_rx_burst_bulk_alloc_preconditions(rxq);
+		if (!use_def_burst_func) {
+#ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
+			PMD_INIT_LOG(DEBUG,
+			  "Rx Burst Bulk Alloc Preconditions are "
+			  "satisfied. Rx Burst Bulk Alloc function will be "
+			  "used on port=%d, queue=%d.",
+			  rxq->port_id, rxq->queue_id);
+#endif /* RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC */
+		} else {
+			PMD_INIT_LOG(DEBUG,
+			  "Rx Burst Bulk Alloc Preconditions are "
+			  "not satisfied, Scattered Rx is requested, "
+			  "or RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC is "
+			  "not enabled on port=%d, queue=%d.",
+			  rxq->port_id, rxq->queue_id);
+			ad->rx_bulk_alloc_allowed = false;
+		}
+	}
+
+	dev->data->rx_queues[queue_idx] = rxq;
 	return 0;
 }
 
@@ -2010,6 +2088,55 @@ i40e_check_tx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
 	if ((requested & dev_info.tx_offload_capa) != requested)
 		return 0; /* requested range check */
 	return !((mandatory ^ requested) & supported);
+}
+
+static int
+i40e_dev_tx_queue_setup_runtime(struct rte_eth_dev *dev,
+				struct i40e_tx_queue *txq)
+{
+	struct i40e_adapter *ad =
+		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (i40e_tx_queue_init(txq) != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to do TX queue initialization");
+		return -EINVAL;
+	}
+
+	if (i40e_dev_first_queue(txq->queue_id,
+				 dev->data->tx_queues,
+				 dev->data->nb_tx_queues)) {
+		/**
+		 * If it is the first queue to setup,
+		 * set all flags to default and call
+		 * i40e_set_tx_function.
+		 */
+		ad->tx_simple_allowed = true;
+		ad->tx_vec_allowed = true;
+		i40e_set_tx_function_flag(dev, txq);
+		i40e_set_tx_function(dev);
+		return 0;
+	}
+
+	/* check vector conflict */
+	if (ad->tx_vec_allowed) {
+		if (txq->tx_rs_thresh > RTE_I40E_TX_MAX_FREE_BUF_SZ ||
+		    i40e_txq_vec_setup(txq)) {
+			PMD_DRV_LOG(ERR, "Failed vector tx setup.");
+			return -EINVAL;
+		}
+	}
+	/* check simple tx conflict */
+	if (ad->tx_simple_allowed) {
+		if (((txq->txq_flags & I40E_SIMPLE_FLAGS) !=
+		     I40E_SIMPLE_FLAGS) ||
+		    txq->tx_rs_thresh < RTE_PMD_I40E_TX_MAX_BURST) {
+			PMD_DRV_LOG(ERR, "No-simple tx is required.");
+			return -EINVAL;
+		}
+	}
+
+	return 0;
 }
 
 int
@@ -2194,10 +2321,6 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	i40e_reset_tx_queue(txq);
 	txq->q_set = TRUE;
-	dev->data->tx_queues[queue_idx] = txq;
-
-	/* Use a simple TX queue without offloads or multi segs if possible */
-	i40e_set_tx_function_flag(dev, txq);
 
 	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
 		if (!(vsi->enabled_tc & (1 << i)))
@@ -2211,6 +2334,20 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		if (queue_idx >= base && queue_idx < (base + BIT(bsf)))
 			txq->dcb_tc = i;
 	}
+
+	if (dev->data->dev_started) {
+		if (i40e_dev_tx_queue_setup_runtime(dev, txq)) {
+			i40e_dev_tx_queue_release(txq);
+			return -EINVAL;
+		}
+	} else {
+		/**
+		 * Use a simple TX queue without offloads or
+		 * multi segs if possible
+		 */
+		i40e_set_tx_function_flag(dev, txq);
+	}
+	dev->data->tx_queues[queue_idx] = txq;
 
 	return 0;
 }
