@@ -2278,7 +2278,7 @@ cmdline_parse_inst_t cmd_config_rxtx_queue = {
 	.data = NULL,
 	.help_str = "port <port_id> rxq|txq <queue_id> start|stop",
 	.tokens = {
-		(void *)&cmd_config_speed_all_port,
+		(void *)&cmd_config_rxtx_queue_port,
 		(void *)&cmd_config_rxtx_queue_portid,
 		(void *)&cmd_config_rxtx_queue_rxtxq,
 		(void *)&cmd_config_rxtx_queue_qid,
