@@ -222,6 +222,17 @@ enum index {
 	ACTION_OF_DEC_NW_TTL,
 	ACTION_OF_COPY_TTL_OUT,
 	ACTION_OF_COPY_TTL_IN,
+	ACTION_OF_POP_VLAN,
+	ACTION_OF_PUSH_VLAN,
+	ACTION_OF_PUSH_VLAN_ETHERTYPE,
+	ACTION_OF_SET_VLAN_VID,
+	ACTION_OF_SET_VLAN_VID_VLAN_VID,
+	ACTION_OF_SET_VLAN_PCP,
+	ACTION_OF_SET_VLAN_PCP_VLAN_PCP,
+	ACTION_OF_POP_MPLS,
+	ACTION_OF_POP_MPLS_ETHERTYPE,
+	ACTION_OF_PUSH_MPLS,
+	ACTION_OF_PUSH_MPLS_ETHERTYPE,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -744,6 +755,12 @@ static const enum index next_action[] = {
 	ACTION_OF_DEC_NW_TTL,
 	ACTION_OF_COPY_TTL_OUT,
 	ACTION_OF_COPY_TTL_IN,
+	ACTION_OF_POP_VLAN,
+	ACTION_OF_PUSH_VLAN,
+	ACTION_OF_SET_VLAN_VID,
+	ACTION_OF_SET_VLAN_PCP,
+	ACTION_OF_POP_MPLS,
+	ACTION_OF_PUSH_MPLS,
 	ZERO,
 };
 
@@ -805,6 +822,36 @@ static const enum index action_of_set_mpls_ttl[] = {
 
 static const enum index action_of_set_nw_ttl[] = {
 	ACTION_OF_SET_NW_TTL_NW_TTL,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_of_push_vlan[] = {
+	ACTION_OF_PUSH_VLAN_ETHERTYPE,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_of_set_vlan_vid[] = {
+	ACTION_OF_SET_VLAN_VID_VLAN_VID,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_of_set_vlan_pcp[] = {
+	ACTION_OF_SET_VLAN_PCP_VLAN_PCP,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_of_pop_mpls[] = {
+	ACTION_OF_POP_MPLS_ETHERTYPE,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_of_push_mpls[] = {
+	ACTION_OF_PUSH_MPLS_ETHERTYPE,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -2173,6 +2220,102 @@ static const struct token token_list[] = {
 		.priv = PRIV_ACTION(OF_COPY_TTL_IN, 0),
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
+	},
+	[ACTION_OF_POP_VLAN] = {
+		.name = "of_pop_vlan",
+		.help = "OpenFlow's OFPAT_POP_VLAN",
+		.priv = PRIV_ACTION(OF_POP_VLAN, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_OF_PUSH_VLAN] = {
+		.name = "of_push_vlan",
+		.help = "OpenFlow's OFPAT_PUSH_VLAN",
+		.priv = PRIV_ACTION
+			(OF_PUSH_VLAN,
+			 sizeof(struct rte_flow_action_of_push_vlan)),
+		.next = NEXT(action_of_push_vlan),
+		.call = parse_vc,
+	},
+	[ACTION_OF_PUSH_VLAN_ETHERTYPE] = {
+		.name = "ethertype",
+		.help = "EtherType",
+		.next = NEXT(action_of_push_vlan, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_of_push_vlan,
+			      ethertype)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_OF_SET_VLAN_VID] = {
+		.name = "of_set_vlan_vid",
+		.help = "OpenFlow's OFPAT_SET_VLAN_VID",
+		.priv = PRIV_ACTION
+			(OF_SET_VLAN_VID,
+			 sizeof(struct rte_flow_action_of_set_vlan_vid)),
+		.next = NEXT(action_of_set_vlan_vid),
+		.call = parse_vc,
+	},
+	[ACTION_OF_SET_VLAN_VID_VLAN_VID] = {
+		.name = "vlan_vid",
+		.help = "VLAN id",
+		.next = NEXT(action_of_set_vlan_vid, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_of_set_vlan_vid,
+			      vlan_vid)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_OF_SET_VLAN_PCP] = {
+		.name = "of_set_vlan_pcp",
+		.help = "OpenFlow's OFPAT_SET_VLAN_PCP",
+		.priv = PRIV_ACTION
+			(OF_SET_VLAN_PCP,
+			 sizeof(struct rte_flow_action_of_set_vlan_pcp)),
+		.next = NEXT(action_of_set_vlan_pcp),
+		.call = parse_vc,
+	},
+	[ACTION_OF_SET_VLAN_PCP_VLAN_PCP] = {
+		.name = "vlan_pcp",
+		.help = "VLAN priority",
+		.next = NEXT(action_of_set_vlan_pcp, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_of_set_vlan_pcp,
+			      vlan_pcp)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_OF_POP_MPLS] = {
+		.name = "of_pop_mpls",
+		.help = "OpenFlow's OFPAT_POP_MPLS",
+		.priv = PRIV_ACTION(OF_POP_MPLS,
+				    sizeof(struct rte_flow_action_of_pop_mpls)),
+		.next = NEXT(action_of_pop_mpls),
+		.call = parse_vc,
+	},
+	[ACTION_OF_POP_MPLS_ETHERTYPE] = {
+		.name = "ethertype",
+		.help = "EtherType",
+		.next = NEXT(action_of_pop_mpls, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_of_pop_mpls,
+			      ethertype)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_OF_PUSH_MPLS] = {
+		.name = "of_push_mpls",
+		.help = "OpenFlow's OFPAT_PUSH_MPLS",
+		.priv = PRIV_ACTION
+			(OF_PUSH_MPLS,
+			 sizeof(struct rte_flow_action_of_push_mpls)),
+		.next = NEXT(action_of_push_mpls),
+		.call = parse_vc,
+	},
+	[ACTION_OF_PUSH_MPLS_ETHERTYPE] = {
+		.name = "ethertype",
+		.help = "EtherType",
+		.next = NEXT(action_of_push_mpls, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_of_push_mpls,
+			      ethertype)),
+		.call = parse_vc_conf,
 	},
 };
 

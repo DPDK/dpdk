@@ -1114,6 +1114,17 @@ static const struct {
 	MK_FLOW_ACTION(OF_DEC_NW_TTL, 0),
 	MK_FLOW_ACTION(OF_COPY_TTL_OUT, 0),
 	MK_FLOW_ACTION(OF_COPY_TTL_IN, 0),
+	MK_FLOW_ACTION(OF_POP_VLAN, 0),
+	MK_FLOW_ACTION(OF_PUSH_VLAN,
+		       sizeof(struct rte_flow_action_of_push_vlan)),
+	MK_FLOW_ACTION(OF_SET_VLAN_VID,
+		       sizeof(struct rte_flow_action_of_set_vlan_vid)),
+	MK_FLOW_ACTION(OF_SET_VLAN_PCP,
+		       sizeof(struct rte_flow_action_of_set_vlan_pcp)),
+	MK_FLOW_ACTION(OF_POP_MPLS,
+		       sizeof(struct rte_flow_action_of_pop_mpls)),
+	MK_FLOW_ACTION(OF_PUSH_MPLS,
+		       sizeof(struct rte_flow_action_of_push_mpls)),
 };
 
 /** Compute storage space needed by action configuration and copy it. */

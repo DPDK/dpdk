@@ -3519,6 +3519,28 @@ This section lists supported actions and their attributes, if any.
 
 - ``of_copy_ttl_in``: OpenFlow's ``OFPAT_COPY_TTL_IN``.
 
+- ``of_pop_vlan``: OpenFlow's ``OFPAT_POP_VLAN``.
+
+- ``of_push_vlan``: OpenFlow's ``OFPAT_PUSH_VLAN``.
+
+  - ``ethertype``: Ethertype.
+
+- ``of_set_vlan_vid``: OpenFlow's ``OFPAT_SET_VLAN_VID``.
+
+  - ``vlan_vid``: VLAN id.
+
+- ``of_set_vlan_pcp``: OpenFlow's ``OFPAT_SET_VLAN_PCP``.
+
+  - ``vlan_pcp``: VLAN priority.
+
+- ``of_pop_mpls``: OpenFlow's ``OFPAT_POP_MPLS``.
+
+  - ``ethertype``: Ethertype.
+
+- ``of_push_mpls``: OpenFlow's ``OFPAT_PUSH_MPLS``.
+
+  - ``ethertype``: Ethertype.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 

@@ -1813,6 +1813,102 @@ next-to-outermost") as defined by the `OpenFlow Switch Specification`_.
    | no properties |
    +---------------+
 
+Action: ``OF_POP_VLAN``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_POP_VLAN`` ("pop the outer VLAN tag") as defined
+by the `OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_pop_vlan:
+
+.. table:: OF_POP_VLAN
+
+   +---------------+
+   | Field         |
+   +===============+
+   | no properties |
+   +---------------+
+
+Action: ``OF_PUSH_VLAN``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_PUSH_VLAN`` ("push a new VLAN tag") as defined by the
+`OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_push_vlan:
+
+.. table:: OF_PUSH_VLAN
+
+   +---------------+-----------+
+   | Field         | Value     |
+   +===============+===========+
+   | ``ethertype`` | EtherType |
+   +---------------+-----------+
+
+Action: ``OF_SET_VLAN_VID``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_SET_VLAN_VID`` ("set the 802.1q VLAN id") as defined by
+the `OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_set_vlan_vid:
+
+.. table:: OF_SET_VLAN_VID
+
+   +--------------+---------+
+   | Field        | Value   |
+   +==============+=========+
+   | ``vlan_vid`` | VLAN id |
+   +--------------+---------+
+
+Action: ``OF_SET_VLAN_PCP``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_SET_LAN_PCP`` ("set the 802.1q priority") as defined by
+the `OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_set_vlan_pcp:
+
+.. table:: OF_SET_VLAN_PCP
+
+   +--------------+---------------+
+   | Field        | Value         |
+   +==============+===============+
+   | ``vlan_pcp`` | VLAN priority |
+   +--------------+---------------+
+
+Action: ``OF_POP_MPLS``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_POP_MPLS`` ("pop the outer MPLS tag") as defined by the
+`OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_pop_mpls:
+
+.. table:: OF_POP_MPLS
+
+   +---------------+-----------+
+   | Field         | Value     |
+   +===============+===========+
+   | ``ethertype`` | EtherType |
+   +---------------+-----------+
+
+Action: ``OF_PUSH_MPLS``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements ``OFPAT_PUSH_MPLS`` ("push a new MPLS tag") as defined by the
+`OpenFlow Switch Specification`_.
+
+.. _table_rte_flow_action_of_push_mpls:
+
+.. table:: OF_PUSH_MPLS
+
+   +---------------+-----------+
+   | Field         | Value     |
+   +===============+===========+
+   | ``ethertype`` | EtherType |
+   +---------------+-----------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

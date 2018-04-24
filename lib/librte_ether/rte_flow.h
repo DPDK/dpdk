@@ -1383,6 +1383,54 @@ enum rte_flow_action_type {
 	 * No associated configuration structure.
 	 */
 	RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_IN,
+
+	/**
+	 * Implements OFPAT_POP_VLAN ("pop the outer VLAN tag") as defined
+	 * by the OpenFlow Switch Specification.
+	 *
+	 * No associated configuration structure.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_POP_VLAN,
+
+	/**
+	 * Implements OFPAT_PUSH_VLAN ("push a new VLAN tag") as defined by
+	 * the OpenFlow Switch Specification.
+	 *
+	 * See struct rte_flow_action_of_push_vlan.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN,
+
+	/**
+	 * Implements OFPAT_SET_VLAN_VID ("set the 802.1q VLAN id") as
+	 * defined by the OpenFlow Switch Specification.
+	 *
+	 * See struct rte_flow_action_of_set_vlan_vid.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID,
+
+	/**
+	 * Implements OFPAT_SET_LAN_PCP ("set the 802.1q priority") as
+	 * defined by the OpenFlow Switch Specification.
+	 *
+	 * See struct rte_flow_action_of_set_vlan_pcp.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP,
+
+	/**
+	 * Implements OFPAT_POP_MPLS ("pop the outer MPLS tag") as defined
+	 * by the OpenFlow Switch Specification.
+	 *
+	 * See struct rte_flow_action_of_pop_mpls.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_POP_MPLS,
+
+	/**
+	 * Implements OFPAT_PUSH_MPLS ("push a new MPLS tag") as defined by
+	 * the OpenFlow Switch Specification.
+	 *
+	 * See struct rte_flow_action_of_push_mpls.
+	 */
+	RTE_FLOW_ACTION_TYPE_OF_PUSH_MPLS,
 };
 
 /**
@@ -1577,6 +1625,56 @@ struct rte_flow_action_of_set_mpls_ttl {
  */
 struct rte_flow_action_of_set_nw_ttl {
 	uint8_t nw_ttl; /**< IP TTL. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN
+ *
+ * Implements OFPAT_PUSH_VLAN ("push a new VLAN tag") as defined by the
+ * OpenFlow Switch Specification.
+ */
+struct rte_flow_action_of_push_vlan {
+	rte_be16_t ethertype; /**< EtherType. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID
+ *
+ * Implements OFPAT_SET_VLAN_VID ("set the 802.1q VLAN id") as defined by
+ * the OpenFlow Switch Specification.
+ */
+struct rte_flow_action_of_set_vlan_vid {
+	rte_be16_t vlan_vid; /**< VLAN id. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP
+ *
+ * Implements OFPAT_SET_LAN_PCP ("set the 802.1q priority") as defined by
+ * the OpenFlow Switch Specification.
+ */
+struct rte_flow_action_of_set_vlan_pcp {
+	uint8_t vlan_pcp; /**< VLAN priority. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_OF_POP_MPLS
+ *
+ * Implements OFPAT_POP_MPLS ("pop the outer MPLS tag") as defined by the
+ * OpenFlow Switch Specification.
+ */
+struct rte_flow_action_of_pop_mpls {
+	rte_be16_t ethertype; /**< EtherType. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_OF_PUSH_MPLS
+ *
+ * Implements OFPAT_PUSH_MPLS ("push a new MPLS tag") as defined by the
+ * OpenFlow Switch Specification.
+ */
+struct rte_flow_action_of_push_mpls {
+	rte_be16_t ethertype; /**< EtherType. */
 };
 
 /**
