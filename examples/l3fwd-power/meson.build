@@ -10,7 +10,6 @@ if host_machine.system() != 'linux'
 	build = false
 endif
 deps += ['power', 'timer', 'lpm', 'hash']
-allow_experimental_apis = true
 sources = files(
 	'main.c'
 )

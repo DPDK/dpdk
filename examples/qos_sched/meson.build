@@ -7,7 +7,6 @@
 # DPDK instance, use 'make'
 
 deps += ['sched', 'cfgfile']
-allow_experimental_apis = true
 sources = files(
 	'app_thread.c', 'args.c', 'cfg_file.c', 'cmdline.c',
 	'init.c', 'main.c', 'stats.c'

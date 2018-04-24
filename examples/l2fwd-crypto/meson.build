@@ -7,7 +7,6 @@
 # DPDK instance, use 'make'
 
 deps += 'cryptodev'
-allow_experimental_apis = true
 sources = files(
 	'main.c'
 )

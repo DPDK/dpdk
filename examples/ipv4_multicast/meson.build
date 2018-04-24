@@ -7,7 +7,6 @@
 # DPDK instance, use 'make'
 
 deps += 'hash'
-allow_experimental_apis = true
 sources = files(
 	'main.c'
 )

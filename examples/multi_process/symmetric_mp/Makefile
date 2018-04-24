@@ -16,7 +16,6 @@ APP = symmetric_mp
 # all source are stored in SRCS-y
 SRCS-y := main.c
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

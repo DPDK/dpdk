@@ -14,7 +14,6 @@ APP = mp_client
 # all source are stored in SRCS-y
 SRCS-y := client.c
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS) -O3
 CFLAGS += -I$(SRCDIR)/../shared
 

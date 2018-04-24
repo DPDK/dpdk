@@ -23,8 +23,6 @@ CFLAGS += -O3 $(shell pkg-config --cflags libdpdk)
 LDFLAGS_SHARED = $(shell pkg-config --libs libdpdk)
 LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
@@ -56,7 +54,6 @@ please change the definition of the RTE_TARGET environment variable)
 all:
 else
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

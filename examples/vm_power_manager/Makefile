@@ -21,7 +21,6 @@ APP = vm_power_mgr
 SRCS-y := main.c vm_power_cli.c power_manager.c channel_manager.c
 SRCS-y += channel_monitor.c
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3 -I$(RTE_SDK)/lib/librte_power/
 CFLAGS += $(WERROR_FLAGS)
 

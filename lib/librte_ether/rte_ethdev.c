@@ -381,7 +381,7 @@ rte_eth_is_valid_owner_id(uint64_t owner_id)
 	return 1;
 }
 
-uint64_t __rte_experimental
+uint64_t
 rte_eth_find_next_owned_by(uint16_t port_id, const uint64_t owner_id)
 {
 	while (port_id < RTE_MAX_ETHPORTS &&
@@ -552,7 +552,7 @@ rte_eth_dev_count_avail(void)
 	return count;
 }
 
-uint16_t
+uint16_t __rte_experimental
 rte_eth_dev_count_total(void)
 {
 	uint16_t port, count = 0;

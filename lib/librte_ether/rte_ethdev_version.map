@@ -203,10 +203,17 @@ DPDK_18.02 {
 
 } DPDK_17.11;
 
-EXPERIMENTAL {
+DPDK_18.05 {
 	global:
 
 	rte_eth_dev_count_avail;
+	rte_eth_find_next_owned_by;
+
+} DPDK_18.02;
+
+EXPERIMENTAL {
+	global:
+
 	rte_eth_dev_count_total;
 	rte_eth_dev_is_removed;
 	rte_eth_dev_owner_delete;
@@ -216,7 +223,6 @@ EXPERIMENTAL {
 	rte_eth_dev_owner_unset;
 	rte_eth_dev_rx_offload_name;
 	rte_eth_dev_tx_offload_name;
-	rte_eth_find_next_owned_by;
 	rte_mtr_capabilities_get;
 	rte_mtr_create;
 	rte_mtr_destroy;

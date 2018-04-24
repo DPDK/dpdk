@@ -23,7 +23,6 @@ CFLAGS += -O3 $(shell pkg-config --cflags libdpdk)
 LDFLAGS_SHARED = $(shell pkg-config --libs libdpdk)
 LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -D_GNU_SOURCE
 LDFLAGS += -lpqos
 
@@ -56,7 +55,6 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS)
 
 # workaround for a gcc bug with noreturn attribute

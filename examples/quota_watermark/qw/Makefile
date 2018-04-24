@@ -16,7 +16,6 @@ APP = qw
 # all source are stored in SRCS-y
 SRCS-y := args.c init.c main.c
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3 -DQW_SOFTWARE_FC
 CFLAGS += $(WERROR_FLAGS)
 

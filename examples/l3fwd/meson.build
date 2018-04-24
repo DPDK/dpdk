@@ -7,7 +7,6 @@
 # DPDK instance, use 'make'
 
 deps += ['hash', 'lpm']
-allow_experimental_apis = true
 sources = files(
 	'l3fwd_em.c', 'l3fwd_lpm.c', 'main.c'
 )

@@ -1277,9 +1277,6 @@ struct rte_eth_dev_owner {
 #define RTE_ETH_DEV_INTR_RMV     0x0008
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Iterates over valid ethdev ports owned by a specific owner.
  *
  * @param port_id
@@ -1290,7 +1287,7 @@ struct rte_eth_dev_owner {
  * @return
  *   Next valid port id owned by owner_id, RTE_MAX_ETHPORTS if there is none.
  */
-uint64_t __rte_experimental rte_eth_find_next_owned_by(uint16_t port_id,
+uint64_t rte_eth_find_next_owned_by(uint16_t port_id,
 		const uint64_t owner_id);
 
 /**
@@ -1417,7 +1414,7 @@ uint16_t rte_eth_dev_count(void);
  * @return
  *   The count of available Ethernet devices.
  */
-uint16_t __rte_experimental rte_eth_dev_count_avail(void);
+uint16_t rte_eth_dev_count_avail(void);
 
 /**
  * Get the total number of ports which are allocated.

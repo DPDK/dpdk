@@ -8,7 +8,6 @@
 
 ext_deps += cc.find_library('rt')
 deps += 'timer'
-allow_experimental_apis = true
 sources = files(
 	'main.c', 'shm.c'
 )
