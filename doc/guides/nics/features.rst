@@ -892,7 +892,25 @@ Documentation describes performance values.
 
 See ``dpdk.org/doc/perf/*``.
 
+.. _nic_features_runtime_rx_queue_setup:
 
+Runtime Rx queue setup
+----------------------
+
+Supports Rx queue setup after device started.
+
+* **[provides] rte_eth_dev_info**: ``dev_capa:RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP``.
+* **[related]  API**: ``rte_eth_dev_info_get()``.
+
+.. _nic_features_runtime_tx_queue_setup:
+
+Runtime Tx queue setup
+----------------------
+
+Supports Tx queue setup after device started.
+
+* **[provides] rte_eth_dev_info**: ``dev_capa:RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP``.
+* **[related]  API**: ``rte_eth_dev_info_get()``.
 
 .. _nic_features_other:
 

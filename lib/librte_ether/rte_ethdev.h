@@ -993,6 +993,11 @@ struct rte_eth_conf {
  */
 #define DEV_TX_OFFLOAD_IP_TNL_TSO       0x00080000
 
+#define RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP 0x00000001
+/**< Device supports Rx queue setup after device started*/
+#define RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP 0x00000002
+/**< Device supports Tx queue setup after device started*/
+
 /*
  * If new Tx offload capabilities are defined, they also must be
  * mentioned in rte_tx_offload_names in rte_ethdev.c file.
@@ -1066,6 +1071,8 @@ struct rte_eth_dev_info {
 	struct rte_eth_dev_portconf default_rxportconf;
 	/** Tx parameter recommendations */
 	struct rte_eth_dev_portconf default_txportconf;
+	/** Generic device capabilities (RTE_ETH_DEV_CAPA_). */
+	uint64_t dev_capa;
 };
 
 /**

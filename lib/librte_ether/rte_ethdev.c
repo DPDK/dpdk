@@ -1423,12 +1423,6 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_started) {
-		RTE_PMD_DEBUG_TRACE(
-		    "port %d must be stopped to allow configuration\n", port_id);
-		return -EBUSY;
-	}
-
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_setup, -ENOTSUP);
 
@@ -1479,6 +1473,15 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 			dev_info.rx_desc_lim.nb_align);
 		return -EINVAL;
 	}
+
+	if (dev->data->dev_started &&
+		!(dev_info.dev_capa &
+			RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP))
+		return -EBUSY;
+
+	if (dev->data->rx_queue_state[rx_queue_id] !=
+		RTE_ETH_QUEUE_STATE_STOPPED)
+		return -EBUSY;
 
 	rxq = dev->data->rx_queues;
 	if (rxq[rx_queue_id]) {
@@ -1555,12 +1558,6 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_started) {
-		RTE_PMD_DEBUG_TRACE(
-		    "port %d must be stopped to allow configuration\n", port_id);
-		return -EBUSY;
-	}
-
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_setup, -ENOTSUP);
 
@@ -1584,6 +1581,15 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 				dev_info.tx_desc_lim.nb_align);
 		return -EINVAL;
 	}
+
+	if (dev->data->dev_started &&
+		!(dev_info.dev_capa &
+			RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP))
+		return -EBUSY;
+
+	if (dev->data->tx_queue_state[tx_queue_id] !=
+		RTE_ETH_QUEUE_STATE_STOPPED)
+		return -EBUSY;
 
 	txq = dev->data->tx_queues;
 	if (txq[tx_queue_id]) {
