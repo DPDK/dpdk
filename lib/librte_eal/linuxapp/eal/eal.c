@@ -770,6 +770,19 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	rte_config_init();
+
+	/* Put mp channel init before bus scan so that we can init the vdev
+	 * bus through mp channel in the secondary process before the bus scan.
+	 */
+	if (rte_mp_channel_init() < 0) {
+		rte_eal_init_alert("failed to init mp channel\n");
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			rte_errno = EFAULT;
+			return -1;
+		}
+	}
+
 	if (rte_bus_scan()) {
 		rte_eal_init_alert("Cannot scan the buses for devices\n");
 		rte_errno = ENODEV;
@@ -820,21 +833,11 @@ rte_eal_init(int argc, char **argv)
 
 	rte_srand(rte_rdtsc());
 
-	rte_config_init();
-
 	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0) {
 		rte_eal_init_alert("Cannot init logging.");
 		rte_errno = ENOMEM;
 		rte_atomic32_clear(&run_once);
 		return -1;
-	}
-
-	if (rte_mp_channel_init() < 0) {
-		rte_eal_init_alert("failed to init mp channel\n");
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			rte_errno = EFAULT;
-			return -1;
-		}
 	}
 
 #ifdef VFIO_PRESENT
