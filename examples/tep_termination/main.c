@@ -1061,8 +1061,8 @@ static const struct vhost_device_ops virtio_net_device_ops = {
  * This is a thread will wake up after a period to print stats if the user has
  * enabled them.
  */
-static void
-print_stats(void)
+static void *
+print_stats(__rte_unused void *arg)
 {
 	struct virtio_net_data_ll *dev_ll;
 	uint64_t tx_dropped, rx_dropped;
@@ -1119,6 +1119,8 @@ print_stats(void)
 		}
 		printf("\n================================================\n");
 	}
+
+	return NULL;
 }
 
 /**
@@ -1134,7 +1136,6 @@ main(int argc, char *argv[])
 	uint16_t portid;
 	uint16_t queue_id;
 	static pthread_t tid;
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1205,13 +1206,10 @@ main(int argc, char *argv[])
 
 	/* Enable stats if the user option is set. */
 	if (enable_stats) {
-		ret = pthread_create(&tid, NULL, (void *)print_stats, NULL);
-		if (ret != 0)
+		ret = rte_ctrl_thread_create(&tid, "print-stats", NULL,
+					print_stats, NULL);
+		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot create print-stats thread\n");
-		snprintf(thread_name, sizeof(thread_name), "print-stats");
-		ret = rte_thread_setname(tid, thread_name);
-		if (ret != 0)
-			RTE_LOG(DEBUG, VHOST_CONFIG, "Cannot set print-stats name\n");
 	}
 
 	/* Launch all data cores. */
