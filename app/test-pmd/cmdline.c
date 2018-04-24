@@ -2365,9 +2365,9 @@ cmd_setup_rxtx_queue_parsed(
 		}
 		ret = rte_eth_rx_queue_setup(res->portid,
 					     res->qid,
-					     nb_rxd,
+					     port->nb_rx_desc[res->qid],
 					     socket_id,
-					     &port->rx_conf,
+					     &port->rx_conf[res->qid],
 					     mp);
 		if (ret)
 			printf("Failed to setup RX queue\n");
@@ -2378,9 +2378,9 @@ cmd_setup_rxtx_queue_parsed(
 
 		ret = rte_eth_tx_queue_setup(res->portid,
 					     res->qid,
-					     nb_txd,
+					     port->nb_tx_desc[res->qid],
 					     socket_id,
-					     &port->tx_conf);
+					     &port->tx_conf[res->qid]);
 		if (ret)
 			printf("Failed to setup TX queue\n");
 	}

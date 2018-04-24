@@ -194,8 +194,10 @@ struct rte_port {
 	uint8_t                 need_reconfig_queues; /**< need reconfiguring queues or not */
 	uint8_t                 rss_flag;   /**< enable rss or not */
 	uint8_t                 dcb_flag;   /**< enable dcb */
-	struct rte_eth_rxconf   rx_conf;    /**< rx configuration */
-	struct rte_eth_txconf   tx_conf;    /**< tx configuration */
+	uint16_t                nb_rx_desc[MAX_QUEUE_ID+1]; /**< per queue rx desc number */
+	uint16_t                nb_tx_desc[MAX_QUEUE_ID+1]; /**< per queue tx desc number */
+	struct rte_eth_rxconf   rx_conf[MAX_QUEUE_ID+1]; /**< per queue rx configuration */
+	struct rte_eth_txconf   tx_conf[MAX_QUEUE_ID+1]; /**< per queue tx configuration */
 	struct ether_addr       *mc_addr_pool; /**< pool of multicast addrs */
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	uint8_t                 slave_flag; /**< bonding slave port */

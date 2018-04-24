@@ -1594,20 +1594,24 @@ start_port(portid_t pid)
 		}
 		if (port->need_reconfig_queues > 0) {
 			port->need_reconfig_queues = 0;
-			port->tx_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
-			/* Apply Tx offloads configuration */
-			port->tx_conf.offloads = port->dev_conf.txmode.offloads;
 			/* setup tx queues */
 			for (qi = 0; qi < nb_txq; qi++) {
+				port->tx_conf[qi].txq_flags =
+					ETH_TXQ_FLAGS_IGNORE;
+				/* Apply Tx offloads configuration */
+				port->tx_conf[qi].offloads =
+					port->dev_conf.txmode.offloads;
 				if ((numa_support) &&
 					(txring_numa[pi] != NUMA_NO_CONFIG))
 					diag = rte_eth_tx_queue_setup(pi, qi,
-						nb_txd,txring_numa[pi],
-						&(port->tx_conf));
+						port->nb_tx_desc[qi],
+						txring_numa[pi],
+						&(port->tx_conf[qi]));
 				else
 					diag = rte_eth_tx_queue_setup(pi, qi,
-						nb_txd,port->socket_id,
-						&(port->tx_conf));
+						port->nb_tx_desc[qi],
+						port->socket_id,
+						&(port->tx_conf[qi]));
 
 				if (diag == 0)
 					continue;
@@ -1618,15 +1622,17 @@ start_port(portid_t pid)
 							RTE_PORT_STOPPED) == 0)
 					printf("Port %d can not be set back "
 							"to stopped\n", pi);
-				printf("Fail to configure port %d tx queues\n", pi);
+				printf("Fail to configure port %d tx queues\n",
+				       pi);
 				/* try to reconfigure queues next time */
 				port->need_reconfig_queues = 1;
 				return -1;
 			}
-			/* Apply Rx offloads configuration */
-			port->rx_conf.offloads = port->dev_conf.rxmode.offloads;
-			/* setup rx queues */
 			for (qi = 0; qi < nb_rxq; qi++) {
+				/* Apply Rx offloads configuration */
+				port->rx_conf[qi].offloads =
+					port->dev_conf.rxmode.offloads;
+				/* setup rx queues */
 				if ((numa_support) &&
 					(rxring_numa[pi] != NUMA_NO_CONFIG)) {
 					struct rte_mempool * mp =
@@ -1640,8 +1646,10 @@ start_port(portid_t pid)
 					}
 
 					diag = rte_eth_rx_queue_setup(pi, qi,
-					     nb_rxd,rxring_numa[pi],
-					     &(port->rx_conf),mp);
+					     port->nb_rx_desc[pi],
+					     rxring_numa[pi],
+					     &(port->rx_conf[qi]),
+					     mp);
 				} else {
 					struct rte_mempool *mp =
 						mbuf_pool_find(port->socket_id);
@@ -1653,8 +1661,10 @@ start_port(portid_t pid)
 						return -1;
 					}
 					diag = rte_eth_rx_queue_setup(pi, qi,
-					     nb_rxd,port->socket_id,
-					     &(port->rx_conf), mp);
+					     port->nb_rx_desc[pi],
+					     port->socket_id,
+					     &(port->rx_conf[qi]),
+					     mp);
 				}
 				if (diag == 0)
 					continue;
@@ -1665,7 +1675,8 @@ start_port(portid_t pid)
 							RTE_PORT_STOPPED) == 0)
 					printf("Port %d can not be set back "
 							"to stopped\n", pi);
-				printf("Fail to configure port %d rx queues\n", pi);
+				printf("Fail to configure port %d rx queues\n",
+				       pi);
 				/* try to reconfigure queues next time */
 				port->need_reconfig_queues = 1;
 				return -1;
@@ -2227,39 +2238,51 @@ map_port_queue_stats_mapping_registers(portid_t pi, struct rte_port *port)
 static void
 rxtx_port_config(struct rte_port *port)
 {
-	port->rx_conf = port->dev_info.default_rxconf;
-	port->tx_conf = port->dev_info.default_txconf;
+	uint16_t qid;
 
-	/* Check if any RX/TX parameters have been passed */
-	if (rx_pthresh != RTE_PMD_PARAM_UNSET)
-		port->rx_conf.rx_thresh.pthresh = rx_pthresh;
+	for (qid = 0; qid < nb_rxq; qid++) {
+		port->rx_conf[qid] = port->dev_info.default_rxconf;
 
-	if (rx_hthresh != RTE_PMD_PARAM_UNSET)
-		port->rx_conf.rx_thresh.hthresh = rx_hthresh;
+		/* Check if any Rx parameters have been passed */
+		if (rx_pthresh != RTE_PMD_PARAM_UNSET)
+			port->rx_conf[qid].rx_thresh.pthresh = rx_pthresh;
 
-	if (rx_wthresh != RTE_PMD_PARAM_UNSET)
-		port->rx_conf.rx_thresh.wthresh = rx_wthresh;
+		if (rx_hthresh != RTE_PMD_PARAM_UNSET)
+			port->rx_conf[qid].rx_thresh.hthresh = rx_hthresh;
 
-	if (rx_free_thresh != RTE_PMD_PARAM_UNSET)
-		port->rx_conf.rx_free_thresh = rx_free_thresh;
+		if (rx_wthresh != RTE_PMD_PARAM_UNSET)
+			port->rx_conf[qid].rx_thresh.wthresh = rx_wthresh;
 
-	if (rx_drop_en != RTE_PMD_PARAM_UNSET)
-		port->rx_conf.rx_drop_en = rx_drop_en;
+		if (rx_free_thresh != RTE_PMD_PARAM_UNSET)
+			port->rx_conf[qid].rx_free_thresh = rx_free_thresh;
 
-	if (tx_pthresh != RTE_PMD_PARAM_UNSET)
-		port->tx_conf.tx_thresh.pthresh = tx_pthresh;
+		if (rx_drop_en != RTE_PMD_PARAM_UNSET)
+			port->rx_conf[qid].rx_drop_en = rx_drop_en;
 
-	if (tx_hthresh != RTE_PMD_PARAM_UNSET)
-		port->tx_conf.tx_thresh.hthresh = tx_hthresh;
+		port->nb_rx_desc[qid] = nb_rxd;
+	}
 
-	if (tx_wthresh != RTE_PMD_PARAM_UNSET)
-		port->tx_conf.tx_thresh.wthresh = tx_wthresh;
+	for (qid = 0; qid < nb_txq; qid++) {
+		port->tx_conf[qid] = port->dev_info.default_txconf;
 
-	if (tx_rs_thresh != RTE_PMD_PARAM_UNSET)
-		port->tx_conf.tx_rs_thresh = tx_rs_thresh;
+		/* Check if any Tx parameters have been passed */
+		if (tx_pthresh != RTE_PMD_PARAM_UNSET)
+			port->tx_conf[qid].tx_thresh.pthresh = tx_pthresh;
 
-	if (tx_free_thresh != RTE_PMD_PARAM_UNSET)
-		port->tx_conf.tx_free_thresh = tx_free_thresh;
+		if (tx_hthresh != RTE_PMD_PARAM_UNSET)
+			port->tx_conf[qid].tx_thresh.hthresh = tx_hthresh;
+
+		if (tx_wthresh != RTE_PMD_PARAM_UNSET)
+			port->tx_conf[qid].tx_thresh.wthresh = tx_wthresh;
+
+		if (tx_rs_thresh != RTE_PMD_PARAM_UNSET)
+			port->tx_conf[qid].tx_rs_thresh = tx_rs_thresh;
+
+		if (tx_free_thresh != RTE_PMD_PARAM_UNSET)
+			port->tx_conf[qid].tx_free_thresh = tx_free_thresh;
+
+		port->nb_tx_desc[qid] = nb_txd;
+	}
 }
 
 void
