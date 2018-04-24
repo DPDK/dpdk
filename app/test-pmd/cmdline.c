@@ -850,6 +850,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Start/stop a rx/tx queue of port X. Only take effect"
 			" when port X is started\n\n"
 
+			"port (port_id) (rxq|txq) (queue_id) setup\n"
+			"    Setup a rx/tx queue of port X.\n\n"
+
 			"port config (port_id|all) l2-tunnel E-tag ether-type"
 			" (value)\n"
 			"    Set the value of E-tag ether-type.\n\n"
@@ -2286,6 +2289,117 @@ cmdline_parse_inst_t cmd_config_rxtx_queue = {
 		NULL,
 	},
 };
+
+/* *** configure port rxq/txq setup *** */
+struct cmd_setup_rxtx_queue {
+	cmdline_fixed_string_t port;
+	portid_t portid;
+	cmdline_fixed_string_t rxtxq;
+	uint16_t qid;
+	cmdline_fixed_string_t setup;
+};
+
+/* Common CLI fields for queue setup */
+cmdline_parse_token_string_t cmd_setup_rxtx_queue_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_setup_rxtx_queue, port, "port");
+cmdline_parse_token_num_t cmd_setup_rxtx_queue_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_setup_rxtx_queue, portid, UINT16);
+cmdline_parse_token_string_t cmd_setup_rxtx_queue_rxtxq =
+	TOKEN_STRING_INITIALIZER(struct cmd_setup_rxtx_queue, rxtxq, "rxq#txq");
+cmdline_parse_token_num_t cmd_setup_rxtx_queue_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_setup_rxtx_queue, qid, UINT16);
+cmdline_parse_token_string_t cmd_setup_rxtx_queue_setup =
+	TOKEN_STRING_INITIALIZER(struct cmd_setup_rxtx_queue, setup, "setup");
+
+static void
+cmd_setup_rxtx_queue_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_setup_rxtx_queue *res = parsed_result;
+	struct rte_port *port;
+	struct rte_mempool *mp;
+	unsigned int socket_id;
+	uint8_t isrx = 0;
+	int ret;
+
+	if (port_id_is_invalid(res->portid, ENABLED_WARN))
+		return;
+
+	if (res->portid == (portid_t)RTE_PORT_ALL) {
+		printf("Invalid port id\n");
+		return;
+	}
+
+	if (!strcmp(res->rxtxq, "rxq"))
+		isrx = 1;
+	else if (!strcmp(res->rxtxq, "txq"))
+		isrx = 0;
+	else {
+		printf("Unknown parameter\n");
+		return;
+	}
+
+	if (isrx && rx_queue_id_is_invalid(res->qid)) {
+		printf("Invalid rx queue\n");
+		return;
+	} else if (!isrx && tx_queue_id_is_invalid(res->qid)) {
+		printf("Invalid tx queue\n");
+		return;
+	}
+
+	port = &ports[res->portid];
+	if (isrx) {
+		socket_id = rxring_numa[res->portid];
+		if (!numa_support || socket_id == NUMA_NO_CONFIG)
+			socket_id = port->socket_id;
+
+		mp = mbuf_pool_find(socket_id);
+		if (mp == NULL) {
+			printf("Failed to setup RX queue: "
+				"No mempool allocation"
+				" on the socket %d\n",
+				rxring_numa[res->portid]);
+			return;
+		}
+		ret = rte_eth_rx_queue_setup(res->portid,
+					     res->qid,
+					     nb_rxd,
+					     socket_id,
+					     &port->rx_conf,
+					     mp);
+		if (ret)
+			printf("Failed to setup RX queue\n");
+	} else {
+		socket_id = txring_numa[res->portid];
+		if (!numa_support || socket_id == NUMA_NO_CONFIG)
+			socket_id = port->socket_id;
+
+		ret = rte_eth_tx_queue_setup(res->portid,
+					     res->qid,
+					     nb_txd,
+					     socket_id,
+					     &port->tx_conf);
+		if (ret)
+			printf("Failed to setup TX queue\n");
+	}
+}
+
+cmdline_parse_inst_t cmd_setup_rxtx_queue = {
+	.f = cmd_setup_rxtx_queue_parsed,
+	.data = NULL,
+	.help_str = "port <port_id> rxq|txq <queue_idx> setup",
+	.tokens = {
+		(void *)&cmd_setup_rxtx_queue_port,
+		(void *)&cmd_setup_rxtx_queue_portid,
+		(void *)&cmd_setup_rxtx_queue_rxtxq,
+		(void *)&cmd_setup_rxtx_queue_qid,
+		(void *)&cmd_setup_rxtx_queue_setup,
+		NULL,
+	},
+};
+
 
 /* *** Configure RSS RETA *** */
 struct cmd_config_rss_reta {
@@ -16248,6 +16362,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
 	(cmdline_parse_inst_t *)&cmd_config_rss,
 	(cmdline_parse_inst_t *)&cmd_config_rxtx_queue,
+	(cmdline_parse_inst_t *)&cmd_setup_rxtx_queue,
 	(cmdline_parse_inst_t *)&cmd_config_rss_reta,
 	(cmdline_parse_inst_t *)&cmd_showport_reta,
 	(cmdline_parse_inst_t *)&cmd_config_burst,
