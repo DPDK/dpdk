@@ -561,6 +561,17 @@ which are lower than logging ``level``.
 Using ``pmd.dpaa2`` as log matching criteria, all PMD logs can be enabled
 which are lower than logging ``level``.
 
+Whitelisting & Blacklisting
+---------------------------
+
+For blacklisting a DPAA2 device, following commands can be used.
+
+ .. code-block:: console
+
+    <dpdk app> <EAL args> -b "fslmc:dpni.x" -- ...
+
+Where x is the device object id as configured in resource container.
+
 Limitations
 -----------
 

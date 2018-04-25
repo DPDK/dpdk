@@ -134,6 +134,17 @@ Supported DPAA2 SoCs
 * LS2088A/LS2048A
 * LS1088A/LS1048A
 
+Whitelisting & Blacklisting
+---------------------------
+
+For blacklisting a DPAA2 SEC device, following commands can be used.
+
+ .. code-block:: console
+
+    <dpdk app> <EAL args> -b "fslmc:dpseci.x" -- ...
+
+Where x is the device object id as configured in resource container.
+
 Limitations
 -----------
 

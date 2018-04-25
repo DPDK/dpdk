@@ -31,6 +31,7 @@ extern "C" {
 #include <rte_dev.h>
 #include <rte_bus.h>
 #include <rte_tailq.h>
+#include <rte_devargs.h>
 
 #include <fslmc_vfio.h>
 
@@ -48,6 +49,9 @@ struct rte_dpaa2_driver;
 /* DPAA2 Device and Driver lists for FSLMC bus */
 TAILQ_HEAD(rte_fslmc_device_list, rte_dpaa2_device);
 TAILQ_HEAD(rte_fslmc_driver_list, rte_dpaa2_driver);
+
+#define RTE_DEV_TO_FSLMC_CONST(ptr) \
+	container_of(ptr, const struct rte_dpaa2_device, device)
 
 extern struct rte_fslmc_bus rte_fslmc_bus;
 
