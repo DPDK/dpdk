@@ -36,7 +36,8 @@
 
 extern int nfp_logtype_init;
 #define PMD_INIT_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+	rte_log(RTE_LOG_ ## level, nfp_logtype_init, \
+		"%s(): " fmt "\n", __func__, ## args)
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
 #ifdef RTE_LIBRTE_NFP_NET_DEBUG_RX
