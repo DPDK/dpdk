@@ -504,7 +504,7 @@ fman_if_init(const struct device_node *dpa_node)
 
 	/* Parsing of the network interface is complete, add it to the list */
 	DPAA_BUS_LOG(DEBUG, "Found %s, Tx Channel = %x, FMAN = %x,"
-		    "Port ID = %x\n",
+		    "Port ID = %x",
 		    dname, __if->__if.tx_channel_id, __if->__if.fman_idx,
 		    __if->__if.mac_idx);
 

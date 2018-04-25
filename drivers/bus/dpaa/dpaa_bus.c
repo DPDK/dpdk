@@ -178,7 +178,7 @@ dpaa_create_device_list(void)
 		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
 		sprintf(dev->name, "fm%d-mac%d", (fman_intf->fman_idx + 1),
 			fman_intf->mac_idx);
-		DPAA_BUS_LOG(DEBUG, "Device added: %s", dev->name);
+		DPAA_BUS_LOG(INFO, "%s netdev added", dev->name);
 		dev->device.name = dev->name;
 		dev->device.devargs = dpaa_devargs_lookup(dev);
 
@@ -216,7 +216,7 @@ dpaa_create_device_list(void)
 		 */
 		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
 		sprintf(dev->name, "dpaa-sec%d", i);
-		DPAA_BUS_LOG(DEBUG, "Device added: %s", dev->name);
+		DPAA_BUS_LOG(INFO, "%s cryptodev added", dev->name);
 		dev->device.name = dev->name;
 		dev->device.devargs = dpaa_devargs_lookup(dev);
 
@@ -461,14 +461,11 @@ rte_dpaa_bus_scan(void)
 		return 0;
 	}
 
-	DPAA_BUS_LOG(DEBUG, "Bus: Address of netcfg=%p, Ethports=%d",
-		     dpaa_netcfg, dpaa_netcfg->num_ethports);
-
 #ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
 	dump_netcfg(dpaa_netcfg);
 #endif
 
-	DPAA_BUS_LOG(DEBUG, "Number of devices = %d\n",
+	DPAA_BUS_LOG(DEBUG, "Number of ethernet devices = %d",
 		     dpaa_netcfg->num_ethports);
 	ret = dpaa_create_device_list();
 	if (ret) {
@@ -485,9 +482,6 @@ rte_dpaa_bus_scan(void)
 		dpaa_clean_device_list();
 		return ret;
 	}
-
-	DPAA_BUS_LOG(DEBUG, "dpaa_portal_key=%u, ret=%d\n",
-		    (unsigned int)dpaa_portal_key, ret);
 
 	return 0;
 }
@@ -644,11 +638,11 @@ dpaa_init_log(void)
 	if (dpaa_logtype_mempool >= 0)
 		rte_log_set_level(dpaa_logtype_mempool, RTE_LOG_NOTICE);
 
-	dpaa_logtype_pmd = rte_log_register("pmd.dpaa");
+	dpaa_logtype_pmd = rte_log_register("pmd.net.dpaa");
 	if (dpaa_logtype_pmd >= 0)
 		rte_log_set_level(dpaa_logtype_pmd, RTE_LOG_NOTICE);
 
-	dpaa_logtype_eventdev = rte_log_register("eventdev.dpaa");
+	dpaa_logtype_eventdev = rte_log_register("pmd.event.dpaa");
 	if (dpaa_logtype_eventdev >= 0)
 		rte_log_set_level(dpaa_logtype_eventdev, RTE_LOG_NOTICE);
 }

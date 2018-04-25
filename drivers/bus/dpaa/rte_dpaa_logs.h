@@ -15,10 +15,7 @@ extern int dpaa_logtype_pmd;
 extern int dpaa_logtype_eventdev;
 
 #define DPAA_BUS_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa_logtype_bus, "%s(): " fmt "\n", \
-		__func__, ##args)
-
-#define BUS_INIT_FUNC_TRACE() DPAA_BUS_LOG(DEBUG, " >>")
+	rte_log(RTE_LOG_ ## level, dpaa_logtype_bus, "dpaa: " fmt "\n", ##args)
 
 #ifdef RTE_LIBRTE_DPAA_DEBUG_BUS
 #define DPAA_BUS_HWWARN(cond, fmt, args...) \
@@ -31,7 +28,11 @@ extern int dpaa_logtype_eventdev;
 #endif
 
 #define DPAA_BUS_DEBUG(fmt, args...) \
-	DPAA_BUS_LOG(DEBUG, fmt, ## args)
+	rte_log(RTE_LOG_DEBUG, dpaa_logtype_bus, "dpaa: %s(): " fmt "\n", \
+		__func__, ##args)
+
+#define BUS_INIT_FUNC_TRACE() DPAA_BUS_DEBUG(" >>")
+
 #define DPAA_BUS_INFO(fmt, args...) \
 	DPAA_BUS_LOG(INFO, fmt, ## args)
 #define DPAA_BUS_ERR(fmt, args...) \
