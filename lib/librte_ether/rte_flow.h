@@ -152,13 +152,8 @@ enum rte_flow_item_type {
 	/**
 	 * [META]
 	 *
-	 * Matches packets addressed to the physical function of the device.
-	 *
-	 * If the underlying device function differs from the one that would
-	 * normally receive the matched traffic, specifying this item
-	 * prevents it from reaching that device unless the flow rule
-	 * contains a PF action. Packets are not duplicated between device
-	 * instances by default.
+	 * Matches traffic originating from (ingress) or going to (egress)
+	 * the physical function of the current device.
 	 *
 	 * No associated specification structure.
 	 */
@@ -167,13 +162,8 @@ enum rte_flow_item_type {
 	/**
 	 * [META]
 	 *
-	 * Matches packets addressed to a virtual function ID of the device.
-	 *
-	 * If the underlying device function differs from the one that would
-	 * normally receive the matched traffic, specifying this item
-	 * prevents it from reaching that device unless the flow rule
-	 * contains a VF action. Packets are not duplicated between device
-	 * instances by default.
+	 * Matches traffic originating from (ingress) or going to (egress) a
+	 * given virtual function of the current device.
 	 *
 	 * See struct rte_flow_item_vf.
 	 */
@@ -371,15 +361,15 @@ static const struct rte_flow_item_any rte_flow_item_any_mask = {
 /**
  * RTE_FLOW_ITEM_TYPE_VF
  *
- * Matches packets addressed to a virtual function ID of the device.
+ * Matches traffic originating from (ingress) or going to (egress) a given
+ * virtual function of the current device.
  *
- * If the underlying device function differs from the one that would
- * normally receive the matched traffic, specifying this item prevents it
- * from reaching that device unless the flow rule contains a VF
- * action. Packets are not duplicated between device instances by default.
+ * If supported, should work even if the virtual function is not managed by
+ * the application and thus not associated with a DPDK port ID.
  *
- * - Likely to return an error or never match any traffic if this causes a
- *   VF device to match traffic addressed to a different VF.
+ * Note this pattern item does not match VF representors traffic which, as
+ * separate entities, should be addressed through their own DPDK port IDs.
+ *
  * - Can be specified multiple times to match traffic addressed to several
  *   VF IDs.
  * - Can be combined with a PF item to match both PF and VF traffic.
@@ -387,7 +377,7 @@ static const struct rte_flow_item_any rte_flow_item_any_mask = {
  * A zeroed mask can be used to match any VF ID.
  */
 struct rte_flow_item_vf {
-	uint32_t id; /**< Destination VF ID. */
+	uint32_t id; /**< VF ID. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_VF. */
@@ -988,16 +978,16 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_RSS,
 
 	/**
-	 * Redirects packets to the physical function (PF) of the current
-	 * device.
+	 * Directs matching traffic to the physical function (PF) of the
+	 * current device.
 	 *
 	 * No associated configuration structure.
 	 */
 	RTE_FLOW_ACTION_TYPE_PF,
 
 	/**
-	 * Redirects packets to the virtual function (VF) of the current
-	 * device with the specified ID.
+	 * Directs matching traffic to a given virtual function of the
+	 * current device.
 	 *
 	 * See struct rte_flow_action_vf.
 	 */
@@ -1111,7 +1101,8 @@ struct rte_flow_action_rss {
 /**
  * RTE_FLOW_ACTION_TYPE_VF
  *
- * Redirects packets to a virtual function (VF) of the current device.
+ * Directs matching traffic to a given virtual function of the current
+ * device.
  *
  * Packets matched by a VF pattern item can be redirected to their original
  * VF ID instead of the specified one. This parameter may not be available
@@ -1122,7 +1113,7 @@ struct rte_flow_action_rss {
 struct rte_flow_action_vf {
 	uint32_t original:1; /**< Use original VF ID if possible. */
 	uint32_t reserved:31; /**< Reserved, must be zero. */
-	uint32_t id; /**< VF ID to redirect packets to. */
+	uint32_t id; /**< VF ID. */
 };
 
 /**

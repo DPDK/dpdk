@@ -54,6 +54,7 @@ static int i40e_flow_parse_ethertype_action(struct rte_eth_dev *dev,
 				    struct rte_flow_error *error,
 				    struct rte_eth_ethertype_filter *filter);
 static int i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
+					const struct rte_flow_attr *attr,
 					const struct rte_flow_item *pattern,
 					struct rte_flow_error *error,
 					struct i40e_fdir_filter_conf *filter);
@@ -1918,14 +1919,6 @@ i40e_flow_parse_attr(const struct rte_flow_attr *attr,
 	}
 
 	/* Not supported */
-	if (attr->transfer) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
-				   attr, "No support for transfer.");
-		return -rte_errno;
-	}
-
-	/* Not supported */
 	if (attr->priority) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
@@ -2429,6 +2422,7 @@ i40e_flow_fdir_get_pctype_value(struct i40e_pf *pf,
  */
 static int
 i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
+			     const struct rte_flow_attr *attr,
 			     const struct rte_flow_item *pattern,
 			     struct rte_flow_error *error,
 			     struct i40e_fdir_filter_conf *filter)
@@ -2966,6 +2960,16 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_VF:
 			vf_spec = item->spec;
+			if (!attr->transfer) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Matching VF traffic"
+						   " without affecting it"
+						   " (transfer attribute)"
+						   " is unsupported");
+				return -rte_errno;
+			}
 			filter->input.flow_ext.is_vf = 1;
 			filter->input.flow_ext.dst_id = vf_spec->id;
 			if (filter->input.flow_ext.is_vf &&
@@ -3128,7 +3132,8 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 		&filter->fdir_filter;
 	int ret;
 
-	ret = i40e_flow_parse_fdir_pattern(dev, pattern, error, fdir_filter);
+	ret = i40e_flow_parse_fdir_pattern(dev, attr, pattern, error,
+					   fdir_filter);
 	if (ret)
 		return ret;
 

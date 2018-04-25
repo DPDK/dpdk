@@ -283,6 +283,7 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 
 static int
 bnxt_validate_and_parse_flow_type(struct bnxt *bp,
+				  const struct rte_flow_attr *attr,
 				  const struct rte_flow_item pattern[],
 				  struct rte_flow_error *error,
 				  struct bnxt_filter_info *filter)
@@ -707,6 +708,16 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				return -rte_errno;
 			}
 
+			if (!attr->transfer) {
+				rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Matching VF traffic without"
+					   " affecting it (transfer attribute)"
+					   " is unsupported");
+				return -rte_errno;
+			}
+
 			filter->mirror_vnic_id =
 			dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf);
 			if (dflt_vnic < 0) {
@@ -750,14 +761,6 @@ bnxt_flow_parse_attr(const struct rte_flow_attr *attr,
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
 				   attr, "No support for egress.");
-		return -rte_errno;
-	}
-
-	/* Not supported */
-	if (attr->transfer) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
-				   attr, "No support for transfer.");
 		return -rte_errno;
 	}
 
@@ -841,7 +844,8 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		goto ret;
 	}
 
-	rc = bnxt_validate_and_parse_flow_type(bp, pattern, error, filter);
+	rc = bnxt_validate_and_parse_flow_type(bp, attr, pattern, error,
+					       filter);
 	if (rc != 0)
 		goto ret;
 

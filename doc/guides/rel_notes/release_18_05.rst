@@ -283,6 +283,9 @@ API Changes
     modified to cover the VID part (lower 12 bits) of TCI only.
   * A new transfer attribute was added to ``struct rte_flow_attr`` in order
     to clarify the behavior of some pattern items.
+  * PF and VF pattern items are now only accepted by PMDs that implement
+    them (bnxt and i40e) when the transfer attribute is also present for
+    consistency.
 
 
 ABI Changes

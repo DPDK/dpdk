@@ -3226,11 +3226,11 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``num {unsigned}``: number of layers covered.
 
-- ``pf``: match packets addressed to the physical function.
+- ``pf``: match traffic from/to the physical function.
 
-- ``vf``: match packets addressed to a virtual function ID.
+- ``vf``: match traffic from/to a virtual function ID.
 
-  - ``id {unsigned}``: destination VF ID.
+  - ``id {unsigned}``: VF ID.
 
 - ``port``: device-specific physical port index to use.
 
@@ -3440,12 +3440,12 @@ This section lists supported actions and their attributes, if any.
 
   - ``queues [{unsigned} [...]] end``: queue indices to use.
 
-- ``pf``: redirect packets to physical device function.
+- ``pf``: direct traffic to physical function.
 
-- ``vf``: redirect packets to virtual device function.
+- ``vf``: direct traffic to a virtual function ID.
 
   - ``original {boolean}``: use original VF ID if possible.
-  - ``id {unsigned}``: VF ID to redirect packets to.
+  - ``id {unsigned}``: VF ID.
 
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
