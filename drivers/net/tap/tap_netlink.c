@@ -13,6 +13,7 @@
 #include <rte_malloc.h>
 #include <tap_netlink.h>
 #include <rte_random.h>
+#include "tap_log.h"
 
 /* Must be quite large to support dumping a huge list of QDISC or filters. */
 #define BUF_SIZE (32 * 1024) /* Size of the buffer to receive kernel messages */
@@ -45,19 +46,19 @@ tap_nl_init(uint32_t nl_groups)
 
 	fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
 	if (fd < 0) {
-		RTE_LOG(ERR, PMD, "Unable to create a netlink socket\n");
+		TAP_LOG(ERR, "Unable to create a netlink socket");
 		return -1;
 	}
 	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(int))) {
-		RTE_LOG(ERR, PMD, "Unable to set socket buffer send size\n");
+		TAP_LOG(ERR, "Unable to set socket buffer send size");
 		return -1;
 	}
 	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(int))) {
-		RTE_LOG(ERR, PMD, "Unable to set socket buffer receive size\n");
+		TAP_LOG(ERR, "Unable to set socket buffer receive size");
 		return -1;
 	}
 	if (bind(fd, (struct sockaddr *)&local, sizeof(local)) < 0) {
-		RTE_LOG(ERR, PMD, "Unable to bind to the netlink socket\n");
+		TAP_LOG(ERR, "Unable to bind to the netlink socket");
 		return -1;
 	}
 	return fd;
@@ -76,7 +77,7 @@ int
 tap_nl_final(int nlsk_fd)
 {
 	if (close(nlsk_fd)) {
-		RTE_LOG(ERR, PMD, "Failed to close netlink socket: %s (%d)\n",
+		TAP_LOG(ERR, "Failed to close netlink socket: %s (%d)",
 			strerror(errno), errno);
 		return -1;
 	}
@@ -117,7 +118,7 @@ tap_nl_send(int nlsk_fd, struct nlmsghdr *nh)
 	nh->nlmsg_seq = (uint32_t)rte_rand();
 	send_bytes = sendmsg(nlsk_fd, &msg, 0);
 	if (send_bytes < 0) {
-		RTE_LOG(ERR, PMD, "Failed to send netlink message: %s (%d)\n",
+		TAP_LOG(ERR, "Failed to send netlink message: %s (%d)",
 			strerror(errno), errno);
 		return -1;
 	}
@@ -300,9 +301,8 @@ tap_nlattr_nested_start(struct nlmsg *msg, uint16_t type)
 
 	tail = rte_zmalloc(NULL, sizeof(struct nested_tail), 0);
 	if (!tail) {
-		RTE_LOG(ERR, PMD,
-			"Couldn't allocate memory for nested netlink"
-			" attribute\n");
+		TAP_LOG(ERR,
+			"Couldn't allocate memory for nested netlink attribute");
 		return -1;
 	}
 

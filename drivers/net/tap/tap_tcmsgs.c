@@ -10,6 +10,7 @@
 
 #include <rte_log.h>
 #include <tap_tcmsgs.h>
+#include "tap_log.h"
 
 struct qdisc {
 	uint32_t handle;
@@ -81,8 +82,8 @@ qdisc_del(int nlsk_fd, uint16_t ifindex, struct qdisc *qinfo)
 	if (!nlsk_fd) {
 		fd = tap_nl_init(0);
 		if (fd < 0) {
-			RTE_LOG(ERR, PMD,
-				"Could not delete QDISC: null netlink socket\n");
+			TAP_LOG(ERR,
+				"Could not delete QDISC: null netlink socket");
 			return -1;
 		}
 	} else {
@@ -261,7 +262,7 @@ qdisc_create_multiq(int nlsk_fd, uint16_t ifindex)
 
 	err = qdisc_add_multiq(nlsk_fd, ifindex);
 	if (err < 0 && errno != -EEXIST) {
-		RTE_LOG(ERR, PMD, "Could not add multiq qdisc (%d): %s\n",
+		TAP_LOG(ERR, "Could not add multiq qdisc (%d): %s",
 			errno, strerror(errno));
 		return -1;
 	}
@@ -287,7 +288,7 @@ qdisc_create_ingress(int nlsk_fd, uint16_t ifindex)
 
 	err = qdisc_add_ingress(nlsk_fd, ifindex);
 	if (err < 0 && errno != -EEXIST) {
-		RTE_LOG(ERR, PMD, "Could not add ingress qdisc (%d): %s\n",
+		TAP_LOG(ERR, "Could not add ingress qdisc (%d): %s",
 			errno, strerror(errno));
 		return -1;
 	}

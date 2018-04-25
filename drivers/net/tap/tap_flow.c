@@ -1399,8 +1399,8 @@ tap_flow_create(struct rte_eth_dev *dev,
 	}
 	err = tap_nl_recv_ack(pmd->nlsk_fd);
 	if (err < 0) {
-		RTE_LOG(ERR, PMD,
-			"Kernel refused TC filter rule creation (%d): %s\n",
+		TAP_LOG(ERR,
+			"Kernel refused TC filter rule creation (%d): %s",
 			errno, strerror(errno));
 		rte_flow_error_set(error, EEXIST, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL,
@@ -1444,8 +1444,8 @@ tap_flow_create(struct rte_eth_dev *dev,
 		}
 		err = tap_nl_recv_ack(pmd->nlsk_fd);
 		if (err < 0) {
-			RTE_LOG(ERR, PMD,
-				"Kernel refused TC filter rule creation (%d): %s\n",
+			TAP_LOG(ERR,
+				"Kernel refused TC filter rule creation (%d): %s",
 				errno, strerror(errno));
 			rte_flow_error_set(
 				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -1499,8 +1499,8 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 	if (ret < 0 && errno == ENOENT)
 		ret = 0;
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD,
-			"Kernel refused TC filter rule deletion (%d): %s\n",
+		TAP_LOG(ERR,
+			"Kernel refused TC filter rule deletion (%d): %s",
 			errno, strerror(errno));
 		rte_flow_error_set(
 			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1523,8 +1523,8 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 		if (ret < 0 && errno == ENOENT)
 			ret = 0;
 		if (ret < 0) {
-			RTE_LOG(ERR, PMD,
-				"Kernel refused TC filter rule deletion (%d): %s\n",
+			TAP_LOG(ERR,
+				"Kernel refused TC filter rule deletion (%d): %s",
 				errno, strerror(errno));
 			rte_flow_error_set(
 				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -1688,7 +1688,7 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 
 	remote_flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
 	if (!remote_flow) {
-		RTE_LOG(ERR, PMD, "Cannot allocate memory for rte_flow\n");
+		TAP_LOG(ERR, "Cannot allocate memory for rte_flow");
 		goto fail;
 	}
 	msg = &remote_flow->msg;
@@ -1729,12 +1729,12 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 		tap_flow_set_handle(remote_flow);
 	if (priv_flow_process(pmd, attr, items, actions, NULL,
 			      remote_flow, implicit_rte_flows[idx].mirred)) {
-		RTE_LOG(ERR, PMD, "rte flow rule validation failed\n");
+		TAP_LOG(ERR, "rte flow rule validation failed");
 		goto fail;
 	}
 	err = tap_nl_send(pmd->nlsk_fd, &msg->nh);
 	if (err < 0) {
-		RTE_LOG(ERR, PMD, "Failure sending nl request\n");
+		TAP_LOG(ERR, "Failure sending nl request");
 		goto fail;
 	}
 	err = tap_nl_recv_ack(pmd->nlsk_fd);
@@ -1742,8 +1742,8 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 		/* Silently ignore re-entering remote promiscuous rule */
 		if (errno == EEXIST && idx == TAP_REMOTE_PROMISC)
 			goto success;
-		RTE_LOG(ERR, PMD,
-			"Kernel refused TC filter rule creation (%d): %s\n",
+		TAP_LOG(ERR,
+			"Kernel refused TC filter rule creation (%d): %s",
 			errno, strerror(errno));
 		goto fail;
 	}
@@ -1859,8 +1859,8 @@ static int rss_enable(struct pmd_internals *pmd,
 				sizeof(struct rss_key),
 				MAX_RSS_KEYS);
 	if (pmd->map_fd < 0) {
-		RTE_LOG(ERR, PMD,
-			"Failed to create BPF map (%d): %s\n",
+		TAP_LOG(ERR,
+			"Failed to create BPF map (%d): %s",
 				errno, strerror(errno));
 		rte_flow_error_set(
 			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1877,7 +1877,7 @@ static int rss_enable(struct pmd_internals *pmd,
 	for (i = 0; i < pmd->dev->data->nb_rx_queues; i++) {
 		pmd->bpf_fd[i] = tap_flow_bpf_cls_q(i);
 		if (pmd->bpf_fd[i] < 0) {
-			RTE_LOG(ERR, PMD,
+			TAP_LOG(ERR,
 				"Failed to load BPF section %s for queue %d",
 				SEC_NAME_CLS_Q, i);
 			rte_flow_error_set(
@@ -1891,7 +1891,7 @@ static int rss_enable(struct pmd_internals *pmd,
 
 		rss_flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
 		if (!rss_flow) {
-			RTE_LOG(ERR, PMD,
+			TAP_LOG(ERR,
 				"Cannot allocate memory for rte_flow");
 			return -1;
 		}
@@ -1934,8 +1934,8 @@ static int rss_enable(struct pmd_internals *pmd,
 			return -1;
 		err = tap_nl_recv_ack(pmd->nlsk_fd);
 		if (err < 0) {
-			RTE_LOG(ERR, PMD,
-				"Kernel refused TC filter rule creation (%d): %s\n",
+			TAP_LOG(ERR,
+				"Kernel refused TC filter rule creation (%d): %s",
 				errno, strerror(errno));
 			return err;
 		}
@@ -2099,8 +2099,8 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 				&flow->key_idx, &rss_entry);
 
 	if (err) {
-		RTE_LOG(ERR, PMD,
-			"Failed to update BPF map entry #%u (%d): %s\n",
+		TAP_LOG(ERR,
+			"Failed to update BPF map entry #%u (%d): %s",
 			flow->key_idx, errno, strerror(errno));
 		rte_flow_error_set(
 			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -2118,8 +2118,8 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 	flow->bpf_fd[SEC_L3_L4] =
 		tap_flow_bpf_calc_l3_l4_hash(flow->key_idx, pmd->map_fd);
 	if (flow->bpf_fd[SEC_L3_L4] < 0) {
-		RTE_LOG(ERR, PMD,
-			"Failed to load BPF section %s (%d): %s\n",
+		TAP_LOG(ERR,
+			"Failed to load BPF section %s (%d): %s",
 				sec_name[SEC_L3_L4], errno, strerror(errno));
 		rte_flow_error_set(
 			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -2180,9 +2180,8 @@ tap_dev_filter_ctrl(struct rte_eth_dev *dev,
 		*(const void **)arg = &tap_flow_ops;
 		return 0;
 	default:
-		RTE_LOG(ERR, PMD, "%p: filter type (%d) not supported\n",
-			(void *)dev, filter_type);
+		TAP_LOG(ERR, "%p: filter type (%d) not supported",
+			dev, filter_type);
 	}
 	return -EINVAL;
 }
-

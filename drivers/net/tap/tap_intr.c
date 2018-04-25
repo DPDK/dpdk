@@ -62,7 +62,7 @@ tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 	intr_handle->intr_vec = malloc(sizeof(intr_handle->intr_vec[rxqs_n]));
 	if (intr_handle->intr_vec == NULL) {
 		rte_errno = ENOMEM;
-		RTE_LOG(ERR, PMD,
+		TAP_LOG(ERR,
 			"failed to allocate memory for interrupt vector,"
 			" Rx interrupts will not be supported");
 		return -rte_errno;

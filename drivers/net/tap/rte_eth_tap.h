@@ -15,6 +15,7 @@
 
 #include <rte_ethdev_driver.h>
 #include <rte_ether.h>
+#include "tap_log.h"
 
 #ifdef IFF_MULTI_QUEUE
 #define RTE_PMD_TAP_MAX_QUEUES	TAP_MAX_QUEUES
