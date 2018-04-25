@@ -154,7 +154,7 @@ For enabling logs, use the following EAL parameter:
 
 .. code-block:: console
 
-   ./your_crypto_application <EAL args> --log-level=pmd.crypto.dpaa,<level>
+   ./your_crypto_application <EAL args> --log-level=pmd.crypto.dpaa:<level>
 
 Using ``pmd.crypto.dpaa`` as log matching criteria, all Crypto PMD logs can be
 enabled which are lower than logging ``level``.

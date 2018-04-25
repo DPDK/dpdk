@@ -356,26 +356,26 @@ Dynamic Logging Parameters
 
 One may leverage EAL option "--log-level" to change default levels
 for the log types supported by the driver. The option is used with
-an argument typically consisting of two parts separated by a comma.
+an argument typically consisting of two parts separated by a colon.
 
-Level value is the last part which takes an integer greater than 0.
-Log type is the former part which may contain a regular expression.
+Level value is the last part which takes a symbolic name (or integer).
+Log type is the former part which may shell match syntax.
 Depending on the choice of the expression, the given log level may
 be used either for some specific log type or for a subset of types.
 
 SFC EFX PMD provides the following log types available for control:
 
-- ``pmd.net.sfc.driver`` (default level is **6** - ``RTE_LOG_NOTICE``)
+- ``pmd.net.sfc.driver`` (default level is **notice**)
 
   Affects driver-wide messages unrelated to any particular devices.
 
-- ``pmd.net.sfc.main`` (default level is **6** - ``RTE_LOG_NOTICE``)
+- ``pmd.net.sfc.main`` (default level is **notice**)
 
   Matches a subset of per-port log types registered during runtime.
   A full name for a particular type may be obtained by appending a
   dot and a PCI device identifier (``XXXX:XX:XX.X``) to the prefix.
 
-- ``pmd.net.sfc.mcdi`` (default level is **6** - ``RTE_LOG_NOTICE``)
+- ``pmd.net.sfc.mcdi`` (default level is **notice**)
 
   Extra logging of the communication with the NIC's management CPU.
   The format of the log is consumed by the Solarflare netlogdecode

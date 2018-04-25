@@ -193,7 +193,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
 
 #. Running testpmd
-   (Supply ``--log-level="pmd.net.qede.driver:7`` to view informational messages):
+   (Supply ``--log-level="pmd.net.qede.driver:info`` to view informational messages):
 
    Refer to the document
    :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` to run

@@ -62,19 +62,16 @@ the wrong socket, the application simply will not start.
 On application startup, there is a lot of EAL information printed. Is there any way to reduce this?
 ---------------------------------------------------------------------------------------------------
 
-Yes, the option ``--log-level=`` accepts one of these numbers:
+Yes, the option ``--log-level=`` accepts either symbolic names (or numbers):
 
-.. code-block:: c
-
-    #define RTE_LOG_EMERG 1U    /* System is unusable. */
-    #define RTE_LOG_ALERT 2U    /* Action must be taken immediately. */
-    #define RTE_LOG_CRIT 3U     /* Critical conditions. */
-    #define RTE_LOG_ERR 4U      /* Error conditions. */
-    #define RTE_LOG_WARNING 5U  /* Warning conditions. */
-    #define RTE_LOG_NOTICE 6U   /* Normal but significant condition. */
-    #define RTE_LOG_INFO 7U     /* Informational. */
-    #define RTE_LOG_DEBUG 8U    /* Debug-level messages. */
-
+1. emergency
+2. alert
+3. critical
+4. error
+5. warning
+6. notice
+7. info
+8. debug
 
 How can I tune my network application to achieve lower latency?
 ---------------------------------------------------------------

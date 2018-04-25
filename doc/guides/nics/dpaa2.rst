@@ -547,7 +547,7 @@ For enabling logging for DPAA2 PMD, following log-level prefix can be used:
 
  .. code-block:: console
 
-    <dpdk app> <EAL args> --log-level=bus.fslmc,<level> -- ...
+    <dpdk app> <EAL args> --log-level=bus.fslmc:<level> -- ...
 
 Using ``bus.fslmc`` as log matching criteria, all FSLMC bus logs can be enabled
 which are lower than logging ``level``.
@@ -556,7 +556,7 @@ which are lower than logging ``level``.
 
  .. code-block:: console
 
-    <dpdk app> <EAL args> --log-level=pmd.net.dpaa2,<level> -- ...
+    <dpdk app> <EAL args> --log-level=pmd.net.dpaa2:<level> -- ...
 
 Using ``pmd.dpaa2`` as log matching criteria, all PMD logs can be enabled
 which are lower than logging ``level``.
