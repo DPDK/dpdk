@@ -223,6 +223,10 @@ static int eth_igb_get_eeprom(struct rte_eth_dev *dev,
 		struct rte_dev_eeprom_info *eeprom);
 static int eth_igb_set_eeprom(struct rte_eth_dev *dev,
 		struct rte_dev_eeprom_info *eeprom);
+static int eth_igb_get_module_info(struct rte_eth_dev *dev,
+				   struct rte_eth_dev_module_info *modinfo);
+static int eth_igb_get_module_eeprom(struct rte_eth_dev *dev,
+				     struct rte_dev_eeprom_info *info);
 static int eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
 				    struct ether_addr *mc_addr_set,
 				    uint32_t nb_mc_addr);
@@ -402,6 +406,8 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.get_eeprom_length    = eth_igb_get_eeprom_length,
 	.get_eeprom           = eth_igb_get_eeprom,
 	.set_eeprom           = eth_igb_set_eeprom,
+	.get_module_info      = eth_igb_get_module_info,
+	.get_module_eeprom    = eth_igb_get_module_eeprom,
 	.timesync_adjust_time = igb_timesync_adjust_time,
 	.timesync_read_time   = igb_timesync_read_time,
 	.timesync_write_time  = igb_timesync_write_time,
@@ -5326,6 +5332,86 @@ eth_igb_set_eeprom(struct rte_eth_dev *dev,
 	if ((nvm->ops.write) == NULL)
 		return -ENOTSUP;
 	return nvm->ops.write(hw,  first, length, data);
+}
+
+static int
+eth_igb_get_module_info(struct rte_eth_dev *dev,
+			struct rte_eth_dev_module_info *modinfo)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	uint32_t status = 0;
+	uint16_t sff8472_rev, addr_mode;
+	bool page_swap = false;
+
+	if (hw->phy.media_type == e1000_media_type_copper ||
+	    hw->phy.media_type == e1000_media_type_unknown)
+		return -EOPNOTSUPP;
+
+	/* Check whether we support SFF-8472 or not */
+	status = e1000_read_phy_reg_i2c(hw, IGB_SFF_8472_COMP, &sff8472_rev);
+	if (status)
+		return -EIO;
+
+	/* addressing mode is not supported */
+	status = e1000_read_phy_reg_i2c(hw, IGB_SFF_8472_SWAP, &addr_mode);
+	if (status)
+		return -EIO;
+
+	/* addressing mode is not supported */
+	if ((addr_mode & 0xFF) & IGB_SFF_ADDRESSING_MODE) {
+		PMD_DRV_LOG(ERR,
+			    "Address change required to access page 0xA2, "
+			    "but not supported. Please report the module "
+			    "type to the driver maintainers.\n");
+		page_swap = true;
+	}
+
+	if ((sff8472_rev & 0xFF) == IGB_SFF_8472_UNSUP || page_swap) {
+		/* We have an SFP, but it does not support SFF-8472 */
+		modinfo->type = RTE_ETH_MODULE_SFF_8079;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8079_LEN;
+	} else {
+		/* We have an SFP which supports a revision of SFF-8472 */
+		modinfo->type = RTE_ETH_MODULE_SFF_8472;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8472_LEN;
+	}
+
+	return 0;
+}
+
+static int
+eth_igb_get_module_eeprom(struct rte_eth_dev *dev,
+			  struct rte_dev_eeprom_info *info)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	uint32_t status = 0;
+	uint16_t dataword[RTE_ETH_MODULE_SFF_8472_LEN / 2 + 1];
+	u16 first_word, last_word;
+	int i = 0;
+
+	if (info->length == 0)
+		return -EINVAL;
+
+	first_word = info->offset >> 1;
+	last_word = (info->offset + info->length - 1) >> 1;
+
+	/* Read EEPROM block, SFF-8079/SFF-8472, word at a time */
+	for (i = 0; i < last_word - first_word + 1; i++) {
+		status = e1000_read_phy_reg_i2c(hw, (first_word + i) * 2,
+						&dataword[i]);
+		if (status) {
+			/* Error occurred while reading module */
+			return -EIO;
+		}
+
+		dataword[i] = rte_be_to_cpu_16(dataword[i]);
+	}
+
+	memcpy(info->data, (u8 *)dataword + (info->offset & 1), info->length);
+
+	return 0;
 }
 
 static int

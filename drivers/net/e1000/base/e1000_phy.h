@@ -330,4 +330,12 @@ struct sfp_e1000_flags {
 #define E1000_SFF_VENDOR_OUI_AVAGO	0x00176A00
 #define E1000_SFF_VENDOR_OUI_INTEL	0x001B2100
 
+/* EEPROM byte offsets */
+#define IGB_SFF_8472_SWAP		0x5C
+#define IGB_SFF_8472_COMP		0x5E
+
+/* Bitmasks */
+#define IGB_SFF_ADDRESSING_MODE	0x4
+#define IGB_SFF_8472_UNSUP		0x00
+
 #endif
