@@ -288,6 +288,8 @@ API Changes
     consistency.
   * Pattern item PORT was renamed PHY_PORT to avoid confusion with DPDK port
     IDs.
+  * An action counterpart to the PHY_PORT pattern item was added in order to
+    redirect matching traffic to a specific physical port.
 
 
 ABI Changes

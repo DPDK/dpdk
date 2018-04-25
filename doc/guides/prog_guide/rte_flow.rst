@@ -1433,6 +1433,26 @@ See `Item: VF`_.
    | ``id``       | VF ID                          |
    +--------------+--------------------------------+
 
+Action: ``PHY_PORT``
+^^^^^^^^^^^^^^^^^^^^
+
+Directs matching traffic to a given physical port index of the underlying
+device.
+
+See `Item: PHY_PORT`_.
+
+.. _table_rte_flow_action_phy_port:
+
+.. table:: PHY_PORT
+
+   +--------------+-------------------------------------+
+   | Field        | Value                               |
+   +==============+=====================================+
+   | ``original`` | use original port index if possible |
+   +--------------+-------------------------------------+
+   | ``index``    | physical port index                 |
+   +--------------+-------------------------------------+
+
 Action: ``METER``
 ^^^^^^^^^^^^^^^^^
 

@@ -3447,6 +3447,11 @@ This section lists supported actions and their attributes, if any.
   - ``original {boolean}``: use original VF ID if possible.
   - ``id {unsigned}``: VF ID.
 
+- ``phy_port``: direct packets to physical port index.
+
+  - ``original {boolean}``: use original port index if possible.
+  - ``index {unsigned}``: physical port index.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 

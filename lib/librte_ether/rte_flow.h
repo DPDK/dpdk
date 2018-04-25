@@ -989,6 +989,14 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_VF,
 
 	/**
+	 * Directs packets to a given physical port index of the underlying
+	 * device.
+	 *
+	 * See struct rte_flow_action_phy_port.
+	 */
+	RTE_FLOW_ACTION_TYPE_PHY_PORT,
+
+	/**
 	 * Traffic metering and policing (MTR).
 	 *
 	 * See struct rte_flow_action_meter.
@@ -1109,6 +1117,20 @@ struct rte_flow_action_vf {
 	uint32_t original:1; /**< Use original VF ID if possible. */
 	uint32_t reserved:31; /**< Reserved, must be zero. */
 	uint32_t id; /**< VF ID. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_PHY_PORT
+ *
+ * Directs packets to a given physical port index of the underlying
+ * device.
+ *
+ * @see RTE_FLOW_ITEM_TYPE_PHY_PORT
+ */
+struct rte_flow_action_phy_port {
+	uint32_t original:1; /**< Use original port index if possible. */
+	uint32_t reserved:31; /**< Reserved, must be zero. */
+	uint32_t index; /**< Physical port index. */
 };
 
 /**
