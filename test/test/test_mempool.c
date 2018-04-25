@@ -327,17 +327,17 @@ test_mempool_sp_sc(void)
 	}
 	if (rte_mempool_lookup("test_mempool_sp_sc") != mp_spsc) {
 		printf("Cannot lookup mempool from its name\n");
-		rte_mempool_free(mp_spsc);
-		RET_ERR();
+		ret = -1;
+		goto err;
 	}
 	lcore_next = rte_get_next_lcore(lcore_id, 0, 1);
 	if (lcore_next >= RTE_MAX_LCORE) {
-		rte_mempool_free(mp_spsc);
-		RET_ERR();
+		ret = -1;
+		goto err;
 	}
 	if (rte_eal_lcore_role(lcore_next) != ROLE_RTE) {
-		rte_mempool_free(mp_spsc);
-		RET_ERR();
+		ret = -1;
+		goto err;
 	}
 	rte_spinlock_init(&scsp_spinlock);
 	memset(scsp_obj_table, 0, sizeof(scsp_obj_table));
@@ -348,7 +348,10 @@ test_mempool_sp_sc(void)
 
 	if (rte_eal_wait_lcore(lcore_next) < 0)
 		ret = -1;
+
+err:
 	rte_mempool_free(mp_spsc);
+	mp_spsc = NULL;
 
 	return ret;
 }
