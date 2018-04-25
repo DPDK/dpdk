@@ -1261,6 +1261,14 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 			rxq_hw_index_max = rxq->hw_index;
 	}
 
+	switch (rss->func) {
+	case RTE_ETH_HASH_FUNCTION_DEFAULT:
+	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
+		break;
+	default:
+		return -EINVAL;
+	}
+
 	if ((rss->types & ~SFC_RSS_OFFLOADS) != 0)
 		return -EINVAL;
 

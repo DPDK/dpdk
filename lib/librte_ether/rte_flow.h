@@ -19,6 +19,7 @@
 
 #include <rte_arp.h>
 #include <rte_ether.h>
+#include <rte_eth_ctrl.h>
 #include <rte_icmp.h>
 #include <rte_ip.h>
 #include <rte_sctp.h>
@@ -1044,6 +1045,7 @@ struct rte_flow_query_count {
  * both can be requested simultaneously.
  */
 struct rte_flow_action_rss {
+	enum rte_eth_hash_function func; /**< RSS hash function to apply. */
 	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
 	uint32_t key_len; /**< Hash key length in bytes. */
 	uint32_t queue_num; /**< Number of entries in @p queue. */

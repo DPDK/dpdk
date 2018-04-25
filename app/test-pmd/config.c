@@ -1117,6 +1117,7 @@ flow_action_conf_copy(void *buf, const struct rte_flow_action *action)
 		off = 0;
 		if (dst.rss)
 			*dst.rss = (struct rte_flow_action_rss){
+				.func = src.rss->func,
 				.types = src.rss->types,
 				.key_len = src.rss->key_len,
 				.queue_num = src.rss->queue_num,

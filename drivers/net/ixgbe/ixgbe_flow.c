@@ -2779,6 +2779,10 @@ ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
 		}
 	}
 
+	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "non-default RSS hash functions are not supported");
 	if (rss->key_len && rss->key_len != RTE_DIM(rss_conf->key))
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,

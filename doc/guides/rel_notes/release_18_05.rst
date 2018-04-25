@@ -275,7 +275,8 @@ API Changes
     (``rss_conf->rss_key`` => ``key``,
     ``rss_conf->rss_key_len`` => ``key_len``,
     ``rss_conf->rss_hf`` => ``types``,
-    ``num`` => ``queue_num``).
+    ``num`` => ``queue_num``), and the addition of missing RSS parameters
+    (``func`` for RSS hash function to apply).
 
 
 ABI Changes

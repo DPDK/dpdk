@@ -1318,6 +1318,8 @@ field only, both can be requested simultaneously.
    +---------------+---------------------------------------------+
    | Field         | Value                                       |
    +===============+=============================================+
+   | ``func``      | RSS hash function to apply                  |
+   +---------------+---------------------------------------------+
    | ``types``     | specific RSS hash types (see ``ETH_RSS_*``) |
    +---------------+---------------------------------------------+
    | ``key_len``   | hash key length in bytes                    |

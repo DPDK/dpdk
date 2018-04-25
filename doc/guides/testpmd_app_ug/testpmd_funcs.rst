@@ -3422,6 +3422,9 @@ This section lists supported actions and their attributes, if any.
 
 - ``rss``: spread packets among several queues.
 
+  - ``func {hash function}``: RSS hash function to apply, allowed tokens are
+    the same as `set_hash_global_config`_.
+
   - ``types [{RSS hash type} [...]] end``: specific RSS hash types, allowed
     tokens are the same as `set_hash_input_set`_, except that an empty list
     does not disable RSS but instead requests unspecified "best-effort"

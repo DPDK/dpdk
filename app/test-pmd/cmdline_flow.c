@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 
 #include <rte_common.h>
+#include <rte_eth_ctrl.h>
 #include <rte_ethdev.h>
 #include <rte_byteorder.h>
 #include <cmdline_parse.h>
@@ -165,6 +166,10 @@ enum index {
 	ACTION_DROP,
 	ACTION_COUNT,
 	ACTION_RSS,
+	ACTION_RSS_FUNC,
+	ACTION_RSS_FUNC_DEFAULT,
+	ACTION_RSS_FUNC_TOEPLITZ,
+	ACTION_RSS_FUNC_SIMPLE_XOR,
 	ACTION_RSS_TYPES,
 	ACTION_RSS_TYPE,
 	ACTION_RSS_KEY,
@@ -632,6 +637,7 @@ static const enum index action_queue[] = {
 };
 
 static const enum index action_rss[] = {
+	ACTION_RSS_FUNC,
 	ACTION_RSS_TYPES,
 	ACTION_RSS_KEY,
 	ACTION_RSS_KEY_LEN,
@@ -666,6 +672,9 @@ static int parse_vc_conf(struct context *, const struct token *,
 static int parse_vc_action_rss(struct context *, const struct token *,
 			       const char *, unsigned int, void *,
 			       unsigned int);
+static int parse_vc_action_rss_func(struct context *, const struct token *,
+				    const char *, unsigned int, void *,
+				    unsigned int);
 static int parse_vc_action_rss_type(struct context *, const struct token *,
 				    const char *, unsigned int, void *,
 				    unsigned int);
@@ -1584,6 +1593,29 @@ static const struct token token_list[] = {
 		.next = NEXT(action_rss),
 		.call = parse_vc_action_rss,
 	},
+	[ACTION_RSS_FUNC] = {
+		.name = "func",
+		.help = "RSS hash function to apply",
+		.next = NEXT(action_rss,
+			     NEXT_ENTRY(ACTION_RSS_FUNC_DEFAULT,
+					ACTION_RSS_FUNC_TOEPLITZ,
+					ACTION_RSS_FUNC_SIMPLE_XOR)),
+	},
+	[ACTION_RSS_FUNC_DEFAULT] = {
+		.name = "default",
+		.help = "default hash function",
+		.call = parse_vc_action_rss_func,
+	},
+	[ACTION_RSS_FUNC_TOEPLITZ] = {
+		.name = "toeplitz",
+		.help = "Toeplitz hash function",
+		.call = parse_vc_action_rss_func,
+	},
+	[ACTION_RSS_FUNC_SIMPLE_XOR] = {
+		.name = "simple_xor",
+		.help = "simple XOR hash function",
+		.call = parse_vc_action_rss_func,
+	},
 	[ACTION_RSS_TYPES] = {
 		.name = "types",
 		.help = "specific RSS hash types",
@@ -2074,6 +2106,7 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 	action_rss_data = ctx->object;
 	*action_rss_data = (struct action_rss_data){
 		.conf = (struct rte_flow_action_rss){
+			.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
 			.types = rss_hf,
 			.key_len = sizeof(action_rss_data->key),
 			.queue_num = RTE_MIN(nb_rxq, ACTION_RSS_QUEUE_NUM),
@@ -2096,6 +2129,45 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 	}
 	action->conf = &action_rss_data->conf;
 	return ret;
+}
+
+/**
+ * Parse func field for RSS action.
+ *
+ * The RTE_ETH_HASH_FUNCTION_* value to assign is derived from the
+ * ACTION_RSS_FUNC_* index that called this function.
+ */
+static int
+parse_vc_action_rss_func(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len,
+			 void *buf, unsigned int size)
+{
+	struct action_rss_data *action_rss_data;
+	enum rte_eth_hash_function func;
+
+	(void)buf;
+	(void)size;
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	switch (ctx->curr) {
+	case ACTION_RSS_FUNC_DEFAULT:
+		func = RTE_ETH_HASH_FUNCTION_DEFAULT;
+		break;
+	case ACTION_RSS_FUNC_TOEPLITZ:
+		func = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
+		break;
+	case ACTION_RSS_FUNC_SIMPLE_XOR:
+		func = RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+		break;
+	default:
+		return -1;
+	}
+	if (!ctx->object)
+		return len;
+	action_rss_data = ctx->object;
+	action_rss_data->conf.func = func;
+	return len;
 }
 
 /**

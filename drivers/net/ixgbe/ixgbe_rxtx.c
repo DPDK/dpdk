@@ -5683,6 +5683,7 @@ ixgbe_rss_conf_init(struct ixgbe_rte_flow_rss_conf *out,
 	    in->queue_num > RTE_DIM(out->queue))
 		return -EINVAL;
 	out->conf = (struct rte_flow_action_rss){
+		.func = in->func,
 		.types = in->types,
 		.key_len = in->key_len,
 		.queue_num = in->queue_num,
@@ -5697,7 +5698,8 @@ int
 ixgbe_action_rss_same(const struct rte_flow_action_rss *comp,
 		      const struct rte_flow_action_rss *with)
 {
-	return (comp->types == with->types &&
+	return (comp->func == with->func &&
+		comp->types == with->types &&
 		comp->key_len == with->key_len &&
 		comp->queue_num == with->queue_num &&
 		!memcmp(comp->key, with->key, with->key_len) &&

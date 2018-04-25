@@ -790,6 +790,12 @@ fill:
 					" of the context size";
 				goto exit_action_not_supported;
 			}
+			if (rss->func &&
+			    rss->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ) {
+				msg = "the only supported RSS hash function"
+					" is Toeplitz";
+				goto exit_action_not_supported;
+			}
 			rte_errno = 0;
 			fields = mlx4_conv_rss_types(priv, rss->types);
 			if (fields == (uint64_t)-1 && rte_errno) {
@@ -1283,6 +1289,7 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 		rte_align32pow2(priv->dev->data->nb_rx_queues + 1) >> 1;
 	uint16_t queue[queues];
 	struct rte_flow_action_rss action_rss = {
+		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
 		.types = -1,
 		.key_len = MLX4_RSS_HASH_KEY_SIZE,
 		.queue_num = queues,
