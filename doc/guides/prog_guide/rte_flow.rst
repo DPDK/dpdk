@@ -806,7 +806,7 @@ preceding pattern item.
 
 - ``tci``: tag control information.
 - ``inner_type``: inner EtherType or TPID.
-- Default ``mask`` matches TCI only.
+- Default ``mask`` matches the VID part of TCI only (lower 12 bits).
 
 Item: ``IPV4``
 ^^^^^^^^^^^^^^

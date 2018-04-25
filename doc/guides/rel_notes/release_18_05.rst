@@ -279,7 +279,8 @@ API Changes
     (``func`` for RSS hash function to apply and ``level`` for the
     encapsulation level).
   * The VLAN pattern item (``struct rte_flow_item_vlan``) was modified to
-    include inner EtherType instead of outer TPID.
+    include inner EtherType instead of outer TPID. Its default mask was also
+    modified to cover the VID part (lower 12 bits) of TCI only.
 
 
 ABI Changes

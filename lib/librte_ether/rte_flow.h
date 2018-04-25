@@ -493,7 +493,7 @@ struct rte_flow_item_vlan {
 /** Default mask for RTE_FLOW_ITEM_TYPE_VLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vlan rte_flow_item_vlan_mask = {
-	.tci = RTE_BE16(0xffff),
+	.tci = RTE_BE16(0x0fff),
 	.inner_type = RTE_BE16(0x0000),
 };
 #endif
