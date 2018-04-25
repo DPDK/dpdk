@@ -122,9 +122,9 @@ dump_device_list(void)
 	local_log_level = rte_log_get_level(dpaa2_logtype_bus);
 	if (global_log_level == RTE_LOG_DEBUG ||
 	    local_log_level == RTE_LOG_DEBUG) {
-		DPAA2_BUS_DEBUG("List of devices scanned on bus:");
+		DPAA2_BUS_LOG(DEBUG, "List of devices scanned on bus:");
 		TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
-			DPAA2_BUS_DEBUG("%s", dev->device.name);
+			DPAA2_BUS_LOG(DEBUG, "\t\t%s", dev->device.name);
 		}
 	}
 }

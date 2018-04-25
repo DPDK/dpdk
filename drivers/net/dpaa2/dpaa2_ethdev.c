@@ -1931,7 +1931,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 
-	DPAA2_PMD_INFO("%s: netdev created", eth_dev->data->name);
+	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
 	return 0;
 init_err:
 	dpaa2_dev_uninit(eth_dev);
