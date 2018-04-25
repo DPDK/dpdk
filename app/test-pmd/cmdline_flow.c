@@ -99,11 +99,11 @@ enum index {
 	ITEM_ETH_SRC,
 	ITEM_ETH_TYPE,
 	ITEM_VLAN,
-	ITEM_VLAN_TPID,
 	ITEM_VLAN_TCI,
 	ITEM_VLAN_PCP,
 	ITEM_VLAN_DEI,
 	ITEM_VLAN_VID,
+	ITEM_VLAN_INNER_TYPE,
 	ITEM_IPV4,
 	ITEM_IPV4_TOS,
 	ITEM_IPV4_TTL,
@@ -505,11 +505,11 @@ static const enum index item_eth[] = {
 };
 
 static const enum index item_vlan[] = {
-	ITEM_VLAN_TPID,
 	ITEM_VLAN_TCI,
 	ITEM_VLAN_PCP,
 	ITEM_VLAN_DEI,
 	ITEM_VLAN_VID,
+	ITEM_VLAN_INNER_TYPE,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1142,12 +1142,6 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vlan),
 		.call = parse_vc,
 	},
-	[ITEM_VLAN_TPID] = {
-		.name = "tpid",
-		.help = "tag protocol identifier",
-		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan, tpid)),
-	},
 	[ITEM_VLAN_TCI] = {
 		.name = "tci",
 		.help = "tag control information",
@@ -1174,6 +1168,13 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_vlan,
 						  tci, "\x0f\xff")),
+	},
+	[ITEM_VLAN_INNER_TYPE] = {
+		.name = "inner_type",
+		.help = "inner EtherType",
+		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan,
+					     inner_type)),
 	},
 	[ITEM_IPV4] = {
 		.name = "ipv4",

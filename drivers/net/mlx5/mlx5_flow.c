@@ -18,6 +18,7 @@
 #endif
 
 #include <rte_common.h>
+#include <rte_ether.h>
 #include <rte_eth_ctrl.h>
 #include <rte_ethdev_driver.h>
 #include <rte_flow.h>
@@ -306,6 +307,7 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_vlan){
 			.tci = -1,
+			.inner_type = -1,
 		},
 		.default_mask = &rte_flow_item_vlan_mask,
 		.mask_sz = sizeof(struct rte_flow_item_vlan),
@@ -1295,6 +1297,7 @@ mlx5_flow_create_vlan(const struct rte_flow_item *item,
 	struct mlx5_flow_parse *parser = data->parser;
 	struct ibv_flow_spec_eth *eth;
 	const unsigned int eth_size = sizeof(struct ibv_flow_spec_eth);
+	const char *msg = "VLAN cannot be empty";
 
 	if (spec) {
 		unsigned int i;
@@ -1316,12 +1319,20 @@ mlx5_flow_create_vlan(const struct rte_flow_item *item,
 			 */
 			if (!eth->mask.vlan_tag)
 				goto error;
+			/* Outer TPID cannot be matched. */
+			if (eth->mask.ether_type) {
+				msg = "VLAN TPID matching is not supported";
+				goto error;
+			}
+			eth->val.ether_type = spec->inner_type;
+			eth->mask.ether_type = mask->inner_type;
+			eth->val.ether_type &= eth->mask.ether_type;
 		}
 		return 0;
 	}
 error:
 	return rte_flow_error_set(data->error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-				  item, "VLAN cannot be empty");
+				  item, msg);
 }
 
 /**

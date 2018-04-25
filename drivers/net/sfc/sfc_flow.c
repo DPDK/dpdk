@@ -7,6 +7,7 @@
  * for Solarflare) and Solarflare Communications, Inc.
  */
 
+#include <rte_byteorder.h>
 #include <rte_tailq.h>
 #include <rte_common.h>
 #include <rte_ethdev_driver.h>
@@ -351,6 +352,7 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
 	const struct rte_flow_item_vlan *mask = NULL;
 	const struct rte_flow_item_vlan supp_mask = {
 		.tci = rte_cpu_to_be_16(ETH_VLAN_ID_MAX),
+		.inner_type = RTE_BE16(0xffff),
 	};
 
 	rc = sfc_flow_parse_init(item,
@@ -390,6 +392,22 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM, item,
 				   "VLAN ID in TCI match is required");
+		return -rte_errno;
+	}
+
+	if (efx_spec->efs_match_flags & EFX_FILTER_MATCH_ETHER_TYPE) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM, item,
+				   "VLAN TPID matching is not supported");
+		return -rte_errno;
+	}
+	if (mask->inner_type == supp_mask.inner_type) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_ETHER_TYPE;
+		efx_spec->efs_ether_type = rte_bswap16(spec->inner_type);
+	} else if (mask->inner_type) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM, item,
+				   "Bad mask for VLAN inner_type");
 		return -rte_errno;
 	}
 

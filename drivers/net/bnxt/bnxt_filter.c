@@ -307,6 +307,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	uint32_t vf = 0;
 	int use_ntuple;
 	uint32_t en = 0;
+	uint32_t en_ethertype;
 	int dflt_vnic;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
@@ -316,6 +317,9 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 
 	filter->filter_type = use_ntuple ?
 		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_EM_FILTER;
+	en_ethertype = use_ntuple ?
+		NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE :
+		EM_FLOW_ALLOC_INPUT_EN_ETHERTYPE;
 
 	while (item->type != RTE_FLOW_ITEM_TYPE_END) {
 		if (item->last) {
@@ -385,29 +389,48 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			if (eth_mask->type) {
 				filter->ethertype =
 					rte_be_to_cpu_16(eth_spec->type);
-				en |= use_ntuple ?
-					NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE :
-					EM_FLOW_ALLOC_INPUT_EN_ETHERTYPE;
+				en |= en_ethertype;
 			}
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			vlan_spec = item->spec;
 			vlan_mask = item->mask;
+			if (en & en_ethertype) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "VLAN TPID matching is not"
+						   " supported");
+				return -rte_errno;
+			}
 			if (vlan_mask->tci &&
-			    vlan_mask->tci == RTE_BE16(0x0fff) &&
-			    !vlan_mask->tpid) {
+			    vlan_mask->tci == RTE_BE16(0x0fff)) {
 				/* Only the VLAN ID can be matched. */
 				filter->l2_ovlan =
 					rte_be_to_cpu_16(vlan_spec->tci &
 							 RTE_BE16(0x0fff));
 				en |= EM_FLOW_ALLOC_INPUT_EN_OVLAN_VID;
-			} else if (vlan_mask->tci || vlan_mask->tpid) {
+			} else if (vlan_mask->tci) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "VLAN mask is invalid");
 				return -rte_errno;
+			}
+			if (vlan_mask->inner_type &&
+			    vlan_mask->inner_type != RTE_BE16(0xffff)) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "inner ethertype mask not"
+						   " valid");
+				return -rte_errno;
+			}
+			if (vlan_mask->inner_type) {
+				filter->ethertype =
+					rte_be_to_cpu_16(vlan_spec->inner_type);
+				en |= en_ethertype;
 			}
 
 			break;

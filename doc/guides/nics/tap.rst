@@ -108,7 +108,7 @@ The kernel support can be checked with this command::
 Supported items:
 
 - eth: src and dst (with variable masks), and eth_type (0xffff mask).
-- vlan: vid, pcp, tpid, but not eid. (requires kernel 4.9)
+- vlan: vid, pcp, but not eid. (requires kernel 4.9)
 - ipv4/6: src and dst (with variable masks), and ip_proto (0xffff mask).
 - udp/tcp: src and dst port (0xffff) mask.
 

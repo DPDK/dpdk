@@ -3247,15 +3247,15 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``dst {MAC-48}``: destination MAC.
   - ``src {MAC-48}``: source MAC.
-  - ``type {unsigned}``: EtherType.
+  - ``type {unsigned}``: EtherType or TPID.
 
 - ``vlan``: match 802.1Q/ad VLAN tag.
 
-  - ``tpid {unsigned}``: tag protocol identifier.
   - ``tci {unsigned}``: tag control information.
   - ``pcp {unsigned}``: priority code point.
   - ``dei {unsigned}``: drop eligible indicator.
   - ``vid {unsigned}``: VLAN identifier.
+  - ``inner_type {unsigned}``: inner EtherType or TPID.
 
 - ``ipv4``: match IPv4 header.
 

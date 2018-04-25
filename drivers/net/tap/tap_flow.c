@@ -270,13 +270,13 @@ static const struct tap_flow_items tap_flow_items[] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_IPV4,
 			       RTE_FLOW_ITEM_TYPE_IPV6),
 		.mask = &(const struct rte_flow_item_vlan){
-			.tpid = -1,
 			/* DEI matching is not supported */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 			.tci = 0xffef,
 #else
 			.tci = 0xefff,
 #endif
+			.inner_type = -1,
 		},
 		.mask_sz = sizeof(struct rte_flow_item_vlan),
 		.default_mask = &rte_flow_item_vlan_mask,
@@ -578,13 +578,19 @@ tap_flow_create_vlan(const struct rte_flow_item *item, void *data)
 	/* use default mask if none provided */
 	if (!mask)
 		mask = tap_flow_items[RTE_FLOW_ITEM_TYPE_VLAN].default_mask;
-	/* TC does not support tpid masking. Only accept if exact match. */
-	if (mask->tpid && mask->tpid != 0xffff)
+	/* Outer TPID cannot be matched. */
+	if (info->eth_type)
 		return -1;
 	/* Double-tagging not supported. */
-	if (spec && mask->tpid && spec->tpid != htons(ETH_P_8021Q))
+	if (info->vlan)
 		return -1;
 	info->vlan = 1;
+	if (mask->inner_type) {
+		/* TC does not support partial eth_type masking */
+		if (mask->inner_type != RTE_BE16(0xffff))
+			return -1;
+		info->eth_type = spec->inner_type;
+	}
 	if (!flow)
 		return 0;
 	msg = &flow->msg;

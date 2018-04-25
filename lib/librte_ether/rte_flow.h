@@ -454,11 +454,17 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
  * RTE_FLOW_ITEM_TYPE_ETH
  *
  * Matches an Ethernet header.
+ *
+ * The @p type field either stands for "EtherType" or "TPID" when followed
+ * by so-called layer 2.5 pattern items such as RTE_FLOW_ITEM_TYPE_VLAN. In
+ * the latter case, @p type refers to that of the outer header, with the
+ * inner EtherType/TPID provided by the subsequent pattern item. This is the
+ * same order as on the wire.
  */
 struct rte_flow_item_eth {
 	struct ether_addr dst; /**< Destination MAC. */
 	struct ether_addr src; /**< Source MAC. */
-	rte_be16_t type; /**< EtherType. */
+	rte_be16_t type; /**< EtherType or TPID. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ETH. */
@@ -475,19 +481,20 @@ static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
  *
  * Matches an 802.1Q/ad VLAN tag.
  *
- * This type normally follows either RTE_FLOW_ITEM_TYPE_ETH or
- * RTE_FLOW_ITEM_TYPE_VLAN.
+ * The corresponding standard outer EtherType (TPID) values are
+ * ETHER_TYPE_VLAN or ETHER_TYPE_QINQ. It can be overridden by the preceding
+ * pattern item.
  */
 struct rte_flow_item_vlan {
-	rte_be16_t tpid; /**< Tag protocol identifier. */
 	rte_be16_t tci; /**< Tag control information. */
+	rte_be16_t inner_type; /**< Inner EtherType or TPID. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_VLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vlan rte_flow_item_vlan_mask = {
-	.tpid = RTE_BE16(0x0000),
 	.tci = RTE_BE16(0xffff),
+	.inner_type = RTE_BE16(0x0000),
 };
 #endif
 
@@ -636,9 +643,11 @@ static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
  * RTE_FLOW_ITEM_TYPE_E_TAG.
  *
  * Matches a E-tag header.
+ *
+ * The corresponding standard outer EtherType (TPID) value is
+ * ETHER_TYPE_ETAG. It can be overridden by the preceding pattern item.
  */
 struct rte_flow_item_e_tag {
-	rte_be16_t tpid; /**< Tag protocol identifier (0x893F). */
 	/**
 	 * E-Tag control information (E-TCI).
 	 * E-PCP (3b), E-DEI (1b), ingress E-CID base (12b).
@@ -648,6 +657,7 @@ struct rte_flow_item_e_tag {
 	rte_be16_t rsvd_grp_ecid_b;
 	uint8_t in_ecid_e; /**< Ingress E-CID ext. */
 	uint8_t ecid_e; /**< E-CID ext. */
+	rte_be16_t inner_type; /**< Inner EtherType or TPID. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_E_TAG. */

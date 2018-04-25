@@ -784,9 +784,15 @@ Item: ``ETH``
 
 Matches an Ethernet header.
 
+The ``type`` field either stands for "EtherType" or "TPID" when followed by
+so-called layer 2.5 pattern items such as ``RTE_FLOW_ITEM_TYPE_VLAN``. In
+the latter case, ``type`` refers to that of the outer header, with the inner
+EtherType/TPID provided by the subsequent pattern item. This is the same
+order as on the wire.
+
 - ``dst``: destination MAC.
 - ``src``: source MAC.
-- ``type``: EtherType.
+- ``type``: EtherType or TPID.
 - Default ``mask`` matches destination and source addresses only.
 
 Item: ``VLAN``
@@ -794,8 +800,12 @@ Item: ``VLAN``
 
 Matches an 802.1Q/ad VLAN tag.
 
-- ``tpid``: tag protocol identifier.
+The corresponding standard outer EtherType (TPID) values are
+``ETHER_TYPE_VLAN`` or ``ETHER_TYPE_QINQ``. It can be overridden by the
+preceding pattern item.
+
 - ``tci``: tag control information.
+- ``inner_type``: inner EtherType or TPID.
 - Default ``mask`` matches TCI only.
 
 Item: ``IPV4``
@@ -866,12 +876,15 @@ Item: ``E_TAG``
 
 Matches an IEEE 802.1BR E-Tag header.
 
-- ``tpid``: tag protocol identifier (0x893F)
+The corresponding standard outer EtherType (TPID) value is
+``ETHER_TYPE_ETAG``. It can be overridden by the preceding pattern item.
+
 - ``epcp_edei_in_ecid_b``: E-Tag control information (E-TCI), E-PCP (3b),
   E-DEI (1b), ingress E-CID base (12b).
 - ``rsvd_grp_ecid_b``: reserved (2b), GRP (2b), E-CID base (12b).
 - ``in_ecid_e``: ingress E-CID ext.
 - ``ecid_e``: E-CID ext.
+- ``inner_type``: inner EtherType or TPID.
 - Default ``mask`` simultaneously matches GRP and E-CID base.
 
 Item: ``NVGRE``

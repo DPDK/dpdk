@@ -557,16 +557,21 @@ enic_copy_item_vlan_v2(const struct rte_flow_item *item,
 	if (!spec)
 		return 0;
 
-	/* Don't support filtering in tpid */
-	if (mask) {
-		if (mask->tpid != 0)
-			return ENOTSUP;
-	} else {
+	if (!mask)
 		mask = &rte_flow_item_vlan_mask;
-		RTE_ASSERT(mask->tpid == 0);
-	}
 
 	if (*inner_ofst == 0) {
+		struct ether_hdr *eth_mask =
+			(void *)gp->layer[FILTER_GENERIC_1_L2].mask;
+		struct ether_hdr *eth_val =
+			(void *)gp->layer[FILTER_GENERIC_1_L2].val;
+
+		/* Outer TPID cannot be matched */
+		if (eth_mask->ether_type)
+			return ENOTSUP;
+		eth_mask->ether_type = mask->inner_type;
+		eth_val->ether_type = spec->inner_type;
+
 		/* Outer header. Use the vlan mask/val fields */
 		gp->mask_vlan = mask->tci;
 		gp->val_vlan = spec->tci;

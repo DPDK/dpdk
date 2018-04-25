@@ -115,7 +115,6 @@
 
 #define IXGBE_VT_CTL_POOLING_MODE_MASK         0x00030000
 #define IXGBE_VT_CTL_POOLING_MODE_ETAG         0x00010000
-#define DEFAULT_ETAG_ETYPE                     0x893f
 #define IXGBE_ETAG_ETYPE                       0x00005084
 #define IXGBE_ETAG_ETYPE_MASK                  0x0000ffff
 #define IXGBE_ETAG_ETYPE_VALID                 0x80000000
@@ -1488,7 +1487,7 @@ static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev)
 	}
 	l2_tn_info->e_tag_en = FALSE;
 	l2_tn_info->e_tag_fwd_en = FALSE;
-	l2_tn_info->e_tag_ether_type = DEFAULT_ETAG_ETYPE;
+	l2_tn_info->e_tag_ether_type = ETHER_TYPE_ETAG;
 
 	return 0;
 }

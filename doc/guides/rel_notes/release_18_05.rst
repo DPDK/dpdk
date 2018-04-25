@@ -278,6 +278,8 @@ API Changes
     ``num`` => ``queue_num``), and the addition of missing RSS parameters
     (``func`` for RSS hash function to apply and ``level`` for the
     encapsulation level).
+  * The VLAN pattern item (``struct rte_flow_item_vlan``) was modified to
+    include inner EtherType instead of outer TPID.
 
 
 ABI Changes
@@ -327,8 +329,9 @@ ABI Changes
   changes in error type definitions (``enum rte_flow_error_type``), removal
   of the unused DUP action (``enum rte_flow_action_type``), modified
   behavior for flow rule actions (see API changes), removal of C99 flexible
-  array from RAW pattern item (``struct rte_flow_item_raw``) and complete
-  rework of the RSS action definition (``struct rte_flow_action_rss``).
+  array from RAW pattern item (``struct rte_flow_item_raw``), complete
+  rework of the RSS action definition (``struct rte_flow_action_rss``) and
+  sanity fix in the VLAN pattern item (``struct rte_flow_item_vlan``).
 
 
 Removed Items

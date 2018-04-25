@@ -1091,12 +1091,6 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 	if (ret)
 		return ret;
 
-	if (mask->tpid) {
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-				   NULL, "Not supported by classifier\n");
-		return -rte_errno;
-	}
-
 	m = rte_be_to_cpu_16(mask->tci);
 	if (m & MRVL_VLAN_ID_MASK) {
 		RTE_LOG(WARNING, PMD, "vlan id mask is ignored\n");
@@ -1108,6 +1102,26 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 	if (m & MRVL_VLAN_PRI_MASK) {
 		RTE_LOG(WARNING, PMD, "vlan pri mask is ignored\n");
 		ret = mrvl_parse_vlan_pri(spec, mask, flow);
+		if (ret)
+			goto out;
+	}
+
+	if (flow->pattern & F_TYPE) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ITEM, item,
+				   "VLAN TPID matching is not supported\n");
+		return -rte_errno;
+	}
+	if (mask->inner_type) {
+		struct rte_flow_item_eth spec_eth = {
+			.type = spec->inner_type,
+		};
+		struct rte_flow_item_eth mask_eth = {
+			.type = mask->inner_type,
+		};
+
+		RTE_LOG(WARNING, PMD, "inner eth type mask is ignored\n");
+		ret = mrvl_parse_type(&spec_eth, &mask_eth, flow);
 		if (ret)
 			goto out;
 	}

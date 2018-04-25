@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 
+#include <rte_debug.h>
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
 #include <rte_log.h>
@@ -2491,16 +2492,22 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 						      "Invalid MAC_addr mask.");
 					return -rte_errno;
 				}
+			}
+			if (eth_spec && eth_mask && eth_mask->type) {
+				enum rte_flow_item_type next = (item + 1)->type;
 
-				if ((eth_mask->type & UINT16_MAX) ==
-				    UINT16_MAX) {
-					input_set |= I40E_INSET_LAST_ETHER_TYPE;
-					filter->input.flow.l2_flow.ether_type =
-						eth_spec->type;
+				if (eth_mask->type != RTE_BE16(0xffff)) {
+					rte_flow_error_set(error, EINVAL,
+						      RTE_FLOW_ERROR_TYPE_ITEM,
+						      item,
+						      "Invalid type mask.");
+					return -rte_errno;
 				}
 
 				ether_type = rte_be_to_cpu_16(eth_spec->type);
-				if (ether_type == ETHER_TYPE_IPv4 ||
+
+				if (next == RTE_FLOW_ITEM_TYPE_VLAN ||
+				    ether_type == ETHER_TYPE_IPv4 ||
 				    ether_type == ETHER_TYPE_IPv6 ||
 				    ether_type == ETHER_TYPE_ARP ||
 				    ether_type == outer_tpid) {
@@ -2510,6 +2517,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 						     "Unsupported ether_type.");
 					return -rte_errno;
 				}
+				input_set |= I40E_INSET_LAST_ETHER_TYPE;
+				filter->input.flow.l2_flow.ether_type =
+					eth_spec->type;
 			}
 
 			pctype = I40E_FILTER_PCTYPE_L2_PAYLOAD;
@@ -2519,6 +2529,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			vlan_spec = item->spec;
 			vlan_mask = item->mask;
+
+			RTE_ASSERT(!(input_set & I40E_INSET_LAST_ETHER_TYPE));
 			if (vlan_spec && vlan_mask) {
 				if (vlan_mask->tci ==
 				    rte_cpu_to_be_16(I40E_TCI_MASK)) {
@@ -2526,6 +2538,33 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					filter->input.flow_ext.vlan_tci =
 						vlan_spec->tci;
 				}
+			}
+			if (vlan_spec && vlan_mask && vlan_mask->inner_type) {
+				if (vlan_mask->inner_type != RTE_BE16(0xffff)) {
+					rte_flow_error_set(error, EINVAL,
+						      RTE_FLOW_ERROR_TYPE_ITEM,
+						      item,
+						      "Invalid inner_type"
+						      " mask.");
+					return -rte_errno;
+				}
+
+				ether_type =
+					rte_be_to_cpu_16(vlan_spec->inner_type);
+
+				if (ether_type == ETHER_TYPE_IPv4 ||
+				    ether_type == ETHER_TYPE_IPv6 ||
+				    ether_type == ETHER_TYPE_ARP ||
+				    ether_type == outer_tpid) {
+					rte_flow_error_set(error, EINVAL,
+						     RTE_FLOW_ERROR_TYPE_ITEM,
+						     item,
+						     "Unsupported inner_type.");
+					return -rte_errno;
+				}
+				input_set |= I40E_INSET_LAST_ETHER_TYPE;
+				filter->input.flow.l2_flow.ether_type =
+					vlan_spec->inner_type;
 			}
 
 			pctype = I40E_FILTER_PCTYPE_L2_PAYLOAD;
@@ -3285,7 +3324,8 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			vlan_spec = item->spec;
 			vlan_mask = item->mask;
-			if (!(vlan_spec && vlan_mask)) {
+			if (!(vlan_spec && vlan_mask) ||
+			    vlan_mask->inner_type) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -3515,7 +3555,8 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			vlan_spec = item->spec;
 			vlan_mask = item->mask;
-			if (!(vlan_spec && vlan_mask)) {
+			if (!(vlan_spec && vlan_mask) ||
+			    vlan_mask->inner_type) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -4023,7 +4064,8 @@ i40e_flow_parse_qinq_pattern(__rte_unused struct rte_eth_dev *dev,
 			vlan_spec = item->spec;
 			vlan_mask = item->mask;
 
-			if (!(vlan_spec && vlan_mask)) {
+			if (!(vlan_spec && vlan_mask) ||
+			    vlan_mask->inner_type) {
 				rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
