@@ -63,6 +63,12 @@ static struct rte_eth_link pmd_link = {
 		.link_autoneg = ETH_LINK_FIXED,
 };
 
+static int eth_ring_logtype;
+
+#define PMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, eth_ring_logtype, \
+		"%s(): " fmt "\n", __func__, ##args)
+
 static uint16_t
 eth_ring_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
@@ -256,7 +262,7 @@ do_eth_dev_ring_create(const char *name,
 	void **tx_queues_local = NULL;
 	unsigned i;
 
-	RTE_LOG(INFO, PMD, "Creating rings-backed ethdev on numa socket %u\n",
+	PMD_LOG(INFO, "Creating rings-backed ethdev on numa socket %u",
 			numa_node);
 
 	rx_queues_local = rte_zmalloc_socket(name,
@@ -446,13 +452,13 @@ static int parse_kvlist (const char *key __rte_unused, const char *value, void *
 	ret = -EINVAL;
 
 	if (!name) {
-		RTE_LOG(WARNING, PMD, "command line parameter is empty for ring pmd!\n");
+		PMD_LOG(WARNING, "command line parameter is empty for ring pmd!");
 		goto out;
 	}
 
 	node = strchr(name, ':');
 	if (!node) {
-		RTE_LOG(WARNING, PMD, "could not parse node value from %s\n",
+		PMD_LOG(WARNING, "could not parse node value from %s",
 			name);
 		goto out;
 	}
@@ -462,7 +468,7 @@ static int parse_kvlist (const char *key __rte_unused, const char *value, void *
 
 	action = strchr(node, ':');
 	if (!action) {
-		RTE_LOG(WARNING, PMD, "could not parse action value from %s\n",
+		PMD_LOG(WARNING, "could not parse action value from %s",
 			node);
 		goto out;
 	}
@@ -485,7 +491,8 @@ static int parse_kvlist (const char *key __rte_unused, const char *value, void *
 	info->list[info->count].node = strtol(node, &end, 10);
 
 	if ((errno != 0) || (*end != '\0')) {
-		RTE_LOG(WARNING, PMD, "node value %s is unparseable as a number\n", node);
+		PMD_LOG(WARNING,
+			"node value %s is unparseable as a number", node);
 		goto out;
 	}
 
@@ -529,14 +536,14 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
 
-	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
+	PMD_LOG(INFO, "Initializing pmd_ring for %s", name);
 
 	if (params == NULL || params[0] == '\0') {
 		ret = eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE,
 				&eth_dev);
 		if (ret == -1) {
-			RTE_LOG(INFO, PMD,
-				"Attach to pmd_ring for %s\n", name);
+			PMD_LOG(INFO,
+				"Attach to pmd_ring for %s", name);
 			ret = eth_dev_ring_create(name, rte_socket_id(),
 						  DEV_ATTACH, &eth_dev);
 		}
@@ -544,13 +551,13 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 
 		if (!kvlist) {
-			RTE_LOG(INFO, PMD, "Ignoring unsupported parameters when creating"
-					" rings-backed ethernet device\n");
+			PMD_LOG(INFO, "Ignoring unsupported parameters when creating"
+					" rings-backed ethernet device");
 			ret = eth_dev_ring_create(name, rte_socket_id(),
 						  DEV_CREATE, &eth_dev);
 			if (ret == -1) {
-				RTE_LOG(INFO, PMD,
-					"Attach to pmd_ring for %s\n",
+				PMD_LOG(INFO,
+					"Attach to pmd_ring for %s",
 					name);
 				ret = eth_dev_ring_create(name, rte_socket_id(),
 							  DEV_ATTACH, &eth_dev);
@@ -604,8 +611,8 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 							  &eth_dev);
 				if ((ret == -1) &&
 				    (info->list[info->count].action == DEV_CREATE)) {
-					RTE_LOG(INFO, PMD,
-						"Attach to pmd_ring for %s\n",
+					PMD_LOG(INFO,
+						"Attach to pmd_ring for %s",
 						name);
 					ret = eth_dev_ring_create(name,
 							info->list[info->count].node,
@@ -634,7 +641,7 @@ rte_pmd_ring_remove(struct rte_vdev_device *dev)
 	struct ring_queue *r = NULL;
 	uint16_t i;
 
-	RTE_LOG(INFO, PMD, "Un-Initializing pmd_ring for %s\n", name);
+	PMD_LOG(INFO, "Un-Initializing pmd_ring for %s", name);
 
 	if (name == NULL)
 		return -EINVAL;
@@ -675,3 +682,12 @@ RTE_PMD_REGISTER_VDEV(net_ring, pmd_ring_drv);
 RTE_PMD_REGISTER_ALIAS(net_ring, eth_ring);
 RTE_PMD_REGISTER_PARAM_STRING(net_ring,
 	ETH_RING_NUMA_NODE_ACTION_ARG "=name:node:action(ATTACH|CREATE)");
+
+RTE_INIT(eth_ring_init_log);
+static void
+eth_ring_init_log(void)
+{
+	eth_ring_logtype = rte_log_register("pmd.net.ring");
+	if (eth_ring_logtype >= 0)
+		rte_log_set_level(eth_ring_logtype, RTE_LOG_NOTICE);
+}
