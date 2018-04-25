@@ -60,8 +60,8 @@ bond_mode_alb_enable(struct rte_eth_dev *bond_dev)
 			0, data_size, socket_id);
 
 		if (internals->mode6.mempool == NULL) {
-			RTE_LOG(ERR, PMD, "%s: Failed to initialize ALB mempool.\n",
-					bond_dev->device->name);
+			RTE_BOND_LOG(ERR, "%s: Failed to initialize ALB mempool.\n",
+				     bond_dev->device->name);
 			goto mempool_alloc_error;
 		}
 	}

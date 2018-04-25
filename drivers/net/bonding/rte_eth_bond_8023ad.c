@@ -16,9 +16,12 @@
 
 static void bond_mode_8023ad_ext_periodic_cb(void *arg);
 #ifdef RTE_LIBRTE_BOND_DEBUG_8023AD
-#define MODE4_DEBUG(fmt, ...) RTE_LOG(DEBUG, PMD, "%6u [Port %u: %s] " fmt, \
-			bond_dbg_get_time_diff_ms(), slave_id, \
-			__func__, ##__VA_ARGS__)
+
+#define MODE4_DEBUG(fmt, ...)				\
+	rte_log(RTE_LOG_DEBUG, bond_logtype,		\
+		"%6u [Port %u: %s] " fmt,		\
+		bond_dbg_get_time_diff_ms(), slave_id,	\
+		__func__, ##__VA_ARGS__)
 
 static uint64_t start_time;
 
@@ -77,44 +80,46 @@ bond_print_lacp(struct lacpdu *l)
 	if (p_len && p_state[p_len-1] == ' ')
 		p_state[p_len-1] = '\0';
 
-	RTE_LOG(DEBUG, PMD, "LACP: {\n"\
-			"  subtype= %02X\n"\
-			"  ver_num=%02X\n"\
-			"  actor={ tlv=%02X, len=%02X\n"\
-			"    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X\n"\
-			"       state={ %s }\n"\
-			"  }\n"\
-			"  partner={ tlv=%02X, len=%02X\n"\
-			"    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X\n"\
-			"       state={ %s }\n"\
-			"  }\n"\
-			"  collector={info=%02X, length=%02X, max_delay=%04X\n, " \
-							"type_term=%02X, terminator_length = %02X}\n",\
-			l->subtype,\
-			l->version_number,\
-			l->actor.tlv_type_info,\
-			l->actor.info_length,\
-			l->actor.port_params.system_priority,\
-			a_address,\
-			l->actor.port_params.key,\
-			l->actor.port_params.port_priority,\
-			l->actor.port_params.port_number,\
-			a_state,\
-			l->partner.tlv_type_info,\
-			l->partner.info_length,\
-			l->partner.port_params.system_priority,\
-			p_address,\
-			l->partner.port_params.key,\
-			l->partner.port_params.port_priority,\
-			l->partner.port_params.port_number,\
-			p_state,\
-			l->tlv_type_collector_info,\
-			l->collector_info_length,\
-			l->collector_max_delay,\
-			l->tlv_type_terminator,\
-			l->terminator_length);
+	RTE_BOND_LOG(DEBUG,
+		     "LACP: {\n"
+		     "  subtype= %02X\n"
+		     "  ver_num=%02X\n"
+		     "  actor={ tlv=%02X, len=%02X\n"
+		     "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X\n"
+		     "       state={ %s }\n"
+		     "  }\n"
+		     "  partner={ tlv=%02X, len=%02X\n"
+		     "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X\n"
+		     "       state={ %s }\n"
+		     "  }\n"
+		     "  collector={info=%02X, length=%02X, max_delay=%04X\n, "
+		     "type_term=%02X, terminator_length = %02X }",
+		     l->subtype,
+		     l->version_number,
+		     l->actor.tlv_type_info,
+		     l->actor.info_length,
+		     l->actor.port_params.system_priority,
+		     a_address,
+		     l->actor.port_params.key,
+		     l->actor.port_params.port_priority,
+		     l->actor.port_params.port_number,
+		     a_state,
+		     l->partner.tlv_type_info,
+		     l->partner.info_length,
+		     l->partner.port_params.system_priority,
+		     p_address,
+		     l->partner.port_params.key,
+		     l->partner.port_params.port_priority,
+		     l->partner.port_params.port_number,
+		     p_state,
+		     l->tlv_type_collector_info,
+		     l->collector_info_length,
+		     l->collector_max_delay,
+		     l->tlv_type_terminator,
+		     l->terminator_length);
 
 }
+
 #define BOND_PRINT_LACP(lacpdu) bond_print_lacp(lacpdu)
 #else
 #define BOND_PRINT_LACP(lacpdu) do { } while (0)
@@ -200,31 +205,34 @@ show_warnings(uint16_t slave_id)
 			rte_get_tsc_hz() / 1000);
 
 	if (warnings & WRN_RX_QUEUE_FULL) {
-		RTE_LOG(DEBUG, PMD,
-			"Slave %u: failed to enqueue LACP packet into RX ring.\n"
-			"Receive and transmit functions must be invoked on bonded\n"
-			"interface at least 10 times per second or LACP will not\n"
-			"work correctly\n", slave_id);
+		RTE_BOND_LOG(DEBUG,
+			     "Slave %u: failed to enqueue LACP packet into RX ring.\n"
+			     "Receive and transmit functions must be invoked on bonded"
+			     "interface at least 10 times per second or LACP will notwork correctly",
+			     slave_id);
 	}
 
 	if (warnings & WRN_TX_QUEUE_FULL) {
-		RTE_LOG(DEBUG, PMD,
-			"Slave %u: failed to enqueue LACP packet into TX ring.\n"
-			"Receive and transmit functions must be invoked on bonded\n"
-			"interface at least 10 times per second or LACP will not\n"
-			"work correctly\n", slave_id);
+		RTE_BOND_LOG(DEBUG,
+			     "Slave %u: failed to enqueue LACP packet into TX ring.\n"
+			     "Receive and transmit functions must be invoked on bonded"
+			     "interface at least 10 times per second or LACP will not work correctly",
+			     slave_id);
 	}
 
 	if (warnings & WRN_RX_MARKER_TO_FAST)
-		RTE_LOG(INFO, PMD, "Slave %u: marker to early - ignoring.\n", slave_id);
+		RTE_BOND_LOG(INFO, "Slave %u: marker to early - ignoring.",
+			     slave_id);
 
 	if (warnings & WRN_UNKNOWN_SLOW_TYPE) {
-		RTE_LOG(INFO, PMD,
-			"Slave %u: ignoring unknown slow protocol frame type", slave_id);
+		RTE_BOND_LOG(INFO,
+			"Slave %u: ignoring unknown slow protocol frame type",
+			     slave_id);
 	}
 
 	if (warnings & WRN_UNKNOWN_MARKER_TYPE)
-		RTE_LOG(INFO, PMD, "Slave %u: ignoring unknown marker type", slave_id);
+		RTE_BOND_LOG(INFO, "Slave %u: ignoring unknown marker type",
+			     slave_id);
 
 	if (warnings & WRN_NOT_LACP_CAPABLE)
 		MODE4_DEBUG("Port %u is not LACP capable!\n", slave_id);
@@ -507,8 +515,8 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 				ACTOR_STATE_SET(port, DISTRIBUTING);
 				SM_FLAG_SET(port, NTT);
 				MODE4_DEBUG("COLLECTING -> DISTRIBUTING\n");
-				RTE_LOG(INFO, PMD,
-					"Bond %u: slave id %u distributing started.\n",
+				RTE_BOND_LOG(INFO,
+					"Bond %u: slave id %u distributing started.",
 					internals->port_id, slave_id);
 			}
 		} else {
@@ -518,8 +526,8 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 				ACTOR_STATE_CLR(port, DISTRIBUTING);
 				SM_FLAG_SET(port, NTT);
 				MODE4_DEBUG("DISTRIBUTING -> COLLECTING\n");
-				RTE_LOG(INFO, PMD,
-					"Bond %u: slave id %u distributing stopped.\n",
+				RTE_BOND_LOG(INFO,
+					"Bond %u: slave id %u distributing stopped.",
 					internals->port_id, slave_id);
 			}
 		}
@@ -557,7 +565,7 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 
 	lacp_pkt = rte_pktmbuf_alloc(port->mbuf_pool);
 	if (lacp_pkt == NULL) {
-		RTE_LOG(ERR, PMD, "Failed to allocate LACP packet from pool\n");
+		RTE_BOND_LOG(ERR, "Failed to allocate LACP packet from pool");
 		return;
 	}
 
@@ -1337,7 +1345,7 @@ bond_8023ad_setup_validate(uint16_t port_id,
 				conf->tx_period_ms == 0 ||
 				conf->rx_marker_period_ms == 0 ||
 				conf->update_timeout_ms == 0) {
-			RTE_LOG(ERR, PMD, "given mode 4 configuration is invalid\n");
+			RTE_BOND_LOG(ERR, "given mode 4 configuration is invalid");
 			return -EINVAL;
 		}
 	}
