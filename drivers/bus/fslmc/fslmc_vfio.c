@@ -74,7 +74,7 @@ fslmc_get_container_group(int *groupid)
 	if (!g_container) {
 		container = getenv("DPRC");
 		if (container == NULL) {
-			DPAA2_BUS_INFO("DPAA2: DPRC not available");
+			DPAA2_BUS_DEBUG("DPAA2: DPRC not available");
 			return -EINVAL;
 		}
 

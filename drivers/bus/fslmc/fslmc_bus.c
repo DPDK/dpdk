@@ -255,7 +255,7 @@ scan_fail_cleanup:
 	/* Remove all devices in the list */
 	cleanup_fslmc_device_list();
 scan_fail:
-	DPAA2_BUS_INFO("FSLMC Bus Not Available. Skipping");
+	DPAA2_BUS_DEBUG("FSLMC Bus Not Available. Skipping");
 	/* Irrespective of failure, scan only return success */
 	return 0;
 }
