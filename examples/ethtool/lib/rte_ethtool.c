@@ -178,6 +178,36 @@ rte_ethtool_set_eeprom(uint16_t port_id, struct ethtool_eeprom *eeprom,
 }
 
 int
+rte_ethtool_get_module_info(uint16_t port_id, uint32_t *modinfo)
+{
+	struct rte_eth_dev_module_info *info;
+
+	info = (struct rte_eth_dev_module_info *)modinfo;
+	return rte_eth_dev_get_module_info(port_id, info);
+}
+
+int
+rte_ethtool_get_module_eeprom(uint16_t port_id, struct ethtool_eeprom *eeprom,
+	void *words)
+{
+	struct rte_dev_eeprom_info eeprom_info;
+	int status;
+
+	if (eeprom == NULL || words == NULL)
+		return -EINVAL;
+
+	eeprom_info.offset = eeprom->offset;
+	eeprom_info.length = eeprom->len;
+	eeprom_info.data = words;
+
+	status = rte_eth_dev_get_module_eeprom(port_id, &eeprom_info);
+	if (status)
+		return status;
+
+	return 0;
+}
+
+int
 rte_ethtool_get_pauseparam(uint16_t port_id,
 	struct ethtool_pauseparam *pause_param)
 {

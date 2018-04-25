@@ -44,6 +44,7 @@ they do as as follows:
 
 * ``drvinfo``: Print driver info
 * ``eeprom``: Dump EEPROM to file
+* ``module-eeprom``: Dump plugin module EEPROM to file
 * ``link``: Print port link states
 * ``macaddr``: Gets/sets MAC address
 * ``mtu``: Set NIC MTU
@@ -97,6 +98,8 @@ the following functions:
 - ``rte_ethtool_get_eeprom_len()``
 - ``rte_ethtool_get_eeprom()``
 - ``rte_ethtool_set_eeprom()``
+- ``rte_ethtool_get_module_info()``
+- ``rte_ethtool_get_module_eeprom()``
 - ``rte_ethtool_get_pauseparam()``
 - ``rte_ethtool_set_pauseparam()``
 - ``rte_ethtool_net_open()``

@@ -154,6 +154,40 @@ int rte_ethtool_set_eeprom(uint16_t port_id, struct ethtool_eeprom *eeprom,
 			      void *words);
 
 /**
+ * Retrieve the type and size of plugin module EEPROM
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param modinfo
+ *	 The pointer that provides the type and size of plugin module EEPROM.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - others depends on the specific operations implementation.
+ */
+int rte_ethtool_get_module_info(uint16_t port_id, uint32_t *modinfo);
+
+/**
+ * Retrieve the data of plugin module EEPROM
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param eeprom
+ *	 The pointer of ethtool_eeprom that provides plugin module eeprom
+ *   offset and length
+ * @param words
+ *	 A buffer that holds data read from plugin module eeprom
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - others depends on the specific operations implementation.
+ */
+int rte_ethtool_get_module_eeprom(uint16_t port_id,
+				  struct ethtool_eeprom *eeprom, void *words);
+
+/**
  * Retrieve the Ethernet device pause frame configuration according to
  * parameter attributes desribed by ethtool data structure,
  * ethtool_pauseparam.
