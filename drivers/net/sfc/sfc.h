@@ -27,10 +27,8 @@
 extern "C" {
 #endif
 
-#if EFSYS_OPT_RX_SCALE
 /** RSS hash offloads mask */
 #define SFC_RSS_OFFLOADS	(ETH_RSS_IP | ETH_RSS_TCP)
-#endif
 
 /*
  * +---------------+
@@ -227,13 +225,11 @@ struct sfc_adapter {
 
 	unsigned int			rss_channels;
 
-#if EFSYS_OPT_RX_SCALE
 	efx_rx_scale_context_type_t	rss_support;
 	efx_rx_hash_support_t		hash_support;
 	efx_rx_hash_type_t		rss_hash_types;
 	unsigned int			rss_tbl[EFX_RSS_TBL_SIZE];
 	uint8_t				rss_key[EFX_RSS_KEY_SIZE];
-#endif
 
 	/*
 	 * Shared memory copy of the Rx datapath name to be used by

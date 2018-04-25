@@ -151,13 +151,11 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (~sa->dp_tx->features & SFC_DP_TX_FEAT_REFCNT)
 		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOREFCOUNT;
 
-#if EFSYS_OPT_RX_SCALE
 	if (sa->rss_support != EFX_RX_SCALE_UNAVAILABLE) {
 		dev_info->reta_size = EFX_RSS_TBL_SIZE;
 		dev_info->hash_key_size = EFX_RSS_KEY_SIZE;
 		dev_info->flow_type_rss_offloads = SFC_RSS_OFFLOADS;
 	}
-#endif
 
 	/* Initialize to hardware limits */
 	dev_info->rx_desc_lim.nb_max = EFX_RXQ_MAXNDESCS;
@@ -1357,7 +1355,6 @@ sfc_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	return sfc_dev_udp_tunnel_op(dev, tunnel_udp, SFC_UDP_TUNNEL_DEL_PORT);
 }
 
-#if EFSYS_OPT_RX_SCALE
 static int
 sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_conf *rss_conf)
@@ -1568,7 +1565,6 @@ bad_reta_entry:
 	SFC_ASSERT(rc >= 0);
 	return -rc;
 }
-#endif
 
 static int
 sfc_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
@@ -1663,12 +1659,10 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.mac_addr_set			= sfc_mac_addr_set,
 	.udp_tunnel_port_add		= sfc_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del		= sfc_dev_udp_tunnel_port_del,
-#if EFSYS_OPT_RX_SCALE
 	.reta_update			= sfc_dev_rss_reta_update,
 	.reta_query			= sfc_dev_rss_reta_query,
 	.rss_hash_update		= sfc_dev_rss_hash_update,
 	.rss_hash_conf_get		= sfc_dev_rss_hash_conf_get,
-#endif
 	.filter_ctrl			= sfc_dev_filter_ctrl,
 	.set_mc_addr_list		= sfc_set_mc_addr_list,
 	.rxq_info_get			= sfc_rx_queue_info_get,

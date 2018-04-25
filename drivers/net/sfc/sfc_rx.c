@@ -184,7 +184,6 @@ sfc_efx_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
 	return ptypes;
 }
 
-#if EFSYS_OPT_RX_SCALE
 static void
 sfc_efx_rx_set_rss_hash(struct sfc_efx_rxq *rxq, unsigned int flags,
 			struct rte_mbuf *m)
@@ -205,14 +204,6 @@ sfc_efx_rx_set_rss_hash(struct sfc_efx_rxq *rxq, unsigned int flags,
 		m->ol_flags |= PKT_RX_RSS_HASH;
 	}
 }
-#else
-static void
-sfc_efx_rx_set_rss_hash(__rte_unused struct sfc_efx_rxq *rxq,
-			__rte_unused unsigned int flags,
-			__rte_unused struct rte_mbuf *m)
-{
-}
-#endif
 
 static uint16_t
 sfc_efx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
@@ -1068,10 +1059,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.batch_max = encp->enc_rx_batch_max;
 	info.prefix_size = encp->enc_rx_prefix_size;
 
-#if EFSYS_OPT_RX_SCALE
 	if (sa->hash_support == EFX_RX_HASH_AVAILABLE && sa->rss_channels > 0)
 		info.flags |= SFC_RXQ_FLAG_RSS_HASH;
-#endif
 
 	info.rxq_entries = rxq_info->entries;
 	info.rxq_hw_ring = rxq->mem.esm_base;
@@ -1141,7 +1130,6 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	rte_free(rxq);
 }
 
-#if EFSYS_OPT_RX_SCALE
 efx_rx_hash_type_t
 sfc_rte_to_efx_hash_type(uint64_t rss_hf)
 {
@@ -1185,9 +1173,7 @@ sfc_efx_to_rte_hash_type(efx_rx_hash_type_t efx_hash_types)
 
 	return rss_hf;
 }
-#endif
 
-#if EFSYS_OPT_RX_SCALE
 static int
 sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
 			    struct rte_eth_rss_conf *conf)
@@ -1248,13 +1234,6 @@ sfc_rx_rss_config(struct sfc_adapter *sa)
 finish:
 	return rc;
 }
-#else
-static int
-sfc_rx_rss_config(__rte_unused struct sfc_adapter *sa)
-{
-	return 0;
-}
-#endif
 
 int
 sfc_rx_start(struct sfc_adapter *sa)
@@ -1337,14 +1316,12 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 	case ETH_MQ_RX_NONE:
 		/* No special checks are required */
 		break;
-#if EFSYS_OPT_RX_SCALE
 	case ETH_MQ_RX_RSS:
 		if (sa->rss_support == EFX_RX_SCALE_UNAVAILABLE) {
 			sfc_err(sa, "RSS is not available");
 			rc = EINVAL;
 		}
 		break;
-#endif
 	default:
 		sfc_err(sa, "Rx multi-queue mode %u not supported",
 			rxmode->mq_mode);
@@ -1446,7 +1423,6 @@ sfc_rx_configure(struct sfc_adapter *sa)
 		sa->rxq_count++;
 	}
 
-#if EFSYS_OPT_RX_SCALE
 	sa->rss_channels = (dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ?
 			   MIN(sa->rxq_count, EFX_MAXRSS) : 0;
 
@@ -1462,7 +1438,6 @@ sfc_rx_configure(struct sfc_adapter *sa)
 		if (rc != 0)
 			goto fail_rx_process_adv_conf_rss;
 	}
-#endif
 
 done:
 	return 0;

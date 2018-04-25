@@ -1248,7 +1248,6 @@ sfc_flow_parse_queue(struct sfc_adapter *sa,
 	return 0;
 }
 
-#if EFSYS_OPT_RX_SCALE
 static int
 sfc_flow_parse_rss(struct sfc_adapter *sa,
 		   const struct rte_flow_action_rss *rss,
@@ -1324,7 +1323,6 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 
 	return 0;
 }
-#endif /* EFSYS_OPT_RX_SCALE */
 
 static int
 sfc_flow_spec_flush(struct sfc_adapter *sa, struct sfc_flow_spec *spec,
@@ -1374,7 +1372,6 @@ static int
 sfc_flow_filter_insert(struct sfc_adapter *sa,
 		       struct rte_flow *flow)
 {
-#if EFSYS_OPT_RX_SCALE
 	struct sfc_flow_rss *rss = &flow->rss_conf;
 	uint32_t efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 	unsigned int i;
@@ -1451,9 +1448,6 @@ fail_scale_mode_set:
 
 fail_scale_context_alloc:
 	return rc;
-#else /* !EFSYS_OPT_RX_SCALE */
-	return sfc_flow_spec_insert(sa, &flow->spec);
-#endif /* EFSYS_OPT_RX_SCALE */
 }
 
 static int
@@ -1466,7 +1460,6 @@ sfc_flow_filter_remove(struct sfc_adapter *sa,
 	if (rc != 0)
 		return rc;
 
-#if EFSYS_OPT_RX_SCALE
 	if (flow->rss) {
 		/*
 		 * All specifications for a given flow rule have the same RSS
@@ -1477,7 +1470,6 @@ sfc_flow_filter_remove(struct sfc_adapter *sa,
 
 		rc = efx_rx_scale_context_free(sa->nic, spec->efs_rss_context);
 	}
-#endif /* EFSYS_OPT_RX_SCALE */
 
 	return rc;
 }
@@ -1524,7 +1516,6 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 			is_specified = B_TRUE;
 			break;
 
-#if EFSYS_OPT_RX_SCALE
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			rc = sfc_flow_parse_rss(sa, actions->conf, flow);
 			if (rc != 0) {
@@ -1536,7 +1527,6 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 
 			is_specified = B_TRUE;
 			break;
-#endif /* EFSYS_OPT_RX_SCALE */
 
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			flow->spec.template.efs_dmaq_id =

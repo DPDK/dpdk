@@ -623,7 +623,6 @@ sfc_mem_bar_fini(struct sfc_adapter *sa)
 	memset(ebp, 0, sizeof(*ebp));
 }
 
-#if EFSYS_OPT_RX_SCALE
 /*
  * A fixed RSS key which has a property of being symmetric
  * (symmetrical flows are distributed to the same CPU)
@@ -637,9 +636,7 @@ static const uint8_t default_rss_key[EFX_RSS_KEY_SIZE] = {
 	0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
 	0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
 };
-#endif
 
-#if EFSYS_OPT_RX_SCALE
 static int
 sfc_set_rss_defaults(struct sfc_adapter *sa)
 {
@@ -688,13 +685,6 @@ fail_ev_init:
 fail_intr_init:
 	return rc;
 }
-#else
-static int
-sfc_set_rss_defaults(__rte_unused struct sfc_adapter *sa)
-{
-	return 0;
-}
-#endif
 
 int
 sfc_attach(struct sfc_adapter *sa)
