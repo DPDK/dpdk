@@ -59,6 +59,6 @@ extern int nfp_logtype_init;
 extern int nfp_logtype_driver;
 #define PMD_DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, nfp_logtype_driver, \
-		"%s(): " fmt, __func__, ## args)
+		"%s(): " fmt "\n", __func__, ## args)
 
 #endif /* _NFP_NET_LOGS_H_ */

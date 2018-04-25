@@ -296,7 +296,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 	uint32_t new;
 	struct timespec wait;
 
-	PMD_DRV_LOG(DEBUG, "Writing to the configuration queue (%p)...\n",
+	PMD_DRV_LOG(DEBUG, "Writing to the configuration queue (%p)...",
 		    hw->qcp_cfg);
 
 	if (hw->qcp_cfg == NULL)
@@ -307,7 +307,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 	wait.tv_sec = 0;
 	wait.tv_nsec = 1000000;
 
-	PMD_DRV_LOG(DEBUG, "Polling for update ack...\n");
+	PMD_DRV_LOG(DEBUG, "Polling for update ack...");
 
 	/* Poll update field, waiting for NFP to ack the config */
 	for (cnt = 0; ; cnt++) {
@@ -325,7 +325,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 		}
 		nanosleep(&wait, 0); /* waiting for a 1ms */
 	}
-	PMD_DRV_LOG(DEBUG, "Ack DONE\n");
+	PMD_DRV_LOG(DEBUG, "Ack DONE");
 	return 0;
 }
 
@@ -343,7 +343,7 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 {
 	uint32_t err;
 
-	PMD_DRV_LOG(DEBUG, "nfp_net_reconfig: ctrl=%08x update=%08x\n",
+	PMD_DRV_LOG(DEBUG, "nfp_net_reconfig: ctrl=%08x update=%08x",
 		    ctrl, update);
 
 	rte_spinlock_lock(&hw->reconfig_lock);
@@ -1016,7 +1016,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
 
-	PMD_DRV_LOG(DEBUG, "Promiscuous mode enable\n");
+	PMD_DRV_LOG(DEBUG, "Promiscuous mode enable");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1026,7 +1026,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	}
 
 	if (hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) {
-		PMD_DRV_LOG(INFO, "Promiscuous mode already enabled\n");
+		PMD_DRV_LOG(INFO, "Promiscuous mode already enabled");
 		return;
 	}
 
@@ -1052,7 +1052,7 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
-		PMD_DRV_LOG(INFO, "Promiscuous mode already disabled\n");
+		PMD_DRV_LOG(INFO, "Promiscuous mode already disabled");
 		return;
 	}
 
@@ -1094,7 +1094,7 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 		[NFP_NET_CFG_STS_LINK_RATE_100G]        = ETH_SPEED_NUM_100G,
 	};
 
-	PMD_DRV_LOG(DEBUG, "Link update\n");
+	PMD_DRV_LOG(DEBUG, "Link update");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1118,9 +1118,9 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == 0) {
 		if (link.link_status)
-			PMD_DRV_LOG(INFO, "NIC Link is Up\n");
+			PMD_DRV_LOG(INFO, "NIC Link is Up");
 		else
-			PMD_DRV_LOG(INFO, "NIC Link is Down\n");
+			PMD_DRV_LOG(INFO, "NIC Link is Down");
 	}
 	return ret;
 }
@@ -1505,7 +1505,7 @@ nfp_net_dev_interrupt_handler(void *param)
 	struct rte_eth_link link;
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
-	PMD_DRV_LOG(DEBUG, "We got a LSC interrupt!!!\n");
+	PMD_DRV_LOG(DEBUG, "We got a LSC interrupt!!!");
 
 	rte_eth_linkstatus_get(dev, &link);
 
