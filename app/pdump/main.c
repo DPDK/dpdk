@@ -37,8 +37,6 @@
 #define PDUMP_RING_SIZE_ARG "ring-size"
 #define PDUMP_MSIZE_ARG "mbuf-size"
 #define PDUMP_NUM_MBUFS_ARG "total-num-mbufs"
-#define CMD_LINE_OPT_SER_SOCK_PATH "server-socket-path"
-#define CMD_LINE_OPT_CLI_SOCK_PATH "client-socket-path"
 
 #define VDEV_PCAP "net_pcap_%s_%d,tx_pcap=%s"
 #define VDEV_IFACE "net_pcap_%s_%d,tx_iface=%s"
@@ -140,8 +138,6 @@ struct parse_val {
 int num_tuples;
 static struct rte_eth_conf port_conf_default;
 volatile uint8_t quit_signal;
-static char server_socket_path[PATH_MAX];
-static char client_socket_path[PATH_MAX];
 
 /**< display usage */
 static void
@@ -154,13 +150,7 @@ pdump_usage(const char *prgname)
 			" tx-dev=<iface or pcap file>,"
 			"[ring-size=<ring size>default:16384],"
 			"[mbuf-size=<mbuf data size>default:2176],"
-			"[total-num-mbufs=<number of mbufs>default:65535]'\n"
-			"[--server-socket-path=<server socket dir>"
-				" which is deprecated and will be removed soon,"
-				" default:/var/run/.dpdk/ (or) ~/.dpdk/]\n"
-			"[--client-socket-path=<client socket dir>"
-				" which is deprecated and will be removed soon,"
-				" default:/var/run/.dpdk/ (or) ~/.dpdk/]\n",
+			"[total-num-mbufs=<number of mbufs>default:65535]'\n",
 			prgname);
 }
 
@@ -385,8 +375,6 @@ launch_args_parse(int argc, char **argv, char *prgname)
 	int option_index;
 	static struct option long_option[] = {
 		{"pdump", 1, 0, 0},
-		{"server-socket-path", 1, 0, 0},
-		{"client-socket-path", 1, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -407,21 +395,6 @@ launch_args_parse(int argc, char **argv, char *prgname)
 					return -1;
 				}
 			}
-
-			if (!strncmp(long_option[option_index].name,
-					CMD_LINE_OPT_SER_SOCK_PATH,
-					sizeof(CMD_LINE_OPT_SER_SOCK_PATH))) {
-				strlcpy(server_socket_path, optarg,
-					sizeof(server_socket_path));
-			}
-
-			if (!strncmp(long_option[option_index].name,
-					CMD_LINE_OPT_CLI_SOCK_PATH,
-					sizeof(CMD_LINE_OPT_CLI_SOCK_PATH))) {
-				strlcpy(client_socket_path, optarg,
-					sizeof(client_socket_path));
-			}
-
 			break;
 		default:
 			pdump_usage(prgname);
