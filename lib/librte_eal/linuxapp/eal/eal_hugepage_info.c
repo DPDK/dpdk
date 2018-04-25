@@ -304,11 +304,8 @@ clear_hugedir(const char * hugedir)
 		lck_result = fcntl(fd, F_SETLK, &lck);
 
 		/* if lock succeeds, unlock and remove the file */
-		if (lck_result != -1) {
-			lck.l_type = F_UNLCK;
-			fcntl(fd, F_SETLK, &lck);
+		if (lck_result != -1)
 			unlinkat(dir_fd, dirent->d_name, 0);
-		}
 		close (fd);
 		dirent = readdir(dir);
 	}
