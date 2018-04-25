@@ -379,11 +379,11 @@ dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	unsigned int i = 0, num = RTE_DIM(dpaa_xstats_strings);
 	uint64_t values[sizeof(struct dpaa_if_stats) / 8];
 
-	if (xstats == NULL)
-		return 0;
-
 	if (n < num)
 		return num;
+
+	if (xstats == NULL)
+		return 0;
 
 	fman_if_stats_get_all(dpaa_intf->fif, values,
 			      sizeof(struct dpaa_if_stats) / 8);
