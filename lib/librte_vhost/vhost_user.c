@@ -214,11 +214,6 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 			dev->notify_ops->features_changed(dev->vid, features);
 	}
 
-	did = dev->vdpa_dev_id;
-	vdpa_dev = rte_vdpa_get_device(did);
-	if (vdpa_dev && vdpa_dev->ops->set_features)
-		vdpa_dev->ops->set_features(dev->vid);
-
 	dev->features = features;
 	if (dev->features &
 		((1 << VIRTIO_NET_F_MRG_RXBUF) | (1ULL << VIRTIO_F_VERSION_1))) {
@@ -251,6 +246,11 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 			free_vq(vq);
 		}
 	}
+
+	did = dev->vdpa_dev_id;
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (vdpa_dev && vdpa_dev->ops->set_features)
+		vdpa_dev->ops->set_features(dev->vid);
 
 	return 0;
 }
