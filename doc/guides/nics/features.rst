@@ -749,6 +749,17 @@ Supports getting/setting device eeprom data.
   ``rte_eth_dev_set_eeprom()``.
 
 
+.. _nic_features_module_eeprom_dump:
+
+Module EEPROM dump
+------------------
+
+Supports getting information and data of plugin module eeprom.
+
+* **[implements] eth_dev_ops**: ``get_module_info``, ``get_module_eeprom``.
+* **[related]    API**: ``rte_eth_dev_get_module_info()``, ``rte_eth_dev_get_module_eeprom()``.
+
+
 .. _nic_features_register_dump:
 
 Registers dump

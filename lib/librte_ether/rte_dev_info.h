@@ -28,4 +28,22 @@ struct rte_dev_eeprom_info {
 	uint32_t magic; /**< Device-specific key, such as device-id */
 };
 
+/**
+ * Placeholder for accessing plugin module eeprom
+ */
+struct rte_eth_dev_module_info {
+	uint32_t type; /**< Type of plugin module eeprom */
+	uint32_t eeprom_len; /**< Length of plugin module eeprom */
+};
+
+/* EEPROM Standards for plug in modules */
+#define RTE_ETH_MODULE_SFF_8079             0x1
+#define RTE_ETH_MODULE_SFF_8079_LEN         256
+#define RTE_ETH_MODULE_SFF_8472             0x2
+#define RTE_ETH_MODULE_SFF_8472_LEN         512
+#define RTE_ETH_MODULE_SFF_8636             0x3
+#define RTE_ETH_MODULE_SFF_8636_LEN         256
+#define RTE_ETH_MODULE_SFF_8436             0x4
+#define RTE_ETH_MODULE_SFF_8436_LEN         256
+
 #endif /* _RTE_DEV_INFO_H_ */

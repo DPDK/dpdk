@@ -3368,6 +3368,49 @@ int rte_eth_dev_get_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
 int rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Retrieve the type and size of plugin module EEPROM
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param modinfo
+ *   The type and size of plugin module EEPROM.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
+ *   - others depends on the specific operations implementation.
+ */
+int __rte_experimental
+rte_eth_dev_get_module_info(uint16_t port_id,
+			    struct rte_eth_dev_module_info *modinfo);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Retrieve the data of plugin module EEPROM
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param info
+ *   The template includes the plugin module EEPROM attributes, and the
+ *   buffer for return plugin module EEPROM data.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
+ *   - others depends on the specific operations implementation.
+ */
+int __rte_experimental
+rte_eth_dev_get_module_eeprom(uint16_t port_id,
+			      struct rte_dev_eeprom_info *info);
+
+/**
  * Set the list of multicast addresses to filter on an Ethernet device.
  *
  * @param port_id

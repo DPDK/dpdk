@@ -337,6 +337,14 @@ typedef int (*eth_set_eeprom_t)(struct rte_eth_dev *dev,
 				struct rte_dev_eeprom_info *info);
 /**< @internal Program eeprom data  */
 
+typedef int (*eth_get_module_info_t)(struct rte_eth_dev *dev,
+				     struct rte_eth_dev_module_info *modinfo);
+/**< @internal Retrieve type and size of plugin module eeprom */
+
+typedef int (*eth_get_module_eeprom_t)(struct rte_eth_dev *dev,
+				       struct rte_dev_eeprom_info *info);
+/**< @internal Retrieve plugin module eeprom data */
+
 typedef int (*eth_l2_tunnel_eth_type_conf_t)
 	(struct rte_eth_dev *dev, struct rte_eth_l2_tunnel_conf *l2_tunnel);
 /**< @internal config l2 tunnel ether type */
@@ -467,6 +475,10 @@ struct eth_dev_ops {
 	eth_get_eeprom_t           get_eeprom;        /**< Get eeprom data. */
 	eth_set_eeprom_t           set_eeprom;        /**< Set eeprom. */
 
+	eth_get_module_info_t      get_module_info;
+	/** Get plugin module eeprom attribute. */
+	eth_get_module_eeprom_t    get_module_eeprom;
+	/** Get plugin module eeprom data. */
 
 	eth_filter_ctrl_t          filter_ctrl; /**< common filter control. */
 

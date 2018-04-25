@@ -215,6 +215,8 @@ EXPERIMENTAL {
 	global:
 
 	rte_eth_dev_count_total;
+	rte_eth_dev_get_module_info;
+	rte_eth_dev_get_module_eeprom;
 	rte_eth_dev_is_removed;
 	rte_eth_dev_owner_delete;
 	rte_eth_dev_owner_get;

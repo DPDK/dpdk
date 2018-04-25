@@ -3878,6 +3878,32 @@ rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info)
 	return eth_err(port_id, (*dev->dev_ops->set_eeprom)(dev, info));
 }
 
+int __rte_experimental
+rte_eth_dev_get_module_info(uint16_t port_id,
+			    struct rte_eth_dev_module_info *modinfo)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_module_info, -ENOTSUP);
+	return (*dev->dev_ops->get_module_info)(dev, modinfo);
+}
+
+int __rte_experimental
+rte_eth_dev_get_module_eeprom(uint16_t port_id,
+			      struct rte_dev_eeprom_info *info)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_module_eeprom, -ENOTSUP);
+	return (*dev->dev_ops->get_module_eeprom)(dev, info);
+}
+
 int
 rte_eth_dev_get_dcb_info(uint16_t port_id,
 			     struct rte_eth_dcb_info *dcb_info)
