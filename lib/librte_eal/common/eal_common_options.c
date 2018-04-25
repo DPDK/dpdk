@@ -917,10 +917,49 @@ eal_parse_syslog(const char *facility, struct internal_config *conf)
 }
 
 static int
+eal_parse_log_priority(const char *level)
+{
+	static const char * const levels[] = {
+		[RTE_LOG_EMERG]   = "emergency",
+		[RTE_LOG_ALERT]   = "alert",
+		[RTE_LOG_CRIT]    = "critical",
+		[RTE_LOG_ERR]     = "error",
+		[RTE_LOG_WARNING] = "warning",
+		[RTE_LOG_NOTICE]  = "notice",
+		[RTE_LOG_INFO]    = "info",
+		[RTE_LOG_DEBUG]   = "debug",
+	};
+	size_t len = strlen(level);
+	unsigned long tmp;
+	char *end;
+	unsigned int i;
+
+	if (len == 0)
+		return -1;
+
+	/* look for named values, skip 0 which is not a valid level */
+	for (i = 1; i < RTE_DIM(levels); i++) {
+		if (strncmp(levels[i], level, len) == 0)
+			return i;
+	}
+
+	/* not a string, maybe it is numeric */
+	errno = 0;
+	tmp = strtoul(level, &end, 0);
+
+	/* check for errors */
+	if (errno != 0 || end == NULL || *end != '\0' ||
+	    tmp >= UINT32_MAX)
+		return -1;
+
+	return tmp;
+}
+
+static int
 eal_parse_log_level(const char *arg)
 {
-	char *end, *str, *type, *level;
-	unsigned long tmp;
+	char *str, *type, *level;
+	int priority;
 
 	str = strdup(arg);
 	if (str == NULL)
@@ -934,23 +973,17 @@ eal_parse_log_level(const char *arg)
 		level = strsep(&str, ",");
 	}
 
-	errno = 0;
-	tmp = strtoul(level, &end, 0);
-
-	/* check for errors */
-	if ((errno != 0) || (level[0] == '\0') ||
-		    end == NULL || (*end != '\0'))
+	priority = eal_parse_log_priority(level);
+	if (priority < 0) {
+		fprintf(stderr, "invalid log priority: %s\n", level);
 		goto fail;
-
-	/* log_level is a uint32_t */
-	if (tmp >= UINT32_MAX)
-		goto fail;
+	}
 
 	if (type == NULL) {
-		rte_log_set_global_level(tmp);
-	} else if (rte_log_set_level_regexp(type, tmp) < 0) {
-		printf("cannot set log level %s,%lu\n",
-			type, tmp);
+		rte_log_set_global_level(priority);
+	} else if (rte_log_set_level_regexp(type, priority) < 0) {
+		fprintf(stderr, "cannot set log level %s,%d\n",
+			type, priority);
 		goto fail;
 	} else {
 		struct rte_eal_opt_loglevel *opt_ll;
@@ -972,7 +1005,7 @@ eal_parse_log_level(const char *arg)
 			goto fail;
 		}
 
-		opt_ll->level = tmp;
+		opt_ll->level = priority;
 
 		TAILQ_INSERT_HEAD(&opt_loglevel_list, opt_ll, next);
 	}
