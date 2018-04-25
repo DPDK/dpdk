@@ -1456,15 +1456,15 @@ nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 
 	rte_eth_linkstatus_get(dev, &link);
 	if (link.link_status)
-		RTE_LOG(INFO, PMD, "Port %d: Link Up - speed %u Mbps - %s\n",
-			dev->data->port_id, link.link_speed,
-			link.link_duplex == ETH_LINK_FULL_DUPLEX
-			? "full-duplex" : "half-duplex");
+		PMD_DRV_LOG(INFO, "Port %d: Link Up - speed %u Mbps - %s",
+			    dev->data->port_id, link.link_speed,
+			    link.link_duplex == ETH_LINK_FULL_DUPLEX
+			    ? "full-duplex" : "half-duplex");
 	else
-		RTE_LOG(INFO, PMD, " Port %d: Link Down\n",
-			dev->data->port_id);
+		PMD_DRV_LOG(INFO, " Port %d: Link Down",
+			    dev->data->port_id);
 
-	RTE_LOG(INFO, PMD, "PCI Address: %04d:%02d:%02d:%d\n",
+	PMD_DRV_LOG(INFO, "PCI Address: %04d:%02d:%02d:%d",
 		pci_dev->addr.domain, pci_dev->addr.bus,
 		pci_dev->addr.devid, pci_dev->addr.function);
 }
@@ -1524,7 +1524,7 @@ nfp_net_dev_interrupt_handler(void *param)
 	if (rte_eal_alarm_set(timeout * 1000,
 			      nfp_net_dev_interrupt_delayed_handler,
 			      (void *)dev) < 0) {
-		RTE_LOG(ERR, PMD, "Error setting alarm");
+		PMD_INIT_LOG(ERR, "Error setting alarm");
 		/* Unmasking */
 		nfp_net_irq_unmask(dev);
 	}
@@ -1611,7 +1611,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	if (((nb_desc * sizeof(struct nfp_net_rx_desc)) % 128) != 0 ||
 	    (nb_desc > NFP_NET_MAX_RX_DESC) ||
 	    (nb_desc < NFP_NET_MIN_RX_DESC)) {
-		RTE_LOG(ERR, PMD, "Wrong nb_desc value\n");
+		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}
 
@@ -1619,10 +1619,10 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rxmode = &dev_conf->rxmode;
 
 	if (rx_conf->offloads != rxmode->offloads) {
-		RTE_LOG(ERR, PMD, "queue %u rx offloads not as port offloads\n",
+		PMD_DRV_LOG(ERR, "queue %u rx offloads not as port offloads",
 				  queue_idx);
-		RTE_LOG(ERR, PMD, "\tport: %" PRIx64 "\n", rxmode->offloads);
-		RTE_LOG(ERR, PMD, "\tqueue: %" PRIx64 "\n", rx_conf->offloads);
+		PMD_DRV_LOG(ERR, "\tport: %" PRIx64 "", rxmode->offloads);
+		PMD_DRV_LOG(ERR, "\tqueue: %" PRIx64 "", rx_conf->offloads);
 		return -EINVAL;
 	}
 
@@ -1675,7 +1675,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 				   socket_id);
 
 	if (tz == NULL) {
-		RTE_LOG(ERR, PMD, "Error allocatig rx dma\n");
+		PMD_DRV_LOG(ERR, "Error allocatig rx dma");
 		nfp_net_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
@@ -1726,7 +1726,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		struct rte_mbuf *mbuf = rte_pktmbuf_alloc(rxq->mem_pool);
 
 		if (mbuf == NULL) {
-			RTE_LOG(ERR, PMD, "RX mbuf alloc failed queue_id=%u\n",
+			PMD_DRV_LOG(ERR, "RX mbuf alloc failed queue_id=%u",
 				(unsigned)rxq->qidx);
 			return -ENOMEM;
 		}
@@ -1773,7 +1773,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (((nb_desc * sizeof(struct nfp_net_tx_desc)) % 128) != 0 ||
 	    (nb_desc > NFP_NET_MAX_TX_DESC) ||
 	    (nb_desc < NFP_NET_MIN_TX_DESC)) {
-		RTE_LOG(ERR, PMD, "Wrong nb_desc value\n");
+		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}
 
@@ -1781,7 +1781,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txmode = &dev_conf->txmode;
 
 	if (tx_conf->offloads != txmode->offloads) {
-		RTE_LOG(ERR, PMD, "queue %u tx offloads not as port offloads",
+		PMD_DRV_LOG(ERR, "queue %u tx offloads not as port offloads",
 				  queue_idx);
 		return -EINVAL;
 	}
@@ -1791,10 +1791,10 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				    DEFAULT_TX_FREE_THRESH);
 
 	if (tx_free_thresh > (nb_desc)) {
-		RTE_LOG(ERR, PMD,
+		PMD_DRV_LOG(ERR,
 			"tx_free_thresh must be less than the number of TX "
 			"descriptors. (tx_free_thresh=%u port=%d "
-			"queue=%d)\n", (unsigned int)tx_free_thresh,
+			"queue=%d)", (unsigned int)tx_free_thresh,
 			dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
@@ -1814,7 +1814,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct nfp_net_txq),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL) {
-		RTE_LOG(ERR, PMD, "Error allocating tx dma\n");
+		PMD_DRV_LOG(ERR, "Error allocating tx dma");
 		return -ENOMEM;
 	}
 
@@ -1828,7 +1828,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				   NFP_NET_MAX_TX_DESC, NFP_MEMZONE_ALIGN,
 				   socket_id);
 	if (tz == NULL) {
-		RTE_LOG(ERR, PMD, "Error allocating tx dma\n");
+		PMD_DRV_LOG(ERR, "Error allocating tx dma");
 		nfp_net_tx_queue_release(txq);
 		return -ENOMEM;
 	}
@@ -2453,7 +2453,7 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 	if ((mask & ETH_VLAN_FILTER_OFFLOAD) ||
 	    (mask & ETH_VLAN_EXTEND_OFFLOAD))
-		RTE_LOG(INFO, PMD, "No support for ETH_VLAN_FILTER_OFFLOAD or"
+		PMD_DRV_LOG(INFO, "No support for ETH_VLAN_FILTER_OFFLOAD or"
 			" ETH_VLAN_EXTEND_OFFLOAD");
 
 	/* Enable vlan strip if it is not configured yet */
@@ -2490,9 +2490,9 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 		NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
-		RTE_LOG(ERR, PMD, "The size of hash lookup table configured "
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number hardware can supported "
-			"(%d)\n", reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
+			"(%d)", reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
 		return -EINVAL;
 	}
 
@@ -2571,9 +2571,9 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
-		RTE_LOG(ERR, PMD, "The size of hash lookup table configured "
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number hardware can supported "
-			"(%d)\n", reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
+			"(%d)", reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
 		return -EINVAL;
 	}
 
@@ -2659,14 +2659,14 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 	/* Checking if RSS is enabled */
 	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS)) {
 		if (rss_hf != 0) { /* Enable RSS? */
-			RTE_LOG(ERR, PMD, "RSS unsupported\n");
+			PMD_DRV_LOG(ERR, "RSS unsupported");
 			return -EINVAL;
 		}
 		return 0; /* Nothing to do */
 	}
 
 	if (rss_conf->rss_key_len > NFP_NET_CFG_RSS_KEY_SZ) {
-		RTE_LOG(ERR, PMD, "hash key too long\n");
+		PMD_DRV_LOG(ERR, "hash key too long");
 		return -EINVAL;
 	}
 
@@ -2738,7 +2738,7 @@ nfp_net_rss_config_default(struct rte_eth_dev *dev)
 	uint16_t queue;
 	int i, j, ret;
 
-	RTE_LOG(INFO, PMD, "setting default RSS conf for %u queues\n",
+	PMD_DRV_LOG(INFO, "setting default RSS conf for %u queues",
 		rx_queues);
 
 	nfp_reta_conf[0].mask = ~0x0;
@@ -2758,7 +2758,7 @@ nfp_net_rss_config_default(struct rte_eth_dev *dev)
 
 	dev_conf = &dev->data->dev_conf;
 	if (!dev_conf) {
-		RTE_LOG(INFO, PMD, "wrong rss conf");
+		PMD_DRV_LOG(INFO, "wrong rss conf");
 		return -EINVAL;
 	}
 	rss_conf = dev_conf->rx_adv_conf.rss_conf;
@@ -2850,11 +2850,11 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
 		port = get_pf_port_number(eth_dev->data->name);
 		if (port < 0 || port > 7) {
-			RTE_LOG(ERR, PMD, "Port value is wrong\n");
+			PMD_DRV_LOG(ERR, "Port value is wrong");
 			return -ENODEV;
 		}
 
-		PMD_INIT_LOG(DEBUG, "Working with PF port value %d\n", port);
+		PMD_INIT_LOG(DEBUG, "Working with PF port value %d", port);
 
 		/* This points to port 0 private data */
 		hwport0 = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
@@ -2888,8 +2888,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	hw->ctrl_bar = (uint8_t *)pci_dev->mem_resource[0].addr;
 	if (hw->ctrl_bar == NULL) {
-		RTE_LOG(ERR, PMD,
-			"hw->ctrl_bar is NULL. BAR0 not configured\n");
+		PMD_DRV_LOG(ERR,
+			"hw->ctrl_bar is NULL. BAR0 not configured");
 		return -ENODEV;
 	}
 
@@ -2898,11 +2898,11 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 					     hw->total_ports * 32768,
 					     &hw->ctrl_area);
 		if (!hw->ctrl_bar) {
-			printf("nfp_rtsym_map fails for _pf0_net_ctrl_bar\n");
+			printf("nfp_rtsym_map fails for _pf0_net_ctrl_bar");
 			return -EIO;
 		}
 
-		PMD_INIT_LOG(DEBUG, "ctrl bar: %p\n", hw->ctrl_bar);
+		PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 	}
 
 	if (port > 0) {
@@ -2914,7 +2914,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			       (port * NFP_PF_CSR_SLICE_SIZE);
 	}
 
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p\n", hw->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
 	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
 	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
@@ -2930,13 +2930,13 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		rx_bar_off = start_q * NFP_QCP_QUEUE_ADDR_SZ;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "nfp_net: no device ID matching\n");
+		PMD_DRV_LOG(ERR, "nfp_net: no device ID matching");
 		err = -ENODEV;
 		goto dev_err_ctrl_map;
 	}
 
-	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "\n", tx_bar_off);
-	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "\n", rx_bar_off);
+	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "", tx_bar_off);
+	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "", rx_bar_off);
 
 	if (hw->is_pf && port == 0) {
 		/* configure access to tx/rx vNIC BARs */
@@ -2946,12 +2946,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 						      &hw->hwqueues_area);
 
 		if (!hwport0->hw_queues) {
-			printf("nfp_rtsym_map fails for net.qc\n");
+			printf("nfp_rtsym_map fails for net.qc");
 			err = -EIO;
 			goto dev_err_ctrl_map;
 		}
 
-		PMD_INIT_LOG(DEBUG, "tx/rx bar address: 0x%p\n",
+		PMD_INIT_LOG(DEBUG, "tx/rx bar address: 0x%p",
 				    hwport0->hw_queues);
 	}
 
@@ -3033,7 +3033,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	}
 
 	if (!is_valid_assigned_ether_addr((struct ether_addr *)&hw->mac_addr)) {
-		PMD_INIT_LOG(INFO, "Using random mac address for port %d\n",
+		PMD_INIT_LOG(INFO, "Using random mac address for port %d",
 				   port);
 		/* Using random mac addresses for VFs */
 		eth_random_addr(&hw->mac_addr[0]);
@@ -3159,7 +3159,7 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 
 	sprintf(fw_name, "%s/%s.nffw", DEFAULT_FW_PATH, serial);
 
-	RTE_LOG(DEBUG, PMD, "Trying with fw file: %s\n", fw_name);
+	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	fw_f = open(fw_name, O_RDONLY);
 	if (fw_f > 0)
 		goto read_fw;
@@ -3167,34 +3167,34 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 	/* Then try the PCI name */
 	sprintf(fw_name, "%s/pci-%s.nffw", DEFAULT_FW_PATH, dev->device.name);
 
-	RTE_LOG(DEBUG, PMD, "Trying with fw file: %s\n", fw_name);
+	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	fw_f = open(fw_name, O_RDONLY);
 	if (fw_f > 0)
 		goto read_fw;
 
 	/* Finally try the card type and media */
 	sprintf(fw_name, "%s/%s", DEFAULT_FW_PATH, card);
-	RTE_LOG(DEBUG, PMD, "Trying with fw file: %s\n", fw_name);
+	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	fw_f = open(fw_name, O_RDONLY);
 	if (fw_f < 0) {
-		RTE_LOG(INFO, PMD, "Firmware file %s not found.", fw_name);
+		PMD_DRV_LOG(INFO, "Firmware file %s not found.", fw_name);
 		return -ENOENT;
 	}
 
 read_fw:
 	if (fstat(fw_f, &file_stat) < 0) {
-		RTE_LOG(INFO, PMD, "Firmware file %s size is unknown", fw_name);
+		PMD_DRV_LOG(INFO, "Firmware file %s size is unknown", fw_name);
 		close(fw_f);
 		return -ENOENT;
 	}
 
 	fsize = file_stat.st_size;
-	RTE_LOG(INFO, PMD, "Firmware file found at %s with size: %" PRIu64 "\n",
+	PMD_DRV_LOG(INFO, "Firmware file found at %s with size: %" PRIu64 "",
 			    fw_name, (uint64_t)fsize);
 
 	fw_buf = malloc((size_t)fsize);
 	if (!fw_buf) {
-		RTE_LOG(INFO, PMD, "malloc failed for fw buffer");
+		PMD_DRV_LOG(INFO, "malloc failed for fw buffer");
 		close(fw_f);
 		return -ENOMEM;
 	}
@@ -3202,7 +3202,7 @@ read_fw:
 
 	bytes = read(fw_f, fw_buf, fsize);
 	if (bytes != fsize) {
-		RTE_LOG(INFO, PMD, "Reading fw to buffer failed.\n"
+		PMD_DRV_LOG(INFO, "Reading fw to buffer failed."
 				   "Just %" PRIu64 " of %" PRIu64 " bytes read",
 				   (uint64_t)bytes, (uint64_t)fsize);
 		free(fw_buf);
@@ -3210,9 +3210,9 @@ read_fw:
 		return -EIO;
 	}
 
-	RTE_LOG(INFO, PMD, "Uploading the firmware ...");
+	PMD_DRV_LOG(INFO, "Uploading the firmware ...");
 	nfp_nsp_load_fw(nsp, fw_buf, bytes);
-	RTE_LOG(INFO, PMD, "Done");
+	PMD_DRV_LOG(INFO, "Done");
 
 	free(fw_buf);
 	close(fw_f);
@@ -3232,29 +3232,29 @@ nfp_fw_setup(struct rte_pci_device *dev, struct nfp_cpp *cpp,
 	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
 
 	if (nfp_fw_model) {
-		RTE_LOG(INFO, PMD, "firmware model found: %s\n", nfp_fw_model);
+		PMD_DRV_LOG(INFO, "firmware model found: %s", nfp_fw_model);
 	} else {
-		RTE_LOG(ERR, PMD, "firmware model NOT found\n");
+		PMD_DRV_LOG(ERR, "firmware model NOT found");
 		return -EIO;
 	}
 
 	if (nfp_eth_table->count == 0 || nfp_eth_table->count > 8) {
-		RTE_LOG(ERR, PMD, "NFP ethernet table reports wrong ports: %u\n",
+		PMD_DRV_LOG(ERR, "NFP ethernet table reports wrong ports: %u",
 		       nfp_eth_table->count);
 		return -EIO;
 	}
 
-	RTE_LOG(INFO, PMD, "NFP ethernet port table reports %u ports\n",
+	PMD_DRV_LOG(INFO, "NFP ethernet port table reports %u ports",
 			   nfp_eth_table->count);
 
-	RTE_LOG(INFO, PMD, "Port speed: %u\n", nfp_eth_table->ports[0].speed);
+	PMD_DRV_LOG(INFO, "Port speed: %u", nfp_eth_table->ports[0].speed);
 
 	sprintf(card_desc, "nic_%s_%dx%d.nffw", nfp_fw_model,
 		nfp_eth_table->count, nfp_eth_table->ports[0].speed / 1000);
 
 	nsp = nfp_nsp_open(cpp);
 	if (!nsp) {
-		RTE_LOG(ERR, PMD, "NFP error when obtaining NSP handle\n");
+		PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle");
 		return -EIO;
 	}
 
@@ -3283,25 +3283,25 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	cpp = nfp_cpp_from_device_name(dev->device.name);
 	if (!cpp) {
-		RTE_LOG(ERR, PMD, "A CPP handle can not be obtained");
+		PMD_DRV_LOG(ERR, "A CPP handle can not be obtained");
 		ret = -EIO;
 		goto error;
 	}
 
 	hwinfo = nfp_hwinfo_read(cpp);
 	if (!hwinfo) {
-		RTE_LOG(ERR, PMD, "Error reading hwinfo table");
+		PMD_DRV_LOG(ERR, "Error reading hwinfo table");
 		return -EIO;
 	}
 
 	nfp_eth_table = nfp_eth_read_ports(cpp);
 	if (!nfp_eth_table) {
-		RTE_LOG(ERR, PMD, "Error reading NFP ethernet table\n");
+		PMD_DRV_LOG(ERR, "Error reading NFP ethernet table");
 		return -EIO;
 	}
 
 	if (nfp_fw_setup(dev, cpp, nfp_eth_table, hwinfo)) {
-		RTE_LOG(INFO, PMD, "Error when uploading firmware\n");
+		PMD_DRV_LOG(INFO, "Error when uploading firmware");
 		ret = -EIO;
 		goto error;
 	}
@@ -3309,7 +3309,7 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	/* Now the symbol table should be there */
 	sym_tbl = nfp_rtsym_table_read(cpp);
 	if (!sym_tbl) {
-		RTE_LOG(ERR, PMD, "Something is wrong with the firmware"
+		PMD_DRV_LOG(ERR, "Something is wrong with the firmware"
 				" symbol table");
 		ret = -EIO;
 		goto error;
@@ -3317,14 +3317,14 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	total_ports = nfp_rtsym_read_le(sym_tbl, "nfd_cfg_pf0_num_ports", &err);
 	if (total_ports != (int)nfp_eth_table->count) {
-		RTE_LOG(ERR, PMD, "Inconsistent number of ports\n");
+		PMD_DRV_LOG(ERR, "Inconsistent number of ports");
 		ret = -EIO;
 		goto error;
 	}
-	PMD_INIT_LOG(INFO, "Total pf ports: %d\n", total_ports);
+	PMD_INIT_LOG(INFO, "Total pf ports: %d", total_ports);
 
 	if (total_ports <= 0 || total_ports > 8) {
-		RTE_LOG(ERR, PMD, "nfd_cfg_pf0_num_ports symbol with wrong value");
+		PMD_DRV_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
 		ret = -ENODEV;
 		goto error;
 	}
