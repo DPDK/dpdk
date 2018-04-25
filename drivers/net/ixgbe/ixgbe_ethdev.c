@@ -327,6 +327,11 @@ static int ixgbe_get_eeprom(struct rte_eth_dev *dev,
 static int ixgbe_set_eeprom(struct rte_eth_dev *dev,
 				struct rte_dev_eeprom_info *eeprom);
 
+static int ixgbe_get_module_info(struct rte_eth_dev *dev,
+				 struct rte_eth_dev_module_info *modinfo);
+static int ixgbe_get_module_eeprom(struct rte_eth_dev *dev,
+				   struct rte_dev_eeprom_info *info);
+
 static int ixgbevf_get_reg_length(struct rte_eth_dev *dev);
 static int ixgbevf_get_regs(struct rte_eth_dev *dev,
 				struct rte_dev_reg_info *regs);
@@ -564,6 +569,8 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.get_eeprom_length    = ixgbe_get_eeprom_length,
 	.get_eeprom           = ixgbe_get_eeprom,
 	.set_eeprom           = ixgbe_set_eeprom,
+	.get_module_info      = ixgbe_get_module_info,
+	.get_module_eeprom    = ixgbe_get_module_eeprom,
 	.get_dcb_info         = ixgbe_dev_get_dcb_info,
 	.timesync_adjust_time = ixgbe_timesync_adjust_time,
 	.timesync_read_time   = ixgbe_timesync_read_time,
@@ -7122,6 +7129,78 @@ ixgbe_set_eeprom(struct rte_eth_dev *dev,
 	in_eeprom->magic = hw->vendor_id | (hw->device_id << 16);
 
 	return eeprom->ops.write_buffer(hw,  first, length, data);
+}
+
+static int
+ixgbe_get_module_info(struct rte_eth_dev *dev,
+		      struct rte_eth_dev_module_info *modinfo)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t status;
+	uint8_t sff8472_rev, addr_mode;
+	bool page_swap = false;
+
+	/* Check whether we support SFF-8472 or not */
+	status = hw->phy.ops.read_i2c_eeprom(hw,
+					     IXGBE_SFF_SFF_8472_COMP,
+					     &sff8472_rev);
+	if (status != 0)
+		return -EIO;
+
+	/* addressing mode is not supported */
+	status = hw->phy.ops.read_i2c_eeprom(hw,
+					     IXGBE_SFF_SFF_8472_SWAP,
+					     &addr_mode);
+	if (status != 0)
+		return -EIO;
+
+	if (addr_mode & IXGBE_SFF_ADDRESSING_MODE) {
+		PMD_DRV_LOG(ERR,
+			    "Address change required to access page 0xA2, "
+			    "but not supported. Please report the module "
+			    "type to the driver maintainers.");
+		page_swap = true;
+	}
+
+	if (sff8472_rev == IXGBE_SFF_SFF_8472_UNSUP || page_swap) {
+		/* We have a SFP, but it does not support SFF-8472 */
+		modinfo->type = RTE_ETH_MODULE_SFF_8079;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8079_LEN;
+	} else {
+		/* We have a SFP which supports a revision of SFF-8472. */
+		modinfo->type = RTE_ETH_MODULE_SFF_8472;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8472_LEN;
+	}
+
+	return 0;
+}
+
+static int
+ixgbe_get_module_eeprom(struct rte_eth_dev *dev,
+			struct rte_dev_eeprom_info *info)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t status = IXGBE_ERR_PHY_ADDR_INVALID;
+	uint8_t databyte = 0xFF;
+	uint8_t *data = info->data;
+	uint32_t i = 0;
+
+	if (info->length == 0)
+		return -EINVAL;
+
+	for (i = info->offset; i < info->offset + info->length; i++) {
+		if (i < RTE_ETH_MODULE_SFF_8079_LEN)
+			status = hw->phy.ops.read_i2c_eeprom(hw, i, &databyte);
+		else
+			status = hw->phy.ops.read_i2c_sff8472(hw, i, &databyte);
+
+		if (status != 0)
+			return -EIO;
+
+		data[i - info->offset] = databyte;
+	}
+
+	return 0;
 }
 
 uint16_t
