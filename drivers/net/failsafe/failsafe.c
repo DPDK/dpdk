@@ -13,6 +13,8 @@
 
 #include "failsafe_private.h"
 
+int failsafe_logtype;
+
 const char pmd_failsafe_driver_name[] = FAILSAFE_DRIVER_NAME;
 static const struct rte_eth_link eth_link = {
 	.link_speed = ETH_SPEED_NUM_10G,
@@ -304,7 +306,7 @@ rte_pmd_failsafe_probe(struct rte_vdev_device *vdev)
 	    strlen(rte_vdev_device_args(vdev)) == 0) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
-			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			ERROR("Failed to probe %s", name);
 			return -1;
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
@@ -332,3 +334,12 @@ static struct rte_vdev_driver failsafe_drv = {
 
 RTE_PMD_REGISTER_VDEV(net_failsafe, failsafe_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_failsafe, PMD_FAILSAFE_PARAM_STRING);
+
+RTE_INIT(failsafe_init_log);
+static void
+failsafe_init_log(void)
+{
+	failsafe_logtype = rte_log_register("pmd.net.failsafe");
+	if (failsafe_logtype >= 0)
+		rte_log_set_level(failsafe_logtype, RTE_LOG_NOTICE);
+}

@@ -326,8 +326,12 @@ extern int mac_from_arg;
 #define FS_THREADID_FMT  "lu"
 #endif
 
-#define LOG__(level, m, ...) \
-	RTE_LOG(level, PMD, "net_failsafe: " m "%c", __VA_ARGS__)
+extern int failsafe_logtype;
+
+#define LOG__(l, m, ...) \
+	rte_log(RTE_LOG_ ## l, failsafe_logtype, \
+		"net_failsafe: " m "%c", __VA_ARGS__)
+
 #define LOG_(level, ...) LOG__(level, __VA_ARGS__, '\n')
 #define DEBUG(...) LOG_(DEBUG, __VA_ARGS__)
 #define INFO(...) LOG_(INFO, __VA_ARGS__)
