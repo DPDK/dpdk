@@ -27,6 +27,7 @@
 #include "eal_internal_cfg.h"
 #include "eal_options.h"
 #include "eal_filesystem.h"
+#include "eal_private.h"
 
 #define BITS_PER_HEX 4
 #define LCORE_OPT_LST 1
@@ -985,29 +986,8 @@ eal_parse_log_level(const char *arg)
 		fprintf(stderr, "cannot set log level %s,%d\n",
 			type, priority);
 		goto fail;
-	} else {
-		struct rte_eal_opt_loglevel *opt_ll;
-
-		/*
-		 * Save the type (regexp string) and the loglevel
-		 * in the global storage so that it could be used
-		 * to configure dynamic logtypes which are absent
-		 * at the moment of EAL option processing but may
-		 * be registered during runtime.
-		 */
-		opt_ll = malloc(sizeof(*opt_ll));
-		if (opt_ll == NULL)
-			goto fail;
-
-		opt_ll->re_type = strdup(type);
-		if (opt_ll->re_type == NULL) {
-			free(opt_ll);
-			goto fail;
-		}
-
-		opt_ll->level = priority;
-
-		TAILQ_INSERT_HEAD(&opt_loglevel_list, opt_ll, next);
+	} else if (rte_log_save_regexp(type, priority) < 0) {
+		goto fail;
 	}
 
 	free(str);

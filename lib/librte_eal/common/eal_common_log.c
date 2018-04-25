@@ -23,8 +23,19 @@ struct rte_logs rte_logs = {
 	.file = NULL,
 };
 
-/** Global list of valid EAL log level options */
-struct rte_eal_opt_loglevel_list opt_loglevel_list =
+struct rte_eal_opt_loglevel {
+	/** Next list entry */
+	TAILQ_ENTRY(rte_eal_opt_loglevel) next;
+	/** Compiled regular expression obtained from the option */
+	regex_t re_match;
+	/** Log level value obtained from the option */
+	uint32_t level;
+};
+
+TAILQ_HEAD(rte_eal_opt_loglevel_list, rte_eal_opt_loglevel);
+
+/** List of valid EAL log level options */
+static struct rte_eal_opt_loglevel_list opt_loglevel_list =
 	TAILQ_HEAD_INITIALIZER(opt_loglevel_list);
 
 /* Stream to use for logging if rte_logs.file is NULL */
@@ -119,6 +130,33 @@ rte_log_set_level_regexp(const char *pattern, uint32_t level)
 	return 0;
 }
 
+/*
+ * Save the type (regexp string) and the loglevel
+ * in the global storage so that it could be used
+ * to configure dynamic logtypes which are absent
+ * at the moment of EAL option processing but may
+ * be registered during runtime.
+ */
+int rte_log_save_regexp(const char *regex, int tmp)
+{
+	struct rte_eal_opt_loglevel *opt_ll;
+
+	opt_ll = malloc(sizeof(*opt_ll));
+	if (opt_ll == NULL)
+		return -1;
+
+	if (regcomp(&opt_ll->re_match, regex, 0) != 0)
+		goto fail;
+
+	opt_ll->level = tmp;
+
+	TAILQ_INSERT_HEAD(&opt_loglevel_list, opt_ll, next);
+	return 0;
+fail:
+	free(opt_ll);
+	return -1;
+}
+
 /* get the current loglevel for the message being processed */
 int rte_log_cur_msg_loglevel(void)
 {
@@ -203,18 +241,11 @@ rte_log_register_type_and_pick_level(const char *name, uint32_t level_def)
 		return type;
 
 	TAILQ_FOREACH(opt_ll, &opt_loglevel_list, next) {
-		regex_t r;
-
 		if (opt_ll->level > RTE_LOG_DEBUG)
 			continue;
 
-		if (regcomp(&r, opt_ll->re_type, 0) != 0)
-			continue;
-
-		if (regexec(&r, name, 0, NULL, 0) == 0)
+		if (regexec(&opt_ll->re_match, name, 0, NULL, 0) == 0)
 			level = opt_ll->level;
-
-		regfree(&r);
 	}
 
 	rte_logs.dynamic_types[type].loglevel = level;
