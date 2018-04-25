@@ -78,6 +78,19 @@ Supported DPAA SoCs
 * LS1046A/LS1026A
 * LS1043A/LS1023A
 
+Whitelisting & Blacklisting
+---------------------------
+
+For blacklisting a DPAA device, following commands can be used.
+
+ .. code-block:: console
+
+    <dpdk app> <EAL args> -b "dpaa_bus:dpaa-secX" -- ...
+    e.g. "dpaa_bus:dpaa-sec0"
+
+    or to disable all 4 SEC devices
+    -b "dpaa_sec:dpaa-sec0"  -b "dpaa_sec:dpaa-sec1" -b "dpaa_sec:dpaa-sec2" -b "dpaa_sec:dpaa-sec3"
+
 Limitations
 -----------
 

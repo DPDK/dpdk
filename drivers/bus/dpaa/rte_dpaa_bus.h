@@ -15,8 +15,6 @@
 #include <of.h>
 #include <netcfg.h>
 
-#define FSL_DPAA_BUS_NAME	"FSL_DPAA_BUS"
-
 #define DPAA_MEMPOOL_OPS_NAME	"dpaa"
 
 #define DEV_TO_DPAA_DEVICE(ptr)	\

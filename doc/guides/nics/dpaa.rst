@@ -162,6 +162,16 @@ Manager.
   this pool.
 
 
+Whitelisting & Blacklisting
+---------------------------
+
+For blacklisting a DPAA device, following commands can be used.
+
+ .. code-block:: console
+
+    <dpdk app> <EAL args> -b "dpaa_bus:fmX-macY" -- ...
+    e.g. "dpaa_bus:fm1-mac4"
+
 Supported DPAA SoCs
 -------------------
 
