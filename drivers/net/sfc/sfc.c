@@ -638,7 +638,7 @@ static const uint8_t default_rss_key[EFX_RSS_KEY_SIZE] = {
 };
 
 static int
-sfc_set_rss_defaults(struct sfc_adapter *sa)
+sfc_rss_attach(struct sfc_adapter *sa)
 {
 	struct sfc_rss *rss = &sa->rss;
 	int rc;
@@ -663,16 +663,19 @@ sfc_set_rss_defaults(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_hash_support_get;
 
+	rc = sfc_rx_hash_init(sa);
+	if (rc != 0)
+		goto fail_rx_hash_init;
+
 	efx_rx_fini(sa->nic);
 	efx_ev_fini(sa->nic);
 	efx_intr_fini(sa->nic);
-
-	rss->hash_types = sfc_rte_to_efx_hash_type(SFC_RSS_OFFLOADS);
 
 	rte_memcpy(rss->key, default_rss_key, sizeof(rss->key));
 
 	return 0;
 
+fail_rx_hash_init:
 fail_hash_support_get:
 fail_scale_support_get:
 	efx_rx_fini(sa->nic);
@@ -685,6 +688,12 @@ fail_ev_init:
 
 fail_intr_init:
 	return rc;
+}
+
+static void
+sfc_rss_detach(struct sfc_adapter *sa)
+{
+	sfc_rx_hash_fini(sa);
 }
 
 int
@@ -744,9 +753,9 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_port_attach;
 
-	rc = sfc_set_rss_defaults(sa);
+	rc = sfc_rss_attach(sa);
 	if (rc != 0)
-		goto fail_set_rss_defaults;
+		goto fail_rss_attach;
 
 	rc = sfc_filter_attach(sa);
 	if (rc != 0)
@@ -763,7 +772,9 @@ sfc_attach(struct sfc_adapter *sa)
 	return 0;
 
 fail_filter_attach:
-fail_set_rss_defaults:
+	sfc_rss_detach(sa);
+
+fail_rss_attach:
 	sfc_port_detach(sa);
 
 fail_port_attach:
@@ -795,6 +806,7 @@ sfc_detach(struct sfc_adapter *sa)
 	sfc_flow_fini(sa);
 
 	sfc_filter_detach(sa);
+	sfc_rss_detach(sa);
 	sfc_port_detach(sa);
 	sfc_ev_detach(sa);
 	sfc_intr_detach(sa);

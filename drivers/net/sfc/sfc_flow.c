@@ -1258,7 +1258,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	struct sfc_rxq *rxq;
 	unsigned int rxq_hw_index_min;
 	unsigned int rxq_hw_index_max;
-	uint64_t rss_hf;
+	efx_rx_hash_type_t efx_hash_types;
 	const uint8_t *rss_key;
 	struct sfc_flow_rss *sfc_rss_conf = &flow->rss_conf;
 	unsigned int i;
@@ -1297,9 +1297,20 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	if (action_rss->level)
 		return -EINVAL;
 
-	rss_hf = action_rss->types;
-	if ((rss_hf & ~SFC_RSS_OFFLOADS) != 0)
-		return -EINVAL;
+	if (action_rss->types) {
+		int rc;
+
+		rc = sfc_rx_hf_rte_to_efx(sa, action_rss->types,
+					  &efx_hash_types);
+		if (rc != 0)
+			return -rc;
+	} else {
+		unsigned int i;
+
+		efx_hash_types = 0;
+		for (i = 0; i < rss->hf_map_nb_entries; ++i)
+			efx_hash_types |= rss->hf_map[i].efx;
+	}
 
 	if (action_rss->key_len) {
 		if (action_rss->key_len != sizeof(rss->key))
@@ -1314,7 +1325,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 
 	sfc_rss_conf->rxq_hw_index_min = rxq_hw_index_min;
 	sfc_rss_conf->rxq_hw_index_max = rxq_hw_index_max;
-	sfc_rss_conf->rss_hash_types = sfc_rte_to_efx_hash_type(rss_hf);
+	sfc_rss_conf->rss_hash_types = efx_hash_types;
 	rte_memcpy(sfc_rss_conf->rss_key, rss_key, sizeof(rss->key));
 
 	for (i = 0; i < RTE_DIM(sfc_rss_conf->rss_tbl); ++i) {
@@ -1395,7 +1406,7 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 			goto fail_scale_context_alloc;
 
 		rc = efx_rx_scale_mode_set(sa->nic, efs_rss_context,
-					   EFX_RX_HASHALG_TOEPLITZ,
+					   rss->hash_alg,
 					   flow_rss->rss_hash_types, B_TRUE);
 		if (rc != 0)
 			goto fail_scale_mode_set;

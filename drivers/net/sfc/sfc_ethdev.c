@@ -153,9 +153,15 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOREFCOUNT;
 
 	if (rss->context_type != EFX_RX_SCALE_UNAVAILABLE) {
+		uint64_t rte_hf = 0;
+		unsigned int i;
+
+		for (i = 0; i < rss->hf_map_nb_entries; ++i)
+			rte_hf |= rss->hf_map[i].rte;
+
 		dev_info->reta_size = EFX_RSS_TBL_SIZE;
 		dev_info->hash_key_size = EFX_RSS_KEY_SIZE;
-		dev_info->flow_type_rss_offloads = SFC_RSS_OFFLOADS;
+		dev_info->flow_type_rss_offloads = rte_hf;
 	}
 
 	/* Initialize to hardware limits */
@@ -1378,7 +1384,7 @@ sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	 * flags which corresponds to the active EFX configuration stored
 	 * locally in 'sfc_adapter' and kept up-to-date
 	 */
-	rss_conf->rss_hf = sfc_efx_to_rte_hash_type(rss->hash_types);
+	rss_conf->rss_hf = sfc_rx_hf_efx_to_rte(sa, rss->hash_types);
 	rss_conf->rss_key_len = EFX_RSS_KEY_SIZE;
 	if (rss_conf->rss_key != NULL)
 		rte_memcpy(rss_conf->rss_key, rss->key, EFX_RSS_KEY_SIZE);
@@ -1418,18 +1424,14 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	if ((rss_conf->rss_hf & ~SFC_RSS_OFFLOADS) != 0) {
-		sfc_err(sa, "unsupported hash functions requested");
-		return -EINVAL;
-	}
-
 	sfc_adapter_lock(sa);
 
-	efx_hash_types = sfc_rte_to_efx_hash_type(rss_conf->rss_hf);
+	rc = sfc_rx_hf_rte_to_efx(sa, rss_conf->rss_hf, &efx_hash_types);
+	if (rc != 0)
+		goto fail_rx_hf_rte_to_efx;
 
 	rc = efx_rx_scale_mode_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
-				   EFX_RX_HASHALG_TOEPLITZ,
-				   efx_hash_types, B_TRUE);
+				   rss->hash_alg, efx_hash_types, B_TRUE);
 	if (rc != 0)
 		goto fail_scale_mode_set;
 
@@ -1459,6 +1461,7 @@ fail_scale_key_set:
 		sfc_err(sa, "failed to restore RSS mode");
 
 fail_scale_mode_set:
+fail_rx_hf_rte_to_efx:
 	sfc_adapter_unlock(sa);
 	return -rc;
 }

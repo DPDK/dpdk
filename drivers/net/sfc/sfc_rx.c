@@ -1132,48 +1132,166 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	rte_free(rxq);
 }
 
-efx_rx_hash_type_t
-sfc_rte_to_efx_hash_type(uint64_t rss_hf)
+/*
+ * Mapping between RTE RSS hash functions and their EFX counterparts.
+ */
+struct sfc_rss_hf_rte_to_efx sfc_rss_hf_map[] = {
+	{ ETH_RSS_NONFRAG_IPV4_TCP,
+	  EFX_RX_HASH(IPV4_TCP, 4TUPLE) },
+	{ ETH_RSS_NONFRAG_IPV4_UDP,
+	  EFX_RX_HASH(IPV4_UDP, 4TUPLE) },
+	{ ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX,
+	  EFX_RX_HASH(IPV6_TCP, 4TUPLE) },
+	{ ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_IPV6_UDP_EX,
+	  EFX_RX_HASH(IPV6_UDP, 4TUPLE) },
+	{ ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 | ETH_RSS_NONFRAG_IPV4_OTHER,
+	  EFX_RX_HASH(IPV4_TCP, 2TUPLE) | EFX_RX_HASH(IPV4_UDP, 2TUPLE) |
+	  EFX_RX_HASH(IPV4, 2TUPLE) },
+	{ ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER |
+	  ETH_RSS_IPV6_EX,
+	  EFX_RX_HASH(IPV6_TCP, 2TUPLE) | EFX_RX_HASH(IPV6_UDP, 2TUPLE) |
+	  EFX_RX_HASH(IPV6, 2TUPLE) }
+};
+
+static efx_rx_hash_type_t
+sfc_rx_hash_types_mask_supp(efx_rx_hash_type_t hash_type,
+			    unsigned int *hash_type_flags_supported,
+			    unsigned int nb_hash_type_flags_supported)
 {
-	efx_rx_hash_type_t efx_hash_types = 0;
+	efx_rx_hash_type_t hash_type_masked = 0;
+	unsigned int i, j;
 
-	if ((rss_hf & (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-		       ETH_RSS_NONFRAG_IPV4_OTHER)) != 0)
-		efx_hash_types |= EFX_RX_HASH_IPV4;
+	for (i = 0; i < nb_hash_type_flags_supported; ++i) {
+		unsigned int class_tuple_lbn[] = {
+			EFX_RX_CLASS_IPV4_TCP_LBN,
+			EFX_RX_CLASS_IPV4_UDP_LBN,
+			EFX_RX_CLASS_IPV4_LBN,
+			EFX_RX_CLASS_IPV6_TCP_LBN,
+			EFX_RX_CLASS_IPV6_UDP_LBN,
+			EFX_RX_CLASS_IPV6_LBN
+		};
 
-	if ((rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) != 0)
-		efx_hash_types |= EFX_RX_HASH_TCPIPV4;
+		for (j = 0; j < RTE_DIM(class_tuple_lbn); ++j) {
+			unsigned int tuple_mask = EFX_RX_CLASS_HASH_4TUPLE;
+			unsigned int flag;
 
-	if ((rss_hf & (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
-			ETH_RSS_NONFRAG_IPV6_OTHER | ETH_RSS_IPV6_EX)) != 0)
-		efx_hash_types |= EFX_RX_HASH_IPV6;
+			tuple_mask <<= class_tuple_lbn[j];
+			flag = hash_type & tuple_mask;
 
-	if ((rss_hf & (ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX)) != 0)
-		efx_hash_types |= EFX_RX_HASH_TCPIPV6;
+			if (flag == hash_type_flags_supported[i])
+				hash_type_masked |= flag;
+		}
+	}
 
-	return efx_hash_types;
+	return hash_type_masked;
+}
+
+int
+sfc_rx_hash_init(struct sfc_adapter *sa)
+{
+	struct sfc_rss *rss = &sa->rss;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint32_t alg_mask = encp->enc_rx_scale_hash_alg_mask;
+	efx_rx_hash_alg_t alg;
+	unsigned int flags_supp[EFX_RX_HASH_NFLAGS];
+	unsigned int nb_flags_supp;
+	struct sfc_rss_hf_rte_to_efx *hf_map;
+	struct sfc_rss_hf_rte_to_efx *entry;
+	efx_rx_hash_type_t efx_hash_types;
+	unsigned int i;
+	int rc;
+
+	if (alg_mask & (1U << EFX_RX_HASHALG_TOEPLITZ))
+		alg = EFX_RX_HASHALG_TOEPLITZ;
+	else if (alg_mask & (1U << EFX_RX_HASHALG_PACKED_STREAM))
+		alg = EFX_RX_HASHALG_PACKED_STREAM;
+	else
+		return EINVAL;
+
+	rc = efx_rx_scale_hash_flags_get(sa->nic, alg, flags_supp,
+					 &nb_flags_supp);
+	if (rc != 0)
+		return rc;
+
+	hf_map = rte_calloc_socket("sfc-rss-hf-map",
+				   RTE_DIM(sfc_rss_hf_map),
+				   sizeof(*hf_map), 0, sa->socket_id);
+	if (hf_map == NULL)
+		return ENOMEM;
+
+	entry = hf_map;
+	efx_hash_types = 0;
+	for (i = 0; i < RTE_DIM(sfc_rss_hf_map); ++i) {
+		efx_rx_hash_type_t ht;
+
+		ht = sfc_rx_hash_types_mask_supp(sfc_rss_hf_map[i].efx,
+						 flags_supp, nb_flags_supp);
+		if (ht != 0) {
+			entry->rte = sfc_rss_hf_map[i].rte;
+			entry->efx = ht;
+			efx_hash_types |= ht;
+			++entry;
+		}
+	}
+
+	rss->hash_alg = alg;
+	rss->hf_map_nb_entries = (unsigned int)(entry - hf_map);
+	rss->hf_map = hf_map;
+	rss->hash_types = efx_hash_types;
+
+	return 0;
+}
+
+void
+sfc_rx_hash_fini(struct sfc_adapter *sa)
+{
+	struct sfc_rss *rss = &sa->rss;
+
+	rte_free(rss->hf_map);
+}
+
+int
+sfc_rx_hf_rte_to_efx(struct sfc_adapter *sa, uint64_t rte,
+		     efx_rx_hash_type_t *efx)
+{
+	struct sfc_rss *rss = &sa->rss;
+	efx_rx_hash_type_t hash_types = 0;
+	unsigned int i;
+
+	for (i = 0; i < rss->hf_map_nb_entries; ++i) {
+		uint64_t rte_mask = rss->hf_map[i].rte;
+
+		if ((rte & rte_mask) != 0) {
+			rte &= ~rte_mask;
+			hash_types |= rss->hf_map[i].efx;
+		}
+	}
+
+	if (rte != 0) {
+		sfc_err(sa, "unsupported hash functions requested");
+		return EINVAL;
+	}
+
+	*efx = hash_types;
+
+	return 0;
 }
 
 uint64_t
-sfc_efx_to_rte_hash_type(efx_rx_hash_type_t efx_hash_types)
+sfc_rx_hf_efx_to_rte(struct sfc_adapter *sa, efx_rx_hash_type_t efx)
 {
-	uint64_t rss_hf = 0;
+	struct sfc_rss *rss = &sa->rss;
+	uint64_t rte = 0;
+	unsigned int i;
 
-	if ((efx_hash_types & EFX_RX_HASH_IPV4) != 0)
-		rss_hf |= (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-			   ETH_RSS_NONFRAG_IPV4_OTHER);
+	for (i = 0; i < rss->hf_map_nb_entries; ++i) {
+		efx_rx_hash_type_t hash_type = rss->hf_map[i].efx;
 
-	if ((efx_hash_types & EFX_RX_HASH_TCPIPV4) != 0)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		if ((efx & hash_type) == hash_type)
+			rte |= rss->hf_map[i].rte;
+	}
 
-	if ((efx_hash_types & EFX_RX_HASH_IPV6) != 0)
-		rss_hf |= (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
-			   ETH_RSS_NONFRAG_IPV6_OTHER | ETH_RSS_IPV6_EX);
-
-	if ((efx_hash_types & EFX_RX_HASH_TCPIPV6) != 0)
-		rss_hf |= (ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX);
-
-	return rss_hf;
+	return rte;
 }
 
 static int
@@ -1182,20 +1300,19 @@ sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
 {
 	struct sfc_rss *rss = &sa->rss;
 	efx_rx_hash_type_t efx_hash_types = rss->hash_types;
+	uint64_t rss_hf = sfc_rx_hf_efx_to_rte(sa, efx_hash_types);
+	int rc;
 
 	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE) {
-		if ((conf->rss_hf != 0 && conf->rss_hf != SFC_RSS_OFFLOADS) ||
+		if ((conf->rss_hf != 0 && conf->rss_hf != rss_hf) ||
 		    conf->rss_key != NULL)
 			return EINVAL;
 	}
 
 	if (conf->rss_hf != 0) {
-		if ((conf->rss_hf & ~SFC_RSS_OFFLOADS) != 0) {
-			sfc_err(sa, "unsupported hash functions requested");
-			return EINVAL;
-		}
-
-		efx_hash_types = sfc_rte_to_efx_hash_type(conf->rss_hf);
+		rc = sfc_rx_hf_rte_to_efx(sa, conf->rss_hf, &efx_hash_types);
+		if (rc != 0)
+			return rc;
 	}
 
 	if (conf->rss_key != NULL) {
@@ -1220,8 +1337,8 @@ sfc_rx_rss_config(struct sfc_adapter *sa)
 
 	if (rss->channels > 0) {
 		rc = efx_rx_scale_mode_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
-					   EFX_RX_HASHALG_TOEPLITZ,
-					   rss->hash_types, B_TRUE);
+					   rss->hash_alg, rss->hash_types,
+					   B_TRUE);
 		if (rc != 0)
 			goto finish;
 

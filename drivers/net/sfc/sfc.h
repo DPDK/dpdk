@@ -27,9 +27,6 @@
 extern "C" {
 #endif
 
-/** RSS hash offloads mask */
-#define SFC_RSS_OFFLOADS	(ETH_RSS_IP | ETH_RSS_TCP)
-
 /*
  * +---------------+
  * | UNINITIALIZED |<-----------+
@@ -154,10 +151,19 @@ struct sfc_port {
 	uint32_t		mac_stats_mask[EFX_MAC_STATS_MASK_NPAGES];
 };
 
+struct sfc_rss_hf_rte_to_efx {
+	uint64_t			rte;
+	efx_rx_hash_type_t		efx;
+};
+
 struct sfc_rss {
 	unsigned int			channels;
 	efx_rx_scale_context_type_t	context_type;
 	efx_rx_hash_support_t		hash_support;
+	efx_rx_hash_alg_t		hash_alg;
+	unsigned int			hf_map_nb_entries;
+	struct sfc_rss_hf_rte_to_efx	*hf_map;
+
 	efx_rx_hash_type_t		hash_types;
 	unsigned int			tbl[EFX_RSS_TBL_SIZE];
 	uint8_t				key[EFX_RSS_KEY_SIZE];
