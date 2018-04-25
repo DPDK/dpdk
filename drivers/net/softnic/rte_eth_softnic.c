@@ -67,6 +67,12 @@ static const struct rte_eth_dev_info pmd_dev_info = {
 	},
 };
 
+static int pmd_softnic_logtype;
+
+#define PMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, pmd_softnic_logtype, \
+		"%s(): " fmt "\n", __func__, ##args)
+
 static void
 pmd_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	struct rte_eth_dev_info *dev_info)
@@ -728,7 +734,7 @@ pmd_probe(struct rte_vdev_device *vdev)
 	struct rte_eth_dev *eth_dev;
 	const char *name = rte_vdev_device_name(vdev);
 
-	RTE_LOG(INFO, PMD, "Probing device \"%s\"\n", name);
+	PMD_LOG(INFO, "Probing device \"%s\"", name);
 
 	/* Parse input arguments */
 	params = rte_vdev_device_args(vdev);
@@ -737,7 +743,7 @@ pmd_probe(struct rte_vdev_device *vdev)
 	    strlen(params) == 0) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
-			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			PMD_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
@@ -776,8 +782,8 @@ pmd_probe(struct rte_vdev_device *vdev)
 		return -ENOMEM;
 
 	/* Register soft ethdev */
-	RTE_LOG(INFO, PMD,
-		"Creating soft ethdev \"%s\" for hard ethdev \"%s\"\n",
+	PMD_LOG(INFO,
+		"Creating soft ethdev \"%s\" for hard ethdev \"%s\"",
 		p.soft.name, p.hard.name);
 
 	status = pmd_ethdev_register(vdev, &p, dev_private);
@@ -798,7 +804,7 @@ pmd_remove(struct rte_vdev_device *vdev)
 	if (!vdev)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD, "Removing device \"%s\"\n",
+	PMD_LOG(INFO, "Removing device \"%s\"",
 		rte_vdev_device_name(vdev));
 
 	/* Find the ethdev entry */
@@ -833,3 +839,12 @@ RTE_PMD_REGISTER_PARAM_STRING(net_softnic,
 	PMD_PARAM_SOFT_TM_DEQ_BSZ "=<int> "
 	PMD_PARAM_HARD_NAME "=<string> "
 	PMD_PARAM_HARD_TX_QUEUE_ID "=<int>");
+
+RTE_INIT(pmd_softnic_init_log);
+static void
+pmd_softnic_init_log(void)
+{
+	pmd_softnic_logtype = rte_log_register("pmd.net.softnic");
+	if (pmd_softnic_logtype >= 0)
+		rte_log_set_level(pmd_softnic_logtype, RTE_LOG_NOTICE);
+}
