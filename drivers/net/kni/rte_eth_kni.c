@@ -65,6 +65,11 @@ static const struct rte_eth_link pmd_link = {
 };
 static int is_kni_initialized;
 
+static int eth_kni_logtype;
+
+#define PMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, eth_kni_logtype, \
+		"%s(): " fmt "\n", __func__, ##args)
 static uint16_t
 eth_kni_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
@@ -126,8 +131,8 @@ eth_kni_start(struct rte_eth_dev *dev)
 
 	internals->kni = rte_kni_alloc(mb_pool, &conf, NULL);
 	if (internals->kni == NULL) {
-		RTE_LOG(ERR, PMD,
-			"Fail to create kni interface for port: %d\n",
+		PMD_LOG(ERR,
+			"Fail to create kni interface for port: %d",
 			port_id);
 		return -1;
 	}
@@ -153,8 +158,8 @@ eth_kni_dev_start(struct rte_eth_dev *dev)
 			"kni_handle_req", NULL,
 			kni_handle_request, internals);
 		if (ret) {
-			RTE_LOG(ERR, PMD,
-				"Fail to create kni request thread\n");
+			PMD_LOG(ERR,
+				"Fail to create kni request thread");
 			return -1;
 		}
 	}
@@ -175,11 +180,11 @@ eth_kni_dev_stop(struct rte_eth_dev *dev)
 
 		ret = pthread_cancel(internals->thread);
 		if (ret)
-			RTE_LOG(ERR, PMD, "Can't cancel the thread\n");
+			PMD_LOG(ERR, "Can't cancel the thread");
 
 		ret = pthread_join(internals->thread, NULL);
 		if (ret)
-			RTE_LOG(ERR, PMD, "Can't join the thread\n");
+			PMD_LOG(ERR, "Can't join the thread");
 
 		internals->stop_thread = 0;
 	}
@@ -338,7 +343,7 @@ eth_kni_create(struct rte_vdev_device *vdev,
 	struct rte_eth_dev_data *data;
 	struct rte_eth_dev *eth_dev;
 
-	RTE_LOG(INFO, PMD, "Creating kni ethdev on numa socket %u\n",
+	PMD_LOG(INFO, "Creating kni ethdev on numa socket %u",
 			numa_node);
 
 	/* reserve an ethdev entry */
@@ -403,13 +408,13 @@ eth_kni_probe(struct rte_vdev_device *vdev)
 
 	name = rte_vdev_device_name(vdev);
 	params = rte_vdev_device_args(vdev);
-	RTE_LOG(INFO, PMD, "Initializing eth_kni for %s\n", name);
+	PMD_LOG(INFO, "Initializing eth_kni for %s", name);
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
 	    strlen(params) == 0) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
-			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			PMD_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
@@ -449,7 +454,7 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 	const char *name;
 
 	name = rte_vdev_device_name(vdev);
-	RTE_LOG(INFO, PMD, "Un-Initializing eth_kni for %s\n", name);
+	PMD_LOG(INFO, "Un-Initializing eth_kni for %s", name);
 
 	/* find the ethdev entry */
 	eth_dev = rte_eth_dev_allocated(name);
@@ -479,3 +484,12 @@ static struct rte_vdev_driver eth_kni_drv = {
 
 RTE_PMD_REGISTER_VDEV(net_kni, eth_kni_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_kni, ETH_KNI_NO_REQUEST_THREAD_ARG "=<int>");
+
+RTE_INIT(eth_kni_init_log);
+static void
+eth_kni_init_log(void)
+{
+	eth_kni_logtype = rte_log_register("pmd.net.kni");
+	if (eth_kni_logtype >= 0)
+		rte_log_set_level(eth_kni_logtype, RTE_LOG_NOTICE);
+}
