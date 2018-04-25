@@ -258,6 +258,8 @@ API Changes
    fall-back value. Previously, setting ``nb_tx_desc`` to zero would have
    resulted in an error.
 
+* ethdev: unused DUP action was removed from the flow API.
+
 
 ABI Changes
 -----------
@@ -298,12 +300,13 @@ ABI Changes
   type ``uint16_t``: ``burst_size``, ``ring_size``, and ``nb_queues``. These
   are parameter values recommended for use by the PMD.
 
-* ethdev: ABI for most flow API functions was updated.
+* ethdev: ABI for all flow API functions was updated.
 
-  This includes functions ``rte_flow_create``, ``rte_flow_destroy``,
-  ``rte_flow_error_set``, ``rte_flow_flush``, ``rte_flow_isolate``,
-  ``rte_flow_query`` and ``rte_flow_validate``, due to changes in error type
-  definitions (``enum rte_flow_error_type``).
+  This includes functions ``rte_flow_copy``, ``rte_flow_create``,
+  ``rte_flow_destroy``, ``rte_flow_error_set``, ``rte_flow_flush``,
+  ``rte_flow_isolate``, ``rte_flow_query`` and ``rte_flow_validate``, due to
+  changes in error type definitions (``enum rte_flow_error_type``) and
+  removal of the unused DUP action (``enum rte_flow_action_type``).
 
 
 Removed Items

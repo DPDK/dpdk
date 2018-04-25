@@ -1082,7 +1082,6 @@ static const struct {
 	MK_FLOW_ACTION(QUEUE, sizeof(struct rte_flow_action_queue)),
 	MK_FLOW_ACTION(DROP, 0),
 	MK_FLOW_ACTION(COUNT, 0),
-	MK_FLOW_ACTION(DUP, sizeof(struct rte_flow_action_dup)),
 	MK_FLOW_ACTION(RSS, sizeof(struct rte_flow_action_rss)), /* +queue[] */
 	MK_FLOW_ACTION(PF, 0),
 	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),

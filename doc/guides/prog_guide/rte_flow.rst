@@ -1299,26 +1299,6 @@ Query structure to retrieve and reset flow rule counters:
    | ``bytes``     | out | number of bytes through this rule |
    +---------------+-----+-----------------------------------+
 
-Action: ``DUP``
-^^^^^^^^^^^^^^^
-
-Duplicates packets to a given queue index.
-
-This is normally combined with QUEUE, however when used alone, it is
-actually similar to QUEUE + PASSTHRU.
-
-- Non-terminating by default.
-
-.. _table_rte_flow_action_dup:
-
-.. table:: DUP
-
-   +-----------+------------------------------------+
-   | Field     | Value                              |
-   +===========+====================================+
-   | ``index`` | queue index to duplicate packet to |
-   +-----------+------------------------------------+
-
 Action: ``RSS``
 ^^^^^^^^^^^^^^^
 
@@ -2009,9 +1989,6 @@ Unsupported actions
 - When combined with `Action: QUEUE`_, packet counting (`Action: COUNT`_)
   and tagging (`Action: MARK`_ or `Action: FLAG`_) may be implemented in
   software as long as the target queue is used by a single rule.
-
-- A rule specifying both `Action: DUP`_ + `Action: QUEUE`_ may be translated
-  to two hidden rules combining `Action: QUEUE`_ and `Action: PASSTHRU`_.
 
 - When a single target queue is provided, `Action: RSS`_ can also be
   implemented through `Action: QUEUE`_.

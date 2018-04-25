@@ -147,7 +147,6 @@ DPDK_17.08 {
 
 	_rte_eth_dev_callback_process;
 	rte_eth_dev_adjust_nb_rx_tx_desc;
-	rte_flow_copy;
 	rte_tm_capabilities_get;
 	rte_tm_hierarchy_commit;
 	rte_tm_level_capabilities_get;
@@ -201,6 +200,7 @@ DPDK_18.05 {
 
 	rte_eth_dev_count_avail;
 	rte_eth_find_next_owned_by;
+	rte_flow_copy;
 	rte_flow_create;
 	rte_flow_destroy;
 	rte_flow_error_set;

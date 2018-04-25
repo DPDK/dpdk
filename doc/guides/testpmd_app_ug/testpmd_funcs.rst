@@ -3387,10 +3387,6 @@ actions can sometimes be combined when the end result is unambiguous::
 
 ::
 
-   drop / dup index 6 / end # same as above
-
-::
-
    queue index 6 / rss queues 6 7 8 / end # queue has no effect
 
 ::
@@ -3423,10 +3419,6 @@ This section lists supported actions and their attributes, if any.
 - ``drop``: drop packets (note: passthru has priority).
 
 - ``count``: enable counters for this rule.
-
-- ``dup``: duplicate packets to a given queue index.
-
-  - ``index {unsigned}``: queue index to duplicate packets to.
 
 - ``rss``: spread packets among several queues.
 

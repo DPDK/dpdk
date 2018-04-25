@@ -961,16 +961,6 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_COUNT,
 
 	/**
-	 * Duplicates packets to a given queue index.
-	 *
-	 * This is normally combined with QUEUE, however when used alone, it
-	 * is actually similar to QUEUE + PASSTHRU.
-	 *
-	 * See struct rte_flow_action_dup.
-	 */
-	RTE_FLOW_ACTION_TYPE_DUP,
-
-	/**
 	 * Similar to QUEUE, except RSS is additionally performed on packets
 	 * to spread them among several queues according to the provided
 	 * parameters.
@@ -1049,20 +1039,6 @@ struct rte_flow_query_count {
 	uint32_t reserved:29; /**< Reserved, must be zero [in, out]. */
 	uint64_t hits; /**< Number of hits for this rule [out]. */
 	uint64_t bytes; /**< Number of bytes through this rule [out]. */
-};
-
-/**
- * RTE_FLOW_ACTION_TYPE_DUP
- *
- * Duplicates packets to a given queue index.
- *
- * This is normally combined with QUEUE, however when used alone, it is
- * actually similar to QUEUE + PASSTHRU.
- *
- * Non-terminating by default.
- */
-struct rte_flow_action_dup {
-	uint16_t index; /**< Queue index to duplicate packets to. */
 };
 
 /**

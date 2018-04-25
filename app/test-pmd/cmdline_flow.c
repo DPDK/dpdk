@@ -164,8 +164,6 @@ enum index {
 	ACTION_QUEUE_INDEX,
 	ACTION_DROP,
 	ACTION_COUNT,
-	ACTION_DUP,
-	ACTION_DUP_INDEX,
 	ACTION_RSS,
 	ACTION_RSS_TYPES,
 	ACTION_RSS_TYPE,
@@ -625,7 +623,6 @@ static const enum index next_action[] = {
 	ACTION_QUEUE,
 	ACTION_DROP,
 	ACTION_COUNT,
-	ACTION_DUP,
 	ACTION_RSS,
 	ACTION_PF,
 	ACTION_VF,
@@ -641,12 +638,6 @@ static const enum index action_mark[] = {
 
 static const enum index action_queue[] = {
 	ACTION_QUEUE_INDEX,
-	ACTION_NEXT,
-	ZERO,
-};
-
-static const enum index action_dup[] = {
-	ACTION_DUP_INDEX,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -1596,20 +1587,6 @@ static const struct token token_list[] = {
 		.priv = PRIV_ACTION(COUNT, 0),
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
-	},
-	[ACTION_DUP] = {
-		.name = "dup",
-		.help = "duplicate packets to a given queue index",
-		.priv = PRIV_ACTION(DUP, sizeof(struct rte_flow_action_dup)),
-		.next = NEXT(action_dup),
-		.call = parse_vc,
-	},
-	[ACTION_DUP_INDEX] = {
-		.name = "index",
-		.help = "queue index to duplicate packets to",
-		.next = NEXT(action_dup, NEXT_ENTRY(UNSIGNED)),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_dup, index)),
-		.call = parse_vc_conf,
 	},
 	[ACTION_RSS] = {
 		.name = "rss",
