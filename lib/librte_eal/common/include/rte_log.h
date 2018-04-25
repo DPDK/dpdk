@@ -130,16 +130,28 @@ uint32_t rte_log_get_global_level(void);
 int rte_log_get_level(uint32_t logtype);
 
 /**
- * Set the log level for a given type.
+ * Set the log level for a given type based on shell pattern.
  *
  * @param pattern
- *   The regexp identifying the log type.
+ *   The match pattern identifying the log type.
  * @param level
  *   The level to be set.
  * @return
  *   0 on success, a negative value if level is invalid.
  */
-int rte_log_set_level_regexp(const char *pattern, uint32_t level);
+int rte_log_set_level_pattern(const char *pattern, uint32_t level);
+
+/**
+ * Set the log level for a given type based on regular expression.
+ *
+ * @param regex
+ *   The regular expression identifying the log type.
+ * @param level
+ *   The level to be set.
+ * @return
+ *   0 on success, a negative value if level is invalid.
+ */
+int rte_log_set_level_regexp(const char *regex, uint32_t level);
 
 /**
  * Set the log level for a given type.

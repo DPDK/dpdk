@@ -959,19 +959,23 @@ eal_parse_log_priority(const char *level)
 static int
 eal_parse_log_level(const char *arg)
 {
-	char *str, *type, *level;
+	const char *pattern = NULL;
+	const char *regex = NULL;
+	char *str, *level;
 	int priority;
 
 	str = strdup(arg);
 	if (str == NULL)
 		return -1;
 
-	if (strchr(str, ',') == NULL) {
-		type = NULL;
-		level = str;
+	if ((level = strchr(str, ','))) {
+		regex = str;
+		*level++ = '\0';
+	} else if ((level = strchr(str, ':'))) {
+		pattern = str;
+		*level++ = '\0';
 	} else {
-		type = strsep(&str, ",");
-		level = strsep(&str, ",");
+		level = str;
 	}
 
 	priority = eal_parse_log_priority(level);
@@ -980,14 +984,24 @@ eal_parse_log_level(const char *arg)
 		goto fail;
 	}
 
-	if (type == NULL) {
+	if (regex) {
+		if (rte_log_set_level_regexp(regex, priority) < 0) {
+			fprintf(stderr, "cannot set log level %s,%d\n",
+				pattern, priority);
+			goto fail;
+		}
+		if (rte_log_save_regexp(regex, priority) < 0)
+			goto fail;
+	} else if (pattern) {
+		if (rte_log_set_level_pattern(pattern, priority) < 0) {
+			fprintf(stderr, "cannot set log level %s:%d\n",
+				pattern, priority);
+			goto fail;
+		}
+		if (rte_log_save_pattern(pattern, priority) < 0)
+			goto fail;
+	} else {
 		rte_log_set_global_level(priority);
-	} else if (rte_log_set_level_regexp(type, priority) < 0) {
-		fprintf(stderr, "cannot set log level %s,%d\n",
-			type, priority);
-		goto fail;
-	} else if (rte_log_save_regexp(type, priority) < 0) {
-		goto fail;
 	}
 
 	free(str);
@@ -1352,7 +1366,7 @@ eal_common_usage(void)
 	       "  --"OPT_PROC_TYPE"         Type of this process (primary|secondary|auto)\n"
 	       "  --"OPT_SYSLOG"            Set syslog facility\n"
 	       "  --"OPT_LOG_LEVEL"=<int>   Set global log level\n"
-	       "  --"OPT_LOG_LEVEL"=<type-regexp>,<int>\n"
+	       "  --"OPT_LOG_LEVEL"=<type-match>:<int>\n"
 	       "                      Set specific log level\n"
 	       "  -v                  Display version information on startup\n"
 	       "  -h, --help          This help\n"

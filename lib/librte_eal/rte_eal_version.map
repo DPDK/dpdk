@@ -209,6 +209,13 @@ DPDK_18.02 {
 
 }  DPDK_17.11;
 
+DPDK_18.05 {
+	global:
+
+	rte_log_set_level_pattern;
+
+} DPDK_18.02;
+
 EXPERIMENTAL {
 	global:
 

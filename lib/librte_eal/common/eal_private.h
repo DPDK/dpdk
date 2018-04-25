@@ -86,6 +86,7 @@ int rte_eal_log_init(const char *id, int facility);
  * Save the log regexp for later
  */
 int rte_log_save_regexp(const char *type, int priority);
+int rte_log_save_pattern(const char *pattern, int priority);
 
 /**
  * Init tail queues for non-EAL library structures. This is to allow
