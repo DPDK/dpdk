@@ -2010,6 +2010,8 @@ cmd_config_rss_parsed(void *parsed_result,
 	struct cmd_config_rss *res = parsed_result;
 	struct rte_eth_rss_conf rss_conf = { .rss_key_len = 0, };
 	struct rte_eth_dev_info dev_info = { .flow_type_rss_offloads = 0, };
+	int use_default = 0;
+	int all_updated = 1;
 	int diag;
 	uint16_t i;
 
@@ -2035,8 +2037,10 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_GENEVE;
 	else if (!strcmp(res->value, "nvgre"))
 		rss_conf.rss_hf = ETH_RSS_NVGRE;
-	else if (!strcmp(res->value, "none") || !strcmp(res->value, "default"))
+	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
+	else if (!strcmp(res->value, "default"))
+		use_default = 1;
 	else if (isdigit(res->value[0]) && atoi(res->value) > 0 &&
 						atoi(res->value) < 64)
 		rss_conf.rss_hf = 1ULL << atoi(res->value);
@@ -2046,18 +2050,21 @@ cmd_config_rss_parsed(void *parsed_result,
 	}
 	rss_conf.rss_key = NULL;
 	/* Update global configuration for RSS types. */
-	rss_hf = rss_conf.rss_hf;
 	RTE_ETH_FOREACH_DEV(i) {
-		if (!strcmp(res->value, "default")) {
+		if (use_default) {
 			rte_eth_dev_info_get(i, &dev_info);
 			rss_conf.rss_hf = dev_info.flow_type_rss_offloads;
 		}
 		diag = rte_eth_dev_rss_hash_update(i, &rss_conf);
-		if (diag < 0)
+		if (diag < 0) {
+			all_updated = 0;
 			printf("Configuration of RSS hash at ethernet port %d "
 				"failed with error (%d): %s.\n",
 				i, -diag, strerror(-diag));
+		}
 	}
+	if (all_updated && !use_default)
+		rss_hf = rss_conf.rss_hf;
 }
 
 cmdline_parse_token_string_t cmd_config_rss_port =
