@@ -39,6 +39,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(PF, 0),
 	MK_FLOW_ITEM(VF, sizeof(struct rte_flow_item_vf)),
 	MK_FLOW_ITEM(PHY_PORT, sizeof(struct rte_flow_item_phy_port)),
+	MK_FLOW_ITEM(PORT_ID, sizeof(struct rte_flow_item_port_id)),
 	MK_FLOW_ITEM(RAW, sizeof(struct rte_flow_item_raw)),
 	MK_FLOW_ITEM(ETH, sizeof(struct rte_flow_item_eth)),
 	MK_FLOW_ITEM(VLAN, sizeof(struct rte_flow_item_vlan)),
@@ -77,6 +78,7 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(PF, 0),
 	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),
 	MK_FLOW_ACTION(PHY_PORT, sizeof(struct rte_flow_action_phy_port)),
+	MK_FLOW_ACTION(PORT_ID, sizeof(struct rte_flow_action_port_id)),
 };
 
 static int

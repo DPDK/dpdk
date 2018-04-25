@@ -290,6 +290,8 @@ API Changes
     IDs.
   * An action counterpart to the PHY_PORT pattern item was added in order to
     redirect matching traffic to a specific physical port.
+  * PORT_ID pattern item and actions were added to match and target DPDK
+    port IDs at a higher level than PHY_PORT.
 
 
 ABI Changes

@@ -180,6 +180,16 @@ enum rte_flow_item_type {
 	RTE_FLOW_ITEM_TYPE_PHY_PORT,
 
 	/**
+	 * [META]
+	 *
+	 * Matches traffic originating from (ingress) or going to (egress) a
+	 * given DPDK port ID.
+	 *
+	 * See struct rte_flow_item_port_id.
+	 */
+	RTE_FLOW_ITEM_TYPE_PORT_ID,
+
+	/**
 	 * Matches a byte string of a given length at a given offset.
 	 *
 	 * See struct rte_flow_item_raw.
@@ -410,6 +420,32 @@ struct rte_flow_item_phy_port {
 #ifndef __cplusplus
 static const struct rte_flow_item_phy_port rte_flow_item_phy_port_mask = {
 	.index = 0x00000000,
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_PORT_ID
+ *
+ * Matches traffic originating from (ingress) or going to (egress) a given
+ * DPDK port ID.
+ *
+ * Normally only supported if the port ID in question is known by the
+ * underlying PMD and related to the device the flow rule is created
+ * against.
+ *
+ * This must not be confused with @p PHY_PORT which refers to the physical
+ * port of a device, whereas @p PORT_ID refers to a struct rte_eth_dev
+ * object on the application side (also known as "port representor"
+ * depending on the kind of underlying device).
+ */
+struct rte_flow_item_port_id {
+	uint32_t id; /**< DPDK port ID. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_PORT_ID. */
+#ifndef __cplusplus
+static const struct rte_flow_item_port_id rte_flow_item_port_id_mask = {
+	.id = 0xffffffff,
 };
 #endif
 
@@ -997,6 +1033,13 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_PHY_PORT,
 
 	/**
+	 * Directs matching traffic to a given DPDK port ID.
+	 *
+	 * See struct rte_flow_action_port_id.
+	 */
+	RTE_FLOW_ACTION_TYPE_PORT_ID,
+
+	/**
 	 * Traffic metering and policing (MTR).
 	 *
 	 * See struct rte_flow_action_meter.
@@ -1131,6 +1174,19 @@ struct rte_flow_action_phy_port {
 	uint32_t original:1; /**< Use original port index if possible. */
 	uint32_t reserved:31; /**< Reserved, must be zero. */
 	uint32_t index; /**< Physical port index. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_PORT_ID
+ *
+ * Directs matching traffic to a given DPDK port ID.
+ *
+ * @see RTE_FLOW_ITEM_TYPE_PORT_ID
+ */
+struct rte_flow_action_port_id {
+	uint32_t original:1; /**< Use original DPDK port ID if possible. */
+	uint32_t reserved:31; /**< Reserved, must be zero. */
+	uint32_t id; /**< DPDK port ID. */
 };
 
 /**

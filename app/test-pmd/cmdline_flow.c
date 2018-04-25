@@ -89,6 +89,8 @@ enum index {
 	ITEM_VF_ID,
 	ITEM_PHY_PORT,
 	ITEM_PHY_PORT_INDEX,
+	ITEM_PORT_ID,
+	ITEM_PORT_ID_ID,
 	ITEM_RAW,
 	ITEM_RAW_RELATIVE,
 	ITEM_RAW_SEARCH,
@@ -185,6 +187,9 @@ enum index {
 	ACTION_PHY_PORT,
 	ACTION_PHY_PORT_ORIGINAL,
 	ACTION_PHY_PORT_INDEX,
+	ACTION_PORT_ID,
+	ACTION_PORT_ID_ORIGINAL,
+	ACTION_PORT_ID_ID,
 	ACTION_METER,
 	ACTION_METER_ID,
 };
@@ -445,6 +450,7 @@ static const enum index next_item[] = {
 	ITEM_PF,
 	ITEM_VF,
 	ITEM_PHY_PORT,
+	ITEM_PORT_ID,
 	ITEM_RAW,
 	ITEM_ETH,
 	ITEM_VLAN,
@@ -487,6 +493,12 @@ static const enum index item_vf[] = {
 
 static const enum index item_phy_port[] = {
 	ITEM_PHY_PORT_INDEX,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_port_id[] = {
+	ITEM_PORT_ID_ID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -627,6 +639,7 @@ static const enum index next_action[] = {
 	ACTION_PF,
 	ACTION_VF,
 	ACTION_PHY_PORT,
+	ACTION_PORT_ID,
 	ACTION_METER,
 	ZERO,
 };
@@ -664,6 +677,13 @@ static const enum index action_vf[] = {
 static const enum index action_phy_port[] = {
 	ACTION_PHY_PORT_ORIGINAL,
 	ACTION_PHY_PORT_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_port_id[] = {
+	ACTION_PORT_ID_ORIGINAL,
+	ACTION_PORT_ID_ID,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -1083,6 +1103,20 @@ static const struct token token_list[] = {
 		.help = "physical port index",
 		.next = NEXT(item_phy_port, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_phy_port, index)),
+	},
+	[ITEM_PORT_ID] = {
+		.name = "port_id",
+		.help = "match traffic from/to a given DPDK port ID",
+		.priv = PRIV_ITEM(PORT_ID,
+				  sizeof(struct rte_flow_item_port_id)),
+		.next = NEXT(item_port_id),
+		.call = parse_vc,
+	},
+	[ITEM_PORT_ID_ID] = {
+		.name = "id",
+		.help = "DPDK port ID",
+		.next = NEXT(item_port_id, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_port_id, id)),
 	},
 	[ITEM_RAW] = {
 		.name = "raw",
@@ -1747,6 +1781,29 @@ static const struct token token_list[] = {
 		.next = NEXT(action_phy_port, NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_phy_port,
 					index)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_PORT_ID] = {
+		.name = "port_id",
+		.help = "direct matching traffic to a given DPDK port ID",
+		.priv = PRIV_ACTION(PORT_ID,
+				    sizeof(struct rte_flow_action_port_id)),
+		.next = NEXT(action_port_id),
+		.call = parse_vc,
+	},
+	[ACTION_PORT_ID_ORIGINAL] = {
+		.name = "original",
+		.help = "use original DPDK port ID if possible",
+		.next = NEXT(action_port_id, NEXT_ENTRY(BOOLEAN)),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_action_port_id,
+					   original, 1)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_PORT_ID_ID] = {
+		.name = "id",
+		.help = "DPDK port ID",
+		.next = NEXT(action_port_id, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_port_id, id)),
 		.call = parse_vc_conf,
 	},
 	[ACTION_METER] = {

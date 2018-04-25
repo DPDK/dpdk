@@ -3236,6 +3236,10 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``index {unsigned}``: physical port index.
 
+- ``port_id``: match traffic from/to a given DPDK port ID.
+
+  - ``id {unsigned}``: DPDK port ID.
+
 - ``raw``: match an arbitrary byte string.
 
   - ``relative {boolean}``: look for pattern after the previous item.
@@ -3451,6 +3455,11 @@ This section lists supported actions and their attributes, if any.
 
   - ``original {boolean}``: use original port index if possible.
   - ``index {unsigned}``: physical port index.
+
+- ``port_id``: direct matching traffic to a given DPDK port ID.
+
+  - ``original {boolean}``: use original DPDK port ID if possible.
+  - ``id {unsigned}``: DPDK port ID.
 
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~

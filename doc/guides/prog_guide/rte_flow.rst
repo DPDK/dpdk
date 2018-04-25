@@ -617,6 +617,36 @@ associated with a port_id should be retrieved by other means.
    | ``mask`` | ``index`` | zeroed to match any port index |
    +----------+-----------+--------------------------------+
 
+Item: ``PORT_ID``
+^^^^^^^^^^^^^^^^^
+
+Matches traffic originating from (ingress) or going to (egress) a given DPDK
+port ID.
+
+Normally only supported if the port ID in question is known by the
+underlying PMD and related to the device the flow rule is created against.
+
+This must not be confused with `Item: PHY_PORT`_ which refers to the
+physical port of a device, whereas `Item: PORT_ID`_ refers to a ``struct
+rte_eth_dev`` object on the application side (also known as "port
+representor" depending on the kind of underlying device).
+
+- Default ``mask`` matches the specified DPDK port ID.
+
+.. _table_rte_flow_item_port_id:
+
+.. table:: PORT_ID
+
+   +----------+----------+-----------------------------+
+   | Field    | Subfield | Value                       |
+   +==========+==========+=============================+
+   | ``spec`` | ``id``   | DPDK port ID                |
+   +----------+----------+-----------------------------+
+   | ``last`` | ``id``   | upper range value           |
+   +----------+----------+-----------------------------+
+   | ``mask`` | ``id``   | zeroed to match any port ID |
+   +----------+----------+-----------------------------+
+
 Data matching item types
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1452,6 +1482,24 @@ See `Item: PHY_PORT`_.
    +--------------+-------------------------------------+
    | ``index``    | physical port index                 |
    +--------------+-------------------------------------+
+
+Action: ``PORT_ID``
+^^^^^^^^^^^^^^^^^^^
+Directs matching traffic to a given DPDK port ID.
+
+See `Item: PORT_ID`_.
+
+.. _table_rte_flow_action_port_id:
+
+.. table:: PORT_ID
+
+   +--------------+---------------------------------------+
+   | Field        | Value                                 |
+   +==============+=======================================+
+   | ``original`` | use original DPDK port ID if possible |
+   +--------------+---------------------------------------+
+   | ``id``       | DPDK port ID                          |
+   +--------------+---------------------------------------+
 
 Action: ``METER``
 ^^^^^^^^^^^^^^^^^
