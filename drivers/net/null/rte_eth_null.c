@@ -92,6 +92,12 @@ static struct rte_eth_link pmd_link = {
 	.link_autoneg = ETH_LINK_FIXED,
 };
 
+static int eth_null_logtype;
+
+#define PMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, eth_null_logtype, \
+		"%s(): " fmt "\n", __func__, ##args)
+
 static uint16_t
 eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
@@ -509,7 +515,7 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 	if (dev->device.numa_node == SOCKET_ID_ANY)
 		dev->device.numa_node = rte_socket_id();
 
-	RTE_LOG(INFO, PMD, "Creating null ethdev on numa socket %u\n",
+	PMD_LOG(INFO, "Creating null ethdev on numa socket %u",
 		dev->device.numa_node);
 
 	eth_dev = rte_eth_vdev_allocate(dev, sizeof(*internals));
@@ -605,13 +611,13 @@ rte_pmd_null_probe(struct rte_vdev_device *dev)
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
-	RTE_LOG(INFO, PMD, "Initializing pmd_null for %s\n", name);
+	PMD_LOG(INFO, "Initializing pmd_null for %s", name);
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
 	    strlen(params) == 0) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
-			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			PMD_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
@@ -643,8 +649,8 @@ rte_pmd_null_probe(struct rte_vdev_device *dev)
 		}
 	}
 
-	RTE_LOG(INFO, PMD, "Configure pmd_null: packet size is %d, "
-			"packet copy is %s\n", packet_size,
+	PMD_LOG(INFO, "Configure pmd_null: packet size is %d, "
+			"packet copy is %s", packet_size,
 			packet_copy ? "enabled" : "disabled");
 
 	ret = eth_dev_null_create(dev, packet_size, packet_copy);
@@ -663,7 +669,7 @@ rte_pmd_null_remove(struct rte_vdev_device *dev)
 	if (!dev)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD, "Closing null ethdev on numa socket %u\n",
+	PMD_LOG(INFO, "Closing null ethdev on numa socket %u",
 			rte_socket_id());
 
 	/* find the ethdev entry */
@@ -688,3 +694,12 @@ RTE_PMD_REGISTER_ALIAS(net_null, eth_null);
 RTE_PMD_REGISTER_PARAM_STRING(net_null,
 	"size=<int> "
 	"copy=<int>");
+
+RTE_INIT(eth_null_init_log);
+static void
+eth_null_init_log(void)
+{
+	eth_null_logtype = rte_log_register("pmd.net.null");
+	if (eth_null_logtype >= 0)
+		rte_log_set_level(eth_null_logtype, RTE_LOG_NOTICE);
+}
