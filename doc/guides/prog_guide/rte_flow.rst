@@ -186,12 +186,13 @@ Pattern item
 
 Pattern items fall in two categories:
 
-- Matching protocol headers and packet data (ANY, RAW, ETH, VLAN, IPV4,
-  IPV6, ICMP, UDP, TCP, SCTP, VXLAN, MPLS, GRE, ESP and so on), usually
-  associated with a specification structure.
+- Matching protocol headers and packet data, usually associated with a
+  specification structure. These must be stacked in the same order as the
+  protocol layers to match inside packets, starting from the lowest.
 
-- Matching meta-data or affecting pattern processing (END, VOID, INVERT, PF,
-  VF, PORT and so on), often without a specification structure.
+- Matching meta-data or affecting pattern processing, often without a
+  specification structure. Since they do not match packet contents, their
+  position in the list is usually not relevant.
 
 Item specification structures are used to match specific values among
 protocol fields (or item properties). Documentation describes for each item
@@ -1001,15 +1002,13 @@ to a flow rule. That list is not ordered.
 
 They fall in three categories:
 
-- Terminating actions (such as QUEUE, DROP, RSS, PF, VF) that prevent
-  processing matched packets by subsequent flow rules, unless overridden
-  with PASSTHRU.
+- Terminating actions that prevent processing matched packets by subsequent
+  flow rules, unless overridden with PASSTHRU.
 
-- Non-terminating actions (PASSTHRU, DUP) that leave matched packets up for
-  additional processing by subsequent flow rules.
+- Non-terminating actions that leave matched packets up for additional
+  processing by subsequent flow rules.
 
-- Other non-terminating meta actions that do not affect the fate of packets
-  (END, VOID, MARK, FLAG, COUNT, SECURITY).
+- Other non-terminating meta actions that do not affect the fate of packets.
 
 When several actions are combined in a flow rule, they should all have
 different types (e.g. dropping a packet twice is not possible).
