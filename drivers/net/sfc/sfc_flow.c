@@ -1269,6 +1269,9 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 		return -EINVAL;
 	}
 
+	if (rss->level)
+		return -EINVAL;
+
 	if ((rss->types & ~SFC_RSS_OFFLOADS) != 0)
 		return -EINVAL;
 

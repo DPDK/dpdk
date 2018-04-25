@@ -2055,11 +2055,15 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 	struct rss_key rss_entry = { .hash_fields = 0,
 				     .key_size = 0 };
 
-	/* Check supported hash functions */
+	/* Check supported RSS features */
 	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			 "non-default RSS hash functions are not supported");
+	if (rss->level)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			 "a nonzero RSS encapsulation level is not supported");
 
 	/* Get a new map key for a new RSS rule */
 	err = bpf_rss_key(KEY_CMD_GET, &flow->key_idx);

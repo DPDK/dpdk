@@ -652,6 +652,14 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 						   " function is Toeplitz");
 				return -rte_errno;
 			}
+			if (rss->level) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "a nonzero RSS encapsulation"
+						   " level is not supported");
+				return -rte_errno;
+			}
 			if (rss->types & MLX5_RSS_HF_MASK) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -702,6 +710,7 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 			}
 			parser->rss_conf = (struct rte_flow_action_rss){
 				.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
+				.level = 0,
 				.types = rss->types,
 				.key_len = rss_key_len,
 				.queue_num = rss->queue_num,
@@ -1937,6 +1946,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	flow->queues = (uint16_t (*)[])(flow + 1);
 	flow->rss_conf = (struct rte_flow_action_rss){
 		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
+		.level = 0,
 		.types = parser.rss_conf.types,
 		.key_len = parser.rss_conf.key_len,
 		.queue_num = parser.rss_conf.queue_num,
@@ -2452,6 +2462,7 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	uint16_t queue[priv->reta_idx_n];
 	struct rte_flow_action_rss action_rss = {
 		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
+		.level = 0,
 		.types = priv->rss_conf.rss_hf,
 		.key_len = priv->rss_conf.rss_key_len,
 		.queue_num = priv->reta_idx_n,

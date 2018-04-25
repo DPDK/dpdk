@@ -4380,6 +4380,10 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
 			 "non-default RSS hash functions are not supported");
+	if (rss->level)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "a nonzero RSS encapsulation level is not supported");
 	if (rss->key_len && rss->key_len > RTE_DIM(rss_config->key))
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,

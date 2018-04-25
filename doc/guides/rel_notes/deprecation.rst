@@ -59,10 +59,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* ethdev: A new rss level field planned in 18.05.
-  The new API add rss_level field to ``rte_eth_rss_conf`` to enable a choice
-  of RSS hash calculation on outer or inner header of tunneled packet.
-
 * ethdev: A work is being planned for 18.05 to expose VF port representors
   as a mean to perform control and data path operation on the different VFs.
   As VF representor is an ethdev port, new fields are needed in order to map

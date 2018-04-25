@@ -167,6 +167,7 @@ enum index {
 	ACTION_COUNT,
 	ACTION_RSS,
 	ACTION_RSS_FUNC,
+	ACTION_RSS_LEVEL,
 	ACTION_RSS_FUNC_DEFAULT,
 	ACTION_RSS_FUNC_TOEPLITZ,
 	ACTION_RSS_FUNC_SIMPLE_XOR,
@@ -638,6 +639,7 @@ static const enum index action_queue[] = {
 
 static const enum index action_rss[] = {
 	ACTION_RSS_FUNC,
+	ACTION_RSS_LEVEL,
 	ACTION_RSS_TYPES,
 	ACTION_RSS_KEY,
 	ACTION_RSS_KEY_LEN,
@@ -1616,6 +1618,16 @@ static const struct token token_list[] = {
 		.help = "simple XOR hash function",
 		.call = parse_vc_action_rss_func,
 	},
+	[ACTION_RSS_LEVEL] = {
+		.name = "level",
+		.help = "encapsulation level for \"types\"",
+		.next = NEXT(action_rss, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_ARB
+			     (offsetof(struct action_rss_data, conf) +
+			      offsetof(struct rte_flow_action_rss, level),
+			      sizeof(((struct rte_flow_action_rss *)0)->
+				     level))),
+	},
 	[ACTION_RSS_TYPES] = {
 		.name = "types",
 		.help = "specific RSS hash types",
@@ -2107,6 +2119,7 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 	*action_rss_data = (struct action_rss_data){
 		.conf = (struct rte_flow_action_rss){
 			.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
+			.level = 0,
 			.types = rss_hf,
 			.key_len = sizeof(action_rss_data->key),
 			.queue_num = RTE_MIN(nb_rxq, ACTION_RSS_QUEUE_NUM),

@@ -796,6 +796,11 @@ fill:
 					" is Toeplitz";
 				goto exit_action_not_supported;
 			}
+			if (rss->level) {
+				msg = "a nonzero RSS encapsulation level is"
+					" not supported";
+				goto exit_action_not_supported;
+			}
 			rte_errno = 0;
 			fields = mlx4_conv_rss_types(priv, rss->types);
 			if (fields == (uint64_t)-1 && rte_errno) {
@@ -1290,6 +1295,7 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	uint16_t queue[queues];
 	struct rte_flow_action_rss action_rss = {
 		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
+		.level = 0,
 		.types = -1,
 		.key_len = MLX4_RSS_HASH_KEY_SIZE,
 		.queue_num = queues,

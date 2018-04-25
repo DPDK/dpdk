@@ -1046,6 +1046,32 @@ struct rte_flow_query_count {
  */
 struct rte_flow_action_rss {
 	enum rte_eth_hash_function func; /**< RSS hash function to apply. */
+	/**
+	 * Packet encapsulation level RSS hash @p types apply to.
+	 *
+	 * - @p 0 requests the default behavior. Depending on the packet
+	 *   type, it can mean outermost, innermost, anything in between or
+	 *   even no RSS.
+	 *
+	 *   It basically stands for the innermost encapsulation level RSS
+	 *   can be performed on according to PMD and device capabilities.
+	 *
+	 * - @p 1 requests RSS to be performed on the outermost packet
+	 *   encapsulation level.
+	 *
+	 * - @p 2 and subsequent values request RSS to be performed on the
+	 *   specified inner packet encapsulation level, from outermost to
+	 *   innermost (lower to higher values).
+	 *
+	 * Values other than @p 0 are not necessarily supported.
+	 *
+	 * Requesting a specific RSS level on unrecognized traffic results
+	 * in undefined behavior. For predictable results, it is recommended
+	 * to make the flow rule pattern match packet headers up to the
+	 * requested encapsulation level so that only matching traffic goes
+	 * through.
+	 */
+	uint32_t level;
 	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
 	uint32_t key_len; /**< Hash key length in bytes. */
 	uint32_t queue_num; /**< Number of entries in @p queue. */

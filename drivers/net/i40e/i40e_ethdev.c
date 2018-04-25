@@ -12191,6 +12191,7 @@ i40e_rss_conf_init(struct i40e_rte_flow_rss_conf *out,
 		return -EINVAL;
 	out->conf = (struct rte_flow_action_rss){
 		.func = in->func,
+		.level = in->level,
 		.types = in->types,
 		.key_len = in->key_len,
 		.queue_num = in->queue_num,
@@ -12206,6 +12207,7 @@ i40e_action_rss_same(const struct rte_flow_action_rss *comp,
 		     const struct rte_flow_action_rss *with)
 {
 	return (comp->func == with->func &&
+		comp->level == with->level &&
 		comp->types == with->types &&
 		comp->key_len == with->key_len &&
 		comp->queue_num == with->queue_num &&
