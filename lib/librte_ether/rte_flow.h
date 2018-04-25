@@ -14,6 +14,7 @@
  * associated actions in hardware through flow rules.
  */
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include <rte_arp.h>
@@ -432,7 +433,7 @@ struct rte_flow_item_raw {
 	int32_t offset; /**< Absolute or relative offset for pattern. */
 	uint16_t limit; /**< Search area limit for start of pattern. */
 	uint16_t length; /**< Pattern length. */
-	uint8_t pattern[]; /**< Byte string to look for. */
+	const uint8_t *pattern; /**< Byte string to look for. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_RAW. */
@@ -444,6 +445,7 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
 	.offset = 0xffffffff,
 	.limit = 0xffff,
 	.length = 0xffff,
+	.pattern = NULL,
 };
 #endif
 
@@ -1037,8 +1039,8 @@ struct rte_flow_query_count {
  */
 struct rte_flow_action_rss {
 	const struct rte_eth_rss_conf *rss_conf; /**< RSS parameters. */
-	uint16_t num; /**< Number of entries in queue[]. */
-	uint16_t queue[]; /**< Queues indices to use. */
+	uint16_t num; /**< Number of entries in @p queue. */
+	const uint16_t *queue; /**< Queue indices to use. */
 };
 
 /**

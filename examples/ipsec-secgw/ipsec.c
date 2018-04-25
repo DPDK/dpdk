@@ -187,14 +187,8 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 					.rss_key_len = 40,
 				};
 				struct rte_eth_dev *eth_dev;
-				union {
-					struct rte_flow_action_rss rss;
-					struct {
-					const struct rte_eth_rss_conf *rss_conf;
-					uint16_t num;
-					uint16_t queue[RTE_MAX_QUEUES_PER_PORT];
-					} local;
-				} action_rss;
+				uint16_t queue[RTE_MAX_QUEUES_PER_PORT];
+				struct rte_flow_action_rss action_rss;
 				unsigned int i;
 				unsigned int j;
 
@@ -208,9 +202,10 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 				for (i = 0, j = 0;
 				     i < eth_dev->data->nb_rx_queues; ++i)
 					if (eth_dev->data->rx_queues[i])
-						action_rss.local.queue[j++] = i;
-				action_rss.local.num = j;
-				action_rss.local.rss_conf = &rss_conf;
+						queue[j++] = i;
+				action_rss.rss_conf = &rss_conf;
+				action_rss.num = j;
+				action_rss.queue = queue;
 				ret = rte_flow_validate(sa->portid, &sa->attr,
 							sa->pattern, sa->action,
 							&err);

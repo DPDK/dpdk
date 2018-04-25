@@ -179,25 +179,22 @@ enum index {
 	ACTION_METER_ID,
 };
 
-/** Size of pattern[] field in struct rte_flow_item_raw. */
-#define ITEM_RAW_PATTERN_SIZE 36
+/** Maximum size for pattern in struct rte_flow_item_raw. */
+#define ITEM_RAW_PATTERN_SIZE 40
 
 /** Storage size for struct rte_flow_item_raw including pattern. */
 #define ITEM_RAW_SIZE \
-	(offsetof(struct rte_flow_item_raw, pattern) + ITEM_RAW_PATTERN_SIZE)
+	(sizeof(struct rte_flow_item_raw) + ITEM_RAW_PATTERN_SIZE)
 
 /** Maximum number of queue indices in struct rte_flow_action_rss. */
 #define ACTION_RSS_QUEUE_NUM 32
 
 /** Storage for struct rte_flow_action_rss including external data. */
-union action_rss_data {
+struct action_rss_data {
 	struct rte_flow_action_rss conf;
-	struct {
-		uint8_t conf_data[offsetof(struct rte_flow_action_rss, queue)];
-		uint16_t queue[ACTION_RSS_QUEUE_NUM];
-		struct rte_eth_rss_conf rss_conf;
-		uint8_t rss_key[RSS_HASH_KEY_LENGTH];
-	} s;
+	uint16_t queue[ACTION_RSS_QUEUE_NUM];
+	struct rte_eth_rss_conf rss_conf;
+	uint8_t rss_key[RSS_HASH_KEY_LENGTH];
 };
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
@@ -318,13 +315,6 @@ struct token {
 #define ARGS_ENTRY_PTR(s, f) \
 	(&(const struct arg){ \
 		.size = sizeof(*((s *)0)->f), \
-	})
-
-/** Static initializer for ARGS() with arbitrary size. */
-#define ARGS_ENTRY_USZ(s, f, sz) \
-	(&(const struct arg){ \
-		.offset = offsetof(s, f), \
-		.size = (sz), \
 	})
 
 /** Static initializer for ARGS() with arbitrary offset and size. */
@@ -1105,9 +1095,9 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(ITEM_PARAM_IS,
 					ITEM_PARAM_SPEC,
 					ITEM_PARAM_MASK)),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_raw, length),
-			     ARGS_ENTRY_USZ(struct rte_flow_item_raw,
-					    pattern,
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_raw, pattern),
+			     ARGS_ENTRY(struct rte_flow_item_raw, length),
+			     ARGS_ENTRY_ARB(sizeof(struct rte_flow_item_raw),
 					    ITEM_RAW_PATTERN_SIZE)),
 	},
 	[ITEM_ETH] = {
@@ -1591,7 +1581,7 @@ static const struct token token_list[] = {
 	[ACTION_RSS] = {
 		.name = "rss",
 		.help = "spread packets among several queues",
-		.priv = PRIV_ACTION(RSS, sizeof(union action_rss_data)),
+		.priv = PRIV_ACTION(RSS, sizeof(struct action_rss_data)),
 		.next = NEXT(action_rss),
 		.call = parse_vc_action_rss,
 	},
@@ -1610,23 +1600,21 @@ static const struct token token_list[] = {
 		.name = "key",
 		.help = "RSS hash key",
 		.next = NEXT(action_rss, NEXT_ENTRY(STRING)),
-		.args = ARGS(ARGS_ENTRY_ARB
-			     (((uintptr_t)&((union action_rss_data *)0)->
-			       s.rss_conf.rss_key_len),
+		.args = ARGS(ARGS_ENTRY_ARB(0, 0),
+			     ARGS_ENTRY_ARB
+			     (offsetof(struct action_rss_data, rss_conf) +
+			      offsetof(struct rte_eth_rss_conf, rss_key_len),
 			      sizeof(((struct rte_eth_rss_conf *)0)->
 				     rss_key_len)),
-			     ARGS_ENTRY_ARB
-			     (((uintptr_t)((union action_rss_data *)0)->
-			       s.rss_key),
-			      RSS_HASH_KEY_LENGTH)),
+			     ARGS_ENTRY(struct action_rss_data, rss_key)),
 	},
 	[ACTION_RSS_KEY_LEN] = {
 		.name = "key_len",
 		.help = "RSS hash key length in bytes",
 		.next = NEXT(action_rss, NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY_ARB_BOUNDED
-			     (((uintptr_t)&((union action_rss_data *)0)->
-			       s.rss_conf.rss_key_len),
+			     (offsetof(struct action_rss_data, rss_conf) +
+			      offsetof(struct rte_eth_rss_conf, rss_key_len),
 			      sizeof(((struct rte_eth_rss_conf *)0)->
 				     rss_key_len),
 			      0,
@@ -2067,7 +2055,7 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 {
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
-	union action_rss_data *action_rss_data;
+	struct action_rss_data *action_rss_data;
 	unsigned int i;
 	int ret;
 
@@ -2085,29 +2073,29 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 	ctx->objmask = NULL;
 	/* Set up default configuration. */
 	action_rss_data = ctx->object;
-	*action_rss_data = (union action_rss_data){
+	*action_rss_data = (struct action_rss_data){
 		.conf = (struct rte_flow_action_rss){
-			.rss_conf = &action_rss_data->s.rss_conf,
+			.rss_conf = &action_rss_data->rss_conf,
 			.num = RTE_MIN(nb_rxq, ACTION_RSS_QUEUE_NUM),
+			.queue = action_rss_data->queue,
 		},
+		.queue = { 0 },
+		.rss_conf = (struct rte_eth_rss_conf){
+			.rss_key = action_rss_data->rss_key,
+			.rss_key_len = sizeof(action_rss_data->rss_key),
+			.rss_hf = rss_hf,
+		},
+		.rss_key = "testpmd's default RSS hash key",
 	};
-	action_rss_data->s.rss_conf = (struct rte_eth_rss_conf){
-		.rss_key = action_rss_data->s.rss_key,
-		.rss_key_len = sizeof(action_rss_data->s.rss_key),
-		.rss_hf = rss_hf,
-	};
-	strncpy((void *)action_rss_data->s.rss_key,
-		"testpmd's default RSS hash key",
-		sizeof(action_rss_data->s.rss_key));
 	for (i = 0; i < action_rss_data->conf.num; ++i)
-		action_rss_data->conf.queue[i] = i;
+		action_rss_data->queue[i] = i;
 	if (!port_id_is_invalid(ctx->port, DISABLED_WARN) &&
 	    ctx->port != (portid_t)RTE_PORT_ALL) {
 		struct rte_eth_dev_info info;
 
 		rte_eth_dev_info_get(ctx->port, &info);
-		action_rss_data->s.rss_conf.rss_key_len =
-			RTE_MIN(sizeof(action_rss_data->s.rss_key),
+		action_rss_data->rss_conf.rss_key_len =
+			RTE_MIN(sizeof(action_rss_data->rss_key),
 				info.hash_key_size);
 	}
 	action->conf = &action_rss_data->conf;
@@ -2125,7 +2113,7 @@ parse_vc_action_rss_type(struct context *ctx, const struct token *token,
 			  void *buf, unsigned int size)
 {
 	static const enum index next[] = NEXT_ENTRY(ACTION_RSS_TYPE);
-	union action_rss_data *action_rss_data;
+	struct action_rss_data *action_rss_data;
 	unsigned int i;
 
 	(void)token;
@@ -2135,7 +2123,7 @@ parse_vc_action_rss_type(struct context *ctx, const struct token *token,
 		return -1;
 	if (!(ctx->objdata >> 16) && ctx->object) {
 		action_rss_data = ctx->object;
-		action_rss_data->s.rss_conf.rss_hf = 0;
+		action_rss_data->rss_conf.rss_hf = 0;
 	}
 	if (!strcmp_partial("end", str, len)) {
 		ctx->objdata &= 0xffff;
@@ -2154,7 +2142,7 @@ parse_vc_action_rss_type(struct context *ctx, const struct token *token,
 	if (!ctx->object)
 		return len;
 	action_rss_data = ctx->object;
-	action_rss_data->s.rss_conf.rss_hf |= rss_type_table[i].rss_type;
+	action_rss_data->rss_conf.rss_hf |= rss_type_table[i].rss_type;
 	return len;
 }
 
@@ -2169,7 +2157,7 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 			  void *buf, unsigned int size)
 {
 	static const enum index next[] = NEXT_ENTRY(ACTION_RSS_QUEUE);
-	union action_rss_data *action_rss_data;
+	struct action_rss_data *action_rss_data;
 	int ret;
 	int i;
 
@@ -2186,10 +2174,9 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 	if (i >= ACTION_RSS_QUEUE_NUM)
 		return -1;
 	if (push_args(ctx,
-		      ARGS_ENTRY_ARB(offsetof(struct rte_flow_action_rss,
-					      queue) +
-				     i * sizeof(action_rss_data->s.queue[i]),
-				     sizeof(action_rss_data->s.queue[i]))))
+		      ARGS_ENTRY_ARB(offsetof(struct action_rss_data, queue) +
+				     i * sizeof(action_rss_data->queue[i]),
+				     sizeof(action_rss_data->queue[i]))))
 		return -1;
 	ret = parse_int(ctx, token, str, len, NULL, 0);
 	if (ret < 0) {
@@ -2206,6 +2193,7 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 		return len;
 	action_rss_data = ctx->object;
 	action_rss_data->conf.num = i;
+	action_rss_data->conf.queue = i ? action_rss_data->queue : NULL;
 	return len;
 }
 
@@ -2483,8 +2471,8 @@ error:
 /**
  * Parse a string.
  *
- * Two arguments (ctx->args) are retrieved from the stack to store data and
- * its length (in that order).
+ * Three arguments (ctx->args) are retrieved from the stack to store data,
+ * its actual length and address (in that order).
  */
 static int
 parse_string(struct context *ctx, const struct token *token,
@@ -2493,6 +2481,7 @@ parse_string(struct context *ctx, const struct token *token,
 {
 	const struct arg *arg_data = pop_args(ctx);
 	const struct arg *arg_len = pop_args(ctx);
+	const struct arg *arg_addr = pop_args(ctx);
 	char tmp[16]; /* Ought to be enough. */
 	int ret;
 
@@ -2500,6 +2489,11 @@ parse_string(struct context *ctx, const struct token *token,
 	if (!arg_data)
 		return -1;
 	if (!arg_len) {
+		push_args(ctx, arg_data);
+		return -1;
+	}
+	if (!arg_addr) {
+		push_args(ctx, arg_len);
 		push_args(ctx, arg_data);
 		return -1;
 	}
@@ -2525,8 +2519,23 @@ parse_string(struct context *ctx, const struct token *token,
 	memset((uint8_t *)buf + len, 0x00, size - len);
 	if (ctx->objmask)
 		memset((uint8_t *)ctx->objmask + arg_data->offset, 0xff, len);
+	/* Save address if requested. */
+	if (arg_addr->size) {
+		memcpy((uint8_t *)ctx->object + arg_addr->offset,
+		       (void *[]){
+			(uint8_t *)ctx->object + arg_data->offset
+		       },
+		       arg_addr->size);
+		if (ctx->objmask)
+			memcpy((uint8_t *)ctx->objmask + arg_addr->offset,
+			       (void *[]){
+				(uint8_t *)ctx->objmask + arg_data->offset
+			       },
+			       arg_addr->size);
+	}
 	return len;
 error:
+	push_args(ctx, arg_addr);
 	push_args(ctx, arg_len);
 	push_args(ctx, arg_data);
 	return -1;

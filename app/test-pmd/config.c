@@ -994,7 +994,7 @@ static const struct {
 	MK_FLOW_ITEM(PF, 0),
 	MK_FLOW_ITEM(VF, sizeof(struct rte_flow_item_vf)),
 	MK_FLOW_ITEM(PORT, sizeof(struct rte_flow_item_port)),
-	MK_FLOW_ITEM(RAW, sizeof(struct rte_flow_item_raw)), /* +pattern[] */
+	MK_FLOW_ITEM(RAW, sizeof(struct rte_flow_item_raw)),
 	MK_FLOW_ITEM(ETH, sizeof(struct rte_flow_item_eth)),
 	MK_FLOW_ITEM(VLAN, sizeof(struct rte_flow_item_vlan)),
 	MK_FLOW_ITEM(IPV4, sizeof(struct rte_flow_item_ipv4)),
@@ -1043,14 +1043,20 @@ flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
 		union {
 			struct rte_flow_item_raw *raw;
 		} dst;
+		size_t off;
 
 	case RTE_FLOW_ITEM_TYPE_RAW:
 		src.raw = item_spec;
 		dst.raw = buf;
-		size = offsetof(struct rte_flow_item_raw, pattern) +
-			src.raw->length * sizeof(*src.raw->pattern);
-		if (dst.raw)
-			memcpy(dst.raw, src.raw, size);
+		off = RTE_ALIGN_CEIL(sizeof(struct rte_flow_item_raw),
+				     sizeof(*src.raw->pattern));
+		size = off + src.raw->length * sizeof(*src.raw->pattern);
+		if (dst.raw) {
+			memcpy(dst.raw, src.raw, sizeof(*src.raw));
+			dst.raw->pattern = memcpy((uint8_t *)dst.raw + off,
+						  src.raw->pattern,
+						  size - off);
+		}
 		break;
 	default:
 		size = flow_item[item->type].size;
@@ -1082,7 +1088,7 @@ static const struct {
 	MK_FLOW_ACTION(QUEUE, sizeof(struct rte_flow_action_queue)),
 	MK_FLOW_ACTION(DROP, 0),
 	MK_FLOW_ACTION(COUNT, 0),
-	MK_FLOW_ACTION(RSS, sizeof(struct rte_flow_action_rss)), /* +queue[] */
+	MK_FLOW_ACTION(RSS, sizeof(struct rte_flow_action_rss)),
 	MK_FLOW_ACTION(PF, 0),
 	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),
 	MK_FLOW_ACTION(METER, sizeof(struct rte_flow_action_meter)),
@@ -1113,11 +1119,14 @@ flow_action_conf_copy(void *buf, const struct rte_flow_action *action)
 			*dst.rss = (struct rte_flow_action_rss){
 				.num = src.rss->num,
 			};
-		off += offsetof(struct rte_flow_action_rss, queue);
+		off += sizeof(*src.rss);
 		if (src.rss->num) {
+			off = RTE_ALIGN_CEIL(off, sizeof(double));
 			size = sizeof(*src.rss->queue) * src.rss->num;
 			if (dst.rss)
-				memcpy(dst.rss->queue, src.rss->queue, size);
+				dst.rss->queue = memcpy
+					((void *)((uintptr_t)dst.rss + off),
+					 src.rss->queue, size);
 			off += size;
 		}
 		off = RTE_ALIGN_CEIL(off, sizeof(double));

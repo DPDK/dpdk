@@ -2456,9 +2456,16 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		},
 	};
+	uint16_t queue[priv->reta_idx_n];
+	struct rte_flow_action_rss action_rss = {
+		.rss_conf = &priv->rss_conf,
+		.num = priv->reta_idx_n,
+		.queue = queue,
+	};
 	struct rte_flow_action actions[] = {
 		{
 			.type = RTE_FLOW_ACTION_TYPE_RSS,
+			.conf = &action_rss,
 		},
 		{
 			.type = RTE_FLOW_ACTION_TYPE_END,
@@ -2467,24 +2474,13 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	struct rte_flow *flow;
 	struct rte_flow_error error;
 	unsigned int i;
-	union {
-		struct rte_flow_action_rss rss;
-		struct {
-			const struct rte_eth_rss_conf *rss_conf;
-			uint16_t num;
-			uint16_t queue[RTE_MAX_QUEUES_PER_PORT];
-		} local;
-	} action_rss;
 
 	if (!priv->reta_idx_n) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
 	for (i = 0; i != priv->reta_idx_n; ++i)
-		action_rss.local.queue[i] = (*priv->reta_idx)[i];
-	action_rss.local.rss_conf = &priv->rss_conf;
-	action_rss.local.num = priv->reta_idx_n;
-	actions[0].conf = (const void *)&action_rss.rss;
+		queue[i] = (*priv->reta_idx)[i];
 	flow = mlx5_flow_list_create(dev, &priv->ctrl_flows, &attr, items,
 				     actions, &error);
 	if (!flow)

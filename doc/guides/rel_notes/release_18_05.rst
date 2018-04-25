@@ -267,6 +267,8 @@ API Changes
     properties anymore.
   * Flow rules are now always terminating unless a PASSTHRU action is
     present.
+  * C99-style flexible arrays were replaced with standard pointers in RSS
+    action and in RAW pattern item structures due to compatibility issues.
 
 
 ABI Changes
@@ -314,8 +316,10 @@ ABI Changes
   ``rte_flow_destroy``, ``rte_flow_error_set``, ``rte_flow_flush``,
   ``rte_flow_isolate``, ``rte_flow_query`` and ``rte_flow_validate``, due to
   changes in error type definitions (``enum rte_flow_error_type``), removal
-  of the unused DUP action (``enum rte_flow_action_type``) and modified
-  behavior for flow rule actions (see API changes).
+  of the unused DUP action (``enum rte_flow_action_type``), modified
+  behavior for flow rule actions (see API changes) and removal of C99
+  flexible arrays from RSS action (``struct rte_flow_action_rss``) and RAW
+  pattern item (``struct rte_flow_item_raw``).
 
 
 Removed Items

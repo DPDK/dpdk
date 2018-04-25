@@ -1282,14 +1282,16 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	 */
 	uint32_t queues =
 		rte_align32pow2(priv->dev->data->nb_rx_queues + 1) >> 1;
-	alignas(struct rte_flow_action_rss) uint8_t rss_conf_data
-		[offsetof(struct rte_flow_action_rss, queue) +
-		 sizeof(((struct rte_flow_action_rss *)0)->queue[0]) * queues];
-	struct rte_flow_action_rss *rss_conf = (void *)rss_conf_data;
+	uint16_t queue[queues];
+	struct rte_flow_action_rss action_rss = {
+		.rss_conf = NULL, /* Rely on default fallback settings. */
+		.num = queues,
+		.queue = queue,
+	};
 	struct rte_flow_action actions[] = {
 		{
 			.type = RTE_FLOW_ACTION_TYPE_RSS,
-			.conf = rss_conf,
+			.conf = &action_rss,
 		},
 		{
 			.type = RTE_FLOW_ACTION_TYPE_END,
@@ -1311,12 +1313,8 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	if (!queues)
 		goto error;
 	/* Prepare default RSS configuration. */
-	*rss_conf = (struct rte_flow_action_rss){
-		.rss_conf = NULL, /* Rely on default fallback settings. */
-		.num = queues,
-	};
 	for (i = 0; i != queues; ++i)
-		rss_conf->queue[i] = i;
+		queue[i] = i;
 	/*
 	 * Set up VLAN item if filtering is enabled and at least one VLAN
 	 * filter is configured.
@@ -1375,7 +1373,7 @@ next_vlan:
 			if (j != sizeof(mac->addr_bytes))
 				continue;
 			if (flow->rss->queues != queues ||
-			    memcmp(flow->rss->queue_id, rss_conf->queue,
+			    memcmp(flow->rss->queue_id, action_rss.queue,
 				   queues * sizeof(flow->rss->queue_id[0])))
 				continue;
 			break;
@@ -1415,7 +1413,7 @@ next_vlan:
 		if (flow && flow->internal) {
 			assert(flow->rss);
 			if (flow->rss->queues != queues ||
-			    memcmp(flow->rss->queue_id, rss_conf->queue,
+			    memcmp(flow->rss->queue_id, action_rss.queue,
 				   queues * sizeof(flow->rss->queue_id[0])))
 				flow = NULL;
 		}
