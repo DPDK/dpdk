@@ -1318,6 +1318,12 @@ enic_flow_parse(struct rte_eth_dev *dev,
 					   NULL,
 					   "egress is not supported");
 			return -rte_errno;
+		} else if (attrs->transfer) {
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+					   NULL,
+					   "transfer is not supported");
+			return -rte_errno;
 		} else if (!attrs->ingress) {
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,

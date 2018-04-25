@@ -379,6 +379,15 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
+	/* not supported */
+	if (attr->transfer) {
+		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				   attr, "No support for transfer.");
+		return -rte_errno;
+	}
+
 	if (attr->priority > 0xFFFF) {
 		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
 		rte_flow_error_set(error, EINVAL,
@@ -620,6 +629,14 @@ cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
 				attr, "Not support egress.");
+		return -rte_errno;
+	}
+
+	/* Not supported */
+	if (attr->transfer) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				attr, "No support for transfer.");
 		return -rte_errno;
 	}
 
@@ -923,6 +940,15 @@ cons_parse_syn_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
+	/* not supported */
+	if (attr->transfer) {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+			attr, "No support for transfer.");
+		return -rte_errno;
+	}
+
 	/* Support 2 priorities, the lowest or highest. */
 	if (!attr->priority) {
 		filter->hig_pri = 0;
@@ -1211,6 +1237,15 @@ item_loop:
 		return -rte_errno;
 	}
 
+	/* not supported */
+	if (attr->transfer) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+			attr, "No support for transfer.");
+		return -rte_errno;
+	}
+
 	if (attr->priority > 0xFFFF) {
 		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
 		rte_flow_error_set(error, EINVAL,
@@ -1358,6 +1393,15 @@ igb_parse_rss_filter(struct rte_eth_dev *dev,
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
 				   attr, "Not support egress.");
+		return -rte_errno;
+	}
+
+	/* not supported */
+	if (attr->transfer) {
+		memset(rss_conf, 0, sizeof(struct igb_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				   attr, "No support for transfer.");
 		return -rte_errno;
 	}
 

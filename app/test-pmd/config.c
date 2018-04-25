@@ -1256,6 +1256,7 @@ port_flow_complain(struct rte_flow_error *error)
 		[RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY] = "priority field",
 		[RTE_FLOW_ERROR_TYPE_ATTR_INGRESS] = "ingress field",
 		[RTE_FLOW_ERROR_TYPE_ATTR_EGRESS] = "egress field",
+		[RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER] = "transfer field",
 		[RTE_FLOW_ERROR_TYPE_ATTR] = "attributes structure",
 		[RTE_FLOW_ERROR_TYPE_ITEM_NUM] = "pattern length",
 		[RTE_FLOW_ERROR_TYPE_ITEM_SPEC] = "item specification",
@@ -1521,12 +1522,13 @@ port_flow_list(portid_t port_id, uint32_t n, const uint32_t group[n])
 		const struct rte_flow_item *item = pf->pattern;
 		const struct rte_flow_action *action = pf->actions;
 
-		printf("%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t%c%c\t",
+		printf("%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t%c%c%c\t",
 		       pf->id,
 		       pf->attr.group,
 		       pf->attr.priority,
 		       pf->attr.ingress ? 'i' : '-',
-		       pf->attr.egress ? 'e' : '-');
+		       pf->attr.egress ? 'e' : '-',
+		       pf->attr.transfer ? 't' : '-');
 		while (item->type != RTE_FLOW_ITEM_TYPE_END) {
 			if (item->type != RTE_FLOW_ITEM_TYPE_VOID)
 				printf("%s ", flow_item[item->type].name);

@@ -2994,14 +2994,14 @@ following sections.
 - Check whether a flow rule can be created::
 
    flow validate {port_id}
-       [group {group_id}] [priority {level}] [ingress] [egress]
+       [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
        pattern {item} [/ {item} [...]] / end
        actions {action} [/ {action} [...]] / end
 
 - Create a flow rule::
 
    flow create {port_id}
-       [group {group_id}] [priority {level}] [ingress] [egress]
+       [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
        pattern {item} [/ {item} [...]] / end
        actions {action} [/ {action} [...]] / end
 
@@ -3034,7 +3034,7 @@ underlying device in its current state but stops short of creating it. It is
 bound to ``rte_flow_validate()``::
 
    flow validate {port_id}
-      [group {group_id}] [priority {level}] [ingress] [egress]
+      [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
       pattern {item} [/ {item} [...]] / end
       actions {action} [/ {action} [...]] / end
 
@@ -3071,7 +3071,7 @@ Creating flow rules
 to ``rte_flow_create()``::
 
    flow create {port_id}
-      [group {group_id}] [priority {level}] [ingress] [egress]
+      [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
       pattern {item} [/ {item} [...]] / end
       actions {action} [/ {action} [...]] / end
 
@@ -3085,7 +3085,7 @@ Otherwise it will show an error message of the form::
 
 Parameters describe in the following order:
 
-- Attributes (*group*, *priority*, *ingress*, *egress* tokens).
+- Attributes (*group*, *priority*, *ingress*, *egress*, *transfer* tokens).
 - A matching pattern, starting with the *pattern* token and terminated by an
   *end* pattern item.
 - Actions, starting with the *actions* token and terminated by an *end*
@@ -3113,6 +3113,7 @@ specified before the ``pattern`` token.
 - ``priority {level}``: priority level within group.
 - ``ingress``: rule applies to ingress traffic.
 - ``egress``: rule applies to egress traffic.
+- ``transfer``: apply rule directly to endpoints found in pattern.
 
 Each instance of an attribute specified several times overrides the previous
 value as shown below (group 4 is used)::

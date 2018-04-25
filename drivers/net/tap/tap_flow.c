@@ -1039,6 +1039,12 @@ priv_flow_process(struct pmd_internals *pmd,
 	};
 	int action = 0; /* Only one action authorized for now */
 
+	if (attr->transfer) {
+		rte_flow_error_set(
+			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+			NULL, "transfer is not supported");
+		return -rte_errno;
+	}
 	if (attr->group > MAX_GROUP) {
 		rte_flow_error_set(
 			error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR_GROUP,

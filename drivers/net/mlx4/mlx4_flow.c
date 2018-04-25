@@ -652,6 +652,10 @@ mlx4_flow_prepare(struct priv *priv,
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
 			 NULL, "egress is not supported");
+	if (attr->transfer)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+			 NULL, "transfer is not supported");
 	if (!attr->ingress)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,

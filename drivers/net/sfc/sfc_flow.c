@@ -1116,6 +1116,12 @@ sfc_flow_parse_attr(const struct rte_flow_attr *attr,
 				   "Egress is not supported");
 		return -rte_errno;
 	}
+	if (attr->transfer != 0) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, attr,
+				   "Transfer is not supported");
+		return -rte_errno;
+	}
 	if (attr->ingress == 0) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS, attr,

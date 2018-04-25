@@ -281,6 +281,8 @@ API Changes
   * The VLAN pattern item (``struct rte_flow_item_vlan``) was modified to
     include inner EtherType instead of outer TPID. Its default mask was also
     modified to cover the VID part (lower 12 bits) of TCI only.
+  * A new transfer attribute was added to ``struct rte_flow_attr`` in order
+    to clarify the behavior of some pattern items.
 
 
 ABI Changes
@@ -331,8 +333,9 @@ ABI Changes
   of the unused DUP action (``enum rte_flow_action_type``), modified
   behavior for flow rule actions (see API changes), removal of C99 flexible
   array from RAW pattern item (``struct rte_flow_item_raw``), complete
-  rework of the RSS action definition (``struct rte_flow_action_rss``) and
-  sanity fix in the VLAN pattern item (``struct rte_flow_item_vlan``).
+  rework of the RSS action definition (``struct rte_flow_action_rss``),
+  sanity fix in the VLAN pattern item (``struct rte_flow_item_vlan``) and
+  new transfer attribute (``struct rte_flow_attr``).
 
 
 Removed Items

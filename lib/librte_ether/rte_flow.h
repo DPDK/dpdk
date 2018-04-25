@@ -72,7 +72,26 @@ struct rte_flow_attr {
 	uint32_t priority; /**< Priority level within group. */
 	uint32_t ingress:1; /**< Rule applies to ingress traffic. */
 	uint32_t egress:1; /**< Rule applies to egress traffic. */
-	uint32_t reserved:30; /**< Reserved, must be zero. */
+	/**
+	 * Instead of simply matching the properties of traffic as it would
+	 * appear on a given DPDK port ID, enabling this attribute transfers
+	 * a flow rule to the lowest possible level of any device endpoints
+	 * found in the pattern.
+	 *
+	 * When supported, this effectively enables an application to
+	 * re-route traffic not necessarily intended for it (e.g. coming
+	 * from or addressed to different physical ports, VFs or
+	 * applications) at the device level.
+	 *
+	 * It complements the behavior of some pattern items such as
+	 * RTE_FLOW_ITEM_TYPE_PORT and is meaningless without them.
+	 *
+	 * When transferring flow rules, ingress and egress attributes keep
+	 * their original meaning, as if processing traffic emitted or
+	 * received by the application.
+	 */
+	uint32_t transfer:1;
+	uint32_t reserved:29; /**< Reserved, must be zero. */
 };
 
 /**
@@ -1181,6 +1200,7 @@ enum rte_flow_error_type {
 	RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY, /**< Priority field. */
 	RTE_FLOW_ERROR_TYPE_ATTR_INGRESS, /**< Ingress field. */
 	RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, /**< Egress field. */
+	RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, /**< Transfer field. */
 	RTE_FLOW_ERROR_TYPE_ATTR, /**< Attributes structure. */
 	RTE_FLOW_ERROR_TYPE_ITEM_NUM, /**< Pattern length. */
 	RTE_FLOW_ERROR_TYPE_ITEM_SPEC, /**< Item specification. */

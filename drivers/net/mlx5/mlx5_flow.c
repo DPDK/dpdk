@@ -576,6 +576,13 @@ mlx5_flow_convert_attributes(const struct rte_flow_attr *attr,
 				   "egress is not supported");
 		return -rte_errno;
 	}
+	if (attr->transfer) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				   NULL,
+				   "transfer is not supported");
+		return -rte_errno;
+	}
 	if (!attr->ingress) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,

@@ -2187,6 +2187,12 @@ mrvl_flow_parse_attr(struct mrvl_priv *priv __rte_unused,
 				   "Egress is not supported");
 		return -rte_errno;
 	}
+	if (attr->transfer) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, NULL,
+				   "Transfer is not supported");
+		return -rte_errno;
+	}
 
 	return 0;
 }

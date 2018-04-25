@@ -1918,6 +1918,14 @@ i40e_flow_parse_attr(const struct rte_flow_attr *attr,
 	}
 
 	/* Not supported */
+	if (attr->transfer) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				   attr, "No support for transfer.");
+		return -rte_errno;
+	}
+
+	/* Not supported */
 	if (attr->priority) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,

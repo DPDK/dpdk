@@ -170,13 +170,37 @@ Note that support for more than a single priority level is not guaranteed.
 Attribute: Traffic direction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Flow rules can apply to inbound and/or outbound traffic (ingress/egress).
+Flow rule patterns apply to inbound and/or outbound traffic.
+
+In the context of this API, **ingress** and **egress** respectively stand
+for **inbound** and **outbound** based on the standpoint of the application
+creating a flow rule.
+
+There are no exceptions to this definition.
 
 Several pattern items and actions are valid and can be used in both
 directions. At least one direction must be specified.
 
 Specifying both directions at once for a given rule is not recommended but
 may be valid in a few cases (e.g. shared counters).
+
+Attribute: Transfer
+^^^^^^^^^^^^^^^^^^^
+
+Instead of simply matching the properties of traffic as it would appear on a
+given DPDK port ID, enabling this attribute transfers a flow rule to the
+lowest possible level of any device endpoints found in the pattern.
+
+When supported, this effectively enables an application to reroute traffic
+not necessarily intended for it (e.g. coming from or addressed to different
+physical ports, VFs or applications) at the device level.
+
+It complements the behavior of some pattern items such as `Item: PORT`_ and
+is meaningless without them.
+
+When transferring flow rules, **ingress** and **egress** attributes
+(`Attribute: Traffic direction`_) keep their original meaning, as if
+processing traffic emitted or received by the application.
 
 Pattern item
 ~~~~~~~~~~~~
