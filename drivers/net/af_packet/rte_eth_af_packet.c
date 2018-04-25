@@ -97,6 +97,12 @@ static struct rte_eth_link pmd_link = {
 	.link_autoneg = ETH_LINK_FIXED,
 };
 
+static int af_packet_logtype;
+
+#define PMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, af_packet_logtype, \
+		"%s(): " fmt "\n", __func__, ##args)
+
 static uint16_t
 eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
@@ -393,8 +399,8 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	data_size -= TPACKET2_HDRLEN - sizeof(struct sockaddr_ll);
 
 	if (data_size > buf_size) {
-		RTE_LOG(ERR, PMD,
-			"%s: %d bytes will not fit in mbuf (%d bytes)\n",
+		PMD_LOG(ERR,
+			"%s: %d bytes will not fit in mbuf (%d bytes)",
 			dev->device->name, data_size, buf_size);
 		return -ENOMEM;
 	}
@@ -515,7 +521,7 @@ open_packet_iface(const char *key __rte_unused,
 	/* Open an AF_PACKET socket... */
 	*sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	if (*sockfd == -1) {
-		RTE_LOG(ERR, PMD, "Could not open AF_PACKET socket\n");
+		PMD_LOG(ERR, "Could not open AF_PACKET socket");
 		return -1;
 	}
 
@@ -561,14 +567,14 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 			break;
 	}
 	if (pair == NULL) {
-		RTE_LOG(ERR, PMD,
-			"%s: no interface specified for AF_PACKET ethdev\n",
+		PMD_LOG(ERR,
+			"%s: no interface specified for AF_PACKET ethdev",
 		        name);
 		return -1;
 	}
 
-	RTE_LOG(INFO, PMD,
-		"%s: creating AF_PACKET-backed ethdev on numa socket %u\n",
+	PMD_LOG(INFO,
+		"%s: creating AF_PACKET-backed ethdev on numa socket %u",
 		name, numa_node);
 
 	*internals = rte_zmalloc_socket(name, sizeof(**internals),
@@ -593,14 +599,14 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		memcpy(ifr.ifr_name, pair->value, ifnamelen);
 		ifr.ifr_name[ifnamelen] = '\0';
 	} else {
-		RTE_LOG(ERR, PMD,
-			"%s: I/F name too long (%s)\n",
+		PMD_LOG(ERR,
+			"%s: I/F name too long (%s)",
 			name, pair->value);
 		return -1;
 	}
 	if (ioctl(sockfd, SIOCGIFINDEX, &ifr) == -1) {
-		RTE_LOG(ERR, PMD,
-			"%s: ioctl failed (SIOCGIFINDEX)\n",
+		PMD_LOG(ERR,
+			"%s: ioctl failed (SIOCGIFINDEX)",
 		        name);
 		return -1;
 	}
@@ -610,8 +616,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	(*internals)->if_index = ifr.ifr_ifindex;
 
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
-		RTE_LOG(ERR, PMD,
-			"%s: ioctl failed (SIOCGIFHWADDR)\n",
+		PMD_LOG(ERR,
+			"%s: ioctl failed (SIOCGIFHWADDR)",
 		        name);
 		return -1;
 	}
@@ -634,8 +640,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		/* Open an AF_PACKET socket for this queue... */
 		qsockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 		if (qsockfd == -1) {
-			RTE_LOG(ERR, PMD,
-			        "%s: could not open AF_PACKET socket\n",
+			PMD_LOG(ERR,
+				"%s: could not open AF_PACKET socket",
 			        name);
 			return -1;
 		}
@@ -644,9 +650,9 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_VERSION,
 				&tpver, sizeof(tpver));
 		if (rc == -1) {
-			RTE_LOG(ERR, PMD,
-				"%s: could not set PACKET_VERSION on AF_PACKET "
-				"socket for %s\n", name, pair->value);
+			PMD_LOG(ERR,
+				"%s: could not set PACKET_VERSION on AF_PACKET socket for %s",
+				name, pair->value);
 			goto error;
 		}
 
@@ -654,9 +660,9 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_LOSS,
 				&discard, sizeof(discard));
 		if (rc == -1) {
-			RTE_LOG(ERR, PMD,
-				"%s: could not set PACKET_LOSS on "
-			        "AF_PACKET socket for %s\n", name, pair->value);
+			PMD_LOG(ERR,
+				"%s: could not set PACKET_LOSS on AF_PACKET socket for %s",
+				name, pair->value);
 			goto error;
 		}
 
@@ -664,10 +670,9 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_QDISC_BYPASS,
 				&qdisc_bypass, sizeof(qdisc_bypass));
 		if (rc == -1) {
-			RTE_LOG(ERR, PMD,
-				"%s: could not set PACKET_QDISC_BYPASS "
-			        "on AF_PACKET socket for %s\n", name,
-			        pair->value);
+			PMD_LOG(ERR,
+				"%s: could not set PACKET_QDISC_BYPASS on AF_PACKET socket for %s",
+				name, pair->value);
 			goto error;
 		}
 #else
@@ -676,17 +681,17 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_RX_RING, req, sizeof(*req));
 		if (rc == -1) {
-			RTE_LOG(ERR, PMD,
-				"%s: could not set PACKET_RX_RING on AF_PACKET "
-				"socket for %s\n", name, pair->value);
+			PMD_LOG(ERR,
+				"%s: could not set PACKET_RX_RING on AF_PACKET socket for %s",
+				name, pair->value);
 			goto error;
 		}
 
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_TX_RING, req, sizeof(*req));
 		if (rc == -1) {
-			RTE_LOG(ERR, PMD,
+			PMD_LOG(ERR,
 				"%s: could not set PACKET_TX_RING on AF_PACKET "
-				"socket for %s\n", name, pair->value);
+				"socket for %s", name, pair->value);
 			goto error;
 		}
 
@@ -697,8 +702,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 				    PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED,
 				    qsockfd, 0);
 		if (rx_queue->map == MAP_FAILED) {
-			RTE_LOG(ERR, PMD,
-				"%s: call to mmap failed on AF_PACKET socket for %s\n",
+			PMD_LOG(ERR,
+				"%s: call to mmap failed on AF_PACKET socket for %s",
 				name, pair->value);
 			goto error;
 		}
@@ -734,8 +739,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 
 		rc = bind(qsockfd, (const struct sockaddr*)&sockaddr, sizeof(sockaddr));
 		if (rc == -1) {
-			RTE_LOG(ERR, PMD,
-				"%s: could not bind AF_PACKET socket to %s\n",
+			PMD_LOG(ERR,
+				"%s: could not bind AF_PACKET socket to %s",
 			        name, pair->value);
 			goto error;
 		}
@@ -744,9 +749,9 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_FANOUT,
 				&fanout_arg, sizeof(fanout_arg));
 		if (rc == -1) {
-			RTE_LOG(ERR, PMD,
+			PMD_LOG(ERR,
 				"%s: could not set PACKET_FANOUT on AF_PACKET socket "
-				"for %s\n", name, pair->value);
+				"for %s", name, pair->value);
 			goto error;
 		}
 #endif
@@ -826,8 +831,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 			qpairs = atoi(pair->value);
 			if (qpairs < 1 ||
 			    qpairs > RTE_PMD_AF_PACKET_MAX_RINGS) {
-				RTE_LOG(ERR, PMD,
-					"%s: invalid qpairs value\n",
+				PMD_LOG(ERR,
+					"%s: invalid qpairs value",
 				        name);
 				return -1;
 			}
@@ -836,8 +841,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 		if (strstr(pair->key, ETH_AF_PACKET_BLOCKSIZE_ARG) != NULL) {
 			blocksize = atoi(pair->value);
 			if (!blocksize) {
-				RTE_LOG(ERR, PMD,
-					"%s: invalid blocksize value\n",
+				PMD_LOG(ERR,
+					"%s: invalid blocksize value",
 				        name);
 				return -1;
 			}
@@ -846,8 +851,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 		if (strstr(pair->key, ETH_AF_PACKET_FRAMESIZE_ARG) != NULL) {
 			framesize = atoi(pair->value);
 			if (!framesize) {
-				RTE_LOG(ERR, PMD,
-					"%s: invalid framesize value\n",
+				PMD_LOG(ERR,
+					"%s: invalid framesize value",
 				        name);
 				return -1;
 			}
@@ -856,8 +861,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 		if (strstr(pair->key, ETH_AF_PACKET_FRAMECOUNT_ARG) != NULL) {
 			framecount = atoi(pair->value);
 			if (!framecount) {
-				RTE_LOG(ERR, PMD,
-					"%s: invalid framecount value\n",
+				PMD_LOG(ERR,
+					"%s: invalid framecount value",
 				        name);
 				return -1;
 			}
@@ -866,8 +871,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 		if (strstr(pair->key, ETH_AF_PACKET_QDISC_BYPASS_ARG) != NULL) {
 			qdisc_bypass = atoi(pair->value);
 			if (qdisc_bypass > 1) {
-				RTE_LOG(ERR, PMD,
-					"%s: invalid bypass value\n",
+				PMD_LOG(ERR,
+					"%s: invalid bypass value",
 					name);
 				return -1;
 			}
@@ -876,24 +881,24 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	}
 
 	if (framesize > blocksize) {
-		RTE_LOG(ERR, PMD,
-			"%s: AF_PACKET MMAP frame size exceeds block size!\n",
+		PMD_LOG(ERR,
+			"%s: AF_PACKET MMAP frame size exceeds block size!",
 		        name);
 		return -1;
 	}
 
 	blockcount = framecount / (blocksize / framesize);
 	if (!blockcount) {
-		RTE_LOG(ERR, PMD,
-			"%s: invalid AF_PACKET MMAP parameters\n", name);
+		PMD_LOG(ERR,
+			"%s: invalid AF_PACKET MMAP parameters", name);
 		return -1;
 	}
 
-	RTE_LOG(INFO, PMD, "%s: AF_PACKET MMAP parameters:\n", name);
-	RTE_LOG(INFO, PMD, "%s:\tblock size %d\n", name, blocksize);
-	RTE_LOG(INFO, PMD, "%s:\tblock count %d\n", name, blockcount);
-	RTE_LOG(INFO, PMD, "%s:\tframe size %d\n", name, framesize);
-	RTE_LOG(INFO, PMD, "%s:\tframe count %d\n", name, framecount);
+	PMD_LOG(INFO, "%s: AF_PACKET MMAP parameters:", name);
+	PMD_LOG(INFO, "%s:\tblock size %d", name, blocksize);
+	PMD_LOG(INFO, "%s:\tblock count %d", name, blockcount);
+	PMD_LOG(INFO, "%s:\tframe size %d", name, framesize);
+	PMD_LOG(INFO, "%s:\tframe count %d", name, framecount);
 
 	if (rte_pmd_init_internals(dev, *sockfd, qpairs,
 				   blocksize, blockcount,
@@ -918,13 +923,13 @@ rte_pmd_af_packet_probe(struct rte_vdev_device *dev)
 	struct rte_eth_dev *eth_dev;
 	const char *name = rte_vdev_device_name(dev);
 
-	RTE_LOG(INFO, PMD, "Initializing pmd_af_packet for %s\n", name);
+	PMD_LOG(INFO, "Initializing pmd_af_packet for %s", name);
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
 	    strlen(rte_vdev_device_args(dev)) == 0) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
-			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			PMD_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
@@ -968,8 +973,8 @@ rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 	struct pmd_internals *internals;
 	unsigned q;
 
-	RTE_LOG(INFO, PMD, "Closing AF_PACKET ethdev on numa socket %u\n",
-			rte_socket_id());
+	PMD_LOG(INFO, "Closing AF_PACKET ethdev on numa socket %u",
+		rte_socket_id());
 
 	if (dev == NULL)
 		return -1;
@@ -1007,3 +1012,12 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_packet,
 	"framesz=<int> "
 	"framecnt=<int> "
 	"qdisc_bypass=<0|1>");
+
+RTE_INIT(af_packet_init_log);
+static void
+af_packet_init_log(void)
+{
+	af_packet_logtype = rte_log_register("pmd.net.packet");
+	if (af_packet_logtype >= 0)
+		rte_log_set_level(af_packet_logtype, RTE_LOG_NOTICE);
+}
