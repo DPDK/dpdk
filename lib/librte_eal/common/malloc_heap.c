@@ -107,6 +107,8 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 
 	malloc_heap_add_memory(heap, found_msl, ms->addr, len);
 
+	heap->total_size += len;
+
 	RTE_LOG(DEBUG, EAL, "Added %zuM to heap on socket %i\n", len >> 20,
 			msl->socket_id);
 	return 0;
