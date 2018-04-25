@@ -3,6 +3,7 @@
  */
 
 #include <errno.h>
+#include <stdint.h>
 #include <rte_log.h>
 #include <rte_ethdev_driver.h>
 #include <rte_flow_driver.h>
@@ -964,6 +965,9 @@ static int
 enic_copy_action_v1(const struct rte_flow_action actions[],
 		    struct filter_action_v2 *enic_action)
 {
+	enum { FATE = 1, };
+	uint32_t overlap = 0;
+
 	FLOW_TRACE();
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
@@ -975,6 +979,10 @@ enic_copy_action_v1(const struct rte_flow_action actions[],
 			const struct rte_flow_action_queue *queue =
 				(const struct rte_flow_action_queue *)
 				actions->conf;
+
+			if (overlap & FATE)
+				return ENOTSUP;
+			overlap |= FATE;
 			enic_action->rq_idx =
 				enic_rte_rq_idx_to_sop_idx(queue->index);
 			break;
@@ -984,6 +992,8 @@ enic_copy_action_v1(const struct rte_flow_action actions[],
 			break;
 		}
 	}
+	if (!(overlap & FATE))
+		return ENOTSUP;
 	enic_action->type = FILTER_ACTION_RQ_STEERING;
 	return 0;
 }
@@ -1001,6 +1011,9 @@ static int
 enic_copy_action_v2(const struct rte_flow_action actions[],
 		    struct filter_action_v2 *enic_action)
 {
+	enum { FATE = 1, MARK = 2, };
+	uint32_t overlap = 0;
+
 	FLOW_TRACE();
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
@@ -1009,6 +1022,10 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 			const struct rte_flow_action_queue *queue =
 				(const struct rte_flow_action_queue *)
 				actions->conf;
+
+			if (overlap & FATE)
+				return ENOTSUP;
+			overlap |= FATE;
 			enic_action->rq_idx =
 				enic_rte_rq_idx_to_sop_idx(queue->index);
 			enic_action->flags |= FILTER_ACTION_RQ_STEERING_FLAG;
@@ -1019,6 +1036,9 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 				(const struct rte_flow_action_mark *)
 				actions->conf;
 
+			if (overlap & MARK)
+				return ENOTSUP;
+			overlap |= MARK;
 			/* ENIC_MAGIC_FILTER_ID is reserved and is the highest
 			 * in the range of allows mark ids.
 			 */
@@ -1029,6 +1049,9 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_FLAG: {
+			if (overlap & MARK)
+				return ENOTSUP;
+			overlap |= MARK;
 			enic_action->filter_id = ENIC_MAGIC_FILTER_ID;
 			enic_action->flags |= FILTER_ACTION_FILTER_ID_FLAG;
 			break;
@@ -1044,6 +1067,8 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 			break;
 		}
 	}
+	if (!(overlap & FATE))
+		return ENOTSUP;
 	enic_action->type = FILTER_ACTION_V2;
 	return 0;
 }

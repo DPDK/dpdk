@@ -258,7 +258,15 @@ API Changes
    fall-back value. Previously, setting ``nb_tx_desc`` to zero would have
    resulted in an error.
 
-* ethdev: unused DUP action was removed from the flow API.
+* ethdev: several changes were made to the flow API.
+
+  * Unused DUP action was removed.
+  * Actions semantics in flow rules: list order now matters ("first
+    to last" instead of "all simultaneously"), repeated actions are now
+    all performed, and they do not individually have (non-)terminating
+    properties anymore.
+  * Flow rules are now always terminating unless a PASSTHRU action is
+    present.
 
 
 ABI Changes
@@ -305,8 +313,9 @@ ABI Changes
   This includes functions ``rte_flow_copy``, ``rte_flow_create``,
   ``rte_flow_destroy``, ``rte_flow_error_set``, ``rte_flow_flush``,
   ``rte_flow_isolate``, ``rte_flow_query`` and ``rte_flow_validate``, due to
-  changes in error type definitions (``enum rte_flow_error_type``) and
-  removal of the unused DUP action (``enum rte_flow_action_type``).
+  changes in error type definitions (``enum rte_flow_error_type``), removal
+  of the unused DUP action (``enum rte_flow_action_type``) and modified
+  behavior for flow rule actions (see API changes).
 
 
 Removed Items

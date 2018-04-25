@@ -1467,10 +1467,19 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 	}
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		/* This one may appear anywhere multiple times. */
+		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID)
+			continue;
+		/* Fate-deciding actions may appear exactly once. */
+		if (is_specified) {
+			rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				 actions,
+				 "Cannot combine several fate-deciding actions,"
+				 "choose between QUEUE, RSS or DROP");
+			return -rte_errno;
+		}
 		switch (actions->type) {
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			break;
-
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			rc = sfc_flow_parse_queue(sa, actions->conf, flow);
 			if (rc != 0) {
@@ -1512,11 +1521,10 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 		}
 	}
 
+	/* When fate is unknown, drop traffic. */
 	if (!is_specified) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ACTION_NUM, actions,
-				   "Action is unspecified");
-		return -rte_errno;
+		flow->spec.template.efs_dmaq_id =
+			EFX_FILTER_SPEC_RX_DMAQ_ID_DROP;
 	}
 
 	return 0;

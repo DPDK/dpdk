@@ -995,27 +995,26 @@ Actions
 
 Each possible action is represented by a type. Some have associated
 configuration structures. Several actions combined in a list can be assigned
-to a flow rule. That list is not ordered.
+to a flow rule and are performed in order.
 
 They fall in three categories:
 
-- Terminating actions that prevent processing matched packets by subsequent
-  flow rules, unless overridden with PASSTHRU.
+- Actions that modify the fate of matching traffic, for instance by dropping
+  or assigning it a specific destination.
 
-- Non-terminating actions that leave matched packets up for additional
-  processing by subsequent flow rules.
+- Actions that modify matching traffic contents or its properties. This
+  includes adding/removing encapsulation, encryption, compression and marks.
 
-- Other non-terminating meta actions that do not affect the fate of packets.
+- Actions related to the flow rule itself, such as updating counters or
+  making it non-terminating.
 
-When several actions are combined in a flow rule, they should all have
-different types (e.g. dropping a packet twice is not possible).
+Flow rules being terminating by default, not specifying any action of the
+fate kind results in undefined behavior. This applies to both ingress and
+egress.
 
-Only the last action of a given type is taken into account. PMDs still
-perform error checking on the entire list.
+PASSTHRU, when supported, makes a flow rule non-terminating.
 
 Like matching patterns, action lists are terminated by END items.
-
-*Note that PASSTHRU is the only action able to override a terminating rule.*
 
 Example of action that redirects packets to queue index 10:
 
@@ -1029,12 +1028,11 @@ Example of action that redirects packets to queue index 10:
    | ``index`` | 10    |
    +-----------+-------+
 
-Action lists examples, their order is not significant, applications must
-consider all actions to be performed simultaneously:
+Actions are performed in list order:
 
-.. _table_rte_flow_count_and_drop:
+.. _table_rte_flow_count_then_drop:
 
-.. table:: Count and drop
+.. table:: Count then drop
 
    +-------+--------+
    | Index | Action |
@@ -1050,7 +1048,7 @@ consider all actions to be performed simultaneously:
 
 .. _table_rte_flow_mark_count_redirect:
 
-.. table:: Mark, count and redirect
+.. table:: Mark, count then redirect
 
    +-------+--------+-----------+-------+
    | Index | Action | Field     | Value |
@@ -1080,12 +1078,15 @@ consider all actions to be performed simultaneously:
    | 2     | END                        |
    +-------+----------------------------+
 
-In the above example, considering both actions are performed simultaneously,
-the end result is that only QUEUE has any effect.
+In the above example, while DROP and QUEUE must be performed in order, both
+have to happen before reaching END. Only QUEUE has a visible effect.
 
-.. _table_rte_flow_redirect_queue_3:
+Note that such a list may be thought as ambiguous and rejected on that
+basis.
 
-.. table:: Redirect to queue 3
+.. _table_rte_flow_redirect_queue_5_3:
+
+.. table:: Redirect to queues 5 and 3
 
    +-------+--------+-----------+-------+
    | Index | Action | Field     | Value |
@@ -1099,9 +1100,9 @@ the end result is that only QUEUE has any effect.
    | 3     | END                        |
    +-------+----------------------------+
 
-As previously described, only the last action of a given type found in the
-list is taken into account. The above example also shows that VOID is
-ignored.
+As previously described, all actions must be taken into account. This
+effectively duplicates traffic to both queues. The above example also shows
+that VOID is ignored.
 
 Action types
 ~~~~~~~~~~~~
@@ -1151,9 +1152,8 @@ PMDs.
 Action: ``PASSTHRU``
 ^^^^^^^^^^^^^^^^^^^^
 
-Leaves packets up for additional processing by subsequent flow rules. This
-is the default when a rule does not contain a terminating action, but can be
-specified to force a rule to become non-terminating.
+Leaves traffic up for additional processing by subsequent flow rules; makes
+a flow rule non-terminating.
 
 - No configurable properties.
 
@@ -1227,8 +1227,6 @@ Action: ``QUEUE``
 
 Assigns packets to a given queue index.
 
-- Terminating by default.
-
 .. _table_rte_flow_action_queue:
 
 .. table:: QUEUE
@@ -1245,8 +1243,6 @@ Action: ``DROP``
 Drop packets.
 
 - No configurable properties.
-- Terminating by default.
-- PASSTHRU overrides this action if both are specified.
 
 .. _table_rte_flow_action_drop:
 
@@ -1309,8 +1305,6 @@ Note: RSS hash result is stored in the ``hash.rss`` mbuf field which
 overlaps ``hash.fdir.lo``. Since `Action: MARK`_ sets the ``hash.fdir.hi``
 field only, both can be requested simultaneously.
 
-- Terminating by default.
-
 .. _table_rte_flow_action_rss:
 
 .. table:: RSS
@@ -1331,7 +1325,6 @@ Action: ``PF``
 Redirects packets to the physical function (PF) of the current device.
 
 - No configurable properties.
-- Terminating by default.
 
 .. _table_rte_flow_action_pf:
 
@@ -1352,8 +1345,6 @@ Packets matched by a VF pattern item can be redirected to their original VF
 ID instead of the specified one. This parameter may not be available and is
 not guaranteed to work properly if the VF part is matched by a prior flow
 rule or if packets are not addressed to a VF in the first place.
-
-- Terminating by default.
 
 .. _table_rte_flow_action_vf:
 
@@ -1377,8 +1368,6 @@ rte_mtr_create() API function. The ID of the MTR object is specified as
 action parameter. More than one flow can use the same MTR object through
 the meter action. The MTR object can be further updated or queried using
 the rte_mtr* API.
-
-- Non-terminating by default.
 
 .. _table_rte_flow_action_meter:
 
@@ -1414,8 +1403,6 @@ security session if the security session supports the definition of the
 direction.
 
 Multiple flows can be configured to use the same security session.
-
-- Non-terminating by default.
 
 .. _table_rte_flow_action_security:
 

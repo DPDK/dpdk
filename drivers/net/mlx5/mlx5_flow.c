@@ -4,6 +4,7 @@
  */
 
 #include <sys/queue.h>
+#include <stdint.h>
 #include <string.h>
 
 /* Verbs header. */
@@ -646,6 +647,8 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 			  struct rte_flow_error *error,
 			  struct mlx5_flow_parse *parser)
 {
+	enum { FATE = 1, MARK = 2, COUNT = 4, };
+	uint32_t overlap = 0;
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
@@ -662,65 +665,37 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
 			continue;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
+			if (overlap & FATE)
+				goto exit_action_overlap;
+			overlap |= FATE;
 			parser->drop = 1;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 			const struct rte_flow_action_queue *queue =
 				(const struct rte_flow_action_queue *)
 				actions->conf;
-			uint16_t n;
-			uint16_t found = 0;
 
+			if (overlap & FATE)
+				goto exit_action_overlap;
+			overlap |= FATE;
 			if (!queue || (queue->index > (priv->rxqs_n - 1)))
 				goto exit_action_not_supported;
-			for (n = 0; n < parser->queues_n; ++n) {
-				if (parser->queues[n] == queue->index) {
-					found = 1;
-					break;
-				}
-			}
-			if (parser->queues_n > 1 && !found) {
-				rte_flow_error_set(error, ENOTSUP,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   actions,
-					   "queue action not in RSS queues");
-				return -rte_errno;
-			}
-			if (!found) {
-				parser->queues_n = 1;
-				parser->queues[0] = queue->index;
-			}
+			parser->queues_n = 1;
+			parser->queues[0] = queue->index;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
 			const struct rte_flow_action_rss *rss =
 				(const struct rte_flow_action_rss *)
 				actions->conf;
 			uint16_t n;
 
+			if (overlap & FATE)
+				goto exit_action_overlap;
+			overlap |= FATE;
 			if (!rss || !rss->num) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
 						   actions,
 						   "no valid queues");
 				return -rte_errno;
-			}
-			if (parser->queues_n == 1) {
-				uint16_t found = 0;
-
-				assert(parser->queues_n);
-				for (n = 0; n < rss->num; ++n) {
-					if (parser->queues[0] ==
-					    rss->queue[n]) {
-						found = 1;
-						break;
-					}
-				}
-				if (!found) {
-					rte_flow_error_set(error, ENOTSUP,
-						   RTE_FLOW_ERROR_TYPE_ACTION,
-						   actions,
-						   "queue action not in RSS"
-						   " queues");
-					return -rte_errno;
-				}
 			}
 			if (rss->num > RTE_DIM(parser->queues)) {
 				rte_flow_error_set(error, EINVAL,
@@ -755,6 +730,9 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 				(const struct rte_flow_action_mark *)
 				actions->conf;
 
+			if (overlap & MARK)
+				goto exit_action_overlap;
+			overlap |= MARK;
 			if (!mark) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -772,14 +750,23 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 			parser->mark = 1;
 			parser->mark_id = mark->id;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_FLAG) {
+			if (overlap & MARK)
+				goto exit_action_overlap;
+			overlap |= MARK;
 			parser->mark = 1;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_COUNT &&
 			   priv->config.flow_counter_en) {
+			if (overlap & COUNT)
+				goto exit_action_overlap;
+			overlap |= COUNT;
 			parser->count = 1;
 		} else {
 			goto exit_action_not_supported;
 		}
 	}
+	/* When fate is unknown, drop traffic. */
+	if (!(overlap & FATE))
+		parser->drop = 1;
 	if (parser->drop && parser->mark)
 		parser->mark = 0;
 	if (!parser->queues_n && !parser->drop) {
@@ -791,6 +778,10 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 exit_action_not_supported:
 	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 			   actions, "action not supported");
+	return -rte_errno;
+exit_action_overlap:
+	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+			   actions, "overlapping actions are not supported");
 	return -rte_errno;
 }
 

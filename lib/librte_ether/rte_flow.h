@@ -859,32 +859,28 @@ struct rte_flow_item {
  *
  * Each possible action is represented by a type. Some have associated
  * configuration structures. Several actions combined in a list can be
- * affected to a flow rule. That list is not ordered.
+ * assigned to a flow rule and are performed in order.
  *
  * They fall in three categories:
  *
- * - Terminating actions that prevent processing matched packets by
- *   subsequent flow rules, unless overridden with PASSTHRU.
+ * - Actions that modify the fate of matching traffic, for instance by
+ *   dropping or assigning it a specific destination.
  *
- * - Non terminating actions that leave matched packets up for additional
- *   processing by subsequent flow rules.
+ * - Actions that modify matching traffic contents or its properties. This
+ *   includes adding/removing encapsulation, encryption, compression and
+ *   marks.
  *
- * - Other non terminating meta actions that do not affect the fate of
- *   packets.
+ * - Actions related to the flow rule itself, such as updating counters or
+ *   making it non-terminating.
  *
- * When several actions are combined in a flow rule, they should all have
- * different types (e.g. dropping a packet twice is not possible).
+ * Flow rules being terminating by default, not specifying any action of the
+ * fate kind results in undefined behavior. This applies to both ingress and
+ * egress.
  *
- * Only the last action of a given type is taken into account. PMDs still
- * perform error checking on the entire list.
- *
- * Note that PASSTHRU is the only action able to override a terminating
- * rule.
+ * PASSTHRU, when supported, makes a flow rule non-terminating.
  */
 enum rte_flow_action_type {
 	/**
-	 * [META]
-	 *
 	 * End marker for action lists. Prevents further processing of
 	 * actions, thereby ending the list.
 	 *
@@ -893,8 +889,6 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_END,
 
 	/**
-	 * [META]
-	 *
 	 * Used as a placeholder for convenience. It is ignored and simply
 	 * discarded by PMDs.
 	 *
@@ -903,18 +897,14 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_VOID,
 
 	/**
-	 * Leaves packets up for additional processing by subsequent flow
-	 * rules. This is the default when a rule does not contain a
-	 * terminating action, but can be specified to force a rule to
-	 * become non-terminating.
+	 * Leaves traffic up for additional processing by subsequent flow
+	 * rules; makes a flow rule non-terminating.
 	 *
 	 * No associated configuration structure.
 	 */
 	RTE_FLOW_ACTION_TYPE_PASSTHRU,
 
 	/**
-	 * [META]
-	 *
 	 * Attaches an integer value to packets and sets PKT_RX_FDIR and
 	 * PKT_RX_FDIR_ID mbuf flags.
 	 *
@@ -923,8 +913,6 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_MARK,
 
 	/**
-	 * [META]
-	 *
 	 * Flags packets. Similar to MARK without a specific value; only
 	 * sets the PKT_RX_FDIR mbuf flag.
 	 *
@@ -949,9 +937,7 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_DROP,
 
 	/**
-	 * [META]
-	 *
-	 * Enables counters for this rule.
+	 * Enables counters for this flow rule.
 	 *
 	 * These counters can be retrieved and reset through rte_flow_query(),
 	 * see struct rte_flow_query_count.
@@ -1020,8 +1006,6 @@ struct rte_flow_action_mark {
  * RTE_FLOW_ACTION_TYPE_QUEUE
  *
  * Assign packets to a given queue index.
- *
- * Terminating by default.
  */
 struct rte_flow_action_queue {
 	uint16_t index; /**< Queue index to use. */
@@ -1050,8 +1034,6 @@ struct rte_flow_query_count {
  * Note: RSS hash result is stored in the hash.rss mbuf field which overlaps
  * hash.fdir.lo. Since the MARK action sets the hash.fdir.hi field only,
  * both can be requested simultaneously.
- *
- * Terminating by default.
  */
 struct rte_flow_action_rss {
 	const struct rte_eth_rss_conf *rss_conf; /**< RSS parameters. */
@@ -1069,8 +1051,6 @@ struct rte_flow_action_rss {
  * and is not guaranteed to work properly if the VF part is matched by a
  * prior flow rule or if packets are not addressed to a VF in the first
  * place.
- *
- * Terminating by default.
  */
 struct rte_flow_action_vf {
 	uint32_t original:1; /**< Use original VF ID if possible. */
@@ -1085,8 +1065,6 @@ struct rte_flow_action_vf {
  *
  * Packets matched by items of this type can be either dropped or passed to the
  * next item with their color set by the MTR object.
- *
- * Non-terminating by default.
  */
 struct rte_flow_action_meter {
 	uint32_t mtr_id; /**< MTR object ID created with rte_mtr_create(). */
@@ -1116,8 +1094,6 @@ struct rte_flow_action_meter {
  * direction.
  *
  * Multiple flows can be configured to use the same security session.
- *
- * Non-terminating by default.
  */
 struct rte_flow_action_security {
 	void *security_session; /**< Pointer to security session structure. */

@@ -1140,6 +1140,7 @@ priv_flow_process(struct pmd_internals *pmd,
 		else
 			goto end;
 	}
+actions:
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
 		int err = 0;
 
@@ -1221,6 +1222,16 @@ priv_flow_process(struct pmd_internals *pmd,
 		}
 		if (err)
 			goto exit_action_not_supported;
+	}
+	/* When fate is unknown, drop traffic. */
+	if (!action) {
+		static const struct rte_flow_action drop[] = {
+			{ .type = RTE_FLOW_ACTION_TYPE_DROP, },
+			{ .type = RTE_FLOW_ACTION_TYPE_END, },
+		};
+
+		actions = drop;
+		goto actions;
 	}
 end:
 	if (flow)

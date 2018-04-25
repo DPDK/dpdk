@@ -637,6 +637,7 @@ mlx4_flow_prepare(struct priv *priv,
 	struct rte_flow temp = { .ibv_attr_size = sizeof(*temp.ibv_attr) };
 	struct rte_flow *flow = &temp;
 	const char *msg = NULL;
+	int overlap;
 
 	if (attr->group)
 		return rte_flow_error_set
@@ -656,6 +657,7 @@ mlx4_flow_prepare(struct priv *priv,
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
 			 NULL, "only ingress is supported");
 fill:
+	overlap = 0;
 	proc = mlx4_flow_proc_item_list;
 	/* Go over pattern. */
 	for (item = pattern; item->type; ++item) {
@@ -702,6 +704,16 @@ fill:
 	}
 	/* Go over actions list. */
 	for (action = actions; action->type; ++action) {
+		/* This one may appear anywhere multiple times. */
+		if (action->type == RTE_FLOW_ACTION_TYPE_VOID)
+			continue;
+		/* Fate-deciding actions may appear exactly once. */
+		if (overlap) {
+			msg = "cannot combine several fate-deciding actions,"
+				" choose between DROP, QUEUE or RSS";
+			goto exit_action_not_supported;
+		}
+		overlap = 1;
 		switch (action->type) {
 			const struct rte_flow_action_queue *queue;
 			const struct rte_flow_action_rss *rss;
@@ -709,8 +721,6 @@ fill:
 			uint64_t fields;
 			unsigned int i;
 
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			continue;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			flow->drop = 1;
 			break;
@@ -801,10 +811,9 @@ fill:
 			goto exit_action_not_supported;
 		}
 	}
-	if (!flow->rss && !flow->drop)
-		return rte_flow_error_set
-			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			 NULL, "no valid action");
+	/* When fate is unknown, drop traffic. */
+	if (!overlap)
+		flow->drop = 1;
 	/* Validation ends here. */
 	if (!addr) {
 		if (flow->rss)
