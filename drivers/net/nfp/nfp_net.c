@@ -751,7 +751,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 			*/
 			nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(i), i + 1);
 			intr_handle->intr_vec[i] = i + 1;
-			PMD_INIT_LOG(DEBUG, "intr_vec[%d]= %d\n", i,
+			PMD_INIT_LOG(DEBUG, "intr_vec[%d]= %d", i,
 					    intr_handle->intr_vec[i]);
 		}
 	}
