@@ -301,6 +301,8 @@ efx_rx_scale_hash_flags_get(
 	__inout_ecount(EFX_RX_HASH_NFLAGS)	unsigned int *flags,
 	__out					unsigned int *nflagsp)
 {
+	efx_nic_cfg_t *encp = &enp->en_nic_cfg;
+	boolean_t additional_modes;
 	unsigned int *entryp = flags;
 	efx_rc_t rc;
 
@@ -309,12 +311,28 @@ efx_rx_scale_hash_flags_get(
 		goto fail1;
 	}
 
-#define	LIST_FLAGS(_entryp, _class, _l4_hashing)			\
+	additional_modes = encp->enc_rx_scale_additional_modes_supported;
+
+#define	LIST_FLAGS(_entryp, _class, _l4_hashing, _additional_modes)	\
 	do {								\
-		if (_l4_hashing)					\
+		if (_l4_hashing) {					\
 			*(_entryp++) = EFX_RX_HASH(_class, 4TUPLE);	\
 									\
+			if (_additional_modes) {			\
+				*(_entryp++) =				\
+				    EFX_RX_HASH(_class, 2TUPLE_DST);	\
+				*(_entryp++) =				\
+				    EFX_RX_HASH(_class, 2TUPLE_SRC);	\
+			}						\
+		}							\
+									\
 		*(_entryp++) = EFX_RX_HASH(_class, 2TUPLE);		\
+									\
+		if (_additional_modes) {				\
+			*(_entryp++) = EFX_RX_HASH(_class, 1TUPLE_DST);	\
+			*(_entryp++) = EFX_RX_HASH(_class, 1TUPLE_SRC);	\
+		}							\
+									\
 		*(_entryp++) = EFX_RX_HASH(_class, DISABLE);		\
 									\
 		_NOTE(CONSTANTCONDITION)				\
@@ -322,10 +340,16 @@ efx_rx_scale_hash_flags_get(
 
 	switch (hash_alg) {
 	case EFX_RX_HASHALG_TOEPLITZ:
-		LIST_FLAGS(entryp, IPV4_TCP, B_TRUE);
-		LIST_FLAGS(entryp, IPV6_TCP, B_TRUE);
-		LIST_FLAGS(entryp, IPV4, B_FALSE);
-		LIST_FLAGS(entryp, IPV6, B_FALSE);
+		LIST_FLAGS(entryp, IPV4_TCP, B_TRUE, additional_modes);
+		LIST_FLAGS(entryp, IPV6_TCP, B_TRUE, additional_modes);
+
+		if (additional_modes) {
+			LIST_FLAGS(entryp, IPV4_UDP, B_TRUE, additional_modes);
+			LIST_FLAGS(entryp, IPV6_UDP, B_TRUE, additional_modes);
+		}
+
+		LIST_FLAGS(entryp, IPV4, B_FALSE, additional_modes);
+		LIST_FLAGS(entryp, IPV6, B_FALSE, additional_modes);
 		break;
 
 	default:
@@ -507,6 +531,7 @@ efx_rx_scale_mode_set(
 	if (type & EFX_RX_HASH_IPV4) {
 		type |= EFX_RX_HASH(IPV4, 2TUPLE);
 		type |= EFX_RX_HASH(IPV4_TCP, 2TUPLE);
+		type |= EFX_RX_HASH(IPV4_UDP, 2TUPLE);
 	}
 
 	if (type & EFX_RX_HASH_TCPIPV4)
@@ -515,6 +540,7 @@ efx_rx_scale_mode_set(
 	if (type & EFX_RX_HASH_IPV6) {
 		type |= EFX_RX_HASH(IPV6, 2TUPLE);
 		type |= EFX_RX_HASH(IPV6_TCP, 2TUPLE);
+		type |= EFX_RX_HASH(IPV6_UDP, 2TUPLE);
 	}
 
 	if (type & EFX_RX_HASH_TCPIPV6)
