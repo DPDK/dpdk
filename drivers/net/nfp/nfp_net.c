@@ -1693,7 +1693,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	PMD_RX_LOG(DEBUG, "rxbufs=%p hw_ring=%p dma_addr=0x%" PRIx64 "\n",
+	PMD_RX_LOG(DEBUG, "rxbufs=%p hw_ring=%p dma_addr=0x%" PRIx64,
 		   rxq->rxbufs, rxq->rxds, (unsigned long int)rxq->dma);
 
 	nfp_net_reset_rx_queue(rxq);
@@ -1718,7 +1718,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 	uint64_t dma_addr;
 	unsigned i;
 
-	PMD_RX_LOG(DEBUG, "nfp_net_rx_fill_freelist for %u descriptors\n",
+	PMD_RX_LOG(DEBUG, "nfp_net_rx_fill_freelist for %u descriptors",
 		   rxq->rx_count);
 
 	for (i = 0; i < rxq->rx_count; i++) {
@@ -1738,14 +1738,14 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		rxd->fld.dma_addr_hi = (dma_addr >> 32) & 0xff;
 		rxd->fld.dma_addr_lo = dma_addr & 0xffffffff;
 		rxe[i].mbuf = mbuf;
-		PMD_RX_LOG(DEBUG, "[%d]: %" PRIx64 "\n", i, dma_addr);
+		PMD_RX_LOG(DEBUG, "[%d]: %" PRIx64, i, dma_addr);
 	}
 
 	/* Make sure all writes are flushed before telling the hardware */
 	rte_wmb();
 
 	/* Not advertising the whole ring as the firmware gets confused if so */
-	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %u\n",
+	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %u",
 		   rxq->rx_count - 1);
 
 	nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, rxq->rx_count - 1);
@@ -1804,7 +1804,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	 * calling nfp_net_stop
 	 */
 	if (dev->data->tx_queues[queue_idx]) {
-		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d\n",
+		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
 			   queue_idx);
 		nfp_net_tx_queue_release(dev->data->tx_queues[queue_idx]);
 		dev->data->tx_queues[queue_idx] = NULL;
@@ -1858,7 +1858,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		nfp_net_tx_queue_release(txq);
 		return -ENOMEM;
 	}
-	PMD_TX_LOG(DEBUG, "txbufs=%p hw_ring=%p dma_addr=0x%" PRIx64 "\n",
+	PMD_TX_LOG(DEBUG, "txbufs=%p hw_ring=%p dma_addr=0x%" PRIx64,
 		   txq->txbufs, txq->txds, (unsigned long int)txq->dma);
 
 	nfp_net_reset_tx_queue(txq);
@@ -2153,7 +2153,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		mb = rxb->mbuf;
 		rxb->mbuf = new_mb;
 
-		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u\n",
+		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u",
 			   rxds->rxd.data_len, rxq->mbuf_size);
 
 		/* Size of this segment */
@@ -2224,7 +2224,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (nb_hold == 0)
 		return nb_hold;
 
-	PMD_RX_LOG(DEBUG, "RX  port_id=%u queue_id=%u, %d packets received\n",
+	PMD_RX_LOG(DEBUG, "RX  port_id=%u queue_id=%u, %d packets received",
 		   rxq->port_id, (unsigned int)rxq->qidx, nb_hold);
 
 	nb_hold += rxq->nb_rx_hold;
@@ -2235,7 +2235,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	 */
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port=%u queue=%u nb_hold=%u avail=%u\n",
+		PMD_RX_LOG(DEBUG, "port=%u queue=%u nb_hold=%u avail=%u",
 			   rxq->port_id, (unsigned int)rxq->qidx,
 			   (unsigned)nb_hold, (unsigned)avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
@@ -2259,14 +2259,14 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	int todo;
 
 	PMD_TX_LOG(DEBUG, "queue %u. Check for descriptor with a complete"
-		   " status\n", txq->qidx);
+		   " status", txq->qidx);
 
 	/* Work out how many packets have been sent */
 	qcp_rd_p = nfp_qcp_read(txq->qcp_q, NFP_QCP_READ_PTR);
 
 	if (qcp_rd_p == txq->rd_p) {
 		PMD_TX_LOG(DEBUG, "queue %u: It seems harrier is not sending "
-			   "packets (%u, %u)\n", txq->qidx,
+			   "packets (%u, %u)", txq->qidx,
 			   qcp_rd_p, txq->rd_p);
 		return 0;
 	}
@@ -2276,7 +2276,7 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	else
 		todo = qcp_rd_p + txq->tx_count - txq->rd_p;
 
-	PMD_TX_LOG(DEBUG, "qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u\n",
+	PMD_TX_LOG(DEBUG, "qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u",
 		   qcp_rd_p, txq->rd_p, txq->rd_p);
 
 	if (todo == 0)
@@ -2330,7 +2330,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	hw = txq->hw;
 	txds = &txq->txds[txq->wr_p];
 
-	PMD_TX_LOG(DEBUG, "working for queue %u at pos %d and %u packets\n",
+	PMD_TX_LOG(DEBUG, "working for queue %u at pos %d and %u packets",
 		   txq->qidx, txq->wr_p, nb_pkts);
 
 	if ((nfp_free_tx_desc(txq) < nb_pkts) || (nfp_net_txq_full(txq)))
@@ -2344,7 +2344,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	i = 0;
 	issued_descs = 0;
-	PMD_TX_LOG(DEBUG, "queue: %u. Sending %u packets\n",
+	PMD_TX_LOG(DEBUG, "queue: %u. Sending %u packets",
 		   txq->qidx, nb_pkts);
 	/* Sending packets */
 	while ((i < nb_pkts) && free_descs) {
@@ -2403,7 +2403,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			dma_size = pkt->data_len;
 			dma_addr = rte_mbuf_data_iova(pkt);
 			PMD_TX_LOG(DEBUG, "Working with mbuf at dma address:"
-				   "%" PRIx64 "\n", dma_addr);
+				   "%" PRIx64 "", dma_addr);
 
 			/* Filling descriptors fields */
 			txds->dma_len = dma_size;
