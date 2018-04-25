@@ -881,7 +881,7 @@ static int
 eal_parse_syslog(const char *facility, struct internal_config *conf)
 {
 	int i;
-	static struct {
+	static const struct {
 		const char *name;
 		int value;
 	} map[] = {
