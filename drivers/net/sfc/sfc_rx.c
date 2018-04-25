@@ -1189,6 +1189,41 @@ sfc_efx_to_rte_hash_type(efx_rx_hash_type_t efx_hash_types)
 
 #if EFSYS_OPT_RX_SCALE
 static int
+sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
+			    struct rte_eth_rss_conf *conf)
+{
+	efx_rx_hash_type_t efx_hash_types = sa->rss_hash_types;
+
+	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE) {
+		if ((conf->rss_hf != 0 && conf->rss_hf != SFC_RSS_OFFLOADS) ||
+		    conf->rss_key != NULL)
+			return EINVAL;
+	}
+
+	if (conf->rss_hf != 0) {
+		if ((conf->rss_hf & ~SFC_RSS_OFFLOADS) != 0) {
+			sfc_err(sa, "unsupported hash functions requested");
+			return EINVAL;
+		}
+
+		efx_hash_types = sfc_rte_to_efx_hash_type(conf->rss_hf);
+	}
+
+	if (conf->rss_key != NULL) {
+		if (conf->rss_key_len != sizeof(sa->rss_key)) {
+			sfc_err(sa, "RSS key size is wrong (should be %lu)",
+				sizeof(sa->rss_key));
+			return EINVAL;
+		}
+		rte_memcpy(sa->rss_key, conf->rss_key, sizeof(sa->rss_key));
+	}
+
+	sa->rss_hash_types = efx_hash_types;
+
+	return 0;
+}
+
+static int
 sfc_rx_rss_config(struct sfc_adapter *sa)
 {
 	int rc = 0;
@@ -1416,16 +1451,23 @@ sfc_rx_configure(struct sfc_adapter *sa)
 			   MIN(sa->rxq_count, EFX_MAXRSS) : 0;
 
 	if (sa->rss_channels > 0) {
+		struct rte_eth_rss_conf *adv_conf_rss;
 		unsigned int sw_index;
 
 		for (sw_index = 0; sw_index < EFX_RSS_TBL_SIZE; ++sw_index)
 			sa->rss_tbl[sw_index] = sw_index % sa->rss_channels;
+
+		adv_conf_rss = &dev_conf->rx_adv_conf.rss_conf;
+		rc = sfc_rx_process_adv_conf_rss(sa, adv_conf_rss);
+		if (rc != 0)
+			goto fail_rx_process_adv_conf_rss;
 	}
 #endif
 
 done:
 	return 0;
 
+fail_rx_process_adv_conf_rss:
 fail_rx_qinit_info:
 fail_rxqs_realloc:
 fail_rxqs_alloc:
