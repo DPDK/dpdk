@@ -1261,8 +1261,12 @@ port_flow_complain(struct rte_flow_error *error)
 		[RTE_FLOW_ERROR_TYPE_ATTR_EGRESS] = "egress field",
 		[RTE_FLOW_ERROR_TYPE_ATTR] = "attributes structure",
 		[RTE_FLOW_ERROR_TYPE_ITEM_NUM] = "pattern length",
+		[RTE_FLOW_ERROR_TYPE_ITEM_SPEC] = "item specification",
+		[RTE_FLOW_ERROR_TYPE_ITEM_LAST] = "item specification range",
+		[RTE_FLOW_ERROR_TYPE_ITEM_MASK] = "item specification mask",
 		[RTE_FLOW_ERROR_TYPE_ITEM] = "specific pattern item",
 		[RTE_FLOW_ERROR_TYPE_ACTION_NUM] = "number of actions",
+		[RTE_FLOW_ERROR_TYPE_ACTION_CONF] = "action configuration",
 		[RTE_FLOW_ERROR_TYPE_ACTION] = "specific action",
 	};
 	const char *errstr;

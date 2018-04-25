@@ -1186,8 +1186,12 @@ enum rte_flow_error_type {
 	RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, /**< Egress field. */
 	RTE_FLOW_ERROR_TYPE_ATTR, /**< Attributes structure. */
 	RTE_FLOW_ERROR_TYPE_ITEM_NUM, /**< Pattern length. */
+	RTE_FLOW_ERROR_TYPE_ITEM_SPEC, /**< Item specification. */
+	RTE_FLOW_ERROR_TYPE_ITEM_LAST, /**< Item specification range. */
+	RTE_FLOW_ERROR_TYPE_ITEM_MASK, /**< Item specification mask. */
 	RTE_FLOW_ERROR_TYPE_ITEM, /**< Specific pattern item. */
 	RTE_FLOW_ERROR_TYPE_ACTION_NUM, /**< Number of actions. */
+	RTE_FLOW_ERROR_TYPE_ACTION_CONF, /**< Action configuration. */
 	RTE_FLOW_ERROR_TYPE_ACTION, /**< Specific action. */
 };
 
