@@ -88,7 +88,7 @@ mlx4_rss_hash_key_default[MLX4_RSS_HASH_KEY_SIZE] = {
  */
 struct mlx4_rss *
 mlx4_rss_get(struct priv *priv, uint64_t fields,
-	     uint8_t key[MLX4_RSS_HASH_KEY_SIZE],
+	     const uint8_t key[MLX4_RSS_HASH_KEY_SIZE],
 	     uint16_t queues, const uint16_t queue_id[])
 {
 	struct mlx4_rss *rss;

@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <assert.h>
 
+#include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 #include <rte_pci.h>
@@ -11650,7 +11651,7 @@ i40e_rss_filter_restore(struct i40e_pf *pf)
 {
 	struct i40e_rte_flow_rss_conf *conf =
 					&pf->rss_info;
-	if (conf->num)
+	if (conf->conf.queue_num)
 		i40e_config_rss_filter(pf, conf, TRUE);
 }
 
@@ -12182,18 +12183,52 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 }
 
 int
+i40e_rss_conf_init(struct i40e_rte_flow_rss_conf *out,
+		   const struct rte_flow_action_rss *in)
+{
+	if (in->key_len > RTE_DIM(out->key) ||
+	    in->queue_num > RTE_DIM(out->queue))
+		return -EINVAL;
+	out->conf = (struct rte_flow_action_rss){
+		.types = in->types,
+		.key_len = in->key_len,
+		.queue_num = in->queue_num,
+		.key = memcpy(out->key, in->key, in->key_len),
+		.queue = memcpy(out->queue, in->queue,
+				sizeof(*in->queue) * in->queue_num),
+	};
+	return 0;
+}
+
+int
+i40e_action_rss_same(const struct rte_flow_action_rss *comp,
+		     const struct rte_flow_action_rss *with)
+{
+	return (comp->types == with->types &&
+		comp->key_len == with->key_len &&
+		comp->queue_num == with->queue_num &&
+		!memcmp(comp->key, with->key, with->key_len) &&
+		!memcmp(comp->queue, with->queue,
+			sizeof(*with->queue) * with->queue_num));
+}
+
+int
 i40e_config_rss_filter(struct i40e_pf *pf,
 		struct i40e_rte_flow_rss_conf *conf, bool add)
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	uint32_t i, lut = 0;
 	uint16_t j, num;
-	struct rte_eth_rss_conf rss_conf = conf->rss_conf;
+	struct rte_eth_rss_conf rss_conf = {
+		.rss_key = conf->conf.key_len ?
+			(void *)(uintptr_t)conf->conf.key : NULL,
+		.rss_key_len = conf->conf.key_len,
+		.rss_hf = conf->conf.types,
+	};
 	struct i40e_rte_flow_rss_conf *rss_info = &pf->rss_info;
 
 	if (!add) {
-		if (memcmp(conf, rss_info,
-			sizeof(struct i40e_rte_flow_rss_conf)) == 0) {
+		if (i40e_action_rss_same(&rss_info->conf, &conf->conf)) {
 			i40e_pf_disable_rss(pf);
 			memset(rss_info, 0,
 				sizeof(struct i40e_rte_flow_rss_conf));
@@ -12202,7 +12237,7 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 		return -EINVAL;
 	}
 
-	if (rss_info->num)
+	if (rss_info->conf.queue_num)
 		return -EINVAL;
 
 	/* If both VMDQ and RSS enabled, not all of PF queues are configured.
@@ -12213,7 +12248,7 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 	else
 		num = pf->dev_data->nb_rx_queues;
 
-	num = RTE_MIN(num, conf->num);
+	num = RTE_MIN(num, conf->conf.queue_num);
 	PMD_DRV_LOG(INFO, "Max of contiguous %u PF queues are configured",
 			num);
 
@@ -12226,7 +12261,7 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 	for (i = 0, j = 0; i < hw->func_caps.rss_table_size; i++, j++) {
 		if (j == num)
 			j = 0;
-		lut = (lut << 8) | (conf->queue[j] & ((0x1 <<
+		lut = (lut << 8) | (conf->conf.queue[j] & ((0x1 <<
 			hw->func_caps.rss_table_entry_width) - 1));
 		if ((i & 3) == 3)
 			I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i >> 2), lut);
@@ -12251,8 +12286,8 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 
 	i40e_hw_rss_hash_set(pf, &rss_conf);
 
-	rte_memcpy(rss_info,
-		conf, sizeof(struct i40e_rte_flow_rss_conf));
+	if (i40e_rss_conf_init(rss_info, &conf->conf))
+		return -EINVAL;
 
 	return 0;
 }

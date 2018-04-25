@@ -134,7 +134,7 @@ struct mlx5_ind_table_ibv {
 	LIST_ENTRY(mlx5_ind_table_ibv) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
-	uint16_t queues_n; /**< Number of queues in the list. */
+	uint32_t queues_n; /**< Number of queues in the list. */
 	uint16_t queues[]; /**< Queue list. */
 };
 
@@ -145,7 +145,7 @@ struct mlx5_hrxq {
 	struct mlx5_ind_table_ibv *ind_table; /* Indirection table. */
 	struct ibv_qp *qp; /* Verbs queue pair. */
 	uint64_t hash_fields; /* Verbs Hash fields. */
-	uint8_t rss_key_len; /* Hash key length in bytes. */
+	uint32_t rss_key_len; /* Hash key length in bytes. */
 	uint8_t rss_key[]; /* Hash key. */
 };
 
@@ -238,20 +238,22 @@ int mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
 struct mlx5_ind_table_ibv *mlx5_ind_table_ibv_new(struct rte_eth_dev *dev,
-						  uint16_t queues[],
-						  uint16_t queues_n);
+						  const uint16_t *queues,
+						  uint32_t queues_n);
 struct mlx5_ind_table_ibv *mlx5_ind_table_ibv_get(struct rte_eth_dev *dev,
-						  uint16_t queues[],
-						  uint16_t queues_n);
+						  const uint16_t *queues,
+						  uint32_t queues_n);
 int mlx5_ind_table_ibv_release(struct rte_eth_dev *dev,
 			       struct mlx5_ind_table_ibv *ind_tbl);
 int mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev);
-struct mlx5_hrxq *mlx5_hrxq_new(struct rte_eth_dev *dev, uint8_t *rss_key,
-				uint8_t rss_key_len, uint64_t hash_fields,
-				uint16_t queues[], uint16_t queues_n);
-struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev, uint8_t *rss_key,
-				uint8_t rss_key_len, uint64_t hash_fields,
-				uint16_t queues[], uint16_t queues_n);
+struct mlx5_hrxq *mlx5_hrxq_new(struct rte_eth_dev *dev,
+				const uint8_t *rss_key, uint32_t rss_key_len,
+				uint64_t hash_fields,
+				const uint16_t *queues, uint32_t queues_n);
+struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
+				const uint8_t *rss_key, uint32_t rss_key_len,
+				uint64_t hash_fields,
+				const uint16_t *queues, uint32_t queues_n);
 int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
 int mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_port_offloads(void);

@@ -203,9 +203,13 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 				     i < eth_dev->data->nb_rx_queues; ++i)
 					if (eth_dev->data->rx_queues[i])
 						queue[j++] = i;
-				action_rss.rss_conf = &rss_conf;
-				action_rss.num = j;
-				action_rss.queue = queue;
+				action_rss = (struct rte_flow_action_rss){
+					.types = rss_conf.rss_hf,
+					.key_len = rss_conf.rss_key_len,
+					.queue_num = j,
+					.key = rss_key,
+					.queue = queue,
+				};
 				ret = rte_flow_validate(sa->portid, &sa->attr,
 							sa->pattern, sa->action,
 							&err);

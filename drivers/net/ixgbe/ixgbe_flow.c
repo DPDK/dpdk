@@ -2761,7 +2761,7 @@ ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
 
 	rss = (const struct rte_flow_action_rss *)act->conf;
 
-	if (!rss || !rss->num) {
+	if (!rss || !rss->queue_num) {
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION,
 				act,
@@ -2769,7 +2769,7 @@ ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	for (n = 0; n < rss->num; n++) {
+	for (n = 0; n < rss->queue_num; n++) {
 		if (rss->queue[n] >= dev->data->nb_rx_queues) {
 			rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -2778,14 +2778,19 @@ ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 	}
-	if (rss->rss_conf)
-		rss_conf->rss_conf = *rss->rss_conf;
-	else
-		rss_conf->rss_conf.rss_hf = IXGBE_RSS_OFFLOAD_ALL;
 
-	for (n = 0; n < rss->num; ++n)
-		rss_conf->queue[n] = rss->queue[n];
-	rss_conf->num = rss->num;
+	if (rss->key_len && rss->key_len != RTE_DIM(rss_conf->key))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "RSS hash key must be exactly 40 bytes");
+	if (rss->queue_num > RTE_DIM(rss_conf->queue))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "too many queues for RSS context");
+	if (ixgbe_rss_conf_init(rss_conf, rss))
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "RSS context initialization failure");
 
 	/* check if the next not void item is END */
 	act = next_no_void_action(actions, act);
@@ -2834,7 +2839,7 @@ ixgbe_clear_rss_filter(struct rte_eth_dev *dev)
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 
-	if (filter_info->rss_info.num)
+	if (filter_info->rss_info.conf.queue_num)
 		ixgbe_config_rss_filter(dev, &filter_info->rss_info, FALSE);
 }
 
@@ -3153,9 +3158,8 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 				PMD_DRV_LOG(ERR, "failed to allocate memory");
 				goto out;
 			}
-			rte_memcpy(&rss_filter_ptr->filter_info,
-				&rss_conf,
-				sizeof(struct ixgbe_rte_flow_rss_conf));
+			ixgbe_rss_conf_init(&rss_filter_ptr->filter_info,
+					    &rss_conf.conf);
 			TAILQ_INSERT_TAIL(&filter_rss_list,
 				rss_filter_ptr, entries);
 			flow->rule = rss_filter_ptr;

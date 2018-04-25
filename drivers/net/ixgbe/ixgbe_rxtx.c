@@ -5676,6 +5676,36 @@ ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 }
 
 int
+ixgbe_rss_conf_init(struct ixgbe_rte_flow_rss_conf *out,
+		    const struct rte_flow_action_rss *in)
+{
+	if (in->key_len > RTE_DIM(out->key) ||
+	    in->queue_num > RTE_DIM(out->queue))
+		return -EINVAL;
+	out->conf = (struct rte_flow_action_rss){
+		.types = in->types,
+		.key_len = in->key_len,
+		.queue_num = in->queue_num,
+		.key = memcpy(out->key, in->key, in->key_len),
+		.queue = memcpy(out->queue, in->queue,
+				sizeof(*in->queue) * in->queue_num),
+	};
+	return 0;
+}
+
+int
+ixgbe_action_rss_same(const struct rte_flow_action_rss *comp,
+		      const struct rte_flow_action_rss *with)
+{
+	return (comp->types == with->types &&
+		comp->key_len == with->key_len &&
+		comp->queue_num == with->queue_num &&
+		!memcmp(comp->key, with->key, with->key_len) &&
+		!memcmp(comp->queue, with->queue,
+			sizeof(*with->queue) * with->queue_num));
+}
+
+int
 ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 		struct ixgbe_rte_flow_rss_conf *conf, bool add)
 {
@@ -5685,7 +5715,12 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 	uint16_t j;
 	uint16_t sp_reta_size;
 	uint32_t reta_reg;
-	struct rte_eth_rss_conf rss_conf = conf->rss_conf;
+	struct rte_eth_rss_conf rss_conf = {
+		.rss_key = conf->conf.key_len ?
+			(void *)(uintptr_t)conf->conf.key : NULL,
+		.rss_key_len = conf->conf.key_len,
+		.rss_hf = conf->conf.types,
+	};
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 
@@ -5695,8 +5730,8 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
 
 	if (!add) {
-		if (memcmp(conf, &filter_info->rss_info,
-			sizeof(struct ixgbe_rte_flow_rss_conf)) == 0) {
+		if (ixgbe_action_rss_same(&filter_info->rss_info.conf,
+					  &conf->conf)) {
 			ixgbe_rss_disable(dev);
 			memset(&filter_info->rss_info, 0,
 				sizeof(struct ixgbe_rte_flow_rss_conf));
@@ -5705,7 +5740,7 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	if (filter_info->rss_info.num)
+	if (filter_info->rss_info.conf.queue_num)
 		return -EINVAL;
 	/* Fill in redirection table
 	 * The byte-swap is needed because NIC registers are in
@@ -5715,9 +5750,9 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 	for (i = 0, j = 0; i < sp_reta_size; i++, j++) {
 		reta_reg = ixgbe_reta_reg_get(hw->mac.type, i);
 
-		if (j == conf->num)
+		if (j == conf->conf.queue_num)
 			j = 0;
-		reta = (reta << 8) | conf->queue[j];
+		reta = (reta << 8) | conf->conf.queue[j];
 		if ((i & 3) == 3)
 			IXGBE_WRITE_REG(hw, reta_reg,
 					rte_bswap32(reta));
@@ -5734,8 +5769,8 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 		rss_conf.rss_key = rss_intel_key; /* Default hash key */
 	ixgbe_hw_rss_hash_set(hw, &rss_conf);
 
-	rte_memcpy(&filter_info->rss_info,
-		conf, sizeof(struct ixgbe_rte_flow_rss_conf));
+	if (ixgbe_rss_conf_init(&filter_info->rss_info, &conf->conf))
+		return -EINVAL;
 
 	return 0;
 }

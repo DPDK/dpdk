@@ -1301,6 +1301,12 @@ Action: ``RSS``
 Similar to QUEUE, except RSS is additionally performed on packets to spread
 them among several queues according to the provided parameters.
 
+Unlike global RSS settings used by other DPDK APIs, unsetting the ``types``
+field does not disable RSS in a flow rule. Doing so instead requests safe
+unspecified "best-effort" settings from the underlying PMD, which depending
+on the flow rule, may result in anything ranging from empty (single queue)
+to all-inclusive RSS.
+
 Note: RSS hash result is stored in the ``hash.rss`` mbuf field which
 overlaps ``hash.fdir.lo``. Since `Action: MARK`_ sets the ``hash.fdir.hi``
 field only, both can be requested simultaneously.
@@ -1309,15 +1315,19 @@ field only, both can be requested simultaneously.
 
 .. table:: RSS
 
-   +--------------+--------------------------------+
-   | Field        | Value                          |
-   +==============+================================+
-   | ``rss_conf`` | RSS parameters                 |
-   +--------------+--------------------------------+
-   | ``num``      | number of entries in ``queue`` |
-   +--------------+--------------------------------+
-   | ``queue``    | queue indices to use           |
-   +--------------+--------------------------------+
+   +---------------+---------------------------------------------+
+   | Field         | Value                                       |
+   +===============+=============================================+
+   | ``types``     | specific RSS hash types (see ``ETH_RSS_*``) |
+   +---------------+---------------------------------------------+
+   | ``key_len``   | hash key length in bytes                    |
+   +---------------+---------------------------------------------+
+   | ``queue_num`` | number of entries in ``queue``              |
+   +---------------+---------------------------------------------+
+   | ``key``       | hash key                                    |
+   +---------------+---------------------------------------------+
+   | ``queue``     | queue indices to use                        |
+   +---------------+---------------------------------------------+
 
 Action: ``PF``
 ^^^^^^^^^^^^^^

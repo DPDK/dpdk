@@ -269,6 +269,13 @@ API Changes
     present.
   * C99-style flexible arrays were replaced with standard pointers in RSS
     action and in RAW pattern item structures due to compatibility issues.
+  * The RSS action was modified to not rely on external
+    ``struct rte_eth_rss_conf`` anymore to instead expose its own and more
+    appropriately named configuration fields directly
+    (``rss_conf->rss_key`` => ``key``,
+    ``rss_conf->rss_key_len`` => ``key_len``,
+    ``rss_conf->rss_hf`` => ``types``,
+    ``num`` => ``queue_num``).
 
 
 ABI Changes
@@ -317,9 +324,9 @@ ABI Changes
   ``rte_flow_isolate``, ``rte_flow_query`` and ``rte_flow_validate``, due to
   changes in error type definitions (``enum rte_flow_error_type``), removal
   of the unused DUP action (``enum rte_flow_action_type``), modified
-  behavior for flow rule actions (see API changes) and removal of C99
-  flexible arrays from RSS action (``struct rte_flow_action_rss``) and RAW
-  pattern item (``struct rte_flow_item_raw``).
+  behavior for flow rule actions (see API changes), removal of C99 flexible
+  array from RAW pattern item (``struct rte_flow_item_raw``) and complete
+  rework of the RSS action definition (``struct rte_flow_action_rss``).
 
 
 Removed Items

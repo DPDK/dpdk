@@ -41,8 +41,6 @@
 #define IGB_DEFAULT_TX_HTHRESH      1
 #define IGB_DEFAULT_TX_WTHRESH      ((hw->mac.type == e1000_82576) ? 1 : 16)
 
-#define IGB_HKEY_MAX_INDEX 10
-
 /* Bit shift and mask */
 #define IGB_4_BIT_WIDTH  (CHAR_BIT / 2)
 #define IGB_4_BIT_MASK   RTE_LEN2MASK(IGB_4_BIT_WIDTH, uint8_t)
@@ -5662,7 +5660,7 @@ igb_rss_filter_restore(struct rte_eth_dev *dev)
 	struct e1000_filter_info *filter_info =
 		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 
-	if (filter_info->rss_info.num)
+	if (filter_info->rss_info.conf.queue_num)
 		igb_config_rss_filter(dev, &filter_info->rss_info, TRUE);
 }
 

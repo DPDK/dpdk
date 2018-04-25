@@ -1215,7 +1215,7 @@ actions:
 				if (err)
 					goto exit_action_not_supported;
 			}
-			if (flow && rss)
+			if (flow)
 				err = rss_add_actions(flow, pmd, rss, error);
 		} else {
 			goto exit_action_not_supported;
@@ -2050,7 +2050,7 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 			   struct rte_flow_error *error)
 {
 	/* 4096 is the maximum number of instructions for a BPF program */
-	int i;
+	unsigned int i;
 	int err;
 	struct rss_key rss_entry = { .hash_fields = 0,
 				     .key_size = 0 };
@@ -2066,8 +2066,8 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 	}
 
 	/* Update RSS map entry with queues */
-	rss_entry.nb_queues = rss->num;
-	for (i = 0; i < rss->num; i++)
+	rss_entry.nb_queues = rss->queue_num;
+	for (i = 0; i < rss->queue_num; i++)
 		rss_entry.queues[i] = rss->queue[i];
 	rss_entry.hash_fields =
 		(1 << HASH_FIELD_IPV4_L3_L4) | (1 << HASH_FIELD_IPV6_L3_L4);

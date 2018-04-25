@@ -4,6 +4,9 @@
 
 #ifndef _IXGBE_ETHDEV_H_
 #define _IXGBE_ETHDEV_H_
+
+#include <stdint.h>
+
 #include "base/ixgbe_type.h"
 #include "base/ixgbe_dcb.h"
 #include "base/ixgbe_dcb_82599.h"
@@ -12,6 +15,7 @@
 #ifdef RTE_LIBRTE_SECURITY
 #include "ixgbe_ipsec.h"
 #endif
+#include <rte_flow.h>
 #include <rte_time.h>
 #include <rte_hash.h>
 #include <rte_pci.h>
@@ -39,6 +43,7 @@
 #define IXGBE_EXTENDED_VLAN	  (uint32_t)(1 << 26) /* EXTENDED VLAN ENABLE */
 #define IXGBE_VFTA_SIZE 128
 #define IXGBE_VLAN_TAG_SIZE 4
+#define IXGBE_HKEY_MAX_INDEX 10
 #define IXGBE_MAX_RX_QUEUE_NUM	128
 #define IXGBE_MAX_INTR_QUEUE_NUM	15
 #define IXGBE_VMDQ_DCB_NB_QUEUES     IXGBE_MAX_RX_QUEUE_NUM
@@ -196,8 +201,8 @@ struct ixgbe_hw_fdir_info {
 };
 
 struct ixgbe_rte_flow_rss_conf {
-	struct rte_eth_rss_conf rss_conf; /**< RSS parameters. */
-	uint16_t num; /**< Number of entries in queue[]. */
+	struct rte_flow_action_rss conf; /**< RSS parameters. */
+	uint8_t key[IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t)]; /* Hash key. */
 	uint16_t queue[IXGBE_MAX_RX_QUEUE_NUM]; /**< Queues indices to use. */
 };
 
@@ -696,6 +701,10 @@ void ixgbe_tm_conf_init(struct rte_eth_dev *dev);
 void ixgbe_tm_conf_uninit(struct rte_eth_dev *dev);
 int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
 			       uint16_t tx_rate);
+int ixgbe_rss_conf_init(struct ixgbe_rte_flow_rss_conf *out,
+			const struct rte_flow_action_rss *in);
+int ixgbe_action_rss_same(const struct rte_flow_action_rss *comp,
+			  const struct rte_flow_action_rss *with);
 int ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 		struct ixgbe_rte_flow_rss_conf *conf, bool add);
 

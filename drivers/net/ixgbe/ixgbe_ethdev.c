@@ -100,8 +100,6 @@
 
 #define IXGBE_QUEUE_STAT_COUNTERS (sizeof(hw_stats->qprc) / sizeof(hw_stats->qprc[0]))
 
-#define IXGBE_HKEY_MAX_INDEX 10
-
 /* Additional timesync values. */
 #define NSEC_PER_SEC             1000000000L
 #define IXGBE_INCVAL_10GB        0x66666666
@@ -8371,7 +8369,7 @@ ixgbe_rss_filter_restore(struct rte_eth_dev *dev)
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 
-	if (filter_info->rss_info.num)
+	if (filter_info->rss_info.conf.queue_num)
 		ixgbe_config_rss_filter(dev,
 			&filter_info->rss_info, TRUE);
 }

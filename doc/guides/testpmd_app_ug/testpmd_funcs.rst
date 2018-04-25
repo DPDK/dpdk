@@ -3422,8 +3422,10 @@ This section lists supported actions and their attributes, if any.
 
 - ``rss``: spread packets among several queues.
 
-  - ``types [{RSS hash type} [...]] end``: RSS hash types, allowed tokens
-    are the same as `set_hash_input_set`_, an empty list means none (0).
+  - ``types [{RSS hash type} [...]] end``: specific RSS hash types, allowed
+    tokens are the same as `set_hash_input_set`_, except that an empty list
+    does not disable RSS but instead requests unspecified "best-effort"
+    settings.
 
   - ``key {string}``: RSS hash key, overrides ``key_len``.
 

@@ -2898,12 +2898,47 @@ igb_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 }
 
 int
+igb_rss_conf_init(struct igb_rte_flow_rss_conf *out,
+		  const struct rte_flow_action_rss *in)
+{
+	if (in->key_len > RTE_DIM(out->key) ||
+	    in->queue_num > RTE_DIM(out->queue))
+		return -EINVAL;
+	out->conf = (struct rte_flow_action_rss){
+		.types = in->types,
+		.key_len = in->key_len,
+		.queue_num = in->queue_num,
+		.key = memcpy(out->key, in->key, in->key_len),
+		.queue = memcpy(out->queue, in->queue,
+				sizeof(*in->queue) * in->queue_num),
+	};
+	return 0;
+}
+
+int
+igb_action_rss_same(const struct rte_flow_action_rss *comp,
+		    const struct rte_flow_action_rss *with)
+{
+	return (comp->types == with->types &&
+		comp->key_len == with->key_len &&
+		comp->queue_num == with->queue_num &&
+		!memcmp(comp->key, with->key, with->key_len) &&
+		!memcmp(comp->queue, with->queue,
+			sizeof(*with->queue) * with->queue_num));
+}
+
+int
 igb_config_rss_filter(struct rte_eth_dev *dev,
 		struct igb_rte_flow_rss_conf *conf, bool add)
 {
 	uint32_t shift;
 	uint16_t i, j;
-	struct rte_eth_rss_conf rss_conf = conf->rss_conf;
+	struct rte_eth_rss_conf rss_conf = {
+		.rss_key = conf->conf.key_len ?
+			(void *)(uintptr_t)conf->conf.key : NULL,
+		.rss_key_len = conf->conf.key_len,
+		.rss_hf = conf->conf.types,
+	};
 	struct e1000_filter_info *filter_info =
 		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2911,8 +2946,8 @@ igb_config_rss_filter(struct rte_eth_dev *dev,
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (!add) {
-		if (memcmp(conf, &filter_info->rss_info,
-			sizeof(struct igb_rte_flow_rss_conf)) == 0) {
+		if (igb_action_rss_same(&filter_info->rss_info.conf,
+					&conf->conf)) {
 			igb_rss_disable(dev);
 			memset(&filter_info->rss_info, 0,
 				sizeof(struct igb_rte_flow_rss_conf));
@@ -2921,7 +2956,7 @@ igb_config_rss_filter(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	if (filter_info->rss_info.num)
+	if (filter_info->rss_info.conf.queue_num)
 		return -EINVAL;
 
 	/* Fill in redirection table. */
@@ -2933,9 +2968,9 @@ igb_config_rss_filter(struct rte_eth_dev *dev,
 		} reta;
 		uint8_t q_idx;
 
-		if (j == conf->num)
+		if (j == conf->conf.queue_num)
 			j = 0;
-		q_idx = conf->queue[j];
+		q_idx = conf->conf.queue[j];
 		reta.bytes[i & 3] = (uint8_t)(q_idx << shift);
 		if ((i & 3) == 3)
 			E1000_WRITE_REG(hw, E1000_RETA(i >> 2), reta.dword);
@@ -2952,8 +2987,8 @@ igb_config_rss_filter(struct rte_eth_dev *dev,
 		rss_conf.rss_key = rss_intel_key; /* Default hash key */
 	igb_hw_rss_hash_set(hw, &rss_conf);
 
-	rte_memcpy(&filter_info->rss_info,
-		conf, sizeof(struct igb_rte_flow_rss_conf));
+	if (igb_rss_conf_init(&filter_info->rss_info, &conf->conf))
+		return -EINVAL;
 
 	return 0;
 }

@@ -192,9 +192,8 @@ enum index {
 /** Storage for struct rte_flow_action_rss including external data. */
 struct action_rss_data {
 	struct rte_flow_action_rss conf;
+	uint8_t key[RSS_HASH_KEY_LENGTH];
 	uint16_t queue[ACTION_RSS_QUEUE_NUM];
-	struct rte_eth_rss_conf rss_conf;
-	uint8_t rss_key[RSS_HASH_KEY_LENGTH];
 };
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
@@ -1587,7 +1586,7 @@ static const struct token token_list[] = {
 	},
 	[ACTION_RSS_TYPES] = {
 		.name = "types",
-		.help = "RSS hash types",
+		.help = "specific RSS hash types",
 		.next = NEXT(action_rss, NEXT_ENTRY(ACTION_RSS_TYPE)),
 	},
 	[ACTION_RSS_TYPE] = {
@@ -1602,21 +1601,21 @@ static const struct token token_list[] = {
 		.next = NEXT(action_rss, NEXT_ENTRY(STRING)),
 		.args = ARGS(ARGS_ENTRY_ARB(0, 0),
 			     ARGS_ENTRY_ARB
-			     (offsetof(struct action_rss_data, rss_conf) +
-			      offsetof(struct rte_eth_rss_conf, rss_key_len),
-			      sizeof(((struct rte_eth_rss_conf *)0)->
-				     rss_key_len)),
-			     ARGS_ENTRY(struct action_rss_data, rss_key)),
+			     (offsetof(struct action_rss_data, conf) +
+			      offsetof(struct rte_flow_action_rss, key_len),
+			      sizeof(((struct rte_flow_action_rss *)0)->
+				     key_len)),
+			     ARGS_ENTRY(struct action_rss_data, key)),
 	},
 	[ACTION_RSS_KEY_LEN] = {
 		.name = "key_len",
 		.help = "RSS hash key length in bytes",
 		.next = NEXT(action_rss, NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY_ARB_BOUNDED
-			     (offsetof(struct action_rss_data, rss_conf) +
-			      offsetof(struct rte_eth_rss_conf, rss_key_len),
-			      sizeof(((struct rte_eth_rss_conf *)0)->
-				     rss_key_len),
+			     (offsetof(struct action_rss_data, conf) +
+			      offsetof(struct rte_flow_action_rss, key_len),
+			      sizeof(((struct rte_flow_action_rss *)0)->
+				     key_len),
 			      0,
 			      RSS_HASH_KEY_LENGTH)),
 	},
@@ -2075,27 +2074,24 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 	action_rss_data = ctx->object;
 	*action_rss_data = (struct action_rss_data){
 		.conf = (struct rte_flow_action_rss){
-			.rss_conf = &action_rss_data->rss_conf,
-			.num = RTE_MIN(nb_rxq, ACTION_RSS_QUEUE_NUM),
+			.types = rss_hf,
+			.key_len = sizeof(action_rss_data->key),
+			.queue_num = RTE_MIN(nb_rxq, ACTION_RSS_QUEUE_NUM),
+			.key = action_rss_data->key,
 			.queue = action_rss_data->queue,
 		},
+		.key = "testpmd's default RSS hash key",
 		.queue = { 0 },
-		.rss_conf = (struct rte_eth_rss_conf){
-			.rss_key = action_rss_data->rss_key,
-			.rss_key_len = sizeof(action_rss_data->rss_key),
-			.rss_hf = rss_hf,
-		},
-		.rss_key = "testpmd's default RSS hash key",
 	};
-	for (i = 0; i < action_rss_data->conf.num; ++i)
+	for (i = 0; i < action_rss_data->conf.queue_num; ++i)
 		action_rss_data->queue[i] = i;
 	if (!port_id_is_invalid(ctx->port, DISABLED_WARN) &&
 	    ctx->port != (portid_t)RTE_PORT_ALL) {
 		struct rte_eth_dev_info info;
 
 		rte_eth_dev_info_get(ctx->port, &info);
-		action_rss_data->rss_conf.rss_key_len =
-			RTE_MIN(sizeof(action_rss_data->rss_key),
+		action_rss_data->conf.key_len =
+			RTE_MIN(sizeof(action_rss_data->key),
 				info.hash_key_size);
 	}
 	action->conf = &action_rss_data->conf;
@@ -2123,7 +2119,7 @@ parse_vc_action_rss_type(struct context *ctx, const struct token *token,
 		return -1;
 	if (!(ctx->objdata >> 16) && ctx->object) {
 		action_rss_data = ctx->object;
-		action_rss_data->rss_conf.rss_hf = 0;
+		action_rss_data->conf.types = 0;
 	}
 	if (!strcmp_partial("end", str, len)) {
 		ctx->objdata &= 0xffff;
@@ -2142,7 +2138,7 @@ parse_vc_action_rss_type(struct context *ctx, const struct token *token,
 	if (!ctx->object)
 		return len;
 	action_rss_data = ctx->object;
-	action_rss_data->rss_conf.rss_hf |= rss_type_table[i].rss_type;
+	action_rss_data->conf.types |= rss_type_table[i].rss_type;
 	return len;
 }
 
@@ -2192,7 +2188,7 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 	if (!ctx->object)
 		return len;
 	action_rss_data = ctx->object;
-	action_rss_data->conf.num = i;
+	action_rss_data->conf.queue_num = i;
 	action_rss_data->conf.queue = i ? action_rss_data->queue : NULL;
 	return len;
 }

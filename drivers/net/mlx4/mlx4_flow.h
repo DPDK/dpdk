@@ -47,7 +47,7 @@ struct rte_flow {
 
 /* mlx4_flow.c */
 
-uint64_t mlx4_conv_rss_hf(struct priv *priv, uint64_t rss_hf);
+uint64_t mlx4_conv_rss_types(struct priv *priv, uint64_t rss_hf);
 int mlx4_flow_sync(struct priv *priv, struct rte_flow_error *error);
 void mlx4_flow_clean(struct priv *priv);
 int mlx4_filter_ctrl(struct rte_eth_dev *dev,

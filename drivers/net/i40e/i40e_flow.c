@@ -4220,7 +4220,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 
 	if (action_flag) {
 		for (n = 0; n < 64; n++) {
-			if (rss->rss_conf->rss_hf & (hf_bit << n)) {
+			if (rss->types & (hf_bit << n)) {
 				conf_info->region[0].hw_flowtype[0] = n;
 				conf_info->region[0].flowtype_num = 1;
 				conf_info->queue_region_number = 1;
@@ -4236,12 +4236,12 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 	 * queue index for this port.
 	 */
 	if (conf_info->queue_region_number) {
-		for (i = 0; i < rss->num; i++) {
-			for (j = 0; j < rss_info->num; j++) {
-				if (rss->queue[i] == rss_info->queue[j])
+		for (i = 0; i < rss->queue_num; i++) {
+			for (j = 0; j < rss_info->conf.queue_num; j++) {
+				if (rss->queue[i] == rss_info->conf.queue[j])
 					break;
 			}
-			if (j == rss_info->num) {
+			if (j == rss_info->conf.queue_num) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION,
 					act,
@@ -4250,7 +4250,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 			}
 		}
 
-		for (i = 0; i < rss->num - 1; i++) {
+		for (i = 0; i < rss->queue_num - 1; i++) {
 			if (rss->queue[i + 1] != rss->queue[i] + 1) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4265,8 +4265,8 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 	for (n = 0; n < conf_info->queue_region_number; n++) {
 		if (conf_info->region[n].user_priority_num ||
 				conf_info->region[n].flowtype_num) {
-			if (!((rte_is_power_of_2(rss->num)) &&
-					rss->num <= 64)) {
+			if (!((rte_is_power_of_2(rss->queue_num)) &&
+					rss->queue_num <= 64)) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION,
 					act,
@@ -4294,7 +4294,8 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 			}
 
 			for (i = 0; i < info->queue_region_number; i++) {
-				if (info->region[i].queue_num == rss->num &&
+				if (info->region[i].queue_num ==
+				    rss->queue_num &&
 					info->region[i].queue_start_index ==
 						rss->queue[0])
 					break;
@@ -4310,7 +4311,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 				}
 
 				info->region[i].queue_num =
-					rss->num;
+					rss->queue_num;
 				info->region[i].queue_start_index =
 					rss->queue[0];
 				info->region[i].region_id =
@@ -4356,7 +4357,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 	if (rss_config->queue_region_conf)
 		return 0;
 
-	if (!rss || !rss->num) {
+	if (!rss || !rss->queue_num) {
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION,
 				act,
@@ -4364,7 +4365,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	for (n = 0; n < rss->num; n++) {
+	for (n = 0; n < rss->queue_num; n++) {
 		if (rss->queue[n] >= dev->data->nb_rx_queues) {
 			rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4375,15 +4376,19 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 	}
 
 	/* Parse RSS related parameters from configuration */
-	if (rss->rss_conf)
-		rss_config->rss_conf = *rss->rss_conf;
-	else
-		rss_config->rss_conf.rss_hf =
-			pf->adapter->flow_types_mask;
+	if (rss->key_len && rss->key_len > RTE_DIM(rss_config->key))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "RSS hash key too large");
+	if (rss->queue_num > RTE_DIM(rss_config->queue))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "too many queues for RSS context");
+	if (i40e_rss_conf_init(rss_config, rss))
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "RSS context initialization failure");
 
-	for (n = 0; n < rss->num; ++n)
-		rss_config->queue[n] = rss->queue[n];
-	rss_config->num = rss->num;
 	index++;
 
 	/* check if the next not void action is END */
@@ -4903,7 +4908,7 @@ i40e_flow_flush_rss_filter(struct rte_eth_dev *dev)
 
 	ret = i40e_flush_queue_region_all_conf(dev, hw, pf, 0);
 
-	if (rss_info->num)
+	if (rss_info->conf.queue_num)
 		ret = i40e_config_rss_filter(pf, rss_info, FALSE);
 	return ret;
 }

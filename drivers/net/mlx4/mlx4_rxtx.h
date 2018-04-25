@@ -127,7 +127,7 @@ uint8_t mlx4_rss_hash_key_default[MLX4_RSS_HASH_KEY_SIZE];
 int mlx4_rss_init(struct priv *priv);
 void mlx4_rss_deinit(struct priv *priv);
 struct mlx4_rss *mlx4_rss_get(struct priv *priv, uint64_t fields,
-			      uint8_t key[MLX4_RSS_HASH_KEY_SIZE],
+			      const uint8_t key[MLX4_RSS_HASH_KEY_SIZE],
 			      uint16_t queues, const uint16_t queue_id[]);
 void mlx4_rss_put(struct mlx4_rss *rss);
 int mlx4_rss_attach(struct mlx4_rss *rss);

@@ -1117,40 +1117,27 @@ flow_action_conf_copy(void *buf, const struct rte_flow_action *action)
 		off = 0;
 		if (dst.rss)
 			*dst.rss = (struct rte_flow_action_rss){
-				.num = src.rss->num,
+				.types = src.rss->types,
+				.key_len = src.rss->key_len,
+				.queue_num = src.rss->queue_num,
 			};
 		off += sizeof(*src.rss);
-		if (src.rss->num) {
+		if (src.rss->key_len) {
 			off = RTE_ALIGN_CEIL(off, sizeof(double));
-			size = sizeof(*src.rss->queue) * src.rss->num;
+			size = sizeof(*src.rss->key) * src.rss->key_len;
+			if (dst.rss)
+				dst.rss->key = memcpy
+					((void *)((uintptr_t)dst.rss + off),
+					 src.rss->key, size);
+			off += size;
+		}
+		if (src.rss->queue_num) {
+			off = RTE_ALIGN_CEIL(off, sizeof(double));
+			size = sizeof(*src.rss->queue) * src.rss->queue_num;
 			if (dst.rss)
 				dst.rss->queue = memcpy
 					((void *)((uintptr_t)dst.rss + off),
 					 src.rss->queue, size);
-			off += size;
-		}
-		off = RTE_ALIGN_CEIL(off, sizeof(double));
-		if (dst.rss) {
-			dst.rss->rss_conf = (void *)((uintptr_t)dst.rss + off);
-			*(struct rte_eth_rss_conf *)(uintptr_t)
-				dst.rss->rss_conf = (struct rte_eth_rss_conf){
-				.rss_key_len = src.rss->rss_conf->rss_key_len,
-				.rss_hf = src.rss->rss_conf->rss_hf,
-			};
-		}
-		off += sizeof(*src.rss->rss_conf);
-		if (src.rss->rss_conf->rss_key_len) {
-			off = RTE_ALIGN_CEIL(off, sizeof(double));
-			size = sizeof(*src.rss->rss_conf->rss_key) *
-				src.rss->rss_conf->rss_key_len;
-			if (dst.rss) {
-				((struct rte_eth_rss_conf *)(uintptr_t)
-				 dst.rss->rss_conf)->rss_key =
-					(void *)((uintptr_t)dst.rss + off);
-				memcpy(dst.rss->rss_conf->rss_key,
-				       src.rss->rss_conf->rss_key,
-				       size);
-			}
 			off += size;
 		}
 		size = off;

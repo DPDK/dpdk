@@ -214,9 +214,8 @@ struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	uint32_t mark:1; /**< Set if the flow is marked. */
 	uint32_t drop:1; /**< Drop queue. */
-	uint16_t queues_n; /**< Number of entries in queue[]. */
+	struct rte_flow_action_rss rss_conf; /**< RSS configuration */
 	uint16_t (*queues)[]; /**< Queues indexes to use. */
-	struct rte_eth_rss_conf rss_conf; /**< RSS configuration */
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
 	struct ibv_counter_set *cs; /**< Holds the counters for the rule. */
 	struct mlx5_flow_counter_stats counter_stats;/**<The counter stats. */
@@ -406,9 +405,8 @@ struct mlx5_flow_parse {
 	uint32_t mark:1; /**< Mark is present in the flow. */
 	uint32_t count:1; /**< Count is present in the flow. */
 	uint32_t mark_id; /**< Mark identifier. */
+	struct rte_flow_action_rss rss_conf; /**< RSS configuration */
 	uint16_t queues[RTE_MAX_QUEUES_PER_PORT]; /**< Queues indexes to use. */
-	uint16_t queues_n; /**< Number of entries in queue[]. */
-	struct rte_eth_rss_conf rss_conf; /**< RSS configuration */
 	uint8_t rss_key[40]; /**< copy of the RSS key. */
 	enum hash_rxq_type layer; /**< Last pattern layer detected. */
 	struct ibv_counter_set *cs; /**< Holds the counter set for the rule */
@@ -540,47 +538,6 @@ mlx5_flow_item_validate(const struct rte_flow_item *item,
 }
 
 /**
- * Copy the RSS configuration from the user ones, of the rss_conf is null,
- * uses the driver one.
- *
- * @param parser
- *   Internal parser structure.
- * @param rss_conf
- *   User RSS configuration to save.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx5_flow_convert_rss_conf(struct mlx5_flow_parse *parser,
-			   const struct rte_eth_rss_conf *rss_conf)
-{
-	/*
-	 * This function is also called at the beginning of
-	 * mlx5_flow_convert_actions() to initialize the parser with the
-	 * device default RSS configuration.
-	 */
-	if (rss_conf) {
-		if (rss_conf->rss_hf & MLX5_RSS_HF_MASK) {
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
-		if (rss_conf->rss_key_len != 40) {
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
-		if (rss_conf->rss_key_len && rss_conf->rss_key) {
-			parser->rss_conf.rss_key_len = rss_conf->rss_key_len;
-			memcpy(parser->rss_key, rss_conf->rss_key,
-			       rss_conf->rss_key_len);
-			parser->rss_conf.rss_key = parser->rss_key;
-		}
-		parser->rss_conf.rss_hf = rss_conf->rss_hf;
-	}
-	return 0;
-}
-
-/**
  * Extract attribute to the parser.
  *
  * @param[in] attr
@@ -650,17 +607,7 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 	enum { FATE = 1, MARK = 2, COUNT = 4, };
 	uint32_t overlap = 0;
 	struct priv *priv = dev->data->dev_private;
-	int ret;
 
-	/*
-	 * Add default RSS configuration necessary for Verbs to create QP even
-	 * if no RSS is necessary.
-	 */
-	ret = mlx5_flow_convert_rss_conf(parser,
-					 (const struct rte_eth_rss_conf *)
-					 &priv->rss_conf);
-	if (ret)
-		return ret;
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
 		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
 			continue;
@@ -679,25 +626,53 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 			overlap |= FATE;
 			if (!queue || (queue->index > (priv->rxqs_n - 1)))
 				goto exit_action_not_supported;
-			parser->queues_n = 1;
 			parser->queues[0] = queue->index;
+			parser->rss_conf = (struct rte_flow_action_rss){
+				.queue_num = 1,
+				.queue = parser->queues,
+			};
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
 			const struct rte_flow_action_rss *rss =
 				(const struct rte_flow_action_rss *)
 				actions->conf;
+			const uint8_t *rss_key;
+			uint32_t rss_key_len;
 			uint16_t n;
 
 			if (overlap & FATE)
 				goto exit_action_overlap;
 			overlap |= FATE;
-			if (!rss || !rss->num) {
+			if (rss->types & MLX5_RSS_HF_MASK) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "unsupported RSS type"
+						   " requested");
+				return -rte_errno;
+			}
+			if (rss->key_len) {
+				rss_key_len = rss->key_len;
+				rss_key = rss->key;
+			} else {
+				rss_key_len = rss_hash_default_key_len;
+				rss_key = rss_hash_default_key;
+			}
+			if (rss_key_len != RTE_DIM(parser->rss_key)) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "RSS hash key must be"
+						   " exactly 40 bytes long");
+				return -rte_errno;
+			}
+			if (!rss->queue_num) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
 						   actions,
 						   "no valid queues");
 				return -rte_errno;
 			}
-			if (rss->num > RTE_DIM(parser->queues)) {
+			if (rss->queue_num > RTE_DIM(parser->queues)) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
 						   actions,
@@ -705,7 +680,7 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 						   " context");
 				return -rte_errno;
 			}
-			for (n = 0; n < rss->num; ++n) {
+			for (n = 0; n < rss->queue_num; ++n) {
 				if (rss->queue[n] >= priv->rxqs_n) {
 					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -715,16 +690,16 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 					return -rte_errno;
 				}
 			}
-			for (n = 0; n < rss->num; ++n)
-				parser->queues[n] = rss->queue[n];
-			parser->queues_n = rss->num;
-			if (mlx5_flow_convert_rss_conf(parser, rss->rss_conf)) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ACTION,
-						   actions,
-						   "wrong RSS configuration");
-				return -rte_errno;
-			}
+			parser->rss_conf = (struct rte_flow_action_rss){
+				.types = rss->types,
+				.key_len = rss_key_len,
+				.queue_num = rss->queue_num,
+				.key = memcpy(parser->rss_key, rss_key,
+					      sizeof(*rss_key) * rss_key_len),
+				.queue = memcpy(parser->queues, rss->queue,
+						sizeof(*rss->queue) *
+						rss->queue_num),
+			};
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_MARK) {
 			const struct rte_flow_action_mark *mark =
 				(const struct rte_flow_action_mark *)
@@ -769,7 +744,7 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 		parser->drop = 1;
 	if (parser->drop && parser->mark)
 		parser->mark = 0;
-	if (!parser->queues_n && !parser->drop) {
+	if (!parser->rss_conf.queue_num && !parser->drop) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "no valid action");
 		return -rte_errno;
@@ -951,7 +926,7 @@ mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 	unsigned int i;
 
 	/* Remove any other flow not matching the pattern. */
-	if (parser->queues_n == 1 && !parser->rss_conf.rss_hf) {
+	if (parser->rss_conf.queue_num == 1 && !parser->rss_conf.types) {
 		for (i = 0; i != hash_rxq_init_n; ++i) {
 			if (i == HASH_RXQ_ETH)
 				continue;
@@ -979,7 +954,7 @@ mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 	}
 	/* Remove impossible flow according to the RSS configuration. */
 	if (hash_rxq_init[parser->layer].dpdk_rss_hf &
-	    parser->rss_conf.rss_hf) {
+	    parser->rss_conf.types) {
 		/* Remove any other flow. */
 		for (i = hmin; i != (hmax + 1); ++i) {
 			if ((i == parser->layer) ||
@@ -990,7 +965,7 @@ mlx5_flow_convert_finalise(struct mlx5_flow_parse *parser)
 		}
 	} else  if (!parser->queue[ip].ibv_attr) {
 		/* no RSS possible with the current configuration. */
-		parser->queues_n = 1;
+		parser->rss_conf.queue_num = 1;
 		return;
 	}
 fill:
@@ -1119,7 +1094,7 @@ mlx5_flow_convert(struct rte_eth_dev *dev,
 		for (i = 0; i != hash_rxq_init_n; ++i) {
 			unsigned int offset;
 
-			if (!(parser->rss_conf.rss_hf &
+			if (!(parser->rss_conf.types &
 			      hash_rxq_init[i].dpdk_rss_hf) &&
 			    (i != HASH_RXQ_ETH))
 				continue;
@@ -1787,20 +1762,20 @@ mlx5_flow_create_action_queue_rss(struct rte_eth_dev *dev,
 			continue;
 		flow->frxq[i].hrxq =
 			mlx5_hrxq_get(dev,
-				      parser->rss_conf.rss_key,
-				      parser->rss_conf.rss_key_len,
+				      parser->rss_conf.key,
+				      parser->rss_conf.key_len,
 				      hash_fields,
-				      parser->queues,
-				      parser->queues_n);
+				      parser->rss_conf.queue,
+				      parser->rss_conf.queue_num);
 		if (flow->frxq[i].hrxq)
 			continue;
 		flow->frxq[i].hrxq =
 			mlx5_hrxq_new(dev,
-				      parser->rss_conf.rss_key,
-				      parser->rss_conf.rss_key_len,
+				      parser->rss_conf.key,
+				      parser->rss_conf.key_len,
 				      hash_fields,
-				      parser->queues,
-				      parser->queues_n);
+				      parser->rss_conf.queue,
+				      parser->rss_conf.queue_num);
 		if (!flow->frxq[i].hrxq) {
 			return rte_flow_error_set(error, ENOMEM,
 						  RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -1871,9 +1846,9 @@ mlx5_flow_create_action_queue(struct rte_eth_dev *dev,
 				   NULL, "internal error in flow creation");
 		goto error;
 	}
-	for (i = 0; i != parser->queues_n; ++i) {
+	for (i = 0; i != parser->rss_conf.queue_num; ++i) {
 		struct mlx5_rxq_data *q =
-			(*priv->rxqs)[parser->queues[i]];
+			(*priv->rxqs)[parser->rss_conf.queue[i]];
 
 		q->mark |= parser->mark;
 	}
@@ -1937,7 +1912,8 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	if (ret)
 		goto exit;
 	flow = rte_calloc(__func__, 1,
-			  sizeof(*flow) + parser.queues_n * sizeof(uint16_t),
+			  sizeof(*flow) +
+			  parser.rss_conf.queue_num * sizeof(uint16_t),
 			  0);
 	if (!flow) {
 		rte_flow_error_set(error, ENOMEM,
@@ -1946,15 +1922,20 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 				   "cannot allocate flow memory");
 		return NULL;
 	}
-	/* Copy queues configuration. */
+	/* Copy configuration. */
 	flow->queues = (uint16_t (*)[])(flow + 1);
-	memcpy(flow->queues, parser.queues, parser.queues_n * sizeof(uint16_t));
-	flow->queues_n = parser.queues_n;
+	flow->rss_conf = (struct rte_flow_action_rss){
+		.types = parser.rss_conf.types,
+		.key_len = parser.rss_conf.key_len,
+		.queue_num = parser.rss_conf.queue_num,
+		.key = memcpy(flow->rss_key, parser.rss_conf.key,
+			      sizeof(*parser.rss_conf.key) *
+			      parser.rss_conf.key_len),
+		.queue = memcpy(flow->queues, parser.rss_conf.queue,
+				sizeof(*parser.rss_conf.queue) *
+				parser.rss_conf.queue_num),
+	};
 	flow->mark = parser.mark;
-	/* Copy RSS configuration. */
-	flow->rss_conf = parser.rss_conf;
-	flow->rss_conf.rss_key = flow->rss_key;
-	memcpy(flow->rss_key, parser.rss_key, parser.rss_conf.rss_key_len);
 	/* finalise the flow. */
 	if (parser.drop)
 		ret = mlx5_flow_create_action_queue_drop(dev, &parser, flow,
@@ -2034,7 +2015,7 @@ mlx5_flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 
 	if (flow->drop || !flow->mark)
 		goto free;
-	for (i = 0; i != flow->queues_n; ++i) {
+	for (i = 0; i != flow->rss_conf.queue_num; ++i) {
 		struct rte_flow *tmp;
 		int mark = 0;
 
@@ -2344,19 +2325,19 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 			if (!flow->frxq[i].ibv_attr)
 				continue;
 			flow->frxq[i].hrxq =
-				mlx5_hrxq_get(dev, flow->rss_conf.rss_key,
-					      flow->rss_conf.rss_key_len,
+				mlx5_hrxq_get(dev, flow->rss_conf.key,
+					      flow->rss_conf.key_len,
 					      hash_rxq_init[i].hash_fields,
-					      (*flow->queues),
-					      flow->queues_n);
+					      flow->rss_conf.queue,
+					      flow->rss_conf.queue_num);
 			if (flow->frxq[i].hrxq)
 				goto flow_create;
 			flow->frxq[i].hrxq =
-				mlx5_hrxq_new(dev, flow->rss_conf.rss_key,
-					      flow->rss_conf.rss_key_len,
+				mlx5_hrxq_new(dev, flow->rss_conf.key,
+					      flow->rss_conf.key_len,
 					      hash_rxq_init[i].hash_fields,
-					      (*flow->queues),
-					      flow->queues_n);
+					      flow->rss_conf.queue,
+					      flow->rss_conf.queue_num);
 			if (!flow->frxq[i].hrxq) {
 				DRV_LOG(DEBUG,
 					"port %u flow %p cannot be applied",
@@ -2380,8 +2361,8 @@ flow_create:
 		}
 		if (!flow->mark)
 			continue;
-		for (i = 0; i != flow->queues_n; ++i)
-			(*priv->rxqs)[(*flow->queues)[i]]->mark = 1;
+		for (i = 0; i != flow->rss_conf.queue_num; ++i)
+			(*priv->rxqs)[flow->rss_conf.queue[i]]->mark = 1;
 	}
 	return 0;
 }
@@ -2458,8 +2439,10 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	};
 	uint16_t queue[priv->reta_idx_n];
 	struct rte_flow_action_rss action_rss = {
-		.rss_conf = &priv->rss_conf,
-		.num = priv->reta_idx_n,
+		.types = priv->rss_conf.rss_hf,
+		.key_len = priv->rss_conf.rss_key_len,
+		.queue_num = priv->reta_idx_n,
+		.key = priv->rss_conf.rss_key,
 		.queue = queue,
 	};
 	struct rte_flow_action actions[] = {

@@ -1033,13 +1033,21 @@ struct rte_flow_query_count {
  * Similar to QUEUE, except RSS is additionally performed on packets to
  * spread them among several queues according to the provided parameters.
  *
+ * Unlike global RSS settings used by other DPDK APIs, unsetting the
+ * @p types field does not disable RSS in a flow rule. Doing so instead
+ * requests safe unspecified "best-effort" settings from the underlying PMD,
+ * which depending on the flow rule, may result in anything ranging from
+ * empty (single queue) to all-inclusive RSS.
+ *
  * Note: RSS hash result is stored in the hash.rss mbuf field which overlaps
  * hash.fdir.lo. Since the MARK action sets the hash.fdir.hi field only,
  * both can be requested simultaneously.
  */
 struct rte_flow_action_rss {
-	const struct rte_eth_rss_conf *rss_conf; /**< RSS parameters. */
-	uint16_t num; /**< Number of entries in @p queue. */
+	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
+	uint32_t key_len; /**< Hash key length in bytes. */
+	uint32_t queue_num; /**< Number of entries in @p queue. */
+	const uint8_t *key; /**< Hash key. */
 	const uint16_t *queue; /**< Queue indices to use. */
 };
 

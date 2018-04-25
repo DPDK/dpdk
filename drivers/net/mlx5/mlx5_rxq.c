@@ -1218,8 +1218,8 @@ mlx5_rxq_verify(struct rte_eth_dev *dev)
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
  */
 struct mlx5_ind_table_ibv *
-mlx5_ind_table_ibv_new(struct rte_eth_dev *dev, uint16_t queues[],
-		       uint16_t queues_n)
+mlx5_ind_table_ibv_new(struct rte_eth_dev *dev, const uint16_t *queues,
+		       uint32_t queues_n)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_ind_table_ibv *ind_tbl;
@@ -1286,8 +1286,8 @@ error:
  *   An indirection table if found.
  */
 struct mlx5_ind_table_ibv *
-mlx5_ind_table_ibv_get(struct rte_eth_dev *dev, uint16_t queues[],
-		       uint16_t queues_n)
+mlx5_ind_table_ibv_get(struct rte_eth_dev *dev, const uint16_t *queues,
+		       uint32_t queues_n)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_ind_table_ibv *ind_tbl;
@@ -1391,8 +1391,10 @@ mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev)
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
  */
 struct mlx5_hrxq *
-mlx5_hrxq_new(struct rte_eth_dev *dev, uint8_t *rss_key, uint8_t rss_key_len,
-	      uint64_t hash_fields, uint16_t queues[], uint16_t queues_n)
+mlx5_hrxq_new(struct rte_eth_dev *dev,
+	      const uint8_t *rss_key, uint32_t rss_key_len,
+	      uint64_t hash_fields,
+	      const uint16_t *queues, uint32_t queues_n)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
@@ -1408,6 +1410,10 @@ mlx5_hrxq_new(struct rte_eth_dev *dev, uint8_t *rss_key, uint8_t rss_key_len,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
+	if (!rss_key_len) {
+		rss_key_len = rss_hash_default_key_len;
+		rss_key = rss_hash_default_key;
+	}
 	qp = mlx5_glue->create_qp_ex
 		(priv->ctx,
 		 &(struct ibv_qp_init_attr_ex){
@@ -1419,7 +1425,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev, uint8_t *rss_key, uint8_t rss_key_len,
 			.rx_hash_conf = (struct ibv_rx_hash_conf){
 				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
 				.rx_hash_key_len = rss_key_len,
-				.rx_hash_key = rss_key,
+				.rx_hash_key = (void *)(uintptr_t)rss_key,
 				.rx_hash_fields_mask = hash_fields,
 			},
 			.rwq_ind_tbl = ind_tbl->ind_table,
@@ -1469,8 +1475,10 @@ error:
  *   An hash Rx queue on success.
  */
 struct mlx5_hrxq *
-mlx5_hrxq_get(struct rte_eth_dev *dev, uint8_t *rss_key, uint8_t rss_key_len,
-	      uint64_t hash_fields, uint16_t queues[], uint16_t queues_n)
+mlx5_hrxq_get(struct rte_eth_dev *dev,
+	      const uint8_t *rss_key, uint32_t rss_key_len,
+	      uint64_t hash_fields,
+	      const uint16_t *queues, uint32_t queues_n)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;

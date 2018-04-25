@@ -1234,13 +1234,11 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	struct sfc_rxq *rxq;
 	unsigned int rxq_hw_index_min;
 	unsigned int rxq_hw_index_max;
-	const struct rte_eth_rss_conf *rss_conf = rss->rss_conf;
-	uint64_t rss_hf;
-	uint8_t *rss_key = NULL;
+	const uint8_t *rss_key;
 	struct sfc_flow_rss *sfc_rss_conf = &flow->rss_conf;
 	unsigned int i;
 
-	if (rss->num == 0)
+	if (rss->queue_num == 0)
 		return -EINVAL;
 
 	rxq_sw_index = sa->rxq_count - 1;
@@ -1248,7 +1246,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	rxq_hw_index_min = rxq->hw_index;
 	rxq_hw_index_max = 0;
 
-	for (i = 0; i < rss->num; ++i) {
+	for (i = 0; i < rss->queue_num; ++i) {
 		rxq_sw_index = rss->queue[i];
 
 		if (rxq_sw_index >= sa->rxq_count)
@@ -1263,15 +1261,14 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 			rxq_hw_index_max = rxq->hw_index;
 	}
 
-	rss_hf = (rss_conf != NULL) ? rss_conf->rss_hf : SFC_RSS_OFFLOADS;
-	if ((rss_hf & ~SFC_RSS_OFFLOADS) != 0)
+	if ((rss->types & ~SFC_RSS_OFFLOADS) != 0)
 		return -EINVAL;
 
-	if (rss_conf != NULL) {
-		if (rss_conf->rss_key_len != sizeof(sa->rss_key))
+	if (rss->key_len) {
+		if (rss->key_len != sizeof(sa->rss_key))
 			return -EINVAL;
 
-		rss_key = rss_conf->rss_key;
+		rss_key = rss->key;
 	} else {
 		rss_key = sa->rss_key;
 	}
@@ -1280,11 +1277,11 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 
 	sfc_rss_conf->rxq_hw_index_min = rxq_hw_index_min;
 	sfc_rss_conf->rxq_hw_index_max = rxq_hw_index_max;
-	sfc_rss_conf->rss_hash_types = sfc_rte_to_efx_hash_type(rss_hf);
+	sfc_rss_conf->rss_hash_types = sfc_rte_to_efx_hash_type(rss->types);
 	rte_memcpy(sfc_rss_conf->rss_key, rss_key, sizeof(sa->rss_key));
 
 	for (i = 0; i < RTE_DIM(sfc_rss_conf->rss_tbl); ++i) {
-		unsigned int rxq_sw_index = rss->queue[i % rss->num];
+		unsigned int rxq_sw_index = rss->queue[i % rss->queue_num];
 		struct sfc_rxq *rxq = sa->rxq_info[rxq_sw_index].rxq;
 
 		sfc_rss_conf->rss_tbl[i] = rxq->hw_index - rxq_hw_index_min;
