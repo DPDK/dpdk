@@ -154,6 +154,15 @@ struct sfc_port {
 	uint32_t		mac_stats_mask[EFX_MAC_STATS_MASK_NPAGES];
 };
 
+struct sfc_rss {
+	unsigned int			channels;
+	efx_rx_scale_context_type_t	context_type;
+	efx_rx_hash_support_t		hash_support;
+	efx_rx_hash_type_t		hash_types;
+	unsigned int			tbl[EFX_RSS_TBL_SIZE];
+	uint8_t				key[EFX_RSS_KEY_SIZE];
+};
+
 /* Adapter private data */
 struct sfc_adapter {
 	/*
@@ -223,13 +232,7 @@ struct sfc_adapter {
 
 	boolean_t			tso;
 
-	unsigned int			rss_channels;
-
-	efx_rx_scale_context_type_t	rss_support;
-	efx_rx_hash_support_t		hash_support;
-	efx_rx_hash_type_t		rss_hash_types;
-	unsigned int			rss_tbl[EFX_RSS_TBL_SIZE];
-	uint8_t				rss_key[EFX_RSS_KEY_SIZE];
+	struct sfc_rss			rss;
 
 	/*
 	 * Shared memory copy of the Rx datapath name to be used by

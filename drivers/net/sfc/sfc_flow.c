@@ -1250,18 +1250,20 @@ sfc_flow_parse_queue(struct sfc_adapter *sa,
 
 static int
 sfc_flow_parse_rss(struct sfc_adapter *sa,
-		   const struct rte_flow_action_rss *rss,
+		   const struct rte_flow_action_rss *action_rss,
 		   struct rte_flow *flow)
 {
+	struct sfc_rss *rss = &sa->rss;
 	unsigned int rxq_sw_index;
 	struct sfc_rxq *rxq;
 	unsigned int rxq_hw_index_min;
 	unsigned int rxq_hw_index_max;
+	uint64_t rss_hf;
 	const uint8_t *rss_key;
 	struct sfc_flow_rss *sfc_rss_conf = &flow->rss_conf;
 	unsigned int i;
 
-	if (rss->queue_num == 0)
+	if (action_rss->queue_num == 0)
 		return -EINVAL;
 
 	rxq_sw_index = sa->rxq_count - 1;
@@ -1269,8 +1271,8 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	rxq_hw_index_min = rxq->hw_index;
 	rxq_hw_index_max = 0;
 
-	for (i = 0; i < rss->queue_num; ++i) {
-		rxq_sw_index = rss->queue[i];
+	for (i = 0; i < action_rss->queue_num; ++i) {
+		rxq_sw_index = action_rss->queue[i];
 
 		if (rxq_sw_index >= sa->rxq_count)
 			return -EINVAL;
@@ -1284,7 +1286,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 			rxq_hw_index_max = rxq->hw_index;
 	}
 
-	switch (rss->func) {
+	switch (action_rss->func) {
 	case RTE_ETH_HASH_FUNCTION_DEFAULT:
 	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
 		break;
@@ -1292,30 +1294,32 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 		return -EINVAL;
 	}
 
-	if (rss->level)
+	if (action_rss->level)
 		return -EINVAL;
 
-	if ((rss->types & ~SFC_RSS_OFFLOADS) != 0)
+	rss_hf = action_rss->types;
+	if ((rss_hf & ~SFC_RSS_OFFLOADS) != 0)
 		return -EINVAL;
 
-	if (rss->key_len) {
-		if (rss->key_len != sizeof(sa->rss_key))
+	if (action_rss->key_len) {
+		if (action_rss->key_len != sizeof(rss->key))
 			return -EINVAL;
 
-		rss_key = rss->key;
+		rss_key = action_rss->key;
 	} else {
-		rss_key = sa->rss_key;
+		rss_key = rss->key;
 	}
 
 	flow->rss = B_TRUE;
 
 	sfc_rss_conf->rxq_hw_index_min = rxq_hw_index_min;
 	sfc_rss_conf->rxq_hw_index_max = rxq_hw_index_max;
-	sfc_rss_conf->rss_hash_types = sfc_rte_to_efx_hash_type(rss->types);
-	rte_memcpy(sfc_rss_conf->rss_key, rss_key, sizeof(sa->rss_key));
+	sfc_rss_conf->rss_hash_types = sfc_rte_to_efx_hash_type(rss_hf);
+	rte_memcpy(sfc_rss_conf->rss_key, rss_key, sizeof(rss->key));
 
 	for (i = 0; i < RTE_DIM(sfc_rss_conf->rss_tbl); ++i) {
-		unsigned int rxq_sw_index = rss->queue[i % rss->queue_num];
+		unsigned int nb_queues = action_rss->queue_num;
+		unsigned int rxq_sw_index = action_rss->queue[i % nb_queues];
 		struct sfc_rxq *rxq = sa->rxq_info[rxq_sw_index].rxq;
 
 		sfc_rss_conf->rss_tbl[i] = rxq->hw_index - rxq_hw_index_min;
@@ -1372,14 +1376,15 @@ static int
 sfc_flow_filter_insert(struct sfc_adapter *sa,
 		       struct rte_flow *flow)
 {
-	struct sfc_flow_rss *rss = &flow->rss_conf;
+	struct sfc_rss *rss = &sa->rss;
+	struct sfc_flow_rss *flow_rss = &flow->rss_conf;
 	uint32_t efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 	unsigned int i;
 	int rc = 0;
 
 	if (flow->rss) {
-		unsigned int rss_spread = MIN(rss->rxq_hw_index_max -
-					      rss->rxq_hw_index_min + 1,
+		unsigned int rss_spread = MIN(flow_rss->rxq_hw_index_max -
+					      flow_rss->rxq_hw_index_min + 1,
 					      EFX_MAXRSS);
 
 		rc = efx_rx_scale_context_alloc(sa->nic,
@@ -1391,13 +1396,13 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 
 		rc = efx_rx_scale_mode_set(sa->nic, efs_rss_context,
 					   EFX_RX_HASHALG_TOEPLITZ,
-					   rss->rss_hash_types, B_TRUE);
+					   flow_rss->rss_hash_types, B_TRUE);
 		if (rc != 0)
 			goto fail_scale_mode_set;
 
 		rc = efx_rx_scale_key_set(sa->nic, efs_rss_context,
-					  rss->rss_key,
-					  sizeof(sa->rss_key));
+					  flow_rss->rss_key,
+					  sizeof(rss->key));
 		if (rc != 0)
 			goto fail_scale_key_set;
 
@@ -1411,7 +1416,7 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 			efx_filter_spec_t *spec = &flow->spec.filters[i];
 
 			spec->efs_rss_context = efs_rss_context;
-			spec->efs_dmaq_id = rss->rxq_hw_index_min;
+			spec->efs_dmaq_id = flow_rss->rxq_hw_index_min;
 			spec->efs_flags |= EFX_FILTER_FLAG_RX_RSS;
 		}
 	}
@@ -1430,7 +1435,8 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 		 * the table entries, and the operation will succeed
 		 */
 		rc = efx_rx_scale_tbl_set(sa->nic, efs_rss_context,
-					  rss->rss_tbl, RTE_DIM(rss->rss_tbl));
+					  flow_rss->rss_tbl,
+					  RTE_DIM(flow_rss->rss_tbl));
 		if (rc != 0)
 			goto fail_scale_tbl_set;
 	}

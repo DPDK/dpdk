@@ -608,7 +608,8 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_rx_default_rxq_set_filter(struct sfc_adapter *sa, struct sfc_rxq *rxq)
 {
-	boolean_t rss = (sa->rss_channels > 0) ? B_TRUE : B_FALSE;
+	struct sfc_rss *rss = &sa->rss;
+	boolean_t need_rss = (rss->channels > 0) ? B_TRUE : B_FALSE;
 	struct sfc_port *port = &sa->port;
 	int rc;
 
@@ -620,7 +621,7 @@ sfc_rx_default_rxq_set_filter(struct sfc_adapter *sa, struct sfc_rxq *rxq)
 	 * repeat this step without promiscuous and all-multicast flags set
 	 */
 retry:
-	rc = efx_mac_filter_default_rxq_set(sa->nic, rxq->common, rss);
+	rc = efx_mac_filter_default_rxq_set(sa->nic, rxq->common, need_rss);
 	if (rc == 0)
 		return 0;
 	else if (rc != EOPNOTSUPP)
@@ -970,6 +971,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	     struct rte_mempool *mb_pool)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	struct sfc_rss *rss = &sa->rss;
 	int rc;
 	unsigned int rxq_entries;
 	unsigned int evq_entries;
@@ -1059,7 +1061,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.batch_max = encp->enc_rx_batch_max;
 	info.prefix_size = encp->enc_rx_prefix_size;
 
-	if (sa->hash_support == EFX_RX_HASH_AVAILABLE && sa->rss_channels > 0)
+	if (rss->hash_support == EFX_RX_HASH_AVAILABLE && rss->channels > 0)
 		info.flags |= SFC_RXQ_FLAG_RSS_HASH;
 
 	info.rxq_entries = rxq_info->entries;
@@ -1178,9 +1180,10 @@ static int
 sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
 			    struct rte_eth_rss_conf *conf)
 {
-	efx_rx_hash_type_t efx_hash_types = sa->rss_hash_types;
+	struct sfc_rss *rss = &sa->rss;
+	efx_rx_hash_type_t efx_hash_types = rss->hash_types;
 
-	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE) {
+	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE) {
 		if ((conf->rss_hf != 0 && conf->rss_hf != SFC_RSS_OFFLOADS) ||
 		    conf->rss_key != NULL)
 			return EINVAL;
@@ -1196,15 +1199,15 @@ sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
 	}
 
 	if (conf->rss_key != NULL) {
-		if (conf->rss_key_len != sizeof(sa->rss_key)) {
+		if (conf->rss_key_len != sizeof(rss->key)) {
 			sfc_err(sa, "RSS key size is wrong (should be %lu)",
-				sizeof(sa->rss_key));
+				sizeof(rss->key));
 			return EINVAL;
 		}
-		rte_memcpy(sa->rss_key, conf->rss_key, sizeof(sa->rss_key));
+		rte_memcpy(rss->key, conf->rss_key, sizeof(rss->key));
 	}
 
-	sa->rss_hash_types = efx_hash_types;
+	rss->hash_types = efx_hash_types;
 
 	return 0;
 }
@@ -1212,23 +1215,23 @@ sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
 static int
 sfc_rx_rss_config(struct sfc_adapter *sa)
 {
+	struct sfc_rss *rss = &sa->rss;
 	int rc = 0;
 
-	if (sa->rss_channels > 0) {
+	if (rss->channels > 0) {
 		rc = efx_rx_scale_mode_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
 					   EFX_RX_HASHALG_TOEPLITZ,
-					   sa->rss_hash_types, B_TRUE);
+					   rss->hash_types, B_TRUE);
 		if (rc != 0)
 			goto finish;
 
 		rc = efx_rx_scale_key_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
-					  sa->rss_key,
-					  sizeof(sa->rss_key));
+					  rss->key, sizeof(rss->key));
 		if (rc != 0)
 			goto finish;
 
 		rc = efx_rx_scale_tbl_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
-					  sa->rss_tbl, RTE_DIM(sa->rss_tbl));
+					  rss->tbl, RTE_DIM(rss->tbl));
 	}
 
 finish:
@@ -1307,6 +1310,7 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 {
+	struct sfc_rss *rss = &sa->rss;
 	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
 				      sfc_rx_get_queue_offload_caps(sa);
 	uint64_t offloads_rejected = rxmode->offloads & ~offloads_supported;
@@ -1317,7 +1321,7 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		/* No special checks are required */
 		break;
 	case ETH_MQ_RX_RSS:
-		if (sa->rss_support == EFX_RX_SCALE_UNAVAILABLE) {
+		if (rss->context_type == EFX_RX_SCALE_UNAVAILABLE) {
 			sfc_err(sa, "RSS is not available");
 			rc = EINVAL;
 		}
@@ -1374,6 +1378,7 @@ sfc_rx_fini_queues(struct sfc_adapter *sa, unsigned int nb_rx_queues)
 int
 sfc_rx_configure(struct sfc_adapter *sa)
 {
+	struct sfc_rss *rss = &sa->rss;
 	struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	const unsigned int nb_rx_queues = sa->eth_dev->data->nb_rx_queues;
 	int rc;
@@ -1423,15 +1428,15 @@ sfc_rx_configure(struct sfc_adapter *sa)
 		sa->rxq_count++;
 	}
 
-	sa->rss_channels = (dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ?
-			   MIN(sa->rxq_count, EFX_MAXRSS) : 0;
+	rss->channels = (dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ?
+			 MIN(sa->rxq_count, EFX_MAXRSS) : 0;
 
-	if (sa->rss_channels > 0) {
+	if (rss->channels > 0) {
 		struct rte_eth_rss_conf *adv_conf_rss;
 		unsigned int sw_index;
 
 		for (sw_index = 0; sw_index < EFX_RSS_TBL_SIZE; ++sw_index)
-			sa->rss_tbl[sw_index] = sw_index % sa->rss_channels;
+			rss->tbl[sw_index] = sw_index % rss->channels;
 
 		adv_conf_rss = &dev_conf->rx_adv_conf.rss_conf;
 		rc = sfc_rx_process_adv_conf_rss(sa, adv_conf_rss);
@@ -1461,9 +1466,11 @@ fail_check_mode:
 void
 sfc_rx_close(struct sfc_adapter *sa)
 {
+	struct sfc_rss *rss = &sa->rss;
+
 	sfc_rx_fini_queues(sa, 0);
 
-	sa->rss_channels = 0;
+	rss->channels = 0;
 
 	rte_free(sa->rxq_info);
 	sa->rxq_info = NULL;

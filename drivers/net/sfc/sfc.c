@@ -640,6 +640,7 @@ static const uint8_t default_rss_key[EFX_RSS_KEY_SIZE] = {
 static int
 sfc_set_rss_defaults(struct sfc_adapter *sa)
 {
+	struct sfc_rss *rss = &sa->rss;
 	int rc;
 
 	rc = efx_intr_init(sa->nic, sa->intr.type, NULL);
@@ -654,11 +655,11 @@ sfc_set_rss_defaults(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_rx_init;
 
-	rc = efx_rx_scale_default_support_get(sa->nic, &sa->rss_support);
+	rc = efx_rx_scale_default_support_get(sa->nic, &rss->context_type);
 	if (rc != 0)
 		goto fail_scale_support_get;
 
-	rc = efx_rx_hash_default_support_get(sa->nic, &sa->hash_support);
+	rc = efx_rx_hash_default_support_get(sa->nic, &rss->hash_support);
 	if (rc != 0)
 		goto fail_hash_support_get;
 
@@ -666,9 +667,9 @@ sfc_set_rss_defaults(struct sfc_adapter *sa)
 	efx_ev_fini(sa->nic);
 	efx_intr_fini(sa->nic);
 
-	sa->rss_hash_types = sfc_rte_to_efx_hash_type(SFC_RSS_OFFLOADS);
+	rss->hash_types = sfc_rte_to_efx_hash_type(SFC_RSS_OFFLOADS);
 
-	rte_memcpy(sa->rss_key, default_rss_key, sizeof(sa->rss_key));
+	rte_memcpy(rss->key, default_rss_key, sizeof(rss->key));
 
 	return 0;
 
