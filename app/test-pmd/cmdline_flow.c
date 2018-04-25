@@ -87,8 +87,8 @@ enum index {
 	ITEM_PF,
 	ITEM_VF,
 	ITEM_VF_ID,
-	ITEM_PORT,
-	ITEM_PORT_INDEX,
+	ITEM_PHY_PORT,
+	ITEM_PHY_PORT_INDEX,
 	ITEM_RAW,
 	ITEM_RAW_RELATIVE,
 	ITEM_RAW_SEARCH,
@@ -441,7 +441,7 @@ static const enum index next_item[] = {
 	ITEM_ANY,
 	ITEM_PF,
 	ITEM_VF,
-	ITEM_PORT,
+	ITEM_PHY_PORT,
 	ITEM_RAW,
 	ITEM_ETH,
 	ITEM_VLAN,
@@ -482,8 +482,8 @@ static const enum index item_vf[] = {
 	ZERO,
 };
 
-static const enum index item_port[] = {
-	ITEM_PORT_INDEX,
+static const enum index item_phy_port[] = {
+	ITEM_PHY_PORT_INDEX,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1059,18 +1059,19 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vf, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_vf, id)),
 	},
-	[ITEM_PORT] = {
-		.name = "port",
-		.help = "device-specific physical port index to use",
-		.priv = PRIV_ITEM(PORT, sizeof(struct rte_flow_item_port)),
-		.next = NEXT(item_port),
+	[ITEM_PHY_PORT] = {
+		.name = "phy_port",
+		.help = "match traffic from/to a specific physical port",
+		.priv = PRIV_ITEM(PHY_PORT,
+				  sizeof(struct rte_flow_item_phy_port)),
+		.next = NEXT(item_phy_port),
 		.call = parse_vc,
 	},
-	[ITEM_PORT_INDEX] = {
+	[ITEM_PHY_PORT_INDEX] = {
 		.name = "index",
 		.help = "physical port index",
-		.next = NEXT(item_port, NEXT_ENTRY(UNSIGNED), item_param),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_port, index)),
+		.next = NEXT(item_phy_port, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_phy_port, index)),
 	},
 	[ITEM_RAW] = {
 		.name = "raw",

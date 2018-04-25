@@ -84,7 +84,7 @@ struct rte_flow_attr {
 	 * applications) at the device level.
 	 *
 	 * It complements the behavior of some pattern items such as
-	 * RTE_FLOW_ITEM_TYPE_PORT and is meaningless without them.
+	 * RTE_FLOW_ITEM_TYPE_PHY_PORT and is meaningless without them.
 	 *
 	 * When transferring flow rules, ingress and egress attributes keep
 	 * their original meaning, as if processing traffic emitted or
@@ -172,17 +172,12 @@ enum rte_flow_item_type {
 	/**
 	 * [META]
 	 *
-	 * Matches packets coming from the specified physical port of the
-	 * underlying device.
+	 * Matches traffic originating from (ingress) or going to (egress) a
+	 * physical port of the underlying device.
 	 *
-	 * The first PORT item overrides the physical port normally
-	 * associated with the specified DPDK input port (port_id). This
-	 * item can be provided several times to match additional physical
-	 * ports.
-	 *
-	 * See struct rte_flow_item_port.
+	 * See struct rte_flow_item_phy_port.
 	 */
-	RTE_FLOW_ITEM_TYPE_PORT,
+	RTE_FLOW_ITEM_TYPE_PHY_PORT,
 
 	/**
 	 * Matches a byte string of a given length at a given offset.
@@ -388,13 +383,13 @@ static const struct rte_flow_item_vf rte_flow_item_vf_mask = {
 #endif
 
 /**
- * RTE_FLOW_ITEM_TYPE_PORT
+ * RTE_FLOW_ITEM_TYPE_PHY_PORT
  *
- * Matches packets coming from the specified physical port of the underlying
- * device.
+ * Matches traffic originating from (ingress) or going to (egress) a
+ * physical port of the underlying device.
  *
- * The first PORT item overrides the physical port normally associated with
- * the specified DPDK input port (port_id). This item can be provided
+ * The first PHY_PORT item overrides the physical port normally associated
+ * with the specified DPDK input port (port_id). This item can be provided
  * several times to match additional physical ports.
  *
  * Note that physical ports are not necessarily tied to DPDK input ports
@@ -407,13 +402,13 @@ static const struct rte_flow_item_vf rte_flow_item_vf_mask = {
  *
  * A zeroed mask can be used to match any port index.
  */
-struct rte_flow_item_port {
+struct rte_flow_item_phy_port {
 	uint32_t index; /**< Physical port index. */
 };
 
-/** Default mask for RTE_FLOW_ITEM_TYPE_PORT. */
+/** Default mask for RTE_FLOW_ITEM_TYPE_PHY_PORT. */
 #ifndef __cplusplus
-static const struct rte_flow_item_port rte_flow_item_port_mask = {
+static const struct rte_flow_item_phy_port rte_flow_item_phy_port_mask = {
 	.index = 0x00000000,
 };
 #endif

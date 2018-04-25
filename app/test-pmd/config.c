@@ -993,7 +993,7 @@ static const struct {
 	MK_FLOW_ITEM(ANY, sizeof(struct rte_flow_item_any)),
 	MK_FLOW_ITEM(PF, 0),
 	MK_FLOW_ITEM(VF, sizeof(struct rte_flow_item_vf)),
-	MK_FLOW_ITEM(PORT, sizeof(struct rte_flow_item_port)),
+	MK_FLOW_ITEM(PHY_PORT, sizeof(struct rte_flow_item_phy_port)),
 	MK_FLOW_ITEM(RAW, sizeof(struct rte_flow_item_raw)),
 	MK_FLOW_ITEM(ETH, sizeof(struct rte_flow_item_eth)),
 	MK_FLOW_ITEM(VLAN, sizeof(struct rte_flow_item_vlan)),

@@ -195,8 +195,8 @@ When supported, this effectively enables an application to reroute traffic
 not necessarily intended for it (e.g. coming from or addressed to different
 physical ports, VFs or applications) at the device level.
 
-It complements the behavior of some pattern items such as `Item: PORT`_ and
-is meaningless without them.
+It complements the behavior of some pattern items such as `Item: PHY_PORT`_
+and is meaningless without them.
 
 When transferring flow rules, **ingress** and **egress** attributes
 (`Attribute: Traffic direction`_) keep their original meaning, as if
@@ -583,15 +583,15 @@ separate entities, should be addressed through their own DPDK port IDs.
    | ``mask`` | ``id``   | zeroed to match any VF ID |
    +----------+----------+---------------------------+
 
-Item: ``PORT``
-^^^^^^^^^^^^^^
+Item: ``PHY_PORT``
+^^^^^^^^^^^^^^^^^^
 
-Matches packets coming from the specified physical port of the underlying
-device.
+Matches traffic originating from (ingress) or going to (egress) a physical
+port of the underlying device.
 
-The first PORT item overrides the physical port normally associated with the
-specified DPDK input port (port_id). This item can be provided several times
-to match additional physical ports.
+The first PHY_PORT item overrides the physical port normally associated with
+the specified DPDK input port (port_id). This item can be provided several
+times to match additional physical ports.
 
 Note that physical ports are not necessarily tied to DPDK input ports
 (port_id) when those are not under DPDK control. Possible values are
@@ -603,9 +603,9 @@ associated with a port_id should be retrieved by other means.
 
 - Default ``mask`` matches any port index.
 
-.. _table_rte_flow_item_port:
+.. _table_rte_flow_item_phy_port:
 
-.. table:: PORT
+.. table:: PHY_PORT
 
    +----------+-----------+--------------------------------+
    | Field    | Subfield  | Value                          |

@@ -3232,7 +3232,7 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``id {unsigned}``: VF ID.
 
-- ``port``: device-specific physical port index to use.
+- ``phy_port``: match traffic from/to a specific physical port.
 
   - ``index {unsigned}``: physical port index.
 

@@ -286,6 +286,8 @@ API Changes
   * PF and VF pattern items are now only accepted by PMDs that implement
     them (bnxt and i40e) when the transfer attribute is also present for
     consistency.
+  * Pattern item PORT was renamed PHY_PORT to avoid confusion with DPDK port
+    IDs.
 
 
 ABI Changes
