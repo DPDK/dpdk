@@ -268,14 +268,9 @@ static uint64_t
 tap_rx_offload_get_port_capa(void)
 {
 	/*
-	 * In order to support legacy apps,
-	 * report capabilities also as port capabilities.
+	 * No specific port Rx offload capabilities.
 	 */
-	return DEV_RX_OFFLOAD_SCATTER |
-	       DEV_RX_OFFLOAD_IPV4_CKSUM |
-	       DEV_RX_OFFLOAD_UDP_CKSUM |
-	       DEV_RX_OFFLOAD_TCP_CKSUM |
-	       DEV_RX_OFFLOAD_CRC_STRIP;
+	return 0;
 }
 
 static uint64_t
@@ -402,13 +397,9 @@ static uint64_t
 tap_tx_offload_get_port_capa(void)
 {
 	/*
-	 * In order to support legacy apps,
-	 * report capabilities also as port capabilities.
+	 * No specific port Tx offload capabilities.
 	 */
-	return DEV_TX_OFFLOAD_MULTI_SEGS |
-	       DEV_TX_OFFLOAD_IPV4_CKSUM |
-	       DEV_TX_OFFLOAD_UDP_CKSUM |
-	       DEV_TX_OFFLOAD_TCP_CKSUM;
+	return 0;
 }
 
 static uint64_t
@@ -680,7 +671,8 @@ tap_dev_stop(struct rte_eth_dev *dev)
 static int
 tap_dev_configure(struct rte_eth_dev *dev)
 {
-	uint64_t supp_tx_offloads = tap_tx_offload_get_port_capa();
+	uint64_t supp_tx_offloads = tap_tx_offload_get_port_capa() |
+				tap_tx_offload_get_queue_capa();
 	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 
 	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
@@ -1194,7 +1186,8 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 				" or supported offloads 0x%" PRIx64,
 				(void *)dev, tx_conf->offloads,
 				dev->data->dev_conf.txmode.offloads,
-				tap_tx_offload_get_port_capa());
+				(tap_tx_offload_get_port_capa() |
+				tap_tx_offload_get_queue_capa()));
 			return -rte_errno;
 		}
 	}
