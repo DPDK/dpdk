@@ -41,6 +41,13 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added bucket mempool driver.**
+
+  Added bucket mempool driver which provides a way to allocate contiguous
+  block of objects.
+  Number of objects in the block depends on how many objects fit in
+  RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB memory chunk which is build time option.
+
 * **Added PMD-recommended Tx and Rx parameters**
 
   Applications can now query drivers for device-tuned values of

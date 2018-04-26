@@ -364,6 +364,15 @@ F: test/test/test_rawdev.c
 F: doc/guides/prog_guide/rawdev.rst
 
 
+Memory Pool Drivers
+-------------------
+
+Bucket memory pool
+M: Artem V. Andreev <artem.andreev@oktetlabs.ru>
+M: Andrew Rybchenko <arybchenko@solarflare.com>
+F: drivers/mempool/bucket/
+
+
 Bus Drivers
 -----------
 
