@@ -145,7 +145,7 @@ pmd_cyclecount_bench_ops(struct pmd_cyclecount_state *state, uint32_t cur_op,
 
 	for (cur_iter_op = 0; cur_iter_op < iter_ops_needed;
 			cur_iter_op += test_burst_size) {
-		uint32_t burst_size = RTE_MIN(state->opts->total_ops - cur_op,
+		uint32_t burst_size = RTE_MIN(iter_ops_needed - cur_iter_op,
 				test_burst_size);
 		struct rte_crypto_op **ops = &state->ctx->ops[cur_iter_op];
 
