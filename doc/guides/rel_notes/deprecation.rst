@@ -37,13 +37,6 @@ Deprecation Notices
 
   - ``rte_eal_mbuf_default_mempool_ops``
 
-* mempool: several API and ABI changes are planned in v18.05.
-
-  The following changes are planned:
-
-  - addition of new op to allocate contiguous
-    block of objects if underlying driver supports it.
-
 * mbuf: The opaque ``mbuf->hash.sched`` field will be updated to support generic
   definition in line with the ethdev TM and MTR APIs. Currently, this field
   is defined in librte_sched in a non-generic way. The new generic format

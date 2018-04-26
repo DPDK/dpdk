@@ -70,6 +70,10 @@ struct rte_mempool_debug_stats {
 	uint64_t get_success_objs; /**< Objects successfully allocated. */
 	uint64_t get_fail_bulk;    /**< Failed allocation number. */
 	uint64_t get_fail_objs;    /**< Objects that failed to be allocated. */
+	/** Successful allocation number of contiguous blocks. */
+	uint64_t get_success_blks;
+	/** Failed allocation number of contiguous blocks. */
+	uint64_t get_fail_blks;
 } __rte_cache_aligned;
 #endif
 
@@ -199,11 +203,8 @@ struct rte_mempool_memhdr {
  * a number of cases when something small is added.
  */
 struct rte_mempool_info {
-	/*
-	 * Dummy structure member to make it non emtpy until the first
-	 * real member is added.
-	 */
-	unsigned int dummy;
+	/** Number of objects in the contiguous block */
+	unsigned int contig_block_size;
 } __rte_cache_aligned;
 
 /**
@@ -282,8 +283,16 @@ struct rte_mempool {
 			mp->stats[__lcore_id].name##_bulk += 1;	\
 		}                                               \
 	} while(0)
+#define __MEMPOOL_CONTIG_BLOCKS_STAT_ADD(mp, name, n) do {                    \
+		unsigned int __lcore_id = rte_lcore_id();       \
+		if (__lcore_id < RTE_MAX_LCORE) {               \
+			mp->stats[__lcore_id].name##_blks += n;	\
+			mp->stats[__lcore_id].name##_bulk += 1;	\
+		}                                               \
+	} while (0)
 #else
 #define __MEMPOOL_STAT_ADD(mp, name, n) do {} while(0)
+#define __MEMPOOL_CONTIG_BLOCKS_STAT_ADD(mp, name, n) do {} while (0)
 #endif
 
 /**
@@ -351,6 +360,38 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 #define __mempool_check_cookies(mp, obj_table_const, n, free) do {} while(0)
 #endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @internal Check contiguous object blocks and update cookies or panic.
+ *
+ * @param mp
+ *   Pointer to the memory pool.
+ * @param first_obj_table_const
+ *   Pointer to a table of void * pointers (first object of the contiguous
+ *   object blocks).
+ * @param n
+ *   Number of contiguous object blocks.
+ * @param free
+ *   - 0: object is supposed to be allocated, mark it as free
+ *   - 1: object is supposed to be free, mark it as allocated
+ *   - 2: just check that cookie is valid (free or allocated)
+ */
+void rte_mempool_contig_blocks_check_cookies(const struct rte_mempool *mp,
+	void * const *first_obj_table_const, unsigned int n, int free);
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+#define __mempool_contig_blocks_check_cookies(mp, first_obj_table_const, n, \
+					      free) \
+	rte_mempool_contig_blocks_check_cookies(mp, first_obj_table_const, n, \
+						free)
+#else
+#define __mempool_contig_blocks_check_cookies(mp, first_obj_table_const, n, \
+					      free) \
+	do {} while (0)
+#endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
+
 #define RTE_MEMPOOL_OPS_NAMESIZE 32 /**< Max length of ops struct name. */
 
 /**
@@ -381,6 +422,15 @@ typedef int (*rte_mempool_enqueue_t)(struct rte_mempool *mp,
  */
 typedef int (*rte_mempool_dequeue_t)(struct rte_mempool *mp,
 		void **obj_table, unsigned int n);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Dequeue a number of contiquous object blocks from the external pool.
+ */
+typedef int (*rte_mempool_dequeue_contig_blocks_t)(struct rte_mempool *mp,
+		 void **first_obj_table, unsigned int n);
 
 /**
  * Return the number of available objects in the external pool.
@@ -548,6 +598,10 @@ struct rte_mempool_ops {
 	 * Get mempool info
 	 */
 	rte_mempool_get_info_t get_info;
+	/**
+	 * Dequeue a number of contiguous object blocks.
+	 */
+	rte_mempool_dequeue_contig_blocks_t dequeue_contig_blocks;
 } __rte_cache_aligned;
 
 #define RTE_MEMPOOL_MAX_OPS_IDX 16  /**< Max registered ops structs */
@@ -623,6 +677,30 @@ rte_mempool_ops_dequeue_bulk(struct rte_mempool *mp,
 
 	ops = rte_mempool_get_ops(mp->ops_index);
 	return ops->dequeue(mp, obj_table, n);
+}
+
+/**
+ * @internal Wrapper for mempool_ops dequeue_contig_blocks callback.
+ *
+ * @param[in] mp
+ *   Pointer to the memory pool.
+ * @param[out] first_obj_table
+ *   Pointer to a table of void * pointers (first objects).
+ * @param[in] n
+ *   Number of blocks to get.
+ * @return
+ *   - 0: Success; got n objects.
+ *   - <0: Error; code of dequeue function.
+ */
+static inline int
+rte_mempool_ops_dequeue_contig_blocks(struct rte_mempool *mp,
+		void **first_obj_table, unsigned int n)
+{
+	struct rte_mempool_ops *ops;
+
+	ops = rte_mempool_get_ops(mp->ops_index);
+	RTE_ASSERT(ops->dequeue_contig_blocks != NULL);
+	return ops->dequeue_contig_blocks(mp, first_obj_table, n);
 }
 
 /**
@@ -1537,6 +1615,49 @@ static __rte_always_inline int
 rte_mempool_get(struct rte_mempool *mp, void **obj_p)
 {
 	return rte_mempool_get_bulk(mp, obj_p, 1);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get a contiguous blocks of objects from the mempool.
+ *
+ * If cache is enabled, consider to flush it first, to reuse objects
+ * as soon as possible.
+ *
+ * The application should check that the driver supports the operation
+ * by calling rte_mempool_ops_get_info() and checking that `contig_block_size`
+ * is not zero.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ * @param first_obj_table
+ *   A pointer to a pointer to the first object in each block.
+ * @param n
+ *   The number of blocks to get from mempool.
+ * @return
+ *   - 0: Success; blocks taken.
+ *   - -ENOBUFS: Not enough entries in the mempool; no object is retrieved.
+ *   - -EOPNOTSUPP: The mempool driver does not support block dequeue
+ */
+static __rte_always_inline int
+__rte_experimental
+rte_mempool_get_contig_blocks(struct rte_mempool *mp,
+			      void **first_obj_table, unsigned int n)
+{
+	int ret;
+
+	ret = rte_mempool_ops_dequeue_contig_blocks(mp, first_obj_table, n);
+	if (ret == 0) {
+		__MEMPOOL_CONTIG_BLOCKS_STAT_ADD(mp, get_success, n);
+		__mempool_contig_blocks_check_cookies(mp, first_obj_table, n,
+						      1);
+	} else {
+		__MEMPOOL_CONTIG_BLOCKS_STAT_ADD(mp, get_fail, n);
+	}
+
+	return ret;
 }
 
 /**

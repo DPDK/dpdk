@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+allow_experimental_apis = true
+
 extra_flags = []
 
 # Allow deprecated symbol to use deprecated rte_mempool_populate_iova_tab()

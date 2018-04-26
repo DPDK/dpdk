@@ -1255,6 +1255,36 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 #endif
 }
 
+void
+rte_mempool_contig_blocks_check_cookies(const struct rte_mempool *mp,
+	void * const *first_obj_table_const, unsigned int n, int free)
+{
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	struct rte_mempool_info info;
+	const size_t total_elt_sz =
+		mp->header_size + mp->elt_size + mp->trailer_size;
+	unsigned int i, j;
+
+	rte_mempool_ops_get_info(mp, &info);
+
+	for (i = 0; i < n; ++i) {
+		void *first_obj = first_obj_table_const[i];
+
+		for (j = 0; j < info.contig_block_size; ++j) {
+			void *obj;
+
+			obj = (void *)((uintptr_t)first_obj + j * total_elt_sz);
+			rte_mempool_check_cookies(mp, &obj, 1, free);
+		}
+	}
+#else
+	RTE_SET_USED(mp);
+	RTE_SET_USED(first_obj_table_const);
+	RTE_SET_USED(n);
+	RTE_SET_USED(free);
+#endif
+}
+
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 static void
 mempool_obj_audit(struct rte_mempool *mp, __rte_unused void *opaque,
@@ -1320,6 +1350,7 @@ void
 rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 {
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	struct rte_mempool_info info;
 	struct rte_mempool_debug_stats sum;
 	unsigned lcore_id;
 #endif
@@ -1361,6 +1392,7 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 
 	/* sum and dump statistics */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	rte_mempool_ops_get_info(mp, &info);
 	memset(&sum, 0, sizeof(sum));
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		sum.put_bulk += mp->stats[lcore_id].put_bulk;
@@ -1369,6 +1401,8 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 		sum.get_success_objs += mp->stats[lcore_id].get_success_objs;
 		sum.get_fail_bulk += mp->stats[lcore_id].get_fail_bulk;
 		sum.get_fail_objs += mp->stats[lcore_id].get_fail_objs;
+		sum.get_success_blks += mp->stats[lcore_id].get_success_blks;
+		sum.get_fail_blks += mp->stats[lcore_id].get_fail_blks;
 	}
 	fprintf(f, "  stats:\n");
 	fprintf(f, "    put_bulk=%"PRIu64"\n", sum.put_bulk);
@@ -1377,6 +1411,11 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	fprintf(f, "    get_success_objs=%"PRIu64"\n", sum.get_success_objs);
 	fprintf(f, "    get_fail_bulk=%"PRIu64"\n", sum.get_fail_bulk);
 	fprintf(f, "    get_fail_objs=%"PRIu64"\n", sum.get_fail_objs);
+	if (info.contig_block_size > 0) {
+		fprintf(f, "    get_success_blks=%"PRIu64"\n",
+			sum.get_success_blks);
+		fprintf(f, "    get_fail_blks=%"PRIu64"\n", sum.get_fail_blks);
+	}
 #else
 	fprintf(f, "  no statistics available\n");
 #endif
