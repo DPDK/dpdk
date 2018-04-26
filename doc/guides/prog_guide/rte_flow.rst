@@ -90,8 +90,12 @@ Thus predictable results for a given priority level can only be achieved
 with non-overlapping rules, using perfect matching on all protocol layers.
 
 Flow rules can also be grouped, the flow rule priority is specific to the
-group they belong to. All flow rules in a given group are thus processed
-either before or after another group.
+group they belong to. All flow rules in a given group are thus processed within
+the context of that group. Groups are not linked by default, so the logical
+hierarchy of groups must be explicitly defined by flow rules themselves in each
+group using the JUMP action to define the next group to redirect too. Only flow
+rules defined in the default group 0 are guarantee to be matched against, this
+makes group 0 the origin of any group hierarchy defined by an application.
 
 Support for multiple actions per rule may be implemented internally on top
 of non-default hardware priorities, as a result both features may not be
@@ -138,28 +142,33 @@ Attributes
 Attribute: Group
 ^^^^^^^^^^^^^^^^
 
-Flow rules can be grouped by assigning them a common group number. Lower
-values have higher priority. Group 0 has the highest priority.
+Flow rules can be grouped by assigning them a common group number. Groups
+allow a logical hierarchy of flow rule groups (tables) to be defined. These
+groups can be supported virtually in the PMD or in the physical device.
+Group 0 is the default group and this is the only group which flows are
+guarantee to matched against, all subsequent groups can only be reached by
+way of the JUMP action from a matched flow rule.
 
 Although optional, applications are encouraged to group similar rules as
 much as possible to fully take advantage of hardware capabilities
 (e.g. optimized matching) and work around limitations (e.g. a single pattern
-type possibly allowed in a given group).
+type possibly allowed in a given group), while being aware that the groups
+hierarchies must be programmed explicitly.
 
 Note that support for more than a single group is not guaranteed.
 
 Attribute: Priority
 ^^^^^^^^^^^^^^^^^^^
 
-A priority level can be assigned to a flow rule. Like groups, lower values
+A priority level can be assigned to a flow rule, lower values
 denote higher priority, with 0 as the maximum.
 
-A rule with priority 0 in group 8 is always matched after a rule with
-priority 8 in group 0.
-
-Group and priority levels are arbitrary and up to the application, they do
+Priority levels are arbitrary and up to the application, they do
 not need to be contiguous nor start from 0, however the maximum number
 varies between devices and may be affected by existing flow rules.
+
+A flow which matches multiple rules in the same group will always matched by
+the rule with the highest priority in that group.
 
 If a packet is matched by several rules of a given group for a given
 priority level, the outcome is undefined. It can take any path, may be
@@ -1371,6 +1380,38 @@ flow rules:
    +-------+--------+-----------+-------+
    | 2     | END                        |
    +-------+----------------------------+
+
+Action: ``JUMP``
+^^^^^^^^^^^^^^^^
+
+Redirects packets to a group on the current device.
+
+In a hierarchy of groups, which can be used to represent physical or logical
+flow group/tables on the device, this action redirects the matched flow to
+the specified group on that device.
+
+If a matched flow is redirected to a table which doesn't contain a matching
+rule for that flow then the behavior is undefined and the resulting behavior
+is up to the specific device. Best practice when using groups would be define
+a default flow rule for each group which a defines the default actions in that
+group so a consistent behavior is defined.
+
+Defining an action for matched flow in a group to jump to a group which is
+higher in the group hierarchy may not be supported by physical devices,
+depending on how groups are mapped to the physical devices. In the
+definitions of jump actions, applications should be aware that it may be
+possible to define flow rules which trigger an undefined behavior causing
+flows to loop between groups.
+
+.. _table_rte_flow_action_jump:
+
+.. table:: JUMP
+
+   +-----------+------------------------------+
+   | Field     | Value                        |
+   +===========+==============================+
+   | ``group`` | Group to redirect packets to |
+   +-----------+------------------------------+
 
 Action: ``MARK``
 ^^^^^^^^^^^^^^^^

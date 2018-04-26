@@ -183,6 +183,8 @@ enum index {
 	ACTION_END,
 	ACTION_VOID,
 	ACTION_PASSTHRU,
+	ACTION_JUMP,
+	ACTION_JUMP_GROUP,
 	ACTION_MARK,
 	ACTION_MARK_ID,
 	ACTION_FLAG,
@@ -738,6 +740,7 @@ static const enum index next_action[] = {
 	ACTION_END,
 	ACTION_VOID,
 	ACTION_PASSTHRU,
+	ACTION_JUMP,
 	ACTION_MARK,
 	ACTION_FLAG,
 	ACTION_QUEUE,
@@ -852,6 +855,12 @@ static const enum index action_of_pop_mpls[] = {
 
 static const enum index action_of_push_mpls[] = {
 	ACTION_OF_PUSH_MPLS_ETHERTYPE,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_jump[] = {
+	ACTION_JUMP_GROUP,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -1930,6 +1939,20 @@ static const struct token token_list[] = {
 		.priv = PRIV_ACTION(PASSTHRU, 0),
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
+	},
+	[ACTION_JUMP] = {
+		.name = "jump",
+		.help = "redirect traffic to a given group",
+		.priv = PRIV_ACTION(JUMP, sizeof(struct rte_flow_action_jump)),
+		.next = NEXT(action_jump),
+		.call = parse_vc,
+	},
+	[ACTION_JUMP_GROUP] = {
+		.name = "group",
+		.help = "group to redirect traffic to",
+		.next = NEXT(action_jump, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_jump, group)),
+		.call = parse_vc_conf,
 	},
 	[ACTION_MARK] = {
 		.name = "mark",

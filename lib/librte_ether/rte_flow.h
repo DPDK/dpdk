@@ -35,18 +35,20 @@ extern "C" {
 /**
  * Flow rule attributes.
  *
- * Priorities are set on two levels: per group and per rule within groups.
+ * Priorities are set on a per rule based within groups.
  *
- * Lower values denote higher priority, the highest priority for both levels
- * is 0, so that a rule with priority 0 in group 8 is always matched after a
- * rule with priority 8 in group 0.
+ * Lower values denote higher priority, the highest priority for a flow rule
+ * is 0, so that a flow that matches for than one rule, the rule with the
+ * lowest priority value will always be matched.
  *
  * Although optional, applications are encouraged to group similar rules as
  * much as possible to fully take advantage of hardware capabilities
  * (e.g. optimized matching) and work around limitations (e.g. a single
- * pattern type possibly allowed in a given group).
+ * pattern type possibly allowed in a given group). Applications should be
+ * aware that groups are not linked by default, and that they must be
+ * explicitly linked by the application using the JUMP action.
  *
- * Group and priority levels are arbitrary and up to the application, they
+ * Priority levels are arbitrary and up to the application, they
  * do not need to be contiguous nor start from 0, however the maximum number
  * varies between devices and may be affected by existing flow rules.
  *
@@ -69,7 +71,7 @@ extern "C" {
  */
 struct rte_flow_attr {
 	uint32_t group; /**< Priority group. */
-	uint32_t priority; /**< Priority level within group. */
+	uint32_t priority; /**< Rule priority level within group. */
 	uint32_t ingress:1; /**< Rule applies to ingress traffic. */
 	uint32_t egress:1; /**< Rule applies to egress traffic. */
 	/**
@@ -1237,6 +1239,15 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_PASSTHRU,
 
 	/**
+	 * RTE_FLOW_ACTION_TYPE_JUMP
+	 *
+	 * Redirects packets to a group on the current device.
+	 *
+	 * See struct rte_flow_action_jump.
+	 */
+	RTE_FLOW_ACTION_TYPE_JUMP,
+
+	/**
 	 * Attaches an integer value to packets and sets PKT_RX_FDIR and
 	 * PKT_RX_FDIR_ID mbuf flags.
 	 *
@@ -1479,6 +1490,22 @@ enum rte_flow_action_type {
  */
 struct rte_flow_action_mark {
 	uint32_t id; /**< Integer value to return with packets. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_JUMP
+ *
+ * Redirects packets to a group on the current device.
+ *
+ * In a hierarchy of groups, which can be used to represent physical or logical
+ * flow tables on the device, this action allows the action to be a redirect to
+ * a group on that device.
+ */
+struct rte_flow_action_jump {
+	uint32_t group;
 };
 
 /**

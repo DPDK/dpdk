@@ -3453,6 +3453,10 @@ This section lists supported actions and their attributes, if any.
 
 - ``passthru``: let subsequent rule process matched packets.
 
+- ``jump``: redirect traffic to group on device.
+
+  - ``group {unsigned}``: group to redirect to.
+
 - ``mark``: attach 32 bit value to packets.
 
   - ``id {unsigned}``: 32 bit value to return with packets.
