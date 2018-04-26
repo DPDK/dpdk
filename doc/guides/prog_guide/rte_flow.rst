@@ -656,6 +656,36 @@ representor" depending on the kind of underlying device).
    | ``mask`` | ``id``   | zeroed to match any port ID |
    +----------+----------+-----------------------------+
 
+Item: ``MARK``
+^^^^^^^^^^^^^^
+
+Matches an arbitrary integer value which was set using the ``MARK`` action in
+a previously matched rule.
+
+This item can only specified once as a match criteria as the ``MARK`` action can
+only be specified once in a flow action.
+
+Note the value of MARK field is arbitrary and application defined.
+
+Depending on the underlying implementation the MARK item may be supported on
+the physical device, with virtual groups in the PMD or not at all.
+
+- Default ``mask`` matches any integer value.
+
+.. _table_rte_flow_item_mark:
+
+.. table:: MARK
+
+   +----------+----------+---------------------------+
+   | Field    | Subfield | Value                     |
+   +==========+==========+===========================+
+   | ``spec`` | ``id``   | integer value             |
+   +----------+--------------------------------------+
+   | ``last`` | ``id``   | upper range value         |
+   +----------+----------+---------------------------+
+   | ``mask`` | ``id``   | zeroed to match any value |
+   +----------+----------+---------------------------+
+
 Data matching item types
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

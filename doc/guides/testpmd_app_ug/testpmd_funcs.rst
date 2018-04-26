@@ -3240,6 +3240,10 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``id {unsigned}``: DPDK port ID.
 
+- ``mark``: match value set in previously matched flow rule using the mark action.
+
+  - ``id {unsigned}``: arbitrary integer value.
+
 - ``raw``: match an arbitrary byte string.
 
   - ``relative {boolean}``: look for pattern after the previous item.

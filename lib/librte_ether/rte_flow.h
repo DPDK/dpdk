@@ -406,6 +406,13 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_icmp6_nd_opt_tla_eth.
 	 */
 	RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_TLA_ETH,
+
+	/**
+	 * Matches specified mark field.
+	 *
+	 * See struct rte_flow_item_mark.
+	 */
+	RTE_FLOW_ITEM_TYPE_MARK,
 };
 
 /**
@@ -1147,6 +1154,28 @@ rte_flow_item_icmp6_nd_opt_tla_eth_mask = {
 	.tla.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 };
 #endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ITEM_TYPE_MARK
+ *
+ * Matches an arbitrary integer value which was set using the ``MARK`` action
+ * in a previously matched rule.
+ *
+ * This item can only be specified once as a match criteria as the ``MARK``
+ * action can only be specified once in a flow action.
+ *
+ * This value is arbitrary and application-defined. Maximum allowed value
+ * depends on the underlying implementation.
+ *
+ * Depending on the underlying implementation the MARK item may be supported on
+ * the physical device, with virtual groups in the PMD or not at all.
+ */
+struct rte_flow_item_mark {
+	uint32_t id; /**< Integer value to match against. */
+};
 
 /**
  * Matching pattern item definition.

@@ -91,6 +91,8 @@ enum index {
 	ITEM_PHY_PORT_INDEX,
 	ITEM_PORT_ID,
 	ITEM_PORT_ID_ID,
+	ITEM_MARK,
+	ITEM_MARK_ID,
 	ITEM_RAW,
 	ITEM_RAW_RELATIVE,
 	ITEM_RAW_SEARCH,
@@ -494,6 +496,7 @@ static const enum index next_item[] = {
 	ITEM_VF,
 	ITEM_PHY_PORT,
 	ITEM_PORT_ID,
+	ITEM_MARK,
 	ITEM_RAW,
 	ITEM_ETH,
 	ITEM_VLAN,
@@ -551,6 +554,12 @@ static const enum index item_phy_port[] = {
 
 static const enum index item_port_id[] = {
 	ITEM_PORT_ID_ID,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_mark[] = {
+	ITEM_MARK_ID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1288,6 +1297,19 @@ static const struct token token_list[] = {
 		.help = "DPDK port ID",
 		.next = NEXT(item_port_id, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_port_id, id)),
+	},
+	[ITEM_MARK] = {
+		.name = "mark",
+		.help = "match traffic against value set in previously matched rule",
+		.priv = PRIV_ITEM(MARK, sizeof(struct rte_flow_item_mark)),
+		.next = NEXT(item_mark),
+		.call = parse_vc,
+	},
+	[ITEM_MARK_ID] = {
+		.name = "id",
+		.help = "Integer value to match against",
+		.next = NEXT(item_mark, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_mark, id)),
 	},
 	[ITEM_RAW] = {
 		.name = "raw",
