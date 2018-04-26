@@ -228,6 +228,20 @@ For more details see the IPsec Security Gateway Sample Application and Security
 library documentation.
 
 
+Virtual Function Port Representors
+----------------------------------
+The IXGBE PF PMD supports the creation of VF port representors for the control
+and monitoring of IXGBE virtual function devices. Each port representor
+corresponds to a single virtual function of that device. Using the ``devargs``
+option ``representor`` the user can specify which virtual functions to create
+port representors for on initialization of the PF PMD by passing the VF IDs of
+the VFs which are required.::
+
+  -w DBDF,representor=[0,1,4]
+
+Currently hot-plugging of representor ports is not supported so all required
+representors must be specified on the creation of the PF.
+
 Supported Chipsets and NICs
 ---------------------------
 

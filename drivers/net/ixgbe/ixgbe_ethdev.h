@@ -258,6 +258,7 @@ struct ixgbe_vf_info {
 	uint16_t vlan_count;
 	uint8_t spoofchk_enabled;
 	uint8_t api_version;
+	uint16_t switch_domain_id;
 };
 
 /*
@@ -485,6 +486,15 @@ struct ixgbe_adapter {
  	struct ixgbe_tm_conf        tm_conf;
 };
 
+struct ixgbe_vf_representor {
+	uint16_t vf_id;
+	uint16_t switch_domain_id;
+	struct rte_eth_dev *pf_ethdev;
+};
+
+int ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params);
+int ixgbe_vf_representor_uninit(struct rte_eth_dev *ethdev);
+
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct ixgbe_adapter *)adapter)->hw)
 
@@ -656,6 +666,10 @@ int ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 			      bool del, bool update);
 
 void ixgbe_configure_dcb(struct rte_eth_dev *dev);
+
+int
+ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
+			    int wait_to_complete, int vf);
 
 /*
  * misc function prototypes

@@ -129,7 +129,7 @@
 #define IXGBE_EXVET_VET_EXT_SHIFT              16
 #define IXGBE_DMATXCTL_VT_MASK                 0xFFFF0000
 
-static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
+static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
 static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
 static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
@@ -1047,7 +1047,7 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
  * It returns 0 on success.
  */
 static int
-eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
+eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
@@ -1720,16 +1720,81 @@ eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	struct rte_pci_device *pci_dev)
+static int
+eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_probe(pci_dev,
-		sizeof(struct ixgbe_adapter), eth_ixgbe_dev_init);
+	char name[RTE_ETH_NAME_MAX_LEN];
+
+	struct rte_eth_devargs eth_da;
+	int i, retval;
+
+	if (pci_dev->device.devargs) {
+		retval = rte_eth_devargs_parse(pci_dev->device.devargs->args,
+				&eth_da);
+		if (retval)
+			return retval;
+	}
+
+	/* physical port net_bdf_port */
+	snprintf(name, sizeof(name), "net_%s_%d", pci_dev->device.name, 0);
+
+	retval = rte_eth_dev_create(&pci_dev->device, name,
+		sizeof(struct ixgbe_adapter),
+		eth_dev_pci_specific_init, pci_dev,
+		eth_ixgbe_dev_init, NULL);
+
+	if (retval || eth_da.nb_representor_ports < 1)
+		return retval;
+
+	/* probe VF representor ports */
+	struct rte_eth_dev *pf_ethdev = rte_eth_dev_allocated(name);
+
+	for (i = 0; i < eth_da.nb_representor_ports; i++) {
+		struct ixgbe_vf_info *vfinfo;
+		struct ixgbe_vf_representor representor;
+
+		vfinfo = *IXGBE_DEV_PRIVATE_TO_P_VFDATA(
+			pf_ethdev->data->dev_private);
+		if (vfinfo == NULL) {
+			PMD_DRV_LOG(ERR,
+				"no virtual functions supported by PF");
+			break;
+		}
+
+		representor.vf_id = eth_da.representor_ports[i];
+		representor.switch_domain_id = vfinfo->switch_domain_id;
+		representor.pf_ethdev = pf_ethdev;
+
+		/* representor port net_bdf_port */
+		snprintf(name, sizeof(name), "net_%s_representor_%d",
+			pci_dev->device.name,
+			eth_da.representor_ports[i]);
+
+		retval = rte_eth_dev_create(&pci_dev->device, name,
+			sizeof(struct ixgbe_vf_representor), NULL, NULL,
+			ixgbe_vf_representor_init, &representor);
+
+		if (retval)
+			PMD_DRV_LOG(ERR, "failed to create ixgbe vf "
+				"representor %s.", name);
+	}
+
+	return 0;
 }
 
 static int eth_ixgbe_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, eth_ixgbe_dev_uninit);
+	struct rte_eth_dev *ethdev;
+
+	ethdev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (!ethdev)
+		return -ENODEV;
+
+	if (ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+		return rte_eth_dev_destroy(ethdev, ixgbe_vf_representor_uninit);
+	else
+		return rte_eth_dev_destroy(ethdev, eth_ixgbe_dev_uninit);
 }
 
 static struct rte_pci_driver rte_ixgbe_pmd = {
@@ -2872,7 +2937,7 @@ ixgbe_dev_reset(struct rte_eth_dev *dev)
 	if (ret)
 		return ret;
 
-	ret = eth_ixgbe_dev_init(dev);
+	ret = eth_ixgbe_dev_init(dev, NULL);
 
 	return ret;
 }
@@ -3887,7 +3952,7 @@ out:
 }
 
 /* return 0 means link status changed, -1 means not changed */
-static int
+int
 ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 			    int wait_to_complete, int vf)
 {

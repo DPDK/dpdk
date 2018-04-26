@@ -90,6 +90,8 @@ void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	if (*vfinfo == NULL)
 		rte_panic("Cannot allocate memory for private VF data\n");
 
+	rte_eth_switch_domain_alloc(&(*vfinfo)->switch_domain_id);
+
 	memset(mirror_info, 0, sizeof(struct ixgbe_mirror_info));
 	memset(uta_info, 0, sizeof(struct ixgbe_uta_info));
 	hw->mac.mc_filter_type = 0;
@@ -122,6 +124,7 @@ void ixgbe_pf_host_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct ixgbe_vf_info **vfinfo;
 	uint16_t vf_num;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -131,6 +134,10 @@ void ixgbe_pf_host_uninit(struct rte_eth_dev *eth_dev)
 	RTE_ETH_DEV_SRIOV(eth_dev).nb_q_per_pool = 0;
 	RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx = 0;
 	RTE_ETH_DEV_SRIOV(eth_dev).def_pool_q_idx = 0;
+
+	ret = rte_eth_switch_domain_free((*vfinfo)->switch_domain_id);
+	if (ret)
+		PMD_INIT_LOG(WARNING, "failed to free switch domain: %d", ret);
 
 	vf_num = dev_num_vf(eth_dev);
 	if (vf_num == 0)

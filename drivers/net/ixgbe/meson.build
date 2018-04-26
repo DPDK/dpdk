@@ -19,6 +19,7 @@ sources = files(
 	'ixgbe_pf.c',
 	'ixgbe_rxtx.c',
 	'ixgbe_tm.c',
+	'ixgbe_vf_representor.c',
 	'rte_pmd_ixgbe.c'
 )
 
