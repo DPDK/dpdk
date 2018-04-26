@@ -4126,6 +4126,60 @@ rte_eth_dev_pool_ops_supported(uint16_t port_id, const char *pool)
 	return (*dev->dev_ops->pool_ops_supported)(dev, pool);
 }
 
+/**
+ * A set of values to describe the possible states of a switch domain.
+ */
+enum rte_eth_switch_domain_state {
+	RTE_ETH_SWITCH_DOMAIN_UNUSED = 0,
+	RTE_ETH_SWITCH_DOMAIN_ALLOCATED
+};
+
+/**
+ * Array of switch domains available for allocation. Array is sized to
+ * RTE_MAX_ETHPORTS elements as there cannot be more active switch domains than
+ * ethdev ports in a single process.
+ */
+struct rte_eth_dev_switch {
+	enum rte_eth_switch_domain_state state;
+} rte_eth_switch_domains[RTE_MAX_ETHPORTS];
+
+int __rte_experimental
+rte_eth_switch_domain_alloc(uint16_t *domain_id)
+{
+	unsigned int i;
+
+	*domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
+
+	for (i = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID + 1;
+		i < RTE_MAX_ETHPORTS; i++) {
+		if (rte_eth_switch_domains[i].state ==
+			RTE_ETH_SWITCH_DOMAIN_UNUSED) {
+			rte_eth_switch_domains[i].state =
+				RTE_ETH_SWITCH_DOMAIN_ALLOCATED;
+			*domain_id = i;
+			return 0;
+		}
+	}
+
+	return -ENOSPC;
+}
+
+int __rte_experimental
+rte_eth_switch_domain_free(uint16_t domain_id)
+{
+	if (domain_id == RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID ||
+		domain_id >= RTE_MAX_ETHPORTS)
+		return -EINVAL;
+
+	if (rte_eth_switch_domains[domain_id].state !=
+		RTE_ETH_SWITCH_DOMAIN_ALLOCATED)
+		return -EINVAL;
+
+	rte_eth_switch_domains[domain_id].state = RTE_ETH_SWITCH_DOMAIN_UNUSED;
+
+	return 0;
+}
+
 typedef int (*rte_eth_devargs_callback_t)(char *str, void *data);
 
 static int

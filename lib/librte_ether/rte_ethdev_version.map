@@ -228,6 +228,8 @@ EXPERIMENTAL {
 	rte_eth_dev_owner_unset;
 	rte_eth_dev_rx_offload_name;
 	rte_eth_dev_tx_offload_name;
+	rte_eth_switch_domain_alloc;
+	rte_eth_switch_domain_free;
 	rte_mtr_capabilities_get;
 	rte_mtr_create;
 	rte_mtr_destroy;
