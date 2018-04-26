@@ -645,10 +645,7 @@ check_socket(const struct rte_memseg_list *msl, void *arg)
 {
 	int *socket_id = arg;
 
-	if (msl->socket_id == *socket_id && msl->memseg_arr.count != 0)
-		return 1;
-
-	return 0;
+	return *socket_id == msl->socket_id;
 }
 
 static void
