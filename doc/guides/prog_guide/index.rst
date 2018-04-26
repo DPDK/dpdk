@@ -17,6 +17,7 @@ Programmer's Guide
     mbuf_lib
     poll_mode_drv
     rte_flow
+    switch_representation
     traffic_metering_and_policing
     traffic_management
     bbdev
