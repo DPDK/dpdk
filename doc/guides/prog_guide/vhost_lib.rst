@@ -65,14 +65,18 @@ The following is an overview of some key Vhost API functions:
     * zero copy is really good for VM2VM case. For iperf between two VMs, the
       boost could be above 70% (when TSO is enableld).
 
-    * for VM2NIC case, the ``nb_tx_desc`` has to be small enough: <= 64 if virtio
-      indirect feature is not enabled and <= 128 if it is enabled.
+    * For zero copy in VM2NIC case, guest Tx used vring may be starved if the
+      PMD driver consume the mbuf but not release them timely.
 
-      This is because when dequeue zero copy is enabled, guest Tx used vring will
-      be updated only when corresponding mbuf is freed. Thus, the nb_tx_desc
-      has to be small enough so that the PMD driver will run out of available
-      Tx descriptors and free mbufs timely. Otherwise, guest Tx vring would be
-      starved.
+      For example, i40e driver has an optimization to maximum NIC pipeline which
+      postpones returning transmitted mbuf until only tx_free_threshold free
+      descs left. The virtio TX used ring will be starved if the formula
+      (num_i40e_tx_desc - num_virtio_tx_desc > tx_free_threshold) is true, since
+      i40e will not return back mbuf.
+
+      A performance tip for tuning zero copy in VM2NIC case is to adjust the
+      frequency of mbuf free (i.e. adjust tx_free_threshold of i40e driver) to
+      balance consumer and producer.
 
     * Guest memory should be backended with huge pages to achieve better
       performance. Using 1G page size is the best.
