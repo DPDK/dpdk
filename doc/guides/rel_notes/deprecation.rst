@@ -28,11 +28,6 @@ Deprecation Notices
   - ``eal_parse_pci_DomBDF`` replaced by ``rte_pci_addr_parse``
   - ``rte_eal_compare_pci_addr`` replaced by ``rte_pci_addr_cmp``
 
-* eal: The semantics of the return value for the ``rte_lcore_has_role`` function
-  are planned to change in v18.05. The function currently returns 0 and <0 for
-  success and failure, respectively.  This will change to 1 and 0 for true and
-  false, respectively, to make use of the function more intuitive.
-
 * eal: a new set of mbuf mempool ops name APIs for user, platform and best
   mempool names have been defined in ``rte_mbuf`` in v18.02. The uses of
   ``rte_eal_mbuf_default_mempool_ops`` shall be replaced by

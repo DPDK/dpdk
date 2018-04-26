@@ -34,10 +34,7 @@ rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role)
 	if (lcore_id >= RTE_MAX_LCORE)
 		return -EINVAL;
 
-	if (cfg->lcore_role[lcore_id] == role)
-		return 0;
-
-	return -EINVAL;
+	return cfg->lcore_role[lcore_id] == role;
 }
 
 int eal_cpuset_socket_id(rte_cpuset_t *cpusetp)

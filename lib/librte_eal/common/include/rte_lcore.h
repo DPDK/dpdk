@@ -311,7 +311,7 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
  * @param role
  *   The role to be checked against.
  * @return
- *   On success, return 0; otherwise return a negative value.
+ *   Boolean value: positive if test is true; otherwise returns 0.
  */
 int
 rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role);

@@ -161,6 +161,12 @@ API Changes
   announced at least one release before the ABI change is made. There are no
   ABI breaking changes planned.
 
+* eal: ``rte_lcore_has_role()`` return value changed.
+
+  This function now returns true or false, respectively,
+  rather than 0 or <0 for success or failure.
+  It makes use of the function more intuitive.
+
 * mempool: capability flags and related functions have been removed.
 
   Flags ``MEMPOOL_F_CAPA_PHYS_CONTIG`` and
