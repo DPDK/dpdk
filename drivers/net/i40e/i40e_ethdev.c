@@ -214,7 +214,7 @@
 /* Bit mask of Extended Tag enable/disable */
 #define PCI_DEV_CTRL_EXT_TAG_MASK  (1 << PCI_DEV_CTRL_EXT_TAG_SHIFT)
 
-static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev);
+static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev, void *init_params);
 static int eth_i40e_dev_uninit(struct rte_eth_dev *eth_dev);
 static int i40e_dev_configure(struct rte_eth_dev *dev);
 static int i40e_dev_start(struct rte_eth_dev *dev);
@@ -615,16 +615,76 @@ static const struct rte_i40e_xstats_name_off rte_i40e_txq_prio_strings[] = {
 #define I40E_NB_TXQ_PRIO_XSTATS (sizeof(rte_i40e_txq_prio_strings) / \
 		sizeof(rte_i40e_txq_prio_strings[0]))
 
-static int eth_i40e_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+static int
+eth_i40e_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_probe(pci_dev,
-		sizeof(struct i40e_adapter), eth_i40e_dev_init);
+	char name[RTE_ETH_NAME_MAX_LEN];
+	struct rte_eth_devargs eth_da = { .nb_representor_ports = 0 };
+	int i, retval;
+
+	if (pci_dev->device.devargs) {
+		retval = rte_eth_devargs_parse(pci_dev->device.devargs->args,
+				&eth_da);
+		if (retval)
+			return retval;
+	}
+
+	/* physical port net_bdf_port */
+	snprintf(name, sizeof(name), "net_%s", pci_dev->device.name);
+
+	retval = rte_eth_dev_create(&pci_dev->device, name,
+		sizeof(struct i40e_adapter),
+		eth_dev_pci_specific_init, pci_dev,
+		eth_i40e_dev_init, NULL);
+
+	if (retval || eth_da.nb_representor_ports < 1)
+		return retval;
+
+	/* probe VF representor ports */
+	struct rte_eth_dev *pf_ethdev = rte_eth_dev_allocated(name);
+
+	if (pf_ethdev == NULL)
+		return -ENODEV;
+
+	for (i = 0; i < eth_da.nb_representor_ports; i++) {
+		struct i40e_vf_representor representor = {
+			.vf_id = eth_da.representor_ports[i],
+			.switch_domain_id = I40E_DEV_PRIVATE_TO_PF(
+				pf_ethdev->data->dev_private)->switch_domain_id,
+			.adapter = I40E_DEV_PRIVATE_TO_ADAPTER(
+				pf_ethdev->data->dev_private)
+		};
+
+		/* representor port net_bdf_port */
+		snprintf(name, sizeof(name), "net_%s_representor_%d",
+			pci_dev->device.name, eth_da.representor_ports[i]);
+
+		retval = rte_eth_dev_create(&pci_dev->device, name,
+			sizeof(struct i40e_vf_representor), NULL, NULL,
+			i40e_vf_representor_init, &representor);
+
+		if (retval)
+			PMD_DRV_LOG(ERR, "failed to create i40e vf "
+				"representor %s.", name);
+	}
+
+	return 0;
 }
 
 static int eth_i40e_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, eth_i40e_dev_uninit);
+	struct rte_eth_dev *ethdev;
+
+	ethdev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (!ethdev)
+		return -ENODEV;
+
+
+	if (ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+		return rte_eth_dev_destroy(ethdev, i40e_vf_representor_uninit);
+	else
+		return rte_eth_dev_destroy(ethdev, eth_i40e_dev_uninit);
 }
 
 static struct rte_pci_driver rte_i40e_pmd = {
@@ -1098,7 +1158,7 @@ i40e_support_multi_driver(struct rte_eth_dev *dev)
 }
 
 static int
-eth_i40e_dev_init(struct rte_eth_dev *dev)
+eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev;
 	struct rte_intr_handle *intr_handle;
@@ -1524,6 +1584,10 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 	hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	intr_handle = &pci_dev->intr_handle;
+
+	ret = rte_eth_switch_domain_free(pf->switch_domain_id);
+	if (ret)
+		PMD_INIT_LOG(WARNING, "failed to free switch domain: %d", ret);
 
 	if (hw->adapter_stopped == 0)
 		i40e_dev_close(dev);
@@ -2331,7 +2395,7 @@ i40e_dev_reset(struct rte_eth_dev *dev)
 	if (ret)
 		return ret;
 
-	ret = eth_i40e_dev_init(dev);
+	ret = eth_i40e_dev_init(dev, NULL);
 
 	return ret;
 }
@@ -5760,6 +5824,12 @@ i40e_pf_setup(struct i40e_pf *pf)
 		PMD_DRV_LOG(ERR, "Could not get switch config, err %d", ret);
 		return ret;
 	}
+
+	ret = rte_eth_switch_domain_alloc(&pf->switch_domain_id);
+	if (ret)
+		PMD_INIT_LOG(WARNING,
+			"failed to allocate switch domain for device %d", ret);
+
 	if (pf->flags & I40E_FLAG_FDIR) {
 		/* make queue allocated first, let FDIR use queue pair 0*/
 		ret = i40e_res_pool_alloc(&pf->qp_pool, I40E_DEFAULT_QP_NUM_FDIR);

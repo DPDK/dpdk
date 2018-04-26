@@ -6,7 +6,8 @@ version = 2
 cflags += ['-DPF_DRIVER',
 	'-DVF_DRIVER',
 	'-DINTEGRATED_VF',
-	'-DX722_A0_SUPPORT']
+	'-DX722_A0_SUPPORT',
+	'-DALLOW_EXPERIMENTAL_API']
 
 subdir('base')
 objs = [base_objs]
@@ -19,6 +20,7 @@ sources = files(
 	'i40e_fdir.c',
 	'i40e_flow.c',
 	'i40e_tm.c',
+	'i40e_vf_representor.c',
 	'rte_pmd_i40e.c'
 	)
 

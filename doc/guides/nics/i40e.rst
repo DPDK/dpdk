@@ -40,6 +40,7 @@ Features of the I40E PMD are:
 - VF Daemon (VFD) - EXPERIMENTAL
 - Dynamic Device Personalization (DDP)
 - Queue region configuration
+- Vitrual Function Port Representors
 
 Prerequisites
 -------------
@@ -120,6 +121,20 @@ Runtime Config Options
   With the above configuration, DPDK PMD will not change global registers, and
   will switch PF interrupt from IntN to Int0 to avoid interrupt conflict between
   DPDK and Linux Kernel.
+
+- ``Support VF Port Representor`` (default ``not enabled``)
+
+  The i40e PF PMD supports the creation of VF port representors for the control
+  and monitoring of i40e virtual function devices. Each port representor
+  corresponds to a single virtual function of that device. Using the ``devargs``
+  option ``representor`` the user can specify which virtual functions to create
+  port representors for on initialization of the PF PMD by passing the VF IDs of
+  the VFs which are required.::
+
+  -w DBDF,representor=[0,1,4]
+
+  Currently hot-plugging of representor ports is not supported so all required
+  representors must be specified on the creation of the PF.
 
 Driver compilation and testing
 ------------------------------

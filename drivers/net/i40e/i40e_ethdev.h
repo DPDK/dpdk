@@ -964,6 +964,8 @@ struct i40e_pf {
 	bool gtp_support; /* 1 - support GTP-C and GTP-U */
 	/* customer customized pctype */
 	struct i40e_customized_pctype customized_pctype[I40E_CUSTOMIZED_MAX];
+	/* Switch Domain Id */
+	uint16_t switch_domain_id;
 };
 
 enum pending_msg {
@@ -1067,6 +1069,18 @@ struct i40e_adapter {
 	uint64_t pctypes_tbl[I40E_FLOW_TYPE_MAX] __rte_cache_min_aligned;
 	uint64_t flow_types_mask;
 	uint64_t pctypes_mask;
+};
+
+/**
+ * Strucute to store private data for each VF representor instance
+ */
+struct i40e_vf_representor {
+	uint16_t switch_domain_id;
+	/**< Virtual Function ID */
+	uint16_t vf_id;
+	/**< Virtual Function ID */
+	struct i40e_adapter *adapter;
+	/**< Private data store of assocaiated physical function */
 };
 
 extern const struct rte_flow_ops i40e_flow_ops;
@@ -1232,6 +1246,8 @@ int i40e_action_rss_same(const struct rte_flow_action_rss *comp,
 			 const struct rte_flow_action_rss *with);
 int i40e_config_rss_filter(struct i40e_pf *pf,
 		struct i40e_rte_flow_rss_conf *conf, bool add);
+int i40e_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params);
+int i40e_vf_representor_uninit(struct rte_eth_dev *ethdev);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)

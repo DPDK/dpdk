@@ -570,6 +570,49 @@ rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
 	return 0;
 }
 
+static const struct ether_addr null_mac_addr;
+
+int
+rte_pmd_i40e_remove_vf_mac_addr(uint16_t port, uint16_t vf_id,
+	struct ether_addr *mac_addr)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf_vf *vf;
+	struct i40e_vsi *vsi;
+	struct i40e_pf *pf;
+
+	if (i40e_validate_mac_addr((u8 *)mac_addr) != I40E_SUCCESS)
+		return -EINVAL;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs)
+		return -EINVAL;
+
+	vf = &pf->vfs[vf_id];
+	vsi = vf->vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	if (is_same_ether_addr(mac_addr, &vf->mac_addr))
+		/* Reset the mac with NULL address */
+		ether_addr_copy(&null_mac_addr, &vf->mac_addr);
+
+	/* Remove the mac */
+	i40e_vsi_delete_mac(vsi, mac_addr);
+
+	return 0;
+}
+
 /* Set vlan strip on/off for specific VF from host */
 int
 rte_pmd_i40e_set_vf_vlan_stripq(uint16_t port, uint16_t vf_id, uint8_t on)

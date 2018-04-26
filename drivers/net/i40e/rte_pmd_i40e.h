@@ -456,6 +456,24 @@ int rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
 				 struct ether_addr *mac_addr);
 
 /**
+ * Remove the VF MAC address.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param vf_id
+ *   VF id.
+ * @param mac_addr
+ *   VF MAC address.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
+ */
+int
+rte_pmd_i40e_remove_vf_mac_addr(uint16_t port, uint16_t vf_id,
+	struct ether_addr *mac_addr);
+
+/**
  * Enable/Disable vf vlan strip for all queues in a pool
  *
  * @param port
