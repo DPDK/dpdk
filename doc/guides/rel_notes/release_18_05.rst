@@ -47,6 +47,8 @@ New Features
   block of objects.
   Number of objects in the block depends on how many objects fit in
   RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB memory chunk which is build time option.
+  The number may be obtained using rte_mempool_ops_get_info() API.
+  Contiguous blocks may be allocated using rte_mempool_get_contig_blocks() API.
 
 * **Added PMD-recommended Tx and Rx parameters**
 

@@ -294,6 +294,46 @@ bucket_dequeue(struct rte_mempool *mp, void **obj_table, unsigned int n)
 	return rc;
 }
 
+static int
+bucket_dequeue_contig_blocks(struct rte_mempool *mp, void **first_obj_table,
+			     unsigned int n)
+{
+	struct bucket_data *bd = mp->pool_data;
+	const uint32_t header_size = bd->header_size;
+	struct bucket_stack *cur_stack = bd->buckets[rte_lcore_id()];
+	unsigned int n_buckets_from_stack = RTE_MIN(n, cur_stack->top);
+	struct bucket_header *hdr;
+	void **first_objp = first_obj_table;
+
+	bucket_adopt_orphans(bd);
+
+	n -= n_buckets_from_stack;
+	while (n_buckets_from_stack-- > 0) {
+		hdr = bucket_stack_pop_unsafe(cur_stack);
+		*first_objp++ = (uint8_t *)hdr + header_size;
+	}
+	if (n > 0) {
+		if (unlikely(rte_ring_dequeue_bulk(bd->shared_bucket_ring,
+						   first_objp, n, NULL) != n)) {
+			/* Return the already dequeued buckets */
+			while (first_objp-- != first_obj_table) {
+				bucket_stack_push(cur_stack,
+						  (uint8_t *)*first_objp -
+						  header_size);
+			}
+			rte_errno = ENOBUFS;
+			return -rte_errno;
+		}
+		while (n-- > 0) {
+			hdr = (struct bucket_header *)*first_objp;
+			hdr->lcore_id = rte_lcore_id();
+			*first_objp++ = (uint8_t *)hdr + header_size;
+		}
+	}
+
+	return 0;
+}
+
 static void
 count_underfilled_buckets(struct rte_mempool *mp,
 			  void *opaque,
@@ -548,6 +588,16 @@ bucket_populate(struct rte_mempool *mp, unsigned int max_objs,
 	return n_objs;
 }
 
+static int
+bucket_get_info(const struct rte_mempool *mp, struct rte_mempool_info *info)
+{
+	struct bucket_data *bd = mp->pool_data;
+
+	info->contig_block_size = bd->obj_per_bucket;
+	return 0;
+}
+
+
 static const struct rte_mempool_ops ops_bucket = {
 	.name = "bucket",
 	.alloc = bucket_alloc,
@@ -557,6 +607,8 @@ static const struct rte_mempool_ops ops_bucket = {
 	.get_count = bucket_get_count,
 	.calc_mem_size = bucket_calc_mem_size,
 	.populate = bucket_populate,
+	.get_info = bucket_get_info,
+	.dequeue_contig_blocks = bucket_dequeue_contig_blocks,
 };
 
 
