@@ -125,20 +125,15 @@ mlx4_conv_rss_types(struct priv *priv, uint64_t types)
 	uint64_t conv = 0;
 	unsigned int i;
 
+	if (types == (uint64_t)-1)
+		return priv->hw_rss_sup;
 	for (i = 0; i != RTE_DIM(in); ++i)
 		if (types & in[i]) {
 			seen |= types & in[i];
 			conv |= out[i];
 		}
-	if ((conv & priv->hw_rss_sup) == conv) {
-		if (types == (uint64_t)-1) {
-			/* Include inner RSS by default if supported. */
-			conv |= priv->hw_rss_sup & IBV_RX_HASH_INNER;
-			return conv;
-		}
-		if (!(types & ~seen))
-			return conv;
-	}
+	if ((conv & priv->hw_rss_sup) == conv && !(types & ~seen))
+		return conv;
 	rte_errno = ENOTSUP;
 	return (uint64_t)-1;
 }
