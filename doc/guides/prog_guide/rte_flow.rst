@@ -1909,6 +1909,113 @@ Implements ``OFPAT_PUSH_MPLS`` ("push a new MPLS tag") as defined by the
    | ``ethertype`` | EtherType |
    +---------------+-----------+
 
+Action: ``VXLAN_ENCAP``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a VXLAN encapsulation action by encapsulating the matched flow in the
+VXLAN tunnel as defined in the``rte_flow_action_vxlan_encap`` flow items
+definition.
+
+This action modifies the payload of matched flows. The flow definition specified
+in the ``rte_flow_action_tunnel_encap`` action structure must define a valid
+VLXAN network overlay which conforms with RFC 7348 (Virtual eXtensible Local
+Area Network (VXLAN): A Framework for Overlaying Virtualized Layer 2 Networks
+over Layer 3 Networks). The pattern must be terminated with the
+RTE_FLOW_ITEM_TYPE_END item type.
+
+.. _table_rte_flow_action_vxlan_encap:
+
+.. table:: VXLAN_ENCAP
+
+   +----------------+-------------------------------------+
+   | Field          | Value                               |
+   +================+=====================================+
+   | ``definition`` | Tunnel end-point overlay definition |
+   +----------------+-------------------------------------+
+
+.. _table_rte_flow_action_vxlan_encap_example:
+
+.. table:: IPv4 VxLAN flow pattern example.
+
+   +-------+----------+
+   | Index | Item     |
+   +=======+==========+
+   | 0     | Ethernet |
+   +-------+----------+
+   | 1     | IPv4     |
+   +-------+----------+
+   | 2     | UDP      |
+   +-------+----------+
+   | 3     | VXLAN    |
+   +-------+----------+
+   | 4     | END      |
+   +-------+----------+
+
+Action: ``VXLAN_DECAP``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a decapsulation action by stripping all headers of the VXLAN tunnel
+network overlay from the matched flow.
+
+The flow items pattern defined for the flow rule with which a ``VXLAN_DECAP``
+action is specified, must define a valid VXLAN tunnel as per RFC7348. If the
+flow pattern does not specify a valid VXLAN tunnel then a
+RTE_FLOW_ERROR_TYPE_ACTION error should be returned.
+
+This action modifies the payload of matched flows.
+
+Action: ``NVGRE_ENCAP``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a NVGRE encapsulation action by encapsulating the matched flow in the
+NVGRE tunnel as defined in the``rte_flow_action_tunnel_encap`` flow item
+definition.
+
+This action modifies the payload of matched flows. The flow definition specified
+in the ``rte_flow_action_tunnel_encap`` action structure must defined a valid
+NVGRE network overlay which conforms with RFC 7637 (NVGRE: Network
+Virtualization Using Generic Routing Encapsulation). The pattern must be
+terminated with the RTE_FLOW_ITEM_TYPE_END item type.
+
+.. _table_rte_flow_action_nvgre_encap:
+
+.. table:: NVGRE_ENCAP
+
+   +----------------+-------------------------------------+
+   | Field          | Value                               |
+   +================+=====================================+
+   | ``definition`` | NVGRE end-point overlay definition  |
+   +----------------+-------------------------------------+
+
+.. _table_rte_flow_action_nvgre_encap_example:
+
+.. table:: IPv4 NVGRE flow pattern example.
+
+   +-------+----------+
+   | Index | Item     |
+   +=======+==========+
+   | 0     | Ethernet |
+   +-------+----------+
+   | 1     | IPv4     |
+   +-------+----------+
+   | 2     | NVGRE    |
+   +-------+----------+
+   | 3     | END      |
+   +-------+----------+
+
+Action: ``NVGRE_DECAP``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a decapsulation action by stripping all headers of the NVGRE tunnel
+network overlay from the matched flow.
+
+The flow items pattern defined for the flow rule with which a ``NVGRE_DECAP``
+action is specified, must define a valid NVGRE tunnel as per RFC7637. If the
+flow pattern does not specify a valid NVGRE tunnel then a
+RTE_FLOW_ERROR_TYPE_ACTION error should be returned.
+
+This action modifies the payload of matched flows.
+
 Negative types
 ~~~~~~~~~~~~~~
 

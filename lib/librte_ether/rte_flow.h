@@ -1431,6 +1431,40 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_of_push_mpls.
 	 */
 	RTE_FLOW_ACTION_TYPE_OF_PUSH_MPLS,
+
+	/**
+	 * Encapsulate flow in VXLAN tunnel as defined in
+	 * rte_flow_action_vxlan_encap action structure.
+	 *
+	 * See struct rte_flow_action_vxlan_encap.
+	 */
+	RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP,
+
+	/**
+	 * Decapsulate outer most VXLAN tunnel from matched flow.
+	 *
+	 * If flow pattern does not define a valid VXLAN tunnel (as specified by
+	 * RFC7348) then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION
+	 * error.
+	 */
+	RTE_FLOW_ACTION_TYPE_VXLAN_DECAP,
+
+	/**
+	 * Encapsulate flow in NVGRE tunnel defined in the
+	 * rte_flow_action_nvgre_encap action structure.
+	 *
+	 * See struct rte_flow_action_nvgre_encap.
+	 */
+	RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP,
+
+	/**
+	 * Decapsulate outer most NVGRE tunnel from matched flow.
+	 *
+	 * If flow pattern does not define a valid NVGRE tunnel (as specified by
+	 * RFC7637) then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION
+	 * error.
+	 */
+	RTE_FLOW_ACTION_TYPE_NVGRE_DECAP,
 };
 
 /**
@@ -1678,6 +1712,75 @@ struct rte_flow_action_of_push_mpls {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
+ *
+ * VXLAN tunnel end-point encapsulation data definition
+ *
+ * The tunnel definition is provided through the flow item pattern, the
+ * provided pattern must conform to RFC7348 for the tunnel specified. The flow
+ * definition must be provided in order from the RTE_FLOW_ITEM_TYPE_ETH
+ * definition up the end item which is specified by RTE_FLOW_ITEM_TYPE_END.
+ *
+ * The mask field allows user to specify which fields in the flow item
+ * definitions can be ignored and which have valid data and can be used
+ * verbatim.
+ *
+ * Note: the last field is not used in the definition of a tunnel and can be
+ * ignored.
+ *
+ * Valid flow definition for RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP include:
+ *
+ * - ETH / IPV4 / UDP / VXLAN / END
+ * - ETH / IPV6 / UDP / VXLAN / END
+ * - ETH / VLAN / IPV4 / UDP / VXLAN / END
+ *
+ */
+struct rte_flow_action_vxlan_encap {
+	/**
+	 * Encapsulating vxlan tunnel definition
+	 * (terminated by the END pattern item).
+	 */
+	struct rte_flow_item *definition;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP
+ *
+ * NVGRE tunnel end-point encapsulation data definition
+ *
+ * The tunnel definition is provided through the flow item pattern  the
+ * provided pattern must conform with RFC7637. The flow definition must be
+ * provided in order from the RTE_FLOW_ITEM_TYPE_ETH definition up the end item
+ * which is specified by RTE_FLOW_ITEM_TYPE_END.
+ *
+ * The mask field allows user to specify which fields in the flow item
+ * definitions can be ignored and which have valid data and can be used
+ * verbatim.
+ *
+ * Note: the last field is not used in the definition of a tunnel and can be
+ * ignored.
+ *
+ * Valid flow definition for RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP include:
+ *
+ * - ETH / IPV4 / NVGRE / END
+ * - ETH / VLAN / IPV6 / NVGRE / END
+ *
+ */
+struct rte_flow_action_nvgre_encap {
+	/**
+	 * Encapsulating vxlan tunnel definition
+	 * (terminated by the END pattern item).
+	 */
+	struct rte_flow_item *definition;
+};
+
+/*
  * Definition of a single action.
  *
  * A list of actions is terminated by a END action.
