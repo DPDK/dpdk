@@ -1056,6 +1056,7 @@ struct rte_eth_dev_info {
 	const char *driver_name; /**< Device Driver name. */
 	unsigned int if_index; /**< Index to bound host interface, or 0 if none.
 		Use if_indextoname() to translate into an interface name. */
+	const uint32_t *dev_flags; /**< Device flags */
 	uint32_t min_rx_bufsize; /**< Minimum size of RX buffer. */
 	uint32_t max_rx_pktlen; /**< Maximum configurable length of RX pkt. */
 	uint16_t max_rx_queues; /**< Maximum number of RX queues. */
@@ -1302,6 +1303,8 @@ struct rte_eth_dev_owner {
 #define RTE_ETH_DEV_BONDED_SLAVE 0x0004
 /** Device supports device removal interrupt */
 #define RTE_ETH_DEV_INTR_RMV     0x0008
+/** Device is port representor */
+#define RTE_ETH_DEV_REPRESENTOR  0x0010
 
 /**
  * Iterates over valid ethdev ports owned by a specific owner.
