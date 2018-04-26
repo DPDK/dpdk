@@ -419,7 +419,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	if (internal_config.single_file_segments) {
 		map_offset = seg_idx * alloc_sz;
 		ret = resize_hugefile(fd, map_offset, alloc_sz, true);
-		if (ret < 1)
+		if (ret < 0)
 			goto resized;
 	} else {
 		map_offset = 0;
