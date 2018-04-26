@@ -46,6 +46,7 @@ scheduler_attach_init_slave(struct rte_cryptodev *dev)
 				sched_ctx->init_slave_names[i]);
 
 		rte_free(sched_ctx->init_slave_names[i]);
+		sched_ctx->init_slave_names[i] = NULL;
 
 		sched_ctx->nb_init_slaves -= 1;
 	}
@@ -261,11 +262,15 @@ scheduler_pmd_close(struct rte_cryptodev *dev)
 		}
 	}
 
-	if (sched_ctx->private_ctx)
+	if (sched_ctx->private_ctx) {
 		rte_free(sched_ctx->private_ctx);
+		sched_ctx->private_ctx = NULL;
+	}
 
-	if (sched_ctx->capabilities)
+	if (sched_ctx->capabilities) {
 		rte_free(sched_ctx->capabilities);
+		sched_ctx->capabilities = NULL;
+	}
 
 	return 0;
 }

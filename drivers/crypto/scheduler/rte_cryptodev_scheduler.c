@@ -91,8 +91,10 @@ update_scheduler_capability(struct scheduler_ctx *sched_ctx)
 	struct rte_cryptodev_capabilities tmp_caps[256] = { {0} };
 	uint32_t nb_caps = 0, i;
 
-	if (sched_ctx->capabilities)
+	if (sched_ctx->capabilities) {
 		rte_free(sched_ctx->capabilities);
+		sched_ctx->capabilities = NULL;
+	}
 
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		struct rte_cryptodev_info dev_info;
@@ -462,8 +464,10 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 	sched_ctx->ops.option_set = scheduler->ops->option_set;
 	sched_ctx->ops.option_get = scheduler->ops->option_get;
 
-	if (sched_ctx->private_ctx)
+	if (sched_ctx->private_ctx) {
 		rte_free(sched_ctx->private_ctx);
+		sched_ctx->private_ctx = NULL;
+	}
 
 	if (sched_ctx->ops.create_private_ctx) {
 		int ret = (*sched_ctx->ops.create_private_ctx)(dev);

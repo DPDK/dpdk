@@ -334,8 +334,10 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	struct psd_scheduler_ctx *psd_ctx;
 
-	if (sched_ctx->private_ctx)
+	if (sched_ctx->private_ctx) {
 		rte_free(sched_ctx->private_ctx);
+		sched_ctx->private_ctx = NULL;
+	}
 
 	psd_ctx = rte_zmalloc_socket(NULL, sizeof(struct psd_scheduler_ctx), 0,
 			rte_socket_id());
