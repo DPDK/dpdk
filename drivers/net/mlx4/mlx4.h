@@ -103,6 +103,7 @@ struct priv {
 	uint32_t vf:1; /**< This is a VF device. */
 	uint32_t intr_alarm:1; /**< An interrupt alarm is scheduled. */
 	uint32_t isolated:1; /**< Toggle isolated mode. */
+	uint32_t rss_init:1; /**< Common RSS context is initialized. */
 	uint32_t hw_csum:1; /**< Checksum offload is supported. */
 	uint32_t hw_csum_l2tun:1; /**< Checksum support for L2 tunnels. */
 	uint32_t hw_fcs_strip:1; /**< FCS stripping toggling is supported. */

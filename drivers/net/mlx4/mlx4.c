@@ -61,6 +61,8 @@ const char *pmd_mlx4_init_params[] = {
 	NULL,
 };
 
+static void mlx4_dev_stop(struct rte_eth_dev *dev);
+
 /**
  * DPDK callback for Ethernet device configuration.
  *
@@ -143,8 +145,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = mlx4_rx_burst;
 	return 0;
 err:
-	/* Rollback. */
-	priv->started = 0;
+	mlx4_dev_stop(dev);
 	return ret;
 }
 
@@ -194,6 +195,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = mlx4_tx_burst_removed;
 	rte_wmb();
 	mlx4_flow_clean(priv);
+	mlx4_rss_deinit(priv);
 	for (i = 0; i != dev->data->nb_rx_queues; ++i)
 		mlx4_rx_queue_release(dev->data->rx_queues[i]);
 	for (i = 0; i != dev->data->nb_tx_queues; ++i)
