@@ -1295,6 +1295,17 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	if (action_rss->level)
 		return -EINVAL;
 
+	/*
+	 * Dummy RSS action with only one queue and no specific settings
+	 * for hash types and key does not require dedicated RSS context
+	 * and may be simplified to single queue action.
+	 */
+	if (action_rss->queue_num == 1 && action_rss->types == 0 &&
+	    action_rss->key_len == 0) {
+		flow->spec.template.efs_dmaq_id = rxq_hw_index_min;
+		return 0;
+	}
+
 	if (action_rss->types) {
 		int rc;
 
