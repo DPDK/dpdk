@@ -292,22 +292,22 @@ F: test/test/test_mbuf.c
 Ethernet API
 M: Thomas Monjalon <thomas@monjalon.net>
 T: git://dpdk.org/next/dpdk-next-net
-F: lib/librte_ether/
+F: lib/librte_ethdev/
 F: devtools/test-null.sh
 
 Flow API
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 T: git://dpdk.org/next/dpdk-next-net
-F: lib/librte_ether/rte_flow*
+F: lib/librte_ethdev/rte_flow*
 
 Traffic Management API - EXPERIMENTAL
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 T: git://dpdk.org/next/dpdk-next-tm
-F: lib/librte_ether/rte_tm*
+F: lib/librte_ethdev/rte_tm*
 
 Traffic Metering and Policing API - EXPERIMENTAL
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
-F: lib/librte_ether/rte_mtr*
+F: lib/librte_ethdev/rte_mtr*
 
 Baseband API - EXPERIMENTAL
 M: Amr Mokhtar <amr.mokhtar@intel.com>

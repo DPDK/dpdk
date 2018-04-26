@@ -28,7 +28,7 @@ The metering and policing stage typically sits on top of flow classification,
 which is why the MTR objects are enabled through a special "meter" action.
 
 The MTR objects are created and updated in their own name space (``rte_mtr``)
-within the ``librte_ether`` library. Whether an MTR object is private to a
+within the ``librte_ethdev`` library. Whether an MTR object is private to a
 flow or potentially shared by several flows has to be specified at its
 creation time.
 
