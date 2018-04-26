@@ -42,6 +42,7 @@ struct bucket_data {
 	unsigned int header_size;
 	unsigned int total_elt_size;
 	unsigned int obj_per_bucket;
+	unsigned int bucket_stack_thresh;
 	uintptr_t bucket_page_mask;
 	struct rte_ring *shared_bucket_ring;
 	struct bucket_stack *buckets[RTE_MAX_LCORE];
@@ -139,12 +140,22 @@ bucket_enqueue(struct rte_mempool *mp, void * const *obj_table,
 	       unsigned int n)
 {
 	struct bucket_data *bd = mp->pool_data;
+	struct bucket_stack *local_stack = bd->buckets[rte_lcore_id()];
 	unsigned int i;
 	int rc = 0;
 
 	for (i = 0; i < n; i++) {
 		rc = bucket_enqueue_single(bd, obj_table[i]);
 		RTE_ASSERT(rc == 0);
+	}
+	if (local_stack->top > bd->bucket_stack_thresh) {
+		rte_ring_enqueue_bulk(bd->shared_bucket_ring,
+				      &local_stack->objects
+				      [bd->bucket_stack_thresh],
+				      local_stack->top -
+				      bd->bucket_stack_thresh,
+				      NULL);
+	    local_stack->top = bd->bucket_stack_thresh;
 	}
 	return rc;
 }
@@ -409,6 +420,8 @@ bucket_alloc(struct rte_mempool *mp)
 	bd->obj_per_bucket = (bd->bucket_mem_size - bucket_header_size) /
 		bd->total_elt_size;
 	bd->bucket_page_mask = ~(rte_align64pow2(bd->bucket_mem_size) - 1);
+	/* eventually this should be a tunable parameter */
+	bd->bucket_stack_thresh = (mp->size / bd->obj_per_bucket) * 4 / 3;
 
 	if (mp->flags & MEMPOOL_F_SP_PUT)
 		rg_flags |= RING_F_SP_ENQ;
