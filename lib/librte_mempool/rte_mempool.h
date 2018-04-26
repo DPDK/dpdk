@@ -190,6 +190,23 @@ struct rte_mempool_memhdr {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Additional information about the mempool
+ *
+ * The structure is cache-line aligned to avoid ABI breakages in
+ * a number of cases when something small is added.
+ */
+struct rte_mempool_info {
+	/*
+	 * Dummy structure member to make it non emtpy until the first
+	 * real member is added.
+	 */
+	unsigned int dummy;
+} __rte_cache_aligned;
+
+/**
  * The RTE mempool structure.
  */
 struct rte_mempool {
@@ -499,6 +516,16 @@ int rte_mempool_op_populate_default(struct rte_mempool *mp,
 		void *vaddr, rte_iova_t iova, size_t len,
 		rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get some additional information about a mempool.
+ */
+typedef int (*rte_mempool_get_info_t)(const struct rte_mempool *mp,
+		struct rte_mempool_info *info);
+
+
 /** Structure defining mempool operations structure */
 struct rte_mempool_ops {
 	char name[RTE_MEMPOOL_OPS_NAMESIZE]; /**< Name of mempool ops struct. */
@@ -517,6 +544,10 @@ struct rte_mempool_ops {
 	 * provided memory chunk.
 	 */
 	rte_mempool_populate_t populate;
+	/**
+	 * Get mempool info
+	 */
+	rte_mempool_get_info_t get_info;
 } __rte_cache_aligned;
 
 #define RTE_MEMPOOL_MAX_OPS_IDX 16  /**< Max registered ops structs */
@@ -678,6 +709,25 @@ int rte_mempool_ops_populate(struct rte_mempool *mp, unsigned int max_objs,
 			     void *vaddr, rte_iova_t iova, size_t len,
 			     rte_mempool_populate_obj_cb_t *obj_cb,
 			     void *obj_cb_arg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Wrapper for mempool_ops get_info callback.
+ *
+ * @param[in] mp
+ *   Pointer to the memory pool.
+ * @param[out] info
+ *   Pointer to the rte_mempool_info structure
+ * @return
+ *   - 0: Success; The mempool driver supports retrieving supplementary
+ *        mempool information
+ *   - -ENOTSUP - doesn't support get_info ops (valid case).
+ */
+__rte_experimental
+int rte_mempool_ops_get_info(const struct rte_mempool *mp,
+			 struct rte_mempool_info *info);
 
 /**
  * @internal wrapper for mempool_ops free callback.

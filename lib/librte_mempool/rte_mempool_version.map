@@ -57,3 +57,10 @@ DPDK_18.05 {
 	rte_mempool_op_populate_default;
 
 } DPDK_17.11;
+
+EXPERIMENTAL {
+	global:
+
+	rte_mempool_ops_get_info;
+
+} DPDK_18.05;

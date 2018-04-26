@@ -59,6 +59,7 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	ops->get_count = h->get_count;
 	ops->calc_mem_size = h->calc_mem_size;
 	ops->populate = h->populate;
+	ops->get_info = h->get_info;
 
 	rte_spinlock_unlock(&rte_mempool_ops_table.sl);
 
@@ -133,6 +134,20 @@ rte_mempool_ops_populate(struct rte_mempool *mp, unsigned int max_objs,
 	return ops->populate(mp, max_objs, vaddr, iova, len, obj_cb,
 			     obj_cb_arg);
 }
+
+/* wrapper to get additional mempool info */
+int
+rte_mempool_ops_get_info(const struct rte_mempool *mp,
+			 struct rte_mempool_info *info)
+{
+	struct rte_mempool_ops *ops;
+
+	ops = rte_mempool_get_ops(mp->ops_index);
+
+	RTE_FUNC_PTR_OR_ERR_RET(ops->get_info, -ENOTSUP);
+	return ops->get_info(mp, info);
+}
+
 
 /* sets mempool ops previously registered by rte_mempool_register_ops. */
 int
