@@ -407,6 +407,7 @@ port_infos_display(portid_t port_id)
 	static const char *info_border = "*********************";
 	portid_t pid;
 	uint16_t mtu;
+	char name[RTE_ETH_NAME_MAX_LEN];
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		printf("Valid port range is [0");
@@ -423,6 +424,8 @@ port_infos_display(portid_t port_id)
 	       info_border, port_id, info_border);
 	rte_eth_macaddr_get(port_id, &mac_addr);
 	print_ethaddr("MAC address: ", &mac_addr);
+	rte_eth_dev_get_name_by_port(port_id, name);
+	printf("\nDevice name: %s", name);
 	printf("\nDriver name: %s", dev_info.driver_name);
 	printf("\nConnect to socket: %u", port->socket_id);
 
