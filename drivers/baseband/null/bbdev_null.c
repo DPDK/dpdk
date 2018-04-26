@@ -13,7 +13,7 @@
 #include <rte_bbdev.h>
 #include <rte_bbdev_pmd.h>
 
-#define DRIVER_NAME bbdev_null
+#define DRIVER_NAME baseband_null
 
 /* NULL BBDev logging ID */
 static int bbdev_null_logtype;
@@ -346,6 +346,7 @@ RTE_PMD_REGISTER_VDEV(DRIVER_NAME, bbdev_null_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(DRIVER_NAME,
 	BBDEV_NULL_MAX_NB_QUEUES_ARG"=<int> "
 	BBDEV_NULL_SOCKET_ID_ARG"=<int>");
+RTE_PMD_REGISTER_ALIAS(DRIVER_NAME, bbdev_null);
 
 RTE_INIT(null_bbdev_init_log);
 static void

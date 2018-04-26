@@ -21,7 +21,7 @@ The bbdevice drivers PMD which should be tested can be enabled by setting
 
    ``CONFIG_RTE_LIBRTE_PMD_<name>=y``
 
-Setting example for (*turbo_sw*) PMD
+Setting example for (*baseband_turbo_sw*) PMD
 
    ``CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW=y``
 
@@ -271,21 +271,21 @@ It runs all available tests using the test vector filled based on
 *turbo_dec_default.data* file.
 By default number of operations to process on device is set to 32, timeout is
 set to 300s and operations enqueue/dequeue burst size is set to 32.
-Moreover a bbdev (*bbdev_null*) device will be created.
+Moreover a bbdev (*baseband_null*) device will be created.
 
-bbdev turbo_sw device
-~~~~~~~~~~~~~~~~~~~~~
+baseband turbo_sw device
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: console
 
   ./test-bbdev.py -p ../../x86_64-native-linuxapp-icc/app/testbbdev
-  -e="--vdev=turbo_sw" -t 120 -c validation
+  -e="--vdev=baseband_turbo_sw" -t 120 -c validation
   -v ./test_vectors/turbo_* -n 64 -b 8 32
 
 It runs **validation** test for each vector file that matches the given pattern.
 Number of operations to process on device is set to 64 and operations timeout is
 set to 120s and enqueue/dequeue burst size is set to 8 and to 32.
-Moreover a bbdev (*turbo_sw*) device will be created.
+Moreover a bbdev (*baseband_turbo_sw*) device will be created.
 
 
 bbdev null device
@@ -296,12 +296,12 @@ overhead introduced by the bbdev framework.
 
 .. code-block:: console
 
-  ./test-bbdev.py -e="--vdev=bbdev_null0"
+  ./test-bbdev.py -e="--vdev=baseband_null0"
   -v ./test_vectors/bbdev_null.data
 
 **Note:**
 
-bbdev_null device does not have to be defined explicitly as it is created by default.
+baseband_null device does not have to be defined explicitly as it is created by default.
 
 
 

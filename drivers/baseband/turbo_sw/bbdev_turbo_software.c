@@ -19,7 +19,7 @@
 #include <phy_rate_match.h>
 #include <divide.h>
 
-#define DRIVER_NAME turbo_sw
+#define DRIVER_NAME baseband_turbo_sw
 
 /* Turbo SW PMD logging ID */
 static int bbdev_turbo_sw_logtype;
@@ -1297,6 +1297,7 @@ RTE_PMD_REGISTER_VDEV(DRIVER_NAME, bbdev_turbo_sw_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(DRIVER_NAME,
 	TURBO_SW_MAX_NB_QUEUES_ARG"=<int> "
 	TURBO_SW_SOCKET_ID_ARG"=<int>");
+RTE_PMD_REGISTER_ALIAS(DRIVER_NAME, turbo_sw);
 
 RTE_INIT(null_bbdev_init_log);
 static void

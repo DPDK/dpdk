@@ -42,13 +42,13 @@ From the command line using the --vdev EAL option
 
 .. code-block:: console
 
-   --vdev 'turbo_sw,max_nb_queues=8,socket_id=0'
+   --vdev 'baseband_turbo_sw,max_nb_queues=8,socket_id=0'
 
 Our using the rte_vdev_init API within the application code.
 
 .. code-block:: c
 
-    rte_vdev_init("turbo_sw", "max_nb_queues=2,socket_id=0")
+    rte_vdev_init("baseband_turbo_sw", "max_nb_queues=2,socket_id=0")
 
 All virtual bbdev devices support the following initialization parameters:
 

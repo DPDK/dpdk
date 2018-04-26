@@ -4,7 +4,7 @@
 BBDEV null Poll Mode Driver
 ============================
 
-The (**bbdev_null**) is a bbdev poll mode driver which provides a minimal
+The (**baseband_null**) is a bbdev poll mode driver which provides a minimal
 implementation of a software bbdev device. As a null device it does not modify
 the data in the mbuf on which the bbdev operation is to operate and it only
 works for operation type ``RTE_BBDEV_OP_NONE``.
@@ -30,9 +30,9 @@ Initialization
 
 To use the PMD in an application, user must:
 
-- Call ``rte_vdev_init("bbdev_null")`` within the application.
+- Call ``rte_vdev_init("baseband_null")`` within the application.
 
-- Use ``--vdev="bbdev_null"`` in the EAL options, which will call ``rte_vdev_init()`` internally.
+- Use ``--vdev="baseband_null"`` in the EAL options, which will call ``rte_vdev_init()`` internally.
 
 The following parameters (all optional) can be provided in the previous two calls:
 
@@ -46,4 +46,4 @@ Example:
 
 .. code-block:: console
 
-    ./test-bbdev.py -e="--vdev=bbdev_null,socket_id=0,max_nb_queues=8"
+    ./test-bbdev.py -e="--vdev=baseband_null,socket_id=0,max_nb_queues=8"

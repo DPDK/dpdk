@@ -31,8 +31,8 @@ Limitations
 Compiling the Application
 -------------------------
 
-#. DPDK needs to be built with ``turbo_sw`` PMD driver enabled along with
-   ``FLEXRAN SDK`` Libraries. Refer to *SW Turbo Poll Mode Driver*
+#. DPDK needs to be built with ``baseband_turbo_sw`` PMD driver enabled along
+   with ``FLEXRAN SDK`` Libraries. Refer to *SW Turbo Poll Mode Driver*
    documentation for more details on this.
 
 #. Go to the example directory:
@@ -84,13 +84,14 @@ issue the command:
 
 .. code-block:: console
 
-    $ ./build/bbdev --vdev='turbo_sw' -w <NIC0PCIADDR> -c 0x38 --socket-mem=2,2 \
+    $ ./build/bbdev --vdev='baseband_turbo_sw' -w <NIC0PCIADDR> -c 0x38 --socket-mem=2,2 \
     --file-prefix=bbdev -- -e 0x10 -d 0x20
 
 where, NIC0PCIADDR is the PCI addresse of the Rx port
 
-This command creates one virtual bbdev devices ``turbo_sw`` where the device
-gets linked to a corresponding ethernet port as whitelisted by the parameter -w.
+This command creates one virtual bbdev devices ``baseband_turbo_sw`` where the
+device gets linked to a corresponding ethernet port as whitelisted by
+the parameter -w.
 3 cores are allocated to the application, and assigned as:
 
  - core 3 is the master and used to print the stats live on screen,

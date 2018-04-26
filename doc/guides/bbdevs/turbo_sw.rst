@@ -4,7 +4,7 @@
 SW Turbo Poll Mode Driver
 =========================
 
-The SW Turbo PMD (**turbo_sw**) provides a poll mode bbdev driver that utilizes
+The SW Turbo PMD (**baseband_turbo_sw**) provides a poll mode bbdev driver that utilizes
 Intel optimized libraries for LTE Layer 1 workloads acceleration. This PMD
 supports the functions: Turbo FEC, Rate Matching and CRC functions.
 
@@ -41,7 +41,7 @@ Installation
 FlexRAN SDK Download
 ~~~~~~~~~~~~~~~~~~~~
 
-To build DPDK with the *turbo_sw* PMD the user is required to download
+To build DPDK with the *baseband_turbo_sw* PMD the user is required to download
 the export controlled ``FlexRAN SDK`` Libraries. An account at `Intel Resource
 Design Center <https://www.intel.com/content/www/us/en/design/resource-design-center.html>`_
 needs to be registered.
@@ -139,9 +139,9 @@ Example:
 
 To use the PMD in an application, user must:
 
-- Call ``rte_vdev_init("turbo_sw")`` within the application.
+- Call ``rte_vdev_init("baseband_turbo_sw")`` within the application.
 
-- Use ``--vdev="turbo_sw"`` in the EAL options, which will call ``rte_vdev_init()`` internally.
+- Use ``--vdev="baseband_turbo_sw"`` in the EAL options, which will call ``rte_vdev_init()`` internally.
 
 The following parameters (all optional) can be provided in the previous two calls:
 
@@ -155,5 +155,5 @@ Example:
 
 .. code-block:: console
 
-    ./test-bbdev.py -e="--vdev=turbo_sw,socket_id=0,max_nb_queues=8" \
+    ./test-bbdev.py -e="--vdev=baseband_turbo_sw,socket_id=0,max_nb_queues=8" \
     -c validation -v ./test_vectors/bbdev_vector_t?_default.data

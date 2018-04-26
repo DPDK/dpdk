@@ -33,7 +33,7 @@ parser.add_argument("-p", "--testapp-path",
                     default=dpdk_path + "/" + dpdk_target + "/app/testbbdev")
 parser.add_argument("-e", "--eal-params",
                     help="EAL arguments which are passed to the test app",
-                    default="--vdev=bbdev_null0")
+                    default="--vdev=baseband_null0")
 parser.add_argument("-t", "--timeout",
                     type=int,
                     help="Timeout in seconds",
