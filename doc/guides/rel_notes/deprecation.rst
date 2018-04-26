@@ -59,12 +59,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* ethdev: A work is being planned for 18.05 to expose VF port representors
-  as a mean to perform control and data path operation on the different VFs.
-  As VF representor is an ethdev port, new fields are needed in order to map
-  between the VF representor and the VF or the parent PF. Those new fields
-  are to be included in ``rte_eth_dev_info`` struct.
-
 * i40e: The default flexible payload configuration which extracts the first 16
   bytes of the payload for RSS will be deprecated starting from 18.02. If
   required the previous behavior can be configured using existing flow

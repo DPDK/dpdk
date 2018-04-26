@@ -1027,6 +1027,28 @@ struct rte_eth_dev_portconf {
 };
 
 /**
+ * Default values for switch domain id when ethdev does not support switch
+ * domain definitions.
+ */
+#define RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID	(0)
+
+/**
+ * Ethernet device associated switch information
+ */
+struct rte_eth_switch_info {
+	const char *name;	/**< switch name */
+	uint16_t domain_id;	/**< switch domain id */
+	uint16_t port_id;
+	/**<
+	 * mapping to the devices physical switch port as enumerated from the
+	 * perspective of the embedded interconnect/switch. For SR-IOV enabled
+	 * device this may correspond to the VF_ID of each virtual function,
+	 * but each driver should explicitly define the mapping of switch
+	 * port identifier to that physical interconnect/switch
+	 */
+};
+
+/**
  * Ethernet device information
  */
 struct rte_eth_dev_info {
@@ -1073,6 +1095,11 @@ struct rte_eth_dev_info {
 	struct rte_eth_dev_portconf default_txportconf;
 	/** Generic device capabilities (RTE_ETH_DEV_CAPA_). */
 	uint64_t dev_capa;
+	/**
+	 * Switching information for ports on a device with a
+	 * embedded managed interconnect/switch.
+	 */
+	struct rte_eth_switch_info switch_info;
 };
 
 /**

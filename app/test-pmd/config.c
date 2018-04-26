@@ -517,6 +517,18 @@ port_infos_display(portid_t port_id)
 	printf("Min possible number of TXDs per queue: %hu\n",
 		dev_info.tx_desc_lim.nb_min);
 	printf("TXDs number alignment: %hu\n", dev_info.tx_desc_lim.nb_align);
+
+	/* Show switch info only if valid switch domain and port id is set */
+	if (dev_info.switch_info.domain_id !=
+		RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
+		if (dev_info.switch_info.name)
+			printf("Switch name: %s\n", dev_info.switch_info.name);
+
+		printf("Switch domain Id: %u\n",
+			dev_info.switch_info.domain_id);
+		printf("Switch Port Id: %u\n",
+			dev_info.switch_info.port_id);
+	}
 }
 
 void
