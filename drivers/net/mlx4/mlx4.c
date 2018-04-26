@@ -387,6 +387,99 @@ free_kvlist:
 	return ret;
 }
 
+/**
+ * Interpret RSS capabilities reported by device.
+ *
+ * This function returns the set of usable Verbs RSS hash fields, kernel
+ * quirks taken into account.
+ *
+ * @param ctx
+ *   Verbs context.
+ * @param pd
+ *   Verbs protection domain.
+ * @param device_attr_ex
+ *   Extended device attributes to interpret.
+ *
+ * @return
+ *   Usable RSS hash fields mask in Verbs format.
+ */
+static uint64_t
+mlx4_hw_rss_sup(struct ibv_context *ctx, struct ibv_pd *pd,
+		struct ibv_device_attr_ex *device_attr_ex)
+{
+	uint64_t hw_rss_sup = device_attr_ex->rss_caps.rx_hash_fields_mask;
+	struct ibv_cq *cq = NULL;
+	struct ibv_wq *wq = NULL;
+	struct ibv_rwq_ind_table *ind = NULL;
+	struct ibv_qp *qp = NULL;
+
+	if (!hw_rss_sup) {
+		WARN("no RSS capabilities reported; disabling support for UDP"
+		     " RSS and inner VXLAN RSS");
+		return IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 |
+			IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6 |
+			IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_DST_PORT_TCP;
+	}
+	if (!(hw_rss_sup & IBV_RX_HASH_INNER))
+		return hw_rss_sup;
+	/*
+	 * Although reported as supported, missing code in some Linux
+	 * versions (v4.15, v4.16) prevents the creation of hash QPs with
+	 * inner capability.
+	 *
+	 * There is no choice but to attempt to instantiate a temporary RSS
+	 * context in order to confirm its support.
+	 */
+	cq = mlx4_glue->create_cq(ctx, 1, NULL, NULL, 0);
+	wq = cq ? mlx4_glue->create_wq
+		(ctx,
+		 &(struct ibv_wq_init_attr){
+			.wq_type = IBV_WQT_RQ,
+			.max_wr = 1,
+			.max_sge = 1,
+			.pd = pd,
+			.cq = cq,
+		 }) : NULL;
+	ind = wq ? mlx4_glue->create_rwq_ind_table
+		(ctx,
+		 &(struct ibv_rwq_ind_table_init_attr){
+			.log_ind_tbl_size = 0,
+			.ind_tbl = &wq,
+			.comp_mask = 0,
+		 }) : NULL;
+	qp = ind ? mlx4_glue->create_qp_ex
+		(ctx,
+		 &(struct ibv_qp_init_attr_ex){
+			.comp_mask =
+				(IBV_QP_INIT_ATTR_PD |
+				 IBV_QP_INIT_ATTR_RX_HASH |
+				 IBV_QP_INIT_ATTR_IND_TABLE),
+			.qp_type = IBV_QPT_RAW_PACKET,
+			.pd = pd,
+			.rwq_ind_tbl = ind,
+			.rx_hash_conf = {
+				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
+				.rx_hash_key_len = MLX4_RSS_HASH_KEY_SIZE,
+				.rx_hash_key = mlx4_rss_hash_key_default,
+				.rx_hash_fields_mask = hw_rss_sup,
+			},
+		 }) : NULL;
+	if (!qp) {
+		WARN("disabling unusable inner RSS capability due to kernel"
+		     " quirk");
+		hw_rss_sup &= ~IBV_RX_HASH_INNER;
+	} else {
+		claim_zero(mlx4_glue->destroy_qp(qp));
+	}
+	if (ind)
+		claim_zero(mlx4_glue->destroy_rwq_ind_table(ind));
+	if (wq)
+		claim_zero(mlx4_glue->destroy_wq(wq));
+	if (cq)
+		claim_zero(mlx4_glue->destroy_cq(cq));
+	return hw_rss_sup;
+}
+
 static struct rte_pci_driver mlx4_driver;
 
 /**
@@ -565,18 +658,8 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			 PCI_DEVICE_ID_MELLANOX_CONNECTX3PRO);
 		DEBUG("L2 tunnel checksum offloads are %ssupported",
 		      priv->hw_csum_l2tun ? "" : "not ");
-		priv->hw_rss_sup = device_attr_ex.rss_caps.rx_hash_fields_mask;
-		if (!priv->hw_rss_sup) {
-			WARN("no RSS capabilities reported; disabling support"
-			     " for UDP RSS and inner VXLAN RSS");
-			priv->hw_rss_sup =
-				IBV_RX_HASH_SRC_IPV4 |
-				IBV_RX_HASH_DST_IPV4 |
-				IBV_RX_HASH_SRC_IPV6 |
-				IBV_RX_HASH_DST_IPV6 |
-				IBV_RX_HASH_SRC_PORT_TCP |
-				IBV_RX_HASH_DST_PORT_TCP;
-		}
+		priv->hw_rss_sup = mlx4_hw_rss_sup(priv->ctx, priv->pd,
+						   &device_attr_ex);
 		DEBUG("supported RSS hash fields mask: %016" PRIx64,
 		      priv->hw_rss_sup);
 		priv->hw_fcs_strip = !!(device_attr_ex.raw_packet_caps &
