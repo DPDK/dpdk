@@ -189,6 +189,36 @@ rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
 }
 
 
+/** Generic Ethernet device arguments  */
+struct rte_eth_devargs {
+	uint16_t ports[RTE_MAX_ETHPORTS];
+	/** port/s number to enable on a multi-port single function */
+	uint16_t nb_ports;
+	/** number of ports in ports field */
+	uint16_t representor_ports[RTE_MAX_ETHPORTS];
+	/** representor port/s identifier to enable on device */
+	uint16_t nb_representor_ports;
+	/** number of ports in representor port field */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * PMD helper function to parse ethdev arguments
+ *
+ * @param devargs
+ *  device arguments
+ * @param eth_devargs
+ *  parsed ethdev specific arguments.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ */
+int __rte_experimental
+rte_eth_devargs_parse(const char *devargs, struct rte_eth_devargs *eth_devargs);
+
+
 typedef int (*ethdev_init_t)(struct rte_eth_dev *ethdev, void *init_params);
 typedef int (*ethdev_bus_specific_init)(struct rte_eth_dev *ethdev,
 	void *bus_specific_init_params);

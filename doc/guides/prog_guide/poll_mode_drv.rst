@@ -345,6 +345,25 @@ Ethernet Device API
 
 The Ethernet device API exported by the Ethernet PMDs is described in the *DPDK API Reference*.
 
+Ethernet Device Standard Device Arguments
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Standard Ethernet device arguments allow for a set of commonly used arguments/
+parameters which are applicable to all Ethernet devices to be available to for
+specification of specific device and for passing common configuration
+parameters to those ports.
+
+* ``representor`` for a device which supports the creation of representor ports
+  this argument allows user to specify which switch ports to enable port
+  representors for.::
+
+   -w BDBF,representor=0
+   -w BDBF,representor=[0,4,6,9]
+   -w BDBF,representor=[0-31]
+
+Note: PMDs are not required to support the standard device arguments and users
+should consult the relevant PMD documentation to see support devargs.
+
 Extended Statistics API
 ~~~~~~~~~~~~~~~~~~~~~~~
 

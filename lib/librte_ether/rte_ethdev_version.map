@@ -214,6 +214,7 @@ DPDK_18.05 {
 EXPERIMENTAL {
 	global:
 
+	rte_eth_devargs_parse;
 	rte_eth_dev_count_total;
 	rte_eth_dev_create;
 	rte_eth_dev_destroy;

@@ -34,6 +34,7 @@
 #include <rte_errno.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
+#include <rte_kvargs.h>
 
 #include "rte_ether.h"
 #include "rte_ethdev.h"
@@ -4123,6 +4124,187 @@ rte_eth_dev_pool_ops_supported(uint16_t port_id, const char *pool)
 		return 1; /* all pools are supported */
 
 	return (*dev->dev_ops->pool_ops_supported)(dev, pool);
+}
+
+typedef int (*rte_eth_devargs_callback_t)(char *str, void *data);
+
+static int
+rte_eth_devargs_tokenise(struct rte_kvargs *arglist, const char *str_in)
+{
+	int state;
+	struct rte_kvargs_pair *pair;
+	char *letter;
+
+	arglist->str = strdup(str_in);
+	if (arglist->str == NULL)
+		return -ENOMEM;
+
+	letter = arglist->str;
+	state = 0;
+	arglist->count = 0;
+	pair = &arglist->pairs[0];
+	while (1) {
+		switch (state) {
+		case 0: /* Initial */
+			if (*letter == '=')
+				return -EINVAL;
+			else if (*letter == '\0')
+				return 0;
+
+			state = 1;
+			pair->key = letter;
+			/* fall-thru */
+
+		case 1: /* Parsing key */
+			if (*letter == '=') {
+				*letter = '\0';
+				pair->value = letter + 1;
+				state = 2;
+			} else if (*letter == ',' || *letter == '\0')
+				return -EINVAL;
+			break;
+
+
+		case 2: /* Parsing value */
+			if (*letter == '[')
+				state = 3;
+			else if (*letter == ',') {
+				*letter = '\0';
+				arglist->count++;
+				pair = &arglist->pairs[arglist->count];
+				state = 0;
+			} else if (*letter == '\0') {
+				letter--;
+				arglist->count++;
+				pair = &arglist->pairs[arglist->count];
+				state = 0;
+			}
+			break;
+
+		case 3: /* Parsing list */
+			if (*letter == ']')
+				state = 2;
+			else if (*letter == '\0')
+				return -EINVAL;
+			break;
+		}
+		letter++;
+	}
+}
+
+static int
+rte_eth_devargs_parse_list(char *str, rte_eth_devargs_callback_t callback,
+	void *data)
+{
+	char *str_start;
+	int state;
+	int result;
+
+	if (*str != '[')
+		/* Single element, not a list */
+		return callback(str, data);
+
+	/* Sanity check, then strip the brackets */
+	str_start = &str[strlen(str) - 1];
+	if (*str_start != ']') {
+		RTE_LOG(ERR, EAL, "(%s): List does not end with ']'", str);
+		return -EINVAL;
+	}
+	str++;
+	*str_start = '\0';
+
+	/* Process list elements */
+	state = 0;
+	while (1) {
+		if (state == 0) {
+			if (*str == '\0')
+				break;
+			if (*str != ',') {
+				str_start = str;
+				state = 1;
+			}
+		} else if (state == 1) {
+			if (*str == ',' || *str == '\0') {
+				if (str > str_start) {
+					/* Non-empty string fragment */
+					*str = '\0';
+					result = callback(str_start, data);
+					if (result < 0)
+						return result;
+				}
+				state = 0;
+			}
+		}
+		str++;
+	}
+	return 0;
+}
+
+static int
+rte_eth_devargs_process_range(char *str, uint16_t *list, uint16_t *len_list,
+	const uint16_t max_list)
+{
+	uint16_t lo, hi, val;
+	int result;
+
+	result = sscanf(str, "%hu-%hu", &lo, &hi);
+	if (result == 1) {
+		if (*len_list >= max_list)
+			return -ENOMEM;
+		list[(*len_list)++] = lo;
+	} else if (result == 2) {
+		if (lo >= hi || lo > RTE_MAX_ETHPORTS || hi > RTE_MAX_ETHPORTS)
+			return -EINVAL;
+		for (val = lo; val <= hi; val++) {
+			if (*len_list >= max_list)
+				return -ENOMEM;
+			list[(*len_list)++] = val;
+		}
+	} else
+		return -EINVAL;
+	return 0;
+}
+
+
+static int
+rte_eth_devargs_parse_representor_ports(char *str, void *data)
+{
+	struct rte_eth_devargs *eth_da = data;
+
+	return rte_eth_devargs_process_range(str, eth_da->representor_ports,
+		&eth_da->nb_representor_ports, RTE_MAX_ETHPORTS);
+}
+
+int __rte_experimental
+rte_eth_devargs_parse(const char *dargs, struct rte_eth_devargs *eth_da)
+{
+	struct rte_kvargs args;
+	struct rte_kvargs_pair *pair;
+	unsigned int i;
+	int result = 0;
+
+	memset(eth_da, 0, sizeof(*eth_da));
+
+	result = rte_eth_devargs_tokenise(&args, dargs);
+	if (result < 0)
+		goto parse_cleanup;
+
+	for (i = 0; i < args.count; i++) {
+		pair = &args.pairs[i];
+		if (strcmp("representor", pair->key) == 0) {
+			result = rte_eth_devargs_parse_list(pair->value,
+				rte_eth_devargs_parse_representor_ports,
+				eth_da);
+			if (result < 0)
+				goto parse_cleanup;
+		}
+	}
+
+parse_cleanup:
+	if (args.str)
+		free(args.str);
+
+	return result;
 }
 
 RTE_INIT(ethdev_init_log);

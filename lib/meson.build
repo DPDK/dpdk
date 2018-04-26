@@ -9,10 +9,9 @@
 # given as a dep, no need to mention ring. This is especially true for the
 # core libs which are widely reused, so their deps are kept to a minimum.
 libraries = [ 'compat', # just a header, used for versioning
-	'eal', 'ring', 'mempool', 'mbuf', 'net', 'ether', 'pci', # core
+	'eal', 'ring', 'mempool', 'mbuf', 'net', 'kvargs', 'ether', 'pci', # core
 	'metrics', # bitrate/latency stats depends on this
 	'hash',    # efd depends on this
-	'kvargs',  # cryptodev depends on this
 	'timer',   # eventdev depends on this
 	'acl', 'bbdev', 'bitratestats', 'cfgfile',
 	'cmdline', 'cryptodev',

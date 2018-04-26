@@ -24,4 +24,4 @@ headers = files('rte_ethdev.h',
 	'rte_tm.h',
 	'rte_tm_driver.h')
 
-deps += ['net']
+deps += ['net', 'kvargs']
