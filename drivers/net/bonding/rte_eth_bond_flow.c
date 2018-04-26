@@ -152,6 +152,7 @@ bond_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *err)
 
 static int
 bond_flow_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
+		      const struct rte_flow_action *action,
 		      struct rte_flow_query_count *count,
 		      struct rte_flow_error *err)
 {
@@ -165,7 +166,7 @@ bond_flow_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 	rte_memcpy(&slave_count, count, sizeof(slave_count));
 	for (i = 0; i < internals->slave_count; i++) {
 		ret = rte_flow_query(internals->slaves[i].port_id,
-				     flow->flows[i], RTE_FLOW_ACTION_TYPE_COUNT,
+				     flow->flows[i], action,
 				     &slave_count, err);
 		if (unlikely(ret != 0)) {
 			RTE_BOND_LOG(ERR, "Failed to query flow on"
@@ -182,12 +183,12 @@ bond_flow_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 static int
 bond_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
-		enum rte_flow_action_type type, void *arg,
+		const struct rte_flow_action *action, void *arg,
 		struct rte_flow_error *err)
 {
-	switch (type) {
+	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_COUNT:
-		return bond_flow_query_count(dev, flow, arg, err);
+		return bond_flow_query_count(dev, flow, action, arg, err);
 	default:
 		return rte_flow_error_set(err, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, arg,

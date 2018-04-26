@@ -620,7 +620,7 @@ int port_flow_create(portid_t port_id,
 int port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule);
 int port_flow_flush(portid_t port_id);
 int port_flow_query(portid_t port_id, uint32_t rule,
-		    enum rte_flow_action_type action);
+		    const struct rte_flow_action *action);
 void port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group);
 int port_flow_isolate(portid_t port_id, int set);
 

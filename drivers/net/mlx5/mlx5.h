@@ -277,7 +277,7 @@ int mlx5_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 void mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list);
 int mlx5_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error);
 int mlx5_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
-		    enum rte_flow_action_type action, void *data,
+		    const struct rte_flow_action *action, void *data,
 		    struct rte_flow_error *error);
 int mlx5_flow_isolate(struct rte_eth_dev *dev, int enable,
 		      struct rte_flow_error *error);

@@ -420,7 +420,7 @@ struct buffer {
 		} destroy; /**< Destroy arguments. */
 		struct {
 			uint32_t rule;
-			enum rte_flow_action_type action;
+			struct rte_flow_action action;
 		} query; /**< Query arguments. */
 		struct {
 			uint32_t *group;
@@ -1101,7 +1101,7 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(QUERY_ACTION),
 			     NEXT_ENTRY(RULE_ID),
 			     NEXT_ENTRY(PORT_ID)),
-		.args = ARGS(ARGS_ENTRY(struct buffer, args.query.action),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.query.action.type),
 			     ARGS_ENTRY(struct buffer, args.query.rule),
 			     ARGS_ENTRY(struct buffer, port)),
 		.call = parse_query,
@@ -3842,7 +3842,7 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case QUERY:
 		port_flow_query(in->port, in->args.query.rule,
-				in->args.query.action);
+				&in->args.query.action);
 		break;
 	case LIST:
 		port_flow_list(in->port, in->args.list.group_n,

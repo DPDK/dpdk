@@ -1277,17 +1277,19 @@ Actions are performed in list order:
 
 .. table:: Mark, count then redirect
 
-   +-------+--------+-----------+-------+
-   | Index | Action | Field     | Value |
-   +=======+========+===========+=======+
-   | 0     | MARK   | ``mark``  | 0x2a  |
-   +-------+--------+-----------+-------+
-   | 1     | COUNT                      |
-   +-------+--------+-----------+-------+
-   | 2     | QUEUE  | ``queue`` | 10    |
-   +-------+--------+-----------+-------+
-   | 3     | END                        |
-   +-------+----------------------------+
+   +-------+--------+------------+-------+
+   | Index | Action | Field      | Value |
+   +=======+========+============+=======+
+   | 0     | MARK   | ``mark``   | 0x2a  |
+   +-------+--------+------------+-------+
+   | 1     | COUNT  | ``shared`` | 0     |
+   |       |        +------------+-------+
+   |       |        | ``id``     | 0     |
+   +-------+--------+------------+-------+
+   | 2     | QUEUE  | ``queue``  | 10    |
+   +-------+--------+------------+-------+
+   | 3     | END                         |
+   +-------+-----------------------------+
 
 |
 
@@ -1516,23 +1518,36 @@ Drop packets.
 Action: ``COUNT``
 ^^^^^^^^^^^^^^^^^
 
-Enables counters for this rule.
+Adds a counter action to a matched flow.
 
-These counters can be retrieved and reset through ``rte_flow_query()``, see
+If more than one count action is specified in a single flow rule, then each
+action must specify a unique id.
+
+Counters can be retrieved and reset through ``rte_flow_query()``, see
 ``struct rte_flow_query_count``.
 
-- Counters can be retrieved with ``rte_flow_query()``.
-- No configurable properties.
+The shared flag indicates whether the counter is unique to the flow rule the
+action is specified with, or whether it is a shared counter.
+
+For a count action with the shared flag set, then then a global device
+namespace is assumed for the counter id, so that any matched flow rules using
+a count action with the same counter id on the same port will contribute to
+that counter.
+
+For ports within the same switch domain then the counter id namespace extends
+to all ports within that switch domain.
 
 .. _table_rte_flow_action_count:
 
 .. table:: COUNT
 
-   +---------------+
-   | Field         |
-   +===============+
-   | no properties |
-   +---------------+
+   +------------+---------------------+
+   | Field      | Value               |
+   +============+=====================+
+   | ``shared`` | shared counter flag |
+   +------------+---------------------+
+   | ``id``     | counter id          |
+   +------------+---------------------+
 
 Query structure to retrieve and reset flow rule counters:
 
@@ -2282,7 +2297,7 @@ definition.
    int
    rte_flow_query(uint16_t port_id,
                   struct rte_flow *flow,
-                  enum rte_flow_action_type action,
+                  const struct rte_flow_action *action,
                   void *data,
                   struct rte_flow_error *error);
 
@@ -2290,7 +2305,7 @@ Arguments:
 
 - ``port_id``: port identifier of Ethernet device.
 - ``flow``: flow rule handle to query.
-- ``action``: action type to query.
+- ``action``: action to query, this must match prototype from flow rule.
 - ``data``: pointer to storage for the associated query data type.
 - ``error``: perform verbose error reporting if not NULL. PMDs initialize
   this structure in case of error only.

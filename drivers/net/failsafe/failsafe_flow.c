@@ -174,7 +174,7 @@ fs_flow_flush(struct rte_eth_dev *dev,
 static int
 fs_flow_query(struct rte_eth_dev *dev,
 	      struct rte_flow *flow,
-	      enum rte_flow_action_type type,
+	      const struct rte_flow_action *action,
 	      void *arg,
 	      struct rte_flow_error *error)
 {
@@ -185,7 +185,7 @@ fs_flow_query(struct rte_eth_dev *dev,
 	if (sdev != NULL) {
 		int ret = rte_flow_query(PORT_ID(sdev),
 					 flow->flows[SUB_ID(sdev)],
-					 type, arg, error);
+					 action, arg, error);
 
 		if ((ret = fs_err(sdev, ret))) {
 			fs_unlock(dev, 0);

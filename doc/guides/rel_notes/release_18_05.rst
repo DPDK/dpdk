@@ -293,6 +293,10 @@ API Changes
   * PORT_ID pattern item and actions were added to match and target DPDK
     port IDs at a higher level than PHY_PORT.
 
+* ethdev: change flow APIs regarding count action:
+  * ``rte_flow_create()`` API count action now requires the ``struct rte_flow_action_count``.
+  * ``rte_flow_query()`` API parameter changed from action type to action structure.
+
 
 ABI Changes
 -----------

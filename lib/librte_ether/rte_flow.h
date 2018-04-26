@@ -1314,7 +1314,7 @@ enum rte_flow_action_type {
 	 * These counters can be retrieved and reset through rte_flow_query(),
 	 * see struct rte_flow_query_count.
 	 *
-	 * No associated configuration structure.
+	 * See struct rte_flow_action_count.
 	 */
 	RTE_FLOW_ACTION_TYPE_COUNT,
 
@@ -1544,6 +1544,38 @@ struct rte_flow_action_jump {
  */
 struct rte_flow_action_queue {
 	uint16_t index; /**< Queue index to use. */
+};
+
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_COUNT
+ *
+ * Adds a counter action to a matched flow.
+ *
+ * If more than one count action is specified in a single flow rule, then each
+ * action must specify a unique id.
+ *
+ * Counters can be retrieved and reset through ``rte_flow_query()``, see
+ * ``struct rte_flow_query_count``.
+ *
+ * The shared flag indicates whether the counter is unique to the flow rule the
+ * action is specified with, or whether it is a shared counter.
+ *
+ * For a count action with the shared flag set, then then a global device
+ * namespace is assumed for the counter id, so that any matched flow rules using
+ * a count action with the same counter id on the same port will contribute to
+ * that counter.
+ *
+ * For ports within the same switch domain then the counter id namespace extends
+ * to all ports within that switch domain.
+ */
+struct rte_flow_action_count {
+	uint32_t shared:1; /**< Share counter ID with other flow rules. */
+	uint32_t reserved:31; /**< Reserved, must be zero. */
+	uint32_t id; /**< Counter ID. */
 };
 
 /**
@@ -2044,7 +2076,7 @@ rte_flow_flush(uint16_t port_id,
  * @param flow
  *   Flow rule handle to query.
  * @param action
- *   Action type to query.
+ *   Action definition as defined in original flow rule.
  * @param[in, out] data
  *   Pointer to storage for the associated query data type.
  * @param[out] error
@@ -2057,7 +2089,7 @@ rte_flow_flush(uint16_t port_id,
 int
 rte_flow_query(uint16_t port_id,
 	       struct rte_flow *flow,
-	       enum rte_flow_action_type action,
+	       const struct rte_flow_action *action,
 	       void *data,
 	       struct rte_flow_error *error);
 

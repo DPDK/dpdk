@@ -1114,7 +1114,7 @@ static const struct {
 	MK_FLOW_ACTION(FLAG, 0),
 	MK_FLOW_ACTION(QUEUE, sizeof(struct rte_flow_action_queue)),
 	MK_FLOW_ACTION(DROP, 0),
-	MK_FLOW_ACTION(COUNT, 0),
+	MK_FLOW_ACTION(COUNT, sizeof(struct rte_flow_action_count)),
 	MK_FLOW_ACTION(RSS, sizeof(struct rte_flow_action_rss)),
 	MK_FLOW_ACTION(PF, 0),
 	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),
@@ -1467,7 +1467,7 @@ port_flow_flush(portid_t port_id)
 /** Query a flow rule. */
 int
 port_flow_query(portid_t port_id, uint32_t rule,
-		enum rte_flow_action_type action)
+		const struct rte_flow_action *action)
 {
 	struct rte_flow_error error;
 	struct rte_port *port;
@@ -1488,16 +1488,17 @@ port_flow_query(portid_t port_id, uint32_t rule,
 		printf("Flow rule #%u not found\n", rule);
 		return -ENOENT;
 	}
-	if ((unsigned int)action >= RTE_DIM(flow_action) ||
-	    !flow_action[action].name)
+	if ((unsigned int)action->type >= RTE_DIM(flow_action) ||
+	    !flow_action[action->type].name)
 		name = "unknown";
 	else
-		name = flow_action[action].name;
-	switch (action) {
+		name = flow_action[action->type].name;
+	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		break;
 	default:
-		printf("Cannot query action type %d (%s)\n", action, name);
+		printf("Cannot query action type %d (%s)\n",
+			action->type, name);
 		return -ENOTSUP;
 	}
 	/* Poisoning to make sure PMDs update it in case of error. */
@@ -1505,7 +1506,7 @@ port_flow_query(portid_t port_id, uint32_t rule,
 	memset(&query, 0, sizeof(query));
 	if (rte_flow_query(port_id, pf->flow, action, &query, &error))
 		return port_flow_complain(&error);
-	switch (action) {
+	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		printf("%s:\n"
 		       " hits_set: %u\n"
@@ -1520,7 +1521,7 @@ port_flow_query(portid_t port_id, uint32_t rule,
 		break;
 	default:
 		printf("Cannot display result for action type %d (%s)\n",
-		       action, name);
+		       action->type, name);
 		break;
 	}
 	return 0;

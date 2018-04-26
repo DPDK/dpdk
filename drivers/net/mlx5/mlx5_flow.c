@@ -3079,7 +3079,7 @@ mlx5_flow_query_count(struct ibv_counter_set *cs,
 int
 mlx5_flow_query(struct rte_eth_dev *dev __rte_unused,
 		struct rte_flow *flow,
-		enum rte_flow_action_type action __rte_unused,
+		const struct rte_flow_action *action __rte_unused,
 		void *data,
 		struct rte_flow_error *error)
 {

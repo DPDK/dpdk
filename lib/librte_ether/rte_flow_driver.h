@@ -88,7 +88,7 @@ struct rte_flow_ops {
 	int (*query)
 		(struct rte_eth_dev *,
 		 struct rte_flow *,
-		 enum rte_flow_action_type,
+		 const struct rte_flow_action *,
 		 void *,
 		 struct rte_flow_error *);
 	/** See rte_flow_isolate(). */
