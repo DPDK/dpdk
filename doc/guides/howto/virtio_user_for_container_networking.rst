@@ -109,7 +109,8 @@ We have below limitations in this solution:
  * Cannot work with --no-huge option. Currently, DPDK uses anonymous mapping
    under this option which cannot be reopened to share with vhost backend.
  * Cannot work when there are more than VHOST_MEMORY_MAX_NREGIONS(8) hugepages.
-   In another word, do not use 2MB hugepage so far.
+   If you have more regions (especially when 2MB hugepages are used), the option,
+   --single-file-segments, can help to reduce the number of shared files.
  * Applications should not use file name like HUGEFILE_FMT ("%smap_%d"). That
    will bring confusion when sharing hugepage files with backend by name.
  * Root privilege is a must. DPDK resolves physical addresses of hugepages

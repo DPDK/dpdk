@@ -138,12 +138,13 @@ struct hugepage_file_info {
 static int
 get_hugepage_file_info(struct hugepage_file_info huges[], int max)
 {
-	int idx;
+	int idx, k, exist;
 	FILE *f;
 	char buf[BUFSIZ], *tmp, *tail;
 	char *str_underline, *str_start;
 	int huge_index;
 	uint64_t v_start, v_end;
+	struct stat stats;
 
 	f = fopen("/proc/self/maps", "r");
 	if (!f) {
@@ -183,14 +184,37 @@ get_hugepage_file_info(struct hugepage_file_info huges[], int max)
 		if (sscanf(str_start, "map_%d", &huge_index) != 1)
 			continue;
 
+		/* skip duplicated file which is mapped to different regions */
+		for (k = 0, exist = -1; k < idx; ++k) {
+			if (!strcmp(huges[k].path, tmp)) {
+				exist = k;
+				break;
+			}
+		}
+		if (exist >= 0)
+			continue;
+
 		if (idx >= max) {
 			PMD_DRV_LOG(ERR, "Exceed maximum of %d", max);
 			goto error;
 		}
+
 		huges[idx].addr = v_start;
-		huges[idx].size = v_end - v_start;
+		huges[idx].size = v_end - v_start; /* To be corrected later */
 		snprintf(huges[idx].path, PATH_MAX, "%s", tmp);
 		idx++;
+	}
+
+	/* correct the size for files who have many regions */
+	for (k = 0; k < idx; ++k) {
+		if (stat(huges[k].path, &stats) < 0) {
+			PMD_DRV_LOG(ERR, "Failed to stat %s, %s\n",
+				    huges[k].path, strerror(errno));
+			continue;
+		}
+		huges[k].size = stats.st_size;
+		PMD_DRV_LOG(INFO, "file %s, size %zx\n",
+			    huges[k].path, huges[k].size);
 	}
 
 	fclose(f);
