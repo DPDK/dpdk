@@ -3389,6 +3389,99 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 			RTE_MEMZONE_IOVA_CONTIG, align);
 }
 
+int __rte_experimental
+rte_eth_dev_create(struct rte_device *device, const char *name,
+	size_t priv_data_size,
+	ethdev_bus_specific_init ethdev_bus_specific_init,
+	void *bus_init_params,
+	ethdev_init_t ethdev_init, void *init_params)
+{
+	struct rte_eth_dev *ethdev;
+	int retval;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*ethdev_init, -EINVAL);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ethdev = rte_eth_dev_allocate(name);
+		if (!ethdev) {
+			retval = -ENODEV;
+			goto probe_failed;
+		}
+
+		if (priv_data_size) {
+			ethdev->data->dev_private = rte_zmalloc_socket(
+				name, priv_data_size, RTE_CACHE_LINE_SIZE,
+				device->numa_node);
+
+			if (!ethdev->data->dev_private) {
+				RTE_LOG(ERR, EAL, "failed to allocate private data");
+				retval = -ENOMEM;
+				goto probe_failed;
+			}
+		}
+	} else {
+		ethdev = rte_eth_dev_attach_secondary(name);
+		if (!ethdev) {
+			RTE_LOG(ERR, EAL, "secondary process attach failed, "
+				"ethdev doesn't exist");
+			retval = -ENODEV;
+			goto probe_failed;
+		}
+	}
+
+	ethdev->device = device;
+
+	if (ethdev_bus_specific_init) {
+		retval = ethdev_bus_specific_init(ethdev, bus_init_params);
+		if (retval) {
+			RTE_LOG(ERR, EAL,
+				"ethdev bus specific initialisation failed");
+			goto probe_failed;
+		}
+	}
+
+	retval = ethdev_init(ethdev, init_params);
+	if (retval) {
+		RTE_LOG(ERR, EAL, "ethdev initialisation failed");
+		goto probe_failed;
+	}
+
+	return retval;
+probe_failed:
+	/* free ports private data if primary process */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_free(ethdev->data->dev_private);
+
+	rte_eth_dev_release_port(ethdev);
+
+	return retval;
+}
+
+int  __rte_experimental
+rte_eth_dev_destroy(struct rte_eth_dev *ethdev,
+	ethdev_uninit_t ethdev_uninit)
+{
+	int ret;
+
+	ethdev = rte_eth_dev_allocated(ethdev->data->name);
+	if (!ethdev)
+		return -ENODEV;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*ethdev_uninit, -EINVAL);
+	if (ethdev_uninit) {
+		ret = ethdev_uninit(ethdev);
+		if (ret)
+			return ret;
+	}
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_free(ethdev->data->dev_private);
+
+	ethdev->data->dev_private = NULL;
+
+	return rte_eth_dev_release_port(ethdev);
+}
+
 int
 rte_eth_dev_rx_intr_ctl_q(uint16_t port_id, uint16_t queue_id,
 			  int epfd, int op, void *data)

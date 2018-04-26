@@ -70,6 +70,18 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
 	eth_dev->data->numa_node = pci_dev->device.numa_node;
 }
 
+static inline int
+eth_dev_pci_specific_init(struct rte_eth_dev *eth_dev, void *bus_device) {
+	struct rte_pci_device *pci_dev = bus_device;
+
+	if (!pci_dev)
+		return -ENODEV;
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
+	return 0;
+}
+
 /**
  * @internal
  * Allocates a new ethdev slot for an ethernet device and returns the pointer

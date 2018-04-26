@@ -188,6 +188,62 @@ rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
 #endif
 }
 
+
+typedef int (*ethdev_init_t)(struct rte_eth_dev *ethdev, void *init_params);
+typedef int (*ethdev_bus_specific_init)(struct rte_eth_dev *ethdev,
+	void *bus_specific_init_params);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * PMD helper function for the creation of a new ethdev ports.
+ *
+ * @param device
+ *  rte_device handle.
+ * @param name
+ *  port name.
+ * @param priv_data_size
+ *  size of private data required for port.
+ * @param bus_specific_init
+ *  port bus specific initialisation callback function
+ * @param bus_init_params
+ *  port bus specific initialisation parameters
+ * @param ethdev_init
+ *  device specific port initialization callback function
+ * @param init_params
+ *  port initialisation parameters
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ */
+int __rte_experimental
+rte_eth_dev_create(struct rte_device *device, const char *name,
+	size_t priv_data_size,
+	ethdev_bus_specific_init bus_specific_init, void *bus_init_params,
+	ethdev_init_t ethdev_init, void *init_params);
+
+
+typedef int (*ethdev_uninit_t)(struct rte_eth_dev *ethdev);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * PMD helper function for cleaing up the resources of a ethdev port on it's
+ * destruction.
+ *
+ * @param ethdev
+ *   ethdev handle of port.
+ * @param ethdev_uninit
+ *   device specific port un-initialise callback function
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ */
+int __rte_experimental
+rte_eth_dev_destroy(struct rte_eth_dev *ethdev, ethdev_uninit_t ethdev_uninit);
+
 #ifdef __cplusplus
 }
 #endif
