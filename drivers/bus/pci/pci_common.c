@@ -455,17 +455,20 @@ static struct rte_device *
 pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		const void *data)
 {
-	struct rte_pci_device *dev;
+	const struct rte_pci_device *pstart;
+	struct rte_pci_device *pdev;
 
-	FOREACH_DEVICE_ON_PCIBUS(dev) {
-		if (start && &dev->device == start) {
-			start = NULL; /* starting point found */
-			continue;
-		}
-		if (cmp(&dev->device, data) == 0)
-			return &dev->device;
+	if (start != NULL) {
+		pstart = RTE_DEV_TO_PCI_CONST(start);
+		pdev = TAILQ_NEXT(pstart, next);
+	} else {
+		pdev = TAILQ_FIRST(&rte_pci_bus.device_list);
 	}
-
+	while (pdev != NULL) {
+		if (cmp(&pdev->device, data) == 0)
+			return &pdev->device;
+		pdev = TAILQ_NEXT(pdev, next);
+	}
 	return NULL;
 }
 

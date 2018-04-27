@@ -74,6 +74,9 @@ struct rte_pci_device {
  */
 #define RTE_DEV_TO_PCI(ptr) container_of(ptr, struct rte_pci_device, device)
 
+#define RTE_DEV_TO_PCI_CONST(ptr) \
+	container_of(ptr, const struct rte_pci_device, device)
+
 #define RTE_ETH_DEV_TO_PCI(eth_dev)	RTE_DEV_TO_PCI((eth_dev)->device)
 
 /** Any PCI device identifier (vendor, device, ...) */
