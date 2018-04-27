@@ -63,6 +63,17 @@ enum rte_comp_algorithm {
 	RTE_COMP_ALGO_LIST_END
 };
 
+/** Compression Hash Algorithms */
+enum rte_comp_hash_algorithm {
+	RTE_COMP_HASH_ALGO_NONE = 0,
+	/**< No hash */
+	RTE_COMP_HASH_ALGO_SHA1,
+	/**< SHA1 hash algorithm */
+	RTE_COMP_HASH_ALGO_SHA2_256,
+	/**< SHA256 hash algorithm of SHA2 family */
+	RTE_COMP_HASH_ALGO_LIST_END
+};
+
 /**< Compression Level.
  * The number is interpreted by each PMD differently. However, lower numbers
  * give fastest compression, at the expense of compression ratio while
@@ -172,6 +183,10 @@ struct rte_comp_compress_xform {
 	 */
 	enum rte_comp_checksum_type chksum;
 	/**< Type of checksum to generate on the uncompressed data */
+	enum rte_comp_hash_algorithm hash_algo;
+	/**< Hash algorithm to be used with compress operation. Hash is always
+	 * done on plaintext.
+	 */
 };
 
 /**
@@ -186,6 +201,10 @@ struct rte_comp_decompress_xform {
 	/**< Base two log value of sliding window which was used to generate
 	 * compressed data. If window size can't be supported by the PMD then
 	 * setup of stream or private_xform should fail.
+	 */
+	enum rte_comp_hash_algorithm hash_algo;
+	/**< Hash algorithm to be used with decompress operation. Hash is always
+	 * done on plaintext.
 	 */
 };
 
@@ -272,6 +291,19 @@ struct rte_comp_op {
 		 * decompress direction.
 		 */
 	} dst;
+	struct {
+		uint8_t *digest;
+		/**< Output buffer to store hash output, if enabled in xform.
+		 * Buffer would contain valid value only after an op with
+		 * flush flag = RTE_COMP_FLUSH_FULL/FLUSH_FINAL is processed
+		 * successfully.
+		 *
+		 * Length of buffer should be contiguous and large enough to
+		 * accommodate digest produced by specific hash algo.
+		 */
+		rte_iova_t iova_addr;
+		/**< IO address of the buffer */
+	} hash;
 	enum rte_comp_flush_flag flush_flag;
 	/**< Defines flush characteristics for the output data.
 	 * Only applicable in compress direction
