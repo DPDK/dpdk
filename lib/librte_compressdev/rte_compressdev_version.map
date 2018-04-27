@@ -1,0 +1,24 @@
+EXPERIMENTAL {
+        global:
+
+	rte_compressdev_callback_register;
+	rte_compressdev_callback_unregister;
+	rte_compressdev_close;
+	rte_compressdev_configure;
+	rte_compressdev_count;
+	rte_compressdev_devices_get;
+	rte_compressdev_info_get;
+	rte_compressdev_name_get;
+	rte_compressdev_pmd_allocate;
+	rte_compressdev_pmd_callback_process;
+	rte_compressdev_pmd_create;
+	rte_compressdev_pmd_destroy;
+	rte_compressdev_pmd_get_named_dev;
+	rte_compressdev_pmd_parse_input_args;
+	rte_compressdev_pmd_release_device;
+	rte_compressdev_socket_id;
+	rte_compressdev_start;
+	rte_compressdev_stop;
+
+        local: *;
+};

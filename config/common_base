@@ -570,6 +570,12 @@ CONFIG_RTE_LIBRTE_PMD_MVSAM_CRYPTO_DEBUG=n
 CONFIG_RTE_LIBRTE_SECURITY=y
 
 #
+# Compile generic compression device library
+#
+CONFIG_RTE_LIBRTE_COMPRESSDEV=y
+CONFIG_RTE_COMPRESS_MAX_DEVS=64
+
+#
 # Compile generic event device library
 #
 CONFIG_RTE_LIBRTE_EVENTDEV=y

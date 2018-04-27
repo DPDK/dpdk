@@ -18,6 +18,7 @@ The public API headers are grouped by topics:
   [bbdev]              (@ref rte_bbdev.h),
   [cryptodev]          (@ref rte_cryptodev.h),
   [security]           (@ref rte_security.h),
+  [compressdev]        (@ref rte_compressdev.h),
   [eventdev]           (@ref rte_eventdev.h),
   [event_eth_rx_adapter]   (@ref rte_event_eth_rx_adapter.h),
   [event_timer_adapter]    (@ref rte_event_timer_adapter.h),

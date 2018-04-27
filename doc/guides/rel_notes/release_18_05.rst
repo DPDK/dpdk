@@ -139,6 +139,11 @@ New Features
 
   * AES-CMAC (128-bit key).
 
+* **Added Compressdev Library, a generic compression service library.**
+
+  The compressdev library provides an API for offload of compression and
+  decompression operations to hardware or software accelerator devices.
+
 * **Added the Event Timer Adapter Library.**
 
   The Event Timer Adapter Library extends the event-based model by introducing
@@ -453,6 +458,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cfgfile.so.2
      librte_cmdline.so.2
    + librte_common_octeontx.so.1
+   + librte_compressdev.so.1
      librte_cryptodev.so.4
      librte_distributor.so.1
    + librte_eal.so.7

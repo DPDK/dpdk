@@ -341,6 +341,13 @@ T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_security/
 F: doc/guides/prog_guide/rte_security.rst
 
+Compression API - EXPERIMENTAL
+M: Fiona Trahe <fiona.trahe@intel.com>
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+M: Ashish Gupta <ashish.gupta@caviumnetworks.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+F: lib/librte_compressdev/
+
 Eventdev API
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 T: git://dpdk.org/next/dpdk-next-eventdev

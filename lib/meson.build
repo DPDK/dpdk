@@ -14,7 +14,7 @@ libraries = [ 'compat', # just a header, used for versioning
 	'hash',    # efd depends on this
 	'timer',   # eventdev depends on this
 	'acl', 'bbdev', 'bitratestats', 'cfgfile',
-	'cmdline', 'cryptodev',
+	'cmdline', 'compressdev', 'cryptodev',
 	'distributor', 'efd', 'eventdev',
 	'gro', 'gso', 'ip_frag', 'jobstats',
 	'kni', 'latencystats', 'lpm', 'member',
