@@ -111,6 +111,19 @@ struct rte_compressdev_stats {
 	/**< Total error count on operations dequeued */
 };
 
+
+/**
+ * Get the device identifier for the named compress device.
+ *
+ * @param name
+ *   Device name to select the device structure
+ * @return
+ *   - Returns compress device identifier on success.
+ *   - Return -1 on failure to find named compress device.
+ */
+int __rte_experimental
+rte_compressdev_get_dev_id(const char *name);
+
 /**
  * Get the compress device name given a device identifier.
  *

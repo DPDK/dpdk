@@ -117,6 +117,24 @@ rte_compressdev_is_valid_dev(uint8_t dev_id)
 }
 
 
+int __rte_experimental
+rte_compressdev_get_dev_id(const char *name)
+{
+	unsigned int i;
+
+	if (name == NULL)
+		return -1;
+
+	for (i = 0; i < rte_compressdev_globals->nb_devs; i++)
+		if ((strcmp(rte_compressdev_globals->devs[i].data->name, name)
+				== 0) &&
+				(rte_compressdev_globals->devs[i].attached ==
+						RTE_COMPRESSDEV_ATTACHED))
+			return i;
+
+	return -1;
+}
+
 uint8_t __rte_experimental
 rte_compressdev_count(void)
 {
