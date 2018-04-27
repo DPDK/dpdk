@@ -128,6 +128,9 @@ The EAL options for FreeBSD are as follows:
 *   ``--proc-type``:
     The type of process instance.
 
+*   ``-m MB``:
+    Memory to allocate from hugepages, regardless of processor socket.
+
 Other options, specific to Linux and are not supported under FreeBSD are as follows:
 
 *   ``socket-mem``:
@@ -141,10 +144,6 @@ Other options, specific to Linux and are not supported under FreeBSD are as foll
 
 *   ``--file-prefix``:
     The prefix text used for hugepage filenames.
-
-*   ``-m MB``:
-    Memory to allocate from hugepages, regardless of processor socket.
-    It is recommended that ``--socket-mem`` be used instead of this option.
 
 The ``-c`` or ``-l`` option is mandatory; the others are optional.
 
