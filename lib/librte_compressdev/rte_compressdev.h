@@ -21,9 +21,42 @@ extern "C" {
 
 #include "rte_comp.h"
 
+/**
+ * compression device supported feature flags
+ *
+ * @note New features flags should be added to the end of the list
+ *
+ * Keep these flags synchronised with rte_compressdev_get_feature_name()
+ */
+#define	RTE_COMPDEV_FF_HW_ACCELERATED		(1ULL << 0)
+/**< Operations are off-loaded to an external hardware accelerator */
+#define	RTE_COMPDEV_FF_CPU_SSE			(1ULL << 1)
+/**< Utilises CPU SIMD SSE instructions */
+#define	RTE_COMPDEV_FF_CPU_AVX			(1ULL << 2)
+/**< Utilises CPU SIMD AVX instructions */
+#define	RTE_COMPDEV_FF_CPU_AVX2			(1ULL << 3)
+/**< Utilises CPU SIMD AVX2 instructions */
+#define	RTE_COMPDEV_FF_CPU_AVX512		(1ULL << 4)
+/**< Utilises CPU SIMD AVX512 instructions */
+#define	RTE_COMPDEV_FF_CPU_NEON			(1ULL << 5)
+/**< Utilises CPU NEON instructions */
+
+/**
+ * Get the name of a compress device feature flag.
+ *
+ * @param flag
+ *   The mask describing the flag
+ *
+ * @return
+ *   The name of this flag, or NULL if it's not a valid feature flag.
+ */
+const char * __rte_experimental
+rte_compressdev_get_feature_name(uint64_t flag);
+
 /**  comp device information */
 struct rte_compressdev_info {
 	const char *driver_name;		/**< Driver name. */
+	uint64_t feature_flags;			/**< Feature flags */
 	uint16_t max_nb_queue_pairs;
 	/**< Maximum number of queues pairs supported by device.
 	 * (If 0, there is no limit in maximum number of queue pairs)

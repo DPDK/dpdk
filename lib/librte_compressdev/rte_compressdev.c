@@ -31,6 +31,27 @@ static struct rte_compressdev_global compressdev_globals = {
 
 struct rte_compressdev_global *rte_compressdev_globals = &compressdev_globals;
 
+const char * __rte_experimental
+rte_compressdev_get_feature_name(uint64_t flag)
+{
+	switch (flag) {
+	case RTE_COMPDEV_FF_HW_ACCELERATED:
+		return "HW_ACCELERATED";
+	case RTE_COMPDEV_FF_CPU_SSE:
+		return "CPU_SSE";
+	case RTE_COMPDEV_FF_CPU_AVX:
+		return "CPU_AVX";
+	case RTE_COMPDEV_FF_CPU_AVX2:
+		return "CPU_AVX2";
+	case RTE_COMPDEV_FF_CPU_AVX512:
+		return "CPU_AVX512";
+	case RTE_COMPDEV_FF_CPU_NEON:
+		return "CPU_NEON";
+	default:
+		return NULL;
+	}
+}
+
 static struct rte_compressdev *
 rte_compressdev_get_dev(uint8_t dev_id)
 {
