@@ -25,6 +25,8 @@ EXPERIMENTAL {
 	rte_compressdev_socket_id;
 	rte_compressdev_start;
 	rte_compressdev_stop;
+	rte_compressdev_stream_create;
+	rte_compressdev_stream_free;
 	rte_comp_op_alloc;
 	rte_comp_op_bulk_alloc;
 	rte_comp_op_free;

@@ -167,6 +167,42 @@ typedef int (*compressdev_queue_pair_release_t)(struct rte_compressdev *dev,
 typedef uint32_t (*compressdev_queue_pair_count_t)(struct rte_compressdev *dev);
 
 /**
+ * Create driver private stream data.
+ *
+ * @param dev
+ *   Compressdev device
+ * @param xform
+ *   xform data
+ * @param stream
+ *   ptr where handle of pmd's private stream data should be stored
+ * @return
+ *  - Returns 0 if private stream structure has been created successfully.
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if comp device does not support STATEFUL operations.
+ *  - Returns -ENOTSUP if comp device does not support the comp transform.
+ *  - Returns -ENOMEM if the private stream could not be allocated.
+ */
+typedef int (*compressdev_stream_create_t)(struct rte_compressdev *dev,
+		const struct rte_comp_xform *xform, void **stream);
+
+/**
+ * Free driver private stream data.
+ *
+ * @param dev
+ *   Compressdev device
+ * @param stream
+ *   handle of pmd's private stream data
+ * @return
+ *  - 0 if successful
+ *  - <0 in error cases
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if comp device does not support STATEFUL operations.
+ *  - Returns -EBUSY if can't free stream as there are inflight operations
+ */
+typedef int (*compressdev_stream_free_t)(struct rte_compressdev *dev,
+		void *stream);
+
+/**
  * Create driver private_xform data.
  *
  * @param dev
@@ -215,6 +251,11 @@ struct rte_compressdev_ops {
 	/**< Set up a device queue pair. */
 	compressdev_queue_pair_release_t queue_pair_release;
 	/**< Release a queue pair. */
+
+	compressdev_stream_create_t stream_create;
+	/**< Create a comp stream and initialise its private data. */
+	compressdev_stream_free_t stream_free;
+	/**< Free a comp stream's private data. */
 
 	compressdev_private_xform_create_t private_xform_create;
 	/**< Create a comp private_xform and initialise its private data. */

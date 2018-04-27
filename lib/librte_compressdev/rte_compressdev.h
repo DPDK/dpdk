@@ -91,6 +91,8 @@ struct rte_compressdev_config {
 	/**< Total number of queue pairs to configure on a device */
 	uint16_t max_nb_priv_xforms;
 	/**< Max number of private_xforms which will be created on the device */
+	uint16_t max_nb_streams;
+	/**< Max number of streams which will be created on the device */
 };
 
 /**
@@ -315,6 +317,54 @@ rte_compressdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 uint16_t __rte_experimental
 rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_comp_op **ops, uint16_t nb_ops);
+
+/**
+ * This should alloc a stream from the device's mempool and initialise it.
+ * The application should call this API when setting up for the stateful
+ * processing of a set of data on a device. The API can be called multiple
+ * times to set up a stream for each data set. The handle returned is only for
+ * use with ops of op_type STATEFUL and must be passed to the PMD
+ * with every op in the data stream
+ *
+ * @param dev_id
+ *   Compress device identifier
+ * @param xform
+ *   xform data
+ * @param stream
+ *   Pointer to where PMD's private stream handle should be stored
+ *
+ * @return
+ *  - 0 if successful and valid stream handle
+ *  - <0 in error cases
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if comp device does not support STATEFUL operations.
+ *  - Returns -ENOTSUP if comp device does not support the comp transform.
+ *  - Returns -ENOMEM if the private stream could not be allocated.
+ *
+ */
+int __rte_experimental
+rte_compressdev_stream_create(uint8_t dev_id,
+		const struct rte_comp_xform *xform,
+		void **stream);
+
+/**
+ * This should clear the stream and return it to the device's mempool.
+ *
+ * @param dev_id
+ *   Compress device identifier
+ *
+ * @param stream
+ *   PMD's private stream data
+ *
+ * @return
+ *  - 0 if successful
+ *  - <0 in error cases
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if comp device does not support STATEFUL operations.
+ *  - Returns -EBUSY if can't free stream as there are inflight operations
+ */
+int __rte_experimental
+rte_compressdev_stream_free(uint8_t dev_id, void *stream);
 
 /**
  * This should alloc a private_xform from the device's mempool and initialise
