@@ -227,10 +227,136 @@ rte_compressdev_pmd_release_device(struct rte_compressdev *compressdev)
 	return 0;
 }
 
+uint16_t __rte_experimental
+rte_compressdev_queue_pair_count(uint8_t dev_id)
+{
+	struct rte_compressdev *dev;
+
+	dev = &rte_comp_devices[dev_id];
+	return dev->data->nb_queue_pairs;
+}
+
+static int
+rte_compressdev_queue_pairs_config(struct rte_compressdev *dev,
+		uint16_t nb_qpairs, int socket_id)
+{
+	struct rte_compressdev_info dev_info;
+	void **qp;
+	unsigned int i;
+
+	if ((dev == NULL) || (nb_qpairs < 1)) {
+		COMPRESSDEV_LOG(ERR, "invalid param: dev %p, nb_queues %u",
+							dev, nb_qpairs);
+		return -EINVAL;
+	}
+
+	COMPRESSDEV_LOG(DEBUG, "Setup %d queues pairs on device %u",
+			nb_qpairs, dev->data->dev_id);
+
+	memset(&dev_info, 0, sizeof(struct rte_compressdev_info));
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
+	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+
+	if ((dev_info.max_nb_queue_pairs != 0) &&
+			(nb_qpairs > dev_info.max_nb_queue_pairs)) {
+		COMPRESSDEV_LOG(ERR, "Invalid num queue_pairs (%u) for dev %u",
+				nb_qpairs, dev->data->dev_id);
+		return -EINVAL;
+	}
+
+	if (dev->data->queue_pairs == NULL) { /* first time configuration */
+		dev->data->queue_pairs = rte_zmalloc_socket(
+				"compressdev->queue_pairs",
+				sizeof(dev->data->queue_pairs[0]) * nb_qpairs,
+				RTE_CACHE_LINE_SIZE, socket_id);
+
+		if (dev->data->queue_pairs == NULL) {
+			dev->data->nb_queue_pairs = 0;
+			COMPRESSDEV_LOG(ERR,
+			"failed to get memory for qp meta data, nb_queues %u",
+							nb_qpairs);
+			return -(ENOMEM);
+		}
+	} else { /* re-configure */
+		int ret;
+		uint16_t old_nb_queues = dev->data->nb_queue_pairs;
+
+		qp = dev->data->queue_pairs;
+
+		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_pair_release,
+				-ENOTSUP);
+
+		for (i = nb_qpairs; i < old_nb_queues; i++) {
+			ret = (*dev->dev_ops->queue_pair_release)(dev, i);
+			if (ret < 0)
+				return ret;
+		}
+
+		qp = rte_realloc(qp, sizeof(qp[0]) * nb_qpairs,
+				RTE_CACHE_LINE_SIZE);
+		if (qp == NULL) {
+			COMPRESSDEV_LOG(ERR,
+			"failed to realloc qp meta data, nb_queues %u",
+						nb_qpairs);
+			return -(ENOMEM);
+		}
+
+		if (nb_qpairs > old_nb_queues) {
+			uint16_t new_qs = nb_qpairs - old_nb_queues;
+
+			memset(qp + old_nb_queues, 0,
+				sizeof(qp[0]) * new_qs);
+		}
+
+		dev->data->queue_pairs = qp;
+
+	}
+	dev->data->nb_queue_pairs = nb_qpairs;
+	return 0;
+}
+
+static int
+rte_compressdev_queue_pairs_release(struct rte_compressdev *dev)
+{
+	uint16_t num_qps, i;
+	int ret;
+
+	if (dev == NULL) {
+		COMPRESSDEV_LOG(ERR, "invalid param: dev %p", dev);
+		return -EINVAL;
+	}
+
+	num_qps = dev->data->nb_queue_pairs;
+
+	if (num_qps == 0)
+		return 0;
+
+	COMPRESSDEV_LOG(DEBUG, "Free %d queues pairs on device %u",
+			dev->data->nb_queue_pairs, dev->data->dev_id);
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_pair_release,
+				-ENOTSUP);
+
+	for (i = 0; i < num_qps; i++) {
+		ret = (*dev->dev_ops->queue_pair_release)(dev, i);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (dev->data->queue_pairs != NULL)
+		rte_free(dev->data->queue_pairs);
+	dev->data->queue_pairs = NULL;
+	dev->data->nb_queue_pairs = 0;
+
+	return 0;
+}
+
 int __rte_experimental
 rte_compressdev_configure(uint8_t dev_id, struct rte_compressdev_config *config)
 {
 	struct rte_compressdev *dev;
+	int diag;
 
 	if (!rte_compressdev_is_valid_dev(dev_id)) {
 		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%" PRIu8, dev_id);
@@ -247,9 +373,18 @@ rte_compressdev_configure(uint8_t dev_id, struct rte_compressdev_config *config)
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
 
+	/* Setup new number of queue pairs and reconfigure device. */
+	diag = rte_compressdev_queue_pairs_config(dev, config->nb_queue_pairs,
+			config->socket_id);
+	if (diag != 0) {
+		COMPRESSDEV_LOG(ERR,
+			"dev%d rte_comp_dev_queue_pairs_config = %d",
+				dev_id, diag);
+		return diag;
+	}
+
 	return (*dev->dev_ops->dev_configure)(dev, config);
 }
-
 
 int __rte_experimental
 rte_compressdev_start(uint8_t dev_id)
@@ -327,6 +462,12 @@ rte_compressdev_close(uint8_t dev_id)
 		return -EBUSY;
 	}
 
+	/* Free queue pairs memory */
+	retval = rte_compressdev_queue_pairs_release(dev);
+
+	if (retval < 0)
+		return retval;
+
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_close, -ENOTSUP);
 	retval = (*dev->dev_ops->dev_close)(dev);
 
@@ -334,6 +475,41 @@ rte_compressdev_close(uint8_t dev_id)
 		return retval;
 
 	return 0;
+}
+
+int __rte_experimental
+rte_compressdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
+		uint32_t max_inflight_ops, int socket_id)
+{
+	struct rte_compressdev *dev;
+
+	if (!rte_compressdev_is_valid_dev(dev_id)) {
+		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%" PRIu8, dev_id);
+		return -EINVAL;
+	}
+
+	dev = &rte_comp_devices[dev_id];
+	if (queue_pair_id >= dev->data->nb_queue_pairs) {
+		COMPRESSDEV_LOG(ERR, "Invalid queue_pair_id=%d", queue_pair_id);
+		return -EINVAL;
+	}
+
+	if (dev->data->dev_started) {
+		COMPRESSDEV_LOG(ERR,
+		    "device %d must be stopped to allow configuration", dev_id);
+		return -EBUSY;
+	}
+
+	if (max_inflight_ops == 0) {
+		COMPRESSDEV_LOG(ERR,
+			"Invalid maximum number of inflight operations");
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_pair_setup, -ENOTSUP);
+
+	return (*dev->dev_ops->queue_pair_setup)(dev, queue_pair_id,
+			max_inflight_ops, socket_id);
 }
 
 void __rte_experimental

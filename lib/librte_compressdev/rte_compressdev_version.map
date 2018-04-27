@@ -16,6 +16,8 @@ EXPERIMENTAL {
 	rte_compressdev_pmd_get_named_dev;
 	rte_compressdev_pmd_parse_input_args;
 	rte_compressdev_pmd_release_device;
+	rte_compressdev_queue_pair_count;
+	rte_compressdev_queue_pair_setup;
 	rte_compressdev_socket_id;
 	rte_compressdev_start;
 	rte_compressdev_stop;

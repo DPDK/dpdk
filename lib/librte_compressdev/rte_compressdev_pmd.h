@@ -125,6 +125,48 @@ typedef int (*compressdev_close_t)(struct rte_compressdev *dev);
 typedef void (*compressdev_info_get_t)(struct rte_compressdev *dev,
 				struct rte_compressdev_info *dev_info);
 
+/**
+ * Setup a queue pair for a device.
+ *
+ * @param dev
+ *   Compress device
+ * @param qp_id
+ *   Queue pair identifier
+ * @param max_inflight_ops
+ *   Max inflight ops which qp must accommodate
+ * @param socket_id
+ *   Socket identifier
+ * @return
+ *   Returns 0 on success.
+ */
+typedef int (*compressdev_queue_pair_setup_t)(struct rte_compressdev *dev,
+		uint16_t qp_id,	uint32_t max_inflight_ops, int socket_id);
+
+/**
+ * Release memory resources allocated by given queue pair.
+ *
+ * @param dev
+ *   Compress device
+ * @param qp_id
+ *   Queue pair identifier
+ * @return
+ * - 0 on success.
+ * - EAGAIN if can't close as device is busy
+ */
+typedef int (*compressdev_queue_pair_release_t)(struct rte_compressdev *dev,
+		uint16_t qp_id);
+
+/**
+ * Get number of available queue pairs of a device.
+ *
+ * @param dev
+ *   Compress device
+ * @return
+ *   Returns number of queue pairs on success.
+ */
+typedef uint32_t (*compressdev_queue_pair_count_t)(struct rte_compressdev *dev);
+
+
 /** comp device operations function pointer table */
 struct rte_compressdev_ops {
 	compressdev_configure_t dev_configure;	/**< Configure device. */
@@ -133,6 +175,11 @@ struct rte_compressdev_ops {
 	compressdev_close_t dev_close;		/**< Close device. */
 
 	compressdev_info_get_t dev_infos_get;	/**< Get device info. */
+
+	compressdev_queue_pair_setup_t queue_pair_setup;
+	/**< Set up a device queue pair. */
+	compressdev_queue_pair_release_t queue_pair_release;
+	/**< Release a queue pair. */
 };
 
 /**

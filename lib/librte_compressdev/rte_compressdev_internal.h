@@ -58,6 +58,11 @@ struct rte_compressdev_data {
 	uint8_t dev_started : 1;
 	/**< Device state: STARTED(1)/STOPPED(0) */
 
+	void **queue_pairs;
+	/**< Array of pointers to queue pairs. */
+	uint16_t nb_queue_pairs;
+	/**< Number of device queue pairs */
+
 	void *dev_private;
 	/**< PMD-specific private data */
 } __rte_cache_aligned;

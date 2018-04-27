@@ -22,6 +22,10 @@ extern "C" {
 /**  comp device information */
 struct rte_compressdev_info {
 	const char *driver_name;		/**< Driver name. */
+	uint16_t max_nb_queue_pairs;
+	/**< Maximum number of queues pairs supported by device.
+	 * (If 0, there is no limit in maximum number of queue pairs)
+	 */
 };
 
 /**
@@ -80,6 +84,9 @@ rte_compressdev_socket_id(uint8_t dev_id);
 /** Compress device configuration structure */
 struct rte_compressdev_config {
 	int socket_id;
+	/**< Socket on which to allocate resources */
+	uint16_t nb_queue_pairs;
+	/**< Total number of queue pairs to configure on a device */
 };
 
 /**
@@ -144,6 +151,44 @@ rte_compressdev_stop(uint8_t dev_id);
  */
 int __rte_experimental
 rte_compressdev_close(uint8_t dev_id);
+
+/**
+ * Allocate and set up a receive queue pair for a device.
+ * This should only be called when the device is stopped.
+ *
+ *
+ * @param dev_id
+ *   Compress device identifier
+ * @param queue_pair_id
+ *   The index of the queue pairs to set up. The
+ *   value must be in the range [0, nb_queue_pair - 1]
+ *   previously supplied to rte_compressdev_configure()
+ * @param max_inflight_ops
+ *   Max number of ops which the qp will have to
+ *   accommodate simultaneously
+ * @param socket_id
+ *   The *socket_id* argument is the socket identifier
+ *   in case of NUMA. The value can be *SOCKET_ID_ANY*
+ *   if there is no NUMA constraint for the DMA memory
+ *   allocated for the receive queue pair
+ * @return
+ *   - 0: Success, queue pair correctly set up.
+ *   - <0: Queue pair configuration failed
+ */
+int __rte_experimental
+rte_compressdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
+		uint32_t max_inflight_ops, int socket_id);
+
+/**
+ * Get the number of queue pairs on a specific comp device
+ *
+ * @param dev_id
+ *   Compress device identifier
+ * @return
+ *   - The number of configured queue pairs.
+ */
+uint16_t __rte_experimental
+rte_compressdev_queue_pair_count(uint8_t dev_id);
 
 /**
  * Retrieve the contextual information of a device.
