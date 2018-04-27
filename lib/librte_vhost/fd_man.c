@@ -293,7 +293,7 @@ fdset_event_dispatch(void *arg)
 			 * because the fd is closed in the cb,
 			 * the old fd val could be reused by when creates new
 			 * listen fd in another thread, we couldn't call
-			 * fd_set_del.
+			 * fdset_del.
 			 */
 			if (remove1 || remove2) {
 				pfdentry->fd = -1;
