@@ -123,12 +123,14 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<armv8\>' \
 	-e ':.*\<crc\>' \
 	-e ':.*\<dma\>' \
+	-e ':.*\<eeprom\>' \
 	-e ':.*\<freebsd\>' \
 	-e ':.*\<iova\>' \
 	-e ':.*\<linux\>' \
 	-e ':.*\<lro\>' \
 	-e ':.*\<lsc\>' \
 	-e ':.*\<mac\>' \
+	-e ':.*\<mss\>' \
 	-e ':.*\<mtu\>' \
 	-e ':.*\<nic\>' \
 	-e ':.*\<nvm\>' \
@@ -138,7 +140,9 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<rss\>' \
 	-e ':.*\<sctp\>' \
 	-e ':.*\<tso\>' \
+	-e ':.*\<udp\>' \
 	-e ':.*\<[Vv]lan\>' \
+	-e ':.*\<vdpa\>' \
 	-e ':.*\<vsi\>' \
 	| sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong headline lowercase:\n$bad\n"
