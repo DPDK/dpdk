@@ -19,6 +19,40 @@ extern "C" {
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
+/**
+ * compression service feature flags
+ *
+ * @note New features flags should be added to the end of the list
+ *
+ * Keep these flags synchronised with rte_comp_get_feature_name()
+ */
+#define RTE_COMP_FF_STATEFUL_COMPRESSION	(1ULL << 0)
+/**< Stateful compression is supported */
+#define RTE_COMP_FF_STATEFUL_DECOMPRESSION	(1ULL << 1)
+/**< Stateful decompression is supported */
+#define	RTE_COMP_FF_MBUF_SCATTER_GATHER		(1ULL << 2)
+/**< Scatter-gather mbufs are supported */
+#define RTE_COMP_FF_ADLER32_CHECKSUM		(1ULL << 3)
+/**< Adler-32 Checksum is supported */
+#define RTE_COMP_FF_CRC32_CHECKSUM		(1ULL << 4)
+/**< CRC32 Checksum is supported */
+#define RTE_COMP_FF_CRC32_ADLER32_CHECKSUM	(1ULL << 5)
+/**< Adler-32/CRC32 Checksum is supported */
+#define RTE_COMP_FF_MULTI_PKT_CHECKSUM		(1ULL << 6)
+/**< Generation of checksum across multiple stateless packets is supported */
+#define RTE_COMP_FF_SHA1_HASH			(1ULL << 7)
+/**< SHA1 Hash is supported */
+#define RTE_COMP_FF_SHA2_SHA256_HASH		(1ULL << 8)
+/**< SHA256 Hash of SHA2 family is supported */
+#define RTE_COMP_FF_NONCOMPRESSED_BLOCKS	(1ULL << 9)
+/**< Creation of non-compressed blocks using RTE_COMP_LEVEL_NONE is supported */
+#define RTE_COMP_FF_SHAREABLE_PRIV_XFORM	(1ULL << 10)
+/**< Private xforms created by the PMD can be shared
+ * across multiple stateless operations. If not set, then app needs
+ * to create as many priv_xforms as it expects to have stateless
+ * operations in-flight.
+ */
+
 /** Status of comp operation */
 enum rte_comp_op_status {
 	RTE_COMP_OP_STATUS_SUCCESS = 0,
@@ -404,6 +438,18 @@ rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
  */
 void __rte_experimental
 rte_comp_op_free(struct rte_comp_op *op);
+
+/**
+ * Get the name of a compress service feature flag
+ *
+ * @param flag
+ *   The mask describing the flag
+ *
+ * @return
+ *   The name of this flag, or NULL if it's not a valid feature flag.
+ */
+const char * __rte_experimental
+rte_comp_get_feature_name(uint64_t flag);
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,37 @@
 #include "rte_compressdev.h"
 #include "rte_compressdev_internal.h"
 
+const char * __rte_experimental
+rte_comp_get_feature_name(uint64_t flag)
+{
+	switch (flag) {
+	case RTE_COMP_FF_STATEFUL_COMPRESSION:
+		return "STATEFUL_COMPRESSION";
+	case RTE_COMP_FF_STATEFUL_DECOMPRESSION:
+		return "STATEFUL_DECOMPRESSION";
+	case RTE_COMP_FF_MBUF_SCATTER_GATHER:
+		return "MBUF_SCATTER_GATHER";
+	case RTE_COMP_FF_MULTI_PKT_CHECKSUM:
+		return "MULTI_PKT_CHECKSUM";
+	case RTE_COMP_FF_ADLER32_CHECKSUM:
+		return "ADLER32_CHECKSUM";
+	case RTE_COMP_FF_CRC32_CHECKSUM:
+		return "CRC32_CHECKSUM";
+	case RTE_COMP_FF_CRC32_ADLER32_CHECKSUM:
+		return "CRC32_ADLER32_CHECKSUM";
+	case RTE_COMP_FF_NONCOMPRESSED_BLOCKS:
+		return "NONCOMPRESSED_BLOCKS";
+	case RTE_COMP_FF_SHA1_HASH:
+		return "SHA1_HASH";
+	case RTE_COMP_FF_SHA2_SHA256_HASH:
+		return "SHA2_SHA256_HASH";
+	case RTE_COMP_FF_SHAREABLE_PRIV_XFORM:
+		return "SHAREABLE_PRIV_XFORM";
+	default:
+		return NULL;
+	}
+}
+
 /**
  * Reset the fields of an operation to their default values.
  *
