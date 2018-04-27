@@ -506,7 +506,7 @@ move_desc(struct vring_desc *head, struct vring_desc **cur_desc,
 		left -= desc->len;
 	}
 
-	if (unlikely(left < 0)) {
+	if (unlikely(left > 0)) {
 		VC_LOG_ERR("Incorrect virtio descriptor");
 		return -1;
 	}
@@ -553,7 +553,7 @@ copy_data(void *dst_data, struct vring_desc *head, struct rte_vhost_memory *mem,
 		left -= to_copy;
 	}
 
-	if (unlikely(left < 0)) {
+	if (unlikely(left > 0)) {
 		VC_LOG_ERR("Incorrect virtio descriptor");
 		return -1;
 	}
