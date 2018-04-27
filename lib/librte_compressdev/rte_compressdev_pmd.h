@@ -166,6 +166,41 @@ typedef int (*compressdev_queue_pair_release_t)(struct rte_compressdev *dev,
  */
 typedef uint32_t (*compressdev_queue_pair_count_t)(struct rte_compressdev *dev);
 
+/**
+ * Create driver private_xform data.
+ *
+ * @param dev
+ *   Compressdev device
+ * @param xform
+ *   xform data
+ * @param private_xform
+ *   ptr where handle of pmd's private_xform data should be stored
+ * @return
+ *  - if successful returns 0
+ *    and valid private_xform handle
+ *  - <0 in error cases
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if comp device does not support the comp transform.
+ *  - Returns -ENOMEM if the private_xform could not be allocated.
+ */
+typedef int (*compressdev_private_xform_create_t)(struct rte_compressdev *dev,
+		const struct rte_comp_xform *xform, void **private_xform);
+
+/**
+ * Free driver private_xform data.
+ *
+ * @param dev
+ *   Compressdev device
+ * @param private_xform
+ *   handle of pmd's private_xform data
+ * @return
+ *  - 0 if successful
+ *  - <0 in error cases
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -EBUSY if can't free private_xform due to inflight operations
+ */
+typedef int (*compressdev_private_xform_free_t)(struct rte_compressdev *dev,
+		void *private_xform);
 
 /** comp device operations function pointer table */
 struct rte_compressdev_ops {
@@ -180,6 +215,11 @@ struct rte_compressdev_ops {
 	/**< Set up a device queue pair. */
 	compressdev_queue_pair_release_t queue_pair_release;
 	/**< Release a queue pair. */
+
+	compressdev_private_xform_create_t private_xform_create;
+	/**< Create a comp private_xform and initialise its private data. */
+	compressdev_private_xform_free_t private_xform_free;
+	/**< Free a comp private_xform's data. */
 };
 
 /**

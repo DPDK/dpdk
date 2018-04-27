@@ -89,6 +89,8 @@ struct rte_compressdev_config {
 	/**< Socket on which to allocate resources */
 	uint16_t nb_queue_pairs;
 	/**< Total number of queue pairs to configure on a device */
+	uint16_t max_nb_priv_xforms;
+	/**< Max number of private_xforms which will be created on the device */
 };
 
 /**
@@ -313,6 +315,52 @@ rte_compressdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 uint16_t __rte_experimental
 rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_comp_op **ops, uint16_t nb_ops);
+
+/**
+ * This should alloc a private_xform from the device's mempool and initialise
+ * it. The application should call this API when setting up for stateless
+ * processing on a device. If it returns non-shareable, then the appl cannot
+ * share this handle with multiple in-flight ops and should call this API again
+ * to get a separate handle for every in-flight op.
+ * The handle returned is only valid for use with ops of op_type STATELESS.
+ *
+ * @param dev_id
+ *   Compress device identifier
+ * @param xform
+ *   xform data
+ * @param private_xform
+ *   Pointer to where PMD's private_xform handle should be stored
+ *
+ * @return
+ *  - if successful returns 0
+ *    and valid private_xform handle
+ *  - <0 in error cases
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if comp device does not support the comp transform.
+ *  - Returns -ENOMEM if the private_xform could not be allocated.
+ */
+int __rte_experimental
+rte_compressdev_private_xform_create(uint8_t dev_id,
+		const struct rte_comp_xform *xform,
+		void **private_xform);
+
+/**
+ * This should clear the private_xform and return it to the device's mempool.
+ *
+ * @param dev_id
+ *   Compress device identifier
+ *
+ * @param private_xform
+ *   PMD's private_xform data
+ *
+ * @return
+ *  - 0 if successful
+ *  - <0 in error cases
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -EBUSY if can't free private_xform due to inflight operations
+ */
+int __rte_experimental
+rte_compressdev_private_xform_free(uint8_t dev_id, void *private_xform);
 
 #ifdef __cplusplus
 }

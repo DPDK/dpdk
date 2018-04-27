@@ -554,6 +554,54 @@ rte_compressdev_info_get(uint8_t dev_id, struct rte_compressdev_info *dev_info)
 	dev_info->driver_name = dev->device->driver->name;
 }
 
+int __rte_experimental
+rte_compressdev_private_xform_create(uint8_t dev_id,
+		const struct rte_comp_xform *xform,
+		void **priv_xform)
+{
+	struct rte_compressdev *dev;
+	int ret;
+
+	dev = rte_compressdev_get_dev(dev_id);
+
+	if (xform == NULL || priv_xform == NULL || dev == NULL)
+		return -EINVAL;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->private_xform_create, -ENOTSUP);
+	ret = (*dev->dev_ops->private_xform_create)(dev, xform, priv_xform);
+	if (ret < 0) {
+		COMPRESSDEV_LOG(ERR,
+			"dev_id %d failed to create private_xform: err=%d",
+			dev_id, ret);
+		return ret;
+	};
+
+	return 0;
+}
+
+int __rte_experimental
+rte_compressdev_private_xform_free(uint8_t dev_id, void *priv_xform)
+{
+	struct rte_compressdev *dev;
+	int ret;
+
+	dev = rte_compressdev_get_dev(dev_id);
+
+	if (dev == NULL || priv_xform == NULL)
+		return -EINVAL;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->private_xform_free, -ENOTSUP);
+	ret = dev->dev_ops->private_xform_free(dev, priv_xform);
+	if (ret < 0) {
+		COMPRESSDEV_LOG(ERR,
+			"dev_id %d failed to free private xform: err=%d",
+			dev_id, ret);
+		return ret;
+	};
+
+	return 0;
+}
+
 const char * __rte_experimental
 rte_compressdev_name_get(uint8_t dev_id)
 {
