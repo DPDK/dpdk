@@ -6,5 +6,6 @@ sources = files('rte_compressdev.c',
 	'rte_compressdev_pmd.c')
 headers = files('rte_compressdev.h',
 	'rte_compressdev_pmd.h',
-	'rte_compressdev_internal.h')
+	'rte_compressdev_internal.h',
+	'rte_comp.h')
 deps += ['kvargs', 'mbuf']
