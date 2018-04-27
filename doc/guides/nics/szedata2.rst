@@ -54,6 +54,15 @@ separately:
 Information about getting the dependencies can be found `here
 <http://www.netcope.com/en/company/community-support/dpdk-libsze2>`_.
 
+Versions of the packages
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The minimum version of the provided packages:
+
+* for DPDK from 18.05: **4.4.1**
+
+* for DPDK up to 18.02 (including): **3.0.5**
+
 Configuration
 -------------
 

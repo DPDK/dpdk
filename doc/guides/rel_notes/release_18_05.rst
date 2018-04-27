@@ -83,6 +83,10 @@ New Features
 * **Updated szedata2 PMD.**
 
   Added support for new NFB-200G2QL card.
+  New API was introduced in the libsze2 library which the szedata2 PMD depends
+  on thus the new version of the library was needed.
+  New versions of the packages are available and the minimum required version
+  is 4.4.1.
 
 * **Added support for Broadcom NetXtreme-S (BCM58800) family of controllers (aka Stingray)**
 
