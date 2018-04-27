@@ -922,13 +922,25 @@ rte_vhost_driver_unregister(const char *path)
 				vhost_user_remove_reconnect(vsocket);
 			}
 
+again:
 			pthread_mutex_lock(&vsocket->conn_mutex);
 			for (conn = TAILQ_FIRST(&vsocket->conn_list);
 			     conn != NULL;
 			     conn = next) {
 				next = TAILQ_NEXT(conn, next);
 
-				fdset_del(&vhost_user.fdset, conn->connfd);
+				/*
+				 * If r/wcb is executing, release the
+				 * conn_mutex lock, and try again since
+				 * the r/wcb may use the conn_mutex lock.
+				 */
+				if (fdset_try_del(&vhost_user.fdset,
+						  conn->connfd) == -1) {
+					pthread_mutex_unlock(
+							&vsocket->conn_mutex);
+					goto again;
+				}
+
 				RTE_LOG(INFO, VHOST_CONFIG,
 					"free connfd = %d for device '%s'\n",
 					conn->connfd, path);
