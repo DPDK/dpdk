@@ -95,9 +95,34 @@ struct dpaa_portal {
 	uint64_t tid;/**< Parent Thread id for this portal */
 };
 
-/* TODO - this is costly, need to write a fast coversion routine */
+/* Various structures representing contiguous memory maps */
+struct dpaa_memseg {
+	TAILQ_ENTRY(dpaa_memseg) next;
+	char *vaddr;
+	rte_iova_t iova;
+	size_t len;
+};
+
+TAILQ_HEAD(dpaa_memseg_list, dpaa_memseg);
+extern struct dpaa_memseg_list rte_dpaa_memsegs;
+
+/* Either iterate over the list of internal memseg references or fallback to
+ * EAL memseg based iova2virt.
+ */
 static inline void *rte_dpaa_mem_ptov(phys_addr_t paddr)
 {
+	struct dpaa_memseg *ms;
+
+	/* Check if the address is already part of the memseg list internally
+	 * maintained by the dpaa driver.
+	 */
+	TAILQ_FOREACH(ms, &rte_dpaa_memsegs, next) {
+		if (paddr >= ms->iova && paddr <
+			ms->iova + ms->len)
+			return RTE_PTR_ADD(ms->vaddr, (uintptr_t)(paddr - ms->iova));
+	}
+
+	/* If not, Fallback to full memseg list searching */
 	return rte_mem_iova2virt(paddr);
 }
 
