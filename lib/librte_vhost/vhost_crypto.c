@@ -919,6 +919,7 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		if (unlikely(!desc || dlen != head->len))
 			return -1;
 		desc_idx = 0;
+		head = desc;
 	} else {
 		desc = head;
 	}
