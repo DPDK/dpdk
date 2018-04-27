@@ -30,6 +30,7 @@ endif
 
 # specific to linuxapp exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) := eal.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_cpuflags.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_hugepage_info.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_memory.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_thread.c
