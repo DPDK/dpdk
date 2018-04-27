@@ -2165,7 +2165,9 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			" or supported offloads 0x%" PRIx64,
 			(void *)dev, tx_conf->offloads,
 			dev->data->dev_conf.txmode.offloads,
-			dev_info.tx_offload_capa); }
+			dev_info.tx_offload_capa);
+			return -ENOTSUP;
+	}
 
 	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF) {
 		vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
