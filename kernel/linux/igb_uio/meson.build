@@ -1,12 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-kernel_dir = get_option('kernel_dir')
-if kernel_dir == ''
-	kernel_version = run_command('uname', '-r').stdout().strip()
-	kernel_dir = '/lib/modules/' + kernel_version + '/build'
-endif
-
 mkfile = custom_target('igb_uio_makefile',
 	output: 'Makefile',
 	command: ['touch', '@OUTPUT@'])
