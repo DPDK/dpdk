@@ -6,7 +6,9 @@ EXPERIMENTAL {
 	rte_compressdev_close;
 	rte_compressdev_configure;
 	rte_compressdev_count;
+	rte_compressdev_dequeue_burst;
 	rte_compressdev_devices_get;
+	rte_compressdev_enqueue_burst;
 	rte_compressdev_info_get;
 	rte_compressdev_name_get;
 	rte_compressdev_pmd_allocate;

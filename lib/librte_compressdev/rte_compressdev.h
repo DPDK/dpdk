@@ -19,6 +19,8 @@ extern "C" {
 
 #include <rte_common.h>
 
+#include "rte_comp.h"
+
 /**  comp device information */
 struct rte_compressdev_info {
 	const char *driver_name;		/**< Driver name. */
@@ -206,6 +208,111 @@ rte_compressdev_queue_pair_count(uint8_t dev_id);
  */
 void __rte_experimental
 rte_compressdev_info_get(uint8_t dev_id, struct rte_compressdev_info *dev_info);
+
+/**
+ *
+ * Dequeue a burst of processed compression operations from a queue on the comp
+ * device. The dequeued operation are stored in *rte_comp_op* structures
+ * whose pointers are supplied in the *ops* array.
+ *
+ * The rte_compressdev_dequeue_burst() function returns the number of ops
+ * actually dequeued, which is the number of *rte_comp_op* data structures
+ * effectively supplied into the *ops* array.
+ *
+ * A return value equal to *nb_ops* indicates that the queue contained
+ * at least *nb_ops* operations, and this is likely to signify that other
+ * processed operations remain in the devices output queue. Applications
+ * implementing a "retrieve as many processed operations as possible" policy
+ * can check this specific case and keep invoking the
+ * rte_compressdev_dequeue_burst() function until a value less than
+ * *nb_ops* is returned.
+ *
+ * The rte_compressdev_dequeue_burst() function does not provide any error
+ * notification to avoid the corresponding overhead.
+ *
+ * @note: operation ordering is not maintained within the queue pair.
+ *
+ * @note: In case op status = OUT_OF_SPACE_TERMINATED, op.consumed=0 and the
+ * op must be resubmitted with the same input data and a larger output buffer.
+ * op.produced is usually 0, but in decompression cases a PMD may return > 0
+ * and the application may find it useful to inspect that data.
+ * This status is only returned on STATELESS ops.
+ *
+ * @note: In case op status = OUT_OF_SPACE_RECOVERABLE, op.produced can be used
+ * and next op in stream should continue on from op.consumed+1 with a fresh
+ * output buffer.
+ * Consumed=0, produced=0 is an unusual but allowed case. There may be useful
+ * state/history stored in the PMD, even though no output was produced yet.
+ *
+ *
+ * @param dev_id
+ *   Compress device identifier
+ * @param qp_id
+ *   The index of the queue pair from which to retrieve
+ *   processed operations. The value must be in the range
+ *   [0, nb_queue_pair - 1] previously supplied to
+ *   rte_compressdev_configure()
+ * @param ops
+ *   The address of an array of pointers to
+ *   *rte_comp_op* structures that must be
+ *   large enough to store *nb_ops* pointers in it
+ * @param nb_ops
+ *   The maximum number of operations to dequeue
+ * @return
+ *   - The number of operations actually dequeued, which is the number
+ *   of pointers to *rte_comp_op* structures effectively supplied to the
+ *   *ops* array.
+ */
+uint16_t __rte_experimental
+rte_compressdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
+		struct rte_comp_op **ops, uint16_t nb_ops);
+
+/**
+ * Enqueue a burst of operations for processing on a compression device.
+ *
+ * The rte_compressdev_enqueue_burst() function is invoked to place
+ * comp operations on the queue *qp_id* of the device designated by
+ * its *dev_id*.
+ *
+ * The *nb_ops* parameter is the number of operations to process which are
+ * supplied in the *ops* array of *rte_comp_op* structures.
+ *
+ * The rte_compressdev_enqueue_burst() function returns the number of
+ * operations it actually enqueued for processing. A return value equal to
+ * *nb_ops* means that all packets have been enqueued.
+ *
+ * @note All compression operations are Out-of-place (OOP) operations,
+ * as the size of the output data is different to the size of the input data.
+ *
+ * @note The flush flag only applies to operations which return SUCCESS.
+ * In OUT_OF_SPACE cases whether STATEFUL or STATELESS, data in dest buffer
+ * is as if flush flag was FLUSH_NONE.
+ * @note flush flag only applies in compression direction. It has no meaning
+ * for decompression.
+ * @note: operation ordering is not maintained within the queue pair.
+ *
+ * @param dev_id
+ *   Compress device identifier
+ * @param qp_id
+ *   The index of the queue pair on which operations
+ *   are to be enqueued for processing. The value
+ *   must be in the range [0, nb_queue_pairs - 1]
+ *   previously supplied to *rte_compressdev_configure*
+ * @param ops
+ *   The address of an array of *nb_ops* pointers
+ *   to *rte_comp_op* structures which contain
+ *   the operations to be processed
+ * @param nb_ops
+ *   The number of operations to process
+ * @return
+ *   The number of operations actually enqueued on the device. The return
+ *   value can be less than the value of the *nb_ops* parameter when the
+ *   comp devices queue is full or if invalid parameters are specified in
+ *   a *rte_comp_op*.
+ */
+uint16_t __rte_experimental
+rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
+		struct rte_comp_op **ops, uint16_t nb_ops);
 
 #ifdef __cplusplus
 }
