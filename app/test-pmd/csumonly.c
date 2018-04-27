@@ -737,7 +737,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		m = pkts_burst[i];
 		info.is_tunnel = 0;
 		info.pkt_len = rte_pktmbuf_pkt_len(m);
-		tx_ol_flags = 0;
+		tx_ol_flags = m->ol_flags &
+			      (IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF);
 		rx_ol_flags = m->ol_flags;
 
 		/* Update the L3/L4 checksum error packet statistics */

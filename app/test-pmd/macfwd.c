@@ -96,7 +96,8 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 				&eth_hdr->d_addr);
 		ether_addr_copy(&ports[fs->tx_port].eth_addr,
 				&eth_hdr->s_addr);
-		mb->ol_flags = ol_flags;
+		mb->ol_flags &= IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF;
+		mb->ol_flags |= ol_flags;
 		mb->l2_len = sizeof(struct ether_hdr);
 		mb->l3_len = sizeof(struct ipv4_hdr);
 		mb->vlan_tci = txp->tx_vlan_id;
