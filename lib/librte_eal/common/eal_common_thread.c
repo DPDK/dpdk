@@ -163,17 +163,21 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		const pthread_attr_t *attr,
 		void *(*start_routine)(void *), void *arg)
 {
-	struct rte_thread_ctrl_params params = {
-		.start_routine = start_routine,
-		.arg = arg,
-	};
+	struct rte_thread_ctrl_params *params;
 	unsigned int lcore_id;
 	rte_cpuset_t cpuset;
 	int cpu_found, ret;
 
-	pthread_barrier_init(&params.configured, NULL, 2);
+	params = malloc(sizeof(*params));
+	if (!params)
+		return -1;
 
-	ret = pthread_create(thread, attr, rte_thread_init, (void *)&params);
+	params->start_routine = start_routine;
+	params->arg = arg;
+
+	pthread_barrier_init(&params->configured, NULL, 2);
+
+	ret = pthread_create(thread, attr, rte_thread_init, (void *)params);
 	if (ret != 0)
 		return ret;
 
@@ -200,12 +204,14 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 	if (ret < 0)
 		goto fail;
 
-	pthread_barrier_wait(&params.configured);
+	pthread_barrier_wait(&params->configured);
+	free(params);
 
 	return 0;
 
 fail:
 	pthread_cancel(*thread);
 	pthread_join(*thread, NULL);
+	free(params);
 	return ret;
 }
