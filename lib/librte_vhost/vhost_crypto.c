@@ -1189,8 +1189,8 @@ rte_vhost_crypto_set_zero_copy(int vid, enum rte_vhost_crypto_zero_copy option)
 		return -EINVAL;
 	}
 
-	if (unlikely(option < 0 || option >=
-			RTE_VHOST_CRYPTO_MAX_ZERO_COPY_OPTIONS)) {
+	if (unlikely((uint32_t)option >=
+				RTE_VHOST_CRYPTO_MAX_ZERO_COPY_OPTIONS)) {
 		VC_LOG_ERR("Invalid option %i", option);
 		return -EINVAL;
 	}
