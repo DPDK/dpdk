@@ -22,7 +22,7 @@
 
 #ifndef HAS_AUXV
 static unsigned long
-getauxval(unsigned long type)
+getauxval(unsigned long type __rte_unused)
 {
 	errno = ENOTSUP;
 	return 0;
