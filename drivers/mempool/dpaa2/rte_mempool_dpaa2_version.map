@@ -3,6 +3,7 @@ DPDK_17.05 {
 
 	rte_dpaa2_bpid_info;
 	rte_dpaa2_mbuf_alloc_bulk;
+	rte_dpaa2_memsegs;
 
 	local: *;
 };
