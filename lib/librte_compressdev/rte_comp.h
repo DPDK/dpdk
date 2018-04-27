@@ -309,6 +309,70 @@ struct rte_comp_op {
 	 */
 } __rte_cache_aligned;
 
+/**
+ * Creates an operation pool
+ *
+ * @param name
+ *   Compress pool name
+ * @param nb_elts
+ *   Number of elements in pool
+ * @param cache_size
+ *   Number of elements to cache on lcore, see
+ *   *rte_mempool_create* for further details about cache size
+ * @param user_size
+ *   Size of private data to allocate for user with each operation
+ * @param socket_id
+ *   Socket to identifier allocate memory on
+ * @return
+ *  - On success pointer to mempool
+ *  - On failure NULL
+ */
+struct rte_mempool * __rte_experimental
+rte_comp_op_pool_create(const char *name,
+		unsigned int nb_elts, unsigned int cache_size,
+		uint16_t user_size, int socket_id);
+
+/**
+ * Allocate an operation from a mempool with default parameters set
+ *
+ * @param mempool
+ *   Compress operation mempool
+ *
+ * @return
+ * - On success returns a valid rte_comp_op structure
+ * - On failure returns NULL
+ */
+struct rte_comp_op * __rte_experimental
+rte_comp_op_alloc(struct rte_mempool *mempool);
+
+/**
+ * Bulk allocate operations from a mempool with default parameters set
+ *
+ * @param mempool
+ *   Compress operation mempool
+ * @param ops
+ *   Array to place allocated operations
+ * @param nb_ops
+ *   Number of operations to allocate
+ * @return
+ *   - 0: Success
+ *   - -ENOENT: Not enough entries in the mempool; no ops are retrieved.
+ */
+int __rte_experimental
+rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
+		struct rte_comp_op **ops, uint16_t nb_ops);
+
+/**
+ * Free operation structure
+ * If operation has been allocate from a rte_mempool, then the operation will
+ * be returned to the mempool.
+ *
+ * @param op
+ *   Compress operation
+ */
+void __rte_experimental
+rte_comp_op_free(struct rte_comp_op *op);
+
 #ifdef __cplusplus
 }
 #endif

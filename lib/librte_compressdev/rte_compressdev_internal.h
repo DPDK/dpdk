@@ -63,7 +63,6 @@ typedef uint16_t (*compressdev_dequeue_pkt_burst_t)(void *qp,
 typedef uint16_t (*compressdev_enqueue_pkt_burst_t)(void *qp,
 		struct rte_comp_op **ops, uint16_t nb_ops);
 
-
 /** The data structure associated with each comp device. */
 struct rte_compressdev {
 	compressdev_dequeue_pkt_burst_t dequeue_burst;

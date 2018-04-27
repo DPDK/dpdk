@@ -23,6 +23,10 @@ EXPERIMENTAL {
 	rte_compressdev_socket_id;
 	rte_compressdev_start;
 	rte_compressdev_stop;
+	rte_comp_op_alloc;
+	rte_comp_op_bulk_alloc;
+	rte_comp_op_free;
+	rte_comp_op_pool_create;
 
         local: *;
 };

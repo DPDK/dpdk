@@ -16,7 +16,7 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_mempool -lrte_kvargs
 
 # library source files
-SRCS-y += rte_compressdev.c rte_compressdev_pmd.c
+SRCS-y += rte_compressdev.c rte_compressdev_pmd.c rte_comp.c
 
 # export include files
 SYMLINK-y-include += rte_comp.h
