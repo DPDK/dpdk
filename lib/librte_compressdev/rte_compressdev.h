@@ -22,6 +22,39 @@ extern "C" {
 #include "rte_comp.h"
 
 /**
+ * Parameter log base 2 range description.
+ * Final value will be 2^value.
+ */
+struct rte_param_log2_range {
+	uint8_t min;	/**< Minimum log2 value */
+	uint8_t max;	/**< Maximum log2 value */
+	uint8_t increment;
+	/**< If a range of sizes are supported,
+	 * this parameter is used to indicate
+	 * increments in base 2 log byte value
+	 * that are supported between the minimum and maximum
+	 */
+};
+
+/** Structure used to capture a capability of a comp device */
+struct rte_compressdev_capabilities {
+	enum rte_comp_algorithm algo;
+	/* Compression algorithm */
+	uint64_t comp_feature_flags;
+	/**< Bitmask of flags for compression service features */
+	struct rte_param_log2_range window_size;
+	/**< Window size range in base two log byte values */
+};
+
+/** Macro used at end of comp PMD list */
+#define RTE_COMP_END_OF_CAPABILITIES_LIST() \
+	{ RTE_COMP_ALGO_UNSPECIFIED }
+
+const struct rte_compressdev_capabilities * __rte_experimental
+rte_compressdev_capability_get(uint8_t dev_id,
+			enum rte_comp_algorithm algo);
+
+/**
  * compression device supported feature flags
  *
  * @note New features flags should be added to the end of the list
@@ -57,6 +90,8 @@ rte_compressdev_get_feature_name(uint64_t flag);
 struct rte_compressdev_info {
 	const char *driver_name;		/**< Driver name. */
 	uint64_t feature_flags;			/**< Feature flags */
+	const struct rte_compressdev_capabilities *capabilities;
+	/**< Array of devices supported capabilities */
 	uint16_t max_nb_queue_pairs;
 	/**< Maximum number of queues pairs supported by device.
 	 * (If 0, there is no limit in maximum number of queue pairs)

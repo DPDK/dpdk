@@ -31,6 +31,29 @@ static struct rte_compressdev_global compressdev_globals = {
 
 struct rte_compressdev_global *rte_compressdev_globals = &compressdev_globals;
 
+const struct rte_compressdev_capabilities * __rte_experimental
+rte_compressdev_capability_get(uint8_t dev_id,
+			enum rte_comp_algorithm algo)
+{
+	const struct rte_compressdev_capabilities *capability;
+	struct rte_compressdev_info dev_info;
+	int i = 0;
+
+	if (dev_id >= compressdev_globals.nb_devs) {
+		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%d", dev_id);
+		return NULL;
+	}
+	rte_compressdev_info_get(dev_id, &dev_info);
+
+	while ((capability = &dev_info.capabilities[i++])->algo !=
+			RTE_COMP_ALGO_UNSPECIFIED){
+		if (capability->algo == algo)
+			return capability;
+	}
+
+	return NULL;
+}
+
 const char * __rte_experimental
 rte_compressdev_get_feature_name(uint64_t flag)
 {

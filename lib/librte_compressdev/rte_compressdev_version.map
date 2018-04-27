@@ -3,6 +3,7 @@ EXPERIMENTAL {
 
 	rte_compressdev_callback_register;
 	rte_compressdev_callback_unregister;
+	rte_compressdev_capability_get;
 	rte_compressdev_close;
 	rte_compressdev_configure;
 	rte_compressdev_count;
