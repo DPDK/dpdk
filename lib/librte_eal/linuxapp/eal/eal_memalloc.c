@@ -504,7 +504,12 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	if (!internal_config.single_file_segments)
 		close(fd);
 
-	*(int *)addr = *(int *)addr;
+	/* we need to trigger a write to the page to enforce page fault and
+	 * ensure that page is accessible to us, but we can't overwrite value
+	 * that is already there, so read the old value, and write itback.
+	 * kernel populates the page with zeroes initially.
+	 */
+	*(volatile int *)addr = *(volatile int *)addr;
 
 	ms->addr = addr;
 	ms->hugepage_sz = alloc_sz;
