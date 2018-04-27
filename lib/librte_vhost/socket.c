@@ -199,6 +199,9 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	struct vhost_user_connection *conn;
 	int ret;
 
+	if (vsocket == NULL)
+		return;
+
 	conn = malloc(sizeof(*conn));
 	if (conn == NULL) {
 		close(fd);
@@ -778,6 +781,20 @@ unlock_exit:
 	return ret;
 }
 
+static void
+vhost_user_socket_mem_free(struct vhost_user_socket *vsocket)
+{
+	if (vsocket && vsocket->path) {
+		free(vsocket->path);
+		vsocket->path = NULL;
+	}
+
+	if (vsocket) {
+		free(vsocket);
+		vsocket = NULL;
+	}
+}
+
 /*
  * Register a new vhost-user socket; here we could act as server
  * (the default case), or client (when RTE_VHOST_USER_CLIENT) flag
@@ -808,7 +825,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	if (vsocket->path == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"error: failed to copy socket path string\n");
-		free(vsocket);
+		vhost_user_socket_mem_free(vsocket);
 		goto out;
 	}
 	TAILQ_INIT(&vsocket->conn_list);
@@ -866,8 +883,7 @@ out_mutex:
 			"error: failed to destroy connection mutex\n");
 	}
 out_free:
-	free(vsocket->path);
-	free(vsocket);
+	vhost_user_socket_mem_free(vsocket);
 out:
 	pthread_mutex_unlock(&vhost_user.mutex);
 
@@ -914,14 +930,6 @@ rte_vhost_driver_unregister(const char *path)
 		struct vhost_user_socket *vsocket = vhost_user.vsockets[i];
 
 		if (!strcmp(vsocket->path, path)) {
-			if (vsocket->is_server) {
-				fdset_del(&vhost_user.fdset, vsocket->socket_fd);
-				close(vsocket->socket_fd);
-				unlink(path);
-			} else if (vsocket->reconnect) {
-				vhost_user_remove_reconnect(vsocket);
-			}
-
 again:
 			pthread_mutex_lock(&vsocket->conn_mutex);
 			for (conn = TAILQ_FIRST(&vsocket->conn_list);
@@ -951,9 +959,17 @@ again:
 			}
 			pthread_mutex_unlock(&vsocket->conn_mutex);
 
+			if (vsocket->is_server) {
+				fdset_del(&vhost_user.fdset,
+						vsocket->socket_fd);
+				close(vsocket->socket_fd);
+				unlink(path);
+			} else if (vsocket->reconnect) {
+				vhost_user_remove_reconnect(vsocket);
+			}
+
 			pthread_mutex_destroy(&vsocket->conn_mutex);
-			free(vsocket->path);
-			free(vsocket);
+			vhost_user_socket_mem_free(vsocket);
 
 			count = --vhost_user.vsocket_cnt;
 			vhost_user.vsockets[i] = vhost_user.vsockets[count];
