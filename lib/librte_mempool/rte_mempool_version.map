@@ -63,5 +63,4 @@ EXPERIMENTAL {
 	global:
 
 	rte_mempool_ops_get_info;
-
-} DPDK_18.05;
+};

@@ -9,6 +9,4 @@ EXPERIMENTAL {
 	dpaa_eth_eventq_attach;
 	dpaa_eth_eventq_detach;
 	rte_pmd_dpaa_set_tx_loopback;
-
-	local: *;
-} DPDK_17.11;
+};

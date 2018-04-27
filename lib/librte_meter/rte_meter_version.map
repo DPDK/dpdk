@@ -16,5 +16,4 @@ EXPERIMENTAL {
 
 	rte_meter_srtcm_profile_config;
 	rte_meter_trtcm_profile_config;
-
-} DPDK_2.0;
+};

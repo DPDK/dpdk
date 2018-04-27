@@ -109,5 +109,4 @@ EXPERIMENTAL {
 	rte_event_crypto_adapter_stats_get;
 	rte_event_crypto_adapter_stats_reset;
 	rte_event_crypto_adapter_stop;
-
-} DPDK_18.05;
+};

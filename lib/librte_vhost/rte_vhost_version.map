@@ -82,4 +82,4 @@ EXPERIMENTAL {
 	rte_vhost_crypto_finalize_requests;
 	rte_vhost_crypto_set_zero_copy;
 	rte_vhost_va_from_guest_pa;
-} DPDK_18.02;
+};
