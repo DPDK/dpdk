@@ -555,6 +555,46 @@ rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 			dev->data->queue_pairs[qp_id], ops, nb_ops);
 }
 
+int __rte_experimental
+rte_compressdev_stats_get(uint8_t dev_id, struct rte_compressdev_stats *stats)
+{
+	struct rte_compressdev *dev;
+
+	if (!rte_compressdev_is_valid_dev(dev_id)) {
+		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%d", dev_id);
+		return -ENODEV;
+	}
+
+	if (stats == NULL) {
+		COMPRESSDEV_LOG(ERR, "Invalid stats ptr");
+		return -EINVAL;
+	}
+
+	dev = &rte_comp_devices[dev_id];
+	memset(stats, 0, sizeof(*stats));
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->stats_get, -ENOTSUP);
+	(*dev->dev_ops->stats_get)(dev, stats);
+	return 0;
+}
+
+void __rte_experimental
+rte_compressdev_stats_reset(uint8_t dev_id)
+{
+	struct rte_compressdev *dev;
+
+	if (!rte_compressdev_is_valid_dev(dev_id)) {
+		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%" PRIu8, dev_id);
+		return;
+	}
+
+	dev = &rte_comp_devices[dev_id];
+
+	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->stats_reset);
+	(*dev->dev_ops->stats_reset)(dev);
+}
+
+
 void __rte_experimental
 rte_compressdev_info_get(uint8_t dev_id, struct rte_compressdev_info *dev_info)
 {

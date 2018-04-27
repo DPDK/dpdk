@@ -63,6 +63,19 @@ struct rte_compressdev_info {
 	 */
 };
 
+/** comp device statistics */
+struct rte_compressdev_stats {
+	uint64_t enqueued_count;
+	/**< Count of all operations enqueued */
+	uint64_t dequeued_count;
+	/**< Count of all operations dequeued */
+
+	uint64_t enqueue_err_count;
+	/**< Total error count on operations enqueued */
+	uint64_t dequeue_err_count;
+	/**< Total error count on operations dequeued */
+};
+
 /**
  * Get the compress device name given a device identifier.
  *
@@ -228,6 +241,32 @@ rte_compressdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
  */
 uint16_t __rte_experimental
 rte_compressdev_queue_pair_count(uint8_t dev_id);
+
+
+/**
+ * Retrieve the general I/O statistics of a device.
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param stats
+ *   A pointer to a structure of type
+ *   *rte_compressdev_stats* to be filled with the
+ *   values of device counters
+ * @return
+ *   - Zero if successful.
+ *   - Non-zero otherwise.
+ */
+int __rte_experimental
+rte_compressdev_stats_get(uint8_t dev_id, struct rte_compressdev_stats *stats);
+
+/**
+ * Reset the general I/O statistics of a device.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ */
+void __rte_experimental
+rte_compressdev_stats_reset(uint8_t dev_id);
 
 /**
  * Retrieve the contextual information of a device.

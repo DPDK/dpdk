@@ -117,6 +117,27 @@ typedef int (*compressdev_close_t)(struct rte_compressdev *dev);
 
 
 /**
+ * Function used to get statistics of a device.
+ *
+ * @param dev
+ *   Compress device
+ * @param stats
+ *   Compress device stats to populate
+ */
+typedef void (*compressdev_stats_get_t)(struct rte_compressdev *dev,
+				struct rte_compressdev_stats *stats);
+
+
+/**
+ * Function used to reset statistics of a device.
+ *
+ * @param dev
+ *   Compress device
+ */
+typedef void (*compressdev_stats_reset_t)(struct rte_compressdev *dev);
+
+
+/**
  * Function used to get specific information of a device.
  *
  * @param dev
@@ -246,6 +267,11 @@ struct rte_compressdev_ops {
 	compressdev_close_t dev_close;		/**< Close device. */
 
 	compressdev_info_get_t dev_infos_get;	/**< Get device info. */
+
+	compressdev_stats_get_t stats_get;
+	/**< Get device statistics. */
+	compressdev_stats_reset_t stats_reset;
+	/**< Reset device statistics. */
 
 	compressdev_queue_pair_setup_t queue_pair_setup;
 	/**< Set up a device queue pair. */
