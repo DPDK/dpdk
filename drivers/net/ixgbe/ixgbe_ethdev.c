@@ -5797,6 +5797,13 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 		if (vector_idx < base + intr_handle->nb_efd - 1)
 			vector_idx++;
 	}
+
+	/* As RX queue setting above show, all queues use the vector 0.
+	 * Set only the ITR value of IXGBE_MISC_VEC_ID.
+	 */
+	IXGBE_WRITE_REG(hw, IXGBE_VTEITR(IXGBE_MISC_VEC_ID),
+			IXGBE_EITR_INTERVAL_US(IXGBE_QUEUE_ITR_INTERVAL_DEFAULT)
+			| IXGBE_EITR_CNT_WDIS);
 }
 
 /**

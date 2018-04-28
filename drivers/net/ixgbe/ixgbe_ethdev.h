@@ -62,6 +62,7 @@
 	(((us) * 1000 / IXGBE_EITR_INTERVAL_UNIT_NS << IXGBE_EITR_ITR_INT_SHIFT) & \
 		IXGBE_EITR_ITR_INT_MASK)
 
+#define IXGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
 
 /* Loopback operation modes */
 /* 82599 specific loopback operation types */
