@@ -4841,7 +4841,8 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 		 * at most 500us latency for a single RSC aggregation.
 		 */
 		eitr &= ~IXGBE_EITR_ITR_INT_MASK;
-		eitr |= IXGBE_EITR_INTERVAL_US(500) | IXGBE_EITR_CNT_WDIS;
+		eitr |= IXGBE_EITR_INTERVAL_US(IXGBE_QUEUE_ITR_INTERVAL_DEFAULT);
+		eitr |= IXGBE_EITR_CNT_WDIS;
 
 		IXGBE_WRITE_REG(hw, IXGBE_SRRCTL(rxq->reg_idx), srrctl);
 		IXGBE_WRITE_REG(hw, IXGBE_RSCCTL(rxq->reg_idx), rscctl);

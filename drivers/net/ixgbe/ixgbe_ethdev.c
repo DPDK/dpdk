@@ -59,9 +59,6 @@
  */
 #define IXGBE_FC_LO    0x40
 
-/* Default minimum inter-interrupt interval for EITR configuration */
-#define IXGBE_MIN_INTER_INTERRUPT_INTERVAL_DEFAULT    0x79E
-
 /* Timer value included in XOFF frames. */
 #define IXGBE_FC_PAUSE 0x680
 
@@ -5873,7 +5870,7 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 		break;
 	}
 	IXGBE_WRITE_REG(hw, IXGBE_EITR(IXGBE_MISC_VEC_ID),
-			IXGBE_MIN_INTER_INTERRUPT_INTERVAL_DEFAULT & 0xFFF);
+			IXGBE_EITR_INTERVAL_US(IXGBE_QUEUE_ITR_INTERVAL_DEFAULT));
 
 	/* set up to autoclear timer, and the vectors */
 	mask = IXGBE_EIMS_ENABLE_MASK;
