@@ -237,8 +237,8 @@ static int ixgbevf_dev_link_update(struct rte_eth_dev *dev,
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
 static void ixgbevf_dev_close(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_reset(struct rte_eth_dev *dev);
-static void ixgbevf_intr_disable(struct ixgbe_hw *hw);
-static void ixgbevf_intr_enable(struct ixgbe_hw *hw);
+static void ixgbevf_intr_disable(struct rte_eth_dev *dev);
+static void ixgbevf_intr_enable(struct rte_eth_dev *dev);
 static int ixgbevf_dev_stats_get(struct rte_eth_dev *dev,
 		struct rte_eth_stats *stats);
 static void ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
@@ -1603,7 +1603,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	ixgbevf_dev_stats_reset(eth_dev);
 
 	/* Disable the interrupts for VF */
-	ixgbevf_intr_disable(hw);
+	ixgbevf_intr_disable(eth_dev);
 
 	hw->mac.num_rar_entries = 128; /* The MAX of the underlying PF */
 	diag = hw->mac.ops.reset_hw(hw);
@@ -1672,7 +1672,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	rte_intr_callback_register(intr_handle,
 				   ixgbevf_dev_interrupt_handler, eth_dev);
 	rte_intr_enable(intr_handle);
-	ixgbevf_intr_enable(hw);
+	ixgbevf_intr_enable(eth_dev);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
@@ -1705,7 +1705,7 @@ eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = NULL;
 
 	/* Disable the interrupts for VF */
-	ixgbevf_intr_disable(hw);
+	ixgbevf_intr_disable(eth_dev);
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
@@ -4927,19 +4927,32 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
  * Virtual Function operations
  */
 static void
-ixgbevf_intr_disable(struct ixgbe_hw *hw)
+ixgbevf_intr_disable(struct rte_eth_dev *dev)
 {
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	PMD_INIT_FUNC_TRACE();
 
 	/* Clear interrupt mask to stop from interrupts being generated */
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMC, IXGBE_VF_IRQ_CLEAR_MASK);
 
 	IXGBE_WRITE_FLUSH(hw);
+
+	/* Clear mask value. */
+	intr->mask = 0;
 }
 
 static void
-ixgbevf_intr_enable(struct ixgbe_hw *hw)
+ixgbevf_intr_enable(struct rte_eth_dev *dev)
 {
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	PMD_INIT_FUNC_TRACE();
 
 	/* VF enable interrupt autoclean */
@@ -4948,6 +4961,9 @@ ixgbevf_intr_enable(struct ixgbe_hw *hw)
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, IXGBE_VF_IRQ_ENABLE_MASK);
 
 	IXGBE_WRITE_FLUSH(hw);
+
+	/* Save IXGBE_VTEIMS value to mask. */
+	intr->mask = IXGBE_VF_IRQ_ENABLE_MASK;
 }
 
 static int
@@ -5090,7 +5106,7 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	rte_intr_enable(intr_handle);
 
 	/* Re-enable interrupt for VF */
-	ixgbevf_intr_enable(hw);
+	ixgbevf_intr_enable(dev);
 
 	return 0;
 }
@@ -5104,7 +5120,7 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	ixgbevf_intr_disable(hw);
+	ixgbevf_intr_disable(dev);
 
 	hw->adapter_stopped = 1;
 	ixgbe_stop_adapter(hw);
@@ -5596,17 +5612,17 @@ ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
-	uint32_t mask;
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t vec = IXGBE_MISC_VEC_ID;
 
-	mask = IXGBE_READ_REG(hw, IXGBE_VTEIMS);
 	if (rte_intr_allow_others(intr_handle))
 		vec = IXGBE_RX_VEC_START;
-	mask |= (1 << vec);
+	intr->mask |= (1 << vec);
 	RTE_SET_USED(queue_id);
-	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, mask);
+	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, intr->mask);
 
 	rte_intr_enable(intr_handle);
 
@@ -5616,19 +5632,19 @@ ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 static int
 ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	uint32_t mask;
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t vec = IXGBE_MISC_VEC_ID;
 
-	mask = IXGBE_READ_REG(hw, IXGBE_VTEIMS);
 	if (rte_intr_allow_others(intr_handle))
 		vec = IXGBE_RX_VEC_START;
-	mask &= ~(1 << vec);
+	intr->mask &= ~(1 << vec);
 	RTE_SET_USED(queue_id);
-	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, mask);
+	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, intr->mask);
 
 	return 0;
 }
@@ -8267,7 +8283,7 @@ ixgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-	ixgbevf_intr_disable(hw);
+	ixgbevf_intr_disable(dev);
 
 	/* read-on-clear nic registers here */
 	eicr = IXGBE_READ_REG(hw, IXGBE_VTEICR);
@@ -8284,7 +8300,6 @@ ixgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
 static int
 ixgbevf_dev_interrupt_action(struct rte_eth_dev *dev)
 {
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
@@ -8293,7 +8308,7 @@ ixgbevf_dev_interrupt_action(struct rte_eth_dev *dev)
 		intr->flags &= ~IXGBE_FLAG_MAILBOX;
 	}
 
-	ixgbevf_intr_enable(hw);
+	ixgbevf_intr_enable(dev);
 
 	return 0;
 }
