@@ -5870,7 +5870,8 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 		break;
 	}
 	IXGBE_WRITE_REG(hw, IXGBE_EITR(IXGBE_MISC_VEC_ID),
-			IXGBE_EITR_INTERVAL_US(IXGBE_QUEUE_ITR_INTERVAL_DEFAULT));
+			IXGBE_EITR_INTERVAL_US(IXGBE_QUEUE_ITR_INTERVAL_DEFAULT)
+			| IXGBE_EITR_CNT_WDIS);
 
 	/* set up to autoclear timer, and the vectors */
 	mask = IXGBE_EIMS_ENABLE_MASK;
