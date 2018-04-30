@@ -121,8 +121,32 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	RTE_LOG(DEBUG, EAL, "Virtual area found at %p (size = 0x%zx)\n",
 		aligned_addr, *size);
 
-	if (unmap)
+	if (unmap) {
 		munmap(mapped_addr, map_sz);
+	} else if (!no_align) {
+		void *map_end, *aligned_end;
+		size_t before_len, after_len;
+
+		/* when we reserve space with alignment, we add alignment to
+		 * mapping size. On 32-bit, if 1GB alignment was requested, this
+		 * would waste 1GB of address space, which is a luxury we cannot
+		 * afford. so, if alignment was performed, check if any unneeded
+		 * address space can be unmapped back.
+		 */
+
+		map_end = RTE_PTR_ADD(mapped_addr, (size_t)map_sz);
+		aligned_end = RTE_PTR_ADD(aligned_addr, *size);
+
+		/* unmap space before aligned mmap address */
+		before_len = RTE_PTR_DIFF(aligned_addr, mapped_addr);
+		if (before_len > 0)
+			munmap(mapped_addr, before_len);
+
+		/* unmap space after aligned end mmap address */
+		after_len = RTE_PTR_DIFF(map_end, aligned_end);
+		if (after_len > 0)
+			munmap(aligned_end, after_len);
+	}
 
 	baseaddr_offset += *size;
 
