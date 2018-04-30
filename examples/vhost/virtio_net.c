@@ -103,7 +103,7 @@ enqueue_pkt(struct vhost_dev *dev, struct rte_vhost_vring *vr,
 
 			remain -= len;
 			guest_addr += len;
-			dst += len;
+			src += len;
 		}
 
 		desc_chunck_len = desc->len - dev->hdr_len;
