@@ -277,7 +277,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			vhost_log_write(dev, guest_addr, len);
 			remain -= len;
 			guest_addr += len;
-			dst += len;
+			src += len;
 		}
 	}
 
@@ -771,7 +771,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 					remain -= len;
 					guest_addr += len;
-					dst += len;
+					src += len;
 				}
 			} else {
 				PRINT_PACKET(dev, (uintptr_t)hdr_addr,
