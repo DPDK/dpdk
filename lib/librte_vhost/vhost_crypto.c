@@ -675,8 +675,8 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 			goto error_exit;
 		}
 		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *), head,
-				mem, &desc, cipher->para.src_data_len))
-				< 0) {
+				mem, &desc, cipher->para.src_data_len)
+				< 0)) {
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
