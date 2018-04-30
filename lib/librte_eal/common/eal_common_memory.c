@@ -75,8 +75,13 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 
 	do {
 		map_sz = no_align ? *size : *size + page_sz;
+		if (map_sz > SIZE_MAX) {
+			RTE_LOG(ERR, EAL, "Map size too big\n");
+			rte_errno = E2BIG;
+			return NULL;
+		}
 
-		mapped_addr = mmap(requested_addr, map_sz, PROT_READ,
+		mapped_addr = mmap(requested_addr, (size_t)map_sz, PROT_READ,
 				mmap_flags, -1, 0);
 		if (mapped_addr == MAP_FAILED && allow_shrink)
 			*size -= page_sz;
