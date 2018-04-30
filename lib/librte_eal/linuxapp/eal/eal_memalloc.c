@@ -666,7 +666,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	struct alloc_walk_param *wa = arg;
 	struct rte_memseg_list *cur_msl;
 	size_t page_sz;
-	int cur_idx, start_idx, j, dir_fd;
+	int cur_idx, start_idx, j, dir_fd = -1;
 	unsigned int msl_idx, need, i;
 
 	if (msl->page_sz != wa->page_sz)
@@ -691,19 +691,24 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	 * because file creation and locking operations are not atomic,
 	 * and we might be the first or the last ones to use a particular page,
 	 * so we need to ensure atomicity of every operation.
+	 *
+	 * during init, we already hold a write lock, so don't try to take out
+	 * another one.
 	 */
-	dir_fd = open(wa->hi->hugedir, O_RDONLY);
-	if (dir_fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n", __func__,
-			wa->hi->hugedir, strerror(errno));
-		return -1;
-	}
-	/* blocking writelock */
-	if (flock(dir_fd, LOCK_EX)) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot lock '%s': %s\n", __func__,
-			wa->hi->hugedir, strerror(errno));
-		close(dir_fd);
-		return -1;
+	if (wa->hi->lock_descriptor == -1) {
+		dir_fd = open(wa->hi->hugedir, O_RDONLY);
+		if (dir_fd < 0) {
+			RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n",
+				__func__, wa->hi->hugedir, strerror(errno));
+			return -1;
+		}
+		/* blocking writelock */
+		if (flock(dir_fd, LOCK_EX)) {
+			RTE_LOG(ERR, EAL, "%s(): Cannot lock '%s': %s\n",
+				__func__, wa->hi->hugedir, strerror(errno));
+			close(dir_fd);
+			return -1;
+		}
 	}
 
 	for (i = 0; i < need; i++, cur_idx++) {
@@ -742,7 +747,8 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 			if (wa->ms)
 				memset(wa->ms, 0, sizeof(*wa->ms) * wa->n_segs);
 
-			close(dir_fd);
+			if (dir_fd >= 0)
+				close(dir_fd);
 			return -1;
 		}
 		if (wa->ms)
@@ -754,7 +760,8 @@ out:
 	wa->segs_allocated = i;
 	if (i > 0)
 		cur_msl->version++;
-	close(dir_fd);
+	if (dir_fd >= 0)
+		close(dir_fd);
 	return 1;
 }
 
@@ -769,7 +776,7 @@ free_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	struct rte_memseg_list *found_msl;
 	struct free_walk_param *wa = arg;
 	uintptr_t start_addr, end_addr;
-	int msl_idx, seg_idx, ret, dir_fd;
+	int msl_idx, seg_idx, ret, dir_fd = -1;
 
 	start_addr = (uintptr_t) msl->base_va;
 	end_addr = start_addr + msl->memseg_arr.len * (size_t)msl->page_sz;
@@ -788,19 +795,24 @@ free_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	 * because file creation and locking operations are not atomic,
 	 * and we might be the first or the last ones to use a particular page,
 	 * so we need to ensure atomicity of every operation.
+	 *
+	 * during init, we already hold a write lock, so don't try to take out
+	 * another one.
 	 */
-	dir_fd = open(wa->hi->hugedir, O_RDONLY);
-	if (dir_fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n", __func__,
-			wa->hi->hugedir, strerror(errno));
-		return -1;
-	}
-	/* blocking writelock */
-	if (flock(dir_fd, LOCK_EX)) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot lock '%s': %s\n", __func__,
-			wa->hi->hugedir, strerror(errno));
-		close(dir_fd);
-		return -1;
+	if (wa->hi->lock_descriptor == -1) {
+		dir_fd = open(wa->hi->hugedir, O_RDONLY);
+		if (dir_fd < 0) {
+			RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n",
+				__func__, wa->hi->hugedir, strerror(errno));
+			return -1;
+		}
+		/* blocking writelock */
+		if (flock(dir_fd, LOCK_EX)) {
+			RTE_LOG(ERR, EAL, "%s(): Cannot lock '%s': %s\n",
+				__func__, wa->hi->hugedir, strerror(errno));
+			close(dir_fd);
+			return -1;
+		}
 	}
 
 	found_msl->version++;
@@ -809,7 +821,8 @@ free_seg_walk(const struct rte_memseg_list *msl, void *arg)
 
 	ret = free_seg(wa->ms, wa->hi, msl_idx, seg_idx);
 
-	close(dir_fd);
+	if (dir_fd >= 0)
+		close(dir_fd);
 
 	if (ret < 0)
 		return -1;
