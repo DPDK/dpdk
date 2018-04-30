@@ -630,10 +630,7 @@ eth_i40e_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			return retval;
 	}
 
-	/* physical port net_bdf_port */
-	snprintf(name, sizeof(name), "net_%s", pci_dev->device.name);
-
-	retval = rte_eth_dev_create(&pci_dev->device, name,
+	retval = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
 		sizeof(struct i40e_adapter),
 		eth_dev_pci_specific_init, pci_dev,
 		eth_i40e_dev_init, NULL);
@@ -642,7 +639,8 @@ eth_i40e_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return retval;
 
 	/* probe VF representor ports */
-	struct rte_eth_dev *pf_ethdev = rte_eth_dev_allocated(name);
+	struct rte_eth_dev *pf_ethdev = rte_eth_dev_allocated(
+		pci_dev->device.name);
 
 	if (pf_ethdev == NULL)
 		return -ENODEV;
