@@ -655,6 +655,8 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	}
 	bnxt_set_hwrm_link_config(bp, false);
 	bnxt_hwrm_port_clr_stats(bp);
+	bnxt_free_tx_mbufs(bp);
+	bnxt_free_rx_mbufs(bp);
 	bnxt_shutdown_nic(bp);
 	bp->dev_stopped = 1;
 }
@@ -666,8 +668,6 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	if (bp->dev_stopped == 0)
 		bnxt_dev_stop_op(eth_dev);
 
-	bnxt_free_tx_mbufs(bp);
-	bnxt_free_rx_mbufs(bp);
 	bnxt_free_mem(bp);
 	if (eth_dev->data->mac_addrs != NULL) {
 		rte_free(eth_dev->data->mac_addrs);
