@@ -1148,7 +1148,6 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				    port_id,
 				    dev_conf->rx_adv_conf.rss_conf.rss_hf,
 				    dev_info.flow_type_rss_offloads);
-		return -EINVAL;
 	}
 
 	/*
@@ -2789,7 +2788,6 @@ rte_eth_dev_rss_hash_update(uint16_t port_id,
 				    port_id,
 				    rss_conf->rss_hf,
 				    dev_info.flow_type_rss_offloads);
-		return -EINVAL;
 	}
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rss_hash_update, -ENOTSUP);
 	return eth_err(port_id, (*dev->dev_ops->rss_hash_update)(dev,
