@@ -143,7 +143,7 @@ prepare_numa(int *oldpolicy, struct bitmask *oldmask, int socket_id)
 }
 
 static void
-resotre_numa(int *oldpolicy, struct bitmask *oldmask)
+restore_numa(int *oldpolicy, struct bitmask *oldmask)
 {
 	RTE_LOG(DEBUG, EAL,
 		"Restoring previous memory policy: %d\n", *oldpolicy);
@@ -889,7 +889,7 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs, size_t page_sz,
 
 #ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
 	if (have_numa)
-		resotre_numa(&oldpolicy, oldmask);
+		restore_numa(&oldpolicy, oldmask);
 #endif
 	return ret;
 }
