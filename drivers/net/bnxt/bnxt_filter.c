@@ -231,7 +231,7 @@ nxt_non_void_action(const struct rte_flow_action *cur)
 	}
 }
 
-int check_zero_bytes(const uint8_t *bytes, int len)
+int bnxt_check_zero_bytes(const uint8_t *bytes, int len)
 {
 	int i;
 	for (i = 0; i < len; i++)
@@ -512,13 +512,15 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				   ipv6_spec->hdr.src_addr, 16);
 			rte_memcpy(filter->dst_ipaddr,
 				   ipv6_spec->hdr.dst_addr, 16);
-			if (!check_zero_bytes(ipv6_mask->hdr.src_addr, 16)) {
+			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.src_addr,
+						   16)) {
 				rte_memcpy(filter->src_ipaddr_mask,
 					   ipv6_mask->hdr.src_addr, 16);
 				en |= !use_ntuple ? 0 :
 				    NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
 			}
-			if (!check_zero_bytes(ipv6_mask->hdr.dst_addr, 16)) {
+			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.dst_addr,
+						   16)) {
 				rte_memcpy(filter->dst_ipaddr_mask,
 					   ipv6_mask->hdr.dst_addr, 16);
 				en |= !use_ntuple ? 0 :

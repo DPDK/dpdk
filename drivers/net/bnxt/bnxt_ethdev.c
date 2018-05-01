@@ -3285,7 +3285,7 @@ skip_init:
 		goto error_free;
 	}
 
-	if (check_zero_bytes(bp->dflt_mac_addr, ETHER_ADDR_LEN)) {
+	if (bnxt_check_zero_bytes(bp->dflt_mac_addr, ETHER_ADDR_LEN)) {
 		PMD_DRV_LOG(ERR,
 			    "Invalid MAC addr %02X:%02X:%02X:%02X:%02X:%02X\n",
 			    bp->dflt_mac_addr[0], bp->dflt_mac_addr[1],
