@@ -417,6 +417,45 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 }
 
 /**
+ * Sets default tuning parameters.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] info
+ *   Info structure output buffer.
+ */
+static void
+mlx5_set_default_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	/* Minimum CPU utilization. */
+	info->default_rxportconf.ring_size = 256;
+	info->default_txportconf.ring_size = 256;
+	info->default_rxportconf.burst_size = 64;
+	info->default_txportconf.burst_size = 64;
+	if (priv->link_speed_capa & ETH_LINK_SPEED_100G) {
+		info->default_rxportconf.nb_queues = 16;
+		info->default_txportconf.nb_queues = 16;
+		if (dev->data->nb_rx_queues > 2 ||
+		    dev->data->nb_tx_queues > 2) {
+			/* Max Throughput. */
+			info->default_rxportconf.ring_size = 2048;
+			info->default_txportconf.ring_size = 2048;
+		}
+	} else {
+		info->default_rxportconf.nb_queues = 8;
+		info->default_txportconf.nb_queues = 8;
+		if (dev->data->nb_rx_queues > 2 ||
+		    dev->data->nb_tx_queues > 2) {
+			/* Max Throughput. */
+			info->default_rxportconf.ring_size = 4096;
+			info->default_txportconf.ring_size = 4096;
+		}
+	}
+}
+
+/**
  * DPDK callback to get information about the device.
  *
  * @param dev
@@ -458,6 +497,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->hash_key_size = rss_hash_default_key_len;
 	info->speed_capa = priv->link_speed_capa;
 	info->flow_type_rss_offloads = ~MLX5_RSS_HF_MASK;
+	mlx5_set_default_params(dev, info);
 }
 
 /**
