@@ -1212,7 +1212,7 @@ static int bnxt_hwrm_vnic_plcmodes_qcfg(struct bnxt *bp,
 
 	HWRM_PREP(req, VNIC_PLCMODES_QCFG);
 
-	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -1240,7 +1240,7 @@ static int bnxt_hwrm_vnic_plcmodes_cfg(struct bnxt *bp,
 
 	HWRM_PREP(req, VNIC_PLCMODES_CFG);
 
-	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 	req.flags = rte_cpu_to_le_32(pmode->flags);
 	req.jumbo_thresh = rte_cpu_to_le_16(pmode->jumbo_thresh);
 	req.hds_offset = rte_cpu_to_le_16(pmode->hds_offset);
@@ -1484,7 +1484,7 @@ int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 	size -= RTE_PKTMBUF_HEADROOM;
 
 	req.jumbo_thresh = rte_cpu_to_le_16(size);
-	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -1520,7 +1520,7 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 			rte_cpu_to_le_16(HWRM_VNIC_TPA_CFG_INPUT_MAX_AGGS_MAX);
 		req.min_agg_len = rte_cpu_to_le_32(512);
 	}
-	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
