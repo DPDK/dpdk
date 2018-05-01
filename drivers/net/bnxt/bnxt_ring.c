@@ -24,6 +24,9 @@
 
 void bnxt_free_ring(struct bnxt_ring *ring)
 {
+	if (!ring)
+		return;
+
 	if (ring->vmem_size && *ring->vmem) {
 		memset((char *)*ring->vmem, 0, ring->vmem_size);
 		*ring->vmem = NULL;

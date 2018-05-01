@@ -23,10 +23,8 @@
 
 void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq)
 {
-	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
-
-	if (cpr->hw_stats)
-		cpr->hw_stats = NULL;
+	if (rxq && rxq->cp_ring && rxq->cp_ring->hw_stats)
+		rxq->cp_ring->hw_stats = NULL;
 }
 
 int bnxt_mq_rx_configure(struct bnxt *bp)
