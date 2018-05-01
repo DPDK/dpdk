@@ -697,9 +697,9 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	time_t start_time = time(NULL);
 
 	do {
-		ret = mlx5_link_update_unlocked_gset(dev, &dev_link);
+		ret = mlx5_link_update_unlocked_gs(dev, &dev_link);
 		if (ret)
-			ret = mlx5_link_update_unlocked_gs(dev, &dev_link);
+			ret = mlx5_link_update_unlocked_gset(dev, &dev_link);
 		if (ret == 0)
 			break;
 		/* Handle wait to complete situation. */
