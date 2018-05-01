@@ -22,7 +22,6 @@ struct bnxt_tx_queue {
 	uint8_t			pthresh; /* Prefetch threshold register */
 	uint8_t			hthresh; /* Host threshold register */
 	uint8_t			wthresh; /* Write-back threshold reg */
-	uint32_t		txq_flags; /* Holds flags for this TXq */
 	uint32_t		ctx_curr; /* Hardware context states */
 	uint8_t			tx_deferred_start; /* not in global dev start */
 
