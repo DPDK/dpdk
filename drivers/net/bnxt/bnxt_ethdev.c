@@ -780,6 +780,11 @@ out:
 	new.link_speed != eth_dev->data->dev_link.link_speed) {
 		memcpy(&eth_dev->data->dev_link, &new,
 			sizeof(struct rte_eth_link));
+
+		_rte_eth_dev_callback_process(eth_dev,
+					      RTE_ETH_EVENT_INTR_LSC,
+					      NULL);
+
 		bnxt_print_link_info(eth_dev);
 	}
 
