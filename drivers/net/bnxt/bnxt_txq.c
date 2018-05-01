@@ -86,7 +86,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		PMD_DRV_LOG(ERR,
 			"Cannot create Tx ring %d. Only %d rings available\n",
 			queue_idx, bp->max_tx_rings);
-		return -ENOSPC;
+		return -EINVAL;
 	}
 
 	if (!nb_desc || nb_desc > MAX_TX_DESC_CNT) {
