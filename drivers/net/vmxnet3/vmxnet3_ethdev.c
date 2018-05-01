@@ -42,6 +42,23 @@
 
 #define	VMXNET3_TX_MAX_SEG	UINT8_MAX
 
+#define VMXNET3_TX_OFFLOAD_CAP		\
+	(DEV_TX_OFFLOAD_VLAN_INSERT |	\
+	 DEV_TX_OFFLOAD_IPV4_CKSUM |	\
+	 DEV_TX_OFFLOAD_TCP_CKSUM |	\
+	 DEV_TX_OFFLOAD_UDP_CKSUM |	\
+	 DEV_TX_OFFLOAD_TCP_TSO |	\
+	 DEV_TX_OFFLOAD_MULTI_SEGS)
+
+#define VMXNET3_RX_OFFLOAD_CAP		\
+	(DEV_RX_OFFLOAD_VLAN_STRIP |	\
+	 DEV_RX_OFFLOAD_SCATTER |	\
+	 DEV_RX_OFFLOAD_IPV4_CKSUM |	\
+	 DEV_RX_OFFLOAD_UDP_CKSUM |	\
+	 DEV_RX_OFFLOAD_TCP_CKSUM |	\
+	 DEV_RX_OFFLOAD_TCP_LRO |	\
+	 DEV_RX_OFFLOAD_JUMBO_FRAME)
+
 static int eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev);
 static int vmxnet3_dev_configure(struct rte_eth_dev *dev);
@@ -376,8 +393,24 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	const struct rte_memzone *mz;
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	size_t size;
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if ((rx_offloads & VMXNET3_RX_OFFLOAD_CAP) != rx_offloads) {
+		RTE_LOG(ERR, PMD, "Requested RX offloads 0x%" PRIx64
+			" do not match supported 0x%" PRIx64,
+			rx_offloads, (uint64_t)VMXNET3_RX_OFFLOAD_CAP);
+		return -ENOTSUP;
+	}
+
+	if ((tx_offloads & VMXNET3_TX_OFFLOAD_CAP) != tx_offloads) {
+		RTE_LOG(ERR, PMD, "Requested TX offloads 0x%" PRIx64
+			" do not match supported 0x%" PRIx64,
+			tx_offloads, (uint64_t)VMXNET3_TX_OFFLOAD_CAP);
+		return -ENOTSUP;
+	}
 
 	if (dev->data->nb_tx_queues > VMXNET3_MAX_TX_QUEUES ||
 	    dev->data->nb_rx_queues > VMXNET3_MAX_RX_QUEUES) {
@@ -567,6 +600,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	uint32_t mtu = dev->data->mtu;
 	Vmxnet3_DriverShared *shared = hw->shared;
 	Vmxnet3_DSDevRead *devRead = &shared->devRead;
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	uint32_t i;
 	int ret;
 
@@ -646,10 +680,10 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	devRead->rxFilterConf.rxMode = 0;
 
 	/* Setting up feature flags */
-	if (dev->data->dev_conf.rxmode.hw_ip_checksum)
+	if (rx_offloads & DEV_RX_OFFLOAD_CHECKSUM)
 		devRead->misc.uptFeatures |= VMXNET3_F_RXCSUM;
 
-	if (dev->data->dev_conf.rxmode.enable_lro) {
+	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) {
 		devRead->misc.uptFeatures |= VMXNET3_F_LRO;
 		devRead->misc.maxNumRxSG = 0;
 	}
@@ -1052,17 +1086,10 @@ vmxnet3_dev_info_get(struct rte_eth_dev *dev __rte_unused,
 		.nb_mtu_seg_max = VMXNET3_MAX_TXD_PER_PKT,
 	};
 
-	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_LRO;
-
-	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_TSO;
+	dev_info->rx_offload_capa = VMXNET3_RX_OFFLOAD_CAP;
+	dev_info->rx_queue_offload_capa = 0;
+	dev_info->tx_offload_capa = VMXNET3_TX_OFFLOAD_CAP;
+	dev_info->tx_queue_offload_capa = 0;
 }
 
 static const uint32_t *
@@ -1156,8 +1183,9 @@ vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	uint32_t *vf_table = hw->shared->devRead.rxFilterConf.vfTable;
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 
-	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		memcpy(vf_table, hw->shadow_vfta, VMXNET3_VFT_TABLE_SIZE);
 	else
 		memset(vf_table, 0xff, VMXNET3_VFT_TABLE_SIZE);
@@ -1219,9 +1247,10 @@ vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	Vmxnet3_DSDevRead *devRead = &hw->shared->devRead;
 	uint32_t *vf_table = devRead->rxFilterConf.vfTable;
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			devRead->misc.uptFeatures |= UPT1_F_RXVLAN;
 		else
 			devRead->misc.uptFeatures &= ~UPT1_F_RXVLAN;
@@ -1231,7 +1260,7 @@ vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 			memcpy(vf_table, hw->shadow_vfta, VMXNET3_VFT_TABLE_SIZE);
 		else
 			memset(vf_table, 0xff, VMXNET3_VFT_TABLE_SIZE);
