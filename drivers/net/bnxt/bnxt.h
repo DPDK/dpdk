@@ -23,6 +23,7 @@
 #define BNXT_MAX_MTU		9500
 #define VLAN_TAG_SIZE		4
 #define BNXT_MAX_LED		4
+#define BNXT_NUM_VLANS		2
 
 struct bnxt_led_info {
 	uint8_t      led_id;

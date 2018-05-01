@@ -2360,7 +2360,8 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings)
 	req.flags = rte_cpu_to_le_32(bp->pf.func_cfg_flags);
 	req.mtu = rte_cpu_to_le_16(BNXT_MAX_MTU);
 	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-				   ETHER_CRC_LEN + VLAN_TAG_SIZE);
+				   ETHER_CRC_LEN + VLAN_TAG_SIZE *
+				   BNXT_NUM_VLANS);
 	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx);
 	req.num_stat_ctxs = rte_cpu_to_le_16(bp->max_stat_ctx);
 	req.num_cmpl_rings = rte_cpu_to_le_16(bp->max_cp_rings);
@@ -2397,9 +2398,11 @@ static void populate_vf_func_cfg_req(struct bnxt *bp,
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
 
 	req->mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-				    ETHER_CRC_LEN + VLAN_TAG_SIZE);
+				    ETHER_CRC_LEN + VLAN_TAG_SIZE *
+				    BNXT_NUM_VLANS);
 	req->mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-				    ETHER_CRC_LEN + VLAN_TAG_SIZE);
+				    ETHER_CRC_LEN + VLAN_TAG_SIZE *
+				    BNXT_NUM_VLANS);
 	req->num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx /
 						(num_vfs + 1));
 	req->num_stat_ctxs = rte_cpu_to_le_16(bp->max_stat_ctx / (num_vfs + 1));
