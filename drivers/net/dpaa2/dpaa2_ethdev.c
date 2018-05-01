@@ -207,6 +207,11 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->speed_capa = ETH_LINK_SPEED_1G |
 			ETH_LINK_SPEED_2_5G |
 			ETH_LINK_SPEED_10G;
+
+	dev_info->max_hash_mac_addrs = 0;
+	dev_info->max_vfs = 0;
+	dev_info->max_vmdq_pools = ETH_16_POOLS;
+	dev_info->flow_type_rss_offloads = DPAA2_RSS_OFFLOAD_ALL;
 }
 
 static int

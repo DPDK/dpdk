@@ -50,6 +50,12 @@
 /* Disable RX tail drop, default is enable */
 #define DPAA2_RX_TAILDROP_OFF	0x04
 
+#define DPAA2_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_IP | \
+	ETH_RSS_UDP | \
+	ETH_RSS_TCP | \
+	ETH_RSS_SCTP)
+
 /* LX2 FRC Parsed values (Little Endian) */
 #define DPAA2_PKT_TYPE_ETHER		0x0060
 #define DPAA2_PKT_TYPE_IPV4		0x0000
