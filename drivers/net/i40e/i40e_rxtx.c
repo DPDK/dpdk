@@ -40,9 +40,6 @@
 /* Base address of the HW descriptor ring should be 128B aligned. */
 #define I40E_RING_BASE_ALIGN	128
 
-#define I40E_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
-					ETH_TXQ_FLAGS_NOOFFLOADS)
-
 #define I40E_TXD_CMD (I40E_TX_DESC_CMD_EOP | I40E_TX_DESC_CMD_RS)
 
 #ifdef RTE_LIBRTE_IEEE1588
@@ -2108,11 +2105,9 @@ i40e_dev_tx_queue_setup_runtime(struct rte_eth_dev *dev,
 				 dev->data->nb_tx_queues)) {
 		/**
 		 * If it is the first queue to setup,
-		 * set all flags to default and call
+		 * set all flags and call
 		 * i40e_set_tx_function.
 		 */
-		ad->tx_simple_allowed = true;
-		ad->tx_vec_allowed = true;
 		i40e_set_tx_function_flag(dev, txq);
 		i40e_set_tx_function(dev);
 		return 0;
@@ -2128,9 +2123,8 @@ i40e_dev_tx_queue_setup_runtime(struct rte_eth_dev *dev,
 	}
 	/* check simple tx conflict */
 	if (ad->tx_simple_allowed) {
-		if (((txq->txq_flags & I40E_SIMPLE_FLAGS) !=
-		     I40E_SIMPLE_FLAGS) ||
-		    txq->tx_rs_thresh < RTE_PMD_I40E_TX_MAX_BURST) {
+		if (txq->offloads != 0 ||
+				txq->tx_rs_thresh < RTE_PMD_I40E_TX_MAX_BURST) {
 			PMD_DRV_LOG(ERR, "No-simple tx is required.");
 			return -EINVAL;
 		}
@@ -3080,18 +3074,21 @@ i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct i40e_tx_queue *txq)
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
-	if (((txq->txq_flags & I40E_SIMPLE_FLAGS) == I40E_SIMPLE_FLAGS)
-			&& (txq->tx_rs_thresh >= RTE_PMD_I40E_TX_MAX_BURST)) {
-		if (txq->tx_rs_thresh <= RTE_I40E_TX_MAX_FREE_BUF_SZ) {
-			PMD_INIT_LOG(DEBUG, "Vector tx"
-				     " can be enabled on this txq.");
+	ad->tx_simple_allowed = (txq->offloads == 0 &&
+			txq->tx_rs_thresh >= RTE_PMD_I40E_TX_MAX_BURST);
+	ad->tx_vec_allowed = (ad->tx_simple_allowed &&
+			txq->tx_rs_thresh <= RTE_I40E_TX_MAX_FREE_BUF_SZ);
 
-		} else {
-			ad->tx_vec_allowed = false;
-		}
-	} else {
-		ad->tx_simple_allowed = false;
-	}
+	if (ad->tx_vec_allowed)
+		PMD_INIT_LOG(DEBUG, "Vector Tx can be enabled on Tx queue %u.",
+				txq->queue_id);
+	else if (ad->tx_simple_allowed)
+		PMD_INIT_LOG(DEBUG, "Simple Tx can be enabled on Tx queue %u.",
+				txq->queue_id);
+	else
+		PMD_INIT_LOG(DEBUG,
+				"Neither simple nor vector Tx enabled on Tx queue %u\n",
+				txq->queue_id);
 }
 
 void __attribute__((cold))
