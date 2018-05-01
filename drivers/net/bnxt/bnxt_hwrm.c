@@ -611,6 +611,15 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 		memcpy(req.vf_req_fwd, bp->pf.vf_req_fwd,
 		       RTE_MIN(sizeof(req.vf_req_fwd),
 			       sizeof(bp->pf.vf_req_fwd)));
+
+		/*
+		 * PF can sniff HWRM API issued by VF. This can be set up by
+		 * linux driver and inherited by the DPDK PF driver. Clear
+		 * this HWRM sniffer list in FW because DPDK PF driver does
+		 * not support this.
+		 */
+		req.flags =
+		rte_cpu_to_le_32(HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_FWD_NONE_MODE);
 	}
 
 	req.async_event_fwd[0] |=
