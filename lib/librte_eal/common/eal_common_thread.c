@@ -149,11 +149,16 @@ struct rte_thread_ctrl_params {
 
 static void *rte_thread_init(void *arg)
 {
+	int ret;
 	struct rte_thread_ctrl_params *params = arg;
 	void *(*start_routine)(void *) = params->start_routine;
 	void *routine_arg = params->arg;
 
-	pthread_barrier_wait(&params->configured);
+	ret = pthread_barrier_wait(&params->configured);
+	if (ret == PTHREAD_BARRIER_SERIAL_THREAD) {
+		pthread_barrier_destroy(&params->configured);
+		free(params);
+	}
 
 	return start_routine(routine_arg);
 }
@@ -206,14 +211,21 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 	if (ret < 0)
 		goto fail;
 
-	pthread_barrier_wait(&params->configured);
-	free(params);
+	ret = pthread_barrier_wait(&params->configured);
+	if (ret == PTHREAD_BARRIER_SERIAL_THREAD) {
+		pthread_barrier_destroy(&params->configured);
+		free(params);
+	}
 
 	return 0;
 
 fail:
+	if (PTHREAD_BARRIER_SERIAL_THREAD ==
+	    pthread_barrier_wait(&params->configured)) {
+		pthread_barrier_destroy(&params->configured);
+		free(params);
+	}
 	pthread_cancel(*thread);
 	pthread_join(*thread, NULL);
-	free(params);
 	return ret;
 }
