@@ -445,6 +445,8 @@ malloc_elem_free(struct malloc_elem *elem)
 
 	malloc_elem_free_list_insert(elem);
 
+	elem->pad = 0;
+
 	/* decrease heap's count of allocated elements */
 	elem->heap->alloc_count--;
 
