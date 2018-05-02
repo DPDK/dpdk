@@ -1019,7 +1019,6 @@ static void axgbe_config_jumbo_enable(struct axgbe_port *pdata)
 	unsigned int val;
 
 	val = (pdata->rx_buf_size > AXGMAC_STD_PACKET_MTU) ? 1 : 0;
-	val = 1;
 
 	AXGMAC_IOWRITE_BITS(pdata, MAC_RCR, JE, val);
 }
