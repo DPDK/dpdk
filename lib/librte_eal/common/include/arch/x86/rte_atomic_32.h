@@ -105,7 +105,7 @@ rte_atomic64_exchange(volatile uint64_t *dest, uint64_t val)
 
 	do {
 		old = *dest;
-	} while (rte_atomic64_cmpset(dest, old, val));
+	} while (rte_atomic64_cmpset(dest, old, val) == 0);
 
 	return old;
 }
