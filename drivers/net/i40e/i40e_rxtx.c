@@ -1237,7 +1237,7 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	for (i = 0; i < txq->tx_rs_thresh; i++)
 		rte_prefetch0((txep + i)->mbuf);
 
-	if (txq->txq_flags & (uint32_t)ETH_TXQ_FLAGS_NOREFCOUNT) {
+	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) {
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
 			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
 			txep->mbuf = NULL;
@@ -2297,7 +2297,6 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->queue_id = queue_idx;
 	txq->reg_idx = reg_idx;
 	txq->port_id = dev->data->port_id;
-	txq->txq_flags = tx_conf->txq_flags;
 	txq->offloads = tx_conf->offloads;
 	txq->vsi = vsi;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
@@ -2951,7 +2950,6 @@ i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
-	qinfo->conf.txq_flags = txq->txq_flags;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
 

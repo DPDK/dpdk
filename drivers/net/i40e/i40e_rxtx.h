@@ -142,7 +142,6 @@ struct i40e_tx_queue {
 	uint16_t port_id; /**< Device port identifier. */
 	uint16_t queue_id; /**< TX queue index. */
 	uint16_t reg_idx;
-	uint32_t txq_flags;
 	struct i40e_vsi *vsi; /**< the VSI this queue belongs to */
 	uint16_t tx_next_dd;
 	uint16_t tx_next_rs;

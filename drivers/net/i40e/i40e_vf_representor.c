@@ -80,8 +80,6 @@ i40e_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 		},
 		.tx_free_thresh = I40E_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = I40E_DEFAULT_TX_RSBIT_THRESH,
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-				ETH_TXQ_FLAGS_NOOFFLOADS,
 		.offloads = 0,
 	};
 
