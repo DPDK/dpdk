@@ -69,6 +69,7 @@ i40e_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 		},
 		.rx_free_thresh = I40E_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
+		.offloads = 0,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -81,6 +82,7 @@ i40e_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 		.tx_rs_thresh = I40E_DEFAULT_TX_RSBIT_THRESH,
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
 				ETH_TXQ_FLAGS_NOOFFLOADS,
+		.offloads = 0,
 	};
 
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {

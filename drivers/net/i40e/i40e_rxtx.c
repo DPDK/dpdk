@@ -1857,6 +1857,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->vsi = vsi;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
+	rxq->offloads = rx_conf->offloads;
 
 	/* Allocate the maximun number of RX ring hardware descriptor. */
 	len = I40E_MAX_RING_DESC;
@@ -2297,6 +2298,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->reg_idx = reg_idx;
 	txq->port_id = dev->data->port_id;
 	txq->txq_flags = tx_conf->txq_flags;
+	txq->offloads = tx_conf->offloads;
 	txq->vsi = vsi;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
