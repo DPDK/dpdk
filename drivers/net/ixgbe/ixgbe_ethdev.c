@@ -1725,7 +1725,7 @@ eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
 	char name[RTE_ETH_NAME_MAX_LEN];
-
+	struct rte_eth_dev *pf_ethdev;
 	struct rte_eth_devargs eth_da;
 	int i, retval;
 
@@ -1736,10 +1736,7 @@ eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			return retval;
 	}
 
-	/* physical port net_bdf_port */
-	snprintf(name, sizeof(name), "net_%s_%d", pci_dev->device.name, 0);
-
-	retval = rte_eth_dev_create(&pci_dev->device, name,
+	retval = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
 		sizeof(struct ixgbe_adapter),
 		eth_dev_pci_specific_init, pci_dev,
 		eth_ixgbe_dev_init, NULL);
@@ -1748,7 +1745,7 @@ eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return retval;
 
 	/* probe VF representor ports */
-	struct rte_eth_dev *pf_ethdev = rte_eth_dev_allocated(name);
+	pf_ethdev = rte_eth_dev_allocated(pci_dev->device.name);
 
 	for (i = 0; i < eth_da.nb_representor_ports; i++) {
 		struct ixgbe_vf_info *vfinfo;
