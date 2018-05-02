@@ -1442,7 +1442,6 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 		},
 		.tx_free_thresh = FM10K_TX_FREE_THRESH_DEFAULT(0),
 		.tx_rs_thresh = FM10K_TX_RS_THRESH_DEFAULT(0),
-		.txq_flags = FM10K_SIMPLE_TX_FLAG,
 		.offloads = 0,
 	};
 
@@ -2114,7 +2113,6 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->nb_desc = nb_desc;
 	q->port_id = dev->data->port_id;
 	q->queue_id = queue_id;
-	q->txq_flags = conf->txq_flags;
 	q->offloads = conf->offloads;
 	q->ops = &def_txq_ops;
 	q->tail_ptr = (volatile uint32_t *)
@@ -2981,7 +2979,7 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 	uint16_t tx_ftag_en = 0;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		/* primary process has set the ftag flag and txq_flags */
+		/* primary process has set the ftag flag and offloads */
 		txq = dev->data->tx_queues[0];
 		if (fm10k_tx_vec_condition_check(txq)) {
 			dev->tx_pkt_burst = fm10k_xmit_pkts;
