@@ -178,8 +178,10 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 	pthread_barrier_init(&params->configured, NULL, 2);
 
 	ret = pthread_create(thread, attr, rte_thread_init, (void *)params);
-	if (ret != 0)
+	if (ret != 0) {
+		free(params);
 		return ret;
+	}
 
 	if (name != NULL) {
 		ret = rte_thread_setname(*thread, name);
