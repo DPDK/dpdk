@@ -22,8 +22,6 @@
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 
-#define MIN_DATA_SIZE (RTE_CACHE_LINE_SIZE)
-
 /*
  * Initialize a general malloc_elem header structure
  */
@@ -476,27 +474,6 @@ malloc_elem_hide_region(struct malloc_elem *elem, void *start, size_t len)
 			split_elem(elem, hide_end);
 
 			malloc_elem_free_list_insert(hide_end);
-		} else if (len_after >= MALLOC_ELEM_HEADER_LEN) {
-			/* shrink current element */
-			elem->size -= len_after;
-			memset(hide_end, 0, sizeof(*hide_end));
-
-			/* copy next element's data to our pad */
-			memcpy(hide_end, next, sizeof(*hide_end));
-
-			/* pad next element */
-			next->state = ELEM_PAD;
-			next->pad = len_after;
-			next->size -= len_after;
-
-			/* next element busy, would've been merged otherwise */
-			hide_end->pad = len_after;
-			hide_end->size += len_after;
-
-			/* adjust pointers to point to our new pad */
-			if (next->next)
-				next->next->prev = hide_end;
-			elem->next = hide_end;
 		} else if (len_after > 0) {
 			RTE_LOG(ERR, EAL, "Unaligned element, heap is probably corrupt\n");
 			return;
@@ -515,32 +492,8 @@ malloc_elem_hide_region(struct malloc_elem *elem, void *start, size_t len)
 
 			malloc_elem_free_list_insert(prev);
 		} else if (len_before > 0) {
-			/*
-			 * unlike with elements after current, here we don't
-			 * need to pad elements, but rather just increase the
-			 * size of previous element, copy the old header and set
-			 * up trailer.
-			 */
-			void *trailer = RTE_PTR_ADD(prev,
-					prev->size - MALLOC_ELEM_TRAILER_LEN);
-
-			memcpy(hide_start, elem, sizeof(*elem));
-			hide_start->size = len;
-
-			prev->size += len_before;
-			set_trailer(prev);
-
-			/* update pointers */
-			prev->next = hide_start;
-			if (next)
-				next->prev = hide_start;
-
-			/* erase old trailer */
-			memset(trailer, 0, MALLOC_ELEM_TRAILER_LEN);
-			/* erase old header */
-			memset(elem, 0, sizeof(*elem));
-
-			elem = hide_start;
+			RTE_LOG(ERR, EAL, "Unaligned element, heap is probably corrupt\n");
+			return;
 		}
 	}
 

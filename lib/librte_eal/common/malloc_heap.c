@@ -609,7 +609,7 @@ malloc_heap_free(struct malloc_elem *elem)
 	void *start, *aligned_start, *end, *aligned_end;
 	size_t len, aligned_len, page_sz;
 	struct rte_memseg_list *msl;
-	unsigned int i, n_segs;
+	unsigned int i, n_segs, before_space, after_space;
 	int ret;
 
 	if (!malloc_elem_cookies_ok(elem) || elem->state != ELEM_BUSY)
@@ -672,6 +672,42 @@ malloc_heap_free(struct malloc_elem *elem)
 	/* check if we can still free some pages */
 	if (n_segs == 0)
 		goto free_unlock;
+
+	/* We're not done yet. We also have to check if by freeing space we will
+	 * be leaving free elements that are too small to store new elements.
+	 * Check if we have enough space in the beginning and at the end, or if
+	 * start/end are exactly page aligned.
+	 */
+	before_space = RTE_PTR_DIFF(aligned_start, elem);
+	after_space = RTE_PTR_DIFF(end, aligned_end);
+	if (before_space != 0 &&
+			before_space < MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE) {
+		/* There is not enough space before start, but we may be able to
+		 * move the start forward by one page.
+		 */
+		if (n_segs == 1)
+			goto free_unlock;
+
+		/* move start */
+		aligned_start = RTE_PTR_ADD(aligned_start, page_sz);
+		aligned_len -= page_sz;
+		n_segs--;
+	}
+	if (after_space != 0 && after_space <
+			MALLOC_ELEM_OVERHEAD + MIN_DATA_SIZE) {
+		/* There is not enough space after end, but we may be able to
+		 * move the end backwards by one page.
+		 */
+		if (n_segs == 1)
+			goto free_unlock;
+
+		/* move end */
+		aligned_end = RTE_PTR_SUB(aligned_end, page_sz);
+		aligned_len -= page_sz;
+		n_segs--;
+	}
+
+	/* now we can finally free us some pages */
 
 	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
 

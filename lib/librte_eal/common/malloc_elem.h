@@ -9,6 +9,8 @@
 
 #include <rte_eal_memconfig.h>
 
+#define MIN_DATA_SIZE (RTE_CACHE_LINE_SIZE)
+
 /* dummy definition of struct so we can use pointers to it in malloc_elem struct */
 struct malloc_heap;
 
