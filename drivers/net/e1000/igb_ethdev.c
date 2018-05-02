@@ -2228,7 +2228,6 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			.hthresh = IGB_DEFAULT_TX_HTHRESH,
 			.wthresh = IGB_DEFAULT_TX_WTHRESH,
 		},
-		.txq_flags = 0,
 		.offloads = 0,
 	};
 
@@ -2319,7 +2318,6 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			.hthresh = IGB_DEFAULT_TX_HTHRESH,
 			.wthresh = IGB_DEFAULT_TX_WTHRESH,
 		},
-		.txq_flags = 0,
 		.offloads = 0,
 	};
 
