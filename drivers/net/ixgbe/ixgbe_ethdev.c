@@ -1734,7 +1734,8 @@ eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				&eth_da);
 		if (retval)
 			return retval;
-	}
+	} else
+		memset(&eth_da, 0, sizeof(eth_da));
 
 	retval = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
 		sizeof(struct ixgbe_adapter),
