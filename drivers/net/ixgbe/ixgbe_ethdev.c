@@ -3727,9 +3727,6 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-			     ETH_TXQ_FLAGS_NOOFFLOADS |
-			     ETH_TXQ_FLAGS_IGNORE,
 		.offloads = 0,
 	};
 
@@ -3835,9 +3832,6 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 		},
 		.tx_free_thresh = IXGBE_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = IXGBE_DEFAULT_TX_RSBIT_THRESH,
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-			     ETH_TXQ_FLAGS_NOOFFLOADS |
-			     ETH_TXQ_FLAGS_IGNORE,
 		.offloads = 0,
 	};
 

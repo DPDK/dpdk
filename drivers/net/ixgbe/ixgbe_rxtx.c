@@ -2620,7 +2620,6 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	txq->port_id = dev->data->port_id;
-	txq->txq_flags = tx_conf->txq_flags;
 	txq->offloads = tx_conf->offloads;
 	txq->ops = &def_txq_ops;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
@@ -5441,7 +5440,6 @@ ixgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
-	qinfo->conf.txq_flags = txq->txq_flags;
 	qinfo->conf.offloads = txq->offloads;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }

@@ -222,7 +222,6 @@ struct ixgbe_tx_queue {
 	uint8_t             pthresh;       /**< Prefetch threshold register. */
 	uint8_t             hthresh;       /**< Host threshold register. */
 	uint8_t             wthresh;       /**< Write-back threshold reg. */
-	uint32_t txq_flags; /**< Holds flags for this TXq */
 	uint64_t offloads; /**< Tx offload flags of DEV_TX_OFFLOAD_* */
 	uint32_t            ctx_curr;      /**< Hardware context states. */
 	/** Hardware context0 history. */
