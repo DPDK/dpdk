@@ -1745,9 +1745,11 @@ eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (retval || eth_da.nb_representor_ports < 1)
 		return retval;
 
-	/* probe VF representor ports */
 	pf_ethdev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (pf_ethdev == NULL)
+		return -ENODEV;
 
+	/* probe VF representor ports */
 	for (i = 0; i < eth_da.nb_representor_ports; i++) {
 		struct ixgbe_vf_info *vfinfo;
 		struct ixgbe_vf_representor representor;
