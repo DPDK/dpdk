@@ -510,7 +510,7 @@ uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		m = tx_pkts[i];
 		ol_flags = m->ol_flags;
 		if (ol_flags & wq->tx_offload_notsup_mask) {
-			rte_errno = -ENOTSUP;
+			rte_errno = ENOTSUP;
 			return i;
 		}
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
