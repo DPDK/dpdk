@@ -804,7 +804,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				goto error;
 			/* Receive command fd from primary process */
 			err = mlx5_socket_connect(eth_dev);
-			if (err)
+			if (err < 0)
 				goto error;
 			/* Remap UAR for Tx queues. */
 			err = mlx5_tx_uar_remap(eth_dev, err);

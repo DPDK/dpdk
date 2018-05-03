@@ -294,7 +294,7 @@ mlx5_socket_connect(struct rte_eth_dev *dev)
 	}
 	ret = *fd;
 	close(socket_fd);
-	return 0;
+	return ret;
 error:
 	if (socket_fd != -1)
 		close(socket_fd);
