@@ -94,7 +94,7 @@ struct pmd_internal {
 	char *dev_name;
 	char *iface_name;
 	uint16_t max_queues;
-	uint16_t vid;
+	int vid;
 	rte_atomic32_t started;
 	uint8_t vlan_strip;
 };
@@ -1259,6 +1259,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	data->nb_rx_queues = queues;
 	data->nb_tx_queues = queues;
 	internal->max_queues = queues;
+	internal->vid = -1;
 	data->dev_link = pmd_link;
 	data->mac_addrs = eth_addr;
 	data->dev_flags = RTE_ETH_DEV_INTR_LSC;
