@@ -124,6 +124,14 @@ Configuration information
     least one interrupt for each Rx queue. For example, if the app uses 3 Rx
     queues and wants to use per-queue interrupts, configure 4 (3 + 1) interrupts.
 
+  - **Receive Side Scaling**
+
+    In order to fully utilize RSS in DPDK, enable all RSS related settings in
+    CIMC or UCSM. These include the following items listed under
+    Receive Side Scaling:
+    TCP, IPv4, TCP-IPv4, IPv6, TCP-IPv6, IPv6 Extension, TCP-IPv6 Extension.
+
+
 .. _enic-flow-director:
 
 Flow director support
@@ -145,20 +153,21 @@ perfect filtering of the 5-tuple with no masking of fields supported.
 SR-IOV mode utilization
 -----------------------
 
-UCS blade servers configured with dynamic vNIC connection policies in UCS
-manager are capable of supporting assigned devices on virtual machines (VMs)
-through a KVM hypervisor. Assigned devices, also known as 'passthrough'
-devices, are SR-IOV virtual functions (VFs) on the host which are exposed
-to VM instances.
+UCS blade servers configured with dynamic vNIC connection policies in UCSM
+are capable of supporting SR-IOV. SR-IOV virtual functions (VFs) are
+specialized vNICs, distinct from regular Ethernet vNICs. These VFs can be
+directly assigned to virtual machines (VMs) as 'passthrough' devices.
 
-The Cisco Virtual Machine Fabric Extender (VM-FEX) gives the VM a dedicated
+In UCS, SR-IOV VFs require the use of the Cisco Virtual Machine Fabric Extender
+(VM-FEX), which gives the VM a dedicated
 interface on the Fabric Interconnect (FI). Layer 2 switching is done at
 the FI. This may eliminate the requirement for software switching on the
 host to route intra-host VM traffic.
 
 Please refer to `Creating a Dynamic vNIC Connection Policy
 <http://www.cisco.com/c/en/us/td/docs/unified_computing/ucs/sw/vm_fex/vmware/gui/config_guide/b_GUI_VMware_VM-FEX_UCSM_Configuration_Guide/b_GUI_VMware_VM-FEX_UCSM_Configuration_Guide_chapter_010.html#task_433E01651F69464783A68E66DA8A47A5>`_
-for information on configuring SR-IOV adapter policies using UCS manager.
+for information on configuring SR-IOV adapter policies and port profiles
+using UCSM.
 
 Once the policies are in place and the host OS is rebooted, VFs should be
 visible on the host, E.g.:
@@ -175,30 +184,37 @@ visible on the host, E.g.:
      0d:00.6 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
      0d:00.7 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
 
-Enable Intel IOMMU on the host and install KVM and libvirt. A VM instance should
-be created with an assigned device. When using libvirt, this configuration can
-be done within the domain (i.e. VM) config file. For example this entry maps
-host VF 0d:00:01 into the VM.
+Enable Intel IOMMU on the host and install KVM and libvirt, and reboot again as
+required. Then, using libvirt, create a VM instance with an assigned device.
+Below is an example ``interface`` block (part of the domain configuration XML)
+that adds the host VF 0d:00:01 to the VM. ``profileid='pp-vlan-25'`` indicates
+the port profile that has been configured in UCSM.
 
 .. code-block:: console
 
     <interface type='hostdev' managed='yes'>
       <mac address='52:54:00:ac:ff:b6'/>
+      <driver name='vfio'/>
       <source>
         <address type='pci' domain='0x0000' bus='0x0d' slot='0x00' function='0x1'/>
       </source>
+      <virtualport type='802.1Qbh'>
+        <parameters profileid='pp-vlan-25'/>
+      </virtualport>
+    </interface>
+
 
 Alternatively, the configuration can be done in a separate file using the
 ``network`` keyword. These methods are described in the libvirt documentation for
 `Network XML format <https://libvirt.org/formatnetwork.html>`_.
 
-When the VM instance is started, the ENIC KVM driver will bind the host VF to
+When the VM instance is started, libvirt will bind the host VF to
 vfio, complete provisioning on the FI and bring up the link.
 
 .. note::
 
     It is not possible to use a VF directly from the host because it is not
-    fully provisioned until the hypervisor brings up the VM that it is assigned
+    fully provisioned until libvirt brings up the VM that it is assigned
     to.
 
 In the VM instance, the VF will now be visible. E.g., here the VF 00:04.0 is
@@ -212,8 +228,26 @@ seen on the VM instance and should be available for binding to a DPDK.
 Follow the normal DPDK install procedure, binding the VF to either ``igb_uio``
 or ``vfio`` in non-IOMMU mode.
 
+In the VM, the kernel enic driver may be automatically bound to the VF during
+boot. Unbinding it currently hangs due to a known issue with the driver. To
+work around the issue, blacklist the enic module as follows.
 Please see :ref:`Limitations <enic_limitations>` for limitations in
 the use of SR-IOV.
+
+.. code-block:: console
+
+     # cat /etc/modprobe.d/enic.conf
+     blacklist enic
+
+     # dracut --force
+
+.. note::
+
+    Passthrough does not require SR-IOV. If VM-FEX is not desired, the user
+    may create as many regular vNICs as necessary and assign them to VMs as
+    passthrough devices. Since these vNICs are not SR-IOV VFs, using them as
+    passthrough devices do not require libvirt, port profiles, and VM-FEX.
+
 
 .. _enic-genic-flow-api:
 
