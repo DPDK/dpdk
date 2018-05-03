@@ -393,7 +393,6 @@ PCI bus driver
 F: drivers/bus/pci/
 
 VDEV bus driver
-M: Jianfeng Tan <jianfeng.tan@intel.com>
 F: drivers/bus/vdev/
 
 
@@ -627,7 +626,6 @@ F: doc/guides/nics/features/vmxnet3.ini
 
 Vhost-user
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
-M: Jianfeng Tan <jianfeng.tan@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: lib/librte_vhost/
 F: doc/guides/prog_guide/vhost_lib.rst
@@ -640,7 +638,6 @@ F: examples/vhost_crypto/
 Vhost PMD
 M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
-M: Jianfeng Tan <jianfeng.tan@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
 F: doc/guides/nics/features/vhost.ini
