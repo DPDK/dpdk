@@ -2100,21 +2100,23 @@ check_all_ports_link_status(uint32_t port_mask)
 static void
 rmv_event_callback(void *arg)
 {
+	int need_to_start = 0;
 	int org_no_link_check = no_link_check;
-	struct rte_eth_dev *dev;
 	portid_t port_id = (intptr_t)arg;
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
-	dev = &rte_eth_devices[port_id];
 
+	if (!test_done && port_is_forwarding(port_id)) {
+		need_to_start = 1;
+		stop_packet_forwarding();
+	}
 	no_link_check = 1;
 	stop_port(port_id);
 	no_link_check = org_no_link_check;
 	close_port(port_id);
-	printf("removing device %s\n", dev->device->name);
-	if (rte_eal_dev_detach(dev->device))
-		TESTPMD_LOG(ERR, "Failed to detach device %s\n",
-			dev->device->name);
+	detach_port(port_id);
+	if (need_to_start)
+		start_packet_forwarding(0);
 }
 
 /* This function is used by the interrupt thread */
