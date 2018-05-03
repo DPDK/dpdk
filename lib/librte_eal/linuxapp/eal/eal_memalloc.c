@@ -647,7 +647,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 
 	memset(ms, 0, sizeof(*ms));
 
-	return ret;
+	return ret < 0 ? -1 : 0;
 }
 
 struct alloc_walk_param {
