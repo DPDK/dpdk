@@ -299,6 +299,10 @@ uint32_t event_print_mask = (UINT32_C(1) << RTE_ETH_EVENT_UNKNOWN) |
 			    (UINT32_C(1) << RTE_ETH_EVENT_IPSEC) |
 			    (UINT32_C(1) << RTE_ETH_EVENT_MACSEC) |
 			    (UINT32_C(1) << RTE_ETH_EVENT_INTR_RMV);
+/*
+ * Decide if all memory are locked for performance.
+ */
+int do_mlockall = 0;
 
 /*
  * NIC bypass mode configuration options.
@@ -2603,7 +2607,20 @@ main(int argc, char** argv)
 		rte_panic("Cannot register log type");
 	rte_log_set_level(testpmd_logtype, RTE_LOG_DEBUG);
 
-	if (mlockall(MCL_CURRENT | MCL_FUTURE)) {
+	/* Bitrate/latency stats disabled by default */
+#ifdef RTE_LIBRTE_BITRATE
+	bitrate_enabled = 0;
+#endif
+#ifdef RTE_LIBRTE_LATENCY_STATS
+	latencystats_enabled = 0;
+#endif
+
+	argc -= diag;
+	argv += diag;
+	if (argc > 1)
+		launch_args_parse(argc, argv);
+
+	if (do_mlockall && mlockall(MCL_CURRENT | MCL_FUTURE)) {
 		TESTPMD_LOG(NOTICE, "mlockall() failed with error \"%s\"\n",
 			strerror(errno));
 	}
@@ -2624,19 +2641,6 @@ main(int argc, char** argv)
 	if (nb_lcores == 0)
 		rte_panic("Empty set of forwarding logical cores - check the "
 			  "core mask supplied in the command parameters\n");
-
-	/* Bitrate/latency stats disabled by default */
-#ifdef RTE_LIBRTE_BITRATE
-	bitrate_enabled = 0;
-#endif
-#ifdef RTE_LIBRTE_LATENCY_STATS
-	latencystats_enabled = 0;
-#endif
-
-	argc -= diag;
-	argv += diag;
-	if (argc > 1)
-		launch_args_parse(argc, argv);
 
 	if (tx_first && interactive)
 		rte_exit(EXIT_FAILURE, "--tx-first cannot be used on "

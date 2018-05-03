@@ -188,6 +188,8 @@ usage(char* progname)
 	printf("  --tx-offloads=0xXXXXXXXX: hexadecimal bitmask of TX queue offloads\n");
 	printf("  --hot-plug: enable hot plug for device.\n");
 	printf("  --vxlan-gpe-port=N: UPD port of tunnel VXLAN-GPE\n");
+	printf("  --mlockall: lock all memory\n");
+	printf("  --no-mlockall: do not lock all memory\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -629,6 +631,8 @@ launch_args_parse(int argc, char** argv)
 		{ "tx-offloads",		1, 0, 0 },
 		{ "hot-plug",			0, 0, 0 },
 		{ "vxlan-gpe-port",		1, 0, 0 },
+		{ "mlockall",			0, 0, 0 },
+		{ "no-mlockall",		0, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1145,6 +1149,10 @@ launch_args_parse(int argc, char** argv)
 				}
 			if (!strcmp(lgopts[opt_idx].name, "hot-plug"))
 				hot_plug = 1;
+			if (!strcmp(lgopts[opt_idx].name, "mlockall"))
+				do_mlockall = 1;
+			if (!strcmp(lgopts[opt_idx].name, "no-mlockall"))
+				do_mlockall = 0;
 			break;
 		case 'h':
 			usage(argv[0]);

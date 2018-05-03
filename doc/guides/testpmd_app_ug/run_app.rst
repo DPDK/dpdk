@@ -490,3 +490,11 @@ The commandline options are:
 
     Set the UDP port number of tunnel VXLAN-GPE to N.
     The default value is 4790.
+
+*   ``--mlockall``
+
+    Enable locking all memory.
+
+*   ``--no-mlockall``
+
+    Disable locking all memory.
