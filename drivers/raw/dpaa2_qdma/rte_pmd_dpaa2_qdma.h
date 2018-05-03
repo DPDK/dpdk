@@ -175,6 +175,76 @@ int __rte_experimental
 rte_qdma_vq_create(uint32_t lcore_id, uint32_t flags);
 
 /**
+ * Enqueue multiple jobs to a Virtual Queue.
+ * If the enqueue is successful, the H/W will perform DMA operations
+ * on the basis of the QDMA jobs provided.
+ *
+ * @param vq_id
+ *   Virtual Queue ID.
+ * @param job
+ *   List of QDMA Jobs containing relevant information related to DMA.
+ * @param nb_jobs
+ *   Number of QDMA jobs provided by the user.
+ *
+ * @returns
+ *   - >=0: Number of jobs successfully submitted
+ *   - <0: Error code.
+ */
+int __rte_experimental
+rte_qdma_vq_enqueue_multi(uint16_t vq_id,
+			  struct rte_qdma_job **job,
+			  uint16_t nb_jobs);
+
+/**
+ * Enqueue a single job to a Virtual Queue.
+ * If the enqueue is successful, the H/W will perform DMA operations
+ * on the basis of the QDMA job provided.
+ *
+ * @param vq_id
+ *   Virtual Queue ID.
+ * @param job
+ *   A QDMA Job containing relevant information related to DMA.
+ *
+ * @returns
+ *   - >=0: Number of jobs successfully submitted
+ *   - <0: Error code.
+ */
+int __rte_experimental
+rte_qdma_vq_enqueue(uint16_t vq_id,
+		    struct rte_qdma_job *job);
+
+/**
+ * Dequeue multiple completed jobs from a Virtual Queue.
+ * Provides the list of completed jobs capped by nb_jobs.
+ *
+ * @param vq_id
+ *   Virtual Queue ID.
+ * @param job
+ *   List of QDMA Jobs returned from the API.
+ * @param nb_jobs
+ *   Number of QDMA jobs requested for dequeue by the user.
+ *
+ * @returns
+ *   Number of jobs actually dequeued.
+ */
+int __rte_experimental
+rte_qdma_vq_dequeue_multi(uint16_t vq_id,
+			  struct rte_qdma_job **job,
+			  uint16_t nb_jobs);
+
+/**
+ * Dequeue a single completed jobs from a Virtual Queue.
+ *
+ * @param vq_id
+ *   Virtual Queue ID.
+ *
+ * @returns
+ *   - A completed job or NULL if no job is there.
+ */
+struct rte_qdma_job * __rte_experimental
+rte_qdma_vq_dequeue(uint16_t vq_id);
+
+/**
  * Get a Virtual Queue statistics.
  *
  * @param vq_id

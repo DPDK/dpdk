@@ -18,8 +18,29 @@ struct qdma_io_meta;
 /** FLE pool cache size */
 #define QDMA_FLE_CACHE_SIZE(_num) (_num/(RTE_MAX_LCORE * 2))
 
+/** Notification by FQD_CTX[fqid] */
+#define QDMA_SER_CTX (1 << 8)
+
+/**
+ * Source descriptor command read transaction type for RBP=0:
+ * coherent copy of cacheable memory
+ */
+#define DPAA2_SET_SDD_RD_COHERENT(sdd) ((sdd)->cmd = (0xb << 28))
+/**
+ * Destination descriptor command write transaction type for RBP=0:
+ * coherent copy of cacheable memory
+ */
+#define DPAA2_SET_SDD_WR_COHERENT(sdd) ((sdd)->cmd = (0x6 << 28))
+
 /** Maximum possible H/W Queues on each core */
 #define MAX_HW_QUEUE_PER_CORE		64
+
+/**
+ * In case of Virtual Queue mode, this specifies the number of
+ * dequeue the 'qdma_vq_dequeue/multi' API does from the H/W Queue
+ * in case there is no job present on the Virtual Queue ring.
+ */
+#define QDMA_DEQUEUE_BUDGET		64
 
 /**
  * Represents a QDMA device.
