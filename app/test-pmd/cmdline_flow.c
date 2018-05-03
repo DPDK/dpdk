@@ -2896,7 +2896,7 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 	i = ctx->objdata >> 16;
 	if (!strcmp_partial("end", str, len)) {
 		ctx->objdata &= 0xffff;
-		return len;
+		goto end;
 	}
 	if (i >= ACTION_RSS_QUEUE_NUM)
 		return -1;
@@ -2916,6 +2916,7 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 	if (ctx->next_num == RTE_DIM(ctx->next))
 		return -1;
 	ctx->next[ctx->next_num++] = next;
+end:
 	if (!ctx->object)
 		return len;
 	action_rss_data = ctx->object;
