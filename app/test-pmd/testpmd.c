@@ -2100,13 +2100,16 @@ check_all_ports_link_status(uint32_t port_mask)
 static void
 rmv_event_callback(void *arg)
 {
+	int org_no_link_check = no_link_check;
 	struct rte_eth_dev *dev;
 	portid_t port_id = (intptr_t)arg;
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
 
+	no_link_check = 1;
 	stop_port(port_id);
+	no_link_check = org_no_link_check;
 	close_port(port_id);
 	printf("removing device %s\n", dev->device->name);
 	if (rte_eal_dev_detach(dev->device))
