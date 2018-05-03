@@ -526,7 +526,7 @@ ef10_mac_stats_get_mask(
 	if (encp->enc_fec_counters) {
 		const struct efx_mac_stats_range ef10_fec[] = {
 			{ EFX_MAC_FEC_UNCORRECTED_ERRORS,
-			    MC_CMD_MAC_FEC_CORRECTED_SYMBOLS_LANE3 },
+			    EFX_MAC_FEC_CORRECTED_SYMBOLS_LANE3 },
 		};
 		if ((rc = efx_mac_stats_mask_add_ranges(maskp, mask_size,
 		    ef10_fec, EFX_ARRAY_SIZE(ef10_fec))) != 0)
