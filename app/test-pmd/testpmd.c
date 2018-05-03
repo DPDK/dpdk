@@ -886,18 +886,23 @@ init_fwd_streams(void)
 
 	/* init new */
 	nb_fwd_streams = nb_fwd_streams_new;
-	fwd_streams = rte_zmalloc("testpmd: fwd_streams",
-		sizeof(struct fwd_stream *) * nb_fwd_streams, RTE_CACHE_LINE_SIZE);
-	if (fwd_streams == NULL)
-		rte_exit(EXIT_FAILURE, "rte_zmalloc(%d (struct fwd_stream *)) "
-						"failed\n", nb_fwd_streams);
+	if (nb_fwd_streams) {
+		fwd_streams = rte_zmalloc("testpmd: fwd_streams",
+			sizeof(struct fwd_stream *) * nb_fwd_streams,
+			RTE_CACHE_LINE_SIZE);
+		if (fwd_streams == NULL)
+			rte_exit(EXIT_FAILURE, "rte_zmalloc(%d"
+				 " (struct fwd_stream *)) failed\n",
+				 nb_fwd_streams);
 
-	for (sm_id = 0; sm_id < nb_fwd_streams; sm_id++) {
-		fwd_streams[sm_id] = rte_zmalloc("testpmd: struct fwd_stream",
-				sizeof(struct fwd_stream), RTE_CACHE_LINE_SIZE);
-		if (fwd_streams[sm_id] == NULL)
-			rte_exit(EXIT_FAILURE, "rte_zmalloc(struct fwd_stream)"
-								" failed\n");
+		for (sm_id = 0; sm_id < nb_fwd_streams; sm_id++) {
+			fwd_streams[sm_id] = rte_zmalloc("testpmd:"
+				" struct fwd_stream", sizeof(struct fwd_stream),
+				RTE_CACHE_LINE_SIZE);
+			if (fwd_streams[sm_id] == NULL)
+				rte_exit(EXIT_FAILURE, "rte_zmalloc"
+					 "(struct fwd_stream) failed\n");
+		}
 	}
 
 	return 0;
