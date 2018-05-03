@@ -7,7 +7,8 @@ driver_classes = ['common',
 	       'mempool', # depends on common and bus.
 	       'net',     # depends on common, bus and mempool.
 	       'crypto',  # depends on common, bus and mempool (net in future).
-	       'event']   # depends on common, bus, mempool and net.
+	       'event',   # depends on common, bus, mempool and net.
+	       'raw']     # depends on common, bus, mempool, net and event.
 
 foreach class:driver_classes
 	drivers = []
