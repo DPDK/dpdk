@@ -726,6 +726,7 @@ enum print_warning {
 	DISABLED_WARN
 };
 int port_id_is_invalid(portid_t port_id, enum print_warning warning);
+void print_valid_ports(void);
 int new_socket_id(unsigned int socket_id);
 
 queueid_t get_allowed_max_nb_rxq(portid_t *pid);

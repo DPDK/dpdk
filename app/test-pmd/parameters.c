@@ -377,7 +377,6 @@ parse_portnuma_config(const char *q_arg)
 	};
 	unsigned long int_fld[_NUM_FLD];
 	char *str_fld[_NUM_FLD];
-	portid_t pid;
 
 	/* reset from value set at definition */
 	while ((p = strchr(p0,'(')) != NULL) {
@@ -401,10 +400,7 @@ parse_portnuma_config(const char *q_arg)
 		port_id = (portid_t)int_fld[FLD_PORT];
 		if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 			port_id == (portid_t)RTE_PORT_ALL) {
-			printf("Valid port range is [0");
-			RTE_ETH_FOREACH_DEV(pid)
-				printf(", %d", pid);
-			printf("]\n");
+			print_valid_ports();
 			return -1;
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
@@ -435,7 +431,6 @@ parse_ringnuma_config(const char *q_arg)
 	};
 	unsigned long int_fld[_NUM_FLD];
 	char *str_fld[_NUM_FLD];
-	portid_t pid;
 	#define RX_RING_ONLY 0x1
 	#define TX_RING_ONLY 0x2
 	#define RXTX_RING    0x3
@@ -462,10 +457,7 @@ parse_ringnuma_config(const char *q_arg)
 		port_id = (portid_t)int_fld[FLD_PORT];
 		if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 			port_id == (portid_t)RTE_PORT_ALL) {
-			printf("Valid port range is [0");
-			RTE_ETH_FOREACH_DEV(pid)
-				printf(", %d", pid);
-			printf("]\n");
+			print_valid_ports();
 			return -1;
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
