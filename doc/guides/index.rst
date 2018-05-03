@@ -18,6 +18,7 @@ DPDK documentation
    bbdevs/index
    cryptodevs/index
    eventdevs/index
+   rawdevs/index
    mempool/index
    platform/index
    contributing/index

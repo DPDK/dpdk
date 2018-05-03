@@ -146,6 +146,14 @@ New Features
   timer expiry events. This new type of event is scheduled by an event device
   along with existing types of events.
 
+* **Added DPAA2 QDMA Driver (in rawdev).**
+
+  The DPAA2 QDMA is an implementation of the rawdev API, that provide means
+  to initiate a DMA transaction from CPU. The initiated DMA is performed
+  without CPU being involved in the actual DMA transaction.
+
+  See the :doc:`../rawdevs/dpaa2_qdma` guide for more details.
+
 * **Added device event monitor framework.**
 
   Added a general device event monitor framework at EAL, for device dynamic management.
@@ -447,6 +455,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_pmd_bond.so.2
      librte_pmd_i40e.so.2
      librte_pmd_ixgbe.so.2
+   + librte_pmd_dpaa2_qdma.so.1
      librte_pmd_ring.so.2
      librte_pmd_softnic.so.1
      librte_pmd_vhost.so.2
