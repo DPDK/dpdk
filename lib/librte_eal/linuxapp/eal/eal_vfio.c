@@ -535,7 +535,8 @@ vfio_group_device_count(int vfio_group_fd)
 }
 
 static void
-vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len)
+vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len,
+		void *arg __rte_unused)
 {
 	struct rte_memseg_list *msl;
 	struct rte_memseg *ms;
@@ -780,7 +781,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			if (vfio_cfg == default_vfio_cfg)
 				ret = rte_mem_event_callback_register(
 					VFIO_MEM_EVENT_CLB_NAME,
-					vfio_mem_event_callback);
+					vfio_mem_event_callback, NULL);
 			else
 				ret = 0;
 			/* unlock memory hotplug */
@@ -908,7 +909,8 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	 * avoid spurious attempts to map/unmap memory from VFIO.
 	 */
 	if (vfio_cfg == default_vfio_cfg && vfio_cfg->vfio_active_groups == 0)
-		rte_mem_event_callback_unregister(VFIO_MEM_EVENT_CLB_NAME);
+		rte_mem_event_callback_unregister(VFIO_MEM_EVENT_CLB_NAME,
+				NULL);
 
 	/* success */
 	ret = 0;

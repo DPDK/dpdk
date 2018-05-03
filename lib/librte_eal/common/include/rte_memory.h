@@ -330,7 +330,7 @@ enum rte_mem_event {
  * Function typedef used to register callbacks for memory events.
  */
 typedef void (*rte_mem_event_callback_t)(enum rte_mem_event event_type,
-		const void *addr, size_t len);
+		const void *addr, size_t len, void *arg);
 
 /**
  * Function used to register callbacks for memory events.
@@ -345,13 +345,17 @@ typedef void (*rte_mem_event_callback_t)(enum rte_mem_event event_type,
  * @param clb
  *   Callback function pointer.
  *
+ * @param arg
+ *   Argument to pass to the callback.
+ *
  * @return
  *   0 on successful callback register
  *   -1 on unsuccessful callback register, with rte_errno value indicating
  *   reason for failure.
  */
 int __rte_experimental
-rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb);
+rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb,
+		void *arg);
 
 /**
  * Function used to unregister callbacks for memory events.
@@ -359,13 +363,16 @@ rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb);
  * @param name
  *   Name associated with specified callback to be removed from the list.
  *
+ * @param arg
+ *   Argument to look for among callbacks with specified callback name.
+ *
  * @return
  *   0 on successful callback unregister
  *   -1 on unsuccessful callback unregister, with rte_errno value indicating
  *   reason for failure.
  */
 int __rte_experimental
-rte_mem_event_callback_unregister(const char *name);
+rte_mem_event_callback_unregister(const char *name, void *arg);
 
 
 #define RTE_MEM_ALLOC_VALIDATOR_NAME_LEN 64

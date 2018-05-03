@@ -194,7 +194,8 @@ static int fslmc_map_dma(uint64_t vaddr, rte_iova_t iovaddr, size_t len);
 static int fslmc_unmap_dma(uint64_t vaddr, rte_iova_t iovaddr, size_t len);
 
 static void
-fslmc_memevent_cb(enum rte_mem_event type, const void *addr, size_t len)
+fslmc_memevent_cb(enum rte_mem_event type, const void *addr, size_t len,
+		void *arg __rte_unused)
 {
 	struct rte_memseg_list *msl;
 	struct rte_memseg *ms;
@@ -347,7 +348,7 @@ int rte_fslmc_vfio_dmamap(void)
 	}
 
 	ret = rte_mem_event_callback_register("fslmc_memevent_clb",
-					      fslmc_memevent_cb);
+			fslmc_memevent_cb, NULL);
 	if (ret && rte_errno == ENOTSUP)
 		DPAA2_BUS_DEBUG("Memory event callbacks not supported");
 	else if (ret)

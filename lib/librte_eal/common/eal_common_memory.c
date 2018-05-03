@@ -661,7 +661,8 @@ dump_memseg(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
  * is in eal_common_memalloc.c, like all other memalloc internals.
  */
 int __rte_experimental
-rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb)
+rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb,
+		void *arg)
 {
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_config.legacy_mem) {
@@ -669,11 +670,11 @@ rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb)
 		rte_errno = ENOTSUP;
 		return -1;
 	}
-	return eal_memalloc_mem_event_callback_register(name, clb);
+	return eal_memalloc_mem_event_callback_register(name, clb, arg);
 }
 
 int __rte_experimental
-rte_mem_event_callback_unregister(const char *name)
+rte_mem_event_callback_unregister(const char *name, void *arg)
 {
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_config.legacy_mem) {
@@ -681,7 +682,7 @@ rte_mem_event_callback_unregister(const char *name)
 		rte_errno = ENOTSUP;
 		return -1;
 	}
-	return eal_memalloc_mem_event_callback_unregister(name);
+	return eal_memalloc_mem_event_callback_unregister(name, arg);
 }
 
 int __rte_experimental

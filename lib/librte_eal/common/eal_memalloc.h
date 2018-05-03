@@ -57,10 +57,10 @@ eal_memalloc_sync_with_primary(void);
 
 int
 eal_memalloc_mem_event_callback_register(const char *name,
-		rte_mem_event_callback_t clb);
+		rte_mem_event_callback_t clb, void *arg);
 
 int
-eal_memalloc_mem_event_callback_unregister(const char *name);
+eal_memalloc_mem_event_callback_unregister(const char *name, void *arg);
 
 void
 eal_memalloc_mem_event_notify(enum rte_mem_event event, const void *start,

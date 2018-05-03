@@ -21,6 +21,7 @@ struct mem_event_callback_entry {
 	TAILQ_ENTRY(mem_event_callback_entry) next;
 	char name[RTE_MEM_EVENT_CALLBACK_NAME_LEN];
 	rte_mem_event_callback_t clb;
+	void *arg;
 };
 
 struct mem_alloc_validator_entry {
@@ -44,12 +45,12 @@ static struct mem_alloc_validator_entry_list mem_alloc_validator_list =
 static rte_rwlock_t mem_alloc_validator_rwlock = RTE_RWLOCK_INITIALIZER;
 
 static struct mem_event_callback_entry *
-find_mem_event_callback(const char *name)
+find_mem_event_callback(const char *name, void *arg)
 {
 	struct mem_event_callback_entry *r;
 
 	TAILQ_FOREACH(r, &mem_event_callback_list, next) {
-		if (!strcmp(r->name, name))
+		if (!strcmp(r->name, name) && r->arg == arg)
 			break;
 	}
 	return r;
@@ -146,7 +147,7 @@ eal_memalloc_is_contig(const struct rte_memseg_list *msl, void *start,
 
 int
 eal_memalloc_mem_event_callback_register(const char *name,
-		rte_mem_event_callback_t clb)
+		rte_mem_event_callback_t clb, void *arg)
 {
 	struct mem_event_callback_entry *entry;
 	int ret, len;
@@ -164,7 +165,7 @@ eal_memalloc_mem_event_callback_register(const char *name,
 	}
 	rte_rwlock_write_lock(&mem_event_rwlock);
 
-	entry = find_mem_event_callback(name);
+	entry = find_mem_event_callback(name, arg);
 	if (entry != NULL) {
 		rte_errno = EEXIST;
 		ret = -1;
@@ -180,12 +181,14 @@ eal_memalloc_mem_event_callback_register(const char *name,
 
 	/* callback successfully created and is valid, add it to the list */
 	entry->clb = clb;
+	entry->arg = arg;
 	strlcpy(entry->name, name, RTE_MEM_EVENT_CALLBACK_NAME_LEN);
 	TAILQ_INSERT_TAIL(&mem_event_callback_list, entry, next);
 
 	ret = 0;
 
-	RTE_LOG(DEBUG, EAL, "Mem event callback '%s' registered\n", name);
+	RTE_LOG(DEBUG, EAL, "Mem event callback '%s:%p' registered\n",
+			name, arg);
 
 unlock:
 	rte_rwlock_write_unlock(&mem_event_rwlock);
@@ -193,7 +196,7 @@ unlock:
 }
 
 int
-eal_memalloc_mem_event_callback_unregister(const char *name)
+eal_memalloc_mem_event_callback_unregister(const char *name, void *arg)
 {
 	struct mem_event_callback_entry *entry;
 	int ret, len;
@@ -212,7 +215,7 @@ eal_memalloc_mem_event_callback_unregister(const char *name)
 	}
 	rte_rwlock_write_lock(&mem_event_rwlock);
 
-	entry = find_mem_event_callback(name);
+	entry = find_mem_event_callback(name, arg);
 	if (entry == NULL) {
 		rte_errno = ENOENT;
 		ret = -1;
@@ -223,7 +226,8 @@ eal_memalloc_mem_event_callback_unregister(const char *name)
 
 	ret = 0;
 
-	RTE_LOG(DEBUG, EAL, "Mem event callback '%s' unregistered\n", name);
+	RTE_LOG(DEBUG, EAL, "Mem event callback '%s:%p' unregistered\n",
+			name, arg);
 
 unlock:
 	rte_rwlock_write_unlock(&mem_event_rwlock);
@@ -239,9 +243,9 @@ eal_memalloc_mem_event_notify(enum rte_mem_event event, const void *start,
 	rte_rwlock_read_lock(&mem_event_rwlock);
 
 	TAILQ_FOREACH(entry, &mem_event_callback_list, next) {
-		RTE_LOG(DEBUG, EAL, "Calling mem event callback %s",
-			entry->name);
-		entry->clb(event, start, len);
+		RTE_LOG(DEBUG, EAL, "Calling mem event callback '%s:%p'",
+			entry->name, entry->arg);
+		entry->clb(event, start, len, entry->arg);
 	}
 
 	rte_rwlock_read_unlock(&mem_event_rwlock);
