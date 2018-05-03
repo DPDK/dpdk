@@ -2951,6 +2951,7 @@ i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+	qinfo->conf.offloads = txq->offloads;
 }
 
 void __attribute__((cold))
