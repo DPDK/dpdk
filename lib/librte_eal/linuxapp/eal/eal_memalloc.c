@@ -610,20 +610,20 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	/* erase page data */
 	memset(ms->addr, 0, ms->len);
 
-	/* if we are not in single file segments mode, we're going to unmap the
-	 * segment and thus drop the lock on original fd, so take out another
-	 * shared lock before we do that.
-	 */
-	fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx);
-	if (fd < 0)
-		return -1;
-
 	if (mmap(ms->addr, ms->len, PROT_READ,
 			MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0) ==
 				MAP_FAILED) {
 		RTE_LOG(DEBUG, EAL, "couldn't unmap page\n");
 		return -1;
 	}
+
+	/* if we are not in single file segments mode, we're going to unmap the
+	 * segment and thus drop the lock on original fd, but hugepage dir is
+	 * now locked so we can take out another one without races.
+	 */
+	fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx);
+	if (fd < 0)
+		return -1;
 
 	if (internal_config.single_file_segments) {
 		map_offset = seg_idx * ms->len;
@@ -735,12 +735,13 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 						&cur_msl->memseg_arr;
 
 				tmp = rte_fbarray_get(arr, j);
-				if (free_seg(tmp, wa->hi, msl_idx, j)) {
-					RTE_LOG(ERR, EAL, "Cannot free page\n");
-					continue;
-				}
-
 				rte_fbarray_set_free(arr, j);
+
+				/* free_seg may attempt to create a file, which
+				 * may fail.
+				 */
+				if (free_seg(tmp, wa->hi, msl_idx, j))
+					RTE_LOG(DEBUG, EAL, "Cannot free page\n");
 			}
 			/* clear the list */
 			if (wa->ms)
