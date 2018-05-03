@@ -1219,6 +1219,31 @@ launch_packet_forwarding(lcore_function_t *pkt_fwd_on_lcore)
 }
 
 /*
+ * Update the forward ports list.
+ */
+void
+update_fwd_ports(portid_t new_pid)
+{
+	unsigned int i;
+	unsigned int new_nb_fwd_ports = 0;
+	int move = 0;
+
+	for (i = 0; i < nb_fwd_ports; ++i) {
+		if (port_id_is_invalid(fwd_ports_ids[i], DISABLED_WARN))
+			move = 1;
+		else if (move)
+			fwd_ports_ids[new_nb_fwd_ports++] = fwd_ports_ids[i];
+		else
+			new_nb_fwd_ports++;
+	}
+	if (new_pid < RTE_MAX_ETHPORTS)
+		fwd_ports_ids[new_nb_fwd_ports++] = new_pid;
+
+	nb_fwd_ports = new_nb_fwd_ports;
+	nb_cfg_ports = new_nb_fwd_ports;
+}
+
+/*
  * Launch packet forwarding configuration.
  */
 void
@@ -1938,6 +1963,8 @@ attach_port(char *identifier)
 
 	ports[pi].port_status = RTE_PORT_STOPPED;
 
+	update_fwd_ports(pi);
+
 	printf("Port %d is attached. Now total ports is %d\n", pi, nb_ports);
 	printf("Done\n");
 }
@@ -1963,6 +1990,8 @@ detach_port(portid_t port_id)
 	}
 
 	nb_ports = rte_eth_dev_count_avail();
+
+	update_fwd_ports(RTE_MAX_ETHPORTS);
 
 	printf("Port '%s' is detached. Now total ports is %d\n",
 			name, nb_ports);
