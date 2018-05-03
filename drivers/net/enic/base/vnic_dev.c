@@ -528,23 +528,6 @@ parse_max_level:
 	return 0;
 }
 
-int vnic_dev_capable_udp_rss(struct vnic_dev *vdev)
-{
-	u64 a0 = CMD_NIC_CFG, a1 = 0;
-	u64 rss_hash_type;
-	int wait = 1000;
-	int err;
-
-	err = vnic_dev_cmd(vdev, CMD_CAPABILITY, &a0, &a1, wait);
-	if (err)
-		return 0;
-	if (a0 == 0)
-		return 0;
-	rss_hash_type = (a1 >> NIC_CFG_RSS_HASH_TYPE_SHIFT) &
-		NIC_CFG_RSS_HASH_TYPE_MASK_FIELD;
-	return ((rss_hash_type & NIC_CFG_RSS_HASH_TYPE_UDP) ? 1 : 0);
-}
-
 int vnic_dev_capable(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd)
 {
 	u64 a0 = (u32)cmd, a1 = 0;

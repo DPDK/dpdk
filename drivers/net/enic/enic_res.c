@@ -122,7 +122,10 @@ int enic_get_vnic_config(struct enic *enic)
 		"loopback tag 0x%04x\n",
 		ENIC_SETTING(enic, TXCSUM) ? "yes" : "no",
 		ENIC_SETTING(enic, RXCSUM) ? "yes" : "no",
-		ENIC_SETTING(enic, RSS) ? "yes" : "no",
+		ENIC_SETTING(enic, RSS) ?
+			(ENIC_SETTING(enic, RSSHASH_UDPIPV4) ? "+UDP" :
+			((ENIC_SETTING(enic, RSSHASH_UDP_WEAK) ? "+udp" :
+			"yes"))) : "no",
 		c->intr_mode == VENET_INTR_MODE_INTX ? "INTx" :
 		c->intr_mode == VENET_INTR_MODE_MSI ? "MSI" :
 		c->intr_mode == VENET_INTR_MODE_ANY ? "any" :
@@ -158,11 +161,15 @@ int enic_get_vnic_config(struct enic *enic)
 	if (ENIC_SETTING(enic, RSSHASH_TCPIPV6))
 		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV6_TCP |
 			ETH_RSS_IPV6_TCP_EX;
-	if (vnic_dev_capable_udp_rss(enic->vdev)) {
+	if (ENIC_SETTING(enic, RSSHASH_UDP_WEAK))
 		enic->flow_type_rss_offloads |=
 			ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP |
 			ETH_RSS_IPV6_UDP_EX;
-	}
+	if (ENIC_SETTING(enic, RSSHASH_UDPIPV4))
+		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV4_UDP;
+	if (ENIC_SETTING(enic, RSSHASH_UDPIPV6))
+		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV6_UDP |
+			ETH_RSS_IPV6_UDP_EX;
 
 	/* Zero offloads if RSS is not enabled */
 	if (!ENIC_SETTING(enic, RSS))

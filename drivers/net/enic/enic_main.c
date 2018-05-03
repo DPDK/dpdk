@@ -1196,12 +1196,15 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 		if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
 		if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
-			/*
-			 * 'TCP' is not a typo. HW does not have a separate
-			 * enable bit for UDP RSS. The TCP bit enables both TCP
-			 * and UDP RSS..
-			 */
-			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
+			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_UDP_IPV4;
+			if (ENIC_SETTING(enic, RSSHASH_UDP_WEAK)) {
+				/*
+				 * 'TCP' is not a typo. The "weak" version of
+				 * UDP RSS requires both the TCP and UDP bits
+				 * be set. It does enable TCP RSS as well.
+				 */
+				rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
+			}
 		}
 		if (rss_hf & (ETH_RSS_IPV6 | ETH_RSS_IPV6_EX |
 			      ETH_RSS_FRAG_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER))
@@ -1209,8 +1212,9 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 		if (rss_hf & (ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX))
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
 		if (rss_hf & (ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_IPV6_UDP_EX)) {
-			/* Again, 'TCP' is not a typo. */
-			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
+			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_UDP_IPV6;
+			if (ENIC_SETTING(enic, RSSHASH_UDP_WEAK))
+				rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
 		}
 	} else {
 		rss_enable = 0;
