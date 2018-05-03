@@ -735,8 +735,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 						&cur_msl->memseg_arr;
 
 				tmp = rte_fbarray_get(arr, j);
-				if (free_seg(tmp, wa->hi, msl_idx,
-						start_idx + j)) {
+				if (free_seg(tmp, wa->hi, msl_idx, j)) {
 					RTE_LOG(ERR, EAL, "Cannot free page\n");
 					continue;
 				}
