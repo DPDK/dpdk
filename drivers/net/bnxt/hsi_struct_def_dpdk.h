@@ -3282,6 +3282,1141 @@ struct hwrm_async_event_cmpl_link_status_change {
 		4
 } __attribute__((packed));
 
+/* hwrm_async_event_cmpl_link_mtu_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_link_mtu_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Link MTU changed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_ID_LINK_MTU_CHANGE \
+		UINT32_C(0x1)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_ID_LINK_MTU_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* The new MTU of the link in bytes. */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_DATA1_NEW_MTU_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_DATA1_NEW_MTU_SFT 0
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_link_speed_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_link_speed_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Link speed changed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_ID_LINK_SPEED_CHANGE \
+		UINT32_C(0x2)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_ID_LINK_SPEED_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/*
+	 * When this bit is '1', the link was forced to the
+	 * force_link_speed value.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_FORCE \
+		UINT32_C(0x1)
+	/* The new link speed in 100 Mbps units. */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_MASK \
+		UINT32_C(0xfffe)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_SFT \
+		1
+	/* 100Mb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_100MB \
+		(UINT32_C(0x1) << 1)
+	/* 1Gb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_1GB \
+		(UINT32_C(0xa) << 1)
+	/* 2Gb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_2GB \
+		(UINT32_C(0x14) << 1)
+	/* 25Gb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_2_5GB \
+		(UINT32_C(0x19) << 1)
+	/* 10Gb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_10GB \
+		(UINT32_C(0x64) << 1)
+	/* 20Mb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_20GB \
+		(UINT32_C(0xc8) << 1)
+	/* 25Gb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_25GB \
+		(UINT32_C(0xfa) << 1)
+	/* 40Gb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_40GB \
+		(UINT32_C(0x190) << 1)
+	/* 50Gb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_50GB \
+		(UINT32_C(0x1f4) << 1)
+	/* 100Gb link speed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_100GB \
+		(UINT32_C(0x3e8) << 1)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_NEW_LINK_SPEED_100MBPS_100GB
+	/* PORT ID */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_PORT_ID_MASK \
+		UINT32_C(0xffff0000)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_PORT_ID_SFT \
+		16
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_dcb_config_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_dcb_config_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* DCB Configuration changed */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_ID_DCB_CONFIG_CHANGE \
+		UINT32_C(0x3)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_ID_DCB_CONFIG_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	/* ETS configuration change */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA2_ETS \
+		UINT32_C(0x1)
+	/* PFC configuration change */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA2_PFC \
+		UINT32_C(0x2)
+	/* APP configuration change */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA2_APP \
+		UINT32_C(0x4)
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* PORT ID */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_PORT_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_PORT_ID_SFT \
+		0
+	/* Priority recommended for RoCE traffic */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_ROCE_PRIORITY_MASK \
+		UINT32_C(0xff0000)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_ROCE_PRIORITY_SFT \
+		16
+	/* none is 255 */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_ROCE_PRIORITY_NONE \
+		(UINT32_C(0xff) << 16)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_ROCE_PRIORITY_LAST \
+		HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_ROCE_PRIORITY_NONE
+	/* Priority recommended for L2 traffic */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_MASK \
+		UINT32_C(0xff000000)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_SFT \
+		24
+	/* none is 255 */
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_NONE \
+		(UINT32_C(0xff) << 24)
+	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_LAST \
+		HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_NONE
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_port_conn_not_allowed (size:128b/16B) */
+struct hwrm_async_event_cmpl_port_conn_not_allowed {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Port connection not allowed */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_ID_PORT_CONN_NOT_ALLOWED \
+		UINT32_C(0x4)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_ID_PORT_CONN_NOT_ALLOWED
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* PORT ID */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_PORT_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_PORT_ID_SFT \
+		0
+	/*
+	 * This value indicates the current port level enforcement policy
+	 * for the optics module when there is an optical module mismatch
+	 * and port is not connected.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_MASK \
+		UINT32_C(0xff0000)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_SFT \
+		16
+	/* No enforcement */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_NONE \
+		(UINT32_C(0x0) << 16)
+	/* Disable Transmit side Laser. */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_DISABLETX \
+		(UINT32_C(0x1) << 16)
+	/* Raise a warning message. */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_WARNINGMSG \
+		(UINT32_C(0x2) << 16)
+	/* Power down the module. */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_PWRDOWN \
+		(UINT32_C(0x3) << 16)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_PWRDOWN
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_link_speed_cfg_not_allowed (size:128b/16B) */
+struct hwrm_async_event_cmpl_link_speed_cfg_not_allowed {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Link speed configuration was not allowed */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_EVENT_ID_LINK_SPEED_CFG_NOT_ALLOWED \
+		UINT32_C(0x5)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_EVENT_ID_LINK_SPEED_CFG_NOT_ALLOWED
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* PORT ID */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_EVENT_DATA1_PORT_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_EVENT_DATA1_PORT_ID_SFT \
+		0
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_link_speed_cfg_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_link_speed_cfg_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Link speed configuration change */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_ID_LINK_SPEED_CFG_CHANGE \
+		UINT32_C(0x6)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_ID_LINK_SPEED_CFG_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* PORT ID */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_DATA1_PORT_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_DATA1_PORT_ID_SFT \
+		0
+	/*
+	 * If set to 1, it indicates that the supported link speeds
+	 * configuration on the port has changed.
+	 * If set to 0, then there is no change in supported link speeds
+	 * configuration.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_DATA1_SUPPORTED_LINK_SPEEDS_CHANGE \
+		UINT32_C(0x10000)
+	/*
+	 * If set to 1, it indicates that the link speed configuration
+	 * on the port has become illegal or invalid.
+	 * If set to 0, then the link speed configuration on the port is
+	 * legal or valid.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_DATA1_ILLEGAL_LINK_SPEED_CFG \
+		UINT32_C(0x20000)
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_port_phy_cfg_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_port_phy_cfg_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Port PHY configuration change */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_ID_PORT_PHY_CFG_CHANGE \
+		UINT32_C(0x7)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_ID_PORT_PHY_CFG_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* PORT ID */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_DATA1_PORT_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_DATA1_PORT_ID_SFT \
+		0
+	/*
+	 * If set to 1, it indicates that the FEC
+	 * configuration on the port has changed.
+	 * If set to 0, then there is no change in FEC configuration.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_DATA1_FEC_CFG_CHANGE \
+		UINT32_C(0x10000)
+	/*
+	 * If set to 1, it indicates that the EEE configuration
+	 * on the port has changed.
+	 * If set to 0, then there is no change in EEE configuration
+	 * on the port.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_DATA1_EEE_CFG_CHANGE \
+		UINT32_C(0x20000)
+	/*
+	 * If set to 1, it indicates that the pause configuration
+	 * on the PHY has changed.
+	 * If set to 0, then there is no change in the pause
+	 * configuration on the PHY.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_DATA1_PAUSE_CFG_CHANGE \
+		UINT32_C(0x40000)
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_func_drvr_unload (size:128b/16B) */
+struct hwrm_async_event_cmpl_func_drvr_unload {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Function driver unloaded */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_EVENT_ID_FUNC_DRVR_UNLOAD \
+		UINT32_C(0x10)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_EVENT_ID_FUNC_DRVR_UNLOAD
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Function ID */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_EVENT_DATA1_FUNC_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_EVENT_DATA1_FUNC_ID_SFT \
+		0
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_func_drvr_load (size:128b/16B) */
+struct hwrm_async_event_cmpl_func_drvr_load {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Function driver loaded */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_ID_FUNC_DRVR_LOAD \
+		UINT32_C(0x11)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_ID_FUNC_DRVR_LOAD
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Function ID */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_DATA1_FUNC_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_DATA1_FUNC_ID_SFT 0
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_func_flr_proc_cmplt (size:128b/16B) */
+struct hwrm_async_event_cmpl_func_flr_proc_cmplt {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Function FLR related processing has completed */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_EVENT_ID_FUNC_FLR_PROC_CMPLT \
+		UINT32_C(0x12)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_EVENT_ID_FUNC_FLR_PROC_CMPLT
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Function ID */
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_EVENT_DATA1_FUNC_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_EVENT_DATA1_FUNC_ID_SFT \
+		0
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_pf_drvr_unload (size:128b/16B) */
+struct hwrm_async_event_cmpl_pf_drvr_unload {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* PF driver unloaded */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_ID_PF_DRVR_UNLOAD \
+		UINT32_C(0x20)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_ID_PF_DRVR_UNLOAD
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* PF ID */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_DATA1_FUNC_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_DATA1_FUNC_ID_SFT 0
+	/* Indicates the physical port this pf belongs to */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_DATA1_PORT_MASK \
+		UINT32_C(0x70000)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_DATA1_PORT_SFT    16
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_pf_drvr_load (size:128b/16B) */
+struct hwrm_async_event_cmpl_pf_drvr_load {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* PF driver loaded */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_ID_PF_DRVR_LOAD \
+		UINT32_C(0x21)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_ID_PF_DRVR_LOAD
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* PF ID */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_DATA1_FUNC_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_DATA1_FUNC_ID_SFT 0
+	/* Indicates the physical port this pf belongs to */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_DATA1_PORT_MASK \
+		UINT32_C(0x70000)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_DATA1_PORT_SFT    16
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_vf_flr (size:128b/16B) */
+struct hwrm_async_event_cmpl_vf_flr {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_VF_FLR_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* VF Function Level Reset (FLR) */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_ID_VF_FLR UINT32_C(0x30)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_ID_VF_FLR
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* VF ID */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_SFT 0
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_vf_mac_addr_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_vf_mac_addr_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* VF MAC Address Change */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_EVENT_ID_VF_MAC_ADDR_CHANGE \
+		UINT32_C(0x31)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_EVENT_ID_VF_MAC_ADDR_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* VF ID */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_EVENT_DATA1_VF_ID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_EVENT_DATA1_VF_ID_SFT \
+		0
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_pf_vf_comm_status_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_pf_vf_comm_status_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* PF-VF communication channel status change. */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_EVENT_ID_PF_VF_COMM_STATUS_CHANGE \
+		UINT32_C(0x32)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_EVENT_ID_PF_VF_COMM_STATUS_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/*
+	 * If this bit is set to 1, then it indicates that the PF-VF
+	 * communication was lost and it is established.
+	 * If this bit set to 0, then it indicates that the PF-VF
+	 * communication was established and it is lost.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_EVENT_DATA1_COMM_ESTABLISHED \
+		UINT32_C(0x1)
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_vf_cfg_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_vf_cfg_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* VF Configuration Change */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_ID_VF_CFG_CHANGE \
+		UINT32_C(0x33)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_ID_VF_CFG_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/*
+	 * Each flag provided in this field indicates a specific VF
+	 * configuration change. At least one of these flags shall be set to 1
+	 * when an asynchronous event completion of this type is provided
+	 * by the HWRM.
+	 */
+	uint32_t	event_data1;
+	/*
+	 * If this bit is set to 1, then the value of MTU
+	 * was changed on this VF.
+	 * If set to 0, then this bit should be ignored.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_DATA1_MTU_CHANGE \
+		UINT32_C(0x1)
+	/*
+	 * If this bit is set to 1, then the value of MRU
+	 * was changed on this VF.
+	 * If set to 0, then this bit should be ignored.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_DATA1_MRU_CHANGE \
+		UINT32_C(0x2)
+	/*
+	 * If this bit is set to 1, then the value of default MAC
+	 * address was changed on this VF.
+	 * If set to 0, then this bit should be ignored.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_DATA1_DFLT_MAC_ADDR_CHANGE \
+		UINT32_C(0x4)
+	/*
+	 * If this bit is set to 1, then the value of default VLAN
+	 * was changed on this VF.
+	 * If set to 0, then this bit should be ignored.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_DATA1_DFLT_VLAN_CHANGE \
+		UINT32_C(0x8)
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_llfc_pfc_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_llfc_pfc_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* unused1 is 10 b */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_UNUSED1_MASK \
+		UINT32_C(0xffc0)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_UNUSED1_SFT          6
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* LLFC/PFC Configuration Change */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_ID_LLFC_PFC_CHANGE \
+		UINT32_C(0x34)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_ID_LLFC_PFC_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Indicates llfc pfc status change */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_LLFC_PFC_MASK \
+		UINT32_C(0x3)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_LLFC_PFC_SFT \
+		0
+	/*
+	 * If this field set to 1, then it indicates that llfc is
+	 * enabled.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_LLFC_PFC_LLFC \
+		UINT32_C(0x1)
+	/*
+	 * If this field is set to 2, then it indicates that pfc
+	 * is enabled.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_LLFC_PFC_PFC \
+		UINT32_C(0x2)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_LLFC_PFC_LAST \
+		HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_LLFC_PFC_PFC
+	/* Indicates the physical port this llfc pfc change occur */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_PORT_MASK \
+		UINT32_C(0x1c)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_PORT_SFT \
+		2
+	/* PORT ID */
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_PORT_ID_MASK \
+		UINT32_C(0x1fffe0)
+	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_PORT_ID_SFT \
+		5
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_hwrm_error (size:128b/16B) */
+struct hwrm_async_event_cmpl_hwrm_error {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* HWRM Error */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_ID_HWRM_ERROR \
+		UINT32_C(0xff)
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_ID_HWRM_ERROR
+	/* Event specific data */
+	uint32_t	event_data2;
+	/* Severity of HWRM Error */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA2_SEVERITY_MASK \
+		UINT32_C(0xff)
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA2_SEVERITY_SFT     0
+	/* Warning */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA2_SEVERITY_WARNING \
+		UINT32_C(0x0)
+	/* Non-fatal Error */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA2_SEVERITY_NONFATAL \
+		UINT32_C(0x1)
+	/* Fatal Error */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA2_SEVERITY_FATAL \
+		UINT32_C(0x2)
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA2_SEVERITY_LAST \
+		HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA2_SEVERITY_FATAL
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Time stamp for error event */
+	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA1_TIMESTAMP \
+		UINT32_C(0x1)
+} __attribute__((packed));
+
 /*******************
  * hwrm_func_reset *
  *******************/
@@ -21984,6 +23119,75 @@ struct hwrm_fwd_resp_input {
 
 /* hwrm_fwd_resp_output (size:128b/16B) */
 struct hwrm_fwd_resp_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*****************************
+ * hwrm_fwd_async_event_cmpl *
+ *****************************/
+
+
+/* hwrm_fwd_async_event_cmpl_input (size:320b/40B) */
+struct hwrm_fwd_async_event_cmpl_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * This value indicates the target id of the encapsulated
+	 * asynchronous event.
+	 * 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors
+	 * 0xFFFF - Broadcast to all children VFs (only applicable when
+	 * a PF is the requester)
+	 */
+	uint16_t	encap_async_event_target_id;
+	uint8_t	unused_0[6];
+	/* This is an encapsulated asynchronous event completion. */
+	uint32_t	encap_async_event_cmpl[4];
+} __attribute__((packed));
+
+/* hwrm_fwd_async_event_cmpl_output (size:128b/16B) */
+struct hwrm_fwd_async_event_cmpl_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
