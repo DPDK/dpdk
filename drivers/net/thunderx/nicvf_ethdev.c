@@ -1435,12 +1435,6 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = NICVF_DEFAULT_TX_FREE_THRESH,
-		.txq_flags =
-			ETH_TXQ_FLAGS_NOMULTSEGS  |
-			ETH_TXQ_FLAGS_NOREFCOUNT  |
-			ETH_TXQ_FLAGS_NOMULTMEMP  |
-			ETH_TXQ_FLAGS_NOVLANOFFL  |
-			ETH_TXQ_FLAGS_NOXSUMSCTP,
 		.offloads = DEV_TX_OFFLOAD_MBUF_FAST_FREE |
 			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM   |
 			DEV_TX_OFFLOAD_UDP_CKSUM          |
