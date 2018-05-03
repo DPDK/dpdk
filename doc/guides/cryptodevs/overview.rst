@@ -11,6 +11,16 @@ Supported Feature Flags
 
 .. include:: overview_feature_table.txt
 
+Note, the mbuf scatter gather feature (aka chained mbufs, scatter-gather-lists
+or SGLs) indicate all following combinations are supported unless otherwise called
+out in the Limitations section of each PMD.
+
+* In place operation, input buffer as multiple segments, same buffer used for output
+* Out of place operation, input buffer as single segment and output as multiple segments
+* Out of place operation, input buffer as multiple segments and output as single segment
+* Out of place operation, input buffer as multiple segments and output as multiple segments
+
+
 Supported Cipher Algorithms
 ---------------------------
 
