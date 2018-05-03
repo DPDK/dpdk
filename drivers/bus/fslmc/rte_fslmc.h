@@ -61,6 +61,7 @@ enum rte_dpaa2_dev_type {
 	DPAA2_IO,	/**< DPIO type device */
 	DPAA2_CI,	/**< DPCI type device */
 	DPAA2_MPORTAL,  /**< DPMCP type device */
+	DPAA2_QDMA,     /**< DPDMAI type device */
 	/* Unknown device placeholder */
 	DPAA2_UNKNOWN,
 	DPAA2_DEVTYPE_MAX,
@@ -91,6 +92,7 @@ struct rte_dpaa2_device {
 	union {
 		struct rte_eth_dev *eth_dev;        /**< ethernet device */
 		struct rte_cryptodev *cryptodev;    /**< Crypto Device */
+		struct rte_rawdev *rawdev;          /**< Raw Device */
 	};
 	enum rte_dpaa2_dev_type dev_type;   /**< Device Type */
 	uint16_t object_id;                 /**< DPAA2 Object ID */
