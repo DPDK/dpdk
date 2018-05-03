@@ -213,7 +213,8 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	snprintf(mz->name, sizeof(mz->name), "%s", name);
 	mz->iova = rte_malloc_virt2iova(mz_addr);
 	mz->addr = mz_addr;
-	mz->len = (requested_len == 0 ? elem->size : requested_len);
+	mz->len = (requested_len == 0 ?
+			(elem->size - MALLOC_ELEM_OVERHEAD) : requested_len);
 	mz->hugepage_sz = elem->msl->page_sz;
 	mz->socket_id = elem->msl->socket_id;
 	mz->flags = 0;
