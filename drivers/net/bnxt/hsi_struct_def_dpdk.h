@@ -20728,6 +20728,894 @@ struct hwrm_cfa_vlan_antispoof_qcfg_output {
 } __attribute__((packed));
 
 /********************************
+ * hwrm_cfa_tunnel_filter_alloc *
+ ********************************/
+
+
+/* hwrm_cfa_tunnel_filter_alloc_input (size:704b/88B) */
+struct hwrm_cfa_tunnel_filter_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/* Setting of this flag indicates the applicability to the loopback path. */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_FLAGS_LOOPBACK \
+		UINT32_C(0x1)
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the l2_filter_id field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_L2_FILTER_ID \
+		UINT32_C(0x1)
+	/*
+	 * This bit must be '1' for the l2_addr field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR \
+		UINT32_C(0x2)
+	/*
+	 * This bit must be '1' for the l2_ivlan field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN \
+		UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the l3_addr field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_L3_ADDR \
+		UINT32_C(0x8)
+	/*
+	 * This bit must be '1' for the l3_addr_type field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_L3_ADDR_TYPE \
+		UINT32_C(0x10)
+	/*
+	 * This bit must be '1' for the t_l3_addr_type field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_T_L3_ADDR_TYPE \
+		UINT32_C(0x20)
+	/*
+	 * This bit must be '1' for the t_l3_addr field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_T_L3_ADDR \
+		UINT32_C(0x40)
+	/*
+	 * This bit must be '1' for the tunnel_type field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_TUNNEL_TYPE \
+		UINT32_C(0x80)
+	/*
+	 * This bit must be '1' for the vni field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_VNI \
+		UINT32_C(0x100)
+	/*
+	 * This bit must be '1' for the dst_vnic_id field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_DST_VNIC_ID \
+		UINT32_C(0x200)
+	/*
+	 * This bit must be '1' for the mirror_vnic_id field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_ENABLES_MIRROR_VNIC_ID \
+		UINT32_C(0x400)
+	/*
+	 * This value identifies a set of CFA data structures used for an L2
+	 * context.
+	 */
+	uint64_t	l2_filter_id;
+	/*
+	 * This value sets the match value for the inner L2
+	 * MAC address.
+	 * Destination MAC address for RX path.
+	 * Source MAC address for TX path.
+	 */
+	uint8_t	l2_addr[6];
+	/*
+	 * This value sets VLAN ID value for inner VLAN.
+	 * Only 12-bits of VLAN ID are used in setting the filter.
+	 */
+	uint16_t	l2_ivlan;
+	/*
+	 * The value of inner destination IP address to be used in filtering.
+	 * For IPv4, first four bytes represent the IP address.
+	 */
+	uint32_t	l3_addr[4];
+	/*
+	 * The value of tunnel destination IP address to be used in filtering.
+	 * For IPv4, first four bytes represent the IP address.
+	 */
+	uint32_t	t_l3_addr[4];
+	/*
+	 * This value indicates the type of inner IP address.
+	 * 4 - IPv4
+	 * 6 - IPv6
+	 * All others are invalid.
+	 */
+	uint8_t	l3_addr_type;
+	/*
+	 * This value indicates the type of tunnel IP address.
+	 * 4 - IPv4
+	 * 6 - IPv6
+	 * All others are invalid.
+	 */
+	uint8_t	t_l3_addr_type;
+	/* Tunnel Type. */
+	uint8_t	tunnel_type;
+	/* Non-tunnel */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_NONTUNNEL \
+		UINT32_C(0x0)
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_VXLAN \
+		UINT32_C(0x1)
+	/* Network Virtualization Generic Routing Encapsulation (NVGRE) */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_NVGRE \
+		UINT32_C(0x2)
+	/* Generic Routing Encapsulation (GRE) inside Ethernet payload */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_L2GRE \
+		UINT32_C(0x3)
+	/* IP in IP */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_IPIP \
+		UINT32_C(0x4)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_GENEVE \
+		UINT32_C(0x5)
+	/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_MPLS \
+		UINT32_C(0x6)
+	/* Stateless Transport Tunnel (STT) */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_STT \
+		UINT32_C(0x7)
+	/* Generic Routing Encapsulation (GRE) inside IP datagram payload */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_IPGRE \
+		UINT32_C(0x8)
+	/* IPV4 over virtual eXtensible Local Area Network (IPV4oVXLAN) */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4 \
+		UINT32_C(0x9)
+	/* Any tunneled traffic */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL \
+		UINT32_C(0xff)
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_LAST \
+		HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL
+	/*
+	 * tunnel_flags allows the user to indicate the tunnel tag detection
+	 * for the tunnel type specified in tunnel_type.
+	 */
+	uint8_t	tunnel_flags;
+	/*
+	 * If the tunnel_type is geneve, then this bit indicates if we
+	 * need to match the geneve OAM packet.
+	 * If the tunnel_type is nvgre or gre, then this bit indicates if
+	 * we need to detect checksum present bit in geneve header.
+	 * If the tunnel_type is mpls, then this bit indicates if we need
+	 * to match mpls packet with explicit IPV4/IPV6 null header.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_FLAGS_TUN_FLAGS_OAM_CHECKSUM_EXPLHDR \
+		UINT32_C(0x1)
+	/*
+	 * If the tunnel_type is geneve, then this bit indicates if we
+	 * need to detect the critical option bit set in the oam packet.
+	 * If the tunnel_type is nvgre or gre, then this bit indicates
+	 * if we need to match nvgre packets with key present bit set in
+	 * gre header.
+	 * If the tunnel_type is mpls, then this bit indicates if we
+	 * need to match mpls packet with S bit from inner/second label.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_FLAGS_TUN_FLAGS_CRITICAL_OPT_S1 \
+		UINT32_C(0x2)
+	/*
+	 * If the tunnel_type is geneve, then this bit indicates if we
+	 * need to match geneve packet with extended header bit set in
+	 * geneve header.
+	 * If the tunnel_type is nvgre or gre, then this bit indicates
+	 * if we need to match nvgre packets with sequence number
+	 * present bit set in gre header.
+	 * If the tunnel_type is mpls, then this bit indicates if we
+	 * need to match mpls packet with S bit from out/first label.
+	 */
+	#define HWRM_CFA_TUNNEL_FILTER_ALLOC_INPUT_TUNNEL_FLAGS_TUN_FLAGS_EXTHDR_SEQNUM_S0 \
+		UINT32_C(0x4)
+	/*
+	 * Virtual Network Identifier (VNI). Only valid with
+	 * tunnel_types VXLAN, NVGRE, and Geneve.
+	 * Only lower 24-bits of VNI field are used
+	 * in setting up the filter.
+	 */
+	uint32_t	vni;
+	/* Logical VNIC ID of the destination VNIC. */
+	uint32_t	dst_vnic_id;
+	/*
+	 * Logical VNIC ID of the VNIC where traffic is
+	 * mirrored.
+	 */
+	uint32_t	mirror_vnic_id;
+} __attribute__((packed));
+
+/* hwrm_cfa_tunnel_filter_alloc_output (size:192b/24B) */
+struct hwrm_cfa_tunnel_filter_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* This value is an opaque id into CFA data structures. */
+	uint64_t	tunnel_filter_id;
+	/*
+	 * This is the ID of the flow associated with this
+	 * filter.
+	 * This value shall be used to match and associate the
+	 * flow identifier returned in completion records.
+	 * A value of 0xFFFFFFFF shall indicate no flow id.
+	 */
+	uint32_t	flow_id;
+	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*******************************
+ * hwrm_cfa_tunnel_filter_free *
+ *******************************/
+
+
+/* hwrm_cfa_tunnel_filter_free_input (size:192b/24B) */
+struct hwrm_cfa_tunnel_filter_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* This value is an opaque id into CFA data structures. */
+	uint64_t	tunnel_filter_id;
+} __attribute__((packed));
+
+/* hwrm_cfa_tunnel_filter_free_output (size:128b/16B) */
+struct hwrm_cfa_tunnel_filter_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/***************************************
+ * hwrm_cfa_redirect_tunnel_type_alloc *
+ ***************************************/
+
+
+/* hwrm_cfa_redirect_tunnel_type_alloc_input (size:192b/24B) */
+struct hwrm_cfa_redirect_tunnel_type_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* The destination function id, to whom the traffic is redirected. */
+	uint16_t	dest_fid;
+	/* Tunnel Type. */
+	uint8_t	tunnel_type;
+	/* Non-tunnel */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_NONTUNNEL \
+		UINT32_C(0x0)
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_VXLAN \
+		UINT32_C(0x1)
+	/* Network Virtualization Generic Routing Encapsulation (NVGRE) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_NVGRE \
+		UINT32_C(0x2)
+	/* Generic Routing Encapsulation (GRE) inside Ethernet payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_L2GRE \
+		UINT32_C(0x3)
+	/* IP in IP */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_IPIP \
+		UINT32_C(0x4)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_GENEVE \
+		UINT32_C(0x5)
+	/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_MPLS \
+		UINT32_C(0x6)
+	/* Stateless Transport Tunnel (STT) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_STT \
+		UINT32_C(0x7)
+	/* Generic Routing Encapsulation (GRE) inside IP datagram payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_IPGRE \
+		UINT32_C(0x8)
+	/* IPV4 over virtual eXtensible Local Area Network (IPV4oVXLAN) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4 \
+		UINT32_C(0x9)
+	/* Enhance Generic Routing Encapsulation (GRE version 1) inside IP datagram payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_IPGRE_V1 \
+		UINT32_C(0xa)
+	/* Any tunneled traffic */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL \
+		UINT32_C(0xff)
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_LAST \
+		HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL
+	/* Tunnel alloc flags. */
+	uint8_t	flags;
+	/* Setting of this flag indicates modify existing redirect tunnel to new destination function ID. */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_FLAGS_MODIFY_DST \
+		UINT32_C(0x1)
+	uint8_t	unused_0[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_redirect_tunnel_type_alloc_output (size:128b/16B) */
+struct hwrm_cfa_redirect_tunnel_type_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**************************************
+ * hwrm_cfa_redirect_tunnel_type_free *
+ **************************************/
+
+
+/* hwrm_cfa_redirect_tunnel_type_free_input (size:192b/24B) */
+struct hwrm_cfa_redirect_tunnel_type_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* The destination function id, to whom the traffic is redirected. */
+	uint16_t	dest_fid;
+	/* Tunnel Type. */
+	uint8_t	tunnel_type;
+	/* Non-tunnel */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_NONTUNNEL \
+		UINT32_C(0x0)
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_VXLAN \
+		UINT32_C(0x1)
+	/* Network Virtualization Generic Routing Encapsulation (NVGRE) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_NVGRE \
+		UINT32_C(0x2)
+	/* Generic Routing Encapsulation (GRE) inside Ethernet payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_L2GRE \
+		UINT32_C(0x3)
+	/* IP in IP */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_IPIP \
+		UINT32_C(0x4)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_GENEVE \
+		UINT32_C(0x5)
+	/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_MPLS \
+		UINT32_C(0x6)
+	/* Stateless Transport Tunnel (STT) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_STT \
+		UINT32_C(0x7)
+	/* Generic Routing Encapsulation (GRE) inside IP datagram payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_IPGRE \
+		UINT32_C(0x8)
+	/* IPV4 over virtual eXtensible Local Area Network (IPV4oVXLAN) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_VXLAN_V4 \
+		UINT32_C(0x9)
+	/* Enhance Generic Routing Encapsulation (GRE version 1) inside IP datagram payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_IPGRE_V1 \
+		UINT32_C(0xa)
+	/* Any tunneled traffic */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_ANYTUNNEL \
+		UINT32_C(0xff)
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_LAST \
+		HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_ANYTUNNEL
+	uint8_t	unused_0[5];
+} __attribute__((packed));
+
+/* hwrm_cfa_redirect_tunnel_type_free_output (size:128b/16B) */
+struct hwrm_cfa_redirect_tunnel_type_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**************************************
+ * hwrm_cfa_redirect_tunnel_type_info *
+ **************************************/
+
+
+/* hwrm_cfa_redirect_tunnel_type_info_input (size:192b/24B) */
+struct hwrm_cfa_redirect_tunnel_type_info_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* The source function id. */
+	uint16_t	src_fid;
+	/* Tunnel Type. */
+	uint8_t	tunnel_type;
+	/* Non-tunnel */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_NONTUNNEL \
+		UINT32_C(0x0)
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_VXLAN \
+		UINT32_C(0x1)
+	/* Network Virtualization Generic Routing Encapsulation (NVGRE) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_NVGRE \
+		UINT32_C(0x2)
+	/* Generic Routing Encapsulation (GRE) inside Ethernet payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_L2GRE \
+		UINT32_C(0x3)
+	/* IP in IP */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_IPIP \
+		UINT32_C(0x4)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_GENEVE \
+		UINT32_C(0x5)
+	/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_MPLS \
+		UINT32_C(0x6)
+	/* Stateless Transport Tunnel (STT) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_STT \
+		UINT32_C(0x7)
+	/* Generic Routing Encapsulation (GRE) inside IP datagram payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_IPGRE \
+		UINT32_C(0x8)
+	/* IPV4 over virtual eXtensible Local Area Network (IPV4oVXLAN) */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_VXLAN_V4 \
+		UINT32_C(0x9)
+	/* Enhance Generic Routing Encapsulation (GRE version 1) inside IP datagram payload */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_IPGRE_V1 \
+		UINT32_C(0xa)
+	/* Any tunneled traffic */
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_ANYTUNNEL \
+		UINT32_C(0xff)
+	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_LAST \
+		HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_ANYTUNNEL
+	uint8_t	unused_0[5];
+} __attribute__((packed));
+
+/* hwrm_cfa_redirect_tunnel_type_info_output (size:128b/16B) */
+struct hwrm_cfa_redirect_tunnel_type_info_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* The destination function id, to whom the traffic is redirected. */
+	uint16_t	dest_fid;
+	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/* hwrm_vxlan_ipv4_hdr (size:128b/16B) */
+struct hwrm_vxlan_ipv4_hdr {
+	/* IPv4 version and header length. */
+	uint8_t	ver_hlen;
+	/* IPv4 header length */
+	#define HWRM_VXLAN_IPV4_HDR_VER_HLEN_HEADER_LENGTH_MASK UINT32_C(0xf)
+	#define HWRM_VXLAN_IPV4_HDR_VER_HLEN_HEADER_LENGTH_SFT 0
+	/* Version */
+	#define HWRM_VXLAN_IPV4_HDR_VER_HLEN_VERSION_MASK      UINT32_C(0xf0)
+	#define HWRM_VXLAN_IPV4_HDR_VER_HLEN_VERSION_SFT       4
+	/* IPv4 type of service. */
+	uint8_t	tos;
+	/* IPv4 identification. */
+	uint16_t	ip_id;
+	/* IPv4 flags and offset. */
+	uint16_t	flags_frag_offset;
+	/* IPv4 TTL. */
+	uint8_t	ttl;
+	/* IPv4 protocol. */
+	uint8_t	protocol;
+	/* IPv4 source address. */
+	uint32_t	src_ip_addr;
+	/* IPv4 destination address. */
+	uint32_t	dest_ip_addr;
+} __attribute__((packed));
+
+/* hwrm_vxlan_ipv6_hdr (size:320b/40B) */
+struct hwrm_vxlan_ipv6_hdr {
+	/* IPv6 version, traffic class and flow label. */
+	uint32_t	ver_tc_flow_label;
+	/* IPv6 version shift */
+	#define HWRM_VXLAN_IPV6_HDR_VER_TC_FLOW_LABEL_VER_SFT \
+		UINT32_C(0x1c)
+	/* IPv6 version mask */
+	#define HWRM_VXLAN_IPV6_HDR_VER_TC_FLOW_LABEL_VER_MASK \
+		UINT32_C(0xf0000000)
+	/* IPv6 TC shift */
+	#define HWRM_VXLAN_IPV6_HDR_VER_TC_FLOW_LABEL_TC_SFT \
+		UINT32_C(0x14)
+	/* IPv6 TC mask */
+	#define HWRM_VXLAN_IPV6_HDR_VER_TC_FLOW_LABEL_TC_MASK \
+		UINT32_C(0xff00000)
+	/* IPv6 flow label shift */
+	#define HWRM_VXLAN_IPV6_HDR_VER_TC_FLOW_LABEL_FLOW_LABEL_SFT \
+		UINT32_C(0x0)
+	/* IPv6 flow label mask */
+	#define HWRM_VXLAN_IPV6_HDR_VER_TC_FLOW_LABEL_FLOW_LABEL_MASK \
+		UINT32_C(0xfffff)
+	#define HWRM_VXLAN_IPV6_HDR_VER_TC_FLOW_LABEL_LAST \
+		HWRM_VXLAN_IPV6_HDR_VER_TC_FLOW_LABEL_FLOW_LABEL_MASK
+	/* IPv6 payload length. */
+	uint16_t	payload_len;
+	/* IPv6 next header. */
+	uint8_t	next_hdr;
+	/* IPv6 TTL. */
+	uint8_t	ttl;
+	/* IPv6 source address. */
+	uint32_t	src_ip_addr[4];
+	/* IPv6 destination address. */
+	uint32_t	dest_ip_addr[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_encap_data_vxlan (size:576b/72B) */
+struct hwrm_cfa_encap_data_vxlan {
+	/* Source MAC address. */
+	uint8_t	src_mac_addr[6];
+	/* reserved. */
+	uint16_t	unused_0;
+	/* Destination MAC address. */
+	uint8_t	dst_mac_addr[6];
+	/* Number of VLAN tags. */
+	uint8_t	num_vlan_tags;
+	/* reserved. */
+	uint8_t	unused_1;
+	/* Outer VLAN TPID. */
+	uint16_t	ovlan_tpid;
+	/* Outer VLAN TCI. */
+	uint16_t	ovlan_tci;
+	/* Inner VLAN TPID. */
+	uint16_t	ivlan_tpid;
+	/* Inner VLAN TCI. */
+	uint16_t	ivlan_tci;
+	/* L3 header fields. */
+	uint32_t	l3[10];
+	/* IP version mask. */
+	#define HWRM_CFA_ENCAP_DATA_VXLAN_L3_VER_MASK UINT32_C(0xf)
+	/* IP version 4. */
+	#define HWRM_CFA_ENCAP_DATA_VXLAN_L3_VER_IPV4 UINT32_C(0x4)
+	/* IP version 6. */
+	#define HWRM_CFA_ENCAP_DATA_VXLAN_L3_VER_IPV6 UINT32_C(0x6)
+	#define HWRM_CFA_ENCAP_DATA_VXLAN_L3_LAST \
+		HWRM_CFA_ENCAP_DATA_VXLAN_L3_VER_IPV6
+	/* UDP source port. */
+	uint16_t	src_port;
+	/* UDP destination port. */
+	uint16_t	dst_port;
+	/* VXLAN Network Identifier. */
+	uint32_t	vni;
+} __attribute__((packed));
+
+/*******************************
+ * hwrm_cfa_encap_record_alloc *
+ *******************************/
+
+
+/* hwrm_cfa_encap_record_alloc_input (size:832b/104B) */
+struct hwrm_cfa_encap_record_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/* Setting of this flag indicates the applicability to the loopback path. */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_FLAGS_LOOPBACK \
+		UINT32_C(0x1)
+	/* Encapsulation Type. */
+	uint8_t	encap_type;
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_VXLAN \
+		UINT32_C(0x1)
+	/* Network Virtualization Generic Routing Encapsulation (NVGRE) */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_NVGRE \
+		UINT32_C(0x2)
+	/* Generic Routing Encapsulation (GRE) after inside Ethernet payload */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_L2GRE \
+		UINT32_C(0x3)
+	/* IP in IP */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_IPIP \
+		UINT32_C(0x4)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_GENEVE \
+		UINT32_C(0x5)
+	/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_MPLS \
+		UINT32_C(0x6)
+	/* VLAN */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_VLAN \
+		UINT32_C(0x7)
+	/* Generic Routing Encapsulation (GRE) inside IP datagram payload */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_IPGRE \
+		UINT32_C(0x8)
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_LAST \
+		HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_IPGRE
+	uint8_t	unused_0[3];
+	/* This value is encap data used for the given encap type. */
+	uint32_t	encap_data[20];
+} __attribute__((packed));
+
+/* hwrm_cfa_encap_record_alloc_output (size:128b/16B) */
+struct hwrm_cfa_encap_record_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* This value is an opaque id into CFA data structures. */
+	uint32_t	encap_record_id;
+	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/******************************
+ * hwrm_cfa_encap_record_free *
+ ******************************/
+
+
+/* hwrm_cfa_encap_record_free_input (size:192b/24B) */
+struct hwrm_cfa_encap_record_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* This value is an opaque id into CFA data structures. */
+	uint32_t	encap_record_id;
+	uint8_t	unused_0[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_encap_record_free_output (size:128b/16B) */
+struct hwrm_cfa_encap_record_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/********************************
  * hwrm_cfa_ntuple_filter_alloc *
  ********************************/
 
@@ -21793,6 +22681,2394 @@ struct hwrm_cfa_em_flow_cfg_input {
 
 /* hwrm_cfa_em_flow_cfg_output (size:128b/16B) */
 struct hwrm_cfa_em_flow_cfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/********************************
+ * hwrm_cfa_meter_profile_alloc *
+ ********************************/
+
+
+/* hwrm_cfa_meter_profile_alloc_input (size:320b/40B) */
+struct hwrm_cfa_meter_profile_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	flags;
+	/*
+	 * Enumeration denoting the RX, TX type of the resource.
+	 * This enumeration is used for resources that are similar for both
+	 * TX and RX paths of the chip.
+	 */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_FLAGS_PATH     UINT32_C(0x1)
+	/* tx path */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_FLAGS_PATH_TX \
+		UINT32_C(0x0)
+	/* rx path */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_FLAGS_PATH_RX \
+		UINT32_C(0x1)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_FLAGS_PATH_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_FLAGS_PATH_RX
+	/* The meter algorithm type. */
+	uint8_t	meter_type;
+	/* RFC 2697 (srTCM) */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_METER_TYPE_RFC2697 \
+		UINT32_C(0x0)
+	/* RFC 2698 (trTCM) */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_METER_TYPE_RFC2698 \
+		UINT32_C(0x1)
+	/* RFC 4115 (trTCM) */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_METER_TYPE_RFC4115 \
+		UINT32_C(0x2)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_METER_TYPE_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_METER_TYPE_RFC4115
+	/*
+	 * This field is reserved for the future use.
+	 * It shall be set to 0.
+	 */
+	uint16_t	reserved1;
+	/*
+	 * This field is reserved for the future use.
+	 * It shall be set to 0.
+	 */
+	uint32_t	reserved2;
+	/* A meter rate specified in bytes-per-second. */
+	uint32_t	commit_rate;
+	/* The bandwidth value. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_MASK \
+		UINT32_C(0xfffffff)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_SFT \
+		0
+	/* The granularity of the value (bits or bytes). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_SCALE \
+		UINT32_C(0x10000000)
+	/* Value is in bits. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_SCALE_BITS \
+		(UINT32_C(0x0) << 28)
+	/* Value is in bytes. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_SCALE_BYTES \
+		(UINT32_C(0x1) << 28)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_SCALE_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_SCALE_BYTES
+	/* bw_value_unit is 3 b */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_MASK \
+		UINT32_C(0xe0000000)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_SFT \
+		29
+	/* Value is in Mb or MB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_MEGA \
+		(UINT32_C(0x0) << 29)
+	/* Value is in Kb or KB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_KILO \
+		(UINT32_C(0x2) << 29)
+	/* Value is in bits or bytes. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_BASE \
+		(UINT32_C(0x4) << 29)
+	/* Value is in Gb or GB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_GIGA \
+		(UINT32_C(0x6) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_PERCENT1_100 \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_INVALID \
+		(UINT32_C(0x7) << 29)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_INVALID
+	/* A meter burst size specified in bytes. */
+	uint32_t	commit_burst;
+	/* The bandwidth value. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_MASK \
+		UINT32_C(0xfffffff)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_SFT \
+		0
+	/* The granularity of the value (bits or bytes). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_SCALE \
+		UINT32_C(0x10000000)
+	/* Value is in bits. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_SCALE_BITS \
+		(UINT32_C(0x0) << 28)
+	/* Value is in bytes. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_SCALE_BYTES \
+		(UINT32_C(0x1) << 28)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_SCALE_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_SCALE_BYTES
+	/* bw_value_unit is 3 b */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_MASK \
+		UINT32_C(0xe0000000)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_SFT \
+		29
+	/* Value is in Mb or MB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_MEGA \
+		(UINT32_C(0x0) << 29)
+	/* Value is in Kb or KB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_KILO \
+		(UINT32_C(0x2) << 29)
+	/* Value is in bits or bytes. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_BASE \
+		(UINT32_C(0x4) << 29)
+	/* Value is in Gb or GB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_GIGA \
+		(UINT32_C(0x6) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_PERCENT1_100 \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_INVALID \
+		(UINT32_C(0x7) << 29)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_INVALID
+	/* A meter rate specified in bytes-per-second. */
+	uint32_t	excess_peak_rate;
+	/* The bandwidth value. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_MASK \
+		UINT32_C(0xfffffff)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_SFT \
+		0
+	/* The granularity of the value (bits or bytes). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_SCALE \
+		UINT32_C(0x10000000)
+	/* Value is in bits. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_SCALE_BITS \
+		(UINT32_C(0x0) << 28)
+	/* Value is in bytes. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_SCALE_BYTES \
+		(UINT32_C(0x1) << 28)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_SCALE_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_SCALE_BYTES
+	/* bw_value_unit is 3 b */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_MASK \
+		UINT32_C(0xe0000000)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_SFT \
+		29
+	/* Value is in Mb or MB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_MEGA \
+		(UINT32_C(0x0) << 29)
+	/* Value is in Kb or KB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_KILO \
+		(UINT32_C(0x2) << 29)
+	/* Value is in bits or bytes. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_BASE \
+		(UINT32_C(0x4) << 29)
+	/* Value is in Gb or GB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_GIGA \
+		(UINT32_C(0x6) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_PERCENT1_100 \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_INVALID \
+		(UINT32_C(0x7) << 29)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_INVALID
+	/* A meter burst size specified in bytes. */
+	uint32_t	excess_peak_burst;
+	/* The bandwidth value. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_MASK \
+		UINT32_C(0xfffffff)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_SFT \
+		0
+	/* The granularity of the value (bits or bytes). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_SCALE \
+		UINT32_C(0x10000000)
+	/* Value is in bits. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_SCALE_BITS \
+		(UINT32_C(0x0) << 28)
+	/* Value is in bytes. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_SCALE_BYTES \
+		(UINT32_C(0x1) << 28)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_SCALE_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_SCALE_BYTES
+	/* bw_value_unit is 3 b */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_MASK \
+		UINT32_C(0xe0000000)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_SFT \
+		29
+	/* Value is in Mb or MB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_MEGA \
+		(UINT32_C(0x0) << 29)
+	/* Value is in Kb or KB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_KILO \
+		(UINT32_C(0x2) << 29)
+	/* Value is in bits or bytes. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_BASE \
+		(UINT32_C(0x4) << 29)
+	/* Value is in Gb or GB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_GIGA \
+		(UINT32_C(0x6) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_PERCENT1_100 \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_INVALID \
+		(UINT32_C(0x7) << 29)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_INVALID
+} __attribute__((packed));
+
+/* hwrm_cfa_meter_profile_alloc_output (size:128b/16B) */
+struct hwrm_cfa_meter_profile_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* This value identifies a meter profile in CFA. */
+	uint16_t	meter_profile_id;
+	/*
+	 * A value of 0xfff is considered invalid and implies the
+	 * profile is not configured.
+	 */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_OUTPUT_METER_PROFILE_ID_INVALID \
+		UINT32_C(0xffff)
+	#define HWRM_CFA_METER_PROFILE_ALLOC_OUTPUT_METER_PROFILE_ID_LAST \
+		HWRM_CFA_METER_PROFILE_ALLOC_OUTPUT_METER_PROFILE_ID_INVALID
+	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*******************************
+ * hwrm_cfa_meter_profile_free *
+ *******************************/
+
+
+/* hwrm_cfa_meter_profile_free_input (size:192b/24B) */
+struct hwrm_cfa_meter_profile_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	flags;
+	/*
+	 * Enumeration denoting the RX, TX type of the resource.
+	 * This enumeration is used for resources that are similar for both
+	 * TX and RX paths of the chip.
+	 */
+	#define HWRM_CFA_METER_PROFILE_FREE_INPUT_FLAGS_PATH     UINT32_C(0x1)
+	/* tx path */
+	#define HWRM_CFA_METER_PROFILE_FREE_INPUT_FLAGS_PATH_TX \
+		UINT32_C(0x0)
+	/* rx path */
+	#define HWRM_CFA_METER_PROFILE_FREE_INPUT_FLAGS_PATH_RX \
+		UINT32_C(0x1)
+	#define HWRM_CFA_METER_PROFILE_FREE_INPUT_FLAGS_PATH_LAST \
+		HWRM_CFA_METER_PROFILE_FREE_INPUT_FLAGS_PATH_RX
+	uint8_t	unused_0;
+	/* This value identifies a meter profile in CFA. */
+	uint16_t	meter_profile_id;
+	/*
+	 * A value of 0xfff is considered invalid and implies the
+	 * profile is not configured.
+	 */
+	#define HWRM_CFA_METER_PROFILE_FREE_INPUT_METER_PROFILE_ID_INVALID \
+		UINT32_C(0xffff)
+	#define HWRM_CFA_METER_PROFILE_FREE_INPUT_METER_PROFILE_ID_LAST \
+		HWRM_CFA_METER_PROFILE_FREE_INPUT_METER_PROFILE_ID_INVALID
+	uint8_t	unused_1[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_meter_profile_free_output (size:128b/16B) */
+struct hwrm_cfa_meter_profile_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/******************************
+ * hwrm_cfa_meter_profile_cfg *
+ ******************************/
+
+
+/* hwrm_cfa_meter_profile_cfg_input (size:320b/40B) */
+struct hwrm_cfa_meter_profile_cfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	flags;
+	/*
+	 * Enumeration denoting the RX, TX type of the resource.
+	 * This enumeration is used for resources that are similar for both
+	 * TX and RX paths of the chip.
+	 */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_FLAGS_PATH     UINT32_C(0x1)
+	/* tx path */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_FLAGS_PATH_TX    UINT32_C(0x0)
+	/* rx path */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_FLAGS_PATH_RX    UINT32_C(0x1)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_FLAGS_PATH_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_FLAGS_PATH_RX
+	/* The meter algorithm type. */
+	uint8_t	meter_type;
+	/* RFC 2697 (srTCM) */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_METER_TYPE_RFC2697 \
+		UINT32_C(0x0)
+	/* RFC 2698 (trTCM) */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_METER_TYPE_RFC2698 \
+		UINT32_C(0x1)
+	/* RFC 4115 (trTCM) */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_METER_TYPE_RFC4115 \
+		UINT32_C(0x2)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_METER_TYPE_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_METER_TYPE_RFC4115
+	/* This value identifies a meter profile in CFA. */
+	uint16_t	meter_profile_id;
+	/*
+	 * A value of 0xfff is considered invalid and implies the
+	 * profile is not configured.
+	 */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_METER_PROFILE_ID_INVALID \
+		UINT32_C(0xffff)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_METER_PROFILE_ID_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_METER_PROFILE_ID_INVALID
+	/*
+	 * This field is reserved for the future use.
+	 * It shall be set to 0.
+	 */
+	uint32_t	reserved;
+	/* A meter rate specified in bytes-per-second. */
+	uint32_t	commit_rate;
+	/* The bandwidth value. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_MASK \
+		UINT32_C(0xfffffff)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_SFT \
+		0
+	/* The granularity of the value (bits or bytes). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_SCALE \
+		UINT32_C(0x10000000)
+	/* Value is in bits. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_SCALE_BITS \
+		(UINT32_C(0x0) << 28)
+	/* Value is in bytes. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_SCALE_BYTES \
+		(UINT32_C(0x1) << 28)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_SCALE_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_SCALE_BYTES
+	/* bw_value_unit is 3 b */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_MASK \
+		UINT32_C(0xe0000000)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_SFT \
+		29
+	/* Value is in Mb or MB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_MEGA \
+		(UINT32_C(0x0) << 29)
+	/* Value is in Kb or KB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_KILO \
+		(UINT32_C(0x2) << 29)
+	/* Value is in bits or bytes. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_BASE \
+		(UINT32_C(0x4) << 29)
+	/* Value is in Gb or GB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_GIGA \
+		(UINT32_C(0x6) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_PERCENT1_100 \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_INVALID \
+		(UINT32_C(0x7) << 29)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_INVALID
+	/* A meter burst size specified in bytes. */
+	uint32_t	commit_burst;
+	/* The bandwidth value. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_MASK \
+		UINT32_C(0xfffffff)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_SFT \
+		0
+	/* The granularity of the value (bits or bytes). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_SCALE \
+		UINT32_C(0x10000000)
+	/* Value is in bits. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_SCALE_BITS \
+		(UINT32_C(0x0) << 28)
+	/* Value is in bytes. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_SCALE_BYTES \
+		(UINT32_C(0x1) << 28)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_SCALE_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_SCALE_BYTES
+	/* bw_value_unit is 3 b */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_MASK \
+		UINT32_C(0xe0000000)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_SFT \
+		29
+	/* Value is in Mb or MB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_MEGA \
+		(UINT32_C(0x0) << 29)
+	/* Value is in Kb or KB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_KILO \
+		(UINT32_C(0x2) << 29)
+	/* Value is in bits or bytes. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_BASE \
+		(UINT32_C(0x4) << 29)
+	/* Value is in Gb or GB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_GIGA \
+		(UINT32_C(0x6) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_PERCENT1_100 \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_INVALID \
+		(UINT32_C(0x7) << 29)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_INVALID
+	/* A meter rate specified in bytes-per-second. */
+	uint32_t	excess_peak_rate;
+	/* The bandwidth value. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_MASK \
+		UINT32_C(0xfffffff)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_SFT \
+		0
+	/* The granularity of the value (bits or bytes). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_SCALE \
+		UINT32_C(0x10000000)
+	/* Value is in bits. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_SCALE_BITS \
+		(UINT32_C(0x0) << 28)
+	/* Value is in bytes. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_SCALE_BYTES \
+		(UINT32_C(0x1) << 28)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_SCALE_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_SCALE_BYTES
+	/* bw_value_unit is 3 b */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_MASK \
+		UINT32_C(0xe0000000)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_SFT \
+		29
+	/* Value is in Mb or MB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_MEGA \
+		(UINT32_C(0x0) << 29)
+	/* Value is in Kb or KB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_KILO \
+		(UINT32_C(0x2) << 29)
+	/* Value is in bits or bytes. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_BASE \
+		(UINT32_C(0x4) << 29)
+	/* Value is in Gb or GB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_GIGA \
+		(UINT32_C(0x6) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_PERCENT1_100 \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_INVALID \
+		(UINT32_C(0x7) << 29)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_INVALID
+	/* A meter burst size specified in bytes. */
+	uint32_t	excess_peak_burst;
+	/* The bandwidth value. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_MASK \
+		UINT32_C(0xfffffff)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_SFT \
+		0
+	/* The granularity of the value (bits or bytes). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_SCALE \
+		UINT32_C(0x10000000)
+	/* Value is in bits. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_SCALE_BITS \
+		(UINT32_C(0x0) << 28)
+	/* Value is in bytes. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_SCALE_BYTES \
+		(UINT32_C(0x1) << 28)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_SCALE_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_SCALE_BYTES
+	/* bw_value_unit is 3 b */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_MASK \
+		UINT32_C(0xe0000000)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_SFT \
+		29
+	/* Value is in Mb or MB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_MEGA \
+		(UINT32_C(0x0) << 29)
+	/* Value is in Kb or KB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_KILO \
+		(UINT32_C(0x2) << 29)
+	/* Value is in bits or bytes. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_BASE \
+		(UINT32_C(0x4) << 29)
+	/* Value is in Gb or GB (base 10). */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_GIGA \
+		(UINT32_C(0x6) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_PERCENT1_100 \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_INVALID \
+		(UINT32_C(0x7) << 29)
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_LAST \
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_INVALID
+} __attribute__((packed));
+
+/* hwrm_cfa_meter_profile_cfg_output (size:128b/16B) */
+struct hwrm_cfa_meter_profile_cfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*********************************
+ * hwrm_cfa_meter_instance_alloc *
+ *********************************/
+
+
+/* hwrm_cfa_meter_instance_alloc_input (size:192b/24B) */
+struct hwrm_cfa_meter_instance_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	flags;
+	/*
+	 * Enumeration denoting the RX, TX type of the resource.
+	 * This enumeration is used for resources that are similar for both
+	 * TX and RX paths of the chip.
+	 */
+	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_FLAGS_PATH \
+		UINT32_C(0x1)
+	/* tx path */
+	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_FLAGS_PATH_TX \
+		UINT32_C(0x0)
+	/* rx path */
+	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_FLAGS_PATH_RX \
+		UINT32_C(0x1)
+	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_FLAGS_PATH_LAST \
+		HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_FLAGS_PATH_RX
+	uint8_t	unused_0;
+	/* This value identifies a meter profile in CFA. */
+	uint16_t	meter_profile_id;
+	/*
+	 * A value of 0xfff is considered invalid and implies the
+	 * profile is not configured.
+	 */
+	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_METER_PROFILE_ID_INVALID \
+		UINT32_C(0xffff)
+	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_METER_PROFILE_ID_LAST \
+		HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_METER_PROFILE_ID_INVALID
+	uint8_t	unused_1[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_meter_instance_alloc_output (size:128b/16B) */
+struct hwrm_cfa_meter_instance_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* This value identifies a meter instance in CFA. */
+	uint16_t	meter_instance_id;
+	/*
+	 * A value of 0xfff is considered invalid and implies the
+	 * instance is not configured.
+	 */
+	#define HWRM_CFA_METER_INSTANCE_ALLOC_OUTPUT_METER_INSTANCE_ID_INVALID \
+		UINT32_C(0xffff)
+	#define HWRM_CFA_METER_INSTANCE_ALLOC_OUTPUT_METER_INSTANCE_ID_LAST \
+		HWRM_CFA_METER_INSTANCE_ALLOC_OUTPUT_METER_INSTANCE_ID_INVALID
+	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/********************************
+ * hwrm_cfa_meter_instance_free *
+ ********************************/
+
+
+/* hwrm_cfa_meter_instance_free_input (size:192b/24B) */
+struct hwrm_cfa_meter_instance_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	flags;
+	/*
+	 * Enumeration denoting the RX, TX type of the resource.
+	 * This enumeration is used for resources that are similar for both
+	 * TX and RX paths of the chip.
+	 */
+	#define HWRM_CFA_METER_INSTANCE_FREE_INPUT_FLAGS_PATH     UINT32_C(0x1)
+	/* tx path */
+	#define HWRM_CFA_METER_INSTANCE_FREE_INPUT_FLAGS_PATH_TX \
+		UINT32_C(0x0)
+	/* rx path */
+	#define HWRM_CFA_METER_INSTANCE_FREE_INPUT_FLAGS_PATH_RX \
+		UINT32_C(0x1)
+	#define HWRM_CFA_METER_INSTANCE_FREE_INPUT_FLAGS_PATH_LAST \
+		HWRM_CFA_METER_INSTANCE_FREE_INPUT_FLAGS_PATH_RX
+	uint8_t	unused_0;
+	/* This value identifies a meter instance in CFA. */
+	uint16_t	meter_instance_id;
+	/*
+	 * A value of 0xfff is considered invalid and implies the
+	 * instance is not configured.
+	 */
+	#define HWRM_CFA_METER_INSTANCE_FREE_INPUT_METER_INSTANCE_ID_INVALID \
+		UINT32_C(0xffff)
+	#define HWRM_CFA_METER_INSTANCE_FREE_INPUT_METER_INSTANCE_ID_LAST \
+		HWRM_CFA_METER_INSTANCE_FREE_INPUT_METER_INSTANCE_ID_INVALID
+	uint8_t	unused_1[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_meter_instance_free_output (size:128b/16B) */
+struct hwrm_cfa_meter_instance_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*******************************
+ * hwrm_cfa_decap_filter_alloc *
+ *******************************/
+
+
+/* hwrm_cfa_decap_filter_alloc_input (size:832b/104B) */
+struct hwrm_cfa_decap_filter_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/* ovs_tunnel is 1 b */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_FLAGS_OVS_TUNNEL \
+		UINT32_C(0x1)
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the tunnel_type field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_TUNNEL_TYPE \
+		UINT32_C(0x1)
+	/*
+	 * This bit must be '1' for the tunnel_id field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_TUNNEL_ID \
+		UINT32_C(0x2)
+	/*
+	 * This bit must be '1' for the src_macaddr field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_SRC_MACADDR \
+		UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the dst_macaddr field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_DST_MACADDR \
+		UINT32_C(0x8)
+	/*
+	 * This bit must be '1' for the ovlan_vid field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_OVLAN_VID \
+		UINT32_C(0x10)
+	/*
+	 * This bit must be '1' for the ivlan_vid field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_IVLAN_VID \
+		UINT32_C(0x20)
+	/*
+	 * This bit must be '1' for the t_ovlan_vid field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_T_OVLAN_VID \
+		UINT32_C(0x40)
+	/*
+	 * This bit must be '1' for the t_ivlan_vid field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_T_IVLAN_VID \
+		UINT32_C(0x80)
+	/*
+	 * This bit must be '1' for the ethertype field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_ETHERTYPE \
+		UINT32_C(0x100)
+	/*
+	 * This bit must be '1' for the src_ipaddr field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_SRC_IPADDR \
+		UINT32_C(0x200)
+	/*
+	 * This bit must be '1' for the dst_ipaddr field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_DST_IPADDR \
+		UINT32_C(0x400)
+	/*
+	 * This bit must be '1' for the ipaddr_type field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_IPADDR_TYPE \
+		UINT32_C(0x800)
+	/*
+	 * This bit must be '1' for the ip_protocol field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_IP_PROTOCOL \
+		UINT32_C(0x1000)
+	/*
+	 * This bit must be '1' for the src_port field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_SRC_PORT \
+		UINT32_C(0x2000)
+	/*
+	 * This bit must be '1' for the dst_port field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_DST_PORT \
+		UINT32_C(0x4000)
+	/*
+	 * This bit must be '1' for the dst_id field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_DST_ID \
+		UINT32_C(0x8000)
+	/*
+	 * This bit must be '1' for the mirror_vnic_id field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_ENABLES_MIRROR_VNIC_ID \
+		UINT32_C(0x10000)
+	/*
+	 * Tunnel identifier.
+	 * Virtual Network Identifier (VNI). Only valid with
+	 * tunnel_types VXLAN, NVGRE, and Geneve.
+	 * Only lower 24-bits of VNI field are used
+	 * in setting up the filter.
+	 */
+	uint32_t	tunnel_id;
+	/* Tunnel Type. */
+	uint8_t	tunnel_type;
+	/* Non-tunnel */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_NONTUNNEL \
+		UINT32_C(0x0)
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_VXLAN \
+		UINT32_C(0x1)
+	/* Network Virtualization Generic Routing Encapsulation (NVGRE) */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_NVGRE \
+		UINT32_C(0x2)
+	/* Generic Routing Encapsulation (GRE) inside Ethernet payload */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_L2GRE \
+		UINT32_C(0x3)
+	/* IP in IP */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_IPIP \
+		UINT32_C(0x4)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_GENEVE \
+		UINT32_C(0x5)
+	/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_MPLS \
+		UINT32_C(0x6)
+	/* Stateless Transport Tunnel (STT) */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_STT \
+		UINT32_C(0x7)
+	/* Generic Routing Encapsulation (GRE) inside IP datagram payload */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_IPGRE \
+		UINT32_C(0x8)
+	/* IPV4 over virtual eXtensible Local Area Network (IPV4oVXLAN) */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4 \
+		UINT32_C(0x9)
+	/* Any tunneled traffic */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL \
+		UINT32_C(0xff)
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_LAST \
+		HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL
+	uint8_t	unused_0;
+	uint16_t	unused_1;
+	/*
+	 * This value indicates the source MAC address in
+	 * the Ethernet header.
+	 */
+	uint8_t	src_macaddr[6];
+	uint8_t	unused_2[2];
+	/*
+	 * This value indicates the destination MAC address in
+	 * the Ethernet header.
+	 */
+	uint8_t	dst_macaddr[6];
+	/*
+	 * This value indicates the VLAN ID of the outer VLAN tag
+	 * in the Ethernet header.
+	 */
+	uint16_t	ovlan_vid;
+	/*
+	 * This value indicates the VLAN ID of the inner VLAN tag
+	 * in the Ethernet header.
+	 */
+	uint16_t	ivlan_vid;
+	/*
+	 * This value indicates the VLAN ID of the outer VLAN tag
+	 * in the tunnel Ethernet header.
+	 */
+	uint16_t	t_ovlan_vid;
+	/*
+	 * This value indicates the VLAN ID of the inner VLAN tag
+	 * in the tunnel Ethernet header.
+	 */
+	uint16_t	t_ivlan_vid;
+	/* This value indicates the ethertype in the Ethernet header. */
+	uint16_t	ethertype;
+	/*
+	 * This value indicates the type of IP address.
+	 * 4 - IPv4
+	 * 6 - IPv6
+	 * All others are invalid.
+	 */
+	uint8_t	ip_addr_type;
+	/* invalid */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_ADDR_TYPE_UNKNOWN \
+		UINT32_C(0x0)
+	/* IPv4 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_ADDR_TYPE_IPV4 \
+		UINT32_C(0x4)
+	/* IPv6 */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_ADDR_TYPE_IPV6 \
+		UINT32_C(0x6)
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_ADDR_TYPE_LAST \
+		HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_ADDR_TYPE_IPV6
+	/*
+	 * The value of protocol filed in IP header.
+	 * Applies to UDP and TCP traffic.
+	 * 6 - TCP
+	 * 17 - UDP
+	 */
+	uint8_t	ip_protocol;
+	/* invalid */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_PROTOCOL_UNKNOWN \
+		UINT32_C(0x0)
+	/* TCP */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_PROTOCOL_TCP \
+		UINT32_C(0x6)
+	/* UDP */
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_PROTOCOL_UDP \
+		UINT32_C(0x11)
+	#define HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_PROTOCOL_LAST \
+		HWRM_CFA_DECAP_FILTER_ALLOC_INPUT_IP_PROTOCOL_UDP
+	uint16_t	unused_3;
+	uint32_t	unused_4;
+	/*
+	 * The value of source IP address to be used in filtering.
+	 * For IPv4, first four bytes represent the IP address.
+	 */
+	uint32_t	src_ipaddr[4];
+	/*
+	 * The value of destination IP address to be used in filtering.
+	 * For IPv4, first four bytes represent the IP address.
+	 */
+	uint32_t	dst_ipaddr[4];
+	/*
+	 * The value of source port to be used in filtering.
+	 * Applies to UDP and TCP traffic.
+	 */
+	uint16_t	src_port;
+	/*
+	 * The value of destination port to be used in filtering.
+	 * Applies to UDP and TCP traffic.
+	 */
+	uint16_t	dst_port;
+	/*
+	 * If set, this value shall represent the
+	 * Logical VNIC ID of the destination VNIC for the RX
+	 * path.
+	 */
+	uint16_t	dst_id;
+	/*
+	 * If set, this value shall represent the L2 context that matches the L2
+	 * information of the decap filter.
+	 */
+	uint16_t	l2_ctxt_ref_id;
+} __attribute__((packed));
+
+/* hwrm_cfa_decap_filter_alloc_output (size:128b/16B) */
+struct hwrm_cfa_decap_filter_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* This value is an opaque id into CFA data structures. */
+	uint32_t	decap_filter_id;
+	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/******************************
+ * hwrm_cfa_decap_filter_free *
+ ******************************/
+
+
+/* hwrm_cfa_decap_filter_free_input (size:192b/24B) */
+struct hwrm_cfa_decap_filter_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* This value is an opaque id into CFA data structures. */
+	uint32_t	decap_filter_id;
+	uint8_t	unused_0[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_decap_filter_free_output (size:128b/16B) */
+struct hwrm_cfa_decap_filter_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/***********************
+ * hwrm_cfa_flow_alloc *
+ ***********************/
+
+
+/* hwrm_cfa_flow_alloc_input (size:1024b/128B) */
+struct hwrm_cfa_flow_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint16_t	flags;
+	/* tunnel is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_TUNNEL       UINT32_C(0x1)
+	/* num_vlan is 2 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_NUM_VLAN_MASK UINT32_C(0x6)
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_NUM_VLAN_SFT 1
+	/* no tags */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_NUM_VLAN_NONE \
+		(UINT32_C(0x0) << 1)
+	/* 1 tag */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_NUM_VLAN_ONE \
+		(UINT32_C(0x1) << 1)
+	/* 2 tags */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_NUM_VLAN_TWO \
+		(UINT32_C(0x2) << 1)
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_NUM_VLAN_LAST \
+		HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_NUM_VLAN_TWO
+	/* Enumeration denoting the Flow Type. */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_FLOWTYPE_MASK UINT32_C(0x38)
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_FLOWTYPE_SFT 3
+	/* L2 flow */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_FLOWTYPE_L2 \
+		(UINT32_C(0x0) << 3)
+	/* IPV4 flow */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_FLOWTYPE_IPV4 \
+		(UINT32_C(0x1) << 3)
+	/* IPV6 flow */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_FLOWTYPE_IPV6 \
+		(UINT32_C(0x2) << 3)
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_FLOWTYPE_LAST \
+		HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_FLOWTYPE_IPV6
+	/*
+	 * Tx Flow: vf fid.
+	 * Rx Flow: pf fid.
+	 */
+	uint16_t	src_fid;
+	/* Tunnel handle valid when tunnel flag is set. */
+	uint32_t	tunnel_handle;
+	uint16_t	action_flags;
+	/*
+	 * Setting of this flag indicates drop action. If this flag is not set,
+	 * then it should be considered accept action.
+	 */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_FWD \
+		UINT32_C(0x1)
+	/* recycle is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_RECYCLE \
+		UINT32_C(0x2)
+	/*
+	 * Setting of this flag indicates drop action. If this flag is not set,
+	 * then it should be considered accept action.
+	 */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_DROP \
+		UINT32_C(0x4)
+	/* meter is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_METER \
+		UINT32_C(0x8)
+	/* tunnel is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_TUNNEL \
+		UINT32_C(0x10)
+	/* nat_src is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_NAT_SRC \
+		UINT32_C(0x20)
+	/* nat_dest is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_NAT_DEST \
+		UINT32_C(0x40)
+	/* nat_ipv4_address is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_NAT_IPV4_ADDRESS \
+		UINT32_C(0x80)
+	/* l2_header_rewrite is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_L2_HEADER_REWRITE \
+		UINT32_C(0x100)
+	/* ttl_decrement is 1 b */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_TTL_DECREMENT \
+		UINT32_C(0x200)
+	/*
+	 * Tx Flow: pf or vf fid.
+	 * Rx Flow: vf fid.
+	 */
+	uint16_t	dst_fid;
+	/* VLAN tpid, valid when push_vlan flag is set. */
+	uint16_t	l2_rewrite_vlan_tpid;
+	/* VLAN tci, valid when push_vlan flag is set. */
+	uint16_t	l2_rewrite_vlan_tci;
+	/* Meter id, valid when meter flag is set. */
+	uint16_t	act_meter_id;
+	/* Flow with the same l2 context tcam key. */
+	uint16_t	ref_flow_handle;
+	/* This value sets the match value for the ethertype. */
+	uint16_t	ethertype;
+	/* valid when num tags is 1 or 2. */
+	uint16_t	outer_vlan_tci;
+	/* This value sets the match value for the Destination MAC address. */
+	uint16_t	dmac[3];
+	/* valid when num tags is 2. */
+	uint16_t	inner_vlan_tci;
+	/* This value sets the match value for the Source MAC address. */
+	uint16_t	smac[3];
+	/* The bit length of destination IP address mask. */
+	uint8_t	ip_dst_mask_len;
+	/* The bit length of source IP address mask. */
+	uint8_t	ip_src_mask_len;
+	/* The value of destination IPv4/IPv6 address. */
+	uint32_t	ip_dst[4];
+	/* The source IPv4/IPv6 address. */
+	uint32_t	ip_src[4];
+	/*
+	 * The value of source port.
+	 * Applies to UDP and TCP traffic.
+	 */
+	uint16_t	l4_src_port;
+	/*
+	 * The value of source port mask.
+	 * Applies to UDP and TCP traffic.
+	 */
+	uint16_t	l4_src_port_mask;
+	/*
+	 * The value of destination port.
+	 * Applies to UDP and TCP traffic.
+	 */
+	uint16_t	l4_dst_port;
+	/*
+	 * The value of destination port mask.
+	 * Applies to UDP and TCP traffic.
+	 */
+	uint16_t	l4_dst_port_mask;
+	/*
+	 * NAT IPv4/6 address based on address type flag.
+	 * 0 values are ignored.
+	 */
+	uint32_t	nat_ip_address[4];
+	/* L2 header re-write Destination MAC address. */
+	uint16_t	l2_rewrite_dmac[3];
+	/*
+	 * The NAT source/destination port based on direction flag.
+	 * Applies to UDP and TCP traffic.
+	 * 0 values are ignored.
+	 */
+	uint16_t	nat_port;
+	/* L2 header re-write Source MAC address. */
+	uint16_t	l2_rewrite_smac[3];
+	/* The value of ip protocol. */
+	uint8_t	ip_proto;
+	uint8_t	unused_0;
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_alloc_output (size:128b/16B) */
+struct hwrm_cfa_flow_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Flow record index. */
+	uint16_t	flow_handle;
+	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**********************
+ * hwrm_cfa_flow_free *
+ **********************/
+
+
+/* hwrm_cfa_flow_free_input (size:192b/24B) */
+struct hwrm_cfa_flow_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Flow record index. */
+	uint16_t	flow_handle;
+	uint8_t	unused_0[6];
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_free_output (size:256b/32B) */
+struct hwrm_cfa_flow_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* packet is 64 b */
+	uint64_t	packet;
+	/* byte is 64 b */
+	uint64_t	byte;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**********************
+ * hwrm_cfa_flow_info *
+ **********************/
+
+
+/* hwrm_cfa_flow_info_input (size:192b/24B) */
+struct hwrm_cfa_flow_info_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Flow record index. */
+	uint16_t	flow_handle;
+	/* Max flow handle */
+	#define HWRM_CFA_FLOW_INFO_INPUT_FLOW_HANDLE_MAX_MASK \
+		UINT32_C(0xfff)
+	#define HWRM_CFA_FLOW_INFO_INPUT_FLOW_HANDLE_MAX_SFT     0
+	/* CNP flow handle */
+	#define HWRM_CFA_FLOW_INFO_INPUT_FLOW_HANDLE_CNP_CNT \
+		UINT32_C(0x1000)
+	/* Direction rx = 1 */
+	#define HWRM_CFA_FLOW_INFO_INPUT_FLOW_HANDLE_DIR_RX \
+		UINT32_C(0x8000)
+	uint8_t	unused_0[6];
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_info_output (size:448b/56B) */
+struct hwrm_cfa_flow_info_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* flags is 8 b */
+	uint8_t	flags;
+	/* profile is 8 b */
+	uint8_t	profile;
+	/* src_fid is 16 b */
+	uint16_t	src_fid;
+	/* dst_fid is 16 b */
+	uint16_t	dst_fid;
+	/* l2_ctxt_id is 16 b */
+	uint16_t	l2_ctxt_id;
+	/* em_info is 64 b */
+	uint64_t	em_info;
+	/* tcam_info is 64 b */
+	uint64_t	tcam_info;
+	/* vfp_tcam_info is 64 b */
+	uint64_t	vfp_tcam_info;
+	/* ar_id is 16 b */
+	uint16_t	ar_id;
+	/* flow_handle is 16 b */
+	uint16_t	flow_handle;
+	/* tunnel_handle is 32 b */
+	uint32_t	tunnel_handle;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/***********************
+ * hwrm_cfa_flow_flush *
+ ***********************/
+
+
+/* hwrm_cfa_flow_flush_input (size:192b/24B) */
+struct hwrm_cfa_flow_flush_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	uint8_t	unused_0[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_flush_output (size:128b/16B) */
+struct hwrm_cfa_flow_flush_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/***********************
+ * hwrm_cfa_flow_stats *
+ ***********************/
+
+
+/* hwrm_cfa_flow_stats_input (size:320b/40B) */
+struct hwrm_cfa_flow_stats_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Flow handle. */
+	uint16_t	num_flows;
+	/* Flow handle. */
+	uint16_t	flow_handle_0;
+	/* Flow handle. */
+	uint16_t	flow_handle_1;
+	/* Flow handle. */
+	uint16_t	flow_handle_2;
+	/* Flow handle. */
+	uint16_t	flow_handle_3;
+	/* Flow handle. */
+	uint16_t	flow_handle_4;
+	/* Flow handle. */
+	uint16_t	flow_handle_5;
+	/* Flow handle. */
+	uint16_t	flow_handle_6;
+	/* Flow handle. */
+	uint16_t	flow_handle_7;
+	/* Flow handle. */
+	uint16_t	flow_handle_8;
+	/* Flow handle. */
+	uint16_t	flow_handle_9;
+	uint8_t	unused_0[2];
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_stats_output (size:1408b/176B) */
+struct hwrm_cfa_flow_stats_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* packet_0 is 64 b */
+	uint64_t	packet_0;
+	/* packet_1 is 64 b */
+	uint64_t	packet_1;
+	/* packet_2 is 64 b */
+	uint64_t	packet_2;
+	/* packet_3 is 64 b */
+	uint64_t	packet_3;
+	/* packet_4 is 64 b */
+	uint64_t	packet_4;
+	/* packet_5 is 64 b */
+	uint64_t	packet_5;
+	/* packet_6 is 64 b */
+	uint64_t	packet_6;
+	/* packet_7 is 64 b */
+	uint64_t	packet_7;
+	/* packet_8 is 64 b */
+	uint64_t	packet_8;
+	/* packet_9 is 64 b */
+	uint64_t	packet_9;
+	/* byte_0 is 64 b */
+	uint64_t	byte_0;
+	/* byte_1 is 64 b */
+	uint64_t	byte_1;
+	/* byte_2 is 64 b */
+	uint64_t	byte_2;
+	/* byte_3 is 64 b */
+	uint64_t	byte_3;
+	/* byte_4 is 64 b */
+	uint64_t	byte_4;
+	/* byte_5 is 64 b */
+	uint64_t	byte_5;
+	/* byte_6 is 64 b */
+	uint64_t	byte_6;
+	/* byte_7 is 64 b */
+	uint64_t	byte_7;
+	/* byte_8 is 64 b */
+	uint64_t	byte_8;
+	/* byte_9 is 64 b */
+	uint64_t	byte_9;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**************************
+ * hwrm_cfa_vf_pair_alloc *
+ **************************/
+
+
+/* hwrm_cfa_vf_pair_alloc_input (size:448b/56B) */
+struct hwrm_cfa_vf_pair_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_a_id;
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_b_id;
+	uint8_t	unused_0[4];
+	/* VF Pair name (32 byte string). */
+	char	pair_name[32];
+} __attribute__((packed));
+
+/* hwrm_cfa_vf_pair_alloc_output (size:128b/16B) */
+struct hwrm_cfa_vf_pair_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*************************
+ * hwrm_cfa_vf_pair_free *
+ *************************/
+
+
+/* hwrm_cfa_vf_pair_free_input (size:384b/48B) */
+struct hwrm_cfa_vf_pair_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* VF Pair name (32 byte string). */
+	char	pair_name[32];
+} __attribute__((packed));
+
+/* hwrm_cfa_vf_pair_free_output (size:128b/16B) */
+struct hwrm_cfa_vf_pair_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*************************
+ * hwrm_cfa_vf_pair_info *
+ *************************/
+
+
+/* hwrm_cfa_vf_pair_info_input (size:448b/56B) */
+struct hwrm_cfa_vf_pair_info_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/* If this flag is set, lookup by name else lookup by index. */
+	#define HWRM_CFA_VF_PAIR_INFO_INPUT_FLAGS_LOOKUP_TYPE     UINT32_C(0x1)
+	/* vf pair table index. */
+	uint16_t	vf_pair_index;
+	uint8_t	unused_0[2];
+	/* VF Pair name (32 byte string). */
+	char	vf_pair_name[32];
+} __attribute__((packed));
+
+/* hwrm_cfa_vf_pair_info_output (size:512b/64B) */
+struct hwrm_cfa_vf_pair_info_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* vf pair table index. */
+	uint16_t	next_vf_pair_index;
+	/* vf pair member a's vf_fid. */
+	uint16_t	vf_a_fid;
+	/* vf pair member a's Linux logical VF number. */
+	uint16_t	vf_a_index;
+	/* vf pair member b's vf_fid. */
+	uint16_t	vf_b_fid;
+	/* vf pair member a's Linux logical VF number. */
+	uint16_t	vf_b_index;
+	/* vf pair state. */
+	uint8_t	pair_state;
+	/* Pair has been allocated */
+	#define HWRM_CFA_VF_PAIR_INFO_OUTPUT_PAIR_STATE_ALLOCATED UINT32_C(0x1)
+	/* Both pair members are active */
+	#define HWRM_CFA_VF_PAIR_INFO_OUTPUT_PAIR_STATE_ACTIVE    UINT32_C(0x2)
+	#define HWRM_CFA_VF_PAIR_INFO_OUTPUT_PAIR_STATE_LAST \
+		HWRM_CFA_VF_PAIR_INFO_OUTPUT_PAIR_STATE_ACTIVE
+	uint8_t	unused_0[5];
+	/* VF Pair name (32 byte string). */
+	char	pair_name[32];
+	uint8_t	unused_1[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/***********************
+ * hwrm_cfa_pair_alloc *
+ ***********************/
+
+
+/* hwrm_cfa_pair_alloc_input (size:576b/72B) */
+struct hwrm_cfa_pair_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Pair mode (0-vf2fn, 1-rep2fn, 2-rep2rep, 3-proxy, 4-pfpair, 5-rep2fn_mod). */
+	uint8_t	pair_mode;
+	/* Pair between VF on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_VF2FN         UINT32_C(0x0)
+	/* Pair between REP on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN        UINT32_C(0x1)
+	/* Pair between REP on local host with REP on specified host. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2REP       UINT32_C(0x2)
+	/* Pair for the proxy interface. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_PROXY         UINT32_C(0x3)
+	/* Pair for the PF interface. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_PFPAIR        UINT32_C(0x4)
+	/* Modify exiting rep2fn pair and move pair to new PF. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN_MOD    UINT32_C(0x5)
+	/* Modify exiting rep2fn pairs paired with same PF and move pairs to new PF. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN_MODALL UINT32_C(0x6)
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_LAST \
+		HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN_MODALL
+	uint8_t	unused_0;
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_a_id;
+	/* Logical Host (0xff-local host). */
+	uint8_t	host_b_id;
+	/* Logical PF (0xff-PF for command channel). */
+	uint8_t	pf_b_id;
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_b_id;
+	/* Loopback port (0xff-internal loopback), valid for mode-3. */
+	uint8_t	port_id;
+	/* Priority used for encap of loopback packets valid for mode-3. */
+	uint8_t	pri;
+	/* New PF for rep2fn modify, valid for mode 5. */
+	uint16_t	new_pf_fid;
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the q_ab field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_Q_AB_VALID      UINT32_C(0x1)
+	/*
+	 * This bit must be '1' for the q_ba field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_Q_BA_VALID      UINT32_C(0x2)
+	/*
+	 * This bit must be '1' for the fc_ab field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_FC_AB_VALID     UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the fc_ba field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_FC_BA_VALID     UINT32_C(0x8)
+	/* VF Pair name (32 byte string). */
+	char	pair_name[32];
+	/*
+	 * The q_ab value specifies the logical index of the TX/RX CoS
+	 * queue to be assigned for traffic in the A to B direction of
+	 * the interface pair. The default value is 0.
+	 */
+	uint8_t	q_ab;
+	/*
+	 * The q_ba value specifies the logical index of the TX/RX CoS
+	 * queue to be assigned for traffic in the B to A direction of
+	 * the interface pair. The default value is 1.
+	 */
+	uint8_t	q_ba;
+	/*
+	 * Specifies whether RX ring flow control is disabled (0) or enabled
+	 * (1) in the A to B direction. The default value is 0, meaning that
+	 * packets will be dropped when the B-side RX rings are full.
+	 */
+	uint8_t	fc_ab;
+	/*
+	 * Specifies whether RX ring flow control is disabled (0) or enabled
+	 * (1) in the B to A direction. The default value is 1, meaning that
+	 * the RX CoS queue will be flow controlled when the A-side RX rings
+	 * are full.
+	 */
+	uint8_t	fc_ba;
+	uint8_t	unused_1[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_pair_alloc_output (size:192b/24B) */
+struct hwrm_cfa_pair_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Only valid for modes 1 and 2. */
+	uint16_t	rx_cfa_code_a;
+	/* Only valid for modes 1 and 2. */
+	uint16_t	tx_cfa_action_a;
+	/* Only valid for mode 2. */
+	uint16_t	rx_cfa_code_b;
+	/* Only valid for mode 2. */
+	uint16_t	tx_cfa_action_b;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**********************
+ * hwrm_cfa_pair_free *
+ **********************/
+
+
+/* hwrm_cfa_pair_free_input (size:384b/48B) */
+struct hwrm_cfa_pair_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* VF Pair name (32 byte string). */
+	char	pair_name[32];
+} __attribute__((packed));
+
+/* hwrm_cfa_pair_free_output (size:128b/16B) */
+struct hwrm_cfa_pair_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**********************
+ * hwrm_cfa_pair_info *
+ **********************/
+
+
+/* hwrm_cfa_pair_info_input (size:448b/56B) */
+struct hwrm_cfa_pair_info_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/* If this flag is set, lookup by name else lookup by index. */
+	#define HWRM_CFA_PAIR_INFO_INPUT_FLAGS_LOOKUP_TYPE      UINT32_C(0x1)
+	/* If this flag is set, lookup by PF id and VF id. */
+	#define HWRM_CFA_PAIR_INFO_INPUT_FLAGS_LOOKUP_REPRE     UINT32_C(0x2)
+	/* Pair table index. */
+	uint16_t	pair_index;
+	/* Pair pf index. */
+	uint8_t	pair_pfid;
+	/* Pair vf index. */
+	uint8_t	pair_vfid;
+	/* Pair name (32 byte string). */
+	char	pair_name[32];
+} __attribute__((packed));
+
+/* hwrm_cfa_pair_info_output (size:576b/72B) */
+struct hwrm_cfa_pair_info_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Pair table index. */
+	uint16_t	next_pair_index;
+	/* Pair member a's fid. */
+	uint16_t	a_fid;
+	/* Logical host number. */
+	uint8_t	host_a_index;
+	/* Logical PF number. */
+	uint8_t	pf_a_index;
+	/* Pair member a's Linux logical VF number. */
+	uint16_t	vf_a_index;
+	/* Rx CFA code. */
+	uint16_t	rx_cfa_code_a;
+	/* Tx CFA action. */
+	uint16_t	tx_cfa_action_a;
+	/* Pair member b's fid. */
+	uint16_t	b_fid;
+	/* Logical host number. */
+	uint8_t	host_b_index;
+	/* Logical PF number. */
+	uint8_t	pf_b_index;
+	/* Pair member a's Linux logical VF number. */
+	uint16_t	vf_b_index;
+	/* Rx CFA code. */
+	uint16_t	rx_cfa_code_b;
+	/* Tx CFA action. */
+	uint16_t	tx_cfa_action_b;
+	/* Pair mode (0-vf2fn, 1-rep2fn, 2-rep2rep, 3-proxy, 4-pfpair). */
+	uint8_t	pair_mode;
+	/* Pair between VF on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_MODE_VF2FN   UINT32_C(0x0)
+	/* Pair between REP on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_MODE_REP2FN  UINT32_C(0x1)
+	/* Pair between REP on local host with REP on specified host. */
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_MODE_REP2REP UINT32_C(0x2)
+	/* Pair for the proxy interface. */
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_MODE_PROXY   UINT32_C(0x3)
+	/* Pair for the PF interface. */
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_MODE_PFPAIR  UINT32_C(0x4)
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_MODE_LAST \
+		HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_MODE_PFPAIR
+	/* Pair state. */
+	uint8_t	pair_state;
+	/* Pair has been allocated */
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_STATE_ALLOCATED UINT32_C(0x1)
+	/* Both pair members are active */
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_STATE_ACTIVE    UINT32_C(0x2)
+	#define HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_STATE_LAST \
+		HWRM_CFA_PAIR_INFO_OUTPUT_PAIR_STATE_ACTIVE
+	/* Pair name (32 byte string). */
+	char	pair_name[32];
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**********************
+ * hwrm_cfa_vfr_alloc *
+ **********************/
+
+
+/* hwrm_cfa_vfr_alloc_input (size:448b/56B) */
+struct hwrm_cfa_vfr_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_id;
+	/*
+	 * This field is reserved for the future use.
+	 * It shall be set to 0.
+	 */
+	uint16_t	reserved;
+	uint8_t	unused_0[4];
+	/* VF Representor name (32 byte string). */
+	char	vfr_name[32];
+} __attribute__((packed));
+
+/* hwrm_cfa_vfr_alloc_output (size:128b/16B) */
+struct hwrm_cfa_vfr_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Rx CFA code. */
+	uint16_t	rx_cfa_code;
+	/* Tx CFA action. */
+	uint16_t	tx_cfa_action;
+	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*********************
+ * hwrm_cfa_vfr_free *
+ *********************/
+
+
+/* hwrm_cfa_vfr_free_input (size:384b/48B) */
+struct hwrm_cfa_vfr_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* VF Representor name (32 byte string). */
+	char	vfr_name[32];
+} __attribute__((packed));
+
+/* hwrm_cfa_vfr_free_output (size:128b/16B) */
+struct hwrm_cfa_vfr_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
