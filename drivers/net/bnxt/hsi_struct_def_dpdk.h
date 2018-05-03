@@ -27167,5 +27167,936 @@ struct hwrm_nvm_erase_dir_entry_output {
 	uint8_t	valid;
 } __attribute__((packed));
 
+/*************************
+ * hwrm_nvm_get_dev_info *
+ *************************/
+
+
+/* hwrm_nvm_get_dev_info_input (size:128b/16B) */
+struct hwrm_nvm_get_dev_info_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+} __attribute__((packed));
+
+/* hwrm_nvm_get_dev_info_output (size:256b/32B) */
+struct hwrm_nvm_get_dev_info_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Manufacturer ID. */
+	uint16_t	manufacturer_id;
+	/* Device ID. */
+	uint16_t	device_id;
+	/* Sector size of the NVRAM device. */
+	uint32_t	sector_size;
+	/* Total size, in bytes of the NVRAM device. */
+	uint32_t	nvram_size;
+	uint32_t	reserved_size;
+	/* Available size that can be used, in bytes.  Available size is the NVRAM size take away the used size and reserved size. */
+	uint32_t	available_size;
+	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**************************
+ * hwrm_nvm_mod_dir_entry *
+ **************************/
+
+
+/* hwrm_nvm_mod_dir_entry_input (size:256b/32B) */
+struct hwrm_nvm_mod_dir_entry_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the checksum field to be
+	 * configured.
+	 */
+	#define HWRM_NVM_MOD_DIR_ENTRY_INPUT_ENABLES_CHECKSUM     UINT32_C(0x1)
+	/* Directory Entry Index */
+	uint16_t	dir_idx;
+	/*
+	 * Directory ordinal.
+	 * The (0-based) instance of this Directory Type.
+	 */
+	uint16_t	dir_ordinal;
+	/* The Directory Entry Extension flags (see BNX_DIR_EXT_* for extension flag definitions). */
+	uint16_t	dir_ext;
+	/* Directory Entry Attribute flags (see BNX_DIR_ATTR_* for attribute flag definitions). */
+	uint16_t	dir_attr;
+	/*
+	 * If valid, then this field updates the checksum
+	 * value of the content in the directory entry.
+	 */
+	uint32_t	checksum;
+} __attribute__((packed));
+
+/* hwrm_nvm_mod_dir_entry_output (size:128b/16B) */
+struct hwrm_nvm_mod_dir_entry_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**************************
+ * hwrm_nvm_verify_update *
+ **************************/
+
+
+/* hwrm_nvm_verify_update_input (size:192b/24B) */
+struct hwrm_nvm_verify_update_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Directory Entry Type, to be verified. */
+	uint16_t	dir_type;
+	/*
+	 * Directory ordinal.
+	 * The instance of the Directory Type to be verified.
+	 */
+	uint16_t	dir_ordinal;
+	/*
+	 * The Directory Entry Extension flags.
+	 * The "UPDATE" extension flag must be set in this value.
+	 * A corresponding directory entry with the same type and ordinal values but *without*
+	 * the "UPDATE" extension flag must also exist. The other flags of the extension must
+	 * be identical between the active and update entries.
+	 */
+	uint16_t	dir_ext;
+	uint8_t	unused_0[2];
+} __attribute__((packed));
+
+/* hwrm_nvm_verify_update_output (size:128b/16B) */
+struct hwrm_nvm_verify_update_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/***************************
+ * hwrm_nvm_install_update *
+ ***************************/
+
+
+/* hwrm_nvm_install_update_input (size:192b/24B) */
+struct hwrm_nvm_install_update_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Installation type. If the value 3 through 0xffff is used,
+	 * only packaged items with that type value will be installed and
+	 * conditional installation directives for those packaged items
+	 * will be over-ridden (i.e. 'create' or 'replace' will be treated
+	 * as 'install').
+	 */
+	uint32_t	install_type;
+	/*
+	 * Perform a normal package installation. Conditional installation
+	 * directives (e.g. 'create' and 'replace') of packaged items
+	 * will be followed.
+	 */
+	#define HWRM_NVM_INSTALL_UPDATE_INPUT_INSTALL_TYPE_NORMAL UINT32_C(0x0)
+	/*
+	 * Install all packaged items regardless of installation directive
+	 * (i.e. treat all packaged items as though they have an installation
+	 * directive of 'install').
+	 */
+	#define HWRM_NVM_INSTALL_UPDATE_INPUT_INSTALL_TYPE_ALL \
+		UINT32_C(0xffffffff)
+	#define HWRM_NVM_INSTALL_UPDATE_INPUT_INSTALL_TYPE_LAST \
+		HWRM_NVM_INSTALL_UPDATE_INPUT_INSTALL_TYPE_ALL
+	uint16_t	flags;
+	/* If set to 1, then securely erase all unused locations in persistent storage. */
+	#define HWRM_NVM_INSTALL_UPDATE_INPUT_FLAGS_ERASE_UNUSED_SPACE \
+		UINT32_C(0x1)
+	/*
+	 * If set to 1, then unspecifed images, images not in the package file, will be safely deleted.
+	 * When combined with erase_unused_space then unspecified images will be securely erased.
+	 */
+	#define HWRM_NVM_INSTALL_UPDATE_INPUT_FLAGS_REMOVE_UNUSED_PKG \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, FW will defragment the NVM if defragmentation is required for the update.
+	 * Allow additional time for this command to complete if this bit is set to 1.
+	 */
+	#define HWRM_NVM_INSTALL_UPDATE_INPUT_FLAGS_ALLOWED_TO_DEFRAG \
+		UINT32_C(0x4)
+	uint8_t	unused_0[2];
+} __attribute__((packed));
+
+/* hwrm_nvm_install_update_output (size:192b/24B) */
+struct hwrm_nvm_install_update_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/*
+	 * Bit-mask of successfully installed items.
+	 * Bit-0 corresponding to the first packaged item, Bit-1 for the second item, etc.
+	 * A value of 0 indicates that no items were successfully installed.
+	 */
+	uint64_t	installed_items;
+	/* result is 8 b */
+	uint8_t	result;
+	/* There was no problem with the package installation. */
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_RESULT_SUCCESS UINT32_C(0x0)
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_RESULT_LAST \
+		HWRM_NVM_INSTALL_UPDATE_OUTPUT_RESULT_SUCCESS
+	/* problem_item is 8 b */
+	uint8_t	problem_item;
+	/* There was no problem with any packaged items. */
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_PROBLEM_ITEM_NONE \
+		UINT32_C(0x0)
+	/* There was a problem with the NVM package itself. */
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_PROBLEM_ITEM_PACKAGE \
+		UINT32_C(0xff)
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_PROBLEM_ITEM_LAST \
+		HWRM_NVM_INSTALL_UPDATE_OUTPUT_PROBLEM_ITEM_PACKAGE
+	/* reset_required is 8 b */
+	uint8_t	reset_required;
+	/*
+	 * No reset is required for installed/updated firmware or
+	 * microcode to take effect.
+	 */
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_RESET_REQUIRED_NONE \
+		UINT32_C(0x0)
+	/*
+	 * A PCIe reset (e.g. system reboot) is
+	 * required for newly installed/updated firmware or
+	 * microcode to take effect.
+	 */
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_RESET_REQUIRED_PCI \
+		UINT32_C(0x1)
+	/*
+	 * A controller power reset (e.g. system power-cycle) is
+	 * required for newly installed/updated firmware or
+	 * microcode to take effect. Some newly installed/updated
+	 * firmware or microcode may still take effect upon the
+	 * next PCIe reset.
+	 */
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_RESET_REQUIRED_POWER \
+		UINT32_C(0x2)
+	#define HWRM_NVM_INSTALL_UPDATE_OUTPUT_RESET_REQUIRED_LAST \
+		HWRM_NVM_INSTALL_UPDATE_OUTPUT_RESET_REQUIRED_POWER
+	uint8_t	unused_0[4];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/* hwrm_nvm_install_update_cmd_err (size:64b/8B) */
+struct hwrm_nvm_install_update_cmd_err {
+	/*
+	 * command specific error codes that goes to
+	 * the cmd_err field in Common HWRM Error Response.
+	 */
+	uint8_t	code;
+	/* Unknown error */
+	#define HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_UNKNOWN  UINT32_C(0x0)
+	/* Unable to complete operation due to fragmentation */
+	#define HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_FRAG_ERR UINT32_C(0x1)
+	/* nvm is completely full. */
+	#define HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_NO_SPACE UINT32_C(0x2)
+	#define HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_LAST \
+		HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_NO_SPACE
+	uint8_t	unused_0[7];
+} __attribute__((packed));
+
+/******************
+ * hwrm_nvm_flush *
+ ******************/
+
+
+/* hwrm_nvm_flush_input (size:128b/16B) */
+struct hwrm_nvm_flush_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+} __attribute__((packed));
+
+/* hwrm_nvm_flush_output (size:128b/16B) */
+struct hwrm_nvm_flush_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/* hwrm_nvm_flush_cmd_err (size:64b/8B) */
+struct hwrm_nvm_flush_cmd_err {
+	/*
+	 * command specific error codes that goes to
+	 * the cmd_err field in Common HWRM Error Response.
+	 */
+	uint8_t	code;
+	/* Unknown error */
+	#define HWRM_NVM_FLUSH_CMD_ERR_CODE_UNKNOWN UINT32_C(0x0)
+	/* flush could not be performed */
+	#define HWRM_NVM_FLUSH_CMD_ERR_CODE_FAIL    UINT32_C(0x1)
+	#define HWRM_NVM_FLUSH_CMD_ERR_CODE_LAST \
+		HWRM_NVM_FLUSH_CMD_ERR_CODE_FAIL
+	uint8_t	unused_0[7];
+} __attribute__((packed));
+
+/*************************
+ * hwrm_nvm_get_variable *
+ *************************/
+
+
+/* hwrm_nvm_get_variable_input (size:320b/40B) */
+struct hwrm_nvm_get_variable_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * This is the host address where
+	 * nvm variable will be stored
+	 */
+	uint64_t	dest_data_addr;
+	/* size of data in bits */
+	uint16_t	data_len;
+	/* nvm cfg option number */
+	uint16_t	option_num;
+	/* reserved. */
+	#define HWRM_NVM_GET_VARIABLE_INPUT_OPTION_NUM_RSVD_0    UINT32_C(0x0)
+	/* reserved. */
+	#define HWRM_NVM_GET_VARIABLE_INPUT_OPTION_NUM_RSVD_FFFF \
+		UINT32_C(0xffff)
+	#define HWRM_NVM_GET_VARIABLE_INPUT_OPTION_NUM_LAST \
+		HWRM_NVM_GET_VARIABLE_INPUT_OPTION_NUM_RSVD_FFFF
+	/*
+	 * Number of dimensions for this nvm configuration variable.
+	 * This value indicates how many of the indexN values to use.
+	 * A value of 0 means that none of the indexN values are valid.
+	 * A value of 1 requires at index0 is valued, a value of 2
+	 * requires that index0 and index1 are valid, and so forth
+	 */
+	uint16_t	dimensions;
+	/* index for the 1st dimensions */
+	uint16_t	index_0;
+	/* index for the 2nd dimensions */
+	uint16_t	index_1;
+	/* index for the 3rd dimensions */
+	uint16_t	index_2;
+	/* index for the 4th dimensions */
+	uint16_t	index_3;
+	uint8_t	flags;
+	/*
+	 * When this bit is set to 1, the factory default value will be returned,
+	 * 0 returns the operational value.
+	 */
+	#define HWRM_NVM_GET_VARIABLE_INPUT_FLAGS_FACTORY_DFLT \
+		UINT32_C(0x1)
+	uint8_t	unused_0;
+} __attribute__((packed));
+
+/* hwrm_nvm_get_variable_output (size:128b/16B) */
+struct hwrm_nvm_get_variable_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* size of data of the actual variable retrieved in bits */
+	uint16_t	data_len;
+	/*
+	 * option_num is the option number for the data retrieved.  It is possible in the
+	 * future that the option number returned would be different than requested.  This
+	 * condition could occur if an option is deprecated and a new option id is defined
+	 * with similar characteristics, but has a slightly different definition.  This
+	 * also makes it convenient for the caller to identify the variable result with
+	 * the option id from the response.
+	 */
+	uint16_t	option_num;
+	/* reserved. */
+	#define HWRM_NVM_GET_VARIABLE_OUTPUT_OPTION_NUM_RSVD_0    UINT32_C(0x0)
+	/* reserved. */
+	#define HWRM_NVM_GET_VARIABLE_OUTPUT_OPTION_NUM_RSVD_FFFF \
+		UINT32_C(0xffff)
+	#define HWRM_NVM_GET_VARIABLE_OUTPUT_OPTION_NUM_LAST \
+		HWRM_NVM_GET_VARIABLE_OUTPUT_OPTION_NUM_RSVD_FFFF
+	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/* hwrm_nvm_get_variable_cmd_err (size:64b/8B) */
+struct hwrm_nvm_get_variable_cmd_err {
+	/*
+	 * command specific error codes that goes to
+	 * the cmd_err field in Common HWRM Error Response.
+	 */
+	uint8_t	code;
+	/* Unknown error */
+	#define HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_UNKNOWN       UINT32_C(0x0)
+	/* variable does not exist */
+	#define HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_VAR_NOT_EXIST UINT32_C(0x1)
+	/* configuration is corrupted and the variable cannot be saved */
+	#define HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_CORRUPT_VAR   UINT32_C(0x2)
+	/* length specified is too small */
+	#define HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_LEN_TOO_SHORT UINT32_C(0x3)
+	#define HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_LAST \
+		HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_LEN_TOO_SHORT
+	uint8_t	unused_0[7];
+} __attribute__((packed));
+
+/*************************
+ * hwrm_nvm_set_variable *
+ *************************/
+
+
+/* hwrm_nvm_set_variable_input (size:320b/40B) */
+struct hwrm_nvm_set_variable_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * This is the host address where
+	 * nvm variable will be copied from
+	 */
+	uint64_t	src_data_addr;
+	/* size of data in bits */
+	uint16_t	data_len;
+	/* nvm cfg option number */
+	uint16_t	option_num;
+	/* reserved. */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_OPTION_NUM_RSVD_0    UINT32_C(0x0)
+	/* reserved. */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_OPTION_NUM_RSVD_FFFF \
+		UINT32_C(0xffff)
+	#define HWRM_NVM_SET_VARIABLE_INPUT_OPTION_NUM_LAST \
+		HWRM_NVM_SET_VARIABLE_INPUT_OPTION_NUM_RSVD_FFFF
+	/*
+	 * Number of dimensions for this nvm configuration variable.
+	 * This value indicates how many of the indexN values to use.
+	 * A value of 0 means that none of the indexN values are valid.
+	 * A value of 1 requires at index0 is valued, a value of 2
+	 * requires that index0 and index1 are valid, and so forth
+	 */
+	uint16_t	dimensions;
+	/* index for the 1st dimensions */
+	uint16_t	index_0;
+	/* index for the 2nd dimensions */
+	uint16_t	index_1;
+	/* index for the 3rd dimensions */
+	uint16_t	index_2;
+	/* index for the 4th dimensions */
+	uint16_t	index_3;
+	uint8_t	flags;
+	/* When this bit is 1, flush internal cache after this write operation (see hwrm_nvm_flush command.) */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_FORCE_FLUSH \
+		UINT32_C(0x1)
+	/* encryption method */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_MASK \
+		UINT32_C(0xe)
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_SFT           1
+	/* No encryption. */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_NONE \
+		(UINT32_C(0x0) << 1)
+	/* one-way encryption. */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_HMAC_SHA1 \
+		(UINT32_C(0x1) << 1)
+	/* symmetric AES256 encryption. */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_AES256 \
+		(UINT32_C(0x2) << 1)
+	/* SHA1 digest appended to plaintext contents, for authentication */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_HMAC_SHA1_AUTH \
+		(UINT32_C(0x3) << 1)
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_LAST \
+		HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_HMAC_SHA1_AUTH
+	uint8_t	unused_0;
+} __attribute__((packed));
+
+/* hwrm_nvm_set_variable_output (size:128b/16B) */
+struct hwrm_nvm_set_variable_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/* hwrm_nvm_set_variable_cmd_err (size:64b/8B) */
+struct hwrm_nvm_set_variable_cmd_err {
+	/*
+	 * command specific error codes that goes to
+	 * the cmd_err field in Common HWRM Error Response.
+	 */
+	uint8_t	code;
+	/* Unknown error */
+	#define HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_UNKNOWN       UINT32_C(0x0)
+	/* variable does not exist */
+	#define HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_VAR_NOT_EXIST UINT32_C(0x1)
+	/* configuration is corrupted and the variable cannot be saved */
+	#define HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_CORRUPT_VAR   UINT32_C(0x2)
+	#define HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_LAST \
+		HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_CORRUPT_VAR
+	uint8_t	unused_0[7];
+} __attribute__((packed));
+
+/****************************
+ * hwrm_nvm_validate_option *
+ ****************************/
+
+
+/* hwrm_nvm_validate_option_input (size:320b/40B) */
+struct hwrm_nvm_validate_option_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * This is the host address where
+	 * nvm variable will be copied from
+	 */
+	uint64_t	src_data_addr;
+	/* size of data in bits */
+	uint16_t	data_len;
+	/* nvm cfg option number */
+	uint16_t	option_num;
+	/* reserved. */
+	#define HWRM_NVM_VALIDATE_OPTION_INPUT_OPTION_NUM_RSVD_0 \
+		UINT32_C(0x0)
+	/* reserved. */
+	#define HWRM_NVM_VALIDATE_OPTION_INPUT_OPTION_NUM_RSVD_FFFF \
+		UINT32_C(0xffff)
+	#define HWRM_NVM_VALIDATE_OPTION_INPUT_OPTION_NUM_LAST \
+		HWRM_NVM_VALIDATE_OPTION_INPUT_OPTION_NUM_RSVD_FFFF
+	/*
+	 * Number of dimensions for this nvm configuration variable.
+	 * This value indicates how many of the indexN values to use.
+	 * A value of 0 means that none of the indexN values are valid.
+	 * A value of 1 requires at index0 is valued, a value of 2
+	 * requires that index0 and index1 are valid, and so forth
+	 */
+	uint16_t	dimensions;
+	/* index for the 1st dimensions */
+	uint16_t	index_0;
+	/* index for the 2nd dimensions */
+	uint16_t	index_1;
+	/* index for the 3rd dimensions */
+	uint16_t	index_2;
+	/* index for the 4th dimensions */
+	uint16_t	index_3;
+	uint8_t	unused_0[2];
+} __attribute__((packed));
+
+/* hwrm_nvm_validate_option_output (size:128b/16B) */
+struct hwrm_nvm_validate_option_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	result;
+	/* indicates that the value provided for the option is not matching with the saved data. */
+	#define HWRM_NVM_VALIDATE_OPTION_OUTPUT_RESULT_NOT_MATCH UINT32_C(0x0)
+	/* indicates that the value provided for the option is matching the saved data. */
+	#define HWRM_NVM_VALIDATE_OPTION_OUTPUT_RESULT_MATCH     UINT32_C(0x1)
+	#define HWRM_NVM_VALIDATE_OPTION_OUTPUT_RESULT_LAST \
+		HWRM_NVM_VALIDATE_OPTION_OUTPUT_RESULT_MATCH
+	uint8_t	unused_0[6];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/* hwrm_nvm_validate_option_cmd_err (size:64b/8B) */
+struct hwrm_nvm_validate_option_cmd_err {
+	/*
+	 * command specific error codes that goes to
+	 * the cmd_err field in Common HWRM Error Response.
+	 */
+	uint8_t	code;
+	/* Unknown error */
+	#define HWRM_NVM_VALIDATE_OPTION_CMD_ERR_CODE_UNKNOWN UINT32_C(0x0)
+	#define HWRM_NVM_VALIDATE_OPTION_CMD_ERR_CODE_LAST \
+		HWRM_NVM_VALIDATE_OPTION_CMD_ERR_CODE_UNKNOWN
+	uint8_t	unused_0[7];
+} __attribute__((packed));
+
+/*****************************
+ * hwrm_nvm_factory_defaults *
+ *****************************/
+
+
+/* hwrm_nvm_factory_defaults_input (size:192b/24B) */
+struct hwrm_nvm_factory_defaults_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* mode is 8 b */
+	uint8_t	mode;
+	/* If set to 1, it will trigger restoration of factory default settings */
+	#define HWRM_NVM_FACTORY_DEFAULTS_INPUT_MODE_RESTORE UINT32_C(0x0)
+	/* If set to 1, it will trigger creation of factory default settings */
+	#define HWRM_NVM_FACTORY_DEFAULTS_INPUT_MODE_CREATE  UINT32_C(0x1)
+	#define HWRM_NVM_FACTORY_DEFAULTS_INPUT_MODE_LAST \
+		HWRM_NVM_FACTORY_DEFAULTS_INPUT_MODE_CREATE
+	uint8_t	unused_0[7];
+} __attribute__((packed));
+
+/* hwrm_nvm_factory_defaults_output (size:128b/16B) */
+struct hwrm_nvm_factory_defaults_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	result;
+	/* factory defaults created successfully. */
+	#define HWRM_NVM_FACTORY_DEFAULTS_OUTPUT_RESULT_CREATE_OK \
+		UINT32_C(0x0)
+	/* factory defaults restored successfully. */
+	#define HWRM_NVM_FACTORY_DEFAULTS_OUTPUT_RESULT_RESTORE_OK \
+		UINT32_C(0x1)
+	/* factory defaults already created. */
+	#define HWRM_NVM_FACTORY_DEFAULTS_OUTPUT_RESULT_CREATE_ALREADY \
+		UINT32_C(0x2)
+	#define HWRM_NVM_FACTORY_DEFAULTS_OUTPUT_RESULT_LAST \
+		HWRM_NVM_FACTORY_DEFAULTS_OUTPUT_RESULT_CREATE_ALREADY
+	uint8_t	unused_0[6];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/* hwrm_nvm_factory_defaults_cmd_err (size:64b/8B) */
+struct hwrm_nvm_factory_defaults_cmd_err {
+	/*
+	 * command specific error codes that goes to
+	 * the cmd_err field in Common HWRM Error Response.
+	 */
+	uint8_t	code;
+	/* Unknown error */
+	#define HWRM_NVM_FACTORY_DEFAULTS_CMD_ERR_CODE_UNKNOWN \
+		UINT32_C(0x0)
+	/* valid configuration not present to create defaults */
+	#define HWRM_NVM_FACTORY_DEFAULTS_CMD_ERR_CODE_NO_VALID_CFG \
+		UINT32_C(0x1)
+	/* No saved configuration present to restore, restore failed */
+	#define HWRM_NVM_FACTORY_DEFAULTS_CMD_ERR_CODE_NO_SAVED_CFG \
+		UINT32_C(0x2)
+	#define HWRM_NVM_FACTORY_DEFAULTS_CMD_ERR_CODE_LAST \
+		HWRM_NVM_FACTORY_DEFAULTS_CMD_ERR_CODE_NO_SAVED_CFG
+	uint8_t	unused_0[7];
+} __attribute__((packed));
 
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */
