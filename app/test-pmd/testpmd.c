@@ -2615,6 +2615,13 @@ main(int argc, char** argv)
 	latencystats_enabled = 0;
 #endif
 
+	/* on FreeBSD, mlockall() is disabled by default */
+#ifdef RTE_EXEC_ENV_BSDAPP
+	do_mlockall = 0;
+#else
+	do_mlockall = 1;
+#endif
+
 	argc -= diag;
 	argv += diag;
 	if (argc > 1)
