@@ -627,10 +627,7 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = 0,
-		.txq_flags =
-			ETH_TXQ_FLAGS_NOMULTSEGS |
-			ETH_TXQ_FLAGS_NOOFFLOADS |
-			ETH_TXQ_FLAGS_NOXSUMS,
+		.offloads = OCTEONTX_TX_OFFLOADS,
 	};
 
 	dev_info->rx_offload_capa = OCTEONTX_RX_OFFLOADS;
