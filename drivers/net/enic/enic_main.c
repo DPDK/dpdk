@@ -287,7 +287,7 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 		  rq->ring.desc_count);
 
 	/*
-	 * If *not* using scatter and the mbuf size is smaller than the
+	 * If *not* using scatter and the mbuf size is greater than the
 	 * requested max packet size (max_rx_pkt_len), then reduce the
 	 * posted buffer size to max_rx_pkt_len. HW still receives packets
 	 * larger than max_rx_pkt_len, but they will be truncated, which we
@@ -730,7 +730,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 		 * See enic_alloc_rx_queue_mbufs().
 		 */
 		if (max_rx_pkt_len <
-		    enic_mtu_to_max_rx_pktlen(enic->rte_dev->data->mtu)) {
+		    enic_mtu_to_max_rx_pktlen(enic->max_mtu)) {
 			dev_warning(enic, "rxmode.max_rx_pkt_len is ignored"
 				    " when scatter rx mode is in use.\n");
 		}
@@ -1416,20 +1416,26 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 			"MTU (%u) is greater than value configured in NIC (%u)\n",
 			new_mtu, config_mtu);
 
-	/* The easy case is when scatter is disabled. However if the MTU
-	 * becomes greater than the mbuf data size, packet drops will ensue.
-	 */
-	if (!(enic->rte_dev->data->dev_conf.rxmode.offloads &
-	      DEV_RX_OFFLOAD_SCATTER)) {
-		eth_dev->data->mtu = new_mtu;
-		goto set_mtu_done;
-	}
+	/* Update the MTU and maximum packet length */
+	eth_dev->data->mtu = new_mtu;
+	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len =
+		enic_mtu_to_max_rx_pktlen(new_mtu);
 
-	/* Rx scatter is enabled so reconfigure RQ's on the fly. The point is to
-	 * change Rx scatter mode if necessary for better performance. I.e. if
-	 * MTU was greater than the mbuf size and now it's less, scatter Rx
-	 * doesn't have to be used and vice versa.
-	  */
+	/*
+	 * If the device has not started (enic_enable), nothing to do.
+	 * Later, enic_enable() will set up RQs reflecting the new maximum
+	 * packet length.
+	 */
+	if (!eth_dev->data->dev_started)
+		goto set_mtu_done;
+
+	/*
+	 * The device has started, re-do RQs on the fly. In the process, we
+	 * pick up the new maximum packet length.
+	 *
+	 * Some applications rely on the ability to change MTU without stopping
+	 * the device. So keep this behavior for now.
+	 */
 	rte_spinlock_lock(&enic->mtu_lock);
 
 	/* Stop traffic on all RQs */
@@ -1454,8 +1460,6 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 
 	/* now it is safe to reconfigure the RQs */
 
-	/* update the mtu */
-	eth_dev->data->mtu = new_mtu;
 
 	/* free and reallocate RQs with the new MTU */
 	for (rq_idx = 0; rq_idx < enic->rq_count; rq_idx++) {
