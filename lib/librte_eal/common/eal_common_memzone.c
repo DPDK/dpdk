@@ -205,7 +205,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 
 	if (mz == NULL) {
 		RTE_LOG(ERR, EAL, "%s(): Cannot find free memzone\n", __func__);
-		malloc_elem_free(elem);
+		malloc_heap_free(elem);
 		rte_errno = ENOSPC;
 		return NULL;
 	}
