@@ -843,6 +843,14 @@ F: drivers/event/opdl/
 F: doc/guides/eventdevs/opdl.rst
 
 
+Rawdev Drivers
+--------------
+
+NXP DPAA2 QDMA
+M: Nipun Gupta <nipun.gupta@nxp.com>
+F: drivers/raw/dpaa2_qdma/
+
+
 Packet processing
 -----------------
 
