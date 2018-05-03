@@ -538,7 +538,7 @@ struct ibv_spec_header {
 };
 
 /**
- * Check support for a given item.
+ * Check item is fully supported by the NIC matching capability.
  *
  * @param item[in]
  *   Item specification.
@@ -555,60 +555,33 @@ static int
 mlx5_flow_item_validate(const struct rte_flow_item *item,
 			const uint8_t *mask, unsigned int size)
 {
-	if (!item->spec && (item->mask || item->last)) {
-		rte_errno = EINVAL;
-		return -rte_errno;
-	}
-	if (item->spec && !item->mask) {
-		unsigned int i;
-		const uint8_t *spec = item->spec;
+	unsigned int i;
+	const uint8_t *spec = item->spec;
+	const uint8_t *last = item->last;
+	const uint8_t *m = item->mask ? item->mask : mask;
 
-		for (i = 0; i < size; ++i)
-			if ((spec[i] | mask[i]) != mask[i]) {
-				rte_errno = EINVAL;
-				return -rte_errno;
-			}
-	}
-	if (item->last && !item->mask) {
-		unsigned int i;
-		const uint8_t *spec = item->last;
-
-		for (i = 0; i < size; ++i)
-			if ((spec[i] | mask[i]) != mask[i]) {
-				rte_errno = EINVAL;
-				return -rte_errno;
-			}
-	}
-	if (item->mask) {
-		unsigned int i;
-		const uint8_t *spec = item->spec;
-
-		for (i = 0; i < size; ++i)
-			if ((spec[i] | mask[i]) != mask[i]) {
-				rte_errno = EINVAL;
-				return -rte_errno;
-			}
-	}
-	if (item->spec && item->last) {
-		uint8_t spec[size];
-		uint8_t last[size];
-		const uint8_t *apply = mask;
-		unsigned int i;
-		int ret;
-
-		if (item->mask)
-			apply = item->mask;
-		for (i = 0; i < size; ++i) {
-			spec[i] = ((const uint8_t *)item->spec)[i] & apply[i];
-			last[i] = ((const uint8_t *)item->last)[i] & apply[i];
-		}
-		ret = memcmp(spec, last, size);
-		if (ret != 0) {
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
+	if (!spec && (item->mask || last))
+		goto error;
+	if (!spec)
+		return 0;
+	/*
+	 * Single-pass check to make sure that:
+	 * - item->mask is supported, no bits are set outside mask.
+	 * - Both masked item->spec and item->last are equal (no range
+	 *   supported).
+	 */
+	for (i = 0; i < size; i++) {
+		if (!m[i])
+			continue;
+		if ((m[i] | mask[i]) != mask[i])
+			goto error;
+		if (last && ((spec[i] & m[i]) != (last[i] & m[i])))
+			goto error;
 	}
 	return 0;
+error:
+	rte_errno = ENOTSUP;
+	return -rte_errno;
 }
 
 /**
