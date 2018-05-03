@@ -458,6 +458,9 @@ memseg_primary_init(void)
 				break;
 #endif
 
+			if (total_mem >= max_mem)
+				break;
+
 			max_type_mem = RTE_MIN(max_mem - total_mem,
 				(uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20);
 			max_segs = RTE_MAX_MEMSEG_PER_TYPE;
