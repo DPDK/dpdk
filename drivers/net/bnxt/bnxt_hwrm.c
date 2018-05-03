@@ -88,7 +88,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 
 		short_input.req_type = rte_cpu_to_le_16(req->req_type);
 		short_input.signature = rte_cpu_to_le_16(
-					HWRM_SHORT_REQ_SIGNATURE_SHORT_CMD);
+					HWRM_SHORT_INPUT_SIGNATURE_SHORT_CMD);
 		short_input.size = rte_cpu_to_le_16(msg_len);
 		short_input.req_addr =
 			rte_cpu_to_le_64(bp->hwrm_short_cmd_req_dma_addr);
@@ -412,16 +412,18 @@ int bnxt_hwrm_ptp_cfg(struct bnxt *bp)
 	HWRM_PREP(req, PORT_MAC_CFG);
 
 	if (ptp->rx_filter)
-		flags |= PORT_MAC_CFG_REQ_FLAGS_PTP_RX_TS_CAPTURE_ENABLE;
+		flags |= HWRM_PORT_MAC_CFG_INPUT_FLAGS_PTP_RX_TS_CAPTURE_ENABLE;
 	else
-		flags |= PORT_MAC_CFG_REQ_FLAGS_PTP_RX_TS_CAPTURE_DISABLE;
+		flags |=
+			HWRM_PORT_MAC_CFG_INPUT_FLAGS_PTP_RX_TS_CAPTURE_DISABLE;
 	if (ptp->tx_tstamp_en)
-		flags |= PORT_MAC_CFG_REQ_FLAGS_PTP_TX_TS_CAPTURE_ENABLE;
+		flags |= HWRM_PORT_MAC_CFG_INPUT_FLAGS_PTP_TX_TS_CAPTURE_ENABLE;
 	else
-		flags |= PORT_MAC_CFG_REQ_FLAGS_PTP_TX_TS_CAPTURE_DISABLE;
+		flags |=
+			HWRM_PORT_MAC_CFG_INPUT_FLAGS_PTP_TX_TS_CAPTURE_DISABLE;
 	req.flags = rte_cpu_to_le_32(flags);
-	req.enables =
-	rte_cpu_to_le_32(PORT_MAC_CFG_REQ_ENABLES_RX_TS_CAPTURE_PTP_MSG_TYPE);
+	req.enables = rte_cpu_to_le_32
+		(HWRM_PORT_MAC_CFG_INPUT_ENABLES_RX_TS_CAPTURE_PTP_MSG_TYPE);
 	req.rx_ts_capture_ptp_msg_type = rte_cpu_to_le_16(ptp->rxctl);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
@@ -449,7 +451,7 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
-	if (!(resp->flags & PORT_MAC_PTP_QCFG_RESP_FLAGS_DIRECT_ACCESS))
+	if (!(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_DIRECT_ACCESS))
 		return 0;
 
 	ptp = rte_zmalloc("ptp_cfg", sizeof(*ptp), 0);
@@ -607,7 +609,7 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 
 	if (BNXT_PF(bp)) {
 		req.enables |= rte_cpu_to_le_32(
-			HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VF_INPUT_FWD);
+			HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VF_REQ_FWD);
 		memcpy(req.vf_req_fwd, bp->pf.vf_req_fwd,
 		       RTE_MIN(sizeof(req.vf_req_fwd),
 			       sizeof(bp->pf.vf_req_fwd)));
@@ -663,11 +665,13 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	HWRM_CHECK_RESULT();
 
 	PMD_DRV_LOG(INFO, "%d.%d.%d:%d.%d.%d\n",
-		resp->hwrm_intf_maj, resp->hwrm_intf_min,
-		resp->hwrm_intf_upd,
-		resp->hwrm_fw_maj, resp->hwrm_fw_min, resp->hwrm_fw_bld);
-	bp->fw_ver = (resp->hwrm_fw_maj << 24) | (resp->hwrm_fw_min << 16) |
-			(resp->hwrm_fw_bld << 8) | resp->hwrm_fw_rsvd;
+		resp->hwrm_intf_maj_8b, resp->hwrm_intf_min_8b,
+		resp->hwrm_intf_upd_8b, resp->hwrm_fw_maj_8b,
+		resp->hwrm_fw_min_8b, resp->hwrm_fw_bld_8b);
+	bp->fw_ver = (resp->hwrm_fw_maj_8b << 24) |
+		     (resp->hwrm_fw_min_8b << 16) |
+		     (resp->hwrm_fw_bld_8b << 8) |
+		     resp->hwrm_fw_rsvd_8b;
 	PMD_DRV_LOG(INFO, "Driver HWRM version: %d.%d.%d\n",
 		HWRM_VERSION_MAJOR, HWRM_VERSION_MINOR, HWRM_VERSION_UPDATE);
 
@@ -675,12 +679,12 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	my_version |= HWRM_VERSION_MINOR << 8;
 	my_version |= HWRM_VERSION_UPDATE;
 
-	fw_version = resp->hwrm_intf_maj << 16;
-	fw_version |= resp->hwrm_intf_min << 8;
-	fw_version |= resp->hwrm_intf_upd;
+	fw_version = resp->hwrm_intf_maj_8b << 16;
+	fw_version |= resp->hwrm_intf_min_8b << 8;
+	fw_version |= resp->hwrm_intf_upd_8b;
 	bp->hwrm_spec_code = fw_version;
 
-	if (resp->hwrm_intf_maj != HWRM_VERSION_MAJOR) {
+	if (resp->hwrm_intf_maj_8b != HWRM_VERSION_MAJOR) {
 		PMD_DRV_LOG(ERR, "Unsupported firmware API version\n");
 		rc = -EINVAL;
 		goto error;
@@ -736,7 +740,7 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	if ((dev_caps_cfg &
 		HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_SUPPORTED) &&
 	    (dev_caps_cfg &
-	     HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_INPUTUIRED)) {
+	     HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_REQUIRED)) {
 		PMD_DRV_LOG(DEBUG, "Short command supported\n");
 
 		rte_free(bp->hwrm_short_cmd_req_addr);
@@ -1614,10 +1618,9 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid,
 	stats->obytes += rte_le_to_cpu_64(resp->tx_mcast_bytes);
 	stats->obytes += rte_le_to_cpu_64(resp->tx_bcast_bytes);
 
-	stats->ierrors = rte_le_to_cpu_64(resp->rx_err_pkts);
-	stats->oerrors = rte_le_to_cpu_64(resp->tx_err_pkts);
-
-	stats->imissed = rte_le_to_cpu_64(resp->rx_drop_pkts);
+	stats->imissed = rte_le_to_cpu_64(resp->rx_discard_pkts);
+	stats->ierrors = rte_le_to_cpu_64(resp->rx_drop_pkts);
+	stats->oerrors = rte_le_to_cpu_64(resp->tx_discard_pkts);
 
 	HWRM_UNLOCK();
 
@@ -2776,9 +2779,9 @@ int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)
 	req.req_buf_page_size = rte_cpu_to_le_16(
 			 page_getenum(bp->pf.active_vfs * HWRM_MAX_REQ_LEN));
 	req.req_buf_len = rte_cpu_to_le_16(HWRM_MAX_REQ_LEN);
-	req.req_buf_page_addr[0] =
+	req.req_buf_page_addr0 =
 		rte_cpu_to_le_64(rte_mem_virt2iova(bp->pf.vf_req_buf));
-	if (req.req_buf_page_addr[0] == 0) {
+	if (req.req_buf_page_addr0 == 0) {
 		PMD_DRV_LOG(ERR,
 			"unable to map buffer address to physical memory\n");
 		return -ENOMEM;

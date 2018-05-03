@@ -306,8 +306,6 @@ struct bnxt {
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 
-#define RX_PROD_AGG_BD_TYPE_RX_PROD_AGG		0x6
-
 bool is_bnxt_supported(struct rte_eth_dev *dev);
 extern const struct rte_flow_ops bnxt_flow_ops;
 

@@ -48,7 +48,7 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 	rx_buf->mbuf = mbuf;
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 
-	rxbd->addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+	rxbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 
 	return 0;
 }
@@ -76,7 +76,7 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 	rx_buf->mbuf = mbuf;
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 
-	rxbd->addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+	rxbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 
 	return 0;
 }
@@ -97,7 +97,7 @@ static inline void bnxt_reuse_rx_mbuf(struct bnxt_rx_ring_info *rxr,
 
 	prod_bd = &rxr->rx_desc_ring[prod];
 
-	prod_bd->addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+	prod_bd->address = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 
 	rxr->rx_prod = prod;
 }
@@ -117,7 +117,7 @@ static void bnxt_reuse_ag_mbuf(struct bnxt_rx_ring_info *rxr, uint16_t cons,
 	prod_bd = &rxr->ag_desc_ring[prod];
 	cons_bd = &rxr->ag_desc_ring[cons];
 
-	prod_bd->addr = cons_bd->addr;
+	prod_bd->address = cons_bd->addr;
 }
 #endif
 

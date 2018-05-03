@@ -153,7 +153,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		txbd->flags_type |= TX_BD_LONG_FLAGS_LHINT_GTE2K;
 	else
 		txbd->flags_type |= lhint_arr[txbd->len >> 9];
-	txbd->addr = rte_cpu_to_le_32(rte_mbuf_data_iova(tx_buf->mbuf));
+	txbd->address = rte_cpu_to_le_32(rte_mbuf_data_iova(tx_buf->mbuf));
 
 	if (long_bd) {
 		txbd->flags_type |= TX_BD_LONG_TYPE_TX_BD_LONG;
@@ -234,7 +234,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		tx_buf = &txr->tx_buf_ring[txr->tx_prod];
 
 		txbd = &txr->tx_desc_ring[txr->tx_prod];
-		txbd->addr = rte_cpu_to_le_32(rte_mbuf_data_iova(m_seg));
+		txbd->address = rte_cpu_to_le_32(rte_mbuf_data_iova(m_seg));
 		txbd->flags_type = TX_BD_SHORT_TYPE_TX_BD_SHORT;
 		txbd->len = m_seg->data_len;
 
