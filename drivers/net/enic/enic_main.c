@@ -315,6 +315,24 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 				rq_buf_len);
 		rq->mbuf_ring[i] = mb;
 	}
+	/*
+	 * Do not post the buffers to the NIC until we enable the RQ via
+	 * enic_start_rq().
+	 */
+	rq->need_initial_post = true;
+	return 0;
+}
+
+/*
+ * Post the Rx buffers for the first time. enic_alloc_rx_queue_mbufs() has
+ * allocated the buffers and filled the RQ descriptor ring. Just need to push
+ * the post index to the NIC.
+ */
+static void
+enic_initial_post_rx(struct enic *enic, struct vnic_rq *rq)
+{
+	if (!rq->in_use || !rq->need_initial_post)
+		return;
 
 	/* make sure all prior writes are complete before doing the PIO write */
 	rte_rmb();
@@ -329,9 +347,7 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 	iowrite32(rq->posted_index, &rq->ctrl->posted_index);
 	iowrite32(0, &rq->ctrl->fetch_index);
 	rte_rmb();
-
-	return 0;
-
+	rq->need_initial_post = false;
 }
 
 static void *
@@ -619,10 +635,13 @@ void enic_start_rq(struct enic *enic, uint16_t queue_idx)
 	rq_data = &enic->rq[rq_sop->data_queue_idx];
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
-	if (rq_data->in_use)
+	if (rq_data->in_use) {
 		vnic_rq_enable(rq_data);
+		enic_initial_post_rx(enic, rq_data);
+	}
 	rte_mb();
 	vnic_rq_enable(rq_sop);
+	enic_initial_post_rx(enic, rq_sop);
 	eth_dev->data->rx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STARTED;
 }
 

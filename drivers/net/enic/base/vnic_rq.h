@@ -6,6 +6,7 @@
 #ifndef _VNIC_RQ_H_
 #define _VNIC_RQ_H_
 
+#include <stdbool.h>
 
 #include "vnic_dev.h"
 #include "vnic_cq.h"
@@ -69,6 +70,7 @@ struct vnic_rq {
 	struct rte_mbuf *pkt_last_seg;
 	unsigned int max_mbufs_per_pkt;
 	uint16_t tot_nb_desc;
+	bool need_initial_post;
 };
 
 static inline unsigned int vnic_rq_desc_avail(struct vnic_rq *rq)
