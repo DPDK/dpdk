@@ -138,20 +138,30 @@ int enic_get_vnic_config(struct enic *enic)
 	enic->hash_key_size = ENIC_RSS_HASH_KEY_SIZE;
 	enic->flow_type_rss_offloads = 0;
 	if (ENIC_SETTING(enic, RSSHASH_IPV4))
-		enic->flow_type_rss_offloads |= ETH_RSS_IPV4;
+		/*
+		 * IPV4 hash type handles both non-frag and frag packet types.
+		 * TCP/UDP is controlled via a separate flag below.
+		 */
+		enic->flow_type_rss_offloads |= ETH_RSS_IPV4 |
+			ETH_RSS_FRAG_IPV4 | ETH_RSS_NONFRAG_IPV4_OTHER;
 	if (ENIC_SETTING(enic, RSSHASH_TCPIPV4))
 		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV4_TCP;
 	if (ENIC_SETTING(enic, RSSHASH_IPV6))
-		enic->flow_type_rss_offloads |= ETH_RSS_IPV6;
+		/*
+		 * The VIC adapter can perform RSS on IPv6 packets with and
+		 * without extension headers. An IPv6 "fragment" is an IPv6
+		 * packet with the fragment extension header.
+		 */
+		enic->flow_type_rss_offloads |= ETH_RSS_IPV6 |
+			ETH_RSS_IPV6_EX | ETH_RSS_FRAG_IPV6 |
+			ETH_RSS_NONFRAG_IPV6_OTHER;
 	if (ENIC_SETTING(enic, RSSHASH_TCPIPV6))
-		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV6_TCP;
-	if (ENIC_SETTING(enic, RSSHASH_IPV6_EX))
-		enic->flow_type_rss_offloads |= ETH_RSS_IPV6_EX;
-	if (ENIC_SETTING(enic, RSSHASH_TCPIPV6_EX))
-		enic->flow_type_rss_offloads |= ETH_RSS_IPV6_TCP_EX;
+		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV6_TCP |
+			ETH_RSS_IPV6_TCP_EX;
 	if (vnic_dev_capable_udp_rss(enic->vdev)) {
 		enic->flow_type_rss_offloads |=
-			ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP;
+			ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP |
+			ETH_RSS_IPV6_UDP_EX;
 	}
 
 	/* Zero offloads if RSS is not enabled */

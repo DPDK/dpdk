@@ -1190,7 +1190,8 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 	    (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) &&
 	    rss_hf != 0) {
 		rss_enable = 1;
-		if (rss_hf & ETH_RSS_IPV4)
+		if (rss_hf & (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+			      ETH_RSS_NONFRAG_IPV4_OTHER))
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_IPV4;
 		if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
@@ -1202,18 +1203,15 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 			 */
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
 		}
-		if (rss_hf & ETH_RSS_IPV6)
+		if (rss_hf & (ETH_RSS_IPV6 | ETH_RSS_IPV6_EX |
+			      ETH_RSS_FRAG_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER))
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_IPV6;
-		if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+		if (rss_hf & (ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX))
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
-		if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) {
+		if (rss_hf & (ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_IPV6_UDP_EX)) {
 			/* Again, 'TCP' is not a typo. */
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
 		}
-		if (rss_hf & ETH_RSS_IPV6_EX)
-			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_IPV6_EX;
-		if (rss_hf & ETH_RSS_IPV6_TCP_EX)
-			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6_EX;
 	} else {
 		rss_enable = 0;
 		rss_hf = 0;
