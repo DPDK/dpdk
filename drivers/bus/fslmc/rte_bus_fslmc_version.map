@@ -105,5 +105,14 @@ DPDK_18.05 {
 	global:
 
 	dpaa2_affine_qbman_ethrx_swp;
+	dpdmai_close;
+	dpdmai_disable;
+	dpdmai_enable;
+	dpdmai_get_attributes;
+	dpdmai_get_rx_queue;
+	dpdmai_get_tx_queue;
+	dpdmai_open;
+	dpdmai_set_rx_queue;
+	dpdmai_set_tx_queue;
 
 } DPDK_18.02;
