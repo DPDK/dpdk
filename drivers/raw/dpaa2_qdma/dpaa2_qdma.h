@@ -5,6 +5,22 @@
 #ifndef __DPAA2_QDMA_H__
 #define __DPAA2_QDMA_H__
 
+struct qdma_sdd;
+struct qdma_io_meta;
+
+#define DPAA2_QDMA_MAX_FLE 3
+#define DPAA2_QDMA_MAX_SDD 2
+
+/** FLE pool size: 3 Frame list + 2 source/destination descriptor */
+#define QDMA_FLE_POOL_SIZE (sizeof(struct qdma_io_meta) + \
+		sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE + \
+		sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD)
+/** FLE pool cache size */
+#define QDMA_FLE_CACHE_SIZE(_num) (_num/(RTE_MAX_LCORE * 2))
+
+/** Maximum possible H/W Queues on each core */
+#define MAX_HW_QUEUE_PER_CORE		64
+
 /**
  * Represents a QDMA device.
  * A single QDMA device exists which is combination of multiple DPDMAI rawdev's.
@@ -44,6 +60,53 @@ struct qdma_hw_queue {
 	/** Number of users of this hw queue */
 	uint32_t num_users;
 };
+
+/** Represents a QDMA virtual queue */
+struct qdma_virt_queue {
+	/** Status ring of the virtual queue */
+	struct rte_ring *status_ring;
+	/** Associated hw queue */
+	struct qdma_hw_queue *hw_queue;
+	/** Associated lcore id */
+	uint32_t lcore_id;
+	/** States if this vq is in use or not */
+	uint8_t in_use;
+	/** States if this vq has exclusively associated hw queue */
+	uint8_t exclusive_hw_queue;
+	/* Total number of enqueues on this VQ */
+	uint64_t num_enqueues;
+	/* Total number of dequeues from this VQ */
+	uint64_t num_dequeues;
+};
+
+/** Represents a QDMA per core hw queues allocation in virtual mode */
+struct qdma_per_core_info {
+	/** list for allocated hw queues */
+	struct qdma_hw_queue *hw_queues[MAX_HW_QUEUE_PER_CORE];
+	/* Number of hw queues allocated for this core */
+	uint16_t num_hw_queues;
+};
+
+/** Metadata which is stored with each operation */
+struct qdma_io_meta {
+	/**
+	 * Context which is stored in the FLE pool (just before the FLE).
+	 * QDMA job is stored as a this context as a part of metadata.
+	 */
+	uint64_t cnxt;
+	/** VQ ID is stored as a part of metadata of the enqueue command */
+	 uint64_t id;
+};
+
+/** Source/Destination Descriptor */
+struct qdma_sdd {
+	uint32_t rsv;
+	/** Stride configuration */
+	uint32_t stride;
+	/** Route-by-port command */
+	uint32_t rbpcmd;
+	uint32_t cmd;
+} __attribute__((__packed__));
 
 /** Represents a DPDMAI raw device */
 struct dpaa2_dpdmai_dev {

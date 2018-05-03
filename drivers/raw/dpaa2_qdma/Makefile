@@ -32,4 +32,6 @@ LIBABIVER := 1
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_QDMA_RAWDEV) += dpaa2_qdma.c
 
+SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_QDMA_RAWDEV)-include += rte_pmd_dpaa2_qdma.h
+
 include $(RTE_SDK)/mk/rte.lib.mk

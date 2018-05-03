@@ -20,6 +20,7 @@
 
 #include "dpaa2_qdma.h"
 #include "dpaa2_qdma_logs.h"
+#include "rte_pmd_dpaa2_qdma.h"
 
 /* Dynamic log type identifier */
 int dpaa2_qdma_logtype;
@@ -31,6 +32,380 @@ static struct qdma_device qdma_dev;
 TAILQ_HEAD(qdma_hw_queue_list, qdma_hw_queue);
 static struct qdma_hw_queue_list qdma_queue_list
 	= TAILQ_HEAD_INITIALIZER(qdma_queue_list);
+
+/* QDMA Virtual Queues */
+struct qdma_virt_queue *qdma_vqs;
+
+/* QDMA per core data */
+struct qdma_per_core_info qdma_core_info[RTE_MAX_LCORE];
+
+static struct qdma_hw_queue *
+alloc_hw_queue(uint32_t lcore_id)
+{
+	struct qdma_hw_queue *queue = NULL;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	/* Get a free queue from the list */
+	TAILQ_FOREACH(queue, &qdma_queue_list, next) {
+		if (queue->num_users == 0) {
+			queue->lcore_id = lcore_id;
+			queue->num_users++;
+			break;
+		}
+	}
+
+	return queue;
+}
+
+static void
+free_hw_queue(struct qdma_hw_queue *queue)
+{
+	DPAA2_QDMA_FUNC_TRACE();
+
+	queue->num_users--;
+}
+
+
+static struct qdma_hw_queue *
+get_hw_queue(uint32_t lcore_id)
+{
+	struct qdma_per_core_info *core_info;
+	struct qdma_hw_queue *queue, *temp;
+	uint32_t least_num_users;
+	int num_hw_queues, i;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	core_info = &qdma_core_info[lcore_id];
+	num_hw_queues = core_info->num_hw_queues;
+
+	/*
+	 * Allocate a HW queue if there are less queues
+	 * than maximum per core queues configured
+	 */
+	if (num_hw_queues < qdma_dev.max_hw_queues_per_core) {
+		queue = alloc_hw_queue(lcore_id);
+		if (queue) {
+			core_info->hw_queues[num_hw_queues] = queue;
+			core_info->num_hw_queues++;
+			return queue;
+		}
+	}
+
+	queue = core_info->hw_queues[0];
+	/* In case there is no queue associated with the core return NULL */
+	if (!queue)
+		return NULL;
+
+	/* Fetch the least loaded H/W queue */
+	least_num_users = core_info->hw_queues[0]->num_users;
+	for (i = 0; i < num_hw_queues; i++) {
+		temp = core_info->hw_queues[i];
+		if (temp->num_users < least_num_users)
+			queue = temp;
+	}
+
+	if (queue)
+		queue->num_users++;
+
+	return queue;
+}
+
+static void
+put_hw_queue(struct qdma_hw_queue *queue)
+{
+	struct qdma_per_core_info *core_info;
+	int lcore_id, num_hw_queues, i;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	/*
+	 * If this is the last user of the queue free it.
+	 * Also remove it from QDMA core info.
+	 */
+	if (queue->num_users == 1) {
+		free_hw_queue(queue);
+
+		/* Remove the physical queue from core info */
+		lcore_id = queue->lcore_id;
+		core_info = &qdma_core_info[lcore_id];
+		num_hw_queues = core_info->num_hw_queues;
+		for (i = 0; i < num_hw_queues; i++) {
+			if (queue == core_info->hw_queues[i])
+				break;
+		}
+		for (; i < num_hw_queues - 1; i++)
+			core_info->hw_queues[i] = core_info->hw_queues[i + 1];
+		core_info->hw_queues[i] = NULL;
+	} else {
+		queue->num_users--;
+	}
+}
+
+int __rte_experimental
+rte_qdma_init(void)
+{
+	DPAA2_QDMA_FUNC_TRACE();
+
+	rte_spinlock_init(&qdma_dev.lock);
+
+	return 0;
+}
+
+void __rte_experimental
+rte_qdma_attr_get(struct rte_qdma_attr *qdma_attr)
+{
+	DPAA2_QDMA_FUNC_TRACE();
+
+	qdma_attr->num_hw_queues = qdma_dev.num_hw_queues;
+}
+
+int __rte_experimental
+rte_qdma_reset(void)
+{
+	struct qdma_hw_queue *queue;
+	int i;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	/* In case QDMA device is not in stopped state, return -EBUSY */
+	if (qdma_dev.state == 1) {
+		DPAA2_QDMA_ERR(
+			"Device is in running state. Stop before reset.");
+		return -EBUSY;
+	}
+
+	/* In case there are pending jobs on any VQ, return -EBUSY */
+	for (i = 0; i < qdma_dev.max_vqs; i++) {
+		if (qdma_vqs[i].in_use && (qdma_vqs[i].num_enqueues !=
+		    qdma_vqs[i].num_dequeues))
+			DPAA2_QDMA_ERR("Jobs are still pending on VQ: %d", i);
+			return -EBUSY;
+	}
+
+	/* Reset HW queues */
+	TAILQ_FOREACH(queue, &qdma_queue_list, next)
+		queue->num_users = 0;
+
+	/* Reset and free virtual queues */
+	for (i = 0; i < qdma_dev.max_vqs; i++) {
+		if (qdma_vqs[i].status_ring)
+			rte_ring_free(qdma_vqs[i].status_ring);
+	}
+	if (qdma_vqs)
+		rte_free(qdma_vqs);
+	qdma_vqs = NULL;
+
+	/* Reset per core info */
+	memset(&qdma_core_info, 0,
+		sizeof(struct qdma_per_core_info) * RTE_MAX_LCORE);
+
+	/* Free the FLE pool */
+	if (qdma_dev.fle_pool)
+		rte_mempool_free(qdma_dev.fle_pool);
+
+	/* Reset QDMA device structure */
+	qdma_dev.mode = RTE_QDMA_MODE_HW;
+	qdma_dev.max_hw_queues_per_core = 0;
+	qdma_dev.fle_pool = NULL;
+	qdma_dev.fle_pool_count = 0;
+	qdma_dev.max_vqs = 0;
+
+	return 0;
+}
+
+int __rte_experimental
+rte_qdma_configure(struct rte_qdma_config *qdma_config)
+{
+	int ret;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	/* In case QDMA device is not in stopped state, return -EBUSY */
+	if (qdma_dev.state == 1) {
+		DPAA2_QDMA_ERR(
+			"Device is in running state. Stop before config.");
+		return -1;
+	}
+
+	/* Reset the QDMA device */
+	ret = rte_qdma_reset();
+	if (ret) {
+		DPAA2_QDMA_ERR("Resetting QDMA failed");
+		return ret;
+	}
+
+	/* Set mode */
+	qdma_dev.mode = qdma_config->mode;
+
+	/* Set max HW queue per core */
+	if (qdma_config->max_hw_queues_per_core > MAX_HW_QUEUE_PER_CORE) {
+		DPAA2_QDMA_ERR("H/W queues per core is more than: %d",
+			       MAX_HW_QUEUE_PER_CORE);
+		return -EINVAL;
+	}
+	qdma_dev.max_hw_queues_per_core =
+		qdma_config->max_hw_queues_per_core;
+
+	/* Allocate Virtual Queues */
+	qdma_vqs = rte_malloc("qdma_virtual_queues",
+			(sizeof(struct qdma_virt_queue) * qdma_config->max_vqs),
+			RTE_CACHE_LINE_SIZE);
+	if (!qdma_vqs) {
+		DPAA2_QDMA_ERR("qdma_virtual_queues allocation failed");
+		return -ENOMEM;
+	}
+	qdma_dev.max_vqs = qdma_config->max_vqs;
+
+	/* Allocate FLE pool */
+	qdma_dev.fle_pool = rte_mempool_create("qdma_fle_pool",
+			qdma_config->fle_pool_count, QDMA_FLE_POOL_SIZE,
+			QDMA_FLE_CACHE_SIZE(qdma_config->fle_pool_count), 0,
+			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
+	if (!qdma_dev.fle_pool) {
+		DPAA2_QDMA_ERR("qdma_fle_pool create failed");
+		rte_free(qdma_vqs);
+		qdma_vqs = NULL;
+		return -ENOMEM;
+	}
+	qdma_dev.fle_pool_count = qdma_config->fle_pool_count;
+
+	return 0;
+}
+
+int __rte_experimental
+rte_qdma_start(void)
+{
+	DPAA2_QDMA_FUNC_TRACE();
+
+	qdma_dev.state = 1;
+
+	return 0;
+}
+
+int __rte_experimental
+rte_qdma_vq_create(uint32_t lcore_id, uint32_t flags)
+{
+	char ring_name[32];
+	int i;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	rte_spinlock_lock(&qdma_dev.lock);
+
+	/* Get a free Virtual Queue */
+	for (i = 0; i < qdma_dev.max_vqs; i++) {
+		if (qdma_vqs[i].in_use == 0)
+			break;
+	}
+
+	/* Return in case no VQ is free */
+	if (i == qdma_dev.max_vqs) {
+		rte_spinlock_unlock(&qdma_dev.lock);
+		return -ENODEV;
+	}
+
+	if (qdma_dev.mode == RTE_QDMA_MODE_HW ||
+			(flags & RTE_QDMA_VQ_EXCLUSIVE_PQ)) {
+		/* Allocate HW queue for a VQ */
+		qdma_vqs[i].hw_queue = alloc_hw_queue(lcore_id);
+		qdma_vqs[i].exclusive_hw_queue = 1;
+	} else {
+		/* Allocate a Ring for Virutal Queue in VQ mode */
+		sprintf(ring_name, "status ring %d", i);
+		qdma_vqs[i].status_ring = rte_ring_create(ring_name,
+			qdma_dev.fle_pool_count, rte_socket_id(), 0);
+		if (!qdma_vqs[i].status_ring) {
+			DPAA2_QDMA_ERR("Status ring creation failed for vq");
+			rte_spinlock_unlock(&qdma_dev.lock);
+			return rte_errno;
+		}
+
+		/* Get a HW queue (shared) for a VQ */
+		qdma_vqs[i].hw_queue = get_hw_queue(lcore_id);
+		qdma_vqs[i].exclusive_hw_queue = 0;
+	}
+
+	if (qdma_vqs[i].hw_queue == NULL) {
+		DPAA2_QDMA_ERR("No H/W queue available for VQ");
+		if (qdma_vqs[i].status_ring)
+			rte_ring_free(qdma_vqs[i].status_ring);
+		qdma_vqs[i].status_ring = NULL;
+		rte_spinlock_unlock(&qdma_dev.lock);
+		return -ENODEV;
+	}
+
+	qdma_vqs[i].in_use = 1;
+	qdma_vqs[i].lcore_id = lcore_id;
+
+	rte_spinlock_unlock(&qdma_dev.lock);
+
+	return i;
+}
+
+void __rte_experimental
+rte_qdma_vq_stats(uint16_t vq_id,
+		  struct rte_qdma_vq_stats *vq_status)
+{
+	struct qdma_virt_queue *qdma_vq = &qdma_vqs[vq_id];
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	if (qdma_vq->in_use) {
+		vq_status->exclusive_hw_queue = qdma_vq->exclusive_hw_queue;
+		vq_status->lcore_id = qdma_vq->lcore_id;
+		vq_status->num_enqueues = qdma_vq->num_enqueues;
+		vq_status->num_dequeues = qdma_vq->num_dequeues;
+		vq_status->num_pending_jobs = vq_status->num_enqueues -
+				vq_status->num_dequeues;
+	}
+}
+
+int __rte_experimental
+rte_qdma_vq_destroy(uint16_t vq_id)
+{
+	struct qdma_virt_queue *qdma_vq = &qdma_vqs[vq_id];
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	/* In case there are pending jobs on any VQ, return -EBUSY */
+	if (qdma_vq->num_enqueues != qdma_vq->num_dequeues)
+		return -EBUSY;
+
+	rte_spinlock_lock(&qdma_dev.lock);
+
+	if (qdma_vq->exclusive_hw_queue)
+		free_hw_queue(qdma_vq->hw_queue);
+	else {
+		if (qdma_vqs->status_ring)
+			rte_ring_free(qdma_vqs->status_ring);
+
+		put_hw_queue(qdma_vq->hw_queue);
+	}
+
+	memset(qdma_vq, 0, sizeof(struct qdma_virt_queue));
+
+	rte_spinlock_lock(&qdma_dev.lock);
+
+	return 0;
+}
+
+void __rte_experimental
+rte_qdma_stop(void)
+{
+	DPAA2_QDMA_FUNC_TRACE();
+
+	qdma_dev.state = 0;
+}
+
+void __rte_experimental
+rte_qdma_destroy(void)
+{
+	DPAA2_QDMA_FUNC_TRACE();
+
+	rte_qdma_reset();
+}
 
 static const struct rte_rawdev_ops dpaa2_qdma_ops;
 

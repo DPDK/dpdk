@@ -1,4 +1,16 @@
 EXPERIMENTAL {
+	global:
+
+	rte_qdma_attr_get;
+	rte_qdma_configure;
+	rte_qdma_destroy;
+	rte_qdma_init;
+	rte_qdma_reset;
+	rte_qdma_start;
+	rte_qdma_stop;
+	rte_qdma_vq_create;
+	rte_qdma_vq_destroy;
+	rte_qdma_vq_stats;
 
 	local: *;
 };
