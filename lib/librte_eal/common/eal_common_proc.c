@@ -870,7 +870,6 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 
 	pending_req->type = REQUEST_TYPE_ASYNC;
 	strlcpy(pending_req->dst, dst, sizeof(pending_req->dst));
-	strcpy(pending_req->dst, dst);
 	pending_req->request = req;
 	pending_req->reply = reply_msg;
 	pending_req->async.param = param;
