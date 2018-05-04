@@ -186,6 +186,51 @@ generic_ut_teardown(void)
 }
 
 static int
+test_compressdev_invalid_configuration(void)
+{
+	struct rte_compressdev_config invalid_config;
+	struct rte_compressdev_config valid_config = {
+		.socket_id = rte_socket_id(),
+		.nb_queue_pairs = 1,
+		.max_nb_priv_xforms = NUM_MAX_XFORMS,
+		.max_nb_streams = 0
+	};
+	struct rte_compressdev_info dev_info;
+
+	/* Invalid configuration with 0 queue pairs */
+	memcpy(&invalid_config, &valid_config,
+			sizeof(struct rte_compressdev_config));
+	invalid_config.nb_queue_pairs = 0;
+
+	TEST_ASSERT_FAIL(rte_compressdev_configure(0, &invalid_config),
+			"Device configuration was successful "
+			"with no queue pairs (invalid)\n");
+
+	/*
+	 * Invalid configuration with too many queue pairs
+	 * (if there is an actual maximum number of queue pairs)
+	 */
+	rte_compressdev_info_get(0, &dev_info);
+	if (dev_info.max_nb_queue_pairs != 0) {
+		memcpy(&invalid_config, &valid_config,
+			sizeof(struct rte_compressdev_config));
+		invalid_config.nb_queue_pairs = dev_info.max_nb_queue_pairs + 1;
+
+		TEST_ASSERT_FAIL(rte_compressdev_configure(0, &invalid_config),
+				"Device configuration was successful "
+				"with too many queue pairs (invalid)\n");
+	}
+
+	/* Invalid queue pair setup, with no number of queue pairs set */
+	TEST_ASSERT_FAIL(rte_compressdev_queue_pair_setup(0, 0,
+				NUM_MAX_INFLIGHT_OPS, rte_socket_id()),
+			"Queue pair setup was successful "
+			"with no queue pairs set (invalid)\n");
+
+	return TEST_SUCCESS;
+}
+
+static int
 compare_buffers(const char *buffer1, uint32_t buffer1_len,
 		const char *buffer2, uint32_t buffer2_len)
 {
@@ -696,7 +741,7 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 
 			/* Attach non shareable private xform data to ops */
 			for (i = 0; i < num_bufs; i++) {
-				priv_data = (struct priv_op_data *) (ops[i] + 1);
+				priv_data = (struct priv_op_data *)(ops[i] + 1);
 				uint16_t xform_idx = priv_data->orig_idx;
 				ops[i]->private_xform = priv_xforms[xform_idx];
 			}
@@ -1063,6 +1108,8 @@ static struct unit_test_suite compressdev_testsuite  = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
+		TEST_CASE_ST(NULL, NULL,
+			test_compressdev_invalid_configuration),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_deflate_stateless_fixed),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
