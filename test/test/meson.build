@@ -234,6 +234,14 @@ if dpdk_conf.has('RTE_LIBRTE_KNI')
 endif
 
 test_dep_objs = []
+compress_test_dep = dependency('zlib', required: false)
+if compress_test_dep.found()
+	test_dep_objs += compress_test_dep
+	test_sources += 'test_compressdev.c'
+	test_deps += 'compressdev'
+	test_names += 'compressdev_autotest'
+endif
+
 foreach d:test_deps
 	def_lib = get_option('default_library')
 	test_dep_objs += get_variable(def_lib + '_rte_' + d)

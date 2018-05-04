@@ -347,6 +347,7 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 M: Ashish Gupta <ashish.gupta@caviumnetworks.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_compressdev/
+F: test/test/test_compressdev*
 F: doc/guides/prog_guide/compressdev.rst
 
 Eventdev API

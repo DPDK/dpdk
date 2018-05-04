@@ -180,6 +180,10 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring_perf.c
 SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev_blockcipher.c
 SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev.c
 
+ifeq ($(CONFIG_RTE_COMPRESSDEV_TEST),y)
+SRCS-$(CONFIG_RTE_LIBRTE_COMPRESSDEV) += test_compressdev.c
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_EVENTDEV),y)
 SRCS-y += test_eventdev.c
 SRCS-y += test_event_ring.c
@@ -202,6 +206,11 @@ CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -D_GNU_SOURCE
 
 LDLIBS += -lm
+ifeq ($(CONFIG_RTE_COMPRESSDEV_TEST),y)
+ifeq ($(CONFIG_RTE_LIBRTE_COMPRESSDEV),y)
+LDLIBS += -lz
+endif
+endif
 
 # Disable VTA for memcpy test
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
