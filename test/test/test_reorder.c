@@ -146,11 +146,11 @@ test_reorder_insert(void)
 	b = rte_reorder_create("test_insert", rte_socket_id(), size);
 	TEST_ASSERT_NOT_NULL(b, "Failed to create reorder buffer");
 
-	ret = rte_mempool_get_bulk(p, (void *)bufs, num_bufs);
-	TEST_ASSERT_SUCCESS(ret, "Error getting mbuf from pool");
-
-	for (i = 0; i < num_bufs; i++)
+	for (i = 0; i < num_bufs; i++) {
+		bufs[i] = rte_pktmbuf_alloc(p);
+		TEST_ASSERT_NOT_NULL(bufs[i], "Packet allocation failed\n");
 		bufs[i]->seqn = i;
+	}
 
 	/* This should fill up order buffer:
 	 * reorder_seq = 0
@@ -165,6 +165,7 @@ test_reorder_insert(void)
 			ret = -1;
 			goto exit;
 		}
+		bufs[i] = NULL;
 	}
 
 	/* early packet - should move mbufs to ready buf and move sequence window
@@ -179,6 +180,7 @@ test_reorder_insert(void)
 		ret = -1;
 		goto exit;
 	}
+	bufs[4] = NULL;
 
 	/* early packet from current sequence window - full ready buffer */
 	bufs[5]->seqn = 2 * size;
@@ -189,6 +191,7 @@ test_reorder_insert(void)
 		ret = -1;
 		goto exit;
 	}
+	bufs[5] = NULL;
 
 	/* late packet */
 	bufs[6]->seqn = 3 * size;
@@ -199,11 +202,15 @@ test_reorder_insert(void)
 		ret = -1;
 		goto exit;
 	}
+	bufs[6] = NULL;
 
 	ret = 0;
 exit:
-	rte_mempool_put_bulk(p, (void *)bufs, num_bufs);
 	rte_reorder_free(b);
+	for (i = 0; i < num_bufs; i++) {
+		if (bufs[i] != NULL)
+			rte_pktmbuf_free(bufs[i]);
+	}
 	return ret;
 }
 
@@ -219,6 +226,10 @@ test_reorder_drain(void)
 	int ret = 0;
 	unsigned i, cnt;
 
+	/* initialize all robufs to NULL */
+	for (i = 0; i < num_bufs; i++)
+		robufs[i] = NULL;
+
 	/* This would create a reorder buffer instance consisting of:
 	 * reorder_seq = 0
 	 * ready_buf: RB[size] = {NULL, NULL, NULL, NULL}
@@ -226,9 +237,6 @@ test_reorder_drain(void)
 	 */
 	b = rte_reorder_create("test_drain", rte_socket_id(), size);
 	TEST_ASSERT_NOT_NULL(b, "Failed to create reorder buffer");
-
-	ret = rte_mempool_get_bulk(p, (void *)bufs, num_bufs);
-	TEST_ASSERT_SUCCESS(ret, "Error getting mbuf from pool");
 
 	/* Check no drained packets if reorder is empty */
 	cnt = rte_reorder_drain(b, robufs, 1);
@@ -239,8 +247,11 @@ test_reorder_drain(void)
 		goto exit;
 	}
 
-	for (i = 0; i < num_bufs; i++)
+	for (i = 0; i < num_bufs; i++) {
+		bufs[i] = rte_pktmbuf_alloc(p);
+		TEST_ASSERT_NOT_NULL(bufs[i], "Packet allocation failed\n");
 		bufs[i]->seqn = i;
+	}
 
 	/* Insert packet with seqn 1:
 	 * reorder_seq = 0
@@ -248,6 +259,7 @@ test_reorder_drain(void)
 	 * OB[] = {1, NULL, NULL, NULL}
 	 */
 	rte_reorder_insert(b, bufs[1]);
+	bufs[1] = NULL;
 
 	cnt = rte_reorder_drain(b, robufs, 1);
 	if (cnt != 1) {
@@ -256,6 +268,8 @@ test_reorder_drain(void)
 		ret = -1;
 		goto exit;
 	}
+	if (robufs[0] != NULL)
+		rte_pktmbuf_free(robufs[i]);
 
 	/* Insert more packets
 	 * RB[] = {NULL, NULL, NULL, NULL}
@@ -263,18 +277,22 @@ test_reorder_drain(void)
 	 */
 	rte_reorder_insert(b, bufs[2]);
 	rte_reorder_insert(b, bufs[3]);
+	bufs[2] = NULL;
+	bufs[3] = NULL;
 
 	/* Insert more packets
 	 * RB[] = {NULL, NULL, NULL, NULL}
 	 * OB[] = {NULL, 2, 3, 4}
 	 */
 	rte_reorder_insert(b, bufs[4]);
+	bufs[4] = NULL;
 
 	/* Insert more packets
 	 * RB[] = {2, 3, 4, NULL}
 	 * OB[] = {NULL, NULL, 7, NULL}
 	 */
 	rte_reorder_insert(b, bufs[7]);
+	bufs[7] = NULL;
 
 	/* drained expected packets */
 	cnt = rte_reorder_drain(b, robufs, 4);
@@ -283,6 +301,10 @@ test_reorder_drain(void)
 				__func__, __LINE__, cnt);
 		ret = -1;
 		goto exit;
+	}
+	for (i = 0; i < 3; i++) {
+		if (robufs[i] != NULL)
+			rte_pktmbuf_free(robufs[i]);
 	}
 
 	/*
@@ -298,8 +320,13 @@ test_reorder_drain(void)
 	}
 	ret = 0;
 exit:
-	rte_mempool_put_bulk(p, (void *)bufs, num_bufs);
 	rte_reorder_free(b);
+	for (i = 0; i < num_bufs; i++) {
+		if (bufs[i] != NULL)
+			rte_pktmbuf_free(bufs[i]);
+		if (robufs[i] != NULL)
+			rte_pktmbuf_free(robufs[i]);
+	}
 	return ret;
 }
 
