@@ -859,6 +859,37 @@ test_compressdev_deflate_stateless_multi_op(void)
 	return TEST_SUCCESS;
 }
 
+
+static int
+test_compressdev_deflate_stateless_multi_level(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	const char *test_buffer;
+	unsigned int level;
+	uint16_t i;
+	struct rte_comp_xform compress_xform;
+
+	memcpy(&compress_xform, &ts_params->def_comp_xform,
+			sizeof(struct rte_comp_xform));
+
+	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
+		test_buffer = compress_test_bufs[i];
+		for (level = RTE_COMP_LEVEL_MIN; level <= RTE_COMP_LEVEL_MAX;
+				level++) {
+			compress_xform.compress.level = level;
+			/* Compress with compressdev, decompress with Zlib */
+			if (test_deflate_comp_decomp(&test_buffer, 1,
+					&i,
+					&compress_xform,
+					&ts_params->def_decomp_xform,
+					RTE_COMP_OP_STATELESS,
+					ZLIB_DECOMPRESS) < 0)
+				return TEST_FAILED;
+		}
+	}
+
+	return TEST_SUCCESS;
+}
 static struct unit_test_suite compressdev_testsuite  = {
 	.suite_name = "compressdev unit test suite",
 	.setup = testsuite_setup,
@@ -870,6 +901,8 @@ static struct unit_test_suite compressdev_testsuite  = {
 			test_compressdev_deflate_stateless_dynamic),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_deflate_stateless_multi_op),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_stateless_multi_level),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
