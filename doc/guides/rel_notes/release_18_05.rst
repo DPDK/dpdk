@@ -154,6 +154,17 @@ New Features
 
   See the :doc:`../rawdevs/dpaa2_qdma` guide for more details.
 
+* **Added DPAA2 Command Interface Driver (in rawdev).**
+
+  The DPAA2 CMDIF is an implementation of the rawdev API, that provides
+  communication between the GPP and NXP's QorIQ based AIOP Block (Firmware).
+  Advanced IO Processor i.e. AIOP is clusters of programmable RISC engines
+  optimised for flexible networking and I/O operations. The communication
+  between GPP and AIOP is achieved via using DPCI devices exposed by MC for
+  GPP <--> AIOP interaction.
+
+  See the :doc:`../rawdevs/dpaa2_cmdif` guide for more details.
+
 * **Added device event monitor framework.**
 
   Added a general device event monitor framework at EAL, for device dynamic management.
@@ -455,6 +466,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_pmd_bond.so.2
      librte_pmd_i40e.so.2
      librte_pmd_ixgbe.so.2
+   + librte_pmd_dpaa2_cmdif.so.1
    + librte_pmd_dpaa2_qdma.so.1
      librte_pmd_ring.so.2
      librte_pmd_softnic.so.1

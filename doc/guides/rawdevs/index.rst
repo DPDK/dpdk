@@ -11,4 +11,5 @@ application through rawdev API.
     :maxdepth: 2
     :numbered:
 
+    dpaa2_cmdif
     dpaa2_qdma
