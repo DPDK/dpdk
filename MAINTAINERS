@@ -851,6 +851,10 @@ M: Nipun Gupta <nipun.gupta@nxp.com>
 F: drivers/raw/dpaa2_qdma/
 F: doc/guides/rawdevs/dpaa2_qdma.rst
 
+DPAA2 CMDIF
+M: Nipun Gupta <nipun.gupta@nxp.com>
+F: drivers/raw/dpaa2_cmdif/
+
 
 Packet processing
 -----------------
