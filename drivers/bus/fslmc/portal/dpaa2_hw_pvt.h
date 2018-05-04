@@ -142,7 +142,8 @@ struct dpaa2_dpci_dev {
 	uint16_t token;
 	rte_atomic16_t in_use;
 	uint32_t dpci_id; /*HW ID for DPCI object */
-	struct dpaa2_queue queue[DPAA2_DPCI_MAX_QUEUES];
+	struct dpaa2_queue rx_queue[DPAA2_DPCI_MAX_QUEUES];
+	struct dpaa2_queue tx_queue[DPAA2_DPCI_MAX_QUEUES];
 };
 
 /*! Global MCP list */

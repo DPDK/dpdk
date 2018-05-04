@@ -87,10 +87,10 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 			const struct rte_event *event = &ev[num_tx + loop];
 
 			if (event->sched_type != RTE_SCHED_TYPE_ATOMIC)
-				fqid = evq_info->dpci->queue[
+				fqid = evq_info->dpci->rx_queue[
 					DPAA2_EVENT_DPCI_PARALLEL_QUEUE].fqid;
 			else
-				fqid = evq_info->dpci->queue[
+				fqid = evq_info->dpci->rx_queue[
 					DPAA2_EVENT_DPCI_ATOMIC_QUEUE].fqid;
 
 			/* Prepare enqueue descriptor */
@@ -733,13 +733,13 @@ dpaa2_eventdev_setup_dpci(struct dpaa2_dpci_dev *dpci_dev,
 	rx_queue_cfg.dest_cfg.dest_id = dpcon_dev->dpcon_id;
 	rx_queue_cfg.dest_cfg.priority = DPAA2_EVENT_DEFAULT_DPCI_PRIO;
 
-	dpci_dev->queue[DPAA2_EVENT_DPCI_PARALLEL_QUEUE].cb =
+	dpci_dev->rx_queue[DPAA2_EVENT_DPCI_PARALLEL_QUEUE].cb =
 		dpaa2_eventdev_process_parallel;
-	dpci_dev->queue[DPAA2_EVENT_DPCI_ATOMIC_QUEUE].cb =
+	dpci_dev->rx_queue[DPAA2_EVENT_DPCI_ATOMIC_QUEUE].cb =
 		dpaa2_eventdev_process_atomic;
 
 	for (i = 0 ; i < DPAA2_EVENT_DPCI_MAX_QUEUES; i++) {
-		rx_queue_cfg.user_ctx = (size_t)(&dpci_dev->queue[i]);
+		rx_queue_cfg.user_ctx = (size_t)(&dpci_dev->rx_queue[i]);
 		ret = dpci_set_rx_queue(&dpci_dev->dpci,
 					CMD_PRI_LOW,
 					dpci_dev->token, i,
