@@ -57,6 +57,7 @@ extern "C" {
  */
 
 #include <sys/types.h>
+#include <rte_compat.h>
 #include <rte_mbuf.h>
 #include <rte_meter.h>
 
@@ -232,6 +233,26 @@ rte_sched_port_config(struct rte_sched_port_params *params);
  */
 void
 rte_sched_port_free(struct rte_sched_port *port);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Hierarchical scheduler pipe profile add
+ *
+ * @param port
+ *   Handle to port scheduler instance
+ * @param params
+ *   Pipe profile parameters
+ * @param pipe_profile_id
+ *   Set to valid profile id when profile is added successfully.
+ * @return
+ *   0 upon success, error code otherwise
+ */
+int __rte_experimental
+rte_sched_port_pipe_profile_add(struct rte_sched_port *port,
+	struct rte_sched_pipe_params *params,
+	uint32_t *pipe_profile_id);
 
 /**
  * Hierarchical scheduler subport configuration

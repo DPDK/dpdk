@@ -29,3 +29,10 @@ DPDK_2.1 {
 	rte_sched_port_pkt_read_color;
 
 } DPDK_2.0;
+
+EXPERIMENTAL {
+	global:
+
+	rte_sched_port_pipe_profile_add;
+
+} DPDK_2.1;
