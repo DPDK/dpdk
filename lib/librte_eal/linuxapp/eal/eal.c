@@ -593,7 +593,8 @@ eal_parse_args(int argc, char **argv)
 			break;
 
 		case OPT_MBUF_POOL_OPS_NAME_NUM:
-			internal_config.user_mbuf_pool_ops_name = optarg;
+			internal_config.user_mbuf_pool_ops_name =
+			    strdup(optarg);
 			break;
 
 		default:
