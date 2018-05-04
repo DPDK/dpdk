@@ -7,3 +7,11 @@ DPDK_17.05 {
 
 	local: *;
 };
+
+DPDK_18.05 {
+	global:
+
+	rte_dpaa2_mbuf_from_buf_addr;
+	rte_dpaa2_mbuf_pool_bpid;
+
+} DPDK_17.05;

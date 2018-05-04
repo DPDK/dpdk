@@ -21,6 +21,7 @@
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
 #include <rte_dev.h>
+#include "rte_dpaa2_mempool.h"
 
 #include <fslmc_logs.h>
 #include <mc/fsl_dpbp.h>
@@ -242,6 +243,35 @@ aligned:
 		} while (ret == -EBUSY);
 		n += DPAA2_MBUF_MAX_ACQ_REL;
 	}
+}
+
+uint16_t
+rte_dpaa2_mbuf_pool_bpid(struct rte_mempool *mp)
+{
+	struct dpaa2_bp_info *bp_info;
+
+	bp_info = mempool_to_bpinfo(mp);
+	if (!(bp_info->bp_list)) {
+		RTE_LOG(ERR, PMD, "DPAA2 buffer pool not configured\n");
+		return -ENOMEM;
+	}
+
+	return bp_info->bpid;
+}
+
+struct rte_mbuf *
+rte_dpaa2_mbuf_from_buf_addr(struct rte_mempool *mp, void *buf_addr)
+{
+	struct dpaa2_bp_info *bp_info;
+
+	bp_info = mempool_to_bpinfo(mp);
+	if (!(bp_info->bp_list)) {
+		RTE_LOG(ERR, PMD, "DPAA2 buffer pool not configured\n");
+		return NULL;
+	}
+
+	return (struct rte_mbuf *)((uint8_t *)buf_addr -
+			bp_info->meta_data_size);
 }
 
 int
