@@ -28,7 +28,33 @@ int dpaa2_cmdif_logtype;
 /* CMDIF driver object */
 static struct rte_vdev_driver dpaa2_cmdif_drv;
 
-static const struct rte_rawdev_ops dpaa2_cmdif_ops;
+/*
+ * This API provides the DPCI device ID in 'attr_value'.
+ * The device ID shall be passed by GPP to the AIOP using CMDIF commands.
+ */
+static int
+dpaa2_cmdif_get_attr(struct rte_rawdev *dev,
+		     const char *attr_name,
+		     uint64_t *attr_value)
+{
+	struct dpaa2_dpci_dev *cidev = dev->dev_private;
+
+	DPAA2_CMDIF_FUNC_TRACE();
+
+	RTE_SET_USED(attr_name);
+
+	if (!attr_value) {
+		DPAA2_CMDIF_ERR("Invalid arguments for getting attributes");
+		return -EINVAL;
+	}
+	*attr_value = cidev->dpci_id;
+
+	return 0;
+}
+
+static const struct rte_rawdev_ops dpaa2_cmdif_ops = {
+	.attr_get = dpaa2_cmdif_get_attr,
+};
 
 static int
 dpaa2_cmdif_create(const char *name,
