@@ -357,6 +357,9 @@ error:
  * Additional mlx4-specific constraints on supported fields:
  *
  * - No support for partial masks.
+ * - Due to HW/FW limitation, flow rule priority is not taken into account
+ *   when matching UDP destination ports, doing is therefore only supported
+ *   at the highest priority level (0).
  *
  * @param[in, out] flow
  *   Flow rule handle to update.
@@ -386,6 +389,11 @@ mlx4_flow_merge_udp(struct rte_flow *flow,
 	    ((uint16_t)(mask->hdr.src_port + 1) > UINT16_C(1) ||
 	     (uint16_t)(mask->hdr.dst_port + 1) > UINT16_C(1))) {
 		msg = "mlx4 does not support matching partial UDP fields";
+		goto error;
+	}
+	if (mask && mask->hdr.dst_port && flow->priority) {
+		msg = "combining UDP destination port matching with a nonzero"
+			" priority level is not supported";
 		goto error;
 	}
 	if (!flow->ibv_attr)
@@ -658,6 +666,7 @@ mlx4_flow_prepare(struct priv *priv,
 fill:
 	overlap = 0;
 	proc = mlx4_flow_proc_item_list;
+	flow->priority = attr->priority;
 	/* Go over pattern. */
 	for (item = pattern; item->type; ++item) {
 		const struct mlx4_flow_proc_item *next = NULL;

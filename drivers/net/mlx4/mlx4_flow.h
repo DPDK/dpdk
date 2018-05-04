@@ -42,6 +42,7 @@ struct rte_flow {
 	uint32_t promisc:1; /**< This rule matches everything. */
 	uint32_t allmulti:1; /**< This rule matches all multicast traffic. */
 	uint32_t drop:1; /**< This rule drops packets. */
+	uint32_t priority; /**< Flow rule priority. */
 	struct mlx4_rss *rss; /**< Rx target. */
 };
 
