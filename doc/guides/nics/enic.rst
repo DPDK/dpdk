@@ -396,14 +396,10 @@ Limitations
 
   - ``rx_good_bytes`` (ibytes) always includes VLAN header (4B) and CRC bytes (4B).
     This behavior applies to 1300 and older series VIC adapters.
-    1400 series VICs do not count CRC bytes, and count VLAN header only when VLAN
-    stripping is disabled.
   - When the NIC drops a packet because the Rx queue has no free buffers,
     ``rx_good_bytes`` still increments by 4B if the packet is not VLAN tagged or
     VLAN stripping is disabled, or by 8B if the packet is VLAN tagged and stripping
-    is enabled.
-    This behavior applies to 1300 and older series VIC adapters. 1400 series VICs
-    do not increment this byte counter when packets are dropped.
+    is enabled. This behavior applies to 1300 and older series VIC adapters.
 
 - **RSS Hashing**
 
@@ -429,7 +425,6 @@ ENIC PMD supports all recent generations of Cisco VIC adapters including:
 
 - VIC 1200 series
 - VIC 1300 series
-- VIC 1400 series
 
 Supported Operating Systems
 ---------------------------
@@ -453,7 +448,7 @@ Supported features
 - VLAN filtering (supported via UCSM/CIMC only)
 - Execution of application by unprivileged system users
 - IPV4, IPV6 and TCP RSS hashing
-- UDP hashing (1400 series and later adapters)
+- UDP RSS hashing (support for upcoming adapters)
 - Scattered Rx
 - MTU update
 - SR-IOV on UCS managed servers connected to Fabric Interconnects
