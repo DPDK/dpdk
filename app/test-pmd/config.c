@@ -1077,7 +1077,8 @@ flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
 		dst.raw = buf;
 		off = RTE_ALIGN_CEIL(sizeof(struct rte_flow_item_raw),
 				     sizeof(*src.raw->pattern));
-		size = off + src.raw->length * sizeof(*src.raw->pattern);
+		size = off + ((const struct rte_flow_item_raw *)item->spec)->
+			length * sizeof(*src.raw->pattern);
 		if (dst.raw) {
 			memcpy(dst.raw, src.raw, sizeof(*src.raw));
 			dst.raw->pattern = memcpy((uint8_t *)dst.raw + off,
