@@ -684,7 +684,8 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 			 * have
 			 */
 			mz = rte_memzone_reserve_aligned(mz_name, 0,
-					mp->socket_id, flags, align);
+					mp->socket_id, flags,
+					RTE_MAX(pg_sz, align));
 		}
 		if (mz == NULL) {
 			ret = -rte_errno;
@@ -709,7 +710,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 				(void *)(uintptr_t)mz);
 		else
 			ret = rte_mempool_populate_virt(mp, mz->addr,
-				mz->len, pg_sz,
+				RTE_ALIGN_FLOOR(mz->len, pg_sz), pg_sz,
 				rte_mempool_memchunk_mz_free,
 				(void *)(uintptr_t)mz);
 		if (ret < 0) {
