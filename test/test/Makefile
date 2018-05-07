@@ -211,6 +211,7 @@ CFLAGS_test_memcpy_perf.o += -fno-var-tracking-assignments
 # designated initializers.
 ifeq ($(shell test $(GCC_VERSION) -le 50 && echo 1), 1)
 CFLAGS_test_eventdev_sw.o += -Wno-missing-field-initializers
+CFLAGS_test_event_timer_adapter.o += -Wno-missing-field-initializers
 endif
 endif
 endif
