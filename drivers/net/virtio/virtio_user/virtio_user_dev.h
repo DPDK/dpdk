@@ -39,6 +39,8 @@ struct virtio_user_dev {
 	char		path[PATH_MAX];
 	struct vring	vrings[VIRTIO_MAX_VIRTQUEUES];
 	struct virtio_user_backend_ops *ops;
+	pthread_mutex_t	mutex;
+	bool		started;
 };
 
 int is_vhost_user_by_type(const char *path);
