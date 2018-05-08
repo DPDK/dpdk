@@ -9,6 +9,9 @@
 #define TAP_MAX_QUEUES 16
 #endif
 
+/* Fixed RSS hash key size in bytes. */
+#define TAP_RSS_HASH_KEY_SIZE 40
+
 /* hashed fields for RSS */
 enum hash_field {
 	HASH_FIELD_IPV4_L3,	/* IPv4 src/dst addr */

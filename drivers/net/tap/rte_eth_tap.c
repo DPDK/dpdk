@@ -35,6 +35,7 @@
 #include <linux/if_ether.h>
 #include <fcntl.h>
 
+#include <tap_rss.h>
 #include <rte_eth_tap.h>
 #include <tap_flow.h>
 #include <tap_netlink.h>
@@ -758,6 +759,13 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->tx_queue_offload_capa = tap_tx_offload_get_queue_capa();
 	dev_info->tx_offload_capa = tap_tx_offload_get_port_capa() |
 				    dev_info->tx_queue_offload_capa;
+	dev_info->hash_key_size = TAP_RSS_HASH_KEY_SIZE;
+	/*
+	 * limitation: TAP suppors all of the following hash
+	 * functions together and not in partial combinations
+	 */
+	dev_info->flow_type_rss_offloads =
+		ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
 }
 
 static int
