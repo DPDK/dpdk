@@ -716,8 +716,9 @@ vhost_memory_changed(struct VhostUserMemory *new,
 }
 
 static int
-vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
+vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
 {
+	struct virtio_net *dev = *pdev;
 	struct VhostUserMemory memory = pmsg->payload.memory;
 	struct rte_vhost_mem_region *reg;
 	void *mmap_addr;
@@ -852,6 +853,25 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 			mmap_size,
 			alignment,
 			mmap_offset);
+	}
+
+	for (i = 0; i < dev->nr_vring; i++) {
+		struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+		if (vq->desc || vq->avail || vq->used) {
+			/*
+			 * If the memory table got updated, the ring addresses
+			 * need to be translated again as virtual addresses have
+			 * changed.
+			 */
+			vring_invalidate(dev, vq);
+
+			dev = translate_ring_addresses(dev, i);
+			if (!dev)
+				return -1;
+
+			*pdev = dev;
+		}
 	}
 
 	dump_guest_pages(dev);
@@ -1566,7 +1586,7 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_SET_MEM_TABLE:
-		ret = vhost_user_set_mem_table(dev, &msg);
+		ret = vhost_user_set_mem_table(&dev, &msg);
 		break;
 
 	case VHOST_USER_SET_LOG_BASE:
