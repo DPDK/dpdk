@@ -826,7 +826,7 @@ static const struct blockcipher_test_case des_cipheronly_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_MB |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MRVL
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM
 	},
 	{
 		.test_descr = "DES-CBC Decryption",
@@ -835,7 +835,7 @@ static const struct blockcipher_test_case des_cipheronly_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_MB |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MRVL
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM
 	},
 
 };
@@ -1079,7 +1079,7 @@ static const struct blockcipher_test_case triple_des_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_MRVL |
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP
 	},
 	{
@@ -1090,7 +1090,7 @@ static const struct blockcipher_test_case triple_des_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_MRVL |
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP
 	},
 	{
@@ -1098,7 +1098,7 @@ static const struct blockcipher_test_case triple_des_chain_test_cases[] = {
 		.test_data = &triple_des192cbc_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MRVL |
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP
 	},
 	{
@@ -1106,7 +1106,7 @@ static const struct blockcipher_test_case triple_des_chain_test_cases[] = {
 		.test_data = &triple_des192cbc_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MRVL |
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP
 	},
 	{
@@ -1232,7 +1232,7 @@ static const struct blockcipher_test_case triple_des_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_MRVL |
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP
 	},
 	{
@@ -1243,7 +1243,7 @@ static const struct blockcipher_test_case triple_des_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_MRVL |
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP
 	},
 	{

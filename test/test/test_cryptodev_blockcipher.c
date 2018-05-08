@@ -69,7 +69,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	int dpaa_sec_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
 	int mrvl_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_MRVL_PMD));
+			RTE_STR(CRYPTODEV_NAME_MVSAM_PMD));
 	int virtio_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 
@@ -576,7 +576,7 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	int qat_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
 	int mrvl_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_MRVL_PMD));
+			RTE_STR(CRYPTODEV_NAME_MVSAM_PMD));
 	int virtio_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 
@@ -642,7 +642,7 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	else if (driver_id == dpaa_sec_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC;
 	else if (driver_id == mrvl_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MRVL;
+		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MVSAM;
 	else if (driver_id == virtio_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO;
 	else

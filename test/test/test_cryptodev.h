@@ -61,7 +61,7 @@
 #define CRYPTODEV_NAME_DPAA_SEC_PMD	crypto_dpaa_sec
 #define CRYPTODEV_NAME_DPAA2_SEC_PMD	crypto_dpaa2_sec
 #define CRYPTODEV_NAME_SCHEDULER_PMD	crypto_scheduler
-#define CRYPTODEV_NAME_MRVL_PMD		crypto_mrvl
+#define CRYPTODEV_NAME_MVSAM_PMD		crypto_mvsam
 #define CRYPTODEV_NAME_CCP_PMD		crypto_ccp
 #define CRYPTODEV_NAME_VIRTIO_PMD	crypto_virtio
 

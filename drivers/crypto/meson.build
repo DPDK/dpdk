@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-drivers = ['dpaa_sec', 'dpaa2_sec', 'mrvl',
+drivers = ['dpaa_sec', 'dpaa2_sec', 'mvsam',
 	'null', 'openssl', 'qat', 'virtio']
 
 std_deps = ['cryptodev'] # cryptodev pulls in all other needed deps

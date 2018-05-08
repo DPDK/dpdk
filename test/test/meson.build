@@ -134,7 +134,7 @@ test_names = [
 	'cryptodev_sw_kasumi_autotest',
 	'cryptodev_sw_zuc_autotest',
 	'cryptodev_sw_armv8_autotest',
-	'cryptodev_sw_mrvl_autotest',
+	'cryptodev_sw_mvsam_autotest',
 	'cryptodev_dpaa2_sec_autotest',
 	'cryptodev_dpaa_sec_autotest',
 	'cycles_autotest',

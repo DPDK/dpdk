@@ -760,9 +760,9 @@ M: Tomasz Duszynski <tdu@semihalf.com>
 M: Dmitri Epshtein <dima@marvell.com>
 M: Natalie Samsonov <nsamsono@marvell.com>
 M: Jianbo Liu <jianbo.liu@arm.com>
-F: drivers/crypto/mrvl/
-F: doc/guides/cryptodevs/mrvl.rst
-F: doc/guides/cryptodevs/features/mrvl.ini
+F: drivers/crypto/mvsam/
+F: doc/guides/cryptodevs/mvsam.rst
+F: doc/guides/cryptodevs/features/mvsam.ini
 
 Null Crypto
 M: Declan Doherty <declan.doherty@intel.com>

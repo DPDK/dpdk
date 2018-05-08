@@ -29,10 +29,10 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-MRVL Crypto Poll Mode Driver
-============================
+MVSAM Crypto Poll Mode Driver
+=============================
 
-The MRVL CRYPTO PMD (**librte_crypto_mrvl_pmd**) provides poll mode crypto driver
+The MVSAM CRYPTO PMD (**librte_crypto_mvsam_pmd**) provides poll mode crypto driver
 support by utilizing MUSDK library, which provides cryptographic operations
 acceleration by using Security Acceleration Engine (EIP197) directly from
 user-space with minimum overhead and high performance.
@@ -40,7 +40,7 @@ user-space with minimum overhead and high performance.
 Features
 --------
 
-MRVL CRYPTO PMD has support for:
+MVSAM CRYPTO PMD has support for:
 
 * Symmetric crypto
 * Sym operation chaining
@@ -73,22 +73,22 @@ Limitations
 Installation
 ------------
 
-MRVL CRYPTO PMD driver compilation is disabled by default due to external dependencies.
+MVSAM CRYPTO PMD driver compilation is disabled by default due to external dependencies.
 Currently there are two driver specific compilation options in
 ``config/common_base`` available:
 
-- ``CONFIG_RTE_LIBRTE_MRVL_CRYPTO`` (default ``n``)
+- ``CONFIG_RTE_LIBRTE_MVSAM_CRYPTO`` (default ``n``)
 
-    Toggle compilation of the librte_pmd_mrvl driver.
+    Toggle compilation of the librte_pmd_mvsam driver.
 
-- ``CONFIG_RTE_LIBRTE_MRVL_CRYPTO_DEBUG`` (default ``n``)
+- ``CONFIG_RTE_LIBRTE_MVSAM_CRYPTO_DEBUG`` (default ``n``)
 
     Toggle display of debugging messages.
 
 For a list of prerequisites please refer to `Prerequisites` section in
 :ref:`MVPP2 Poll Mode Driver <mvpp2_poll_mode_driver>` guide.
 
-MRVL CRYPTO PMD requires MUSDK built with EIP197 support thus following
+MVSAM CRYPTO PMD requires MUSDK built with EIP197 support thus following
 extra option must be passed to the library configuration script:
 
 .. code-block:: console
@@ -101,7 +101,7 @@ to `doc/musdk_get_started.txt`.
 Initialization
 --------------
 
-After successfully building MRVL CRYPTO PMD, the following modules need to be
+After successfully building MVSAM CRYPTO PMD, the following modules need to be
 loaded:
 
 .. code-block:: console
@@ -118,12 +118,12 @@ The following parameters (all optional) are exported by the driver:
 * max_nb_sessions: maximum number of sessions that can be created (2048 by default).
 * socket_id: socket on which to allocate the device resources on.
 
-l2fwd-crypto example application can be used to verify MRVL CRYPTO PMD
+l2fwd-crypto example application can be used to verify MVSAM CRYPTO PMD
 operation:
 
 .. code-block:: console
 
-   ./l2fwd-crypto --vdev=eth_mvpp2,iface=eth0 --vdev=crypto_mrvl -- \
+   ./l2fwd-crypto --vdev=eth_mvpp2,iface=eth0 --vdev=crypto_mvsam -- \
      --cipher_op ENCRYPT --cipher_algo aes-cbc \
      --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f  \
      --auth_op GENERATE --auth_algo sha1-hmac \

@@ -9,7 +9,7 @@
 
 #include "rte_mrvl_compat.h"
 
-#define CRYPTODEV_NAME_MRVL_PMD crypto_mrvl
+#define CRYPTODEV_NAME_MRVL_PMD crypto_mvsam
 /**< Marvell PMD device name */
 
 #define MRVL_CRYPTO_LOG_ERR(fmt, args...) \
