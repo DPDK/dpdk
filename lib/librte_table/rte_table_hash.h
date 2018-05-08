@@ -99,9 +99,6 @@ extern struct rte_table_ops rte_table_hash_key8_lru_ops;
 extern struct rte_table_ops rte_table_hash_key16_lru_ops;
 extern struct rte_table_ops rte_table_hash_key32_lru_ops;
 
-/** Cuckoo hash table operations */
-extern struct rte_table_ops rte_table_hash_cuckoo_ops;
-
 #ifdef __cplusplus
 }
 #endif

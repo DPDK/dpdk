@@ -45,6 +45,7 @@ ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_acl.h
 endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_hash.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_hash_cuckoo.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_lru.h
 ifeq ($(CONFIG_RTE_ARCH_X86),y)
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_lru_x86.h

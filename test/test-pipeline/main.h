@@ -107,6 +107,10 @@ uint64_t test_hash(void *key,
 	uint32_t key_size,
 	uint64_t seed);
 
+uint32_t test_hash_cuckoo(const void *key,
+	uint32_t key_size,
+	uint32_t seed);
+
 void app_main_loop_worker(void);
 void app_main_loop_worker_pipeline_stub(void);
 void app_main_loop_worker_pipeline_hash(void);

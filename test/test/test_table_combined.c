@@ -778,14 +778,14 @@ test_table_hash_cuckoo_combined(void)
 	int status, i;
 
 	/* Traffic flow */
-	struct rte_table_hash_params cuckoo_params = {
+	struct rte_table_hash_cuckoo_params cuckoo_params = {
 		.name = "TABLE",
 		.key_size = 32,
 		.key_offset = APP_METADATA_OFFSET(32),
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = pipeline_test_hash,
+		.f_hash = pipeline_test_hash_cuckoo,
 		.seed = 0,
 	};
 

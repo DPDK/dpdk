@@ -6,6 +6,7 @@
 #include <rte_table_lpm.h>
 #include <rte_table_lpm_ipv6.h>
 #include <rte_table_hash.h>
+#include <rte_table_hash_cuckoo.h>
 #include <rte_table_array.h>
 #include <rte_pipeline.h>
 
@@ -105,6 +106,11 @@ uint64_t pipeline_test_hash(
 	__attribute__((unused)) void *key_mask,
 	__attribute__((unused)) uint32_t key_size,
 	__attribute__((unused)) uint64_t seed);
+
+uint32_t pipeline_test_hash_cuckoo(
+	const void *key,
+	__attribute__((unused)) uint32_t key_size,
+	__attribute__((unused)) uint32_t seed);
 
 /* Extern variables */
 extern struct rte_pipeline *p;

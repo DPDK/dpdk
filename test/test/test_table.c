@@ -54,6 +54,17 @@ uint64_t pipeline_test_hash(void *key,
 	return signature;
 }
 
+uint32_t pipeline_test_hash_cuckoo(const void *key,
+		__attribute__((unused)) uint32_t key_size,
+		__attribute__((unused)) uint32_t seed)
+{
+	const uint32_t *k32 = key;
+	uint32_t ip_dst = rte_be_to_cpu_32(k32[0]);
+	uint32_t signature = ip_dst;
+
+	return signature;
+}
+
 static void
 app_free_resources(void) {
 	int i;

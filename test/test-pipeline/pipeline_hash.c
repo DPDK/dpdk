@@ -15,6 +15,7 @@
 #include <rte_port_ring.h>
 #include <rte_table_hash.h>
 #include <rte_hash.h>
+#include <rte_table_hash_cuckoo.h>
 #include <rte_pipeline.h>
 
 #include "main.h"
@@ -148,6 +149,17 @@ app_main_loop_worker_pipeline_hash(void) {
 		.n_keys = 1 << 24,
 		.n_buckets = 1 << 22,
 		.f_hash = test_hash,
+		.seed = 0,
+	};
+
+	struct rte_table_hash_cuckoo_params table_hash_cuckoo_params = {
+		.name = "TABLE",
+		.key_size = key_size,
+		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
+		.n_keys = 1 << 24,
+		.n_buckets = 1 << 22,
+		.f_hash = test_hash_cuckoo,
 		.seed = 0,
 	};
 
@@ -298,7 +310,7 @@ app_main_loop_worker_pipeline_hash(void) {
 	{
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_cuckoo_ops,
-			.arg_create = &table_hash_params,
+			.arg_create = &table_hash_cuckoo_params,
 			.f_action_hit = NULL,
 			.f_action_miss = NULL,
 			.arg_ah = NULL,
@@ -375,6 +387,18 @@ uint64_t test_hash(
 	uint32_t *k32 = key;
 	uint32_t ip_dst = rte_be_to_cpu_32(k32[0]);
 	uint64_t signature = (ip_dst >> 2) | ((ip_dst & 0x3) << 30);
+
+	return signature;
+}
+
+uint32_t test_hash_cuckoo(
+	const void *key,
+	__attribute__((unused)) uint32_t key_size,
+	__attribute__((unused)) uint32_t seed)
+{
+	const uint32_t *k32 = key;
+	uint32_t ip_dst = rte_be_to_cpu_32(k32[0]);
+	uint32_t signature = (ip_dst >> 2) | ((ip_dst & 0x3) << 30);
 
 	return signature;
 }

@@ -903,14 +903,14 @@ test_table_hash_cuckoo(void)
 	uint32_t entry_size = 1;
 
 	/* Initialize params and create tables */
-	struct rte_table_hash_params cuckoo_params = {
+	struct rte_table_hash_cuckoo_params cuckoo_params = {
 		.name = "TABLE",
 		.key_size = 32,
 		.key_offset = APP_METADATA_OFFSET(32),
 		.key_mask = NULL,
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
-		.f_hash = (rte_table_hash_op_hash)pipeline_test_hash,
+		.f_hash = pipeline_test_hash_cuckoo,
 		.seed = 0, 
 	};
 
@@ -941,7 +941,7 @@ test_table_hash_cuckoo(void)
 	if (table != NULL)
 		return -4;
 
-	cuckoo_params.f_hash = pipeline_test_hash;
+	cuckoo_params.f_hash = pipeline_test_hash_cuckoo;
 	cuckoo_params.name = NULL;
 
 	table = rte_table_hash_cuckoo_ops.f_create(&cuckoo_params,

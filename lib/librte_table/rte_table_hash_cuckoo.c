@@ -10,8 +10,7 @@
 #include <rte_malloc.h>
 #include <rte_log.h>
 
-#include <rte_hash.h>
-#include "rte_table_hash.h"
+#include "rte_table_hash_cuckoo.h"
 
 #ifdef RTE_TABLE_STATS_COLLECT
 
@@ -35,7 +34,7 @@ struct rte_table_hash {
 	uint32_t key_size;
 	uint32_t entry_size;
 	uint32_t n_keys;
-	rte_table_hash_op_hash f_hash;
+	rte_hash_function f_hash;
 	uint32_t seed;
 	uint32_t key_offset;
 
@@ -47,7 +46,7 @@ struct rte_table_hash {
 };
 
 static int
-check_params_create_hash_cuckoo(struct rte_table_hash_params *params)
+check_params_create_hash_cuckoo(struct rte_table_hash_cuckoo_params *params)
 {
 	if (params == NULL) {
 		RTE_LOG(ERR, TABLE, "NULL Input Parameters.\n");
@@ -82,7 +81,7 @@ rte_table_hash_cuckoo_create(void *params,
 			int socket_id,
 			uint32_t entry_size)
 {
-	struct rte_table_hash_params *p = params;
+	struct rte_table_hash_cuckoo_params *p = params;
 	struct rte_hash *h_table;
 	struct rte_table_hash *t;
 	uint32_t total_size;
@@ -107,7 +106,7 @@ rte_table_hash_cuckoo_create(void *params,
 	struct rte_hash_parameters hash_cuckoo_params = {
 		.entries = p->n_keys,
 		.key_len = p->key_size,
-		.hash_func = (rte_hash_function)(p->f_hash),
+		.hash_func = p->f_hash,
 		.hash_func_init_val = p->seed,
 		.socket_id = socket_id,
 		.name = p->name
