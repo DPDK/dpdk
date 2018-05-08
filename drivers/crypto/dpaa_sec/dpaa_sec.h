@@ -136,7 +136,7 @@ struct dpaa_sec_qp {
 	int tx_errs;
 };
 
-#define RTE_DPAA_MAX_NB_SEC_QPS 1
+#define RTE_DPAA_MAX_NB_SEC_QPS 8
 #define RTE_DPAA_MAX_RX_QUEUE RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS
 #define DPAA_MAX_DEQUEUE_NUM_FRAMES 63
 
