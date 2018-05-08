@@ -143,6 +143,13 @@ below.
     following limitation: VLAN filtering is not supported with this mode.
     This is the recommended mode in case VLAN filter is not needed.
 
+Limitations
+-----------
+
+- CRC stripping is supported by default and always reported as "true".
+  The ability to enable/disable CRC stripping requires OFED version
+  4.3-1.5.0.0 and above  or rdma-core version v18 and above.
+
 Prerequisites
 -------------
 
