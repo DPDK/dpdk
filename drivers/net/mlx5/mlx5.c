@@ -1063,6 +1063,8 @@ port_error:
 			claim_zero(mlx5_glue->dealloc_pd(pd));
 		if (ctx)
 			claim_zero(mlx5_glue->close_device(ctx));
+		if (eth_dev && rte_eal_process_type() == RTE_PROC_PRIMARY)
+			rte_eth_dev_release_port(eth_dev);
 		break;
 	}
 	/*
