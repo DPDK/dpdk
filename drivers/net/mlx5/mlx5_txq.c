@@ -725,18 +725,6 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 					  inline_max_packet_sz) +
 				  (RTE_CACHE_LINE_SIZE - 1)) /
 				 RTE_CACHE_LINE_SIZE) * RTE_CACHE_LINE_SIZE;
-		} else if (tso) {
-			int inline_diff = txq_ctrl->txq.max_inline -
-					  max_tso_inline;
-
-			/*
-			 * Adjust inline value as Verbs aggregates
-			 * tso_inline and txq_inline fields.
-			 */
-			txq_ctrl->max_inline_data = inline_diff > 0 ?
-					       inline_diff *
-					       RTE_CACHE_LINE_SIZE :
-					       0;
 		} else {
 			txq_ctrl->max_inline_data =
 				txq_ctrl->txq.max_inline * RTE_CACHE_LINE_SIZE;
