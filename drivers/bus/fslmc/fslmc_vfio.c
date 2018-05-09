@@ -665,9 +665,6 @@ fslmc_vfio_process_group(void)
 	}
 
 	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
-		if (!dev)
-			break;
-
 		switch (dev->dev_type) {
 		case DPAA2_ETH:
 		case DPAA2_CRYPTO:
