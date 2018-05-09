@@ -30,6 +30,21 @@ struct isal_comp_qp {
 	uint16_t num_free_elements;
 } __rte_cache_aligned;
 
+/** ISA-L private xform structure */
+struct isal_priv_xform {
+	enum rte_comp_xform_type type;
+	union {
+		struct rte_comp_compress_xform compress;
+		struct rte_comp_decompress_xform decompress;
+	};
+	uint32_t level_buffer_size;
+} __rte_cache_aligned;
+
+/** Set and validate NULL comp private xform parameters */
+extern int
+isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
+			const struct rte_comp_xform *xform);
+
 /** device specific operations function pointer structure */
 extern struct rte_compressdev_ops *isal_compress_pmd_ops;
 
