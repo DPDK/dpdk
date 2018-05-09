@@ -583,7 +583,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 			.addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
 								  uintptr_t)),
 			.byte_count = rte_cpu_to_be_32(buf->data_len),
-			.lkey = rte_cpu_to_be_32(rxq->mr->lkey),
+			.lkey = UINT32_MAX,
 		};
 		(*elts)[i] = buf;
 	}
@@ -855,13 +855,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      1 << rxq->sges_n);
 		goto error;
 	}
-	/* Use the entire Rx mempool as the memory region. */
-	rxq->mr = mlx4_mr_get(priv, mp);
-	if (!rxq->mr) {
-		ERROR("%p: MR creation failure: %s",
-		      (void *)dev, strerror(rte_errno));
-		goto error;
-	}
 	if (dev->data->dev_conf.intr_conf.rxq) {
 		rxq->channel = mlx4_glue->create_comp_channel(priv->ctx);
 		if (rxq->channel == NULL) {
@@ -919,7 +912,5 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	assert(!rxq->rq_db);
 	if (rxq->channel)
 		claim_zero(mlx4_glue->destroy_comp_channel(rxq->channel));
-	if (rxq->mr)
-		mlx4_mr_put(rxq->mr);
 	rte_free(rxq);
 }

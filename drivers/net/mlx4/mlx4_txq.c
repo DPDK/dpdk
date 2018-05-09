@@ -63,64 +63,6 @@ mlx4_txq_free_elts(struct txq *txq)
 	txq->elts_tail = txq->elts_head;
 }
 
-struct txq_mp2mr_mbuf_check_data {
-	int ret;
-};
-
-/**
- * Callback function for rte_mempool_obj_iter() to check whether a given
- * mempool object looks like a mbuf.
- *
- * @param[in] mp
- *   The mempool pointer
- * @param[in] arg
- *   Context data (struct mlx4_txq_mp2mr_mbuf_check_data). Contains the
- *   return value.
- * @param[in] obj
- *   Object address.
- * @param index
- *   Object index, unused.
- */
-static void
-mlx4_txq_mp2mr_mbuf_check(struct rte_mempool *mp, void *arg, void *obj,
-			  uint32_t index)
-{
-	struct txq_mp2mr_mbuf_check_data *data = arg;
-	struct rte_mbuf *buf = obj;
-
-	(void)index;
-	/*
-	 * Check whether mbuf structure fits element size and whether mempool
-	 * pointer is valid.
-	 */
-	if (sizeof(*buf) > mp->elt_size || buf->pool != mp)
-		data->ret = -1;
-}
-
-/**
- * Iterator function for rte_mempool_walk() to register existing mempools and
- * fill the MP to MR cache of a Tx queue.
- *
- * @param[in] mp
- *   Memory Pool to register.
- * @param *arg
- *   Pointer to Tx queue structure.
- */
-static void
-mlx4_txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
-{
-	struct txq *txq = arg;
-	struct txq_mp2mr_mbuf_check_data data = {
-		.ret = 0,
-	};
-
-	/* Register mempool only if the first element looks like a mbuf. */
-	if (rte_mempool_obj_iter(mp, mlx4_txq_mp2mr_mbuf_check, &data) == 0 ||
-			data.ret == -1)
-		return;
-	mlx4_txq_mp2mr(txq, mp);
-}
-
 /**
  * Retrieves information needed in order to directly access the Tx queue.
  *
@@ -374,8 +316,6 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	/* Save first wqe pointer in the first element. */
 	(&(*txq->elts)[0])->wqe =
 		(volatile struct mlx4_wqe_ctrl_seg *)txq->msq.buf;
-	/* Pre-register known mempools. */
-	rte_mempool_walk(mlx4_txq_mp2mr_iter, txq);
 	DEBUG("%p: adding Tx queue %p to list", (void *)dev, (void *)txq);
 	dev->data->tx_queues[idx] = txq;
 	return 0;
@@ -416,11 +356,5 @@ mlx4_tx_queue_release(void *dpdk_txq)
 		claim_zero(mlx4_glue->destroy_qp(txq->qp));
 	if (txq->cq)
 		claim_zero(mlx4_glue->destroy_cq(txq->cq));
-	for (i = 0; i != RTE_DIM(txq->mp2mr); ++i) {
-		if (!txq->mp2mr[i].mp)
-			break;
-		assert(txq->mp2mr[i].mr);
-		mlx4_mr_put(txq->mp2mr[i].mr);
-	}
 	rte_free(txq);
 }

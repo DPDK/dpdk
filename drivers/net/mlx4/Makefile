@@ -69,10 +69,6 @@ else
 CFLAGS += -DNDEBUG -UPEDANTIC
 endif
 
-ifdef CONFIG_RTE_LIBRTE_MLX4_TX_MP_CACHE
-CFLAGS += -DMLX4_PMD_TX_MP_CACHE=$(CONFIG_RTE_LIBRTE_MLX4_TX_MP_CACHE)
-endif
-
 include $(RTE_SDK)/mk/rte.lib.mk
 
 # Generate and clean-up mlx4_autoconf.h.
