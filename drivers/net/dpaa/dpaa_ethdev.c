@@ -74,12 +74,13 @@ static uint64_t dev_tx_offloads_nodis =
 
 /* Keep track of whether QMAN and BMAN have been globally initialized */
 static int is_global_init;
-/* At present we only allow up to 4 push mode queues - as each of this queue
- * need dedicated portal and we are short of portals.
+/* At present we only allow up to 4 push mode queues as default - as each of
+ * this queue need dedicated portal and we are short of portals.
  */
-#define DPAA_MAX_PUSH_MODE_QUEUE       4
+#define DPAA_MAX_PUSH_MODE_QUEUE       8
+#define DPAA_DEFAULT_PUSH_MODE_QUEUE   4
 
-static int dpaa_push_mode_max_queue = DPAA_MAX_PUSH_MODE_QUEUE;
+static int dpaa_push_mode_max_queue = DPAA_DEFAULT_PUSH_MODE_QUEUE;
 static int dpaa_push_queue_idx; /* Queue index which are in push mode*/
 
 
