@@ -88,9 +88,6 @@ rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	RTE_FUNC_PTR_OR_ERR_RET(dev_info, -EINVAL);
 
-	if (dev_info == NULL)
-		return -EINVAL;
-
 	rawdev = &rte_rawdevs[dev_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*rawdev->dev_ops->dev_info_get, -ENOTSUP);
