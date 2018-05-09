@@ -144,6 +144,8 @@ op_decoder_flag_strtoul(char *token, uint32_t *op_flag_value)
 		*op_flag_value = RTE_BBDEV_TURBO_MAP_DEC;
 	else if (!strcmp(token, "RTE_BBDEV_TURBO_DEC_SCATTER_GATHER"))
 		*op_flag_value = RTE_BBDEV_TURBO_DEC_SCATTER_GATHER;
+	else if (!strcmp(token, "RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP"))
+		*op_flag_value = RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP;
 	else {
 		printf("The given value is not a turbo decoder flag\n");
 		return -1;

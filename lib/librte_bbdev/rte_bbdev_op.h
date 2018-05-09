@@ -102,7 +102,11 @@ enum rte_bbdev_op_td_flag_bitmasks {
 	 */
 	RTE_BBDEV_TURBO_MAP_DEC = (1ULL << 14),
 	/**< Set if a device supports scatter-gather functionality */
-	RTE_BBDEV_TURBO_DEC_SCATTER_GATHER = (1ULL << 15)
+	RTE_BBDEV_TURBO_DEC_SCATTER_GATHER = (1ULL << 15),
+	/**< Set to keep CRC24B bits appended while decoding. Only usable when
+	 * decoding Transport Blocks (code_block_mode = 0).
+	 */
+	RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP = (1ULL << 16)
 };
 
 /** Flags for turbo encoder operation and capability structure */

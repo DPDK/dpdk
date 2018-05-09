@@ -138,6 +138,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 					RTE_BBDEV_TURBO_POS_LLR_1_BIT_IN |
 					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
 					RTE_BBDEV_TURBO_CRC_TYPE_24B |
+					RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
 					RTE_BBDEV_TURBO_EARLY_TERMINATION,
 				.max_llr_modulus = 16,
 				.num_buffers_src = RTE_BBDEV_MAX_CODE_BLOCKS,
@@ -862,7 +863,7 @@ static inline void
 process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		uint8_t c, uint16_t k, uint16_t kw, struct rte_mbuf *m_in,
 		struct rte_mbuf *m_out, uint16_t in_offset, uint16_t out_offset,
-		bool check_crc_24b, uint16_t total_left)
+		bool check_crc_24b, uint16_t crc24_overlap, uint16_t total_left)
 {
 	int ret;
 	int32_t k_idx;
@@ -920,7 +921,7 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	adapter_resp.pharqout = q->adapter_output;
 	bblib_turbo_adapter_ul(&adapter_req, &adapter_resp);
 
-	out = (uint8_t *)rte_pktmbuf_append(m_out, (k >> 3));
+	out = (uint8_t *)rte_pktmbuf_append(m_out, ((k - crc24_overlap) >> 3));
 	if (out == NULL) {
 		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 		rte_bbdev_log(ERR, "Too little space in output mbuf");
@@ -960,6 +961,7 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op)
 {
 	uint8_t c, r = 0;
 	uint16_t kw, k = 0;
+	uint16_t crc24_overlap = 0;
 	struct rte_bbdev_op_turbo_dec *dec = &op->turbo_dec;
 	struct rte_mbuf *m_in = dec->input.data;
 	struct rte_mbuf *m_out = dec->hard_output.data;
@@ -983,6 +985,10 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op)
 		c = 1;
 	}
 
+	if ((c > 1) && !check_bit(dec->op_flags,
+		RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP))
+		crc24_overlap = 24;
+
 	while (total_left > 0) {
 		if (dec->code_block_mode == 0)
 			k = (r < dec->tb_params.c_neg) ?
@@ -1002,17 +1008,18 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op)
 
 		process_dec_cb(q, op, c, k, kw, m_in, m_out, in_offset,
 				out_offset, check_bit(dec->op_flags,
-				RTE_BBDEV_TURBO_CRC_TYPE_24B), total_left);
-		/* As a result of decoding we get Code Block with included
-		 * decoded CRC24 at the end of Code Block. Type of CRC24 is
-		 * specified by flag.
+				RTE_BBDEV_TURBO_CRC_TYPE_24B), crc24_overlap,
+				total_left);
+		/* To keep CRC24 attached to end of Code block, use
+		 * RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP flag as it
+		 * removed by default once verified.
 		 */
 
 		/* Update total_left */
 		total_left -= kw;
 		/* Update offsets for next CBs (if exist) */
 		in_offset += kw;
-		out_offset += (k >> 3);
+		out_offset += ((k - crc24_overlap) >> 3);
 		r++;
 	}
 	if (total_left != 0) {
