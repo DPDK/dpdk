@@ -18,6 +18,18 @@ struct isal_comp_private {
 	struct rte_mempool *priv_xform_mp;
 };
 
+/** ISA-L queue pair */
+struct isal_comp_qp {
+	/* Queue Pair Identifier */
+	uint16_t id;
+	/* Unique Queue Pair Name */
+	char name[RTE_COMPRESSDEV_NAME_MAX_LEN];
+	/* Queue pair statistics */
+	struct rte_compressdev_stats qp_stats;
+	/* Number of free elements on ring */
+	uint16_t num_free_elements;
+} __rte_cache_aligned;
+
 /** device specific operations function pointer structure */
 extern struct rte_compressdev_ops *isal_compress_pmd_ops;
 
