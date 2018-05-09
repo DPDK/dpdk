@@ -25,6 +25,7 @@ EXPORT_MAP := rte_pmd_isal_version.map
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ISAL) += isal_compress_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_ISAL) += isal_compress_pmd_ops.c
 
 # export include files
 include $(RTE_SDK)/mk/rte.lib.mk
