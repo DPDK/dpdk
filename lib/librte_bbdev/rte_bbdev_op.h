@@ -379,6 +379,10 @@ struct rte_bbdev_op_turbo_enc {
 struct rte_bbdev_op_cap_turbo_dec {
 	/**< Flags from rte_bbdev_op_td_flag_bitmasks */
 	uint32_t capability_flags;
+	/** Maximal LLR absolute value. Acceptable LLR values lie in range
+	 * [-max_llr_modulus, max_llr_modulus].
+	 */
+	int8_t max_llr_modulus;
 	uint8_t num_buffers_src;  /**< Num input code block buffers */
 	/**< Num hard output code block buffers */
 	uint8_t num_buffers_hard_out;

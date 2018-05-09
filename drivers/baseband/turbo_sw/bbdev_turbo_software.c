@@ -135,6 +135,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
 					RTE_BBDEV_TURBO_CRC_TYPE_24B |
 					RTE_BBDEV_TURBO_EARLY_TERMINATION,
+				.max_llr_modulus = 16,
 				.num_buffers_src = RTE_BBDEV_MAX_CODE_BLOCKS,
 				.num_buffers_hard_out =
 						RTE_BBDEV_MAX_CODE_BLOCKS,
@@ -578,8 +579,16 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 
 	/* Rate-matching */
 	if (enc->op_flags & RTE_BBDEV_TURBO_RATE_MATCH) {
+		uint8_t mask_id;
+		/* Integer round up division by 8 */
+		uint16_t out_len = (e + 7) >> 3;
+		/* The mask array is indexed using E%8. E is an even number so
+		 * there are only 4 possible values.
+		 */
+		const uint8_t mask_out[] = {0xFF, 0xC0, 0xF0, 0xFC};
+
 		/* get output data starting address */
-		rm_out = (uint8_t *)rte_pktmbuf_append(m_out, (e >> 3));
+		rm_out = (uint8_t *)rte_pktmbuf_append(m_out, out_len);
 		if (rm_out == NULL) {
 			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 			rte_bbdev_log(ERR,
@@ -619,7 +628,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		rm_req.tin1 = out1;
 		rm_req.tin2 = out2;
 		rm_resp.output = rm_out;
-		rm_resp.OutputLen = (e >> 3);
+		rm_resp.OutputLen = out_len;
 		if (enc->op_flags & RTE_BBDEV_TURBO_RV_INDEX_BYPASS)
 			rm_req.bypass_rvidx = 1;
 		else
@@ -630,6 +639,13 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 			rte_bbdev_log(ERR, "Rate matching failed");
 			return;
 		}
+
+		/* SW fills an entire last byte even if E%8 != 0. Clear the
+		 * superfluous data bits for consistency with HW device.
+		 */
+		mask_id = (e & 7) >> 1;
+		rm_out[out_len - 1] &= mask_out[mask_id];
+
 		enc->output.length += rm_resp.OutputLen;
 	} else {
 		/* Rate matching is bypassed */
@@ -806,7 +822,7 @@ remove_nulls_from_circular_buf(const uint8_t *in, uint8_t *out, uint16_t k,
 	}
 
 	/* Last interlaced row is different - its last byte is the only padding
-	 * byte. We can have from 2 up to 26 padding bytes (Nd) per sub-block.
+	 * byte. We can have from 4 up to 28 padding bytes (Nd) per sub-block.
 	 * After interlacing the 1st and 2nd parity sub-blocks we can have 0, 1
 	 * or 2 padding bytes each time we make a step of 2 * R_SUBBLOCK bytes
 	 * (moving to another column). 2nd parity sub-block uses the same
@@ -817,10 +833,10 @@ remove_nulls_from_circular_buf(const uint8_t *in, uint8_t *out, uint16_t k,
 	 * 32nd (31+1) byte, then 64th etc. (step is C_SUBBLOCK == 32) and the
 	 * last byte will be the first byte from the sub-block:
 	 * (32 + 32 * (R_SUBBLOCK-1)) % Kw == Kw % Kw == 0. Nd can't  be smaller
-	 * than 2 so we know that bytes with ids 0 and 1 must be the padding
-	 * bytes. The bytes from the 1st parity sub-block are the bytes from the
-	 * 31st column - Nd can't be greater than 26 so we are sure that there
-	 * are no padding bytes in 31st column.
+	 * than 4 so we know that bytes with ids 0, 1, 2 and 3 must be the
+	 * padding bytes. The bytes from the 1st parity sub-block are the bytes
+	 * from the 31st column - Nd can't be greater than 28 so we are sure
+	 * that there are no padding bytes in 31st column.
 	 */
 	rte_memcpy(&out[out_idx], &in[in_idx], 2 * r_subblock - 1);
 }
@@ -835,7 +851,7 @@ move_padding_bytes(const uint8_t *in, uint8_t *out, uint16_t k,
 
 	rte_memcpy(&out[nd], in, d);
 	rte_memcpy(&out[nd + kpi + 64], &in[kpi], d);
-	rte_memcpy(&out[nd + 2 * (kpi + 64)], &in[2 * kpi], d);
+	rte_memcpy(&out[(nd - 1) + 2 * (kpi + 64)], &in[2 * kpi], d);
 }
 
 static inline void

@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <math.h>
 
 #include <rte_eal.h>
 #include <rte_common.h>
@@ -609,10 +610,32 @@ allocate_buffers_on_socket(struct rte_bbdev_op_data **buffers, const int len,
 	return (*buffers == NULL) ? TEST_FAILED : TEST_SUCCESS;
 }
 
+static void
+limit_input_llr_val_range(struct rte_bbdev_op_data *input_ops,
+		uint16_t n, int8_t max_llr_modulus)
+{
+	uint16_t i, byte_idx;
+
+	for (i = 0; i < n; ++i) {
+		struct rte_mbuf *m = input_ops[i].data;
+		while (m != NULL) {
+			int8_t *llr = rte_pktmbuf_mtod_offset(m, int8_t *,
+					input_ops[i].offset);
+			for (byte_idx = 0; byte_idx < input_ops[i].length;
+					++byte_idx)
+				llr[byte_idx] = round((double)max_llr_modulus *
+						llr[byte_idx] / INT8_MAX);
+
+			m = m->next;
+		}
+	}
+}
+
 static int
 fill_queue_buffers(struct test_op_params *op_params,
 		struct rte_mempool *in_mp, struct rte_mempool *hard_out_mp,
 		struct rte_mempool *soft_out_mp, uint16_t queue_id,
+		const struct rte_bbdev_op_cap *capabilities,
 		uint16_t min_alignment, const int socket_id)
 {
 	int ret;
@@ -648,6 +671,10 @@ fill_queue_buffers(struct test_op_params *op_params,
 		TEST_ASSERT_SUCCESS(ret,
 				"Couldn't init rte_bbdev_op_data structs");
 	}
+
+	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
+		limit_input_llr_val_range(*queue_ops[DATA_INPUT], n,
+			capabilities->cap.turbo_dec.max_llr_modulus);
 
 	return 0;
 }
@@ -995,6 +1022,7 @@ run_test_case_on_device(test_case_function *test_case_func, uint8_t dev_id,
 	struct active_device *ad;
 	unsigned int burst_sz = get_burst_sz();
 	enum rte_bbdev_op_type op_type = test_vector.op_type;
+	const struct rte_bbdev_op_cap *capabilities = NULL;
 
 	ad = &active_devs[dev_id];
 
@@ -1027,9 +1055,20 @@ run_test_case_on_device(test_case_function *test_case_func, uint8_t dev_id,
 		goto fail;
 	}
 
-	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
+	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC) {
+		/* Find Decoder capabilities */
+		const struct rte_bbdev_op_cap *cap = info.drv.capabilities;
+		while (cap->type != RTE_BBDEV_OP_NONE) {
+			if (cap->type == RTE_BBDEV_OP_TURBO_DEC) {
+				capabilities = cap;
+				break;
+			}
+		}
+		TEST_ASSERT_NOT_NULL(capabilities,
+				"Couldn't find Decoder capabilities");
+
 		create_reference_dec_op(op_params->ref_dec_op);
-	else if (test_vector.op_type == RTE_BBDEV_OP_TURBO_ENC)
+	} else if (test_vector.op_type == RTE_BBDEV_OP_TURBO_ENC)
 		create_reference_enc_op(op_params->ref_enc_op);
 
 	for (i = 0; i < ad->nb_queues; ++i) {
@@ -1038,6 +1077,7 @@ run_test_case_on_device(test_case_function *test_case_func, uint8_t dev_id,
 				ad->hard_out_mbuf_pool,
 				ad->soft_out_mbuf_pool,
 				ad->queue_ids[i],
+				capabilities,
 				info.drv.min_alignment,
 				socket_id);
 		if (f_ret != TEST_SUCCESS) {

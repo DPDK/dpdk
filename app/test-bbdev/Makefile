@@ -20,4 +20,6 @@ SRCS-$(CONFIG_RTE_TEST_BBDEV) += test_bbdev.c
 SRCS-$(CONFIG_RTE_TEST_BBDEV) += test_bbdev_perf.c
 SRCS-$(CONFIG_RTE_TEST_BBDEV) += test_bbdev_vector.c
 
+LDLIBS += -lm
+
 include $(RTE_SDK)/mk/rte.app.mk

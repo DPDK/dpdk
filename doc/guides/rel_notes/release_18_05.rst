@@ -394,6 +394,12 @@ ABI Changes
   sanity fix in the VLAN pattern item (``struct rte_flow_item_vlan``) and
   new transfer attribute (``struct rte_flow_attr``).
 
+**New parameter added to rte_bbdev_op_cap_turbo_dec.**
+
+  A new parameter ``max_llr_modulus`` has been added to
+  ``rte_bbdev_op_cap_turbo_dec`` structure to specify maximal LLR (likelihood
+  ratio) absolute value.
+
 
 Removed Items
 -------------

@@ -151,6 +151,13 @@ It runs all tests with following vectors:
 
 - ``bbdev_vector_te_default.data``
 
+- ``turbo_enc_c1_k40_r0_e1190_rm.data``
+
+- ``turbo_enc_c1_k40_r0_e1194_rm.data``
+
+- ``turbo_enc_c1_k40_r0_e1196_rm.data``
+
+- ``turbo_enc_c1_k40_r0_e272_rm.data``
 
 .. code-block:: console
 
