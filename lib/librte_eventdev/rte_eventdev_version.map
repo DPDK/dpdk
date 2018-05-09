@@ -97,4 +97,6 @@ EXPERIMENTAL {
 	rte_event_timer_arm_burst;
 	rte_event_timer_arm_tmo_tick_burst;
 	rte_event_timer_cancel_burst;
+	rte_event_crypto_adapter_caps_get;
+
 } DPDK_18.05;

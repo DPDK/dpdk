@@ -480,6 +480,17 @@ sw_timer_adapter_caps_get(const struct rte_eventdev *dev,
 	return 0;
 }
 
+static int
+sw_crypto_adapter_caps_get(const struct rte_eventdev *dev,
+			   const struct rte_cryptodev *cdev,
+			   uint32_t *caps)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(cdev);
+	*caps = RTE_EVENT_CRYPTO_ADAPTER_SW_CAP;
+	return 0;
+}
+
 static void
 sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info)
 {
@@ -808,6 +819,8 @@ sw_probe(struct rte_vdev_device *vdev)
 			.eth_rx_adapter_caps_get = sw_eth_rx_adapter_caps_get,
 
 			.timer_adapter_caps_get = sw_timer_adapter_caps_get,
+
+			.crypto_adapter_caps_get = sw_crypto_adapter_caps_get,
 
 			.xstats_get = sw_xstats_get,
 			.xstats_get_names = sw_xstats_get_names,

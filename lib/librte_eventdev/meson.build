@@ -15,4 +15,4 @@ headers = files('rte_eventdev.h',
 		'rte_event_eth_rx_adapter.h',
 		'rte_event_timer_adapter.h',
 		'rte_event_timer_adapter_pmd.h')
-deps += ['ring', 'ethdev', 'hash', 'mempool', 'timer']
+deps += ['ring', 'ethdev', 'hash', 'mempool', 'mbuf', 'timer', 'cryptodev']

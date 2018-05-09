@@ -215,7 +215,6 @@ extern "C" {
 #include <rte_config.h>
 #include <rte_memory.h>
 #include <rte_errno.h>
-#include <rte_compat.h>
 
 struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
 struct rte_event;
@@ -1134,6 +1133,58 @@ rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint8_t eth_port_id,
  */
 int __rte_experimental
 rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
+
+/* Crypto adapter capability bitmap flag */
+#define RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW   0x1
+/**< Flag indicates HW is capable of generating events in
+ * RTE_EVENT_OP_NEW enqueue operation. Cryptodev will send
+ * packets to the event device as new events using an internal
+ * event port.
+ */
+
+#define RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD   0x2
+/**< Flag indicates HW is capable of generating events in
+ * RTE_EVENT_OP_FORWARD enqueue operation. Cryptodev will send
+ * packets to the event device as forwarded event using an
+ * internal event port.
+ */
+
+#define RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND  0x4
+/**< Flag indicates HW is capable of mapping crypto queue pair to
+ * event queue.
+ */
+
+#define RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA   0x8
+/**< Flag indicates HW/SW suports a mechanism to store and retrieve
+ * the private data information along with the crypto session.
+ */
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Retrieve the event device's crypto adapter capabilities for the
+ * specified cryptodev device
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @param cdev_id
+ *   The identifier of the cryptodev device.
+ *
+ * @param[out] caps
+ *   A pointer to memory filled with event adapter capabilities.
+ *   It is expected to be pre-allocated & initialized by caller.
+ *
+ * @return
+ *   - 0: Success, driver provides event adapter capabilities for the
+ *     cryptodev device.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+int __rte_experimental
+rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
+				  uint32_t *caps);
 
 struct rte_eventdev_ops;
 struct rte_eventdev;
