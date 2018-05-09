@@ -347,6 +347,7 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 M: Ashish Gupta <ashish.gupta@caviumnetworks.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_compressdev/
+F: drivers/compress/
 F: test/test/test_compressdev*
 F: doc/guides/prog_guide/compressdev.rst
 
@@ -816,6 +817,16 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/zuc/
 F: doc/guides/cryptodevs/zuc.rst
 F: doc/guides/cryptodevs/features/zuc.ini
+
+
+Compression Drivers
+-------------------
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+
+ISA-L
+M: Lee Daly <lee.daly@intel.com>
+F: drivers/compress/isal/
 
 
 Eventdev Drivers

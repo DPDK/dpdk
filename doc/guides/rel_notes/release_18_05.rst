@@ -144,6 +144,11 @@ New Features
   The compressdev library provides an API for offload of compression and
   decompression operations to hardware or software accelerator devices.
 
+* **Added a new compression poll mode driver using Intels ISA-L.**
+
+   Added the new ``ISA-L`` compression driver, for compression and decompression
+   operations in software.
+
 * **Added the Event Timer Adapter Library.**
 
   The Event Timer Adapter Library extends the event-based model by introducing
