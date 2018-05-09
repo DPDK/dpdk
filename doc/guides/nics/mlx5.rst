@@ -69,8 +69,8 @@ Features
 - Multiple process.
 - KVM and VMware ESX SR-IOV modes are supported.
 - RSS hash result is supported.
-- Hardware TSO.
-- Hardware checksum TX offload for VXLAN and GRE.
+- Hardware TSO for generic IP or UDP tunnel, including VXLAN and GRE.
+- Hardware checksum Tx offload for generic IP or UDP tunnel, including VXLAN and GRE.
 - RX interrupts.
 - Statistics query including Basic, Extended and per queue.
 - Rx HW timestamp.
