@@ -706,6 +706,11 @@ init_config(void)
 		port->dev_conf.txmode = tx_mode;
 		port->dev_conf.rxmode = rx_mode;
 		rte_eth_dev_info_get(pid, &port->dev_info);
+
+		if (!(port->dev_info.rx_offload_capa &
+					DEV_RX_OFFLOAD_CRC_STRIP))
+			port->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_CRC_STRIP;
 		if (!(port->dev_info.tx_offload_capa &
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
 			port->dev_conf.txmode.offloads &=
