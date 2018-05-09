@@ -611,16 +611,6 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	tmpl->rxq_ctrl = rxq_ctrl;
-	/* Use the entire RX mempool as the memory region. */
-	tmpl->mr = mlx5_mr_get(dev, rxq_data->mp);
-	if (!tmpl->mr) {
-		tmpl->mr = mlx5_mr_new(dev, rxq_data->mp);
-		if (!tmpl->mr) {
-			DRV_LOG(ERR, "port %u: memeroy region creation failure",
-				dev->data->port_id);
-			goto error;
-		}
-	}
 	if (rxq_ctrl->irq) {
 		tmpl->channel = mlx5_glue->create_comp_channel(priv->ctx);
 		if (!tmpl->channel) {
@@ -761,7 +751,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 			.addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
 								  uintptr_t)),
 			.byte_count = rte_cpu_to_be_32(DATA_LEN(buf)),
-			.lkey = tmpl->mr->lkey,
+			.lkey = UINT32_MAX,
 		};
 	}
 	rxq_data->rq_db = rwq.dbrec;
@@ -797,8 +787,6 @@ error:
 		claim_zero(mlx5_glue->destroy_cq(tmpl->cq));
 	if (tmpl->channel)
 		claim_zero(mlx5_glue->destroy_comp_channel(tmpl->channel));
-	if (tmpl->mr)
-		mlx5_mr_release(tmpl->mr);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	rte_errno = ret; /* Restore rte_errno. */
 	return NULL;
@@ -828,7 +816,6 @@ mlx5_rxq_ibv_get(struct rte_eth_dev *dev, uint16_t idx)
 		return NULL;
 	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	if (rxq_ctrl->ibv) {
-		mlx5_mr_get(dev, rxq_data->mp);
 		rte_atomic32_inc(&rxq_ctrl->ibv->refcnt);
 		DRV_LOG(DEBUG, "port %u Verbs Rx queue %u: refcnt %d",
 			dev->data->port_id, rxq_ctrl->idx,
@@ -849,15 +836,9 @@ mlx5_rxq_ibv_get(struct rte_eth_dev *dev, uint16_t idx)
 int
 mlx5_rxq_ibv_release(struct mlx5_rxq_ibv *rxq_ibv)
 {
-	int ret;
-
 	assert(rxq_ibv);
 	assert(rxq_ibv->wq);
 	assert(rxq_ibv->cq);
-	assert(rxq_ibv->mr);
-	ret = mlx5_mr_release(rxq_ibv->mr);
-	if (!ret)
-		rxq_ibv->mr = NULL;
 	DRV_LOG(DEBUG, "port %u Verbs Rx queue %u: refcnt %d",
 		PORT_ID(rxq_ibv->rxq_ctrl->priv),
 		rxq_ibv->rxq_ctrl->idx, rte_atomic32_read(&rxq_ibv->refcnt));

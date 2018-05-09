@@ -167,14 +167,6 @@ These options can be modified in the ``.config`` file.
   adds additional run-time checks and debugging messages at the cost of
   lower performance.
 
-- ``CONFIG_RTE_LIBRTE_MLX5_TX_MP_CACHE`` (default **8**)
-
-  Maximum number of cached memory pools (MPs) per TX queue. Each MP from
-  which buffers are to be transmitted must be associated to memory regions
-  (MRs). This is a slow operation that must be cached.
-
-  This value is always 1 for RX queues since they use a single MP.
-
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~
 

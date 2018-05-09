@@ -38,17 +38,6 @@
 #define MLX5_TX_COMP_THRESH_INLINE_DIV (1 << 3)
 
 /*
- * Maximum number of cached Memory Pools (MPs) per TX queue. Each RTE MP
- * from which buffers are to be transmitted will have to be mapped by this
- * driver to their own Memory Region (MR). This is a slow operation.
- *
- * This value is always 1 for RX queues.
- */
-#ifndef MLX5_PMD_TX_MP_CACHE
-#define MLX5_PMD_TX_MP_CACHE 8
-#endif
-
-/*
  * If defined, only use software counters. The PMD will never ask the hardware
  * for these, and many of them won't be available.
  */

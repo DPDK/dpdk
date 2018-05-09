@@ -54,17 +54,6 @@ struct mlx5_txq_stats {
 
 struct priv;
 
-/* Memory region queue object. */
-struct mlx5_mr {
-	LIST_ENTRY(mlx5_mr) next; /**< Pointer to the next element. */
-	rte_atomic32_t refcnt; /*<< Reference counter. */
-	uint32_t lkey; /*<< rte_cpu_to_be_32(mr->lkey) */
-	uintptr_t start; /* Start address of MR */
-	uintptr_t end; /* End address of MR */
-	struct ibv_mr *mr; /*<< Memory Region. */
-	struct rte_mempool *mp; /*<< Memory Pool. */
-};
-
 /* Compressed CQE context. */
 struct rxq_zip {
 	uint16_t ai; /* Array index. */
@@ -114,7 +103,6 @@ struct mlx5_rxq_ibv {
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_wq *wq; /* Work Queue. */
 	struct ibv_comp_channel *channel;
-	struct mlx5_mr *mr; /* Memory Region (for mp). */
 };
 
 /* RX queue control descriptor. */
@@ -175,7 +163,6 @@ struct mlx5_txq_data {
 	uint16_t mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
 	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
 	uint16_t inline_max_packet_sz; /* Max packet size for inlining. */
-	uint16_t mr_cache_idx; /* Index of last hit entry. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	uint64_t offloads; /* Offloads for Tx Queue. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
@@ -183,7 +170,6 @@ struct mlx5_txq_data {
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
 	volatile void *bf_reg; /* Blueflame register remapped. */
-	struct mlx5_mr *mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MR translation table. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 } __rte_cache_aligned;
@@ -321,12 +307,6 @@ uint16_t mlx5_tx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 			   uint16_t pkts_n);
 uint16_t mlx5_rx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 			   uint16_t pkts_n);
-
-/* mlx5_mr.c */
-
-void mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg);
-struct mlx5_mr *mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq,
-				   struct rte_mempool *mp, unsigned int idx);
 
 #ifndef NDEBUG
 /**
@@ -513,76 +493,12 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 	*txq->cq_db = rte_cpu_to_be_32(cq_ci);
 }
 
-/**
- * Get Memory Pool (MP) from mbuf. If mbuf is indirect, the pool from which
- * the cloned mbuf is allocated is returned instead.
- *
- * @param buf
- *   Pointer to mbuf.
- *
- * @return
- *   Memory pool where data is located for given mbuf.
- */
-static struct rte_mempool *
-mlx5_tx_mb2mp(struct rte_mbuf *buf)
-{
-	if (unlikely(RTE_MBUF_INDIRECT(buf)))
-		return rte_mbuf_from_indirect(buf)->pool;
-	return buf->pool;
-}
-
-/**
- * Get Memory Region (MR) <-> rte_mbuf association from txq->mp2mr[].
- * Add MP to txq->mp2mr[] if it's not registered yet. If mp2mr[] is full,
- * remove an entry first.
- *
- * @param txq
- *   Pointer to TX queue structure.
- * @param[in] mp
- *   Memory Pool for which a Memory Region lkey must be returned.
- *
- * @return
- *   mr->lkey on success, (uint32_t)-1 on failure.
- */
 static __rte_always_inline uint32_t
 mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 {
-	uint16_t i = txq->mr_cache_idx;
-	uintptr_t addr = rte_pktmbuf_mtod(mb, uintptr_t);
-	struct mlx5_mr *mr;
-
-	assert(i < RTE_DIM(txq->mp2mr));
-	if (likely(txq->mp2mr[i]->start <= addr && txq->mp2mr[i]->end > addr))
-		return txq->mp2mr[i]->lkey;
-	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
-		if (unlikely(txq->mp2mr[i] == NULL ||
-		    txq->mp2mr[i]->mr == NULL)) {
-			/* Unknown MP, add a new MR for it. */
-			break;
-		}
-		if (txq->mp2mr[i]->start <= addr &&
-		    txq->mp2mr[i]->end > addr) {
-			assert(txq->mp2mr[i]->lkey != (uint32_t)-1);
-			txq->mr_cache_idx = i;
-			return txq->mp2mr[i]->lkey;
-		}
-	}
-	mr = mlx5_txq_mp2mr_reg(txq, mlx5_tx_mb2mp(mb), i);
-	/*
-	 * Request the reference to use in this queue, the original one is
-	 * kept by the control plane.
-	 */
-	if (mr) {
-		rte_atomic32_inc(&mr->refcnt);
-		txq->mr_cache_idx = i >= RTE_DIM(txq->mp2mr) ? i - 1 : i;
-		return mr->lkey;
-	} else {
-		struct rte_mempool *mp = mlx5_tx_mb2mp(mb);
-
-		DRV_LOG(WARNING, "failed to register mempool 0x%p(%s)",
-			(void *)mp, mp->name);
-	}
-	return (uint32_t)-1;
+	(void)txq;
+	(void)mb;
+	return UINT32_MAX;
 }
 
 /**

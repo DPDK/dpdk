@@ -368,7 +368,6 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		return NULL;
 	}
 	memset(&tmpl, 0, sizeof(struct mlx5_txq_ibv));
-	/* MRs will be registered in mp2mr[] later. */
 	attr.cq = (struct ibv_cq_init_attr_ex){
 		.comp_mask = 0,
 	};
@@ -764,7 +763,6 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.elts_n = log2above(desc);
 	tmpl->idx = idx;
 	txq_set_params(tmpl);
-	/* MRs will be registered in mp2mr[] later. */
 	DRV_LOG(DEBUG, "port %u priv->device_attr.max_qp_wr is %d",
 		dev->data->port_id, priv->device_attr.orig_attr.max_qp_wr);
 	DRV_LOG(DEBUG, "port %u priv->device_attr.max_sge is %d",
@@ -799,15 +797,7 @@ mlx5_txq_get(struct rte_eth_dev *dev, uint16_t idx)
 	if ((*priv->txqs)[idx]) {
 		ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl,
 				    txq);
-		unsigned int i;
-
 		mlx5_txq_ibv_get(dev, idx);
-		for (i = 0; i != MLX5_PMD_TX_MP_CACHE; ++i) {
-			if (ctrl->txq.mp2mr[i])
-				claim_nonzero
-					(mlx5_mr_get(dev,
-						     ctrl->txq.mp2mr[i]->mp));
-		}
 		rte_atomic32_inc(&ctrl->refcnt);
 		DRV_LOG(DEBUG, "port %u Tx queue %u refcnt %d",
 			dev->data->port_id,
@@ -831,7 +821,6 @@ int
 mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct priv *priv = dev->data->dev_private;
-	unsigned int i;
 	struct mlx5_txq_ctrl *txq;
 	size_t page_size = sysconf(_SC_PAGESIZE);
 
@@ -842,12 +831,6 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 		txq->idx, rte_atomic32_read(&txq->refcnt));
 	if (txq->ibv && !mlx5_txq_ibv_release(txq->ibv))
 		txq->ibv = NULL;
-	for (i = 0; i != MLX5_PMD_TX_MP_CACHE; ++i) {
-		if (txq->txq.mp2mr[i]) {
-			mlx5_mr_release(txq->txq.mp2mr[i]);
-			txq->txq.mp2mr[i] = NULL;
-		}
-	}
 	if (priv->uar_base)
 		munmap((void *)RTE_ALIGN_FLOOR((uintptr_t)txq->txq.bf_reg,
 		       page_size), page_size);

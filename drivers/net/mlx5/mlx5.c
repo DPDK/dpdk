@@ -245,10 +245,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some flows still remain",
 			dev->data->port_id);
-	ret = mlx5_mr_verify(dev);
-	if (ret)
-		DRV_LOG(WARNING, "port %u some memory region still remain",
-			dev->data->port_id);
 	memset(priv, 0, sizeof(*priv));
 }
 

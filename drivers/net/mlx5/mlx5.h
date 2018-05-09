@@ -26,7 +26,6 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
-#include <rte_spinlock.h>
 #include <rte_interrupts.h>
 #include <rte_errno.h>
 #include <rte_flow.h>
@@ -147,7 +146,6 @@ struct priv {
 	struct mlx5_hrxq_drop *flow_drop_queue; /* Flow drop queue. */
 	struct mlx5_flows flows; /* RTE Flow rules. */
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
-	LIST_HEAD(mr, mlx5_mr) mr; /* Memory region. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
 	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */
@@ -157,7 +155,6 @@ struct priv {
 	LIST_HEAD(ind_tables, mlx5_ind_table_ibv) ind_tbls;
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
-	rte_spinlock_t mr_lock; /* MR Lock. */
 	int primary_socket; /* Unix socket for primary process. */
 	void *uar_base; /* Reserved address space for UAR mapping */
 	struct rte_intr_handle intr_handle_socket; /* Interrupt handler. */
@@ -308,13 +305,6 @@ int mlx5_socket_init(struct rte_eth_dev *priv);
 void mlx5_socket_uninit(struct rte_eth_dev *priv);
 void mlx5_socket_handle(struct rte_eth_dev *priv);
 int mlx5_socket_connect(struct rte_eth_dev *priv);
-
-/* mlx5_mr.c */
-
-struct mlx5_mr *mlx5_mr_new(struct rte_eth_dev *dev, struct rte_mempool *mp);
-struct mlx5_mr *mlx5_mr_get(struct rte_eth_dev *dev, struct rte_mempool *mp);
-int mlx5_mr_release(struct mlx5_mr *mr);
-int mlx5_mr_verify(struct rte_eth_dev *dev);
 
 /* mlx5_nl.c */
 
