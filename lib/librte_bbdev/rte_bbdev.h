@@ -239,6 +239,8 @@ struct rte_bbdev_stats {
 	uint64_t enqueue_err_count;
 	/** Total error count on operations dequeued */
 	uint64_t dequeue_err_count;
+	/** Offload time */
+	uint64_t offload_time;
 };
 
 /**
