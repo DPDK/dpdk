@@ -307,7 +307,7 @@ int rte_event_eth_rx_adapter_free(uint8_t id);
  *  combination of the two error codes.
  */
 int rte_event_eth_rx_adapter_queue_add(uint8_t id,
-			uint8_t eth_dev_id,
+			uint16_t eth_dev_id,
 			int32_t rx_queue_id,
 			const struct rte_event_eth_rx_adapter_queue_conf *conf);
 
@@ -335,7 +335,7 @@ int rte_event_eth_rx_adapter_queue_add(uint8_t id,
  *  - 0: Success, Receive queue deleted correctly.
  *  - <0: Error code on failure.
  */
-int rte_event_eth_rx_adapter_queue_del(uint8_t id, uint8_t eth_dev_id,
+int rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
 				       int32_t rx_queue_id);
 
 /**

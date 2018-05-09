@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-version = 3
+version = 4
 allow_experimental_apis = true
 sources = files('rte_eventdev.c',
 		'rte_event_ring.c',

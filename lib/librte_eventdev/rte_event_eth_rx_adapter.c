@@ -31,7 +31,7 @@
  */
 struct eth_rx_poll_entry {
 	/* Eth port to poll */
-	uint8_t eth_dev_id;
+	uint16_t eth_dev_id;
 	/* Eth rx queue to poll */
 	uint16_t eth_rx_qid;
 };
@@ -168,7 +168,7 @@ wrr_next(struct rte_event_eth_rx_adapter *rx_adapter,
 
 	while (1) {
 		uint16_t q;
-		uint8_t d;
+		uint16_t d;
 
 		i = (i + 1) % n;
 		if (i == 0) {
@@ -190,7 +190,7 @@ wrr_next(struct rte_event_eth_rx_adapter *rx_adapter,
 static int
 eth_poll_wrr_calc(struct rte_event_eth_rx_adapter *rx_adapter)
 {
-	uint8_t d;
+	uint16_t d;
 	uint16_t q;
 	unsigned int i;
 
@@ -510,7 +510,7 @@ eth_rx_poll(struct rte_event_eth_rx_adapter *rx_adapter)
 	for (num_queue = 0; num_queue < rx_adapter->wrr_len; num_queue++) {
 		unsigned int poll_idx = rx_adapter->wrr_sched[wrr_pos];
 		uint16_t qid = rx_adapter->eth_rx_poll[poll_idx].eth_rx_qid;
-		uint8_t d = rx_adapter->eth_rx_poll[poll_idx].eth_dev_id;
+		uint16_t d = rx_adapter->eth_rx_poll[poll_idx].eth_dev_id;
 
 		/* Don't do a batch dequeue from the rx queue if there isn't
 		 * enough space in the enqueue buffer.
@@ -755,7 +755,7 @@ event_eth_rx_adapter_queue_add(struct rte_event_eth_rx_adapter *rx_adapter,
 }
 
 static int add_rx_queue(struct rte_event_eth_rx_adapter *rx_adapter,
-		uint8_t eth_dev_id,
+		uint16_t eth_dev_id,
 		int rx_queue_id,
 		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
 {
@@ -859,7 +859,7 @@ rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 	struct rte_event_eth_rx_adapter *rx_adapter;
 	int ret;
 	int socket_id;
-	uint8_t i;
+	uint16_t i;
 	char mem_name[ETH_RX_ADAPTER_SERVICE_NAME_LEN];
 	const uint8_t default_rss_key[] = {
 		0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
@@ -978,7 +978,7 @@ rte_event_eth_rx_adapter_free(uint8_t id)
 
 int
 rte_event_eth_rx_adapter_queue_add(uint8_t id,
-		uint8_t eth_dev_id,
+		uint16_t eth_dev_id,
 		int32_t rx_queue_id,
 		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
 {
@@ -1002,7 +1002,7 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 						&cap);
 	if (ret) {
 		RTE_EDEV_LOG_ERR("Failed to get adapter caps edev %" PRIu8
-			"eth port %" PRIu8, id, eth_dev_id);
+			"eth port %" PRIu16, id, eth_dev_id);
 		return ret;
 	}
 
@@ -1010,7 +1010,7 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 		&& (queue_conf->rx_queue_flags &
 			RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID)) {
 		RTE_EDEV_LOG_ERR("Flow ID override is not supported,"
-				" eth port: %" PRIu8 " adapter id: %" PRIu8,
+				" eth port: %" PRIu16 " adapter id: %" PRIu8,
 				eth_dev_id, id);
 		return -EINVAL;
 	}
@@ -1018,7 +1018,8 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 	if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ) == 0 &&
 		(rx_queue_id != -1)) {
 		RTE_EDEV_LOG_ERR("Rx queues can only be connected to single "
-			"event queue id %u eth port %u", id, eth_dev_id);
+			"event queue, eth port: %" PRIu16 " adapter id: %"
+			PRIu8, eth_dev_id, id);
 		return -EINVAL;
 	}
 
@@ -1075,7 +1076,7 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 }
 
 int
-rte_event_eth_rx_adapter_queue_del(uint8_t id, uint8_t eth_dev_id,
+rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
 				int32_t rx_queue_id)
 {
 	int ret = 0;
