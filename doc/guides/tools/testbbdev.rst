@@ -70,30 +70,6 @@ The following are the command-line options:
 ``-c TEST_CASE [TEST_CASE ...], --test_cases TEST_CASE [TEST_CASE ...]``
  Defines test cases to run. If not specified all available tests are run.
 
- The following tests can be run:
-
- * unittest
-     Small unit tests witch check basic functionality of bbdev library.
- * latency
-     Test calculates three latency metrics:
-
-     * offload_latency_tc
-         measures the cost of offloading enqueue and dequeue operations.
-     * offload_latency_empty_q_tc
-         measures the cost of offloading a dequeue operation from an empty queue.
-         checks how long last dequeueing if there is no operations to dequeue
-     * operation_latency_tc
-         measures the time difference from the first attempt to enqueue till the
-         first successful dequeue.
- * validation
-     Test do enqueue on given vector and compare output after dequeueing.
- * throughput
-     Test measures the achieved throughput on the available lcores.
-     Results are printed in million operations per second and million bits per second.
- * interrupt
-     The same test as 'throughput' but uses interrupts instead of PMD to perform
-     the dequeue.
-
  **Example usage:**
 
  ``./test-bbdev.py -c validation``
@@ -130,8 +106,54 @@ The following are the command-line options:
  Specifies operations enqueue/dequeue burst size. If not specified burst_size is
  set to 32. Maximum is 512.
 
+Test Cases
+~~~~~~~~~~
 
-Parameter globbing
+There are 6 main test cases that can be executed using testbbdev tool:
+
+* Sanity checks [-c unittest]
+    - Performs sanity checks on BBDEV interface, validating basic functionality
+
+* Validation tests [-c validation]
+    - Performs full operation of enqueue and dequeue
+    - Compares the dequeued data buffer with a expected values in the test
+      vector (TV) being used
+    - Fails if any dequeued value does not match the data in the TV
+
+* Offload Cost measurement [-c offload]
+    - Measures the CPU cycles consumed from the receipt of a user enqueue
+      until it is put on the device queue
+    - The test measures 4 metrics
+        (a) *SW Enq Offload Cost*: Software only enqueue offload cost, the cycle
+            counts and time (us) from the point the enqueue API is called until
+            the point the operation is put on the accelerator queue.
+        (b) *Acc Enq Offload Cost*: The cycle count and time (us) from the
+            point the operation is put on the accelerator queue until the return
+            from enqueue.
+        (c) *SW Deq Offload Cost*: Software dequeue cost, the cycle counts and
+            time (us) consumed to dequeue one operation.
+        (d) *Empty Queue Enq Offload Cost*: The cycle count and time (us)
+            consumed to dequeue from an empty queue.
+
+* Latency measurement [-c latency]
+    - Measures the time consumed from the first enqueue until the first
+      appearance of a dequeued result
+    - This measurment represents the full latency of a bbdev operation
+      (encode or decode) to execute
+
+* Poll-mode Throughput measurement [-c throughput]
+    - Performs full operation of enqueue and dequeue
+    - Executes in poll mode
+    - Measures the achieved throughput on a subset or all available CPU cores
+    - Dequeued data is not validated against expected values stored in TV
+    - Results are printed in million operations per second and million bits
+      per second
+
+* Interrupt-mode Throughput [-c interrupt]
+    - Similar to Throughput test case, but using interrupts. No polling.
+
+
+Parameter Globbing
 ~~~~~~~~~~~~~~~~~~
 
 Thanks to the globbing functionality in python test-bbdev.py script allows to
