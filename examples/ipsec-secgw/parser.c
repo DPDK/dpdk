@@ -3,6 +3,7 @@
  */
 #include <rte_common.h>
 #include <rte_crypto.h>
+#include <rte_string_fns.h>
 
 #include <cmdline_parse_string.h>
 #include <cmdline_parse_num.h>
@@ -207,19 +208,20 @@ inet_pton6(const char *src, unsigned char *dst)
 int
 parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask)
 {
-	char ip_str[256] = {0};
+	char ip_str[INET_ADDRSTRLEN] = {0};
 	char *pch;
 
 	pch = strchr(token, '/');
 	if (pch != NULL) {
-		strncpy(ip_str, token, pch - token);
+		strlcpy(ip_str, token, RTE_MIN((unsigned int long)(pch - token),
+					sizeof(ip_str)));
 		pch += 1;
 		if (is_str_num(pch) != 0)
 			return -EINVAL;
 		if (mask)
 			*mask = atoi(pch);
 	} else {
-		strncpy(ip_str, token, sizeof(ip_str) - 1);
+		strlcpy(ip_str, token, sizeof(ip_str));
 		if (mask)
 			*mask = 0;
 	}
@@ -241,14 +243,15 @@ parse_ipv6_addr(const char *token, struct in6_addr *ipv6, uint32_t *mask)
 
 	pch = strchr(token, '/');
 	if (pch != NULL) {
-		strncpy(ip_str, token, pch - token);
+		strlcpy(ip_str, token, RTE_MIN((unsigned int long)(pch - token),
+					sizeof(ip_str)));
 		pch += 1;
 		if (is_str_num(pch) != 0)
 			return -EINVAL;
 		if (mask)
 			*mask = atoi(pch);
 	} else {
-		strncpy(ip_str, token, sizeof(ip_str) - 1);
+		strlcpy(ip_str, token, sizeof(ip_str));
 		if (mask)
 			*mask = 0;
 	}
@@ -515,9 +518,7 @@ parse_cfg_file(const char *cfg_filename)
 				goto error_exit;
 			}
 
-			strncpy(str + strlen(str), oneline,
-				strlen(oneline));
-
+			strcpy(str + strlen(str), oneline);
 			continue;
 		}
 
@@ -528,8 +529,7 @@ parse_cfg_file(const char *cfg_filename)
 				cfg_filename, line_num);
 			goto error_exit;
 		}
-		strncpy(str + strlen(str), oneline,
-			strlen(oneline));
+		strcpy(str + strlen(str), oneline);
 
 		str[strlen(str)] = '\n';
 		if (cmdline_parse(cl, str) < 0) {
