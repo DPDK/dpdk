@@ -43,6 +43,10 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 static __rte_always_inline uint32_t
 rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe);
 
+static __rte_always_inline void
+rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
+	       volatile struct mlx5_cqe *cqe, uint32_t rss_hash_res);
+
 uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
 	[0xff] = RTE_PTYPE_ALL_MASK, /* Last entry for errored packet. */
 };
@@ -1841,6 +1845,52 @@ rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe)
 }
 
 /**
+ * Fill in mbuf fields from RX completion flags.
+ * Note that pkt->ol_flags should be initialized outside of this function.
+ *
+ * @param rxq
+ *   Pointer to RX queue.
+ * @param pkt
+ *   mbuf to fill.
+ * @param cqe
+ *   CQE to process.
+ * @param rss_hash_res
+ *   Packet RSS Hash result.
+ */
+static inline void
+rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
+	       volatile struct mlx5_cqe *cqe, uint32_t rss_hash_res)
+{
+	/* Update packet information. */
+	pkt->packet_type = rxq_cq_to_pkt_type(rxq, cqe);
+	if (rss_hash_res && rxq->rss_hash) {
+		pkt->hash.rss = rss_hash_res;
+		pkt->ol_flags |= PKT_RX_RSS_HASH;
+	}
+	if (rxq->mark && MLX5_FLOW_MARK_IS_VALID(cqe->sop_drop_qpn)) {
+		pkt->ol_flags |= PKT_RX_FDIR;
+		if (cqe->sop_drop_qpn !=
+		    rte_cpu_to_be_32(MLX5_FLOW_MARK_DEFAULT)) {
+			uint32_t mark = cqe->sop_drop_qpn;
+
+			pkt->ol_flags |= PKT_RX_FDIR_ID;
+			pkt->hash.fdir.hi = mlx5_flow_mark_get(mark);
+		}
+	}
+	if (rxq->csum)
+		pkt->ol_flags |= rxq_cq_to_ol_flags(cqe);
+	if (rxq->vlan_strip &&
+	    (cqe->hdr_type_etc & rte_cpu_to_be_16(MLX5_CQE_VLAN_STRIPPED))) {
+		pkt->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		pkt->vlan_tci = rte_be_to_cpu_16(cqe->vlan_info);
+	}
+	if (rxq->hw_timestamp) {
+		pkt->timestamp = rte_be_to_cpu_64(cqe->timestamp);
+		pkt->ol_flags |= PKT_RX_TIMESTAMP;
+	}
+}
+
+/**
  * DPDK callback for RX.
  *
  * @param dpdk_rxq
@@ -1916,40 +1966,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 			pkt = seg;
 			assert(len >= (rxq->crc_present << 2));
-			/* Update packet information. */
-			pkt->packet_type = rxq_cq_to_pkt_type(rxq, cqe);
 			pkt->ol_flags = 0;
-			if (rss_hash_res && rxq->rss_hash) {
-				pkt->hash.rss = rss_hash_res;
-				pkt->ol_flags = PKT_RX_RSS_HASH;
-			}
-			if (rxq->mark &&
-			    MLX5_FLOW_MARK_IS_VALID(cqe->sop_drop_qpn)) {
-				pkt->ol_flags |= PKT_RX_FDIR;
-				if (cqe->sop_drop_qpn !=
-				    rte_cpu_to_be_32(MLX5_FLOW_MARK_DEFAULT)) {
-					uint32_t mark = cqe->sop_drop_qpn;
-
-					pkt->ol_flags |= PKT_RX_FDIR_ID;
-					pkt->hash.fdir.hi =
-						mlx5_flow_mark_get(mark);
-				}
-			}
-			if (rxq->csum)
-				pkt->ol_flags |= rxq_cq_to_ol_flags(cqe);
-			if (rxq->vlan_strip &&
-			    (cqe->hdr_type_etc &
-			     rte_cpu_to_be_16(MLX5_CQE_VLAN_STRIPPED))) {
-				pkt->ol_flags |= PKT_RX_VLAN |
-					PKT_RX_VLAN_STRIPPED;
-				pkt->vlan_tci =
-					rte_be_to_cpu_16(cqe->vlan_info);
-			}
-			if (rxq->hw_timestamp) {
-				pkt->timestamp =
-					rte_be_to_cpu_64(cqe->timestamp);
-				pkt->ol_flags |= PKT_RX_TIMESTAMP;
-			}
+			rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
 			if (rxq->crc_present)
 				len -= ETHER_CRC_LEN;
 			PKT_LEN(pkt) = len;
