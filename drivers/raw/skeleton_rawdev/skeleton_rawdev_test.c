@@ -288,6 +288,7 @@ test_rawdev_attr_set_get(void)
 			      "Attribute (Test2) not set correctly (%" PRIu64 ")",
 			      ret_value);
 
+	free(dummy_value);
 	return TEST_SUCCESS;
 }
 
