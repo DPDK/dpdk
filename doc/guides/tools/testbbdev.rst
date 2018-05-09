@@ -147,15 +147,43 @@ It runs all tests with following vectors:
 
 - ``bbdev_null.data``
 
-- ``turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_high_snr.data``
-
-- ``turbo_enc_c1_k40_r0_e1190_rm.data``
-
-- ``turbo_enc_c1_k40_r0_e1194_rm.data``
+- ``turbo_dec_c1_k6144_r0_e34560_sbd_negllr.data``
 
 - ``turbo_enc_c1_k40_r0_e1196_rm.data``
 
+- ``turbo_enc_c2_k5952_r0_e17868_crc24b.data``
+
+- ``turbo_dec_c1_k40_r0_e17280_sbd_negllr.data``
+
+- ``turbo_dec_c1_k6144_r0_e34560_sbd_posllr.data``
+
 - ``turbo_enc_c1_k40_r0_e272_rm.data``
+
+- ``turbo_enc_c3_k4800_r2_e14412_crc24b.data``
+
+- ``turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_high_snr.data``
+
+- ``turbo_dec_c2_k3136_r0_e4920_sbd_negllr_crc24b.data``
+
+- ``turbo_enc_c1_k6144_r0_e120_rm_rvidx.data``
+
+- ``turbo_enc_c4_k4800_r2_e14412_crc24b.data``
+
+- ``turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_low_snr.data``
+
+- ``turbo_dec_c2_k3136_r0_e4920_sbd_negllr.data``
+
+- ``turbo_enc_c1_k6144_r0_e18444.data``
+
+- ``turbo_dec_c1_k6144_r0_e34560_negllr.data``
+
+- ``turbo_enc_c1_k40_r0_e1190_rm.data``
+
+- ``turbo_enc_c1_k6144_r0_e18448_crc24a.data``
+
+- ``turbo_dec_c1_k6144_r0_e34560_posllr.data``
+
+- ``turbo_enc_c1_k40_r0_e1194_rm.data``
 
 - ``turbo_enc_c1_k6144_r0_e32256_crc24b_rm.data``
 
@@ -184,11 +212,25 @@ x86_64-native-linuxapp-icc target:
      |-- test-bbdev
          |-- test_vectors
              |-- bbdev_null.data
-             |-- turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_high_snr.data
-             |-- turbo_enc_c1_k40_r0_e1190_rm.data
-             |-- turbo_enc_c1_k40_r0_e1194_rm.data
+             |-- turbo_dec_c1_k6144_r0_e34560_sbd_negllr.data
              |-- turbo_enc_c1_k40_r0_e1196_rm.data
+             |-- turbo_enc_c2_k5952_r0_e17868_crc24b.data
+             |-- turbo_dec_c1_k40_r0_e17280_sbd_negllr.data
+             |-- turbo_dec_c1_k6144_r0_e34560_sbd_posllr.data
              |-- turbo_enc_c1_k40_r0_e272_rm.data
+             |-- turbo_enc_c3_k4800_r2_e14412_crc24b.data
+             |-- turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_high_snr.data
+             |-- turbo_dec_c2_k3136_r0_e4920_sbd_negllr_crc24b.data
+             |-- turbo_enc_c1_k6144_r0_e120_rm_rvidx.data
+             |-- turbo_enc_c4_k4800_r2_e14412_crc24b.data
+             |-- turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_low_snr.data
+             |-- turbo_dec_c2_k3136_r0_e4920_sbd_negllr.data
+             |-- turbo_enc_c1_k6144_r0_e18444.data
+             |-- turbo_dec_c1_k6144_r0_e34560_negllr.data
+             |-- turbo_enc_c1_k40_r0_e1190_rm.data
+             |-- turbo_enc_c1_k6144_r0_e18448_crc24a.data
+             |-- turbo_dec_c1_k6144_r0_e34560_posllr.data
+             |-- turbo_enc_c1_k40_r0_e1194_rm.data
              |-- turbo_enc_c1_k6144_r0_e32256_crc24b_rm.data
 
  |-- x86_64-native-linuxapp-icc
