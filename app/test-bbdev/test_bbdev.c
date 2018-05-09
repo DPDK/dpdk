@@ -895,12 +895,12 @@ test_bbdev_callback(void)
 			"Failed to callback rgstr for RTE_BBDEV_EVENT_UNKNOWN");
 
 	rte_bbdev_pmd_callback_process(dev1, RTE_BBDEV_EVENT_UNKNOWN, NULL);
-	TEST_ASSERT(event_status == 0,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_UNKNOWN,
 			"Failed test for rte_bbdev_pmd_callback_process "
 			"for RTE_BBDEV_EVENT_UNKNOWN ");
 
 	rte_bbdev_pmd_callback_process(dev1, RTE_BBDEV_EVENT_ERROR, NULL);
-	TEST_ASSERT(event_status == 0,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_UNKNOWN,
 			"Failed test for rte_bbdev_pmd_callback_process: "
 			"event RTE_BBDEV_EVENT_ERROR was not registered ");
 
@@ -919,12 +919,12 @@ test_bbdev_callback(void)
 
 	event_status = -1;
 	rte_bbdev_pmd_callback_process(dev1, RTE_BBDEV_EVENT_UNKNOWN, NULL);
-	TEST_ASSERT(event_status == 0,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_UNKNOWN,
 			"Failed test for rte_bbdev_pmd_callback_process "
 			"for RTE_BBDEV_EVENT_UNKNOWN ");
 
 	rte_bbdev_pmd_callback_process(dev1, RTE_BBDEV_EVENT_ERROR, NULL);
-	TEST_ASSERT(event_status == 1,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_ERROR,
 			"Failed test for rte_bbdev_pmd_callback_process "
 			"for RTE_BBDEV_EVENT_ERROR ");
 
@@ -938,12 +938,12 @@ test_bbdev_callback(void)
 
 	event_status = -1;
 	rte_bbdev_pmd_callback_process(dev1, RTE_BBDEV_EVENT_UNKNOWN, NULL);
-	TEST_ASSERT(event_status == 0,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_UNKNOWN,
 			"Failed test for rte_bbdev_pmd_callback_process "
 			"for RTE_BBDEV_EVENT_UNKNOWN ");
 
 	rte_bbdev_pmd_callback_process(dev1, RTE_BBDEV_EVENT_ERROR, NULL);
-	TEST_ASSERT(event_status == 0,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_UNKNOWN,
 			"Failed test for rte_bbdev_pmd_callback_process: "
 			"event RTE_BBDEV_EVENT_ERROR was unregistered ");
 
@@ -992,7 +992,7 @@ test_bbdev_callback(void)
 		"for RTE_BBDEV_EVENT_ERROR ");
 
 	rte_bbdev_pmd_callback_process(dev2, RTE_BBDEV_EVENT_ERROR, NULL);
-	TEST_ASSERT(event_status == 1,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_ERROR,
 		"Failed test for rte_bbdev_pmd_callback_process in dev2 "
 		"for RTE_BBDEV_EVENT_ERROR ");
 
@@ -1006,7 +1006,7 @@ test_bbdev_callback(void)
 			"in dev 2 ");
 
 	rte_bbdev_pmd_callback_process(dev2, RTE_BBDEV_EVENT_UNKNOWN, NULL);
-	TEST_ASSERT(event_status == 0,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_UNKNOWN,
 			"Failed test for rte_bbdev_pmd_callback_process in dev2"
 			" for RTE_BBDEV_EVENT_UNKNOWN ");
 
@@ -1026,7 +1026,7 @@ test_bbdev_callback(void)
 		" for RTE_BBDEV_EVENT_UNKNOWN ");
 
 	rte_bbdev_pmd_callback_process(dev1, RTE_BBDEV_EVENT_UNKNOWN, NULL);
-	TEST_ASSERT(event_status == 0,
+	TEST_ASSERT(event_status == (int) RTE_BBDEV_EVENT_UNKNOWN,
 			"Failed test for rte_bbdev_pmd_callback_process in dev2 "
 			"for RTE_BBDEV_EVENT_UNKNOWN ");
 
