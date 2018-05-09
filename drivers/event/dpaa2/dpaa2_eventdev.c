@@ -154,26 +154,12 @@ dpaa2_eventdev_enqueue(void *port, const struct rte_event *ev)
 static void dpaa2_eventdev_dequeue_wait(uint64_t timeout_ticks)
 {
 	struct epoll_event epoll_ev;
-	int ret, i = 0;
 
 	qbman_swp_interrupt_clear_status(DPAA2_PER_LCORE_PORTAL,
 					 QBMAN_SWP_INTERRUPT_DQRI);
 
-RETRY:
-	ret = epoll_wait(DPAA2_PER_LCORE_DPIO->epoll_fd,
+	epoll_wait(DPAA2_PER_LCORE_DPIO->epoll_fd,
 			 &epoll_ev, 1, timeout_ticks);
-	if (ret < 1) {
-		/* sometimes due to some spurious interrupts epoll_wait fails
-		 * with errno EINTR. so here we are retrying epoll_wait in such
-		 * case to avoid the problem.
-		 */
-		if (errno == EINTR) {
-			DPAA2_EVENTDEV_DEBUG("epoll_wait fails");
-			if (i++ > 10)
-				DPAA2_EVENTDEV_DEBUG("Dequeue burst Failed");
-		goto RETRY;
-		}
-	}
 }
 
 static void dpaa2_eventdev_process_parallel(struct qbman_swp *swp,
