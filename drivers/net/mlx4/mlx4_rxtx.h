@@ -25,6 +25,7 @@
 
 #include "mlx4.h"
 #include "mlx4_prm.h"
+#include "mlx4_mr.h"
 
 /** Rx queue counters. */
 struct mlx4_rxq_stats {
@@ -46,6 +47,7 @@ struct rxq {
 	uint16_t port_id; /**< Port ID for incoming packets. */
 	uint16_t sges_n; /**< Number of segments per packet (log2 value). */
 	uint16_t elts_n; /**< Mbuf queue size (log2 value). */
+	struct mlx4_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	struct rte_mbuf *(*elts)[]; /**< Rx elements. */
 	volatile struct mlx4_wqe_data_seg (*wqes)[]; /**< HW queue entries. */
 	volatile uint32_t *rq_db; /**< RQ doorbell record. */
@@ -100,6 +102,7 @@ struct txq {
 	int elts_comp_cd; /**< Countdown for next completion. */
 	unsigned int elts_comp_cd_init; /**< Initial value for countdown. */
 	unsigned int elts_n; /**< (*elts)[] length. */
+	struct mlx4_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	struct txq_elt (*elts)[]; /**< Tx elements. */
 	struct mlx4_txq_stats stats; /**< Tx queue counters. */
 	uint32_t max_inline; /**< Max inline send size. */
@@ -155,12 +158,70 @@ int mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			const struct rte_eth_txconf *conf);
 void mlx4_tx_queue_release(void *dpdk_txq);
 
-static inline uint32_t
-mlx4_txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
+/* mlx4_mr.c */
+
+void mlx4_mr_flush_local_cache(struct mlx4_mr_ctrl *mr_ctrl);
+uint32_t mlx4_rx_addr2mr_bh(struct rxq *rxq, uintptr_t addr);
+uint32_t mlx4_tx_addr2mr_bh(struct txq *txq, uintptr_t addr);
+
+/**
+ * Query LKey from a packet buffer for Rx. No need to flush local caches for Rx
+ * as mempool is pre-configured and static.
+ *
+ * @param rxq
+ *   Pointer to Rx queue structure.
+ * @param addr
+ *   Address to search.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+static __rte_always_inline uint32_t
+mlx4_rx_addr2mr(struct rxq *rxq, uintptr_t addr)
 {
-	(void)txq;
-	(void)mp;
-	return UINT32_MAX;
+	struct mlx4_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
+	uint32_t lkey;
+
+	/* Linear search on MR cache array. */
+	lkey = mlx4_mr_lookup_cache(mr_ctrl->cache, &mr_ctrl->mru,
+				    MLX4_MR_CACHE_N, addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/* Take slower bottom-half (Binary Search) on miss. */
+	return mlx4_rx_addr2mr_bh(rxq, addr);
 }
+
+#define mlx4_rx_mb2mr(rxq, mb) mlx4_rx_addr2mr(rxq, (uintptr_t)((mb)->buf_addr))
+
+/**
+ * Query LKey from a packet buffer for Tx. If not found, add the mempool.
+ *
+ * @param txq
+ *   Pointer to Tx queue structure.
+ * @param addr
+ *   Address to search.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+static __rte_always_inline uint32_t
+mlx4_tx_addr2mr(struct txq *txq, uintptr_t addr)
+{
+	struct mlx4_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
+	uint32_t lkey;
+
+	/* Check generation bit to see if there's any change on existing MRs. */
+	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
+		mlx4_mr_flush_local_cache(mr_ctrl);
+	/* Linear search on MR cache array. */
+	lkey = mlx4_mr_lookup_cache(mr_ctrl->cache, &mr_ctrl->mru,
+				    MLX4_MR_CACHE_N, addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/* Take slower bottom-half (binary search) on miss. */
+	return mlx4_tx_addr2mr_bh(txq, addr);
+}
+
+#define mlx4_tx_mb2mr(rxq, mb) mlx4_tx_addr2mr(rxq, (uintptr_t)((mb)->buf_addr))
 
 #endif /* MLX4_RXTX_H_ */

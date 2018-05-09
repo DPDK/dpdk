@@ -316,6 +316,13 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	/* Save first wqe pointer in the first element. */
 	(&(*txq->elts)[0])->wqe =
 		(volatile struct mlx4_wqe_ctrl_seg *)txq->msq.buf;
+	if (mlx4_mr_btree_init(&txq->mr_ctrl.cache_bh,
+			       MLX4_MR_BTREE_CACHE_N, socket)) {
+		/* rte_errno is already set. */
+		goto error;
+	}
+	/* Save pointer of global generation number to check memory event. */
+	txq->mr_ctrl.dev_gen_ptr = &priv->mr.dev_gen;
 	DEBUG("%p: adding Tx queue %p to list", (void *)dev, (void *)txq);
 	dev->data->tx_queues[idx] = txq;
 	return 0;
@@ -356,5 +363,6 @@ mlx4_tx_queue_release(void *dpdk_txq)
 		claim_zero(mlx4_glue->destroy_qp(txq->qp));
 	if (txq->cq)
 		claim_zero(mlx4_glue->destroy_cq(txq->cq));
+	mlx4_mr_btree_free(&txq->mr_ctrl.cache_bh);
 	rte_free(txq);
 }

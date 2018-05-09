@@ -488,6 +488,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 	}
 
 	struct priv *priv = rxq->priv;
+	struct rte_eth_dev *dev = priv->dev;
 	const uint32_t elts_n = 1 << rxq->elts_n;
 	const uint32_t sges_n = 1 << rxq->sges_n;
 	struct rte_mbuf *(*elts)[elts_n] = rxq->elts;
@@ -552,6 +553,11 @@ mlx4_rxq_attach(struct rxq *rxq)
 		msg = "failed to obtain device information from WQ/CQ objects";
 		goto error;
 	}
+	/* Pre-register Rx mempool. */
+	DEBUG("port %u Rx queue %u registering mp %s having %u chunks",
+	      priv->dev->data->port_id, rxq->stats.idx,
+	      rxq->mp->name, rxq->mp->nb_mem_chunks);
+	mlx4_mr_update_mp(dev, &rxq->mr_ctrl, rxq->mp);
 	wqes = (volatile struct mlx4_wqe_data_seg (*)[])
 		((uintptr_t)dv_rwq.buf.buf + dv_rwq.rq.offset);
 	for (i = 0; i != RTE_DIM(*elts); ++i) {
@@ -583,7 +589,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 			.addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
 								  uintptr_t)),
 			.byte_count = rte_cpu_to_be_32(buf->data_len),
-			.lkey = UINT32_MAX,
+			.lkey = mlx4_rx_mb2mr(rxq, buf),
 		};
 		(*elts)[i] = buf;
 	}
@@ -855,6 +861,11 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      1 << rxq->sges_n);
 		goto error;
 	}
+	if (mlx4_mr_btree_init(&rxq->mr_ctrl.cache_bh,
+			       MLX4_MR_BTREE_CACHE_N, socket)) {
+		/* rte_errno is already set. */
+		goto error;
+	}
 	if (dev->data->dev_conf.intr_conf.rxq) {
 		rxq->channel = mlx4_glue->create_comp_channel(priv->ctx);
 		if (rxq->channel == NULL) {
@@ -912,5 +923,6 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	assert(!rxq->rq_db);
 	if (rxq->channel)
 		claim_zero(mlx4_glue->destroy_comp_channel(rxq->channel));
+	mlx4_mr_btree_free(&rxq->mr_ctrl.cache_bh);
 	rte_free(rxq);
 }

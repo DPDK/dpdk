@@ -370,6 +370,12 @@ Performance tuning
         The XXX can be different on different systems. Make sure to configure
         according to the setpci output.
 
+6. To minimize overhead of searching Memory Regions:
+
+   - '--socket-mem' is recommended to pin memory by predictable amount.
+   - Configure per-lcore cache when creating Mempools for packet buffer.
+   - Refrain from dynamically allocating/freeing memory in run-time.
+
 Usage example
 -------------
 

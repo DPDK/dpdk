@@ -23,6 +23,9 @@
 #include <rte_ether.h>
 #include <rte_interrupts.h>
 #include <rte_mempool.h>
+#include <rte_rwlock.h>
+
+#include "mlx4_mr.h"
 
 #ifndef IBV_RX_HASH_INNER
 /** This is not necessarily defined by supported RDMA core versions. */
@@ -66,8 +69,12 @@ struct rxq;
 struct txq;
 struct rte_flow;
 
+LIST_HEAD(mlx4_dev_list, priv);
+LIST_HEAD(mlx4_mr_list, mlx4_mr);
+
 /** Private data structure. */
 struct priv {
+	LIST_ENTRY(priv) mem_event_cb; /* Called by memory event callback. */
 	struct rte_eth_dev *dev; /**< Ethernet device. */
 	struct ibv_context *ctx; /**< Verbs context. */
 	struct ibv_device_attr device_attr; /**< Device properties. */
@@ -86,6 +93,13 @@ struct priv {
 	uint64_t hw_rss_sup; /**< Supported RSS hash fields (Verbs format). */
 	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
 	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */
+	struct {
+		uint32_t dev_gen; /* Generation number to flush local caches. */
+		rte_rwlock_t rwlock; /* MR Lock. */
+		struct mlx4_mr_btree cache; /* Global MR cache table. */
+		struct mlx4_mr_list mr_list; /* Registered MR list. */
+		struct mlx4_mr_list mr_free_list; /* Freed MR list. */
+	} mr;
 	LIST_HEAD(, mlx4_rss) rss; /**< Shared targets for Rx flow rules. */
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];

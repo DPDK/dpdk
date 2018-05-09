@@ -44,8 +44,14 @@
 #include "mlx4.h"
 #include "mlx4_glue.h"
 #include "mlx4_flow.h"
+#include "mlx4_mr.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
+
+struct mlx4_dev_list mlx4_mem_event_cb_list =
+	LIST_HEAD_INITIALIZER(mlx4_mem_event_cb_list);
+
+rte_rwlock_t mlx4_mem_event_rwlock = RTE_RWLOCK_INITIALIZER;
 
 /** Configuration structure for device arguments. */
 struct mlx4_conf {
@@ -92,6 +98,20 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 	if (ret)
 		ERROR("%p: interrupt handler installation failed",
 		      (void *)dev);
+	/*
+	 * Once the device is added to the list of memory event callback, its
+	 * global MR cache table cannot be expanded on the fly because of
+	 * deadlock. If it overflows, lookup should be done by searching MR list
+	 * linearly, which is slow.
+	 */
+	if (mlx4_mr_btree_init(&priv->mr.cache, MLX4_MR_BTREE_CACHE_N * 2,
+			       dev->device->numa_node)) {
+		/* rte_errno is already set. */
+		return -rte_errno;
+	}
+	rte_rwlock_write_lock(&mlx4_mem_event_rwlock);
+	LIST_INSERT_HEAD(&mlx4_mem_event_cb_list, priv, mem_event_cb);
+	rte_rwlock_write_unlock(&mlx4_mem_event_rwlock);
 exit:
 	return ret;
 }
@@ -125,6 +145,9 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		      (void *)dev, strerror(-ret));
 		goto err;
 	}
+#ifndef NDEBUG
+	mlx4_mr_dump_dev(dev);
+#endif
 	ret = mlx4_rxq_intr_enable(priv);
 	if (ret) {
 		ERROR("%p: interrupt handler installation failed",
@@ -200,6 +223,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		mlx4_rx_queue_release(dev->data->rx_queues[i]);
 	for (i = 0; i != dev->data->nb_tx_queues; ++i)
 		mlx4_tx_queue_release(dev->data->tx_queues[i]);
+	mlx4_mr_release(dev);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
 		claim_zero(mlx4_glue->dealloc_pd(priv->pd));
@@ -964,6 +988,8 @@ rte_mlx4_pmd_init(void)
 	}
 	mlx4_glue->fork_init();
 	rte_pci_register(&mlx4_driver);
+	rte_mem_event_callback_register("MLX4_MEM_EVENT_CB",
+					mlx4_mr_mem_event_cb, NULL);
 }
 
 RTE_PMD_EXPORT_NAME(net_mlx4, __COUNTER__);
