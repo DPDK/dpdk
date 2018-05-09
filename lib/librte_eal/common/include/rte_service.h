@@ -363,6 +363,42 @@ int32_t rte_service_attr_get(uint32_t id, uint32_t attr_id,
  */
 int32_t rte_service_attr_reset_all(uint32_t id);
 
+/**
+ * Returns the number of times the service runner has looped.
+ */
+#define RTE_SERVICE_LCORE_ATTR_LOOPS 0
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get an attribute from a service core.
+ *
+ * @param lcore Id of the service core.
+ * @param attr_id Id of the attribute to be retrieved.
+ * @param [out] attr_value Pointer to storage in which to write retrieved value.
+ * @retval 0 Success, the attribute value has been written to *attr_value*.
+ *         -EINVAL Invalid lcore, attr_id or attr_value was NULL.
+ *         -ENOTSUP lcore is not a service core.
+ */
+int32_t __rte_experimental
+rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
+			   uint64_t *attr_value);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Reset all attribute values of a service core.
+ *
+ * @param lcore The service core to reset all the statistics of
+ * @retval 0 Successfully reset attributes
+ *         -EINVAL Invalid service id provided
+ *         -ENOTSUP lcore is not a service core.
+ */
+int32_t __rte_experimental
+rte_service_lcore_attr_reset_all(uint32_t lcore);
+
 #ifdef __cplusplus
 }
 #endif

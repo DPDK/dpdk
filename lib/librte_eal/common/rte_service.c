@@ -61,7 +61,7 @@ struct core_state {
 	uint8_t runstate; /* running or stopped */
 	uint8_t is_service_core; /* set if core is currently a service core */
 
-	/* extreme statistics */
+	uint64_t loops;
 	uint64_t calls_per_service[RTE_SERVICE_NUM_MAX];
 } __rte_cache_aligned;
 
@@ -422,6 +422,8 @@ rte_service_runner_func(void *arg)
 			service_run(i, cs, service_mask);
 		}
 
+		cs->loops++;
+
 		rte_smp_rmb();
 	}
 
@@ -729,6 +731,28 @@ rte_service_attr_get(uint32_t id, uint32_t attr_id, uint32_t *attr_value)
 	}
 }
 
+int32_t __rte_experimental
+rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
+			   uint64_t *attr_value)
+{
+	struct core_state *cs;
+
+	if (lcore >= RTE_MAX_LCORE || !attr_value)
+		return -EINVAL;
+
+	cs = &lcore_states[lcore];
+	if (!cs->is_service_core)
+		return -ENOTSUP;
+
+	switch (attr_id) {
+	case RTE_SERVICE_LCORE_ATTR_LOOPS:
+		*attr_value = cs->loops;
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
 static void
 rte_service_dump_one(FILE *f, struct rte_service_spec_impl *s,
 		     uint64_t all_cycles, uint32_t reset)
@@ -761,6 +785,23 @@ rte_service_attr_reset_all(uint32_t id)
 
 	int reset = 1;
 	rte_service_dump_one(NULL, s, 0, reset);
+	return 0;
+}
+
+int32_t __rte_experimental
+rte_service_lcore_attr_reset_all(uint32_t lcore)
+{
+	struct core_state *cs;
+
+	if (lcore >= RTE_MAX_LCORE)
+		return -EINVAL;
+
+	cs = &lcore_states[lcore];
+	if (!cs->is_service_core)
+		return -ENOTSUP;
+
+	cs->loops = 0;
+
 	return 0;
 }
 
