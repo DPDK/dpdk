@@ -98,6 +98,14 @@ The following instructions should be followed in this exact order:
         cd <path-to-workspace>/FlexRAN-1.4.0/SDK-R1.4.0/sdk/
         ./create-makefiles-linux.sh
 
+#. If build as a shared library is required, then add ``"-fPIC"`` option to file
+   ``<path-to-workspace>/FlexRAN-1.4.0/SDK-R1.4.0/sdk/cmake/intel-compile-options.cmake``
+   as follows:
+
+    .. code-block:: console
+
+        add_compile_options("-fPIC")
+
 #. A build folder is generated in this form ``build-<ISA>-<CC>``, enter that
    folder and install:
 
