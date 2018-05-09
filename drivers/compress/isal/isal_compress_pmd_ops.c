@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2018 Intel Corporation
  */
+#include <isa-l.h>
 
 #include <rte_common.h>
 #include <rte_compressdev_pmd.h>
@@ -9,6 +10,15 @@
 #include "isal_compress_pmd_private.h"
 
 static const struct rte_compressdev_capabilities isal_pmd_capabilities[] = {
+	{
+		.algo = RTE_COMP_ALGO_DEFLATE,
+		.comp_feature_flags =	RTE_COMP_FF_SHAREABLE_PRIV_XFORM,
+		.window_size = {
+			.min = 15,
+			.max = 15,
+			.increment = 0
+		},
+	},
 	RTE_COMP_END_OF_CAPABILITIES_LIST()
 };
 
@@ -146,6 +156,12 @@ isal_comp_pmd_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 	if (qp == NULL)
 		return -EINVAL;
 
+	if (qp->stream != NULL)
+		rte_free(qp->stream);
+
+	if (qp->stream->level_buf != NULL)
+		rte_free(qp->stream->level_buf);
+
 	if (dev->data->queue_pairs[qp_id] != NULL)
 		rte_free(dev->data->queue_pairs[qp_id]);
 
@@ -213,6 +229,16 @@ isal_comp_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		ISAL_PMD_LOG(ERR, "Failed to allocate queue pair memory");
 		return (-ENOMEM);
 	}
+
+	/* Initialize memory for compression stream structure */
+	qp->stream = rte_zmalloc_socket("Isa-l compression stream ",
+			sizeof(struct isal_zstream),  RTE_CACHE_LINE_SIZE,
+			socket_id);
+
+	/* Initialize memory for compression level buffer */
+	qp->stream->level_buf = rte_zmalloc_socket("Isa-l compression lev_buf",
+			ISAL_DEF_LVL3_DEFAULT, RTE_CACHE_LINE_SIZE,
+			socket_id);
 
 	qp->id = qp_id;
 	dev->data->queue_pairs[qp_id] = qp;

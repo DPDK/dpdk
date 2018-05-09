@@ -6,6 +6,7 @@
 #include <rte_bus_vdev.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
+#include <rte_mbuf.h>
 #include <rte_compressdev_pmd.h>
 
 #include "isal_compress_pmd_private.h"
@@ -187,14 +188,92 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 	return 0;
 }
 
+/* Stateless Compression Function */
+static int
+process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
+		struct isal_priv_xform *priv_xform)
+{
+	int ret = 0;
+	op->status = RTE_COMP_OP_STATUS_SUCCESS;
+
+	/* Required due to init clearing level_buf */
+	uint8_t *temp_level_buf = qp->stream->level_buf;
+
+	/* Initialize compression stream */
+	isal_deflate_stateless_init(qp->stream);
+
+	qp->stream->level_buf = temp_level_buf;
+
+	/* Stateless operation, input will be consumed in one go */
+	qp->stream->flush = NO_FLUSH;
+
+	/* set op level & intermediate level buffer */
+	qp->stream->level = priv_xform->compress.level;
+	qp->stream->level_buf_size = priv_xform->level_buffer_size;
+
+	/* Point compression stream structure to input/output buffers */
+	qp->stream->avail_in = op->src.length;
+	qp->stream->next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
+	qp->stream->avail_out = op->m_dst->data_len;
+	qp->stream->next_out  = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+	qp->stream->end_of_stream = 1; /* All input consumed in one go */
+
+	if (unlikely(!qp->stream->next_in || !qp->stream->next_out)) {
+		ISAL_PMD_LOG(ERR, "Invalid source or destination buffers\n");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		return -1;
+	}
+
+	/* Set op huffman code */
+	if (priv_xform->compress.deflate.huffman == RTE_COMP_HUFFMAN_FIXED)
+		isal_deflate_set_hufftables(qp->stream, NULL,
+				IGZIP_HUFFTABLE_STATIC);
+	else if (priv_xform->compress.deflate.huffman ==
+			RTE_COMP_HUFFMAN_DEFAULT)
+		isal_deflate_set_hufftables(qp->stream, NULL,
+			IGZIP_HUFFTABLE_DEFAULT);
+	/* Dynamically change the huffman code to suit the input data */
+	else if (priv_xform->compress.deflate.huffman ==
+			RTE_COMP_HUFFMAN_DYNAMIC)
+		isal_deflate_set_hufftables(qp->stream, NULL,
+				IGZIP_HUFFTABLE_DEFAULT);
+
+	/* Execute compression operation */
+	ret =  isal_deflate_stateless(qp->stream);
+
+	/* Check that output buffer did not run out of space */
+	if (ret == STATELESS_OVERFLOW) {
+		ISAL_PMD_LOG(ERR, "Output buffer not big enough\n");
+		op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+		return ret;
+	}
+
+	/* Check that input buffer has been fully consumed */
+	if (qp->stream->avail_in != (uint32_t)0) {
+		ISAL_PMD_LOG(ERR, "Input buffer could not be read entirely\n");
+		op->status = RTE_COMP_OP_STATUS_ERROR;
+		return -1;
+	}
+
+	if (ret != COMP_OK) {
+		op->status = RTE_COMP_OP_STATUS_ERROR;
+		return ret;
+	}
+
+	op->consumed = qp->stream->total_in;
+	op->produced = qp->stream->total_out;
+
+	return ret;
+}
+
 /* Process compression/decompression operation */
 static int
-process_op(struct isal_comp_qp *qp __rte_unused,
-		struct rte_comp_op *op __rte_unused,
+process_op(struct isal_comp_qp *qp, struct rte_comp_op *op,
 		struct isal_priv_xform *priv_xform)
 {
 	switch (priv_xform->type) {
 	case RTE_COMP_COMPRESS:
+		process_isal_deflate(op, qp, priv_xform);
 		break;
 	case RTE_COMP_DECOMPRESS:
 		break;

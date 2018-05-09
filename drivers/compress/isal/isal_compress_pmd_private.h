@@ -28,6 +28,8 @@ struct isal_comp_qp {
 	struct rte_ring *processed_pkts;
 	/* Queue pair statistics */
 	struct rte_compressdev_stats qp_stats;
+	/* Compression stream information*/
+	struct isal_zstream *stream;
 	/* Number of free elements on ring */
 	uint16_t num_free_elements;
 } __rte_cache_aligned;
