@@ -80,6 +80,12 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 
 	nb_lcores = rte_lcore_count() - 1;
 
+	if (nb_lcores < 1) {
+		RTE_LOG(ERR, USER1,
+			"Number of enabled cores need to be higher than 1\n");
+		return -EINVAL;
+	}
+
 	/*
 	 * Use less number of devices,
 	 * if there are more available than cores.
