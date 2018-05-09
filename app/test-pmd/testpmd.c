@@ -671,6 +671,7 @@ init_config(void)
 	uint8_t port_per_socket[RTE_MAX_NUMA_NODES];
 	struct rte_gro_param gro_param;
 	uint32_t gso_types;
+	int k;
 
 	memset(port_per_socket,0,RTE_MAX_NUMA_NODES);
 
@@ -721,6 +722,15 @@ init_config(void)
 				port_per_socket[socket_id]++;
 			}
 		}
+
+		/* Apply Rx offloads configuration */
+		for (k = 0; k < port->dev_info.max_rx_queues; k++)
+			port->rx_conf[k].offloads =
+				port->dev_conf.rxmode.offloads;
+		/* Apply Tx offloads configuration */
+		for (k = 0; k < port->dev_info.max_tx_queues; k++)
+			port->tx_conf[k].offloads =
+				port->dev_conf.txmode.offloads;
 
 		/* set flag to initialize port/queue */
 		port->need_reconfig = 1;
@@ -1629,9 +1639,6 @@ start_port(portid_t pid)
 			for (qi = 0; qi < nb_txq; qi++) {
 				port->tx_conf[qi].txq_flags =
 					ETH_TXQ_FLAGS_IGNORE;
-				/* Apply Tx offloads configuration */
-				port->tx_conf[qi].offloads =
-					port->dev_conf.txmode.offloads;
 				if ((numa_support) &&
 					(txring_numa[pi] != NUMA_NO_CONFIG))
 					diag = rte_eth_tx_queue_setup(pi, qi,
@@ -1660,9 +1667,6 @@ start_port(portid_t pid)
 				return -1;
 			}
 			for (qi = 0; qi < nb_rxq; qi++) {
-				/* Apply Rx offloads configuration */
-				port->rx_conf[qi].offloads =
-					port->dev_conf.rxmode.offloads;
 				/* setup rx queues */
 				if ((numa_support) &&
 					(rxring_numa[pi] != NUMA_NO_CONFIG)) {

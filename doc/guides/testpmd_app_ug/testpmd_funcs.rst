@@ -393,6 +393,34 @@ List all items from the pctype mapping table::
 
    testpmd> show port (port_id) pctype mapping
 
+show rx offloading capabilities
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+List all per queue and per port Rx offloading capabilities of a port::
+
+   testpmd> show port (port_id) rx_offload capabilities
+
+show rx offloading configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+List port level and all queue level Rx offloading configuration::
+
+   testpmd> show port (port_id) rx_offload configuration
+
+show tx offloading capabilities
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+List all per queue and per port Tx offloading capabilities of a port::
+
+   testpmd> show port (port_id) tx_offload capabilities
+
+show tx offloading configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+List port level and all queue level Tx offloading configuration::
+
+   testpmd> show port (port_id) tx_offload configuration
+
 
 Configuration Functions
 -----------------------
@@ -1443,6 +1471,69 @@ where:
 Reset ptype mapping table::
 
    testpmd> ptype mapping reset (port_id)
+
+config per port Rx offloading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enable or disable a per port Rx offloading on all Rx queues of a port::
+
+   testpmd> port config (port_id) rx_offload (offloading) on|off
+
+* ``offloading``: can be any of these offloading capability:
+                  vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
+                  qinq_strip, outer_ipv4_cksum, macsec_strip,
+                  header_split, vlan_filter, vlan_extend, jumbo_frame,
+                  crc_strip, scatter, timestamp, security
+
+This command should be run when the port is stopped, or else it will fail.
+
+config per queue Rx offloading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enable or disable a per queue Rx offloading only on a specific Rx queue::
+
+   testpmd> port (port_id) rxq (queue_id) rx_offload (offloading) on|off
+
+* ``offloading``: can be any of these offloading capability:
+                  vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
+                  qinq_strip, outer_ipv4_cksum, macsec_strip,
+                  header_split, vlan_filter, vlan_extend, jumbo_frame,
+                  crc_strip, scatter, timestamp, security
+
+This command should be run when the port is stopped, or else it will fail.
+
+config per port Tx offloading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enable or disable a per port Tx offloading on all Tx queues of a port::
+
+   testpmd> port config (port_id) tx_offload (offloading) on|off
+
+* ``offloading``: can be any of these offloading capability:
+                  vlan_insert, ipv4_cksum, udp_cksum, udp_cksum,
+                  sctp_cksum, tcp_tso, udp_tso, outer_ipv4_cksum,
+                  qinq_insert, vxlan_tnl_tso, gre_tnl_tso,
+                  ipip_tnl_tso, geneve_tnl_tso, macsec_insert,
+                  mt_lockfree, multi_segs, fast_free, security
+
+This command should be run when the port is stopped, or else it will fail.
+
+config per queue Tx offloading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enable or disable a per queue Tx offloading only on a specific Tx queue::
+
+   testpmd> port (port_id) txq (queue_id) tx_offload (offloading) on|off
+
+* ``offloading``: can be any of these offloading capability:
+                  vlan_insert, ipv4_cksum, udp_cksum, udp_cksum,
+                  sctp_cksum, tcp_tso, udp_tso, outer_ipv4_cksum,
+                  qinq_insert, vxlan_tnl_tso, gre_tnl_tso,
+                  ipip_tnl_tso, geneve_tnl_tso, macsec_insert,
+                  mt_lockfree, multi_segs, fast_free, security
+
+This command should be run when the port is stopped, or else it will fail.
+
 
 Port Functions
 --------------
