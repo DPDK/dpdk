@@ -181,7 +181,7 @@ receive_stage(__attribute__((unused)) void *args)
 	}
 }
 
-static void
+static int
 pipeline_stage(__attribute__((unused)) void *args)
 {
 	int i, ret;
@@ -243,9 +243,11 @@ pipeline_stage(__attribute__((unused)) void *args)
 			}
 		}
 	}
+
+	return 0;
 }
 
-static void
+static int
 send_stage(__attribute__((unused)) void *args)
 {
 	uint16_t nb_dq_pkts;
@@ -287,6 +289,8 @@ send_stage(__attribute__((unused)) void *args)
 			/* TODO: Check if nb_dq_pkts == nb_tx_pkts? */
 		}
 	}
+
+	return 0;
 }
 
 int
@@ -346,15 +350,13 @@ main(int argc, char **argv)
 				if (is_bit_set(port_id, portmask))
 					init_ring(lcore_id, port_id);
 
-			/* typecast is a workaround for GCC 4.3 bug */
-			rte_eal_remote_launch((int (*)(void *))pipeline_stage,
+			rte_eal_remote_launch(pipeline_stage,
 					NULL, lcore_id);
 		}
 	}
 
 	/* Start send_stage() on the last slave core */
-	/* typecast is a workaround for GCC 4.3 bug */
-	rte_eal_remote_launch((int (*)(void *))send_stage, NULL, last_lcore_id);
+	rte_eal_remote_launch(send_stage, NULL, last_lcore_id);
 
 	/* Start receive_stage() on the master core */
 	receive_stage(NULL);
