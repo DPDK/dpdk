@@ -773,7 +773,8 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	}
 	txq_ctrl->txq.tunnel_en = config->tunnel_en;
 	txq_ctrl->txq.swp_en = ((DEV_TX_OFFLOAD_IP_TNL_TSO |
-				 DEV_TX_OFFLOAD_UDP_TNL_TSO) &
+				 DEV_TX_OFFLOAD_UDP_TNL_TSO |
+				 DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &
 				txq_ctrl->txq.offloads) && config->swp;
 }
 

@@ -1129,7 +1129,9 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 	int tso = !!(tx_offloads & (DEV_TX_OFFLOAD_TCP_TSO |
 				    DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				    DEV_TX_OFFLOAD_GRE_TNL_TSO));
+				    DEV_TX_OFFLOAD_GRE_TNL_TSO |
+				    DEV_TX_OFFLOAD_IP_TNL_TSO |
+				    DEV_TX_OFFLOAD_UDP_TNL_TSO));
 	int swp = !!(tx_offloads & (DEV_TX_OFFLOAD_IP_TNL_TSO |
 				    DEV_TX_OFFLOAD_UDP_TNL_TSO |
 				    DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM));
