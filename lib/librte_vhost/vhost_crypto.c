@@ -853,11 +853,6 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		op->sym->auth.digest.data = digest_addr;
 		op->sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m_dst,
 				digest_offset);
-		if (unlikely(move_desc(head, &desc,
-				chain->para.hash_result_len) < 0)) {
-			ret = VIRTIO_CRYPTO_ERR;
-			goto error_exit;
-		}
 		break;
 	default:
 		ret = VIRTIO_CRYPTO_BADMSG;
