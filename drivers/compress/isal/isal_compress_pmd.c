@@ -187,6 +187,72 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 	return 0;
 }
 
+/* Process compression/decompression operation */
+static int
+process_op(struct isal_comp_qp *qp __rte_unused,
+		struct rte_comp_op *op __rte_unused,
+		struct isal_priv_xform *priv_xform)
+{
+	switch (priv_xform->type) {
+	case RTE_COMP_COMPRESS:
+		break;
+	case RTE_COMP_DECOMPRESS:
+		break;
+	default:
+		ISAL_PMD_LOG(ERR, "Operation Not Supported\n");
+		return -ENOTSUP;
+	}
+	return 0;
+}
+
+/* Enqueue burst */
+static uint16_t
+isal_comp_pmd_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
+			uint16_t nb_ops)
+{
+	struct isal_comp_qp *qp = queue_pair;
+	uint16_t i;
+	int retval;
+	int16_t num_enq = RTE_MIN(qp->num_free_elements, nb_ops);
+
+	for (i = 0; i < num_enq; i++) {
+		if (unlikely(ops[i]->op_type != RTE_COMP_OP_STATELESS)) {
+			ops[i]->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+			ISAL_PMD_LOG(ERR, "Stateful operation not Supported\n");
+			qp->qp_stats.enqueue_err_count++;
+			continue;
+		}
+		retval = process_op(qp, ops[i], ops[i]->private_xform);
+		if (unlikely(retval < 0) ||
+				ops[i]->status != RTE_COMP_OP_STATUS_SUCCESS) {
+			qp->qp_stats.enqueue_err_count++;
+		}
+	}
+
+	retval = rte_ring_enqueue_burst(qp->processed_pkts, (void *)ops,
+			num_enq, NULL);
+	qp->num_free_elements -= retval;
+	qp->qp_stats.enqueued_count += retval;
+
+	return retval;
+}
+
+/* Dequeue burst */
+static uint16_t
+isal_comp_pmd_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
+		uint16_t nb_ops)
+{
+	struct isal_comp_qp *qp = queue_pair;
+	uint16_t nb_dequeued;
+
+	nb_dequeued = rte_ring_dequeue_burst(qp->processed_pkts, (void **)ops,
+			nb_ops, NULL);
+	qp->num_free_elements += nb_dequeued;
+	qp->qp_stats.dequeued_count += nb_dequeued;
+
+	return nb_dequeued;
+}
+
 /* Create ISA-L compression device */
 static int
 compdev_isal_create(const char *name, struct rte_vdev_device *vdev,
@@ -202,6 +268,10 @@ compdev_isal_create(const char *name, struct rte_vdev_device *vdev,
 	}
 
 	dev->dev_ops = isal_compress_pmd_ops;
+
+	/* register rx/tx burst functions for data path */
+	dev->dequeue_burst = isal_comp_pmd_dequeue_burst;
+	dev->enqueue_burst = isal_comp_pmd_enqueue_burst;
 
 	return 0;
 }

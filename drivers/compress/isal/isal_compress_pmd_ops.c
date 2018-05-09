@@ -203,6 +203,8 @@ isal_comp_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		goto qp_setup_cleanup;
 	}
 
+	qp->num_free_elements = rte_ring_free_count(qp->processed_pkts);
+
 	memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
 	return 0;
 
