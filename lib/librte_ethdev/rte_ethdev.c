@@ -1028,7 +1028,9 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
-	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
+
+	rte_eth_dev_info_get(port_id, &dev_info);
 
 	/* If number of queues specified by application for both Rx and Tx is
 	 * zero, use driver preferred values. This cannot be done individually
@@ -1058,9 +1060,6 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			nb_tx_q, RTE_MAX_QUEUES_PER_PORT);
 		return -EINVAL;
 	}
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
 
 	if (dev->data->dev_started) {
 		RTE_PMD_DEBUG_TRACE(
