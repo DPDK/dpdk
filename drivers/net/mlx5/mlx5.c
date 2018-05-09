@@ -41,6 +41,7 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 #include "mlx5_glue.h"
+#include "mlx5_mr.h"
 
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
@@ -84,8 +85,47 @@
 #define MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP (1 << 4)
 #endif
 
+static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
+
+/* Shared memory between primary and secondary processes. */
+struct mlx5_shared_data *mlx5_shared_data;
+
+/* Spinlock for mlx5_shared_data allocation. */
+static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
+
 /** Driver-specific log messages type. */
 int mlx5_logtype;
+
+/**
+ * Prepare shared data between primary and secondary process.
+ */
+static void
+mlx5_prepare_shared_data(void)
+{
+	const struct rte_memzone *mz;
+
+	rte_spinlock_lock(&mlx5_shared_data_lock);
+	if (mlx5_shared_data == NULL) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* Allocate shared memory. */
+			mz = rte_memzone_reserve(MZ_MLX5_PMD_SHARED_DATA,
+						 sizeof(*mlx5_shared_data),
+						 SOCKET_ID_ANY, 0);
+		} else {
+			/* Lookup allocated shared memory. */
+			mz = rte_memzone_lookup(MZ_MLX5_PMD_SHARED_DATA);
+		}
+		if (mz == NULL)
+			rte_panic("Cannot allocate mlx5 shared data\n");
+		mlx5_shared_data = mz->addr;
+		/* Initialize shared data. */
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			LIST_INIT(&mlx5_shared_data->mem_event_cb_list);
+			rte_rwlock_init(&mlx5_shared_data->mem_event_rwlock);
+		}
+	}
+	rte_spinlock_unlock(&mlx5_shared_data_lock);
+}
 
 /**
  * Retrieve integer value from environment variable.
@@ -201,6 +241,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->txqs = NULL;
 	}
 	mlx5_flow_delete_drop_queue(dev);
+	mlx5_mr_release(dev);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
 		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
@@ -633,6 +674,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct ibv_counter_set_description cs_desc;
 #endif
 
+	/* Prepare shared data between primary and secondary process. */
+	mlx5_prepare_shared_data();
 	assert(pci_drv == &mlx5_driver);
 	/* Get mlx5_dev[] index. */
 	idx = mlx5_dev_idx(&pci_dev->addr);
@@ -1308,6 +1351,8 @@ rte_mlx5_pmd_init(void)
 	}
 	mlx5_glue->fork_init();
 	rte_pci_register(&mlx5_driver);
+	rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
+					mlx5_mr_mem_event_cb, NULL);
 }
 
 RTE_PMD_EXPORT_NAME(net_mlx5, __COUNTER__);

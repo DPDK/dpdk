@@ -104,9 +104,18 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 
 	for (i = 0; i != priv->rxqs_n; ++i) {
 		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_get(dev, i);
+		struct rte_mempool *mp;
 
 		if (!rxq_ctrl)
 			continue;
+		/* Pre-register Rx mempool. */
+		mp = rxq_ctrl->rxq.mp;
+		DRV_LOG(DEBUG,
+			"port %u Rx queue %u registering"
+			" mp %s having %u chunks",
+			dev->data->port_id, rxq_ctrl->idx,
+			mp->name, mp->nb_mem_chunks);
+		mlx5_mr_update_mp(dev, &rxq_ctrl->rxq.mr_ctrl, mp);
 		ret = rxq_alloc_elts(rxq_ctrl);
 		if (ret)
 			goto error;
@@ -154,6 +163,8 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
+	if (rte_log_get_level(mlx5_logtype) == RTE_LOG_DEBUG)
+		mlx5_mr_dump_dev(dev);
 	ret = mlx5_rx_intr_vec_enable(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u Rx interrupt vector creation failed",

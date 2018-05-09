@@ -29,6 +29,7 @@
 
 #include "mlx5_utils.h"
 #include "mlx5.h"
+#include "mlx5_mr.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 #include "mlx5_prm.h"
@@ -81,6 +82,7 @@ struct mlx5_rxq_data {
 	uint16_t rq_ci;
 	uint16_t rq_pi;
 	uint16_t cq_ci;
+	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	volatile struct mlx5_wqe_data_seg(*wqes)[];
 	volatile struct mlx5_cqe(*cqes)[];
 	struct rxq_zip zip; /* Compressed context. */
@@ -109,8 +111,8 @@ struct mlx5_rxq_ibv {
 struct mlx5_rxq_ctrl {
 	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
-	struct priv *priv; /* Back pointer to private data. */
 	struct mlx5_rxq_ibv *ibv; /* Verbs elements. */
+	struct priv *priv; /* Back pointer to private data. */
 	struct mlx5_rxq_data rxq; /* Data path structure. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	uint32_t tunnel_types[16]; /* Tunnel type counter. */
@@ -165,6 +167,7 @@ struct mlx5_txq_data {
 	uint16_t inline_max_packet_sz; /* Max packet size for inlining. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	uint64_t offloads; /* Offloads for Tx Queue. */
+	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
 	volatile void *wqes; /* Work queue (use volatile to write into). */
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
@@ -187,11 +190,11 @@ struct mlx5_txq_ibv {
 struct mlx5_txq_ctrl {
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
-	struct priv *priv; /* Back pointer to private data. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int max_inline_data; /* Max inline data. */
 	unsigned int max_tso_header; /* Max TSO header size. */
 	struct mlx5_txq_ibv *ibv; /* Verbs queue object. */
+	struct priv *priv; /* Back pointer to private data. */
 	struct mlx5_txq_data txq; /* Data path structure. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	volatile void *bf_reg_orig; /* Blueflame register from verbs. */
@@ -307,6 +310,12 @@ uint16_t mlx5_tx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 			   uint16_t pkts_n);
 uint16_t mlx5_rx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 			   uint16_t pkts_n);
+
+/* mlx5_mr.c */
+
+void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
+uint32_t mlx5_rx_addr2mr_bh(struct mlx5_rxq_data *rxq, uintptr_t addr);
+uint32_t mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr);
 
 #ifndef NDEBUG
 /**
@@ -493,13 +502,65 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 	*txq->cq_db = rte_cpu_to_be_32(cq_ci);
 }
 
+/**
+ * Query LKey from a packet buffer for Rx. No need to flush local caches for Rx
+ * as mempool is pre-configured and static.
+ *
+ * @param rxq
+ *   Pointer to Rx queue structure.
+ * @param addr
+ *   Address to search.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
 static __rte_always_inline uint32_t
-mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
+mlx5_rx_addr2mr(struct mlx5_rxq_data *rxq, uintptr_t addr)
 {
-	(void)txq;
-	(void)mb;
-	return UINT32_MAX;
+	struct mlx5_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
+	uint32_t lkey;
+
+	/* Linear search on MR cache array. */
+	lkey = mlx5_mr_lookup_cache(mr_ctrl->cache, &mr_ctrl->mru,
+				    MLX5_MR_CACHE_N, addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/* Take slower bottom-half (Binary Search) on miss. */
+	return mlx5_rx_addr2mr_bh(rxq, addr);
 }
+
+#define mlx5_rx_mb2mr(rxq, mb) mlx5_rx_addr2mr(rxq, (uintptr_t)((mb)->buf_addr))
+
+/**
+ * Query LKey from a packet buffer for Tx. If not found, add the mempool.
+ *
+ * @param txq
+ *   Pointer to Tx queue structure.
+ * @param addr
+ *   Address to search.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+static __rte_always_inline uint32_t
+mlx5_tx_addr2mr(struct mlx5_txq_data *txq, uintptr_t addr)
+{
+	struct mlx5_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
+	uint32_t lkey;
+
+	/* Check generation bit to see if there's any change on existing MRs. */
+	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
+		mlx5_mr_flush_local_cache(mr_ctrl);
+	/* Linear search on MR cache array. */
+	lkey = mlx5_mr_lookup_cache(mr_ctrl->cache, &mr_ctrl->mru,
+				    MLX5_MR_CACHE_N, addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/* Take slower bottom-half (binary search) on miss. */
+	return mlx5_tx_addr2mr_bh(txq, addr);
+}
+
+#define mlx5_tx_mb2mr(rxq, mb) mlx5_tx_addr2mr(rxq, (uintptr_t)((mb)->buf_addr))
 
 /**
  * Ring TX queue doorbell and flush the update if requested.

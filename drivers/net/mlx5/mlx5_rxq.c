@@ -751,7 +751,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 			.addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
 								  uintptr_t)),
 			.byte_count = rte_cpu_to_be_32(DATA_LEN(buf)),
-			.lkey = UINT32_MAX,
+			.lkey = mlx5_rx_mb2mr(rxq_data, buf),
 		};
 	}
 	rxq_data->rq_db = rwq.dbrec;
@@ -934,6 +934,11 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
+	if (mlx5_mr_btree_init(&tmpl->rxq.mr_ctrl.cache_bh,
+			       MLX5_MR_BTREE_CACHE_N, socket)) {
+		/* rte_errno is already set. */
+		goto error;
+	}
 	tmpl->socket = socket;
 	if (dev->data->dev_conf.intr_conf.rxq)
 		tmpl->irq = 1;
@@ -1089,6 +1094,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	DRV_LOG(DEBUG, "port %u Rx queue %u: refcnt %d", dev->data->port_id,
 		rxq_ctrl->idx, rte_atomic32_read(&rxq_ctrl->refcnt));
 	if (rte_atomic32_dec_and_test(&rxq_ctrl->refcnt)) {
+		mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
 		LIST_REMOVE(rxq_ctrl, next);
 		rte_free(rxq_ctrl);
 		(*priv->rxqs)[idx] = NULL;

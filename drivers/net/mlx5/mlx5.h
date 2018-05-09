@@ -26,11 +26,13 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
+#include <rte_rwlock.h>
 #include <rte_interrupts.h>
 #include <rte_errno.h>
 #include <rte_flow.h>
 
 #include "mlx5_utils.h"
+#include "mlx5_mr.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
@@ -49,6 +51,16 @@ enum {
 	PCI_DEVICE_ID_MELLANOX_CONNECTX5EX = 0x1019,
 	PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF = 0x101a,
 };
+
+LIST_HEAD(mlx5_dev_list, priv);
+
+/* Shared memory between primary and secondary processes. */
+struct mlx5_shared_data {
+	struct mlx5_dev_list mem_event_cb_list;
+	rte_rwlock_t mem_event_rwlock;
+};
+
+extern struct mlx5_shared_data *mlx5_shared_data;
 
 struct mlx5_xstats_ctrl {
 	/* Number of device stats. */
@@ -119,7 +131,10 @@ struct mlx5_verbs_alloc_ctx {
 	const void *obj; /* Pointer to the DPDK object. */
 };
 
+LIST_HEAD(mlx5_mr_list, mlx5_mr);
+
 struct priv {
+	LIST_ENTRY(priv) mem_event_cb; /* Called by memory event callback. */
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
@@ -146,6 +161,13 @@ struct priv {
 	struct mlx5_hrxq_drop *flow_drop_queue; /* Flow drop queue. */
 	struct mlx5_flows flows; /* RTE Flow rules. */
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
+	struct {
+		uint32_t dev_gen; /* Generation number to flush local caches. */
+		rte_rwlock_t rwlock; /* MR Lock. */
+		struct mlx5_mr_btree cache; /* Global MR cache table. */
+		struct mlx5_mr_list mr_list; /* Registered MR list. */
+		struct mlx5_mr_list mr_free_list; /* Freed MR list. */
+	} mr;
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
 	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */

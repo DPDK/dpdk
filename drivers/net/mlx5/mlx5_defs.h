@@ -37,6 +37,12 @@
  */
 #define MLX5_TX_COMP_THRESH_INLINE_DIV (1 << 3)
 
+/* Size of per-queue MR cache array for linear search. */
+#define MLX5_MR_CACHE_N 8
+
+/* Size of MR cache table for binary search. */
+#define MLX5_MR_BTREE_CACHE_N 256
+
 /*
  * If defined, only use software counters. The PMD will never ask the hardware
  * for these, and many of them won't be available.

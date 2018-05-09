@@ -34,6 +34,7 @@
 #include <rte_interrupts.h>
 #include <rte_malloc.h>
 #include <rte_string_fns.h>
+#include <rte_rwlock.h>
 
 #include "mlx5.h"
 #include "mlx5_glue.h"
@@ -391,6 +392,21 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		if (++j == rxqs_n)
 			j = 0;
 	}
+	/*
+	 * Once the device is added to the list of memory event callback, its
+	 * global MR cache table cannot be expanded on the fly because of
+	 * deadlock. If it overflows, lookup should be done by searching MR list
+	 * linearly, which is slow.
+	 */
+	if (mlx5_mr_btree_init(&priv->mr.cache, MLX5_MR_BTREE_CACHE_N * 2,
+			       dev->device->numa_node)) {
+		/* rte_errno is already set. */
+		return -rte_errno;
+	}
+	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
+	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
+			 priv, mem_event_cb);
+	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	return 0;
 }
 
