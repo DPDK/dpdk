@@ -35,6 +35,10 @@ struct ibv_query_counter_set_attr;
 struct mlx5dv_qp_init_attr;
 #endif
 
+#ifndef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+struct mlx5dv_wq_init_attr;
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;
@@ -104,6 +108,10 @@ struct mlx5_glue {
 		(struct ibv_context *context,
 		 struct ibv_cq_init_attr_ex *cq_attr,
 		 struct mlx5dv_cq_init_attr *mlx5_cq_attr);
+	struct ibv_wq *(*dv_create_wq)
+		(struct ibv_context *context,
+		 struct ibv_wq_init_attr *wq_attr,
+		 struct mlx5dv_wq_init_attr *mlx5_wq_attr);
 	int (*dv_query_device)(struct ibv_context *ctx_in,
 			       struct mlx5dv_context *attrs_out);
 	int (*dv_set_context_attr)(struct ibv_context *ibv_ctx,

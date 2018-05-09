@@ -293,6 +293,21 @@ mlx5_glue_dv_create_cq(struct ibv_context *context,
 	return mlx5dv_create_cq(context, cq_attr, mlx5_cq_attr);
 }
 
+static struct ibv_wq *
+mlx5_glue_dv_create_wq(struct ibv_context *context,
+		       struct ibv_wq_init_attr *wq_attr,
+		       struct mlx5dv_wq_init_attr *mlx5_wq_attr)
+{
+#ifndef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+	(void)context;
+	(void)wq_attr;
+	(void)mlx5_wq_attr;
+	return NULL;
+#else
+	return mlx5dv_create_wq(context, wq_attr, mlx5_wq_attr);
+#endif
+}
+
 static int
 mlx5_glue_dv_query_device(struct ibv_context *ctx,
 			  struct mlx5dv_context *attrs_out)
@@ -368,6 +383,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.port_state_str = mlx5_glue_port_state_str,
 	.cq_ex_to_cq = mlx5_glue_cq_ex_to_cq,
 	.dv_create_cq = mlx5_glue_dv_create_cq,
+	.dv_create_wq = mlx5_glue_dv_create_wq,
 	.dv_query_device = mlx5_glue_dv_query_device,
 	.dv_set_context_attr = mlx5_glue_dv_set_context_attr,
 	.dv_init_obj = mlx5_glue_dv_init_obj,
