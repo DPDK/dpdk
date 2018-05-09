@@ -45,7 +45,7 @@ parser.add_argument("-v", "--test-vector",
                     nargs="+",
                     help="Specifies paths to the test vector files.",
                     default=[dpdk_path +
-                    "/app/test-bbdev/test_vectors/bbdev_vector_null.data"])
+                    "/app/test-bbdev/test_vectors/bbdev_null.data"])
 parser.add_argument("-n", "--num-ops",
                     type=int,
                     help="Number of operations to process on device.",

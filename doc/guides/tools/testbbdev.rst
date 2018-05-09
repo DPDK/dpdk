@@ -105,18 +105,18 @@ The following are the command-line options:
 ``-v TEST_VECTOR [TEST_VECTOR ...], --test_vector TEST_VECTOR [TEST_VECTOR ...]``
  Specifies paths to the test vector files. If not specified path is set based
  on *$RTE_SDK* environment variable concatenated with
- "*/app/test-bbdev/test_vectors/bbdev_vector_null.data*" and indicates default
+ "*/app/test-bbdev/test_vectors/bbdev_null.data*" and indicates default
  data file.
 
  **Example usage:**
 
- ``./test-bbdev.py -v app/test-bbdev/test_vectors/bbdev_vector_td_test1.data``
-  Fills vector based on bbdev_vector_td_test1.data file and runs all tests
+ ``./test-bbdev.py -v app/test-bbdev/test_vectors/turbo_dec_test1.data``
+  Fills vector based on turbo_dec_test1.data file and runs all tests
 
- ``./test-bbdev.py -v bbdev_vector_td_test1.data bbdev_vector_te_test2.data``
+ ``./test-bbdev.py -v turbo_dec_test1.data turbo_enc_test2.data``
   The bbdev test app is executed twice. First time vector is filled based on
-  *bbdev_vector_td_test1.data* file and second time based on
-  *bbdev_vector_te_test2.data* file. For both executions all tests are run.
+  *turbo_dec_test1.data* file and second time based on
+  *turb_enc_test2.data* file. For both executions all tests are run.
 
 ``-n NUM_OPS, --num_ops NUM_OPS``
  Specifies number of operations to process on device. If not specified num_ops
@@ -141,15 +141,13 @@ run tests with different set of vector files without giving all of them explicit
 
 .. code-block:: console
 
-  ./test-bbdev.py -v app/test-bbdev/test_vectors/bbdev_vector_*.data
+  ./test-bbdev.py -v app/test-bbdev/test_vectors/turbo_<enc/dec>_c<c>_k<k>_r<r>_e<e>_<extra-info>.data
 
 It runs all tests with following vectors:
 
-- ``bbdev_vector_null.data``
+- ``bbdev_null.data``
 
-- ``bbdev_vector_td_default.data``
-
-- ``bbdev_vector_te_default.data``
+- ``turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_high_snr.data``
 
 - ``turbo_enc_c1_k40_r0_e1190_rm.data``
 
@@ -159,15 +157,19 @@ It runs all tests with following vectors:
 
 - ``turbo_enc_c1_k40_r0_e272_rm.data``
 
+- ``turbo_enc_c1_k6144_r0_e32256_crc24b_rm.data``
+
 .. code-block:: console
 
-  ./test-bbdev.py -v app/test-bbdev/test_vectors/bbdev_vector_t?_default.data
+  ./test-bbdev.py -v app/test-bbdev/turbo_*_default.data
 
-It runs all tests with "default" vectors:
+It runs all tests with "default" vectors.
 
-- ``bbdev_vector_te_default.data``
+* ``turbo_dec_default.data`` is a soft link to
+  ``turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_high_snr.data``
 
-- ``bbdev_vector_td_default.data``
+* ``turbo_enc_default.data`` is a soft link to
+  ``turbo_enc_c1_k6144_r0_e32256_crc24b_rm.data``
 
 
 Running Tests
@@ -181,9 +183,13 @@ x86_64-native-linuxapp-icc target:
  |-- app
      |-- test-bbdev
          |-- test_vectors
-             |-- bbdev_vector_null.data
-             |-- bbdev_vector_td_default.data
-             |-- bbdev_vector_te_default.data
+             |-- bbdev_null.data
+             |-- turbo_dec_c1_k6144_r0_e10376_crc24b_sbd_negllr_high_snr.data
+             |-- turbo_enc_c1_k40_r0_e1190_rm.data
+             |-- turbo_enc_c1_k40_r0_e1194_rm.data
+             |-- turbo_enc_c1_k40_r0_e1196_rm.data
+             |-- turbo_enc_c1_k40_r0_e272_rm.data
+             |-- turbo_enc_c1_k6144_r0_e32256_crc24b_rm.data
 
  |-- x86_64-native-linuxapp-icc
      |-- app
@@ -195,10 +201,10 @@ All bbdev devices
 .. code-block:: console
 
   ./test-bbdev.py -p ../../x86_64-native-linuxapp-icc/app/testbbdev
-  -v ./test_vectors/bbdev_vector_td_default.data
+  -v turbo_dec_default.data
 
 It runs all available tests using the test vector filled based on
-*bbdev_vector_td_default.data* file.
+*turbo_dec_default.data* file.
 By default number of operations to process on device is set to 32, timeout is
 set to 300s and operations enqueue/dequeue burst size is set to 32.
 Moreover a bbdev (*bbdev_null*) device will be created.
@@ -210,7 +216,7 @@ bbdev turbo_sw device
 
   ./test-bbdev.py -p ../../x86_64-native-linuxapp-icc/app/testbbdev
   -e="--vdev=turbo_sw" -t 120 -c validation
-  -v ./test_vectors/bbdev_vector_t?_default.data -n 64 -b 8 32
+  -v ./test_vectors/turbo_* -n 64 -b 8 32
 
 It runs **validation** test for each vector file that matches the given pattern.
 Number of operations to process on device is set to 64 and operations timeout is
@@ -221,13 +227,13 @@ Moreover a bbdev (*turbo_sw*) device will be created.
 bbdev null device
 ~~~~~~~~~~~~~~~~~
 
-Executing bbdev null device with *bbdev_vector_null.data* helps in measuring the
+Executing bbdev null device with *bbdev_null.data* helps in measuring the
 overhead introduced by the bbdev framework.
 
 .. code-block:: console
 
   ./test-bbdev.py -e="--vdev=bbdev_null0"
-  -v ./test_vectors/bbdev_vector_null.data
+  -v ./test_vectors/bbdev_null.data
 
 **Note:**
 
