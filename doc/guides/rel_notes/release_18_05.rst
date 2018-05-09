@@ -153,6 +153,13 @@ New Features
 
   See the :doc:`../eventdevs/octeontx` guide for more details
 
+* **Added Event Crypto Adapter Library.**
+
+    Added the Event Crypto Adapter Library.  This library extends the
+    event-based model by introducing APIs that allow applications to
+    enqueue/dequeue crypto operations to/from cryptodev as events scheduled
+    by an event device.
+
 * **Added DPAA2 QDMA Driver (in rawdev).**
 
   The DPAA2 QDMA is an implementation of the rawdev API, that provide means

@@ -367,6 +367,7 @@ M: Abhinandan Gujjar <abhinandan.gujjar@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*crypto_adapter*
 F: test/test/test_event_crypto_adapter.c
+F: doc/guides/prog_guide/event_crypto_adapter.rst
 
 Raw device API - EXPERIMENTAL
 M: Shreyansh Jain <shreyansh.jain@nxp.com>

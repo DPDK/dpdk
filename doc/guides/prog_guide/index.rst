@@ -44,6 +44,7 @@ Programmer's Guide
     eventdev
     event_ethernet_rx_adapter
     event_timer_adapter
+    event_crypto_adapter
     qos_framework
     power_man
     packet_classif_access_ctrl
