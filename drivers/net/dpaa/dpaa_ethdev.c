@@ -328,6 +328,8 @@ static void dpaa_eth_dev_info(struct rte_eth_dev *dev,
 					dev_rx_offloads_nodis;
 	dev_info->tx_offload_capa = dev_tx_offloads_sup |
 					dev_tx_offloads_nodis;
+	dev_info->default_rxportconf.burst_size = DPAA_DEF_RX_BURST_SIZE;
+	dev_info->default_txportconf.burst_size = DPAA_DEF_TX_BURST_SIZE;
 }
 
 static int dpaa_eth_link_update(struct rte_eth_dev *dev,

@@ -51,6 +51,10 @@
 /*Maximum number of slots available in TX ring*/
 #define DPAA_TX_BURST_SIZE	7
 
+/* Optimal burst size for RX and TX as default */
+#define DPAA_DEF_RX_BURST_SIZE 7
+#define DPAA_DEF_TX_BURST_SIZE DPAA_TX_BURST_SIZE
+
 #ifndef VLAN_TAG_SIZE
 #define VLAN_TAG_SIZE   4 /** < Vlan Header Length */
 #endif
