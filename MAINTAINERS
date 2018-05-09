@@ -366,6 +366,7 @@ Eventdev Crypto Adapter API - EXPERIMENTAL
 M: Abhinandan Gujjar <abhinandan.gujjar@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*crypto_adapter*
+F: test/test/test_event_crypto_adapter.c
 
 Raw device API - EXPERIMENTAL
 M: Shreyansh Jain <shreyansh.jain@nxp.com>

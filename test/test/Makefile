@@ -185,6 +185,7 @@ SRCS-y += test_eventdev.c
 SRCS-y += test_event_ring.c
 SRCS-y += test_event_eth_rx_adapter.c
 SRCS-y += test_event_timer_adapter.c
+SRCS-y += test_event_crypto_adapter.c
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_RAWDEV),y)
@@ -212,6 +213,7 @@ CFLAGS_test_memcpy_perf.o += -fno-var-tracking-assignments
 ifeq ($(shell test $(GCC_VERSION) -le 50 && echo 1), 1)
 CFLAGS_test_eventdev_sw.o += -Wno-missing-field-initializers
 CFLAGS_test_event_timer_adapter.o += -Wno-missing-field-initializers
+CFLAGS_test_event_crypto_adapter.o += -Wno-missing-field-initializers
 endif
 endif
 endif
