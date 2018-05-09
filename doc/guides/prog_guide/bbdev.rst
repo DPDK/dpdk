@@ -6,12 +6,12 @@ Wireless Baseband Device Library
 
 The Wireless Baseband library provides a common programming framework that
 abstracts HW accelerators based on FPGA and/or Fixed Function Accelerators that
-assist with 3gpp Physical Layer processing. Furthermore, it decouples the
+assist with 3GPP Physical Layer processing. Furthermore, it decouples the
 application from the compute-intensive wireless functions by abstracting their
 optimized libraries to appear as virtual bbdev devices.
 
 The functional scope of the BBDEV library are those functions in relation to
-the 3gpp Layer 1 signal processing (channel coding, modulation, ...).
+the 3GPP Layer 1 signal processing (channel coding, modulation, ...).
 
 The framework currently only supports Turbo Code FEC function.
 
@@ -167,7 +167,7 @@ Logical Cores, Memory and Queues Relationships
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The bbdev device Library as the Poll Mode Driver library support NUMA for when
-a processor’s logical cores and interfaces utilize its local memory. Therefore
+a processor's logical cores and interfaces utilize its local memory. Therefore
 baseband operations, the mbuf being operated on should be allocated from memory
 pools created in the local memory. The buffers should, if possible, remain on
 the local processor to obtain the best performance results and buffer
@@ -202,7 +202,7 @@ structure in the *DPDK API Reference*.
 
 A device reports its capabilities when registering itself in the bbdev framework.
 With the aid of this capabilities mechanism, an application can query devices to
-discover which operations within the 3gpp physical layer they are capable of
+discover which operations within the 3GPP physical layer they are capable of
 performing. Below is an example of the capabilities for a PMD it supports in
 relation to Turbo Encoding and Decoding operations.
 
@@ -216,7 +216,10 @@ relation to Turbo Encoding and Decoding operations.
                     RTE_BBDEV_TURBO_SUBBLOCK_DEINTERLEAVE |
                     RTE_BBDEV_TURBO_POS_LLR_1_BIT_IN |
                     RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
-                    RTE_BBDEV_TURBO_CRC_TYPE_24B,
+                    RTE_BBDEV_TURBO_CRC_TYPE_24B |
+                    RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
+                    RTE_BBDEV_TURBO_EARLY_TERMINATION,
+                .max_llr_modulus = 16,
                 .num_buffers_src = RTE_BBDEV_MAX_CODE_BLOCKS,
                 .num_buffers_hard_out =
                         RTE_BBDEV_MAX_CODE_BLOCKS,
@@ -228,6 +231,7 @@ relation to Turbo Encoding and Decoding operations.
             .cap.turbo_enc = {
                 .capability_flags =
                         RTE_BBDEV_TURBO_CRC_24B_ATTACH |
+                        RTE_BBDEV_TURBO_CRC_24A_ATTACH |
                         RTE_BBDEV_TURBO_RATE_MATCH |
                         RTE_BBDEV_TURBO_RV_INDEX_BYPASS,
                 .num_buffers_src = RTE_BBDEV_MAX_CODE_BLOCKS,
@@ -391,27 +395,101 @@ operation to its allocating pool.
     void rte_bbdev_enc_op_free_bulk(struct rte_bbdev_enc_op **ops,
             unsigned int num_ops)
 
-BBDEV Operations
-~~~~~~~~~~~~~~~~
+BBDEV Inbound/Outbound Memory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The bbdev operation structure contains all the mutable data relating to
-performing Turbo code processing on a referenced mbuf data buffer. It is used
-for either encode or decode operations.
+performing Turbo coding on a referenced mbuf data buffer. It is used for either
+encode or decode operations.
 
 Turbo Encode operation accepts one input and one output.
-
 Turbo Decode operation accepts one input and two outputs, called *hard-decision*
 and *soft-decision* outputs. *Soft-decision* output is optional.
 
-It is expected that the application provides input and output ``mbuf`` pointers
+It is expected that the application provides input and output mbuf pointers
 allocated and ready to use. The baseband framework supports turbo coding on
 Code Blocks (CB) and Transport Blocks (TB).
 
-For the output buffer(s), the application needs only to provide an allocated and
-free mbuf (containing only one mbuf segment), so that bbdev can write the
-operation outcome.
+For the output buffer(s), the application is required to provide an allocated
+and free mbuf, so that bbdev write back the resulting output.
 
-**Turbo Encode Op structure**
+The support of split "scattered" buffers is a driver-specific feature, so it is
+reported individually by the supporting driver as a capability.
+
+Input and output data buffers are identified by ``rte_bbdev_op_data`` structure,
+as follows:
+
+.. code-block:: c
+
+    struct rte_bbdev_op_data {
+        struct rte_mbuf *data;
+        uint32_t offset;
+        uint32_t length;
+    };
+
+
+This structure has three elements:
+
+- ``data``: This is the mbuf data structure representing the data for BBDEV
+  operation.
+
+  This mbuf pointer can point to one Code Block (CB) data buffer or multiple CBs
+  contiguously located next to each other. A Transport Block (TB) represents a
+  whole piece of data that is divided into one or more CBs. Maximum number of
+  CBs can be contained in one TB is defined by ``RTE_BBDEV_MAX_CODE_BLOCKS``.
+
+  An mbuf data structure cannot represent more than one TB. The smallest piece
+  of data that can be contained in one mbuf is one CB.
+  An mbuf can include one contiguous CB, subset of contiguous CBs that are
+  belonging to one TB, or all contiguous CBs that are belonging to one TB.
+
+  If a BBDEV PMD supports the extended capability "Scatter-Gather", then it is
+  capable of collecting (gathering) non-contiguous (scattered) data from
+  multiple locations in the memory.
+  This capability is reported by the capability flags:
+
+  - ``RTE_BBDEV_TURBO_ENC_SCATTER_GATHER``, and
+
+  - ``RTE_BBDEV_TURBO_DEC_SCATTER_GATHER``.
+
+  Only if a BBDEV PMD supports this feature, chained mbuf data structures are
+  accepted. A chained mbuf can represent one non-contiguous CB or multiple
+  non-contiguous CBs.
+  The first mbuf segment in the given chained mbuf represents the first piece
+  of the CB. Offset is only applicable to the first segment. ``length`` is the
+  total length of the CB.
+
+  BBDEV driver is responsible for identifying where the split is and enqueue
+  the split data to its internal queues.
+
+  If BBDEV PMD does not support this feature, it will assume inbound mbuf data
+  contains one segment.
+
+  The output mbuf data though is always one segment, even if the input was a
+  chained mbuf.
+
+
+- ``offset``: This is the starting point of the BBDEV (encode/decode) operation,
+  in bytes.
+
+  BBDEV starts to read data past this offset.
+  In case of chained mbuf, this offset applies only to the first mbuf segment.
+
+
+- ``length``: This is the total data length to be processed in one operation,
+  in bytes.
+
+  In case the mbuf data is representing one CB, this is the length of the CB
+  undergoing the operation.
+  If it is for multiple CBs, this is the total length of those CBs undergoing
+  the operation.
+  If it is for one TB, this is the total length of the TB under operation.
+  In case of chained mbuf, this data length includes the lengths of the
+  "scattered" data segments undergoing the operation.
+
+
+BBDEV Turbo Encode Operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: c
 
@@ -428,8 +506,69 @@ operation outcome.
         };
     };
 
+The Turbo encode structure is composed of the ``input`` and ``output`` mbuf
+data pointers. The provided mbuf pointer of ``input`` needs to be big enough to
+stretch for extra CRC trailers.
 
-**Turbo Decode Op structure**
+``op_flags`` parameter holds all operation related flags, like whether CRC24A is
+included by the application or not.
+
+``code_block_mode`` flag identifies the mode in which bbdev is operating in.
+
+The encode interface works on both the code block (CB) and the transport block
+(TB). An operation executes in "CB-mode" when the CB is standalone. While
+"TB-mode" executes when an operation performs on one or multiple CBs that
+belong to a TB. Therefore, a given data can be standalone CB, full-size TB or
+partial TB. Partial TB means that only a subset of CBs belonging to a bigger TB
+are being enqueued.
+
+  **NOTE:** It is assumed that all enqueued ops in one ``rte_bbdev_enqueue_enc_ops()``
+  call belong to one mode, either CB-mode or TB-mode.
+
+In case that the CB is smaller than Z (6144 bits), then effectively the TB = CB.
+CRC24A is appended to the tail of the CB. The application is responsible for
+calculating and appending CRC24A before calling BBDEV in case that the
+underlying driver does not support CRC24A generation.
+
+In CB-mode, CRC24A/B is an optional operation.
+The input ``k`` is the size of the CB (this maps to K as described in 3GPP TS
+36.212 section 5.1.2), this size is inclusive of CRC24A/B.
+The ``length`` is inclusive of CRC24A/B and equals to ``k`` in this case.
+
+Not all BBDEV PMDs are capable of CRC24A/B calculation. Flags
+``RTE_BBDEV_TURBO_CRC_24A_ATTACH`` and ``RTE_BBDEV_TURBO_CRC_24B_ATTACH``
+informs the application with relevant capability. These flags can be set in the
+``op_flags`` parameter to indicate BBDEV to calculate and append CRC24A to CB
+before going forward with Turbo encoding.
+
+Output format of the CB encode will have the encoded CB in ``e`` size output
+(this maps to E described in 3GPP TS 36.212 section 5.1.4.1.2). The output mbuf
+buffer size needs to be big enough to hold the encoded buffer of size ``e``.
+
+In TB-mode, CRC24A is assumed to be pre-calculated and appended to the inbound
+TB mbuf data buffer.
+The output mbuf data structure is expected to be allocated by the application
+with enough room for the output data.
+
+The difference between the partial and full-size TB is that we need to know the
+index of the first CB in this group and the number of CBs contained within.
+The first CB index is given by ``r`` but the number of the remaining CBs is
+calculated automatically by BBDEV before passing down to the driver.
+
+The number of remaining CBs should not be confused with ``c``. ``c`` is the
+total number of CBs that composes the whole TB (this maps to C as
+described in 3GPP TS 36.212 section 5.1.2).
+
+The ``length`` is total size of the CBs inclusive of any CRC24A and CRC24B in
+case they were appended by the application.
+
+The case when one CB belongs to TB and is being enqueued individually to BBDEV,
+this case is considered as a special case of partial TB where its number of CBs
+is 1. Therefore, it requires to get processed in TB-mode.
+
+
+BBDEV Turbo Decode Operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: c
 
@@ -452,18 +591,66 @@ operation outcome.
         };
     };
 
-Input and output data buffers are identified by ``rte_bbdev_op_data`` structure.
-This structure has three elements:
+The Turbo decode structure is composed of the ``input`` and ``output`` mbuf
+data pointers.
 
-- ``data`` - This is the mbuf reference
+``op_flags`` parameter holds all operation related flags, like whether CRC24B is
+retained or not.
 
-- ``offset`` - The starting point for the Turbo input/output, in bytes, from the
-  start of the data in the data buffer. It must be smaller than data_len of the
-  mbuf's first segment
+``code_block_mode`` flag identifies the mode in which bbdev is operating in.
 
-- ``length`` - The length, in bytes, of the buffer on which the Turbo operation
-  will or has been computed. For the input, the length is set by the application.
-  For the output(s), the length is computed by the bbdev PMD driver.
+Similarly, the decode interface works on both the code block (CB) and the
+transport block (TB). An operation executes in "CB-mode" when the CB is
+standalone. While "TB-mode" executes when an operation performs on one or
+multiple CBs that belong to a TB. Therefore, a given data can be standalone CB,
+full-size TB or partial TB. Partial TB means that only a subset of CBs belonging
+to a bigger TB are being enqueued.
+
+  **NOTE:** It is assumed that all enqueued ops in one ``rte_bbdev_enqueue_dec_ops()``
+  call belong to one mode, either CB-mode or TB-mode.
+
+The input ``k`` is the size of the decoded CB (this maps to K as described in
+3GPP TS 36.212 section 5.1.2), this size is inclusive of CRC24A/B.
+The ``length`` is inclusive of CRC24A/B and equals to ``k`` in this case.
+
+The input encoded CB data is the Virtual Circular Buffer data stream, wk, with
+the null padding included as described in 3GPP TS 36.212 section 5.1.4.1.2 and
+shown in 3GPP TS 36.212 section 5.1.4.1 Figure 5.1.4-1.
+The size of the virtual circular buffer is 3*Kpi, where Kpi is the 32 byte
+aligned value of K, as specified in 3GPP TS 36.212 section 5.1.4.1.1.
+
+Each byte in the input circular buffer is the LLR value of each bit of the
+original CB.
+
+``hard_output`` is a mandatory capability that all BBDEV PMDs support. This is
+the decoded CBs of K sizes (CRC24A/B is the last 24-bit in each decoded CB).
+Soft output is an optional capability for BBDEV PMDs. Setting flag
+``RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP`` in ``op_flags`` directs BBDEV to retain
+CRC24B at the end of each CB. This might be useful for the application in debug
+mode.
+An LLR rate matched output is computed in the ``soft_output`` buffer structure
+for the given ``e`` size (this maps to E described in 3GPP TS 36.212 section
+5.1.4.1.2). The output mbuf buffer size needs to be big enough to hold the
+encoded buffer of size ``e``.
+
+The first CB Virtual Circular Buffer (VCB) index is given by ``r`` but the
+number of the remaining CB VCBs is calculated automatically by BBDEV before
+passing down to the driver.
+
+The number of remaining CB VCBs should not be confused with ``c``. ``c`` is the
+total number of CBs that composes the whole TB (this maps to C as
+described in 3GPP TS 36.212 section 5.1.2).
+
+The ``length`` is total size of the CBs inclusive of any CRC24A and CRC24B in
+case they were appended by the application.
+
+The case when one CB belongs to TB and is being enqueued individually to BBDEV,
+this case is considered as a special case of partial TB where its number of CBs
+is 1. Therefore, it requires to get processed in TB-mode.
+
+The output mbuf data structure is expected to be allocated by the application
+with enough room for the output data.
+
 
 Sample code
 -----------
