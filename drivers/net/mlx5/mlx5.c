@@ -729,7 +729,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		mps = MLX5_MPW_DISABLED;
 	}
 #ifdef HAVE_IBV_MLX5_MOD_SWP
-	if (attrs_out.comp_mask | MLX5DV_CONTEXT_MASK_SWP)
+	if (attrs_out.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
 		swp = attrs_out.sw_parsing_caps.sw_parsing_offloads;
 	DRV_LOG(DEBUG, "SWP support: %u", swp);
 #endif
