@@ -273,7 +273,7 @@ test_bbdev_configure_stop_queue(void)
 
 	/* Valid queue configuration */
 	ts_params->qconf.queue_size = info.drv.queue_size_lim;
-	ts_params->qconf.priority = info.drv.max_queue_priority;
+	ts_params->qconf.priority = info.drv.max_ul_queue_priority;
 
 	/* Device - started; queue - started */
 	rte_bbdev_start(dev_id);
@@ -413,14 +413,7 @@ test_bbdev_configure_invalid_queue_configure(void)
 			ts_params->qconf.queue_size);
 
 	ts_params->qconf.queue_size = info.drv.queue_size_lim;
-	ts_params->qconf.priority = info.drv.max_queue_priority + 1;
-	TEST_ASSERT_FAIL(rte_bbdev_queue_configure(dev_id, queue_id,
-			&ts_params->qconf),
-			"Failed test for rte_bbdev_queue_configure: "
-			"invalid value qconf.queue_size: %u",
-			ts_params->qconf.queue_size);
-
-	ts_params->qconf.priority = info.drv.max_queue_priority;
+	ts_params->qconf.priority = info.drv.max_ul_queue_priority;
 	queue_id = info.num_queues;
 	TEST_ASSERT_FAIL(rte_bbdev_queue_configure(dev_id, queue_id,
 			&ts_params->qconf),

@@ -400,6 +400,12 @@ ABI Changes
   ``rte_bbdev_op_cap_turbo_dec`` structure to specify maximal LLR (likelihood
   ratio) absolute value.
 
+* **BBdev Queue Groups split into UL/DL Groups**
+
+  Queue Groups have been split into UL/DL Groups in Turbo Software Driver.
+  They are independent for Decode/Encode. ``rte_bbdev_driver_info`` reflects
+  introduced changes.
+
 
 Removed Items
 -------------

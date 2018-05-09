@@ -175,7 +175,8 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 	dev_info->max_num_queues = internals->max_nb_queues;
 	dev_info->queue_size_lim = RTE_BBDEV_QUEUE_SIZE_LIMIT;
 	dev_info->hardware_accelerated = false;
-	dev_info->max_queue_priority = 0;
+	dev_info->max_dl_queue_priority = 0;
+	dev_info->max_ul_queue_priority = 0;
 	dev_info->default_queue_conf = default_queue_conf;
 	dev_info->capabilities = bbdev_capabilities;
 	dev_info->cpu_flag_reqs = &cpu_flag;
