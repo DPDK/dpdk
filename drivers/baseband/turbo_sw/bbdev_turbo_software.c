@@ -452,7 +452,7 @@ is_dec_input_valid(int32_t k_idx, int16_t kw, int16_t in_length)
 
 static inline void
 process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
-		uint8_t cb_idx, uint8_t c, uint16_t k, uint16_t ncb,
+		uint8_t r, uint8_t c, uint16_t k, uint16_t ncb,
 		uint32_t e, struct rte_mbuf *m_in, struct rte_mbuf *m_out,
 		uint16_t in_offset, uint16_t out_offset, uint16_t total_left)
 {
@@ -460,6 +460,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	int16_t k_idx;
 	uint16_t m;
 	uint8_t *in, *out0, *out1, *out2, *tmp_out, *rm_out;
+	uint64_t first_3_bytes = 0;
 	struct rte_bbdev_op_turbo_enc *enc = &op->turbo_enc;
 	struct bblib_crc_request crc_req;
 	struct bblib_crc_response crc_resp;
@@ -479,16 +480,25 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 			return;
 		}
-		/* copy the input to the temporary buffer to be able to extend
-		 * it by 3 CRC bytes
-		 */
-		rte_memcpy(q->enc_in, in, (k - 24) >> 3);
 		crc_req.data = in;
 		crc_req.len = (k - 24) >> 3;
-		crc_resp.data = q->enc_in;
-		bblib_lte_crc24a_gen(&crc_req, &crc_resp);
+		/* Check if there is a room for CRC bits. If not use
+		 * the temporary buffer.
+		 */
+		if (rte_pktmbuf_append(m_in, 3) == NULL) {
+			rte_memcpy(q->enc_in, in, (k - 24) >> 3);
+			in = q->enc_in;
+		} else {
+			/* Store 3 first bytes of next CB as they will be
+			 * overwritten by CRC bytes. If it is the last CB then
+			 * there is no point to store 3 next bytes and this
+			 * if..else branch will be omitted.
+			 */
+			first_3_bytes = *((uint64_t *)&in[(k - 32) >> 3]);
+		}
 
-		in = q->enc_in;
+		crc_resp.data = in;
+		bblib_lte_crc24a_gen(&crc_req, &crc_resp);
 	} else if (enc->op_flags & RTE_BBDEV_TURBO_CRC_24B_ATTACH) {
 		/* CRC24B */
 		ret = is_enc_input_valid(k - 24, k_idx, total_left);
@@ -496,16 +506,25 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 			return;
 		}
-		/* copy the input to the temporary buffer to be able to extend
-		 * it by 3 CRC bytes
-		 */
-		rte_memcpy(q->enc_in, in, (k - 24) >> 3);
 		crc_req.data = in;
 		crc_req.len = (k - 24) >> 3;
-		crc_resp.data = q->enc_in;
-		bblib_lte_crc24b_gen(&crc_req, &crc_resp);
+		/* Check if there is a room for CRC bits. If this is the last
+		 * CB in TB. If not use temporary buffer.
+		 */
+		if ((c - r == 1) && (rte_pktmbuf_append(m_in, 3) == NULL)) {
+			rte_memcpy(q->enc_in, in, (k - 24) >> 3);
+			in = q->enc_in;
+		} else if (c - r > 1) {
+			/* Store 3 first bytes of next CB as they will be
+			 * overwritten by CRC bytes. If it is the last CB then
+			 * there is no point to store 3 next bytes and this
+			 * if..else branch will be omitted.
+			 */
+			first_3_bytes = *((uint64_t *)&in[(k - 32) >> 3]);
+		}
 
-		in = q->enc_in;
+		crc_resp.data = in;
+		bblib_lte_crc24b_gen(&crc_req, &crc_resp);
 	} else {
 		ret = is_enc_input_valid(k, k_idx, total_left);
 		if (ret != 0) {
@@ -519,10 +538,32 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	/* Each bit layer output from turbo encoder is (k+4) bits long, i.e.
 	 * input length + 4 tail bits. That's (k/8) + 1 bytes after rounding up.
 	 * So dst_data's length should be 3*(k/8) + 3 bytes.
+	 * In Rate-matching bypass case outputs pointers passed to encoder
+	 * (out0, out1 and out2) can directly point to addresses of output from
+	 * turbo_enc entity.
 	 */
-	out0 = q->enc_out;
-	out1 = RTE_PTR_ADD(out0, (k >> 3) + 1);
-	out2 = RTE_PTR_ADD(out1, (k >> 3) + 1);
+	if (enc->op_flags & RTE_BBDEV_TURBO_RATE_MATCH) {
+		out0 = q->enc_out;
+		out1 = RTE_PTR_ADD(out0, (k >> 3) + 1);
+		out2 = RTE_PTR_ADD(out1, (k >> 3) + 1);
+	} else {
+		out0 = (uint8_t *)rte_pktmbuf_append(m_out, (k >> 3) * 3 + 2);
+		if (out0 == NULL) {
+			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
+			rte_bbdev_log(ERR,
+					"Too little space in output mbuf");
+			return;
+		}
+		enc->output.length += (k >> 3) * 3 + 2;
+		/* rte_bbdev_op_data.offset can be different than the
+		 * offset of the appended bytes
+		 */
+		out0 = rte_pktmbuf_mtod_offset(m_out, uint8_t *, out_offset);
+		out1 = rte_pktmbuf_mtod_offset(m_out, uint8_t *,
+				out_offset + (k >> 3) + 1);
+		out2 = rte_pktmbuf_mtod_offset(m_out, uint8_t *,
+				out_offset + 2 * ((k >> 3) + 1));
+	}
 
 	turbo_req.case_id = k_idx;
 	turbo_req.input_win = in;
@@ -535,6 +576,10 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		rte_bbdev_log(ERR, "Turbo Encoder failed");
 		return;
 	}
+
+	/* Restore 3 first bytes of next CB if they were overwritten by CRC*/
+	if (first_3_bytes != 0)
+		*((uint64_t *)&in[(k - 32) >> 3]) = first_3_bytes;
 
 	/* Rate-matching */
 	if (enc->op_flags & RTE_BBDEV_TURBO_RATE_MATCH) {
@@ -552,7 +597,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		rm_out = rte_pktmbuf_mtod_offset(m_out, uint8_t *, out_offset);
 
 		/* index of current code block */
-		rm_req.r = cb_idx;
+		rm_req.r = r;
 		/* total number of code block */
 		rm_req.C = c;
 		/* For DL - 1, UL - 0 */
@@ -613,23 +658,6 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 			tmp_out++;
 		}
 		*tmp_out = 0;
-
-		/* copy shifted output to turbo_enc entity */
-		out0 = (uint8_t *)rte_pktmbuf_append(m_out,
-				(k >> 3) * 3 + 2);
-		if (out0 == NULL) {
-			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
-			rte_bbdev_log(ERR,
-					"Too little space in output mbuf");
-			return;
-		}
-		enc->output.length += (k >> 3) * 3 + 2;
-		/* rte_bbdev_op_data.offset can be different than the
-		 * offset of the appended bytes
-		 */
-		out0 = rte_pktmbuf_mtod_offset(m_out, uint8_t *,
-				out_offset);
-		rte_memcpy(out0, q->enc_out, (k >> 3) * 3 + 2);
 	}
 }
 
