@@ -32,6 +32,10 @@ static int bbdev_turbo_sw_logtype;
 	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \
 		##__VA_ARGS__)
 
+#define DEINT_INPUT_BUF_SIZE (((RTE_BBDEV_MAX_CB_SIZE >> 3) + 1) * 48)
+#define DEINT_OUTPUT_BUF_SIZE (DEINT_INPUT_BUF_SIZE * 6)
+#define ADAPTER_OUTPUT_BUF_SIZE ((RTE_BBDEV_MAX_CB_SIZE + 4) * 48)
+
 /* private data structure */
 struct bbdev_private {
 	unsigned int max_nb_queues;  /**< Max number of queues */
@@ -285,7 +289,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		return -ENAMETOOLONG;
 	}
 	q->code_block = rte_zmalloc_socket(name,
-			(6144 >> 3) * sizeof(*q->code_block),
+			RTE_BBDEV_MAX_CB_SIZE * sizeof(*q->code_block),
 			RTE_CACHE_LINE_SIZE, queue_conf->socket);
 	if (q->code_block == NULL) {
 		rte_bbdev_log(ERR,
@@ -304,7 +308,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		return -ENAMETOOLONG;
 	}
 	q->deint_input = rte_zmalloc_socket(name,
-			RTE_BBDEV_MAX_KW * sizeof(*q->deint_input),
+			DEINT_INPUT_BUF_SIZE * sizeof(*q->deint_input),
 			RTE_CACHE_LINE_SIZE, queue_conf->socket);
 	if (q->deint_input == NULL) {
 		rte_bbdev_log(ERR,
@@ -323,7 +327,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		return -ENAMETOOLONG;
 	}
 	q->deint_output = rte_zmalloc_socket(NULL,
-			RTE_BBDEV_MAX_KW * sizeof(*q->deint_output),
+			DEINT_OUTPUT_BUF_SIZE * sizeof(*q->deint_output),
 			RTE_CACHE_LINE_SIZE, queue_conf->socket);
 	if (q->deint_output == NULL) {
 		rte_bbdev_log(ERR,
@@ -342,7 +346,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		return -ENAMETOOLONG;
 	}
 	q->adapter_output = rte_zmalloc_socket(NULL,
-			RTE_BBDEV_MAX_CB_SIZE * 6 * sizeof(*q->adapter_output),
+			ADAPTER_OUTPUT_BUF_SIZE * sizeof(*q->adapter_output),
 			RTE_CACHE_LINE_SIZE, queue_conf->socket);
 	if (q->adapter_output == NULL) {
 		rte_bbdev_log(ERR,
