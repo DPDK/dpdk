@@ -40,16 +40,29 @@ FlexRAN SDK Download
 ~~~~~~~~~~~~~~~~~~~~
 
 To build DPDK with the *turbo_sw* PMD the user is required to download
-the export controlled ``FlexRAN SDK`` Libraries. An account at Intel Resource
-Design Center needs to be registered from
-`<https://www.intel.com/content/www/us/en/design/resource-design-center.html>`_.
+the export controlled ``FlexRAN SDK`` Libraries. An account at `Intel Resource
+Design Center <https://www.intel.com/content/www/us/en/design/resource-design-center.html>`_
+needs to be registered.
 
 Once registered, the user needs to log in, and look for
-*Intel SWA_SW_FlexRAN_Release_Package R1_3_0* and click for download. Or use
-this direct download link `<https://cdrd.intel.com/v1/dl/getContent/575367>`_.
+*Intel FlexRAN Software Release Package 1_4_0* to download or directly through
+this `link <https://cdrdv2.intel.com/v1/dl/getContent/576288>`_.
 
 After download is complete, the user needs to unpack and compile on their
 system before building DPDK.
+
+The following table maps DPDK versions with past FlexRAN SDK releases:
+
+.. _table_flexran_releases:
+
+.. table:: DPDK and FlexRAN SDK releases compliance
+
+   =====================  ============================
+   DPDK version           FlexRAN SDK release
+   =====================  ============================
+   18.02                  1.3.0
+   18.05                  1.4.0
+   =====================  ============================
 
 FlexRAN SDK Installation
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -57,7 +70,7 @@ FlexRAN SDK Installation
 The following are pre-requisites for building FlexRAN SDK Libraries:
  (a) An AVX2 supporting machine
  (b) Windriver TS 2 or CentOS 7 operating systems
- (c) Intel ICC compiler installed
+ (c) Intel ICC 17.0.3 compiler installed
 
 The following instructions should be followed in this exact order:
 
@@ -68,30 +81,19 @@ The following instructions should be followed in this exact order:
         source <path-to-icc-compiler-install-folder>/linux/bin/compilervars.sh intel64 -platform linux
 
 
-#. Extract the ``FlexRAN-1.3.0.tar.gz.zip`` package, then run the SDK extractor
-   script and accept the license:
+#. Extract the ``576288-576288-intel-swa-sw-flexran-release-package-r1-4-0.zip``
+   package, then run the SDK extractor script and accept the license:
 
     .. code-block:: console
 
-        cd <path-to-workspace>/FlexRAN-1.3.0/
-        ./SDK-R1.3.0.sh
-
-#. To allow ``FlexRAN SDK R1.3.0`` to work with bbdev properly, the following
-   hotfix is required. Change the return of function ``rate_matching_turbo_lte_avx2()``
-   located in file
-   ``<path-to-workspace>/FlexRAN-1.3.0/SDK-R1.3.0/sdk/source/phy/lib_rate_matching/phy_rate_match_avx2.cpp``
-   to return 0 instead of 1.
-
-    .. code-block:: c
-
-        -  return 1;
-        +  return 0;
+        cd <path-to-workspace>/FlexRAN-1.4.0/
+        ./SDK-R1.4.0.sh
 
 #. Generate makefiles based on system configuration:
 
     .. code-block:: console
 
-        cd <path-to-workspace>/FlexRAN-1.3.0/SDK-R1.3.0/sdk/
+        cd <path-to-workspace>/FlexRAN-1.4.0/SDK-R1.4.0/sdk/
         ./create-makefiles-linux.sh
 
 #. A build folder is generated in this form ``build-<ISA>-<CC>``, enter that
@@ -118,8 +120,8 @@ Example:
 
 .. code-block:: console
 
-    export FLEXRAN_SDK=<path-to-workspace>/FlexRAN-1.3.0/SDK-R1.3.0/sdk/build-avx2-icc/install
-    export DIR_WIRELESS_SDK=<path-to-workspace>/FlexRAN-1.3.0/SDK-R1.3.0/sdk/
+    export FLEXRAN_SDK=<path-to-workspace>/FlexRAN-1.4.0/SDK-R1.4.0/sdk/build-avx2-icc/install
+    export DIR_WIRELESS_SDK=<path-to-workspace>/FlexRAN-1.4.0/SDK-R1.4.0/sdk/
 
 
 * Set ``CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW=y`` in DPDK common configuration

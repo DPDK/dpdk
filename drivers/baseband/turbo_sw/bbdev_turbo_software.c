@@ -462,6 +462,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	uint8_t *in, *out0, *out1, *out2, *tmp_out, *rm_out;
 	struct rte_bbdev_op_turbo_enc *enc = &op->turbo_enc;
 	struct bblib_crc_request crc_req;
+	struct bblib_crc_response crc_resp;
 	struct bblib_turbo_encoder_request turbo_req;
 	struct bblib_turbo_encoder_response turbo_resp;
 	struct bblib_rate_match_dl_request rm_req;
@@ -482,13 +483,11 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		 * it by 3 CRC bytes
 		 */
 		rte_memcpy(q->enc_in, in, (k - 24) >> 3);
-		crc_req.data = q->enc_in;
+		crc_req.data = in;
 		crc_req.len = (k - 24) >> 3;
-		if (bblib_lte_crc24a_gen(&crc_req) == -1) {
-			op->status |= 1 << RTE_BBDEV_CRC_ERROR;
-			rte_bbdev_log(ERR, "CRC24a generation failed");
-			return;
-		}
+		crc_resp.data = q->enc_in;
+		bblib_lte_crc24a_gen(&crc_req, &crc_resp);
+
 		in = q->enc_in;
 	} else if (enc->op_flags & RTE_BBDEV_TURBO_CRC_24B_ATTACH) {
 		/* CRC24B */
@@ -501,13 +500,11 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		 * it by 3 CRC bytes
 		 */
 		rte_memcpy(q->enc_in, in, (k - 24) >> 3);
-		crc_req.data = q->enc_in;
+		crc_req.data = in;
 		crc_req.len = (k - 24) >> 3;
-		if (bblib_lte_crc24b_gen(&crc_req) == -1) {
-			op->status |= 1 << RTE_BBDEV_CRC_ERROR;
-			rte_bbdev_log(ERR, "CRC24b generation failed");
-			return;
-		}
+		crc_resp.data = q->enc_in;
+		bblib_lte_crc24b_gen(&crc_req, &crc_resp);
+
 		in = q->enc_in;
 	} else {
 		ret = is_enc_input_valid(k, k_idx, total_left);
