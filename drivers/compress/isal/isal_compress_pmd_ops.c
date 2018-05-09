@@ -4,6 +4,7 @@
 
 #include <rte_common.h>
 #include <rte_compressdev_pmd.h>
+#include <rte_malloc.h>
 
 #include "isal_compress_pmd_private.h"
 
@@ -106,6 +107,112 @@ isal_comp_pmd_info_get(struct rte_compressdev *dev __rte_unused,
 	}
 }
 
+
+/** Release queue pair */
+static int
+isal_comp_pmd_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
+{
+	struct isal_comp_qp *qp = dev->data->queue_pairs[qp_id];
+
+	if (qp == NULL)
+		return -EINVAL;
+
+	if (dev->data->queue_pairs[qp_id] != NULL)
+		rte_free(dev->data->queue_pairs[qp_id]);
+
+	return 0;
+}
+
+/** Create a ring to place process packets on */
+static struct rte_ring *
+isal_comp_pmd_qp_create_processed_pkts_ring(struct isal_comp_qp *qp,
+		unsigned int ring_size, int socket_id)
+{
+	struct rte_ring *r;
+
+	r = rte_ring_lookup(qp->name);
+	if (r) {
+		if (rte_ring_get_size(r) >= ring_size) {
+			ISAL_PMD_LOG(DEBUG,
+				"Reusing existing ring %s for processed packets",
+				qp->name);
+			return r;
+		}
+
+			ISAL_PMD_LOG(ERR,
+				"Unable to reuse existing ring %s"
+				" for processed packets",
+			 qp->name);
+		return NULL;
+	}
+
+	return rte_ring_create(qp->name, ring_size, socket_id,
+			RING_F_SP_ENQ | RING_F_SC_DEQ);
+}
+
+/** set a unique name for the queue pair based on its name, dev_id and qp_id */
+static int
+isal_comp_pmd_qp_set_unique_name(struct rte_compressdev *dev,
+struct isal_comp_qp *qp)
+{
+	unsigned int n = snprintf(qp->name, sizeof(qp->name),
+			"isal_compression_pmd_%u_qp_%u",
+			dev->data->dev_id, qp->id);
+
+	if (n >= sizeof(qp->name))
+		return -1;
+
+	return 0;
+}
+
+/* Setup a queue pair */
+static int
+isal_comp_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
+		uint32_t max_inflight_ops, int socket_id)
+{
+	struct isal_comp_qp *qp = NULL;
+	int retval;
+
+	/* Free memory prior to re-allocation if needed. */
+	if (dev->data->queue_pairs[qp_id] != NULL)
+		isal_comp_pmd_qp_release(dev, qp_id);
+
+	/* Allocate the queue pair data structure. */
+	qp = rte_zmalloc_socket("Isa-l compression PMD Queue Pair", sizeof(*qp),
+					RTE_CACHE_LINE_SIZE, socket_id);
+	if (qp == NULL) {
+		ISAL_PMD_LOG(ERR, "Failed to allocate queue pair memory");
+		return (-ENOMEM);
+	}
+
+	qp->id = qp_id;
+	dev->data->queue_pairs[qp_id] = qp;
+
+	retval = isal_comp_pmd_qp_set_unique_name(dev, qp);
+	if (retval) {
+		ISAL_PMD_LOG(ERR, "Failed to create unique name for isal "
+				"compression device");
+		goto qp_setup_cleanup;
+	}
+
+	qp->processed_pkts = isal_comp_pmd_qp_create_processed_pkts_ring(qp,
+			max_inflight_ops, socket_id);
+	if (qp->processed_pkts == NULL) {
+		ISAL_PMD_LOG(ERR, "Failed to create unique name for isal "
+				"compression device");
+		goto qp_setup_cleanup;
+	}
+
+	memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
+	return 0;
+
+qp_setup_cleanup:
+	if (qp)
+		rte_free(qp);
+
+	return -1;
+}
+
 /** Set private xform data*/
 static int
 isal_comp_pmd_priv_xform_create(struct rte_compressdev *dev,
@@ -161,8 +268,8 @@ struct rte_compressdev_ops isal_pmd_ops = {
 
 		.dev_infos_get		= isal_comp_pmd_info_get,
 
-		.queue_pair_setup	= NULL,
-		.queue_pair_release	= NULL,
+		.queue_pair_setup	= isal_comp_pmd_qp_setup,
+		.queue_pair_release	= isal_comp_pmd_qp_release,
 
 		.private_xform_create	= isal_comp_pmd_priv_xform_create,
 		.private_xform_free	= isal_comp_pmd_priv_xform_free,

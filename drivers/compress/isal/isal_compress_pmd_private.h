@@ -24,6 +24,8 @@ struct isal_comp_qp {
 	uint16_t id;
 	/* Unique Queue Pair Name */
 	char name[RTE_COMPRESSDEV_NAME_MAX_LEN];
+	/* Ring for placing process packets */
+	struct rte_ring *processed_pkts;
 	/* Queue pair statistics */
 	struct rte_compressdev_stats qp_stats;
 	/* Number of free elements on ring */
