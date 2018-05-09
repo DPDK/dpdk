@@ -83,7 +83,10 @@ static struct rte_eth_dev_info default_infos = {
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_TSO,
-	.flow_type_rss_offloads = 0x0,
+	.flow_type_rss_offloads =
+			ETH_RSS_IP |
+			ETH_RSS_UDP |
+			ETH_RSS_TCP,
 };
 
 static int
@@ -805,26 +808,29 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 	} else {
 		uint64_t rx_offload_capa;
 		uint64_t rxq_offload_capa;
+		uint64_t rss_hf_offload_capa;
 
 		rx_offload_capa = default_infos.rx_offload_capa;
 		rxq_offload_capa = default_infos.rx_queue_offload_capa;
+		rss_hf_offload_capa = default_infos.flow_type_rss_offloads;
 		FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
 			rte_eth_dev_info_get(PORT_ID(sdev),
 					&PRIV(dev)->infos);
 			rx_offload_capa &= PRIV(dev)->infos.rx_offload_capa;
 			rxq_offload_capa &=
 					PRIV(dev)->infos.rx_queue_offload_capa;
+			rss_hf_offload_capa &=
+					PRIV(dev)->infos.flow_type_rss_offloads;
 		}
 		sdev = TX_SUBDEV(dev);
 		rte_eth_dev_info_get(PORT_ID(sdev), &PRIV(dev)->infos);
 		PRIV(dev)->infos.rx_offload_capa = rx_offload_capa;
 		PRIV(dev)->infos.rx_queue_offload_capa = rxq_offload_capa;
+		PRIV(dev)->infos.flow_type_rss_offloads = rss_hf_offload_capa;
 		PRIV(dev)->infos.tx_offload_capa &=
 					default_infos.tx_offload_capa;
 		PRIV(dev)->infos.tx_queue_offload_capa &=
 					default_infos.tx_queue_offload_capa;
-		PRIV(dev)->infos.flow_type_rss_offloads &=
-					default_infos.flow_type_rss_offloads;
 	}
 	rte_memcpy(infos, &PRIV(dev)->infos, sizeof(*infos));
 }
