@@ -525,6 +525,7 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	};
 
 	if (dev->rx_pkt_burst == mlx5_rx_burst ||
+	    dev->rx_pkt_burst == mlx5_rx_burst_mprq ||
 	    dev->rx_pkt_burst == mlx5_rx_burst_vec)
 		return ptypes;
 	return NULL;
@@ -1182,6 +1183,8 @@ mlx5_select_rx_function(struct rte_eth_dev *dev)
 		rx_pkt_burst = mlx5_rx_burst_vec;
 		DRV_LOG(DEBUG, "port %u selected Rx vectorized function",
 			dev->data->port_id);
+	} else if (mlx5_mprq_enabled(dev)) {
+		rx_pkt_burst = mlx5_rx_burst_mprq;
 	}
 	return rx_pkt_burst;
 }

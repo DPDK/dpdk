@@ -46,6 +46,18 @@
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
 
+/* Device parameter to enable Multi-Packet Rx queue. */
+#define MLX5_RX_MPRQ_EN "mprq_en"
+
+/* Device parameter to configure log 2 of the number of strides for MPRQ. */
+#define MLX5_RX_MPRQ_LOG_STRIDE_NUM "mprq_log_stride_num"
+
+/* Device parameter to limit the size of memcpy'd packet for MPRQ. */
+#define MLX5_RX_MPRQ_MAX_MEMCPY_LEN "mprq_max_memcpy_len"
+
+/* Device parameter to set the minimum number of Rx queues to enable MPRQ. */
+#define MLX5_RXQS_MIN_MPRQ "rxqs_min_mprq"
+
 /* Device parameter to configure inline send. */
 #define MLX5_TXQ_INLINE "txq_inline"
 
@@ -241,6 +253,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->txqs = NULL;
 	}
 	mlx5_flow_delete_drop_queue(dev);
+	mlx5_mprq_free_mp(dev);
 	mlx5_mr_release(dev);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
@@ -444,6 +457,14 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	}
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
 		config->cqe_comp = !!tmp;
+	} else if (strcmp(MLX5_RX_MPRQ_EN, key) == 0) {
+		config->mprq.enabled = !!tmp;
+	} else if (strcmp(MLX5_RX_MPRQ_LOG_STRIDE_NUM, key) == 0) {
+		config->mprq.stride_num_n = tmp;
+	} else if (strcmp(MLX5_RX_MPRQ_MAX_MEMCPY_LEN, key) == 0) {
+		config->mprq.max_memcpy_len = tmp;
+	} else if (strcmp(MLX5_RXQS_MIN_MPRQ, key) == 0) {
+		config->mprq.min_rxqs_num = tmp;
 	} else if (strcmp(MLX5_TXQ_INLINE, key) == 0) {
 		config->txq_inline = tmp;
 	} else if (strcmp(MLX5_TXQS_MIN_INLINE, key) == 0) {
@@ -486,6 +507,10 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 {
 	const char **params = (const char *[]){
 		MLX5_RXQ_CQE_COMP_EN,
+		MLX5_RX_MPRQ_EN,
+		MLX5_RX_MPRQ_LOG_STRIDE_NUM,
+		MLX5_RX_MPRQ_MAX_MEMCPY_LEN,
+		MLX5_RXQS_MIN_MPRQ,
 		MLX5_TXQ_INLINE,
 		MLX5_TXQS_MIN_INLINE,
 		MLX5_TXQ_MPW_EN,
@@ -667,6 +692,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	unsigned int tunnel_en = 0;
 	unsigned int swp = 0;
 	unsigned int verb_priorities = 0;
+	unsigned int mprq = 0;
+	unsigned int mprq_min_stride_size_n = 0;
+	unsigned int mprq_max_stride_size_n = 0;
+	unsigned int mprq_min_stride_num_n = 0;
+	unsigned int mprq_max_stride_num_n = 0;
 	int idx;
 	int i;
 	struct mlx5dv_context attrs_out = {0};
@@ -754,6 +784,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	attrs_out.comp_mask |= MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS;
 #endif
+#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+	attrs_out.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
+#endif
 	mlx5_glue->dv_query_device(attr_ctx, &attrs_out);
 	if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
 		if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
@@ -771,6 +804,33 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (attrs_out.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
 		swp = attrs_out.sw_parsing_caps.sw_parsing_offloads;
 	DRV_LOG(DEBUG, "SWP support: %u", swp);
+#endif
+#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+	if (attrs_out.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
+		struct mlx5dv_striding_rq_caps mprq_caps =
+			attrs_out.striding_rq_caps;
+
+		DRV_LOG(DEBUG, "\tmin_single_stride_log_num_of_bytes: %d",
+			mprq_caps.min_single_stride_log_num_of_bytes);
+		DRV_LOG(DEBUG, "\tmax_single_stride_log_num_of_bytes: %d",
+			mprq_caps.max_single_stride_log_num_of_bytes);
+		DRV_LOG(DEBUG, "\tmin_single_wqe_log_num_of_strides: %d",
+			mprq_caps.min_single_wqe_log_num_of_strides);
+		DRV_LOG(DEBUG, "\tmax_single_wqe_log_num_of_strides: %d",
+			mprq_caps.max_single_wqe_log_num_of_strides);
+		DRV_LOG(DEBUG, "\tsupported_qpts: %d",
+			mprq_caps.supported_qpts);
+		DRV_LOG(DEBUG, "device supports Multi-Packet RQ");
+		mprq = 1;
+		mprq_min_stride_size_n =
+			mprq_caps.min_single_stride_log_num_of_bytes;
+		mprq_max_stride_size_n =
+			mprq_caps.max_single_stride_log_num_of_bytes;
+		mprq_min_stride_num_n =
+			mprq_caps.min_single_wqe_log_num_of_strides;
+		mprq_max_stride_num_n =
+			mprq_caps.max_single_wqe_log_num_of_strides;
+	}
 #endif
 	if (RTE_CACHE_LINE_SIZE == 128 &&
 	    !(attrs_out.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP))
@@ -821,6 +881,13 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			.inline_max_packet_sz = MLX5_ARG_UNSET,
 			.vf_nl_en = 1,
 			.swp = !!swp,
+			.mprq = {
+				.enabled = 0, /* Disabled by default. */
+				.stride_num_n = RTE_MAX(MLX5_MPRQ_STRIDE_NUM_N,
+							mprq_min_stride_num_n),
+				.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN,
+				.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
+			},
 		};
 
 		len = snprintf(name, sizeof(name), PCI_PRI_FMT,
@@ -985,6 +1052,22 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (config.cqe_comp && !cqe_comp) {
 			DRV_LOG(WARNING, "Rx CQE compression isn't supported");
 			config.cqe_comp = 0;
+		}
+		config.mprq.enabled = config.mprq.enabled && mprq;
+		if (config.mprq.enabled) {
+			if (config.mprq.stride_num_n > mprq_max_stride_num_n ||
+			    config.mprq.stride_num_n < mprq_min_stride_num_n) {
+				config.mprq.stride_num_n =
+					RTE_MAX(MLX5_MPRQ_STRIDE_NUM_N,
+						mprq_min_stride_num_n);
+				DRV_LOG(WARNING,
+					"the number of strides"
+					" for Multi-Packet RQ is out of range,"
+					" setting default value (%u)",
+					1 << config.mprq.stride_num_n);
+			}
+			config.mprq.min_stride_size_n = mprq_min_stride_size_n;
+			config.mprq.max_stride_size_n = mprq_max_stride_size_n;
 		}
 		eth_dev = rte_eth_dev_allocate(name);
 		if (eth_dev == NULL) {

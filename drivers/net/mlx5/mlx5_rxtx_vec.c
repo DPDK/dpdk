@@ -275,6 +275,8 @@ mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq)
 	struct mlx5_rxq_ctrl *ctrl =
 		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 
+	if (mlx5_mprq_enabled(ETH_DEV(ctrl->priv)))
+		return -ENOTSUP;
 	if (!ctrl->priv->config.rx_vec_en || rxq->sges_n != 0)
 		return -ENOTSUP;
 	return 1;
@@ -296,6 +298,8 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev)
 	uint16_t i;
 
 	if (!priv->config.rx_vec_en)
+		return -ENOTSUP;
+	if (mlx5_mprq_enabled(dev))
 		return -ENOTSUP;
 	/* All the configured queues should support. */
 	for (i = 0; i < priv->rxqs_n; ++i) {

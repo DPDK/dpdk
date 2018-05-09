@@ -95,4 +95,22 @@
  */
 #define MLX5_UAR_OFFSET (1ULL << 32)
 
+/* Log 2 of the default number of strides per WQE for Multi-Packet RQ. */
+#define MLX5_MPRQ_STRIDE_NUM_N 4U
+
+/* Two-byte shift is disabled for Multi-Packet RQ. */
+#define MLX5_MPRQ_TWO_BYTE_SHIFT 0
+
+/*
+ * Minimum size of packet to be memcpy'd instead of being attached as an
+ * external buffer.
+ */
+#define MLX5_MPRQ_MEMCPY_DEFAULT_LEN 128
+
+/* Minimum number Rx queues to enable Multi-Packet RQ. */
+#define MLX5_MPRQ_MIN_RXQS 12
+
+/* Cache size of mempool for Multi-Packet RQ. */
+#define MLX5_MPRQ_MP_CACHE_SZ 32
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */

@@ -87,7 +87,8 @@ mlx5_rx_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq, uint16_t n)
 	const uint16_t q_mask = q_n - 1;
 	uint16_t elts_idx = rxq->rq_ci & q_mask;
 	struct rte_mbuf **elts = &(*rxq->elts)[elts_idx];
-	volatile struct mlx5_wqe_data_seg *wq = &(*rxq->wqes)[elts_idx];
+	volatile struct mlx5_wqe_data_seg *wq =
+		&((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[elts_idx];
 	unsigned int i;
 
 	assert(n >= MLX5_VPMD_RXQ_RPLNSH_THRESH);

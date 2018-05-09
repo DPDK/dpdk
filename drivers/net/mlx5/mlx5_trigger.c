@@ -102,6 +102,9 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 	unsigned int i;
 	int ret = 0;
 
+	/* Allocate/reuse/resize mempool for Multi-Packet RQ. */
+	if (mlx5_mprq_alloc_mp(dev))
+		goto error;
 	for (i = 0; i != priv->rxqs_n; ++i) {
 		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_get(dev, i);
 		struct rte_mempool *mp;
@@ -109,7 +112,8 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		if (!rxq_ctrl)
 			continue;
 		/* Pre-register Rx mempool. */
-		mp = rxq_ctrl->rxq.mp;
+		mp = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
+		     rxq_ctrl->rxq.mprq_mp : rxq_ctrl->rxq.mp;
 		DRV_LOG(DEBUG,
 			"port %u Rx queue %u registering"
 			" mp %s having %u chunks",

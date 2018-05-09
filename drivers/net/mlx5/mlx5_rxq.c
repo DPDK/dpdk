@@ -55,7 +55,74 @@ uint8_t rss_hash_default_key[] = {
 const size_t rss_hash_default_key_len = sizeof(rss_hash_default_key);
 
 /**
- * Allocate RX queue elements.
+ * Check whether Multi-Packet RQ can be enabled for the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   1 if supported, negative errno value if not.
+ */
+inline int
+mlx5_check_mprq_support(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	if (priv->config.mprq.enabled &&
+	    priv->rxqs_n >= priv->config.mprq.min_rxqs_num)
+		return 1;
+	return -ENOTSUP;
+}
+
+/**
+ * Check whether Multi-Packet RQ is enabled for the Rx queue.
+ *
+ *  @param rxq
+ *     Pointer to receive queue structure.
+ *
+ * @return
+ *   0 if disabled, otherwise enabled.
+ */
+inline int
+mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq)
+{
+	return rxq->strd_num_n > 0;
+}
+
+/**
+ * Check whether Multi-Packet RQ is enabled for the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 if disabled, otherwise enabled.
+ */
+inline int
+mlx5_mprq_enabled(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	uint16_t i;
+	uint16_t n = 0;
+
+	if (mlx5_check_mprq_support(dev) < 0)
+		return 0;
+	/* All the configured queues should be enabled. */
+	for (i = 0; i < priv->rxqs_n; ++i) {
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+
+		if (!rxq)
+			continue;
+		if (mlx5_rxq_mprq_enabled(rxq))
+			++n;
+	}
+	/* Multi-Packet RQ can't be partially configured. */
+	assert(n == 0 || n == priv->rxqs_n);
+	return n == priv->rxqs_n;
+}
+
+/**
+ * Allocate RX queue elements for Multi-Packet RQ.
  *
  * @param rxq_ctrl
  *   Pointer to RX queue structure.
@@ -63,8 +130,58 @@ const size_t rss_hash_default_key_len = sizeof(rss_hash_default_key);
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-int
-rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
+static int
+rxq_alloc_elts_mprq(struct mlx5_rxq_ctrl *rxq_ctrl)
+{
+	struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
+	unsigned int wqe_n = 1 << rxq->elts_n;
+	unsigned int i;
+	int err;
+
+	/* Iterate on segments. */
+	for (i = 0; i <= wqe_n; ++i) {
+		struct mlx5_mprq_buf *buf;
+
+		if (rte_mempool_get(rxq->mprq_mp, (void **)&buf) < 0) {
+			DRV_LOG(ERR, "port %u empty mbuf pool", rxq->port_id);
+			rte_errno = ENOMEM;
+			goto error;
+		}
+		if (i < wqe_n)
+			(*rxq->mprq_bufs)[i] = buf;
+		else
+			rxq->mprq_repl = buf;
+	}
+	DRV_LOG(DEBUG,
+		"port %u Rx queue %u allocated and configured %u segments",
+		rxq->port_id, rxq_ctrl->idx, wqe_n);
+	return 0;
+error:
+	err = rte_errno; /* Save rte_errno before cleanup. */
+	wqe_n = i;
+	for (i = 0; (i != wqe_n); ++i) {
+		if ((*rxq->elts)[i] != NULL)
+			rte_mempool_put(rxq->mprq_mp,
+					(*rxq->mprq_bufs)[i]);
+		(*rxq->mprq_bufs)[i] = NULL;
+	}
+	DRV_LOG(DEBUG, "port %u Rx queue %u failed, freed everything",
+		rxq->port_id, rxq_ctrl->idx);
+	rte_errno = err; /* Restore rte_errno. */
+	return -rte_errno;
+}
+
+/**
+ * Allocate RX queue elements for Single-Packet RQ.
+ *
+ * @param rxq_ctrl
+ *   Pointer to RX queue structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	const unsigned int sges_n = 1 << rxq_ctrl->rxq.sges_n;
 	unsigned int elts_n = 1 << rxq_ctrl->rxq.elts_n;
@@ -140,13 +257,57 @@ error:
 }
 
 /**
- * Free RX queue elements.
+ * Allocate RX queue elements.
+ *
+ * @param rxq_ctrl
+ *   Pointer to RX queue structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
+{
+	return mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
+	       rxq_alloc_elts_mprq(rxq_ctrl) : rxq_alloc_elts_sprq(rxq_ctrl);
+}
+
+/**
+ * Free RX queue elements for Multi-Packet RQ.
  *
  * @param rxq_ctrl
  *   Pointer to RX queue structure.
  */
 static void
-rxq_free_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
+rxq_free_elts_mprq(struct mlx5_rxq_ctrl *rxq_ctrl)
+{
+	struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
+	uint16_t i;
+
+	DRV_LOG(DEBUG, "port %u Multi-Packet Rx queue %u freeing WRs",
+		rxq->port_id, rxq_ctrl->idx);
+	if (rxq->mprq_bufs == NULL)
+		return;
+	assert(mlx5_rxq_check_vec_support(rxq) < 0);
+	for (i = 0; (i != (1u << rxq->elts_n)); ++i) {
+		if ((*rxq->mprq_bufs)[i] != NULL)
+			mlx5_mprq_buf_free((*rxq->mprq_bufs)[i]);
+		(*rxq->mprq_bufs)[i] = NULL;
+	}
+	if (rxq->mprq_repl != NULL) {
+		mlx5_mprq_buf_free(rxq->mprq_repl);
+		rxq->mprq_repl = NULL;
+	}
+}
+
+/**
+ * Free RX queue elements for Single-Packet RQ.
+ *
+ * @param rxq_ctrl
+ *   Pointer to RX queue structure.
+ */
+static void
+rxq_free_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
 	const uint16_t q_n = (1 << rxq->elts_n);
@@ -172,6 +333,21 @@ rxq_free_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 			rte_pktmbuf_free_seg((*rxq->elts)[i]);
 		(*rxq->elts)[i] = NULL;
 	}
+}
+
+/**
+ * Free RX queue elements.
+ *
+ * @param rxq_ctrl
+ *   Pointer to RX queue structure.
+ */
+static void
+rxq_free_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
+{
+	if (mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq))
+		rxq_free_elts_mprq(rxq_ctrl);
+	else
+		rxq_free_elts_sprq(rxq_ctrl);
 }
 
 /**
@@ -585,10 +761,16 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 			struct ibv_cq_init_attr_ex ibv;
 			struct mlx5dv_cq_init_attr mlx5;
 		} cq;
-		struct ibv_wq_init_attr wq;
+		struct {
+			struct ibv_wq_init_attr ibv;
+#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+			struct mlx5dv_wq_init_attr mlx5;
+#endif
+		} wq;
 		struct ibv_cq_ex cq_attr;
 	} attr;
-	unsigned int cqe_n = (1 << rxq_data->elts_n) - 1;
+	unsigned int cqe_n;
+	unsigned int wqe_n = 1 << rxq_data->elts_n;
 	struct mlx5_rxq_ibv *tmpl;
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_rwq rwq;
@@ -596,6 +778,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	int ret = 0;
 	struct mlx5dv_obj obj;
 	struct mlx5_dev_config *config = &priv->config;
+	const int mprq_en = mlx5_rxq_mprq_enabled(rxq_data);
 
 	assert(rxq_data);
 	assert(!rxq_ctrl->ibv);
@@ -620,6 +803,10 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 			goto error;
 		}
 	}
+	if (mprq_en)
+		cqe_n = wqe_n * (1 << rxq_data->strd_num_n) - 1;
+	else
+		cqe_n = wqe_n  - 1;
 	attr.cq.ibv = (struct ibv_cq_init_attr_ex){
 		.cqe = cqe_n,
 		.channel = tmpl->channel,
@@ -657,11 +844,11 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		dev->data->port_id, priv->device_attr.orig_attr.max_qp_wr);
 	DRV_LOG(DEBUG, "port %u priv->device_attr.max_sge is %d",
 		dev->data->port_id, priv->device_attr.orig_attr.max_sge);
-	attr.wq = (struct ibv_wq_init_attr){
+	attr.wq.ibv = (struct ibv_wq_init_attr){
 		.wq_context = NULL, /* Could be useful in the future. */
 		.wq_type = IBV_WQT_RQ,
 		/* Max number of outstanding WRs. */
-		.max_wr = (1 << rxq_data->elts_n) >> rxq_data->sges_n,
+		.max_wr = wqe_n >> rxq_data->sges_n,
 		/* Max number of scatter/gather elements in a WR. */
 		.max_sge = 1 << rxq_data->sges_n,
 		.pd = priv->pd,
@@ -675,16 +862,35 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	};
 	/* By default, FCS (CRC) is stripped by hardware. */
 	if (rxq_data->crc_present) {
-		attr.wq.create_flags |= IBV_WQ_FLAGS_SCATTER_FCS;
-		attr.wq.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
+		attr.wq.ibv.create_flags |= IBV_WQ_FLAGS_SCATTER_FCS;
+		attr.wq.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 	}
 #ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
 	if (config->hw_padding) {
-		attr.wq.create_flags |= IBV_WQ_FLAG_RX_END_PADDING;
-		attr.wq.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
+		attr.wq.ibv.create_flags |= IBV_WQ_FLAG_RX_END_PADDING;
+		attr.wq.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 	}
 #endif
-	tmpl->wq = mlx5_glue->create_wq(priv->ctx, &attr.wq);
+#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+	attr.wq.mlx5 = (struct mlx5dv_wq_init_attr){
+		.comp_mask = 0,
+	};
+	if (mprq_en) {
+		struct mlx5dv_striding_rq_init_attr *mprq_attr =
+			&attr.wq.mlx5.striding_rq_attrs;
+
+		attr.wq.mlx5.comp_mask |= MLX5DV_WQ_INIT_ATTR_MASK_STRIDING_RQ;
+		*mprq_attr = (struct mlx5dv_striding_rq_init_attr){
+			.single_stride_log_num_of_bytes = rxq_data->strd_sz_n,
+			.single_wqe_log_num_of_strides = rxq_data->strd_num_n,
+			.two_byte_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT,
+		};
+	}
+	tmpl->wq = mlx5_glue->dv_create_wq(priv->ctx, &attr.wq.ibv,
+					   &attr.wq.mlx5);
+#else
+	tmpl->wq = mlx5_glue->create_wq(priv->ctx, &attr.wq.ibv);
+#endif
 	if (tmpl->wq == NULL) {
 		DRV_LOG(ERR, "port %u Rx queue %u WQ creation failure",
 			dev->data->port_id, idx);
@@ -695,16 +901,14 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	 * Make sure number of WRs*SGEs match expectations since a queue
 	 * cannot allocate more than "desc" buffers.
 	 */
-	if (((int)attr.wq.max_wr !=
-	     ((1 << rxq_data->elts_n) >> rxq_data->sges_n)) ||
-	    ((int)attr.wq.max_sge != (1 << rxq_data->sges_n))) {
+	if (attr.wq.ibv.max_wr != (wqe_n >> rxq_data->sges_n) ||
+	    attr.wq.ibv.max_sge != (1u << rxq_data->sges_n)) {
 		DRV_LOG(ERR,
 			"port %u Rx queue %u requested %u*%u but got %u*%u"
 			" WRs*SGEs",
 			dev->data->port_id, idx,
-			((1 << rxq_data->elts_n) >> rxq_data->sges_n),
-			(1 << rxq_data->sges_n),
-			attr.wq.max_wr, attr.wq.max_sge);
+			wqe_n >> rxq_data->sges_n, (1 << rxq_data->sges_n),
+			attr.wq.ibv.max_wr, attr.wq.ibv.max_sge);
 		rte_errno = EINVAL;
 		goto error;
 	}
@@ -739,25 +943,40 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	/* Fill the rings. */
-	rxq_data->wqes = (volatile struct mlx5_wqe_data_seg (*)[])
-		(uintptr_t)rwq.buf;
-	for (i = 0; (i != (unsigned int)(1 << rxq_data->elts_n)); ++i) {
-		struct rte_mbuf *buf = (*rxq_data->elts)[i];
-		volatile struct mlx5_wqe_data_seg *scat = &(*rxq_data->wqes)[i];
+	rxq_data->wqes = rwq.buf;
+	for (i = 0; (i != wqe_n); ++i) {
+		volatile struct mlx5_wqe_data_seg *scat;
+		uintptr_t addr;
+		uint32_t byte_count;
 
+		if (mprq_en) {
+			struct mlx5_mprq_buf *buf = (*rxq_data->mprq_bufs)[i];
+
+			scat = &((volatile struct mlx5_wqe_mprq *)
+				 rxq_data->wqes)[i].dseg;
+			addr = (uintptr_t)mlx5_mprq_buf_addr(buf);
+			byte_count = (1 << rxq_data->strd_sz_n) *
+				     (1 << rxq_data->strd_num_n);
+		} else {
+			struct rte_mbuf *buf = (*rxq_data->elts)[i];
+
+			scat = &((volatile struct mlx5_wqe_data_seg *)
+				 rxq_data->wqes)[i];
+			addr = rte_pktmbuf_mtod(buf, uintptr_t);
+			byte_count = DATA_LEN(buf);
+		}
 		/* scat->addr must be able to store a pointer. */
 		assert(sizeof(scat->addr) >= sizeof(uintptr_t));
 		*scat = (struct mlx5_wqe_data_seg){
-			.addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
-								  uintptr_t)),
-			.byte_count = rte_cpu_to_be_32(DATA_LEN(buf)),
-			.lkey = mlx5_rx_mb2mr(rxq_data, buf),
+			.addr = rte_cpu_to_be_64(addr),
+			.byte_count = rte_cpu_to_be_32(byte_count),
+			.lkey = mlx5_rx_addr2mr(rxq_data, addr),
 		};
 	}
 	rxq_data->rq_db = rwq.dbrec;
 	rxq_data->cqe_n = log2above(cq_info.cqe_cnt);
 	rxq_data->cq_ci = 0;
-	rxq_data->rq_ci = 0;
+	rxq_data->strd_ci = 0;
 	rxq_data->rq_pi = 0;
 	rxq_data->zip = (struct rxq_zip){
 		.ai = 0,
@@ -768,7 +987,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cqn = cq_info.cqn;
 	rxq_data->cq_arm_sn = 0;
 	/* Update doorbell counter. */
-	rxq_data->rq_ci = (1 << rxq_data->elts_n) >> rxq_data->sges_n;
+	rxq_data->rq_ci = wqe_n >> rxq_data->sges_n;
 	rte_wmb();
 	*rxq_data->rq_db = rte_cpu_to_be_32(rxq_data->rq_ci);
 	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
@@ -894,12 +1113,180 @@ mlx5_rxq_ibv_releasable(struct mlx5_rxq_ibv *rxq_ibv)
 }
 
 /**
+ * Callback function to initialize mbufs for Multi-Packet RQ.
+ */
+static inline void
+mlx5_mprq_buf_init(struct rte_mempool *mp, void *opaque_arg __rte_unused,
+		    void *_m, unsigned int i __rte_unused)
+{
+	struct mlx5_mprq_buf *buf = _m;
+
+	memset(_m, 0, sizeof(*buf));
+	buf->mp = mp;
+	rte_atomic16_set(&buf->refcnt, 1);
+}
+
+/**
+ * Free mempool of Multi-Packet RQ.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_mprq_free_mp(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rte_mempool *mp = priv->mprq_mp;
+	unsigned int i;
+
+	if (mp == NULL)
+		return 0;
+	DRV_LOG(DEBUG, "port %u freeing mempool (%s) for Multi-Packet RQ",
+		dev->data->port_id, mp->name);
+	/*
+	 * If a buffer in the pool has been externally attached to a mbuf and it
+	 * is still in use by application, destroying the Rx qeueue can spoil
+	 * the packet. It is unlikely to happen but if application dynamically
+	 * creates and destroys with holding Rx packets, this can happen.
+	 *
+	 * TODO: It is unavoidable for now because the mempool for Multi-Packet
+	 * RQ isn't provided by application but managed by PMD.
+	 */
+	if (!rte_mempool_full(mp)) {
+		DRV_LOG(ERR,
+			"port %u mempool for Multi-Packet RQ is still in use",
+			dev->data->port_id);
+		rte_errno = EBUSY;
+		return -rte_errno;
+	}
+	rte_mempool_free(mp);
+	/* Unset mempool for each Rx queue. */
+	for (i = 0; i != priv->rxqs_n; ++i) {
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+
+		if (rxq == NULL)
+			continue;
+		rxq->mprq_mp = NULL;
+	}
+	return 0;
+}
+
+/**
+ * Allocate a mempool for Multi-Packet RQ. All configured Rx queues share the
+ * mempool. If already allocated, reuse it if there're enough elements.
+ * Otherwise, resize it.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rte_mempool *mp = priv->mprq_mp;
+	char name[RTE_MEMPOOL_NAMESIZE];
+	unsigned int desc = 0;
+	unsigned int buf_len;
+	unsigned int obj_num;
+	unsigned int obj_size;
+	unsigned int strd_num_n = 0;
+	unsigned int strd_sz_n = 0;
+	unsigned int i;
+
+	if (!mlx5_mprq_enabled(dev))
+		return 0;
+	/* Count the total number of descriptors configured. */
+	for (i = 0; i != priv->rxqs_n; ++i) {
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+
+		if (rxq == NULL)
+			continue;
+		desc += 1 << rxq->elts_n;
+		/* Get the max number of strides. */
+		if (strd_num_n < rxq->strd_num_n)
+			strd_num_n = rxq->strd_num_n;
+		/* Get the max size of a stride. */
+		if (strd_sz_n < rxq->strd_sz_n)
+			strd_sz_n = rxq->strd_sz_n;
+	}
+	assert(strd_num_n && strd_sz_n);
+	buf_len = (1 << strd_num_n) * (1 << strd_sz_n);
+	obj_size = buf_len + sizeof(struct mlx5_mprq_buf);
+	/*
+	 * Received packets can be either memcpy'd or externally referenced. In
+	 * case that the packet is attached to an mbuf as an external buffer, as
+	 * it isn't possible to predict how the buffers will be queued by
+	 * application, there's no option to exactly pre-allocate needed buffers
+	 * in advance but to speculatively prepares enough buffers.
+	 *
+	 * In the data path, if this Mempool is depleted, PMD will try to memcpy
+	 * received packets to buffers provided by application (rxq->mp) until
+	 * this Mempool gets available again.
+	 */
+	desc *= 4;
+	obj_num = desc + MLX5_MPRQ_MP_CACHE_SZ * priv->rxqs_n;
+	/* Check a mempool is already allocated and if it can be resued. */
+	if (mp != NULL && mp->elt_size >= obj_size && mp->size >= obj_num) {
+		DRV_LOG(DEBUG, "port %u mempool %s is being reused",
+			dev->data->port_id, mp->name);
+		/* Reuse. */
+		goto exit;
+	} else if (mp != NULL) {
+		DRV_LOG(DEBUG, "port %u mempool %s should be resized, freeing it",
+			dev->data->port_id, mp->name);
+		/*
+		 * If failed to free, which means it may be still in use, no way
+		 * but to keep using the existing one. On buffer underrun,
+		 * packets will be memcpy'd instead of external buffer
+		 * attachment.
+		 */
+		if (mlx5_mprq_free_mp(dev)) {
+			if (mp->elt_size >= obj_size)
+				goto exit;
+			else
+				return -rte_errno;
+		}
+	}
+	snprintf(name, sizeof(name), "%s-mprq", dev->device->name);
+	mp = rte_mempool_create(name, obj_num, obj_size, MLX5_MPRQ_MP_CACHE_SZ,
+				0, NULL, NULL, mlx5_mprq_buf_init, NULL,
+				dev->device->numa_node, 0);
+	if (mp == NULL) {
+		DRV_LOG(ERR,
+			"port %u failed to allocate a mempool for"
+			" Multi-Packet RQ, count=%u, size=%u",
+			dev->data->port_id, obj_num, obj_size);
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	priv->mprq_mp = mp;
+exit:
+	/* Set mempool for each Rx queue. */
+	for (i = 0; i != priv->rxqs_n; ++i) {
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+
+		if (rxq == NULL)
+			continue;
+		rxq->mprq_mp = mp;
+	}
+	DRV_LOG(INFO, "port %u Multi-Packet RQ is configured",
+		dev->data->port_id);
+	return 0;
+}
+
+/**
  * Create a DPDK Rx queue.
  *
  * @param dev
  *   Pointer to Ethernet device.
  * @param idx
- *   TX queue index.
+ *   RX queue index.
  * @param desc
  *   Number of descriptors to configure in queue.
  * @param socket
@@ -916,15 +1303,17 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *tmpl;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
+	unsigned int mprq_stride_size;
 	struct mlx5_dev_config *config = &priv->config;
 	/*
 	 * Always allocate extra slots, even if eventually
 	 * the vector Rx will not be used.
 	 */
-	const uint16_t desc_n =
+	uint16_t desc_n =
 		desc + config->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
 	uint64_t offloads = conf->offloads |
 			   dev->data->dev_conf.rxmode.offloads;
+	const int mprq_en = mlx5_check_mprq_support(dev) > 0;
 
 	tmpl = rte_calloc_socket("RXQ", 1,
 				 sizeof(*tmpl) +
@@ -942,10 +1331,41 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->socket = socket;
 	if (dev->data->dev_conf.intr_conf.rxq)
 		tmpl->irq = 1;
-	/* Enable scattered packets support for this queue if necessary. */
+	/*
+	 * This Rx queue can be configured as a Multi-Packet RQ if all of the
+	 * following conditions are met:
+	 *  - MPRQ is enabled.
+	 *  - The number of descs is more than the number of strides.
+	 *  - max_rx_pkt_len plus overhead is less than the max size of a
+	 *    stride.
+	 *  Otherwise, enable Rx scatter if necessary.
+	 */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
-	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
-	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
+	mprq_stride_size =
+		dev->data->dev_conf.rxmode.max_rx_pkt_len +
+		sizeof(struct rte_mbuf_ext_shared_info) +
+		RTE_PKTMBUF_HEADROOM;
+	if (mprq_en &&
+	    desc >= (1U << config->mprq.stride_num_n) &&
+	    mprq_stride_size <= (1U << config->mprq.max_stride_size_n)) {
+		/* TODO: Rx scatter isn't supported yet. */
+		tmpl->rxq.sges_n = 0;
+		/* Trim the number of descs needed. */
+		desc >>= config->mprq.stride_num_n;
+		tmpl->rxq.strd_num_n = config->mprq.stride_num_n;
+		tmpl->rxq.strd_sz_n = RTE_MAX(log2above(mprq_stride_size),
+					      config->mprq.min_stride_size_n);
+		tmpl->rxq.strd_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT;
+		tmpl->rxq.mprq_max_memcpy_len =
+			RTE_MIN(mb_len - RTE_PKTMBUF_HEADROOM,
+				config->mprq.max_memcpy_len);
+		DRV_LOG(DEBUG,
+			"port %u Rx queue %u: Multi-Packet RQ is enabled"
+			" strd_num_n = %u, strd_sz_n = %u",
+			dev->data->port_id, idx,
+			tmpl->rxq.strd_num_n, tmpl->rxq.strd_sz_n);
+	} else if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
+		   (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		tmpl->rxq.sges_n = 0;
 	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
 		unsigned int size =

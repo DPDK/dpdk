@@ -219,6 +219,21 @@ struct mlx5_mpw {
 	} data;
 };
 
+/* WQE for Multi-Packet RQ. */
+struct mlx5_wqe_mprq {
+	struct mlx5_wqe_srq_next_seg next_seg;
+	struct mlx5_wqe_data_seg dseg;
+};
+
+#define MLX5_MPRQ_LEN_MASK 0x000ffff
+#define MLX5_MPRQ_LEN_SHIFT 0
+#define MLX5_MPRQ_STRIDE_NUM_MASK 0x3fff0000
+#define MLX5_MPRQ_STRIDE_NUM_SHIFT 16
+#define MLX5_MPRQ_FILLER_MASK 0x80000000
+#define MLX5_MPRQ_FILLER_SHIFT 31
+
+#define MLX5_MPRQ_STRIDE_SHIFT_BYTE 2
+
 /* CQ element structure - should be equal to the cache line size */
 struct mlx5_cqe {
 #if (RTE_CACHE_LINE_SIZE == 128)

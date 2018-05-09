@@ -102,6 +102,16 @@ struct mlx5_dev_config {
 	unsigned int l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
 	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
+	struct {
+		unsigned int enabled:1; /* Whether MPRQ is enabled. */
+		unsigned int stride_num_n; /* Number of strides. */
+		unsigned int min_stride_size_n; /* Min size of a stride. */
+		unsigned int max_stride_size_n; /* Max size of a stride. */
+		unsigned int max_memcpy_len;
+		/* Maximum packet size to memcpy Rx packets. */
+		unsigned int min_rxqs_num;
+		/* Rx queue count threshold to enable MPRQ. */
+	} mprq; /* Configurations for Multi-Packet RQ. */
 	unsigned int max_verbs_prio; /* Number of Verb flow priorities. */
 	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
@@ -154,6 +164,7 @@ struct priv {
 	unsigned int txqs_n; /* TX queues array size. */
 	struct mlx5_rxq_data *(*rxqs)[]; /* RX queues. */
 	struct mlx5_txq_data *(*txqs)[]; /* TX queues. */
+	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
 	struct rte_eth_rss_conf rss_conf; /* RSS configuration. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	unsigned int (*reta_idx)[]; /* RETA index table. */

@@ -105,10 +105,14 @@ Limitations
 - A multi segment packet must have less than 6 segments in case the Tx burst function
   is set to multi-packet send or Enhanced multi-packet send. Otherwise it must have
   less than 50 segments.
+
 - Count action for RTE flow is **only supported in Mellanox OFED**.
+
 - Flows with a VXLAN Network Identifier equal (or ends to be equal)
   to 0 are not supported.
+
 - VXLAN TSO and checksum offloads are not supported on VM.
+
 - VF: flow rules created on VF devices can only match traffic targeted at the
   configured MAC addresses (see ``rte_eth_dev_mac_addr_add()``).
 
@@ -118,6 +122,13 @@ Limitations
    kernel network device will be added and cleaned up by the PMD when closing
    the device. In case of ungraceful program termination, some entries may
    remain present and should be removed manually by other means.
+
+- When Multi-Packet Rx queue is configured (``mprq_en``), a Rx packet can be
+  externally attached to a user-provided mbuf with having EXT_ATTACHED_MBUF in
+  ol_flags. As the mempool for the external buffer is managed by PMD, all the
+  Rx mbufs must be freed before the device is closed. Otherwise, the mempool of
+  the external buffers will be freed by PMD and the application which still
+  holds the external buffers may be corrupted.
 
 Statistics
 ----------
@@ -228,6 +239,53 @@ Run-time configuration
 
   - x86_64 with ConnectX-4, ConnectX-4 LX and ConnectX-5.
   - POWER8 and ARMv8 with ConnectX-4 LX and ConnectX-5.
+
+- ``mprq_en`` parameter [int]
+
+  A nonzero value enables configuring Multi-Packet Rx queues. Rx queue is
+  configured as Multi-Packet RQ if the total number of Rx queues is
+  ``rxqs_min_mprq`` or more and Rx scatter isn't configured. Disabled by
+  default.
+
+  Multi-Packet Rx Queue (MPRQ a.k.a Striding RQ) can further save PCIe bandwidth
+  by posting a single large buffer for multiple packets. Instead of posting a
+  buffers per a packet, one large buffer is posted in order to receive multiple
+  packets on the buffer. A MPRQ buffer consists of multiple fixed-size strides
+  and each stride receives one packet. MPRQ can improve throughput for
+  small-packet tarffic.
+
+  When MPRQ is enabled, max_rx_pkt_len can be larger than the size of
+  user-provided mbuf even if DEV_RX_OFFLOAD_SCATTER isn't enabled. PMD will
+  configure large stride size enough to accommodate max_rx_pkt_len as long as
+  device allows. Note that this can waste system memory compared to enabling Rx
+  scatter and multi-segment packet.
+
+- ``mprq_log_stride_num`` parameter [int]
+
+  Log 2 of the number of strides for Multi-Packet Rx queue. Configuring more
+  strides can reduce PCIe tarffic further. If configured value is not in the
+  range of device capability, the default value will be set with a warning
+  message. The default value is 4 which is 16 strides per a buffer, valid only
+  if ``mprq_en`` is set.
+
+  The size of Rx queue should be bigger than the number of strides.
+
+- ``mprq_max_memcpy_len`` parameter [int]
+
+  The maximum length of packet to memcpy in case of Multi-Packet Rx queue. Rx
+  packet is mem-copied to a user-provided mbuf if the size of Rx packet is less
+  than or equal to this parameter. Otherwise, PMD will attach the Rx packet to
+  the mbuf by external buffer attachment - ``rte_pktmbuf_attach_extbuf()``.
+  A mempool for external buffers will be allocated and managed by PMD. If Rx
+  packet is externally attached, ol_flags field of the mbuf will have
+  EXT_ATTACHED_MBUF and this flag must be preserved. ``RTE_MBUF_HAS_EXTBUF()``
+  checks the flag. The default value is 128, valid only if ``mprq_en`` is set.
+
+- ``rxqs_min_mprq`` parameter [int]
+
+  Configure Rx queues as Multi-Packet RQ if the total number of Rx queues is
+  greater or equal to this value. The default value is 12, valid only if
+  ``mprq_en`` is set.
 
 - ``txq_inline`` parameter [int]
 

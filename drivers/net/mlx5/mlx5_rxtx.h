@@ -64,6 +64,16 @@ struct rxq_zip {
 	uint32_t cqe_cnt; /* Number of CQEs. */
 };
 
+/* Multi-Packet RQ buffer header. */
+struct mlx5_mprq_buf {
+	struct rte_mempool *mp;
+	rte_atomic16_t refcnt; /* Atomically accessed refcnt. */
+	uint8_t pad[RTE_PKTMBUF_HEADROOM]; /* Headroom for the first packet. */
+} __rte_cache_aligned;
+
+/* Get pointer to the first stride. */
+#define mlx5_mprq_buf_addr(ptr) ((ptr) + 1)
+
 /* RX queue descriptor. */
 struct mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
@@ -75,19 +85,30 @@ struct mlx5_rxq_data {
 	unsigned int elts_n:4; /* Log 2 of Mbufs. */
 	unsigned int rss_hash:1; /* RSS hash result is enabled. */
 	unsigned int mark:1; /* Marked flow available on the queue. */
-	unsigned int :15; /* Remaining bits. */
+	unsigned int strd_num_n:5; /* Log 2 of the number of stride. */
+	unsigned int strd_sz_n:4; /* Log 2 of stride size. */
+	unsigned int strd_shift_en:1; /* Enable 2bytes shift on a stride. */
+	unsigned int :6; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
 	uint16_t rq_ci;
+	uint16_t strd_ci; /* Stride index in a WQE for Multi-Packet RQ. */
 	uint16_t rq_pi;
 	uint16_t cq_ci;
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
-	volatile struct mlx5_wqe_data_seg(*wqes)[];
+	uint16_t mprq_max_memcpy_len; /* Maximum size of packet to memcpy. */
+	volatile void *wqes;
 	volatile struct mlx5_cqe(*cqes)[];
 	struct rxq_zip zip; /* Compressed context. */
-	struct rte_mbuf *(*elts)[];
+	RTE_STD_C11
+	union  {
+		struct rte_mbuf *(*elts)[];
+		struct mlx5_mprq_buf *(*mprq_bufs)[];
+	};
 	struct rte_mempool *mp;
+	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
+	struct mlx5_mprq_buf *mprq_repl; /* Stashed mbuf for replenish. */
 	struct mlx5_rxq_stats stats;
 	uint64_t mbuf_initializer; /* Default rearm_data for vectorized Rx. */
 	struct rte_mbuf fake_mbuf; /* elts padding for vectorized Rx. */
@@ -206,6 +227,11 @@ struct mlx5_txq_ctrl {
 extern uint8_t rss_hash_default_key[];
 extern const size_t rss_hash_default_key_len;
 
+int mlx5_check_mprq_support(struct rte_eth_dev *dev);
+int mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq);
+int mlx5_mprq_enabled(struct rte_eth_dev *dev);
+int mlx5_mprq_free_mp(struct rte_eth_dev *dev);
+int mlx5_mprq_alloc_mp(struct rte_eth_dev *dev);
 void mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl);
 int mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			unsigned int socket, const struct rte_eth_rxconf *conf,
@@ -229,6 +255,7 @@ int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
+int rxq_alloc_mprq_buf(struct mlx5_rxq_ctrl *rxq_ctrl);
 struct mlx5_ind_table_ibv *mlx5_ind_table_ibv_new(struct rte_eth_dev *dev,
 						  const uint16_t *queues,
 						  uint32_t queues_n);
@@ -292,6 +319,10 @@ uint16_t mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 uint16_t mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts,
 			    uint16_t pkts_n);
 uint16_t mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
+void mlx5_mprq_buf_free_cb(void *addr, void *opaque);
+void mlx5_mprq_buf_free(struct mlx5_mprq_buf *buf);
+uint16_t mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts,
+			    uint16_t pkts_n);
 uint16_t removed_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts,
 			  uint16_t pkts_n);
 uint16_t removed_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts,
