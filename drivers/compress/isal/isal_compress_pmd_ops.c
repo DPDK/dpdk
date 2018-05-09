@@ -162,6 +162,9 @@ isal_comp_pmd_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 	if (qp->stream->level_buf != NULL)
 		rte_free(qp->stream->level_buf);
 
+	if (qp->state != NULL)
+		rte_free(qp->state);
+
 	if (dev->data->queue_pairs[qp_id] != NULL)
 		rte_free(dev->data->queue_pairs[qp_id]);
 
@@ -238,6 +241,11 @@ isal_comp_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	/* Initialize memory for compression level buffer */
 	qp->stream->level_buf = rte_zmalloc_socket("Isa-l compression lev_buf",
 			ISAL_DEF_LVL3_DEFAULT, RTE_CACHE_LINE_SIZE,
+			socket_id);
+
+	/* Initialize memory for decompression state structure */
+	qp->state = rte_zmalloc_socket("Isa-l decompression state",
+			sizeof(struct inflate_state), RTE_CACHE_LINE_SIZE,
 			socket_id);
 
 	qp->id = qp_id;

@@ -266,6 +266,56 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 	return ret;
 }
 
+/* Stateless Decompression Function */
+static int
+process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp)
+{
+	int ret = 0;
+
+	op->status = RTE_COMP_OP_STATUS_SUCCESS;
+
+	/* Initialize decompression state */
+	isal_inflate_init(qp->state);
+
+	/* Point decompression state structure to input/output buffers */
+	qp->state->avail_in = op->src.length;
+	qp->state->next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
+	qp->state->avail_out = op->m_dst->data_len;
+	qp->state->next_out  = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+
+	if (unlikely(!qp->state->next_in || !qp->state->next_out)) {
+		ISAL_PMD_LOG(ERR, "Invalid source or destination buffers\n");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		return -1;
+	}
+
+	/* Execute decompression operation */
+	ret = isal_inflate_stateless(qp->state);
+
+	if (ret == ISAL_OUT_OVERFLOW) {
+		ISAL_PMD_LOG(ERR, "Output buffer not big enough\n");
+		op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+		return ret;
+	}
+
+	/* Check that input buffer has been fully consumed */
+	if (qp->state->avail_in != (uint32_t)0) {
+		ISAL_PMD_LOG(ERR, "Input buffer could not be read entirely\n");
+		op->status = RTE_COMP_OP_STATUS_ERROR;
+		return -1;
+	}
+
+	if (ret != ISAL_DECOMP_OK) {
+		op->status = RTE_COMP_OP_STATUS_ERROR;
+		return ret;
+	}
+
+	op->consumed = op->src.length - qp->state->avail_in;
+	op->produced = qp->state->total_out;
+
+return ret;
+}
+
 /* Process compression/decompression operation */
 static int
 process_op(struct isal_comp_qp *qp, struct rte_comp_op *op,
@@ -276,6 +326,7 @@ process_op(struct isal_comp_qp *qp, struct rte_comp_op *op,
 		process_isal_deflate(op, qp, priv_xform);
 		break;
 	case RTE_COMP_DECOMPRESS:
+		process_isal_inflate(op, qp);
 		break;
 	default:
 		ISAL_PMD_LOG(ERR, "Operation Not Supported\n");
