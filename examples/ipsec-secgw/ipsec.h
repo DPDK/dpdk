@@ -17,6 +17,7 @@
 #define RTE_LOGTYPE_IPSEC_IPIP  RTE_LOGTYPE_USER3
 
 #define MAX_PKT_BURST 32
+#define MAX_INFLIGHT 128
 #define MAX_QP_PER_LCORE 256
 
 #define MAX_DIGEST_SIZE 32 /* Bytes -- 256 bits */
