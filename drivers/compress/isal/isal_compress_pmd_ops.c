@@ -93,6 +93,24 @@ isal_comp_pmd_close(struct rte_compressdev *dev)
 	return 0;
 }
 
+/** Get device statistics */
+static void
+isal_comp_pmd_stats_get(struct rte_compressdev *dev,
+		struct rte_compressdev_stats *stats)
+{
+	uint16_t qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct isal_comp_qp *qp = dev->data->queue_pairs[qp_id];
+
+		stats->enqueued_count += qp->qp_stats.enqueued_count;
+		stats->dequeued_count += qp->qp_stats.dequeued_count;
+
+		stats->enqueue_err_count += qp->qp_stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->qp_stats.dequeue_err_count;
+	}
+}
+
 /** Get device info */
 static void
 isal_comp_pmd_info_get(struct rte_compressdev *dev __rte_unused,
@@ -107,6 +125,17 @@ isal_comp_pmd_info_get(struct rte_compressdev *dev __rte_unused,
 	}
 }
 
+/** Reset device statistics */
+static void
+isal_comp_pmd_stats_reset(struct rte_compressdev *dev)
+{
+	uint16_t qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct isal_comp_qp *qp = dev->data->queue_pairs[qp_id];
+		memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
+	}
+}
 
 /** Release queue pair */
 static int
@@ -265,8 +294,8 @@ struct rte_compressdev_ops isal_pmd_ops = {
 		.dev_stop		= isal_comp_pmd_stop,
 		.dev_close		= isal_comp_pmd_close,
 
-		.stats_get		= NULL,
-		.stats_reset		= NULL,
+		.stats_get		= isal_comp_pmd_stats_get,
+		.stats_reset		= isal_comp_pmd_stats_reset,
 
 		.dev_infos_get		= isal_comp_pmd_info_get,
 
