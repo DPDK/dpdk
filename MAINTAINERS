@@ -350,6 +350,7 @@ F: lib/librte_compressdev/
 F: drivers/compress/
 F: test/test/test_compressdev*
 F: doc/guides/prog_guide/compressdev.rst
+F: doc/guides/compressdevs/features/default.ini
 
 Eventdev API
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
@@ -827,6 +828,8 @@ T: git://dpdk.org/next/dpdk-next-crypto
 ISA-L
 M: Lee Daly <lee.daly@intel.com>
 F: drivers/compress/isal/
+F: doc/guides/compressdevs/isal.rst
+F: doc/guides/compressdevs/features/isal.ini
 
 
 Eventdev Drivers

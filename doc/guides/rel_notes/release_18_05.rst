@@ -147,7 +147,8 @@ New Features
 * **Added a new compression poll mode driver using Intels ISA-L.**
 
    Added the new ``ISA-L`` compression driver, for compression and decompression
-   operations in software.
+   operations in software. See the :doc:`../compressdevs/isal` compression driver
+   guide for details on this new driver.
 
 * **Added the Event Timer Adapter Library.**
 

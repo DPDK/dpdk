@@ -388,6 +388,11 @@ def setup(app):
                             'AEAD',
                             'AEAD algorithms in crypto drivers',
                             'AEAD algorithm')
+    table_file = dirname(__file__) + '/compressdevs/overview_feature_table.txt'
+    generate_overview_table(table_file, 1,
+                            'Features',
+                            'Features availability in compression drivers',
+                            'Feature')
 
     if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):
         print('Upgrade sphinx to version >= 1.3.1 for '
