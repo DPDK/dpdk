@@ -78,7 +78,7 @@ rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 		buf = rte_pktmbuf_alloc(rxq_ctrl->rxq.mp);
 		if (buf == NULL) {
 			DRV_LOG(ERR, "port %u empty mbuf pool",
-				rxq_ctrl->priv->dev->data->port_id);
+				PORT_ID(rxq_ctrl->priv));
 			rte_errno = ENOMEM;
 			goto error;
 		}
@@ -122,7 +122,7 @@ rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 	DRV_LOG(DEBUG,
 		"port %u Rx queue %u allocated and configured %u segments"
 		" (max %u packets)",
-		rxq_ctrl->priv->dev->data->port_id, rxq_ctrl->idx, elts_n,
+		PORT_ID(rxq_ctrl->priv), rxq_ctrl->idx, elts_n,
 		elts_n / (1 << rxq_ctrl->rxq.sges_n));
 	return 0;
 error:
@@ -134,7 +134,7 @@ error:
 		(*rxq_ctrl->rxq.elts)[i] = NULL;
 	}
 	DRV_LOG(DEBUG, "port %u Rx queue %u failed, freed everything",
-		rxq_ctrl->priv->dev->data->port_id, rxq_ctrl->idx);
+		PORT_ID(rxq_ctrl->priv), rxq_ctrl->idx);
 	rte_errno = err; /* Restore rte_errno. */
 	return -rte_errno;
 }
@@ -155,7 +155,7 @@ rxq_free_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 	uint16_t i;
 
 	DRV_LOG(DEBUG, "port %u Rx queue %u freeing WRs",
-		rxq_ctrl->priv->dev->data->port_id, rxq_ctrl->idx);
+		PORT_ID(rxq_ctrl->priv), rxq_ctrl->idx);
 	if (rxq->elts == NULL)
 		return;
 	/**
@@ -186,7 +186,7 @@ void
 mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	DRV_LOG(DEBUG, "port %u cleaning up Rx queue %u",
-		rxq_ctrl->priv->dev->data->port_id, rxq_ctrl->idx);
+		PORT_ID(rxq_ctrl->priv), rxq_ctrl->idx);
 	if (rxq_ctrl->ibv)
 		mlx5_rxq_ibv_release(rxq_ctrl->ibv);
 	memset(rxq_ctrl, 0, sizeof(*rxq_ctrl));
@@ -354,11 +354,11 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 		return;
 	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	priv = rxq_ctrl->priv;
-	if (!mlx5_rxq_releasable(priv->dev, rxq_ctrl->rxq.stats.idx))
+	if (!mlx5_rxq_releasable(ETH_DEV(priv), rxq_ctrl->rxq.stats.idx))
 		rte_panic("port %u Rx queue %u is still used by a flow and"
-			  " cannot be removed\n", priv->dev->data->port_id,
-			  rxq_ctrl->idx);
-	mlx5_rxq_release(priv->dev, rxq_ctrl->rxq.stats.idx);
+			  " cannot be removed\n",
+			  PORT_ID(priv), rxq_ctrl->idx);
+	mlx5_rxq_release(ETH_DEV(priv), rxq_ctrl->rxq.stats.idx);
 }
 
 /**
@@ -378,9 +378,9 @@ mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev)
 	unsigned int rxqs_n = priv->rxqs_n;
 	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 	unsigned int count = 0;
-	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+	struct rte_intr_handle *intr_handle = dev->intr_handle;
 
-	if (!priv->dev->data->dev_conf.intr_conf.rxq)
+	if (!dev->data->dev_conf.intr_conf.rxq)
 		return 0;
 	mlx5_rx_intr_vec_disable(dev);
 	intr_handle->intr_vec = malloc(n * sizeof(intr_handle->intr_vec[0]));
@@ -452,12 +452,12 @@ void
 mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+	struct rte_intr_handle *intr_handle = dev->intr_handle;
 	unsigned int i;
 	unsigned int rxqs_n = priv->rxqs_n;
 	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 
-	if (!priv->dev->data->dev_conf.intr_conf.rxq)
+	if (!dev->data->dev_conf.intr_conf.rxq)
 		return;
 	if (!intr_handle->intr_vec)
 		goto free;
@@ -897,7 +897,7 @@ mlx5_rxq_ibv_release(struct mlx5_rxq_ibv *rxq_ibv)
 	if (!ret)
 		rxq_ibv->mr = NULL;
 	DRV_LOG(DEBUG, "port %u Verbs Rx queue %u: refcnt %d",
-		rxq_ibv->rxq_ctrl->priv->dev->data->port_id,
+		PORT_ID(rxq_ibv->rxq_ctrl->priv),
 		rxq_ibv->rxq_ctrl->idx, rte_atomic32_read(&rxq_ibv->refcnt));
 	if (rte_atomic32_dec_and_test(&rxq_ibv->refcnt)) {
 		rxq_free_elts(rxq_ibv->rxq_ctrl);
@@ -990,7 +990,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		return NULL;
 	}
 	tmpl->socket = socket;
-	if (priv->dev->data->dev_conf.intr_conf.rxq)
+	if (dev->data->dev_conf.intr_conf.rxq)
 		tmpl->irq = 1;
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
@@ -1328,8 +1328,8 @@ mlx5_ind_table_ibv_release(struct rte_eth_dev *dev,
 	unsigned int i;
 
 	DRV_LOG(DEBUG, "port %u indirection table %p: refcnt %d",
-		((struct priv *)dev->data->dev_private)->port,
-		(void *)ind_tbl, rte_atomic32_read(&ind_tbl->refcnt));
+		dev->data->port_id, (void *)ind_tbl,
+		rte_atomic32_read(&ind_tbl->refcnt));
 	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt)) {
 		claim_zero(mlx5_glue->destroy_rwq_ind_table
 			   (ind_tbl->ind_table));
@@ -1589,8 +1589,8 @@ int
 mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 {
 	DRV_LOG(DEBUG, "port %u hash Rx queue %p: refcnt %d",
-		((struct priv *)dev->data->dev_private)->port,
-		(void *)hrxq, rte_atomic32_read(&hrxq->refcnt));
+		dev->data->port_id, (void *)hrxq,
+		rte_atomic32_read(&hrxq->refcnt));
 	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
 		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
 		DEBUG("port %u delete QP %p: hash: 0x%" PRIx64 ", tunnel:"

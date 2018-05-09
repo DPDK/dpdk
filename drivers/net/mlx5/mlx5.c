@@ -954,7 +954,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			goto port_error;
 		}
 		eth_dev->data->dev_private = priv;
-		priv->dev = eth_dev;
+		priv->dev_data = eth_dev->data;
 		eth_dev->data->mac_addrs = priv->mac;
 		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);

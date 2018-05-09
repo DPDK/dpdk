@@ -121,7 +121,7 @@ struct mlx5_verbs_alloc_ctx {
 };
 
 struct priv {
-	struct rte_eth_dev *dev; /* Ethernet device of master process. */
+	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
@@ -167,6 +167,9 @@ struct priv {
 	int nl_socket; /* Netlink socket. */
 	uint32_t nl_sn; /* Netlink message sequence number. */
 };
+
+#define PORT_ID(priv) ((priv)->dev_data->port_id)
+#define ETH_DEV(priv) (&rte_eth_devices[PORT_ID(priv)])
 
 /* mlx5.c */
 

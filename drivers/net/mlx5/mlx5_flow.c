@@ -2034,7 +2034,7 @@ mlx5_flow_create_action_queue_drop(struct rte_eth_dev *dev,
 		parser->queue[HASH_RXQ_ETH].ibv_attr;
 	if (parser->count)
 		flow->cs = parser->cs;
-	if (!priv->dev->data->dev_started)
+	if (!dev->data->dev_started)
 		return 0;
 	parser->queue[HASH_RXQ_ETH].ibv_attr = NULL;
 	flow->frxq[HASH_RXQ_ETH].ibv_flow =
@@ -2086,7 +2086,6 @@ mlx5_flow_create_action_queue_rss(struct rte_eth_dev *dev,
 				  struct rte_flow *flow,
 				  struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
 
 	for (i = 0; i != hash_rxq_init_n; ++i) {
@@ -2095,7 +2094,7 @@ mlx5_flow_create_action_queue_rss(struct rte_eth_dev *dev,
 		flow->frxq[i].ibv_attr = parser->queue[i].ibv_attr;
 		parser->queue[i].ibv_attr = NULL;
 		flow->frxq[i].hash_fields = parser->queue[i].hash_fields;
-		if (!priv->dev->data->dev_started)
+		if (!dev->data->dev_started)
 			continue;
 		flow->frxq[i].hrxq =
 			mlx5_hrxq_get(dev,
@@ -2241,7 +2240,7 @@ mlx5_flow_create_action_queue(struct rte_eth_dev *dev,
 			      struct rte_flow *flow,
 			      struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv __rte_unused = dev->data->dev_private;
 	int ret;
 	unsigned int i;
 	unsigned int flows_n = 0;
@@ -2254,7 +2253,7 @@ mlx5_flow_create_action_queue(struct rte_eth_dev *dev,
 		goto error;
 	if (parser->count)
 		flow->cs = parser->cs;
-	if (!priv->dev->data->dev_started)
+	if (!dev->data->dev_started)
 		return 0;
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (!flow->frxq[i].hrxq)
@@ -3097,9 +3096,9 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 	}
 	priv->isolated = !!enable;
 	if (enable)
-		priv->dev->dev_ops = &mlx5_dev_ops_isolate;
+		dev->dev_ops = &mlx5_dev_ops_isolate;
 	else
-		priv->dev->dev_ops = &mlx5_dev_ops;
+		dev->dev_ops = &mlx5_dev_ops;
 	return 0;
 }
 
@@ -3487,11 +3486,10 @@ mlx5_fdir_filter_flush(struct rte_eth_dev *dev)
 static void
 mlx5_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info)
 {
-	struct priv *priv = dev->data->dev_private;
 	struct rte_eth_fdir_masks *mask =
-		&priv->dev->data->dev_conf.fdir_conf.mask;
+		&dev->data->dev_conf.fdir_conf.mask;
 
-	fdir_info->mode = priv->dev->data->dev_conf.fdir_conf.mode;
+	fdir_info->mode = dev->data->dev_conf.fdir_conf.mode;
 	fdir_info->guarant_spc = 0;
 	rte_memcpy(&fdir_info->mask, mask, sizeof(fdir_info->mask));
 	fdir_info->max_flexpayload = 0;
@@ -3519,9 +3517,8 @@ static int
 mlx5_fdir_ctrl_func(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 		    void *arg)
 {
-	struct priv *priv = dev->data->dev_private;
 	enum rte_fdir_mode fdir_mode =
-		priv->dev->data->dev_conf.fdir_conf.mode;
+		dev->data->dev_conf.fdir_conf.mode;
 
 	if (filter_op == RTE_ETH_FILTER_NOP)
 		return 0;

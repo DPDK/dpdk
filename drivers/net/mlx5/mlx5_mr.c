@@ -105,8 +105,8 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 	rte_spinlock_lock(&txq_ctrl->priv->mr_lock);
 	/* Add a new entry, register MR first. */
 	DRV_LOG(DEBUG, "port %u discovered new memory pool \"%s\" (%p)",
-		txq_ctrl->priv->dev->data->port_id, mp->name, (void *)mp);
-	dev = txq_ctrl->priv->dev;
+		PORT_ID(txq_ctrl->priv), mp->name, (void *)mp);
+	dev = ETH_DEV(txq_ctrl->priv);
 	mr = mlx5_mr_get(dev, mp);
 	if (mr == NULL) {
 		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
@@ -114,8 +114,7 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 				"port %u using unregistered mempool 0x%p(%s)"
 				" in secondary process, please create mempool"
 				" before rte_eth_dev_start()",
-				txq_ctrl->priv->dev->data->port_id,
-				(void *)mp, mp->name);
+				PORT_ID(txq_ctrl->priv), (void *)mp, mp->name);
 			rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 			rte_errno = ENOTSUP;
 			return NULL;
@@ -126,7 +125,7 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 		DRV_LOG(DEBUG,
 			"port %u unable to configure memory region,"
 			" ibv_reg_mr() failed.",
-			txq_ctrl->priv->dev->data->port_id);
+			PORT_ID(txq_ctrl->priv));
 		rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 		return NULL;
 	}
@@ -135,7 +134,7 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 		DRV_LOG(DEBUG,
 			"port %u memory region <-> memory pool table full, "
 			" dropping oldest entry",
-			txq_ctrl->priv->dev->data->port_id);
+			PORT_ID(txq_ctrl->priv));
 		--idx;
 		mlx5_mr_release(txq->mp2mr[0]);
 		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
@@ -146,7 +145,7 @@ mlx5_txq_mp2mr_reg(struct mlx5_txq_data *txq, struct rte_mempool *mp,
 	DRV_LOG(DEBUG,
 		"port %u new memory region lkey for MP \"%s\" (%p): 0x%08"
 		PRIu32,
-		txq_ctrl->priv->dev->data->port_id, mp->name, (void *)mp,
+		PORT_ID(txq_ctrl->priv), mp->name, (void *)mp,
 		txq_ctrl->txq.mp2mr[idx]->lkey);
 	rte_spinlock_unlock(&txq_ctrl->priv->mr_lock);
 	return mr;
@@ -207,15 +206,15 @@ mlx5_mp2mr_iter(struct rte_mempool *mp, void *arg)
 	if (rte_mempool_obj_iter(mp, txq_mp2mr_mbuf_check, &data) == 0 ||
 			data.ret == -1)
 		return;
-	mr = mlx5_mr_get(priv->dev, mp);
+	mr = mlx5_mr_get(ETH_DEV(priv), mp);
 	if (mr) {
 		mlx5_mr_release(mr);
 		return;
 	}
-	mr = mlx5_mr_new(priv->dev, mp);
+	mr = mlx5_mr_new(ETH_DEV(priv), mp);
 	if (!mr)
 		DRV_LOG(ERR, "port %u cannot create memory region: %s",
-			priv->dev->data->port_id, strerror(rte_errno));
+			PORT_ID(priv), strerror(rte_errno));
 }
 
 /**
