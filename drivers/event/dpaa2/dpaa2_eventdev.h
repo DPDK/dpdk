@@ -63,7 +63,6 @@ struct evq_info_t {
 	struct dpaa2_dpci_dev *dpci;
 	/* Configuration provided by the user */
 	uint32_t event_queue_cfg;
-	uint8_t link;
 };
 
 struct dpaa2_eventdev {
