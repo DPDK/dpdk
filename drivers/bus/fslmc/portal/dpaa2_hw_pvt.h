@@ -199,7 +199,7 @@ enum qbman_fd_format {
 } while (0)
 #define DPAA2_SET_FLE_INTERNAL_JD(fle, len) ((fle)->frc = (0x80000000 | (len)))
 #define DPAA2_GET_FLE_ADDR(fle)					\
-	(uint64_t)((((uint64_t)((fle)->addr_hi)) << 32) + (fle)->addr_lo)
+	(size_t)((((uint64_t)((fle)->addr_hi)) << 32) + (fle)->addr_lo)
 #define DPAA2_SET_FLE_ADDR(fle, addr) do { \
 	(fle)->addr_lo = lower_32_bits((size_t)addr);		\
 	(fle)->addr_hi = upper_32_bits((uint64_t)addr);		\

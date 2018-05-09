@@ -1261,8 +1261,7 @@ sec_fd_to_mbuf(const struct qbman_fd *fd, uint8_t driver_id)
 		DPAA2_SEC_ERR("error: non inline buffer");
 		return NULL;
 	}
-	op = (struct rte_crypto_op *)DPAA2_IOVA_TO_VADDR(
-			DPAA2_GET_FLE_ADDR((fle - 1)));
+	op = (struct rte_crypto_op *)DPAA2_GET_FLE_ADDR((fle - 1));
 
 	/* Prefeth op */
 	src = op->sym->m_src;
