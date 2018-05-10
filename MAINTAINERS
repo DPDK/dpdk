@@ -1103,6 +1103,7 @@ F: lib/librte_latencystats/
 BPF
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_bpf/
+F: test/bpf/
 
 
 Test Applications
