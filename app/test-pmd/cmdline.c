@@ -75,6 +75,7 @@
 #include "testpmd.h"
 #include "cmdline_mtr.h"
 #include "cmdline_tm.h"
+#include "bpf_cmd.h"
 
 static struct cmdline *testpmd_cl;
 
@@ -16703,6 +16704,10 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_resume_port_tm_node,
 	(cmdline_parse_inst_t *)&cmd_port_tm_hierarchy_commit,
 	(cmdline_parse_inst_t *)&cmd_cfg_tunnel_udp_port,
+#ifdef RTE_LIBRTE_BPF
+	(cmdline_parse_inst_t *)&cmd_operate_bpf_ld_parse,
+	(cmdline_parse_inst_t *)&cmd_operate_bpf_unld_parse,
+#endif
 	NULL,
 };
 

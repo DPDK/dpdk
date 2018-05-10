@@ -3823,3 +3823,59 @@ Validate and create a QinQ rule on port 0 to steer traffic to a queue on the hos
    ID      Group   Prio    Attr    Rule
    0       0       0       i-      ETH VLAN VLAN=>VF QUEUE
    1       0       0       i-      ETH VLAN VLAN=>PF QUEUE
+
+BPF Functions
+--------------
+
+The following sections show functions to load/unload eBPF based filters.
+
+bpf-load
+~~~~~~~~
+
+Load an eBPF program as a callback for partciular RX/TX queue::
+
+   testpmd> bpf-load rx|tx (portid) (queueid) (load-flags) (bpf-prog-filename)
+
+The available load-flags are:
+
+* ``J``: use JIT generated native code, otherwise BPF interpreter will be used.
+
+* ``M``: assume input parameter is a pointer to rte_mbuf, otherwise assume it is a pointer to first segment's data.
+
+* ``-``: none.
+
+.. note::
+
+   You'll need clang v3.7 or above to build bpf program you'd like to load
+
+For example:
+
+.. code-block:: console
+
+   cd test/bpf
+   clang -O2 -target bpf -c t1.c
+
+Then to load (and JIT compile) t1.o at RX queue 0, port 1::
+
+.. code-block:: console
+
+   testpmd> bpf-load rx 1 0 J ./dpdk.org/test/bpf/t1.o
+
+To load (not JITed) t1.o at TX queue 0, port 0::
+
+.. code-block:: console
+
+   testpmd> bpf-load tx 0 0 - ./dpdk.org/test/bpf/t1.o
+
+bpf-unload
+~~~~~~~~~~
+
+Unload previously loaded eBPF program for partciular RX/TX queue::
+
+   testpmd> bpf-unload rx|tx (portid) (queueid)
+
+For example to unload BPF filter from TX queue 0, port 0:
+
+.. code-block:: console
+
+   testpmd> bpf-load tx 0 0 - ./dpdk.org/test/bpf/t1.o

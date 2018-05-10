@@ -38,3 +38,7 @@ endif
 if dpdk_conf.has('RTE_LIBRTE_DPAA_PMD')
 	deps += ['bus_dpaa', 'mempool_dpaa', 'pmd_dpaa']
 endif
+if dpdk_conf.has('RTE_LIBRTE_BPF')
+	sources += files('bpf_cmd.c')
+	deps += 'bpf'
+endif
