@@ -106,6 +106,8 @@ int _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
  * This is the last step of device probing.
  * It must be called after a port is allocated and initialized successfully.
  *
+ * The state is set as RTE_ETH_DEV_ATTACHED.
+ *
  * @param dev
  *  New ethdev port.
  */

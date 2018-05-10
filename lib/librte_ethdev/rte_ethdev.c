@@ -240,7 +240,7 @@ _rte_eth_dev_allocated(const char *name)
 	unsigned i;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if ((rte_eth_devices[i].state == RTE_ETH_DEV_ATTACHED) &&
+		if (rte_eth_devices[i].data != NULL &&
 		    strcmp(rte_eth_devices[i].data->name, name) == 0)
 			return &rte_eth_devices[i];
 	}
@@ -285,7 +285,6 @@ eth_dev_get(uint16_t port_id)
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
 
 	eth_dev->data = &rte_eth_dev_shared_data->data[port_id];
-	eth_dev->state = RTE_ETH_DEV_ATTACHED;
 
 	eth_dev_last_created_port = port_id;
 
@@ -303,16 +302,15 @@ rte_eth_dev_allocate(const char *name)
 	/* Synchronize port creation between primary and secondary threads. */
 	rte_spinlock_lock(&rte_eth_dev_shared_data->ownership_lock);
 
-	port_id = rte_eth_dev_find_free_port();
-	if (port_id == RTE_MAX_ETHPORTS) {
-		ethdev_log(ERR, "Reached maximum number of Ethernet ports");
+	if (_rte_eth_dev_allocated(name) != NULL) {
+		ethdev_log(ERR, "Ethernet device with name %s already allocated",
+				name);
 		goto unlock;
 	}
 
-	if (_rte_eth_dev_allocated(name) != NULL) {
-		ethdev_log(ERR,
-			"Ethernet Device with name %s already allocated!",
-			name);
+	port_id = rte_eth_dev_find_free_port();
+	if (port_id == RTE_MAX_ETHPORTS) {
+		ethdev_log(ERR, "Reached maximum number of Ethernet ports");
 		goto unlock;
 	}
 
@@ -3481,6 +3479,8 @@ rte_eth_dev_probing_finish(struct rte_eth_dev *dev)
 {
 	if (dev == NULL)
 		return;
+
+	dev->state = RTE_ETH_DEV_ATTACHED;
 }
 
 int
