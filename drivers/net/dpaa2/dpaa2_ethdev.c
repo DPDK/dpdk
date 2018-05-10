@@ -2018,8 +2018,10 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 
 	/* Invoke PMD device initialization function */
 	diag = dpaa2_dev_init(eth_dev);
-	if (diag == 0)
+	if (diag == 0) {
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
+	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(eth_dev->data->dev_private);

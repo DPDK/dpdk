@@ -3052,6 +3052,7 @@ bond_probe(struct rte_vdev_device *dev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &default_dev_ops;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 
@@ -3124,6 +3125,7 @@ bond_probe(struct rte_vdev_device *dev)
 		rte_eth_bond_8023ad_agg_selection_set(port_id, AGG_STABLE);
 	}
 
+	rte_eth_dev_probing_finish(&rte_eth_devices[port_id]);
 	RTE_BOND_LOG(INFO, "Create bonded device %s on port %d in mode %u on "
 			"socket %u.",	name, port_id, bonding_mode, socket_id);
 	return 0;

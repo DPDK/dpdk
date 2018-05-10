@@ -590,6 +590,8 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	eth_dev->rx_pkt_burst = virtual_ethdev_rx_burst_success;
 	eth_dev->tx_pkt_burst = virtual_ethdev_tx_burst_success;
 
+	rte_eth_dev_probing_finish(eth_dev);
+
 	return eth_dev->data->port_id;
 
 err:

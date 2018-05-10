@@ -259,6 +259,7 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		.fd = -1,
 		.type = RTE_INTR_HANDLE_EXT,
 	};
+	rte_eth_dev_probing_finish(dev);
 	return 0;
 cancel_alarm:
 	failsafe_hotplug_alarm_cancel(dev);
@@ -313,6 +314,7 @@ rte_pmd_failsafe_probe(struct rte_vdev_device *vdev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &failsafe_ops;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 

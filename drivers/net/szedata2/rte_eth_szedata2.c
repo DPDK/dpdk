@@ -1841,6 +1841,8 @@ static int szedata2_eth_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			rte_free(list_entry);
 			return ret;
 		}
+
+		rte_eth_dev_probing_finish(eth_devs[i]);
 	}
 
 	/*

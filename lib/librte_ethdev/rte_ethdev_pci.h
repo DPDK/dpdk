@@ -175,6 +175,8 @@ rte_eth_dev_pci_generic_probe(struct rte_pci_device *pci_dev,
 	ret = dev_init(eth_dev);
 	if (ret)
 		rte_eth_dev_pci_release(eth_dev);
+	else
+		rte_eth_dev_probing_finish(eth_dev);
 
 	return ret;
 }

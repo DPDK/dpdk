@@ -1468,6 +1468,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		}
 	}
 
+	rte_eth_dev_probing_finish(dev);
 	return 0;
 
 disable_rte_flow:
@@ -1664,6 +1665,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &ops;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 

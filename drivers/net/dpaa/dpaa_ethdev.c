@@ -1372,6 +1372,7 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 		eth_dev = rte_eth_dev_attach_secondary(dpaa_dev->name);
 		if (!eth_dev)
 			return -ENOMEM;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 
@@ -1421,8 +1422,10 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 
 	/* Invoke PMD device initialization function */
 	diag = dpaa_dev_init(eth_dev);
-	if (diag == 0)
+	if (diag == 0) {
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
+	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(eth_dev->data->dev_private);

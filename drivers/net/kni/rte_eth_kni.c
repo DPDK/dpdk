@@ -419,6 +419,7 @@ eth_kni_probe(struct rte_vdev_device *vdev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &eth_kni_ops;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 
@@ -437,6 +438,7 @@ eth_kni_probe(struct rte_vdev_device *vdev)
 	eth_dev->rx_pkt_burst = eth_kni_rx;
 	eth_dev->tx_pkt_burst = eth_kni_tx;
 
+	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
 
 kni_uninit:

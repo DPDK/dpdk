@@ -102,6 +102,16 @@ int _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 		enum rte_eth_event_type event, void *ret_param);
 
 /**
+ * @internal
+ * This is the last step of device probing.
+ * It must be called after a port is allocated and initialized successfully.
+ *
+ * @param dev
+ *  New ethdev port.
+ */
+void rte_eth_dev_probing_finish(struct rte_eth_dev *dev);
+
+/**
  * Create memzone for HW rings.
  * malloc can't be used as the physical address is needed.
  * If the memzone is already created, then this function returns a ptr

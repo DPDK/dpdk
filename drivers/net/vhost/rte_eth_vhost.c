@@ -1284,6 +1284,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 		goto error;
 	}
 
+	rte_eth_dev_probing_finish(eth_dev);
 	return data->port_id;
 
 error:
@@ -1354,6 +1355,7 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &ops;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 

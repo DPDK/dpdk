@@ -199,6 +199,7 @@ DPDK_18.05 {
 	global:
 
 	rte_eth_dev_count_avail;
+	rte_eth_dev_probing_finish;
 	rte_eth_find_next_owned_by;
 	rte_flow_copy;
 	rte_flow_create;

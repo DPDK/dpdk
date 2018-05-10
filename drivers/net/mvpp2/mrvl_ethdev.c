@@ -2515,6 +2515,7 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	eth_dev->device = &vdev->device;
 	eth_dev->dev_ops = &mrvl_ops;
 
+	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
 out_free_mac:
 	rte_free(eth_dev->data->mac_addrs);

@@ -329,6 +329,7 @@ do_eth_dev_ring_create(const char *name,
 	eth_dev->rx_pkt_burst = eth_ring_rx;
 	eth_dev->tx_pkt_burst = eth_ring_tx;
 
+	rte_eth_dev_probing_finish(eth_dev);
 	*eth_dev_p = eth_dev;
 
 	return data->port_id;

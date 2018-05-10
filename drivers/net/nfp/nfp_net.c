@@ -2967,6 +2967,8 @@ nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
 
 	if (ret)
 		rte_eth_dev_release_port(eth_dev);
+	else
+		rte_eth_dev_probing_finish(eth_dev);
 
 	rte_free(port_name);
 

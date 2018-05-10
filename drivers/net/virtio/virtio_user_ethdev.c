@@ -563,6 +563,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 			virtio_user_eth_dev_free(eth_dev);
 			goto end;
 		}
+
 	} else {
 		eth_dev = rte_eth_dev_attach_secondary(rte_vdev_device_name(dev));
 		if (!eth_dev)
@@ -575,6 +576,8 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 		virtio_user_eth_dev_free(eth_dev);
 		goto end;
 	}
+
+	rte_eth_dev_probing_finish(eth_dev);
 	ret = 0;
 
 end:

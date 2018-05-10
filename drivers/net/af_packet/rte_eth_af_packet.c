@@ -911,6 +911,7 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	eth_dev->rx_pkt_burst = eth_af_packet_rx;
 	eth_dev->tx_pkt_burst = eth_af_packet_tx;
 
+	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
 }
 
@@ -934,6 +935,7 @@ rte_pmd_af_packet_probe(struct rte_vdev_device *dev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &ops;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 

@@ -1016,6 +1016,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 
 		eth_dev->tx_pkt_burst = octeontx_xmit_pkts;
 		eth_dev->rx_pkt_burst = octeontx_recv_pkts;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 
@@ -1100,6 +1101,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	rte_octeontx_pchan_map[(nic->base_ochan >> 8) & 0x7]
 		[(nic->base_ochan >> 4) & 0xF] = data->port_id;
 
+	rte_eth_dev_probing_finish(eth_dev);
 	return data->port_id;
 
 err:
@@ -1180,6 +1182,7 @@ octeontx_probe(struct rte_vdev_device *dev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &octeontx_dev_ops;
+		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 

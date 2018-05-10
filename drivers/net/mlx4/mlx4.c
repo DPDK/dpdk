@@ -761,6 +761,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		/* Update link status once if waiting for LSC. */
 		if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 			mlx4_link_update(eth_dev, 0);
+		rte_eth_dev_probing_finish(eth_dev);
 		continue;
 port_error:
 		rte_free(priv);

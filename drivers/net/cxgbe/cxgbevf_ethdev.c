@@ -138,6 +138,7 @@ static int eth_cxgbevf_dev_init(struct rte_eth_dev *eth_dev)
 					eth_dev->rx_pkt_burst;
 				rest_eth_dev->tx_pkt_burst =
 					eth_dev->tx_pkt_burst;
+				rte_eth_dev_probing_finish(rest_eth_dev);
 			}
 		}
 		return 0;
