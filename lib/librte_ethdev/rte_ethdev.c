@@ -322,9 +322,6 @@ rte_eth_dev_allocate(const char *name)
 unlock:
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
 
-	if (eth_dev != NULL)
-		_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_NEW, NULL);
-
 	return eth_dev;
 }
 
@@ -3479,6 +3476,8 @@ rte_eth_dev_probing_finish(struct rte_eth_dev *dev)
 {
 	if (dev == NULL)
 		return;
+
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_NEW, NULL);
 
 	dev->state = RTE_ETH_DEV_ATTACHED;
 }
