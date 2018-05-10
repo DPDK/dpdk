@@ -1062,6 +1062,9 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_DROP: {
+			if (overlap & FATE)
+				return ENOTSUP;
+			overlap |= FATE;
 			enic_action->flags |= FILTER_ACTION_DROP_FLAG;
 			break;
 		}
