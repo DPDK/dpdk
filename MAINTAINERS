@@ -1104,6 +1104,7 @@ BPF
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_bpf/
 F: test/bpf/
+F: test/test/test_bpf.c
 
 
 Test Applications

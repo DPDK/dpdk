@@ -198,6 +198,8 @@ endif
 
 SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_BPF) += test_bpf.c
+
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 CFLAGS += -O3
