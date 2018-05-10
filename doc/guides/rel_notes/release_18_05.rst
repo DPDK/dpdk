@@ -226,6 +226,7 @@ New Features
 
   The BPF Library provides the ability to load and execute
   Enhanced Berkeley Packet Filter (eBPF) within user-space dpdk application.
+  It also adds dependency on libelf.
 
 
 API Changes

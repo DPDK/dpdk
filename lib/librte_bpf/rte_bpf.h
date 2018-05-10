@@ -116,6 +116,26 @@ void rte_bpf_destroy(struct rte_bpf *bpf);
 struct rte_bpf *rte_bpf_load(const struct rte_bpf_prm *prm);
 
 /**
+ * Create a new eBPF execution context and load BPF code from given ELF
+ * file into it.
+ *
+ * @param prm
+ *  Parameters used to create and initialise the BPF exeution context.
+ * @param fname
+ *  Pathname for a ELF file.
+ * @param sname
+ *  Name of the executable section within the file to load.
+ * @return
+ *   BPF handle that is used in future BPF operations,
+ *   or NULL on error, with error code set in rte_errno.
+ *   Possible rte_errno errors include:
+ *   - EINVAL - invalid parameter passed to function
+ *   - ENOMEM - can't reserve enough memory
+ */
+struct rte_bpf *rte_bpf_elf_load(const struct rte_bpf_prm *prm,
+	const char *fname, const char *sname);
+
+/**
  * Execute given BPF bytecode.
  *
  * @param bpf

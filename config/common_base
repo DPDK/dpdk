@@ -872,6 +872,8 @@ CONFIG_RTE_LIBRTE_IFCVF_VDPA_PMD=n
 # Compile librte_bpf
 #
 CONFIG_RTE_LIBRTE_BPF=y
+# allow load BPF from ELF files (requires libelf)
+CONFIG_RTE_LIBRTE_BPF_ELF=n
 
 #
 # Compile the test application

@@ -83,3 +83,19 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 
 	return bpf;
 }
+
+__rte_experimental __attribute__ ((weak)) struct rte_bpf *
+rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
+	const char *sname)
+{
+	if (prm == NULL || fname == NULL || sname == NULL) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	RTE_BPF_LOG(ERR, "%s() is not supported with current config\n"
+		"rebuild with libelf installed\n",
+		__func__);
+	rte_errno = ENOTSUP;
+	return NULL;
+}

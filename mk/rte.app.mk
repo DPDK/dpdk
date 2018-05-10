@@ -82,6 +82,9 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_POWER)          += -lrte_power
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EFD)            += -lrte_efd
 _LDLIBS-$(CONFIG_RTE_LIBRTE_BPF)            += -lrte_bpf
+ifeq ($(CONFIG_RTE_LIBRTE_BPF_ELF),y)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_BPF)            += -lelf
+endif
 
 _LDLIBS-y += --whole-archive
 

@@ -12,6 +12,9 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_net -lrte_eal
 LDLIBS += -lrte_mempool -lrte_ring
 LDLIBS += -lrte_mbuf -lrte_ethdev
+ifeq ($(CONFIG_RTE_LIBRTE_BPF_ELF),y)
+LDLIBS += -lelf
+endif
 
 EXPORT_MAP := rte_bpf_version.map
 
@@ -22,6 +25,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf.c
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_exec.c
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_load.c
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_validate.c
+ifeq ($(CONFIG_RTE_LIBRTE_BPF_ELF),y)
+SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_load_elf.c
+endif
 
 # install header files
 SYMLINK-$(CONFIG_RTE_LIBRTE_BPF)-include += bpf_def.h
