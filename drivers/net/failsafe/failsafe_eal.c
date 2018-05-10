@@ -98,7 +98,6 @@ fs_bus_init(struct rte_eth_dev *dev)
 		SUB_ID(sdev) = i;
 		sdev->fs_dev = dev;
 		sdev->dev = ETH(sdev)->device;
-		ETH(sdev)->state = RTE_ETH_DEV_DEFERRED;
 		sdev->state = DEV_PROBED;
 	}
 	return 0;
