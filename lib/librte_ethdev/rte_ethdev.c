@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <netinet/in.h>
@@ -227,6 +228,12 @@ rte_eth_dev_shared_data_prepare(void)
 	rte_spinlock_unlock(&rte_eth_shared_data_lock);
 }
 
+static bool
+is_allocated(const struct rte_eth_dev *ethdev)
+{
+	return ethdev->data->name[0] != '\0';
+}
+
 struct rte_eth_dev *
 rte_eth_dev_allocated(const char *name)
 {
@@ -414,10 +421,14 @@ static int
 _rte_eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 		       const struct rte_eth_dev_owner *new_owner)
 {
+	struct rte_eth_dev *ethdev = &rte_eth_devices[port_id];
 	struct rte_eth_dev_owner *port_owner;
 	int sret;
 
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	if (port_id >= RTE_MAX_ETHPORTS || !is_allocated(ethdev)) {
+		RTE_PMD_DEBUG_TRACE("Port id %"PRIu16" is not allocated.\n", port_id);
+		return -ENODEV;
+	}
 
 	if (!rte_eth_is_valid_owner_id(new_owner->id) &&
 	    !rte_eth_is_valid_owner_id(old_owner_id))
@@ -488,9 +499,10 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 	rte_spinlock_lock(&rte_eth_dev_shared_data->ownership_lock);
 
 	if (rte_eth_is_valid_owner_id(owner_id)) {
-		RTE_ETH_FOREACH_DEV_OWNED_BY(port_id, owner_id)
-			memset(&rte_eth_devices[port_id].data->owner, 0,
-			       sizeof(struct rte_eth_dev_owner));
+		for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++)
+			if (rte_eth_devices[port_id].data->owner.id == owner_id)
+				memset(&rte_eth_devices[port_id].data->owner, 0,
+				       sizeof(struct rte_eth_dev_owner));
 		RTE_PMD_DEBUG_TRACE("All port owners owned by %016"PRIX64
 				" identifier have removed.\n", owner_id);
 	}
@@ -502,17 +514,17 @@ int __rte_experimental
 rte_eth_dev_owner_get(const uint16_t port_id, struct rte_eth_dev_owner *owner)
 {
 	int ret = 0;
+	struct rte_eth_dev *ethdev = &rte_eth_devices[port_id];
 
 	rte_eth_dev_shared_data_prepare();
 
 	rte_spinlock_lock(&rte_eth_dev_shared_data->ownership_lock);
 
-	if (!rte_eth_dev_is_valid_port(port_id)) {
-		RTE_PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+	if (port_id >= RTE_MAX_ETHPORTS || !is_allocated(ethdev)) {
+		RTE_PMD_DEBUG_TRACE("Port id %"PRIu16" is not allocated.\n", port_id);
 		ret = -ENODEV;
 	} else {
-		rte_memcpy(owner, &rte_eth_devices[port_id].data->owner,
-			   sizeof(*owner));
+		rte_memcpy(owner, &ethdev->data->owner, sizeof(*owner));
 	}
 
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
