@@ -449,8 +449,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	    (txq->offloads & DEV_TX_OFFLOAD_UDP_CKSUM)) {
 		flags |= EFX_TXQ_CKSUM_TCPUDP;
 
-		if ((~txq->flags & ETH_TXQ_FLAGS_IGNORE) &&
-		    (offloads_supported & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM))
+		if (offloads_supported & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 			flags |= EFX_TXQ_CKSUM_INNER_TCPUDP;
 	}
 
