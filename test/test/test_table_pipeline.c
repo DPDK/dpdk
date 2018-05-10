@@ -69,7 +69,7 @@ rte_pipeline_table_action_handler_hit
 table_action_stub_hit(struct rte_pipeline *p, struct rte_mbuf **pkts,
 	uint64_t pkts_mask, struct rte_pipeline_table_entry **entry, void *arg);
 
-rte_pipeline_table_action_handler_miss
+static int
 table_action_stub_miss(struct rte_pipeline *p, struct rte_mbuf **pkts,
 	uint64_t pkts_mask, struct rte_pipeline_table_entry **entry, void *arg);
 
@@ -101,7 +101,7 @@ table_action_stub_hit(__attribute__((unused)) struct rte_pipeline *p,
 	return 0;
 }
 
-rte_pipeline_table_action_handler_miss
+static int
 table_action_stub_miss(struct rte_pipeline *p,
 	__attribute__((unused)) struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
