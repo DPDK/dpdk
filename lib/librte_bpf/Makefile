@@ -24,6 +24,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf.c
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_exec.c
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_load.c
+SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_pkt.c
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_validate.c
 ifeq ($(CONFIG_RTE_LIBRTE_BPF_ELF),y)
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_load_elf.c
@@ -35,5 +36,6 @@ endif
 # install header files
 SYMLINK-$(CONFIG_RTE_LIBRTE_BPF)-include += bpf_def.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_BPF)-include += rte_bpf.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_BPF)-include += rte_bpf_ethdev.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

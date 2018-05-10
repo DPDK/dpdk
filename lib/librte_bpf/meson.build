@@ -5,6 +5,7 @@ allow_experimental_apis = true
 sources = files('bpf.c',
 		'bpf_exec.c',
 		'bpf_load.c',
+		'bpf_pkt.c',
 		'bpf_validate.c')
 
 if arch_subdir == 'x86'
@@ -12,9 +13,10 @@ if arch_subdir == 'x86'
 endif
 
 install_headers = files('bpf_def.h',
-			'rte_bpf.h')
+			'rte_bpf.h',
+			'rte_bpf_ethdev.h')
 
-deps += ['mbuf', 'net']
+deps += ['mbuf', 'net', 'ethdev']
 
 dep = cc.find_library('elf', required: false)
 if dep.found() == true and cc.has_header('libelf.h', dependencies: dep)

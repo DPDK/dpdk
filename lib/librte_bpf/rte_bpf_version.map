@@ -3,6 +3,10 @@ EXPERIMENTAL {
 
 	rte_bpf_destroy;
 	rte_bpf_elf_load;
+	rte_bpf_eth_rx_elf_load;
+	rte_bpf_eth_rx_unload;
+	rte_bpf_eth_tx_elf_load;
+	rte_bpf_eth_tx_unload;
 	rte_bpf_exec;
 	rte_bpf_exec_burst;
 	rte_bpf_get_jit;
