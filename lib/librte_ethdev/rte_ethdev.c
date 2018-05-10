@@ -376,7 +376,7 @@ rte_eth_is_valid_owner_id(uint64_t owner_id)
 {
 	if (owner_id == RTE_ETH_DEV_NO_OWNER ||
 	    rte_eth_dev_shared_data->next_owner_id <= owner_id) {
-		RTE_PMD_DEBUG_TRACE("Invalid owner_id=%016lX.\n", owner_id);
+		RTE_PMD_DEBUG_TRACE("Invalid owner_id=%016"PRIX64".\n", owner_id);
 		return 0;
 	}
 	return 1;
@@ -426,7 +426,7 @@ _rte_eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 	port_owner = &rte_eth_devices[port_id].data->owner;
 	if (port_owner->id != old_owner_id) {
 		RTE_PMD_DEBUG_TRACE("Cannot set owner to port %d already owned"
-				    " by %s_%016lX.\n", port_id,
+				    " by %s_%016"PRIX64".\n", port_id,
 				    port_owner->name, port_owner->id);
 		return -EPERM;
 	}
@@ -439,7 +439,7 @@ _rte_eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 
 	port_owner->id = new_owner->id;
 
-	RTE_PMD_DEBUG_TRACE("Port %d owner is %s_%016lX.\n", port_id,
+	RTE_PMD_DEBUG_TRACE("Port %d owner is %s_%016"PRIX64".\n", port_id,
 			    new_owner->name, new_owner->id);
 
 	return 0;
@@ -491,8 +491,8 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 		RTE_ETH_FOREACH_DEV_OWNED_BY(port_id, owner_id)
 			memset(&rte_eth_devices[port_id].data->owner, 0,
 			       sizeof(struct rte_eth_dev_owner));
-		RTE_PMD_DEBUG_TRACE("All port owners owned by %016X identifier"
-				    " have removed.\n", owner_id);
+		RTE_PMD_DEBUG_TRACE("All port owners owned by %016"PRIX64
+				" identifier have removed.\n", owner_id);
 	}
 
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
