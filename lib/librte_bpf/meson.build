@@ -7,6 +7,10 @@ sources = files('bpf.c',
 		'bpf_load.c',
 		'bpf_validate.c')
 
+if arch_subdir == 'x86'
+	sources += files('bpf_jit_x86.c')
+endif
+
 install_headers = files('bpf_def.h',
 			'rte_bpf.h')
 

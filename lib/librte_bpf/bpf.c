@@ -41,7 +41,12 @@ bpf_jit(struct rte_bpf *bpf)
 {
 	int32_t rc;
 
+#ifdef RTE_ARCH_X86_64
+	rc = bpf_jit_x86(bpf);
+#else
 	rc = -ENOTSUP;
+#endif
+
 	if (rc != 0)
 		RTE_BPF_LOG(WARNING, "%s(%p) failed, error code: %d;\n",
 			__func__, bpf, rc);

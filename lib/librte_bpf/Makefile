@@ -28,6 +28,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_validate.c
 ifeq ($(CONFIG_RTE_LIBRTE_BPF_ELF),y)
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_load_elf.c
 endif
+ifeq ($(CONFIG_RTE_ARCH_X86_64),y)
+SRCS-$(CONFIG_RTE_LIBRTE_BPF) += bpf_jit_x86.c
+endif
 
 # install header files
 SYMLINK-$(CONFIG_RTE_LIBRTE_BPF)-include += bpf_def.h
