@@ -1269,12 +1269,16 @@ typedef uint16_t (*rte_tx_callback_fn)(uint16_t port_id, uint16_t queue,
 	struct rte_mbuf *pkts[], uint16_t nb_pkts, void *user_param);
 
 /**
- * A set of values to describe the possible states of an eth device.
+ * Possible states of an ethdev port.
  */
 enum rte_eth_dev_state {
+	/** Device is unused before being probed. */
 	RTE_ETH_DEV_UNUSED = 0,
+	/** Device is attached when allocated in probing. */
 	RTE_ETH_DEV_ATTACHED,
+	/** The deferred state is useless and replaced by ownership. */
 	RTE_ETH_DEV_DEFERRED,
+	/** Device is in removed state when plug-out is detected. */
 	RTE_ETH_DEV_REMOVED,
 };
 
