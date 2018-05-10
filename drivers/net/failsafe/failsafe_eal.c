@@ -18,8 +18,9 @@ fs_ethdev_portid_get(const char *name, uint16_t *port_id)
 		return -EINVAL;
 	}
 	len = strlen(name);
-	RTE_ETH_FOREACH_DEV(pid) {
-		if (!strncmp(name, rte_eth_devices[pid].device->name, len)) {
+	for (pid = 0; pid < RTE_MAX_ETHPORTS; pid++) {
+		if (rte_eth_dev_is_valid_port(pid) &&
+		    !strncmp(name, rte_eth_devices[pid].device->name, len)) {
 			*port_id = pid;
 			return 0;
 		}
@@ -41,6 +42,8 @@ fs_bus_init(struct rte_eth_dev *dev)
 			continue;
 		da = &sdev->devargs;
 		if (fs_ethdev_portid_get(da->name, &pid) != 0) {
+			struct rte_eth_dev_owner pid_owner;
+
 			ret = rte_eal_hotplug_add(da->bus->name,
 						  da->name,
 						  da->args);
@@ -55,12 +58,26 @@ fs_bus_init(struct rte_eth_dev *dev)
 				ERROR("sub_device %d init went wrong", i);
 				return -ENODEV;
 			}
+			/*
+			 * The NEW callback tried to take ownership, check
+			 * whether it succeed or didn't.
+			 */
+			rte_eth_dev_owner_get(pid, &pid_owner);
+			if (pid_owner.id != PRIV(dev)->my_owner.id) {
+				INFO("sub_device %d owner(%s_%016"PRIX64") is not my,"
+				     " owner(%s_%016"PRIX64"), will try again later",
+				     i, pid_owner.name, pid_owner.id,
+				     PRIV(dev)->my_owner.name,
+				     PRIV(dev)->my_owner.id);
+				continue;
+			}
 		} else {
+			/* The sub-device port was found. */
 			char devstr[DEVARGS_MAXLEN] = "";
 			struct rte_devargs *probed_da =
 					rte_eth_devices[pid].device->devargs;
 
-			/* Take control of device probed by EAL options. */
+			/* Take control of probed device. */
 			free(da->args);
 			memset(da, 0, sizeof(*da));
 			if (probed_da != NULL)
@@ -77,22 +94,23 @@ fs_bus_init(struct rte_eth_dev *dev)
 			}
 			INFO("Taking control of a probed sub device"
 			      " %d named %s", i, da->name);
-		}
-		ret = rte_eth_dev_owner_set(pid, &PRIV(dev)->my_owner);
-		if (ret < 0) {
-			INFO("sub_device %d owner set failed (%s),"
-			     " will try again later", i, strerror(-ret));
-			continue;
-		} else if (strncmp(rte_eth_devices[pid].device->name, da->name,
-			   strlen(da->name)) != 0) {
-			/*
-			 * The device probably was removed and its port id was
-			 * reallocated before ownership set.
-			 */
-			rte_eth_dev_owner_unset(pid, PRIV(dev)->my_owner.id);
-			INFO("sub_device %d was probably removed before taking"
-			     " ownership, will try again later", i);
-			continue;
+			ret = rte_eth_dev_owner_set(pid, &PRIV(dev)->my_owner);
+			if (ret < 0) {
+				INFO("sub_device %d owner set failed (%s), "
+				     "will try again later", i, strerror(-ret));
+				continue;
+			} else if (strncmp(rte_eth_devices[pid].device->name,
+				   da->name, strlen(da->name)) != 0) {
+				/*
+				 * The device probably was removed and its port
+				 * id was reallocated before ownership set.
+				 */
+				rte_eth_dev_owner_unset(pid,
+							PRIV(dev)->my_owner.id);
+				INFO("sub_device %d was removed before taking"
+				     " ownership, will try again later", i);
+				continue;
+			}
 		}
 		ETH(sdev) = &rte_eth_devices[pid];
 		SUB_ID(sdev) = i;

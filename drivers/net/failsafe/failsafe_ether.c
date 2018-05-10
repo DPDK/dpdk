@@ -463,3 +463,26 @@ failsafe_eth_lsc_event_callback(uint16_t port_id __rte_unused,
 	else
 		return 0;
 }
+
+/* Take sub-device ownership before it becomes exposed to the application. */
+int
+failsafe_eth_new_event_callback(uint16_t port_id,
+				enum rte_eth_event_type event __rte_unused,
+				void *cb_arg, void *out __rte_unused)
+{
+	struct rte_eth_dev *fs_dev = cb_arg;
+	struct sub_device *sdev;
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	uint8_t i;
+
+	FOREACH_SUBDEV_STATE(sdev, i, fs_dev, DEV_PARSED) {
+		if (sdev->state >= DEV_PROBED)
+			continue;
+		if (strcmp(sdev->devargs.name, dev->device->name) != 0)
+			continue;
+		rte_eth_dev_owner_set(port_id, &PRIV(fs_dev)->my_owner);
+		/* The actual owner will be checked after the port probing. */
+		break;
+	}
+	return 0;
+}

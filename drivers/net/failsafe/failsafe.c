@@ -204,16 +204,25 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 	}
 	snprintf(priv->my_owner.name, sizeof(priv->my_owner.name),
 		 FAILSAFE_OWNER_NAME);
+	DEBUG("Failsafe port %u owner info: %s_%016"PRIX64, dev->data->port_id,
+	      priv->my_owner.name, priv->my_owner.id);
+	ret = rte_eth_dev_callback_register(RTE_ETH_ALL, RTE_ETH_EVENT_NEW,
+					    failsafe_eth_new_event_callback,
+					    dev);
+	if (ret) {
+		ERROR("Failed to register NEW callback");
+		goto free_args;
+	}
 	ret = failsafe_eal_init(dev);
 	if (ret)
-		goto free_args;
+		goto unregister_new_callback;
 	ret = fs_mutex_init(priv);
 	if (ret)
-		goto free_args;
+		goto unregister_new_callback;
 	ret = failsafe_hotplug_alarm_install(dev);
 	if (ret) {
 		ERROR("Could not set up plug-in event detection");
-		goto free_args;
+		goto unregister_new_callback;
 	}
 	mac = &dev->data->mac_addrs[0];
 	if (mac_from_arg) {
@@ -263,6 +272,9 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 	return 0;
 cancel_alarm:
 	failsafe_hotplug_alarm_cancel(dev);
+unregister_new_callback:
+	rte_eth_dev_callback_unregister(RTE_ETH_ALL, RTE_ETH_EVENT_NEW,
+					failsafe_eth_new_event_callback, dev);
 free_args:
 	failsafe_args_free(dev);
 free_subs:
@@ -282,6 +294,8 @@ fs_rte_eth_free(const char *name)
 	dev = rte_eth_dev_allocated(name);
 	if (dev == NULL)
 		return -ENODEV;
+	rte_eth_dev_callback_unregister(RTE_ETH_ALL, RTE_ETH_EVENT_NEW,
+					failsafe_eth_new_event_callback, dev);
 	ret = failsafe_eal_uninit(dev);
 	if (ret)
 		ERROR("Error while uninitializing sub-EAL");

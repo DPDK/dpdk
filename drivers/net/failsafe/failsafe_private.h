@@ -220,6 +220,9 @@ int failsafe_eth_rmv_event_callback(uint16_t port_id,
 int failsafe_eth_lsc_event_callback(uint16_t port_id,
 				    enum rte_eth_event_type event,
 				    void *cb_arg, void *out);
+int failsafe_eth_new_event_callback(uint16_t port_id,
+				    enum rte_eth_event_type event,
+				    void *cb_arg, void *out);
 
 /* GLOBALS */
 
