@@ -2201,7 +2201,8 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_CRC_STRIP |
 		DEV_RX_OFFLOAD_SCATTER |
-		DEV_RX_OFFLOAD_JUMBO_FRAME;
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_VLAN_FILTER;
 
 	dev_info->tx_queue_offload_capa = 0;
 	dev_info->tx_offload_capa =
