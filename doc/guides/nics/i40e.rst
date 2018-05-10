@@ -5,7 +5,7 @@ I40E Poll Mode Driver
 ======================
 
 The I40E PMD (librte_pmd_i40e) provides poll mode driver support
-for the Intel X710/XL710/X722 10/40 Gbps family of adapters.
+for the Intel X710/XL710/X722/XXV710 10/25/40 Gbps family of adapters.
 
 
 Features
