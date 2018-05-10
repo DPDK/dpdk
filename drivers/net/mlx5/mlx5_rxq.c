@@ -237,32 +237,6 @@ mlx5_get_rx_port_offloads(void)
 }
 
 /**
- * Checks if the per-queue offload configuration is valid.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param offloads
- *   Per-queue offloads configuration.
- *
- * @return
- *   1 if the configuration is valid, 0 otherwise.
- */
-static int
-mlx5_is_rx_queue_offloads_allowed(struct rte_eth_dev *dev, uint64_t offloads)
-{
-	uint64_t port_offloads = dev->data->dev_conf.rxmode.offloads;
-	uint64_t queue_supp_offloads = mlx5_get_rx_queue_offloads(dev);
-	uint64_t port_supp_offloads = mlx5_get_rx_port_offloads();
-
-	if ((offloads & (queue_supp_offloads | port_supp_offloads)) !=
-	    offloads)
-		return 0;
-	if (((port_offloads ^ offloads) & port_supp_offloads))
-		return 0;
-	return 1;
-}
-
-/**
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -303,18 +277,6 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		DRV_LOG(ERR, "port %u Rx queue index out of range (%u >= %u)",
 			dev->data->port_id, idx, priv->rxqs_n);
 		rte_errno = EOVERFLOW;
-		return -rte_errno;
-	}
-	if (!mlx5_is_rx_queue_offloads_allowed(dev, conf->offloads)) {
-		DRV_LOG(ERR,
-			"port %u Rx queue offloads 0x%" PRIx64 " don't match"
-			" port offloads 0x%" PRIx64 " or supported offloads 0x%"
-			PRIx64,
-			dev->data->port_id, conf->offloads,
-			dev->data->dev_conf.rxmode.offloads,
-			(mlx5_get_rx_port_offloads() |
-			 mlx5_get_rx_queue_offloads(dev)));
-		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
 	if (!mlx5_rxq_releasable(dev, idx)) {
@@ -980,6 +942,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 */
 	const uint16_t desc_n =
 		desc + config->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
+	uint64_t offloads = conf->offloads |
+			   dev->data->dev_conf.rxmode.offloads;
 
 	tmpl = rte_calloc_socket("RXQ", 1,
 				 sizeof(*tmpl) +
@@ -997,7 +961,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
 	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		tmpl->rxq.sges_n = 0;
-	} else if (conf->offloads & DEV_RX_OFFLOAD_SCATTER) {
+	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
 		unsigned int size =
 			RTE_PKTMBUF_HEADROOM +
 			dev->data->dev_conf.rxmode.max_rx_pkt_len;
@@ -1044,12 +1008,12 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	/* Toggle RX checksum offload if hardware supports it. */
-	tmpl->rxq.csum = !!(conf->offloads & DEV_RX_OFFLOAD_CHECKSUM);
-	tmpl->rxq.hw_timestamp = !!(conf->offloads & DEV_RX_OFFLOAD_TIMESTAMP);
+	tmpl->rxq.csum = !!(offloads & DEV_RX_OFFLOAD_CHECKSUM);
+	tmpl->rxq.hw_timestamp = !!(offloads & DEV_RX_OFFLOAD_TIMESTAMP);
 	/* Configure VLAN stripping. */
-	tmpl->rxq.vlan_strip = !!(conf->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
+	tmpl->rxq.vlan_strip = !!(offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 	/* By default, FCS (CRC) is stripped by hardware. */
-	if (conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
+	if (offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
 		tmpl->rxq.crc_present = 0;
 	} else if (config->hw_fcs_strip) {
 		tmpl->rxq.crc_present = 1;

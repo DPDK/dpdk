@@ -454,28 +454,9 @@ eth_em_configure(struct rte_eth_dev *dev)
 {
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-	struct rte_eth_dev_info dev_info;
-	uint64_t rx_offloads;
-	uint64_t tx_offloads;
 
 	PMD_INIT_FUNC_TRACE();
 	intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
-
-	eth_em_infos_get(dev, &dev_info);
-	rx_offloads = dev->data->dev_conf.rxmode.offloads;
-	if ((rx_offloads & dev_info.rx_offload_capa) != rx_offloads) {
-		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
-			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			    rx_offloads, dev_info.rx_offload_capa);
-		return -ENOTSUP;
-	}
-	tx_offloads = dev->data->dev_conf.txmode.offloads;
-	if ((tx_offloads & dev_info.tx_offload_capa) != tx_offloads) {
-		PMD_DRV_LOG(ERR, "Some Tx offloads are not supported "
-			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			    tx_offloads, dev_info.tx_offload_capa);
-		return -ENOTSUP;
-	}
 
 	PMD_INIT_FUNC_TRACE();
 

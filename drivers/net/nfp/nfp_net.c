@@ -412,147 +412,8 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	}
 
 	/* Checking RX offloads */
-	if (rxmode->offloads & DEV_RX_OFFLOAD_HEADER_SPLIT) {
-		PMD_INIT_LOG(INFO, "rxmode does not support split header");
-		return -EINVAL;
-	}
-
-	if ((rxmode->offloads & DEV_RX_OFFLOAD_IPV4_CKSUM) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_RXCSUM))
-		PMD_INIT_LOG(INFO, "RXCSUM not supported");
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
-		PMD_INIT_LOG(INFO, "VLAN filter not supported");
-		return -EINVAL;
-	}
-
-	if ((rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_RXVLAN)) {
-		PMD_INIT_LOG(INFO, "hw vlan strip not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND) {
-		PMD_INIT_LOG(INFO, "VLAN extended not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_TCP_LRO) {
-		PMD_INIT_LOG(INFO, "LRO not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_QINQ_STRIP) {
-		PMD_INIT_LOG(INFO, "QINQ STRIP not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) {
-		PMD_INIT_LOG(INFO, "Outer IP checksum not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_MACSEC_STRIP) {
-		PMD_INIT_LOG(INFO, "MACSEC strip not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_MACSEC_STRIP) {
-		PMD_INIT_LOG(INFO, "MACSEC strip not supported");
-		return -EINVAL;
-	}
-
 	if (!(rxmode->offloads & DEV_RX_OFFLOAD_CRC_STRIP))
 		PMD_INIT_LOG(INFO, "HW does strip CRC. No configurable!");
-
-	if ((rxmode->offloads & DEV_RX_OFFLOAD_SCATTER) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_SCATTER)) {
-		PMD_INIT_LOG(INFO, "Scatter not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
-		PMD_INIT_LOG(INFO, "timestamp offfload not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_SECURITY) {
-		PMD_INIT_LOG(INFO, "security offload not supported");
-		return -EINVAL;
-	}
-
-	/* checking TX offloads */
-	if ((txmode->offloads & DEV_TX_OFFLOAD_VLAN_INSERT) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_TXVLAN)) {
-		PMD_INIT_LOG(INFO, "vlan insert offload not supported");
-		return -EINVAL;
-	}
-
-	if ((txmode->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_TXCSUM)) {
-		PMD_INIT_LOG(INFO, "TX checksum offload not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) {
-		PMD_INIT_LOG(INFO, "TX SCTP checksum offload not supported");
-		return -EINVAL;
-	}
-
-	if ((txmode->offloads & DEV_TX_OFFLOAD_TCP_TSO) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_LSO_ANY)) {
-		PMD_INIT_LOG(INFO, "TSO TCP offload not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_UDP_TSO) {
-		PMD_INIT_LOG(INFO, "TSO UDP offload not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) {
-		PMD_INIT_LOG(INFO, "TX outer checksum offload not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_QINQ_INSERT) {
-		PMD_INIT_LOG(INFO, "QINQ insert offload not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_VXLAN_TNL_TSO ||
-	    txmode->offloads & DEV_TX_OFFLOAD_GRE_TNL_TSO ||
-	    txmode->offloads & DEV_TX_OFFLOAD_IPIP_TNL_TSO ||
-	    txmode->offloads & DEV_TX_OFFLOAD_GENEVE_TNL_TSO) {
-		PMD_INIT_LOG(INFO, "tunneling offload not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_MACSEC_INSERT) {
-		PMD_INIT_LOG(INFO, "TX MACSEC offload not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_MT_LOCKFREE) {
-		PMD_INIT_LOG(INFO, "multiqueue lockfree not supported");
-		return -EINVAL;
-	}
-
-	if ((txmode->offloads & DEV_TX_OFFLOAD_MULTI_SEGS) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_GATHER)) {
-		PMD_INIT_LOG(INFO, "TX multisegs  not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) {
-		PMD_INIT_LOG(INFO, "mbuf fast-free not supported");
-		return -EINVAL;
-	}
-
-	if (txmode->offloads & DEV_TX_OFFLOAD_SECURITY) {
-		PMD_INIT_LOG(INFO, "TX security offload not supported");
-		return -EINVAL;
-	}
 
 	return 0;
 }
@@ -1600,8 +1461,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	const struct rte_memzone *tz;
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_hw *hw;
-	struct rte_eth_conf *dev_conf;
-	struct rte_eth_rxmode *rxmode;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1612,17 +1471,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	    (nb_desc > NFP_NET_MAX_RX_DESC) ||
 	    (nb_desc < NFP_NET_MIN_RX_DESC)) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
-		return -EINVAL;
-	}
-
-	dev_conf = &dev->data->dev_conf;
-	rxmode = &dev_conf->rxmode;
-
-	if (rx_conf->offloads != rxmode->offloads) {
-		PMD_DRV_LOG(ERR, "queue %u rx offloads not as port offloads",
-				  queue_idx);
-		PMD_DRV_LOG(ERR, "\tport: %" PRIx64 "", rxmode->offloads);
-		PMD_DRV_LOG(ERR, "\tqueue: %" PRIx64 "", rx_conf->offloads);
 		return -EINVAL;
 	}
 
@@ -1762,8 +1610,6 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	struct nfp_net_txq *txq;
 	uint16_t tx_free_thresh;
 	struct nfp_net_hw *hw;
-	struct rte_eth_conf *dev_conf;
-	struct rte_eth_txmode *txmode;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1774,15 +1620,6 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	    (nb_desc > NFP_NET_MAX_TX_DESC) ||
 	    (nb_desc < NFP_NET_MIN_TX_DESC)) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
-		return -EINVAL;
-	}
-
-	dev_conf = &dev->data->dev_conf;
-	txmode = &dev_conf->txmode;
-
-	if (tx_conf->offloads != txmode->offloads) {
-		PMD_DRV_LOG(ERR, "queue %u tx offloads not as port offloads",
-				  queue_idx);
 		return -EINVAL;
 	}
 

@@ -180,26 +180,6 @@ mlx4_get_tx_port_offloads(struct priv *priv)
 }
 
 /**
- * Checks if the per-queue offload configuration is valid.
- *
- * @param priv
- *   Pointer to private structure.
- * @param requested
- *   Per-queue offloads configuration.
- *
- * @return
- *   Nonzero when configuration is valid.
- */
-static int
-mlx4_check_tx_queue_offloads(struct priv *priv, uint64_t requested)
-{
-	uint64_t mandatory = priv->dev->data->dev_conf.txmode.offloads;
-	uint64_t supported = mlx4_get_tx_port_offloads(priv);
-
-	return !((mandatory ^ requested) & supported);
-}
-
-/**
  * DPDK callback to configure a Tx queue.
  *
  * @param dev
@@ -246,23 +226,13 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		},
 	};
 	int ret;
+	uint64_t offloads;
+
+	offloads = conf->offloads | dev->data->dev_conf.txmode.offloads;
 
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
-	/*
-	 * Don't verify port offloads for application which
-	 * use the old API.
-	 */
-	if ((conf->txq_flags & ETH_TXQ_FLAGS_IGNORE) &&
-	    !mlx4_check_tx_queue_offloads(priv, conf->offloads)) {
-		rte_errno = ENOTSUP;
-		ERROR("%p: Tx queue offloads 0x%" PRIx64 " don't match port "
-		      "offloads 0x%" PRIx64 " or supported offloads 0x%" PRIx64,
-		      (void *)dev, conf->offloads,
-		      dev->data->dev_conf.txmode.offloads,
-		      mlx4_get_tx_port_offloads(priv));
-		return -rte_errno;
-	}
+
 	if (idx >= dev->data->nb_tx_queues) {
 		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
@@ -313,11 +283,11 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.elts_comp_cd_init =
 			RTE_MIN(MLX4_PMD_TX_PER_COMP_REQ, desc / 4),
 		.csum = priv->hw_csum &&
-			(conf->offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |
+			(offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |
 					   DEV_TX_OFFLOAD_UDP_CKSUM |
 					   DEV_TX_OFFLOAD_TCP_CKSUM)),
 		.csum_l2tun = priv->hw_csum_l2tun &&
-			      (conf->offloads &
+			      (offloads &
 			       DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM),
 		/* Enable Tx loopback for VF devices. */
 		.lb = !!priv->vf,

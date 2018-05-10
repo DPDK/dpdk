@@ -814,48 +814,10 @@ sfc_rx_get_queue_offload_caps(struct sfc_adapter *sa)
 	return caps;
 }
 
-static void
-sfc_rx_log_offloads(struct sfc_adapter *sa, const char *offload_group,
-		    const char *verdict, uint64_t offloads)
-{
-	unsigned long long bit;
-
-	while ((bit = __builtin_ffsll(offloads)) != 0) {
-		uint64_t flag = (1ULL << --bit);
-
-		sfc_err(sa, "Rx %s offload %s %s", offload_group,
-			rte_eth_dev_rx_offload_name(flag), verdict);
-
-		offloads &= ~flag;
-	}
-}
-
-static boolean_t
-sfc_rx_queue_offloads_mismatch(struct sfc_adapter *sa, uint64_t requested)
-{
-	uint64_t mandatory = sa->eth_dev->data->dev_conf.rxmode.offloads;
-	uint64_t supported = sfc_rx_get_dev_offload_caps(sa) |
-			     sfc_rx_get_queue_offload_caps(sa);
-	uint64_t rejected = requested & ~supported;
-	uint64_t missing = (requested & mandatory) ^ mandatory;
-	boolean_t mismatch = B_FALSE;
-
-	if (rejected) {
-		sfc_rx_log_offloads(sa, "queue", "is unsupported", rejected);
-		mismatch = B_TRUE;
-	}
-
-	if (missing) {
-		sfc_rx_log_offloads(sa, "queue", "must be set", missing);
-		mismatch = B_TRUE;
-	}
-
-	return mismatch;
-}
-
 static int
 sfc_rx_qcheck_conf(struct sfc_adapter *sa, unsigned int rxq_max_fill_level,
-		   const struct rte_eth_rxconf *rx_conf)
+		   const struct rte_eth_rxconf *rx_conf,
+		   uint64_t offloads)
 {
 	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
 				      sfc_rx_get_queue_offload_caps(sa);
@@ -880,16 +842,13 @@ sfc_rx_qcheck_conf(struct sfc_adapter *sa, unsigned int rxq_max_fill_level,
 		rc = EINVAL;
 	}
 
-	if ((rx_conf->offloads & DEV_RX_OFFLOAD_CHECKSUM) !=
+	if ((offloads & DEV_RX_OFFLOAD_CHECKSUM) !=
 	    DEV_RX_OFFLOAD_CHECKSUM)
 		sfc_warn(sa, "Rx checksum offloads cannot be disabled - always on (IPv4/TCP/UDP)");
 
 	if ((offloads_supported & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) &&
-	    (~rx_conf->offloads & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM))
+	    (~offloads & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM))
 		sfc_warn(sa, "Rx outer IPv4 checksum offload cannot be disabled - always on");
-
-	if (sfc_rx_queue_offloads_mismatch(sa, rx_conf->offloads))
-		rc = EINVAL;
 
 	return rc;
 }
@@ -1006,6 +965,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	unsigned int rxq_entries;
 	unsigned int evq_entries;
 	unsigned int rxq_max_fill_level;
+	uint64_t offloads;
 	uint16_t buf_size;
 	struct sfc_rxq_info *rxq_info;
 	struct sfc_evq *evq;
@@ -1020,7 +980,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	SFC_ASSERT(rxq_entries <= EFX_RXQ_MAXNDESCS);
 	SFC_ASSERT(rxq_max_fill_level <= nb_rx_desc);
 
-	rc = sfc_rx_qcheck_conf(sa, rxq_max_fill_level, rx_conf);
+	offloads = rx_conf->offloads |
+		sa->eth_dev->data->dev_conf.rxmode.offloads;
+	rc = sfc_rx_qcheck_conf(sa, rxq_max_fill_level, rx_conf, offloads);
 	if (rc != 0)
 		goto fail_bad_conf;
 
@@ -1033,7 +995,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	}
 
 	if ((buf_size < sa->port.pdu + encp->enc_rx_prefix_size) &&
-	    (~rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER)) {
+	    (~offloads & DEV_RX_OFFLOAD_SCATTER)) {
 		sfc_err(sa, "Rx scatter is disabled and RxQ %u mbuf pool "
 			"object size is too small", sw_index);
 		sfc_err(sa, "RxQ %u calculated Rx buffer size is %u vs "
@@ -1056,7 +1018,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
 
 	rxq_info->type_flags =
-		(rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) ?
+		(offloads & DEV_RX_OFFLOAD_SCATTER) ?
 		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
 
 	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
@@ -1463,9 +1425,6 @@ static int
 sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 {
 	struct sfc_rss *rss = &sa->rss;
-	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
-				      sfc_rx_get_queue_offload_caps(sa);
-	uint64_t offloads_rejected = rxmode->offloads & ~offloads_supported;
 	int rc = 0;
 
 	switch (rxmode->mq_mode) {
@@ -1481,12 +1440,6 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 	default:
 		sfc_err(sa, "Rx multi-queue mode %u not supported",
 			rxmode->mq_mode);
-		rc = EINVAL;
-	}
-
-	if (offloads_rejected) {
-		sfc_rx_log_offloads(sa, "device", "is unsupported",
-				    offloads_rejected);
 		rc = EINVAL;
 	}
 

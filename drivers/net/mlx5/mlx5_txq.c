@@ -127,31 +127,6 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 }
 
 /**
- * Checks if the per-queue offload configuration is valid.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param offloads
- *   Per-queue offloads configuration.
- *
- * @return
- *   1 if the configuration is valid, 0 otherwise.
- */
-static int
-mlx5_is_tx_queue_offloads_allowed(struct rte_eth_dev *dev, uint64_t offloads)
-{
-	uint64_t port_offloads = dev->data->dev_conf.txmode.offloads;
-	uint64_t port_supp_offloads = mlx5_get_tx_port_offloads(dev);
-
-	/* There are no Tx offloads which are per queue. */
-	if ((offloads & port_supp_offloads) != offloads)
-		return 0;
-	if ((port_offloads ^ offloads) & port_supp_offloads)
-		return 0;
-	return 1;
-}
-
-/**
  * DPDK callback to configure a TX queue.
  *
  * @param dev
@@ -177,22 +152,6 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mlx5_txq_ctrl *txq_ctrl =
 		container_of(txq, struct mlx5_txq_ctrl, txq);
 
-	/*
-	 * Don't verify port offloads for application which
-	 * use the old API.
-	 */
-	if (!!(conf->txq_flags & ETH_TXQ_FLAGS_IGNORE) &&
-	    !mlx5_is_tx_queue_offloads_allowed(dev, conf->offloads)) {
-		rte_errno = ENOTSUP;
-		DRV_LOG(ERR,
-			"port %u Tx queue offloads 0x%" PRIx64 " don't match"
-			" port offloads 0x%" PRIx64 " or supported offloads 0x%"
-			PRIx64,
-			dev->data->port_id, conf->offloads,
-			dev->data->dev_conf.txmode.offloads,
-			mlx5_get_tx_port_offloads(dev));
-		return -rte_errno;
-	}
 	if (desc <= MLX5_TX_COMP_THRESH) {
 		DRV_LOG(WARNING,
 			"port %u number of descriptors requested for Tx queue"
@@ -798,7 +757,8 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		return NULL;
 	}
 	assert(desc > MLX5_TX_COMP_THRESH);
-	tmpl->txq.offloads = conf->offloads;
+	tmpl->txq.offloads = conf->offloads |
+			     dev->data->dev_conf.txmode.offloads;
 	tmpl->priv = priv;
 	tmpl->socket = socket;
 	tmpl->txq.elts_n = log2above(desc);

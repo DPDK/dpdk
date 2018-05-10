@@ -1067,13 +1067,13 @@ struct rte_eth_dev_info {
 	uint16_t max_vfs; /**< Maximum number of VFs. */
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
 	uint64_t rx_offload_capa;
-	/**< Device per port RX offload capabilities. */
+	/**< All RX offload capabilities including all per-queue ones */
 	uint64_t tx_offload_capa;
-	/**< Device per port TX offload capabilities. */
+	/**< All TX offload capabilities including all per-queue ones */
 	uint64_t rx_queue_offload_capa;
-	/**< Device per queue RX offload capabilities. */
+	/**< Device per-queue RX offload capabilities. */
 	uint64_t tx_queue_offload_capa;
-	/**< Device per queue TX offload capabilities. */
+	/**< Device per-queue TX offload capabilities. */
 	uint16_t reta_size;
 	/**< Device redirection table size, the total number of entries. */
 	uint8_t hash_key_size; /**< Hash key size in bytes */
@@ -1546,6 +1546,11 @@ const char * __rte_experimental rte_eth_dev_tx_offload_name(uint64_t offload);
  *        The Rx offload bitfield API is obsolete and will be deprecated.
  *        Applications should set the ignore_bitfield_offloads bit on *rxmode*
  *        structure and use offloads field to set per-port offloads instead.
+ *     -  Any offloading set in eth_conf->[rt]xmode.offloads must be within
+ *        the [rt]x_offload_capa returned from rte_eth_dev_infos_get().
+ *        Any type of device supported offloading set in the input argument
+ *        eth_conf->[rt]xmode.offloads to rte_eth_dev_configure() is enabled
+ *        on all queues and it can't be disabled in rte_eth_[rt]x_queue_setup().
  *     - the Receive Side Scaling (RSS) configuration when using multiple RX
  *         queues per port.
  *
@@ -1602,6 +1607,13 @@ rte_eth_dev_is_removed(uint16_t port_id);
  *   ring.
  *   In addition it contains the hardware offloads features to activate using
  *   the DEV_RX_OFFLOAD_* flags.
+ *   If an offloading set in rx_conf->offloads
+ *   hasn't been set in the input argument eth_conf->rxmode.offloads
+ *   to rte_eth_dev_configure(), it is a new added offloading, it must be
+ *   per-queue type and it is enabled for the queue.
+ *   No need to repeat any bit in rx_conf->offloads which has already been
+ *   enabled in rte_eth_dev_configure() at port level. An offloading enabled
+ *   at port level can't be disabled at queue level.
  * @param mb_pool
  *   The pointer to the memory pool from which to allocate *rte_mbuf* network
  *   memory buffers to populate each descriptor of the receive ring.
@@ -1660,7 +1672,13 @@ int rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
  *     should set it to ETH_TXQ_FLAGS_IGNORE and use
  *     the offloads field below.
  *   - The *offloads* member contains Tx offloads to be enabled.
- *     Offloads which are not set cannot be used on the datapath.
+ *     If an offloading set in tx_conf->offloads
+ *     hasn't been set in the input argument eth_conf->txmode.offloads
+ *     to rte_eth_dev_configure(), it is a new added offloading, it must be
+ *     per-queue type and it is enabled for the queue.
+ *     No need to repeat any bit in tx_conf->offloads which has already been
+ *     enabled in rte_eth_dev_configure() at port level. An offloading enabled
+ *     at port level can't be disabled at queue level.
  *
  *     Note that setting *tx_free_thresh* or *tx_rs_thresh* value to 0 forces
  *     the transmit function to use default values.

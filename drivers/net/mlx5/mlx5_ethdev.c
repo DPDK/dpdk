@@ -330,30 +330,8 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	unsigned int reta_idx_n;
 	const uint8_t use_app_rss_key =
 		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
-	uint64_t supp_tx_offloads = mlx5_get_tx_port_offloads(dev);
-	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
-	uint64_t supp_rx_offloads =
-		(mlx5_get_rx_port_offloads() |
-		 mlx5_get_rx_queue_offloads(dev));
-	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	int ret = 0;
 
-	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
-		DRV_LOG(ERR,
-			"port %u some Tx offloads are not supported requested"
-			" 0x%" PRIx64 " supported 0x%" PRIx64,
-			dev->data->port_id, tx_offloads, supp_tx_offloads);
-		rte_errno = ENOTSUP;
-		return -rte_errno;
-	}
-	if ((rx_offloads & supp_rx_offloads) != rx_offloads) {
-		DRV_LOG(ERR,
-			"port %u some Rx offloads are not supported requested"
-			" 0x%" PRIx64 " supported 0x%" PRIx64,
-			dev->data->port_id, rx_offloads, supp_rx_offloads);
-		rte_errno = ENOTSUP;
-		return -rte_errno;
-	}
 	if (use_app_rss_key &&
 	    (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len !=
 	     rss_hash_default_key_len)) {

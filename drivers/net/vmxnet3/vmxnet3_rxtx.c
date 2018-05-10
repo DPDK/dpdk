@@ -1013,7 +1013,7 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
 			   unsigned int socket_id,
-			   const struct rte_eth_txconf *tx_conf)
+			   const struct rte_eth_txconf *tx_conf __rte_unused)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	const struct rte_memzone *mz;
@@ -1024,12 +1024,6 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	int size;
 
 	PMD_INIT_FUNC_TRACE();
-
-	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOXSUMSCTP) !=
-	    ETH_TXQ_FLAGS_NOXSUMSCTP) {
-		PMD_INIT_LOG(ERR, "SCTP checksum offload not supported");
-		return -EINVAL;
-	}
 
 	txq = rte_zmalloc("ethdev_tx_queue", sizeof(struct vmxnet3_tx_queue),
 			  RTE_CACHE_LINE_SIZE);

@@ -318,23 +318,8 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
-		RTE_LOG(INFO, PMD, "VLAN stripping not supported\n");
-		return -EINVAL;
-	}
-
 	if (dev->data->dev_conf.rxmode.split_hdr_size) {
 		RTE_LOG(INFO, PMD, "Split headers not supported\n");
-		return -EINVAL;
-	}
-
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) {
-		RTE_LOG(INFO, PMD, "RX Scatter/Gather not supported\n");
-		return -EINVAL;
-	}
-
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO) {
-		RTE_LOG(INFO, PMD, "LRO not supported\n");
 		return -EINVAL;
 	}
 
@@ -1522,42 +1507,6 @@ out:
 }
 
 /**
- * Check whether requested rx queue offloads match port offloads.
- *
- * @param
- *   dev Pointer to the device.
- * @param
- *   requested Bitmap of the requested offloads.
- *
- * @return
- *   1 if requested offloads are okay, 0 otherwise.
- */
-static int
-mrvl_rx_queue_offloads_okay(struct rte_eth_dev *dev, uint64_t requested)
-{
-	uint64_t mandatory = dev->data->dev_conf.rxmode.offloads;
-	uint64_t supported = MRVL_RX_OFFLOADS;
-	uint64_t unsupported = requested & ~supported;
-	uint64_t missing = mandatory & ~requested;
-
-	if (unsupported) {
-		RTE_LOG(ERR, PMD, "Some Rx offloads are not supported. "
-			"Requested 0x%" PRIx64 " supported 0x%" PRIx64 ".\n",
-			requested, supported);
-		return 0;
-	}
-
-	if (missing) {
-		RTE_LOG(ERR, PMD, "Some Rx offloads are missing. "
-			"Requested 0x%" PRIx64 " missing 0x%" PRIx64 ".\n",
-			requested, missing);
-		return 0;
-	}
-
-	return 1;
-}
-
-/**
  * DPDK callback to configure the receive queue.
  *
  * @param dev
@@ -1587,9 +1536,9 @@ mrvl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	uint32_t min_size,
 		 max_rx_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	int ret, tc, inq;
+	uint64_t offloads;
 
-	if (!mrvl_rx_queue_offloads_okay(dev, conf->offloads))
-		return -ENOTSUP;
+	offloads = conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
 	if (priv->rxq_map[idx].tc == MRVL_UNKNOWN_TC) {
 		/*
@@ -1622,8 +1571,7 @@ mrvl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 
 	rxq->priv = priv;
 	rxq->mp = mp;
-	rxq->cksum_enabled =
-		dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_IPV4_CKSUM;
+	rxq->cksum_enabled = offloads & DEV_RX_OFFLOAD_IPV4_CKSUM;
 	rxq->queue_id = idx;
 	rxq->port_id = dev->data->port_id;
 	mrvl_port_to_bpool_lookup[rxq->port_id] = priv->bpool;
@@ -1686,42 +1634,6 @@ mrvl_rx_queue_release(void *rxq)
 }
 
 /**
- * Check whether requested tx queue offloads match port offloads.
- *
- * @param
- *   dev Pointer to the device.
- * @param
- *   requested Bitmap of the requested offloads.
- *
- * @return
- *   1 if requested offloads are okay, 0 otherwise.
- */
-static int
-mrvl_tx_queue_offloads_okay(struct rte_eth_dev *dev, uint64_t requested)
-{
-	uint64_t mandatory = dev->data->dev_conf.txmode.offloads;
-	uint64_t supported = MRVL_TX_OFFLOADS;
-	uint64_t unsupported = requested & ~supported;
-	uint64_t missing = mandatory & ~requested;
-
-	if (unsupported) {
-		RTE_LOG(ERR, PMD, "Some Tx offloads are not supported. "
-			"Requested 0x%" PRIx64 " supported 0x%" PRIx64 ".\n",
-			requested, supported);
-		return 0;
-	}
-
-	if (missing) {
-		RTE_LOG(ERR, PMD, "Some Tx offloads are missing. "
-			"Requested 0x%" PRIx64 " missing 0x%" PRIx64 ".\n",
-			requested, missing);
-		return 0;
-	}
-
-	return 1;
-}
-
-/**
  * DPDK callback to configure the transmit queue.
  *
  * @param dev
@@ -1745,9 +1657,6 @@ mrvl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	struct mrvl_txq *txq;
-
-	if (!mrvl_tx_queue_offloads_okay(dev, conf->offloads))
-		return -ENOTSUP;
 
 	if (dev->data->tx_queues[idx]) {
 		rte_free(dev->data->tx_queues[idx]);

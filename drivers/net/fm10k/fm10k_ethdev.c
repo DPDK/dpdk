@@ -448,28 +448,12 @@ static int
 fm10k_dev_configure(struct rte_eth_dev *dev)
 {
 	int ret;
-	struct rte_eth_dev_info dev_info;
-	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
-	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if ((rx_offloads & DEV_RX_OFFLOAD_CRC_STRIP) == 0)
+	if ((dev->data->dev_conf.rxmode.offloads &
+	     DEV_RX_OFFLOAD_CRC_STRIP) == 0)
 		PMD_INIT_LOG(WARNING, "fm10k always strip CRC");
-
-	fm10k_dev_infos_get(dev, &dev_info);
-	if ((rx_offloads & dev_info.rx_offload_capa) != rx_offloads) {
-		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
-			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			    rx_offloads, dev_info.rx_offload_capa);
-		return -ENOTSUP;
-	}
-	if ((tx_offloads & dev_info.tx_offload_capa) != tx_offloads) {
-		PMD_DRV_LOG(ERR, "Some Tx offloads are not supported "
-			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			    tx_offloads, dev_info.tx_offload_capa);
-		return -ENOTSUP;
-	}
 
 	/* multipe queue mode checking */
 	ret  = fm10k_check_mq_mode(dev);
@@ -1826,22 +1810,6 @@ static uint64_t fm10k_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 }
 
 static int
-fm10k_check_rx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
-{
-	uint64_t port_offloads = dev->data->dev_conf.rxmode.offloads;
-	uint64_t queue_supported = fm10k_get_rx_queue_offloads_capa(dev);
-	uint64_t port_supported = fm10k_get_rx_port_offloads_capa(dev);
-
-	if ((requested & (queue_supported | port_supported)) != requested)
-		return 0;
-
-	if ((port_offloads ^ requested) & port_supported)
-		return 0;
-
-	return 1;
-}
-
-static int
 fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	uint16_t nb_desc, unsigned int socket_id,
 	const struct rte_eth_rxconf *conf, struct rte_mempool *mp)
@@ -1851,20 +1819,11 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
 	struct fm10k_rx_queue *q;
 	const struct rte_memzone *mz;
+	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (!fm10k_check_rx_queue_offloads(dev, conf->offloads)) {
-		PMD_INIT_LOG(ERR, "%p: Rx queue offloads 0x%" PRIx64
-			" don't match port offloads 0x%" PRIx64
-			" or supported port offloads 0x%" PRIx64
-			" or supported queue offloads 0x%" PRIx64,
-			(void *)dev, conf->offloads,
-			dev->data->dev_conf.rxmode.offloads,
-			fm10k_get_rx_port_offloads_capa(dev),
-			fm10k_get_rx_queue_offloads_capa(dev));
-		return -ENOTSUP;
-	}
+	offloads = conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
 	/* make sure the mempool element size can account for alignment. */
 	if (!mempool_element_size_valid(mp)) {
@@ -1910,7 +1869,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->queue_id = queue_id;
 	q->tail_ptr = (volatile uint32_t *)
 		&((uint32_t *)hw->hw_addr)[FM10K_RDT(queue_id)];
-	q->offloads = conf->offloads;
+	q->offloads = offloads;
 	if (handle_rxconf(q, conf))
 		return -EINVAL;
 
@@ -2039,22 +1998,6 @@ static uint64_t fm10k_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 }
 
 static int
-fm10k_check_tx_queue_offloads(struct rte_eth_dev *dev, uint64_t requested)
-{
-	uint64_t port_offloads = dev->data->dev_conf.txmode.offloads;
-	uint64_t queue_supported = fm10k_get_tx_queue_offloads_capa(dev);
-	uint64_t port_supported = fm10k_get_tx_port_offloads_capa(dev);
-
-	if ((requested & (queue_supported | port_supported)) != requested)
-		return 0;
-
-	if ((port_offloads ^ requested) & port_supported)
-		return 0;
-
-	return 1;
-}
-
-static int
 fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	uint16_t nb_desc, unsigned int socket_id,
 	const struct rte_eth_txconf *conf)
@@ -2062,20 +2005,11 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct fm10k_tx_queue *q;
 	const struct rte_memzone *mz;
+	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (!fm10k_check_tx_queue_offloads(dev, conf->offloads)) {
-		PMD_INIT_LOG(ERR, "%p: Tx queue offloads 0x%" PRIx64
-			" don't match port offloads 0x%" PRIx64
-			" or supported port offloads 0x%" PRIx64
-			" or supported queue offloads 0x%" PRIx64,
-			(void *)dev, conf->offloads,
-			dev->data->dev_conf.txmode.offloads,
-			fm10k_get_tx_port_offloads_capa(dev),
-			fm10k_get_tx_queue_offloads_capa(dev));
-		return -ENOTSUP;
-	}
+	offloads = conf->offloads | dev->data->dev_conf.txmode.offloads;
 
 	/* make sure a valid number of descriptors have been requested */
 	if (check_nb_desc(FM10K_MIN_TX_DESC, FM10K_MAX_TX_DESC,
@@ -2113,7 +2047,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->nb_desc = nb_desc;
 	q->port_id = dev->data->port_id;
 	q->queue_id = queue_id;
-	q->offloads = conf->offloads;
+	q->offloads = offloads;
 	q->ops = &def_txq_ops;
 	q->tail_ptr = (volatile uint32_t *)
 		&((uint32_t *)hw->hw_addr)[FM10K_TDT(queue_id)];

@@ -93,22 +93,10 @@ static int
 fs_dev_configure(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
-	uint64_t supp_tx_offloads;
-	uint64_t tx_offloads;
 	uint8_t i;
 	int ret;
 
 	fs_lock(dev, 0);
-	supp_tx_offloads = PRIV(dev)->infos.tx_offload_capa;
-	tx_offloads = dev->data->dev_conf.txmode.offloads;
-	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
-		rte_errno = ENOTSUP;
-		ERROR("Some Tx offloads are not supported, "
-		      "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-		      tx_offloads, supp_tx_offloads);
-		fs_unlock(dev, 0);
-		return -rte_errno;
-	}
 	FOREACH_SUBDEV(sdev, i, dev) {
 		int rmv_interrupt = 0;
 		int lsc_interrupt = 0;
@@ -300,25 +288,6 @@ fs_dev_close(struct rte_eth_dev *dev)
 	fs_unlock(dev, 0);
 }
 
-static bool
-fs_rxq_offloads_valid(struct rte_eth_dev *dev, uint64_t offloads)
-{
-	uint64_t port_offloads;
-	uint64_t queue_supp_offloads;
-	uint64_t port_supp_offloads;
-
-	port_offloads = dev->data->dev_conf.rxmode.offloads;
-	queue_supp_offloads = PRIV(dev)->infos.rx_queue_offload_capa;
-	port_supp_offloads = PRIV(dev)->infos.rx_offload_capa;
-	if ((offloads & (queue_supp_offloads | port_supp_offloads)) !=
-	     offloads)
-		return false;
-	/* Verify we have no conflict with port offloads */
-	if ((port_offloads ^ offloads) & port_supp_offloads)
-		return false;
-	return true;
-}
-
 static void
 fs_rx_queue_release(void *queue)
 {
@@ -370,19 +339,6 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	if (rxq != NULL) {
 		fs_rx_queue_release(rxq);
 		dev->data->rx_queues[rx_queue_id] = NULL;
-	}
-	/* Verify application offloads are valid for our port and queue. */
-	if (fs_rxq_offloads_valid(dev, rx_conf->offloads) == false) {
-		rte_errno = ENOTSUP;
-		ERROR("Rx queue offloads 0x%" PRIx64
-		      " don't match port offloads 0x%" PRIx64
-		      " or supported offloads 0x%" PRIx64,
-		      rx_conf->offloads,
-		      dev->data->dev_conf.rxmode.offloads,
-		      PRIV(dev)->infos.rx_offload_capa |
-		      PRIV(dev)->infos.rx_queue_offload_capa);
-		fs_unlock(dev, 0);
-		return -rte_errno;
 	}
 	rxq = rte_zmalloc(NULL,
 			  sizeof(*rxq) +
@@ -502,25 +458,6 @@ unlock:
 	return rc;
 }
 
-static bool
-fs_txq_offloads_valid(struct rte_eth_dev *dev, uint64_t offloads)
-{
-	uint64_t port_offloads;
-	uint64_t queue_supp_offloads;
-	uint64_t port_supp_offloads;
-
-	port_offloads = dev->data->dev_conf.txmode.offloads;
-	queue_supp_offloads = PRIV(dev)->infos.tx_queue_offload_capa;
-	port_supp_offloads = PRIV(dev)->infos.tx_offload_capa;
-	if ((offloads & (queue_supp_offloads | port_supp_offloads)) !=
-	     offloads)
-		return false;
-	/* Verify we have no conflict with port offloads */
-	if ((port_offloads ^ offloads) & port_supp_offloads)
-		return false;
-	return true;
-}
-
 static void
 fs_tx_queue_release(void *queue)
 {
@@ -559,24 +496,6 @@ fs_tx_queue_setup(struct rte_eth_dev *dev,
 	if (txq != NULL) {
 		fs_tx_queue_release(txq);
 		dev->data->tx_queues[tx_queue_id] = NULL;
-	}
-	/*
-	 * Don't verify queue offloads for applications which
-	 * use the old API.
-	 */
-	if (tx_conf != NULL &&
-	    (tx_conf->txq_flags & ETH_TXQ_FLAGS_IGNORE) &&
-	    fs_txq_offloads_valid(dev, tx_conf->offloads) == false) {
-		rte_errno = ENOTSUP;
-		ERROR("Tx queue offloads 0x%" PRIx64
-		      " don't match port offloads 0x%" PRIx64
-		      " or supported offloads 0x%" PRIx64,
-		      tx_conf->offloads,
-		      dev->data->dev_conf.txmode.offloads,
-		      PRIV(dev)->infos.tx_offload_capa |
-		      PRIV(dev)->infos.tx_queue_offload_capa);
-		fs_unlock(dev, 0);
-		return -rte_errno;
 	}
 	txq = rte_zmalloc("ethdev TX queue",
 			  sizeof(*txq) +

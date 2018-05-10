@@ -2362,9 +2362,6 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct ixgbe_adapter *adapter =
 		(struct ixgbe_adapter *)dev->data->dev_private;
-	struct rte_eth_dev_info dev_info;
-	uint64_t rx_offloads;
-	uint64_t tx_offloads;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2374,22 +2371,6 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "ixgbe_check_mq_mode fails with %d.",
 			    ret);
 		return ret;
-	}
-
-	ixgbe_dev_info_get(dev, &dev_info);
-	rx_offloads = dev->data->dev_conf.rxmode.offloads;
-	if ((rx_offloads & dev_info.rx_offload_capa) != rx_offloads) {
-		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
-			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			    rx_offloads, dev_info.rx_offload_capa);
-		return -ENOTSUP;
-	}
-	tx_offloads = dev->data->dev_conf.txmode.offloads;
-	if ((tx_offloads & dev_info.tx_offload_capa) != tx_offloads) {
-		PMD_DRV_LOG(ERR, "Some Tx offloads are not supported "
-			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			    tx_offloads, dev_info.tx_offload_capa);
-		return -ENOTSUP;
 	}
 
 	/* set flag to update link status after init */
@@ -4972,28 +4953,9 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 	struct ixgbe_adapter *adapter =
 			(struct ixgbe_adapter *)dev->data->dev_private;
-	struct rte_eth_dev_info dev_info;
-	uint64_t rx_offloads;
-	uint64_t tx_offloads;
 
 	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
 		     dev->data->port_id);
-
-	ixgbevf_dev_info_get(dev, &dev_info);
-	rx_offloads = dev->data->dev_conf.rxmode.offloads;
-	if ((rx_offloads & dev_info.rx_offload_capa) != rx_offloads) {
-		PMD_DRV_LOG(ERR, "Some Rx offloads are not supported "
-			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			    rx_offloads, dev_info.rx_offload_capa);
-		return -ENOTSUP;
-	}
-	tx_offloads = dev->data->dev_conf.txmode.offloads;
-	if ((tx_offloads & dev_info.tx_offload_capa) != tx_offloads) {
-		PMD_DRV_LOG(ERR, "Some Tx offloads are not supported "
-			    "requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			    tx_offloads, dev_info.tx_offload_capa);
-		return -ENOTSUP;
-	}
 
 	/*
 	 * VF has no ability to enable/disable HW CRC

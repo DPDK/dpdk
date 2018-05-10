@@ -281,21 +281,6 @@ tap_rx_offload_get_queue_capa(void)
 	       DEV_RX_OFFLOAD_CRC_STRIP;
 }
 
-static bool
-tap_rxq_are_offloads_valid(struct rte_eth_dev *dev, uint64_t offloads)
-{
-	uint64_t port_offloads = dev->data->dev_conf.rxmode.offloads;
-	uint64_t queue_supp_offloads = tap_rx_offload_get_queue_capa();
-	uint64_t port_supp_offloads = tap_rx_offload_get_port_capa();
-
-	if ((offloads & (queue_supp_offloads | port_supp_offloads)) !=
-	    offloads)
-		return false;
-	if ((port_offloads ^ offloads) & port_supp_offloads)
-		return false;
-	return true;
-}
-
 /* Callback to handle the rx burst of packets to the correct interface and
  * file descriptor(s) in a multi-queue setup.
  */
@@ -407,22 +392,6 @@ tap_tx_offload_get_queue_capa(void)
 	       DEV_TX_OFFLOAD_IPV4_CKSUM |
 	       DEV_TX_OFFLOAD_UDP_CKSUM |
 	       DEV_TX_OFFLOAD_TCP_CKSUM;
-}
-
-static bool
-tap_txq_are_offloads_valid(struct rte_eth_dev *dev, uint64_t offloads)
-{
-	uint64_t port_offloads = dev->data->dev_conf.txmode.offloads;
-	uint64_t queue_supp_offloads = tap_tx_offload_get_queue_capa();
-	uint64_t port_supp_offloads = tap_tx_offload_get_port_capa();
-
-	if ((offloads & (queue_supp_offloads | port_supp_offloads)) !=
-	    offloads)
-		return false;
-	/* Verify we have no conflict with port offloads */
-	if ((port_offloads ^ offloads) & port_supp_offloads)
-		return false;
-	return true;
 }
 
 static void
@@ -669,18 +638,6 @@ tap_dev_stop(struct rte_eth_dev *dev)
 static int
 tap_dev_configure(struct rte_eth_dev *dev)
 {
-	uint64_t supp_tx_offloads = tap_tx_offload_get_port_capa() |
-				tap_tx_offload_get_queue_capa();
-	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
-
-	if ((tx_offloads & supp_tx_offloads) != tx_offloads) {
-		rte_errno = ENOTSUP;
-		TAP_LOG(ERR,
-			"Some Tx offloads are not supported "
-			"requested 0x%" PRIx64 " supported 0x%" PRIx64,
-			tx_offloads, supp_tx_offloads);
-		return -rte_errno;
-	}
 	if (dev->data->nb_rx_queues > RTE_PMD_TAP_MAX_QUEUES) {
 		TAP_LOG(ERR,
 			"%s: number of rx queues %d exceeds max num of queues %d",
@@ -1089,19 +1046,6 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		return -1;
 	}
 
-	/* Verify application offloads are valid for our port and queue. */
-	if (!tap_rxq_are_offloads_valid(dev, rx_conf->offloads)) {
-		rte_errno = ENOTSUP;
-		TAP_LOG(ERR,
-			"%p: Rx queue offloads 0x%" PRIx64
-			" don't match port offloads 0x%" PRIx64
-			" or supported offloads 0x%" PRIx64,
-			(void *)dev, rx_conf->offloads,
-			dev->data->dev_conf.rxmode.offloads,
-			(tap_rx_offload_get_port_capa() |
-			 tap_rx_offload_get_queue_capa()));
-		return -rte_errno;
-	}
 	rxq->mp = mp;
 	rxq->trigger_seen = 1; /* force initial burst */
 	rxq->in_port = dev->data->port_id;
@@ -1165,35 +1109,19 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct tx_queue *txq;
 	int ret;
+	uint64_t offloads;
 
 	if (tx_queue_id >= dev->data->nb_tx_queues)
 		return -1;
 	dev->data->tx_queues[tx_queue_id] = &internals->txq[tx_queue_id];
 	txq = dev->data->tx_queues[tx_queue_id];
-	/*
-	 * Don't verify port offloads for application which
-	 * use the old API.
-	 */
-	if (tx_conf != NULL &&
-	    !!(tx_conf->txq_flags & ETH_TXQ_FLAGS_IGNORE)) {
-		if (tap_txq_are_offloads_valid(dev, tx_conf->offloads)) {
-			txq->csum = !!(tx_conf->offloads &
-					(DEV_TX_OFFLOAD_IPV4_CKSUM |
-					 DEV_TX_OFFLOAD_UDP_CKSUM |
-					 DEV_TX_OFFLOAD_TCP_CKSUM));
-		} else {
-			rte_errno = ENOTSUP;
-			TAP_LOG(ERR,
-				"%p: Tx queue offloads 0x%" PRIx64
-				" don't match port offloads 0x%" PRIx64
-				" or supported offloads 0x%" PRIx64,
-				(void *)dev, tx_conf->offloads,
-				dev->data->dev_conf.txmode.offloads,
-				(tap_tx_offload_get_port_capa() |
-				tap_tx_offload_get_queue_capa()));
-			return -rte_errno;
-		}
-	}
+
+	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
+	txq->csum = !!(offloads &
+			(DEV_TX_OFFLOAD_IPV4_CKSUM |
+			 DEV_TX_OFFLOAD_UDP_CKSUM |
+			 DEV_TX_OFFLOAD_TCP_CKSUM));
+
 	ret = tap_setup_queue(dev, internals, tx_queue_id, 0);
 	if (ret == -1)
 		return -1;

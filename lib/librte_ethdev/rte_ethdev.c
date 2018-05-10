@@ -1138,6 +1138,30 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 							ETHER_MAX_LEN;
 	}
 
+	/* Any requested offloading must be within its device capabilities */
+	if ((local_conf.rxmode.offloads & dev_info.rx_offload_capa) !=
+	     local_conf.rxmode.offloads) {
+		ethdev_log(ERR, "ethdev port_id=%d requested Rx offloads "
+				"0x%" PRIx64 " doesn't match Rx offloads "
+				"capabilities 0x%" PRIx64 " in %s()\n",
+				port_id,
+				local_conf.rxmode.offloads,
+				dev_info.rx_offload_capa,
+				__func__);
+		/* Will return -EINVAL in the next release */
+	}
+	if ((local_conf.txmode.offloads & dev_info.tx_offload_capa) !=
+	     local_conf.txmode.offloads) {
+		ethdev_log(ERR, "ethdev port_id=%d requested Tx offloads "
+				"0x%" PRIx64 " doesn't match Tx offloads "
+				"capabilities 0x%" PRIx64 " in %s()\n",
+				port_id,
+				local_conf.txmode.offloads,
+				dev_info.tx_offload_capa,
+				__func__);
+		/* Will return -EINVAL in the next release */
+	}
+
 	/* Check that device supports requested rss hash functions. */
 	if ((dev_info.flow_type_rss_offloads |
 	     dev_conf->rx_adv_conf.rss_conf.rss_hf) !=
@@ -1503,6 +1527,38 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 						    &local_conf.offloads);
 	}
 
+	/*
+	 * If an offloading has already been enabled in
+	 * rte_eth_dev_configure(), it has been enabled on all queues,
+	 * so there is no need to enable it in this queue again.
+	 * The local_conf.offloads input to underlying PMD only carries
+	 * those offloadings which are only enabled on this queue and
+	 * not enabled on all queues.
+	 */
+	local_conf.offloads &= ~dev->data->dev_conf.rxmode.offloads;
+
+	/*
+	 * New added offloadings for this queue are those not enabled in
+	 * rte_eth_dev_configure() and they must be per-queue type.
+	 * A pure per-port offloading can't be enabled on a queue while
+	 * disabled on another queue. A pure per-port offloading can't
+	 * be enabled for any queue as new added one if it hasn't been
+	 * enabled in rte_eth_dev_configure().
+	 */
+	if ((local_conf.offloads & dev_info.rx_queue_offload_capa) !=
+	     local_conf.offloads) {
+		ethdev_log(ERR, "Ethdev port_id=%d rx_queue_id=%d, new "
+				"added offloads 0x%" PRIx64 " must be "
+				"within pre-queue offload capabilities 0x%"
+				PRIx64 " in %s()\n",
+				port_id,
+				rx_queue_id,
+				local_conf.offloads,
+				dev_info.rx_queue_offload_capa,
+				__func__);
+		/* Will return -EINVAL in the next release */
+	}
+
 	ret = (*dev->dev_ops->rx_queue_setup)(dev, rx_queue_id, nb_rx_desc,
 					      socket_id, &local_conf, mp);
 	if (!ret) {
@@ -1633,6 +1689,38 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	if (!(tx_conf->txq_flags & ETH_TXQ_FLAGS_IGNORE)) {
 		rte_eth_convert_txq_flags(tx_conf->txq_flags,
 					  &local_conf.offloads);
+	}
+
+	/*
+	 * If an offloading has already been enabled in
+	 * rte_eth_dev_configure(), it has been enabled on all queues,
+	 * so there is no need to enable it in this queue again.
+	 * The local_conf.offloads input to underlying PMD only carries
+	 * those offloadings which are only enabled on this queue and
+	 * not enabled on all queues.
+	 */
+	local_conf.offloads &= ~dev->data->dev_conf.txmode.offloads;
+
+	/*
+	 * New added offloadings for this queue are those not enabled in
+	 * rte_eth_dev_configure() and they must be per-queue type.
+	 * A pure per-port offloading can't be enabled on a queue while
+	 * disabled on another queue. A pure per-port offloading can't
+	 * be enabled for any queue as new added one if it hasn't been
+	 * enabled in rte_eth_dev_configure().
+	 */
+	if ((local_conf.offloads & dev_info.tx_queue_offload_capa) !=
+	     local_conf.offloads) {
+		ethdev_log(ERR, "Ethdev port_id=%d tx_queue_id=%d, new "
+				"added offloads 0x%" PRIx64 " must be "
+				"within pre-queue offload capabilities 0x%"
+				PRIx64 " in %s()\n",
+				port_id,
+				tx_queue_id,
+				local_conf.offloads,
+				dev_info.tx_queue_offload_capa,
+				__func__);
+		/* Will return -EINVAL in the next release */
 	}
 
 	return eth_err(port_id, (*dev->dev_ops->tx_queue_setup)(dev,

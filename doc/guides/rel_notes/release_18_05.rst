@@ -369,6 +369,14 @@ API Changes
   * ``rte_flow_create()`` API count action now requires the ``struct rte_flow_action_count``.
   * ``rte_flow_query()`` API parameter changed from action type to action structure.
 
+* ethdev: changes to offload API
+
+   A pure per-port offloading isn't requested to be repeated in [rt]x_conf->offloads to
+   ``rte_eth_[rt]x_queue_setup()``. Now any offloading enabled in ``rte_eth_dev_configure()``
+   can't be disabled by ``rte_eth_[rt]x_queue_setup()``. Any new added offloading which has
+   not been enabled in ``rte_eth_dev_configure()`` and is requested to be enabled in
+   ``rte_eth_[rt]x_queue_setup()`` must be per-queue type, otherwise trigger an error log.
+
 
 ABI Changes
 -----------

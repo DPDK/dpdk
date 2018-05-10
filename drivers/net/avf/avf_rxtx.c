@@ -435,8 +435,11 @@ avf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	uint32_t ring_size;
 	uint16_t tx_rs_thresh, tx_free_thresh;
 	uint16_t i, base, bsf, tc_mapping;
+	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
+
+	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 
 	if (nb_desc % AVF_ALIGN_RING_DESC != 0 ||
 	    nb_desc > AVF_MAX_RING_DESC ||
@@ -474,7 +477,7 @@ avf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->free_thresh = tx_free_thresh;
 	txq->queue_id = queue_idx;
 	txq->port_id = dev->data->port_id;
-	txq->offloads = tx_conf->offloads;
+	txq->offloads = offloads;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
 	/* Allocate software ring */

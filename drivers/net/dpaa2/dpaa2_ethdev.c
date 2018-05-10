@@ -309,14 +309,6 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Rx offloads validation */
-	if (~(dev_rx_offloads_sup | dev_rx_offloads_nodis) & rx_offloads) {
-		DPAA2_PMD_ERR(
-		"Rx offloads non supported - requested 0x%" PRIx64
-		" supported 0x%" PRIx64,
-			rx_offloads,
-			dev_rx_offloads_sup | dev_rx_offloads_nodis);
-		return -ENOTSUP;
-	}
 	if (dev_rx_offloads_nodis & ~rx_offloads) {
 		DPAA2_PMD_WARN(
 		"Rx offloads non configurable - requested 0x%" PRIx64
@@ -325,14 +317,6 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	/* Tx offloads validation */
-	if (~(dev_tx_offloads_sup | dev_tx_offloads_nodis) & tx_offloads) {
-		DPAA2_PMD_ERR(
-		"Tx offloads non supported - requested 0x%" PRIx64
-		" supported 0x%" PRIx64,
-			tx_offloads,
-			dev_tx_offloads_sup | dev_tx_offloads_nodis);
-		return -ENOTSUP;
-	}
 	if (dev_tx_offloads_nodis & ~tx_offloads) {
 		DPAA2_PMD_WARN(
 		"Tx offloads non configurable - requested 0x%" PRIx64

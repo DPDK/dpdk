@@ -366,31 +366,15 @@ int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
-	uint64_t unsupported_offloads, configured_offloads;
+	uint64_t configured_offloads;
 	int err;
 
 	CXGBE_FUNC_TRACE();
 	configured_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 	if (!(configured_offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
 		dev_info(adapter, "can't disable hw crc strip\n");
-		configured_offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-	}
-
-	unsupported_offloads = configured_offloads & ~CXGBE_RX_OFFLOADS;
-	if (unsupported_offloads) {
-		dev_err(adapter, "Rx offloads 0x%" PRIx64 " are not supported. "
-			"Supported:0x%" PRIx64 "\n",
-			unsupported_offloads, (uint64_t)CXGBE_RX_OFFLOADS);
-		return -ENOTSUP;
-	}
-
-	configured_offloads = eth_dev->data->dev_conf.txmode.offloads;
-	unsupported_offloads = configured_offloads & ~CXGBE_TX_OFFLOADS;
-	if (unsupported_offloads) {
-		dev_err(adapter, "Tx offloads 0x%" PRIx64 " are not supported. "
-			"Supported:0x%" PRIx64 "\n",
-			unsupported_offloads, (uint64_t)CXGBE_TX_OFFLOADS);
-		return -ENOTSUP;
+		eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 
 	if (!(adapter->flags & FW_QUEUE_BOUND)) {
@@ -440,7 +424,7 @@ int cxgbe_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 			     uint16_t queue_idx, uint16_t nb_desc,
 			     unsigned int socket_id,
-			     const struct rte_eth_txconf *tx_conf)
+			     const struct rte_eth_txconf *tx_conf __rte_unused)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
@@ -448,15 +432,6 @@ int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	struct sge_eth_txq *txq = &s->ethtxq[pi->first_qset + queue_idx];
 	int err = 0;
 	unsigned int temp_nb_desc;
-	uint64_t unsupported_offloads;
-
-	unsupported_offloads = tx_conf->offloads & ~CXGBE_TX_OFFLOADS;
-	if (unsupported_offloads) {
-		dev_err(adapter, "Tx offloads 0x%" PRIx64 " are not supported. "
-			"Supported:0x%" PRIx64 "\n",
-			unsupported_offloads, (uint64_t)CXGBE_TX_OFFLOADS);
-		return -ENOTSUP;
-	}
 
 	dev_debug(adapter, "%s: eth_dev->data->nb_tx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; pi->first_qset = %u\n",
 		  __func__, eth_dev->data->nb_tx_queues, queue_idx, nb_desc,
@@ -553,7 +528,7 @@ int cxgbe_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 			     uint16_t queue_idx, uint16_t nb_desc,
 			     unsigned int socket_id,
-			     const struct rte_eth_rxconf *rx_conf,
+			     const struct rte_eth_rxconf *rx_conf __rte_unused,
 			     struct rte_mempool *mp)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
@@ -565,21 +540,6 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	unsigned int temp_nb_desc;
 	struct rte_eth_dev_info dev_info;
 	unsigned int pkt_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
-	uint64_t unsupported_offloads, configured_offloads;
-
-	configured_offloads = rx_conf->offloads;
-	if (!(configured_offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
-		dev_info(adapter, "can't disable hw crc strip\n");
-		configured_offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-	}
-
-	unsupported_offloads = configured_offloads & ~CXGBE_RX_OFFLOADS;
-	if (unsupported_offloads) {
-		dev_err(adapter, "Rx offloads 0x%" PRIx64 " are not supported. "
-			"Supported:0x%" PRIx64 "\n",
-			unsupported_offloads, (uint64_t)CXGBE_RX_OFFLOADS);
-		return -ENOTSUP;
-	}
 
 	dev_debug(adapter, "%s: eth_dev->data->nb_rx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; mp = %p\n",
 		  __func__, eth_dev->data->nb_rx_queues, queue_idx, nb_desc,

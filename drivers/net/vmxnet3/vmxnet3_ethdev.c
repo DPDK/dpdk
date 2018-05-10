@@ -393,24 +393,8 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	const struct rte_memzone *mz;
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	size_t size;
-	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
-	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 
 	PMD_INIT_FUNC_TRACE();
-
-	if ((rx_offloads & VMXNET3_RX_OFFLOAD_CAP) != rx_offloads) {
-		RTE_LOG(ERR, PMD, "Requested RX offloads 0x%" PRIx64
-			" do not match supported 0x%" PRIx64,
-			rx_offloads, (uint64_t)VMXNET3_RX_OFFLOAD_CAP);
-		return -ENOTSUP;
-	}
-
-	if ((tx_offloads & VMXNET3_TX_OFFLOAD_CAP) != tx_offloads) {
-		RTE_LOG(ERR, PMD, "Requested TX offloads 0x%" PRIx64
-			" do not match supported 0x%" PRIx64,
-			tx_offloads, (uint64_t)VMXNET3_TX_OFFLOAD_CAP);
-		return -ENOTSUP;
-	}
 
 	if (dev->data->nb_tx_queues > VMXNET3_MAX_TX_QUEUES ||
 	    dev->data->nb_rx_queues > VMXNET3_MAX_RX_QUEUES) {

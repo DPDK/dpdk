@@ -501,24 +501,7 @@ found:
 static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
-	uint64_t tx_offloads = eth_dev->data->dev_conf.txmode.offloads;
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
-
-	if (tx_offloads != (tx_offloads & BNXT_DEV_TX_OFFLOAD_SUPPORT)) {
-		PMD_DRV_LOG
-			(ERR,
-			 "Tx offloads requested 0x%" PRIx64 " supported 0x%x\n",
-			 tx_offloads, BNXT_DEV_TX_OFFLOAD_SUPPORT);
-		return -ENOTSUP;
-	}
-
-	if (rx_offloads != (rx_offloads & BNXT_DEV_RX_OFFLOAD_SUPPORT)) {
-		PMD_DRV_LOG
-			(ERR,
-			 "Rx offloads requested 0x%" PRIx64 " supported 0x%x\n",
-			    rx_offloads, BNXT_DEV_RX_OFFLOAD_SUPPORT);
-		return -ENOTSUP;
-	}
 
 	bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;

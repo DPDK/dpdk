@@ -692,26 +692,6 @@ mlx4_get_rx_port_offloads(struct priv *priv)
 }
 
 /**
- * Checks if the per-queue offload configuration is valid.
- *
- * @param priv
- *   Pointer to private structure.
- * @param requested
- *   Per-queue offloads configuration.
- *
- * @return
- *   Nonzero when configuration is valid.
- */
-static int
-mlx4_check_rx_queue_offloads(struct priv *priv, uint64_t requested)
-{
-	uint64_t mandatory = priv->dev->data->dev_conf.rxmode.offloads;
-	uint64_t supported = mlx4_get_rx_port_offloads(priv);
-
-	return !((mandatory ^ requested) & supported);
-}
-
-/**
  * DPDK callback to configure a Rx queue.
  *
  * @param dev
@@ -753,20 +733,13 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	};
 	int ret;
 	uint32_t crc_present;
+	uint64_t offloads;
 
-	(void)conf; /* Thresholds configuration (ignored). */
+	offloads = conf->offloads | dev->data->dev_conf.rxmode.offloads;
+
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
-	if (!mlx4_check_rx_queue_offloads(priv, conf->offloads)) {
-		rte_errno = ENOTSUP;
-		ERROR("%p: Rx queue offloads 0x%" PRIx64 " don't match port "
-		      "offloads 0x%" PRIx64 " or supported offloads 0x%" PRIx64,
-		      (void *)dev, conf->offloads,
-		      dev->data->dev_conf.rxmode.offloads,
-		      (mlx4_get_rx_port_offloads(priv) |
-		       mlx4_get_rx_queue_offloads(priv)));
-		return -rte_errno;
-	}
+
 	if (idx >= dev->data->nb_rx_queues) {
 		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
@@ -792,7 +765,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		     (void *)dev, idx, desc);
 	}
 	/* By default, FCS (CRC) is stripped by hardware. */
-	if (conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
+	if (offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
 		crc_present = 0;
 	} else if (priv->hw_fcs_strip) {
 		crc_present = 1;
@@ -824,9 +797,9 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.elts = elts,
 		/* Toggle Rx checksum offload if hardware supports it. */
 		.csum = priv->hw_csum &&
-			(conf->offloads & DEV_RX_OFFLOAD_CHECKSUM),
+			(offloads & DEV_RX_OFFLOAD_CHECKSUM),
 		.csum_l2tun = priv->hw_csum_l2tun &&
-			      (conf->offloads & DEV_RX_OFFLOAD_CHECKSUM),
+			      (offloads & DEV_RX_OFFLOAD_CHECKSUM),
 		.crc_present = crc_present,
 		.l2tun_offload = priv->hw_csum_l2tun,
 		.stats = {
@@ -839,7 +812,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
 	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		;
-	} else if (conf->offloads & DEV_RX_OFFLOAD_SCATTER) {
+	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
 		uint32_t size =
 			RTE_PKTMBUF_HEADROOM +
 			dev->data->dev_conf.rxmode.max_rx_pkt_len;

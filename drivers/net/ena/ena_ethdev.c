@@ -238,10 +238,6 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 			      struct rte_eth_rss_reta_entry64 *reta_conf,
 			      uint16_t reta_size);
 static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
-static bool ena_are_tx_queue_offloads_allowed(struct ena_adapter *adapter,
-					      uint64_t offloads);
-static bool ena_are_rx_queue_offloads_allowed(struct ena_adapter *adapter,
-					      uint64_t offloads);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -1005,12 +1001,6 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	if (tx_conf->txq_flags == ETH_TXQ_FLAGS_IGNORE &&
-	    !ena_are_tx_queue_offloads_allowed(adapter, tx_conf->offloads)) {
-		RTE_LOG(ERR, PMD, "Unsupported queue offloads\n");
-		return -EINVAL;
-	}
-
 	ena_qid = ENA_IO_TXQ_IDX(queue_idx);
 
 	ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_TX;
@@ -1065,7 +1055,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	for (i = 0; i < txq->ring_size; i++)
 		txq->empty_tx_reqs[i] = i;
 
-	txq->offloads = tx_conf->offloads;
+	txq->offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 
 	/* Store pointer to this queue in upper layer */
 	txq->configured = 1;
@@ -1078,7 +1068,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 			      uint16_t queue_idx,
 			      uint16_t nb_desc,
 			      __rte_unused unsigned int socket_id,
-			      const struct rte_eth_rxconf *rx_conf,
+			      __rte_unused const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp)
 {
 	struct ena_com_create_io_ctx ctx =
@@ -1111,11 +1101,6 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(ERR, PMD,
 			"Unsupported size of RX queue (max size: %d)\n",
 			adapter->rx_ring_size);
-		return -EINVAL;
-	}
-
-	if (!ena_are_rx_queue_offloads_allowed(adapter, rx_conf->offloads)) {
-		RTE_LOG(ERR, PMD, "Unsupported queue offloads\n");
 		return -EINVAL;
 	}
 
@@ -1422,22 +1407,6 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
-	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
-	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
-
-	if ((tx_offloads & adapter->tx_supported_offloads) != tx_offloads) {
-		RTE_LOG(ERR, PMD, "Some Tx offloads are not supported "
-		    "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
-		    tx_offloads, adapter->tx_supported_offloads);
-		return -ENOTSUP;
-	}
-
-	if ((rx_offloads & adapter->rx_supported_offloads) != rx_offloads) {
-		RTE_LOG(ERR, PMD, "Some Rx offloads are not supported "
-		    "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
-		    rx_offloads, adapter->rx_supported_offloads);
-		return -ENOTSUP;
-	}
 
 	if (!(adapter->state == ENA_ADAPTER_STATE_INIT ||
 	      adapter->state == ENA_ADAPTER_STATE_STOPPED)) {
@@ -1459,8 +1428,8 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 		break;
 	}
 
-	adapter->tx_selected_offloads = tx_offloads;
-	adapter->rx_selected_offloads = rx_offloads;
+	adapter->tx_selected_offloads = dev->data->dev_conf.txmode.offloads;
+	adapter->rx_selected_offloads = dev->data->dev_conf.rxmode.offloads;
 	return 0;
 }
 
@@ -1487,32 +1456,6 @@ static void ena_init_rings(struct ena_adapter *adapter)
 		ring->adapter = adapter;
 		ring->id = i;
 	}
-}
-
-static bool ena_are_tx_queue_offloads_allowed(struct ena_adapter *adapter,
-					      uint64_t offloads)
-{
-	uint64_t port_offloads = adapter->tx_selected_offloads;
-
-	/* Check if port supports all requested offloads.
-	 * True if all offloads selected for queue are set for port.
-	 */
-	if ((offloads & port_offloads) != offloads)
-		return false;
-	return true;
-}
-
-static bool ena_are_rx_queue_offloads_allowed(struct ena_adapter *adapter,
-					      uint64_t offloads)
-{
-	uint64_t port_offloads = adapter->rx_selected_offloads;
-
-	/* Check if port supports all requested offloads.
-	 * True if all offloads selected for queue are set for port.
-	 */
-	if ((offloads & port_offloads) != offloads)
-		return false;
-	return true;
 }
 
 static void ena_infos_get(struct rte_eth_dev *dev,

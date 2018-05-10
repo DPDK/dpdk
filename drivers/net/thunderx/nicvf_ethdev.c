@@ -931,7 +931,7 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	bool is_single_pool;
 	struct nicvf_txq *txq;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
-	uint64_t conf_offloads, offload_capa, unsupported_offloads;
+	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -944,17 +944,6 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	if (socket_id != (unsigned int)SOCKET_ID_ANY && socket_id != nic->node)
 		PMD_DRV_LOG(WARNING, "socket_id expected %d, configured %d",
 		socket_id, nic->node);
-
-	conf_offloads = tx_conf->offloads;
-	offload_capa = NICVF_TX_OFFLOAD_CAPA;
-
-	unsupported_offloads = conf_offloads & ~offload_capa;
-	if (unsupported_offloads) {
-		PMD_INIT_LOG(ERR, "Tx offloads 0x%" PRIx64 " are not supported."
-		      "Requested 0x%" PRIx64 " supported 0x%" PRIx64 ".\n",
-		      unsupported_offloads, conf_offloads, offload_capa);
-		return -ENOTSUP;
-	}
 
 	/* Tx deferred start is not supported */
 	if (tx_conf->tx_deferred_start) {
@@ -1007,9 +996,10 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->sq_head = nicvf_qset_base(nic, qidx) + NIC_QSET_SQ_0_7_HEAD;
 	txq->sq_door = nicvf_qset_base(nic, qidx) + NIC_QSET_SQ_0_7_DOOR;
-	txq->offloads = conf_offloads;
+	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
+	txq->offloads = offloads;
 
-	is_single_pool = !!(conf_offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE);
+	is_single_pool = !!(offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE);
 
 	/* Choose optimum free threshold value for multipool case */
 	if (!is_single_pool) {
@@ -1269,7 +1259,7 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	uint16_t rx_free_thresh;
 	struct nicvf_rxq *rxq;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
-	uint64_t conf_offloads, offload_capa, unsupported_offloads;
+	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1282,24 +1272,6 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	if (socket_id != (unsigned int)SOCKET_ID_ANY && socket_id != nic->node)
 		PMD_DRV_LOG(WARNING, "socket_id expected %d, configured %d",
 		socket_id, nic->node);
-
-
-	conf_offloads = rx_conf->offloads;
-
-	if (conf_offloads & DEV_RX_OFFLOAD_CHECKSUM) {
-		PMD_INIT_LOG(NOTICE, "Rx checksum not supported");
-		conf_offloads &= ~DEV_RX_OFFLOAD_CHECKSUM;
-	}
-
-	offload_capa = NICVF_RX_OFFLOAD_CAPA;
-	unsupported_offloads = conf_offloads & ~offload_capa;
-
-	if (unsupported_offloads) {
-		PMD_INIT_LOG(ERR, "Rx offloads 0x%" PRIx64 " are not supported. "
-		      "Requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
-		      unsupported_offloads, conf_offloads, offload_capa);
-		return -ENOTSUP;
-	}
 
 	/* Mempool memory must be contiguous, so must be one memory segment*/
 	if (mp->nb_mem_chunks != 1) {
@@ -1381,10 +1353,11 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 
 	nicvf_rx_queue_reset(rxq);
 
+	offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
 	PMD_INIT_LOG(DEBUG, "[%d] rxq=%p pool=%s nb_desc=(%d/%d)"
 			" phy=0x%" PRIx64 " offloads=0x%" PRIx64,
 			nicvf_netdev_qidx(nic, qidx), rxq, mp->name, nb_desc,
-			rte_mempool_avail_count(mp), rxq->phys, conf_offloads);
+			rte_mempool_avail_count(mp), rxq->phys, offloads);
 
 	dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)] = rxq;
 	dev->data->rx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
@@ -1906,8 +1879,6 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_txmode *txmode = &conf->txmode;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint8_t cqcount;
-	uint64_t conf_rx_offloads, rx_offload_capa;
-	uint64_t conf_tx_offloads, tx_offload_capa;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1916,32 +1887,7 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	conf_tx_offloads = dev->data->dev_conf.txmode.offloads;
-	tx_offload_capa = NICVF_TX_OFFLOAD_CAPA;
-
-	if ((conf_tx_offloads & tx_offload_capa) != conf_tx_offloads) {
-		PMD_INIT_LOG(ERR, "Some Tx offloads are not supported "
-		      "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
-		      conf_tx_offloads, tx_offload_capa);
-		return -ENOTSUP;
-	}
-
-	if (rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM) {
-		PMD_INIT_LOG(NOTICE, "Rx checksum not supported");
-		rxmode->offloads &= ~DEV_RX_OFFLOAD_CHECKSUM;
-	}
-
-	conf_rx_offloads = rxmode->offloads;
-	rx_offload_capa = NICVF_RX_OFFLOAD_CAPA;
-
-	if ((conf_rx_offloads & rx_offload_capa) != conf_rx_offloads) {
-		PMD_INIT_LOG(ERR, "Some Rx offloads are not supported "
-		      "requested 0x%" PRIx64 " supported 0x%" PRIx64 "\n",
-		      conf_rx_offloads, rx_offload_capa);
-		return -ENOTSUP;
-	}
-
-	if ((conf_rx_offloads & DEV_RX_OFFLOAD_CRC_STRIP) == 0) {
+	if ((rxmode->offloads & DEV_RX_OFFLOAD_CRC_STRIP) == 0) {
 		PMD_INIT_LOG(NOTICE, "Can't disable hw crc strip");
 		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
