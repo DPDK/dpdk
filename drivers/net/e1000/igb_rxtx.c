@@ -1460,7 +1460,8 @@ igb_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 			  DEV_TX_OFFLOAD_UDP_CKSUM   |
 			  DEV_TX_OFFLOAD_TCP_CKSUM   |
 			  DEV_TX_OFFLOAD_SCTP_CKSUM  |
-			  DEV_TX_OFFLOAD_TCP_TSO;
+			  DEV_TX_OFFLOAD_TCP_TSO     |
+			  DEV_TX_OFFLOAD_MULTI_SEGS;
 
 	return rx_offload_capa;
 }
