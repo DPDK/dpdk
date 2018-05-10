@@ -718,11 +718,10 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 				    dev_info->tx_queue_offload_capa;
 	dev_info->hash_key_size = TAP_RSS_HASH_KEY_SIZE;
 	/*
-	 * limitation: TAP suppors all of the following hash
+	 * limitation: TAP supports all of IP, UDP and TCP hash
 	 * functions together and not in partial combinations
 	 */
-	dev_info->flow_type_rss_offloads =
-		ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
+	dev_info->flow_type_rss_offloads = ~TAP_RSS_HF_MASK;
 }
 
 static int
@@ -1270,6 +1269,39 @@ tap_flow_ctrl_set(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+/**
+ * DPDK callback to update the RSS hash configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[in] rss_conf
+ *   RSS configuration data.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+tap_rss_hash_update(struct rte_eth_dev *dev,
+		struct rte_eth_rss_conf *rss_conf)
+{
+	if (rss_conf->rss_hf & TAP_RSS_HF_MASK) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (rss_conf->rss_key && rss_conf->rss_key_len) {
+		/*
+		 * Currently TAP RSS key is hard coded
+		 * and cannot be updated
+		 */
+		TAP_LOG(ERR,
+			"port %u RSS key cannot be updated",
+			dev->data->port_id);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start              = tap_dev_start,
 	.dev_stop               = tap_dev_stop,
@@ -1295,6 +1327,7 @@ static const struct eth_dev_ops ops = {
 	.stats_get              = tap_stats_get,
 	.stats_reset            = tap_stats_reset,
 	.dev_supported_ptypes_get = tap_dev_supported_ptypes_get,
+	.rss_hash_update        = tap_rss_hash_update,
 	.filter_ctrl            = tap_dev_filter_ctrl,
 };
 
