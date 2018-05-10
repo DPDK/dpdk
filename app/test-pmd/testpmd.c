@@ -2510,12 +2510,8 @@ init_port_dcb_config(portid_t pid,
 		return retval;
 	port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
 
-	/**
-	 * Write the configuration into the device.
-	 * Set the numbers of RX & TX queues to 0, so
-	 * the RX & TX queues will not be setup.
-	 */
-	rte_eth_dev_configure(pid, 0, 0, &port_conf);
+	/* re-configure the device . */
+	rte_eth_dev_configure(pid, nb_rxq, nb_rxq, &port_conf);
 
 	rte_eth_dev_info_get(pid, &rte_port->dev_info);
 
