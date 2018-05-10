@@ -400,7 +400,6 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 
 	for (i = 0; likely(i < nb_rx); i++) {
 		bufs[i]->port = r->port;
-		bufs[i]->ol_flags = 0;
 		bufs[i]->vlan_tci = 0;
 
 		if (r->internal->vlan_strip)
