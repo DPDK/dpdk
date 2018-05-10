@@ -869,6 +869,11 @@ CONFIG_RTE_LIBRTE_PMD_VHOST=n
 CONFIG_RTE_LIBRTE_IFCVF_VDPA_PMD=n
 
 #
+# Compile librte_bpf
+#
+CONFIG_RTE_LIBRTE_BPF=y
+
+#
 # Compile the test application
 #
 CONFIG_RTE_APP_TEST=y

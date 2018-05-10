@@ -81,6 +81,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_LATENCY_STATS)  += -lrte_latencystats
 _LDLIBS-$(CONFIG_RTE_LIBRTE_POWER)          += -lrte_power
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EFD)            += -lrte_efd
+_LDLIBS-$(CONFIG_RTE_LIBRTE_BPF)            += -lrte_bpf
 
 _LDLIBS-y += --whole-archive
 

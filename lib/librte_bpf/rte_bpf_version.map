@@ -1,0 +1,11 @@
+EXPERIMENTAL {
+	global:
+
+	rte_bpf_destroy;
+	rte_bpf_exec;
+	rte_bpf_exec_burst;
+	rte_bpf_get_jit;
+	rte_bpf_load;
+
+	local: *;
+};

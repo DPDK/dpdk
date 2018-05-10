@@ -23,7 +23,7 @@ libraries = [ 'compat', # just a header, used for versioning
 	# add pkt framework libs which use other libs from above
 	'port', 'table', 'pipeline',
 	# flow_classify lib depends on pkt framework table lib
-	'flow_classify']
+	'flow_classify', 'bpf']
 
 foreach l:libraries
 	build = true

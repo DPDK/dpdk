@@ -222,6 +222,11 @@ New Features
   stats/xstats on shared memory from secondary process, and also pdump packets on
   those virtual devices.
 
+* **Added the BPF Library.**
+
+  The BPF Library provides the ability to load and execute
+  Enhanced Berkeley Packet Filter (eBPF) within user-space dpdk application.
+
 
 API Changes
 -----------
@@ -483,6 +488,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_acl.so.2
      librte_bbdev.so.1
      librte_bitratestats.so.2
+   + librte_bpf.so.1
      librte_bus_dpaa.so.1
      librte_bus_fslmc.so.1
      librte_bus_pci.so.1
