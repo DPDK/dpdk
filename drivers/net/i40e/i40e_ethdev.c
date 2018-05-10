@@ -2513,7 +2513,7 @@ update_link_no_wait(struct i40e_hw *hw, struct rte_eth_link *link)
 	reg_val &= I40E_REG_LINK_UP;
 	link->link_status = (reg_val == I40E_REG_LINK_UP) ? 1 : 0;
 
-	if (unlikely(link->link_status != 0))
+	if (unlikely(link->link_status == 0))
 		return;
 
 	/* Parse the link status */
@@ -2572,7 +2572,7 @@ update_link_wait(struct i40e_hw *hw, struct rte_eth_link *link,
 
 		link->link_status = link_status.link_info & I40E_AQ_LINK_UP;
 		if (unlikely(link->link_status != 0))
-			return;
+			break;
 
 		rte_delay_ms(CHECK_INTERVAL);
 	} while (--rep_cnt);
