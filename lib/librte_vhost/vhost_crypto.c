@@ -42,7 +42,8 @@
 		(1 << VIRTIO_CRYPTO_SERVICE_MAC) |			\
 		(1 << VIRTIO_NET_F_CTRL_VQ))
 
-#define GPA_TO_VVA(t, m, a, l)	((t)(uintptr_t)rte_vhost_va_from_guest_pa(m, a, l))
+#define IOVA_TO_VVA(t, r, a, l, p)					\
+	((t)(uintptr_t)vhost_iova_to_vva(r->dev, r->vq, a, l, p))
 
 static int
 cipher_algo_transform(uint32_t virtio_cipher_algo)
@@ -216,7 +217,7 @@ struct vhost_crypto {
 
 struct vhost_crypto_data_req {
 	struct vring_desc *head;
-	struct rte_vhost_memory *mem;
+	struct virtio_net *dev;
 	struct virtio_crypto_inhdr *inhdr;
 	struct vhost_virtqueue *vq;
 	struct vring_desc *wb_desc;
@@ -473,18 +474,18 @@ find_write_desc(struct vring_desc *head, struct vring_desc *desc)
 }
 
 static struct virtio_crypto_inhdr *
-reach_inhdr(struct vring_desc *head, struct rte_vhost_memory *mem,
-		struct vring_desc *desc)
+reach_inhdr(struct vhost_crypto_data_req *vc_req, struct vring_desc *desc)
 {
 	uint64_t dlen;
 	struct virtio_crypto_inhdr *inhdr;
 
 	while (desc->flags & VRING_DESC_F_NEXT)
-		desc = &head[desc->next];
+		desc = &vc_req->head[desc->next];
 
 	dlen = desc->len;
-	inhdr = GPA_TO_VVA(struct virtio_crypto_inhdr *, mem, desc->addr, &dlen);
-	if (unlikely(dlen != desc->len))
+	inhdr = IOVA_TO_VVA(struct virtio_crypto_inhdr *, vc_req, desc->addr,
+			&dlen, VHOST_ACCESS_WO);
+	if (unlikely(!inhdr || dlen != desc->len))
 		return NULL;
 
 	return inhdr;
@@ -516,40 +517,86 @@ move_desc(struct vring_desc *head, struct vring_desc **cur_desc,
 }
 
 static int
-copy_data(void *dst_data, struct vring_desc *head, struct rte_vhost_memory *mem,
+copy_data(void *dst_data, struct vhost_crypto_data_req *vc_req,
 		struct vring_desc **cur_desc, uint32_t size)
 {
 	struct vring_desc *desc = *cur_desc;
+	uint64_t remain, addr, dlen, len;
 	uint32_t to_copy;
 	uint8_t *data = dst_data;
 	uint8_t *src;
 	int left = size;
-	uint64_t dlen;
 
-	rte_prefetch0(&head[desc->next]);
+	rte_prefetch0(&vc_req->head[desc->next]);
 	to_copy = RTE_MIN(desc->len, (uint32_t)left);
-	dlen = desc->len;
-	src = GPA_TO_VVA(uint8_t *, mem, desc->addr, &dlen);
-	if (unlikely(!src || dlen != desc->len)) {
+	dlen = to_copy;
+	src = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
+			VHOST_ACCESS_RO);
+	if (unlikely(!src || !dlen)) {
 		VC_LOG_ERR("Failed to map descriptor");
 		return -1;
 	}
 
-	rte_memcpy((uint8_t *)data, src, to_copy);
+	rte_memcpy((uint8_t *)data, src, dlen);
+	data += dlen;
+
+	if (unlikely(dlen < to_copy)) {
+		remain = to_copy - dlen;
+		addr = desc->addr + dlen;
+
+		while (remain) {
+			len = remain;
+			src = IOVA_TO_VVA(uint8_t *, vc_req, addr, &len,
+					VHOST_ACCESS_RO);
+			if (unlikely(!src || !len)) {
+				VC_LOG_ERR("Failed to map descriptor");
+				return -1;
+			}
+
+			rte_memcpy(data, src, len);
+			addr += len;
+			remain -= len;
+			data += len;
+		}
+	}
+
 	left -= to_copy;
 
 	while ((desc->flags & VRING_DESC_F_NEXT) && left > 0) {
-		desc = &head[desc->next];
-		rte_prefetch0(&head[desc->next]);
+		desc = &vc_req->head[desc->next];
+		rte_prefetch0(&vc_req->head[desc->next]);
 		to_copy = RTE_MIN(desc->len, (uint32_t)left);
 		dlen = desc->len;
-		src = GPA_TO_VVA(uint8_t *, mem, desc->addr, &dlen);
-		if (unlikely(!src || dlen != desc->len)) {
+		src = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
+				VHOST_ACCESS_RO);
+		if (unlikely(!src || !dlen)) {
 			VC_LOG_ERR("Failed to map descriptor");
 			return -1;
 		}
 
-		rte_memcpy(data + size - left, src, to_copy);
+		rte_memcpy(data, src, dlen);
+		data += dlen;
+
+		if (unlikely(dlen < to_copy)) {
+			remain = to_copy - dlen;
+			addr = desc->addr + dlen;
+
+			while (remain) {
+				len = remain;
+				src = IOVA_TO_VVA(uint8_t *, vc_req, addr, &len,
+						VHOST_ACCESS_RO);
+				if (unlikely(!src || !len)) {
+					VC_LOG_ERR("Failed to map descriptor");
+					return -1;
+				}
+
+				rte_memcpy(data, src, len);
+				addr += len;
+				remain -= len;
+				data += len;
+			}
+		}
+
 		left -= to_copy;
 	}
 
@@ -558,25 +605,25 @@ copy_data(void *dst_data, struct vring_desc *head, struct rte_vhost_memory *mem,
 		return -1;
 	}
 
-	*cur_desc = &head[desc->next];
+	*cur_desc = &vc_req->head[desc->next];
 
 	return 0;
 }
 
 static __rte_always_inline void *
-get_data_ptr(struct vring_desc *head, struct rte_vhost_memory *mem,
-		struct vring_desc **cur_desc, uint32_t size)
+get_data_ptr(struct vhost_crypto_data_req *vc_req, struct vring_desc **cur_desc,
+		uint32_t size, uint8_t perm)
 {
 	void *data;
 	uint64_t dlen = (*cur_desc)->len;
 
-	data = GPA_TO_VVA(void *, mem, (*cur_desc)->addr, &dlen);
+	data = IOVA_TO_VVA(void *, vc_req, (*cur_desc)->addr, &dlen, perm);
 	if (unlikely(!data || dlen != (*cur_desc)->len)) {
 		VC_LOG_ERR("Failed to map object");
 		return NULL;
 	}
 
-	if (unlikely(move_desc(head, cur_desc, size) < 0))
+	if (unlikely(move_desc(vc_req->head, cur_desc, size) < 0))
 		return NULL;
 
 	return data;
@@ -587,7 +634,6 @@ write_back_data(struct rte_crypto_op *op, struct vhost_crypto_data_req *vc_req)
 {
 	struct rte_mbuf *mbuf = op->sym->m_dst;
 	struct vring_desc *head = vc_req->head;
-	struct rte_vhost_memory *mem = vc_req->mem;
 	struct vring_desc *desc = vc_req->wb_desc;
 	int left = vc_req->wb_len;
 	uint32_t to_write;
@@ -597,7 +643,8 @@ write_back_data(struct rte_crypto_op *op, struct vhost_crypto_data_req *vc_req)
 	rte_prefetch0(&head[desc->next]);
 	to_write = RTE_MIN(desc->len, (uint32_t)left);
 	dlen = desc->len;
-	dst = GPA_TO_VVA(uint8_t *, mem, desc->addr, &dlen);
+	dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
+			VHOST_ACCESS_RW);
 	if (unlikely(!dst || dlen != desc->len)) {
 		VC_LOG_ERR("Failed to map descriptor");
 		return -1;
@@ -612,7 +659,8 @@ write_back_data(struct rte_crypto_op *op, struct vhost_crypto_data_req *vc_req)
 		rte_prefetch0(&head[desc->next]);
 		to_write = RTE_MIN(desc->len, (uint32_t)left);
 		dlen = desc->len;
-		dst = GPA_TO_VVA(uint8_t *, mem, desc->addr, &dlen);
+		dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
+				VHOST_ACCESS_RW);
 		if (unlikely(!dst || dlen != desc->len)) {
 			VC_LOG_ERR("Failed to map descriptor");
 			return -1;
@@ -637,16 +685,14 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		struct virtio_crypto_cipher_data_req *cipher,
 		struct vring_desc *cur_desc)
 {
-	struct vring_desc *head = vc_req->head;
 	struct vring_desc *desc = cur_desc;
-	struct rte_vhost_memory *mem = vc_req->mem;
 	struct rte_mbuf *m_src = op->sym->m_src, *m_dst = op->sym->m_dst;
 	uint8_t *iv_data = rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET);
 	uint8_t ret = 0;
 
 	/* prepare */
 	/* iv */
-	if (unlikely(copy_data(iv_data, head, mem, &desc,
+	if (unlikely(copy_data(iv_data, vc_req, &desc,
 			cipher->para.iv_len) < 0)) {
 		ret = VIRTIO_CRYPTO_BADMSG;
 		goto error_exit;
@@ -658,8 +704,8 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
 		m_src->buf_iova = gpa_to_hpa(vcrypto->dev, desc->addr,
 				cipher->para.src_data_len);
-		m_src->buf_addr = get_data_ptr(head, mem, &desc,
-				cipher->para.src_data_len);
+		m_src->buf_addr = get_data_ptr(vc_req, &desc,
+				cipher->para.src_data_len, VHOST_ACCESS_RO);
 		if (unlikely(m_src->buf_iova == 0 ||
 				m_src->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
@@ -674,8 +720,8 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
-		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *), head,
-				mem, &desc, cipher->para.src_data_len)
+		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *),
+				vc_req, &desc, cipher->para.src_data_len)
 				< 0)) {
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
@@ -687,7 +733,7 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	}
 
 	/* dst */
-	desc = find_write_desc(head, desc);
+	desc = find_write_desc(vc_req->head, desc);
 	if (unlikely(!desc)) {
 		VC_LOG_ERR("Cannot find write location");
 		ret = VIRTIO_CRYPTO_BADMSG;
@@ -698,8 +744,8 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
 		m_dst->buf_iova = gpa_to_hpa(vcrypto->dev,
 				desc->addr, cipher->para.dst_data_len);
-		m_dst->buf_addr = get_data_ptr(head, mem, &desc,
-				cipher->para.dst_data_len);
+		m_dst->buf_addr = get_data_ptr(vc_req, &desc,
+				cipher->para.dst_data_len, VHOST_ACCESS_RW);
 		if (unlikely(m_dst->buf_iova == 0 || m_dst->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
@@ -711,7 +757,8 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
 		vc_req->wb_desc = desc;
 		vc_req->wb_len = cipher->para.dst_data_len;
-		if (unlikely(move_desc(head, &desc, vc_req->wb_len) < 0)) {
+		if (unlikely(move_desc(vc_req->head, &desc,
+				vc_req->wb_len) < 0)) {
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
@@ -728,7 +775,7 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	op->sym->cipher.data.offset = 0;
 	op->sym->cipher.data.length = cipher->para.src_data_len;
 
-	vc_req->inhdr = get_data_ptr(head, mem, &desc, INHDR_LEN);
+	vc_req->inhdr = get_data_ptr(vc_req, &desc, INHDR_LEN, VHOST_ACCESS_WO);
 	if (unlikely(vc_req->inhdr == NULL)) {
 		ret = VIRTIO_CRYPTO_BADMSG;
 		goto error_exit;
@@ -750,9 +797,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		struct virtio_crypto_alg_chain_data_req *chain,
 		struct vring_desc *cur_desc)
 {
-	struct vring_desc *head = vc_req->head;
 	struct vring_desc *desc = cur_desc;
-	struct rte_vhost_memory *mem = vc_req->mem;
 	struct rte_mbuf *m_src = op->sym->m_src, *m_dst = op->sym->m_dst;
 	uint8_t *iv_data = rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET);
 	uint32_t digest_offset;
@@ -761,7 +806,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 
 	/* prepare */
 	/* iv */
-	if (unlikely(copy_data(iv_data, head, mem, &desc,
+	if (unlikely(copy_data(iv_data, vc_req, &desc,
 			chain->para.iv_len) < 0)) {
 		ret = VIRTIO_CRYPTO_BADMSG;
 		goto error_exit;
@@ -774,8 +819,8 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
 		m_src->buf_iova = gpa_to_hpa(vcrypto->dev, desc->addr,
 				chain->para.src_data_len);
-		m_src->buf_addr = get_data_ptr(head, mem, &desc,
-				chain->para.src_data_len);
+		m_src->buf_addr = get_data_ptr(vc_req, &desc,
+				chain->para.src_data_len, VHOST_ACCESS_RO);
 		if (unlikely(m_src->buf_iova == 0 || m_src->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
@@ -789,8 +834,8 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
-		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *), head,
-				mem, &desc, chain->para.src_data_len)) < 0) {
+		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *),
+				vc_req, &desc, chain->para.src_data_len)) < 0) {
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
@@ -801,7 +846,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	}
 
 	/* dst */
-	desc = find_write_desc(head, desc);
+	desc = find_write_desc(vc_req->head, desc);
 	if (unlikely(!desc)) {
 		VC_LOG_ERR("Cannot find write location");
 		ret = VIRTIO_CRYPTO_BADMSG;
@@ -812,8 +857,8 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
 		m_dst->buf_iova = gpa_to_hpa(vcrypto->dev,
 				desc->addr, chain->para.dst_data_len);
-		m_dst->buf_addr = get_data_ptr(head, mem, &desc,
-				chain->para.dst_data_len);
+		m_dst->buf_addr = get_data_ptr(vc_req, &desc,
+				chain->para.dst_data_len, VHOST_ACCESS_RW);
 		if (unlikely(m_dst->buf_iova == 0 || m_dst->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
@@ -822,8 +867,8 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 
 		op->sym->auth.digest.phys_addr = gpa_to_hpa(vcrypto->dev,
 				desc->addr, chain->para.hash_result_len);
-		op->sym->auth.digest.data = get_data_ptr(head, mem, &desc,
-				chain->para.hash_result_len);
+		op->sym->auth.digest.data = get_data_ptr(vc_req, &desc,
+				chain->para.hash_result_len, VHOST_ACCESS_RW);
 		if (unlikely(op->sym->auth.digest.phys_addr == 0)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
@@ -838,13 +883,13 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		vc_req->wb_desc = desc;
 		vc_req->wb_len = m_dst->data_len + chain->para.hash_result_len;
 
-		if (unlikely(move_desc(head, &desc,
+		if (unlikely(move_desc(vc_req->head, &desc,
 				chain->para.dst_data_len) < 0)) {
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
 
-		if (unlikely(copy_data(digest_addr, head, mem, &desc,
+		if (unlikely(copy_data(digest_addr, vc_req, &desc,
 				chain->para.hash_result_len)) < 0) {
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
@@ -860,7 +905,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	}
 
 	/* record inhdr */
-	vc_req->inhdr = get_data_ptr(head, mem, &desc, INHDR_LEN);
+	vc_req->inhdr = get_data_ptr(vc_req, &desc, INHDR_LEN, VHOST_ACCESS_WO);
 	if (unlikely(vc_req->inhdr == NULL)) {
 		ret = VIRTIO_CRYPTO_BADMSG;
 		goto error_exit;
@@ -893,13 +938,12 @@ error_exit:
 static __rte_always_inline int
 vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		struct vhost_virtqueue *vq, struct rte_crypto_op *op,
-		struct vring_desc *head, uint16_t desc_idx,
-		struct rte_vhost_memory *mem)
+		struct vring_desc *head, uint16_t desc_idx)
 {
 	struct vhost_crypto_data_req *vc_req = RTE_PTR_ADD(op->sym->m_src,
 			sizeof(struct rte_mbuf));
 	struct rte_cryptodev_sym_session *session;
-	struct virtio_crypto_op_data_req *req;
+	struct virtio_crypto_op_data_req *req, tmp_req;
 	struct virtio_crypto_inhdr *inhdr;
 	struct vring_desc *desc = NULL;
 	uint64_t session_id;
@@ -907,10 +951,13 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 	int err = 0;
 
 	vc_req->desc_idx = desc_idx;
+	vc_req->dev = vcrypto->dev;
+	vc_req->vq = vq;
 
 	if (likely(head->flags & VRING_DESC_F_INDIRECT)) {
 		dlen = head->len;
-		desc = GPA_TO_VVA(struct vring_desc *, mem, head->addr, &dlen);
+		desc = IOVA_TO_VVA(struct vring_desc *, vc_req, head->addr,
+				&dlen, VHOST_ACCESS_RO);
 		if (unlikely(!desc || dlen != head->len))
 			return -1;
 		desc_idx = 0;
@@ -919,17 +966,30 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		desc = head;
 	}
 
-	vc_req->mem = mem;
 	vc_req->head = head;
-	vc_req->vq = vq;
-
 	vc_req->zero_copy = vcrypto->option;
 
-	req = get_data_ptr(head, mem, &desc, sizeof(*req));
+	req = get_data_ptr(vc_req, &desc, sizeof(*req), VHOST_ACCESS_RO);
 	if (unlikely(req == NULL)) {
-		err = VIRTIO_CRYPTO_ERR;
-		VC_LOG_ERR("Invalid descriptor");
-		goto error_exit;
+		switch (vcrypto->option) {
+		case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
+			err = VIRTIO_CRYPTO_BADMSG;
+			VC_LOG_ERR("Invalid descriptor");
+			goto error_exit;
+		case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+			req = &tmp_req;
+			if (unlikely(copy_data(req, vc_req, &desc, sizeof(*req))
+					< 0)) {
+				err = VIRTIO_CRYPTO_BADMSG;
+				VC_LOG_ERR("Invalid descriptor");
+				goto error_exit;
+			}
+			break;
+		default:
+			err = VIRTIO_CRYPTO_ERR;
+			VC_LOG_ERR("Invalid option");
+			goto error_exit;
+		}
 	}
 
 	switch (req->header.opcode) {
@@ -989,7 +1049,7 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 
 error_exit:
 
-	inhdr = reach_inhdr(head, mem, desc);
+	inhdr = reach_inhdr(vc_req, desc);
 	if (likely(inhdr != NULL))
 		inhdr->status = (uint8_t)err;
 
@@ -1216,7 +1276,6 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 {
 	struct rte_mbuf *mbufs[VHOST_CRYPTO_MAX_BURST_SIZE * 2];
 	struct virtio_net *dev = get_device(vid);
-	struct rte_vhost_memory *mem;
 	struct vhost_crypto *vcrypto;
 	struct vhost_virtqueue *vq;
 	uint16_t avail_idx;
@@ -1242,7 +1301,6 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 	}
 
 	vq = dev->virtqueue[qid];
-	mem = dev->mem;
 
 	avail_idx = *((volatile uint16_t *)&vq->avail->idx);
 	start_idx = vq->last_used_idx;
@@ -1275,7 +1333,7 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 		op->sym->m_dst->data_off = 0;
 
 		if (unlikely(vhost_crypto_process_one_req(vcrypto, vq, op, head,
-				desc_idx, mem)) < 0)
+				desc_idx)) < 0)
 			break;
 	}
 
