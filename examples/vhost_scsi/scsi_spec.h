@@ -367,7 +367,7 @@ struct scsi_vpd_page {
 	uint8_t peripheral;
 	uint8_t page_code;
 	uint16_t alloc_len;
-	uint8_t params[];
+	uint8_t params[32];
 };
 
 #define SCSI_VEXT_REF_CHK		0x01
