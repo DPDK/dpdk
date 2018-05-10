@@ -644,24 +644,14 @@ static struct rte_pci_driver rte_bnx2xvf_pmd;
 static int eth_bnx2x_pci_probe(struct rte_pci_driver *pci_drv,
 	struct rte_pci_device *pci_dev)
 {
-	struct rte_eth_dev *eth_dev;
-	int ret;
-
-	eth_dev = rte_eth_dev_pci_allocate(pci_dev, sizeof(struct bnx2x_softc));
-	if (!eth_dev)
-		return -ENOMEM;
-
 	if (pci_drv == &rte_bnx2x_pmd)
-		ret = eth_bnx2x_dev_init(eth_dev);
+		return rte_eth_dev_pci_generic_probe(pci_dev,
+				sizeof(struct bnx2x_softc), eth_bnx2x_dev_init);
 	else if (pci_drv == &rte_bnx2xvf_pmd)
-		ret = eth_bnx2xvf_dev_init(eth_dev);
+		return rte_eth_dev_pci_generic_probe(pci_dev,
+				sizeof(struct bnx2x_softc), eth_bnx2xvf_dev_init);
 	else
-		ret = -EINVAL;
-
-	if (ret)
-		rte_eth_dev_pci_release(eth_dev);
-
-	return ret;
+		return -EINVAL;
 }
 
 static int eth_bnx2x_pci_remove(struct rte_pci_device *pci_dev)

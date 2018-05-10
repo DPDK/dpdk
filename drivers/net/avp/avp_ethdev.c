@@ -1048,19 +1048,8 @@ static int
 eth_avp_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		  struct rte_pci_device *pci_dev)
 {
-	struct rte_eth_dev *eth_dev;
-	int ret;
-
-	eth_dev = rte_eth_dev_pci_allocate(pci_dev,
-					   sizeof(struct avp_adapter));
-	if (eth_dev == NULL)
-		return -ENOMEM;
-
-	ret = eth_avp_dev_init(eth_dev);
-	if (ret)
-		rte_eth_dev_pci_release(eth_dev);
-
-	return ret;
+	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct avp_adapter),
+			eth_avp_dev_init);
 }
 
 static int
