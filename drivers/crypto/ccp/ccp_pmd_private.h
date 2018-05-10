@@ -42,6 +42,7 @@ struct ccp_private {
 	unsigned int max_nb_qpairs;	/**< Max number of queue pairs */
 	unsigned int max_nb_sessions;	/**< Max number of sessions */
 	uint8_t crypto_num_dev;		/**< Number of working crypto devices */
+	bool auth_opt;			/**< Authentication offload option */
 	struct ccp_device *last_dev;	/**< Last working crypto device */
 };
 
@@ -62,10 +63,8 @@ struct ccp_batch_info {
 	phys_addr_t lsb_buf_phys;
 	/**< LSB intermediate buf for passthru */
 	int lsb_buf_idx;
-#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
 	uint16_t auth_ctr;
-	/**< auth only ops batch */
-#endif
+	/**< auth only ops batch for CPU based auth */
 } __rte_cache_aligned;
 
 /**< CCP crypto queue pair */

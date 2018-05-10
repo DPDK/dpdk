@@ -42,10 +42,9 @@
 #define HMAC_IPAD_VALUE 0x36
 #define HMAC_OPAD_VALUE 0x5c
 
-#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
+/* MD5 */
 #define MD5_DIGEST_SIZE         16
 #define MD5_BLOCK_SIZE          64
-#endif
 
 /* SHA */
 #define SHA_COMMON_DIGEST_SIZE	32
@@ -235,9 +234,7 @@ enum ccp_hash_algo {
 	CCP_AUTH_ALGO_SHA3_512_HMAC,
 	CCP_AUTH_ALGO_AES_CMAC,
 	CCP_AUTH_ALGO_AES_GCM,
-#ifdef RTE_LIBRTE_PMD_CCP_CPU_AUTH
 	CCP_AUTH_ALGO_MD5_HMAC,
-#endif
 };
 
 /**
@@ -250,6 +247,7 @@ enum ccp_hash_op {
 
 /* CCP crypto private session structure */
 struct ccp_session {
+	bool auth_opt;
 	enum ccp_cmd_order cmd_id;
 	/**< chain order mode */
 	struct {
@@ -321,6 +319,7 @@ struct ccp_session {
 extern uint8_t ccp_cryptodev_driver_id;
 
 struct ccp_qp;
+struct ccp_private;
 
 /**
  * Set and validate CCP crypto session parameters
@@ -330,7 +329,8 @@ struct ccp_qp;
  * @return 0 on success otherwise -1
  */
 int ccp_set_session_parameters(struct ccp_session *sess,
-			       const struct rte_crypto_sym_xform *xform);
+			       const struct rte_crypto_sym_xform *xform,
+			       struct ccp_private *internals);
 
 /**
  * Find count of slots

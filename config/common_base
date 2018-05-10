@@ -557,7 +557,6 @@ CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO=y
 # Compile PMD for AMD CCP crypto device
 #
 CONFIG_RTE_LIBRTE_PMD_CCP=n
-CONFIG_RTE_LIBRTE_PMD_CCP_CPU_AUTH=n
 
 #
 # Compile PMD for Marvell Crypto device

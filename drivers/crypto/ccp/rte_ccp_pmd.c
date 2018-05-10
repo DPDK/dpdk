@@ -22,6 +22,143 @@
 static unsigned int ccp_pmd_init_done;
 uint8_t ccp_cryptodev_driver_id;
 
+struct ccp_pmd_init_params {
+	struct rte_cryptodev_pmd_init_params def_p;
+	bool auth_opt;
+};
+
+#define CCP_CRYPTODEV_PARAM_NAME		("name")
+#define CCP_CRYPTODEV_PARAM_SOCKET_ID		("socket_id")
+#define CCP_CRYPTODEV_PARAM_MAX_NB_QP		("max_nb_queue_pairs")
+#define CCP_CRYPTODEV_PARAM_MAX_NB_SESS		("max_nb_sessions")
+#define CCP_CRYPTODEV_PARAM_AUTH_OPT		("ccp_auth_opt")
+
+const char *ccp_pmd_valid_params[] = {
+	CCP_CRYPTODEV_PARAM_NAME,
+	CCP_CRYPTODEV_PARAM_SOCKET_ID,
+	CCP_CRYPTODEV_PARAM_MAX_NB_QP,
+	CCP_CRYPTODEV_PARAM_MAX_NB_SESS,
+	CCP_CRYPTODEV_PARAM_AUTH_OPT,
+};
+
+/** ccp pmd auth option */
+enum ccp_pmd_auth_opt {
+	CCP_PMD_AUTH_OPT_CCP = 0,
+	CCP_PMD_AUTH_OPT_CPU,
+};
+
+/** parse integer from integer argument */
+static int
+parse_integer_arg(const char *key __rte_unused,
+		  const char *value, void *extra_args)
+{
+	int *i = (int *) extra_args;
+
+	*i = atoi(value);
+	if (*i < 0) {
+		CCP_LOG_ERR("Argument has to be positive.\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/** parse name argument */
+static int
+parse_name_arg(const char *key __rte_unused,
+	       const char *value, void *extra_args)
+{
+	struct rte_cryptodev_pmd_init_params *params = extra_args;
+
+	if (strlen(value) >= RTE_CRYPTODEV_NAME_MAX_LEN - 1) {
+		CCP_LOG_ERR("Invalid name %s, should be less than "
+			    "%u bytes.\n", value,
+			    RTE_CRYPTODEV_NAME_MAX_LEN - 1);
+		return -EINVAL;
+	}
+
+	strncpy(params->name, value, RTE_CRYPTODEV_NAME_MAX_LEN);
+
+	return 0;
+}
+
+/** parse authentication operation option */
+static int
+parse_auth_opt_arg(const char *key __rte_unused,
+		   const char *value, void *extra_args)
+{
+	struct ccp_pmd_init_params *params = extra_args;
+	int i;
+
+	i = atoi(value);
+	if (i < CCP_PMD_AUTH_OPT_CCP || i > CCP_PMD_AUTH_OPT_CPU) {
+		CCP_LOG_ERR("Invalid ccp pmd auth option. "
+			    "0->auth on CCP(default), "
+			    "1->auth on CPU\n");
+		return -EINVAL;
+	}
+	params->auth_opt = i;
+	return 0;
+}
+
+static int
+ccp_pmd_parse_input_args(struct ccp_pmd_init_params *params,
+			 const char *input_args)
+{
+	struct rte_kvargs *kvlist = NULL;
+	int ret = 0;
+
+	if (params == NULL)
+		return -EINVAL;
+
+	if (input_args) {
+		kvlist = rte_kvargs_parse(input_args,
+					  ccp_pmd_valid_params);
+		if (kvlist == NULL)
+			return -1;
+
+		ret = rte_kvargs_process(kvlist,
+					 CCP_CRYPTODEV_PARAM_MAX_NB_QP,
+					 &parse_integer_arg,
+					 &params->def_p.max_nb_queue_pairs);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist,
+					 CCP_CRYPTODEV_PARAM_MAX_NB_SESS,
+					 &parse_integer_arg,
+					 &params->def_p.max_nb_sessions);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist,
+					 CCP_CRYPTODEV_PARAM_SOCKET_ID,
+					 &parse_integer_arg,
+					 &params->def_p.socket_id);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist,
+					 CCP_CRYPTODEV_PARAM_NAME,
+					 &parse_name_arg,
+					 &params->def_p);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist,
+					 CCP_CRYPTODEV_PARAM_AUTH_OPT,
+					 &parse_auth_opt_arg,
+					 params);
+		if (ret < 0)
+			goto free_kvlist;
+
+	}
+
+free_kvlist:
+	rte_kvargs_free(kvlist);
+	return ret;
+}
+
 static struct ccp_session *
 get_ccp_session(struct ccp_qp *qp, struct rte_crypto_op *op)
 {
@@ -38,6 +175,7 @@ get_ccp_session(struct ccp_qp *qp, struct rte_crypto_op *op)
 	} else if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		void *_sess;
 		void *_sess_private_data = NULL;
+		struct ccp_private *internals;
 
 		if (rte_mempool_get(qp->sess_mp, &_sess))
 			return NULL;
@@ -46,8 +184,9 @@ get_ccp_session(struct ccp_qp *qp, struct rte_crypto_op *op)
 
 		sess = (struct ccp_session *)_sess_private_data;
 
-		if (unlikely(ccp_set_session_parameters(sess,
-							op->sym->xform) != 0)) {
+		internals = (struct ccp_private *)qp->dev->data->dev_private;
+		if (unlikely(ccp_set_session_parameters(sess, op->sym->xform,
+							internals) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
 			rte_mempool_put(qp->sess_mp, _sess_private_data);
 			sess = NULL;
@@ -154,19 +293,20 @@ cryptodev_ccp_remove(struct rte_vdev_device *dev)
 static int
 cryptodev_ccp_create(const char *name,
 		     struct rte_vdev_device *vdev,
-		     struct rte_cryptodev_pmd_init_params *init_params)
+		     struct ccp_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct ccp_private *internals;
 	uint8_t cryptodev_cnt = 0;
 
-	if (init_params->name[0] == '\0')
-		snprintf(init_params->name, sizeof(init_params->name),
-				"%s", name);
+	if (init_params->def_p.name[0] == '\0')
+		snprintf(init_params->def_p.name,
+			 sizeof(init_params->def_p.name),
+			 "%s", name);
 
-	dev = rte_cryptodev_pmd_create(init_params->name,
+	dev = rte_cryptodev_pmd_create(init_params->def_p.name,
 				       &vdev->device,
-				       init_params);
+				       &init_params->def_p);
 	if (dev == NULL) {
 		CCP_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;
@@ -193,15 +333,16 @@ cryptodev_ccp_create(const char *name,
 
 	internals = dev->data->dev_private;
 
-	internals->max_nb_qpairs = init_params->max_nb_queue_pairs;
-	internals->max_nb_sessions = init_params->max_nb_sessions;
+	internals->max_nb_qpairs = init_params->def_p.max_nb_queue_pairs;
+	internals->max_nb_sessions = init_params->def_p.max_nb_sessions;
+	internals->auth_opt = init_params->auth_opt;
 	internals->crypto_num_dev = cryptodev_cnt;
 
 	return 0;
 
 init_error:
 	CCP_LOG_ERR("driver %s: %s() failed",
-		    init_params->name, __func__);
+		    init_params->def_p.name, __func__);
 	cryptodev_ccp_remove(vdev);
 
 	return -EFAULT;
@@ -213,12 +354,15 @@ cryptodev_ccp_probe(struct rte_vdev_device *vdev)
 {
 	int rc = 0;
 	const char *name;
-	struct rte_cryptodev_pmd_init_params init_params = {
-		"",
-		sizeof(struct ccp_private),
-		rte_socket_id(),
-		CCP_PMD_MAX_QUEUE_PAIRS,
-		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
+	struct ccp_pmd_init_params init_params = {
+		.def_p = {
+			"",
+			sizeof(struct ccp_private),
+			rte_socket_id(),
+			CCP_PMD_MAX_QUEUE_PAIRS,
+			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
+		},
+		.auth_opt = CCP_PMD_AUTH_OPT_CCP,
 	};
 	const char *input_args;
 
@@ -231,15 +375,17 @@ cryptodev_ccp_probe(struct rte_vdev_device *vdev)
 		return -EINVAL;
 
 	input_args = rte_vdev_device_args(vdev);
-	rte_cryptodev_pmd_parse_input_args(&init_params, input_args);
-	init_params.max_nb_queue_pairs = CCP_PMD_MAX_QUEUE_PAIRS;
+	ccp_pmd_parse_input_args(&init_params, input_args);
+	init_params.def_p.max_nb_queue_pairs = CCP_PMD_MAX_QUEUE_PAIRS;
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
-			init_params.socket_id);
+		init_params.def_p.socket_id);
 	RTE_LOG(INFO, PMD, "Max number of queue pairs = %d\n",
-			init_params.max_nb_queue_pairs);
+		init_params.def_p.max_nb_queue_pairs);
 	RTE_LOG(INFO, PMD, "Max number of sessions = %d\n",
-			init_params.max_nb_sessions);
+		init_params.def_p.max_nb_sessions);
+	RTE_LOG(INFO, PMD, "Authentication offload to %s\n",
+		((init_params.auth_opt == 0) ? "CCP" : "CPU"));
 
 	rc = cryptodev_ccp_create(name, vdev, &init_params);
 	if (rc)
@@ -257,6 +403,9 @@ static struct cryptodev_driver ccp_crypto_drv;
 
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_CCP_PMD, cryptodev_ccp_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_CCP_PMD,
-	"max_nb_queue_pairs=<int> max_nb_sessions=<int> socket_id=<int>");
+	"max_nb_queue_pairs=<int> "
+	"max_nb_sessions=<int> "
+	"socket_id=<int> "
+	"ccp_auth_opt=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(ccp_crypto_drv, cryptodev_ccp_pmd_drv.driver,
 			       ccp_cryptodev_driver_id);
