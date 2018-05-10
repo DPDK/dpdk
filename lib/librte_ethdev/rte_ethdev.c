@@ -366,6 +366,8 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 
 	rte_eth_dev_shared_data_prepare();
 
+	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_DESTROY, NULL);
+
 	rte_spinlock_lock(&rte_eth_dev_shared_data->ownership_lock);
 
 	eth_dev->state = RTE_ETH_DEV_UNUSED;
@@ -373,8 +375,6 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 	memset(eth_dev->data, 0, sizeof(struct rte_eth_dev_data));
 
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
-
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_DESTROY, NULL);
 
 	return 0;
 }
