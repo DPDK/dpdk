@@ -377,6 +377,14 @@ API Changes
    not been enabled in ``rte_eth_dev_configure()`` and is requested to be enabled in
    ``rte_eth_[rt]x_queue_setup()`` must be per-queue type, otherwise trigger an error log.
 
+* ethdev: runtime queue setup:
+
+  ``rte_eth_rx_queue_setup`` and ``rte_eth_tx_queue_setup`` can be called after
+  ``rte_eth_dev_start`` if device support runtime queue setup. Device driver can
+  expose this capability through ``rte_eth_dev_info_get``. A Rx or Tx queue be
+  setup at runtime need to be started explicitly by ``rte_eth_dev_rx_queue_start``
+  or ``rte_eth_dev_tx_queue_start``.
+
 
 ABI Changes
 -----------
