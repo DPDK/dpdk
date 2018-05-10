@@ -13,6 +13,7 @@
 #include <rte_malloc.h>
 #include <rte_flow.h>
 #include <rte_cycles.h>
+#include <rte_ethdev.h>
 
 #include "failsafe_private.h"
 
@@ -947,6 +948,31 @@ fs_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 }
 
 static int
+fs_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret;
+
+	fs_lock(dev, 0);
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_dev_rss_hash_update(PORT_ID(sdev), rss_conf);
+		ret = fs_err(sdev, ret);
+		if (ret) {
+			ERROR("Operation rte_eth_dev_rss_hash_update"
+				" failed for sub_device %d with error %d",
+				i, ret);
+			fs_unlock(dev, 0);
+			return ret;
+		}
+	}
+	fs_unlock(dev, 0);
+
+	return 0;
+}
+
+static int
 fs_filter_ctrl(struct rte_eth_dev *dev,
 		enum rte_filter_type type,
 		enum rte_filter_op op,
@@ -1005,5 +1031,6 @@ const struct eth_dev_ops failsafe_ops = {
 	.mac_addr_remove = fs_mac_addr_remove,
 	.mac_addr_add = fs_mac_addr_add,
 	.mac_addr_set = fs_mac_addr_set,
+	.rss_hash_update = fs_rss_hash_update,
 	.filter_ctrl = fs_filter_ctrl,
 };
