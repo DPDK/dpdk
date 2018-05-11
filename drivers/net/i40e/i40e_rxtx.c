@@ -3028,9 +3028,11 @@ i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct i40e_tx_queue *txq)
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
-	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
-	ad->tx_simple_allowed = (txq->offloads == 0 &&
-			txq->tx_rs_thresh >= RTE_PMD_I40E_TX_MAX_BURST);
+	/* Use a simple Tx queue if possible (only fast free is allowed) */
+	ad->tx_simple_allowed =
+		(txq->offloads ==
+		 (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) &&
+		 txq->tx_rs_thresh >= RTE_PMD_I40E_TX_MAX_BURST);
 	ad->tx_vec_allowed = (ad->tx_simple_allowed &&
 			txq->tx_rs_thresh <= RTE_I40E_TX_MAX_FREE_BUF_SZ);
 

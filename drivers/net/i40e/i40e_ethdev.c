@@ -3301,7 +3301,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_VLAN_FILTER |
 		DEV_RX_OFFLOAD_JUMBO_FRAME;
 
-	dev_info->tx_queue_offload_capa = 0;
+	dev_info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_QINQ_INSERT |
@@ -3315,7 +3315,8 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_GRE_TNL_TSO |
 		DEV_TX_OFFLOAD_IPIP_TNL_TSO |
 		DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-		DEV_TX_OFFLOAD_MULTI_SEGS;
+		DEV_TX_OFFLOAD_MULTI_SEGS |
+		dev_info->tx_queue_offload_capa;
 	dev_info->dev_capa =
 		RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 		RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
