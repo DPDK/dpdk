@@ -694,12 +694,16 @@ static struct rte_pci_driver rte_i40e_pmd = {
 };
 
 static inline void
-i40e_write_global_rx_ctl(struct i40e_hw *hw, u32 reg_addr, u32 reg_val)
+i40e_write_global_rx_ctl(struct i40e_hw *hw, uint32_t reg_addr,
+			 uint32_t reg_val)
 {
+	uint32_t ori_reg_val;
+
+	ori_reg_val = i40e_read_rx_ctl(hw, reg_addr);
 	i40e_write_rx_ctl(hw, reg_addr, reg_val);
-	PMD_DRV_LOG(DEBUG, "Global register 0x%08x is modified "
-		    "with value 0x%08x",
-		    reg_addr, reg_val);
+	PMD_DRV_LOG(DEBUG,
+		    "Global register [0x%08x] original: 0x%08x, after: 0x%08x",
+		    reg_addr, ori_reg_val, reg_val);
 }
 
 RTE_PMD_REGISTER_PCI(net_i40e, rte_i40e_pmd);
@@ -1156,6 +1160,30 @@ i40e_support_multi_driver(struct rte_eth_dev *dev)
 }
 
 static int
+i40e_aq_debug_write_global_register(struct i40e_hw *hw,
+				    uint32_t reg_addr, uint64_t reg_val,
+				    struct i40e_asq_cmd_details *cmd_details)
+{
+	uint64_t ori_reg_val;
+	int ret;
+
+	ret = i40e_aq_debug_read_register(hw, reg_addr, &ori_reg_val, NULL);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR,
+			    "Fail to debug read from 0x%08x",
+			    reg_addr);
+		return -EIO;
+	}
+
+	PMD_DRV_LOG(DEBUG,
+		    "Global register [0x%08x] original: 0x%"PRIx64
+		    ", after: 0x%"PRIx64,
+		    reg_addr, ori_reg_val, reg_val);
+
+	return i40e_aq_debug_write_register(hw, reg_addr, reg_val, cmd_details);
+}
+
+static int
 eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev;
@@ -1262,7 +1290,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 
 	/* initialise the L3_MAP register */
 	if (!pf->support_multi_driver) {
-		ret = i40e_aq_debug_write_register(hw, I40E_GLQF_L3_MAP(40),
+		ret = i40e_aq_debug_write_global_register(hw,
+						   I40E_GLQF_L3_MAP(40),
 						   0x00000028,	NULL);
 		if (ret)
 			PMD_INIT_LOG(ERR, "Failed to write L3 MAP register %d",
@@ -3458,7 +3487,8 @@ i40e_vlan_tpid_set_by_registers(struct rte_eth_dev *dev,
 		return 0;
 	}
 
-	ret = i40e_aq_debug_write_register(hw, I40E_GL_SWT_L2TAGCTRL(reg_id),
+	ret = i40e_aq_debug_write_global_register(hw,
+					   I40E_GL_SWT_L2TAGCTRL(reg_id),
 					   reg_w, NULL);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR,
@@ -3469,6 +3499,8 @@ i40e_vlan_tpid_set_by_registers(struct rte_eth_dev *dev,
 	PMD_DRV_LOG(DEBUG,
 		    "Global register 0x%08x is changed with value 0x%08x",
 		    I40E_GL_SWT_L2TAGCTRL(reg_id), (uint32_t)reg_w);
+
+	i40e_global_cfg_warning(I40E_WARNING_TPID);
 
 	return 0;
 }
@@ -3519,7 +3551,6 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 		/* If NVM API < 1.7, keep the register setting */
 		ret = i40e_vlan_tpid_set_by_registers(dev, vlan_type,
 						      tpid, qinq);
-	i40e_global_cfg_warning(I40E_WARNING_TPID);
 
 	return ret;
 }
@@ -8355,7 +8386,8 @@ i40e_dev_set_gre_key_len(struct i40e_hw *hw, uint8_t len)
 	}
 
 	if (reg != val) {
-		ret = i40e_aq_debug_write_register(hw, I40E_GL_PRS_FVBM(2),
+		ret = i40e_aq_debug_write_global_register(hw,
+						   I40E_GL_PRS_FVBM(2),
 						   reg, NULL);
 		if (ret != 0)
 			return ret;
@@ -9248,11 +9280,11 @@ i40e_check_write_global_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 {
 	uint32_t reg = i40e_read_rx_ctl(hw, addr);
 
-	PMD_DRV_LOG(DEBUG, "[0x%08x] original: 0x%08x", addr, reg);
 	if (reg != val)
-		i40e_write_global_rx_ctl(hw, addr, val);
-	PMD_DRV_LOG(DEBUG, "[0x%08x] after: 0x%08x", addr,
-		    (uint32_t)i40e_read_rx_ctl(hw, addr));
+		i40e_write_rx_ctl(hw, addr, val);
+	PMD_DRV_LOG(DEBUG,
+		    "Global register [0x%08x] original: 0x%08x, after: 0x%08x",
+		    addr, reg, (uint32_t)i40e_read_rx_ctl(hw, addr));
 }
 
 static void

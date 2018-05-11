@@ -86,11 +86,13 @@
 
 #define I40E_WRITE_GLB_REG(hw, reg, value)				\
 	do {								\
+		uint32_t ori_val;					\
+		ori_val = I40E_READ_REG((hw), (reg));			\
 		I40E_PCI_REG_WRITE(I40E_PCI_REG_ADDR((hw),		\
 						     (reg)), (value));	\
-		PMD_DRV_LOG(DEBUG, "Global register 0x%08x is modified " \
-			    "with value 0x%08x",			\
-			    (reg), (value));				\
+		PMD_DRV_LOG(DEBUG, "global register [0x%08x] "		\
+			    "original: 0x%08x, after: 0x%08x ",		\
+			    (reg), (ori_val), (value));			\
 	} while (0)
 
 /* index flex payload per layer */
