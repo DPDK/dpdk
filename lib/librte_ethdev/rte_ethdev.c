@@ -1525,8 +1525,9 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 			RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP))
 		return -EBUSY;
 
-	if (dev->data->rx_queue_state[rx_queue_id] !=
-		RTE_ETH_QUEUE_STATE_STOPPED)
+	if (dev->data->dev_started &&
+		(dev->data->rx_queue_state[rx_queue_id] !=
+			RTE_ETH_QUEUE_STATE_STOPPED))
 		return -EBUSY;
 
 	rxq = dev->data->rx_queues;
@@ -1689,8 +1690,9 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 			RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP))
 		return -EBUSY;
 
-	if (dev->data->tx_queue_state[tx_queue_id] !=
-		RTE_ETH_QUEUE_STATE_STOPPED)
+	if (dev->data->dev_started &&
+		(dev->data->tx_queue_state[tx_queue_id] !=
+			RTE_ETH_QUEUE_STATE_STOPPED))
 		return -EBUSY;
 
 	txq = dev->data->tx_queues;
