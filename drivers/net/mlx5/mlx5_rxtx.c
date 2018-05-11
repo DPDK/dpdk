@@ -645,7 +645,8 @@ pkt_inline:
 				if (unlikely(max_wqe < n))
 					break;
 				max_wqe -= n;
-				if (tso && !inl) {
+				if (tso) {
+					assert(inl == 0);
 					inl = rte_cpu_to_be_32(copy_b |
 							       MLX5_INLINE_SEG);
 					rte_memcpy((void *)raw,
@@ -680,8 +681,17 @@ pkt_inline:
 			} else if (!segs_n) {
 				goto next_pkt;
 			} else {
-				raw += copy_b;
-				inline_room -= copy_b;
+				/*
+				 * Further inline the next segment only for
+				 * non-TSO packets.
+				 */
+				if (!tso) {
+					raw += copy_b;
+					inline_room -= copy_b;
+				} else {
+					inline_room = 0;
+				}
+				/* Move to the next segment. */
 				--segs_n;
 				buf = buf->next;
 				assert(buf);
