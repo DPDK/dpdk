@@ -287,6 +287,9 @@ vhost_user_sock(struct virtio_user_dev *dev,
 
 	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
 
+	if (dev->is_server && vhostfd < 0)
+		return -1;
+
 	msg.request = req;
 	msg.flags = VHOST_USER_VERSION;
 	msg.size = 0;

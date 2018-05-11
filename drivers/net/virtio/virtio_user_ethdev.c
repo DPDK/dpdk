@@ -30,6 +30,7 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 	int ret;
 	int flag;
 	int connectfd;
+	uint64_t features = dev->device_features;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
 
 	connectfd = accept(dev->listenfd, NULL, NULL);
@@ -37,6 +38,25 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 		return -1;
 
 	dev->vhostfd = connectfd;
+	if (dev->ops->send_request(dev, VHOST_USER_GET_FEATURES,
+				   &dev->device_features) < 0) {
+		PMD_INIT_LOG(ERR, "get_features failed: %s",
+			     strerror(errno));
+		return -1;
+	}
+
+	features &= ~dev->device_features;
+	/* For following bits, vhost-user doesn't really need to know */
+	features &= ~(1ull << VIRTIO_NET_F_MAC);
+	features &= ~(1ull << VIRTIO_NET_F_CTRL_VLAN);
+	features &= ~(1ull << VIRTIO_NET_F_CTRL_MAC_ADDR);
+	features &= ~(1ull << VIRTIO_NET_F_STATUS);
+	if (features)
+		PMD_INIT_LOG(ERR, "WARNING: Some features 0x%" PRIx64 " are not supported by vhost-user!",
+			     features);
+
+	dev->features &= dev->device_features;
+
 	flag = fcntl(connectfd, F_GETFD);
 	fcntl(connectfd, F_SETFL, flag | O_NONBLOCK);
 
@@ -44,6 +64,13 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 	if (ret < 0)
 		return -1;
 
+	if (dev->queue_pairs > 1) {
+		ret = virtio_user_handle_mq(dev, dev->queue_pairs);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Fails to enable multi-queue pairs!");
+			return -1;
+		}
+	}
 	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
 		if (rte_intr_disable(eth_dev->intr_handle) < 0) {
 			PMD_DRV_LOG(ERR, "interrupt disable failed");

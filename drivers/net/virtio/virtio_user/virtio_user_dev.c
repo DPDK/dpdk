@@ -486,7 +486,7 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 		unlink(dev->path);
 }
 
-static uint8_t
+uint8_t
 virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs)
 {
 	uint16_t i;
@@ -498,11 +498,17 @@ virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs)
 		return -1;
 	}
 
-	for (i = 0; i < q_pairs; ++i)
-		ret |= dev->ops->enable_qp(dev, i, 1);
-	for (i = q_pairs; i < dev->max_queue_pairs; ++i)
-		ret |= dev->ops->enable_qp(dev, i, 0);
-
+	/* Server mode can't enable queue pairs if vhostfd is invalid,
+	 * always return 0 in this case.
+	 */
+	if (dev->vhostfd >= 0) {
+		for (i = 0; i < q_pairs; ++i)
+			ret |= dev->ops->enable_qp(dev, i, 1);
+		for (i = q_pairs; i < dev->max_queue_pairs; ++i)
+			ret |= dev->ops->enable_qp(dev, i, 0);
+	} else if (!dev->is_server) {
+		ret = ~0;
+	}
 	dev->queue_pairs = q_pairs;
 
 	return ret;
