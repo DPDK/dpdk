@@ -421,6 +421,8 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 
 	if (dev->mac_specified)
 		dev->device_features |= (1ull << VIRTIO_NET_F_MAC);
+	else
+		dev->device_features &= ~(1ull << VIRTIO_NET_F_MAC);
 
 	if (cq) {
 		/* device does not really need to know anything about CQ,
