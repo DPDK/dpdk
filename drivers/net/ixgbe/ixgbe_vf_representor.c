@@ -153,6 +153,20 @@ struct eth_dev_ops ixgbe_vf_representor_dev_ops = {
 	.mac_addr_set		= ixgbe_vf_representor_mac_addr_set,
 };
 
+static uint16_t
+ixgbe_vf_representor_rx_burst(__rte_unused void *rx_queue,
+	__rte_unused struct rte_mbuf **rx_pkts, __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+static uint16_t
+ixgbe_vf_representor_tx_burst(__rte_unused void *tx_queue,
+	__rte_unused struct rte_mbuf **tx_pkts, __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
 int
 ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 {
@@ -182,9 +196,11 @@ ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 	/* Set representor device ops */
 	ethdev->dev_ops = &ixgbe_vf_representor_dev_ops;
 
-	/* No data-path so no RX/TX functions */
-	ethdev->rx_pkt_burst = NULL;
-	ethdev->tx_pkt_burst = NULL;
+	/* No data-path, but need stub Rx/Tx functions to avoid crash
+	 * when testing with the likes of testpmd.
+	 */
+	ethdev->rx_pkt_burst = ixgbe_vf_representor_rx_burst;
+	ethdev->tx_pkt_burst = ixgbe_vf_representor_tx_burst;
 
 	/* Setting the number queues allocated to the VF */
 	ethdev->data->nb_rx_queues = IXGBE_VF_MAX_RX_QUEUES;
