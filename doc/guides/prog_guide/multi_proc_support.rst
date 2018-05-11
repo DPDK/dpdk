@@ -29,6 +29,9 @@ after a primary process has already configured the hugepage shared memory for th
 
     Secondary processes should run alongside primary process with same DPDK version.
 
+    Secondary processes which requires access to physical devices in Primary process, must
+    be passed with the same whitelist and blacklist options.
+
 To support these two process types, and other multi-process setups described later,
 two additional command-line parameters are available to the EAL:
 
