@@ -177,6 +177,14 @@ New Features
   the DPDK framework. It provides Intel FPGA Partial Bit Stream AFU (Accelerated
   Function Unit) scan and drivers probe.
 
+* **Added IFPGA (Intel FPGA) Rawdev Driver.**
+
+  Added a new Rawdev driver called IFPGA(Intel FPGA) Rawdev Driver, which cooperates
+  with OPAE (Open Programmable Acceleration Engine) share code provides common FPGA
+  management ops for FPGA operation.
+
+  See the :doc:`../rawdevs/ifpga_rawdev` programmer's guide for more details.
+
 * **Added DPAA2 QDMA Driver (in rawdev).**
 
   The DPAA2 QDMA is an implementation of the rawdev API, that provide means

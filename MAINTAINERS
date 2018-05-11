@@ -881,8 +881,10 @@ Rawdev Drivers
 --------------
 
 Intel FPGA
+M: Rosen Xu <rosen.xu@intel.com>
 M: Tianfei zhang <tianfei.zhang@intel.com>
 F: drivers/raw/ifpga_rawdev/
+F: doc/guides/rawdevs/ifpga_rawdev.rst
 
 NXP DPAA2 QDMA
 M: Nipun Gupta <nipun.gupta@nxp.com>
