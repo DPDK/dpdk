@@ -1,0 +1,10 @@
+DPDK_18.05 {
+	global:
+
+	rte_ifpga_get_integer32_arg;
+	rte_ifpga_get_string_arg;
+	rte_ifpga_driver_register;
+	rte_ifpga_driver_unregister;
+
+	local: *;
+};

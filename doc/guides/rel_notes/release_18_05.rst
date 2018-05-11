@@ -171,6 +171,12 @@ New Features
     enqueue/dequeue crypto operations to/from cryptodev as events scheduled
     by an event device.
 
+* **Added Ifpga Bus, a generic Intel FPGA Bus library.**
+
+  The Ifpga Bus library provides support for integrating any Intel FPGA device with
+  the DPDK framework. It provides Intel FPGA Partial Bit Stream AFU (Accelerated
+  Function Unit) scan and drivers probe.
+
 * **Added DPAA2 QDMA Driver (in rawdev).**
 
   The DPAA2 QDMA is an implementation of the rawdev API, that provide means

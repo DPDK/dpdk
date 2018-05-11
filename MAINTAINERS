@@ -401,6 +401,10 @@ F: drivers/mempool/bucket/
 Bus Drivers
 -----------
 
+Intel FPGA bus
+M: Rosen Xu <rosen.xu@intel.com>
+F: drivers/bus/ifpga/
+
 NXP buses
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 M: Shreyansh Jain <shreyansh.jain@nxp.com>
