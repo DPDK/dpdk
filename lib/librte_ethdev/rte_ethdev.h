@@ -3674,9 +3674,9 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id);
 * Get the device name from port id
 *
 * @param port_id
-*   pointer to port identifier of the device
+*   Port identifier of the device.
 * @param name
-*  pci address or name of the device
+*   Buffer of size RTE_ETH_NAME_MAX_LEN to store the name.
 * @return
 *   - (0) if successful.
 *   - (-EINVAL) on failure.
