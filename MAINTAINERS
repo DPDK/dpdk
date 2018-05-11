@@ -880,6 +880,10 @@ F: doc/guides/eventdevs/opdl.rst
 Rawdev Drivers
 --------------
 
+Intel FPGA
+M: Tianfei zhang <tianfei.zhang@intel.com>
+F: drivers/raw/ifpga_rawdev/
+
 NXP DPAA2 QDMA
 M: Nipun Gupta <nipun.gupta@nxp.com>
 F: drivers/raw/dpaa2_qdma/

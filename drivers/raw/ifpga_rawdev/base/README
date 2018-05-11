@@ -1,0 +1,31 @@
+..
+
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2010-2018 Intel Corporation
+ */
+
+Intel iFPGA driver
+==================
+
+This directory contains source code of Intel FPGA driver released by
+the team which develops Intel FPGA Open Programmable Acceleration Engine (OPAE).
+The directory of base/ contains the original source package. The base code
+currently supports Intel FPGA solutions including integrated solution (Intel(R)
+Xeon(R) CPU with FPGAs) and discrete solution (Intel(R) Programmable Acceleration
+Card with Intel(R) Arria(R) 10 FPGA) and it could be extended to support more FPGA
+devices in the future.
+
+Please refer to [1][2] for more introduction on OPAE and Intel FPGAs.
+
+[1] https://01.org/OPAE
+[2] https://www.altera.com/solutions/acceleration-hub/overview.html
+
+
+Updating the driver
+===================
+
+NOTE: The source code in this directory should not be modified apart from
+the following file(s):
+
+	osdep_raw/osdep_generic.h
+	osdep_rte/osdep_generic.h
