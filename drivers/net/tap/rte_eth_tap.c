@@ -65,7 +65,7 @@ static const char *valid_arguments[] = {
 	NULL
 };
 
-static int tap_unit;
+static unsigned int tap_unit;
 static unsigned int tun_unit;
 
 static char tuntap_name[8];
@@ -1764,7 +1764,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	}
 
 	speed = ETH_SPEED_NUM_10G;
-	snprintf(tap_name, sizeof(tap_name), "%s%d",
+	snprintf(tap_name, sizeof(tap_name), "%s%u",
 		 DEFAULT_TAP_NAME, tap_unit++);
 	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
 
