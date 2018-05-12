@@ -350,11 +350,12 @@ static inline int rte_vlan_strip(struct rte_mbuf *m)
 {
 	struct ether_hdr *eh
 		 = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	struct vlan_hdr *vh;
 
 	if (eh->ether_type != rte_cpu_to_be_16(ETHER_TYPE_VLAN))
 		return -1;
 
-	struct vlan_hdr *vh = (struct vlan_hdr *)(eh + 1);
+	vh = (struct vlan_hdr *)(eh + 1);
 	m->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 	m->vlan_tci = rte_be_to_cpu_16(vh->vlan_tci);
 
