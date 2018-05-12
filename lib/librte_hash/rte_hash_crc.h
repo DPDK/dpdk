@@ -338,13 +338,12 @@ crc32c_1word(uint32_t data, uint32_t init_val)
 static inline uint32_t
 crc32c_2words(uint64_t data, uint32_t init_val)
 {
+	uint32_t crc, term1, term2;
 	union {
 		uint64_t u64;
 		uint32_t u32[2];
 	} d;
 	d.u64 = data;
-
-	uint32_t crc, term1, term2;
 
 	crc = init_val;
 	crc ^= d.u32[0];
