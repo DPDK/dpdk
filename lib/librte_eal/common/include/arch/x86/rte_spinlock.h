@@ -76,10 +76,12 @@ static inline int rte_tm_supported(void)
 static inline int
 rte_try_tm(volatile int *lock)
 {
+	int retries;
+
 	if (!rte_rtm_supported)
 		return 0;
 
-	int retries = RTE_RTM_MAX_RETRIES;
+	retries = RTE_RTM_MAX_RETRIES;
 
 	while (likely(retries--)) {
 
