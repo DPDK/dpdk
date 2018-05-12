@@ -20,10 +20,10 @@
 #include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_common.h>
-
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
 #include <rte_alarm.h>
+#include <rte_string_fns.h>
 
 #include "rte_rawdev.h"
 #include "rte_rawdev_pmd.h"
@@ -158,7 +158,7 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 		rawdev->dev_ops->dev_start(rawdev))
 		goto free_dev;
 
-	strncpy(afu_pr_conf.bs_path, path, sizeof(afu_pr_conf.bs_path));
+	strlcpy(afu_pr_conf.bs_path, path, sizeof(afu_pr_conf.bs_path));
 	if (rawdev->dev_ops->firmware_load &&
 		rawdev->dev_ops->firmware_load(rawdev,
 				&afu_pr_conf)){
