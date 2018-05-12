@@ -51,15 +51,18 @@ rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
 
 	va_start(ap, fmt);
 
-	char buffer[vsnprintf(NULL, 0, fmt, ap) + 1];
+	{
+		char buffer[vsnprintf(NULL, 0, fmt, ap) + 1];
 
-	va_end(ap);
+		va_end(ap);
 
-	va_start(ap, fmt);
-	vsnprintf(buffer, sizeof(buffer), fmt, ap);
-	va_end(ap);
+		va_start(ap, fmt);
+		vsnprintf(buffer, sizeof(buffer), fmt, ap);
+		va_end(ap);
 
-	rte_log(RTE_LOG_ERR, RTE_LOGTYPE_PMD, "%s: %s", func_name, buffer);
+		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_PMD, "%s: %s",
+			func_name, buffer);
+	}
 }
 
 /*
