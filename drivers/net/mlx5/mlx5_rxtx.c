@@ -2253,11 +2253,11 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	}
 	/* Update the consumer indexes. */
 	rxq->strd_ci = strd_idx;
-	rte_io_wmb();
+	rte_cio_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	if (rq_ci != rxq->rq_ci) {
 		rxq->rq_ci = rq_ci;
-		rte_io_wmb();
+		rte_cio_wmb();
 		*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 	}
 #ifdef MLX5_PMD_SOFT_COUNTERS
