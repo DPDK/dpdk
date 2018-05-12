@@ -160,7 +160,7 @@ error:
 	err = rte_errno; /* Save rte_errno before cleanup. */
 	wqe_n = i;
 	for (i = 0; (i != wqe_n); ++i) {
-		if ((*rxq->elts)[i] != NULL)
+		if ((*rxq->mprq_bufs)[i] != NULL)
 			rte_mempool_put(rxq->mprq_mp,
 					(*rxq->mprq_bufs)[i]);
 		(*rxq->mprq_bufs)[i] = NULL;
