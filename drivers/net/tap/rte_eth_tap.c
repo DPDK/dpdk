@@ -66,7 +66,7 @@ static const char *valid_arguments[] = {
 };
 
 static int tap_unit;
-static int tun_unit;
+static unsigned int tun_unit;
 
 static int tap_type;
 static char tuntap_name[8];
@@ -1601,6 +1601,9 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
 	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
+
+	snprintf(tun_name, sizeof(tun_name), "%s%u",
+		 DEFAULT_TUN_NAME, tun_unit++);
 
 	if (params && (params[0] != '\0')) {
 		TAP_LOG(DEBUG, "parameters (%s)", params);
