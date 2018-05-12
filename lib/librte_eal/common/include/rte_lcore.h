@@ -119,7 +119,7 @@ rte_lcore_index(int lcore_id)
 	if (lcore_id >= RTE_MAX_LCORE)
 		return -1;
 	if (lcore_id < 0)
-		lcore_id = rte_lcore_id();
+		lcore_id = (int)rte_lcore_id();
 	return lcore_config[lcore_id].core_index;
 }
 
