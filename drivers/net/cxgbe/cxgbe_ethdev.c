@@ -256,7 +256,6 @@ void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
-	int i, dev_down = 0;
 
 	CXGBE_FUNC_TRACE();
 
@@ -270,22 +269,6 @@ void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
 	 *  have been disabled
 	 */
 	t4_sge_eth_clear_queues(pi);
-
-	/*  See if all ports are down */
-	for_each_port(adapter, i) {
-		pi = adap2pinfo(adapter, i);
-		/*
-		 * Skip first port of the adapter since it will be closed
-		 * by DPDK
-		 */
-		if (i == 0)
-			continue;
-		dev_down += (pi->eth_dev->data->dev_started == 0) ? 1 : 0;
-	}
-
-	/* If rest of the ports are stopped, then free up resources */
-	if (dev_down == (adapter->params.nports - 1))
-		cxgbe_close(adapter);
 }
 
 /* Start the device.
@@ -1143,6 +1126,16 @@ out_free_adapter:
 	return err;
 }
 
+static int eth_cxgbe_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adap = pi->adapter;
+
+	/* Free up other ports and all resources */
+	cxgbe_close(adap);
+	return 0;
+}
+
 static int eth_cxgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
@@ -1152,7 +1145,7 @@ static int eth_cxgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 static int eth_cxgbe_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_cxgbe_dev_uninit);
 }
 
 static struct rte_pci_driver rte_cxgbe_pmd = {
