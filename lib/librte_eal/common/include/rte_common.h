@@ -413,7 +413,7 @@ rte_align64prevpow2(uint64_t v)
 static inline uint32_t
 rte_bsf32(uint32_t v)
 {
-	return __builtin_ctz(v);
+	return (uint32_t)__builtin_ctz(v);
 }
 
 /**
