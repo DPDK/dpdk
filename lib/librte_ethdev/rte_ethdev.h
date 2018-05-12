@@ -4240,8 +4240,9 @@ rte_eth_tx_buffer_flush(uint16_t port_id, uint16_t queue_id,
 
 	/* All packets sent, or to be dealt with by callback below */
 	if (unlikely(sent != to_send))
-		buffer->error_callback(&buffer->pkts[sent], to_send - sent,
-				buffer->error_userdata);
+		buffer->error_callback(&buffer->pkts[sent],
+				       (uint16_t)(to_send - sent),
+				       buffer->error_userdata);
 
 	return sent;
 }
