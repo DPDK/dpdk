@@ -2335,7 +2335,12 @@ mlx5_flow_dump(struct rte_eth_dev *dev __rte_unused,
 	uint16_t j;
 	char buf[256];
 	uint8_t off;
+	uint64_t extra_hash_fields = 0;
 
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	if (flow->tunnel && flow->rss_conf.level > 1)
+		extra_hash_fields = (uint32_t)IBV_RX_HASH_INNER;
+#endif
 	spec_ptr = (uintptr_t)(flow->frxq[hrxq_idx].ibv_attr + 1);
 	for (j = 0, off = 0; j < flow->frxq[hrxq_idx].ibv_attr->num_of_specs;
 	     j++) {
@@ -2352,9 +2357,7 @@ mlx5_flow_dump(struct rte_eth_dev *dev __rte_unused,
 		(void *)flow->frxq[hrxq_idx].hrxq,
 		(void *)flow->frxq[hrxq_idx].hrxq->qp,
 		(void *)flow->frxq[hrxq_idx].hrxq->ind_table,
-		flow->frxq[hrxq_idx].hash_fields |
-		(flow->tunnel &&
-		 flow->rss_conf.level > 1 ? (uint32_t)IBV_RX_HASH_INNER : 0),
+		(flow->frxq[hrxq_idx].hash_fields | extra_hash_fields),
 		flow->rss_conf.queue_num,
 		flow->frxq[hrxq_idx].ibv_attr->num_of_specs,
 		flow->frxq[hrxq_idx].ibv_attr->size,
