@@ -574,11 +574,11 @@ static bool axgbe_phy_belfuse_parse_quirks(struct axgbe_port *pdata)
 	struct axgbe_sfp_eeprom *sfp_eeprom = &phy_data->sfp_eeprom;
 
 	if (memcmp(&sfp_eeprom->base[AXGBE_SFP_BASE_VENDOR_NAME],
-		   AXGBE_BEL_FUSE_VENDOR, AXGBE_SFP_BASE_VENDOR_NAME_LEN))
+		   AXGBE_BEL_FUSE_VENDOR, strlen(AXGBE_BEL_FUSE_VENDOR)))
 		return false;
 
 	if (!memcmp(&sfp_eeprom->base[AXGBE_SFP_BASE_VENDOR_PN],
-		    AXGBE_BEL_FUSE_PARTNO, AXGBE_SFP_BASE_VENDOR_PN_LEN)) {
+		    AXGBE_BEL_FUSE_PARTNO, strlen(AXGBE_BEL_FUSE_PARTNO))) {
 		phy_data->sfp_base = AXGBE_SFP_BASE_1000_SX;
 		phy_data->sfp_cable = AXGBE_SFP_CABLE_ACTIVE;
 		phy_data->sfp_speed = AXGBE_SFP_SPEED_1000;
