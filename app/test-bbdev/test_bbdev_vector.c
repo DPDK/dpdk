@@ -891,8 +891,7 @@ test_bbdev_vector_read(const char *filename,
 			goto exit;
 		}
 
-		memset(entry, 0, strlen(line) + 1);
-		strncpy(entry, line, strlen(line));
+		strcpy(entry, line);
 
 		/* check if entry ends with , or = */
 		if (entry[strlen(entry) - 1] == ','
@@ -914,7 +913,8 @@ test_bbdev_vector_read(const char *filename,
 				}
 
 				entry = entry_extended;
-				strncat(entry, line, strlen(line));
+				/* entry has been allocated accordingly */
+				strcpy(&entry[strlen(entry)], line);
 
 				if (entry[strlen(entry) - 1] != ',')
 					break;
