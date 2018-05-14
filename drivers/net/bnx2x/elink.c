@@ -12921,7 +12921,7 @@ static void elink_check_kr2_wa(struct elink_params *params,
 	 */
 	not_kr2_device = (((base_page & 0x8000) == 0) ||
 			  (((base_page & 0x8000) &&
-			    ((next_page & 0xe0) == 0x2))));
+			    ((next_page & 0xe0) == 0x20))));
 
 	/* In case KR2 is already disabled, check if we need to re-enable it */
 	if (!(vars->link_attr_sync & LINK_ATTR_SYNC_KR2_ENABLE)) {
