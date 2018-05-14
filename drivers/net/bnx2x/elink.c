@@ -4143,9 +4143,9 @@ static void elink_sfp_e3_set_transmitter(struct elink_params *params,
 		elink_set_cfg_pin(sc, cfg_pin + 3, tx_en ^ 1);
 }
 
-static void elink_warpcore_config_init(struct elink_phy *phy,
-				       struct elink_params *params,
-				       struct elink_vars *vars)
+static uint8_t elink_warpcore_config_init(struct elink_phy *phy,
+					  struct elink_params *params,
+					  struct elink_vars *vars)
 {
 	struct bnx2x_softc *sc = params->sc;
 	uint32_t serdes_net_if;
@@ -4222,7 +4222,7 @@ static void elink_warpcore_config_init(struct elink_phy *phy,
 		case PORT_HW_CFG_NET_SERDES_IF_DXGXS:
 			if (vars->line_speed != ELINK_SPEED_20000) {
 				PMD_DRV_LOG(DEBUG, "Speed not supported yet");
-				return;
+				return 0;
 			}
 			PMD_DRV_LOG(DEBUG, "Setting 20G DXGXS");
 			elink_warpcore_set_20G_DXGXS(sc, phy, lane);
@@ -4242,13 +4242,15 @@ static void elink_warpcore_config_init(struct elink_phy *phy,
 			PMD_DRV_LOG(DEBUG,
 				    "Unsupported Serdes Net Interface 0x%x",
 				    serdes_net_if);
-			return;
+			return 0;
 		}
 	}
 
 	/* Take lane out of reset after configuration is finished */
 	elink_warpcore_reset_lane(sc, phy, 0);
 	PMD_DRV_LOG(DEBUG, "Exit config init");
+
+	return 0;
 }
 
 static void elink_warpcore_link_reset(struct elink_phy *phy,
@@ -5226,9 +5228,9 @@ static elink_status_t elink_get_link_speed_duplex(struct elink_phy *phy,
 	return ELINK_STATUS_OK;
 }
 
-static elink_status_t elink_link_settings_status(struct elink_phy *phy,
-						 struct elink_params *params,
-						 struct elink_vars *vars)
+static uint8_t elink_link_settings_status(struct elink_phy *phy,
+					  struct elink_params *params,
+					  struct elink_vars *vars)
 {
 	struct bnx2x_softc *sc = params->sc;
 
@@ -5299,9 +5301,9 @@ static elink_status_t elink_link_settings_status(struct elink_phy *phy,
 	return rc;
 }
 
-static elink_status_t elink_warpcore_read_status(struct elink_phy *phy,
-						 struct elink_params *params,
-						 struct elink_vars *vars)
+static uint8_t elink_warpcore_read_status(struct elink_phy *phy,
+					  struct elink_params *params,
+					  struct elink_vars *vars)
 {
 	struct bnx2x_softc *sc = params->sc;
 	uint8_t lane;
@@ -5520,9 +5522,9 @@ static void elink_set_preemphasis(struct elink_phy *phy,
 	}
 }
 
-static void elink_xgxs_config_init(struct elink_phy *phy,
-				   struct elink_params *params,
-				   struct elink_vars *vars)
+static uint8_t elink_xgxs_config_init(struct elink_phy *phy,
+				      struct elink_params *params,
+				      struct elink_vars *vars)
 {
 	uint8_t enable_cl73 = (ELINK_SINGLE_MEDIA_DIRECT(params) ||
 			       (params->loopback_mode == ELINK_LOOPBACK_XGXS));
@@ -5567,6 +5569,8 @@ static void elink_xgxs_config_init(struct elink_phy *phy,
 
 		elink_initialize_sgmii_process(phy, params, vars);
 	}
+
+	return 0;
 }
 
 static elink_status_t elink_prepare_xgxs(struct elink_phy *phy,
@@ -5751,8 +5755,8 @@ static void elink_link_int_ack(struct elink_params *params,
 	}
 }
 
-static elink_status_t elink_format_ver(uint32_t num, uint8_t * str,
-				       uint16_t * len)
+static uint8_t elink_format_ver(uint32_t num, uint8_t * str,
+				uint16_t * len)
 {
 	uint8_t *str_ptr = str;
 	uint32_t mask = 0xf0000000;
@@ -5790,8 +5794,8 @@ static elink_status_t elink_format_ver(uint32_t num, uint8_t * str,
 	return ELINK_STATUS_OK;
 }
 
-static elink_status_t elink_null_format_ver(__rte_unused uint32_t spirom_ver,
-					    uint8_t * str, uint16_t * len)
+static uint8_t elink_null_format_ver(__rte_unused uint32_t spirom_ver,
+				     uint8_t * str, uint16_t * len)
 {
 	str[0] = '\0';
 	(*len)--;
@@ -6802,9 +6806,9 @@ static void elink_8073_specific_func(struct elink_phy *phy,
 	}
 }
 
-static elink_status_t elink_8073_config_init(struct elink_phy *phy,
-					     struct elink_params *params,
-					     struct elink_vars *vars)
+static uint8_t elink_8073_config_init(struct elink_phy *phy,
+				      struct elink_params *params,
+				      struct elink_vars *vars)
 {
 	struct bnx2x_softc *sc = params->sc;
 	uint16_t val = 0, tmp1;
@@ -7097,9 +7101,9 @@ static void elink_8073_link_reset(__rte_unused struct elink_phy *phy,
 /******************************************************************/
 /*			BNX2X8705 PHY SECTION			  */
 /******************************************************************/
-static elink_status_t elink_8705_config_init(struct elink_phy *phy,
-					     struct elink_params *params,
-					     __rte_unused struct elink_vars
+static uint8_t elink_8705_config_init(struct elink_phy *phy,
+				      struct elink_params *params,
+				      __rte_unused struct elink_vars
 					     *vars)
 {
 	struct bnx2x_softc *sc = params->sc;
@@ -8403,9 +8407,9 @@ static uint8_t elink_8706_config_init(struct elink_phy *phy,
 	return ELINK_STATUS_OK;
 }
 
-static elink_status_t elink_8706_read_status(struct elink_phy *phy,
-					     struct elink_params *params,
-					     struct elink_vars *vars)
+static uint8_t elink_8706_read_status(struct elink_phy *phy,
+				      struct elink_params *params,
+				      struct elink_vars *vars)
 {
 	return elink_8706_8726_read_status(phy, params, vars);
 }
@@ -8477,9 +8481,9 @@ static uint8_t elink_8726_read_status(struct elink_phy *phy,
 	return link_up;
 }
 
-static elink_status_t elink_8726_config_init(struct elink_phy *phy,
-					     struct elink_params *params,
-					     struct elink_vars *vars)
+static uint8_t elink_8726_config_init(struct elink_phy *phy,
+				      struct elink_params *params,
+				      struct elink_vars *vars)
 {
 	struct bnx2x_softc *sc = params->sc;
 	PMD_DRV_LOG(DEBUG, "Initializing BNX2X8726");
@@ -8684,9 +8688,9 @@ static void elink_8727_config_speed(struct elink_phy *phy,
 	}
 }
 
-static elink_status_t elink_8727_config_init(struct elink_phy *phy,
-					     struct elink_params *params,
-					     __rte_unused struct elink_vars
+static uint8_t elink_8727_config_init(struct elink_phy *phy,
+				      struct elink_params *params,
+				      __rte_unused struct elink_vars
 					     *vars)
 {
 	uint32_t tx_en_mode;
@@ -9291,7 +9295,7 @@ static elink_status_t elink_848xx_cmn_config_init(struct elink_phy *phy,
 	return ELINK_STATUS_OK;
 }
 
-static elink_status_t elink_8481_config_init(struct elink_phy *phy,
+static uint8_t elink_8481_config_init(struct elink_phy *phy,
 					     struct elink_params *params,
 					     struct elink_vars *vars)
 {
@@ -9442,8 +9446,8 @@ static uint8_t elink_84833_get_reset_gpios(struct bnx2x_softc *sc,
 	return reset_gpios;
 }
 
-static elink_status_t elink_84833_hw_reset_phy(struct elink_phy *phy,
-					       struct elink_params *params)
+static void elink_84833_hw_reset_phy(struct elink_phy *phy,
+					struct elink_params *params)
 {
 	struct bnx2x_softc *sc = params->sc;
 	uint8_t reset_gpios;
@@ -9471,8 +9475,6 @@ static elink_status_t elink_84833_hw_reset_phy(struct elink_phy *phy,
 				 MISC_REGISTERS_GPIO_OUTPUT_LOW);
 	DELAY(10);
 	PMD_DRV_LOG(DEBUG, "84833 hw reset on pin values 0x%x", reset_gpios);
-
-	return ELINK_STATUS_OK;
 }
 
 static elink_status_t elink_8483x_disable_eee(struct elink_phy *phy,
@@ -9513,9 +9515,9 @@ static elink_status_t elink_8483x_enable_eee(struct elink_phy *phy,
 }
 
 #define PHY84833_CONSTANT_LATENCY 1193
-static elink_status_t elink_848x3_config_init(struct elink_phy *phy,
-					      struct elink_params *params,
-					      struct elink_vars *vars)
+static uint8_t elink_848x3_config_init(struct elink_phy *phy,
+				       struct elink_params *params,
+				       struct elink_vars *vars)
 {
 	struct bnx2x_softc *sc = params->sc;
 	uint8_t port, initialize = 1;
@@ -9819,7 +9821,7 @@ static uint8_t elink_848xx_read_status(struct elink_phy *phy,
 	return link_up;
 }
 
-static elink_status_t elink_848xx_format_ver(uint32_t raw_ver, uint8_t * str,
+static uint8_t elink_848xx_format_ver(uint32_t raw_ver, uint8_t * str,
 					     uint16_t * len)
 {
 	elink_status_t status = ELINK_STATUS_OK;
@@ -10146,9 +10148,9 @@ static void elink_54618se_specific_func(struct elink_phy *phy,
 	}
 }
 
-static elink_status_t elink_54618se_config_init(struct elink_phy *phy,
-						struct elink_params *params,
-						struct elink_vars *vars)
+static uint8_t elink_54618se_config_init(struct elink_phy *phy,
+					 struct elink_params *params,
+					 struct elink_vars *vars)
 {
 	struct bnx2x_softc *sc = params->sc;
 	uint8_t port;
@@ -10542,9 +10544,9 @@ static void elink_7101_config_loopback(struct elink_phy *phy,
 			 MDIO_XS_DEVAD, MDIO_XS_SFX7101_XGXS_TEST1, 0x100);
 }
 
-static elink_status_t elink_7101_config_init(struct elink_phy *phy,
-					     struct elink_params *params,
-					     struct elink_vars *vars)
+static uint8_t elink_7101_config_init(struct elink_phy *phy,
+				      struct elink_params *params,
+				      struct elink_vars *vars)
 {
 	uint16_t fw_ver1, fw_ver2, val;
 	struct bnx2x_softc *sc = params->sc;
@@ -10614,8 +10616,8 @@ static uint8_t elink_7101_read_status(struct elink_phy *phy,
 	return link_up;
 }
 
-static elink_status_t elink_7101_format_ver(uint32_t spirom_ver, uint8_t * str,
-					    uint16_t * len)
+static uint8_t elink_7101_format_ver(uint32_t spirom_ver, uint8_t * str,
+				     uint16_t * len)
 {
 	if (*len < 5)
 		return ELINK_STATUS_ERROR;
@@ -10680,14 +10682,14 @@ static const struct elink_phy phy_null = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) NULL,
-	.read_status = (read_status_t) NULL,
-	.link_reset = (link_reset_t) NULL,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) NULL,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) NULL,
-	.phy_specific_func = (phy_specific_func_t) NULL
+	.config_init = NULL,
+	.read_status = NULL,
+	.link_reset = NULL,
+	.config_loopback = NULL,
+	.format_fw_ver = NULL,
+	.hw_reset = NULL,
+	.set_link_led = NULL,
+	.phy_specific_func = NULL
 };
 
 static const struct elink_phy phy_serdes = {
@@ -10714,14 +10716,14 @@ static const struct elink_phy phy_serdes = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_xgxs_config_init,
-	.read_status = (read_status_t) elink_link_settings_status,
-	.link_reset = (link_reset_t) elink_int_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) NULL,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) NULL,
-	.phy_specific_func = (phy_specific_func_t) NULL
+	.config_init = elink_xgxs_config_init,
+	.read_status = elink_link_settings_status,
+	.link_reset = elink_int_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = NULL,
+	.hw_reset = NULL,
+	.set_link_led = NULL,
+	.phy_specific_func = NULL
 };
 
 static const struct elink_phy phy_xgxs = {
@@ -10749,14 +10751,14 @@ static const struct elink_phy phy_xgxs = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_xgxs_config_init,
-	.read_status = (read_status_t) elink_link_settings_status,
-	.link_reset = (link_reset_t) elink_int_link_reset,
-	.config_loopback = (config_loopback_t) elink_set_xgxs_loopback,
-	.format_fw_ver = (format_fw_ver_t) NULL,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) NULL,
-	.phy_specific_func = (phy_specific_func_t) elink_xgxs_specific_func
+	.config_init = elink_xgxs_config_init,
+	.read_status = elink_link_settings_status,
+	.link_reset = elink_int_link_reset,
+	.config_loopback = elink_set_xgxs_loopback,
+	.format_fw_ver = NULL,
+	.hw_reset = NULL,
+	.set_link_led = NULL,
+	.phy_specific_func = elink_xgxs_specific_func
 };
 
 static const struct elink_phy phy_warpcore = {
@@ -10785,14 +10787,14 @@ static const struct elink_phy phy_warpcore = {
 	.speed_cap_mask = 0,
 	/* req_duplex = */ 0,
 	/* rsrv = */ 0,
-	.config_init = (config_init_t) elink_warpcore_config_init,
-	.read_status = (read_status_t) elink_warpcore_read_status,
-	.link_reset = (link_reset_t) elink_warpcore_link_reset,
-	.config_loopback = (config_loopback_t) elink_set_warpcore_loopback,
-	.format_fw_ver = (format_fw_ver_t) NULL,
-	.hw_reset = (hw_reset_t) elink_warpcore_hw_reset,
-	.set_link_led = (set_link_led_t) NULL,
-	.phy_specific_func = (phy_specific_func_t) NULL
+	.config_init = elink_warpcore_config_init,
+	.read_status = elink_warpcore_read_status,
+	.link_reset = elink_warpcore_link_reset,
+	.config_loopback = elink_set_warpcore_loopback,
+	.format_fw_ver = NULL,
+	.hw_reset = elink_warpcore_hw_reset,
+	.set_link_led = NULL,
+	.phy_specific_func = NULL
 };
 
 static const struct elink_phy phy_7101 = {
@@ -10814,14 +10816,14 @@ static const struct elink_phy phy_7101 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_7101_config_init,
-	.read_status = (read_status_t) elink_7101_read_status,
-	.link_reset = (link_reset_t) elink_common_ext_link_reset,
-	.config_loopback = (config_loopback_t) elink_7101_config_loopback,
-	.format_fw_ver = (format_fw_ver_t) elink_7101_format_ver,
-	.hw_reset = (hw_reset_t) elink_7101_hw_reset,
-	.set_link_led = (set_link_led_t) elink_7101_set_link_led,
-	.phy_specific_func = (phy_specific_func_t) NULL
+	.config_init = elink_7101_config_init,
+	.read_status = elink_7101_read_status,
+	.link_reset = elink_common_ext_link_reset,
+	.config_loopback = elink_7101_config_loopback,
+	.format_fw_ver = elink_7101_format_ver,
+	.hw_reset = elink_7101_hw_reset,
+	.set_link_led = elink_7101_set_link_led,
+	.phy_specific_func = NULL
 };
 
 static const struct elink_phy phy_8073 = {
@@ -10845,14 +10847,14 @@ static const struct elink_phy phy_8073 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_8073_config_init,
-	.read_status = (read_status_t) elink_8073_read_status,
-	.link_reset = (link_reset_t) elink_8073_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) elink_format_ver,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) NULL,
-	.phy_specific_func = (phy_specific_func_t) elink_8073_specific_func
+	.config_init = elink_8073_config_init,
+	.read_status = elink_8073_read_status,
+	.link_reset = elink_8073_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = elink_format_ver,
+	.hw_reset = NULL,
+	.set_link_led = NULL,
+	.phy_specific_func = elink_8073_specific_func
 };
 
 static const struct elink_phy phy_8705 = {
@@ -10873,14 +10875,14 @@ static const struct elink_phy phy_8705 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_8705_config_init,
-	.read_status = (read_status_t) elink_8705_read_status,
-	.link_reset = (link_reset_t) elink_common_ext_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) elink_null_format_ver,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) NULL,
-	.phy_specific_func = (phy_specific_func_t) NULL
+	.config_init = elink_8705_config_init,
+	.read_status = elink_8705_read_status,
+	.link_reset = elink_common_ext_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = elink_null_format_ver,
+	.hw_reset = NULL,
+	.set_link_led = NULL,
+	.phy_specific_func = NULL
 };
 
 static const struct elink_phy phy_8706 = {
@@ -10902,14 +10904,14 @@ static const struct elink_phy phy_8706 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_8706_config_init,
-	.read_status = (read_status_t) elink_8706_read_status,
-	.link_reset = (link_reset_t) elink_common_ext_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) elink_format_ver,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) NULL,
-	.phy_specific_func = (phy_specific_func_t) NULL
+	.config_init = elink_8706_config_init,
+	.read_status = elink_8706_read_status,
+	.link_reset = elink_common_ext_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = elink_format_ver,
+	.hw_reset = NULL,
+	.set_link_led = NULL,
+	.phy_specific_func = NULL
 };
 
 static const struct elink_phy phy_8726 = {
@@ -10932,14 +10934,14 @@ static const struct elink_phy phy_8726 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_8726_config_init,
-	.read_status = (read_status_t) elink_8726_read_status,
-	.link_reset = (link_reset_t) elink_8726_link_reset,
-	.config_loopback = (config_loopback_t) elink_8726_config_loopback,
-	.format_fw_ver = (format_fw_ver_t) elink_format_ver,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) NULL,
-	.phy_specific_func = (phy_specific_func_t) NULL
+	.config_init = elink_8726_config_init,
+	.read_status = elink_8726_read_status,
+	.link_reset = elink_8726_link_reset,
+	.config_loopback = elink_8726_config_loopback,
+	.format_fw_ver = elink_format_ver,
+	.hw_reset = NULL,
+	.set_link_led = NULL,
+	.phy_specific_func = NULL
 };
 
 static const struct elink_phy phy_8727 = {
@@ -10961,14 +10963,14 @@ static const struct elink_phy phy_8727 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_8727_config_init,
-	.read_status = (read_status_t) elink_8727_read_status,
-	.link_reset = (link_reset_t) elink_8727_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) elink_format_ver,
-	.hw_reset = (hw_reset_t) elink_8727_hw_reset,
-	.set_link_led = (set_link_led_t) elink_8727_set_link_led,
-	.phy_specific_func = (phy_specific_func_t) elink_8727_specific_func
+	.config_init = elink_8727_config_init,
+	.read_status = elink_8727_read_status,
+	.link_reset = elink_8727_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = elink_format_ver,
+	.hw_reset = elink_8727_hw_reset,
+	.set_link_led = elink_8727_set_link_led,
+	.phy_specific_func = elink_8727_specific_func
 };
 
 static const struct elink_phy phy_8481 = {
@@ -10996,14 +10998,14 @@ static const struct elink_phy phy_8481 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_8481_config_init,
-	.read_status = (read_status_t) elink_848xx_read_status,
-	.link_reset = (link_reset_t) elink_8481_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) elink_848xx_format_ver,
-	.hw_reset = (hw_reset_t) elink_8481_hw_reset,
-	.set_link_led = (set_link_led_t) elink_848xx_set_link_led,
-	.phy_specific_func = (phy_specific_func_t) NULL
+	.config_init = elink_8481_config_init,
+	.read_status = elink_848xx_read_status,
+	.link_reset = elink_8481_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = elink_848xx_format_ver,
+	.hw_reset = elink_8481_hw_reset,
+	.set_link_led = elink_848xx_set_link_led,
+	.phy_specific_func = NULL
 };
 
 static const struct elink_phy phy_84823 = {
@@ -11031,14 +11033,14 @@ static const struct elink_phy phy_84823 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_848x3_config_init,
-	.read_status = (read_status_t) elink_848xx_read_status,
-	.link_reset = (link_reset_t) elink_848x3_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) elink_848xx_format_ver,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) elink_848xx_set_link_led,
-	.phy_specific_func = (phy_specific_func_t) elink_848xx_specific_func
+	.config_init = elink_848x3_config_init,
+	.read_status = elink_848xx_read_status,
+	.link_reset = elink_848x3_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = elink_848xx_format_ver,
+	.hw_reset = NULL,
+	.set_link_led = elink_848xx_set_link_led,
+	.phy_specific_func = elink_848xx_specific_func
 };
 
 static const struct elink_phy phy_84833 = {
@@ -11065,14 +11067,14 @@ static const struct elink_phy phy_84833 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_848x3_config_init,
-	.read_status = (read_status_t) elink_848xx_read_status,
-	.link_reset = (link_reset_t) elink_848x3_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) elink_848xx_format_ver,
-	.hw_reset = (hw_reset_t) elink_84833_hw_reset_phy,
-	.set_link_led = (set_link_led_t) elink_848xx_set_link_led,
-	.phy_specific_func = (phy_specific_func_t) elink_848xx_specific_func
+	.config_init = elink_848x3_config_init,
+	.read_status = elink_848xx_read_status,
+	.link_reset = elink_848x3_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = elink_848xx_format_ver,
+	.hw_reset = elink_84833_hw_reset_phy,
+	.set_link_led = elink_848xx_set_link_led,
+	.phy_specific_func = elink_848xx_specific_func
 };
 
 static const struct elink_phy phy_84834 = {
@@ -11098,14 +11100,14 @@ static const struct elink_phy phy_84834 = {
 	.speed_cap_mask = 0,
 	.req_duplex = 0,
 	.rsrv = 0,
-	.config_init = (config_init_t) elink_848x3_config_init,
-	.read_status = (read_status_t) elink_848xx_read_status,
-	.link_reset = (link_reset_t) elink_848x3_link_reset,
-	.config_loopback = (config_loopback_t) NULL,
-	.format_fw_ver = (format_fw_ver_t) elink_848xx_format_ver,
-	.hw_reset = (hw_reset_t) elink_84833_hw_reset_phy,
-	.set_link_led = (set_link_led_t) elink_848xx_set_link_led,
-	.phy_specific_func = (phy_specific_func_t) elink_848xx_specific_func
+	.config_init = elink_848x3_config_init,
+	.read_status = elink_848xx_read_status,
+	.link_reset = elink_848x3_link_reset,
+	.config_loopback = NULL,
+	.format_fw_ver = elink_848xx_format_ver,
+	.hw_reset = elink_84833_hw_reset_phy,
+	.set_link_led = elink_848xx_set_link_led,
+	.phy_specific_func = elink_848xx_specific_func
 };
 
 static const struct elink_phy phy_54618se = {
@@ -11131,14 +11133,14 @@ static const struct elink_phy phy_54618se = {
 	.speed_cap_mask = 0,
 	/* req_duplex = */ 0,
 	/* rsrv = */ 0,
-	.config_init = (config_init_t) elink_54618se_config_init,
-	.read_status = (read_status_t) elink_54618se_read_status,
-	.link_reset = (link_reset_t) elink_54618se_link_reset,
-	.config_loopback = (config_loopback_t) elink_54618se_config_loopback,
-	.format_fw_ver = (format_fw_ver_t) NULL,
-	.hw_reset = (hw_reset_t) NULL,
-	.set_link_led = (set_link_led_t) elink_5461x_set_link_led,
-	.phy_specific_func = (phy_specific_func_t) elink_54618se_specific_func
+	.config_init = elink_54618se_config_init,
+	.read_status = elink_54618se_read_status,
+	.link_reset = elink_54618se_link_reset,
+	.config_loopback = elink_54618se_config_loopback,
+	.format_fw_ver = NULL,
+	.hw_reset = NULL,
+	.set_link_led = elink_5461x_set_link_led,
+	.phy_specific_func = elink_54618se_specific_func
 };
 
 /*****************************************************************/
