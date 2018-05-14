@@ -13,7 +13,6 @@
 
 /** Path of rte config file. */
 #define RUNTIME_CONFIG_FMT "%s/.%s_config"
-#define FBARRAY_FMT "%s/.%s_%s"
 
 #include <stdint.h>
 #include <limits.h>
@@ -22,8 +21,6 @@
 
 #include <rte_string_fns.h>
 #include "eal_internal_cfg.h"
-
-static const char *default_config_dir = "/var/run";
 
 /* sets up platform-specific runtime data dir */
 int
@@ -37,7 +34,7 @@ static inline const char *
 eal_runtime_config_path(void)
 {
 	static char buffer[PATH_MAX]; /* static so auto-zeroed */
-	const char *directory = default_config_dir;
+	const char *directory = "/var/run";
 	const char *home_dir = getenv("HOME");
 
 	if (getuid() != 0 && home_dir != NULL)
@@ -48,65 +45,45 @@ eal_runtime_config_path(void)
 }
 
 /** Path of primary/secondary communication unix socket file. */
-#define MP_SOCKET_PATH_FMT "%s/.%s_unix"
+#define MP_SOCKET_FNAME "mp_socket"
 static inline const char *
 eal_mp_socket_path(void)
 {
 	static char buffer[PATH_MAX]; /* static so auto-zeroed */
-	const char *directory = default_config_dir;
-	const char *home_dir = getenv("HOME");
 
-	if (getuid() != 0 && home_dir != NULL)
-		directory = home_dir;
-	snprintf(buffer, sizeof(buffer) - 1, MP_SOCKET_PATH_FMT,
-		 directory, internal_config.hugefile_prefix);
-
+	snprintf(buffer, sizeof(buffer) - 1, "%s/%s", eal_get_runtime_dir(),
+			MP_SOCKET_FNAME);
 	return buffer;
 }
 
+#define FBARRAY_NAME_FMT "%s/fbarray_%s"
 static inline const char *
 eal_get_fbarray_path(char *buffer, size_t buflen, const char *name) {
-	const char *directory = "/tmp";
-	const char *home_dir = getenv("HOME");
-
-	if (getuid() != 0 && home_dir != NULL)
-		directory = home_dir;
-	snprintf(buffer, buflen - 1, FBARRAY_FMT, directory,
-			internal_config.hugefile_prefix, name);
+	snprintf(buffer, buflen, FBARRAY_NAME_FMT, eal_get_runtime_dir(), name);
 	return buffer;
 }
 
 /** Path of hugepage info file. */
-#define HUGEPAGE_INFO_FMT "%s/.%s_hugepage_info"
-
+#define HUGEPAGE_INFO_FNAME "hugepage_info"
 static inline const char *
 eal_hugepage_info_path(void)
 {
 	static char buffer[PATH_MAX]; /* static so auto-zeroed */
-	const char *directory = default_config_dir;
-	const char *home_dir = getenv("HOME");
 
-	if (getuid() != 0 && home_dir != NULL)
-		directory = home_dir;
-	snprintf(buffer, sizeof(buffer) - 1, HUGEPAGE_INFO_FMT, directory,
-			internal_config.hugefile_prefix);
+	snprintf(buffer, sizeof(buffer) - 1, "%s/%s", eal_get_runtime_dir(),
+			HUGEPAGE_INFO_FNAME);
 	return buffer;
 }
 
-/** Path of hugepage info file. */
-#define HUGEPAGE_FILE_FMT "%s/.%s_hugepage_file"
-
+/** Path of hugepage data file. */
+#define HUGEPAGE_DATA_FNAME "hugepage_data"
 static inline const char *
 eal_hugepage_data_path(void)
 {
 	static char buffer[PATH_MAX]; /* static so auto-zeroed */
-	const char *directory = default_config_dir;
-	const char *home_dir = getenv("HOME");
 
-	if (getuid() != 0 && home_dir != NULL)
-		directory = home_dir;
-	snprintf(buffer, sizeof(buffer) - 1, HUGEPAGE_FILE_FMT, directory,
-			internal_config.hugefile_prefix);
+	snprintf(buffer, sizeof(buffer) - 1, "%s/%s", eal_get_runtime_dir(),
+			HUGEPAGE_DATA_FNAME);
 	return buffer;
 }
 
@@ -122,18 +99,12 @@ eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id
 }
 
 /** String format for hugepage map lock files. */
-#define HUGEFILE_LOCK_FMT "%s/.%smap_%d.lock"
-
+#define HUGEFILE_LOCK_FMT "%s/map_%d.lock"
 static inline const char *
 eal_get_hugefile_lock_path(char *buffer, size_t buflen, int f_id)
 {
-	const char *directory = default_config_dir;
-	const char *home_dir = getenv("HOME");
-
-	if (getuid() != 0 && home_dir != NULL)
-		directory = home_dir;
-	snprintf(buffer, buflen - 1, HUGEFILE_LOCK_FMT, directory,
-			internal_config.hugefile_prefix, f_id);
+	snprintf(buffer, buflen, HUGEFILE_LOCK_FMT, eal_get_runtime_dir(),
+			f_id);
 	buffer[buflen - 1] = '\0';
 	return buffer;
 }

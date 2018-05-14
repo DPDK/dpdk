@@ -95,10 +95,12 @@ int rte_cycles_vmware_tsc_map;
 /* platform-specific runtime dir */
 static char runtime_dir[PATH_MAX];
 
+static const char *default_runtime_dir = "/var/run";
+
 int
 eal_create_runtime_dir(void)
 {
-	const char *directory = default_config_dir;
+	const char *directory = default_runtime_dir;
 	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
 	const char *fallback = "/tmp";
 	char tmp[PATH_MAX];
