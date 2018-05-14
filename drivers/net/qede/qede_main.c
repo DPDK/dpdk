@@ -9,6 +9,7 @@
 #include <limits.h>
 #include <time.h>
 #include <rte_alarm.h>
+#include <rte_string_fns.h>
 
 #include "qede_ethdev.h"
 
@@ -303,9 +304,8 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 		drv_version.version = (params->drv_major << 24) |
 		    (params->drv_minor << 16) |
 		    (params->drv_rev << 8) | (params->drv_eng);
-		/* TBD: strlcpy() */
-		strncpy((char *)drv_version.name, (const char *)params->name,
-			MCP_DRV_VER_STR_SIZE - 4);
+		strlcpy((char *)drv_version.name, (const char *)params->name,
+			sizeof(drv_version.name));
 		rc = ecore_mcp_send_drv_version(hwfn, hwfn->p_main_ptt,
 						&drv_version);
 		if (rc) {
