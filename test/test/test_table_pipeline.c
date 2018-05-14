@@ -71,7 +71,7 @@ table_action_stub_hit(struct rte_pipeline *p, struct rte_mbuf **pkts,
 
 static int
 table_action_stub_miss(struct rte_pipeline *p, struct rte_mbuf **pkts,
-	uint64_t pkts_mask, struct rte_pipeline_table_entry **entry, void *arg);
+	uint64_t pkts_mask, struct rte_pipeline_table_entry *entry, void *arg);
 
 rte_pipeline_table_action_handler_hit
 table_action_0x00(__attribute__((unused)) struct rte_pipeline *p,
@@ -105,7 +105,7 @@ static int
 table_action_stub_miss(struct rte_pipeline *p,
 	__attribute__((unused)) struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
-	__attribute__((unused)) struct rte_pipeline_table_entry **entry,
+	__attribute__((unused)) struct rte_pipeline_table_entry *entry,
 	__attribute__((unused)) void *arg)
 {
 	printf("STUB Table Action Miss - setting mask to 0x%"PRIx64"\n",
@@ -517,8 +517,7 @@ test_table_pipeline(void)
 
 	/* TEST - one packet per port */
 	action_handler_hit = NULL;
-	action_handler_miss =
-		(rte_pipeline_table_action_handler_miss) table_action_stub_miss;
+	action_handler_miss = table_action_stub_miss;
 	table_entry_default_action = RTE_PIPELINE_ACTION_PORT;
 	override_miss_mask = 0x01; /* one packet per port */
 	setup_pipeline(e_TEST_STUB);
@@ -553,8 +552,7 @@ test_table_pipeline(void)
 
 	printf("TEST - two tables, hitmask override to 0x01\n");
 	connect_miss_action_to_table = 1;
-	action_handler_miss =
-		(rte_pipeline_table_action_handler_miss)table_action_stub_miss;
+	action_handler_miss = table_action_stub_miss;
 	override_miss_mask = 0x01;
 	setup_pipeline(e_TEST_STUB);
 	if (test_pipeline_single_filter(e_TEST_STUB, 2) < 0)
