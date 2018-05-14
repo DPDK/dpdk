@@ -2983,8 +2983,8 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 	struct nfp_cpp *cpp = nsp->cpp;
 	int fw_f;
 	char *fw_buf;
-	char fw_name[100];
-	char serial[100];
+	char fw_name[125];
+	char serial[40];
 	struct stat file_stat;
 	off_t fsize, bytes;
 
