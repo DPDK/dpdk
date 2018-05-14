@@ -951,6 +951,9 @@ pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 			pktnb_stats[1] = pktnb_stats[0];
 			burst_stats[0] = nb_burst;
 			pktnb_stats[0] = nb_pkt;
+		} else if (nb_burst > burst_stats[1]) {
+			burst_stats[1] = nb_burst;
+			pktnb_stats[1] = nb_pkt;
 		}
 	}
 	if (total_burst == 0)
