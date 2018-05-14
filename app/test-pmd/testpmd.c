@@ -2646,6 +2646,23 @@ main(int argc, char** argv)
 		rte_panic("Cannot register log type");
 	rte_log_set_level(testpmd_logtype, RTE_LOG_DEBUG);
 
+#ifdef RTE_LIBRTE_PDUMP
+	/* initialize packet capture framework */
+	rte_pdump_init(NULL);
+#endif
+
+	nb_ports = (portid_t) rte_eth_dev_count_avail();
+	if (nb_ports == 0)
+		TESTPMD_LOG(WARNING, "No probed ethernet devices\n");
+
+	/* allocate port structures, and init them */
+	init_port();
+
+	set_def_fwd_config();
+	if (nb_lcores == 0)
+		rte_panic("Empty set of forwarding logical cores - check the "
+			  "core mask supplied in the command parameters\n");
+
 	/* Bitrate/latency stats disabled by default */
 #ifdef RTE_LIBRTE_BITRATE
 	bitrate_enabled = 0;
@@ -2670,23 +2687,6 @@ main(int argc, char** argv)
 		TESTPMD_LOG(NOTICE, "mlockall() failed with error \"%s\"\n",
 			strerror(errno));
 	}
-
-#ifdef RTE_LIBRTE_PDUMP
-	/* initialize packet capture framework */
-	rte_pdump_init(NULL);
-#endif
-
-	nb_ports = (portid_t) rte_eth_dev_count_avail();
-	if (nb_ports == 0)
-		TESTPMD_LOG(WARNING, "No probed ethernet devices\n");
-
-	/* allocate port structures, and init them */
-	init_port();
-
-	set_def_fwd_config();
-	if (nb_lcores == 0)
-		rte_panic("Empty set of forwarding logical cores - check the "
-			  "core mask supplied in the command parameters\n");
 
 	if (tx_first && interactive)
 		rte_exit(EXIT_FAILURE, "--tx-first cannot be used on "
