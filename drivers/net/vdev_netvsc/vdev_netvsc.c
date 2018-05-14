@@ -327,12 +327,15 @@ static int
 vdev_netvsc_sysfs_readlink(char *buf, size_t size, const char *if_name,
 			   const char *relpath)
 {
+	struct vdev_netvsc_ctx *ctx;
+	char in[RTE_MAX(sizeof(ctx->yield), 256u)];
 	int ret;
 
-	ret = snprintf(buf, size, "/sys/class/net/%s/%s", if_name, relpath);
-	if (ret == -1 || (size_t)ret >= size)
+	ret = snprintf(in, sizeof(in) - 1, "/sys/class/net/%s/%s",
+		       if_name, relpath);
+	if (ret == -1 || (size_t)ret >= sizeof(in))
 		return -ENOBUFS;
-	ret = readlink(buf, buf, size);
+	ret = readlink(in, buf, size);
 	if (ret == -1)
 		return -errno;
 	if ((size_t)ret >= size - 1)
