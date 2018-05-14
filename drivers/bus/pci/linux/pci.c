@@ -54,7 +54,7 @@ pci_get_kernel_driver_by_path(const char *filename, char *dri_name)
 
 	name = strrchr(path, '/');
 	if (name) {
-		strncpy(dri_name, name + 1, strlen(name + 1) + 1);
+		strlcpy(dri_name, name + 1, sizeof(dri_name));
 		return 0;
 	}
 
