@@ -1985,7 +1985,7 @@ detach_port(portid_t port_id)
 		port_flow_flush(port_id);
 
 	if (rte_eth_dev_detach(port_id, name)) {
-		TESTPMD_LOG(ERR, "Failed to detach port '%s'\n", name);
+		TESTPMD_LOG(ERR, "Failed to detach port %u\n", port_id);
 		return;
 	}
 
@@ -1993,8 +1993,8 @@ detach_port(portid_t port_id)
 
 	update_fwd_ports(RTE_MAX_ETHPORTS);
 
-	printf("Port '%s' is detached. Now total ports is %d\n",
-			name, nb_ports);
+	printf("Port %u is detached. Now total ports is %d\n",
+			port_id, nb_ports);
 	printf("Done\n");
 	return;
 }
