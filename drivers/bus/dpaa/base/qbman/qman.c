@@ -314,9 +314,9 @@ loop:
 		if (!msg)
 			return 0;
 	}
-	if ((msg->verb & QM_MR_VERB_TYPE_MASK) != QM_MR_VERB_FQRNI) {
+	if ((msg->ern.verb & QM_MR_VERB_TYPE_MASK) != QM_MR_VERB_FQRNI) {
 		/* We aren't draining anything but FQRNIs */
-		pr_err("Found verb 0x%x in MR\n", msg->verb);
+		pr_err("Found verb 0x%x in MR\n", msg->ern.verb);
 		return -1;
 	}
 	qm_mr_next(p);
@@ -483,7 +483,7 @@ static inline void qm_mr_pvb_update(struct qm_portal *portal)
 	/* when accessing 'verb', use __raw_readb() to ensure that compiler
 	 * inlining doesn't try to optimise out "excess reads".
 	 */
-	if ((__raw_readb(&res->verb) & QM_MR_VERB_VBIT) == mr->vbit) {
+	if ((__raw_readb(&res->ern.verb) & QM_MR_VERB_VBIT) == mr->vbit) {
 		mr->pi = (mr->pi + 1) & (QM_MR_SIZE - 1);
 		if (!mr->pi)
 			mr->vbit ^= QM_MR_VERB_VBIT;
@@ -832,7 +832,7 @@ mr_loop:
 			goto mr_done;
 		swapped_msg = *msg;
 		hw_fd_to_cpu(&swapped_msg.ern.fd);
-		verb = msg->verb & QM_MR_VERB_TYPE_MASK;
+		verb = msg->ern.verb & QM_MR_VERB_TYPE_MASK;
 		/* The message is a software ERN iff the 0x20 bit is set */
 		if (verb & 0x20) {
 			switch (verb) {
@@ -1666,7 +1666,7 @@ int qman_retire_fq(struct qman_fq *fq, u32 *flags)
 			 */
 			struct qm_mr_entry msg;
 
-			msg.verb = QM_MR_VERB_FQRNI;
+			msg.ern.verb = QM_MR_VERB_FQRNI;
 			msg.fq.fqs = mcr->alterfq.fqs;
 			msg.fq.fqid = fq->fqid;
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
@@ -2643,7 +2643,7 @@ int qman_shutdown_fq(u32 fqid)
 				qm_mr_pvb_update(low_p);
 				msg = qm_mr_current(low_p);
 				while (msg) {
-					if ((msg->verb &
+					if ((msg->ern.verb &
 					     QM_MR_VERB_TYPE_MASK)
 					    == QM_MR_VERB_FQRN)
 						found_fqrn = 1;
@@ -2711,7 +2711,7 @@ int qman_shutdown_fq(u32 fqid)
 			qm_mr_pvb_update(low_p);
 			msg = qm_mr_current(low_p);
 			while (msg) {
-				if ((msg->verb & QM_MR_VERB_TYPE_MASK) ==
+				if ((msg->ern.verb & QM_MR_VERB_TYPE_MASK) ==
 				    QM_MR_VERB_FQRL)
 					orl_empty = 1;
 				qm_mr_next(low_p);

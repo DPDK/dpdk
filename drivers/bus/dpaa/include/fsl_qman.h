@@ -284,20 +284,20 @@ static inline dma_addr_t qm_sg_addr(const struct qm_sg_entry *sg)
 	} while (0)
 
 /* See 1.5.8.1: "Enqueue Command" */
-struct qm_eqcr_entry {
+struct __rte_aligned(8) qm_eqcr_entry {
 	u8 __dont_write_directly__verb;
 	u8 dca;
 	u16 seqnum;
 	u32 orp;	/* 24-bit */
 	u32 fqid;	/* 24-bit */
 	u32 tag;
-	struct qm_fd fd;
+	struct qm_fd fd; /* this has alignment 8 */
 	u8 __reserved3[32];
 } __packed;
 
 
 /* "Frame Dequeue Response" */
-struct qm_dqrr_entry {
+struct __rte_aligned(8) qm_dqrr_entry {
 	u8 verb;
 	u8 stat;
 	u16 seqnum;	/* 15-bit */
@@ -305,7 +305,7 @@ struct qm_dqrr_entry {
 	u8 __reserved2[3];
 	u32 fqid;	/* 24-bit */
 	u32 contextB;
-	struct qm_fd fd;
+	struct qm_fd fd; /* this has alignment 8 */
 	u8 __reserved4[32];
 };
 
@@ -323,18 +323,19 @@ struct qm_dqrr_entry {
 /* "ERN Message Response" */
 /* "FQ State Change Notification" */
 struct qm_mr_entry {
-	u8 verb;
 	union {
 		struct {
+			u8 verb;
 			u8 dca;
 			u16 seqnum;
 			u8 rc;		/* Rejection Code */
 			u32 orp:24;
 			u32 fqid;	/* 24-bit */
 			u32 tag;
-			struct qm_fd fd;
-		} __packed ern;
+			struct qm_fd fd; /* this has alignment 8 */
+		} __packed __rte_aligned(8) ern;
 		struct {
+			u8 verb;
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u8 colour:2;	/* See QM_MR_DCERN_COLOUR_* */
 			u8 __reserved1:4;
@@ -349,18 +350,19 @@ struct qm_mr_entry {
 			u32 __reserved3:24;
 			u32 fqid;	/* 24-bit */
 			u32 tag;
-			struct qm_fd fd;
-		} __packed dcern;
+			struct qm_fd fd; /* this has alignment 8 */
+		} __packed __rte_aligned(8) dcern;
 		struct {
+			u8 verb;
 			u8 fqs;		/* Frame Queue Status */
 			u8 __reserved1[6];
 			u32 fqid;	/* 24-bit */
 			u32 contextB;
 			u8 __reserved2[16];
-		} __packed fq;		/* FQRN/FQRNI/FQRL/FQPN */
+		} __packed __rte_aligned(8) fq;	/* FQRN/FQRNI/FQRL/FQPN */
 	};
 	u8 __reserved2[32];
-} __packed;
+} __packed __rte_aligned(8);
 #define QM_MR_VERB_VBIT			0x80
 /*
  * ERNs originating from direct-connect portals ("dcern") use 0x20 as a verb
