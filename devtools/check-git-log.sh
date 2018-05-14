@@ -106,8 +106,8 @@ bad=$(echo "$headlines" | grep --color=always \
 
 # check headline lowercase for first words
 bad=$(echo "$headlines" | grep --color=always \
-	-e '^.*[A-Z].*:' \
-	-e ': *[A-Z]' \
+	-e '^.*[[:upper:]].*:' \
+	-e ': *[[:upper:]]' \
 	| sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong headline uppercase:\n$bad\n"
 
