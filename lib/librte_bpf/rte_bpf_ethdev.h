@@ -6,7 +6,8 @@
 #define _RTE_BPF_ETHDEV_H_
 
 /**
- * @file
+ * @file rte_bpf_ethdev.h
+ * @b EXPERIMENTAL: this API may change without prior notice
  *
  * API to install BPF filter as RX/TX callbacks for eth devices.
  * Note that right now:
@@ -44,7 +45,8 @@ enum {
  * @param queue
  *   The identifier of the RX queue on the given port
  */
-void rte_bpf_eth_rx_unload(uint16_t port, uint16_t queue);
+void __rte_experimental
+rte_bpf_eth_rx_unload(uint16_t port, uint16_t queue);
 
 /**
  * Unload previously loaded BPF program (if any) from given TX port/queue
@@ -55,7 +57,8 @@ void rte_bpf_eth_rx_unload(uint16_t port, uint16_t queue);
  * @param queue
  *   The identifier of the TX queue on the given port
  */
-void rte_bpf_eth_tx_unload(uint16_t port, uint16_t queue);
+void __rte_experimental
+rte_bpf_eth_tx_unload(uint16_t port, uint16_t queue);
 
 /**
  * Load BPF program from the ELF file and install callback to execute it
@@ -77,7 +80,8 @@ void rte_bpf_eth_tx_unload(uint16_t port, uint16_t queue);
  * @return
  *   Zero on successful completion or negative error code otherwise.
  */
-int rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
+int __rte_experimental
+rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
 	const struct rte_bpf_prm *prm, const char *fname, const char *sname,
 	uint32_t flags);
 
@@ -101,7 +105,8 @@ int rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
  * @return
  *   Zero on successful completion or negative error code otherwise.
  */
-int rte_bpf_eth_tx_elf_load(uint16_t port, uint16_t queue,
+int __rte_experimental
+rte_bpf_eth_tx_elf_load(uint16_t port, uint16_t queue,
 	const struct rte_bpf_prm *prm, const char *fname, const char *sname,
 	uint32_t flags);
 
