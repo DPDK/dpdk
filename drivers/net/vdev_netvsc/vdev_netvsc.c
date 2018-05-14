@@ -35,6 +35,7 @@
 #include <rte_hypervisor.h>
 #include <rte_kvargs.h>
 #include <rte_log.h>
+#include <rte_string_fns.h>
 
 #define VDEV_NETVSC_DRIVER net_vdev_netvsc
 #define VDEV_NETVSC_DRIVER_NAME RTE_STR(VDEV_NETVSC_DRIVER)
@@ -182,7 +183,7 @@ vdev_netvsc_foreach_iface(int (*func)(const struct if_nameindex *iface,
 		is_netvsc_ret = vdev_netvsc_iface_is_netvsc(&iface[i]) ? 1 : 0;
 		if (is_netvsc ^ is_netvsc_ret)
 			continue;
-		strncpy(req.ifr_name, iface[i].if_name, sizeof(req.ifr_name));
+		strlcpy(req.ifr_name, iface[i].if_name, sizeof(req.ifr_name));
 		if (ioctl(s, SIOCGIFHWADDR, &req) == -1) {
 			DRV_LOG(WARNING, "cannot retrieve information about"
 					 " interface \"%s\": %s",
@@ -385,7 +386,7 @@ vdev_netvsc_device_probe(const struct if_nameindex *iface,
 		DRV_LOG(DEBUG,
 			"NetVSC interface \"%s\" (index %u) renamed \"%s\"",
 			ctx->if_name, ctx->if_index, iface->if_name);
-		strncpy(ctx->if_name, iface->if_name, sizeof(ctx->if_name));
+		strlcpy(ctx->if_name, iface->if_name, sizeof(ctx->if_name));
 		return 0;
 	}
 	if (!is_same_ether_addr(eth_addr, &ctx->if_addr))
@@ -583,7 +584,7 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 		goto error;
 	}
 	ctx->id = vdev_netvsc_ctx_count;
-	strncpy(ctx->if_name, iface->if_name, sizeof(ctx->if_name));
+	strlcpy(ctx->if_name, iface->if_name, sizeof(ctx->if_name));
 	ctx->if_index = iface->if_index;
 	ctx->if_addr = *eth_addr;
 	ctx->pipe[0] = -1;
