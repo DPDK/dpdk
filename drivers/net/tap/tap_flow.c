@@ -1568,10 +1568,14 @@ tap_flow_isolate(struct rte_eth_dev *dev,
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 
+	/* normalize 'set' variable to contain 0 or 1 values */
 	if (set)
-		pmd->flow_isolate = 1;
-	else
-		pmd->flow_isolate = 0;
+		set = 1;
+	/* if already in the right isolation mode - nothing to do */
+	if ((set ^ pmd->flow_isolate) == 0)
+		return 0;
+	/* mark the isolation mode for tap_flow_implicit_create() */
+	pmd->flow_isolate = set;
 	/*
 	 * If netdevice is there, setup appropriate flow rules immediately.
 	 * Otherwise it will be set when bringing up the netdevice (tun_alloc).
@@ -1579,20 +1583,20 @@ tap_flow_isolate(struct rte_eth_dev *dev,
 	if (!pmd->rxq[0].fd)
 		return 0;
 	if (set) {
-		struct rte_flow *flow;
+		struct rte_flow *remote_flow;
 
 		while (1) {
-			flow = LIST_FIRST(&pmd->implicit_flows);
-			if (!flow)
+			remote_flow = LIST_FIRST(&pmd->implicit_flows);
+			if (!remote_flow)
 				break;
 			/*
 			 * Remove all implicit rules on the remote.
 			 * Keep the local rule to redirect packets on TX.
 			 * Keep also the last implicit local rule: ISOLATE.
 			 */
-			if (flow->msg.t.tcm_ifindex == pmd->if_index)
+			if (remote_flow->msg.t.tcm_ifindex == pmd->if_index)
 				break;
-			if (tap_flow_destroy_pmd(pmd, flow, NULL) < 0)
+			if (tap_flow_destroy_pmd(pmd, remote_flow, NULL) < 0)
 				goto error;
 		}
 		/* Switch the TC rule according to pmd->flow_isolate */
@@ -1739,8 +1743,8 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 	}
 	err = tap_nl_recv_ack(pmd->nlsk_fd);
 	if (err < 0) {
-		/* Silently ignore re-entering remote promiscuous rule */
-		if (errno == EEXIST && idx == TAP_REMOTE_PROMISC)
+		/* Silently ignore re-entering existing rule */
+		if (errno == EEXIST)
 			goto success;
 		TAP_LOG(ERR,
 			"Kernel refused TC filter rule creation (%d): %s",
