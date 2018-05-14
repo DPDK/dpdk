@@ -686,7 +686,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int err = 0;
 	struct ibv_context *attr_ctx = NULL;
 	struct ibv_device_attr_ex device_attr;
-	unsigned int vf;
+	unsigned int vf = 0;
 	unsigned int mps;
 	unsigned int cqe_comp;
 	unsigned int tunnel_en = 0;
