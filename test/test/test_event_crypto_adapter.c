@@ -21,6 +21,7 @@
 #define MBUF_CACHE_SIZE           (256)
 #define MAXIMUM_IV_LENGTH         (16)
 #define DEFAULT_NUM_OPS_INFLIGHT  (128)
+#define MAX_NB_SESSIONS            4
 #define TEST_APP_PORT_ID           0
 #define TEST_APP_EV_QUEUE_ID       0
 #define TEST_APP_EV_PRIORITY       0
@@ -527,7 +528,7 @@ configure_cryptodev(void)
 
 	params.session_mpool = rte_mempool_create(
 				"CRYPTO_ADAPTER_SESSION_MP",
-				info.sym.max_nb_sessions * 2,
+				MAX_NB_SESSIONS * 2,
 				session_size,
 				0, 0, NULL, NULL, NULL,
 				NULL, SOCKET_ID_ANY,
