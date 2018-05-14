@@ -16,16 +16,20 @@ get_port(struct ifpga_hw *hw, u32 port_id)
 	return &hw->port[port_id];
 }
 
-#define ifpga_for_each_feature(hw, feature)		\
+#define ifpga_for_each_fme_feature(hw, feature)		\
 	for ((feature) = (hw)->sub_feature;			\
 	   (feature) < (hw)->sub_feature + (FME_FEATURE_ID_MAX); (feature)++)
+
+#define ifpga_for_each_port_feature(hw, feature)		\
+	for ((feature) = (hw)->sub_feature;			\
+	   (feature) < (hw)->sub_feature + (PORT_FEATURE_ID_MAX); (feature)++)
 
 static inline struct feature *
 get_fme_feature_by_id(struct ifpga_fme_hw *fme, u64 id)
 {
 	struct feature *feature;
 
-	ifpga_for_each_feature(fme, feature) {
+	ifpga_for_each_fme_feature(fme, feature) {
 		if (feature->id == id)
 			return feature;
 	}
@@ -38,7 +42,7 @@ get_port_feature_by_id(struct ifpga_port_hw *port, u64 id)
 {
 	struct feature *feature;
 
-	ifpga_for_each_feature(port, feature) {
+	ifpga_for_each_port_feature(port, feature) {
 		if (feature->id == id)
 			return feature;
 	}
