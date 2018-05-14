@@ -213,8 +213,9 @@ parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask)
 
 	pch = strchr(token, '/');
 	if (pch != NULL) {
-		strlcpy(ip_str, token, RTE_MIN((unsigned int long)(pch - token),
-					sizeof(ip_str)));
+		strlcpy(ip_str, token,
+			RTE_MIN((unsigned int long)(pch - token + 1),
+			sizeof(ip_str)));
 		pch += 1;
 		if (is_str_num(pch) != 0)
 			return -EINVAL;
@@ -225,7 +226,6 @@ parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask)
 		if (mask)
 			*mask = 0;
 	}
-
 	if (strlen(ip_str) >= INET_ADDRSTRLEN)
 		return -EINVAL;
 
@@ -243,7 +243,8 @@ parse_ipv6_addr(const char *token, struct in6_addr *ipv6, uint32_t *mask)
 
 	pch = strchr(token, '/');
 	if (pch != NULL) {
-		strlcpy(ip_str, token, RTE_MIN((unsigned int long)(pch - token),
+		strlcpy(ip_str, token,
+			RTE_MIN((unsigned int long)(pch - token + 1),
 					sizeof(ip_str)));
 		pch += 1;
 		if (is_str_num(pch) != 0)
