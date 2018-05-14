@@ -527,7 +527,7 @@ nfp_net_vf_read_mac(struct nfp_net_hw *hw)
 	uint32_t tmp;
 
 	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR));
-	memcpy(&hw->mac_addr[0], &tmp, sizeof(struct ether_addr));
+	memcpy(&hw->mac_addr[0], &tmp, 4);
 
 	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR + 4));
 	memcpy(&hw->mac_addr[4], &tmp, 2);
