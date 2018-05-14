@@ -182,12 +182,16 @@ int enic_get_vnic_config(struct enic *enic)
 	 * flags if it enables overlay offloads.
 	 */
 	enic->tx_offload_capa =
+		DEV_TX_OFFLOAD_MULTI_SEGS |
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM |
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_TSO;
 	enic->rx_offload_capa =
+		DEV_RX_OFFLOAD_SCATTER |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_CRC_STRIP |
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM |
