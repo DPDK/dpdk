@@ -1499,7 +1499,7 @@ eal_legacy_hugepage_init(void)
 	}
 
 	/* create shared memory */
-	hugepage = create_shared_memory(eal_hugepage_file_path(),
+	hugepage = create_shared_memory(eal_hugepage_data_path(),
 			nr_hugefiles * sizeof(struct hugepage_file));
 
 	if (hugepage == NULL) {
@@ -1727,16 +1727,18 @@ eal_legacy_hugepage_attach(void)
 
 	test_phys_addrs_available();
 
-	fd_hugepage = open(eal_hugepage_file_path(), O_RDONLY);
+	fd_hugepage = open(eal_hugepage_data_path(), O_RDONLY);
 	if (fd_hugepage < 0) {
-		RTE_LOG(ERR, EAL, "Could not open %s\n", eal_hugepage_file_path());
+		RTE_LOG(ERR, EAL, "Could not open %s\n",
+				eal_hugepage_data_path());
 		goto error;
 	}
 
 	size = getFileSize(fd_hugepage);
 	hp = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd_hugepage, 0);
 	if (hp == MAP_FAILED) {
-		RTE_LOG(ERR, EAL, "Could not mmap %s\n", eal_hugepage_file_path());
+		RTE_LOG(ERR, EAL, "Could not mmap %s\n",
+				eal_hugepage_data_path());
 		goto error;
 	}
 

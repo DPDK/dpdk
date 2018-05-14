@@ -89,7 +89,7 @@ eal_hugepage_info_path(void)
 #define HUGEPAGE_FILE_FMT "%s/.%s_hugepage_file"
 
 static inline const char *
-eal_hugepage_file_path(void)
+eal_hugepage_data_path(void)
 {
 	static char buffer[PATH_MAX]; /* static so auto-zeroed */
 	const char *directory = default_config_dir;
