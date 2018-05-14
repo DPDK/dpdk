@@ -25,6 +25,14 @@
 
 static const char *default_config_dir = "/var/run";
 
+/* sets up platform-specific runtime data dir */
+int
+eal_create_runtime_dir(void);
+
+/* returns runtime dir */
+const char *
+eal_get_runtime_dir(void);
+
 static inline const char *
 eal_runtime_config_path(void)
 {

@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 
 #include <rte_compat.h>
 #include <rte_common.h>
@@ -82,6 +83,66 @@ struct internal_config internal_config;
 
 /* used by rte_rdtsc() */
 int rte_cycles_vmware_tsc_map;
+
+/* platform-specific runtime dir */
+static char runtime_dir[PATH_MAX];
+
+int
+eal_create_runtime_dir(void)
+{
+	const char *directory = default_config_dir;
+	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+	const char *fallback = "/tmp";
+	char tmp[PATH_MAX];
+	int ret;
+
+	if (getuid() != 0) {
+		/* try XDG path first, fall back to /tmp */
+		if (xdg_runtime_dir != NULL)
+			directory = xdg_runtime_dir;
+		else
+			directory = fallback;
+	}
+	/* create DPDK subdirectory under runtime dir */
+	ret = snprintf(tmp, sizeof(tmp), "%s/dpdk", directory);
+	if (ret < 0 || ret == sizeof(tmp)) {
+		RTE_LOG(ERR, EAL, "Error creating DPDK runtime path name\n");
+		return -1;
+	}
+
+	/* create prefix-specific subdirectory under DPDK runtime dir */
+	ret = snprintf(runtime_dir, sizeof(runtime_dir), "%s/%s",
+			tmp, internal_config.hugefile_prefix);
+	if (ret < 0 || ret == sizeof(runtime_dir)) {
+		RTE_LOG(ERR, EAL, "Error creating prefix-specific runtime path name\n");
+		return -1;
+	}
+
+	/* create the path if it doesn't exist. no "mkdir -p" here, so do it
+	 * step by step.
+	 */
+	ret = mkdir(tmp, 0600);
+	if (ret < 0 && errno != EEXIST) {
+		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
+			tmp, strerror(errno));
+		return -1;
+	}
+
+	ret = mkdir(runtime_dir, 0600);
+	if (ret < 0 && errno != EEXIST) {
+		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
+			runtime_dir, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+const char *
+eal_get_runtime_dir(void)
+{
+	return runtime_dir;
+}
 
 /* Return user provided mbuf pool ops name */
 const char * __rte_experimental
@@ -522,6 +583,13 @@ rte_eal_init(int argc, char **argv)
 
 	/* set log level as early as possible */
 	eal_log_level_parse(argc, argv);
+
+	/* create runtime data directory */
+	if (eal_create_runtime_dir() < 0) {
+		rte_eal_init_alert("Cannot create runtime directory\n");
+		rte_errno = EACCES;
+		return -1;
+	}
 
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");
