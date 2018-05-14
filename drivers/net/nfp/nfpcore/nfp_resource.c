@@ -7,6 +7,8 @@
 #include <time.h>
 #include <endian.h>
 
+#include <rte_string_fns.h>
+
 #include "nfp_cpp.h"
 #include "nfp6000/nfp6000.h"
 #include "nfp_resource.h"
@@ -65,22 +67,22 @@ struct nfp_resource {
 static int
 nfp_cpp_resource_find(struct nfp_cpp *cpp, struct nfp_resource *res)
 {
-	char name_pad[NFP_RESOURCE_ENTRY_NAME_SZ] = {};
+	char name_pad[NFP_RESOURCE_ENTRY_NAME_SZ + 2];
 	struct nfp_resource_entry entry;
 	uint32_t cpp_id, key;
 	int ret, i;
 
 	cpp_id = NFP_CPP_ID(NFP_RESOURCE_TBL_TARGET, 3, 0);  /* Atomic read */
 
-	memset(name_pad, 0, NFP_RESOURCE_ENTRY_NAME_SZ);
-	strncpy(name_pad, res->name, sizeof(name_pad));
+	memset(name_pad, 0, sizeof(name_pad));
+	strlcpy(name_pad, res->name, sizeof(name_pad));
 
 	/* Search for a matching entry */
 	if (!memcmp(name_pad, NFP_RESOURCE_TBL_NAME "\0\0\0\0\0\0\0\0", 8)) {
 		printf("Grabbing device lock not supported\n");
 		return -EOPNOTSUPP;
 	}
-	key = nfp_crc32_posix(name_pad, sizeof(name_pad));
+	key = nfp_crc32_posix(name_pad, NFP_RESOURCE_ENTRY_NAME_SZ);
 
 	for (i = 0; i < NFP_RESOURCE_TBL_ENTRIES; i++) {
 		uint64_t addr = NFP_RESOURCE_TBL_BASE +
