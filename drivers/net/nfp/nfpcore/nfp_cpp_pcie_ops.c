@@ -31,6 +31,8 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 
+#include <rte_string_fns.h>
+
 #include "nfp_cpp.h"
 #include "nfp_target.h"
 #include "nfp6000/nfp6000.h"
@@ -846,7 +848,7 @@ nfp6000_init(struct nfp_cpp *cpp, const char *devname)
 
 
 	memset(desc->busdev, 0, BUSDEV_SZ);
-	strncpy(desc->busdev, devname, strlen(devname));
+	strlcpy(desc->busdev, devname, sizeof(desc->busdev));
 
 	ret = nfp_acquire_process_lock(desc);
 	if (ret)
