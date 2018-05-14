@@ -119,8 +119,7 @@ void *helloworld_pthread(void *arg)
  */
 __thread pthread_t tid[HELLOW_WORLD_MAX_LTHREADS];
 
-static void initial_lthread(void *args);
-static void initial_lthread(void *args __attribute__((unused)))
+static void *initial_lthread(void *args __attribute__((unused)))
 {
 	int lcore = (int) rte_lcore_id();
 	/*
@@ -195,6 +194,7 @@ static void initial_lthread(void *args __attribute__((unused)))
 	/* shutdown the lthread scheduler */
 	lthread_scheduler_shutdown(rte_lcore_id());
 	lthread_detach();
+	return NULL;
 }
 
 
@@ -204,8 +204,6 @@ static void initial_lthread(void *args __attribute__((unused)))
  * An instance of this thread is created on each thread
  * in the core mask
  */
-static int
-lthread_scheduler(void *args);
 static int
 lthread_scheduler(void *args __attribute__((unused)))
 {

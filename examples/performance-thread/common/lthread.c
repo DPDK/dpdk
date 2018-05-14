@@ -320,13 +320,14 @@ struct lthread *lthread_current(void)
 /*
  * Tasklet to cancel a thread
  */
-static void
+static void *
 _cancel(void *arg)
 {
 	struct lthread *lt = (struct lthread *) arg;
 
 	lt->state |= BIT(ST_LT_CANCELLED);
 	lthread_detach();
+	return NULL;
 }
 
 

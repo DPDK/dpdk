@@ -143,7 +143,7 @@ struct lthread_mutex;
 struct lthread_condattr;
 struct lthread_mutexattr;
 
-typedef void (*lthread_func_t) (void *);
+typedef void *(*lthread_func_t) (void *);
 
 /*
  * Define the size of stack for an lthread
