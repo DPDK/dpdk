@@ -3381,13 +3381,13 @@ mlx5_fdir_filter_delete(struct rte_eth_dev *dev,
 	if (parser.drop) {
 		struct ibv_flow_spec_action_drop *drop;
 
-		drop = (void *)((uintptr_t)parser.queue[parser.layer].ibv_attr +
-				parser.queue[parser.layer].offset);
+		drop = (void *)((uintptr_t)parser.queue[HASH_RXQ_ETH].ibv_attr +
+				parser.queue[HASH_RXQ_ETH].offset);
 		*drop = (struct ibv_flow_spec_action_drop){
 			.type = IBV_FLOW_SPEC_ACTION_DROP,
 			.size = sizeof(struct ibv_flow_spec_action_drop),
 		};
-		parser.queue[parser.layer].ibv_attr->num_of_specs++;
+		parser.queue[HASH_RXQ_ETH].ibv_attr->num_of_specs++;
 	}
 	TAILQ_FOREACH(flow, &priv->flows, next) {
 		struct ibv_flow_attr *attr;
@@ -3397,11 +3397,14 @@ mlx5_fdir_filter_delete(struct rte_eth_dev *dev,
 		struct ibv_spec_header *flow_h;
 		void *flow_spec;
 		unsigned int specs_n;
+		unsigned int queue_id = parser.drop ? HASH_RXQ_ETH :
+						      parser.layer;
 
-		attr = parser.queue[parser.layer].ibv_attr;
-		flow_attr = flow->frxq[parser.layer].ibv_attr;
+		attr = parser.queue[queue_id].ibv_attr;
+		flow_attr = flow->frxq[queue_id].ibv_attr;
 		/* Compare first the attributes. */
-		if (memcmp(attr, flow_attr, sizeof(struct ibv_flow_attr)))
+		if (!flow_attr ||
+		    memcmp(attr, flow_attr, sizeof(struct ibv_flow_attr)))
 			continue;
 		if (attr->num_of_specs == 0)
 			continue;
