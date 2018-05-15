@@ -108,6 +108,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_IBV_DEVICE_MPLS_SUPPORT \
+		infiniband/verbs.h \
+		enum IBV_FLOW_SPEC_MPLS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_IBV_WQ_FLAG_RX_END_PADDING \
 		infiniband/verbs.h \
 		enum IBV_WQ_FLAG_RX_END_PADDING \

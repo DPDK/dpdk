@@ -74,7 +74,7 @@ Features
 - RX interrupts.
 - Statistics query including Basic, Extended and per queue.
 - Rx HW timestamp.
-- Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE.
+- Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE, MPLSoGRE, MPLSoUDP.
 - Tunnel HW offloads: packet type, inner/outer RSS, IP and UDP checksum verification.
 
 Limitations
@@ -112,6 +112,8 @@ Limitations
   to 0 are not supported.
 
 - VXLAN TSO and checksum offloads are not supported on VM.
+
+- L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
 
 - VF: flow rules created on VF devices can only match traffic targeted at the
   configured MAC addresses (see ``rte_eth_dev_mac_addr_add()``).

@@ -101,6 +101,11 @@ mlx5_flow_create_gre(const struct rte_flow_item *item,
 		     const void *default_mask,
 		     struct mlx5_flow_data *data);
 
+static int
+mlx5_flow_create_mpls(const struct rte_flow_item *item,
+		      const void *default_mask,
+		      struct mlx5_flow_data *data);
+
 struct mlx5_flow_parse;
 
 static void
@@ -248,12 +253,14 @@ struct rte_flow {
 #define IS_TUNNEL(type) ( \
 	(type) == RTE_FLOW_ITEM_TYPE_VXLAN || \
 	(type) == RTE_FLOW_ITEM_TYPE_VXLAN_GPE || \
-	(type) == RTE_FLOW_ITEM_TYPE_GRE)
+	(type) == RTE_FLOW_ITEM_TYPE_GRE || \
+	(type) == RTE_FLOW_ITEM_TYPE_MPLS)
 
 const uint32_t flow_ptype[] = {
 	[RTE_FLOW_ITEM_TYPE_VXLAN] = RTE_PTYPE_TUNNEL_VXLAN,
 	[RTE_FLOW_ITEM_TYPE_VXLAN_GPE] = RTE_PTYPE_TUNNEL_VXLAN_GPE,
 	[RTE_FLOW_ITEM_TYPE_GRE] = RTE_PTYPE_TUNNEL_GRE,
+	[RTE_FLOW_ITEM_TYPE_MPLS] = RTE_PTYPE_TUNNEL_MPLS_IN_GRE,
 };
 
 #define PTYPE_IDX(t) ((RTE_PTYPE_TUNNEL_MASK & (t)) >> 12)
@@ -264,6 +271,10 @@ const uint32_t ptype_ext[] = {
 	[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN_GPE)]	= RTE_PTYPE_TUNNEL_VXLAN_GPE |
 						  RTE_PTYPE_L4_UDP,
 	[PTYPE_IDX(RTE_PTYPE_TUNNEL_GRE)] = RTE_PTYPE_TUNNEL_GRE,
+	[PTYPE_IDX(RTE_PTYPE_TUNNEL_MPLS_IN_GRE)] =
+		RTE_PTYPE_TUNNEL_MPLS_IN_GRE,
+	[PTYPE_IDX(RTE_PTYPE_TUNNEL_MPLS_IN_UDP)] =
+		RTE_PTYPE_TUNNEL_MPLS_IN_GRE | RTE_PTYPE_L4_UDP,
 };
 
 /** Structure to generate a simple graph of layers supported by the NIC. */
@@ -400,7 +411,8 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VXLAN,
-			       RTE_FLOW_ITEM_TYPE_VXLAN_GPE),
+			       RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
+			       RTE_FLOW_ITEM_TYPE_MPLS),
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_udp){
 			.hdr = {
@@ -429,7 +441,8 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 	[RTE_FLOW_ITEM_TYPE_GRE] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
 			       RTE_FLOW_ITEM_TYPE_IPV4,
-			       RTE_FLOW_ITEM_TYPE_IPV6),
+			       RTE_FLOW_ITEM_TYPE_IPV6,
+			       RTE_FLOW_ITEM_TYPE_MPLS),
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_gre){
 			.protocol = -1,
@@ -437,7 +450,26 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.default_mask = &rte_flow_item_gre_mask,
 		.mask_sz = sizeof(struct rte_flow_item_gre),
 		.convert = mlx5_flow_create_gre,
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+		.dst_sz = sizeof(struct ibv_flow_spec_gre),
+#else
 		.dst_sz = sizeof(struct ibv_flow_spec_tunnel),
+#endif
+	},
+	[RTE_FLOW_ITEM_TYPE_MPLS] = {
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_IPV6),
+		.actions = valid_actions,
+		.mask = &(const struct rte_flow_item_mpls){
+			.label_tc_s = "\xff\xff\xf0",
+		},
+		.default_mask = &rte_flow_item_mpls_mask,
+		.mask_sz = sizeof(struct rte_flow_item_mpls),
+		.convert = mlx5_flow_create_mpls,
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+		.dst_sz = sizeof(struct ibv_flow_spec_mpls),
+#endif
 	},
 	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
@@ -865,6 +897,7 @@ mlx5_flow_convert_items_validate(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	const struct mlx5_flow_items *cur_item = mlx5_flow_items;
 	unsigned int i;
+	unsigned int last_voids = 0;
 	int ret = 0;
 
 	/* Initialise the offsets to start after verbs attribute. */
@@ -874,8 +907,10 @@ mlx5_flow_convert_items_validate(struct rte_eth_dev *dev,
 		const struct mlx5_flow_items *token = NULL;
 		unsigned int n;
 
-		if (items->type == RTE_FLOW_ITEM_TYPE_VOID)
+		if (items->type == RTE_FLOW_ITEM_TYPE_VOID) {
+			last_voids++;
 			continue;
+		}
 		for (i = 0;
 		     cur_item->items &&
 		     cur_item->items[i] != RTE_FLOW_ITEM_TYPE_END;
@@ -896,12 +931,25 @@ mlx5_flow_convert_items_validate(struct rte_eth_dev *dev,
 		if (ret)
 			goto exit_item_not_supported;
 		if (IS_TUNNEL(items->type)) {
-			if (parser->tunnel) {
+			if (parser->tunnel &&
+			    !((items - last_voids - 1)->type ==
+			      RTE_FLOW_ITEM_TYPE_GRE && items->type ==
+			      RTE_FLOW_ITEM_TYPE_MPLS)) {
 				rte_flow_error_set(error, ENOTSUP,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   items,
 						   "Cannot recognize multiple"
 						   " tunnel encapsulations.");
+				return -rte_errno;
+			}
+			if (items->type == RTE_FLOW_ITEM_TYPE_MPLS &&
+			    !priv->config.mpls_en) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   items,
+						   "MPLS not supported or"
+						   " disabled in firmware"
+						   " configuration.");
 				return -rte_errno;
 			}
 			if (!priv->config.tunnel_en &&
@@ -921,6 +969,7 @@ mlx5_flow_convert_items_validate(struct rte_eth_dev *dev,
 			for (n = 0; n != hash_rxq_init_n; ++n)
 				parser->queue[n].offset += cur_item->dst_sz;
 		}
+		last_voids = 0;
 	}
 	if (parser->drop) {
 		parser->queue[HASH_RXQ_ETH].offset +=
@@ -1878,16 +1927,27 @@ mlx5_flow_create_vxlan_gpe(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_flow_create_gre(const struct rte_flow_item *item __rte_unused,
-		     const void *default_mask __rte_unused,
+mlx5_flow_create_gre(const struct rte_flow_item *item,
+		     const void *default_mask,
 		     struct mlx5_flow_data *data)
 {
 	struct mlx5_flow_parse *parser = data->parser;
+#ifndef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	(void)default_mask;
 	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
 	struct ibv_flow_spec_tunnel tunnel = {
 		.type = parser->inner | IBV_FLOW_SPEC_VXLAN_TUNNEL,
 		.size = size,
 	};
+#else
+	const struct rte_flow_item_gre *spec = item->spec;
+	const struct rte_flow_item_gre *mask = item->mask;
+	unsigned int size = sizeof(struct ibv_flow_spec_gre);
+	struct ibv_flow_spec_gre tunnel = {
+		.type = parser->inner | IBV_FLOW_SPEC_GRE,
+		.size = size,
+	};
+#endif
 	struct ibv_flow_spec_ipv4_ext *ipv4;
 	struct ibv_flow_spec_ipv6 *ipv6;
 	unsigned int i;
@@ -1899,6 +1959,20 @@ mlx5_flow_create_gre(const struct rte_flow_item *item __rte_unused,
 	/* Default GRE to inner RSS. */
 	if (!parser->rss_conf.level)
 		parser->rss_conf.level = 2;
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	if (spec) {
+		if (!mask)
+			mask = default_mask;
+		tunnel.val.c_ks_res0_ver = spec->c_rsvd0_ver;
+		tunnel.val.protocol = spec->protocol;
+		tunnel.mask.c_ks_res0_ver = mask->c_rsvd0_ver;
+		tunnel.mask.protocol = mask->protocol;
+		/* Remove unwanted bits from values. */
+		tunnel.val.c_ks_res0_ver &= tunnel.mask.c_ks_res0_ver;
+		tunnel.val.protocol &= tunnel.mask.protocol;
+		tunnel.val.key &= tunnel.mask.key;
+	}
+#endif
 	/* Update encapsulation IP layer protocol. */
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (!parser->queue[i].ibv_attr)
@@ -1929,6 +2003,79 @@ mlx5_flow_create_gre(const struct rte_flow_item *item __rte_unused,
 					  "IP protocol of GRE must be 47");
 	mlx5_flow_create_copy(parser, &tunnel, size);
 	return 0;
+}
+
+/**
+ * Convert MPLS item to Verbs specification.
+ * MPLS tunnel types currently supported are MPLS-in-GRE and MPLS-in-UDP.
+ *
+ * @param item[in]
+ *   Item specification.
+ * @param default_mask[in]
+ *   Default bit-masks to use when item->mask is not provided.
+ * @param data[in, out]
+ *   User structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_create_mpls(const struct rte_flow_item *item,
+		      const void *default_mask,
+		      struct mlx5_flow_data *data)
+{
+#ifndef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	(void)default_mask;
+	return rte_flow_error_set(data->error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_ITEM,
+				  item,
+				  "MPLS is not supported by driver");
+#else
+	const struct rte_flow_item_mpls *spec = item->spec;
+	const struct rte_flow_item_mpls *mask = item->mask;
+	struct mlx5_flow_parse *parser = data->parser;
+	unsigned int size = sizeof(struct ibv_flow_spec_mpls);
+	struct ibv_flow_spec_mpls mpls = {
+		.type = IBV_FLOW_SPEC_MPLS,
+		.size = size,
+	};
+
+	parser->inner = IBV_FLOW_SPEC_INNER;
+	if (parser->layer == HASH_RXQ_UDPV4 ||
+	    parser->layer == HASH_RXQ_UDPV6) {
+		parser->tunnel =
+			ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_MPLS_IN_UDP)];
+		parser->out_layer = parser->layer;
+	} else {
+		parser->tunnel =
+			ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_MPLS_IN_GRE)];
+		/* parser->out_layer stays as in GRE out_layer. */
+	}
+	parser->layer = HASH_RXQ_TUNNEL;
+	/*
+	 * For MPLS-in-GRE, RSS level should have been set.
+	 * For MPLS-in-UDP, use outer RSS.
+	 */
+	if (!parser->rss_conf.level)
+		parser->rss_conf.level = 1;
+	if (spec) {
+		if (!mask)
+			mask = default_mask;
+		/*
+		 * The verbs label field includes the entire MPLS header:
+		 * bits 0:19 - label value field.
+		 * bits 20:22 - traffic class field.
+		 * bits 23 - bottom of stack bit.
+		 * bits 24:31 - ttl field.
+		 */
+		mpls.val.label = *(const uint32_t *)spec;
+		mpls.mask.label = *(const uint32_t *)mask;
+		/* Remove unwanted bits from values. */
+		mpls.val.label &= mpls.mask.label;
+	}
+	mlx5_flow_create_copy(parser, &mpls, size);
+	return 0;
+#endif
 }
 
 /**

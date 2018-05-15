@@ -690,6 +690,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	unsigned int mps;
 	unsigned int cqe_comp;
 	unsigned int tunnel_en = 0;
+	unsigned int mpls_en = 0;
 	unsigned int swp = 0;
 	unsigned int verb_priorities = 0;
 	unsigned int mprq = 0;
@@ -850,6 +851,17 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	DRV_LOG(WARNING,
 		"tunnel offloading disabled due to old OFED/rdma-core version");
 #endif
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	mpls_en = ((attrs_out.tunnel_offloads_caps &
+		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_GRE) &&
+		   (attrs_out.tunnel_offloads_caps &
+		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_UDP));
+	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is %ssupported",
+		mpls_en ? "" : "not ");
+#else
+	DRV_LOG(WARNING, "MPLS over GRE/UDP tunnel offloading disabled due to"
+		" old OFED/rdma-core version or firmware configuration");
+#endif
 	err = mlx5_glue->query_device_ex(attr_ctx, NULL, &device_attr);
 	if (err) {
 		DEBUG("ibv_query_device_ex() failed");
@@ -873,6 +885,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			.cqe_comp = cqe_comp,
 			.mps = mps,
 			.tunnel_en = tunnel_en,
+			.mpls_en = mpls_en,
 			.tx_vec_en = 1,
 			.rx_vec_en = 1,
 			.mpw_hdr_dseg = 0,
