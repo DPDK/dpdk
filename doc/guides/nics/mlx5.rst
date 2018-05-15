@@ -6,9 +6,9 @@ MLX5 poll mode driver
 =====================
 
 The MLX5 poll mode driver library (**librte_pmd_mlx5**) provides support
-for **Mellanox ConnectX-4**, **Mellanox ConnectX-4 Lx** and **Mellanox
-ConnectX-5** families of 10/25/40/50/100 Gb/s adapters as well as their
-virtual functions (VF) in SR-IOV context.
+for **Mellanox ConnectX-4**, **Mellanox ConnectX-4 Lx** , **Mellanox
+ConnectX-5** and **Mellanox Bluefield** families of 10/25/40/50/100 Gb/s
+adapters as well as their virtual functions (VF) in SR-IOV context.
 
 Information and documentation about these adapters can be found on the
 `Mellanox website <http://www.mellanox.com>`__. Help is also provided by the
@@ -237,8 +237,8 @@ Run-time configuration
 
   Supported on:
 
-  - x86_64 with ConnectX-4, ConnectX-4 LX and ConnectX-5.
-  - POWER8 and ARMv8 with ConnectX-4 LX and ConnectX-5.
+  - x86_64 with ConnectX-4, ConnectX-4 LX, ConnectX-5 and Bluefield.
+  - POWER8 and ARMv8 with ConnectX-4 LX, ConnectX-5 and Bluefield.
 
 - ``mprq_en`` parameter [int]
 
@@ -304,34 +304,35 @@ Run-time configuration
 
   This option should be used in combination with ``txq_inline`` above.
 
-  On ConnectX-4, ConnectX-4 LX and ConnectX-5 without Enhanced MPW:
+  On ConnectX-4, ConnectX-4 LX, ConnectX-5 and Bluefield without
+  Enhanced MPW:
 
         - Disabled by default.
         - In case ``txq_inline`` is set recommendation is 4.
 
-  On ConnectX-5 with Enhanced MPW:
+  On ConnectX-5 and Bluefield with Enhanced MPW:
 
         - Set to 8 by default.
 
 - ``txq_mpw_en`` parameter [int]
 
   A nonzero value enables multi-packet send (MPS) for ConnectX-4 Lx and
-  enhanced multi-packet send (Enhanced MPS) for ConnectX-5. MPS allows the
-  TX burst function to pack up multiple packets in a single descriptor
-  session in order to save PCI bandwidth and improve performance at the
-  cost of a slightly higher CPU usage. When ``txq_inline`` is set along
-  with ``txq_mpw_en``, TX burst function tries to copy entire packet data
-  on to TX descriptor instead of including pointer of packet only if there
-  is enough room remained in the descriptor. ``txq_inline`` sets
-  per-descriptor space for either pointers or inlined packets. In addition,
-  Enhanced MPS supports hybrid mode - mixing inlined packets and pointers
-  in the same descriptor.
+  enhanced multi-packet send (Enhanced MPS) for ConnectX-5 and Bluefield.
+  MPS allows the TX burst function to pack up multiple packets in a
+  single descriptor session in order to save PCI bandwidth and improve
+  performance at the cost of a slightly higher CPU usage. When
+  ``txq_inline`` is set along with ``txq_mpw_en``, TX burst function tries
+  to copy entire packet data on to TX descriptor instead of including
+  pointer of packet only if there is enough room remained in the
+  descriptor. ``txq_inline`` sets per-descriptor space for either pointers
+  or inlined packets. In addition, Enhanced MPS supports hybrid mode -
+  mixing inlined packets and pointers in the same descriptor.
 
   This option cannot be used with certain offloads such as ``DEV_TX_OFFLOAD_TCP_TSO,
   DEV_TX_OFFLOAD_VXLAN_TNL_TSO, DEV_TX_OFFLOAD_GRE_TNL_TSO, DEV_TX_OFFLOAD_VLAN_INSERT``.
   When those offloads are requested the MPS send function will not be used.
 
-  It is currently only supported on the ConnectX-4 Lx and ConnectX-5
+  It is currently only supported on the ConnectX-4 Lx, ConnectX-5 and Bluefield
   families of adapters. Enabled by default.
 
 - ``txq_mpw_hdr_dseg_en`` parameter [int]
@@ -352,14 +353,14 @@ Run-time configuration
 
 - ``tx_vec_en`` parameter [int]
 
-  A nonzero value enables Tx vector on ConnectX-5 only NIC if the number of
+  A nonzero value enables Tx vector on ConnectX-5 and Bluefield NICs if the number of
   global Tx queues on the port is lesser than MLX5_VPMD_MIN_TXQS.
 
   This option cannot be used with certain offloads such as ``DEV_TX_OFFLOAD_TCP_TSO,
   DEV_TX_OFFLOAD_VXLAN_TNL_TSO, DEV_TX_OFFLOAD_GRE_TNL_TSO, DEV_TX_OFFLOAD_VLAN_INSERT``.
   When those offloads are requested the MPS send function will not be used.
 
-  Enabled by default on ConnectX-5.
+  Enabled by default on ConnectX-5 and Bluefield.
 
 - ``rx_vec_en`` parameter [int]
 
@@ -422,8 +423,9 @@ DPDK and must be installed separately:
 
 - **libmlx5**
 
-  Low-level user space driver library for Mellanox ConnectX-4/ConnectX-5
-  devices, it is automatically loaded by libibverbs.
+  Low-level user space driver library for Mellanox
+  ConnectX-4/ConnectX-5/Bluefield devices, it is automatically loaded
+  by libibverbs.
 
   This library basically implements send/receive calls to the hardware
   queues.
@@ -437,15 +439,16 @@ DPDK and must be installed separately:
   Unlike most other PMDs, these modules must remain loaded and bound to
   their devices:
 
-  - mlx5_core: hardware driver managing Mellanox ConnectX-4/ConnectX-5
-    devices and related Ethernet kernel network devices.
+  - mlx5_core: hardware driver managing Mellanox
+    ConnectX-4/ConnectX-5/Bluefield devices and related Ethernet kernel
+    network devices.
   - mlx5_ib: InifiniBand device driver.
   - ib_uverbs: user space driver for Verbs (entry point for libibverbs).
 
 - **Firmware update**
 
-  Mellanox OFED releases include firmware updates for ConnectX-4/ConnectX-5
-  adapters.
+  Mellanox OFED releases include firmware updates for
+  ConnectX-4/ConnectX-5/Bluefield adapters.
 
   Because each release provides new features, these updates must be applied to
   match the kernel modules and libraries they come with.
@@ -482,6 +485,7 @@ Mellanox OFED
   - ConnectX-4 Lx: **14.21.1000** and above.
   - ConnectX-5: **16.21.1000** and above.
   - ConnectX-5 Ex: **16.21.1000** and above.
+  - Bluefield: **18.99.3950** and above.
 
 While these libraries and kernel modules are available on OpenFabrics
 Alliance's `website <https://www.openfabrics.org/>`__ and provided by package
@@ -699,7 +703,7 @@ Usage example
 -------------
 
 This section demonstrates how to launch **testpmd** with Mellanox
-ConnectX-4/ConnectX-5 devices managed by librte_pmd_mlx5.
+ConnectX-4/ConnectX-5/Bluefield devices managed by librte_pmd_mlx5.
 
 #. Load the kernel modules:
 
