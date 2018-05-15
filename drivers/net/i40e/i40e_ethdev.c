@@ -2369,6 +2369,8 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	i40e_pf_disable_irq0(hw);
 	rte_intr_disable(intr_handle);
 
+	i40e_fdir_teardown(pf);
+
 	/* shutdown and destroy the HMC */
 	i40e_shutdown_lan_hmc(hw);
 
@@ -2380,7 +2382,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	pf->vmdq = NULL;
 
 	/* release all the existing VSIs and VEBs */
-	i40e_fdir_teardown(pf);
 	i40e_vsi_release(pf->main_vsi);
 
 	/* shutdown the adminq */
