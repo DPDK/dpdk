@@ -1594,7 +1594,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->tx_queue_offload_capa = dev_info->tx_offload_capa;
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
-		.txq_flags = DEV_TX_OFFLOAD_MULTI_SEGS,
+		.offloads = DEV_TX_OFFLOAD_MULTI_SEGS,
 	};
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
