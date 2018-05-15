@@ -107,7 +107,7 @@ port_init(uint8_t port, struct rte_mempool *mp)
 static int
 init_ports(int num_ports)
 {
-	uint8_t portid;
+	uint16_t portid;
 	int retval;
 
 	default_params.mp = rte_pktmbuf_pool_create("packet_pool",
