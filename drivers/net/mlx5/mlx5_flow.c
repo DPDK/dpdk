@@ -805,7 +805,7 @@ mlx5_flow_convert_actions(struct rte_eth_dev *dev,
 			}
 			parser->rss_conf = (struct rte_flow_action_rss){
 				.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
-				.level = rss->level,
+				.level = rss->level ? rss->level : 1,
 				.types = rss->types,
 				.key_len = rss_key_len,
 				.queue_num = rss->queue_num,
@@ -1166,9 +1166,6 @@ mlx5_flow_convert_rss(struct mlx5_flow_parse *parser)
 	int outer = parser->tunnel && parser->rss_conf.level < 2;
 	uint64_t rss = parser->rss_conf.types;
 
-	/* Default to outer RSS. */
-	if (!parser->rss_conf.level)
-		parser->rss_conf.level = 1;
 	layer = outer ? parser->out_layer : parser->layer;
 	if (layer == HASH_RXQ_TUNNEL)
 		layer = HASH_RXQ_ETH;
@@ -1801,9 +1798,6 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 	parser->tunnel = ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN)];
 	parser->out_layer = parser->layer;
 	parser->layer = HASH_RXQ_TUNNEL;
-	/* Default VXLAN to outer RSS. */
-	if (!parser->rss_conf.level)
-		parser->rss_conf.level = 1;
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1876,9 +1870,6 @@ mlx5_flow_create_vxlan_gpe(const struct rte_flow_item *item,
 	parser->tunnel = ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_VXLAN_GPE)];
 	parser->out_layer = parser->layer;
 	parser->layer = HASH_RXQ_TUNNEL;
-	/* Default VXLAN-GPE to outer RSS. */
-	if (!parser->rss_conf.level)
-		parser->rss_conf.level = 1;
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -1956,9 +1947,6 @@ mlx5_flow_create_gre(const struct rte_flow_item *item,
 	parser->tunnel = ptype_ext[PTYPE_IDX(RTE_PTYPE_TUNNEL_GRE)];
 	parser->out_layer = parser->layer;
 	parser->layer = HASH_RXQ_TUNNEL;
-	/* Default GRE to inner RSS. */
-	if (!parser->rss_conf.level)
-		parser->rss_conf.level = 2;
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
 	if (spec) {
 		if (!mask)
@@ -2052,12 +2040,6 @@ mlx5_flow_create_mpls(const struct rte_flow_item *item,
 		/* parser->out_layer stays as in GRE out_layer. */
 	}
 	parser->layer = HASH_RXQ_TUNNEL;
-	/*
-	 * For MPLS-in-GRE, RSS level should have been set.
-	 * For MPLS-in-UDP, use outer RSS.
-	 */
-	if (!parser->rss_conf.level)
-		parser->rss_conf.level = 1;
 	if (spec) {
 		if (!mask)
 			mask = default_mask;
@@ -2501,7 +2483,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	flow->tunnel = parser.tunnel;
 	flow->rss_conf = (struct rte_flow_action_rss){
 		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
-		.level = 0,
+		.level = parser.rss_conf.level,
 		.types = parser.rss_conf.types,
 		.key_len = parser.rss_conf.key_len,
 		.queue_num = parser.rss_conf.queue_num,
