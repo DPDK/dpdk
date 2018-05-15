@@ -352,7 +352,7 @@ post_process_gcm_crypto_op(struct aesni_gcm_qp *qp,
 			session->op == AESNI_GMAC_OP_VERIFY) {
 		uint8_t *digest;
 
-		uint8_t *tag = (uint8_t *)&qp->temp_digest;
+		uint8_t *tag = qp->temp_digest;
 
 		if (session->op == AESNI_GMAC_OP_VERIFY)
 			digest = op->sym->auth.digest.data;
