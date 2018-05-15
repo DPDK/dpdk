@@ -803,13 +803,6 @@ rte_eal_init(int argc, char **argv)
 	/* set log level as early as possible */
 	eal_log_level_parse(argc, argv);
 
-	/* create runtime data directory */
-	if (eal_create_runtime_dir() < 0) {
-		rte_eal_init_alert("Cannot create runtime directory\n");
-		rte_errno = EACCES;
-		return -1;
-	}
-
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");
 		rte_errno = ENOTSUP;
@@ -821,6 +814,13 @@ rte_eal_init(int argc, char **argv)
 		rte_eal_init_alert("Invalid 'command line' arguments.");
 		rte_errno = EINVAL;
 		rte_atomic32_clear(&run_once);
+		return -1;
+	}
+
+	/* create runtime data directory */
+	if (eal_create_runtime_dir() < 0) {
+		rte_eal_init_alert("Cannot create runtime directory\n");
+		rte_errno = EACCES;
 		return -1;
 	}
 
