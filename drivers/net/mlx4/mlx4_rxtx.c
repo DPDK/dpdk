@@ -263,7 +263,7 @@ mlx4_txq_stamp_freed_wqe(struct mlx4_sq *sq, volatile uint32_t *start,
 		} while (start != (volatile uint32_t *)sq->eob);
 		start = (volatile uint32_t *)sq->buf;
 		/* Flip invalid stamping ownership. */
-		stamp ^= RTE_BE32(0x1 << MLX4_SQ_OWNER_BIT);
+		stamp ^= RTE_BE32(1u << MLX4_SQ_OWNER_BIT);
 		sq->stamp = stamp;
 		if (start == end)
 			return size;
@@ -621,7 +621,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			ctrl_next = (volatile struct mlx4_wqe_ctrl_seg *)
 				((volatile uint8_t *)ctrl_next - sq->size);
 			/* Flip HW valid ownership. */
-			sq->owner_opcode ^= 0x1 << MLX4_SQ_OWNER_BIT;
+			sq->owner_opcode ^= 1u << MLX4_SQ_OWNER_BIT;
 		}
 		/*
 		 * For raw Ethernet, the SOLICIT flag is used to indicate

@@ -86,9 +86,9 @@ mlx4_txq_fill_dv_obj_info(struct txq *txq, struct mlx4dv_obj *mlxdv)
 	uint32_t headroom_size = 2048 + (1 << dqp->sq.wqe_shift);
 	/* Continuous headroom size bytes must always stay freed. */
 	sq->remain_size = sq->size - headroom_size;
-	sq->owner_opcode = MLX4_OPCODE_SEND | (0 << MLX4_SQ_OWNER_BIT);
+	sq->owner_opcode = MLX4_OPCODE_SEND | (0u << MLX4_SQ_OWNER_BIT);
 	sq->stamp = rte_cpu_to_be_32(MLX4_SQ_STAMP_VAL |
-				     (0 << MLX4_SQ_OWNER_BIT));
+				     (0u << MLX4_SQ_OWNER_BIT));
 	sq->db = dqp->sdb;
 	sq->doorbell_qpn = dqp->doorbell_qpn;
 	cq->buf = dcq->buf.buf;
