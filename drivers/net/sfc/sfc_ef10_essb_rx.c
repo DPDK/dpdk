@@ -43,6 +43,31 @@
 #define SFC_EF10_ESSB_RX_FAKE_BUF_SIZE	32
 
 /**
+ * Minimum number of Rx buffers the datapath allows to use.
+ *
+ * Each HW Rx descriptor has many Rx buffers. The number of buffers
+ * in one HW Rx descriptor is equal to size of contiguous block
+ * provided by Rx buffers memory pool. The contiguous block size
+ * depends on CONFIG_RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB and rte_mbuf
+ * data size specified on the memory pool creation. Typical rte_mbuf
+ * data size is about 2k which makes a bit less than 32 buffers in
+ * contiguous block with default bucket size equal to 64k.
+ * Since HW Rx descriptors are pushed by 8 (see SFC_EF10_RX_WPTR_ALIGN),
+ * it makes about 256 as required minimum. Double it in advertised
+ * minimum to allow for at least 2 refill blocks.
+ */
+#define SFC_EF10_ESSB_RX_DESCS_MIN	512
+
+/**
+ * Number of Rx buffers should be aligned to.
+ *
+ * There are no extra requirements on alignment since actual number of
+ * pushed Rx buffers will be multiple by contiguous block size which
+ * is unknown beforehand.
+ */
+#define SFC_EF10_ESSB_RX_DESCS_ALIGN	1
+
+/**
  * Maximum number of descriptors/buffers in the Rx ring.
  * It should guarantee that corresponding event queue never overfill.
  */
@@ -396,8 +421,8 @@ sfc_ef10_essb_rx_get_dev_info(struct rte_eth_dev_info *dev_info)
 	 * Number of descriptors just defines maximum number of pushed
 	 * descriptors (fill level).
 	 */
-	dev_info->rx_desc_lim.nb_min = SFC_RX_REFILL_BULK;
-	dev_info->rx_desc_lim.nb_align = SFC_RX_REFILL_BULK;
+	dev_info->rx_desc_lim.nb_min = SFC_EF10_ESSB_RX_DESCS_MIN;
+	dev_info->rx_desc_lim.nb_align = SFC_EF10_ESSB_RX_DESCS_ALIGN;
 }
 
 static sfc_dp_rx_pool_ops_supported_t sfc_ef10_essb_rx_pool_ops_supported;
