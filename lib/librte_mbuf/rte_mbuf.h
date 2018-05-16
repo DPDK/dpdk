@@ -1345,12 +1345,14 @@ rte_pktmbuf_ext_shinfo_init_helper(void *buf_addr, uint16_t *buf_len,
 {
 	struct rte_mbuf_ext_shared_info *shinfo;
 	void *buf_end = RTE_PTR_ADD(buf_addr, *buf_len);
+	void *addr;
 
-	shinfo = RTE_PTR_ALIGN_FLOOR(RTE_PTR_SUB(buf_end,
-				sizeof(*shinfo)), sizeof(uintptr_t));
-	if ((void *)shinfo <= buf_addr)
+	addr = RTE_PTR_ALIGN_FLOOR(RTE_PTR_SUB(buf_end, sizeof(*shinfo)),
+				   sizeof(uintptr_t));
+	if (addr <= buf_addr)
 		return NULL;
 
+	shinfo = (struct rte_mbuf_ext_shared_info *)addr;
 	shinfo->free_cb = free_cb;
 	shinfo->fcb_opaque = fcb_opaque;
 	rte_mbuf_ext_refcnt_set(shinfo, 1);
