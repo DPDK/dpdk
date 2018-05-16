@@ -347,7 +347,8 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 	for (i = 0; i < sched_ctx->nb_wc; i++) {
 		char r_name[16];
 
-		snprintf(r_name, sizeof(r_name), MC_SCHED_ENQ_RING_NAME_PREFIX "%u", i);
+		snprintf(r_name, sizeof(r_name), MC_SCHED_ENQ_RING_NAME_PREFIX
+				"%u_%u", dev->data->dev_id, i);
 		mc_ctx->sched_enq_ring[i] = rte_ring_lookup(r_name);
 		if (!mc_ctx->sched_enq_ring[i]) {
 			mc_ctx->sched_enq_ring[i] = rte_ring_create(r_name,
@@ -360,7 +361,8 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 				goto exit;
 			}
 		}
-		snprintf(r_name, sizeof(r_name), MC_SCHED_DEQ_RING_NAME_PREFIX "%u", i);
+		snprintf(r_name, sizeof(r_name), MC_SCHED_DEQ_RING_NAME_PREFIX
+				"%u_%u", dev->data->dev_id, i);
 		mc_ctx->sched_deq_ring[i] = rte_ring_lookup(r_name);
 		if (!mc_ctx->sched_deq_ring[i]) {
 			mc_ctx->sched_deq_ring[i] = rte_ring_create(r_name,
