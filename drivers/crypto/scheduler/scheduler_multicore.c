@@ -348,18 +348,30 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 		char r_name[16];
 
 		snprintf(r_name, sizeof(r_name), MC_SCHED_ENQ_RING_NAME_PREFIX "%u", i);
-		mc_ctx->sched_enq_ring[i] = rte_ring_create(r_name, PER_SLAVE_BUFF_SIZE,
-					rte_socket_id(), RING_F_SC_DEQ | RING_F_SP_ENQ);
+		mc_ctx->sched_enq_ring[i] = rte_ring_lookup(r_name);
 		if (!mc_ctx->sched_enq_ring[i]) {
-			CS_LOG_ERR("Cannot create ring for worker %u", i);
-			goto exit;
+			mc_ctx->sched_enq_ring[i] = rte_ring_create(r_name,
+						PER_SLAVE_BUFF_SIZE,
+						rte_socket_id(),
+						RING_F_SC_DEQ | RING_F_SP_ENQ);
+			if (!mc_ctx->sched_enq_ring[i]) {
+				CS_LOG_ERR("Cannot create ring for worker %u",
+					   i);
+				goto exit;
+			}
 		}
 		snprintf(r_name, sizeof(r_name), MC_SCHED_DEQ_RING_NAME_PREFIX "%u", i);
-		mc_ctx->sched_deq_ring[i] = rte_ring_create(r_name, PER_SLAVE_BUFF_SIZE,
-					rte_socket_id(), RING_F_SC_DEQ | RING_F_SP_ENQ);
+		mc_ctx->sched_deq_ring[i] = rte_ring_lookup(r_name);
 		if (!mc_ctx->sched_deq_ring[i]) {
-			CS_LOG_ERR("Cannot create ring for worker %u", i);
-			goto exit;
+			mc_ctx->sched_deq_ring[i] = rte_ring_create(r_name,
+						PER_SLAVE_BUFF_SIZE,
+						rte_socket_id(),
+						RING_F_SC_DEQ | RING_F_SP_ENQ);
+			if (!mc_ctx->sched_deq_ring[i]) {
+				CS_LOG_ERR("Cannot create ring for worker %u",
+					   i);
+				goto exit;
+			}
 		}
 	}
 
