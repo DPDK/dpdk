@@ -184,7 +184,7 @@ rte_log_set_level_pattern(const char *pattern, uint32_t level)
 		if (rte_logs.dynamic_types[i].name == NULL)
 			continue;
 
-		if (fnmatch(pattern, rte_logs.dynamic_types[i].name, 0))
+		if (fnmatch(pattern, rte_logs.dynamic_types[i].name, 0) == 0)
 			rte_logs.dynamic_types[i].loglevel = level;
 	}
 
