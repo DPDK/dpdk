@@ -2046,7 +2046,7 @@ sfc_flow_spec_filters_complete(struct sfc_adapter *sa,
 	if (min_multiplier == UINT_MAX) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Flow rule pattern is not supported");
+				   "The flow rule pattern is unsupported");
 		return -rte_errno;
 	}
 
