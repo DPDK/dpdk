@@ -139,7 +139,7 @@ static int fme_pr_write(struct ifpga_fme_hw *fme_dev,
 			pr_credit--;
 		} else {
 			WARN_ON(1);
-			return -EINVAL;
+			ret = -EINVAL;
 			goto done;
 		}
 	}
