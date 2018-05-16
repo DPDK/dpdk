@@ -621,6 +621,11 @@ igbuio_pci_init_module(void)
 {
 	int ret;
 
+	if (igbuio_kernel_is_locked_down()) {
+		pr_err("Not able to use module, kernel lock down is enabled\n");
+		return -EINVAL;
+	}
+
 	ret = igbuio_config_intr_mode(intr_mode);
 	if (ret < 0)
 		return ret;

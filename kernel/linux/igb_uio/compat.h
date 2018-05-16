@@ -126,10 +126,6 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 #define HAVE_PCI_IS_BRIDGE_API 1
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
-#define HAVE_ALLOC_IRQ_VECTORS 1
-#endif
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
 #define HAVE_MSI_LIST_IN_GENERIC_DEVICE 1
 #endif
@@ -137,3 +133,22 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 #define HAVE_PCI_MSI_MASK_IRQ 1
 #endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
+#define HAVE_ALLOC_IRQ_VECTORS 1
+#endif
+
+static inline bool igbuio_kernel_is_locked_down(void)
+{
+#ifdef CONFIG_LOCK_DOWN_KERNEL
+#ifdef CONFIG_LOCK_DOWN_IN_EFI_SECURE_BOOT
+	return kernel_is_locked_down(NULL);
+#elif CONFIG_EFI_SECURE_BOOT_LOCK_DOWN
+	return kernel_is_locked_down();
+#else
+	return false;
+#endif
+#else
+	return false;
+#endif
+}
