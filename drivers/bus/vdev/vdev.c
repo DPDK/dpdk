@@ -142,7 +142,7 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 
 	name = rte_vdev_device_name(dev);
 
-	VDEV_LOG(DEBUG, "Search driver %s to probe device %s\n", name,
+	VDEV_LOG(DEBUG, "Search driver %s to probe device %s", name,
 		rte_vdev_device_name(dev));
 
 	if (vdev_parse(name, &driver))
@@ -255,7 +255,7 @@ rte_vdev_init(const char *name, const char *args)
 		ret = vdev_probe_all_drivers(dev);
 		if (ret) {
 			if (ret > 0)
-				VDEV_LOG(ERR, "no driver found for %s\n", name);
+				VDEV_LOG(ERR, "no driver found for %s", name);
 			/* If fails, remove it from vdev list */
 			devargs = dev->device.devargs;
 			TAILQ_REMOVE(&vdev_device_list, dev, next);
@@ -274,7 +274,7 @@ vdev_remove_driver(struct rte_vdev_device *dev)
 	const struct rte_vdev_driver *driver;
 
 	if (!dev->device.driver) {
-		VDEV_LOG(DEBUG, "no driver attach to device %s\n", name);
+		VDEV_LOG(DEBUG, "no driver attach to device %s", name);
 		return 1;
 	}
 
@@ -482,7 +482,7 @@ vdev_probe(void)
 			continue;
 
 		if (vdev_probe_all_drivers(dev)) {
-			VDEV_LOG(ERR, "failed to initialize %s device\n",
+			VDEV_LOG(ERR, "failed to initialize %s device",
 				rte_vdev_device_name(dev));
 			ret = -1;
 		}
