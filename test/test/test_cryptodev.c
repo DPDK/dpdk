@@ -6615,7 +6615,7 @@ test_multi_session_random_usage(void)
 		sessions[i] = rte_cryptodev_sym_session_create(
 				ts_params->session_mpool);
 
-		rte_memcpy(&ut_paramz[i].ut_params, &testsuite_params,
+		rte_memcpy(&ut_paramz[i].ut_params, &unittest_params,
 				sizeof(struct crypto_unittest_params));
 
 		test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
