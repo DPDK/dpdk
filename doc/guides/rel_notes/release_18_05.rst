@@ -64,6 +64,33 @@ New Features
   CXGBE VF Poll Mode Driver has been added to run DPDK over Chelsio
   T5/T6 NIC VF instances.
 
+* **Updated mlx5 driver.**
+
+  Updated the mlx5 driver including the following changes:
+
+  * Introduced Multi-packet Rx. With it, achieved 100Gb/sec with 64B frames.
+  * Supported to be run by non-root users given reduced set of capabilities
+    CAP_NET_ADMIN, CAP_NET_RAW and CAP_IPC_LOCK.
+  * Supported TSO and checksum for generic UDP and IP tunnels.
+  * Supported inner checksum and RSS for GRE, VXLAN-GPE, MPLSoGRE
+    and MPLSoUDP tunnels.
+  * Accommodate to the new memory hotplug model.
+  * Supported non virtually contiguous mempools.
+  * Supported MAC adding along with allmulti and promiscuous modes from VF.
+  * Supported Mellanox BlueField SoC device.
+  * Supported PMD defaults for queue number and depth to improve the out
+    of the box performance.
+
+* **Updated mlx4 driver.**
+
+  Updated the mlx4 driver including the following changes:
+
+  * Supported to be run by non-root users given reduced set of capabilities
+    CAP_NET_ADMIN, CAP_NET_RAW and CAP_IPC_LOCK.
+  * Supported CRC strip toggling.
+  * Accommodate to the new memory hotplug model.
+  * Supported non virtually contiguous mempools.
+
 * **Updated Solarflare network PMD.**
 
   Updated the sfc_efx driver including the following changes:
