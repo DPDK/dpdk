@@ -55,7 +55,7 @@ rte_strsplit(char *string, int stringlen,
 static inline size_t
 rte_strlcpy(char *dst, const char *src, size_t size)
 {
-	return snprintf(dst, size, "%s", src);
+	return (size_t)snprintf(dst, size, "%s", src);
 }
 
 /* pull in a strlcpy function */
