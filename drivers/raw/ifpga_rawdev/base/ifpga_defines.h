@@ -97,7 +97,7 @@ enum port_feature_id {
 /*
  * All headers and structures must be byte-packed to match the spec.
  */
-#pragma pack(1)
+#pragma pack(push, 1)
 
 struct feature_header {
 	union {
@@ -1659,4 +1659,5 @@ struct bts_header {
 	(((bts_hdr)->guid_h == GBS_GUID_H) &&		\
 	((bts_hdr)->guid_l == GBS_GUID_L))
 
+#pragma pack(pop)
 #endif /* _BASE_IFPGA_DEFINES_H_ */
