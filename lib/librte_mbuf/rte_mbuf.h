@@ -806,7 +806,7 @@ rte_mbuf_refcnt_read(const struct rte_mbuf *m)
 static inline void
 rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 {
-	rte_atomic16_set(&m->refcnt_atomic, new_value);
+	rte_atomic16_set(&m->refcnt_atomic, (int16_t)new_value);
 }
 
 /* internal */
@@ -837,8 +837,8 @@ rte_mbuf_refcnt_update(struct rte_mbuf *m, int16_t value)
 	 */
 	if (likely(rte_mbuf_refcnt_read(m) == 1)) {
 		++value;
-		rte_mbuf_refcnt_set(m, value);
-		return value;
+		rte_mbuf_refcnt_set(m, (uint16_t)value);
+		return (uint16_t)value;
 	}
 
 	return __rte_mbuf_refcnt_update(m, value);
@@ -909,7 +909,7 @@ static inline void
 rte_mbuf_ext_refcnt_set(struct rte_mbuf_ext_shared_info *shinfo,
 	uint16_t new_value)
 {
-	rte_atomic16_set(&shinfo->refcnt_atomic, new_value);
+	rte_atomic16_set(&shinfo->refcnt_atomic, (int16_t)new_value);
 }
 
 /**
@@ -929,8 +929,8 @@ rte_mbuf_ext_refcnt_update(struct rte_mbuf_ext_shared_info *shinfo,
 {
 	if (likely(rte_mbuf_ext_refcnt_read(shinfo) == 1)) {
 		++value;
-		rte_mbuf_ext_refcnt_set(shinfo, value);
-		return value;
+		rte_mbuf_ext_refcnt_set(shinfo, (uint16_t)value);
+		return (uint16_t)value;
 	}
 
 	return (uint16_t)rte_atomic16_add_return(&shinfo->refcnt_atomic, value);
