@@ -167,8 +167,8 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		vst1q_u8((void *)t_wqe, ctrl);
 		/* Fill ESEG in the header. */
 		vst1q_u16((void *)(t_wqe + 1),
-			  (uint16x8_t) { 0, 0, cs_flags, rte_cpu_to_be_16(len),
-					 0, 0, 0, 0 });
+			  ((uint16x8_t) { 0, 0, cs_flags, rte_cpu_to_be_16(len),
+					  0, 0, 0, 0 }));
 		txq->wqe_ci = wqe_ci;
 	}
 	if (!n)
@@ -300,10 +300,10 @@ txq_burst_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	vst1q_u8((void *)t_wqe, ctrl);
 	/* Fill ESEG in the header. */
 	vst1q_u8((void *)(t_wqe + 1),
-		 (uint8x16_t) { 0, 0, 0, 0,
-				cs_flags, 0, 0, 0,
-				0, 0, 0, 0,
-				0, 0, 0, 0 });
+		 ((uint8x16_t) { 0, 0, 0, 0,
+				 cs_flags, 0, 0, 0,
+				 0, 0, 0, 0,
+				 0, 0, 0, 0 }));
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	txq->stats.opackets += pkts_n;
 #endif
