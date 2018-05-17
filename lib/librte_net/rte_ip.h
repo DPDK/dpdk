@@ -375,7 +375,7 @@ rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 		uint32_t proto; /* L4 protocol - top 3 bytes must be zero */
 	} psd_hdr;
 
-	psd_hdr.proto = (ipv6_hdr->proto << 24);
+	psd_hdr.proto = (uint32_t)(ipv6_hdr->proto << 24);
 	if (ol_flags & PKT_TX_TCP_SEG) {
 		psd_hdr.len = 0;
 	} else {
