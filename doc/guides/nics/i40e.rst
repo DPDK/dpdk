@@ -4,14 +4,16 @@
 I40E Poll Mode Driver
 ======================
 
-The I40E PMD (librte_pmd_i40e) provides poll mode driver support
-for the Intel X710/XL710/X722/XXV710 10/25/40 Gbps family of adapters.
+The i40e PMD (librte_pmd_i40e) provides poll mode driver support for
+10/25/40 Gbps Intel® Ethernet 700 Series Network Adapters based on
+the Intel Ethernet Controller X710/XL710/XXV710 and Intel Ethernet
+Connection X722 (only support part of features).
 
 
 Features
 --------
 
-Features of the I40E PMD are:
+Features of the i40e PMD are:
 
 - Multiple queues for TX and RX
 - Receiver Side Scaling (RSS)
@@ -40,7 +42,7 @@ Features of the I40E PMD are:
 - VF Daemon (VFD) - EXPERIMENTAL
 - Dynamic Device Personalization (DDP)
 - Queue region configuration
-- Vitrual Function Port Representors
+- Virtual Function Port Representors
 
 Prerequisites
 -------------
@@ -54,7 +56,7 @@ Prerequisites
   section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
 
 - Upgrade the NVM/FW version following the `Intel® Ethernet NVM Update Tool Quick Usage Guide for Linux
-  <https://www-ssl.intel.com/content/www/us/en/embedded/products/networking/nvm-update-tool-quick-linux-usage-guide.html>`_ if needed.
+  <https://www-ssl.intel.com/content/www/us/en/embedded/products/networking/nvm-update-tool-quick-linux-usage-guide.html>`_ and `Intel® Ethernet NVM Update Tool: Quick Usage Guide for EFI <https://www.intel.com/content/www/us/en/embedded/products/networking/nvm-update-tool-quick-efi-usage-guide.html>`_ if needed.
 
 Pre-Installation Configuration
 ------------------------------
@@ -339,7 +341,7 @@ Delete all flow director rules on a port:
 Floating VEB
 ~~~~~~~~~~~~~
 
-The Intel® Ethernet Controller X710 and XL710 Family support a feature called
+The Intel® Ethernet 700 Series support a feature called
 "Floating VEB".
 
 A Virtual Ethernet Bridge (VEB) is an IEEE Edge Virtual Bridging (EVB) term
@@ -385,21 +387,22 @@ or greater.
 Dynamic Device Personalization (DDP)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Intel® Ethernet Controller X*710 support a feature called "Dynamic Device
-Personalization (DDP)", which is used to configure hardware by downloading
-a profile to support protocols/filters which are not supported by default.
-The DDP functionality requires a NIC firmware version of 6.0 or greater.
+The Intel® Ethernet 700 Series except for the Intel Ethernet Connection
+X722 support a feature called "Dynamic Device Personalization (DDP)",
+which is used to configure hardware by downloading a profile to support
+protocols/filters which are not supported by default. The DDP
+functionality requires a NIC firmware version of 6.0 or greater.
 
-Current implementation supports MPLSoUDP/MPLSoGRE/GTP-C/GTP-U/PPPoE/PPPoL2TP,
+Current implementation supports GTP-C/GTP-U/PPPoE/PPPoL2TP,
 steering can be used with rte_flow API.
 
-Load a profile which supports MPLSoUDP/MPLSoGRE and store backup profile:
+Load a profile which supports GTP and store backup profile:
 
 .. code-block:: console
 
-   testpmd> ddp add 0 ./mpls.pkgo,./backup.pkgo
+   testpmd> ddp add 0 ./gtp.pkgo,./backup.pkgo
 
-Delete a MPLS profile and restore backup profile:
+Delete a GTP profile and restore backup profile:
 
 .. code-block:: console
 
@@ -411,11 +414,11 @@ Get loaded DDP package info list:
 
    testpmd> ddp get list 0
 
-Display information about a MPLS profile:
+Display information about a GTP profile:
 
 .. code-block:: console
 
-   testpmd> ddp get info ./mpls.pkgo
+   testpmd> ddp get info ./gtp.pkgo
 
 Input set configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -431,7 +434,7 @@ For example, to use only 48bit prefix for IPv6 src address for IPv6 TCP RSS:
 
 Queue region configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The Ethernet Controller X710/XL710 supports a feature of queue regions
+The Intel® Ethernet 700 Series supports a feature of queue regions
 configuration for RSS in the PF, so that different traffic classes or
 different packet classification types can be separated to different
 queues in different queue regions. There is an API for configuration
@@ -455,8 +458,8 @@ details please refer to :doc:`../testpmd_app_ug/index`.
 Limitations or Known issues
 ---------------------------
 
-MPLS packet classification on X710/XL710
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+MPLS packet classification
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For firmware versions prior to 5.0, MPLS packets are not recognized by the NIC.
 The L2 Payload flow type in flow director can be used to classify MPLS packet
@@ -504,14 +507,14 @@ Incorrect Rx statistics when packet is oversize
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When a packet is over maximum frame size, the packet is dropped.
-However the Rx statistics, when calling `rte_eth_stats_get` incorrectly
+However, the Rx statistics, when calling `rte_eth_stats_get` incorrectly
 shows it as received.
 
 VF & TC max bandwidth setting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The per VF max bandwidth and per TC max bandwidth cannot be enabled in parallel.
-The dehavior is different when handling per VF and per TC max bandwidth setting.
+The behavior is different when handling per VF and per TC max bandwidth setting.
 When enabling per VF max bandwidth, SW will check if per TC max bandwidth is
 enabled. If so, return failure.
 When enabling per TC max bandwidth, SW will check if per VF max bandwidth
@@ -532,11 +535,11 @@ VF performance is impacted by PCI extended tag setting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To reach maximum NIC performance in the VF the PCI extended tag must be
-enabled. The DPDK I40E PF driver will set this feature during initialization,
+enabled. The DPDK i40e PF driver will set this feature during initialization,
 but the kernel PF driver does not. So when running traffic on a VF which is
 managed by the kernel PF driver, a significant NIC performance downgrade has
-been observed (for 64 byte packets, there is about 25% linerate downgrade for
-a 25G device and about 35% for a 40G device).
+been observed (for 64 byte packets, there is about 25% line-rate downgrade for
+a 25GbE device and about 35% for a 40GbE device).
 
 For kernel version >= 4.11, the kernel's PCI driver will enable the extended
 tag if it detects that the device supports it. So by default, this is not an
@@ -577,12 +580,12 @@ with DPDK, then the configuration will also impact port B in the NIC with
 kernel driver, which don't want to use the TPID.
 So PMD reports warning to clarify what is changed by writing global register.
 
-High Performance of Small Packets on 40G NIC
---------------------------------------------
+High Performance of Small Packets on 40GbE NIC
+----------------------------------------------
 
 As there might be firmware fixes for performance enhancement in latest version
 of firmware image, the firmware update might be needed for getting high performance.
-Check with the local Intel's Network Division application engineers for firmware updates.
+Check the Intel support website for the latest firmware updates.
 Users should consult the release notes specific to a DPDK release to identify
 the validated firmware version for a NIC using the i40e driver.
 
@@ -605,10 +608,10 @@ performance or per packet latency.
 Example of getting best performance with l3fwd example
 ------------------------------------------------------
 
-The following is an example of running the DPDK ``l3fwd`` sample application to get high performance with an
-Intel server platform and Intel XL710 NICs.
+The following is an example of running the DPDK ``l3fwd`` sample application to get high performance with a
+server with Intel Xeon processors and Intel Ethernet CNA XL710.
 
-The example scenario is to get best performance with two Intel XL710 40GbE ports.
+The example scenario is to get best performance with two Intel Ethernet CNA XL710 40GbE ports.
 See :numref:`figure_intel_perf_test_setup` for the performance test setup.
 
 .. _figure_intel_perf_test_setup:
@@ -618,9 +621,9 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
    Performance Test Setup
 
 
-1. Add two Intel XL710 NICs to the platform, and use one port per card to get best performance.
-   The reason for using two NICs is to overcome a PCIe Gen3's limitation since it cannot provide 80G bandwidth
-   for two 40G ports, but two different PCIe Gen3 x8 slot can.
+1. Add two Intel Ethernet CNA XL710 to the platform, and use one port per card to get best performance.
+   The reason for using two NICs is to overcome a PCIe v3.0 limitation since it cannot provide 80GbE bandwidth
+   for two 40GbE ports, but two different PCIe v3.0 x8 slot can.
    Refer to the sample NICs output above, then we can select ``82:00.0`` and ``85:00.0`` as test ports::
 
       82:00.0 Ethernet [0200]: Intel XL710 for 40GbE QSFP+ [8086:1583]
@@ -636,7 +639,7 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
 
 4. Bind these two ports to igb_uio.
 
-5. As to XL710 40G port, we need at least two queue pairs to achieve best performance, then two queues per port
+5. As to Intel Ethernet CNA XL710 40GbE port, we need at least two queue pairs to achieve best performance, then two queues per port
    will be required, and each queue pair will need a dedicated CPU core for receiving/transmitting packets.
 
 6. The DPDK sample application ``l3fwd`` will be used for performance testing, with using two ports for bi-directional forwarding.
