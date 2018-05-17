@@ -447,8 +447,11 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 
 	if (rte_mem_event_callback_register(VIRTIO_USER_MEM_EVENT_CLB_NAME,
 				virtio_user_mem_event_cb, dev)) {
-		PMD_INIT_LOG(ERR, "Failed to register mem event callback\n");
-		return -1;
+		if (rte_errno != ENOTSUP) {
+			PMD_INIT_LOG(ERR, "Failed to register mem event"
+					" callback\n");
+			return -1;
+		}
 	}
 
 	return 0;
