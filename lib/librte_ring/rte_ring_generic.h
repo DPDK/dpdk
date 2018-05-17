@@ -53,7 +53,7 @@ update_tail(struct rte_ring_headtail *ht, uint32_t old_val, uint32_t new_val,
  *   If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only.
  */
 static __rte_always_inline unsigned int
-__rte_ring_move_prod_head(struct rte_ring *r, int is_sp,
+__rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 		unsigned int n, enum rte_ring_queue_behavior behavior,
 		uint32_t *old_head, uint32_t *new_head,
 		uint32_t *free_entries)
@@ -123,7 +123,7 @@ __rte_ring_move_prod_head(struct rte_ring *r, int is_sp,
  *     If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only.
  */
 static __rte_always_inline unsigned int
-__rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
+__rte_ring_move_cons_head(struct rte_ring *r, unsigned int is_sc,
 		unsigned int n, enum rte_ring_queue_behavior behavior,
 		uint32_t *old_head, uint32_t *new_head,
 		uint32_t *entries)

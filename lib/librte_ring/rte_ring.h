@@ -335,7 +335,7 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
 static __rte_always_inline unsigned int
 __rte_ring_do_enqueue(struct rte_ring *r, void * const *obj_table,
 		 unsigned int n, enum rte_ring_queue_behavior behavior,
-		 int is_sp, unsigned int *free_space)
+		 unsigned int is_sp, unsigned int *free_space)
 {
 	uint32_t prod_head, prod_next;
 	uint32_t free_entries;
@@ -377,7 +377,7 @@ end:
 static __rte_always_inline unsigned int
 __rte_ring_do_dequeue(struct rte_ring *r, void **obj_table,
 		 unsigned int n, enum rte_ring_queue_behavior behavior,
-		 int is_sc, unsigned int *available)
+		 unsigned int is_sc, unsigned int *available)
 {
 	uint32_t cons_head, cons_next;
 	uint32_t entries;
