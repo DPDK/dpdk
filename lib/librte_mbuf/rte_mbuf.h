@@ -836,8 +836,9 @@ rte_mbuf_refcnt_update(struct rte_mbuf *m, int16_t value)
 	 * reference counter can occur.
 	 */
 	if (likely(rte_mbuf_refcnt_read(m) == 1)) {
-		rte_mbuf_refcnt_set(m, 1 + value);
-		return 1 + value;
+		++value;
+		rte_mbuf_refcnt_set(m, value);
+		return value;
 	}
 
 	return __rte_mbuf_refcnt_update(m, value);
@@ -927,8 +928,9 @@ rte_mbuf_ext_refcnt_update(struct rte_mbuf_ext_shared_info *shinfo,
 	int16_t value)
 {
 	if (likely(rte_mbuf_ext_refcnt_read(shinfo) == 1)) {
-		rte_mbuf_ext_refcnt_set(shinfo, 1 + value);
-		return 1 + value;
+		++value;
+		rte_mbuf_ext_refcnt_set(shinfo, value);
+		return value;
 	}
 
 	return (uint16_t)rte_atomic16_add_return(&shinfo->refcnt_atomic, value);
