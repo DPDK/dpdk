@@ -5800,8 +5800,12 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 
 	/* won't configure msix register if no mapping is done
 	 * between intr vector and event fd
+	 * but if misx has been enabled already, need to configure
+	 * auto clean, auto mask and throttling.
 	 */
-	if (!rte_intr_dp_is_en(intr_handle))
+	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
+	if (!rte_intr_dp_is_en(intr_handle) &&
+	    !(gpie & (IXGBE_GPIE_MSIX_MODE | IXGBE_GPIE_PBA_SUPPORT)))
 		return;
 
 	if (rte_intr_allow_others(intr_handle))
@@ -5825,27 +5829,30 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 	/* Populate the IVAR table and set the ITR values to the
 	 * corresponding register.
 	 */
-	for (queue_id = 0; queue_id < dev->data->nb_rx_queues;
-	     queue_id++) {
-		/* by default, 1:1 mapping */
-		ixgbe_set_ivar_map(hw, 0, queue_id, vec);
-		intr_handle->intr_vec[queue_id] = vec;
-		if (vec < base + intr_handle->nb_efd - 1)
-			vec++;
-	}
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (queue_id = 0; queue_id < dev->data->nb_rx_queues;
+			queue_id++) {
+			/* by default, 1:1 mapping */
+			ixgbe_set_ivar_map(hw, 0, queue_id, vec);
+			intr_handle->intr_vec[queue_id] = vec;
+			if (vec < base + intr_handle->nb_efd - 1)
+				vec++;
+		}
 
-	switch (hw->mac.type) {
-	case ixgbe_mac_82598EB:
-		ixgbe_set_ivar_map(hw, -1, IXGBE_IVAR_OTHER_CAUSES_INDEX,
-				   IXGBE_MISC_VEC_ID);
-		break;
-	case ixgbe_mac_82599EB:
-	case ixgbe_mac_X540:
-	case ixgbe_mac_X550:
-		ixgbe_set_ivar_map(hw, -1, 1, IXGBE_MISC_VEC_ID);
-		break;
-	default:
-		break;
+		switch (hw->mac.type) {
+		case ixgbe_mac_82598EB:
+			ixgbe_set_ivar_map(hw, -1,
+					   IXGBE_IVAR_OTHER_CAUSES_INDEX,
+					   IXGBE_MISC_VEC_ID);
+			break;
+		case ixgbe_mac_82599EB:
+		case ixgbe_mac_X540:
+		case ixgbe_mac_X550:
+			ixgbe_set_ivar_map(hw, -1, 1, IXGBE_MISC_VEC_ID);
+			break;
+		default:
+			break;
+		}
 	}
 	IXGBE_WRITE_REG(hw, IXGBE_EITR(IXGBE_MISC_VEC_ID),
 			IXGBE_EITR_INTERVAL_US(IXGBE_QUEUE_ITR_INTERVAL_DEFAULT)
