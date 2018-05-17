@@ -210,7 +210,7 @@ static inline void eth_random_addr(uint8_t *addr)
 	uint8_t *p = (uint8_t *)&rand;
 
 	rte_memcpy(addr, p, ETHER_ADDR_LEN);
-	addr[0] &= ~ETHER_GROUP_ADDR;       /* clear multicast bit */
+	addr[0] &= (uint8_t)~ETHER_GROUP_ADDR;       /* clear multicast bit */
 	addr[0] |= ETHER_LOCAL_ADMIN_ADDR;  /* set local assignment bit */
 }
 
