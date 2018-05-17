@@ -475,7 +475,7 @@ avf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct avf_adapter *adapter =
 		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev);
+	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
 	int ret, i;
