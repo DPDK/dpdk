@@ -222,7 +222,7 @@ rte_raw_cksum_mbuf(const struct rte_mbuf *m, uint32_t off, uint32_t len,
 	for (;;) {
 		tmp = __rte_raw_cksum(buf, seglen, 0);
 		if (done & 1)
-			tmp = rte_bswap16(tmp);
+			tmp = rte_bswap16((uint16_t)tmp);
 		sum += tmp;
 		done += seglen;
 		if (done == len)
@@ -253,7 +253,7 @@ rte_ipv4_cksum(const struct ipv4_hdr *ipv4_hdr)
 {
 	uint16_t cksum;
 	cksum = rte_raw_cksum(ipv4_hdr, sizeof(struct ipv4_hdr));
-	return (cksum == 0xffff) ? cksum : ~cksum;
+	return (cksum == 0xffff) ? cksum : (uint16_t)~cksum;
 }
 
 /**
@@ -329,7 +329,7 @@ rte_ipv4_udptcp_cksum(const struct ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 	if (cksum == 0)
 		cksum = 0xffff;
 
-	return cksum;
+	return (uint16_t)cksum;
 }
 
 /**
@@ -418,7 +418,7 @@ rte_ipv6_udptcp_cksum(const struct ipv6_hdr *ipv6_hdr, const void *l4_hdr)
 	if (cksum == 0)
 		cksum = 0xffff;
 
-	return cksum;
+	return (uint16_t)cksum;
 }
 
 #ifdef __cplusplus
