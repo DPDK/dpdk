@@ -686,7 +686,7 @@ F: doc/guides/nics/pcap_ring.rst
 F: doc/guides/nics/features/pcap.ini
 
 Tap PMD
-M: Pascal Mazon <pascal.mazon@6wind.com>
+M: Keith Wiles <keith.wiles@intel.com>
 F: drivers/net/tap/
 F: doc/guides/nics/tap.rst
 F: doc/guides/nics/features/tap.ini
