@@ -33,21 +33,6 @@ rte_pci_probe(void);
 int rte_pci_scan(void);
 
 /**
- * Probe the single PCI device.
- *
- * Scan the content of the PCI bus, and find the pci device specified by pci
- * address, then call the probe() function for registered driver that has a
- * matching entry in its id_table for discovered device.
- *
- * @param addr
- *	The PCI Bus-Device-Function address to probe.
- * @return
- *   - 0 on success.
- *   - Negative on error.
- */
-int rte_pci_probe_one(const struct rte_pci_addr *addr);
-
-/**
  * Close the single PCI device.
  *
  * Scan the content of the PCI bus, and find the pci device specified by pci

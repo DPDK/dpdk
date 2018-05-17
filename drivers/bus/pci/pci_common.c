@@ -258,44 +258,6 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 }
 
 /*
- * Find the pci device specified by pci address, then invoke probe function of
- * the driver of the device.
- */
-int
-rte_pci_probe_one(const struct rte_pci_addr *addr)
-{
-	struct rte_pci_device *dev = NULL;
-
-	int ret = 0;
-
-	if (addr == NULL)
-		return -1;
-
-	/* update current pci device in global list, kernel bindings might have
-	 * changed since last time we looked at it.
-	 */
-	if (pci_update_device(addr) < 0)
-		goto err_return;
-
-	FOREACH_DEVICE_ON_PCIBUS(dev) {
-		if (rte_pci_addr_cmp(&dev->addr, addr))
-			continue;
-
-		ret = pci_probe_all_drivers(dev);
-		if (ret)
-			goto err_return;
-		return 0;
-	}
-	return -1;
-
-err_return:
-	RTE_LOG(WARNING, EAL,
-		"Requested device " PCI_PRI_FMT " cannot be used\n",
-		addr->domain, addr->bus, addr->devid, addr->function);
-	return -1;
-}
-
-/*
  * Detach device specified by its pci address.
  */
 int
