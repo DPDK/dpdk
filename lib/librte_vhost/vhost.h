@@ -36,6 +36,8 @@
 
 #define BUF_VECTOR_MAX 256
 
+#define VHOST_LOG_CACHE_NR 32
+
 /**
  * Structure contains buffer address, length and descriptor index
  * from vring to do scatter RX.
@@ -67,6 +69,14 @@ struct batch_copy_elem {
 	void *src;
 	uint32_t len;
 	uint64_t log_addr;
+};
+
+/*
+ * Structure that contains the info for batched dirty logging.
+ */
+struct log_cache_entry {
+	uint32_t offset;
+	unsigned long val;
 };
 
 /**
@@ -111,6 +121,9 @@ struct vhost_virtqueue {
 
 	struct batch_copy_elem	*batch_copy_elems;
 	uint16_t		batch_copy_nb_elems;
+
+	struct log_cache_entry log_cache[VHOST_LOG_CACHE_NR];
+	uint16_t log_cache_nb_elem;
 
 	rte_rwlock_t	iotlb_lock;
 	rte_rwlock_t	iotlb_pending_lock;
@@ -309,7 +322,15 @@ struct virtio_net {
 static __rte_always_inline void
 vhost_set_bit(unsigned int nr, volatile uint8_t *addr)
 {
-	__sync_fetch_and_or_8(addr, (1U << nr));
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70100)
+	/*
+	 * __sync_ built-ins are deprecated, but __atomic_ ones
+	 * are sub-optimized in older GCC versions.
+	 */
+	__sync_fetch_and_or_1(addr, (1U << nr));
+#else
+	__atomic_fetch_or(addr, (1U << nr), __ATOMIC_RELAXED);
+#endif
 }
 
 static __rte_always_inline void
@@ -338,6 +359,102 @@ vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len)
 		vhost_log_page((uint8_t *)(uintptr_t)dev->log_base, page);
 		page += 1;
 	}
+}
+
+static __rte_always_inline void
+vhost_log_cache_sync(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	unsigned long *log_base;
+	int i;
+
+	if (likely(((dev->features & (1ULL << VHOST_F_LOG_ALL)) == 0) ||
+		   !dev->log_base))
+		return;
+
+	log_base = (unsigned long *)(uintptr_t)dev->log_base;
+
+	/*
+	 * It is expected a write memory barrier has been issued
+	 * before this function is called.
+	 */
+
+	for (i = 0; i < vq->log_cache_nb_elem; i++) {
+		struct log_cache_entry *elem = vq->log_cache + i;
+
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70100)
+		/*
+		 * '__sync' builtins are deprecated, but '__atomic' ones
+		 * are sub-optimized in older GCC versions.
+		 */
+		__sync_fetch_and_or(log_base + elem->offset, elem->val);
+#else
+		__atomic_fetch_or(log_base + elem->offset, elem->val,
+				__ATOMIC_RELAXED);
+#endif
+	}
+
+	rte_smp_wmb();
+
+	vq->log_cache_nb_elem = 0;
+}
+
+static __rte_always_inline void
+vhost_log_cache_page(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			uint64_t page)
+{
+	uint32_t bit_nr = page % (sizeof(unsigned long) << 3);
+	uint32_t offset = page / (sizeof(unsigned long) << 3);
+	int i;
+
+	for (i = 0; i < vq->log_cache_nb_elem; i++) {
+		struct log_cache_entry *elem = vq->log_cache + i;
+
+		if (elem->offset == offset) {
+			elem->val |= (1UL << bit_nr);
+			return;
+		}
+	}
+
+	if (unlikely(i >= VHOST_LOG_CACHE_NR)) {
+		/*
+		 * No more room for a new log cache entry,
+		 * so write the dirty log map directly.
+		 */
+		rte_smp_wmb();
+		vhost_log_page((uint8_t *)(uintptr_t)dev->log_base, page);
+
+		return;
+	}
+
+	vq->log_cache[i].offset = offset;
+	vq->log_cache[i].val = (1UL << bit_nr);
+}
+
+static __rte_always_inline void
+vhost_log_cache_write(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			uint64_t addr, uint64_t len)
+{
+	uint64_t page;
+
+	if (likely(((dev->features & (1ULL << VHOST_F_LOG_ALL)) == 0) ||
+		   !dev->log_base || !len))
+		return;
+
+	if (unlikely(dev->log_size <= ((addr + len - 1) / VHOST_LOG_PAGE / 8)))
+		return;
+
+	page = addr / VHOST_LOG_PAGE;
+	while (page * VHOST_LOG_PAGE < addr + len) {
+		vhost_log_cache_page(dev, vq, page);
+		page += 1;
+	}
+}
+
+static __rte_always_inline void
+vhost_log_cache_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			uint64_t offset, uint64_t len)
+{
+	vhost_log_cache_write(dev, vq, vq->log_guest_addr + offset, len);
 }
 
 static __rte_always_inline void
