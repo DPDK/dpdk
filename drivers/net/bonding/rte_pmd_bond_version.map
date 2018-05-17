@@ -1,6 +1,7 @@
 DPDK_2.0 {
 	global:
 
+	rte_eth_bond_8023ad_slave_info;
 	rte_eth_bond_active_slaves_get;
 	rte_eth_bond_create;
 	rte_eth_bond_link_monitoring_set;
