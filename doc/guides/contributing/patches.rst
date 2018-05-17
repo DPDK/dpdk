@@ -491,6 +491,20 @@ Experienced committers may send patches directly with ``git send-email`` without
 The options ``--annotate`` and ``confirm = always`` are recommended for checking patches before sending.
 
 
+Backporting patches for Stable Releases
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes a maintainer or contributor wishes, or can be asked, to send a patch
+for a stable release rather than mainline.
+In this case the patch(es) should be sent to ``stable@dpdk.org``,
+not to ``dev@dpdk.org``.
+
+Given that there are multiple stable releases being maintained at the same time,
+please specify exactly which branch(es) the patch is for
+using ``git send-email --subject-prefix='PATCH 16.11' ...``
+and also optionally in the cover letter or in the annotation.
+
+
 The Review Process
 ------------------
 
