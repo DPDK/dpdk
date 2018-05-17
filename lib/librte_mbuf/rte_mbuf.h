@@ -1360,7 +1360,7 @@ rte_pktmbuf_ext_shinfo_init_helper(void *buf_addr, uint16_t *buf_len,
 	shinfo->fcb_opaque = fcb_opaque;
 	rte_mbuf_ext_refcnt_set(shinfo, 1);
 
-	*buf_len = RTE_PTR_DIFF(shinfo, buf_addr);
+	*buf_len = (uint16_t)RTE_PTR_DIFF(shinfo, buf_addr);
 	return shinfo;
 }
 
