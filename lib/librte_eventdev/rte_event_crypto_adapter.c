@@ -527,7 +527,7 @@ eca_ops_enqueue_burst(struct rte_event_crypto_adapter *adapter,
 			continue;
 		}
 
-		rte_memcpy(ev, &m_data->response_info, sizeof(ev));
+		rte_memcpy(ev, &m_data->response_info, sizeof(*ev));
 		ev->event_ptr = ops[i];
 		ev->event_type = RTE_EVENT_TYPE_CRYPTODEV;
 		if (adapter->implicit_release_disabled)
