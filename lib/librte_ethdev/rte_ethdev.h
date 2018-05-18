@@ -3657,7 +3657,10 @@ rte_eth_dev_l2_tunnel_offload_set(uint16_t port_id,
 
 /**
 * Get the port id from pci address or device name
-* Ex: 0000:2:00.0 or vdev name net_pcap0
+* Example:
+* - PCIe, 0000:2:00.0
+* - SoC, fsl-gmac0
+* - vdev, net_pcap0
 *
 * @param name
 *  pci address or name of the device
@@ -3672,6 +3675,10 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id);
 
 /**
 * Get the device name from port id
+* Example:
+* - PCIe Bus:Domain:Function, 0000:02:00.0
+* - SoC device name, fsl-gmac0
+* - vdev dpdk name, net_[pcap0|null0|tun0|tap0]
 *
 * @param port_id
 *   Port identifier of the device.
