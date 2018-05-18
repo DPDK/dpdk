@@ -131,14 +131,14 @@ eal_create_runtime_dir(void)
 	/* create the path if it doesn't exist. no "mkdir -p" here, so do it
 	 * step by step.
 	 */
-	ret = mkdir(tmp, 0600);
+	ret = mkdir(tmp, 0700);
 	if (ret < 0 && errno != EEXIST) {
 		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
 			tmp, strerror(errno));
 		return -1;
 	}
 
-	ret = mkdir(runtime_dir, 0600);
+	ret = mkdir(runtime_dir, 0700);
 	if (ret < 0 && errno != EEXIST) {
 		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
 			runtime_dir, strerror(errno));
