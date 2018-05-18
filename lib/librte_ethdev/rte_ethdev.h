@@ -3874,7 +3874,7 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 	if (queue_id >= dev->data->nb_rx_queues)
 		return -EINVAL;
 
-	return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
+	return (int)(*dev->dev_ops->rx_queue_count)(dev, queue_id);
 }
 
 /**
