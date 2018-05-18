@@ -139,15 +139,126 @@ i40e_vf_representor_tx_queue_setup(__rte_unused struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+i40evf_stat_update_48(uint64_t *offset,
+		   uint64_t *stat)
+{
+	if (*stat >= *offset)
+		*stat = *stat - *offset;
+	else
+		*stat = (uint64_t)((*stat +
+			((uint64_t)1 << I40E_48_BIT_WIDTH)) - *offset);
+
+	*stat &= I40E_48_BIT_MASK;
+}
+
+static void
+i40evf_stat_update_32(uint64_t *offset,
+		   uint64_t *stat)
+{
+	if (*stat >= *offset)
+		*stat = (uint64_t)(*stat - *offset);
+	else
+		*stat = (uint64_t)((*stat +
+			((uint64_t)1 << I40E_32_BIT_WIDTH)) - *offset);
+}
+
+static int
+rte_pmd_i40e_get_vf_native_stats(uint16_t port,
+			  uint16_t vf_id,
+			  struct i40e_eth_stats *stats)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID.");
+		return -EINVAL;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	i40e_update_vsi_stats(vsi);
+	memcpy(stats, &vsi->eth_stats, sizeof(vsi->eth_stats));
+
+	return 0;
+}
+
 static int
 i40e_vf_representor_stats_get(struct rte_eth_dev *ethdev,
 		struct rte_eth_stats *stats)
 {
 	struct i40e_vf_representor *representor = ethdev->data->dev_private;
+	struct i40e_eth_stats native_stats;
+	int ret;
 
-	return rte_pmd_i40e_get_vf_stats(
+	ret = rte_pmd_i40e_get_vf_native_stats(
 		representor->adapter->eth_dev->data->port_id,
-		representor->vf_id, stats);
+		representor->vf_id, &native_stats);
+	if (ret == 0) {
+		i40evf_stat_update_48(
+			&representor->stats_offset.rx_bytes,
+			&native_stats.rx_bytes);
+		i40evf_stat_update_48(
+			&representor->stats_offset.rx_unicast,
+			&native_stats.rx_unicast);
+		i40evf_stat_update_48(
+			&representor->stats_offset.rx_multicast,
+			&native_stats.rx_multicast);
+		i40evf_stat_update_48(
+			&representor->stats_offset.rx_broadcast,
+			&native_stats.rx_broadcast);
+		i40evf_stat_update_32(
+			&representor->stats_offset.rx_discards,
+			&native_stats.rx_discards);
+		i40evf_stat_update_32(
+			&representor->stats_offset.rx_unknown_protocol,
+			&native_stats.rx_unknown_protocol);
+		i40evf_stat_update_48(
+			&representor->stats_offset.tx_bytes,
+			&native_stats.tx_bytes);
+		i40evf_stat_update_48(
+			&representor->stats_offset.tx_unicast,
+			&native_stats.tx_unicast);
+		i40evf_stat_update_48(
+			&representor->stats_offset.tx_multicast,
+			&native_stats.tx_multicast);
+		i40evf_stat_update_48(
+			&representor->stats_offset.tx_broadcast,
+			&native_stats.tx_broadcast);
+		i40evf_stat_update_32(
+			&representor->stats_offset.tx_errors,
+			&native_stats.tx_errors);
+		i40evf_stat_update_32(
+			&representor->stats_offset.tx_discards,
+			&native_stats.tx_discards);
+
+		stats->ipackets = native_stats.rx_unicast +
+			native_stats.rx_multicast +
+			native_stats.rx_broadcast;
+		stats->opackets = native_stats.tx_unicast +
+			native_stats.tx_multicast +
+			native_stats.tx_broadcast;
+		stats->ibytes   = native_stats.rx_bytes;
+		stats->obytes   = native_stats.tx_bytes;
+		stats->ierrors  = native_stats.rx_discards;
+		stats->oerrors  = native_stats.tx_errors + native_stats.tx_discards;
+	}
+	return ret;
 }
 
 static void
@@ -155,9 +266,9 @@ i40e_vf_representor_stats_reset(struct rte_eth_dev *ethdev)
 {
 	struct i40e_vf_representor *representor = ethdev->data->dev_private;
 
-	rte_pmd_i40e_reset_vf_stats(
+	rte_pmd_i40e_get_vf_native_stats(
 		representor->adapter->eth_dev->data->port_id,
-		representor->vf_id);
+		representor->vf_id, &representor->stats_offset);
 }
 
 static void

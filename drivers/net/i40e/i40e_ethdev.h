@@ -1083,6 +1083,8 @@ struct i40e_vf_representor {
 	/**< Virtual Function ID */
 	struct i40e_adapter *adapter;
 	/**< Private data store of assocaiated physical function */
+	struct i40e_eth_stats stats_offset;
+	/**< Zero-point of VF statistics*/
 };
 
 extern const struct rte_flow_ops i40e_flow_ops;
