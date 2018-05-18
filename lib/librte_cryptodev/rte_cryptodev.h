@@ -373,7 +373,8 @@ struct rte_cryptodev_info {
 	uint8_t driver_id;			/**< Driver identifier */
 	struct rte_pci_device *pci_dev;		/**< PCI information. */
 
-	uint64_t feature_flags;			/**< Feature flags */
+	uint64_t feature_flags;
+	/**< Feature flags exposes HW/SW features for the given device */
 
 	const struct rte_cryptodev_capabilities *capabilities;
 	/**< Array of devices supported capabilities */
@@ -749,7 +750,7 @@ struct rte_cryptodev {
 	struct rte_cryptodev_ops *dev_ops;
 	/**< Functions exported by PMD */
 	uint64_t feature_flags;
-	/**< Supported features */
+	/**< Feature flags exposes HW/SW features for the given device */
 	struct rte_device *device;
 	/**< Backing device */
 
