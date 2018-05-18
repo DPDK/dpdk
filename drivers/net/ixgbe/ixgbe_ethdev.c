@@ -2304,11 +2304,6 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 		if (dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB) {
 			const struct rte_eth_dcb_rx_conf *conf;
 
-			if (nb_rx_q != IXGBE_DCB_NB_QUEUES) {
-				PMD_INIT_LOG(ERR, "DCB selected, nb_rx_q != %d.",
-						 IXGBE_DCB_NB_QUEUES);
-				return -EINVAL;
-			}
 			conf = &dev_conf->rx_adv_conf.dcb_rx_conf;
 			if (!(conf->nb_tcs == ETH_4_TCS ||
 			       conf->nb_tcs == ETH_8_TCS)) {
@@ -2322,11 +2317,6 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 		if (dev_conf->txmode.mq_mode == ETH_MQ_TX_DCB) {
 			const struct rte_eth_dcb_tx_conf *conf;
 
-			if (nb_tx_q != IXGBE_DCB_NB_QUEUES) {
-				PMD_INIT_LOG(ERR, "DCB, nb_tx_q != %d.",
-						 IXGBE_DCB_NB_QUEUES);
-				return -EINVAL;
-			}
 			conf = &dev_conf->tx_adv_conf.dcb_tx_conf;
 			if (!(conf->nb_tcs == ETH_4_TCS ||
 			       conf->nb_tcs == ETH_8_TCS)) {
