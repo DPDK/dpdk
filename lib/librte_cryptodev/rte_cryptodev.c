@@ -367,6 +367,8 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "CPU_NEON";
 	case RTE_CRYPTODEV_FF_CPU_ARM_CE:
 		return "CPU_ARM_CE";
+	case RTE_CRYPTODEV_FF_SECURITY:
+		return "SECURITY_PROTOCOL";
 	default:
 		return NULL;
 	}
