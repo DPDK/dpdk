@@ -2014,6 +2014,7 @@ detach_port(portid_t port_id)
 void
 pmd_test_exit(void)
 {
+	struct rte_device *device;
 	portid_t pt_id;
 	int ret;
 
@@ -2027,6 +2028,18 @@ pmd_test_exit(void)
 			fflush(stdout);
 			stop_port(pt_id);
 			close_port(pt_id);
+
+			/*
+			 * This is a workaround to fix a virtio-user issue that
+			 * requires to call clean-up routine to remove existing
+			 * socket.
+			 * This workaround valid only for testpmd, needs a fix
+			 * valid for all applications.
+			 * TODO: Implement proper resource cleanup
+			 */
+			device = rte_eth_devices[pt_id].device;
+			if (device && !strcmp(device->driver->name, "net_virtio_user"))
+				detach_port(pt_id);
 		}
 	}
 
