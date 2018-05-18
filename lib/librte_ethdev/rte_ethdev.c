@@ -49,7 +49,7 @@ static int ethdev_logtype;
 
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
-static uint8_t eth_dev_last_created_port;
+static uint16_t eth_dev_last_created_port;
 
 /* spinlock for eth device callbacks */
 static rte_spinlock_t rte_eth_dev_cb_lock = RTE_SPINLOCK_INITIALIZER;
