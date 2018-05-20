@@ -857,10 +857,10 @@ qede_ucast_filter(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 				    ETHER_ADDR_LEN) == 0) &&
 			     ucast->vni == tmp->vni &&
 			     ucast->vlan == tmp->vlan) {
-				DP_ERR(edev, "Unicast MAC is already added"
-				       " with vlan = %u, vni = %u\n",
-				       ucast->vlan,  ucast->vni);
-					return -EEXIST;
+				DP_INFO(edev, "Unicast MAC is already added"
+					" with vlan = %u, vni = %u\n",
+					ucast->vlan,  ucast->vni);
+					return 0;
 			}
 		}
 		u = rte_malloc(NULL, sizeof(struct qede_ucast_entry),
@@ -1117,9 +1117,9 @@ static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 
 		SLIST_FOREACH(tmp, &qdev->vlan_list_head, list) {
 			if (tmp->vid == vlan_id) {
-				DP_ERR(edev, "VLAN %u already configured\n",
-				       vlan_id);
-				return -EEXIST;
+				DP_INFO(edev, "VLAN %u already configured\n",
+					vlan_id);
+				return 0;
 			}
 		}
 

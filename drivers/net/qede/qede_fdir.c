@@ -141,8 +141,8 @@ qede_config_cmn_fdir_filter(struct rte_eth_dev *eth_dev,
 	if (add) {
 		SLIST_FOREACH(tmp, &qdev->fdir_info.fdir_list_head, list) {
 			if (memcmp(tmp->mz->addr, pkt, pkt_len) == 0) {
-				DP_ERR(edev, "flowdir filter exist\n");
-				rc = -EEXIST;
+				DP_INFO(edev, "flowdir filter exist\n");
+				rc = 0;
 				goto err2;
 			}
 		}
