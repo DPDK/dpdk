@@ -1632,6 +1632,7 @@ qede_encode_sg_bd(struct qede_tx_queue *p_txq, struct rte_mbuf *m_seg,
 			QEDE_BD_SET_ADDR_LEN(tx_bd, mapping, m_seg->data_len);
 			PMD_TX_LOG(DEBUG, txq, "BD len %04x", m_seg->data_len);
 		}
+		start_seg++;
 		m_seg = m_seg->next;
 	}
 
