@@ -2979,8 +2979,7 @@ ecore_iov_vp_update_mcast_bin_param(struct ecore_hwfn *p_hwfn,
 
 	p_data->update_approx_mcast_flg = 1;
 	OSAL_MEMCPY(p_data->bins, p_mcast_tlv->bins,
-		    sizeof(unsigned long) *
-		    ETH_MULTICAST_MAC_BINS_IN_REGS);
+		    sizeof(u32) * ETH_MULTICAST_MAC_BINS_IN_REGS);
 	*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_MCAST;
 }
 

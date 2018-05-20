@@ -1275,8 +1275,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
 
 		OSAL_MEMCPY(p_mcast_tlv->bins, p_params->bins,
-			    sizeof(unsigned long) *
-			    ETH_MULTICAST_MAC_BINS_IN_REGS);
+			    sizeof(u32) * ETH_MULTICAST_MAC_BINS_IN_REGS);
 	}
 
 	update_rx = p_params->accept_flags.update_rx_mode_config;
@@ -1473,7 +1472,7 @@ void ecore_vf_pf_filter_mcast(struct ecore_hwfn *p_hwfn,
 			u32 bit;
 
 			bit = ecore_mcast_bin_from_mac(p_filter_cmd->mac[i]);
-			OSAL_SET_BIT(bit, sp_params.bins);
+			sp_params.bins[bit / 32] |= 1 << (bit % 32);
 		}
 	}
 

@@ -690,7 +690,7 @@ ecore_sp_update_mcast_bin(struct vport_update_ramrod_data *p_ramrod,
 
 	p_ramrod->common.update_approx_mcast_flg = 1;
 	for (i = 0; i < ETH_MULTICAST_MAC_BINS_IN_REGS; i++) {
-		u32 *p_bins = (u32 *)p_params->bins;
+		u32 *p_bins = p_params->bins;
 
 		p_ramrod->approx_mcast.bins[i] = OSAL_CPU_TO_LE32(p_bins[i]);
 	}
@@ -1568,8 +1568,8 @@ ecore_sp_eth_filter_mcast(struct ecore_hwfn *p_hwfn,
 			  enum spq_mode comp_mode,
 			  struct ecore_spq_comp_cb *p_comp_data)
 {
-	unsigned long bins[ETH_MULTICAST_MAC_BINS_IN_REGS];
 	struct vport_update_ramrod_data *p_ramrod = OSAL_NULL;
+	u32 bins[ETH_MULTICAST_MAC_BINS_IN_REGS];
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
 	u8 abs_vport_id = 0;
@@ -1608,8 +1608,7 @@ ecore_sp_eth_filter_mcast(struct ecore_hwfn *p_hwfn,
 	/* explicitly clear out the entire vector */
 	OSAL_MEMSET(&p_ramrod->approx_mcast.bins,
 		    0, sizeof(p_ramrod->approx_mcast.bins));
-	OSAL_MEMSET(bins, 0, sizeof(unsigned long) *
-		    ETH_MULTICAST_MAC_BINS_IN_REGS);
+	OSAL_MEMSET(bins, 0, sizeof(u32) * ETH_MULTICAST_MAC_BINS_IN_REGS);
 	/* filter ADD op is explicit set op and it removes
 	*  any existing filters for the vport.
 	*/
@@ -1618,16 +1617,15 @@ ecore_sp_eth_filter_mcast(struct ecore_hwfn *p_hwfn,
 			u32 bit;
 
 			bit = ecore_mcast_bin_from_mac(p_filter_cmd->mac[i]);
-			OSAL_SET_BIT(bit, bins);
+			bins[bit / 32] |= 1 << (bit % 32);
 		}
 
 		/* Convert to correct endianity */
 		for (i = 0; i < ETH_MULTICAST_MAC_BINS_IN_REGS; i++) {
 			struct vport_update_ramrod_mcast *p_ramrod_bins;
-			u32 *p_bins = (u32 *)bins;
 
 			p_ramrod_bins = &p_ramrod->approx_mcast;
-			p_ramrod_bins->bins[i] = OSAL_CPU_TO_LE32(p_bins[i]);
+			p_ramrod_bins->bins[i] = OSAL_CPU_TO_LE32(bins[i]);
 		}
 	}
 

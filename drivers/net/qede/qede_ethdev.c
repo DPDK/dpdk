@@ -894,47 +894,69 @@ qede_ucast_filter(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 }
 
 static int
-qede_mcast_filter(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *mcast,
-		  bool add)
+qede_add_mcast_filters(struct rte_eth_dev *eth_dev, struct ether_addr *mc_addrs,
+		       uint32_t mc_addrs_num)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct ether_addr *mac_addr;
-	struct qede_mcast_entry *tmp = NULL;
-	struct qede_mcast_entry *m;
+	struct ecore_filter_mcast mcast;
+	struct qede_mcast_entry *m = NULL;
+	uint8_t i;
+	int rc;
 
-	mac_addr  = (struct ether_addr *)mcast->mac;
-	if (add) {
-		SLIST_FOREACH(tmp, &qdev->mc_list_head, list) {
-			if (memcmp(mac_addr, &tmp->mac, ETHER_ADDR_LEN) == 0) {
-				DP_ERR(edev,
-					"Multicast MAC is already added\n");
-				return -EEXIST;
-			}
-		}
+	for (i = 0; i < mc_addrs_num; i++) {
 		m = rte_malloc(NULL, sizeof(struct qede_mcast_entry),
-			RTE_CACHE_LINE_SIZE);
+			       RTE_CACHE_LINE_SIZE);
 		if (!m) {
-			DP_ERR(edev,
-				"Did not allocate memory for mcast\n");
+			DP_ERR(edev, "Did not allocate memory for mcast\n");
 			return -ENOMEM;
 		}
-		ether_addr_copy(mac_addr, &m->mac);
+		ether_addr_copy(&mc_addrs[i], &m->mac);
 		SLIST_INSERT_HEAD(&qdev->mc_list_head, m, list);
-		qdev->num_mc_addr++;
-	} else {
-		SLIST_FOREACH(tmp, &qdev->mc_list_head, list) {
-			if (memcmp(mac_addr, &tmp->mac, ETHER_ADDR_LEN) == 0)
-				break;
-		}
-		if (tmp == NULL) {
-			DP_INFO(edev, "Multicast mac is not found\n");
-			return -EINVAL;
-		}
-		SLIST_REMOVE(&qdev->mc_list_head, tmp,
-			     qede_mcast_entry, list);
-		qdev->num_mc_addr--;
 	}
+	memset(&mcast, 0, sizeof(mcast));
+	mcast.num_mc_addrs = mc_addrs_num;
+	mcast.opcode = ECORE_FILTER_ADD;
+	for (i = 0; i < mc_addrs_num; i++)
+		ether_addr_copy(&mc_addrs[i], (struct ether_addr *)
+							&mcast.mac[i]);
+	rc = ecore_filter_mcast_cmd(edev, &mcast, ECORE_SPQ_MODE_CB, NULL);
+	if (rc != ECORE_SUCCESS) {
+		DP_ERR(edev, "Failed to add multicast filter (rc = %d\n)", rc);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int qede_del_mcast_filters(struct rte_eth_dev *eth_dev)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct qede_mcast_entry *tmp = NULL;
+	struct ecore_filter_mcast mcast;
+	int j;
+	int rc;
+
+	memset(&mcast, 0, sizeof(mcast));
+	mcast.num_mc_addrs = qdev->num_mc_addr;
+	mcast.opcode = ECORE_FILTER_REMOVE;
+	j = 0;
+	SLIST_FOREACH(tmp, &qdev->mc_list_head, list) {
+		ether_addr_copy(&tmp->mac, (struct ether_addr *)&mcast.mac[j]);
+		j++;
+	}
+	rc = ecore_filter_mcast_cmd(edev, &mcast, ECORE_SPQ_MODE_CB, NULL);
+	if (rc != ECORE_SUCCESS) {
+		DP_ERR(edev, "Failed to delete multicast filter\n");
+		return -1;
+	}
+	/* Init the list */
+	while (!SLIST_EMPTY(&qdev->mc_list_head)) {
+		tmp = SLIST_FIRST(&qdev->mc_list_head);
+		SLIST_REMOVE_HEAD(&qdev->mc_list_head, list);
+	}
+	SLIST_INIT(&qdev->mc_list_head);
 
 	return 0;
 }
@@ -945,58 +967,21 @@ qede_mac_int_ops(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	enum _ecore_status_t rc;
-	struct ecore_filter_mcast mcast;
-	struct qede_mcast_entry *tmp;
-	uint16_t j = 0;
+	enum _ecore_status_t rc = ECORE_INVAL;
 
-	/* Multicast */
-	if (is_multicast_ether_addr((struct ether_addr *)ucast->mac)) {
-		if (add) {
-			if (qdev->num_mc_addr >= ECORE_MAX_MC_ADDRS) {
-				DP_ERR(edev,
-				       "Mcast filter table limit exceeded, "
-				       "Please enable mcast promisc mode\n");
-				return -ECORE_INVAL;
-			}
-		}
-		rc = qede_mcast_filter(eth_dev, ucast, add);
-		if (rc == 0) {
-			DP_INFO(edev, "num_mc_addrs = %u\n", qdev->num_mc_addr);
-			memset(&mcast, 0, sizeof(mcast));
-			mcast.num_mc_addrs = qdev->num_mc_addr;
-			mcast.opcode = ECORE_FILTER_ADD;
-			SLIST_FOREACH(tmp, &qdev->mc_list_head, list) {
-				ether_addr_copy(&tmp->mac,
-					(struct ether_addr *)&mcast.mac[j]);
-				j++;
-			}
-			rc = ecore_filter_mcast_cmd(edev, &mcast,
-						    ECORE_SPQ_MODE_CB, NULL);
-		}
-		if (rc != ECORE_SUCCESS) {
-			DP_ERR(edev, "Failed to add multicast filter"
-			       " rc = %d, op = %d\n", rc, add);
-		}
-	} else { /* Unicast */
-		if (add) {
-			if (qdev->num_uc_addr >=
-			    qdev->dev_info.num_mac_filters) {
-				DP_ERR(edev,
-				       "Ucast filter table limit exceeded,"
-				       " Please enable promisc mode\n");
-				return -ECORE_INVAL;
-			}
-		}
-		rc = qede_ucast_filter(eth_dev, ucast, add);
-		if (rc == 0)
-			rc = ecore_filter_ucast_cmd(edev, ucast,
-						    ECORE_SPQ_MODE_CB, NULL);
-		if (rc != ECORE_SUCCESS) {
-			DP_ERR(edev, "MAC filter failed, rc = %d, op = %d\n",
-			       rc, add);
-		}
+	if (add && (qdev->num_uc_addr >= qdev->dev_info.num_mac_filters)) {
+		DP_ERR(edev, "Ucast filter table limit exceeded,"
+			      " Please enable promisc mode\n");
+			return ECORE_INVAL;
 	}
+
+	rc = qede_ucast_filter(eth_dev, ucast, add);
+	if (rc == 0)
+		rc = ecore_filter_ucast_cmd(edev, ucast,
+					    ECORE_SPQ_MODE_CB, NULL);
+	if (rc != ECORE_SUCCESS)
+		DP_ERR(edev, "MAC filter failed, rc = %d, op = %d\n",
+		       rc, add);
 
 	return rc;
 }
@@ -2042,6 +2027,35 @@ static void qede_allmulticast_disable(struct rte_eth_dev *eth_dev)
 				QED_FILTER_RX_MODE_TYPE_REGULAR);
 }
 
+static int
+qede_set_mc_addr_list(struct rte_eth_dev *eth_dev, struct ether_addr *mc_addrs,
+		      uint32_t mc_addrs_num)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	uint8_t i;
+
+	if (mc_addrs_num > ECORE_MAX_MC_ADDRS) {
+		DP_ERR(edev, "Reached max multicast filters limit,"
+			     "Please enable multicast promisc mode\n");
+		return -ENOSPC;
+	}
+
+	for (i = 0; i < mc_addrs_num; i++) {
+		if (!is_multicast_ether_addr(&mc_addrs[i])) {
+			DP_ERR(edev, "Not a valid multicast MAC\n");
+			return -EINVAL;
+		}
+	}
+
+	/* Flush all existing entries */
+	if (qede_del_mcast_filters(eth_dev))
+		return -1;
+
+	/* Set new mcast list */
+	return qede_add_mcast_filters(eth_dev, mc_addrs, mc_addrs_num);
+}
+
 static int qede_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			      struct rte_eth_fc_conf *fc_conf)
 {
@@ -2926,6 +2940,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.promiscuous_disable = qede_promiscuous_disable,
 	.allmulticast_enable = qede_allmulticast_enable,
 	.allmulticast_disable = qede_allmulticast_disable,
+	.set_mc_addr_list = qede_set_mc_addr_list,
 	.dev_stop = qede_dev_stop,
 	.dev_close = qede_dev_close,
 	.stats_get = qede_get_stats,
@@ -2966,6 +2981,7 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.promiscuous_disable = qede_promiscuous_disable,
 	.allmulticast_enable = qede_allmulticast_enable,
 	.allmulticast_disable = qede_allmulticast_disable,
+	.set_mc_addr_list = qede_set_mc_addr_list,
 	.dev_stop = qede_dev_stop,
 	.dev_close = qede_dev_close,
 	.stats_get = qede_get_stats,
@@ -3174,6 +3190,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	SLIST_INIT(&adapter->fdir_info.fdir_list_head);
 	SLIST_INIT(&adapter->vlan_list_head);
 	SLIST_INIT(&adapter->uc_list_head);
+	SLIST_INIT(&adapter->mc_list_head);
 	adapter->mtu = ETHER_MTU;
 	adapter->vport_started = false;
 
