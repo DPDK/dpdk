@@ -258,43 +258,6 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 }
 
 /*
- * Detach device specified by its pci address.
- */
-int
-rte_pci_detach(const struct rte_pci_addr *addr)
-{
-	struct rte_pci_device *dev = NULL;
-	int ret = 0;
-
-	if (addr == NULL)
-		return -1;
-
-	FOREACH_DEVICE_ON_PCIBUS(dev) {
-		if (rte_pci_addr_cmp(&dev->addr, addr))
-			continue;
-
-		ret = rte_pci_detach_dev(dev);
-		if (ret < 0)
-			/* negative value is an error */
-			goto err_return;
-		if (ret > 0)
-			/* positive value means driver doesn't support it */
-			continue;
-
-		rte_pci_remove_device(dev);
-		free(dev);
-		return 0;
-	}
-	return -1;
-
-err_return:
-	RTE_LOG(WARNING, EAL, "Requested device " PCI_PRI_FMT
-			" cannot be used\n", dev->addr.domain, dev->addr.bus,
-			dev->addr.devid, dev->addr.function);
-	return -1;
-}
-
-/*
  * Scan the content of the PCI bus, and call the probe() function for
  * all registered drivers that have a matching entry in its id_table
  * for discovered devices.
