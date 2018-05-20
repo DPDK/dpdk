@@ -325,7 +325,7 @@ mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 			stats[i].value = (counters[i] - xstats_ctrl->base[i]);
 		}
 	}
-	return n;
+	return xstats_n;
 }
 
 /**
