@@ -2514,7 +2514,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		}
 
 		/* Log and clean previous pglue_b errors if such exist */
-		ecore_pglueb_rbc_attn_handler(p_hwfn, p_hwfn->p_main_ptt);
+		ecore_pglueb_rbc_attn_handler(p_hwfn, p_hwfn->p_main_ptt, true);
 		ecore_pglueb_clear_err(p_hwfn, p_hwfn->p_main_ptt);
 
 		/* Enable the PF's internal FID_enable in the PXP */

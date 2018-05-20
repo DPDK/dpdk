@@ -287,9 +287,11 @@ out:
 #define ECORE_PGLUE_ATTENTION_ILT_VALID (1 << 23)
 
 enum _ecore_status_t ecore_pglueb_rbc_attn_handler(struct ecore_hwfn *p_hwfn,
-						   struct ecore_ptt *p_ptt)
+						   struct ecore_ptt *p_ptt,
+						   bool is_hw_init)
 {
 	u32 tmp;
+	char str[512] = {0};
 
 	tmp = ecore_rd(p_hwfn, p_ptt, PGLUE_B_REG_TX_ERR_WR_DETAILS2);
 	if (tmp & ECORE_PGLUE_ATTENTION_VALID) {
@@ -301,9 +303,8 @@ enum _ecore_status_t ecore_pglueb_rbc_attn_handler(struct ecore_hwfn *p_hwfn,
 				   PGLUE_B_REG_TX_ERR_WR_ADD_63_32);
 		details = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_TX_ERR_WR_DETAILS);
-
-		DP_NOTICE(p_hwfn, false,
-			  "Illegal write by chip to [%08x:%08x] blocked. Details: %08x [PFID %02x, VFID %02x, VF_VALID %02x] Details2 %08x [Was_error %02x BME deassert %02x FID_enable deassert %02x]\n",
+		OSAL_SNPRINTF(str, 512,
+			 "Illegal write by chip to [%08x:%08x] blocked. Details: %08x [PFID %02x, VFID %02x, VF_VALID %02x] Details2 %08x [Was_error %02x BME deassert %02x FID_enable deassert %02x]\n",
 			  addr_hi, addr_lo, details,
 			  (u8)((details &
 				ECORE_PGLUE_ATTENTION_DETAILS_PFID_MASK) >>
@@ -320,6 +321,10 @@ enum _ecore_status_t ecore_pglueb_rbc_attn_handler(struct ecore_hwfn *p_hwfn,
 				1 : 0),
 			  (u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_FID_EN) ?
 				1 : 0));
+		if (is_hw_init)
+			DP_VERBOSE(p_hwfn, ECORE_MSG_INTR, "%s", str);
+		else
+			DP_NOTICE(p_hwfn, false, "%s", str);
 	}
 
 	tmp = ecore_rd(p_hwfn, p_ptt, PGLUE_B_REG_TX_ERR_RD_DETAILS2);
@@ -395,7 +400,7 @@ enum _ecore_status_t ecore_pglueb_rbc_attn_handler(struct ecore_hwfn *p_hwfn,
 
 static enum _ecore_status_t ecore_pglueb_rbc_attn_cb(struct ecore_hwfn *p_hwfn)
 {
-	return ecore_pglueb_rbc_attn_handler(p_hwfn, p_hwfn->p_dpc_ptt);
+	return ecore_pglueb_rbc_attn_handler(p_hwfn, p_hwfn->p_dpc_ptt, false);
 }
 
 static enum _ecore_status_t ecore_fw_assertion(struct ecore_hwfn *p_hwfn)
