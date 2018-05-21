@@ -454,12 +454,12 @@ mempool for all crypto devices (where the mempool object size is big
 enough to hold the private session of any crypto device), as well as having
 multiple session mempools of different sizes for better memory usage.
 
-An application can use ``rte_cryptodev_get_private_session_size()`` to
+An application can use ``rte_cryptodev_sym_get_private_session_size()`` to
 get the private session size of given crypto device. This function would allow
 an application to calculate the max device session size of all crypto devices
 to create a single session mempool.
 If instead an application creates multiple session mempools, the Crypto device
-framework also provides ``rte_cryptodev_get_header_session_size`` to get
+framework also provides ``rte_cryptodev_sym_get_header_session_size`` to get
 the size of an uninitialized session.
 
 Once the session mempools have been created, ``rte_cryptodev_sym_session_create()``
@@ -662,7 +662,7 @@ using one of the crypto PMDs available in DPDK.
     uint8_t cdev_id = rte_cryptodev_get_dev_id(crypto_name);
 
     /* Get private session data size. */
-    session_size = rte_cryptodev_get_private_session_size(cdev_id);
+    session_size = rte_cryptodev_sym_get_private_session_size(cdev_id);
 
     /*
      * Create session mempool, with two objects per session,

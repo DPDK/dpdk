@@ -1982,7 +1982,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 	}
 
 	for (cdev_id = 0; cdev_id < cdev_count; cdev_id++) {
-		sess_sz = rte_cryptodev_get_private_session_size(cdev_id);
+		sess_sz = rte_cryptodev_sym_get_private_session_size(cdev_id);
 		if (sess_sz > max_sess_sz)
 			max_sess_sz = sess_sz;
 	}

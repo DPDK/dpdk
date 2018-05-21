@@ -972,15 +972,18 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
 			struct rte_cryptodev_sym_session *sess);
 
 /**
+ * @deprecated
  * Get the size of the header session, for all registered drivers.
  *
  * @return
  *   Size of the header session.
  */
+__rte_deprecated
 unsigned int
 rte_cryptodev_get_header_session_size(void);
 
 /**
+ * @deprecated
  * Get the size of the private session data for a device.
  *
  * @param	dev_id		The device identifier.
@@ -989,8 +992,32 @@ rte_cryptodev_get_header_session_size(void);
  *   - Size of the private data, if successful
  *   - 0 if device is invalid or does not have private session
  */
+__rte_deprecated
 unsigned int
 rte_cryptodev_get_private_session_size(uint8_t dev_id);
+
+/**
+ * Get the size of the header session, for all registered drivers.
+ *
+ * @return
+ *   Size of the symmetric eader session.
+ */
+unsigned int
+rte_cryptodev_sym_get_header_session_size(void);
+
+/**
+ * Get the size of the private symmetric session data
+ * for a device.
+ *
+ * @param	dev_id		The device identifier.
+ *
+ * @return
+ *   - Size of the private data, if successful
+ *   - 0 if device is invalid or does not have private
+ *   symmetric session
+ */
+unsigned int
+rte_cryptodev_sym_get_private_session_size(uint8_t dev_id);
 
 /**
  * @deprecated

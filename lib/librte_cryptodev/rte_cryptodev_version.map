@@ -86,6 +86,14 @@ DPDK_17.11 {
 
 } DPDK_17.08;
 
+DPDK_18.05 {
+	global:
+
+	rte_cryptodev_sym_get_header_session_size;
+	rte_cryptodev_sym_get_private_session_size;
+
+} DPDK_17.11;
+
 EXPERIMENTAL {
         global:
 

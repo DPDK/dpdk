@@ -1390,7 +1390,7 @@ cryptodevs_init(void)
 
 	uint32_t max_sess_sz = 0, sess_sz;
 	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
-		sess_sz = rte_cryptodev_get_private_session_size(cdev_id);
+		sess_sz = rte_cryptodev_sym_get_private_session_size(cdev_id);
 		if (sess_sz > max_sess_sz)
 			max_sess_sz = sess_sz;
 	}

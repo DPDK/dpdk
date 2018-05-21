@@ -428,7 +428,8 @@ testsuite_setup(void)
 	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
 
-	unsigned int session_size = rte_cryptodev_get_private_session_size(dev_id);
+	unsigned int session_size =
+		rte_cryptodev_sym_get_private_session_size(dev_id);
 
 	/*
 	 * Create mempool with maximum number of sessions * 2,
@@ -8534,7 +8535,8 @@ test_scheduler_attach_slave_op(void)
 			rte_mempool_free(ts_params->session_mpool);
 			ts_params->session_mpool = NULL;
 		}
-		unsigned int session_size = rte_cryptodev_get_private_session_size(i);
+		unsigned int session_size =
+			rte_cryptodev_sym_get_private_session_size(i);
 
 		/*
 		 * Create mempool with maximum number of sessions * 2,

@@ -523,7 +523,7 @@ configure_cryptodev(void)
 	 * Create mempool with maximum number of sessions * 2,
 	 * to include the session headers & private data
 	 */
-	session_size = rte_cryptodev_get_private_session_size(TEST_CDEV_ID);
+	session_size = rte_cryptodev_sym_get_private_session_size(TEST_CDEV_ID);
 	session_size += sizeof(union rte_event_crypto_metadata);
 
 	params.session_mpool = rte_mempool_create(

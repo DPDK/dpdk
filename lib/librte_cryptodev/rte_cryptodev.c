@@ -1227,6 +1227,12 @@ rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess)
 unsigned int
 rte_cryptodev_get_header_session_size(void)
 {
+	return rte_cryptodev_sym_get_header_session_size();
+}
+
+unsigned int
+rte_cryptodev_sym_get_header_session_size(void)
+{
 	/*
 	 * Header contains pointers to the private data
 	 * of all registered drivers, and a flag which
@@ -1237,6 +1243,12 @@ rte_cryptodev_get_header_session_size(void)
 
 unsigned int
 rte_cryptodev_get_private_session_size(uint8_t dev_id)
+{
+	return rte_cryptodev_sym_get_private_session_size(dev_id);
+}
+
+unsigned int
+rte_cryptodev_sym_get_private_session_size(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev;
 	unsigned int header_size = sizeof(void *) * nb_drivers;

@@ -327,7 +327,7 @@ process_ops(struct rte_crypto_op **ops, enum zuc_operation op_type,
 		if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 			memset(sessions[i], 0, sizeof(struct zuc_session));
 			memset(ops[i]->sym->session, 0,
-					rte_cryptodev_get_header_session_size());
+					rte_cryptodev_sym_get_header_session_size());
 			rte_mempool_put(qp->sess_mp, sessions[i]);
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;

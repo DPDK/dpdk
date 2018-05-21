@@ -450,7 +450,7 @@ main(int argc, char *argv[])
 
 	snprintf(name, 127, "SESS_POOL_%u", worker_lcore);
 	info.sess_pool = rte_mempool_create(name, SESSION_MAP_ENTRIES,
-			rte_cryptodev_get_private_session_size(
+			rte_cryptodev_sym_get_private_session_size(
 			cryptodev_id), 64, 0, NULL, NULL, NULL, NULL,
 			rte_lcore_to_socket_id(worker_lcore), 0);
 	if (!info.sess_pool) {

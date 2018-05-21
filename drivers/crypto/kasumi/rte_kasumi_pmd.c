@@ -320,7 +320,7 @@ process_ops(struct rte_crypto_op **ops, struct kasumi_session *session,
 		if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 			memset(session, 0, sizeof(struct kasumi_session));
 			memset(ops[i]->sym->session, 0,
-					rte_cryptodev_get_header_session_size());
+					rte_cryptodev_sym_get_header_session_size());
 			rte_mempool_put(qp->sess_mp, session);
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;
