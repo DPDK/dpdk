@@ -88,3 +88,5 @@ Deprecation Notices
     ``rte_cryptodev_queue_pair_stop()`` will be deprecated from 18.05
     and removed in 18.08, as there are no drivers doing anything useful
     with them.
+  - Some feature flags such as ``RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER`` are ambiguous,
+    so some will be replaced by more explicit flags.
