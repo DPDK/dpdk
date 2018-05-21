@@ -5,6 +5,8 @@
 #ifndef _E1000_LOGS_H_
 #define _E1000_LOGS_H_
 
+#include <rte_log.h>
+
 extern int e1000_logtype_init;
 #define PMD_INIT_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, e1000_logtype_init, \
@@ -40,5 +42,9 @@ extern int e1000_logtype_driver;
 
 #define PMD_DRV_LOG(level, fmt, args...) \
 	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
+
+
+/* log init function shared by e1000 and igb drivers */
+void e1000_igb_init_log(void);
 
 #endif /* _E1000_LOGS_H_ */

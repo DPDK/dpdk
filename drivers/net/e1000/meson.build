@@ -5,6 +5,7 @@ subdir('base')
 objs = [base_objs]
 
 sources = files(
+	'e1000_logs.c',
 	'em_ethdev.c',
 	'em_rxtx.c',
 	'igb_ethdev.c',
