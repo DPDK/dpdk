@@ -60,7 +60,7 @@ struct scheduler_ctx {
 
 	char name[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN];
 	char description[RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN];
-	uint16_t wc_pool[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKER_CORES];
+	uint16_t wc_pool[RTE_MAX_LCORE];
 	uint16_t nb_wc;
 
 	char *init_slave_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];

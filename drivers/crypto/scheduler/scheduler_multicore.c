@@ -21,8 +21,8 @@ struct mc_scheduler_ctx {
 	uint32_t num_workers;             /**< Number of workers polling */
 	uint32_t stop_signal;
 
-	struct rte_ring *sched_enq_ring[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKER_CORES];
-	struct rte_ring *sched_deq_ring[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKER_CORES];
+	struct rte_ring *sched_enq_ring[RTE_MAX_LCORE];
+	struct rte_ring *sched_deq_ring[RTE_MAX_LCORE];
 };
 
 struct mc_scheduler_qp_ctx {

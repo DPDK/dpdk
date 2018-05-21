@@ -20,7 +20,8 @@ struct scheduler_init_params {
 	uint32_t nb_slaves;
 	enum rte_cryptodev_scheduler_mode mode;
 	uint32_t enable_ordering;
-	uint64_t wcmask;
+	uint16_t wc_pool[RTE_MAX_LCORE];
+	uint16_t nb_wc;
 	char slave_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES]
 			[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN];
 };
@@ -86,10 +87,6 @@ cryptodev_scheduler_create(const char *name,
 		return -EFAULT;
 	}
 
-	if (init_params->wcmask != 0)
-		RTE_LOG(INFO, PMD, "  workers core mask = %"PRIx64"\n",
-			init_params->wcmask);
-
 	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_crypto_scheduler_pmd_ops;
 
@@ -100,15 +97,12 @@ cryptodev_scheduler_create(const char *name,
 	if (init_params->mode == CDEV_SCHED_MODE_MULTICORE) {
 		uint16_t i;
 
-		sched_ctx->nb_wc = 0;
+		sched_ctx->nb_wc = init_params->nb_wc;
 
-		for (i = 0; i < RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKER_CORES; i++) {
-			if (init_params->wcmask & (1ULL << i)) {
-				sched_ctx->wc_pool[sched_ctx->nb_wc++] = i;
-				RTE_LOG(INFO, PMD,
-					"  Worker core[%u]=%u added\n",
-					sched_ctx->nb_wc-1, i);
-			}
+		for (i = 0; i < sched_ctx->nb_wc; i++) {
+			sched_ctx->wc_pool[i] = init_params->wc_pool[i];
+			RTE_LOG(INFO, PMD, "  Worker core[%u]=%u added\n",
+				i, sched_ctx->wc_pool[i]);
 		}
 	}
 
@@ -232,9 +226,47 @@ static int
 parse_coremask_arg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
+	int i, j, val;
+	uint16_t idx = 0;
+	char c;
 	struct scheduler_init_params *params = extra_args;
 
-	params->wcmask = strtoull(value, NULL, 16);
+	params->nb_wc = 0;
+
+	if (value == NULL)
+		return -1;
+	/* Remove all blank characters ahead and after .
+	 * Remove 0x/0X if exists.
+	 */
+	while (isblank(*value))
+		value++;
+	if (value[0] == '0' && ((value[1] == 'x') || (value[1] == 'X')))
+		value += 2;
+	i = strlen(value);
+	while ((i > 0) && isblank(value[i - 1]))
+		i--;
+
+	if (i == 0)
+		return -1;
+
+	for (i = i - 1; i >= 0 && idx < RTE_MAX_LCORE; i--) {
+		c = value[i];
+		if (isxdigit(c) == 0) {
+			/* invalid characters */
+			return -1;
+		}
+		if (isdigit(c))
+			val = c - '0';
+		else if (isupper(c))
+			val = c - 'A' + 10;
+		else
+			val = c - 'a' + 10;
+
+		for (j = 0; j < 4 && idx < RTE_MAX_LCORE; j++, idx++) {
+			if ((1 << j) & val)
+				params->wc_pool[params->nb_wc++] = idx;
+		}
+	}
 
 	return 0;
 }
@@ -246,7 +278,7 @@ parse_corelist_arg(const char *key __rte_unused,
 {
 	struct scheduler_init_params *params = extra_args;
 
-	params->wcmask = 0ULL;
+	params->nb_wc = 0;
 
 	const char *token = value;
 
@@ -254,7 +286,11 @@ parse_corelist_arg(const char *key __rte_unused,
 		char *rval;
 		unsigned int core = strtoul(token, &rval, 10);
 
-		params->wcmask |= 1ULL << core;
+		if (core >= RTE_MAX_LCORE) {
+			CS_LOG_ERR("Invalid worker core %u, should be smaller "
+				   "than %u.\n", core, RTE_MAX_LCORE);
+		}
+		params->wc_pool[params->nb_wc++] = (uint16_t)core;
 		token = (const char *)rval;
 		if (token[0] == '\0')
 			break;
