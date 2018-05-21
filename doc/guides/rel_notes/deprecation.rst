@@ -71,3 +71,10 @@ Deprecation Notices
   - ``rte_pdump_set_socket_dir`` will be removed;
   - The parameter, ``path``, of ``rte_pdump_init`` will be removed;
   - The enum ``rte_pdump_socktype`` will be removed.
+
+* cryptodev: The following changes will be made in the library
+  for 18.08:
+
+  - Removal of ``sym`` structure in ``rte_cryptodev_info`` structure,
+    containing fields not relevant anymore since the session mempool
+    is not internal in the crypto device anymore.
