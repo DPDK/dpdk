@@ -110,12 +110,18 @@ init_ports(int num_ports)
 	uint16_t portid;
 	int retval;
 
-	default_params.mp = rte_pktmbuf_pool_create("packet_pool",
+	struct rte_mempool *ptr = rte_mempool_lookup("packet_pool");
+
+	if (ptr == NULL)
+		default_params.mp = rte_pktmbuf_pool_create("packet_pool",
 						NB_MBUFS,
 						MBUF_CACHE_SIZE,
 						MBUF_PRIV_SIZE,
 						RTE_MBUF_DEFAULT_BUF_SIZE,
 						rte_socket_id());
+	else
+		default_params.mp = ptr;
+
 	if (!default_params.mp)
 		return -ENOMEM;
 
@@ -333,6 +339,68 @@ adapter_queue_add_del(void)
 }
 
 static int
+adapter_multi_eth_add_del(void)
+{
+	int err;
+	struct rte_event ev;
+
+	uint16_t port_index, drv_id = 0;
+	char driver_name[50];
+
+	struct rte_event_eth_rx_adapter_queue_conf queue_config;
+
+	ev.queue_id = 0;
+	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+	ev.priority = 0;
+
+	queue_config.rx_queue_flags = 0;
+	queue_config.ev = ev;
+	queue_config.servicing_weight = 1;
+
+	/* stop eth devices for existing */
+	port_index = 0;
+	for (; port_index < rte_eth_dev_count_total(); port_index += 1)
+		rte_eth_dev_stop(port_index);
+
+	/* add the max port for rx_adapter */
+	port_index = rte_eth_dev_count_total();
+	for (; port_index < RTE_MAX_ETHPORTS; port_index += 1) {
+		sprintf(driver_name, "%s%u", "net_null", drv_id);
+		err = rte_vdev_init(driver_name, NULL);
+		TEST_ASSERT(err == 0, "Failed driver %s got %d",
+		driver_name, err);
+		drv_id += 1;
+	}
+
+	err = init_ports(rte_eth_dev_count_total());
+	TEST_ASSERT(err == 0, "Port initialization failed err %d\n", err);
+
+	/* creating new instance for all newly added eth devices */
+	adapter_create();
+
+	/* eth_rx_adapter_queue_add for n ports */
+	port_index = 0;
+	for (; port_index < rte_eth_dev_count_total(); port_index += 1) {
+		err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+				port_index, 0,
+				&queue_config);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	}
+
+	/* eth_rx_adapter_queue_del n ports */
+	port_index = 0;
+	for (; port_index < rte_eth_dev_count_total(); port_index += 1) {
+		err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+				port_index, 0);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	}
+
+	adapter_free();
+
+	return TEST_SUCCESS;
+}
+
+static int
 adapter_start_stop(void)
 {
 	int err;
@@ -410,6 +478,7 @@ static struct unit_test_suite service_tests  = {
 		TEST_CASE_ST(NULL, NULL, adapter_create_free),
 		TEST_CASE_ST(adapter_create, adapter_free,
 					adapter_queue_add_del),
+		TEST_CASE_ST(NULL, NULL, adapter_multi_eth_add_del),
 		TEST_CASE_ST(adapter_create, adapter_free, adapter_start_stop),
 		TEST_CASE_ST(adapter_create, adapter_free, adapter_stats),
 		TEST_CASES_END() /**< NULL terminate unit test array */
