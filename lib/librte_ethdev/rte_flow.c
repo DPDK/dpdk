@@ -300,15 +300,24 @@ flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
 		    enum item_spec_type type)
 {
 	size_t size = 0;
-	const void *item_spec =
+	const void *data =
 		type == ITEM_SPEC ? item->spec :
 		type == ITEM_LAST ? item->last :
 		type == ITEM_MASK ? item->mask :
 		NULL;
 
-	if (!item_spec)
+	if (!item->spec || !data)
 		goto empty;
 	switch (item->type) {
+		union {
+			const struct rte_flow_item_raw *raw;
+		} spec;
+		union {
+			const struct rte_flow_item_raw *raw;
+		} last;
+		union {
+			const struct rte_flow_item_raw *raw;
+		} mask;
 		union {
 			const struct rte_flow_item_raw *raw;
 		} src;
@@ -318,11 +327,21 @@ flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
 		size_t off;
 
 	case RTE_FLOW_ITEM_TYPE_RAW:
-		src.raw = item_spec;
+		spec.raw = item->spec;
+		last.raw = item->last ? item->last : item->spec;
+		mask.raw = item->mask ? item->mask : &rte_flow_item_raw_mask;
+		src.raw = data;
 		dst.raw = buf;
 		off = RTE_ALIGN_CEIL(sizeof(struct rte_flow_item_raw),
 				     sizeof(*src.raw->pattern));
-		size = off + src.raw->length * sizeof(*src.raw->pattern);
+		if (type == ITEM_SPEC ||
+		    (type == ITEM_MASK &&
+		     ((spec.raw->length & mask.raw->length) >=
+		      (last.raw->length & mask.raw->length))))
+			size = spec.raw->length & mask.raw->length;
+		else
+			size = last.raw->length & mask.raw->length;
+		size = off + size * sizeof(*src.raw->pattern);
 		if (dst.raw) {
 			memcpy(dst.raw, src.raw, sizeof(*src.raw));
 			dst.raw->pattern = memcpy((uint8_t *)dst.raw + off,
@@ -333,7 +352,7 @@ flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
 	default:
 		size = rte_flow_desc_item[item->type].size;
 		if (buf)
-			memcpy(buf, item_spec, size);
+			memcpy(buf, data, size);
 		break;
 	}
 empty:
