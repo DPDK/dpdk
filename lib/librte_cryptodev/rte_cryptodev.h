@@ -603,6 +603,7 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		struct rte_mempool *session_pool);
 
 /**
+ * @deprecated
  * Start a specified queue pair of a device. It is used
  * when deferred_start flag of the specified queue is true.
  *
@@ -616,10 +617,12 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
  *   - -EINVAL: The dev_id or the queue_id out of range.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
+__rte_deprecated
 extern int
 rte_cryptodev_queue_pair_start(uint8_t dev_id, uint16_t queue_pair_id);
 
 /**
+ * @deprecated
  * Stop specified queue pair of a device
  *
  * @param	dev_id		The identifier of the device
@@ -632,6 +635,7 @@ rte_cryptodev_queue_pair_start(uint8_t dev_id, uint16_t queue_pair_id);
  *   - -EINVAL: The dev_id or the queue_id out of range.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
+__rte_deprecated
 extern int
 rte_cryptodev_queue_pair_stop(uint8_t dev_id, uint16_t queue_pair_id);
 

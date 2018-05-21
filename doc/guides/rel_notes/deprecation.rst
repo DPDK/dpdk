@@ -84,3 +84,7 @@ Deprecation Notices
     ``rte_cryptodev_queue_pair_dettach_sym_session()`` will be deprecated from
     18.05 and removed in 18.08, as there are no drivers doing anything useful
     with them.
+  - Functions ``rte_cryptodev_queue_pair_start()`` and
+    ``rte_cryptodev_queue_pair_stop()`` will be deprecated from 18.05
+    and removed in 18.08, as there are no drivers doing anything useful
+    with them.
