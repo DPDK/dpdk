@@ -39,6 +39,7 @@
 
 #define VDEV_NETVSC_DRIVER net_vdev_netvsc
 #define VDEV_NETVSC_DRIVER_NAME RTE_STR(VDEV_NETVSC_DRIVER)
+#define VDEV_NETVSC_DRIVER_NAME_LEN 15
 #define VDEV_NETVSC_ARG_IFACE "iface"
 #define VDEV_NETVSC_ARG_MAC "mac"
 #define VDEV_NETVSC_ARG_FORCE "force"
@@ -798,7 +799,8 @@ static int
 vdev_netvsc_cmp_rte_device(const struct rte_device *dev1,
 			   __rte_unused const void *_dev2)
 {
-	return strcmp(dev1->devargs->name, VDEV_NETVSC_DRIVER_NAME);
+	return strncmp(dev1->devargs->name, VDEV_NETVSC_DRIVER_NAME,
+		       VDEV_NETVSC_DRIVER_NAME_LEN);
 }
 
 /**
@@ -814,7 +816,8 @@ vdev_netvsc_scan_callback(__rte_unused void *arg)
 	struct rte_bus *vbus = rte_bus_find_by_name("vdev");
 
 	RTE_EAL_DEVARGS_FOREACH("vdev", devargs)
-		if (!strcmp(devargs->name, VDEV_NETVSC_DRIVER_NAME))
+		if (!strncmp(devargs->name, VDEV_NETVSC_DRIVER_NAME,
+			     VDEV_NETVSC_DRIVER_NAME_LEN))
 			return;
 	dev = (struct rte_vdev_device *)vbus->find_device(NULL,
 		vdev_netvsc_cmp_rte_device, VDEV_NETVSC_DRIVER_NAME);
