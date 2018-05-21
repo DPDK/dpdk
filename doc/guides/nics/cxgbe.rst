@@ -143,6 +143,12 @@ be passed as part of EAL arguments. For example,
   enabled, the outer VLAN tag is preserved in Q-in-Q packets. Otherwise,
   the outer VLAN tag is stripped in Q-in-Q packets.
 
+- ``force_link_up`` (default **0**)
+
+  When set to 1, CXGBEVF PMD always forces link as up for all VFs on
+  underlying Chelsio NICs. This enables multiple VFs on the same NIC
+  to send traffic to each other even when the physical link is down.
+
 .. _driver-compilation:
 
 Driver compilation and testing

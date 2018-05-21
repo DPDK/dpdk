@@ -25,6 +25,10 @@
 			  ETH_RSS_NONFRAG_IPV6_TCP | \
 			  ETH_RSS_NONFRAG_IPV6_UDP)
 
+#define CXGBE_DEVARG_KEEP_OVLAN "keep_ovlan"
+#define CXGBE_DEVARG_FORCE_LINK_UP "force_link_up"
+
+bool force_linkup(struct adapter *adap);
 int cxgbe_probe(struct adapter *adapter);
 int cxgbevf_probe(struct adapter *adapter);
 void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps);
@@ -45,5 +49,6 @@ int setup_rss(struct port_info *pi);
 void cxgbe_enable_rx_queues(struct port_info *pi);
 void print_port_info(struct adapter *adap);
 void print_adapter_info(struct adapter *adap);
+int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key);
 
 #endif /* _CXGBE_H_ */

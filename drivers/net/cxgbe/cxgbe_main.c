@@ -38,8 +38,6 @@
 #include "t4_msg.h"
 #include "cxgbe.h"
 
-#define CXGBE_DEVARG_KEEP_OVLAN "keep_ovlan"
-
 /*
  * Response queue handler for the FW event queue.
  */
@@ -404,7 +402,7 @@ check_devargs_handler(__rte_unused const char *key, const char *value,
 	return 0;
 }
 
-static int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key)
+int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key)
 {
 	struct rte_kvargs *kvlist;
 
@@ -942,6 +940,18 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 			 pi->port_id, pi->mod_type);
 }
 
+inline bool force_linkup(struct adapter *adap)
+{
+	struct rte_pci_device *pdev = adap->pdev;
+
+	if (is_pf4(adap))
+		return false;	/* force_linkup not required for pf driver*/
+	if (!cxgbe_get_devargs(pdev->device.devargs,
+			       CXGBE_DEVARG_FORCE_LINK_UP))
+		return false;
+	return true;
+}
+
 /**
  * link_start - enable a port
  * @dev: the port to enable
@@ -987,6 +997,9 @@ int link_start(struct port_info *pi)
 		ret = t4_enable_vi_params(adapter, adapter->mbox, pi->viid,
 					  true, true, false);
 	}
+
+	if (ret == 0 && force_linkup(adapter))
+		pi->eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 	return ret;
 }
 

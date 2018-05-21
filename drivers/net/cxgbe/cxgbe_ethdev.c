@@ -204,19 +204,17 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
 	struct sge *s = &adapter->sge;
-	struct rte_eth_link *old_link = &eth_dev->data->dev_link;
+	struct rte_eth_link new_link;
 	unsigned int work_done, budget = 4;
 
 	cxgbe_poll(&s->fw_evtq, NULL, budget, &work_done);
-	if (old_link->link_status == pi->link_cfg.link_ok)
-		return -1;  /* link not changed */
 
-	eth_dev->data->dev_link.link_status = pi->link_cfg.link_ok;
-	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	eth_dev->data->dev_link.link_speed = pi->link_cfg.speed;
+	new_link.link_status = force_linkup(adapter) ?
+			       ETH_LINK_UP : pi->link_cfg.link_ok;
+	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	new_link.link_speed = pi->link_cfg.speed;
 
-	/* link has changed */
-	return 0;
+	return rte_eth_linkstatus_set(eth_dev, &new_link);
 }
 
 int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
@@ -1158,3 +1156,6 @@ static struct rte_pci_driver rte_cxgbe_pmd = {
 RTE_PMD_REGISTER_PCI(net_cxgbe, rte_cxgbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_cxgbe, cxgb4_pci_tbl);
 RTE_PMD_REGISTER_KMOD_DEP(net_cxgbe, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_cxgbe,
+			      CXGBE_DEVARG_KEEP_OVLAN "=<0|1> "
+			      CXGBE_DEVARG_FORCE_LINK_UP "=<0|1> ");
