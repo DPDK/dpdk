@@ -79,9 +79,6 @@ struct rte_compressdev {
 	struct rte_device *device;
 	/**< Backing device */
 
-	uint8_t driver_id;
-	/**< comp driver identifier*/
-
 	__extension__
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
