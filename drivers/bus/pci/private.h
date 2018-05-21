@@ -94,16 +94,6 @@ void rte_pci_insert_device(struct rte_pci_device *exist_pci_dev,
 		struct rte_pci_device *new_pci_dev);
 
 /**
- * Remove a PCI device from the PCI Bus. This sets to NULL the bus references
- * in the PCI device object as well as the generic device object.
- *
- * @param pci_device
- *	PCI device to be removed from PCI Bus
- * @return void
- */
-void rte_pci_remove_device(struct rte_pci_device *pci_device);
-
-/**
  * Update a pci device object by asking the kernel for the latest information.
  *
  * This function is private to EAL.

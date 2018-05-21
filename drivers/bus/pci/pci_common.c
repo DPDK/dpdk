@@ -26,6 +26,9 @@
 
 #include "private.h"
 
+
+static void rte_pci_remove_device(struct rte_pci_device *pci_device);
+
 extern struct rte_pci_bus rte_pci_bus;
 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
@@ -445,7 +448,7 @@ rte_pci_insert_device(struct rte_pci_device *exist_pci_dev,
 }
 
 /* Remove a device from PCI bus */
-void
+static void
 rte_pci_remove_device(struct rte_pci_device *pci_dev)
 {
 	TAILQ_REMOVE(&rte_pci_bus.device_list, pci_dev, next);
