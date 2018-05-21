@@ -77,6 +77,7 @@ struct pmd_internals {
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES]; /* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES]; /* List of TX queues */
 	struct rte_intr_handle intr_handle;          /* LSC interrupt handle. */
+	int ka_fd;                        /* keep-alive file descriptor */
 };
 
 /* tap_intr.c */
