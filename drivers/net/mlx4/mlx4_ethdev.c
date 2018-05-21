@@ -587,8 +587,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			ETH_LINK_SPEED_20G |
 			ETH_LINK_SPEED_40G |
 			ETH_LINK_SPEED_56G;
-	info->flow_type_rss_offloads =
-		mlx4_ibv_to_rss_types(priv->hw_rss_sup);
+	info->flow_type_rss_offloads = mlx4_conv_rss_types(priv, 0, 1);
 }
 
 /**

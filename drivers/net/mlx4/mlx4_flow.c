@@ -42,41 +42,6 @@
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
-/** IBV supported RSS hash functions combinations */
-#define MLX4_IBV_IPV4_HF ( \
-	IBV_RX_HASH_SRC_IPV4 | \
-	IBV_RX_HASH_DST_IPV4)
-#define MLX4_IBV_IPV6_HF ( \
-	IBV_RX_HASH_SRC_IPV6 | \
-	IBV_RX_HASH_DST_IPV6)
-#define MLX4_IBV_TCP_HF ( \
-	IBV_RX_HASH_SRC_PORT_TCP | \
-	IBV_RX_HASH_DST_PORT_TCP)
-#define MLX4_IBV_UDP_HF ( \
-	IBV_RX_HASH_SRC_PORT_UDP | \
-	IBV_RX_HASH_DST_PORT_UDP)
-
-/** Supported RSS hash functions combinations */
-#define MLX4_RSS_IPV4_HF ( \
-	ETH_RSS_IPV4 | \
-	ETH_RSS_FRAG_IPV4 | \
-	ETH_RSS_NONFRAG_IPV4_OTHER)
-#define MLX4_RSS_IPV6_HF ( \
-	ETH_RSS_IPV6 | \
-	ETH_RSS_FRAG_IPV6 | \
-	ETH_RSS_NONFRAG_IPV6_OTHER | \
-	ETH_RSS_IPV6_EX)
-#define MLX4_RSS_IPV4_TCP_HF ( \
-	ETH_RSS_NONFRAG_IPV4_TCP)
-#define MLX4_RSS_IPV6_TCP_HF ( \
-	ETH_RSS_NONFRAG_IPV6_TCP | \
-	ETH_RSS_IPV6_TCP_EX)
-#define MLX4_RSS_IPV4_UDP_HF ( \
-	ETH_RSS_NONFRAG_IPV4_UDP)
-#define MLX4_RSS_IPV6_UDP_HF ( \
-	ETH_RSS_NONFRAG_IPV6_UDP | \
-	ETH_RSS_IPV6_UDP_EX)
-
 /** Static initializer for a list of subsequent item types. */
 #define NEXT_ITEM(...) \
 	(const enum rte_flow_item_type []){ \
@@ -111,7 +76,7 @@ struct mlx4_drop {
 };
 
 /**
- * Convert DPDK RSS hash types to their Verbs equivalent.
+ * Convert supported RSS hash field types between DPDK and Verbs formats.
  *
  * This function returns the supported (default) set when @p types has
  * special value 0.
@@ -119,103 +84,88 @@ struct mlx4_drop {
  * @param priv
  *   Pointer to private structure.
  * @param types
- *   Hash types in DPDK format (see struct rte_eth_rss_conf).
+ *   Depending on @p verbs_to_dpdk, hash types in either DPDK (see struct
+ *   rte_eth_rss_conf) or Verbs format.
+ * @param verbs_to_dpdk
+ *   A zero value converts @p types from DPDK to Verbs, a nonzero value
+ *   performs the reverse operation.
  *
  * @return
- *   A valid Verbs RSS hash fields mask for mlx4 on success, (uint64_t)-1
- *   otherwise and rte_errno is set.
+ *   Converted RSS hash fields on success, (uint64_t)-1 otherwise and
+ *   rte_errno is set.
  */
 uint64_t
-mlx4_conv_rss_types(struct priv *priv, uint64_t types)
+mlx4_conv_rss_types(struct priv *priv, uint64_t types, int verbs_to_dpdk)
 {
-	enum { IPV4, IPV6, TCP, UDP, };
-	static const uint64_t in[] = {
-		[IPV4] = (ETH_RSS_IPV4 |
-			  ETH_RSS_FRAG_IPV4 |
-			  ETH_RSS_NONFRAG_IPV4_TCP |
-			  ETH_RSS_NONFRAG_IPV4_UDP |
-			  ETH_RSS_NONFRAG_IPV4_OTHER),
-		[IPV6] = (ETH_RSS_IPV6 |
-			  ETH_RSS_FRAG_IPV6 |
-			  ETH_RSS_NONFRAG_IPV6_TCP |
-			  ETH_RSS_NONFRAG_IPV6_UDP |
-			  ETH_RSS_NONFRAG_IPV6_OTHER |
-			  ETH_RSS_IPV6_EX |
-			  ETH_RSS_IPV6_TCP_EX |
-			  ETH_RSS_IPV6_UDP_EX),
-		[TCP] = (ETH_RSS_NONFRAG_IPV4_TCP |
-			 ETH_RSS_NONFRAG_IPV6_TCP |
-			 ETH_RSS_IPV6_TCP_EX),
-		[UDP] = (ETH_RSS_NONFRAG_IPV4_UDP |
-			 ETH_RSS_NONFRAG_IPV6_UDP |
-			 ETH_RSS_IPV6_UDP_EX),
+	enum {
+		INNER,
+		IPV4, IPV4_1, IPV4_2, IPV6, IPV6_1, IPV6_2, IPV6_3,
+		TCP, UDP,
+		IPV4_TCP, IPV4_UDP, IPV6_TCP, IPV6_TCP_1, IPV6_UDP, IPV6_UDP_1,
 	};
-	static const uint64_t out[RTE_DIM(in)] = {
-		[IPV4] = IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4,
-		[IPV6] = IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6,
-		[TCP] = IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_DST_PORT_TCP,
-		[UDP] = IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_DST_PORT_UDP,
+	enum {
+		VERBS_IPV4 = IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4,
+		VERBS_IPV6 = IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6,
+		VERBS_TCP = IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_DST_PORT_TCP,
+		VERBS_UDP = IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_DST_PORT_UDP,
 	};
+	static const uint64_t dpdk[] = {
+		[INNER] = 0,
+		[IPV4] = ETH_RSS_IPV4,
+		[IPV4_1] = ETH_RSS_FRAG_IPV4,
+		[IPV4_2] = ETH_RSS_NONFRAG_IPV4_OTHER,
+		[IPV6] = ETH_RSS_IPV6,
+		[IPV6_1] = ETH_RSS_FRAG_IPV6,
+		[IPV6_2] = ETH_RSS_NONFRAG_IPV6_OTHER,
+		[IPV6_3] = ETH_RSS_IPV6_EX,
+		[TCP] = 0,
+		[UDP] = 0,
+		[IPV4_TCP] = ETH_RSS_NONFRAG_IPV4_TCP,
+		[IPV4_UDP] = ETH_RSS_NONFRAG_IPV4_UDP,
+		[IPV6_TCP] = ETH_RSS_NONFRAG_IPV6_TCP,
+		[IPV6_TCP_1] = ETH_RSS_IPV6_TCP_EX,
+		[IPV6_UDP] = ETH_RSS_NONFRAG_IPV6_UDP,
+		[IPV6_UDP_1] = ETH_RSS_IPV6_UDP_EX,
+	};
+	static const uint64_t verbs[RTE_DIM(dpdk)] = {
+		[INNER] = IBV_RX_HASH_INNER,
+		[IPV4] = VERBS_IPV4,
+		[IPV4_1] = VERBS_IPV4,
+		[IPV4_2] = VERBS_IPV4,
+		[IPV6] = VERBS_IPV6,
+		[IPV6_1] = VERBS_IPV6,
+		[IPV6_2] = VERBS_IPV6,
+		[IPV6_3] = VERBS_IPV6,
+		[TCP] = VERBS_TCP,
+		[UDP] = VERBS_UDP,
+		[IPV4_TCP] = VERBS_IPV4 | VERBS_TCP,
+		[IPV4_UDP] = VERBS_IPV4 | VERBS_UDP,
+		[IPV6_TCP] = VERBS_IPV6 | VERBS_TCP,
+		[IPV6_TCP_1] = VERBS_IPV6 | VERBS_TCP,
+		[IPV6_UDP] = VERBS_IPV6 | VERBS_UDP,
+		[IPV6_UDP_1] = VERBS_IPV6 | VERBS_UDP,
+	};
+	const uint64_t *in = verbs_to_dpdk ? verbs : dpdk;
+	const uint64_t *out = verbs_to_dpdk ? dpdk : verbs;
 	uint64_t seen = 0;
 	uint64_t conv = 0;
 	unsigned int i;
 
-	if (!types)
-		return priv->hw_rss_sup;
-	for (i = 0; i != RTE_DIM(in); ++i)
-		if (types & in[i]) {
+	if (!types) {
+		if (!verbs_to_dpdk)
+			return priv->hw_rss_sup;
+		types = priv->hw_rss_sup;
+	}
+	for (i = 0; i != RTE_DIM(dpdk); ++i)
+		if (in[i] && (types & in[i]) == in[i]) {
 			seen |= types & in[i];
 			conv |= out[i];
 		}
-	if ((conv & priv->hw_rss_sup) == conv && !(types & ~seen))
+	if ((verbs_to_dpdk || (conv & priv->hw_rss_sup) == conv) &&
+	    !(types & ~seen))
 		return conv;
 	rte_errno = ENOTSUP;
 	return (uint64_t)-1;
-}
-
-/**
- * Convert verbs RSS types to their DPDK equivalents.
- *
- * This function returns a group of RSS DPDK types given their equivalent group
- * of verbs types.
- * For example both source IPv4 and destination IPv4 verbs types are converted
- * into their equivalent RSS group types. If each of these verbs types existed
- * exclusively - no conversion would take place.
- *
- * @param types
- *   RSS hash types in verbs format.
- *
- * @return
- *   DPDK RSS hash fields supported by mlx4.
- */
-uint64_t
-mlx4_ibv_to_rss_types(uint64_t types)
-{
-	enum { IPV4, IPV6, IPV4_TCP, IPV6_TCP, IPV4_UDP, IPV6_UDP};
-
-	static const uint64_t in[] = {
-		[IPV4] = MLX4_IBV_IPV4_HF,
-		[IPV6] = MLX4_IBV_IPV6_HF,
-		[IPV4_TCP] = MLX4_IBV_IPV4_HF | MLX4_IBV_TCP_HF,
-		[IPV6_TCP] = MLX4_IBV_IPV6_HF | MLX4_IBV_TCP_HF,
-		[IPV4_UDP] = MLX4_IBV_IPV4_HF | MLX4_IBV_UDP_HF,
-		[IPV6_UDP] = MLX4_IBV_IPV6_HF | MLX4_IBV_UDP_HF,
-	};
-	static const uint64_t out[RTE_DIM(in)] = {
-		[IPV4] = MLX4_RSS_IPV4_HF,
-		[IPV6] = MLX4_RSS_IPV6_HF,
-		[IPV4_TCP] = MLX4_RSS_IPV4_HF | MLX4_RSS_IPV4_TCP_HF,
-		[IPV6_TCP] = MLX4_RSS_IPV6_HF | MLX4_RSS_IPV6_TCP_HF,
-		[IPV4_UDP] = MLX4_RSS_IPV4_HF | MLX4_RSS_IPV4_UDP_HF,
-		[IPV6_UDP] = MLX4_RSS_IPV6_HF | MLX4_RSS_IPV6_UDP_HF,
-	};
-	uint64_t conv = 0;
-	unsigned int i;
-
-	for (i = 0; i != RTE_DIM(in); ++i)
-		if ((types & in[i]) == in[i])
-			conv |= out[i];
-	return conv;
 }
 
 /**
@@ -890,7 +840,7 @@ fill:
 				goto exit_action_not_supported;
 			}
 			rte_errno = 0;
-			fields = mlx4_conv_rss_types(priv, rss->types);
+			fields = mlx4_conv_rss_types(priv, rss->types, 0);
 			if (fields == (uint64_t)-1 && rte_errno) {
 				msg = "unsupported RSS hash type requested";
 				goto exit_action_not_supported;
