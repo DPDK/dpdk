@@ -107,16 +107,6 @@ void rte_pci_insert_device(struct rte_pci_device *exist_pci_dev,
 int pci_update_device(const struct rte_pci_addr *addr);
 
 /**
- * Unbind kernel driver for this device
- *
- * This function is private to EAL.
- *
- * @return
- *   0 on success, negative on error
- */
-int pci_unbind_kernel_driver(struct rte_pci_device *dev);
-
-/**
  * Map the PCI resource of a PCI device in virtual memory
  *
  * This function is private to EAL.
