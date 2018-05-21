@@ -390,6 +390,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 		if (p == 0) {
 			/* First port is already allocated by DPDK */
 			eth_dev = ark->eth_dev;
+			rte_eth_dev_probing_finish(eth_dev);
 			continue;
 		}
 
