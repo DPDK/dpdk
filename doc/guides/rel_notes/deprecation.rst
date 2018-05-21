@@ -78,3 +78,5 @@ Deprecation Notices
   - Removal of ``sym`` structure in ``rte_cryptodev_info`` structure,
     containing fields not relevant anymore since the session mempool
     is not internal in the crypto device anymore.
+  - Replacement of ``pci_dev`` field with the more generic ``rte_device``
+    structure.
