@@ -63,7 +63,10 @@
  * rte_event_eth_rx_adapter_service_id_get() function can be used to retrieve
  * the service function ID of the adapter in this case.
  *
- * Note: Interrupt driven receive queues are currently unimplemented.
+ * Note:
+ * 1) Interrupt driven receive queues are currently unimplemented.
+ * 2) Devices created after an instance of rte_event_eth_rx_adapter_create
+ *  should be added to a new instance of the rx adapter.
  */
 
 #ifdef __cplusplus
