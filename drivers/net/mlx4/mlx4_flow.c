@@ -114,7 +114,7 @@ struct mlx4_drop {
  * Convert DPDK RSS hash types to their Verbs equivalent.
  *
  * This function returns the supported (default) set when @p types has
- * special value (uint64_t)-1.
+ * special value 0.
  *
  * @param priv
  *   Pointer to private structure.
@@ -160,7 +160,7 @@ mlx4_conv_rss_types(struct priv *priv, uint64_t types)
 	uint64_t conv = 0;
 	unsigned int i;
 
-	if (types == (uint64_t)-1)
+	if (!types)
 		return priv->hw_rss_sup;
 	for (i = 0; i != RTE_DIM(in); ++i)
 		if (types & in[i]) {
@@ -1384,7 +1384,7 @@ mlx4_flow_internal(struct priv *priv, struct rte_flow_error *error)
 	struct rte_flow_action_rss action_rss = {
 		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
 		.level = 0,
-		.types = -1,
+		.types = 0,
 		.key_len = MLX4_RSS_HASH_KEY_SIZE,
 		.queue_num = queues,
 		.key = mlx4_rss_hash_key_default,
