@@ -33,11 +33,11 @@ Installation
 ------------
 
 To build DPDK with the SNOW3G_PMD the user is required to download
-the export controlled ``libsso_snow3g`` library, by requesting it from
-`<https://networkbuilders.intel.com/network-technologies/dpdk>`_.
-Once approval has been granted, the user needs to log in
-`<https://networkbuilders.intel.com/dpdklogin>`_
-and click on "Snow3G Bit Stream crypto library" link, to download the library.
+the export controlled ``libsso_snow3g`` library, by registering in
+`Intel Resource & Design Center <https://www.intel.com/content/www/us/en/design/resource-design-center.html>`_.
+Once approval has been granted, the user needs to search for
+*Snow3G F8 F9 3GPP cryptographic algorithms Software Library* to download the
+library or directly through this `link <https://cdrdv2.intel.com/v1/dl/getContent/575867>`_.
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK::
 
