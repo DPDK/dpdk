@@ -516,6 +516,8 @@ rte_compressdev_private_xform_create(uint8_t dev_id,
 
 /**
  * This should clear the private_xform and return it to the device's mempool.
+ * It is the application's responsibility to ensure that private_xform data
+ * is not cleared while there are still in-flight operations using it.
  *
  * @param dev_id
  *   Compress device identifier
@@ -527,7 +529,6 @@ rte_compressdev_private_xform_create(uint8_t dev_id,
  *  - 0 if successful
  *  - <0 in error cases
  *  - Returns -EINVAL if input parameters are invalid.
- *  - Returns -EBUSY if can't free private_xform due to inflight operations
  */
 int __rte_experimental
 rte_compressdev_private_xform_free(uint8_t dev_id, void *private_xform);
