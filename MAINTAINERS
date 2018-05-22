@@ -546,6 +546,7 @@ M: Qi Zhang <qi.z.zhang@intel.com>
 M: Xiao Wang <xiao.w.wang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/fm10k/
+F: doc/guides/nics/fm10k.rst
 F: doc/guides/nics/features/fm10k*.ini
 
 Intel avf
@@ -664,6 +665,7 @@ M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
+F: doc/guides/nics/vhost.rst
 F: doc/guides/nics/features/vhost.ini
 
 Virtio PMD
@@ -716,6 +718,7 @@ Fail-safe PMD
 M: Gaetan Rivet <gaetan.rivet@6wind.com>
 F: drivers/net/failsafe/
 F: doc/guides/nics/fail_safe.rst
+F: doc/guides/nics/features/failsafe.ini
 
 Softnic PMD
 M: Jasvinder Singh <jasvinder.singh@intel.com>
