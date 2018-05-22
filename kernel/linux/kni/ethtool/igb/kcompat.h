@@ -3900,7 +3900,8 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #define HAVE_NDO_BRIDGE_GETLINK_NLFLAGS
 #endif /* >= 4.1.0 */
 
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0) )
+#if (( LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0) ) \
+    || ( RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,4) ))
 /* ndo_bridge_getlink adds new filter_mask and vlan_fill parameters */
 #define HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK_VLAN_FILL
 #endif /* >= 4.2.0 */
@@ -3918,9 +3919,15 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #endif
 
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)) || \
-    (SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(12, 3, 0)))
+     (SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(12, 3, 0)) || \
+     (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4)))
 #define HAVE_VF_VLAN_PROTO
-#endif /* >= 4.9.0, >= SLES12SP3 */
+#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4))
+/* In RHEL/Centos 7.4, the "new" version of ndo_set_vf_vlan
+ * is in the struct net_device_ops_extended */
+#define ndo_set_vf_vlan extended.ndo_set_vf_vlan
+#endif
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 #define HAVE_PCI_ENABLE_MSIX
