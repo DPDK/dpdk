@@ -3151,10 +3151,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	}
 skip_init:
 	eth_dev->dev_ops = &bnxt_dev_ops;
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
 	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	if (BNXT_PF(bp) && pci_dev->id.device_id != BROADCOM_DEV_ID_NS2) {
 		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
