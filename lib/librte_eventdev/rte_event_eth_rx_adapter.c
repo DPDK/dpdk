@@ -418,14 +418,14 @@ flush_event_buffer(struct rte_event_eth_rx_adapter *rx_adapter)
 
 static inline void
 fill_event_buffer(struct rte_event_eth_rx_adapter *rx_adapter,
-	uint8_t dev_id,
+	uint16_t eth_dev_id,
 	uint16_t rx_queue_id,
 	struct rte_mbuf **mbufs,
 	uint16_t num)
 {
 	uint32_t i;
 	struct eth_device_info *eth_device_info =
-					&rx_adapter->eth_devices[dev_id];
+					&rx_adapter->eth_devices[eth_dev_id];
 	struct eth_rx_queue_info *eth_rx_queue_info =
 					&eth_device_info->rx_queue[rx_queue_id];
 
