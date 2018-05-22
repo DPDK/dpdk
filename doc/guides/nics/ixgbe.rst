@@ -102,20 +102,9 @@ Consequently, by default the tx_rs_thresh value is in the range 32 to 64.
 Feature not Supported by TX Vector PMD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-TX vPMD only works when txq_flags is set to IXGBE_SIMPLE_FLAGS.
+TX vPMD only works when offloads is set to 0
 
-This means that it does not support TX multi-segment, VLAN offload and TX csum offload.
-The following MACROs are used for these three features:
-
-*   ETH_TXQ_FLAGS_NOMULTSEGS
-
-*   ETH_TXQ_FLAGS_NOVLANOFFL
-
-*   ETH_TXQ_FLAGS_NOXSUMSCTP
-
-*   ETH_TXQ_FLAGS_NOXSUMUDP
-
-*   ETH_TXQ_FLAGS_NOXSUMTCP
+This means that it does not support any TX offload.
 
 Application Programming Interface
 ---------------------------------

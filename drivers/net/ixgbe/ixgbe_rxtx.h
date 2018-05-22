@@ -241,20 +241,6 @@ struct ixgbe_txq_ops {
 };
 
 /*
- * The "simple" TX queue functions require that the following
- * flags are set when the TX queue is configured:
- *  - ETH_TXQ_FLAGS_NOMULTSEGS
- *  - ETH_TXQ_FLAGS_NOVLANOFFL
- *  - ETH_TXQ_FLAGS_NOXSUMSCTP
- *  - ETH_TXQ_FLAGS_NOXSUMUDP
- *  - ETH_TXQ_FLAGS_NOXSUMTCP
- * and that the RS bit threshold (tx_rs_thresh) is at least equal to
- * RTE_PMD_IXGBE_TX_MAX_BURST.
- */
-#define IXGBE_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
-			    ETH_TXQ_FLAGS_NOOFFLOADS)
-
-/*
  * Populate descriptors with the following info:
  * 1.) buffer_addr = phys_addr + headroom
  * 2.) cmd_type_len = DCMD_DTYP_FLAGS | pkt_len
