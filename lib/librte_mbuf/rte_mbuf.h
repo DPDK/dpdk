@@ -2157,7 +2157,7 @@ rte_validate_tx_offload(const struct rte_mbuf *m)
 static inline int
 rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
 {
-	int seg_len, copy_len;
+	size_t seg_len, copy_len;
 	struct rte_mbuf *m;
 	struct rte_mbuf *m_next;
 	char *buffer;
