@@ -378,7 +378,8 @@ i40e_vf_representor_vlan_offload_set(struct rte_eth_dev *ethdev, int mask)
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		/* Enable or disable VLAN filtering offload */
-		if (ethdev->data->dev_conf.rxmode.hw_vlan_filter)
+		if (ethdev->data->dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_VLAN_FILTER)
 			return i40e_vsi_config_vlan_filter(vsi, TRUE);
 		else
 			return i40e_vsi_config_vlan_filter(vsi, FALSE);
@@ -386,7 +387,8 @@ i40e_vf_representor_vlan_offload_set(struct rte_eth_dev *ethdev, int mask)
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping offload */
-		if (ethdev->data->dev_conf.rxmode.hw_vlan_strip)
+		if (ethdev->data->dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_VLAN_STRIP)
 			return i40e_vsi_config_vlan_stripping(vsi, TRUE);
 		else
 			return i40e_vsi_config_vlan_stripping(vsi, FALSE);
