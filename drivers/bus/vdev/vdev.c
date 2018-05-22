@@ -36,7 +36,9 @@ TAILQ_HEAD(vdev_device_list, rte_vdev_device);
 
 static struct vdev_device_list vdev_device_list =
 	TAILQ_HEAD_INITIALIZER(vdev_device_list);
-static rte_spinlock_t vdev_device_list_lock = RTE_SPINLOCK_INITIALIZER;
+/* The lock needs to be recursive because a vdev can manage another vdev. */
+static rte_spinlock_recursive_t vdev_device_list_lock =
+	RTE_SPINLOCK_RECURSIVE_INITIALIZER;
 
 struct vdev_driver_list vdev_driver_list =
 	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
@@ -249,7 +251,7 @@ rte_vdev_init(const char *name, const char *args)
 	struct rte_devargs *devargs;
 	int ret;
 
-	rte_spinlock_lock(&vdev_device_list_lock);
+	rte_spinlock_recursive_lock(&vdev_device_list_lock);
 	ret = insert_vdev(name, args, &dev);
 	if (ret == 0) {
 		ret = vdev_probe_all_drivers(dev);
@@ -263,7 +265,7 @@ rte_vdev_init(const char *name, const char *args)
 			free(dev);
 		}
 	}
-	rte_spinlock_unlock(&vdev_device_list_lock);
+	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 	return ret;
 }
 
@@ -293,7 +295,7 @@ rte_vdev_uninit(const char *name)
 	if (name == NULL)
 		return -EINVAL;
 
-	rte_spinlock_lock(&vdev_device_list_lock);
+	rte_spinlock_recursive_lock(&vdev_device_list_lock);
 
 	dev = find_vdev(name);
 	if (!dev) {
@@ -311,7 +313,7 @@ rte_vdev_uninit(const char *name)
 	free(dev);
 
 unlock:
-	rte_spinlock_unlock(&vdev_device_list_lock);
+	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 	return ret;
 }
 
@@ -355,7 +357,7 @@ vdev_action(const struct rte_mp_msg *mp_msg, const void *peer)
 		ou->num = 1;
 		num = 0;
 
-		rte_spinlock_lock(&vdev_device_list_lock);
+		rte_spinlock_recursive_lock(&vdev_device_list_lock);
 		TAILQ_FOREACH(dev, &vdev_device_list, next) {
 			devname = rte_vdev_device_name(dev);
 			if (strlen(devname) == 0) {
@@ -369,7 +371,7 @@ vdev_action(const struct rte_mp_msg *mp_msg, const void *peer)
 					 devname, strerror(rte_errno));
 			num++;
 		}
-		rte_spinlock_unlock(&vdev_device_list_lock);
+		rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 
 		ou->type = VDEV_SCAN_REP;
 		ou->num = num;
@@ -445,10 +447,10 @@ vdev_scan(void)
 		if (!dev)
 			return -1;
 
-		rte_spinlock_lock(&vdev_device_list_lock);
+		rte_spinlock_recursive_lock(&vdev_device_list_lock);
 
 		if (find_vdev(devargs->name)) {
-			rte_spinlock_unlock(&vdev_device_list_lock);
+			rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 			free(dev);
 			continue;
 		}
@@ -459,7 +461,7 @@ vdev_scan(void)
 
 		TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
 
-		rte_spinlock_unlock(&vdev_device_list_lock);
+		rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 	}
 
 	return 0;
@@ -498,7 +500,7 @@ vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	const struct rte_vdev_device *vstart;
 	struct rte_vdev_device *dev;
 
-	rte_spinlock_lock(&vdev_device_list_lock);
+	rte_spinlock_recursive_lock(&vdev_device_list_lock);
 	if (start != NULL) {
 		vstart = RTE_DEV_TO_VDEV_CONST(start);
 		dev = TAILQ_NEXT(vstart, next);
@@ -510,7 +512,7 @@ vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 			break;
 		dev = TAILQ_NEXT(dev, next);
 	}
-	rte_spinlock_unlock(&vdev_device_list_lock);
+	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 
 	return dev ? &dev->device : NULL;
 }
