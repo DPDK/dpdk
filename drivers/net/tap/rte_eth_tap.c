@@ -1653,12 +1653,24 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	struct rte_kvargs *kvlist = NULL;
 	char tun_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
+	struct rte_eth_dev *eth_dev;
 
 	strcpy(tuntap_name, "TUN");
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
 	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    strlen(params) == 0) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			TAP_LOG(ERR, "Failed to probe %s", name);
+			return -1;
+		}
+		eth_dev->dev_ops = &ops;
+		return 0;
+	}
 
 	snprintf(tun_name, sizeof(tun_name), "%s%u",
 		 DEFAULT_TUN_NAME, tun_unit++);
