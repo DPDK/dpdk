@@ -23,6 +23,13 @@
 #define RTE_PMD_TAP_MAX_QUEUES	1
 #endif
 
+enum rte_tuntap_type {
+	ETH_TUNTAP_TYPE_UNKNOWN,
+	ETH_TUNTAP_TYPE_TUN,
+	ETH_TUNTAP_TYPE_TAP,
+	ETH_TUNTAP_TYPE_MAX,
+};
+
 struct pkt_stats {
 	uint64_t opackets;              /* Number of output packets */
 	uint64_t ipackets;              /* Number of input packets */
@@ -48,6 +55,7 @@ struct rx_queue {
 
 struct tx_queue {
 	int fd;
+	int type;                       /* Type field - TUN|TAP */
 	uint16_t *mtu;                  /* Pointer to MTU from dev_data */
 	uint16_t csum:1;                /* Enable checksum offloading */
 	struct pkt_stats stats;         /* Stats for this TX queue */
@@ -57,6 +65,7 @@ struct pmd_internals {
 	struct rte_eth_dev *dev;          /* Ethernet device. */
 	char remote_iface[RTE_ETH_NAME_MAX_LEN]; /* Remote netdevice name */
 	char name[RTE_ETH_NAME_MAX_LEN];  /* Internal Tap device name */
+	int type;                         /* Type field - TUN|TAP */
 	struct ether_addr eth_addr;       /* Mac address of the device port */
 	struct ifreq remote_initial_flags;   /* Remote netdevice flags on init */
 	int remote_if_index;              /* remote netdevice IF_INDEX */

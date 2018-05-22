@@ -68,7 +68,6 @@ static const char *valid_arguments[] = {
 static int tap_unit;
 static unsigned int tun_unit;
 
-static int tap_type;
 static char tuntap_name[8];
 
 static volatile uint32_t tap_trigger;	/* Rx trigger */
@@ -116,7 +115,8 @@ tun_alloc(struct pmd_internals *pmd)
 	 * Do not set IFF_NO_PI as packet information header will be needed
 	 * to check if a received packet has been truncated.
 	 */
-	ifr.ifr_flags = (tap_type) ? IFF_TAP : IFF_TUN | IFF_POINTOPOINT;
+	ifr.ifr_flags = (pmd->type == ETH_TUNTAP_TYPE_TAP) ?
+		IFF_TAP : IFF_TUN | IFF_POINTOPOINT;
 	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", pmd->name);
 
 	TAP_LOG(DEBUG, "ifr_name '%s'", ifr.ifr_name);
@@ -472,20 +472,22 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		if (rte_pktmbuf_pkt_len(mbuf) > max_size)
 			break;
 
-		/*
-		 * TUN and TAP are created with IFF_NO_PI disabled.
-		 * For TUN PMD this mandatory as fields are used by
-		 * Kernel tun.c to determine whether its IP or non IP
-		 * packets.
-		 *
-		 * The logic fetches the first byte of data from mbuf.
-		 * compares whether its v4 or v6. If none matches default
-		 * value 0x00 is taken for protocol field.
-		 */
-		char *buff_data = rte_pktmbuf_mtod(seg, void *);
-		j = (*buff_data & 0xf0);
-		pi.proto = (j == 0x40) ? 0x0008 :
-				(j == 0x60) ? 0xdd86 : 0x00;
+		if (txq->type == ETH_TUNTAP_TYPE_TUN) {
+			/*
+			 * TUN and TAP are created with IFF_NO_PI disabled.
+			 * For TUN PMD this mandatory as fields are used by
+			 * Kernel tun.c to determine whether its IP or non IP
+			 * packets.
+			 *
+			 * The logic fetches the first byte of data from mbuf
+			 * then compares whether its v4 or v6. If first byte
+			 * is 4 or 6, then protocol field is updated.
+			 */
+			char *buff_data = rte_pktmbuf_mtod(seg, void *);
+			j = (*buff_data & 0xf0);
+			pi.proto = (j == 0x40) ? rte_cpu_to_be_16(ETHER_TYPE_IPv4) :
+				(j == 0x60) ? rte_cpu_to_be_16(ETHER_TYPE_IPv6) : 0x00;
+		}
 
 		iovecs[0].iov_base = &pi;
 		iovecs[0].iov_len = sizeof(pi);
@@ -928,6 +930,12 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	struct ifreq ifr;
 	int ret;
 
+	if (pmd->type == ETH_TUNTAP_TYPE_TUN) {
+		TAP_LOG(ERR, "%s: can't MAC address for TUN",
+			dev->device->name);
+		return -ENOTSUP;
+	}
+
 	if (is_zero_ether_addr(mac_addr)) {
 		TAP_LOG(ERR, "%s: can't set an empty MAC address",
 			dev->device->name);
@@ -1024,6 +1032,8 @@ tap_setup_queue(struct rte_eth_dev *dev,
 
 	tx->mtu = &dev->data->mtu;
 	rx->rxmode = &dev->data->dev_conf.rxmode;
+
+	tx->type = pmd->type;
 
 	return *fd;
 }
@@ -1342,7 +1352,8 @@ static const struct eth_dev_ops ops = {
 
 static int
 eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
-		   char *remote_iface, struct ether_addr *mac_addr)
+		   char *remote_iface, struct ether_addr *mac_addr,
+		   enum rte_tuntap_type type)
 {
 	int numa_node = rte_socket_id();
 	struct rte_eth_dev *dev;
@@ -1364,6 +1375,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	pmd = dev->data->dev_private;
 	pmd->dev = dev;
 	snprintf(pmd->name, sizeof(pmd->name), "%s", tap_name);
+	pmd->type = type;
 
 	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (pmd->ioctl_sock == -1) {
@@ -1400,7 +1412,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		pmd->txq[i].fd = -1;
 	}
 
-	if (tap_type) {
+	if (pmd->type == ETH_TUNTAP_TYPE_TAP) {
 		if (is_zero_ether_addr(mac_addr))
 			eth_random_addr((uint8_t *)&pmd->eth_addr);
 		else
@@ -1423,7 +1435,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1, LOCAL_AND_REMOTE) < 0)
 		goto error_exit;
 
-	if (tap_type) {
+	if (pmd->type == ETH_TUNTAP_TYPE_TAP) {
 		memset(&ifr, 0, sizeof(struct ifreq));
 		ifr.ifr_hwaddr.sa_family = AF_LOCAL;
 		rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr,
@@ -1642,7 +1654,6 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	char tun_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
 
-	tap_type = 0;
 	strcpy(tuntap_name, "TUN");
 
 	name = rte_vdev_device_name(dev);
@@ -1673,7 +1684,8 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	TAP_LOG(NOTICE, "Initializing pmd_tun for %s as %s",
 		name, tun_name);
 
-	ret = eth_dev_tap_create(dev, tun_name, remote_iface, 0);
+	ret = eth_dev_tap_create(dev, tun_name, remote_iface, 0,
+		ETH_TUNTAP_TYPE_TUN);
 
 leave:
 	if (ret == -1) {
@@ -1700,7 +1712,6 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	struct ether_addr user_mac = { .addr_bytes = {0} };
 	struct rte_eth_dev *eth_dev;
 
-	tap_type = 1;
 	strcpy(tuntap_name, "TAP");
 
 	name = rte_vdev_device_name(dev);
@@ -1762,7 +1773,8 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	TAP_LOG(NOTICE, "Initializing pmd_tap for %s as %s",
 		name, tap_name);
 
-	ret = eth_dev_tap_create(dev, tap_name, remote_iface, &user_mac);
+	ret = eth_dev_tap_create(dev, tap_name, remote_iface, &user_mac,
+		ETH_TUNTAP_TYPE_TAP);
 
 leave:
 	if (ret == -1) {
@@ -1784,15 +1796,17 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	struct pmd_internals *internals;
 	int i;
 
-	TAP_LOG(DEBUG, "Closing TUN/TAP Ethernet device on numa %u",
-		rte_socket_id());
-
 	/* find the ethdev entry */
 	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (!eth_dev)
 		return 0;
 
 	internals = eth_dev->data->dev_private;
+
+	TAP_LOG(DEBUG, "Closing %s Ethernet device on numa %u",
+		(internals->type == ETH_TUNTAP_TYPE_TAP) ? "TAP" : "TUN",
+		rte_socket_id());
+
 	if (internals->nlsk_fd) {
 		tap_flow_flush(eth_dev, NULL);
 		tap_flow_implicit_flush(internals, NULL);
