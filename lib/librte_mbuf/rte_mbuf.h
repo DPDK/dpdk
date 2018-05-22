@@ -1908,7 +1908,10 @@ static inline char *rte_pktmbuf_prepend(struct rte_mbuf *m,
 	if (unlikely(len > rte_pktmbuf_headroom(m)))
 		return NULL;
 
-	m->data_off -= len;
+	/* NB: elaborating the subtraction like this instead of using
+	 *     -= allows us to ensure the result type is uint16_t
+	 *     avoiding compiler warnings on gcc 8.1 at least */
+	m->data_off = (uint16_t)(m->data_off - len);
 	m->data_len = (uint16_t)(m->data_len + len);
 	m->pkt_len  = (m->pkt_len + len);
 
@@ -1968,8 +1971,11 @@ static inline char *rte_pktmbuf_adj(struct rte_mbuf *m, uint16_t len)
 	if (unlikely(len > m->data_len))
 		return NULL;
 
+	/* NB: elaborating the addition like this instead of using
+	 *     += allows us to ensure the result type is uint16_t
+	 *     avoiding compiler warnings on gcc 8.1 at least */
 	m->data_len = (uint16_t)(m->data_len - len);
-	m->data_off += len;
+	m->data_off = (uint16_t)(m->data_off + len);
 	m->pkt_len  = (m->pkt_len - len);
 	return (char *)m->buf_addr + m->data_off;
 }
@@ -2081,8 +2087,11 @@ static inline int rte_pktmbuf_chain(struct rte_mbuf *head, struct rte_mbuf *tail
 	cur_tail = rte_pktmbuf_lastseg(head);
 	cur_tail->next = tail;
 
-	/* accumulate number of segments and total length. */
-	head->nb_segs += tail->nb_segs;
+	/* accumulate number of segments and total length.
+	 * NB: elaborating the addition like this instead of using
+	 *     -= allows us to ensure the result type is uint16_t
+	 *     avoiding compiler warnings on gcc 8.1 at least */
+	head->nb_segs = (uint16_t)(head->nb_segs + tail->nb_segs);
 	head->pkt_len += tail->pkt_len;
 
 	/* pkt_len is only set in the head */
