@@ -3823,6 +3823,7 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 		 struct rte_mbuf **rx_pkts, const uint16_t nb_pkts)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	uint16_t nb_rx;
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
@@ -3833,13 +3834,14 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 		return 0;
 	}
 #endif
-	int16_t nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
-			rx_pkts, nb_pkts);
+	nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
+				     rx_pkts, nb_pkts);
 
 #ifdef RTE_ETHDEV_RXTX_CALLBACKS
-	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];
+	if (unlikely(dev->post_rx_burst_cbs[queue_id] != NULL)) {
+		struct rte_eth_rxtx_callback *cb =
+				dev->post_rx_burst_cbs[queue_id];
 
-	if (unlikely(cb != NULL)) {
 		do {
 			nb_rx = cb->fn.rx(port_id, queue_id, rx_pkts, nb_rx,
 						nb_pkts, cb->param);
