@@ -119,6 +119,10 @@ struct sub_device {
 	volatile unsigned int remove:1;
 	/* flow isolation state */
 	int flow_isolated:1;
+	/* RMV callback registration state */
+	unsigned int rmv_callback:1;
+	/* LSC callback registration state */
+	unsigned int lsc_callback:1;
 };
 
 struct fs_priv {
@@ -211,6 +215,7 @@ int failsafe_eal_uninit(struct rte_eth_dev *dev);
 /* ETH_DEV */
 
 int failsafe_eth_dev_state_sync(struct rte_eth_dev *dev);
+void failsafe_eth_dev_unregister_callbacks(struct sub_device *sdev);
 void failsafe_dev_remove(struct rte_eth_dev *dev);
 void failsafe_stats_increment(struct rte_eth_stats *to,
 				struct rte_eth_stats *from);

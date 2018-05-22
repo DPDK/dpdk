@@ -146,6 +146,8 @@ fs_dev_configure(struct rte_eth_dev *dev)
 			if (ret)
 				WARN("Failed to register RMV callback for sub_device %d",
 				     SUB_ID(sdev));
+			else
+				sdev->rmv_callback = 1;
 		}
 		dev->data->dev_conf.intr_conf.rmv = 0;
 		if (lsc_interrupt) {
@@ -156,6 +158,8 @@ fs_dev_configure(struct rte_eth_dev *dev)
 			if (ret)
 				WARN("Failed to register LSC callback for sub_device %d",
 				     SUB_ID(sdev));
+			else
+				sdev->lsc_callback = 1;
 		}
 		dev->data->dev_conf.intr_conf.lsc = lsc_enabled;
 		sdev->state = DEV_ACTIVE;
@@ -282,6 +286,7 @@ fs_dev_close(struct rte_eth_dev *dev)
 	PRIV(dev)->state = DEV_ACTIVE - 1;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		DEBUG("Closing sub_device %d", i);
+		failsafe_eth_dev_unregister_callbacks(sdev);
 		rte_eth_dev_close(PORT_ID(sdev));
 		sdev->state = DEV_ACTIVE - 1;
 	}

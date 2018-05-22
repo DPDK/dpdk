@@ -260,6 +260,7 @@ fs_dev_remove(struct sub_device *sdev)
 		sdev->state = DEV_ACTIVE;
 		/* fallthrough */
 	case DEV_ACTIVE:
+		failsafe_eth_dev_unregister_callbacks(sdev);
 		rte_eth_dev_close(PORT_ID(sdev));
 		sdev->state = DEV_PROBED;
 		/* fallthrough */
@@ -318,6 +319,35 @@ fs_rxtx_clean(struct sub_device *sdev)
 		if (FS_ATOMIC_TX(sdev, i))
 			return 0;
 	return 1;
+}
+
+void
+failsafe_eth_dev_unregister_callbacks(struct sub_device *sdev)
+{
+	int ret;
+
+	if (sdev == NULL)
+		return;
+	if (sdev->rmv_callback) {
+		ret = rte_eth_dev_callback_unregister(PORT_ID(sdev),
+						RTE_ETH_EVENT_INTR_RMV,
+						failsafe_eth_rmv_event_callback,
+						sdev);
+		if (ret)
+			WARN("Failed to unregister RMV callback for sub_device"
+			     " %d", SUB_ID(sdev));
+		sdev->rmv_callback = 0;
+	}
+	if (sdev->lsc_callback) {
+		ret = rte_eth_dev_callback_unregister(PORT_ID(sdev),
+						RTE_ETH_EVENT_INTR_LSC,
+						failsafe_eth_lsc_event_callback,
+						sdev);
+		if (ret)
+			WARN("Failed to unregister LSC callback for sub_device"
+			     " %d", SUB_ID(sdev));
+		sdev->lsc_callback = 0;
+	}
 }
 
 void
