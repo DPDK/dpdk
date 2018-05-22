@@ -1689,7 +1689,7 @@ start_port(portid_t pid)
 					}
 
 					diag = rte_eth_rx_queue_setup(pi, qi,
-					     port->nb_rx_desc[pi],
+					     port->nb_rx_desc[qi],
 					     rxring_numa[pi],
 					     &(port->rx_conf[qi]),
 					     mp);
@@ -1704,7 +1704,7 @@ start_port(portid_t pid)
 						return -1;
 					}
 					diag = rte_eth_rx_queue_setup(pi, qi,
-					     port->nb_rx_desc[pi],
+					     port->nb_rx_desc[qi],
 					     port->socket_id,
 					     &(port->rx_conf[qi]),
 					     mp);
