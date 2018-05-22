@@ -3131,9 +3131,6 @@ int bnxt_hwrm_port_qstats(struct bnxt *bp)
 	struct bnxt_pf_info *pf = &bp->pf;
 	int rc;
 
-	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
-		return 0;
-
 	HWRM_PREP(req, PORT_QSTATS);
 
 	req.port_id = rte_cpu_to_le_16(pf->port_id);

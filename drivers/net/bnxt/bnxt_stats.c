@@ -266,11 +266,6 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	unsigned int count, i;
 	uint64_t tx_drop_pkts;
 
-	if (!(bp->flags & BNXT_FLAG_PORT_STATS)) {
-		PMD_DRV_LOG(ERR, "xstats not supported for VF\n");
-		return 0;
-	}
-
 	bnxt_hwrm_port_qstats(bp);
 	bnxt_hwrm_func_qstats_tx_drop(bp, 0xffff, &tx_drop_pkts);
 

@@ -3160,7 +3160,7 @@ skip_init:
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	if (BNXT_PF(bp) && pci_dev->id.device_id != BROADCOM_DEV_ID_NS2) {
+	if (pci_dev->id.device_id != BROADCOM_DEV_ID_NS2) {
 		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
 			 "bnxt_%04x:%02x:%02x:%02x-%s", pci_dev->addr.domain,
 			 pci_dev->addr.bus, pci_dev->addr.devid,
