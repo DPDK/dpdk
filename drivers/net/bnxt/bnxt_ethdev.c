@@ -2432,6 +2432,7 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 	switch (filter_op) {
 	case RTE_ETH_FILTER_ADD:
 	case RTE_ETH_FILTER_DELETE:
+		/* FALLTHROUGH */
 		filter = bnxt_get_unused_filter(bp);
 		if (filter == NULL) {
 			PMD_DRV_LOG(ERR,
@@ -2897,6 +2898,7 @@ static bool bnxt_dir_type_is_ape_bin_format(uint16_t dir_type)
 	case BNX_DIR_TYPE_KONG_PATCH:
 	case BNX_DIR_TYPE_BONO_FW:
 	case BNX_DIR_TYPE_BONO_PATCH:
+		/* FALLTHROUGH */
 		return true;
 	}
 
@@ -2915,6 +2917,7 @@ static bool bnxt_dir_type_is_other_exec_format(uint16_t dir_type)
 	case BNX_DIR_TYPE_ISCSI_BOOT:
 	case BNX_DIR_TYPE_ISCSI_BOOT_IPV6:
 	case BNX_DIR_TYPE_ISCSI_BOOT_IPV4N6:
+		/* FALLTHROUGH */
 		return true;
 	}
 

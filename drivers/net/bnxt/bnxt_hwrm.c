@@ -2002,6 +2002,7 @@ static uint16_t bnxt_parse_eth_link_duplex(uint32_t conf_link_speed)
 	switch (conf_link_speed) {
 	case ETH_LINK_SPEED_10M_HD:
 	case ETH_LINK_SPEED_100M_HD:
+		/* FALLTHROUGH */
 		return HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_HALF;
 	}
 	return hw_link_duplex;
@@ -2022,6 +2023,7 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed)
 	switch (conf_link_speed & ~ETH_LINK_SPEED_FIXED) {
 	case ETH_LINK_SPEED_100M:
 	case ETH_LINK_SPEED_100M_HD:
+		/* FALLTHROUGH */
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_100MB;
 		break;
@@ -2186,6 +2188,7 @@ static uint16_t bnxt_parse_hw_link_duplex(uint16_t hw_link_duplex)
 	switch (hw_link_duplex) {
 	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_BOTH:
 	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_FULL:
+		/* FALLTHROUGH */
 		eth_link_duplex = ETH_LINK_FULL_DUPLEX;
 		break;
 	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_HALF:
@@ -2315,6 +2318,7 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_5:
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR2_0:
+		/* FALLTHROUGH */
 		bp->port_partition_type = resp->port_partition_type;
 		break;
 	default:
