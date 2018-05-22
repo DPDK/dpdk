@@ -651,10 +651,11 @@ mlx5_tx_dbrec(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe)
  */
 static __rte_always_inline void
 txq_mbuf_to_swp(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
-		 uint8_t tso, uint64_t vlan,
-		 uint8_t *offsets, uint8_t *swp_types)
+		uint8_t *offsets, uint8_t *swp_types)
 {
-	uint64_t tunnel = buf->ol_flags & PKT_TX_TUNNEL_MASK;
+	const uint64_t vlan = buf->ol_flags & PKT_TX_VLAN_PKT;
+	const uint64_t tunnel = buf->ol_flags & PKT_TX_TUNNEL_MASK;
+	const uint64_t tso = buf->ol_flags & PKT_TX_TCP_SEG;
 	const uint64_t csum_flags = buf->ol_flags & PKT_TX_L4_MASK;
 	const uint64_t inner_ip =
 		buf->ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6);
@@ -663,8 +664,8 @@ txq_mbuf_to_swp(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
 	uint16_t idx;
 	uint16_t off;
 
-	if (likely(!tunnel || !txq->swp_en ||
-		   (tunnel != PKT_TX_TUNNEL_UDP && tunnel != PKT_TX_TUNNEL_IP)))
+	if (likely(!txq->swp_en || (tunnel != PKT_TX_TUNNEL_UDP &&
+				    tunnel != PKT_TX_TUNNEL_IP)))
 		return;
 	/*
 	 * The index should have:
@@ -684,7 +685,7 @@ txq_mbuf_to_swp(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
 	 * in if any of SWP offsets is set. Therefore, all of the L3 offsets
 	 * should be set regardless of HW offload.
 	 */
-	off = buf->outer_l2_len + (vlan ? 4 : 0);
+	off = buf->outer_l2_len + (vlan ? sizeof(struct vlan_hdr) : 0);
 	offsets[1] = off >> 1; /* Outer L3 offset. */
 	if (tunnel == PKT_TX_TUNNEL_UDP) {
 		off += buf->outer_l3_len;

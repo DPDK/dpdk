@@ -522,7 +522,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint16_t ehdr;
 		uint8_t cs_flags;
 		uint8_t tso = txq->tso_en && (buf->ol_flags & PKT_TX_TCP_SEG);
-		uint8_t is_vlan = !!(buf->ol_flags & PKT_TX_VLAN_PKT);
 		uint32_t swp_offsets = 0;
 		uint8_t swp_types = 0;
 		uint16_t tso_segsz = 0;
@@ -566,11 +565,10 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rte_prefetch0(
 			    rte_pktmbuf_mtod(*(pkts + 1), volatile void *));
 		cs_flags = txq_ol_cksum_to_cs(buf);
-		txq_mbuf_to_swp(txq, buf, tso, is_vlan,
-				(uint8_t *)&swp_offsets, &swp_types);
+		txq_mbuf_to_swp(txq, buf, (uint8_t *)&swp_offsets, &swp_types);
 		raw = ((uint8_t *)(uintptr_t)wqe) + 2 * MLX5_WQE_DWORD_SIZE;
 		/* Replace the Ethernet type by the VLAN if necessary. */
-		if (is_vlan) {
+		if (buf->ol_flags & PKT_TX_VLAN_PKT) {
 			uint32_t vlan = rte_cpu_to_be_32(0x81000000 |
 							 buf->vlan_tci);
 			unsigned int len = 2 * ETHER_ADDR_LEN - 2;
