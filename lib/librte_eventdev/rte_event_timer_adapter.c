@@ -565,7 +565,7 @@ sw_event_timer_cb(struct rte_timer *tim, void *arg)
 		 * immediate expiry value, so that we process it again on the
 		 * next iteration.
 		 */
-		rte_timer_reset_sync(tim, SINGLE, 0, rte_lcore_id(),
+		rte_timer_reset_sync(tim, 0, SINGLE, rte_lcore_id(),
 				     sw_event_timer_cb, evtim);
 
 		sw_data->stats.evtim_retry_count++;
