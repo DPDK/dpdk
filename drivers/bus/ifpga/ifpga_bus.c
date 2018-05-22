@@ -159,7 +159,8 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 		goto end;
 
 	strlcpy(afu_pr_conf.bs_path, path, sizeof(afu_pr_conf.bs_path));
-	if (rawdev->dev_ops->firmware_load &&
+	if (rawdev->dev_ops &&
+		rawdev->dev_ops->firmware_load &&
 		rawdev->dev_ops->firmware_load(rawdev,
 				&afu_pr_conf)){
 		IFPGA_BUS_ERR("firmware load error %d\n", ret);
