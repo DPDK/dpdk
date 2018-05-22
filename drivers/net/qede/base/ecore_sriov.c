@@ -61,6 +61,8 @@ const char *ecore_channel_tlvs_string[] = {
 	"CHANNEL_TLV_COALESCE_UPDATE",
 	"CHANNEL_TLV_QID",
 	"CHANNEL_TLV_COALESCE_READ",
+	"CHANNEL_TLV_BULLETIN_UPDATE_MAC",
+	"CHANNEL_TLV_UPDATE_MTU",
 	"CHANNEL_TLV_MAX"
 };
 
@@ -2858,6 +2860,45 @@ out:
 			       length, status);
 }
 
+static enum _ecore_status_t
+ecore_iov_vf_pf_update_mtu(struct ecore_hwfn *p_hwfn,
+				    struct ecore_ptt *p_ptt,
+				    struct ecore_vf_info *p_vf)
+{
+	struct ecore_iov_vf_mbx *mbx = &p_vf->vf_mbx;
+	struct ecore_sp_vport_update_params params;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	struct vfpf_update_mtu_tlv *p_req;
+	u8 status = PFVF_STATUS_SUCCESS;
+
+	/* Valiate PF can send such a request */
+	if (!p_vf->vport_instance) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "No VPORT instance available for VF[%d], failing MTU update\n",
+			   p_vf->abs_vf_id);
+		status = PFVF_STATUS_FAILURE;
+		goto send_status;
+	}
+
+	p_req = &mbx->req_virt->update_mtu;
+
+	OSAL_MEMSET(&params, 0, sizeof(params));
+	params.opaque_fid =  p_vf->opaque_fid;
+	params.vport_id = p_vf->vport_id;
+	params.mtu = p_req->mtu;
+	rc = ecore_sp_vport_update(p_hwfn, &params, ECORE_SPQ_MODE_EBLOCK,
+				   OSAL_NULL);
+
+	if (rc)
+		status = PFVF_STATUS_FAILURE;
+send_status:
+	ecore_iov_prepare_resp(p_hwfn, p_ptt, p_vf,
+			       CHANNEL_TLV_UPDATE_MTU,
+			       sizeof(struct pfvf_def_resp_tlv),
+			       status);
+	return rc;
+}
+
 void *ecore_iov_search_list_tlvs(struct ecore_hwfn *p_hwfn,
 				 void *p_tlvs_list, u16 req_type)
 {
@@ -4139,6 +4180,9 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 			break;
 		case CHANNEL_TLV_COALESCE_READ:
 			ecore_iov_vf_pf_get_coalesce(p_hwfn, p_ptt, p_vf);
+			break;
+		case CHANNEL_TLV_UPDATE_MTU:
+			ecore_iov_vf_pf_update_mtu(p_hwfn, p_ptt, p_vf);
 			break;
 		}
 	} else if (ecore_iov_tlv_supported(mbx->first_tlv.tl.type)) {

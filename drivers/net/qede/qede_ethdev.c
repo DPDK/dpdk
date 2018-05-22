@@ -603,37 +603,6 @@ int qede_enable_tpa(struct rte_eth_dev *eth_dev, bool flg)
 	return 0;
 }
 
-/* Update MTU via vport-update without doing port restart.
- * The vport must be deactivated before calling this API.
- */
-int qede_update_mtu(struct rte_eth_dev *eth_dev, uint16_t mtu)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct ecore_sp_vport_update_params params;
-	struct ecore_hwfn *p_hwfn;
-	int rc;
-	int i;
-
-	memset(&params, 0, sizeof(struct ecore_sp_vport_update_params));
-	params.vport_id = 0;
-	params.mtu = mtu;
-	params.vport_id = 0;
-	for_each_hwfn(edev, i) {
-		p_hwfn = &edev->hwfns[i];
-		params.opaque_fid = p_hwfn->hw_info.opaque_fid;
-		rc = ecore_sp_vport_update(p_hwfn, &params,
-				ECORE_SPQ_MODE_EBLOCK, NULL);
-		if (rc != ECORE_SUCCESS) {
-			DP_ERR(edev, "Failed to update MTU\n");
-			return -1;
-		}
-	}
-	DP_INFO(edev, "MTU updated to %u\n", mtu);
-
-	return 0;
-}
-
 static void qede_set_ucast_cmn_params(struct ecore_filter_ucast *ucast)
 {
 	memset(ucast, 0, sizeof(struct ecore_filter_ucast));
@@ -1295,6 +1264,12 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
 
 	PMD_INIT_FUNC_TRACE(edev);
+
+	/* Update MTU only if it has changed */
+	if (eth_dev->data->mtu != qdev->mtu) {
+		if (qede_update_mtu(eth_dev, qdev->mtu))
+			goto err;
+	}
 
 	/* Configure TPA parameters */
 	if (rxmode->offloads & DEV_RX_OFFLOAD_TCP_LRO) {
@@ -2056,6 +2031,72 @@ qede_set_mc_addr_list(struct rte_eth_dev *eth_dev, struct ether_addr *mc_addrs,
 	return qede_add_mcast_filters(eth_dev, mc_addrs, mc_addrs_num);
 }
 
+/* Update MTU via vport-update without doing port restart.
+ * The vport must be deactivated before calling this API.
+ */
+int qede_update_mtu(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_hwfn *p_hwfn;
+	int rc;
+	int i;
+
+	if (IS_PF(edev)) {
+		struct ecore_sp_vport_update_params params;
+
+		memset(&params, 0, sizeof(struct ecore_sp_vport_update_params));
+		params.vport_id = 0;
+		params.mtu = mtu;
+		params.vport_id = 0;
+		for_each_hwfn(edev, i) {
+			p_hwfn = &edev->hwfns[i];
+			params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+			rc = ecore_sp_vport_update(p_hwfn, &params,
+					ECORE_SPQ_MODE_EBLOCK, NULL);
+			if (rc != ECORE_SUCCESS)
+				goto err;
+		}
+	} else {
+		for_each_hwfn(edev, i) {
+			p_hwfn = &edev->hwfns[i];
+			rc = ecore_vf_pf_update_mtu(p_hwfn, mtu);
+			if (rc == ECORE_INVAL) {
+				DP_INFO(edev, "VF MTU Update TLV not supported\n");
+				/* Recreate vport */
+				rc = qede_start_vport(qdev, mtu);
+				if (rc != ECORE_SUCCESS)
+					goto err;
+
+				/* Restore config lost due to vport stop */
+				qede_mac_addr_set(eth_dev, &qdev->primary_mac);
+
+				if (eth_dev->data->promiscuous)
+					qede_promiscuous_enable(eth_dev);
+				else
+					qede_promiscuous_disable(eth_dev);
+
+				if (eth_dev->data->all_multicast)
+					qede_allmulticast_enable(eth_dev);
+				else
+					qede_allmulticast_disable(eth_dev);
+
+				qede_vlan_offload_set(eth_dev,
+						      qdev->vlan_offload_mask);
+			} else if (rc != ECORE_SUCCESS) {
+				goto err;
+			}
+		}
+	}
+	DP_INFO(edev, "%s MTU updated to %u\n", IS_PF(edev) ? "PF" : "VF", mtu);
+
+	return 0;
+
+err:
+	DP_ERR(edev, "Failed to update MTU\n");
+	return -1;
+}
+
 static int qede_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			      struct rte_eth_fc_conf *fc_conf)
 {
@@ -2463,7 +2504,6 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 			qede_mac_addr_remove(dev, 0);
 	}
 	rte_delay_ms(1000);
-	qede_start_vport(qdev, mtu); /* Recreate vport */
 	qdev->mtu = mtu;
 
 	/* Fix up RX buf size for all queues of the port */
@@ -2486,22 +2526,6 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		dev->data->dev_conf.rxmode.jumbo_frame = 1;
 	else
 		dev->data->dev_conf.rxmode.jumbo_frame = 0;
-
-	/* Restore config lost due to vport stop */
-	if (IS_PF(edev))
-		qede_mac_addr_set(dev, &qdev->primary_mac);
-
-	if (dev->data->promiscuous)
-		qede_promiscuous_enable(dev);
-	else
-		qede_promiscuous_disable(dev);
-
-	if (dev->data->all_multicast)
-		qede_allmulticast_enable(dev);
-	else
-		qede_allmulticast_disable(dev);
-
-	qede_vlan_offload_set(dev, qdev->vlan_offload_mask);
 
 	if (!dev->data->dev_started && restart) {
 		qede_dev_start(dev);

@@ -531,6 +531,18 @@ struct pfvf_read_coal_resp_tlv {
 	u8 padding[6];
 };
 
+struct vfpf_bulletin_update_mac_tlv {
+	struct vfpf_first_tlv first_tlv;
+	u8 mac[ETH_ALEN];
+	u8 padding[2];
+};
+
+struct vfpf_update_mtu_tlv {
+	struct vfpf_first_tlv first_tlv;
+	u16 mtu;
+	u8 padding[6];
+};
+
 union vfpf_tlvs {
 	struct vfpf_first_tlv			first_tlv;
 	struct vfpf_acquire_tlv			acquire;
@@ -545,6 +557,8 @@ union vfpf_tlvs {
 	struct vfpf_update_tunn_param_tlv	tunn_param_update;
 	struct vfpf_update_coalesce		update_coalesce;
 	struct vfpf_read_coal_req_tlv		read_coal_req;
+	struct vfpf_bulletin_update_mac_tlv	bulletin_update_mac;
+	struct vfpf_update_mtu_tlv		update_mtu;
 	struct tlv_buffer_size			tlv_buf_size;
 };
 
@@ -675,6 +689,8 @@ enum {
 	CHANNEL_TLV_COALESCE_UPDATE,
 	CHANNEL_TLV_QID,
 	CHANNEL_TLV_COALESCE_READ,
+	CHANNEL_TLV_BULLETIN_UPDATE_MAC,
+	CHANNEL_TLV_UPDATE_MTU,
 	CHANNEL_TLV_MAX,
 
 	/* Required for iterating over vport-update tlvs.

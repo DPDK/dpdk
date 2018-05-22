@@ -34,6 +34,7 @@
 #include "base/nvm_cfg.h"
 #include "base/ecore_sp_commands.h"
 #include "base/ecore_l2.h"
+#include "base/ecore_vf.h"
 
 #include "qede_logs.h"
 #include "qede_if.h"
