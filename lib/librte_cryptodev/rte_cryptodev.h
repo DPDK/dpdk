@@ -952,7 +952,9 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 
 /**
  * Frees private data for the device id, based on its device type,
- * returning it to its mempool.
+ * returning it to its mempool. It is the application's responsibility
+ * to ensure that private session data is not cleared while there are
+ * still in-flight operations using it.
  *
  * @param   dev_id   ID of device that uses the session.
  * @param   sess     Session containing the reference to the private data
