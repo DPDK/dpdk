@@ -315,6 +315,8 @@ struct rte_comp_op {
 		/**< Starting point for compression or decompression,
 		 * specified as number of bytes from start of packet in
 		 * source buffer.
+		 * This offset starts from the first segment
+		 * of the buffer, in case the m_src is a chain of mbufs.
 		 * Starting point for checksum generation in compress direction.
 		 */
 		uint32_t length;
@@ -328,7 +330,10 @@ struct rte_comp_op {
 		uint32_t offset;
 		/**< Starting point for writing output data, specified as
 		 * number of bytes from start of packet in dest
-		 * buffer. Starting point for checksum generation in
+		 * buffer.
+		 * This offset starts from the first segment
+		 * of the buffer, in case the m_dst is a chain of mbufs.
+		 * Starting point for checksum generation in
 		 * decompress direction.
 		 */
 	} dst;
