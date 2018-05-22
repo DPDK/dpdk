@@ -63,6 +63,7 @@ int bnxt_hwrm_vf_func_cfg_def_cp(struct bnxt *bp);
 
 int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
 
+int bnxt_hwrm_set_async_event_cr(struct bnxt *bp);
 int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			 struct bnxt_ring *ring,
 			 uint32_t ring_type, uint32_t map_index,

@@ -168,22 +168,11 @@ static void bnxt_free_mem(struct bnxt *bp)
 	bnxt_free_stats(bp);
 	bnxt_free_tx_rings(bp);
 	bnxt_free_rx_rings(bp);
-	bnxt_free_def_cp_ring(bp);
 }
 
 static int bnxt_alloc_mem(struct bnxt *bp)
 {
 	int rc;
-
-	/* Default completion ring */
-	rc = bnxt_init_def_ring_struct(bp, SOCKET_ID_ANY);
-	if (rc)
-		goto alloc_mem_err;
-
-	rc = bnxt_alloc_rings(bp, 0, NULL, NULL,
-			      bp->def_cp_ring, "def_cp");
-	if (rc)
-		goto alloc_mem_err;
 
 	rc = bnxt_alloc_vnic_mem(bp);
 	if (rc)
@@ -509,11 +498,11 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	/* Inherit new configurations */
 	if (eth_dev->data->nb_rx_queues > bp->max_rx_rings ||
 	    eth_dev->data->nb_tx_queues > bp->max_tx_rings ||
-	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues + 1 >
+	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
 	    bp->max_cp_rings ||
 	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
 	    bp->max_stat_ctx ||
-	    (uint32_t)(eth_dev->data->nb_rx_queues + 1) > bp->max_ring_grps) {
+	    (uint32_t)(eth_dev->data->nb_rx_queues) > bp->max_ring_grps) {
 		PMD_DRV_LOG(ERR,
 			"Insufficient resources to support requested config\n");
 		PMD_DRV_LOG(ERR,
@@ -3383,10 +3372,6 @@ skip_init:
 	if (rc)
 		goto error_free_int;
 
-	rc = bnxt_alloc_def_cp_ring(bp);
-	if (rc)
-		goto error_free_int;
-
 	bnxt_enable_int(bp);
 	bnxt_init_nic(bp);
 
@@ -3394,7 +3379,6 @@ skip_init:
 
 error_free_int:
 	bnxt_disable_int(bp);
-	bnxt_free_def_cp_ring(bp);
 	bnxt_hwrm_func_buf_unrgtr(bp);
 	bnxt_free_int(bp);
 	bnxt_free_mem(bp);

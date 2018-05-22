@@ -132,69 +132,31 @@ reject:
 	return;
 }
 
-/* For the default completion ring only */
-int bnxt_alloc_def_cp_ring(struct bnxt *bp)
+int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
 {
-	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
-	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
-	int rc;
+	bool evt = 0;
 
-	rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
-				  HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
-				  0, HWRM_NA_SIGNATURE,
-				  HWRM_NA_SIGNATURE);
-	if (rc)
-		goto err_out;
-	cpr->cp_doorbell = (char *)bp->doorbell_base;
-	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
-	if (BNXT_PF(bp))
-		rc = bnxt_hwrm_func_cfg_def_cp(bp);
-	else
-		rc = bnxt_hwrm_vf_func_cfg_def_cp(bp);
+	if (bp == NULL || cmp == NULL) {
+		PMD_DRV_LOG(ERR, "invalid NULL argument\n");
+		return evt;
+	}
 
-err_out:
-	return rc;
-}
+	switch (CMP_TYPE(cmp)) {
+	case CMPL_BASE_TYPE_HWRM_ASYNC_EVENT:
+		/* Handle any async event */
+		bnxt_handle_async_event(bp, cmp);
+		evt = 1;
+		break;
+	case CMPL_BASE_TYPE_HWRM_FWD_RESP:
+		/* Handle HWRM forwarded responses */
+		bnxt_handle_fwd_req(bp, cmp);
+		evt = 1;
+		break;
+	default:
+		/* Ignore any other events */
+		PMD_DRV_LOG(INFO, "Ignoring %02x completion\n", CMP_TYPE(cmp));
+		break;
+	}
 
-void bnxt_free_def_cp_ring(struct bnxt *bp)
-{
-	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
-
-	if (cpr == NULL)
-		return;
-
-	bnxt_free_ring(cpr->cp_ring_struct);
-	cpr->cp_ring_struct = NULL;
-	rte_free(cpr->cp_ring_struct);
-	rte_free(cpr);
-	bp->def_cp_ring = NULL;
-}
-
-/* For the default completion ring only */
-int bnxt_init_def_ring_struct(struct bnxt *bp, unsigned int socket_id)
-{
-	struct bnxt_cp_ring_info *cpr;
-	struct bnxt_ring *ring;
-
-	cpr = rte_zmalloc_socket("cpr",
-				 sizeof(struct bnxt_cp_ring_info),
-				 RTE_CACHE_LINE_SIZE, socket_id);
-	if (cpr == NULL)
-		return -ENOMEM;
-	bp->def_cp_ring = cpr;
-
-	ring = rte_zmalloc_socket("bnxt_cp_ring_struct",
-				  sizeof(struct bnxt_ring),
-				  RTE_CACHE_LINE_SIZE, socket_id);
-	if (ring == NULL)
-		return -ENOMEM;
-	cpr->cp_ring_struct = ring;
-	ring->bd = (void *)cpr->cp_desc_ring;
-	ring->bd_dma = cpr->cp_desc_mapping;
-	ring->ring_size = rte_align32pow2(DEFAULT_CP_RING_SIZE);
-	ring->ring_mask = ring->ring_size - 1;
-	ring->vmem_size = 0;
-	ring->vmem = NULL;
-
-	return 0;
+	return evt;
 }

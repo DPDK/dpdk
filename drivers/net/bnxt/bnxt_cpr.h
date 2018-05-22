@@ -72,12 +72,9 @@ struct bnxt_cp_ring_info {
 #define RX_CMP_L2_ERRORS						\
 	(RX_PKT_CMPL_ERRORS_BUFFER_ERROR_MASK | RX_PKT_CMPL_ERRORS_CRC_ERROR)
 
-
 struct bnxt;
-int bnxt_alloc_def_cp_ring(struct bnxt *bp);
-void bnxt_free_def_cp_ring(struct bnxt *bp);
-int bnxt_init_def_ring_struct(struct bnxt *bp, unsigned int socket_id);
 void bnxt_handle_async_event(struct bnxt *bp, struct cmpl_base *cmp);
 void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmp);
+int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp);
 
 #endif

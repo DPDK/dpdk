@@ -274,31 +274,48 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 		struct bnxt_ring *ring = rxr->rx_ring_struct;
-		unsigned int idx = i + 1;
-		unsigned int map_idx = idx + bp->rx_cp_nr_rings;
+		unsigned int map_idx = i + bp->rx_cp_nr_rings;
 
 		bp->grp_info[i].fw_stats_ctx = cpr->hw_stats_ctx_id;
 
 		/* Rx cmpl */
-		rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
-					HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
-					idx, HWRM_NA_SIGNATURE,
-					HWRM_NA_SIGNATURE);
+		rc = bnxt_hwrm_ring_alloc
+			(bp,
+			 cp_ring,
+			 HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
+			 i,
+			 HWRM_NA_SIGNATURE,
+			 HWRM_NA_SIGNATURE);
 		if (rc)
 			goto err_out;
-		cpr->cp_doorbell = (char *)bp->doorbell_base + idx * 0x80;
+		cpr->cp_doorbell = (char *)bp->doorbell_base + i * 0x80;
 		bp->grp_info[i].cp_fw_ring_id = cp_ring->fw_ring_id;
 		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
 
+		if (!i) {
+			/*
+			 * In order to save completion resource, use the first
+			 * completion ring from PF or VF as the default
+			 * completion ring for async event & HWRM
+			 * forward response handling.
+			 */
+			bp->def_cp_ring = cpr;
+			rc = bnxt_hwrm_set_async_event_cr(bp);
+			if (rc)
+				goto err_out;
+		}
+
 		/* Rx ring */
-		rc = bnxt_hwrm_ring_alloc(bp, ring,
-					HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
-					idx, cpr->hw_stats_ctx_id,
-					cp_ring->fw_ring_id);
+		rc = bnxt_hwrm_ring_alloc(bp,
+					  ring,
+					  HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
+					  i,
+					  cpr->hw_stats_ctx_id,
+					  cp_ring->fw_ring_id);
 		if (rc)
 			goto err_out;
 		rxr->rx_prod = 0;
-		rxr->rx_doorbell = (char *)bp->doorbell_base + idx * 0x80;
+		rxr->rx_doorbell = (char *)bp->doorbell_base + i * 0x80;
 		bp->grp_info[i].rx_fw_ring_id = ring->fw_ring_id;
 		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
 
@@ -330,7 +347,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		}
 		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
 		B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
-		rxq->index = idx;
+		rxq->index = i;
 	}
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
@@ -339,7 +356,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 		struct bnxt_tx_ring_info *txr = txq->tx_ring;
 		struct bnxt_ring *ring = txr->tx_ring_struct;
-		unsigned int idx = i + 1 + bp->rx_cp_nr_rings;
+		unsigned int idx = i + bp->rx_cp_nr_rings;
 
 		/* Tx cmpl */
 		rc = bnxt_hwrm_ring_alloc(bp, cp_ring,

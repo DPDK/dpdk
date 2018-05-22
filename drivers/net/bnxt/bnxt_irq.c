@@ -40,30 +40,10 @@ static void bnxt_int_handler(void *param)
 		if (!CMP_VALID(cmp, raw_cons, cpr->cp_ring_struct))
 			break;
 
-		switch (CMP_TYPE(cmp)) {
-		case CMPL_BASE_TYPE_HWRM_ASYNC_EVENT:
-			/* Handle any async event */
-			bnxt_handle_async_event(bp, cmp);
-			break;
-		case CMPL_BASE_TYPE_HWRM_FWD_REQ:
-			/* Handle HWRM forwarded responses */
-			bnxt_handle_fwd_req(bp, cmp);
-			break;
-		default:
-			/* Ignore any other events */
-			if (cmp->type & rte_cpu_to_le_16(0x01)) {
-				if (!CMP_VALID(cmp, raw_cons,
-					       cpr->cp_ring_struct))
-					goto no_more;
-			}
-			PMD_DRV_LOG(INFO,
-				"Ignoring %02x completion\n", CMP_TYPE(cmp));
-			break;
-		}
+		bnxt_event_hwrm_resp_handler(bp, cmp);
 		raw_cons = NEXT_RAW_CMP(raw_cons);
-
 	};
-no_more:
+
 	cpr->cp_raw_cons = raw_cons;
 	B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
 }
@@ -99,7 +79,9 @@ void bnxt_enable_int(struct bnxt *bp)
 {
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
 
-	B_CP_DB_ARM(cpr);
+	/* Only the default completion ring */
+	if (cpr != NULL && cpr->cp_doorbell != NULL)
+		B_CP_DB_ARM(cpr);
 }
 
 int bnxt_setup_int(struct bnxt *bp)

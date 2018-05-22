@@ -534,6 +534,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t prod = rxr->rx_prod;
 	uint16_t ag_prod = rxr->ag_prod;
 	int rc = 0;
+	bool evt = false;
 
 	/* If Rx Q was stopped return */
 	if (rxq->rx_deferred_start)
@@ -558,14 +559,19 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				nb_rx_pkts++;
 			if (rc == -EBUSY)	/* partial completion */
 				break;
+		} else {
+			evt =
+			bnxt_event_hwrm_resp_handler(rxq->bp,
+						     (struct cmpl_base *)rxcmp);
 		}
+
 		raw_cons = NEXT_RAW_CMP(raw_cons);
-		if (nb_rx_pkts == nb_pkts)
+		if (nb_rx_pkts == nb_pkts || evt)
 			break;
 	}
 
 	cpr->cp_raw_cons = raw_cons;
-	if (prod == rxr->rx_prod && ag_prod == rxr->ag_prod) {
+	if ((prod == rxr->rx_prod && ag_prod == rxr->ag_prod) && !evt) {
 		/*
 		 * For PMD, there is no need to keep on pushing to REARM
 		 * the doorbell if there are no new completions
@@ -574,9 +580,12 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	}
 
 	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
-	B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+	if (prod != rxr->rx_prod)
+		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+
 	/* Ring the AGG ring DB */
-	B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+	if (ag_prod != rxr->ag_prod)
+		B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
 
 	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
 	if (rc == -ENOMEM) {
