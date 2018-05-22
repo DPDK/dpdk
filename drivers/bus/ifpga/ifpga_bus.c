@@ -367,7 +367,7 @@ ifpga_unplug(struct rte_device *dev)
 		return -EINVAL;
 
 	afu_dev = RTE_DEV_TO_AFU(dev);
-	if (!dev)
+	if (!afu_dev)
 		return -ENOENT;
 
 	devargs = dev->devargs;
