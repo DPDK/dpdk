@@ -1839,6 +1839,11 @@ rxtx_config_display(void)
 		struct rte_eth_txconf *tx_conf = &ports[pid].tx_conf[0];
 		uint16_t *nb_rx_desc = &ports[pid].nb_rx_desc[0];
 		uint16_t *nb_tx_desc = &ports[pid].nb_tx_desc[0];
+		uint16_t nb_rx_desc_tmp;
+		uint16_t nb_tx_desc_tmp;
+		struct rte_eth_rxq_info rx_qinfo;
+		struct rte_eth_txq_info tx_qinfo;
+		int32_t rc;
 
 		/* per port config */
 		printf("  port %d: RX queue number: %d Tx queue number: %d\n",
@@ -1850,9 +1855,15 @@ rxtx_config_display(void)
 
 		/* per rx queue config only for first queue to be less verbose */
 		for (qid = 0; qid < 1; qid++) {
+			rc = rte_eth_rx_queue_info_get(pid, qid, &rx_qinfo);
+			if (rc)
+				nb_rx_desc_tmp = nb_rx_desc[qid];
+			else
+				nb_rx_desc_tmp = rx_qinfo.nb_desc;
+
 			printf("    RX queue: %d\n", qid);
 			printf("      RX desc=%d - RX free threshold=%d\n",
-				nb_rx_desc[qid], rx_conf[qid].rx_free_thresh);
+				nb_rx_desc_tmp, rx_conf[qid].rx_free_thresh);
 			printf("      RX threshold registers: pthresh=%d hthresh=%d "
 				" wthresh=%d\n",
 				rx_conf[qid].rx_thresh.pthresh,
@@ -1864,9 +1875,15 @@ rxtx_config_display(void)
 
 		/* per tx queue config only for first queue to be less verbose */
 		for (qid = 0; qid < 1; qid++) {
+			rc = rte_eth_tx_queue_info_get(pid, qid, &tx_qinfo);
+			if (rc)
+				nb_tx_desc_tmp = nb_tx_desc[qid];
+			else
+				nb_tx_desc_tmp = tx_qinfo.nb_desc;
+
 			printf("    TX queue: %d\n", qid);
 			printf("      TX desc=%d - TX free threshold=%d\n",
-				nb_tx_desc[qid], tx_conf[qid].tx_free_thresh);
+				nb_tx_desc_tmp, tx_conf[qid].tx_free_thresh);
 			printf("      TX threshold registers: pthresh=%d hthresh=%d "
 				" wthresh=%d\n",
 				tx_conf[qid].tx_thresh.pthresh,
