@@ -491,12 +491,7 @@ eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 	struct pmd_internal *internal = dev->data->dev_private;
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 
-	internal->vlan_strip = rxmode->hw_vlan_strip;
-
-	if (rxmode->hw_vlan_filter)
-		VHOST_LOG(WARNING,
-			"vhost(%s): vlan filtering not available\n",
-			internal->dev_name);
+	internal->vlan_strip = !!(rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 
 	return 0;
 }
@@ -1072,6 +1067,10 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = internal->max_queues;
 	dev_info->max_tx_queues = internal->max_queues;
 	dev_info->min_rx_bufsize = 0;
+
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
+				DEV_TX_OFFLOAD_VLAN_INSERT;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
 }
 
 static int
