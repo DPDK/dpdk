@@ -605,3 +605,77 @@ Tested Platforms
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+* Intel(R) platforms with Intel(R) NICs combinations
+
+   * CPU
+
+     * Intel(R) Atom(TM) CPU C2758 @ 2.40GHz
+     * Intel(R) Xeon(R) CPU D-1541 @ 2.10GHz
+     * Intel(R) Xeon(R) CPU E5-4667 v3 @ 2.00GHz
+     * Intel(R) Xeon(R) CPU E5-2680 v2 @ 2.80GHz
+     * Intel(R) Xeon(R) CPU E5-2699 v4 @ 2.20GHz
+     * Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz
+     * Intel(R) Xeon(R) CPU E5-2658 v2 @ 2.40GHz
+     * Intel(R) Xeon(R) CPU E5-2658 v3 @ 2.20GHz
+     * Intel(R) Xeon(R) Platinum 8180 CPU @ 2.50GHz
+
+   * OS:
+
+     * CentOS 7.4
+     * Fedora 25
+     * Fedora 27
+     * Fedora 28
+     * FreeBSD 11.1
+     * Red Hat Enterprise Linux Server release 7.3
+     * SUSE Enterprise Linux 12
+     * Wind River Linux 8
+     * Ubuntu 14.04
+     * Ubuntu 16.04
+     * Ubuntu 16.10
+     * Ubuntu 17.10
+
+   * NICs:
+
+     * Intel(R) 82599ES 10 Gigabit Ethernet Controller
+
+       * Firmware version: 0x61bf0001
+       * Device id (pf/vf): 8086:10fb / 8086:10ed
+       * Driver version: 5.2.3 (ixgbe)
+
+     * Intel(R) Corporation Ethernet Connection X552/X557-AT 10GBASE-T
+
+       * Firmware version: 0x800003e7
+       * Device id (pf/vf): 8086:15ad / 8086:15a8
+       * Driver version: 4.4.6 (ixgbe)
+
+     * Intel(R) Ethernet Converged Network Adapter X710-DA4 (4x10G)
+
+       * Firmware version: 6.01 0x80003221
+       * Device id (pf/vf): 8086:1572 / 8086:154c
+       * Driver version: 2.4.6 (i40e)
+
+     * Intel Corporation Ethernet Connection X722 for 10GbE SFP+ (4x10G)
+
+       * Firmware version: 3.33 0x80000fd5 0.0.0
+       * Device id (pf/vf): 8086:37d0 / 8086:37cd
+       * Driver version: 2.4.3 (i40e)
+
+     * Intel(R) Ethernet Converged Network Adapter XXV710-DA2 (2x25G)
+
+       * Firmware version: 6.01 0x80003221
+       * Device id (pf/vf): 8086:158b / 8086:154c
+       * Driver version: 2.4.6 (i40e)
+
+     * Intel(R) Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
+
+       * Firmware version: 6.01 0x8000321c
+       * Device id (pf/vf): 8086:1583 / 8086:154c
+       * Driver version: 2.4.6 (i40e)
+
+     * Intel(R) Corporation I350 Gigabit Network Connection
+
+       * Firmware version: 1.63, 0x80000dda
+       * Device id (pf/vf): 8086:1521 / 8086:1520
+       * Driver version: 5.4.0-k (igb)
+
