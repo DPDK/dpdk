@@ -518,14 +518,9 @@ int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg)
 	params.update_vport_active_tx_flg = 1;
 	params.vport_active_rx_flg = flg;
 	params.vport_active_tx_flg = flg;
-	if (!qdev->enable_tx_switching) {
-		if ((QEDE_NPAR_TX_SWITCHING != NULL) ||
-		    ((QEDE_VF_TX_SWITCHING != NULL) && IS_VF(edev))) {
-			params.update_tx_switching_flg = 1;
-			params.tx_switching_flg = !flg;
-			DP_INFO(edev, "%s tx-switching is disabled\n",
-				QEDE_NPAR_TX_SWITCHING ? "NPAR" : "VF");
-		}
+	if (~qdev->enable_tx_switching & flg) {
+		params.update_tx_switching_flg = 1;
+		params.tx_switching_flg = !flg;
 	}
 	for_each_hwfn(edev, i) {
 		p_hwfn = &edev->hwfns[i];
@@ -1362,8 +1357,12 @@ static int qede_args_check(const char *key, const char *val, void *opaque)
 	}
 
 	if ((strcmp(QEDE_NPAR_TX_SWITCHING, key) == 0) ||
-	    (strcmp(QEDE_VF_TX_SWITCHING, key) == 0))
+	    ((strcmp(QEDE_VF_TX_SWITCHING, key) == 0) && IS_VF(edev))) {
 		qdev->enable_tx_switching = !!tmp;
+		DP_INFO(edev, "Disabling %s tx-switching\n",
+			strcmp(QEDE_NPAR_TX_SWITCHING, key) ?
+			"VF" : "NPAR");
+	}
 
 	return ret;
 }
@@ -1438,7 +1437,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 	/* Parse devargs and fix up rxmode */
 	if (qede_args(eth_dev))
-		return -ENOTSUP;
+		DP_NOTICE(edev, false,
+			  "Invalid devargs supplied, requested change will not take effect\n");
 
 	if (!(rxmode->mq_mode == ETH_MQ_RX_NONE ||
 	      rxmode->mq_mode == ETH_MQ_RX_RSS)) {
