@@ -27,6 +27,7 @@
 #include <rte_io.h>
 
 #define HWRM_CMD_TIMEOUT		10000
+#define HWRM_SPEC_CODE_1_8_3		0x10803
 #define HWRM_VERSION_1_9_1		0x10901
 
 struct bnxt_plcmodes_cfg {
@@ -483,7 +484,7 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 	return 0;
 }
 
-int bnxt_hwrm_func_qcaps(struct bnxt *bp)
+static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 {
 	int rc = 0;
 	struct hwrm_func_qcaps_input req = {.req_type = 0 };
@@ -573,6 +574,20 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_func_qcaps(struct bnxt *bp)
+{
+	int rc;
+
+	rc = __bnxt_hwrm_func_qcaps(bp);
+	if (!rc && bp->hwrm_spec_code >= HWRM_SPEC_CODE_1_8_3) {
+		rc = bnxt_hwrm_func_resc_qcaps(bp);
+		if (!rc)
+			bp->flags |= BNXT_FLAG_NEW_RM;
+	}
+
+	return rc;
+}
+
 int bnxt_hwrm_func_reset(struct bnxt *bp)
 {
 	int rc = 0;
@@ -639,6 +654,64 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 
 	bp->flags |= BNXT_FLAG_REGISTERED;
 
+	return rc;
+}
+
+int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp)
+{
+	int rc;
+	struct hwrm_func_vf_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_vf_cfg_input req = {0};
+
+	HWRM_PREP(req, FUNC_VF_CFG);
+
+	req.enables = rte_cpu_to_le_32
+			(HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_RX_RINGS  |
+			HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_TX_RINGS   |
+			HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_STAT_CTXS  |
+			HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_CMPL_RINGS |
+			HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
+
+	req.num_tx_rings = rte_cpu_to_le_16(bp->tx_nr_rings);
+	req.num_rx_rings = rte_cpu_to_le_16(bp->rx_nr_rings *
+					    AGG_RING_MULTIPLIER);
+	req.num_stat_ctxs = rte_cpu_to_le_16(bp->rx_nr_rings + bp->tx_nr_rings);
+	req.num_cmpl_rings = rte_cpu_to_le_16(bp->rx_nr_rings +
+					      bp->tx_nr_rings);
+	req.num_hw_ring_grps = rte_cpu_to_le_16(bp->rx_nr_rings);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+	return rc;
+}
+
+int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
+{
+	int rc;
+	struct hwrm_func_resource_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_resource_qcaps_input req = {0};
+
+	HWRM_PREP(req, FUNC_RESOURCE_QCAPS);
+	req.fid = rte_cpu_to_le_16(0xffff);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT();
+
+	if (BNXT_VF(bp)) {
+		bp->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
+		bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
+		bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
+		bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
+		bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
+		bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
+		bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
+		bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
+	}
+
+	HWRM_UNLOCK();
 	return rc;
 }
 

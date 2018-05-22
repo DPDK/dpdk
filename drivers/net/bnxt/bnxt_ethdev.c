@@ -406,9 +406,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	/* PF/VF specifics */
 	if (BNXT_PF(bp))
 		dev_info->max_vfs = bp->pdev->max_vfs;
-	max_rx_rings = RTE_MIN(bp->max_vnics, RTE_MIN(bp->max_l2_ctx,
-						RTE_MIN(bp->max_rsscos_ctx,
-						bp->max_stat_ctx)));
+	max_rx_rings = RTE_MIN(bp->max_vnics, bp->max_stat_ctx);
 	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
 	dev_info->max_rx_queues = max_rx_rings;
 	dev_info->max_tx_queues = max_rx_rings;
@@ -494,6 +492,25 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 
 	bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
+	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
+	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
+
+	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
+		int rc;
+
+		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
+		if (rc) {
+			PMD_DRV_LOG(ERR, "HWRM resource alloc fail:%x\n", rc);
+			return -ENOSPC;
+		}
+
+		/* legacy driver needs to get updated values */
+		rc = bnxt_hwrm_func_qcaps(bp);
+		if (rc) {
+			PMD_DRV_LOG(ERR, "hwrm func qcaps fail:%d\n", rc);
+			return -ENOSPC;
+		}
+	}
 
 	/* Inherit new configurations */
 	if (eth_dev->data->nb_rx_queues > bp->max_rx_rings ||
@@ -516,8 +533,6 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		return -ENOSPC;
 	}
 
-	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
-	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
 	bp->tx_cp_nr_rings = bp->tx_nr_rings;
 
