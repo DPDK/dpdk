@@ -1405,6 +1405,11 @@ lio_dev_start(struct rte_eth_dev *eth_dev)
 	/* Configure RSS if device configured with multiple RX queues. */
 	lio_dev_mq_rx_configure(eth_dev);
 
+	/* Before update the link info,
+	 * must set linfo.link.link_status64 to 0.
+	 */
+	lio_dev->linfo.link.link_status64 = 0;
+
 	/* start polling for lsc */
 	ret = rte_eal_alarm_set(LIO_LSC_TIMEOUT,
 				lio_sync_link_state_check,
