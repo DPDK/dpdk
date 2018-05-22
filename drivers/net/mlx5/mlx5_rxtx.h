@@ -655,10 +655,13 @@ txq_mbuf_to_swp(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
 		 uint8_t *offsets, uint8_t *swp_types)
 {
 	uint64_t tunnel = buf->ol_flags & PKT_TX_TUNNEL_MASK;
-	uint16_t idx;
-	uint16_t off;
+	const uint64_t csum_flags = buf->ol_flags & PKT_TX_L4_MASK;
+	const uint64_t inner_ip =
+		buf->ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6);
 	const uint64_t ol_flags_mask = PKT_TX_L4_MASK | PKT_TX_IPV6 |
 				       PKT_TX_OUTER_IPV6;
+	uint16_t idx;
+	uint16_t off;
 
 	if (likely(!tunnel || !txq->swp_en ||
 		   (tunnel != PKT_TX_TUNNEL_UDP && tunnel != PKT_TX_TUNNEL_IP)))
@@ -674,20 +677,28 @@ txq_mbuf_to_swp(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
 	if (tunnel == PKT_TX_TUNNEL_UDP)
 		idx |= 1 << 9;
 	*swp_types = mlx5_swp_types_table[idx];
-	/* swp offsets. */
-	off = buf->outer_l2_len + (vlan ? 4 : 0); /* Outer L3 offset. */
-	if (tso || (buf->ol_flags & PKT_TX_OUTER_IP_CKSUM))
-		offsets[1] = off >> 1;
-	off += buf->outer_l3_len; /* Outer L4 offset. */
-	if (tunnel == PKT_TX_TUNNEL_UDP)
-		offsets[0] = off >> 1;
-	off += buf->l2_len; /* Inner L3 offset. */
-	if (tso || (buf->ol_flags & PKT_TX_IP_CKSUM))
-		offsets[3] = off >> 1;
-	off += buf->l3_len; /* Inner L4 offset. */
-	if (tso || ((buf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM) ||
-	    ((buf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM))
-		offsets[2] = off >> 1;
+	/*
+	 * Set offsets for SW parser. Since ConnectX-5, SW parser just
+	 * complements HW parser. SW parser starts to engage only if HW parser
+	 * can't reach a header. For the older devices, HW parser will not kick
+	 * in if any of SWP offsets is set. Therefore, all of the L3 offsets
+	 * should be set regardless of HW offload.
+	 */
+	off = buf->outer_l2_len + (vlan ? 4 : 0);
+	offsets[1] = off >> 1; /* Outer L3 offset. */
+	if (tunnel == PKT_TX_TUNNEL_UDP) {
+		off += buf->outer_l3_len;
+		offsets[0] = off >> 1; /* Outer L4 offset. */
+	}
+	if (inner_ip) {
+		off += buf->l2_len;
+		offsets[3] = off >> 1; /* Inner L3 offset. */
+		if (csum_flags == PKT_TX_TCP_CKSUM || tso ||
+		    csum_flags == PKT_TX_UDP_CKSUM) {
+			off += buf->l3_len;
+			offsets[2] = off >> 1; /* Inner L4 offset. */
+		}
+	}
 }
 
 /**
