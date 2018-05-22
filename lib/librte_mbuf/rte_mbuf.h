@@ -1571,7 +1571,8 @@ __rte_pktmbuf_free_direct(struct rte_mbuf *m)
 static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 {
 	struct rte_mempool *mp = m->pool;
-	uint32_t mbuf_size, buf_len, priv_size;
+	uint32_t mbuf_size, buf_len;
+	uint16_t priv_size;
 
 	if (RTE_MBUF_HAS_EXTBUF(m))
 		__rte_pktmbuf_free_extbuf(m);
