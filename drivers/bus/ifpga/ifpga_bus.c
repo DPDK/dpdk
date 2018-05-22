@@ -156,27 +156,29 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 	if (rawdev->dev_ops &&
 		rawdev->dev_ops->dev_start &&
 		rawdev->dev_ops->dev_start(rawdev))
-		goto free_dev;
+		goto end;
 
 	strlcpy(afu_pr_conf.bs_path, path, sizeof(afu_pr_conf.bs_path));
 	if (rawdev->dev_ops->firmware_load &&
 		rawdev->dev_ops->firmware_load(rawdev,
 				&afu_pr_conf)){
 		IFPGA_BUS_ERR("firmware load error %d\n", ret);
-		goto free_dev;
+		goto end;
 	}
 	afu_dev->id.uuid.uuid_low  = afu_pr_conf.afu_id.uuid.uuid_low;
 	afu_dev->id.uuid.uuid_high = afu_pr_conf.afu_id.uuid.uuid_high;
 
+	rte_kvargs_free(kvlist);
+	free(path);
 	return afu_dev;
 
-free_dev:
-	free(afu_dev);
 end:
 	if (kvlist)
 		rte_kvargs_free(kvlist);
 	if (path)
 		free(path);
+	if (afu_dev)
+		free(afu_dev);
 
 	return NULL;
 }
