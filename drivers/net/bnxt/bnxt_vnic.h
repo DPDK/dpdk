@@ -25,6 +25,7 @@ struct bnxt_vnic_info {
 	uint16_t	dflt_ring_grp;
 	uint16_t	mru;
 	uint16_t	hash_type;
+	uint8_t		hash_mode;
 	rte_iova_t	rss_table_dma_addr;
 	uint16_t	*rss_table;
 	rte_iova_t	rss_hash_key_dma_addr;

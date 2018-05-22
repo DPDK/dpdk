@@ -49,6 +49,8 @@ void bnxt_init_vnics(struct bnxt *bp)
 		vnic->rss_rule = (uint16_t)HWRM_NA_SIGNATURE;
 		vnic->cos_rule = (uint16_t)HWRM_NA_SIGNATURE;
 		vnic->lb_rule = (uint16_t)HWRM_NA_SIGNATURE;
+		vnic->hash_mode =
+			HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_DEFAULT;
 
 		for (j = 0; j < MAX_QUEUES_PER_VNIC; j++)
 			vnic->fw_grp_ids[j] = (uint16_t)HWRM_NA_SIGNATURE;
