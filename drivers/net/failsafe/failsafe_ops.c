@@ -138,7 +138,7 @@ fs_dev_configure(struct rte_eth_dev *dev)
 			fs_unlock(dev, 0);
 			return ret;
 		}
-		if (rmv_interrupt) {
+		if (rmv_interrupt && sdev->rmv_callback == 0) {
 			ret = rte_eth_dev_callback_register(PORT_ID(sdev),
 					RTE_ETH_EVENT_INTR_RMV,
 					failsafe_eth_rmv_event_callback,
@@ -150,7 +150,7 @@ fs_dev_configure(struct rte_eth_dev *dev)
 				sdev->rmv_callback = 1;
 		}
 		dev->data->dev_conf.intr_conf.rmv = 0;
-		if (lsc_interrupt) {
+		if (lsc_interrupt && sdev->lsc_callback == 0) {
 			ret = rte_eth_dev_callback_register(PORT_ID(sdev),
 						RTE_ETH_EVENT_INTR_LSC,
 						failsafe_eth_lsc_event_callback,
