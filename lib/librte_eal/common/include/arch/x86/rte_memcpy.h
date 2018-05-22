@@ -574,7 +574,7 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
  */
 #define MOVEUNALIGNED_LEFT47_IMM(dst, src, len, offset)                                                     \
 __extension__ ({                                                                                            \
-    int tmp;                                                                                                \
+    size_t tmp;                                                                                                \
     while (len >= 128 + 16 - offset) {                                                                      \
         xmm0 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 0 * 16));                  \
         len -= 128;                                                                                         \
