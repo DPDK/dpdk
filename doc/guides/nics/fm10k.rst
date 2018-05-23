@@ -79,14 +79,14 @@ Other features are supported using optional MACRO configuration. They include:
 
 To enable via ``RX_OLFLAGS`` use ``RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE=y``.
 
-To guarantee the constraint, the following configuration flags in ``dev_conf.rxmode``
+To guarantee the constraint, the following capabilities in ``dev_conf.rxmode.offloads``
 will be checked:
 
-*   ``hw_vlan_extend``
+*   ``DEV_RX_OFFLOAD_VLAN_EXTEND``
 
-*   ``hw_ip_checksum``
+*   ``DEV_RX_OFFLOAD_CHECKSUM``
 
-*   ``header_split``
+*   ``DEV_RX_OFFLOAD_HEADER_SPLIT``
 
 *   ``fdir_conf->mode``
 
@@ -106,19 +106,9 @@ TX Constraint
 Features not Supported by TX Vector PMD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-TX vPMD only works when ``txq_flags`` is set to ``FM10K_SIMPLE_TX_FLAG``.
-This means that it does not support TX multi-segment, VLAN offload or TX csum
-offload. The following MACROs are used for these three features:
+TX vPMD only works when offloads is set to 0
 
-*   ``ETH_TXQ_FLAGS_NOMULTSEGS``
-
-*   ``ETH_TXQ_FLAGS_NOVLANOFFL``
-
-*   ``ETH_TXQ_FLAGS_NOXSUMSCTP``
-
-*   ``ETH_TXQ_FLAGS_NOXSUMUDP``
-
-*   ``ETH_TXQ_FLAGS_NOXSUMTCP``
+This means that it does not support any TX offload.
 
 Limitations
 -----------
@@ -149,9 +139,8 @@ CRC striping
 ~~~~~~~~~~~~
 
 The FM10000 family of NICs strip the CRC for every packets coming into the
-host interface.  So, CRC will be stripped even when the
-``rxmode.hw_strip_crc`` member is set to 0 in ``struct rte_eth_conf``.
-
+host interface.  So, CRC will be stripped even when ``DEV_RX_OFFLOAD_CRC_STRIP``
+in ``rxmode.offloads`` is NOT set in ``struct rte_eth_conf``.
 
 Maximum packet length
 ~~~~~~~~~~~~~~~~~~~~~
