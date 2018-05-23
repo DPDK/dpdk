@@ -16,7 +16,7 @@ int qede_logtype_init;
 int qede_logtype_driver;
 
 static const struct qed_eth_ops *qed_ops;
-static int64_t timer_period = 1;
+#define QEDE_SP_TIMER_PERIOD	10000 /* 100ms */
 
 /* VXLAN tunnel classification mapping */
 const struct _qede_udp_tunn_types {
@@ -1698,7 +1698,7 @@ static void qede_poll_sp_sb_cb(void *param)
 	qede_interrupt_action(ECORE_LEADING_HWFN(edev));
 	qede_interrupt_action(&edev->hwfns[1]);
 
-	rc = rte_eal_alarm_set(timer_period * US_PER_S,
+	rc = rte_eal_alarm_set(QEDE_SP_TIMER_PERIOD,
 			       qede_poll_sp_sb_cb,
 			       (void *)eth_dev);
 	if (rc != 0) {
@@ -3093,7 +3093,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	 * interrupt vector but we need one for each engine.
 	 */
 	if (ECORE_IS_CMT(edev) && IS_PF(edev)) {
-		rc = rte_eal_alarm_set(timer_period * US_PER_S,
+		rc = rte_eal_alarm_set(QEDE_SP_TIMER_PERIOD,
 				       qede_poll_sp_sb_cb,
 				       (void *)eth_dev);
 		if (rc != 0) {
