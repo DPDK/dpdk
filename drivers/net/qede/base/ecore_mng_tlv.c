@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2016 - 2018 QLogic Corporation.
+ * All rights reserved.
+ * www.qlogic.com
+ *
+ * See LICENSE.qede_pmd for copyright and licensing details.
+ */
+
 #include "bcm_osal.h"
 #include "ecore.h"
 #include "ecore_status.h"
