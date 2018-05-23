@@ -2065,8 +2065,8 @@ i40e_phy_conf_link(struct i40e_hw *hw,
 
 
 
-	/* To enable link, phy_type mask needs to include each type */
-	for (cnt = I40E_PHY_TYPE_SGMII; cnt < I40E_PHY_TYPE_MAX; cnt++)
+	/* PHY type mask needs to include each type except PHY type extension */
+	for (cnt = I40E_PHY_TYPE_SGMII; cnt < I40E_PHY_TYPE_25GBASE_KR; cnt++)
 		phy_type_mask |= 1 << cnt;
 
 	/* use get_phy_abilities_resp value for the rest */
