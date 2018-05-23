@@ -3118,7 +3118,18 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (!dev)
 		return ret;
 
-	cpp = nfp_cpp_from_device_name(dev->device.name);
+	/*
+	 * When device bound to UIO, the device could be used, by mistake,
+	 * by two DPDK apps, and the UIO driver does not avoid it. This
+	 * could lead to a serious problem when configuring the NFP CPP
+	 * interface. Here we avoid this telling to the CPP init code to
+	 * use a lock file if UIO is being used.
+	 */
+	if (dev->kdrv == RTE_KDRV_VFIO)
+		cpp = nfp_cpp_from_device_name(dev->device.name, 0);
+	else
+		cpp = nfp_cpp_from_device_name(dev->device.name, 1);
+
 	if (!cpp) {
 		PMD_DRV_LOG(ERR, "A CPP handle can not be obtained");
 		ret = -EIO;

@@ -542,7 +542,7 @@ nfp_xpb_readl(struct nfp_cpp *cpp, uint32_t xpb_addr, uint32_t *value)
 }
 
 static struct nfp_cpp *
-nfp_cpp_alloc(const char *devname)
+nfp_cpp_alloc(const char *devname, int driver_lock_needed)
 {
 	const struct nfp_cpp_operations *ops;
 	struct nfp_cpp *cpp;
@@ -558,6 +558,7 @@ nfp_cpp_alloc(const char *devname)
 		return NULL;
 
 	cpp->op = ops;
+	cpp->driver_lock_needed = driver_lock_needed;
 
 	if (cpp->op->init) {
 		err = cpp->op->init(cpp, devname);
@@ -603,9 +604,9 @@ nfp_cpp_free(struct nfp_cpp *cpp)
 }
 
 struct nfp_cpp *
-nfp_cpp_from_device_name(const char *devname)
+nfp_cpp_from_device_name(const char *devname, int driver_lock_needed)
 {
-	return nfp_cpp_alloc(devname);
+	return nfp_cpp_alloc(devname, driver_lock_needed);
 }
 
 /*

@@ -31,6 +31,8 @@ struct nfp_cpp {
 	 * island XPB CSRs.
 	 */
 	uint32_t imb_cat_table[16];
+
+	int driver_lock_needed;
 };
 
 /*
@@ -179,7 +181,8 @@ uint32_t __nfp_cpp_model_autodetect(struct nfp_cpp *cpp);
  *
  * @return NFP CPP handle, or NULL on failure (and set errno accordingly).
  */
-struct nfp_cpp *nfp_cpp_from_device_name(const char *devname);
+struct nfp_cpp *nfp_cpp_from_device_name(const char *devname,
+					 int driver_lock_needed);
 
 /*
  * Free a NFP CPP handle

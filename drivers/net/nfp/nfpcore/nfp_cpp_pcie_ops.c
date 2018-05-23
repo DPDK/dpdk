@@ -850,9 +850,11 @@ nfp6000_init(struct nfp_cpp *cpp, const char *devname)
 	memset(desc->busdev, 0, BUSDEV_SZ);
 	strlcpy(desc->busdev, devname, sizeof(desc->busdev));
 
-	ret = nfp_acquire_process_lock(desc);
-	if (ret)
-		return -1;
+	if (cpp->driver_lock_needed) {
+		ret = nfp_acquire_process_lock(desc);
+		if (ret)
+			return -1;
+	}
 
 	snprintf(tmp_str, sizeof(tmp_str), "%s/%s/driver", PCI_DEVICES,
 		 desc->busdev);
@@ -912,7 +914,8 @@ nfp6000_free(struct nfp_cpp *cpp)
 		if (desc->bar[x - 1].iomem)
 			munmap(desc->bar[x - 1].iomem, 1 << (desc->barsz - 3));
 	}
-	close(desc->lock);
+	if (cpp->driver_lock_needed)
+		close(desc->lock);
 	close(desc->device);
 	free(desc);
 }
