@@ -1,3 +1,8 @@
+#    Copyright (c) 2014 - 2018 QLogic Corporation.
+#    All rights reserved.
+#    www.qlogic.com
+#
+#    See LICENSE.bnx2x_pmd for copyright and licensing details.
 include $(RTE_SDK)/mk/rte.vars.mk
 
 #
