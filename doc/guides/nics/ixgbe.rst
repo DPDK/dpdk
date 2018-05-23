@@ -68,15 +68,15 @@ Other features are supported using optional MACRO configuration. They include:
 
 *   HW extend dual VLAN
 
-To guarantee the constraint, configuration flags in dev_conf.rxmode will be checked:
+To guarantee the constraint, capabilities in dev_conf.rxmode.offloads will be checked:
 
-*   hw_vlan_strip
+*   DEV_RX_OFFLOAD_VLAN_STRIP
 
-*   hw_vlan_extend
+*   DEV_RX_OFFLOAD_VLAN_EXTEND
 
-*   hw_ip_checksum
+*   DEV_RX_OFFLOAD_CHECKSUM
 
-*   header_split
+*   DEV_RX_OFFLOAD_HEADER_SPLIT
 
 *   dev_conf
 
@@ -119,13 +119,13 @@ l3fwd
 ~~~~~
 
 When running l3fwd with vPMD, there is one thing to note.
-In the configuration, ensure that port_conf.rxmode.hw_ip_checksum=0.
+In the configuration, ensure that DEV_RX_OFFLOAD_CHECKSUM in port_conf.rxmode.offloads is NOT set.
 Otherwise, by default, RX vPMD is disabled.
 
 load_balancer
 ~~~~~~~~~~~~~
 
-As in the case of l3fwd, set configure port_conf.rxmode.hw_ip_checksum=0 to enable vPMD.
+As in the case of l3fwd, to enable vPMD, do NOT set DEV_RX_OFFLOAD_CHECKSUM in port_conf.rxmode.offloads.
 In addition, for improved performance, use -bsz "(32,32),(64,64),(32,32)" in load_balancer to avoid using the default burst size of 144.
 
 
