@@ -201,6 +201,4 @@ Number of descriptors for Rx/Tx ring should be in the range 128 to 512.
 CRC striping
 ~~~~~~~~~~~~
 
-LiquidIO adapters strip ethernet FCS of every packet coming to the host
-interface. So, CRC will be stripped even when the ``rxmode.hw_strip_crc``
-member is set to 0 in ``struct rte_eth_conf``.
+LiquidIO adapters strip ethernet FCS of every packet coming to the host interface.
