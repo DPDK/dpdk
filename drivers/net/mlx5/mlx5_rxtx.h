@@ -687,10 +687,9 @@ txq_mbuf_to_swp(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
 	 */
 	off = buf->outer_l2_len + (vlan ? sizeof(struct vlan_hdr) : 0);
 	offsets[1] = off >> 1; /* Outer L3 offset. */
-	if (tunnel == PKT_TX_TUNNEL_UDP) {
-		off += buf->outer_l3_len;
+	off += buf->outer_l3_len;
+	if (tunnel == PKT_TX_TUNNEL_UDP)
 		offsets[0] = off >> 1; /* Outer L4 offset. */
-	}
 	if (inner_ip) {
 		off += buf->l2_len;
 		offsets[3] = off >> 1; /* Inner L3 offset. */
