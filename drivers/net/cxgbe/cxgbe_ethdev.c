@@ -204,13 +204,14 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
 	struct sge *s = &adapter->sge;
-	struct rte_eth_link new_link;
+	struct rte_eth_link new_link = { 0 };
 	unsigned int work_done, budget = 4;
 
 	cxgbe_poll(&s->fw_evtq, NULL, budget, &work_done);
 
 	new_link.link_status = force_linkup(adapter) ?
 			       ETH_LINK_UP : pi->link_cfg.link_ok;
+	new_link.link_autoneg = pi->link_cfg.autoneg;
 	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	new_link.link_speed = pi->link_cfg.speed;
 
