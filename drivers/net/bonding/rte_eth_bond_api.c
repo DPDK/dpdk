@@ -716,9 +716,21 @@ rte_eth_bond_mac_address_reset(uint16_t bonded_port_id)
 	internals->user_defined_mac = 0;
 
 	if (internals->slave_count > 0) {
+		int slave_port;
+		/* Get the primary slave location based on the primary port
+		 * number as, while slave_add(), we will keep the primary
+		 * slave based on slave_count,but not based on the primary port.
+		 */
+		for (slave_port = 0; slave_port < internals->slave_count;
+		     slave_port++) {
+			if (internals->slaves[slave_port].port_id ==
+			    internals->primary_port)
+				break;
+		}
+
 		/* Set MAC Address of Bonded Device */
 		if (mac_address_set(bonded_eth_dev,
-				&internals->slaves[internals->primary_port].persisted_mac_addr)
+			&internals->slaves[slave_port].persisted_mac_addr)
 				!= 0) {
 			RTE_BOND_LOG(ERR, "Failed to set MAC address on bonded device");
 			return -1;
