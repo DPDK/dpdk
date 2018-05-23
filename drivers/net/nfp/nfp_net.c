@@ -1508,8 +1508,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_count = nb_desc;
 	rxq->port_id = dev->data->port_id;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
-	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ? 0
-				  : ETHER_CRC_LEN);
 	rxq->drop_en = rx_conf->rx_drop_en;
 
 	/*
