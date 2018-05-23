@@ -1,6 +1,6 @@
-#    Copyright (c) 2014 - 2018 QLogic Corporation.
+#    Copyright (c) 2014 - 2018 Cavium Inc.
 #    All rights reserved.
-#    www.qlogic.com
+#    www.cavium.com
 #
 #    See LICENSE.bnx2x_pmd for copyright and licensing details.
 include $(RTE_SDK)/mk/rte.vars.mk
