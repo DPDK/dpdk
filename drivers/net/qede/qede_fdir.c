@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2017 QLogic Corporation.
+ * Copyright (c) 2017 Cavium Inc.
  * All rights reserved.
- * www.qlogic.com
+ * www.cavium.com
  *
  * See LICENSE.qede_pmd for copyright and licensing details.
  */
