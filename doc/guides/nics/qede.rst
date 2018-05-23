@@ -35,15 +35,15 @@ Supported Features
 - N-tuple filter and flow director (limited support)
 - NPAR (NIC Partitioning)
 - SR-IOV VF
-- VXLAN Tunneling offload
+- GRE Tunneling offload
 - GENEVE Tunneling offload
+- VXLAN Tunneling offload
 - MPLSoUDP Tx Tunneling offload
 
 Non-supported Features
 ----------------------
 
 - SR-IOV PF
-- GRE and NVGRE Tunneling offloads
 
 Co-existence considerations
 ---------------------------
@@ -58,14 +58,15 @@ Supported QLogic Adapters
 Prerequisites
 -------------
 
-- Requires storm firmware version **8.30.12.0**. Firmware may be available
+- Requires storm firmware version **8.33.12.0**. Firmware may be available
   inbox in certain newer Linux distros under the standard directory
-  ``E.g. /lib/firmware/qed/qed_init_values-8.30.12.0.bin``
+  ``E.g. /lib/firmware/qed/qed_init_values-8.33.12.0.bin``.
   If the required firmware files are not available then download it from
-  `QLogic Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.
-  For downloading firmware file, select adapter category, model and DPDK Poll Mode Driver.
+  `linux-firmware git repository <http://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/qed>`_
+  or `QLogic Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.
+  To download firmware file from QLogic website, select adapter category, model and DPDK Poll Mode Driver.
 
-- Requires management firmware (MFW) version **8.30.x.x** or higher to be
+- Requires management firmware (MFW) version **8.34.x.x** or higher to be
   flashed on to the adapter. If the required management firmware is not
   available then download from
   `QLogic Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.
@@ -104,7 +105,7 @@ enabling debugging options may affect system performance.
 - ``CONFIG_RTE_LIBRTE_QEDE_FW`` (default **""**)
 
   Gives absolute path of firmware file.
-  ``Eg: "/lib/firmware/qed/qed_init_values-8.30.12.0.bin"``
+  ``Eg: "/lib/firmware/qed/qed_init_values-8.33.12.0.bin"``
   Empty string indicates driver will pick up the firmware file
   from the default location /lib/firmware/qed.
   CAUTION this option is more for custom firmware, it is not
@@ -121,7 +122,7 @@ SR-IOV: Prerequisites and Sample Application Notes
 
 This section provides instructions to configure SR-IOV with Linux OS.
 
-**Note**: librte_pmd_qede will be used to bind to SR-IOV VF device and Linux native kernel driver (qede) will function as SR-IOV PF driver. Requires PF driver to be 8.10.x.x or higher.
+**Note**: librte_pmd_qede will be used to bind to SR-IOV VF device and Linux native kernel driver (qede) will function as SR-IOV PF driver. Requires PF driver to be 8.20.x.x or higher.
 
 #. Verify SR-IOV and ARI capability is enabled on the adapter using ``lspci``:
 
