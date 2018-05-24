@@ -181,3 +181,14 @@ Common Issues
 * Failed to build DPDK in VM
 
   Make sure "-cpu host" QEMU option is given.
+
+* Device start fails if NIC's max queues > the default number of 128
+
+  mbuf pool size is dependent on the MAX_QUEUES configuration, if NIC's
+  max queue number is larger than 128, device start will fail due to
+  insufficient mbuf.
+
+  Change the default number to make it work as below, just set the number
+  according to the NIC's property. ::
+
+      make EXTRA_CFLAGS="-DMAX_QUEUES=320"
