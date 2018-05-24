@@ -319,8 +319,7 @@ CRC striping
 ~~~~~~~~~~~~
 
 The ThunderX SoC family NICs strip the CRC for every packets coming into the
-host interface. So, CRC will be stripped even when the
-``rxmode.hw_strip_crc`` member is set to 0 in ``struct rte_eth_conf``.
+host interface irrespective of the offload configuration.
 
 Maximum packet length
 ~~~~~~~~~~~~~~~~~~~~~
