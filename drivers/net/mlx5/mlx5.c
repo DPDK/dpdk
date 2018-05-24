@@ -1062,7 +1062,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			DRV_LOG(ERR,
 				"port %u cannot get MAC address, is mlx5_en"
 				" loaded? (errno: %s)",
-				eth_dev->data->port_id, strerror(errno));
+				eth_dev->data->port_id, strerror(rte_errno));
 			err = ENODEV;
 			goto port_error;
 		}
