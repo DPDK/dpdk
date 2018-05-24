@@ -1245,6 +1245,9 @@ virtio_notify_peers(struct rte_eth_dev *dev)
 		return;
 
 	rxvq = dev->data->rx_queues[0];
+	if (!rxvq)
+		return;
+
 	rarp_mbuf = rte_net_make_rarp_packet(rxvq->mpool,
 			(struct ether_addr *)hw->mac_addr);
 	if (rarp_mbuf == NULL) {
