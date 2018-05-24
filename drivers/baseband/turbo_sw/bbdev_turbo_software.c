@@ -227,7 +227,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 	}
 
 	/* Allocate memory for encoder output. */
-	ret = snprintf(name, RTE_RING_NAMESIZE, RTE_STR(DRIVER_NAME)"_enc_out%u:%u",
+	ret = snprintf(name, RTE_RING_NAMESIZE, RTE_STR(DRIVER_NAME)"_enc_o%u:%u",
 			dev->data->dev_id, q_id);
 	if ((ret < 0) || (ret >= (int)RTE_RING_NAMESIZE)) {
 		rte_bbdev_log(ERR,
@@ -247,7 +247,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 
 	/* Allocate memory for rate matching output. */
 	ret = snprintf(name, RTE_RING_NAMESIZE,
-			RTE_STR(DRIVER_NAME)"_enc_in%u:%u", dev->data->dev_id,
+			RTE_STR(DRIVER_NAME)"_enc_i%u:%u", dev->data->dev_id,
 			q_id);
 	if ((ret < 0) || (ret >= (int)RTE_RING_NAMESIZE)) {
 		rte_bbdev_log(ERR,
@@ -302,7 +302,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 
 	/* Allocate memory for Deinterleaver input. */
 	ret = snprintf(name, RTE_RING_NAMESIZE,
-			RTE_STR(DRIVER_NAME)"_deint_input%u:%u",
+			RTE_STR(DRIVER_NAME)"_de_i%u:%u",
 			dev->data->dev_id, q_id);
 	if ((ret < 0) || (ret >= (int)RTE_RING_NAMESIZE)) {
 		rte_bbdev_log(ERR,
@@ -321,7 +321,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 
 	/* Allocate memory for Deinterleaver output. */
 	ret = snprintf(name, RTE_RING_NAMESIZE,
-			RTE_STR(DRIVER_NAME)"_deint_output%u:%u",
+			RTE_STR(DRIVER_NAME)"_de_o%u:%u",
 			dev->data->dev_id, q_id);
 	if ((ret < 0) || (ret >= (int)RTE_RING_NAMESIZE)) {
 		rte_bbdev_log(ERR,
@@ -340,7 +340,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 
 	/* Allocate memory for Adapter output. */
 	ret = snprintf(name, RTE_RING_NAMESIZE,
-			RTE_STR(DRIVER_NAME)"_adapter_output%u:%u",
+			RTE_STR(DRIVER_NAME)"_ada_o%u:%u",
 			dev->data->dev_id, q_id);
 	if ((ret < 0) || (ret >= (int)RTE_RING_NAMESIZE)) {
 		rte_bbdev_log(ERR,
