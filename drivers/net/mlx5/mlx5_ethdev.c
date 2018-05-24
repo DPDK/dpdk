@@ -403,10 +403,6 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		/* rte_errno is already set. */
 		return -rte_errno;
 	}
-	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
-	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
-			 priv, mem_event_cb);
-	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	return 0;
 }
 

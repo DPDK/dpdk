@@ -34,6 +34,8 @@
 #include <rte_config.h>
 #include <rte_eal_memconfig.h>
 #include <rte_kvargs.h>
+#include <rte_rwlock.h>
+#include <rte_spinlock.h>
 
 #include "mlx5.h"
 #include "mlx5_utils.h"
@@ -1191,6 +1193,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			goto port_error;
 		}
 		priv->config.max_verbs_prio = verb_priorities;
+		/* Add device to memory callback list. */
+		rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
+		LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
+				 priv, mem_event_cb);
+		rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 		rte_eth_dev_probing_finish(eth_dev);
 		continue;
 port_error:
