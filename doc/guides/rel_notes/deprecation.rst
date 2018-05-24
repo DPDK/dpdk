@@ -42,8 +42,8 @@ Deprecation Notices
   mempool names have been defined in ``rte_mbuf`` in v18.02. The uses of
   ``rte_eal_mbuf_default_mempool_ops`` shall be replaced by
   ``rte_mbuf_best_mempool_ops``.
-  The following function is now redundant and it is target to be deprecated
-  in 18.05:
+  The following function is deprecated since 18.05, and will be removed
+  in 18.08:
 
   - ``rte_eal_mbuf_default_mempool_ops``
 
