@@ -95,13 +95,20 @@ enum ioctl_mode {
 
 static int tap_intr_handle_set(struct rte_eth_dev *dev, int set);
 
-/* Tun/Tap allocation routine
+/**
+ * Tun/Tap allocation routine
  *
- * name is the number of the interface to use, unless NULL to take the host
- * supplied name.
+ * @param[in] pmd
+ *   Pointer to private structure.
+ *
+ * @param[in] is_keepalive
+ *   Keepalive flag
+ *
+ * @return
+ *   -1 on failure, fd on success
  */
 static int
-tun_alloc(struct pmd_internals *pmd)
+tun_alloc(struct pmd_internals *pmd, int is_keepalive)
 {
 	struct ifreq ifr;
 #ifdef IFF_MULTI_QUEUE
@@ -152,6 +159,20 @@ tun_alloc(struct pmd_internals *pmd)
 		TAP_LOG(WARNING, "Unable to set TUNSETIFF for %s: %s",
 			ifr.ifr_name, strerror(errno));
 		goto error;
+	}
+
+	if (is_keepalive) {
+		/*
+		 * Detach the TUN/TAP keep-alive queue
+		 * to avoid traffic through it
+		 */
+		ifr.ifr_flags = IFF_DETACH_QUEUE;
+		if (ioctl(fd, TUNSETQUEUE, (void *)&ifr) < 0) {
+			TAP_LOG(WARNING,
+				"Unable to detach keep-alive queue for %s: %s",
+				ifr.ifr_name, strerror(errno));
+			goto error;
+		}
 	}
 
 	/* Always set the file descriptor to non-blocking */
@@ -1020,7 +1041,7 @@ tap_setup_queue(struct rte_eth_dev *dev,
 			pmd->name, *other_fd, dir, qid, *fd);
 	} else {
 		/* Both RX and TX fds do not exist (equal -1). Create fd */
-		*fd = tun_alloc(pmd);
+		*fd = tun_alloc(pmd, 0);
 		if (*fd < 0) {
 			*fd = -1; /* restore original value */
 			TAP_LOG(ERR, "%s: tun_alloc() failed.", pmd->name);
@@ -1425,7 +1446,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	 * This keep-alive file descriptor will guarantee that the TUN device
 	 * exists even when all of its queues are closed
 	 */
-	pmd->ka_fd = tun_alloc(pmd);
+	pmd->ka_fd = tun_alloc(pmd, 1);
 	if (pmd->ka_fd == -1) {
 		TAP_LOG(ERR, "Unable to create %s interface", tuntap_name);
 		goto error_exit;
