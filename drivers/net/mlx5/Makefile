@@ -120,7 +120,7 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q sh -- '$<' '$@' \
 		HAVE_IBV_MLX5_MOD_SWP \
 		infiniband/mlx5dv.h \
-		enum MLX5DV_CONTEXT_MASK_SWP \
+		type 'struct mlx5dv_sw_parsing_caps' \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_IBV_MLX5_MOD_MPW \
