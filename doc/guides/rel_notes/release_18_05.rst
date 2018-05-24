@@ -90,6 +90,7 @@ New Features
   * Supported CRC strip toggling.
   * Accommodate to the new memory hotplug model.
   * Supported non virtually contiguous mempools.
+  * Dropped support in Mellanox OFED 4.2.
 
 * **Updated Solarflare network PMD.**
 
