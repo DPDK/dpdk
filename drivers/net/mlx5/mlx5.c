@@ -1145,6 +1145,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (verb_priorities < MLX5_VERBS_FLOW_PRIO_8) {
 			DRV_LOG(ERR, "port %u wrong Verbs flow priorities: %u",
 				eth_dev->data->port_id, verb_priorities);
+			err = ENOTSUP;
 			goto port_error;
 		}
 		priv->config.max_verbs_prio = verb_priorities;
