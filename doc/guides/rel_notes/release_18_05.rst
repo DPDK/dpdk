@@ -141,6 +141,12 @@ New Features
   driver the assigned VF gets configured to Rx/Tx directly to VM's virtio
   vrings.
 
+* **Added support for vhost dequeue interrupt mode.**
+
+  Added support for vhost dequeue interrupt mode to release cpus to others when
+  no data to transmit. Applications could register an epoll event fd to associate
+  Rx queues with interrupt vectors.
+
 * **Added support for virtio-user server mode.**
   In a container environment if the vhost-user backend restarts, there's no way
   for it to reconnect to virtio-user. To address this, support for server mode
