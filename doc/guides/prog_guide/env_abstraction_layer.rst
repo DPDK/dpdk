@@ -94,9 +94,120 @@ The allocation of large contiguous physical memory is done using the hugetlbfs k
 The EAL provides an API to reserve named memory zones in this contiguous memory.
 The physical address of the reserved memory for that memory zone is also returned to the user by the memory zone reservation API.
 
+There are two modes in which DPDK memory subsystem can operate: dynamic mode,
+and legacy mode. Both modes are explained below.
+
 .. note::
 
     Memory reservations done using the APIs provided by rte_malloc are also backed by pages from the hugetlbfs filesystem.
+
++ Dynamic memory mode
+
+Currently, this mode is only supported on Linux.
+
+In this mode, usage of hugepages by DPDK application will grow and shrink based
+on application's requests. Any memory allocation through ``rte_malloc()``,
+``rte_memzone_reserve()`` or other methods, can potentially result in more
+hugepages being reserved from the system. Similarly, any memory deallocation can
+potentially result in hugepages being released back to the system.
+
+Memory allocated in this mode is not guaranteed to be IOVA-contiguous. If large
+chunks of IOVA-contiguous are required (with "large" defined as "more than one
+page"), it is recommended to either use VFIO driver for all physical devices (so
+that IOVA and VA addresses can be the same, thereby bypassing physical addresses
+entirely), or use legacy memory mode.
+
+For chunks of memory which must be IOVA-contiguous, it is recommended to use
+``rte_memzone_reserve()`` function with ``RTE_MEMZONE_IOVA_CONTIG`` flag
+specified. This way, memory allocator will ensure that, whatever memory mode is
+in use, either reserved memory will satisfy the requirements, or the allocation
+will fail.
+
+There is no need to preallocate any memory at startup using ``-m`` or
+``--socket-mem`` command-line parameters, however it is still possible to do so,
+in which case preallocate memory will be "pinned" (i.e. will never be released
+by the application back to the system). It will be possible to allocate more
+hugepages, and deallocate those, but any preallocated pages will not be freed.
+If neither ``-m`` nor ``--socket-mem`` were specified, no memory will be
+preallocated, and all memory will be allocated at runtime, as needed.
+
+Another available option to use in dynamic memory mode is
+``--single-file-segments`` command-line option. This option will put pages in
+single files (per memseg list), as opposed to creating a file per page. This is
+normally not needed, but can be useful for use cases like userspace vhost, where
+there is limited number of page file descriptors that can be passed to VirtIO.
+
+If the application (or DPDK-internal code, such as device drivers) wishes to
+receive notifications about newly allocated memory, it is possible to register
+for memory event callbacks via ``rte_mem_event_callback_register()`` function.
+This will call a callback function any time DPDK's memory map has changed.
+
+If the application (or DPDK-internal code, such as device drivers) wishes to be
+notified about memory allocations above specified threshold (and have a chance
+to deny them), allocation validator callbacks are also available via
+``rte_mem_alloc_validator_callback_register()`` function.
+
+.. note::
+
+    In multiprocess scenario, all related processes (i.e. primary process, and
+    secondary processes running with the same prefix) must be in the same memory
+    modes. That is, if primary process is run in dynamic memory mode, all of its
+    secondary processes must be run in the same mode. The same is applicable to
+    ``--single-file-segments`` command-line option - both primary and secondary
+    processes must shared this mode.
+
++ Legacy memory mode
+
+This mode is enabled by specifying ``--legacy-mem`` command-line switch to the
+EAL. This switch will have no effect on FreeBSD as FreeBSD only supports
+legacy mode anyway.
+
+This mode mimics historical behavior of EAL. That is, EAL will reserve all
+memory at startup, sort all memory into large IOVA-contiguous chunks, and will
+not allow acquiring or releasing hugepages from the system at runtime.
+
+If neither ``-m`` nor ``--socket-mem`` were specified, the entire available
+hugepage memory will be preallocated.
+
++ 32-bit support
+
+Additional restrictions are present when running in 32-bit mode. In dynamic
+memory mode, by default maximum of 2 gigabytes of VA space will be preallocated,
+and all of it will be on master lcore NUMA node unless ``--socket-mem`` flag is
+used.
+
+In legacy mode, VA space will only be preallocated for segments that were
+requested (plus padding, to keep IOVA-contiguousness).
+
++ Maximum amount of memory
+
+All possible virtual memory space that can ever be used for hugepage mapping in
+a DPDK process is preallocated at startup, thereby placing an upper limit on how
+much memory a DPDK application can have. DPDK memory is stored in segment lists,
+each segment is strictly one physical page. It is possible to change the amount
+of virtual memory being preallocated at startup by editing the following config
+variables:
+
+* ``CONFIG_RTE_MAX_MEMSEG_LISTS`` controls how many segment lists can DPDK have
+* ``CONFIG_RTE_MAX_MEM_MB_PER_LIST`` controls how much megabytes of memory each
+  segment list can address
+* ``CONFIG_RTE_MAX_MEMSEG_PER_LIST`` controls how many segments each segment can
+  have
+* ``CONFIG_RTE_MAX_MEMSEG_PER_TYPE`` controls how many segments each memory type
+  can have (where "type" is defined as "page size + NUMA node" combination)
+* ``CONFIG_RTE_MAX_MEM_MB_PER_TYPE`` controls how much megabytes of memory each
+  memory type can address
+* ``CONFIG_RTE_MAX_MEM_MB`` places a global maximum on the amount of memory
+  DPDK can reserve
+
+Normally, these options do not need to be changed.
+
+.. note::
+
+    Preallocated virtual memory is not to be confused with preallocated hugepage
+    memory! All DPDK processes preallocate virtual memory at startup. Hugepages
+    can later be mapped into that preallocated VA space (if dynamic memory mode
+    is enabled), and can optionally be mapped into it at startup.
 
 PCI Access
 ~~~~~~~~~~
@@ -211,7 +322,7 @@ Memory Segments and Memory Zones (memzone)
 
 The mapping of physical memory is provided by this feature in the EAL.
 As physical memory can have gaps, the memory is described in a table of descriptors,
-and each descriptor (called rte_memseg ) describes a contiguous portion of memory.
+and each descriptor (called rte_memseg ) describes a physical page.
 
 On top of this, the memzone allocator's role is to reserve contiguous portions of physical memory.
 These zones are identified by a unique name when the memory is reserved.
@@ -224,6 +335,9 @@ Memory zones can be reserved with specific start address alignment by supplying 
 (by default, they are aligned to cache line size).
 The alignment value should be a power of two and not less than the cache line size (64 bytes).
 Memory zones can also be reserved from either 2 MB or 1 GB hugepages, provided that both are available on the system.
+
+Both memsegs and memzones are stored using ``rte_fbarray`` structures. Please
+refer to *DPDK API Reference* for more information.
 
 
 Multiple pthread
@@ -453,11 +567,9 @@ The key fields of the heap structure and their function are described below
 *   free_head - this points to the first element in the list of free nodes for
     this malloc heap.
 
-.. note::
+*   first - this points to the first element in the heap.
 
-    The malloc_heap structure does not keep track of in-use blocks of memory,
-    since these are never touched except when they are to be freed again -
-    at which point the pointer to the block is an input to the free() function.
+*   last - this points to the last element in the heap.
 
 .. _figure_malloc_heap:
 
@@ -473,15 +585,20 @@ Structure: malloc_elem
 
 The malloc_elem structure is used as a generic header structure for various
 blocks of memory.
-It is used in three different ways - all shown in the diagram above:
+It is used in two different ways - all shown in the diagram above:
 
 #.  As a header on a block of free or allocated memory - normal case
 
 #.  As a padding header inside a block of memory
 
-#.  As an end-of-memseg marker
-
 The most important fields in the structure and how they are used are described below.
+
+Malloc heap is a doubly-linked list, where each element keeps track of its
+previous and next elements. Due to the fact that hugepage memory can come and
+go, neighbouring malloc elements may not necessarily be adjacent in memory.
+Also, since a malloc element may span multiple pages, its contents may not
+necessarily be IOVA-contiguous either - each malloc element is only guaranteed
+to be virtually contiguous.
 
 .. note::
 
@@ -495,13 +612,20 @@ The most important fields in the structure and how they are used are described b
     It is used for normal memory blocks when they are being freed, to add the
     newly-freed block to the heap's free-list.
 
-*   prev - this pointer points to the header element/block in the memseg
-    immediately behind the current one. When freeing a block, this pointer is
-    used to reference the previous block to check if that block is also free.
-    If so, then the two free blocks are merged to form a single larger block.
+*   prev - this pointer points to previous header element/block in memory. When
+    freeing a block, this pointer is used to reference the previous block to
+    check if that block is also free. If so, and the two blocks are immediately
+    adjacent to each other, then the two free blocks are merged to form a single
+    larger block.
 
-*   next_free - this pointer is used to chain the free-list of unallocated
-    memory blocks together.
+*   next - this pointer points to next header element/block in memory. When
+    freeing a block, this pointer is used to reference the next block to check
+    if that block is also free. If so, and the two blocks are immediately
+    adjacent to each other, then the two free blocks are merged to form a single
+    larger block.
+
+*   free_list - this is a structure pointing to previous and next elements in
+    this heap's free list.
     It is only used in normal memory blocks; on ``malloc()`` to find a suitable
     free block to allocate and on ``free()`` to add the newly freed element to
     the free-list.
@@ -515,9 +639,6 @@ The most important fields in the structure and how they are used are described b
     constraints.
     In that case, the pad header is used to locate the actual malloc element
     header for the block.
-    For the end-of-memseg structure, this is always a ``BUSY`` value, which
-    ensures that no element, on being freed, searches beyond the end of the
-    memseg for other blocks to merge with into a larger free area.
 
 *   pad - this holds the length of the padding present at the start of the block.
     In the case of a normal block header, it is added to the address of the end
@@ -528,21 +649,18 @@ The most important fields in the structure and how they are used are described b
     actual block header.
 
 *   size - the size of the data block, including the header itself.
-    For end-of-memseg structures, this size is given as zero, though it is never
-    actually checked.
-    For normal blocks which are being freed, this size value is used in place of
-    a "next" pointer to identify the location of the next block of memory that
-    in the case of being ``FREE``, the two free blocks can be merged into one.
 
 Memory Allocation
 ^^^^^^^^^^^^^^^^^
 
-On EAL initialization, all memsegs are setup as part of the malloc heap.
-This setup involves placing a dummy structure at the end with ``BUSY`` state,
-which may contain a sentinel value if ``CONFIG_RTE_MALLOC_DEBUG`` is enabled,
-and a proper :ref:`element header<malloc_elem>` with ``FREE`` at the start
-for each memseg.
+On EAL initialization, all preallocated memory segments are setup as part of the
+malloc heap. This setup involves placing an :ref:`element header<malloc_elem>`
+with ``FREE`` at the start of each virtually contiguous segment of memory.
 The ``FREE`` element is then added to the ``free_list`` for the malloc heap.
+
+This setup also happens whenever memory is allocated at runtime (if supported),
+in which case newly allocated pages are also added to the heap, merging with any
+adjacent free segments if there are any.
 
 When an application makes a call to a malloc-like function, the malloc function
 will first index the ``lcore_config`` structure for the calling thread, and
@@ -574,8 +692,34 @@ the start and/or end of the element, resulting in the following behavior:
 
 The advantage of allocating the memory from the end of the existing element is
 that no adjustment of the free list needs to take place - the existing element
-on the free list just has its size pointer adjusted, and the following element
-has its "prev" pointer redirected to the newly created element.
+on the free list just has its size value adjusted, and the next/previous elements
+have their "prev"/"next" pointers redirected to the newly created element.
+
+In case when there is not enough memory in the heap to satisfy allocation
+request, EAL will attempt to allocate more memory from the system (if supported)
+and, following successful allocation, will retry reserving the memory again. In
+a multiprocessing scenario, all primary and secondary processes will synchronize
+their memory maps to ensure that any valid pointer to DPDK memory is guaranteed
+to be valid at all times in all currently running processes.
+
+Failure to synchronize memory maps in one of the processes will cause allocation
+to fail, even though some of the processes may have allocated the memory
+successfully. The memory is not added to the malloc heap unless primary process
+has ensured that all other processes have mapped this memory successfully.
+
+Any successful allocation event will trigger a callback, for which user
+applications and other DPDK subsystems can register. Additionally, validation
+callbacks will be triggered before allocation if the newly allocated memory will
+exceed threshold set by the user, giving a chance to allow or deny allocation.
+
+.. note::
+
+    Any allocation of new pages has to go through primary process. If the
+    primary process is not active, no memory will be allocated even if it was
+    theoretically possible to do so. This is because primary's process map acts
+    as an authority on what should or should not be mapped, while each secondary
+    process has its own, local memory map. Secondary processes do not update the
+    shared memory map, they only copy its contents to their local memory map.
 
 Freeing Memory
 ^^^^^^^^^^^^^^
@@ -589,8 +733,17 @@ the pointer to get the proper element header for the entire block.
 
 From this element header, we get pointers to the heap from which the block was
 allocated and to where it must be freed, as well as the pointer to the previous
-element, and via the size field, we can calculate the pointer to the next element.
-These next and previous elements are then checked to see if they are also
-``FREE``, and if so, they are merged with the current element.
-This means that we can never have two ``FREE`` memory blocks adjacent to one
-another, as they are always merged into a single block.
+and next elements. These next and previous elements are then checked to see if
+they are also ``FREE`` and are immediately adjacent to the current one, and if
+so, they are merged with the current element. This means that we can never have
+two ``FREE`` memory blocks adjacent to one another, as they are always merged
+into a single block.
+
+If deallocating pages at runtime is supported, and the free element encloses
+one or more pages, those pages can be deallocated and be removed from the heap.
+If DPDK was started with command-line parameters for preallocating memory
+(``-m`` or ``--socket-mem``), then those pages that were allocated at startup
+will not be deallocated.
+
+Any successful deallocation event will trigger a callback, for which user
+applications and other DPDK subsystems can register.

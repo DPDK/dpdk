@@ -63,6 +63,10 @@ and point to the same objects, in both processes.
     Refer to `Multi-process Limitations`_ for details of
     how Linux kernel Address-Space Layout Randomization (ASLR) can affect memory sharing.
 
+    If the primary process was run with ``--legacy-mem`` or
+    ``--single-file-segments`` switch, secondary processes must be run with the
+    same switch specified. Otherwise, memory corruption may occur.
+
 .. _figure_multi_process_memory:
 
 .. figure:: img/multi_process_memory.*
@@ -116,8 +120,13 @@ The rte part of the filenames of each of the above is configurable using the fil
 
 In addition to specifying the file-prefix parameter,
 any DPDK applications that are to be run side-by-side must explicitly limit their memory use.
-This is done by passing the -m flag to each process to specify how much hugepage memory, in megabytes,
-each process can use (or passing ``--socket-mem`` to specify how much hugepage memory on each socket each process can use).
+This is less of a problem on Linux, as by default, applications will not
+allocate more memory than they need. However if ``--legacy-mem`` is used, DPDK
+will attempt to preallocate all memory it can get to, and memory use must be
+explicitly limited. This is done by passing the ``-m`` flag to each process to
+specify how much hugepage memory, in megabytes, each process can use (or passing
+``--socket-mem`` to specify how much hugepage memory on each socket each process
+can use).
 
 .. note::
 
@@ -144,8 +153,10 @@ There are a number of limitations to what can be done when running DPDK multi-pr
 Some of these are documented below:
 
 *   The multi-process feature requires that the exact same hugepage memory mappings be present in all applications.
-    The Linux security feature - Address-Space Layout Randomization (ASLR) can interfere with this mapping,
-    so it may be necessary to disable this feature in order to reliably run multi-process applications.
+    This makes secondary process startup process generally unreliable. Disabling
+    Linux security feature - Address-Space Layout Randomization (ASLR) may
+    help getting more consistent mappings, but not necessarily more reliable -
+    if the mappings are wrong, they will be consistently wrong!
 
 .. warning::
 
