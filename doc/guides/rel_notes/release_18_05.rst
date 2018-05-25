@@ -296,6 +296,15 @@ New Features
   stats/xstats on shared memory from secondary process, and also pdump packets on
   those virtual devices.
 
+* **Advancement to Packet Framework Library.**
+
+  Design and development of new API functions for Packet Framework library that
+  implements common set of actions such as traffic metering, packet
+  encapsulation, network address translation, TTL update, etc., for pipeline
+  table and input ports to speed up application development. The API functions
+  includes creating action profiles, registering actions to the profiles,
+  instantiating action profiles for pipeline table and input ports, etc.
+
 * **Added the BPF Library.**
 
   The BPF Library provides the ability to load and execute
