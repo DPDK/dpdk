@@ -234,7 +234,7 @@ By default, the non-vector callbacks are used:
 
 Vector callbacks will be used when:
 
-*   ``txq_flags`` is set to ``VIRTIO_SIMPLE_FLAGS`` (0xF01), which implies:
+*   ``txmode.offloads`` is set to ``0x0``, which implies:
 
     *   Single segment is specified.
 
@@ -252,7 +252,7 @@ The corresponding callbacks are:
 Example of using the vector version of the virtio poll mode driver in
 ``testpmd``::
 
-   testpmd -l 0-2 -n 4 -- -i --txqflags=0xF01 --rxq=1 --txq=1 --nb-cores=1
+   testpmd -l 0-2 -n 4 -- -i --tx-offloads=0x0 --rxq=1 --txq=1 --nb-cores=1
 
 
 Interrupt mode
