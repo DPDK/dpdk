@@ -178,3 +178,140 @@ instead of the functions which do the hashing internally, such as rte_hash_add()
     which means that only the first, primary DPDK process instance can open and mmap  /dev/hpet.
     If the number of required DPDK processes exceeds that of the number of available HPET comparators,
     the TSC (which is the default timer in this release) must be used as a time source across all processes instead of the HPET.
+
+Communication between multiple processes
+----------------------------------------
+
+While there are multiple ways one can approach inter-process communication in
+DPDK, there is also a native DPDK IPC API available. It is not intended to be
+performance-critical, but rather is intended to be a convenient, general
+purpose API to exchange short messages between primary and secondary processes.
+
+DPDK IPC API supports the following communication modes:
+
+* Unicast message from secondary to primary
+* Broadcast message from primary to all secondaries
+
+In other words, any IPC message sent in a primary process will be delivered to
+all secondaries, while any IPC message sent in a secondary process will only be
+delivered to primary process. Unicast from primary to secondary or from
+secondary to secondary is not supported.
+
+There are three types of communications that are available within DPDK IPC API:
+
+* Message
+* Synchronous request
+* Asynchronous request
+
+A "message" type does not expect a response and is meant to be a best-effort
+notification mechanism, while the two types of "requests" are meant to be a two
+way communication mechanism, with the requester expecting a response from the
+other side.
+
+Both messages and requests will trigger a named callback on the receiver side.
+These callbacks will be called from within a dedicated IPC thread that is not
+part of EAL lcore threads.
+
+Registering for incoming messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before any messages can be received, a callback will need to be registered.
+This is accomplished by calling ``rte_mp_action_register()`` function. This
+function accepts a unique callback name, and a function pointer to a callback
+that will be called when a message or a request matching this callback name
+arrives.
+
+If the application is no longer willing to receive messages intended for a
+specific callback function, ``rte_mp_action_unregister()`` function can be
+called to ensure that callback will not be triggered again.
+
+Sending messages
+~~~~~~~~~~~~~~~~
+
+To send a message, a ``rte_mp_msg`` descriptor must be populated first. The list
+of fields to be populated are as follows:
+
+* ``name`` - message name. This name must match receivers' callback name.
+* ``param`` - message data (up to 256 bytes).
+* ``len_param`` - length of message data.
+* ``fds`` - file descriptors to pass long with the data (up to 8 fd's).
+* ``num_fds`` - number of file descriptors to send.
+
+Once the structure is populated, calling ``rte_mp_sendmsg()`` will send the
+descriptor either to all secondary processes (if sent from primary process), or
+to primary process (if sent from secondary process). The function will return
+a value indicating whether sending the message succeeded or not.
+
+Sending requests
+~~~~~~~~~~~~~~~~
+
+Sending requests involves waiting for the other side to reply, so they can block
+for a relatively long time.
+
+To send a request, a message descriptor ``rte_mp_msg`` must be populated.
+Additionally, a ``timespec`` value must be specified as a timeout, after which
+IPC will stop waiting and return.
+
+For synchronous synchronous requests, the ``rte_mp_reply`` descriptor must also
+be created. This is where the responses will be stored. The list of fields that
+will be populated by IPC are as follows:
+
+* ``nb_sent`` - number indicating how many requests were sent (i.e. how many
+  peer processes were active at the time of the request).
+* ``nb_received`` - number indicating how many responses were received (i.e. of
+  those peer processes that were active at the time of request, how many have
+  replied)
+* ``msgs`` - pointer to where all of the responses are stored. The order in
+  which responses appear is undefined. Whendoing sycnrhonous requests, this
+  memory must be freed by the requestor after request completes!
+
+For asynchronous requests, a function pointer to the callback function must be
+provided instead. This callback will be called when the request either has timed
+out, or will have received a response to all the messages that were sent.
+
+When the callback is called, the original request descriptor will be provided
+(so that it would be possible to determine for which sent message this is a
+callback to), along with a response descriptor like the one described above.
+When doing asynchronous requests, there is no need to free the resulting
+``rte_mp_reply`` descriptor.
+
+Receiving and responding to messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To receive a message, a name callback must be registered using the
+``rte_mp_action_register()`` function. The name of the callback must match the
+``name`` field in sender's ``rte_mp_msg`` message descriptor in order for this
+message to be delivered and for the callback to be trigger.
+
+The callback's definition is ``rte_mp_t``, and consists of the incoming message
+pointer ``msg``, and an opaque pointer ``peer``. Contents of ``msg`` will be
+identical to ones sent by the sender.
+
+If a response is required, a new ``rte_mp_msg`` message descriptor must be
+constructed and sent via ``rte_mp_reply()`` function, along with ``peer``
+pointer. The resulting response will then be delivered to the correct requestor.
+
+Misc considerations
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Due to the underlying IPC implementation being single-threaded, recursive
+requests (i.e. sending a request while responding to another request) is not
+supported. However, since sending messages (not requests) does not involve an
+IPC thread, sending messages while processing another message or request is
+supported.
+
+If callbacks spend a long time processing the incoming requests, the requestor
+might time out, so setting the right timeout value on the requestor side is
+imperative.
+
+If some of the messages timed out, ``nb_sent`` and ``nb_received`` fields in the
+``rte_mp_reply`` descriptor will not have matching values. This is not treated
+as error by the IPC API, and it is expected that the user will be responsible
+for deciding how to handle such cases.
+
+If a callback has been registered, IPC will assume that it is safe to call it.
+This is important when registering callbacks during DPDK initialization.
+During initialization, IPC will consider the receiving side as non-existing if
+the callback has not been registered yet. However, once the callback has been
+registered, it is expected that IPC should be safe to trigger it, even if the
+rest of the DPDK initialization hasn't finished yet.
