@@ -274,3 +274,62 @@ Vhost supported vSwitch reference
 
 For more vhost details and how to support vhost in vSwitch, please refer to
 the vhost example in the DPDK Sample Applications Guide.
+
+Vhost data path acceleration (vDPA)
+-----------------------------------
+
+vDPA supports selective datapath in vhost-user lib by enabling virtio ring
+compatible devices to serve virtio driver directly for datapath acceleration.
+
+``rte_vhost_driver_attach_vdpa_device`` is used to configure the vhost device
+with accelerated backend.
+
+Also vhost device capabilities are made configurable to adopt various devices.
+Such capabilities include supported features, protocol features, queue number.
+
+Finally, a set of device ops is defined for device specific operations:
+
+* ``get_queue_num``
+
+  Called to get supported queue number of the device.
+
+* ``get_features``
+
+  Called to get supported features of the device.
+
+* ``get_protocol_features``
+
+  Called to get supported protocol features of the device.
+
+* ``dev_conf``
+
+  Called to configure the actual device when the virtio device becomes ready.
+
+* ``dev_close``
+
+  Called to close the actual device when the virtio device is stopped.
+
+* ``set_vring_state``
+
+  Called to change the state of the vring in the actual device when vring state
+  changes.
+
+* ``set_features``
+
+  Called to set the negotiated features to device.
+
+* ``migration_done``
+
+  Called to allow the device to response to RARP sending.
+
+* ``get_vfio_group_fd``
+
+   Called to get the VFIO group fd of the device.
+
+* ``get_vfio_device_fd``
+
+  Called to get the VFIO device fd of the device.
+
+* ``get_notify_area``
+
+  Called to get the notify area info of the queue.
