@@ -41,6 +41,40 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Reworked memory subsystem.**
+
+  Memory subsystem has been reworked to support new functionality.
+
+  On Linux, support for reserving/unreserving hugepage memory at runtime was
+  added, so applications no longer need to pre-reserve memory at startup. Due to
+  reorganized internal workings of memory subsystem, any memory allocated
+  through ``rte_malloc()`` or ``rte_memzone_reserve()`` is no longer guaranteed
+  to be IOVA-contiguous.
+
+  This functionality has introduced the following changes:
+
+  * ``rte_eal_get_physmem_layout()`` was removed
+  * A new flag for memzone reservation (``RTE_MEMZONE_IOVA_CONTIG``) was added
+    to ensure reserved memory will be IOVA-contiguous, for use with device
+    drivers and other cases requiring such memory
+  * New callbacks for memory allocation/deallocation events, allowing user (or
+    drivers) to be notified of new memory being allocated or deallocated
+  * New callbacks for validating memory allocations above specified limit,
+    allowing user to permit or deny memory allocations
+  * A new command-line switch ``--legacy-mem`` to enable EAL behavior similar to
+    how older versions of DPDK worked (memory segments that are IOVA-contiguous,
+    but hugepages are reserved at startup only, and can never be released)
+  * A new command-line switch ``--single-file-segments`` to put all memory
+    segments within a segment list in a single file
+  * A set of convenience function calls to look up and iterate over allocated
+    memory segments
+  * ``-m`` and ``--socket-mem`` command-line arguments now carry an additional
+    meaning and mark pre-reserved hugepages as "unfree-able", thereby acting as
+    a mechanism guaranteeing minimum availability of hugepage memory to the
+    application
+
+  Reserving/unreserving memory at runtime is not currently supported on FreeBSD.
+
 * **Added bucket mempool driver.**
 
   Added bucket mempool driver which provides a way to allocate contiguous
