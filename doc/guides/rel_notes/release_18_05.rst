@@ -126,6 +126,12 @@ New Features
   The ARM CPU subsystem features eight ARMv8 Cortex-A72 CPUs at 3.0 GHz, arranged in a multi-cluster
   configuration.
 
+* **Added vDPA in vhost-user lib.**
+
+  Added support for selective datapath in vhost-user lib. vDPA stands for vhost
+  Data Path Acceleration. It supports virtio ring compatible devices to serve
+  virtio driver directly to enable datapath acceleration.
+
 * **Added IFCVF vDPA driver.**
 
   Added IFCVF vDPA driver to support Intel FPGA 100G VF device. IFCVF works
