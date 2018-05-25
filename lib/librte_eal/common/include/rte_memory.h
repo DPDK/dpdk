@@ -339,6 +339,10 @@ typedef void (*rte_mem_event_callback_t)(enum rte_mem_event event_type,
  *       therefore some functions (e.g. `rte_memseg_walk()`) will cause a
  *       deadlock when called from within such callbacks.
  *
+ * @note mem event callbacks not being supported is an expected error condition,
+ *       so user code needs to handle this situation. In these cases, return
+ *       value will be -1, and rte_errno will be set to ENOTSUP.
+ *
  * @param name
  *   Name associated with specified callback to be added to the list.
  *
@@ -398,6 +402,10 @@ typedef int (*rte_mem_alloc_validator_t)(int socket_id,
  * @note callbacks will happen while memory hotplug subsystem is write-locked,
  *       therefore some functions (e.g. `rte_memseg_walk()`) will cause a
  *       deadlock when called from within such callbacks.
+ *
+ * @note validator callbacks not being supported is an expected error condition,
+ *       so user code needs to handle this situation. In these cases, return
+ *       value will be -1, and rte_errno will be set to ENOTSUP.
  *
  * @param name
  *   Name associated with specified callback to be added to the list.
