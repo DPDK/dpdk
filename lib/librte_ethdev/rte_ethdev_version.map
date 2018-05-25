@@ -148,6 +148,7 @@ DPDK_17.08 {
 	_rte_eth_dev_callback_process;
 	rte_eth_dev_adjust_nb_rx_tx_desc;
 	rte_tm_capabilities_get;
+	rte_tm_get_number_of_leaf_nodes;
 	rte_tm_hierarchy_commit;
 	rte_tm_level_capabilities_get;
 	rte_tm_mark_ip_dscp;
