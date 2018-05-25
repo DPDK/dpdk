@@ -955,9 +955,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		priv->mtu = ETHER_MTU;
 		err = mlx5_args(&config, pci_dev->device.devargs);
 		if (err) {
-			DRV_LOG(ERR, "failed to process device arguments: %s",
-				strerror(err));
 			err = rte_errno;
+			DRV_LOG(ERR, "failed to process device arguments: %s",
+				strerror(rte_errno));
 			goto port_error;
 		}
 		err = mlx5_glue->query_device_ex(ctx, NULL, &device_attr_ex);
