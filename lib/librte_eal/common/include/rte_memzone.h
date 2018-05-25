@@ -81,6 +81,9 @@ struct rte_memzone {
  *   memzones from memory that is already available. It will not trigger any
  *   new allocations.
  *
+ * @note Reserving IOVA-contiguous memzones with len set to 0 is not currently
+ *   supported.
+ *
  * @param name
  *   The name of the memzone. If it already exists, the function will
  *   fail and return NULL.
@@ -137,6 +140,9 @@ const struct rte_memzone *rte_memzone_reserve(const char *name,
  * @note Reserving memzones with len set to 0 will only attempt to allocate
  *   memzones from memory that is already available. It will not trigger any
  *   new allocations.
+ *
+ * @note Reserving IOVA-contiguous memzones with len set to 0 is not currently
+ *   supported.
  *
  * @param name
  *   The name of the memzone. If it already exists, the function will
@@ -199,6 +205,9 @@ const struct rte_memzone *rte_memzone_reserve_aligned(const char *name,
  * @note Reserving memzones with len set to 0 will only attempt to allocate
  *   memzones from memory that is already available. It will not trigger any
  *   new allocations.
+ *
+ * @note Reserving IOVA-contiguous memzones with len set to 0 is not currently
+ *   supported.
  *
  * @param name
  *   The name of the memzone. If it already exists, the function will
