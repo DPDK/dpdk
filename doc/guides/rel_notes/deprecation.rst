@@ -52,6 +52,13 @@ Deprecation Notices
   is defined in librte_sched in a non-generic way. The new generic format
   will contain: queue ID, traffic class, color. Field size will not change.
 
+* mbuf: the macro ``RTE_MBUF_INDIRECT()`` will be removed in v18.08 or later and
+  replaced with ``RTE_MBUF_CLONED()`` which is already added in v18.05. As
+  ``EXT_ATTACHED_MBUF`` is newly introduced in v18.05, ``RTE_MBUF_INDIRECT()``
+  can no longer be mutually exclusive with ``RTE_MBUF_DIRECT()`` if the new
+  experimental API ``rte_pktmbuf_attach_extbuf()`` is used. Removal of the macro
+  is to fix this semantic inconsistency.
+
 * ethdev: a new Tx and Rx offload API was introduced on 17.11.
   In the new API, offloads are divided into per-port and per-queue offloads.
   Offloads are disabled by default and enabled per application request.

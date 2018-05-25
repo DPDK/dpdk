@@ -738,7 +738,8 @@ rte_mbuf_to_baddr(struct rte_mbuf *md)
 #define RTE_MBUF_CLONED(mb)     ((mb)->ol_flags & IND_ATTACHED_MBUF)
 
 /**
- * Returns TRUE if given mbuf is indirect, or FALSE otherwise.
+ * Deprecated.
+ * Use RTE_MBUF_CLONED().
  */
 #define RTE_MBUF_INDIRECT(mb)   RTE_MBUF_CLONED(mb)
 
