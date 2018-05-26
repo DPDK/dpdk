@@ -191,6 +191,7 @@ mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
+	assert(!bt->table && !bt->size);
 	memset(bt, 0, sizeof(*bt));
 	bt->table = rte_calloc_socket("B-tree table",
 				      n, sizeof(struct mlx5_mr_cache),

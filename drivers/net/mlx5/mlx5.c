@@ -1193,6 +1193,19 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			goto port_error;
 		}
 		priv->config.max_verbs_prio = verb_priorities;
+		/*
+		 * Once the device is added to the list of memory event
+		 * callback, its global MR cache table cannot be expanded
+		 * on the fly because of deadlock. If it overflows, lookup
+		 * should be done by searching MR list linearly, which is slow.
+		 */
+		err = mlx5_mr_btree_init(&priv->mr.cache,
+					 MLX5_MR_BTREE_CACHE_N * 2,
+					 eth_dev->device->numa_node);
+		if (err) {
+			err = rte_errno;
+			goto port_error;
+		}
 		/* Add device to memory callback list. */
 		rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
 		LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,

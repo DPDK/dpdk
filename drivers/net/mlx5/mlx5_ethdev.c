@@ -392,17 +392,6 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		if (++j == rxqs_n)
 			j = 0;
 	}
-	/*
-	 * Once the device is added to the list of memory event callback, its
-	 * global MR cache table cannot be expanded on the fly because of
-	 * deadlock. If it overflows, lookup should be done by searching MR list
-	 * linearly, which is slow.
-	 */
-	if (mlx5_mr_btree_init(&priv->mr.cache, MLX5_MR_BTREE_CACHE_N * 2,
-			       dev->device->numa_node)) {
-		/* rte_errno is already set. */
-		return -rte_errno;
-	}
 	return 0;
 }
 
