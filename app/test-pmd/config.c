@@ -2177,15 +2177,11 @@ rss_fwd_config_setup(void)
 		fs->tx_queue = rxq;
 		fs->peer_addr = fs->tx_port;
 		fs->retry_enabled = retry_enabled;
-		rxq = (queueid_t) (rxq + 1);
-		if (rxq < nb_q)
-			continue;
-		/*
-		 * rxq == nb_q
-		 * Restart from RX queue 0 on next RX port
-		 */
-		rxq = 0;
 		rxp++;
+		if (rxp < nb_fwd_ports)
+			continue;
+		rxp = 0;
+		rxq++;
 	}
 }
 
