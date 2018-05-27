@@ -161,9 +161,6 @@ DPDK_17.05 {
 	rte_log_set_global_level;
 	rte_log_set_level;
 	rte_log_set_level_regexp;
-	vfio_get_container_fd;
-	vfio_get_group_fd;
-	vfio_get_group_no;
 
 } DPDK_17.02;
 
