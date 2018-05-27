@@ -248,7 +248,7 @@ Code
   /* end the pattern array */
   pattern[2].type = RTE_FLOW_ITEM)TYPE_END;
 
-  /* create the drop action */
+  /* create the queue action */
   actions[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
   actions[0].conf = &queue
   actions[1].type = RTE_FLOW_ACTION_TYPE_END;
