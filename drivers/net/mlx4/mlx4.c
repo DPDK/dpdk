@@ -98,20 +98,6 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 	if (ret)
 		ERROR("%p: interrupt handler installation failed",
 		      (void *)dev);
-	/*
-	 * Once the device is added to the list of memory event callback, its
-	 * global MR cache table cannot be expanded on the fly because of
-	 * deadlock. If it overflows, lookup should be done by searching MR list
-	 * linearly, which is slow.
-	 */
-	if (mlx4_mr_btree_init(&priv->mr.cache, MLX4_MR_BTREE_CACHE_N * 2,
-			       dev->device->numa_node)) {
-		/* rte_errno is already set. */
-		return -rte_errno;
-	}
-	rte_rwlock_write_lock(&mlx4_mem_event_rwlock);
-	LIST_INSERT_HEAD(&mlx4_mem_event_cb_list, priv, mem_event_cb);
-	rte_rwlock_write_unlock(&mlx4_mem_event_rwlock);
 exit:
 	return ret;
 }
@@ -761,6 +747,23 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		/* Update link status once if waiting for LSC. */
 		if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 			mlx4_link_update(eth_dev, 0);
+		/*
+		 * Once the device is added to the list of memory event
+		 * callback, its global MR cache table cannot be expanded
+		 * on the fly because of deadlock. If it overflows, lookup
+		 * should be done by searching MR list linearly, which is slow.
+		 */
+		err = mlx4_mr_btree_init(&priv->mr.cache,
+					 MLX4_MR_BTREE_CACHE_N * 2,
+					 eth_dev->device->numa_node);
+		if (err) {
+			/* rte_errno is already set. */
+			goto port_error;
+		}
+		/* Add device to memory callback list. */
+		rte_rwlock_write_lock(&mlx4_mem_event_rwlock);
+		LIST_INSERT_HEAD(&mlx4_mem_event_cb_list, priv, mem_event_cb);
+		rte_rwlock_write_unlock(&mlx4_mem_event_rwlock);
 		rte_eth_dev_probing_finish(eth_dev);
 		continue;
 port_error:
