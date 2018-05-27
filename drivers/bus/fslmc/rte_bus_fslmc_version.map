@@ -113,7 +113,6 @@ DPDK_18.05 {
 	dpdmai_get_tx_queue;
 	dpdmai_open;
 	dpdmai_set_rx_queue;
-	dpdmai_set_tx_queue;
 	rte_dpaa2_free_dpci_dev;
 
 } DPDK_18.02;
