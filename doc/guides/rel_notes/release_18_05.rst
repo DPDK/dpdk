@@ -841,3 +841,14 @@ Tested Platforms
        * Host interface: PCI Express 3.0 x16
        * Device ID: 15b3:1017
        * Firmware version: 16.22.0428
+
+* ARM SoC combinations from Cavium (with integrated NICs)
+
+   * SoC:
+
+     * Cavium CN81xx
+     * Cavium CN83xx
+
+   * OS:
+
+     * Ubuntu 16.04.2 LTS with Cavium SDK-6.2.0-Patch2 release support package.
