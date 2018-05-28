@@ -382,7 +382,7 @@ __rte_ring_do_dequeue(struct rte_ring *r, void **obj_table,
 	uint32_t cons_head, cons_next;
 	uint32_t entries;
 
-	n = __rte_ring_move_cons_head(r, is_sc, n, behavior,
+	n = __rte_ring_move_cons_head(r, (int)is_sc, n, behavior,
 			&cons_head, &cons_next, &entries);
 	if (n == 0)
 		goto end;
