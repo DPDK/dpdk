@@ -84,6 +84,16 @@ New Features
   The number may be obtained using rte_mempool_ops_get_info() API.
   Contiguous blocks may be allocated using rte_mempool_get_contig_blocks() API.
 
+* **Added support for port representors.**
+
+  The DPDK port representors (also known as "VF representors" in the specific
+  context of VFs), which are to DPDK what the Ethernet switch device driver
+  model (**switchdev**) is to Linux, and which can be thought as a software
+  "patch panel" front-end for applications. DPDK port representors are
+  implemented as additional virtual Ethernet device (**ethdev**) instances,
+  spawned on an as needed basis through configuration parameters passed to the
+  driver of the underlying device using devargs.
+
 * **Added PMD-recommended Tx and Rx parameters**
 
   Applications can now query drivers for device-tuned values of
