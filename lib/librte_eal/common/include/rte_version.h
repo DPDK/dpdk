@@ -49,7 +49,7 @@ extern "C" {
  *   0-15 = release candidates
  *   16   = release
  */
-#define RTE_VER_RELEASE 5
+#define RTE_VER_RELEASE 6
 
 /**
  * Macro to compute a version number usable for comparisons
