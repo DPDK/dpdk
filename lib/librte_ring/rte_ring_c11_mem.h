@@ -66,14 +66,14 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 
 		*old_head = __atomic_load_n(&r->prod.head,
 					__ATOMIC_ACQUIRE);
-		const uint32_t cons_tail = r->cons.tail;
+
 		/*
 		 *  The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
 		 * *old_head > cons_tail). So 'free_entries' is always between 0
 		 * and capacity (which is < size).
 		 */
-		*free_entries = (capacity + cons_tail - *old_head);
+		*free_entries = (capacity + r->cons.tail - *old_head);
 
 		/* check that we have enough room in ring */
 		if (unlikely(n > *free_entries))
@@ -133,13 +133,13 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 		n = max;
 		*old_head = __atomic_load_n(&r->cons.head,
 					__ATOMIC_ACQUIRE);
-		const uint32_t prod_tail = r->prod.tail;
+
 		/* The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
 		 * cons_head > prod_tail). So 'entries' is always between 0
 		 * and size(ring)-1.
 		 */
-		*entries = (prod_tail - *old_head);
+		*entries = (r->prod.tail - *old_head);
 
 		/* Set the actual entries for dequeue */
 		if (n > *entries)
