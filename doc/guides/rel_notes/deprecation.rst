@@ -18,13 +18,12 @@ Deprecation Notices
   - if DPDK is not running as root and $XDG_RUNTIME_DIR is not set, path will be
     set to ``/tmp/dpdk/<prefix>/config``
 
-* eal: both declaring and identifying devices will be streamlined in v18.05.
+* eal: both declaring and identifying devices will be streamlined in v18.08.
   New functions will appear to query a specific port from buses, classes of
   device and device drivers. Device declaration will be made coherent with the
   new scheme of device identification.
   As such, ``rte_devargs`` device representation will change.
 
-  - removal of ``name`` and ``args`` fields.
   - The enum ``rte_devtype`` was used to identify a bus and will disappear.
   - Functions previously deprecated will change or disappear:
 
