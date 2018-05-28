@@ -94,6 +94,15 @@ New Features
   spawned on an as needed basis through configuration parameters passed to the
   driver of the underlying device using devargs.
 
+* **Added support for VXLAN and NVGRE tunnel endpoint.**
+
+  New actions types have been added to support encapsulation and decapsulation
+  operations for a tunnel endpoint. The new action types are
+  RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_ENCAP, RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_DECAP,
+  RTE_FLOW_ACTION_TYPE_JUMP. New item type RTE_FLOW_ACTION_TYPE_MARK has been
+  added to match a flow against a previously marked flow. It also introduced shared
+  counter to flow API to counte for a group of flows.
+
 * **Added PMD-recommended Tx and Rx parameters**
 
   Applications can now query drivers for device-tuned values of
@@ -457,6 +466,14 @@ API Changes
     redirect matching traffic to a specific physical port.
   * PORT_ID pattern item and actions were added to match and target DPDK
     port IDs at a higher level than PHY_PORT.
+  * RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_ENCAP action items were added to support
+    tunnel encapsulation operation for VXLAN and NVGRE type tunnel endpoint.
+  * RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_DECAP action items were added to support
+    tunnel decapsulation operation for VXLAN and NVGRE type tunnel endpoint.
+  * RTE_FLOW_ACTION_TYPE_JUMP action item was added to support a matched flow
+    to be redirected to the specific group.
+  * RTE_FLOW_ACTION_TYPE_MARK item type has been added to match a flow against
+    a previously marked flow.
 
 * ethdev: change flow APIs regarding count action:
   * ``rte_flow_create()`` API count action now requires the ``struct rte_flow_action_count``.
