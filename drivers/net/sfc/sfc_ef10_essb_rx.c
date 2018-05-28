@@ -413,6 +413,14 @@ sfc_ef10_essb_rx_qdesc_npending(__rte_unused struct sfc_dp_rxq *dp_rxq)
 	return -ENOTSUP;
 }
 
+static sfc_dp_rx_qdesc_status_t sfc_ef10_essb_rx_qdesc_status;
+static int
+sfc_ef10_essb_rx_qdesc_status(__rte_unused struct sfc_dp_rxq *dp_rxq,
+			      __rte_unused uint16_t offset)
+{
+	return -ENOTSUP;
+}
+
 static sfc_dp_rx_get_dev_info_t sfc_ef10_essb_rx_get_dev_info;
 static void
 sfc_ef10_essb_rx_get_dev_info(struct rte_eth_dev_info *dev_info)
@@ -687,5 +695,6 @@ struct sfc_dp_rx sfc_ef10_essb_rx = {
 	.qpurge			= sfc_ef10_essb_rx_qpurge,
 	.supported_ptypes_get	= sfc_ef10_supported_ptypes_get,
 	.qdesc_npending		= sfc_ef10_essb_rx_qdesc_npending,
+	.qdesc_status		= sfc_ef10_essb_rx_qdesc_status,
 	.pkt_burst		= sfc_ef10_essb_recv_pkts,
 };
