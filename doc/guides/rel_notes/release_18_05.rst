@@ -595,6 +595,23 @@ Known Issues
   dpdk-pdump example and any other applications using librte_pdump, cannot work
   with older version DPDK primary applications.
 
+* **rte_abort takes a long time on FreeBSD.**
+
+  DPDK processes now allocates a large area of virtual memory address space,
+  with this change during rte_abort FreeBSD now dumps the contents of the
+  whole reserved memory range, not just the used portion, to a core dump file.
+  Write this large core file can take a significant amount of time, causing
+  processes to appear hung on the system.
+
+  The work around for the issue is to set the system resource limits for core
+  dumps before running any tests e.g."limit coredumpsize 0". This will
+  effectively disable core dumps on FreeBSD. If they are not to be completely
+  disabled, a suitable limit, e.g. 1G might be specified instead of 0. This
+  needs to be run per-shell session, or before every test run. This change
+  can also be made persistent by adding "kern.coredump=0" to /etc/sysctl.conf
+
+  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=53
+
 
 Shared Library Versions
 -----------------------
