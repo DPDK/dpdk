@@ -625,6 +625,13 @@ Known Issues
 
   Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=53
 
+* **Bonding PMD may fail to accept new slaves in certain conditions.**
+
+  In certain conditions when using testpmd,
+  bonding may fail to register new slave ports.
+
+  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=52.
+
 
 Shared Library Versions
 -----------------------
