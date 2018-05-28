@@ -632,6 +632,14 @@ Known Issues
 
   Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=52.
 
+* **Unexpected performance regression in Vhost library.**
+
+  Patches fixing CVE-2018-1059 were expected to introduce a small performance
+  drop. However, in some setups, bigger performance drops have been measured
+  when running micro-benchmarks.
+
+  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=48
+
 
 Shared Library Versions
 -----------------------
