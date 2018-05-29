@@ -256,8 +256,8 @@ In addition to the ``Signed-off-by:`` name the commit messages can also have
 tags for who reported, suggested, tested and reviewed the patch being
 posted. Please refer to the `Tested, Acked and Reviewed by`_ section.
 
-Coverity Related Patch Fixes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Patch Fix Related Issues
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 `Coverity <https://scan.coverity.com/projects/dpdk-data-plane-development-kit>`_
 is a tool for static code analysis.
@@ -276,6 +276,25 @@ in the body of the commit message. For example::
      Cc: author@example.com
 
      Signed-off-by: Alex Smith <alex.smith@example.com>
+
+
+`Bugzilla <https://dpdk.org/tracker>`_
+is a bug- or issue-tracking system.
+Bug-tracking systems allow individual or groups of developers
+effectively to keep track of outstanding problems with their product.
+When fixing an issue raised in Bugzilla, the patch must contain
+a Bugzilla issue ID in the body of the commit message.
+For example::
+
+    doc: fix some parameter description
+
+    Update the docs, fixing description of some parameter.
+
+    Bugzilla ID: 12345
+    Fixes: abcdefgh1234 ("doc: add some parameter")
+    Cc: author@example.com
+
+    Signed-off-by: Alex Smith <alex.smith@example.com>
 
 Patch for Stable Releases
 ~~~~~~~~~~~~~~~~~~~~~~~~~
