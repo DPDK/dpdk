@@ -588,6 +588,19 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Secondary process launch is not reliable.**
+
+  Recent memory hotplug patches have made multiprocess startup less reliable
+  than it was in the past. A number of workarounds are known to work depending
+  on the circumstances. As such it isn't recommended to use the secondary
+  process mechanism for critical systems. The underlying issues will be
+  addressed in upcoming releases.
+
+  The issue is explained in more detail, including potential workarounds,
+  in the Bugzilla entry referenced below.
+
+  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=50
+
 * **pdump is not compatible with old applications.**
 
   As we changed to use generic multi-process communication for pdump negotiation
