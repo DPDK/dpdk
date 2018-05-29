@@ -86,6 +86,7 @@ F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
 F: devtools/test-build.sh
+F: devtools/test-meson-builds.sh
 F: license/
 
 
