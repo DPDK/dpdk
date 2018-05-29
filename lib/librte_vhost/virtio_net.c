@@ -352,7 +352,6 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf *hdr_mbuf;
 	struct batch_copy_elem *batch_copy = vq->batch_copy_elems;
 	struct virtio_net_hdr_mrg_rxbuf tmp_hdr, *hdr = NULL;
-	uint16_t copy_nb = vq->batch_copy_nb_elems;
 	int error = 0;
 
 	if (unlikely(m == NULL)) {
@@ -493,7 +492,8 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		cpy_len = RTE_MIN(desc_chunck_len, mbuf_avail);
 
-		if (likely(cpy_len > MAX_BATCH_LEN || copy_nb >= vq->size)) {
+		if (likely(cpy_len > MAX_BATCH_LEN ||
+					vq->batch_copy_nb_elems >= vq->size)) {
 			rte_memcpy((void *)((uintptr_t)(desc_addr +
 							desc_offset)),
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset),
@@ -503,13 +503,14 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			PRINT_PACKET(dev, (uintptr_t)(desc_addr + desc_offset),
 				cpy_len, 0);
 		} else {
-			batch_copy[copy_nb].dst =
+			batch_copy[vq->batch_copy_nb_elems].dst =
 				(void *)((uintptr_t)(desc_addr + desc_offset));
-			batch_copy[copy_nb].src =
+			batch_copy[vq->batch_copy_nb_elems].src =
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset);
-			batch_copy[copy_nb].log_addr = desc_gaddr + desc_offset;
-			batch_copy[copy_nb].len = cpy_len;
-			copy_nb++;
+			batch_copy[vq->batch_copy_nb_elems].log_addr =
+				desc_gaddr + desc_offset;
+			batch_copy[vq->batch_copy_nb_elems].len = cpy_len;
+			vq->batch_copy_nb_elems++;
 		}
 
 		mbuf_avail  -= cpy_len;
@@ -520,7 +521,6 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 
 out:
-	vq->batch_copy_nb_elems = copy_nb;
 
 	return error;
 }
@@ -766,7 +766,6 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	/* A counter to avoid desc dead loop chain */
 	uint32_t nr_desc = 1;
 	struct batch_copy_elem *batch_copy = vq->batch_copy_elems;
-	uint16_t copy_nb = vq->batch_copy_nb_elems;
 	int error = 0;
 
 	desc = &descs[desc_idx];
@@ -905,7 +904,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			mbuf_avail = cpy_len;
 		} else {
 			if (likely(cpy_len > MAX_BATCH_LEN ||
-				   copy_nb >= vq->size ||
+				   vq->batch_copy_nb_elems >= vq->size ||
 				   (hdr && cur == m) ||
 				   desc->len != desc_chunck_len)) {
 				rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *,
@@ -914,14 +913,15 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 								desc_offset)),
 					   cpy_len);
 			} else {
-				batch_copy[copy_nb].dst =
+				batch_copy[vq->batch_copy_nb_elems].dst =
 					rte_pktmbuf_mtod_offset(cur, void *,
 								mbuf_offset);
-				batch_copy[copy_nb].src =
+				batch_copy[vq->batch_copy_nb_elems].src =
 					(void *)((uintptr_t)(desc_addr +
 							     desc_offset));
-				batch_copy[copy_nb].len = cpy_len;
-				copy_nb++;
+				batch_copy[vq->batch_copy_nb_elems].len =
+					cpy_len;
+				vq->batch_copy_nb_elems++;
 			}
 		}
 
@@ -1015,7 +1015,6 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		vhost_dequeue_offload(hdr, m);
 
 out:
-	vq->batch_copy_nb_elems = copy_nb;
 
 	return error;
 }
