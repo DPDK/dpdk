@@ -625,6 +625,13 @@ Known Issues
 
   Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=53
 
+* **ixgbe PMD crash on hotplug detach when no VF created.**
+
+  ixgbe PMD uninit path cause null pointer dereference because of port representor
+  cleanup when number of VF is zero.
+
+  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=57
+
 * **Bonding PMD may fail to accept new slaves in certain conditions.**
 
   In certain conditions when using testpmd,
