@@ -2522,7 +2522,7 @@ i40e_dev_set_link_down(struct rte_eth_dev *dev)
 }
 
 static __rte_always_inline void
-update_link_no_wait(struct i40e_hw *hw, struct rte_eth_link *link)
+update_link_reg(struct i40e_hw *hw, struct rte_eth_link *link)
 {
 /* Link status registers and values*/
 #define I40E_PRTMAC_LINKSTA		0x001E2420
@@ -2576,8 +2576,8 @@ update_link_no_wait(struct i40e_hw *hw, struct rte_eth_link *link)
 }
 
 static __rte_always_inline void
-update_link_wait(struct i40e_hw *hw, struct rte_eth_link *link,
-	bool enable_lse)
+update_link_aq(struct i40e_hw *hw, struct rte_eth_link *link,
+	bool enable_lse, int wait_to_complete)
 {
 #define CHECK_INTERVAL             100  /* 100ms */
 #define MAX_REPEAT_TIME            10  /* 1s (10 * 100ms) in total */
@@ -2601,7 +2601,7 @@ update_link_wait(struct i40e_hw *hw, struct rte_eth_link *link,
 		}
 
 		link->link_status = link_status.link_info & I40E_AQ_LINK_UP;
-		if (unlikely(link->link_status != 0))
+		if (!wait_to_complete || link->link_status)
 			break;
 
 		rte_delay_ms(CHECK_INTERVAL);
@@ -2649,10 +2649,10 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 			ETH_LINK_SPEED_FIXED);
 
-	if (!wait_to_complete)
-		update_link_no_wait(hw, &link);
+	if (!wait_to_complete && !enable_lse)
+		update_link_reg(hw, &link);
 	else
-		update_link_wait(hw, &link, enable_lse);
+		update_link_aq(hw, &link, enable_lse, wait_to_complete);
 
 	ret = rte_eth_linkstatus_set(dev, &link);
 	i40e_notify_all_vfs_link_status(dev);
