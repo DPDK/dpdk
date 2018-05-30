@@ -137,6 +137,8 @@ mlx5_prepare_shared_data(void)
 			LIST_INIT(&mlx5_shared_data->mem_event_cb_list);
 			rte_rwlock_init(&mlx5_shared_data->mem_event_rwlock);
 		}
+		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
+						mlx5_mr_mem_event_cb, NULL);
 	}
 	rte_spinlock_unlock(&mlx5_shared_data_lock);
 }
@@ -1473,8 +1475,6 @@ rte_mlx5_pmd_init(void)
 	}
 	mlx5_glue->fork_init();
 	rte_pci_register(&mlx5_driver);
-	rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
-					mlx5_mr_mem_event_cb, NULL);
 }
 
 RTE_PMD_EXPORT_NAME(net_mlx5, __COUNTER__);
