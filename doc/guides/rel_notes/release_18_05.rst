@@ -45,7 +45,7 @@ New Features
 
   Memory subsystem has been reworked to support new functionality.
 
-  On Linux, support for reserving/unreserving hugepage memory at runtime was
+  On Linux, support for reserving/unreserving hugepage memory at runtime has been
   added, so applications no longer need to pre-reserve memory at startup. Due to
   reorganized internal workings of memory subsystem, any memory allocated
   through ``rte_malloc()`` or ``rte_memzone_reserve()`` is no longer guaranteed
@@ -53,64 +53,64 @@ New Features
 
   This functionality has introduced the following changes:
 
-  * ``rte_eal_get_physmem_layout()`` was removed
+  * ``rte_eal_get_physmem_layout()`` was removed.
   * A new flag for memzone reservation (``RTE_MEMZONE_IOVA_CONTIG``) was added
     to ensure reserved memory will be IOVA-contiguous, for use with device
-    drivers and other cases requiring such memory
-  * New callbacks for memory allocation/deallocation events, allowing user (or
+    drivers and other cases requiring such memory.
+  * New callbacks for memory allocation/deallocation events, allowing users (or
     drivers) to be notified of new memory being allocated or deallocated
-  * New callbacks for validating memory allocations above specified limit,
-    allowing user to permit or deny memory allocations
+  * New callbacks for validating memory allocations above a specified limit,
+    allowing user to permit or deny memory allocations.
   * A new command-line switch ``--legacy-mem`` to enable EAL behavior similar to
     how older versions of DPDK worked (memory segments that are IOVA-contiguous,
-    but hugepages are reserved at startup only, and can never be released)
+    but hugepages are reserved at startup only, and can never be released).
   * A new command-line switch ``--single-file-segments`` to put all memory
-    segments within a segment list in a single file
+    segments within a segment list in a single file.
   * A set of convenience function calls to look up and iterate over allocated
-    memory segments
+    memory segments.
   * ``-m`` and ``--socket-mem`` command-line arguments now carry an additional
     meaning and mark pre-reserved hugepages as "unfree-able", thereby acting as
     a mechanism guaranteeing minimum availability of hugepage memory to the
-    application
+    application.
 
   Reserving/unreserving memory at runtime is not currently supported on FreeBSD.
 
 * **Added bucket mempool driver.**
 
-  Added bucket mempool driver which provides a way to allocate contiguous
+  Added a bucket mempool driver which provides a way to allocate contiguous
   block of objects.
-  Number of objects in the block depends on how many objects fit in
-  RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB memory chunk which is build time option.
-  The number may be obtained using rte_mempool_ops_get_info() API.
-  Contiguous blocks may be allocated using rte_mempool_get_contig_blocks() API.
+  The number of objects in the block depends on how many objects fit in the
+  ``RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB`` memory chunk which is a build time option.
+  The number may be obtained using ``rte_mempool_ops_get_info()`` API.
+  Contiguous blocks may be allocated using ``rte_mempool_get_contig_blocks()`` API.
 
 * **Added support for port representors.**
 
-  The DPDK port representors (also known as "VF representors" in the specific
+  Added DPDK port representors (also known as "VF representors" in the specific
   context of VFs), which are to DPDK what the Ethernet switch device driver
   model (**switchdev**) is to Linux, and which can be thought as a software
   "patch panel" front-end for applications. DPDK port representors are
   implemented as additional virtual Ethernet device (**ethdev**) instances,
-  spawned on an as needed basis through configuration parameters passed to the
+  spawned on an as-needed basis through configuration parameters passed to the
   driver of the underlying device using devargs.
 
 * **Added support for VXLAN and NVGRE tunnel endpoint.**
 
   New actions types have been added to support encapsulation and decapsulation
   operations for a tunnel endpoint. The new action types are
-  RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_ENCAP, RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_DECAP,
-  RTE_FLOW_ACTION_TYPE_JUMP. New item type RTE_FLOW_ACTION_TYPE_MARK has been
-  added to match a flow against a previously marked flow. It also introduced shared
-  counter to flow API to counte for a group of flows.
+  ``RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_ENCAP``, ``RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_DECAP``,
+  ``RTE_FLOW_ACTION_TYPE_JUMP``. A new item type ``RTE_FLOW_ACTION_TYPE_MARK`` has been
+  added to match a flow against a previously marked flow. A shared counter has also been
+  introduced to the flow API to count a group of flows.
 
-* **Added PMD-recommended Tx and Rx parameters**
+* **Added PMD-recommended Tx and Rx parameters.**
 
   Applications can now query drivers for device-tuned values of
   ring sizes, burst sizes, and number of queues.
 
 * **Added RSS hash and key update to CXGBE PMD.**
 
-  Support to update RSS hash and key has been added to CXGBE PMD.
+  Added support for updating the RSS hash and key to the CXGBE PMD.
 
 * **Added CXGBE VF PMD.**
 
@@ -121,29 +121,29 @@ New Features
 
   Updated the mlx5 driver including the following changes:
 
-  * Introduced Multi-packet Rx. With it, achieved 100Gb/sec with 64B frames.
-  * Supported to be run by non-root users given reduced set of capabilities
-    CAP_NET_ADMIN, CAP_NET_RAW and CAP_IPC_LOCK.
-  * Supported TSO and checksum for generic UDP and IP tunnels.
-  * Supported inner checksum and RSS for GRE, VXLAN-GPE, MPLSoGRE
+  * Introduced Multi-packet Rx to enable 100Gb/sec with 64B frames.
+  * Support for being run by non-root users given a reduced set of capabilities
+    ``CAP_NET_ADMIN``, ``CAP_NET_RAW`` and ``CAP_IPC_LOCK``.
+  * Support for TSO and checksum for generic UDP and IP tunnels.
+  * Support for  inner checksum and RSS for GRE, VXLAN-GPE, MPLSoGRE
     and MPLSoUDP tunnels.
-  * Accommodate to the new memory hotplug model.
-  * Supported non virtually contiguous mempools.
-  * Supported MAC adding along with allmulti and promiscuous modes from VF.
-  * Supported Mellanox BlueField SoC device.
-  * Supported PMD defaults for queue number and depth to improve the out
+  * Accommodate the new memory hotplug model.
+  * Support for non virtually contiguous mempools.
+  * Support for MAC adding along with allmulti and promiscuous modes from VF.
+  * Support for Mellanox BlueField SoC device.
+  * Support for PMD defaults for queue number and depth to improve the out
     of the box performance.
 
 * **Updated mlx4 driver.**
 
   Updated the mlx4 driver including the following changes:
 
-  * Supported to be run by non-root users given reduced set of capabilities
-    CAP_NET_ADMIN, CAP_NET_RAW and CAP_IPC_LOCK.
+  * Support for to being run by non-root users given a reduced set of capabilities
+    ``CAP_NET_ADMIN``, ``CAP_NET_RAW`` and ``CAP_IPC_LOCK``.
   * Supported CRC strip toggling.
-  * Accommodate to the new memory hotplug model.
-  * Supported non virtually contiguous mempools.
-  * Dropped support in Mellanox OFED 4.2.
+  * Accommodate the new memory hotplug model.
+  * Support non virtually contiguous mempools.
+  * Dropped support for Mellanox OFED 4.2.
 
 * **Updated Solarflare network PMD.**
 
@@ -164,58 +164,61 @@ New Features
 * **Updated szedata2 PMD.**
 
   Added support for new NFB-200G2QL card.
-  New API was introduced in the libsze2 library which the szedata2 PMD depends
-  on thus the new version of the library was needed.
+  A new API was introduced in the libsze2 library which the szedata2 PMD depends
+  on, thus the new version of the library was needed.
   New versions of the packages are available and the minimum required version
   is 4.4.1.
 
-* **Added support for Broadcom NetXtreme-S (BCM58800) family of controllers (aka Stingray)**
+* **Added support for Broadcom NetXtreme-S (BCM58800) family of controllers (aka Stingray).**
 
-  The BCM58800 devices feature a NetXtreme E-Series advanced network controller, a high-performance
-  ARM CPU block, PCI Express (PCIe) Gen3 interfaces, key accelerators for compute offload and a high-
-  speed memory subsystem including L3 cache and DDR4 interfaces, all interconnected by a coherent
-  Network-on-chip (NOC) fabric.
+  Added support for the Broadcom NetXtreme-S (BCM58800) family of controllers
+  (aka Stingray). The BCM58800 devices feature a NetXtreme E-Series advanced
+  network controller, a high-performance ARM CPU block, PCI Express (PCIe)
+  Gen3 interfaces, key accelerators for compute offload and a high-speed
+  memory subsystem including L3 cache and DDR4 interfaces, all interconnected
+  by a coherent Network-on-chip (NOC) fabric.
 
-  The ARM CPU subsystem features eight ARMv8 Cortex-A72 CPUs at 3.0 GHz, arranged in a multi-cluster
-  configuration.
+  The ARM CPU subsystem features eight ARMv8 Cortex-A72 CPUs at 3.0 GHz,
+  arranged in a multi-cluster configuration.
 
 * **Added vDPA in vhost-user lib.**
 
-  Added support for selective datapath in vhost-user lib. vDPA stands for vhost
+  Added support for selective datapath in the vhost-user lib. vDPA stands for vhost
   Data Path Acceleration. It supports virtio ring compatible devices to serve
-  virtio driver directly to enable datapath acceleration.
+  the virtio driver directly to enable datapath acceleration.
 
 * **Added IFCVF vDPA driver.**
 
-  Added IFCVF vDPA driver to support Intel FPGA 100G VF device. IFCVF works
+  Added IFCVF vDPA driver to support Intel FPGA 100G VF devices. IFCVF works
   as a HW vhost data path accelerator, it supports live migration and is
-  compatible with virtio 0.95 and 1.0. This driver registers ifcvf vDPA driver
-  to vhost lib, when virtio connected, with the help of the registered vDPA
+  compatible with virtio 0.95 and 1.0. This driver registers the ifcvf vDPA driver
+  to vhost lib, when virtio connects. With the help of the registered vDPA
   driver the assigned VF gets configured to Rx/Tx directly to VM's virtio
   vrings.
 
 * **Added support for vhost dequeue interrupt mode.**
 
-  Added support for vhost dequeue interrupt mode to release cpus to others when
-  no data to transmit. Applications could register an epoll event fd to associate
-  Rx queues with interrupt vectors.
+  Added support for vhost dequeue interrupt mode to release CPUs to others
+  when there is no data to transmit. Applications can register an epoll event
+  file descriptor to associate Rx queues with interrupt vectors.
 
 * **Added support for virtio-user server mode.**
+
   In a container environment if the vhost-user backend restarts, there's no way
   for it to reconnect to virtio-user. To address this, support for server mode
-  is added. In this mode the socket file is created by virtio-user, which the
+  has been added. In this mode the socket file is created by virtio-user, which the
   backend connects to. This means that if the backend restarts, it can reconnect
   to virtio-user and continue communications.
 
 * **Added crypto workload support to vhost library.**
 
-  New APIs are introduced in vhost library to enable virtio crypto support
+  New APIs have been introduced in the vhost library to enable virtio crypto support
   including session creation/deletion handling and translating virtio-crypto
-  request into DPDK crypto operations. A sample application is also introduced.
+  requests into DPDK crypto operations. A sample application has also been introduced.
 
 * **Added virtio crypto PMD.**
 
-  Added a new poll mode driver for virtio crypto devices, which provides
+  Added a new Poll Mode Driver for virtio crypto devices, which provides
   AES-CBC ciphering and AES-CBC with HMAC-SHA1 algorithm-chaining. See the
   :doc:`../cryptodevs/virtio` crypto driver guide for more details on
   this new driver.
@@ -232,9 +235,9 @@ New Features
 
   * AES-CMAC (128-bit key).
 
-* **Added Compressdev Library, a generic compression service library.**
+* **Added the Compressdev Library, a generic compression service library.**
 
-  The compressdev library provides an API for offload of compression and
+  Added the Compressdev library which provides an API for offload of compression and
   decompression operations to hardware or software accelerator devices.
 
 * **Added a new compression poll mode driver using Intels ISA-L.**
@@ -253,36 +256,36 @@ New Features
 * **Added OcteonTx TIM Driver (Event timer adapter).**
 
   The OcteonTx Timer block enables software to schedule events for a future
-  time, it is exposed to an application via Event timer adapter library.
+  time, it is exposed to an application via the Event timer adapter library.
 
   See the :doc:`../eventdevs/octeontx` guide for more details
 
 * **Added Event Crypto Adapter Library.**
 
-    Added the Event Crypto Adapter Library.  This library extends the
-    event-based model by introducing APIs that allow applications to
-    enqueue/dequeue crypto operations to/from cryptodev as events scheduled
-    by an event device.
+  Added the Event Crypto Adapter Library.  This library extends the
+  event-based model by introducing APIs that allow applications to
+  enqueue/dequeue crypto operations to/from cryptodev as events scheduled
+  by an event device.
 
 * **Added Ifpga Bus, a generic Intel FPGA Bus library.**
 
-  The Ifpga Bus library provides support for integrating any Intel FPGA device with
-  the DPDK framework. It provides Intel FPGA Partial Bit Stream AFU (Accelerated
-  Function Unit) scan and drivers probe.
+  Added the Ifpga Bus library which provides support for integrating any Intel
+  FPGA device with the DPDK framework. It provides Intel FPGA Partial Bit
+  Stream AFU (Accelerated Function Unit) scan and drivers probe.
 
 * **Added IFPGA (Intel FPGA) Rawdev Driver.**
 
-  Added a new Rawdev driver called IFPGA(Intel FPGA) Rawdev Driver, which cooperates
-  with OPAE (Open Programmable Acceleration Engine) share code provides common FPGA
+  Added a new Rawdev driver called IFPGA (Intel FPGA) Rawdev Driver, which cooperates
+  with OPAE (Open Programmable Acceleration Engine) shared code to provide common FPGA
   management ops for FPGA operation.
 
   See the :doc:`../rawdevs/ifpga_rawdev` programmer's guide for more details.
 
 * **Added DPAA2 QDMA Driver (in rawdev).**
 
-  The DPAA2 QDMA is an implementation of the rawdev API, that provide means
-  to initiate a DMA transaction from CPU. The initiated DMA is performed
-  without CPU being involved in the actual DMA transaction.
+  The DPAA2 QDMA is an implementation of the rawdev API, that provide a means
+  of initiating a DMA transaction from CPU. The initiated DMA is performed
+  without the CPU being involved in the actual DMA transaction.
 
   See the :doc:`../rawdevs/dpaa2_qdma` guide for more details.
 
@@ -290,8 +293,8 @@ New Features
 
   The DPAA2 CMDIF is an implementation of the rawdev API, that provides
   communication between the GPP and NXP's QorIQ based AIOP Block (Firmware).
-  Advanced IO Processor i.e. AIOP is clusters of programmable RISC engines
-  optimised for flexible networking and I/O operations. The communication
+  Advanced IO Processor i.e. AIOP are clusters of programmable RISC engines
+  optimized for flexible networking and I/O operations. The communication
   between GPP and AIOP is achieved via using DPCI devices exposed by MC for
   GPP <--> AIOP interaction.
 
@@ -299,26 +302,27 @@ New Features
 
 * **Added device event monitor framework.**
 
-  Added a general device event monitor framework at EAL, for device dynamic management.
-  Such as device hotplug awareness and actions adopted accordingly. The list of new APIs:
+  Added a general device event monitor framework to EAL, for device dynamic
+  management to facilitate device hotplug awareness and associated
+  actions. The list of new APIs is:
 
-  * ``rte_dev_event_monitor_start`` and ``rte_dev_event_monitor_stop`` are for
-    the event monitor enable and disable.
+  * ``rte_dev_event_monitor_start`` and ``rte_dev_event_monitor_stop`` for
+    the event monitor enabling and disabling.
   * ``rte_dev_event_callback_register`` and ``rte_dev_event_callback_unregister``
-    are for the user's callbacks register and unregister.
+    for registering and un-registering user callbacks.
 
-  Linux uevent is supported as backend of this device event notification framework.
+  Linux uevent is supported as a backend of this device event notification framework.
 
 * **Added support for procinfo and pdump on eth vdev.**
 
-  For ethernet virtual devices (like tap, pcap, etc), with this feature, we can get
-  stats/xstats on shared memory from secondary process, and also pdump packets on
+  For ethernet virtual devices (like TAP, PCAP, etc.), with this feature, we can get
+  stats/xstats on shared memory from a secondary process, and also pdump packets on
   those virtual devices.
 
-* **Advancement to Packet Framework Library.**
+* **Enhancements to the Packet Framework Library.**
 
   Design and development of new API functions for Packet Framework library that
-  implements common set of actions such as traffic metering, packet
+  implement a common set of actions such as traffic metering, packet
   encapsulation, network address translation, TTL update, etc., for pipeline
   table and input ports to speed up application development. The API functions
   includes creating action profiles, registering actions to the profiles,
@@ -327,10 +331,10 @@ New Features
 * **Added the BPF Library.**
 
   The BPF Library provides the ability to load and execute
-  Enhanced Berkeley Packet Filter (eBPF) within user-space dpdk application.
-  Also it introduces basic framework to load/unload BPF-based filters
-  on eth devices (right now only via SW RX/TX callbacks).
-  It also adds dependency on libelf.
+  Enhanced Berkeley Packet Filters (eBPF) within user-space DPDK applications.
+  It also introduces a basic framework to load/unload BPF-based filters
+  on Eth devices (right now only via SW RX/TX callbacks).
+  It also adds a dependency on libelf.
 
 
 API Changes
@@ -346,28 +350,28 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* service cores: no longer marked as experimental.
+* service cores: No longer marked as experimental.
 
   The service cores functions are no longer marked as experimental, and have
   become part of the normal DPDK API and ABI. Any future ABI changes will be
   announced at least one release before the ABI change is made. There are no
   ABI breaking changes planned.
 
-* eal: ``rte_lcore_has_role()`` return value changed.
+* eal: The ``rte_lcore_has_role()`` return value changed.
 
   This function now returns true or false, respectively,
-  rather than 0 or <0 for success or failure.
+  rather than 0 or < 0 for success or failure.
   It makes use of the function more intuitive.
 
-* mempool: capability flags and related functions have been removed.
+* mempool: The capability flags and related functions have been removed.
 
   Flags ``MEMPOOL_F_CAPA_PHYS_CONTIG`` and
   ``MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS`` were used by octeontx mempool
-  driver to customize generic mempool library behaviour.
+  driver to customize generic mempool library behavior.
   Now the new driver callbacks ``calc_mem_size`` and ``populate`` may be
   used to achieve it without specific knowledge in the generic code.
 
-* mempool: xmem functions have been deprecated:
+* mempool: The following xmem functions have been deprecated:
 
   - ``rte_mempool_xmem_create``
   - ``rte_mempool_xmem_size``
@@ -387,59 +391,59 @@ API Changes
 
   The packet mbuf API should be used as a replacement.
 
-* meter: updated to accommodate configuration profiles.
+* meter: API updated to accommodate configuration profiles.
 
-  The meter API is changed to support meter configuration profiles. The
+  The meter API has been changed to support meter configuration profiles. The
   configuration profile represents the set of configuration parameters
   for a given meter object, such as the rates and sizes for the token
-  buckets. These configuration parameters were previously the part of meter
-  object internal data strcuture. The separation of the configuration
-  parameters from meter object data structure results in reducing its
-  memory footprint which helps in better cache utilization when large number
+  buckets. These configuration parameters were previously part of the meter
+  object internal data structure. The separation of the configuration
+  parameters from the meter object data structure results in reducing its
+  memory footprint which helps in better cache utilization when a large number
   of meter objects are used.
 
-* ethdev: The function ``rte_eth_dev_count``, often mis-used to iterate
-  over ports, is deprecated and replaced by ``rte_eth_dev_count_avail``.
-  There is also a new function ``rte_eth_dev_count_total`` to get the
+* ethdev: The function ``rte_eth_dev_count()``, often mis-used to iterate
+  over ports, is deprecated and replaced by ``rte_eth_dev_count_avail()``.
+  There is also a new function ``rte_eth_dev_count_total()`` to get the
   total number of allocated ports, available or not.
   The hotplug-proof applications should use ``RTE_ETH_FOREACH_DEV`` or
   ``RTE_ETH_FOREACH_DEV_OWNED_BY`` as port iterators.
 
-* ethdev, in struct ``struct rte_eth_dev_info``, field ``rte_pci_device *pci_dev``
-  replaced with field ``struct rte_device *device``.
+* ethdev: In struct ``struct rte_eth_dev_info``, field ``rte_pci_device *pci_dev``
+  has been replaced with field ``struct rte_device *device``.
 
-* **Changes to semantics of rte_eth_dev_configure() parameters.**
+* ethdev: Changes to the semantics of ``rte_eth_dev_configure()`` parameters.
 
-   If both the ``nb_rx_q`` and ``nb_tx_q`` parameters are zero,
-   ``rte_eth_dev_configure`` will now use PMD-recommended queue sizes, or if
-   recommendations are not provided by the PMD the function will use ethdev
-   fall-back values. Previously setting both of the parameters to zero would
-   have resulted in ``-EINVAL`` being returned.
+  If both the ``nb_rx_q`` and ``nb_tx_q`` parameters are zero,
+  ``rte_eth_dev_configure()`` will now use PMD-recommended queue sizes, or if
+  recommendations are not provided by the PMD the function will use ethdev
+  fall-back values. Previously setting both of the parameters to zero would
+  have resulted in ``-EINVAL`` being returned.
 
-* **Changes to semantics of rte_eth_rx_queue_setup() parameters.**
+* ethdev: Changes to the semantics of ``rte_eth_rx_queue_setup()`` parameters.
 
-   If the ``nb_rx_desc`` parameter is zero, ``rte_eth_rx_queue_setup`` will
-   now use the PMD-recommended Rx ring size, or in the case where the PMD
-   does not provide a recommendation, will use an ethdev-provided
-   fall-back value. Previously, setting ``nb_rx_desc`` to zero would have
-   resulted in an error.
+  If the ``nb_rx_desc`` parameter is zero, ``rte_eth_rx_queue_setup`` will
+  now use the PMD-recommended Rx ring size, or in the case where the PMD
+  does not provide a recommendation, will use an ethdev-provided
+  fall-back value. Previously, setting ``nb_rx_desc`` to zero would have
+  resulted in an error.
 
-* **Changes to semantics of rte_eth_tx_queue_setup() parameters.**
+* ethdev: Changes to the semantics of ``rte_eth_tx_queue_setup()`` parameters.
 
    If the ``nb_tx_desc`` parameter is zero, ``rte_eth_tx_queue_setup`` will
    now use the PMD-recommended Tx ring size, or in the case where the PMD
-   does not provide a recoomendation, will use an ethdev-provided
+   does not provide a recommendation, will use an ethdev-provided
    fall-back value. Previously, setting ``nb_tx_desc`` to zero would have
    resulted in an error.
 
-* ethdev: several changes were made to the flow API.
+* ethdev: Several changes were made to the flow API.
 
-  * Unused DUP action was removed.
+  * The unused DUP action was removed.
   * Actions semantics in flow rules: list order now matters ("first
     to last" instead of "all simultaneously"), repeated actions are now
     all performed, and they do not individually have (non-)terminating
     properties anymore.
-  * Flow rules are now always terminating unless a PASSTHRU action is
+  * Flow rules are now always terminating unless a ``PASSTHRU`` action is
     present.
   * C99-style flexible arrays were replaced with standard pointers in RSS
     action and in RAW pattern item structures due to compatibility issues.
@@ -458,7 +462,7 @@ API Changes
   * A new transfer attribute was added to ``struct rte_flow_attr`` in order
     to clarify the behavior of some pattern items.
   * PF and VF pattern items are now only accepted by PMDs that implement
-    them (bnxt and i40e) when the transfer attribute is also present for
+    them (bnxt and i40e) when the transfer attribute is also present, for
     consistency.
   * Pattern item PORT was renamed PHY_PORT to avoid confusion with DPDK port
     IDs.
@@ -466,33 +470,34 @@ API Changes
     redirect matching traffic to a specific physical port.
   * PORT_ID pattern item and actions were added to match and target DPDK
     port IDs at a higher level than PHY_PORT.
-  * RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_ENCAP action items were added to support
+  * ``RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_ENCAP`` action items were added to support
     tunnel encapsulation operation for VXLAN and NVGRE type tunnel endpoint.
-  * RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_DECAP action items were added to support
+  * ``RTE_FLOW_ACTION_TYPE_[VXLAN/NVGRE]_DECAP`` action items were added to support
     tunnel decapsulation operation for VXLAN and NVGRE type tunnel endpoint.
-  * RTE_FLOW_ACTION_TYPE_JUMP action item was added to support a matched flow
+  * ``RTE_FLOW_ACTION_TYPE_JUMP`` action item was added to support a matched flow
     to be redirected to the specific group.
-  * RTE_FLOW_ACTION_TYPE_MARK item type has been added to match a flow against
+  * ``RTE_FLOW_ACTION_TYPE_MARK`` item type has been added to match a flow against
     a previously marked flow.
 
-* ethdev: change flow APIs regarding count action:
+* ethdev: Change flow APIs regarding count action:
+
   * ``rte_flow_create()`` API count action now requires the ``struct rte_flow_action_count``.
   * ``rte_flow_query()`` API parameter changed from action type to action structure.
 
-* ethdev: changes to offload API
+* ethdev: Changes to offload API
 
    A pure per-port offloading isn't requested to be repeated in [rt]x_conf->offloads to
    ``rte_eth_[rt]x_queue_setup()``. Now any offloading enabled in ``rte_eth_dev_configure()``
    can't be disabled by ``rte_eth_[rt]x_queue_setup()``. Any new added offloading which has
    not been enabled in ``rte_eth_dev_configure()`` and is requested to be enabled in
-   ``rte_eth_[rt]x_queue_setup()`` must be per-queue type, otherwise trigger an error log.
+   ``rte_eth_[rt]x_queue_setup()`` must be per-queue type, or otherwise trigger an error log.
 
-* ethdev: runtime queue setup:
+* ethdev: Runtime queue setup
 
   ``rte_eth_rx_queue_setup`` and ``rte_eth_tx_queue_setup`` can be called after
-  ``rte_eth_dev_start`` if device support runtime queue setup. Device driver can
-  expose this capability through ``rte_eth_dev_info_get``. A Rx or Tx queue be
-  setup at runtime need to be started explicitly by ``rte_eth_dev_rx_queue_start``
+  ``rte_eth_dev_start`` if the device supports runtime queue setup. The device driver can
+  expose this capability through ``rte_eth_dev_info_get``. A Rx or Tx queue
+  set up at runtime need to be started explicitly by ``rte_eth_dev_rx_queue_start``
   or ``rte_eth_dev_tx_queue_start``.
 
 
@@ -509,25 +514,25 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* ring: the alignment constraints on the ring structure has been relaxed
+* ring: The alignment constraints on the ring structure has been relaxed
   to one cache line instead of two, and an empty cache line padding is
   added between the producer and consumer structures. The size of the
   structure and the offset of the fields remains the same on platforms
-  with 64B cache line, but change on other platforms.
+  with 64B cache line, but changes on other platforms.
 
-* mempool: ops have changed.
+* mempool: Some ops have changed.
 
   A new callback ``calc_mem_size`` has been added to ``rte_mempool_ops``
-  to allow to customize required memory size calculation.
+  to allow customization of the required memory size calculation.
   A new callback ``populate`` has been added to ``rte_mempool_ops``
-  to allow to customize objects population.
+  to allow customized object population.
   Callback ``get_capabilities`` has been removed from ``rte_mempool_ops``
   since its features are covered by ``calc_mem_size`` and ``populate``
   callbacks.
   Callback ``register_memory_area`` has been removed from ``rte_mempool_ops``
   since the new callback ``populate`` may be used instead of it.
 
-* **Additional fields in rte_eth_dev_info.**
+* ethdev: Additional fields in rte_eth_dev_info.
 
   The ``rte_eth_dev_info`` structure has had two extra entries appended to the
   end of it: ``default_rxportconf`` and ``default_txportconf``. Each of these
@@ -548,30 +553,17 @@ ABI Changes
   sanity fix in the VLAN pattern item (``struct rte_flow_item_vlan``) and
   new transfer attribute (``struct rte_flow_attr``).
 
-**New parameter added to rte_bbdev_op_cap_turbo_dec.**
+* bbdev: New parameter added to rte_bbdev_op_cap_turbo_dec.
 
   A new parameter ``max_llr_modulus`` has been added to
   ``rte_bbdev_op_cap_turbo_dec`` structure to specify maximal LLR (likelihood
   ratio) absolute value.
 
-* **BBdev Queue Groups split into UL/DL Groups**
+* bbdev: Queue Groups split into UL/DL Groups.
 
-  Queue Groups have been split into UL/DL Groups in Turbo Software Driver.
+  Queue Groups have been split into UL/DL Groups in the Turbo Software Driver.
   They are independent for Decode/Encode. ``rte_bbdev_driver_info`` reflects
   introduced changes.
-
-
-Removed Items
--------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item in the past
-     tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 
 Known Issues
@@ -591,7 +583,7 @@ Known Issues
 * **Secondary process launch is not reliable.**
 
   Recent memory hotplug patches have made multiprocess startup less reliable
-  than it was in the past. A number of workarounds are known to work depending
+  than it was in past releases. A number of workarounds are known to work depending
   on the circumstances. As such it isn't recommended to use the secondary
   process mechanism for critical systems. The underlying issues will be
   addressed in upcoming releases.
@@ -603,25 +595,26 @@ Known Issues
 
 * **pdump is not compatible with old applications.**
 
-  As we changed to use generic multi-process communication for pdump negotiation
-  instead of previous dedicated unix socket way, pdump applications, including
-  dpdk-pdump example and any other applications using librte_pdump, cannot work
-  with older version DPDK primary applications.
+  As we changed to use generic multi-process communication for pdump
+  negotiation instead of previous dedicated unix socket way, pdump
+  applications, including the dpdk-pdump example and any other applications
+  using ``librte_pdump``, will not work with older version DPDK primary
+  applications.
 
 * **rte_abort takes a long time on FreeBSD.**
 
-  DPDK processes now allocates a large area of virtual memory address space,
-  with this change during rte_abort FreeBSD now dumps the contents of the
+  DPDK processes now allocates a large area of virtual memory address space.
+  As a result ``rte_abort`` on FreeBSD now dumps the contents of the
   whole reserved memory range, not just the used portion, to a core dump file.
-  Write this large core file can take a significant amount of time, causing
-  processes to appear hung on the system.
+  Writing this large core file can take a significant amount of time, causing
+  processes to appear to hang on the system.
 
   The work around for the issue is to set the system resource limits for core
-  dumps before running any tests e.g."limit coredumpsize 0". This will
+  dumps before running any tests, e.g. ``limit coredumpsize 0``. This will
   effectively disable core dumps on FreeBSD. If they are not to be completely
   disabled, a suitable limit, e.g. 1G might be specified instead of 0. This
   needs to be run per-shell session, or before every test run. This change
-  can also be made persistent by adding "kern.coredump=0" to /etc/sysctl.conf
+  can also be made persistent by adding ``kern.coredump=0`` to ``/etc/sysctl.conf``.
 
   Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=53
 
@@ -632,7 +625,7 @@ Known Issues
 
   Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=57
 
-* **Bonding PMD may fail to accept new slaves in certain conditions.**
+* **Bonding PMD may fail to accept new slave ports in certain conditions.**
 
   In certain conditions when using testpmd,
   bonding may fail to register new slave ports.
