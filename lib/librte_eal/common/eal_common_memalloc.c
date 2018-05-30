@@ -243,7 +243,7 @@ eal_memalloc_mem_event_notify(enum rte_mem_event event, const void *start,
 	rte_rwlock_read_lock(&mem_event_rwlock);
 
 	TAILQ_FOREACH(entry, &mem_event_callback_list, next) {
-		RTE_LOG(DEBUG, EAL, "Calling mem event callback '%s:%p'",
+		RTE_LOG(DEBUG, EAL, "Calling mem event callback '%s:%p'\n",
 			entry->name, entry->arg);
 		entry->clb(event, start, len, entry->arg);
 	}
