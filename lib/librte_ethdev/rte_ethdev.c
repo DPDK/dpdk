@@ -1171,7 +1171,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				local_conf.rxmode.offloads,
 				dev_info.rx_offload_capa,
 				__func__);
-		/* Will return -EINVAL in the next release */
+		return -EINVAL;
 	}
 	if ((local_conf.txmode.offloads & dev_info.tx_offload_capa) !=
 	     local_conf.txmode.offloads) {
@@ -1182,7 +1182,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				local_conf.txmode.offloads,
 				dev_info.tx_offload_capa,
 				__func__);
-		/* Will return -EINVAL in the next release */
+		return -EINVAL;
 	}
 
 	/* Check that device supports requested rss hash functions. */
@@ -1580,7 +1580,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 				local_conf.offloads,
 				dev_info.rx_queue_offload_capa,
 				__func__);
-		/* Will return -EINVAL in the next release */
+		return -EINVAL;
 	}
 
 	ret = (*dev->dev_ops->rx_queue_setup)(dev, rx_queue_id, nb_rx_desc,
@@ -1745,7 +1745,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 				local_conf.offloads,
 				dev_info.tx_queue_offload_capa,
 				__func__);
-		/* Will return -EINVAL in the next release */
+		return -EINVAL;
 	}
 
 	return eth_err(port_id, (*dev->dev_ops->tx_queue_setup)(dev,
