@@ -84,22 +84,29 @@ main(int argc, char **argv)
 	int ret;
 
 	ret = rte_eal_init(argc, argv);
-	if (ret < 0)
-		return -1;
+	if (ret < 0) {
+		ret = -1;
+		goto out;
+	}
 
 #ifdef RTE_LIBRTE_TIMER
 	rte_timer_subsystem_init();
 #endif
 
-	if (commands_init() < 0)
-		return -1;
+	if (commands_init() < 0) {
+		ret = -1;
+		goto out;
+	}
 
 	argv += ret;
 
 	prgname = argv[0];
 
-	if ((recursive_call = getenv(RECURSIVE_ENV_VAR)) != NULL)
-		return do_recursive_call();
+	recursive_call = getenv(RECURSIVE_ENV_VAR);
+	if (recursive_call != NULL) {
+		ret = do_recursive_call();
+		goto out;
+	}
 
 #ifdef RTE_LIBEAL_USE_HPET
 	if (rte_eal_hpet_init(1) < 0)
@@ -111,7 +118,8 @@ main(int argc, char **argv)
 #ifdef RTE_LIBRTE_CMDLINE
 	cl = cmdline_stdin_new(main_ctx, "RTE>>");
 	if (cl == NULL) {
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	char *dpdk_test = getenv("DPDK_TEST");
@@ -120,18 +128,23 @@ main(int argc, char **argv)
 		snprintf(buf, sizeof(buf), "%s\n", dpdk_test);
 		if (cmdline_in(cl, buf, strlen(buf)) < 0) {
 			printf("error on cmdline input\n");
-			return -1;
+			ret = -1;
+			goto out;
 		}
 
 		cmdline_stdin_exit(cl);
-		return last_test_result;
+		ret = last_test_result;
+		goto out;
 	}
 	/* if no DPDK_TEST env variable, go interactive */
 	cmdline_interact(cl);
 	cmdline_stdin_exit(cl);
 #endif
+	ret = 0;
 
-	return 0;
+out:
+	rte_eal_cleanup();
+	return ret;
 }
 
 
