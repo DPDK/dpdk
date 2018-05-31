@@ -386,16 +386,18 @@ malloc_elem_join_adjacent_free(struct malloc_elem *elem)
 	if (elem->next != NULL && elem->next->state == ELEM_FREE &&
 			next_elem_is_adjacent(elem)) {
 		void *erase;
+		size_t erase_len;
 
 		/* we will want to erase the trailer and header */
 		erase = RTE_PTR_SUB(elem->next, MALLOC_ELEM_TRAILER_LEN);
+		erase_len = MALLOC_ELEM_OVERHEAD + elem->next->pad;
 
 		/* remove from free list, join to this one */
 		malloc_elem_free_list_remove(elem->next);
 		join_elem(elem, elem->next);
 
-		/* erase header and trailer */
-		memset(erase, 0, MALLOC_ELEM_OVERHEAD);
+		/* erase header, trailer and pad */
+		memset(erase, 0, erase_len);
 	}
 
 	/*
@@ -406,9 +408,11 @@ malloc_elem_join_adjacent_free(struct malloc_elem *elem)
 			prev_elem_is_adjacent(elem)) {
 		struct malloc_elem *new_elem;
 		void *erase;
+		size_t erase_len;
 
 		/* we will want to erase trailer and header */
 		erase = RTE_PTR_SUB(elem, MALLOC_ELEM_TRAILER_LEN);
+		erase_len = MALLOC_ELEM_OVERHEAD + elem->pad;
 
 		/* remove from free list, join to this one */
 		malloc_elem_free_list_remove(elem->prev);
@@ -416,8 +420,8 @@ malloc_elem_join_adjacent_free(struct malloc_elem *elem)
 		new_elem = elem->prev;
 		join_elem(new_elem, elem);
 
-		/* erase header and trailer */
-		memset(erase, 0, MALLOC_ELEM_OVERHEAD);
+		/* erase header, trailer and pad */
+		memset(erase, 0, erase_len);
 
 		elem = new_elem;
 	}
@@ -436,8 +440,8 @@ malloc_elem_free(struct malloc_elem *elem)
 	void *ptr;
 	size_t data_len;
 
-	ptr = RTE_PTR_ADD(elem, sizeof(*elem));
-	data_len = elem->size - MALLOC_ELEM_OVERHEAD;
+	ptr = RTE_PTR_ADD(elem, MALLOC_ELEM_HEADER_LEN + elem->pad);
+	data_len = elem->size - elem->pad - MALLOC_ELEM_OVERHEAD;
 
 	elem = malloc_elem_join_adjacent_free(elem);
 
