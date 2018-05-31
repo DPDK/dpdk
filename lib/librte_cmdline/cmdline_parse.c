@@ -208,9 +208,6 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 	int err = CMDLINE_PARSE_NOMATCH;
 	int tok;
 	cmdline_parse_ctx_t *ctx;
-#ifdef RTE_LIBRTE_CMDLINE_DEBUG
-	char debug_buf[BUFSIZ];
-#endif
 	char *result_buf = result.buf;
 
 	if (!cl || !buf)
@@ -250,10 +247,8 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 		return linelen;
 	}
 
-#ifdef RTE_LIBRTE_CMDLINE_DEBUG
-	strlcpy(debug_buf, buf, (linelen > 64 ? 64 : linelen));
-	debug_printf("Parse line : len=%d, <%s>\n", linelen, debug_buf);
-#endif
+	debug_printf("Parse line : len=%d, <%.*s>\n",
+		     linelen, linelen > 64 ? 64 : linelen, buf);
 
 	/* parse it !! */
 	inst = ctx[inst_num];
