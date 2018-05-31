@@ -194,6 +194,8 @@ enum index {
 	ACTION_QUEUE_INDEX,
 	ACTION_DROP,
 	ACTION_COUNT,
+	ACTION_COUNT_SHARED,
+	ACTION_COUNT_ID,
 	ACTION_RSS,
 	ACTION_RSS_FUNC,
 	ACTION_RSS_LEVEL,
@@ -784,6 +786,13 @@ static const enum index action_mark[] = {
 
 static const enum index action_queue[] = {
 	ACTION_QUEUE_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_count[] = {
+	ACTION_COUNT_ID,
+	ACTION_COUNT_SHARED,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -2022,9 +2031,25 @@ static const struct token token_list[] = {
 	[ACTION_COUNT] = {
 		.name = "count",
 		.help = "enable counters for this rule",
-		.priv = PRIV_ACTION(COUNT, 0),
-		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.priv = PRIV_ACTION(COUNT,
+				    sizeof(struct rte_flow_action_count)),
+		.next = NEXT(action_count),
 		.call = parse_vc,
+	},
+	[ACTION_COUNT_ID] = {
+		.name = "identifier",
+		.help = "counter identifier to use",
+		.next = NEXT(action_count, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_count, id)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_COUNT_SHARED] = {
+		.name = "shared",
+		.help = "shared counter",
+		.next = NEXT(action_count, NEXT_ENTRY(BOOLEAN)),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_action_count,
+					   shared, 1)),
+		.call = parse_vc_conf,
 	},
 	[ACTION_RSS] = {
 		.name = "rss",
