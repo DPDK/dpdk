@@ -1044,9 +1044,26 @@ rte_eal_init(int argc, char **argv)
 	return fctret;
 }
 
+static int
+mark_freeable(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
+		void *arg __rte_unused)
+{
+	/* ms is const, so find this memseg */
+	struct rte_memseg *found = rte_mem_virt2memseg(ms->addr, msl);
+
+	found->flags &= ~RTE_MEMSEG_FLAG_DO_NOT_FREE;
+
+	return 0;
+}
+
 int __rte_experimental
 rte_eal_cleanup(void)
 {
+	/* if we're in a primary process, we need to mark hugepages as freeable
+	 * so that finalization can release them back to the system.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_memseg_walk(mark_freeable, NULL);
 	rte_service_finalize();
 	return 0;
 }
