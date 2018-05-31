@@ -18,9 +18,88 @@
 #include <rte_common.h>
 #include <rte_spinlock.h>
 
+#include "eal_internal_cfg.h"
 #include "eal_memalloc.h"
 #include "malloc_elem.h"
 #include "malloc_heap.h"
+
+size_t
+malloc_elem_find_max_iova_contig(struct malloc_elem *elem, size_t align)
+{
+	void *cur_page, *contig_seg_start, *page_end, *cur_seg_end;
+	void *data_start, *data_end;
+	rte_iova_t expected_iova;
+	struct rte_memseg *ms;
+	size_t page_sz, cur, max;
+
+	page_sz = (size_t)elem->msl->page_sz;
+	data_start = RTE_PTR_ADD(elem, MALLOC_ELEM_HEADER_LEN);
+	data_end = RTE_PTR_ADD(elem, elem->size - MALLOC_ELEM_TRAILER_LEN);
+	/* segment must start after header and with specified alignment */
+	contig_seg_start = RTE_PTR_ALIGN_CEIL(data_start, align);
+
+	/* if we're in IOVA as VA mode, or if we're in legacy mode with
+	 * hugepages, all elements are IOVA-contiguous.
+	 */
+	if (rte_eal_iova_mode() == RTE_IOVA_VA ||
+			(internal_config.legacy_mem && rte_eal_has_hugepages()))
+		return RTE_PTR_DIFF(data_end, contig_seg_start);
+
+	cur_page = RTE_PTR_ALIGN_FLOOR(contig_seg_start, page_sz);
+	ms = rte_mem_virt2memseg(cur_page, elem->msl);
+
+	/* do first iteration outside the loop */
+	page_end = RTE_PTR_ADD(cur_page, page_sz);
+	cur_seg_end = RTE_MIN(page_end, data_end);
+	cur = RTE_PTR_DIFF(cur_seg_end, contig_seg_start) -
+			MALLOC_ELEM_TRAILER_LEN;
+	max = cur;
+	expected_iova = ms->iova + page_sz;
+	/* memsegs are contiguous in memory */
+	ms++;
+
+	cur_page = RTE_PTR_ADD(cur_page, page_sz);
+
+	while (cur_page < data_end) {
+		page_end = RTE_PTR_ADD(cur_page, page_sz);
+		cur_seg_end = RTE_MIN(page_end, data_end);
+
+		/* reset start of contiguous segment if unexpected iova */
+		if (ms->iova != expected_iova) {
+			/* next contiguous segment must start at specified
+			 * alignment.
+			 */
+			contig_seg_start = RTE_PTR_ALIGN(cur_page, align);
+			/* new segment start may be on a different page, so find
+			 * the page and skip to next iteration to make sure
+			 * we're not blowing past data end.
+			 */
+			ms = rte_mem_virt2memseg(contig_seg_start, elem->msl);
+			cur_page = ms->addr;
+			/* don't trigger another recalculation */
+			expected_iova = ms->iova;
+			continue;
+		}
+		/* cur_seg_end ends on a page boundary or on data end. if we're
+		 * looking at data end, then malloc trailer is already included
+		 * in the calculations. if we're looking at page end, then we
+		 * know there's more data past this page and thus there's space
+		 * for malloc element trailer, so don't count it here.
+		 */
+		cur = RTE_PTR_DIFF(cur_seg_end, contig_seg_start);
+		/* update max if cur value is bigger */
+		if (cur > max)
+			max = cur;
+
+		/* move to next page */
+		cur_page = page_end;
+		expected_iova = ms->iova + page_sz;
+		/* memsegs are contiguous in memory */
+		ms++;
+	}
+
+	return max;
+}
 
 /*
  * Initialize a general malloc_elem header structure

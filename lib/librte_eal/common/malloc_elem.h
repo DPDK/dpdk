@@ -179,4 +179,10 @@ malloc_elem_free_list_index(size_t size);
 void
 malloc_elem_free_list_insert(struct malloc_elem *elem);
 
+/*
+ * Find biggest IOVA-contiguous zone within an element with specified alignment.
+ */
+size_t
+malloc_elem_find_max_iova_contig(struct malloc_elem *elem, size_t align);
+
 #endif /* MALLOC_ELEM_H_ */
