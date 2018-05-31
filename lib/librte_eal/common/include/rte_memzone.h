@@ -81,8 +81,12 @@ struct rte_memzone {
  *   memzones from memory that is already available. It will not trigger any
  *   new allocations.
  *
- * @note Reserving IOVA-contiguous memzones with len set to 0 is not currently
- *   supported.
+ * @note: When reserving memzones with len set to 0, it is preferable to also
+ *   set a valid socket_id. Setting socket_id to SOCKET_ID_ANY is supported, but
+ *   will likely not yield expected results. Specifically, the resulting memzone
+ *   may not necessarily be the biggest memzone available, but rather biggest
+ *   memzone available on socket id corresponding to an lcore from which
+ *   reservation was called.
  *
  * @param name
  *   The name of the memzone. If it already exists, the function will
@@ -141,8 +145,12 @@ const struct rte_memzone *rte_memzone_reserve(const char *name,
  *   memzones from memory that is already available. It will not trigger any
  *   new allocations.
  *
- * @note Reserving IOVA-contiguous memzones with len set to 0 is not currently
- *   supported.
+ * @note: When reserving memzones with len set to 0, it is preferable to also
+ *   set a valid socket_id. Setting socket_id to SOCKET_ID_ANY is supported, but
+ *   will likely not yield expected results. Specifically, the resulting memzone
+ *   may not necessarily be the biggest memzone available, but rather biggest
+ *   memzone available on socket id corresponding to an lcore from which
+ *   reservation was called.
  *
  * @param name
  *   The name of the memzone. If it already exists, the function will
@@ -206,8 +214,12 @@ const struct rte_memzone *rte_memzone_reserve_aligned(const char *name,
  *   memzones from memory that is already available. It will not trigger any
  *   new allocations.
  *
- * @note Reserving IOVA-contiguous memzones with len set to 0 is not currently
- *   supported.
+ * @note: When reserving memzones with len set to 0, it is preferable to also
+ *   set a valid socket_id. Setting socket_id to SOCKET_ID_ANY is supported, but
+ *   will likely not yield expected results. Specifically, the resulting memzone
+ *   may not necessarily be the biggest memzone available, but rather biggest
+ *   memzone available on socket id corresponding to an lcore from which
+ *   reservation was called.
  *
  * @param name
  *   The name of the memzone. If it already exists, the function will

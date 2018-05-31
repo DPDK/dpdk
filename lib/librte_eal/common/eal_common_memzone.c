@@ -52,38 +52,6 @@ memzone_lookup_thread_unsafe(const char *name)
 	return NULL;
 }
 
-
-/* This function will return the greatest free block if a heap has been
- * specified. If no heap has been specified, it will return the heap and
- * length of the greatest free block available in all heaps */
-static size_t
-find_heap_max_free_elem(int *s, unsigned align)
-{
-	struct rte_mem_config *mcfg;
-	struct rte_malloc_socket_stats stats;
-	int i, socket = *s;
-	size_t len = 0;
-
-	/* get pointer to global configuration */
-	mcfg = rte_eal_get_configuration()->mem_config;
-
-	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
-		if ((socket != SOCKET_ID_ANY) && (socket != i))
-			continue;
-
-		malloc_heap_get_stats(&mcfg->malloc_heaps[i], &stats);
-		if (stats.greatest_free_size > len) {
-			len = stats.greatest_free_size;
-			*s = i;
-		}
-	}
-
-	if (len < MALLOC_ELEM_OVERHEAD + align)
-		return 0;
-
-	return len - MALLOC_ELEM_OVERHEAD - align;
-}
-
 static const struct rte_memzone *
 memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		int socket_id, unsigned int flags, unsigned int align,
@@ -92,6 +60,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	struct rte_memzone *mz;
 	struct rte_mem_config *mcfg;
 	struct rte_fbarray *arr;
+	void *mz_addr;
 	size_t requested_len;
 	int mz_idx;
 	bool contig;
@@ -140,8 +109,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		return NULL;
 	}
 
-	len += RTE_CACHE_LINE_MASK;
-	len &= ~((size_t) RTE_CACHE_LINE_MASK);
+	len = RTE_ALIGN_CEIL(len, RTE_CACHE_LINE_SIZE);
 
 	/* save minimal requested  length */
 	requested_len = RTE_MAX((size_t)RTE_CACHE_LINE_SIZE,  len);
@@ -165,27 +133,18 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	/* malloc only cares about size flags, remove contig flag from flags */
 	flags &= ~RTE_MEMZONE_IOVA_CONTIG;
 
-	if (len == 0) {
-		/* len == 0 is only allowed for non-contiguous zones */
-		if (contig) {
-			RTE_LOG(DEBUG, EAL, "Reserving zero-length contiguous memzones is not supported\n");
-			rte_errno = EINVAL;
-			return NULL;
-		}
-		if (bound != 0)
+	if (len == 0 && bound == 0) {
+		/* no size constraints were placed, so use malloc elem len */
+		requested_len = 0;
+		mz_addr = malloc_heap_alloc_biggest(NULL, socket_id, flags,
+				align, contig);
+	} else {
+		if (len == 0)
 			requested_len = bound;
-		else {
-			requested_len = find_heap_max_free_elem(&socket_id, align);
-			if (requested_len == 0) {
-				rte_errno = ENOMEM;
-				return NULL;
-			}
-		}
+		/* allocate memory on heap */
+		mz_addr = malloc_heap_alloc(NULL, requested_len, socket_id,
+				flags, align, bound, contig);
 	}
-
-	/* allocate memory on heap */
-	void *mz_addr = malloc_heap_alloc(NULL, requested_len, socket_id, flags,
-			align, bound, contig);
 	if (mz_addr == NULL) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -213,8 +172,9 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	snprintf(mz->name, sizeof(mz->name), "%s", name);
 	mz->iova = rte_malloc_virt2iova(mz_addr);
 	mz->addr = mz_addr;
-	mz->len = (requested_len == 0 ?
-			(elem->size - MALLOC_ELEM_OVERHEAD) : requested_len);
+	mz->len = requested_len == 0 ?
+			elem->size - elem->pad - MALLOC_ELEM_OVERHEAD :
+			requested_len;
 	mz->hugepage_sz = elem->msl->page_sz;
 	mz->socket_id = elem->msl->socket_id;
 	mz->flags = 0;

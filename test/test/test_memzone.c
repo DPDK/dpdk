@@ -467,61 +467,69 @@ test_memzone_reserve_flags(void)
 
 /* Find the heap with the greatest free block size */
 static size_t
-find_max_block_free_size(const unsigned _align)
+find_max_block_free_size(unsigned int align, unsigned int socket_id)
 {
 	struct rte_malloc_socket_stats stats;
-	unsigned i, align = _align;
-	size_t len = 0;
+	size_t len, overhead;
 
-	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
-		rte_malloc_get_socket_stats(i, &stats);
-		if (stats.greatest_free_size > len)
-			len = stats.greatest_free_size;
-	}
+	rte_malloc_get_socket_stats(socket_id, &stats);
 
-	if (align < RTE_CACHE_LINE_SIZE)
-		align = RTE_CACHE_LINE_ROUNDUP(align+1);
+	len = stats.greatest_free_size;
+	overhead = MALLOC_ELEM_OVERHEAD;
 
-	if (len <= MALLOC_ELEM_OVERHEAD + align)
+	if (len == 0)
 		return 0;
 
-	return len - MALLOC_ELEM_OVERHEAD - align;
+	align = RTE_CACHE_LINE_ROUNDUP(align);
+	overhead += align;
+
+	if (len < overhead)
+		return 0;
+
+	return len - overhead;
 }
 
 static int
 test_memzone_reserve_max(void)
 {
-	const struct rte_memzone *mz;
-	size_t maxlen;
+	unsigned int i;
 
-	maxlen = find_max_block_free_size(0);
+	for (i = 0; i < rte_socket_count(); i++) {
+		const struct rte_memzone *mz;
+		size_t maxlen;
+		int socket;
 
-	if (maxlen == 0) {
-		printf("There is no space left!\n");
-		return 0;
-	}
+		socket = rte_socket_id_by_idx(i);
+		maxlen = find_max_block_free_size(0, socket);
 
-	mz = rte_memzone_reserve(TEST_MEMZONE_NAME("max_zone"), 0,
-			SOCKET_ID_ANY, 0);
-	if (mz == NULL){
-		printf("Failed to reserve a big chunk of memory - %s\n",
-				rte_strerror(rte_errno));
-		rte_dump_physmem_layout(stdout);
-		rte_memzone_dump(stdout);
-		return -1;
-	}
+		if (maxlen == 0) {
+			printf("There is no space left!\n");
+			return 0;
+		}
 
-	if (mz->len != maxlen) {
-		printf("Memzone reserve with 0 size did not return bigest block\n");
-		printf("Expected size = %zu, actual size = %zu\n", maxlen, mz->len);
-		rte_dump_physmem_layout(stdout);
-		rte_memzone_dump(stdout);
-		return -1;
-	}
+		mz = rte_memzone_reserve(TEST_MEMZONE_NAME("max_zone"), 0,
+				socket, 0);
+		if (mz == NULL) {
+			printf("Failed to reserve a big chunk of memory - %s\n",
+					rte_strerror(rte_errno));
+			rte_dump_physmem_layout(stdout);
+			rte_memzone_dump(stdout);
+			return -1;
+		}
 
-	if (rte_memzone_free(mz)) {
-		printf("Fail memzone free\n");
-		return -1;
+		if (mz->len != maxlen) {
+			printf("Memzone reserve with 0 size did not return bigest block\n");
+			printf("Expected size = %zu, actual size = %zu\n",
+					maxlen, mz->len);
+			rte_dump_physmem_layout(stdout);
+			rte_memzone_dump(stdout);
+			return -1;
+		}
+
+		if (rte_memzone_free(mz)) {
+			printf("Fail memzone free\n");
+			return -1;
+		}
 	}
 
 	return 0;
@@ -530,45 +538,62 @@ test_memzone_reserve_max(void)
 static int
 test_memzone_reserve_max_aligned(void)
 {
-	const struct rte_memzone *mz;
-	size_t maxlen = 0;
+	unsigned int i;
 
-	/* random alignment */
-	rte_srand((unsigned)rte_rdtsc());
-	const unsigned align = 1 << ((rte_rand() % 8) + 5); /* from 128 up to 4k alignment */
+	for (i = 0; i < rte_socket_count(); i++) {
+		const struct rte_memzone *mz;
+		size_t maxlen, minlen = 0;
+		int socket;
 
-	maxlen = find_max_block_free_size(align);
+		socket = rte_socket_id_by_idx(i);
 
-	if (maxlen == 0) {
-		printf("There is no space left for biggest %u-aligned memzone!\n", align);
-		return 0;
+		/* random alignment */
+		rte_srand((unsigned int)rte_rdtsc());
+		const unsigned int align = 1 << ((rte_rand() % 8) + 5); /* from 128 up to 4k alignment */
+
+		/* memzone size may be between size and size - align */
+		minlen = find_max_block_free_size(align, socket);
+		maxlen = find_max_block_free_size(0, socket);
+
+		if (minlen == 0 || maxlen == 0) {
+			printf("There is no space left for biggest %u-aligned memzone!\n",
+					align);
+			return 0;
+		}
+
+		mz = rte_memzone_reserve_aligned(
+				TEST_MEMZONE_NAME("max_zone_aligned"),
+				0, socket, 0, align);
+		if (mz == NULL) {
+			printf("Failed to reserve a big chunk of memory - %s\n",
+					rte_strerror(rte_errno));
+			rte_dump_physmem_layout(stdout);
+			rte_memzone_dump(stdout);
+			return -1;
+		}
+		if (mz->addr != RTE_PTR_ALIGN(mz->addr, align)) {
+			printf("Memzone reserve with 0 size and alignment %u did not return aligned block\n",
+					align);
+			rte_dump_physmem_layout(stdout);
+			rte_memzone_dump(stdout);
+			return -1;
+		}
+
+		if (mz->len < minlen || mz->len > maxlen) {
+			printf("Memzone reserve with 0 size and alignment %u did not return"
+					" bigest block\n", align);
+			printf("Expected size = %zu-%zu, actual size = %zu\n",
+					minlen, maxlen, mz->len);
+			rte_dump_physmem_layout(stdout);
+			rte_memzone_dump(stdout);
+			return -1;
+		}
+
+		if (rte_memzone_free(mz)) {
+			printf("Fail memzone free\n");
+			return -1;
+		}
 	}
-
-	mz = rte_memzone_reserve_aligned(TEST_MEMZONE_NAME("max_zone_aligned"),
-			0, SOCKET_ID_ANY, 0, align);
-	if (mz == NULL){
-		printf("Failed to reserve a big chunk of memory - %s\n",
-				rte_strerror(rte_errno));
-		rte_dump_physmem_layout(stdout);
-		rte_memzone_dump(stdout);
-		return -1;
-	}
-
-	if (mz->len != maxlen) {
-		printf("Memzone reserve with 0 size and alignment %u did not return"
-				" bigest block\n", align);
-		printf("Expected size = %zu, actual size = %zu\n",
-				maxlen, mz->len);
-		rte_dump_physmem_layout(stdout);
-		rte_memzone_dump(stdout);
-		return -1;
-	}
-
-	if (rte_memzone_free(mz)) {
-		printf("Fail memzone free\n");
-		return -1;
-	}
-
 	return 0;
 }
 
