@@ -114,6 +114,10 @@ The EAL options are as follows:
   this memory will also be pinned (i.e. not released back to the system until
   application closes).
 
+* ``--socket-limit``:
+  Limit maximum memory available for allocation on each socket. Does not support
+  legacy memory mode.
+
 * ``-d``:
   Add a driver or driver directory to be loaded.
   The application should use this option to load the pmd drivers

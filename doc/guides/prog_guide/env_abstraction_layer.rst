@@ -147,6 +147,10 @@ notified about memory allocations above specified threshold (and have a chance
 to deny them), allocation validator callbacks are also available via
 ``rte_mem_alloc_validator_callback_register()`` function.
 
+A default validator callback is provided by EAL, which can be enabled with a
+``--socket-limit`` command-line option, for a simple way to limit maximum amount
+of memory that can be used by DPDK application.
+
 .. note::
 
     In multiprocess scenario, all related processes (i.e. primary process, and

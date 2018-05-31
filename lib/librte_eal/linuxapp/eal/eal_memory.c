@@ -1633,6 +1633,15 @@ hugepage_count_walk(const struct rte_memseg_list *msl, void *arg)
 }
 
 static int
+limits_callback(int socket_id, size_t cur_limit, size_t new_len)
+{
+	RTE_SET_USED(socket_id);
+	RTE_SET_USED(cur_limit);
+	RTE_SET_USED(new_len);
+	return -1;
+}
+
+static int
 eal_hugepage_init(void)
 {
 	struct hugepage_info used_hp[MAX_HUGEPAGE_SIZES];
@@ -1713,6 +1722,18 @@ eal_hugepage_init(void)
 				ms->flags |= RTE_MEMSEG_FLAG_DO_NOT_FREE;
 			}
 			free(pages);
+		}
+	}
+	/* if socket limits were specified, set them */
+	if (internal_config.force_socket_limits) {
+		unsigned int i;
+		for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
+			uint64_t limit = internal_config.socket_limit[i];
+			if (limit == 0)
+				continue;
+			if (rte_mem_alloc_validator_register("socket-limit",
+					limits_callback, i, limit))
+				RTE_LOG(ERR, EAL, "Failed to register socket limits validator callback\n");
 		}
 	}
 	return 0;

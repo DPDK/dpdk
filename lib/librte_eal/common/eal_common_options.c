@@ -70,6 +70,7 @@ eal_long_options[] = {
 	{OPT_PCI_WHITELIST,     1, NULL, OPT_PCI_WHITELIST_NUM    },
 	{OPT_PROC_TYPE,         1, NULL, OPT_PROC_TYPE_NUM        },
 	{OPT_SOCKET_MEM,        1, NULL, OPT_SOCKET_MEM_NUM       },
+	{OPT_SOCKET_LIMIT,      1, NULL, OPT_SOCKET_LIMIT_NUM     },
 	{OPT_SYSLOG,            1, NULL, OPT_SYSLOG_NUM           },
 	{OPT_VDEV,              1, NULL, OPT_VDEV_NUM             },
 	{OPT_VFIO_INTR,         1, NULL, OPT_VFIO_INTR_NUM        },
@@ -179,6 +180,10 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	/* zero out the NUMA config */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
 		internal_cfg->socket_mem[i] = 0;
+	internal_cfg->force_socket_limits = 0;
+	/* zero out the NUMA limits config */
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
+		internal_cfg->socket_limit[i] = 0;
 	/* zero out hugedir descriptors */
 	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++) {
 		memset(&internal_cfg->hugepage_info[i], 0,
@@ -1320,6 +1325,11 @@ eal_check_common_options(struct internal_config *internal_cfg)
 	if (internal_cfg->no_hugetlbfs && internal_cfg->hugepage_unlink) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_HUGE_UNLINK" cannot "
 			"be specified together with --"OPT_NO_HUGE"\n");
+		return -1;
+	}
+	if (internal_config.force_socket_limits && internal_config.legacy_mem) {
+		RTE_LOG(ERR, EAL, "Option --"OPT_SOCKET_LIMIT
+			" is only supported in non-legacy memory mode\n");
 		return -1;
 	}
 

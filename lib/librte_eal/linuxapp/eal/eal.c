@@ -405,6 +405,7 @@ eal_usage(const char *prgname)
 	eal_common_usage();
 	printf("EAL Linux options:\n"
 	       "  --"OPT_SOCKET_MEM"        Memory to allocate on sockets (comma separated values)\n"
+	       "  --"OPT_SOCKET_LIMIT"      Limit memory allocation on sockets (comma separated values)\n"
 	       "  --"OPT_HUGE_DIR"          Directory where hugetlbfs is mounted\n"
 	       "  --"OPT_FILE_PREFIX"       Prefix for hugepage filenames\n"
 	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
@@ -434,46 +435,45 @@ rte_set_application_usage_hook( rte_usage_hook_t usage_func )
 }
 
 static int
-eal_parse_socket_mem(char *socket_mem)
+eal_parse_socket_arg(char *strval, volatile uint64_t *socket_arg)
 {
 	char * arg[RTE_MAX_NUMA_NODES];
 	char *end;
 	int arg_num, i, len;
 	uint64_t total_mem = 0;
 
-	len = strnlen(socket_mem, SOCKET_MEM_STRLEN);
+	len = strnlen(strval, SOCKET_MEM_STRLEN);
 	if (len == SOCKET_MEM_STRLEN) {
 		RTE_LOG(ERR, EAL, "--socket-mem is too long\n");
 		return -1;
 	}
 
 	/* all other error cases will be caught later */
-	if (!isdigit(socket_mem[len-1]))
+	if (!isdigit(strval[len-1]))
 		return -1;
 
 	/* split the optarg into separate socket values */
-	arg_num = rte_strsplit(socket_mem, len,
+	arg_num = rte_strsplit(strval, len,
 			arg, RTE_MAX_NUMA_NODES, ',');
 
 	/* if split failed, or 0 arguments */
 	if (arg_num <= 0)
 		return -1;
 
-	internal_config.force_sockets = 1;
-
 	/* parse each defined socket option */
 	errno = 0;
 	for (i = 0; i < arg_num; i++) {
+		uint64_t val;
 		end = NULL;
-		internal_config.socket_mem[i] = strtoull(arg[i], &end, 10);
+		val = strtoull(arg[i], &end, 10);
 
 		/* check for invalid input */
 		if ((errno != 0)  ||
 				(arg[i][0] == '\0') || (end == NULL) || (*end != '\0'))
 			return -1;
-		internal_config.socket_mem[i] *= 1024ULL;
-		internal_config.socket_mem[i] *= 1024ULL;
-		total_mem += internal_config.socket_mem[i];
+		val <<= 20;
+		total_mem += val;
+		socket_arg[i] = val;
 	}
 
 	/* check if we have a positive amount of total memory */
@@ -621,13 +621,27 @@ eal_parse_args(int argc, char **argv)
 			break;
 
 		case OPT_SOCKET_MEM_NUM:
-			if (eal_parse_socket_mem(optarg) < 0) {
+			if (eal_parse_socket_arg(optarg,
+					internal_config.socket_mem) < 0) {
 				RTE_LOG(ERR, EAL, "invalid parameters for --"
 						OPT_SOCKET_MEM "\n");
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
 			}
+			internal_config.force_sockets = 1;
+			break;
+
+		case OPT_SOCKET_LIMIT_NUM:
+			if (eal_parse_socket_arg(optarg,
+					internal_config.socket_limit) < 0) {
+				RTE_LOG(ERR, EAL, "invalid parameters for --"
+						OPT_SOCKET_LIMIT "\n");
+				eal_usage(prgname);
+				ret = -1;
+				goto out;
+			}
+			internal_config.force_socket_limits = 1;
 			break;
 
 		case OPT_BASE_VIRTADDR_NUM:

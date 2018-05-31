@@ -46,6 +46,8 @@ struct internal_config {
 	/** true to try allocating memory on specific sockets */
 	volatile unsigned force_sockets;
 	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket */
+	volatile unsigned force_socket_limits;
+	volatile uint64_t socket_limit[RTE_MAX_NUMA_NODES]; /**< limit amount of memory per socket */
 	uintptr_t base_virtaddr;          /**< base address to try and reserve memory from */
 	volatile unsigned legacy_mem;
 	/**< true to enable legacy memory behavior (no dynamic allocation,
