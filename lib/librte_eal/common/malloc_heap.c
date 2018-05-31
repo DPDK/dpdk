@@ -149,6 +149,52 @@ find_suitable_element(struct malloc_heap *heap, size_t size,
 }
 
 /*
+ * Iterates through the freelist for a heap to find a free element with the
+ * biggest size and requested alignment. Will also set size to whatever element
+ * size that was found.
+ * Returns null on failure, or pointer to element on success.
+ */
+static struct malloc_elem *
+find_biggest_element(struct malloc_heap *heap, size_t *size,
+		unsigned int flags, size_t align, bool contig)
+{
+	struct malloc_elem *elem, *max_elem = NULL;
+	size_t idx, max_size = 0;
+
+	for (idx = 0; idx < RTE_HEAP_NUM_FREELISTS; idx++) {
+		for (elem = LIST_FIRST(&heap->free_head[idx]);
+				!!elem; elem = LIST_NEXT(elem, free_list)) {
+			size_t cur_size;
+			if (!check_hugepage_sz(flags, elem->msl->page_sz))
+				continue;
+			if (contig) {
+				cur_size =
+					malloc_elem_find_max_iova_contig(elem,
+							align);
+			} else {
+				void *data_start = RTE_PTR_ADD(elem,
+						MALLOC_ELEM_HEADER_LEN);
+				void *data_end = RTE_PTR_ADD(elem, elem->size -
+						MALLOC_ELEM_TRAILER_LEN);
+				void *aligned = RTE_PTR_ALIGN_CEIL(data_start,
+						align);
+				/* check if aligned data start is beyond end */
+				if (aligned >= data_end)
+					continue;
+				cur_size = RTE_PTR_DIFF(data_end, aligned);
+			}
+			if (cur_size > max_size) {
+				max_size = cur_size;
+				max_elem = elem;
+			}
+		}
+	}
+
+	*size = max_size;
+	return max_elem;
+}
+
+/*
  * Main function to allocate a block of memory from the heap.
  * It locks the free list, scans it, and adds a new memseg if the
  * scan fails. Once the new memseg is added, it re-scans and should return
@@ -166,6 +212,26 @@ heap_alloc(struct malloc_heap *heap, const char *type __rte_unused, size_t size,
 	elem = find_suitable_element(heap, size, flags, align, bound, contig);
 	if (elem != NULL) {
 		elem = malloc_elem_alloc(elem, size, align, bound, contig);
+
+		/* increase heap's count of allocated elements */
+		heap->alloc_count++;
+	}
+
+	return elem == NULL ? NULL : (void *)(&elem[1]);
+}
+
+static void *
+heap_alloc_biggest(struct malloc_heap *heap, const char *type __rte_unused,
+		unsigned int flags, size_t align, bool contig)
+{
+	struct malloc_elem *elem;
+	size_t size;
+
+	align = RTE_CACHE_LINE_ROUNDUP(align);
+
+	elem = find_biggest_element(heap, &size, flags, align, contig);
+	if (elem != NULL) {
+		elem = malloc_elem_alloc(elem, size, align, 0, contig);
 
 		/* increase heap's count of allocated elements */
 		heap->alloc_count++;
@@ -569,6 +635,66 @@ malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 			continue;
 		ret = heap_alloc_on_socket(type, size, cur_socket, flags,
 				align, bound, contig);
+		if (ret != NULL)
+			return ret;
+	}
+	return NULL;
+}
+
+static void *
+heap_alloc_biggest_on_socket(const char *type, int socket, unsigned int flags,
+		size_t align, bool contig)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct malloc_heap *heap = &mcfg->malloc_heaps[socket];
+	void *ret;
+
+	rte_spinlock_lock(&(heap->lock));
+
+	align = align == 0 ? 1 : align;
+
+	ret = heap_alloc_biggest(heap, type, flags, align, contig);
+
+	rte_spinlock_unlock(&(heap->lock));
+
+	return ret;
+}
+
+void *
+malloc_heap_alloc_biggest(const char *type, int socket_arg, unsigned int flags,
+		size_t align, bool contig)
+{
+	int socket, i, cur_socket;
+	void *ret;
+
+	/* return NULL if align is not power-of-2 */
+	if ((align && !rte_is_power_of_2(align)))
+		return NULL;
+
+	if (!rte_eal_has_hugepages())
+		socket_arg = SOCKET_ID_ANY;
+
+	if (socket_arg == SOCKET_ID_ANY)
+		socket = malloc_get_numa_socket();
+	else
+		socket = socket_arg;
+
+	/* Check socket parameter */
+	if (socket >= RTE_MAX_NUMA_NODES)
+		return NULL;
+
+	ret = heap_alloc_biggest_on_socket(type, socket, flags, align,
+			contig);
+	if (ret != NULL || socket_arg != SOCKET_ID_ANY)
+		return ret;
+
+	/* try other heaps */
+	for (i = 0; i < (int) rte_socket_count(); i++) {
+		cur_socket = rte_socket_id_by_idx(i);
+		if (cur_socket == socket)
+			continue;
+		ret = heap_alloc_biggest_on_socket(type, cur_socket, flags,
+				align, contig);
 		if (ret != NULL)
 			return ret;
 	}
