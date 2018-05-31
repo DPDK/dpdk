@@ -294,6 +294,11 @@ rte_combine64ms1b(register uint64_t v)
 /*********** Macros to work with powers of 2 ********/
 
 /**
+ * Macro to return 1 if n is a power of 2, 0 otherwise
+ */
+#define RTE_IS_POWER_OF_2(n) ((n) && !(((n) - 1) & (n)))
+
+/**
  * Returns true if n is a power of 2
  * @param n
  *     Number to check
