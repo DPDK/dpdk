@@ -66,7 +66,7 @@ static bool phys_addrs_available = true;
 static void
 test_phys_addrs_available(void)
 {
-	uint64_t tmp;
+	uint64_t tmp = 0;
 	phys_addr_t physaddr;
 
 	if (!rte_eal_has_hugepages()) {
