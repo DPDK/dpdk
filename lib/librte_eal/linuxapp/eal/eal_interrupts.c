@@ -420,7 +420,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	TAILQ_FOREACH(src, &intr_sources, next) {
 		if (src->intr_handle.fd == intr_handle->fd) {
 			/* we had no interrupts for this */
-			if TAILQ_EMPTY(&src->callbacks)
+			if (TAILQ_EMPTY(&src->callbacks))
 				wake_thread = 1;
 
 			TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
