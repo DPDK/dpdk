@@ -527,7 +527,10 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	if (va == MAP_FAILED) {
 		RTE_LOG(DEBUG, EAL, "%s(): mmap() failed: %s\n", __func__,
 			strerror(errno));
-		goto resized;
+		/* mmap failed, but the previous region might have been
+		 * unmapped anyway. try to remap it
+		 */
+		goto unmapped;
 	}
 	if (va != addr) {
 		RTE_LOG(DEBUG, EAL, "%s(): wrong mmap() address\n", __func__);
@@ -588,6 +591,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 mapped:
 	munmap(addr, alloc_sz);
+unmapped:
 	flags = MAP_FIXED;
 #ifdef RTE_ARCH_PPC_64
 	flags |= MAP_HUGETLB;
