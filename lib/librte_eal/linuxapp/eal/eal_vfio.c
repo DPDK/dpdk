@@ -1745,7 +1745,7 @@ int __rte_experimental
 rte_vfio_container_group_unbind(int container_fd, int iommu_group_num)
 {
 	struct vfio_config *vfio_cfg;
-	struct vfio_group *cur_grp;
+	struct vfio_group *cur_grp = NULL;
 	int i;
 
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
@@ -1762,7 +1762,7 @@ rte_vfio_container_group_unbind(int container_fd, int iommu_group_num)
 	}
 
 	/* This should not happen */
-	if (i == VFIO_MAX_GROUPS) {
+	if (i == VFIO_MAX_GROUPS || cur_grp == NULL) {
 		RTE_LOG(ERR, EAL, "Specified group number not found\n");
 		return -1;
 	}
