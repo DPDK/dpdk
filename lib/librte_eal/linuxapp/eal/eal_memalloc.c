@@ -39,6 +39,7 @@
 #include "eal_filesystem.h"
 #include "eal_internal_cfg.h"
 #include "eal_memalloc.h"
+#include "eal_private.h"
 
 /*
  * not all kernel version support fallocate on hugetlbfs, so fall back to
@@ -490,6 +491,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	int ret = 0;
 	int fd;
 	size_t alloc_sz;
+	int flags;
+	void *new_addr;
 
 	/* takes out a read lock on segment or segment list */
 	fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx);
@@ -585,6 +588,20 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 mapped:
 	munmap(addr, alloc_sz);
+	flags = MAP_FIXED;
+#ifdef RTE_ARCH_PPC_64
+	flags |= MAP_HUGETLB;
+#endif
+	new_addr = eal_get_virtual_area(addr, &alloc_sz, alloc_sz, 0, flags);
+	if (new_addr != addr) {
+		if (new_addr != NULL)
+			munmap(new_addr, alloc_sz);
+		/* we're leaving a hole in our virtual address space. if
+		 * somebody else maps this hole now, we could accidentally
+		 * override it in the future.
+		 */
+		RTE_LOG(CRIT, EAL, "Can't mmap holes in our virtual address space\n");
+	}
 resized:
 	if (internal_config.single_file_segments) {
 		resize_hugefile(fd, path, list_idx, seg_idx, map_offset,
