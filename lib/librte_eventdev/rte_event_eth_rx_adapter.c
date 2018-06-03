@@ -517,8 +517,10 @@ eth_rx_poll(struct rte_event_eth_rx_adapter *rx_adapter)
 		 */
 		if (buf->count >= BATCH_SIZE)
 			flush_event_buffer(rx_adapter);
-		if (BATCH_SIZE > (ETH_EVENT_BUFFER_SIZE - buf->count))
+		if (BATCH_SIZE > (ETH_EVENT_BUFFER_SIZE - buf->count)) {
+			rx_adapter->wrr_pos = wrr_pos;
 			break;
+		}
 
 		stats->rx_poll_count++;
 		n = rte_eth_rx_burst(d, qid, mbufs, BATCH_SIZE);
