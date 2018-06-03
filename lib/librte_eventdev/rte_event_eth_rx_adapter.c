@@ -490,7 +490,7 @@ fill_event_buffer(struct rte_event_eth_rx_adapter *rx_adapter,
  * the hypervisor's switching layer where adjustments can be made to deal with
  * it.
  */
-static inline uint32_t
+static inline void
 eth_rx_poll(struct rte_event_eth_rx_adapter *rx_adapter)
 {
 	uint32_t num_queue;
@@ -519,7 +519,7 @@ eth_rx_poll(struct rte_event_eth_rx_adapter *rx_adapter)
 			flush_event_buffer(rx_adapter);
 		if (BATCH_SIZE > (ETH_EVENT_BUFFER_SIZE - buf->count)) {
 			rx_adapter->wrr_pos = wrr_pos;
-			break;
+			return;
 		}
 
 		stats->rx_poll_count++;
@@ -535,7 +535,7 @@ eth_rx_poll(struct rte_event_eth_rx_adapter *rx_adapter)
 			if (nb_rx > max_nb_rx) {
 				rx_adapter->wrr_pos =
 				    (wrr_pos + 1) % rx_adapter->wrr_len;
-				return nb_rx;
+				break;
 			}
 		}
 
@@ -543,20 +543,18 @@ eth_rx_poll(struct rte_event_eth_rx_adapter *rx_adapter)
 			wrr_pos = 0;
 	}
 
-	return nb_rx;
+	if (buf->count >= BATCH_SIZE)
+		flush_event_buffer(rx_adapter);
 }
 
 static int
 event_eth_rx_adapter_service_func(void *args)
 {
 	struct rte_event_eth_rx_adapter *rx_adapter = args;
-	struct rte_eth_event_enqueue_buffer *buf;
 
-	buf = &rx_adapter->event_enqueue_buffer;
 	if (rte_spinlock_trylock(&rx_adapter->rx_lock) == 0)
 		return 0;
-	if (eth_rx_poll(rx_adapter) == 0 && buf->count)
-		flush_event_buffer(rx_adapter);
+	eth_rx_poll(rx_adapter);
 	rte_spinlock_unlock(&rx_adapter->rx_lock);
 	return 0;
 }
