@@ -224,6 +224,8 @@ eth_poll_wrr_calc(struct rte_event_eth_rx_adapter *rx_adapter)
 			nb_rx_queues = dev_info->dev->data->nb_rx_queues;
 			if (dev_info->rx_queue == NULL)
 				continue;
+			if (dev_info->internal_event_port)
+				continue;
 			for (q = 0; q < nb_rx_queues; q++) {
 				struct eth_rx_queue_info *queue_info =
 					&dev_info->rx_queue[q];
@@ -1050,6 +1052,7 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 				&rte_eth_devices[eth_dev_id],
 				rx_queue_id, queue_conf);
 		if (ret == 0) {
+			dev_info->internal_event_port = 1;
 			update_queue_info(rx_adapter,
 					&rx_adapter->eth_devices[eth_dev_id],
 					rx_queue_id,
@@ -1057,6 +1060,7 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 		}
 	} else {
 		rte_spinlock_lock(&rx_adapter->rx_lock);
+		dev_info->internal_event_port = 0;
 		ret = init_service(rx_adapter, id);
 		if (ret == 0)
 			ret = add_rx_queue(rx_adapter, eth_dev_id, rx_queue_id,
