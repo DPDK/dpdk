@@ -536,6 +536,9 @@ virt2memseg(const void *addr, const struct rte_memseg_list *msl)
 	void *start, *end;
 	int ms_idx;
 
+	if (msl == NULL)
+		return NULL;
+
 	/* a memseg list was specified, check if it's the right one */
 	start = msl->base_va;
 	end = RTE_PTR_ADD(start, (size_t)msl->page_sz * msl->memseg_arr.len);
