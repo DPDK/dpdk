@@ -1054,7 +1054,7 @@ mrvl_parse_eth(const struct rte_flow_item *item, struct rte_flow *flow,
 	}
 
 	if (mask->type) {
-		RTE_LOG(WARNING, PMD, "eth type mask is ignored\n");
+		MRVL_LOG(WARNING, "eth type mask is ignored");
 		ret = mrvl_parse_type(spec, mask, flow);
 		if (ret)
 			goto out;
@@ -1093,14 +1093,14 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 
 	m = rte_be_to_cpu_16(mask->tci);
 	if (m & MRVL_VLAN_ID_MASK) {
-		RTE_LOG(WARNING, PMD, "vlan id mask is ignored\n");
+		MRVL_LOG(WARNING, "vlan id mask is ignored");
 		ret = mrvl_parse_vlan_id(spec, mask, flow);
 		if (ret)
 			goto out;
 	}
 
 	if (m & MRVL_VLAN_PRI_MASK) {
-		RTE_LOG(WARNING, PMD, "vlan pri mask is ignored\n");
+		MRVL_LOG(WARNING, "vlan pri mask is ignored");
 		ret = mrvl_parse_vlan_pri(spec, mask, flow);
 		if (ret)
 			goto out;
@@ -1109,7 +1109,7 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 	if (flow->pattern & F_TYPE) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ITEM, item,
-				   "VLAN TPID matching is not supported\n");
+				   "VLAN TPID matching is not supported");
 		return -rte_errno;
 	}
 	if (mask->inner_type) {
@@ -1120,7 +1120,7 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 			.type = mask->inner_type,
 		};
 
-		RTE_LOG(WARNING, PMD, "inner eth type mask is ignored\n");
+		MRVL_LOG(WARNING, "inner eth type mask is ignored");
 		ret = mrvl_parse_type(&spec_eth, &mask_eth, flow);
 		if (ret)
 			goto out;
@@ -1186,7 +1186,7 @@ mrvl_parse_ip4(const struct rte_flow_item *item,
 	}
 
 	if (mask->hdr.next_proto_id) {
-		RTE_LOG(WARNING, PMD, "next proto id mask is ignored\n");
+		MRVL_LOG(WARNING, "next proto id mask is ignored");
 		ret = mrvl_parse_ip4_proto(spec, mask, flow);
 		if (ret)
 			goto out;
@@ -1257,7 +1257,7 @@ mrvl_parse_ip6(const struct rte_flow_item *item,
 	}
 
 	if (mask->hdr.proto) {
-		RTE_LOG(WARNING, PMD, "next header mask is ignored\n");
+		MRVL_LOG(WARNING, "next header mask is ignored");
 		ret = mrvl_parse_ip6_next_hdr(spec, mask, flow);
 		if (ret)
 			goto out;
@@ -1306,14 +1306,14 @@ mrvl_parse_tcp(const struct rte_flow_item *item,
 	}
 
 	if (mask->hdr.src_port) {
-		RTE_LOG(WARNING, PMD, "tcp sport mask is ignored\n");
+		MRVL_LOG(WARNING, "tcp sport mask is ignored");
 		ret = mrvl_parse_tcp_sport(spec, mask, flow);
 		if (ret)
 			goto out;
 	}
 
 	if (mask->hdr.dst_port) {
-		RTE_LOG(WARNING, PMD, "tcp dport mask is ignored\n");
+		MRVL_LOG(WARNING, "tcp dport mask is ignored");
 		ret = mrvl_parse_tcp_dport(spec, mask, flow);
 		if (ret)
 			goto out;
@@ -1357,14 +1357,14 @@ mrvl_parse_udp(const struct rte_flow_item *item,
 	}
 
 	if (mask->hdr.src_port) {
-		RTE_LOG(WARNING, PMD, "udp sport mask is ignored\n");
+		MRVL_LOG(WARNING, "udp sport mask is ignored");
 		ret = mrvl_parse_udp_sport(spec, mask, flow);
 		if (ret)
 			goto out;
 	}
 
 	if (mask->hdr.dst_port) {
-		RTE_LOG(WARNING, PMD, "udp dport mask is ignored\n");
+		MRVL_LOG(WARNING, "udp dport mask is ignored");
 		ret = mrvl_parse_udp_dport(spec, mask, flow);
 		if (ret)
 			goto out;
@@ -2280,8 +2280,8 @@ mrvl_flow_parse_actions(struct mrvl_priv *priv,
 				 * Unknown TC mapping, mapping will not have
 				 * a correct queue.
 				 */
-				RTE_LOG(ERR, PMD,
-					"Unknown TC mapping for queue %hu eth%hhu\n",
+				MRVL_LOG(ERR,
+					"Unknown TC mapping for queue %hu eth%hhu",
 					q->index, priv->ppio_id);
 
 				rte_flow_error_set(error, EFAULT,
@@ -2290,8 +2290,8 @@ mrvl_flow_parse_actions(struct mrvl_priv *priv,
 				return -rte_errno;
 			}
 
-			RTE_LOG(DEBUG, PMD,
-				"Action: Assign packets to queue %d, tc:%d, q:%d\n",
+			MRVL_LOG(DEBUG,
+				"Action: Assign packets to queue %d, tc:%d, q:%d",
 				q->index, priv->rxq_map[q->index].tc,
 				priv->rxq_map[q->index].inq);
 
@@ -2384,7 +2384,7 @@ mrvl_create_cls_table(struct rte_eth_dev *dev, struct rte_flow *first_flow)
 	memset(&priv->cls_tbl_params, 0, sizeof(priv->cls_tbl_params));
 
 	priv->cls_tbl_params.type = mrvl_engine_type(first_flow);
-	RTE_LOG(INFO, PMD, "Setting cls search engine type to %s\n",
+	MRVL_LOG(INFO, "Setting cls search engine type to %s",
 			priv->cls_tbl_params.type == PP2_CLS_TBL_EXACT_MATCH ?
 			"exact" : "maskable");
 	priv->cls_tbl_params.max_num_rules = MRVL_CLS_MAX_NUM_RULES;

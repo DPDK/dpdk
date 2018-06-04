@@ -98,4 +98,12 @@ struct mrvl_priv {
 
 /** Flow operations forward declaration. */
 extern const struct rte_flow_ops mrvl_flow_ops;
+
+/** Current log type. */
+extern int mrvl_logtype;
+
+#define MRVL_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, mrvl_logtype, "%s(): " fmt "\n", \
+		__func__, ##args)
+
 #endif /* _MRVL_ETHDEV_H_ */

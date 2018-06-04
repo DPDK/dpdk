@@ -138,7 +138,7 @@ get_outq_cfg(struct rte_cfgfile *file, int port, int outq,
 			cfg->port[port].outq[outq].sched_mode =
 				PP2_PPIO_SCHED_M_WRR;
 		} else {
-			RTE_LOG(ERR, PMD, "Unknown token: %s\n", entry);
+			MRVL_LOG(ERR, "Unknown token: %s", entry);
 			return -1;
 		}
 	}
@@ -159,7 +159,7 @@ get_outq_cfg(struct rte_cfgfile *file, int port, int outq,
 	 * global port rate limiting has priority.
 	 */
 	if (cfg->port[port].rate_limit_enable) {
-		RTE_LOG(WARNING, PMD, "Port %d rate limiting already enabled\n",
+		MRVL_LOG(WARNING, "Port %d rate limiting already enabled",
 			port);
 		return 0;
 	}
@@ -340,7 +340,7 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
 			RTE_DIM(cfg->port[port].tc[tc].inq),
 			MRVL_PP2_RXQ_MAX);
 		if (n < 0) {
-			RTE_LOG(ERR, PMD, "Error %d while parsing: %s\n",
+			MRVL_LOG(ERR, "Error %d while parsing: %s",
 				n, entry);
 			return n;
 		}
@@ -355,7 +355,7 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
 			RTE_DIM(cfg->port[port].tc[tc].pcp),
 			MAX_PCP);
 		if (n < 0) {
-			RTE_LOG(ERR, PMD, "Error %d while parsing: %s\n",
+			MRVL_LOG(ERR, "Error %d while parsing: %s",
 				n, entry);
 			return n;
 		}
@@ -370,7 +370,7 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
 			RTE_DIM(cfg->port[port].tc[tc].dscp),
 			MAX_DSCP);
 		if (n < 0) {
-			RTE_LOG(ERR, PMD, "Error %d while parsing: %s\n",
+			MRVL_LOG(ERR, "Error %d while parsing: %s",
 				n, entry);
 			return n;
 		}
@@ -390,7 +390,7 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
 				sizeof(MRVL_TOK_PLCR_DEFAULT_COLOR_RED))) {
 			cfg->port[port].tc[tc].color = PP2_PPIO_COLOR_RED;
 		} else {
-			RTE_LOG(ERR, PMD, "Error while parsing: %s\n", entry);
+			MRVL_LOG(ERR, "Error while parsing: %s", entry);
 			return -1;
 		}
 	}
@@ -435,7 +435,7 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 
 	if (n == 0) {
 		/* This is weird, but not bad. */
-		RTE_LOG(WARNING, PMD, "Empty configuration file?\n");
+		MRVL_LOG(WARNING, "Empty configuration file?");
 		return 0;
 	}
 
@@ -461,8 +461,8 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 				return -1;
 			(*cfg)->port[n].default_tc = (uint8_t)val;
 		} else {
-			RTE_LOG(ERR, PMD,
-				"Default Traffic Class required in custom configuration!\n");
+			MRVL_LOG(ERR,
+				"Default Traffic Class required in custom configuration!");
 			return -1;
 		}
 
@@ -489,7 +489,7 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 					sizeof(MRVL_TOK_PLCR_UNIT_PACKETS))) {
 					unit = PP2_CLS_PLCR_PACKETS_TOKEN_UNIT;
 				} else {
-					RTE_LOG(ERR, PMD, "Unknown token: %s\n",
+					MRVL_LOG(ERR, "Unknown token: %s",
 						entry);
 					return -1;
 				}
@@ -511,8 +511,8 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 					sizeof(MRVL_TOK_PLCR_COLOR_AWARE))) {
 					mode = PP2_CLS_PLCR_COLOR_AWARE_MODE;
 				} else {
-					RTE_LOG(ERR, PMD,
-						"Error in parsing: %s\n",
+					MRVL_LOG(ERR,
+						"Error in parsing: %s",
 						entry);
 					return -1;
 				}
@@ -682,7 +682,7 @@ setup_policer(struct mrvl_priv *priv, struct pp2_cls_plcr_params *params)
 
 	ret = pp2_cls_plcr_init(params, &priv->policer);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Failed to setup %s\n", match);
+		MRVL_LOG(ERR, "Failed to setup %s", match);
 		return -1;
 	}
 
@@ -742,8 +742,8 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 	for (tc = 0; tc < RTE_DIM(port_cfg->tc); ++tc) {
 		if (port_cfg->tc[tc].pcps > RTE_DIM(port_cfg->tc[0].pcp)) {
 			/* Better safe than sorry. */
-			RTE_LOG(ERR, PMD,
-				"Too many PCPs configured in TC %zu!\n", tc);
+			MRVL_LOG(ERR,
+				"Too many PCPs configured in TC %zu!", tc);
 			return -1;
 		}
 		for (i = 0; i < port_cfg->tc[tc].pcps; ++i) {
@@ -764,8 +764,8 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 	for (tc = 0; tc < RTE_DIM(port_cfg->tc); ++tc) {
 		if (port_cfg->tc[tc].dscps > RTE_DIM(port_cfg->tc[0].dscp)) {
 			/* Better safe than sorry. */
-			RTE_LOG(ERR, PMD,
-				"Too many DSCPs configured in TC %zu!\n", tc);
+			MRVL_LOG(ERR,
+				"Too many DSCPs configured in TC %zu!", tc);
 			return -1;
 		}
 		for (i = 0; i < port_cfg->tc[tc].dscps; ++i) {
@@ -786,8 +786,8 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 	for (tc = 0; tc < RTE_DIM(port_cfg->tc); ++tc) {
 		if (port_cfg->tc[tc].inqs > RTE_DIM(port_cfg->tc[0].inq)) {
 			/* Overflow. */
-			RTE_LOG(ERR, PMD,
-				"Too many RX queues configured per TC %zu!\n",
+			MRVL_LOG(ERR,
+				"Too many RX queues configured per TC %zu!",
 				tc);
 			return -1;
 		}
@@ -795,7 +795,7 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 			uint8_t idx = port_cfg->tc[tc].inq[i];
 
 			if (idx > RTE_DIM(priv->rxq_map)) {
-				RTE_LOG(ERR, PMD, "Bad queue index %d!\n", idx);
+				MRVL_LOG(ERR, "Bad queue index %d!", idx);
 				return -1;
 			}
 
@@ -878,7 +878,7 @@ mrvl_start_qos_mapping(struct mrvl_priv *priv)
 	size_t i;
 
 	if (priv->ppio == NULL) {
-		RTE_LOG(ERR, PMD, "ppio must not be NULL here!\n");
+		MRVL_LOG(ERR, "ppio must not be NULL here!");
 		return -1;
 	}
 
