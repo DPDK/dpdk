@@ -1614,9 +1614,12 @@ mrvl_rx_queue_release(void *rxq)
 	if (core_id == LCORE_ID_ANY)
 		core_id = 0;
 
+	if (!q)
+		return;
+
 	hif = mrvl_get_hif(q->priv, core_id);
 
-	if (!q || !hif)
+	if (!hif)
 		return;
 
 	tc = q->priv->rxq_map[q->queue_id].tc;
