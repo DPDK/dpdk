@@ -65,10 +65,13 @@ struct ip_frag_pkt {
 
 #define IP_FRAG_DEATH_ROW_LEN 32 /**< death row size (in packets) */
 
+/* death row size in mbufs */
+#define IP_FRAG_DEATH_ROW_MBUF_LEN (IP_FRAG_DEATH_ROW_LEN * (IP_MAX_FRAG_NUM + 1))
+
 /** mbuf death row (packets to be freed) */
 struct rte_ip_frag_death_row {
 	uint32_t cnt;          /**< number of mbufs currently on death row */
-	struct rte_mbuf *row[IP_FRAG_DEATH_ROW_LEN * (IP_MAX_FRAG_NUM + 1)];
+	struct rte_mbuf *row[IP_FRAG_DEATH_ROW_MBUF_LEN];
 	/**< mbufs to be freed */
 };
 
@@ -324,6 +327,20 @@ void rte_ip_frag_free_death_row(struct rte_ip_frag_death_row *dr,
  */
 void
 rte_ip_frag_table_statistics_dump(FILE * f, const struct rte_ip_frag_tbl *tbl);
+
+/**
+ * Delete expired fragments
+ *
+ * @param tbl
+ *   Table to delete expired fragments from
+ * @param dr
+ *   Death row to free buffers to
+ * @param tms
+ *   Current timestamp
+ */
+void __rte_experimental
+rte_frag_table_del_expired_entries(struct rte_ip_frag_tbl *tbl,
+	struct rte_ip_frag_death_row *dr, uint64_t tms);
 
 #ifdef __cplusplus
 }

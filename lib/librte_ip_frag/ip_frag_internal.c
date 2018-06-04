@@ -14,24 +14,6 @@
 #define	IP_FRAG_TBL_POS(tbl, sig)	\
 	((tbl)->pkt + ((sig) & (tbl)->entry_mask))
 
-#ifdef RTE_LIBRTE_IP_FRAG_TBL_STAT
-#define	IP_FRAG_TBL_STAT_UPDATE(s, f, v)	((s)->f += (v))
-#else
-#define	IP_FRAG_TBL_STAT_UPDATE(s, f, v)	do {} while (0)
-#endif /* IP_FRAG_TBL_STAT */
-
-/* local frag table helper functions */
-static inline void
-ip_frag_tbl_del(struct rte_ip_frag_tbl *tbl, struct rte_ip_frag_death_row *dr,
-	struct ip_frag_pkt *fp)
-{
-	ip_frag_free(fp, dr);
-	ip_frag_key_invalidate(&fp->key);
-	TAILQ_REMOVE(&tbl->lru, fp, lru);
-	tbl->use_entries--;
-	IP_FRAG_TBL_STAT_UPDATE(&tbl->stat, del_num, 1);
-}
-
 static inline void
 ip_frag_tbl_add(struct rte_ip_frag_tbl *tbl,  struct ip_frag_pkt *fp,
 	const struct ip_frag_key *key, uint64_t tms)
