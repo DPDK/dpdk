@@ -91,6 +91,8 @@ struct rte_event_eth_rx_adapter {
 	int socket_id;
 	/* Per adapter EAL service */
 	uint32_t service_id;
+	/* Adapter started flag */
+	uint8_t rxa_started;
 } __rte_cache_aligned;
 
 /* Per eth device */
@@ -556,6 +558,10 @@ event_eth_rx_adapter_service_func(void *args)
 
 	if (rte_spinlock_trylock(&rx_adapter->rx_lock) == 0)
 		return 0;
+	if (!rx_adapter->rxa_started) {
+		return 0;
+		rte_spinlock_unlock(&rx_adapter->rx_lock);
+	}
 	eth_rx_poll(rx_adapter);
 	rte_spinlock_unlock(&rx_adapter->rx_lock);
 	return 0;
@@ -847,8 +853,12 @@ rx_adapter_ctrl(uint8_t id, int start)
 						&rte_eth_devices[i]);
 	}
 
-	if (use_service)
+	if (use_service) {
+		rte_spinlock_lock(&rx_adapter->rx_lock);
+		rx_adapter->rxa_started = start;
 		rte_service_runstate_set(rx_adapter->service_id, start);
+		rte_spinlock_unlock(&rx_adapter->rx_lock);
+	}
 
 	return 0;
 }
