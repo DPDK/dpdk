@@ -167,8 +167,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
-	if (rte_log_get_level(mlx5_logtype) == RTE_LOG_DEBUG)
-		mlx5_mr_dump_dev(dev);
 	ret = mlx5_rx_intr_vec_enable(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u Rx interrupt vector creation failed",
