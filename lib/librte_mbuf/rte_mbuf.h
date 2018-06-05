@@ -1164,7 +1164,7 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
  *    - EEXIST - a memzone with the same name already exists
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
-struct rte_mempool * __rte_experimental
+struct rte_mempool *
 rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
 	int socket_id, const char *ops_name);

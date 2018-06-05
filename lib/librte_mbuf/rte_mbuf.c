@@ -107,7 +107,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 }
 
 /* Helper to create a mbuf pool with given mempool ops name*/
-struct rte_mempool * __rte_experimental
+struct rte_mempool *
 rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
 	int socket_id, const char *ops_name)

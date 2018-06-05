@@ -35,7 +35,7 @@ DPDK_16.11 {
 
 } DPDK_2.1;
 
-EXPERIMENTAL {
+DPDK_18.08 {
 	global:
 
 	rte_mbuf_best_mempool_ops;
@@ -44,4 +44,4 @@ EXPERIMENTAL {
 	rte_mbuf_set_user_mempool_ops;
 	rte_mbuf_user_mempool_ops;
 	rte_pktmbuf_pool_create_by_ops;
-};
+} DPDK_16.11;

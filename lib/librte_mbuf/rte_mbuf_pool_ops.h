@@ -12,9 +12,6 @@
  * These APIs are for configuring the mbuf pool ops names to be largely used by
  * rte_pktmbuf_pool_create(). However, this can also be used to set and inquire
  * the best mempool ops available.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
  */
 
 #include <rte_compat.h>
@@ -34,7 +31,7 @@ extern "C" {
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int __rte_experimental
+int
 rte_mbuf_set_platform_mempool_ops(const char *ops_name);
 
 /**
@@ -46,7 +43,7 @@ rte_mbuf_set_platform_mempool_ops(const char *ops_name);
  *   - On success, platform pool ops name.
  *   - On failure, NULL.
  */
-const char * __rte_experimental
+const char *
 rte_mbuf_platform_mempool_ops(void);
 
 /**
@@ -60,7 +57,7 @@ rte_mbuf_platform_mempool_ops(void);
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int __rte_experimental
+int
 rte_mbuf_set_user_mempool_ops(const char *ops_name);
 
 /**
@@ -72,7 +69,7 @@ rte_mbuf_set_user_mempool_ops(const char *ops_name);
  *   - On success, user pool ops name..
  *   - On failure, NULL.
  */
-const char * __rte_experimental
+const char *
 rte_mbuf_user_mempool_ops(void);
 
 /**
@@ -87,7 +84,7 @@ rte_mbuf_user_mempool_ops(void);
  * @return
  *   returns preferred mbuf pool ops name
  */
-const char * __rte_experimental
+const char *
 rte_mbuf_best_mempool_ops(void);
 
 

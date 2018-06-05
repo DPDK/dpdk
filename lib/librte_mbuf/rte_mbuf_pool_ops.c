@@ -9,7 +9,7 @@
 #include <rte_errno.h>
 #include <rte_mbuf_pool_ops.h>
 
-int __rte_experimental
+int
 rte_mbuf_set_platform_mempool_ops(const char *ops_name)
 {
 	const struct rte_memzone *mz;
@@ -35,7 +35,7 @@ rte_mbuf_set_platform_mempool_ops(const char *ops_name)
 	return -EEXIST;
 }
 
-const char * __rte_experimental
+const char *
 rte_mbuf_platform_mempool_ops(void)
 {
 	const struct rte_memzone *mz;
@@ -46,7 +46,7 @@ rte_mbuf_platform_mempool_ops(void)
 	return mz->addr;
 }
 
-int __rte_experimental
+int
 rte_mbuf_set_user_mempool_ops(const char *ops_name)
 {
 	const struct rte_memzone *mz;
@@ -67,7 +67,7 @@ rte_mbuf_set_user_mempool_ops(const char *ops_name)
 
 }
 
-const char * __rte_experimental
+const char *
 rte_mbuf_user_mempool_ops(void)
 {
 	const struct rte_memzone *mz;
@@ -79,7 +79,7 @@ rte_mbuf_user_mempool_ops(void)
 }
 
 /* Return mbuf pool ops name */
-const char * __rte_experimental
+const char *
 rte_mbuf_best_mempool_ops(void)
 {
 	/* User defined mempool ops takes the priority */
