@@ -2251,7 +2251,7 @@ int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 	vport_update_params.vport_id = 0;
 	/* pass the L2 handles instead of qids */
 	for (i = 0 ; i < ECORE_RSS_IND_TABLE_SIZE ; i++) {
-		idx = qdev->rss_ind_table[i];
+		idx = i % QEDE_RSS_COUNT(qdev);
 		rss_params.rss_ind_table[i] = qdev->fp_array[idx].rxq->handle;
 	}
 	vport_update_params.rss_params = &rss_params;
