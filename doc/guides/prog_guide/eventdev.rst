@@ -1,5 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Intel Corporation.
+    Copyright(c) 2018 Arm Limited.
 
 Event Device Library
 ====================
@@ -129,8 +130,10 @@ API Walk-through
 
 This section will introduce the reader to the eventdev API, showing how to
 create and configure an eventdev and use it for a two-stage atomic pipeline
-with a single core for TX. The diagram below shows the final state of the
-application after this walk-through:
+with one core each for RX and TX. RX and TX cores are shown here for
+illustration, refer to Eventdev Adapter documentation for further details.
+The diagram below shows the final state of the application after this
+walk-through:
 
 .. _figure_eventdev-usage1:
 
@@ -196,23 +199,29 @@ calling the setup function. Repeat this step for each queue, starting from
                 .nb_atomic_flows = 1024,
                 .nb_atomic_order_sequences = 1024,
         };
+        struct rte_event_queue_conf single_link_conf = {
+                .event_queue_cfg = RTE_EVENT_QUEUE_CFG_SINGLE_LINK,
+        };
         int dev_id = 0;
-        int queue_id = 0;
-        int err = rte_event_queue_setup(dev_id, queue_id, &atomic_conf);
+        int atomic_q_1 = 0;
+        int atomic_q_2 = 1;
+        int single_link_q = 2;
+        int err = rte_event_queue_setup(dev_id, atomic_q_1, &atomic_conf);
+        int err = rte_event_queue_setup(dev_id, atomic_q_2, &atomic_conf);
+        int err = rte_event_queue_setup(dev_id, single_link_q, &single_link_conf);
 
-The remainder of this walk-through assumes that the queues are configured as
-follows:
+As shown above, queue IDs are as follows:
 
  * id 0, atomic queue #1
  * id 1, atomic queue #2
  * id 2, single-link queue
 
+These queues are used for the remainder of this walk-through.
+
 Setting up Ports
 ~~~~~~~~~~~~~~~~
 
-Once queues are set up successfully, create the ports as required. Each port
-should be set up with its corresponding port_conf type, worker for worker cores,
-rx and tx for the RX and TX cores:
+Once queues are set up successfully, create the ports as required.
 
 .. code-block:: c
 
@@ -232,14 +241,23 @@ rx and tx for the RX and TX cores:
                 .new_event_threshold = 4096,
         };
         int dev_id = 0;
-        int port_id = 0;
-        int err = rte_event_port_setup(dev_id, port_id, &CORE_FUNCTION_conf);
+        int rx_port_id = 0;
+        int err = rte_event_port_setup(dev_id, rx_port_id, &rx_conf);
 
-It is now assumed that:
+        for(int worker_port_id = 1; worker_port_id <= 4; worker_port_id++) {
+	        int err = rte_event_port_setup(dev_id, worker_port_id, &worker_conf);
+        }
+
+        int tx_port_id = 5;
+	int err = rte_event_port_setup(dev_id, tx_port_id, &tx_conf);
+
+As shown above:
 
  * port 0: RX core
  * ports 1,2,3,4: Workers
  * port 5: TX core
+
+These ports are used for the remainder of this walk-through.
 
 Linking Queues and Ports
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -254,15 +272,14 @@ can be achieved like this:
 
 .. code-block:: c
 
-        uint8_t port_id = 0;
+        uint8_t rx_port_id = 0;
+        uint8_t tx_port_id = 5;
         uint8_t atomic_qs[] = {0, 1};
         uint8_t single_link_q = 2;
-        uint8_t tx_port_id = 5;
         uin8t_t priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
 
-        for(int i = 0; i < 4; i++) {
-                int worker_port = i + 1;
-                int links_made = rte_event_port_link(dev_id, worker_port, atomic_qs, NULL, 2);
+        for(int worker_port_id = 1; worker_port_id <= 4; worker_port_id++) {
+                int links_made = rte_event_port_link(dev_id, worker_port_id, atomic_qs, NULL, 2);
         }
         int links_made = rte_event_port_link(dev_id, tx_port_id, &single_link_q, &priority, 1);
 
@@ -295,14 +312,14 @@ The following code shows how those packets can be enqueued into the eventdev:
                 ev[i].flow_id = mbufs[i]->hash.rss;
                 ev[i].op = RTE_EVENT_OP_NEW;
                 ev[i].sched_type = RTE_SCHED_TYPE_ATOMIC;
-                ev[i].queue_id = 0;
+                ev[i].queue_id = atomic_q_1;
                 ev[i].event_type = RTE_EVENT_TYPE_ETHDEV;
                 ev[i].sub_event_type = 0;
                 ev[i].priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
                 ev[i].mbuf = mbufs[i];
         }
 
-        const int nb_tx = rte_event_enqueue_burst(dev_id, port_id, ev, nb_rx);
+        const int nb_tx = rte_event_enqueue_burst(dev_id, rx_port_id, ev, nb_rx);
         if (nb_tx != nb_rx) {
                 for(i = nb_tx; i < nb_rx; i++)
                         rte_pktmbuf_free(mbufs[i]);
@@ -334,7 +351,7 @@ the event to the next stage in the pipeline.
                 events[i].queue_id++;
         }
 
-        uint16_t nb_tx = rte_event_enqueue_burst(dev_id, port_id, events, nb_rx);
+        uint16_t nb_tx = rte_event_enqueue_burst(dev_id, worker_port_id, events, nb_rx);
 
 
 Egress of Events
