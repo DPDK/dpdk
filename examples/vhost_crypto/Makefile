@@ -10,7 +10,7 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-ifneq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
+ifneq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 $(info This application can only operate in a linuxapp environment, \
 please change the definition of the RTE_TARGET environment variable)
 all:
