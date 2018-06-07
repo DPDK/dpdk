@@ -1491,6 +1491,24 @@ static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
 	}
 }
 
+static int ena_calc_io_queue_num(__rte_unused struct ena_com_dev *ena_dev,
+				 struct ena_com_dev_get_features_ctx *get_feat_ctx)
+{
+	int io_sq_num, io_cq_num, io_queue_num;
+
+	io_sq_num = get_feat_ctx->max_queues.max_sq_num;
+	io_cq_num = get_feat_ctx->max_queues.max_cq_num;
+
+	io_queue_num = RTE_MIN(io_sq_num, io_cq_num);
+
+	if (unlikely(io_queue_num == 0)) {
+		RTE_LOG(ERR, PMD, "Number of IO queues should not be 0\n");
+		return -EFAULT;
+	}
+
+	return io_queue_num;
+}
+
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
@@ -1555,7 +1573,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->wd_state = wd_state;
 
 	ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
-	adapter->num_queues = get_feat_ctx.max_queues.max_sq_num;
+	adapter->num_queues = ena_calc_io_queue_num(ena_dev,
+						    &get_feat_ctx);
 
 	queue_size = ena_calc_queue_size(ena_dev, &tx_sgl_size, &get_feat_ctx);
 	if ((queue_size <= 0) || (adapter->num_queues <= 0))
