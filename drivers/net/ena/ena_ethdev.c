@@ -85,6 +85,9 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+#define ENA_MAX_RING_DESC	ENA_DEFAULT_RING_SIZE
+#define ENA_MIN_RING_DESC	128
+
 enum ethtool_stringset {
 	ETH_SS_TEST             = 0,
 	ETH_SS_STATS,
@@ -1740,6 +1743,16 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 
 	adapter->tx_supported_offloads = tx_feat;
 	adapter->rx_supported_offloads = rx_feat;
+
+	dev_info->rx_desc_lim.nb_max = ENA_MAX_RING_DESC;
+	dev_info->rx_desc_lim.nb_min = ENA_MIN_RING_DESC;
+
+	dev_info->tx_desc_lim.nb_max = ENA_MAX_RING_DESC;
+	dev_info->tx_desc_lim.nb_min = ENA_MIN_RING_DESC;
+	dev_info->tx_desc_lim.nb_seg_max = RTE_MIN(ENA_PKT_MAX_BUFS,
+					feat.max_queues.max_packet_tx_descs);
+	dev_info->tx_desc_lim.nb_mtu_seg_max = RTE_MIN(ENA_PKT_MAX_BUFS,
+					feat.max_queues.max_packet_tx_descs);
 }
 
 static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
