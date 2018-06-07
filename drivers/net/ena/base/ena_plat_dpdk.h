@@ -116,11 +116,13 @@ typedef uint64_t dma_addr_t;
 #define ENA_MIN16(x, y) RTE_MIN((x), (y))
 #define ENA_MIN8(x, y) RTE_MIN((x), (y))
 
+#define BITS_PER_LONG_LONG (__SIZEOF_LONG_LONG__ * 8)
 #define U64_C(x) x ## ULL
 #define BIT(nr)         (1UL << (nr))
 #define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
 #define GENMASK(h, l)	(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
-#define GENMASK_ULL(h, l) (((U64_C(1) << ((h) - (l) + 1)) - 1) << (l))
+#define GENMASK_ULL(h, l) (((~0ULL) - (1ULL << (l)) + 1) & \
+			  (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
 
 #ifdef RTE_LIBRTE_ENA_COM_DEBUG
 #define ena_trc_dbg(format, arg...)					\
