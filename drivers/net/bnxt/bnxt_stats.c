@@ -278,6 +278,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	count = 0;
 	for (i = 0; i < RTE_DIM(bnxt_rx_stats_strings); i++) {
 		uint64_t *rx_stats = (uint64_t *)bp->hw_rx_port_stats;
+		xstats[count].id = count;
 		xstats[count].value = rte_le_to_cpu_64(
 				*(uint64_t *)((char *)rx_stats +
 				bnxt_rx_stats_strings[i].offset));
@@ -286,6 +287,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 
 	for (i = 0; i < RTE_DIM(bnxt_tx_stats_strings); i++) {
 		uint64_t *tx_stats = (uint64_t *)bp->hw_tx_port_stats;
+		xstats[count].id = count;
 		xstats[count].value = rte_le_to_cpu_64(
 				 *(uint64_t *)((char *)tx_stats +
 				bnxt_tx_stats_strings[i].offset));
@@ -293,6 +295,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	}
 
 	/* The Tx drop pkts aka the Anti spoof coounter */
+	xstats[count].id = count;
 	xstats[count].value = rte_le_to_cpu_64(tx_drop_pkts);
 	count++;
 
