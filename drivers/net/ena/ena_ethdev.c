@@ -936,7 +936,7 @@ ena_calc_queue_size(struct ena_com_dev *ena_dev,
 	if (!rte_is_power_of_2(queue_size))
 		queue_size = rte_align32pow2(queue_size >> 1);
 
-	if (queue_size == 0) {
+	if (unlikely(queue_size == 0)) {
 		PMD_INIT_LOG(ERR, "Invalid queue size");
 		return -EFAULT;
 	}
@@ -1360,7 +1360,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	}
 
 	/* When we submitted free recources to device... */
-	if (i > 0) {
+	if (likely(i > 0)) {
 		/* ...let HW know that it can fill buffers with data */
 		rte_wmb();
 		ena_com_write_sq_doorbell(rxq->ena_com_io_sq);
@@ -1466,7 +1466,7 @@ static void ena_interrupt_handler_rte(void *cb_arg)
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 
 	ena_com_admin_q_comp_intr_handler(ena_dev);
-	if (adapter->state != ENA_ADAPTER_STATE_CLOSED)
+	if (likely(adapter->state != ENA_ADAPTER_STATE_CLOSED))
 		ena_com_aenq_intr_handler(ena_dev, adapter);
 }
 
@@ -1856,7 +1856,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 			mbuf->refcnt = 1;
 			mbuf->next = NULL;
-			if (segments == 0) {
+			if (unlikely(segments == 0)) {
 				mbuf->nb_segs = ena_rx_ctx.descs;
 				mbuf->port = rx_ring->port_id;
 				mbuf->pkt_len = 0;
