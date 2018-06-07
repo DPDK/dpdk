@@ -384,6 +384,27 @@ static inline int validate_rx_req_id(struct ena_ring *rx_ring, uint16_t req_id)
 	return -EFAULT;
 }
 
+static int validate_tx_req_id(struct ena_ring *tx_ring, u16 req_id)
+{
+	struct ena_tx_buffer *tx_info = NULL;
+
+	if (likely(req_id < tx_ring->ring_size)) {
+		tx_info = &tx_ring->tx_buffer_info[req_id];
+		if (likely(tx_info->mbuf))
+			return 0;
+	}
+
+	if (tx_info)
+		RTE_LOG(ERR, PMD, "tx_info doesn't have valid mbuf\n");
+	else
+		RTE_LOG(ERR, PMD, "Invalid req_id: %hu\n", req_id);
+
+	/* Trigger device reset */
+	tx_ring->adapter->reset_reason = ENA_REGS_RESET_INV_TX_REQ_ID;
+	tx_ring->adapter->trigger_reset	= true;
+	return -EFAULT;
+}
+
 static void ena_config_host_info(struct ena_com_dev *ena_dev)
 {
 	struct ena_admin_host_info *host_info;
@@ -2093,6 +2114,10 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Clear complete packets  */
 	while (ena_com_tx_comp_req_id_get(tx_ring->ena_com_io_cq, &req_id) >= 0) {
+		rc = validate_tx_req_id(tx_ring, req_id);
+		if (rc)
+			break;
+
 		/* Get Tx info & store how many descs were processed  */
 		tx_info = &tx_ring->tx_buffer_info[req_id];
 		total_tx_descs += tx_info->tx_descs;
