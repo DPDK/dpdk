@@ -1290,7 +1290,8 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 		goto err_admin_init;
 	}
 
-	aenq_groups = BIT(ENA_ADMIN_LINK_CHANGE);
+	aenq_groups = BIT(ENA_ADMIN_LINK_CHANGE) |
+		      BIT(ENA_ADMIN_NOTIFICATION);
 
 	aenq_groups &= get_feat_ctx->aenq.supported_groups;
 	rc = ena_com_set_aenq_config(ena_dev, aenq_groups);
@@ -1724,6 +1725,19 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return i;
 }
 
+static void ena_update_hints(struct ena_adapter *adapter,
+			     struct ena_admin_ena_hw_hints *hints)
+{
+	if (hints->admin_completion_tx_timeout)
+		adapter->ena_dev.admin_queue.completion_timeout =
+			hints->admin_completion_tx_timeout * 1000;
+
+	if (hints->mmio_read_timeout)
+		/* convert to usec */
+		adapter->ena_dev.mmio_read.reg_read_to =
+			hints->mmio_read_timeout * 1000;
+}
+
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts)
 {
@@ -1918,6 +1932,29 @@ static void ena_update_on_link_change(void *adapter_data,
 	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
+static void ena_notification(void *data,
+			     struct ena_admin_aenq_entry *aenq_e)
+{
+	struct ena_adapter *adapter = (struct ena_adapter *)data;
+	struct ena_admin_ena_hw_hints *hints;
+
+	if (aenq_e->aenq_common_desc.group != ENA_ADMIN_NOTIFICATION)
+		RTE_LOG(WARNING, PMD, "Invalid group(%x) expected %x\n",
+			aenq_e->aenq_common_desc.group,
+			ENA_ADMIN_NOTIFICATION);
+
+	switch (aenq_e->aenq_common_desc.syndrom) {
+	case ENA_ADMIN_UPDATE_HINTS:
+		hints = (struct ena_admin_ena_hw_hints *)
+			(&aenq_e->inline_data_w4);
+		ena_update_hints(adapter, hints);
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "Invalid aenq notification link state %d\n",
+			aenq_e->aenq_common_desc.syndrom);
+	}
+}
+
 /**
  * This handler will called for unknown event group or unimplemented handlers
  **/
@@ -1930,7 +1967,7 @@ static void unimplemented_aenq_handler(__rte_unused void *data,
 static struct ena_aenq_handlers aenq_handlers = {
 	.handlers = {
 		[ENA_ADMIN_LINK_CHANGE] = ena_update_on_link_change,
-		[ENA_ADMIN_NOTIFICATION] = unimplemented_aenq_handler,
+		[ENA_ADMIN_NOTIFICATION] = ena_notification,
 		[ENA_ADMIN_KEEP_ALIVE] = unimplemented_aenq_handler
 	},
 	.unimplemented_handler = unimplemented_aenq_handler
