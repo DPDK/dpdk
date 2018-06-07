@@ -1415,7 +1415,9 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 
 	aenq_groups = BIT(ENA_ADMIN_LINK_CHANGE) |
 		      BIT(ENA_ADMIN_NOTIFICATION) |
-		      BIT(ENA_ADMIN_KEEP_ALIVE);
+		      BIT(ENA_ADMIN_KEEP_ALIVE) |
+		      BIT(ENA_ADMIN_FATAL_ERROR) |
+		      BIT(ENA_ADMIN_WARNING);
 
 	aenq_groups &= get_feat_ctx->aenq.supported_groups;
 	rc = ena_com_set_aenq_config(ena_dev, aenq_groups);
@@ -2196,7 +2198,8 @@ static void ena_keep_alive(void *adapter_data,
 static void unimplemented_aenq_handler(__rte_unused void *data,
 				       __rte_unused struct ena_admin_aenq_entry *aenq_e)
 {
-	// Unimplemented handler
+	RTE_LOG(ERR, PMD, "Unknown event was received or event with "
+			  "unimplemented handler\n");
 }
 
 static struct ena_aenq_handlers aenq_handlers = {
