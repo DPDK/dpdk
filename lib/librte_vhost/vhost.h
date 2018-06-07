@@ -593,7 +593,7 @@ static __rte_always_inline void
 vhost_vring_call(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	/* Flush used->idx update before we read avail->flags. */
-	rte_mb();
+	rte_smp_mb();
 
 	/* Don't kick guest if we don't reach index specified by guest. */
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX)) {
