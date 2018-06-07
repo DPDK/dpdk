@@ -527,6 +527,8 @@ ena_dev_reset(struct rte_eth_dev *dev)
 	for (i = 0; i < nb_queues; ++i)
 		ena_tx_queue_setup(eth_dev, i, adapter->tx_ring_size, 0, NULL);
 
+	adapter->trigger_reset = false;
+
 	return 0;
 }
 
@@ -1400,21 +1402,40 @@ static void ena_interrupt_handler_rte(void *cb_arg)
 		ena_com_aenq_intr_handler(ena_dev, adapter);
 }
 
+static void check_for_missing_keep_alive(struct ena_adapter *adapter)
+{
+	if (adapter->keep_alive_timeout == ENA_HW_HINTS_NO_TIMEOUT)
+		return;
+
+	if (unlikely((rte_get_timer_cycles() - adapter->timestamp_wd) >=
+	    adapter->keep_alive_timeout)) {
+		RTE_LOG(ERR, PMD, "Keep alive timeout\n");
+		adapter->reset_reason = ENA_REGS_RESET_KEEP_ALIVE_TO;
+		adapter->trigger_reset = true;
+	}
+}
+
+/* Check if admin queue is enabled */
+static void check_for_admin_com_state(struct ena_adapter *adapter)
+{
+	if (unlikely(!ena_com_get_admin_running_state(&adapter->ena_dev))) {
+		RTE_LOG(ERR, PMD, "ENA admin queue is not in running state!\n");
+		adapter->reset_reason = ENA_REGS_RESET_ADMIN_TO;
+		adapter->trigger_reset = true;
+	}
+}
+
 static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
 				  void *arg)
 {
 	struct ena_adapter *adapter = (struct ena_adapter *)arg;
 	struct rte_eth_dev *dev = adapter->rte_dev;
 
-	if (adapter->keep_alive_timeout == ENA_HW_HINTS_NO_TIMEOUT)
-		return;
+	check_for_missing_keep_alive(adapter);
+	check_for_admin_com_state(adapter);
 
-	/* Within reasonable timing range no memory barriers are needed */
-	if ((rte_get_timer_cycles() - adapter->timestamp_wd) >=
-	    adapter->keep_alive_timeout) {
-		RTE_LOG(ERR, PMD, "The ENA device is not responding - "
-			"performing device reset...");
-		adapter->reset_reason = ENA_REGS_RESET_KEEP_ALIVE_TO;
+	if (unlikely(adapter->trigger_reset)) {
+		RTE_LOG(ERR, PMD, "Trigger reset is on\n");
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
 			NULL);
 	}

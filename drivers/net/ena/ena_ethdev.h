@@ -194,6 +194,8 @@ struct ena_adapter {
 	struct rte_timer timer_wd;
 	uint64_t timestamp_wd;
 	uint64_t keep_alive_timeout;
+
+	bool trigger_reset;
 };
 
 #endif /* _ENA_ETHDEV_H_ */
