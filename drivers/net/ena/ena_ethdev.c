@@ -201,7 +201,7 @@ static const struct rte_pci_id pci_id_ena_map[] = {
 	{ .device_id = 0 },
 };
 
-static struct ena_aenq_handlers empty_aenq_handlers;
+static struct ena_aenq_handlers aenq_handlers;
 
 static int ena_device_init(struct ena_com_dev *ena_dev,
 			   struct ena_com_dev_get_features_ctx *get_feat_ctx);
@@ -732,8 +732,11 @@ static int ena_link_update(struct rte_eth_dev *dev,
 			   __rte_unused int wait_to_complete)
 {
 	struct rte_eth_link *link = &dev->data->dev_link;
+	struct ena_adapter *adapter;
 
-	link->link_status = ETH_LINK_UP;
+	adapter = (struct ena_adapter *)(dev->data->dev_private);
+
+	link->link_status = adapter->link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
 	link->link_speed = ETH_SPEED_NUM_10G;
 	link->link_duplex = ETH_LINK_FULL_DUPLEX;
 
@@ -1228,6 +1231,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 static int ena_device_init(struct ena_com_dev *ena_dev,
 			   struct ena_com_dev_get_features_ctx *get_feat_ctx)
 {
+	uint32_t aenq_groups;
 	int rc;
 	bool readless_supported;
 
@@ -1263,7 +1267,7 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 	ena_dev->dma_addr_bits = ena_com_get_dma_width(ena_dev);
 
 	/* ENA device administration layer init */
-	rc = ena_com_admin_init(ena_dev, &empty_aenq_handlers, true);
+	rc = ena_com_admin_init(ena_dev, &aenq_handlers, true);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
 			"cannot initialize ena admin queue with device\n");
@@ -1286,6 +1290,15 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 		goto err_admin_init;
 	}
 
+	aenq_groups = BIT(ENA_ADMIN_LINK_CHANGE);
+
+	aenq_groups &= get_feat_ctx->aenq.supported_groups;
+	rc = ena_com_set_aenq_config(ena_dev, aenq_groups);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "Cannot configure aenq groups rc: %d\n", rc);
+		goto err_admin_init;
+	}
+
 	return 0;
 
 err_admin_init:
@@ -1297,12 +1310,14 @@ err_mmio_read_less:
 	return rc;
 }
 
-static void ena_interrupt_handler_rte(__rte_unused void *cb_arg)
+static void ena_interrupt_handler_rte(void *cb_arg)
 {
 	struct ena_adapter *adapter = (struct ena_adapter *)cb_arg;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 
 	ena_com_admin_q_comp_intr_handler(ena_dev);
+	if (adapter->state != ENA_ADAPTER_STATE_CLOSED)
+		ena_com_aenq_intr_handler(ena_dev, adapter);
 }
 
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
@@ -1405,6 +1420,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 				   adapter);
 	rte_intr_enable(intr_handle);
 	ena_com_set_admin_polling_mode(ena_dev, false);
+	ena_com_admin_aenq_enable(ena_dev);
 
 	adapters_found++;
 	adapter->state = ENA_ADAPTER_STATE_INIT;
@@ -1842,6 +1858,9 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return sent_idx;
 }
 
+/*********************************************************************
+ *  PMD configuration
+ *********************************************************************/
 static int eth_ena_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
@@ -1856,7 +1875,7 @@ static int eth_ena_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_ena_pmd = {
 	.id_table = pci_id_ena_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_ena_pci_probe,
 	.remove = eth_ena_pci_remove,
 };
@@ -1880,6 +1899,25 @@ ena_init_log(void)
 /******************************************************************************
  ******************************** AENQ Handlers *******************************
  *****************************************************************************/
+static void ena_update_on_link_change(void *adapter_data,
+				      struct ena_admin_aenq_entry *aenq_e)
+{
+	struct rte_eth_dev *eth_dev;
+	struct ena_adapter *adapter;
+	struct ena_admin_aenq_link_change_desc *aenq_link_desc;
+	uint32_t status;
+
+	adapter = (struct ena_adapter *)adapter_data;
+	aenq_link_desc = (struct ena_admin_aenq_link_change_desc *)aenq_e;
+	eth_dev = adapter->rte_dev;
+
+	status = get_ena_admin_aenq_link_change_desc_link_status(aenq_link_desc);
+	adapter->link_status = status;
+
+	ena_link_update(eth_dev, 0);
+	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+}
+
 /**
  * This handler will called for unknown event group or unimplemented handlers
  **/
@@ -1889,9 +1927,9 @@ static void unimplemented_aenq_handler(__rte_unused void *data,
 	// Unimplemented handler
 }
 
-static struct ena_aenq_handlers empty_aenq_handlers = {
+static struct ena_aenq_handlers aenq_handlers = {
 	.handlers = {
-		[ENA_ADMIN_LINK_CHANGE] = unimplemented_aenq_handler,
+		[ENA_ADMIN_LINK_CHANGE] = ena_update_on_link_change,
 		[ENA_ADMIN_NOTIFICATION] = unimplemented_aenq_handler,
 		[ENA_ADMIN_KEEP_ALIVE] = unimplemented_aenq_handler
 	},

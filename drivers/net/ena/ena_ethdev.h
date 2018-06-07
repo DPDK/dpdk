@@ -181,6 +181,8 @@ struct ena_adapter {
 	uint64_t tx_selected_offloads;
 	uint64_t rx_supported_offloads;
 	uint64_t rx_selected_offloads;
+
+	bool link_status;
 };
 
 #endif /* _ENA_ETHDEV_H_ */
