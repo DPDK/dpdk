@@ -634,8 +634,11 @@ void qed_link_update(struct ecore_hwfn *hwfn)
 {
 	struct ecore_dev *edev = hwfn->p_dev;
 	struct qede_dev *qdev = (struct qede_dev *)edev;
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)qdev->ethdev;
 
-	qede_link_update((struct rte_eth_dev *)qdev->ethdev, 0);
+	if (!qede_link_update(dev, 0))
+		_rte_eth_dev_callback_process(dev,
+					      RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 static int qed_drain(struct ecore_dev *edev)
