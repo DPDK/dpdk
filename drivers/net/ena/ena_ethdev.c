@@ -1327,16 +1327,11 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->regs = pci_dev->mem_resource[ENA_REGS_BAR].addr;
 	adapter->dev_mem_base = pci_dev->mem_resource[ENA_MEM_BAR].addr;
 
-	/* Present ENA_MEM_BAR indicates available LLQ mode.
-	 * Use corresponding policy
-	 */
-	if (adapter->dev_mem_base)
-		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_DEV;
-	else if (adapter->regs)
-		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
-	else
+	if (!adapter->regs) {
 		PMD_INIT_LOG(CRIT, "Failed to access registers BAR(%d)",
 			     ENA_REGS_BAR);
+		return -ENXIO;
+	}
 
 	ena_dev->reg_bar = adapter->regs;
 	ena_dev->dmadev = adapter->pdev;
@@ -1353,22 +1348,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV) {
-		if (get_feat_ctx.max_queues.max_llq_num == 0) {
-			PMD_INIT_LOG(ERR,
-				     "Trying to use LLQ but llq_num is 0.\n"
-				     "Fall back into regular queues.");
-			ena_dev->tx_mem_queue_type =
-				ENA_ADMIN_PLACEMENT_POLICY_HOST;
-			adapter->num_queues =
-				get_feat_ctx.max_queues.max_sq_num;
-		} else {
-			adapter->num_queues =
-				get_feat_ctx.max_queues.max_llq_num;
-		}
-	} else {
-		adapter->num_queues = get_feat_ctx.max_queues.max_sq_num;
-	}
+	ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
+	adapter->num_queues = get_feat_ctx.max_queues.max_sq_num;
 
 	queue_size = ena_calc_queue_size(ena_dev, &get_feat_ctx);
 	if ((queue_size <= 0) || (adapter->num_queues <= 0))
