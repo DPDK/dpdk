@@ -368,6 +368,19 @@ static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 	}
 }
 
+static inline int validate_rx_req_id(struct ena_ring *rx_ring, uint16_t req_id)
+{
+	if (likely(req_id < rx_ring->ring_size))
+		return 0;
+
+	RTE_LOG(ERR, PMD, "Invalid rx req_id: %hu\n", req_id);
+
+	rx_ring->adapter->reset_reason = ENA_REGS_RESET_INV_RX_REQ_ID;
+	rx_ring->adapter->trigger_reset = true;
+
+	return -EFAULT;
+}
+
 static void ena_config_host_info(struct ena_com_dev *ena_dev)
 {
 	struct ena_admin_host_info *host_info;
@@ -723,6 +736,10 @@ static void ena_rx_queue_release(void *queue)
 	if (ring->rx_buffer_info)
 		rte_free(ring->rx_buffer_info);
 	ring->rx_buffer_info = NULL;
+
+	if (ring->empty_rx_reqs)
+		rte_free(ring->empty_rx_reqs);
+	ring->empty_rx_reqs = NULL;
 
 	ring->configured = 0;
 
@@ -1176,7 +1193,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 		(struct ena_adapter *)(dev->data->dev_private);
 	struct ena_ring *rxq = NULL;
 	uint16_t ena_qid = 0;
-	int rc = 0;
+	int i, rc = 0;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 
 	rxq = &adapter->rx_ring[queue_idx];
@@ -1242,6 +1259,19 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	rxq->empty_rx_reqs = rte_zmalloc("rxq->empty_rx_reqs",
+					 sizeof(uint16_t) * nb_desc,
+					 RTE_CACHE_LINE_SIZE);
+	if (!rxq->empty_rx_reqs) {
+		RTE_LOG(ERR, PMD, "failed to alloc mem for empty rx reqs\n");
+		rte_free(rxq->rx_buffer_info);
+		rxq->rx_buffer_info = NULL;
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < nb_desc; i++)
+		rxq->empty_tx_reqs[i] = i;
+
 	/* Store pointer to this queue in upper layer */
 	rxq->configured = 1;
 	dev->data->rx_queues[queue_idx] = rxq;
@@ -1256,7 +1286,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	uint16_t ring_size = rxq->ring_size;
 	uint16_t ring_mask = ring_size - 1;
 	uint16_t next_to_use = rxq->next_to_use;
-	uint16_t in_use;
+	uint16_t in_use, req_id;
 	struct rte_mbuf **mbufs = &rxq->rx_buffer_info[0];
 
 	if (unlikely(!count))
@@ -1284,12 +1314,14 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 		struct ena_com_buf ebuf;
 
 		rte_prefetch0(mbufs[((next_to_use + 4) & ring_mask)]);
+
+		req_id = rxq->empty_rx_reqs[next_to_use_masked];
 		/* prepare physical address for DMA transaction */
 		ebuf.paddr = mbuf->buf_iova + RTE_PKTMBUF_HEADROOM;
 		ebuf.len = mbuf->buf_len - RTE_PKTMBUF_HEADROOM;
 		/* pass resource to device */
 		rc = ena_com_add_single_rx_desc(rxq->ena_com_io_sq,
-						&ebuf, next_to_use_masked);
+						&ebuf, req_id);
 		if (unlikely(rc)) {
 			rte_mempool_put_bulk(rxq->mb_pool, (void **)(&mbuf),
 					     count - i);
@@ -1710,6 +1742,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	unsigned int ring_mask = ring_size - 1;
 	uint16_t next_to_clean = rx_ring->next_to_clean;
 	uint16_t desc_in_use = 0;
+	uint16_t req_id;
 	unsigned int recv_idx = 0;
 	struct rte_mbuf *mbuf = NULL;
 	struct rte_mbuf *mbuf_head = NULL;
@@ -1750,7 +1783,12 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 
 		while (segments < ena_rx_ctx.descs) {
-			mbuf = rx_buff_info[next_to_clean & ring_mask];
+			req_id = ena_rx_ctx.ena_bufs[segments].req_id;
+			rc = validate_rx_req_id(rx_ring, req_id);
+			if (unlikely(rc))
+				break;
+
+			mbuf = rx_buff_info[req_id];
 			mbuf->data_len = ena_rx_ctx.ena_bufs[segments].len;
 			mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 			mbuf->refcnt = 1;
@@ -1767,6 +1805,8 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			mbuf_head->pkt_len += mbuf->data_len;
 
 			mbuf_prev = mbuf;
+			rx_ring->empty_rx_reqs[next_to_clean & ring_mask] =
+				req_id;
 			segments++;
 			next_to_clean++;
 		}

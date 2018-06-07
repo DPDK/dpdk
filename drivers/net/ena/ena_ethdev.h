@@ -75,8 +75,12 @@ struct ena_ring {
 
 	enum ena_ring_type type;
 	enum ena_admin_placement_policy_type tx_mem_queue_type;
-	/* Holds the empty requests for TX OOO completions */
-	uint16_t *empty_tx_reqs;
+	/* Holds the empty requests for TX/RX OOO completions */
+	union {
+		uint16_t *empty_tx_reqs;
+		uint16_t *empty_rx_reqs;
+	};
+
 	union {
 		struct ena_tx_buffer *tx_buffer_info; /* contex of tx packet */
 		struct rte_mbuf **rx_buffer_info; /* contex of rx packet */
