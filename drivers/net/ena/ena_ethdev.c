@@ -749,13 +749,18 @@ static int ena_queue_restart_all(struct rte_eth_dev *dev,
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
 	struct ena_ring *queues = NULL;
+	int nb_queues;
 	int i = 0;
 	int rc = 0;
 
-	queues = (ring_type == ENA_RING_TYPE_RX) ?
-		adapter->rx_ring : adapter->tx_ring;
-
-	for (i = 0; i < adapter->num_queues; i++) {
+	if (ring_type == ENA_RING_TYPE_RX) {
+		queues = adapter->rx_ring;
+		nb_queues = dev->data->nb_rx_queues;
+	} else {
+		queues = adapter->tx_ring;
+		nb_queues = dev->data->nb_tx_queues;
+	}
+	for (i = 0; i < nb_queues; i++) {
 		if (queues[i].configured) {
 			if (ring_type == ENA_RING_TYPE_RX) {
 				ena_assert_msg(
