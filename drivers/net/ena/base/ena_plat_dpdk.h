@@ -237,6 +237,7 @@ extern uint32_t ena_alloc_cnt;
 				"ena_alloc_%d", ena_alloc_cnt++);	\
 		mz = rte_memzone_reserve(z_name, size, node,		\
 				RTE_MEMZONE_IOVA_CONTIG);		\
+		mem_handle = mz;					\
 		if (mz == NULL) {					\
 			virt = NULL;					\
 			phys = 0;					\
@@ -245,7 +246,6 @@ extern uint32_t ena_alloc_cnt;
 			virt = mz->addr;				\
 			phys = mz->iova;				\
 		}							\
-		(void)mem_handle;					\
 	} while (0)
 
 #define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node, dev_node) \
