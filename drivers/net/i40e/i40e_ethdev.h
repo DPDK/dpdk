@@ -87,12 +87,18 @@
 #define I40E_WRITE_GLB_REG(hw, reg, value)				\
 	do {								\
 		uint32_t ori_val;					\
+		struct rte_eth_dev *dev;				\
 		ori_val = I40E_READ_REG((hw), (reg));			\
+		dev = ((struct i40e_adapter *)hw->back)->eth_dev;	\
 		I40E_PCI_REG_WRITE(I40E_PCI_REG_ADDR((hw),		\
 						     (reg)), (value));	\
-		PMD_DRV_LOG(DEBUG, "global register [0x%08x] "		\
-			    "original: 0x%08x, after: 0x%08x ",		\
-			    (reg), (ori_val), (value));			\
+		if (ori_val != value)					\
+			PMD_DRV_LOG(WARNING,				\
+				    "i40e device %s changed global "	\
+				    "register [0x%08x]. original: 0x%08x, " \
+				    "new: 0x%08x ",			\
+				    (dev->device->name), (reg),		\
+				    (ori_val), (value));		\
 	} while (0)
 
 /* index flex payload per layer */

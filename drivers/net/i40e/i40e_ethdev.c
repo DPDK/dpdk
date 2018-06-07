@@ -698,12 +698,16 @@ i40e_write_global_rx_ctl(struct i40e_hw *hw, uint32_t reg_addr,
 			 uint32_t reg_val)
 {
 	uint32_t ori_reg_val;
+	struct rte_eth_dev *dev;
 
 	ori_reg_val = i40e_read_rx_ctl(hw, reg_addr);
+	dev = ((struct i40e_adapter *)hw->back)->eth_dev;
 	i40e_write_rx_ctl(hw, reg_addr, reg_val);
-	PMD_DRV_LOG(DEBUG,
-		    "Global register [0x%08x] original: 0x%08x, after: 0x%08x",
-		    reg_addr, ori_reg_val, reg_val);
+	if (ori_reg_val != reg_val)
+		PMD_DRV_LOG(WARNING,
+			    "i40e device %s changed global register [0x%08x]."
+			    " original: 0x%08x, new: 0x%08x",
+			    dev->device->name, reg_addr, ori_reg_val, reg_val);
 }
 
 RTE_PMD_REGISTER_PCI(net_i40e, rte_i40e_pmd);
@@ -1165,6 +1169,7 @@ i40e_aq_debug_write_global_register(struct i40e_hw *hw,
 				    struct i40e_asq_cmd_details *cmd_details)
 {
 	uint64_t ori_reg_val;
+	struct rte_eth_dev *dev;
 	int ret;
 
 	ret = i40e_aq_debug_read_register(hw, reg_addr, &ori_reg_val, NULL);
@@ -1174,11 +1179,13 @@ i40e_aq_debug_write_global_register(struct i40e_hw *hw,
 			    reg_addr);
 		return -EIO;
 	}
+	dev = ((struct i40e_adapter *)hw->back)->eth_dev;
 
-	PMD_DRV_LOG(DEBUG,
-		    "Global register [0x%08x] original: 0x%"PRIx64
-		    ", after: 0x%"PRIx64,
-		    reg_addr, ori_reg_val, reg_val);
+	if (ori_reg_val != reg_val)
+		PMD_DRV_LOG(WARNING,
+			    "i40e device %s changed global register [0x%08x]."
+			    " original: 0x%"PRIx64", after: 0x%"PRIx64,
+			    dev->device->name, reg_addr, ori_reg_val, reg_val);
 
 	return i40e_aq_debug_write_register(hw, reg_addr, reg_val, cmd_details);
 }
@@ -7565,6 +7572,7 @@ i40e_status_code i40e_replace_mpls_l1_filter(struct i40e_pf *pf)
 	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
 	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct rte_eth_dev *dev = ((struct i40e_adapter *)hw->back)->eth_dev;
 	enum i40e_status_code status = I40E_SUCCESS;
 
 	if (pf->support_multi_driver) {
@@ -7608,10 +7616,12 @@ i40e_status_code i40e_replace_mpls_l1_filter(struct i40e_pf *pf)
 
 	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 					       &filter_replace_buf);
-	if (!status) {
+	if (!status && (filter_replace.old_filter_type !=
+			filter_replace.new_filter_type)) {
 		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
-		PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-			    "cloud l1 type is changed from 0x%x to 0x%x",
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
 			    filter_replace.old_filter_type,
 			    filter_replace.new_filter_type);
 	}
@@ -7624,6 +7634,7 @@ i40e_status_code i40e_replace_mpls_cloud_filter(struct i40e_pf *pf)
 	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
 	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct rte_eth_dev *dev = ((struct i40e_adapter *)hw->back)->eth_dev;
 	enum i40e_status_code status = I40E_SUCCESS;
 
 	if (pf->support_multi_driver) {
@@ -7652,10 +7663,13 @@ i40e_status_code i40e_replace_mpls_cloud_filter(struct i40e_pf *pf)
 					       &filter_replace_buf);
 	if (status < 0)
 		return status;
-	PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-		    "cloud filter type is changed from 0x%x to 0x%x",
-		    filter_replace.old_filter_type,
-		    filter_replace.new_filter_type);
+	if (filter_replace.old_filter_type !=
+	    filter_replace.new_filter_type)
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
+			    filter_replace.old_filter_type,
+			    filter_replace.new_filter_type);
 
 	/* For MPLSoGRE */
 	memset(&filter_replace, 0,
@@ -7678,10 +7692,12 @@ i40e_status_code i40e_replace_mpls_cloud_filter(struct i40e_pf *pf)
 
 	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 					       &filter_replace_buf);
-	if (!status) {
+	if (!status && (filter_replace.old_filter_type !=
+			filter_replace.new_filter_type)) {
 		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
-		PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-			    "cloud filter type is changed from 0x%x to 0x%x",
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
 			    filter_replace.old_filter_type,
 			    filter_replace.new_filter_type);
 	}
@@ -7694,6 +7710,7 @@ i40e_replace_gtp_l1_filter(struct i40e_pf *pf)
 	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
 	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct rte_eth_dev *dev = ((struct i40e_adapter *)hw->back)->eth_dev;
 	enum i40e_status_code status = I40E_SUCCESS;
 
 	if (pf->support_multi_driver) {
@@ -7729,10 +7746,13 @@ i40e_replace_gtp_l1_filter(struct i40e_pf *pf)
 					       &filter_replace_buf);
 	if (status < 0)
 		return status;
-	PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-		    "cloud l1 type is changed from 0x%x to 0x%x",
-		    filter_replace.old_filter_type,
-		    filter_replace.new_filter_type);
+	if (filter_replace.old_filter_type !=
+	    filter_replace.new_filter_type)
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
+			    filter_replace.old_filter_type,
+			    filter_replace.new_filter_type);
 
 	/* for GTP-U */
 	memset(&filter_replace, 0,
@@ -7761,10 +7781,12 @@ i40e_replace_gtp_l1_filter(struct i40e_pf *pf)
 
 	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 					       &filter_replace_buf);
-	if (!status) {
+	if (!status && (filter_replace.old_filter_type !=
+			filter_replace.new_filter_type)) {
 		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
-		PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-			    "cloud l1 type is changed from 0x%x to 0x%x",
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
 			    filter_replace.old_filter_type,
 			    filter_replace.new_filter_type);
 	}
@@ -7777,6 +7799,7 @@ i40e_status_code i40e_replace_gtp_cloud_filter(struct i40e_pf *pf)
 	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
 	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct rte_eth_dev *dev = ((struct i40e_adapter *)hw->back)->eth_dev;
 	enum i40e_status_code status = I40E_SUCCESS;
 
 	if (pf->support_multi_driver) {
@@ -7804,10 +7827,13 @@ i40e_status_code i40e_replace_gtp_cloud_filter(struct i40e_pf *pf)
 					       &filter_replace_buf);
 	if (status < 0)
 		return status;
-	PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-		    "cloud filter type is changed from 0x%x to 0x%x",
-		    filter_replace.old_filter_type,
-		    filter_replace.new_filter_type);
+	if (filter_replace.old_filter_type !=
+	    filter_replace.new_filter_type)
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
+			    filter_replace.old_filter_type,
+			    filter_replace.new_filter_type);
 
 	/* for GTP-U */
 	memset(&filter_replace, 0,
@@ -7829,10 +7855,12 @@ i40e_status_code i40e_replace_gtp_cloud_filter(struct i40e_pf *pf)
 
 	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 					       &filter_replace_buf);
-	if (!status) {
+	if (!status && (filter_replace.old_filter_type !=
+			filter_replace.new_filter_type)) {
 		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
-		PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-			    "cloud filter type is changed from 0x%x to 0x%x",
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
 			    filter_replace.old_filter_type,
 			    filter_replace.new_filter_type);
 	}
@@ -9280,12 +9308,17 @@ void
 i40e_check_write_global_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 {
 	uint32_t reg = i40e_read_rx_ctl(hw, addr);
+	struct rte_eth_dev *dev;
 
-	if (reg != val)
+	dev = ((struct i40e_adapter *)hw->back)->eth_dev;
+	if (reg != val) {
 		i40e_write_rx_ctl(hw, addr, val);
-	PMD_DRV_LOG(DEBUG,
-		    "Global register [0x%08x] original: 0x%08x, after: 0x%08x",
-		    addr, reg, (uint32_t)i40e_read_rx_ctl(hw, addr));
+		PMD_DRV_LOG(WARNING,
+			    "i40e device %s changed global register [0x%08x]."
+			    " original: 0x%08x, new: 0x%08x",
+			    dev->device->name, addr, reg,
+			    (uint32_t)i40e_read_rx_ctl(hw, addr));
+	}
 }
 
 static void
@@ -12214,6 +12247,7 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
 	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct rte_eth_dev *dev = ((struct i40e_adapter *)hw->back)->eth_dev;
 
 	if (pf->support_multi_driver) {
 		PMD_DRV_LOG(ERR, "Replace cloud filter is not supported.");
@@ -12250,10 +12284,14 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 			&filter_replace_buf);
 	if (ret != I40E_SUCCESS)
 		return ret;
-	PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-		    "cloud l1 type is changed from 0x%x to 0x%x",
-		    filter_replace.old_filter_type,
-		    filter_replace.new_filter_type);
+
+	if (filter_replace.old_filter_type !=
+	    filter_replace.new_filter_type)
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
+			    filter_replace.old_filter_type,
+			    filter_replace.new_filter_type);
 
 	/* Apply the second L2 cloud filter */
 	memset(&filter_replace, 0,
@@ -12275,10 +12313,12 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
 	ret = i40e_aq_replace_cloud_filters(hw, &filter_replace,
 			&filter_replace_buf);
-	if (!ret) {
+	if (!ret && (filter_replace.old_filter_type !=
+		     filter_replace.new_filter_type)) {
 		i40e_global_cfg_warning(I40E_WARNING_RPL_CLD_FILTER);
-		PMD_DRV_LOG(DEBUG, "Global configuration modification: "
-			    "cloud filter type is changed from 0x%x to 0x%x",
+		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
+			    " original: 0x%x, new: 0x%x",
+			    dev->device->name,
 			    filter_replace.old_filter_type,
 			    filter_replace.new_filter_type);
 	}
