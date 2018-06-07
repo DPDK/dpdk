@@ -210,10 +210,15 @@ extern uint32_t ena_alloc_cnt;
 				"ena_alloc_%d", ena_alloc_cnt++);	\
 		mz = rte_memzone_reserve(z_name, size, SOCKET_ID_ANY,	\
 				RTE_MEMZONE_IOVA_CONTIG);		\
-		memset(mz->addr, 0, size);				\
-		virt = mz->addr;					\
-		phys = mz->iova;					\
 		handle = mz;						\
+		if (mz == NULL) {					\
+			virt = NULL;					\
+			phys = 0;					\
+		} else {						\
+			memset(mz->addr, 0, size);			\
+			virt = mz->addr;				\
+			phys = mz->iova;				\
+		}							\
 	} while (0)
 #define ENA_MEM_FREE_COHERENT(dmadev, size, virt, phys, handle) 	\
 		({ ENA_TOUCH(size); ENA_TOUCH(phys);			\
@@ -230,9 +235,14 @@ extern uint32_t ena_alloc_cnt;
 				"ena_alloc_%d", ena_alloc_cnt++);	\
 		mz = rte_memzone_reserve(z_name, size, node,		\
 				RTE_MEMZONE_IOVA_CONTIG);		\
-		memset(mz->addr, 0, size);				\
-		virt = mz->addr;					\
-		phys = mz->iova;					\
+		if (mz == NULL) {					\
+			virt = NULL;					\
+			phys = 0;					\
+		} else {						\
+			memset(mz->addr, 0, size);			\
+			virt = mz->addr;				\
+			phys = mz->iova;				\
+		}							\
 		(void)mem_handle;					\
 	} while (0)
 
