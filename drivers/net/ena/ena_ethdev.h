@@ -196,6 +196,8 @@ struct ena_adapter {
 	uint64_t keep_alive_timeout;
 
 	bool trigger_reset;
+
+	bool wd_state;
 };
 
 #endif /* _ENA_ETHDEV_H_ */

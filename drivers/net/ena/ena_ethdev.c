@@ -204,7 +204,8 @@ static const struct rte_pci_id pci_id_ena_map[] = {
 static struct ena_aenq_handlers aenq_handlers;
 
 static int ena_device_init(struct ena_com_dev *ena_dev,
-			   struct ena_com_dev_get_features_ctx *get_feat_ctx);
+			   struct ena_com_dev_get_features_ctx *get_feat_ctx,
+			   bool *wd_state);
 static int ena_dev_configure(struct rte_eth_dev *dev);
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
@@ -485,6 +486,7 @@ ena_dev_reset(struct rte_eth_dev *dev)
 	struct ena_adapter *adapter;
 	int nb_queues;
 	int rc, i;
+	bool wd_state;
 
 	adapter = (struct ena_adapter *)(dev->data->dev_private);
 	ena_dev = &adapter->ena_dev;
@@ -510,11 +512,12 @@ ena_dev_reset(struct rte_eth_dev *dev)
 	ena_com_admin_destroy(ena_dev);
 	ena_com_mmio_reg_read_request_destroy(ena_dev);
 
-	rc = ena_device_init(ena_dev, &get_feat_ctx);
+	rc = ena_device_init(ena_dev, &get_feat_ctx, &wd_state);
 	if (rc) {
 		PMD_INIT_LOG(CRIT, "Cannot initialize device\n");
 		return rc;
 	}
+	adapter->wd_state = wd_state;
 
 	rte_intr_enable(intr_handle);
 	ena_com_set_admin_polling_mode(ena_dev, false);
@@ -1309,7 +1312,8 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 }
 
 static int ena_device_init(struct ena_com_dev *ena_dev,
-			   struct ena_com_dev_get_features_ctx *get_feat_ctx)
+			   struct ena_com_dev_get_features_ctx *get_feat_ctx,
+			   bool *wd_state)
 {
 	uint32_t aenq_groups;
 	int rc;
@@ -1381,6 +1385,8 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 		goto err_admin_init;
 	}
 
+	*wd_state = !!(aenq_groups & BIT(ENA_ADMIN_KEEP_ALIVE));
+
 	return 0;
 
 err_admin_init:
@@ -1404,6 +1410,9 @@ static void ena_interrupt_handler_rte(void *cb_arg)
 
 static void check_for_missing_keep_alive(struct ena_adapter *adapter)
 {
+	if (!adapter->wd_state)
+		return;
+
 	if (adapter->keep_alive_timeout == ENA_HW_HINTS_NO_TIMEOUT)
 		return;
 
@@ -1452,6 +1461,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	int queue_size, rc;
 
 	static int adapters_found;
+	bool wd_state;
 
 	memset(adapter, 0, sizeof(struct ena_adapter));
 	ena_dev = &adapter->ena_dev;
@@ -1495,11 +1505,12 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		 adapter->id_number);
 
 	/* device specific initialization routine */
-	rc = ena_device_init(ena_dev, &get_feat_ctx);
+	rc = ena_device_init(ena_dev, &get_feat_ctx, &wd_state);
 	if (rc) {
 		PMD_INIT_LOG(CRIT, "Failed to init ENA device");
 		return -1;
 	}
+	adapter->wd_state = wd_state;
 
 	ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
 	adapter->num_queues = get_feat_ctx.max_queues.max_sq_num;
