@@ -201,6 +201,11 @@ void osal_dma_free_mem(struct ecore_dev *p_dev, dma_addr_t phys)
 			DP_VERBOSE(p_dev, ECORE_MSG_SP,
 				"Free memzone %s\n", ecore_mz_mapping[j]->name);
 			rte_memzone_free(ecore_mz_mapping[j]);
+			while (j < ecore_mz_count - 1) {
+				ecore_mz_mapping[j] = ecore_mz_mapping[j + 1];
+				j++;
+			}
+			ecore_mz_count--;
 			return;
 		}
 	}
