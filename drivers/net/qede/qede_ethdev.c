@@ -1590,18 +1590,20 @@ qede_link_update(struct rte_eth_dev *eth_dev, __rte_unused int wait_to_complete)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
+	struct qed_link_output q_link;
+	struct rte_eth_link link;
 	uint16_t link_duplex;
-	struct qed_link_output link;
-	struct rte_eth_link *curr = &eth_dev->data->dev_link;
 
-	memset(&link, 0, sizeof(struct qed_link_output));
-	qdev->ops->common->get_link(edev, &link);
+	memset(&q_link, 0, sizeof(q_link));
+	memset(&link, 0, sizeof(link));
+
+	qdev->ops->common->get_link(edev, &q_link);
 
 	/* Link Speed */
-	curr->link_speed = link.speed;
+	link.link_speed = q_link.speed;
 
 	/* Link Mode */
-	switch (link.duplex) {
+	switch (q_link.duplex) {
 	case QEDE_DUPLEX_HALF:
 		link_duplex = ETH_LINK_HALF_DUPLEX;
 		break;
@@ -1612,21 +1614,20 @@ qede_link_update(struct rte_eth_dev *eth_dev, __rte_unused int wait_to_complete)
 	default:
 		link_duplex = -1;
 	}
-	curr->link_duplex = link_duplex;
+	link.link_duplex = link_duplex;
 
 	/* Link Status */
-	curr->link_status = (link.link_up) ? ETH_LINK_UP : ETH_LINK_DOWN;
+	link.link_status = q_link.link_up ? ETH_LINK_UP : ETH_LINK_DOWN;
 
 	/* AN */
-	curr->link_autoneg = (link.supported_caps & QEDE_SUPPORTED_AUTONEG) ?
+	link.link_autoneg = (q_link.supported_caps & QEDE_SUPPORTED_AUTONEG) ?
 			     ETH_LINK_AUTONEG : ETH_LINK_FIXED;
 
 	DP_INFO(edev, "Link - Speed %u Mode %u AN %u Status %u\n",
-		curr->link_speed, curr->link_duplex,
-		curr->link_autoneg, curr->link_status);
+		link.link_speed, link.link_duplex,
+		link.link_autoneg, link.link_status);
 
-	/* return 0 means link status changed, -1 means not changed */
-	return ((curr->link_status == link.link_up) ? -1 : 0);
+	return rte_eth_linkstatus_set(eth_dev, &link);
 }
 
 static void qede_promiscuous_enable(struct rte_eth_dev *eth_dev)
