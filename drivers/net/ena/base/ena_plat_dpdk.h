@@ -248,15 +248,8 @@ extern uint32_t ena_alloc_cnt;
 
 #define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node, dev_node) \
 	do {								\
-		const struct rte_memzone *mz;				\
-		char z_name[RTE_MEMZONE_NAMESIZE];			\
 		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			\
-		snprintf(z_name, sizeof(z_name),			\
-				"ena_alloc_%d", ena_alloc_cnt++);	\
-		mz = rte_memzone_reserve(z_name, size, node,		\
-				RTE_MEMZONE_IOVA_CONTIG);		\
-		memset(mz->addr, 0, size);				\
-		virt = mz->addr;					\
+		virt = rte_zmalloc_socket(NULL, size, 0, node);		\
 	} while (0)
 
 #define ENA_MEM_ALLOC(dmadev, size) rte_zmalloc(NULL, size, 1)
