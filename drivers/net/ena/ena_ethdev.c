@@ -246,6 +246,7 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 			      struct rte_eth_rss_reta_entry64 *reta_conf,
 			      uint16_t reta_size);
 static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
+static void ena_interrupt_handler_rte(void *cb_arg);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -459,8 +460,15 @@ static void ena_close(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	adapter->state = ENA_ADAPTER_STATE_STOPPED;
+
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+				     ena_interrupt_handler_rte,
+				     adapter);
 
 	ena_rx_queue_release_all(dev);
 	ena_tx_queue_release_all(dev);
@@ -908,6 +916,8 @@ static int ena_start(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int rc = 0;
 
 	if (!(adapter->state == ENA_ADAPTER_STATE_CONFIG ||
@@ -936,6 +946,11 @@ static int ena_start(struct rte_eth_dev *dev)
 	}
 
 	ena_stats_restart(dev);
+
+	rte_intr_callback_register(intr_handle,
+				   ena_interrupt_handler_rte,
+				   adapter);
+	rte_intr_enable(intr_handle);
 
 	adapter->state = ENA_ADAPTER_STATE_RUNNING;
 
@@ -1289,6 +1304,14 @@ err_mmio_read_less:
 	ena_com_mmio_reg_read_request_destroy(ena_dev);
 
 	return rc;
+}
+
+static void ena_interrupt_handler_rte(__rte_unused void *cb_arg)
+{
+	struct ena_adapter *adapter = (struct ena_adapter *)cb_arg;
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
+
+	ena_com_admin_q_comp_intr_handler(ena_dev);
 }
 
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
