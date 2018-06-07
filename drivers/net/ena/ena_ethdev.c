@@ -1175,6 +1175,8 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		goto err_destroy_io_queue;
 	}
 
+	ena_com_update_numa_node(txq->ena_com_io_cq, ctx.numa_node);
+
 	txq->port_id = dev->data->port_id;
 	txq->next_to_clean = 0;
 	txq->next_to_use = 0;
