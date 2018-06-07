@@ -526,7 +526,6 @@ i40e_set_flx_pld_cfg(struct i40e_pf *pf,
 			  (num << I40E_GLQF_ORT_FIELD_CNT_SHIFT) |
 			  (layer_idx * I40E_MAX_FLXPLD_FIED);
 		I40E_WRITE_GLB_REG(hw, I40E_GLQF_ORT(33 + layer_idx), flx_ort);
-		i40e_global_cfg_warning(I40E_WARNING_ENA_FLX_PLD);
 	}
 
 	for (i = 0; i < num; i++) {

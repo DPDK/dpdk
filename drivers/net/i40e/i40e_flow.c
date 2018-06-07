@@ -2263,7 +2263,6 @@ i40e_flow_set_fdir_flex_pit(struct i40e_pf *pf,
 			  (raw_id << I40E_GLQF_ORT_FIELD_CNT_SHIFT) |
 			  (layer_idx * I40E_MAX_FLXPLD_FIED);
 		I40E_WRITE_GLB_REG(hw, I40E_GLQF_ORT(33 + layer_idx), flx_ort);
-		i40e_global_cfg_warning(I40E_WARNING_ENA_FLX_PLD);
 	}
 
 	/* Set flex pit */

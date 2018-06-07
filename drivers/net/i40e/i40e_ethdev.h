@@ -1114,22 +1114,6 @@ struct i40e_valid_pattern {
 	parse_filter_t parse_filter;
 };
 
-enum I40E_WARNING_IDX {
-	I40E_WARNING_DIS_FLX_PLD,
-	I40E_WARNING_ENA_FLX_PLD,
-	I40E_WARNING_QINQ_PARSER,
-	I40E_WARNING_QINQ_CLOUD_FILTER,
-	I40E_WARNING_TPID,
-	I40E_WARNING_FLOW_CTL,
-	I40E_WARNING_GRE_KEY_LEN,
-	I40E_WARNING_QF_CTL,
-	I40E_WARNING_HASH_INSET,
-	I40E_WARNING_HSYM,
-	I40E_WARNING_HASH_MSK,
-	I40E_WARNING_FD_MSK,
-	I40E_WARNING_RPL_CLD_FILTER,
-};
-
 int i40e_dev_switch_queues(struct i40e_pf *pf, bool on);
 int i40e_vsi_release(struct i40e_vsi *vsi);
 struct i40e_vsi *i40e_vsi_setup(struct i40e_pf *pf,
@@ -1349,33 +1333,6 @@ i40e_calc_itr_interval(int16_t interval, bool is_pf, bool is_multi_drv)
 
 	/* Convert to hardware count, as writing each 1 represents 2 us */
 	return interval / 2;
-}
-
-static inline void
-i40e_global_cfg_warning(enum I40E_WARNING_IDX idx)
-{
-	const char *warning;
-	static const char *const warning_list[] = {
-		[I40E_WARNING_DIS_FLX_PLD] = "disable FDIR flexible payload",
-		[I40E_WARNING_ENA_FLX_PLD] = "enable FDIR flexible payload",
-		[I40E_WARNING_QINQ_PARSER] = "support QinQ parser",
-		[I40E_WARNING_QINQ_CLOUD_FILTER] = "support QinQ cloud filter",
-		[I40E_WARNING_TPID] = "support TPID configuration",
-		[I40E_WARNING_FLOW_CTL] = "configure water marker",
-		[I40E_WARNING_GRE_KEY_LEN] = "support GRE key length setting",
-		[I40E_WARNING_QF_CTL] = "support hash function setting",
-		[I40E_WARNING_HASH_INSET] = "configure hash input set",
-		[I40E_WARNING_HSYM] = "set symmetric hash",
-		[I40E_WARNING_HASH_MSK] = "configure hash mask",
-		[I40E_WARNING_FD_MSK] = "configure fdir mask",
-		[I40E_WARNING_RPL_CLD_FILTER] = "replace cloud filter",
-	};
-
-	warning = warning_list[idx];
-
-	RTE_LOG(WARNING, PMD,
-		"Global register is changed during %s\n",
-		warning);
 }
 
 #define I40E_VALID_FLOW(flow_type) \
