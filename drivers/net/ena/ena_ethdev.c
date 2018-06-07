@@ -894,6 +894,7 @@ static int ena_check_valid_conf(struct ena_adapter *adapter)
 
 static int
 ena_calc_queue_size(struct ena_com_dev *ena_dev,
+		    u16 *max_tx_sgl_size,
 		    struct ena_com_dev_get_features_ctx *get_feat_ctx)
 {
 	uint32_t queue_size = ENA_DEFAULT_RING_SIZE;
@@ -915,6 +916,9 @@ ena_calc_queue_size(struct ena_com_dev *ena_dev,
 		PMD_INIT_LOG(ERR, "Invalid queue size");
 		return -EFAULT;
 	}
+
+	*max_tx_sgl_size = RTE_MIN(ENA_PKT_MAX_BUFS,
+		get_feat_ctx->max_queues.max_packet_tx_descs);
 
 	return queue_size;
 }
@@ -1491,6 +1495,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	struct ena_com_dev_get_features_ctx get_feat_ctx;
 	int queue_size, rc;
+	u16 tx_sgl_size = 0;
 
 	static int adapters_found;
 	bool wd_state;
@@ -1547,12 +1552,14 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
 	adapter->num_queues = get_feat_ctx.max_queues.max_sq_num;
 
-	queue_size = ena_calc_queue_size(ena_dev, &get_feat_ctx);
+	queue_size = ena_calc_queue_size(ena_dev, &tx_sgl_size, &get_feat_ctx);
 	if ((queue_size <= 0) || (adapter->num_queues <= 0))
 		return -EFAULT;
 
 	adapter->tx_ring_size = queue_size;
 	adapter->rx_ring_size = queue_size;
+
+	adapter->max_tx_sgl_size = tx_sgl_size;
 
 	/* prepare ring structures */
 	ena_init_rings(adapter);
@@ -1652,6 +1659,7 @@ static void ena_init_rings(struct ena_adapter *adapter)
 		ring->id = i;
 		ring->tx_mem_queue_type = adapter->ena_dev.tx_mem_queue_type;
 		ring->tx_max_header_size = adapter->ena_dev.tx_max_header_size;
+		ring->sgl_size = adapter->max_tx_sgl_size;
 	}
 
 	for (i = 0; i < adapter->num_queues; i++) {
@@ -1923,6 +1931,23 @@ static void ena_update_hints(struct ena_adapter *adapter,
 	}
 }
 
+static int ena_check_and_linearize_mbuf(struct ena_ring *tx_ring,
+					struct rte_mbuf *mbuf)
+{
+	int num_segments, rc;
+
+	num_segments = mbuf->nb_segs;
+
+	if (likely(num_segments < tx_ring->sgl_size))
+		return 0;
+
+	rc = rte_pktmbuf_linearize(mbuf);
+	if (unlikely(rc))
+		RTE_LOG(WARNING, PMD, "Mbuf linearize failed\n");
+
+	return rc;
+}
+
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts)
 {
@@ -1952,6 +1977,10 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		mbuf = tx_pkts[sent_idx];
+
+		rc = ena_check_and_linearize_mbuf(tx_ring, mbuf);
+		if (unlikely(rc))
+			break;
 
 		req_id = tx_ring->empty_tx_reqs[next_to_use & ring_mask];
 		tx_info = &tx_ring->tx_buffer_info[req_id];

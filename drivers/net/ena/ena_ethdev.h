@@ -101,6 +101,7 @@ struct ena_ring {
 	int configured;
 	struct ena_adapter *adapter;
 	uint64_t offloads;
+	u16 sgl_size;
 } __rte_cache_aligned;
 
 enum ena_adapter_state {
@@ -167,6 +168,7 @@ struct ena_adapter {
 	/* TX */
 	struct ena_ring tx_ring[ENA_MAX_NUM_QUEUES] __rte_cache_aligned;
 	int tx_ring_size;
+	u16 max_tx_sgl_size;
 
 	/* RX */
 	struct ena_ring rx_ring[ENA_MAX_NUM_QUEUES] __rte_cache_aligned;
