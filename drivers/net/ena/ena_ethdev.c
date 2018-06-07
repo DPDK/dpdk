@@ -436,9 +436,12 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 
 	rc = ena_com_set_host_attributes(ena_dev);
 	if (rc) {
-		RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
-		if (rc != -ENA_COM_UNSUPPORTED)
-			goto err;
+		if (rc == -ENA_COM_UNSUPPORTED)
+			RTE_LOG(WARNING, PMD, "Cannot set host attributes\n");
+		else
+			RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
+
+		goto err;
 	}
 
 	return;
@@ -489,9 +492,12 @@ static void ena_config_debug_area(struct ena_adapter *adapter)
 
 	rc = ena_com_set_host_attributes(&adapter->ena_dev);
 	if (rc) {
-		RTE_LOG(WARNING, PMD, "Cannot set host attributes\n");
-		if (rc != -ENA_COM_UNSUPPORTED)
-			goto err;
+		if (rc == -ENA_COM_UNSUPPORTED)
+			RTE_LOG(WARNING, PMD, "Cannot set host attributes\n");
+		else
+			RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
+
+		goto err;
 	}
 
 	return;
@@ -534,7 +540,9 @@ ena_dev_reset(struct rte_eth_dev *dev)
 
 	ena_com_set_admin_running_state(ena_dev, false);
 
-	ena_com_dev_reset(ena_dev, adapter->reset_reason);
+	rc = ena_com_dev_reset(ena_dev, adapter->reset_reason);
+	if (rc)
+		RTE_LOG(ERR, PMD, "Device reset failed\n");
 
 	for (i = 0; i < nb_queues; i++)
 		mb_pool_rx[i] = adapter->rx_ring[i].mb_pool;
@@ -579,7 +587,7 @@ static int ena_rss_reta_update(struct rte_eth_dev *dev,
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
-	int ret, i;
+	int rc, i;
 	u16 entry_value;
 	int conf_idx;
 	int idx;
@@ -591,8 +599,7 @@ static int ena_rss_reta_update(struct rte_eth_dev *dev,
 		RTE_LOG(WARNING, PMD,
 			"indirection table %d is bigger than supported (%d)\n",
 			reta_size, ENA_RX_RSS_TABLE_SIZE);
-		ret = -EINVAL;
-		goto err;
+		return -EINVAL;
 	}
 
 	for (i = 0 ; i < reta_size ; i++) {
@@ -604,29 +611,28 @@ static int ena_rss_reta_update(struct rte_eth_dev *dev,
 		if (TEST_BIT(reta_conf[conf_idx].mask, idx)) {
 			entry_value =
 				ENA_IO_RXQ_IDX(reta_conf[conf_idx].reta[idx]);
-			ret = ena_com_indirect_table_fill_entry(ena_dev,
-								i,
-								entry_value);
-			if (unlikely(ret && (ret != ENA_COM_UNSUPPORTED))) {
+
+			rc = ena_com_indirect_table_fill_entry(ena_dev,
+							       i,
+							       entry_value);
+			if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
 				RTE_LOG(ERR, PMD,
 					"Cannot fill indirect table\n");
-				ret = -ENOTSUP;
-				goto err;
+				return rc;
 			}
 		}
 	}
 
-	ret = ena_com_indirect_table_set(ena_dev);
-	if (unlikely(ret && (ret != ENA_COM_UNSUPPORTED))) {
+	rc = ena_com_indirect_table_set(ena_dev);
+	if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
 		RTE_LOG(ERR, PMD, "Cannot flush the indirect table\n");
-		ret = -ENOTSUP;
-		goto err;
+		return rc;
 	}
 
 	RTE_LOG(DEBUG, PMD, "%s(): RSS configured %d entries  for port %d\n",
 		__func__, reta_size, adapter->rte_dev->data->port_id);
-err:
-	return ret;
+
+	return 0;
 }
 
 /* Query redirection table. */
@@ -637,7 +643,7 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
-	int ret;
+	int rc;
 	int i;
 	u32 indirect_table[ENA_RX_RSS_TABLE_SIZE] = {0};
 	int reta_conf_idx;
@@ -647,11 +653,10 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 	    (reta_size > RTE_RETA_GROUP_SIZE && ((reta_conf + 1) == NULL)))
 		return -EINVAL;
 
-	ret = ena_com_indirect_table_get(ena_dev, indirect_table);
-	if (unlikely(ret && (ret != ENA_COM_UNSUPPORTED))) {
+	rc = ena_com_indirect_table_get(ena_dev, indirect_table);
+	if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
 		RTE_LOG(ERR, PMD, "cannot get indirect table\n");
-		ret = -ENOTSUP;
-		goto err;
+		return -ENOTSUP;
 	}
 
 	for (i = 0 ; i < reta_size ; i++) {
@@ -661,8 +666,8 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 			reta_conf[reta_conf_idx].reta[reta_idx] =
 				ENA_IO_RXQ_IDX_REV(indirect_table[i]);
 	}
-err:
-	return ret;
+
+	return 0;
 }
 
 static int ena_rss_init_default(struct ena_adapter *adapter)
@@ -884,7 +889,7 @@ static int ena_queue_restart_all(struct rte_eth_dev *dev,
 				PMD_INIT_LOG(ERR,
 					     "failed to restart queue %d type(%d)",
 					     i, ring_type);
-				return -1;
+				return rc;
 			}
 		}
 	}
@@ -908,9 +913,11 @@ static int ena_check_valid_conf(struct ena_adapter *adapter)
 {
 	uint32_t max_frame_len = ena_get_mtu_conf(adapter);
 
-	if (max_frame_len > adapter->max_mtu) {
-		PMD_INIT_LOG(ERR, "Unsupported MTU of %d", max_frame_len);
-		return -1;
+	if (max_frame_len > adapter->max_mtu || max_frame_len < ENA_MIN_MTU) {
+		PMD_INIT_LOG(ERR, "Unsupported MTU of %d. "
+				  "max mtu: %d, min mtu: %d\n",
+			     max_frame_len, adapter->max_mtu, ENA_MIN_MTU);
+		return ENA_COM_UNSUPPORTED;
 	}
 
 	return 0;
@@ -1008,12 +1015,12 @@ static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	ena_dev = &adapter->ena_dev;
 	ena_assert_msg(ena_dev != NULL, "Uninitialized device");
 
-	if (mtu > ena_get_mtu_conf(adapter)) {
+	if (mtu > ena_get_mtu_conf(adapter) || mtu < ENA_MIN_MTU) {
 		RTE_LOG(ERR, PMD,
-			"Given MTU (%d) exceeds maximum MTU supported (%d)\n",
-			mtu, ena_get_mtu_conf(adapter));
-		rc = -EINVAL;
-		goto err;
+			"Invalid MTU setting. new_mtu: %d "
+			"max mtu: %d min mtu: %d\n",
+			mtu, ena_get_mtu_conf(adapter), ENA_MIN_MTU);
+		return -EINVAL;
 	}
 
 	rc = ena_com_set_dev_mtu(ena_dev, mtu);
@@ -1022,7 +1029,6 @@ static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	else
 		RTE_LOG(NOTICE, PMD, "Set MTU: %d\n", mtu);
 
-err:
 	return rc;
 }
 
@@ -1093,7 +1099,7 @@ static int ena_queue_restart(struct ena_ring *ring)
 	rc = ena_populate_rx_queue(ring, bufs_num);
 	if (rc != bufs_num) {
 		PMD_INIT_LOG(ERR, "Failed to populate rx ring !");
-		return (-1);
+		return ENA_COM_FAULT;
 	}
 
 	return 0;
@@ -1123,12 +1129,12 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(CRIT, PMD,
 			"API violation. Queue %d is already configured\n",
 			queue_idx);
-		return -1;
+		return ENA_COM_FAULT;
 	}
 
 	if (!rte_is_power_of_2(nb_desc)) {
 		RTE_LOG(ERR, PMD,
-			"Unsupported size of RX queue: %d is not a power of 2.",
+			"Unsupported size of TX queue: %d is not a power of 2.",
 			nb_desc);
 		return -EINVAL;
 	}
@@ -1154,6 +1160,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(ERR, PMD,
 			"failed to create io TX queue #%d (qid:%d) rc: %d\n",
 			queue_idx, ena_qid, rc);
+		return rc;
 	}
 	txq->ena_com_io_cq = &ena_dev->io_cq_queues[ena_qid];
 	txq->ena_com_io_sq = &ena_dev->io_sq_queues[ena_qid];
@@ -1165,8 +1172,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(ERR, PMD,
 			"Failed to get TX queue handlers. TX queue num %d rc: %d\n",
 			queue_idx, rc);
-		ena_com_destroy_io_queue(ena_dev, ena_qid);
-		goto err;
+		goto err_destroy_io_queue;
 	}
 
 	txq->port_id = dev->data->port_id;
@@ -1180,7 +1186,8 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 					  RTE_CACHE_LINE_SIZE);
 	if (!txq->tx_buffer_info) {
 		RTE_LOG(ERR, PMD, "failed to alloc mem for tx buffer info\n");
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto err_destroy_io_queue;
 	}
 
 	txq->empty_tx_reqs = rte_zmalloc("txq->empty_tx_reqs",
@@ -1188,9 +1195,10 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 					 RTE_CACHE_LINE_SIZE);
 	if (!txq->empty_tx_reqs) {
 		RTE_LOG(ERR, PMD, "failed to alloc mem for tx reqs\n");
-		rte_free(txq->tx_buffer_info);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto err_free;
 	}
+
 	for (i = 0; i < txq->ring_size; i++)
 		txq->empty_tx_reqs[i] = i;
 
@@ -1202,7 +1210,14 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Store pointer to this queue in upper layer */
 	txq->configured = 1;
 	dev->data->tx_queues[queue_idx] = txq;
-err:
+
+	return 0;
+
+err_free:
+	rte_free(txq->tx_buffer_info);
+
+err_destroy_io_queue:
+	ena_com_destroy_io_queue(ena_dev, ena_qid);
 	return rc;
 }
 
@@ -1229,12 +1244,12 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(CRIT, PMD,
 			"API violation. Queue %d is already configured\n",
 			queue_idx);
-		return -1;
+		return ENA_COM_FAULT;
 	}
 
 	if (!rte_is_power_of_2(nb_desc)) {
 		RTE_LOG(ERR, PMD,
-			"Unsupported size of TX queue: %d is not a power of 2.",
+			"Unsupported size of RX queue: %d is not a power of 2.",
 			nb_desc);
 		return -EINVAL;
 	}
@@ -1256,9 +1271,11 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	ctx.numa_node = ena_cpu_to_node(queue_idx);
 
 	rc = ena_com_create_io_queue(ena_dev, &ctx);
-	if (rc)
+	if (rc) {
 		RTE_LOG(ERR, PMD, "failed to create io RX queue #%d rc: %d\n",
 			queue_idx, rc);
+		return rc;
+	}
 
 	rxq->ena_com_io_cq = &ena_dev->io_cq_queues[ena_qid];
 	rxq->ena_com_io_sq = &ena_dev->io_sq_queues[ena_qid];
@@ -1271,6 +1288,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 			"Failed to get RX queue handlers. RX queue num %d rc: %d\n",
 			queue_idx, rc);
 		ena_com_destroy_io_queue(ena_dev, ena_qid);
+		return rc;
 	}
 
 	rxq->port_id = dev->data->port_id;
@@ -1284,6 +1302,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 					  RTE_CACHE_LINE_SIZE);
 	if (!rxq->rx_buffer_info) {
 		RTE_LOG(ERR, PMD, "failed to alloc mem for rx buffer info\n");
+		ena_com_destroy_io_queue(ena_dev, ena_qid);
 		return -ENOMEM;
 	}
 
@@ -1294,6 +1313,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(ERR, PMD, "failed to alloc mem for empty rx reqs\n");
 		rte_free(rxq->rx_buffer_info);
 		rxq->rx_buffer_info = NULL;
+		ena_com_destroy_io_queue(ena_dev, ena_qid);
 		return -ENOMEM;
 	}
 
@@ -1344,6 +1364,10 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 		rte_prefetch0(mbufs[((next_to_use + 4) & ring_mask)]);
 
 		req_id = rxq->empty_rx_reqs[next_to_use_masked];
+		rc = validate_rx_req_id(rxq, req_id);
+		if (unlikely(rc < 0))
+			break;
+
 		/* prepare physical address for DMA transaction */
 		ebuf.paddr = mbuf->buf_iova + RTE_PKTMBUF_HEADROOM;
 		ebuf.len = mbuf->buf_len - RTE_PKTMBUF_HEADROOM;
@@ -1359,9 +1383,17 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 		next_to_use++;
 	}
 
+	if (unlikely(i < count))
+		RTE_LOG(WARNING, PMD, "refilled rx qid %d with only %d "
+			"buffers (from %d)\n", rxq->id, i, count);
+
 	/* When we submitted free recources to device... */
 	if (likely(i > 0)) {
-		/* ...let HW know that it can fill buffers with data */
+		/* ...let HW know that it can fill buffers with data
+		 *
+		 * Add memory barrier to make sure the desc were written before
+		 * issue a doorbell
+		 */
 		rte_wmb();
 		ena_com_write_sq_doorbell(rxq->ena_com_io_sq);
 
@@ -1589,7 +1621,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	rc = ena_device_init(ena_dev, &get_feat_ctx, &wd_state);
 	if (rc) {
 		PMD_INIT_LOG(CRIT, "Failed to init ENA device");
-		return -1;
+		goto err;
 	}
 	adapter->wd_state = wd_state;
 
@@ -1598,8 +1630,10 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 						    &get_feat_ctx);
 
 	queue_size = ena_calc_queue_size(ena_dev, &tx_sgl_size, &get_feat_ctx);
-	if ((queue_size <= 0) || (adapter->num_queues <= 0))
-		return -EFAULT;
+	if (queue_size <= 0 || adapter->num_queues <= 0) {
+		rc = -EFAULT;
+		goto err_device_destroy;
+	}
 
 	adapter->tx_ring_size = queue_size;
 	adapter->rx_ring_size = queue_size;
@@ -1628,7 +1662,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 					 RTE_CACHE_LINE_SIZE);
 	if (!adapter->drv_stats) {
 		RTE_LOG(ERR, PMD, "failed to alloc mem for adapter stats\n");
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto err_delete_debug_area;
 	}
 
 	rte_intr_callback_register(intr_handle,
@@ -1646,6 +1681,16 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->state = ENA_ADAPTER_STATE_INIT;
 
 	return 0;
+
+err_delete_debug_area:
+	ena_com_delete_debug_area(ena_dev);
+
+err_device_destroy:
+	ena_com_delete_host_info(ena_dev);
+	ena_com_admin_destroy(ena_dev);
+
+err:
+	return rc;
 }
 
 static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
@@ -1839,6 +1884,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				    &ena_rx_ctx);
 		if (unlikely(rc)) {
 			RTE_LOG(ERR, PMD, "ena_com_rx_pkt error %d\n", rc);
+			rx_ring->adapter->trigger_reset = true;
 			return 0;
 		}
 

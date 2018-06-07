@@ -50,6 +50,8 @@
 #define ENA_NAME_MAX_LEN	20
 #define ENA_PKT_MAX_BUFS	17
 
+#define ENA_MIN_MTU		128
+
 #define ENA_MMIO_DISABLE_REG_READ	BIT(0)
 
 #define ENA_WD_TIMEOUT_SEC	3
