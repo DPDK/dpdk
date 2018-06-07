@@ -223,6 +223,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count);
 static void ena_init_rings(struct ena_adapter *adapter);
 static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int ena_start(struct rte_eth_dev *dev);
+static void ena_stop(struct rte_eth_dev *dev);
 static void ena_close(struct rte_eth_dev *dev);
 static int ena_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 static void ena_rx_queue_release_all(struct rte_eth_dev *dev);
@@ -254,6 +255,7 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.rx_queue_setup       = ena_rx_queue_setup,
 	.tx_queue_setup       = ena_tx_queue_setup,
 	.dev_start            = ena_start,
+	.dev_stop             = ena_stop,
 	.link_update          = ena_link_update,
 	.stats_get            = ena_stats_get,
 	.mtu_set              = ena_mtu_set,
@@ -460,15 +462,9 @@ static void ena_close(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
-	adapter->state = ENA_ADAPTER_STATE_STOPPED;
-
-	rte_intr_disable(intr_handle);
-	rte_intr_callback_unregister(intr_handle,
-				     ena_interrupt_handler_rte,
-				     adapter);
+	ena_stop(dev);
+	adapter->state = ENA_ADAPTER_STATE_CLOSED;
 
 	ena_rx_queue_release_all(dev);
 	ena_tx_queue_release_all(dev);
@@ -916,15 +912,7 @@ static int ena_start(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int rc = 0;
-
-	if (!(adapter->state == ENA_ADAPTER_STATE_CONFIG ||
-	      adapter->state == ENA_ADAPTER_STATE_STOPPED)) {
-		PMD_INIT_LOG(ERR, "API violation");
-		return -1;
-	}
 
 	rc = ena_check_valid_conf(adapter);
 	if (rc)
@@ -947,14 +935,17 @@ static int ena_start(struct rte_eth_dev *dev)
 
 	ena_stats_restart(dev);
 
-	rte_intr_callback_register(intr_handle,
-				   ena_interrupt_handler_rte,
-				   adapter);
-	rte_intr_enable(intr_handle);
-
 	adapter->state = ENA_ADAPTER_STATE_RUNNING;
 
 	return 0;
+}
+
+static void ena_stop(struct rte_eth_dev *dev)
+{
+	struct ena_adapter *adapter =
+		(struct ena_adapter *)(dev->data->dev_private);
+
+	adapter->state = ENA_ADAPTER_STATE_STOPPED;
 }
 
 static int ena_queue_restart(struct ena_ring *ring)
@@ -1317,6 +1308,7 @@ static void ena_interrupt_handler_rte(__rte_unused void *cb_arg)
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct rte_intr_handle *intr_handle;
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(eth_dev->data->dev_private);
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
@@ -1346,6 +1338,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		     pci_dev->addr.bus,
 		     pci_dev->addr.devid,
 		     pci_dev->addr.function);
+
+	intr_handle = &pci_dev->intr_handle;
 
 	adapter->regs = pci_dev->mem_resource[ENA_REGS_BAR].addr;
 	adapter->dev_mem_base = pci_dev->mem_resource[ENA_MEM_BAR].addr;
@@ -1406,8 +1400,45 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
+	rte_intr_callback_register(intr_handle,
+				   ena_interrupt_handler_rte,
+				   adapter);
+	rte_intr_enable(intr_handle);
+	ena_com_set_admin_polling_mode(ena_dev, false);
+
 	adapters_found++;
 	adapter->state = ENA_ADAPTER_STATE_INIT;
+
+	return 0;
+}
+
+static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct ena_adapter *adapter =
+		(struct ena_adapter *)(eth_dev->data->dev_private);
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
+
+	if (adapter->state != ENA_ADAPTER_STATE_CLOSED)
+		ena_close(eth_dev);
+
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+	eth_dev->tx_pkt_prepare = NULL;
+
+	rte_free(adapter->drv_stats);
+	adapter->drv_stats = NULL;
+
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+				     ena_interrupt_handler_rte,
+				     adapter);
+
+	adapter->state = ENA_ADAPTER_STATE_FREE;
 
 	return 0;
 }
@@ -1417,25 +1448,7 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
 
-	if (!(adapter->state == ENA_ADAPTER_STATE_INIT ||
-	      adapter->state == ENA_ADAPTER_STATE_STOPPED)) {
-		PMD_INIT_LOG(ERR, "Illegal adapter state: %d",
-			     adapter->state);
-		return -1;
-	}
-
-	switch (adapter->state) {
-	case ENA_ADAPTER_STATE_INIT:
-	case ENA_ADAPTER_STATE_STOPPED:
-		adapter->state = ENA_ADAPTER_STATE_CONFIG;
-		break;
-	case ENA_ADAPTER_STATE_CONFIG:
-		RTE_LOG(WARNING, PMD,
-			"Ivalid driver state while trying to configure device\n");
-		break;
-	default:
-		break;
-	}
+	adapter->state = ENA_ADAPTER_STATE_CONFIG;
 
 	adapter->tx_selected_offloads = dev->data->dev_conf.txmode.offloads;
 	adapter->rx_selected_offloads = dev->data->dev_conf.rxmode.offloads;
@@ -1838,7 +1851,7 @@ static int eth_ena_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 static int eth_ena_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_ena_dev_uninit);
 }
 
 static struct rte_pci_driver rte_ena_pmd = {

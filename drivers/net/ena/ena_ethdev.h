@@ -97,9 +97,10 @@ struct ena_ring {
 enum ena_adapter_state {
 	ENA_ADAPTER_STATE_FREE    = 0,
 	ENA_ADAPTER_STATE_INIT    = 1,
-	ENA_ADAPTER_STATE_RUNNING  = 2,
+	ENA_ADAPTER_STATE_RUNNING = 2,
 	ENA_ADAPTER_STATE_STOPPED = 3,
 	ENA_ADAPTER_STATE_CONFIG  = 4,
+	ENA_ADAPTER_STATE_CLOSED  = 5,
 };
 
 struct ena_driver_stats {
