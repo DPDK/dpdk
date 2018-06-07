@@ -183,6 +183,8 @@ struct ena_adapter {
 	uint64_t rx_selected_offloads;
 
 	bool link_status;
+
+	enum ena_regs_reset_reason_types reset_reason;
 };
 
 #endif /* _ENA_ETHDEV_H_ */

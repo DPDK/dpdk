@@ -225,6 +225,7 @@ static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int ena_start(struct rte_eth_dev *dev);
 static void ena_stop(struct rte_eth_dev *dev);
 static void ena_close(struct rte_eth_dev *dev);
+static int ena_dev_reset(struct rte_eth_dev *dev);
 static int ena_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 static void ena_rx_queue_release_all(struct rte_eth_dev *dev);
 static void ena_tx_queue_release_all(struct rte_eth_dev *dev);
@@ -262,6 +263,7 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.rx_queue_release     = ena_rx_queue_release,
 	.tx_queue_release     = ena_tx_queue_release,
 	.dev_close            = ena_close,
+	.dev_reset            = ena_dev_reset,
 	.reta_update          = ena_rss_reta_update,
 	.reta_query           = ena_rss_reta_query,
 };
@@ -468,6 +470,63 @@ static void ena_close(struct rte_eth_dev *dev)
 
 	ena_rx_queue_release_all(dev);
 	ena_tx_queue_release_all(dev);
+}
+
+static int
+ena_dev_reset(struct rte_eth_dev *dev)
+{
+	struct rte_mempool *mb_pool_rx[ENA_MAX_NUM_QUEUES];
+	struct rte_eth_dev *eth_dev;
+	struct rte_pci_device *pci_dev;
+	struct rte_intr_handle *intr_handle;
+	struct ena_com_dev *ena_dev;
+	struct ena_com_dev_get_features_ctx get_feat_ctx;
+	struct ena_adapter *adapter;
+	int nb_queues;
+	int rc, i;
+
+	adapter = (struct ena_adapter *)(dev->data->dev_private);
+	ena_dev = &adapter->ena_dev;
+	eth_dev = adapter->rte_dev;
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	intr_handle = &pci_dev->intr_handle;
+	nb_queues = eth_dev->data->nb_rx_queues;
+
+	ena_com_set_admin_running_state(ena_dev, false);
+
+	ena_com_dev_reset(ena_dev, adapter->reset_reason);
+
+	for (i = 0; i < nb_queues; i++)
+		mb_pool_rx[i] = adapter->rx_ring[i].mb_pool;
+
+	ena_rx_queue_release_all(eth_dev);
+	ena_tx_queue_release_all(eth_dev);
+
+	rte_intr_disable(intr_handle);
+
+	ena_com_abort_admin_commands(ena_dev);
+	ena_com_wait_for_abort_completion(ena_dev);
+	ena_com_admin_destroy(ena_dev);
+	ena_com_mmio_reg_read_request_destroy(ena_dev);
+
+	rc = ena_device_init(ena_dev, &get_feat_ctx);
+	if (rc) {
+		PMD_INIT_LOG(CRIT, "Cannot initialize device\n");
+		return rc;
+	}
+
+	rte_intr_enable(intr_handle);
+	ena_com_set_admin_polling_mode(ena_dev, false);
+	ena_com_admin_aenq_enable(ena_dev);
+
+	for (i = 0; i < nb_queues; ++i)
+		ena_rx_queue_setup(eth_dev, i, adapter->rx_ring_size, 0, NULL,
+			mb_pool_rx[i]);
+
+	for (i = 0; i < nb_queues; ++i)
+		ena_tx_queue_setup(eth_dev, i, adapter->tx_ring_size, 0, NULL);
+
+	return 0;
 }
 
 static int ena_rss_reta_update(struct rte_eth_dev *dev,
@@ -1074,7 +1133,10 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	for (i = 0; i < txq->ring_size; i++)
 		txq->empty_tx_reqs[i] = i;
 
-	txq->offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
+	if (tx_conf != NULL) {
+		txq->offloads =
+			tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
+	}
 
 	/* Store pointer to this queue in upper layer */
 	txq->configured = 1;
