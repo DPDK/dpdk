@@ -249,6 +249,7 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 			      uint16_t reta_size);
 static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
 static void ena_interrupt_handler_rte(void *cb_arg);
+static void ena_timer_wd_callback(struct rte_timer *timer, void *arg);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -979,6 +980,7 @@ static int ena_start(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
+	uint64_t ticks;
 	int rc = 0;
 
 	rc = ena_check_valid_conf(adapter);
@@ -1002,6 +1004,13 @@ static int ena_start(struct rte_eth_dev *dev)
 
 	ena_stats_restart(dev);
 
+	adapter->timestamp_wd = rte_get_timer_cycles();
+	adapter->keep_alive_timeout = ENA_DEVICE_KALIVE_TIMEOUT;
+
+	ticks = rte_get_timer_hz();
+	rte_timer_reset(&adapter->timer_wd, ticks, PERIODICAL, rte_lcore_id(),
+			ena_timer_wd_callback, adapter);
+
 	adapter->state = ENA_ADAPTER_STATE_RUNNING;
 
 	return 0;
@@ -1011,6 +1020,8 @@ static void ena_stop(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
+
+	rte_timer_stop_sync(&adapter->timer_wd);
 
 	adapter->state = ENA_ADAPTER_STATE_STOPPED;
 }
@@ -1358,7 +1369,8 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 	}
 
 	aenq_groups = BIT(ENA_ADMIN_LINK_CHANGE) |
-		      BIT(ENA_ADMIN_NOTIFICATION);
+		      BIT(ENA_ADMIN_NOTIFICATION) |
+		      BIT(ENA_ADMIN_KEEP_ALIVE);
 
 	aenq_groups &= get_feat_ctx->aenq.supported_groups;
 	rc = ena_com_set_aenq_config(ena_dev, aenq_groups);
@@ -1386,6 +1398,26 @@ static void ena_interrupt_handler_rte(void *cb_arg)
 	ena_com_admin_q_comp_intr_handler(ena_dev);
 	if (adapter->state != ENA_ADAPTER_STATE_CLOSED)
 		ena_com_aenq_intr_handler(ena_dev, adapter);
+}
+
+static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
+				  void *arg)
+{
+	struct ena_adapter *adapter = (struct ena_adapter *)arg;
+	struct rte_eth_dev *dev = adapter->rte_dev;
+
+	if (adapter->keep_alive_timeout == ENA_HW_HINTS_NO_TIMEOUT)
+		return;
+
+	/* Within reasonable timing range no memory barriers are needed */
+	if ((rte_get_timer_cycles() - adapter->timestamp_wd) >=
+	    adapter->keep_alive_timeout) {
+		RTE_LOG(ERR, PMD, "The ENA device is not responding - "
+			"performing device reset...");
+		adapter->reset_reason = ENA_REGS_RESET_KEEP_ALIVE_TO;
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
+			NULL);
+	}
 }
 
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
@@ -1489,6 +1521,10 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	rte_intr_enable(intr_handle);
 	ena_com_set_admin_polling_mode(ena_dev, false);
 	ena_com_admin_aenq_enable(ena_dev);
+
+	if (adapters_found == 0)
+		rte_timer_subsystem_init();
+	rte_timer_init(&adapter->timer_wd);
 
 	adapters_found++;
 	adapter->state = ENA_ADAPTER_STATE_INIT;
@@ -1803,6 +1839,16 @@ static void ena_update_hints(struct ena_adapter *adapter,
 		/* convert to usec */
 		adapter->ena_dev.mmio_read.reg_read_to =
 			hints->mmio_read_timeout * 1000;
+
+	if (hints->driver_watchdog_timeout) {
+		if (hints->driver_watchdog_timeout == ENA_HW_HINTS_NO_TIMEOUT)
+			adapter->keep_alive_timeout = ENA_HW_HINTS_NO_TIMEOUT;
+		else
+			// Convert msecs to ticks
+			adapter->keep_alive_timeout =
+				(hints->driver_watchdog_timeout *
+				rte_get_timer_hz()) / 1000;
+	}
 }
 
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -2022,6 +2068,14 @@ static void ena_notification(void *data,
 	}
 }
 
+static void ena_keep_alive(void *adapter_data,
+			   __rte_unused struct ena_admin_aenq_entry *aenq_e)
+{
+	struct ena_adapter *adapter = (struct ena_adapter *)adapter_data;
+
+	adapter->timestamp_wd = rte_get_timer_cycles();
+}
+
 /**
  * This handler will called for unknown event group or unimplemented handlers
  **/
@@ -2035,7 +2089,7 @@ static struct ena_aenq_handlers aenq_handlers = {
 	.handlers = {
 		[ENA_ADMIN_LINK_CHANGE] = ena_update_on_link_change,
 		[ENA_ADMIN_NOTIFICATION] = ena_notification,
-		[ENA_ADMIN_KEEP_ALIVE] = unimplemented_aenq_handler
+		[ENA_ADMIN_KEEP_ALIVE] = ena_keep_alive
 	},
 	.unimplemented_handler = unimplemented_aenq_handler
 };

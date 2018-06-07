@@ -58,5 +58,6 @@ CFLAGS += $(INCLUDES)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_bus_pci
+LDLIBS += -lrte_timer
 
 include $(RTE_SDK)/mk/rte.lib.mk

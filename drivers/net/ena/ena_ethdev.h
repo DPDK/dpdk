@@ -34,8 +34,10 @@
 #ifndef _ENA_ETHDEV_H_
 #define _ENA_ETHDEV_H_
 
+#include <rte_cycles.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
+#include <rte_timer.h>
 
 #include "ena_com.h"
 
@@ -49,6 +51,9 @@
 #define ENA_PKT_MAX_BUFS	17
 
 #define ENA_MMIO_DISABLE_REG_READ	BIT(0)
+
+#define ENA_WD_TIMEOUT_SEC	3
+#define ENA_DEVICE_KALIVE_TIMEOUT (ENA_WD_TIMEOUT_SEC * rte_get_timer_hz())
 
 struct ena_adapter;
 
@@ -185,6 +190,10 @@ struct ena_adapter {
 	bool link_status;
 
 	enum ena_regs_reset_reason_types reset_reason;
+
+	struct rte_timer timer_wd;
+	uint64_t timestamp_wd;
+	uint64_t keep_alive_timeout;
 };
 
 #endif /* _ENA_ETHDEV_H_ */
