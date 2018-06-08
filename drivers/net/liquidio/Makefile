@@ -15,7 +15,7 @@ LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_bus_pci
 
-EXPORT_MAP := rte_pmd_lio_version.map
+EXPORT_MAP := rte_pmd_liquidio_version.map
 
 LIBABIVER := 1
 

@@ -17,6 +17,7 @@ drivers = ['af_packet',
 	'ifc',
 	'ixgbe',
 	'kni',
+	'liquidio',
 	'mvpp2', 'null', 'octeontx', 'pcap', 'ring',
 	'sfc', 'thunderx', 'virtio']
 std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
