@@ -30,6 +30,7 @@ CXGBE and CXGBEVF PMD has support for:
 - All multicast mode
 - Port hardware statistics
 - Jumbo frames
+- Flow API
 
 Limitations
 -----------

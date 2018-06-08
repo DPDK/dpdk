@@ -77,9 +77,39 @@ struct ch_filter_tuple {
  * Filter specification
  */
 struct ch_filter_specification {
+	/* Administrative fields for filter. */
+	uint32_t hitcnts:1;	/* count filter hits in TCB */
+	uint32_t prio:1;	/* filter has priority over active/server */
+
+	/*
+	 * Fundamental filter typing.  This is the one element of filter
+	 * matching that doesn't exist as a (value, mask) tuple.
+	 */
+	uint32_t type:1;	/* 0 => IPv4, 1 => IPv6 */
+
+	/*
+	 * Packet dispatch information.  Ingress packets which match the
+	 * filter rules will be dropped, passed to the host or switched back
+	 * out as egress packets.
+	 */
+	uint32_t action:2;	/* drop, pass, switch */
+
+	uint32_t dirsteer:1;	/* 0 => RSS, 1 => steer to iq */
+	uint32_t iq:10;		/* ingress queue */
+
 	/* Filter rule value/mask pairs. */
 	struct ch_filter_tuple val;
 	struct ch_filter_tuple mask;
+};
+
+enum {
+	FILTER_PASS = 0,	/* default */
+	FILTER_DROP
+};
+
+enum filter_type {
+	FILTER_TYPE_IPV4 = 0,
+	FILTER_TYPE_IPV6,
 };
 
 /*
@@ -88,10 +118,71 @@ struct ch_filter_specification {
  * firmware command.
  */
 struct filter_entry {
+	struct rte_eth_dev *dev;    /* Port's rte eth device */
+
 	/*
 	 * The filter itself.
 	 */
 	struct ch_filter_specification fs;
 };
 
+#define FILTER_ID_MAX   (~0U)
+
+struct tid_info;
+struct adapter;
+
+/**
+ * Find first clear bit in the bitmap.
+ */
+static inline unsigned int cxgbe_find_first_zero_bit(struct rte_bitmap *bmap,
+						     unsigned int size)
+{
+	unsigned int idx;
+
+	for (idx = 0; idx < size; idx++)
+		if (!rte_bitmap_get(bmap, idx))
+			break;
+
+	return idx;
+}
+
+/**
+ * Find a free region of 'num' consecutive entries.
+ */
+static inline unsigned int
+cxgbe_bitmap_find_free_region(struct rte_bitmap *bmap, unsigned int size,
+			      unsigned int num)
+{
+	unsigned int idx, j, free = 0;
+
+	if (num > size)
+		return size;
+
+	for (idx = 0; idx < size; idx += num) {
+		for (j = 0; j < num; j++) {
+			if (!rte_bitmap_get(bmap, idx + j)) {
+				free++;
+			} else {
+				free = 0;
+				break;
+			}
+		}
+
+		/* Found the Region */
+		if (free == num)
+			break;
+
+		/* Reached the end and still no region found */
+		if ((idx + num) > size) {
+			idx = size;
+			break;
+		}
+	}
+
+	return idx;
+}
+
+bool is_filter_set(struct tid_info *, int fidx, int family);
+int cxgbe_alloc_ftid(struct adapter *adap, unsigned int family);
+int validate_filter(struct adapter *adap, struct ch_filter_specification *fs);
 #endif /* _CXGBE_FILTER_H_ */

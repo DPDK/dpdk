@@ -313,6 +313,17 @@ struct adapter {
 };
 
 /**
+ * ethdev2pinfo - return the port_info structure associated with a rte_eth_dev
+ * @dev: the rte_eth_dev
+ *
+ * Return the struct port_info associated with a rte_eth_dev
+ */
+static inline struct port_info *ethdev2pinfo(const struct rte_eth_dev *dev)
+{
+	return (struct port_info *)dev->data->dev_private;
+}
+
+/**
  * adap2pinfo - return the port_info of a port
  * @adap: the adapter
  * @idx: the port index
@@ -322,6 +333,17 @@ struct adapter {
 static inline struct port_info *adap2pinfo(const struct adapter *adap, int idx)
 {
 	return adap->port[idx];
+}
+
+/**
+ * ethdev2adap - return the adapter structure associated with a rte_eth_dev
+ * @dev: the rte_eth_dev
+ *
+ * Return the struct adapter associated with a rte_eth_dev
+ */
+static inline struct adapter *ethdev2adap(const struct rte_eth_dev *dev)
+{
+	return ethdev2pinfo(dev)->adapter;
 }
 
 #define CXGBE_PCI_REG(reg) rte_read32(reg)

@@ -36,6 +36,7 @@
 
 #include "cxgbe.h"
 #include "cxgbe_pfvf.h"
+#include "cxgbe_flow.h"
 
 /*
  * Macros needed to support the PCI Device ID Table ...
@@ -1036,6 +1037,7 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.rx_queue_start		= cxgbe_dev_rx_queue_start,
 	.rx_queue_stop		= cxgbe_dev_rx_queue_stop,
 	.rx_queue_release	= cxgbe_dev_rx_queue_release,
+	.filter_ctrl            = cxgbe_dev_filter_ctrl,
 	.stats_get		= cxgbe_dev_stats_get,
 	.stats_reset		= cxgbe_dev_stats_reset,
 	.flow_ctrl_get		= cxgbe_flow_ctrl_get,

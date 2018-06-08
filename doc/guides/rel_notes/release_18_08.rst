@@ -41,6 +41,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added Flow API support for CXGBE PMD.**
+
+  Flow API support has been added to CXGBE Poll Mode Driver to offload
+  flows to Chelsio T5/T6 NICs.
+
 
 API Changes
 -----------
