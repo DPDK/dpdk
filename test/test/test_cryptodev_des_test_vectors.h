@@ -792,6 +792,30 @@ triple_des192cbc_hmac_sha1_test_vector = {
 		.len = 20
 	}
 };
+static const struct blockcipher_test_data
+triple_des64cbc_test_vector = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_3DES_CBC,
+	.cipher_key = {
+		.data = {
+			0xE4, 0x23, 0x33, 0x8A, 0x35, 0x64, 0x61, 0xE2
+		},
+		.len = 8
+	},
+	.iv = {
+		.data = {
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		},
+		.len = 8
+	},
+	.plaintext = {
+		.data = plaintext_des,
+		.len = 512
+	},
+	.ciphertext = {
+		.data = ciphertext512_des,
+		.len = 512
+	},
+};
 
 static const struct blockcipher_test_data
 des_cbc_test_vector = {
@@ -1205,6 +1229,18 @@ static const struct blockcipher_test_case triple_des_chain_test_cases[] = {
 
 static const struct blockcipher_test_case triple_des_cipheronly_test_cases[] = {
 	{
+		.test_descr = "3DES-64-CBC Encryption",
+		.test_data = &triple_des64cbc_test_vector,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+	},
+	{
+		.test_descr = "3DES-64-CBC Decryption",
+		.test_data = &triple_des64cbc_test_vector,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+	},
+	{
 		.test_descr = "3DES-128-CBC Encryption",
 		.test_data = &triple_des128cbc_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
@@ -1212,7 +1248,8 @@ static const struct blockcipher_test_case triple_des_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "3DES-128-CBC Decryption",
@@ -1222,7 +1259,8 @@ static const struct blockcipher_test_case triple_des_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "3DES-192-CBC Encryption",
@@ -1233,7 +1271,8 @@ static const struct blockcipher_test_case triple_des_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "3DES-192-CBC Decryption",
@@ -1244,7 +1283,8 @@ static const struct blockcipher_test_case triple_des_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "3DES-128-CTR Encryption",

@@ -169,12 +169,18 @@ struct aesni_mb_session {
 
 		uint64_t key_length_in_bytes;
 
-		struct {
-			uint32_t encode[60] __rte_aligned(16);
-			/**< encode key */
-			uint32_t decode[60] __rte_aligned(16);
-			/**< decode key */
-		} expanded_aes_keys;
+		union {
+			struct {
+				uint32_t encode[60] __rte_aligned(16);
+				/**< encode key */
+				uint32_t decode[60] __rte_aligned(16);
+				/**< decode key */
+			} expanded_aes_keys;
+			struct {
+				const void *ks_ptr[3];
+				uint64_t key[3][16];
+			} exp_3des_keys;
+		};
 		/**< Expanded AES keys - Allocating space to
 		 * contain the maximum expanded key size which
 		 * is 240 bytes for 256 bit AES, calculate by:

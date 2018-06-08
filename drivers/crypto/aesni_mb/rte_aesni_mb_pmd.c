@@ -182,6 +182,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		const struct rte_crypto_sym_xform *xform)
 {
 	uint8_t is_aes = 0;
+	uint8_t is_3DES = 0;
 	aes_keyexp_t aes_keyexp_fn;
 
 	if (xform == NULL) {
@@ -227,6 +228,10 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 	case RTE_CRYPTO_CIPHER_DES_DOCSISBPI:
 		sess->cipher.mode = DOCSIS_DES;
 		break;
+	case RTE_CRYPTO_CIPHER_3DES_CBC:
+		sess->cipher.mode = DES3;
+		is_3DES = 1;
+		break;
 	default:
 		AESNI_MB_LOG(ERR, "Unsupported cipher mode parameter");
 		return -ENOTSUP;
@@ -261,6 +266,49 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 				sess->cipher.expanded_aes_keys.encode,
 				sess->cipher.expanded_aes_keys.decode);
 
+	} else if (is_3DES) {
+		uint64_t *keys[3] = {sess->cipher.exp_3des_keys.key[0],
+				sess->cipher.exp_3des_keys.key[1],
+				sess->cipher.exp_3des_keys.key[2]};
+
+		switch (xform->cipher.key.length) {
+		case  24:
+			des_key_schedule(keys[0], xform->cipher.key.data);
+			des_key_schedule(keys[1], xform->cipher.key.data+8);
+			des_key_schedule(keys[2], xform->cipher.key.data+16);
+
+			/* Initialize keys - 24 bytes: [K1-K2-K3] */
+			sess->cipher.exp_3des_keys.ks_ptr[0] = keys[0];
+			sess->cipher.exp_3des_keys.ks_ptr[1] = keys[1];
+			sess->cipher.exp_3des_keys.ks_ptr[2] = keys[2];
+			break;
+		case 16:
+			des_key_schedule(keys[0], xform->cipher.key.data);
+			des_key_schedule(keys[1], xform->cipher.key.data+8);
+
+			/* Initialize keys - 16 bytes: [K1=K1,K2=K2,K3=K1] */
+			sess->cipher.exp_3des_keys.ks_ptr[0] = keys[0];
+			sess->cipher.exp_3des_keys.ks_ptr[1] = keys[1];
+			sess->cipher.exp_3des_keys.ks_ptr[2] = keys[0];
+			break;
+		case 8:
+			des_key_schedule(keys[0], xform->cipher.key.data);
+
+			/* Initialize keys - 8 bytes: [K1 = K2 = K3] */
+			sess->cipher.exp_3des_keys.ks_ptr[0] = keys[0];
+			sess->cipher.exp_3des_keys.ks_ptr[1] = keys[0];
+			sess->cipher.exp_3des_keys.ks_ptr[2] = keys[0];
+			break;
+		default:
+			AESNI_MB_LOG(ERR, "Invalid cipher key length");
+			return -EINVAL;
+		}
+
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+		sess->cipher.key_length_in_bytes = 24;
+#else
+		sess->cipher.key_length_in_bytes = 8;
+#endif
 	} else {
 		if (xform->cipher.key.length != 8) {
 			AESNI_MB_LOG(ERR, "Invalid cipher key length");
@@ -524,8 +572,20 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 	job->cipher_mode = session->cipher.mode;
 
 	job->aes_key_len_in_bytes = session->cipher.key_length_in_bytes;
-	job->aes_enc_key_expanded = session->cipher.expanded_aes_keys.encode;
-	job->aes_dec_key_expanded = session->cipher.expanded_aes_keys.decode;
+
+	if (job->cipher_mode == DES3) {
+		job->aes_enc_key_expanded =
+			session->cipher.exp_3des_keys.ks_ptr;
+		job->aes_dec_key_expanded =
+			session->cipher.exp_3des_keys.ks_ptr;
+	} else {
+		job->aes_enc_key_expanded =
+			session->cipher.expanded_aes_keys.encode;
+		job->aes_dec_key_expanded =
+			session->cipher.expanded_aes_keys.decode;
+	}
+
+
 
 
 	/* Set authentication parameters */
