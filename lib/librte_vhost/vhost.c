@@ -268,21 +268,21 @@ vhost_new_device(void)
 	struct virtio_net *dev;
 	int i;
 
-	dev = rte_zmalloc(NULL, sizeof(struct virtio_net), 0);
-	if (dev == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"Failed to allocate memory for new dev.\n");
-		return -1;
-	}
-
 	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
 		if (vhost_devices[i] == NULL)
 			break;
 	}
+
 	if (i == MAX_VHOST_DEVICE) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"Failed to find a free slot for new device.\n");
-		rte_free(dev);
+		return -1;
+	}
+
+	dev = rte_zmalloc(NULL, sizeof(struct virtio_net), 0);
+	if (dev == NULL) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Failed to allocate memory for new dev.\n");
 		return -1;
 	}
 
