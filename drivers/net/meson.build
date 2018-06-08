@@ -3,6 +3,7 @@
 
 drivers = ['af_packet',
 	'ark',
+	'avp',
 	'axgbe', 'bonding', 'dpaa', 'dpaa2',
 	'e1000', 'enic', 'fm10k', 'i40e',
 	'ifc',
