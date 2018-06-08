@@ -468,6 +468,8 @@ cxgbe_flow_create(struct rte_eth_dev *dev,
 		return NULL;
 	}
 
+	flow->f->private = flow; /* Will be used during flush */
+
 	return flow;
 }
 
@@ -632,11 +634,47 @@ cxgbe_flow_validate(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/*
+ * @ret : > 0 filter destroyed succsesfully
+ *        < 0 error destroying filter
+ *        == 1 filter not active / not found
+ */
+static int
+cxgbe_check_n_destroy(struct filter_entry *f, struct rte_eth_dev *dev,
+		      struct rte_flow_error *e)
+{
+	if (f && (f->valid || f->pending) &&
+	    f->dev == dev && /* Only if user has asked for this port */
+	     f->private) /* We (rte_flow) created this filter */
+		return cxgbe_flow_destroy(dev, (struct rte_flow *)f->private,
+					  e);
+	return 1;
+}
+
+static int cxgbe_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *e)
+{
+	struct adapter *adap = ethdev2adap(dev);
+	unsigned int i;
+	int ret = 0;
+
+	if (adap->tids.ftid_tab) {
+		struct filter_entry *f = &adap->tids.ftid_tab[0];
+
+		for (i = 0; i < adap->tids.nftids; i++, f++) {
+			ret = cxgbe_check_n_destroy(f, dev, e);
+			if (ret < 0)
+				goto out;
+		}
+	}
+out:
+	return ret >= 0 ? 0 : ret;
+}
+
 static const struct rte_flow_ops cxgbe_flow_ops = {
 	.validate	= cxgbe_flow_validate,
 	.create		= cxgbe_flow_create,
 	.destroy	= cxgbe_flow_destroy,
-	.flush		= NULL,
+	.flush		= cxgbe_flow_flush,
 	.query		= cxgbe_flow_query,
 	.isolate	= NULL,
 };

@@ -141,6 +141,7 @@ struct filter_entry {
 	u32 pending:1;              /* filter action is pending FW reply */
 	struct filter_ctx *ctx;     /* caller's completion hook */
 	struct rte_eth_dev *dev;    /* Port's rte eth device */
+	void *private;              /* For use by apps using filter_entry */
 
 	/* This will store the actual tid */
 	u32 tid;
