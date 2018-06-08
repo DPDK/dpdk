@@ -458,6 +458,7 @@
 #define F_CRXPKTENC    V_CRXPKTENC(1U)
 
 #define TP_BASE_ADDR 0x7d00
+#define A_TP_CMM_TCB_BASE 0x7d10
 
 #define A_TP_TIMER_RESOLUTION 0x7d90
 
@@ -573,6 +574,21 @@
 
 #define S_RM_OVLAN	9
 #define V_RM_OVLAN(x)	((x) << S_RM_OVLAN)
+
+/* registers for module MA */
+#define A_MA_EDRAM0_BAR 0x77c0
+
+#define S_EDRAM0_SIZE    0
+#define M_EDRAM0_SIZE    0xfffU
+#define V_EDRAM0_SIZE(x) ((x) << S_EDRAM0_SIZE)
+#define G_EDRAM0_SIZE(x) (((x) >> S_EDRAM0_SIZE) & M_EDRAM0_SIZE)
+
+#define A_MA_EXT_MEMORY0_BAR 0x77c8
+
+#define S_EXT_MEM0_SIZE    0
+#define M_EXT_MEM0_SIZE    0xfffU
+#define V_EXT_MEM0_SIZE(x) ((x) << S_EXT_MEM0_SIZE)
+#define G_EXT_MEM0_SIZE(x) (((x) >> S_EXT_MEM0_SIZE) & M_EXT_MEM0_SIZE)
 
 /* registers for module MPS */
 #define MPS_BASE_ADDR 0x9000

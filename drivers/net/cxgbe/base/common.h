@@ -18,6 +18,9 @@ extern "C" {
 
 #define CXGBE_PAGE_SIZE RTE_PGSIZE_4K
 
+#define T4_MEMORY_WRITE 0
+#define T4_MEMORY_READ  1
+
 enum {
 	MAX_NPORTS     = 4,     /* max # of ports */
 };
@@ -46,6 +49,8 @@ enum cc_fec {
 	FEC_RS       = 1 << 1,    /* Reed-Solomon */
 	FEC_BASER_RS = 1 << 2,    /* BaseR/Reed-Solomon */
 };
+
+enum { MEM_EDC0, MEM_EDC1, MEM_MC, MEM_MC0 = MEM_MC, MEM_MC1 };
 
 struct port_stats {
 	u64 tx_octets;            /* total # of octets in good frames */
@@ -502,5 +507,15 @@ void t4_get_regs(struct adapter *adap, void *buf, size_t buf_size);
 int t4_seeprom_read(struct adapter *adapter, u32 addr, u32 *data);
 int t4_seeprom_write(struct adapter *adapter, u32 addr, u32 data);
 int t4_seeprom_wp(struct adapter *adapter, int enable);
+int t4_memory_rw_addr(struct adapter *adap, int win,
+		      u32 addr, u32 len, void *hbuf, int dir);
+int t4_memory_rw_mtype(struct adapter *adap, int win, int mtype, u32 maddr,
+		       u32 len, void *hbuf, int dir);
+static inline int t4_memory_rw(struct adapter *adap, int win,
+			       int mtype, u32 maddr, u32 len,
+			       void *hbuf, int dir)
+{
+	return t4_memory_rw_mtype(adap, win, mtype, maddr, len, hbuf, dir);
+}
 fw_port_cap32_t fwcaps16_to_caps32(fw_port_cap16_t caps16);
 #endif /* __CHELSIO_COMMON_H */

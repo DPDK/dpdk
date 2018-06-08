@@ -42,6 +42,10 @@ enum {
 	SGE_MAX_WR_NDESC = SGE_MAX_WR_LEN / SGE_EQ_IDXSIZE,
 };
 
+enum {
+	TCB_SIZE        = 128,   /* TCB size */
+};
+
 struct sge_qstat {                /* data written to SGE queue status entries */
 	__be32 qid;
 	__be16 cidx;

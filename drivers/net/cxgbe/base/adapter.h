@@ -319,6 +319,7 @@ struct adapter {
 	unsigned int vpd_flag;
 
 	int use_unpacked_mode; /* unpacked rx mode state */
+	rte_spinlock_t win0_lock;
 
 	struct tid_info tids;     /* Info used to access TID related tables */
 };

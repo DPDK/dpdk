@@ -1527,6 +1527,7 @@ int cxgbe_probe(struct adapter *adapter)
 
 	t4_os_lock_init(&adapter->mbox_lock);
 	TAILQ_INIT(&adapter->mbox_list);
+	t4_os_lock_init(&adapter->win0_lock);
 
 	err = t4_prep_adapter(adapter);
 	if (err)

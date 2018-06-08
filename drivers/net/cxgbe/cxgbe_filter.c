@@ -545,3 +545,65 @@ void filter_rpl(struct adapter *adap, const struct cpl_set_tcb_rpl *rpl)
 			t4_complete(&ctx->completion);
 	}
 }
+
+/*
+ * Retrieve the packet count for the specified filter.
+ */
+int cxgbe_get_filter_count(struct adapter *adapter, unsigned int fidx,
+			   u64 *c, bool get_byte)
+{
+	struct filter_entry *f;
+	unsigned int tcb_base, tcbaddr;
+	int ret;
+
+	tcb_base = t4_read_reg(adapter, A_TP_CMM_TCB_BASE);
+	if (fidx >= adapter->tids.nftids)
+		return -ERANGE;
+
+	f = &adapter->tids.ftid_tab[fidx];
+	if (!f->valid)
+		return -EINVAL;
+
+	tcbaddr = tcb_base + f->tid * TCB_SIZE;
+
+	if (is_t5(adapter->params.chip) || is_t6(adapter->params.chip)) {
+		/*
+		 * For T5, the Filter Packet Hit Count is maintained as a
+		 * 32-bit Big Endian value in the TCB field {timestamp}.
+		 * Similar to the craziness above, instead of the filter hit
+		 * count showing up at offset 20 ((W_TCB_TIMESTAMP == 5) *
+		 * sizeof(u32)), it actually shows up at offset 24.  Whacky.
+		 */
+		if (get_byte) {
+			unsigned int word_offset = 4;
+			__be64 be64_byte_count;
+
+			t4_os_lock(&adapter->win0_lock);
+			ret = t4_memory_rw(adapter, MEMWIN_NIC, MEM_EDC0,
+					   tcbaddr +
+					   (word_offset * sizeof(__be32)),
+					   sizeof(be64_byte_count),
+					   &be64_byte_count,
+					   T4_MEMORY_READ);
+			t4_os_unlock(&adapter->win0_lock);
+			if (ret < 0)
+				return ret;
+			*c = be64_to_cpu(be64_byte_count);
+		} else {
+			unsigned int word_offset = 6;
+			__be32 be32_count;
+
+			t4_os_lock(&adapter->win0_lock);
+			ret = t4_memory_rw(adapter, MEMWIN_NIC, MEM_EDC0,
+					   tcbaddr +
+					   (word_offset * sizeof(__be32)),
+					   sizeof(be32_count), &be32_count,
+					   T4_MEMORY_READ);
+			t4_os_unlock(&adapter->win0_lock);
+			if (ret < 0)
+				return ret;
+			*c = (u64)be32_to_cpu(be32_count);
+		}
+	}
+	return 0;
+}

@@ -522,6 +522,66 @@ cxgbe_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 	return 0;
 }
 
+static int __cxgbe_flow_query(struct rte_flow *flow, u64 *count,
+			      u64 *byte_count)
+{
+	struct adapter *adap = ethdev2adap(flow->dev);
+	unsigned int fidx = flow->fidx;
+	int ret = 0;
+
+	ret = cxgbe_get_filter_count(adap, fidx, count, 0);
+	if (ret)
+		return ret;
+	return cxgbe_get_filter_count(adap, fidx, byte_count, 1);
+}
+
+static int
+cxgbe_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
+		 const struct rte_flow_action *action, void *data,
+		 struct rte_flow_error *e)
+{
+	struct ch_filter_specification fs;
+	struct rte_flow_query_count *c;
+	struct filter_entry *f;
+	int ret;
+
+	RTE_SET_USED(dev);
+
+	f = flow->f;
+	fs = f->fs;
+
+	if (action->type != RTE_FLOW_ACTION_TYPE_COUNT)
+		return rte_flow_error_set(e, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "only count supported for query");
+
+	/*
+	 * This is a valid operation, Since we are allowed to do chelsio
+	 * specific operations in rte side of our code but not vise-versa
+	 *
+	 * So, fs can be queried/modified here BUT rte_flow_query_count
+	 * cannot be worked on by the lower layer since we want to maintain
+	 * it as rte_flow agnostic.
+	 */
+	if (!fs.hitcnts)
+		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					  &fs, "filter hit counters were not"
+					  " enabled during filter creation");
+
+	c = (struct rte_flow_query_count *)data;
+	ret = __cxgbe_flow_query(flow, &c->hits, &c->bytes);
+	if (ret)
+		return rte_flow_error_set(e, -ret, RTE_FLOW_ERROR_TYPE_ACTION,
+					  f, "cxgbe pmd failed to"
+					  " perform query");
+
+	/* Query was successful */
+	c->bytes_set = 1;
+	c->hits_set = 1;
+
+	return 0; /* success / partial_success */
+}
+
 static int
 cxgbe_flow_validate(struct rte_eth_dev *dev,
 		    const struct rte_flow_attr *attr,
@@ -577,7 +637,7 @@ static const struct rte_flow_ops cxgbe_flow_ops = {
 	.create		= cxgbe_flow_create,
 	.destroy	= cxgbe_flow_destroy,
 	.flush		= NULL,
-	.query		= NULL,
+	.query		= cxgbe_flow_query,
 	.isolate	= NULL,
 };
 
