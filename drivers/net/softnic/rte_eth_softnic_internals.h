@@ -695,4 +695,19 @@ softnic_thread_init(struct pmd_internals *p);
 void
 softnic_thread_free(struct pmd_internals *p);
 
+/**
+ * CLI
+ */
+void
+softnic_cli_process(char *in,
+	char *out,
+	size_t out_size,
+	void *arg);
+
+int
+softnic_cli_script_process(struct pmd_internals *softnic,
+	const char *file_name,
+	size_t msg_in_len_max,
+	size_t msg_out_len_max);
+
 #endif /* __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__ */

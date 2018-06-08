@@ -32,6 +32,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += rte_eth_softnic_tap.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += rte_eth_softnic_action.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += rte_eth_softnic_pipeline.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += rte_eth_softnic_thread.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += rte_eth_softnic_cli.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += parser.c
 
 #
 # Export include files
