@@ -112,13 +112,38 @@ enum filter_type {
 	FILTER_TYPE_IPV6,
 };
 
+struct t4_completion {
+	unsigned int done;       /* completion done (0 - No, 1 - Yes) */
+	rte_spinlock_t lock;     /* completion lock */
+};
+
+/*
+ * Filter operation context to allow callers to wait for
+ * an asynchronous completion.
+ */
+struct filter_ctx {
+	struct t4_completion completion; /* completion rendezvous */
+	int result;                      /* result of operation */
+	u32 tid;                         /* to store tid of hash filter */
+};
+
 /*
  * Host shadow copy of ingress filter entry.  This is in host native format
  * and doesn't match the ordering or bit order, etc. of the hardware or the
  * firmware command.
  */
 struct filter_entry {
+	/*
+	 * Administrative fields for filter.
+	 */
+	u32 valid:1;                /* filter allocated and valid */
+	u32 locked:1;               /* filter is administratively locked */
+	u32 pending:1;              /* filter action is pending FW reply */
+	struct filter_ctx *ctx;     /* caller's completion hook */
 	struct rte_eth_dev *dev;    /* Port's rte eth device */
+
+	/* This will store the actual tid */
+	u32 tid;
 
 	/*
 	 * The filter itself.
@@ -183,6 +208,13 @@ cxgbe_bitmap_find_free_region(struct rte_bitmap *bmap, unsigned int size,
 }
 
 bool is_filter_set(struct tid_info *, int fidx, int family);
+void filter_rpl(struct adapter *adap, const struct cpl_set_tcb_rpl *rpl);
+void clear_filter(struct filter_entry *f);
+int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx);
+int writable_filter(struct filter_entry *f);
+int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
+		     struct ch_filter_specification *fs,
+		     struct filter_ctx *ctx);
 int cxgbe_alloc_ftid(struct adapter *adap, unsigned int family);
 int validate_filter(struct adapter *adap, struct ch_filter_specification *fs);
 #endif /* _CXGBE_FILTER_H_ */

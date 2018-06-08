@@ -391,6 +391,86 @@ cxgbe_flow_parse(struct rte_flow *flow,
 	return cxgbe_rtef_parse_actions(flow, action, e);
 }
 
+static int __cxgbe_flow_create(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct ch_filter_specification *fs = &flow->fs;
+	struct adapter *adap = ethdev2adap(dev);
+	struct filter_ctx ctx;
+	unsigned int fidx;
+	int err;
+
+	if (cxgbe_get_fidx(flow, &fidx))
+		return -ENOMEM;
+	if (cxgbe_verify_fidx(flow, fidx, 0))
+		return -1;
+
+	t4_init_completion(&ctx.completion);
+	/* go create the filter */
+	err = cxgbe_set_filter(dev, fidx, fs, &ctx);
+	if (err) {
+		dev_err(adap, "Error %d while creating filter.\n", err);
+		return err;
+	}
+
+	/* Poll the FW for reply */
+	err = cxgbe_poll_for_completion(&adap->sge.fw_evtq,
+					CXGBE_FLOW_POLL_US,
+					CXGBE_FLOW_POLL_CNT,
+					&ctx.completion);
+	if (err) {
+		dev_err(adap, "Filter set operation timed out (%d)\n", err);
+		return err;
+	}
+	if (ctx.result) {
+		dev_err(adap, "Hardware error %d while creating the filter.\n",
+			ctx.result);
+		return ctx.result;
+	}
+
+	flow->fidx = fidx;
+	flow->f = &adap->tids.ftid_tab[fidx];
+
+	return 0;
+}
+
+static struct rte_flow *
+cxgbe_flow_create(struct rte_eth_dev *dev,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item item[],
+		  const struct rte_flow_action action[],
+		  struct rte_flow_error *e)
+{
+	struct rte_flow *flow;
+	int ret;
+
+	flow = t4_os_alloc(sizeof(struct rte_flow));
+	if (!flow) {
+		rte_flow_error_set(e, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "Unable to allocate memory for"
+				   " filter_entry");
+		return NULL;
+	}
+
+	flow->item_parser = parseitem;
+	flow->dev = dev;
+
+	if (cxgbe_flow_parse(flow, attr, item, action, e)) {
+		t4_os_free(flow);
+		return NULL;
+	}
+
+	/* go, interact with cxgbe_filter */
+	ret = __cxgbe_flow_create(dev, flow);
+	if (ret) {
+		rte_flow_error_set(e, ret, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "Unable to create flow rule");
+		t4_os_free(flow);
+		return NULL;
+	}
+
+	return flow;
+}
+
 static int
 cxgbe_flow_validate(struct rte_eth_dev *dev,
 		    const struct rte_flow_attr *attr,
@@ -443,7 +523,7 @@ cxgbe_flow_validate(struct rte_eth_dev *dev,
 
 static const struct rte_flow_ops cxgbe_flow_ops = {
 	.validate	= cxgbe_flow_validate,
-	.create		= NULL,
+	.create		= cxgbe_flow_create,
 	.destroy	= NULL,
 	.flush		= NULL,
 	.query		= NULL,

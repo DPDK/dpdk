@@ -7,6 +7,7 @@
 #define T4_MSG_H
 
 enum {
+	CPL_SET_TCB_RPL       = 0x3A,
 	CPL_SGE_EGR_UPDATE    = 0xA5,
 	CPL_FW4_MSG           = 0xC0,
 	CPL_FW6_MSG           = 0xE0,
@@ -24,6 +25,13 @@ union opcode_tid {
 	__be32 opcode_tid;
 	__u8 opcode;
 };
+
+#define G_TID(x)    ((x) & 0xFFFFFF)
+
+#define OPCODE_TID(cmd) ((cmd)->ot.opcode_tid)
+
+/* extract the TID from a CPL command */
+#define GET_TID(cmd) (G_TID(be32_to_cpu(OPCODE_TID(cmd))))
 
 struct rss_header {
 	__u8 opcode;
@@ -65,6 +73,20 @@ struct work_request_hdr {
 #define WR_HDR
 #define WR_HDR_SIZE 0
 #endif
+
+#define S_COOKIE    5
+#define M_COOKIE    0x7
+#define V_COOKIE(x) ((x) << S_COOKIE)
+#define G_COOKIE(x) (((x) >> S_COOKIE) & M_COOKIE)
+
+struct cpl_set_tcb_rpl {
+	RSS_HDR
+	union opcode_tid ot;
+	__be16 rsvd;
+	__u8   cookie;
+	__u8   status;
+	__be64 oldval;
+};
 
 struct cpl_tx_data {
 	union opcode_tid ot;

@@ -717,6 +717,27 @@ static inline void t4_os_atomic_list_del(struct mbox_entry *entry,
 	t4_os_unlock(lock);
 }
 
+/**
+ * t4_init_completion - initialize completion
+ * @c: the completion context
+ */
+static inline void t4_init_completion(struct t4_completion *c)
+{
+	c->done = 0;
+	t4_os_lock_init(&c->lock);
+}
+
+/**
+ * t4_complete - set completion as done
+ * @c: the completion context
+ */
+static inline void t4_complete(struct t4_completion *c)
+{
+	t4_os_lock(&c->lock);
+	c->done = 1;
+	t4_os_unlock(&c->lock);
+}
+
 void *t4_alloc_mem(size_t size);
 void t4_free_mem(void *addr);
 #define t4_os_alloc(_size)     t4_alloc_mem((_size))

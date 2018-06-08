@@ -86,6 +86,10 @@ static int fwevtq_handler(struct sge_rspq *q, const __be64 *rsp,
 		const struct cpl_fw6_msg *msg = (const void *)rsp;
 
 		t4_handle_fw_rpl(q->adapter, msg->data);
+	} else if (opcode == CPL_SET_TCB_RPL) {
+		const struct cpl_set_tcb_rpl *p = (const void *)rsp;
+
+		filter_rpl(q->adapter, p);
 	} else {
 		dev_err(adapter, "unexpected CPL %#x on FW event queue\n",
 			opcode);
@@ -133,6 +137,38 @@ int setup_sge_ctrl_txq(struct adapter *adapter)
 out:
 	t4_free_sge_resources(adapter);
 	return err;
+}
+
+/**
+ * cxgbe_poll_for_completion: Poll rxq for completion
+ * @q: rxq to poll
+ * @us: microseconds to delay
+ * @cnt: number of times to poll
+ * @c: completion to check for 'done' status
+ *
+ * Polls the rxq for reples until completion is done or the count
+ * expires.
+ */
+int cxgbe_poll_for_completion(struct sge_rspq *q, unsigned int us,
+			      unsigned int cnt, struct t4_completion *c)
+{
+	unsigned int i;
+	unsigned int work_done, budget = 4;
+
+	if (!c)
+		return -EINVAL;
+
+	for (i = 0; i < cnt; i++) {
+		cxgbe_poll(q, NULL, budget, &work_done);
+		t4_os_lock(&c->lock);
+		if (c->done) {
+			t4_os_unlock(&c->lock);
+			return 0;
+		}
+		t4_os_unlock(&c->lock);
+		udelay(us);
+	}
+	return -ETIMEDOUT;
 }
 
 int setup_sge_fwevtq(struct adapter *adapter)

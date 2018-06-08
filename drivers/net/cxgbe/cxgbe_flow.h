@@ -7,6 +7,10 @@
 
 #include <rte_flow_driver.h>
 #include "cxgbe_filter.h"
+#include "cxgbe.h"
+
+#define CXGBE_FLOW_POLL_US  10
+#define CXGBE_FLOW_POLL_CNT 10
 
 struct chrte_fparse {
 	int (*fptr)(const void *mask, /* currently supported mask */
