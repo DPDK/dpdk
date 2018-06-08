@@ -21,7 +21,9 @@ drivers = ['af_packet',
 	'mvpp2',
 	'nfp',
 	'null', 'octeontx', 'pcap', 'ring',
-	'sfc', 'thunderx', 'virtio']
+	'sfc',
+	'softnic',
+	'thunderx', 'virtio']
 std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
 std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
 std_deps += ['bus_vdev']        # same with vdev bus
