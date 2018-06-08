@@ -291,6 +291,7 @@ vhost_new_device(void)
 	dev->flags = VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 	dev->slave_req_fd = -1;
 	dev->vdpa_dev_id = -1;
+	rte_spinlock_init(&dev->slave_req_lock);
 
 	return i;
 }
@@ -345,6 +346,8 @@ vhost_detach_vdpa_device(int vid)
 
 	if (dev == NULL)
 		return;
+
+	vhost_user_host_notifier_ctrl(vid, false);
 
 	dev->vdpa_dev_id = -1;
 }

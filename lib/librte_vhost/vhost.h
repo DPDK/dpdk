@@ -301,6 +301,7 @@ struct virtio_net {
 	struct guest_page       *guest_pages;
 
 	int			slave_req_fd;
+	rte_spinlock_t		slave_req_lock;
 
 	/*
 	 * Device id to identify a specific backend device.

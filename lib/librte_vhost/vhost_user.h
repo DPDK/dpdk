@@ -20,7 +20,9 @@
 					 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ) | \
-					 (1ULL << VHOST_USER_PROTOCOL_F_CRYPTO_SESSION))
+					 (1ULL << VHOST_USER_PROTOCOL_F_CRYPTO_SESSION) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER))
 
 typedef enum VhostUserRequest {
 	VHOST_USER_NONE = 0,
@@ -54,6 +56,7 @@ typedef enum VhostUserRequest {
 typedef enum VhostUserSlaveRequest {
 	VHOST_USER_SLAVE_NONE = 0,
 	VHOST_USER_SLAVE_IOTLB_MSG = 1,
+	VHOST_USER_SLAVE_VRING_HOST_NOTIFIER_MSG = 3,
 	VHOST_USER_SLAVE_MAX
 } VhostUserSlaveRequest;
 
@@ -99,6 +102,12 @@ typedef struct VhostUserCryptoSessionParam {
 	uint8_t auth_key_buf[VHOST_USER_CRYPTO_MAX_HMAC_KEY_LENGTH];
 } VhostUserCryptoSessionParam;
 
+typedef struct VhostUserVringArea {
+	uint64_t u64;
+	uint64_t size;
+	uint64_t offset;
+} VhostUserVringArea;
+
 typedef struct VhostUserMsg {
 	union {
 		uint32_t master; /* a VhostUserRequest value */
@@ -120,6 +129,7 @@ typedef struct VhostUserMsg {
 		VhostUserLog    log;
 		struct vhost_iotlb_msg iotlb;
 		VhostUserCryptoSessionParam crypto_session;
+		VhostUserVringArea area;
 	} payload;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 } __attribute((packed)) VhostUserMsg;
@@ -133,6 +143,7 @@ typedef struct VhostUserMsg {
 /* vhost_user.c */
 int vhost_user_msg_handler(int vid, int fd);
 int vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm);
+int vhost_user_host_notifier_ctrl(int vid, bool enable);
 
 /* socket.c */
 int read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num);

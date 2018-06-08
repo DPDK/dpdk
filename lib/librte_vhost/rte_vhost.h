@@ -58,6 +58,14 @@ extern "C" {
 #define VHOST_USER_PROTOCOL_F_CRYPTO_SESSION 7
 #endif
 
+#ifndef VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD
+#define VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD 10
+#endif
+
+#ifndef VHOST_USER_PROTOCOL_F_HOST_NOTIFIER
+#define VHOST_USER_PROTOCOL_F_HOST_NOTIFIER 11
+#endif
+
 /** Indicate whether protocol features negotiation is supported. */
 #ifndef VHOST_USER_F_PROTOCOL_FEATURES
 #define VHOST_USER_F_PROTOCOL_FEATURES	30

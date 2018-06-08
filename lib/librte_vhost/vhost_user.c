@@ -1384,6 +1384,22 @@ send_vhost_reply(int sockfd, struct VhostUserMsg *msg)
 	return send_vhost_message(sockfd, msg, NULL, 0);
 }
 
+static int
+send_vhost_slave_message(struct virtio_net *dev, struct VhostUserMsg *msg,
+			 int *fds, int fd_num)
+{
+	int ret;
+
+	if (msg->flags & VHOST_USER_NEED_REPLY)
+		rte_spinlock_lock(&dev->slave_req_lock);
+
+	ret = send_vhost_message(dev->slave_req_fd, msg, fds, fd_num);
+	if (ret < 0 && (msg->flags & VHOST_USER_NEED_REPLY))
+		rte_spinlock_unlock(&dev->slave_req_lock);
+
+	return ret;
+}
+
 /*
  * Allocate a queue pair if it hasn't been allocated yet
  */
@@ -1705,9 +1721,43 @@ skip_to_reply:
 		if (vdpa_dev->ops->dev_conf)
 			vdpa_dev->ops->dev_conf(dev->vid);
 		dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
+		if (vhost_user_host_notifier_ctrl(dev->vid, true) != 0) {
+			RTE_LOG(INFO, VHOST_CONFIG,
+				"(%d) software relay is used for vDPA, performance may be low.\n",
+				dev->vid);
+		}
 	}
 
 	return 0;
+}
+
+static int process_slave_message_reply(struct virtio_net *dev,
+				       const VhostUserMsg *msg)
+{
+	VhostUserMsg msg_reply;
+	int ret;
+
+	if ((msg->flags & VHOST_USER_NEED_REPLY) == 0)
+		return 0;
+
+	if (read_vhost_message(dev->slave_req_fd, &msg_reply) < 0) {
+		ret = -1;
+		goto out;
+	}
+
+	if (msg_reply.request.slave != msg->request.slave) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Received unexpected msg type (%u), expected %u\n",
+			msg_reply.request.slave, msg->request.slave);
+		ret = -1;
+		goto out;
+	}
+
+	ret = msg_reply.payload.u64 ? -1 : 0;
+
+out:
+	rte_spinlock_unlock(&dev->slave_req_lock);
+	return ret;
 }
 
 int
@@ -1734,4 +1784,100 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 	}
 
 	return 0;
+}
+
+static int vhost_user_slave_set_vring_host_notifier(struct virtio_net *dev,
+						    int index, int fd,
+						    uint64_t offset,
+						    uint64_t size)
+{
+	int *fdp = NULL;
+	size_t fd_num = 0;
+	int ret;
+	struct VhostUserMsg msg = {
+		.request.slave = VHOST_USER_SLAVE_VRING_HOST_NOTIFIER_MSG,
+		.flags = VHOST_USER_VERSION | VHOST_USER_NEED_REPLY,
+		.size = sizeof(msg.payload.area),
+		.payload.area = {
+			.u64 = index & VHOST_USER_VRING_IDX_MASK,
+			.size = size,
+			.offset = offset,
+		},
+	};
+
+	if (fd < 0)
+		msg.payload.area.u64 |= VHOST_USER_VRING_NOFD_MASK;
+	else {
+		fdp = &fd;
+		fd_num = 1;
+	}
+
+	ret = send_vhost_slave_message(dev, &msg, fdp, fd_num);
+	if (ret < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Failed to set host notifier (%d)\n", ret);
+		return ret;
+	}
+
+	return process_slave_message_reply(dev, &msg);
+}
+
+int vhost_user_host_notifier_ctrl(int vid, bool enable)
+{
+	struct virtio_net *dev;
+	struct rte_vdpa_device *vdpa_dev;
+	int vfio_device_fd, did, ret = 0;
+	uint64_t offset, size;
+	unsigned int i;
+
+	dev = get_device(vid);
+	if (!dev)
+		return -ENODEV;
+
+	did = dev->vdpa_dev_id;
+	if (did < 0)
+		return -EINVAL;
+
+	if (!(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ||
+	    !(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
+	    !(dev->protocol_features &
+			(1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ)) ||
+	    !(dev->protocol_features &
+			(1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD)) ||
+	    !(dev->protocol_features &
+			(1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER)))
+		return -ENOTSUP;
+
+	vdpa_dev = rte_vdpa_get_device(did);
+
+	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_vfio_device_fd, -ENOTSUP);
+	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_notify_area, -ENOTSUP);
+
+	vfio_device_fd = vdpa_dev->ops->get_vfio_device_fd(vid);
+	if (vfio_device_fd < 0)
+		return -ENOTSUP;
+
+	if (enable) {
+		for (i = 0; i < dev->nr_vring; i++) {
+			if (vdpa_dev->ops->get_notify_area(vid, i, &offset,
+					&size) < 0) {
+				ret = -ENOTSUP;
+				goto disable;
+			}
+
+			if (vhost_user_slave_set_vring_host_notifier(dev, i,
+					vfio_device_fd, offset, size) < 0) {
+				ret = -EFAULT;
+				goto disable;
+			}
+		}
+	} else {
+disable:
+		for (i = 0; i < dev->nr_vring; i++) {
+			vhost_user_slave_set_vring_host_notifier(dev, i, -1,
+					0, 0);
+		}
+	}
+
+	return ret;
 }
