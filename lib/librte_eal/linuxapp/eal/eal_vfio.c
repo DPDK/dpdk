@@ -1562,7 +1562,7 @@ out:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len)
 {
 	if (len == 0) {
@@ -1573,7 +1573,7 @@ rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len)
 	return container_dma_map(default_vfio_cfg, vaddr, iova, len);
 }
 
-int __rte_experimental
+int
 rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len)
 {
 	if (len == 0) {
@@ -1616,7 +1616,7 @@ rte_vfio_noiommu_is_enabled(void)
 	return c == 'Y';
 }
 
-int __rte_experimental
+int
 rte_vfio_container_create(void)
 {
 	int i;
@@ -1666,7 +1666,7 @@ rte_vfio_container_destroy(int container_fd)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_group_bind(int container_fd, int iommu_group_num)
 {
 	struct vfio_config *vfio_cfg;
@@ -1712,7 +1712,7 @@ rte_vfio_container_group_bind(int container_fd, int iommu_group_num)
 	return vfio_group_fd;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_group_unbind(int container_fd, int iommu_group_num)
 {
 	struct vfio_config *vfio_cfg;
@@ -1751,7 +1751,7 @@ rte_vfio_container_group_unbind(int container_fd, int iommu_group_num)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_dma_map(int container_fd, uint64_t vaddr, uint64_t iova,
 		uint64_t len)
 {
@@ -1771,7 +1771,7 @@ rte_vfio_container_dma_map(int container_fd, uint64_t vaddr, uint64_t iova,
 	return container_dma_map(vfio_cfg, vaddr, iova, len);
 }
 
-int __rte_experimental
+int
 rte_vfio_container_dma_unmap(int container_fd, uint64_t vaddr, uint64_t iova,
 		uint64_t len)
 {
@@ -1793,14 +1793,14 @@ rte_vfio_container_dma_unmap(int container_fd, uint64_t vaddr, uint64_t iova,
 
 #else
 
-int __rte_experimental
+int
 rte_vfio_dma_map(uint64_t __rte_unused vaddr, __rte_unused uint64_t iova,
 		  __rte_unused uint64_t len)
 {
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_dma_unmap(uint64_t __rte_unused vaddr, uint64_t __rte_unused iova,
 		    __rte_unused uint64_t len)
 {
@@ -1847,7 +1847,7 @@ rte_vfio_clear_group(__rte_unused int vfio_group_fd)
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_get_group_num(__rte_unused const char *sysfs_base,
 		__rte_unused const char *dev_addr,
 		__rte_unused int *iommu_group_num)
@@ -1855,45 +1855,45 @@ rte_vfio_get_group_num(__rte_unused const char *sysfs_base,
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_get_container_fd(void)
 {
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_get_group_fd(__rte_unused int iommu_group_num)
 {
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_create(void)
 {
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_destroy(__rte_unused int container_fd)
 {
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_group_bind(__rte_unused int container_fd,
 		__rte_unused int iommu_group_num)
 {
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_group_unbind(__rte_unused int container_fd,
 		__rte_unused int iommu_group_num)
 {
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_dma_map(__rte_unused int container_fd,
 		__rte_unused uint64_t vaddr,
 		__rte_unused uint64_t iova,
@@ -1902,7 +1902,7 @@ rte_vfio_container_dma_map(__rte_unused int container_fd,
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_dma_unmap(__rte_unused int container_fd,
 		__rte_unused uint64_t vaddr,
 		__rte_unused uint64_t iova,

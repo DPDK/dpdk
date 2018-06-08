@@ -248,6 +248,17 @@ DPDK_18.08 {
 	rte_uuid_is_null;
 	rte_uuid_parse;
 	rte_uuid_unparse;
+	rte_vfio_container_create;
+	rte_vfio_container_destroy;
+	rte_vfio_container_dma_map;
+	rte_vfio_container_dma_unmap;
+	rte_vfio_container_group_bind;
+	rte_vfio_container_group_unbind;
+	rte_vfio_dma_map;
+	rte_vfio_dma_unmap;
+	rte_vfio_get_container_fd;
+	rte_vfio_get_group_fd;
+	rte_vfio_get_group_num;
 
 } DPDK_18.05;
 
@@ -325,15 +336,4 @@ EXPERIMENTAL {
 	rte_service_may_be_active;
 	rte_socket_count;
 	rte_socket_id_by_idx;
-	rte_vfio_dma_map;
-	rte_vfio_dma_unmap;
-	rte_vfio_get_container_fd;
-	rte_vfio_get_group_fd;
-	rte_vfio_get_group_num;
-	rte_vfio_container_create;
-	rte_vfio_container_destroy;
-	rte_vfio_container_dma_map;
-	rte_vfio_container_dma_unmap;
-	rte_vfio_container_group_bind;
-	rte_vfio_container_group_unbind;
 };
