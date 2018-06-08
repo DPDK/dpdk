@@ -489,6 +489,10 @@ enum fw_params_mnem {
 enum fw_params_param_dev {
 	FW_PARAMS_PARAM_DEV_CCLK	= 0x00, /* chip core clock in khz */
 	FW_PARAMS_PARAM_DEV_PORTVEC	= 0x01, /* the port vector */
+	FW_PARAMS_PARAM_DEV_NTID        = 0x02, /* reads the number of TIDs
+						 * allocated by the device's
+						 * Lookup Engine
+						 */
 	FW_PARAMS_PARAM_DEV_FWREV	= 0x0B, /* fw version */
 	FW_PARAMS_PARAM_DEV_TPREV	= 0x0C, /* tp version */
 	FW_PARAMS_PARAM_DEV_ULPTX_MEMWRITE_DSGL = 0x17,
@@ -498,6 +502,8 @@ enum fw_params_param_dev {
  * physical and virtual function parameters
  */
 enum fw_params_param_pfvf {
+	FW_PARAMS_PARAM_PFVF_FILTER_START = 0x05,
+	FW_PARAMS_PARAM_PFVF_FILTER_END = 0x06,
 	FW_PARAMS_PARAM_PFVF_CPLFW4MSG_ENCAP = 0x31,
 	FW_PARAMS_PARAM_PFVF_PORT_CAPS32 = 0x3A
 };

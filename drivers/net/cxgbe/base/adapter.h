@@ -11,9 +11,11 @@
 #include <rte_bus_pci.h>
 #include <rte_mbuf.h>
 #include <rte_io.h>
+#include <rte_ethdev.h>
 
 #include "cxgbe_compat.h"
 #include "t4_regs_values.h"
+#include "cxgbe_ofld.h"
 
 enum {
 	MAX_ETH_QSETS = 64,           /* # of Ethernet Tx/Rx queue sets */
@@ -306,6 +308,8 @@ struct adapter {
 	unsigned int vpd_flag;
 
 	int use_unpacked_mode; /* unpacked rx mode state */
+
+	struct tid_info tids;     /* Info used to access TID related tables */
 };
 
 /**

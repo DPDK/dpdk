@@ -38,6 +38,22 @@
 #include "t4_msg.h"
 #include "cxgbe.h"
 
+/**
+ * Allocate a chunk of memory. The allocated memory is cleared.
+ */
+void *t4_alloc_mem(size_t size)
+{
+	return rte_zmalloc(NULL, size, 0);
+}
+
+/**
+ * Free memory allocated through t4_alloc_mem().
+ */
+void t4_free_mem(void *addr)
+{
+	rte_free(addr);
+}
+
 /*
  * Response queue handler for the FW event queue.
  */
@@ -166,6 +182,59 @@ int cxgb4_set_rspq_intr_params(struct sge_rspq *q, unsigned int us,
 	else
 		q->intr_params = V_QINTR_TIMER_IDX(timer_val) |
 				 V_QINTR_CNT_EN(cnt > 0);
+	return 0;
+}
+
+/**
+ * Free TID tables.
+ */
+static void tid_free(struct tid_info *t)
+{
+	if (t->tid_tab) {
+		if (t->ftid_bmap)
+			rte_bitmap_free(t->ftid_bmap);
+
+		if (t->ftid_bmap_array)
+			t4_os_free(t->ftid_bmap_array);
+
+		t4_os_free(t->tid_tab);
+	}
+
+	memset(t, 0, sizeof(struct tid_info));
+}
+
+/**
+ * Allocate and initialize the TID tables.  Returns 0 on success.
+ */
+static int tid_init(struct tid_info *t)
+{
+	size_t size;
+	unsigned int ftid_bmap_size;
+	unsigned int max_ftids = t->nftids;
+
+	ftid_bmap_size = rte_bitmap_get_memory_footprint(t->nftids);
+	size = t->ntids * sizeof(*t->tid_tab) +
+		max_ftids * sizeof(*t->ftid_tab);
+
+	t->tid_tab = t4_os_alloc(size);
+	if (!t->tid_tab)
+		return -ENOMEM;
+
+	t->ftid_tab = (struct filter_entry *)&t->tid_tab[t->ntids];
+	t->ftid_bmap_array = t4_os_alloc(ftid_bmap_size);
+	if (!t->ftid_bmap_array) {
+		tid_free(t);
+		return -ENOMEM;
+	}
+
+	t4_os_lock_init(&t->ftid_lock);
+	t->ftid_bmap = rte_bitmap_init(t->nftids, t->ftid_bmap_array,
+				       ftid_bmap_size);
+	if (!t->ftid_bmap) {
+		tid_free(t);
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 
@@ -706,6 +775,7 @@ bye:
 
 static int adap_init0(struct adapter *adap)
 {
+	struct fw_caps_config_cmd caps_cmd;
 	int ret = 0;
 	u32 v, port_vec;
 	enum dev_state state;
@@ -821,6 +891,35 @@ static int adap_init0(struct adapter *adap)
 	 V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_PFVF_##param) |  \
 	 V_FW_PARAMS_PARAM_Y(0) | \
 	 V_FW_PARAMS_PARAM_Z(0))
+
+	params[0] = FW_PARAM_PFVF(FILTER_START);
+	params[1] = FW_PARAM_PFVF(FILTER_END);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 2, params, val);
+	if (ret < 0)
+		goto bye;
+	adap->tids.ftid_base = val[0];
+	adap->tids.nftids = val[1] - val[0] + 1;
+
+	/*
+	 * Get device capabilities so we can determine what resources we need
+	 * to manage.
+	 */
+	memset(&caps_cmd, 0, sizeof(caps_cmd));
+	caps_cmd.op_to_write = htonl(V_FW_CMD_OP(FW_CAPS_CONFIG_CMD) |
+				     F_FW_CMD_REQUEST | F_FW_CMD_READ);
+	caps_cmd.cfvalid_to_len16 = htonl(FW_LEN16(caps_cmd));
+	ret = t4_wr_mbox(adap, adap->mbox, &caps_cmd, sizeof(caps_cmd),
+			 &caps_cmd);
+	if (ret < 0)
+		goto bye;
+
+	/* query tid-related parameters */
+	params[0] = FW_PARAM_DEV(NTID);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1,
+			      params, val);
+	if (ret < 0)
+		goto bye;
+	adap->tids.ntids = val[0];
 
 	/* If we're running on newer firmware, let it know that we're
 	 * prepared to deal with encapsulated CPL messages.  Older
@@ -1307,6 +1406,7 @@ void cxgbe_close(struct adapter *adapter)
 	if (adapter->flags & FULL_INIT_DONE) {
 		if (is_pf4(adapter))
 			t4_intr_disable(adapter);
+		tid_free(&adapter->tids);
 		t4_sge_tx_monitor_stop(adapter);
 		t4_free_sge_resources(adapter);
 		for_each_port(adapter, i) {
@@ -1468,6 +1568,12 @@ allocate_mac:
 
 	print_adapter_info(adapter);
 	print_port_info(adapter);
+
+	if (tid_init(&adapter->tids) < 0) {
+		/* Disable filtering support */
+		dev_warn(adapter, "could not allocate TID table, "
+			 "filter support disabled. Continuing\n");
+	}
 
 	err = init_rss(adapter);
 	if (err)
