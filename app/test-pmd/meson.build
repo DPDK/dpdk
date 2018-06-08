@@ -25,6 +25,9 @@ deps = ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'meter', 'bus_pci']
 if dpdk_conf.has('RTE_LIBRTE_PDUMP')
 	deps += 'pdump'
 endif
+if dpdk_conf.has('RTE_LIBRTE_BNXT_PMD')
+	deps += 'pmd_bnxt'
+endif
 if dpdk_conf.has('RTE_LIBRTE_I40E_PMD')
 	deps += 'pmd_i40e'
 endif
