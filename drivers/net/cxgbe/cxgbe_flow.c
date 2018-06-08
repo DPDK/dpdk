@@ -471,6 +471,57 @@ cxgbe_flow_create(struct rte_eth_dev *dev,
 	return flow;
 }
 
+static int __cxgbe_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct adapter *adap = ethdev2adap(dev);
+	struct filter_entry *f = flow->f;
+	struct ch_filter_specification *fs;
+	struct filter_ctx ctx;
+	int err;
+
+	fs = &f->fs;
+	if (cxgbe_verify_fidx(flow, flow->fidx, 1))
+		return -1;
+
+	t4_init_completion(&ctx.completion);
+	err = cxgbe_del_filter(dev, flow->fidx, fs, &ctx);
+	if (err) {
+		dev_err(adap, "Error %d while deleting filter.\n", err);
+		return err;
+	}
+
+	/* Poll the FW for reply */
+	err = cxgbe_poll_for_completion(&adap->sge.fw_evtq,
+					CXGBE_FLOW_POLL_US,
+					CXGBE_FLOW_POLL_CNT,
+					&ctx.completion);
+	if (err) {
+		dev_err(adap, "Filter delete operation timed out (%d)\n", err);
+		return err;
+	}
+	if (ctx.result) {
+		dev_err(adap, "Hardware error %d while deleting the filter.\n",
+			ctx.result);
+		return ctx.result;
+	}
+
+	return 0;
+}
+
+static int
+cxgbe_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
+		   struct rte_flow_error *e)
+{
+	int ret;
+
+	ret = __cxgbe_flow_destroy(dev, flow);
+	if (ret)
+		return rte_flow_error_set(e, ret, RTE_FLOW_ERROR_TYPE_HANDLE,
+					  flow, "error destroying filter.");
+	t4_os_free(flow);
+	return 0;
+}
+
 static int
 cxgbe_flow_validate(struct rte_eth_dev *dev,
 		    const struct rte_flow_attr *attr,
@@ -524,7 +575,7 @@ cxgbe_flow_validate(struct rte_eth_dev *dev,
 static const struct rte_flow_ops cxgbe_flow_ops = {
 	.validate	= cxgbe_flow_validate,
 	.create		= cxgbe_flow_create,
-	.destroy	= NULL,
+	.destroy	= cxgbe_flow_destroy,
 	.flush		= NULL,
 	.query		= NULL,
 	.isolate	= NULL,

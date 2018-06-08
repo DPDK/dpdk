@@ -134,6 +134,60 @@ void clear_filter(struct filter_entry *f)
 	memset(f, 0, sizeof(*f));
 }
 
+/**
+ * t4_mk_filtdelwr - create a delete filter WR
+ * @ftid: the filter ID
+ * @wr: the filter work request to populate
+ * @qid: ingress queue to receive the delete notification
+ *
+ * Creates a filter work request to delete the supplied filter.  If @qid is
+ * negative the delete notification is suppressed.
+ */
+static void t4_mk_filtdelwr(unsigned int ftid, struct fw_filter_wr *wr, int qid)
+{
+	memset(wr, 0, sizeof(*wr));
+	wr->op_pkd = cpu_to_be32(V_FW_WR_OP(FW_FILTER_WR));
+	wr->len16_pkd = cpu_to_be32(V_FW_WR_LEN16(sizeof(*wr) / 16));
+	wr->tid_to_iq = cpu_to_be32(V_FW_FILTER_WR_TID(ftid) |
+				    V_FW_FILTER_WR_NOREPLY(qid < 0));
+	wr->del_filter_to_l2tix = cpu_to_be32(F_FW_FILTER_WR_DEL_FILTER);
+	if (qid >= 0)
+		wr->rx_chan_rx_rpl_iq =
+				cpu_to_be16(V_FW_FILTER_WR_RX_RPL_IQ(qid));
+}
+
+/**
+ * Create FW work request to delete the filter at a specified index
+ */
+static int del_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
+{
+	struct adapter *adapter = ethdev2adap(dev);
+	struct filter_entry *f = &adapter->tids.ftid_tab[fidx];
+	struct rte_mbuf *mbuf;
+	struct fw_filter_wr *fwr;
+	struct sge_ctrl_txq *ctrlq;
+	unsigned int port_id = ethdev2pinfo(dev)->port_id;
+
+	ctrlq = &adapter->sge.ctrlq[port_id];
+	mbuf = rte_pktmbuf_alloc(ctrlq->mb_pool);
+	if (!mbuf)
+		return -ENOMEM;
+
+	mbuf->data_len = sizeof(*fwr);
+	mbuf->pkt_len = mbuf->data_len;
+
+	fwr = rte_pktmbuf_mtod(mbuf, struct fw_filter_wr *);
+	t4_mk_filtdelwr(f->tid, fwr, adapter->sge.fw_evtq.abs_id);
+
+	/*
+	 * Mark the filter as "pending" and ship off the Filter Work Request.
+	 * When we get the Work Request Reply we'll clear the pending status.
+	 */
+	f->pending = 1;
+	t4_mgmt_tx(ctrlq, mbuf);
+	return 0;
+}
+
 int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 {
 	struct adapter *adapter = ethdev2adap(dev);
@@ -242,6 +296,58 @@ static void cxgbe_clear_ftid(struct tid_info *t, int fidx, int family)
 		rte_bitmap_clear(t->ftid_bmap, fidx + 3);
 	}
 	t4_os_unlock(&t->ftid_lock);
+}
+
+/**
+ * Check a delete filter request for validity and send it to the hardware.
+ * Return 0 on success, an error number otherwise.  We attach any provided
+ * filter operation context to the internal filter specification in order to
+ * facilitate signaling completion of the operation.
+ */
+int cxgbe_del_filter(struct rte_eth_dev *dev, unsigned int filter_id,
+		     struct ch_filter_specification *fs,
+		     struct filter_ctx *ctx)
+{
+	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct filter_entry *f;
+	int ret;
+
+	if (filter_id >= adapter->tids.nftids)
+		return -ERANGE;
+
+	ret = is_filter_set(&adapter->tids, filter_id, fs->type);
+	if (!ret) {
+		dev_warn(adap, "%s: could not find filter entry: %u\n",
+			 __func__, filter_id);
+		return -EINVAL;
+	}
+
+	f = &adapter->tids.ftid_tab[filter_id];
+	ret = writable_filter(f);
+	if (ret)
+		return ret;
+
+	if (f->valid) {
+		f->ctx = ctx;
+		cxgbe_clear_ftid(&adapter->tids,
+				 f->tid - adapter->tids.ftid_base,
+				 f->fs.type ? FILTER_TYPE_IPV6 :
+					      FILTER_TYPE_IPV4);
+		return del_filter_wr(dev, filter_id);
+	}
+
+	/*
+	 * If the caller has passed in a Completion Context then we need to
+	 * mark it as a successful completion so they don't stall waiting
+	 * for it.
+	 */
+	if (ctx) {
+		ctx->result = 0;
+		t4_complete(&ctx->completion);
+	}
+
+	return 0;
 }
 
 /**
@@ -415,6 +521,14 @@ void filter_rpl(struct adapter *adap, const struct cpl_set_tcb_rpl *rpl)
 				ctx->tid = f->tid;
 				ctx->result = 0;
 			}
+		} else if (ret == FW_FILTER_WR_FLT_DELETED) {
+			/*
+			 * Clear the filter when we get confirmation from the
+			 * hardware that the filter has been deleted.
+			 */
+			clear_filter(f);
+			if (ctx)
+				ctx->result = 0;
 		} else {
 			/*
 			 * Something went wrong.  Issue a warning about the

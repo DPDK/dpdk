@@ -215,6 +215,9 @@ int writable_filter(struct filter_entry *f);
 int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 		     struct ch_filter_specification *fs,
 		     struct filter_ctx *ctx);
+int cxgbe_del_filter(struct rte_eth_dev *dev, unsigned int filter_id,
+		     struct ch_filter_specification *fs,
+		     struct filter_ctx *ctx);
 int cxgbe_alloc_ftid(struct adapter *adap, unsigned int family);
 int validate_filter(struct adapter *adap, struct ch_filter_specification *fs);
 #endif /* _CXGBE_FILTER_H_ */
