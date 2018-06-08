@@ -96,7 +96,7 @@ The tests are run once the vdev creation is successfully complete.
 
 .. code-block:: console
 
-    --vdev="event_octeontx,self_test=1"
+    --vdev="event_octeontx,selftest=1"
 
 
 Enable TIMvf stats
