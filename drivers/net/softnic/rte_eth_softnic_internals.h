@@ -689,6 +689,91 @@ softnic_pipeline_table_create(struct pmd_internals *p,
 	const char *pipeline_name,
 	struct softnic_table_params *params);
 
+struct softnic_table_rule_match_acl {
+	int ip_version;
+
+	RTE_STD_C11
+	union {
+		struct {
+			uint32_t sa;
+			uint32_t da;
+		} ipv4;
+
+		struct {
+			uint8_t sa[16];
+			uint8_t da[16];
+		} ipv6;
+	};
+
+	uint32_t sa_depth;
+	uint32_t da_depth;
+	uint16_t sp0;
+	uint16_t sp1;
+	uint16_t dp0;
+	uint16_t dp1;
+	uint8_t proto;
+	uint8_t proto_mask;
+	uint32_t priority;
+};
+
+struct softnic_table_rule_match_array {
+	uint32_t pos;
+};
+
+#ifndef TABLE_RULE_MATCH_SIZE_MAX
+#define TABLE_RULE_MATCH_SIZE_MAX                          256
+#endif
+
+struct softnic_table_rule_match_hash {
+	uint8_t key[TABLE_RULE_MATCH_SIZE_MAX];
+};
+
+struct softnic_table_rule_match_lpm {
+	int ip_version;
+
+	RTE_STD_C11
+	union {
+		uint32_t ipv4;
+		uint8_t ipv6[16];
+	};
+
+	uint8_t depth;
+};
+
+struct softnic_table_rule_match {
+	enum softnic_table_type match_type;
+
+	union {
+		struct softnic_table_rule_match_acl acl;
+		struct softnic_table_rule_match_array array;
+		struct softnic_table_rule_match_hash hash;
+		struct softnic_table_rule_match_lpm lpm;
+	} match;
+};
+
+struct softnic_table_rule_action {
+	uint64_t action_mask;
+	struct rte_table_action_fwd_params fwd;
+	struct rte_table_action_lb_params lb;
+	struct rte_table_action_mtr_params mtr;
+	struct rte_table_action_tm_params tm;
+	struct rte_table_action_encap_params encap;
+	struct rte_table_action_nat_params nat;
+	struct rte_table_action_ttl_params ttl;
+	struct rte_table_action_stats_params stats;
+	struct rte_table_action_time_params time;
+};
+
+int
+softnic_pipeline_port_in_enable(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t port_id);
+
+int
+softnic_pipeline_port_in_disable(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t port_id);
+
 /**
  * Thread
  */
