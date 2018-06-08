@@ -41,6 +41,5 @@ for f in config/arm/arm*gcc ; do
 	if ! command -v $c >/dev/null 2>&1 ; then
 		continue
 	fi
-	export CC="ccache $c"
 	build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) --cross-file $f
 done
