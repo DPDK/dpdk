@@ -646,6 +646,9 @@ ifcvf_get_vdpa_features(int did, uint64_t *features)
 
 #define VDPA_SUPPORTED_PROTOCOL_FEATURES \
 		(1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK | \
+		 1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ | \
+		 1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD | \
+		 1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER | \
 		 1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD)
 static int
 ifcvf_get_protocol_features(int did __rte_unused, uint64_t *features)
