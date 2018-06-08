@@ -55,6 +55,11 @@ static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
 #define MAX_IMM_TX_PKT_LEN 256
 
 /*
+ * Max size of a WR sent through a control Tx queue.
+ */
+#define MAX_CTRL_WR_LEN SGE_MAX_WR_LEN
+
+/*
  * Rx buffer sizes for "usembufs" Free List buffers (one ingress packet
  * per mbuf buffer).  We currently only support two sizes for 1500- and
  * 9000-byte MTUs. We could easily support more but there doesn't seem to be
@@ -1300,6 +1305,126 @@ out_free:
 }
 
 /**
+ * reclaim_completed_tx_imm - reclaim completed control-queue Tx descs
+ * @q: the SGE control Tx queue
+ *
+ * This is a variant of reclaim_completed_tx() that is used for Tx queues
+ * that send only immediate data (presently just the control queues) and
+ * thus do not have any mbufs to release.
+ */
+static inline void reclaim_completed_tx_imm(struct sge_txq *q)
+{
+	int hw_cidx = ntohs(q->stat->cidx);
+	int reclaim = hw_cidx - q->cidx;
+
+	if (reclaim < 0)
+		reclaim += q->size;
+
+	q->in_use -= reclaim;
+	q->cidx = hw_cidx;
+}
+
+/**
+ * is_imm - check whether a packet can be sent as immediate data
+ * @mbuf: the packet
+ *
+ * Returns true if a packet can be sent as a WR with immediate data.
+ */
+static inline int is_imm(const struct rte_mbuf *mbuf)
+{
+	return mbuf->pkt_len <= MAX_CTRL_WR_LEN;
+}
+
+/**
+ * inline_tx_mbuf: inline a packet's data into TX descriptors
+ * @q: the TX queue where the packet will be inlined
+ * @from: pointer to data portion of packet
+ * @to: pointer after cpl where data has to be inlined
+ * @len: length of data to inline
+ *
+ * Inline a packet's contents directly to TX descriptors, starting at
+ * the given position within the TX DMA ring.
+ * Most of the complexity of this operation is dealing with wrap arounds
+ * in the middle of the packet we want to inline.
+ */
+static void inline_tx_mbuf(const struct sge_txq *q, caddr_t from, caddr_t *to,
+			   int len)
+{
+	int left = RTE_PTR_DIFF(q->stat, *to);
+
+	if (likely((uintptr_t)*to + len <= (uintptr_t)q->stat)) {
+		rte_memcpy(*to, from, len);
+		*to = RTE_PTR_ADD(*to, len);
+	} else {
+		rte_memcpy(*to, from, left);
+		from = RTE_PTR_ADD(from, left);
+		left = len - left;
+		rte_memcpy((void *)q->desc, from, left);
+		*to = RTE_PTR_ADD((void *)q->desc, left);
+	}
+}
+
+/**
+ * ctrl_xmit - send a packet through an SGE control Tx queue
+ * @q: the control queue
+ * @mbuf: the packet
+ *
+ * Send a packet through an SGE control Tx queue.  Packets sent through
+ * a control queue must fit entirely as immediate data.
+ */
+static int ctrl_xmit(struct sge_ctrl_txq *q, struct rte_mbuf *mbuf)
+{
+	unsigned int ndesc;
+	struct fw_wr_hdr *wr;
+	caddr_t dst;
+
+	if (unlikely(!is_imm(mbuf))) {
+		WARN_ON(1);
+		rte_pktmbuf_free(mbuf);
+		return -1;
+	}
+
+	reclaim_completed_tx_imm(&q->q);
+	ndesc = DIV_ROUND_UP(mbuf->pkt_len, sizeof(struct tx_desc));
+	t4_os_lock(&q->ctrlq_lock);
+
+	q->full = txq_avail(&q->q) < ndesc ? 1 : 0;
+	if (unlikely(q->full)) {
+		t4_os_unlock(&q->ctrlq_lock);
+		return -1;
+	}
+
+	wr = (struct fw_wr_hdr *)&q->q.desc[q->q.pidx];
+	dst = (void *)wr;
+	inline_tx_mbuf(&q->q, rte_pktmbuf_mtod(mbuf, caddr_t),
+		       &dst, mbuf->data_len);
+
+	txq_advance(&q->q, ndesc);
+	if (unlikely(txq_avail(&q->q) < 64))
+		wr->lo |= htonl(F_FW_WR_EQUEQ);
+
+	q->txp++;
+
+	ring_tx_db(q->adapter, &q->q);
+	t4_os_unlock(&q->ctrlq_lock);
+
+	rte_pktmbuf_free(mbuf);
+	return 0;
+}
+
+/**
+ * t4_mgmt_tx - send a management message
+ * @q: the control queue
+ * @mbuf: the packet containing the management message
+ *
+ * Send a management message through control queue.
+ */
+int t4_mgmt_tx(struct sge_ctrl_txq *q, struct rte_mbuf *mbuf)
+{
+	return ctrl_xmit(q, mbuf);
+}
+
+/**
  * alloc_ring - allocate resources for an SGE descriptor ring
  * @dev: the PCI device's core device
  * @nelem: the number of descriptors
@@ -2080,6 +2205,64 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 	return 0;
 }
 
+int t4_sge_alloc_ctrl_txq(struct adapter *adap, struct sge_ctrl_txq *txq,
+			  struct rte_eth_dev *eth_dev, uint16_t queue_id,
+			  unsigned int iqid, int socket_id)
+{
+	int ret, nentries;
+	struct fw_eq_ctrl_cmd c;
+	struct sge *s = &adap->sge;
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	char z_name[RTE_MEMZONE_NAMESIZE];
+	char z_name_sw[RTE_MEMZONE_NAMESIZE];
+
+	/* Add status entries */
+	nentries = txq->q.size + s->stat_len / sizeof(struct tx_desc);
+
+	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
+		 eth_dev->device->driver->name, "ctrl_tx_ring",
+		 eth_dev->data->port_id, queue_id);
+	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
+
+	txq->q.desc = alloc_ring(txq->q.size, sizeof(struct tx_desc),
+				 0, &txq->q.phys_addr,
+				 NULL, 0, queue_id,
+				 socket_id, z_name, z_name_sw);
+	if (!txq->q.desc)
+		return -ENOMEM;
+
+	memset(&c, 0, sizeof(c));
+	c.op_to_vfn = htonl(V_FW_CMD_OP(FW_EQ_CTRL_CMD) | F_FW_CMD_REQUEST |
+			    F_FW_CMD_WRITE | F_FW_CMD_EXEC |
+			    V_FW_EQ_CTRL_CMD_PFN(adap->pf) |
+			    V_FW_EQ_CTRL_CMD_VFN(0));
+	c.alloc_to_len16 = htonl(F_FW_EQ_CTRL_CMD_ALLOC |
+				 F_FW_EQ_CTRL_CMD_EQSTART | (sizeof(c) / 16));
+	c.cmpliqid_eqid = htonl(V_FW_EQ_CTRL_CMD_CMPLIQID(0));
+	c.physeqid_pkd = htonl(0);
+	c.fetchszm_to_iqid =
+		htonl(V_FW_EQ_CTRL_CMD_HOSTFCMODE(X_HOSTFCMODE_NONE) |
+		      V_FW_EQ_CTRL_CMD_PCIECHN(pi->tx_chan) |
+		      F_FW_EQ_CTRL_CMD_FETCHRO | V_FW_EQ_CTRL_CMD_IQID(iqid));
+	c.dcaen_to_eqsize =
+		htonl(V_FW_EQ_CTRL_CMD_FBMIN(X_FETCHBURSTMIN_64B) |
+		      V_FW_EQ_CTRL_CMD_FBMAX(X_FETCHBURSTMAX_512B) |
+		      V_FW_EQ_CTRL_CMD_EQSIZE(nentries));
+	c.eqaddr = cpu_to_be64(txq->q.phys_addr);
+
+	ret = t4_wr_mbox(adap, adap->mbox, &c, sizeof(c), &c);
+	if (ret) {
+		txq->q.desc = NULL;
+		return ret;
+	}
+
+	init_txq(adap, &txq->q, G_FW_EQ_CTRL_CMD_EQID(ntohl(c.cmpliqid_eqid)),
+		 G_FW_EQ_CTRL_CMD_EQID(ntohl(c. physeqid_pkd)));
+	txq->adapter = adap;
+	txq->full = 0;
+	return 0;
+}
+
 static void free_txq(struct sge_txq *q)
 {
 	q->cntxt_id = 0;
@@ -2174,7 +2357,7 @@ void t4_sge_tx_monitor_stop(struct adapter *adap)
  */
 void t4_free_sge_resources(struct adapter *adap)
 {
-	int i;
+	unsigned int i;
 	struct sge_eth_rxq *rxq = &adap->sge.ethrxq[0];
 	struct sge_eth_txq *txq = &adap->sge.ethtxq[0];
 
@@ -2188,6 +2371,18 @@ void t4_free_sge_resources(struct adapter *adap)
 		if (txq->q.desc) {
 			t4_sge_eth_txq_release(adap, txq);
 			txq->eth_dev = NULL;
+		}
+	}
+
+	/* clean up control Tx queues */
+	for (i = 0; i < ARRAY_SIZE(adap->sge.ctrlq); i++) {
+		struct sge_ctrl_txq *cq = &adap->sge.ctrlq[i];
+
+		if (cq->q.desc) {
+			reclaim_completed_tx_imm(&cq->q);
+			t4_ctrl_eq_free(adap, adap->mbox, adap->pf, 0,
+					cq->q.cntxt_id);
+			free_txq(&cq->q);
 		}
 	}
 

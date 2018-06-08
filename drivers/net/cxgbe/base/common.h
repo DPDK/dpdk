@@ -378,6 +378,8 @@ int t4_iq_free(struct adapter *adap, unsigned int mbox, unsigned int pf,
 	       unsigned int fl0id, unsigned int fl1id);
 int t4_eth_eq_free(struct adapter *adap, unsigned int mbox, unsigned int pf,
 		   unsigned int vf, unsigned int eqid);
+int t4_ctrl_eq_free(struct adapter *adap, unsigned int mbox, unsigned int pf,
+		    unsigned int vf, unsigned int eqid);
 
 static inline unsigned int core_ticks_per_usec(const struct adapter *adap)
 {

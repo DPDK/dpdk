@@ -42,6 +42,7 @@ int link_start(struct port_info *pi);
 void init_rspq(struct adapter *adap, struct sge_rspq *q, unsigned int us,
 	       unsigned int cnt, unsigned int size, unsigned int iqe_size);
 int setup_sge_fwevtq(struct adapter *adapter);
+int setup_sge_ctrl_txq(struct adapter *adapter);
 void cfg_queues(struct rte_eth_dev *eth_dev);
 int cfg_queue_count(struct rte_eth_dev *eth_dev);
 int init_rss(struct adapter *adap);

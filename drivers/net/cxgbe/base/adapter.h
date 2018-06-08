@@ -19,6 +19,7 @@
 
 enum {
 	MAX_ETH_QSETS = 64,           /* # of Ethernet Tx/Rx queue sets */
+	MAX_CTRL_QUEUES = NCHAN,      /* # of control Tx queues */
 };
 
 struct adapter;
@@ -256,10 +257,20 @@ struct sge_eth_txq {                   /* state for an SGE Ethernet Tx queue */
 	unsigned int flags;            /* flags for state of the queue */
 } __rte_cache_aligned;
 
+struct sge_ctrl_txq {                /* State for an SGE control Tx queue */
+	struct sge_txq q;            /* txq */
+	struct adapter *adapter;     /* adapter associated with this queue */
+	rte_spinlock_t ctrlq_lock;   /* control queue lock */
+	u8 full;                     /* the Tx ring is full */
+	u64 txp;                     /* number of transmits */
+	struct rte_mempool *mb_pool; /* mempool to generate ctrl pkts */
+} __rte_cache_aligned;
+
 struct sge {
 	struct sge_eth_txq ethtxq[MAX_ETH_QSETS];
 	struct sge_eth_rxq ethrxq[MAX_ETH_QSETS];
 	struct sge_rspq fw_evtq __rte_cache_aligned;
+	struct sge_ctrl_txq ctrlq[MAX_CTRL_QUEUES];
 
 	u16 max_ethqsets;           /* # of available Ethernet queue sets */
 	u32 stat_len;               /* length of status page at ring end */
@@ -720,6 +731,7 @@ void t4_sge_tx_monitor_start(struct adapter *adap);
 void t4_sge_tx_monitor_stop(struct adapter *adap);
 int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf,
 		uint16_t nb_pkts);
+int t4_mgmt_tx(struct sge_ctrl_txq *txq, struct rte_mbuf *mbuf);
 int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 		     const struct pkt_gl *gl);
 int t4_sge_init(struct adapter *adap);
@@ -727,6 +739,9 @@ int t4vf_sge_init(struct adapter *adap);
 int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 			 struct rte_eth_dev *eth_dev, uint16_t queue_id,
 			 unsigned int iqid, int socket_id);
+int t4_sge_alloc_ctrl_txq(struct adapter *adap, struct sge_ctrl_txq *txq,
+			  struct rte_eth_dev *eth_dev, uint16_t queue_id,
+			  unsigned int iqid, int socket_id);
 int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *rspq, bool fwevtq,
 		     struct rte_eth_dev *eth_dev, int intr_idx,
 		     struct sge_fl *fl, rspq_handler_t handler,

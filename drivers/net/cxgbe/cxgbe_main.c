@@ -94,6 +94,47 @@ out:
 	return 0;
 }
 
+/**
+ * Setup sge control queues to pass control information.
+ */
+int setup_sge_ctrl_txq(struct adapter *adapter)
+{
+	struct sge *s = &adapter->sge;
+	int err = 0, i = 0;
+
+	for_each_port(adapter, i) {
+		char name[RTE_ETH_NAME_MAX_LEN];
+		struct sge_ctrl_txq *q = &s->ctrlq[i];
+
+		q->q.size = 1024;
+		err = t4_sge_alloc_ctrl_txq(adapter, q,
+					    adapter->eth_dev,  i,
+					    s->fw_evtq.cntxt_id,
+					    rte_socket_id());
+		if (err) {
+			dev_err(adapter, "Failed to alloc ctrl txq. Err: %d",
+				err);
+			goto out;
+		}
+		snprintf(name, sizeof(name), "cxgbe_ctrl_pool_%d", i);
+		q->mb_pool = rte_pktmbuf_pool_create(name, s->ctrlq[i].q.size,
+						     RTE_CACHE_LINE_SIZE,
+						     RTE_MBUF_PRIV_ALIGN,
+						     RTE_MBUF_DEFAULT_BUF_SIZE,
+						     SOCKET_ID_ANY);
+		if (!q->mb_pool) {
+			dev_err(adapter, "Can't create ctrl pool for port: %d",
+				i);
+			err = -ENOMEM;
+			goto out;
+		}
+	}
+	return 0;
+out:
+	t4_free_sge_resources(adapter);
+	return err;
+}
+
 int setup_sge_fwevtq(struct adapter *adapter)
 {
 	struct sge *s = &adapter->sge;

@@ -4491,6 +4491,31 @@ static void t4_handle_get_port_info(struct port_info *pi, const __be64 *rpl)
 }
 
 /**
+ * t4_ctrl_eq_free - free a control egress queue
+ * @adap: the adapter
+ * @mbox: mailbox to use for the FW command
+ * @pf: the PF owning the queue
+ * @vf: the VF owning the queue
+ * @eqid: egress queue id
+ *
+ * Frees a control egress queue.
+ */
+int t4_ctrl_eq_free(struct adapter *adap, unsigned int mbox, unsigned int pf,
+		    unsigned int vf, unsigned int eqid)
+{
+	struct fw_eq_ctrl_cmd c;
+
+	memset(&c, 0, sizeof(c));
+	c.op_to_vfn = cpu_to_be32(V_FW_CMD_OP(FW_EQ_CTRL_CMD) |
+				  F_FW_CMD_REQUEST | F_FW_CMD_EXEC |
+				  V_FW_EQ_CTRL_CMD_PFN(pf) |
+				  V_FW_EQ_CTRL_CMD_VFN(vf));
+	c.alloc_to_len16 = cpu_to_be32(F_FW_EQ_CTRL_CMD_FREE | FW_LEN16(c));
+	c.cmpliqid_eqid = cpu_to_be32(V_FW_EQ_CTRL_CMD_EQID(eqid));
+	return t4_wr_mbox(adap, mbox, &c, sizeof(c), NULL);
+}
+
+/**
  * t4_handle_fw_rpl - process a FW reply message
  * @adap: the adapter
  * @rpl: start of the FW message

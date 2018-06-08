@@ -178,6 +178,7 @@ enum fw_cmd_opcodes {
 	FW_PFVF_CMD		       = 0x09,
 	FW_IQ_CMD                      = 0x10,
 	FW_EQ_ETH_CMD                  = 0x12,
+	FW_EQ_CTRL_CMD                 = 0x13,
 	FW_VI_CMD                      = 0x14,
 	FW_VI_MAC_CMD                  = 0x15,
 	FW_VI_RXMODE_CMD               = 0x16,
@@ -959,6 +960,75 @@ struct fw_eq_eth_cmd {
 #define V_FW_EQ_ETH_CMD_VIID(x)	((x) << S_FW_EQ_ETH_CMD_VIID)
 #define G_FW_EQ_ETH_CMD_VIID(x)	\
 	(((x) >> S_FW_EQ_ETH_CMD_VIID) & M_FW_EQ_ETH_CMD_VIID)
+
+struct fw_eq_ctrl_cmd {
+	__be32 op_to_vfn;
+	__be32 alloc_to_len16;
+	__be32 cmpliqid_eqid;
+	__be32 physeqid_pkd;
+	__be32 fetchszm_to_iqid;
+	__be32 dcaen_to_eqsize;
+	__be64 eqaddr;
+};
+
+#define S_FW_EQ_CTRL_CMD_PFN		8
+#define V_FW_EQ_CTRL_CMD_PFN(x)		((x) << S_FW_EQ_CTRL_CMD_PFN)
+
+#define S_FW_EQ_CTRL_CMD_VFN		0
+#define V_FW_EQ_CTRL_CMD_VFN(x)		((x) << S_FW_EQ_CTRL_CMD_VFN)
+
+#define S_FW_EQ_CTRL_CMD_ALLOC		31
+#define V_FW_EQ_CTRL_CMD_ALLOC(x)	((x) << S_FW_EQ_CTRL_CMD_ALLOC)
+#define F_FW_EQ_CTRL_CMD_ALLOC		V_FW_EQ_CTRL_CMD_ALLOC(1U)
+
+#define S_FW_EQ_CTRL_CMD_FREE		30
+#define V_FW_EQ_CTRL_CMD_FREE(x)	((x) << S_FW_EQ_CTRL_CMD_FREE)
+#define F_FW_EQ_CTRL_CMD_FREE		V_FW_EQ_CTRL_CMD_FREE(1U)
+
+#define S_FW_EQ_CTRL_CMD_EQSTART	28
+#define V_FW_EQ_CTRL_CMD_EQSTART(x)	((x) << S_FW_EQ_CTRL_CMD_EQSTART)
+#define F_FW_EQ_CTRL_CMD_EQSTART	V_FW_EQ_CTRL_CMD_EQSTART(1U)
+
+#define S_FW_EQ_CTRL_CMD_CMPLIQID	20
+#define V_FW_EQ_CTRL_CMD_CMPLIQID(x)	((x) << S_FW_EQ_CTRL_CMD_CMPLIQID)
+
+#define S_FW_EQ_CTRL_CMD_EQID		0
+#define M_FW_EQ_CTRL_CMD_EQID		0xfffff
+#define V_FW_EQ_CTRL_CMD_EQID(x)	((x) << S_FW_EQ_CTRL_CMD_EQID)
+#define G_FW_EQ_CTRL_CMD_EQID(x)	\
+	(((x) >> S_FW_EQ_CTRL_CMD_EQID) & M_FW_EQ_CTRL_CMD_EQID)
+
+#define S_FW_EQ_CTRL_CMD_PHYSEQID       0
+#define M_FW_EQ_CTRL_CMD_PHYSEQID       0xfffff
+#define V_FW_EQ_CTRL_CMD_PHYSEQID(x)    ((x) << S_FW_EQ_CTRL_CMD_PHYSEQID)
+#define G_FW_EQ_CTRL_CMD_PHYSEQID(x)    \
+	(((x) >> S_FW_EQ_CTRL_CMD_PHYSEQID) & M_FW_EQ_CTRL_CMD_PHYSEQID)
+
+#define S_FW_EQ_CTRL_CMD_FETCHRO	22
+#define V_FW_EQ_CTRL_CMD_FETCHRO(x)	((x) << S_FW_EQ_CTRL_CMD_FETCHRO)
+#define F_FW_EQ_CTRL_CMD_FETCHRO	V_FW_EQ_CTRL_CMD_FETCHRO(1U)
+
+#define S_FW_EQ_CTRL_CMD_HOSTFCMODE	20
+#define M_FW_EQ_CTRL_CMD_HOSTFCMODE	0x3
+#define V_FW_EQ_CTRL_CMD_HOSTFCMODE(x)	((x) << S_FW_EQ_CTRL_CMD_HOSTFCMODE)
+
+#define S_FW_EQ_CTRL_CMD_PCIECHN	16
+#define V_FW_EQ_CTRL_CMD_PCIECHN(x)	((x) << S_FW_EQ_CTRL_CMD_PCIECHN)
+
+#define S_FW_EQ_CTRL_CMD_IQID		0
+#define V_FW_EQ_CTRL_CMD_IQID(x)	((x) << S_FW_EQ_CTRL_CMD_IQID)
+
+#define S_FW_EQ_CTRL_CMD_FBMIN		23
+#define V_FW_EQ_CTRL_CMD_FBMIN(x)	((x) << S_FW_EQ_CTRL_CMD_FBMIN)
+
+#define S_FW_EQ_CTRL_CMD_FBMAX		20
+#define V_FW_EQ_CTRL_CMD_FBMAX(x)	((x) << S_FW_EQ_CTRL_CMD_FBMAX)
+
+#define S_FW_EQ_CTRL_CMD_CIDXFTHRESH	16
+#define V_FW_EQ_CTRL_CMD_CIDXFTHRESH(x)	((x) << S_FW_EQ_CTRL_CMD_CIDXFTHRESH)
+
+#define S_FW_EQ_CTRL_CMD_EQSIZE		0
+#define V_FW_EQ_CTRL_CMD_EQSIZE(x)	((x) << S_FW_EQ_CTRL_CMD_EQSIZE)
 
 enum fw_vi_func {
 	FW_VI_FUNC_ETH,
