@@ -402,7 +402,7 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 			break;
 		/* call instructions */
 		case (BPF_JMP | EBPF_CALL):
-			reg[EBPF_REG_0] = bpf->prm.xsym[ins->imm].func(
+			reg[EBPF_REG_0] = bpf->prm.xsym[ins->imm].func.val(
 				reg[EBPF_REG_1], reg[EBPF_REG_2],
 				reg[EBPF_REG_3], reg[EBPF_REG_4],
 				reg[EBPF_REG_5]);

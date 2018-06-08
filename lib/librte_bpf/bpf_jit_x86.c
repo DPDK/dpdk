@@ -113,20 +113,6 @@ union bpf_jit_imm {
 	uint8_t u8[4];
 };
 
-static size_t
-bpf_size(uint32_t bpf_op_sz)
-{
-	if (bpf_op_sz == BPF_B)
-		return sizeof(uint8_t);
-	else if (bpf_op_sz == BPF_H)
-		return sizeof(uint16_t);
-	else if (bpf_op_sz == BPF_W)
-		return sizeof(uint32_t);
-	else if (bpf_op_sz == EBPF_DW)
-		return sizeof(uint64_t);
-	return 0;
-}
-
 /*
  * In many cases for imm8 we can produce shorter code.
  */
@@ -1294,7 +1280,8 @@ emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
 			break;
 		/* call instructions */
 		case (BPF_JMP | EBPF_CALL):
-			emit_call(st, (uintptr_t)bpf->prm.xsym[ins->imm].func);
+			emit_call(st,
+				(uintptr_t)bpf->prm.xsym[ins->imm].func.val);
 			break;
 		/* return instruction */
 		case (BPF_JMP | EBPF_EXIT):

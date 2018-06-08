@@ -19,12 +19,35 @@ static const struct rte_bpf_xsym bpf_xsym[] = {
 	{
 		.name = RTE_STR(stdout),
 		.type = RTE_BPF_XTYPE_VAR,
-		.var = &stdout,
+		.var = {
+			.val = &stdout,
+			.desc = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = sizeof(stdout),
+			},
+		},
 	},
 	{
 		.name = RTE_STR(rte_pktmbuf_dump),
 		.type = RTE_BPF_XTYPE_FUNC,
-		.func = (void *)rte_pktmbuf_dump,
+		.func = {
+			.val = (void *)rte_pktmbuf_dump,
+			.nb_args = 3,
+			.args = {
+				[0] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uintptr_t),
+				},
+				[1] = {
+					.type = RTE_BPF_ARG_PTR_MBUF,
+					.size = sizeof(struct rte_mbuf),
+				},
+				[2] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uint32_t),
+				},
+			},
+		},
 	},
 };
 

@@ -131,6 +131,11 @@ struct ebpf_insn {
 	int32_t imm;
 };
 
+/*
+ * eBPF allows functions with R1-R5 as arguments.
+ */
+#define	EBPF_FUNC_MAX_ARGS	(EBPF_REG_6 - EBPF_REG_1)
+
 #ifdef __cplusplus
 }
 #endif

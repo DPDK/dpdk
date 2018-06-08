@@ -81,9 +81,9 @@ resolve_xsym(const char *sn, size_t ofs, struct ebpf_insn *ins, size_t ins_sz,
 		ins[idx].imm = fidx;
 	/* for variable we need to store its absolute address */
 	else {
-		ins[idx].imm = (uintptr_t)prm->xsym[fidx].var;
+		ins[idx].imm = (uintptr_t)prm->xsym[fidx].var.val;
 		ins[idx + 1].imm =
-			(uint64_t)(uintptr_t)prm->xsym[fidx].var >> 32;
+			(uint64_t)(uintptr_t)prm->xsym[fidx].var.val >> 32;
 	}
 
 	return 0;

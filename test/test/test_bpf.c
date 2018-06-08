@@ -1530,7 +1530,24 @@ static const struct rte_bpf_xsym test_call1_xsym[] = {
 	{
 		.name = RTE_STR(dummy_func1),
 		.type = RTE_BPF_XTYPE_FUNC,
-		.func = (void *)dummy_func1,
+		.func = {
+			.val = (void *)dummy_func1,
+			.nb_args = 3,
+			.args = {
+				[0] = {
+					.type = RTE_BPF_ARG_PTR,
+					.size = sizeof(struct dummy_offset),
+				},
+				[1] = {
+					.type = RTE_BPF_ARG_PTR,
+					.size = sizeof(uint32_t),
+				},
+				[2] = {
+					.type = RTE_BPF_ARG_PTR,
+					.size = sizeof(uint64_t),
+				},
+			},
+		},
 	},
 };
 

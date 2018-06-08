@@ -34,6 +34,20 @@ extern int rte_bpf_logtype;
 #define	RTE_BPF_LOG(lvl, fmt, args...) \
 	rte_log(RTE_LOG_## lvl, rte_bpf_logtype, fmt, ##args)
 
+static inline size_t
+bpf_size(uint32_t bpf_op_sz)
+{
+	if (bpf_op_sz == BPF_B)
+		return sizeof(uint8_t);
+	else if (bpf_op_sz == BPF_H)
+		return sizeof(uint16_t);
+	else if (bpf_op_sz == BPF_W)
+		return sizeof(uint32_t);
+	else if (bpf_op_sz == EBPF_DW)
+		return sizeof(uint64_t);
+	return 0;
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -40,7 +40,11 @@ enum rte_bpf_arg_type {
  */
 struct rte_bpf_arg {
 	enum rte_bpf_arg_type type;
-	size_t size;     /**< for pointer types, size of data it points to */
+	/**
+	 * for ptr type - max size of data buffer it points to
+	 * for raw type - the size (in bytes) of the value
+	 */
+	size_t size;
 	size_t buf_size;
 	/**< for mbuf ptr type, max size of rte_mbuf data buffer */
 };
@@ -66,10 +70,19 @@ struct rte_bpf_xsym {
 	const char *name;        /**< name */
 	enum rte_bpf_xtype type; /**< type */
 	union {
-		uint64_t (*func)(uint64_t, uint64_t, uint64_t,
+		struct {
+			uint64_t (*val)(uint64_t, uint64_t, uint64_t,
 				uint64_t, uint64_t);
-		void *var;
-	}; /**< value */
+			uint32_t nb_args;
+			struct rte_bpf_arg args[EBPF_FUNC_MAX_ARGS];
+			/**< Function arguments descriptions. */
+			struct rte_bpf_arg ret; /**< function return value. */
+		} func;
+		struct {
+			void *val; /**< actual memory location */
+			struct rte_bpf_arg desc; /**< type, size, etc. */
+		} var; /**< external variable */
+	};
 };
 
 /**
