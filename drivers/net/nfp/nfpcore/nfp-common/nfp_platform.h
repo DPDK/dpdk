@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <inttypes.h>
-#include <sys/cdefs.h>
 #include <sys/stat.h>
 #include <limits.h>
 #include <errno.h>
