@@ -2253,11 +2253,15 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				txq->wr_p = 0;
 
 			pkt_size -= dma_size;
-			if (!pkt_size)
-				/* End of packet */
-				txds->offset_eop |= PCIE_DESC_TX_EOP;
+
+			/*
+			 * Making the EOP, packets with just one segment
+			 * the priority
+			 */
+			if (likely(!pkt_size))
+				txds->offset_eop = PCIE_DESC_TX_EOP;
 			else
-				txds->offset_eop &= PCIE_DESC_TX_OFFSET_MASK;
+				txds->offset_eop = 0;
 
 			pkt = pkt->next;
 			/* Referencing next free TX descriptor */
