@@ -773,8 +773,8 @@ out:
 	return ret;
 }
 
-int __rte_experimental
-rte_fbarray_find_contig_free(struct rte_fbarray *arr, unsigned int start)
+static int
+fbarray_find_contig(struct rte_fbarray *arr, unsigned int start, bool used)
 {
 	int ret = -1;
 
@@ -786,14 +786,25 @@ rte_fbarray_find_contig_free(struct rte_fbarray *arr, unsigned int start)
 	/* prevent array from changing under us */
 	rte_rwlock_read_lock(&arr->rwlock);
 
-	if (arr->len == arr->count) {
-		rte_errno = ENOSPC;
-		goto out;
-	}
-
-	if (arr->count == 0) {
-		ret = arr->len - start;
-		goto out;
+	/* cheap checks to prevent doing useless work */
+	if (used) {
+		if (arr->count == 0) {
+			ret = 0;
+			goto out;
+		}
+		if (arr->len == arr->count) {
+			ret = arr->len - start;
+			goto out;
+		}
+	} else {
+		if (arr->len == arr->count) {
+			ret = 0;
+			goto out;
+		}
+		if (arr->count == 0) {
+			ret = arr->len - start;
+			goto out;
+		}
 	}
 
 	ret = find_contig(arr, start, false);
@@ -803,22 +814,15 @@ out:
 }
 
 int __rte_experimental
+rte_fbarray_find_contig_free(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find_contig(arr, start, false);
+}
+
+int __rte_experimental
 rte_fbarray_find_contig_used(struct rte_fbarray *arr, unsigned int start)
 {
-	int ret = -1;
-
-	if (arr == NULL || start >= arr->len) {
-		rte_errno = EINVAL;
-		return -1;
-	}
-
-	/* prevent array from changing under us */
-	rte_rwlock_read_lock(&arr->rwlock);
-
-	ret = find_contig(arr, start, true);
-
-	rte_rwlock_read_unlock(&arr->rwlock);
-	return ret;
+	return fbarray_find_contig(arr, start, true);
 }
 
 int __rte_experimental
