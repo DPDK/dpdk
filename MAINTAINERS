@@ -177,6 +177,7 @@ F: lib/librte_eal/linuxapp/eal/eal_mem*
 F: lib/librte_eal/bsdapp/eal/eal_mem*
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: test/test/test_func_reentrancy.c
+F: test/test/test_fbarray.c
 F: test/test/test_malloc.c
 F: test/test/test_memory.c
 F: test/test/test_memzone.c
