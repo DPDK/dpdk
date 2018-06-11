@@ -19,6 +19,13 @@ test_power_acpi_cpufreq(void)
 	return TEST_SKIPPED;
 }
 
+static int
+test_power_acpi_caps(void)
+{
+	printf("Power management library not supported, skipping test\n");
+	return TEST_SKIPPED;
+}
+
 #else
 #include <rte_power.h>
 
@@ -517,6 +524,42 @@ fail_all:
 	rte_power_unset_env();
 	return -1;
 }
+
+static int
+test_power_acpi_caps(void)
+{
+	struct rte_power_core_capabilities caps;
+	int ret;
+
+	ret = rte_power_set_env(PM_ENV_ACPI_CPUFREQ);
+	if (ret) {
+		printf("Error setting ACPI environment\n");
+		return -1;
+	}
+
+	ret = rte_power_init(TEST_POWER_LCORE_ID);
+	if (ret < 0) {
+		printf("Cannot initialise power management for lcore %u, this "
+			"may occur if environment is not configured "
+			"correctly(APCI cpufreq) or operating in another valid "
+			"Power management environment\n", TEST_POWER_LCORE_ID);
+		rte_power_unset_env();
+		return -1;
+	}
+
+	ret = rte_power_get_capabilities(TEST_POWER_LCORE_ID, &caps);
+	if (ret) {
+		printf("ACPI: Error getting capabilities\n");
+		return -1;
+	}
+
+	printf("ACPI: Capabilities %lx\n", caps.capabilities);
+
+	rte_power_unset_env();
+	return 0;
+}
+
 #endif
 
 REGISTER_TEST_COMMAND(power_acpi_cpufreq_autotest, test_power_acpi_cpufreq);
+REGISTER_TEST_COMMAND(power_acpi_caps_autotest, test_power_acpi_caps);
