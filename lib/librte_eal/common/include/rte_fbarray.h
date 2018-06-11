@@ -370,6 +370,50 @@ int __rte_experimental
 rte_fbarray_find_prev_used(struct rte_fbarray *arr, unsigned int start);
 
 
+/**
+ * Find lowest start index of chunk of ``n`` free elements, down from specified
+ * index.
+ *
+ * @param arr
+ *   Valid pointer to allocated and correctly set up ``rte_fbarray`` structure.
+ *
+ * @param start
+ *   Element index to start search from.
+ *
+ * @param n
+ *   Number of free elements to look for.
+ *
+ * @return
+ *  - non-negative integer on success.
+ *  - -1 on failure, with ``rte_errno`` indicating reason for failure.
+ */
+int __rte_experimental
+rte_fbarray_find_prev_n_free(struct rte_fbarray *arr, unsigned int start,
+		unsigned int n);
+
+
+/**
+ * Find lowest start index of chunk of ``n`` used elements, down from specified
+ * index.
+ *
+ * @param arr
+ *   Valid pointer to allocated and correctly set up ``rte_fbarray`` structure.
+ *
+ * @param start
+ *   Element index to start search from.
+ *
+ * @param n
+ *   Number of used elements to look for.
+ *
+ * @return
+ *  - non-negative integer on success.
+ *  - -1 on failure, with ``rte_errno`` indicating reason for failure.
+ */
+int __rte_experimental
+rte_fbarray_find_prev_n_used(struct rte_fbarray *arr, unsigned int start,
+		unsigned int n);
+
+
 
 /**
  * Dump ``rte_fbarray`` metadata.
