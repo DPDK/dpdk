@@ -675,8 +675,8 @@ rte_fbarray_is_used(struct rte_fbarray *arr, unsigned int idx)
 	return ret;
 }
 
-int __rte_experimental
-rte_fbarray_find_next_free(struct rte_fbarray *arr, unsigned int start)
+static int
+fbarray_find(struct rte_fbarray *arr, unsigned int start, bool used)
 {
 	int ret = -1;
 
@@ -688,39 +688,43 @@ rte_fbarray_find_next_free(struct rte_fbarray *arr, unsigned int start)
 	/* prevent array from changing under us */
 	rte_rwlock_read_lock(&arr->rwlock);
 
-	if (arr->len == arr->count) {
-		rte_errno = ENOSPC;
-		goto out;
+	/* cheap checks to prevent doing useless work */
+	if (!used) {
+		if (arr->len == arr->count) {
+			rte_errno = ENOSPC;
+			goto out;
+		}
+		if (arr->count == 0) {
+			ret = start;
+			goto out;
+		}
+	} else {
+		if (arr->count == 0) {
+			rte_errno = ENOENT;
+			goto out;
+		}
+		if (arr->len == arr->count) {
+			ret = start;
+			goto out;
+		}
 	}
 
-	ret = find_next(arr, start, false);
+	ret = find_next(arr, start, used);
 out:
 	rte_rwlock_read_unlock(&arr->rwlock);
 	return ret;
 }
 
 int __rte_experimental
+rte_fbarray_find_next_free(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find(arr, start, false);
+}
+
+int __rte_experimental
 rte_fbarray_find_next_used(struct rte_fbarray *arr, unsigned int start)
 {
-	int ret = -1;
-
-	if (arr == NULL || start >= arr->len) {
-		rte_errno = EINVAL;
-		return -1;
-	}
-
-	/* prevent array from changing under us */
-	rte_rwlock_read_lock(&arr->rwlock);
-
-	if (arr->count == 0) {
-		rte_errno = ENOENT;
-		goto out;
-	}
-
-	ret = find_next(arr, start, true);
-out:
-	rte_rwlock_read_unlock(&arr->rwlock);
-	return ret;
+	return fbarray_find(arr, start, true);
 }
 
 static int
