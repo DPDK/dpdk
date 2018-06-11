@@ -623,3 +623,24 @@ power_acpi_disable_turbo(unsigned int lcore_id)
 
 	return 0;
 }
+
+int power_acpi_get_capabilities(unsigned int lcore_id,
+		struct rte_power_core_capabilities *caps)
+{
+	struct rte_power_info *pi;
+
+	if (lcore_id >= RTE_MAX_LCORE) {
+		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
+		return -1;
+	}
+	if (caps == NULL) {
+		RTE_LOG(ERR, POWER, "Invalid argument\n");
+		return -1;
+	}
+
+	pi = &lcore_power_info[lcore_id];
+	caps->capabilities = 0;
+	caps->turbo = !!(pi->turbo_available);
+
+	return 0;
+}

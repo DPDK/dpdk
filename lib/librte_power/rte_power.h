@@ -247,6 +247,38 @@ extern rte_power_freq_change_t rte_power_freq_enable_turbo;
  */
 extern rte_power_freq_change_t rte_power_freq_disable_turbo;
 
+/**
+ * Power capabilities summary.
+ */
+struct rte_power_core_capabilities {
+	RTE_STD_C11
+	union {
+		uint64_t capabilities;
+		RTE_STD_C11
+		struct {
+			uint64_t turbo:1;	/**< Turbo can be enabled. */
+		};
+	};
+};
+
+/**
+ * Returns power capabilities for a specific lcore.
+ * Function pointer definition. Review each environments
+ * specific documentation for usage.
+ *
+ * @param lcore_id
+ *  lcore id.
+ * @param caps
+ *  pointer to rte_power_core_capabilities object.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
+ */
+typedef int (*rte_power_get_capabilities_t)(unsigned int lcore_id,
+		struct rte_power_core_capabilities *caps);
+
+extern rte_power_get_capabilities_t rte_power_get_capabilities;
 
 #ifdef __cplusplus
 }

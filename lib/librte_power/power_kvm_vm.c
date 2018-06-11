@@ -124,3 +124,11 @@ power_kvm_vm_disable_turbo(unsigned int lcore_id)
 {
 	return send_msg(lcore_id, CPU_POWER_DISABLE_TURBO);
 }
+
+struct rte_power_core_capabilities;
+int power_kvm_vm_get_capabilities(__rte_unused unsigned int lcore_id,
+		__rte_unused struct rte_power_core_capabilities *caps)
+{
+	RTE_LOG(ERR, POWER, "rte_power_get_capabilities is not implemented for Virtual Machine Power Management\n");
+	return -ENOTSUP;
+}

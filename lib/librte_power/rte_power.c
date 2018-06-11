@@ -24,6 +24,7 @@ rte_power_freq_change_t rte_power_freq_min = NULL;
 rte_power_freq_change_t rte_power_turbo_status;
 rte_power_freq_change_t rte_power_freq_enable_turbo;
 rte_power_freq_change_t rte_power_freq_disable_turbo;
+rte_power_get_capabilities_t rte_power_get_capabilities;
 
 int
 rte_power_set_env(enum power_management_env env)
@@ -42,6 +43,7 @@ rte_power_set_env(enum power_management_env env)
 		rte_power_turbo_status = power_acpi_turbo_status;
 		rte_power_freq_enable_turbo = power_acpi_enable_turbo;
 		rte_power_freq_disable_turbo = power_acpi_disable_turbo;
+		rte_power_get_capabilities = power_acpi_get_capabilities;
 	} else if (env == PM_ENV_KVM_VM) {
 		rte_power_freqs = power_kvm_vm_freqs;
 		rte_power_get_freq = power_kvm_vm_get_freq;
@@ -53,6 +55,7 @@ rte_power_set_env(enum power_management_env env)
 		rte_power_turbo_status = power_kvm_vm_turbo_status;
 		rte_power_freq_enable_turbo = power_kvm_vm_enable_turbo;
 		rte_power_freq_disable_turbo = power_kvm_vm_disable_turbo;
+		rte_power_get_capabilities = power_kvm_vm_get_capabilities;
 	} else {
 		RTE_LOG(ERR, POWER, "Invalid Power Management Environment(%d) set\n",
 				env);

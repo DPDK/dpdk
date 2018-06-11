@@ -26,3 +26,10 @@ DPDK_17.11 {
 	rte_power_turbo_status;
 
 } DPDK_2.0;
+
+DPDK_18.08 {
+	global:
+
+	rte_power_get_capabilities;
+
+} DPDK_17.11;

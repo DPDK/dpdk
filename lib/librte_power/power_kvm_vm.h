@@ -14,6 +14,7 @@
 #include <rte_byteorder.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
+#include "rte_power.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -177,6 +178,22 @@ int power_kvm_vm_enable_turbo(unsigned int lcore_id);
  *  - Negative on error.
  */
 int power_kvm_vm_disable_turbo(unsigned int lcore_id);
+
+/**
+ * Returns power capabilities for a specific lcore.
+ *
+ * @param lcore_id
+ *  lcore id.
+ * @param caps
+ *  pointer to rte_power_core_capabilities object.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
+ */
+int power_kvm_vm_get_capabilities(unsigned int lcore_id,
+		struct rte_power_core_capabilities *caps);
+
 #ifdef __cplusplus
 }
 #endif
