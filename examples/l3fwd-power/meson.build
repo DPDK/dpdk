@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2017 Intel Corporation
+# Copyright(c) 2018 Intel Corporation
 
 # meson file, for building this example as part of a main DPDK build.
 #
@@ -11,5 +11,5 @@ if host_machine.system() != 'linux'
 endif
 deps += ['power', 'timer', 'lpm', 'hash']
 sources = files(
-	'main.c'
+	'main.c', 'perf_core.c'
 )
