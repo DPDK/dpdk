@@ -353,6 +353,60 @@ find_contig(const struct rte_fbarray *arr, unsigned int start, bool used)
 }
 
 static int
+find_prev(const struct rte_fbarray *arr, unsigned int start, bool used)
+{
+	const struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz,
+			arr->len);
+	unsigned int idx, first, first_mod;
+	uint64_t ignore_msk;
+
+	/*
+	 * mask only has granularity of MASK_ALIGN, but start may not be aligned
+	 * on that boundary, so construct a special mask to exclude anything we
+	 * don't want to see to avoid confusing clz.
+	 */
+	first = MASK_LEN_TO_IDX(start);
+	first_mod = MASK_LEN_TO_MOD(start);
+	/* we're going backwards, so mask must start from the top */
+	ignore_msk = first_mod == MASK_ALIGN - 1 ?
+				-1ULL : /* prevent overflow */
+				~(-1ULL << (first_mod + 1));
+
+	/* go backwards, include zero */
+	idx = first;
+	do {
+		uint64_t cur = msk->data[idx];
+		int found;
+
+		/* if we're looking for free entries, invert mask */
+		if (!used)
+			cur = ~cur;
+
+		/* ignore everything before start on first iteration */
+		if (idx == first)
+			cur &= ignore_msk;
+
+		/* check if we have any entries */
+		if (cur == 0)
+			continue;
+
+		/*
+		 * find last set bit - that will correspond to whatever it is
+		 * that we're looking for. we're counting trailing zeroes, thus
+		 * the value we get is counted from end of mask, so calculate
+		 * position from start of mask.
+		 */
+		found = MASK_ALIGN - __builtin_clzll(cur) - 1;
+
+		return MASK_GET_IDX(idx, found);
+	} while (idx-- != 0); /* decrement after check  to include zero*/
+
+	/* we didn't find anything */
+	rte_errno = used ? ENOENT : ENOSPC;
+	return -1;
+}
+
+static int
 set_used(struct rte_fbarray *arr, unsigned int idx, bool used)
 {
 	struct used_mask *msk;
@@ -676,7 +730,7 @@ rte_fbarray_is_used(struct rte_fbarray *arr, unsigned int idx)
 }
 
 static int
-fbarray_find(struct rte_fbarray *arr, unsigned int start, bool used)
+fbarray_find(struct rte_fbarray *arr, unsigned int start, bool next, bool used)
 {
 	int ret = -1;
 
@@ -708,8 +762,10 @@ fbarray_find(struct rte_fbarray *arr, unsigned int start, bool used)
 			goto out;
 		}
 	}
-
-	ret = find_next(arr, start, used);
+	if (next)
+		ret = find_next(arr, start, used);
+	else
+		ret = find_prev(arr, start, used);
 out:
 	rte_rwlock_read_unlock(&arr->rwlock);
 	return ret;
@@ -718,13 +774,25 @@ out:
 int __rte_experimental
 rte_fbarray_find_next_free(struct rte_fbarray *arr, unsigned int start)
 {
-	return fbarray_find(arr, start, false);
+	return fbarray_find(arr, start, true, false);
 }
 
 int __rte_experimental
 rte_fbarray_find_next_used(struct rte_fbarray *arr, unsigned int start)
 {
-	return fbarray_find(arr, start, true);
+	return fbarray_find(arr, start, true, true);
+}
+
+int __rte_experimental
+rte_fbarray_find_prev_free(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find(arr, start, false, false);
+}
+
+int __rte_experimental
+rte_fbarray_find_prev_used(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find(arr, start, false, true);
 }
 
 static int

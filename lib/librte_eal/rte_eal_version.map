@@ -269,6 +269,8 @@ EXPERIMENTAL {
 	rte_fbarray_find_next_used;
 	rte_fbarray_find_next_n_free;
 	rte_fbarray_find_next_n_used;
+	rte_fbarray_find_prev_free;
+	rte_fbarray_find_prev_used;
 	rte_fbarray_find_contig_free;
 	rte_fbarray_find_contig_used;
 	rte_fbarray_get;

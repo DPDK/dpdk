@@ -336,6 +336,40 @@ rte_fbarray_find_contig_free(struct rte_fbarray *arr,
 int __rte_experimental
 rte_fbarray_find_contig_used(struct rte_fbarray *arr, unsigned int start);
 
+/**
+ * Find index of previous free element, starting at specified index.
+ *
+ * @param arr
+ *   Valid pointer to allocated and correctly set up ``rte_fbarray`` structure.
+ *
+ * @param start
+ *   Element index to start search from.
+ *
+ * @return
+ *  - non-negative integer on success.
+ *  - -1 on failure, with ``rte_errno`` indicating reason for failure.
+ */
+int __rte_experimental
+rte_fbarray_find_prev_free(struct rte_fbarray *arr, unsigned int start);
+
+
+/**
+ * Find index of previous used element, starting at specified index.
+ *
+ * @param arr
+ *   Valid pointer to allocated and correctly set up ``rte_fbarray`` structure.
+ *
+ * @param start
+ *   Element index to start search from.
+ *
+ * @return
+ *  - non-negative integer on success.
+ *  - -1 on failure, with ``rte_errno`` indicating reason for failure.
+ */
+int __rte_experimental
+rte_fbarray_find_prev_used(struct rte_fbarray *arr, unsigned int start);
+
+
 
 /**
  * Dump ``rte_fbarray`` metadata.
