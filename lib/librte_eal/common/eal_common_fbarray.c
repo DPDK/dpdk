@@ -570,6 +570,60 @@ find_prev(const struct rte_fbarray *arr, unsigned int start, bool used)
 }
 
 static int
+find_rev_contig(const struct rte_fbarray *arr, unsigned int start, bool used)
+{
+	const struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz,
+			arr->len);
+	unsigned int idx, first, first_mod;
+	unsigned int need_len, result = 0;
+
+	first = MASK_LEN_TO_IDX(start);
+	first_mod = MASK_LEN_TO_MOD(start);
+
+	/* go backwards, include zero */
+	idx = first;
+	do {
+		uint64_t cur = msk->data[idx];
+		unsigned int run_len;
+
+		need_len = MASK_ALIGN;
+
+		/* if we're looking for free entries, invert mask */
+		if (!used)
+			cur = ~cur;
+
+		/* ignore everything after start on first iteration */
+		if (idx == first) {
+			unsigned int end_len = MASK_ALIGN - first_mod - 1;
+			cur <<= end_len;
+			/* at the start, we don't need the full mask len */
+			need_len -= end_len;
+		}
+
+		/* we will be looking for zeroes, so invert the mask */
+		cur = ~cur;
+
+		/* if mask is zero, we have a complete run */
+		if (cur == 0)
+			goto endloop;
+
+		/*
+		 * see where run ends, starting from the end.
+		 */
+		run_len = __builtin_clzll(cur);
+
+		/* add however many zeroes we've had in the last run and quit */
+		if (run_len < need_len) {
+			result += run_len;
+			break;
+		}
+endloop:
+		result += need_len;
+	} while (idx-- != 0); /* decrement after check to include zero */
+	return result;
+}
+
+static int
 set_used(struct rte_fbarray *arr, unsigned int idx, bool used)
 {
 	struct used_mask *msk;
@@ -1039,7 +1093,8 @@ rte_fbarray_find_prev_n_used(struct rte_fbarray *arr, unsigned int start,
 }
 
 static int
-fbarray_find_contig(struct rte_fbarray *arr, unsigned int start, bool used)
+fbarray_find_contig(struct rte_fbarray *arr, unsigned int start, bool next,
+		bool used)
 {
 	int ret = -1;
 
@@ -1057,8 +1112,12 @@ fbarray_find_contig(struct rte_fbarray *arr, unsigned int start, bool used)
 			ret = 0;
 			goto out;
 		}
-		if (arr->len == arr->count) {
+		if (next && arr->count == arr->len) {
 			ret = arr->len - start;
+			goto out;
+		}
+		if (!next && arr->count == arr->len) {
+			ret = start + 1;
 			goto out;
 		}
 	} else {
@@ -1066,13 +1125,20 @@ fbarray_find_contig(struct rte_fbarray *arr, unsigned int start, bool used)
 			ret = 0;
 			goto out;
 		}
-		if (arr->count == 0) {
+		if (next && arr->count == 0) {
 			ret = arr->len - start;
+			goto out;
+		}
+		if (!next && arr->count == 0) {
+			ret = start + 1;
 			goto out;
 		}
 	}
 
-	ret = find_contig(arr, start, false);
+	if (next)
+		ret = find_contig(arr, start, used);
+	else
+		ret = find_rev_contig(arr, start, used);
 out:
 	rte_rwlock_read_unlock(&arr->rwlock);
 	return ret;
@@ -1081,13 +1147,25 @@ out:
 int __rte_experimental
 rte_fbarray_find_contig_free(struct rte_fbarray *arr, unsigned int start)
 {
-	return fbarray_find_contig(arr, start, false);
+	return fbarray_find_contig(arr, start, true, false);
 }
 
 int __rte_experimental
 rte_fbarray_find_contig_used(struct rte_fbarray *arr, unsigned int start)
 {
-	return fbarray_find_contig(arr, start, true);
+	return fbarray_find_contig(arr, start, true, true);
+}
+
+int __rte_experimental
+rte_fbarray_find_rev_contig_free(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find_contig(arr, start, false, false);
+}
+
+int __rte_experimental
+rte_fbarray_find_rev_contig_used(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find_contig(arr, start, false, true);
 }
 
 int __rte_experimental
