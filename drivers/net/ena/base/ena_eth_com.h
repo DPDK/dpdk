@@ -92,10 +92,12 @@ int ena_com_add_single_rx_desc(struct ena_com_io_sq *io_sq,
 
 int ena_com_tx_comp_req_id_get(struct ena_com_io_cq *io_cq, u16 *req_id);
 
+bool ena_com_cq_empty(struct ena_com_io_cq *io_cq);
+
 static inline void ena_com_unmask_intr(struct ena_com_io_cq *io_cq,
 				       struct ena_eth_io_intr_reg *intr_reg)
 {
-	ENA_REG_WRITE32(intr_reg->intr_control, io_cq->unmask_reg);
+	ENA_REG_WRITE32(io_cq->bus, intr_reg->intr_control, io_cq->unmask_reg);
 }
 
 static inline int ena_com_sq_empty_space(struct ena_com_io_sq *io_sq)
@@ -118,7 +120,7 @@ static inline int ena_com_write_sq_doorbell(struct ena_com_io_sq *io_sq)
 	ena_trc_dbg("write submission queue doorbell for queue: %d tail: %d\n",
 		    io_sq->qid, tail);
 
-	ENA_REG_WRITE32(tail, io_sq->db_addr);
+	ENA_REG_WRITE32(io_sq->bus, tail, io_sq->db_addr);
 
 	return 0;
 }
@@ -135,7 +137,7 @@ static inline int ena_com_update_dev_comp_head(struct ena_com_io_cq *io_cq)
 	if (io_cq->cq_head_db_reg && need_update) {
 		ena_trc_dbg("Write completion queue doorbell for queue %d: head: %d\n",
 			    io_cq->qid, head);
-		ENA_REG_WRITE32(head, io_cq->cq_head_db_reg);
+		ENA_REG_WRITE32(io_cq->bus, head, io_cq->cq_head_db_reg);
 		io_cq->last_head_update = head;
 	}
 
@@ -153,7 +155,7 @@ static inline void ena_com_update_numa_node(struct ena_com_io_cq *io_cq,
 	numa_cfg.numa_cfg = (numa_node & ENA_ETH_IO_NUMA_NODE_CFG_REG_NUMA_MASK)
 		| ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_MASK;
 
-	ENA_REG_WRITE32(numa_cfg.numa_cfg, io_cq->numa_node_cfg_reg);
+	ENA_REG_WRITE32(io_cq->bus, numa_cfg.numa_cfg, io_cq->numa_node_cfg_reg);
 }
 
 static inline void ena_com_comp_ack(struct ena_com_io_sq *io_sq, u16 elem)

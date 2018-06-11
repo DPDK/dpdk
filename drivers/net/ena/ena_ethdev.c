@@ -114,6 +114,12 @@ struct ena_stats {
 #define ENA_STAT_GLOBAL_ENTRY(stat) \
 	ENA_STAT_ENTRY(stat, dev)
 
+/*
+ * Each rte_memzone should have unique name.
+ * To satisfy it, count number of allocation and add it to name.
+ */
+uint32_t ena_alloc_cnt;
+
 static const struct ena_stats ena_stats_global_strings[] = {
 	ENA_STAT_GLOBAL_ENTRY(tx_timeout),
 	ENA_STAT_GLOBAL_ENTRY(io_suspend),
@@ -194,6 +200,8 @@ static const struct rte_pci_id pci_id_ena_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_LLQ_VF) },
 	{ .device_id = 0 },
 };
+
+static struct ena_aenq_handlers empty_aenq_handlers;
 
 static int ena_device_init(struct ena_com_dev *ena_dev,
 			   struct ena_com_dev_get_features_ctx *get_feat_ctx);
@@ -346,9 +354,6 @@ static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 		ena_meta->mss = mbuf->tso_segsz;
 		ena_meta->l3_hdr_len = mbuf->l3_len;
 		ena_meta->l3_hdr_offset = mbuf->l2_len;
-		/* this param needed only for TSO */
-		ena_meta->l3_outer_hdr_len = 0;
-		ena_meta->l3_outer_hdr_offset = 0;
 
 		ena_tx_ctx->meta_valid = true;
 	} else {
@@ -388,7 +393,7 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 	rc = ena_com_set_host_attributes(ena_dev);
 	if (rc) {
 		RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
-		if (rc != -EPERM)
+		if (rc != -ENA_COM_UNSUPPORTED)
 			goto err;
 	}
 
@@ -441,7 +446,7 @@ static void ena_config_debug_area(struct ena_adapter *adapter)
 	rc = ena_com_set_host_attributes(&adapter->ena_dev);
 	if (rc) {
 		RTE_LOG(WARNING, PMD, "Cannot set host attributes\n");
-		if (rc != -EPERM)
+		if (rc != -ENA_COM_UNSUPPORTED)
 			goto err;
 	}
 
@@ -496,7 +501,7 @@ static int ena_rss_reta_update(struct rte_eth_dev *dev,
 			ret = ena_com_indirect_table_fill_entry(ena_dev,
 								i,
 								entry_value);
-			if (unlikely(ret && (ret != ENA_COM_PERMISSION))) {
+			if (unlikely(ret && (ret != ENA_COM_UNSUPPORTED))) {
 				RTE_LOG(ERR, PMD,
 					"Cannot fill indirect table\n");
 				ret = -ENOTSUP;
@@ -506,7 +511,7 @@ static int ena_rss_reta_update(struct rte_eth_dev *dev,
 	}
 
 	ret = ena_com_indirect_table_set(ena_dev);
-	if (unlikely(ret && (ret != ENA_COM_PERMISSION))) {
+	if (unlikely(ret && (ret != ENA_COM_UNSUPPORTED))) {
 		RTE_LOG(ERR, PMD, "Cannot flush the indirect table\n");
 		ret = -ENOTSUP;
 		goto err;
@@ -537,7 +542,7 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	ret = ena_com_indirect_table_get(ena_dev, indirect_table);
-	if (unlikely(ret && (ret != ENA_COM_PERMISSION))) {
+	if (unlikely(ret && (ret != ENA_COM_UNSUPPORTED))) {
 		RTE_LOG(ERR, PMD, "cannot get indirect table\n");
 		ret = -ENOTSUP;
 		goto err;
@@ -571,7 +576,7 @@ static int ena_rss_init_default(struct ena_adapter *adapter)
 		val = i % nb_rx_queues;
 		rc = ena_com_indirect_table_fill_entry(ena_dev, i,
 						       ENA_IO_RXQ_IDX(val));
-		if (unlikely(rc && (rc != ENA_COM_PERMISSION))) {
+		if (unlikely(rc && (rc != ENA_COM_UNSUPPORTED))) {
 			RTE_LOG(ERR, PMD, "Cannot fill indirect table\n");
 			goto err_fill_indir;
 		}
@@ -579,19 +584,19 @@ static int ena_rss_init_default(struct ena_adapter *adapter)
 
 	rc = ena_com_fill_hash_function(ena_dev, ENA_ADMIN_CRC32, NULL,
 					ENA_HASH_KEY_SIZE, 0xFFFFFFFF);
-	if (unlikely(rc && (rc != ENA_COM_PERMISSION))) {
+	if (unlikely(rc && (rc != ENA_COM_UNSUPPORTED))) {
 		RTE_LOG(INFO, PMD, "Cannot fill hash function\n");
 		goto err_fill_indir;
 	}
 
 	rc = ena_com_set_default_hash_ctrl(ena_dev);
-	if (unlikely(rc && (rc != ENA_COM_PERMISSION))) {
+	if (unlikely(rc && (rc != ENA_COM_UNSUPPORTED))) {
 		RTE_LOG(INFO, PMD, "Cannot fill hash control\n");
 		goto err_fill_indir;
 	}
 
 	rc = ena_com_indirect_table_set(ena_dev);
-	if (unlikely(rc && (rc != ENA_COM_PERMISSION))) {
+	if (unlikely(rc && (rc != ENA_COM_UNSUPPORTED))) {
 		RTE_LOG(ERR, PMD, "Cannot flush the indirect table\n");
 		goto err_fill_indir;
 	}
@@ -1236,7 +1241,7 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 	ena_com_set_mmio_read_mode(ena_dev, readless_supported);
 
 	/* reset device */
-	rc = ena_com_dev_reset(ena_dev);
+	rc = ena_com_dev_reset(ena_dev, ENA_REGS_RESET_NORMAL);
 	if (rc) {
 		RTE_LOG(ERR, PMD, "cannot reset device\n");
 		goto err_mmio_read_less;
@@ -1252,7 +1257,7 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 	ena_dev->dma_addr_bits = ena_com_get_dma_width(ena_dev);
 
 	/* ENA device administration layer init */
-	rc = ena_com_admin_init(ena_dev, NULL, true);
+	rc = ena_com_admin_init(ena_dev, &empty_aenq_handlers, true);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
 			"cannot initialize ena admin queue with device\n");
@@ -1854,3 +1859,24 @@ ena_init_log(void)
 	if (ena_logtype_driver >= 0)
 		rte_log_set_level(ena_logtype_driver, RTE_LOG_NOTICE);
 }
+
+/******************************************************************************
+ ******************************** AENQ Handlers *******************************
+ *****************************************************************************/
+/**
+ * This handler will called for unknown event group or unimplemented handlers
+ **/
+static void unimplemented_aenq_handler(__rte_unused void *data,
+				       __rte_unused struct ena_admin_aenq_entry *aenq_e)
+{
+	// Unimplemented handler
+}
+
+static struct ena_aenq_handlers empty_aenq_handlers = {
+	.handlers = {
+		[ENA_ADMIN_LINK_CHANGE] = unimplemented_aenq_handler,
+		[ENA_ADMIN_NOTIFICATION] = unimplemented_aenq_handler,
+		[ENA_ADMIN_KEEP_ALIVE] = unimplemented_aenq_handler
+	},
+	.unimplemented_handler = unimplemented_aenq_handler
+};

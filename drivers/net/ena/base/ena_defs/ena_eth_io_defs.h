@@ -34,35 +34,30 @@
 #ifndef _ENA_ETH_IO_H_
 #define _ENA_ETH_IO_H_
 
-/* Layer 3 protocol index */
 enum ena_eth_io_l3_proto_index {
-	ENA_ETH_IO_L3_PROTO_UNKNOWN = 0,
+	ENA_ETH_IO_L3_PROTO_UNKNOWN	= 0,
 
-	ENA_ETH_IO_L3_PROTO_IPV4 = 8,
+	ENA_ETH_IO_L3_PROTO_IPV4	= 8,
 
-	ENA_ETH_IO_L3_PROTO_IPV6 = 11,
+	ENA_ETH_IO_L3_PROTO_IPV6	= 11,
 
-	ENA_ETH_IO_L3_PROTO_FCOE = 21,
+	ENA_ETH_IO_L3_PROTO_FCOE	= 21,
 
-	ENA_ETH_IO_L3_PROTO_ROCE = 22,
+	ENA_ETH_IO_L3_PROTO_ROCE	= 22,
 };
 
-/* Layer 4 protocol index */
 enum ena_eth_io_l4_proto_index {
-	ENA_ETH_IO_L4_PROTO_UNKNOWN = 0,
+	ENA_ETH_IO_L4_PROTO_UNKNOWN		= 0,
 
-	ENA_ETH_IO_L4_PROTO_TCP = 12,
+	ENA_ETH_IO_L4_PROTO_TCP			= 12,
 
-	ENA_ETH_IO_L4_PROTO_UDP = 13,
+	ENA_ETH_IO_L4_PROTO_UDP			= 13,
 
-	ENA_ETH_IO_L4_PROTO_ROUTEABLE_ROCE = 23,
+	ENA_ETH_IO_L4_PROTO_ROUTEABLE_ROCE	= 23,
 };
 
-/* ENA IO Queue Tx descriptor */
 struct ena_eth_io_tx_desc {
-	/* word 0 : */
-	/* length, request id and control flags
-	 * 15:0 : length - Buffer length in bytes, must
+	/* 15:0 : length - Buffer length in bytes, must
 	 *    include any packet trailers that the ENA supposed
 	 *    to update like End-to-End CRC, Authentication GMAC
 	 *    etc. This length must not include the
@@ -85,9 +80,7 @@ struct ena_eth_io_tx_desc {
 	 */
 	uint32_t len_ctrl;
 
-	/* word 1 : */
-	/* ethernet control
-	 * 3:0 : l3_proto_idx - L3 protocol. This field
+	/* 3:0 : l3_proto_idx - L3 protocol. This field
 	 *    required when l3_csum_en,l3_csum or tso_en are set.
 	 * 4 : DF - IPv4 DF, must be 0 if packet is IPv4 and
 	 *    DF flags of the IPv4 header is 0. Otherwise must
@@ -119,10 +112,8 @@ struct ena_eth_io_tx_desc {
 	 */
 	uint32_t meta_ctrl;
 
-	/* word 2 : Buffer address bits[31:0] */
 	uint32_t buff_addr_lo;
 
-	/* word 3 : */
 	/* address high and header size
 	 * 15:0 : addr_hi - Buffer Pointer[47:32]
 	 * 23:16 : reserved16_w2
@@ -141,20 +132,16 @@ struct ena_eth_io_tx_desc {
 	uint32_t buff_addr_hi_hdr_sz;
 };
 
-/* ENA IO Queue Tx Meta descriptor */
 struct ena_eth_io_tx_meta_desc {
-	/* word 0 : */
-	/* length, request id and control flags
-	 * 9:0 : req_id_lo - Request ID[9:0]
+	/* 9:0 : req_id_lo - Request ID[9:0]
 	 * 11:10 : reserved10 - MBZ
 	 * 12 : reserved12 - MBZ
 	 * 13 : reserved13 - MBZ
 	 * 14 : ext_valid - if set, offset fields in Word2
-	 *    are valid Also MSS High in Word 0 and Outer L3
-	 *    Offset High in WORD 0 and bits [31:24] in Word 3
-	 * 15 : word3_valid - If set Crypto Info[23:0] of
-	 *    Word 3 is valid
-	 * 19:16 : mss_hi_ptp
+	 *    are valid Also MSS High in Word 0 and bits [31:24]
+	 *    in Word 3
+	 * 15 : reserved15
+	 * 19:16 : mss_hi
 	 * 20 : eth_meta_type - 0: Tx Metadata Descriptor, 1:
 	 *    Extended Metadata Descriptor
 	 * 21 : meta_store - Store extended metadata in queue
@@ -175,19 +162,13 @@ struct ena_eth_io_tx_meta_desc {
 	 */
 	uint32_t len_ctrl;
 
-	/* word 1 : */
-	/* word 1
-	 * 5:0 : req_id_hi
+	/* 5:0 : req_id_hi
 	 * 31:6 : reserved6 - MBZ
 	 */
 	uint32_t word1;
 
-	/* word 2 : */
-	/* word 2
-	 * 7:0 : l3_hdr_len - the header length L3 IP header.
-	 * 15:8 : l3_hdr_off - the offset of the first byte
-	 *    in the L3 header from the beginning of the to-be
-	 *    transmitted packet.
+	/* 7:0 : l3_hdr_len
+	 * 15:8 : l3_hdr_off
 	 * 21:16 : l4_hdr_len_in_words - counts the L4 header
 	 *    length in words. there is an explicit assumption
 	 *    that L4 header appears right after L3 header and
@@ -196,13 +177,10 @@ struct ena_eth_io_tx_meta_desc {
 	 */
 	uint32_t word2;
 
-	/* word 3 : */
 	uint32_t reserved;
 };
 
-/* ENA IO Queue Tx completions descriptor */
 struct ena_eth_io_tx_cdesc {
-	/* word 0 : */
 	/* Request ID[15:0] */
 	uint16_t req_id;
 
@@ -214,24 +192,19 @@ struct ena_eth_io_tx_cdesc {
 	 */
 	uint8_t flags;
 
-	/* word 1 : */
 	uint16_t sub_qid;
 
-	/* indicates location of submission queue head */
 	uint16_t sq_head_idx;
 };
 
-/* ENA IO Queue Rx descriptor */
 struct ena_eth_io_rx_desc {
-	/* word 0 : */
 	/* In bytes. 0 means 64KB */
 	uint16_t length;
 
 	/* MBZ */
 	uint8_t reserved2;
 
-	/* control flags
-	 * 0 : phase
+	/* 0 : phase
 	 * 1 : reserved1 - MBZ
 	 * 2 : first - Indicates first descriptor in
 	 *    transaction
@@ -242,32 +215,27 @@ struct ena_eth_io_rx_desc {
 	 */
 	uint8_t ctrl;
 
-	/* word 1 : */
 	uint16_t req_id;
 
 	/* MBZ */
 	uint16_t reserved6;
 
-	/* word 2 : Buffer address bits[31:0] */
 	uint32_t buff_addr_lo;
 
-	/* word 3 : */
-	/* Buffer Address bits[47:16] */
 	uint16_t buff_addr_hi;
 
 	/* MBZ */
 	uint16_t reserved16_w3;
 };
 
-/* ENA IO Queue Rx Completion Base Descriptor (4-word format). Note: all
- * ethernet parsing information are valid only when last=1
+/* 4-word format Note: all ethernet parsing information are valid only when
+ * last=1
  */
 struct ena_eth_io_rx_cdesc_base {
-	/* word 0 : */
-	/* 4:0 : l3_proto_idx - L3 protocol index
-	 * 6:5 : src_vlan_cnt - Source VLAN count
+	/* 4:0 : l3_proto_idx
+	 * 6:5 : src_vlan_cnt
 	 * 7 : reserved7 - MBZ
-	 * 12:8 : l4_proto_idx - L4 protocol index
+	 * 12:8 : l4_proto_idx
 	 * 13 : l3_csum_err - when set, either the L3
 	 *    checksum error detected, or, the controller didn't
 	 *    validate the checksum. This bit is valid only when
@@ -292,56 +260,43 @@ struct ena_eth_io_rx_cdesc_base {
 	 */
 	uint32_t status;
 
-	/* word 1 : */
 	uint16_t length;
 
 	uint16_t req_id;
 
-	/* word 2 : 32-bit hash result */
+	/* 32-bit hash result */
 	uint32_t hash;
 
-	/* word 3 : */
-	/* submission queue number */
 	uint16_t sub_qid;
 
 	uint16_t reserved;
 };
 
-/* ENA IO Queue Rx Completion Descriptor (8-word format) */
+/* 8-word format */
 struct ena_eth_io_rx_cdesc_ext {
-	/* words 0:3 : Rx Completion Extended */
 	struct ena_eth_io_rx_cdesc_base base;
 
-	/* word 4 : Completed Buffer address bits[31:0] */
 	uint32_t buff_addr_lo;
 
-	/* word 5 : */
-	/* the buffer address used bits[47:32] */
 	uint16_t buff_addr_hi;
 
 	uint16_t reserved16;
 
-	/* word 6 : Reserved */
 	uint32_t reserved_w6;
 
-	/* word 7 : Reserved */
 	uint32_t reserved_w7;
 };
 
-/* ENA Interrupt Unmask Register */
 struct ena_eth_io_intr_reg {
-	/* word 0 : */
-	/* 14:0 : rx_intr_delay - rx interrupt delay value
-	 * 29:15 : tx_intr_delay - tx interrupt delay value
-	 * 30 : intr_unmask - if set, unmasks interrupt
+	/* 14:0 : rx_intr_delay
+	 * 29:15 : tx_intr_delay
+	 * 30 : intr_unmask
 	 * 31 : reserved
 	 */
 	uint32_t intr_control;
 };
 
-/* ENA NUMA Node configuration register */
 struct ena_eth_io_numa_node_cfg_reg {
-	/* word 0 : */
 	/* 7:0 : numa
 	 * 30:8 : reserved
 	 * 31 : enabled
@@ -388,10 +343,8 @@ struct ena_eth_io_numa_node_cfg_reg {
 #define ENA_ETH_IO_TX_META_DESC_REQ_ID_LO_MASK GENMASK(9, 0)
 #define ENA_ETH_IO_TX_META_DESC_EXT_VALID_SHIFT 14
 #define ENA_ETH_IO_TX_META_DESC_EXT_VALID_MASK BIT(14)
-#define ENA_ETH_IO_TX_META_DESC_WORD3_VALID_SHIFT 15
-#define ENA_ETH_IO_TX_META_DESC_WORD3_VALID_MASK BIT(15)
-#define ENA_ETH_IO_TX_META_DESC_MSS_HI_PTP_SHIFT 16
-#define ENA_ETH_IO_TX_META_DESC_MSS_HI_PTP_MASK GENMASK(19, 16)
+#define ENA_ETH_IO_TX_META_DESC_MSS_HI_SHIFT 16
+#define ENA_ETH_IO_TX_META_DESC_MSS_HI_MASK GENMASK(19, 16)
 #define ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_SHIFT 20
 #define ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_MASK BIT(20)
 #define ENA_ETH_IO_TX_META_DESC_META_STORE_SHIFT 21
@@ -463,803 +416,544 @@ struct ena_eth_io_numa_node_cfg_reg {
 #define ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_MASK BIT(31)
 
 #if !defined(ENA_DEFS_LINUX_MAINLINE)
-static inline uint32_t get_ena_eth_io_tx_desc_length(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_length(const struct ena_eth_io_tx_desc *p)
 {
 	return p->len_ctrl & ENA_ETH_IO_TX_DESC_LENGTH_MASK;
 }
 
-static inline void set_ena_eth_io_tx_desc_length(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_length(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
 	p->len_ctrl |= val & ENA_ETH_IO_TX_DESC_LENGTH_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_req_id_hi(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_req_id_hi(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_REQ_ID_HI_MASK)
-		>> ENA_ETH_IO_TX_DESC_REQ_ID_HI_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_REQ_ID_HI_MASK) >> ENA_ETH_IO_TX_DESC_REQ_ID_HI_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_req_id_hi(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_req_id_hi(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->len_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_REQ_ID_HI_SHIFT)
-		& ENA_ETH_IO_TX_DESC_REQ_ID_HI_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_DESC_REQ_ID_HI_SHIFT) & ENA_ETH_IO_TX_DESC_REQ_ID_HI_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_meta_desc(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_meta_desc(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_META_DESC_MASK)
-		>> ENA_ETH_IO_TX_DESC_META_DESC_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_META_DESC_MASK) >> ENA_ETH_IO_TX_DESC_META_DESC_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_meta_desc(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_meta_desc(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->len_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_META_DESC_SHIFT)
-		& ENA_ETH_IO_TX_DESC_META_DESC_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_DESC_META_DESC_SHIFT) & ENA_ETH_IO_TX_DESC_META_DESC_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_phase(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_phase(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_PHASE_MASK)
-		>> ENA_ETH_IO_TX_DESC_PHASE_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_PHASE_MASK) >> ENA_ETH_IO_TX_DESC_PHASE_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_phase(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_phase(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->len_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_PHASE_SHIFT)
-		& ENA_ETH_IO_TX_DESC_PHASE_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_DESC_PHASE_SHIFT) & ENA_ETH_IO_TX_DESC_PHASE_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_first(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_first(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_FIRST_MASK)
-		>> ENA_ETH_IO_TX_DESC_FIRST_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_FIRST_MASK) >> ENA_ETH_IO_TX_DESC_FIRST_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_first(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_first(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->len_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_FIRST_SHIFT)
-		& ENA_ETH_IO_TX_DESC_FIRST_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_DESC_FIRST_SHIFT) & ENA_ETH_IO_TX_DESC_FIRST_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_last(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_last(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_LAST_MASK)
-		>> ENA_ETH_IO_TX_DESC_LAST_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_LAST_MASK) >> ENA_ETH_IO_TX_DESC_LAST_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_last(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_last(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->len_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_LAST_SHIFT)
-		& ENA_ETH_IO_TX_DESC_LAST_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_DESC_LAST_SHIFT) & ENA_ETH_IO_TX_DESC_LAST_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_comp_req(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_comp_req(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_COMP_REQ_MASK)
-		>> ENA_ETH_IO_TX_DESC_COMP_REQ_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_DESC_COMP_REQ_MASK) >> ENA_ETH_IO_TX_DESC_COMP_REQ_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_comp_req(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_comp_req(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->len_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_COMP_REQ_SHIFT)
-		& ENA_ETH_IO_TX_DESC_COMP_REQ_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_DESC_COMP_REQ_SHIFT) & ENA_ETH_IO_TX_DESC_COMP_REQ_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_l3_proto_idx(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_l3_proto_idx(const struct ena_eth_io_tx_desc *p)
 {
 	return p->meta_ctrl & ENA_ETH_IO_TX_DESC_L3_PROTO_IDX_MASK;
 }
 
-static inline void set_ena_eth_io_tx_desc_l3_proto_idx(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_l3_proto_idx(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
 	p->meta_ctrl |= val & ENA_ETH_IO_TX_DESC_L3_PROTO_IDX_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_DF(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_DF(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_DF_MASK)
-		>> ENA_ETH_IO_TX_DESC_DF_SHIFT;
+	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_DF_MASK) >> ENA_ETH_IO_TX_DESC_DF_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_DF(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_DF(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->meta_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_DF_SHIFT)
-		& ENA_ETH_IO_TX_DESC_DF_MASK;
+	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_DF_SHIFT) & ENA_ETH_IO_TX_DESC_DF_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_tso_en(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_tso_en(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_TSO_EN_MASK)
-		>> ENA_ETH_IO_TX_DESC_TSO_EN_SHIFT;
+	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_TSO_EN_MASK) >> ENA_ETH_IO_TX_DESC_TSO_EN_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_tso_en(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_tso_en(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->meta_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_TSO_EN_SHIFT)
-		& ENA_ETH_IO_TX_DESC_TSO_EN_MASK;
+	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_TSO_EN_SHIFT) & ENA_ETH_IO_TX_DESC_TSO_EN_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_l4_proto_idx(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_l4_proto_idx(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_L4_PROTO_IDX_MASK)
-		>> ENA_ETH_IO_TX_DESC_L4_PROTO_IDX_SHIFT;
+	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_L4_PROTO_IDX_MASK) >> ENA_ETH_IO_TX_DESC_L4_PROTO_IDX_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_l4_proto_idx(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_l4_proto_idx(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->meta_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_L4_PROTO_IDX_SHIFT)
-		& ENA_ETH_IO_TX_DESC_L4_PROTO_IDX_MASK;
+	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_L4_PROTO_IDX_SHIFT) & ENA_ETH_IO_TX_DESC_L4_PROTO_IDX_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_l3_csum_en(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_l3_csum_en(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_L3_CSUM_EN_MASK)
-		>> ENA_ETH_IO_TX_DESC_L3_CSUM_EN_SHIFT;
+	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_L3_CSUM_EN_MASK) >> ENA_ETH_IO_TX_DESC_L3_CSUM_EN_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_l3_csum_en(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_l3_csum_en(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->meta_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_L3_CSUM_EN_SHIFT)
-		& ENA_ETH_IO_TX_DESC_L3_CSUM_EN_MASK;
+	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_L3_CSUM_EN_SHIFT) & ENA_ETH_IO_TX_DESC_L3_CSUM_EN_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_l4_csum_en(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_l4_csum_en(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_L4_CSUM_EN_MASK)
-		>> ENA_ETH_IO_TX_DESC_L4_CSUM_EN_SHIFT;
+	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_L4_CSUM_EN_MASK) >> ENA_ETH_IO_TX_DESC_L4_CSUM_EN_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_l4_csum_en(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_l4_csum_en(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->meta_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_L4_CSUM_EN_SHIFT)
-		& ENA_ETH_IO_TX_DESC_L4_CSUM_EN_MASK;
+	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_L4_CSUM_EN_SHIFT) & ENA_ETH_IO_TX_DESC_L4_CSUM_EN_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_ethernet_fcs_dis(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_ethernet_fcs_dis(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_ETHERNET_FCS_DIS_MASK)
-		>> ENA_ETH_IO_TX_DESC_ETHERNET_FCS_DIS_SHIFT;
+	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_ETHERNET_FCS_DIS_MASK) >> ENA_ETH_IO_TX_DESC_ETHERNET_FCS_DIS_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_ethernet_fcs_dis(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_ethernet_fcs_dis(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->meta_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_ETHERNET_FCS_DIS_SHIFT)
-		& ENA_ETH_IO_TX_DESC_ETHERNET_FCS_DIS_MASK;
+	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_ETHERNET_FCS_DIS_SHIFT) & ENA_ETH_IO_TX_DESC_ETHERNET_FCS_DIS_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_l4_csum_partial(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_l4_csum_partial(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_L4_CSUM_PARTIAL_MASK)
-		>> ENA_ETH_IO_TX_DESC_L4_CSUM_PARTIAL_SHIFT;
+	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_L4_CSUM_PARTIAL_MASK) >> ENA_ETH_IO_TX_DESC_L4_CSUM_PARTIAL_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_l4_csum_partial(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_l4_csum_partial(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->meta_ctrl |=
-		(val << ENA_ETH_IO_TX_DESC_L4_CSUM_PARTIAL_SHIFT)
-		& ENA_ETH_IO_TX_DESC_L4_CSUM_PARTIAL_MASK;
+	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_L4_CSUM_PARTIAL_SHIFT) & ENA_ETH_IO_TX_DESC_L4_CSUM_PARTIAL_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_req_id_lo(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_req_id_lo(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_REQ_ID_LO_MASK)
-		>> ENA_ETH_IO_TX_DESC_REQ_ID_LO_SHIFT;
+	return (p->meta_ctrl & ENA_ETH_IO_TX_DESC_REQ_ID_LO_MASK) >> ENA_ETH_IO_TX_DESC_REQ_ID_LO_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_req_id_lo(
-		struct ena_eth_io_tx_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_desc_req_id_lo(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_REQ_ID_LO_SHIFT)
-		& ENA_ETH_IO_TX_DESC_REQ_ID_LO_MASK;
+	p->meta_ctrl |= (val << ENA_ETH_IO_TX_DESC_REQ_ID_LO_SHIFT) & ENA_ETH_IO_TX_DESC_REQ_ID_LO_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_addr_hi(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_addr_hi(const struct ena_eth_io_tx_desc *p)
 {
 	return p->buff_addr_hi_hdr_sz & ENA_ETH_IO_TX_DESC_ADDR_HI_MASK;
 }
 
-static inline void set_ena_eth_io_tx_desc_addr_hi(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_addr_hi(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
 	p->buff_addr_hi_hdr_sz |= val & ENA_ETH_IO_TX_DESC_ADDR_HI_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_desc_header_length(
-		const struct ena_eth_io_tx_desc *p)
+static inline uint32_t get_ena_eth_io_tx_desc_header_length(const struct ena_eth_io_tx_desc *p)
 {
-	return (p->buff_addr_hi_hdr_sz & ENA_ETH_IO_TX_DESC_HEADER_LENGTH_MASK)
-		>> ENA_ETH_IO_TX_DESC_HEADER_LENGTH_SHIFT;
+	return (p->buff_addr_hi_hdr_sz & ENA_ETH_IO_TX_DESC_HEADER_LENGTH_MASK) >> ENA_ETH_IO_TX_DESC_HEADER_LENGTH_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_desc_header_length(
-		struct ena_eth_io_tx_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_desc_header_length(struct ena_eth_io_tx_desc *p, uint32_t val)
 {
-	p->buff_addr_hi_hdr_sz |=
-		(val << ENA_ETH_IO_TX_DESC_HEADER_LENGTH_SHIFT)
-		& ENA_ETH_IO_TX_DESC_HEADER_LENGTH_MASK;
+	p->buff_addr_hi_hdr_sz |= (val << ENA_ETH_IO_TX_DESC_HEADER_LENGTH_SHIFT) & ENA_ETH_IO_TX_DESC_HEADER_LENGTH_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_req_id_lo(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_req_id_lo(const struct ena_eth_io_tx_meta_desc *p)
 {
 	return p->len_ctrl & ENA_ETH_IO_TX_META_DESC_REQ_ID_LO_MASK;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_req_id_lo(
-		struct ena_eth_io_tx_meta_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_req_id_lo(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
 	p->len_ctrl |= val & ENA_ETH_IO_TX_META_DESC_REQ_ID_LO_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_ext_valid(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_ext_valid(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_EXT_VALID_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_EXT_VALID_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_EXT_VALID_MASK) >> ENA_ETH_IO_TX_META_DESC_EXT_VALID_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_ext_valid(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_ext_valid(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_EXT_VALID_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_EXT_VALID_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_EXT_VALID_SHIFT) & ENA_ETH_IO_TX_META_DESC_EXT_VALID_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_word3_valid(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_mss_hi(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_WORD3_VALID_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_WORD3_VALID_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_MSS_HI_MASK) >> ENA_ETH_IO_TX_META_DESC_MSS_HI_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_word3_valid(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_mss_hi(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_WORD3_VALID_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_WORD3_VALID_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_MSS_HI_SHIFT) & ENA_ETH_IO_TX_META_DESC_MSS_HI_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_mss_hi_ptp(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_eth_meta_type(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_MSS_HI_PTP_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_MSS_HI_PTP_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_MASK) >> ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_mss_hi_ptp(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_eth_meta_type(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_MSS_HI_PTP_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_MSS_HI_PTP_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_SHIFT) & ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_eth_meta_type(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_meta_store(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_META_STORE_MASK) >> ENA_ETH_IO_TX_META_DESC_META_STORE_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_eth_meta_type(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_meta_store(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_ETH_META_TYPE_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_META_STORE_SHIFT) & ENA_ETH_IO_TX_META_DESC_META_STORE_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_meta_store(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_meta_desc(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_META_STORE_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_META_STORE_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_META_DESC_MASK) >> ENA_ETH_IO_TX_META_DESC_META_DESC_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_meta_store(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_meta_desc(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_META_STORE_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_META_STORE_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_META_DESC_SHIFT) & ENA_ETH_IO_TX_META_DESC_META_DESC_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_meta_desc(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_phase(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_META_DESC_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_META_DESC_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_PHASE_MASK) >> ENA_ETH_IO_TX_META_DESC_PHASE_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_meta_desc(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_phase(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_META_DESC_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_META_DESC_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_PHASE_SHIFT) & ENA_ETH_IO_TX_META_DESC_PHASE_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_phase(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_first(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_PHASE_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_PHASE_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_FIRST_MASK) >> ENA_ETH_IO_TX_META_DESC_FIRST_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_phase(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_first(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_PHASE_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_PHASE_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_FIRST_SHIFT) & ENA_ETH_IO_TX_META_DESC_FIRST_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_first(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_last(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_FIRST_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_FIRST_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_LAST_MASK) >> ENA_ETH_IO_TX_META_DESC_LAST_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_first(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_last(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_FIRST_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_FIRST_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_LAST_SHIFT) & ENA_ETH_IO_TX_META_DESC_LAST_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_last(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_comp_req(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_LAST_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_LAST_SHIFT;
+	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_COMP_REQ_MASK) >> ENA_ETH_IO_TX_META_DESC_COMP_REQ_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_last(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_comp_req(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_LAST_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_LAST_MASK;
+	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_COMP_REQ_SHIFT) & ENA_ETH_IO_TX_META_DESC_COMP_REQ_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_comp_req(
-		const struct ena_eth_io_tx_meta_desc *p)
-{
-	return (p->len_ctrl & ENA_ETH_IO_TX_META_DESC_COMP_REQ_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_COMP_REQ_SHIFT;
-}
-
-static inline void set_ena_eth_io_tx_meta_desc_comp_req(
-		struct ena_eth_io_tx_meta_desc *p, uint32_t val)
-{
-	p->len_ctrl |= (val << ENA_ETH_IO_TX_META_DESC_COMP_REQ_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_COMP_REQ_MASK;
-}
-
-static inline uint32_t get_ena_eth_io_tx_meta_desc_req_id_hi(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_req_id_hi(const struct ena_eth_io_tx_meta_desc *p)
 {
 	return p->word1 & ENA_ETH_IO_TX_META_DESC_REQ_ID_HI_MASK;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_req_id_hi(
-		struct ena_eth_io_tx_meta_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_req_id_hi(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
 	p->word1 |= val & ENA_ETH_IO_TX_META_DESC_REQ_ID_HI_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_l3_hdr_len(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_l3_hdr_len(const struct ena_eth_io_tx_meta_desc *p)
 {
 	return p->word2 & ENA_ETH_IO_TX_META_DESC_L3_HDR_LEN_MASK;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_l3_hdr_len(
-		struct ena_eth_io_tx_meta_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_l3_hdr_len(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
 	p->word2 |= val & ENA_ETH_IO_TX_META_DESC_L3_HDR_LEN_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_l3_hdr_off(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_l3_hdr_off(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->word2 & ENA_ETH_IO_TX_META_DESC_L3_HDR_OFF_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_L3_HDR_OFF_SHIFT;
+	return (p->word2 & ENA_ETH_IO_TX_META_DESC_L3_HDR_OFF_MASK) >> ENA_ETH_IO_TX_META_DESC_L3_HDR_OFF_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_l3_hdr_off(
-		struct ena_eth_io_tx_meta_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_l3_hdr_off(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->word2 |=
-		(val << ENA_ETH_IO_TX_META_DESC_L3_HDR_OFF_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_L3_HDR_OFF_MASK;
+	p->word2 |= (val << ENA_ETH_IO_TX_META_DESC_L3_HDR_OFF_SHIFT) & ENA_ETH_IO_TX_META_DESC_L3_HDR_OFF_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_l4_hdr_len_in_words(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_l4_hdr_len_in_words(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->word2 & ENA_ETH_IO_TX_META_DESC_L4_HDR_LEN_IN_WORDS_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_L4_HDR_LEN_IN_WORDS_SHIFT;
+	return (p->word2 & ENA_ETH_IO_TX_META_DESC_L4_HDR_LEN_IN_WORDS_MASK) >> ENA_ETH_IO_TX_META_DESC_L4_HDR_LEN_IN_WORDS_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_l4_hdr_len_in_words(
-		struct ena_eth_io_tx_meta_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_l4_hdr_len_in_words(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->word2 |=
-		(val << ENA_ETH_IO_TX_META_DESC_L4_HDR_LEN_IN_WORDS_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_L4_HDR_LEN_IN_WORDS_MASK;
+	p->word2 |= (val << ENA_ETH_IO_TX_META_DESC_L4_HDR_LEN_IN_WORDS_SHIFT) & ENA_ETH_IO_TX_META_DESC_L4_HDR_LEN_IN_WORDS_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_tx_meta_desc_mss_lo(
-		const struct ena_eth_io_tx_meta_desc *p)
+static inline uint32_t get_ena_eth_io_tx_meta_desc_mss_lo(const struct ena_eth_io_tx_meta_desc *p)
 {
-	return (p->word2 & ENA_ETH_IO_TX_META_DESC_MSS_LO_MASK)
-		>> ENA_ETH_IO_TX_META_DESC_MSS_LO_SHIFT;
+	return (p->word2 & ENA_ETH_IO_TX_META_DESC_MSS_LO_MASK) >> ENA_ETH_IO_TX_META_DESC_MSS_LO_SHIFT;
 }
 
-static inline void set_ena_eth_io_tx_meta_desc_mss_lo(
-		struct ena_eth_io_tx_meta_desc *p,
-		uint32_t val)
+static inline void set_ena_eth_io_tx_meta_desc_mss_lo(struct ena_eth_io_tx_meta_desc *p, uint32_t val)
 {
-	p->word2 |=
-		(val << ENA_ETH_IO_TX_META_DESC_MSS_LO_SHIFT)
-		& ENA_ETH_IO_TX_META_DESC_MSS_LO_MASK;
+	p->word2 |= (val << ENA_ETH_IO_TX_META_DESC_MSS_LO_SHIFT) & ENA_ETH_IO_TX_META_DESC_MSS_LO_MASK;
 }
 
-static inline uint8_t get_ena_eth_io_tx_cdesc_phase(
-		const struct ena_eth_io_tx_cdesc *p)
+static inline uint8_t get_ena_eth_io_tx_cdesc_phase(const struct ena_eth_io_tx_cdesc *p)
 {
 	return p->flags & ENA_ETH_IO_TX_CDESC_PHASE_MASK;
 }
 
-static inline void set_ena_eth_io_tx_cdesc_phase(
-		struct ena_eth_io_tx_cdesc *p,
-		uint8_t val)
+static inline void set_ena_eth_io_tx_cdesc_phase(struct ena_eth_io_tx_cdesc *p, uint8_t val)
 {
 	p->flags |= val & ENA_ETH_IO_TX_CDESC_PHASE_MASK;
 }
 
-static inline uint8_t get_ena_eth_io_rx_desc_phase(
-		const struct ena_eth_io_rx_desc *p)
+static inline uint8_t get_ena_eth_io_rx_desc_phase(const struct ena_eth_io_rx_desc *p)
 {
 	return p->ctrl & ENA_ETH_IO_RX_DESC_PHASE_MASK;
 }
 
-static inline void set_ena_eth_io_rx_desc_phase(
-		struct ena_eth_io_rx_desc *p,
-		uint8_t val)
+static inline void set_ena_eth_io_rx_desc_phase(struct ena_eth_io_rx_desc *p, uint8_t val)
 {
 	p->ctrl |= val & ENA_ETH_IO_RX_DESC_PHASE_MASK;
 }
 
-static inline uint8_t get_ena_eth_io_rx_desc_first(
-		const struct ena_eth_io_rx_desc *p)
+static inline uint8_t get_ena_eth_io_rx_desc_first(const struct ena_eth_io_rx_desc *p)
 {
-	return (p->ctrl & ENA_ETH_IO_RX_DESC_FIRST_MASK)
-		>> ENA_ETH_IO_RX_DESC_FIRST_SHIFT;
+	return (p->ctrl & ENA_ETH_IO_RX_DESC_FIRST_MASK) >> ENA_ETH_IO_RX_DESC_FIRST_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_desc_first(
-		struct ena_eth_io_rx_desc *p,
-		uint8_t val)
+static inline void set_ena_eth_io_rx_desc_first(struct ena_eth_io_rx_desc *p, uint8_t val)
 {
-	p->ctrl |=
-		(val << ENA_ETH_IO_RX_DESC_FIRST_SHIFT)
-		& ENA_ETH_IO_RX_DESC_FIRST_MASK;
+	p->ctrl |= (val << ENA_ETH_IO_RX_DESC_FIRST_SHIFT) & ENA_ETH_IO_RX_DESC_FIRST_MASK;
 }
 
-static inline uint8_t get_ena_eth_io_rx_desc_last(
-		const struct ena_eth_io_rx_desc *p)
+static inline uint8_t get_ena_eth_io_rx_desc_last(const struct ena_eth_io_rx_desc *p)
 {
-	return (p->ctrl & ENA_ETH_IO_RX_DESC_LAST_MASK)
-		>> ENA_ETH_IO_RX_DESC_LAST_SHIFT;
+	return (p->ctrl & ENA_ETH_IO_RX_DESC_LAST_MASK) >> ENA_ETH_IO_RX_DESC_LAST_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_desc_last(
-		struct ena_eth_io_rx_desc *p,
-		uint8_t val)
+static inline void set_ena_eth_io_rx_desc_last(struct ena_eth_io_rx_desc *p, uint8_t val)
 {
-	p->ctrl |=
-		(val << ENA_ETH_IO_RX_DESC_LAST_SHIFT)
-		& ENA_ETH_IO_RX_DESC_LAST_MASK;
+	p->ctrl |= (val << ENA_ETH_IO_RX_DESC_LAST_SHIFT) & ENA_ETH_IO_RX_DESC_LAST_MASK;
 }
 
-static inline uint8_t get_ena_eth_io_rx_desc_comp_req(
-		const struct ena_eth_io_rx_desc *p)
+static inline uint8_t get_ena_eth_io_rx_desc_comp_req(const struct ena_eth_io_rx_desc *p)
 {
-	return (p->ctrl & ENA_ETH_IO_RX_DESC_COMP_REQ_MASK)
-		>> ENA_ETH_IO_RX_DESC_COMP_REQ_SHIFT;
+	return (p->ctrl & ENA_ETH_IO_RX_DESC_COMP_REQ_MASK) >> ENA_ETH_IO_RX_DESC_COMP_REQ_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_desc_comp_req(
-		struct ena_eth_io_rx_desc *p,
-		uint8_t val)
+static inline void set_ena_eth_io_rx_desc_comp_req(struct ena_eth_io_rx_desc *p, uint8_t val)
 {
-	p->ctrl |=
-		(val << ENA_ETH_IO_RX_DESC_COMP_REQ_SHIFT)
-		& ENA_ETH_IO_RX_DESC_COMP_REQ_MASK;
+	p->ctrl |= (val << ENA_ETH_IO_RX_DESC_COMP_REQ_SHIFT) & ENA_ETH_IO_RX_DESC_COMP_REQ_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_l3_proto_idx(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_l3_proto_idx(const struct ena_eth_io_rx_cdesc_base *p)
 {
 	return p->status & ENA_ETH_IO_RX_CDESC_BASE_L3_PROTO_IDX_MASK;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_l3_proto_idx(
-		struct ena_eth_io_rx_cdesc_base *p,
-		uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_l3_proto_idx(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
 	p->status |= val & ENA_ETH_IO_RX_CDESC_BASE_L3_PROTO_IDX_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_src_vlan_cnt(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_src_vlan_cnt(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_src_vlan_cnt(
-		struct ena_eth_io_rx_cdesc_base *p,
-		uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_src_vlan_cnt(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |=
-		(val << ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_l4_proto_idx(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_l4_proto_idx(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_l4_proto_idx(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_l4_proto_idx(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_l3_csum_err(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_l3_csum_err(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_l3_csum_err(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_l3_csum_err(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_l4_csum_err(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_l4_csum_err(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_ERR_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_ERR_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_ERR_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_ERR_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_l4_csum_err(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_l4_csum_err(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_ERR_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_ERR_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_ERR_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_ERR_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_ipv4_frag(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_ipv4_frag(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_ipv4_frag(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_ipv4_frag(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_phase(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_phase(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_PHASE_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_PHASE_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_PHASE_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_PHASE_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_phase(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_phase(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_PHASE_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_PHASE_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_PHASE_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_PHASE_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_l3_csum2(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_l3_csum2(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_l3_csum2(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_l3_csum2(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_first(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_first(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_FIRST_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_FIRST_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_FIRST_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_FIRST_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_first(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_first(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_FIRST_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_FIRST_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_FIRST_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_FIRST_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_last(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_last(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_LAST_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_LAST_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_LAST_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_LAST_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_last(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_last(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_LAST_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_LAST_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_LAST_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_LAST_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_rx_cdesc_base_buffer(
-		const struct ena_eth_io_rx_cdesc_base *p)
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_buffer(const struct ena_eth_io_rx_cdesc_base *p)
 {
-	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_BUFFER_MASK)
-		>> ENA_ETH_IO_RX_CDESC_BASE_BUFFER_SHIFT;
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_BUFFER_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_BUFFER_SHIFT;
 }
 
-static inline void set_ena_eth_io_rx_cdesc_base_buffer(
-		struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
+static inline void set_ena_eth_io_rx_cdesc_base_buffer(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
-	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_BUFFER_SHIFT)
-		& ENA_ETH_IO_RX_CDESC_BASE_BUFFER_MASK;
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_BUFFER_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_BUFFER_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_intr_reg_rx_intr_delay(
-		const struct ena_eth_io_intr_reg *p)
+static inline uint32_t get_ena_eth_io_intr_reg_rx_intr_delay(const struct ena_eth_io_intr_reg *p)
 {
 	return p->intr_control & ENA_ETH_IO_INTR_REG_RX_INTR_DELAY_MASK;
 }
 
-static inline void set_ena_eth_io_intr_reg_rx_intr_delay(
-		struct ena_eth_io_intr_reg *p, uint32_t val)
+static inline void set_ena_eth_io_intr_reg_rx_intr_delay(struct ena_eth_io_intr_reg *p, uint32_t val)
 {
 	p->intr_control |= val & ENA_ETH_IO_INTR_REG_RX_INTR_DELAY_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_intr_reg_tx_intr_delay(
-		const struct ena_eth_io_intr_reg *p)
+static inline uint32_t get_ena_eth_io_intr_reg_tx_intr_delay(const struct ena_eth_io_intr_reg *p)
 {
-	return (p->intr_control & ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK)
-		>> ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_SHIFT;
+	return (p->intr_control & ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK) >> ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_SHIFT;
 }
 
-static inline void set_ena_eth_io_intr_reg_tx_intr_delay(
-		struct ena_eth_io_intr_reg *p, uint32_t val)
+static inline void set_ena_eth_io_intr_reg_tx_intr_delay(struct ena_eth_io_intr_reg *p, uint32_t val)
 {
-	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_SHIFT)
-		& ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK;
+	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_SHIFT) & ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_intr_reg_intr_unmask(
-		const struct ena_eth_io_intr_reg *p)
+static inline uint32_t get_ena_eth_io_intr_reg_intr_unmask(const struct ena_eth_io_intr_reg *p)
 {
-	return (p->intr_control & ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK)
-		>> ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT;
+	return (p->intr_control & ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK) >> ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT;
 }
 
-static inline void set_ena_eth_io_intr_reg_intr_unmask(
-		struct ena_eth_io_intr_reg *p, uint32_t val)
+static inline void set_ena_eth_io_intr_reg_intr_unmask(struct ena_eth_io_intr_reg *p, uint32_t val)
 {
-	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT)
-		& ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK;
+	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT) & ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_numa_node_cfg_reg_numa(
-		const struct ena_eth_io_numa_node_cfg_reg *p)
+static inline uint32_t get_ena_eth_io_numa_node_cfg_reg_numa(const struct ena_eth_io_numa_node_cfg_reg *p)
 {
 	return p->numa_cfg & ENA_ETH_IO_NUMA_NODE_CFG_REG_NUMA_MASK;
 }
 
-static inline void set_ena_eth_io_numa_node_cfg_reg_numa(
-		struct ena_eth_io_numa_node_cfg_reg *p, uint32_t val)
+static inline void set_ena_eth_io_numa_node_cfg_reg_numa(struct ena_eth_io_numa_node_cfg_reg *p, uint32_t val)
 {
 	p->numa_cfg |= val & ENA_ETH_IO_NUMA_NODE_CFG_REG_NUMA_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_numa_node_cfg_reg_enabled(
-		const struct ena_eth_io_numa_node_cfg_reg *p)
+static inline uint32_t get_ena_eth_io_numa_node_cfg_reg_enabled(const struct ena_eth_io_numa_node_cfg_reg *p)
 {
-	return (p->numa_cfg & ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_MASK)
-		>> ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_SHIFT;
+	return (p->numa_cfg & ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_MASK) >> ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_SHIFT;
 }
 
-static inline void set_ena_eth_io_numa_node_cfg_reg_enabled(
-		struct ena_eth_io_numa_node_cfg_reg *p, uint32_t val)
+static inline void set_ena_eth_io_numa_node_cfg_reg_enabled(struct ena_eth_io_numa_node_cfg_reg *p, uint32_t val)
 {
-	p->numa_cfg |= (val << ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_SHIFT)
-		& ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_MASK;
+	p->numa_cfg |= (val << ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_SHIFT) & ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_MASK;
 }
 
 #endif /* !defined(ENA_DEFS_LINUX_MAINLINE) */

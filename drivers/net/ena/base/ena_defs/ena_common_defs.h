@@ -34,17 +34,13 @@
 #ifndef _ENA_COMMON_H_
 #define _ENA_COMMON_H_
 
-/* spec version */
-#define ENA_COMMON_SPEC_VERSION_MAJOR	0 /* spec version major */
-#define ENA_COMMON_SPEC_VERSION_MINOR	10 /* spec version minor */
+#define ENA_COMMON_SPEC_VERSION_MAJOR	0 /*  */
+#define ENA_COMMON_SPEC_VERSION_MINOR	10 /*  */
 
 /* ENA operates with 48-bit memory addresses. ena_mem_addr_t */
 struct ena_common_mem_addr {
-	/* word 0 : low 32 bit of the memory address */
 	uint32_t mem_addr_low;
 
-	/* word 1 : */
-	/* high 16 bits of the memory address */
 	uint16_t mem_addr_high;
 
 	/* MBZ */
