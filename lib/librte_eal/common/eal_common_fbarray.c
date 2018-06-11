@@ -231,7 +231,7 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 		return MASK_GET_IDX(msk_idx, run_start);
 	}
 	/* we didn't find anything */
-	rte_errno = used ? -ENOENT : -ENOSPC;
+	rte_errno = used ? ENOENT : ENOSPC;
 	return -1;
 }
 
@@ -287,7 +287,7 @@ find_next(const struct rte_fbarray *arr, unsigned int start, bool used)
 		return MASK_GET_IDX(idx, found);
 	}
 	/* we didn't find anything */
-	rte_errno = used ? -ENOENT : -ENOSPC;
+	rte_errno = used ? ENOENT : ENOSPC;
 	return -1;
 }
 
