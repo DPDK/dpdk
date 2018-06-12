@@ -41,6 +41,7 @@ T: git://dpdk.org/next/dpdk-next-net-mlx
 
 Next-virtio Tree
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
+M: Tiwei Bie <tiwei.bie@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 
 Next-crypto Tree
@@ -654,6 +655,8 @@ F: doc/guides/nics/features/vmxnet3.ini
 
 Vhost-user
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
+M: Tiwei Bie <tiwei.bie@intel.com>
+M: Zhihong Wang <zhihong.wang@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: lib/librte_vhost/
 F: doc/guides/prog_guide/vhost_lib.rst
@@ -665,6 +668,8 @@ F: examples/vhost_crypto/
 
 Vhost PMD
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
+M: Tiwei Bie <tiwei.bie@intel.com>
+M: Zhihong Wang <zhihong.wang@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
 F: doc/guides/nics/vhost.rst
@@ -673,6 +678,7 @@ F: doc/guides/nics/features/vhost.ini
 Virtio PMD
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 M: Tiwei Bie <tiwei.bie@intel.com>
+M: Zhihong Wang <zhihong.wang@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/virtio/
 F: doc/guides/nics/virtio.rst
