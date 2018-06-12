@@ -664,7 +664,6 @@ F: doc/guides/sample_app_ug/vhost_scsi.rst
 F: examples/vhost_crypto/
 
 Vhost PMD
-M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
