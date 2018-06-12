@@ -264,6 +264,24 @@ int __rte_experimental
 rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg);
 
 /**
+ * Walk list of all memsegs without performing any locking.
+ *
+ * @note This function does not perform any locking, and is only safe to call
+ *       from within memory-related callback functions.
+ *
+ * @param func
+ *   Iterator function
+ * @param arg
+ *   Argument passed to iterator
+ * @return
+ *   0 if walked over the entire list
+ *   1 if stopped by the user
+ *   -1 if user function reported error
+ */
+int __rte_experimental
+rte_memseg_walk_thread_unsafe(rte_memseg_walk_t func, void *arg);
+
+/**
  * Walk each VA-contiguous area without performing any locking.
  *
  * @note This function does not perform any locking, and is only safe to call

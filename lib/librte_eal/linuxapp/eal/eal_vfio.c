@@ -87,42 +87,6 @@ static const struct vfio_iommu_type iommu_types[] = {
 	},
 };
 
-/* for sPAPR IOMMU, we will need to walk memseg list, but we cannot use
- * rte_memseg_walk() because by the time we enter callback we will be holding a
- * write lock, so regular rte-memseg_walk will deadlock. copying the same
- * iteration code everywhere is not ideal as well. so, use a lockless copy of
- * memseg walk here.
- */
-static int
-memseg_walk_thread_unsafe(rte_memseg_walk_t func, void *arg)
-{
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	int i, ms_idx, ret = 0;
-
-	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
-		struct rte_memseg_list *msl = &mcfg->memsegs[i];
-		const struct rte_memseg *ms;
-		struct rte_fbarray *arr;
-
-		if (msl->memseg_arr.count == 0)
-			continue;
-
-		arr = &msl->memseg_arr;
-
-		ms_idx = rte_fbarray_find_next_used(arr, 0);
-		while (ms_idx >= 0) {
-			ms = rte_fbarray_get(arr, ms_idx);
-			ret = func(msl, ms, arg);
-			if (ret < 0)
-				return -1;
-			if (ret > 0)
-				return 1;
-			ms_idx = rte_fbarray_find_next_used(arr, ms_idx + 1);
-		}
-	}
-	return 0;
-}
-
 static int
 is_null_map(const struct user_mem_map *map)
 {
@@ -1357,7 +1321,8 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 	/* check if window size needs to be adjusted */
 	memset(&param, 0, sizeof(param));
 
-	if (memseg_walk_thread_unsafe(vfio_spapr_window_size_walk,
+	/* we're inside a callback so use thread-unsafe version */
+	if (rte_memseg_walk_thread_unsafe(vfio_spapr_window_size_walk,
 				&param) < 0) {
 		RTE_LOG(ERR, EAL, "Could not get window size\n");
 		ret = -1;
@@ -1386,7 +1351,9 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 				ret = -1;
 				goto out;
 			}
-			if (memseg_walk_thread_unsafe(vfio_spapr_map_walk,
+			/* we're inside a callback, so use thread-unsafe version
+			 */
+			if (rte_memseg_walk_thread_unsafe(vfio_spapr_map_walk,
 					&vfio_container_fd) < 0) {
 				RTE_LOG(ERR, EAL, "Could not recreate DMA maps\n");
 				ret = -1;
