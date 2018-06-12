@@ -418,13 +418,10 @@ rte_mem_lock_page(const void *virt)
 }
 
 int __rte_experimental
-rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
+rte_memseg_contig_walk_thread_unsafe(rte_memseg_contig_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int i, ms_idx, ret = 0;
-
-	/* do not allow allocations/frees/init while we iterate */
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
 
 	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
 		struct rte_memseg_list *msl = &mcfg->memsegs[i];
@@ -450,19 +447,26 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 			len = n_segs * msl->page_sz;
 
 			ret = func(msl, ms, len, arg);
-			if (ret < 0) {
-				ret = -1;
-				goto out;
-			} else if (ret > 0) {
-				ret = 1;
-				goto out;
-			}
+			if (ret)
+				return ret;
 			ms_idx = rte_fbarray_find_next_used(arr,
 					ms_idx + n_segs);
 		}
 	}
-out:
+	return 0;
+}
+
+int __rte_experimental
+rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int ret = 0;
+
+	/* do not allow allocations/frees/init while we iterate */
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	ret = rte_memseg_contig_walk_thread_unsafe(func, arg);
 	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+
 	return ret;
 }
 

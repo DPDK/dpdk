@@ -292,6 +292,7 @@ EXPERIMENTAL {
 	rte_mem_virt2memseg;
 	rte_mem_virt2memseg_list;
 	rte_memseg_contig_walk;
+	rte_memseg_contig_walk_thread_unsafe;
 	rte_memseg_list_walk;
 	rte_memseg_walk;
 	rte_mp_action_register;
