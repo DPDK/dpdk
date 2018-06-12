@@ -137,6 +137,9 @@ get_cipher_algo(enum rte_crypto_cipher_algorithm sess_algo, size_t keylen,
 		switch (sess_algo) {
 		case RTE_CRYPTO_CIPHER_3DES_CBC:
 			switch (keylen) {
+			case 8:
+				*algo = EVP_des_cbc();
+				break;
 			case 16:
 				*algo = EVP_des_ede_cbc();
 				break;
