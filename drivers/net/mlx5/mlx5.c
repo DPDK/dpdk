@@ -672,7 +672,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int i;
 	struct mlx5dv_context attrs_out = {0};
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
-	struct ibv_counter_set_description cs_desc;
+	struct ibv_counter_set_description cs_desc = { .counter_type = 0 };
 #endif
 
 	/* Prepare shared data between primary and secondary process. */
