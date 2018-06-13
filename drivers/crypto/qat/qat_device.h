@@ -62,7 +62,7 @@ struct qat_gen_hw_data {
 	const struct qat_qp_hw_data (*qp_hw_data)[ADF_MAX_QPS_ON_ANY_SERVICE];
 };
 
-extern struct qat_gen_hw_data qp_gen_config[];
+extern struct qat_gen_hw_data qat_gen_config[];
 
 struct qat_pci_device *
 qat_pci_device_allocate(struct rte_pci_device *pci_dev);

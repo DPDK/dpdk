@@ -68,7 +68,7 @@ static void qat_sym_dev_info_get(struct rte_cryptodev *dev,
 {
 	struct qat_sym_dev_private *internals = dev->data->dev_private;
 	const struct qat_qp_hw_data *sym_hw_qps =
-		qp_gen_config[internals->qat_dev->qat_dev_gen]
+		qat_gen_config[internals->qat_dev->qat_dev_gen]
 			      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
 
 	PMD_INIT_FUNC_TRACE();
@@ -143,7 +143,7 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
 	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
 	const struct qat_qp_hw_data *sym_hw_qps =
-			qp_gen_config[qat_private->qat_dev->qat_dev_gen]
+			qat_gen_config[qat_private->qat_dev->qat_dev_gen]
 				      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
 	const struct qat_qp_hw_data *qp_hw_data = sym_hw_qps + qp_id;
 
@@ -178,16 +178,16 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	for (i = 0; i < qp->nb_descriptors; i++) {
 
-		struct qat_sym_op_cookie *sql_cookie =
+		struct qat_sym_op_cookie *cookie =
 				qp->op_cookies[i];
 
-		sql_cookie->qat_sgl_src_phys_addr =
-				rte_mempool_virt2iova(sql_cookie) +
+		cookie->qat_sgl_src_phys_addr =
+				rte_mempool_virt2iova(cookie) +
 				offsetof(struct qat_sym_op_cookie,
 				qat_sgl_src);
 
-		sql_cookie->qat_sgl_dst_phys_addr =
-				rte_mempool_virt2iova(sql_cookie) +
+		cookie->qat_sgl_dst_phys_addr =
+				rte_mempool_virt2iova(cookie) +
 				offsetof(struct qat_sym_op_cookie,
 				qat_sgl_dst);
 	}

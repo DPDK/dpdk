@@ -10,7 +10,7 @@
 
 /* Hardware device information per generation */
 __extension__
-struct qat_gen_hw_data qp_gen_config[] =  {
+struct qat_gen_hw_data qat_gen_config[] =  {
 	[QAT_GEN1] = {
 		.dev_gen = QAT_GEN1,
 		.qp_hw_data = qat_gen1_qps,
