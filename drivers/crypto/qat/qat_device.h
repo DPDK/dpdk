@@ -11,11 +11,9 @@
 #include "adf_transport_access_macros.h"
 #include "qat_qp.h"
 
-
 #define QAT_DETACHED  (0)
 #define QAT_ATTACHED  (1)
 
-#define QAT_MAX_PCI_DEVICES	48
 #define QAT_DEV_NAME_MAX_LEN	64
 
 /*

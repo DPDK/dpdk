@@ -23,7 +23,7 @@ struct qat_gen_hw_data qat_gen_config[] =  {
 };
 
 
-static struct qat_pci_device qat_pci_devices[QAT_MAX_PCI_DEVICES];
+static struct qat_pci_device qat_pci_devices[RTE_PMD_QAT_MAX_PCI_DEVICES];
 static int qat_nb_pci_devices;
 
 /*
@@ -62,7 +62,7 @@ qat_pci_get_named_dev(const char *name)
 	if (name == NULL)
 		return NULL;
 
-	for (i = 0; i < QAT_MAX_PCI_DEVICES; i++) {
+	for (i = 0; i < RTE_PMD_QAT_MAX_PCI_DEVICES; i++) {
 		dev = &qat_pci_devices[i];
 
 		if ((dev->attached == QAT_ATTACHED) &&
@@ -78,7 +78,7 @@ qat_pci_find_free_device_index(void)
 {
 	uint8_t dev_id;
 
-	for (dev_id = 0; dev_id < QAT_MAX_PCI_DEVICES; dev_id++) {
+	for (dev_id = 0; dev_id < RTE_PMD_QAT_MAX_PCI_DEVICES; dev_id++) {
 		if (qat_pci_devices[dev_id].attached == QAT_DETACHED)
 			break;
 	}
@@ -111,7 +111,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	}
 
 	qat_dev_id = qat_pci_find_free_device_index();
-	if (qat_dev_id == QAT_MAX_PCI_DEVICES) {
+	if (qat_dev_id == RTE_PMD_QAT_MAX_PCI_DEVICES) {
 		PMD_DRV_LOG(ERR, "Reached maximum number of QAT devices");
 		return NULL;
 	}
