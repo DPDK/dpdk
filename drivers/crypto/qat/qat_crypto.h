@@ -75,42 +75,6 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 int qat_crypto_sym_qp_release(struct rte_cryptodev *dev,
 	uint16_t queue_pair_id);
 
-int
-qat_pmd_session_mempool_create(struct rte_cryptodev *dev,
-	unsigned nb_objs, unsigned obj_cache_size, int socket_id);
-
-extern unsigned
-qat_crypto_sym_get_session_private_size(struct rte_cryptodev *dev);
-
-extern int
-qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *sess,
-		struct rte_mempool *mempool);
-
-
-int
-qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform, void *session_private);
-
-int
-qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
-				struct qat_session *session);
-
-int
-qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
-				struct rte_crypto_sym_xform *xform,
-				struct qat_session *session);
-
-int
-qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform,
-		struct qat_session *session);
-
-
-extern void
-qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
-		struct rte_cryptodev_sym_session *session);
 
 extern uint16_t
 qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,

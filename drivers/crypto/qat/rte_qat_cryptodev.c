@@ -10,6 +10,7 @@
 #include <rte_cryptodev_pmd.h>
 
 #include "qat_crypto.h"
+#include "qat_sym_session.h"
 #include "qat_logs.h"
 
 uint8_t cryptodev_qat_driver_id;

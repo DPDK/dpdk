@@ -24,7 +24,7 @@ LDLIBS += -lrte_pci -lrte_bus_pci
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_crypto.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_device.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_qp.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_adf/qat_algs_build_desc.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym_session.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += rte_qat_cryptodev.c
 
 # export include files

@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright(c) 2015-2018 Intel Corporation
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2018 Intel Corporation
  */
-#ifndef _ICP_QAT_ALGS_H_
-#define _ICP_QAT_ALGS_H_
-#include <rte_memory.h>
+#ifndef _QAT_SYM_SESSION_H_
+#define _QAT_SYM_SESSION_H_
+
 #include <rte_crypto.h>
+#include <rte_cryptodev_pmd.h>
+
+#include "qat_common.h"
 #include "icp_qat_hw.h"
 #include "icp_qat_fw.h"
 #include "icp_qat_fw_la.h"
-#include "../qat_crypto.h"
 
 /*
  * Key Modifier (KM) value used in KASUMI algorithm in F9 mode to XOR
@@ -56,7 +58,7 @@ struct qat_session {
 	void *bpi_ctx;
 	struct qat_alg_cd cd;
 	uint8_t *cd_cur_ptr;
-	rte_iova_t cd_paddr;
+	phys_addr_t cd_paddr;
 	struct icp_qat_fw_la_bulk_req fw_req;
 	uint8_t aad_len;
 	struct qat_crypto_instance *inst;
@@ -73,18 +75,56 @@ struct qat_session {
 	enum qat_device_gen min_qat_dev_gen;
 };
 
-int qat_get_inter_state_size(enum icp_qat_hw_auth_algo qat_hash_alg);
+int
+qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform,
+		struct rte_cryptodev_sym_session *sess,
+		struct rte_mempool *mempool);
 
-int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cd,
+int
+qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform, void *session_private);
+
+int
+qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
+				struct qat_session *session);
+
+int
+qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform,
+		struct qat_session *session);
+
+int
+qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
+				struct rte_crypto_sym_xform *xform,
+				struct qat_session *session);
+
+int
+qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cd,
 						uint8_t *enckey,
 						uint32_t enckeylen);
 
-int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
+int
+qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 						uint8_t *authkey,
 						uint32_t authkeylen,
 						uint32_t aad_length,
 						uint32_t digestsize,
 						unsigned int operation);
+
+int
+qat_pmd_session_mempool_create(struct rte_cryptodev *dev,
+	unsigned int nb_objs, unsigned int obj_cache_size, int socket_id);
+
+void
+qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *session);
+
+unsigned int
+qat_crypto_sym_get_session_private_size(struct rte_cryptodev *dev);
+
+int qat_get_inter_state_size(enum icp_qat_hw_auth_algo qat_hash_alg);
+
 
 void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
 					enum qat_crypto_proto_flag proto_flags);
@@ -98,4 +138,5 @@ int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_cipher_get_block_size(enum icp_qat_hw_cipher_algo qat_cipher_alg);
 int qat_alg_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
-#endif
+
+#endif /* _QAT_SYM_SESSION_H_ */

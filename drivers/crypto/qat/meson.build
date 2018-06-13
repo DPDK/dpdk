@@ -6,7 +6,7 @@ if not dep.found()
 	build = false
 endif
 sources = files('qat_crypto.c', 'qat_qp.c',
-		'qat_adf/qat_algs_build_desc.c',
+		'qat_sym_session.c',
 		'rte_qat_cryptodev.c',
 		'qat_device.c')
 includes += include_directories('qat_adf')
