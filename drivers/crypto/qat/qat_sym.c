@@ -204,7 +204,7 @@ qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 	return qat_enqueue_op_burst(qp, (void **)ops, nb_ops);
 }
 
-int
+static int
 qat_sym_process_response(void **op, uint8_t *resp,
 		__rte_unused void *op_cookie,
 		__rte_unused enum qat_device_gen qat_dev_gen)
@@ -293,8 +293,7 @@ set_cipher_iv_ccm(uint16_t iv_length, uint16_t iv_offset,
 			iv_length);
 }
 
-
-int
+static int
 qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		void *op_cookie, enum qat_device_gen qat_dev_gen)
 {
@@ -773,9 +772,9 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	struct qat_qp **qp_addr =
 			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
-	struct qat_pmd_private *qat_private = dev->data->dev_private;
+	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
 	const struct qat_qp_hw_data *sym_hw_qps =
-			qp_gen_config[qat_private->qat_dev_gen]
+			qp_gen_config[qat_private->qat_dev->qat_dev_gen]
 				      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
 	const struct qat_qp_hw_data *qp_hw_data = sym_hw_qps + qp_id;
 
@@ -798,7 +797,7 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qat_qp_conf.socket_id = socket_id;
 	qat_qp_conf.service_str = "sym";
 
-	ret = qat_qp_setup(qat_private, qp_addr, qp_id, &qat_qp_conf);
+	ret = qat_qp_setup(qat_private->qat_dev, qp_addr, qp_id, &qat_qp_conf);
 	if (ret != 0)
 		return ret;
 

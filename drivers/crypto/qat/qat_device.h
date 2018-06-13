@@ -32,30 +32,31 @@ extern int qat_sym_qp_release(struct rte_cryptodev *dev,
  *  - config data
  *  - runtime data
  */
+struct qat_sym_dev_private;
 struct qat_pci_device {
 
-	/* data used by all services */
+	/* Data used by all services */
 	char name[QAT_DEV_NAME_MAX_LEN];
 	/**< Name of qat pci device */
+	uint8_t qat_dev_id;
+	/**< Device instance for this qat pci device */
 	struct rte_pci_device *pci_dev;
 	/**< PCI information. */
 	enum qat_device_gen qat_dev_gen;
 	/**< QAT device generation */
 	rte_spinlock_t arb_csr_lock;
-	/* protects accesses to the arbiter CSR */
+	/**< lock to protect accesses to the arbiter CSR */
 	__extension__
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
 
-	/* data relating to symmetric crypto service */
-	struct qat_pmd_private *sym_dev;
+	/* Data relating to symmetric crypto service */
+	struct qat_sym_dev_private *sym_dev;
 	/**< link back to cryptodev private data */
-	unsigned int max_nb_sym_queue_pairs;
-	/**< Max number of queue pairs supported by device */
 
-	/* data relating to compression service */
+	/* Data relating to compression service */
 
-	/* data relating to asymmetric crypto service */
+	/* Data relating to asymmetric crypto service */
 
 };
 
@@ -64,21 +65,13 @@ struct qat_pci_device {
  * there can be one of these on each qat_pci_device (VF),
  * in future there may also be private data structures for other services.
  */
-struct qat_pmd_private {
-	unsigned int max_nb_queue_pairs;
-	/**< Max number of queue pairs supported by device */
-	unsigned int max_nb_sessions;
-	/**< Max number of sessions supported by device */
-	enum qat_device_gen qat_dev_gen;
-	/**< QAT device generation */
-	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
-	/* QAT device capabilities */
-	struct rte_pci_device *pci_dev;
-	/**< PCI information. */
-	uint8_t dev_id;
-	/**< Device ID for this instance */
+struct qat_sym_dev_private {
 	struct qat_pci_device *qat_dev;
 	/**< The qat pci device hosting the service */
+	uint8_t sym_dev_id;
+	/**< Device instance for this rte_cryptodev */
+	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
+	/* QAT device symmetric crypto capabilities */
 };
 
 struct qat_gen_hw_data {
@@ -93,7 +86,7 @@ int qat_dev_config(struct rte_cryptodev *dev,
 int qat_dev_start(struct rte_cryptodev *dev);
 void qat_dev_stop(struct rte_cryptodev *dev);
 int qat_dev_close(struct rte_cryptodev *dev);
-void qat_dev_info_get(struct rte_cryptodev *dev,
+void qat_sym_dev_info_get(struct rte_cryptodev *dev,
 	struct rte_cryptodev_info *info);
 
 struct qat_pci_device *

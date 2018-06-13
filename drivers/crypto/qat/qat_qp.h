@@ -85,7 +85,7 @@ struct qat_qp {
 	enum qat_device_gen qat_dev_gen;
 	build_request_t build_request;
 	process_response_t process_response;
-	struct qat_pmd_private *qat_dev;
+	struct qat_pci_device *qat_dev;
 	/**< qat device this qp is on */
 } __rte_cache_aligned;
 
@@ -101,7 +101,7 @@ int
 qat_qp_release(struct qat_qp **qp_addr);
 
 int
-qat_qp_setup(struct qat_pmd_private *qat_dev,
+qat_qp_setup(struct qat_pci_device *qat_dev,
 		struct qat_qp **qp_addr, uint16_t queue_pair_id,
 		struct qat_qp_config *qat_qp_conf);
 

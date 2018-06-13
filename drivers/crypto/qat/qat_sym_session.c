@@ -64,7 +64,7 @@ ctx_init_err:
 
 static int
 qat_is_cipher_alg_supported(enum rte_crypto_cipher_algorithm algo,
-		struct qat_pmd_private *internals)
+		struct qat_sym_dev_private *internals)
 {
 	int i = 0;
 	const struct rte_cryptodev_capabilities *capability;
@@ -85,7 +85,7 @@ qat_is_cipher_alg_supported(enum rte_crypto_cipher_algorithm algo,
 
 static int
 qat_is_auth_alg_supported(enum rte_crypto_auth_algorithm algo,
-		struct qat_pmd_private *internals)
+		struct qat_sym_dev_private *internals)
 {
 	int i = 0;
 	const struct rte_cryptodev_capabilities *capability;
@@ -201,7 +201,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct qat_sym_session *session)
 {
-	struct qat_pmd_private *internals = dev->data->dev_private;
+	struct qat_sym_dev_private *internals = dev->data->dev_private;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 	int ret;
 
@@ -495,7 +495,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				struct qat_sym_session *session)
 {
 	struct rte_crypto_auth_xform *auth_xform = qat_get_auth_xform(xform);
-	struct qat_pmd_private *internals = dev->data->dev_private;
+	struct qat_sym_dev_private *internals = dev->data->dev_private;
 	uint8_t *key_data = auth_xform->key.data;
 	uint8_t key_length = auth_xform->key.length;
 

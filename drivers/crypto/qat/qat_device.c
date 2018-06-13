@@ -57,12 +57,12 @@ int qat_dev_close(struct rte_cryptodev *dev)
 	return 0;
 }
 
-void qat_dev_info_get(struct rte_cryptodev *dev,
+void qat_sym_dev_info_get(struct rte_cryptodev *dev,
 			struct rte_cryptodev_info *info)
 {
-	struct qat_pmd_private *internals = dev->data->dev_private;
+	struct qat_sym_dev_private *internals = dev->data->dev_private;
 	const struct qat_qp_hw_data *sym_hw_qps =
-		qp_gen_config[internals->qat_dev_gen]
+		qp_gen_config[internals->qat_dev->qat_dev_gen]
 			      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
 
 	PMD_INIT_FUNC_TRACE();
@@ -71,7 +71,7 @@ void qat_dev_info_get(struct rte_cryptodev *dev,
 			qat_qps_per_service(sym_hw_qps, QAT_SERVICE_SYMMETRIC);
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = internals->qat_dev_capabilities;
-		info->sym.max_nb_sessions = internals->max_nb_sessions;
+		info->sym.max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS;
 		info->driver_id = cryptodev_qat_driver_id;
 		info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	}
@@ -83,6 +83,7 @@ qat_pci_get_dev(uint8_t dev_id)
 {
 	return &qat_pci_devices[dev_id];
 }
+
 static struct qat_pci_device *
 qat_pci_get_named_dev(const char *name)
 {
@@ -133,7 +134,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	char name[QAT_DEV_NAME_MAX_LEN];
 
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
-
+	snprintf(name+strlen(name), QAT_DEV_NAME_MAX_LEN-strlen(name), "_qat");
 	if (qat_pci_get_named_dev(name) != NULL) {
 		PMD_DRV_LOG(ERR, "QAT device with name %s already allocated!",
 				name);
@@ -148,6 +149,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 
 	qat_dev = qat_pci_get_dev(qat_dev_id);
 	snprintf(qat_dev->name, QAT_DEV_NAME_MAX_LEN, "%s", name);
+	qat_dev->qat_dev_id = qat_dev_id;
 	qat_dev->pci_dev = pci_dev;
 	switch (qat_dev->pci_dev->id.device_id) {
 	case 0x0443:
@@ -169,8 +171,8 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 
 	qat_nb_pci_devices++;
 
-	PMD_DRV_LOG(DEBUG, "QAT device %d allocated, total QATs %d",
-				qat_dev_id, qat_nb_pci_devices);
+	PMD_DRV_LOG(DEBUG, "QAT device %d allocated, name %s, total QATs %d",
+			qat_dev->qat_dev_id, qat_dev->name, qat_nb_pci_devices);
 
 	return qat_dev;
 }
@@ -185,6 +187,7 @@ qat_pci_device_release(struct rte_pci_device *pci_dev)
 		return -EINVAL;
 
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
+	snprintf(name+strlen(name), QAT_DEV_NAME_MAX_LEN-strlen(name), "_qat");
 	qat_dev = qat_pci_get_named_dev(name);
 	if (qat_dev != NULL) {
 

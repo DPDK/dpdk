@@ -102,7 +102,7 @@ const struct qat_qp_hw_data qat_gen1_qps[QAT_MAX_SERVICES]
 static int qat_qp_check_queue_alignment(uint64_t phys_addr,
 	uint32_t queue_size_bytes);
 static void qat_queue_delete(struct qat_queue *queue);
-static int qat_queue_create(struct qat_pmd_private *qat_dev,
+static int qat_queue_create(struct qat_pci_device *qat_dev,
 	struct qat_queue *queue, struct qat_qp_config *, uint8_t dir);
 static int adf_verify_queue_size(uint32_t msg_size, uint32_t msg_num,
 	uint32_t *queue_size_for_csr);
@@ -153,7 +153,7 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 		socket_id, RTE_MEMZONE_IOVA_CONTIG, queue_size);
 }
 
-int qat_qp_setup(struct qat_pmd_private *qat_dev,
+int qat_qp_setup(struct qat_pci_device *qat_dev,
 		struct qat_qp **qp_addr,
 		uint16_t queue_pair_id,
 		struct qat_qp_config *qat_qp_conf)
@@ -164,8 +164,8 @@ int qat_qp_setup(struct qat_pmd_private *qat_dev,
 	char op_cookie_pool_name[RTE_RING_NAMESIZE];
 	uint32_t i;
 
-	PMD_DRV_LOG(DEBUG, "Setup qp %u on device %d gen %d",
-			queue_pair_id, qat_dev->dev_id, qat_dev->qat_dev_gen);
+	PMD_DRV_LOG(DEBUG, "Setup qp %u on qat pci device %d gen %d",
+		queue_pair_id, qat_dev->qat_dev_id, qat_dev->qat_dev_gen);
 
 	if ((qat_qp_conf->nb_descriptors > ADF_MAX_DESC) ||
 		(qat_qp_conf->nb_descriptors < ADF_MIN_DESC)) {
@@ -218,10 +218,12 @@ int qat_qp_setup(struct qat_pmd_private *qat_dev,
 	adf_configure_queues(qp);
 	adf_queue_arb_enable(&qp->tx_q, qp->mmap_bar_addr);
 
-	snprintf(op_cookie_pool_name, RTE_RING_NAMESIZE, "%s_%s_qp_op_%d_%hu",
-		pci_dev->driver->driver.name, qat_qp_conf->service_str,
-		qat_dev->dev_id, queue_pair_id);
+	snprintf(op_cookie_pool_name, RTE_RING_NAMESIZE,
+					"%s%d_cookies_%s_qp%hu",
+		pci_dev->driver->driver.name, qat_dev->qat_dev_id,
+		qat_qp_conf->service_str, queue_pair_id);
 
+	PMD_DRV_LOG(DEBUG, "cookiepool: %s", op_cookie_pool_name);
 	qp->op_cookie_pool = rte_mempool_lookup(op_cookie_pool_name);
 	if (qp->op_cookie_pool == NULL)
 		qp->op_cookie_pool = rte_mempool_create(op_cookie_pool_name,
@@ -270,7 +272,7 @@ int qat_qp_release(struct qat_qp **qp_addr)
 	}
 
 	PMD_DRV_LOG(DEBUG, "Free qp on qat_pci device %d",
-			qp->qat_dev->dev_id);
+				qp->qat_dev->qat_dev_id);
 
 	/* Don't free memory if there are still responses to be processed */
 	if (qp->inflights16 == 0) {
@@ -322,7 +324,7 @@ static void qat_queue_delete(struct qat_queue *queue)
 }
 
 static int
-qat_queue_create(struct qat_pmd_private *qat_dev, struct qat_queue *queue,
+qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 		struct qat_qp_config *qp_conf, uint8_t dir)
 {
 	uint64_t queue_base;
@@ -347,9 +349,9 @@ qat_queue_create(struct qat_pmd_private *qat_dev, struct qat_queue *queue,
 	 * Allocate a memzone for the queue - create a unique name.
 	 */
 	snprintf(queue->memz_name, sizeof(queue->memz_name),
-		"%s_%s_%s_%d_%d_%d",
-		pci_dev->driver->driver.name, qp_conf->service_str,
-		"qp_mem", qat_dev->dev_id,
+			"%s_%d_%s_%s_%d_%d",
+		pci_dev->driver->driver.name, qat_dev->qat_dev_id,
+		qp_conf->service_str, "qp_mem",
 		queue->hw_bundle_number, queue->hw_queue_number);
 	qp_mz = queue_dma_zone_reserve(queue->memz_name, queue_size_bytes,
 			qp_conf->socket_id);

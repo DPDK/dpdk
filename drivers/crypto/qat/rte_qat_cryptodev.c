@@ -33,7 +33,7 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
 		.dev_start		= qat_dev_start,
 		.dev_stop		= qat_dev_stop,
 		.dev_close		= qat_dev_close,
-		.dev_infos_get		= qat_dev_info_get,
+		.dev_infos_get		= qat_sym_dev_info_get,
 
 		.stats_get		= qat_sym_stats_get,
 		.stats_reset		= qat_sym_stats_reset,
@@ -77,12 +77,12 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 	struct rte_cryptodev_pmd_init_params init_params = {
 			.name = "",
 			.socket_id = qat_pci_dev->pci_dev->device.numa_node,
-			.private_data_size = sizeof(struct qat_pmd_private),
+			.private_data_size = sizeof(struct qat_sym_dev_private),
 			.max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS
 	};
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
-	struct qat_pmd_private *internals;
+	struct qat_sym_dev_private *internals;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
@@ -109,27 +109,25 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 	internals->qat_dev = qat_pci_dev;
 	qat_pci_dev->sym_dev = internals;
 
-	internals->max_nb_sessions = init_params.max_nb_sessions;
-	internals->pci_dev = RTE_DEV_TO_PCI(cryptodev->device);
-	internals->dev_id = cryptodev->data->dev_id;
-	switch (internals->pci_dev->id.device_id) {
-	case 0x0443:
-		internals->qat_dev_gen = QAT_GEN1;
+	internals->sym_dev_id = cryptodev->data->dev_id;
+	switch (qat_pci_dev->qat_dev_gen) {
+	case QAT_GEN1:
 		internals->qat_dev_capabilities = qat_gen1_sym_capabilities;
 		break;
-	case 0x37c9:
-	case 0x19e3:
-	case 0x6f55:
-		internals->qat_dev_gen = QAT_GEN2;
+	case QAT_GEN2:
 		internals->qat_dev_capabilities = qat_gen2_sym_capabilities;
 		break;
 	default:
-		PMD_DRV_LOG(ERR,
-				"Invalid dev_id, can't determine capabilities");
+		internals->qat_dev_capabilities = qat_gen2_sym_capabilities;
+		PMD_DRV_LOG(DEBUG,
+			"QAT gen %d capabilities unknown, default to GEN2",
+					qat_pci_dev->qat_dev_gen);
 		break;
 	}
 
-		return 0;
+	PMD_DRV_LOG(DEBUG, "Created QAT SYM device %s as cryptodev instance %d",
+			name, internals->sym_dev_id);
+	return 0;
 }
 
 static int
@@ -143,7 +141,7 @@ qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 		return 0;
 
 	/* free crypto device */
-	cryptodev = rte_cryptodev_pmd_get_dev(qat_pci_dev->sym_dev->dev_id);
+	cryptodev = rte_cryptodev_pmd_get_dev(qat_pci_dev->sym_dev->sym_dev_id);
 	rte_cryptodev_pmd_destroy(cryptodev);
 	qat_pci_dev->sym_dev = NULL;
 
