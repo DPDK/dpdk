@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2015-2018 Intel Corporation
  */
 #ifndef _QAT_SYM_SESSION_H_
 #define _QAT_SYM_SESSION_H_

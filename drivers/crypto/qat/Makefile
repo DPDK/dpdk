@@ -26,7 +26,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_device.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_qp.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym_session.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_common.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += rte_qat_cryptodev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_asym_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_comp_pmd.c
 
 # export include files
 SYMLINK-y-include +=

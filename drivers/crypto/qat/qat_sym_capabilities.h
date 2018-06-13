@@ -2,8 +2,8 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
-#ifndef _QAT_CRYPTO_CAPABILITIES_H_
-#define _QAT_CRYPTO_CAPABILITIES_H_
+#ifndef _QAT_SYM_CAPABILITIES_H_
+#define _QAT_SYM_CAPABILITIES_H_
 
 #define QAT_BASE_GEN1_SYM_CAPABILITIES					\
 	{	/* SHA1 HMAC */						\
@@ -554,4 +554,4 @@
 		}, }							\
 	}
 
-#endif /* _QAT_CRYPTO_CAPABILITIES_H_ */
+#endif /* _QAT_SYM_CAPABILITIES_H_ */

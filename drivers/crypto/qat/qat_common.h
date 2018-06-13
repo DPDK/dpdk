@@ -8,9 +8,6 @@
 
 #include <rte_mbuf.h>
 
-/**< Intel(R) QAT Symmetric Crypto PMD device name */
-#define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
-
 /**< Intel(R) QAT device name for PCI registration */
 #define QAT_PCI_NAME	qat
 /*
@@ -21,10 +18,9 @@
 /* Intel(R) QuickAssist Technology device generation is enumerated
  * from one according to the generation of the device
  */
-
 enum qat_device_gen {
 	QAT_GEN1 = 1,
-	QAT_GEN2,
+	QAT_GEN2
 };
 
 enum qat_service_type {
@@ -62,8 +58,17 @@ struct qat_common_stats {
 	/**< Total error count on operations dequeued */
 };
 
+struct qat_pci_device;
+
 int
 qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
 		struct qat_sgl *list, uint32_t data_len);
+void
+qat_stats_get(struct qat_pci_device *dev,
+		struct qat_common_stats *stats,
+		enum qat_service_type service);
+void
+qat_stats_reset(struct qat_pci_device *dev,
+		enum qat_service_type service);
 
 #endif /* _QAT_COMMON_H_ */

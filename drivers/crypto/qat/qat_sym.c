@@ -2,6 +2,8 @@
  * Copyright(c) 2015-2018 Intel Corporation
  */
 
+#include <openssl/evp.h>
+
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_hexdump.h>
@@ -9,14 +11,10 @@
 #include <rte_bus_pci.h>
 #include <rte_byteorder.h>
 
-#include <openssl/evp.h>
-
 #include "qat_logs.h"
 #include "qat_sym_session.h"
 #include "qat_sym.h"
-#include "qat_qp.h"
-#include "adf_transport_access_macros.h"
-#include "qat_device.h"
+#include "qat_sym_pmd.h"
 
 #define BYTE_LENGTH    8
 /* bpi is only used for partial blocks of DES and AES
@@ -82,9 +80,6 @@ cipher_decrypt_err:
 	return -EINVAL;
 }
 
-/** Creates a context in either AES or DES in ECB mode
- *  Depends on openssl libcrypto
- */
 
 static inline uint32_t
 qat_bpicipher_preprocess(struct qat_sym_session *ctx,
@@ -197,57 +192,6 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 	return sym_op->cipher.data.length - last_block_len;
 }
 
-uint16_t
-qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
-		uint16_t nb_ops)
-{
-	return qat_enqueue_op_burst(qp, (void **)ops, nb_ops);
-}
-
-static int
-qat_sym_process_response(void **op, uint8_t *resp,
-		__rte_unused void *op_cookie,
-		__rte_unused enum qat_device_gen qat_dev_gen)
-{
-
-	struct icp_qat_fw_comn_resp *resp_msg =
-			(struct icp_qat_fw_comn_resp *)resp;
-	struct rte_crypto_op *rx_op = (struct rte_crypto_op *)(uintptr_t)
-			(resp_msg->opaque_data);
-
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
-	rte_hexdump(stdout, "qat_response:", (uint8_t *)resp_msg,
-			sizeof(struct icp_qat_fw_comn_resp));
-#endif
-
-	if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
-			ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
-			resp_msg->comn_hdr.comn_status)) {
-
-		rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-	} else {
-		struct qat_sym_session *sess = (struct qat_sym_session *)
-						get_session_private_data(
-						rx_op->sym->session,
-						cryptodev_qat_driver_id);
-
-		if (sess->bpi_ctx)
-			qat_bpicipher_postprocess(sess, rx_op);
-		rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
-	}
-	*op = (void *)rx_op;
-
-	return 0;
-}
-
-
-uint16_t
-qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
-		uint16_t nb_ops)
-{
-	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
-}
-
 static inline void
 set_cipher_iv(uint16_t iv_length, uint16_t iv_offset,
 		struct icp_qat_fw_la_cipher_req_params *cipher_param,
@@ -293,7 +237,7 @@ set_cipher_iv_ccm(uint16_t iv_length, uint16_t iv_offset,
 			iv_length);
 }
 
-static int
+int
 qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		void *op_cookie, enum qat_device_gen qat_dev_gen)
 {
@@ -716,168 +660,38 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	return 0;
 }
 
-
-static void qat_stats_get(struct qat_pci_device *dev,
-		struct qat_common_stats *stats,
-		enum qat_service_type service)
+int
+qat_sym_process_response(void **op, uint8_t *resp,
+		__rte_unused void *op_cookie,
+		__rte_unused enum qat_device_gen qat_dev_gen)
 {
-	int i;
-	struct qat_qp **qp;
 
-	if (stats == NULL || dev == NULL || service >= QAT_SERVICE_INVALID) {
-		PMD_DRV_LOG(ERR, "invalid param: stats %p, dev %p, service %d",
-				stats, dev, service);
-		return;
+	struct icp_qat_fw_comn_resp *resp_msg =
+			(struct icp_qat_fw_comn_resp *)resp;
+	struct rte_crypto_op *rx_op = (struct rte_crypto_op *)(uintptr_t)
+			(resp_msg->opaque_data);
+
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
+	rte_hexdump(stdout, "qat_response:", (uint8_t *)resp_msg,
+			sizeof(struct icp_qat_fw_comn_resp));
+#endif
+
+	if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
+			ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
+			resp_msg->comn_hdr.comn_status)) {
+
+		rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	} else {
+		struct qat_sym_session *sess = (struct qat_sym_session *)
+						get_session_private_data(
+						rx_op->sym->session,
+						cryptodev_qat_driver_id);
+
+		if (sess->bpi_ctx)
+			qat_bpicipher_postprocess(sess, rx_op);
+		rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 	}
+	*op = (void *)rx_op;
 
-	qp = dev->qps_in_use[service];
-	for (i = 0; i < ADF_MAX_QPS_PER_BUNDLE; i++) {
-		if (qp[i] == NULL) {
-			PMD_DRV_LOG(DEBUG, "Service %d Uninitialised qp %d",
-					service, i);
-			continue;
-		}
-
-		stats->enqueued_count += qp[i]->stats.enqueued_count;
-		stats->dequeued_count += qp[i]->stats.dequeued_count;
-		stats->enqueue_err_count += qp[i]->stats.enqueue_err_count;
-		stats->dequeue_err_count += qp[i]->stats.dequeue_err_count;
-	}
-}
-
-void qat_sym_stats_get(struct rte_cryptodev *dev,
-		struct rte_cryptodev_stats *stats)
-{
-	struct qat_common_stats qat_stats = {0};
-	struct qat_sym_dev_private *qat_priv;
-
-	if (stats == NULL || dev == NULL) {
-		PMD_DRV_LOG(ERR, "invalid ptr: stats %p, dev %p", stats, dev);
-		return;
-	}
-	qat_priv = dev->data->dev_private;
-
-	qat_stats_get(qat_priv->qat_dev, &qat_stats, QAT_SERVICE_SYMMETRIC);
-	stats->enqueued_count = qat_stats.enqueued_count;
-	stats->dequeued_count = qat_stats.dequeued_count;
-	stats->enqueue_err_count = qat_stats.enqueue_err_count;
-	stats->dequeue_err_count = qat_stats.dequeue_err_count;
-}
-
-static void qat_stats_reset(struct qat_pci_device *dev,
-		enum qat_service_type service)
-{
-	int i;
-	struct qat_qp **qp;
-
-	if (dev == NULL || service >= QAT_SERVICE_INVALID) {
-		PMD_DRV_LOG(ERR, "invalid param: dev %p, service %d",
-				dev, service);
-		return;
-	}
-
-	qp = dev->qps_in_use[service];
-	for (i = 0; i < ADF_MAX_QPS_PER_BUNDLE; i++) {
-		if (qp[i] == NULL) {
-			PMD_DRV_LOG(DEBUG, "Service %d Uninitialised qp %d",
-					service, i);
-			continue;
-		}
-		memset(&(qp[i]->stats), 0, sizeof(qp[i]->stats));
-	}
-
-	PMD_DRV_LOG(DEBUG, "QAT crypto: %d stats cleared", service);
-}
-
-void qat_sym_stats_reset(struct rte_cryptodev *dev)
-{
-	struct qat_sym_dev_private *qat_priv;
-
-	if (dev == NULL) {
-		PMD_DRV_LOG(ERR, "invalid cryptodev ptr %p", dev);
-		return;
-	}
-	qat_priv = dev->data->dev_private;
-
-	qat_stats_reset(qat_priv->qat_dev, QAT_SERVICE_SYMMETRIC);
-
-}
-
-int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
-{
-	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
-
-	PMD_DRV_LOG(DEBUG, "Release sym qp %u on device %d",
-				queue_pair_id, dev->data->dev_id);
-
-	qat_private->qat_dev->qps_in_use[QAT_SERVICE_SYMMETRIC][queue_pair_id]
-						= NULL;
-
-	return qat_qp_release((struct qat_qp **)
-			&(dev->data->queue_pairs[queue_pair_id]));
-}
-
-int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
-	const struct rte_cryptodev_qp_conf *qp_conf,
-	int socket_id, struct rte_mempool *session_pool __rte_unused)
-{
-	struct qat_qp *qp;
-	int ret = 0;
-	uint32_t i;
-	struct qat_qp_config qat_qp_conf;
-
-	struct qat_qp **qp_addr =
-			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
-	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
-	const struct qat_qp_hw_data *sym_hw_qps =
-			qp_gen_config[qat_private->qat_dev->qat_dev_gen]
-				      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
-	const struct qat_qp_hw_data *qp_hw_data = sym_hw_qps + qp_id;
-
-	/* If qp is already in use free ring memory and qp metadata. */
-	if (*qp_addr != NULL) {
-		ret = qat_sym_qp_release(dev, qp_id);
-		if (ret < 0)
-			return ret;
-	}
-	if (qp_id >= qat_qps_per_service(sym_hw_qps, QAT_SERVICE_SYMMETRIC)) {
-		PMD_DRV_LOG(ERR, "qp_id %u invalid for this device", qp_id);
-		return -EINVAL;
-	}
-
-	qat_qp_conf.hw = qp_hw_data;
-	qat_qp_conf.build_request = qat_sym_build_request;
-	qat_qp_conf.process_response = qat_sym_process_response;
-	qat_qp_conf.cookie_size = sizeof(struct qat_sym_op_cookie);
-	qat_qp_conf.nb_descriptors = qp_conf->nb_descriptors;
-	qat_qp_conf.socket_id = socket_id;
-	qat_qp_conf.service_str = "sym";
-
-	ret = qat_qp_setup(qat_private->qat_dev, qp_addr, qp_id, &qat_qp_conf);
-	if (ret != 0)
-		return ret;
-
-	/* store a link to the qp in the qat_pci_device */
-	qat_private->qat_dev->qps_in_use[QAT_SERVICE_SYMMETRIC][qp_id]
-							= *qp_addr;
-
-	qp = (struct qat_qp *)*qp_addr;
-
-	for (i = 0; i < qp->nb_descriptors; i++) {
-
-		struct qat_sym_op_cookie *sql_cookie =
-				qp->op_cookies[i];
-
-		sql_cookie->qat_sgl_src_phys_addr =
-				rte_mempool_virt2iova(sql_cookie) +
-				offsetof(struct qat_sym_op_cookie,
-				qat_sgl_src);
-
-		sql_cookie->qat_sgl_dst_phys_addr =
-				rte_mempool_virt2iova(sql_cookie) +
-				offsetof(struct qat_sym_op_cookie,
-				qat_sgl_dst);
-	}
-
-	return ret;
+	return 0;
 }

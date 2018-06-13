@@ -4,8 +4,8 @@
 #ifndef _QAT_DEVICE_H_
 #define _QAT_DEVICE_H_
 
-#include <rte_cryptodev_pmd.h>
 #include <rte_bus_pci.h>
+
 #include "qat_common.h"
 #include "qat_logs.h"
 #include "adf_transport_access_macros.h"
@@ -17,12 +17,6 @@
 
 #define QAT_MAX_PCI_DEVICES	48
 #define QAT_DEV_NAME_MAX_LEN	64
-
-
-extern uint8_t cryptodev_qat_driver_id;
-
-extern int qat_sym_qp_release(struct rte_cryptodev *dev,
-	uint16_t queue_pair_id);
 
 /*
  * This struct holds all the data about a QAT pci device
@@ -63,20 +57,6 @@ struct qat_pci_device {
 
 };
 
-/** private data structure for a QAT device.
- * This QAT device is a device offering only symmetric crypto service,
- * there can be one of these on each qat_pci_device (VF),
- * in future there may also be private data structures for other services.
- */
-struct qat_sym_dev_private {
-	struct qat_pci_device *qat_dev;
-	/**< The qat pci device hosting the service */
-	uint8_t sym_dev_id;
-	/**< Device instance for this rte_cryptodev */
-	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
-	/* QAT device symmetric crypto capabilities */
-};
-
 struct qat_gen_hw_data {
 	enum qat_device_gen dev_gen;
 	const struct qat_qp_hw_data (*qp_hw_data)[ADF_MAX_QPS_PER_BUNDLE];
@@ -84,19 +64,12 @@ struct qat_gen_hw_data {
 
 extern struct qat_gen_hw_data qp_gen_config[];
 
-int qat_sym_dev_config(struct rte_cryptodev *dev,
-		struct rte_cryptodev_config *config);
-int qat_sym_dev_start(struct rte_cryptodev *dev);
-void qat_sym_dev_stop(struct rte_cryptodev *dev);
-int qat_sym_dev_close(struct rte_cryptodev *dev);
-void qat_sym_dev_info_get(struct rte_cryptodev *dev,
-	struct rte_cryptodev_info *info);
-
 struct qat_pci_device *
 qat_pci_device_allocate(struct rte_pci_device *pci_dev);
 int
 qat_pci_device_release(struct rte_pci_device *pci_dev);
 struct qat_pci_device *
 qat_get_qat_dev_from_pci_dev(struct rte_pci_device *pci_dev);
+
 
 #endif /* _QAT_DEVICE_H_ */

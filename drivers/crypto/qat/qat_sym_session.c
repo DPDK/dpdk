@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  * Copyright(c) 2015-2018 Intel Corporation
  */
+
+#include <openssl/sha.h>	/* Needed to calculate pre-compute values */
+#include <openssl/aes.h>	/* Needed to calculate pre-compute values */
+#include <openssl/md5.h>	/* Needed to calculate pre-compute values */
+#include <openssl/evp.h>	/* Needed for bpi runt block processing */
+
 #include <rte_memcpy.h>
 #include <rte_common.h>
 #include <rte_spinlock.h>
@@ -10,14 +16,8 @@
 #include <rte_crypto_sym.h>
 
 #include "qat_logs.h"
-#include "qat_device.h"
-
-#include <openssl/sha.h>	/* Needed to calculate pre-compute values */
-#include <openssl/aes.h>	/* Needed to calculate pre-compute values */
-#include <openssl/md5.h>	/* Needed to calculate pre-compute values */
-#include <openssl/evp.h>
-
 #include "qat_sym_session.h"
+#include "qat_sym_pmd.h"
 
 /** Frees a context previously created
  *  Depends on openssl libcrypto
@@ -29,6 +29,9 @@ bpi_cipher_ctx_free(void *bpi_ctx)
 		EVP_CIPHER_CTX_free((EVP_CIPHER_CTX *)bpi_ctx);
 }
 
+/** Creates a context in either AES or DES in ECB mode
+ *  Depends on openssl libcrypto
+ */
 static int
 bpi_cipher_ctx_init(enum rte_crypto_cipher_algorithm cryptodev_algo,
 		enum rte_crypto_cipher_operation direction __rte_unused,

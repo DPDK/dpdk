@@ -4,7 +4,9 @@
 
 #include "qat_device.h"
 #include "adf_transport_access_macros.h"
-#include "qat_qp.h"
+#include "qat_sym_pmd.h"
+#include "qat_asym_pmd.h"
+#include "qat_comp_pmd.h"
 
 /* Hardware device information per generation */
 __extension__
@@ -24,58 +26,25 @@ struct qat_gen_hw_data qp_gen_config[] =  {
 static struct qat_pci_device qat_pci_devices[QAT_MAX_PCI_DEVICES];
 static int qat_nb_pci_devices;
 
-int qat_sym_dev_config(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused struct rte_cryptodev_config *config)
-{
-	PMD_INIT_FUNC_TRACE();
-	return 0;
-}
+/*
+ * The set of PCI devices this driver supports
+ */
 
-int qat_sym_dev_start(__rte_unused struct rte_cryptodev *dev)
-{
-	PMD_INIT_FUNC_TRACE();
-	return 0;
-}
-
-void qat_sym_dev_stop(__rte_unused struct rte_cryptodev *dev)
-{
-	PMD_INIT_FUNC_TRACE();
-}
-
-int qat_sym_dev_close(struct rte_cryptodev *dev)
-{
-	int i, ret;
-
-	PMD_INIT_FUNC_TRACE();
-
-	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
-		ret = qat_sym_qp_release(dev, i);
-		if (ret < 0)
-			return ret;
-	}
-
-	return 0;
-}
-
-void qat_sym_dev_info_get(struct rte_cryptodev *dev,
-			struct rte_cryptodev_info *info)
-{
-	struct qat_sym_dev_private *internals = dev->data->dev_private;
-	const struct qat_qp_hw_data *sym_hw_qps =
-		qp_gen_config[internals->qat_dev->qat_dev_gen]
-			      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
-
-	PMD_INIT_FUNC_TRACE();
-	if (info != NULL) {
-		info->max_nb_queue_pairs =
-			qat_qps_per_service(sym_hw_qps, QAT_SERVICE_SYMMETRIC);
-		info->feature_flags = dev->feature_flags;
-		info->capabilities = internals->qat_dev_capabilities;
-		info->sym.max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS;
-		info->driver_id = cryptodev_qat_driver_id;
-		info->pci_dev = RTE_DEV_TO_PCI(dev->device);
-	}
-}
+static const struct rte_pci_id pci_id_qat_map[] = {
+		{
+			RTE_PCI_DEVICE(0x8086, 0x0443),
+		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x37c9),
+		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x19e3),
+		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x6f55),
+		},
+		{.device_id = 0},
+};
 
 
 static struct qat_pci_device *
@@ -203,3 +172,71 @@ qat_pci_device_release(struct rte_pci_device *pci_dev)
 				name, qat_nb_pci_devices);
 	return 0;
 }
+
+static int
+qat_pci_dev_destroy(struct qat_pci_device *qat_pci_dev,
+		struct rte_pci_device *pci_dev)
+{
+	qat_sym_dev_destroy(qat_pci_dev);
+	qat_comp_dev_destroy(qat_pci_dev);
+	qat_asym_dev_destroy(qat_pci_dev);
+	return qat_pci_device_release(pci_dev);
+}
+
+static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		struct rte_pci_device *pci_dev)
+{
+	int ret = 0;
+	struct qat_pci_device *qat_pci_dev;
+
+	PMD_DRV_LOG(DEBUG, "Found QAT device at %02x:%02x.%x",
+			pci_dev->addr.bus,
+			pci_dev->addr.devid,
+			pci_dev->addr.function);
+
+	qat_pci_dev = qat_pci_device_allocate(pci_dev);
+	if (qat_pci_dev == NULL)
+		return -ENODEV;
+
+	ret = qat_sym_dev_create(qat_pci_dev);
+	if (ret != 0)
+		goto error_out;
+
+	ret = qat_comp_dev_create(qat_pci_dev);
+	if (ret != 0)
+		goto error_out;
+
+	ret = qat_asym_dev_create(qat_pci_dev);
+	if (ret != 0)
+		goto error_out;
+
+	return 0;
+
+error_out:
+	qat_pci_dev_destroy(qat_pci_dev, pci_dev);
+	return ret;
+
+}
+
+static int qat_pci_remove(struct rte_pci_device *pci_dev)
+{
+	struct qat_pci_device *qat_pci_dev;
+
+	if (pci_dev == NULL)
+		return -EINVAL;
+
+	qat_pci_dev = qat_get_qat_dev_from_pci_dev(pci_dev);
+	if (qat_pci_dev == NULL)
+		return 0;
+
+	return qat_pci_dev_destroy(qat_pci_dev, pci_dev);
+}
+
+static struct rte_pci_driver rte_qat_pmd = {
+	.id_table = pci_id_qat_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = qat_pci_probe,
+	.remove = qat_pci_remove
+};
+RTE_PMD_REGISTER_PCI(QAT_PCI_NAME, rte_qat_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(QAT_PCI_NAME, pci_id_qat_map);

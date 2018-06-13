@@ -5,11 +5,12 @@ dep = dependency('libcrypto', required: false)
 if not dep.found()
 	build = false
 endif
-sources = files('qat_sym.c', 'qat_qp.c',
-		'qat_sym_session.c',
-		'qat_common.c',
-		'rte_qat_cryptodev.c',
-		'qat_device.c')
+sources = files('qat_common.c',
+		'qat_qp.c',
+		'qat_device.c',
+		'qat_sym_pmd.c', 'qat_sym.c', 'qat_sym_session.c',
+		'qat_asym_pmd.c',
+		'qat_comp_pmd.c')
 includes += include_directories('qat_adf')
 deps += ['bus_pci']
 ext_deps += dep

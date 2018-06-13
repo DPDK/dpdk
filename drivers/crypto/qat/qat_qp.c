@@ -12,8 +12,8 @@
 #include <rte_prefetch.h>
 
 #include "qat_logs.h"
-#include "qat_qp.h"
 #include "qat_device.h"
+#include "qat_qp.h"
 #include "adf_transport_access_macros.h"
 
 

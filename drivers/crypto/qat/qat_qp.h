@@ -5,8 +5,9 @@
 #define _QAT_QP_H_
 
 #include "qat_common.h"
-#include <rte_cryptodev_pmd.h>
 #include "adf_transport_access_macros.h"
+
+struct qat_pci_device;
 
 #define QAT_CSR_HEAD_WRITE_THRESH 32U
 /* number of requests to accumulate before writing head CSR */
@@ -76,9 +77,9 @@ struct qat_queue {
 struct qat_qp {
 	void			*mmap_bar_addr;
 	uint16_t		inflights16;
-	struct	qat_queue	tx_q;
-	struct	qat_queue	rx_q;
-	struct	qat_common_stats stats;
+	struct qat_queue	tx_q;
+	struct qat_queue	rx_q;
+	struct qat_common_stats stats;
 	struct rte_mempool *op_cookie_pool;
 	void **op_cookies;
 	uint32_t nb_descriptors;
