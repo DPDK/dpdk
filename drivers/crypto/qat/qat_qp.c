@@ -239,6 +239,7 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 
 	qp->qat_dev_gen = qat_dev->qat_dev_gen;
 	qp->build_request = qat_qp_conf->build_request;
+	qp->service_type = qat_qp_conf->hw->service_type;
 	qp->qat_dev = qat_dev;
 
 	PMD_DRV_LOG(DEBUG, "QP setup complete: id: %d, cookiepool: %s",
@@ -612,7 +613,10 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			resp_counter != nb_ops) {
 
-		qat_sym_process_response(ops, resp_msg);
+		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
+			qat_sym_process_response(ops, resp_msg);
+		/* add qat_asym_process_response here */
+		/* add qat_comp_process_response here */
 
 		head = adf_modulo(head + rx_queue->msg_size,
 				  rx_queue->modulo_mask);

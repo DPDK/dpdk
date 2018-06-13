@@ -79,6 +79,7 @@ struct qat_qp {
 	uint32_t nb_descriptors;
 	enum qat_device_gen qat_dev_gen;
 	build_request_t build_request;
+	enum qat_service_type service_type;
 	struct qat_pci_device *qat_dev;
 	/**< qat device this qp is on */
 } __rte_cache_aligned;
