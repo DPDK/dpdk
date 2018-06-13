@@ -135,17 +135,7 @@ vhost_user_set_owner(void)
 static int
 vhost_user_reset_owner(struct virtio_net *dev)
 {
-	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
-
-	if (dev->flags & VIRTIO_DEV_RUNNING) {
-		did = dev->vdpa_dev_id;
-		vdpa_dev = rte_vdpa_get_device(did);
-		if (vdpa_dev && vdpa_dev->ops->dev_close)
-			vdpa_dev->ops->dev_close(dev->vid);
-		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		dev->notify_ops->destroy_device(dev->vid);
-	}
+	vhost_destroy_device_notify(dev);
 
 	cleanup_device(dev, 0);
 	reset_device(dev);
@@ -996,18 +986,9 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 			  VhostUserMsg *msg)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[msg->payload.state.index];
-	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 
 	/* We have to stop the queue (virtio) if it is running. */
-	if (dev->flags & VIRTIO_DEV_RUNNING) {
-		did = dev->vdpa_dev_id;
-		vdpa_dev = rte_vdpa_get_device(did);
-		if (vdpa_dev && vdpa_dev->ops->dev_close)
-			vdpa_dev->ops->dev_close(dev->vid);
-		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		dev->notify_ops->destroy_device(dev->vid);
-	}
+	vhost_destroy_device_notify(dev);
 
 	dev->flags &= ~VIRTIO_DEV_READY;
 	dev->flags &= ~VIRTIO_DEV_VDPA_CONFIGURED;

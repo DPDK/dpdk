@@ -536,6 +536,7 @@ int vhost_new_device(void);
 void cleanup_device(struct virtio_net *dev, int destroy);
 void reset_device(struct virtio_net *dev);
 void vhost_destroy_device(int);
+void vhost_destroy_device_notify(struct virtio_net *dev);
 
 void cleanup_vq(struct vhost_virtqueue *vq, int destroy);
 void free_vq(struct vhost_virtqueue *vq);

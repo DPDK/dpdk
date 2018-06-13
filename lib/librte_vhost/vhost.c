@@ -296,6 +296,22 @@ vhost_new_device(void)
 	return i;
 }
 
+void
+vhost_destroy_device_notify(struct virtio_net *dev)
+{
+	struct rte_vdpa_device *vdpa_dev;
+	int did;
+
+	if (dev->flags & VIRTIO_DEV_RUNNING) {
+		did = dev->vdpa_dev_id;
+		vdpa_dev = rte_vdpa_get_device(did);
+		if (vdpa_dev && vdpa_dev->ops->dev_close)
+			vdpa_dev->ops->dev_close(dev->vid);
+		dev->flags &= ~VIRTIO_DEV_RUNNING;
+		dev->notify_ops->destroy_device(dev->vid);
+	}
+}
+
 /*
  * Invoked when there is the vhost-user connection is broken (when
  * the virtio device is being detached).
@@ -304,20 +320,11 @@ void
 vhost_destroy_device(int vid)
 {
 	struct virtio_net *dev = get_device(vid);
-	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 
 	if (dev == NULL)
 		return;
 
-	if (dev->flags & VIRTIO_DEV_RUNNING) {
-		did = dev->vdpa_dev_id;
-		vdpa_dev = rte_vdpa_get_device(did);
-		if (vdpa_dev && vdpa_dev->ops->dev_close)
-			vdpa_dev->ops->dev_close(dev->vid);
-		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		dev->notify_ops->destroy_device(vid);
-	}
+	vhost_destroy_device_notify(dev);
 
 	cleanup_device(dev, 1);
 	free_device(dev);
