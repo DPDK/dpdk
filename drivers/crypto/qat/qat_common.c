@@ -103,5 +103,5 @@ void qat_stats_reset(struct qat_pci_device *dev,
 		memset(&(qp[i]->stats), 0, sizeof(qp[i]->stats));
 	}
 
-	PMD_DRV_LOG(DEBUG, "QAT crypto: %d stats cleared", service);
+	PMD_DRV_LOG(DEBUG, "QAT: %d stats cleared", service);
 }
