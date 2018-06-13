@@ -50,6 +50,11 @@ struct qat_pci_device {
 	/* Data relating to symmetric crypto service */
 	struct qat_sym_dev_private *sym_dev;
 	/**< link back to cryptodev private data */
+	struct rte_device sym_rte_dev;
+	/**< This represents the crypto subset of this pci device.
+	 * Register with this rather than with the one in
+	 * pci_dev so that its driver can have a crypto-specific name
+	 */
 
 	/* Data relating to compression service */
 

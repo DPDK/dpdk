@@ -232,6 +232,18 @@ qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
 }
 
+/* An rte_driver is needed in the registration of both the device and the driver
+ * with cryptodev.
+ * The actual qat pci's rte_driver can't be used as its name represents
+ * the whole pci device with all services. Think of this as a holder for a name
+ * for the crypto part of the pci device.
+ */
+static const char qat_sym_drv_name[] = RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD);
+static const struct rte_driver cryptodev_qat_sym_driver = {
+	.name = qat_sym_drv_name,
+	.alias = qat_sym_drv_name
+};
+
 int
 qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 {
@@ -249,12 +261,19 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 			qat_pci_dev->name, "sym");
 	PMD_DRV_LOG(DEBUG, "Creating QAT SYM device %s", name);
 
+	/* Populate subset device to use in cryptodev device creation */
+	qat_pci_dev->sym_rte_dev.driver = &cryptodev_qat_sym_driver;
+	qat_pci_dev->sym_rte_dev.numa_node =
+				qat_pci_dev->pci_dev->device.numa_node;
+	qat_pci_dev->sym_rte_dev.devargs = NULL;
+
 	cryptodev = rte_cryptodev_pmd_create(name,
-			&qat_pci_dev->pci_dev->device, &init_params);
+			&(qat_pci_dev->sym_rte_dev), &init_params);
 
 	if (cryptodev == NULL)
 		return -ENODEV;
 
+	qat_pci_dev->sym_rte_dev.name = cryptodev->data->name;
 	cryptodev->driver_id = cryptodev_qat_driver_id;
 	cryptodev->dev_ops = &crypto_qat_ops;
 
@@ -287,7 +306,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 	}
 
 	PMD_DRV_LOG(DEBUG, "Created QAT SYM device %s as cryptodev instance %d",
-			name, internals->sym_dev_id);
+			cryptodev->data->name, internals->sym_dev_id);
 	return 0;
 }
 
@@ -304,23 +323,14 @@ qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 	/* free crypto device */
 	cryptodev = rte_cryptodev_pmd_get_dev(qat_pci_dev->sym_dev->sym_dev_id);
 	rte_cryptodev_pmd_destroy(cryptodev);
+	qat_pci_dev->sym_rte_dev.name = NULL;
 	qat_pci_dev->sym_dev = NULL;
 
 	return 0;
 }
 
 
-/* An rte_driver is needed in the registration of both the device and the driver
- * with cryptodev.
- * The actual qat pci's rte_driver can't be used as its name represents
- * the whole pci device with all services. Think of this as a holder for a name
- * for the crypto part of the pci device.
- */
-static const char qat_sym_drv_name[] = RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD);
-static struct rte_driver cryptodev_qat_sym_driver = {
-	.name = qat_sym_drv_name,
-	.alias = qat_sym_drv_name
-};
 static struct cryptodev_driver qat_crypto_drv;
-RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv, cryptodev_qat_sym_driver,
+RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv,
+		cryptodev_qat_sym_driver,
 		cryptodev_qat_driver_id);
