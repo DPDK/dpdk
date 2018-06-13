@@ -34,7 +34,7 @@
 					ICP_QAT_HW_CIPHER_KEY_CONVERT, \
 					ICP_QAT_HW_CIPHER_DECRYPT)
 
-enum qat_crypto_proto_flag {
+enum qat_sym_proto_flag {
 	QAT_CRYPTO_PROTO_FLAG_NONE = 0,
 	QAT_CRYPTO_PROTO_FLAG_CCM = 1,
 	QAT_CRYPTO_PROTO_FLAG_GCM = 2,
@@ -43,12 +43,12 @@ enum qat_crypto_proto_flag {
 };
 
 /* Common content descriptor */
-struct qat_alg_cd {
+struct qat_sym_cd {
 	struct icp_qat_hw_cipher_algo_blk cipher;
 	struct icp_qat_hw_auth_algo_blk hash;
 } __rte_packed __rte_cache_aligned;
 
-struct qat_session {
+struct qat_sym_session {
 	enum icp_qat_fw_la_cmd_id qat_cmd;
 	enum icp_qat_hw_cipher_algo qat_cipher_alg;
 	enum icp_qat_hw_cipher_dir qat_dir;
@@ -56,7 +56,7 @@ struct qat_session {
 	enum icp_qat_hw_auth_algo qat_hash_alg;
 	enum icp_qat_hw_auth_op auth_op;
 	void *bpi_ctx;
-	struct qat_alg_cd cd;
+	struct qat_sym_cd cd;
 	uint8_t *cd_cur_ptr;
 	phys_addr_t cd_paddr;
 	struct icp_qat_fw_la_bulk_req fw_req;
@@ -87,25 +87,25 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 
 int
 qat_sym_session_configure_aead(struct rte_crypto_sym_xform *xform,
-				struct qat_session *session);
+				struct qat_sym_session *session);
 
 int
 qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
-		struct qat_session *session);
+		struct qat_sym_session *session);
 
 int
 qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
-				struct qat_session *session);
+				struct qat_sym_session *session);
 
 int
-qat_sym_session_aead_create_cd_cipher(struct qat_session *cd,
+qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cd,
 						uint8_t *enckey,
 						uint32_t enckeylen);
 
 int
-qat_sym_session_aead_create_cd_auth(struct qat_session *cdesc,
+qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 						uint8_t *authkey,
 						uint32_t authkeylen,
 						uint32_t aad_length,
@@ -121,7 +121,7 @@ qat_sym_session_get_private_size(struct rte_cryptodev *dev);
 
 void
 qat_sym_sesssion_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
-					enum qat_crypto_proto_flag proto_flags);
+					enum qat_sym_proto_flag proto_flags);
 int
 qat_sym_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int

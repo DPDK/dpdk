@@ -88,10 +88,10 @@ adf_modulo(uint32_t data, uint32_t shift);
 
 static inline int
 qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
-		struct qat_crypto_op_cookie *qat_op_cookie, struct qat_qp *qp);
+		struct qat_sym_op_cookie *qat_op_cookie, struct qat_qp *qp);
 
 static inline uint32_t
-qat_bpicipher_preprocess(struct qat_session *ctx,
+qat_bpicipher_preprocess(struct qat_sym_session *ctx,
 				struct rte_crypto_op *op)
 {
 	int block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
@@ -146,7 +146,7 @@ qat_bpicipher_preprocess(struct qat_session *ctx,
 }
 
 static inline uint32_t
-qat_bpicipher_postprocess(struct qat_session *ctx,
+qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 				struct rte_crypto_op *op)
 {
 	int block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
@@ -329,10 +329,11 @@ qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 					resp_msg->comn_hdr.comn_status)) {
 			rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else {
-			struct qat_session *sess = (struct qat_session *)
+			struct qat_sym_session *sess =
+				(struct qat_sym_session *)
 					get_session_private_data(
-					rx_op->sym->session,
-					cryptodev_qat_driver_id);
+						rx_op->sym->session,
+						cryptodev_qat_driver_id);
 
 			if (sess->bpi_ctx)
 				qat_bpicipher_postprocess(sess, rx_op);
@@ -457,10 +458,10 @@ set_cipher_iv_ccm(uint16_t iv_length, uint16_t iv_offset,
 
 static inline int
 qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
-		struct qat_crypto_op_cookie *qat_op_cookie, struct qat_qp *qp)
+		struct qat_sym_op_cookie *qat_op_cookie, struct qat_qp *qp)
 {
 	int ret = 0;
-	struct qat_session *ctx;
+	struct qat_sym_session *ctx;
 	struct icp_qat_fw_la_cipher_req_params *cipher_param;
 	struct icp_qat_fw_la_auth_req_params *auth_param;
 	register struct icp_qat_fw_la_bulk_req *qat_req;
@@ -485,7 +486,7 @@ qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
 		return -EINVAL;
 	}
 
-	ctx = (struct qat_session *)get_session_private_data(
+	ctx = (struct qat_sym_session *)get_session_private_data(
 			op->sym->session, cryptodev_qat_driver_id);
 
 	if (unlikely(ctx == NULL)) {

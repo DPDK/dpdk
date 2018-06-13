@@ -165,7 +165,7 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	if (qp->op_cookie_pool == NULL)
 		qp->op_cookie_pool = rte_mempool_create(op_cookie_pool_name,
 				qp->nb_descriptors,
-				sizeof(struct qat_crypto_op_cookie), 64, 0,
+				sizeof(struct qat_sym_op_cookie), 64, 0,
 				NULL, NULL, NULL, NULL, socket_id,
 				0);
 	if (!qp->op_cookie_pool) {
@@ -180,17 +180,17 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 			goto create_err;
 		}
 
-		struct qat_crypto_op_cookie *sql_cookie =
+		struct qat_sym_op_cookie *sql_cookie =
 				qp->op_cookies[i];
 
 		sql_cookie->qat_sgl_src_phys_addr =
 				rte_mempool_virt2iova(sql_cookie) +
-				offsetof(struct qat_crypto_op_cookie,
+				offsetof(struct qat_sym_op_cookie,
 				qat_sgl_list_src);
 
 		sql_cookie->qat_sgl_dst_phys_addr =
 				rte_mempool_virt2iova(sql_cookie) +
-				offsetof(struct qat_crypto_op_cookie,
+				offsetof(struct qat_sym_op_cookie,
 				qat_sgl_list_dst);
 	}
 

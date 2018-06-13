@@ -111,7 +111,7 @@ qat_sym_session_clear(struct rte_cryptodev *dev,
 	PMD_INIT_FUNC_TRACE();
 	uint8_t index = dev->driver_id;
 	void *sess_priv = get_session_private_data(sess, index);
-	struct qat_session *s = (struct qat_session *)sess_priv;
+	struct qat_sym_session *s = (struct qat_sym_session *)sess_priv;
 
 	if (sess_priv) {
 		if (s->bpi_ctx)
@@ -199,7 +199,7 @@ qat_get_cipher_xform(struct rte_crypto_sym_xform *xform)
 int
 qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
-		struct qat_session *session)
+		struct qat_sym_session *session)
 {
 	struct qat_pmd_private *internals = dev->data->dev_private;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
@@ -404,7 +404,7 @@ int
 qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
-	struct qat_session *session = session_private;
+	struct qat_sym_session *session = session_private;
 	int ret;
 	int qat_cmd_id;
 
@@ -412,7 +412,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 
 	/* Set context descriptor physical address */
 	session->cd_paddr = rte_mempool_virt2iova(session) +
-			offsetof(struct qat_session, cd);
+			offsetof(struct qat_sym_session, cd);
 
 	session->min_qat_dev_gen = QAT_GEN1;
 
@@ -492,7 +492,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 int
 qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
-				struct qat_session *session)
+				struct qat_sym_session *session)
 {
 	struct rte_crypto_auth_xform *auth_xform = qat_get_auth_xform(xform);
 	struct qat_pmd_private *internals = dev->data->dev_private;
@@ -629,7 +629,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 
 int
 qat_sym_session_configure_aead(struct rte_crypto_sym_xform *xform,
-				struct qat_session *session)
+				struct qat_sym_session *session)
 {
 	struct rte_crypto_aead_xform *aead_xform = &xform->aead;
 	enum rte_crypto_auth_operation crypto_operation;
@@ -721,7 +721,7 @@ qat_sym_session_configure_aead(struct rte_crypto_sym_xform *xform,
 unsigned int qat_sym_session_get_private_size(
 		struct rte_cryptodev *dev __rte_unused)
 {
-	return RTE_ALIGN_CEIL(sizeof(struct qat_session), 8);
+	return RTE_ALIGN_CEIL(sizeof(struct qat_sym_session), 8);
 }
 
 /* returns block size in bytes per cipher algo */
@@ -1124,7 +1124,7 @@ static int qat_sym_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 
 static void
 qat_sym_session_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
-		enum qat_crypto_proto_flag proto_flags)
+		enum qat_sym_proto_flag proto_flags)
 {
 	PMD_INIT_FUNC_TRACE();
 	header->hdr_flags =
@@ -1172,11 +1172,11 @@ qat_sym_session_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
  *	and set its protocol flag in both cipher and auth part of content
  *	descriptor building function
  */
-static enum qat_crypto_proto_flag
+static enum qat_sym_proto_flag
 qat_get_crypto_proto_flag(uint16_t flags)
 {
 	int proto = ICP_QAT_FW_LA_PROTO_GET(flags);
-	enum qat_crypto_proto_flag qat_proto_flag =
+	enum qat_sym_proto_flag qat_proto_flag =
 			QAT_CRYPTO_PROTO_FLAG_NONE;
 
 	switch (proto) {
@@ -1191,7 +1191,7 @@ qat_get_crypto_proto_flag(uint16_t flags)
 	return qat_proto_flag;
 }
 
-int qat_sym_session_aead_create_cd_cipher(struct qat_session *cdesc,
+int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 						uint8_t *cipherkey,
 						uint32_t cipherkeylen)
 {
@@ -1203,7 +1203,7 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_session *cdesc,
 	struct icp_qat_fw_cipher_cd_ctrl_hdr *cipher_cd_ctrl = ptr;
 	struct icp_qat_fw_auth_cd_ctrl_hdr *hash_cd_ctrl = ptr;
 	enum icp_qat_hw_cipher_convert key_convert;
-	enum qat_crypto_proto_flag qat_proto_flag =
+	enum qat_sym_proto_flag qat_proto_flag =
 		QAT_CRYPTO_PROTO_FLAG_NONE;
 	uint32_t total_key_size;
 	uint16_t cipher_offset, cd_size;
@@ -1339,7 +1339,7 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_session *cdesc,
 	return 0;
 }
 
-int qat_sym_session_aead_create_cd_auth(struct qat_session *cdesc,
+int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 						uint8_t *authkey,
 						uint32_t authkeylen,
 						uint32_t aad_length,
@@ -1363,7 +1363,7 @@ int qat_sym_session_aead_create_cd_auth(struct qat_session *cdesc,
 	uint32_t *aad_len = NULL;
 	uint32_t wordIndex  = 0;
 	uint32_t *pTempKey;
-	enum qat_crypto_proto_flag qat_proto_flag =
+	enum qat_sym_proto_flag qat_proto_flag =
 		QAT_CRYPTO_PROTO_FLAG_NONE;
 
 	PMD_INIT_FUNC_TRACE();

@@ -27,7 +27,7 @@
 #define QAT_CSR_TAIL_FORCE_WRITE_THRESH 256U
 /* number of inflights below which no tail write coalescing should occur */
 
-struct qat_session;
+struct qat_sym_session;
 
 /**
  * Structure associated with each queue.

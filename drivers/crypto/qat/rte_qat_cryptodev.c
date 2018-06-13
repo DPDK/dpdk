@@ -15,12 +15,12 @@
 
 uint8_t cryptodev_qat_driver_id;
 
-static const struct rte_cryptodev_capabilities qat_gen1_capabilities[] = {
+static const struct rte_cryptodev_capabilities qat_gen1_sym_capabilities[] = {
 	QAT_BASE_GEN1_SYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
-static const struct rte_cryptodev_capabilities qat_gen2_capabilities[] = {
+static const struct rte_cryptodev_capabilities qat_gen2_sym_capabilities[] = {
 	QAT_BASE_GEN1_SYM_CAPABILITIES,
 	QAT_EXTRA_GEN2_SYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
@@ -99,13 +99,13 @@ crypto_qat_create(const char *name, struct rte_pci_device *pci_dev,
 	switch (pci_dev->id.device_id) {
 	case 0x0443:
 		internals->qat_dev_gen = QAT_GEN1;
-		internals->qat_dev_capabilities = qat_gen1_capabilities;
+		internals->qat_dev_capabilities = qat_gen1_sym_capabilities;
 		break;
 	case 0x37c9:
 	case 0x19e3:
 	case 0x6f55:
 		internals->qat_dev_gen = QAT_GEN2;
-		internals->qat_dev_capabilities = qat_gen2_capabilities;
+		internals->qat_dev_capabilities = qat_gen2_sym_capabilities;
 		break;
 	default:
 		PMD_DRV_LOG(ERR,

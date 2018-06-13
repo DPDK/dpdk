@@ -37,11 +37,11 @@ struct qat_alg_buf_list {
 	struct qat_alg_buf bufers[QAT_SGL_MAX_NUMBER];
 } __rte_packed __rte_cache_aligned;
 
-struct qat_crypto_op_cookie {
+struct qat_sym_op_cookie {
 	struct qat_alg_buf_list qat_sgl_list_src;
 	struct qat_alg_buf_list qat_sgl_list_dst;
 	phys_addr_t qat_sgl_src_phys_addr;
 	phys_addr_t qat_sgl_dst_phys_addr;
 };
 
-#endif /* _QAT_QAT_COMMON_H_ */
+#endif /* _QAT_COMMON_H_ */
