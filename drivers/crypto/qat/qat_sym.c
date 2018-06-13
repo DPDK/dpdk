@@ -250,20 +250,20 @@ qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 
 static inline int
 qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buff_start,
-		struct qat_alg_buf_list *list, uint32_t data_len)
+		struct qat_sgl *list, uint32_t data_len)
 {
 	int nr = 1;
 
 	uint32_t buf_len = rte_pktmbuf_iova(buf) -
 			buff_start + rte_pktmbuf_data_len(buf);
 
-	list->bufers[0].addr = buff_start;
-	list->bufers[0].resrvd = 0;
-	list->bufers[0].len = buf_len;
+	list->buffers[0].addr = buff_start;
+	list->buffers[0].resrvd = 0;
+	list->buffers[0].len = buf_len;
 
 	if (data_len <= buf_len) {
 		list->num_bufs = nr;
-		list->bufers[0].len = data_len;
+		list->buffers[0].len = data_len;
 		return 0;
 	}
 
@@ -276,15 +276,15 @@ qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buff_start,
 			return -EINVAL;
 		}
 
-		list->bufers[nr].len = rte_pktmbuf_data_len(buf);
-		list->bufers[nr].resrvd = 0;
-		list->bufers[nr].addr = rte_pktmbuf_iova(buf);
+		list->buffers[nr].len = rte_pktmbuf_data_len(buf);
+		list->buffers[nr].resrvd = 0;
+		list->buffers[nr].addr = rte_pktmbuf_iova(buf);
 
-		buf_len += list->bufers[nr].len;
+		buf_len += list->buffers[nr].len;
 		buf = buf->next;
 
 		if (buf_len > data_len) {
-			list->bufers[nr].len -=
+			list->buffers[nr].len -=
 				buf_len - data_len;
 			buf = NULL;
 		}
@@ -695,7 +695,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		ICP_QAT_FW_COMN_PTR_TYPE_SET(qat_req->comn_hdr.comn_req_flags,
 				QAT_COMN_PTR_TYPE_SGL);
 		ret = qat_sgl_fill_array(op->sym->m_src, src_buf_start,
-				&cookie->qat_sgl_list_src,
+				&cookie->qat_sgl_src,
 				qat_req->comn_mid.src_length);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "QAT PMD Cannot fill sgl array");
@@ -709,7 +709,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		else {
 			ret = qat_sgl_fill_array(op->sym->m_dst,
 					dst_buf_start,
-					&cookie->qat_sgl_list_dst,
+					&cookie->qat_sgl_dst,
 						qat_req->comn_mid.dst_length);
 
 			if (ret) {
@@ -859,12 +859,12 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		sql_cookie->qat_sgl_src_phys_addr =
 				rte_mempool_virt2iova(sql_cookie) +
 				offsetof(struct qat_sym_op_cookie,
-				qat_sgl_list_src);
+				qat_sgl_src);
 
 		sql_cookie->qat_sgl_dst_phys_addr =
 				rte_mempool_virt2iova(sql_cookie) +
 				offsetof(struct qat_sym_op_cookie,
-				qat_sgl_list_dst);
+				qat_sgl_dst);
 	}
 
 	return ret;
