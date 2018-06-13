@@ -27,6 +27,11 @@
 #define QAT_CSR_TAIL_FORCE_WRITE_THRESH 256U
 /* number of inflights below which no tail write coalescing should occur */
 
+typedef int (*build_request_t)(void *op,
+		uint8_t *req, void *op_cookie,
+		enum qat_device_gen qat_dev_gen);
+/**< Build a request from an op. */
+
 struct qat_sym_session;
 
 /**
@@ -63,7 +68,13 @@ struct qat_qp {
 	void **op_cookies;
 	uint32_t nb_descriptors;
 	enum qat_device_gen qat_dev_gen;
+	build_request_t build_request;
 } __rte_cache_aligned;
+
+
+int
+qat_sym_build_request(void *in_op, uint8_t *out_msg,
+		void *op_cookie, enum qat_device_gen qat_dev_gen);
 
 void qat_sym_stats_get(struct rte_cryptodev *dev,
 	struct rte_cryptodev_stats *stats);

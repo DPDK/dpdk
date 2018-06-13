@@ -86,10 +86,6 @@ cipher_decrypt_err:
 static inline uint32_t
 adf_modulo(uint32_t data, uint32_t shift);
 
-static inline int
-qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
-		struct qat_sym_op_cookie *qat_op_cookie, struct qat_qp *qp);
-
 static inline uint32_t
 qat_bpicipher_preprocess(struct qat_sym_session *ctx,
 				struct rte_crypto_op *op)
@@ -209,14 +205,12 @@ txq_write_tail(struct qat_qp *qp, struct qat_queue *q) {
 	q->csr_tail = q->tail;
 }
 
-uint16_t
-qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
-		uint16_t nb_ops)
+static uint16_t
+qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 {
 	register struct qat_queue *queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
 	register uint32_t nb_ops_sent = 0;
-	register struct rte_crypto_op **cur_op = ops;
 	register int ret;
 	uint16_t nb_ops_possible = nb_ops;
 	register uint8_t *base_addr;
@@ -242,8 +236,9 @@ qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 	}
 
 	while (nb_ops_sent != nb_ops_possible) {
-		ret = qat_sym_build_request(*cur_op, base_addr + tail,
-			tmp_qp->op_cookies[tail / queue->msg_size], tmp_qp);
+		ret = tmp_qp->build_request(*ops, base_addr + tail,
+				tmp_qp->op_cookies[tail / queue->msg_size],
+				tmp_qp->qat_dev_gen);
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
 			/*
@@ -257,8 +252,8 @@ qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 		}
 
 		tail = adf_modulo(tail + queue->msg_size, queue->modulo);
+		ops++;
 		nb_ops_sent++;
-		cur_op++;
 	}
 kick_tail:
 	queue->tail = tail;
@@ -296,6 +291,13 @@ void rxq_free_desc(struct qat_qp *qp, struct qat_queue *q)
 	/* write current head to CSR */
 	WRITE_CSR_RING_HEAD(qp->mmap_bar_addr, q->hw_bundle_number,
 			    q->hw_queue_number, new_head);
+}
+
+uint16_t
+qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
+{
+	return qat_enqueue_op_burst(qp, (void **)ops, nb_ops);
 }
 
 uint16_t
@@ -456,9 +458,10 @@ set_cipher_iv_ccm(uint16_t iv_length, uint16_t iv_offset,
 			iv_length);
 }
 
-static inline int
-qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
-		struct qat_sym_op_cookie *qat_op_cookie, struct qat_qp *qp)
+
+int
+qat_sym_build_request(void *in_op, uint8_t *out_msg,
+		void *op_cookie, enum qat_device_gen qat_dev_gen)
 {
 	int ret = 0;
 	struct qat_sym_session *ctx;
@@ -471,6 +474,9 @@ qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
 	uint32_t min_ofs = 0;
 	uint64_t src_buf_start = 0, dst_buf_start = 0;
 	uint8_t do_sgl = 0;
+	struct rte_crypto_op *op = (struct rte_crypto_op *)in_op;
+	struct qat_sym_op_cookie *cookie =
+				(struct qat_sym_op_cookie *)op_cookie;
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 	if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
@@ -494,7 +500,7 @@ qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
 		return -EINVAL;
 	}
 
-	if (unlikely(ctx->min_qat_dev_gen > qp->qat_dev_gen)) {
+	if (unlikely(ctx->min_qat_dev_gen > qat_dev_gen)) {
 		PMD_DRV_LOG(ERR, "Session alg not supported on this device gen");
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return -EINVAL;
@@ -807,7 +813,7 @@ qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
 		ICP_QAT_FW_COMN_PTR_TYPE_SET(qat_req->comn_hdr.comn_req_flags,
 				QAT_COMN_PTR_TYPE_SGL);
 		ret = qat_sgl_fill_array(op->sym->m_src, src_buf_start,
-				&qat_op_cookie->qat_sgl_list_src,
+				&cookie->qat_sgl_list_src,
 				qat_req->comn_mid.src_length);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "QAT PMD Cannot fill sgl array");
@@ -817,11 +823,11 @@ qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
 		if (likely(op->sym->m_dst == NULL))
 			qat_req->comn_mid.dest_data_addr =
 				qat_req->comn_mid.src_data_addr =
-				qat_op_cookie->qat_sgl_src_phys_addr;
+				cookie->qat_sgl_src_phys_addr;
 		else {
 			ret = qat_sgl_fill_array(op->sym->m_dst,
 					dst_buf_start,
-					&qat_op_cookie->qat_sgl_list_dst,
+					&cookie->qat_sgl_list_dst,
 						qat_req->comn_mid.dst_length);
 
 			if (ret) {
@@ -831,9 +837,9 @@ qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
 			}
 
 			qat_req->comn_mid.src_data_addr =
-				qat_op_cookie->qat_sgl_src_phys_addr;
+				cookie->qat_sgl_src_phys_addr;
 			qat_req->comn_mid.dest_data_addr =
-					qat_op_cookie->qat_sgl_dst_phys_addr;
+					cookie->qat_sgl_dst_phys_addr;
 		}
 	} else {
 		qat_req->comn_mid.src_data_addr = src_buf_start;
