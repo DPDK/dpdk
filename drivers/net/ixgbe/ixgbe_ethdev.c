@@ -3120,9 +3120,18 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	}
 
 	/* Flow Director Stats registers */
-	hw_stats->fdirmatch += IXGBE_READ_REG(hw, IXGBE_FDIRMATCH);
-	hw_stats->fdirmiss += IXGBE_READ_REG(hw, IXGBE_FDIRMISS);
-
+	if (hw->mac.type != ixgbe_mac_82598EB) {
+		hw_stats->fdirmatch += IXGBE_READ_REG(hw, IXGBE_FDIRMATCH);
+		hw_stats->fdirmiss += IXGBE_READ_REG(hw, IXGBE_FDIRMISS);
+		hw_stats->fdirustat_add += IXGBE_READ_REG(hw,
+					IXGBE_FDIRUSTAT) & 0xFFFF;
+		hw_stats->fdirustat_remove += (IXGBE_READ_REG(hw,
+					IXGBE_FDIRUSTAT) >> 16) & 0xFFFF;
+		hw_stats->fdirfstat_fadd += IXGBE_READ_REG(hw,
+					IXGBE_FDIRFSTAT) & 0xFFFF;
+		hw_stats->fdirfstat_fremove += (IXGBE_READ_REG(hw,
+					IXGBE_FDIRFSTAT) >> 16) & 0xFFFF;
+	}
 	/* MACsec Stats registers */
 	macsec_stats->out_pkts_untagged += IXGBE_READ_REG(hw, IXGBE_LSECTXUT);
 	macsec_stats->out_pkts_encrypted +=
