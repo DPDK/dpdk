@@ -67,7 +67,7 @@ void qat_stats_get(struct qat_pci_device *dev,
 	}
 
 	qp = dev->qps_in_use[service];
-	for (i = 0; i < ADF_MAX_QPS_PER_BUNDLE; i++) {
+	for (i = 0; i < ADF_MAX_QPS_ON_ANY_SERVICE; i++) {
 		if (qp[i] == NULL) {
 			PMD_DRV_LOG(DEBUG, "Service %d Uninitialised qp %d",
 					service, i);
@@ -94,7 +94,7 @@ void qat_stats_reset(struct qat_pci_device *dev,
 	}
 
 	qp = dev->qps_in_use[service];
-	for (i = 0; i < ADF_MAX_QPS_PER_BUNDLE; i++) {
+	for (i = 0; i < ADF_MAX_QPS_ON_ANY_SERVICE; i++) {
 		if (qp[i] == NULL) {
 			PMD_DRV_LOG(DEBUG, "Service %d Uninitialised qp %d",
 					service, i);

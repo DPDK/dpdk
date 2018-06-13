@@ -90,7 +90,7 @@ struct qat_qp {
 	/**< qat device this qp is on */
 } __rte_cache_aligned;
 
-extern const struct qat_qp_hw_data qat_gen1_qps[][ADF_MAX_QPS_PER_BUNDLE];
+extern const struct qat_qp_hw_data qat_gen1_qps[][ADF_MAX_QPS_ON_ANY_SERVICE];
 
 uint16_t
 qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops);

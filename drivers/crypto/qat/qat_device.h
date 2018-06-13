@@ -44,7 +44,7 @@ struct qat_pci_device {
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
 
-	struct qat_qp *qps_in_use[QAT_MAX_SERVICES][ADF_MAX_QPS_PER_BUNDLE];
+	struct qat_qp *qps_in_use[QAT_MAX_SERVICES][ADF_MAX_QPS_ON_ANY_SERVICE];
 	/**< links to qps set up for each service, index same as on API */
 
 	/* Data relating to symmetric crypto service */
@@ -59,7 +59,7 @@ struct qat_pci_device {
 
 struct qat_gen_hw_data {
 	enum qat_device_gen dev_gen;
-	const struct qat_qp_hw_data (*qp_hw_data)[ADF_MAX_QPS_PER_BUNDLE];
+	const struct qat_qp_hw_data (*qp_hw_data)[ADF_MAX_QPS_ON_ANY_SERVICE];
 };
 
 extern struct qat_gen_hw_data qp_gen_config[];

@@ -29,7 +29,7 @@
 
 __extension__
 const struct qat_qp_hw_data qat_gen1_qps[QAT_MAX_SERVICES]
-					 [ADF_MAX_QPS_PER_BUNDLE] = {
+					 [ADF_MAX_QPS_ON_ANY_SERVICE] = {
 	/* queue pairs which provide an asymmetric crypto service */
 	[QAT_SERVICE_ASYMMETRIC] = {
 		{
@@ -42,14 +42,11 @@ const struct qat_qp_hw_data qat_gen1_qps[QAT_MAX_SERVICES]
 
 		}, {
 			.service_type = QAT_SERVICE_ASYMMETRIC,
+			.hw_bundle_num = 0,
 			.tx_ring_num = 1,
 			.rx_ring_num = 9,
 			.tx_msg_size = 64,
 			.rx_msg_size = 32,
-		}, {
-			.service_type = QAT_SERVICE_INVALID,
-		}, {
-			.service_type = QAT_SERVICE_INVALID,
 		}
 	},
 	/* queue pairs which provide a symmetric crypto service */
@@ -69,10 +66,6 @@ const struct qat_qp_hw_data qat_gen1_qps[QAT_MAX_SERVICES]
 			.rx_ring_num = 11,
 			.tx_msg_size = 128,
 			.rx_msg_size = 32,
-		}, {
-			.service_type = QAT_SERVICE_INVALID,
-		}, {
-			.service_type = QAT_SERVICE_INVALID,
 		}
 	},
 	/* queue pairs which provide a compression service */
@@ -91,10 +84,6 @@ const struct qat_qp_hw_data qat_gen1_qps[QAT_MAX_SERVICES]
 			.rx_ring_num = 15,
 			.tx_msg_size = 128,
 			.rx_msg_size = 32,
-		}, {
-			.service_type = QAT_SERVICE_INVALID,
-		}, {
-			.service_type = QAT_SERVICE_INVALID,
 		}
 	}
 };
@@ -118,10 +107,10 @@ int qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
 {
 	int i, count;
 
-	for (i = 0, count = 0; i < ADF_MAX_QPS_PER_BUNDLE; i++)
+	for (i = 0, count = 0; i < ADF_MAX_QPS_ON_ANY_SERVICE; i++)
 		if (qp_hw_data[i].service_type == service)
 			count++;
-	return count * ADF_NUM_BUNDLES_PER_DEV;
+	return count;
 }
 
 static const struct rte_memzone *

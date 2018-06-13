@@ -50,9 +50,8 @@
 #define ADF_MAX_RING_SIZE ADF_RING_SIZE_4M
 #define ADF_DEFAULT_RING_SIZE ADF_RING_SIZE_16K
 
-#define ADF_NUM_BUNDLES_PER_DEV         1
-/* Maximum number of qps for any service type */
-#define ADF_MAX_QPS_PER_BUNDLE		4
+/* Maximum number of qps on a device for any service type */
+#define ADF_MAX_QPS_ON_ANY_SERVICE	2
 #define ADF_RING_DIR_TX			0
 #define ADF_RING_DIR_RX			1
 
