@@ -774,7 +774,7 @@ ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
 		input->formatted.tunnel_type =
 			fdir_filter->input.flow.tunnel_flow.tunnel_type;
 		input->formatted.tni_vni =
-			fdir_filter->input.flow.tunnel_flow.tunnel_id;
+			fdir_filter->input.flow.tunnel_flow.tunnel_id >> 8;
 	}
 
 	return 0;
