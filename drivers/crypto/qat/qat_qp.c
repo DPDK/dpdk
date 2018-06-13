@@ -376,7 +376,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 
 	queue->max_inflights = ADF_MAX_INFLIGHTS(queue->queue_size,
 					ADF_BYTES_TO_MSG_SIZE(desc_size));
-	queue->modulo = ADF_RING_SIZE_MODULO(queue->queue_size);
+	queue->modulo_mask = (1 << ADF_RING_SIZE_MODULO(queue->queue_size)) - 1;
 
 	if (queue->max_inflights < 2) {
 		PMD_DRV_LOG(ERR, "Invalid num inflights");
@@ -401,11 +401,11 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 			queue->hw_queue_number, queue_base);
 
 	PMD_DRV_LOG(DEBUG, "RING: Name:%s, size in CSR: %u, in bytes %u,"
-			" nb msgs %u, msg_size %u, max_inflights %u modulo %u",
+		" nb msgs %u, msg_size %u, max_inflights %u modulo mask %u",
 			queue->memz_name,
 			queue->queue_size, queue_size_bytes,
 			qp_conf->nb_descriptors, desc_size,
-			queue->max_inflights, queue->modulo);
+			queue->max_inflights, queue->modulo_mask);
 
 	return 0;
 
@@ -494,13 +494,9 @@ static void adf_configure_queues(struct qat_qp *qp)
 			queue->hw_queue_number, queue_config);
 }
 
-
-static inline uint32_t adf_modulo(uint32_t data, uint32_t shift)
+static inline uint32_t adf_modulo(uint32_t data, uint32_t modulo_mask)
 {
-	uint32_t div = data >> shift;
-	uint32_t mult = div << shift;
-
-	return data - mult;
+	return data & modulo_mask;
 }
 
 static inline void
@@ -584,7 +580,7 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 			goto kick_tail;
 		}
 
-		tail = adf_modulo(tail + queue->msg_size, queue->modulo);
+		tail = adf_modulo(tail + queue->msg_size, queue->modulo_mask);
 		ops++;
 		nb_ops_sent++;
 	}
@@ -620,7 +616,8 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 			tmp_qp->op_cookies[head / rx_queue->msg_size],
 			tmp_qp->qat_dev_gen);
 
-		head = adf_modulo(head + rx_queue->msg_size, rx_queue->modulo);
+		head = adf_modulo(head + rx_queue->msg_size,
+				  rx_queue->modulo_mask);
 
 		resp_msg = (uint8_t *)rx_queue->base_addr + head;
 		ops++;

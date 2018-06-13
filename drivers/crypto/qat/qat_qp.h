@@ -59,7 +59,7 @@ struct qat_queue {
 	rte_iova_t	base_phys_addr;		/* Queue physical address */
 	uint32_t	head;			/* Shadow copy of the head */
 	uint32_t	tail;			/* Shadow copy of the tail */
-	uint32_t	modulo;
+	uint32_t	modulo_mask;
 	uint32_t	msg_size;
 	uint16_t	max_inflights;
 	uint32_t	queue_size;
