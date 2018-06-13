@@ -20,11 +20,7 @@
 
 #define ADF_MAX_DESC				4096
 #define ADF_MIN_DESC				128
-#define ADF_SYM_TX_RING_DESC_SIZE		128
-#define ADF_SYM_RX_RING_DESC_SIZE		32
-#define ADF_SYM_TX_QUEUE_STARTOFF		2
-/* Offset from bundle start to 1st Sym Tx queue */
-#define ADF_SYM_RX_QUEUE_STARTOFF		10
+
 #define ADF_ARB_REG_SLOT			0x1000
 #define ADF_ARB_RINGSRVARBEN_OFFSET		0x19C
 
@@ -74,7 +70,7 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 		socket_id, RTE_MEMZONE_IOVA_CONTIG, queue_size);
 }
 
-static int qat_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
+int qat_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 		struct qat_qp_config *qat_qp_conf)
 {
 	struct qat_qp *qp;
@@ -174,71 +170,7 @@ create_err:
 	return -EFAULT;
 }
 
-
-
-int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
-	const struct rte_cryptodev_qp_conf *qp_conf,
-	int socket_id, struct rte_mempool *session_pool __rte_unused)
-{
-	struct qat_qp *qp;
-	int ret = 0;
-	uint32_t i;
-	struct qat_qp_config qat_qp_conf;
-
-	/* If qp is already in use free ring memory and qp metadata. */
-	if (dev->data->queue_pairs[qp_id] != NULL) {
-		ret = qat_sym_qp_release(dev, qp_id);
-		if (ret < 0)
-			return ret;
-	}
-	if (qp_id >= (ADF_NUM_SYM_QPS_PER_BUNDLE *
-					ADF_NUM_BUNDLES_PER_DEV)) {
-		PMD_DRV_LOG(ERR, "qp_id %u invalid for this device", qp_id);
-		return -EINVAL;
-	}
-
-
-	qat_qp_conf.hw_bundle_num = (qp_id/ADF_NUM_SYM_QPS_PER_BUNDLE);
-	qat_qp_conf.tx_ring_num = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
-			ADF_SYM_TX_QUEUE_STARTOFF;
-	qat_qp_conf.rx_ring_num = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
-			ADF_SYM_RX_QUEUE_STARTOFF;
-	qat_qp_conf.tx_msg_size = ADF_SYM_TX_RING_DESC_SIZE;
-	qat_qp_conf.rx_msg_size = ADF_SYM_RX_RING_DESC_SIZE;
-	qat_qp_conf.build_request = qat_sym_build_request;
-	qat_qp_conf.process_response = qat_sym_process_response;
-	qat_qp_conf.cookie_size = sizeof(struct qat_sym_op_cookie);
-	qat_qp_conf.nb_descriptors = qp_conf->nb_descriptors;
-	qat_qp_conf.socket_id = socket_id;
-	qat_qp_conf.service_str = "sym";
-
-	ret = qat_qp_setup(dev, qp_id, &qat_qp_conf);
-	if (ret != 0)
-		return ret;
-
-	qp = (struct qat_qp *)dev->data->queue_pairs[qp_id];
-
-	for (i = 0; i < qp->nb_descriptors; i++) {
-
-		struct qat_sym_op_cookie *sql_cookie =
-				qp->op_cookies[i];
-
-		sql_cookie->qat_sgl_src_phys_addr =
-				rte_mempool_virt2iova(sql_cookie) +
-				offsetof(struct qat_sym_op_cookie,
-				qat_sgl_list_src);
-
-		sql_cookie->qat_sgl_dst_phys_addr =
-				rte_mempool_virt2iova(sql_cookie) +
-				offsetof(struct qat_sym_op_cookie,
-				qat_sgl_list_dst);
-	}
-
-	return ret;
-
-}
-
-static int qat_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
+int qat_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 {
 	struct qat_qp *qp =
 			(struct qat_qp *)dev->data->queue_pairs[queue_pair_id];
@@ -273,10 +205,6 @@ static int qat_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 }
 
 
-int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
-{
-	return qat_qp_release(dev, queue_pair_id);
-}
 
 
 static void qat_queue_delete(struct qat_queue *queue)

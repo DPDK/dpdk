@@ -77,4 +77,10 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops);
 uint16_t
 qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops);
 
+int
+qat_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id);
+
+int
+qat_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
+		struct qat_qp_config *qat_qp_conf);
 #endif /* _QAT_QP_H_ */
