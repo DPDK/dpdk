@@ -2,30 +2,8 @@
  * Copyright(c) 2015-2018 Intel Corporation
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <strings.h>
-#include <string.h>
-#include <inttypes.h>
-#include <errno.h>
-#include <sys/queue.h>
-#include <stdarg.h>
-
-#include <rte_common.h>
-#include <rte_log.h>
-#include <rte_debug.h>
-#include <rte_memory.h>
-#include <rte_tailq.h>
-#include <rte_malloc.h>
-#include <rte_launch.h>
-#include <rte_eal.h>
-#include <rte_per_lcore.h>
-#include <rte_lcore.h>
-#include <rte_branch_prediction.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
-#include <rte_string_fns.h>
-#include <rte_spinlock.h>
 #include <rte_hexdump.h>
 #include <rte_crypto_sym.h>
 #include <rte_byteorder.h>
