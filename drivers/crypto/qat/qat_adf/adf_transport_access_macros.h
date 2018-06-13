@@ -52,6 +52,8 @@
 
 #define ADF_NUM_BUNDLES_PER_DEV         1
 #define ADF_NUM_SYM_QPS_PER_BUNDLE      2
+#define ADF_RING_DIR_TX			0
+#define ADF_RING_DIR_RX			1
 
 /* Valid internal msg size values */
 #define ADF_MSG_SIZE_32 0x01

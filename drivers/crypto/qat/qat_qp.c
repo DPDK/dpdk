@@ -18,8 +18,8 @@
 
 #include "adf_transport_access_macros.h"
 
-#define ADF_MAX_SYM_DESC			4096
-#define ADF_MIN_SYM_DESC			128
+#define ADF_MAX_DESC				4096
+#define ADF_MIN_DESC				128
 #define ADF_SYM_TX_RING_DESC_SIZE		128
 #define ADF_SYM_RX_RING_DESC_SIZE		32
 #define ADF_SYM_TX_QUEUE_STARTOFF		2
@@ -34,16 +34,9 @@
 
 static int qat_qp_check_queue_alignment(uint64_t phys_addr,
 	uint32_t queue_size_bytes);
-static int qat_tx_queue_create(struct rte_cryptodev *dev,
-	struct qat_queue *queue, uint8_t id, uint32_t nb_desc,
-	int socket_id);
-static int qat_rx_queue_create(struct rte_cryptodev *dev,
-	struct qat_queue *queue, uint8_t id, uint32_t nb_desc,
-	int socket_id);
 static void qat_queue_delete(struct qat_queue *queue);
 static int qat_queue_create(struct rte_cryptodev *dev,
-	struct qat_queue *queue, uint32_t nb_desc, uint8_t desc_size,
-	int socket_id);
+	struct qat_queue *queue, struct qat_qp_config *, uint8_t dir);
 static int adf_verify_queue_size(uint32_t msg_size, uint32_t msg_num,
 	uint32_t *queue_size_for_csr);
 static void adf_configure_queues(struct qat_qp *queue);
@@ -81,29 +74,19 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 		socket_id, RTE_MEMZONE_IOVA_CONTIG, queue_size);
 }
 
-int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
-	const struct rte_cryptodev_qp_conf *qp_conf,
-	int socket_id, struct rte_mempool *session_pool __rte_unused)
+static int qat_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
+		struct qat_qp_config *qat_qp_conf)
 {
 	struct qat_qp *qp;
 	struct rte_pci_device *pci_dev;
-	int ret;
 	char op_cookie_pool_name[RTE_RING_NAMESIZE];
 	uint32_t i;
 
-	PMD_INIT_FUNC_TRACE();
 
-	/* If qp is already in use free ring memory and qp metadata. */
-	if (dev->data->queue_pairs[queue_pair_id] != NULL) {
-		ret = qat_sym_qp_release(dev, queue_pair_id);
-		if (ret < 0)
-			return ret;
-	}
-
-	if ((qp_conf->nb_descriptors > ADF_MAX_SYM_DESC) ||
-		(qp_conf->nb_descriptors < ADF_MIN_SYM_DESC)) {
+	if ((qat_qp_conf->nb_descriptors > ADF_MAX_DESC) ||
+		(qat_qp_conf->nb_descriptors < ADF_MIN_DESC)) {
 		PMD_DRV_LOG(ERR, "Can't create qp for %u descriptors",
-				qp_conf->nb_descriptors);
+				qat_qp_conf->nb_descriptors);
 		return -EINVAL;
 	}
 
@@ -115,13 +98,6 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 		return -EINVAL;
 	}
 
-	if (queue_pair_id >=
-			(ADF_NUM_SYM_QPS_PER_BUNDLE *
-					ADF_NUM_BUNDLES_PER_DEV)) {
-		PMD_DRV_LOG(ERR, "qp_id %u invalid for this device",
-				queue_pair_id);
-		return -EINVAL;
-	}
 	/* Allocate the queue pair data structure. */
 	qp = rte_zmalloc("qat PMD qp metadata",
 			sizeof(*qp), RTE_CACHE_LINE_SIZE);
@@ -129,9 +105,9 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 		PMD_DRV_LOG(ERR, "Failed to alloc mem for qp struct");
 		return -ENOMEM;
 	}
-	qp->nb_descriptors = qp_conf->nb_descriptors;
+	qp->nb_descriptors = qat_qp_conf->nb_descriptors;
 	qp->op_cookies = rte_zmalloc("qat PMD op cookie pointer",
-			qp_conf->nb_descriptors * sizeof(*qp->op_cookies),
+			qat_qp_conf->nb_descriptors * sizeof(*qp->op_cookies),
 			RTE_CACHE_LINE_SIZE);
 	if (qp->op_cookies == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to alloc mem for cookie");
@@ -142,15 +118,15 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	qp->mmap_bar_addr = pci_dev->mem_resource[0].addr;
 	qp->inflights16 = 0;
 
-	if (qat_tx_queue_create(dev, &(qp->tx_q),
-		queue_pair_id, qp_conf->nb_descriptors, socket_id) != 0) {
+	if (qat_queue_create(dev, &(qp->tx_q), qat_qp_conf,
+					ADF_RING_DIR_TX) != 0) {
 		PMD_INIT_LOG(ERR, "Tx queue create failed "
 				"queue_pair_id=%u", queue_pair_id);
 		goto create_err;
 	}
 
-	if (qat_rx_queue_create(dev, &(qp->rx_q),
-		queue_pair_id, qp_conf->nb_descriptors, socket_id) != 0) {
+	if (qat_queue_create(dev, &(qp->rx_q), qat_qp_conf,
+					ADF_RING_DIR_RX) != 0) {
 		PMD_DRV_LOG(ERR, "Rx queue create failed "
 				"queue_pair_id=%hu", queue_pair_id);
 		qat_queue_delete(&(qp->tx_q));
@@ -159,16 +135,17 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 
 	adf_configure_queues(qp);
 	adf_queue_arb_enable(&qp->tx_q, qp->mmap_bar_addr);
-	snprintf(op_cookie_pool_name, RTE_RING_NAMESIZE, "%s_qp_op_%d_%hu",
-		pci_dev->driver->driver.name, dev->data->dev_id,
-		queue_pair_id);
+
+	snprintf(op_cookie_pool_name, RTE_RING_NAMESIZE, "%s_%s_qp_op_%d_%hu",
+		pci_dev->driver->driver.name, qat_qp_conf->service_str,
+		dev->data->dev_id, queue_pair_id);
 
 	qp->op_cookie_pool = rte_mempool_lookup(op_cookie_pool_name);
 	if (qp->op_cookie_pool == NULL)
 		qp->op_cookie_pool = rte_mempool_create(op_cookie_pool_name,
 				qp->nb_descriptors,
-				sizeof(struct qat_sym_op_cookie), 64, 0,
-				NULL, NULL, NULL, NULL, socket_id,
+				qat_qp_conf->cookie_size, 64, 0,
+				NULL, NULL, NULL, NULL, qat_qp_conf->socket_id,
 				0);
 	if (!qp->op_cookie_pool) {
 		PMD_DRV_LOG(ERR, "QAT PMD Cannot create"
@@ -181,6 +158,67 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 			PMD_DRV_LOG(ERR, "QAT PMD Cannot get op_cookie");
 			goto create_err;
 		}
+	}
+
+	struct qat_pmd_private *internals
+		= dev->data->dev_private;
+	qp->qat_dev_gen = internals->qat_dev_gen;
+	qp->build_request = qat_qp_conf->build_request;
+	qp->process_response = qat_qp_conf->process_response;
+
+	dev->data->queue_pairs[queue_pair_id] = qp;
+	return 0;
+
+create_err:
+	rte_free(qp);
+	return -EFAULT;
+}
+
+
+
+int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
+	const struct rte_cryptodev_qp_conf *qp_conf,
+	int socket_id, struct rte_mempool *session_pool __rte_unused)
+{
+	struct qat_qp *qp;
+	int ret = 0;
+	uint32_t i;
+	struct qat_qp_config qat_qp_conf;
+
+	/* If qp is already in use free ring memory and qp metadata. */
+	if (dev->data->queue_pairs[qp_id] != NULL) {
+		ret = qat_sym_qp_release(dev, qp_id);
+		if (ret < 0)
+			return ret;
+	}
+	if (qp_id >= (ADF_NUM_SYM_QPS_PER_BUNDLE *
+					ADF_NUM_BUNDLES_PER_DEV)) {
+		PMD_DRV_LOG(ERR, "qp_id %u invalid for this device", qp_id);
+		return -EINVAL;
+	}
+
+
+	qat_qp_conf.hw_bundle_num = (qp_id/ADF_NUM_SYM_QPS_PER_BUNDLE);
+	qat_qp_conf.tx_ring_num = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
+			ADF_SYM_TX_QUEUE_STARTOFF;
+	qat_qp_conf.rx_ring_num = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
+			ADF_SYM_RX_QUEUE_STARTOFF;
+	qat_qp_conf.tx_msg_size = ADF_SYM_TX_RING_DESC_SIZE;
+	qat_qp_conf.rx_msg_size = ADF_SYM_RX_RING_DESC_SIZE;
+	qat_qp_conf.build_request = qat_sym_build_request;
+	qat_qp_conf.process_response = qat_sym_process_response;
+	qat_qp_conf.cookie_size = sizeof(struct qat_sym_op_cookie);
+	qat_qp_conf.nb_descriptors = qp_conf->nb_descriptors;
+	qat_qp_conf.socket_id = socket_id;
+	qat_qp_conf.service_str = "sym";
+
+	ret = qat_qp_setup(dev, qp_id, &qat_qp_conf);
+	if (ret != 0)
+		return ret;
+
+	qp = (struct qat_qp *)dev->data->queue_pairs[qp_id];
+
+	for (i = 0; i < qp->nb_descriptors; i++) {
 
 		struct qat_sym_op_cookie *sql_cookie =
 				qp->op_cookies[i];
@@ -196,24 +234,11 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 				qat_sgl_list_dst);
 	}
 
-	struct qat_pmd_private *internals
-		= dev->data->dev_private;
-	qp->qat_dev_gen = internals->qat_dev_gen;
-	qp->build_request = qat_sym_build_request;
-	qp->process_response = qat_sym_process_response;
+	return ret;
 
-	dev->data->queue_pairs[queue_pair_id] = qp;
-	return 0;
-
-create_err:
-	if (qp->op_cookie_pool)
-		rte_mempool_free(qp->op_cookie_pool);
-	rte_free(qp->op_cookies);
-	rte_free(qp);
-	return -EFAULT;
 }
 
-int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
+static int qat_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 {
 	struct qat_qp *qp =
 			(struct qat_qp *)dev->data->queue_pairs[queue_pair_id];
@@ -247,37 +272,12 @@ int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 	return 0;
 }
 
-static int qat_tx_queue_create(struct rte_cryptodev *dev,
-	struct qat_queue *queue, uint8_t qp_id,
-	uint32_t nb_desc, int socket_id)
-{
-	PMD_INIT_FUNC_TRACE();
-	queue->hw_bundle_number = qp_id/ADF_NUM_SYM_QPS_PER_BUNDLE;
-	queue->hw_queue_number = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
-						ADF_SYM_TX_QUEUE_STARTOFF;
-	PMD_DRV_LOG(DEBUG, "TX ring for %u msgs: qp_id %d, bundle %u, ring %u",
-		nb_desc, qp_id, queue->hw_bundle_number,
-		queue->hw_queue_number);
 
-	return qat_queue_create(dev, queue, nb_desc,
-				ADF_SYM_TX_RING_DESC_SIZE, socket_id);
+int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
+{
+	return qat_qp_release(dev, queue_pair_id);
 }
 
-static int qat_rx_queue_create(struct rte_cryptodev *dev,
-		struct qat_queue *queue, uint8_t qp_id, uint32_t nb_desc,
-		int socket_id)
-{
-	PMD_INIT_FUNC_TRACE();
-	queue->hw_bundle_number = qp_id/ADF_NUM_SYM_QPS_PER_BUNDLE;
-	queue->hw_queue_number = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
-						ADF_SYM_RX_QUEUE_STARTOFF;
-
-	PMD_DRV_LOG(DEBUG, "RX ring for %u msgs: qp id %d, bundle %u, ring %u",
-		nb_desc, qp_id, queue->hw_bundle_number,
-		queue->hw_queue_number);
-	return qat_queue_create(dev, queue, nb_desc,
-				ADF_SYM_RX_RING_DESC_SIZE, socket_id);
-}
 
 static void qat_queue_delete(struct qat_queue *queue)
 {
@@ -304,15 +304,21 @@ static void qat_queue_delete(struct qat_queue *queue)
 
 static int
 qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
-		uint32_t nb_desc, uint8_t desc_size, int socket_id)
+		struct qat_qp_config *qp_conf, uint8_t dir)
 {
 	uint64_t queue_base;
 	void *io_addr;
 	const struct rte_memzone *qp_mz;
-	uint32_t queue_size_bytes = nb_desc*desc_size;
 	struct rte_pci_device *pci_dev;
+	int ret = 0;
+	uint16_t desc_size = (dir == ADF_RING_DIR_TX ?
+				qp_conf->tx_msg_size : qp_conf->rx_msg_size);
+	uint32_t queue_size_bytes = (qp_conf->nb_descriptors)*(desc_size);
 
-	PMD_INIT_FUNC_TRACE();
+	queue->hw_bundle_number = qp_conf->hw_bundle_num;
+	queue->hw_queue_number = (dir == ADF_RING_DIR_TX ?
+			qp_conf->tx_ring_num : qp_conf->rx_ring_num);
+
 	if (desc_size > ADF_MSG_SIZE_TO_BYTES(ADF_MAX_MSG_SIZE)) {
 		PMD_DRV_LOG(ERR, "Invalid descriptor size %d", desc_size);
 		return -EINVAL;
@@ -323,11 +329,13 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 	/*
 	 * Allocate a memzone for the queue - create a unique name.
 	 */
-	snprintf(queue->memz_name, sizeof(queue->memz_name), "%s_%s_%d_%d_%d",
-		pci_dev->driver->driver.name, "qp_mem", dev->data->dev_id,
+	snprintf(queue->memz_name, sizeof(queue->memz_name),
+		"%s_%s_%s_%d_%d_%d",
+		pci_dev->driver->driver.name, qp_conf->service_str,
+		"qp_mem", dev->data->dev_id,
 		queue->hw_bundle_number, queue->hw_queue_number);
 	qp_mz = queue_dma_zone_reserve(queue->memz_name, queue_size_bytes,
-			socket_id);
+			qp_conf->socket_id);
 	if (qp_mz == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to allocate ring memzone");
 		return -ENOMEM;
@@ -340,27 +348,31 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 		PMD_DRV_LOG(ERR, "Invalid alignment on queue create "
 					" 0x%"PRIx64"\n",
 					queue->base_phys_addr);
-		return -EFAULT;
+		ret = -EFAULT;
+		goto queue_create_err;
 	}
 
-	if (adf_verify_queue_size(desc_size, nb_desc, &(queue->queue_size))
-			!= 0) {
+	if (adf_verify_queue_size(desc_size, qp_conf->nb_descriptors,
+			&(queue->queue_size)) != 0) {
 		PMD_DRV_LOG(ERR, "Invalid num inflights");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto queue_create_err;
 	}
 
 	queue->max_inflights = ADF_MAX_INFLIGHTS(queue->queue_size,
 					ADF_BYTES_TO_MSG_SIZE(desc_size));
 	queue->modulo = ADF_RING_SIZE_MODULO(queue->queue_size);
-	PMD_DRV_LOG(DEBUG, "RING size in CSR: %u, in bytes %u, nb msgs %u,"
-				" msg_size %u, max_inflights %u modulo %u",
-				queue->queue_size, queue_size_bytes,
-				nb_desc, desc_size, queue->max_inflights,
-				queue->modulo);
+	PMD_DRV_LOG(DEBUG, "RING: Name:%s, size in CSR: %u, in bytes %u,"
+			" nb msgs %u, msg_size %u, max_inflights %u modulo %u",
+			queue->memz_name,
+			queue->queue_size, queue_size_bytes,
+			qp_conf->nb_descriptors, desc_size,
+			queue->max_inflights, queue->modulo);
 
 	if (queue->max_inflights < 2) {
 		PMD_DRV_LOG(ERR, "Invalid num inflights");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto queue_create_err;
 	}
 	queue->head = 0;
 	queue->tail = 0;
@@ -379,6 +391,10 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 	WRITE_CSR_RING_BASE(io_addr, queue->hw_bundle_number,
 			queue->hw_queue_number, queue_base);
 	return 0;
+
+queue_create_err:
+	rte_memzone_free(qp_mz);
+	return ret;
 }
 
 static int qat_qp_check_queue_alignment(uint64_t phys_addr,

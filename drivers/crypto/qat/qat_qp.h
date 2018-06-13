@@ -17,6 +17,23 @@ typedef int (*process_response_t)(void **ops,
 /**< Process a response descriptor and return the associated op. */
 
 /**
+ * Structure with data needed for creation of queue pair.
+ */
+struct qat_qp_config {
+	uint8_t hw_bundle_num;
+	uint8_t tx_ring_num;
+	uint8_t rx_ring_num;
+	uint16_t tx_msg_size;
+	uint16_t rx_msg_size;
+	uint32_t nb_descriptors;
+	uint32_t cookie_size;
+	int socket_id;
+	build_request_t build_request;
+	process_response_t process_response;
+	const char *service_str;
+};
+
+/**
  * Structure associated with each queue.
  */
 struct qat_queue {
