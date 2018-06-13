@@ -300,70 +300,91 @@ qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 	return qat_enqueue_op_burst(qp, (void **)ops, nb_ops);
 }
 
-uint16_t
-qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
-		uint16_t nb_ops)
+int
+qat_sym_process_response(void **op, uint8_t *resp,
+		__rte_unused void *op_cookie,
+		__rte_unused enum qat_device_gen qat_dev_gen)
+{
+
+	struct icp_qat_fw_comn_resp *resp_msg =
+			(struct icp_qat_fw_comn_resp *)resp;
+	struct rte_crypto_op *rx_op = (struct rte_crypto_op *)(uintptr_t)
+			(resp_msg->opaque_data);
+
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
+	rte_hexdump(stdout, "qat_response:", (uint8_t *)resp_msg,
+			sizeof(struct icp_qat_fw_comn_resp));
+#endif
+
+	if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
+			ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
+			resp_msg->comn_hdr.comn_status)) {
+
+		rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	} else {
+		struct qat_sym_session *sess = (struct qat_sym_session *)
+						get_session_private_data(
+						rx_op->sym->session,
+						cryptodev_qat_driver_id);
+
+		if (sess->bpi_ctx)
+			qat_bpicipher_postprocess(sess, rx_op);
+		rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	}
+	*op = (void *)rx_op;
+
+	return 0;
+}
+
+static uint16_t
+qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 {
 	struct qat_queue *rx_queue, *tx_queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
-	uint32_t msg_counter = 0;
-	struct rte_crypto_op *rx_op;
-	struct icp_qat_fw_comn_resp *resp_msg;
 	uint32_t head;
+	uint32_t resp_counter = 0;
+	uint8_t *resp_msg;
 
 	rx_queue = &(tmp_qp->rx_q);
 	tx_queue = &(tmp_qp->tx_q);
 	head = rx_queue->head;
-	resp_msg = (struct icp_qat_fw_comn_resp *)
-			((uint8_t *)rx_queue->base_addr + head);
+	resp_msg = (uint8_t *)rx_queue->base_addr + rx_queue->head;
 
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
-			msg_counter != nb_ops) {
-		rx_op = (struct rte_crypto_op *)(uintptr_t)
-				(resp_msg->opaque_data);
+			resp_counter != nb_ops) {
 
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
-		rte_hexdump(stdout, "qat_response:", (uint8_t *)resp_msg,
-			sizeof(struct icp_qat_fw_comn_resp));
-#endif
-		if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
-				ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
-					resp_msg->comn_hdr.comn_status)) {
-			rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-		} else {
-			struct qat_sym_session *sess =
-				(struct qat_sym_session *)
-					get_session_private_data(
-						rx_op->sym->session,
-						cryptodev_qat_driver_id);
-
-			if (sess->bpi_ctx)
-				qat_bpicipher_postprocess(sess, rx_op);
-			rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
-		}
+		tmp_qp->process_response(ops, resp_msg,
+			tmp_qp->op_cookies[head / rx_queue->msg_size],
+			tmp_qp->qat_dev_gen);
 
 		head = adf_modulo(head + rx_queue->msg_size, rx_queue->modulo);
-		resp_msg = (struct icp_qat_fw_comn_resp *)
-				((uint8_t *)rx_queue->base_addr + head);
-		*ops = rx_op;
+
+		resp_msg = (uint8_t *)rx_queue->base_addr + head;
 		ops++;
-		msg_counter++;
+		resp_counter++;
 	}
-	if (msg_counter > 0) {
+	if (resp_counter > 0) {
 		rx_queue->head = head;
-		tmp_qp->stats.dequeued_count += msg_counter;
-		rx_queue->nb_processed_responses += msg_counter;
-		tmp_qp->inflights16 -= msg_counter;
+		tmp_qp->stats.dequeued_count += resp_counter;
+		rx_queue->nb_processed_responses += resp_counter;
+		tmp_qp->inflights16 -= resp_counter;
 
 		if (rx_queue->nb_processed_responses > QAT_CSR_HEAD_WRITE_THRESH)
 			rxq_free_desc(tmp_qp, rx_queue);
 	}
 	/* also check if tail needs to be advanced */
 	if (tmp_qp->inflights16 <= QAT_CSR_TAIL_FORCE_WRITE_THRESH &&
-			tx_queue->tail != tx_queue->csr_tail) {
+		tx_queue->tail != tx_queue->csr_tail) {
 		txq_write_tail(tmp_qp, tx_queue);
 	}
-	return msg_counter;
+	return resp_counter;
+}
+
+uint16_t
+qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
+{
+	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
 }
 
 static inline int

@@ -198,6 +198,7 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 		= dev->data->dev_private;
 	qp->qat_dev_gen = internals->qat_dev_gen;
 	qp->build_request = qat_sym_build_request;
+	qp->process_response = qat_sym_process_response;
 
 	dev->data->queue_pairs[queue_pair_id] = qp;
 	return 0;

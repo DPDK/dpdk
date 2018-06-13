@@ -32,6 +32,11 @@ typedef int (*build_request_t)(void *op,
 		enum qat_device_gen qat_dev_gen);
 /**< Build a request from an op. */
 
+typedef int (*process_response_t)(void **ops,
+		uint8_t *resp, void *op_cookie,
+		enum qat_device_gen qat_dev_gen);
+/**< Process a response descriptor and return the associated op. */
+
 struct qat_sym_session;
 
 /**
@@ -69,12 +74,17 @@ struct qat_qp {
 	uint32_t nb_descriptors;
 	enum qat_device_gen qat_dev_gen;
 	build_request_t build_request;
+	process_response_t process_response;
 } __rte_cache_aligned;
 
 
 int
 qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		void *op_cookie, enum qat_device_gen qat_dev_gen);
+
+int
+qat_sym_process_response(void **op, uint8_t *resp,
+		__rte_unused void *op_cookie, enum qat_device_gen qat_dev_gen);
 
 void qat_sym_stats_get(struct rte_cryptodev *dev,
 	struct rte_cryptodev_stats *stats);
