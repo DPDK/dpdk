@@ -10014,6 +10014,60 @@ i40e_pctype_to_flowtype(const struct i40e_adapter *adapter,
 #define I40E_GL_SWR_PM_UP_THR_SF_VALUE   0x06060606
 #define I40E_GL_SWR_PM_UP_THR            0x269FBC
 
+/*
+ * GL_SWR_PM_UP_THR:
+ * The value is not impacted from the link speed, its value is set according
+ * to the total number of ports for a better pipe-monitor configuration.
+ */
+static bool
+i40e_get_swr_pm_cfg(struct i40e_hw *hw, uint32_t *value)
+{
+#define I40E_GL_SWR_PM_EF_DEVICE(dev) \
+		.device_id = (dev),   \
+		.val = I40E_GL_SWR_PM_UP_THR_EF_VALUE
+
+#define I40E_GL_SWR_PM_SF_DEVICE(dev) \
+		.device_id = (dev),   \
+		.val = I40E_GL_SWR_PM_UP_THR_SF_VALUE
+
+	static const struct {
+		uint16_t device_id;
+		uint32_t val;
+	} swr_pm_table[] = {
+		{ I40E_GL_SWR_PM_EF_DEVICE(I40E_DEV_ID_SFP_XL710) },
+		{ I40E_GL_SWR_PM_EF_DEVICE(I40E_DEV_ID_KX_C) },
+		{ I40E_GL_SWR_PM_EF_DEVICE(I40E_DEV_ID_10G_BASE_T) },
+		{ I40E_GL_SWR_PM_EF_DEVICE(I40E_DEV_ID_10G_BASE_T4) },
+
+		{ I40E_GL_SWR_PM_SF_DEVICE(I40E_DEV_ID_KX_B) },
+		{ I40E_GL_SWR_PM_SF_DEVICE(I40E_DEV_ID_QSFP_A) },
+		{ I40E_GL_SWR_PM_SF_DEVICE(I40E_DEV_ID_QSFP_B) },
+		{ I40E_GL_SWR_PM_SF_DEVICE(I40E_DEV_ID_20G_KR2) },
+		{ I40E_GL_SWR_PM_SF_DEVICE(I40E_DEV_ID_20G_KR2_A) },
+		{ I40E_GL_SWR_PM_SF_DEVICE(I40E_DEV_ID_25G_B) },
+		{ I40E_GL_SWR_PM_SF_DEVICE(I40E_DEV_ID_25G_SFP28) },
+	};
+	uint32_t i;
+
+	if (value == NULL) {
+		PMD_DRV_LOG(ERR, "value is NULL");
+		return false;
+	}
+
+	for (i = 0; i < RTE_DIM(swr_pm_table); i++) {
+		if (hw->device_id == swr_pm_table[i].device_id) {
+			*value = swr_pm_table[i].val;
+
+			PMD_DRV_LOG(DEBUG, "Device 0x%x with GL_SWR_PM_UP_THR "
+				    "value - 0x%08x",
+				    hw->device_id, *value);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static int
 i40e_dev_sync_phy_type(struct i40e_hw *hw)
 {
@@ -10078,13 +10132,16 @@ i40e_configure_registers(struct i40e_hw *hw)
 		}
 
 		if (reg_table[i].addr == I40E_GL_SWR_PM_UP_THR) {
-			if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types) || /* For XL710 */
-			    I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types)) /* For XXV710 */
-				reg_table[i].val =
-					I40E_GL_SWR_PM_UP_THR_SF_VALUE;
-			else /* For X710 */
-				reg_table[i].val =
-					I40E_GL_SWR_PM_UP_THR_EF_VALUE;
+			uint32_t cfg_val;
+
+			if (!i40e_get_swr_pm_cfg(hw, &cfg_val)) {
+				PMD_DRV_LOG(DEBUG, "Device 0x%x skips "
+					    "GL_SWR_PM_UP_THR value fixup",
+					    hw->device_id);
+				continue;
+			}
+
+			reg_table[i].val = cfg_val;
 		}
 
 		ret = i40e_aq_debug_read_register(hw, reg_table[i].addr,
