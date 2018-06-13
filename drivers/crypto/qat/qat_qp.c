@@ -13,7 +13,9 @@
 #include <rte_prefetch.h>
 
 #include "qat_logs.h"
+#include "qat_qp.h"
 #include "qat_sym.h"
+
 #include "adf_transport_access_macros.h"
 
 #define ADF_MAX_SYM_DESC			4096
@@ -449,4 +451,154 @@ static void adf_configure_queues(struct qat_qp *qp)
 
 	WRITE_CSR_RING_CONFIG(qp->mmap_bar_addr, queue->hw_bundle_number,
 			queue->hw_queue_number, queue_config);
+}
+
+
+static inline uint32_t adf_modulo(uint32_t data, uint32_t shift)
+{
+	uint32_t div = data >> shift;
+	uint32_t mult = div << shift;
+
+	return data - mult;
+}
+
+static inline void
+txq_write_tail(struct qat_qp *qp, struct qat_queue *q) {
+	WRITE_CSR_RING_TAIL(qp->mmap_bar_addr, q->hw_bundle_number,
+			q->hw_queue_number, q->tail);
+	q->nb_pending_requests = 0;
+	q->csr_tail = q->tail;
+}
+
+static inline
+void rxq_free_desc(struct qat_qp *qp, struct qat_queue *q)
+{
+	uint32_t old_head, new_head;
+	uint32_t max_head;
+
+	old_head = q->csr_head;
+	new_head = q->head;
+	max_head = qp->nb_descriptors * q->msg_size;
+
+	/* write out free descriptors */
+	void *cur_desc = (uint8_t *)q->base_addr + old_head;
+
+	if (new_head < old_head) {
+		memset(cur_desc, ADF_RING_EMPTY_SIG_BYTE, max_head - old_head);
+		memset(q->base_addr, ADF_RING_EMPTY_SIG_BYTE, new_head);
+	} else {
+		memset(cur_desc, ADF_RING_EMPTY_SIG_BYTE, new_head - old_head);
+	}
+	q->nb_processed_responses = 0;
+	q->csr_head = new_head;
+
+	/* write current head to CSR */
+	WRITE_CSR_RING_HEAD(qp->mmap_bar_addr, q->hw_bundle_number,
+			    q->hw_queue_number, new_head);
+}
+
+uint16_t
+qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
+{
+	register struct qat_queue *queue;
+	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
+	register uint32_t nb_ops_sent = 0;
+	register int ret;
+	uint16_t nb_ops_possible = nb_ops;
+	register uint8_t *base_addr;
+	register uint32_t tail;
+	int overflow;
+
+	if (unlikely(nb_ops == 0))
+		return 0;
+
+	/* read params used a lot in main loop into registers */
+	queue = &(tmp_qp->tx_q);
+	base_addr = (uint8_t *)queue->base_addr;
+	tail = queue->tail;
+
+	/* Find how many can actually fit on the ring */
+	tmp_qp->inflights16 += nb_ops;
+	overflow = tmp_qp->inflights16 - queue->max_inflights;
+	if (overflow > 0) {
+		tmp_qp->inflights16 -= overflow;
+		nb_ops_possible = nb_ops - overflow;
+		if (nb_ops_possible == 0)
+			return 0;
+	}
+
+	while (nb_ops_sent != nb_ops_possible) {
+		ret = tmp_qp->build_request(*ops, base_addr + tail,
+				tmp_qp->op_cookies[tail / queue->msg_size],
+				tmp_qp->qat_dev_gen);
+		if (ret != 0) {
+			tmp_qp->stats.enqueue_err_count++;
+			/*
+			 * This message cannot be enqueued,
+			 * decrease number of ops that wasn't sent
+			 */
+			tmp_qp->inflights16 -= nb_ops_possible - nb_ops_sent;
+			if (nb_ops_sent == 0)
+				return 0;
+			goto kick_tail;
+		}
+
+		tail = adf_modulo(tail + queue->msg_size, queue->modulo);
+		ops++;
+		nb_ops_sent++;
+	}
+kick_tail:
+	queue->tail = tail;
+	tmp_qp->stats.enqueued_count += nb_ops_sent;
+	queue->nb_pending_requests += nb_ops_sent;
+	if (tmp_qp->inflights16 < QAT_CSR_TAIL_FORCE_WRITE_THRESH ||
+		    queue->nb_pending_requests > QAT_CSR_TAIL_WRITE_THRESH) {
+		txq_write_tail(tmp_qp, queue);
+	}
+	return nb_ops_sent;
+}
+
+uint16_t
+qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
+{
+	struct qat_queue *rx_queue, *tx_queue;
+	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
+	uint32_t head;
+	uint32_t resp_counter = 0;
+	uint8_t *resp_msg;
+
+	rx_queue = &(tmp_qp->rx_q);
+	tx_queue = &(tmp_qp->tx_q);
+	head = rx_queue->head;
+	resp_msg = (uint8_t *)rx_queue->base_addr + rx_queue->head;
+
+	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
+			resp_counter != nb_ops) {
+
+		tmp_qp->process_response(ops, resp_msg,
+			tmp_qp->op_cookies[head / rx_queue->msg_size],
+			tmp_qp->qat_dev_gen);
+
+		head = adf_modulo(head + rx_queue->msg_size, rx_queue->modulo);
+
+		resp_msg = (uint8_t *)rx_queue->base_addr + head;
+		ops++;
+		resp_counter++;
+	}
+	if (resp_counter > 0) {
+		rx_queue->head = head;
+		tmp_qp->stats.dequeued_count += resp_counter;
+		rx_queue->nb_processed_responses += resp_counter;
+		tmp_qp->inflights16 -= resp_counter;
+
+		if (rx_queue->nb_processed_responses >
+						QAT_CSR_HEAD_WRITE_THRESH)
+			rxq_free_desc(tmp_qp, rx_queue);
+	}
+	/* also check if tail needs to be advanced */
+	if (tmp_qp->inflights16 <= QAT_CSR_TAIL_FORCE_WRITE_THRESH &&
+		tx_queue->tail != tx_queue->csr_tail) {
+		txq_write_tail(tmp_qp, tx_queue);
+	}
+	return resp_counter;
 }
