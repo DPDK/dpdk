@@ -359,3 +359,15 @@ length of data to authenticate (op.sym.auth.data.length) must be the length
 of all the items described above, including the padding at the end.
 Also, offset of data to authenticate (op.sym.auth.data.offset)
 must be such that points at the start of the COUNT bytes.
+
+Device and driver naming
+------------------------
+
+The qat crypto driver name is "crypto_qat".
+This name is passed to the dpdk-test-crypto-perf tool in the -devtype parameter.
+The rte_cryptodev_devices_get() can return the devices exposed by a driver.
+
+Each qat crypto device has a unique name, in format
+<pci bdf>_<service>, e.g. "0000:41:01.0_qat_sym".
+This name can be passed to rte_cryptodev_get_dev_id() to get the device_id.
+This is also the format of the slave parameter passed to the crypto scheduler.
