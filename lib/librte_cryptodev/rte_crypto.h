@@ -73,26 +73,37 @@ enum rte_crypto_op_sess_type {
  * rte_cryptodev_enqueue_burst() / rte_cryptodev_dequeue_burst() .
  */
 struct rte_crypto_op {
-	uint8_t type;
-	/**< operation type */
-	uint8_t status;
-	/**<
-	 * operation status - this is reset to
-	 * RTE_CRYPTO_OP_STATUS_NOT_PROCESSED on allocation from mempool and
-	 * will be set to RTE_CRYPTO_OP_STATUS_SUCCESS after crypto operation
-	 * is successfully processed by a crypto PMD
-	 */
-	uint8_t sess_type;
-	/**< operation session type */
-	uint16_t private_data_offset;
-	/**< Offset to indicate start of private data (if any). The offset
-	 * is counted from the start of the rte_crypto_op including IV.
-	 * The private data may be used by the application to store
-	 * information which should remain untouched in the library/driver
-	 */
-
-	uint8_t reserved[3];
-	/**< Reserved bytes to fill 64 bits for future additions */
+	__extension__
+	union {
+		uint64_t raw;
+		__extension__
+		struct {
+			uint8_t type;
+			/**< operation type */
+			uint8_t status;
+			/**<
+			 * operation status - this is reset to
+			 * RTE_CRYPTO_OP_STATUS_NOT_PROCESSED on allocation
+			 * from mempool and will be set to
+			 * RTE_CRYPTO_OP_STATUS_SUCCESS after crypto operation
+			 * is successfully processed by a crypto PMD
+			 */
+			uint8_t sess_type;
+			/**< operation session type */
+			uint8_t reserved[3];
+			/**< Reserved bytes to fill 64 bits for
+			 * future additions
+			 */
+			uint16_t private_data_offset;
+			/**< Offset to indicate start of private data (if any).
+			 * The offset is counted from the start of the
+			 * rte_crypto_op including IV.
+			 * The private data may be used by the application
+			 * to store information which should remain untouched
+			 * in the library/driver
+			 */
+		};
+	};
 	struct rte_mempool *mempool;
 	/**< crypto operation mempool which operation is allocated from */
 
