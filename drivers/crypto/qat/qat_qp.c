@@ -13,7 +13,7 @@
 #include <rte_prefetch.h>
 
 #include "qat_logs.h"
-#include "qat_crypto.h"
+#include "qat_sym.h"
 #include "adf_transport_access_macros.h"
 
 #define ADF_MAX_SYM_DESC			4096

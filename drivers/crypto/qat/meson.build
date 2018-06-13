@@ -5,7 +5,7 @@ dep = dependency('libcrypto', required: false)
 if not dep.found()
 	build = false
 endif
-sources = files('qat_crypto.c', 'qat_qp.c',
+sources = files('qat_sym.c', 'qat_qp.c',
 		'qat_sym_session.c',
 		'rte_qat_cryptodev.c',
 		'qat_device.c')

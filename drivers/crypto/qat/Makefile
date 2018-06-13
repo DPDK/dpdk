@@ -21,7 +21,7 @@ LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_pci -lrte_bus_pci
 
 # library source files
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_crypto.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_device.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_qp.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym_session.c

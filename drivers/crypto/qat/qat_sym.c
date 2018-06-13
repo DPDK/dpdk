@@ -6,15 +6,14 @@
 #include <rte_mbuf.h>
 #include <rte_hexdump.h>
 #include <rte_crypto_sym.h>
-#include <rte_byteorder.h>
-#include <rte_pci.h>
 #include <rte_bus_pci.h>
+#include <rte_byteorder.h>
 
 #include <openssl/evp.h>
 
 #include "qat_logs.h"
 #include "qat_sym_session.h"
-#include "qat_crypto.h"
+#include "qat_sym.h"
 #include "adf_transport_access_macros.h"
 
 #define BYTE_LENGTH    8
@@ -500,8 +499,6 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		return -EINVAL;
 	}
 
-
-
 	qat_req = (struct icp_qat_fw_la_bulk_req *)out_msg;
 	rte_mov128((uint8_t *)qat_req, (const uint8_t *)&(ctx->fw_req));
 	qat_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
@@ -512,11 +509,11 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) {
 		/* AES-GCM or AES-CCM */
 		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
-				ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64 ||
-				(ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_AES128
-				&& ctx->qat_mode == ICP_QAT_HW_CIPHER_CTR_MODE
-				&& ctx->qat_hash_alg ==
-						ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC)) {
+			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64 ||
+			(ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_AES128
+			&& ctx->qat_mode == ICP_QAT_HW_CIPHER_CTR_MODE
+			&& ctx->qat_hash_alg ==
+					ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC)) {
 			do_aead = 1;
 		} else {
 			do_auth = 1;
@@ -642,7 +639,6 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 					qat_req->comn_hdr.serv_specif_flags,
 					ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
 			}
-
 			set_cipher_iv(ctx->cipher_iv.length,
 					ctx->cipher_iv.offset,
 					cipher_param, op, qat_req);
@@ -650,15 +646,14 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		} else if (ctx->qat_hash_alg ==
 				ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC) {
 
-			/* In case of AES-CCM this may point to user selected memory
-			 * or iv offset in cypto_op
+			/* In case of AES-CCM this may point to user selected
+			 * memory or iv offset in cypto_op
 			 */
 			uint8_t *aad_data = op->sym->aead.aad.data;
 			/* This is true AAD length, it not includes 18 bytes of
 			 * preceding data
 			 */
 			uint8_t aad_ccm_real_len = 0;
-
 			uint8_t aad_len_field_sz = 0;
 			uint32_t msg_len_be =
 					rte_bswap32(op->sym->aead.data.length);
@@ -670,33 +665,36 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 					ICP_QAT_HW_CCM_AAD_LEN_INFO;
 			} else {
 				/*
-				 * aad_len not greater than 18, so no actual aad data,
-				 * then use IV after op for B0 block
+				 * aad_len not greater than 18, so no actual aad
+				 *  data, then use IV after op for B0 block
 				 */
-				aad_data = rte_crypto_op_ctod_offset(op, uint8_t *,
+				aad_data = rte_crypto_op_ctod_offset(op,
+						uint8_t *,
 						ctx->cipher_iv.offset);
 				aad_phys_addr_aead =
 						rte_crypto_op_ctophys_offset(op,
-								ctx->cipher_iv.offset);
+							ctx->cipher_iv.offset);
 			}
 
-			uint8_t q = ICP_QAT_HW_CCM_NQ_CONST - ctx->cipher_iv.length;
+			uint8_t q = ICP_QAT_HW_CCM_NQ_CONST -
+							ctx->cipher_iv.length;
 
-			aad_data[0] = ICP_QAT_HW_CCM_BUILD_B0_FLAGS(aad_len_field_sz,
+			aad_data[0] = ICP_QAT_HW_CCM_BUILD_B0_FLAGS(
+							aad_len_field_sz,
 							ctx->digest_length, q);
 
 			if (q > ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE) {
 				memcpy(aad_data	+ ctx->cipher_iv.length +
-					ICP_QAT_HW_CCM_NONCE_OFFSET
-					+ (q - ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE),
-					(uint8_t *)&msg_len_be,
-					ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE);
+				    ICP_QAT_HW_CCM_NONCE_OFFSET +
+				    (q - ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE),
+				    (uint8_t *)&msg_len_be,
+				    ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE);
 			} else {
 				memcpy(aad_data	+ ctx->cipher_iv.length +
-					ICP_QAT_HW_CCM_NONCE_OFFSET,
-					(uint8_t *)&msg_len_be
-					+ (ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE
-					- q), q);
+				    ICP_QAT_HW_CCM_NONCE_OFFSET,
+				    (uint8_t *)&msg_len_be
+				    + (ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE
+				    - q), q);
 			}
 
 			if (aad_len_field_sz > 0) {
@@ -709,10 +707,10 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 					uint8_t pad_idx = 0;
 
 					pad_len = ICP_QAT_HW_CCM_AAD_B0_LEN -
-						((aad_ccm_real_len + aad_len_field_sz) %
-							ICP_QAT_HW_CCM_AAD_B0_LEN);
+					((aad_ccm_real_len + aad_len_field_sz) %
+						ICP_QAT_HW_CCM_AAD_B0_LEN);
 					pad_idx = ICP_QAT_HW_CCM_AAD_B0_LEN +
-						aad_ccm_real_len + aad_len_field_sz;
+					    aad_ccm_real_len + aad_len_field_sz;
 					memset(&aad_data[pad_idx],
 							0, pad_len);
 				}
