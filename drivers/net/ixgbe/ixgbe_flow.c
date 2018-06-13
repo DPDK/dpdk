@@ -1739,7 +1739,8 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 				return -rte_errno;
 			}
 		} else {
-			if (item->type != RTE_FLOW_ITEM_TYPE_IPV4) {
+			if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+					item->type != RTE_FLOW_ITEM_TYPE_VLAN) {
 				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
