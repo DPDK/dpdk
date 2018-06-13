@@ -21,9 +21,6 @@ typedef int (*build_request_t)(void *op,
 		enum qat_device_gen qat_dev_gen);
 /**< Build a request from an op. */
 
-typedef int (*process_response_t)(void **ops, uint8_t *resp);
-/**< Process a response descriptor and return the associated op. */
-
 /**
  * Structure with data needed for creation of queue pair.
  */
@@ -44,7 +41,6 @@ struct qat_qp_config {
 	uint32_t cookie_size;
 	int socket_id;
 	build_request_t build_request;
-	process_response_t process_response;
 	const char *service_str;
 };
 
@@ -83,7 +79,6 @@ struct qat_qp {
 	uint32_t nb_descriptors;
 	enum qat_device_gen qat_dev_gen;
 	build_request_t build_request;
-	process_response_t process_response;
 	struct qat_pci_device *qat_dev;
 	/**< qat device this qp is on */
 } __rte_cache_aligned;

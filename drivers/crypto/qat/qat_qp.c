@@ -14,6 +14,7 @@
 #include "qat_logs.h"
 #include "qat_device.h"
 #include "qat_qp.h"
+#include "qat_sym.h"
 #include "adf_transport_access_macros.h"
 
 
@@ -238,7 +239,6 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 
 	qp->qat_dev_gen = qat_dev->qat_dev_gen;
 	qp->build_request = qat_qp_conf->build_request;
-	qp->process_response = qat_qp_conf->process_response;
 	qp->qat_dev = qat_dev;
 
 	PMD_DRV_LOG(DEBUG, "QP setup complete: id: %d, cookiepool: %s",
@@ -612,7 +612,7 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			resp_counter != nb_ops) {
 
-		tmp_qp->process_response(ops, resp_msg);
+		qat_sym_process_response(ops, resp_msg);
 
 		head = adf_modulo(head + rx_queue->msg_size,
 				  rx_queue->modulo_mask);

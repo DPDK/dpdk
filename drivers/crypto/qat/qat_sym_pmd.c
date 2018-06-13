@@ -160,7 +160,6 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qat_qp_conf.hw = qp_hw_data;
 	qat_qp_conf.build_request = qat_sym_build_request;
-	qat_qp_conf.process_response = qat_sym_process_response;
 	qat_qp_conf.cookie_size = sizeof(struct qat_sym_op_cookie);
 	qat_qp_conf.nb_descriptors = qp_conf->nb_descriptors;
 	qat_qp_conf.socket_id = socket_id;
