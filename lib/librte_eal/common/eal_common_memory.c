@@ -70,7 +70,7 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	 * system page size is the same as requested page size.
 	 */
 	no_align = (requested_addr != NULL &&
-		((uintptr_t)requested_addr & (page_sz - 1)) == 0) ||
+		((uintptr_t)requested_addr & (page_sz - 1))) ||
 		page_sz == system_page_sz;
 
 	do {
