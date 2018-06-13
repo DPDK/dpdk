@@ -9,8 +9,6 @@
 
 #include "qat_common.h"
 
-#define QAT_64_BTYE_ALIGN_MASK (~0x3f)
-
 struct qat_sym_session;
 
 struct qat_sym_op_cookie {

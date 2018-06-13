@@ -15,6 +15,8 @@
  */
 #define QAT_SGL_MAX_NUMBER	16
 
+#define QAT_64_BTYE_ALIGN_MASK (~0x3f)
+
 /* Intel(R) QuickAssist Technology device generation is enumerated
  * from one according to the generation of the device
  */
