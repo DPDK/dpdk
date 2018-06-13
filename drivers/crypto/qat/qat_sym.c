@@ -717,20 +717,24 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 }
 
 
-void qat_sym_stats_get(struct rte_cryptodev *dev,
-		struct rte_cryptodev_stats *stats)
+static void qat_stats_get(struct qat_pci_device *dev,
+		struct qat_common_stats *stats,
+		enum qat_service_type service)
 {
 	int i;
-	struct qat_qp **qp = (struct qat_qp **)(dev->data->queue_pairs);
+	struct qat_qp **qp;
 
-	PMD_INIT_FUNC_TRACE();
-	if (stats == NULL) {
-		PMD_DRV_LOG(ERR, "invalid stats ptr NULL");
+	if (stats == NULL || dev == NULL || service >= QAT_SERVICE_INVALID) {
+		PMD_DRV_LOG(ERR, "invalid param: stats %p, dev %p, service %d",
+				stats, dev, service);
 		return;
 	}
-	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
+
+	qp = dev->qps_in_use[service];
+	for (i = 0; i < ADF_MAX_QPS_PER_BUNDLE; i++) {
 		if (qp[i] == NULL) {
-			PMD_DRV_LOG(DEBUG, "Uninitialised queue pair");
+			PMD_DRV_LOG(DEBUG, "Service %d Uninitialised qp %d",
+					service, i);
 			continue;
 		}
 
@@ -741,21 +745,73 @@ void qat_sym_stats_get(struct rte_cryptodev *dev,
 	}
 }
 
-void qat_sym_stats_reset(struct rte_cryptodev *dev)
+void qat_sym_stats_get(struct rte_cryptodev *dev,
+		struct rte_cryptodev_stats *stats)
+{
+	struct qat_common_stats qat_stats = {0};
+	struct qat_sym_dev_private *qat_priv;
+
+	if (stats == NULL || dev == NULL) {
+		PMD_DRV_LOG(ERR, "invalid ptr: stats %p, dev %p", stats, dev);
+		return;
+	}
+	qat_priv = dev->data->dev_private;
+
+	qat_stats_get(qat_priv->qat_dev, &qat_stats, QAT_SERVICE_SYMMETRIC);
+	stats->enqueued_count = qat_stats.enqueued_count;
+	stats->dequeued_count = qat_stats.dequeued_count;
+	stats->enqueue_err_count = qat_stats.enqueue_err_count;
+	stats->dequeue_err_count = qat_stats.dequeue_err_count;
+}
+
+static void qat_stats_reset(struct qat_pci_device *dev,
+		enum qat_service_type service)
 {
 	int i;
-	struct qat_qp **qp = (struct qat_qp **)(dev->data->queue_pairs);
+	struct qat_qp **qp;
 
-	PMD_INIT_FUNC_TRACE();
-	for (i = 0; i < dev->data->nb_queue_pairs; i++)
+	if (dev == NULL || service >= QAT_SERVICE_INVALID) {
+		PMD_DRV_LOG(ERR, "invalid param: dev %p, service %d",
+				dev, service);
+		return;
+	}
+
+	qp = dev->qps_in_use[service];
+	for (i = 0; i < ADF_MAX_QPS_PER_BUNDLE; i++) {
+		if (qp[i] == NULL) {
+			PMD_DRV_LOG(DEBUG, "Service %d Uninitialised qp %d",
+					service, i);
+			continue;
+		}
 		memset(&(qp[i]->stats), 0, sizeof(qp[i]->stats));
-	PMD_DRV_LOG(DEBUG, "QAT crypto: stats cleared");
+	}
+
+	PMD_DRV_LOG(DEBUG, "QAT crypto: %d stats cleared", service);
+}
+
+void qat_sym_stats_reset(struct rte_cryptodev *dev)
+{
+	struct qat_sym_dev_private *qat_priv;
+
+	if (dev == NULL) {
+		PMD_DRV_LOG(ERR, "invalid cryptodev ptr %p", dev);
+		return;
+	}
+	qat_priv = dev->data->dev_private;
+
+	qat_stats_reset(qat_priv->qat_dev, QAT_SERVICE_SYMMETRIC);
+
 }
 
 int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 {
+	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
+
 	PMD_DRV_LOG(DEBUG, "Release sym qp %u on device %d",
 				queue_pair_id, dev->data->dev_id);
+
+	qat_private->qat_dev->qps_in_use[QAT_SERVICE_SYMMETRIC][queue_pair_id]
+						= NULL;
 
 	return qat_qp_release((struct qat_qp **)
 			&(dev->data->queue_pairs[queue_pair_id]));
@@ -800,6 +856,10 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	ret = qat_qp_setup(qat_private->qat_dev, qp_addr, qp_id, &qat_qp_conf);
 	if (ret != 0)
 		return ret;
+
+	/* store a link to the qp in the qat_pci_device */
+	qat_private->qat_dev->qps_in_use[QAT_SERVICE_SYMMETRIC][qp_id]
+							= *qp_addr;
 
 	qp = (struct qat_qp *)*qp_addr;
 

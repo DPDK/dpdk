@@ -78,7 +78,7 @@ struct qat_qp {
 	uint16_t		inflights16;
 	struct	qat_queue	tx_q;
 	struct	qat_queue	rx_q;
-	struct	rte_cryptodev_stats stats;
+	struct	qat_common_stats stats;
 	struct rte_mempool *op_cookie_pool;
 	void **op_cookies;
 	uint32_t nb_descriptors;

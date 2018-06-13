@@ -50,6 +50,9 @@ struct qat_pci_device {
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
 
+	struct qat_qp *qps_in_use[QAT_MAX_SERVICES][ADF_MAX_QPS_PER_BUNDLE];
+	/**< links to qps set up for each service, index same as on API */
+
 	/* Data relating to symmetric crypto service */
 	struct qat_sym_dev_private *sym_dev;
 	/**< link back to cryptodev private data */

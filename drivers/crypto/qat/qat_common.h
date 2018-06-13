@@ -49,6 +49,19 @@ struct qat_sgl {
 	struct qat_flat_buf buffers[QAT_SGL_MAX_NUMBER];
 } __rte_packed __rte_cache_aligned;
 
+/** Common, i.e. not service-specific, statistics */
+struct qat_common_stats {
+	uint64_t enqueued_count;
+	/**< Count of all operations enqueued */
+	uint64_t dequeued_count;
+	/**< Count of all operations dequeued */
+
+	uint64_t enqueue_err_count;
+	/**< Total error count on operations enqueued */
+	uint64_t dequeue_err_count;
+	/**< Total error count on operations dequeued */
+};
+
 int
 qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
 		struct qat_sgl *list, uint32_t data_len);
