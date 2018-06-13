@@ -107,8 +107,10 @@ static int qat_queue_create(struct qat_pci_device *qat_dev,
 static int adf_verify_queue_size(uint32_t msg_size, uint32_t msg_num,
 	uint32_t *queue_size_for_csr);
 static void adf_configure_queues(struct qat_qp *queue);
-static void adf_queue_arb_enable(struct qat_queue *txq, void *base_addr);
-static void adf_queue_arb_disable(struct qat_queue *txq, void *base_addr);
+static void adf_queue_arb_enable(struct qat_queue *txq, void *base_addr,
+	rte_spinlock_t *lock);
+static void adf_queue_arb_disable(struct qat_queue *txq, void *base_addr,
+	rte_spinlock_t *lock);
 
 
 int qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
@@ -216,7 +218,8 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 	}
 
 	adf_configure_queues(qp);
-	adf_queue_arb_enable(&qp->tx_q, qp->mmap_bar_addr);
+	adf_queue_arb_enable(&qp->tx_q, qp->mmap_bar_addr,
+					&qat_dev->arb_csr_lock);
 
 	snprintf(op_cookie_pool_name, RTE_RING_NAMESIZE,
 					"%s%d_cookies_%s_qp%hu",
@@ -282,7 +285,8 @@ int qat_qp_release(struct qat_qp **qp_addr)
 		return -EAGAIN;
 	}
 
-	adf_queue_arb_disable(&(qp->tx_q), qp->mmap_bar_addr);
+	adf_queue_arb_disable(&(qp->tx_q), qp->mmap_bar_addr,
+					&qp->qat_dev->arb_csr_lock);
 
 	for (i = 0; i < qp->nb_descriptors; i++)
 		rte_mempool_put(qp->op_cookie_pool, qp->op_cookies[i]);
@@ -443,7 +447,8 @@ static int adf_verify_queue_size(uint32_t msg_size, uint32_t msg_num,
 	return -EINVAL;
 }
 
-static void adf_queue_arb_enable(struct qat_queue *txq, void *base_addr)
+static void adf_queue_arb_enable(struct qat_queue *txq, void *base_addr,
+					rte_spinlock_t *lock)
 {
 	uint32_t arb_csr_offset =  ADF_ARB_RINGSRVARBEN_OFFSET +
 					(ADF_ARB_REG_SLOT *
@@ -451,12 +456,16 @@ static void adf_queue_arb_enable(struct qat_queue *txq, void *base_addr)
 	uint32_t value;
 
 	PMD_INIT_FUNC_TRACE();
+
+	rte_spinlock_lock(lock);
 	value = ADF_CSR_RD(base_addr, arb_csr_offset);
 	value |= (0x01 << txq->hw_queue_number);
 	ADF_CSR_WR(base_addr, arb_csr_offset, value);
+	rte_spinlock_unlock(lock);
 }
 
-static void adf_queue_arb_disable(struct qat_queue *txq, void *base_addr)
+static void adf_queue_arb_disable(struct qat_queue *txq, void *base_addr,
+					rte_spinlock_t *lock)
 {
 	uint32_t arb_csr_offset =  ADF_ARB_RINGSRVARBEN_OFFSET +
 					(ADF_ARB_REG_SLOT *
@@ -464,9 +473,12 @@ static void adf_queue_arb_disable(struct qat_queue *txq, void *base_addr)
 	uint32_t value;
 
 	PMD_INIT_FUNC_TRACE();
+
+	rte_spinlock_lock(lock);
 	value = ADF_CSR_RD(base_addr, arb_csr_offset);
-	value ^= (0x01 << txq->hw_queue_number);
+	value &= ~(0x01 << txq->hw_queue_number);
 	ADF_CSR_WR(base_addr, arb_csr_offset, value);
+	rte_spinlock_unlock(lock);
 }
 
 static void adf_configure_queues(struct qat_qp *qp)
