@@ -25,6 +25,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_device.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_qp.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym_session.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_common.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += rte_qat_cryptodev.c
 
 # export include files

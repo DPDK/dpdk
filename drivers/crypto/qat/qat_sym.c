@@ -248,53 +248,6 @@ qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
 }
 
-static inline int
-qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buff_start,
-		struct qat_sgl *list, uint32_t data_len)
-{
-	int nr = 1;
-
-	uint32_t buf_len = rte_pktmbuf_iova(buf) -
-			buff_start + rte_pktmbuf_data_len(buf);
-
-	list->buffers[0].addr = buff_start;
-	list->buffers[0].resrvd = 0;
-	list->buffers[0].len = buf_len;
-
-	if (data_len <= buf_len) {
-		list->num_bufs = nr;
-		list->buffers[0].len = data_len;
-		return 0;
-	}
-
-	buf = buf->next;
-	while (buf) {
-		if (unlikely(nr == QAT_SGL_MAX_NUMBER)) {
-			PMD_DRV_LOG(ERR, "QAT PMD exceeded size of QAT SGL"
-					" entry(%u)",
-					QAT_SGL_MAX_NUMBER);
-			return -EINVAL;
-		}
-
-		list->buffers[nr].len = rte_pktmbuf_data_len(buf);
-		list->buffers[nr].resrvd = 0;
-		list->buffers[nr].addr = rte_pktmbuf_iova(buf);
-
-		buf_len += list->buffers[nr].len;
-		buf = buf->next;
-
-		if (buf_len > data_len) {
-			list->buffers[nr].len -=
-				buf_len - data_len;
-			buf = NULL;
-		}
-		++nr;
-	}
-	list->num_bufs = nr;
-
-	return 0;
-}
-
 static inline void
 set_cipher_iv(uint16_t iv_length, uint16_t iv_offset,
 		struct icp_qat_fw_la_cipher_req_params *cipher_param,

@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#include <rte_mbuf.h>
+
 /**< Intel(R) QAT Symmetric Crypto PMD device name */
 #define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
 
@@ -45,11 +47,8 @@ struct qat_sgl {
 	struct qat_flat_buf buffers[QAT_SGL_MAX_NUMBER];
 } __rte_packed __rte_cache_aligned;
 
-struct qat_sym_op_cookie {
-	struct qat_sgl qat_sgl_src;
-	struct qat_sgl qat_sgl_dst;
-	phys_addr_t qat_sgl_src_phys_addr;
-	phys_addr_t qat_sgl_dst_phys_addr;
-};
+int
+qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
+		struct qat_sgl *list, uint32_t data_len);
 
 #endif /* _QAT_COMMON_H_ */
