@@ -661,9 +661,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 }
 
 int
-qat_sym_process_response(void **op, uint8_t *resp,
-		__rte_unused void *op_cookie,
-		__rte_unused enum qat_device_gen qat_dev_gen)
+qat_sym_process_response(void **op, uint8_t *resp)
 {
 
 	struct icp_qat_fw_comn_resp *resp_msg =

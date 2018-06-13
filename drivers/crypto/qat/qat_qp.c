@@ -612,9 +612,7 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			resp_counter != nb_ops) {
 
-		tmp_qp->process_response(ops, resp_msg,
-			tmp_qp->op_cookies[head / rx_queue->msg_size],
-			tmp_qp->qat_dev_gen);
+		tmp_qp->process_response(ops, resp_msg);
 
 		head = adf_modulo(head + rx_queue->msg_size,
 				  rx_queue->modulo_mask);

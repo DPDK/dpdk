@@ -21,9 +21,7 @@ typedef int (*build_request_t)(void *op,
 		enum qat_device_gen qat_dev_gen);
 /**< Build a request from an op. */
 
-typedef int (*process_response_t)(void **ops,
-		uint8_t *resp, void *op_cookie,
-		enum qat_device_gen qat_dev_gen);
+typedef int (*process_response_t)(void **ops, uint8_t *resp);
 /**< Process a response descriptor and return the associated op. */
 
 /**
