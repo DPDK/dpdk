@@ -16,18 +16,13 @@
 #include "qat_sym.h"
 #include "qat_qp.h"
 #include "adf_transport_access_macros.h"
+#include "qat_device.h"
 
 #define BYTE_LENGTH    8
 /* bpi is only used for partial blocks of DES and AES
  * so AES block len can be assumed as max len for iv, src and dst
  */
 #define BPI_MAX_ENCR_IV_LEN ICP_QAT_HW_AES_BLK_SZ
-
-#define ADF_SYM_TX_RING_DESC_SIZE		128
-#define ADF_SYM_RX_RING_DESC_SIZE		32
-#define ADF_SYM_TX_QUEUE_STARTOFF		2
-/* Offset from bundle start to 1st Sym Tx queue */
-#define ADF_SYM_RX_QUEUE_STARTOFF		10
 
 /** Encrypt a single partial block
  *  Depends on openssl libcrypto
@@ -805,12 +800,11 @@ void qat_sym_stats_reset(struct rte_cryptodev *dev)
 	PMD_DRV_LOG(DEBUG, "QAT crypto: stats cleared");
 }
 
-
-
 int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 {
 	PMD_DRV_LOG(DEBUG, "Release sym qp %u on device %d",
 				queue_pair_id, dev->data->dev_id);
+
 	return qat_qp_release((struct qat_qp **)
 			&(dev->data->queue_pairs[queue_pair_id]));
 }
@@ -823,9 +817,14 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	int ret = 0;
 	uint32_t i;
 	struct qat_qp_config qat_qp_conf;
+
 	struct qat_qp **qp_addr =
 			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
 	struct qat_pmd_private *qat_private = dev->data->dev_private;
+	const struct qat_qp_hw_data *sym_hw_qps =
+			qp_gen_config[qat_private->qat_dev_gen]
+				      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
+	const struct qat_qp_hw_data *qp_hw_data = sym_hw_qps + qp_id;
 
 	/* If qp is already in use free ring memory and qp metadata. */
 	if (*qp_addr != NULL) {
@@ -833,19 +832,12 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		if (ret < 0)
 			return ret;
 	}
-	if (qp_id >= (ADF_NUM_SYM_QPS_PER_BUNDLE *
-					ADF_NUM_BUNDLES_PER_DEV)) {
+	if (qp_id >= qat_qps_per_service(sym_hw_qps, QAT_SERVICE_SYMMETRIC)) {
 		PMD_DRV_LOG(ERR, "qp_id %u invalid for this device", qp_id);
 		return -EINVAL;
 	}
 
-	qat_qp_conf.hw_bundle_num = (qp_id/ADF_NUM_SYM_QPS_PER_BUNDLE);
-	qat_qp_conf.tx_ring_num = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
-			ADF_SYM_TX_QUEUE_STARTOFF;
-	qat_qp_conf.rx_ring_num = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
-			ADF_SYM_RX_QUEUE_STARTOFF;
-	qat_qp_conf.tx_msg_size = ADF_SYM_TX_RING_DESC_SIZE;
-	qat_qp_conf.rx_msg_size = ADF_SYM_RX_RING_DESC_SIZE;
+	qat_qp_conf.hw = qp_hw_data;
 	qat_qp_conf.build_request = qat_sym_build_request;
 	qat_qp_conf.process_response = qat_sym_process_response;
 	qat_qp_conf.cookie_size = sizeof(struct qat_sym_op_cookie);
@@ -876,5 +868,4 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	}
 
 	return ret;
-
 }

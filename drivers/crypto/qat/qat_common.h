@@ -23,6 +23,14 @@ enum qat_device_gen {
 	QAT_GEN2,
 };
 
+enum qat_service_type {
+	QAT_SERVICE_ASYMMETRIC = 0,
+	QAT_SERVICE_SYMMETRIC,
+	QAT_SERVICE_COMPRESSION,
+	QAT_SERVICE_INVALID
+};
+#define QAT_MAX_SERVICES		(QAT_SERVICE_INVALID)
+
 /**< Common struct for scatter-gather list operations */
 struct qat_alg_buf {
 	uint32_t len;

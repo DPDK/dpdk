@@ -13,9 +13,9 @@
 
 #include "qat_logs.h"
 #include "qat_qp.h"
-#include "qat_sym.h"
-
+#include "qat_device.h"
 #include "adf_transport_access_macros.h"
+
 
 #define ADF_MAX_DESC				4096
 #define ADF_MIN_DESC				128
@@ -27,6 +27,78 @@
 	ADF_CSR_WR(csr_addr, ADF_ARB_RINGSRVARBEN_OFFSET + \
 	(ADF_ARB_REG_SLOT * index), value)
 
+__extension__
+const struct qat_qp_hw_data qat_gen1_qps[QAT_MAX_SERVICES]
+					 [ADF_MAX_QPS_PER_BUNDLE] = {
+	/* queue pairs which provide an asymmetric crypto service */
+	[QAT_SERVICE_ASYMMETRIC] = {
+		{
+			.service_type = QAT_SERVICE_ASYMMETRIC,
+			.hw_bundle_num = 0,
+			.tx_ring_num = 0,
+			.rx_ring_num = 8,
+			.tx_msg_size = 64,
+			.rx_msg_size = 32,
+
+		}, {
+			.service_type = QAT_SERVICE_ASYMMETRIC,
+			.tx_ring_num = 1,
+			.rx_ring_num = 9,
+			.tx_msg_size = 64,
+			.rx_msg_size = 32,
+		}, {
+			.service_type = QAT_SERVICE_INVALID,
+		}, {
+			.service_type = QAT_SERVICE_INVALID,
+		}
+	},
+	/* queue pairs which provide a symmetric crypto service */
+	[QAT_SERVICE_SYMMETRIC] = {
+		{
+			.service_type = QAT_SERVICE_SYMMETRIC,
+			.hw_bundle_num = 0,
+			.tx_ring_num = 2,
+			.rx_ring_num = 10,
+			.tx_msg_size = 128,
+			.rx_msg_size = 32,
+		},
+		{
+			.service_type = QAT_SERVICE_SYMMETRIC,
+			.hw_bundle_num = 0,
+			.tx_ring_num = 3,
+			.rx_ring_num = 11,
+			.tx_msg_size = 128,
+			.rx_msg_size = 32,
+		}, {
+			.service_type = QAT_SERVICE_INVALID,
+		}, {
+			.service_type = QAT_SERVICE_INVALID,
+		}
+	},
+	/* queue pairs which provide a compression service */
+	[QAT_SERVICE_COMPRESSION] = {
+		{
+			.service_type = QAT_SERVICE_COMPRESSION,
+			.hw_bundle_num = 0,
+			.tx_ring_num = 6,
+			.rx_ring_num = 14,
+			.tx_msg_size = 128,
+			.rx_msg_size = 32,
+		}, {
+			.service_type = QAT_SERVICE_COMPRESSION,
+			.hw_bundle_num = 0,
+			.tx_ring_num = 7,
+			.rx_ring_num = 15,
+			.tx_msg_size = 128,
+			.rx_msg_size = 32,
+		}, {
+			.service_type = QAT_SERVICE_INVALID,
+		}, {
+			.service_type = QAT_SERVICE_INVALID,
+		}
+	}
+};
+
 static int qat_qp_check_queue_alignment(uint64_t phys_addr,
 	uint32_t queue_size_bytes);
 static void qat_queue_delete(struct qat_queue *queue);
@@ -37,6 +109,18 @@ static int adf_verify_queue_size(uint32_t msg_size, uint32_t msg_num,
 static void adf_configure_queues(struct qat_qp *queue);
 static void adf_queue_arb_enable(struct qat_queue *txq, void *base_addr);
 static void adf_queue_arb_disable(struct qat_queue *txq, void *base_addr);
+
+
+int qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
+		enum qat_service_type service)
+{
+	int i, count;
+
+	for (i = 0, count = 0; i < ADF_MAX_QPS_PER_BUNDLE; i++)
+		if (qp_hw_data[i].service_type == service)
+			count++;
+	return count * ADF_NUM_BUNDLES_PER_DEV;
+}
 
 static const struct rte_memzone *
 queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
@@ -247,12 +331,12 @@ qat_queue_create(struct qat_pmd_private *qat_dev, struct qat_queue *queue,
 	struct rte_pci_device *pci_dev = qat_dev->pci_dev;
 	int ret = 0;
 	uint16_t desc_size = (dir == ADF_RING_DIR_TX ?
-				qp_conf->tx_msg_size : qp_conf->rx_msg_size);
+			qp_conf->hw->tx_msg_size : qp_conf->hw->rx_msg_size);
 	uint32_t queue_size_bytes = (qp_conf->nb_descriptors)*(desc_size);
 
-	queue->hw_bundle_number = qp_conf->hw_bundle_num;
+	queue->hw_bundle_number = qp_conf->hw->hw_bundle_num;
 	queue->hw_queue_number = (dir == ADF_RING_DIR_TX ?
-			qp_conf->tx_ring_num : qp_conf->rx_ring_num);
+			qp_conf->hw->tx_ring_num : qp_conf->hw->rx_ring_num);
 
 	if (desc_size > ADF_MSG_SIZE_TO_BYTES(ADF_MAX_MSG_SIZE)) {
 		PMD_DRV_LOG(ERR, "Invalid descriptor size %d", desc_size);

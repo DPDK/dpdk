@@ -5,7 +5,8 @@
 #define _QAT_QP_H_
 
 #include "qat_common.h"
-#include "qat_device.h"
+#include <rte_cryptodev_pmd.h>
+#include "adf_transport_access_macros.h"
 
 #define QAT_CSR_HEAD_WRITE_THRESH 32U
 /* number of requests to accumulate before writing head CSR */
@@ -27,12 +28,19 @@ typedef int (*process_response_t)(void **ops,
 /**
  * Structure with data needed for creation of queue pair.
  */
-struct qat_qp_config {
+struct qat_qp_hw_data {
+	enum qat_service_type service_type;
 	uint8_t hw_bundle_num;
 	uint8_t tx_ring_num;
 	uint8_t rx_ring_num;
 	uint16_t tx_msg_size;
 	uint16_t rx_msg_size;
+};
+/**
+ * Structure with data needed for creation of queue pair.
+ */
+struct qat_qp_config {
+	const struct qat_qp_hw_data *hw;
 	uint32_t nb_descriptors;
 	uint32_t cookie_size;
 	int socket_id;
@@ -81,6 +89,8 @@ struct qat_qp {
 	/**< qat device this qp is on */
 } __rte_cache_aligned;
 
+extern const struct qat_qp_hw_data qat_gen1_qps[][ADF_MAX_QPS_PER_BUNDLE];
+
 uint16_t
 qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops);
 
@@ -94,4 +104,8 @@ int
 qat_qp_setup(struct qat_pmd_private *qat_dev,
 		struct qat_qp **qp_addr, uint16_t queue_pair_id,
 		struct qat_qp_config *qat_qp_conf);
+
+int
+qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
+			enum qat_service_type service);
 #endif /* _QAT_QP_H_ */

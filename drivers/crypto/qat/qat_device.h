@@ -8,6 +8,8 @@
 #include <rte_bus_pci.h>
 #include "qat_common.h"
 #include "qat_logs.h"
+#include "adf_transport_access_macros.h"
+#include "qat_qp.h"
 
 extern uint8_t cryptodev_qat_driver_id;
 
@@ -33,6 +35,13 @@ struct qat_pmd_private {
 	uint8_t dev_id;
 	/**< Device ID for this instance */
 };
+
+struct qat_gen_hw_data {
+	enum qat_device_gen dev_gen;
+	const struct qat_qp_hw_data (*qp_hw_data)[ADF_MAX_QPS_PER_BUNDLE];
+};
+
+extern struct qat_gen_hw_data qp_gen_config[];
 
 int qat_dev_config(struct rte_cryptodev *dev,
 		struct rte_cryptodev_config *config);
