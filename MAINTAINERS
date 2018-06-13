@@ -564,8 +564,8 @@ Intel ifc
 M: Xiao Wang <xiao.w.wang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/ifc/
-F: doc/guides/nics/ifcvf.rst
-F: doc/guides/nics/features/ifcvf.ini
+F: doc/guides/nics/ifc.rst
+F: doc/guides/nics/features/ifc*.ini
 
 Marvell mvpp2
 M: Tomasz Duszynski <tdu@semihalf.com>

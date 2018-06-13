@@ -861,11 +861,11 @@ CONFIG_RTE_LIBRTE_VHOST_DEBUG=n
 CONFIG_RTE_LIBRTE_PMD_VHOST=n
 
 #
-# Compile IFCVF driver
+# Compile IFC driver
 # To compile, CONFIG_RTE_LIBRTE_VHOST and CONFIG_RTE_EAL_VFIO
 # should be enabled.
 #
-CONFIG_RTE_LIBRTE_IFCVF_VDPA_PMD=n
+CONFIG_RTE_LIBRTE_IFC_PMD=n
 
 #
 # Compile librte_bpf

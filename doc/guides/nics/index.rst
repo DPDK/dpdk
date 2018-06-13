@@ -24,7 +24,7 @@ Network Interface Controller Drivers
     enic
     fm10k
     i40e
-    ifcvf
+    ifc
     igb
     ixgbe
     intel_vf
