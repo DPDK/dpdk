@@ -9,12 +9,6 @@
 
 #include "qat_common.h"
 
-/*
- * This macro rounds up a number to a be a multiple of
- * the alignment when the alignment is a power of 2
- */
-#define ALIGN_POW2_ROUNDUP(num, align) \
-	(((num) + (align) - 1) & ~((align) - 1))
 #define QAT_64_BTYE_ALIGN_MASK (~0x3f)
 
 struct qat_sym_session;
