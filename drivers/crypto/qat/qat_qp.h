@@ -5,6 +5,7 @@
 #define _QAT_QP_H_
 
 #include "qat_common.h"
+#include "qat_device.h"
 
 typedef int (*build_request_t)(void *op,
 		uint8_t *req, void *op_cookie,
@@ -69,6 +70,8 @@ struct qat_qp {
 	enum qat_device_gen qat_dev_gen;
 	build_request_t build_request;
 	process_response_t process_response;
+	struct qat_pmd_private *qat_dev;
+	/**< qat device this qp is on */
 } __rte_cache_aligned;
 
 uint16_t
@@ -78,9 +81,10 @@ uint16_t
 qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops);
 
 int
-qat_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id);
+qat_qp_release(struct qat_qp **qp_addr);
 
 int
-qat_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
+qat_qp_setup(struct qat_pmd_private *qat_dev,
+		struct qat_qp **qp_addr, uint16_t queue_pair_id,
 		struct qat_qp_config *qat_qp_conf);
 #endif /* _QAT_QP_H_ */

@@ -809,7 +809,10 @@ void qat_sym_stats_reset(struct rte_cryptodev *dev)
 
 int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 {
-	return qat_qp_release(dev, queue_pair_id);
+	PMD_DRV_LOG(DEBUG, "Release sym qp %u on device %d",
+				queue_pair_id, dev->data->dev_id);
+	return qat_qp_release((struct qat_qp **)
+			&(dev->data->queue_pairs[queue_pair_id]));
 }
 
 int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
@@ -820,9 +823,12 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	int ret = 0;
 	uint32_t i;
 	struct qat_qp_config qat_qp_conf;
+	struct qat_qp **qp_addr =
+			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
+	struct qat_pmd_private *qat_private = dev->data->dev_private;
 
 	/* If qp is already in use free ring memory and qp metadata. */
-	if (dev->data->queue_pairs[qp_id] != NULL) {
+	if (*qp_addr != NULL) {
 		ret = qat_sym_qp_release(dev, qp_id);
 		if (ret < 0)
 			return ret;
@@ -832,7 +838,6 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		PMD_DRV_LOG(ERR, "qp_id %u invalid for this device", qp_id);
 		return -EINVAL;
 	}
-
 
 	qat_qp_conf.hw_bundle_num = (qp_id/ADF_NUM_SYM_QPS_PER_BUNDLE);
 	qat_qp_conf.tx_ring_num = (qp_id%ADF_NUM_SYM_QPS_PER_BUNDLE) +
@@ -848,11 +853,11 @@ int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qat_qp_conf.socket_id = socket_id;
 	qat_qp_conf.service_str = "sym";
 
-	ret = qat_qp_setup(dev, qp_id, &qat_qp_conf);
+	ret = qat_qp_setup(qat_private, qp_addr, qp_id, &qat_qp_conf);
 	if (ret != 0)
 		return ret;
 
-	qp = (struct qat_qp *)dev->data->queue_pairs[qp_id];
+	qp = (struct qat_qp *)*qp_addr;
 
 	for (i = 0; i < qp->nb_descriptors; i++) {
 

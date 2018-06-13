@@ -96,7 +96,9 @@ crypto_qat_create(const char *name, struct rte_pci_device *pci_dev,
 
 	internals = cryptodev->data->dev_private;
 	internals->max_nb_sessions = init_params->max_nb_sessions;
-	switch (pci_dev->id.device_id) {
+	internals->pci_dev = RTE_DEV_TO_PCI(cryptodev->device);
+	internals->dev_id = cryptodev->data->dev_id;
+	switch (internals->pci_dev->id.device_id) {
 	case 0x0443:
 		internals->qat_dev_gen = QAT_GEN1;
 		internals->qat_dev_capabilities = qat_gen1_sym_capabilities;

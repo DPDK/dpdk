@@ -14,7 +14,11 @@ extern uint8_t cryptodev_qat_driver_id;
 extern int qat_sym_qp_release(struct rte_cryptodev *dev,
 	uint16_t queue_pair_id);
 
-/** private data structure for each QAT device */
+/** private data structure for each QAT device.
+ * In this context a QAT device is a device offering only one service,
+ * so there can be more than 1 device on a pci_dev (VF),
+ * one for symmetric crypto, one for compression
+ */
 struct qat_pmd_private {
 	unsigned int max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
@@ -23,6 +27,11 @@ struct qat_pmd_private {
 	enum qat_device_gen qat_dev_gen;
 	/**< QAT device generation */
 	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
+	/* QAT device capabilities */
+	struct rte_pci_device *pci_dev;
+	/**< PCI information. */
+	uint8_t dev_id;
+	/**< Device ID for this instance */
 };
 
 int qat_dev_config(struct rte_cryptodev *dev,
