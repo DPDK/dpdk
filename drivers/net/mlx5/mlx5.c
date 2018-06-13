@@ -1388,6 +1388,11 @@ RTE_INIT(rte_mlx5_pmd_init);
 static void
 rte_mlx5_pmd_init(void)
 {
+	/* Initialize driver log type. */
+	mlx5_logtype = rte_log_register("pmd.net.mlx5");
+	if (mlx5_logtype >= 0)
+		rte_log_set_level(mlx5_logtype, RTE_LOG_NOTICE);
+
 	/* Build the static tables for Verbs conversion. */
 	mlx5_set_ptype_table();
 	mlx5_set_cksum_table();
@@ -1429,11 +1434,3 @@ rte_mlx5_pmd_init(void)
 RTE_PMD_EXPORT_NAME(net_mlx5, __COUNTER__);
 RTE_PMD_REGISTER_PCI_TABLE(net_mlx5, mlx5_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_mlx5, "* ib_uverbs & mlx5_core & mlx5_ib");
-
-/** Initialize driver log type. */
-RTE_INIT(vdev_netvsc_init_log)
-{
-	mlx5_logtype = rte_log_register("pmd.net.mlx5");
-	if (mlx5_logtype >= 0)
-		rte_log_set_level(mlx5_logtype, RTE_LOG_NOTICE);
-}
