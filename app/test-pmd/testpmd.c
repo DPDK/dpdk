@@ -2355,16 +2355,15 @@ init_port_config(void)
 {
 	portid_t pid;
 	struct rte_port *port;
-	struct rte_eth_dev_info dev_info;
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
 		port->dev_conf.fdir_conf = fdir_conf;
+		rte_eth_dev_info_get(pid, &port->dev_info);
 		if (nb_rxq > 1) {
-			rte_eth_dev_info_get(pid, &dev_info);
 			port->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 			port->dev_conf.rx_adv_conf.rss_conf.rss_hf =
-				rss_hf & dev_info.flow_type_rss_offloads;
+				rss_hf & port->dev_info.flow_type_rss_offloads;
 		} else {
 			port->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 			port->dev_conf.rx_adv_conf.rss_conf.rss_hf = 0;
