@@ -29,10 +29,10 @@ static const struct rte_cryptodev_capabilities qat_gen2_sym_capabilities[] = {
 static struct rte_cryptodev_ops crypto_qat_ops = {
 
 		/* Device related operations */
-		.dev_configure		= qat_dev_config,
-		.dev_start		= qat_dev_start,
-		.dev_stop		= qat_dev_stop,
-		.dev_close		= qat_dev_close,
+		.dev_configure		= qat_sym_dev_config,
+		.dev_start		= qat_sym_dev_start,
+		.dev_stop		= qat_sym_dev_stop,
+		.dev_close		= qat_sym_dev_close,
 		.dev_infos_get		= qat_sym_dev_info_get,
 
 		.stats_get		= qat_sym_stats_get,

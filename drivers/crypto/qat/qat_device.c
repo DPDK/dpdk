@@ -24,25 +24,25 @@ struct qat_gen_hw_data qp_gen_config[] =  {
 static struct qat_pci_device qat_pci_devices[QAT_MAX_PCI_DEVICES];
 static int qat_nb_pci_devices;
 
-int qat_dev_config(__rte_unused struct rte_cryptodev *dev,
+int qat_sym_dev_config(__rte_unused struct rte_cryptodev *dev,
 		__rte_unused struct rte_cryptodev_config *config)
 {
 	PMD_INIT_FUNC_TRACE();
 	return 0;
 }
 
-int qat_dev_start(__rte_unused struct rte_cryptodev *dev)
+int qat_sym_dev_start(__rte_unused struct rte_cryptodev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
 	return 0;
 }
 
-void qat_dev_stop(__rte_unused struct rte_cryptodev *dev)
+void qat_sym_dev_stop(__rte_unused struct rte_cryptodev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
 }
 
-int qat_dev_close(struct rte_cryptodev *dev)
+int qat_sym_dev_close(struct rte_cryptodev *dev)
 {
 	int i, ret;
 

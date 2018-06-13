@@ -84,11 +84,11 @@ struct qat_gen_hw_data {
 
 extern struct qat_gen_hw_data qp_gen_config[];
 
-int qat_dev_config(struct rte_cryptodev *dev,
+int qat_sym_dev_config(struct rte_cryptodev *dev,
 		struct rte_cryptodev_config *config);
-int qat_dev_start(struct rte_cryptodev *dev);
-void qat_dev_stop(struct rte_cryptodev *dev);
-int qat_dev_close(struct rte_cryptodev *dev);
+int qat_sym_dev_start(struct rte_cryptodev *dev);
+void qat_sym_dev_stop(struct rte_cryptodev *dev);
+int qat_sym_dev_close(struct rte_cryptodev *dev);
 void qat_sym_dev_info_get(struct rte_cryptodev *dev,
 	struct rte_cryptodev_info *info);
 
