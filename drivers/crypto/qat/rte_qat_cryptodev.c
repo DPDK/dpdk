@@ -234,16 +234,27 @@ static int qat_pci_remove(struct rte_pci_device *pci_dev)
 
 }
 
+
+/* An rte_driver is needed in the registration of both the device and the driver
+ * with cryptodev.
+ * The actual qat pci's rte_driver can't be used as its name represents
+ * the whole pci device with all services. Think of this as a holder for a name
+ * for the crypto part of the pci device.
+ */
+static const char qat_sym_drv_name[] = RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD);
+static struct rte_driver cryptodev_qat_sym_driver = {
+	.name = qat_sym_drv_name,
+	.alias = qat_sym_drv_name
+};
+static struct cryptodev_driver qat_crypto_drv;
+RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv, cryptodev_qat_sym_driver,
+		cryptodev_qat_driver_id);
+
 static struct rte_pci_driver rte_qat_pmd = {
 	.id_table = pci_id_qat_map,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 	.probe = qat_pci_probe,
 	.remove = qat_pci_remove
 };
-
-static struct cryptodev_driver qat_crypto_drv;
-
-RTE_PMD_REGISTER_PCI(CRYPTODEV_NAME_QAT_SYM_PMD, rte_qat_pmd);
-RTE_PMD_REGISTER_PCI_TABLE(CRYPTODEV_NAME_QAT_SYM_PMD, pci_id_qat_map);
-RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv, rte_qat_pmd.driver,
-		cryptodev_qat_driver_id);
+RTE_PMD_REGISTER_PCI(QAT_PCI_NAME, rte_qat_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(QAT_PCI_NAME, pci_id_qat_map);

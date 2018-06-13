@@ -11,6 +11,8 @@
 /**< Intel(R) QAT Symmetric Crypto PMD device name */
 #define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
 
+/**< Intel(R) QAT device name for PCI registration */
+#define QAT_PCI_NAME	qat
 /*
  * Maximum number of SGL entries
  */
