@@ -79,7 +79,7 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 		socket_id, RTE_MEMZONE_IOVA_CONTIG, queue_size);
 }
 
-int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
+int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	const struct rte_cryptodev_qp_conf *qp_conf,
 	int socket_id, struct rte_mempool *session_pool __rte_unused)
 {
@@ -93,7 +93,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 
 	/* If qp is already in use free ring memory and qp metadata. */
 	if (dev->data->queue_pairs[queue_pair_id] != NULL) {
-		ret = qat_crypto_sym_qp_release(dev, queue_pair_id);
+		ret = qat_sym_qp_release(dev, queue_pair_id);
 		if (ret < 0)
 			return ret;
 	}
@@ -209,7 +209,7 @@ create_err:
 	return -EFAULT;
 }
 
-int qat_crypto_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
+int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 {
 	struct qat_qp *qp =
 			(struct qat_qp *)dev->data->queue_pairs[queue_pair_id];

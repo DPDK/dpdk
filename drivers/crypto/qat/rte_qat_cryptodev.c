@@ -35,18 +35,18 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
 		.dev_close		= qat_dev_close,
 		.dev_infos_get		= qat_dev_info_get,
 
-		.stats_get		= qat_crypto_sym_stats_get,
-		.stats_reset		= qat_crypto_sym_stats_reset,
-		.queue_pair_setup	= qat_crypto_sym_qp_setup,
-		.queue_pair_release	= qat_crypto_sym_qp_release,
+		.stats_get		= qat_sym_stats_get,
+		.stats_reset		= qat_sym_stats_reset,
+		.queue_pair_setup	= qat_sym_qp_setup,
+		.queue_pair_release	= qat_sym_qp_release,
 		.queue_pair_start	= NULL,
 		.queue_pair_stop	= NULL,
 		.queue_pair_count	= NULL,
 
 		/* Crypto related operations */
-		.session_get_size	= qat_crypto_sym_get_session_private_size,
-		.session_configure	= qat_crypto_sym_configure_session,
-		.session_clear		= qat_crypto_sym_clear_session
+		.session_get_size	= qat_sym_session_get_private_size,
+		.session_configure	= qat_sym_session_configure,
+		.session_clear		= qat_sym_session_clear
 };
 
 /*
@@ -86,8 +86,8 @@ crypto_qat_create(const char *name, struct rte_pci_device *pci_dev,
 	cryptodev->driver_id = cryptodev_qat_driver_id;
 	cryptodev->dev_ops = &crypto_qat_ops;
 
-	cryptodev->enqueue_burst = qat_pmd_enqueue_op_burst;
-	cryptodev->dequeue_burst = qat_pmd_dequeue_op_burst;
+	cryptodev->enqueue_burst = qat_sym_pmd_enqueue_op_burst;
+	cryptodev->dequeue_burst = qat_sym_pmd_dequeue_op_burst;
 
 	cryptodev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |

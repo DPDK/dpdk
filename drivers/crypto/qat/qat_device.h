@@ -11,7 +11,7 @@
 
 extern uint8_t cryptodev_qat_driver_id;
 
-extern int qat_crypto_sym_qp_release(struct rte_cryptodev *dev,
+extern int qat_sym_qp_release(struct rte_cryptodev *dev,
 	uint16_t queue_pair_id);
 
 /** private data structure for each QAT device */

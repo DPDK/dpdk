@@ -87,7 +87,7 @@ static inline uint32_t
 adf_modulo(uint32_t data, uint32_t shift);
 
 static inline int
-qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
+qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
 		struct qat_crypto_op_cookie *qat_op_cookie, struct qat_qp *qp);
 
 static inline uint32_t
@@ -210,7 +210,7 @@ txq_write_tail(struct qat_qp *qp, struct qat_queue *q) {
 }
 
 uint16_t
-qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
+qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
 	register struct qat_queue *queue;
@@ -242,7 +242,7 @@ qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 	}
 
 	while (nb_ops_sent != nb_ops_possible) {
-		ret = qat_write_hw_desc_entry(*cur_op, base_addr + tail,
+		ret = qat_sym_build_request(*cur_op, base_addr + tail,
 			tmp_qp->op_cookies[tail / queue->msg_size], tmp_qp);
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
@@ -299,7 +299,7 @@ void rxq_free_desc(struct qat_qp *qp, struct qat_queue *q)
 }
 
 uint16_t
-qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
+qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
 	struct qat_queue *rx_queue, *tx_queue;
@@ -456,7 +456,7 @@ set_cipher_iv_ccm(uint16_t iv_length, uint16_t iv_offset,
 }
 
 static inline int
-qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
+qat_sym_build_request(struct rte_crypto_op *op, uint8_t *out_msg,
 		struct qat_crypto_op_cookie *qat_op_cookie, struct qat_qp *qp)
 {
 	int ret = 0;
@@ -883,7 +883,7 @@ static inline uint32_t adf_modulo(uint32_t data, uint32_t shift)
 	return data - mult;
 }
 
-void qat_crypto_sym_stats_get(struct rte_cryptodev *dev,
+void qat_sym_stats_get(struct rte_cryptodev *dev,
 		struct rte_cryptodev_stats *stats)
 {
 	int i;
@@ -907,7 +907,7 @@ void qat_crypto_sym_stats_get(struct rte_cryptodev *dev,
 	}
 }
 
-void qat_crypto_sym_stats_reset(struct rte_cryptodev *dev)
+void qat_sym_stats_reset(struct rte_cryptodev *dev)
 {
 	int i;
 	struct qat_qp **qp = (struct qat_qp **)(dev->data->queue_pairs);

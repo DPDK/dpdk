@@ -76,67 +76,68 @@ struct qat_session {
 };
 
 int
-qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
+qat_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess,
 		struct rte_mempool *mempool);
 
 int
-qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
+qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private);
 
 int
-qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
+qat_sym_session_configure_aead(struct rte_crypto_sym_xform *xform,
 				struct qat_session *session);
 
 int
-qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
+qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct qat_session *session);
 
 int
-qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
+qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
 				struct qat_session *session);
 
 int
-qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cd,
+qat_sym_session_aead_create_cd_cipher(struct qat_session *cd,
 						uint8_t *enckey,
 						uint32_t enckeylen);
 
 int
-qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
+qat_sym_session_aead_create_cd_auth(struct qat_session *cdesc,
 						uint8_t *authkey,
 						uint32_t authkeylen,
 						uint32_t aad_length,
 						uint32_t digestsize,
 						unsigned int operation);
 
-int
-qat_pmd_session_mempool_create(struct rte_cryptodev *dev,
-	unsigned int nb_objs, unsigned int obj_cache_size, int socket_id);
-
 void
-qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
+qat_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *session);
 
 unsigned int
-qat_crypto_sym_get_session_private_size(struct rte_cryptodev *dev);
+qat_sym_session_get_private_size(struct rte_cryptodev *dev);
 
-int qat_get_inter_state_size(enum icp_qat_hw_auth_algo qat_hash_alg);
-
-
-void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
+void
+qat_sym_sesssion_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
 					enum qat_crypto_proto_flag proto_flags);
-
-int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
-int qat_alg_validate_aes_docsisbpi_key(int key_len,
+int
+qat_sym_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int
+qat_sym_validate_aes_docsisbpi_key(int key_len,
 					enum icp_qat_hw_cipher_algo *alg);
-int qat_alg_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
-int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
-int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
-int qat_alg_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
-int qat_cipher_get_block_size(enum icp_qat_hw_cipher_algo qat_cipher_alg);
-int qat_alg_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int
+qat_sym_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int
+qat_sym_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int
+qat_sym_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int
+qat_sym_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int
+qat_cipher_get_block_size(enum icp_qat_hw_cipher_algo qat_cipher_alg);
+int
+qat_sym_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 
 #endif /* _QAT_SYM_SESSION_H_ */

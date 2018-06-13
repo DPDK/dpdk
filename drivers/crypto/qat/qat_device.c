@@ -30,7 +30,7 @@ int qat_dev_close(struct rte_cryptodev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
-		ret = qat_crypto_sym_qp_release(dev, i);
+		ret = qat_sym_qp_release(dev, i);
 		if (ret < 0)
 			return ret;
 	}

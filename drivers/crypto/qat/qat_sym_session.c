@@ -105,7 +105,7 @@ qat_is_auth_alg_supported(enum rte_crypto_auth_algorithm algo,
 }
 
 void
-qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
+qat_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -116,7 +116,7 @@ qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
 	if (sess_priv) {
 		if (s->bpi_ctx)
 			bpi_cipher_ctx_free(s->bpi_ctx);
-		memset(s, 0, qat_crypto_sym_get_session_private_size(dev));
+		memset(s, 0, qat_sym_session_get_private_size(dev));
 		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
 
 		set_session_private_data(sess, index, NULL);
@@ -197,7 +197,7 @@ qat_get_cipher_xform(struct rte_crypto_sym_xform *xform)
 }
 
 int
-qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
+qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct qat_session *session)
 {
@@ -213,7 +213,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 
 	switch (cipher_xform->algo) {
 	case RTE_CRYPTO_CIPHER_AES_CBC:
-		if (qat_alg_validate_aes_key(cipher_xform->key.length,
+		if (qat_sym_validate_aes_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES cipher key size");
 			ret = -EINVAL;
@@ -222,7 +222,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
-		if (qat_alg_validate_aes_key(cipher_xform->key.length,
+		if (qat_sym_validate_aes_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES cipher key size");
 			ret = -EINVAL;
@@ -231,7 +231,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
-		if (qat_alg_validate_snow3g_key(cipher_xform->key.length,
+		if (qat_sym_validate_snow3g_key(cipher_xform->key.length,
 					&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid SNOW 3G cipher key size");
 			ret = -EINVAL;
@@ -243,7 +243,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
-		if (qat_alg_validate_kasumi_key(cipher_xform->key.length,
+		if (qat_sym_validate_kasumi_key(cipher_xform->key.length,
 					&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid KASUMI cipher key size");
 			ret = -EINVAL;
@@ -252,7 +252,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_F8_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
-		if (qat_alg_validate_3des_key(cipher_xform->key.length,
+		if (qat_sym_validate_3des_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid 3DES cipher key size");
 			ret = -EINVAL;
@@ -261,7 +261,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_DES_CBC:
-		if (qat_alg_validate_des_key(cipher_xform->key.length,
+		if (qat_sym_validate_des_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid DES cipher key size");
 			ret = -EINVAL;
@@ -270,7 +270,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_3DES_CTR:
-		if (qat_alg_validate_3des_key(cipher_xform->key.length,
+		if (qat_sym_validate_3des_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid 3DES cipher key size");
 			ret = -EINVAL;
@@ -288,7 +288,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 			PMD_DRV_LOG(ERR, "failed to create DES BPI ctx");
 			goto error_out;
 		}
-		if (qat_alg_validate_des_key(cipher_xform->key.length,
+		if (qat_sym_validate_des_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid DES cipher key size");
 			ret = -EINVAL;
@@ -306,7 +306,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 			PMD_DRV_LOG(ERR, "failed to create AES BPI ctx");
 			goto error_out;
 		}
-		if (qat_alg_validate_aes_docsisbpi_key(cipher_xform->key.length,
+		if (qat_sym_validate_aes_docsisbpi_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES DOCSISBPI key size");
 			ret = -EINVAL;
@@ -323,7 +323,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 			ret = -ENOTSUP;
 			goto error_out;
 		}
-		if (qat_alg_validate_zuc_key(cipher_xform->key.length,
+		if (qat_sym_validate_zuc_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid ZUC cipher key size");
 			ret = -EINVAL;
@@ -352,7 +352,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 	else
 		session->qat_dir = ICP_QAT_HW_CIPHER_DECRYPT;
 
-	if (qat_alg_aead_session_create_content_desc_cipher(session,
+	if (qat_sym_session_aead_create_cd_cipher(session,
 						cipher_xform->key.data,
 						cipher_xform->key.length)) {
 		ret = -EINVAL;
@@ -370,7 +370,7 @@ error_out:
 }
 
 int
-qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
+qat_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess,
 		struct rte_mempool *mempool)
@@ -384,7 +384,7 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		return -ENOMEM;
 	}
 
-	ret = qat_crypto_set_session_parameters(dev, xform, sess_private_data);
+	ret = qat_sym_session_set_parameters(dev, xform, sess_private_data);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR,
 		    "Crypto QAT PMD: failed to configure session parameters");
@@ -401,7 +401,7 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 }
 
 int
-qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
+qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
 	struct qat_session *session = session_private;
@@ -425,29 +425,27 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 	session->qat_cmd = (enum icp_qat_fw_la_cmd_id)qat_cmd_id;
 	switch (session->qat_cmd) {
 	case ICP_QAT_FW_LA_CMD_CIPHER:
-		ret = qat_crypto_sym_configure_session_cipher(dev,
-							xform, session);
+		ret = qat_sym_session_configure_cipher(dev, xform, session);
 		if (ret < 0)
 			return ret;
 		break;
 	case ICP_QAT_FW_LA_CMD_AUTH:
-		ret = qat_crypto_sym_configure_session_auth(dev,
-							xform, session);
+		ret = qat_sym_session_configure_auth(dev, xform, session);
 		if (ret < 0)
 			return ret;
 		break;
 	case ICP_QAT_FW_LA_CMD_CIPHER_HASH:
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
-			ret = qat_crypto_sym_configure_session_aead(xform,
+			ret = qat_sym_session_configure_aead(xform,
 					session);
 			if (ret < 0)
 				return ret;
 		} else {
-			ret = qat_crypto_sym_configure_session_cipher(dev,
+			ret = qat_sym_session_configure_cipher(dev,
 					xform, session);
 			if (ret < 0)
 				return ret;
-			ret = qat_crypto_sym_configure_session_auth(dev,
+			ret = qat_sym_session_configure_auth(dev,
 					xform, session);
 			if (ret < 0)
 				return ret;
@@ -455,16 +453,16 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 		break;
 	case ICP_QAT_FW_LA_CMD_HASH_CIPHER:
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
-			ret = qat_crypto_sym_configure_session_aead(xform,
+			ret = qat_sym_session_configure_aead(xform,
 					session);
 			if (ret < 0)
 				return ret;
 		} else {
-			ret = qat_crypto_sym_configure_session_auth(dev,
+			ret = qat_sym_session_configure_auth(dev,
 					xform, session);
 			if (ret < 0)
 				return ret;
-			ret = qat_crypto_sym_configure_session_cipher(dev,
+			ret = qat_sym_session_configure_cipher(dev,
 					xform, session);
 			if (ret < 0)
 				return ret;
@@ -492,7 +490,7 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 }
 
 int
-qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
+qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
 				struct qat_session *session)
 {
@@ -521,7 +519,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
 		break;
 	case RTE_CRYPTO_AUTH_AES_GMAC:
-		if (qat_alg_validate_aes_key(auth_xform->key.length,
+		if (qat_sym_validate_aes_key(auth_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES key size");
 			return -EINVAL;
@@ -579,14 +577,13 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 			 * It needs to create cipher desc content first,
 			 * then authentication
 			 */
-			if (qat_alg_aead_session_create_content_desc_cipher(
-						session,
+
+			if (qat_sym_session_aead_create_cd_cipher(session,
 						auth_xform->key.data,
 						auth_xform->key.length))
 				return -EINVAL;
 
-			if (qat_alg_aead_session_create_content_desc_auth(
-						session,
+			if (qat_sym_session_aead_create_cd_auth(session,
 						key_data,
 						key_length,
 						0,
@@ -600,8 +597,8 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 			 * It needs to create authentication desc content first,
 			 * then cipher
 			 */
-			if (qat_alg_aead_session_create_content_desc_auth(
-					session,
+
+			if (qat_sym_session_aead_create_cd_auth(session,
 					key_data,
 					key_length,
 					0,
@@ -609,8 +606,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 					auth_xform->op))
 				return -EINVAL;
 
-			if (qat_alg_aead_session_create_content_desc_cipher(
-						session,
+			if (qat_sym_session_aead_create_cd_cipher(session,
 						auth_xform->key.data,
 						auth_xform->key.length))
 				return -EINVAL;
@@ -618,7 +614,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 		/* Restore to authentication only only */
 		session->qat_cmd = ICP_QAT_FW_LA_CMD_AUTH;
 	} else {
-		if (qat_alg_aead_session_create_content_desc_auth(session,
+		if (qat_sym_session_aead_create_cd_auth(session,
 				key_data,
 				key_length,
 				0,
@@ -632,7 +628,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 }
 
 int
-qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
+qat_sym_session_configure_aead(struct rte_crypto_sym_xform *xform,
 				struct qat_session *session)
 {
 	struct rte_crypto_aead_xform *aead_xform = &xform->aead;
@@ -647,7 +643,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 
 	switch (aead_xform->algo) {
 	case RTE_CRYPTO_AEAD_AES_GCM:
-		if (qat_alg_validate_aes_key(aead_xform->key.length,
+		if (qat_sym_validate_aes_key(aead_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES key size");
 			return -EINVAL;
@@ -656,7 +652,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
 		break;
 	case RTE_CRYPTO_AEAD_AES_CCM:
-		if (qat_alg_validate_aes_key(aead_xform->key.length,
+		if (qat_sym_validate_aes_key(aead_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES key size");
 			return -EINVAL;
@@ -682,12 +678,12 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 		crypto_operation = aead_xform->algo == RTE_CRYPTO_AEAD_AES_GCM ?
 			RTE_CRYPTO_AUTH_OP_GENERATE : RTE_CRYPTO_AUTH_OP_VERIFY;
 
-		if (qat_alg_aead_session_create_content_desc_cipher(session,
+		if (qat_sym_session_aead_create_cd_cipher(session,
 					aead_xform->key.data,
 					aead_xform->key.length))
 			return -EINVAL;
 
-		if (qat_alg_aead_session_create_content_desc_auth(session,
+		if (qat_sym_session_aead_create_cd_auth(session,
 					aead_xform->key.data,
 					aead_xform->key.length,
 					aead_xform->aad_length,
@@ -704,7 +700,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 		crypto_operation = aead_xform->algo == RTE_CRYPTO_AEAD_AES_GCM ?
 			RTE_CRYPTO_AUTH_OP_VERIFY : RTE_CRYPTO_AUTH_OP_GENERATE;
 
-		if (qat_alg_aead_session_create_content_desc_auth(session,
+		if (qat_sym_session_aead_create_cd_auth(session,
 					aead_xform->key.data,
 					aead_xform->key.length,
 					aead_xform->aad_length,
@@ -712,7 +708,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 					crypto_operation))
 			return -EINVAL;
 
-		if (qat_alg_aead_session_create_content_desc_cipher(session,
+		if (qat_sym_session_aead_create_cd_cipher(session,
 					aead_xform->key.data,
 					aead_xform->key.length))
 			return -EINVAL;
@@ -722,7 +718,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 	return 0;
 }
 
-unsigned int qat_crypto_sym_get_session_private_size(
+unsigned int qat_sym_session_get_private_size(
 		struct rte_cryptodev *dev __rte_unused)
 {
 	return RTE_ALIGN_CEIL(sizeof(struct qat_session), 8);
@@ -996,7 +992,7 @@ static int partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
 #define HMAC_OPAD_VALUE	0x5c
 #define HASH_XCBC_PRECOMP_KEY_NUM 3
 
-static int qat_alg_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
+static int qat_sym_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 				const uint8_t *auth_key,
 				uint16_t auth_keylen,
 				uint8_t *p_state_buf,
@@ -1126,7 +1122,8 @@ static int qat_alg_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 	return 0;
 }
 
-void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
+static void
+qat_sym_session_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
 		enum qat_crypto_proto_flag proto_flags)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -1194,7 +1191,7 @@ qat_get_crypto_proto_flag(uint16_t flags)
 	return qat_proto_flag;
 }
 
-int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
+int qat_sym_session_aead_create_cd_cipher(struct qat_session *cdesc,
 						uint8_t *cipherkey,
 						uint32_t cipherkeylen)
 {
@@ -1298,7 +1295,7 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 	cipher_cd_ctrl->cipher_cfg_offset = cipher_offset >> 3;
 
 	header->service_cmd_id = cdesc->qat_cmd;
-	qat_alg_init_common_hdr(header, qat_proto_flag);
+	qat_sym_session_init_common_hdr(header, qat_proto_flag);
 
 	cipher = (struct icp_qat_hw_cipher_algo_blk *)cdesc->cd_cur_ptr;
 	cipher->cipher_config.val =
@@ -1342,7 +1339,7 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 	return 0;
 }
 
-int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
+int qat_sym_session_aead_create_cd_auth(struct qat_session *cdesc,
 						uint8_t *authkey,
 						uint32_t authkeylen,
 						uint32_t aad_length,
@@ -1431,7 +1428,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 	 */
 	switch (cdesc->qat_hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
-		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA1,
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA1,
 			authkey, authkeylen, cdesc->cd_cur_ptr,	&state1_size)) {
 			PMD_DRV_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
@@ -1439,7 +1436,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		state2_size = RTE_ALIGN_CEIL(ICP_QAT_HW_SHA1_STATE2_SZ, 8);
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA224:
-		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA224,
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA224,
 			authkey, authkeylen, cdesc->cd_cur_ptr, &state1_size)) {
 			PMD_DRV_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
@@ -1447,7 +1444,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		state2_size = ICP_QAT_HW_SHA224_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA256:
-		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA256,
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA256,
 			authkey, authkeylen, cdesc->cd_cur_ptr,	&state1_size)) {
 			PMD_DRV_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
@@ -1455,7 +1452,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		state2_size = ICP_QAT_HW_SHA256_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA384:
-		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA384,
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA384,
 			authkey, authkeylen, cdesc->cd_cur_ptr, &state1_size)) {
 			PMD_DRV_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
@@ -1463,7 +1460,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		state2_size = ICP_QAT_HW_SHA384_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
-		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA512,
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA512,
 			authkey, authkeylen, cdesc->cd_cur_ptr,	&state1_size)) {
 			PMD_DRV_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
@@ -1472,7 +1469,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
 		state1_size = ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ;
-		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC,
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC,
 			authkey, authkeylen, cdesc->cd_cur_ptr + state1_size,
 			&state2_size)) {
 			PMD_DRV_LOG(ERR, "(XCBC)precompute failed");
@@ -1483,7 +1480,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
 		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_GCM;
 		state1_size = ICP_QAT_HW_GALOIS_128_STATE1_SZ;
-		if (qat_alg_do_precomputes(cdesc->qat_hash_alg,
+		if (qat_sym_do_precomputes(cdesc->qat_hash_alg,
 			authkey, authkeylen, cdesc->cd_cur_ptr + state1_size,
 			&state2_size)) {
 			PMD_DRV_LOG(ERR, "(GCM)precompute failed");
@@ -1543,7 +1540,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
-		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_MD5,
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_MD5,
 			authkey, authkeylen, cdesc->cd_cur_ptr,
 			&state1_size)) {
 			PMD_DRV_LOG(ERR, "(MD5)precompute failed");
@@ -1606,7 +1603,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 	}
 
 	/* Request template setup */
-	qat_alg_init_common_hdr(header, qat_proto_flag);
+	qat_sym_session_init_common_hdr(header, qat_proto_flag);
 	header->service_cmd_id = cdesc->qat_cmd;
 
 	/* Auth CD config setup */
@@ -1632,7 +1629,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 	return 0;
 }
 
-int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+int qat_sym_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 {
 	switch (key_len) {
 	case ICP_QAT_HW_AES_128_KEY_SZ:
@@ -1650,7 +1647,7 @@ int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	return 0;
 }
 
-int qat_alg_validate_aes_docsisbpi_key(int key_len,
+int qat_sym_validate_aes_docsisbpi_key(int key_len,
 		enum icp_qat_hw_cipher_algo *alg)
 {
 	switch (key_len) {
@@ -1663,7 +1660,7 @@ int qat_alg_validate_aes_docsisbpi_key(int key_len,
 	return 0;
 }
 
-int qat_alg_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+int qat_sym_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 {
 	switch (key_len) {
 	case ICP_QAT_HW_SNOW_3G_UEA2_KEY_SZ:
@@ -1675,7 +1672,7 @@ int qat_alg_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	return 0;
 }
 
-int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+int qat_sym_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 {
 	switch (key_len) {
 	case ICP_QAT_HW_KASUMI_KEY_SZ:
@@ -1687,7 +1684,7 @@ int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	return 0;
 }
 
-int qat_alg_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+int qat_sym_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 {
 	switch (key_len) {
 	case ICP_QAT_HW_DES_KEY_SZ:
@@ -1699,7 +1696,7 @@ int qat_alg_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	return 0;
 }
 
-int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+int qat_sym_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 {
 	switch (key_len) {
 	case QAT_3DES_KEY_SZ_OPT1:
@@ -1712,7 +1709,7 @@ int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	return 0;
 }
 
-int qat_alg_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+int qat_sym_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 {
 	switch (key_len) {
 	case ICP_QAT_HW_ZUC_3G_EEA3_KEY_SZ:
