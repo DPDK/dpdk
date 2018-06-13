@@ -8,10 +8,8 @@
 #include <rte_cryptodev_pmd.h>
 #include <rte_memzone.h>
 
+#include "qat_common.h"
 #include "qat_crypto_capabilities.h"
-
-#define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
-/**< Intel QAT Symmetric Crypto PMD device name */
 
 /*
  * This macro rounds up a number to a be a multiple of
@@ -29,11 +27,6 @@
 /* number of inflights below which no tail write coalescing should occur */
 
 struct qat_session;
-
-enum qat_device_gen {
-	QAT_GEN1 = 1,
-	QAT_GEN2,
-};
 
 /**
  * Structure associated with each queue.

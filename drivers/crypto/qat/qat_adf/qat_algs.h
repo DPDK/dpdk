@@ -32,37 +32,12 @@
 					ICP_QAT_HW_CIPHER_KEY_CONVERT, \
 					ICP_QAT_HW_CIPHER_DECRYPT)
 
-struct qat_alg_buf {
-	uint32_t len;
-	uint32_t resrvd;
-	uint64_t addr;
-} __rte_packed;
-
 enum qat_crypto_proto_flag {
 	QAT_CRYPTO_PROTO_FLAG_NONE = 0,
 	QAT_CRYPTO_PROTO_FLAG_CCM = 1,
 	QAT_CRYPTO_PROTO_FLAG_GCM = 2,
 	QAT_CRYPTO_PROTO_FLAG_SNOW3G = 3,
 	QAT_CRYPTO_PROTO_FLAG_ZUC = 4
-};
-
-/*
- * Maximum number of SGL entries
- */
-#define QAT_SGL_MAX_NUMBER	16
-
-struct qat_alg_buf_list {
-	uint64_t resrvd;
-	uint32_t num_bufs;
-	uint32_t num_mapped_bufs;
-	struct qat_alg_buf bufers[QAT_SGL_MAX_NUMBER];
-} __rte_packed __rte_cache_aligned;
-
-struct qat_crypto_op_cookie {
-	struct qat_alg_buf_list qat_sgl_list_src;
-	struct qat_alg_buf_list qat_sgl_list_dst;
-	rte_iova_t qat_sgl_src_phys_addr;
-	rte_iova_t qat_sgl_dst_phys_addr;
 };
 
 /* Common content descriptor */
