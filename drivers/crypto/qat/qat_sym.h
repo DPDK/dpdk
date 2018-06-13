@@ -20,13 +20,6 @@
 	(((num) + (align) - 1) & ~((align) - 1))
 #define QAT_64_BTYE_ALIGN_MASK (~0x3f)
 
-#define QAT_CSR_HEAD_WRITE_THRESH 32U
-/* number of requests to accumulate before writing head CSR */
-#define QAT_CSR_TAIL_WRITE_THRESH 32U
-/* number of requests to accumulate before writing tail CSR */
-#define QAT_CSR_TAIL_FORCE_WRITE_THRESH 256U
-/* number of inflights below which no tail write coalescing should occur */
-
 struct qat_sym_session;
 
 int

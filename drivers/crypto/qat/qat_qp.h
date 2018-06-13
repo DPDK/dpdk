@@ -7,6 +7,13 @@
 #include "qat_common.h"
 #include "qat_device.h"
 
+#define QAT_CSR_HEAD_WRITE_THRESH 32U
+/* number of requests to accumulate before writing head CSR */
+#define QAT_CSR_TAIL_WRITE_THRESH 32U
+/* number of requests to accumulate before writing tail CSR */
+#define QAT_CSR_TAIL_FORCE_WRITE_THRESH 256U
+/* number of inflights below which no tail write coalescing should occur */
+
 typedef int (*build_request_t)(void *op,
 		uint8_t *req, void *op_cookie,
 		enum qat_device_gen qat_dev_gen);
