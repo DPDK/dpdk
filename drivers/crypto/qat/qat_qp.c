@@ -248,6 +248,9 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 	return 0;
 
 create_err:
+	if (qp->op_cookie_pool)
+		rte_mempool_free(qp->op_cookie_pool);
+	rte_free(qp->op_cookies);
 	rte_free(qp);
 	return -EFAULT;
 }
