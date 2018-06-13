@@ -69,17 +69,28 @@ static const struct rte_pci_id pci_id_qat_map[] = {
 		{.device_id = 0},
 };
 
+
+
 static int
-crypto_qat_create(const char *name, struct rte_pci_device *pci_dev,
-		struct rte_cryptodev_pmd_init_params *init_params)
+qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 {
+	struct rte_cryptodev_pmd_init_params init_params = {
+			.name = "",
+			.socket_id = qat_pci_dev->pci_dev->device.numa_node,
+			.private_data_size = sizeof(struct qat_pmd_private),
+			.max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS
+	};
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	struct qat_pmd_private *internals;
 
-	PMD_INIT_FUNC_TRACE();
+	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
+			qat_pci_dev->name, "sym");
+	PMD_DRV_LOG(DEBUG, "Creating QAT SYM device %s", name);
 
-	cryptodev = rte_cryptodev_pmd_create(name, &pci_dev->device,
-			init_params);
+	cryptodev = rte_cryptodev_pmd_create(name,
+			&qat_pci_dev->pci_dev->device, &init_params);
+
 	if (cryptodev == NULL)
 		return -ENODEV;
 
@@ -95,7 +106,10 @@ crypto_qat_create(const char *name, struct rte_pci_device *pci_dev,
 			RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER;
 
 	internals = cryptodev->data->dev_private;
-	internals->max_nb_sessions = init_params->max_nb_sessions;
+	internals->qat_dev = qat_pci_dev;
+	qat_pci_dev->sym_dev = internals;
+
+	internals->max_nb_sessions = init_params.max_nb_sessions;
 	internals->pci_dev = RTE_DEV_TO_PCI(cryptodev->device);
 	internals->dev_id = cryptodev->data->dev_id;
 	switch (internals->pci_dev->id.device_id) {
@@ -111,68 +125,120 @@ crypto_qat_create(const char *name, struct rte_pci_device *pci_dev,
 		break;
 	default:
 		PMD_DRV_LOG(ERR,
-			"Invalid dev_id, can't determine capabilities");
+				"Invalid dev_id, can't determine capabilities");
 		break;
 	}
 
-	/*
-	 * For secondary processes, we don't initialise any further as primary
-	 * has already done this work. Only check we don't need a different
-	 * RX function
-	 */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		PMD_DRV_LOG(DEBUG, "Device already initialised by primary process");
 		return 0;
-	}
+}
+
+static int
+qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
+{
+	struct rte_cryptodev *cryptodev;
+
+	if (qat_pci_dev == NULL)
+		return -ENODEV;
+	if (qat_pci_dev->sym_dev == NULL)
+		return 0;
+
+	/* free crypto device */
+	cryptodev = rte_cryptodev_pmd_get_dev(qat_pci_dev->sym_dev->dev_id);
+	rte_cryptodev_pmd_destroy(cryptodev);
+	qat_pci_dev->sym_dev = NULL;
 
 	return 0;
 }
 
-static int crypto_qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+static int
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
+{
+	return 0;
+}
+
+static int
+qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
+{
+	return 0;
+}
+
+static int
+qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
+{
+	return 0;
+}
+
+static int
+qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
+{
+	return 0;
+}
+
+static int
+qat_pci_dev_destroy(struct qat_pci_device *qat_pci_dev,
 		struct rte_pci_device *pci_dev)
 {
-	struct rte_cryptodev_pmd_init_params init_params = {
-		.name = "",
-		.socket_id = pci_dev->device.numa_node,
-		.private_data_size = sizeof(struct qat_pmd_private),
-		.max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS
-	};
-	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
+	qat_sym_dev_destroy(qat_pci_dev);
+	qat_comp_dev_destroy(qat_pci_dev);
+	qat_asym_dev_destroy(qat_pci_dev);
+	return qat_pci_device_release(pci_dev);
+}
+
+static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		struct rte_pci_device *pci_dev)
+{
+	int ret = 0;
+	struct qat_pci_device *qat_pci_dev;
 
 	PMD_DRV_LOG(DEBUG, "Found QAT device at %02x:%02x.%x",
 			pci_dev->addr.bus,
 			pci_dev->addr.devid,
 			pci_dev->addr.function);
 
-	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
+	qat_pci_dev = qat_pci_device_allocate(pci_dev);
+	if (qat_pci_dev == NULL)
+		return -ENODEV;
 
-	return crypto_qat_create(name, pci_dev, &init_params);
+	ret = qat_sym_dev_create(qat_pci_dev);
+	if (ret != 0)
+		goto error_out;
+
+	ret = qat_comp_dev_create(qat_pci_dev);
+	if (ret != 0)
+		goto error_out;
+
+	ret = qat_asym_dev_create(qat_pci_dev);
+	if (ret != 0)
+		goto error_out;
+
+	return 0;
+
+error_out:
+	qat_pci_dev_destroy(qat_pci_dev, pci_dev);
+	return ret;
+
 }
 
-static int crypto_qat_pci_remove(struct rte_pci_device *pci_dev)
+static int qat_pci_remove(struct rte_pci_device *pci_dev)
 {
-	struct rte_cryptodev *cryptodev;
-	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
+	struct qat_pci_device *qat_pci_dev;
 
 	if (pci_dev == NULL)
 		return -EINVAL;
 
-	rte_pci_device_name(&pci_dev->addr, cryptodev_name,
-			sizeof(cryptodev_name));
+	qat_pci_dev = qat_get_qat_dev_from_pci_dev(pci_dev);
+	if (qat_pci_dev == NULL)
+		return 0;
 
-	cryptodev = rte_cryptodev_pmd_get_named_dev(cryptodev_name);
-	if (cryptodev == NULL)
-		return -ENODEV;
+	return qat_pci_dev_destroy(qat_pci_dev, pci_dev);
 
-	/* free crypto device */
-	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 
 static struct rte_pci_driver rte_qat_pmd = {
 	.id_table = pci_id_qat_map,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-	.probe = crypto_qat_pci_probe,
-	.remove = crypto_qat_pci_remove
+	.probe = qat_pci_probe,
+	.remove = qat_pci_remove
 };
 
 static struct cryptodev_driver qat_crypto_drv;
