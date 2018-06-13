@@ -85,12 +85,7 @@
 
 /****** driver defines ********/
 
-/*
- * Number of sessions to create in the session memory pool
- * on a single instance of crypto HW device.
- */
 /* QuickAssist device */
-#define RTE_QAT_PMD_MAX_NB_SESSIONS 2048
 /* Max. number of QuickAssist devices which can be attached */
 #define RTE_PMD_QAT_MAX_PCI_DEVICES 48
 
