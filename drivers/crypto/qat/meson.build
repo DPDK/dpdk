@@ -7,7 +7,8 @@ if not dep.found()
 endif
 sources = files('qat_crypto.c', 'qat_qp.c',
 		'qat_adf/qat_algs_build_desc.c',
-		'rte_qat_cryptodev.c')
+		'rte_qat_cryptodev.c',
+		'qat_device.c')
 includes += include_directories('qat_adf')
 deps += ['bus_pci']
 ext_deps += dep

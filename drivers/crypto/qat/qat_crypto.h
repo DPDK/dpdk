@@ -9,6 +9,7 @@
 #include <rte_memzone.h>
 
 #include "qat_common.h"
+#include "qat_device.h"
 #include "qat_crypto_capabilities.h"
 
 /*
@@ -63,27 +64,6 @@ struct qat_qp {
 	uint32_t nb_descriptors;
 	enum qat_device_gen qat_dev_gen;
 } __rte_cache_aligned;
-
-/** private data structure for each QAT device */
-struct qat_pmd_private {
-	unsigned max_nb_queue_pairs;
-	/**< Max number of queue pairs supported by device */
-	unsigned max_nb_sessions;
-	/**< Max number of sessions supported by device */
-	enum qat_device_gen qat_dev_gen;
-	/**< QAT device generation */
-	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
-};
-
-extern uint8_t cryptodev_qat_driver_id;
-
-int qat_dev_config(struct rte_cryptodev *dev,
-		struct rte_cryptodev_config *config);
-int qat_dev_start(struct rte_cryptodev *dev);
-void qat_dev_stop(struct rte_cryptodev *dev);
-int qat_dev_close(struct rte_cryptodev *dev);
-void qat_dev_info_get(struct rte_cryptodev *dev,
-	struct rte_cryptodev_info *info);
 
 void qat_crypto_sym_stats_get(struct rte_cryptodev *dev,
 	struct rte_cryptodev_stats *stats);
