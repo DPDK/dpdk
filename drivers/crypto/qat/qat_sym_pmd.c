@@ -85,7 +85,7 @@ static void qat_sym_stats_get(struct rte_cryptodev *dev,
 	struct qat_sym_dev_private *qat_priv;
 
 	if (stats == NULL || dev == NULL) {
-		PMD_DRV_LOG(ERR, "invalid ptr: stats %p, dev %p", stats, dev);
+		QAT_LOG(ERR, "invalid ptr: stats %p, dev %p", stats, dev);
 		return;
 	}
 	qat_priv = dev->data->dev_private;
@@ -102,7 +102,7 @@ static void qat_sym_stats_reset(struct rte_cryptodev *dev)
 	struct qat_sym_dev_private *qat_priv;
 
 	if (dev == NULL) {
-		PMD_DRV_LOG(ERR, "invalid cryptodev ptr %p", dev);
+		QAT_LOG(ERR, "invalid cryptodev ptr %p", dev);
 		return;
 	}
 	qat_priv = dev->data->dev_private;
@@ -115,7 +115,7 @@ static int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 {
 	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
 
-	PMD_DRV_LOG(DEBUG, "Release sym qp %u on device %d",
+	QAT_LOG(DEBUG, "Release sym qp %u on device %d",
 				queue_pair_id, dev->data->dev_id);
 
 	qat_private->qat_dev->qps_in_use[QAT_SERVICE_SYMMETRIC][queue_pair_id]
@@ -149,7 +149,7 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			return ret;
 	}
 	if (qp_id >= qat_qps_per_service(sym_hw_qps, QAT_SERVICE_SYMMETRIC)) {
-		PMD_DRV_LOG(ERR, "qp_id %u invalid for this device", qp_id);
+		QAT_LOG(ERR, "qp_id %u invalid for this device", qp_id);
 		return -EINVAL;
 	}
 
@@ -253,7 +253,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
-	PMD_DRV_LOG(DEBUG, "Creating QAT SYM device %s", name);
+	QAT_LOG(DEBUG, "Creating QAT SYM device %s", name);
 
 	/* Populate subset device to use in cryptodev device creation */
 	qat_pci_dev->sym_rte_dev.driver = &cryptodev_qat_sym_driver;
@@ -293,13 +293,13 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 		break;
 	default:
 		internals->qat_dev_capabilities = qat_gen2_sym_capabilities;
-		PMD_DRV_LOG(DEBUG,
+		QAT_LOG(DEBUG,
 			"QAT gen %d capabilities unknown, default to GEN2",
 					qat_pci_dev->qat_dev_gen);
 		break;
 	}
 
-	PMD_DRV_LOG(DEBUG, "Created QAT SYM device %s as cryptodev instance %d",
+	QAT_LOG(DEBUG, "Created QAT SYM device %s as cryptodev instance %d",
 			cryptodev->data->name, internals->sym_dev_id);
 	return 0;
 }

@@ -28,7 +28,7 @@ qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
 	buf = buf->next;
 	while (buf) {
 		if (unlikely(nr == QAT_SGL_MAX_NUMBER)) {
-			PMD_DRV_LOG(ERR,
+			QAT_LOG(ERR,
 				"QAT PMD exceeded size of QAT SGL entry(%u)",
 					QAT_SGL_MAX_NUMBER);
 			return -EINVAL;
@@ -61,7 +61,7 @@ void qat_stats_get(struct qat_pci_device *dev,
 	struct qat_qp **qp;
 
 	if (stats == NULL || dev == NULL || service >= QAT_SERVICE_INVALID) {
-		PMD_DRV_LOG(ERR, "invalid param: stats %p, dev %p, service %d",
+		QAT_LOG(ERR, "invalid param: stats %p, dev %p, service %d",
 				stats, dev, service);
 		return;
 	}
@@ -69,7 +69,7 @@ void qat_stats_get(struct qat_pci_device *dev,
 	qp = dev->qps_in_use[service];
 	for (i = 0; i < ADF_MAX_QPS_ON_ANY_SERVICE; i++) {
 		if (qp[i] == NULL) {
-			PMD_DRV_LOG(DEBUG, "Service %d Uninitialised qp %d",
+			QAT_LOG(DEBUG, "Service %d Uninitialised qp %d",
 					service, i);
 			continue;
 		}
@@ -88,7 +88,7 @@ void qat_stats_reset(struct qat_pci_device *dev,
 	struct qat_qp **qp;
 
 	if (dev == NULL || service >= QAT_SERVICE_INVALID) {
-		PMD_DRV_LOG(ERR, "invalid param: dev %p, service %d",
+		QAT_LOG(ERR, "invalid param: dev %p, service %d",
 				dev, service);
 		return;
 	}
@@ -96,12 +96,12 @@ void qat_stats_reset(struct qat_pci_device *dev,
 	qp = dev->qps_in_use[service];
 	for (i = 0; i < ADF_MAX_QPS_ON_ANY_SERVICE; i++) {
 		if (qp[i] == NULL) {
-			PMD_DRV_LOG(DEBUG, "Service %d Uninitialised qp %d",
+			QAT_LOG(DEBUG, "Service %d Uninitialised qp %d",
 					service, i);
 			continue;
 		}
 		memset(&(qp[i]->stats), 0, sizeof(qp[i]->stats));
 	}
 
-	PMD_DRV_LOG(DEBUG, "QAT: %d stats cleared", service);
+	QAT_LOG(DEBUG, "QAT: %d stats cleared", service);
 }

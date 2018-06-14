@@ -125,12 +125,12 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 		if (((size_t)queue_size <= mz->len) &&
 				((socket_id == SOCKET_ID_ANY) ||
 					(socket_id == mz->socket_id))) {
-			PMD_DRV_LOG(DEBUG, "re-use memzone already "
+			QAT_LOG(DEBUG, "re-use memzone already "
 					"allocated for %s", queue_name);
 			return mz;
 		}
 
-		PMD_DRV_LOG(ERR, "Incompatible memzone already "
+		QAT_LOG(ERR, "Incompatible memzone already "
 				"allocated %s, size %u, socket %d. "
 				"Requested size %u, socket %u",
 				queue_name, (uint32_t)mz->len,
@@ -138,7 +138,7 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 		return NULL;
 	}
 
-	PMD_DRV_LOG(DEBUG, "Allocate memzone for %s, size %u on socket %u",
+	QAT_LOG(DEBUG, "Allocate memzone for %s, size %u on socket %u",
 					queue_name, queue_size, socket_id);
 	return rte_memzone_reserve_aligned(queue_name, queue_size,
 		socket_id, RTE_MEMZONE_IOVA_CONTIG, queue_size);
@@ -155,18 +155,18 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 	char op_cookie_pool_name[RTE_RING_NAMESIZE];
 	uint32_t i;
 
-	PMD_DRV_LOG(DEBUG, "Setup qp %u on qat pci device %d gen %d",
+	QAT_LOG(DEBUG, "Setup qp %u on qat pci device %d gen %d",
 		queue_pair_id, qat_dev->qat_dev_id, qat_dev->qat_dev_gen);
 
 	if ((qat_qp_conf->nb_descriptors > ADF_MAX_DESC) ||
 		(qat_qp_conf->nb_descriptors < ADF_MIN_DESC)) {
-		PMD_DRV_LOG(ERR, "Can't create qp for %u descriptors",
+		QAT_LOG(ERR, "Can't create qp for %u descriptors",
 				qat_qp_conf->nb_descriptors);
 		return -EINVAL;
 	}
 
 	if (pci_dev->mem_resource[0].addr == NULL) {
-		PMD_DRV_LOG(ERR, "Could not find VF config space "
+		QAT_LOG(ERR, "Could not find VF config space "
 				"(UIO driver attached?).");
 		return -EINVAL;
 	}
@@ -175,7 +175,7 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 	qp = rte_zmalloc("qat PMD qp metadata",
 			sizeof(*qp), RTE_CACHE_LINE_SIZE);
 	if (qp == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc mem for qp struct");
+		QAT_LOG(ERR, "Failed to alloc mem for qp struct");
 		return -ENOMEM;
 	}
 	qp->nb_descriptors = qat_qp_conf->nb_descriptors;
@@ -183,7 +183,7 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 			qat_qp_conf->nb_descriptors * sizeof(*qp->op_cookies),
 			RTE_CACHE_LINE_SIZE);
 	if (qp->op_cookies == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc mem for cookie");
+		QAT_LOG(ERR, "Failed to alloc mem for cookie");
 		rte_free(qp);
 		return -ENOMEM;
 	}
@@ -193,14 +193,14 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 
 	if (qat_queue_create(qat_dev, &(qp->tx_q), qat_qp_conf,
 					ADF_RING_DIR_TX) != 0) {
-		PMD_DRV_LOG(ERR, "Tx queue create failed "
+		QAT_LOG(ERR, "Tx queue create failed "
 				"queue_pair_id=%u", queue_pair_id);
 		goto create_err;
 	}
 
 	if (qat_queue_create(qat_dev, &(qp->rx_q), qat_qp_conf,
 					ADF_RING_DIR_RX) != 0) {
-		PMD_DRV_LOG(ERR, "Rx queue create failed "
+		QAT_LOG(ERR, "Rx queue create failed "
 				"queue_pair_id=%hu", queue_pair_id);
 		qat_queue_delete(&(qp->tx_q));
 		goto create_err;
@@ -215,7 +215,7 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 		pci_dev->driver->driver.name, qat_dev->qat_dev_id,
 		qat_qp_conf->service_str, queue_pair_id);
 
-	PMD_DRV_LOG(DEBUG, "cookiepool: %s", op_cookie_pool_name);
+	QAT_LOG(DEBUG, "cookiepool: %s", op_cookie_pool_name);
 	qp->op_cookie_pool = rte_mempool_lookup(op_cookie_pool_name);
 	if (qp->op_cookie_pool == NULL)
 		qp->op_cookie_pool = rte_mempool_create(op_cookie_pool_name,
@@ -224,14 +224,14 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 				NULL, NULL, NULL, NULL, qat_qp_conf->socket_id,
 				0);
 	if (!qp->op_cookie_pool) {
-		PMD_DRV_LOG(ERR, "QAT PMD Cannot create"
+		QAT_LOG(ERR, "QAT PMD Cannot create"
 				" op mempool");
 		goto create_err;
 	}
 
 	for (i = 0; i < qp->nb_descriptors; i++) {
 		if (rte_mempool_get(qp->op_cookie_pool, &qp->op_cookies[i])) {
-			PMD_DRV_LOG(ERR, "QAT PMD Cannot get op_cookie");
+			QAT_LOG(ERR, "QAT PMD Cannot get op_cookie");
 			goto create_err;
 		}
 	}
@@ -241,7 +241,7 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 	qp->service_type = qat_qp_conf->hw->service_type;
 	qp->qat_dev = qat_dev;
 
-	PMD_DRV_LOG(DEBUG, "QP setup complete: id: %d, cookiepool: %s",
+	QAT_LOG(DEBUG, "QP setup complete: id: %d, cookiepool: %s",
 			queue_pair_id, op_cookie_pool_name);
 
 	*qp_addr = qp;
@@ -261,11 +261,11 @@ int qat_qp_release(struct qat_qp **qp_addr)
 	uint32_t i;
 
 	if (qp == NULL) {
-		PMD_DRV_LOG(DEBUG, "qp already freed");
+		QAT_LOG(DEBUG, "qp already freed");
 		return 0;
 	}
 
-	PMD_DRV_LOG(DEBUG, "Free qp on qat_pci device %d",
+	QAT_LOG(DEBUG, "Free qp on qat_pci device %d",
 				qp->qat_dev->qat_dev_id);
 
 	/* Don't free memory if there are still responses to be processed */
@@ -298,10 +298,10 @@ static void qat_queue_delete(struct qat_queue *queue)
 	int status = 0;
 
 	if (queue == NULL) {
-		PMD_DRV_LOG(DEBUG, "Invalid queue");
+		QAT_LOG(DEBUG, "Invalid queue");
 		return;
 	}
-	PMD_DRV_LOG(DEBUG, "Free ring %d, memzone: %s",
+	QAT_LOG(DEBUG, "Free ring %d, memzone: %s",
 			queue->hw_queue_number, queue->memz_name);
 
 	mz = rte_memzone_lookup(queue->memz_name);
@@ -310,10 +310,10 @@ static void qat_queue_delete(struct qat_queue *queue)
 		memset(queue->base_addr, 0x7F, queue->queue_size);
 		status = rte_memzone_free(mz);
 		if (status != 0)
-			PMD_DRV_LOG(ERR, "Error %d on freeing queue %s",
+			QAT_LOG(ERR, "Error %d on freeing queue %s",
 					status, queue->memz_name);
 	} else {
-		PMD_DRV_LOG(DEBUG, "queue %s doesn't exist",
+		QAT_LOG(DEBUG, "queue %s doesn't exist",
 				queue->memz_name);
 	}
 }
@@ -336,7 +336,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 			qp_conf->hw->tx_ring_num : qp_conf->hw->rx_ring_num);
 
 	if (desc_size > ADF_MSG_SIZE_TO_BYTES(ADF_MAX_MSG_SIZE)) {
-		PMD_DRV_LOG(ERR, "Invalid descriptor size %d", desc_size);
+		QAT_LOG(ERR, "Invalid descriptor size %d", desc_size);
 		return -EINVAL;
 	}
 
@@ -351,7 +351,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	qp_mz = queue_dma_zone_reserve(queue->memz_name, queue_size_bytes,
 			qp_conf->socket_id);
 	if (qp_mz == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to allocate ring memzone");
+		QAT_LOG(ERR, "Failed to allocate ring memzone");
 		return -ENOMEM;
 	}
 
@@ -359,7 +359,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	queue->base_phys_addr = qp_mz->iova;
 	if (qat_qp_check_queue_alignment(queue->base_phys_addr,
 			queue_size_bytes)) {
-		PMD_DRV_LOG(ERR, "Invalid alignment on queue create "
+		QAT_LOG(ERR, "Invalid alignment on queue create "
 					" 0x%"PRIx64"\n",
 					queue->base_phys_addr);
 		ret = -EFAULT;
@@ -368,7 +368,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 
 	if (adf_verify_queue_size(desc_size, qp_conf->nb_descriptors,
 			&(queue->queue_size)) != 0) {
-		PMD_DRV_LOG(ERR, "Invalid num inflights");
+		QAT_LOG(ERR, "Invalid num inflights");
 		ret = -EINVAL;
 		goto queue_create_err;
 	}
@@ -378,7 +378,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	queue->modulo_mask = (1 << ADF_RING_SIZE_MODULO(queue->queue_size)) - 1;
 
 	if (queue->max_inflights < 2) {
-		PMD_DRV_LOG(ERR, "Invalid num inflights");
+		QAT_LOG(ERR, "Invalid num inflights");
 		ret = -EINVAL;
 		goto queue_create_err;
 	}
@@ -399,7 +399,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	WRITE_CSR_RING_BASE(io_addr, queue->hw_bundle_number,
 			queue->hw_queue_number, queue_base);
 
-	PMD_DRV_LOG(DEBUG, "RING: Name:%s, size in CSR: %u, in bytes %u,"
+	QAT_LOG(DEBUG, "RING: Name:%s, size in CSR: %u, in bytes %u,"
 		" nb msgs %u, msg_size %u, max_inflights %u modulo mask %u",
 			queue->memz_name,
 			queue->queue_size, queue_size_bytes,
@@ -432,7 +432,7 @@ static int adf_verify_queue_size(uint32_t msg_size, uint32_t msg_num,
 			*p_queue_size_for_csr = i;
 			return 0;
 		}
-	PMD_DRV_LOG(ERR, "Invalid ring size %d", msg_size * msg_num);
+	QAT_LOG(ERR, "Invalid ring size %d", msg_size * msg_num);
 	return -EINVAL;
 }
 

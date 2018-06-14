@@ -7,7 +7,7 @@
 
 extern int qat_gen_logtype;
 
-#define PMD_DRV_LOG(level, fmt, args...)			\
+#define QAT_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, qat_gen_logtype,		\
 			"%s(): " fmt "\n", __func__, ## args)
 

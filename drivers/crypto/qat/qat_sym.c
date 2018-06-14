@@ -39,7 +39,7 @@ bpi_cipher_decrypt(uint8_t *src, uint8_t *dst,
 	return 0;
 
 cipher_decrypt_err:
-	PMD_DRV_LOG(ERR, "libcrypto ECB cipher decrypt for BPI IV failed");
+	QAT_LOG(ERR, "libcrypto ECB cipher decrypt for BPI IV failed");
 	return -EINVAL;
 }
 
@@ -165,14 +165,14 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 	if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
-		PMD_DRV_LOG(ERR, "QAT PMD only supports symmetric crypto "
+		QAT_LOG(ERR, "QAT PMD only supports symmetric crypto "
 				"operation requests, op (%p) is not a "
 				"symmetric operation.", op);
 		return -EINVAL;
 	}
 #endif
 	if (unlikely(op->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
-		PMD_DRV_LOG(ERR, "QAT PMD only supports session oriented"
+		QAT_LOG(ERR, "QAT PMD only supports session oriented"
 				" requests, op (%p) is sessionless.", op);
 		return -EINVAL;
 	}
@@ -181,12 +181,12 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			op->sym->session, cryptodev_qat_driver_id);
 
 	if (unlikely(ctx == NULL)) {
-		PMD_DRV_LOG(ERR, "Session was not created for this device");
+		QAT_LOG(ERR, "Session was not created for this device");
 		return -EINVAL;
 	}
 
 	if (unlikely(ctx->min_qat_dev_gen > qat_dev_gen)) {
-		PMD_DRV_LOG(ERR, "Session alg not supported on this device gen");
+		QAT_LOG(ERR, "Session alg not supported on this device gen");
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return -EINVAL;
 	}
@@ -231,7 +231,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				(cipher_param->cipher_length % BYTE_LENGTH != 0)
 				 || (cipher_param->cipher_offset
 							% BYTE_LENGTH != 0))) {
-				PMD_DRV_LOG(ERR,
+				QAT_LOG(ERR,
 		  "SNOW3G/KASUMI/ZUC in QAT PMD only supports byte aligned values");
 				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 				return -EINVAL;
@@ -265,7 +265,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3) {
 			if (unlikely((auth_param->auth_off % BYTE_LENGTH != 0)
 				|| (auth_param->auth_len % BYTE_LENGTH != 0))) {
-				PMD_DRV_LOG(ERR,
+				QAT_LOG(ERR,
 		"For SNOW3G/KASUMI/ZUC, QAT PMD only supports byte aligned values");
 				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 				return -EINVAL;
@@ -501,7 +501,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				&cookie->qat_sgl_src,
 				qat_req->comn_mid.src_length);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "QAT PMD Cannot fill sgl array");
+			QAT_LOG(ERR, "QAT PMD Cannot fill sgl array");
 			return ret;
 		}
 
@@ -516,7 +516,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 						qat_req->comn_mid.dst_length);
 
 			if (ret) {
-				PMD_DRV_LOG(ERR, "QAT PMD Cannot "
+				QAT_LOG(ERR, "QAT PMD Cannot "
 						"fill sgl array");
 				return ret;
 			}

@@ -59,7 +59,7 @@ bpi_cipher_encrypt(uint8_t *src, uint8_t *dst,
 	return 0;
 
 cipher_encrypt_err:
-	PMD_DRV_LOG(ERR, "libcrypto ECB cipher encrypt failed");
+	QAT_LOG(ERR, "libcrypto ECB cipher encrypt failed");
 	return -EINVAL;
 }
 

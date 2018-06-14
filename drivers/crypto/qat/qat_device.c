@@ -105,14 +105,14 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 	snprintf(name+strlen(name), QAT_DEV_NAME_MAX_LEN-strlen(name), "_qat");
 	if (qat_pci_get_named_dev(name) != NULL) {
-		PMD_DRV_LOG(ERR, "QAT device with name %s already allocated!",
+		QAT_LOG(ERR, "QAT device with name %s already allocated!",
 				name);
 		return NULL;
 	}
 
 	qat_dev_id = qat_pci_find_free_device_index();
 	if (qat_dev_id == RTE_PMD_QAT_MAX_PCI_DEVICES) {
-		PMD_DRV_LOG(ERR, "Reached maximum number of QAT devices");
+		QAT_LOG(ERR, "Reached maximum number of QAT devices");
 		return NULL;
 	}
 
@@ -131,7 +131,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 		qat_dev->qat_dev_gen = QAT_GEN2;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Invalid dev_id, can't determine generation");
+		QAT_LOG(ERR, "Invalid dev_id, can't determine generation");
 		return NULL;
 	}
 
@@ -141,7 +141,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 
 	qat_nb_pci_devices++;
 
-	PMD_DRV_LOG(DEBUG, "QAT device %d allocated, name %s, total QATs %d",
+	QAT_LOG(DEBUG, "QAT device %d allocated, name %s, total QATs %d",
 			qat_dev->qat_dev_id, qat_dev->name, qat_nb_pci_devices);
 
 	return qat_dev;
@@ -168,7 +168,7 @@ qat_pci_device_release(struct rte_pci_device *pci_dev)
 		qat_dev->attached = QAT_DETACHED;
 		qat_nb_pci_devices--;
 	}
-	PMD_DRV_LOG(DEBUG, "QAT device %s released, total QATs %d",
+	QAT_LOG(DEBUG, "QAT device %s released, total QATs %d",
 				name, qat_nb_pci_devices);
 	return 0;
 }
@@ -189,7 +189,7 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int ret = 0;
 	struct qat_pci_device *qat_pci_dev;
 
-	PMD_DRV_LOG(DEBUG, "Found QAT device at %02x:%02x.%x",
+	QAT_LOG(DEBUG, "Found QAT device at %02x:%02x.%x",
 			pci_dev->addr.bus,
 			pci_dev->addr.devid,
 			pci_dev->addr.function);
