@@ -371,3 +371,29 @@ Each qat crypto device has a unique name, in format
 <pci bdf>_<service>, e.g. "0000:41:01.0_qat_sym".
 This name can be passed to rte_cryptodev_get_dev_id() to get the device_id.
 This is also the format of the slave parameter passed to the crypto scheduler.
+
+Debugging
+----------------------------------------
+
+There are 2 sets of trace available via the dynamic logging feature:
+
+* pmd.qat_dp exposes trace on the data-path.
+* pmd.qat_general exposes all other trace.
+
+pmd.qat exposes both sets of traces.
+They can be enabled using the log-level option (where 8=maximum log level) on
+the process cmdline, e.g. using any of the following::
+
+    --log-level="pmd.qat_general,8"
+    --log-level="pmd.qat_dp,8"
+    --log-level="pmd.qat,8"
+
+.. Note::
+
+    The global RTE_LOG_DP_LEVEL overrides data-path trace so must be set to
+    RTE_LOG_DEBUG to see all the trace. This variable is in config/rte_config.h
+    for meson build and config/common_base for gnu make.
+    Also the dynamic global log level overrides both sets of trace, so e.g. no
+    QAT trace would display in this case::
+
+	--log-level="7" --log-level="pmd.qat_general,8"
