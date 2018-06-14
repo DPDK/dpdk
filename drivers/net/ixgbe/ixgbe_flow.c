@@ -2438,7 +2438,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 	/* Get the VxLAN info */
 	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN) {
 		rule->ixgbe_fdir.formatted.tunnel_type =
-			RTE_FDIR_TUNNEL_TYPE_VXLAN;
+				IXGBE_FDIR_VXLAN_TUNNEL_TYPE;
 
 		/* Only care about VNI, others should be masked. */
 		if (!item->mask) {
@@ -2496,7 +2496,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 	/* Get the NVGRE info */
 	if (item->type == RTE_FLOW_ITEM_TYPE_NVGRE) {
 		rule->ixgbe_fdir.formatted.tunnel_type =
-			RTE_FDIR_TUNNEL_TYPE_NVGRE;
+				IXGBE_FDIR_NVGRE_TUNNEL_TYPE;
 
 		/**
 		 * Only care about flags0, flags1, protocol and TNI,

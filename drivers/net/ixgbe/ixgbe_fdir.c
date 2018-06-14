@@ -771,8 +771,17 @@ ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
 			input->formatted.inner_mac,
 			fdir_filter->input.flow.tunnel_flow.mac_addr.addr_bytes,
 			sizeof(input->formatted.inner_mac));
-		input->formatted.tunnel_type =
-			fdir_filter->input.flow.tunnel_flow.tunnel_type;
+		if (fdir_filter->input.flow.tunnel_flow.tunnel_type ==
+				RTE_FDIR_TUNNEL_TYPE_VXLAN)
+			input->formatted.tunnel_type =
+					IXGBE_FDIR_VXLAN_TUNNEL_TYPE;
+		else if (fdir_filter->input.flow.tunnel_flow.tunnel_type ==
+				RTE_FDIR_TUNNEL_TYPE_NVGRE)
+			input->formatted.tunnel_type =
+					IXGBE_FDIR_NVGRE_TUNNEL_TYPE;
+		else
+			PMD_DRV_LOG(ERR, " invalid tunnel type arguments.");
+
 		input->formatted.tni_vni =
 			fdir_filter->input.flow.tunnel_flow.tunnel_id >> 8;
 	}
@@ -1001,8 +1010,7 @@ fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(2), 0);
 		} else {
 			/* tunnel mode */
-			if (input->formatted.tunnel_type !=
-				RTE_FDIR_TUNNEL_TYPE_NVGRE)
+			if (input->formatted.tunnel_type)
 				tunnel_type = 0x80000000;
 			tunnel_type |= addr_high;
 			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(0), addr_low);
@@ -1010,6 +1018,9 @@ fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(2),
 					input->formatted.tni_vni);
 		}
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRIPSA, 0);
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRIPDA, 0);
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRPORT, 0);
 	}
 
 	/* record vlan (little-endian) and flex_bytes(big-endian) */
