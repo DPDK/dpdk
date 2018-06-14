@@ -6,13 +6,13 @@
 #define _QAT_SYM_H_
 
 #include <rte_cryptodev_pmd.h>
-#include <rte_hexdump.h>
 
 #include <openssl/evp.h>
 
 #include "qat_common.h"
 #include "qat_sym_session.h"
 #include "qat_sym_pmd.h"
+#include "qat_logs.h"
 
 #define BYTE_LENGTH    8
 /* bpi is only used for partial blocks of DES and AES
@@ -59,7 +59,7 @@ bpi_cipher_encrypt(uint8_t *src, uint8_t *dst,
 	return 0;
 
 cipher_encrypt_err:
-	QAT_LOG(ERR, "libcrypto ECB cipher encrypt failed");
+	QAT_DP_LOG(ERR, "libcrypto ECB cipher encrypt failed");
 	return -EINVAL;
 }
 
@@ -99,21 +99,23 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 			iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 					ctx->cipher_iv.offset);
 
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
-		rte_hexdump(stdout, "BPI: src before post-process:", last_block,
-			last_block_len);
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src before post-process:",
+			last_block, last_block_len);
 		if (sym_op->m_dst != NULL)
-			rte_hexdump(stdout, "BPI: dst before post-process:",
-					dst, last_block_len);
+			QAT_DP_HEXDUMP_LOG(DEBUG,
+				"BPI: dst before post-process:",
+				dst, last_block_len);
 #endif
 		bpi_cipher_encrypt(last_block, dst, iv, block_len,
 				last_block_len, ctx->bpi_ctx);
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
-		rte_hexdump(stdout, "BPI: src after post-process:", last_block,
-			last_block_len);
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src after post-process:",
+				last_block, last_block_len);
 		if (sym_op->m_dst != NULL)
-			rte_hexdump(stdout, "BPI: dst after post-process:", dst,
-				last_block_len);
+			QAT_DP_HEXDUMP_LOG(DEBUG,
+				"BPI: dst after post-process:",
+				dst, last_block_len);
 #endif
 	}
 	return sym_op->cipher.data.length - last_block_len;
@@ -128,8 +130,8 @@ qat_sym_process_response(void **op, uint8_t *resp)
 	struct rte_crypto_op *rx_op = (struct rte_crypto_op *)(uintptr_t)
 			(resp_msg->opaque_data);
 
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
-	rte_hexdump(stdout, "qat_response:", (uint8_t *)resp_msg,
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	QAT_DP_HEXDUMP_LOG(DEBUG, "qat_response:", (uint8_t *)resp_msg,
 			sizeof(struct icp_qat_fw_comn_resp));
 #endif
 

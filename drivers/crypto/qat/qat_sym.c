@@ -6,12 +6,10 @@
 
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
-#include <rte_hexdump.h>
 #include <rte_crypto_sym.h>
 #include <rte_bus_pci.h>
 #include <rte_byteorder.h>
 
-#include "qat_logs.h"
 #include "qat_sym.h"
 
 /** Decrypt a single partial block
@@ -39,7 +37,7 @@ bpi_cipher_decrypt(uint8_t *src, uint8_t *dst,
 	return 0;
 
 cipher_decrypt_err:
-	QAT_LOG(ERR, "libcrypto ECB cipher decrypt for BPI IV failed");
+	QAT_DP_LOG(ERR, "libcrypto ECB cipher decrypt for BPI IV failed");
 	return -EINVAL;
 }
 
@@ -78,21 +76,21 @@ qat_bpicipher_preprocess(struct qat_sym_session *ctx,
 			iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 					ctx->cipher_iv.offset);
 
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
-		rte_hexdump(stdout, "BPI: src before pre-process:", last_block,
-			last_block_len);
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src before pre-process:",
+			last_block, last_block_len);
 		if (sym_op->m_dst != NULL)
-			rte_hexdump(stdout, "BPI: dst before pre-process:", dst,
-				last_block_len);
+			QAT_DP_HEXDUMP_LOG(DEBUG, "BPI:dst before pre-process:",
+			dst, last_block_len);
 #endif
 		bpi_cipher_decrypt(last_block, dst, iv, block_len,
 				last_block_len, ctx->bpi_ctx);
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
-		rte_hexdump(stdout, "BPI: src after pre-process:", last_block,
-			last_block_len);
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src after pre-process:",
+			last_block, last_block_len);
 		if (sym_op->m_dst != NULL)
-			rte_hexdump(stdout, "BPI: dst after pre-process:", dst,
-				last_block_len);
+			QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: dst after pre-process:",
+			dst, last_block_len);
 #endif
 	}
 
@@ -163,16 +161,15 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	struct qat_sym_op_cookie *cookie =
 				(struct qat_sym_op_cookie *)op_cookie;
 
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 	if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
-		QAT_LOG(ERR, "QAT PMD only supports symmetric crypto "
+		QAT_DP_LOG(ERR, "QAT PMD only supports symmetric crypto "
 				"operation requests, op (%p) is not a "
 				"symmetric operation.", op);
 		return -EINVAL;
 	}
-#endif
+
 	if (unlikely(op->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
-		QAT_LOG(ERR, "QAT PMD only supports session oriented"
+		QAT_DP_LOG(ERR, "QAT PMD only supports session oriented"
 				" requests, op (%p) is sessionless.", op);
 		return -EINVAL;
 	}
@@ -181,12 +178,12 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			op->sym->session, cryptodev_qat_driver_id);
 
 	if (unlikely(ctx == NULL)) {
-		QAT_LOG(ERR, "Session was not created for this device");
+		QAT_DP_LOG(ERR, "Session was not created for this device");
 		return -EINVAL;
 	}
 
 	if (unlikely(ctx->min_qat_dev_gen > qat_dev_gen)) {
-		QAT_LOG(ERR, "Session alg not supported on this device gen");
+		QAT_DP_LOG(ERR, "Session alg not supported on this device gen");
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return -EINVAL;
 	}
@@ -231,7 +228,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				(cipher_param->cipher_length % BYTE_LENGTH != 0)
 				 || (cipher_param->cipher_offset
 							% BYTE_LENGTH != 0))) {
-				QAT_LOG(ERR,
+				QAT_DP_LOG(ERR,
 		  "SNOW3G/KASUMI/ZUC in QAT PMD only supports byte aligned values");
 				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 				return -EINVAL;
@@ -265,7 +262,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3) {
 			if (unlikely((auth_param->auth_off % BYTE_LENGTH != 0)
 				|| (auth_param->auth_len % BYTE_LENGTH != 0))) {
-				QAT_LOG(ERR,
+				QAT_DP_LOG(ERR,
 		"For SNOW3G/KASUMI/ZUC, QAT PMD only supports byte aligned values");
 				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 				return -EINVAL;
@@ -500,8 +497,9 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		ret = qat_sgl_fill_array(op->sym->m_src, src_buf_start,
 				&cookie->qat_sgl_src,
 				qat_req->comn_mid.src_length);
-		if (ret) {
-			QAT_LOG(ERR, "QAT PMD Cannot fill sgl array");
+
+		if (unlikely(ret)) {
+			QAT_DP_LOG(ERR, "QAT PMD Cannot fill sgl array");
 			return ret;
 		}
 
@@ -515,9 +513,8 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 					&cookie->qat_sgl_dst,
 						qat_req->comn_mid.dst_length);
 
-			if (ret) {
-				QAT_LOG(ERR, "QAT PMD Cannot "
-						"fill sgl array");
+			if (unlikely(ret)) {
+				QAT_DP_LOG(ERR, "QAT PMD can't fill sgl array");
 				return ret;
 			}
 
@@ -531,17 +528,17 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		qat_req->comn_mid.dest_data_addr = dst_buf_start;
 	}
 
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
-	rte_hexdump(stdout, "qat_req:", qat_req,
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	QAT_DP_HEXDUMP_LOG(DEBUG, "qat_req:", qat_req,
 			sizeof(struct icp_qat_fw_la_bulk_req));
-	rte_hexdump(stdout, "src_data:",
+	QAT_DP_HEXDUMP_LOG(DEBUG, "src_data:",
 			rte_pktmbuf_mtod(op->sym->m_src, uint8_t*),
 			rte_pktmbuf_data_len(op->sym->m_src));
 	if (do_cipher) {
 		uint8_t *cipher_iv_ptr = rte_crypto_op_ctod_offset(op,
 						uint8_t *,
 						ctx->cipher_iv.offset);
-		rte_hexdump(stdout, "cipher iv:", cipher_iv_ptr,
+		QAT_DP_HEXDUMP_LOG(DEBUG, "cipher iv:", cipher_iv_ptr,
 				ctx->cipher_iv.length);
 	}
 
@@ -550,17 +547,17 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			uint8_t *auth_iv_ptr = rte_crypto_op_ctod_offset(op,
 							uint8_t *,
 							ctx->auth_iv.offset);
-			rte_hexdump(stdout, "auth iv:", auth_iv_ptr,
+			QAT_DP_HEXDUMP_LOG(DEBUG, "auth iv:", auth_iv_ptr,
 						ctx->auth_iv.length);
 		}
-		rte_hexdump(stdout, "digest:", op->sym->auth.digest.data,
+		QAT_DP_HEXDUMP_LOG(DEBUG, "digest:", op->sym->auth.digest.data,
 				ctx->digest_length);
 	}
 
 	if (do_aead) {
-		rte_hexdump(stdout, "digest:", op->sym->aead.digest.data,
+		QAT_DP_HEXDUMP_LOG(DEBUG, "digest:", op->sym->aead.digest.data,
 				ctx->digest_length);
-		rte_hexdump(stdout, "aad:", op->sym->aead.aad.data,
+		QAT_DP_HEXDUMP_LOG(DEBUG, "aad:", op->sym->aead.aad.data,
 				ctx->aad_len);
 	}
 #endif

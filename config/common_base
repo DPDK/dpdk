@@ -486,8 +486,6 @@ CONFIG_RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS=2048
 # Compile PMD for QuickAssist based devices
 #
 CONFIG_RTE_LIBRTE_PMD_QAT=n
-CONFIG_RTE_LIBRTE_PMD_QAT_DEBUG_TX=n
-CONFIG_RTE_LIBRTE_PMD_QAT_DEBUG_RX=n
 #
 # Max. number of QuickAssist devices, which can be detected and attached
 #
