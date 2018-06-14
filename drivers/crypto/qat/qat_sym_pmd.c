@@ -33,26 +33,22 @@ static int qat_sym_qp_release(struct rte_cryptodev *dev,
 static int qat_sym_dev_config(__rte_unused struct rte_cryptodev *dev,
 		__rte_unused struct rte_cryptodev_config *config)
 {
-	PMD_INIT_FUNC_TRACE();
 	return 0;
 }
 
 static int qat_sym_dev_start(__rte_unused struct rte_cryptodev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
 	return 0;
 }
 
 static void qat_sym_dev_stop(__rte_unused struct rte_cryptodev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
+	return;
 }
 
 static int qat_sym_dev_close(struct rte_cryptodev *dev)
 {
 	int i, ret;
-
-	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
 		ret = qat_sym_qp_release(dev, i);
@@ -71,7 +67,6 @@ static void qat_sym_dev_info_get(struct rte_cryptodev *dev,
 		qat_gen_config[internals->qat_dev->qat_dev_gen]
 			      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
 
-	PMD_INIT_FUNC_TRACE();
 	if (info != NULL) {
 		info->max_nb_queue_pairs =
 			qat_qps_per_service(sym_hw_qps, QAT_SERVICE_SYMMETRIC);

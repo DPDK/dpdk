@@ -120,7 +120,6 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 {
 	const struct rte_memzone *mz;
 
-	PMD_INIT_FUNC_TRACE();
 	mz = rte_memzone_lookup(queue_name);
 	if (mz != 0) {
 		if (((size_t)queue_size <= mz->len) &&
@@ -194,7 +193,7 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 
 	if (qat_queue_create(qat_dev, &(qp->tx_q), qat_qp_conf,
 					ADF_RING_DIR_TX) != 0) {
-		PMD_INIT_LOG(ERR, "Tx queue create failed "
+		PMD_DRV_LOG(ERR, "Tx queue create failed "
 				"queue_pair_id=%u", queue_pair_id);
 		goto create_err;
 	}
@@ -261,7 +260,6 @@ int qat_qp_release(struct qat_qp **qp_addr)
 	struct qat_qp *qp = *qp_addr;
 	uint32_t i;
 
-	PMD_INIT_FUNC_TRACE();
 	if (qp == NULL) {
 		PMD_DRV_LOG(DEBUG, "qp already freed");
 		return 0;
@@ -418,7 +416,6 @@ queue_create_err:
 static int qat_qp_check_queue_alignment(uint64_t phys_addr,
 					uint32_t queue_size_bytes)
 {
-	PMD_INIT_FUNC_TRACE();
 	if (((queue_size_bytes - 1) & phys_addr) != 0)
 		return -EINVAL;
 	return 0;
@@ -429,7 +426,6 @@ static int adf_verify_queue_size(uint32_t msg_size, uint32_t msg_num,
 {
 	uint8_t i = ADF_MIN_RING_SIZE;
 
-	PMD_INIT_FUNC_TRACE();
 	for (; i <= ADF_MAX_RING_SIZE; i++)
 		if ((msg_size * msg_num) ==
 				(uint32_t)ADF_SIZE_TO_RING_SIZE_IN_BYTES(i)) {
@@ -448,8 +444,6 @@ static void adf_queue_arb_enable(struct qat_queue *txq, void *base_addr,
 							txq->hw_bundle_number);
 	uint32_t value;
 
-	PMD_INIT_FUNC_TRACE();
-
 	rte_spinlock_lock(lock);
 	value = ADF_CSR_RD(base_addr, arb_csr_offset);
 	value |= (0x01 << txq->hw_queue_number);
@@ -465,8 +459,6 @@ static void adf_queue_arb_disable(struct qat_queue *txq, void *base_addr,
 							txq->hw_bundle_number);
 	uint32_t value;
 
-	PMD_INIT_FUNC_TRACE();
-
 	rte_spinlock_lock(lock);
 	value = ADF_CSR_RD(base_addr, arb_csr_offset);
 	value &= ~(0x01 << txq->hw_queue_number);
@@ -479,7 +471,6 @@ static void adf_configure_queues(struct qat_qp *qp)
 	uint32_t queue_config;
 	struct qat_queue *queue = &qp->tx_q;
 
-	PMD_INIT_FUNC_TRACE();
 	queue_config = BUILD_RING_CONFIG(queue->queue_size);
 
 	WRITE_CSR_RING_CONFIG(qp->mmap_bar_addr, queue->hw_bundle_number,

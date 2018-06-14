@@ -111,7 +111,6 @@ void
 qat_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
-	PMD_INIT_FUNC_TRACE();
 	uint8_t index = dev->driver_id;
 	void *sess_priv = get_session_private_data(sess, index);
 	struct qat_sym_session *s = (struct qat_sym_session *)sess_priv;
@@ -410,8 +409,6 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 	struct qat_sym_session *session = session_private;
 	int ret;
 	int qat_cmd_id;
-
-	PMD_INIT_FUNC_TRACE();
 
 	/* Set context descriptor physical address */
 	session->cd_paddr = rte_mempool_virt2iova(session) +
@@ -936,7 +933,6 @@ static int partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
 	uint64_t *hash_state_out_be64;
 	int i;
 
-	PMD_INIT_FUNC_TRACE();
 	digest_size = qat_hash_get_digest_size(hash_alg);
 	if (digest_size <= 0)
 		return -EFAULT;
@@ -1006,7 +1002,6 @@ static int qat_sym_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 	uint8_t opad[qat_hash_get_block_size(ICP_QAT_HW_AUTH_ALGO_DELIMITER)];
 	int i;
 
-	PMD_INIT_FUNC_TRACE();
 	if (hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC) {
 		static uint8_t qat_aes_xcbc_key_seed[
 					ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ] = {
@@ -1129,7 +1124,6 @@ static void
 qat_sym_session_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
 		enum qat_sym_proto_flag proto_flags)
 {
-	PMD_INIT_FUNC_TRACE();
 	header->hdr_flags =
 		ICP_QAT_FW_COMN_HDR_FLAGS_BUILD(ICP_QAT_FW_COMN_REQ_FLAG_SET);
 	header->service_type = ICP_QAT_FW_COMN_REQ_CPM_FW_LA;
@@ -1212,7 +1206,6 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 	uint16_t cipher_offset, cd_size;
 	uint32_t wordIndex  = 0;
 	uint32_t *temp_key = NULL;
-	PMD_INIT_FUNC_TRACE();
 
 	if (cdesc->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER) {
 		cd_pars->u.s.content_desc_addr = cdesc->cd_paddr;
@@ -1368,8 +1361,6 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 	uint32_t *pTempKey;
 	enum qat_sym_proto_flag qat_proto_flag =
 		QAT_CRYPTO_PROTO_FLAG_NONE;
-
-	PMD_INIT_FUNC_TRACE();
 
 	if (cdesc->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH) {
 		ICP_QAT_FW_COMN_CURR_ID_SET(hash_cd_ctrl,
