@@ -653,9 +653,9 @@ extern "C" {
 #define  RTE_ETH_IS_IPV4_HDR(ptype) ((ptype) & RTE_PTYPE_L3_IPV4)
 
 /**
- * Check if the (outer) L3 header is IPv4. To avoid comparing IPv4 types one by
- * one, bit 6 is selected to be used for IPv4 only. Then checking bit 6 can
- * determine if it is an IPV4 packet.
+ * Check if the (outer) L3 header is IPv6. To avoid comparing IPv6 types one by
+ * one, bit 6 is selected to be used for IPv6 only. Then checking bit 6 can
+ * determine if it is an IPV6 packet.
  */
 #define  RTE_ETH_IS_IPV6_HDR(ptype) ((ptype) & RTE_PTYPE_L3_IPV6)
 
