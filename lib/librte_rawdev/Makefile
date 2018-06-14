@@ -10,7 +10,6 @@ LIB = librte_rawdev.a
 LIBABIVER := 1
 
 # build flags
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal

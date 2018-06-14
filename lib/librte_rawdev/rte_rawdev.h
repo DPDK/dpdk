@@ -35,7 +35,7 @@ typedef void *rte_rawdev_obj_t;
  * @return
  *   The total number of usable raw devices.
  */
-uint8_t __rte_experimental
+uint8_t
 rte_rawdev_count(void);
 
 /**
@@ -48,7 +48,7 @@ rte_rawdev_count(void);
  *   Returns raw device identifier on success.
  *   - <0: Failure to find named raw device.
  */
-uint16_t __rte_experimental
+uint16_t
 rte_rawdev_get_dev_id(const char *name);
 
 /**
@@ -61,7 +61,7 @@ rte_rawdev_get_dev_id(const char *name);
  *   a default of zero if the socket could not be determined.
  *   -(-EINVAL)  dev_id value is out of range.
  */
-int __rte_experimental
+int
 rte_rawdev_socket_id(uint16_t dev_id);
 
 /**
@@ -84,7 +84,7 @@ struct rte_rawdev_info;
  *   - <0: Error code returned by the driver info get function.
  *
  */
-int __rte_experimental
+int
 rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info);
 
 /**
@@ -111,7 +111,7 @@ rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info);
  *   - 0: Success, device configured.
  *   - <0: Error code returned by the driver configuration function.
  */
-int __rte_experimental
+int
 rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf);
 
 
@@ -137,7 +137,7 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf);
  * @see rte_raw_queue_setup()
  *
  */
-int __rte_experimental
+int
 rte_rawdev_queue_conf_get(uint16_t dev_id,
 			  uint16_t queue_id,
 			  rte_rawdev_obj_t queue_conf);
@@ -160,7 +160,7 @@ rte_rawdev_queue_conf_get(uint16_t dev_id,
  *   - 0: Success, raw queue correctly set up.
  *   - <0: raw queue configuration failed
  */
-int __rte_experimental
+int
 rte_rawdev_queue_setup(uint16_t dev_id,
 		       uint16_t queue_id,
 		       rte_rawdev_obj_t queue_conf);
@@ -180,7 +180,7 @@ rte_rawdev_queue_setup(uint16_t dev_id,
  *   - 0: Success, raw queue released.
  *   - <0: raw queue configuration failed
  */
-int __rte_experimental
+int
 rte_rawdev_queue_release(uint16_t dev_id, uint16_t queue_id);
 /**
  * Get the number of raw queues on a specific raw device
@@ -190,7 +190,7 @@ rte_rawdev_queue_release(uint16_t dev_id, uint16_t queue_id);
  * @return
  *   - The number of configured raw queues
  */
-uint16_t __rte_experimental
+uint16_t
 rte_rawdev_queue_count(uint16_t dev_id);
 
 /**
@@ -208,7 +208,7 @@ rte_rawdev_queue_count(uint16_t dev_id);
  *   - 0: Success, device started.
  *   < 0: Failure
  */
-int __rte_experimental
+int
 rte_rawdev_start(uint16_t dev_id);
 
 /**
@@ -218,7 +218,7 @@ rte_rawdev_start(uint16_t dev_id);
  * @param dev_id
  *   Raw device identifier.
  */
-void __rte_experimental
+void
 rte_rawdev_stop(uint16_t dev_id);
 
 /**
@@ -232,7 +232,7 @@ rte_rawdev_stop(uint16_t dev_id);
  *  - <0 on failure to close device
  *  - (-EAGAIN) if device is busy
  */
-int __rte_experimental
+int
 rte_rawdev_close(uint16_t dev_id);
 
 /**
@@ -246,7 +246,7 @@ rte_rawdev_close(uint16_t dev_id);
  *   0 for sucessful reset,
  *  !0 for failure in resetting
  */
-int __rte_experimental
+int
 rte_rawdev_reset(uint16_t dev_id);
 
 #define RTE_RAWDEV_NAME_MAX_LEN	(64)
@@ -316,7 +316,7 @@ struct rte_rawdev_buf {
  *   - 0: on success
  *   - <0: on failure.
  */
-int __rte_experimental
+int
 rte_rawdev_dump(uint16_t dev_id, FILE *f);
 
 /**
@@ -338,7 +338,7 @@ rte_rawdev_dump(uint16_t dev_id, FILE *f);
  *   0 for success
  *  !0 Error; attr_value remains untouched in case of error.
  */
-int __rte_experimental
+int
 rte_rawdev_get_attr(uint16_t dev_id,
 		    const char *attr_name,
 		    uint64_t *attr_value);
@@ -357,7 +357,7 @@ rte_rawdev_get_attr(uint16_t dev_id,
  *   0 for success
  *  !0 Error
  */
-int __rte_experimental
+int
 rte_rawdev_set_attr(uint16_t dev_id,
 		    const char *attr_name,
 		    const uint64_t attr_value);
@@ -383,7 +383,7 @@ rte_rawdev_set_attr(uint16_t dev_id,
  *  Whether partial enqueue is failure or success is defined between app
  *  and driver implementation.
  */
-int __rte_experimental
+int
 rte_rawdev_enqueue_buffers(uint16_t dev_id,
 			   struct rte_rawdev_buf **buffers,
 			   unsigned int count,
@@ -414,7 +414,7 @@ rte_rawdev_enqueue_buffers(uint16_t dev_id,
  *  Whether partial enqueue is failure or success is defined between app
  *  and driver implementation.
  */
-int __rte_experimental
+int
 rte_rawdev_dequeue_buffers(uint16_t dev_id,
 			   struct rte_rawdev_buf **buffers,
 			   unsigned int count,
@@ -454,7 +454,7 @@ struct rte_rawdev_xstats_name {
  *        -ENODEV for invalid *dev_id*
  *        -ENOTSUP if the device doesn't support this function.
  */
-int __rte_experimental
+int
 rte_rawdev_xstats_names_get(uint16_t dev_id,
 			    struct rte_rawdev_xstats_name *xstats_names,
 			    unsigned int size);
@@ -478,7 +478,7 @@ rte_rawdev_xstats_names_get(uint16_t dev_id,
  *        -ENODEV for invalid *dev_id*
  *        -ENOTSUP if the device doesn't support this function.
  */
-int __rte_experimental
+int
 rte_rawdev_xstats_get(uint16_t dev_id,
 		      const unsigned int ids[],
 		      uint64_t values[],
@@ -500,7 +500,7 @@ rte_rawdev_xstats_get(uint16_t dev_id,
  *   - positive value or zero: the stat value
  *   - negative value: -EINVAL if stat not found, -ENOTSUP if not supported.
  */
-uint64_t __rte_experimental
+uint64_t
 rte_rawdev_xstats_by_name_get(uint16_t dev_id,
 			      const char *name,
 			      unsigned int *id);
@@ -520,7 +520,7 @@ rte_rawdev_xstats_by_name_get(uint16_t dev_id,
  *   - zero: successfully reset the statistics to zero
  *   - negative value: -EINVAL invalid parameters, -ENOTSUP if not supported.
  */
-int __rte_experimental
+int
 rte_rawdev_xstats_reset(uint16_t dev_id,
 			const uint32_t ids[],
 			uint32_t nb_ids);
@@ -539,7 +539,7 @@ rte_rawdev_xstats_reset(uint16_t dev_id,
  *   0 for success,
  *  !0 for failure, `status_info` argument state is undefined
  */
-int __rte_experimental
+int
 rte_rawdev_firmware_status_get(uint16_t dev_id,
 			       rte_rawdev_obj_t status_info);
 
@@ -557,7 +557,7 @@ rte_rawdev_firmware_status_get(uint16_t dev_id,
  *   0 for success,
  *  !0 for failure, `version_info` argument state is undefined
  */
-int __rte_experimental
+int
 rte_rawdev_firmware_version_get(uint16_t dev_id,
 				rte_rawdev_obj_t version_info);
 
@@ -574,7 +574,7 @@ rte_rawdev_firmware_version_get(uint16_t dev_id,
  *   0 for successful load
  *  !0 for failure to load the provided image, or image incorrect.
  */
-int __rte_experimental
+int
 rte_rawdev_firmware_load(uint16_t dev_id, rte_rawdev_obj_t firmware_image);
 
 /**
@@ -586,7 +586,7 @@ rte_rawdev_firmware_load(uint16_t dev_id, rte_rawdev_obj_t firmware_image);
  *   0 for successful Unload
  *  !0 for failure in unloading
  */
-int __rte_experimental
+int
 rte_rawdev_firmware_unload(uint16_t dev_id);
 
 /**
@@ -599,7 +599,7 @@ rte_rawdev_firmware_unload(uint16_t dev_id);
  *   - -ENOTSUP if the device doesn't support selftest
  *   - other values < 0 on failure.
  */
-int __rte_experimental
+int
 rte_rawdev_selftest(uint16_t dev_id);
 
 #ifdef __cplusplus

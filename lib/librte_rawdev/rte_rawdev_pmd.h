@@ -556,7 +556,7 @@ struct rte_rawdev_ops {
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
-struct rte_rawdev * __rte_experimental
+struct rte_rawdev *
 rte_rawdev_pmd_allocate(const char *name, size_t dev_private_size,
 			int socket_id);
 
@@ -568,7 +568,7 @@ rte_rawdev_pmd_allocate(const char *name, size_t dev_private_size,
  * @return
  *   - 0 on success, negative on error
  */
-int __rte_experimental
+int
 rte_rawdev_pmd_release(struct rte_rawdev *rawdev);
 
 /**
@@ -585,7 +585,7 @@ rte_rawdev_pmd_release(struct rte_rawdev *rawdev);
  *   - Raw device pointer if device is successfully created.
  *   - NULL if device cannot be created.
  */
-struct rte_rawdev * __rte_experimental
+struct rte_rawdev *
 rte_rawdev_pmd_init(const char *name, size_t dev_private_size,
 		    int socket_id);
 
@@ -597,7 +597,7 @@ rte_rawdev_pmd_init(const char *name, size_t dev_private_size,
  * @return
  *   - 0 on success, negative on error
  */
-int __rte_experimental
+int
 rte_rawdev_pmd_uninit(const char *name);
 
 #ifdef __cplusplus

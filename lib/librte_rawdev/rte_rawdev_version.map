@@ -1,4 +1,4 @@
-EXPERIMENTAL {
+DPDK_18.08 {
 	global:
 
 	rte_rawdev_close;
