@@ -204,6 +204,8 @@ ssows_flush_events(struct ssows *ws, uint8_t queue_id,
 	uint32_t reg_off;
 	struct rte_event ev;
 	uint64_t enable, aq_cnt = 1, cq_ds_cnt = 1;
+	uint64_t get_work0, get_work1;
+	uint64_t sched_type_queue;
 	uint8_t *base = ssovf_bar(OCTEONTX_SSO_GROUP, queue_id, 0);
 
 	enable = ssovf_read64(base + SSO_VHGRP_QCTL);
@@ -219,7 +221,20 @@ ssows_flush_events(struct ssows *ws, uint8_t queue_id,
 		cq_ds_cnt = ssovf_read64(base + SSO_VHGRP_INT_CNT);
 		/* Extract cq and ds count */
 		cq_ds_cnt &= 0x1FFF1FFF0000;
-		ssows_get_work(ws, &ev);
+
+		ssovf_load_pair(get_work0, get_work1, ws->base + reg_off);
+
+		sched_type_queue = (get_work0 >> 32) & 0xfff;
+		ws->cur_tt = sched_type_queue & 0x3;
+		ws->cur_grp = sched_type_queue >> 2;
+		sched_type_queue = sched_type_queue << 38;
+		ev.event = sched_type_queue | (get_work0 & 0xffffffff);
+		if (get_work1 && ev.event_type == RTE_EVENT_TYPE_ETHDEV)
+			ev.mbuf = ssovf_octeontx_wqe_to_pkt(get_work1,
+					(ev.event >> 20) & 0x7F);
+		else
+			ev.u64 = get_work1;
+
 		if (fn != NULL && ev.u64 != 0)
 			fn(arg, ev);
 	}
