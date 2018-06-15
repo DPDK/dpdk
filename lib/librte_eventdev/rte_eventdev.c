@@ -57,16 +57,21 @@ int
 rte_event_dev_get_dev_id(const char *name)
 {
 	int i;
+	uint8_t cmp;
 
 	if (!name)
 		return -EINVAL;
 
-	for (i = 0; i < rte_eventdev_globals->nb_devs; i++)
-		if ((strcmp(rte_event_devices[i].data->name, name)
-				== 0) &&
-				(rte_event_devices[i].attached ==
-						RTE_EVENTDEV_ATTACHED))
+	for (i = 0; i < rte_eventdev_globals->nb_devs; i++) {
+		cmp = (strncmp(rte_event_devices[i].data->name, name,
+				RTE_EVENTDEV_NAME_MAX_LEN) == 0) ||
+			(rte_event_devices[i].dev ? (strncmp(
+				rte_event_devices[i].dev->driver->name, name,
+					 RTE_EVENTDEV_NAME_MAX_LEN) == 0) : 0);
+		if (cmp && (rte_event_devices[i].attached ==
+					RTE_EVENTDEV_ATTACHED))
 			return i;
+	}
 	return -ENODEV;
 }
 
