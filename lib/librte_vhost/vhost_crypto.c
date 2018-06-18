@@ -940,8 +940,7 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		struct vhost_virtqueue *vq, struct rte_crypto_op *op,
 		struct vring_desc *head, uint16_t desc_idx)
 {
-	struct vhost_crypto_data_req *vc_req = RTE_PTR_ADD(op->sym->m_src,
-			sizeof(struct rte_mbuf));
+	struct vhost_crypto_data_req *vc_req = rte_mbuf_to_priv(op->sym->m_src);
 	struct rte_cryptodev_sym_session *session;
 	struct virtio_crypto_op_data_req *req, tmp_req;
 	struct virtio_crypto_inhdr *inhdr;
@@ -1062,8 +1061,7 @@ vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 {
 	struct rte_mbuf *m_src = op->sym->m_src;
 	struct rte_mbuf *m_dst = op->sym->m_dst;
-	struct vhost_crypto_data_req *vc_req = RTE_PTR_ADD(m_src,
-			sizeof(struct rte_mbuf));
+	struct vhost_crypto_data_req *vc_req = rte_mbuf_to_priv(m_src);
 	uint16_t desc_idx;
 	int ret = 0;
 
