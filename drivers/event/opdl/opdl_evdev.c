@@ -753,10 +753,7 @@ static struct rte_vdev_driver evdev_opdl_pmd_drv = {
 	.remove = opdl_remove
 };
 
-RTE_INIT(opdl_init_log);
-
-static void
-opdl_init_log(void)
+RTE_INIT(opdl_init_log)
 {
 	opdl_logtype_driver = rte_log_register("pmd.event.opdl.driver");
 	if (opdl_logtype_driver >= 0)

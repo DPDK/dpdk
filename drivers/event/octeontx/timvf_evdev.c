@@ -6,9 +6,7 @@
 
 int otx_logtype_timvf;
 
-RTE_INIT(otx_timvf_init_log);
-static void
-otx_timvf_init_log(void)
+RTE_INIT(otx_timvf_init_log)
 {
 	otx_logtype_timvf = rte_log_register("pmd.event.octeontx.timer");
 	if (otx_logtype_timvf >= 0)

@@ -164,8 +164,7 @@ void dpaa_portal_finish(void *arg);
 
 /** Helper for DPAA device registration from driver (eth, crypto) instance */
 #define RTE_PMD_REGISTER_DPAA(nm, dpaa_drv) \
-RTE_INIT(dpaainitfn_ ##nm); \
-static void dpaainitfn_ ##nm(void) \
+RTE_INIT(dpaainitfn_ ##nm) \
 {\
 	(dpaa_drv).driver.name = RTE_STR(nm);\
 	rte_dpaa_driver_register(&dpaa_drv); \

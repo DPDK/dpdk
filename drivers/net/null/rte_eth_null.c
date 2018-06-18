@@ -698,9 +698,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_null,
 	"size=<int> "
 	"copy=<int>");
 
-RTE_INIT(eth_null_init_log);
-static void
-eth_null_init_log(void)
+RTE_INIT(eth_null_init_log)
 {
 	eth_null_logtype = rte_log_register("pmd.net.null");
 	if (eth_null_logtype >= 0)

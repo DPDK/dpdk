@@ -2143,9 +2143,7 @@ RTE_PMD_REGISTER_PCI(net_liovf, rte_liovf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_liovf, pci_id_liovf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_liovf, "* igb_uio | vfio-pci");
 
-RTE_INIT(lio_init_log);
-static void
-lio_init_log(void)
+RTE_INIT(lio_init_log)
 {
 	lio_logtype_init = rte_log_register("pmd.net.liquidio.init");
 	if (lio_logtype_init >= 0)

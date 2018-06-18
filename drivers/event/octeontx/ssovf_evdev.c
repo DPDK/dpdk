@@ -23,9 +23,7 @@
 int otx_logtype_ssovf;
 static uint8_t timvf_enable_stats;
 
-RTE_INIT(otx_ssovf_init_log);
-static void
-otx_ssovf_init_log(void)
+RTE_INIT(otx_ssovf_init_log)
 {
 	otx_logtype_ssovf = rte_log_register("pmd.event.octeontx");
 	if (otx_logtype_ssovf >= 0)

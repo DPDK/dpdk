@@ -964,9 +964,7 @@ RTE_PMD_REGISTER_PARAM_STRING(event_sw, NUMA_NODE_ARG "=<int> "
 /* declared extern in header, for access from other .c files */
 int eventdev_sw_log_level;
 
-RTE_INIT(evdev_sw_init_log);
-static void
-evdev_sw_init_log(void)
+RTE_INIT(evdev_sw_init_log)
 {
 	eventdev_sw_log_level = rte_log_register("pmd.event.sw");
 	if (eventdev_sw_log_level >= 0)

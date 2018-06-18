@@ -4407,9 +4407,7 @@ parse_cleanup:
 	return result;
 }
 
-RTE_INIT(ethdev_init_log);
-static void
-ethdev_init_log(void)
+RTE_INIT(ethdev_init_log)
 {
 	rte_eth_dev_logtype = rte_log_register("lib.ethdev");
 	if (rte_eth_dev_logtype >= 0)

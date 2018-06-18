@@ -173,8 +173,7 @@ void rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver);
 
 /** Helper for DPAA2 device registration from driver (eth, crypto) instance */
 #define RTE_PMD_REGISTER_DPAA2(nm, dpaa2_drv) \
-RTE_INIT(dpaa2initfn_ ##nm); \
-static void dpaa2initfn_ ##nm(void) \
+RTE_INIT(dpaa2initfn_ ##nm) \
 {\
 	(dpaa2_drv).driver.name = RTE_STR(nm);\
 	rte_fslmc_driver_register(&dpaa2_drv); \
@@ -203,8 +202,7 @@ uint32_t rte_fslmc_get_device_count(enum rte_dpaa2_dev_type device_type);
 
 /** Helper for DPAA2 object registration */
 #define RTE_PMD_REGISTER_DPAA2_OBJECT(nm, dpaa2_obj) \
-RTE_INIT(dpaa2objinitfn_ ##nm); \
-static void dpaa2objinitfn_ ##nm(void) \
+RTE_INIT(dpaa2objinitfn_ ##nm) \
 {\
 	(dpaa2_obj).name = RTE_STR(nm);\
 	rte_fslmc_object_register(&dpaa2_obj); \

@@ -683,9 +683,7 @@ RTE_PMD_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnx2xvf, pci_id_bnx2xvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_bnx2xvf, "* igb_uio | vfio-pci");
 
-RTE_INIT(bnx2x_init_log);
-static void
-bnx2x_init_log(void)
+RTE_INIT(bnx2x_init_log)
 {
 	bnx2x_logtype_init = rte_log_register("pmd.net.bnx2x.init");
 	if (bnx2x_logtype_init >= 0)

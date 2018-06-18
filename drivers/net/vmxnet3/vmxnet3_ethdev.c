@@ -1320,9 +1320,7 @@ RTE_PMD_REGISTER_PCI(net_vmxnet3, rte_vmxnet3_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_vmxnet3, pci_id_vmxnet3_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_vmxnet3, "* igb_uio | uio_pci_generic | vfio-pci");
 
-RTE_INIT(vmxnet3_init_log);
-static void
-vmxnet3_init_log(void)
+RTE_INIT(vmxnet3_init_log)
 {
 	vmxnet3_logtype_init = rte_log_register("pmd.net.vmxnet3.init");
 	if (vmxnet3_logtype_init >= 0)

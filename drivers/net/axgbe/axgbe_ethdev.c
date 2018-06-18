@@ -759,9 +759,7 @@ RTE_PMD_REGISTER_PCI(net_axgbe, rte_axgbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_axgbe, pci_id_axgbe_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_axgbe, "* igb_uio | uio_pci_generic | vfio-pci");
 
-RTE_INIT(axgbe_init_log);
-static void
-axgbe_init_log(void)
+RTE_INIT(axgbe_init_log)
 {
 	axgbe_logtype_init = rte_log_register("pmd.net.axgbe.init");
 	if (axgbe_logtype_init >= 0)

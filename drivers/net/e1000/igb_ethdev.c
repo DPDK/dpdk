@@ -5686,9 +5686,7 @@ RTE_PMD_REGISTER_PCI_TABLE(net_e1000_igb_vf, pci_id_igbvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_e1000_igb_vf, "* igb_uio | vfio-pci");
 
 /* see e1000_logs.c */
-RTE_INIT(e1000_init_log);
-static void
-e1000_init_log(void)
+RTE_INIT(e1000_init_log)
 {
 	e1000_igb_init_log();
 }

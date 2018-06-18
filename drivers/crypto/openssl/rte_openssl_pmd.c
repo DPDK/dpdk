@@ -1734,9 +1734,7 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_OPENSSL_PMD,
 RTE_PMD_REGISTER_CRYPTO_DRIVER(openssl_crypto_drv,
 		cryptodev_openssl_pmd_drv.driver, cryptodev_driver_id);
 
-RTE_INIT(openssl_init_log);
-static void
-openssl_init_log(void)
+RTE_INIT(openssl_init_log)
 {
 	openssl_logtype_driver = rte_log_register("pmd.crypto.openssl");
 }

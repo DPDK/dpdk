@@ -2053,9 +2053,7 @@ static struct rte_dpaa2_driver rte_dpaa2_pmd = {
 
 RTE_PMD_REGISTER_DPAA2(net_dpaa2, rte_dpaa2_pmd);
 
-RTE_INIT(dpaa2_pmd_init_log);
-static void
-dpaa2_pmd_init_log(void)
+RTE_INIT(dpaa2_pmd_init_log)
 {
 	dpaa2_logtype_pmd = rte_log_register("pmd.net.dpaa2");
 	if (dpaa2_logtype_pmd >= 0)

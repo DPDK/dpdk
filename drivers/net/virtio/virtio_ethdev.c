@@ -1786,9 +1786,7 @@ static struct rte_pci_driver rte_virtio_pmd = {
 	.remove = eth_virtio_pci_remove,
 };
 
-RTE_INIT(rte_virtio_pmd_init);
-static void
-rte_virtio_pmd_init(void)
+RTE_INIT(rte_virtio_pmd_init)
 {
 	if (rte_eal_iopl_init() != 0) {
 		PMD_INIT_LOG(ERR, "IOPL call failed - cannot use virtio PMD");
@@ -2210,9 +2208,7 @@ RTE_PMD_EXPORT_NAME(net_virtio, __COUNTER__);
 RTE_PMD_REGISTER_PCI_TABLE(net_virtio, pci_id_virtio_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_virtio, "* igb_uio | uio_pci_generic | vfio-pci");
 
-RTE_INIT(virtio_init_log);
-static void
-virtio_init_log(void)
+RTE_INIT(virtio_init_log)
 {
 	virtio_logtype_init = rte_log_register("pmd.net.virtio.init");
 	if (virtio_logtype_init >= 0)

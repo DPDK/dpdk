@@ -3428,9 +3428,7 @@ RTE_PMD_REGISTER_PCI(net_qede_vf, rte_qedevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_qede_vf, pci_id_qedevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_qede_vf, "* igb_uio | vfio-pci");
 
-RTE_INIT(qede_init_log);
-static void
-qede_init_log(void)
+RTE_INIT(qede_init_log)
 {
 	qede_logtype_init = rte_log_register("pmd.net.qede.init");
 	if (qede_logtype_init >= 0)

@@ -517,9 +517,7 @@ RTE_PMD_REGISTER_PCI(ifpga_rawdev_pci_driver, rte_ifpga_rawdev_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(ifpga_rawdev_pci_driver, rte_ifpga_rawdev_pmd);
 RTE_PMD_REGISTER_KMOD_DEP(ifpga_rawdev_pci_driver, "* igb_uio | uio_pci_generic | vfio-pci");
 
-RTE_INIT(ifpga_rawdev_init_log);
-static void
-ifpga_rawdev_init_log(void)
+RTE_INIT(ifpga_rawdev_init_log)
 {
 	ifpga_rawdev_logtype = rte_log_register("driver.raw.init");
 	if (ifpga_rawdev_logtype >= 0)

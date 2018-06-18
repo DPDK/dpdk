@@ -578,10 +578,7 @@ rte_cryptodev_scheduler_option_get(uint8_t scheduler_id,
 	return (*sched_ctx->ops.option_get)(dev, option_type, option);
 }
 
-RTE_INIT(scheduler_init_log);
-
-static void
-scheduler_init_log(void)
+RTE_INIT(scheduler_init_log)
 {
 	scheduler_logtype_driver = rte_log_register("pmd.crypto.scheduler");
 }

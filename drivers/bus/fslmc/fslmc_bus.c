@@ -519,9 +519,7 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 
 RTE_REGISTER_BUS(FSLMC_BUS_NAME, rte_fslmc_bus.bus);
 
-RTE_INIT(fslmc_init_log);
-static void
-fslmc_init_log(void)
+RTE_INIT(fslmc_init_log)
 {
 	/* Bus level logs */
 	dpaa2_logtype_bus = rte_log_register("bus.fslmc");

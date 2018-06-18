@@ -39,9 +39,7 @@ static const struct rte_pci_id pci_id_enic_map[] = {
 #define ENIC_DEVARG_DISABLE_OVERLAY "disable-overlay"
 #define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
 
-RTE_INIT(enicpmd_init_log);
-static void
-enicpmd_init_log(void)
+RTE_INIT(enicpmd_init_log)
 {
 	enicpmd_logtype_init = rte_log_register("pmd.net.enic.init");
 	if (enicpmd_logtype_init >= 0)

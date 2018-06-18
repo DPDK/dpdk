@@ -844,9 +844,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_softnic,
 	PMD_PARAM_HARD_NAME "=<string> "
 	PMD_PARAM_HARD_TX_QUEUE_ID "=<int>");
 
-RTE_INIT(pmd_softnic_init_log);
-static void
-pmd_softnic_init_log(void)
+RTE_INIT(pmd_softnic_init_log)
 {
 	pmd_softnic_logtype = rte_log_register("pmd.net.softnic");
 	if (pmd_softnic_logtype >= 0)

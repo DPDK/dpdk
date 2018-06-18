@@ -626,9 +626,7 @@ struct rte_dpaa_bus rte_dpaa_bus = {
 
 RTE_REGISTER_BUS(FSL_DPAA_BUS_NAME, rte_dpaa_bus.bus);
 
-RTE_INIT(dpaa_init_log);
-static void
-dpaa_init_log(void)
+RTE_INIT(dpaa_init_log)
 {
 	dpaa_logtype_bus = rte_log_register("bus.dpaa");
 	if (dpaa_logtype_bus >= 0)

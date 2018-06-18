@@ -785,9 +785,7 @@ RTE_PMD_REGISTER_PCI(net_ifcvf, rte_ifcvf_vdpa);
 RTE_PMD_REGISTER_PCI_TABLE(net_ifcvf, pci_id_ifcvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ifcvf, "* vfio-pci");
 
-RTE_INIT(ifcvf_vdpa_init_log);
-static void
-ifcvf_vdpa_init_log(void)
+RTE_INIT(ifcvf_vdpa_init_log)
 {
 	ifcvf_vdpa_logtype = rte_log_register("pmd.net.ifcvf_vdpa");
 	if (ifcvf_vdpa_logtype >= 0)

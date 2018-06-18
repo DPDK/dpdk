@@ -744,10 +744,7 @@ static struct rte_vdev_driver skeleton_pmd_drv = {
 
 RTE_PMD_REGISTER_VDEV(SKELETON_PMD_RAWDEV_NAME, skeleton_pmd_drv);
 
-RTE_INIT(skeleton_pmd_init_log);
-
-static void
-skeleton_pmd_init_log(void)
+RTE_INIT(skeleton_pmd_init_log)
 {
 	skeleton_pmd_logtype = rte_log_register("rawdev.skeleton");
 	if (skeleton_pmd_logtype >= 0)

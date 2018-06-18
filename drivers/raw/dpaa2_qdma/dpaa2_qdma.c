@@ -992,9 +992,7 @@ static struct rte_dpaa2_driver rte_dpaa2_qdma_pmd = {
 
 RTE_PMD_REGISTER_DPAA2(dpaa2_qdma, rte_dpaa2_qdma_pmd);
 
-RTE_INIT(dpaa2_qdma_init_log);
-static void
-dpaa2_qdma_init_log(void)
+RTE_INIT(dpaa2_qdma_init_log)
 {
 	dpaa2_qdma_logtype = rte_log_register("pmd.raw.dpaa2.qdma");
 	if (dpaa2_qdma_logtype >= 0)

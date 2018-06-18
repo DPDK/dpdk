@@ -1282,9 +1282,7 @@ static const struct rte_event_timer_adapter_ops sw_event_adapter_timer_ops = {
 	.cancel_burst = sw_event_timer_cancel_burst,
 };
 
-RTE_INIT(event_timer_adapter_init_log);
-static void
-event_timer_adapter_init_log(void)
+RTE_INIT(event_timer_adapter_init_log)
 {
 	evtim_logtype = rte_log_register("lib.eventdev.adapter.timer");
 	if (evtim_logtype >= 0)

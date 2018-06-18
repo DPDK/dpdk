@@ -46,9 +46,7 @@ int otx_net_logtype_mbox;
 int otx_net_logtype_init;
 int otx_net_logtype_driver;
 
-RTE_INIT(otx_net_init_log);
-static void
-otx_net_init_log(void)
+RTE_INIT(otx_net_init_log)
 {
 	otx_net_logtype_mbox = rte_log_register("pmd.net.octeontx.mbox");
 	if (otx_net_logtype_mbox >= 0)

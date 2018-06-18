@@ -1080,9 +1080,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_pcap,
 	ETH_PCAP_TX_IFACE_ARG "=<ifc> "
 	ETH_PCAP_IFACE_ARG "=<ifc>");
 
-RTE_INIT(eth_pcap_init_log);
-static void
-eth_pcap_init_log(void)
+RTE_INIT(eth_pcap_init_log)
 {
 	eth_pcap_logtype = rte_log_register("pmd.net.pcap");
 	if (eth_pcap_logtype >= 0)

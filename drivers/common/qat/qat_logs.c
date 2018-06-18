@@ -24,9 +24,7 @@ qat_hexdump_log(uint32_t level, uint32_t logtype, const char *title,
 	return 0;
 }
 
-RTE_INIT(qat_pci_init_log);
-static void
-qat_pci_init_log(void)
+RTE_INIT(qat_pci_init_log)
 {
 	/* Non-data-path logging for pci device and all services */
 	qat_gen_logtype = rte_log_register("pmd.qat_general");

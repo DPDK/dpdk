@@ -532,10 +532,7 @@ rte_rawdev_pmd_release(struct rte_rawdev *rawdev)
 	return 0;
 }
 
-RTE_INIT(librawdev_init_log);
-
-static void
-librawdev_init_log(void)
+RTE_INIT(librawdev_init_log)
 {
 	librawdev_logtype = rte_log_register("lib.rawdev");
 	if (librawdev_logtype >= 0)

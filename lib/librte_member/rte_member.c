@@ -297,10 +297,7 @@ rte_member_reset(const struct rte_member_setsum *setsum)
 	}
 }
 
-RTE_INIT(librte_member_init_log);
-
-static void
-librte_member_init_log(void)
+RTE_INIT(librte_member_init_log)
 {
 	librte_member_logtype = rte_log_register("lib.member");
 	if (librte_member_logtype >= 0)

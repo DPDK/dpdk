@@ -2398,9 +2398,7 @@ RTE_PMD_REGISTER_DPAA(CRYPTODEV_NAME_DPAA_SEC_PMD, rte_dpaa_sec_driver);
 RTE_PMD_REGISTER_CRYPTO_DRIVER(dpaa_sec_crypto_drv, rte_dpaa_sec_driver.driver,
 		cryptodev_driver_id);
 
-RTE_INIT(dpaa_sec_init_log);
-static void
-dpaa_sec_init_log(void)
+RTE_INIT(dpaa_sec_init_log)
 {
 	dpaa_logtype_sec = rte_log_register("pmd.crypto.dpaa");
 	if (dpaa_logtype_sec >= 0)

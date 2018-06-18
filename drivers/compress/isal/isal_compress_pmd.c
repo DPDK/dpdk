@@ -460,10 +460,7 @@ RTE_PMD_REGISTER_VDEV(COMPDEV_NAME_ISAL_PMD, compdev_isal_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(COMPDEV_NAME_ISAL_PMD,
 	"socket_id=<int>");
 
-RTE_INIT(isal_init_log);
-
-static void
-isal_init_log(void)
+RTE_INIT(isal_init_log)
 {
 	isal_logtype_driver = rte_log_register("comp_isal");
 	if (isal_logtype_driver >= 0)

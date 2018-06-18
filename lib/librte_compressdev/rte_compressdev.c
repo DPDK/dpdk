@@ -764,10 +764,7 @@ rte_compressdev_name_get(uint8_t dev_id)
 	return dev->data->name;
 }
 
-RTE_INIT(rte_compressdev_log);
-
-static void
-rte_compressdev_log(void)
+RTE_INIT(rte_compressdev_log)
 {
 	compressdev_logtype = rte_log_register("lib.compressdev");
 	if (compressdev_logtype >= 0)

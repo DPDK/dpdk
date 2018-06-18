@@ -2094,9 +2094,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,
 	SFC_KVARG_RXD_WAIT_TIMEOUT_NS "=<long> "
 	SFC_KVARG_STATS_UPDATE_PERIOD_MS "=<long>");
 
-RTE_INIT(sfc_driver_register_logtype);
-static void
-sfc_driver_register_logtype(void)
+RTE_INIT(sfc_driver_register_logtype)
 {
 	int ret;
 

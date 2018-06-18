@@ -3294,9 +3294,7 @@ RTE_PMD_REGISTER_PCI(net_fm10k, rte_pmd_fm10k);
 RTE_PMD_REGISTER_PCI_TABLE(net_fm10k, pci_id_fm10k_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_fm10k, "* igb_uio | uio_pci_generic | vfio-pci");
 
-RTE_INIT(fm10k_init_log);
-static void
-fm10k_init_log(void)
+RTE_INIT(fm10k_init_log)
 {
 	fm10k_logtype_init = rte_log_register("pmd.net.fm10k.init");
 	if (fm10k_logtype_init >= 0)

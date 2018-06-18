@@ -1125,9 +1125,7 @@ rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type)
 	return NULL;
 }
 
-RTE_INIT(rte_bbdev_init_log);
-static void
-rte_bbdev_init_log(void)
+RTE_INIT(rte_bbdev_init_log)
 {
 	bbdev_logtype = rte_log_register("lib.bbdev");
 	if (bbdev_logtype >= 0)

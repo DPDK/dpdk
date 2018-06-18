@@ -1343,9 +1343,7 @@ static struct rte_pci_driver rte_avf_pmd = {
 RTE_PMD_REGISTER_PCI(net_avf, rte_avf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_avf, pci_id_avf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_avf, "* igb_uio | vfio-pci");
-RTE_INIT(avf_init_log);
-static void
-avf_init_log(void)
+RTE_INIT(avf_init_log)
 {
 	avf_logtype_init = rte_log_register("pmd.net.avf.init");
 	if (avf_logtype_init >= 0)

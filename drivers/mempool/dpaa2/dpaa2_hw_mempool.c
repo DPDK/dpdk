@@ -442,9 +442,7 @@ struct rte_mempool_ops dpaa2_mpool_ops = {
 
 MEMPOOL_REGISTER_OPS(dpaa2_mpool_ops);
 
-RTE_INIT(dpaa2_mempool_init_log);
-static void
-dpaa2_mempool_init_log(void)
+RTE_INIT(dpaa2_mempool_init_log)
 {
 	dpaa2_logtype_mempool = rte_log_register("mempool.dpaa2");
 	if (dpaa2_logtype_mempool >= 0)

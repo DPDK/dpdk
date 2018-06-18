@@ -822,9 +822,7 @@ static struct rte_vdev_driver vdev_eventdev_dpaa2_pmd = {
 
 RTE_PMD_REGISTER_VDEV(EVENTDEV_NAME_DPAA2_PMD, vdev_eventdev_dpaa2_pmd);
 
-RTE_INIT(dpaa2_eventdev_init_log);
-static void
-dpaa2_eventdev_init_log(void)
+RTE_INIT(dpaa2_eventdev_init_log)
 {
 	dpaa2_logtype_event = rte_log_register("pmd.event.dpaa2");
 	if (dpaa2_logtype_event >= 0)

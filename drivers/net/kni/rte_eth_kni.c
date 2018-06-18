@@ -488,9 +488,7 @@ static struct rte_vdev_driver eth_kni_drv = {
 RTE_PMD_REGISTER_VDEV(net_kni, eth_kni_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_kni, ETH_KNI_NO_REQUEST_THREAD_ARG "=<int>");
 
-RTE_INIT(eth_kni_init_log);
-static void
-eth_kni_init_log(void)
+RTE_INIT(eth_kni_init_log)
 {
 	eth_kni_logtype = rte_log_register("pmd.net.kni");
 	if (eth_kni_logtype >= 0)

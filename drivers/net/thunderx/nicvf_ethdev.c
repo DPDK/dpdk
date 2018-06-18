@@ -53,9 +53,7 @@ static void nicvf_dev_stop_cleanup(struct rte_eth_dev *dev, bool cleanup);
 static void nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic,
 			  bool cleanup);
 
-RTE_INIT(nicvf_init_log);
-static void
-nicvf_init_log(void)
+RTE_INIT(nicvf_init_log)
 {
 	nicvf_logtype_mbox = rte_log_register("pmd.net.thunderx.mbox");
 	if (nicvf_logtype_mbox >= 0)

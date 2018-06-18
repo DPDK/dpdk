@@ -3604,9 +3604,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_bonding,
 
 int bond_logtype;
 
-RTE_INIT(bond_init_log);
-static void
-bond_init_log(void)
+RTE_INIT(bond_init_log)
 {
 	bond_logtype = rte_log_register("pmd.net.bon");
 	if (bond_logtype >= 0)

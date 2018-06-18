@@ -1475,9 +1475,7 @@ RTE_PMD_REGISTER_CRYPTO_DRIVER(virtio_crypto_drv,
 	rte_virtio_crypto_driver.driver,
 	cryptodev_virtio_driver_id);
 
-RTE_INIT(virtio_crypto_init_log);
-static void
-virtio_crypto_init_log(void)
+RTE_INIT(virtio_crypto_init_log)
 {
 	virtio_crypto_logtype_init = rte_log_register("pmd.crypto.virtio.init");
 	if (virtio_crypto_logtype_init >= 0)

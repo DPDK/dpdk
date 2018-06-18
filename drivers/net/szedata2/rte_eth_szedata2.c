@@ -1923,9 +1923,7 @@ RTE_PMD_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_SZEDATA2_DRIVER_NAME,
 	"* combo6core & combov3 & szedata2 & ( szedata2_cv3 | szedata2_cv3_fdt )");
 
-RTE_INIT(szedata2_init_log);
-static void
-szedata2_init_log(void)
+RTE_INIT(szedata2_init_log)
 {
 	szedata2_logtype_init = rte_log_register("pmd.net.szedata2.init");
 	if (szedata2_logtype_init >= 0)

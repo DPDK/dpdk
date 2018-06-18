@@ -1016,9 +1016,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_packet,
 	"framecnt=<int> "
 	"qdisc_bypass=<0|1>");
 
-RTE_INIT(af_packet_init_log);
-static void
-af_packet_init_log(void)
+RTE_INIT(af_packet_init_log)
 {
 	af_packet_logtype = rte_log_register("pmd.net.packet");
 	if (af_packet_logtype >= 0)

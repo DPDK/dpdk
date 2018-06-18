@@ -955,9 +955,7 @@ glue_error:
 /**
  * Driver initialization routine.
  */
-RTE_INIT(rte_mlx4_pmd_init);
-static void
-rte_mlx4_pmd_init(void)
+RTE_INIT(rte_mlx4_pmd_init)
 {
 	/*
 	 * MLX4_DEVICE_FATAL_CLEANUP tells ibv_destroy functions we

@@ -61,9 +61,7 @@ struct mbox_ram_hdr {
 
 int octeontx_logtype_mbox;
 
-RTE_INIT(otx_init_log);
-static void
-otx_init_log(void)
+RTE_INIT(otx_init_log)
 {
 	octeontx_logtype_mbox = rte_log_register("pmd.octeontx.mbox");
 	if (octeontx_logtype_mbox >= 0)

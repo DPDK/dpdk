@@ -3284,9 +3284,7 @@ RTE_PMD_REGISTER_PCI_TABLE(net_nfp_vf, pci_id_nfp_vf_net_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_pf, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_vf, "* igb_uio | uio_pci_generic | vfio");
 
-RTE_INIT(nfp_init_log);
-static void
-nfp_init_log(void)
+RTE_INIT(nfp_init_log)
 {
 	nfp_logtype_init = rte_log_register("pmd.net.nfp.init");
 	if (nfp_logtype_init >= 0)

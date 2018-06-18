@@ -1386,9 +1386,7 @@ glue_error:
 /**
  * Driver initialization routine.
  */
-RTE_INIT(rte_mlx5_pmd_init);
-static void
-rte_mlx5_pmd_init(void)
+RTE_INIT(rte_mlx5_pmd_init)
 {
 	/* Initialize driver log type. */
 	mlx5_logtype = rte_log_register("pmd.net.mlx5");

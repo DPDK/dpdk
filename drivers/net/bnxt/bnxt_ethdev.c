@@ -3540,9 +3540,7 @@ bool is_bnxt_supported(struct rte_eth_dev *dev)
 	return is_device_supported(dev, &bnxt_rte_pmd);
 }
 
-RTE_INIT(bnxt_init_log);
-static void
-bnxt_init_log(void)
+RTE_INIT(bnxt_init_log)
 {
 	bnxt_logtype_driver = rte_log_register("pmd.bnxt.driver");
 	if (bnxt_logtype_driver >= 0)

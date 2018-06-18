@@ -8584,9 +8584,7 @@ RTE_PMD_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe_vf, "* igb_uio | vfio-pci");
 
-RTE_INIT(ixgbe_init_log);
-static void
-ixgbe_init_log(void)
+RTE_INIT(ixgbe_init_log)
 {
 	ixgbe_logtype_init = rte_log_register("pmd.net.ixgbe.init");
 	if (ixgbe_logtype_init >= 0)

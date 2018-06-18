@@ -53,10 +53,7 @@ bpf_jit(struct rte_bpf *bpf)
 	return rc;
 }
 
-RTE_INIT(rte_bpf_init_log);
-
-static void
-rte_bpf_init_log(void)
+RTE_INIT(rte_bpf_init_log)
 {
 	rte_bpf_logtype = rte_log_register("lib.bpf");
 	if (rte_bpf_logtype >= 0)

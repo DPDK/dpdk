@@ -12473,9 +12473,7 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 	return 0;
 }
 
-RTE_INIT(i40e_init_log);
-static void
-i40e_init_log(void)
+RTE_INIT(i40e_init_log)
 {
 	i40e_logtype_init = rte_log_register("pmd.net.i40e.init");
 	if (i40e_logtype_init >= 0)

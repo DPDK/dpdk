@@ -108,9 +108,7 @@ static struct octeontx_fpadev fpadev;
 int octeontx_logtype_fpavf;
 int octeontx_logtype_fpavf_mbox;
 
-RTE_INIT(otx_pool_init_log);
-static void
-otx_pool_init_log(void)
+RTE_INIT(otx_pool_init_log)
 {
 	octeontx_logtype_fpavf = rte_log_register("pmd.mempool.octeontx");
 	if (octeontx_logtype_fpavf >= 0)

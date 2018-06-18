@@ -2220,9 +2220,7 @@ RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio-pci");
 
-RTE_INIT(ena_init_log);
-static void
-ena_init_log(void)
+RTE_INIT(ena_init_log)
 {
 	ena_logtype_init = rte_log_register("pmd.net.ena.init");
 	if (ena_logtype_init >= 0)

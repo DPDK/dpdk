@@ -289,10 +289,7 @@ static struct rte_vdev_driver dpaa2_cmdif_drv = {
 
 RTE_PMD_REGISTER_VDEV(DPAA2_CMDIF_PMD_NAME, dpaa2_cmdif_drv);
 
-RTE_INIT(dpaa2_cmdif_init_log);
-
-static void
-dpaa2_cmdif_init_log(void)
+RTE_INIT(dpaa2_cmdif_init_log)
 {
 	dpaa2_cmdif_logtype = rte_log_register("pmd.raw.dpaa2.cmdif");
 	if (dpaa2_cmdif_logtype >= 0)

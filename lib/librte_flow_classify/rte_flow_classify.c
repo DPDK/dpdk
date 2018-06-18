@@ -673,10 +673,7 @@ rte_flow_classifier_query(struct rte_flow_classifier *cls,
 	return ret;
 }
 
-RTE_INIT(librte_flow_classify_init_log);
-
-static void
-librte_flow_classify_init_log(void)
+RTE_INIT(librte_flow_classify_init_log)
 {
 	librte_flow_classify_logtype =
 		rte_log_register("lib.flow_classify");
