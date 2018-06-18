@@ -34,6 +34,8 @@
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_tailq.h>
+#include <rte_devargs.h>
+#include <rte_kvargs.h>
 
 #include "base/nicvf_plat.h"
 
@@ -1230,6 +1232,7 @@ nicvf_rxq_mbuf_setup(struct nicvf_rxq *rxq)
 {
 	uintptr_t p;
 	struct rte_mbuf mb_def;
+	struct nicvf *nic = rxq->nic;
 
 	RTE_BUILD_BUG_ON(sizeof(union mbuf_initializer) != 8);
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) % 8 != 0);
@@ -1240,7 +1243,7 @@ nicvf_rxq_mbuf_setup(struct nicvf_rxq *rxq)
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, port) -
 				offsetof(struct rte_mbuf, data_off) != 6);
 	mb_def.nb_segs = 1;
-	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM + (nic->skip_bytes);
 	mb_def.port = rxq->port_id;
 	rte_mbuf_refcnt_set(&mb_def, 1);
 
@@ -1260,8 +1263,18 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	struct nicvf_rxq *rxq;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint64_t offloads;
+	uint32_t buffsz;
+	struct rte_pktmbuf_pool_private *mbp_priv;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* First skip check */
+	mbp_priv = rte_mempool_get_priv(mp);
+	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+	if (buffsz < (uint32_t)(nic->skip_bytes)) {
+		PMD_INIT_LOG(ERR, "First skip is more than configured buffer size");
+		return -EINVAL;
+	}
 
 	if (qidx >= MAX_RCV_QUEUES_PER_QS)
 		nic = nic->snicvf[qidx / MAX_RCV_QUEUES_PER_QS - 1];
@@ -1297,6 +1310,7 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 		PMD_INIT_LOG(ERR, "Value nb_desc beyond available hw cq qsize");
 		return -EINVAL;
 	}
+
 
 	/* Check rx_free_thresh upper bound */
 	rx_free_thresh = (uint16_t)((rx_conf->rx_free_thresh) ?
@@ -1498,6 +1512,7 @@ nicvf_vf_start(struct rte_eth_dev *dev, struct nicvf *nic, uint32_t rbdrsz)
 			return -EINVAL;
 		}
 		rxq->mbuf_phys_off -= data_off;
+		rxq->mbuf_phys_off -= nic->skip_bytes;
 
 		if (mbuf_phys_off == 0)
 			mbuf_phys_off = rxq->mbuf_phys_off;
@@ -1978,6 +1993,59 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.get_reg                  = nicvf_dev_get_regs,
 };
 
+static inline int
+nicvf_set_first_skip(struct rte_eth_dev *dev)
+{
+	int bytes_to_skip = 0;
+	int ret = 0;
+	unsigned int i;
+	struct rte_kvargs *kvlist;
+	static const char *const skip[] = {
+		SKIP_DATA_BYTES,
+		NULL};
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	if (!dev->device->devargs) {
+		nicvf_first_skip_config(nic, 0);
+		return ret;
+	}
+
+	kvlist = rte_kvargs_parse(dev->device->devargs->args, skip);
+	if (!kvlist)
+		return -EINVAL;
+
+	if (kvlist->count == 0)
+		goto exit;
+
+	for (i = 0; i != kvlist->count; ++i) {
+		const struct rte_kvargs_pair *pair = &kvlist->pairs[i];
+
+		if (!strcmp(pair->key, SKIP_DATA_BYTES))
+			bytes_to_skip = atoi(pair->value);
+	}
+
+	/*128 bytes amounts to one cache line*/
+	if (bytes_to_skip >= 0 && bytes_to_skip < 128) {
+		if (!(bytes_to_skip % 8)) {
+			nicvf_first_skip_config(nic, (bytes_to_skip / 8));
+			nic->skip_bytes = bytes_to_skip;
+			goto kvlist_free;
+		} else {
+			PMD_INIT_LOG(ERR, "skip_data_bytes should be multiple of 8");
+			ret = -EINVAL;
+			goto exit;
+		}
+	} else {
+		PMD_INIT_LOG(ERR, "skip_data_bytes should be less than 128");
+		ret = -EINVAL;
+		goto exit;
+	}
+exit:
+	nicvf_first_skip_config(nic, 0);
+kvlist_free:
+	rte_kvargs_free(kvlist);
+	return ret;
+}
 static int
 nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -2087,6 +2155,11 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 		goto malloc_fail;
 	}
 
+	ret = nicvf_set_first_skip(eth_dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to configure first skip");
+		goto malloc_fail;
+	}
 	PMD_INIT_LOG(INFO, "Port %d (%x:%x) mac=%02x:%02x:%02x:%02x:%02x:%02x",
 		eth_dev->data->port_id, nic->vendor_id, nic->device_id,
 		nic->mac_addr[0], nic->mac_addr[1], nic->mac_addr[2],
@@ -2159,3 +2232,4 @@ static struct rte_pci_driver rte_nicvf_pmd = {
 RTE_PMD_REGISTER_PCI(net_thunderx, rte_nicvf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_thunderx, pci_id_nicvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_thunderx, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_thunderx, SKIP_DATA_BYTES "=<int>");

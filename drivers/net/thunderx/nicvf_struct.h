@@ -99,6 +99,7 @@ struct nicvf {
 	struct rte_intr_handle intr_handle;
 	uint8_t cpi_alg;
 	uint16_t mtu;
+	int skip_bytes;
 	bool vlan_filter_en;
 	uint8_t mac_addr[ETHER_ADDR_LEN];
 	/* secondary queue set support */

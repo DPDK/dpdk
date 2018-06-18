@@ -193,6 +193,7 @@ uint32_t nicvf_qsize_sq_roundup(uint32_t val);
 void nicvf_vlan_hw_strip(struct nicvf *nic, bool enable);
 
 void nicvf_apad_config(struct nicvf *nic, bool enable);
+void nicvf_first_skip_config(struct nicvf *nic, uint8_t dwords);
 
 int nicvf_rss_config(struct nicvf *nic, uint32_t  qcnt, uint64_t cfg);
 int nicvf_rss_term(struct nicvf *nic);

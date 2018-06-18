@@ -703,6 +703,18 @@ nicvf_vlan_hw_strip(struct nicvf *nic, bool enable)
 }
 
 void
+nicvf_first_skip_config(struct nicvf *nic, uint8_t num_dwords)
+{
+	uint64_t val;
+
+	val = nicvf_reg_read(nic, NIC_VNIC_RQ_GEN_CFG);
+	val &= ~(0xfULL);
+	val |= (num_dwords & 0xf);
+
+	nicvf_reg_write(nic, NIC_VNIC_RQ_GEN_CFG, val);
+}
+
+void
 nicvf_apad_config(struct nicvf *nic, bool enable)
 {
 	uint64_t val;

@@ -51,6 +51,7 @@
 
 #define VLAN_TAG_SIZE                   4	/* 802.3ac tag */
 
+#define SKIP_DATA_BYTES "skip_data_bytes"
 static inline struct nicvf *
 nicvf_pmd_priv(struct rte_eth_dev *eth_dev)
 {
