@@ -31,6 +31,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 
+#include <rte_ethdev_pci.h>
 #include <rte_string_fns.h>
 
 #include "nfp_cpp.h"
@@ -639,61 +640,32 @@ nfp_acquire_process_lock(struct nfp_pcie_user *desc)
 }
 
 static int
-nfp6000_set_model(struct nfp_pcie_user *desc, struct nfp_cpp *cpp)
+nfp6000_set_model(struct rte_pci_device *dev, struct nfp_cpp *cpp)
 {
-	char tmp_str[80];
-	uint32_t tmp;
-	int fp;
+	uint32_t model;
 
-	snprintf(tmp_str, sizeof(tmp_str), "%s/%s/config", PCI_DEVICES,
-		 desc->busdev);
-
-	fp = open(tmp_str, O_RDONLY);
-	if (!fp)
-		return -1;
-
-	lseek(fp, 0x2e, SEEK_SET);
-
-	if (read(fp, &tmp, sizeof(tmp)) != sizeof(tmp)) {
-		printf("Error reading config file for model\n");
+	if (rte_pci_read_config(dev, &model, 4, 0x2e) < 0) {
+		printf("nfp set model failed\n");
 		return -1;
 	}
 
-	tmp = tmp << 16;
-
-	if (close(fp) == -1)
-		return -1;
-
-	nfp_cpp_model_set(cpp, tmp);
+	model  = model << 16;
+	nfp_cpp_model_set(cpp, model);
 
 	return 0;
 }
 
 static int
-nfp6000_set_interface(struct nfp_pcie_user *desc, struct nfp_cpp *cpp)
+nfp6000_set_interface(struct rte_pci_device *dev, struct nfp_cpp *cpp)
 {
-	char tmp_str[80];
-	uint16_t tmp;
-	int fp;
+	uint16_t interface;
 
-	snprintf(tmp_str, sizeof(tmp_str), "%s/%s/config", PCI_DEVICES,
-		 desc->busdev);
-
-	fp = open(tmp_str, O_RDONLY);
-	if (!fp)
-		return -1;
-
-	lseek(fp, 0x154, SEEK_SET);
-
-	if (read(fp, &tmp, sizeof(tmp)) != sizeof(tmp)) {
-		printf("error reading config file for interface\n");
+	if (rte_pci_read_config(dev, &interface, 2, 0x154) < 0) {
+		printf("nfp set interface failed\n");
 		return -1;
 	}
 
-	if (close(fp) == -1)
-		return -1;
-
-	nfp_cpp_interface_set(cpp, tmp);
+	nfp_cpp_interface_set(cpp, interface);
 
 	return 0;
 }
@@ -704,7 +676,7 @@ nfp6000_set_interface(struct nfp_pcie_user *desc, struct nfp_cpp *cpp)
 #define PCI_EXT_CAP_NEXT(header)	((header >> 20) & 0xffc)
 #define PCI_EXT_CAP_ID_DSN	0x03
 static int
-nfp_pci_find_next_ext_capability(int fp, int cap)
+nfp_pci_find_next_ext_capability(struct rte_pci_device *dev, int cap)
 {
 	uint32_t header;
 	int ttl;
@@ -713,9 +685,8 @@ nfp_pci_find_next_ext_capability(int fp, int cap)
 	/* minimum 8 bytes per capability */
 	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
 
-	lseek(fp, pos, SEEK_SET);
-	if (read(fp, &header, sizeof(header)) != sizeof(header)) {
-		printf("error reading config file for serial\n");
+	if (rte_pci_read_config(dev, &header, 4, pos) < 0) {
+		printf("nfp error reading extended capabilities\n");
 		return -1;
 	}
 
@@ -734,9 +705,8 @@ nfp_pci_find_next_ext_capability(int fp, int cap)
 		if (pos < PCI_CFG_SPACE_SIZE)
 			break;
 
-		lseek(fp, pos, SEEK_SET);
-		if (read(fp, &header, sizeof(header)) != sizeof(header)) {
-			printf("error reading config file for serial\n");
+		if (rte_pci_read_config(dev, &header, 4, pos) < 0) {
+			printf("nfp error reading extended capabilities\n");
 			return -1;
 		}
 	}
@@ -745,55 +715,46 @@ nfp_pci_find_next_ext_capability(int fp, int cap)
 }
 
 static int
-nfp6000_set_serial(struct nfp_pcie_user *desc, struct nfp_cpp *cpp)
+nfp6000_set_serial(struct rte_pci_device *dev, struct nfp_cpp *cpp)
 {
-	char tmp_str[80];
 	uint16_t tmp;
 	uint8_t serial[6];
 	int serial_len = 6;
-	int fp, pos;
+	int pos;
 
-	snprintf(tmp_str, sizeof(tmp_str), "%s/%s/config", PCI_DEVICES,
-		 desc->busdev);
-
-	fp = open(tmp_str, O_RDONLY);
-	if (!fp)
-		return -1;
-
-	pos = nfp_pci_find_next_ext_capability(fp, PCI_EXT_CAP_ID_DSN);
+	pos = nfp_pci_find_next_ext_capability(dev, PCI_EXT_CAP_ID_DSN);
 	if (pos <= 0) {
-		printf("PCI_EXT_CAP_ID_DSN not found. Using default offset\n");
-		lseek(fp, 0x156, SEEK_SET);
+		printf("PCI_EXT_CAP_ID_DSN not found. nfp set serial failed\n");
+		return -1;
 	} else {
-		lseek(fp, pos + 6, SEEK_SET);
+		pos += 6;
 	}
 
-	if (read(fp, &tmp, sizeof(tmp)) != sizeof(tmp)) {
-		printf("error reading config file for serial\n");
+	if (rte_pci_read_config(dev, &tmp, 2, pos) < 0) {
+		printf("nfp set serial failed\n");
 		return -1;
 	}
 
 	serial[4] = (uint8_t)((tmp >> 8) & 0xff);
 	serial[5] = (uint8_t)(tmp & 0xff);
 
-	if (read(fp, &tmp, sizeof(tmp)) != sizeof(tmp)) {
-		printf("error reading config file for serial\n");
+	pos += 2;
+	if (rte_pci_read_config(dev, &tmp, 2, pos) < 0) {
+		printf("nfp set serial failed\n");
 		return -1;
 	}
 
 	serial[2] = (uint8_t)((tmp >> 8) & 0xff);
 	serial[3] = (uint8_t)(tmp & 0xff);
 
-	if (read(fp, &tmp, sizeof(tmp)) != sizeof(tmp)) {
-		printf("error reading config file for serial\n");
+	pos += 2;
+	if (rte_pci_read_config(dev, &tmp, 2, pos) < 0) {
+		printf("nfp set serial failed\n");
 		return -1;
 	}
 
 	serial[0] = (uint8_t)((tmp >> 8) & 0xff);
 	serial[1] = (uint8_t)(tmp & 0xff);
-
-	if (close(fp) == -1)
-		return -1;
 
 	nfp_cpp_serial_set(cpp, serial, serial_len);
 
@@ -833,7 +794,7 @@ nfp6000_set_barsz(struct nfp_pcie_user *desc)
 }
 
 static int
-nfp6000_init(struct nfp_cpp *cpp, const char *devname)
+nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 {
 	char link[120];
 	char tmp_str[80];
@@ -848,7 +809,7 @@ nfp6000_init(struct nfp_cpp *cpp, const char *devname)
 
 
 	memset(desc->busdev, 0, BUSDEV_SZ);
-	strlcpy(desc->busdev, devname, sizeof(desc->busdev));
+	strlcpy(desc->busdev, dev->device.name, sizeof(desc->busdev));
 
 	if (cpp->driver_lock_needed) {
 		ret = nfp_acquire_process_lock(desc);
@@ -874,11 +835,11 @@ nfp6000_init(struct nfp_cpp *cpp, const char *devname)
 	if (desc->device == -1)
 		return -1;
 
-	if (nfp6000_set_model(desc, cpp) < 0)
+	if (nfp6000_set_model(dev, cpp) < 0)
 		return -1;
-	if (nfp6000_set_interface(desc, cpp) < 0)
+	if (nfp6000_set_interface(dev, cpp) < 0)
 		return -1;
-	if (nfp6000_set_serial(desc, cpp) < 0)
+	if (nfp6000_set_serial(dev, cpp) < 0)
 		return -1;
 	if (nfp6000_set_barsz(desc) < 0)
 		return -1;

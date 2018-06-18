@@ -12,6 +12,7 @@
 #include <sys/types.h>
 
 #include <rte_byteorder.h>
+#include <rte_ethdev_pci.h>
 
 #include "nfp_cpp.h"
 #include "nfp_target.h"
@@ -542,7 +543,7 @@ nfp_xpb_readl(struct nfp_cpp *cpp, uint32_t xpb_addr, uint32_t *value)
 }
 
 static struct nfp_cpp *
-nfp_cpp_alloc(const char *devname, int driver_lock_needed)
+nfp_cpp_alloc(struct rte_pci_device *dev, int driver_lock_needed)
 {
 	const struct nfp_cpp_operations *ops;
 	struct nfp_cpp *cpp;
@@ -561,7 +562,7 @@ nfp_cpp_alloc(const char *devname, int driver_lock_needed)
 	cpp->driver_lock_needed = driver_lock_needed;
 
 	if (cpp->op->init) {
-		err = cpp->op->init(cpp, devname);
+		err = cpp->op->init(cpp, dev);
 		if (err < 0) {
 			free(cpp);
 			return NULL;
@@ -604,9 +605,9 @@ nfp_cpp_free(struct nfp_cpp *cpp)
 }
 
 struct nfp_cpp *
-nfp_cpp_from_device_name(const char *devname, int driver_lock_needed)
+nfp_cpp_from_device_name(struct rte_pci_device *dev, int driver_lock_needed)
 {
-	return nfp_cpp_alloc(devname, driver_lock_needed);
+	return nfp_cpp_alloc(dev, driver_lock_needed);
 }
 
 /*

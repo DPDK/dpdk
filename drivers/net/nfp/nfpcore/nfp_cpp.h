@@ -6,6 +6,8 @@
 #ifndef __NFP_CPP_H__
 #define __NFP_CPP_H__
 
+#include <rte_ethdev_pci.h>
+
 #include "nfp-common/nfp_platform.h"
 #include "nfp-common/nfp_resid.h"
 
@@ -54,7 +56,7 @@ struct nfp_cpp_operations {
 	size_t area_priv_size;
 
 	/* Instance an NFP CPP */
-	int (*init)(struct nfp_cpp *cpp, const char *devname);
+	int (*init)(struct nfp_cpp *cpp, struct rte_pci_device *dev);
 
 	/*
 	 * Free the bus.
@@ -181,7 +183,7 @@ uint32_t __nfp_cpp_model_autodetect(struct nfp_cpp *cpp);
  *
  * @return NFP CPP handle, or NULL on failure (and set errno accordingly).
  */
-struct nfp_cpp *nfp_cpp_from_device_name(const char *devname,
+struct nfp_cpp *nfp_cpp_from_device_name(struct rte_pci_device *dev,
 					 int driver_lock_needed);
 
 /*

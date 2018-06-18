@@ -3130,9 +3130,9 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * use a lock file if UIO is being used.
 	 */
 	if (dev->kdrv == RTE_KDRV_VFIO)
-		cpp = nfp_cpp_from_device_name(dev->device.name, 0);
+		cpp = nfp_cpp_from_device_name(dev, 0);
 	else
-		cpp = nfp_cpp_from_device_name(dev->device.name, 1);
+		cpp = nfp_cpp_from_device_name(dev, 1);
 
 	if (!cpp) {
 		PMD_DRV_LOG(ERR, "A CPP handle can not be obtained");
