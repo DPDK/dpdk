@@ -56,7 +56,8 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	allow_shrink = (flags & EAL_VIRTUAL_AREA_ALLOW_SHRINK) > 0;
 	unmap = (flags & EAL_VIRTUAL_AREA_UNMAP) > 0;
 
-	if (next_baseaddr == NULL && internal_config.base_virtaddr != 0)
+	if (next_baseaddr == NULL && internal_config.base_virtaddr != 0 &&
+			rte_eal_process_type() == RTE_PROC_PRIMARY)
 		next_baseaddr = (void *) internal_config.base_virtaddr;
 
 	if (requested_addr == NULL && next_baseaddr != NULL) {
