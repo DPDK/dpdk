@@ -939,7 +939,7 @@ inbound_sa_check(struct sa_ctx *sa_ctx, struct rte_mbuf *m, uint32_t sa_idx)
 {
 	struct ipsec_mbuf_metadata *priv;
 
-	priv = RTE_PTR_ADD(m, sizeof(struct rte_mbuf));
+	priv = get_priv(m);
 
 	return (sa_ctx->sa[sa_idx].spi == priv->sa->spi);
 }

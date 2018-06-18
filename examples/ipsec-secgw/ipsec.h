@@ -191,7 +191,7 @@ ipsec_metadata_size(void)
 static inline struct ipsec_mbuf_metadata *
 get_priv(struct rte_mbuf *m)
 {
-	return RTE_PTR_ADD(m, sizeof(struct rte_mbuf));
+	return rte_mbuf_to_priv(m);
 }
 
 static inline void *
