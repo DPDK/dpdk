@@ -213,6 +213,13 @@ DPDK_18.05 {
 
 } DPDK_18.02;
 
+DPDK_18.08 {
+	global:
+
+	rte_eth_dev_logtype;
+
+} DPDK_18.05;
+
 EXPERIMENTAL {
 	global:
 

@@ -42,10 +42,7 @@
 #include "rte_ethdev_driver.h"
 #include "ethdev_profile.h"
 
-static int ethdev_logtype;
-
-#define ethdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, ethdev_logtype, fmt "\n", ## __VA_ARGS__)
+int rte_eth_dev_logtype;
 
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
@@ -303,14 +300,16 @@ rte_eth_dev_allocate(const char *name)
 	rte_spinlock_lock(&rte_eth_dev_shared_data->ownership_lock);
 
 	if (_rte_eth_dev_allocated(name) != NULL) {
-		ethdev_log(ERR, "Ethernet device with name %s already allocated",
-				name);
+		RTE_ETHDEV_LOG(ERR,
+			"Ethernet device with name %s already allocated\n",
+			name);
 		goto unlock;
 	}
 
 	port_id = rte_eth_dev_find_free_port();
 	if (port_id == RTE_MAX_ETHPORTS) {
-		ethdev_log(ERR, "Reached maximum number of Ethernet ports");
+		RTE_ETHDEV_LOG(ERR,
+			"Reached maximum number of Ethernet ports\n");
 		goto unlock;
 	}
 
@@ -663,7 +662,7 @@ rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
 
 	/* no point looking at the port count if no port exists */
 	if (!rte_eth_dev_count_total()) {
-		ethdev_log(ERR, "No port found for device (%s)", da.name);
+		RTE_ETHDEV_LOG(ERR, "No port found for device (%s)\n", da.name);
 		ret = -1;
 		goto err;
 	}
@@ -698,8 +697,8 @@ rte_eth_dev_detach(uint16_t port_id, char *name __rte_unused)
 
 	dev_flags = rte_eth_devices[port_id].data->dev_flags;
 	if (dev_flags & RTE_ETH_DEV_BONDED_SLAVE) {
-		ethdev_log(ERR,
-			"Port %" PRIu16 " is bonded, cannot detach", port_id);
+		RTE_ETHDEV_LOG(ERR,
+			"Port %" PRIu16 " is bonded, cannot detach\n", port_id);
 		return -ENOTSUP;
 	}
 
@@ -1164,7 +1163,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	/* Any requested offloading must be within its device capabilities */
 	if ((local_conf.rxmode.offloads & dev_info.rx_offload_capa) !=
 	     local_conf.rxmode.offloads) {
-		ethdev_log(ERR, "ethdev port_id=%d requested Rx offloads "
+		RTE_ETHDEV_LOG(ERR, "ethdev port_id=%d requested Rx offloads "
 				"0x%" PRIx64 " doesn't match Rx offloads "
 				"capabilities 0x%" PRIx64 " in %s()\n",
 				port_id,
@@ -1175,7 +1174,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	}
 	if ((local_conf.txmode.offloads & dev_info.tx_offload_capa) !=
 	     local_conf.txmode.offloads) {
-		ethdev_log(ERR, "ethdev port_id=%d requested Tx offloads "
+		RTE_ETHDEV_LOG(ERR, "ethdev port_id=%d requested Tx offloads "
 				"0x%" PRIx64 " doesn't match Tx offloads "
 				"capabilities 0x%" PRIx64 " in %s()\n",
 				port_id,
@@ -1572,7 +1571,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	 */
 	if ((local_conf.offloads & dev_info.rx_queue_offload_capa) !=
 	     local_conf.offloads) {
-		ethdev_log(ERR, "Ethdev port_id=%d rx_queue_id=%d, new "
+		RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%d rx_queue_id=%d, new "
 				"added offloads 0x%" PRIx64 " must be "
 				"within pre-queue offload capabilities 0x%"
 				PRIx64 " in %s()\n",
@@ -1737,7 +1736,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	 */
 	if ((local_conf.offloads & dev_info.tx_queue_offload_capa) !=
 	     local_conf.offloads) {
-		ethdev_log(ERR, "Ethdev port_id=%d tx_queue_id=%d, new "
+		RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%d tx_queue_id=%d, new "
 				"added offloads 0x%" PRIx64 " must be "
 				"within pre-queue offload capabilities 0x%"
 				PRIx64 " in %s()\n",
@@ -3343,7 +3342,7 @@ rte_eth_dev_callback_register(uint16_t port_id,
 		return -EINVAL;
 
 	if (!rte_eth_dev_is_valid_port(port_id) && port_id != RTE_ETH_ALL) {
-		ethdev_log(ERR, "Invalid port_id=%d", port_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid port_id=%d\n", port_id);
 		return -EINVAL;
 	}
 
@@ -3406,7 +3405,7 @@ rte_eth_dev_callback_unregister(uint16_t port_id,
 		return -EINVAL;
 
 	if (!rte_eth_dev_is_valid_port(port_id) && port_id != RTE_ETH_ALL) {
-		ethdev_log(ERR, "Invalid port_id=%d", port_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid port_id=%d\n", port_id);
 		return -EINVAL;
 	}
 
@@ -4522,7 +4521,7 @@ RTE_INIT(ethdev_init_log);
 static void
 ethdev_init_log(void)
 {
-	ethdev_logtype = rte_log_register("lib.ethdev");
-	if (ethdev_logtype >= 0)
-		rte_log_set_level(ethdev_logtype, RTE_LOG_INFO);
+	rte_eth_dev_logtype = rte_log_register("lib.ethdev");
+	if (rte_eth_dev_logtype >= 0)
+		rte_log_set_level(rte_eth_dev_logtype, RTE_LOG_INFO);
 }

@@ -159,6 +159,11 @@ extern "C" {
 #include "rte_eth_ctrl.h"
 #include "rte_dev_info.h"
 
+extern int rte_eth_dev_logtype;
+
+#define RTE_ETHDEV_LOG(level, ...) \
+	rte_log(RTE_LOG_ ## level, rte_eth_dev_logtype, "" __VA_ARGS__)
+
 struct rte_mbuf;
 
 /**
