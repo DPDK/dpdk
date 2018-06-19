@@ -53,8 +53,8 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
 	struct rte_pci_device *pci_dev)
 {
 	if ((eth_dev == NULL) || (pci_dev == NULL)) {
-		RTE_PMD_DEBUG_TRACE("NULL pointer eth_dev=%p pci_dev=%p\n",
-				eth_dev, pci_dev);
+		RTE_ETHDEV_LOG(ERR, "NULL pointer eth_dev=%p pci_dev=%p",
+			(void *)eth_dev, (void *)pci_dev);
 		return;
 	}
 

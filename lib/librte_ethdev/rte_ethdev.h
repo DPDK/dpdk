@@ -1199,14 +1199,14 @@ struct rte_eth_dcb_info {
 /* Macros to check for valid port */
 #define RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, retval) do { \
 	if (!rte_eth_dev_is_valid_port(port_id)) { \
-		RTE_PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id); \
+		RTE_ETHDEV_LOG(ERR, "Invalid port_id=%u\n", port_id); \
 		return retval; \
 	} \
 } while (0)
 
 #define RTE_ETH_VALID_PORTID_OR_RET(port_id) do { \
 	if (!rte_eth_dev_is_valid_port(port_id)) { \
-		RTE_PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id); \
+		RTE_ETHDEV_LOG(ERR, "Invalid port_id=%u\n", port_id); \
 		return; \
 	} \
 } while (0)
@@ -3842,7 +3842,7 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, 0);
 
 	if (queue_id >= dev->data->nb_rx_queues) {
-		RTE_PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", queue_id);
 		return 0;
 	}
 #endif
@@ -4108,7 +4108,7 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->tx_pkt_burst, 0);
 
 	if (queue_id >= dev->data->nb_tx_queues) {
-		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", queue_id);
 		return 0;
 	}
 #endif
@@ -4194,7 +4194,7 @@ rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	if (!rte_eth_dev_is_valid_port(port_id)) {
-		RTE_PMD_DEBUG_TRACE("Invalid TX port_id=%d\n", port_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid TX port_id=%u\n", port_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
@@ -4204,7 +4204,7 @@ rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	if (queue_id >= dev->data->nb_tx_queues) {
-		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", queue_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
