@@ -69,8 +69,7 @@ rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
  * Enable RTE_PMD_DEBUG_TRACE() when at least one component relying on the
  * RTE_*_RET() macros defined below is compiled in debug mode.
  */
-#if defined(RTE_LIBRTE_ETHDEV_DEBUG) || \
-	defined(RTE_LIBRTE_CRYPTODEV_DEBUG) || \
+#if defined(RTE_LIBRTE_CRYPTODEV_DEBUG) || \
 	defined(RTE_LIBRTE_EVENTDEV_DEBUG)
 #define RTE_PMD_DEBUG_TRACE(...) \
 	rte_pmd_debug_trace(__func__, __VA_ARGS__)
