@@ -3561,15 +3561,17 @@ wrong_flow:
 		/* The flow does not match. */
 		continue;
 	}
-	ret = rte_errno; /* Save rte_errno before cleanup. */
 	if (flow)
 		mlx5_flow_list_destroy(dev, &priv->flows, flow);
 exit:
+	if (ret)
+		ret = rte_errno; /* Save rte_errno before cleanup. */
 	for (i = 0; i != hash_rxq_init_n; ++i) {
 		if (parser.queue[i].ibv_attr)
 			rte_free(parser.queue[i].ibv_attr);
 	}
-	rte_errno = ret; /* Restore rte_errno. */
+	if (ret)
+		rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 }
 
