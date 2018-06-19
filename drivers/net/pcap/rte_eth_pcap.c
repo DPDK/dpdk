@@ -658,6 +658,22 @@ static const struct eth_dev_ops ops = {
 	.stats_reset = eth_stats_reset,
 };
 
+static int
+add_queue(struct pmd_devargs *pmd, const char *name, const char *type,
+		pcap_t *pcap, pcap_dumper_t *dumper)
+{
+	if (pmd->num_of_queue >= RTE_PMD_PCAP_MAX_QUEUES)
+		return -1;
+	if (pcap)
+		pmd->queue[pmd->num_of_queue].pcap = pcap;
+	if (dumper)
+		pmd->queue[pmd->num_of_queue].dumper = dumper;
+	pmd->queue[pmd->num_of_queue].name = name;
+	pmd->queue[pmd->num_of_queue].type = type;
+	pmd->num_of_queue++;
+	return 0;
+}
+
 /*
  * Function handler that opens the pcap file for reading a stores a
  * reference of it for use it later on.
@@ -669,15 +685,13 @@ open_rx_pcap(const char *key, const char *value, void *extra_args)
 	struct pmd_devargs *rx = extra_args;
 	pcap_t *pcap = NULL;
 
-	if (rx->num_of_queue >= RTE_PMD_PCAP_MAX_QUEUES)
-		return -1;
 	if (open_single_rx_pcap(pcap_filename, &pcap) < 0)
 		return -1;
 
-	rx->queue[rx->num_of_queue].pcap = pcap;
-	rx->queue[rx->num_of_queue].name = pcap_filename;
-	rx->queue[rx->num_of_queue].type = key;
-	rx->num_of_queue++;
+	if (add_queue(rx, pcap_filename, key, pcap, NULL) < 0) {
+		pcap_close(pcap);
+		return -1;
+	}
 
 	return 0;
 }
@@ -693,15 +707,13 @@ open_tx_pcap(const char *key, const char *value, void *extra_args)
 	struct pmd_devargs *dumpers = extra_args;
 	pcap_dumper_t *dumper;
 
-	if (dumpers->num_of_queue >= RTE_PMD_PCAP_MAX_QUEUES)
-		return -1;
 	if (open_single_tx_pcap(pcap_filename, &dumper) < 0)
 		return -1;
 
-	dumpers->queue[dumpers->num_of_queue].dumper = dumper;
-	dumpers->queue[dumpers->num_of_queue].name = pcap_filename;
-	dumpers->queue[dumpers->num_of_queue].type = key;
-	dumpers->num_of_queue++;
+	if (add_queue(dumpers, pcap_filename, key, NULL, dumper) < 0) {
+		pcap_dump_close(dumper);
+		return -1;
+	}
 
 	return 0;
 }
@@ -726,26 +738,30 @@ open_rx_tx_iface(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
+static inline int
+open_iface(const char *key, const char *value, void *extra_args)
+{
+	const char *iface = value;
+	struct pmd_devargs *pmd = extra_args;
+	pcap_t *pcap = NULL;
+
+	if (open_single_iface(iface, &pcap) < 0)
+		return -1;
+	if (add_queue(pmd, iface, key, pcap, NULL) < 0) {
+		pcap_close(pcap);
+		return -1;
+	}
+
+	return 0;
+}
+
 /*
  * Opens a NIC for reading packets from it
  */
 static inline int
 open_rx_iface(const char *key, const char *value, void *extra_args)
 {
-	const char *iface = value;
-	struct pmd_devargs *rx = extra_args;
-	pcap_t *pcap = NULL;
-
-	if (rx->num_of_queue >= RTE_PMD_PCAP_MAX_QUEUES)
-		return -1;
-	if (open_single_iface(iface, &pcap) < 0)
-		return -1;
-	rx->queue[rx->num_of_queue].pcap = pcap;
-	rx->queue[rx->num_of_queue].name = iface;
-	rx->queue[rx->num_of_queue].type = key;
-	rx->num_of_queue++;
-
-	return 0;
+	return open_iface(key, value, extra_args);
 }
 
 /*
@@ -754,20 +770,7 @@ open_rx_iface(const char *key, const char *value, void *extra_args)
 static int
 open_tx_iface(const char *key, const char *value, void *extra_args)
 {
-	const char *iface = value;
-	struct pmd_devargs *tx = extra_args;
-	pcap_t *pcap;
-
-	if (tx->num_of_queue >= RTE_PMD_PCAP_MAX_QUEUES)
-		return -1;
-	if (open_single_iface(iface, &pcap) < 0)
-		return -1;
-	tx->queue[tx->num_of_queue].pcap = pcap;
-	tx->queue[tx->num_of_queue].name = iface;
-	tx->queue[tx->num_of_queue].type = key;
-	tx->num_of_queue++;
-
-	return 0;
+	return open_iface(key, value, extra_args);
 }
 
 static struct rte_vdev_driver pmd_pcap_drv;
