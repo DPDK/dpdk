@@ -30,6 +30,8 @@
 #define I40E_TX_MAX_SEG     UINT8_MAX
 #define I40E_TX_MAX_MTU_SEG 8
 
+#define I40E_TX_MIN_PKT_LEN 17
+
 #undef container_of
 #define container_of(ptr, type, member) ({ \
 		typeof(((type *)0)->member)(*__mptr) = (ptr); \
