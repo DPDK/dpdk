@@ -373,6 +373,13 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		return -1;
 	}
 
+	/* Add additional MAC addresses to the slave */
+	if (slave_add_mac_addresses(bonded_eth_dev, slave_port_id) != 0) {
+		RTE_BOND_LOG(ERR, "Failed to add mac address(es) to slave %hu",
+				slave_port_id);
+		return -1;
+	}
+
 	internals->slave_count++;
 
 	if (bonded_eth_dev->data->dev_started) {
@@ -387,7 +394,7 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 	/* Add slave details to bonded device */
 	slave_eth_dev->data->dev_flags |= RTE_ETH_DEV_BONDED_SLAVE;
 
-	/* Update all slave devices MACs*/
+	/* Update all slave devices MACs */
 	mac_address_slaves_update(bonded_eth_dev);
 
 	/* Register link status change callback with bonded device pointer as
@@ -490,6 +497,9 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 	/* Restore original MAC address of slave device */
 	rte_eth_dev_default_mac_addr_set(slave_port_id,
 			&(internals->slaves[slave_idx].persisted_mac_addr));
+
+	/* remove additional MAC addresses from the slave */
+	slave_remove_mac_addresses(bonded_eth_dev, slave_port_id);
 
 	/*
 	 * Remove bond device flows from slave device.

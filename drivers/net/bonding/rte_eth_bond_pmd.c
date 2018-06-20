@@ -25,6 +25,7 @@
 
 #define REORDER_PERIOD_MS 10
 #define DEFAULT_POLLING_INTERVAL_10_MS (10)
+#define BOND_MAX_MAC_ADDRS 16
 
 #define HASH_L4_PORTS(h) ((h)->src_port ^ (h)->dst_port)
 
@@ -1588,6 +1589,61 @@ mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr)
 	return 0;
 }
 
+static const struct ether_addr null_mac_addr;
+
+/*
+ * Add additional MAC addresses to the slave
+ */
+int
+slave_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
+		uint16_t slave_port_id)
+{
+	int i, ret;
+	struct ether_addr *mac_addr;
+
+	for (i = 1; i < BOND_MAX_MAC_ADDRS; i++) {
+		mac_addr = &bonded_eth_dev->data->mac_addrs[i];
+		if (is_same_ether_addr(mac_addr, &null_mac_addr))
+			break;
+
+		ret = rte_eth_dev_mac_addr_add(slave_port_id, mac_addr, 0);
+		if (ret < 0) {
+			/* rollback */
+			for (i--; i > 0; i--)
+				rte_eth_dev_mac_addr_remove(slave_port_id,
+					&bonded_eth_dev->data->mac_addrs[i]);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Remove additional MAC addresses from the slave
+ */
+int
+slave_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
+		uint16_t slave_port_id)
+{
+	int i, rc, ret;
+	struct ether_addr *mac_addr;
+
+	rc = 0;
+	for (i = 1; i < BOND_MAX_MAC_ADDRS; i++) {
+		mac_addr = &bonded_eth_dev->data->mac_addrs[i];
+		if (is_same_ether_addr(mac_addr, &null_mac_addr))
+			break;
+
+		ret = rte_eth_dev_mac_addr_remove(slave_port_id, mac_addr);
+		/* save only the first error */
+		if (ret < 0 && rc == 0)
+			rc = ret;
+	}
+
+	return rc;
+}
+
 int
 mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 {
@@ -2219,7 +2275,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	uint16_t max_nb_rx_queues = UINT16_MAX;
 	uint16_t max_nb_tx_queues = UINT16_MAX;
 
-	dev_info->max_mac_addrs = 1;
+	dev_info->max_mac_addrs = BOND_MAX_MAC_ADDRS;
 
 	dev_info->max_rx_pktlen = internals->candidate_max_rx_pktlen ?
 			internals->candidate_max_rx_pktlen :
@@ -2902,6 +2958,68 @@ bond_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
 	return -ENOTSUP;
 }
 
+static int
+bond_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+				__rte_unused uint32_t index, uint32_t vmdq)
+{
+	struct rte_eth_dev *slave_eth_dev;
+	struct bond_dev_private *internals = dev->data->dev_private;
+	int ret, i;
+
+	rte_spinlock_lock(&internals->lock);
+
+	for (i = 0; i < internals->slave_count; i++) {
+		slave_eth_dev = &rte_eth_devices[internals->slaves[i].port_id];
+		if (*slave_eth_dev->dev_ops->mac_addr_add == NULL ||
+			 *slave_eth_dev->dev_ops->mac_addr_remove == NULL) {
+			ret = -ENOTSUP;
+			goto end;
+		}
+	}
+
+	for (i = 0; i < internals->slave_count; i++) {
+		ret = rte_eth_dev_mac_addr_add(internals->slaves[i].port_id,
+				mac_addr, vmdq);
+		if (ret < 0) {
+			/* rollback */
+			for (i--; i >= 0; i--)
+				rte_eth_dev_mac_addr_remove(
+					internals->slaves[i].port_id, mac_addr);
+			goto end;
+		}
+	}
+
+	ret = 0;
+end:
+	rte_spinlock_unlock(&internals->lock);
+	return ret;
+}
+
+static void
+bond_ethdev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct rte_eth_dev *slave_eth_dev;
+	struct bond_dev_private *internals = dev->data->dev_private;
+	int i;
+
+	rte_spinlock_lock(&internals->lock);
+
+	for (i = 0; i < internals->slave_count; i++) {
+		slave_eth_dev = &rte_eth_devices[internals->slaves[i].port_id];
+		if (*slave_eth_dev->dev_ops->mac_addr_remove == NULL)
+			goto end;
+	}
+
+	struct ether_addr *mac_addr = &dev->data->mac_addrs[index];
+
+	for (i = 0; i < internals->slave_count; i++)
+		rte_eth_dev_mac_addr_remove(internals->slaves[i].port_id,
+				mac_addr);
+
+end:
+	rte_spinlock_unlock(&internals->lock);
+}
+
 const struct eth_dev_ops default_dev_ops = {
 	.dev_start            = bond_ethdev_start,
 	.dev_stop             = bond_ethdev_stop,
@@ -2924,6 +3042,8 @@ const struct eth_dev_ops default_dev_ops = {
 	.rss_hash_conf_get    = bond_ethdev_rss_hash_conf_get,
 	.mtu_set              = bond_ethdev_mtu_set,
 	.mac_addr_set         = bond_ethdev_mac_address_set,
+	.mac_addr_add         = bond_ethdev_mac_addr_add,
+	.mac_addr_remove      = bond_ethdev_mac_addr_remove,
 	.filter_ctrl          = bond_filter_ctrl
 };
 
@@ -2951,10 +3071,13 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
 
-	eth_dev->data->mac_addrs = rte_zmalloc_socket(name, ETHER_ADDR_LEN, 0,
-			socket_id);
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc_socket(name, ETHER_ADDR_LEN *
+			BOND_MAX_MAC_ADDRS, 0, socket_id);
 	if (eth_dev->data->mac_addrs == NULL) {
-		RTE_BOND_LOG(ERR, "Unable to malloc mac_addrs");
+		RTE_BOND_LOG(ERR,
+			     "Failed to allocate %u bytes needed to store MAC addresses",
+			     ETHER_ADDR_LEN * BOND_MAX_MAC_ADDRS);
 		goto err;
 	}
 

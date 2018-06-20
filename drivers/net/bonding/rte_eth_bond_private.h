@@ -231,6 +231,14 @@ int
 mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev);
 
 int
+slave_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
+		uint16_t slave_port_id);
+
+int
+slave_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
+		uint16_t slave_port_id);
+
+int
 bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode);
 
 int
