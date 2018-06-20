@@ -32,7 +32,8 @@ M: Ferruh Yigit <ferruh.yigit@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 
 Next-net-intel Tree
-M: Helin Zhang <helin.zhang@intel.com>
+M: Qi Zhang <qi.z.zhang@intel.com>
+M: Beilei Xing <beilei.xing@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 
 Next-net-mlx Tree
