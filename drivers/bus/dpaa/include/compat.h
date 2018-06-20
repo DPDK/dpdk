@@ -48,9 +48,15 @@
  */
 
 /* Required compiler attributes */
+#ifndef __maybe_unused
 #define __maybe_unused	__rte_unused
+#endif
+#ifndef __always_unused
 #define __always_unused	__rte_unused
+#endif
+#ifndef __packed
 #define __packed	__rte_packed
+#endif
 #define noinline	__attribute__((noinline))
 
 #define L1_CACHE_BYTES 64
