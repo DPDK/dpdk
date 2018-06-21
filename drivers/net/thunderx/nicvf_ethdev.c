@@ -885,7 +885,7 @@ nicvf_dev_tx_queue_release(void *sq)
 static void
 nicvf_set_tx_function(struct rte_eth_dev *dev)
 {
-	struct nicvf_txq *txq;
+	struct nicvf_txq *txq = NULL;
 	size_t i;
 	bool multiseg = false;
 
@@ -905,6 +905,9 @@ nicvf_set_tx_function(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(DEBUG, "Using single-segment tx callback");
 		dev->tx_pkt_burst = nicvf_xmit_pkts;
 	}
+
+	if (!txq)
+		return;
 
 	if (txq->pool_free == nicvf_single_pool_free_xmited_buffers)
 		PMD_DRV_LOG(DEBUG, "Using single-mempool tx free method");
