@@ -148,7 +148,6 @@ Where x is the device object id as configured in resource container.
 Limitations
 -----------
 
-* Chained mbufs are not supported.
 * Hash followed by Cipher mode is not supported
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 
