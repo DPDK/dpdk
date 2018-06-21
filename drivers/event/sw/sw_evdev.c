@@ -361,9 +361,99 @@ sw_init_qid_iqs(struct sw_evdev *sw)
 	}
 }
 
-static void
-sw_clean_qid_iqs(struct sw_evdev *sw)
+static int
+sw_qids_empty(struct sw_evdev *sw)
 {
+	unsigned int i, j;
+
+	for (i = 0; i < sw->qid_count; i++) {
+		for (j = 0; j < SW_IQS_MAX; j++) {
+			if (iq_count(&sw->qids[i].iq[j]))
+				return 0;
+		}
+	}
+
+	return 1;
+}
+
+static int
+sw_ports_empty(struct sw_evdev *sw)
+{
+	unsigned int i;
+
+	for (i = 0; i < sw->port_count; i++) {
+		if ((rte_event_ring_count(sw->ports[i].rx_worker_ring)) ||
+		     rte_event_ring_count(sw->ports[i].cq_worker_ring))
+			return 0;
+	}
+
+	return 1;
+}
+
+static void
+sw_drain_ports(struct rte_eventdev *dev)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	eventdev_stop_flush_t flush;
+	unsigned int i;
+	uint8_t dev_id;
+	void *arg;
+
+	flush = dev->dev_ops->dev_stop_flush;
+	dev_id = dev->data->dev_id;
+	arg = dev->data->dev_stop_flush_arg;
+
+	for (i = 0; i < sw->port_count; i++) {
+		struct rte_event ev;
+
+		while (rte_event_dequeue_burst(dev_id, i, &ev, 1, 0)) {
+			if (flush)
+				flush(dev_id, ev, arg);
+
+			ev.op = RTE_EVENT_OP_RELEASE;
+			rte_event_enqueue_burst(dev_id, i, &ev, 1);
+		}
+	}
+}
+
+static void
+sw_drain_queue(struct rte_eventdev *dev, struct sw_iq *iq)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	eventdev_stop_flush_t flush;
+	uint8_t dev_id;
+	void *arg;
+
+	flush = dev->dev_ops->dev_stop_flush;
+	dev_id = dev->data->dev_id;
+	arg = dev->data->dev_stop_flush_arg;
+
+	while (iq_count(iq) > 0) {
+		struct rte_event ev;
+
+		iq_dequeue_burst(sw, iq, &ev, 1);
+
+		if (flush)
+			flush(dev_id, ev, arg);
+	}
+}
+
+static void
+sw_drain_queues(struct rte_eventdev *dev)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	unsigned int i, j;
+
+	for (i = 0; i < sw->qid_count; i++) {
+		for (j = 0; j < SW_IQS_MAX; j++)
+			sw_drain_queue(dev, &sw->qids[i].iq[j]);
+	}
+}
+
+static void
+sw_clean_qid_iqs(struct rte_eventdev *dev)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
 	int i, j;
 
 	/* Release the IQ memory of all configured qids */
@@ -729,10 +819,30 @@ static void
 sw_stop(struct rte_eventdev *dev)
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);
-	sw_clean_qid_iqs(sw);
+	int32_t runstate;
+
+	/* Stop the scheduler if it's running */
+	runstate = rte_service_runstate_get(sw->service_id);
+	if (runstate == 1)
+		rte_service_runstate_set(sw->service_id, 0);
+
+	while (rte_service_may_be_active(sw->service_id))
+		rte_pause();
+
+	/* Flush all events out of the device */
+	while (!(sw_qids_empty(sw) && sw_ports_empty(sw))) {
+		sw_event_schedule(dev);
+		sw_drain_ports(dev);
+		sw_drain_queues(dev);
+	}
+
+	sw_clean_qid_iqs(dev);
 	sw_xstats_uninit(sw);
 	sw->started = 0;
 	rte_smp_wmb();
+
+	if (runstate == 1)
+		rte_service_runstate_set(sw->service_id, 1);
 }
 
 static int

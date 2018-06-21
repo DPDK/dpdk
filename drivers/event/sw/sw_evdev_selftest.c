@@ -28,6 +28,7 @@
 #define MAX_PORTS 16
 #define MAX_QIDS 16
 #define NUM_PACKETS (1<<18)
+#define DEQUEUE_DEPTH 128
 
 static int evdev;
 
@@ -147,7 +148,7 @@ init(struct test *t, int nb_queues, int nb_ports)
 			.nb_event_ports = nb_ports,
 			.nb_event_queue_flows = 1024,
 			.nb_events_limit = 4096,
-			.nb_event_port_dequeue_depth = 128,
+			.nb_event_port_dequeue_depth = DEQUEUE_DEPTH,
 			.nb_event_port_enqueue_depth = 128,
 	};
 	int ret;
@@ -2807,6 +2808,78 @@ err:
 	return -1;
 }
 
+static void
+flush(uint8_t dev_id __rte_unused, struct rte_event event, void *arg)
+{
+	*((uint8_t *) arg) += (event.u64 == 0xCA11BACC) ? 1 : 0;
+}
+
+static int
+dev_stop_flush(struct test *t) /* test to check we can properly flush events */
+{
+	const struct rte_event new_ev = {
+		.op = RTE_EVENT_OP_NEW,
+		.u64 = 0xCA11BACC,
+		.queue_id = 0
+	};
+	struct rte_event ev = new_ev;
+	uint8_t count = 0;
+	int i;
+
+	if (init(t, 1, 1) < 0 ||
+	    create_ports(t, 1) < 0 ||
+	    create_atomic_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	/* Link the queue so *_start() doesn't error out */
+	if (rte_event_port_link(evdev, t->port[0], NULL, NULL, 0) != 1) {
+		printf("%d: Error linking queue to port\n", __LINE__);
+		goto err;
+	}
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		goto err;
+	}
+
+	for (i = 0; i < DEQUEUE_DEPTH + 1; i++) {
+		if (rte_event_enqueue_burst(evdev, t->port[0], &ev, 1) != 1) {
+			printf("%d: Error enqueuing events\n", __LINE__);
+			goto err;
+		}
+	}
+
+	/* Schedule the events from the port to the IQ. At least one event
+	 * should be remaining in the queue.
+	 */
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
+
+	if (rte_event_dev_stop_flush_callback_register(evdev, flush, &count)) {
+		printf("%d: Error installing the flush callback\n", __LINE__);
+		goto err;
+	}
+
+	cleanup(t);
+
+	if (count == 0) {
+		printf("%d: Error executing the flush callback\n", __LINE__);
+		goto err;
+	}
+
+	if (rte_event_dev_stop_flush_callback_register(evdev, NULL, NULL)) {
+		printf("%d: Error uninstalling the flush callback\n", __LINE__);
+		goto err;
+	}
+
+	return 0;
+err:
+	rte_event_dev_dump(evdev, stdout);
+	cleanup(t);
+	return -1;
+}
+
 static int
 worker_loopback_worker_fn(void *arg)
 {
@@ -3209,6 +3282,12 @@ test_sw_eventdev(void)
 	ret = holb(t);
 	if (ret != 0) {
 		printf("ERROR - Head-of-line-blocking test FAILED.\n");
+		goto test_fail;
+	}
+	printf("*** Running Stop Flush test...\n");
+	ret = dev_stop_flush(t);
+	if (ret != 0) {
+		printf("ERROR - Stop Flush test FAILED.\n");
 		goto test_fail;
 	}
 	if (rte_lcore_count() >= 3) {
