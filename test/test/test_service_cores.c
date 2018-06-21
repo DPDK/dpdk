@@ -843,6 +843,48 @@ service_lcore_start_stop(void)
 	return unregister_all();
 }
 
+/* stop a service and wait for it to become inactive */
+static int
+service_may_be_active(void)
+{
+	const uint32_t sid = 0;
+	int i;
+
+	/* expected failure cases */
+	TEST_ASSERT_EQUAL(-EINVAL, rte_service_may_be_active(10000),
+			"Invalid service may be active check did not fail");
+
+	/* start the service */
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 1),
+			"Starting valid service failed");
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_id),
+			"Add service core failed when not in use before");
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(sid, slcore_id, 1),
+			"Enabling valid service on valid core failed");
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_start(slcore_id),
+			"Service core start after add failed");
+
+	/* ensures core really is running the service function */
+	TEST_ASSERT_EQUAL(1, service_lcore_running_check(),
+			"Service core expected to poll service but it didn't");
+
+	/* stop the service */
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
+			"Error: Service stop returned non-zero");
+
+	/* give the service 100ms to stop running */
+	for (i = 0; i < 100; i++) {
+		if (!rte_service_may_be_active(sid))
+			break;
+		rte_delay_ms(SERVICE_DELAY);
+	}
+
+	TEST_ASSERT_EQUAL(0, rte_service_may_be_active(sid),
+			  "Error: Service not stopped after 100ms");
+
+	return unregister_all();
+}
+
 static struct unit_test_suite service_tests  = {
 	.suite_name = "service core test suite",
 	.setup = testsuite_setup,
@@ -863,6 +905,7 @@ static struct unit_test_suite service_tests  = {
 		TEST_CASE_ST(dummy_register, NULL, service_mt_safe_poll),
 		TEST_CASE_ST(dummy_register, NULL, service_app_lcore_mt_safe),
 		TEST_CASE_ST(dummy_register, NULL, service_app_lcore_mt_unsafe),
+		TEST_CASE_ST(dummy_register, NULL, service_may_be_active),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

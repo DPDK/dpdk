@@ -296,6 +296,7 @@ EXPERIMENTAL {
 	rte_mp_sendmsg;
 	rte_service_lcore_attr_get;
 	rte_service_lcore_attr_reset_all;
+	rte_service_may_be_active;
 	rte_socket_count;
 	rte_socket_id_by_idx;
 	rte_vfio_dma_map;

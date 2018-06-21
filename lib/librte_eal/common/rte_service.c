@@ -52,6 +52,7 @@ struct rte_service_spec_impl {
 	rte_atomic32_t num_mapped_cores;
 	uint64_t calls;
 	uint64_t cycles_spent;
+	uint8_t active_on_lcore[RTE_MAX_LCORE];
 } __rte_cache_aligned;
 
 /* the internal values of a service core */
@@ -347,15 +348,19 @@ rte_service_runner_do_callback(struct rte_service_spec_impl *s,
 
 
 static inline int32_t
-service_run(uint32_t i, struct core_state *cs, uint64_t service_mask)
+service_run(uint32_t i, int lcore, struct core_state *cs, uint64_t service_mask)
 {
 	if (!service_valid(i))
 		return -EINVAL;
 	struct rte_service_spec_impl *s = &rte_services[i];
 	if (s->comp_runstate != RUNSTATE_RUNNING ||
 			s->app_runstate != RUNSTATE_RUNNING ||
-			!(service_mask & (UINT64_C(1) << i)))
+			!(service_mask & (UINT64_C(1) << i))) {
+		s->active_on_lcore[lcore] = 0;
 		return -ENOEXEC;
+	}
+
+	s->active_on_lcore[lcore] = 1;
 
 	/* check do we need cmpset, if MT safe or <= 1 core
 	 * mapped, atomic ops are not required.
@@ -370,6 +375,25 @@ service_run(uint32_t i, struct core_state *cs, uint64_t service_mask)
 		rte_atomic32_clear(&s->execute_lock);
 	} else
 		rte_service_runner_do_callback(s, cs, i);
+
+	return 0;
+}
+
+int32_t __rte_experimental
+rte_service_may_be_active(uint32_t id)
+{
+	uint32_t ids[RTE_MAX_LCORE] = {0};
+	struct rte_service_spec_impl *s = &rte_services[id];
+	int32_t lcore_count = rte_service_lcore_list(ids, RTE_MAX_LCORE);
+	int i;
+
+	if (!service_valid(id))
+		return -EINVAL;
+
+	for (i = 0; i < lcore_count; i++) {
+		if (s->active_on_lcore[ids[i]])
+			return 1;
+	}
 
 	return 0;
 }
@@ -398,7 +422,7 @@ int32_t rte_service_run_iter_on_app_lcore(uint32_t id,
 		return -EBUSY;
 	}
 
-	int ret = service_run(id, cs, UINT64_MAX);
+	int ret = service_run(id, rte_lcore_id(), cs, UINT64_MAX);
 
 	if (serialize_mt_unsafe)
 		rte_atomic32_dec(&s->num_mapped_cores);
@@ -419,7 +443,7 @@ rte_service_runner_func(void *arg)
 
 		for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
 			/* return value ignored as no change to code flow */
-			service_run(i, cs, service_mask);
+			service_run(i, lcore, cs, service_mask);
 		}
 
 		cs->loops++;
