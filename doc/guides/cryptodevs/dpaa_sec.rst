@@ -94,7 +94,6 @@ For blacklisting a DPAA device, following commands can be used.
 Limitations
 -----------
 
-* Chained mbufs are not supported.
 * Hash followed by Cipher mode is not supported
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 
