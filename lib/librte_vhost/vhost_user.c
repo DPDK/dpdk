@@ -1830,6 +1830,8 @@ int vhost_user_host_notifier_ctrl(int vid, bool enable)
 		return -ENOTSUP;
 
 	vdpa_dev = rte_vdpa_get_device(did);
+	if (!vdpa_dev)
+		return -ENODEV;
 
 	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_vfio_device_fd, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_notify_area, -ENOTSUP);
