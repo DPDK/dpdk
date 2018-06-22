@@ -36,6 +36,12 @@ link_find(const char *name)
 	return NULL;
 }
 
+struct link *
+link_next(struct link *link)
+{
+	return (link == NULL) ? TAILQ_FIRST(&link_list) : TAILQ_NEXT(link, node);
+}
+
 static struct rte_eth_conf port_conf_default = {
 	.link_speeds = 0,
 	.rxmode = {

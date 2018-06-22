@@ -30,6 +30,9 @@ link_init(void);
 struct link *
 link_find(const char *name);
 
+struct link *
+link_next(struct link *link);
+
 struct link_params_rss {
 	uint32_t queue_id[LINK_RXQ_RSS_MAX];
 	uint32_t n_queues;

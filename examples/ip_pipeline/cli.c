@@ -9,6 +9,7 @@
 
 #include <rte_common.h>
 #include <rte_cycles.h>
+#include <rte_ethdev.h>
 
 #include "cli.h"
 #include "kni.h"
@@ -234,6 +235,91 @@ cmd_link(char **tokens,
 	if (link == NULL) {
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
 		return;
+	}
+}
+
+/* Print the link stats and info */
+static void
+print_link_info(struct link *link, char *out, size_t out_size)
+{
+	struct rte_eth_stats stats;
+	struct ether_addr mac_addr;
+	struct rte_eth_link eth_link;
+	uint16_t mtu;
+
+	memset(&stats, 0, sizeof(stats));
+	rte_eth_stats_get(link->port_id, &stats);
+
+	rte_eth_macaddr_get(link->port_id, &mac_addr);
+	rte_eth_link_get(link->port_id, &eth_link);
+	rte_eth_dev_get_mtu(link->port_id, &mtu);
+
+	snprintf(out, out_size,
+		"\n"
+		"%s: flags=<%s> mtu %u\n"
+		"\tether %02X:%02X:%02X:%02X:%02X:%02X rxqueues %u txqueues %u\n"
+		"\tport# %u  speed %u Mbps\n"
+		"\tRX packets %" PRIu64"  bytes %" PRIu64"\n"
+		"\tRX errors %" PRIu64"  missed %" PRIu64"  no-mbuf %" PRIu64"\n"
+		"\tTX packets %" PRIu64"  bytes %" PRIu64"\n"
+		"\tTX errors %" PRIu64"\n",
+		link->name,
+		eth_link.link_status == 0 ? "DOWN" : "UP",
+		mtu,
+		mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
+		mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
+		mac_addr.addr_bytes[4], mac_addr.addr_bytes[5],
+		link->n_rxq,
+		link->n_txq,
+		link->port_id,
+		eth_link.link_speed,
+		stats.ipackets,
+		stats.ibytes,
+		stats.ierrors,
+		stats.imissed,
+		stats.rx_nombuf,
+		stats.opackets,
+		stats.obytes,
+		stats.oerrors);
+}
+
+/*
+ * link show [<link_name>]
+ */
+static void
+cmd_link_show(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
+{
+	struct link *link;
+	char *link_name;
+
+	if (n_tokens != 2 && n_tokens != 3) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (n_tokens == 2) {
+		link = link_next(NULL);
+
+		while (link != NULL) {
+			out_size = out_size - strlen(out);
+			out = &out[strlen(out)];
+
+			print_link_info(link, out, out_size);
+			link = link_next(link);
+		}
+	} else {
+		out_size = out_size - strlen(out);
+		out = &out[strlen(out)];
+
+		link_name = tokens[2];
+		link = link_find(link_name);
+
+		if (link == NULL) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+					"Link does not exist");
+			return;
+		}
+		print_link_info(link, out, out_size);
 	}
 }
 
@@ -4380,6 +4466,11 @@ cli_process(char *in, char *out, size_t out_size)
 	}
 
 	if (strcmp(tokens[0], "link") == 0) {
+		if (strcmp(tokens[1], "show") == 0) {
+			cmd_link_show(tokens, n_tokens, out, out_size);
+			return;
+		}
+
 		cmd_link(tokens, n_tokens, out, out_size);
 		return;
 	}
