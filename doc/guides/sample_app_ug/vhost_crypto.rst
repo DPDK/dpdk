@@ -28,24 +28,22 @@ Start the vhost_crypto example
 
 .. code-block:: console
 
-    ./vhost_crypto [EAL options] -- [--socket-file PATH]
-        [--cdev-id ID] [--cdev-queue-id ID] [--zero-copy] [--guest-polling]
+    ./vhost_crypto [EAL options] --
+    		--config (lcore,cdev-id,queue-id)[,(lcore,cdev-id,queue-id)]
+    		--socketfile lcore,PATH
+    		[--zero-copy]
+    		[--guest-polling]
 
 where,
 
-* socket-file PATH: the path of UNIX socket file to be created, multiple
-  instances of this config item is supported. Upon absence of this item,
-  the default socket-file `/tmp/vhost_crypto1.socket` is used.
+* config (lcore,cdev-id,queue-id): build the lcore-cryptodev id-queue id
+  connection. Once specified, the specified lcore will only work with
+  specified cryptodev's queue.
 
-* cdev-id ID: the target DPDK Cryptodev's ID to process the actual crypto
-  workload. Upon absence of this item the default value of `0` will be used.
-  For details of DPDK Cryptodev, please refer to DPDK Cryptodev Library
-  Programmers' Guide.
-
-* cdev-queue-id ID: the target DPDK Cryptodev's queue ID to process the
-  actual crypto workload. Upon absence of this item the default value of `0`
-  will be used. For details of DPDK Cryptodev, please refer to DPDK Cryptodev
-  Library Programmers' Guide.
+* socket-file lcore,PATH: the path of UNIX socket file to be created and
+  the lcore id that will deal with the all workloads of the socket. Multiple
+  instances of this config item is supported and one lcore supports processing
+  multiple sockets.
 
 * zero-copy: the presence of this item means the ZERO-COPY feature will be
   enabled. Otherwise it is disabled. PLEASE NOTE the ZERO-COPY feature is still

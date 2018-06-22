@@ -14,6 +14,7 @@
 #include <rte_vhost.h>
 #include <rte_cryptodev.h>
 #include <rte_vhost_crypto.h>
+#include <rte_string_fns.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -29,96 +30,160 @@
 #define SESSION_MAP_ENTRIES		(1024)
 #define REFRESH_TIME_SEC		(3)
 
-#define MAX_NB_SOCKETS			(32)
-#define DEF_SOCKET_FILE			"/tmp/vhost_crypto1.socket"
+#define MAX_NB_SOCKETS			(4)
+#define MAX_NB_WORKER_CORES		(16)
 
-struct vhost_crypto_options {
+struct lcore_option {
+	uint32_t lcore_id;
 	char *socket_files[MAX_NB_SOCKETS];
 	uint32_t nb_sockets;
 	uint8_t cid;
 	uint16_t qid;
+};
+
+struct vhost_crypto_info {
+	int vids[MAX_NB_SOCKETS];
+	uint32_t nb_vids;
+	struct rte_mempool *sess_pool;
+	struct rte_mempool *cop_pool;
+	uint8_t cid;
+	uint32_t qid;
+	uint32_t nb_inflight_ops;
+	volatile uint32_t initialized[MAX_NB_SOCKETS];
+} __rte_cache_aligned;
+
+struct vhost_crypto_options {
+	struct lcore_option los[MAX_NB_WORKER_CORES];
+	struct vhost_crypto_info *infos[MAX_NB_WORKER_CORES];
+	uint32_t nb_los;
 	uint32_t zero_copy;
 	uint32_t guest_polling;
 } options;
 
-struct vhost_crypto_info {
-	int vids[MAX_NB_SOCKETS];
-	struct rte_mempool *sess_pool;
-	struct rte_mempool *cop_pool;
-	uint32_t lcore_id;
-	uint8_t cid;
-	uint32_t qid;
-	uint32_t nb_vids;
-	volatile uint32_t initialized[MAX_NB_SOCKETS];
-
-} info;
-
+#define CONFIG_KEYWORD		"config"
 #define SOCKET_FILE_KEYWORD	"socket-file"
-#define CRYPTODEV_ID_KEYWORD	"cdev-id"
-#define CRYPTODEV_QUEUE_KEYWORD	"cdev-queue-id"
 #define ZERO_COPY_KEYWORD	"zero-copy"
 #define POLLING_KEYWORD		"guest-polling"
 
-uint64_t vhost_cycles[2], last_v_cycles[2];
-uint64_t outpkt_amount;
+#define NB_SOCKET_FIELDS	(2)
+
+static uint32_t
+find_lo(uint32_t lcore_id)
+{
+	uint32_t i;
+
+	for (i = 0; i < options.nb_los; i++)
+		if (options.los[i].lcore_id == lcore_id)
+			return i;
+
+	return UINT32_MAX;
+}
 
 /** support *SOCKET_FILE_PATH:CRYPTODEV_ID* format */
 static int
 parse_socket_arg(char *arg)
 {
-	uint32_t nb_sockets = options.nb_sockets;
-	size_t len = strlen(arg);
+	uint32_t nb_sockets;
+	uint32_t lcore_id;
+	char *str_fld[NB_SOCKET_FIELDS];
+	struct lcore_option *lo;
+	uint32_t idx;
+	char *end;
+
+	if (rte_strsplit(arg, strlen(arg), str_fld, NB_SOCKET_FIELDS, ',') !=
+				NB_SOCKET_FIELDS) {
+		RTE_LOG(ERR, USER1, "Invalid socket parameter '%s'\n", arg);
+		return -EINVAL;
+	}
+
+	errno = 0;
+	lcore_id = strtoul(str_fld[0], &end, 0);
+	if (errno != 0 || end == str_fld[0] || lcore_id > 255)
+		return -EINVAL;
+
+	idx = find_lo(lcore_id);
+	if (idx == UINT32_MAX) {
+		if (options.nb_los == MAX_NB_WORKER_CORES)
+			return -ENOMEM;
+		lo = &options.los[options.nb_los];
+		lo->lcore_id = lcore_id;
+		options.nb_los++;
+	} else
+		lo = &options.los[idx];
+
+	nb_sockets = lo->nb_sockets;
 
 	if (nb_sockets >= MAX_NB_SOCKETS) {
 		RTE_LOG(ERR, USER1, "Too many socket files!\n");
 		return -ENOMEM;
 	}
 
-	options.socket_files[nb_sockets] = rte_malloc(NULL, len, 0);
-	if (!options.socket_files[nb_sockets]) {
+	lo->socket_files[nb_sockets] = strdup(str_fld[1]);
+	if (!lo->socket_files[nb_sockets]) {
 		RTE_LOG(ERR, USER1, "Insufficient memory\n");
 		return -ENOMEM;
 	}
 
-	rte_memcpy(options.socket_files[nb_sockets], arg, len);
-
-	options.nb_sockets++;
+	lo->nb_sockets++;
 
 	return 0;
 }
 
 static int
-parse_cryptodev_id(const char *q_arg)
+parse_config(char *q_arg)
 {
-	char *end = NULL;
-	uint64_t pm;
+	struct lcore_option *lo;
+	char s[256];
+	const char *p, *p0 = q_arg;
+	char *end;
+	enum fieldnames {
+		FLD_LCORE = 0,
+		FLD_CID,
+		FLD_QID,
+		_NUM_FLD
+	};
+	uint32_t flds[_NUM_FLD];
+	char *str_fld[_NUM_FLD];
+	uint32_t i;
+	uint32_t size;
 
-	/* parse decimal string */
-	pm = strtoul(q_arg, &end, 10);
-	if (pm > rte_cryptodev_count()) {
-		RTE_LOG(ERR, USER1, "Invalid Cryptodev ID %s\n", q_arg);
-		return -1;
+	while ((p = strchr(p0, '(')) != NULL) {
+		++p;
+		p0 = strchr(p, ')');
+		if (p0 == NULL)
+			return -1;
+
+		size = p0 - p;
+		if (size >= sizeof(s))
+			return -1;
+
+		snprintf(s, sizeof(s), "%.*s", size, p);
+		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') !=
+				_NUM_FLD)
+			return -1;
+		for (i = 0; i < _NUM_FLD; i++) {
+			errno = 0;
+			flds[i] = strtoul(str_fld[i], &end, 0);
+			if (errno != 0 || end == str_fld[i] || flds[i] > 255)
+				return -EINVAL;
+		}
+
+		if (flds[FLD_LCORE] > RTE_MAX_LCORE)
+			return -EINVAL;
+
+		i = find_lo(flds[FLD_LCORE]);
+		if (i == UINT32_MAX) {
+			if (options.nb_los == MAX_NB_WORKER_CORES)
+				return -ENOMEM;
+			lo = &options.los[options.nb_los];
+			options.nb_los++;
+		} else
+			lo = &options.los[i];
+
+		lo->lcore_id = flds[FLD_LCORE];
+		lo->cid = flds[FLD_CID];
+		lo->qid = flds[FLD_QID];
 	}
-
-	options.cid = (uint8_t)pm;
-
-	return 0;
-}
-
-static int
-parse_cdev_queue_id(const char *q_arg)
-{
-	char *end = NULL;
-	uint64_t pm;
-
-	/* parse decimal string */
-	pm = strtoul(q_arg, &end, 10);
-	if (pm == UINT64_MAX) {
-		RTE_LOG(ERR, USER1, "Invalid Cryptodev Queue ID %s\n", q_arg);
-		return -1;
-	}
-
-	options.qid = (uint16_t)pm;
 
 	return 0;
 }
@@ -127,13 +192,12 @@ static void
 vhost_crypto_usage(const char *prgname)
 {
 	printf("%s [EAL options] --\n"
-		"  --%s SOCKET-FILE-PATH\n"
-		"  --%s CRYPTODEV_ID: crypto device id\n"
-		"  --%s CDEV_QUEUE_ID: crypto device queue id\n"
+		"  --%s <lcore>,SOCKET-FILE-PATH\n"
+		"  --%s (lcore,cdev_id,queue_id)[,(lcore,cdev_id,queue_id)]"
 		"  --%s: zero copy\n"
 		"  --%s: guest polling\n",
-		prgname, SOCKET_FILE_KEYWORD, CRYPTODEV_ID_KEYWORD,
-		CRYPTODEV_QUEUE_KEYWORD, ZERO_COPY_KEYWORD, POLLING_KEYWORD);
+		prgname, SOCKET_FILE_KEYWORD, CONFIG_KEYWORD,
+		ZERO_COPY_KEYWORD, POLLING_KEYWORD);
 }
 
 static int
@@ -145,18 +209,11 @@ vhost_crypto_parse_args(int argc, char **argv)
 	int option_index;
 	struct option lgopts[] = {
 			{SOCKET_FILE_KEYWORD, required_argument, 0, 0},
-			{CRYPTODEV_ID_KEYWORD, required_argument, 0, 0},
-			{CRYPTODEV_QUEUE_KEYWORD, required_argument, 0, 0},
+			{CONFIG_KEYWORD, required_argument, 0, 0},
 			{ZERO_COPY_KEYWORD, no_argument, 0, 0},
 			{POLLING_KEYWORD, no_argument, 0, 0},
 			{NULL, 0, 0, 0}
 	};
-
-	options.cid = 0;
-	options.qid = 0;
-	options.nb_sockets = 0;
-	options.guest_polling = 0;
-	options.zero_copy = RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE;
 
 	argvopt = argv;
 
@@ -173,15 +230,8 @@ vhost_crypto_parse_args(int argc, char **argv)
 					return ret;
 				}
 			} else if (strcmp(lgopts[option_index].name,
-					CRYPTODEV_ID_KEYWORD) == 0) {
-				ret = parse_cryptodev_id(optarg);
-				if (ret < 0) {
-					vhost_crypto_usage(prgname);
-					return ret;
-				}
-			} else if (strcmp(lgopts[option_index].name,
-					CRYPTODEV_QUEUE_KEYWORD) == 0) {
-				ret = parse_cdev_queue_id(optarg);
+					CONFIG_KEYWORD) == 0) {
+				ret = parse_config(optarg);
 				if (ret < 0) {
 					vhost_crypto_usage(prgname);
 					return ret;
@@ -203,22 +253,15 @@ vhost_crypto_parse_args(int argc, char **argv)
 		}
 	}
 
-	if (options.nb_sockets == 0) {
-		options.socket_files[0] = strdup(DEF_SOCKET_FILE);
-		options.nb_sockets = 1;
-		RTE_LOG(INFO, USER1,
-				"VHOST-CRYPTO: use default socket file %s\n",
-				DEF_SOCKET_FILE);
-	}
-
 	return 0;
 }
 
 static int
 new_device(int vid)
 {
+	struct vhost_crypto_info *info = NULL;
 	char path[PATH_MAX];
-	uint32_t idx, i;
+	uint32_t i, j;
 	int ret;
 
 	ret = rte_vhost_get_ifname(vid, path, PATH_MAX);
@@ -227,23 +270,25 @@ new_device(int vid)
 		return ret;
 	}
 
-	for (idx = 0; idx < options.nb_sockets; idx++) {
-		if (strcmp(path, options.socket_files[idx]) == 0)
+	for (i = 0; i < options.nb_los; i++) {
+		for (j = 0; j < options.los[i].nb_sockets; j++) {
+			if (strcmp(path, options.los[i].socket_files[j]) == 0) {
+				info = options.infos[i];
+				break;
+			}
+		}
+
+		if (info)
 			break;
 	}
 
-	if (idx == options.nb_sockets) {
+	if (!info) {
 		RTE_LOG(ERR, USER1, "Cannot find recorded socket\n");
 		return -ENOENT;
 	}
 
-	for (i = 0; i < 2; i++) {
-		vhost_cycles[i] = 0;
-		last_v_cycles[i] = 0;
-	}
-
-	ret = rte_vhost_crypto_create(vid, info.cid, info.sess_pool,
-			rte_lcore_to_socket_id(info.lcore_id));
+	ret = rte_vhost_crypto_create(vid, info->cid, info->sess_pool,
+			rte_lcore_to_socket_id(options.los[i].lcore_id));
 	if (ret) {
 		RTE_LOG(ERR, USER1, "Cannot create vhost crypto\n");
 		return ret;
@@ -256,8 +301,8 @@ new_device(int vid)
 		return ret;
 	}
 
-	info.vids[idx] = vid;
-	info.initialized[idx] = 1;
+	info->vids[j] = vid;
+	info->initialized[j] = 1;
 
 	rte_wmb();
 
@@ -269,19 +314,30 @@ new_device(int vid)
 static void
 destroy_device(int vid)
 {
-	uint32_t i;
+	struct vhost_crypto_info *info = NULL;
+	uint32_t i, j;
 
-	for (i = 0; i < info.nb_vids; i++) {
-		if (vid == info.vids[i])
+	for (i = 0; i < options.nb_los; i++) {
+		for (j = 0; j < options.los[i].nb_sockets; j++) {
+			if (options.infos[i]->vids[j] == vid) {
+				info = options.infos[i];
+				break;
+			}
+		}
+		if (info)
 			break;
 	}
 
-	if (i == info.nb_vids) {
+	if (!info) {
 		RTE_LOG(ERR, USER1, "Cannot find socket file from list\n");
 		return;
 	}
 
-	info.initialized[i] = 0;
+	do {
+
+	} while (info->nb_inflight_ops);
+
+	info->initialized[j] = 0;
 
 	rte_wmb();
 
@@ -302,25 +358,24 @@ static void clrscr(void)
 }
 
 static int
-vhost_crypto_worker(__rte_unused void *arg)
+vhost_crypto_worker(void *arg)
 {
 	struct rte_crypto_op *ops[NB_VIRTIO_QUEUES][MAX_PKT_BURST + 1];
 	struct rte_crypto_op *ops_deq[NB_VIRTIO_QUEUES][MAX_PKT_BURST + 1];
-	uint32_t nb_inflight_ops = 0;
+	struct vhost_crypto_info *info = arg;
 	uint16_t nb_callfds;
 	int callfds[VIRTIO_CRYPTO_MAX_NUM_BURST_VQS];
 	uint32_t lcore_id = rte_lcore_id();
 	uint32_t burst_size = MAX_PKT_BURST;
 	uint32_t i, j, k;
 	uint32_t to_fetch, fetched;
-	uint64_t t_start, t_end, interval;
 
 	int ret = 0;
 
 	RTE_LOG(INFO, USER1, "Processing on Core %u started\n", lcore_id);
 
 	for (i = 0; i < NB_VIRTIO_QUEUES; i++) {
-		if (rte_crypto_op_bulk_alloc(info.cop_pool,
+		if (rte_crypto_op_bulk_alloc(info->cop_pool,
 				RTE_CRYPTO_OP_TYPE_SYMMETRIC, ops[i],
 				burst_size) < burst_size) {
 			RTE_LOG(ERR, USER1, "Failed to alloc cops\n");
@@ -330,45 +385,38 @@ vhost_crypto_worker(__rte_unused void *arg)
 	}
 
 	while (1) {
-		for (i = 0; i < info.nb_vids; i++) {
-			if (unlikely(info.initialized[i] == 0))
+		for (i = 0; i < info->nb_vids; i++) {
+			if (unlikely(info->initialized[i] == 0))
 				continue;
 
 			for (j = 0; j < NB_VIRTIO_QUEUES; j++) {
-				t_start = rte_rdtsc_precise();
-
 				to_fetch = RTE_MIN(burst_size,
 						(NB_CRYPTO_DESCRIPTORS -
-						nb_inflight_ops));
+						info->nb_inflight_ops));
 				fetched = rte_vhost_crypto_fetch_requests(
-						info.vids[i], j, ops[j],
+						info->vids[i], j, ops[j],
 						to_fetch);
-				nb_inflight_ops += rte_cryptodev_enqueue_burst(
-						info.cid, info.qid, ops[j],
+				info->nb_inflight_ops +=
+						rte_cryptodev_enqueue_burst(
+						info->cid, info->qid, ops[j],
 						fetched);
 				if (unlikely(rte_crypto_op_bulk_alloc(
-						info.cop_pool,
+						info->cop_pool,
 						RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 						ops[j], fetched) < fetched)) {
 					RTE_LOG(ERR, USER1, "Failed realloc\n");
 					return -1;
 				}
-				t_end = rte_rdtsc_precise();
-				interval = t_end - t_start;
 
-				vhost_cycles[fetched > 0] += interval;
-
-				t_start = t_end;
 				fetched = rte_cryptodev_dequeue_burst(
-						info.cid, info.qid,
+						info->cid, info->qid,
 						ops_deq[j], RTE_MIN(burst_size,
-						nb_inflight_ops));
+						info->nb_inflight_ops));
 				fetched = rte_vhost_crypto_finalize_requests(
 						ops_deq[j], fetched, callfds,
 						&nb_callfds);
 
-				nb_inflight_ops -= fetched;
-				outpkt_amount += fetched;
+				info->nb_inflight_ops -= fetched;
 
 				if (!options.guest_polling) {
 					for (k = 0; k < nb_callfds; k++)
@@ -376,11 +424,8 @@ vhost_crypto_worker(__rte_unused void *arg)
 								(eventfd_t)1);
 				}
 
-				rte_mempool_put_bulk(info.cop_pool,
+				rte_mempool_put_bulk(info->cop_pool,
 						(void **)ops_deq[j], fetched);
-				interval = rte_rdtsc_precise() - t_start;
-
-				vhost_cycles[fetched > 0] += interval;
 			}
 		}
 	}
@@ -388,17 +433,27 @@ exit:
 	return ret;
 }
 
-
 static void
-unregister_drivers(int socket_num)
+free_resource(void)
 {
-	int ret;
+	uint32_t i, j;
 
-	ret = rte_vhost_driver_unregister(options.socket_files[socket_num]);
-	if (ret != 0)
-		RTE_LOG(ERR, USER1,
-			"Fail to unregister vhost driver for %s.\n",
-			options.socket_files[socket_num]);
+	for (i = 0; i < options.nb_los; i++) {
+		struct lcore_option *lo = &options.los[i];
+		struct vhost_crypto_info *info = options.infos[i];
+
+		rte_mempool_free(info->cop_pool);
+		rte_mempool_free(info->sess_pool);
+
+		for (j = 0; j < lo->nb_sockets; j++) {
+			rte_vhost_driver_unregister(lo->socket_files[i]);
+			free(lo->socket_files[i]);
+		}
+
+		rte_free(info);
+	}
+
+	memset(&options, 0, sizeof(options));
 }
 
 int
@@ -407,10 +462,8 @@ main(int argc, char *argv[])
 	struct rte_cryptodev_qp_conf qp_conf = {NB_CRYPTO_DESCRIPTORS};
 	struct rte_cryptodev_config config;
 	struct rte_cryptodev_info dev_info;
-	uint32_t cryptodev_id;
-	uint32_t worker_lcore;
 	char name[128];
-	uint32_t i = 0;
+	uint32_t i, j, lcore;
 	int ret;
 
 	ret = rte_eal_init(argc, argv);
@@ -423,114 +476,121 @@ main(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Failed to parse arguments!\n");
 
-	info.cid = options.cid;
-	info.qid = options.qid;
+	for (i = 0; i < options.nb_los; i++) {
+		struct lcore_option *lo = &options.los[i];
+		struct vhost_crypto_info *info;
 
-	worker_lcore = rte_get_next_lcore(0, 1, 0);
-	if (worker_lcore == RTE_MAX_LCORE)
-		rte_exit(EXIT_FAILURE, "Not enough lcore\n");
+		info = rte_zmalloc_socket(NULL, sizeof(*info),
+				RTE_CACHE_LINE_SIZE, rte_lcore_to_socket_id(
+						lo->lcore_id));
+		if (!info) {
+			ret = -ENOMEM;
+			goto error_exit;
+		}
 
-	cryptodev_id = info.cid;
-	rte_cryptodev_info_get(cryptodev_id, &dev_info);
-	if (dev_info.max_nb_queue_pairs < info.qid + 1) {
-		RTE_LOG(ERR, USER1, "Number of queues cannot over %u",
-				dev_info.max_nb_queue_pairs);
-		goto error_exit;
-	}
+		info->cid = lo->cid;
+		info->qid = lo->qid;
+		info->nb_vids = lo->nb_sockets;
 
-	config.nb_queue_pairs = dev_info.max_nb_queue_pairs;
-	config.socket_id = rte_lcore_to_socket_id(worker_lcore);
+		rte_cryptodev_info_get(info->cid, &dev_info);
+		if (dev_info.max_nb_queue_pairs < info->qid + 1) {
+			RTE_LOG(ERR, USER1, "Number of queues cannot over %u",
+					dev_info.max_nb_queue_pairs);
+			goto error_exit;
+		}
 
-	ret = rte_cryptodev_configure(cryptodev_id, &config);
-	if (ret < 0) {
-		RTE_LOG(ERR, USER1, "Failed to configure cryptodev %u",
-				cryptodev_id);
-		goto error_exit;
-	}
+		config.nb_queue_pairs = dev_info.max_nb_queue_pairs;
+		config.socket_id = rte_lcore_to_socket_id(lo->lcore_id);
 
-	snprintf(name, 127, "SESS_POOL_%u", worker_lcore);
-	info.sess_pool = rte_mempool_create(name, SESSION_MAP_ENTRIES,
-			rte_cryptodev_sym_get_private_session_size(
-			cryptodev_id), 64, 0, NULL, NULL, NULL, NULL,
-			rte_lcore_to_socket_id(worker_lcore), 0);
-	if (!info.sess_pool) {
-		RTE_LOG(ERR, USER1, "Failed to create mempool");
-		goto error_exit;
-	}
-
-	snprintf(name, 127, "COPPOOL_%u", worker_lcore);
-	info.cop_pool = rte_crypto_op_pool_create(name,
-			RTE_CRYPTO_OP_TYPE_SYMMETRIC, NB_MEMPOOL_OBJS,
-			NB_CACHE_OBJS, 0, rte_lcore_to_socket_id(worker_lcore));
-
-	if (!info.cop_pool) {
-		RTE_LOG(ERR, USER1, "Lcore %u failed to create crypto pool",
-				worker_lcore);
-		ret = -1;
-		goto error_exit;
-	}
-
-	info.nb_vids = options.nb_sockets;
-	for (i = 0; i < MAX_NB_SOCKETS; i++)
-		info.vids[i] = -1;
-
-	for (i = 0; i < dev_info.max_nb_queue_pairs; i++) {
-		ret = rte_cryptodev_queue_pair_setup(cryptodev_id, i,
-				&qp_conf, rte_lcore_to_socket_id(worker_lcore),
-				info.sess_pool);
+		ret = rte_cryptodev_configure(info->cid, &config);
 		if (ret < 0) {
-			RTE_LOG(ERR, USER1, "Failed to configure qp %u\n",
-					info.cid);
-			goto error_exit;
-		}
-	}
-
-	ret = rte_cryptodev_start(cryptodev_id);
-	if (ret < 0) {
-		RTE_LOG(ERR, USER1, "Failed to start cryptodev %u\n", info.cid);
-		goto error_exit;
-	}
-
-	info.cid = cryptodev_id;
-	info.lcore_id = worker_lcore;
-
-	if (rte_eal_remote_launch(vhost_crypto_worker, NULL, worker_lcore)
-			< 0) {
-		RTE_LOG(ERR, USER1, "Failed to start worker lcore");
-		goto error_exit;
-	}
-
-	for (i = 0; i < options.nb_sockets; i++) {
-		if (rte_vhost_driver_register(options.socket_files[i],
-				RTE_VHOST_USER_DEQUEUE_ZERO_COPY) < 0) {
-			RTE_LOG(ERR, USER1, "socket %s already exists\n",
-					options.socket_files[i]);
+			RTE_LOG(ERR, USER1, "Failed to configure cryptodev %u",
+					info->cid);
 			goto error_exit;
 		}
 
-		rte_vhost_driver_callback_register(options.socket_files[i],
+		snprintf(name, 127, "SESS_POOL_%u", lo->lcore_id);
+		info->sess_pool = rte_mempool_create(name, SESSION_MAP_ENTRIES,
+				rte_cryptodev_sym_get_private_session_size(
+				info->cid), 64, 0, NULL, NULL, NULL, NULL,
+				rte_lcore_to_socket_id(lo->lcore_id), 0);
+		if (!info->sess_pool) {
+			RTE_LOG(ERR, USER1, "Failed to create mempool");
+			goto error_exit;
+		}
+
+		snprintf(name, 127, "COPPOOL_%u", lo->lcore_id);
+		info->cop_pool = rte_crypto_op_pool_create(name,
+				RTE_CRYPTO_OP_TYPE_SYMMETRIC, NB_MEMPOOL_OBJS,
+				NB_CACHE_OBJS, 0,
+				rte_lcore_to_socket_id(lo->lcore_id));
+
+		if (!info->cop_pool) {
+			RTE_LOG(ERR, USER1, "Failed to create crypto pool");
+			ret = -ENOMEM;
+			goto error_exit;
+		}
+
+		options.infos[i] = info;
+
+		for (j = 0; j < dev_info.max_nb_queue_pairs; j++) {
+			ret = rte_cryptodev_queue_pair_setup(info->cid, j,
+					&qp_conf, rte_lcore_to_socket_id(
+							lo->lcore_id),
+					info->sess_pool);
+			if (ret < 0) {
+				RTE_LOG(ERR, USER1, "Failed to configure qp\n");
+				goto error_exit;
+			}
+		}
+	}
+
+	for (i = 0; i < options.nb_los; i++) {
+		struct lcore_option *lo = &options.los[i];
+		struct vhost_crypto_info *info = options.infos[i];
+
+		ret = rte_cryptodev_start(lo->cid);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "Failed to start cryptodev\n");
+			goto error_exit;
+		}
+
+		if (rte_eal_remote_launch(vhost_crypto_worker, info,
+				lo->lcore_id) < 0) {
+			RTE_LOG(ERR, USER1, "Failed to start worker lcore");
+			goto error_exit;
+		}
+
+		for (j = 0; j < lo->nb_sockets; j++) {
+			ret = rte_vhost_driver_register(lo->socket_files[j],
+				RTE_VHOST_USER_DEQUEUE_ZERO_COPY);
+			if (ret < 0) {
+				RTE_LOG(ERR, USER1, "socket %s already exists\n",
+					lo->socket_files[j]);
+				goto error_exit;
+			}
+
+			rte_vhost_driver_callback_register(lo->socket_files[j],
 				&virtio_crypto_device_ops);
 
-		if (rte_vhost_driver_start(options.socket_files[i]) < 0) {
-			RTE_LOG(ERR, USER1, "failed to start vhost driver.\n");
-			goto error_exit;
+			ret = rte_vhost_driver_start(lo->socket_files[j]);
+			if (ret < 0)  {
+				RTE_LOG(ERR, USER1, "failed to start vhost.\n");
+				goto error_exit;
+			}
 		}
 	}
 
-	RTE_LCORE_FOREACH(worker_lcore)
-		rte_eal_wait_lcore(worker_lcore);
+	RTE_LCORE_FOREACH(lcore)
+		rte_eal_wait_lcore(lcore);
 
-	rte_mempool_free(info.sess_pool);
-	rte_mempool_free(info.cop_pool);
+	free_resource();
 
 	return 0;
 
 error_exit:
-	for (i = 0; i < options.nb_sockets; i++)
-		unregister_drivers(i);
 
-	rte_mempool_free(info.cop_pool);
-	rte_mempool_free(info.sess_pool);
+	free_resource();
 
 	return -1;
 }
