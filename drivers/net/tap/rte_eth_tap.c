@@ -415,9 +415,41 @@ tap_tx_offload_get_queue_capa(void)
 	       DEV_TX_OFFLOAD_TCP_CKSUM;
 }
 
+/* Finalize l4 checksum calculation */
 static void
-tap_tx_offload(char *packet, uint64_t ol_flags, unsigned int l2_len,
-	       unsigned int l3_len)
+tap_tx_l4_cksum(uint16_t *l4_cksum, uint16_t l4_phdr_cksum,
+		uint32_t l4_raw_cksum)
+{
+	if (l4_cksum) {
+		uint32_t cksum;
+
+		cksum = __rte_raw_cksum_reduce(l4_raw_cksum);
+		cksum += l4_phdr_cksum;
+
+		cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
+		cksum = (~cksum) & 0xffff;
+		if (cksum == 0)
+			cksum = 0xffff;
+		*l4_cksum = cksum;
+	}
+}
+
+/* Accumaulate L4 raw checksums */
+static void
+tap_tx_l4_add_rcksum(char *l4_data, unsigned int l4_len, uint16_t *l4_cksum,
+			uint32_t *l4_raw_cksum)
+{
+	if (l4_cksum == NULL)
+		return;
+
+	*l4_raw_cksum = __rte_raw_cksum(l4_data, l4_len, *l4_raw_cksum);
+}
+
+/* L3 and L4 pseudo headers checksum offloads */
+static void
+tap_tx_l3_cksum(char *packet, uint64_t ol_flags, unsigned int l2_len,
+		unsigned int l3_len, unsigned int l4_len, uint16_t **l4_cksum,
+		uint16_t *l4_phdr_cksum, uint32_t *l4_raw_cksum)
 {
 	void *l3_hdr = packet + l2_len;
 
@@ -430,38 +462,21 @@ tap_tx_offload(char *packet, uint64_t ol_flags, unsigned int l2_len,
 		iph->hdr_checksum = (cksum == 0xffff) ? cksum : ~cksum;
 	}
 	if (ol_flags & PKT_TX_L4_MASK) {
-		uint16_t l4_len;
-		uint32_t cksum;
-		uint16_t *l4_cksum;
 		void *l4_hdr;
 
 		l4_hdr = packet + l2_len + l3_len;
 		if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM)
-			l4_cksum = &((struct udp_hdr *)l4_hdr)->dgram_cksum;
+			*l4_cksum = &((struct udp_hdr *)l4_hdr)->dgram_cksum;
 		else if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM)
-			l4_cksum = &((struct tcp_hdr *)l4_hdr)->cksum;
+			*l4_cksum = &((struct tcp_hdr *)l4_hdr)->cksum;
 		else
 			return;
-		*l4_cksum = 0;
-		if (ol_flags & PKT_TX_IPV4) {
-			struct ipv4_hdr *iph = l3_hdr;
-
-			l4_len = rte_be_to_cpu_16(iph->total_length) - l3_len;
-			cksum = rte_ipv4_phdr_cksum(l3_hdr, 0);
-		} else {
-			struct ipv6_hdr *ip6h = l3_hdr;
-
-			/* payload_len does not include ext headers */
-			l4_len = rte_be_to_cpu_16(ip6h->payload_len) -
-				l3_len + sizeof(struct ipv6_hdr);
-			cksum = rte_ipv6_phdr_cksum(l3_hdr, 0);
-		}
-		cksum += rte_raw_cksum(l4_hdr, l4_len);
-		cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
-		cksum = (~cksum) & 0xffff;
-		if (cksum == 0)
-			cksum = 0xffff;
-		*l4_cksum = cksum;
+		**l4_cksum = 0;
+		if (ol_flags & PKT_TX_IPV4)
+			*l4_phdr_cksum = rte_ipv4_phdr_cksum(l3_hdr, 0);
+		else
+			*l4_phdr_cksum = rte_ipv6_phdr_cksum(l3_hdr, 0);
+		*l4_raw_cksum = __rte_raw_cksum(l4_hdr, l4_len, 0);
 	}
 }
 
@@ -482,17 +497,27 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	max_size = *txq->mtu + (ETHER_HDR_LEN + ETHER_CRC_LEN + 4);
 	for (i = 0; i < nb_pkts; i++) {
 		struct rte_mbuf *mbuf = bufs[num_tx];
-		struct iovec iovecs[mbuf->nb_segs + 1];
+		struct iovec iovecs[mbuf->nb_segs + 2];
 		struct tun_pi pi = { .flags = 0, .proto = 0x00 };
 		struct rte_mbuf *seg = mbuf;
 		char m_copy[mbuf->data_len];
+		int proto;
 		int n;
 		int j;
+		int k; /* first index in iovecs for copying segments */
+		uint16_t l234_hlen; /* length of layers 2,3,4 headers */
+		uint16_t seg_len; /* length of first segment */
+		uint16_t nb_segs;
+		uint16_t *l4_cksum; /* l4 checksum (pseudo header + payload) */
+		uint32_t l4_raw_cksum = 0; /* TCP/UDP payload raw checksum */
+		uint16_t l4_phdr_cksum = 0; /* TCP/UDP pseudo header checksum */
+		uint16_t is_cksum = 0; /* in case cksum should be offloaded */
 
 		/* stats.errs will be incremented */
 		if (rte_pktmbuf_pkt_len(mbuf) > max_size)
 			break;
 
+		l4_cksum = NULL;
 		if (txq->type == ETH_TUNTAP_TYPE_TUN) {
 			/*
 			 * TUN and TAP are created with IFF_NO_PI disabled.
@@ -505,35 +530,77 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			 * is 4 or 6, then protocol field is updated.
 			 */
 			char *buff_data = rte_pktmbuf_mtod(seg, void *);
-			j = (*buff_data & 0xf0);
-			pi.proto = (j == 0x40) ? rte_cpu_to_be_16(ETHER_TYPE_IPv4) :
-				(j == 0x60) ? rte_cpu_to_be_16(ETHER_TYPE_IPv6) : 0x00;
+			proto = (*buff_data & 0xf0);
+			pi.proto = (proto == 0x40) ?
+				rte_cpu_to_be_16(ETHER_TYPE_IPv4) :
+				((proto == 0x60) ?
+					rte_cpu_to_be_16(ETHER_TYPE_IPv6) :
+					0x00);
 		}
 
-		iovecs[0].iov_base = &pi;
-		iovecs[0].iov_len = sizeof(pi);
-		for (j = 1; j <= mbuf->nb_segs; j++) {
-			iovecs[j].iov_len = rte_pktmbuf_data_len(seg);
-			iovecs[j].iov_base =
-				rte_pktmbuf_mtod(seg, void *);
-			seg = seg->next;
-		}
+		k = 0;
+		iovecs[k].iov_base = &pi;
+		iovecs[k].iov_len = sizeof(pi);
+		k++;
+
+		nb_segs = mbuf->nb_segs;
 		if (txq->csum &&
 		    ((mbuf->ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_IPV4) ||
 		     (mbuf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM ||
 		     (mbuf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM))) {
-			/* Support only packets with all data in the same seg */
-			if (mbuf->nb_segs > 1)
+			is_cksum = 1;
+
+			/* Support only packets with at least layer 4
+			 * header included in the first segment
+			 */
+			seg_len = rte_pktmbuf_data_len(mbuf);
+			l234_hlen = mbuf->l2_len + mbuf->l3_len + mbuf->l4_len;
+			if (seg_len < l234_hlen)
 				break;
-			/* To change checksums, work on a copy of data. */
+
+			/* To change checksums, work on a
+			 * copy of l2, l3 l4 headers.
+			 */
 			rte_memcpy(m_copy, rte_pktmbuf_mtod(mbuf, void *),
-				   rte_pktmbuf_data_len(mbuf));
-			tap_tx_offload(m_copy, mbuf->ol_flags,
-				       mbuf->l2_len, mbuf->l3_len);
-			iovecs[1].iov_base = m_copy;
+					l234_hlen);
+			tap_tx_l3_cksum(m_copy, mbuf->ol_flags,
+				       mbuf->l2_len, mbuf->l3_len, mbuf->l4_len,
+				       &l4_cksum, &l4_phdr_cksum,
+				       &l4_raw_cksum);
+			iovecs[k].iov_base = m_copy;
+			iovecs[k].iov_len = l234_hlen;
+			k++;
+
+			/* Update next iovecs[] beyond l2, l3, l4 headers */
+			if (seg_len > l234_hlen) {
+				iovecs[k].iov_len = seg_len - l234_hlen;
+				iovecs[k].iov_base =
+					rte_pktmbuf_mtod(seg, char *) +
+						l234_hlen;
+				tap_tx_l4_add_rcksum(iovecs[k].iov_base,
+					iovecs[k].iov_len, l4_cksum,
+					&l4_raw_cksum);
+				k++;
+				nb_segs++;
+			}
+			seg = seg->next;
 		}
+
+		for (j = k; j <= nb_segs; j++) {
+			iovecs[j].iov_len = rte_pktmbuf_data_len(seg);
+			iovecs[j].iov_base = rte_pktmbuf_mtod(seg, void *);
+			if (is_cksum)
+				tap_tx_l4_add_rcksum(iovecs[j].iov_base,
+					iovecs[j].iov_len, l4_cksum,
+					&l4_raw_cksum);
+			seg = seg->next;
+		}
+
+		if (is_cksum)
+			tap_tx_l4_cksum(l4_cksum, l4_phdr_cksum, l4_raw_cksum);
+
 		/* copy the tx frame data */
-		n = writev(txq->fd, iovecs, mbuf->nb_segs + 1);
+		n = writev(txq->fd, iovecs, j);
 		if (n <= 0)
 			break;
 
