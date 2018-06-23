@@ -957,7 +957,11 @@ qede_mac_addr_add(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr,
 	struct ecore_filter_ucast ucast;
 	int re;
 
+	if (!is_valid_assigned_ether_addr(mac_addr))
+		return -EINVAL;
+
 	qede_set_ucast_cmn_params(&ucast);
+	ucast.opcode = ECORE_FILTER_ADD;
 	ucast.type = ECORE_FILTER_MAC;
 	ether_addr_copy(mac_addr, (struct ether_addr *)&ucast.mac);
 	re = (int)qede_mac_int_ops(eth_dev, &ucast, 1);
@@ -978,6 +982,9 @@ qede_mac_addr_remove(struct rte_eth_dev *eth_dev, uint32_t index)
 		       index, qdev->dev_info.num_mac_filters);
 		return;
 	}
+
+	if (!is_valid_assigned_ether_addr(&eth_dev->data->mac_addrs[index]))
+		return;
 
 	qede_set_ucast_cmn_params(&ucast);
 	ucast.opcode = ECORE_FILTER_REMOVE;
@@ -1002,8 +1009,9 @@ qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr)
 		return -EPERM;
 	}
 
-	qede_mac_addr_add(eth_dev, mac_addr, 0, 0);
-	return 0;
+	qede_mac_addr_remove(eth_dev, 0);
+
+	return qede_mac_addr_add(eth_dev, mac_addr, 0, 0);
 }
 
 static void qede_config_accept_any_vlan(struct qede_dev *qdev, bool flg)
@@ -3024,6 +3032,9 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.mtu_set = qede_set_mtu,
 	.udp_tunnel_port_add = qede_udp_dst_port_add,
 	.udp_tunnel_port_del = qede_udp_dst_port_del,
+	.mac_addr_add = qede_mac_addr_add,
+	.mac_addr_remove = qede_mac_addr_remove,
+	.mac_addr_set = qede_mac_addr_set,
 };
 
 static void qede_update_pf_params(struct ecore_dev *edev)
@@ -3188,7 +3199,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 						ECORE_LEADING_HWFN(edev),
 						vf_mac,
 						&is_mac_forced);
-			if (is_mac_exist && is_mac_forced) {
+			if (is_mac_exist) {
 				DP_INFO(edev, "VF macaddr received from PF\n");
 				ether_addr_copy((struct ether_addr *)&vf_mac,
 						&eth_dev->data->mac_addrs[0]);
