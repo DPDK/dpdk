@@ -15,6 +15,7 @@
 
 #include <rte_ethdev_driver.h>
 #include <rte_ether.h>
+#include <rte_gso.h>
 #include "tap_log.h"
 
 #ifdef IFF_MULTI_QUEUE
@@ -22,6 +23,7 @@
 #else
 #define RTE_PMD_TAP_MAX_QUEUES	1
 #endif
+#define MAX_GSO_MBUFS 64
 
 enum rte_tuntap_type {
 	ETH_TUNTAP_TYPE_UNKNOWN,
@@ -59,6 +61,7 @@ struct tx_queue {
 	uint16_t *mtu;                  /* Pointer to MTU from dev_data */
 	uint16_t csum:1;                /* Enable checksum offloading */
 	struct pkt_stats stats;         /* Stats for this TX queue */
+	struct rte_gso_ctx gso_ctx;     /* GSO context */
 };
 
 struct pmd_internals {
