@@ -339,6 +339,24 @@ static void qede_interrupt_action(struct ecore_hwfn *p_hwfn)
 }
 
 static void
+qede_interrupt_handler_intx(void *param)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
+	struct qede_dev *qdev = eth_dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
+	u64 status;
+
+	/* Check if our device actually raised an interrupt */
+	status = ecore_int_igu_read_sisr_reg(ECORE_LEADING_HWFN(edev));
+	if (status & 0x1) {
+		qede_interrupt_action(ECORE_LEADING_HWFN(edev));
+
+		if (rte_intr_enable(eth_dev->intr_handle))
+			DP_ERR(edev, "rte_intr_enable failed\n");
+	}
+}
+
+static void
 qede_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
@@ -3063,6 +3081,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	/* Fix up ecore debug level */
 	uint32_t dp_module = ~0 & ~ECORE_MSG_HW;
 	uint8_t dp_level = ECORE_LEVEL_VERBOSE;
+	uint32_t int_mode;
 	int rc;
 
 	/* Extract key data structures */
@@ -3107,8 +3126,22 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		return -ENODEV;
 	}
 	qede_update_pf_params(edev);
-	rte_intr_callback_register(&pci_dev->intr_handle,
-				   qede_interrupt_handler, (void *)eth_dev);
+
+	switch (pci_dev->intr_handle.type) {
+	case RTE_INTR_HANDLE_UIO_INTX:
+	case RTE_INTR_HANDLE_VFIO_LEGACY:
+		int_mode = ECORE_INT_MODE_INTA;
+		rte_intr_callback_register(&pci_dev->intr_handle,
+					   qede_interrupt_handler_intx,
+					   (void *)eth_dev);
+		break;
+	default:
+		int_mode = ECORE_INT_MODE_MSIX;
+		rte_intr_callback_register(&pci_dev->intr_handle,
+					   qede_interrupt_handler,
+					   (void *)eth_dev);
+	}
+
 	if (rte_intr_enable(&pci_dev->intr_handle)) {
 		DP_ERR(edev, "rte_intr_enable() failed\n");
 		return -ENODEV;
@@ -3116,7 +3149,8 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	/* Start the Slowpath-process */
 	memset(&params, 0, sizeof(struct qed_slowpath_params));
-	params.int_mode = ECORE_INT_MODE_MSIX;
+
+	params.int_mode = int_mode;
 	params.drv_major = QEDE_PMD_VERSION_MAJOR;
 	params.drv_minor = QEDE_PMD_VERSION_MINOR;
 	params.drv_rev = QEDE_PMD_VERSION_REVISION;
