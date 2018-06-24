@@ -113,15 +113,20 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 			     DEV_TX_OFFLOAD_TCP_CKSUM);
 	if (config->tso)
 		offloads |= DEV_TX_OFFLOAD_TCP_TSO;
+	if (config->swp) {
+		if (config->hw_csum)
+			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		if (config->tso)
+			offloads |= (DEV_TX_OFFLOAD_IP_TNL_TSO |
+				     DEV_TX_OFFLOAD_UDP_TNL_TSO);
+	}
+
 	if (config->tunnel_en) {
 		if (config->hw_csum)
 			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 		if (config->tso)
 			offloads |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 				     DEV_TX_OFFLOAD_GRE_TNL_TSO);
-		if (config->swp)
-			offloads |= (DEV_TX_OFFLOAD_IP_TNL_TSO |
-				     DEV_TX_OFFLOAD_UDP_TNL_TSO);
 	}
 	return offloads;
 }
@@ -707,7 +712,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 						   max_tso_inline);
 		txq_ctrl->txq.tso_en = 1;
 	}
-	txq_ctrl->txq.tunnel_en = config->tunnel_en;
+	txq_ctrl->txq.tunnel_en = config->tunnel_en | config->swp;
 	txq_ctrl->txq.swp_en = ((DEV_TX_OFFLOAD_IP_TNL_TSO |
 				 DEV_TX_OFFLOAD_UDP_TNL_TSO |
 				 DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &
