@@ -30,7 +30,6 @@
 #include <rte_branch_prediction.h>
 #include <rte_debug.h>
 #include <rte_log.h>
-#include <rte_malloc.h>
 #include <rte_errno.h>
 #include <rte_spinlock.h>
 #include <rte_pause.h>
@@ -405,8 +404,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	}
 
 	/* allocate a new interrupt callback entity */
-	callback = rte_zmalloc("interrupt callback list",
-				sizeof(*callback), 0);
+	callback = calloc(1, sizeof(*callback));
 	if (callback == NULL) {
 		RTE_LOG(ERR, EAL, "Can not allocate memory\n");
 		return -ENOMEM;
@@ -431,10 +429,10 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 
 	/* no existing callbacks for this - add new source */
 	if (src == NULL) {
-		if ((src = rte_zmalloc("interrupt source list",
-				sizeof(*src), 0)) == NULL) {
+		src = calloc(1, sizeof(*src));
+		if (src == NULL) {
 			RTE_LOG(ERR, EAL, "Can not allocate memory\n");
-			rte_free(callback);
+			free(callback);
 			ret = -ENOMEM;
 		} else {
 			src->intr_handle = *intr_handle;
@@ -501,7 +499,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 			if (cb->cb_fn == cb_fn && (cb_arg == (void *)-1 ||
 					cb->cb_arg == cb_arg)) {
 				TAILQ_REMOVE(&src->callbacks, cb, next);
-				rte_free(cb);
+				free(cb);
 				ret++;
 			}
 		}
@@ -509,7 +507,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		/* all callbacks for that source are removed. */
 		if (TAILQ_EMPTY(&src->callbacks)) {
 			TAILQ_REMOVE(&intr_sources, src, next);
-			rte_free(src);
+			free(src);
 		}
 	}
 
