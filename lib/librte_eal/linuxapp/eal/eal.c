@@ -853,6 +853,11 @@ rte_eal_init(int argc, char **argv)
 
 	rte_config_init();
 
+	if (rte_eal_intr_init() < 0) {
+		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
+		return -1;
+	}
+
 	/* Put mp channel init before bus scan so that we can init the vdev
 	 * bus through mp channel in the secondary process before the bus scan.
 	 */
@@ -981,11 +986,6 @@ rte_eal_init(int argc, char **argv)
 	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%x;cpuset=[%s%s])\n",
 		rte_config.master_lcore, (int)thread_id, cpuset,
 		ret == 0 ? "" : "...");
-
-	if (rte_eal_intr_init() < 0) {
-		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
-		return -1;
-	}
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
