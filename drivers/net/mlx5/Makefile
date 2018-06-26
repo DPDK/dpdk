@@ -100,7 +100,7 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q sh -- '$<' '$@' \
 		HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT \
 		infiniband/mlx5dv.h \
-		enum MLX5DV_CONTEXT_MASK_STRIDING_RQ \
+		enum MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_IBV_DEVICE_TUNNEL_SUPPORT \

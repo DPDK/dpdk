@@ -132,6 +132,10 @@ Limitations
   the external buffers will be freed by PMD and the application which still
   holds the external buffers may be corrupted.
 
+- If Multi-Packet Rx queue is configured (``mprq_en``) and Rx CQE compression is
+  enabled (``rxq_cqe_comp_en``) at the same time, RSS hash result is not fully
+  supported. Some Rx packets may not have PKT_RX_RSS_HASH.
+
 Statistics
 ----------
 

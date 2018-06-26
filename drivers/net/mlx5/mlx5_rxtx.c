@@ -2108,7 +2108,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	volatile struct mlx5_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];
 	unsigned int i = 0;
 	uint16_t rq_ci = rxq->rq_ci;
-	uint16_t strd_idx = rxq->strd_ci;
+	uint16_t consumed_strd = rxq->consumed_strd;
 	struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[rq_ci & wq_mask];
 
 	while (i < pkts_n) {
@@ -2116,13 +2116,14 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		void *addr;
 		int ret;
 		unsigned int len;
-		uint16_t consumed_strd;
+		uint16_t strd_cnt;
+		uint16_t strd_idx;
 		uint32_t offset;
 		uint32_t byte_cnt;
 		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
-		uint32_t rss_hash_res;
+		uint32_t rss_hash_res = 0;
 
-		if (strd_idx == strd_n) {
+		if (consumed_strd == strd_n) {
 			/* Replace WQE only if the buffer is still in use. */
 			if (rte_atomic16_read(&buf->refcnt) > 1) {
 				mprq_buf_replace(rxq, rq_ci & wq_mask);
@@ -2142,7 +2143,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					rxq->mprq_repl = rep;
 			}
 			/* Advance to the next WQE. */
-			strd_idx = 0;
+			consumed_strd = 0;
 			++rq_ci;
 			buf = (*rxq->mprq_bufs)[rq_ci & wq_mask];
 		}
@@ -2156,14 +2157,21 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			continue;
 		}
 		byte_cnt = ret;
-		consumed_strd = (byte_cnt & MLX5_MPRQ_STRIDE_NUM_MASK) >>
-				MLX5_MPRQ_STRIDE_NUM_SHIFT;
-		assert(consumed_strd);
-		/* Calculate offset before adding up stride index. */
-		offset = strd_idx * strd_sz + strd_shift;
-		strd_idx += consumed_strd;
+		strd_cnt = (byte_cnt & MLX5_MPRQ_STRIDE_NUM_MASK) >>
+			   MLX5_MPRQ_STRIDE_NUM_SHIFT;
+		assert(strd_cnt);
+		consumed_strd += strd_cnt;
 		if (byte_cnt & MLX5_MPRQ_FILLER_MASK)
 			continue;
+		if (mcqe == NULL) {
+			rss_hash_res = rte_be_to_cpu_32(cqe->rx_hash_res);
+			strd_idx = rte_be_to_cpu_16(cqe->wqe_counter);
+		} else {
+			/* mini-CQE for MPRQ doesn't have hash result. */
+			strd_idx = rte_be_to_cpu_16(mcqe->stride_idx);
+		}
+		assert(strd_idx < strd_n);
+		assert(!((rte_be_to_cpu_16(cqe->wqe_id) ^ rq_ci) & wq_mask));
 		/*
 		 * Currently configured to receive a packet per a stride. But if
 		 * MTU is adjusted through kernel interface, device could
@@ -2171,7 +2179,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * case, the packet should be dropped because it is bigger than
 		 * the max_rx_pkt_len.
 		 */
-		if (unlikely(consumed_strd > 1)) {
+		if (unlikely(strd_cnt > 1)) {
 			++rxq->stats.idropped;
 			continue;
 		}
@@ -2184,6 +2192,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert((int)len >= (rxq->crc_present << 2));
 		if (rxq->crc_present)
 			len -= ETHER_CRC_LEN;
+		offset = strd_idx * strd_sz + strd_shift;
 		addr = RTE_PTR_ADD(mlx5_mprq_buf_addr(buf), offset);
 		/* Initialize the offload flag. */
 		pkt->ol_flags = 0;
@@ -2206,7 +2215,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		} else {
 			rte_iova_t buf_iova;
 			struct rte_mbuf_ext_shared_info *shinfo;
-			uint16_t buf_len = consumed_strd * strd_sz;
+			uint16_t buf_len = strd_cnt * strd_sz;
 
 			/* Increment the refcnt of the whole chunk. */
 			rte_atomic16_add_return(&buf->refcnt, 1);
@@ -2242,10 +2251,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				continue;
 			}
 		}
-		/* If compressed, take hash result from mini-CQE. */
-		rss_hash_res = rte_be_to_cpu_32(mcqe == NULL ?
-						cqe->rx_hash_res :
-						mcqe->rx_hash_result);
 		rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
 		PKT_LEN(pkt) = len;
 		DATA_LEN(pkt) = len;
@@ -2259,7 +2264,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		++i;
 	}
 	/* Update the consumer indexes. */
-	rxq->strd_ci = strd_idx;
+	rxq->consumed_strd = consumed_strd;
 	rte_cio_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	if (rq_ci != rxq->rq_ci) {

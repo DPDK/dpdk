@@ -93,7 +93,7 @@ struct mlx5_rxq_data {
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
 	uint16_t rq_ci;
-	uint16_t strd_ci; /* Stride index in a WQE for Multi-Packet RQ. */
+	uint16_t consumed_strd; /* Number of consumed strides in WQE. */
 	uint16_t rq_pi;
 	uint16_t cq_ci;
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */

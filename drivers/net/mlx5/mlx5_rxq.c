@@ -818,7 +818,13 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	if (config->cqe_comp && !rxq_data->hw_timestamp) {
 		attr.cq.mlx5.comp_mask |=
 			MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+		attr.cq.mlx5.cqe_comp_res_format =
+			mprq_en ? MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX :
+				  MLX5DV_CQE_RES_FORMAT_HASH;
+#else
 		attr.cq.mlx5.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
+#endif
 		/*
 		 * For vectorized Rx, it must not be doubled in order to
 		 * make cq_ci and rq_ci aligned.
@@ -976,7 +982,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->rq_db = rwq.dbrec;
 	rxq_data->cqe_n = log2above(cq_info.cqe_cnt);
 	rxq_data->cq_ci = 0;
-	rxq_data->strd_ci = 0;
+	rxq_data->consumed_strd = 0;
 	rxq_data->rq_pi = 0;
 	rxq_data->zip = (struct rxq_zip){
 		.ai = 0,
