@@ -811,9 +811,10 @@ static void igb_get_drvinfo(struct net_device *netdev,
 	strncpy(drvinfo->driver,  igb_driver_name, sizeof(drvinfo->driver) - 1);
 	strncpy(drvinfo->version, igb_driver_version, sizeof(drvinfo->version) - 1);
 
-	strncpy(drvinfo->fw_version, adapter->fw_version,
-		sizeof(drvinfo->fw_version) - 1);
-	strncpy(drvinfo->bus_info, pci_name(adapter->pdev), sizeof(drvinfo->bus_info) -1);
+	strlcpy(drvinfo->fw_version, adapter->fw_version,
+		sizeof(drvinfo->fw_version));
+	strlcpy(drvinfo->bus_info, pci_name(adapter->pdev),
+		sizeof(drvinfo->bus_info));
 	drvinfo->n_stats = IGB_STATS_LEN;
 	drvinfo->testinfo_len = IGB_TEST_LEN;
 	drvinfo->regdump_len = igb_get_regs_len(netdev);
