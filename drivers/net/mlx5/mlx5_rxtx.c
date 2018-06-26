@@ -38,7 +38,7 @@ rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe);
 
 static __rte_always_inline int
 mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
-		 uint16_t cqe_cnt, uint32_t *rss_hash);
+		 uint16_t cqe_cnt, volatile struct mlx5_mini_cqe8 **mcqe);
 
 static __rte_always_inline uint32_t
 rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe);
@@ -1722,8 +1722,9 @@ rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
  *   Pointer to RX queue.
  * @param cqe
  *   CQE to process.
- * @param[out] rss_hash
- *   Packet RSS Hash result.
+ * @param[out] mcqe
+ *   Store pointer to mini-CQE if compressed. Otherwise, the pointer is not
+ *   written.
  *
  * @return
  *   Packet size in bytes (0 if there is none), -1 in case of completion
@@ -1731,7 +1732,7 @@ rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
  */
 static inline int
 mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
-		 uint16_t cqe_cnt, uint32_t *rss_hash)
+		 uint16_t cqe_cnt, volatile struct mlx5_mini_cqe8 **mcqe)
 {
 	struct rxq_zip *zip = &rxq->zip;
 	uint16_t cqe_n = cqe_cnt + 1;
@@ -1745,7 +1746,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 			(uintptr_t)(&(*rxq->cqes)[zip->ca & cqe_cnt].pkt_info);
 
 		len = rte_be_to_cpu_32((*mc)[zip->ai & 7].byte_cnt);
-		*rss_hash = rte_be_to_cpu_32((*mc)[zip->ai & 7].rx_hash_result);
+		*mcqe = &(*mc)[zip->ai & 7];
 		if ((++zip->ai & 7) == 0) {
 			/* Invalidate consumed CQEs */
 			idx = zip->ca;
@@ -1810,7 +1811,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 			zip->cq_ci = rxq->cq_ci + zip->cqe_cnt;
 			/* Get packet size to return. */
 			len = rte_be_to_cpu_32((*mc)[0].byte_cnt);
-			*rss_hash = rte_be_to_cpu_32((*mc)[0].rx_hash_result);
+			*mcqe = &(*mc)[0];
 			zip->ai = 1;
 			/* Prefetch all the entries to be invalidated */
 			idx = zip->ca;
@@ -1821,7 +1822,6 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 			}
 		} else {
 			len = rte_be_to_cpu_32(cqe->byte_cnt);
-			*rss_hash = rte_be_to_cpu_32(cqe->rx_hash_res);
 		}
 		/* Error while receiving packet. */
 		if (unlikely(MLX5_CQE_OPCODE(op_own) == MLX5_CQE_RESP_ERR))
@@ -1934,7 +1934,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		volatile struct mlx5_wqe_data_seg *wqe =
 			&((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[idx];
 		struct rte_mbuf *rep = (*rxq->elts)[idx];
-		uint32_t rss_hash_res = 0;
+		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
+		uint32_t rss_hash_res;
 
 		if (pkt)
 			NEXT(seg) = rep;
@@ -1964,8 +1965,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		if (!pkt) {
 			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
-			len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt,
-					       &rss_hash_res);
+			len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt, &mcqe);
 			if (!len) {
 				rte_mbuf_raw_free(rep);
 				break;
@@ -1979,6 +1979,10 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			pkt = seg;
 			assert(len >= (rxq->crc_present << 2));
 			pkt->ol_flags = 0;
+			/* If compressed, take hash result from mini-CQE. */
+			rss_hash_res = rte_be_to_cpu_32(mcqe == NULL ?
+							cqe->rx_hash_res :
+							mcqe->rx_hash_result);
 			rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
 			if (rxq->crc_present)
 				len -= ETHER_CRC_LEN;
@@ -2115,7 +2119,8 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint16_t consumed_strd;
 		uint32_t offset;
 		uint32_t byte_cnt;
-		uint32_t rss_hash_res = 0;
+		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
+		uint32_t rss_hash_res;
 
 		if (strd_idx == strd_n) {
 			/* Replace WQE only if the buffer is still in use. */
@@ -2142,7 +2147,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			buf = (*rxq->mprq_bufs)[rq_ci & wq_mask];
 		}
 		cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];
-		ret = mlx5_rx_poll_len(rxq, cqe, cq_mask, &rss_hash_res);
+		ret = mlx5_rx_poll_len(rxq, cqe, cq_mask, &mcqe);
 		if (!ret)
 			break;
 		if (unlikely(ret == -1)) {
@@ -2237,6 +2242,10 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				continue;
 			}
 		}
+		/* If compressed, take hash result from mini-CQE. */
+		rss_hash_res = rte_be_to_cpu_32(mcqe == NULL ?
+						cqe->rx_hash_res :
+						mcqe->rx_hash_result);
 		rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
 		PKT_LEN(pkt) = len;
 		DATA_LEN(pkt) = len;
