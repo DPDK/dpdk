@@ -97,7 +97,7 @@
 #define MLX5_UAR_OFFSET (1ULL << 32)
 
 /* Log 2 of the default number of strides per WQE for Multi-Packet RQ. */
-#define MLX5_MPRQ_STRIDE_NUM_N 4U
+#define MLX5_MPRQ_STRIDE_NUM_N 6U
 
 /* Two-byte shift is disabled for Multi-Packet RQ. */
 #define MLX5_MPRQ_TWO_BYTE_SHIFT 0
