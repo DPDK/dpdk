@@ -362,7 +362,7 @@ static inline int
 check_cqe_seen(volatile struct mlx5_cqe *cqe)
 {
 	static const uint8_t magic[] = "seen";
-	volatile uint8_t (*buf)[sizeof(cqe->rsvd0)] = &cqe->rsvd0;
+	volatile uint8_t (*buf)[sizeof(cqe->rsvd1)] = &cqe->rsvd1;
 	int ret = 1;
 	unsigned int i;
 
