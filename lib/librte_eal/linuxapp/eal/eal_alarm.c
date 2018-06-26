@@ -19,7 +19,6 @@
 #include <rte_launch.h>
 #include <rte_lcore.h>
 #include <rte_errno.h>
-#include <rte_malloc.h>
 #include <rte_spinlock.h>
 #include <eal_private.h>
 
@@ -91,7 +90,7 @@ eal_alarm_callback(void *arg __rte_unused)
 		rte_spinlock_lock(&alarm_list_lk);
 
 		LIST_REMOVE(ap, next);
-		rte_free(ap);
+		free(ap);
 	}
 
 	if (!LIST_EMPTY(&alarm_list)) {
@@ -122,7 +121,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	if (us < 1 || us > (UINT64_MAX - US_PER_S) || cb_fn == NULL)
 		return -EINVAL;
 
-	new_alarm = rte_zmalloc(NULL, sizeof(*new_alarm), 0);
+	new_alarm = calloc(1, sizeof(*new_alarm));
 	if (new_alarm == NULL)
 		return -ENOMEM;
 
@@ -196,7 +195,7 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 
 			if (ap->executing == 0) {
 				LIST_REMOVE(ap, next);
-				rte_free(ap);
+				free(ap);
 				count++;
 			} else {
 				/* If calling from other context, mark that alarm is executing
@@ -220,7 +219,7 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 
 				if (ap->executing == 0) {
 					LIST_REMOVE(ap, next);
-					rte_free(ap);
+					free(ap);
 					count++;
 					ap = ap_prev;
 				} else if (pthread_equal(ap->executing_id, pthread_self()) == 0)
