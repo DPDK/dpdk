@@ -64,10 +64,11 @@
 #define MLX5_VPMD_MIN_TXQS 4
 
 /* Threshold of buffer replenishment for vectorized Rx. */
-#define MLX5_VPMD_RXQ_RPLNSH_THRESH   64U
+#define MLX5_VPMD_RXQ_RPLNSH_THRESH(n) \
+	(RTE_MIN(MLX5_VPMD_RX_MAX_BURST, (unsigned int)(n) >> 2))
 
 /* Maximum size of burst for vectorized Rx. */
-#define MLX5_VPMD_RX_MAX_BURST        MLX5_VPMD_RXQ_RPLNSH_THRESH
+#define MLX5_VPMD_RX_MAX_BURST 64U
 
 /*
  * Maximum size of burst for vectorized Tx. This is related to the maximum size

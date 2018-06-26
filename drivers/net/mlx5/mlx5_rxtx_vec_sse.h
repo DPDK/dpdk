@@ -724,7 +724,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	 *   N - (rq_ci - rq_pi) := # of buffers consumed (to be replenished).
 	 */
 	repl_n = q_n - (rxq->rq_ci - rxq->rq_pi);
-	if (repl_n >= MLX5_VPMD_RXQ_RPLNSH_THRESH)
+	if (repl_n >= MLX5_VPMD_RXQ_RPLNSH_THRESH(q_n))
 		mlx5_rx_replenish_bulk_mbuf(rxq, repl_n);
 	/* See if there're unreturned mbufs from compressed CQE. */
 	rcvd_pkt = rxq->cq_ci - rxq->rq_pi;
