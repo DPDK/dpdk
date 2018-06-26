@@ -310,13 +310,8 @@ nfp_enable_bars(struct nfp_pcie_user *nfp)
 		bar->csr = nfp->cfg +
 			   NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(bar->index >> 3,
 							   bar->index & 7);
-		bar->iomem =
-		    (char *)mmap(0, 1 << bar->bitsize, PROT_READ | PROT_WRITE,
-				 MAP_SHARED, nfp->device,
-				 bar->index << bar->bitsize);
 
-		if (bar->iomem == MAP_FAILED)
-			return (-ENOMEM);
+		bar->iomem = nfp->cfg + (bar->index << bar->bitsize);
 	}
 	return 0;
 }
@@ -346,7 +341,6 @@ nfp_disable_bars(struct nfp_pcie_user *nfp)
 	for (x = ARRAY_SIZE(nfp->bar); x > 0; x--) {
 		bar = &nfp->bar[x - 1];
 		if (bar->iomem) {
-			munmap(bar->iomem, 1 << (nfp->barsz - 3));
 			bar->iomem = NULL;
 			bar->lock = 0;
 		}
@@ -779,9 +773,6 @@ nfp6000_set_barsz(struct rte_pci_device *dev, struct nfp_pcie_user *desc)
 static int
 nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 {
-	char link[120];
-	char tmp_str[80];
-	ssize_t size;
 	int ret = 0;
 	uint32_t model;
 	struct nfp_pcie_user *desc;
@@ -800,24 +791,6 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 			return -1;
 	}
 
-	snprintf(tmp_str, sizeof(tmp_str), "%s/%s/driver", PCI_DEVICES,
-		 desc->busdev);
-
-	size = readlink(tmp_str, link, sizeof(link));
-
-	if (size == -1)
-		tmp_str[0] = '\0';
-
-	if (size == sizeof(link))
-		tmp_str[0] = '\0';
-
-	snprintf(tmp_str, sizeof(tmp_str), "%s/%s/resource0", PCI_DEVICES,
-		 desc->busdev);
-
-	desc->device = open(tmp_str, O_RDWR);
-	if (desc->device == -1)
-		return -1;
-
 	if (nfp6000_set_model(dev, cpp) < 0)
 		return -1;
 	if (nfp6000_set_interface(dev, cpp) < 0)
@@ -827,12 +800,7 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 	if (nfp6000_set_barsz(dev, desc) < 0)
 		return -1;
 
-	desc->cfg = (char *)mmap(0, 1 << (desc->barsz - 3),
-				 PROT_READ | PROT_WRITE,
-				 MAP_SHARED, desc->device, 0);
-
-	if (desc->cfg == MAP_FAILED)
-		return -1;
+	desc->cfg = (char *)dev->mem_resource[0].addr;
 
 	nfp_enable_bars(desc);
 
@@ -848,16 +816,8 @@ static void
 nfp6000_free(struct nfp_cpp *cpp)
 {
 	struct nfp_pcie_user *desc = nfp_cpp_priv(cpp);
-	int x;
 
-	/* Unmap may cause if there are any pending transaxctions */
 	nfp_disable_bars(desc);
-	munmap(desc->cfg, 1 << (desc->barsz - 3));
-
-	for (x = ARRAY_SIZE(desc->bar); x > 0; x--) {
-		if (desc->bar[x - 1].iomem)
-			munmap(desc->bar[x - 1].iomem, 1 << (desc->barsz - 3));
-	}
 	if (cpp->driver_lock_needed)
 		close(desc->lock);
 	close(desc->device);
