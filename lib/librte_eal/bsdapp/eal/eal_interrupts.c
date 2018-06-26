@@ -15,6 +15,7 @@
 #include <rte_interrupts.h>
 
 #include "eal_private.h"
+#include "eal_alarm_private.h"
 
 #define MAX_INTR_EVENTS 16
 
@@ -55,7 +56,22 @@ static volatile int kq = -1;
 static int
 intr_source_to_kevent(const struct rte_intr_handle *ih, struct kevent *ke)
 {
-	ke->filter = EVFILT_READ;
+	/* alarm callbacks are special case */
+	if (ih->type == RTE_INTR_HANDLE_ALARM) {
+		uint64_t timeout_ns;
+
+		/* get soonest alarm timeout */
+		if (eal_alarm_get_timeout_ns(&timeout_ns) < 0)
+			return -1;
+
+		ke->filter = EVFILT_TIMER;
+		/* timers are one shot */
+		ke->flags |= EV_ONESHOT;
+		ke->fflags = NOTE_NSECONDS;
+		ke->data = timeout_ns;
+	} else {
+		ke->filter = EVFILT_READ;
+	}
 	ke->ident = ih->fd;
 
 	return 0;
@@ -121,8 +137,10 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		}
 	}
 
-	/* add events to the queue */
-	if (add_event) {
+	/* add events to the queue. timer events are special as we need to
+	 * re-set the timer.
+	 */
+	if (add_event || src->intr_handle.type == RTE_INTR_HANDLE_ALARM) {
 		struct kevent ke;
 
 		memset(&ke, 0, sizeof(ke));
@@ -217,8 +235,9 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		if (kevent(kq, &ke, 1, NULL, 0, NULL) < 0) {
 			RTE_LOG(ERR, EAL, "Error removing fd %d kevent, %s\n",
 				src->intr_handle.fd, strerror(errno));
-			ret = -errno;
-			goto out;
+			/* removing non-existent even is an expected condition
+			 * in some circumstances (e.g. oneshot events).
+			 */
 		}
 
 		/*walk through the callbacks and remove all that match. */
