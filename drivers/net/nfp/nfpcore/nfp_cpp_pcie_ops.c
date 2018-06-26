@@ -762,33 +762,16 @@ nfp6000_set_serial(struct rte_pci_device *dev, struct nfp_cpp *cpp)
 }
 
 static int
-nfp6000_set_barsz(struct nfp_pcie_user *desc)
+nfp6000_set_barsz(struct rte_pci_device *dev, struct nfp_pcie_user *desc)
 {
-	char tmp_str[80];
-	unsigned long start, end, flags, tmp;
-	int i;
-	FILE *fp;
+	unsigned long tmp;
+	int i = 0;
 
-	snprintf(tmp_str, sizeof(tmp_str), "%s/%s/resource", PCI_DEVICES,
-		 desc->busdev);
+	tmp = dev->mem_resource[0].len;
 
-	fp = fopen(tmp_str, "r");
-	if (!fp)
-		return -1;
-
-	if (fscanf(fp, "0x%lx 0x%lx 0x%lx", &start, &end, &flags) == 0) {
-		printf("error reading resource file for bar size\n");
-		fclose(fp);
-		return -1;
-	}
-
-	if (fclose(fp) == -1)
-		return -1;
-
-	tmp = (end - start) + 1;
-	i = 0;
 	while (tmp >>= 1)
 		i++;
+
 	desc->barsz = i;
 	return 0;
 }
@@ -841,7 +824,7 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 		return -1;
 	if (nfp6000_set_serial(dev, cpp) < 0)
 		return -1;
-	if (nfp6000_set_barsz(desc) < 0)
+	if (nfp6000_set_barsz(dev, desc) < 0)
 		return -1;
 
 	desc->cfg = (char *)mmap(0, 1 << (desc->barsz - 3),
