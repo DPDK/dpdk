@@ -1052,7 +1052,7 @@ static int ena_start(struct rte_eth_dev *dev)
 		return rc;
 
 	if (adapter->rte_dev->data->dev_conf.rxmode.mq_mode &
-	    ETH_MQ_RX_RSS_FLAG) {
+	    ETH_MQ_RX_RSS_FLAG && adapter->rte_dev->data->nb_rx_queues > 0) {
 		rc = ena_rss_init_default(adapter);
 		if (rc)
 			return rc;
