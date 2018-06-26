@@ -1024,8 +1024,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			DRV_LOG(WARNING, "Rx CQE compression isn't supported");
 			config.cqe_comp = 0;
 		}
-		config.mprq.enabled = config.mprq.enabled && mprq;
-		if (config.mprq.enabled) {
+		if (config.mprq.enabled && mprq) {
 			if (config.mprq.stride_num_n > mprq_max_stride_num_n ||
 			    config.mprq.stride_num_n < mprq_min_stride_num_n) {
 				config.mprq.stride_num_n =
@@ -1039,6 +1038,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			}
 			config.mprq.min_stride_size_n = mprq_min_stride_size_n;
 			config.mprq.max_stride_size_n = mprq_max_stride_size_n;
+		} else if (config.mprq.enabled && !mprq) {
+			DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
+			config.mprq.enabled = 0;
 		}
 		eth_dev = rte_eth_dev_allocate(name);
 		if (eth_dev == NULL) {
