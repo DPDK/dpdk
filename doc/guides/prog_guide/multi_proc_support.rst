@@ -220,8 +220,8 @@ way communication mechanism, with the requester expecting a response from the
 other side.
 
 Both messages and requests will trigger a named callback on the receiver side.
-These callbacks will be called from within a dedicated IPC thread that is not
-part of EAL lcore threads.
+These callbacks will be called from within a dedicated IPC or interrupt thread
+that are not part of EAL lcore threads.
 
 Registering for incoming messages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -280,6 +280,13 @@ For asynchronous requests, a function pointer to the callback function must be
 provided instead. This callback will be called when the request either has timed
 out, or will have received a response to all the messages that were sent.
 
+.. warning::
+
+    When an asynchronous request times out, the callback will be called not by
+    a dedicated IPC thread, but rather from EAL interrupt thread. Because of
+    this, it may not be possible for DPDK to trigger another interrupt-based
+    event (such as an alarm) while handling asynchronous IPC callback.
+
 When the callback is called, the original request descriptor will be provided
 (so that it would be possible to determine for which sent message this is a
 callback to), along with a response descriptor like the one described above.
@@ -310,6 +317,12 @@ requests (i.e. sending a request while responding to another request) is not
 supported. However, since sending messages (not requests) does not involve an
 IPC thread, sending messages while processing another message or request is
 supported.
+
+Asynchronous request callbacks may be triggered either from IPC thread or from
+interrupt thread, depending on whether the request has timed out. It is
+therefore suggested to avoid waiting for interrupt-based events (such as alarms)
+inside asynchronous IPC request callbacks. This limitation does not apply to
+messages or synchronous requests.
 
 If callbacks spend a long time processing the incoming requests, the requestor
 might time out, so setting the right timeout value on the requestor side is
