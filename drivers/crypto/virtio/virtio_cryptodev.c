@@ -1223,6 +1223,12 @@ virtio_crypto_sym_pad_op_ctrl_req(
 	/* Get cipher xform from crypto xform chain */
 	cipher_xform = virtio_crypto_get_cipher_xform(xform);
 	if (cipher_xform) {
+		if (cipher_xform->iv.length > VIRTIO_CRYPTO_MAX_IV_SIZE) {
+			VIRTIO_CRYPTO_SESSION_LOG_ERR(
+				"cipher IV size cannot be longer than %u",
+				VIRTIO_CRYPTO_MAX_IV_SIZE);
+			return -1;
+		}
 		if (is_chainned)
 			ret = virtio_crypto_sym_pad_cipher_param(
 				&ctrl->u.sym_create_session.u.chain.para

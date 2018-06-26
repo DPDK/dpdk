@@ -203,6 +203,8 @@ virtqueue_crypto_sym_enqueue_xmit(
 	uint16_t req_data_len = sizeof(struct virtio_crypto_op_data_req);
 	uint32_t indirect_vring_addr_offset = req_data_len +
 		sizeof(struct virtio_crypto_inhdr);
+	uint32_t indirect_iv_addr_offset = indirect_vring_addr_offset +
+			sizeof(struct vring_desc) * NUM_ENTRY_VIRTIO_CRYPTO_OP;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct virtio_crypto_session *session =
 		(struct virtio_crypto_session *)get_session_private_data(
@@ -259,7 +261,17 @@ virtqueue_crypto_sym_enqueue_xmit(
 
 	/* indirect vring: iv of cipher */
 	if (session->iv.length) {
-		desc[idx].addr = cop->phys_addr + session->iv.offset;
+		if (cop->phys_addr)
+			desc[idx].addr = cop->phys_addr + session->iv.offset;
+		else {
+			rte_memcpy(crypto_op_cookie->iv,
+					rte_crypto_op_ctod_offset(cop,
+					uint8_t *, session->iv.offset),
+					session->iv.length);
+			desc[idx].addr = indirect_op_data_req_phys_addr +
+				indirect_iv_addr_offset;
+		}
+
 		desc[idx].len = session->iv.length;
 		desc[idx++].flags = VRING_DESC_F_NEXT;
 	}

@@ -16,6 +16,8 @@
 
 #define NUM_ENTRY_VIRTIO_CRYPTO_OP 7
 
+#define VIRTIO_CRYPTO_MAX_IV_SIZE 16
+
 extern uint8_t cryptodev_virtio_driver_id;
 
 enum virtio_crypto_cmd_id {
@@ -29,6 +31,7 @@ struct virtio_crypto_op_cookie {
 	struct virtio_crypto_op_data_req data_req;
 	struct virtio_crypto_inhdr inhdr;
 	struct vring_desc desc[NUM_ENTRY_VIRTIO_CRYPTO_OP];
+	uint8_t iv[VIRTIO_CRYPTO_MAX_IV_SIZE];
 };
 
 /*
