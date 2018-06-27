@@ -44,6 +44,8 @@
 #define I40EVF_BUSY_WAIT_COUNT 50
 #define MAX_RESET_WAIT_CNT     20
 
+#define I40EVF_ALARM_INTERVAL 50000 /* us */
+
 struct i40evf_arq_msg_info {
 	enum virtchnl_ops ops;
 	enum i40e_status_code result;
@@ -1133,7 +1135,7 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	uint16_t interval =
-		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 0, 0);
+		i40e_calc_itr_interval(0, 0);
 
 	vf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	vf->dev_data = dev->data;
@@ -1370,7 +1372,7 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
  *  void
  */
 static void
-i40evf_dev_interrupt_handler(void *param)
+i40evf_dev_alarm_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1399,6 +1401,8 @@ i40evf_dev_interrupt_handler(void *param)
 
 done:
 	i40evf_enable_irq0(hw);
+	rte_eal_alarm_set(I40EVF_ALARM_INTERVAL,
+			  i40evf_dev_alarm_handler, dev);
 }
 
 static int
@@ -1442,12 +1446,8 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	/* register callback func to eal lib */
-	rte_intr_callback_register(&pci_dev->intr_handle,
-		i40evf_dev_interrupt_handler, (void *)eth_dev);
-
-	/* enable uio intr after callback register */
-	rte_intr_enable(&pci_dev->intr_handle);
+	rte_eal_alarm_set(I40EVF_ALARM_INTERVAL,
+			  i40evf_dev_alarm_handler, eth_dev);
 
 	/* configure and enable device interrupt */
 	i40evf_enable_irq0(hw);
@@ -1836,7 +1836,7 @@ i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t interval =
-		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL, 0, 0);
+		i40e_calc_itr_interval(0, 0);
 	uint16_t msix_intr;
 
 	msix_intr = intr_handle->intr_vec[queue_id];
@@ -1858,8 +1858,6 @@ i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 				I40E_VFINT_DYN_CTLN1_INTERVAL_SHIFT));
 
 	I40EVF_WRITE_FLUSH(hw);
-
-	rte_intr_enable(&pci_dev->intr_handle);
 
 	return 0;
 }
@@ -2016,17 +2014,9 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 		goto err_mac;
 	}
 
-	/* When a VF port is bound to VFIO-PCI, only miscellaneous interrupt
-	 * is mapped to VFIO vector 0 in i40evf_dev_init( ).
-	 * If previous VFIO interrupt mapping set in i40evf_dev_init( ) is
-	 * not cleared, it will fail when rte_intr_enable( ) tries to map Rx
-	 * queue interrupt to other VFIO vectors.
-	 * So clear uio/vfio intr/evevnfd first to avoid failure.
-	 */
-	if (dev->data->dev_conf.intr_conf.rxq != 0) {
-		rte_intr_disable(intr_handle);
+	/* only enable interrupt in rx interrupt mode */
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
 		rte_intr_enable(intr_handle);
-	}
 
 	i40evf_enable_queues_intr(dev);
 
@@ -2049,6 +2039,9 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
+		rte_intr_disable(intr_handle);
 
 	if (hw->adapter_stopped == 1)
 		return;
@@ -2285,9 +2278,8 @@ static void
 i40evf_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
+	rte_eal_alarm_cancel(i40evf_dev_alarm_handler, dev);
 	i40evf_dev_stop(dev);
 	i40e_dev_free_queues(dev);
 	/*
@@ -2300,12 +2292,6 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
-	/* disable uio intr before callback unregister */
-	rte_intr_disable(intr_handle);
-
-	/* unregister callback func from eal lib */
-	rte_intr_callback_unregister(intr_handle,
-				     i40evf_dev_interrupt_handler, dev);
 	i40evf_disable_irq0(hw);
 }
 

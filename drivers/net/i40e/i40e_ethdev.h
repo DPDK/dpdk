@@ -184,7 +184,7 @@ enum i40e_flxpld_layer_idx {
 #define I40E_ITR_INDEX_NONE             3
 #define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
 #define I40E_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
-#define I40E_VF_QUEUE_ITR_INTERVAL_DEFAULT 8160 /* 8160 us */
+#define I40E_VF_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
 /* Special FW support this floating VEB feature */
 #define FLOATING_VEB_SUPPORTED_FW_MAJ 5
 #define FLOATING_VEB_SUPPORTED_FW_MIN 0
@@ -1318,17 +1318,17 @@ i40e_align_floor(int n)
 }
 
 static inline uint16_t
-i40e_calc_itr_interval(int16_t interval, bool is_pf, bool is_multi_drv)
+i40e_calc_itr_interval(bool is_pf, bool is_multi_drv)
 {
-	if (interval < 0 || interval > I40E_QUEUE_ITR_INTERVAL_MAX) {
-		if (is_multi_drv) {
-			interval = I40E_QUEUE_ITR_INTERVAL_MAX;
-		} else {
-			if (is_pf)
-				interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
-			else
-				interval = I40E_VF_QUEUE_ITR_INTERVAL_DEFAULT;
-		}
+	uint16_t interval = 0;
+
+	if (is_multi_drv) {
+		interval = I40E_QUEUE_ITR_INTERVAL_MAX;
+	} else {
+		if (is_pf)
+			interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
+		else
+			interval = I40E_VF_QUEUE_ITR_INTERVAL_DEFAULT;
 	}
 
 	/* Convert to hardware count, as writing each 1 represents 2 us */

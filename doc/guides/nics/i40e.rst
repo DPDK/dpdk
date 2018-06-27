@@ -96,11 +96,6 @@ Please note that enabling debugging options may affect system performance.
 
   Number of queues reserved for each VMDQ Pool.
 
-- ``CONFIG_RTE_LIBRTE_I40E_ITR_INTERVAL`` (default ``-1``)
-
-  Interrupt Throttling interval.
-
-
 Runtime Config Options
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -594,16 +589,6 @@ Use 16 Bytes RX Descriptor Size
 
 As i40e PMD supports both 16 and 32 bytes RX descriptor sizes, and 16 bytes size can provide helps to high performance of small packets.
 Configuration of ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC`` in config files can be changed to use 16 bytes size RX descriptors.
-
-High Performance and per Packet Latency Tradeoff
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Due to the hardware design, the interrupt signal inside NIC is needed for per
-packet descriptor write-back. The minimum interval of interrupts could be set
-at compile time by ``CONFIG_RTE_LIBRTE_I40E_ITR_INTERVAL`` in configuration files.
-Though there is a default configuration, the interval could be tuned by the
-users with that configuration item depends on what the user cares about more,
-performance or per packet latency.
 
 Example of getting best performance with l3fwd example
 ------------------------------------------------------
