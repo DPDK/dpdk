@@ -46,6 +46,14 @@ New Features
   Flow API support has been added to CXGBE Poll Mode Driver to offload
   flows to Chelsio T5/T6 NICs.
 
+* **Added ixgbe preferred Rx/Tx parameters.**
+
+  Rather than applications providing explicit Rx and Tx parameters such as
+  queue and burst sizes, they can request that the EAL instead uses preferred
+  values provided by the PMD, falling back to defaults within the EAL if the
+  PMD does not provide any. The provision of such tuned values now includes
+  the ixgbe PMD.
+
 
 API Changes
 -----------
