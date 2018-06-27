@@ -7,6 +7,8 @@
 # - DPDK_CHECKPATCH_LINE_LENGTH
 . $(dirname $(readlink -e $0))/load-devel-config
 
+VALIDATE_NEW_API=$(dirname $(readlink -e $0))/check-symbol-change.sh
+
 length=${DPDK_CHECKPATCH_LINE_LENGTH:-80}
 
 # override default Linux options
@@ -20,6 +22,14 @@ PREFER_KERNEL_TYPES,BIT_MACRO,CONST_STRUCT,\
 SPLIT_STRING,LONG_LINE_STRING,\
 LINE_SPACING,PARENTHESIS_ALIGNMENT,NETWORKING_BLOCK_COMMENT_STYLE,\
 NEW_TYPEDEFS,COMPARISON_TO_NULL"
+
+clean_tmp_files() {
+	if echo $tmpinput | grep -q '^checkpatches\.' ; then
+		rm -f $tmpinput
+	fi
+}
+
+trap "clean_tmp_files" SIGINT
 
 print_usage () {
 	cat <<- END_OF_HELP
@@ -58,19 +68,38 @@ total=0
 status=0
 
 check () { # <patch> <commit> <title>
+	local ret=0
+
 	total=$(($total + 1))
 	! $verbose || printf '\n### %s\n\n' "$3"
 	if [ -n "$1" ] ; then
-		report=$($DPDK_CHECKPATCH_PATH $options "$1" 2>/dev/null)
+		tmpinput=$1
 	elif [ -n "$2" ] ; then
-		report=$(git format-patch --find-renames --no-stat --stdout -1 $commit |
-			$DPDK_CHECKPATCH_PATH $options - 2>/dev/null)
+		tmpinput=$(mktemp checkpatches.XXXXXX)
+		git format-patch --find-renames \
+		--no-stat --stdout -1 $commit > $tmpinput
 	else
-		report=$($DPDK_CHECKPATCH_PATH $options - 2>/dev/null)
+		tmpinput=$(mktemp checkpatches.XXXXXX)
+		cat > $tmpinput
 	fi
-	[ $? -ne 0 ] || return 0
-	$verbose || printf '\n### %s\n\n' "$3"
-	printf '%s\n' "$report" | sed -n '1,/^total:.*lines checked$/p'
+
+	report=$($DPDK_CHECKPATCH_PATH $options $tmpinput 2>/dev/null)
+	if [ $? -ne 0 ] ; then
+		$verbose || printf '\n### %s\n\n' "$3"
+		printf '%s\n' "$report" | sed -n '1,/^total:.*lines checked$/p'
+		ret=1
+	fi
+
+	! $verbose || printf '\nChecking API additions/removals:\n'
+	report=$($VALIDATE_NEW_API "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
+	clean_tmp_files
+	[ $ret -eq 0 ] && return 0
+
 	status=$(($status + 1))
 }
 
