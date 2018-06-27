@@ -786,7 +786,7 @@ mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 
 	dir_fd = dirfd(mp_dir);
 	/* lock the directory to prevent processes spinning up while we send */
-	if (flock(dir_fd, LOCK_EX)) {
+	if (flock(dir_fd, LOCK_SH)) {
 		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
 			mp_dir_path);
 		rte_errno = errno;
@@ -1020,7 +1020,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 
 	dir_fd = dirfd(mp_dir);
 	/* lock the directory to prevent processes spinning up while we send */
-	if (flock(dir_fd, LOCK_EX)) {
+	if (flock(dir_fd, LOCK_SH)) {
 		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
 			mp_dir_path);
 		closedir(mp_dir);
@@ -1146,7 +1146,7 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 	dir_fd = dirfd(mp_dir);
 
 	/* lock the directory to prevent processes spinning up while we send */
-	if (flock(dir_fd, LOCK_EX)) {
+	if (flock(dir_fd, LOCK_SH)) {
 		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
 			mp_dir_path);
 		rte_errno = errno;
