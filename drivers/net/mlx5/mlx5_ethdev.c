@@ -192,13 +192,13 @@ int
 mlx5_ifindex(const struct rte_eth_dev *dev)
 {
 	char ifname[IF_NAMESIZE];
-	int ret;
+	unsigned int ret;
 
 	ret = mlx5_get_ifname(dev, &ifname);
 	if (ret)
 		return ret;
 	ret = if_nametoindex(ifname);
-	if (ret == -1) {
+	if (ret == 0) {
 		rte_errno = errno;
 		return -rte_errno;
 	}
