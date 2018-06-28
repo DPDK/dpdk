@@ -251,6 +251,17 @@ static int bnxt_init_chip(struct bnxt *bp)
 	for (i = 0; i < bp->nr_vnics; i++) {
 		struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+		uint32_t size = sizeof(*vnic->fw_grp_ids) * bp->max_ring_grps;
+
+		vnic->fw_grp_ids = rte_zmalloc("vnic_fw_grp_ids", size, 0);
+		if (!vnic->fw_grp_ids) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to alloc %d bytes for group ids\n",
+				    size);
+			rc = -ENOMEM;
+			goto err_out;
+		}
+		memset(vnic->fw_grp_ids, -1, size);
 
 		rc = bnxt_hwrm_vnic_alloc(bp, vnic);
 		if (rc) {

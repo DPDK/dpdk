@@ -1319,8 +1319,9 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	/* map ring groups to this vnic */
 	PMD_DRV_LOG(DEBUG, "Alloc VNIC. Start %x, End %x\n",
 		vnic->start_grp_id, vnic->end_grp_id);
-	for (i = vnic->start_grp_id, j = 0; i <= vnic->end_grp_id; i++, j++)
+	for (i = vnic->start_grp_id, j = 0; i < vnic->end_grp_id; i++, j++)
 		vnic->fw_grp_ids[j] = bp->grp_info[i].fw_grp_id;
+
 	vnic->dflt_ring_grp = bp->grp_info[vnic->start_grp_id].fw_grp_id;
 	vnic->rss_rule = (uint16_t)HWRM_NA_SIGNATURE;
 	vnic->cos_rule = (uint16_t)HWRM_NA_SIGNATURE;
@@ -2106,6 +2107,8 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 		bnxt_hwrm_vnic_tpa_cfg(bp, vnic, false);
 
 		bnxt_hwrm_vnic_free(bp, vnic);
+
+		rte_free(vnic->fw_grp_ids);
 	}
 	/* Ring resources */
 	bnxt_free_all_hwrm_rings(bp);
