@@ -147,6 +147,10 @@ struct rte_event_eth_rx_adapter {
 struct eth_device_info {
 	struct rte_eth_dev *dev;
 	struct eth_rx_queue_info *rx_queue;
+	/* Rx callback */
+	rte_event_eth_rx_adapter_cb_fn cb_fn;
+	/* Rx callback argument */
+	void *cb_arg;
 	/* Set if ethdev->eventdev packet transfer uses a
 	 * hardware mechanism
 	 */
@@ -759,11 +763,12 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 		uint16_t num)
 {
 	uint32_t i;
-	struct eth_device_info *eth_device_info =
+	struct eth_device_info *dev_info =
 					&rx_adapter->eth_devices[eth_dev_id];
 	struct eth_rx_queue_info *eth_rx_queue_info =
-					&eth_device_info->rx_queue[rx_queue_id];
-
+					&dev_info->rx_queue[rx_queue_id];
+	struct rte_eth_event_enqueue_buffer *buf =
+					&rx_adapter->event_enqueue_buffer;
 	int32_t qid = eth_rx_queue_info->event_queue_id;
 	uint8_t sched_type = eth_rx_queue_info->sched_type;
 	uint8_t priority = eth_rx_queue_info->priority;
@@ -774,6 +779,8 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 	uint32_t rss;
 	int do_rss;
 	uint64_t ts;
+	struct rte_mbuf *cb_mbufs[BATCH_SIZE];
+	uint16_t nb_cb;
 
 	/* 0xffff ffff if PKT_RX_RSS_HASH is set, otherwise 0 */
 	rss_mask = ~(((m->ol_flags & PKT_RX_RSS_HASH) != 0) - 1);
@@ -787,6 +794,19 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 			m->timestamp = ts;
 			m->ol_flags |= PKT_RX_TIMESTAMP;
 		}
+	}
+
+
+	nb_cb = dev_info->cb_fn ? dev_info->cb_fn(eth_dev_id, rx_queue_id,
+						ETH_EVENT_BUFFER_SIZE,
+						buf->count, mbufs,
+						num,
+						dev_info->cb_arg,
+						cb_mbufs) :
+						num;
+	if (nb_cb < num) {
+		mbufs = cb_mbufs;
+		num = nb_cb;
 	}
 
 	for (i = 0; i < num; i++) {
@@ -2363,4 +2383,48 @@ rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 		*service_id = rx_adapter->service_id;
 
 	return rx_adapter->service_inited ? 0 : -ESRCH;
+}
+
+int rte_event_eth_rx_adapter_cb_register(uint8_t id,
+					uint16_t eth_dev_id,
+					rte_event_eth_rx_adapter_cb_fn cb_fn,
+					void *cb_arg)
+{
+	struct rte_event_eth_rx_adapter *rx_adapter;
+	struct eth_device_info *dev_info;
+	uint32_t cap;
+	int ret;
+
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
+
+	rx_adapter = rxa_id_to_adapter(id);
+	if (rx_adapter == NULL)
+		return -EINVAL;
+
+	dev_info = &rx_adapter->eth_devices[eth_dev_id];
+	if (dev_info->rx_queue == NULL)
+		return -EINVAL;
+
+	ret = rte_event_eth_rx_adapter_caps_get(rx_adapter->eventdev_id,
+						eth_dev_id,
+						&cap);
+	if (ret) {
+		RTE_EDEV_LOG_ERR("Failed to get adapter caps edev %" PRIu8
+			"eth port %" PRIu16, id, eth_dev_id);
+		return ret;
+	}
+
+	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
+		RTE_EDEV_LOG_ERR("Rx callback not supported for eth port %"
+				PRIu16, eth_dev_id);
+		return -EINVAL;
+	}
+
+	rte_spinlock_lock(&rx_adapter->rx_lock);
+	dev_info->cb_fn = cb_fn;
+	dev_info->cb_arg = cb_arg;
+	rte_spinlock_unlock(&rx_adapter->rx_lock);
+
+	return 0;
 }

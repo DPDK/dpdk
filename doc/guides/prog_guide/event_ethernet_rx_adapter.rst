@@ -168,3 +168,20 @@ received on a polled Rx queue. The interrupt thread is affinitized to the same
 CPUs as the lcores of the Rx adapter service function, if the Rx adapter
 service function has not been mapped to any lcores, the interrupt thread
 is mapped to the master lcore.
+
+Rx Callback for SW Rx Adapter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For SW based packet transfers, i.e., when the
+``RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT`` is not set in the adapter's
+capabilities flags for a particular ethernet device, the service function
+temporarily enqueues mbufs to an event buffer before batch enqueueing these
+to the event device. If the buffer fills up, the service function stops
+dequeueing packets from the ethernet device. The application may want to
+monitor the buffer fill level and instruct the service function to selectively
+enqueue packets to the event device. The application may also use some other
+criteria to decide which packets should enter the event device even when
+the event buffer fill level is low. The
+``rte_event_eth_rx_adapter_cb_register()`` function allow the application
+to register a callback that selects which packets to enqueue to the event
+device.
