@@ -6,6 +6,7 @@ version = 2
 sources = files('bnxt_cpr.c',
 	'bnxt_ethdev.c',
 	'bnxt_filter.c',
+	'bnxt_flow.c',
 	'bnxt_hwrm.c',
 	'bnxt_irq.c',
 	'bnxt_ring.c',
