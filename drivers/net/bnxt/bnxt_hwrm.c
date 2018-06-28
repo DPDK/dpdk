@@ -506,6 +506,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (BNXT_PF(bp)) {
 		bp->pf.port_id = resp->port_id;
 		bp->pf.first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
+		bp->pf.total_vfs = rte_le_to_cpu_16(resp->max_vfs);
 		new_max_vfs = bp->pdev->max_vfs;
 		if (new_max_vfs != bp->pf.max_vfs) {
 			if (bp->pf.vf_info)
@@ -3151,7 +3152,9 @@ int bnxt_hwrm_port_clr_stats(struct bnxt *bp)
 	struct bnxt_pf_info *pf = &bp->pf;
 	int rc;
 
-	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
+	/* Not allowed on NS2 device, NPAR, MultiHost, VF */
+	if (!(bp->flags & BNXT_FLAG_PORT_STATS) || BNXT_VF(bp) ||
+	    BNXT_NPAR(bp) || BNXT_MH(bp) || BNXT_TOTAL_VFS(bp))
 		return 0;
 
 	HWRM_PREP(req, PORT_CLR_STATS);
