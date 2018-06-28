@@ -450,6 +450,10 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	eth_dev->data->dev_conf.intr_conf.lsc = 1;
 
 	eth_dev->data->dev_conf.intr_conf.rxq = 1;
+	dev_info->rx_desc_lim.nb_min = BNXT_MIN_RING_DESC;
+	dev_info->rx_desc_lim.nb_max = BNXT_MAX_RX_RING_DESC;
+	dev_info->tx_desc_lim.nb_min = BNXT_MIN_RING_DESC;
+	dev_info->tx_desc_lim.nb_max = BNXT_MAX_TX_RING_DESC;
 
 	/* *INDENT-ON* */
 
