@@ -54,6 +54,8 @@
 #define RX_CMP_IP_CS_UNKNOWN(rxcmp1)					\
 		!((rxcmp1)->flags2 & RX_CMP_IP_CS_BITS)
 
+#define BNXT_RX_POST_THRESH	32
+
 enum pkt_hash_types {
 	PKT_HASH_TYPE_NONE,	/* Undefined type */
 	PKT_HASH_TYPE_L2,	/* Input: src_MAC, dest_MAC */
