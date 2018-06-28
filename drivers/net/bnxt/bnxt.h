@@ -28,6 +28,14 @@
 #define BNXT_MAX_TX_RING_DESC	4096
 #define BNXT_MAX_RX_RING_DESC	8192
 
+#define BNXT_INT_LAT_TMR_MIN			75
+#define BNXT_INT_LAT_TMR_MAX			150
+#define BNXT_NUM_CMPL_AGGR_INT			36
+#define BNXT_CMPL_AGGR_DMA_TMR			37
+#define BNXT_NUM_CMPL_DMA_AGGR			36
+#define BNXT_CMPL_AGGR_DMA_TMR_DURING_INT	50
+#define BNXT_NUM_CMPL_DMA_AGGR_DURING_INT	12
+
 struct bnxt_led_info {
 	uint8_t      led_id;
 	uint8_t      led_type;
@@ -209,6 +217,16 @@ struct bnxt_ptp_cfg {
 	uint32_t			tx_mapped_regs[BNXT_PTP_TX_REGS];
 };
 
+struct bnxt_coal {
+	uint16_t			num_cmpl_aggr_int;
+	uint16_t			num_cmpl_dma_aggr;
+	uint16_t			num_cmpl_dma_aggr_during_int;
+	uint16_t			int_lat_tmr_max;
+	uint16_t			int_lat_tmr_min;
+	uint16_t			cmpl_aggr_dma_tmr;
+	uint16_t			cmpl_aggr_dma_tmr_during_int;
+};
+
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
 	void				*bar0;
@@ -315,6 +333,7 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 
 bool is_bnxt_supported(struct rte_eth_dev *dev);
+bool bnxt_stratus_device(struct bnxt *bp);
 extern const struct rte_flow_ops bnxt_flow_ops;
 
 extern int bnxt_logtype_driver;

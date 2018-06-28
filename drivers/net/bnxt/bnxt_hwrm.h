@@ -167,4 +167,6 @@ int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 int bnxt_hwrm_ptp_cfg(struct bnxt *bp);
 int bnxt_vnic_rss_configure(struct bnxt *bp,
 			    struct bnxt_vnic_info *vnic);
+int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
+			struct bnxt_coal *coal, uint16_t ring_id);
 #endif

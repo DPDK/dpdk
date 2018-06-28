@@ -3835,3 +3835,54 @@ int bnxt_vnic_rss_configure(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	}
 	return 0;
 }
+
+static void bnxt_hwrm_set_coal_params(struct bnxt_coal *hw_coal,
+	struct hwrm_ring_cmpl_ring_cfg_aggint_params_input *req)
+{
+	uint16_t flags;
+
+	req->num_cmpl_aggr_int = rte_cpu_to_le_16(hw_coal->num_cmpl_aggr_int);
+
+	/* This is a 6-bit value and must not be 0, or we'll get non stop IRQ */
+	req->num_cmpl_dma_aggr = rte_cpu_to_le_16(hw_coal->num_cmpl_dma_aggr);
+
+	/* This is a 6-bit value and must not be 0, or we'll get non stop IRQ */
+	req->num_cmpl_dma_aggr_during_int =
+		rte_cpu_to_le_16(hw_coal->num_cmpl_dma_aggr_during_int);
+
+	req->int_lat_tmr_max = rte_cpu_to_le_16(hw_coal->int_lat_tmr_max);
+
+	/* min timer set to 1/2 of interrupt timer */
+	req->int_lat_tmr_min = rte_cpu_to_le_16(hw_coal->int_lat_tmr_min);
+
+	/* buf timer set to 1/4 of interrupt timer */
+	req->cmpl_aggr_dma_tmr = rte_cpu_to_le_16(hw_coal->cmpl_aggr_dma_tmr);
+
+	req->cmpl_aggr_dma_tmr_during_int =
+		rte_cpu_to_le_16(hw_coal->cmpl_aggr_dma_tmr_during_int);
+
+	flags = HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_FLAGS_TIMER_RESET |
+		HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_FLAGS_RING_IDLE;
+	req->flags = rte_cpu_to_le_16(flags);
+}
+
+int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
+			struct bnxt_coal *coal, uint16_t ring_id)
+{
+	struct hwrm_ring_cmpl_ring_cfg_aggint_params_input req = {0};
+	struct hwrm_ring_cmpl_ring_cfg_aggint_params_output *resp =
+						bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	/* Set ring coalesce parameters only for Stratus 100G NIC */
+	if (!bnxt_stratus_device(bp))
+		return 0;
+
+	HWRM_PREP(req, RING_CMPL_RING_CFG_AGGINT_PARAMS);
+	bnxt_hwrm_set_coal_params(coal, &req);
+	req.ring_id = rte_cpu_to_le_16(ring_id);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+	return 0;
+}

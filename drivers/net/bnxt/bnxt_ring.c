@@ -258,6 +258,24 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	return 0;
 }
 
+static void bnxt_init_dflt_coal(struct bnxt_coal *coal)
+{
+	/* Tick values in micro seconds.
+	 * 1 coal_buf x bufs_per_record = 1 completion record.
+	 */
+	coal->num_cmpl_aggr_int = BNXT_NUM_CMPL_AGGR_INT;
+	/* This is a 6-bit value and must not be 0, or we'll get non stop IRQ */
+	coal->num_cmpl_dma_aggr = BNXT_NUM_CMPL_DMA_AGGR;
+	/* This is a 6-bit value and must not be 0, or we'll get non stop IRQ */
+	coal->num_cmpl_dma_aggr_during_int = BNXT_NUM_CMPL_DMA_AGGR_DURING_INT;
+	coal->int_lat_tmr_max = BNXT_INT_LAT_TMR_MAX;
+	/* min timer set to 1/2 of interrupt timer */
+	coal->int_lat_tmr_min = BNXT_INT_LAT_TMR_MIN;
+	/* buf timer set to 1/4 of interrupt timer */
+	coal->cmpl_aggr_dma_tmr = BNXT_CMPL_AGGR_DMA_TMR;
+	coal->cmpl_aggr_dma_tmr_during_int = BNXT_CMPL_AGGR_DMA_TMR_DURING_INT;
+}
+
 /* ring_grp usage:
  * [0] = default completion ring
  * [1 -> +rx_cp_nr_rings] = rx_cp, rx rings
@@ -265,8 +283,11 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
  */
 int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 {
+	struct bnxt_coal coal;
 	unsigned int i;
 	int rc = 0;
+
+	bnxt_init_dflt_coal(&coal);
 
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
@@ -291,6 +312,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		cpr->cp_doorbell = (char *)bp->doorbell_base + i * 0x80;
 		bp->grp_info[i].cp_fw_ring_id = cp_ring->fw_ring_id;
 		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+		bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
 
 		if (!i) {
 			/*
@@ -379,6 +401,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 
 		txr->tx_doorbell = (char *)bp->doorbell_base + idx * 0x80;
 		txq->index = idx;
+		bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
 	}
 
 err_out:

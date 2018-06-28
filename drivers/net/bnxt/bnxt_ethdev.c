@@ -3074,6 +3074,17 @@ static bool bnxt_vf_pciid(uint16_t id)
 	return false;
 }
 
+bool bnxt_stratus_device(struct bnxt *bp)
+{
+	uint16_t id = bp->pdev->id.device_id;
+
+	if (id == BROADCOM_DEV_ID_STRATUS_NIC ||
+	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF1 ||
+	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF2)
+		return true;
+	return false;
+}
+
 static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
