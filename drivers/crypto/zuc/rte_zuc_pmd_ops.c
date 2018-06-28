@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2018 Intel Corporation
  */
 
 #include <string.h>
@@ -172,13 +172,13 @@ zuc_pmd_qp_create_processed_ops_ring(struct zuc_qp *qp,
 	r = rte_ring_lookup(qp->name);
 	if (r) {
 		if (rte_ring_get_size(r) >= ring_size) {
-			ZUC_LOG_INFO("Reusing existing ring %s"
+			ZUC_LOG(INFO, "Reusing existing ring %s"
 					" for processed packets",
 					 qp->name);
 			return r;
 		}
 
-		ZUC_LOG_ERR("Unable to reuse existing ring %s"
+		ZUC_LOG(ERR, "Unable to reuse existing ring %s"
 				" for processed packets",
 				 qp->name);
 		return NULL;
@@ -271,19 +271,20 @@ zuc_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 	int ret;
 
 	if (unlikely(sess == NULL)) {
-		ZUC_LOG_ERR("invalid session struct");
+		ZUC_LOG(ERR, "invalid session struct");
 		return -EINVAL;
 	}
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CDEV_LOG_ERR(
+		ZUC_LOG(ERR,
 			"Couldn't get object from session mempool");
+
 		return -ENOMEM;
 	}
 
 	ret = zuc_set_session_parameters(sess_private_data, xform);
 	if (ret != 0) {
-		ZUC_LOG_ERR("failed configure session parameters");
+		ZUC_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);

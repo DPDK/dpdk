@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2018 Intel Corporation
  */
 
 #ifndef _RTE_ZUC_PMD_PRIVATE_H_
@@ -10,25 +10,12 @@
 #define CRYPTODEV_NAME_ZUC_PMD		crypto_zuc
 /**< KASUMI PMD device name */
 
-#define ZUC_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_ZUC_PMD), \
-			__func__, __LINE__, ## args)
-
-#ifdef RTE_LIBRTE_ZUC_DEBUG
-#define ZUC_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_ZUC_PMD), \
-			__func__, __LINE__, ## args)
-
-#define ZUC_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_ZUC_PMD), \
-			__func__, __LINE__, ## args)
-#else
-#define ZUC_LOG_INFO(fmt, args...)
-#define ZUC_LOG_DBG(fmt, args...)
-#endif
+/** ZUC PMD LOGTYPE DRIVER */
+int zuc_logtype_driver;
+#define ZUC_LOG(level, fmt, ...)  \
+	rte_log(RTE_LOG_ ## level, zuc_logtype_driver,  \
+			"%s()... line %u: " fmt "\n", __func__, __LINE__,  \
+				## __VA_ARGS__)
 
 #define ZUC_IV_KEY_LENGTH 16
 #define ZUC_DIGEST_LENGTH 4
