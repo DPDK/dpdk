@@ -47,6 +47,18 @@ void eal_log_set_default(FILE *default_log);
 int rte_eal_cpu_init(void);
 
 /**
+ * Create memseg lists
+ *
+ * This function is private to EAL.
+ *
+ * Preallocate virtual memory.
+ *
+ * @return
+ *   0 on success, negative on error
+ */
+int rte_eal_memseg_init(void);
+
+/**
  * Map memory
  *
  * This function is private to EAL.

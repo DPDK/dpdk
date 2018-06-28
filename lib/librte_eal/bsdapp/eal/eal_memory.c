@@ -12,6 +12,7 @@
 
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
+#include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
 #include "eal_private.h"
@@ -299,4 +300,218 @@ int
 rte_eal_using_phys_addrs(void)
 {
 	return 0;
+}
+
+static uint64_t
+get_mem_amount(uint64_t page_sz, uint64_t max_mem)
+{
+	uint64_t area_sz, max_pages;
+
+	/* limit to RTE_MAX_MEMSEG_PER_LIST pages or RTE_MAX_MEM_MB_PER_LIST */
+	max_pages = RTE_MAX_MEMSEG_PER_LIST;
+	max_mem = RTE_MIN((uint64_t)RTE_MAX_MEM_MB_PER_LIST << 20, max_mem);
+
+	area_sz = RTE_MIN(page_sz * max_pages, max_mem);
+
+	/* make sure the list isn't smaller than the page size */
+	area_sz = RTE_MAX(area_sz, page_sz);
+
+	return RTE_ALIGN(area_sz, page_sz);
+}
+
+#define MEMSEG_LIST_FMT "memseg-%" PRIu64 "k-%i-%i"
+static int
+alloc_memseg_list(struct rte_memseg_list *msl, uint64_t page_sz,
+		int n_segs, int socket_id, int type_msl_idx)
+{
+	char name[RTE_FBARRAY_NAME_LEN];
+
+	snprintf(name, sizeof(name), MEMSEG_LIST_FMT, page_sz >> 10, socket_id,
+		 type_msl_idx);
+	if (rte_fbarray_init(&msl->memseg_arr, name, n_segs,
+			sizeof(struct rte_memseg))) {
+		RTE_LOG(ERR, EAL, "Cannot allocate memseg list: %s\n",
+			rte_strerror(rte_errno));
+		return -1;
+	}
+
+	msl->page_sz = page_sz;
+	msl->socket_id = socket_id;
+	msl->base_va = NULL;
+
+	RTE_LOG(DEBUG, EAL, "Memseg list allocated: 0x%zxkB at socket %i\n",
+			(size_t)page_sz >> 10, socket_id);
+
+	return 0;
+}
+
+static int
+alloc_va_space(struct rte_memseg_list *msl)
+{
+	uint64_t page_sz;
+	size_t mem_sz;
+	void *addr;
+	int flags = 0;
+
+#ifdef RTE_ARCH_PPC_64
+	flags |= MAP_HUGETLB;
+#endif
+
+	page_sz = msl->page_sz;
+	mem_sz = page_sz * msl->memseg_arr.len;
+
+	addr = eal_get_virtual_area(msl->base_va, &mem_sz, page_sz, 0, flags);
+	if (addr == NULL) {
+		if (rte_errno == EADDRNOTAVAIL)
+			RTE_LOG(ERR, EAL, "Could not mmap %llu bytes at [%p] - please use '--base-virtaddr' option\n",
+				(unsigned long long)mem_sz, msl->base_va);
+		else
+			RTE_LOG(ERR, EAL, "Cannot reserve memory\n");
+		return -1;
+	}
+	msl->base_va = addr;
+
+	return 0;
+}
+
+
+static int
+memseg_primary_init(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int hpi_idx, msl_idx = 0;
+	struct rte_memseg_list *msl;
+	uint64_t max_mem, total_mem;
+
+	/* no-huge does not need this at all */
+	if (internal_config.no_hugetlbfs)
+		return 0;
+
+	/* FreeBSD has an issue where core dump will dump the entire memory
+	 * contents, including anonymous zero-page memory. Therefore, while we
+	 * will be limiting total amount of memory to RTE_MAX_MEM_MB, we will
+	 * also be further limiting total memory amount to whatever memory is
+	 * available to us through contigmem driver (plus spacing blocks).
+	 *
+	 * so, at each stage, we will be checking how much memory we are
+	 * preallocating, and adjust all the values accordingly.
+	 */
+
+	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
+	total_mem = 0;
+
+	/* create memseg lists */
+	for (hpi_idx = 0; hpi_idx < (int) internal_config.num_hugepage_sizes;
+			hpi_idx++) {
+		uint64_t max_type_mem, total_type_mem = 0;
+		uint64_t avail_mem;
+		int type_msl_idx, max_segs, avail_segs, total_segs = 0;
+		struct hugepage_info *hpi;
+		uint64_t hugepage_sz;
+
+		hpi = &internal_config.hugepage_info[hpi_idx];
+		hugepage_sz = hpi->hugepage_sz;
+
+		/* no NUMA support on FreeBSD */
+
+		/* check if we've already exceeded total memory amount */
+		if (total_mem >= max_mem)
+			break;
+
+		/* first, calculate theoretical limits according to config */
+		max_type_mem = RTE_MIN(max_mem - total_mem,
+			(uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20);
+		max_segs = RTE_MAX_MEMSEG_PER_TYPE;
+
+		/* now, limit all of that to whatever will actually be
+		 * available to us, because without dynamic allocation support,
+		 * all of that extra memory will be sitting there being useless
+		 * and slowing down core dumps in case of a crash.
+		 *
+		 * we need (N*2)-1 segments because we cannot guarantee that
+		 * each segment will be IOVA-contiguous with the previous one,
+		 * so we will allocate more and put spaces inbetween segments
+		 * that are non-contiguous.
+		 */
+		avail_segs = (hpi->num_pages[0] * 2) - 1;
+		avail_mem = avail_segs * hugepage_sz;
+
+		max_type_mem = RTE_MIN(avail_mem, max_type_mem);
+		max_segs = RTE_MIN(avail_segs, max_segs);
+
+		type_msl_idx = 0;
+		while (total_type_mem < max_type_mem &&
+				total_segs < max_segs) {
+			uint64_t cur_max_mem, cur_mem;
+			unsigned int n_segs;
+
+			if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
+				RTE_LOG(ERR, EAL,
+					"No more space in memseg lists, please increase %s\n",
+					RTE_STR(CONFIG_RTE_MAX_MEMSEG_LISTS));
+				return -1;
+			}
+
+			msl = &mcfg->memsegs[msl_idx++];
+
+			cur_max_mem = max_type_mem - total_type_mem;
+
+			cur_mem = get_mem_amount(hugepage_sz,
+					cur_max_mem);
+			n_segs = cur_mem / hugepage_sz;
+
+			if (alloc_memseg_list(msl, hugepage_sz, n_segs,
+					0, type_msl_idx))
+				return -1;
+
+			total_segs += msl->memseg_arr.len;
+			total_type_mem = total_segs * hugepage_sz;
+			type_msl_idx++;
+
+			if (alloc_va_space(msl)) {
+				RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list\n");
+				return -1;
+			}
+		}
+		total_mem += total_type_mem;
+	}
+	return 0;
+}
+
+static int
+memseg_secondary_init(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int msl_idx = 0;
+	struct rte_memseg_list *msl;
+
+	for (msl_idx = 0; msl_idx < RTE_MAX_MEMSEG_LISTS; msl_idx++) {
+
+		msl = &mcfg->memsegs[msl_idx];
+
+		/* skip empty memseg lists */
+		if (msl->memseg_arr.len == 0)
+			continue;
+
+		if (rte_fbarray_attach(&msl->memseg_arr)) {
+			RTE_LOG(ERR, EAL, "Cannot attach to primary process memseg lists\n");
+			return -1;
+		}
+
+		/* preallocate VA space */
+		if (alloc_va_space(msl)) {
+			RTE_LOG(ERR, EAL, "Cannot preallocate VA space for hugepage memory\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int
+rte_eal_memseg_init(void)
+{
+	return rte_eal_process_type() == RTE_PROC_PRIMARY ?
+			memseg_primary_init() :
+			memseg_secondary_init();
 }
