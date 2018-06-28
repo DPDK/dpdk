@@ -1582,6 +1582,7 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 
 	for (i = 0; i < bp->nr_vnics; i++) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+		uint16_t size = 0;
 
 		vnic->mru = bp->eth_dev->data->mtu + ETHER_HDR_LEN +
 					ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
@@ -1589,9 +1590,14 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		if (rc)
 			break;
 
-		rc = bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
-		if (rc)
-			return rc;
+		size = rte_pktmbuf_data_room_size(bp->rx_queues[0]->mb_pool);
+		size -= RTE_PKTMBUF_HEADROOM;
+
+		if (size < new_mtu) {
+			rc = bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
+			if (rc)
+				return rc;
+		}
 	}
 
 	return rc;
