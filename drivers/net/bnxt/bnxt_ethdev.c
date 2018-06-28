@@ -249,6 +249,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 	/* VNIC configuration */
 	for (i = 0; i < bp->nr_vnics; i++) {
+		struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
 
 		rc = bnxt_hwrm_vnic_alloc(bp, vnic);
@@ -258,12 +259,15 @@ static int bnxt_init_chip(struct bnxt *bp)
 			goto err_out;
 		}
 
-		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
-		if (rc) {
-			PMD_DRV_LOG(ERR,
-				"HWRM vnic %d ctx alloc failure rc: %x\n",
-				i, rc);
-			goto err_out;
+		/* Alloc RSS context only if RSS mode is enabled */
+		if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) {
+			rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
+			if (rc) {
+				PMD_DRV_LOG(ERR,
+					"HWRM vnic %d ctx alloc failure rc: %x\n",
+					i, rc);
+				goto err_out;
+			}
 		}
 
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
