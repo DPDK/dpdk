@@ -51,6 +51,7 @@ enum {
 };
 
 /* CQE status flags. */
+#define MLX4_CQE_STATUS_IPV6F (1 << 12)
 #define MLX4_CQE_STATUS_IPV4 (1 << 22)
 #define MLX4_CQE_STATUS_IPV4F (1 << 23)
 #define MLX4_CQE_STATUS_IPV6 (1 << 24)
