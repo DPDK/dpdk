@@ -14,5 +14,6 @@ sources = files('bnxt_cpr.c',
 	'bnxt_stats.c',
 	'bnxt_txq.c',
 	'bnxt_txr.c',
+	'bnxt_util.c',
 	'bnxt_vnic.c',
 	'rte_pmd_bnxt.c')

@@ -69,7 +69,6 @@ struct bnxt_filter_info *bnxt_get_unused_filter(struct bnxt *bp);
 void bnxt_free_filter(struct bnxt *bp, struct bnxt_filter_info *filter);
 struct bnxt_filter_info *bnxt_get_l2_filter(struct bnxt *bp,
 		struct bnxt_filter_info *nf, struct bnxt_vnic_info *vnic);
-int bnxt_check_zero_bytes(const uint8_t *bytes, int len);
 
 #define NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_MACADDR	\
 	HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_SRC_MACADDR

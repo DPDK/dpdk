@@ -15,6 +15,7 @@
 #include "bnxt.h"
 #include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
+#include "bnxt_util.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 
@@ -229,15 +230,6 @@ nxt_non_void_action(const struct rte_flow_action *cur)
 			return cur;
 		cur++;
 	}
-}
-
-int bnxt_check_zero_bytes(const uint8_t *bytes, int len)
-{
-	int i;
-	for (i = 0; i < len; i++)
-		if (bytes[i] != 0x00)
-			return 0;
-	return 1;
 }
 
 static int
