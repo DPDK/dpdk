@@ -715,6 +715,9 @@ rte_kni_get(const char *name)
 	struct rte_kni_memzone_slot *it;
 	struct rte_kni *kni;
 
+	if (name == NULL || name[0] == '\0')
+		return NULL;
+
 	/* Note: could be improved perf-wise if necessary */
 	for (i = 0; i < kni_memzone_pool.max_ifaces; i++) {
 		it = &kni_memzone_pool.slots[i];
