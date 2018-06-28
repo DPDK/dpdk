@@ -686,8 +686,8 @@ struct hwrm_err_output {
 #define HWRM_VERSION_MINOR 9
 #define HWRM_VERSION_UPDATE 2
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 6
-#define HWRM_VERSION_STR "1.9.2.6"
+#define HWRM_VERSION_RSVD 9
+#define HWRM_VERSION_STR "1.9.2.9"
 
 /****************
  * hwrm_ver_get *
@@ -3183,6 +3183,9 @@ struct hwrm_async_event_cmpl {
 	/* LLFC/PFC Configuration Change */
 	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LLFC_PFC_CHANGE \
 		UINT32_C(0x34)
+	/* Default VNIC Configuration Change */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE \
+		UINT32_C(0x35)
 	/* HWRM Error */
 	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_HWRM_ERROR \
 		UINT32_C(0xff)
@@ -3280,6 +3283,11 @@ struct hwrm_async_event_cmpl_link_status_change {
 		UINT32_C(0xffff0)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_STATUS_CHANGE_EVENT_DATA1_PORT_ID_SFT \
 		4
+	/* Indicates the physical function this event occured on. */
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_STATUS_CHANGE_EVENT_DATA1_PF_ID_MASK \
+		UINT32_C(0xff00000)
+	#define HWRM_ASYNC_EVENT_CMPL_LINK_STATUS_CHANGE_EVENT_DATA1_PF_ID_SFT \
+		20
 } __attribute__((packed));
 
 /* hwrm_async_event_cmpl_link_mtu_change (size:128b/16B) */
@@ -4087,6 +4095,10 @@ struct hwrm_async_event_cmpl_vf_flr {
 	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_MASK \
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_SFT 0
+	/* Indicates the physical function this event occured on. */
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_PF_ID_MASK \
+		UINT32_C(0xff0000)
+	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_PF_ID_SFT 16
 } __attribute__((packed));
 
 /* hwrm_async_event_cmpl_vf_mac_addr_change (size:128b/16B) */
@@ -4352,6 +4364,88 @@ struct hwrm_async_event_cmpl_llfc_pfc_change {
 		UINT32_C(0x1fffe0)
 	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_PORT_ID_SFT \
 		5
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_default_vnic_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_default_vnic_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* unused1 is 10 b */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_UNUSED1_MASK \
+		UINT32_C(0xffc0)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_UNUSED1_SFT \
+		6
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Notification of a default vnic allocaiton or free */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_ID_ALLOC_FREE_NOTIFICATION \
+		UINT32_C(0x35)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_ID_ALLOC_FREE_NOTIFICATION
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Indicates default vnic configuration change */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_MASK \
+		UINT32_C(0x3)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_SFT \
+		0
+	/*
+	 * If this field is set to 1, then it indicates that
+	 * a default VNIC has been allocate.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_DEF_VNIC_ALLOC \
+		UINT32_C(0x1)
+	/*
+	 * If this field is set to 2, then it indicates that
+	 * a default VNIC has been freed.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_DEF_VNIC_FREE \
+		UINT32_C(0x2)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_DEF_VNIC_FREE
+	/* Indicates the physical function this event occured on. */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_PF_ID_MASK \
+		UINT32_C(0x3fc)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_PF_ID_SFT \
+		2
+	/* Indicates the virtual function this event occured on */
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_VF_ID_MASK \
+		UINT32_C(0x3fffc00)
+	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_VF_ID_SFT \
+		10
 } __attribute__((packed));
 
 /* hwrm_async_event_cmpl_hwrm_error (size:128b/16B) */
@@ -5196,6 +5290,21 @@ struct hwrm_func_qcaps_output {
 	 */
 	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PCIE_STATS_SUPPORTED \
 		UINT32_C(0x10000)
+	/*
+	 * If the query is for a VF, then this flag shall be ignored,
+	 * If this query is for a PF and this flag is set to 1,
+	 * then the PF has the capability to adopt the VF's belonging
+	 * to another PF.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ADOPTED_PF_SUPPORTED \
+		UINT32_C(0x20000)
+	/*
+	 * If the query is for a VF, then this flag shall be ignored,
+	 * If this query is for a PF and this flag is set to 1,
+	 * then the PF has the capability to administer another PF.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ADMIN_PF_SUPPORTED \
+		UINT32_C(0x40000)
 	/*
 	 * This value is current MAC address configured for this
 	 * function. A value of 00-00-00-00-00-00 indicates no
