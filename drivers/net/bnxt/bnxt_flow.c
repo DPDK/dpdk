@@ -968,9 +968,13 @@ bnxt_match_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 				    sizeof(nf->dst_ipaddr_mask))) {
 				if (mf->dst_id == nf->dst_id)
 					return -EEXIST;
-				/* Same Flow, Different queue
+				/*
+				 * Same Flow, Different queue
 				 * Clear the old ntuple filter
+				 * Reuse the matching L2 filter
+				 * ID for the new filter
 				 */
+				nf->fw_l2_filter_id = mf->fw_l2_filter_id;
 				if (nf->filter_type == HWRM_CFA_EM_FILTER)
 					bnxt_hwrm_clear_em_filter(bp, mf);
 				if (nf->filter_type == HWRM_CFA_NTUPLE_FILTER)
