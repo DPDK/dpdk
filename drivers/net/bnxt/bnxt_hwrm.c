@@ -3798,7 +3798,6 @@ int bnxt_hwrm_clear_ntuple_filter(struct bnxt *bp,
 	HWRM_UNLOCK();
 
 	filter->fw_ntuple_filter_id = UINT64_MAX;
-	filter->fw_l2_filter_id = UINT64_MAX;
 
 	return 0;
 }
