@@ -1560,6 +1560,11 @@ int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 	struct hwrm_vnic_plcmodes_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint16_t size;
 
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
+		PMD_DRV_LOG(DEBUG, "VNIC ID %x\n", vnic->fw_vnic_id);
+		return rc;
+	}
+
 	HWRM_PREP(req, VNIC_PLCMODES_CFG);
 
 	req.flags = rte_cpu_to_le_32(
