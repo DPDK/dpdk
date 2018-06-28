@@ -1494,8 +1494,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 	/* Enable VLAN offloads by default */
 	ret = qede_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK  |
-					     ETH_VLAN_FILTER_MASK |
-					     ETH_VLAN_EXTEND_MASK);
+					     ETH_VLAN_FILTER_MASK);
 	if (ret)
 		return ret;
 
