@@ -31,8 +31,8 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		auth_xform = xform;
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_AES_GMAC) {
-			GCM_LOG_ERR("Only AES GMAC is supported as an "
-					"authentication only algorithm");
+			AESNI_GCM_LOG(ERR, "Only AES GMAC is supported as an "
+				"authentication only algorithm");
 			return -ENOTSUP;
 		}
 		/* Set IV parameters */
@@ -54,7 +54,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		aead_xform = xform;
 
 		if (aead_xform->aead.algo != RTE_CRYPTO_AEAD_AES_GCM) {
-			GCM_LOG_ERR("The only combined operation "
+			AESNI_GCM_LOG(ERR, "The only combined operation "
 						"supported is AES GCM");
 			return -ENOTSUP;
 		}
@@ -75,7 +75,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		sess->aad_length = aead_xform->aead.aad_length;
 		digest_length = aead_xform->aead.digest_length;
 	} else {
-		GCM_LOG_ERR("Wrong xform type, has to be AEAD or authentication");
+		AESNI_GCM_LOG(ERR, "Wrong xform type, has to be AEAD or authentication");
 		return -ENOTSUP;
 	}
 
@@ -83,7 +83,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 	/* IV check */
 	if (sess->iv.length != 16 && sess->iv.length != 12 &&
 			sess->iv.length != 0) {
-		GCM_LOG_ERR("Wrong IV length");
+		AESNI_GCM_LOG(ERR, "Wrong IV length");
 		return -EINVAL;
 	}
 
@@ -99,7 +99,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		sess->key = AESNI_GCM_KEY_256;
 		break;
 	default:
-		GCM_LOG_ERR("Invalid key length");
+		AESNI_GCM_LOG(ERR, "Invalid key length");
 		return -EINVAL;
 	}
 
@@ -109,7 +109,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 	if (digest_length != 16 &&
 			digest_length != 12 &&
 			digest_length != 8) {
-		GCM_LOG_ERR("digest");
+		AESNI_GCM_LOG(ERR, "Invalid digest length");
 		return -EINVAL;
 	}
 	sess->digest_length = digest_length;
@@ -464,13 +464,13 @@ aesni_gcm_create(const char *name,
 
 	/* Check CPU for support for AES instruction set */
 	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES)) {
-		GCM_LOG_ERR("AES instructions not supported by CPU");
+		AESNI_GCM_LOG(ERR, "AES instructions not supported by CPU");
 		return -EFAULT;
 	}
-
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
-		GCM_LOG_ERR("driver %s: create failed", init_params->name);
+		AESNI_GCM_LOG(ERR, "driver %s: create failed",
+			init_params->name);
 		return -ENODEV;
 	}
 
@@ -572,3 +572,12 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_GCM_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(aesni_gcm_crypto_drv, aesni_gcm_pmd_drv.driver,
 		cryptodev_driver_id);
+
+
+RTE_INIT(aesni_gcm_init_log);
+static void
+aesni_gcm_init_log(void)
+{
+	aesni_gcm_logtype_driver = rte_log_register("pmd.crypto.aesni_gcm");
+
+}

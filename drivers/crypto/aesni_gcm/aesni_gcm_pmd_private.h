@@ -10,25 +10,12 @@
 #define CRYPTODEV_NAME_AESNI_GCM_PMD	crypto_aesni_gcm
 /**< AES-NI GCM PMD device name */
 
-#define GCM_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), \
-			__func__, __LINE__, ## args)
-
-#ifdef RTE_LIBRTE_AESNI_MB_DEBUG
-#define GCM_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), \
-			__func__, __LINE__, ## args)
-
-#define GCM_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), \
-			__func__, __LINE__, ## args)
-#else
-#define GCM_LOG_INFO(fmt, args...)
-#define GCM_LOG_DBG(fmt, args...)
-#endif
+/** AES-NI GCM PMD  LOGTYPE DRIVER */
+int aesni_gcm_logtype_driver;
+#define AESNI_GCM_LOG(level, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, aesni_gcm_logtype_driver,	\
+			"%s() line %u: "fmt "\n", __func__, __LINE__,	\
+					## __VA_ARGS__)
 
 /* Maximum length for digest */
 #define DIGEST_LENGTH_MAX 16

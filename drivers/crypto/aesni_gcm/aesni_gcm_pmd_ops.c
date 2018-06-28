@@ -183,12 +183,11 @@ aesni_gcm_pmd_qp_create_processed_pkts_ring(struct aesni_gcm_qp *qp,
 	r = rte_ring_lookup(qp->name);
 	if (r) {
 		if (rte_ring_get_size(r) >= ring_size) {
-			GCM_LOG_INFO("Reusing existing ring %s for processed"
-					" packets", qp->name);
+			AESNI_GCM_LOG(INFO, "Reusing existing ring %s for processed"
+				" packets", qp->name);
 			return r;
 		}
-
-		GCM_LOG_ERR("Unable to reuse existing ring %s for processed"
+		AESNI_GCM_LOG(ERR, "Unable to reuse existing ring %s for processed"
 				" packets", qp->name);
 		return NULL;
 	}
@@ -284,19 +283,19 @@ aesni_gcm_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 	struct aesni_gcm_private *internals = dev->data->dev_private;
 
 	if (unlikely(sess == NULL)) {
-		GCM_LOG_ERR("invalid session struct");
+		AESNI_GCM_LOG(ERR, "invalid session struct");
 		return -EINVAL;
 	}
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CDEV_LOG_ERR(
-			"Couldn't get object from session mempool");
+		AESNI_GCM_LOG(ERR,
+				"Couldn't get object from session mempool");
 		return -ENOMEM;
 	}
 	ret = aesni_gcm_set_session_parameters(gcm_ops[internals->vector_mode],
 				sess_private_data, xform);
 	if (ret != 0) {
-		GCM_LOG_ERR("failed configure session parameters");
+		AESNI_GCM_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);
