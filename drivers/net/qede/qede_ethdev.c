@@ -1568,7 +1568,6 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 				     DEV_TX_OFFLOAD_UDP_CKSUM	|
 				     DEV_TX_OFFLOAD_TCP_CKSUM	|
 				     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				     DEV_TX_OFFLOAD_QINQ_INSERT |
 				     DEV_TX_OFFLOAD_MULTI_SEGS  |
 				     DEV_TX_OFFLOAD_TCP_TSO	|
 				     DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
@@ -1582,11 +1581,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		/* Packets are always dropped if no descriptors are available */
 		.rx_drop_en = 1,
-		/* The below RX offloads are always enabled */
-		.offloads = (DEV_RX_OFFLOAD_CRC_STRIP  |
-			     DEV_RX_OFFLOAD_IPV4_CKSUM |
-			     DEV_RX_OFFLOAD_TCP_CKSUM  |
-			     DEV_RX_OFFLOAD_UDP_CKSUM),
+		.offloads = 0,
 	};
 
 	memset(&link, 0, sizeof(struct qed_link_output));
