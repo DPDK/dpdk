@@ -541,7 +541,9 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	bool evt = false;
 
 	/* If Rx Q was stopped return. RxQ0 cannot be stopped. */
-	if (rxq->rx_deferred_start && rxq->queue_id)
+	if (unlikely(((rxq->rx_deferred_start ||
+		       !rte_spinlock_trylock(&rxq->lock)) &&
+		      rxq->queue_id)))
 		return 0;
 
 	/* Handle RX burst request */
@@ -583,7 +585,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * For PMD, there is no need to keep on pushing to REARM
 		 * the doorbell if there are no new completions
 		 */
-		return nb_rx_pkts;
+		goto done;
 	}
 
 	if (prod != rxr->rx_prod)
@@ -618,16 +620,22 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 	}
 
+done:
+	rte_spinlock_unlock(&rxq->lock);
+
 	return nb_rx_pkts;
 }
 
 void bnxt_free_rx_rings(struct bnxt *bp)
 {
 	int i;
+	struct bnxt_rx_queue *rxq;
+
+	if (!bp->rx_queues)
+		return;
 
 	for (i = 0; i < (int)bp->rx_nr_rings; i++) {
-		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
-
+		rxq = bp->rx_queues[i];
 		if (!rxq)
 			continue;
 

@@ -107,6 +107,7 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 void bnxt_free_all_hwrm_resources(struct bnxt *bp);
 void bnxt_free_hwrm_resources(struct bnxt *bp);
+void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index);
 int bnxt_alloc_hwrm_resources(struct bnxt *bp);
 int bnxt_get_hwrm_link_config(struct bnxt *bp, struct rte_eth_link *link);
 int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up);

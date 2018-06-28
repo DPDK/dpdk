@@ -10,6 +10,9 @@ struct bnxt;
 struct bnxt_rx_ring_info;
 struct bnxt_cp_ring_info;
 struct bnxt_rx_queue {
+	rte_spinlock_t		lock;	/* Synchronize between rx_queue_stop
+					 * and fast path
+					 */
 	struct rte_mempool	*mb_pool; /* mbuf pool for RX ring */
 	struct rte_mbuf		*pkt_first_seg; /* 1st seg of pkt */
 	struct rte_mbuf		*pkt_last_seg; /* Last seg of pkt */
@@ -54,4 +57,5 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev,
 			uint16_t rx_queue_id);
 int bnxt_rx_queue_stop(struct rte_eth_dev *dev,
 		       uint16_t rx_queue_id);
+void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq);
 #endif

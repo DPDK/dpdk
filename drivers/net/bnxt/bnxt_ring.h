@@ -70,6 +70,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			    struct bnxt_rx_queue *rxq,
 			    struct bnxt_cp_ring_info *cp_ring_info,
 			    const char *suffix);
+int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index);
 int bnxt_alloc_hwrm_rings(struct bnxt *bp);
 
 #endif

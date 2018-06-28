@@ -199,13 +199,14 @@ alloc_mem_err:
 
 static int bnxt_init_chip(struct bnxt *bp)
 {
-	unsigned int i;
+	struct bnxt_rx_queue *rxq;
 	struct rte_eth_link new;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
 	uint32_t queue_id, base = BNXT_MISC_VEC_ID;
 	uint32_t vec = BNXT_MISC_VEC_ID;
+	unsigned int i, j;
 	int rc;
 
 	/* disable uio/vfio intr/eventfd mapping */
@@ -277,6 +278,13 @@ static int bnxt_init_chip(struct bnxt *bp)
 				"HWRM vnic %d filter failure rc: %x\n",
 				i, rc);
 			goto err_out;
+		}
+
+		for (j = 0; j < bp->rx_nr_rings; j++) {
+			rxq = bp->eth_dev->data->rx_queues[j];
+
+			if (rxq->rx_deferred_start)
+				rxq->vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
 		}
 
 		rc = bnxt_vnic_rss_configure(bp, vnic);

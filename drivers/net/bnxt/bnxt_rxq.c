@@ -199,11 +199,13 @@ err_out:
 	return rc;
 }
 
-static void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
+void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 {
 	struct bnxt_sw_rx_bd *sw_ring;
 	struct bnxt_tpa_info *tpa_info;
 	uint16_t i;
+
+	rte_spinlock_lock(&rxq->lock);
 
 	if (rxq) {
 		sw_ring = rxq->rx_ring->rx_buf_ring;
@@ -239,6 +241,8 @@ static void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 			}
 		}
 	}
+
+	rte_spinlock_unlock(&rxq->lock);
 }
 
 void bnxt_free_rx_mbufs(struct bnxt *bp)
@@ -286,6 +290,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 	struct bnxt_rx_queue *rxq;
 	int rc = 0;
+	uint8_t queue_state;
 
 	if (queue_idx >= bp->max_rx_rings) {
 		PMD_DRV_LOG(ERR,
@@ -341,6 +346,11 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	}
 	rte_atomic64_init(&rxq->rx_mbuf_alloc_fail);
 
+	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
+	queue_state = rxq->rx_deferred_start ? RTE_ETH_QUEUE_STATE_STOPPED :
+						RTE_ETH_QUEUE_STATE_STARTED;
+	eth_dev->data->rx_queue_state[queue_idx] = queue_state;
+	rte_spinlock_init(&rxq->lock);
 out:
 	return rc;
 }
@@ -389,6 +399,7 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct bnxt_rx_queue *rxq = bp->rx_queues[rx_queue_id];
 	struct bnxt_vnic_info *vnic = NULL;
+	int rc = 0;
 
 	if (rxq == NULL) {
 		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
@@ -396,28 +407,47 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
-	rxq->rx_deferred_start = false;
+
+	bnxt_free_hwrm_rx_ring(bp, rx_queue_id);
+	bnxt_alloc_hwrm_rx_ring(bp, rx_queue_id);
 	PMD_DRV_LOG(INFO, "Rx queue started %d\n", rx_queue_id);
+
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		vnic = rxq->vnic;
+
 		if (vnic->fw_grp_ids[rx_queue_id] != INVALID_HW_RING_ID)
 			return 0;
-		PMD_DRV_LOG(DEBUG, "vnic = %p fw_grp_id = %d\n",
-			vnic, bp->grp_info[rx_queue_id + 1].fw_grp_id);
+
+		PMD_DRV_LOG(DEBUG,
+			    "vnic = %p fw_grp_id = %d\n",
+			    vnic, bp->grp_info[rx_queue_id].fw_grp_id);
+
 		vnic->fw_grp_ids[rx_queue_id] =
-					bp->grp_info[rx_queue_id + 1].fw_grp_id;
-		return bnxt_vnic_rss_configure(bp, vnic);
+					bp->grp_info[rx_queue_id].fw_grp_id;
+		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
-	return 0;
+	if (rc == 0)
+		rxq->rx_deferred_start = false;
+
+	return rc;
 }
 
 int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-	struct bnxt_rx_queue *rxq = bp->rx_queues[rx_queue_id];
 	struct bnxt_vnic_info *vnic = NULL;
+	struct bnxt_rx_queue *rxq = NULL;
+	int rc = 0;
+
+	/* Rx CQ 0 also works as Default CQ for async notifications */
+	if (!rx_queue_id) {
+		PMD_DRV_LOG(ERR, "Cannot stop Rx queue id %d\n", rx_queue_id);
+		return -EINVAL;
+	}
+
+	rxq = bp->rx_queues[rx_queue_id];
 
 	if (rxq == NULL) {
 		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
@@ -431,7 +461,11 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		vnic = rxq->vnic;
 		vnic->fw_grp_ids[rx_queue_id] = INVALID_HW_RING_ID;
-		return bnxt_vnic_rss_configure(bp, vnic);
+		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
-	return 0;
+
+	if (rc == 0)
+		bnxt_rx_queue_release_mbufs(rxq);
+
+	return rc;
 }
