@@ -526,3 +526,110 @@ store:
 	}
 	return 0;
 }
+
+/**
+ * Expand RSS flows into several possible flows according to the RSS hash
+ * fields requested and the driver capabilities.
+ */
+int
+rte_flow_expand_rss(struct rte_flow_expand_rss *buf, size_t size,
+		    const struct rte_flow_item *pattern, uint64_t types,
+		    const struct rte_flow_expand_node graph[],
+		    int graph_root_index)
+{
+	const int elt_n = 8;
+	const struct rte_flow_item *item;
+	const struct rte_flow_expand_node *node = &graph[graph_root_index];
+	const int *next_node;
+	const int *stack[elt_n];
+	int stack_pos = 0;
+	struct rte_flow_item flow_items[elt_n];
+	unsigned int i;
+	size_t lsize;
+	size_t user_pattern_size = 0;
+	void *addr = NULL;
+
+	lsize = offsetof(struct rte_flow_expand_rss, entry) +
+		elt_n * sizeof(buf->entry[0]);
+	if (lsize <= size) {
+		buf->entry[0].priority = 0;
+		buf->entry[0].pattern = (void *)&buf->entry[elt_n];
+		buf->entries = 0;
+		addr = buf->entry[0].pattern;
+	}
+	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		const struct rte_flow_expand_node *next = NULL;
+
+		for (i = 0; node->next && node->next[i]; ++i) {
+			next = &graph[node->next[i]];
+			if (next->type == item->type)
+				break;
+		}
+		if (next)
+			node = next;
+		user_pattern_size += sizeof(*item);
+	}
+	user_pattern_size += sizeof(*item); /* Handle END item. */
+	lsize += user_pattern_size;
+	/* Copy the user pattern in the first entry of the buffer. */
+	if (lsize <= size) {
+		rte_memcpy(addr, pattern, user_pattern_size);
+		addr = (void *)(((uintptr_t)addr) + user_pattern_size);
+		buf->entries = 1;
+	}
+	/* Start expanding. */
+	memset(flow_items, 0, sizeof(flow_items));
+	user_pattern_size -= sizeof(*item);
+	next_node = node->next;
+	stack[stack_pos] = next_node;
+	node = next_node ? &graph[*next_node] : NULL;
+	while (node) {
+		flow_items[stack_pos].type = node->type;
+		if ((node->rss_types & types) == node->rss_types) {
+			/*
+			 * compute the number of items to copy from the
+			 * expansion and copy it.
+			 * When the stack_pos is 0, there are 1 element in it,
+			 * plus the addition END item.
+			 */
+			int elt = stack_pos + 2;
+
+			flow_items[stack_pos + 1].type = RTE_FLOW_ITEM_TYPE_END;
+			lsize += elt * sizeof(*item) + user_pattern_size;
+			if (lsize <= size) {
+				size_t n = elt * sizeof(*item);
+
+				buf->entry[buf->entries].priority =
+					stack_pos + 1;
+				buf->entry[buf->entries].pattern = addr;
+				buf->entries++;
+				rte_memcpy(addr, buf->entry[0].pattern,
+					   user_pattern_size);
+				addr = (void *)(((uintptr_t)addr) +
+						user_pattern_size);
+				rte_memcpy(addr, flow_items, n);
+				addr = (void *)(((uintptr_t)addr) + n);
+			}
+		}
+		/* Go deeper. */
+		if (node->next) {
+			next_node = node->next;
+			if (stack_pos++ == elt_n) {
+				rte_errno = E2BIG;
+				return -rte_errno;
+			}
+			stack[stack_pos] = next_node;
+		} else if (*(next_node + 1)) {
+			/* Follow up with the next possibility. */
+			++next_node;
+		} else {
+			/* Move to the next path. */
+			if (stack_pos)
+				next_node = stack[--stack_pos];
+			next_node++;
+			stack[stack_pos] = next_node;
+		}
+		node = *next_node ? &graph[*next_node] : NULL;
+	};
+	return lsize;
+}

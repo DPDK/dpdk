@@ -114,6 +114,67 @@ struct rte_flow_ops {
 const struct rte_flow_ops *
 rte_flow_ops_get(uint16_t port_id, struct rte_flow_error *error);
 
+/** Helper macro to build input graph for rte_flow_expand_rss(). */
+#define RTE_FLOW_EXPAND_RSS_NEXT(...) \
+	(const int []){ \
+		__VA_ARGS__, 0, \
+	}
+
+/** Node object of input graph for rte_flow_expand_rss(). */
+struct rte_flow_expand_node {
+	const int *const next;
+	/**<
+	 * List of next node indexes. Index 0 is interpreted as a terminator.
+	 */
+	const enum rte_flow_item_type type;
+	/**< Pattern item type of current node. */
+	uint64_t rss_types;
+	/**<
+	 * RSS types bit-field associated with this node
+	 * (see ETH_RSS_* definitions).
+	 */
+};
+
+/** Object returned by rte_flow_expand_rss(). */
+struct rte_flow_expand_rss {
+	uint32_t entries;
+	/**< Number of entries @p patterns and @p priorities. */
+	struct {
+		struct rte_flow_item *pattern; /**< Expanded pattern array. */
+		uint32_t priority; /**< Priority offset for each expansion. */
+	} entry[];
+};
+
+/**
+ * Expand RSS flows into several possible flows according to the RSS hash
+ * fields requested and the driver capabilities.
+ *
+ * @param[out] buf
+ *   Buffer to store the result expansion.
+ * @param[in] size
+ *   Buffer size in bytes. If 0, @p buf can be NULL.
+ * @param[in] pattern
+ *   User flow pattern.
+ * @param[in] types
+ *   RSS types to expand (see ETH_RSS_* definitions).
+ * @param[in] graph
+ *   Input graph to expand @p pattern according to @p types.
+ * @param[in] graph_root_index
+ *   Index of root node in @p graph, typically 0.
+ *
+ * @return
+ *   A positive value representing the size of @p buf in bytes regardless of
+ *   @p size on success, a negative errno value otherwise and rte_errno is
+ *   set, the following errors are defined:
+ *
+ *   -E2BIG: graph-depth @p graph is too deep.
+ */
+int
+rte_flow_expand_rss(struct rte_flow_expand_rss *buf, size_t size,
+		    const struct rte_flow_item *pattern, uint64_t types,
+		    const struct rte_flow_expand_node graph[],
+		    int graph_root_index);
+
 #ifdef __cplusplus
 }
 #endif
