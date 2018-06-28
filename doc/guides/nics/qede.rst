@@ -66,12 +66,13 @@ Prerequisites
   or `QLogic Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.
   To download firmware file from QLogic website, select adapter category, model and DPDK Poll Mode Driver.
 
-- Requires management firmware (MFW) version **8.34.x.x** or higher to be
-  flashed on to the adapter. If the required management firmware is not
-  available then download from
-  `QLogic Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.
-  For downloading firmware upgrade utility, select adapter category, model and Linux distro.
-  To flash the management firmware refer to the instructions in the QLogic Firmware Upgrade Utility Readme document.
+- Requires the NIC be updated minimally with **8.30.x.x** Management firmware(MFW) version supported for that NIC.
+  It is highly recommended that the NIC be updated with the latest available management firmware version to get latest feature  set.
+  Management Firmware and Firmware Upgrade Utility for Cavium FastLinQ(r) branded adapters can be downloaded from
+  `Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.
+  For downloading Firmware Upgrade Utility, select NIC category, model and Linux distro.
+  To update the management firmware, refer to the instructions in the Firmware Upgrade Utility Readme document.
+  For OEM branded adapters please follow the instruction provided by the OEM to update the Management Firmware on the NIC.
 
 - SR-IOV requires Linux PF driver version **8.20.x.x** or higher.
   If the required PF driver is not available then download it from
