@@ -200,7 +200,7 @@ rte_eal_hugepage_init(void)
 
 			RTE_LOG(INFO, EAL, "Mapped memory segment %u @ %p: physaddr:0x%"
 					PRIx64", len %zu\n",
-					seg_idx, addr, physaddr, page_sz);
+					seg_idx++, addr, physaddr, page_sz);
 
 			total_mem += seg->len;
 		}
