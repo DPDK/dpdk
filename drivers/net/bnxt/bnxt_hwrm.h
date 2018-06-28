@@ -29,6 +29,9 @@ struct bnxt_cp_ring_info;
 #define HWRM_QUEUE_SERVICE_PROFILE_LOSSY \
 	HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSY
 
+#define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESV_STRATEGY_MINIMAL_STATIC \
+	HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_MINIMAL_STATIC
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,
@@ -113,7 +116,7 @@ int bnxt_get_hwrm_link_config(struct bnxt *bp, struct rte_eth_link *link);
 int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up);
 int bnxt_hwrm_func_qcfg(struct bnxt *bp);
 int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp);
-int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp);
+int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp, bool test);
 int bnxt_hwrm_allocate_pf_only(struct bnxt *bp);
 int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs);
 int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf,
@@ -170,4 +173,5 @@ int bnxt_vnic_rss_configure(struct bnxt *bp,
 			    struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
 			struct bnxt_coal *coal, uint16_t ring_id);
+int bnxt_hwrm_check_vf_rings(struct bnxt *bp);
 #endif

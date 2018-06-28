@@ -510,6 +510,7 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
+	int rc;
 
 	bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
@@ -517,19 +518,23 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
 
 	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
-		int rc;
+		rc = bnxt_hwrm_check_vf_rings(bp);
+		if (rc) {
+			PMD_DRV_LOG(ERR, "HWRM insufficient resources\n");
+			return -ENOSPC;
+		}
 
-		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
+		rc = bnxt_hwrm_func_reserve_vf_resc(bp, false);
 		if (rc) {
 			PMD_DRV_LOG(ERR, "HWRM resource alloc fail:%x\n", rc);
 			return -ENOSPC;
 		}
-
+	} else {
 		/* legacy driver needs to get updated values */
 		rc = bnxt_hwrm_func_qcaps(bp);
 		if (rc) {
 			PMD_DRV_LOG(ERR, "hwrm func qcaps fail:%d\n", rc);
-			return -ENOSPC;
+			return rc;
 		}
 	}
 
@@ -540,7 +545,9 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	    bp->max_cp_rings ||
 	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
 	    bp->max_stat_ctx ||
-	    (uint32_t)(eth_dev->data->nb_rx_queues) > bp->max_ring_grps) {
+	    (uint32_t)(eth_dev->data->nb_rx_queues) > bp->max_ring_grps ||
+	    (!(eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) &&
+	     bp->max_vnics < eth_dev->data->nb_rx_queues)) {
 		PMD_DRV_LOG(ERR,
 			"Insufficient resources to support requested config\n");
 		PMD_DRV_LOG(ERR,
@@ -548,9 +555,9 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 			eth_dev->data->nb_tx_queues,
 			eth_dev->data->nb_rx_queues);
 		PMD_DRV_LOG(ERR,
-			"Res available: TxQ %d, RxQ %d, CQ %d Stat %d, Grp %d\n",
+			"MAX: TxQ %d, RxQ %d, CQ %d Stat %d, Grp %d, Vnic %d\n",
 			bp->max_tx_rings, bp->max_rx_rings, bp->max_cp_rings,
-			bp->max_stat_ctx, bp->max_ring_grps);
+			bp->max_stat_ctx, bp->max_ring_grps, bp->max_vnics);
 		return -ENOSPC;
 	}
 

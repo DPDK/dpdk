@@ -22,6 +22,10 @@
 
 #define BNXT_MAX_MTU		9500
 #define VLAN_TAG_SIZE		4
+#define BNXT_VF_RSV_NUM_RSS_CTX	1
+#define BNXT_VF_RSV_NUM_L2_CTX	4
+/* TODO: For now, do not support VMDq/RFS on VFs. */
+#define BNXT_VF_RSV_NUM_VNIC	1
 #define BNXT_MAX_LED		4
 #define BNXT_NUM_VLANS		2
 #define BNXT_MIN_RING_DESC	16
@@ -328,6 +332,7 @@ struct bnxt {
 	struct bnxt_led_info	leds[BNXT_MAX_LED];
 	uint8_t			num_leds;
 	struct bnxt_ptp_cfg     *ptp_cfg;
+	uint16_t		vf_resv_strategy;
 };
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
