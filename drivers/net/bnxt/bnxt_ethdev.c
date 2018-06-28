@@ -153,6 +153,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
 static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
+static int bnxt_dev_uninit(struct rte_eth_dev *eth_dev);
 
 /***********************/
 
@@ -669,6 +670,8 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 		rte_free(bp->grp_info);
 		bp->grp_info = NULL;
 	}
+
+	bnxt_dev_uninit(eth_dev);
 }
 
 static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
@@ -3117,7 +3120,6 @@ init_err_disable:
 	return rc;
 }
 
-static int bnxt_dev_uninit(struct rte_eth_dev *eth_dev);
 
 #define ALLOW_FUNC(x)	\
 	{ \
@@ -3409,13 +3411,15 @@ error:
 }
 
 static int
-bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
+bnxt_dev_uninit(struct rte_eth_dev *eth_dev)
+{
 	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
 
+	PMD_DRV_LOG(DEBUG, "Calling Device uninit\n");
 	bnxt_disable_int(bp);
 	bnxt_free_int(bp);
 	bnxt_free_mem(bp);
@@ -3429,8 +3433,17 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 	}
 	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
 	bnxt_free_hwrm_resources(bp);
-	rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
-	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
+
+	if (bp->tx_mem_zone) {
+		rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
+		bp->tx_mem_zone = NULL;
+	}
+
+	if (bp->rx_mem_zone) {
+		rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
+		bp->rx_mem_zone = NULL;
+	}
+
 	if (bp->dev_stopped == 0)
 		bnxt_dev_close_op(eth_dev);
 	if (bp->pf.vf_info)
