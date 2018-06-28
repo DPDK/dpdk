@@ -1328,9 +1328,9 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 	struct bnxt_vnic_info *vnic;
 	unsigned int i;
 	int rc = 0;
-	uint32_t en = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN |
-		HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN_MASK;
-	uint32_t chk = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN;
+	uint32_t en = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN |
+		HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN_MASK;
+	uint32_t chk = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN;
 
 	/* Cycle through all VNICs */
 	for (i = 0; i < bp->nr_vnics; i++) {
@@ -1377,8 +1377,8 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 				memcpy(new_filter->l2_addr, filter->l2_addr,
 				       ETHER_ADDR_LEN);
 				/* MAC + VLAN ID filter */
-				new_filter->l2_ovlan = vlan_id;
-				new_filter->l2_ovlan_mask = 0xF000;
+				new_filter->l2_ivlan = vlan_id;
+				new_filter->l2_ivlan_mask = 0xF000;
 				new_filter->enables |= en;
 				rc = bnxt_hwrm_set_l2_filter(bp,
 							     vnic->fw_vnic_id,

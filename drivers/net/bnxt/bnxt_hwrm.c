@@ -388,13 +388,13 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 		req.l2_ovlan = filter->l2_ovlan;
 	if (enables &
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN)
-		req.l2_ovlan = filter->l2_ivlan;
+		req.l2_ivlan = filter->l2_ivlan;
 	if (enables &
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN_MASK)
 		req.l2_ovlan_mask = filter->l2_ovlan_mask;
 	if (enables &
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN_MASK)
-		req.l2_ovlan_mask = filter->l2_ivlan_mask;
+		req.l2_ivlan_mask = filter->l2_ivlan_mask;
 	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_ID)
 		req.src_id = rte_cpu_to_le_32(filter->src_id);
 	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_TYPE)
