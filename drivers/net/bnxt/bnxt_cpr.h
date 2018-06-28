@@ -22,12 +22,20 @@
 #define ADV_RAW_CMP(idx, n)	((idx) + (n))
 #define NEXT_RAW_CMP(idx)	ADV_RAW_CMP(idx, 1)
 #define RING_CMP(ring, idx)	((idx) & (ring)->ring_mask)
+#define RING_CMPL(ring_mask, idx)	((idx) & (ring_mask))
 #define NEXT_CMP(idx)		RING_CMP(ADV_RAW_CMP(idx, 1))
 #define FLIP_VALID(cons, mask, val)	((cons) >= (mask) ? !(val) : (val))
 
 #define DB_CP_REARM_FLAGS	(DB_KEY_CP | DB_IDX_VALID)
 #define DB_CP_FLAGS		(DB_KEY_CP | DB_IDX_VALID | DB_IRQ_DIS)
 
+#define NEXT_CMPL(cpr, idx, v, inc)	do { \
+	(idx) += (inc); \
+	if (unlikely((idx) == (cpr)->cp_ring_struct->ring_size)) { \
+		(v) = !(v); \
+		(idx) = 0; \
+	} \
+} while (0)
 #define B_CP_DB_REARM(cpr, raw_cons)					\
 	rte_write32((DB_CP_REARM_FLAGS |				\
 		    RING_CMP(((cpr)->cp_ring_struct), raw_cons)),	\
@@ -49,6 +57,10 @@
 #define B_CP_DIS_DB(cpr, raw_cons)					\
 	rte_write32((DB_CP_FLAGS |					\
 		    RING_CMP(((cpr)->cp_ring_struct), raw_cons)),	\
+		    ((cpr)->cp_doorbell))
+#define B_CP_DB(cpr, raw_cons, ring_mask)				\
+	rte_write32((DB_CP_FLAGS |					\
+		    RING_CMPL((ring_mask), raw_cons)),	\
 		    ((cpr)->cp_doorbell))
 
 struct bnxt_ring;

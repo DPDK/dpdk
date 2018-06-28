@@ -114,7 +114,9 @@ static inline uint32_t bnxt_tx_avail(struct bnxt_tx_ring_info *txr)
 }
 
 static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
-				struct bnxt_tx_queue *txq)
+				struct bnxt_tx_queue *txq,
+				uint16_t *coal_pkts,
+				uint16_t *cmpl_next)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct tx_bd_long *txbd;
@@ -146,8 +148,15 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		return -ENOMEM;
 
 	txbd = &txr->tx_desc_ring[txr->tx_prod];
-	txbd->opaque = txr->tx_prod;
+	txbd->opaque = *coal_pkts;
 	txbd->flags_type = tx_buf->nr_bds << TX_BD_LONG_FLAGS_BD_CNT_SFT;
+	txbd->flags_type |= TX_BD_SHORT_FLAGS_COAL_NOW;
+	if (!*cmpl_next) {
+		txbd->flags_type |= TX_BD_LONG_FLAGS_NO_CMPL;
+	} else {
+		*coal_pkts = 0;
+		*cmpl_next = false;
+	}
 	txbd->len = tx_pkt->data_len;
 	if (txbd->len >= 2014)
 		txbd->flags_type |= TX_BD_LONG_FLAGS_LHINT_GTE2K;
@@ -235,7 +244,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 		txbd = &txr->tx_desc_ring[txr->tx_prod];
 		txbd->address = rte_cpu_to_le_32(rte_mbuf_data_iova(m_seg));
-		txbd->flags_type = TX_BD_SHORT_TYPE_TX_BD_SHORT;
+		txbd->flags_type |= TX_BD_SHORT_TYPE_TX_BD_SHORT;
 		txbd->len = m_seg->data_len;
 
 		m_seg = m_seg->next;
@@ -278,35 +287,44 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 	uint32_t raw_cons = cpr->cp_raw_cons;
 	uint32_t cons;
-	int nb_tx_pkts = 0;
+	uint32_t nb_tx_pkts = 0;
 	struct tx_cmpl *txcmp;
+	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
+	struct bnxt_ring *cp_ring_struct = cpr->cp_ring_struct;
+	uint32_t ring_mask = cp_ring_struct->ring_mask;
+	uint32_t opaque = 0;
 
-	if ((txq->tx_ring->tx_ring_struct->ring_size -
-			(bnxt_tx_avail(txq->tx_ring))) >
-			txq->tx_free_thresh) {
-		while (1) {
-			cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
-			txcmp = (struct tx_cmpl *)&cpr->cp_desc_ring[cons];
+	if (((txq->tx_ring->tx_prod - txq->tx_ring->tx_cons) &
+		txq->tx_ring->tx_ring_struct->ring_mask) < txq->tx_free_thresh)
+		return 0;
 
-			if (!CMP_VALID(txcmp, raw_cons, cpr->cp_ring_struct))
-				break;
-			cpr->valid = FLIP_VALID(cons,
-						cpr->cp_ring_struct->ring_mask,
-						cpr->valid);
+	do {
+		cons = RING_CMPL(ring_mask, raw_cons);
+		txcmp = (struct tx_cmpl *)&cpr->cp_desc_ring[cons];
+		rte_prefetch_non_temporal(&cp_desc_ring[(cons + 2) &
+							ring_mask]);
 
-			if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
-				nb_tx_pkts++;
-			else
-				RTE_LOG_DP(DEBUG, PMD,
-						"Unhandled CMP type %02x\n",
-						CMP_TYPE(txcmp));
-			raw_cons = NEXT_RAW_CMP(raw_cons);
-		}
-		if (nb_tx_pkts)
-			bnxt_tx_cmp(txq, nb_tx_pkts);
+		if (!CMPL_VALID(txcmp, cpr->valid))
+			break;
+		opaque = rte_cpu_to_le_32(txcmp->opaque);
+		NEXT_CMPL(cpr, cons, cpr->valid, 1);
+		rte_prefetch0(&cp_desc_ring[cons]);
+
+		if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
+			nb_tx_pkts += opaque;
+		else
+			RTE_LOG_DP(ERR, PMD,
+					"Unhandled CMP type %02x\n",
+					CMP_TYPE(txcmp));
+		raw_cons = cons;
+	} while (nb_tx_pkts < ring_mask);
+
+	if (nb_tx_pkts) {
+		bnxt_tx_cmp(txq, nb_tx_pkts);
 		cpr->cp_raw_cons = raw_cons;
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+		B_CP_DB(cpr, cpr->cp_raw_cons, ring_mask);
 	}
+
 	return nb_tx_pkts;
 }
 
@@ -315,8 +333,8 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct bnxt_tx_queue *txq = tx_queue;
 	uint16_t nb_tx_pkts = 0;
-	uint16_t db_mask = txq->tx_ring->tx_ring_struct->ring_size >> 2;
-	uint16_t last_db_mask = 0;
+	uint16_t coal_pkts = 0;
+	uint16_t cmpl_next = txq->cmpl_next;
 
 	/* Handle TX completions */
 	bnxt_handle_tx_cp(txq);
@@ -326,16 +344,25 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		PMD_DRV_LOG(DEBUG, "Tx q stopped;return\n");
 		return 0;
 	}
+
+	txq->cmpl_next = 0;
 	/* Handle TX burst request */
 	for (nb_tx_pkts = 0; nb_tx_pkts < nb_pkts; nb_tx_pkts++) {
-		if (bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq)) {
+		int rc;
+
+		/* Request a completion on first and last packet */
+		cmpl_next |= (nb_pkts == nb_tx_pkts + 1);
+		coal_pkts++;
+		rc = bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq,
+				&coal_pkts, &cmpl_next);
+
+		if (unlikely(rc)) {
+			/* Request a completion in next cycle */
+			txq->cmpl_next = 1;
 			break;
-		} else if ((nb_tx_pkts & db_mask) != last_db_mask) {
-			B_TX_DB(txq->tx_ring->tx_doorbell,
-					txq->tx_ring->tx_prod);
-			last_db_mask = nb_tx_pkts & db_mask;
 		}
 	}
+
 	if (nb_tx_pkts)
 		B_TX_DB(txq->tx_ring->tx_doorbell, txq->tx_ring->tx_prod);
 
