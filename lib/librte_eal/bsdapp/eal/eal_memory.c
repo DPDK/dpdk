@@ -104,6 +104,8 @@ rte_eal_hugepage_init(void)
 	/* map all hugepages and sort them */
 	for (i = 0; i < internal_config.num_hugepage_sizes; i ++){
 		struct hugepage_info *hpi;
+		rte_iova_t prev_end = 0;
+		int prev_ms_idx = -1;
 		uint64_t page_sz, mem_needed;
 		unsigned int n_pages, max_pages;
 
@@ -124,10 +126,27 @@ rte_eal_hugepage_init(void)
 			int error;
 			size_t sysctl_size = sizeof(physaddr);
 			char physaddr_str[64];
+			bool is_adjacent;
+
+			/* first, check if this segment is IOVA-adjacent to
+			 * the previous one.
+			 */
+			snprintf(physaddr_str, sizeof(physaddr_str),
+					"hw.contigmem.physaddr.%d", j);
+			error = sysctlbyname(physaddr_str, &physaddr,
+					&sysctl_size, NULL, 0);
+			if (error < 0) {
+				RTE_LOG(ERR, EAL, "Failed to get physical addr for buffer %u "
+						"from %s\n", j, hpi->hugedir);
+				return -1;
+			}
+
+			is_adjacent = prev_end != 0 && physaddr == prev_end;
+			prev_end = physaddr + hpi->hugepage_sz;
 
 			for (msl_idx = 0; msl_idx < RTE_MAX_MEMSEG_LISTS;
 					msl_idx++) {
-				bool empty;
+				bool empty, need_hole;
 				msl = &mcfg->memsegs[msl_idx];
 				arr = &msl->memseg_arr;
 
@@ -136,20 +155,23 @@ rte_eal_hugepage_init(void)
 
 				empty = arr->count == 0;
 
-				/* we need 1, plus hole if not empty */
+				/* we need a hole if this isn't an empty memseg
+				 * list, and if previous segment was not
+				 * adjacent to current one.
+				 */
+				need_hole = !empty && !is_adjacent;
+
+				/* we need 1, plus hole if not adjacent */
 				ms_idx = rte_fbarray_find_next_n_free(arr,
-						0, 1 + (empty ? 1 : 0));
+						0, 1 + (need_hole ? 1 : 0));
 
 				/* memseg list is full? */
 				if (ms_idx < 0)
 					continue;
 
-				/* leave some space between memsegs, they are
-				 * not IOVA contiguous, so they shouldn't be VA
-				 * contiguous either.
-				 */
-				if (!empty)
+				if (need_hole && prev_ms_idx == ms_idx - 1)
 					ms_idx++;
+				prev_ms_idx = ms_idx;
 
 				break;
 			}
@@ -175,16 +197,6 @@ rte_eal_hugepage_init(void)
 			if (addr == MAP_FAILED) {
 				RTE_LOG(ERR, EAL, "Failed to mmap buffer %u from %s\n",
 						j, hpi->hugedir);
-				return -1;
-			}
-
-			snprintf(physaddr_str, sizeof(physaddr_str), "hw.contigmem"
-					".physaddr.%d", j);
-			error = sysctlbyname(physaddr_str, &physaddr, &sysctl_size,
-					NULL, 0);
-			if (error < 0) {
-				RTE_LOG(ERR, EAL, "Failed to get physical addr for buffer %u "
-						"from %s\n", j, hpi->hugedir);
 				return -1;
 			}
 
