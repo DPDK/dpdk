@@ -93,11 +93,34 @@ cxgbe_fill_filter_region(struct adapter *adap,
 		ntuple_mask |= (u64)fs->mask.proto << tp->protocol_shift;
 	if (tp->ethertype_shift >= 0)
 		ntuple_mask |= (u64)fs->mask.ethtype << tp->ethertype_shift;
+	if (tp->port_shift >= 0)
+		ntuple_mask |= (u64)fs->mask.iport << tp->port_shift;
 
 	if (ntuple_mask != hash_filter_mask)
 		return;
 
 	fs->cap = 1;	/* use hash region */
+}
+
+static int
+ch_rte_parsetype_port(const void *dmask, const struct rte_flow_item *item,
+		      struct ch_filter_specification *fs,
+		      struct rte_flow_error *e)
+{
+	const struct rte_flow_item_phy_port *val = item->spec;
+	const struct rte_flow_item_phy_port *umask = item->mask;
+	const struct rte_flow_item_phy_port *mask;
+
+	mask = umask ? umask : (const struct rte_flow_item_phy_port *)dmask;
+
+	if (val->index > 0x7)
+		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "port index upto 0x7 is supported");
+
+	CXGBE_FILL_FS(val->index, mask->index, iport);
+
+	return 0;
 }
 
 static int
@@ -357,6 +380,13 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 }
 
 struct chrte_fparse parseitem[] = {
+		[RTE_FLOW_ITEM_TYPE_PHY_PORT] = {
+		.fptr = ch_rte_parsetype_port,
+		.dmask = &(const struct rte_flow_item_phy_port){
+			.index = 0x7,
+		}
+	},
+
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
 		.fptr  = ch_rte_parsetype_ipv4,
 		.dmask = &rte_flow_item_ipv4_mask,
