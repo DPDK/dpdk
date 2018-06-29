@@ -3194,12 +3194,12 @@ igbvf_dev_configure(struct rte_eth_dev *dev)
 	 * Keep the persistent behavior the same as Host PF
 	 */
 #ifndef RTE_LIBRTE_E1000_PF_DISABLE_STRIP_CRC
-	if (!(conf->rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
+	if (rte_eth_dev_must_keep_crc(conf->rxmode.offloads)) {
 		PMD_INIT_LOG(NOTICE, "VF can't disable HW CRC Strip");
 		conf->rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 #else
-	if (conf->rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
+	if (!rte_eth_dev_must_keep_crc(conf->rxmode.offloads)) {
 		PMD_INIT_LOG(NOTICE, "VF can't enable HW CRC Strip");
 		conf->rxmode.offloads &= ~DEV_RX_OFFLOAD_CRC_STRIP;
 	}

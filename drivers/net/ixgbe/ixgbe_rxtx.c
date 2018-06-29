@@ -2849,6 +2849,7 @@ ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 		   DEV_RX_OFFLOAD_UDP_CKSUM   |
 		   DEV_RX_OFFLOAD_TCP_CKSUM   |
 		   DEV_RX_OFFLOAD_CRC_STRIP   |
+		   DEV_RX_OFFLOAD_KEEP_CRC    |
 		   DEV_RX_OFFLOAD_JUMBO_FRAME |
 		   DEV_RX_OFFLOAD_SCATTER;
 
@@ -2935,8 +2936,10 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
-	rxq->crc_len = (uint8_t)((dev->data->dev_conf.rxmode.offloads &
-		DEV_RX_OFFLOAD_CRC_STRIP) ? 0 : ETHER_CRC_LEN);
+	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads))
+		rxq->crc_len = ETHER_CRC_LEN;
+	else
+		rxq->crc_len = 0;
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->offloads = offloads;
@@ -4702,7 +4705,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 
 	/* RSC global configuration (chapter 4.6.7.2.1 of 82599 Spec) */
 
-	if (!(rx_conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP) &&
+	if (rte_eth_dev_must_keep_crc(rx_conf->offloads) &&
 	     (rx_conf->offloads & DEV_RX_OFFLOAD_TCP_LRO)) {
 		/*
 		 * According to chapter of 4.6.7.2.1 of the Spec Rev.
@@ -4851,10 +4854,10 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	 * Configure CRC stripping, if any.
 	 */
 	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
-	if (rx_conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP)
-		hlreg0 |= IXGBE_HLREG0_RXCRCSTRP;
-	else
+	if (rte_eth_dev_must_keep_crc(rx_conf->offloads))
 		hlreg0 &= ~IXGBE_HLREG0_RXCRCSTRP;
+	else
+		hlreg0 |= IXGBE_HLREG0_RXCRCSTRP;
 
 	/*
 	 * Configure jumbo frame support, if any.
@@ -4892,8 +4895,8 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		 * Reset crc_len in case it was changed after queue setup by a
 		 * call to configure.
 		 */
-		rxq->crc_len = (rx_conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP) ?
-				0 : ETHER_CRC_LEN;
+		rxq->crc_len = rte_eth_dev_must_keep_crc(rx_conf->offloads) ?
+				ETHER_CRC_LEN : 0;
 
 		/* Setup the Base and Length of the Rx Descriptor Rings */
 		bus_addr = rxq->rx_ring_phys_addr;
@@ -4962,10 +4965,10 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	if (hw->mac.type == ixgbe_mac_82599EB ||
 	    hw->mac.type == ixgbe_mac_X540) {
 		rdrxctl = IXGBE_READ_REG(hw, IXGBE_RDRXCTL);
-		if (rx_conf->offloads & DEV_RX_OFFLOAD_CRC_STRIP)
-			rdrxctl |= IXGBE_RDRXCTL_CRCSTRIP;
-		else
+		if (rte_eth_dev_must_keep_crc(rx_conf->offloads))
 			rdrxctl &= ~IXGBE_RDRXCTL_CRCSTRIP;
+		else
+			rdrxctl |= IXGBE_RDRXCTL_CRCSTRIP;
 		rdrxctl &= ~IXGBE_RDRXCTL_RSCFRSTSIZE;
 		IXGBE_WRITE_REG(hw, IXGBE_RDRXCTL, rdrxctl);
 	}

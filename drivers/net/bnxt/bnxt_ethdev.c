@@ -147,6 +147,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM | \
 				     DEV_RX_OFFLOAD_JUMBO_FRAME | \
 				     DEV_RX_OFFLOAD_CRC_STRIP | \
+				     DEV_RX_OFFLOAD_KEEP_CRC | \
 				     DEV_RX_OFFLOAD_TCP_LRO)
 
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);

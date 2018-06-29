@@ -1905,7 +1905,10 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if ((rxmode->offloads & DEV_RX_OFFLOAD_CRC_STRIP) == 0) {
+	/* KEEP_CRC offload flag is not supported by PMD
+	 * can remove the below block when DEV_RX_OFFLOAD_CRC_STRIP removed
+	 */
+	if (rte_eth_dev_must_keep_crc(rxmode->offloads)) {
 		PMD_INIT_LOG(NOTICE, "Can't disable hw crc strip");
 		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}

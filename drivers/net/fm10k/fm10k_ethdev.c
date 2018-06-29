@@ -451,8 +451,10 @@ fm10k_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if ((dev->data->dev_conf.rxmode.offloads &
-	     DEV_RX_OFFLOAD_CRC_STRIP) == 0)
+	/* KEEP_CRC offload flag is not supported by PMD
+	 * can remove the below block when DEV_RX_OFFLOAD_CRC_STRIP removed
+	 */
+	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads))
 		PMD_INIT_LOG(WARNING, "fm10k always strip CRC");
 
 	/* multipe queue mode checking */

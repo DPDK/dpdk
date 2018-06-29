@@ -325,6 +325,32 @@ typedef int (*ethdev_uninit_t)(struct rte_eth_dev *ethdev);
 int __rte_experimental
 rte_eth_dev_destroy(struct rte_eth_dev *ethdev, ethdev_uninit_t ethdev_uninit);
 
+/**
+ * PMD helper function to check if keeping CRC is requested
+ *
+ * @note
+ * When CRC_STRIP offload flag is removed and default behavior switch to
+ * strip CRC, as planned, this helper function is not that useful and will be
+ * removed. In PMDs this function will be replaced with check:
+ *   if (offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+ *
+ * @param rx_offloads
+ *   offload bits to be applied
+ *
+ * @return
+ *   Return positive if keeping CRC is requested,
+ *   zero if stripping CRC is requested
+ */
+static inline int
+rte_eth_dev_must_keep_crc(uint64_t rx_offloads)
+{
+	if (rx_offloads & DEV_RX_OFFLOAD_CRC_STRIP)
+		return 0;
+
+	/* no KEEP_CRC or CRC_STRIP offload flags means keep CRC */
+	return 1;
+}
+
 #ifdef __cplusplus
 }
 #endif

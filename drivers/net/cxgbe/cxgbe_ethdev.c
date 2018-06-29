@@ -354,7 +354,11 @@ int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 
 	CXGBE_FUNC_TRACE();
 	configured_offloads = eth_dev->data->dev_conf.rxmode.offloads;
-	if (!(configured_offloads & DEV_RX_OFFLOAD_CRC_STRIP)) {
+
+	/* KEEP_CRC offload flag is not supported by PMD
+	 * can remove the below block when DEV_RX_OFFLOAD_CRC_STRIP removed
+	 */
+	if (rte_eth_dev_must_keep_crc(configured_offloads)) {
 		dev_info(adapter, "can't disable hw crc strip\n");
 		eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_CRC_STRIP;

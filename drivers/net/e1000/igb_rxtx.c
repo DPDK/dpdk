@@ -1639,6 +1639,7 @@ igb_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 			  DEV_RX_OFFLOAD_TCP_CKSUM   |
 			  DEV_RX_OFFLOAD_JUMBO_FRAME |
 			  DEV_RX_OFFLOAD_CRC_STRIP   |
+			  DEV_RX_OFFLOAD_KEEP_CRC    |
 			  DEV_RX_OFFLOAD_SCATTER;
 
 	return rx_offload_capa;
@@ -1720,8 +1721,10 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
-	rxq->crc_len = (uint8_t)((dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_CRC_STRIP) ? 0 : ETHER_CRC_LEN);
+	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads))
+		rxq->crc_len = ETHER_CRC_LEN;
+	else
+		rxq->crc_len = 0;
 
 	/*
 	 *  Allocate RX ring hardware descriptors. A memzone large enough to
@@ -2371,8 +2374,10 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		 * Reset crc_len in case it was changed after queue setup by a
 		 *  call to configure
 		 */
-		rxq->crc_len = (uint8_t)(dev->data->dev_conf.rxmode.offloads &
-				DEV_RX_OFFLOAD_CRC_STRIP ? 0 : ETHER_CRC_LEN);
+		if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads))
+			rxq->crc_len = ETHER_CRC_LEN;
+		else
+			rxq->crc_len = 0;
 
 		bus_addr = rxq->rx_ring_phys_addr;
 		E1000_WRITE_REG(hw, E1000_RDLEN(rxq->reg_idx),
@@ -2501,23 +2506,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_RXCSUM, rxcsum);
 
 	/* Setup the Receive Control Register. */
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
-		rctl |= E1000_RCTL_SECRC; /* Strip Ethernet CRC. */
-
-		/* set STRCRC bit in all queues */
-		if (hw->mac.type == e1000_i350 ||
-		    hw->mac.type == e1000_i210 ||
-		    hw->mac.type == e1000_i211 ||
-		    hw->mac.type == e1000_i354) {
-			for (i = 0; i < dev->data->nb_rx_queues; i++) {
-				rxq = dev->data->rx_queues[i];
-				uint32_t dvmolr = E1000_READ_REG(hw,
-					E1000_DVMOLR(rxq->reg_idx));
-				dvmolr |= E1000_DVMOLR_STRCRC;
-				E1000_WRITE_REG(hw, E1000_DVMOLR(rxq->reg_idx), dvmolr);
-			}
-		}
-	} else {
+	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads)) {
 		rctl &= ~E1000_RCTL_SECRC; /* Do not Strip Ethernet CRC. */
 
 		/* clear STRCRC bit in all queues */
@@ -2530,6 +2519,22 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 				uint32_t dvmolr = E1000_READ_REG(hw,
 					E1000_DVMOLR(rxq->reg_idx));
 				dvmolr &= ~E1000_DVMOLR_STRCRC;
+				E1000_WRITE_REG(hw, E1000_DVMOLR(rxq->reg_idx), dvmolr);
+			}
+		}
+	} else {
+		rctl |= E1000_RCTL_SECRC; /* Strip Ethernet CRC. */
+
+		/* set STRCRC bit in all queues */
+		if (hw->mac.type == e1000_i350 ||
+		    hw->mac.type == e1000_i210 ||
+		    hw->mac.type == e1000_i211 ||
+		    hw->mac.type == e1000_i354) {
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				rxq = dev->data->rx_queues[i];
+				uint32_t dvmolr = E1000_READ_REG(hw,
+					E1000_DVMOLR(rxq->reg_idx));
+				dvmolr |= E1000_DVMOLR_STRCRC;
 				E1000_WRITE_REG(hw, E1000_DVMOLR(rxq->reg_idx), dvmolr);
 			}
 		}

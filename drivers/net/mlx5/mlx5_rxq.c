@@ -386,8 +386,10 @@ mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev)
 			     DEV_RX_OFFLOAD_TIMESTAMP |
 			     DEV_RX_OFFLOAD_JUMBO_FRAME);
 
+	offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	if (config->hw_fcs_strip)
-		offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+		offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
+
 	if (config->hw_csum)
 		offloads |= (DEV_RX_OFFLOAD_IPV4_CKSUM |
 			     DEV_RX_OFFLOAD_UDP_CKSUM |
@@ -1417,17 +1419,17 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	/* Configure VLAN stripping. */
 	tmpl->rxq.vlan_strip = !!(offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 	/* By default, FCS (CRC) is stripped by hardware. */
-	if (offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
-		tmpl->rxq.crc_present = 0;
-	} else if (config->hw_fcs_strip) {
-		tmpl->rxq.crc_present = 1;
-	} else {
-		DRV_LOG(WARNING,
-			"port %u CRC stripping has been disabled but will"
-			" still be performed by hardware, make sure MLNX_OFED"
-			" and firmware are up to date",
-			dev->data->port_id);
-		tmpl->rxq.crc_present = 0;
+	tmpl->rxq.crc_present = 0;
+	if (rte_eth_dev_must_keep_crc(offloads)) {
+		if (config->hw_fcs_strip) {
+			tmpl->rxq.crc_present = 1;
+		} else {
+			DRV_LOG(WARNING,
+				"port %u CRC stripping has been disabled but will"
+				" still be performed by hardware, make sure MLNX_OFED"
+				" and firmware are up to date",
+				dev->data->port_id);
+		}
 	}
 	DRV_LOG(DEBUG,
 		"port %u CRC stripping is %s, %u bytes will be subtracted from"

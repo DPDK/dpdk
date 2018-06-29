@@ -1070,7 +1070,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
 				DEV_TX_OFFLOAD_VLAN_INSERT;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
+				    DEV_RX_OFFLOAD_CRC_STRIP;
 }
 
 static int

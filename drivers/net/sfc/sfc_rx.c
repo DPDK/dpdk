@@ -1443,7 +1443,10 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		rc = EINVAL;
 	}
 
-	if (~rxmode->offloads & DEV_RX_OFFLOAD_CRC_STRIP) {
+	/* KEEP_CRC offload flag is not supported by PMD
+	 * can remove the below block when DEV_RX_OFFLOAD_CRC_STRIP removed
+	 */
+	if (rte_eth_dev_must_keep_crc(rxmode->offloads)) {
 		sfc_warn(sa, "FCS stripping cannot be disabled - always on");
 		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 		rxmode->hw_strip_crc = 1;

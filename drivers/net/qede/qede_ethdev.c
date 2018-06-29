@@ -1554,6 +1554,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 				     DEV_RX_OFFLOAD_TCP_LRO	|
 				     DEV_RX_OFFLOAD_CRC_STRIP	|
+				     DEV_RX_OFFLOAD_KEEP_CRC    |
 				     DEV_RX_OFFLOAD_SCATTER	|
 				     DEV_RX_OFFLOAD_JUMBO_FRAME |
 				     DEV_RX_OFFLOAD_VLAN_FILTER |

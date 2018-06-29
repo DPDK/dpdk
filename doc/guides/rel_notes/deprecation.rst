@@ -67,16 +67,6 @@ Deprecation Notices
   - removal of ``txq_flags`` field from ``rte_eth_txconf`` struct.
   - removal of the offloads bit-field from ``rte_eth_rxmode`` struct.
 
-* ethdev: A new offloading flag ``DEV_RX_OFFLOAD_KEEP_CRC`` will be added in v18.08,
-  This will replace the usage of not setting ``DEV_RX_OFFLOAD_CRC_STRIP`` flag
-  and will be implemented in PMDs accordingly.
-  In v18.08 both ``DEV_RX_OFFLOAD_KEEP_CRC`` and ``DEV_RX_OFFLOAD_CRC_STRIP`` flags
-  will be available, usage will be:
-  ``CRC_STRIP``: Strip CRC from packet
-  ``KEEP_CRC``: Keep CRC in packet
-  Both ``CRC_STRIP`` & ``KEEP_CRC``: Invalid
-  No flag: Keep CRC in packet
-
 * ethdev: In v18.11 ``DEV_RX_OFFLOAD_CRC_STRIP`` offload flag will be removed, default
   behavior without any flag will be changed to CRC strip.
   To keep CRC ``DEV_RX_OFFLOAD_KEEP_CRC`` flag is required.

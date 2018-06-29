@@ -57,7 +57,8 @@
 	 DEV_RX_OFFLOAD_UDP_CKSUM |	\
 	 DEV_RX_OFFLOAD_TCP_CKSUM |	\
 	 DEV_RX_OFFLOAD_TCP_LRO |	\
-	 DEV_RX_OFFLOAD_JUMBO_FRAME)
+	 DEV_RX_OFFLOAD_JUMBO_FRAME |   \
+	 DEV_RX_OFFLOAD_CRC_STRIP)
 
 static int eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev);

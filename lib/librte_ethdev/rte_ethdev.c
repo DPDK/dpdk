@@ -126,6 +126,7 @@ static const struct {
 	RTE_RX_OFFLOAD_BIT2STR(SCATTER),
 	RTE_RX_OFFLOAD_BIT2STR(TIMESTAMP),
 	RTE_RX_OFFLOAD_BIT2STR(SECURITY),
+	RTE_RX_OFFLOAD_BIT2STR(KEEP_CRC),
 };
 
 #undef RTE_RX_OFFLOAD_BIT2STR
@@ -1181,6 +1182,14 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			port_id, local_conf.txmode.offloads,
 			dev_info.tx_offload_capa,
 			__func__);
+		return -EINVAL;
+	}
+
+	if ((local_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP) &&
+			(local_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)) {
+		RTE_ETHDEV_LOG(ERR,
+			"Port id=%u not allowed to set both CRC STRIP and KEEP CRC offload flags\n",
+			port_id);
 		return -EINVAL;
 	}
 
