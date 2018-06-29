@@ -588,14 +588,14 @@ openssl_pmd_qp_create_processed_ops_ring(struct openssl_qp *qp,
 	r = rte_ring_lookup(qp->name);
 	if (r) {
 		if (rte_ring_get_size(r) >= ring_size) {
-			OPENSSL_LOG_INFO(
-				"Reusing existing ring %s for processed ops",
+			OPENSSL_LOG(INFO,
+					"Reusing existing ring %s for processed ops",
 				 qp->name);
 			return r;
 		}
 
-		OPENSSL_LOG_ERR(
-			"Unable to reuse existing ring %s for processed ops",
+		OPENSSL_LOG(ERR,
+				"Unable to reuse existing ring %s for processed ops",
 			 qp->name);
 		return NULL;
 	}
@@ -688,19 +688,19 @@ openssl_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 	int ret;
 
 	if (unlikely(sess == NULL)) {
-		OPENSSL_LOG_ERR("invalid session struct");
+		OPENSSL_LOG(ERR, "invalid session struct");
 		return -EINVAL;
 	}
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CDEV_LOG_ERR(
+		OPENSSL_LOG(ERR,
 			"Couldn't get object from session mempool");
 		return -ENOMEM;
 	}
 
 	ret = openssl_set_session_parameters(sess_private_data, xform);
 	if (ret != 0) {
-		OPENSSL_LOG_ERR("failed configure session parameters");
+		OPENSSL_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);

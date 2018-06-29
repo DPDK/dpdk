@@ -12,25 +12,12 @@
 #define CRYPTODEV_NAME_OPENSSL_PMD	crypto_openssl
 /**< Open SSL Crypto PMD device name */
 
-#define OPENSSL_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD), \
-			__func__, __LINE__, ## args)
-
-#ifdef RTE_LIBRTE_OPENSSL_DEBUG
-#define OPENSSL_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD), \
-			__func__, __LINE__, ## args)
-
-#define OPENSSL_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD), \
-			__func__, __LINE__, ## args)
-#else
-#define OPENSSL_LOG_INFO(fmt, args...)
-#define OPENSSL_LOG_DBG(fmt, args...)
-#endif
+/** OPENSSL PMD LOGTYPE DRIVER */
+int openssl_logtype_driver;
+#define OPENSSL_LOG(level, fmt, ...)  \
+	rte_log(RTE_LOG_ ## level, openssl_logtype_driver,  \
+			"%s() line %u: " fmt "\n", __func__, __LINE__,  \
+					## __VA_ARGS__)
 
 /* Maximum length for digest (SHA-512 needs 64 bytes) */
 #define DIGEST_LENGTH_MAX 64

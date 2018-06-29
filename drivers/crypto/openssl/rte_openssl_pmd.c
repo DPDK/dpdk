@@ -119,7 +119,7 @@ get_cipher_key_ede(uint8_t *key, int keylen, uint8_t *key_ede)
 		memcpy(key_ede + 16, key, 8);
 		break;
 	default:
-		OPENSSL_LOG_ERR("Unsupported key size");
+		OPENSSL_LOG(ERR, "Unsupported key size");
 		res = -EINVAL;
 	}
 
@@ -677,7 +677,7 @@ openssl_set_session_parameters(struct openssl_session *sess,
 		ret = openssl_set_session_cipher_parameters(
 				sess, cipher_xform);
 		if (ret != 0) {
-			OPENSSL_LOG_ERR(
+			OPENSSL_LOG(ERR,
 				"Invalid/unsupported cipher parameters");
 			return ret;
 		}
@@ -686,7 +686,7 @@ openssl_set_session_parameters(struct openssl_session *sess,
 	if (auth_xform) {
 		ret = openssl_set_session_auth_parameters(sess, auth_xform);
 		if (ret != 0) {
-			OPENSSL_LOG_ERR(
+			OPENSSL_LOG(ERR,
 				"Invalid/unsupported auth parameters");
 			return ret;
 		}
@@ -695,7 +695,7 @@ openssl_set_session_parameters(struct openssl_session *sess,
 	if (aead_xform) {
 		ret = openssl_set_session_aead_parameters(sess, aead_xform);
 		if (ret != 0) {
-			OPENSSL_LOG_ERR(
+			OPENSSL_LOG(ERR,
 				"Invalid/unsupported AEAD parameters");
 			return ret;
 		}
@@ -884,7 +884,7 @@ process_openssl_cipher_encrypt(struct rte_mbuf *mbuf_src, uint8_t *dst,
 	return 0;
 
 process_cipher_encrypt_err:
-	OPENSSL_LOG_ERR("Process openssl cipher encrypt failed");
+	OPENSSL_LOG(ERR, "Process openssl cipher encrypt failed");
 	return -EINVAL;
 }
 
@@ -908,7 +908,7 @@ process_openssl_cipher_bpi_encrypt(uint8_t *src, uint8_t *dst,
 	return 0;
 
 process_cipher_encrypt_err:
-	OPENSSL_LOG_ERR("Process openssl cipher bpi encrypt failed");
+	OPENSSL_LOG(ERR, "Process openssl cipher bpi encrypt failed");
 	return -EINVAL;
 }
 /** Process standard openssl cipher decryption */
@@ -932,7 +932,7 @@ process_openssl_cipher_decrypt(struct rte_mbuf *mbuf_src, uint8_t *dst,
 	return 0;
 
 process_cipher_decrypt_err:
-	OPENSSL_LOG_ERR("Process openssl cipher decrypt failed");
+	OPENSSL_LOG(ERR, "Process openssl cipher decrypt failed");
 	return -EINVAL;
 }
 
@@ -989,7 +989,7 @@ process_openssl_cipher_des3ctr(struct rte_mbuf *mbuf_src, uint8_t *dst,
 	return 0;
 
 process_cipher_des3ctr_err:
-	OPENSSL_LOG_ERR("Process openssl cipher des 3 ede ctr failed");
+	OPENSSL_LOG(ERR, "Process openssl cipher des 3 ede ctr failed");
 	return -EINVAL;
 }
 
@@ -1027,7 +1027,7 @@ process_openssl_auth_encryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 	return 0;
 
 process_auth_encryption_gcm_err:
-	OPENSSL_LOG_ERR("Process openssl auth encryption gcm failed");
+	OPENSSL_LOG(ERR, "Process openssl auth encryption gcm failed");
 	return -EINVAL;
 }
 
@@ -1068,7 +1068,7 @@ process_openssl_auth_encryption_ccm(struct rte_mbuf *mbuf_src, int offset,
 	return 0;
 
 process_auth_encryption_ccm_err:
-	OPENSSL_LOG_ERR("Process openssl auth encryption ccm failed");
+	OPENSSL_LOG(ERR, "Process openssl auth encryption ccm failed");
 	return -EINVAL;
 }
 
@@ -1106,7 +1106,7 @@ process_openssl_auth_decryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 	return 0;
 
 process_auth_decryption_gcm_err:
-	OPENSSL_LOG_ERR("Process openssl auth decryption gcm failed");
+	OPENSSL_LOG(ERR, "Process openssl auth decryption gcm failed");
 	return -EINVAL;
 }
 
@@ -1145,7 +1145,7 @@ process_openssl_auth_decryption_ccm(struct rte_mbuf *mbuf_src, int offset,
 	return 0;
 
 process_auth_decryption_ccm_err:
-	OPENSSL_LOG_ERR("Process openssl auth decryption ccm failed");
+	OPENSSL_LOG(ERR, "Process openssl auth decryption ccm failed");
 	return -EINVAL;
 }
 
@@ -1198,7 +1198,7 @@ process_auth_final:
 	return 0;
 
 process_auth_err:
-	OPENSSL_LOG_ERR("Process openssl auth failed");
+	OPENSSL_LOG(ERR, "Process openssl auth failed");
 	return -EINVAL;
 }
 
@@ -1251,7 +1251,7 @@ process_auth_final:
 	return 0;
 
 process_auth_err:
-	OPENSSL_LOG_ERR("Process openssl auth failed");
+	OPENSSL_LOG(ERR, "Process openssl auth failed");
 	return -EINVAL;
 }
 
@@ -1646,7 +1646,7 @@ cryptodev_openssl_create(const char *name,
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
-		OPENSSL_LOG_ERR("failed to create cryptodev vdev");
+		OPENSSL_LOG(ERR, "failed to create cryptodev vdev");
 		goto init_error;
 	}
 
@@ -1671,7 +1671,7 @@ cryptodev_openssl_create(const char *name,
 	return 0;
 
 init_error:
-	OPENSSL_LOG_ERR("driver %s: cryptodev_openssl_create failed",
+	OPENSSL_LOG(ERR, "driver %s: create failed",
 			init_params->name);
 
 	cryptodev_openssl_remove(vdev);
@@ -1735,3 +1735,10 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_OPENSSL_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(openssl_crypto_drv,
 		cryptodev_openssl_pmd_drv.driver, cryptodev_driver_id);
+
+RTE_INIT(openssl_init_log);
+static void
+openssl_init_log(void)
+{
+	openssl_logtype_driver = rte_log_register("pmd.crypto.openssl");
+}
