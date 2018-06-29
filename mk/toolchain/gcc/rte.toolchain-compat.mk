@@ -15,6 +15,11 @@ GCC_MINOR = $(shell echo __GNUC_MINOR__ | $(CC) -E -x c - | tail -n 1)
 GCC_PATCHLEVEL = $(shell echo __GNUC_PATCHLEVEL__ | $(CC) -E -x c - | tail -n 1)
 GCC_VERSION = $(GCC_MAJOR)$(GCC_MINOR)
 
+HOST_GCC_MAJOR = $(shell echo __GNUC__ | $(HOSTCC) -E -x c - | tail -n 1)
+HOST_GCC_MINOR = $(shell echo __GNUC_MINOR__ | $(HOSTCC) -E -x c - | tail -n 1)
+HOST_GCC_PATCHLEVEL = $(shell echo __GNUC_PATCHLEVEL__ | $(HOSTCC) -E -x c - | tail -n 1)
+HOST_GCC_VERSION = $(HOST_GCC_MAJOR)$(HOST_GCC_MINOR)
+
 # if GCC is older than 4.x
 ifeq ($(shell test $(GCC_VERSION) -lt 40 && echo 1), 1)
 	MACHINE_CFLAGS =

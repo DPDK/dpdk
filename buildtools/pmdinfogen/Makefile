@@ -41,7 +41,7 @@ HOSTAPP = dpdk-pmdinfogen
 #
 SRCS-y += pmdinfogen.c
 
-HOST_CFLAGS += $(WERROR_FLAGS) -g
+HOST_CFLAGS += $(HOST_WERROR_FLAGS) -g
 HOST_CFLAGS += -I$(RTE_OUTPUT)/include
 
 include $(RTE_SDK)/mk/rte.hostapp.mk
