@@ -437,10 +437,19 @@ sfc_ef10_essb_rx_qdesc_npending(struct sfc_dp_rxq *dp_rxq)
 
 static sfc_dp_rx_qdesc_status_t sfc_ef10_essb_rx_qdesc_status;
 static int
-sfc_ef10_essb_rx_qdesc_status(__rte_unused struct sfc_dp_rxq *dp_rxq,
-			      __rte_unused uint16_t offset)
+sfc_ef10_essb_rx_qdesc_status(struct sfc_dp_rxq *dp_rxq, uint16_t offset)
 {
-	return -ENOTSUP;
+	struct sfc_ef10_essb_rxq *rxq = sfc_ef10_essb_rxq_by_dp_rxq(dp_rxq);
+	unsigned int pending = sfc_ef10_essb_rx_qdesc_npending(dp_rxq);
+
+	if (offset < pending)
+		return RTE_ETH_RX_DESC_DONE;
+
+	if (offset < (rxq->added - rxq->completed) * rxq->block_size +
+		     rxq->left_in_completed - rxq->block_size)
+		return RTE_ETH_RX_DESC_AVAIL;
+
+	return RTE_ETH_RX_DESC_UNAVAIL;
 }
 
 static sfc_dp_rx_get_dev_info_t sfc_ef10_essb_rx_get_dev_info;
