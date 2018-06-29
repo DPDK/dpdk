@@ -82,7 +82,7 @@ cryptodev_scheduler_create(const char *name,
 	dev = rte_cryptodev_pmd_create(name, &vdev->device,
 			&init_params->def_p);
 	if (dev == NULL) {
-		CS_LOG_ERR("driver %s: failed to create cryptodev vdev",
+		CR_SCHED_LOG(ERR, "driver %s: failed to create cryptodev vdev",
 			name);
 		return -EFAULT;
 	}
@@ -101,7 +101,7 @@ cryptodev_scheduler_create(const char *name,
 
 		for (i = 0; i < sched_ctx->nb_wc; i++) {
 			sched_ctx->wc_pool[i] = init_params->wc_pool[i];
-			RTE_LOG(INFO, PMD, "  Worker core[%u]=%u added\n",
+			CR_SCHED_LOG(INFO, "  Worker core[%u]=%u added",
 				i, sched_ctx->wc_pool[i]);
 		}
 	}
@@ -119,7 +119,7 @@ cryptodev_scheduler_create(const char *name,
 			if (scheduler_mode_map[i].val != sched_ctx->mode)
 				continue;
 
-			RTE_LOG(INFO, PMD, "  Scheduling mode = %s\n",
+			CR_SCHED_LOG(INFO, "  Scheduling mode = %s",
 					scheduler_mode_map[i].name);
 			break;
 		}
@@ -132,7 +132,7 @@ cryptodev_scheduler_create(const char *name,
 				sched_ctx->reordering_enabled)
 			continue;
 
-		RTE_LOG(INFO, PMD, "  Packet ordering = %s\n",
+		CR_SCHED_LOG(INFO, "  Packet ordering = %s",
 				scheduler_ordering_map[i].name);
 
 		break;
@@ -147,7 +147,7 @@ cryptodev_scheduler_create(const char *name,
 
 		if (!sched_ctx->init_slave_names[
 				sched_ctx->nb_init_slaves]) {
-			CS_LOG_ERR("driver %s: Insufficient memory",
+			CR_SCHED_LOG(ERR, "driver %s: Insufficient memory",
 					name);
 			return -ENOMEM;
 		}
@@ -169,8 +169,8 @@ cryptodev_scheduler_create(const char *name,
 			0, SOCKET_ID_ANY);
 
 	if (!sched_ctx->capabilities) {
-		RTE_LOG(ERR, PMD, "Not enough memory for capability "
-				"information\n");
+		CR_SCHED_LOG(ERR, "Not enough memory for capability "
+				"information");
 		return -ENOMEM;
 	}
 
@@ -214,7 +214,7 @@ parse_integer_arg(const char *key __rte_unused,
 
 	*i = atoi(value);
 	if (*i < 0) {
-		CS_LOG_ERR("Argument has to be positive.\n");
+		CR_SCHED_LOG(ERR, "Argument has to be positive.");
 		return -EINVAL;
 	}
 
@@ -287,8 +287,8 @@ parse_corelist_arg(const char *key __rte_unused,
 		unsigned int core = strtoul(token, &rval, 10);
 
 		if (core >= RTE_MAX_LCORE) {
-			CS_LOG_ERR("Invalid worker core %u, should be smaller "
-				   "than %u.\n", core, RTE_MAX_LCORE);
+			CR_SCHED_LOG(ERR, "Invalid worker core %u, should be smaller "
+				   "than %u.", core, RTE_MAX_LCORE);
 		}
 		params->wc_pool[params->nb_wc++] = (uint16_t)core;
 		token = (const char *)rval;
@@ -308,8 +308,8 @@ parse_name_arg(const char *key __rte_unused,
 	struct rte_cryptodev_pmd_init_params *params = extra_args;
 
 	if (strlen(value) >= RTE_CRYPTODEV_NAME_MAX_LEN - 1) {
-		CS_LOG_ERR("Invalid name %s, should be less than "
-				"%u bytes.\n", value,
+		CR_SCHED_LOG(ERR, "Invalid name %s, should be less than "
+				"%u bytes.", value,
 				RTE_CRYPTODEV_NAME_MAX_LEN - 1);
 		return -EINVAL;
 	}
@@ -327,7 +327,7 @@ parse_slave_arg(const char *key __rte_unused,
 	struct scheduler_init_params *param = extra_args;
 
 	if (param->nb_slaves >= RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES) {
-		CS_LOG_ERR("Too many slaves.\n");
+		CR_SCHED_LOG(ERR, "Too many slaves.");
 		return -ENOMEM;
 	}
 
@@ -353,7 +353,7 @@ parse_mode_arg(const char *key __rte_unused,
 	}
 
 	if (i == RTE_DIM(scheduler_mode_map)) {
-		CS_LOG_ERR("Unrecognized input.\n");
+		CR_SCHED_LOG(ERR, "Unrecognized input.");
 		return -EINVAL;
 	}
 
@@ -376,7 +376,7 @@ parse_ordering_arg(const char *key __rte_unused,
 	}
 
 	if (i == RTE_DIM(scheduler_ordering_map)) {
-		CS_LOG_ERR("Unrecognized input.\n");
+		CR_SCHED_LOG(ERR, "Unrecognized input.");
 		return -EINVAL;
 	}
 

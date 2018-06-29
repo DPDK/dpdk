@@ -258,7 +258,7 @@ scheduler_start(struct rte_cryptodev *dev)
 
 	/* for packet size based scheduler, nb_slaves have to >= 2 */
 	if (sched_ctx->nb_slaves < NB_PKT_SIZE_SLAVES) {
-		CS_LOG_ERR("not enough slaves to start");
+		CR_SCHED_LOG(ERR, "not enough slaves to start");
 		return -1;
 	}
 
@@ -302,7 +302,7 @@ scheduler_stop(struct rte_cryptodev *dev)
 
 		if (ps_qp_ctx->primary_slave.nb_inflight_cops +
 				ps_qp_ctx->secondary_slave.nb_inflight_cops) {
-			CS_LOG_ERR("Some crypto ops left in slave queue");
+			CR_SCHED_LOG(ERR, "Some crypto ops left in slave queue");
 			return -1;
 		}
 	}
@@ -319,7 +319,7 @@ scheduler_config_qp(struct rte_cryptodev *dev, uint16_t qp_id)
 	ps_qp_ctx = rte_zmalloc_socket(NULL, sizeof(*ps_qp_ctx), 0,
 			rte_socket_id());
 	if (!ps_qp_ctx) {
-		CS_LOG_ERR("failed allocate memory for private queue pair");
+		CR_SCHED_LOG(ERR, "failed allocate memory for private queue pair");
 		return -ENOMEM;
 	}
 
@@ -342,7 +342,7 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 	psd_ctx = rte_zmalloc_socket(NULL, sizeof(struct psd_scheduler_ctx), 0,
 			rte_socket_id());
 	if (!psd_ctx) {
-		CS_LOG_ERR("failed allocate memory");
+		CR_SCHED_LOG(ERR, "failed allocate memory");
 		return -ENOMEM;
 	}
 
@@ -362,14 +362,14 @@ scheduler_option_set(struct rte_cryptodev *dev, uint32_t option_type,
 
 	if ((enum rte_cryptodev_schedule_option_type)option_type !=
 			CDEV_SCHED_OPTION_THRESHOLD) {
-		CS_LOG_ERR("Option not supported");
+		CR_SCHED_LOG(ERR, "Option not supported");
 		return -EINVAL;
 	}
 
 	threshold = ((struct rte_cryptodev_scheduler_threshold_option *)
 			option)->threshold;
 	if (!rte_is_power_of_2(threshold)) {
-		CS_LOG_ERR("Threshold is not power of 2");
+		CR_SCHED_LOG(ERR, "Threshold is not power of 2");
 		return -EINVAL;
 	}
 
@@ -388,7 +388,7 @@ scheduler_option_get(struct rte_cryptodev *dev, uint32_t option_type,
 
 	if ((enum rte_cryptodev_schedule_option_type)option_type !=
 			CDEV_SCHED_OPTION_THRESHOLD) {
-		CS_LOG_ERR("Option not supported");
+		CR_SCHED_LOG(ERR, "Option not supported");
 		return -EINVAL;
 	}
 

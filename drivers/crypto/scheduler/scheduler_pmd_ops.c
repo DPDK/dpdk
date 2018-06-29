@@ -27,7 +27,7 @@ scheduler_attach_init_slave(struct rte_cryptodev *dev)
 		int status;
 
 		if (!slave_dev) {
-			CS_LOG_ERR("Failed to locate slave dev %s",
+			CR_SCHED_LOG(ERR, "Failed to locate slave dev %s",
 					dev_name);
 			return -EINVAL;
 		}
@@ -36,12 +36,12 @@ scheduler_attach_init_slave(struct rte_cryptodev *dev)
 				scheduler_id, slave_dev->data->dev_id);
 
 		if (status < 0) {
-			CS_LOG_ERR("Failed to attach slave cryptodev %u",
+			CR_SCHED_LOG(ERR, "Failed to attach slave cryptodev %u",
 					slave_dev->data->dev_id);
 			return status;
 		}
 
-		CS_LOG_INFO("Scheduler %s attached slave %s\n",
+		CR_SCHED_LOG(INFO, "Scheduler %s attached slave %s",
 				dev->data->name,
 				sched_ctx->init_slave_names[i]);
 
@@ -102,7 +102,7 @@ update_order_ring(struct rte_cryptodev *dev, uint16_t qp_id)
 		if (snprintf(order_ring_name, RTE_CRYPTODEV_NAME_MAX_LEN,
 			"%s_rb_%u_%u", RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD),
 			dev->data->dev_id, qp_id) < 0) {
-			CS_LOG_ERR("failed to create unique reorder buffer "
+			CR_SCHED_LOG(ERR, "failed to create unique reorder buffer"
 					"name");
 			return -ENOMEM;
 		}
@@ -111,7 +111,7 @@ update_order_ring(struct rte_cryptodev *dev, uint16_t qp_id)
 				buff_size, rte_socket_id(),
 				RING_F_SP_ENQ | RING_F_SC_DEQ);
 		if (!qp_ctx->order_ring) {
-			CS_LOG_ERR("failed to create order ring");
+			CR_SCHED_LOG(ERR, "failed to create order ring");
 			return -ENOMEM;
 		}
 	} else {
@@ -145,18 +145,18 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
 		ret = update_order_ring(dev, i);
 		if (ret < 0) {
-			CS_LOG_ERR("Failed to update reorder buffer");
+			CR_SCHED_LOG(ERR, "Failed to update reorder buffer");
 			return ret;
 		}
 	}
 
 	if (sched_ctx->mode == CDEV_SCHED_MODE_NOT_SET) {
-		CS_LOG_ERR("Scheduler mode is not set");
+		CR_SCHED_LOG(ERR, "Scheduler mode is not set");
 		return -1;
 	}
 
 	if (!sched_ctx->nb_slaves) {
-		CS_LOG_ERR("No slave in the scheduler");
+		CR_SCHED_LOG(ERR, "No slave in the scheduler");
 		return -1;
 	}
 
@@ -166,7 +166,7 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
 
 		if ((*sched_ctx->ops.slave_attach)(dev, slave_dev_id) < 0) {
-			CS_LOG_ERR("Failed to attach slave");
+			CR_SCHED_LOG(ERR, "Failed to attach slave");
 			return -ENOTSUP;
 		}
 	}
@@ -174,7 +174,7 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.scheduler_start, -ENOTSUP);
 
 	if ((*sched_ctx->ops.scheduler_start)(dev) < 0) {
-		CS_LOG_ERR("Scheduler start failed");
+		CR_SCHED_LOG(ERR, "Scheduler start failed");
 		return -1;
 	}
 
@@ -186,7 +186,7 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 
 		ret = (*slave_dev->dev_ops->dev_start)(slave_dev);
 		if (ret < 0) {
-			CS_LOG_ERR("Failed to start slave dev %u",
+			CR_SCHED_LOG(ERR, "Failed to start slave dev %u",
 					slave_dev_id);
 			return ret;
 		}
@@ -386,7 +386,7 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN,
 			"CRYTO_SCHE PMD %u QP %u",
 			dev->data->dev_id, qp_id) < 0) {
-		CS_LOG_ERR("Failed to create unique queue pair name");
+		CR_SCHED_LOG(ERR, "Failed to create unique queue pair name");
 		return -EFAULT;
 	}
 
@@ -424,14 +424,14 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	 */
 	ret = scheduler_attach_init_slave(dev);
 	if (ret < 0) {
-		CS_LOG_ERR("Failed to attach slave");
+		CR_SCHED_LOG(ERR, "Failed to attach slave");
 		scheduler_pmd_qp_release(dev, qp_id);
 		return ret;
 	}
 
 	if (*sched_ctx->ops.config_queue_pair) {
 		if ((*sched_ctx->ops.config_queue_pair)(dev, qp_id) < 0) {
-			CS_LOG_ERR("Unable to configure queue pair");
+			CR_SCHED_LOG(ERR, "Unable to configure queue pair");
 			return -1;
 		}
 	}
@@ -498,7 +498,7 @@ scheduler_pmd_session_configure(struct rte_cryptodev *dev,
 		ret = rte_cryptodev_sym_session_init(slave->dev_id, sess,
 					xform, mempool);
 		if (ret < 0) {
-			CS_LOG_ERR("unabled to config sym session");
+			CR_SCHED_LOG(ERR, "unable to config sym session");
 			return ret;
 		}
 	}

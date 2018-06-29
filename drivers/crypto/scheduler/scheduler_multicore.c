@@ -178,7 +178,8 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 		}
 	}
 	if (worker_idx == -1) {
-		CS_LOG_ERR("worker on core %u:cannot find worker index!\n", core_id);
+		CR_SCHED_LOG(ERR, "worker on core %u:cannot find worker index!",
+			core_id);
 		return -1;
 	}
 
@@ -313,7 +314,7 @@ scheduler_config_qp(struct rte_cryptodev *dev, uint16_t qp_id)
 	mc_qp_ctx = rte_zmalloc_socket(NULL, sizeof(*mc_qp_ctx), 0,
 			rte_socket_id());
 	if (!mc_qp_ctx) {
-		CS_LOG_ERR("failed allocate memory for private queue pair");
+		CR_SCHED_LOG(ERR, "failed allocate memory for private queue pair");
 		return -ENOMEM;
 	}
 
@@ -339,7 +340,7 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 	mc_ctx = rte_zmalloc_socket(NULL, sizeof(struct mc_scheduler_ctx), 0,
 			rte_socket_id());
 	if (!mc_ctx) {
-		CS_LOG_ERR("failed allocate memory");
+		CR_SCHED_LOG(ERR, "failed allocate memory");
 		return -ENOMEM;
 	}
 
@@ -356,7 +357,7 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 						rte_socket_id(),
 						RING_F_SC_DEQ | RING_F_SP_ENQ);
 			if (!mc_ctx->sched_enq_ring[i]) {
-				CS_LOG_ERR("Cannot create ring for worker %u",
+				CR_SCHED_LOG(ERR, "Cannot create ring for worker %u",
 					   i);
 				goto exit;
 			}
@@ -370,7 +371,7 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 						rte_socket_id(),
 						RING_F_SC_DEQ | RING_F_SP_ENQ);
 			if (!mc_ctx->sched_deq_ring[i]) {
-				CS_LOG_ERR("Cannot create ring for worker %u",
+				CR_SCHED_LOG(ERR, "Cannot create ring for worker %u",
 					   i);
 				goto exit;
 			}

@@ -139,7 +139,7 @@ scheduler_start(struct rte_cryptodev *dev)
 	uint16_t i;
 
 	if (sched_ctx->nb_slaves < 2) {
-		CS_LOG_ERR("Number of slaves shall no less than 2");
+		CR_SCHED_LOG(ERR, "Number of slaves shall no less than 2");
 		return -ENOMEM;
 	}
 
@@ -182,7 +182,7 @@ scheduler_config_qp(struct rte_cryptodev *dev, uint16_t qp_id)
 	fo_qp_ctx = rte_zmalloc_socket(NULL, sizeof(*fo_qp_ctx), 0,
 			rte_socket_id());
 	if (!fo_qp_ctx) {
-		CS_LOG_ERR("failed allocate memory for private queue pair");
+		CR_SCHED_LOG(ERR, "failed allocate memory for private queue pair");
 		return -ENOMEM;
 	}
 

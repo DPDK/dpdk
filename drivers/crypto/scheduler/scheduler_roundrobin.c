@@ -175,7 +175,7 @@ scheduler_config_qp(struct rte_cryptodev *dev, uint16_t qp_id)
 	rr_qp_ctx = rte_zmalloc_socket(NULL, sizeof(*rr_qp_ctx), 0,
 			rte_socket_id());
 	if (!rr_qp_ctx) {
-		CS_LOG_ERR("failed allocate memory for private queue pair");
+		CR_SCHED_LOG(ERR, "failed allocate memory for private queue pair");
 		return -ENOMEM;
 	}
 
