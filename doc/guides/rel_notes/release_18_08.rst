@@ -59,6 +59,15 @@ New Features
   ``rte_eth_rx_descritpr_status`` and ``rte_eth_tx_descriptor_status``
   are supported by fm10K.
 
+* **Updated the enic driver.**
+
+  * Add support for mbuf fast free offload.
+  * Add low cycle count Tx handler for no-offload Tx (except mbuf fast free).
+  * Add low cycle count Rx handler for non-scattered Rx.
+  * Minor performance improvements to scattered Rx handler.
+  * Add handlers to add/delete VxLAN port number.
+  * Add devarg to specify ingress VLAN rewrite mode.
+
 
 API Changes
 -----------
