@@ -411,13 +411,28 @@ sfc_ef10_essb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 static sfc_dp_rx_qdesc_npending_t sfc_ef10_essb_rx_qdesc_npending;
 static unsigned int
-sfc_ef10_essb_rx_qdesc_npending(__rte_unused struct sfc_dp_rxq *dp_rxq)
+sfc_ef10_essb_rx_qdesc_npending(struct sfc_dp_rxq *dp_rxq)
 {
-	/*
-	 * Correct implementation requires EvQ polling and events
-	 * processing.
-	 */
-	return -ENOTSUP;
+	struct sfc_ef10_essb_rxq *rxq = sfc_ef10_essb_rxq_by_dp_rxq(dp_rxq);
+	const unsigned int evq_old_read_ptr = rxq->evq_read_ptr;
+	efx_qword_t rx_ev;
+
+	if (unlikely(rxq->flags & (SFC_EF10_ESSB_RXQ_NOT_RUNNING |
+				   SFC_EF10_ESSB_RXQ_EXCEPTION)))
+		return rxq->bufs_pending;
+
+	while (sfc_ef10_essb_rx_event_get(rxq, &rx_ev)) {
+		/*
+		 * DROP_EVENT is an internal to the NIC, software should
+		 * never see it and, therefore, may ignore it.
+		 */
+		sfc_ef10_essb_rx_process_ev(rxq, rx_ev);
+	}
+
+	sfc_ef10_ev_qclear(rxq->evq_hw_ring, rxq->evq_ptr_mask,
+			   evq_old_read_ptr, rxq->evq_read_ptr);
+
+	return rxq->bufs_pending;
 }
 
 static sfc_dp_rx_qdesc_status_t sfc_ef10_essb_rx_qdesc_status;
