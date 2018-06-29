@@ -869,25 +869,23 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 	static int instance;
 
 	wq->socket_id = socket_id;
-	if (nb_desc) {
-		if (nb_desc > enic->config.wq_desc_count) {
-			dev_warning(enic,
-				"WQ %d - number of tx desc in cmd line (%d)"\
-				"is greater than that in the UCSM/CIMC adapter"\
-				"policy.  Applying the value in the adapter "\
-				"policy (%d)\n",
-				queue_idx, nb_desc, enic->config.wq_desc_count);
-		} else if (nb_desc != enic->config.wq_desc_count) {
-			enic->config.wq_desc_count = nb_desc;
-			dev_info(enic,
-				"TX Queues - effective number of descs:%d\n",
-				nb_desc);
-		}
+	if (nb_desc > enic->config.wq_desc_count) {
+		dev_warning(enic,
+			    "WQ %d - number of tx desc in cmd line (%d) "
+			    "is greater than that in the UCSM/CIMC adapter "
+			    "policy.  Applying the value in the adapter "
+			    "policy (%d)\n",
+			    queue_idx, nb_desc, enic->config.wq_desc_count);
+		nb_desc = enic->config.wq_desc_count;
+	} else if (nb_desc != enic->config.wq_desc_count) {
+		dev_info(enic,
+			 "TX Queues - effective number of descs:%d\n",
+			 nb_desc);
 	}
 
 	/* Allocate queue resources */
 	err = vnic_wq_alloc(enic->vdev, &enic->wq[queue_idx], queue_idx,
-		enic->config.wq_desc_count,
+		nb_desc,
 		sizeof(struct wq_enet_desc));
 	if (err) {
 		dev_err(enic, "error in allocation of wq\n");
@@ -895,7 +893,7 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 	}
 
 	err = vnic_cq_alloc(enic->vdev, &enic->cq[cq_index], cq_index,
-		socket_id, enic->config.wq_desc_count,
+		socket_id, nb_desc,
 		sizeof(struct cq_enet_wq_desc));
 	if (err) {
 		vnic_wq_free(wq);

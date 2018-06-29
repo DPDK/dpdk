@@ -731,13 +731,14 @@ static void enicpmd_dev_rxq_info_get(struct rte_eth_dev *dev,
 }
 
 static void enicpmd_dev_txq_info_get(struct rte_eth_dev *dev,
-				     __rte_unused uint16_t tx_queue_id,
+				     uint16_t tx_queue_id,
 				     struct rte_eth_txq_info *qinfo)
 {
 	struct enic *enic = pmd_priv(dev);
+	struct vnic_wq *wq = &enic->wq[tx_queue_id];
 
 	ENICPMD_FUNC_TRACE();
-	qinfo->nb_desc = enic->config.wq_desc_count;
+	qinfo->nb_desc = wq->ring.desc_count;
 	memset(&qinfo->conf, 0, sizeof(qinfo->conf));
 	qinfo->conf.offloads = enic->tx_offload_capa;
 	/* tx_thresh, and all the other fields are not applicable for enic */
