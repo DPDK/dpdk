@@ -163,15 +163,15 @@ null_crypto_pmd_qp_create_processed_pkts_ring(struct null_crypto_qp *qp,
 	r = rte_ring_lookup(qp->name);
 	if (r) {
 		if (rte_ring_get_size(r) >= ring_size) {
-			NULL_CRYPTO_LOG_INFO(
-				"Reusing existing ring %s for processed packets",
-				qp->name);
+			NULL_LOG(INFO,
+					"Reusing existing ring %s for "
+					" processed packets", qp->name);
 			return r;
 		}
 
-		NULL_CRYPTO_LOG_INFO(
-			"Unable to reuse existing ring %s for processed packets",
-			 qp->name);
+		NULL_LOG(INFO,
+				"Unable to reuse existing ring %s for "
+				" processed packets", qp->name);
 		return NULL;
 	}
 
@@ -190,7 +190,7 @@ null_crypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	int retval;
 
 	if (qp_id >= internals->max_nb_qpairs) {
-		NULL_CRYPTO_LOG_ERR("Invalid qp_id %u, greater than maximum "
+		NULL_LOG(ERR, "Invalid qp_id %u, greater than maximum "
 				"number of queue pairs supported (%u).",
 				qp_id, internals->max_nb_qpairs);
 		return (-EINVAL);
@@ -204,7 +204,7 @@ null_crypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qp = rte_zmalloc_socket("Null Crypto PMD Queue Pair", sizeof(*qp),
 					RTE_CACHE_LINE_SIZE, socket_id);
 	if (qp == NULL) {
-		NULL_CRYPTO_LOG_ERR("Failed to allocate queue pair memory");
+		NULL_LOG(ERR, "Failed to allocate queue pair memory");
 		return (-ENOMEM);
 	}
 
@@ -213,15 +213,16 @@ null_crypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	retval = null_crypto_pmd_qp_set_unique_name(dev, qp);
 	if (retval) {
-		NULL_CRYPTO_LOG_ERR("Failed to create unique name for null "
+		NULL_LOG(ERR, "Failed to create unique name for null "
 				"crypto device");
+
 		goto qp_setup_cleanup;
 	}
 
 	qp->processed_pkts = null_crypto_pmd_qp_create_processed_pkts_ring(qp,
 			qp_conf->nb_descriptors, socket_id);
 	if (qp->processed_pkts == NULL) {
-		NULL_CRYPTO_LOG_ERR("Failed to create unique name for null "
+		NULL_LOG(ERR, "Failed to create unique name for null "
 				"crypto device");
 		goto qp_setup_cleanup;
 	}
@@ -280,19 +281,19 @@ null_crypto_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 	int ret;
 
 	if (unlikely(sess == NULL)) {
-		NULL_CRYPTO_LOG_ERR("invalid session struct");
+		NULL_LOG(ERR, "invalid session struct");
 		return -EINVAL;
 	}
 
 	if (rte_mempool_get(mp, &sess_private_data)) {
-		CDEV_LOG_ERR(
-			"Couldn't get object from session mempool");
+		NULL_LOG(ERR,
+				"Couldn't get object from session mempool");
 		return -ENOMEM;
 	}
 
 	ret = null_crypto_set_session_parameters(sess_private_data, xform);
 	if (ret != 0) {
-		NULL_CRYPTO_LOG_ERR("failed configure session parameters");
+		NULL_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mp, sess_private_data);

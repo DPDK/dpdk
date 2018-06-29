@@ -161,10 +161,9 @@ cryptodev_null_create(const char *name,
 {
 	struct rte_cryptodev *dev;
 	struct null_crypto_private *internals;
-
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
-		NULL_CRYPTO_LOG_ERR("failed to create cryptodev vdev");
+		NULL_LOG(ERR, "failed to create cryptodev vdev");
 		return -EFAULT;
 	}
 
@@ -209,8 +208,9 @@ cryptodev_null_probe(struct rte_vdev_device *dev)
 
 	retval = rte_cryptodev_pmd_parse_input_args(&init_params, args);
 	if (retval) {
-		RTE_LOG(ERR, PMD,
-			"Failed to parse initialisation arguments[%s]\n", args);
+		NULL_LOG(ERR,
+				"Failed to parse initialisation arguments[%s]",
+				args);
 		return -EINVAL;
 	}
 
@@ -249,3 +249,10 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_NULL_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(null_crypto_drv, cryptodev_null_pmd_drv.driver,
 		cryptodev_driver_id);
+
+RTE_INIT(null_init_log);
+static void
+null_init_log(void)
+{
+	null_logtype_driver = rte_log_register("pmd.crypto.null");
+}

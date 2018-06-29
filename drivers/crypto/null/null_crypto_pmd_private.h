@@ -8,25 +8,12 @@
 #define CRYPTODEV_NAME_NULL_PMD		crypto_null
 /**< Null crypto PMD device name */
 
-#define NULL_CRYPTO_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_NULL_PMD), \
-			__func__, __LINE__, ## args)
+int null_logtype_driver;
 
-#ifdef RTE_LIBRTE_NULL_CRYPTO_DEBUG
-#define NULL_CRYPTO_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_NULL_PMD), \
-			__func__, __LINE__, ## args)
-
-#define NULL_CRYPTO_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_NULL_PMD), \
-			__func__, __LINE__, ## args)
-#else
-#define NULL_CRYPTO_LOG_INFO(fmt, args...)
-#define NULL_CRYPTO_LOG_DBG(fmt, args...)
-#endif
+#define NULL_LOG(level, fmt, ...)  \
+	rte_log(RTE_LOG_ ## level, null_logtype_driver,  \
+			"%s() line %u: "fmt "\n", __func__, __LINE__,  \
+					## __VA_ARGS__)
 
 
 /** private data structure for each NULL crypto device */
