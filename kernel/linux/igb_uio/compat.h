@@ -143,7 +143,7 @@ static inline bool igbuio_kernel_is_locked_down(void)
 #ifdef CONFIG_LOCK_DOWN_KERNEL
 #ifdef CONFIG_LOCK_DOWN_IN_EFI_SECURE_BOOT
 	return kernel_is_locked_down(NULL);
-#elif CONFIG_EFI_SECURE_BOOT_LOCK_DOWN
+#elif defined(CONFIG_EFI_SECURE_BOOT_LOCK_DOWN)
 	return kernel_is_locked_down();
 #else
 	return false;
