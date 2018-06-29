@@ -310,7 +310,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct vnic_rq *rq;
 	struct enic *enic = vnic_dev_priv(sop_rq->vdev);
 	uint16_t cq_idx;
-	uint16_t rq_idx;
+	uint16_t rq_idx, max_rx;
 	uint16_t rq_num;
 	struct rte_mbuf *nmb, *rxmb;
 	uint16_t nb_rx = 0;
@@ -325,19 +325,23 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	cq = &enic->cq[enic_cq_rq(enic, sop_rq->index)];
 	cq_idx = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
 	cqd_ptr = (struct cq_desc *)(cq->ring.descs) + cq_idx;
+	color = cq->last_color;
 
 	data_rq = &enic->rq[sop_rq->data_queue_idx];
 
-	while (nb_rx < nb_pkts) {
+	/* Receive until the end of the ring, at most. */
+	max_rx = RTE_MIN(nb_pkts, cq->ring.desc_count - cq_idx);
+
+	while (max_rx) {
 		volatile struct rq_enet_desc *rqd_ptr;
 		struct cq_desc cqd;
 		uint8_t packet_error;
 		uint16_t ciflags;
 
+		max_rx--;
+
 		/* Check for pkts available */
-		color = (cqd_ptr->type_color >> CQ_DESC_COLOR_SHIFT)
-			& CQ_DESC_COLOR_MASK;
-		if (color == cq->last_color)
+		if ((cqd_ptr->type_color & CQ_DESC_COLOR_MASK_NOSHIFT) == color)
 			break;
 
 		/* Get the cq descriptor and extract rq info from it */
@@ -361,13 +365,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* Get the mbuf to return and replace with one just allocated */
 		rxmb = rq->mbuf_ring[rq_idx];
 		rq->mbuf_ring[rq_idx] = nmb;
-
-		/* Increment cqd, rqd, mbuf_table index */
 		cq_idx++;
-		if (unlikely(cq_idx == cq->ring.desc_count)) {
-			cq_idx = 0;
-			cq->last_color = cq->last_color ? 0 : 1;
-		}
 
 		/* Prefetch next mbuf & desc while processing current one */
 		cqd_ptr = (struct cq_desc *)(cq->ring.descs) + cq_idx;
@@ -419,6 +417,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->packet_type =
 			enic_cq_rx_flags_to_pkt_type(&cqd, tnl);
 		enic_cq_rx_to_pkt_flags(&cqd, first_seg);
+
 		/* Wipe the outer types set by enic_cq_rx_flags_to_pkt_type() */
 		if (tnl) {
 			first_seg->packet_type &= ~(RTE_PTYPE_L3_MASK |
@@ -437,6 +436,10 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* store the mbuf address into the next entry of the array */
 		rx_pkts[nb_rx++] = first_seg;
+	}
+	if (unlikely(cq_idx == cq->ring.desc_count)) {
+		cq_idx = 0;
+		cq->last_color ^= CQ_DESC_COLOR_MASK_NOSHIFT;
 	}
 
 	sop_rq->pkt_first_seg = first_seg;
