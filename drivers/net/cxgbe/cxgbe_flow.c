@@ -452,6 +452,7 @@ static int __cxgbe_flow_create(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct ch_filter_specification *fs = &flow->fs;
 	struct adapter *adap = ethdev2adap(dev);
+	struct tid_info *t = &adap->tids;
 	struct filter_ctx ctx;
 	unsigned int fidx;
 	int err;
@@ -484,8 +485,13 @@ static int __cxgbe_flow_create(struct rte_eth_dev *dev, struct rte_flow *flow)
 		return ctx.result;
 	}
 
-	flow->fidx = fidx;
-	flow->f = &adap->tids.ftid_tab[fidx];
+	if (fs->cap) { /* to destroy the filter */
+		flow->fidx = ctx.tid;
+		flow->f = lookup_tid(t, ctx.tid);
+	} else {
+		flow->fidx = fidx;
+		flow->f = &adap->tids.ftid_tab[fidx];
+	}
 
 	return 0;
 }

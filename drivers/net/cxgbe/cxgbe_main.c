@@ -91,6 +91,10 @@ static int fwevtq_handler(struct sge_rspq *q, const __be64 *rsp,
 		const struct cpl_set_tcb_rpl *p = (const void *)rsp;
 
 		filter_rpl(q->adapter, p);
+	} else if (opcode == CPL_ACT_OPEN_RPL) {
+		const struct cpl_act_open_rpl *p = (const void *)rsp;
+
+		hash_filter_rpl(q->adapter, p);
 	} else {
 		dev_err(adapter, "unexpected CPL %#x on FW event queue\n",
 			opcode);
@@ -261,6 +265,58 @@ int cxgb4_set_rspq_intr_params(struct sge_rspq *q, unsigned int us,
 		q->intr_params = V_QINTR_TIMER_IDX(timer_val) |
 				 V_QINTR_CNT_EN(cnt > 0);
 	return 0;
+}
+
+/**
+ * Allocate an active-open TID and set it to the supplied value.
+ */
+int cxgbe_alloc_atid(struct tid_info *t, void *data)
+{
+	int atid = -1;
+
+	t4_os_lock(&t->atid_lock);
+	if (t->afree) {
+		union aopen_entry *p = t->afree;
+
+		atid = p - t->atid_tab;
+		t->afree = p->next;
+		p->data = data;
+		t->atids_in_use++;
+	}
+	t4_os_unlock(&t->atid_lock);
+	return atid;
+}
+
+/**
+ * Release an active-open TID.
+ */
+void cxgbe_free_atid(struct tid_info *t, unsigned int atid)
+{
+	union aopen_entry *p = &t->atid_tab[atid];
+
+	t4_os_lock(&t->atid_lock);
+	p->next = t->afree;
+	t->afree = p;
+	t->atids_in_use--;
+	t4_os_unlock(&t->atid_lock);
+}
+
+/**
+ * Insert a TID.
+ */
+void cxgbe_insert_tid(struct tid_info *t, void *data, unsigned int tid,
+		      unsigned short family)
+{
+	t->tid_tab[tid] = data;
+	if (t->hash_base && tid >= t->hash_base) {
+		if (family == FILTER_TYPE_IPV4)
+			rte_atomic32_inc(&t->hash_tids_in_use);
+	} else {
+		if (family == FILTER_TYPE_IPV4)
+			rte_atomic32_inc(&t->tids_in_use);
+	}
+
+	rte_atomic32_inc(&t->conns_in_use);
 }
 
 /**

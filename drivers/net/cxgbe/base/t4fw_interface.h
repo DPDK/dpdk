@@ -55,6 +55,7 @@ enum fw_memtype {
 
 enum fw_wr_opcodes {
 	FW_FILTER_WR		= 0x02,
+	FW_TP_WR		= 0x05,
 	FW_ETH_TX_PKT_WR	= 0x08,
 	FW_ETH_TX_PKTS_WR	= 0x09,
 	FW_ETH_TX_PKT_VM_WR	= 0x11,
@@ -92,6 +93,11 @@ struct fw_wr_hdr {
 #define V_FW_WR_EQUEQ(x)	((x) << S_FW_WR_EQUEQ)
 #define G_FW_WR_EQUEQ(x)	(((x) >> S_FW_WR_EQUEQ) & M_FW_WR_EQUEQ)
 #define F_FW_WR_EQUEQ		V_FW_WR_EQUEQ(1U)
+
+/* flow context identifier (lo)
+ */
+#define S_FW_WR_FLOWID		8
+#define V_FW_WR_FLOWID(x)	((x) << S_FW_WR_FLOWID)
 
 /* length in units of 16-bytes (lo)
  */

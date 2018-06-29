@@ -771,6 +771,17 @@ static inline void t4_complete(struct t4_completion *c)
 	t4_os_unlock(&c->lock);
 }
 
+/**
+ * cxgbe_port_viid - get the VI id of a port
+ * @dev: the device for the port
+ *
+ * Return the VI id of the given port.
+ */
+static inline unsigned int cxgbe_port_viid(const struct rte_eth_dev *dev)
+{
+	return ethdev2pinfo(dev)->viid;
+}
+
 void *t4_alloc_mem(size_t size);
 void t4_free_mem(void *addr);
 #define t4_os_alloc(_size)     t4_alloc_mem((_size))
