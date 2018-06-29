@@ -57,7 +57,25 @@ that a tagged release has been tested.
 What changes should be backported
 ---------------------------------
 
-Backporting should be limited to bug fixes.
+Backporting should be limited to bug fixes. All patches accepted on the master
+branch with a Fixes: tag should be backported to the relevant stable/LTS
+branches, unless the submitter indicates otherwise. If there are exceptions,
+they will be discussed on the mailing lists.
+
+Fixes suitable for backport should have a ``Cc: stable@dpdk.org`` tag in the
+commit message body as follows::
+
+     doc: fix some parameter description
+
+     Update the docs, fixing description of some parameter.
+
+     Fixes: abcdefgh1234 ("doc: add some parameter")
+     Cc: stable@dpdk.org
+
+     Signed-off-by: Alex Smith <alex.smith@example.com>
+
+
+Fixes not suitable for backport should not include the ``Cc: stable@dpdk.org`` tag.
 
 Features should not be backported to stable releases. It may be acceptable, in
 limited cases, to back port features for the LTS release where:
