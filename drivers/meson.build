@@ -32,6 +32,9 @@ foreach class:driver_classes
 		sources = []
 		objs = []
 		cflags = machine_args
+		if cc.has_argument('-Wno-format-truncation')
+			cflags += '-Wno-format-truncation'
+		endif
 		includes = [include_directories(drv_path)]
 		# set up internal deps. Drivers can append/override as necessary
 		deps = std_deps

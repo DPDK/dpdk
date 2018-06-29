@@ -237,6 +237,11 @@ if dpdk_conf.has('RTE_LIBRTE_KNI')
 	test_deps += 'kni'
 endif
 
+cflags = machine_args
+if cc.has_argument('-Wno-format-truncation')
+    cflags += '-Wno-format-truncation'
+endif
+
 test_dep_objs = []
 compress_test_dep = dependency('zlib', required: false)
 if compress_test_dep.found()
@@ -262,7 +267,7 @@ if get_option('tests')
 		test_sources,
 		link_whole: link_libs,
 		dependencies: test_dep_objs,
-		c_args: [machine_args, '-DALLOW_EXPERIMENTAL_API'],
+		c_args: [cflags, '-DALLOW_EXPERIMENTAL_API'],
 		install_rpath: driver_install_path,
 		install: false)
 

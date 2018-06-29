@@ -24,6 +24,10 @@ foreach example: examples
 	sources = []
 	allow_experimental_apis = false
 	cflags = machine_args
+	if cc.has_argument('-Wno-format-truncation')
+		cflags += '-Wno-format-truncation'
+	endif
+
 	ext_deps = [execinfo]
 	includes = [include_directories(example)]
 	deps = ['eal', 'mempool', 'net', 'mbuf', 'ethdev', 'cmdline']

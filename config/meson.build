@@ -57,8 +57,7 @@ add_project_arguments('-include', 'rte_config.h', language: 'c')
 warning_flags = [
 	'-Wsign-compare',
 	'-Wcast-qual',
-	'-Wno-address-of-packed-member',
-	'-Wno-format-truncation'
+	'-Wno-address-of-packed-member'
 ]
 foreach arg: warning_flags
 	if cc.has_argument(arg)

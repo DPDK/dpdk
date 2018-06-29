@@ -34,6 +34,10 @@ foreach l:libraries
 	headers = []
 	includes = []
 	cflags = machine_args
+	if cc.has_argument('-Wno-format-truncation')
+	    cflags += '-Wno-format-truncation'
+	endif
+
 	objs = [] # other object files to link against, used e.g. for
 	          # instruction-set optimized versions of code
 
