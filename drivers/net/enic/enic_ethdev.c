@@ -185,17 +185,21 @@ static int enicpmd_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	uint16_t queue_idx,
 	uint16_t nb_desc,
 	unsigned int socket_id,
-	__rte_unused const struct rte_eth_txconf *tx_conf)
+	const struct rte_eth_txconf *tx_conf)
 {
 	int ret;
 	struct enic *enic = pmd_priv(eth_dev);
+	struct vnic_wq *wq;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -E_RTE_SECONDARY;
 
 	ENICPMD_FUNC_TRACE();
 	RTE_ASSERT(queue_idx < enic->conf_wq_count);
-	eth_dev->data->tx_queues[queue_idx] = (void *)&enic->wq[queue_idx];
+	wq = &enic->wq[queue_idx];
+	wq->offloads = tx_conf->offloads |
+		eth_dev->data->dev_conf.txmode.offloads;
+	eth_dev->data->tx_queues[queue_idx] = (void *)wq;
 
 	ret = enic_alloc_wq(enic, queue_idx, socket_id, nb_desc);
 	if (ret) {
@@ -477,6 +481,7 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->max_mac_addrs = ENIC_MAX_MAC_ADDR;
 	device_info->rx_offload_capa = enic->rx_offload_capa;
 	device_info->tx_offload_capa = enic->tx_offload_capa;
+	device_info->tx_queue_offload_capa = enic->tx_queue_offload_capa;
 	device_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = ENIC_DEFAULT_RX_FREE_THRESH
 	};
@@ -765,7 +770,7 @@ static void enicpmd_dev_txq_info_get(struct rte_eth_dev *dev,
 	ENICPMD_FUNC_TRACE();
 	qinfo->nb_desc = wq->ring.desc_count;
 	memset(&qinfo->conf, 0, sizeof(qinfo->conf));
-	qinfo->conf.offloads = enic->tx_offload_capa;
+	qinfo->conf.offloads = wq->offloads;
 	/* tx_thresh, and all the other fields are not applicable for enic */
 }
 

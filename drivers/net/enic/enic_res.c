@@ -183,7 +183,9 @@ int enic_get_vnic_config(struct enic *enic)
 	 * Default hardware capabilities. enic_dev_init() may add additional
 	 * flags if it enables overlay offloads.
 	 */
+	enic->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	enic->tx_offload_capa =
+		enic->tx_queue_offload_capa |
 		DEV_TX_OFFLOAD_MULTI_SEGS |
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM |

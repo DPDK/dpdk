@@ -183,6 +183,7 @@ struct enic {
 
 	uint64_t rx_offload_capa; /* DEV_RX_OFFLOAD flags */
 	uint64_t tx_offload_capa; /* DEV_TX_OFFLOAD flags */
+	uint64_t tx_queue_offload_capa; /* DEV_TX_OFFLOAD flags */
 	uint64_t tx_offload_mask; /* PKT_TX flags accepted */
 };
 

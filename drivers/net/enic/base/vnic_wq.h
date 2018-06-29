@@ -48,6 +48,7 @@ struct vnic_wq {
 	unsigned int socket_id;
 	const struct rte_memzone *cqmsg_rz;
 	uint16_t last_completed_index;
+	uint64_t offloads;
 };
 
 static inline unsigned int vnic_wq_desc_avail(struct vnic_wq *wq)
