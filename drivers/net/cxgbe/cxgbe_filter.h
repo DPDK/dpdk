@@ -228,5 +228,5 @@ void hash_del_filter_rpl(struct adapter *adap,
 			 const struct cpl_abort_rpl_rss *rpl);
 int validate_filter(struct adapter *adap, struct ch_filter_specification *fs);
 int cxgbe_get_filter_count(struct adapter *adapter, unsigned int fidx,
-			   u64 *c, bool get_byte);
+			   u64 *c, int hash, bool get_byte);
 #endif /* _CXGBE_FILTER_H_ */

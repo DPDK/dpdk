@@ -591,13 +591,14 @@ static int __cxgbe_flow_query(struct rte_flow *flow, u64 *count,
 			      u64 *byte_count)
 {
 	struct adapter *adap = ethdev2adap(flow->dev);
+	struct ch_filter_specification fs = flow->f->fs;
 	unsigned int fidx = flow->fidx;
 	int ret = 0;
 
-	ret = cxgbe_get_filter_count(adap, fidx, count, 0);
+	ret = cxgbe_get_filter_count(adap, fidx, count, fs.cap, 0);
 	if (ret)
 		return ret;
-	return cxgbe_get_filter_count(adap, fidx, byte_count, 1);
+	return cxgbe_get_filter_count(adap, fidx, byte_count, fs.cap, 1);
 }
 
 static int

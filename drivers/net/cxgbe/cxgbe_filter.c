@@ -118,6 +118,36 @@ int writable_filter(struct filter_entry *f)
 }
 
 /**
+ * Send CPL_SET_TCB_FIELD message
+ */
+static void set_tcb_field(struct adapter *adapter, unsigned int ftid,
+			  u16 word, u64 mask, u64 val, int no_reply)
+{
+	struct rte_mbuf *mbuf;
+	struct cpl_set_tcb_field *req;
+	struct sge_ctrl_txq *ctrlq;
+
+	ctrlq = &adapter->sge.ctrlq[0];
+	mbuf = rte_pktmbuf_alloc(ctrlq->mb_pool);
+	WARN_ON(!mbuf);
+
+	mbuf->data_len = sizeof(*req);
+	mbuf->pkt_len = mbuf->data_len;
+
+	req = rte_pktmbuf_mtod(mbuf, struct cpl_set_tcb_field *);
+	memset(req, 0, sizeof(*req));
+	INIT_TP_WR_MIT_CPL(req, CPL_SET_TCB_FIELD, ftid);
+	req->reply_ctrl = cpu_to_be16(V_REPLY_CHAN(0) |
+				      V_QUEUENO(adapter->sge.fw_evtq.abs_id) |
+				      V_NO_REPLY(no_reply));
+	req->word_cookie = cpu_to_be16(V_WORD(word) | V_COOKIE(ftid));
+	req->mask = cpu_to_be64(mask);
+	req->val = cpu_to_be64(val);
+
+	t4_mgmt_tx(ctrlq, mbuf);
+}
+
+/**
  * Build a CPL_SET_TCB_FIELD message as payload of a ULP_TX_PKT command.
  */
 static inline void mk_set_tcb_field_ulp(struct filter_entry *f,
@@ -978,6 +1008,15 @@ void hash_filter_rpl(struct adapter *adap, const struct cpl_act_open_rpl *rpl)
 			ctx->tid = f->tid;
 			ctx->result = 0;
 		}
+		if (f->fs.hitcnts)
+			set_tcb_field(adap, tid,
+				      W_TCB_TIMESTAMP,
+				      V_TCB_TIMESTAMP(M_TCB_TIMESTAMP) |
+				      V_TCB_T_RTT_TS_RECENT_AGE
+					      (M_TCB_T_RTT_TS_RECENT_AGE),
+				      V_TCB_TIMESTAMP(0ULL) |
+				      V_TCB_T_RTT_TS_RECENT_AGE(0ULL),
+				      1);
 		break;
 	}
 	default:
@@ -1068,22 +1107,44 @@ void filter_rpl(struct adapter *adap, const struct cpl_set_tcb_rpl *rpl)
  * Retrieve the packet count for the specified filter.
  */
 int cxgbe_get_filter_count(struct adapter *adapter, unsigned int fidx,
-			   u64 *c, bool get_byte)
+			   u64 *c, int hash, bool get_byte)
 {
 	struct filter_entry *f;
 	unsigned int tcb_base, tcbaddr;
 	int ret;
 
 	tcb_base = t4_read_reg(adapter, A_TP_CMM_TCB_BASE);
-	if (fidx >= adapter->tids.nftids)
-		return -ERANGE;
+	if (is_hashfilter(adapter) && hash) {
+		if (fidx < adapter->tids.ntids) {
+			f = adapter->tids.tid_tab[fidx];
+			if (!f)
+				return -EINVAL;
+
+			if (is_t5(adapter->params.chip)) {
+				*c = 0;
+				return 0;
+			}
+			tcbaddr = tcb_base + (fidx * TCB_SIZE);
+			goto get_count;
+		} else {
+			return -ERANGE;
+		}
+	} else {
+		if (fidx >= adapter->tids.nftids)
+			return -ERANGE;
+
+		f = &adapter->tids.ftid_tab[fidx];
+		if (!f->valid)
+			return -EINVAL;
+
+		tcbaddr = tcb_base + f->tid * TCB_SIZE;
+	}
 
 	f = &adapter->tids.ftid_tab[fidx];
 	if (!f->valid)
 		return -EINVAL;
 
-	tcbaddr = tcb_base + f->tid * TCB_SIZE;
-
+get_count:
 	if (is_t5(adapter->params.chip) || is_t6(adapter->params.chip)) {
 		/*
 		 * For T5, the Filter Packet Hit Count is maintained as a
