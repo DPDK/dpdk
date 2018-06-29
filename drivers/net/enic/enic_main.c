@@ -743,8 +743,8 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	}
 
 	/* number of descriptors have to be a multiple of 32 */
-	nb_sop_desc = (nb_desc / mbufs_per_pkt) & ~0x1F;
-	nb_data_desc = (nb_desc - nb_sop_desc) & ~0x1F;
+	nb_sop_desc = (nb_desc / mbufs_per_pkt) & ENIC_ALIGN_DESCS_MASK;
+	nb_data_desc = (nb_desc - nb_sop_desc) & ENIC_ALIGN_DESCS_MASK;
 
 	rq_sop->max_mbufs_per_pkt = mbufs_per_pkt;
 	rq_data->max_mbufs_per_pkt = mbufs_per_pkt;
@@ -752,7 +752,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	if (mbufs_per_pkt > 1) {
 		min_sop = 64;
 		max_sop = ((enic->config.rq_desc_count /
-			    (mbufs_per_pkt - 1)) & ~0x1F);
+			    (mbufs_per_pkt - 1)) & ENIC_ALIGN_DESCS_MASK);
 		min_data = min_sop * (mbufs_per_pkt - 1);
 		max_data = enic->config.rq_desc_count;
 	} else {
@@ -870,19 +870,11 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 	static int instance;
 
 	wq->socket_id = socket_id;
-	if (nb_desc > enic->config.wq_desc_count) {
-		dev_warning(enic,
-			    "WQ %d - number of tx desc in cmd line (%d) "
-			    "is greater than that in the UCSM/CIMC adapter "
-			    "policy.  Applying the value in the adapter "
-			    "policy (%d)\n",
-			    queue_idx, nb_desc, enic->config.wq_desc_count);
-		nb_desc = enic->config.wq_desc_count;
-	} else if (nb_desc != enic->config.wq_desc_count) {
-		dev_info(enic,
-			 "TX Queues - effective number of descs:%d\n",
-			 nb_desc);
-	}
+	/*
+	 * rte_eth_tx_queue_setup() checks min, max, and alignment. So just
+	 * print an info message for diagnostics.
+	 */
+	dev_info(enic, "TX Queues - effective number of descs:%d\n", nb_desc);
 
 	/* Allocate queue resources */
 	err = vnic_wq_alloc(enic->vdev, &enic->wq[queue_idx], queue_idx,

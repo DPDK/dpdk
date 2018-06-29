@@ -482,6 +482,30 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->reta_size = enic->reta_size;
 	device_info->hash_key_size = enic->hash_key_size;
 	device_info->flow_type_rss_offloads = enic->flow_type_rss_offloads;
+	device_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = enic->config.rq_desc_count,
+		.nb_min = ENIC_MIN_RQ_DESCS,
+		.nb_align = ENIC_ALIGN_DESCS,
+	};
+	device_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = enic->config.wq_desc_count,
+		.nb_min = ENIC_MIN_WQ_DESCS,
+		.nb_align = ENIC_ALIGN_DESCS,
+		.nb_seg_max = ENIC_TX_XMIT_MAX,
+		.nb_mtu_seg_max = ENIC_NON_TSO_MAX_DESC,
+	};
+	device_info->default_rxportconf = (struct rte_eth_dev_portconf) {
+		.burst_size = ENIC_DEFAULT_RX_BURST,
+		.ring_size = RTE_MIN(device_info->rx_desc_lim.nb_max,
+			ENIC_DEFAULT_RX_RING_SIZE),
+		.nb_queues = ENIC_DEFAULT_RX_RINGS,
+	};
+	device_info->default_txportconf = (struct rte_eth_dev_portconf) {
+		.burst_size = ENIC_DEFAULT_TX_BURST,
+		.ring_size = RTE_MIN(device_info->tx_desc_lim.nb_max,
+			ENIC_DEFAULT_TX_RING_SIZE),
+		.nb_queues = ENIC_DEFAULT_TX_RINGS,
+	};
 }
 
 static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
