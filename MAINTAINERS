@@ -300,6 +300,8 @@ F: test/test/test_mbuf.c
 
 Ethernet API
 M: Thomas Monjalon <thomas@monjalon.net>
+M: Ferruh Yigit <ferruh.yigit@intel.com>
+M: Andrew Rybchenko <arybchenko@solarflare.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: lib/librte_ethdev/
 F: devtools/test-null.sh
