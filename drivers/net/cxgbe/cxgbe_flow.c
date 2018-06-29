@@ -730,6 +730,19 @@ static int cxgbe_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *e)
 				goto out;
 		}
 	}
+
+	if (is_hashfilter(adap) && adap->tids.tid_tab) {
+		struct filter_entry *f;
+
+		for (i = adap->tids.hash_base; i <= adap->tids.ntids; i++) {
+			f = (struct filter_entry *)adap->tids.tid_tab[i];
+
+			ret = cxgbe_check_n_destroy(f, dev, e);
+			if (ret < 0)
+				goto out;
+		}
+	}
+
 out:
 	return ret >= 0 ? 0 : ret;
 }
