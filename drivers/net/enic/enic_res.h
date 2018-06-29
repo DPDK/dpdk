@@ -37,6 +37,7 @@
 #define ENIC_NON_TSO_MAX_DESC		16
 #define ENIC_DEFAULT_RX_FREE_THRESH	32
 #define ENIC_TX_XMIT_MAX		64
+#define ENIC_RX_BURST_MAX		64
 
 /* Defaults for dev_info.default_{rx,tx}portconf */
 #define ENIC_DEFAULT_RX_BURST		32

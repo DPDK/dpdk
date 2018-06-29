@@ -313,6 +313,8 @@ int enic_clsf_init(struct enic *enic);
 void enic_clsf_destroy(struct enic *enic);
 uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
+uint16_t enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+				  uint16_t nb_pkts);
 uint16_t enic_dummy_recv_pkts(void *rx_queue,
 			      struct rte_mbuf **rx_pkts,
 			      uint16_t nb_pkts);

@@ -571,6 +571,14 @@ int enic_enable(struct enic *enic)
 		eth_dev->tx_pkt_burst = &enic_xmit_pkts;
 	}
 
+	/* Use the non-scatter, simplified RX handler if possible. */
+	if (enic->rq_count > 0 && enic->rq[0].data_queue_enable == 0) {
+		PMD_INIT_LOG(DEBUG, " use the non-scatter Rx handler");
+		eth_dev->rx_pkt_burst = &enic_noscatter_recv_pkts;
+	} else {
+		PMD_INIT_LOG(DEBUG, " use the normal Rx handler");
+	}
+
 	for (index = 0; index < enic->wq_count; index++)
 		enic_start_wq(enic, index);
 	for (index = 0; index < enic->rq_count; index++)
@@ -622,6 +630,19 @@ void enic_free_rq(void *rxq)
 	rq_sop = (struct vnic_rq *)rxq;
 	enic = vnic_dev_priv(rq_sop->vdev);
 	rq_data = &enic->rq[rq_sop->data_queue_idx];
+
+	if (rq_sop->free_mbufs) {
+		struct rte_mbuf **mb;
+		int i;
+
+		mb = rq_sop->free_mbufs;
+		for (i = ENIC_RX_BURST_MAX - rq_sop->num_free_mbufs;
+		     i < ENIC_RX_BURST_MAX; i++)
+			rte_pktmbuf_free(mb[i]);
+		rte_free(rq_sop->free_mbufs);
+		rq_sop->free_mbufs = NULL;
+		rq_sop->num_free_mbufs = 0;
+	}
 
 	enic_rxmbuf_queue_release(enic, rq_sop);
 	if (rq_data->in_use)
@@ -786,13 +807,13 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	rq_data->max_mbufs_per_pkt = mbufs_per_pkt;
 
 	if (mbufs_per_pkt > 1) {
-		min_sop = 64;
+		min_sop = ENIC_RX_BURST_MAX;
 		max_sop = ((enic->config.rq_desc_count /
 			    (mbufs_per_pkt - 1)) & ENIC_ALIGN_DESCS_MASK);
 		min_data = min_sop * (mbufs_per_pkt - 1);
 		max_data = enic->config.rq_desc_count;
 	} else {
-		min_sop = 64;
+		min_sop = ENIC_RX_BURST_MAX;
 		max_sop = enic->config.rq_desc_count;
 		min_data = 0;
 		max_data = 0;
@@ -863,10 +884,21 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 			goto err_free_sop_mbuf;
 	}
 
+	rq_sop->free_mbufs = (struct rte_mbuf **)
+		rte_zmalloc_socket("rq->free_mbufs",
+				   sizeof(struct rte_mbuf *) *
+				   ENIC_RX_BURST_MAX,
+				   RTE_CACHE_LINE_SIZE, rq_sop->socket_id);
+	if (rq_sop->free_mbufs == NULL)
+		goto err_free_data_mbuf;
+	rq_sop->num_free_mbufs = 0;
+
 	rq_sop->tot_nb_desc = nb_desc; /* squirl away for MTU update function */
 
 	return 0;
 
+err_free_data_mbuf:
+	rte_free(rq_data->mbuf_ring);
 err_free_sop_mbuf:
 	rte_free(rq_sop->mbuf_ring);
 err_free_cq:

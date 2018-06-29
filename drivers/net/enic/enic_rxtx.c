@@ -471,6 +471,120 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rx;
 }
 
+uint16_t
+enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
+{
+	struct rte_mbuf *mb, **rx, **rxmb;
+	uint16_t cq_idx, nb_rx, max_rx;
+	struct cq_enet_rq_desc *cqd;
+	struct rq_enet_desc *rqd;
+	unsigned int port_id;
+	struct vnic_cq *cq;
+	struct vnic_rq *rq;
+	struct enic *enic;
+	uint8_t color;
+	bool overlay;
+	bool tnl;
+
+	rq = rx_queue;
+	enic = vnic_dev_priv(rq->vdev);
+	cq = &enic->cq[enic_cq_rq(enic, rq->index)];
+	cq_idx = cq->to_clean;
+
+	/*
+	 * Fill up the reserve of free mbufs. Below, we restock the receive
+	 * ring with these mbufs to avoid allocation failures.
+	 */
+	if (rq->num_free_mbufs == 0) {
+		if (rte_mempool_get_bulk(rq->mp, (void **)rq->free_mbufs,
+					 ENIC_RX_BURST_MAX))
+			return 0;
+		rq->num_free_mbufs = ENIC_RX_BURST_MAX;
+	}
+
+	/* Receive until the end of the ring, at most. */
+	max_rx = RTE_MIN(nb_pkts, rq->num_free_mbufs);
+	max_rx = RTE_MIN(max_rx, cq->ring.desc_count - cq_idx);
+
+	cqd = (struct cq_enet_rq_desc *)(cq->ring.descs) + cq_idx;
+	color = cq->last_color;
+	rxmb = rq->mbuf_ring + cq_idx;
+	port_id = enic->port_id;
+	overlay = enic->overlay_offload;
+
+	rx = rx_pkts;
+	while (max_rx) {
+		max_rx--;
+		if ((cqd->type_color & CQ_DESC_COLOR_MASK_NOSHIFT) == color)
+			break;
+		if (unlikely(cqd->bytes_written_flags &
+			     CQ_ENET_RQ_DESC_FLAGS_TRUNCATED)) {
+			rte_pktmbuf_free(*rxmb++);
+			rte_atomic64_inc(&enic->soft_stats.rx_packet_errors);
+			cqd++;
+			continue;
+		}
+
+		mb = *rxmb++;
+		/* prefetch mbuf data for caller */
+		rte_packet_prefetch(RTE_PTR_ADD(mb->buf_addr,
+				    RTE_PKTMBUF_HEADROOM));
+		mb->data_len = cqd->bytes_written_flags &
+			CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK;
+		mb->pkt_len = mb->data_len;
+		mb->port = port_id;
+		tnl = overlay && (cqd->completed_index_flags &
+				  CQ_ENET_RQ_DESC_FLAGS_FCOE) != 0;
+		mb->packet_type =
+			enic_cq_rx_flags_to_pkt_type((struct cq_desc *)cqd,
+						     tnl);
+		enic_cq_rx_to_pkt_flags((struct cq_desc *)cqd, mb);
+		/* Wipe the outer types set by enic_cq_rx_flags_to_pkt_type() */
+		if (tnl) {
+			mb->packet_type &= ~(RTE_PTYPE_L3_MASK |
+					     RTE_PTYPE_L4_MASK);
+		}
+		cqd++;
+		*rx++ = mb;
+	}
+	/* Number of descriptors visited */
+	nb_rx = cqd - (struct cq_enet_rq_desc *)(cq->ring.descs) - cq_idx;
+	if (nb_rx == 0)
+		return 0;
+	rqd = ((struct rq_enet_desc *)rq->ring.descs) + cq_idx;
+	rxmb = rq->mbuf_ring + cq_idx;
+	cq_idx += nb_rx;
+	rq->rx_nb_hold += nb_rx;
+	if (unlikely(cq_idx == cq->ring.desc_count)) {
+		cq_idx = 0;
+		cq->last_color ^= CQ_DESC_COLOR_MASK_NOSHIFT;
+	}
+	cq->to_clean = cq_idx;
+
+	memcpy(rxmb, rq->free_mbufs + ENIC_RX_BURST_MAX - rq->num_free_mbufs,
+	       sizeof(struct rte_mbuf *) * nb_rx);
+	rq->num_free_mbufs -= nb_rx;
+	while (nb_rx) {
+		nb_rx--;
+		mb = *rxmb++;
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
+		rqd->address = mb->buf_iova + RTE_PKTMBUF_HEADROOM;
+		rqd++;
+	}
+	if (rq->rx_nb_hold > rq->rx_free_thresh) {
+		rq->posted_index = enic_ring_add(rq->ring.desc_count,
+						 rq->posted_index,
+						 rq->rx_nb_hold);
+		rq->rx_nb_hold = 0;
+		rte_wmb();
+		iowrite32_relaxed(rq->posted_index,
+				  &rq->ctrl->posted_index);
+	}
+
+	return rx - rx_pkts;
+}
+
 static void enic_fast_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 {
 	unsigned int desc_count, n, nb_to_free, tail_idx;

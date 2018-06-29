@@ -38,6 +38,7 @@ struct cq_desc {
 #define CQ_DESC_TYPE_MASK        ((1 << CQ_DESC_TYPE_BITS) - 1)
 #define CQ_DESC_COLOR_MASK       1
 #define CQ_DESC_COLOR_SHIFT      7
+#define CQ_DESC_COLOR_MASK_NOSHIFT 0x80
 #define CQ_DESC_Q_NUM_BITS       10
 #define CQ_DESC_Q_NUM_MASK       ((1 << CQ_DESC_Q_NUM_BITS) - 1)
 #define CQ_DESC_COMP_NDX_BITS    12

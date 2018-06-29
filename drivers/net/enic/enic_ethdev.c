@@ -524,7 +524,8 @@ static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_UNKNOWN
 	};
 
-	if (dev->rx_pkt_burst == enic_recv_pkts)
+	if (dev->rx_pkt_burst == enic_recv_pkts ||
+	    dev->rx_pkt_burst == enic_noscatter_recv_pkts)
 		return ptypes;
 	return NULL;
 }

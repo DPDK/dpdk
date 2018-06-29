@@ -52,6 +52,8 @@ struct vnic_rq {
 	struct vnic_dev *vdev;
 	struct vnic_rq_ctrl __iomem *ctrl;	/* memory-mapped */
 	struct vnic_dev_ring ring;
+	struct rte_mbuf **free_mbufs;		/* reserve of free mbufs */
+	int num_free_mbufs;
 	struct rte_mbuf **mbuf_ring;		/* array of allocated mbufs */
 	unsigned int mbuf_next_idx;		/* next mb to consume */
 	void *os_buf_head;
