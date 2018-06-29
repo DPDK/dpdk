@@ -13,6 +13,7 @@ Getting Started Guide for Linux
     intro
     sys_reqs
     build_dpdk
+    cross_build_dpdk_for_arm64
     linux_drivers
     build_sample_apps
     enable_func
