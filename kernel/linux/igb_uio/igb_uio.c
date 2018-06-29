@@ -30,6 +30,7 @@ struct rte_uio_pci_dev {
 	int refcnt;
 };
 
+static int wc_activate;
 static char *intr_mode;
 static enum rte_intr_mode igbuio_intr_mode_preferred = RTE_INTR_MODE_MSIX;
 /* sriov sysfs */
@@ -375,9 +376,13 @@ igbuio_pci_setup_iomem(struct pci_dev *dev, struct uio_info *info,
 	len = pci_resource_len(dev, pci_bar);
 	if (addr == 0 || len == 0)
 		return -1;
-	internal_addr = ioremap(addr, len);
-	if (internal_addr == NULL)
-		return -1;
+	if (wc_activate == 0) {
+		internal_addr = ioremap(addr, len);
+		if (internal_addr == NULL)
+			return -1;
+	} else {
+		internal_addr = NULL;
+	}
 	info->mem[n].name = name;
 	info->mem[n].addr = addr;
 	info->mem[n].internal_addr = internal_addr;
@@ -626,6 +631,9 @@ igbuio_pci_init_module(void)
 		return -EINVAL;
 	}
 
+	if (wc_activate != 0)
+		pr_info("wc_activate is set\n");
+
 	ret = igbuio_config_intr_mode(intr_mode);
 	if (ret < 0)
 		return ret;
@@ -649,6 +657,12 @@ MODULE_PARM_DESC(intr_mode,
 "    " RTE_INTR_MODE_MSI_NAME "        Use MSI interrupt\n"
 "    " RTE_INTR_MODE_LEGACY_NAME "     Use Legacy interrupt\n"
 "\n");
+
+module_param(wc_activate, int, 0);
+MODULE_PARM_DESC(wc_activate,
+"Activate support for write combining (WC) (default=0)\n"
+"    0 - disable\n"
+"    other - enable\n");
 
 MODULE_DESCRIPTION("UIO driver for Intel IGB PCI cards");
 MODULE_LICENSE("GPL");
